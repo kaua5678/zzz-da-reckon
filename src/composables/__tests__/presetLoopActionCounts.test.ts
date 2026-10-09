@@ -37,7 +37,10 @@ describe('CC-267 换人重置全部动作次数', () => {
 
   it('CC-268：用户槽残留潜能不影响装配结果（换人回到模板潜能 6）', async () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    const preset = teamPresets.find(p => p.team.includes('1191'))! // 艾莲：模块读潜能
+    // 2026-10-08 自动预设库重生成后 艾莲(1191) 不再出现在任何预设（旧 auto-1191-* 三条已消失）。
+    // 换成 猫又(1021)：同为「模块读潜能」的角色（`mechanics/agents/nekomata.ts` 按 potentialLevel
+    // 取 `NEKOMATA_POTENTIAL_CRIT_DMG`，实测 slot0 潜能 1→6 总伤 +4.91M）⇒ 泄漏判据仍然咬合。
+    const preset = teamPresets.find(p => p.team.includes('1021'))! // 猫又：模块读潜能
     for (const c of config.team) c.potentialLevel = 1
     applyTeamToStore(config, preset)
     expect(config.team.map(c => c.potentialLevel)).toEqual([6, 6, 6])

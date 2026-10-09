@@ -51,7 +51,7 @@ function styleSources(vueText) {
   const scoped = []   // 带 scope id 的来源（本文件内联 scoped，或 <style scoped src>）
   const plain = []    // 无 scoped 的内联 style（少数用法）
   // ⚠ 开标签必须**锚在行首**：正文注释里也会出现「<style scoped src>」字样（实测
-  //   PullValueChart.vue / NewCharacterChart.vue 的文件头注释都这么写）。不锚定则会把注释里的
+  //   NewCharacterChart.vue 的文件头注释就这么写）。不锚定则会把注释里的
   //   字样当开标签、非贪婪吞掉后面真正的块 ⇒ 该组件解析成「没有样式」⇒ 误报/漏报双向失真。
   //   闭标签**不能**要求行首：`<style scoped src="..."></style>` 是同一行的常见写法。
   for (const m of vueText.matchAll(/^<style\b([^>]*)>([\s\S]*?)<\/style>/gm)) {

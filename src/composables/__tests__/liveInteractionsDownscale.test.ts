@@ -1,7 +1,12 @@
 /**
  * CC-263：难度 x 的交互次数必须按引擎非轴降配（`interactionScale`）同口径缩放。
- * 修前 x 读 store 原值：auto-1431-1481-1341 引擎 scale 0.5 实打弹刀 / 闪反各减半，x 仍按满额计（60.7 → 应为 42.7）。
+ * 修前 x 读 store 原值：auto-1431-1341-1481 引擎 scale 0.5 实打弹刀 / 闪反各减半，x 仍按满额计。
  * 单一来源：`resourceCalc/feasibilitySearch#DOWNSCALED_INTERACTION_FIELDS` + `downscaleInteractionCount`。
+ *
+ * ⚠ 夹具沿革（2026-10-09，预设库重生成 85→77 条）：原夹具 `auto-1431-1481-1341` 已从库中消失
+ * （同 3 名角色槽序不同 ⇒ 新 id `auto-1431-1341-1481`，且来自另一条实战 run：金数 5→6、
+ * 照的音擎由 `14134` 变空、琉音由 `14148` 变 `13005`）。
+ * 换成**存活且仍处于降配态**的 `auto-1431-1341-1481`（实测 scale 0.5，与旧夹具同档）。
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
@@ -24,7 +29,7 @@ describe('CC-263 难度 x 认引擎降配', () => {
   it('降配队：engineInteractionItems 的弹刀 / 闪反 = Σ round(store × scale)，liveInteractions 随之缩', async () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1431-1481-1341')!
+    const preset = teamPresets.find(p => p.id === 'auto-1431-1341-1481')!
     applyTeamToStore(config, preset)
     const rr = calc.resourceResult.value!
     const scale = rr.convergence?.interactionScale

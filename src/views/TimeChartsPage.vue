@@ -370,10 +370,6 @@
       :auto-build="autoBuild"
     />
 
-    <!-- ============ Chart 5：抽卡价值 · 危局兑现（实战归档配对差分） ============ -->
-    <!-- 整块已抽组件 components/charts/PullValueChart.vue（2026-09-14）；样式随组件走 -->
-    <PullValueChart :svg-w="svgW" />
-
     <!-- ============ Chart 6：抽卡规划器（危局最优策略 + VCG 价值） ============ -->
     <!-- 整块已抽组件 components/charts/PullPlannerChart.vue（2026-09-14）；样式随组件走 -->
     <PullPlannerChart
@@ -403,7 +399,6 @@ import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'
 import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
 import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
 import DirectDamageChart from '@/components/charts/DirectDamageChart.vue'
-import PullValueChart from '@/components/charts/PullValueChart.vue'
 import NewCharacterChart from '@/components/charts/NewCharacterChart.vue'
 import FilmSimChart from '@/components/charts/FilmSimChart.vue'
 import SlotCompareChart from '@/components/charts/SlotCompareChart.vue'

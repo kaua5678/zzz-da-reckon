@@ -8,6 +8,14 @@
  * 这份超出与交互降配档无关（S3 八档试算净占用全部 182.367s），S3 没有杠杆，只能在源头对齐口径。
  * 修复后 104 队 physical：超预算 13 队 / 15.86s → 3 队 / 0.49s；缺省 off 逐位不变。
  * 详见 docs/mcp-stun-dual-source.md §6。
+ *
+ * 2026-10-08 自动预设库重生成：原 `auto-1321-1481-1491`（伊芙琳+琉音+千夏）与
+ * `auto-1381-1481-1311`（零号·安比+琉音+耀嘉音）双双真消失（伊芙琳 1321 / 零号·安比 1381
+ * 已不在任何预设）。换成两支语义等价队（同为「强攻主C + 槽1 琉音 + 支援」、physical 下失衡 ≥1
+ * 且账本与物化同口径、超预算 0）：
+ *   - `auto-1521-1481-1311`（希希芙 强攻·电 + 琉音 + 耀嘉音 支援）——与旧 1381 队同「电强攻+琉音+耀嘉音」结构
+ *   - `auto-1021-1481-1211`（猫又 强攻·物理 + 琉音 + 丽娜 支援）
+ * 实测 physical：两者 stun 5 / 3，over −0.766 / 0.000（旧 1321 队修前 +2.37s）。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -43,7 +51,7 @@ async function overBudget(presetId: string, projectionCode: number) {
 }
 
 describe('physical 模式：琉音赠大账本与物化同口径（不超预算）', () => {
-  for (const id of ['auto-1321-1481-1491', 'auto-1381-1481-1311']) {
+  for (const id of ['auto-1521-1481-1311', 'auto-1021-1481-1211']) {
     it(id, async () => {
       const r = await overBudget(id, 4)
       expect(r.stun).toBeGreaterThanOrEqual(1)

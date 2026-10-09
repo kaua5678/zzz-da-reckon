@@ -1,6 +1,18 @@
 {
  "_note": "时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts —— 重生成前必须先 A/B 归因（见测试头注释）",
  "_tolerance": 1,
+ "auto-1021-1031-1491": {
+  "slack": 0,
+  "over": 0,
+  "stun": 2,
+  "outerExit": "stable"
+ },
+ "auto-1021-1141-1211": {
+  "slack": 0,
+  "over": 0,
+  "stun": 4,
+  "outerExit": "stable"
+ },
  "auto-1021-1481-1031": {
   "slack": 0,
   "over": 0,
@@ -19,25 +31,19 @@
   "stun": 2,
   "outerExit": "stable"
  },
- "auto-1021-1481-1341": {
+ "auto-1021-1481-1491": {
   "slack": 0,
   "over": 0,
-  "stun": 2,
-  "outerExit": "cycle"
+  "stun": 3,
+  "outerExit": "stable"
  },
- "auto-1021-1571-1491": {
+ "auto-1021-1571-1211": {
   "slack": 0,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "auto-1041-1161-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 4,
-  "outerExit": "stable"
- },
- "auto-1041-1361-1311": {
   "slack": 0,
   "over": 0,
   "stun": 4,
@@ -55,16 +61,16 @@
   "stun": 4,
   "outerExit": "stable"
  },
+ "auto-1041-1571-1211": {
+  "slack": 0,
+  "over": 0,
+  "stun": 4,
+  "outerExit": "stable"
+ },
  "auto-1041-1571-1311": {
   "slack": 2,
   "over": 0,
   "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1041-1571-1341": {
-  "slack": 0,
-  "over": 0,
-  "stun": 4,
   "outerExit": "stable"
  },
  "auto-1051-1141-1451": {
@@ -79,16 +85,22 @@
   "stun": 3,
   "outerExit": "stable"
  },
- "auto-1091-1031-1511": {
-  "slack": 0,
+ "auto-1091-1031-1311": {
+  "slack": 11.7,
   "over": 0,
-  "stun": 3,
+  "stun": 2,
   "outerExit": "stable"
  },
- "auto-1091-1221-1581": {
+ "auto-1091-1411-1131": {
   "slack": 0,
   "over": 0,
   "stun": 2,
+  "outerExit": "stable"
+ },
+ "auto-1091-1511-1031": {
+  "slack": 0,
+  "over": 0,
+  "stun": 3,
   "outerExit": "stable"
  },
  "auto-1091-1511-1211": {
@@ -109,10 +121,28 @@
   "stun": 3,
   "outerExit": "stable"
  },
+ "auto-1171-1561-1411": {
+  "slack": 0.7,
+  "over": 0,
+  "stun": 2,
+  "outerExit": "stable"
+ },
+ "auto-1171-1561-1581": {
+  "slack": 0.5,
+  "over": 0,
+  "stun": 2,
+  "outerExit": "stable"
+ },
  "auto-1181-1511-1411": {
   "slack": 0.4,
   "over": 0,
   "stun": 3,
+  "outerExit": "stable"
+ },
+ "auto-1181-1561-1211": {
+  "slack": 0,
+  "over": 0,
+  "stun": 2,
   "outerExit": "stable"
  },
  "auto-1181-1561-1411": {
@@ -127,60 +157,6 @@
   "stun": 2,
   "outerExit": "stable"
  },
- "auto-1191-1161-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1191-1361-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1191-1481-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1201-1361-1211": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1201-1361-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1201-1481-1211": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1201-1481-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1201-1481-1491": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1201-1571-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
  "auto-1221-1511-1211": {
   "slack": 0,
   "over": 0,
@@ -191,30 +167,6 @@
   "slack": 0,
   "over": 0,
   "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1221-1561-1411": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1241-1031-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1261-1331-1411": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1261-1331-1581": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
   "outerExit": "stable"
  },
  "auto-1261-1561-1411": {
@@ -229,37 +181,19 @@
   "stun": 2,
   "outerExit": "stable"
  },
- "auto-1321-1161-1311": {
+ "auto-1281-1511-1411": {
   "slack": 0,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
- "auto-1321-1481-1311": {
+ "auto-1281-1561-1581": {
   "slack": 0,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
- "auto-1321-1481-1491": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1321-1571-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1331-1561-1411": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1371-1251-1451": {
+ "auto-1371-1391-1451": {
   "slack": 0,
   "over": 0,
   "stun": 4,
@@ -271,58 +205,16 @@
   "stun": 4,
   "outerExit": "stable"
  },
- "auto-1371-1571-1451": {
-  "slack": 0,
-  "over": 0,
-  "stun": 4,
-  "outerExit": "stable"
- },
- "auto-1381-1211-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1381-1361-1301": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1381-1361-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1381-1361-1411": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1381-1481-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1401-1261-1411": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1401-1361-1411": {
-  "slack": 0,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
  "auto-1401-1411-1031": {
   "slack": 1.4,
   "over": 0,
   "stun": 2,
+  "outerExit": "stable"
+ },
+ "auto-1401-1511-1031": {
+  "slack": 0,
+  "over": 0,
+  "stun": 3,
   "outerExit": "stable"
  },
  "auto-1401-1511-1411": {
@@ -331,25 +223,43 @@
   "stun": 3,
   "outerExit": "stable"
  },
+ "auto-1401-1561-1581": {
+  "slack": 0,
+  "over": 0,
+  "stun": 2,
+  "outerExit": "stable"
+ },
+ "auto-1431-1031-1491": {
+  "slack": 0,
+  "over": 0,
+  "stun": 1,
+  "outerExit": "stable"
+ },
  "auto-1431-1341-1031": {
   "slack": 0,
   "over": 0,
   "stun": 1,
   "outerExit": "stable"
  },
- "auto-1431-1341-1311": {
-  "slack": 0,
-  "over": 0,
-  "stun": 1,
-  "outerExit": "stable"
- },
- "auto-1431-1481-1311": {
+ "auto-1431-1341-1481": {
   "slack": 0,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
- "auto-1431-1481-1341": {
+ "auto-1431-1341-1491": {
+  "slack": 0,
+  "over": 0,
+  "stun": 1,
+  "outerExit": "stable"
+ },
+ "auto-1431-1391-1491": {
+  "slack": 0,
+  "over": 0,
+  "stun": 3,
+  "outerExit": "stable"
+ },
+ "auto-1431-1481-1031": {
   "slack": 0,
   "over": 0,
   "stun": 2,
@@ -367,31 +277,31 @@
   "stun": 1,
   "outerExit": "stable"
  },
- "auto-1431-1491-1341": {
-  "slack": 0,
-  "over": 0,
-  "stun": 1,
-  "outerExit": "stable"
- },
- "auto-1461-1521-1031": {
-  "slack": 0,
-  "over": 0,
-  "stun": 4,
-  "outerExit": "stable"
- },
- "auto-1461-1521-1361": {
-  "slack": 0,
-  "over": 0,
-  "stun": 5,
-  "outerExit": "stable"
- },
- "auto-1471-1571-1451": {
+ "auto-1461-1031-1521": {
   "slack": 0,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
- "auto-1501-1511-1311": {
+ "auto-1461-1521-1491": {
+  "slack": 0,
+  "over": 0,
+  "stun": 4,
+  "outerExit": "stable"
+ },
+ "auto-1471-1481-1451": {
+  "slack": 0,
+  "over": 0,
+  "stun": 2,
+  "outerExit": "stable"
+ },
+ "auto-1501-1141-1491": {
+  "slack": 0,
+  "over": 0,
+  "stun": 4,
+  "outerExit": "stable"
+ },
+ "auto-1501-1411-1491": {
   "slack": 0,
   "over": 0,
   "stun": 2,
@@ -403,7 +313,19 @@
   "stun": 3,
   "outerExit": "stable"
  },
+ "auto-1501-1511-1491": {
+  "slack": 0,
+  "over": 0,
+  "stun": 3,
+  "outerExit": "stable"
+ },
  "auto-1501-1561-1411": {
+  "slack": 0,
+  "over": 0,
+  "stun": 2,
+  "outerExit": "stable"
+ },
+ "auto-1501-1581-1561": {
   "slack": 0,
   "over": 0,
   "stun": 2,
@@ -415,13 +337,13 @@
   "stun": 3,
   "outerExit": "stable"
  },
- "auto-1521-1251-1311": {
+ "auto-1511-1561-1581": {
   "slack": 0,
   "over": 0,
-  "stun": 5,
+  "stun": 3,
   "outerExit": "stable"
  },
- "auto-1521-1361-1311": {
+ "auto-1521-1251-1311": {
   "slack": 0,
   "over": 0,
   "stun": 5,
@@ -439,6 +361,12 @@
   "stun": 4,
   "outerExit": "stable"
  },
+ "auto-1521-1481-1491": {
+  "slack": 0.3,
+  "over": 0,
+  "stun": 4,
+  "outerExit": "stable"
+ },
  "auto-1531-1481-1451": {
   "slack": 0.3,
   "over": 0,
@@ -449,6 +377,12 @@
   "slack": 0,
   "over": 0,
   "stun": 3,
+  "outerExit": "stable"
+ },
+ "auto-1541-1331-1411": {
+  "slack": 0,
+  "over": 0,
+  "stun": 2,
   "outerExit": "stable"
  },
  "auto-1541-1331-1581": {
@@ -469,28 +403,22 @@
   "stun": 2,
   "outerExit": "stable"
  },
- "auto-1561-1171-1411": {
-  "slack": 0.6,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1581-1501-1561": {
+ "auto-1541-1561-1581": {
   "slack": 0,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
- "auto-1591-1161-1211": {
+ "auto-1581-1511-1411": {
   "slack": 0,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
- "auto-1591-1161-1311": {
-  "slack": 0.3,
+ "auto-1591-1141-1211": {
+  "slack": 0,
   "over": 0,
-  "stun": 3,
+  "stun": 4,
   "outerExit": "stable"
  },
  "auto-1591-1481-1211": {
@@ -499,16 +427,40 @@
   "stun": 3,
   "outerExit": "stable"
  },
- "auto-1591-1481-1311": {
-  "slack": 1.7,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
  "auto-1591-1571-1211": {
   "slack": 0,
   "over": 1.4,
   "stun": 4,
+  "outerExit": "stable"
+ },
+ "auto-1611-1101-1211": {
+  "slack": 0,
+  "over": 0,
+  "stun": 3,
+  "outerExit": "stable"
+ },
+ "auto-1611-1141-1211": {
+  "slack": 0,
+  "over": 0,
+  "stun": 4,
+  "outerExit": "stable"
+ },
+ "auto-1611-1361-1211": {
+  "slack": 0,
+  "over": 0,
+  "stun": 3,
+  "outerExit": "stable"
+ },
+ "auto-1611-1571-1211": {
+  "slack": 0,
+  "over": 0,
+  "stun": 3,
+  "outerExit": "stable"
+ },
+ "auto-1611-1621-1211": {
+  "slack": 0,
+  "over": 0,
+  "stun": 2,
   "outerExit": "stable"
  },
  "banyue-jufufu-lucia": {
@@ -521,6 +473,12 @@
   "slack": 0,
   "over": 0,
   "stun": 2,
+  "outerExit": "stable"
+ },
+ "banyue-norma-lucia": {
+  "slack": 0,
+  "over": 0,
+  "stun": 3,
   "outerExit": "stable"
  },
  "banyue-qingyi-lucia": {

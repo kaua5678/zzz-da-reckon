@@ -7,6 +7,12 @@
  * ③ 端到端：多预设 × 命座 0/6 的完整 resourceResult 在「记忆命中」路径下与「逐次重算」路径逐位相同
  *    （以 `feasibleRows` 的 mock 强制关闭记忆作对照臂）且确有命中；
  * ④ resolveMechanicSettings 直读口径 = `configStore.getMechanicSetting` 逐项相同（含非有限值回落 default）。
+ *
+ * ⚠ 2026-10-09 夹具更换：`auto-1461-1521-1361`（「席德」+希希芙+「扳机」）在新库**真消失**（无同槽序存活者），
+ * 换成 `auto-1461-1521-1491`（「席德」+希希芙+千夏）。等价性：同属 强攻队/电、**保留原夹具的双输出核心
+ * 与槽序**（槽0 `1461` 席德 / 槽1 `1521` 希希芙）；只有槽2 从击破（`1361` 扳机）换成支援（`1491` 千夏）——
+ * 新库没有 1461+1521+击破 的存活预设。本文件的判据（作用域记忆命中/逐位等价）只要求「一支有真实 cfg 与
+ * 降配扫描面的三人队」，与槽2 的职业无关。
  */
 import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
@@ -44,7 +50,7 @@ async function firstCfgAndState(presetId: string) {
 
 describe('feasibleRows 作用域记忆', () => {
   it('作用域外恒重算；作用域内同参数命中、改任一键即重算；退出清槽', async () => {
-    const { cfg, state } = await firstCfgAndState('auto-1461-1521-1361')
+    const { cfg, state } = await firstCfgAndState('auto-1461-1521-1491')
     const a = feasibleRows(cfg, state, 3, 50)
     const b = feasibleRows(cfg, state, 3, 50)
     expect(b).not.toBe(a)
@@ -86,7 +92,7 @@ describe('feasibleRows 作用域记忆', () => {
     const run = (on: boolean) => {
       setRowFastPathsEnabled(on)
       const trail: string[] = []
-      for (const id of ['auto-1461-1521-1361', 'banyue-liuyin-lucia', 'auto-1041-1161-1311', 'auto-1431-1481-1491']) {
+      for (const id of ['auto-1461-1521-1491', 'banyue-liuyin-lucia', 'auto-1041-1161-1311', 'auto-1431-1481-1491']) {
         const p = teamPresets.find(x => x.id === id)
         expect(p, id).toBeTruthy()
         for (const c of [0, 6]) {

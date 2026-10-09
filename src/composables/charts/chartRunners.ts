@@ -6,8 +6,8 @@
  * （`budget ?? 6`、`initialGold ?? 6`、`filmPerVersion ?? 15000`、`spendRatio ?? 0.5`、
  * `budgetYuan ?? 0`）、try/finally 结构逐字不变。
  *
- * Chart 5 的 `runPullValue` 留在组件里：归档缓存已收进 `catalog#loadRunArchive`（arena-D 第 367 轮），
- * 若要搬过来，只剩「调 loadRunArchive + computePullValue」两步。
+ * ⚠ Chart 5（抽卡价值 · 危局兑现）已于 2026-10-08 整体下线（用户裁决：价值要用计算器算，
+ * 不用统计估）——其 `runPullValue` 与 `composables/pullValue.ts` 一并删除，本文件不再涉及它。
  *
  * 依赖注入：批任务归属 `owner`（页面 `useBatchOwner()`）与各 ref/getter 由页面传入，本文件不读 store、
  * 不碰组件生命周期，可单测。每次运行经 `owner.start()` 发车：重算吊销上一次，离开页面也吊销；

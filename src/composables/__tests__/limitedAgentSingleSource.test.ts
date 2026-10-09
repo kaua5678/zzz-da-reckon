@@ -58,8 +58,9 @@ describe('CC-270 限定 S 角色单一定义', () => {
     expect(isLimitedWEngine('zzz_wiki_218')).toBe(false) // = 14121 啜泣摇篮（常驻）
   })
 
-  it('CC-272 源码锁：抽卡分层特例集合只在 versionTimeline 定义（pullValue / pullPlannerEngine 不再写字面量 id 集合）', () => {
-    for (const f of ['../pullValue.ts', '../pullPlannerEngine.ts']) {
+  it('CC-272 源码锁：抽卡分层特例集合只在 versionTimeline 定义（pullPlannerEngine 不再写字面量 id 集合）', () => {
+    // pullValue.ts 已于 2026-10-08 随 Chart 5 下线删除（用户裁决：价值用计算器算，不用统计估）
+    for (const f of ['../pullPlannerEngine.ts']) {
       const src = readFileSync(new URL(f, import.meta.url), 'utf8')
       expect(src, f).not.toMatch(/new Set\(\[\s*'1(551|421)'/)
     }

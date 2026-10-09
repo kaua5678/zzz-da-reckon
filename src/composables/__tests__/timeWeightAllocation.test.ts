@@ -7,7 +7,8 @@
  *  ② 触发签名**不含权重本身**（否则策略写回权重会自触发成死循环）——策略新增逻辑时这条最容易踩；
  *  ③ 走默认（不点名策略）时：权重确实被改动、`strategyId` = B、**团队总伤不降**（坐标上升单调不劣）；
  *  ④ 主C（槽0）的平A池时间**增加**——即「能量不够就多A」这条约束在当前策略下确实被喂饱
- *     （实测 auto-1521-1361-1311：平A 31.8→65.7s、强特 16→18 次、伤害 +23.9%）。
+ *     （实测 auto-1521-1481-1311：平A 21.8→42.5s、强特 15→17 次、伤害 +20.78%；
+ *      旧样本 auto-1521-1361-1311 为平A 31.8→65.7s、强特 16→18 次、伤害 +23.9%，该预设已消失）。
  *  ⑥~⑧ 测的是 **C 的杠杆**（可行性优先/弹刀阶梯/相对门/能量驱动/角点解/弹刀下限）→ 必须显式点名
  *     `DEEP_TIME_WEIGHT_STRATEGY_ID`（默认已不是 C）。
  */
@@ -29,7 +30,7 @@ import {
   getTimeWeightStrategy,
 } from '@/composables/timeWeightAllocation'
 
-const PRESET_ID = 'auto-1521-1361-1311'
+const PRESET_ID = 'auto-1521-1481-1311'
 
 // 本文件每个用例都要跑「联合策略」（≈15~20 次完整引擎求值，单跑 1~5s）；全量并行下会撞 vitest 默认
 // 5000ms 上限（2026-09-10 实测 5557/5799ms 假红）→ 文件级显式超时。
@@ -94,13 +95,14 @@ describe('平A池权重·分配策略', () => {
     const { catalog } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
-    // CC-152 逐用例钉：依赖「均衡把失衡 4→3」这一 off 场景
+    // CC-152 逐用例钉：依赖「均衡改变失衡次数」这一 off 场景（旧样本 4→3；换库后 6→4）
     config.setMechanicSetting('time.stunPlanProjection', 0)
     const calc = useResourceCalc()
-    // auto-1591-1481-1311：实测均衡解会把失衡 4→3 同时 +10.1% 伤害。
-    // 用户口径 2026-09-10 修正：「最终目的是总伤提高，失衡四舍五入不一定让总伤提高」→
-    // 次数**不是约束**（曾按硬约束回滚，已撤销）；次数变化只做如实上报。
-    const p = teamPresets.find(x => x.id === 'auto-1591-1481-1311')!
+    // 2026-10-08 自动预设库重生成：原 `auto-1591-1481-1311`（希格莉德+琉音+耀嘉音）真消失
+    // （希格莉德 1591 仍在库，但该三人的同槽序预设不再产出）。换成 `auto-1041-1161-1311`
+    // （11号+莱特+耀嘉音）——它同样有「均衡解改失衡次数」这条活分支（实测 6→4 次、总伤 +8.07%，
+    // 与旧队 4→3 次同型），note 仍如实上报「次数是分配的结果」。旧值 4→3 次 / +10.1%。
+    const p = teamPresets.find(x => x.id === 'auto-1041-1161-1311')!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const stunBefore = calc.stunPoolResult.value!.stunCount
@@ -120,9 +122,10 @@ describe('平A池权重·分配策略', () => {
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
     const calc = useResourceCalc()
-    // auto-1521-1361-1311：实测弹刀 12→0 时总伤 83.5M→92.2M（PROBE_STUN_LEVER）——
-    // 低效交互（吃必要前台时间）应被搜索**减掉**，这是「弹刀是杠杆」的下半句。
-    const p = teamPresets.find(x => x.id === 'auto-1521-1361-1311')!
+    // auto-1521-1481-1311：联合策略把弹刀 12→0（`弹刀 6/6/0→0/0/0`，受「不发生截断」硬门约束），
+    // 同期总伤 78.65M→112.03M——低效交互（吃必要前台时间）应被搜索**减掉**，这是「弹刀是杠杆」的下半句。
+    // （旧样本 auto-1521-1361-1311 为 83.5M→92.2M / PROBE_STUN_LEVER，该预设已消失。）
+    const p = teamPresets.find(x => x.id === 'auto-1521-1481-1311')!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const dmgBefore = calc.teamTotalDamage.value
@@ -144,7 +147,8 @@ describe('平A池权重·分配策略', () => {
   // ⚠ 2026-09-19 R37-J5 v2（动态合轴）后再补一刀：非轴多人队的溢出先由队友前台按溢出量被合轴吸收，该队自由口径下
   // 琉音/柳的前台被整段吸收 + 降配 0.875 ⇒ 装配截断归零，不再是超时样本。v2 下唯一装不下的是**操作角色自己的前台 > 180s**，
   // 而降配/弃轴机制会把它收进可行域——只有**锁窗**（用户明确意图「操作够就能打 N 次失衡」，编排层一律不动、超时如实上报）
-  // 能保留这条结构性溢出：锁在该队自身的失衡次数 3（golden 同值）时基线截断 ≈23.4s（仪玄自己的必要行 > 预算）。
+  // 能保留这条结构性溢出：锁在该队自身的失衡次数 3（golden 同值）时基线截断（旧 run ≈23.4s；
+  // 2026-10-08 换 run 后实测 89.68s，仍 > 0 ⇒ 用例前提「基线本身就超时」照旧成立）。
   const OVERTIME_SAMPLE_ID = 'auto-1431-1481-1491'
   /** 锁窗次数 = 该队自由口径的失衡次数（timeGolden preset:auto-1431-1481-1491.stun），不是抬高需求 */
   const OVERTIME_SAMPLE_STUN_LOCK = 3
@@ -189,7 +193,8 @@ describe('平A池权重·分配策略', () => {
     expect(after).toBeLessThanOrEqual(truncated + 1e-6)
     expect(dmgAfter).toBeGreaterThanOrEqual(dmgBefore - 1e-6)
     // 状态如实上报三态（与 timeWeightAllocation.ts 阶段 -1 的三个出口一一对应）：
-    //   归零 → 「已拉回可行」；部分拉回（结构性溢出队的常态，实测 auto-1431-1481-1491 108.79→87.41s）→
+    //   归零 → 「已拉回可行」；部分拉回（结构性溢出队的常态，旧 run 实测 108.79→87.41s；
+    //   2026-10-08 换 run 后为「拉不回来」分支：89.68→89.68s，note 报「拉不回来」）→
     //   「可行性优先：截断 a→b」且**不得**同时报「拉不回来」；零进展 → 「拉不回来」。
     if (after <= 1e-6) {
       expect(r.note ?? '').toContain('已拉回可行')
@@ -234,8 +239,9 @@ describe('平A池权重·分配策略', () => {
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
     const calc = useResourceCalc()
-    // auto-1521-1361-1311：实测主C 平A 池 31.8→65.7s、强特 16→18 次（用户点名「能量不够就多A」的样本）
-    const p = teamPresets.find(x => x.id === 'auto-1521-1361-1311')!
+    // auto-1521-1481-1311：实测联合策略主C 强特 15→19 次、总伤 78.65M→112.03M
+    // （用户点名「能量不够就多A」的样本；旧样本 auto-1521-1361-1311 为 16→18 次，该预设已消失）
+    const p = teamPresets.find(x => x.id === 'auto-1521-1481-1311')!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const exBase = calc.resourceResult.value!.characters[0]!.exSpecialCount
@@ -258,7 +264,7 @@ describe('平A池权重·分配策略', () => {
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
     const calc = useResourceCalc()
-    const p = teamPresets.find(x => x.id === 'auto-1521-1361-1311')!
+    const p = teamPresets.find(x => x.id === 'auto-1521-1481-1311')!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const stunBase = calc.stunPoolResult.value!.stunCount
@@ -279,9 +285,14 @@ describe('平A池权重·分配策略', () => {
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
     const calc = useResourceCalc()
-    // 维琳娜(异常)+柏妮思(异常)+柚叶(支援)：双异常核心队（预设库多支双 C 队同款结构；
-    // 2026-09-13 成员集合去重后该队只留 auto-1561-1171-1411 一条，槽序 = 维琳娜/柏妮思/柚叶）
-    const p = teamPresets.find(x => x.id === 'auto-1561-1171-1411')!
+    // 维琳娜(异常)+柏妮思(异常)+柚叶(支援)：双异常核心队（预设库多支双 C 队同款结构）。
+    // 2026-10-08 自动预设库重生成：同 3 人槽序变为 `auto-1171-1561-1411`
+    // （柏妮思 1171 / 维琳娜 1561 / 柚叶 1411）——⚠ 不是纯改名，来自另一条实战 run
+    // （旧 run-1783870299159-khqbcz 金数 2 / 音擎 14156·14118·14141 →
+    //  新 run-1783080266142-ucgbfs 金数 5 / 音擎 14118·13009·14121）。
+    // 语义等价：仍是「两个异常核心（柏妮思+维琳娜）+ 一个支援（柚叶）」的同型双 C 队。
+    // 实测逐核心强特不降（slot0 13.72→14.36、slot1 13→13）、总伤 43.24M→45.01M（不降）。
+    const p = teamPresets.find(x => x.id === 'auto-1171-1561-1411')!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const chars = () => calc.resourceResult.value!.characters
@@ -292,10 +303,10 @@ describe('平A池权重·分配策略', () => {
     const exA2 = chars()[0]!.exSpecialCount
     const exB2 = chars()[1]!.exSpecialCount
     // 判据（逐核心）：两个主C 的强特次数都不许低于策略入口
-    expect(exA2, '主C#1（维琳娜）强特次数不降').toBeGreaterThanOrEqual(exA)
-    expect(exB2, '主C#2（柏妮思）强特次数不降（A4 前该槽被角点解当辅助压过）').toBeGreaterThanOrEqual(exB)
+    expect(exA2, '主C#1（柏妮思）强特次数不降').toBeGreaterThanOrEqual(exA)
+    expect(exB2, '主C#2（维琳娜）强特次数不降（A4 前该槽被角点解当辅助压过）').toBeGreaterThanOrEqual(exB)
     expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(dmgBase - 1e-6)
-    // 角点解若出手，被压的只能是柚叶（支援位 slot3）——输出槽权重不降
+    // 角点解若出手，被压的只能是柚叶（支援位 slot2）——输出槽权重不降
     const m = (r.note ?? '').match(/角点解：非主C 权重 ([\d./]+)→([\d./]+)/)
     if (m) {
       const [, b, a] = m
@@ -311,7 +322,10 @@ describe('平A池权重·分配策略', () => {
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
     const calc = useResourceCalc()
-    const p = teamPresets.find(x => x.id === 'auto-1591-1481-1311')!
+    // 2026-10-08 自动预设库重生成：原 `auto-1591-1481-1311` 真消失。换成 `auto-1041-1161-1311`
+    // （11号+莱特+耀嘉音）——99 弹刀同样装不下（实测被编排层降配到 0.375 档、截断归零），
+    // 判据「越界被挡住」仍然咬合；实测搜索后弹刀总数不增（105→105）。
+    const p = teamPresets.find(x => x.id === 'auto-1041-1161-1311')!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     config.setActionCount(0, 'parryCount', 99)
@@ -334,7 +348,7 @@ describe('平A池权重·分配策略', () => {
     await catalog.loadBuildRecommendations()
     const config = useConfigStore()
     const calc = useResourceCalc()
-    const p = teamPresets.find(x => x.id === 'auto-1521-1361-1311')!
+    const p = teamPresets.find(x => x.id === 'auto-1521-1481-1311')!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     // 合成一个 boss 预设：13 次正常弹刀（同叶释渊 defaults.parryTotal）

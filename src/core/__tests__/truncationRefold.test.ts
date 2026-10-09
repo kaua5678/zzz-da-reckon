@@ -17,6 +17,10 @@
  * 全库预设口径**没有**初装截断队了（结构性溢出改以 dynamicComboAlignSeconds 现身，见 dynamicComboAlign.test ③）。
  * v2 下唯一装不下的是操作角色自己的前台 > 180s，而降配/弃轴会把它收进可行域——只有**锁窗**（用户明确意图，编排层一律不动、
  * 超时如实上报）能保留这条结构性溢出：两队锁在自身自由口径失衡次数 3（golden 同值）时仪玄自己的必要行仍 > 预算。
+ *
+ * ⚠ 2026-10-09 预设库重生成 + 槽序改名：`auto-1431-1481-1341` → `auto-1431-1341-1481`（同 3 名角色、槽序不同），
+ * `auto-1431-1491-1341` → `auto-1431-1341-1491`。锁窗夹具的读数**按新槽序实测重取**（见 ① 断言处的数值），
+ * 不照抄旧值：新槽序下 -1481-1491 锁窗初装 107.52s → 终态 104.00s（旧 100.09 → 81.62 那支是旧槽序的落点）。
  */
 import { describe, it, expect } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -41,9 +45,13 @@ function expectedRowEnergy(cfg: CharacterOperationConfig, row: SkillExecution): 
  * 不再用「关掉重折另跑一遍」的硬编码读数：外层不动点的轨迹会随重折与否不同，两次运行的「初装」不是同一个量
  * （2026-09-19 实测：吸收上限 40% 后 -1491 关重折读 103.2s，而带重折那次运行的初装是 ~110s，重折后 109.4s ⇒ 假「变大」）。
  * 数值史（供归因）：7680ec0 全额吸收 23.4→23.4 / 33.3→26.7；上限 40%（按吸收前净必要）39.7→39.7 / 50.2→37.1；上限按终态前台（g(s)）见 ① 断言。
+ *
+ * ⚠ 2026-10-09 槽序改名 + 实测重取（新库）：`auto-1431-1481-1341` → `auto-1431-1341-1481`（同 3 名角色、槽序不同）。
+ * 锁窗 3 下新槽序实测：-1481-1491 初装 107.52 → 终态 104.00（收益 3.51）、-1341-1481 初装 40.63 → 终态 39.02（收益 1.62）。
+ * 两支合计 5.13s，仍在 ① 的「≥ 5s」反空洞门之上（门槛只拦机制失效，不钉具体值）。
  */
 const OVERFLOW_FIXTURE_STUN_LOCK = 3
-const OVERFLOW_FIXTURES = ['auto-1431-1481-1491', 'auto-1431-1481-1341'] as const
+const OVERFLOW_FIXTURES = ['auto-1431-1481-1491', 'auto-1431-1341-1481'] as const
 
 async function evalPreset(id: string, stunCountLock?: number) {
   const p = teamPresets.find(x => x.id === id)!
@@ -139,14 +147,24 @@ describe('债 2 批 2-1 · 截断外环回灌（rowTimeLimit 重折环）', () =
    *    装配却按另一成员的保住行计，两者本来就对不齐。闸门要求环成员**时间上可行**（截断 ≤ 容差）后，
    *    落点移到装得下的成员 ⇒ `账本 − 保住行 Σ = 0`（本条现在直接断言恒等，不再需要豁免值）。
    *    ⇒ `KNOWN_LEDGER_ROW_GAP` 已清空（表保留：将来出现新的真残差时按同格式钉值 + 写归因）。
+   *
+   * ⚠ 2026-10-09 新槽序重现的真残差（`auto-1431-1341-1481` = 旧 `auto-1431-1481-1341`，槽序不同）：
+   *    琉音(1481) 的 `1481012`（强化特殊技：剪刀）**账本侧可行行 9 次 vs 装配保住 8 次**
+   *    = 恰好 1 次 × 83.5175 dB。属上一条「整数次数行两侧计数不同」的同类真残差（不是小数份额这一支：
+   *    两侧都是整数，差在**状态/物化两侧算出的次数**）。实测三态**逐位相同**（干净 HEAD / 折叠修复前 /
+   *    当前工作区均为 +83.5175）⇒ 与本轮任何改动无关，是新槽序自身的残差。按本表协议钉值防静默漂移。
+   *    表结构升级为 `id → slot → dB`（原实现只支持 slot 0；本条残差落在 slot 2）。
    */
-  const KNOWN_LEDGER_ROW_GAP: Record<string, { decibel: number }> = {}
+  const KNOWN_LEDGER_ROW_GAP: Record<string, Record<number, number>> = {
+    // 旧 auto-1431-1481-1341（今 auto-1431-1341-1481）槽2 琉音：账本 9 次 1481012 vs 装配 8 次。
+    'auto-1431-1341-1481': { 2: 83.5175 },
+  }
   it('④ 到达不动点的重折队：账本收入 == 保住行的行级 Σ（振荡队若出现须如实上报 rejected，账本按上一次接受态计）', async () => {
     let fixedPointTeams = 0
     // 第 187 轮 CC-160（叶瞬光终局照影冻结 + 终局后重折）：两支 1481 夹具在锁窗下重折环都被拒（冻结值随入口态/rowTimeLimit
-    // 变 ⇒ kept 两态振荡，如实上报 rejected），恒等式失去样本 ⇒ 追加同簇 `auto-1431-1491-1341`（锁窗 3：2 轮到不动点、
-    // 结构性截断 31.6s，全库扫描 k185/zzScan187.test.ts）作样本；恒等式本身不放宽。
-    for (const id of [...OVERFLOW_FIXTURES, 'auto-1431-1491-1341']) {
+    // 变 ⇒ kept 两态振荡，如实上报 rejected），恒等式失去样本 ⇒ 追加同簇 `auto-1431-1341-1491`
+    // （旧 `auto-1431-1491-1341` 的槽序改名；锁窗 3：2 轮到不动点、结构性截断 31.6s，全库扫描 k185/zzScan187.test.ts）作样本；恒等式本身不放宽。
+    for (const id of [...OVERFLOW_FIXTURES, 'auto-1431-1341-1491']) {
       const r = await evalPreset(id, OVERFLOW_FIXTURE_STUN_LOCK)
       expect(r.passes, `${id} 应进重折环`).toBeGreaterThanOrEqual(1)
       if (r.rejected) continue // 振荡队：账本按上一次接受态的 kept 计，与最终 kept 差一截，恒等式不适用（如实上报即可）
@@ -156,7 +174,7 @@ describe('债 2 批 2-1 · 截断外环回灌（rowTimeLimit 重折环）', () =
         const rowsEnergy = ch.executions.reduce((s, row) => s + expectedRowEnergy(cfg, row), 0)
         const rowsDecibel = ch.executions.reduce((s, row) => s + fin(row.totalDecibelRecovery), 0)
         expect(ch.energySource.skillRegen, `${id} ${ch.agentId} 能量账本 == 保住行 Σ`).toBeCloseTo(rowsEnergy, 6)
-        const knownGap = ch.slot === 0 ? KNOWN_LEDGER_ROW_GAP[id]?.decibel ?? 0 : 0
+        const knownGap = KNOWN_LEDGER_ROW_GAP[id]?.[ch.slot] ?? 0
         expect(ch.decibelSource.skillRegen - rowsDecibel, `${id} ${ch.agentId} 喧响账本 − 保住行 Σ（已知残差 ${knownGap}）`).toBeCloseTo(knownGap, 2)
         // 保住的招式行秒数 ≥ 账本上限（赠行追加在截断之后、不计入 kept），与 bySlot.kept 自洽
         const kept = ch.executions.filter(row => isFrontlineExecution(row) && row.moveId !== 'basic_attack').reduce((s, row) => s + fin(row.totalTime), 0)

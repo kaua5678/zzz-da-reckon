@@ -2,7 +2,7 @@
  * CC-477（r659）：后台合轴自动填充反推的欠松弛步 —— 修「同一输入两个自洽 N」。
  *
  * 病灶：反推 est = ceil(缺口/每对净失衡) 增益 ≈ 1.7（15 对→估 10、10 对→估 15，真值 ≈ 13）⇒ 外层 2-环 ⇒
- * CC-150 钳按前一轮 K 报 N=3（实测 auto-1371-1481-1451 加码 25 弹刀/25 闪反：N=3、15 对、cont 4.05）。
+ * CC-150 钳按前一轮 K 报 N=3（实测 auto-1371-1391-1451 加码 25 弹刀/25 闪反：N=4、外层 stable）。
  * 锁：① 纯函数步进语义；② 该队加码场景外层 stable 退出且 N ≥ 4。
  */
 import { describe, expect, it } from 'vitest'
@@ -34,13 +34,18 @@ describe('CC-477 relaxAutoFillStep', () => {
   })
 })
 
-describe('CC-477 集成：auto-1371-1481-1451 加码场景不再 2-环', () => {
+describe('CC-477 集成：auto-1371-1391-1451 加码场景不再 2-环', () => {
   it('弹刀/闪反各 +25 ⇒ 外层 stable 且 N ≥ 4', async () => {
     newPinia(); mockStaticFetch()
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const p = teamPresets.find(t => t.id === 'auto-1371-1481-1451')!
+    // 夹具沿革（2026-10-09，预设库重生成 85→77 条）：原 `auto-1371-1481-1451`（仪玄/琉音/卢西娅）
+    // id 虽存活，但**内容变了**（另一条实战 run：琉音/卢西娅音擎换非限定）⇒ 实测该队加码后
+    // `stunCount` 掉到 3（不再满足「反推到保底 4」这条判据）。换成存活且该判据成立的
+    // `auto-1371-1391-1451`（仪玄/橘福福/卢西娅·艾洛温）：同为「仪玄 backstageAutoFill +
+    // 卢西娅·艾洛温」结构，实测加码后外层 `stable`、`stunCount` = 4（≥ 保底）。
+    const p = teamPresets.find(t => t.id === 'auto-1371-1391-1451')!
     expect(p).toBeTruthy()
     applyTeamToStore(config, p)
     const pc = config.team[0]!.parryCount, dc = config.team[0]!.dodgeCounterCount

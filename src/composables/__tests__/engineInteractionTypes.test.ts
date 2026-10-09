@@ -32,7 +32,9 @@ describe('CC-258 引擎交互类型名按角色解析', () => {
 
   it('非般岳队：不新增专属类型条目（零差）', async () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    const p = teamPresets.find(x => x.id === 'auto-1521-1361-1311')!
+    // 夹具沿革（2026-10-09，预设库重生成 85→77 条）：原 `auto-1521-1361-1311`（希希芙/「扳机」/耀嘉音）
+    // 新库无此组合 ⇒ 换槽序改名后的 `auto-1521-1481-1311`（希希芙/琉音/耀嘉音，同主C 希希芙）。
+    const p = teamPresets.find(x => x.id === 'auto-1521-1481-1311')!
     applyTeamToStore(config, p)
     const types = liveInteractions(config, p).map(i => i.type)
     expect(types.some(t => t.startsWith('banyue'))).toBe(false)

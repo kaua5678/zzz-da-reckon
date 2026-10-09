@@ -128,7 +128,7 @@ describe('判据 16 detector（构造输入，可红性自证）', () => {
         '嵌套 <template #slot> 截断导致漏报').toBe(true)
     })
 
-  it('注释里写「<style scoped src>」字样不得被当成真标签（实测 PullValueChart/NewCharacterChart 文件头就这么写）', () => {
+  it('注释里写「<style scoped src>」字样不得被当成真标签（实测 NewCharacterChart 文件头就这么写）', () => {
     const withProse = `<!-- 用 <style scoped src> 载入 ⇒ 特异性不变 -->
 <style scoped src="../../styles/chart-blocks.css"></style>`
     writeFileSync(join(root, 'src/components/charts/Prose.vue'), compVue(withProse)

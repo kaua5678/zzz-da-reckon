@@ -500,6 +500,8 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     赠送队伤害 ±3% 以内（auto-1431-1481-1311 −2.9%，auto-1431-1481-1491 +1.0%，其余逐位不变）。
     护栏：`giftMoveTimeLedger.test.ts`（卡片总计 = 战斗时间、赠送行在账本内、琉音赠大同口径）；`banyue-preset-int.test.ts` 的论道守恒判据改 ≤（截断会砍行）。
 
+    ⚠ **赠行单次时长 = `cfg.ultimateActionTime`（2026-10-09，槽序依赖的单一口径破）**：装配侧赠行曾从倍率表重算融合组整段时长（`fusedGroupActionTime`），而账本侧 `ultimateGiftOf` 的 `secondsPerUnit` 与 `assembleSlot` 物化都读 `cfg.ultimateActionTime`。模块改过该 cfg 的角色（照：终结技前台减半）两侧分裂 ⇒ 账本预留 ≠ 装配赠行、物化行超账本，且**只在落点恰为该角色时暴露**（落点随槽序变）——这正是「同一队换个槽序就红」的根因。修法 = 装配侧优先取引擎已物化的赠行 `actionTime`，次选目标自己的终结技行，两者都缺才回落倍率表。护栏 `timeLedgerInvariants`（全预设库非轴队）。
+
     ⚠ **轴模式四处同源（2026-09-20 R67，推翻上段早期口径）**：琉音赠大轴计数四处消费点（`iterate` 预留 / S2 折叠环 / 试探测量 / 截断上限）旧实现后两者计入、前两者漏计 ⇒ 截断额度被扣而账本没涨 ⇒ 决算被整数装包砍掉一整次（雨果 0 命轴 5→4）；统一走 `ultimateGiftOf` 后守恒恢复（`@fact engine:赠送时间/轴模式四处同源`，护栏 `liuyinAxisGiftSameSource.test.ts`）。
 
     ⚠ **转大次数来源（2026-09-25，W21 blocked → lead 设计 `docs/mcp-liuyin-promote-source.md`）**：非轴模式同一轮有三个读数——送客行用 `floor(G/90)`、`crossAgentSupply` 预留用计划值结转、赠行用 `promoteFixpoint` 池口径。单源定为**答案层** `promote`；其中「经 `prevPromoteCount` 线程滞后注入」（W26）已否决：改变外层暂态 ⇒ 棘轮路径留白回退、`truncationRefold` 恒等式样本塌缩（`docs/mcp-liuyin-promote-source.md` §9）；修订方向 = 出口校验 + 校正轮。**否决记录**：① 计划值通道（converge 写计划值、四处按它阈值结转；W21 变体 1/2）→ `timeGolden` 7 / 6 条 delta，且合一后仍 ≠ 赠行（`agent:1481:c0` 送客 3→4 而赠行仍 3）；② 事后按池 patch 送客行 → 送客时间记在 iterate 必要时间账里，改行不改账 ⇒ 守恒破（同 `ultimatePromote.ts:104-108` 旧 post-hoc carve 的 +7.2s 先例）。

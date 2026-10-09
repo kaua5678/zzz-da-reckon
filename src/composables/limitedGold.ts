@@ -7,11 +7,13 @@
  * 常驻 S 角色与未收录角色（AGENT_RELEASE_NODE 无条目，含四星）的角色本体不计金；
  * 他们若穿着限定专武，音擎金仍计（有金就是金）。
  *
- * 归档与计算器共用这一份公式（memberLimitedGold），改口径只改这里：
- * - 归档侧经 runLimitedGold：pullValue（效率前沿 frontierLowestGold）、charIncrement（队伍基底 extractBaseTeams 的金数窗）、
- *   实战对比页 RunArchivePage（「仅看低金顶分」筛选）
+ * 共用同一口径的地方（改口径只改这里）：
+ * - 归档侧经 runLimitedGold：归档精炼管道 `scripts/import-zzz-run-archive.mjs`（每队最低金满分的收录判据）、
+ *   charIncrement（队伍基底 extractBaseTeams 的金数窗）、自动预设生成 `scripts/gen-auto-presets.mjs`（前沿窗口）、
+ *   实战对比页 RunArchivePage（金数列）
  * - 计算器侧经 teamCompare.teamGoldOf：配置页「预设金数」、基础金 baseGoldOf（队伍对比）/ baseGoldOfTeam（时间线）
  *   （r734 前这三处各写一份同一公式）
+ * （原 pullValue 的效率前沿消费方已随 Chart 5 于 2026-10-08 下线删除。）
  */
 import { AGENT_RELEASE_NODE, A_RANK_RELEASE_SPECIAL_IDS } from '@/data/versionTimeline'
 import { STANDARD_S_AGENT_IDS, STANDARD_S_WENGINE_IDS } from '@/data/standardMultiplierTable'

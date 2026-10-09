@@ -19,16 +19,20 @@
  * ## 反证（报告 §5 要求）
  *
  * 把 `solveTeam.ts` 的 `const downscaleAllowed = resourceConfig.interactionsLocked !== true` 一行
- * 删掉（闸门失效）⇒ 断言①「锁定后不被砍」**变红**：`interactionScale` 从 `undefined` 变 `0.125`、
- * 闪反行次数从 7 掉回 1、`overflowSeconds` 从 93.61 掉回 19.80。实测输出见报告。
+ * 删掉（闸门失效）⇒ 断言①「锁定后不被砍」**变红**：`interactionScale` 从 `undefined` 变 `0.375`、
+ * 闪反行次数从 7 掉回 3、`overflowSeconds` 从 56.38 掉回 21.30。实测输出见报告。
+ * （数值 2026-10-09 重测：预设库重生成后 `auto-1431-1481-1491` 的降配档由 0.125 变 0.375、
+ *  锁定态截断由 93.61s 变 56.38s——见下方断言①的 delta 记录。）
  *
  * ## 合轴率先跑（为什么不需要新增调用）
  *
  * 合轴吸收（G5 / `comboAlignAbsorbRatio`）在 `core/resource/helpers.ts#iterate` 内部，
  * **本来就在降配之前**生效 ⇒ 锁定后它自然先跑。断言③用**同队同锁**下改吸收比的可观测差
  * 证明这条通道活着：`ratio=0 → 0.4(缺省) → 1` 时 `auto-1431-1481-1491` 的截断
- * `93.69 → 93.61 → 31.23s`、队友动态吸收 `0 → 22.58/10.18 → 75.52/38.41s`、伤害
- * `79.43 → 107.85 → 135.38M`。即：锁定后引擎确实在用「提高合轴率」兜，兜不住的部分如实报截断。
+ * `88.93 → 56.38 → 17.72s`、队友动态吸收 `0 → 22.15/10.46 → 70.78/36.16s`、伤害
+ * `64.33 → 74.25 → 110.00M`。即：锁定后引擎确实在用「提高合轴率」兜，兜不住的部分如实报截断。
+ * （旧夹具同口径读数 `93.69 → 93.61 → 31.23s` / `0 → 22.58/10.18 → 75.52/38.41s` /
+ *  `79.43 → 107.85 → 135.38M`，2026-10-09 随预设库重生成一并重测。）
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
@@ -91,19 +95,23 @@ async function evalPreset(
 
 describe('手动锁定交互（用户口径 2026-10-06）', () => {
   /**
-   * ① 核心判据：勾选后交互**不被砍**（缺省该队 `iscale=0.125` ⇒ 闪反 10→1），
+   * ① 核心判据：勾选后交互**不被砍**（缺省该队 `iscale=0.375` ⇒ 闪反 10→3），
    *    且装不下时**如实上报截断**（`interactionScale` 保持 undefined、截断秒数变大）。
+   *
+   * ⚠ 数值沿革（2026-10-09，预设库重生成 85→77 条）：夹具 id `auto-1431-1481-1491` 存活，
+   * 但**内容变了**（另一条实战 run：叶瞬光 M0→M1、琉音/千夏音擎换非限定）⇒ 实测重取：
+   * 降配档 `0.125 → 0.375`（闪反 10→3 而非 10→1）、锁定态截断 `93.61 → 56.38s`。
    */
   it(`① 勾选后 ${DOWNSCALE_TEAM} 不降配：interactionScale=undefined、实打交互=store 原值、截断如实上报`, async () => {
     const off = await evalPreset(DOWNSCALE_TEAM)
     const on = await evalPreset(DOWNSCALE_TEAM, { locked: true })
 
-    // 未勾选 = 现状（降配生效，交互被砍到 1/8）
-    expect(off.scale, '缺省须处于降配态（本断言锁的是「不勾选 = 现状」）').toBeCloseTo(0.125, 6)
+    // 未勾选 = 现状（降配生效，交互被砍到 3/8）
+    expect(off.scale, '缺省须处于降配态（本断言锁的是「不勾选 = 现状」）').toBeCloseTo(0.375, 6)
     const rawParry = off.config.team[0]!.parryCount
     const rawDodge = off.config.team[0]!.dodgeCounterCount
     expect([rawParry, rawDodge], 'store 原值（夹具基准）').toEqual([6, 10])
-    expect(off.perSlotParry[0], '未勾选：实打弹刀 = round(6 × 0.125)').toBe(1)
+    expect(off.perSlotParry[0], '未勾选：实打弹刀 = round(6 × 0.375)').toBe(2)
 
     // 勾选 = 用户明确意图 ⇒ 不缩交互（同一读数回到 store 原值）
     expect(on.scale, '勾选后不得采纳任何降配档').toBeUndefined()
@@ -147,7 +155,7 @@ describe('手动锁定交互（用户口径 2026-10-06）', () => {
    *    截断单调不增、动态吸收单调不减 ⇒ 锁定后引擎确实在用合轴兜底，
    *    兜不住的部分才成为截断（本断言不是新代码，是证明既有通道在锁定态活着）。
    */
-  it(`③ 合轴吸收在锁定态先跑：ratio 0 → 缺省0.4 → 1，截断 93.69 → 93.61 → 31.23s`, async () => {
+  it(`③ 合轴吸收在锁定态先跑：ratio 0 → 缺省0.4 → 1，截断 88.93 → 56.38 → 17.72s`, async () => {
     const r0 = await evalPreset(DOWNSCALE_TEAM, { locked: true, absorbRatio: 0 })
     const rDefault = await evalPreset(DOWNSCALE_TEAM, { locked: true })
     const r1 = await evalPreset(DOWNSCALE_TEAM, { locked: true, absorbRatio: 1 })
@@ -159,9 +167,9 @@ describe('手动锁定交互（用户口径 2026-10-06）', () => {
     }
     // 吸收比 ↑ ⇒ 队友被并行吸收的时间 ↑、截断 ↓（单调，实测值见 describe 头注释）
     expect(r0.dyn[1]!, 'ratio=0 无吸收').toBeCloseTo(0, 3)
-    expect(rDefault.dyn[1]!, '缺省 0.4：琉音被吸收 ~22.58s').toBeGreaterThan(20)
-    expect(r1.dyn[1]!, 'ratio=1：琉音被吸收 ~75.52s').toBeGreaterThan(70)
-    expect(r1.cut, '全额吸收把截断从 93.6s 压到 31.2s').toBeLessThan(r0.cut - 50)
+    expect(rDefault.dyn[1]!, '缺省 0.4：琉音被吸收 ~22.15s').toBeGreaterThan(20)
+    expect(r1.dyn[1]!, 'ratio=1：琉音被吸收 ~70.78s').toBeGreaterThan(70)
+    expect(r1.cut, '全额吸收把截断从 88.9s 压到 17.7s').toBeLessThan(r0.cut - 50)
     expect(rDefault.cut, '缺省 0.4 介于两者之间（本队容量不足以吸收全部溢出）').toBeLessThanOrEqual(r0.cut)
     // 伤害同向：兜住的交互越多 ⇒ 打出的伤害越高
     expect(r1.dmg).toBeGreaterThan(rDefault.dmg)

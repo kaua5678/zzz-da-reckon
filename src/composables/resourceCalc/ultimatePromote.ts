@@ -68,6 +68,8 @@ export interface PromoteFixpointDeps {
  * adj 来自 promoteFixpoint 的收敛结果（runCalcRound 的 R0/R1 内层不动点）。
  */
 // @fact engine:实战档位喧响计数 口径: 「实战 N 喧响大」这类档位说法（含「叶释渊 3 例外」）的**口径主体 = 主C 自攒喧响 floor(总/消耗)，不计琉音好评赠大**——赠大只加进展示 `ultimateCount` 并独立成 `source='gift'` 行，是队友产出、不是自己攒的条。实测 Boss 30042（无敌24s/弹刀13）下：叶瞬光自攒 11227 → 3 ✓ 正落该档；仪玄自攒 12087 → 4，超 3 档线仅 87 喧响（边界敏感，**不据此改账**） | 据 用户@2026-09-08（裁决「不计琉音赠大，看自攒 floor」）·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/composables/__tests__/giftConsumption.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#applyUltimatePromote | 信 确认
+// @fact engine:赠送时间/单次时长单一来源 口径: 琉音赠大**单次时长 = 目标槽 `cfg.ultimateActionTime`**（= 账本侧 `ultimateGiftOf` 的 `secondsPerUnit` 与 `assembleSlot` 物化口径）；装配侧不得从倍率表重算融合组整段（模块改过该 cfg 的角色会两侧分裂，且只在落点恰为该角色时暴露 ⇒ 症状依赖槽序） | 据 实测@2026-10-09（auto-1431-1341-1481：账本预留 4.584 ≠ 装配赠行 7.334、物化行超账本 0.76） | 验 src/composables/__tests__/timeLedgerInvariants.test.ts | 锚 src/composables/resourceCalc/ultimatePromote.ts#applyUltimatePromote | 信 确认
+// ⟳复核: 再增/删赠行时长消费点，或模块新增对 `cfg.ultimateActionTime` 的改写时，复核「账本预留 == 装配赠行 == 物化行」（timeLedgerInvariants + giftMoveTimeLedger 全绿） | 到期 2027-03-31
 export function applyUltimatePromote(
   base: TeamResourceResult,
   adj: { promote: number; hug60: number; targetSlot: number; chainMoveId: string; ultimateMoveId: string } | null,
@@ -104,7 +106,20 @@ export function applyUltimatePromote(
         ?? getRowValue(ultMoveDef, rowId) // CC-239：单段回落也吃逻辑编辑器行规则（与 fusedRowValue 分段取值、helpers 主执行同源）
       const ultMult = fusedOf('damage')
       const ultBuildUp = fusedOf('anomaly_buildup')
-      const ultActionTime = (skills ? fusedGroupActionTime(skills, ultimateMoveId) : null)
+      // 赠行**单次时长**必须与引擎账本侧同一口径（= `cfg.ultimateActionTime`，规则 11 单一事实源）。
+      // 引擎 `ultimateGiftOf` 的 `secondsPerUnit` 与 `assembleSlot` 物化的赠行都用 `cfg.ultimateActionTime`；
+      // 本处旧实现却从倍率表重算融合组整段时长 ⇒ 模块改过 `cfg.ultimateActionTime` 的角色两侧分裂
+      // （照 1341 `buildCharConfig` 把终结技前台减半：融合整段 1.8336 → cfg 0.9168）。实测
+      // `auto-1431-1341-1481`（照在槽2 ⇒ 落点=照）：账本预留 5×0.9168=4.584 ≠ 装配赠行 4×1.8336=7.334
+      // （Δ2.75），且物化行 34.72 > 账本 33.96。依赖槽位是因为**落点是谁**随槽序变（琉音在槽1 时落点=叶瞬光，
+      // 其模块不改 cfg.ultimateActionTime ⇒ 两侧恰好相等、不暴露）。
+      // 引擎已把赠行物化（`source==='gift'`）⇒ 直接取该行 actionTime 即账本口径；目标自己的终结技行
+      // （`rowBuild` 按 `cfg.ultimateActionTime` 产行）是次选兜底；两者都缺才回落倍率表重算。
+      const giftIdx = char.executions.findIndex(e => e.source === 'gift' && !e.chainGift && e.moveId === ultimateMoveId)
+      const ownUltIdx = char.executions.findIndex(e => e.moveId === ultimateMoveId && e.source !== 'gift' && !e.chainGift)
+      const ultActionTime = (giftIdx >= 0 ? char.executions[giftIdx].actionTime : undefined)
+        ?? (ownUltIdx >= 0 ? char.executions[ownUltIdx].actionTime : undefined)
+        ?? (skills ? fusedGroupActionTime(skills, ultimateMoveId) : null)
         ?? ultMoveDef?.actionTime ?? 0
       // 转大的终结技是真实动作（目标队友打一次终结技），必须占用前台时间——曾写死 0
       // 导致时间表/资源利用率页看不到转大耗时（用户 2026-09 般琉卢排查）。
@@ -132,7 +147,7 @@ export function applyUltimatePromote(
       // 阶段1 ②（2026-09-10）：**行由引擎物化**（存在/行序），本函数补倍率 + carve，并把
       // 计数/时长**以池为准**写回（引擎推导在退化配置下会与池不同）；找不到行时兜底追加。
       // CC-336：与上方 `promote <= 0` 分支一致加 `!e.chainGift` 门控，统一经 `buildGiftRow` 构造行字段。
-      const giftIdx = char.executions.findIndex(e => e.source === 'gift' && !e.chainGift && e.moveId === ultimateMoveId)
+      // （`giftIdx` 已在函数上方解析——赠行单次时长与它同源，见上。）
       const giftRow = buildGiftRow({
         moveId: ultimateMoveId,
         moveName: '好评转大·队友终结技',

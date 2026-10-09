@@ -10,8 +10,13 @@
  * 反向验证（第 161 轮做过）：把 `outerCycle.ts` 换回 0028eb01 版（CC-136 之前，2-环按奇偶取成员），
  * 本用例红（琉音 c6 在 1.91 / 2.00 两点同次数跳 +5.34%）。
  *
- * 扫描对象：`auto-1201-1481-1211`，槽 0 设 6 命，琉音（1481）冲击→失衡转换 `valuePerStep` 1.90..2.10 步长 0.01。
+ * 扫描对象：`auto-1021-1481-1211`，槽 0 设 6 命，琉音（1481）冲击→失衡转换 `valuePerStep` 1.90..2.10 步长 0.01。
  * 直接改内存中的 spec 对象（finally 里还原），每点清热启动缓存、关输出 memo 后强制重算。
+ *
+ * 2026-10-08 自动预设库重生成：原 `auto-1201-1481-1211`（悠真+琉音+丽娜）真消失（悠真 1201
+ * 已不在任何预设）。换成 `auto-1021-1481-1211`（猫又+琉音+丽娜）——槽 1 琉音、槽 2 丽娜与旧队
+ * 逐位相同，槽 0 同为强攻主C（猫又 强攻·物理 vs 悠真 强攻·电），扫描对象 1481 与其 spec 条目不变。
+ * 实测两队在 1.90..2.10 全区间同失衡次数（旧队恒 4、新队恒 3）、同次数内跳变 0.000%（判据恒成立）。
  */
 import { it, expect } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
@@ -26,8 +31,8 @@ it('琉音 c6 转换系数扫描：同失衡次数的相邻点总伤跳变 ≤ 1
   await catalog.loadBuildRecommendations()
   const calc = useResourceCalc()
   setCalcOutputMemoEnabled(false)
-  const preset = teamPresets.find(x => x.id === 'auto-1201-1481-1211')
-  expect(preset, '预设 auto-1201-1481-1211 缺失：换一个带 1481 的预设并更新注释').toBeTruthy()
+  const preset = teamPresets.find(x => x.id === 'auto-1021-1481-1211')
+  expect(preset, '预设 auto-1021-1481-1211 缺失：换一个带 1481 的预设并更新注释').toBeTruthy()
   applyTeamToStore(config, preset!)
   const conv = getAgentSpec('1481')?.attributeConversions?.[0] as { valuePerStep: number } | undefined
   expect(conv, '1481 的 attributeConversions[0] 缺失：扫描对象失效').toBeTruthy()

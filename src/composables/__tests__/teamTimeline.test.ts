@@ -453,11 +453,15 @@ describe('Chart 3：每期新角色强队（buildNewCharacterRows / suggest / co
 // ========== Chart 7：同槽位角色对比（findSlotComparePairs / computeSlotComparePoints） ==========
 
 describe('Chart 7：同槽位角色对比（预设中其余两槽相同、所选槽位 A/B 两队）', () => {
-  it('配对：琉音 vs 诺姆 击破位 = 主C+支援相同的成对预设（含仪玄/般岳/希格莉德等），同 (主C,支援) 去重、其余两槽恒定', () => {
+  it('配对：琉音 vs 诺姆 击破位 = 主C+支援相同的成对预设（含般岳/希格莉德/伊德海莉等），同 (主C,支援) 去重、其余两槽恒定', () => {
     const pairs = findSlotComparePairs(teamPresets, 1, '1481', '1571')
     expect(pairs.length).toBeGreaterThanOrEqual(5)
+    // 2026-10-08 自动预设库重生成：旧库 5 支主C（1371 仪玄/1471 般岳/1591 希格莉德/1051 伊德海莉/
+    // 1531 星徽比利）里 1371 与 1571（诺姆）不再有同 (主C,支援) 成对预设（旧 auto-1371-1571-1451
+    // 已消失），而 1021 猫又 成为新成对主C。实测配对集 = 下列 5 支，逐条保留原判据（主C 在场、
+    // (主C,支援) 去重、对比槽与其余两槽恒定）。
     const mains = new Set(pairs.map(p => p.main))
-    for (const id of ['1371', '1471', '1591', '1051', '1531']) {
+    for (const id of ['1051', '1591', '1531', '1021', '1471']) {
       expect(mains.has(id), `缺主C ${id}`).toBe(true)
     }
     const keys = pairs.map(p => `${p.main},${p.support}`)

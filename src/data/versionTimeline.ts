@@ -166,13 +166,13 @@ export const AGENT_RELEASE_NODE: Record<string, string> = {
 
 /**
  * AGENT_RELEASE_NODE 里的 A 级特例（潘引壶 1421，见上方注释）：为演变路径收录进时间线，但**不是限定金**
- * （FEATURES_GUIDE「随仪玄 2.0 上实装、0 限定金」）。CC-270 单一来源：limitedGold 的限定判定与 pullValue 的分层都读这里。
+ * （FEATURES_GUIDE「随仪玄 2.0 上实装、0 限定金」）。CC-270 单一来源：limitedGold 的限定判定读这里（原 pullValue 分层消费方随 Chart 5 于 2026-10-08 下线）。
  */
 export const A_RANK_RELEASE_SPECIAL_IDS: ReadonlySet<string> = new Set(['1421'])
 
 /**
  * 赠送 S（无抽卡成本）：佩洛伊斯 1551，3.0 上半赠送（用户口径）。CC-272 单一来源：
- * pullValue 分层（freeGift）与 pullPlannerEngine 免费特例（= 赠送 S ∪ A 级特例）都读这里。
+ * pullPlannerEngine 免费特例（= 赠送 S ∪ A 级特例）读这里（原 pullValue 分层消费方随 Chart 5 下线）。
  * 是否计限定金是未决口径（§24.109），limitedGold 目前**不**读本集合。
  */
 export const FREE_GIFT_S_AGENT_IDS: ReadonlySet<string> = new Set(['1551'])
@@ -186,3 +186,16 @@ export function releaseNodeOf(agentId: string): string | null {
 export function nodeIndexOf(nodeId: string): number {
   return VERSION_NODE_INDEX[nodeId] ?? -1
 }
+
+/**
+ * 角色实装日期（YYYY-MM-DD）；未知角色（四星/未收录）返回 null。
+ * 单一事实源：原 `pullValue#pvReleaseDateOf`（Chart 5 下线时删除）与 `teamTimeline` 内的局部
+ * `releaseDateOf` 各写了一份同口径实现，2026-10-08 收拢到这里。
+ */
+export function releaseDateOf(agentId: string): string | null {
+  const node = AGENT_RELEASE_NODE[agentId]
+  if (!node) return null
+  return VERSION_NODES[nodeIndexOf(node)]?.date ?? null
+}
+// ⚠ `nodesFrom` 已由 r721（dee99c90「清掉没有生产消费者的导出」）删除：生产零消费、只有测试引用。
+// 本合并（d0d1579c 重放）不得把它加回来——那是被清理的死导出，不是本分支的新增。

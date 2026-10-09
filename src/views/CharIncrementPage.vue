@@ -131,7 +131,7 @@
               <td>{{ agentName(r.agentId) }}</td>
               <td :class="{ hot: r.total > 0 }">{{ fmt(r.total, 0) }}</td>
               <td>{{ r.periodsActive }}</td>
-              <td>{{ pvReleaseDateOf(r.agentId) ?? '—' }}</td>
+              <td>{{ releaseDateOf(r.agentId) ?? '—' }}</td>
               <td>{{ r.periodsActive > 0 ? fmt(r.total / r.periodsActive, 0) : '—' }}</td>
             </tr>
           </tbody>
@@ -149,8 +149,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
 import { computeIncrementPass, computeCardIncrements, computeAllCardTotals, type IncrementPassResult, type CardIncrementSummary, type BaseTeam } from '@/composables/charIncrement'
-import { pvReleaseDateOf } from '@/composables/pullValue'
-import { AGENT_RELEASE_NODE as RELEASE_NODE } from '@/data/versionTimeline'
+import { AGENT_RELEASE_NODE as RELEASE_NODE, releaseDateOf } from '@/data/versionTimeline'
 import { fmt, compact } from '@/utils/format'
 import type { BossPreset } from '@/types/bossPreset'
 import type { RunArchiveFile } from '@/composables/runArchiveImport'
@@ -229,7 +228,7 @@ const cardData = computed<CardIncrementSummary | null>(() => {
   return computeCardIncrements(
     passResult.value.periods,
     selectedAgentId.value,
-    pvReleaseDateOf(selectedAgentId.value),
+    releaseDateOf(selectedAgentId.value),
   )
 })
 const hoverIdx = ref(-1)
@@ -258,7 +257,7 @@ const rankRows = computed(() => {
   const pr = passResult.value
   if (!pr) return []
   const cards = Object.keys(RELEASE_NODE)
-    .map(id => ({ agentId: id, releaseDate: pvReleaseDateOf(id) }))
+    .map(id => ({ agentId: id, releaseDate: releaseDateOf(id) }))
   return computeAllCardTotals(pr.periods, cards)
 })
 </script>

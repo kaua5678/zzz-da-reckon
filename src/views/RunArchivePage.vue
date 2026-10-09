@@ -5,7 +5,7 @@
         <n-card size="small" :bordered="true">
           <template #header>
             <div class="card-header">
-              <span>实战归档（危局强袭）</span>
+              <span>实战归档（危局强袭 · 每队最低金满分）</span>
               <span v-if="file" class="muted">共 {{ file.totalRuns }} 条 · {{ file.generatedAt.slice(0, 10) }} 快照</span>
             </div>
           </template>
@@ -17,13 +17,9 @@
             <n-space :size="8" style="margin-bottom: 10px" :wrap="true">
               <n-select v-model:value="seasonId" :options="seasonOptions" size="small" style="width: 210px" placeholder="期数" />
               <n-select v-model:value="bossKey" :options="bossOptions" size="small" style="width: 200px" placeholder="Boss（全部）" clearable />
-              <n-switch v-model:value="onlyKilled" size="small"><template #checked>仅看击杀</template><template #unchecked>全部</template></n-switch>
-              <n-switch v-model:value="lowGoldOnly" size="small"><template #checked>仅看低金顶分</template><template #unchecked>全部</template></n-switch>
-              <template v-if="lowGoldOnly">
-                <span class="muted">金数窗口</span>
-                <n-select v-model:value="goldWindow" :options="goldWindowOptions" size="small" style="width: 118px" />
-                <span class="muted">击杀顶分里限定金数最低的投稿（角色上限）</span>
-              </template>
+              <span class="muted">金数窗口</span>
+              <n-select v-model:value="goldWindow" :options="goldWindowOptions" size="small" style="width: 130px" />
+              <span class="muted">每队最低金满分投稿（角色上限）</span>
             </n-space>
 
             <n-data-table
@@ -129,6 +125,9 @@
         </n-card>
 
         <div class="hint muted">
+          <b>收录口径</b>（用户裁决 2026-10-08）：只收危局强袭里<b>每个队伍限定金数最低的满分（65000）投稿</b>——每（房间 × 队伍构成）取金数最低那一批，
+          同（房间 × 构成 × 金数 × 精确配置）去重。它们 = 该队在该 Boss「实际能打到的上界」，与计算器理论理想值直接对照最合适；重复投稿与低水平投稿（未打满）不收录。
+          <br />
           口径：配装 = 计算器默认理想（推荐驱动盘 + 最优副词条 + 技能全满）；交互 = 轴模式自动推导（连携从轴读、弹刀按「保底4失衡 + 保底4喧响缺口÷215」反推，闪反按职业基准（支援/防护 0，其余 10）/ 快支3 为固定基准）。
           当期可选牌（3 选 1）不自动应用（归档未记录玩家选择）。伤害分 = 分段线性伤害分（普通/困难两套曲线，操作分已剔除）；归档 65000 = 60000 伤害分 + 5000 操作分，击杀即伤害分 60000。差异 = 配装差 + 建模误差，需用理想配装作上界夹逼。
         </div>
@@ -170,7 +169,7 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue'
-import { NCard, NSelect, NSwitch, NDataTable, NTag, NButton, NSpace, NDivider, NAlert } from 'naive-ui'
+import { NCard, NSelect, NDataTable, NTag, NButton, NSpace, NDivider, NAlert } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -205,9 +204,8 @@ const phaseViews = ref<PhaseView[]>([])
 
 const seasonId = ref('')
 const bossKey = ref<string | null>(null)
-const onlyKilled = ref(false)
-const lowGoldOnly = ref(false)
-const goldWindow = ref(0)
+/** 金数窗口：数据集本身 = 每（房间 × 队伍构成）最低金满分；-1 = 不限（看全部） */
+const goldWindow = ref(-1)
 const selected = ref<ArchiveRun | null>(null)
 const lastWarnings = ref<string[]>([])
 
@@ -251,13 +249,14 @@ const modelingGapHints = computed<ModelingGapHint[]>(() => {
   ]
 })
 
-/** 金数窗口（低金顶分：取最低金 + 该窗口内的投稿） */
+/** 金数窗口（数据集 = 每队最低金满分；窗口 = 再按**房间内**最低金放宽几金，看该房最省金的几支队） */
 const goldWindowOptions = [
-  { label: '最低金', value: 0 },
-  { label: '最低金 +1', value: 1 },
-  { label: '最低金 +2', value: 2 },
-  { label: '最低金 +3', value: 3 },
-  { label: '最低金 +4', value: 4 },
+  { label: '不限（每队最低金）', value: -1 },
+  { label: '该房最低金', value: 0 },
+  { label: '该房最低金 +1', value: 1 },
+  { label: '该房最低金 +2', value: 2 },
+  { label: '该房最低金 +3', value: 3 },
+  { label: '该房最低金 +4', value: 4 },
 ]
 
 onMounted(async () => {
@@ -308,14 +307,14 @@ const filteredRuns = computed(() => {
       if (!bossKey.value) return true
       return f.rooms[r.targetId]?.bossNameZh === bossKey.value
     })
-    .filter((r) => (onlyKilled.value ? r.bossKilled : true))
-  if (lowGoldOnly.value) {
-    // 低金顶分前沿：每房间击杀顶分里限定金数最低（+窗口）的一批，按金数升序（最少金在前）
-    return lowGoldFrontier(base, { killedOnly: true, goldWindow: goldWindow.value }).sort(
-      (a, b) => runLimitedGold(a.team) - runLimitedGold(b.team) || b.score - a.score,
-    )
-  }
-  return base.slice().sort((a, b) => b.score - a.score)
+  // 数据集本身 = 每（房间 × 队伍构成）最低金满分（`scripts/import-zzz-run-archive.mjs`）。
+  // 金数窗口 -1 = 不限（看全部）；≥0 = 再按**房间内**最低金放宽 N 金（lowGoldFrontier 单一实现；
+  // 本数据集全员满分且全击杀，故 killedOnly 恒真、顶分恒 65000）。
+  const gw = goldWindow.value
+  const windowed = gw >= 0 ? lowGoldFrontier(base, { killedOnly: true, goldWindow: gw }) : base
+  return windowed
+    .slice()
+    .sort((a, b) => runLimitedGold(a.team) - runLimitedGold(b.team) || b.score - a.score)
 })
 
 function agentName(id: string): string {

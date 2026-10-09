@@ -2,8 +2,11 @@
  * 自动预设生成器（用户 2026-09-03）：把「最低金顶分 +2」窗口的全部队伍收进预设库。
  *
  * 口径与 consumer 同源声明：
- * - 金数 = 限定 S 本体 1 + 影画 + 精炼(phase−1)；常驻 S（STANDARD_S_AGENT_IDS）与
- *   AGENT_RELEASE_NODE 无条目（四星/A 级）不计——与 src/composables/limitedGold.ts 同口径。
+ * - **金数走单一事实源 `src/composables/limitedGold.ts#runLimitedGold`**（经 `lib/ts-modules.mjs`
+ *   用 vite ssrLoadModule 载入；规则 11）。本脚本曾自抄一份 `memberGold`，与 TS 侧**口径分叉**：
+ *   常驻 S 名单 11 个 vs 6 个（多出 1011/1051/1061/1081/1111/1241/1261），且把音擎精炼
+ *   **无条件**计金（TS 侧只在 `weaponId` 认得出是限定 S 音擎时才计）。两处对同一份归档算出
+ *   不同金数且都不报错——2026-10-08 归档重整时一并收口。
  * - 前沿 = 每 room（seasonId|targetId）顶分击杀 run 的最低金 + 2 窗口（lowGoldFrontier 同逻辑）。
  * - 生成条目：group/subgroup 走 `scripts/lib/presetCategories.mjs` 单源判定——
  *   一级 = 队伍**输出核心**职业（强攻/命破/异常/锋御队），二级 = 该核心属性。
@@ -17,8 +20,6 @@
  *   本脚本会清理 `auto-*` 孤儿文件（上一轮生成但本轮不再产出的），手编预设不受影响。
  * - 同一口径的回填/校验：`node scripts/sync-preset-categories.mjs`（手编预设 subgroup
  *   漏填曾让「命破队·火」只出 1 条，般岳其余配队掉进「未分属性」看不见）。
- * - 常驻 S 名单与发布节点：↓ 两处键级常量与 TS 侧同源（改动需同步）：
- *   src/composables/teamCompare.ts STANDARD_S_AGENT_IDS、src/data/versionTimeline.ts AGENT_RELEASE_NODE。
  *
  * 用法：node scripts/gen-auto-presets.mjs
  */
@@ -26,21 +27,15 @@ import { readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { classifyPreset, resolveCarryAgent } from './lib/presetCategories.mjs'
+import { loadTsModule, closeTsModules } from './lib/ts-modules.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const archive = JSON.parse(readFileSync(join(root, 'public/static/run-archive.json'), 'utf8'))
 const bossFile = JSON.parse(readFileSync(join(root, 'public/static/boss-presets.json'), 'utf8'))
 const catalog = JSON.parse(readFileSync(join(root, 'public/static/catalog.json'), 'utf8'))
 
-const STANDARD_S_AGENT_IDS = new Set(['1011', '1021', '1041', '1051', '1061', '1081', '1111', '1141', '1211', '1241', '1261'])
-const AGENT_RELEASE_NODE = { 1371: 1, 1391: 1, 1401: 1, 1301: 1, 1051: 1, 1481: 1, 1471: 1, 1431: 1, 1491: 1, 1501: 1, 1511: 1, 1521: 1, 1531: 1, 1561: 1, 1571: 1, 1581: 1, 1591: 1, 1621: 1, 1611: 1, 1091: 1, 1291: 1, 1281: 1, 1171: 1, 1131: 1, 1421: 1, 1541: 1, 1351: 1, 1551: 1, 1461: 1, 1331: 1, 1231: 1, 1101: 1 }
-
-function memberGold(m) {
-  if (!AGENT_RELEASE_NODE[m.agentId]) return 0
-  if (STANDARD_S_AGENT_IDS.has(m.agentId)) return 0
-  return 1 + (m.mindscape ?? 0) + Math.max(0, (m.phase ?? 1) - 1)
-}
-const teamGold = (team) => team.reduce((s, m) => s + memberGold(m), 0)
+// 金数口径单一事实源（规则 11）：与 RunArchivePage / pullValue / charIncrement 同一实现。
+const { runLimitedGold: teamGold } = await loadTsModule(root, '/src/composables/limitedGold.ts')
 
 const agentById = new Map(catalog.agents.map(a => [String(a.id), a]))
 const wEngineIds = new Set(catalog.wEngines.map(w => String(w.id)))
@@ -132,3 +127,6 @@ const groupCount = {}
 for (const p of presets) groupCount[`${p.group} · ${p.subgroup}`] = (groupCount[`${p.group} · ${p.subgroup}`] ?? 0) + 1
 console.log(`前沿 ${frontier.length} 队 → 去重后 ${presets.length} 条自动预设`)
 console.log('分组分布:', Object.entries(groupCount).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}:${v}`).join(' | '))
+
+// vite 服务句柄不关会让进程不退出（ts-modules 的契约）
+await closeTsModules()

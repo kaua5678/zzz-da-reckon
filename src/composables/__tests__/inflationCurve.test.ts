@@ -13,10 +13,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   INFLATION_MODES,
-  buildInflationFromFile,
   buildInflationSeries,
   buildReleaseStrengths,
-  mapRoomsToInflation,
   isLowSample,
 } from '@/composables/inflationCurve'
 import { buildDirectDamageTimeline, type DirectDamagePoint } from '@/composables/multiplierCoefficients'
@@ -72,7 +70,7 @@ describe('buildInflationSeries（环境侧：Boss 平均血量膨胀）', () => 
   })
 
   it('★ 真实数据里恰好等于旧固定阈值的版本必须被标记（防止 vacuous 回归）', () => {
-    const s = buildInflationFromFile(realFile, 'defense')
+    const s = buildInflationSeries(realFile.bosses, 'defense')
     const thin = s.points.filter(p => p.lowSample)
     // 实测 2.4（n=6 < 满编 9）是唯一短板版本；旧口径下它是 0 条
     expect(thin.length).toBeGreaterThanOrEqual(1)
@@ -118,7 +116,7 @@ describe('buildInflationSeries（环境侧：Boss 平均血量膨胀）', () => 
   })
 
   it('★ 真实仓库：defense 覆盖 16+ 版本、末版本显著膨胀、base = 最早版本', () => {
-    const s = buildInflationFromFile(realFile, 'defense')
+    const s = buildInflationSeries(realFile.bosses, 'defense')
     expect(s.points.length).toBeGreaterThanOrEqual(16)
     expect(s.baseVersion).toBe('1.4')
     // 实测 3.3 = 346.7%（涨到 3.47 倍）；用宽松下界防数据微调造成假红
@@ -130,7 +128,7 @@ describe('buildInflationSeries（环境侧：Boss 平均血量膨胀）', () => 
 
   it('INFLATION_MODES 两个模式在真实数据里都有样本（判据不是死的）', () => {
     for (const m of INFLATION_MODES) {
-      expect(buildInflationFromFile(realFile, m).points.length).toBeGreaterThan(0)
+      expect(buildInflationSeries(realFile.bosses, m).points.length).toBeGreaterThan(0)
     }
   })
 })
@@ -199,74 +197,5 @@ describe('buildReleaseStrengths（首池节点 ↔ 环境水位对照表）', ()
     // 且多数点落在同一档（平坦锚点），不是均匀铺开
     const flatShare = vals.filter(v => v.toFixed(2) === '1.00').length / vals.length
     expect(flatShare).toBeGreaterThan(0.5)   // 实测 28/43 ≈ 0.651
-  })
-})
-
-describe('mapRoomsToInflation（与抽取价值的连接）', () => {
-  const series = (pts: Array<{ version: string; index: number; begin: string }>) => ({
-    mode: 'defense' as const,
-    baseVersion: pts[0]?.version ?? '',
-    cumulativePct: pts[pts.length - 1]?.index ?? 100,
-    points: pts.map((p, i) => ({
-      version: p.version, versionIndex: i, avgHp: p.index * 1e6, samples: 9,
-      lowSample: false, index: p.index, momPct: null, begin: p.begin,
-    })),
-  })
-
-  it('★ 按房间日期取「begin ≤ date」的最后一个版本点', () => {
-    const s = series([
-      { version: '1.0', index: 100, begin: '2025-01-01 04:00:00' },
-      { version: '2.0', index: 200, begin: '2025-06-01 04:00:00' },
-      { version: '3.0', index: 300, begin: '2026-01-01 04:00:00' },
-    ])
-    const r = mapRoomsToInflation([
-      { key: 'a', date: '2025-03-01' },   // 落在 1.0 区间
-      { key: 'b', date: '2025-08-01' },   // 落在 2.0 区间
-      { key: 'c', date: '2026-05-01' },   // 晚于末版本 → 取末版本
-    ], s)
-    expect(r.map(x => x.version)).toEqual(['1.0', '2.0', '3.0'])
-    expect(r.map(x => x.index)).toEqual([100, 200, 300])
-    expect(r.every(x => !x.clamped)).toBe(true)
-  })
-
-  // 实测踩到（2026-09-14）：真实数据里未上线版本（3.3）的 defense 期相 begin 全是空串。
-  // 首版把空串也当候选 ⇒ 它「小于一切日期」又被当成最后一个点 ⇒ **32/32 房间全被误判到 3.3**。
-  it('★ 无日期的版本点不参与区间判断（否则会吸走全部房间）', () => {
-    const s = series([
-      { version: '1.0', index: 100, begin: '2025-01-01 04:00:00' },
-      { version: '2.0', index: 200, begin: '2025-06-01 04:00:00' },
-      { version: '3.3', index: 347, begin: '' },   // 未上线：无日期
-    ])
-    const r = mapRoomsToInflation([{ key: 'a', date: '2025-03-01' }], s)
-    expect(r[0].version).toBe('1.0')       // 不是 3.3
-    expect(r[0].index).toBe(100)
-  })
-
-  it('早于首版本 / 房间无日期 → 钳到首版本并标 clamped', () => {
-    const s = series([{ version: '2.0', index: 250, begin: '2025-06-01 04:00:00' }])
-    const r = mapRoomsToInflation([{ key: 'a', date: '2024-01-01' }, { key: 'b', date: '' }], s)
-    expect(r.map(x => x.index)).toEqual([250, 250])
-    expect(r.map(x => x.clamped)).toEqual([true, true])
-  })
-
-  it('全部版本点无日期 / 空序列 → 返回空（不猜）', () => {
-    expect(mapRoomsToInflation([{ key: 'a', date: '2025-01-01' }], series([{ version: 'x', index: 100, begin: '' }]))).toEqual([])
-    expect(mapRoomsToInflation([{ key: 'a', date: '2025-01-01' }], series([]))).toEqual([])
-  })
-
-  it('★ 真实仓库端到端：32 个危局房间全部映射成功且**无 clamped**', () => {
-    const s = buildInflationFromFile(realFile, 'defense')
-    // 用真实的归档房间日期（与 pullValue 同源）
-    const arch = JSON.parse(readFileSync(new URL('../../../public/static/run-archive.json', import.meta.url), 'utf8'))
-    const rooms = Object.entries(arch.rooms as Record<string, { seasonStart?: string }>).map(([key, r]) => ({ key, date: r.seasonStart ?? '' }))
-    const ctx = mapRoomsToInflation(rooms, s)
-    expect(ctx).toHaveLength(rooms.length)
-    // 观测窗口内（归档覆盖的赛季）不应出现钳位
-    expect(ctx.filter(c => c.clamped)).toEqual([])
-    // 指数应落在合理区间（首版本 100 ~ 末版本累计）
-    for (const c of ctx) {
-      expect(c.index).toBeGreaterThanOrEqual(100)
-      expect(c.index).toBeLessThanOrEqual(s.cumulativePct + 1e-6)
-    }
   })
 })

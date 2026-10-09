@@ -52,9 +52,17 @@ async function stunChainSeconds(presetId: string, projectionCode: number) {
   }
 }
 
-describe('失衡连携账本：auto-1461-1521-1361（物理 5 次、规划 0）', () => {
+describe('失衡连携账本：auto-1461-1521-1491（物理 4 次、规划 0）', () => {
+  /**
+   * 2026-10-08 自动预设库重生成：原 `auto-1461-1521-1361`（「席德」+希希芙+「扳机」）真消失
+   * （「扳机」1361 已不在任何预设）。换成 `auto-1461-1521-1491`（「席德」+希希芙+千夏）——
+   * 语义等价理由：① 槽 0/1 逐位相同（1461 席德 + 1521 希希芙），只有槽 2 从击破「扳机」换成支援千夏；
+   * ② 两队命中**同一条自动轴预设** `seed-xixifu`（席德+希希芙，槽 2 通配 `*`）⇒ 轴态行为同源；
+   * ③ 实测旧队 off/physical 均 stun 6 / chain 0 / axis true，新队均 stun 4 / chain 0 / axis true
+   *    ⇒ 本用例的两条判据（有失衡、无失衡连携、进轴态）逐条仍然咬合。
+   */
   it('缺省口径（off）：有失衡、没有失衡连携 —— 已知缺陷，CC-140 未切默认', async () => {
-    const r = await stunChainSeconds('auto-1461-1521-1361', 0)
+    const r = await stunChainSeconds('auto-1461-1521-1491', 0)
     expect(r.stun).toBeGreaterThanOrEqual(1)
     expect(r.chain).toBeLessThan(0.5)
   }, 60000)
@@ -66,15 +74,16 @@ describe('失衡连携账本：auto-1461-1521-1361（物理 5 次、规划 0）'
    *
    * ⇒ 「每失衡连携 × 失衡次数」是**非轴模式专用**口径；轴态下 `chainCountTotalOverride`
    * （轴内计数）取代它 ⇒ **轴态算出 0 秒连携是正确的**，不是缺陷。
-   * 本队含琉音（`axisPresetPreferred`）⇒ §20.5-3 修正后自动进轴态 ⇒ 连携按轴内计数 ⇒ 0s。
+   * 本队自动进轴态——来源是**槽 0/1 命中自动轴预设 `seed-xixifu`**（「席德+希希芙」，槽 2 通配 `*`），
+   * 与槽 2 是谁无关（旧队 1361 与新队 1491 实测 axisActive 均为 true）。
    *
    * ⚠ **原「physical 模式 ⇒ 连携 > 5」已无法在本队复现**：`autoActive` 由**队伍构成**派生
    * （`roundInputs#autoPreset`，非 store 轴状态）⇒ **无法在本队关掉轴**。
    * 故本用例改为断言**轴态下的真实契约**（连携按轴内计数），并在注释里保留原口径的适用条件。
    */
   it('轴态（本队缺省，§20.5-3 后）：每失衡连携不适用 ⇒ 连携按轴内计数（本轴未排连携块 ⇒ 0）', async () => {
-    const r = await stunChainSeconds('auto-1461-1521-1361', 4)
-    expect(r.axisActive, '本队含琉音 ⇒ 应自动进轴态（本用例前提）').toBe(true)
+    const r = await stunChainSeconds('auto-1461-1521-1491', 4)
+    expect(r.axisActive, '本队命中自动轴预设 seed-xixifu ⇒ 应自动进轴态（本用例前提）').toBe(true)
     expect(r.stun).toBeGreaterThanOrEqual(1)
     expect(r.chain, '轴态走轴内计数 ⇒ 本轴无连携块 ⇒ 0s（用户口径：每失衡连携只给非轴用）').toBeLessThan(0.5)
   }, 60000)

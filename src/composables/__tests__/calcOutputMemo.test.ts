@@ -52,7 +52,9 @@ async function runSearch(memo: boolean, presetId: string) {
 
 describe('calcOutput 记忆化', () => {
   it('搜索型调用：记忆化开/关逐位相同，且确有命中', async () => {
-    for (const id of ['auto-1521-1361-1311', 'banyue-liuyin-lucia']) {
+    // 夹具沿革（2026-10-09，预设库重生成 85→77 条）：原 `auto-1521-1361-1311`（希希芙/「扳机」/耀嘉音）
+    // 新库无此组合 ⇒ 换槽序改名后的 `auto-1521-1481-1311`（希希芙/琉音/耀嘉音，同主C 希希芙）。
+    for (const id of ['auto-1521-1481-1311', 'banyue-liuyin-lucia']) {
       const off = await runSearch(false, id)
       const s0 = getCalcOutputMemoStats()
       const on = await runSearch(true, id)
@@ -66,7 +68,7 @@ describe('calcOutput 记忆化', () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    applyTeamToStore(config, teamPresets.find(p => p.id === 'auto-1521-1361-1311')!)
+    applyTeamToStore(config, teamPresets.find(p => p.id === 'auto-1521-1481-1311')!)
     config.timeWeightStrategy = 'static'
     const d0 = calc.teamTotalDamage.value
     // 命座（store 字段）
@@ -148,7 +150,7 @@ describe('calcOutput 记忆化', () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    applyTeamToStore(config, teamPresets.find(p => p.id === 'auto-1521-1361-1311')!)
+    applyTeamToStore(config, teamPresets.find(p => p.id === 'auto-1521-1481-1311')!)
     config.timeWeightStrategy = 'static'
     const d0 = calc.teamTotalDamage.value
     // 纯界面态住在 ui store（CC-356）：不在 config `$state` 里 ⇒ 不进键、不重算
@@ -170,7 +172,7 @@ describe('calcOutput 记忆化', () => {
   it('r707：记忆化跨实例共享——第二个实例读同一状态只命中、不重算', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
-    applyTeamToStore(config, teamPresets.find(p => p.id === 'auto-1521-1361-1311')!)
+    applyTeamToStore(config, teamPresets.find(p => p.id === 'auto-1521-1481-1311')!)
     config.timeWeightStrategy = 'static'
     const d0 = useResourceCalc().teamTotalDamage.value
     const s0 = getCalcOutputMemoStats()

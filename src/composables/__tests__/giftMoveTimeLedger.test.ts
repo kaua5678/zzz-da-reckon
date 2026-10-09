@@ -70,7 +70,10 @@ async function cardTotals(presetId: string) {
 
 describe('赠送招式时间账（诺姆赠链 / 琉音赠大）', () => {
   it('诺姆入队：主C 资源卡总计 = 战斗时间（不再 = 180 + 赠链秒数），且赠送行时间在账本内', async () => {
-    const r = await cardTotals('auto-1021-1571-1491') // 猫又 / 诺姆 / 千夏
+    // 夹具沿革（2026-10-09，预设库重生成 85→77 条）：原 `auto-1021-1571-1491`（猫又/诺姆/千夏）
+    // 新库无此组合 ⇒ 换语义等价存活夹具 `auto-1021-1571-1211`（猫又/诺姆/丽娜：同为「猫又主C +
+    // 诺姆赠链」结构，赠链行同样物化在主C 槽 0）。实测赠链 7 次 / 11.788s。
+    const r = await cardTotals('auto-1021-1571-1211') // 猫又 / 诺姆 / 丽娜
     const main = r.slots[0]
     expect(main.gift, '主C 有诺姆赠链行').toBeGreaterThan(0)
     expect(main.cardTotal, `主C 资源卡总计 ${main.cardTotal.toFixed(1)}s`).toBeCloseTo(r.totalTime, 6)
@@ -115,7 +118,12 @@ describe('赠送招式时间账（诺姆赠链 / 琉音赠大）', () => {
    * 轴模式按口径不预留（`reserved=0`，赠行时间由轴窗口/carve 承担），故只断言非轴队。
    */
   it('账本预留 == 装配赠行时间（非轴琉音队，逐位相等）', async () => {
-    for (const id of ['auto-1021-1481-1311', 'auto-1201-1481-1311', 'auto-1321-1481-1311', 'auto-1431-1481-1311']) {
+    // 夹具沿革（2026-10-09）：原 `auto-1201-1481-1311`（悠真/琉音/耀嘉音）、`auto-1321-1481-1311`
+    // （伊芙琳/琉音/耀嘉音）、`auto-1431-1481-1311`（叶瞬光/琉音/耀嘉音）新库均无 ⇒ 换成语义等价存活队：
+    // `auto-1021-1481-1311`（猫又/琉音/耀嘉音，原列表首个，存活）、`auto-1021-1481-1491`（猫又/琉音/千夏）、
+    // `auto-1591-1481-1211`（希格莉德/琉音/丽娜）、`auto-1431-1481-1491`（叶瞬光/琉音/千夏）——
+    // 均为「非轴琉音队」，赠大行物化在主C 槽、账本侧 `ultimateGiftTimeReserved` 同源。
+    for (const id of ['auto-1021-1481-1311', 'auto-1021-1481-1491', 'auto-1591-1481-1211', 'auto-1431-1481-1491']) {
       const r = await cardTotals(id)
       if (r.axis) continue // 轴模式不预留，见口径
       const gift = r.slots.reduce((s, x) => s + x.gift, 0)
@@ -125,7 +133,9 @@ describe('赠送招式时间账（诺姆赠链 / 琉音赠大）', () => {
   }, 180000)
 
   it('诺姆赠链：账本预留 == 装配赠行时间（对称判据）', async () => {
-    for (const id of ['auto-1021-1571-1491', 'auto-1591-1571-1211']) {
+    // 夹具沿革（2026-10-09）：原 `auto-1021-1571-1491`（猫又/诺姆/千夏）新库无 ⇒ 换存活等价的
+    // `auto-1021-1571-1211`（猫又/诺姆/丽娜，同为猫又主C+诺姆赠链）；`auto-1591-1571-1211` 存活。
+    for (const id of ['auto-1021-1571-1211', 'auto-1591-1571-1211']) {
       const r = await cardTotals(id)
       const gift = r.slots.reduce((s, x) => s + x.normaGift, 0)
       expect(gift, `${id} 有诺姆赠行`).toBeGreaterThan(0)
@@ -162,13 +172,16 @@ describe('赠送招式时间账（诺姆赠链 / 琉音赠大）', () => {
       const rr = useResourceCalc().resourceResult.value!
       return rr.characters.flatMap(c => (c.executions ?? []).filter(e => pick(e)))
     }
-    const liuyinGift = await giftRowsOf('auto-1591-1481-1311', e => e.source === 'gift')
+    // 夹具沿革（2026-10-09）：`auto-1591-1481-1311`（希格莉德/琉音/耀嘉音）新库无 ⇒ 换存活的
+    // `auto-1021-1481-1311`（猫又/琉音/耀嘉音：同为琉音赠大非轴队，赠行不带 daze）；
+    // `auto-1021-1571-1491` 新库无 ⇒ 换 `auto-1021-1571-1211`（猫又/诺姆/丽娜，诺姆赠链行不带定向键）。
+    const liuyinGift = await giftRowsOf('auto-1021-1481-1311', e => e.source === 'gift')
     expect(liuyinGift.length).toBeGreaterThan(0)
     for (const g of liuyinGift) {
       expect('dazeMultiplier' in g, '琉音赠行的 daze 由失衡池侧单独结算，行上刻意留空').toBe(false)
     }
 
-    const normaGift = await giftRowsOf('auto-1021-1571-1491', e => e.chainGift === true)
+    const normaGift = await giftRowsOf('auto-1021-1571-1211', e => e.chainGift === true)
     expect(normaGift.length).toBeGreaterThan(0)
     for (const g of normaGift) {
       expect('skillDamageTarget' in g, '诺姆赠连携行刻意不写定向键（写了会吃连携定向增伤）').toBe(false)

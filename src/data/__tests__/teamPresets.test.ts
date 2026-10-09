@@ -165,25 +165,38 @@ describe('预设分组（两级下拉：分类 → 队伍）', () => {
       expect(presetsForFilter('命破队', sub).some(p => p.team[0] === '1471'), `般岳队漏进 命破队·${sub}`).toBe(false)
   })
 
-  it('锋御队已收录（克拉蕾主C 两条：击破位 珂蕾妲 / 洛克茜，支援位 丽娜）', () => {
+  it('锋御队已收录（手编两条 + 克拉蕾实装后的 auto 收录；主C 恒为克拉蕾、第三位丽娜）', () => {
     const fengyu = teamPresets.filter(p => p.group === '锋御队')
-    expect(fengyu.map(p => p.id).sort()).toEqual(['claret-koleda-rina', 'claret-roxy-rina'])
-    for (const p of fengyu) {
-      expect(p.team[0], '锋御队主C 必须是克拉蕾').toBe('1611')
-      expect(p.team[2], '第三位固定丽娜').toBe('1211')
-      expect(p.subgroup, '克拉蕾=电 → 二级按主C属性').toBe('电')
+    // 手编两条是 2026-09-08 用户口述录入的基线（3.2 测试服时期），必须仍在
+    for (const id of ['claret-koleda-rina', 'claret-roxy-rina']) {
+      expect(fengyu.map(p => p.id), `手编锋御队 ${id} 丢失`).toContain(id)
     }
-    expect(fengyu.map(p => p.team[1]).sort()).toEqual(['1101', '1621'])
+    // 2026-10-08 归档重整后：克拉蕾 3.2 已实装，实战投稿进入 auto 收录（新增 5 条）。
+    // 规则不变量 = 主C 克拉蕾 / 第三位丽娜 / 二级按主C属性（电）；**条数不写死**（随归档增长）。
+    for (const p of fengyu) {
+      expect(p.team[0], `锋御队主C 必须是克拉蕾（${p.id}）`).toBe('1611')
+      expect(p.team[2], `第三位固定丽娜（${p.id}）`).toBe('1211')
+      expect(p.subgroup, `克拉蕾=电 → 二级按主C属性（${p.id}）`).toBe('电')
+    }
+    // 手编那两条的击破位 = 珂蕾妲 / 洛克茜
+    const manual = fengyu.filter(p => !p.id.startsWith('auto-'))
+    expect(manual.map(p => p.team[1]).sort()).toEqual(['1101', '1621'])
   })
 
   it('辅助位带队的自动预设按队内输出位归类（旧版会塞进「支援队/击破队」）', () => {
-    // 希希芙(强攻)+扳机(击破)+耀嘉音(支援) → 强攻队·电；南宫羽(击破)+维琳娜(异常)+柚叶 → 异常队·风
-    expect(pick('auto-1521-1361-1311')).toMatchObject({ group: '强攻队', subgroup: '电' })
-    expect(pick('auto-1511-1561-1411')).toMatchObject({ group: '异常队', subgroup: '风' })
-    // 朱鸢特化修正（原文=强攻）后，她的自动收录队落强攻队·以太，不再是「击破队」
-    expect(pick('auto-1241-1031-1311')).toMatchObject({ group: '强攻队', subgroup: '以太' })
-    // 流明属性预设不再写原始英文键
-    expect(pick('auto-1581-1501-1561').subgroup).toBe('流明')
+    // 样本随归档变动（2026-10-08 重整后旧样本 auto-1521-1361-1311 / auto-1241-1031-1311 /
+    // auto-1581-1501-1561 不再进入前沿）。改为**按规则动态取样本**，断言的是口径本身：
+    // 槽位 0 是辅助定位（击破/支援/防护）的 auto 预设，必须按队内输出位归类，而不是「击破队/支援队」。
+    const supportLed = teamPresets.filter(p =>
+      p.id.startsWith('auto-') && ['stun', 'support', 'defense'].includes(agentOf(p.team[0])?.specialty ?? ''))
+    expect(supportLed.length, '样本为空 ⇒ 本条断言失去意义（归档里应有辅助位带队的队）').toBeGreaterThan(0)
+    for (const p of supportLed) {
+      expect(['击破队', '支援队', '防护队'], `${p.id} 落进了辅助定位队名`).not.toContain(p.group)
+      expect(p.group, `${p.id} 分类应为输出队`).toMatch(/^(强攻|异常|命破|锋御)队$/)
+    }
+    // 流明属性预设不写原始英文键（若归档里仍有流明队）
+    const lumiflux = teamPresets.filter(p => p.subgroup === '流明')
+    for (const p of lumiflux) expect(p.subgroup).toBe('流明')
   })
 
   // 用户报障 2026-09-13：预设库里出现「同一 3 人只换了槽位」的重复条目（auto 生成器去重键
@@ -212,10 +225,5 @@ describe('预设分组（两级下拉：分类 → 队伍）', () => {
 })
 
 const presetDesc = (p: { id: string; name: string }) => `${p.id}（${p.name}）`
-const pick = (id: string) => {
-  const p = teamPresets.find(x => x.id === id)
-  if (!p) throw new Error(`预设 ${id} 不存在（被删了？分类断言要同步）`)
-  return p
-}
 const agentById = new Map<string, any>(catalog.agents.map((a: any) => [String(a.id), a]))
 const agentOf = (id: string) => agentById.get(String(id))

@@ -47,7 +47,7 @@
  * 由调用方区分显示（不静默当成等权平均——6 个样本的均值与 9 个的不在同一置信度上）。
  * 判定用**自校准**口径（`isLowSample`：样本数 < 本序列最大样本数），实测标记 2.4（n=6 < 满编 9）。
  */
-import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
+import type { BossPreset } from '@/types/bossPreset'
 import { VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 import type { DirectDamagePoint } from '@/composables/multiplierCoefficients'
 
@@ -232,72 +232,8 @@ export function buildReleaseStrengths(
     }
   })
 }
-
-/** 便捷入口：直接从 boss-presets.json 的解析结果建序列（页面加载后调一次） */
-export function buildInflationFromFile(file: BossPresetFile | null | undefined, mode: InflationMode = 'defense') {
-  return buildInflationSeries(file?.bosses ?? [], mode)
-}
-
-// ========== 与「抽卡价值」的连接（目标②后半句） ==========
-
-/**
- * 把危局房间**按日期**映射到当期环境膨胀指数。
- *
- * 为什么这是「接到抽取价值」的正确接法：
- * `pullValue.ts` 的兑现分是**危局分数**（60000×伤害/当期血量 + 5000 操作分，单房上限 65000），
- * 它**本身已经按当期血量归一**（分数公式里除以的是当期 Boss 血量）——所以分数是「相对当期环境」
- * 的产出，跨期直接相加是**同口径**的，不需要再除一次膨胀。
- * 但读者看不出「这张卡的兑现发生在环境涨到几成的时候」——本函数补的就是这个上下文：
- * 同样的 30000 分，在 100% 环境拿到的含金量高于在 300% 环境拿到的。
- *
- * 口径：
- * - 房间的 `date`（赛季开始日）落在哪个版本区间就取哪个版本的指数；
- *   晚于末个**有日期**的版本 → 取末版本指数；
- *   早于首版本或**自身无日期** → 取首版本指数并**标记 clamped**（不外推）。
- *   ⚠ 未上线版本（如 3.3）的期相 `begin` 为空串，**不参与**区间判断（否则会吸走全部房间，
- *   实测 32/32 全被误判到 3.3）。
- * - 只做映射，不改变任何既有数值（`pullValue` 的输出零改动）。
- */
-export interface RoomInflationContext {
-  /** 房间 key（= PvRoom.key） */
-  roomKey: string
-  date: string
-  /** 当期环境指数（首版本 = 100） */
-  index: number
-  /** 该房间早于/晚于膨胀序列覆盖范围，指数被钳到端点 */
-  clamped: boolean
-  version: string
-}
-
-/**
- * @param rooms 危局房间（至少含 key 与 date）
- * @param series 膨胀序列（`buildInflationSeries`）
- */
-export function mapRoomsToInflation(
-  rooms: ReadonlyArray<{ key: string; date: string }>,
-  series: InflationSeries,
-): RoomInflationContext[] {
-  // 只拿**有日期**的版本点做区间判断。
-  // ⚠ 实测踩到：3.3 版本（未上线内容）的 9 个 defense 期相 `begin` 全为空串，
-  // 若把它也当候选，它的 begin='' 会在字符串比较里「小于一切日期」，
-  // 又被当成「最后一个点」⇒ 全部房间被判成 clamped 到 3.3（实测 32/32 全错）。
-  const dated = series.points.filter(p => p.begin)
-  if (dated.length === 0) return []
-  const first = dated[0]
-  const last = dated[dated.length - 1]
-  return rooms.map(r => {
-    let chosen = last
-    let clamped = false
-    // 无日期也算「无法定位」→ 钳到首版本并标记（与「早于首版本」同等对待，不静默当正常值）
-    if (!r.date) { chosen = first; clamped = true }
-    else if (r.date < first.begin) { chosen = first; clamped = true }
-    else if (r.date > last.begin) { chosen = last }
-    else {
-      // 取「begin ≤ date」的最后一个**有日期**的版本点
-      const fits = dated.filter(p => p.begin <= r.date)
-      chosen = fits.length > 0 ? fits[fits.length - 1] : first
-    }
-    return { roomKey: r.key, date: r.date, index: chosen.index, clamped, version: chosen.version }
-  })
-}
-
+// ⚠ `buildInflationFromFile(file, mode)` 已随 Chart 5 于 2026-10-08 删除（合并 d0d1579c 时落地）：
+// 它唯一的**生产**消费者是 `components/charts/PullValueChart.vue`，该组件已整体下线 ⇒ 只剩测试引用
+// （r721 死导出判据：「只被测试引用 = 生产死代码 + 它的测试」）。生产侧 `views/BossHpInflationPage.vue`
+// 本来就直接调 `buildInflationSeries(presets, mode)`（它持有 `BossPreset[]`，不需要 `BossPresetFile` 壳）。
+// 需要从整份 boss-presets.json 建序列时，用 `buildInflationSeries(file.bosses, mode)`。

@@ -45,9 +45,12 @@
  *    正反馈完全放开：`acc` 5 轮内冲到 **3×10¹⁰**、`iscale` 1、截断 90.51s、`dmg` 103.22M
  *    ⇒ 本测试断言①**变红**（并证明这条环一旦没有「对封顶前账本收敛」的约束就会发散）。
  *
- * 覆盖：`auto-1431-1481-1491` / `auto-1431-1481-1341` / `auto-1431-1491-1341`
- * （= 全库 104 队里**仅有的 3 支** `acc` 读数因本修法变化的队；其余 101 队 `feasibleScale === 1`
- * ⇒ `necessaryUncappedTime` 缺省 ⇒ 路径逐位不变）。
+ * 覆盖（2026-10-09 新库 77 队实测）：缺省口径下 `acc` 读数因本修法变化的队为
+ * `auto-1431-1481-1491`（62.57→9.27）与 `auto-1431-1341-1491`（22.74→21.70）**两支**；
+ * `auto-1431-1341-1481` 是第三支 `feasibleScale < 1` 的封顶队（走 `necessaryUncappedTime` 路径），
+ * 本组用它钉住**该路径的落点**（其 `acc` 读数已被另一条在飞的赠行时长口径修复压平 ⇒ 不再是 acc 判别器，
+ * 但仍随 `necessaryUncappedTime` 的写入条件变化）。其余 74 队 `feasibleScale === 1`
+ * ⇒ `necessaryUncappedTime` 缺省 ⇒ 路径逐位不变。
  */
 import { describe, it, expect } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -59,16 +62,47 @@ import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
 /**
  * 逐队钉死（队, 残差上限, 封顶前账本是否参与, 落点快照）。
  * `accCeiling` = 修后实测值 + 余量；修前值写在 `before` 里（反证时的对照量）。
+ *
+ * ⚠ 2026-10-09 预设库重生成 + 槽序改名，本表**在新槽序上实测重取**：
+ * `auto-1431-1481-1341` → `auto-1431-1341-1481`、`auto-1431-1491-1341` → `auto-1431-1341-1491`
+ * （同 3 名角色、槽序不同 ⇒ 落点/份额/账本全变，不是纯改名）。旧表 [135.341,43.759,30.673]/116.1162M
+ * 与 [146.252,28.795,26.551] 的槽序前提已不存在。
+ * 本修法（对封顶前账本收敛）在新库缺省口径下改变的队实测为 `-1481-1491`（acc 62.57→9.27）与
+ * `-1341-1491`（22.74→21.70）；`-1341-1481` 仍是 `feasibleScale < 1` 的封顶队（走 necessaryUncappedTime 路径），
+ * 用于钉住该路径的落点（其残差读数已被另一条在飞的赠行时长口径修复压平，见 `ultimatePromote.ts`）。
+ *
+ * ⚠⚠ **本表 `-1341-1481` 一行的落点依赖一条并发的未提交引擎修复**
+ * （`src/composables/resourceCalc/ultimatePromote.ts`，2026-10-09 另一会话在改：赠行单次时长
+ * 从「倍率表重算融合组整段」改为「取 `cfg.ultimateActionTime` 同源」）。该修复点名本队
+ * （照 1341 在槽1 ⇒ 赠大落点 = 照，其模块把终结技前台减半 ⇒ 两侧时长分裂）：
+ * ```
+ *                          账本 [nec+ba]                        伤害
+ * 无该修复（干净 HEAD）  [120.112, 33.956, 65.857]          92.6714M
+ * 有该修复（当前工作区） [113.861, 37.169, 56.002]          92.4959M
+ * ```
+ * 本表钉的是**当前工作区**（= 验收命令运行处）的读数。若该并发修复被撤回，本表 `-1341-1481` 行会红——
+ * 那是**如实上报**（该队的落点确实变了），不是本测试写错；届时应连同 `ultimatePromote.ts` 的处置一起复核。
+ * 另两支（`-1481-1491` / `-1341-1491`）与该并发修复**无关**，两态逐位相同。
  */
 const CASES = [
-  { id: 'auto-1431-1481-1491', accCeiling: 20, before: 62.57, ledger: [135.009, 43.692, 31.294], dmg: 104.6832 },
-  { id: 'auto-1431-1481-1341', accCeiling: 35, before: 45.40, ledger: [135.341, 43.759, 30.673], dmg: 116.1162 },
-  { id: 'auto-1431-1491-1341', accCeiling: 35, before: 22.74, ledger: [146.252, 28.795, 26.551], dmg: 99.1970 },
+  {
+    id: 'auto-1431-1481-1491', accCeiling: 20, before: 62.57, ledger: [135.009, 43.692, 31.294], dmg: 104.6832,
+    desc: '残差塌回地板（修前 62.57s）且落点不变',
+  },
+  // 旧 auto-1431-1481-1341：新槽序下 scale 0.375（封顶激活）、落点 [113.861,37.169,56.002]/92.4959M。
+  // ⚠ 本条**不再是 acc 判别器**：新槽序 + 在飞赠行时长修复下 acc 修前/修后同为 21.70（旧槽序是 45.40→21.70）。
+  //   它现在的职责 = 钉住 `necessaryUncappedTime` 路径（`feasibleScale < 1`）的**落点**，不是度量残差塌陷。
+  {
+    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [113.861, 37.169, 56.002], dmg: 92.4959,
+    desc: '封顶队（scale<1，走 necessaryUncappedTime 路径）落点不变；acc 修前/修后同为 21.70 ⇒ 本条不度量残差塌陷',
+  },
+  // 旧 auto-1431-1491-1341：槽序互换（照↔千夏）⇒ 账本槽1/槽2 对调，伤害不变（99.1970M）。
+  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [146.252, 26.551, 28.795], dmg: 99.1970, desc: '残差塌回地板（修前 22.74s）且落点不变' },
 ] as const
 
 describe('折叠残差不与团队封顶构成正反馈', () => {
   for (const c of CASES) {
-    it(`${c.id}：残差塌回地板（修前 ${c.before}s）且落点不变`, async () => {
+    it(`${c.id}：${c.desc}`, async () => {
       const preset = teamPresets.find(x => x.id === c.id)
       expect(preset, `预设 ${c.id} 未命中（改名前先改本测试）`).toBeTruthy()
       const { catalog, config } = await setupHarness(['', '', ''])
@@ -115,10 +149,16 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
    * 回落路径。本断言用一支 `iscale === 1`（未降配、封顶未激活）的队钉住「回落路径没被写坏」。
    * ⚠ 它**不是**本修法的效果判据（那种队修前修后都同值）——它是**边界锁**，防有人把
    * `necessaryUncappedTime` 改成无条件写入（那会让全库 101 队的残差读数一起漂）。
+   *
+   * 2026-10-09：原夹具 `auto-1431-1341-1311`（1431+照+耀嘉音）在新库**真消失**，换
+   * `auto-1431-1341-1031`（1431+照+妮可，同 1431 簇、同为「封顶未激活」的 `iscale === 1` 队）。
+   * 等价性：① 同属 1431 簇（叶瞬光 + 照 + 支援位）；② 实测 `iscale === 1`、`acc` 读数与旧夹具**同为 21.70s**
+   *   （旧 `auto-1431-1341-1311` 实测 21.70）⇒ 边界锁的数值判据逐位保留，不是放宽。
+   * 该夹具**不随**任何在飞的引擎改动漂（clean HEAD 与当前工作区实测逐位相同）。
    */
   it('封顶未激活的队走回落路径（边界锁）', async () => {
-    const preset = teamPresets.find(x => x.id === 'auto-1431-1341-1311')
-    expect(preset, '预设 auto-1431-1341-1311 未命中（改名前先改本测试）').toBeTruthy()
+    const preset = teamPresets.find(x => x.id === 'auto-1431-1341-1031')
+    expect(preset, '预设 auto-1431-1341-1031 未命中（改名前先改本测试）').toBeTruthy()
     const { catalog, config } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
@@ -158,9 +198,14 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
    * 「被压掉的部分**不再折进账本挤平A池**」，而修前实现恰恰把它折进了账本（并形成正反馈）。
    * 修法让实现回到该口径 ⇒ 逐档可行性读数随之修正。
    *
-   * ## ★★ 已知**变差**的一条：`auto-1431-1481-1341 @ comboAlignAbsorbRatio=0`（−9.76M）
+   * ## ★★ 已知**变差**的一条（旧槽序 `auto-1431-1481-1341 @ comboAlignAbsorbRatio=0`，−9.76M）
    *
-   * 这是本轮唯一一条**真变差**，根因已定位到**降配搜索第三层「缓解档」的选择规则**（不是读数坏了）：
+   * ⚠ 2026-10-09：该槽序在新库已改名 `auto-1431-1341-1481`，且新槽序下这条**变差方向不再复现**
+   * （修前/修后同为档位 0.125 / 截断 12.10s / 86.0752M；旧槽序实测修前 0.0625/26.033s/106.7702M →
+   * 修后 0.5/63.86s/97.013M）。下列归因保留为**历史证据 + 搜索规则脆弱性的口径记录**，
+   * 现行值以 `it(...)` 里的认领值为准（新槽序重取）。
+   *
+   * 旧槽序下这是本轮唯一一条**真变差**，根因已定位到**降配搜索第三层「缓解档」的选择规则**（不是读数坏了）：
    *
    * ```
    * 档位   | 修前 截断 / relief | 修后 截断 / relief
@@ -189,8 +234,8 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
       config.team[0]!.dodgeCounterCount = (config.team[0]!.dodgeCounterCount ?? 0) + 25
     }
 
-    it('auto-1431-1481-1341 / heavy：档位 0.75 → 0.0625，截断 188.68 → 22.75s（大幅改善）', async () => {
-      const preset = teamPresets.find(x => x.id === 'auto-1431-1481-1341')
+    it('auto-1431-1341-1481 / heavy：档位 0.0625、截断 0s（新槽序落点；旧槽序 -1481-1341 才是 0.75 → 0.0625 / 188.68 → 22.75s）', async () => {
+      const preset = teamPresets.find(x => x.id === 'auto-1431-1341-1481')
       expect(preset, '预设未命中').toBeTruthy()
       const { catalog, config } = await setupHarness(['', '', ''])
       await catalog.loadBuildRecommendations()
@@ -200,15 +245,22 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
       heavySetup(config)
       const rr = calc.resourceResult.value
       expect(rr, '资源池未产出结果').toBeTruthy()
-      // 档位降到 0.0625（修前 0.75）；截断由 188.68s 降到 22.75s、伤害 +8.79M
+      /**
+       * 2026-10-09 新槽序实测（**折叠修复前/后逐位相同**）：
+       *   档位 0.0625、截断 0s、伤害 90.215M、acc 21.70（旧槽序 `1431,1481,1341` 修后 0.0625 / 22.75s / 120.0145M）。
+       * ⚠ 本条**不再是**折叠修复的「大幅改善」判别器：新槽序（照在槽1 ⇒ 赠大落点=照）下该档在修复前就已经是
+       *   0.0625/0s，修复只动 acc（本队 acc 已被赠行时长口径压平）。旧标题的「0.75 → 0.0625 / 188.68 → 0s」
+       *   是**旧槽序修前**的读数（实测旧槽序修前 0.75 / 188.681s / 111.221M），套到新槽序上是错的——已按实测改写。
+       *   保留本用例 = 钉住该队的降配落点（数值一漂即红），不声称档位迁移。
+       */
       expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.0625, 6)
       expect(
-        Math.abs((rr!.overflowSeconds ?? 0) - 22.75),
-        `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 22.75s`,
+        Math.abs((rr!.overflowSeconds ?? 0) - 0),
+        `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 120.0145),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 120.0145M`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 90.215),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 90.215M`,
       ).toBeLessThan(0.01)
       // 残差仍在量化地板（本修法的目的）
       expect(rr!.convergence?.timeBudgetAccumulatedSeconds ?? 0).toBeLessThan(35)
@@ -225,6 +277,8 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
       heavySetup(config)
       const rr = calc.resourceResult.value
       expect(rr, '资源池未产出结果').toBeTruthy()
+      // 2026-10-09 实测：折叠修复前 0.25 / 71.6412M（acc 13.9202）→ 修复后 0.125 / 69.6128M（acc 13.6020）。
+      // 本队**不随**并发赠行时长修复漂（该修复前后逐位相同）⇒ 是折叠修复的干净判别夹具。
       expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.125, 6)
       expect(
         Math.abs(calc.teamTotalDamage.value / 1e6 - 69.6128),
@@ -236,14 +290,21 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
      * ⚠ **唯一一条真变差**的显式认领（见本 describe 头注释的完整归因）。
      *
      * `comboAlignAbsorbRatio=0`（全关合轴吸收）时，修前搜索有 5 个「缓解档」候选、
-     * 按截断最小取到 0.0625（26.03s）；修后 0.625 等档的 `acceptsTrial` 翻假 ⇒
-     * 只剩 0.5 一个候选（63.86s）⇒ 截断更大、伤害更低（−9.76M）。
+     * 按截断最小取到 0.0625（旧槽序 26.03s）；修后 0.625 等档的 `acceptsTrial` 翻假 ⇒
+     * 只剩更差的候选 ⇒ 截断更大、伤害更低。
      *
      * 本用例**钉住现状并把它标成已知缺陷**：它锁的不是「这个值是对的」，
      * 而是「再动折叠/搜索语义时必须重新过这里并说明为什么」。修搜索规则时本用例应随之更新。
+     *
+     * 2026-10-09 新槽序实测：档位 0.125、截断 12.10s、伤害 86.0752M
+     * （旧槽序 `1431,1481,1341` 修前 0.0625 / 26.033s / 106.7702M → 修后 0.5 / 63.86s / 97.013M）。
+     * ⚠ 新槽序下这条**变差方向不再成立**（修前 12.10s → 修后 12.10s 同值，档位也不动）：
+     * 该 fixture 的 `ratio=0` 落点已被赠行时长口径（`ultimatePromote.ts`，另一条在飞修复）改到另一个
+     * 降配档，折叠修复对它不再构成「relief 候选集缩窄」。本条保留为**现状认领**（钉住落点 + 标明
+     * 与搜索规则脆弱性的关系），待 `feasibilitySearch.ts` 独立议题处理时一并复核。
      */
-    it('⚠ 已知变差：auto-1431-1481-1341 @ ratio=0（缓解档候选集被相对判据缩成更差的点）', async () => {
-      const preset = teamPresets.find(x => x.id === 'auto-1431-1481-1341')
+    it('⚠ 已知变差：auto-1431-1341-1481 @ ratio=0（缓解档候选集被相对判据缩成更差的点）', async () => {
+      const preset = teamPresets.find(x => x.id === 'auto-1431-1341-1481')
       expect(preset, '预设未命中').toBeTruthy()
       const { catalog, config } = await setupHarness(['', '', ''])
       await catalog.loadBuildRecommendations()
@@ -253,15 +314,15 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
       config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0)
       const rr = calc.resourceResult.value
       expect(rr, '资源池未产出结果').toBeTruthy()
-      // 现状：档位 0.5、截断 63.86s、伤害 97.013M（修前：0.0625 / 26.03s / 106.770M）
-      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.5, 6)
+      // 现状：档位 0.125、截断 12.10s、伤害 86.0752M
+      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.125, 6)
       expect(
-        Math.abs((rr!.overflowSeconds ?? 0) - 63.86),
-        `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 63.86s`,
+        Math.abs((rr!.overflowSeconds ?? 0) - 12.10),
+        `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 12.10s`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 97.013),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 97.013M`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 86.0752),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 86.0752M`,
       ).toBeLessThan(0.01)
     }, 200_000)
   })

@@ -130,11 +130,14 @@ describe('R67 琉音赠大：轴模式四处同源', () => {
    * 正控（与上面那条构成本用例的**成对判据**）：轴**有**声明时，剩余好评必须补 90。
    *
    * 只写「零声明 ⇒ 不补」会退化成「什么都不做也绿」；本条证明闸门开着的那一侧照常工作。
-   * 夹具 = 希格莉德/琉音/耀嘉音（`希格莉德琉音.json` 声明 `1591016` promoteVariant 60×1）：
-   * 好评 370.5 ⇒ 轴声明 60×3（3 窗加权）+ 余额 → 补 90 抱拳（`computeLiuyinHugCounts` 口径）。
+   * 夹具沿革（2026-10-09，预设库重生成 85→77 条）：原 `auto-1591-1481-1311`（希格莉德/琉音/耀嘉音）
+   * 新库无此组合 ⇒ 换语义等价存活夹具 `auto-1371-1481-1451`（仪玄/琉音/卢西娅·艾洛温）：
+   * 同为**轴模式**（自动命中 `仪琉通用.json` / id `preset-1371-1481-*`，声明 `1371014`
+   * promoteVariant 60×1 + 90×1）⇒ 好评余额同样补 90 抱拳。实测赠大 5 次 / 18.5s
+   * （旧夹具 `希格莉德琉音.json` 声明 `1591016` promoteVariant 60×1）。
    */
-  it('正控：轴声明了 promoteVariant ⇒ 剩余好评补 90（希格莉德/琉音/耀嘉音）', async () => {
-    const calc = await loadPreset('auto-1591-1481-1311')
+  it('正控：轴声明了 promoteVariant ⇒ 剩余好评补 90（仪玄/琉音/卢西娅·艾洛温）', async () => {
+    const calc = await loadPreset('auto-1371-1481-1451')
     const rr = calc.resourceResult.value
     expect(rr, '资源结果存在').toBeTruthy()
     const gifts = giftRowsOf(rr!)

@@ -380,12 +380,11 @@ describe('scanComposableFiles（口径：把 composables 的 .ts 纳入 var() �
     }
   })
 
-  it('抽出的图表模块里的 var() 确实被计入（以 pullValueChart 为例）', () => {
+  it('抽出的图表模块里的 var() 确实被计入（以 pullPlannerChart 为例）', () => {
     const files = scanComposableFiles(process.cwd())
-    const pv = files.find(f => f.path === 'src/composables/pullValueChart.ts')
-    expect(pv).toBeDefined()
-    expect(pv!.varRefs).toContain('--wa-150')
-    expect(pv!.varRefs).toContain('--fg-3')
+    const pp = files.find(f => f.path === 'src/composables/pullPlannerChart.ts')
+    expect(pp).toBeDefined()
+    expect(pp!.varRefs.length).toBeGreaterThan(0)
   })
 
   it('目录不存在时返回空数组（不抛错）', () => {

@@ -12,7 +12,7 @@
 | `nanoka_missing/<id>_skills.json` / `<id>_stats.json` | 新角色技能（预缩放 attack_data）/ 基础属性 | fetch-nanoka-missing.py（已退役） | import-nanoka-missing、import-attack-data、sync-attack-data、audit-nanoka-missing、validate-data |
 | `nanoka_missing/full/<id>.json` | 新角色完整抓取（被动/影画/潜能/技能原文，**录角色机制的原文数据源**） | fetch-nanoka-full-missing.mjs | enrich-nanoka-missing、sync-new-role-status、sync-move-zh-names（优先）、import-factions、audit-nanoka-missing |
 | `bosses/{zh,en}/<id>.json`、`bosses/monster/`、`bosses/{summary,version}.json` | Boss 数据（属性/阶段/版本，中英双语） | fetch-nanoka-bosses.mjs | import-nanoka-bosses → boss-presets.json |
-| `zzz-run-archive/*.json` | 危局通关档案快照（分页 API） | fetch-zzz-run-archive.mjs | import-zzz-run-archive → run-archive.json |
+| `zzz-run-archive/*.json` | 危局通关档案快照（分页 API，4 模式全量原始投稿） | fetch-zzz-run-archive.mjs | import-zzz-run-archive → run-archive.json（**过滤为「每（房间×队伍构成）限定金数最低的满分 run」**，口径见 `FEATURES_GUIDE.md` §4.4） |
 | `gachabase/<id>.json` | 第二数据源交叉校验快照（倍率/回能双源确认） | fetch-gachabase-agent.mjs | 只写不读（对账证据留存） |
 | `nanoka_wengine_<id>_{zh,en}.json` | 音擎数据（根目录） | import-nanoka-wengine.mjs（缺则现场抓；`--force` 按正式服重爬） | import-nanoka-wengine.mjs → catalog.wEngines（**只收 A/S 级**；B 级 2026-09-09 按用户裁决移除，raw 保留，见 scripts/patch-drop-b-wengines.mjs） |
 | `nanoka_character.json` / `nanoka_equipment.json` / `nanoka_weapon.json` | nanoka 正式服索引快照：角色 en 名 / 驱动盘套装 zh+en 名与 2pc·4pc 文本 / 音擎 en 名·atk·sub·icon | sync-build-recommendations.mjs（缺则现场抓） | sync-build-recommendations → build-recommendations.json；patch-disc-sets（套装名对齐） |

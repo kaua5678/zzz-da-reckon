@@ -33,7 +33,7 @@ import type { ConfigModel } from '@/stores/config'
 import { equalizeTimeWeights } from '@/composables/timeWeightBalancer'
 import { useCatalogStore } from '@/stores/catalog'
 import { teammatePairsFor } from '@/composables/teamStructure'
-import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseNodeOf } from '@/data/versionTimeline'
+import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf, releaseDateOf as releaseDateOfSingle, releaseNodeOf } from '@/data/versionTimeline'
 import { indexForDate } from '@/composables/bossSchedule'
 import { isLimitedWEngine } from '@/composables/teamCompare'
 import { isLimitedSAgentId } from '@/composables/limitedGold'
@@ -369,10 +369,9 @@ export async function computeTeamTimeline(scenario: AnalysisContext, opts: TeamT
   const mainAxisIdx = Math.max(0, indexForDate(fullAxis, mainDate))
   const nodes: TimelineAxisNode[] = fullAxis.slice(mainAxisIdx)
 
-  const releaseDateOf = (id: string) => {
-    const rel = AGENT_RELEASE_NODE[id]
-    return rel ? VERSION_NODES[nodeIndexOf(rel)]?.date : undefined
-  }
+  // 实装日期走 `versionTimeline#releaseDateOf` 单一事实源（原此处局部实现，2026-10-08 收拢）；
+  // 本模块内部把「未知角色」当 undefined 用（`d ? … : -1`），故用 ?? undefined 对齐旧形状。
+  const releaseDateOf = (id: string) => releaseDateOfSingle(id) ?? undefined
   /** 实装 → 轴下标（未裁剪；-1 = 早于轴起点） */
   const axisIndexRaw = (id: string) => {
     const d = releaseDateOf(id)

@@ -563,9 +563,9 @@ export const HARDCODED_BASELINE = {
   // 1 处字面色值是**逐字搬迁**——`.kill-line` 的 #63e2b7（原在 TimeChartsPage.css）。页面 31 → 30。
   'src/styles/chart-blocks.css': 3,  // 3 → 5（2026-09-14 Chart 6 抽组件：`.lane-cell`/`.lane-text` 两条 rgba 随 lane-* 共用类**逐字搬迁**进来；
   //   同轮页面 18→12、新组件 +4，三处合计 12+5+4 = 21 = 改前 18+3 ⇒ **总量不变、棘轮未放松**）   // 1 → 3（+ .node-note 的 #f6ad55 与 rgba(246,173,85,.35)，逐字搬迁）
-  // 2026-09-14 Chart 5 抽组件（components/charts/PullValueChart.vue）：7 处字面色值是**整组搬迁**
-  // （原在 TimeChartsPage.css 的 .pv-* 规则里）。页面 30 → 23。
-  'src/components/charts/PullValueChart.vue': 5,
+  // 2026-10-08 Chart 5 下线（用户裁决：价值要用计算器算，不用统计估）：`PullValueChart.vue` 连同
+  // `composables/pullValue.ts` / `pullValueChart.ts` / `views/timeCharts/pull-value-chart.css` 整体删除，
+  // 该文件 5 处字面色值随文件消失 ⇒ 条目销号（棘轮只减不增：留着即 stale 红）。
   'src/views/WEngineFieldPage.vue': 2,
   // ---- 2026-09-18 round 29：3D 可视化组件（外部协作者 `310ba51`）——**修红基线，非新增债务** ----
   //
@@ -631,7 +631,7 @@ export const FONT_SIZE_BASELINE = {
   'src/views/TimeChartsPage.vue': 0,   // 3 → 0：最后三处（11.5/11.5/8.5px）归到档位 11/11/8（目标里「清零两页离群字号」达成）
   'src/components/charts/DirectDamageChart.vue': 1,   // .dd-caption 的 11.5px（搬迁前就在页面的离群基线里）
   'src/components/charts/TimeChartsControls.vue': 1,   // .boss-data-item 的 11.5px（原在页面的离群基线里）
-  'src/components/charts/PullValueChart.vue': 2,   // .pv-row-label 10.5px / .pv-detail-bar-label 8.5px（随组件搬迁）
+  // 2026-10-08 Chart 5 下线：PullValueChart.vue 删除（其 10.5px / 8.5px 两条离群字号随文件消失）⇒ 销号。
   // 2026-09-14 第二轮：共享控件基元（.ctl-*/.chart-progress/.progress-text/.ctl-note）收敛到
   // src/styles/charts.css ⇒ `.ctl-note` 的 10.5px 从页面基线**平移**到本表（页面 7→6、本表 0→1），
   // 合计不变。是归属变化不是新增债务。
@@ -650,7 +650,7 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--fg-2/--fg-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 431  /* ★ 2026-10-05 r667 T22（`3f399d82`）：437 → **431**（−6）。纯删除：result-page.css `@media (max-width:1200px)` 内与基础规则逐字相同的 10 条无效覆盖（−61 行）——var() 总数与 --wa-* 直引一起下降，都是删重复规则，不是改回字面量（CC-481 分片时被本棘轮抓到，master 红了 10 分钟）。 ★ 2026-09-28 CC-186（第 209 轮）：447 → **437**（−10）。纯删除：ResourceUtilizationPage「全队边际收益」卡片与
+export const WA_REF_BASELINE = 419  /* ★ 2026-10-08 Chart 5 下线（用户裁决：抽卡价值用计算器算，不用统计估）：431 → **419**（−12）。纯删除——`PullValueChart.vue` 与其 `pull-value-chart.css` 整体删除，两者的 `var(--wa-*)` 直引一并消失，没有任何变量改回字面量（VAR_TOTAL_BASELINE 同步 792 → 774，同一批删除）。 ★ 2026-10-05 r667 T22（`3f399d82`）：437 → **431**（−6）。纯删除：result-page.css `@media (max-width:1200px)` 内与基础规则逐字相同的 10 条无效覆盖（−61 行）——var() 总数与 --wa-* 直引一起下降，都是删重复规则，不是改回字面量（CC-481 分片时被本棘轮抓到，master 红了 10 分钟）。 ★ 2026-09-28 CC-186（第 209 轮）：447 → **437**（−10）。纯删除：ResourceUtilizationPage「全队边际收益」卡片与
    MarginalUtilityCard「副词条边际效用」区永远显示「（未计算）」（数据源 perSlotMarginalGains 生产不可写），随 core 打分模型退役删除；
    没有任何变量改回字面量。VAR_TOTAL_BASELINE 同步 808 → 797（同一批删除）。
    ★ 2026-09-21 UI 外壳打磨：448 → **447**（−1）。方向 = 棘轮要求的方向。
@@ -693,7 +693,7 @@ export const WA_REF_BASELINE = 431  /* ★ 2026-10-05 r667 T22（`3f399d82`）�
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 769  /* ★ 2026-10-07 r703 删除 `DifficultyDescentPanel.vue`（用户裁决：结果页难度下降面板与队伍对比页难度曲线重复，面板与引擎一并删）：792 → **769**（−23）。纯删除：该组件恰好 23 处 `var(--` 随文件消失，改动的 TeamComparePage/ResultPage 的 var() 计数不变；wa 431 / hardcoded-color 107 不变（该组件零字面色）——不是字面量回退。 ★ 2026-10-06 难度曲线截断提醒（`.curve-trunc-label` 用语义令牌 --c-warning，与跃迁标注的 currentColor 在图上区分开）：791 → **792**（+1）。同轮 hardcoded-color / tokens-defined / tinted-ink-closure 保持绿——新增的是语义别名，不是字面色。 ★ 2026-10-05 r667 T22（`3f399d82`）：801 → **791**（−10）。纯删除：result-page.css `@media (max-width:1200px)` 内与基础规则逐字相同的 10 条无效覆盖（−61 行）——var() 总数与 --wa-* 直引一起下降，都是删重复规则，不是改回字面量（CC-481 分片时被本棘轮抓到，master 红了 10 分钟）。 ★ 2026-10-02 r416 CC-390 轴编辑器残留块虚线边框用 --app-accent-gold：800 → 801（+1，StunAxisPage.vue）。★ 2026-09-29 抽卡价值提案落地（§3.3 零价值三态）：799 → 800（+1，PullPlannerChart.vue 新增
+export const VAR_TOTAL_BASELINE = 751  /* ★ 2026-10-09 合并口径（origin/master r7xx ↔ d0d1579c 重放）：**两侧删除都成立且可加**——base 792 −23（r703 删 DifficultyDescentPanel）−18（Chart 5 下线删 PullValueChart.vue + pull-value-chart.css）= **751**，与合并后实测逐位一致（`node scripts/check-tokens.mjs --report`：var() 751 / --wa-* 419）。两笔都是纯删除，不是把变量改回字面量。 ★ 2026-10-08 Chart 5 下线（同 WA_REF_BASELINE 那条）：792 → **774**（−18）。纯删除——PullValueChart.vue + pull-value-chart.css 的 var() 引用随文件消失，不是把变量改回字面量。 ★ 2026-10-07 r703 删除 `DifficultyDescentPanel.vue`（用户裁决：结果页难度下降面板与队伍对比页难度曲线重复，面板与引擎一并删）：792 → **769**（−23）。纯删除：该组件恰好 23 处 `var(--` 随文件消失，改动的 TeamComparePage/ResultPage 的 var() 计数不变；wa 431 / hardcoded-color 107 不变（该组件零字面色）——不是字面量回退。 ★ 2026-10-06 难度曲线截断提醒（`.curve-trunc-label` 用语义令牌 --c-warning，与跃迁标注的 currentColor 在图上区分开）：791 → **792**（+1）。同轮 hardcoded-color / tokens-defined / tinted-ink-closure 保持绿——新增的是语义别名，不是字面色。 ★ 2026-10-05 r667 T22（`3f399d82`）：801 → **791**（−10）。纯删除：result-page.css `@media (max-width:1200px)` 内与基础规则逐字相同的 10 条无效覆盖（−61 行）——var() 总数与 --wa-* 直引一起下降，都是删重复规则，不是改回字面量（CC-481 分片时被本棘轮抓到，master 红了 10 分钟）。 ★ 2026-10-02 r416 CC-390 轴编辑器残留块虚线边框用 --app-accent-gold：800 → 801（+1，StunAxisPage.vue）。★ 2026-09-29 抽卡价值提案落地（§3.3 零价值三态）：799 → 800（+1，PullPlannerChart.vue 新增
                                          * `.pp-warn` 警示符号引用语义令牌 --c-warning，用于把「搜索不自洽」与「真·完全下位」在视觉上区分开；
                                          * 同轮 hardcoded-color/tokens-defined 保持绿——没有新增字面色）。
                                          * ★ 2026-09-29 CC-204（第 227 轮）：797 → 799（+2，freeCompare 汇总表胜负着色引用语义令牌 --c-success / --c-success-soft）。★ 2026-09-28 CC-186（第 209 轮）：808 → **797**（−11）。纯删除（同 WA_REF_BASELINE 447→437 那条）：两块永远显示

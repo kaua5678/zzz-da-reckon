@@ -165,7 +165,7 @@ describe('关键次数差分（用户口径：难度上升到关键变化要标�
 describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，用户 2026-09-10 口径）', () => {
   it('liveInteractions：读**当前配置**的交互次数（不是预设声明），角色专属类型沿用预设', async () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
     // 先清零（harness 的 TEST_BASE_CHAR 给每槽 quickAssistCount=3，不清零会串味）
     for (const c of config.team) {
       c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0; c.blockCount = 0
@@ -184,7 +184,7 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
     // 纯函数口径（假 rr 只给 convergence.truncationBySlot）——不依赖"哪个队真截断"（那个集合随引擎修复在变：
     // 降配判据修正后交互型溢出被收进可行域，只剩 1431 簇等结构队）。
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
     for (const c of config.team) { c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0; c.blockCount = 0 }
     config.team[0]!.parryCount = 8
     config.team[1]!.parryCount = 4
@@ -205,7 +205,7 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
 
   it('measureOperationalDifficulty = Σ(交互×权重) + 溢出秒×溢出权重（权重可改）', async () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
     for (const c of config.team) { c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0; c.blockCount = 0; c.tauntCancelCount = 0 }
     config.team[0]!.parryCount = 3
     const calc = { resourceResult: { value: null } } as never
@@ -220,7 +220,7 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
   it('集成：x 轴 = 实测操作难度（绝对值，与散点同尺），伤害单调增', async () => {
     const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
-    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
     const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE }))
     const pts = row!.ladder.points
     expect(pts[0]!.x).toBeGreaterThan(0)          // x = 绝对操作难度（全关也不是 0：有基础交互）
@@ -256,7 +256,7 @@ describe('时间压力 = 硬溢出 + 合轴抵扣（用户 2026-09-11：合轴�
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
     // 用真实一队的结果核对恒等式（合轴默认全 0 ⇒ 多数队 saved 可能为 0，等式仍须成立）
-    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')!
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
     applyTeamToStore(config, preset)          // 曲线算完会恢复现场 ⇒ 这里自己套一次队再读引擎结果
     const rr = calc.resourceResult.value!
     const b = frontlineOccupationBreakdown(rr)
@@ -275,17 +275,29 @@ describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动�
    * >  那么我们直接不算中间档位，只算最高合轴率表示一下合轴这一板块对伤害的影响就行」
    *
    * 反证：把 `apply` 改回 v3 的 `cur + cap/2` 机械分档 ⇒ 本用例第一档断言
-   * （`contain` ≠ cap/2）即红（实测 `auto-1431-1481-1491` 的 r*=0.70，v3 给 0.2）。
+   * （`contain` ≠ cap/2）即红（实测 `auto-1431-1481-1491` 加码 10 次交互后 r*=0.04，v3 给 0.2）。
+   *
+   * ⚠ 夹具沿革（2026-10-09，预设库重生成 85→77 条）：原 `auto-1431-1481-1491` 存活但**内容变了**
+   * （另一条实战 run），新内容 r=0 无溢出 ⇒ 不再触发「包容」档。
+   * **不再换队，改为在同一存活队上显式构造溢出前置**（主 C 弹刀/闪反各 +10）：
+   * 理由——普查全库 77 条 auto 预设，r=0 溢出 > 1s 的只剩 3 队（`auto-1051-1481-1451` /
+   * `auto-1531-1481-1451` / `yidhari-jufufu-lucia`），且它们的 `containRatioOf` 全为 `null`
+   * （结构性溢出，吸满也包不住）⇒ 本用例想锁的「有溢出的队第一档 = 刚好包容」**已无自然样本**。
+   * 加码 10 次后该队溢出 3.666s、r*=0.04，是「可包容溢出」的最小构造；且该构造对
+   * 「并行会话正在改的 ultimatePromote 单一口径」两种引擎状态给出**逐位相同**的结果
+   * （当前工作树与 HEAD 隔离树实测 d1=82472137.9、d2=83755870.4、r1=0.04 全等）。
    */
   it('★ v4：有溢出的队第一档 = 「刚好包容」（不是 cap/2），第二档 = 封顶', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    // 实测（`ysgrungcensus.perf.ts`）r=0 溢出 34.25s、包容所需 r* = 0.70 的队
     const preset = teamPresets.find(p => p.id === 'auto-1431-1481-1491')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
+    // 构造「可包容溢出」前置（见上方夹具沿革）：主 C 弹刀 / 闪反各 +10 ⇒ r=0 溢出 3.666s
+    config.team[0]!.parryCount = (config.team[0]!.parryCount ?? 0) + 10
+    config.team[0]!.dodgeCounterCount = (config.team[0]!.dodgeCounterCount ?? 0) + 10
     expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0)
     expect(calc.resourceResult.value!.overflowSeconds).toBeGreaterThan(1) // 确有溢出（前置条件）
 
@@ -315,8 +327,11 @@ describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动�
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    // 实测 r=0 无溢出、但提高合轴率仍涨伤害（66.108M → 78.229M，+18%：吸收释放平A池给主C）
-    const preset = teamPresets.find(p => p.id === 'auto-1461-1521-1031')!
+    // 实测 r=0 无溢出、但提高合轴率仍涨伤害（57.53M → 76.01M，+32.1%：吸收释放平A池给主C）
+    // 夹具沿革（2026-10-09）：原 `auto-1461-1521-1031`（席德/希希芙/妮可）新库无 ⇒ 换存活等价的
+    // `auto-1461-1521-1491`（席德/希希芙/千夏）：同为「席德主C + 希希芙」结构、r=0 无溢出、
+    // 封顶档仍有 +32% 增益（旧夹具 +18%）。
+    const preset = teamPresets.find(p => p.id === 'auto-1461-1521-1491')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
@@ -336,7 +351,9 @@ describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动�
     const calc = useResourceCalc()
     // 用 `containRatioOf` 直接验容差口径（不依赖某个队「恰好」有亚秒溢出——
     // 实测那类读数多半来自前一个队的残留配置，见本用例下方的显式注入）。
-    const preset = teamPresets.find(p => p.id === 'auto-1591-1161-1211')!
+    // 夹具沿革（2026-10-09）：原 `auto-1591-1161-1211`（希格莉德/莱特/丽娜）新库无 ⇒ 换存活等价的
+    // `auto-1591-1481-1211`（希格莉德/琉音/丽娜：同主C 希格莉德、r=0 无溢出 ⇒ 同走「无溢出」分支）。
+    const preset = teamPresets.find(p => p.id === 'auto-1591-1481-1211')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
@@ -356,8 +373,13 @@ describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动�
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    // 时间压力队 auto-1371-1481-1451（实测 缺省 0.4：溢出 25.4s ≤ 容量，全额吸收）
-    const preset = teamPresets.find(p => p.id === 'auto-1371-1481-1451')!
+    // 时间压力队 auto-1471-1481-1451（般岳/琉音/卢西娅·艾洛温；实测 缺省 0.4：saved 28.63s，
+    // 到上限伤害 56.82M ≥ 全关 45.76M）。
+    // 夹具沿革（2026-10-09，预设库重生成 85→77 条）：原 `auto-1371-1481-1451`（仪玄/琉音/卢西娅）
+    // id 虽存活，但**内容变了**（另一条实战 run：琉音/卢西娅音擎换非限定）⇒ 实测到上限伤害
+    // 60.86M **低于**全关 61.38M（−0.85%），不再满足「自动吸收真的省出前台时间」这条设计保证。
+    // 换成同支援核心（琉音+卢西娅·艾洛温）且该保证成立的存活队 `auto-1471-1481-1451`。
+    const preset = teamPresets.find(p => p.id === 'auto-1471-1481-1451')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)                 // 全关基线（会清掉合轴率覆盖、吸收上限置 0 并记下用户上限）
     applyTeamToStore(config, preset)
@@ -382,8 +404,7 @@ describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动�
     expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 6)
     // ⚠ **2026-10-05 改 `toBeGreaterThan` → `toBeGreaterThanOrEqual`**（§20.5-3 轴态吃吸收后暴露）：
     // 吸收量 = `min(溢出, 容量)`（`helpers.ts` 的 `take`）⇒ **溢出被吸满后，再提高比例不再增加 saved**。
-    // 实测本队（改动后进轴态）：ratio=0.2 时 `gross=195.885 net=180.000 saved=15.885`，
-    // 恰好 = 全部溢出（195.885 − 180）⇒ 0.4 档**无事可做**，两档 saved **精确相等**。
+    // 实测本队：saved 28.63s 恰为可吸收上限 ⇒ 0.4 档**无事可做**，两档 saved **精确相等**。
     // ⇒ 「逐档严格变大」从来不是该设计的不变量（只是该队在溢出 > 容量时恰好成立的历史巧合）；
     //    正确的设计保证 = **单调不减**（容量↑ ⇒ 可吸收量↑，但以溢出为上限）。
     expect(frontlineOccupationBreakdown(calc.resourceResult.value!).saved).toBeGreaterThanOrEqual(saved1)
@@ -680,8 +701,8 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
   it('每队一条曲线、伤害单调不减，且算完恢复现场（队伍/敌方/机制开关/权重策略）', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
-    const preset = teamPresets.find(p => p.id === 'auto-1521-1361-1311')
-    expect(preset, '预设数据里应有 auto-1521-1361-1311（实测 +42.9% 的爬梯样本）').toBeTruthy()
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')
+    expect(preset, '预设数据里应有 auto-1521-1481-1311（实测 +47.6% 的爬梯样本）').toBeTruthy()
 
     const before = {
       agents: config.team.map(c => c.agentId),
