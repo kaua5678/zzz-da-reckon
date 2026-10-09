@@ -90,7 +90,7 @@ S5（收窄类型）已于第 375 轮完成（`3c287f85`，§3.5）：求值管�
   - ② 隔离：场景里换人、进另一期 Boss 房间、改机制设置、求值 ⇒ 源 store `$state` 与 UI calc 的总伤都不变；
   - ③ 等值：同一现场，场景 calc 与 UI calc 的队伍总伤逐位相同，两边同步进 Boss 房间后仍相同；
   - ④ 源码锁：`createResourceCalc` 函数体不出现 `useConfigStore()` / `useCatalogStore()`；`MIGRATED_ANALYZERS` 里的文件不调 `useConfigStore()`、不调 `snapshotStore(` / `restoreStore(`。
-- `charIncrementInt.test.ts`：原「快照恢复」只比跑完后的队伍 id；现改为**每次进度回报（紧接 yield）时整份 `$state` 与开跑前逐字相同**，跑完也相同。性能比值 22.6×（线 100×）。
+- `charIncrementInt.test.ts`：原「快照恢复」只比跑完后的队伍 id；现改为**每次进度回报（紧接 yield）时整份 `$state` 与开跑前逐字相同**，跑完也相同。（当时的性能比值 22.6× / 线 100× **已作废**——2026-10-09 口径纠正：那条尺对负载敏感且对单位工作量回归**反向**，现行判据 = 单位工作量 ÷ 同进程机器速度标尺 ≤ 1.0×，见该测试文件「性能判据」段。）
 - **A/B 零差**：同一现场（副词条上限 18），旧 API（`2d781b67`，改写 UI store + 快照恢复）与新 API（场景）各跑一遍全归档 `computeIncrementPass`，
   输出（9 期、78 次基底队求值的逐队分数）逐字节相同（md5 `53ecb939`）；耗时 15.6s / 15.9s。探针未入库（`/home/kaua/calc-arch/arenaC/zzScenarioProbe.{old,new}.test.ts`、`ab.sh`）。
 - 全量 verify：全量 verify EXIT 0（449 文件 / 4126 测试通过，16 / 29 跳过，228.9s）。

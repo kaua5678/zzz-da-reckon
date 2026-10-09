@@ -61,8 +61,10 @@ export default defineConfig({
     // 由应用入口 `src/main.ts` 与这里的 setupFiles 负责——测试进程与浏览器入口看到同一张注册表。
     setupFiles: ['./src/mechanics/index.ts'],
     // 重负载集成用例（全库 pass / 权重分配搜索 / 难度变体）在本机满套件并发下 30~80s：
-    // 默认 30s 会让它们随机超时（测的是机器负载，不是断言）。**真正的性能判据**已改为
-    // 「同进程参照量归一化」的比值（见 `charIncrementInt.test.ts`），这里只放开基础设施超时。
+    // 默认 30s 会让它们随机超时（测的是机器负载，不是断言）。**真正的性能判据**是
+    // 「单位工作量 ÷ 同进程机器速度标尺」的比值（见 `charIncrementInt.test.ts`；
+    // 2026-10-09 口径纠正——旧的「同进程参照量归一化」实测对负载敏感且对回归反向，已废），
+    // 这里只放开基础设施超时。
     testTimeout: 180_000,
     // CC-424（2026-10-03 r450）：worker 上限进配置，不再靠每个人记得加 `--maxWorkers=4`。
     // 本机 16 vCPU / 9 GB 内存，vitest 默认按 CPU 数起 16 个 fork，每个 fork 载入全部角色模块后
