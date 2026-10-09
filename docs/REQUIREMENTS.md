@@ -427,3 +427,51 @@ CC-96： "catalog 效果 basis 引擎零读取"   ← 引擎根本不读这个�
 但如果你判断顺序应该反过来，也请写明理由。）
 
 
+
+---
+
+## R9 · 精简「搭桥提示词」——每轮都发 19 KB，是最大的固定开销
+> ✅ **DONE 2026-10-07 00:03** by arena (r700). Output moved to `/mnt/f/proj/arena-proxy/bridge-prompt-arena.slim.md` (per-round section 19366 -> 8567 chars = 44%, target <=50%). Original path in this requirement (`/mnt/c/Users/kaua/Desktop/...`) is obsolete: the source of truth moved to `/mnt/f/proj/arena-proxy/bridge-prompt-arena.md` on 2026-10-06. **Do NOT redo this task.**
+
+**用户原话**
+
+> 提示词每次对话完你都要发一次么，会不会占太多上下文了？精简是需要的。
+
+**背景（助手实测，2026-10-06）**
+
+- `autopilot.js:1772`：`const prompt = done === 0 ? bridgePrompt : bridgePrompt + tail;`
+  ⇒ **每一轮都把完整搭桥提示词重发一遍**，不是握手发一次。
+- 来源：`C:\Users\kaua\Desktop\bridge-prompt-arena.md`（整份 52 KB），
+  其中被抠出来每轮发的「一、粘给 arena 的内容」那段 = **19 KB**。
+- 原设计前提是「每轮都是新会话」（那样 19 KB 每轮独立、不累积）；
+  但无人值守用的是 `--sid` **复用同一会话** ⇒ **19 KB × 轮数 在会话内累积**。
+  实测证据：`Data/bridge-super.log` 里 `历史排空: N 个已完成回合` 每轮 +1（7→8→9→10→11→12）。
+- ⇒ 这是**每轮都付的固定成本**，也是「长会话越来越慢」的主要来源。
+
+**要做什么**
+
+把该文件精简掉一大半（**目标：每轮发的那段 ≤ 原来的 50%**），**但规则一条都不能丢**。
+
+**硬约束（很重要）**
+
+1. ⚠️ **不要覆盖原文件。** 输出写到新路径
+   `/mnt/f/proj/arena-proxy/bridge-prompt-arena.slim.md`；
+   原文件保持不动，由用户/助手 review 后再决定替换。
+2. **规则、口径、判据、坑、命令必须全部保留。** 只允许删这三类：
+   - **重复叙述**（同一件事在多处讲过 —— 合并成一处）
+   - **已废弃路线的历史推导**（VPN Gate / 反代时代的细节）
+   - **「当初为什么这么定」的长叙事**（保留一句结论即可）
+3. 目标读者是**没有上一轮记忆的 agent** ⇒ 「怎么开工 / 怎么查现场 / 怎么判据 /
+   出错怎么办」这类**操作性内容一律不能删**。
+4. 完成后给出对照说明：
+   - 用 `wc -c` 报出**前后字节数**（原文件 vs 新文件 vs 每轮实发那段）
+   - 列出你删掉的**类别**和**典型例子**（各 2~3 条）
+   - **逐条列出你确认「规则没丢」的清单**（这是验收的核心）
+
+**怎么验**
+
+```bash
+wc -c /mnt/f/proj/arena-proxy/bridge-prompt-arena.md \
+      /mnt/f/proj/arena-proxy/bridge-prompt-arena.slim.md
+```
+再 diff 一遍，确认**没有整条规则被删**（只删叙述）。
