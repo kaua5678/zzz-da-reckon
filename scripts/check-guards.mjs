@@ -18,6 +18,10 @@
 //      （同一对象内同名键 ⇒ JSON.parse 后者覆盖前者、前一份值静默消失；2026-09-22 事故 =
 //       1091.json 重复 teamBuffs 键让「雅 C1 全队积蓄 +20%」失效而全链全绿，
 //       实现面 scripts/lib/json-dup-keys.mjs）
+//  30. 通用字段「唯一声明方」前提 —— 规则 6「引擎按能力查询，不按角色认人」的**前提面**
+//      （引擎读点按「该字段只有一个声明方」删掉了 agentId 判断 ⇒ 第二个声明方会静默继承
+//       1051 的整套实数迭代期语义；2026-10-10 T128 立，缺口由 T127 §3.4 实测发现，
+//       实现面 scripts/lib/field-writer-uniqueness.mjs 头注释有 5 处读点分类表）
 //
 // 用法：node scripts/check-guards.mjs（npm run check / npm run verify 已挂载）
 // 逃生口（都要求显式改本文件，让「例外」在 diff 里留痕）：
@@ -74,6 +78,10 @@ import { scanLiteralAssertions, formatLiteralAssertions, LITERAL_ASSERTION_BASEL
 import { scanDeadNullish, formatDeadNullish, DEAD_NULLISH_BASELINE } from './lib/dead-nullish-gate.mjs'
 // 判据 29：类型只声明一次（r729，见 scripts/lib/type-restatement-gate.mjs 头注释）
 import { scanTypeRestatements, formatTypeRestatements, TYPE_RESTATEMENT_BASELINE } from './lib/type-restatement-gate.mjs'
+// 判据 30：通用字段的「唯一声明方」前提（T128，见 scripts/lib/field-writer-uniqueness.mjs 头注释）
+// ⚠ 与判据 26–29 同款：**不**从本文件转出（`check-guards.d.mts` 是手写影子 API，多转出即 C 段漂移红；
+//    测试直接 `import … from '../../../scripts/lib/field-writer-uniqueness.mjs'`，先例 idLiteralGate.test.ts）
+import { scanFieldWriters, formatFieldWriters, SINGLE_WRITER_FIELDS } from './lib/field-writer-uniqueness.mjs'
 export { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST }
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -1362,6 +1370,19 @@ export function runAllChecks(root = ROOT) {
         + `= ${report.count}/${TYPE_RESTATEMENT_BASELINE} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
       ok: report.ok,
       detail: report.ok ? [] : formatTypeRestatements(report),
+    })
+  }
+
+  // ---- 判据 30：通用字段的「唯一声明方」前提（T128；引擎注释里逐字依赖它删掉了 agentId 判断，
+  //      此前无任何机器判据——第二个声明方会静默继承 1051 的整套实数迭代期语义，见 lib 头注释表）----
+  {
+    const report = scanFieldWriters(root)
+    const fields = SINGLE_WRITER_FIELDS.map(f => f.field).join('/')
+    results.push({
+      name: `field-writer uniqueness gate (判据 30: 通用字段「唯一声明方」前提——引擎读点按它删了 agentId 判断，${fields} 新增声明方即红) `
+        + `= 未登记 ${report.extra.length} / 登记过期 ${report.missing.length} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
+      ok: report.ok,
+      detail: report.ok ? [] : formatFieldWriters(report),
     })
   }
 

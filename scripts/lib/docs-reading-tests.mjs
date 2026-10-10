@@ -64,6 +64,10 @@ export const DOCS_READING_MIN_SCANNED = 800
  *   （读 `docs/mechanism-reference.md`）、`checkGuards`（§4 行数 / 密度 / README 文档表 / `@fact`）；
  * - 起子进程 / 跑仓库级扫描的守卫类：`zc*`、`checkTokens`、`deadChannelLs`、`jsonDupKeys`、
  *   `idLiteralGate`、`layerInversion`、`scopedStyleReach`、`timeGolden`（`git status` 查 catalog 脏否）等。
+ *
+ * ⚠ 2026-10-10 T128 追加 1 条（31 → **32**）：`fieldWriterUniqueness`（判据 30）——它按规则 ② 入选
+ * （测试自身写 `scripts/lib/field-writer-uniqueness.mjs` 路径字面量），跑的是仓库级 AST 扫描
+ * （读 `src/**` 现状，与 `idLiteralGate` 同族）。加清单条目是本判据规定的动作（checkGuards 的棘轮会红）。
  */
 export const DOCS_READING_TESTS = [
   'src/composables/__tests__/agentColorSingleSource.test.ts',
@@ -82,6 +86,7 @@ export const DOCS_READING_TESTS = [
   'src/scripts/__tests__/checkTokens.test.ts',
   'src/scripts/__tests__/compactedSlotIndex.test.ts',
   'src/scripts/__tests__/deadChannelLs.test.ts',
+  'src/scripts/__tests__/fieldWriterUniqueness.test.ts',
   'src/scripts/__tests__/idLiteralGate.test.ts',
   'src/scripts/__tests__/jsonDupKeys.test.ts',
   'src/scripts/__tests__/layerInversion.test.ts',

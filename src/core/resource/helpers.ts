@@ -270,7 +270,8 @@ function iterateBody(
     // 伊德海莉实数迭代期：喧响按 floor 后的整数次数算——若按实数，喧响→终结技阈值的
     // 4↔5 翻转会把实数次数拽成 2-循环（20.23↔20.35，必要时间随大翻跳）；floor 只影响
     // 迭代期喧响信道，终局整数重推后二者一致。
-    // agentId 判断冗余已删（同 resolveExSpecialCount：exContinuous 唯一写入方 = yidhari.ts:148）。
+    // agentId 判断冗余已删（同 resolveExSpecialCount：exContinuous 唯一写入方 = yidhari.ts；
+    // 该前提由机器判据 30 盯着，故此处不写死行号——行号会随重构漂移）。
     const decibelExCount = cfg.exContinuous === true
       ? Math.floor(exSpecialCount)
       : exSpecialCount
@@ -383,7 +384,7 @@ function iterateBody(
     // 4↔5 翻转会把实数强特次数拽成 2-循环（必要时间跳变 → 平A时间/回能/喧响同步跳变）；
     // 状态里 ult 仍是整数（终局一致），只有时间信道用实数参与收敛。
     // （旧「轴内喧响轨保持整数」的例外已随裁决 A 取消——轨不再反推次数。）
-    // agentId 判断冗余已删：exContinuous 唯一写入方 = src/mechanics/agents/yidhari.ts:148。
+    // agentId 判断冗余已删：exContinuous 唯一写入方 = src/mechanics/agents/yidhari.ts（机器判据 30：scripts/lib/field-writer-uniqueness.mjs）。
     const realUltForTime = cfg.exContinuous === true
       && cfg.exFinalize !== true
     const ultForTime = realUltForTime ? decibels[i] / cfg.ultimateCost : ultimateCount
@@ -392,7 +393,7 @@ function iterateBody(
     // 与队友耦合，队友整数次数在阈值处翻转会把她的次数拽成 2-循环（如 19.54↔19.71，队友 6↔7）。
     // 必要时间按 (prev+new)/2 松弛：不动点不变（不动点处 prev==new），2-循环振幅每迭代减半，
     // 两个种子收敛到同一中点 → 终局 floor 唯一。终局重推（finalize）不阻尼（直接按整数账本重算）。
-    // agentId 判断冗余已删（同 realUltForTime：exContinuous 唯一写入方 = yidhari.ts:148）。
+    // agentId 判断冗余已删（同 realUltForTime：exContinuous 唯一写入方 = yidhari.ts（机器判据 30：scripts/lib/field-writer-uniqueness.mjs））。
     const exForTime = cfg.exContinuous === true
       && cfg.exFinalize !== true
       ? (prevStates[i].exSpecialCount + exSpecialCount) / 2
@@ -678,7 +679,7 @@ function iterateBody(
     // 伊德海莉迭代期状态写入阻尼值（与必要时间信道同源）：原始实数次数经共享平A池与队友整数
     // 次数耦合会 2-循环（19.54↔19.71），状态与时间信道统一按 (prev+new)/2 松弛——不动点不变，
     // 2-循环振幅每迭代减半，两个种子收敛到同一中点，终局 floor 唯一。终局重推（finalize）写整数。
-    // agentId 判断冗余已删（exContinuous 唯一写入方 = src/mechanics/agents/yidhari.ts:148）。
+    // agentId 判断冗余已删（exContinuous 唯一写入方 = src/mechanics/agents/yidhari.ts（机器判据 30：scripts/lib/field-writer-uniqueness.mjs））。
     const storedEx = cfg.exContinuous === true && cfg.exFinalize !== true
       ? (prevStates[i].exSpecialCount + exSpecialCount) / 2
       : exSpecialCount

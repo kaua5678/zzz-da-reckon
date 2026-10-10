@@ -245,6 +245,12 @@ export interface CharacterOperationConfig {
   // 正反馈资源环（强特次数 → 回能 → 强特次数）的通用表达：引擎只认下列字段，
   // 由角色模块在自己的 buildCharConfig / applyTeamConfig 里声明；引擎不读 agentId。
   // 当前唯一声明方 = 1051 `mechanics/agents/yidhari.ts`。
+  // ⚠ 这个「唯一声明方」前提**有机器判据**（判据 30，T128 2026-10-10 立）：引擎有 5 处读点
+  //   （`core/resource/helpers.ts` 的 decibelExCount / realUltForTime / exForTime / storedEx +
+  //   `core/resource.ts` 的 continuousExPresent）**没有 refund 门**，正是靠「只有一个声明方」
+  //   才敢删掉原来的 agentId 判断 ⇒ 第二个声明方会**静默继承整套**语义（实数状态写入 + 双阻尼
+  //   + 实数 ult 时间信道 + 内层上限 100）。新增声明方时判据会红并给出三条出路；读点分类表见
+  //   `scripts/lib/field-writer-uniqueness.mjs` 头注释。
   /** 迭代期强特次数实数参与收敛（阻尼 + 实数 ult 时间信道 + 内层上限 ≥100） */
   exContinuous?: boolean
   /** 终局整数重推期：floor 一次、不阻尼 */

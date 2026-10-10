@@ -129,7 +129,7 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 伊德海莉连续松弛（0.5 阻尼）收敛比整数动力学慢：她的队内层迭代上限至少 100
   // （阻尼残差减半每轮，且判稳用严格相等——浮点不动点约需 40+ 轮）。2026-09-19 起缺省上限也是 100
   // （`INNER_LOOP_MAX_ITERATIONS`，理由见其注释）；这条 max 只在调用方显式传更小的 `maxIterations` 时仍为她兜底。
-  // agentId 判断冗余已删：exContinuous 唯一写入方 = src/mechanics/agents/yidhari.ts:148
+  // agentId 判断冗余已删：exContinuous 唯一写入方 = src/mechanics/agents/yidhari.ts（机器判据 30：scripts/lib/field-writer-uniqueness.mjs）
   // （模块只对自己的 cfg 运行 ⇒ 该字段为 true 即蕴含 agentId === '1051'），引擎层不读 agentId。
   const continuousExPresent = config.characters.some(c => c.exContinuous === true)
   const maxIter = Math.max(config.maxIterations || INNER_LOOP_MAX_ITERATIONS, continuousExPresent ? 100 : 0)
