@@ -137,6 +137,12 @@ export function runUnderfillProbe(
       // 试探轮会写下自己的溢出值，被拒后若不回滚，编排层会按一个不存在的溢出把交互缩光
       // → 失衡归零（实测 runArchiveDeploy 雅/南宫/柚叶队 stunCount 螺旋到 0）。
       const savedOverflow = ctx.config.overflowSeconds ?? 0
+      // T123b 批 2：动态合轴吸收诊断量同为**团队级 cfg 副作用**（同 `overflowSeconds` 的处置）。
+      // 试探轮会写下自己的读数，被拒后不回滚就会让「收敛读数」归属到被弃用的那一轮
+      // （口径 `engine:收敛读数归属`：诊断量归属**被接受的那次调用**）。**存原值不存 `?? 0`**：
+      // `undefined`（= 本次调用还没跑过 iterate）与 `false`/`0` 是两回事，压平会伪造读数。
+      const savedComboAlignConverged = ctx.config.dynamicComboAlignConverged
+      const savedComboAlignIterations = ctx.config.dynamicComboAlignIterations
       ctx.config.timeBudgetRefund = savedRefund + probe
       const trial = convergeCounts(states)
       const trialRows = frontlineRowsOf(trial.states)
@@ -152,6 +158,8 @@ export function runUnderfillProbe(
       } else {
         ctx.config.timeBudgetRefund = savedRefund // 回滚：宁可留白，不制造超预算
         ctx.config.overflowSeconds = savedOverflow
+        ctx.config.dynamicComboAlignConverged = savedComboAlignConverged
+        ctx.config.dynamicComboAlignIterations = savedComboAlignIterations
         ctx.configs.forEach((c, i) => Object.assign(c, savedCfg[i]))
         probe /= 2
       }

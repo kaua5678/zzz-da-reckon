@@ -354,6 +354,14 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
     converged: diag.converged,
     axisOverlapByAction: config.axisOverlapByAction,
     overflowSeconds: config.overflowSeconds,
+    // 动态合轴吸收子问题的收敛读数（T123b 批 2）：`iterate` 把求解器的 `converged`/`iterations`
+    // 写回 `config`，这里**提到返回值上**——因为编排层每次传的是 `{...base, characters}` 新克隆
+    // （`resourceCalc/convergence.ts`），cfg 上的写回外部读不到（实测 0/97 队）。
+    // ⚠ 与 `config.overflowSeconds` 同源同处置：读的是**被接受那次调用**写在 cfg 上的值
+    // （重折环拒绝时会整体 `restoreCfgs` 回滚 cfg，故这里的读数与 `overflowSeconds` 口径一致）。
+    // `dynamicComboAlignIterations` 恒有值（闸门未开时 `iterate` 写 0），故不用 `!== undefined` 守卫。
+    dynamicComboAlignConverged: config.dynamicComboAlignConverged,
+    dynamicComboAlignIterations: config.dynamicComboAlignIterations,
     truncationCuts: truncationCuts.length > 0 ? truncationCuts : undefined,
     // 琉音好评转大赠链时间已由引擎预留（非轴）→ applyUltimatePromote 不再 post-hoc carve 守恒
     ultimateGiftTimeReserved: ultimateGiftTime > 0 ? ultimateGiftTime : undefined,

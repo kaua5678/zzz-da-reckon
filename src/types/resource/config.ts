@@ -410,6 +410,28 @@ export interface ResourceCalcConfig {
    * convergence.timeTruncatedSeconds 而不是未收敛的 rr.overflowSeconds。
    */
   overflowSeconds?: number
+  /**
+   * 动态合轴吸收子问题的**收敛读数**（设计稿 `docs/mcp-time-allocation-algorithms.md` §5 批 2）：
+   * `iterate` 调 `solveComboAlignTake` 后把该解的 `branch`/`iterations` 原样写到 cfg 上，
+   * 让「吸收子问题收敛没收敛」这件事可机检（全库判据：`converged == false` 的队数 == 0）。
+   *
+   * **口径 = 残差，不是轮数**（T123b 实测钉住，勿改成「打满上限即未收敛」）：吸收子问题的迭代式是
+   * `take = min(Δ, F(take/T)·T)`，`Δ` 支是**饱和钳**（`g = Δ/T` 不是 `F` 的不动点但 `take` 已停住）
+   * ⇒ 判据取 `|take − min(Δ, F(take/T)·T)| ≤ 1e-12`。实测（T123b 100 万随机样本）：闭式解残差
+   * **恒 < 1e-15**（最大 7.44e-16，超门 0 例）；旧 8 轮迭代在咬合档 **99.97% 判 false**
+   * （680527/680705，最大残差 1.96e-1）。旧实现自带的 `break`（`|gNext−g| < 1e-9`）**不是**本判据的
+   * 依据——它在主队第 8 轮恰好触发，却留下 2.43e-9 的相对残差（T119 §① 实测），正是「读数不诚实」。
+   *
+   * `iterations` 语义 = **`solveComboAlignTake` 返回的实际轮数**（闭式三分支恒 1，`legacy-fallback` 恒 8），
+   * **不是**「跑到残差达标所需的轮数」——后者与 `converged` 的残差口径不同源，别混。
+   *
+   * ⚠ 诊断量副作用（坑 42 / R25-J2）：由引擎计算中途写回 cfg，调用前在新克隆对象上恒为 undefined，
+   * 严禁在调用前预读其值作为前置条件判定。吸收闸门未开（未进 `solveComboAlignTake`）时**不写**
+   * ⇒ 恒 undefined（「本轮没发生吸收」与「吸收了但没收敛」由此可区分）。
+   */
+  dynamicComboAlignConverged?: boolean
+  /** 动态合轴吸收子问题的实际迭代轮数（同 `dynamicComboAlignConverged` 的写回时机与口径） */
+  dynamicComboAlignIterations?: number
   /** 失衡次数输入（连携次数 = chainCountPerStun × stunCount）；由外部失衡池不动点收敛后回填 */
   stunCount?: number
   /**

@@ -89,6 +89,10 @@ export function runTruncationRefold(
       diag,
       timeBudgetRefund: config.timeBudgetRefund,
       overflowSeconds: config.overflowSeconds,
+      // T123b 批 2：动态合轴吸收诊断量是**团队级 cfg 副作用**（同 `overflowSeconds` 的处置，不在
+      // `restoreCfgs` 的逐槽快照范围内）⇒ 被拒的重折轮必须连它们一起回滚，否则读数会归属到被弃用的那轮。
+      dynamicComboAlignConverged: config.dynamicComboAlignConverged,
+      dynamicComboAlignIterations: config.dynamicComboAlignIterations,
       tail,
     }
     // 回到 S2 入口：cfg 还原为入口态 + 本轮 rowTimeLimit（其余槽不写），种子同规范种子，诊断量归零
@@ -118,6 +122,8 @@ export function runTruncationRefold(
     diag = accepted.diag
     config.timeBudgetRefund = accepted.timeBudgetRefund
     config.overflowSeconds = accepted.overflowSeconds
+    config.dynamicComboAlignConverged = accepted.dynamicComboAlignConverged
+    config.dynamicComboAlignIterations = accepted.dynamicComboAlignIterations
     tail = accepted.tail
     break
   }

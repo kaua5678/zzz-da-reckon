@@ -182,6 +182,24 @@ export interface TeamResourceResult {
    */
   truncationCuts?: TruncationCut[]
   /**
+   * 动态合轴吸收子问题的**收敛读数**（设计稿 `docs/mcp-time-allocation-algorithms.md` §5 批 2，T123b）：
+   * `true` = 本轮吸收子问题停在不动点上（残差判据，见 `ResourceCalcConfig.dynamicComboAlignConverged`）。
+   *
+   * **为什么必须在这里再暴露一次**（T123b 实测，别以为 cfg 上有了就够）：`iterate` 写的是
+   * `calcTeamResources` 本轮拿到的那个 cfg，而编排层每次调用传的是 `{...base, characters}` 新对象
+   * （`resourceCalc/convergence.ts`）⇒ 外部读 `calc.resourceConfig.value` 拿到的是**调用前的 base**
+   * （实测 **0/97 队**能读到值）。要让「全库 `converged == false` 的队数 == 0」这条判据可机检，
+   * 必须把读数从被接受那次调用的 cfg 提到**返回值**上（与 `overflowSeconds` 同一处置）。
+   */
+  dynamicComboAlignConverged?: boolean
+  /**
+   * 动态合轴吸收子问题的实际迭代轮数（= `solveComboAlignTake` 的 `iterations`，闭式三分支恒 1、
+   * `legacy-fallback` 恒 8）。**0 = 本轮吸收闸门未开**（无溢出 / 比例为 0 / 单人）⇒ 没有子问题可解。
+   * 该字段是判据的**反空洞下限**来源：全库扫「`iterations > 0` 的队数 ≥ 下限」即可证明
+   * 「`converged == false` 队数 == 0」不是因为闸门全没开而假绿。
+   */
+  dynamicComboAlignIterations?: number
+  /**
    * 赠终结技时间预留量（非轴模式，秒；CC-15 原名 liuyinGiftTimeReserved，当前唯一来源 = 琉音好评转大）：iterate 已把 promote × 目标终结技时长计入
    * 必要时间（守恒由引擎成立）→ applyUltimatePromote 见到本字段即**跳过 post-hoc carve**
    * （旧 carve 只抠 basic_attack 聚合行，目标平A时间在分段行里时会落空 → 守恒破 +7.2s）。

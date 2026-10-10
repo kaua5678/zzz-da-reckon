@@ -119,13 +119,49 @@ export function legacyComboAlignTake(S: number, B: number, T: number, r: number)
 /** 吸收子问题求解器的分支（= 控制流锁的判别量；见 `solveComboAlignTake`） */
 export type ComboAlignBranch = 'cap-not-binding' | 'r1-linear' | 'closed-form' | 'legacy-fallback'
 
-/** `solveComboAlignTake` 的解：`take` = 吸收量；`branch`/`iterations` = 走的分支与实际迭代轮数（诊断 + 锁用） */
+/** `solveComboAlignTake` 的解：`take` = 吸收量；`branch`/`iterations`/`converged` = 诊断 + 锁用 */
 export interface ComboAlignSolution {
   take: number
   branch: ComboAlignBranch
-  /** 实际迭代轮数：闭式三个分支恒 1，legacy 兜底 1..8 */
+  /** 实际迭代轮数：闭式三个分支恒 1，legacy 兜底 1..8（**不是**「跑到残差达标的轮数」） */
   iterations: number
+  /** 该解是否停在吸收子问题的不动点上（残差判据，见 `comboAlignTakeResidual`） */
+  converged: boolean
 }
+
+/**
+ * 吸收子问题的**残差**（T119 §④ 口径，T123b 批 2 提为导出函数当收敛判据）。
+ *
+ * 为什么判据定义在 `take` 上而不是 `g` 上：迭代式是 `take = min(Δ, F(take/T)·T)`，`Δ` 支是**饱和钳**——
+ * `g = Δ/T` 不是 `F` 的不动点，但 `take` 已停住（`F(Δ/T)·T = r·T ≥ Δ`）。故「这一步还会不会动」的
+ * 正确度量是 `|take − min(Δ, F(take/T)·T)|`；拿 `|gNext − g|` 当判据会把已停住的饱和解误判成未收敛。
+ *
+ * **为什么必须与 `legacyComboAlignTake` 自带的 `break` 区分**（T119 §① 实测，别再合并两者）：
+ * 旧迭代的 `break` 条件是 `|gNext − g| < 1e-9`，它在生产主队 `auto-1431-1481-1491 @ r=0.4`
+ * **第 8 轮恰好触发**，而同一轮 `take` 相对上一轮仍动 7.2e-8s、留下的相对残差 = **2.43e-9**
+ * ⇒ 「break 触发了」与「真收敛了」是两件事，本判据取后者。
+ *
+ * @returns 相对残差（`take ≈ 0` 时退化为绝对残差）；0 = 精确停在不动点
+ */
+export function comboAlignTakeResidual(S: number, B: number, T: number, r: number, take: number): number {
+  const g = T > 0 ? take / T : 0
+  const remain = S - Math.min(S - B, g * T)
+  const s = remain > B ? B / remain : 1
+  const gNext = r * s / (1 - r + r * s)
+  return Math.abs(take - Math.min(S - B, gNext * T)) / Math.max(1e-300, Math.abs(take))
+}
+
+/**
+ * 收敛判据门限（相对残差）。**按实测标定，不是拍的**（T123b，100 万随机样本 × 咬合档）：
+ *   · 闭式解三个分支：残差**恒 < 1e-15**（最大 **7.443e-16**，超门 **0** 例）⇒ 本门对闭式解零误报；
+ *   · 旧 8 轮迭代（咬合档 680705 例）：**680527 例超门**（99.97%，最大残差 **1.957e-1**）⇒ 本门真能分辨。
+ * 取 `1e-12`（闭式实测最差值的 ~1300 倍余量、旧迭代最小残差的 ~1/1000）——**不要收紧到 1e-15**
+ * （那离实测最差值只剩 1.3 倍，浮点末位抖动会假红），**也不要放宽到 1e-9**（会放过主队那 2.43e-9 的旧读数）。
+ *
+ * @fact engine:动态合轴吸收/收敛判据 口径: 吸收子问题的「收敛」判据取**相对残差** `|take − min(Δ, F(take/T)·T)|/|take| ≤ 1e-12`（**不是**「迭代轮数打满即未收敛」——旧实现的 `break` 在主队第 8 轮恰好触发却留下 2.43e-9 残差，轮数判据会把它误判成已收敛）；闭式解三分支恒 `converged=true`，读数经 cfg 写回并**再暴露到 `TeamResourceResult`**（cfg 面外部读不到，实测 0/97 队）。全库判据 = `converged == false` 队数 == 0（实测 97 队 0 支，闸门开 35 支） | 据 推导@T117（docs/mcp-time-allocation-algorithms.md §3.0）+ 设计稿 §5 批 2 + 实测@T123b（100 万随机样本：闭式最大残差 7.443e-16 / 旧迭代咬合档 99.97% 超门） | 验 src/core/__tests__/comboAlignClosedForm.test.ts | 锚 src/core/resource/helpers.ts#comboAlignTakeResidual | 信 高
+ * ⟳复核: 吸收上限口径（「上限按封顶后终态算」）或求解器分支表再动时，复核「闸门开队数 ≥ 30」与「converged==false 队数 == 0」两条实测读数，并按需重标定 1e-12 门 | 到期 2027-04-30
+ */
+export const COMBO_ALIGN_CONVERGED_TOLERANCE = 1e-12
 
 /**
  * 动态合轴吸收子问题的**唯一求解器**（T119 批 1 / `docs/mcp-time-allocation-algorithms.md` §3.0 候选 A）。
@@ -138,19 +174,33 @@ export interface ComboAlignSolution {
  * 数值锁写不出来（读数相同）。按 T116 先例，锁**控制流** = `branch` + `iterations`——把求解器改回 8 轮迭代，
  * `branch` 当场从 `'closed-form'` 变 `'legacy-fallback'`/`'cap-not-binding'`、`iterations` 从 1 变大 ⇒ 锁红。
  * 支路口径见 `src/core/__tests__/comboAlignClosedForm.test.ts`。
+ *
+ * `converged`（T123b 批 2）走**残差**判据（`comboAlignTakeResidual`）——它与 `branch`/`iterations` 是
+ * **两条独立的锁**：`branch` 锁的是「走了哪条路」，`converged` 锁的是「到了没有」。
+ * 把 `legacyComboAlignTake` 的结果伪装成闭式解（branch/iterations 都对）⇒ 本字段仍会红。
  */
 export function solveComboAlignTake(S: number, B: number, T: number, r: number): ComboAlignSolution {
   const overflow = S - B
   // 情形 1：容量不咬合（s = 1、g = r）——一轮到位，`take = Δ`，与无上限时的分摊公式逐位一致
-  if (overflow <= r * T) return { take: overflow, branch: 'cap-not-binding', iterations: 1 }
+  if (overflow <= r * T) {
+    return { take: overflow, branch: 'cap-not-binding', iterations: 1, converged: true }
+  }
   // r = 1：不动点方程二次项系数为 0（退化成一元一次）⇒ g ≡ 1、`take = min(Δ, T)`（此处 Δ > r·T = T ⇒ take = T）
-  if (r >= 1) return { take: Math.min(overflow, T), branch: 'r1-linear', iterations: 1 }
+  if (r >= 1) {
+    return { take: Math.min(overflow, T), branch: 'r1-linear', iterations: 1, converged: true }
+  }
   const quadA = T * (1 - r)
   const quadP = (1 - r) * S + r * B
   const disc = quadP * quadP - 4 * quadA * r * B
-  if (disc < 0) return { take: legacyComboAlignTake(S, B, T, r), branch: 'legacy-fallback', iterations: 8 }
+  if (disc < 0) {
+    const take = legacyComboAlignTake(S, B, T, r)
+    return {
+      take, branch: 'legacy-fallback', iterations: 8,
+      converged: comboAlignTakeResidual(S, B, T, r, take) <= COMBO_ALIGN_CONVERGED_TOLERANCE,
+    }
+  }
   // 小根 `g*`：代数上 = (P − √disc)/(2A)，此处用 2C/(P + √disc) 规避相消（见 `iterate` 段头注释）
-  return { take: Math.min(T, 2 * r * B / (quadP + Math.sqrt(disc)) * T), branch: 'closed-form', iterations: 1 }
+  return { take: Math.min(T, 2 * r * B / (quadP + Math.sqrt(disc)) * T), branch: 'closed-form', iterations: 1, converged: true }
 }
 
 /**
@@ -493,9 +543,22 @@ function iterateBody(
     const teammateNet = netNecessary.map((n, i) => (i === operator ? 0 : Math.max(0, n)))
     const teammateTotal = teammateNet.reduce((a, b) => a + b, 0)
     if (teammateTotal > 1e-9) {
-      const take = solveComboAlignTake(sumNetNecessary, budget, teammateTotal, absorbRatio).take
+      const sol = solveComboAlignTake(sumNetNecessary, budget, teammateTotal, absorbRatio)
+      // 批 2 诊断量（T123b）：把求解器的 `converged`/`iterations` 接到既有 `globalCfg` 副作用通道上
+      // （与 `timeFeasibleScale`/`overflowSeconds` 同形：计算中途写回，调用前恒为 undefined）。
+      // 读法与盲区见 `ResourceCalcConfig.dynamicComboAlignConverged` 与 `TeamResourceResult` 同名字段。
+      globalCfg.dynamicComboAlignConverged = sol.converged
+      globalCfg.dynamicComboAlignIterations = sol.iterations
+      const take = sol.take
       for (let i = 0; i < teammateNet.length; i++) dynamicComboAlign[i] = teammateNet[i] / teammateTotal * take
     }
+  }
+  // 闸门未开（无溢出 / 比例为 0 / 单人）⇒ 没有子问题可解，写成「真空收敛 + 0 轮」而不是留 undefined：
+  // 读法恒为「本次调用最后一次 iterate 的读数」，无 undefined 分支。**这也让反空洞下限可写**——
+  // 判据扫「`iterations > 0` 的队数 ≥ 下限」即可证明扫描面真的走到了求解器（见 comboAlignClosedForm.test ⑥）。
+  if (dynamicComboAlign.every(d => d === 0)) {
+    globalCfg.dynamicComboAlignConverged = true
+    globalCfg.dynamicComboAlignIterations = 0
   }
   const dynamicTotal = dynamicComboAlign.reduce((a, b) => a + b, 0)
   const effectiveCredits = comboAlignCredits.map((c, i) => c + dynamicComboAlign[i])
