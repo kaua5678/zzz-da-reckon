@@ -72,7 +72,8 @@ export const LIUYIN_EX_MOVE_IDS: Set<string> = new Set(EX_MOVES.map(m => m.id))
  * **开窗次数 = 阈值结转口径**（原文逐字：「当[好评]**满90点**且琉音…打开[连携技]窗口时…消耗60点」/
  * 「当[好评]**满90点**且…命中未打开[连携技]窗口的敌人时，将消耗90点」）——
  * 每次开窗都要求**当刻**好评 ≥90，扣 60（有连携窗口）或 90（无窗口），剩余好评**结转**到下一次开窗。
- * ⇒ 计数 = 贪心推进：`while (好评 ≥ 90) { 有窗口扣60否则扣90 }`。
+ * ⇒ 计数 = 阈值结转：`while (好评 ≥ 90) { 有窗口扣60否则扣90 }` 的推进结果，
+ *   已写成**闭式**（除法 + 余数，见函数内注释；逐位等价由 `liuyin.test.ts` 的锁用例钉住）。
  *
  * ⚠ 2026-09-15 修（原为 `floor(好评总量/90)` 的**预算上限**模型）：两者在 60 档上不等价——
  * 好评 390 时旧模型 4 次、结转口径 **6 次**（= 90 + 60×5，正是用户需求链③「4喧响+6好评转大，
@@ -106,17 +107,21 @@ export function computeLiuyinHugCounts(
     2 * Math.max(0, Math.floor(stunCount)),
   )
   /**
-   * 阈值结转贪心：每次开窗要求**当刻** ≥90，优先用 60 档（有连携窗口 + 未超 cap60），
-   * 否则用 90 档。**预算安全**由循环条件保证（花 60 或 90 都 ≤ 当刻余额）。
+   * 阈值结转的闭式（= 原贪心循环的解析解，逐位等价见 `liuyin.test.ts` 的锁用例）。
+   *
+   * 每次开窗要求**当刻** ≥90，优先用 60 档（有连携窗口 + 未超 cap60），否则用 90 档：
+   *  · **60 档**：第 m 次扣 60 前当刻余额 = `G − 60(m−1)`，要求 ≥90
+   *    ⇒ `m ≤ (G−90)/60 + 1`（`+1` = 恰好 90 时那一次也开得成），再被 `cap60` 夹紧；
+   *  · **90 档**：60 档用满后的余额每满 90 开一窗，余数结转。
+   * **预算安全**：60 档按上式至多花到 `G−90`，90 档按余额整除去尾 ⇒ 花费恒 ≤ G。
    */
-  let hug60 = 0
-  let hug90 = 0
-  let rest = G
-  while (rest >= HUG90_COST) {
-    if (hug60 < cap60) { rest -= HUG60_COST; hug60++ }
-    else { rest -= HUG90_COST; hug90++ }
-  }
-  return { hug60, hug90, remainingGoodReview: rest }
+  const hug60 = Math.min(
+    Math.max(0, Math.floor(cap60)),
+    Math.max(0, Math.floor((G - HUG90_COST) / HUG60_COST) + 1),
+  )
+  const afterHug60 = G - hug60 * HUG60_COST
+  const hug90 = Math.floor(afterHug60 / HUG90_COST)
+  return { hug60, hug90, remainingGoodReview: afterHug60 - hug90 * HUG90_COST }
 }
 
 

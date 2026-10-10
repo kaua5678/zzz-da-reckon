@@ -160,6 +160,96 @@ describe('琉音阈值结转口径（好评 → 开窗次数）', () => {
 })
 
 /**
+ * ★ 规格锁：闭式 ≡ 阈值结转贪心（T131 可读性重写，逐位等价）。
+ *
+ * 背景：`computeLiuyinHugCounts` 的 `while (rest ≥ 90) { 有窗口扣60否则扣90 }` 在 T131 被改写成
+ * **除法 + 余数**（原循环只是「写法不直白」，数学本来就是精确解——T126 §4.1 批 4 实测
+ * 贪心 vs 解析解 0 差 / 12,006 点）。本组用例把「改写没有动数学」钉成机器判据。
+ *
+ * ## 对照侧 = 原循环的**逐字复刻**（不是重述新公式）
+ *
+ * 两侧独立：`legacyHugGreedy` 是改写前那 7 行的原样搬运（`while` + `if/else` 扣 60/90），
+ * 新实现是除法。若把新公式同时写进两侧，`0 差` 就是恒真式（T126 §3.2 新判据①的教训）。
+ *
+ * ## 反证（改错一处 ⇒ 本锁当场红）
+ *
+ * 任选其一：① 把 `+ 1`（「恰好 90 也开得成」那一项）删掉 ⇒ `G=390,cap60=6` 从 6 窗掉到 5 窗，
+ * 差分用例立刻红；② 把 60 档的 `(G−90)/60` 写成 `G/60` ⇒ 同上红；
+ * ③ 把 90 档的 `Math.floor` 换成 `Math.round` ⇒ 余数断言红。
+ */
+describe('★ 琉音闭式规格锁：除法+余数 ≡ 阈值结转贪心（逐位）', () => {
+  /**
+   * 改写前 `liuyin.ts:94` + `:112-118` 的逐字复刻（= 规格，不是实现）。
+   * `G` 的 `Math.max(0, …)` 夹紧在 `:94`、**不在本次改动区**，故照抄进来（否则负好评档位会假红）。
+   */
+  function legacyHugGreedy(goodReviewTotal: number, cap60: number) {
+    const G = Math.max(0, goodReviewTotal)
+    let hug60 = 0
+    let hug90 = 0
+    let rest = G
+    while (rest >= 90) {
+      if (hug60 < cap60) { rest -= 60; hug60++ }
+      else { rest -= 90; hug90++ }
+    }
+    return { hug60, hug90, remainingGoodReview: rest }
+  }
+
+  it('生产公式域（好评 60 + 0.6t·c1 + 7.5ex·c1 × 失衡/连携/设置组合）逐位相同', () => {
+    let n = 0
+    for (let t10 = 0; t10 <= 2400; t10 += 5) {
+      for (const c1 of [1, 1.16]) {
+        for (let ex = 0; ex <= 30; ex += 3) {
+          const G = 60 + (t10 / 10) * 0.6 * c1 + ex * 7.5 * c1
+          for (const stun of [0, 1, 2, 3, 4, 5, 6, 8, 12]) {
+            for (const chain of [0, 1, 2, 3, 6, 12]) {
+              const r = computeLiuyinHugCounts(G, stun, -1, chain)
+              // 对照侧用同一 cap60 口径（= 函数内 103-107 行的三重夹紧），只换计数算法
+              const chainWindows = Math.max(0, Math.floor(chain))
+              const cap60 = Math.min(Math.min(Math.max(0, Math.floor(stun)), chainWindows), chainWindows, 2 * Math.max(0, Math.floor(stun)))
+              expect(r, `G=${G} stun=${stun} chain=${chain}`).toEqual(legacyHugGreedy(G, cap60))
+              n++
+            }
+          }
+        }
+      }
+    }
+    expect(n, '夹具必须真的跑出规模，防循环写空').toBeGreaterThan(5000)
+  })
+
+  it('整数域穷举 + 边界（恰满 90 / 恰满 60k+90 / ±1e-9）逐位相同', () => {
+    for (let G = 0; G <= 3000; G++) {
+      for (const cap60 of [0, 1, 2, 3, 5, 8, 200]) {
+        expect(computeLiuyinHugCounts(G, cap60, cap60, cap60), `G=${G} cap=${cap60}`)
+          .toEqual(legacyHugGreedy(G, cap60))
+      }
+    }
+    // 临界：G = 60a + 90b（恰好花光）与其 ±1e-9 抖动
+    for (let a = 0; a <= 8; a++) {
+      for (let b = 0; b <= 8; b++) {
+        const base = a * 60 + b * 90
+        for (const d of [0, 1e-9, -1e-9]) {
+          for (const cap of [0, 1, 3, 8]) {
+            expect(computeLiuyinHugCounts(base + d, cap, cap, cap), `G=${base + d} cap=${cap}`)
+              .toEqual(legacyHugGreedy(base + d, cap))
+          }
+        }
+      }
+    }
+  })
+
+  it('对抗小数好评（生产好评恒为小数）× 小数上限：逐位相同', () => {
+    let seed = 0xabcdef
+    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff }
+    for (let i = 0; i < 20000; i++) {
+      const G = rnd() * 5000 + rnd() * 1e-6
+      const cap = Math.floor(rnd() * 30)
+      expect(computeLiuyinHugCounts(G, cap, cap, cap), `G=${G} cap=${cap}`)
+        .toEqual(legacyHugGreedy(G, cap))
+    }
+  })
+})
+
+/**
  * ★ 跨层一致性：通用公式（非轴）与**轴预设声明**必须给出同一个开窗数。
  *
  * 这是 `core/resource.ts:222-224` 点名的「真收口 = 把轴 promote 计数线程化进 core」那条缺口的
