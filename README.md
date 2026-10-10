@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（92 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（93 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -107,6 +107,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-altaxes-test-budget.md` | **altAxes 慢测试提速**：耗时分解（G2 联合搜索占 2/3）、`baseGoals` 选项、断言收紧与预算回到 300s，不放宽超时 |
 | `docs/mcp-engine-perf.md` | **引擎性能活文档**：现状读数、等价验证手段（全库 dump / profile / 纯度探针）、已落地手段及其前提、否决记录、剩余热点；每轮更新本文不新开 |
 | `docs/mcp-calc-core-architecture.md` | **计算核心架构优化**：五个结构问题诊断（阶段闭包共享可变态 / 引擎层角色特判 / 求解器绑 Vue / 公式副本 / 职责混装）、目标形态、零行为搬迁通用验收（dump A/B）与 CC-* 分批任务卡；活文档，卡做完改状态 |
+| `docs/mcp-time-allocation-algorithms.md` | **时间分配算法选型（T117，只读调研 + 设计稿）**：全库 97 队容量账（吸收闸门 34 支 / 容量用尽 1 支）、吸收子问题的不动点方程与闭式解（`helpers.ts` 8 轮小迭代在 `9eb11196` 上不收敛、换闭式解可 41→1 轮且 `cut` 逐位不变）、三个候选算法对比（闭式解 / 上限解耦 / 对称吸收，含实测波及 18/97 队与 `max\|Δdmg\| +40.67%`）、三个必答问题（「占完剩余时间」不可达 / 0.4 上限维持下的降级顺序 / 砍谁不裁决）、与债 1a 实数化的读数依赖清单 |
 | `docs/mcp-d2-cfg-fields.md` | **D2 公共接口去巨型化（类型层）**：单模块私有成员用 `declare module` 扩充随模块走（`CharacterOperationConfig` / `ModuleFeedback`），约定、结果、剩余公共字段的下一步与字段矩阵；脚本 `scripts/d2-*.py`，锁 `src/types/__tests__/privateCfgFields.test.ts`（CC-359/360） |
 | `docs/mcp-nextround-writeback.md` | **nextRoundFeedback cfg 写回判死**（r397 CC-371）：静态 + 动态判死依据、删掉的死通道（`lucyCheerSpinsEstimate` / `targetCfgOf`）、「深冻结调用全部已注册钩子」只读锁及其反证坑、同病其他落点（phoenix panel 夹带等） |
 | `docs/round2-intent-charter.md` | **下一轮委托：意图与验收闸门**（云端作者）：为什么做/何时值得做/什么不能做、六条长期意图、证伪闸门两行、权限与升级条件；不含现场操作参数，配套 field-sheet 由首席现场填写 |
@@ -174,6 +175,6 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/proposals/pull-value-optimization.md` | **抽卡规划价值：思想与口径**（部分落地）：价值如何定义与量纲、期望值口径（用户裁决 2026-09-01，模拟抽卡已删）；本文只谈"怎么想"，实施事实以 `pullValue.ts` / `pullPlannerEngine.ts` / `data/filmEconomy.ts` 为准 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（92 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（93 份，与节标题一致），新增文档需同步本表。
 > **判据 9 已递归到子目录**（`docs/**/*.md`）：子目录里的文档同样必须登记，路径按 `docs/<相对路径>` 写
 > （2026-10-06 修：`docs/proposals/pull-value-optimization.md` 曾因 glob 只扫顶层而长期不在表内 = agent 找不到）。
