@@ -253,8 +253,12 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
      上一轮整数次数）+ 迭代期实数次数（必要时间信道阻尼破 2-循环）+ 终局整数重推（`calcTeamResources`
      floor 一次后重推 ≤12 轮到全状态逐位稳定）。只作用于 1051，其余模块不动。护栏：
      `yidhariInteractionGrid.test.ts`（交互网格 × 零/高种子）。全局「实数化松弛、终局才 floor」
-     仍为 debt（重排所有带时间/资源循环模块的均衡，sigrid 出枪式消失前例），见 check-guards
-     DEBT_REGISTRY。
+     仍为 debt（重排所有带时间/资源循环模块的均衡），见 check-guards DEBT_REGISTRY。
+     ⚠ **2026-10-10 用户裁决（元规则，勿再用旧措辞否决）**：此处原文曾以「sigrid 出枪式消失前例」
+     当**否决理由**——**已删**。用户：「锚点偏移是开发流程的问题，不是他不符合游戏逻辑……怎么能抱着
+     错误的数据定死金标准呢」。`timeGolden`/`timeFillRatchet` 是**未实数化逻辑**下的快照 ⇒
+     「N 队变了」是读数不是罪证（规则 10 / 17③）；逐队归因是义务，delta 本身不是否决权。
+     **本债已获授权开工，边界自定。**
      **targeted 例外 ②（2026-09-06）**：星徽·比利动力压制链数（HP 池 ∝ 普攻回血 ∝ 平A时间 =
      正反馈连续信道）走同骨架：`computeBillyHpModel(quantize=false)` 迭代期实数链 + 消滞后
      （`AgentExSpecialTimeInput.state` 传入当轮 basicAttackTime，估时与物化共用同一求解器，
