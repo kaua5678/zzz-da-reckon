@@ -594,6 +594,19 @@ function iterateBody(
   // 封顶后的必要前台：净占用按可行比例缩回预算（合轴抵扣部分原样保留，它不占预算）。
   // 这个 capped 值**同时**用于平A池计算与 state.necessaryTime ⇒ 省下来的必要时间变成队友
   // 能打的平A填充，而不是"账本说满了、动作没打满"的假满（实测：不回灌留白 393s，回灌 275s）。
+  //
+  // ★★★ **三层降级顺序 = 平A → 合轴率 → 全员平等等比（用户 2026-10-10，勿再问「③ 加权分摊要不要做」）**
+  //   用户原话（逐字）：「**我们首先有平a灵活可分配时间，其次有合轴率包容，如果这两个都没承担住，
+  //   那只能全都承担了。因为简单逻辑无法识别压缩谁最有利，只能全部都平等了**」
+  //   ⇒ 本文件的三层与之**逐层对应**：① 平A池回灌 = 下方 `availableBasicTime`；
+  //      ② 合轴率包容 = 上方 `dynamicComboAlign`（40% 吸收，非操作槽）；③ 本行的 `feasibleScale`
+  //      = `budget / sumAbsorbedNet`。
+  //   ⇒ **③「加权分摊」（让操作角色承担 `1/n` 而不是 0）判为不采纳**，理由就是用户那句
+  //      「简单逻辑无法识别压缩谁最有利」：给操作槽加权重 = **假装引擎能判断「压谁更划算」**，
+  //      而它不能。**全员平等是诚实的选择，不是偷懒**——不要把 `absorbedNetNecessary` 的全槽无豁免
+  //      当成「漏了主C 的豁免」去"修"。
+  //   ⇒ **主C 在前两层被豁免（不被吸收），到第三层与队友同等承担**（`absorbedNetNecessary` 是全槽
+  //      数组、无槽位判定）——这正是「这两个都没承担住，那只能全都承担了」的实现。
   const cappedNecessary = absorbedNetNecessary.map((x, i) =>
     x * feasibleScale + (effectiveCredits[i] ?? 0))
   const sumNecessaryCapped = cappedNecessary.reduce((a, b) => a + b, 0)
