@@ -45,7 +45,7 @@ const settingOf = mechanicSettingPanelReader(() => settings)
  *   地动山摇占比沿用 banyue.diDongComboCount 滑块（60 耗能，非固定连段按偏好分配）；
  *   主页交互栏「嘲讽取消」次数每次取消一次失衡外连段的后摇（按两类连段占比拆分）。
  * - 轴模式自动补齐交互次数（保底语义，2026-08 方案A）：轴内怒相/终结技对嗔火/喧响有硬性需求，不足时自动抬双反（补嗔火 +10/次）
- *   与弹刀（普通弹刀补喧响 +215/次）；有效次数 = 交互栏输入 + 补齐量（不覆盖输入，交互栏/资源卡片显示补齐量）；
+ *   与弹刀（普通弹刀补喧响 +301.35/次 = 一次弹刀完整链的实测收益，见 PARRY_TOPUP_DECIBEL_UNIT）；有效次数 = 交互栏输入 + 补齐量（不覆盖输入，交互栏/资源卡片显示补齐量）；
  *   computeBanyueInteractionTopUp 纯函数，useResourceCalc 外不动点收敛，设置 banyue.autoTopUpInteractions 可关闭。
  * - 怒相增益：强特/支援突击后 贯穿+300 / 火伤+36% / 暴伤+36%（Lv.7 固定，不随 3/5 命），30s；
  *   用 banyue.rageGainCoverage 覆盖率滑块（默认 100%）近似。
@@ -107,9 +107,51 @@ export const MINGWANG_BASE_PER_STACK = 5 // 明王基础每层火伤 +5%
 export const MINGWANG_MAX_STACKS = 3 // 明王满层（简化：全覆盖，不再按窗口数层）
 const C1_SHEER_DMG_BONUS = 10 // 影画1：对战栗敌人贯穿伤害+10%
 const C1_STUN_DURATION = 2 // 影画1：摧岳命中失衡敌人失衡时长+2s
-// 普通弹刀单次喧响奖励 / 终结技喧响消耗缺省：直接 import 数据层单一来源（CC-501；此前手抄 215 / 3000 各一份）
-const PARRY_DECIBEL = PARRY_DECIBEL_BONUS
+// 终结技喧响消耗缺省：直接 import 数据层单一来源（CC-501；此前手抄 3000 一份）
 const ULTIMATE_COST = ULTIMATE_COST_DEFAULT
+
+/**
+ * 支援突击：昂霄(1471026) 的**行级**喧响回复（catalog `decibel_recovery`，T129 实测 = 86.35）。
+ *
+ * 为什么要有这个名字：它是「一次普通弹刀」链条里**除 215 之外**的那一段收益，
+ * 而 215（`PARRY_DECIBEL_BONUS`）只覆盖招架判定那一段。单列出来是为了让
+ * `PARRY_TOPUP_DECIBEL_UNIT` 的构成**一眼可分解**，而不是一个来历不明的 301.35。
+ *
+ * ⚠ 这是 catalog 数据的**镜像**（规则 2：数值唯一事实源 = `catalog.json`）。模块在
+ * `buildCharConfig` 之外拿不到 `skills`，故此处只能镜像；**由
+ * `handCopiedConstants.test.ts` 把本常量与 catalog 逐位钉住**——catalog 里 1471026 的
+ * `decibel_recovery` 一旦改动，该测试立刻红，强制回来重标定本单价（不会静默漂移）。
+ */
+const ANG_XIAO_DECIBEL_RECOVERY = 86.35
+
+/**
+ * **反推专用单价**：一次普通弹刀**完整走完**的实测喧响总收益（T129）。
+ *
+ * = 招架判定那一段的奖励 `PARRY_DECIBEL_BONUS`(215) + 后面接的**支援突击：昂霄(1471026)**
+ * 的行级 `decibel_recovery`(86.35) = **301.35**（个人口径，喧响效率系数 1）。
+ *
+ * ⚠ **与 `PARRY_DECIBEL_BONUS` 不是同一层，禁止互相替换**：
+ * - `PARRY_DECIBEL_BONUS = 215` = **游戏数据**（招架判定单段的奖励喧响，`core/anomalyPool.ts`
+ *   的「特殊动作奖励」通道按 `parryCount` 逐次发放）——**不许动**；
+ * - 本常量 = **反推用的观测值**（含支援突击那一段），**只**服务于
+ *   `computeBanyueInteractionTopUp` 的「喧响缺口 → 弹刀次数」反推。
+ *
+ * 为什么必须分开：反推要回答「还差多少喧响 ⇒ 还要打几刀」，而**一刀的真实收益**是整条链
+ * （招架判定 + 铁壁 + 昂霄）的收益；用 215 当分母会**系统性低估 35%**（215/301.35 ≈ 0.71），
+ * 使补齐次数偏高、并把「装 N 刀 ⇒ 算 0 ⇒ 再装 N 刀」的 2-环撑大。
+ *
+ * 用户裁决原话（2026-10-10）：「**215是弹刀行为的奖励喧响，没算其后面接的支援突击。
+ * 你可以用291更准确点，因为反推不涉及什么数据修改**」⇒ 口径方向 = 取「含支援突击的总收益」，
+ * **不是**改游戏数据。用户给的 291 是当时树的读数；本树实测 = **301.35**（T129 报告 §①，
+ * 逐行分解 + 真管线双证），按用户「更准确」的本意取实测值。
+ *
+ * ⚠ 已知边界（如实记录）：本常量按**零喧响效率**标定；面板 `decibelGainEfficiency ≠ 0` 时
+ * 一刀实际收益 = 301.35 × (1 + 效率)，而 `InteractionTopUpInput` 目前不携带效率 ⇒ 该档位下
+ * 反推略偏保守（次数偏多）。般岳推荐构筑效率 = 0 ⇒ 主流档位精确。
+ */
+// @fact engine:banyue/反推单价 口径: 喧响缺口→弹刀次数反推的分母 = 一次普通弹刀完整链（招架判定 PARRY_DECIBEL_BONUS 215 + 支援突击：昂霄 1471026 行级 86.35）= 301.35；与游戏数据 215 分层不互换 | 据 用户@2026-10-10「215是弹刀行为的奖励喧响，没算其后面接的支援突击。你可以用291更准确点，因为反推不涉及什么数据修改」+ 实测@2026-10-10（逐行 215+86.35 + 真管线差分） | 验 src/mechanics/__tests__/handCopiedConstants.test.ts | 锚 src/mechanics/agents/banyue.ts#PARRY_TOPUP_DECIBEL_UNIT + src/mechanics/agents/banyue.ts#computeBanyueInteractionTopUp | 信 确认
+// ⟳复核: 昂霄 1471026 的 `decibel_recovery` 行值变了（`handCopiedConstants.test.ts` 会先红）、或「一次普通弹刀」的招式映射改了段数（当前 = 招架判定 + 铁壁 1471023 + 昂霄 1471026，铁壁无行级喧响）时，重跑 `.zc/perf/T129exact.perf.ts` 重标定本单价 | 到期 2027-04-30
+export const PARRY_TOPUP_DECIBEL_UNIT = PARRY_DECIBEL_BONUS + ANG_XIAO_DECIBEL_RECOVERY
 
 const DEFAULT_DIDONG_COMBO = 0 // 怒相外连段里分配给「地动→山摇·怒」的组数（默认 0 = 全打论道连段）
 
@@ -118,7 +160,7 @@ const DEFAULT_DIDONG_COMBO = 0 // 怒相外连段里分配给「地动→山摇�
  * 自动补齐交互的时间上限（用户口径 2026-09-01）。
  *
  * 自动轴模式下失衡次数一多，轴就要求每个窗口一次终结技（3000 喧响/次），补齐逻辑于是
- * **无上界地加招架**去填喧响缺口——parry = ceil(缺口 / 215) 本身没有任何天花板。
+ * **无上界地加招架**去填喧响缺口——parry = ceil(缺口 / 301.35) 本身没有任何天花板。
  * 判据：把补齐交互的**原始动作时间**（未扣合轴）加总，超过 200 秒即判本次补齐**非法**——
  * 战斗只有 180 秒，少量合轴（并行段）吸收不了 20 秒以上的净超出。
  *
@@ -132,7 +174,9 @@ export const AUTO_TOPUP_TIME_LIMIT_SEC = 200
 /**
  * 轴模式自动补齐（用户口径 2026-08，方案 A 保底补齐）：
  * - 嗔火不足 → 抬双反：轴内怒相组数 ÷ 2 = 需要的怒相次数 × 120 − 当前嗔火产出 → 双反 = 缺口 ÷ 10；
- * - 喧响不足 → 抬弹刀：轴内终结技需求（次数 × 消耗）− 当前喧响供给 → 弹刀 = 缺口 ÷ 215。
+ * - 喧响不足 → 抬弹刀：轴内终结技需求（次数 × 消耗）− 当前喧响供给 → 弹刀 = 缺口 ÷ 301.35。
+ *   分母 = 一次普通弹刀**完整链**的实测收益（含支援突击：昂霄），不是招架判定单段的 215
+ *   —— 见 `PARRY_TOPUP_DECIBEL_UNIT` 与 T129 报告 §①（用户裁决 2026-10-10）。
  * 有效次数 = 用户输入 + 返回值；怒相不足/喧响不足分别由双反/弹刀单独补齐，互不干扰。
  */
 export function computeBanyueInteractionTopUp(opts: InteractionTopUpInput): InteractionTopUp {
@@ -155,7 +199,9 @@ export function computeBanyueInteractionTopUp(opts: InteractionTopUpInput): Inte
   const furyShort = Math.max(0, (rageNeeded - cycle.rageCount) * FURY_ENTER)
   const dual = Math.ceil(furyShort / FURY_DUAL)
   const decibelShort = Math.max(0, opts.ultimateCountNeeded * (opts.ultimateCost || ULTIMATE_COST) - opts.decibelHave)
-  const parry = Math.ceil(decibelShort / PARRY_DECIBEL)
+  // 分母 = **一次普通弹刀完整链**的实测收益（301.35，含支援突击：昂霄），不是招架判定单段的 215：
+  // 缺口问的是「还差几刀」，一刀兑现的是整条链的喧响 ⇒ 用 215 会把次数抬高约 40%（T129）。
+  const parry = Math.ceil(decibelShort / PARRY_TOPUP_DECIBEL_UNIT)
   const requiredSeconds = parry * Math.max(0, opts.perParrySeconds ?? 0) + dual * Math.max(0, opts.perDualSeconds ?? 0)
   // 时长未知（调用方没传）时 requiredSeconds = 0，天然不触发判定：
   // 宁可不管，也不要用假时长把合法补齐判成非法
@@ -647,7 +693,7 @@ function buildBanyueResourceSections({ result }: AgentResourceSectionsInput) {
       { label: '强特连段后摇', value: `失衡外 ×${cycle.comboOutRecoveryCount}（嘲讽取消 ${cycle.tauntCancelCount}）`, detail: recoveryDetail },
       { label: '后摇损失伤害（估算）', value: `${recoveryTime.toFixed(2)}s 平A时间 · 占平A ${lossPct.toFixed(1)}%`, detail: `未取消的失衡外连段末尾后摇计入必做前台时间，直接压缩平A时间池 → 平A伤害损失 ≈ 损失时间 ÷ (平A时间 + 损失时间)；全部嘲讽取消可回收 ${recoveryTime.toFixed(2)}s 平A时间。` },
       ...(result.banyueInteractionTopUp && (result.banyueInteractionTopUp.parry > 0 || result.banyueInteractionTopUp.dual > 0)
-        ? [{ label: '轴模式自动补齐', value: `弹刀 +${result.banyueInteractionTopUp.parry} · 双反 +${result.banyueInteractionTopUp.dual}`, detail: '保底语义：轴内怒相/终结技对嗔火/喧响的硬性需求不足时自动补齐（有效次数 = 交互栏输入 + 补齐，不覆盖输入）；弹刀补喧响（+215/次）、双反补嗔火（+10/次）；设置 banyue.autoTopUpInteractions 可关闭' }]
+        ? [{ label: '轴模式自动补齐', value: `弹刀 +${result.banyueInteractionTopUp.parry} · 双反 +${result.banyueInteractionTopUp.dual}`, detail: `保底语义：轴内怒相/终结技对嗔火/喧响的硬性需求不足时自动补齐（有效次数 = 交互栏输入 + 补齐，不覆盖输入）；弹刀补喧响（按一次弹刀完整链 ${fmt(PARRY_TOPUP_DECIBEL_UNIT, 2)}/次反推）、双反补嗔火（+10/次）；设置 banyue.autoTopUpInteractions 可关闭` }]
         : []),
     ],
     footer: '怒相增益按覆盖率滑块近似；明王非6命按轴内时间轴扫描（非轴模式按覆盖率滑块），6命全局 +39%；后摇时长 = 末尾强特（狮子吼·怒/山摇·怒）自身动作时间。',
@@ -744,7 +790,7 @@ const settings: MechanicSetting[] = [
   {
     id: 'banyue.autoTopUpInteractions',
     label: '般岳·轴模式自动补齐交互次数（保底）',
-    description: '轴模式下轴内怒相/终结技对资源有硬性需求：嗔火不足自动抬双反（+10/次）、喧响不足自动抬弹刀（+215/次，普通弹刀）。有效次数 = 用户输入 + 自动补齐（保底语义，不覆盖输入，交互栏/资源卡片会显示补齐量）；关闭则保持现状（资源不足只提示不跳过）。',
+    description: '轴模式下轴内怒相/终结技对资源有硬性需求：嗔火不足自动抬双反（+10/次）、喧响不足自动抬弹刀（按一次弹刀完整链 301.35 喧响/次反推，含支援突击：昂霄）。有效次数 = 用户输入 + 自动补齐（保底语义，不覆盖输入，交互栏/资源卡片会显示补齐量）；关闭则保持现状（资源不足只提示不跳过）。',
     default: 1,
     min: 0,
     max: 1,

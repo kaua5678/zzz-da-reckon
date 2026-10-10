@@ -195,15 +195,17 @@ describe('computeBanyueInteractionTopUp（轴模式自动补齐，保底语义�
     expect(t).toMatchObject({ parry: 0, dual: 0, illegal: false })
   })
 
-  it('嗔火不足 → 抬双反；喧响不足 → 抬弹刀（分别按缺口 ÷ 10 / ÷ 215 向上取整）', () => {
+  it('嗔火不足 → 抬双反；喧响不足 → 抬弹刀（分别按缺口 ÷ 10 / ÷ 反推单价 向上取整）', () => {
     const t = computeBanyueInteractionTopUp({
       battleTime: 180, dodgeCount: 0, parryCount: 0, blockCount: 0, dualCounterCount: 0, cinemaLevel: 0,
       axisEx: axis8, ultimateCountNeeded: 4, ultimateCost: 3000, decibelHave: 8000,
     })
     // 低交互下嗔火只够 2 次怒相 → 差 2 次 × 120 = 240 嗔火 → 双反 ceil(240/10) = 24
     expect(t.dual).toBe(24)
-    // 4 终结技 × 3000 = 12000 − 8000 = 4000 → 弹刀 ceil(4000/215) = 19
-    expect(t.parry).toBe(19)
+    // 4 终结技 × 3000 = 12000 − 8000 = 4000 → 弹刀 ceil(4000 / 301.35) = 14
+    // （T129：分母由 215 改为「一次弹刀完整链」实测收益 301.35，见 PARRY_TOPUP_DECIBEL_UNIT；
+    //   旧口径 ceil(4000/215) = 19 系统性高估 5 刀）
+    expect(t.parry).toBe(14)
   })
 
   it('轴内连段块不是 2 的倍数：怒相次数向上取整；无终结技需求 → 不补弹刀', () => {
@@ -925,8 +927,11 @@ describe('自动补齐的时间合法性（用户口径 2026-09-01：>200s 即�
     expect(t.illegal).toBe(false)
   })
 
-  it('自动轴要 6 次大 → 补齐 84 刀 × 2.4s ≈ 202s > 200s → 判非法并清零（这正是无限加招架的刹车）', () => {
-    const t = computeBanyueInteractionTopUp({ ...base, ultimateCountNeeded: 6, perParrySeconds: 2.4 })
+  it('自动轴要 9 次大 → 补齐 90 刀 × 2.4s = 216s > 200s → 判非法并清零（这正是无限加招架的刹车）', () => {
+    // T129：分母 215 → 301.35 后，同样的「次数需求」对应更少刀 ⇒ 要把需求抬到 9 次大
+    // （缺口 27000 → 90 刀 × 2.4s = 216s）才仍能压过 200s 上限。本用例锁的「刹车」语义不变：
+    // 原始动作时间合计 > 200s ⇒ illegal 且次数清零（不是截断成半套）。
+    const t = computeBanyueInteractionTopUp({ ...base, ultimateCountNeeded: 9, perParrySeconds: 2.4 })
     expect(t.requiredSeconds).toBeGreaterThan(AUTO_TOPUP_TIME_LIMIT_SEC)
     expect(t.illegal).toBe(true)
     expect(t.parry).toBe(0)
@@ -934,10 +939,11 @@ describe('自动补齐的时间合法性（用户口径 2026-09-01：>200s 即�
   })
 
   it('刚好压线不判非法（判据是严格大于，边界可用）', () => {
-    // 4 次大、无供给 → 缺口 12000 → 56 刀；56 × 3.5 = 196s ≤ 200s
-    const t = computeBanyueInteractionTopUp({ ...base, ultimateCountNeeded: 4, perParrySeconds: 3.5 })
-    expect(t.parry).toBe(56)
-    expect(t.requiredSeconds).toBeCloseTo(196, 6)
+    // 5 次大、无供给 → 缺口 15000 → ceil(15000/301.35) = 50 刀；50 × 4 = 200s，**恰好**等于上限
+    // ⇒ 严格大于判据下仍合法（T129 顺带把边界从「196 接近」改成「200 精确压线」，判据更贴字面）。
+    const t = computeBanyueInteractionTopUp({ ...base, ultimateCountNeeded: 5, perParrySeconds: 4 })
+    expect(t.parry).toBe(50)
+    expect(t.requiredSeconds).toBeCloseTo(200, 6)
     expect(t.illegal).toBe(false)
   })
 
