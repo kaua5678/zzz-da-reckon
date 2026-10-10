@@ -56,7 +56,10 @@ setsid nohup /home/kaua/.local/node/bin/dsh --profile headless "$BRIEF" \
 
 - **强度不变，顺序和并行方式变了**：全量 `npm run verify`、零差、文档提交后重跑 check-guards 三道都保留。
 - ① 改代码中途要早信号时，跑 `npx vue-tsc -b` 加相关测试文件。tsconfig 已开 `incremental`：无改动 1.5 秒，改一两个文件约 9–12 秒。**工人自测仍必须包含 `vue-tsc -b`**（上面 W31 那条不变，它现在很便宜）。
-- ② 触及计算路径时，跑 `bash .zc/perf/zd.sh <tag>`（基线 = HEAD 的 worktree，改后 = 工作区，四路并行约 50 秒；原来顺序执行约 176 秒）。要求 DIFF 0；不为 0 就逐条解释。**本卡改动先不要提交**。
+- ② 触及计算路径时，跑 `bash .zc/perf/zd.sh <tag>`（基线 = HEAD 的 worktree，改后 = 工作区，四路并行**约 50 秒**；原来顺序执行约 176 秒）。要求 DIFF 0；不为 0 就逐条解释。**本卡改动先不要提交**。
+  - **★ 命座采样面 = `{0,1,2,6}`（2026-10-10 T119 任务 B 起；原为 `{0,6}`）**：常量在 `.zc/perf/dump.perf.ts` 与 `rowsnap.perf.ts` 顶部（`CINEMA_SAMPLES`，两文件必须逐字一致）。原值只采 `{c0,c6}`，而 `timeGolden` 采 `{0,3,4,5,6}` ⇒ **cinema 1/2 三个仪器全盲**（T118 报告 §⑥：`yeshuguang.ts` 的自指反馈恰在影画1 解锁，三次 `zd.sh` 全 `DIFF 0` 而真实 delta 存在）。`{0,1,2,6}` 与 timeGolden 并集**覆盖 0..6**。⇒ **扩大测量面**（规则 17② 口径纠正），不是放宽判据。**不要**动 `timeGolden` 的 `CINEMA_LEVELS`。
+  - **`.zc/` 被 gitignore ⇒ 重建 perf 工具时必须照上一条写**，否则退回 `{0,6}`。代价与实测见 `docs/mcp-dev-process-speed.md` §4 与 §9.5（反证：旧面 `DIFF 0` / 新面 `DIFF 17`；墙钟 +32%~40%，实测 47.5→65.4 s）。
+
 - ③ 全量 verify **只跑一次**，放后台；等待期间在本地起草文档，**verify 结束前不要落盘**，因为 check-guards 会扫描 docs。用轮询 `grep -q '^EXIT'` 等待，不要用固定 sleep。
 - ④ verify EXIT 0 后，依次：提交代码 → 落盘并提交文档 → **重跑 `node scripts/check-guards.mjs`（必须）**。
 - ⑤ **纯文档批次（`git diff --name-only HEAD` 全部落在 `docs/`）可走快路**：`npm run test:docs`（= `node scripts/test-docs.mjs`，34 条「读 docs 的测试」清单，实测 39.3 秒 vs 全量 248.2 秒，**失败集逐条相同**）。非 docs-only 时它**拒绝并退出 2**（要人工确认才 `--force`）。⚠ 它只替代那一次全量 vitest，**不替代** `check-guards` / `docs:status` /（动了源码时的）`vue-tsc -b`；`verify` 仍是交付口径。

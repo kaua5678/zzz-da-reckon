@@ -93,6 +93,67 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
 }
 
 /**
+ * 动态合轴吸收子问题的**旧求解器**（8 轮小不动点迭代）：`docs/mcp-time-allocation-algorithms.md` §5 批 1 的
+ * **单点回退**，现只作闭式解在浮点极端参数下判别式舍入为负时的兜底（生产 97 队实测不触发，`disc<0` 数学上不可达——
+ * `disc ≥ 4(1−r)·rB·(S−T) ≥ 0`，因 `S ≥ T` 恒成立）。
+ *
+ * 语义（`S` = Σ净必要、`B` = 预算、`T` = 可吸收总量）：`take = min(Δ, g·T)`、`s = B/(S − take)`、`g ← r·s/(1−r+r·s)`。
+ * ⚠ 与闭式解的差别 = 它**可能不收敛**：`|gNext − g| < 1e-9` 的 break 在慢收敛队上第 8 轮仍未触发（T117 §1.6 实测
+ * `auto-1431-1481-1491 @ r=0.4`：第 8 轮 `take` 仍在动），此时返回的是**未收敛的近似**，与闭式解差 ~8e-8s。
+ * 保留它而不是直接 `take = Δ` 兜底：判别式舍入为负时闭式不可用，而 `Δ` 会**系统性偏大**吸收量（T117 §6 否决记录 2）。
+ */
+export function legacyComboAlignTake(S: number, B: number, T: number, r: number): number {
+  let g = r
+  let take = 0
+  for (let it = 0; it < 8; it++) {
+    take = Math.min(S - B, g * T)
+    const remain = S - take
+    const s = remain > B ? B / remain : 1
+    const gNext = r * s / (1 - r + r * s)
+    if (Math.abs(gNext - g) < 1e-9) break
+    g = gNext
+  }
+  return take
+}
+
+/** 吸收子问题求解器的分支（= 控制流锁的判别量；见 `solveComboAlignTake`） */
+export type ComboAlignBranch = 'cap-not-binding' | 'r1-linear' | 'closed-form' | 'legacy-fallback'
+
+/** `solveComboAlignTake` 的解：`take` = 吸收量；`branch`/`iterations` = 走的分支与实际迭代轮数（诊断 + 锁用） */
+export interface ComboAlignSolution {
+  take: number
+  branch: ComboAlignBranch
+  /** 实际迭代轮数：闭式三个分支恒 1，legacy 兜底 1..8 */
+  iterations: number
+}
+
+/**
+ * 动态合轴吸收子问题的**唯一求解器**（T119 批 1 / `docs/mcp-time-allocation-algorithms.md` §3.0 候选 A）。
+ *
+ * 输入：`S` = Σ净必要、`B` = 预算（预算 = 战斗时间 − 无敌）、`T` = 可吸收总量（Σ非操作角色净必要）、`r` = 吸收上限比例。
+ * 语义：`take = min(Δ, g·T)`（`Δ = S − B` 为溢出），容量咬合时 `g` 解不动点方程
+ * `T(1−r)·g² − [(1−r)S + rB]·g + rB = 0` 的小根。
+ *
+ * **为什么抽成导出函数**（T119）：闭式解与旧的 8 轮迭代在**生产读数上逐位差 ≤ 8e-8s**（浮点量级）⇒
+ * 数值锁写不出来（读数相同）。按 T116 先例，锁**控制流** = `branch` + `iterations`——把求解器改回 8 轮迭代，
+ * `branch` 当场从 `'closed-form'` 变 `'legacy-fallback'`/`'cap-not-binding'`、`iterations` 从 1 变大 ⇒ 锁红。
+ * 支路口径见 `src/core/__tests__/comboAlignClosedForm.test.ts`。
+ */
+export function solveComboAlignTake(S: number, B: number, T: number, r: number): ComboAlignSolution {
+  const overflow = S - B
+  // 情形 1：容量不咬合（s = 1、g = r）——一轮到位，`take = Δ`，与无上限时的分摊公式逐位一致
+  if (overflow <= r * T) return { take: overflow, branch: 'cap-not-binding', iterations: 1 }
+  // r = 1：不动点方程二次项系数为 0（退化成一元一次）⇒ g ≡ 1、`take = min(Δ, T)`（此处 Δ > r·T = T ⇒ take = T）
+  if (r >= 1) return { take: Math.min(overflow, T), branch: 'r1-linear', iterations: 1 }
+  const quadA = T * (1 - r)
+  const quadP = (1 - r) * S + r * B
+  const disc = quadP * quadP - 4 * quadA * r * B
+  if (disc < 0) return { take: legacyComboAlignTake(S, B, T, r), branch: 'legacy-fallback', iterations: 8 }
+  // 小根 `g*`：代数上 = (P − √disc)/(2A)，此处用 2C/(P + √disc) 规避相消（见 `iterate` 段头注释）
+  return { take: Math.min(T, 2 * r * B / (quadP + Math.sqrt(disc)) * T), branch: 'closed-form', iterations: 1 }
+}
+
+/**
  * 单次迭代：根据当前 state 计算新的 state。
  *
  * **S1（资源账本预解）内的四步顺序不可交换**（2026-09-11 显式化）：
@@ -394,21 +455,16 @@ function iterateBody(
     // 上限按**封顶后的最终前台**算，不是按吸收前的净必要：吸收不完的溢出会让下方 feasibleScale 把「未被吸收的部分」等比压缩，
     // 而被吸收的部分不压 ⇒ 若按吸收前净必要取 40%，队友终态前台里被并行的份额会远超 40%（实测 auto-1431-1481-1491：
     // 1481 终态 67.8s 里 57.1s 被判并行 = 84%）。令 s = 封顶比例、r = 上限，则约束 dyn_i ≤ r·[(net_i − dyn_i)·s + dyn_i]
-    // ⇔ dyn_i ≤ net_i · g(s)，g(s) = r·s / (1 − r + r·s)；s 又由吸收量决定（s = 预算 / (Σ净必要 − Σdyn)）⇒ 小不动点迭代
-    // （g 单调递减、有下界，实测 ≤ 5 轮到 1e-9）。溢出 ≤ 容量时 s = 1、g = r，一轮即收敛，与无上限时的分摊公式逐位一致。
+    // ⇔ dyn_i ≤ net_i · g(s)，g(s) = r·s / (1 − r + r·s)；s 又由吸收量决定（s = 预算 / (Σ净必要 − Σdyn)）。
+    // **求解器已外提为 `solveComboAlignTake`**（T119 批 1，闭式解；推导、分支表与回退点全在该函数头注释，
+    // 口径与实测数字见 `docs/mcp-time-allocation-algorithms.md` §3.0/§3.1/§5 批 1）。本处只做「拆分 + 按容量比例摊」。
+    // 相对旧 8 轮迭代：`take`/`dyn` 差 ≤ 8.04e-8s（浮点量级，**不是 0**），`cut`/伤害逐位不变；迭代轮数 41 → 1（r=0.4）。
+    // @fact engine:动态合轴吸收/求解器 口径: 容量咬合（Δ > r·T）时吸收量取二次不动点方程 (★) 的小根 g*·T（闭式、一轮到位），不再跑 8 轮小迭代；r=1 走一次分支 take=min(Δ,T)；判别式舍入为负时回落原 8 轮迭代兜底 | 据 推导@T117（docs/mcp-time-allocation-algorithms.md §3.0）+ T119 采纳决策表 ② | 验 src/core/__tests__/comboAlignClosedForm.test.ts | 锚 src/core/resource/helpers.ts#solveComboAlignTake | 信 高
+    // ⟳复核: 若有人再改吸收上限的**口径**（改「上限按封顶后终态算」这条前提，如候选 B/C），则 (★) 的推导地基消失 ⇒ 重新推导并重取 `cut`/`dyn` 读数；另复核 `legacyComboAlignTake` 兜底是否真在生产 97 队上零触发 | 到期 2027-04-30
     const teammateNet = netNecessary.map((n, i) => (i === operator ? 0 : Math.max(0, n)))
     const teammateTotal = teammateNet.reduce((a, b) => a + b, 0)
     if (teammateTotal > 1e-9) {
-      let g = absorbRatio
-      let take = 0
-      for (let it = 0; it < 8; it++) {
-        take = Math.min(sumNetNecessary - budget, g * teammateTotal)
-        const remain = sumNetNecessary - take
-        const s = remain > budget ? budget / remain : 1
-        const gNext = absorbRatio * s / (1 - absorbRatio + absorbRatio * s)
-        if (Math.abs(gNext - g) < 1e-9) break
-        g = gNext
-      }
+      const take = solveComboAlignTake(sumNetNecessary, budget, teammateTotal, absorbRatio).take
       for (let i = 0; i < teammateNet.length; i++) dynamicComboAlign[i] = teammateNet[i] / teammateTotal * take
     }
   }
