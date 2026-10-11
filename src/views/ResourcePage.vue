@@ -5,6 +5,7 @@
       <n-select
         :value="selectedAgentId"
         :options="agentOptions"
+        filterable
         @update:value="onAgentChange"
         placeholder="选择角色"
         style="width: 240px"

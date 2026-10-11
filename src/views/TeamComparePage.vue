@@ -58,9 +58,10 @@
             multiple
             filterable
             max-tag-count="responsive"
+            :fallback-option="presetLabelOf"
             style="width: 220px"
             placeholder="选择队伍（可多选）"
-            title="默认全选全部预设队；框内只显示首队 +N，点开下拉可逐个勾选/清空"
+            title="默认全选全部预设队；框内只显示首队 +N，点开下拉可逐个勾选/清空。筛选只决定下拉列出什么，不影响已经选中的队伍（跨分类自由勾选）"
           />
           <n-select
             v-model:value="quickPickMainC"
@@ -72,6 +73,7 @@
             clearable
           />
         </div>
+        <CustomTeamsEditor v-model:selected-ids="selectedPresetIds" />
         <div class="ctl-field" title="操作难度是主观量（两图共用同一口径）：难度 = Σ(交互次数×权重) + 时间压力秒×权重；散点图横轴同口径。按你的手感改，浏览器本地持久化；预设条目自带 weight 仍最优先">
           <n-popover trigger="click" placement="bottom-end" :style="{ width: '300px' }">
             <template #trigger>
@@ -743,6 +745,8 @@ import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { teamPresets } from '@/data/teamPresets'
 import { usePresetTeamPicker } from '@/composables/usePresetTeamPicker'
+import { useCustomTeamsStore, resolveSelectedPresets } from '@/composables/customTeams'
+import CustomTeamsEditor from '@/components/CustomTeamsEditor.vue'
 import { fmt, compact, localized } from '@/utils/format'
 import { useScatterGeometry } from '@/composables/teamCompareScatter'
 import { useSlotSweep } from '@/composables/teamCompareSweep'
@@ -857,9 +861,12 @@ watch([currentPhaseView], () => {
 })
 
 // ========== 预设队伍 ==========
-const { selectedPresetIds, presetGroupSel, presetSubSel, presetGroupOptionsC, presetSubOptions, presetFilteredOptions, quickPickMainC, mainCQuickOptions } = usePresetTeamPicker()  // CC-482：两级筛选 + 主C快选的状态簇，与另一比较页共用
+const { selectedPresetIds, presetGroupSel, presetSubSel, presetGroupOptionsC, presetSubOptions, presetFilteredOptions, presetLabelOf, quickPickMainC, mainCQuickOptions } = usePresetTeamPicker()  // CC-482：两级筛选 + 主C快选的状态簇，与另一比较页共用
+const customTeams = useCustomTeamsStore()
+// 自定义队与预设队共用一个 id 命名空间 ⇒ 必须**合并解析**：只查预设库会让自定义队静默消失
+// （选中了但算不出来，比报错更难查）。解析口是 customTeams#resolveSelectedPresets，两页同源。
 const selectedPresets = computed<TeamPreset[]>(() =>
-  teamPresets.filter(t => selectedPresetIds.value.includes(t.id)),
+  resolveSelectedPresets(selectedPresetIds.value, customTeams.defs, customTeams.toCustomPreset),
 )
 
 // ========== 金数 ==========

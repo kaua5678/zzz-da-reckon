@@ -41,7 +41,17 @@
             placeholder="属性"
             title="二级分类：该职业下的属性/体系"
           />
-          <n-select v-model:value="selectedPresetIds" :options="presetFilteredOptions" multiple size="small" filterable max-tag-count="responsive" style="width: 220px" />
+          <n-select
+            v-model:value="selectedPresetIds"
+            :options="presetFilteredOptions"
+            multiple
+            size="small"
+            filterable
+            max-tag-count="responsive"
+            :fallback-option="presetLabelOf"
+            style="width: 220px"
+            title="筛选只决定下拉列出什么，不影响已经选中的队伍（可跨职业/属性勾选）"
+          />
           <n-select
             v-model:value="quickPickMainC"
             :options="mainCQuickOptions"
@@ -52,6 +62,7 @@
             clearable
           />
         </div>
+        <CustomTeamsEditor v-model:selected-ids="selectedPresetIds" />
         <div class="control">
           <span class="label">限定金</span>
           <n-input-number v-model:value="gold" :min="0" :max="20" size="small" style="width: 90px" />
@@ -131,8 +142,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { NCard, NSelect, NButton, NTable, NInputNumber } from 'naive-ui'
-import { teamPresets } from '@/data/teamPresets'
 import { usePresetTeamPicker } from '@/composables/usePresetTeamPicker'
+import { useCustomTeamsStore, resolveSelectedPresets } from '@/composables/customTeams'
+import CustomTeamsEditor from '@/components/CustomTeamsEditor.vue'
 import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
@@ -142,7 +154,12 @@ import type { BossPreset } from '@/types/bossPreset'
 const bossPresets = ref<BossPreset[]>([])
 const selectedBossId = ref('')
 const selectedPhaseId = ref('')
-const { selectedPresetIds, presetGroupSel, presetSubSel, presetGroupOptionsC, presetSubOptions, presetFilteredOptions, quickPickMainC, mainCQuickOptions } = usePresetTeamPicker()  // CC-482：两级筛选 + 主C快选的状态簇，与另一比较页共用
+const { selectedPresetIds, presetGroupSel, presetSubSel, presetGroupOptionsC, presetSubOptions, presetFilteredOptions, presetLabelOf, quickPickMainC, mainCQuickOptions } = usePresetTeamPicker()  // CC-482：两级筛选 + 主C快选的状态簇，与另一比较页共用
+const customTeams = useCustomTeamsStore()
+/** 已选 id → 队伍（预设库 + 自定义队合并解析；同 TeamComparePage，见 customTeams#resolveSelectedPresets） */
+const selectedPresets = computed(() =>
+  resolveSelectedPresets(selectedPresetIds.value, customTeams.defs, customTeams.toCustomPreset),
+)
 const results = ref<PositionCompareRow[]>([])
 const computing = ref(false)
 /** 对比位置：主C / 击破手 / 辅助 */
@@ -182,7 +199,7 @@ const owner = useBatchOwner()
 
 async function run() {
   if (!canRun.value) return
-  const presets = teamPresets.filter(p => selectedPresetIds.value.includes(p.id))
+  const presets = selectedPresets.value
   const boss = selectedBoss.value!
   const phase = selectedPhase.value!
   const run = owner.start()

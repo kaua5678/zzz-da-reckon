@@ -13,7 +13,11 @@ import { roleInteractionBaseline } from '@/mechanics/interactionBaseline'
 const ZERO = { parry: 0, dodge: 0, block: 0, dual: 0 }
 const LEGACY_DEFAULTS: Record<string, typeof ZERO> = {
   '1531': { parry: 4, dodge: 0, block: 5, dual: 0 },
-  '1471': { parry: 6, dodge: 10, block: 20, dual: 5 },
+  // 2026-10-11 用户裁决「预设的交互太多了……我之前只是想让般岳有 4 次嗔火而已」：
+  // 金身 20→12、双反 5→3。原值是按嗔火来源拍的死数值，实测把轴挤出时间预算 ⇒ 弃轴
+  // （冲霄 = 金身+双反，单次 2.67s，25 次 = 66.7s）。本表 = 「模块声明 == 原写死表」的对照，
+  // 故随裁决同步；「4 怒相仍成立」由 `.zc/perf/banyueConfirm.perf.ts` 六队实测（4怒相 6/6）。
+  '1471': { parry: 6, dodge: 10, block: 12, dual: 3 },
 }
 const LEGACY_NO_GENERIC = new Set(['1051'])
 function legacyBaseline(id: string, spec?: string) {

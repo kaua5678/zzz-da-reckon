@@ -106,22 +106,28 @@ export const UNGROUPED_LABEL = '未分组'
 export const presetGroupLabels: string[] = [...new Set(teamPresets.map(p => p.group?.trim() || UNGROUPED_LABEL))]
   .sort((a, b) => a === UNGROUPED_LABEL ? 1 : b === UNGROUPED_LABEL ? -1 : a.localeCompare(b))
 
-/** 二级：该职业下的属性（subgroup；缺省归「未分属性」） */
+/**
+ * 二级：该职业下的属性（subgroup；缺省归「未分属性」）。
+ *
+ * `group = null` = **不限职业** ⇒ 返回全部属性的并集（用户 2026-10-11：「点了职业和属性后就不能
+ * 加其他队伍了…这不够自由」）。用 `null` 而不是「全部」哨兵字符串：哨兵会与真实分类名撞车
+ * （预设分类名由 `scripts/lib/presetCategories.mjs` 生成，不在本文件的控制内）。
+ */
 export const PRESET_UNGROUPED_SUB = '未分属性'
-export function presetSubgroupLabelsFor(group: string): string[] {
+export function presetSubgroupLabelsFor(group: string | null): string[] {
   const subs = [...new Set(
     teamPresets
-      .filter(p => (p.group?.trim() || UNGROUPED_LABEL) === group)
+      .filter(p => group === null || (p.group?.trim() || UNGROUPED_LABEL) === group)
       .map(p => p.subgroup?.trim() || PRESET_UNGROUPED_SUB),
   )]
   return subs.sort((a, b) => a === PRESET_UNGROUPED_SUB ? 1 : b === PRESET_UNGROUPED_SUB ? -1 : a.localeCompare(b))
 }
 
-/** 三级：该（职业, 属性）下的预设队伍 */
-export function presetsForFilter(group: string, subgroup: string): TeamPreset[] {
+/** 三级：该（职业, 属性）下的预设队伍。两级各自 `null` = 该级不筛（跨分类自由勾选，2026-10-11） */
+export function presetsForFilter(group: string | null, subgroup: string | null): TeamPreset[] {
   return teamPresets.filter(p =>
-    (p.group?.trim() || UNGROUPED_LABEL) === group
-    && (p.subgroup?.trim() || PRESET_UNGROUPED_SUB) === subgroup,
+    (group === null || (p.group?.trim() || UNGROUPED_LABEL) === group)
+    && (subgroup === null || (p.subgroup?.trim() || PRESET_UNGROUPED_SUB) === subgroup),
   )
 }
 

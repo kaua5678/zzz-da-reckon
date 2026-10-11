@@ -33,11 +33,23 @@ const force = process.argv.includes('--force')
 const STATIC = 'https://static.nanoka.cc'
 
 /** 取当前最新 zzz 版本号（manifest.json） */
+/**
+ * 正式服版本：`manifest.zzz.live`。
+ *
+ * ⚠ 不要用 `manifest.zzz.latest`（2026-10-10 修正）——`latest` 是**测试服/预发布**构建，
+ * 其 `layer_buff.desc` 可能是未定稿文本（实测 3.3.x 把库萨里库[识破]写成 20%/层，
+ * 正式服 3.2 是 10%/层 ⇒ 解析出的 sharpCritDmg 差一倍：80 vs 40）。
+ * 正式服的排期字段名也不同（`begin`/`end`），预发布用 `live_begin`/`live_end`。
+ * 口径见 docs/DATA_FETCHING.md「⚠️ 版本」；同款修法见 fetch-nanoka-full-missing.mjs。
+ *
+ * @fact data:bossVersion 口径: Boss 原始数据一律取 manifest.zzz.live（正式服）；预发布构建（zzz.latest，带 hash）的 layer_buff.desc 是未定稿文本，且排期字段名不同（begin/end vs live_begin/live_end） | 据 用户@2026-10-10（裁决按正式服 3.2 重抓覆盖） | 验 src/composables/__tests__/bossPresetsData.test.ts | 锚 scripts/fetch-nanoka-bosses.mjs#latestZzzVersion | 信 确认
+ * ⟳复核: 下期危局上线后重抓时，确认 manifest.zzz.live 仍是正式服版本号（若 nanoka 改为 latest=正式服/live 弃用，本条与五个抓取脚本的取版逻辑一起改） | 到期 2027-01-31
+ */
 async function latestZzzVersion() {
   const res = await fetch(`${STATIC}/manifest.json`)
   if (!res.ok) throw new Error(`manifest HTTP ${res.status}`)
   const manifest = await res.json()
-  return manifest.zzz?.latest
+  return manifest.zzz?.live ?? manifest.zzz?.latest
 }
 
 async function fetchJson(url, label, retries = 2) {

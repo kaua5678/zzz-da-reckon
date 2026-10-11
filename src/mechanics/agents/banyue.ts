@@ -1013,8 +1013,15 @@ export const banyueMechanic: AgentMechanicModule = {
     }
     return [row]
   },
-  // CC-65b：交互次数默认值（原 stores/config.ts 写死表；用户确认：闪反10/招架6/金身20/双反5，嗔火来源）
-  interactionDefaults: { parry: 6, dodge: 10, block: 20, dual: 5 }, // 默认触发次数（用户确认）：闪反 10 / 招架 6 / 金身弹刀 20 / 双反 5
+  // CC-65b：交互次数默认值（原 stores/config.ts 写死表）。
+  // 用户 2026-10-11 口径：「预设的交互太多了……我之前只是想让般岳有 4 次嗔火而已，有些 boss 还能 4 喧响」
+  // ⇒ 原「金身 20 / 双反 5」是按嗔火来源拍的死数值，实测**把轴挤出预算**（冲霄 = 金身+双反，单次 2.67s，
+  //  25 次 = 66.7s；般岳槽毛前台 230.5s，轴态净占用 295.4s > 180s ⇒ 弃轴）。
+  // 实测降到 金身 12 / 双反 3 仍**六队全部保持 4 怒相**（`banyueConfirm`），且保轴队数 0/6 → 1/6、
+  // 六队伤害合计 289.50M → 309.92M（+7.0%）。再往下（4/2）伤害更高（353.18M）但只剩 1/6 队够 4 怒相
+  // ⇒ 与「4 次嗔火」的原始意图冲突，不取；要 4 怒相恒成立应改用引擎保底通道（`guarantee.fury`）。
+  // 判据：`.zc/perf/banyueConfirm.perf.ts`（六队 × 三档）+ `.zc/perf/banyueMinFind.perf.ts`（最低档扫描）。
+  interactionDefaults: { parry: 6, dodge: 10, block: 12, dual: 3 }, // 闪反 10 / 招架 6 / 金身弹刀 12 / 双反 3
   // CC-65b：TeamConfigPage 交互栏专属输入框（原页面写死本角色 id）
   interactionInputs: { block: { label: '金身格挡' }, dualCounter: { label: '双反' } },
   // CC-65b：「保底4嗔火」开关归属（原页面 teamHasBanyue 写死本角色 id）

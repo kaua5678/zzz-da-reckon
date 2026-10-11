@@ -24,10 +24,12 @@
 ### 1.2 数据管道（加新期数/Boss 时）
 
 ```bash
-node scripts/fetch-nanoka-bosses.mjs [版本号]   # 幂等；缺省读 manifest 最新版
+node scripts/fetch-nanoka-bosses.mjs [版本号]   # 幂等；缺省读 manifest.zzz.live（正式服）
 node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-presets.json
 ```
 
+- **版本口径（2026-10-10 修正）**：缺省取 `manifest.zzz.live`（**正式服**）。此前本脚本是**全仓唯一**取 `zzz.latest` 的抓取脚本，会把预发布构建的 `layer_buff.desc` 抓进来——实测 3.3.x 把库萨里库[识破]写成 20%/层、正式服 3.2 是 10%/层，解析出的 `sharpCritDmg` 差一倍（80 vs 40）。预发布的排期字段名也不同（`live_begin`/`live_end`，正式服用 `begin`/`end`）。要抓测试期须显式传版本号（如 `3.3.12+19476086`），且**只用于占位期**，不要覆盖已上线的正式期。
+- 重抓正式期时**不要整份覆盖 `summary.json`**：正式服不含 3.3 测试服试炼期（690481/690491/690501），且字段名是 `begin`/`end` 而导入脚本只读 `live_begin`——直接覆盖会静默丢掉三期、并让整条时间轴排期变空。正确做法 = 正式期按正式服重抓 + 归一化字段名 + 保留既有试炼期条目。
 - 原始数据 → `data/raw/bosses/{summary.json, version.json, zh|en/<期数id>.json, monster/<怪物id>.json}`
 - 端点与结构见 `scripts/fetch-nanoka-bosses.mjs` 头注释（boss.json / zh|en/boss/<id>.json / zh/monster/<id>.json）
 - **期视图**（`phaseViews`，Boss 选择 UI 的数据源）：覆盖全部 50 期（1.4–3.2 正式 + 3.3 测试服试炼占位）；每期含 普通 3 Boss（`defense`，可应用）/ 当期 buff（`buffs`）；3.1–3.3 另含 困难 Boss（`criticalAssault`，可应用），1.4–3.0 无困难模式
@@ -314,6 +316,7 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 
 - 前端 `RunArchivePage.vue` 懒加载 fetch `/static/run-archive.json`（不进首屏 bundle）。
 - 归档新 Boss / 期数 → 补 `scripts/import-nanoka-bosses.mjs` 的 `CATALOG_MONSTER_MAP` 后重跑（见 §1.2），再重跑 import-zzz-run-archive。
+- **刷新节奏**：新一期危局上线当天投稿量最大（2026-10-10 刷新：13444 → 13831 条 approved，`+387`；新增房间 `69047-1/2/3` 与困难房 `690471-1`，产出 1404 → 1490 条）。fetch 脚本**整份覆盖重写** `runs.json`/`bootstrap.json`，不做增量——重抓前先确认服务端 `submissionCounts.approved` 已增长（脚本会打印 `服务端 totalApproved=`），跑完核对 manifest 的 `targetCount` 与 `errors` 为空。
 
 ### 7.2 用户操作
 

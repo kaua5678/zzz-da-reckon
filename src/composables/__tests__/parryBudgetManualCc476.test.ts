@@ -49,8 +49,14 @@ describe('§20.5-3 保底4失衡：用户调高弹刀即启动反推（无 Boss 
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const p = teamPresets.find(x => x.id === 'banyue-trigger-lucia')
-    expect(p, '预设 banyue-trigger-lucia 存在').toBeTruthy()
+    // 夹具 2026-10-11 换：原 `banyue-trigger-lucia` 在「预设交互下调」（用户裁决：金身 20→12 /
+    // 双反 5→3，见 banyue.ts#interactionDefaults）后**自然就 4 失衡**（腾出的 ~15s 让失衡多一次），
+    // 于是「0 次 = 3 失衡」这个前提不再成立 ⇒ 该队**测不出**本锁。
+    // 换 `banyue-qingyi-lucia`：实测 0/6 → 3 次、12/20 → 4 次，且 37.66 ≤ 40.07 ≤ 40.19M 单调
+    // （`.zc/perf/parryFixture.perf.ts` 六队扫描；roxy/jufufu 的 12→20 段伤害反降 1.3M/0.03M，不满足本文件
+    // 第三条臂「加弹刀不应降低伤害」）⇒ 原契约四条逐条保留，断言不放宽。
+    const p = teamPresets.find(x => x.id === 'banyue-qingyi-lucia')
+    expect(p, '预设 banyue-qingyi-lucia 存在').toBeTruthy()
 
     const run = async (parry: number) => {
       applyTeamToStore(config, p!)

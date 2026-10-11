@@ -105,8 +105,10 @@ describe('夜D · 层① 契约面', () => {
       expect(converge.length, 'converge 相位必须派发过（否则本判据空转）').toBeGreaterThan(0)
       const g = converge[0].guarantee
       expect(g, '`guarantee` 契约必须递达（不再靠 settings 读）').toBeTruthy()
-      // 精确值：只有 fury 被打开
-      expect(g).toEqual({ stun: false, fury: true, ultimate: false })
+      // 精确值：用户只勾了 fury；`ultimate` 因**轴态自动保底**（用户裁决 2026-10-11：
+      // 「轴模式本来就是最顶尖的预设」⇒ 轴态视同勾选保底4嗔火/4喧响）而为 true。
+      // 本队（雨果/琉音/安比）命中预设轴 ⇒ 该条生效；非轴队的对照见 `axisAutoGuarantee.test.ts`。
+      expect(g).toEqual({ stun: false, fury: true, ultimate: true })
       // `boss` 同批递达（无 Boss 时三项皆 0）
       expect(converge[0].boss).toEqual({ parryTotal: 0, parryNoFollowUpTotal: 0, parryDecibelOnlyTotal: 0 })
       // `boss` 契约与 store 同源（应用一个真 Boss 预设后必须非零）
@@ -480,10 +482,20 @@ describe('夜D · 层③ 真管线端到端', () => {
     //    ⇒ 目标就是让反推单价 = 完整链收益，落点变小是预期方向（预测 §B④ 说 12~13，
     //    实测 6 —— 预测偏差已如实记入 T129 报告 §③，差额来自上述闸门/时间面反馈，不是算错）。
     // ④ 本锚按新口径更新；`timeGolden` / `timeFillRatchet` 同批重生成（delta 表在 T129 报告 §④）。
-    expect(await readBanyueCfg(1, 0, true)).toEqual({ parry: 6, dual: 0, requiredSeconds: 13.998000000000001, illegal: false })
+    //
+    // ⚠ **2026-10-11 6 → 5（用户裁决：预设交互下调 金身 20→12 / 双反 5→3）**：
+    // ① 量 delta：本队般岳保底补齐量 6 → **5**（13.998s → 11.665s）。
+    // ② 逐项归因（唯一变量 = 般岳 interactionDefaults 的 block/dual）：
+    //    金身+双反 = 冲霄次数（每次 2.67s）⇒ 20/5→12/3 直接腾出 ~15s 前台 ⇒ 时间面变宽，
+    //    同时**喧响缺口按新时间面重算**（弹刀补齐是「缺口 ÷ 301.35」的反馈线程，时间面一动落点就动）。
+    //    同批 `timeGolden` 28 条、`timeFillRatchet` 4 条，**全部为般岳条目**（脚本核对：非般岳 0 条）。
+    // ③ 确认有意：用户原话「预设的交互太多了……我之前只是想让般岳有 4 次嗔火而已」——
+    //    6→5 是「腾出时间后喧响缺口变化」的副产物，方向无异常（仍 ≥ 保底所需）。
+    // ④ 本锚更新；4 怒相是否保持由 `.zc/perf/banyueConfirm.perf.ts` 实测（六队 6/6 保持 4 次）。
+    expect(await readBanyueCfg(1, 0, true)).toEqual({ parry: 5, dual: 0, requiredSeconds: 11.665000000000001, illegal: false })
   })
 
-  it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 6 不是恒写）', async () => {
+  it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 5 不是恒写）', async () => {
     expect(await readBanyueCfg(0)).toEqual({ parry: 0, dual: 0 })
   })
 

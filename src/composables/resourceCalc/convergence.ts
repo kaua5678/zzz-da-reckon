@@ -247,8 +247,21 @@ export function createRunCalcRound(deps: {
     const mainDpsSlot = breakerSlot === 0 ? -1 : 0
     // 保底开关（配装页「保底目标」勾选）：保底4嗔火 → 抬双反补嗔火；保底4喧响 → 抬弹刀补喧响。
     // 是否补齐由产出者模块按 gate 判定（CC-295：轴模式 / 保底开关 / 模块设置，公式只在模块里一份）。
-    const guaranteeFury = configStore.getMechanicSetting('guarantee.fury', 0) !== 0
-    const guaranteeUltimate = configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0
+    //
+    // ★ 2026-10-11 用户裁决：**轴模式 ⇒ 自动按「保底达成」口径补齐**（不必用户手动勾选）。
+    // 原话：「轴模式确实对资源要求高，也许必须打开开关才能达到。因为轴模式本来就是最顶尖的预设」
+    //      「你可以让轴模式自动勾选保底4嗔火和保底4喧响，因为一次轴里面花费了一次嗔火和一次喧响，
+    //        所以资源要求本来就是 4 次嗔火和 4 次喧响」。
+    // 语义：`axisActive`（本轮的轴真的注入了计算）时，`guarantee.fury` / `guarantee.ultimate` 视同已勾选。
+    // 为什么放在这里而不是写进 store：`guarantee.*` 是**用户意图**（配装页复选框 + 难度阶梯 G3 +
+    // 归档部署都会写），写 store 会把「引擎按轴推断的补齐」和「用户勾的保底」混成一份、且污染 G3 的
+    // 「全关」基线（`clearDifficultyLevers` 清零后又被引擎写回）。这里只做**本轮读数的视同勾选**，
+    // store 一字不动 ⇒ 页面复选框状态、G3 爬梯语义、快照/还原全部不受影响。
+    // `guarantee.stun`（保底4失衡）**不在**本条：它是「反推弹刀次数」的用户意图开关，
+    // 与轴自身的嗔火/喧响需求无关（轴内连携由轴块反推，见 roundInputs）。
+    // 判据：`src/composables/__tests__/axisAutoGuarantee.test.ts`（轴态补齐量 > 非轴态；非轴态零差）。
+    const guaranteeFury = axisActive || configStore.getMechanicSetting('guarantee.fury', 0) !== 0
+    const guaranteeUltimate = axisActive || configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0
     // 通用保底4喧响：喧响缺口 → 弹刀（任意队伍；般岳走上面的模块能力 computeInteractionTopUp，此处排除避免双计）。
     // 弹刀注入槽位 0（主C，弹刀喧响经伴随覆盖全队），轮间经 prevDecibelParry 线程收敛。
     const decibelParryActive = guaranteeUltimate && interactionTopUpSlot < 0

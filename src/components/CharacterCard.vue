@@ -17,16 +17,32 @@
         <div class="char-info">
           <div class="char-name-row">
             <div class="char-name">{{ agentName }}</div>
-            <n-dropdown
-              :options="dropdownOptions"
+            <n-popselect
+              v-model:show="pickerOpen"
+              :value="char?.agentId ?? null"
+              :options="filteredOptions"
               trigger="click"
               placement="bottom-end"
-              @select="onDropdownSelect"
+              size="small"
+              style="width: 320px"
+              @update:value="onSelectAgent"
             >
+              <template #header>
+                <n-input
+                  ref="searchInputRef"
+                  v-model:value="searchText"
+                  size="small"
+                  clearable
+                  placeholder="搜索角色"
+                />
+              </template>
+              <template #empty>
+                <span class="picker-empty">无匹配角色</span>
+              </template>
               <n-button text size="tiny" @click.stop>
                 <n-icon size="14"><chevron-down-outline /></n-icon>
               </n-button>
-            </n-dropdown>
+            </n-popselect>
           </div>
           <div class="char-tags">
             <n-tag :type="rarityTag" size="tiny" round>
@@ -66,8 +82,9 @@
 
 <script setup lang="ts">
 import { ATTRIBUTE_LABEL, SPECIALTY_LABEL, attributeTagColor, rarityTagType, specialtyTagColor } from '@/utils/agentLabelMaps'
-import { computed, ref, watch } from 'vue'
-import { NTag, NIcon, NSelect, NButton, NDropdown } from 'naive-ui'
+import { computed, nextTick, ref, watch } from 'vue'
+import { NTag, NIcon, NSelect, NButton, NPopselect, NInput } from 'naive-ui'
+import type { InputInst } from 'naive-ui'
 import { MusicalNotesOutline, ChevronDownOutline } from '@vicons/ionicons5'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
@@ -119,7 +136,7 @@ const wengineName = computed(() => {
   return localized(w.name, w.id)
 })
 
-// 可选角色（过滤掉已选的，保留当前槽位的角色）：NSelect 与 NDropdown 共用同一份过滤 + 标签，只差 value / key 字段名
+// 可选角色（过滤掉已选的，保留当前槽位的角色）：空槽 NSelect 与卡头 NPopselect 共用同一份过滤 + 标签
 const agentChoices = computed(() => {
   const used = configStore.usedAgentIds
   const currentId = char.value?.agentId
@@ -133,16 +150,36 @@ const agentChoices = computed(() => {
     })
 })
 const availableOptions = computed(() => agentChoices.value.map(c => ({ label: c.label, value: c.id })))
-const dropdownOptions = computed(() => agentChoices.value.map(c => ({ label: c.label, key: c.id })))
+
+/**
+ * 卡头换人下拉的搜索框（60+ 角色逐个翻太长）。
+ * NPopselect 没有 filterable，故手动按搜索词过滤 options；匹配口径 = 整条标签
+ * （「名字 · 稀有度 · 职业 · 属性」），与 NSelect filterable 一致：中文名/职业/属性/S 都能命中。
+ */
+const searchText = ref('')
+const pickerOpen = ref(false)
+const searchInputRef = ref<InputInst | null>(null)
+
+const filteredOptions = computed(() => {
+  const q = searchText.value.trim().toLowerCase()
+  if (!q) return availableOptions.value
+  return availableOptions.value.filter(o => o.label.toLowerCase().includes(q))
+})
+
+// 打开时聚焦搜索框（PopselectPanel 的 mousedown preventDefault 把 header 槽排除在外，输入框能正常取焦）；关闭时清空搜索词
+watch(pickerOpen, async (open) => {
+  if (!open) {
+    searchText.value = ''
+    return
+  }
+  await nextTick()
+  searchInputRef.value?.focus()
+})
 
 function onSelectAgent(id: string | null) {
   if (id) {
     configStore.setAgent(props.slot, id)
   }
-}
-
-function onDropdownSelect(key: string | number) {
-  configStore.setAgent(props.slot, String(key))
 }
 
 const rarityTag = computed(() => rarityTagType(agent.value?.rarity))
@@ -266,6 +303,12 @@ function handleCardClick() {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+/* 搜索无命中时的空态（NPopselect #empty 槽；底是 naive 弹层，不是页面底 ⇒ 用次级墨 --fg-2） */
+.picker-empty {
+  color: var(--fg-2);
+  font-size: 12px;
 }
 
 .char-tags {

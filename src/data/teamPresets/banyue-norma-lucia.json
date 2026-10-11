@@ -60,12 +60,12 @@
     },
     {
       "type": "banyueGoldenParry",
-      "count": 20,
+      "count": 12,
       "slot": 0
     },
     {
       "type": "banyueDualCounter",
-      "count": 5,
+      "count": 3,
       "slot": 0
     }
   ]

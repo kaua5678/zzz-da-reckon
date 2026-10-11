@@ -875,7 +875,8 @@ export function applyTeamPresetConfig(configStore: ConfigModel, preset: TeamPres
  * （banyue.ts `interactionInputs.block = 金身格挡`）⇒ 两个名字是同一物理交互，取并集。
  * CC-259：专属类型不再写死般岳名，改由**该槽角色**模块 `interactionFieldTypes` 反查字段——
  * 专属类型挂在别的角色槽上（如测试夹具给维琳娜声明 banyueGoldenParry）不写引擎、只进难度（修前会误写 blockCount 再按普通格挡计一次）。
- * 现存预设里只有 banyue-liuyin-lucia 声明般岳类型（般岳在 slot 0），值 = 模块 interactionDefaults（20 / 5）⇒ 零差。
+ * 现存预设里声明般岳类型的有 banyue-liuyin-lucia / banyue-norma-lucia 两条（般岳在 slot 0），
+ * 值同模块 interactionDefaults（2026-10-11 用户口径下调后 = 12 / 3，原 20 / 5 会把轴挤出预算）。
  */
 export function applyPresetInteractions(
   configStore: ConfigModel,

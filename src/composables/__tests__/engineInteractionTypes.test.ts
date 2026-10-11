@@ -20,14 +20,15 @@ describe('CC-258 引擎交互类型名按角色解析', () => {
     const liuyin = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')!
     applyTeamToStore(config, liuyin)
     const items = liveInteractions(config, liuyin)
-    expect(count(items, 'banyueGoldenParry').map(i => i.count)).toEqual([20])
-    expect(count(items, 'banyueDualCounter').map(i => i.count)).toEqual([5])
+    // 2026-10-11 用户裁决下调预设交互（金身 20→12 / 双反 5→3）：本断言随预设数据同步。
+    expect(count(items, 'banyueGoldenParry').map(i => i.count)).toEqual([12])
+    expect(count(items, 'banyueDualCounter').map(i => i.count)).toEqual([3])
     expect(count(items, 'block').map(i => i.count)).toEqual([0])
-    // 预设未声明般岳类型的队也按引擎实打次数计
+    // 预设未声明般岳类型的队也按引擎实打次数计（取模块 interactionDefaults，现 12/3）
     const trigger = teamPresets.find(p => p.id === 'banyue-trigger-lucia')!
     applyTeamToStore(config, trigger)
     const t = liveInteractions(config, trigger)
-    expect([count(t, 'banyueGoldenParry')[0]?.count, count(t, 'banyueDualCounter')[0]?.count]).toEqual([20, 5])
+    expect([count(t, 'banyueGoldenParry')[0]?.count, count(t, 'banyueDualCounter')[0]?.count]).toEqual([12, 3])
   })
 
   it('非般岳队：不新增专属类型条目（零差）', async () => {
