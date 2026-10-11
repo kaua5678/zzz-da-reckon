@@ -76,25 +76,25 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
     expect(c.diDongRageCount + c.shanYaoNuRageCount).toBe(c.swayExCount)
   })
 
-  it('失衡外连段末尾后摇：默认 = 怒相外连段组数，嘲讽逐次取消、按两类连段占比拆分', () => {
-    // 默认（闪反10/招架6/金身20）：怒相外 9 组全打论道连段 → 后摇 9 次
+  it('失衡外连段末尾后摇：≤0=自动全取消（零成本动作），正数=手动上限、按两类连段占比拆分', () => {
+    // 默认 0（= 自动全取消，用户裁决 2026-10-11）：怒相外 9 组论道连段后摇全部被取消 → 后摇 0。
+    // 旧口径 0 = 不取消（后摇 9）；改口径的理由见 computeBanyueRageCycle 参数注释（T134 实测虚耗 30.503s）。
     const c0 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180)
-    expect(c0.comboOutRecoveryCount).toBe(9)
-    expect(c0.lunDaoRecoveryCount).toBe(9)
-    expect(c0.diDongRecoveryCount).toBe(0)
-    expect(c0.tauntCancelCount).toBe(0)
-    // 嘲讽取消 3 次 → 剩 6 次（全论道连段 → 全算论道）
+    expect(c0.comboOutRecoveryCount).toBe(0)
+    expect(c0.tauntCancelCount).toBe(9)
+    // 显式手动档：取消 3 次 → 剩 6 次（全论道连段 → 全算论道）
     const c3 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180, 0, 3)
     expect(c3.comboOutRecoveryCount).toBe(6)
     expect(c3.lunDaoRecoveryCount).toBe(6)
     expect(c3.diDongRecoveryCount).toBe(0)
     expect(c3.tauntCancelCount).toBe(3)
-    // 嘲讽超过连段总数 → 后摇 0
+    // 手动档超过连段总数 → 封顶于总数、后摇 0
     const c99 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180, 0, 99)
     expect(c99.comboOutRecoveryCount).toBe(0)
     expect(c99.lunDaoRecoveryCount).toBe(0)
     expect(c99.diDongRecoveryCount).toBe(0)
-    // 地动山摇连段 2 组（怒相外 9 = 论道7 + 地动2）：嘲讽 2 次按占比取消 → 剩 7 = 论道 5 + 地动 2
+    expect(c99.tauntCancelCount).toBe(9)
+    // 地动山摇连段 2 组（怒相外 9 = 论道7 + 地动2）：手动取消 2 次按占比取消 → 剩 7 = 论道 5 + 地动 2
     const cd = computeBanyueRageCycle(10, 6, 20, 0, 2, 0, 0, 0, 180, 0, 2)
     expect(cd.comboOutCount).toBe(9)
     expect(cd.comboOutRecoveryCount).toBe(7)
@@ -103,12 +103,36 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
     expect(cd.lunDaoRecoveryCount + cd.diDongRecoveryCount).toBe(7)
   })
 
+  it('嘲讽取消默认档（≤0）= 自动全取消：后摇归零、取消数取满失衡外连段数（T134 用户裁决 2026-10-11）', () => {
+    // 口径：嘲讽取消零成本（不耗闪能/嗔火/喧响、不占前台时间）⇒ 账本按「不取消」计后摇是替玩家算不会选的场景。
+    // 三态：≤0/缺省 = 自动全取消；正数 = 手动上限（封顶于失衡外连段数）。反例见下方「手动档 3 次 → 剩 6」。
+    const auto0 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180)
+    const autoNeg = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180, 0, -1)
+    expect(auto0.tauntCancelCount).toBe(auto0.outStunComboCount)
+    expect(autoNeg.tauntCancelCount).toBe(autoNeg.outStunComboCount)
+    expect(auto0.comboOutRecoveryCount).toBe(0)
+    expect(autoNeg.comboOutRecoveryCount).toBe(0)
+    // 默认档 == 手动取满档（99 封顶后与自动档逐位相同）⇒ 自动档不是新的第三种语义
+    const manual99 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180, 0, 99)
+    expect(auto0.tauntCancelCount).toBe(manual99.tauntCancelCount)
+    expect(auto0.comboOutRecoveryCount).toBe(manual99.comboOutRecoveryCount)
+    // 反空洞：手动档小值必须**仍然留后摇**（证明「自动」不是把参数变成恒零的摆设）
+    const manual3 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180, 0, 3)
+    expect(manual3.comboOutRecoveryCount).toBe(6)
+    expect(manual3.tauntCancelCount).toBe(3)
+    // 取消在嗔火面零杠杆（T134 实测）：三档嗔火逐位相同
+    expect(manual3.furyTotal).toBe(auto0.furyTotal)
+    expect(manual99.furyTotal).toBe(auto0.furyTotal)
+  })
+
   it('轴模式（axisActive）：失衡外后摇 = 闪能连段为主（怒相基本在失衡内打完），轴内耗闪能越多失衡外连段越少', () => {
-    // 非轴模式：怒相内连段视为失衡内全取消，只计怒相外自动连段（9 组 → 后摇 9）
+    // 非轴模式：怒相内连段视为失衡内全取消，只计怒相外自动连段（9 组）。
+    // 默认 0 = 自动全取消 ⇒ 后摇 0、取消数 = 组数（旧口径 0 = 不取消、后摇 9）。
     const c0 = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180, 0, 0, false)
     expect(c0.axisInComboCount).toBe(0)
     expect(c0.outStunComboCount).toBe(9)
-    expect(c0.comboOutRecoveryCount).toBe(9)
+    expect(c0.comboOutRecoveryCount).toBe(0)
+    expect(c0.tauntCancelCount).toBe(9)
     // 轴模式：轴内普通强特耗 200 闪能 → 怒相外自动连段降到 6 组；怒相内 8 组（4 怒相×2）全被
     // 轴内捏块覆盖（banyue-combo×6 + banyue-combo-didong×2 = 8）→ 失衡外 = 6 + 未覆盖 0 = 6 组后摇
     const cA = computeBanyueRageCycle(10, 6, 20, 0, 0, 200, 6, 0, 180, 2, 0, true)
@@ -116,7 +140,7 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
     expect(cA.comboOutCount).toBe(6)
     expect(cA.axisInComboCount).toBe(8)
     expect(cA.outStunComboCount).toBe(6)
-    expect(cA.comboOutRecoveryCount).toBe(6)
+    expect(cA.comboOutRecoveryCount).toBe(0) // 默认自动全取消
     // 轴内耗闪能更多（400）→ 失衡外闪能连段降到 3 组（怒相组数不参与失衡外池）
     const cHigh = computeBanyueRageCycle(10, 6, 20, 0, 0, 400, 6, 0, 180, 2, 0, true)
     expect(cHigh.comboOutCount).toBe(3)
@@ -125,7 +149,7 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
     const cUncov = computeBanyueRageCycle(10, 6, 20, 0, 0, 200, 4, 0, 180, 2, 0, true)
     expect(cUncov.axisInComboCount).toBe(6)
     expect(cUncov.outStunComboCount).toBe(8)
-    expect(cUncov.comboOutRecoveryCount).toBe(8)
+    expect(cUncov.comboOutRecoveryCount).toBe(0) // 默认自动全取消（旧口径为 8）
     // 失衡外 6 组后摇用嘲讽取消 4 次 → 剩 2
     const cT = computeBanyueRageCycle(10, 6, 20, 0, 0, 200, 6, 0, 180, 2, 4, true)
     expect(cT.outStunComboCount).toBe(6)
@@ -397,6 +421,9 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     // 关掉金身/双反（其动作时间也计入必做前台，会把平A压到 0）→ 让后摇时间成为唯一变量
     config.setActionCount(0, 'blockCount', 0)
     config.setActionCount(0, 'dualCounterCount', 0)
+    // 本用例要观察「后摇存在」⇒ 必须**显式**填手动档。默认 0 现在是「自动全取消」（用户裁决 2026-10-11），
+    // 拿默认值跑会得到 0 后摇、无恢复行，前提直接不成立（旧口径 0 = 不取消）。
+    config.setActionCount(0, 'tauntCancelCount', 1)
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
     const rr = calc.resourceResult.value!
@@ -412,7 +439,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     // 后摇计入必做前台时间 → 占用战场时间（平A池变小）
     expect(c0.timeAllocation.necessaryTime).toBeGreaterThan(0)
     const basic0 = c0.timeAllocation.basicAttackTime
-    // 全嘲讽取消后摇 → 无恢复行、后摇 0 → 平A时间回升
+    // 全嘲讽取消后摇（99 = 手动档上限）→ 无恢复行、后摇 0 → 平A时间回升
     config.setActionCount(0, 'tauntCancelCount', 99)
     await new Promise(r => setTimeout(r, 50))
     const c99 = calc.resourceResult.value!.characters[0]
@@ -441,8 +468,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     const outStunFlash = cycle.comboOutCount * 60 // 失衡外闪能 = 自动连段 60/组
     const recoveryRows = (c0.executions ?? []).filter(e => e.moveId?.startsWith('banyue-recovery'))
     const recoveryTime = recoveryRows.reduce((s, e) => s + (e.totalTime ?? 0), 0)
-    const lunDaoT = recoveryRows.find(e => e.moveId === 'banyue-recovery-lundao')?.actionTime ?? 0
-    const diDongT = recoveryRows.find(e => e.moveId === 'banyue-recovery-didong')?.actionTime ?? 0
+    // T134 起默认档（taunt ≤0）= 自动全取消 ⇒ 本用例恢复行恒为空，两单位时长不再参与断言（保留查询语句会 TS6133）
     // 锁窗 2 基线（2026-08-23 重推导，净失衡+充足性约束后口径）：闪能收入 580（净失衡迭代后行情）
     // → 轴内强特支出 160 → 怒相外自动连段 = floor((580−160)/60) = 7 组；总支出 = 160 + 7×60 = 580。
     expect(cycle.rageCount).toBe(4)
@@ -455,10 +481,14 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     expect(cycle.comboOutCount).toBe(7)
     expect(cycle.flashSpent).toBe(580)
     expect(cycle.flashSpent).toBe(inStunFlash + outStunFlash)
-    // 失衡外后摇：每连段组 1 次（含轴内未覆盖怒相组）→ 9 次；时间 = 论道组后摇 × 9（恢复行总时长计入必做前台）
-    expect(cycle.comboOutRecoveryCount).toBe(9)
-    expect(recoveryTime).toBeCloseTo(cycle.lunDaoRecoveryCount * lunDaoT + cycle.diDongRecoveryCount * diDongT, 3)
-    expect(recoveryTime).toBeCloseTo(cycle.lunDaoRecoveryCount * lunDaoT, 3)
+    // 失衡外后摇：每连段组 1 次（含轴内未覆盖怒相组）→ 9 次；**默认档（taunt ≤0）= 自动全取消** ⇒ 后摇 0。
+    // 本用例不再显式填嘲讽取消 ⇒ 取自动档；断言改为钉「自动档确实取消满」而不是「后摇 9 次」。
+    // 要观察「后摇占用战场时间」的路径见上一个用例（它显式填 1 才留下后摇）。
+    expect(cycle.comboOutRecoveryCount).toBe(0)
+    expect(cycle.tauntCancelCount).toBe(9)
+    expect(recoveryRows.length).toBe(0)
+    expect(recoveryTime).toBe(0)
+    // 时间恒等式仍然成立（后摇 0 时两边同为 0，判据不退化：necessaryTime 仍 ≥ 0 且含恢复行口径）
     expect(c0.timeAllocation.necessaryTime).toBeGreaterThanOrEqual(recoveryTime - 1e-6)
   })
 

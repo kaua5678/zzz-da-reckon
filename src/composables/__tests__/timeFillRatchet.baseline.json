@@ -292,7 +292,7 @@
  "auto-1471-1481-1451": {
   "slack": 0,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "stable"
  },
  "auto-1501-1141-1491": {
@@ -467,12 +467,12 @@
   "slack": 0,
   "over": 0,
   "stun": 4,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "banyue-liuyin-lucia": {
   "slack": 0,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "stable"
  },
  "banyue-norma-lucia": {
@@ -497,7 +497,7 @@
   "slack": 0,
   "over": 0,
   "stun": 4,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "billy-jufufu-lucia": {
   "slack": 0,

@@ -748,6 +748,9 @@ export function createRunCalcRound(deps: {
     // 轴模式自动补齐下一轮量（保底）：嗔火缺口 → 双反；喧响缺口 → 弹刀。用 store 原始输入 + 本轮实际资源供给计算，
     // 外不动点收敛时 prevInteractionTopUp 稳定（round 0 无补齐 → 本轮算出的下一轮量即最终缺口）。
     let interactionTopUpNext = prevInteractionTopUp
+    /** 本轮**真正装入**的补齐量（模块返回 null = gate 关 = 装入 0）。交互栏显示读它（CC-296/297），
+     *  读 `interactionTopUpNext` 会在「gate 在末轮翻转」的落点上显示 +9 而实际装入 0（T134 实测）。 */
+    let interactionTopUpApplied: typeof prevInteractionTopUp = prevInteractionTopUp
     if (interactionTopUpSlot >= 0) {
       const storeChar = configStore.team[interactionTopUpSlot]
       const ultNeed = axisUltimateNeed(resolvedAxes, countStun, interactionTopUpSlot) // CC-142：计数通道
@@ -775,7 +778,16 @@ export function createRunCalcRound(deps: {
         perParrySeconds: (base.characters.find(c => c.slot === interactionTopUpSlot)?.defensiveAssistActionTime ?? 0)
           + (base.characters.find(c => c.slot === interactionTopUpSlot)?.assistFollowUpActionTime ?? 0),
       })
+      // ⚠ 这里**不**清零 `interactionTopUpNext`（gate 关时保持上一轮值 = CC-295 迭代稳定性语义；
+      // 下一轮 gate 重开时还要用它）。清零会破坏携带语义并改变数值（T134 实测 parry=12 档 43.74M→38.08M）。
       if (topUpNext) interactionTopUpNext = topUpNext
+      // 本轮**已装量**（交互栏显示读它，CC-296/297）= 模块接受了才装：`topUpNext === null` 就是模块
+      // 本轮的 gate 判词（`banyueAutoTopUpEnabled` 为假），此时 `applyBanyueTeamConfig` 按字面量写 {0,0}
+      // ⇒ 实际装入 0。gate 开时装入的是**本轮读入**的那份（`prevInteractionTopUp`）。
+      // 与 `interactionTopUpNext`（下一轮量、gate 关时携带上一轮值以维持 CC-295 迭代稳定）刻意分开：
+      // 末轮 gate 翻转的落点上两者不等（下一轮量 9 / 实际装入 0），显示读下一轮量就会「显示 +9、实际 0」。
+      // 只用模块自己的 gate 判词，不在此复刻 gate 公式。
+      interactionTopUpApplied = topUpNext ? prevInteractionTopUp : { ...prevInteractionTopUp, parry: 0, dual: 0 }
     }
 
     // 通用保底4喧响：喧响缺口 → 弹刀（所有非般岳队伍）。目标 = 主C（槽0）保底 4 次终结技（4×3000 喧响），
@@ -1211,7 +1223,9 @@ export function createRunCalcRound(deps: {
       },
       inStunAnomalyState: inStunAnomalyStateNext,
       bossAnomalyState: bossAnomalyStateNext,
-      threadsApplied: threads,
+      // `threads` = 本轮**读入**的上一轮线程；`interactionTopUp` 例外：交互栏显示的是「本轮已装量」
+      // （CC-296/297），而 threads 里那份是**上一轮读入**的，末轮 gate 翻转时两者不等 ⇒ 用 applied 覆盖。
+      threadsApplied: { ...threads, interactionTopUp: interactionTopUpApplied },
       axisStack: axisExecutedStack,
       axisActive, // CC-302：forceNoAxis 已含在局部 axisActive 内
       parrySplitGate: { active: parrySplitActive, breakerSlot: effectiveBreakerSlot }, // CC-303
