@@ -181,6 +181,7 @@ import { runLimitedGold, lowGoldFrontier } from '@/composables/limitedGold'
 import { scoreForDamageRatio } from '@/data/deadlyAssaultScore'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import { localized } from '@/utils/format'
+import { withBase } from '@/utils/staticUrl'
 import type { BossPreset, PhaseView, PhaseBuffCard } from '@/types/bossPreset'
 import {
   BANGBOO_GAP_HINT,
@@ -229,8 +230,8 @@ async function ensureModelingLedgers(): Promise<void> {
   modelingLedgersLoaded.value = true
   try {
     const [cin, mec] = await Promise.all([
-      readLedger<CinemaLedgerEntry>('/static/character-constellations.json'),
-      readLedger<MechanicLedgerEntry>('/static/character-mechanics.json'),
+      readLedger<CinemaLedgerEntry>(withBase('/static/character-constellations.json')),
+      readLedger<MechanicLedgerEntry>(withBase('/static/character-mechanics.json')),
     ])
     modelingLedgers.value = { constellations: cin.characters ?? {}, mechanics: mec.characters ?? {} }
   } catch {

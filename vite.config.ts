@@ -26,7 +26,25 @@ function localAssetUrls(dir = resolve(__dirname, 'public/assets'), base = '/asse
   return out.sort()
 }
 
+/**
+ * 部署 base（子路径部署用，2026-10-11）。
+ *
+ * 默认 `'/'` = 部署在域名根路径（本地 dev / 测试 / Cloudflare Pages / EdgeOne 都走这条，
+ * **现有行为逐位不变**）。GitHub Pages 项目站的地址是 `https://<user>.github.io/<repo>/`
+ * ——**子路径**，此时用 `VITE_BASE=/<repo>/ npm run build` 构建，产物内所有资源引用与
+ * `import.meta.env.BASE_URL` 会自动带上前缀。
+ *
+ * 运行时那侧由 `src/utils/staticUrl.ts#withBase` 统一消费（`fetch('/static/...')` 已全部改为
+ * `withBase('/static/...')`），所以这里只需要管住构建期前缀，不必改任何调用点。
+ */
+function deployBase(): string {
+  const raw = process.env.VITE_BASE || '/'
+  const withLeading = raw.startsWith('/') ? raw : `/${raw}`
+  return withLeading.endsWith('/') ? withLeading : `${withLeading}/`
+}
+
 export default defineConfig({
+  base: deployBase(),
   plugins: [vue()],
   define: {
     __LOCAL_ASSET_URLS__: JSON.stringify(localAssetUrls()),

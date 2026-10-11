@@ -43,7 +43,11 @@ describe.each(CASES)('catalog 加载 $file', ({ file, load, cached, nonEmpty }) 
 
   it('源码锁：只由 stores/catalog.ts 请求', () => {
     const root = join(__dirname, '..', '..')
-    const re = new RegExp(`fetch\\(\\s*['"\`]/static/${file.replace('.', '\\.')}`)
+    // 2026-10-11 换尺：fetch 的实参改为 `withBase('/static/...')`（子路径部署，见 utils/staticUrl.ts）。
+    // 旧正则只认 `fetch('/static/...` 裸形态 ⇒ 匹配 0 处、hits=[]，**判据假绿**（不是"没人请求"）。
+    // 这里放行可选的 withBase( 包裹，两种形态都咬得住：既覆盖现状，也仍能抓住
+    // 别处新写的裸 fetch —— 别把可选组删掉，否则判据又会瞎。
+    const re = new RegExp(`fetch\\(\\s*(?:withBase\\()?\\s*['"\`]/static/${file.replace('.', '\\.')}`)
     const hits: string[] = []
     const walk = (d: string) => {
       for (const f of readdirSync(d)) {
@@ -55,5 +59,14 @@ describe.each(CASES)('catalog 加载 $file', ({ file, load, cached, nonEmpty }) 
     }
     walk(root)
     expect(hits).toEqual(['stores/catalog.ts'])
+  })
+
+  it('源码锁自证：换尺后的正则仍咬得住裸 fetch 形态（防判据瞎掉）', () => {
+    // 负控：如果正则被改成只认 withBase 包裹，裸形态就会漏 ⇒ 本用例红。
+    const re = new RegExp(`fetch\\(\\s*(?:withBase\\()?\\s*['"\`]/static/catalog\\.json`)
+    expect(re.test(`const res = await fetch('/static/catalog.json')`)).toBe(true)
+    expect(re.test(`const res = await fetch(withBase('/static/catalog.json'))`)).toBe(true)
+    // 正控：不该咬到别的路径
+    expect(re.test(`const res = await fetch(withBase('/static/other.json'))`)).toBe(false)
   })
 })

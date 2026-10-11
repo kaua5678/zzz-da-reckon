@@ -1,0 +1,67 @@
+name: Deploy to GitHub Pages
+
+# 只在 master 上部署（PR 不部署，避免把未合并的分支内容发出去）；支持手动触发。
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# GitHub Pages 官方部署方式要求的权限（OIDC 令牌 + 写 pages）。
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 本仓库提交频率很高（实测 30 天 2012 次提交）。同一时刻只保留最新一次部署：
+# 新 push 到来时取消排队中的旧运行，避免几十个构建互相排队、且线上始终是旧版本。
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # 子路径部署：GitHub Pages 项目站的地址是 https://<user>.github.io/<repo>/，
+      # 所以产物内所有资源引用都要带 /<repo>/ 前缀（见 vite.config.ts#deployBase 与
+      # src/utils/staticUrl.ts）。**仓库名从上下文取**，不写死——将来改仓库名或 fork
+      # 到别的账号下，这里不需要改一行（写死会在改名后静默 404）。
+      - name: Build
+        run: npm run build
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+
+      # 防呆：产物里必须真的有前缀。若 base 没生效（例如环境变量名写错），
+      # 部署出去就是一个全站 404 的站点，而 CI 依然显示绿色——这里让它直接红。
+      - name: Assert base prefix applied
+        run: |
+          set -euo pipefail
+          prefix="/${{ github.event.repository.name }}/"
+          if ! grep -q "src=\"${prefix}assets/" dist/index.html; then
+            echo "::error::dist/index.html 里没有 ${prefix}assets/ 前缀——VITE_BASE 没生效，部署出去会全站 404"
+            grep -o 'src="[^"]*"' dist/index.html || true
+            exit 1
+          fi
+          echo "✓ base 前缀已生效：${prefix}"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

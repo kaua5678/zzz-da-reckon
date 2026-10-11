@@ -10,6 +10,7 @@ import { getAgentSpecsByAgentId } from '@/specs/registry'
 import { specTeamBuffToTeammateBuff } from '@/specs/teamBuffConvert'
 
 import { localized } from '@/utils/format'
+import { withBase } from '@/utils/staticUrl'
 export type CatalogLoadStatus = 'idle' | 'loading' | 'ready' | 'error'
 
 export const useCatalogStore = defineStore('catalog', () => {
@@ -165,7 +166,7 @@ export const useCatalogStore = defineStore('catalog', () => {
       try {
         // 默认缓存：服务端（vite preview 发 no-cache + ETag）走 304 重验证，避免每次整包重下 1.48MB。
         // 改动后 ETag/mtime 变化自然失效，无需 no-store 强刷。
-        const res = await fetch('/static/catalog.json')
+        const res = await fetch(withBase('/static/catalog.json'))
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json() as Catalog
         catalog.value = data
@@ -196,7 +197,7 @@ export const useCatalogStore = defineStore('catalog', () => {
       try {
         // useResourceCalc 可能先于页面 onMounted 请求 Buff；spec 合并需要目录里的角色元信息。
         await load()
-        const res = await fetch('/static/teammate-buffs.json')
+        const res = await fetch(withBase('/static/teammate-buffs.json'))
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json() as TeammateBuffGroup[]
         teammateBuffGroups.value = mergeSpecTeamBuffs(data) // 合并 spec 人工录入的 teamBuffs（去重，spec 优先）
@@ -227,7 +228,7 @@ export const useCatalogStore = defineStore('catalog', () => {
     buildRecsError.value = null
     buildRecsPromise = Promise.resolve().then(async () => {
       try {
-        const res = await fetch('/static/build-recommendations.json')
+        const res = await fetch(withBase('/static/build-recommendations.json'))
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json() as BuildRecommendations
         buildRecommendations.value = data
@@ -251,7 +252,7 @@ export const useCatalogStore = defineStore('catalog', () => {
     if (bossPresetsPromise) return bossPresetsPromise
     bossPresetsPromise = Promise.resolve().then(async () => {
       try {
-        const res = await fetch('/static/boss-presets.json')
+        const res = await fetch(withBase('/static/boss-presets.json'))
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json() as BossPresetFile
         bossPresetFile.value = data
@@ -269,7 +270,7 @@ export const useCatalogStore = defineStore('catalog', () => {
     if (runArchivePromise) return runArchivePromise
     runArchivePromise = Promise.resolve().then(async () => {
       try {
-        const res = await fetch('/static/run-archive.json')
+        const res = await fetch(withBase('/static/run-archive.json'))
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json() as RunArchiveFile
         runArchiveFile.value = data

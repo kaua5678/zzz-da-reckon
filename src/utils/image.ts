@@ -16,6 +16,7 @@
  * 回答，**零运行时请求、无清单文件、不会漂移**。判据测试：`src/utils/__tests__/image.test.ts`。
  */
 import type { CatalogImages } from '@/types/catalog'
+import { withBase } from '@/utils/staticUrl'
 
 /** 构建期注入的本地图清单（`vite.config.ts#define`）。缺失该常量时按「本地全无」处理（安全降级）。 */
 declare const __LOCAL_ASSET_URLS__: string[] | undefined
@@ -24,7 +25,12 @@ const LOCAL_ASSETS: ReadonlySet<string> = new Set(
   typeof __LOCAL_ASSET_URLS__ === 'undefined' ? [] : __LOCAL_ASSET_URLS__,
 )
 
-/** 本地图是否真的随包发布（决定是否值得发请求） */
+/**
+ * 本地图是否真的随包发布（决定是否值得发请求）。
+ *
+ * ⚠ 入参是 **catalog 里的原始路径**（`/assets/...`），与 `__LOCAL_ASSET_URLS__` 清单同源，
+ * **不带 base 前缀**——前缀只在 `getImageUrl` 返回时拼接（见下）。
+ */
 export function localAssetExists(url?: string | null): boolean {
   return !!url && LOCAL_ASSETS.has(url)
 }
@@ -45,9 +51,10 @@ export function isDirectImageUrl(url: string): boolean {
 export function getImageUrl(images?: CatalogImages): string | null {
   if (!images) return null
   const local = images.icon || images.portrait || ''
-  // ① 本地有文件 → 0 网络，直接用
-  if (localAssetExists(local)) return local
-  // ② 远程直图（wiki CDN 等）
+  // ① 本地有文件 → 0 网络，直接用。**返回时拼部署 base**：清单里存的是 catalog 原始路径
+  //    （`/assets/...`，子路径部署下会 404），withBase 在根路径部署时是恒等变换。
+  if (localAssetExists(local)) return withBase(local)
+  // ② 远程直图（wiki CDN 等）——绝对 URL，withBase 原样放行
   if (images.source && isDirectImageUrl(images.source)) return images.source
   // ③ 两者都不可用 → 不发注定 404 的空请求
   return null
