@@ -61,8 +61,8 @@ export interface BossPresetDefaults {
   energyShield: number
   /** Boss 无敌不可攻击时间（秒，如秽盾/转阶段动画；缺省 0，当前端数据不全时留空） */
   invincibleTime?: number
-  /** 默认弹刀总次数（主C/击破位按「保底4失衡反推 + 剩余给主C」运行时拆分，
-   *  见 src/core/parrySplit.ts 与 useResourceCalc 反推线程；应用时自动勾选「保底4失衡」）。
+  /** 默认弹刀总次数（主C/击破位按「失衡四舍五入反推 + 剩余给主C」运行时拆分，
+   *  见 src/core/parrySplit.ts 与 useResourceCalc 反推线程；应用时自动勾选「失衡次数四舍五入」）。
    *  缺省 = 不反推（沿用角色侧交互默认值）。 */
   parryTotal?: number
   /** 不带支援突击的弹刀总次数（boss 机制强制下限，只有轻弹刀倍率行 + 喧响 215、无支援突击行；

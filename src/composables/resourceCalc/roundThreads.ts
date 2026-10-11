@@ -34,7 +34,7 @@ export interface CalcRoundThreads {
   anomalyDecibelBonus: number[]
   /** 般岳轴模式自动补齐（弹刀/双反） */
   interactionTopUp: InteractionTopUp
-  /** Boss 预设弹刀反推拆分（保底4失衡） */
+  /** Boss 预设弹刀反推拆分（失衡次数四舍五入） */
   parrySplit: ParrySplitResult | null
   /** 后台合轴自动填充（agentId → 自动对数）：由模块 backstageAutoFill 声明驱动，编排层通用反推 */
   backstageAuto: Record<string, number> | null

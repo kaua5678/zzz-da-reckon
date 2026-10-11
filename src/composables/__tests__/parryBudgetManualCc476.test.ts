@@ -1,5 +1,5 @@
 /**
- * §20.5-3 锁：**用户主动调高弹刀 ⇒ 保底4失衡反推链必须启动**（不看有没有 Boss）。
+ * §20.5-3 锁：**用户主动调高弹刀 ⇒ 失衡四舍五入反推链必须启动**（不看有没有 Boss）。
  *
  * ## 锁的是什么（口径）
  *
@@ -68,7 +68,7 @@ import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
 
 const tick = () => new Promise(r => setTimeout(r, 55))
 
-describe('§20.5-3 保底4失衡：用户调高弹刀即启动反推（无 Boss 亦然）', () => {
+describe('§20.5-3 失衡次数四舍五入：用户调高弹刀即启动反推（无 Boss 亦然）', () => {
   it('无 Boss 手填弹刀：0/6 次 = 3 失衡；12/20 次 ⇒ 4 失衡且单调', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
@@ -99,8 +99,8 @@ describe('§20.5-3 保底4失衡：用户调高弹刀即启动反推（无 Boss 
     const r20 = await run(20)
 
     // ★ 反证点：旧实现下这里恒为 3（弹刀不进反推链）
-    expect(r12.stun, '手填 12 次弹刀 ⇒ 应达成保底 4 失衡（旧实现为 3）').toBeGreaterThanOrEqual(4)
-    expect(r20.stun, '手填 20 次弹刀 ⇒ 应达成保底 4 失衡').toBeGreaterThanOrEqual(4)
+    expect(r12.stun, '手填 12 次弹刀 ⇒ 应达成 4 次失衡（旧实现为 3）').toBeGreaterThanOrEqual(4)
+    expect(r20.stun, '手填 20 次弹刀 ⇒ 应达成 4 次失衡').toBeGreaterThanOrEqual(4)
 
     // 未达门槛的档位不受影响（防「一律抬高」的过宽修法）
     expect(r0.stun, '不填弹刀 ⇒ 仍 3 次（不应被抬高）').toBe(3)

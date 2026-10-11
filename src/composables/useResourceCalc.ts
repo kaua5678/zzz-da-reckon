@@ -555,9 +555,9 @@ export function createResourceCalc(
   // （不论有没有人读；r706 探针：多一个只建不读的实例，每次输入就多一遍整条管线）。已删 ⇒ 实例纯惰性，只在被读时求值。
 
 
-  /** Boss 预设弹刀反推（保底4失衡，最终收敛值）：交互栏显示「击破位弹刀 +N / 主C 剩余」用 */
+  /** Boss 预设弹刀反推（失衡次数四舍五入，最终收敛值）：交互栏显示「击破位弹刀 +N / 主C 剩余」用 */
   const parrySplitResult = computed<{ breakerSlot: number; topUp: number; breakerParry: number; mainDpsParry: number; breakerNoFollowUp: number; mainDpsNoFollowUp: number; breakerDecibelOnly: number; parryTotal: number; parryNoFollowUpTotal: number } | null>(() => {
-    // CC-303：门控（弹刀预算 / 保底4失衡勾选 / 有击破位或队伍非空）与击破位槽位（首个 stun 特性，无则 0）都读引擎
+    // CC-303：门控（弹刀预算 / 失衡次数四舍五入勾选 / 有击破位或队伍非空）与击破位槽位（首个 stun 特性，无则 0）都读引擎
     // `parrySplitGate`，不再在此复制 convergence 的规则。原「懒守卫」省不了计算：同页 decibelGuaranteeResult 无条件读 calcOutput。
     const gate = calcOutput.value?.parrySplitGate
     if (!gate?.active) return null
@@ -568,7 +568,7 @@ export function createResourceCalc(
     return { breakerSlot: gate.breakerSlot, topUp: split.topUp, breakerParry: split.breakerParry, mainDpsParry: split.mainDpsParry, breakerNoFollowUp: split.breakerNoFollowUp, mainDpsNoFollowUp: split.mainDpsNoFollowUp, breakerDecibelOnly: parryDecibelOnlyTotal, parryTotal, parryNoFollowUpTotal }
   })
 
-  /** 保底4失衡未达成诊断（CC-156）：未勾选 / 无池结果 / 已达成 → null；判定见 core/parrySplit.ts#guaranteeStunShortfall */
+  /** 失衡次数四舍五入未达成诊断（CC-156）：未勾选 / 无池结果 / 已达成 → null；判定见 core/parrySplit.ts#guaranteeStunShortfall */
   const guaranteeStunShortfallResult = computed<(GuaranteeStunShortfall & { parryTotal: number }) | null>(() => {
     if (configStore.getMechanicSetting('guarantee.stun', 0) === 0) return null
     const sp = stunPoolResult.value

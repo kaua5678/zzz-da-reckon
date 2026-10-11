@@ -265,9 +265,9 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
      （iterate 必要时间预留 + 折叠/探针行测量同口径），并修 `computeNormaHatToChainCount`
      长按项漏乘 exCount（迭代期喧响信道与最终行差 1 条赠链）。
 18. **Boss 预设弹刀反推（2026-08）+ 控制技（紫光技）组 × 反制支援（弹刀拆分/折算单一事实源条目）**
-    - **机制（弹刀反推）**：`boss-presets.json` 的 `defaults.parryTotal` / `parryNoFollowUpTotal` +「保底4失衡」勾选
+    - **机制（弹刀反推）**：`boss-presets.json` 的 `defaults.parryTotal` / `parryNoFollowUpTotal` +「失衡次数四舍五入」勾选
       ⇒ `useResourceCalc` 外层不动点线程（`prevParrySplit`，般岳 `prevBanyueTopUp` 同款收敛）按当前队伍反推：
-      击破位（首个 `specialty==='stun'` 槽位）正常弹刀 = 保底 4 次失衡所需；主C（槽位 0）= `parryTotal − 击破位`
+      击破位（首个 `specialty==='stun'` 槽位）正常弹刀 = 达到四舍五入后的失衡次数目标所需；主C（槽位 0）= `parryTotal − 击破位`
       （已手填不覆盖）；**不带支援突击弹刀**（只有轻弹刀倍率行 + 喧响 215、无支援突击行）按**对半分**
       （2026-09-10 更正，见「弹刀口径三件事」）、非用户可调；执行行：轻弹刀 count = parry + 无突击、支援突击
       count = parry。

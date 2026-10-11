@@ -932,7 +932,7 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
   - 回退点：`git revert 08b4d40d`（`.zc/perf` 不入库，回退后需在 perf 脚本中补回 `clearWarmStartCache`，否则只丢缓存隔离，不影响结果）。
   - 影响面：引擎入口签名少一个可选字段；没有生产写入方（只有测试写入）。加速收益本来就是 0（CC-146 起热启动不省任何轮数）。
 
-### 24.12 CC-156：「保底4失衡」未达成改为如实提示（第 190 轮，代码提交 e542a005）
+### 24.12 CC-156：「失衡次数四舍五入」未达成改为如实提示（第 190 轮，代码提交 e542a005）
 - **复测原病例**：归档 72db6dc3（1371+1481+1451），缺省 physical 口径下现在池 = 4（有效失衡 66829 ≥ 4×16647），伤害 66.6% 击杀线。§18.3 记录的「N*=3.84、池 3」已被 CC-158…CC-147 的修复消除，原病例不再复现。
 - **一般问题仍在**：把 Boss 弹刀预算压到 6 次，6 次全部反推给击破位（topUp 封顶）后池只有 3 次，页面没有任何提示，属于静默降级。`ParrySplitResult.reached` 本意是做这个诊断，但全仓零读取，而且比的是单轮池计数。
 - **决定：上报，采用最小实现，不改任何数值**。
@@ -944,7 +944,7 @@ CC-149 继续阻塞于 CC-159。补丁 `k179/cc149-attempt.diff` 仍能对 HEAD 
     - 删除零读取的 `reached`；
     - 新增纯函数 `guaranteeStunShortfall(stunCount, split)`，按**最终**池计数判定，原因分三种：`parry-exhausted`（预算用满）/ `no-parry-budget`（拆分未激活）/ `other`。
   - `useResourceCalc`：暴露 `guaranteeStunShortfallResult`（未勾选、无池结果或已达成时为 null）。展示层不能直接 import `@/core`，这是 CG 展示层越层棘轮的要求，所以判定放在编排层。
-  - `TeamConfigPage.vue`：在「保底4失衡」旁显示「（未达成：失衡池 N 次，Boss 弹刀 X 次已全部反推给击破位仍不够）」。
+  - `TeamConfigPage.vue`：在「失衡次数四舍五入」旁显示「（未达成：失衡池 N 次，Boss 弹刀 X 次已全部反推给击破位仍不够）」。
 - **测试**：
   - `parrySplit.test.ts` 新增 4 条（三种原因 + 达成）；
   - `archiveDeployStun.test.ts` 去掉第 177 轮的 off 钉，回到缺省 physical 口径，另加「parryTotal=6 ⇒ parry-exhausted、池 3」一段。
@@ -4728,7 +4728,7 @@ r6 清单全部结项，交接没有排定的下一步。本轮查了 7 个区�
 - **根因**：
   1. **分析器现场快照泄漏（`src/composables/configSnapshot.ts`）**：
      - `snapshotStore` / `restoreStore` 原先对 `configStore.appliedBoss` 仅做浅引用赋值；而 `src/stores/config.ts` 的 `watch([counterAssistSlot, ...], syncBossInteractionPlan, { flush: 'sync' })` 会在分析器换队（改变队内是否有反制支援角色）时同步就地改写 `appliedBoss.parryTotal` 与 `parryNoFollowUpTotal`，导致快照里的 `snap.appliedBoss` 被原地污染、`restoreStore` 后弹刀总数错位。
-     - 所有调用 `configStore.applyBossPreset` 的分析器（散点对比、位置对比、自由对比、时间线、菲林模拟、抽卡规划、单人递增）在遇到带弹刀或控制技组的 Boss 时都会自动写入 `mechanicSettings['guarantee.stun'] = 1`（`config.ts:1186`），此前 `StoreSnapshot` 未纳入 `mechanicSettings` 导致分析器跑完后「保底 4 失衡」永久泄漏到用户现场；同时 `difficultyCurve.ts` 与 `TeamComparePage.vue` 还在快照外手写了一份重复的 `extra = { strategy, mechanics }` 旁路备份。
+     - 所有调用 `configStore.applyBossPreset` 的分析器（散点对比、位置对比、自由对比、时间线、菲林模拟、抽卡规划、单人递增）在遇到带弹刀或控制技组的 Boss 时都会自动写入 `mechanicSettings['guarantee.stun'] = 1`（`config.ts:1186`），此前 `StoreSnapshot` 未纳入 `mechanicSettings` 导致分析器跑完后「失衡次数四舍五入」的开启状态永久泄漏到用户现场；同时 `difficultyCurve.ts` 与 `TeamComparePage.vue` 还在快照外手写了一份重复的 `extra = { strategy, mechanics }` 旁路备份。
   2. **空槽清空音擎与限定金统计（`src/stores/config.ts#setAgent` & `src/composables/teamCompare.ts#teamGoldOf`）**：
      - `setAgent(slot, '')` 清空角色时 `if (agent)` 为假，未清空 `char.wEngineId`，导致旧角色的专武残留在空槽上；且 `teamGoldOf` 未像下方的 `buildGoldStepsFromConfig` 那样跳过 `!agentId` 的空槽，误将空槽残留限定音擎计入总限定金。
   3. **时间线配装顺序、收敛守卫与菲林模拟重复求值（`src/composables/teamTimelineStore.ts` / `teamTimeline.ts` / `teamTimelineFilm.ts`）**：

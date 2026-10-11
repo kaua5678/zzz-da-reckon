@@ -1,7 +1,7 @@
 /**
  * 实战归档部署回归：低金仪玄/琉音/卢西娅（72db6dc3，Boss 恶名·庞培 30021）。
  *
- * 2026-09-07 修复前：30021 defaults 无 parryTotal → applyBossPreset 不自动勾选「保底4失衡」
+ * 2026-09-07 修复前：30021 defaults 无 parryTotal → applyBossPreset 不自动勾选「失衡次数四舍五入」
  * → 弹刀反推熄火 → 失衡只有 3 次、伤害仅为击杀线 13.1%（用户实测问题：4 次失衡打不完整）。
  * 修复：30021 defaults 补 parryTotal 8（据归档实战弹刀 8）+ 反推链照常 → 弹刀 8 全给主C、
  * 失衡 ≥4、伤害回升（>35% 击杀线）。钉住这条链不再断。
@@ -34,7 +34,7 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
     expect(deploy.supported).toBe(true)
     applyDeployConfig(configStore, deploy, bossFile.bosses)
 
-    // 30021 defaults 补录 parryTotal 8 + 自动勾选「保底4失衡」
+    // 30021 defaults 补录 parryTotal 8 + 自动勾选「失衡次数四舍五入」
     expect(configStore.bossParryTotals.parryTotal).toBe(8)
     expect(configStore.getMechanicSetting('guarantee.stun', 0)).toBe(1)
 

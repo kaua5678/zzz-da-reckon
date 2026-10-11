@@ -1,6 +1,6 @@
 /**
  * Boss 预设弹刀反推集成测试（真实数据）：
- * 应用叶释渊预设（无敌 24s / 秽盾 1 / 默认弹刀总数 13）→ 自动勾选「保底4失衡」→
+ * 应用叶释渊预设（无敌 24s / 秽盾 1 / 默认弹刀总数 13）→ 自动勾选「失衡次数四舍五入」→
  * 计算器按当前队伍反推击破位弹刀、主C 拿剩余 → 失衡池达保底 4 次（注入自洽）。
  */
 import { describe, expect, it } from 'vitest'
@@ -41,7 +41,7 @@ const STANDARD_TEAM = [
 ] as never
 
 describe('Boss 预设弹刀反推（叶释渊）', () => {
-  it('预设字段落库：无敌 24s / 秽盾 1 / 弹刀总数 13，自动勾选「保底4失衡」', async () => {
+  it('预设字段落库：无敌 24s / 秽盾 1 / 弹刀总数 13，自动勾选「失衡次数四舍五入」', async () => {
     const { config } = await setupHarness([...STANDARD_TEAM])
     const { preset, phase, monster, defaults } = yeshiyuanPreset()
     expect(defaults.invincibleTime).toBe(24)
@@ -106,7 +106,7 @@ describe('Boss 预设弹刀反推（叶释渊）', () => {
     expect(calc.stunPoolResult.value!.stunCount).toBeLessThan(4)
   })
 
-  it('未勾选「保底4失衡」→ 不反推（拆分不生效）', async () => {
+  it('未勾选「失衡次数四舍五入」→ 不反推（拆分不生效）', async () => {
     const { config } = await setupHarness([...STANDARD_TEAM])
     const { preset, phase, monster, defaults } = yeshiyuanPreset()
     config.applyBossPreset({ id: preset.id }, phase as never, monster as never, defaults as never)

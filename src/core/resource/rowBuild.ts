@@ -515,7 +515,7 @@ export function buildExecutions(
   // 反制支援（Counter Assist）：boss 控制技（紫光技）**整组化解**——一组 = 一次动作
   // （本体 + 紧随的专属支援突击，两行由 data/moveFusions.ts#CLARET_COUNTER_ASSIST 融合）。
   // 刻意不并进 parryCount：不产轻弹刀/支援突击行、不拿弹刀 215 特殊动作奖励、不参与
-  // 「保底4失衡」的每次弹刀失衡反推（用户口径 2026-09-12「完全不拿 215，只算行内喧响」）。
+  // 「失衡次数四舍五入」的每次弹刀失衡反推（用户口径 2026-09-12「完全不拿 215，只算行内喧响」）。
   const counterAssistCount = Math.max(0, Math.floor(cfg.counterAssistCount))
   const counterAssistActionTime = cfg.counterAssistActionTime
   if (counterAssistCount > 0 && cfg.counterAssistMoveId && counterAssistActionTime > 0) {

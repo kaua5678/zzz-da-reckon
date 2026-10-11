@@ -360,7 +360,7 @@ describe('仪玄 spec 机制（1371）', () => {
     await catalog.load()
     await catalog.loadTeammateBuffs()
     const config = useConfigStore()
-    config.setMechanicSetting('guarantee.stun', 1) // 保底4失衡开启 → 自动填充反推
+    config.setMechanicSetting('guarantee.stun', 1) // 失衡次数四舍五入开启 → 自动填充反推
     // 手动 = 0 → 自动接管（反推缺口 = 4×bossStunValue − 非合轴失衡，供给上限钳制）
     config.team[0] = teamChar(0, '1371')
     config.team[1] = teamChar(1, '1251')

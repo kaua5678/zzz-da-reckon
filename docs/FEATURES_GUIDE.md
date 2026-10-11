@@ -15,7 +15,7 @@
 3. 应用 Boss 时（唯一入口 `composables/bossRoom.ts#applyBossRoom`，CC-342；所有分析器与抽卡规划 / 角色兑现曲线逐房同样走它；数据 = `boss-presets.json` 预设 phase 的 `layerBuffs`）除填充敌人配置外，**自动把该 Boss 当期关卡固有 buff（layer_buff 数值效果）写入全局 Buff 表**（id 前缀 `layer-buff:`，切 Boss 时先清旧）；效果上的特性限定 / 人数分档（`cond`）随行写入，计算时按**当前队伍**判定、换人自动换档（`src/utils/phaseBuff.ts`，CC-341）
 3. 一键填充字段：血量 / 失衡值 / 防御 / 等级 / 危局异常系数（`bossAnomalyCoeff`）/ 失衡易伤（`stunVuln`）/ 失衡时间（`stunTime`）/ 三张抗性表 / 战斗时间 180s / 秽盾触发次数 / 能量盾次数 / 无敌时间（预设声明时，如 叶释渊 24s）/ 失衡赠礼（`bossStunGift`，预设 `stunGiftRatio` × 失衡上限，如 亵渎者 30%）。
    **不动的字段**：快支次数（角色侧）。
-3.1. **Boss 预设弹刀反推**（声明了 `parryTotal` / `parryNoFollowUpTotal` / `parryDecibelOnlyTotal` 的 Boss）：应用时自动勾选「保底4失衡」，计算器按当前队伍反推——击破位（首个 stun 特性槽位）**正常弹刀** = 保底 4 次失衡所需（封顶 `parryTotal`），主C = `parryTotal − 击破位`（主C 已手填则不覆盖）；**不带支援突击的弹刀**（`parryNoFollowUpTotal`，只有轻弹刀倍率行 + 喧响 215、无支援突击行）按**对半分**（击破/主C 各一半、奇数时击破位多 1；2026-09-10 口径，早期「全部归击破位」已废）；**只给喧响的弹刀**（`parryDecibelOnlyTotal`，轻弹刀打小怪无 daze 无支援突击）归击破位，两者均非用户可调；**喧响赠礼**（`decibelGift`）叠加到指定槽位进场喧响。交互栏显示「→ N（含无突击 M / 只喧响 K / 保底反推 +K）」提示，取消勾选即回到手动输入。实现：`src/core/parrySplit.ts` 纯函数 + `useResourceCalc` 外层不动点线程（般岳轴自动补齐同款收敛）。
+3.1. **Boss 预设弹刀反推**（声明了 `parryTotal` / `parryNoFollowUpTotal` / `parryDecibelOnlyTotal` 的 Boss）：应用时自动勾选「失衡次数四舍五入」，计算器按当前队伍反推——击破位（首个 stun 特性槽位）**正常弹刀** = 达到四舍五入后的失衡次数目标所需（封顶 `parryTotal`），主C = `parryTotal − 击破位`（主C 已手填则不覆盖）；**不带支援突击的弹刀**（`parryNoFollowUpTotal`，只有轻弹刀倍率行 + 喧响 215、无支援突击行）按**对半分**（击破/主C 各一半、奇数时击破位多 1；2026-09-10 口径，早期「全部归击破位」已废）；**只给喧响的弹刀**（`parryDecibelOnlyTotal`，轻弹刀打小怪无 daze 无支援突击）归击破位，两者均非用户可调；**喧响赠礼**（`decibelGift`）叠加到指定槽位进场喧响。交互栏显示「→ N（含无突击 M / 只喧响 K / 保底反推 +K）」提示，取消勾选即回到手动输入。实现：`src/core/parrySplit.ts` 纯函数 + `useResourceCalc` 外层不动点线程（般岳轴自动补齐同款收敛）。
 3.2. **控制技（紫光技）× 反制支援整组替换**（声明了 `counterAssistGroups` 的 Boss，逐组记该组招架段数）：队内有**反制支援**招式的角色（现全库唯一 = 克拉蕾(1611)）时，Boss 卡「反制支援整组替换」默认勾选 → 一组控制技 = 她**一次反制支援**（本体 + 其专属支援突击合成一次动作），**不产弹刀行、不拿弹刀 215 喧响、不参与每次弹刀失衡反推**；取消勾选（或队内无人）→ 整组按「每组 1 次正常弹刀 + 段数−1 次无突击弹刀」并入 3.1 的强制弹刀总数。承接槽位缺省自动（队内第一个有该招式的角色），可在 Boss 卡改为指定槽位。交互栏在「弹刀次数」标签上标「（控制技 N 组已转反制支援）」。两条附带口径（用户 2026-09-12）：**角力 = 一次弹刀同等难度**（`INTERACTION_WEIGHTS.counterAssist = 1.0`，难度明细以「反制支援（角力）N×1」露出，并按承接槽位的截断存活率缩）；**每组直接送 1 层残痕**（琢形原文「重击命中直接添加1层」→ 进克拉蕾残痕/毁伤账本，不吃积蓄效率倍率）。实现：折算 `src/stores/config.ts#bossParryTotals`（computed getter，不改编排层）、产行 `src/core/resource/helpers#buildExecutions`、招式配对表 `src/data/counterAssists.ts`；口径见 `ENGINE_PIPELINE_GUIDE.md` §4 坑 18 末段。**当前无 Boss 录该字段**（通道已建，数据待逐 Boss 手录）。
 4. 底部「全部 Boss」折叠：23 个 Boss 按「危局异构（困难）」「危局常规（普通）」两组分组，点 chip 跳转到该 Boss 最新危局期。
 5. 已应用 Boss 卡片高亮；「清除已选」撤销高亮（不影响已填数值）。
@@ -338,7 +338,7 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 ### 7.4 口径
 
 - 配装 = 计算器默认理想（推荐驱动盘 + 最优副词条 + 技能全满，作为理论**上界**）；不从视频提取真实配装。
-- 交互基准 = 不预设弹刀——弹刀由「保底4失衡（Boss 预设反推）+ 保底4喧响（喧响缺口÷215）」运行时反推；闪反按职业基准（roleInteractionBaseline：支援/防护 0 交互，其余 10）、快支固定 3 作为喧响基础供给；连携基准 1（轴模式由轴内连携块反推覆盖）。
+- 交互基准 = 不预设弹刀——弹刀由「失衡次数四舍五入（Boss 预设反推）+ 保底4喧响（喧响缺口÷215）」运行时反推；闪反按职业基准（roleInteractionBaseline：支援/防护 0 交互，其余 10）、快支固定 3 作为喧响基础供给；连携基准 1（轴模式由轴内连携块反推覆盖）。
 - Boss = 期相位血量（**危局总血量 = nanoka 单管血量 `mo.stats.hp` × 管数：普通 8.74 / 困难 15.8**；`mo.stats.hp` 已含 4 号血量成长曲线 70 级 × 版本系数）+ 关卡固有 layer_buff 自动应用；当期可选牌（3 选 1）**不自动应用**（归档未记录玩家选择）。
 - 仅危局强袭（Deadly Assault*，含 Adversity），防卫战/歼灭排除。
 - 比对口径：伤害/血量%（击杀线 100%）+ **伤害分**（`data/deadlyAssaultScore.ts` 分段线性，普通/困难两套曲线，按 run.mode 自动选；操作分已剔除）vs 实战 score/bossKilled/time；归档 65000 = 60000 伤害分 + 5000 操作分，击杀即伤害分 60000。差异 = 配装差 + 建模误差，靠理想配装上界夹逼隔离。

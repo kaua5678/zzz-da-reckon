@@ -174,7 +174,7 @@
 · **新契约 `AgentTeamConfigInput.interactions`**（`AgentInteractionContext`：`bySlot` 按槽位键控的
   `{ agentId, parryCount, blockCount, dodgeCounterCount, dualCounterCount, quickAssistCount }` 快照）。
   存在的理由（本轮实测）：契约里 `characters` 那份 cfg 的交互次数**已被改过两道**——
-  ① `interactionScale`（非轴降配）`Math.round(x × scale)`；② `parrySplit`（保底4失衡反推）**改写**
+  ① `interactionScale`（非轴降配）`Math.round(x × scale)`；② `parrySplit`（失衡四舍五入反推）**改写**
   击破位/主C 的 `parryCount`。而两个原实现读的都是 **`configStore.team` 原值**：
   · 仪玄 `yixuanExtremeAssistCap`（Σ队友弹刀）——round 13 受控两臂实验已证：用合并值 ⇒ `yixuanSmoke`
     **9 failed**；按 store 口径递入 ⇒ **13 passed**；

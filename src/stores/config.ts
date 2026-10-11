@@ -1163,7 +1163,7 @@ export function createConfigModel(
    * + 默认值（战斗时间 180s/秽盾/能量盾/无敌时间）。
    * 无敌时间：preset.defaults.invincibleTime 有值即填（如 叶释渊 24s），缺省 0；
    * 快支不动：快支是角色侧与 Boss 无关。
-   * 弹刀反推：defaults.parryTotal > 0（如 叶释渊 13）时自动勾选「保底4失衡」
+   * 弹刀反推：defaults.parryTotal > 0（如 叶释渊 13）时自动勾选「失衡次数四舍五入」
    * （guarantee.stun）——计算器据此按当前队伍反推击破位弹刀、主C 拿剩余（core/parrySplit.ts）。
    */
   function applyBossPreset(preset: { id: string }, phase: {
@@ -1199,7 +1199,7 @@ export function createConfigModel(
       bossStunGift: Math.round((defaults.stunGiftRatio ?? 0) * phase.stunValue),
       weakness: [...(phase.weakness ?? [])],
     })
-    // 声明了默认弹刀总数（正常/不带支援突击/只喧响）**或控制技组**的 Boss → 自动勾选「保底4失衡」
+    // 声明了默认弹刀总数（正常/不带支援突击/只喧响）**或控制技组**的 Boss → 自动勾选「失衡次数四舍五入」
     // （弹刀反推的开关；用户可手动取消）。控制技组无替换时会并入弹刀总数，故也算弹刀来源；
     // 整组被反制支援化解时折算后总数可能归零 → parrySplitActive 自然为假，勾选无害。
     const groups = defaults.counterAssistGroups ?? []

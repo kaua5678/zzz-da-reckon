@@ -1,9 +1,9 @@
 /**
  * Boss 预设弹刀拆分（用户口径 2026-08）：
- * 击破位弹刀 = 按「保底4失衡」反推（在击破位当前输入之上补足缺口），主C = 正常弹刀总数 − 击破位正常弹刀。
+ * 击破位弹刀 = 按「失衡次数四舍五入」反推（在击破位当前输入之上补足缺口），主C = 正常弹刀总数 − 击破位正常弹刀。
  *
  * 两类弹刀：
- * - 正常弹刀（parryTotal）：轻弹刀 + 支援突击 + 喧响 215，按保底4失衡反推拆分击破/主C；
+ * - 正常弹刀（parryTotal）：轻弹刀 + 支援突击 + 喧响 215，按失衡四舍五入反推拆分击破/主C；
  * - 不带支援突击的弹刀（parryNoFollowUpTotal）：只有轻弹刀倍率行 + 喧响 215、无支援突击行，
  *   boss 机制强制、非用户可调 → **对半分**（用户口径 2026-09-10：「不带支援突击的弹刀**必须对半分**，
  *   「强制归击破位」是错的——那是把「补失衡」误解成「只有击破弹刀」；删掉」，奇数时击破位多 1）。
@@ -20,14 +20,41 @@
  * 数据源：boss-presets.json defaults.parryTotal / parryNoFollowUpTotal（叶释渊 13 / 司祭 15 等）。
  */
 
-/** 「保底4失衡」的目标失衡次数（单一事实源：收敛层反推与页面未达成提示同引） */
+/**
+ * 失衡次数「四舍五入」的目标次数（单一事实源：收敛层反推与页面未达成提示同引）。
+ *
+ * ⚠ 名字沿革：原叫「保底4失衡」。用户裁决 2026-10-11 改名——**保底**是「一定要凑到 4」，
+ * 而实测凑不动：算法的必要资源已经打满，剩下的交互占比很小，硬向上取就会超时（般岳厚轴反复
+ * 因此弃轴）。改成**四舍五入**后口径 = 对**补的弹刀次数**取整（见 `roundedParryCount`），
+ * 「尽力而为」不变，只削掉余量 < 半刀的那一次。
+ */
 export const GUARANTEE_STUN_TARGET = 4
 
+/**
+ * 补的弹刀次数取整：**四舍五入**（用户裁决 2026-10-11），取代原来的「总是向上取（ceil）」。
+ *
+ * > 「保底你也说了，很严格，总是出问题超时。我们的算法已经把必要资源都打出去了，
+ * >  剩下的交互其实占比较小，硬是要**向上取**就很难，**四舍五入**是合适的。」
+ *
+ * 口径 = 对**交互次数**取整，不是对缺口设门槛：
+ * - 旧（ceil）：缺口 0.1 刀也补 1 刀 ⇒ 为最后一次失衡硬塞一整刀，撑爆时间预算（般岳厚轴反复弃轴）；
+ * - 新（round）：只削掉**余量 < 半刀**的那一次；缺口 9.9 刀仍补 10 刀（**尽力而为不变**）。
+ *
+ * ⚠ 为什么不是「缺口 > 半格 ⇒ 补 0」（本函数初版写法，已被 3 条集成测试否决）：
+ * 那会让「离目标还有 9.9 刀」的队**一刀都不补**，与「尽力而为」相悖。
+ * 四舍五入的正确落点是**取整那一步**，不是「补不补」那个开关。
+ */
+export function roundedParryCount(remainingGap: number, perParryDaze: number): number {
+  if (!(perParryDaze > 0)) return 0
+  return Math.round(Math.max(0, remainingGap) / perParryDaze)
+}
+
 export interface ParrySplitInput {
-  /** 保底失衡次数（UI「保底4失衡」= 4） */
+  /** 目标失衡次数（UI「失衡次数四舍五入」= 4） */
   targetStunCount: number
   /** 当前轮失衡池收敛出的失衡次数（原始池计数，未做时间可行性截断） */
   stunCount: number
+
   /** 非弹刀失衡基数 = 失衡池 totalStunBuildUp − 击破位弹刀行贡献（消费端已剔除） */
   nonParryStun: number
   /** Boss 失衡条（一次失衡所需失衡值） */
@@ -85,7 +112,8 @@ export function computeParrySplit(input: ParrySplitInput): ParrySplitResult {
   const noFollowUpBreakerHalf = noFollowUpTotal - Math.floor(noFollowUpTotal / 2)
   const noFollowUpDazeTotal = noFollowUpBreakerHalf * noFollowDaze
   const remainingGap = Math.max(0, neededStun - Math.max(0, input.nonParryStun) - noFollowUpDazeTotal)
-  const neededParries = daze > 0 ? Math.ceil(remainingGap / daze) : 0
+  // 四舍五入（用户裁决 2026-10-11）：只削掉余量 < 半刀的那一次，缺口大时仍尽力补（见 roundedParryCount）。
+  const neededParries = roundedParryCount(remainingGap, daze)
 
   // 封顶：击破位正常弹刀不超 parryTotal，超出部分不再补（缺口可能补不满）
   const cappedParries = Math.max(0, Math.min(neededParries, parryTotal))
@@ -110,7 +138,7 @@ export function computeParrySplit(input: ParrySplitInput): ParrySplitResult {
 }
 
 /**
- * 「保底4失衡」未达成诊断（CC-156，2026-09-28）：勾选保底后，弹刀反推在预算内补不满目标次数时，
+ * 「失衡次数四舍五入」未达成诊断（CC-156，2026-09-28）：勾选后，弹刀反推在预算内补不满目标次数时，
  * 引擎按实际池计数继续算（不硬凑）——此前这一降级**静默**发生（`ParrySplitResult.reached` 算了却零读取，
  * 且比的是单轮池计数）。本函数按**最终**失衡池计数判定，返回 null = 已达成；否则给出原因供页面如实显示。
  * - `parry-exhausted`：Boss 正常弹刀已全部反推给击破位仍不够（预算用满）；

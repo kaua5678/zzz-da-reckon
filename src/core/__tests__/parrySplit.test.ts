@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeParrySplit, guaranteeStunShortfall } from '@/core/parrySplit'
 
-/** 叶释渊 口径：保底4失衡、弹刀总数 13；nonParryStun = 非弹刀失衡基数（已剔除击破位弹刀行贡献） */
+/** 叶释渊 口径：失衡次数四舍五入、弹刀总数 13；nonParryStun = 非弹刀失衡基数（已剔除击破位弹刀行贡献） */
 function base(overrides: Partial<Parameters<typeof computeParrySplit>[0]> = {}) {
   return computeParrySplit({
     targetStunCount: 4,
@@ -70,11 +70,28 @@ describe('computeParrySplit（Boss 弹刀反推拆分）', () => {
     expect(r.mainDpsParry).toBe(13)
   })
 
-  it('缺口巨大 → 击破位封顶 parryTotal，主C 归 0', () => {
+  it('缺口巨大 → 尽力而为照旧封顶 parryTotal（四舍五入不改变「尽量补」）', () => {
+    // 本用例原名「缺口巨大 → 击破位封顶 parryTotal，主C 归 0」。用户裁决 2026-10-11 改四舍五入后，
+    // **这条断言逐位不变**——这正是「四舍五入」与「放弃硬凑」的差别所在：
+    // 四舍五入作用在**取整那一步**（只削掉余量 < 半刀的那一次），缺口再大也照样尽力补满。
+    // ⚠ 初版实现曾把判据写成「缺口 > 半格 ⇒ 补 0」，本用例当即变红（expected 13 to be 0）——
+    // 那会让「离目标还有 9.9 刀」的队一刀都不补，与尽力而为相悖，已否决（见 roundedParryCount 头注释）。
     const r = base({ nonParryStun: 10000, perParryDaze: 200 })
-    expect(r.topUp).toBe(13)
+    expect(r.topUp, '缺口巨大 ⇒ 仍尽力补满（封顶 parryTotal）').toBe(13)
     expect(r.breakerParry).toBe(13)
     expect(r.mainDpsParry).toBe(0)
+  })
+
+  it('四舍五入的判别力：余量 < 半刀 ⇒ 少补一次；≥ 半刀 ⇒ 补满', () => {
+    // 口径 = 对补的次数取整：round(缺口 / 每刀失衡)，与喧响侧的「半格」同构。
+    // 夹具：缺口 = 2.4 刀 ⇒ ceil 3 / round 2（少补 1 次）；缺口 = 2.5 刀 ⇒ round 3（补齐，边界进一）。
+    // 旧 ceil 与 round 的差仅 1 次——这正是「硬向上取很难」的那一次，不再硬塞。
+    const below = base({ nonParryStun: 56000 - 2400, perParryDaze: 1000 })
+    expect(below.topUp, '缺口 2.4 刀 ⇒ round 2（ceil 会给 3）').toBe(2)
+    const atHalf = base({ nonParryStun: 56000 - 2500, perParryDaze: 1000 })
+    expect(atHalf.topUp, '缺口恰 2.5 刀 ⇒ round 3（半刀进一）').toBe(3)
+    const whole = base({ nonParryStun: 56000 - 3000, perParryDaze: 1000 })
+    expect(whole.topUp, '缺口整 3 刀 ⇒ 3（无取整损失）').toBe(3)
   })
 
   it('parryTotal = 0（未声明正常弹刀）→ 正常拆分全 0', () => {
@@ -112,7 +129,7 @@ describe('computeParrySplit（Boss 弹刀反推拆分）', () => {
   })
 })
 
-describe('guaranteeStunShortfall（保底4失衡未达成诊断，CC-156）', () => {
+describe('guaranteeStunShortfall（失衡次数四舍五入未达成诊断，CC-156）', () => {
   it('达成 → null', () => {
     expect(guaranteeStunShortfall(4, { breakerParry: 8, parryTotal: 8 })).toBeNull()
     expect(guaranteeStunShortfall(5, null)).toBeNull()

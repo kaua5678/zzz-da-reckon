@@ -472,7 +472,7 @@ export interface AgentInteractionSnapshot {
  * 存在的理由（2026-09-16 round 14 实测，别重新论证）：契约里 `characters` 那份 cfg 的交互次数
  * **已经被改过两道**——`convergence.ts` 的 `characters.map` 里
  *   ① `interactionScale`（非轴降配）：`Math.round(x × scale)`，实测 scale=0.125 时 store 10 → cfg 0；
- *   ② `parrySplit`（保底4失衡反推）：**改写**击破位/主C 的 `parryCount`（实测带叶释渊
+ *   ② `parrySplit`（失衡四舍五入反推）：**改写**击破位/主C 的 `parryCount`（实测带叶释渊
  *      `parryTotal=13` 时 5/6 队 mergedΣ 变 13/9，而 storeΣ 恒 6）+ x 弹刀叠加。
  * 而两个既有实现在迁移前读的是 **`configStore.team` 原值**：
  *   · 仪玄 1371 的 `yixuanExtremeAssistCap`（极限支援换场落雷次数上限 = Σ**队友**弹刀）——

@@ -623,7 +623,7 @@ export interface AgentMechanicModule {
    */
   applyTeamConfig?(input: AgentTeamConfigInput): void
   /**
-   * 后台合轴自动填充声明（用户口径 2026-09-07：合轴可自动填充、不占前台不计难度，反推至保底4失衡）。
+   * 后台合轴自动填充声明（用户口径 2026-09-07：合轴可自动填充、不占前台不计难度，反推至保底 4 次失衡）。
    * 声明式（编排层通用执行，无 agentId 分支）：编排层按 deficit=保底目标×bossStunValue−非合轴失衡
    * 反推次数，封顶 floor(可用后台时间/minPeriodSeconds)，写回 cfgField；手动字段 >0 时模块优先用手动。
    */

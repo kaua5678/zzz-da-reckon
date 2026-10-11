@@ -173,7 +173,7 @@
                     <n-collapse-item title="战斗动作与保底目标" name="battle-actions">
                       <div class="guarantee-row">
                         <span class="section-title" style="margin-right: 12px">保底目标</span>
-                        <n-checkbox :checked="guaranteeStun" @update:checked="v => setGuarantee('stun', v)">保底4失衡</n-checkbox>
+                        <n-checkbox :checked="guaranteeStun" @update:checked="v => setGuarantee('stun', v)">失衡次数四舍五入</n-checkbox>
                         <span v-if="guaranteeStunHint" class="muted" style="font-size: 12px; margin-right: 8px">{{ guaranteeStunHint }}</span>
                         <!-- 嗔火是般岳专属资源：队里没有般岳不显示（引擎侧 banyueSlot>=0 才消费） -->
                         <n-checkbox v-if="teamHasGuaranteeFury" :checked="guaranteeFury" @update:checked="v => setGuarantee('fury', v)">保底4嗔火</n-checkbox>
@@ -982,7 +982,7 @@ const interactionsLockedHint = computed(() => {
     ? `（已锁定：装不下，时间截断 ${cut.toFixed(1)}s —— 结果页「时间截断」有被砍招式明细）`
     : '（已锁定：当前配置装得下，按你填的次数计算）'
 })
-/** 保底4失衡·未达成如实显示（CC-156）：弹刀预算内补不满时引擎按实际池计数算，这里把降级露出来 */
+/** 失衡次数四舍五入·未达成如实显示（CC-156）：弹刀预算内补不满时引擎按实际池计数算，这里把降级露出来 */
 const guaranteeStunHint = computed(() => {
   const s = guaranteeStunShortfallResult.value
   if (!s) return ''
@@ -994,7 +994,7 @@ const interactionTopUpForSlot = computed(() => {
   const t = interactionTopUp.value
   return t && t.slot === uiStore.selectedSlot ? t : null
 })
-// Boss 预设弹刀反推（保底4失衡）：击破位显示「→ 有效次数（含无突击弹刀/保底反推）」、未手填的主C 显示「→ 剩余（Boss 默认）」
+// Boss 预设弹刀反推（失衡次数四舍五入）：击破位显示「→ 有效次数（含无突击弹刀/保底反推）」、未手填的主C 显示「→ 剩余（Boss 默认）」
 const parrySplitForSlot = computed<{ label: string } | null>(() => {
   const p = parrySplitResult.value
   if (!p) return null

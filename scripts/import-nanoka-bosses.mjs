@@ -203,8 +203,8 @@ const catalogById = new Map(catalog.bosses.map(b => [b.id, b]))
  * - energyShield（能量盾触发次数）：同上口径，暂无数据，默认 0
  * - invincibleTime：Boss 无敌不可攻击时间（秒；招式机制决定的转阶段/入场动画，用户核对值）。
  *   用于 DoT 有效时间扣减（effectiveTime = battleTime − invincibleTime）与时间预算提示。
- * - parryTotal：默认弹刀总次数（主C/击破位按「保底4失衡反推 + 剩余给主C」运行时拆分，
- *   见 src/core/parrySplit.ts + useResourceCalc 反推线程；应用 Boss 时自动勾选「保底4失衡」）。
+ * - parryTotal：默认弹刀总次数（主C/击破位按「失衡四舍五入反推 + 剩余给主C」运行时拆分，
+ *   见 src/core/parrySplit.ts + useResourceCalc 反推线程；应用 Boss 时自动勾选「失衡次数四舍五入」）。
  *   口径：只记「正常弹刀」（轻弹刀 + 支援突击 + 喧响 215）；「不带支援突击的弹刀」
  *   （只有轻弹刀倍率行 + 喧响 215、无支援突击行）用 parryNoFollowUpTotal 单独记、
  *   全部归击破位（非用户可调）；「x弹刀」（两人同时招架同一攻击，基塔布鲁 1 次）——

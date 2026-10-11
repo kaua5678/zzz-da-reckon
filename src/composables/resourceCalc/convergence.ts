@@ -192,7 +192,7 @@ export function createRunCalcRound(deps: {
     // `interactionTopUp` computed 共用 findInteractionTopUpSlot），原为按身份 `findSlotByIdentity(…, ['1471'])`。
     const interactionTopUpSlot = findInteractionTopUpSlot(configStore.team)
     // Boss 预设弹刀反推（用户口径 2026-08）：Boss 声明 parryTotal/parryNoFollowUpTotal（如 叶释渊 13 / 司祭 15；生效值含控制技组折算）且
-    // 「保底4失衡」勾选时，击破位（队伍首个 stun 特性槽位）弹刀按保底失衡反推补齐、主C 拿剩余
+    // 「失衡次数四舍五入」勾选时，击破位（队伍首个 stun 特性槽位）弹刀按四舍五入反推补齐、主C 拿剩余
     // （纯函数 core/parrySplit.ts；本轮注入上一轮拆分，收敛判据含 parrySplitSeq）。
     // 不带支援突击弹刀（parryNoFollowUpTotal）**对半分**（用户口径 2026-09-10：「必须对半分；强制归击破位是错的，
     // 那是把补失衡误解成只有击破弹刀，删掉」）；只给喧响弹刀（parryDecibelOnlyTotal）走保底4喧响通道。
@@ -200,12 +200,12 @@ export function createRunCalcRound(deps: {
     const guaranteeStun = configStore.getMechanicSetting('guarantee.stun', 0) !== 0
     const breakerSlot = configStore.team.findIndex(c => c.agentId && catalogStore.agentsMap.get(c.agentId)?.specialty === 'stun')
     // 无击破位队伍（如 仪玄/琉音/卢西娅：强攻/强攻/支援）：实战弹刀全由主C（槽位 0）承担
-    // （归档 72db6dc3 弹刀 8 即此口径）——保底4失衡反推照常，但「剩余给主C」没有第二个角色可分，
+    // （归档 72db6dc3 弹刀 8 即此口径）——失衡四舍五入反推照常，但「剩余给主C」没有第二个角色可分，
     // 有效次数 = max(输入, 反推 T) 封顶 parryTotal（同位语义，2026-09-07）。
     const noBreakerFallback = breakerSlot < 0
     const effectiveBreakerSlot = breakerSlot >= 0 ? breakerSlot : 0
     /**
-     * 用户**主动调高**弹刀（相对职业基准）的总量——「保底4失衡反推链」的独立启动依据。
+     * 用户**主动调高**弹刀（相对职业基准）的总量——「失衡四舍五入反推链」的独立启动依据。
      *
      * 用户口径 2026-10-05：
      * > 「`parryTotal` 只是说他**默认没有强制弹刀**，但**你想弹还是有普通弹刀的**。
@@ -257,7 +257,7 @@ export function createRunCalcRound(deps: {
     // 归档部署都会写），写 store 会把「引擎按轴推断的补齐」和「用户勾的保底」混成一份、且污染 G3 的
     // 「全关」基线（`clearDifficultyLevers` 清零后又被引擎写回）。这里只做**本轮读数的视同勾选**，
     // store 一字不动 ⇒ 页面复选框状态、G3 爬梯语义、快照/还原全部不受影响。
-    // `guarantee.stun`（保底4失衡）**不在**本条：它是「反推弹刀次数」的用户意图开关，
+    // `guarantee.stun`（失衡次数四舍五入）**不在**本条：它是「反推弹刀次数」的用户意图开关，
     // 与轴自身的嗔火/喧响需求无关（轴内连携由轴块反推，见 roundInputs）。
     // 判据：`src/composables/__tests__/axisAutoGuarantee.test.ts`（轴态补齐量 > 非轴态；非轴态零差）。
     const guaranteeFury = axisActive || configStore.getMechanicSetting('guarantee.fury', 0) !== 0
@@ -528,7 +528,7 @@ export function createRunCalcRound(deps: {
       }
       // 通用保底4喧响：注入槽位 0 的「只给喧响」弹刀补齐量（上一轮收敛值；首轮 0）。
       // 走 parryDecibelOnlyCount 而非 parryCount：只计 215 喧响、不产轻弹刀/支援突击行、不贡献失衡值——
-      // 保底4失衡的弹刀（含失衡值）由上方 parrySplit 独立反推，二者职责分离，避免弹刀↔失衡池的反馈环振荡。
+      // 「失衡次数四舍五入」补的弹刀（含失衡值）由上方 parrySplit 独立反推，二者职责分离，避免弹刀↔失衡池的反馈环振荡。
       if (decibelParryActive && cfg.slot === 0) {
         merged.parryDecibelOnlyCount = merged.parryDecibelOnlyCount + prevDecibelParry
       }
@@ -927,7 +927,7 @@ export function createRunCalcRound(deps: {
     const flinch1 = ap0.coverage.physicalCoverageRate
     const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio, lockForPool)
 
-    // Boss 预设弹刀反推下一轮量（保底4失衡）：本轮失衡池（含注入的击破位弹刀）→ 非弹刀基数 → 缺口 → 补齐。
+    // Boss 预设弹刀反推下一轮量（失衡次数四舍五入）：本轮失衡池（含注入的击破位弹刀）→ 非弹刀基数 → 缺口 → 补齐。
     // 击破位弹刀行（轻弹刀 + 支援突击，count 随弹刀次数缩放）：行贡献剔出非弹刀基数（防 0↔T 振荡），
     // 正常弹刀每次失衡 = 轻弹刀 + 支援突击；不带支援突击弹刀每次失衡 = 仅轻弹刀。无行 = 无招架失衡来源，不反推。
     let parrySplitNext = prevParrySplit ?? { breakerParry: 0, mainDpsParry: 0, breakerNoFollowUp: 0, mainDpsNoFollowUp: 0, topUp: 0, perParryDaze: 0, perNoFollowUpDaze: 0 }
@@ -982,11 +982,11 @@ export function createRunCalcRound(deps: {
     }
 
     // 后台合轴自动填充反推（模块 backstageAutoFill 声明驱动，通用执行零 agentId 分支；
-    // 用户口径 2026-09-07：合轴可自动填充、不占前台不计难度，反推至保底4失衡）：
+    // 用户口径 2026-09-07：合轴可自动填充、不占前台不计难度，反推至保底 4 次失衡）：
     // 缺口 = stunBuildUpForCount(池@保底次数, 保底次数) −（该池总失衡 − 其中合轴行）（CC-475：池在目标次数的扣除口径下重算）；每对有效失衡优先实测
     //（声明 moveIds 的池行），首轮回落 perPairBase；供给上限 = floor(非该角色战斗时间 / minPeriodSeconds)。
     {
-      /** 用户口径 2026-09-07「反推至保底4失衡」的那个 4 */
+      /** 用户口径 2026-09-07「反推至保底 4 次失衡」的那个 4 */
       const BACKSTAGE_FLOOR_STUNS = 4
       const backstageNext: Record<string, number> = {}
       for (const cfg of base.characters) {

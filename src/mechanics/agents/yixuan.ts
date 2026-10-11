@@ -708,7 +708,7 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   // 墨影凝云合轴（用户口径）：合轴次数 N；玄墨值 M 把合轴招式替换为玄墨极阵+青溟震击
   // （N ≤ M 全打玄墨极阵+青溟震击；N > M 超出部分打墨影凝云+A5）；全部 actionTime=0 不占战场时间
-  // 合轴次数：手动输入 >0 优先；否则吃自动填充（useResourceCalc 反推至保底4失衡，
+  // 合轴次数：手动输入 >0 优先；否则吃自动填充（useResourceCalc 反推至保底 4 次失衡，
   // 用户口径 2026-09-07：合轴可自动填充、不占前台不计难度）
   const manualBackstage = Math.max(0, Math.floor(Number(cfg.yixuanBackstageComboCount ?? 0)))
   const backstageCount = manualBackstage > 0
@@ -1057,7 +1057,7 @@ export const yixuanMechanic: AgentMechanicModule = {
   buildResourceResult: buildYixuanResourceResult,
   resourceSections: buildYixuanResourceSections,
   // 墨影凝云合轴自动填充（用户口径 2026-09-07）：合轴可自动填充、不占前台不计难度，反推至
-  // 保底4失衡。声明式（编排层通用执行，无 agentId 分支）：moveIds=合轴招式行（实测每对失衡），
+  // 保底 4 次失衡。声明式（编排层通用执行，无 agentId 分支）：moveIds=合轴招式行（实测每对失衡），
   // perPairBase=每对基础失衡（玄墨极阵440.8+青溟震击160.2；超出玄墨值的墨影凝云版 600.4 近似同值），
   // cfgField=自动次数写回字段（消费端：buildExecutions 手动输入 ≤0 时取它），manualField=手动输入字段。
   backstageAutoFill: {
@@ -1167,7 +1167,7 @@ declare module '@/types/resource/config' {
     yixuanMoveDaze?: Record<string, number>
     /** 仪玄术法值初始值（影画1：立即获得 120；spec 术法值 initialValueSource=cfgField 读取） */
     yixuanShufaInitial?: number
-    /** 仪玄·墨影凝云合轴自动填充（反推至保底4失衡，由 useResourceCalc 线程收敛注入；手动输入 >0 时优先） */
+    /** 仪玄·墨影凝云合轴自动填充（反推至保底 4 次失衡，由 useResourceCalc 线程收敛注入；手动输入 >0 时优先） */
     yixuanBackstageAutoCount?: number
     /** 仪玄额外闪能总账（模块汇总：完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次，calcEnergySource 通用读取） */
     yixuanFlashBonus?: number
