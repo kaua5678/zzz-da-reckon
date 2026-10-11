@@ -21,6 +21,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc, type ResourceCalc } from '@/composables/useResourceCalc'
 import { optimizeTeamTimeWeights } from '@/composables/teamTimeline'
 import { isCarrySpecialty } from '../../scripts/lib/presetCategories.mjs'
+import { getAgentMechanic } from '@/mechanics'
 import type { TimeWeightMode } from '@/types/resource'
 
 /**
@@ -52,6 +53,23 @@ function carrySlotsOf(configStore: ConfigStore, catalogStore: ReturnType<typeof 
     return !!id && isCarrySpecialty(String(catalogStore.getAgent(id)?.specialty ?? ''))
   })
   return slots.length > 0 ? slots : [0]
+}
+
+/**
+ * 本队可用的「嘲讽取消」杠杆槽位（升序）。
+ *
+ * 嘲讽取消是般岳专属的**零成本时间杠杆**：每取消一次，直接抹掉一次失衡外连段末尾后摇的战场占用
+ * （时长 = 末尾强特自身动作时间，期间不能平A）⇒ 回收的秒数回流平A池。它不耗闪能/嗔火/喧响，
+ * 是联合搜索里唯一「只减时间占用、不加资源成本」的杠杆（其余交互都是加占用换收益）。
+ *
+ * 判据走模块能力（`characterCountInputs` 声明了 tauntCancelCount 才算），**不认 agentId**（判据 26）。
+ * 用户口径 2026-10-11：默认值 0 是给**非轴模式**的；轴模式对资源与时间有高要求，应由本搜索自动抬。
+ */
+function tauntLeverSlots(configStore: ConfigStore): number[] {
+  return [0, 1, 2].filter(s => {
+    const id = String(configStore.team[s]?.agentId ?? '')
+    return !!id && (getAgentMechanic(id)?.characterCountInputs ?? []).some(i => i.field === 'tauntCancelCount')
+  })
 }
 
 type Calc = ResourceCalc
@@ -90,14 +108,17 @@ export interface TimeWeightStrategy {
  * 而超出的时间会被装配截断（坑22），模型于是「白拿奖励」，优化器会一路加到上限。
  * 这也是用户原话「弹刀多了也不能超过总时间」的机器面。
  *
- * 代价：≈ 边际均衡（~3 次求值）+ 弹刀阶梯（3 槽 × 2 方向 × ≤3 轮）≈ 15~20 次求值（~1.5s），
- * 因此只挂在三态的 `'joint'` 档后面跑（默认档是较快的 **B 边际均衡**）。交互搜索的其它候选
- * （闪避/快支、合轴）同题扩展。
+ * 搜索空间（2026-10-11 扩）：① 平A 时间权重；② **弹刀次数**；②′ **嘲讽取消**（零成本时间杠杆，
+ * 见搜索体内注释——只抬不降，先于弹刀执行）；③④ 能量驱动 / 角点解。
+ *
+ * 代价：≈ 边际均衡（~3 次求值）+ 嘲讽取消阶梯（≤1 槽 × ≤12 轮）+ 弹刀阶梯（3 槽 × 2 方向 × ≤3 轮）
+ * ≈ 15~20 次求值（~1.5s），因此只挂在三态的 `'joint'` 档后面跑（默认档是较快的 **B 边际均衡**）。
+ * 交互搜索的其它候选（闪避/快支、合轴）同题扩展。
  */
 export const jointLeverStrategy: TimeWeightStrategy = {
   id: 'joint-levers',
-  label: '多杠杆联合（平A 权重 + 弹刀）',
-  description: '按团队总伤联合搜索平A 权重与弹刀次数；硬门 = 不发生时间线截断（不超总时间）',
+  label: '多杠杆联合（平A 权重 + 弹刀 + 嘲讽取消）',
+  description: '按团队总伤联合搜索平A 权重、弹刀次数与嘲讽取消；硬门 = 不发生时间线截断（不超总时间）',
   allocate(ctx) {
     const { calc, configStore } = ctx
     const weightsBefore = [0, 1, 2].map(s => Math.max(0, Number(configStore.team[s]?.basicAttackTimeWeight ?? 0)))
@@ -107,6 +128,7 @@ export const jointLeverStrategy: TimeWeightStrategy = {
       blockCount: Number(configStore.team[s]?.blockCount ?? 0),
       dualCounterCount: Number(configStore.team[s]?.dualCounterCount ?? 0),
       dodgeCounterCount: Number(configStore.team[s]?.dodgeCounterCount ?? 0),
+      tauntCancelCount: Number(configStore.team[s]?.tauntCancelCount ?? 0),
     }))
     const stunBefore = calc.stunPoolResult.value?.stunCount ?? 0
     // 主C 判定走单源（carrySlotsOf）；**双主C 队逐槽都是主C**（A4，用户「有些队伍不是一个主c」）。
@@ -220,6 +242,61 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     // `parryNoFollowUpTotal` 是另一类（无支援突击）且 split 已强制归击破位，不并进本下限。
     // （STEP/MAX_ROUNDS/minParryTotal/totalParries/floorBlocked 已在上方阶段 -1 前声明）
     let best = calc.teamTotalDamage.value
+    // ②′ 嘲讽取消（**零成本时间杠杆**，用户口径 2026-10-11：「默认值是给非轴模式的，你使用轴模式
+    // 那么就对资源和时间有高要求，会自动提高交互和合轴率去达成轴」）：**只抬不降**。
+    //
+    // 为什么它与众不同：其余交互（弹刀/金身/双反/闪反）都是「花前台时间换资源」——加多了会顶爆预算，
+    // 故要 ± 双向搜索 + 可行性门。嘲讽取消反过来：每取消一次**直接抹掉**一次失衡外连段末尾后摇的
+    // 战场占用（时长 = 末尾强特自身动作时间，期间不能平A），回收的秒数回流平A池，且不耗闪能/嗔火/喧响。
+    // ⇒ 它是唯一「只减时间占用、不加资源成本」的杠杆，降向没有意义。
+    //
+    // 放在弹刀阶梯之前：先把免费的时间吃掉，再考虑要花时间的交互（顺序影响搜索停点）。
+    //
+    // ⚠ 接受门是「总伤↑ **或** 必要前台↓（等值）」而不是「总伤严格↑」（初版用严格↑，实测 4/4 队全被回滚）：
+    // 嘲讽取消的价值可能只体现在**回收时间**上——多数队的平A池本来就已是 0，回收的秒数只是让预算更宽裕
+    // 而不立刻变成伤害（实测 `banyue-trigger-lucia` 入口 0→9 次：伤害 45.477M 不变、必要前台 130.302→125.649s）。
+    // 只认伤害就会把这类「真省了时间但暂时不加伤」的队全部拒掉，而后面的弹刀阶梯正需要这份余量。
+    // 停点 = 伤害与必要前台**都不再变**（引擎按失衡外连段数封顶，越过封顶即空操作）⇒ 自然落在有效上限，
+    // 不会把 0 抬成 99 那种虚高值。
+    //
+    // 步长 1（不是 STEP）：该杠杆的收益是**离散台阶**（实测 `banyue-roxy-lucia` 在 taunt=4 处一次性
+    // 翻轴 +11.2M，1~3 次全平），步长 2 会从 0 跳到 2 判「没变好」而错过 4。
+    const tauntSlots = tauntLeverSlots(configStore)
+    const tauntLog: string[] = []
+    const necessaryTotal = () => (calc.resourceResult.value?.characters ?? [])
+      .reduce((s, c) => s + c.timeAllocation.necessaryTime, 0)
+    for (const slot of tauntSlots) {
+      const tauntBefore = Math.max(0, Number(configStore.team[slot]?.tauntCancelCount ?? 0))
+      let cur = tauntBefore
+      let curNec = necessaryTotal()
+      // 上限 12 步：实测最长路径 = 走到引擎封顶（trigger 9 步 + 1 步确认），再宽就是空转
+      for (let round = 0; round < 12; round++) {
+        const next = Math.min(99, cur + 1)
+        if (next === cur) break
+        configStore.setActionCount(slot, 'tauntCancelCount', next)
+        const dmg = calc.teamTotalDamage.value
+        const nec = necessaryTotal()
+        const better = dmg > best + 1e-6
+        const freed = Math.abs(dmg - best) <= 1e-6 && nec < curNec - 1e-6
+        // ⚠ 可行性门**只取截断臂**，不复用 `feasible()` 的吸收臂：后者是为「花时间换资源」的杠杆
+        // （弹刀/金身/双反/闪反）设计的——防搜索把计划推过预算、再让队友无限背吸收。
+        // 嘲讽取消方向相反：它**严格减少**必要前台（实测 `banyue-jufufu-lucia` 221.968→219.383s 单调降），
+        // 不可能把计划推过预算 ⇒ 对它用吸收臂是范畴错误，且实测会误杀该队（吸收 24.881→24.925 的
+        // 二阶再分配被当成「加深吸收」，整条阶梯全被回滚）。截断臂仍然保留（不许把已可行变不可行）。
+        const truncOk = truncation() <= feasibleFloor + 1e-6
+        if (!truncOk || (!better && !freed)) {
+          configStore.setActionCount(slot, 'tauntCancelCount', cur) // 回滚：越界 / 变差 / 已到封顶
+          break
+        }
+        best = Math.max(best, dmg)
+        cur = next
+        curNec = nec
+      }
+      if (cur !== tauntBefore) tauntLog.push(`槽${slot + 1} ${tauntBefore}→${cur}`)
+    }
+    if (tauntLog.length > 0) {
+      notes.push(`嘲讽取消自动抬（零成本回收后摇占用）：${tauntLog.join('、')}`)
+    }
     for (let round = 0; round < MAX_ROUNDS; round++) {
       let improved = false
       for (let slot = 0; slot < 3; slot++) {
@@ -394,7 +471,7 @@ export const jointLeverStrategy: TimeWeightStrategy = {
       notes.push(`失衡 ${stunBefore}→${stunAfter} 次（次数是分配的结果，未拦截）`)
     }
     // applied 覆盖全部杠杆：权重、弹刀、可行性优先阶段动的其它交互（金身/双反/闪反）
-    const interactionMoved = ['parryCount', 'blockCount', 'dualCounterCount', 'dodgeCounterCount']
+    const interactionMoved = ['parryCount', 'blockCount', 'dualCounterCount', 'dodgeCounterCount', 'tauntCancelCount']
       .some(k => [0, 1, 2].some(s => Number((configStore.team[s] as Record<string, unknown>)[k] ?? 0)
         !== Number((interactionBefore[s] as Record<string, unknown>)[k] ?? 0)))
     // rolledBack（v2 守卫）只回滚权重：弹刀/其它交互/⑤ 合轴覆盖的改动仍在 → moved 不算权重类

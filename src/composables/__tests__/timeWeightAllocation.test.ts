@@ -19,6 +19,8 @@ import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
+import { applyTeamToStore } from '@/composables/teamCompare'
+import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
 import {
   TIME_WEIGHT_STRATEGIES,
   DEFAULT_TIME_WEIGHT_STRATEGY_ID,
@@ -423,5 +425,51 @@ describe('平A池权重·分配策略', () => {
     expect(new Set(TIME_WEIGHT_STRATEGIES.map(s => s.id)).size).toBe(TIME_WEIGHT_STRATEGIES.length)
     // 未知 id 回落默认策略（不抛错：UI 开关不会因为策略改名而炸）
     expect(getTimeWeightStrategy('not-a-strategy').id).toBe(DEFAULT_TIME_WEIGHT_STRATEGY_ID)
+  })
+
+  it('⑨ 嘲讽取消自动抬（T135）：轴队跑 joint 后 tauntCancelCount 被自动抬高、必要前台下降', async () => {
+    // 用户口径 2026-10-11：「默认值是给非轴模式的，你使用轴模式那么就对资源和时间有高要求，
+    // 会自动提高交互和合轴率去达成轴」。嘲讽取消是**零成本时间杠杆**（每取消一次抹掉一次失衡外
+    // 连段末尾后摇的战场占用，不耗闪能/嗔火/喧响）⇒ 进 joint 搜索，只抬不降。
+    const { catalog, config } = await setupHarness(['', '', ''] as never, { recommendedBuild: false } as never)
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const p = teamPresets.find(x => x.id === 'banyue-trigger-lucia')
+    expect(p, '预设 banyue-trigger-lucia 存在').toBeTruthy()
+    applyTeamToStore(config, p as never)
+    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.4)
+    await nextTick()
+    // 前提：入口 taunt=0（默认档）且确有待取消的后摇
+    expect(Number(config.team[0]?.tauntCancelCount ?? 0), '入口默认档').toBe(0)
+    const recBefore = calc.resourceResult.value!.characters.find(c => c.slot === 0)!.banyueRageCycle!.comboOutRecoveryCount
+    expect(recBefore, '入口确有未取消后摇（否则本用例测不到东西）').toBeGreaterThan(0)
+    const dmgBefore = calc.teamTotalDamage.value
+    applyTimeWeightAllocation({ calc, configStore: config as never }, DEEP_TIME_WEIGHT_STRATEGY_ID)
+    await nextTick()
+    // ① 杠杆真的被抬（不是恒零的摆设）
+    const tauntAfter = Number(config.team[0]?.tauntCancelCount ?? 0)
+    expect(tauntAfter, 'joint 应自动抬高 tauntCancelCount').toBeGreaterThan(0)
+    // ② 抬到有效上限即停（引擎按失衡外连段数封顶）⇒ 后摇归零，且不会一路冲到 99 的虚高值
+    const recAfter = calc.resourceResult.value!.characters.find(c => c.slot === 0)!.banyueRageCycle!.comboOutRecoveryCount
+    expect(recAfter, '抬满后后摇归零').toBe(0)
+    expect(tauntAfter, '停在有效上限而非 99（越过封顶是空操作，不该录取）').toBeLessThanOrEqual(recBefore)
+    // ③ 时间面确实回收（本杠杆的价值就在这）：恢复行整批消失 ⇒ 后摇占用归零。
+    // ⚠ 不拿「必要前台总量下降」当判据：joint 里 ② 弹刀阶梯同时在加交互时间，两者叠加后总量可能反升
+    // （实测 202.665→205.818s），拿总量比会把弹刀的账算到嘲讽取消头上。
+    const recRows = (calc.resourceResult.value!.characters.find(c => c.slot === 0)!.executions ?? [])
+      .filter(e => e.moveId?.startsWith('banyue-recovery'))
+    expect(recRows.length, '抬满后不应再有后摇恢复行').toBe(0)
+    expect(calc.teamTotalDamage.value, '总伤不降（联合搜索单调不劣）').toBeGreaterThanOrEqual(dmgBefore - 1e-6)
+    // ④ 非般岳队零影响：能力声明驱动（不认 agentId），无该声明的队杠杆槽位为空
+    const { catalog: c2, config: cfg2 } = await setupHarness(['', '', ''] as never, { recommendedBuild: false } as never)
+    await c2.loadBuildRecommendations()
+    const calc2 = useResourceCalc()
+    const p2 = teamPresets.find(x => x.id === 'auto-1521-1481-1311')
+    applyTeamToStore(cfg2, p2 as never)
+    await nextTick()
+    const taunt2Before = [0, 1, 2].map(s => Number(cfg2.team[s]?.tauntCancelCount ?? 0))
+    applyTimeWeightAllocation({ calc: calc2, configStore: cfg2 as never }, DEEP_TIME_WEIGHT_STRATEGY_ID)
+    await nextTick()
+    expect([0, 1, 2].map(s => Number(cfg2.team[s]?.tauntCancelCount ?? 0)), '无嘲讽取消声明的队零改动').toEqual(taunt2Before)
   })
 })

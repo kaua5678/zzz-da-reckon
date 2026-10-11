@@ -15,9 +15,7 @@ const LEGACY: Record<string, Array<{ field: string; label: string; hint?: string
     { field: 'assaultOrderCount', label: '强袭训令次数', title: '特殊技：强袭训令的发动次数（格挡招式，伤害计入倍率表 166.4% 以太行）' },
   ],
   '1471': [
-    // T134（2026-10-11）：默认档由「0 = 不取消」改为「≤0 = 自动全取消」（零成本动作，见 banyue.ts
-    // computeBanyueRageCycle 参数注释），故本表同步加 hint 与 mode。
-    { field: 'tauntCancelCount', label: '嘲讽取消', hint: '≤0=自动', title: '失衡外强特连段末尾后摇的嘲讽取消次数：每连段末尾强特后摇 = 自身时长（期间不能平A，占用战场时间），一次嘲讽取消一次后摇；失衡内连段默认被连携/大招/瞬拳取消，不计。≤0/清空 = 自动全取消（嘲讽取消零成本，实战能取消必然取消；T134 实测 7 支预设 0 档虚耗后摇 30.503s）；填正数 = 手动上限（上限 = 失衡外连段数）', mode: 'autoIfNonPositive' },
+    { field: 'tauntCancelCount', label: '嘲讽取消', title: '失衡外强特连段末尾后摇的嘲讽取消次数：每连段末尾强特后摇 = 自身时长（期间不能平A，占用战场时间），一次嘲讽取消一次后摇；失衡内连段默认被连携/大招/瞬拳取消，不计' },
   ],
   '1541': [
     { field: 'promiaNiyingCount', label: '处刑式·匿影', title: '强特变体：耗强特能量（用户自控预算）；每次触发+10寒蚀值，之后可接特殊技「处刑式·重霜」' },
@@ -39,8 +37,7 @@ const LEGACY_MINMAX: Record<string, [number, number]> = {
 const LEGACY_VALUE: Record<string, (x: number | undefined) => number | null> = {
   perfectBlockCount: x => x || 0,
   assaultOrderCount: x => x || 0,
-  // T134：口径由「0 = 不取消」改为「≤0 = 自动全取消」⇒ 显示值改「≤0 显示空（placeholder 自动）」
-  tauntCancelCount: x => ((x ?? 0) > 0 ? x! : null),
+  tauntCancelCount: x => x ?? 0,
   promiaNiyingCount: x => x ?? 0,
   yixuanInk2Count: x => x ?? 0,
   yixuanInk3Count: x => ((x ?? 0) > 0 ? x! : null),

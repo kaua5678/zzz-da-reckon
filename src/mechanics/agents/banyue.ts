@@ -223,15 +223,6 @@ export function computeBanyueRageCycle(
   /** 战斗时间（秒）：闪能收入 = 秒回 × 战斗时间 + 进场（r726 前写死 180 秒） */
   battleTime: number,
   rageDiDongCombo = 0,
-  /**
-   * 失衡外连段末尾后摇的嘲讽取消次数。**≤0 = 自动全取消**（本仓 `autoIfNonPositive` 惯用法：≤0 即「自动」）。
-   *
-   * 为什么默认自动：嘲讽取消是**零成本**动作（不耗闪能/嗔火/喧响，模型里也不占前台时间），
-   * 实战能取消必然取消 ⇒ 账本按「不取消」计后摇，等于替玩家算了一个不会选的场景。
-   * 实测（T134，7 支般岳预设）：0 档共虚耗后摇 30.503s；而取消在**嗔火面零杠杆**
-   * （嗔火 = 交互产出 + 闪能支出×0.5，两半都与 taunt 无关，逐位对账通过）⇒ 收益全在时间面。
-   * 上限恒为失衡外连段数（取消次数超过连段数无意义，自动档即取满）。
-   */
   tauntCancelCount = 0,
   axisActive = false,
 ): BanyueRageCycle {
@@ -296,11 +287,7 @@ export function computeBanyueRageCycle(
   const axisInCombos = axisCombo + Math.max(0, Math.floor(rageDiDongCombo)) // 轴内捏的连段块总数（×窗口）
   const uncoveredRage = axisActive ? Math.min(Math.max(0, rageComboGroups - axisInCombos), 2) : 0
   const outStunCombos = comboOut + uncoveredRage
-  // 嘲讽取消：≤0 = 自动全取消（零成本动作，见 computeBanyueRageCycle 参数注释）；正数 = 手动上限。
-  // 上限恒为失衡外连段数（取消次数超过连段数无意义，自动档即取满）。
-  const taunt = tauntCancelCount <= 0
-    ? outStunCombos
-    : Math.min(Math.floor(tauntCancelCount), outStunCombos)
+  const taunt = Math.max(0, Math.min(Math.floor(tauntCancelCount), outStunCombos))
   const comboOutRecovery = outStunCombos - taunt
   const lunDaoShare = comboOut > 0 ? lunDaoComboOut / comboOut : 0
   const lunDaoRecovery = Math.round(comboOutRecovery * lunDaoShare)
@@ -775,10 +762,8 @@ export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg']): Ban
     cfg.battleTime,
     // 怒相内「地动→山摇·怒」连段组数 = 轴内捏的 banyue-combo-didong 块（非轴模式 banyueAxisEx 为空 → 0）
     axisEx['banyue-combo-didong'] ?? 0,
-    // 失衡外连段末尾后摇的嘲讽取消次数（主页交互栏录入，每次取消一次后摇）；
-    // **≤0/缺省 = 自动全取消**（零成本动作，见 computeBanyueRageCycle 参数注释），
-    // 只有显式填正数才按手填值算 —— store 缺省 0 曾使「不取消」成为默认，实测虚耗 30.503s 后摇。
-    Math.floor(cfg.tauntCancelCount),
+    // 失衡外连段末尾后摇的嘲讽取消次数（主页交互栏录入，每次取消一次后摇）
+    Math.max(0, Math.floor(cfg.tauntCancelCount)),
     // 轴模式：失衡内 = 轴内实际捏的连段块，失衡外 = 全部连段 − 轴内捏块（后摇按轴外单位数计）
     !!cfg.banyueAxisActive,
   )
@@ -878,7 +863,7 @@ export const banyueMechanic: AgentMechanicModule = {
   name: '般岳',
   // CC-65：TeamConfigPage 角色专属计数输入框（展示层；弹刀/双反仍在页面，归 CC-65b）
   characterCountInputs: [
-    { field: 'tauntCancelCount', label: '嘲讽取消', hint: '≤0=自动', title: '失衡外强特连段末尾后摇的嘲讽取消次数：每连段末尾强特后摇 = 自身时长（期间不能平A，占用战场时间），一次嘲讽取消一次后摇；失衡内连段默认被连携/大招/瞬拳取消，不计。≤0/清空 = 自动全取消（嘲讽取消零成本，实战能取消必然取消；T134 实测 7 支预设 0 档虚耗后摇 30.503s）；填正数 = 手动上限（上限 = 失衡外连段数）', mode: 'autoIfNonPositive' },
+    { field: 'tauntCancelCount', label: '嘲讽取消', title: '失衡外强特连段末尾后摇的嘲讽取消次数：每连段末尾强特后摇 = 自身时长（期间不能平A，占用战场时间），一次嘲讽取消一次后摇；失衡内连段默认被连携/大招/瞬拳取消，不计' },
   ],
   description: '嗔火→怒相循环（山威免费连段）、怒相增益、影画4/6 moveId 级增伤与倾山附伤。',
   applyPanel: applyBanyuePanel,

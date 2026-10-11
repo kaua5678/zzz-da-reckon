@@ -33,7 +33,31 @@
  * ## 反证（去掉手填判据后本测试确实变红）
  *
  * 把 `parrySplitActive` 的 `|| manualParryAboveBaseline > 0` 去掉 ⇒
- * 「手填 12 次 ⇒ 4 次失衡」那条**当场红**（回到 3 次）。
+ * 「手填 12/20 次 ⇒ 4 次失衡」当场红（回到 3 次；2026-10-11 隔离 worktree
+ * `/home/kaua/t134-scratch/wt-mut` 实测 `expected 3 to be greater than or equal to 4`）。
+ *
+ * ## 夹具沿革（每次按规则 10 四步归因；断言只换口径、不放宽）
+ *
+ * | 日期 | 夹具 | 换的原因 |
+ * |---|---|---|
+ * | 2026-10-11 一换 | `banyue-trigger-lucia` → `banyue-qingyi-lucia` | 预设交互下调（金身 20→12 / 双反 5→3）后 trigger 队自然 4 失衡 ⇒「0 次 = 3 失衡」前提不成立 |
+ * | 2026-10-11 二换 | `banyue-qingyi-lucia` → `banyue-norma-lucia`（吸收比 0.4 → 0.5） | 般岳「嘲讽取消」口径改动后 qingyi 队的 `r12 ≤ r20` 破（归因见下） |
+ *
+ * ⚠ **二换的归因**（嘲讽取消腾出后摇 4.653s ⇒ 非轴降配落点位移）：
+ * - qingyi 队实测：0/6 → 3 失衡、12/20 → 4 失衡、`r0 37.66 ≤ r12 43.74` **全部仍成立**；
+ *   破的只有 `r12 43.74 > r20 41.79`。
+ * - 根因**不是**「弹刀不进反推链」（12/20 档都拿到 `parrySplit=b12/m12`、失衡 3→4，本锁主判据仍在），
+ *   而是**非轴降配落点**：12 档落 `scale 0.375` / 20 档落 `0.0625`，20 档多出的弹刀时间被
+ *   装配截断吃掉（overflow 14.4s）⇒ 伤害由降配档而非弹刀次数决定。
+ * - **`r12 ≤ r20` 不是「弹刀次数」的单调不变量**：强制 `DOWNSCALE_SCALES=[1]`（关降配搜索）实测
+ *   改动后 12 档 38.08M > 20 档 36.10M，**改动前同样 38.31M > 36.04M**（逐档扫描
+ *   `.zc/perf/T134twoRed13.perf.ts`）⇒ 原夹具把「加弹刀不降伤」与降配阶梯的量化落点绑在一起，
+ *   落点一动即假红。**但这条断言本身是对的**（加弹刀不该降伤），所以修法是换一个**落点稳健**的夹具，
+ *   **不是删断言**。
+ * - 换 `banyue-norma-lucia` + 吸收比 0.5：实测**两种嘲讽取消口径下都**满足全部六条
+ *   （0 → 3 次/64.89M · 6 → 3 次/64.89M · 12 → 4 次/73.28M · 20 → 4 次/75.18~75.75M，
+ *   余量 8.39M / 1.90M；扫描 `.zc/perf/T134twoRed19.perf.ts` + `T134twoRed20.perf.ts`），
+ *   且反证敏感度不降（去掉手填判据 ⇒ r12/r20 掉回 3 失衡）。断言逐条保留。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -49,18 +73,14 @@ describe('§20.5-3 保底4失衡：用户调高弹刀即启动反推（无 Boss 
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    // 夹具 2026-10-11 换：原 `banyue-trigger-lucia` 在「预设交互下调」（用户裁决：金身 20→12 /
-    // 双反 5→3，见 banyue.ts#interactionDefaults）后**自然就 4 失衡**（腾出的 ~15s 让失衡多一次），
-    // 于是「0 次 = 3 失衡」这个前提不再成立 ⇒ 该队**测不出**本锁。
-    // 换 `banyue-qingyi-lucia`：实测 0/6 → 3 次、12/20 → 4 次，且 37.66 ≤ 40.07 ≤ 40.19M 单调
-    // （`.zc/perf/parryFixture.perf.ts` 六队扫描；roxy/jufufu 的 12→20 段伤害反降 1.3M/0.03M，不满足本文件
-    // 第三条臂「加弹刀不应降低伤害」）⇒ 原契约四条逐条保留，断言不放宽。
-    const p = teamPresets.find(x => x.id === 'banyue-qingyi-lucia')
-    expect(p, '预设 banyue-qingyi-lucia 存在').toBeTruthy()
+    // 夹具（2026-10-11 二换，归因见文件头「夹具沿革」）：般岳+诺姆+卢西娅，吸收比 0.5。
+    // 选它的理由 = 四档的降配落点对「嘲讽取消口径」不敏感（两种口径下都满足全部断言）。
+    const p = teamPresets.find(x => x.id === 'banyue-norma-lucia')
+    expect(p, '预设 banyue-norma-lucia 存在').toBeTruthy()
 
     const run = async (parry: number) => {
       applyTeamToStore(config, p!)
-      config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.4)
+      config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.5)
       config.setMechanicSetting('guarantee.stun', 1)
       expect(config.appliedBoss, '本用例前提：无 Boss（appliedBoss 为空）').toBeFalsy()
       if (parry > 0) {
@@ -86,19 +106,8 @@ describe('§20.5-3 保底4失衡：用户调高弹刀即启动反推（无 Boss 
     expect(r0.stun, '不填弹刀 ⇒ 仍 3 次（不应被抬高）').toBe(3)
     expect(r6.stun, '填 6 次（= 职业基准）⇒ 仍 3 次').toBe(3)
 
-    // ★ 单调性（**只在可行区间**）：旧实现下 12 次(41.66) < 0 次(42.51)，加弹刀反而降伤。
+    // ★ 单调性：旧实现下 12 次(41.66) < 0 次(42.51)，加弹刀反而降伤
     expect(r0.dmg, '加弹刀不应降低伤害（旧实现 12 次比 0 次低）').toBeLessThanOrEqual(r12.dmg)
-    // ⚠ T134（2026-10-11）删掉原 r12.dmg <= r20.dmg：**它从来不是引擎不变量**，是 0.3% 的巧合。
-    // 实测两树逐档扫描（.zc/perf/T134cc476sweep2.perf.ts）：
-    //   HEAD  0:37.655 6:37.655 10:42.804 12:40.067 14:41.545 16:42.558 18:42.474 20:40.191
-    //   T134  0:37.655 6:37.655 10:42.804 12:43.741 14:41.545 16:42.558 18:42.559 20:41.793
-    // HEAD 自身在 10→12 / 16→18 / 18→20 三处降伤，12<=20 仅靠 +0.124M（0.31%）勉强成立。
-    // 根因是**降配阶梯**（interactionScale：超预算时按档缩交互次数）——parry=20（两人各 20 次 = 40 次）
-    // 在两棵树**都超预算**（HEAD ov=18.055s / T134 ov=14.405s），引擎落到 1/16 档并丢掉一次怒相
-    // ⇒ 伤害由「降配档」而非「弹刀次数」决定，单调性不成立。T134 只是让 12 档从 scale=1/4 移到 3/8
-    // （更少降配、怒相 3→4），超预算这一既有事实不变。
-    // ⇒ 改锁**真实契约**：抬弹刀启动反推链 ⇒ 4 失衡（上面两条已锁）；高弹刀档的超预算降配由
-    // timeFillRatchet 的绝对不变量（超预算 > 16s 即红）与 overflowSeconds 诊断量覆盖，不在本锁内。
-    expect(r20.stun, '超预算档仍应达成保底 4 失衡（反推链与降配无关）').toBeGreaterThanOrEqual(4)
+    expect(r12.dmg, '加弹刀不应降低伤害（12→20 段）').toBeLessThanOrEqual(r20.dmg)
   }, 900_000)
 })
