@@ -146,6 +146,36 @@ export const INITIAL_CRIT_DMG_TO_CRIT_RATE = 0.35
 /** 葬血强袭每施放至多 3 次毁伤（连续 3 段横斩，各命中触发） */
 export const BURIAL_MAIM_PER_CAST = 3
 /**
+ * 葬血强袭·**打断**（用户技巧，2026-10-09）：在 2.317s 的三连横斩打到一半时打断，
+ * 只结算**前半段**——秒数与各项数值都减半，但 **3 次毁伤照常全部触发**（毁伤挂在命中判定上，
+ * 不随前半/后半走）。
+ *
+ * 为什么这招是**正收益**（用户口径：「预计提升伤害」）：葬血强袭的 DPS 明显低于[锻星]平A
+ * （(153.6+626.3)/2.884 ≈ 270.4%/s vs 锻星 531.88%/s），所以把它的后半段省下来的时间还给平A
+ * 是净赚；且平A时间变多 ⇒ 残痕积累变多（锻星 120%/s > 血锻 100%/s）⇒ 毁伤次数也更多。
+ *
+ * 省下的时间 = 每次 `BURIAL_SECONDS × (1 − BURIAL_INTERRUPT_RATIO)` = 1.1585s。
+ * ⚠ 秽盾（`ether_purify`）不是执行行通道（只在标准式演算里），故「各项数值减半」落在
+ * 伤害/失衡/喧响三列 + 时间；积蓄列本是空（`anomaly_buildup` 表内无该行）。
+ *
+ * @fact agent:1611/葬血强袭打断 口径: 打断葬血强袭 = 只打前半段：时间与伤害/失衡/喧响各项数值均减半（2.317s→1.1585s、626.3%→313.15%、失衡 382.5→191.25、喧响 70.098→35.049），但 **3 次毁伤照常全部触发**（不随打断减少）；入场「斩金断铁·上挑」那一下仍完整打（153.6%/0.567s） | 据 用户@2026-10-09（「打断葬血强袭，使其2.317s的招式只需打一半，伤害失衡等各项数值都丢失一半，时间也短了一半，变成1.1585s」「这个技巧之所以预计上升强度，是因为他把3次毁伤全都触发了，只是把后半部分的普通伤害去掉，节约时间」）·复核@2026-10-09 | 验 src/mechanics/__tests__/claretInterrupt.test.ts | 锚 src/mechanics/agents/claret.ts#BURIAL_INTERRUPT_RATIO + src/mechanics/agents/claret.ts#buildClaretExecutions | 信 确认
+ * ⟳复核: 若官方改葬血强袭时长/段数（现 2.317s 三段），或实战实测打断点不在正中（现按 50% 结算），改 BURIAL_INTERRUPT_RATIO 与 BURIAL_SECONDS 并重跑 claretInterrupt | 到期 2027-03-31
+ */
+export const BURIAL_INTERRUPT_RATIO = 0.5
+/** 葬血强袭单次动作时长（秒，catalog 1611014 actionTime）——打断时 × `BURIAL_INTERRUPT_RATIO` */
+export const BURIAL_SECONDS = 2.317
+/** 斩金断铁·上挑段时长（秒）——葬血强袭的入场段，两种结算都完整打 */
+export const CLEAVE_ENTRY_SECONDS = 0.567
+/**
+ * 斩金断铁·横斩段（1611012）时长 0.649s —— **只在 spec 事件里声明**（`1611.json` 的
+ * `claret_cleave_b.actionTime`，值来自 catalog actionTime），模块不重复持有该常量：
+ * 融合口径只需要「入场上挑 + 三连横斩」两项（见 `CLEAVE_ENTRY_SECONDS` / `BURIAL_SECONDS`）。
+ */
+/** 斩金断铁·上挑段表 id（1611011，v12 = 153.6%）——葬血强袭的入场段 */
+export const CLEAVE_ENTRY_MOVE_ID = '1611011'
+/** 斩金断铁·横斩段表 id（1611012，v12 = 175.7%） */
+export const CLEAVE_SLASH_MOVE_ID = '1611012'
+/**
  * 猩红铭刻平A基准段：锻星#3（表 id 1611007，531.88%/s、gash 120/s）。
  *
  * @fact agent:1611/平A双基准 口径: 常态平A只能用[血锻四式]（基准=血锻#3 345.21%/s·gash 100/s），[猩红铭刻]下用[锻星]/[伏钺]（基准=锻星#3 531.88%/s·gash 120/s）；两态秒均倍率与残痕积累都不同，引擎单基准段必须按 `claret.inscriptionBasicTimeShare` 加权 | 据 用户@2026-09-11（gachabase 列 gash_buildup 佐证：锻星 120% vs 血锻 100%）·复核@2026-09-25·复核@2026-09-30 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#INSCRIPTION_BENCHMARK_MOVE_ID + src/mechanics/agents/claret.ts#resolveNormalBenchmark + src/mechanics/agents/claret.ts#computeClaretBasicPerSec | 信 确认
@@ -300,13 +330,42 @@ export function computeClaretSharpResource(input: {
   // ⇒ 白白抬高钳位上限，让**本来无层可消耗**的连携/终结把 cleave/burial 的层"腾"出来
   // ⇒ `maimCount` 虚高（实测 62/253 夹具越界、最大 +8 次）。
   // 正解 = 两个量分开：`maimStackBudget`（**真正消耗层**的招式）管消耗，`maimDemand`（总需求）管展示。
-  const maimStackBudget = cleaveCount + burialCount * BURIAL_MAIM_PER_CAST
-  const maimDemand = maimStackBudget + c6Extra
+  //
+  // ★★ 毁伤**按层数结算**（用户裁决 2026-10-09，推翻旧的「滑块层预算钳制」）：
+  //   原话「这个滑块限制就很背离计算逻辑了」「该结算就放」「不需要斩金断铁，只打葬血强袭。
+  //   轴模式下有 斩金断铁和葬血强袭对总量的消耗，剩下的自动用葬血强袭打完」。
+  //   ⇒ 层预算**不再由滑块封顶**，而是「滑块声明的那几次先扣，剩余层数一律由葬血强袭打完」。
+  //   · 葬血强袭「这个招式没有成本，可以一直用，只是收益比平A低」（用户原话）⇒ **不设次数上限**，
+  //     真正的约束是**时间**（每次 2.884s 必做前台，由折叠环挤平A，见 `buildClaretExecutions`）。
+  //   · 旧口径把这里的上限记成「消耗需求次数（斩金断铁/葬血强袭能打几次）」，那是把**滑块**当成了
+  //     真实上限 —— 实测默认夹具 48 层只结算 4 次毁伤（层预算 1+3），与用户预期严重不符。
+  //
+  // 结算顺序（与旧式 `maimFromCleave` 先扣的次序一致）：覆盖率折算 → 斩金断铁 → 声明的葬血强袭
+  //   → **自动补足的葬血强袭**（剩余层数 ÷ 3 向上取整）。
   const coverage = Math.max(0, Math.min(1, input.gashCoverage))
-  const gashStackConsumed = Math.min(gashStacks, Math.max(0, maimStackBudget)) * coverage
-  const maimFromCleave = Math.min(gashStackConsumed, cleaveCount)
-  const maimFromBurial = Math.min(gashStackConsumed - maimFromCleave, burialCount * BURIAL_MAIM_PER_CAST)
+  /** 覆盖率折算后可消耗的层数（层数本身不随覆盖率变化，见既有 `mechanicSettingsEffect` 口径） */
+  const consumableStacks = Math.max(0, gashStacks * coverage)
+  const maimFromCleave = Math.min(consumableStacks, cleaveCount)
+  const declaredBurialStacks = burialCount * BURIAL_MAIM_PER_CAST
+  const declaredBurialConsumed = Math.min(Math.max(0, consumableStacks - maimFromCleave), declaredBurialStacks)
+  /** 声明部分吃完后还剩多少层 —— 这些**全部**由自动补足的葬血强袭打完 */
+  const remainingStacks = Math.max(0, consumableStacks - maimFromCleave - declaredBurialConsumed)
+  // ⚠ 自动补足用 `ceil`（不是 floor）：层数不是 3 的整数倍时，最后一发**部分消耗**（1~2 层）
+  //   也是实打的一次完整动作；floor 会让那几层白扔（且少算一次动作的时间/伤害）。
+  const autoBurialCasts = Math.ceil(remainingStacks / BURIAL_MAIM_PER_CAST - 1e-9)
+  const autoBurialConsumed = Math.min(remainingStacks, autoBurialCasts * BURIAL_MAIM_PER_CAST)
+  const maimFromBurial = declaredBurialConsumed + autoBurialConsumed
+  /** 实际消耗的总层数（= 毁伤的消耗侧次数，影画6 不计入） */
+  const gashStackConsumed = maimFromCleave + maimFromBurial
   const maimCount = Math.floor(gashStackConsumed) + c6Extra
+  /** 葬血强袭实际结算次数 = 滑块声明 + 自动补足（发行行与时间都按它） */
+  const burialCastsSettled = burialCount + autoBurialCasts
+  /**
+   * 毁伤需求（展示用总量）= 实际结算的段数 + 影画6。
+   * ⚠ 与 `gashStackConsumed` 的区别：这里按「**招式段数**」算（葬血强袭每次 3 段），
+   *   后者按「**层数**」算——自动补足那发部分消耗时两者会差几层（层不够 3 的倍数）。
+   */
+  const maimDemand = (cleaveCount + burialCastsSettled * BURIAL_MAIM_PER_CAST) + c6Extra
   // 锐能总量 = 进场 60（开局赠送）+ 终结技 ×10 + 常态平A自动回复（锻星 0）
   const ultimateCount = Math.max(0, Math.floor(Number(input.ultimateCount ?? 0)))
   const sharpnessGain = SHARPNESS_INITIAL + ultimateCount * SHARPNESS_ULTIMATE_GAIN
@@ -359,11 +418,13 @@ export function computeClaretSharpResource(input: {
     maimFromCleave,
     maimFromBurial,
     maimFromC6: c6Extra,
+    burialCastsSettled,
+    autoBurialCasts,
     sharpnessGain,
     affordableExCount,
     sharpnessSpend,
     sharpnessRemaining: Math.max(0, sharpnessGain - sharpnessSpend),
-    note: 'v12 口径：残痕值 = 平A（两态秒均×时间）+ 其余全部招式（实打次数 × gash_buildup 表值）→ × 积蓄效率，每 600 点 = 1 层；3 层是敌人身上同时存量上限、不是整局毁伤次数上限（毁伤 = min(总层数, 消耗需求) × 覆盖率）；斩金断铁×1/葬血强袭×3 命中残痕各消耗 1 层触发毁伤；反制支援整组化解控制技时琢形「重击命中直接添加 1 层残痕」（每组 +600 点、不吃积蓄效率倍率，与招式自身表值积累是两件事）；锐能 = 进场 60（勘域 180s 一次）+ 终结技 10/次，秘血铸锋 60/发。',
+    note: 'v12 口径：残痕值 = 平A（两态秒均×时间）+ 其余全部招式（实打次数 × gash_buildup 表值）→ × 积蓄效率，每 600 点 = 1 层；3 层是敌人身上同时存量上限、不是整局毁伤次数上限；**毁伤按层数结算**（用户 2026-10-09）——滑块的斩金断铁/葬血强袭先扣，**剩余层数一律由葬血强袭打完**（不设次数上限，真正的约束是时间：每次 2.884s 必做前台，由折叠环挤平A）；葬血强袭可**打断**（只打前半段：时间与数值减半，但 3 次毁伤照常全触发，每次省 1.1585s 还给平A）；反制支援整组化解控制技时琢形「重击命中直接添加 1 层残痕」（每组 +600 点、不吃积蓄效率倍率）；锐能 = 进场 60（勘域 180s 一次）+ 终结技 10/次，秘血铸锋 60/发。',
   }
 }
 
@@ -423,8 +484,10 @@ function computeClaretBasicPerSecFromCfg(cfg: AgentCharConfigInput['cfg'], share
   )
 }
 
-function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
+function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg, char }: AgentCharConfigInput): void {
   cfg.claretSkills = skills
+  // 交互栏用户输入（CC-35b 同款：模块从 `char` 读本角色专属次数，不让 helpers 的 cfg 字面量替每槽拷一遍）。
+  cfg.claretBurialInterruptCount = Math.max(0, Math.floor(Number(char?.claretBurialInterruptCount ?? 0)))
   // （2026-09-19 R37 清理）曾在此写 cfg.claretExMoveId / claretExDamageMultiplier：全仓零读取点的死诊断键
   //   （EX 行倍率由 enrichExecutionPlan 按 moveId 从倍率表回填，不经这里），判据 14 看不见 record 动态键 ⇒ 手工核销。
   /**
@@ -445,6 +508,41 @@ function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg }: AgentCharCon
   cfg.claretGashByMoveId = gashByMoveId
   cfg.claretMaimDamageMultiplier = getRowValue(findMoveById(skills, MAIM_MOVE_ID), 'damage') || 1625.6
   cfg.claretBloodBurialDamageMultiplier = getRowValue(findMoveById(skills, BLOOD_BURIAL_MOVE_ID), 'damage') || 626.3
+  /**
+   * 葬血强袭（1611014）与它的入场段「斩金断铁·上挑」（1611011）的**全通道**表值。
+   *
+   * 为什么需要：`buildClaretExecutions` 把两者**融合成一次动作**发行（用户口径 2026-10-09），
+   * 融合后的失衡/喧响不再是单行表值 ⇒ 必须显式覆盖（`dazeMultiplierOverride` /
+   * `decibelRecoveryOverride`），否则 `enrichExecutionPlan` 会按 moveId 1611014 回填**单行**值，
+   * 静默丢掉上挑段那一份。伤害侧同理（打断版要按比例缩）。
+   */
+  cfg.claretBloodBurialDaze = getRowValue(findMoveById(skills, BLOOD_BURIAL_MOVE_ID), 'daze')
+  cfg.claretBloodBurialDecibel = getRowValue(findMoveById(skills, BLOOD_BURIAL_MOVE_ID), 'decibel_recovery')
+  /**
+   * 段时长从 **catalog actionTime** 读（规则 11：跨文件常量单一来源；`CLEAVE_ENTRY_SECONDS` 等常量
+   * 只作 catalog 缺值时的兜底，且值与其一致）。葬血强袭的融合时长 = 入场上挑 + 三连横斩。
+   */
+  cfg.claretCleaveEntrySeconds = findMoveById(skills, CLEAVE_ENTRY_MOVE_ID)?.actionTime ?? CLEAVE_ENTRY_SECONDS
+  cfg.claretBurialSeconds = findMoveById(skills, BLOOD_BURIAL_MOVE_ID)?.actionTime ?? BURIAL_SECONDS
+  cfg.claretCleaveEntryDamage = getRowValue(findMoveById(skills, CLEAVE_ENTRY_MOVE_ID), 'damage')
+  cfg.claretCleaveEntryDaze = getRowValue(findMoveById(skills, CLEAVE_ENTRY_MOVE_ID), 'daze')
+  cfg.claretCleaveEntryDecibel = getRowValue(findMoveById(skills, CLEAVE_ENTRY_MOVE_ID), 'decibel_recovery')
+  /**
+   * spec 事件载体行的**表值预取**（CC-250 协议：`buildSpecEventExecutions` 缺省读 `cfg.mechanicRowValues`）。
+   *
+   * ⚠ 克拉蕾是**自定义 TS 模块**，不走 `specToMechanicModule.buildCharConfig`，而那份预取只长在
+   *   spec 模块里 ⇒ 本模块若不自己写，`buildSpecEventExecutions` 读到的 base 恒为 0；damage 行又
+   *   没有 override ⇒ 命中 `if (multiplier <= 0 && !usesOverride) continue` **静默丢弃整行**。
+   *   实测缺陷：斩金断铁本体两段（1611011 上挑 153.6% / 1611012 横斩 175.7%）**从未被发行**——
+   *   滑块默认 1 次，但伤害/失衡/喧响一分没进账（`roxy.ts` 有同款先例，是唯一写该键的自定义模块）。
+   *   判据：`claretSmoke.test.ts` 的「斩金断铁本体两段必须发行」组。
+   */
+  cfg.mechanicRowValues = {
+    ...(cfg.mechanicRowValues ?? {}),
+    [CLEAVE_ENTRY_MOVE_ID]: getRowValue(findMoveById(skills, CLEAVE_ENTRY_MOVE_ID), 'damage'),
+    [CLEAVE_SLASH_MOVE_ID]: getRowValue(findMoveById(skills, CLEAVE_SLASH_MOVE_ID), 'damage'),
+    [MAIM_MOVE_ID]: getRowValue(findMoveById(skills, MAIM_MOVE_ID), 'damage'),
+  }
   // 平A两态基准（秒均）：常态=血锻基准段、猩红铭刻=锻星#3（用户口径 2026-09-11）
   cfg.claretNormalBenchmarkMoveId = resolveNormalBenchmark(skills)?.id ?? ''
   cfg.claretInscriptionBenchmarkMoveId = INSCRIPTION_BENCHMARK_MOVE_ID
@@ -744,12 +842,82 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
   const spec = getAgentSpec(CLARET_AGENT_ID)
   if (!spec) return
+  const cleaveCount = Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount')))
+  const burialCount = Math.max(0, Math.floor(source.burialCastsSettled))
+  // 打断次数（交互栏录入）：夹到 [0, 实际结算次数]——打断了就没有那一次完整施放。
+  const interruptCount = Math.min(
+    Math.max(0, Math.floor(Number(cfg.claretBurialInterruptCount ?? 0))),
+    burialCount,
+  )
+  const fullBurialCount = Math.max(0, burialCount - interruptCount)
+  // ── 葬血强袭（含入场「斩金断铁·上挑」）按**真实时间**发行 ──
+  // 用户口径 2026-10-09：这是普通招式，必须吃前台时间；进「必做动作」池自然挤平A，由折叠环收敛。
+  // 融合口径：每次 = 上挑（1611011，153.6%/0.567s）+ 三连横斩（1611014，626.3%/2.317s）= 779.9%/2.884s
+  //   —— 原文「在[特殊技：血华誓·斩金断铁]**上挑期间**，保持长按…发动」；用户确认「要：每次葬血强袭都含上挑那一下」。
+  // ⚠ 这两行原由 spec 事件发行且 `actionTime` 记 0（历史遗漏，行时间整段丢失）⇒ 改由模块按融合口径发行，
+  //   spec 的 `claret_blood_burial` 事件已停用（`1611.json` 的 `enabledField`）。
+  // ⚠ 必须用**真 moveId 1611014**（不是自造 id）：`enrichExecutionPlan` 按 moveId 找行、`skillDamageTarget`
+  //   定向、M4 的 `patchExecutions` 都依赖它；融合后的倍率/失衡/喧响全部走 `*Override` 显式覆盖。
+  // 段时长（秒）：catalog 为源、常量为兜底（见 buildClaretCharConfig）
+  const entrySeconds = Math.max(0, Number(cfg.claretCleaveEntrySeconds ?? CLEAVE_ENTRY_SECONDS))
+  const bodySeconds = Math.max(0, Number(cfg.claretBurialSeconds ?? BURIAL_SECONDS))
+  const entry = {
+    damage: Number(cfg.claretCleaveEntryDamage ?? 0),
+    daze: Number(cfg.claretCleaveEntryDaze ?? 0),
+    decibel: Number(cfg.claretCleaveEntryDecibel ?? 0),
+  }
+  const body = {
+    damage: Number(cfg.claretBloodBurialDamageMultiplier ?? 626.3),
+    daze: Number(cfg.claretBloodBurialDaze ?? 0),
+    decibel: Number(cfg.claretBloodBurialDecibel ?? 0),
+  }
+  const ratio = BURIAL_INTERRUPT_RATIO
+  /** 一次完整施放：上挑 + 三连横斩全额 */
+  if (fullBurialCount > 0) {
+    executions.push(moduleExecRow({
+      moveId: BLOOD_BURIAL_MOVE_ID,
+      moveName: '特殊技：血华誓·葬血强袭（含上挑）',
+      category: 'special',
+      count: fullBurialCount,
+      actionTime: entrySeconds + bodySeconds,
+      totalTime: fullBurialCount * (entrySeconds + bodySeconds),
+      damageMultiplier: entry.damage + body.damage,
+      damageMultiplierOverride: true,
+      dazeMultiplier: entry.daze + body.daze,
+      dazeMultiplierOverride: true,
+      decibelRecovery: entry.decibel + body.decibel,
+      decibelRecoveryOverride: true,
+      ...ENERGY_RECOVERY_OFF,
+      timeBucket: 'necessary',
+    }))
+  }
+  // 打断版：三连横斩只打一半（时间与伤害/失衡/喧响减半），**上挑那一下照打**；
+  // 毁伤**照常 3 次**（毁伤由独立的 `claret_maim` 行结算，不随这里的数值减半）
+  if (interruptCount > 0) {
+    executions.push(moduleExecRow({
+      moveId: BLOOD_BURIAL_MOVE_ID,
+      moveName: '特殊技：血华誓·葬血强袭（含上挑·已打断）',
+      category: 'special',
+      count: interruptCount,
+      actionTime: entrySeconds + bodySeconds * ratio,
+      totalTime: interruptCount * (entrySeconds + bodySeconds * ratio),
+      damageMultiplier: entry.damage + body.damage * ratio,
+      damageMultiplierOverride: true,
+      dazeMultiplier: entry.daze + body.daze * ratio,
+      dazeMultiplierOverride: true,
+      decibelRecovery: entry.decibel + body.decibel * ratio,
+      decibelRecoveryOverride: true,
+      ...ENERGY_RECOVERY_OFF,
+      timeBucket: 'necessary',
+    }))
+  }
   const generated = buildSpecEventExecutions(spec, {
     cfg,
     state,
     counts: {
-      claretCleaveCount: Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount'))),
-      claretBloodBurialCount: Math.max(0, Math.floor(cfgSetting(cfg, 'claret.bloodBurialCount'))),
+      claretCleaveCount: cleaveCount,
+      // 葬血强袭已由本模块按融合口径发行（含时间）⇒ spec 事件传 0 避免双计
+      claretBloodBurialCount: 0,
       claretMaimCount: Math.max(0, Math.floor(source.maimCount)),
       claretMaimFromCleave: Math.max(0, Math.floor(source.maimFromCleave)),
       claretMaimFromBurial: Math.max(0, Math.floor(source.maimFromBurial)),
@@ -757,7 +925,6 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
     },
     overrides: {
       claret_maim: { multiplier: Number(cfg.claretMaimDamageMultiplier ?? 1625.6) * (cinemaLevel >= 1 ? C1_MAIM_MULT : 1) },
-      claret_blood_burial: { multiplier: Number(cfg.claretBloodBurialDamageMultiplier ?? 626.3) },
     },
   })
   executions.push(...generated)
@@ -791,11 +958,12 @@ function buildClaretResourceSections({ result }: AgentResourceSectionsInput) {
               detail: `整组化解 ${source.counterAssistGashStacks} 组控制技，琢形「重击命中直接添加 1 层[残痕]」（不吃积蓄效率倍率）`,
             }]
           : []),
-        { label: '毁伤需求', value: `${source.maimDemand} 次`, detail: `斩金断铁×1 + 葬血强袭×3 + 影画6(连携+终结)×1；其中影画6 **不消耗残痕**，故层预算只算前两项` },
-        { label: '残痕消耗', value: `-${Math.floor(source.gashStackConsumed)} 层`, detail: '命中残痕状态敌人，每层一次毁伤（覆盖率折算）' },
+        { label: '毁伤需求', value: `${source.maimDemand} 段`, detail: `斩金断铁×1 + 葬血强袭×3/次（结算 ${source.burialCastsSettled} 次，含自动补足 ${source.autoBurialCasts} 次）+ 影画6(连携+终结)×1；其中影画6 **不消耗残痕**，不占层预算。段数按招式段算，与层数会差几层（葬血强袭每次 3 段）` },
+        { label: '残痕消耗', value: `-${Math.floor(source.gashStackConsumed)} 层`, detail: `命中残痕状态敌人，每层一次毁伤（覆盖率 ${fmt(Math.min(100, Math.max(0, source.gashStackConsumed / Math.max(1e-9, source.gashStacks) * 100)))}% 折算）。**按层数结算**：滑块的斩金断铁/葬血强袭先扣，剩余层数一律由葬血强袭自动打完（不再被滑块封顶）` },
         { label: '毁伤触发', value: `${source.maimCount} 次`, detail: `斩金断铁 ${source.maimFromCleave} + 葬血强袭 ${source.maimFromBurial} + 影画6 ${source.maimFromC6}` },
+        { label: '葬血强袭结算', value: `${source.burialCastsSettled} 次`, detail: `滑块声明 + **自动补足 ${source.autoBurialCasts} 次**（剩余层数 ÷ 3 向上取整）；每次 2.884s 必做前台（入场上挑 0.567s + 三连横斩 2.317s），由折叠环自然挤平A——这是毁伤次数真正的约束（滑块不是上限）` },
       ],
-      footer: `v12：残痕值 = 平A（两态秒均×时间）+ 其余招式（实打次数 × gash_buildup 表值），每 600 点 = 1 层（用户口径）；敌人身上同时最多挂 ${GASH_MAX_STACKS} 层，但整局可用层数不钳制（攒够就消耗，毁伤上限是消耗需求次数）；反制支援化解控制技时琢形**额外直接送 1 层/组**（送层不吃积蓄效率，与招式自身的表值积累是两件事）；快速支援等无物化行的交互不计积累。`,
+      footer: `v12：残痕值 = 平A（两态秒均×时间）+ 其余招式（实打次数 × gash_buildup 表值），每 600 点 = 1 层（用户口径）；敌人身上同时最多挂 ${GASH_MAX_STACKS} 层，但整局可用层数不钳制。**毁伤按层数结算**（用户 2026-10-09）：滑块的斩金断铁/葬血强袭先扣，**剩余层数一律由葬血强袭自动补足打完**（不设次数上限，真正的约束是时间）；反制支援化解控制技时琢形**额外直接送 1 层/组**（送层不吃积蓄效率，与招式自身的表值积累是两件事）；快速支援等无物化行的交互不计积累。`,
     },
     {
       id: 'claret-two-state-time',
@@ -829,8 +997,10 @@ const settings: MechanicSetting[] = [
   {
     id: 'claret.cleaveSpecialCount',
     label: '克拉蕾斩金断铁（短按E）次数',
-    description: '手法（用户 2026-09-03）：失衡外离散的短按E 结算残痕（命中残痕敌 → 1 次毁伤）；默认每轮 1 次。',
-    default: 1,
+    description: '手法：失衡外离散的短按E 结算残痕（命中残痕敌 → 1 次毁伤）。'
+      + '**默认 0**（用户口径 2026-10-09：「不需要斩金断铁，只打葬血强袭」）——轴模式下若要打就在此填，或由轴带入。'
+      + '每次占前台 0.567s（上挑）+ 0.649s（横斩）= 1.216s，两段都进伤害/失衡/喧响。',
+    default: 0,
     min: 0,
     max: 20,
     step: 1,
@@ -838,9 +1008,12 @@ const settings: MechanicSetting[] = [
   },
   {
     id: 'claret.bloodBurialCount',
-    label: '克拉蕾葬血强袭（长按E）次数',
-    description: '手法（用户 2026-09-03）：失衡轴内用长按E 结算残痕（每施放至多 3 次毁伤，3 段横斩各命中触发）；默认每轮 1 次。',
-    default: 1,
+    label: '克拉蕾葬血强袭（长按E）声明次数',
+    description: '**声明**要打几次葬血强袭——它只决定「前几次由你指定」，**不是结算上限**：'
+      + '剩余残痕层数一律由葬血强袭**自动补足打完**（用户口径 2026-10-09「剩下的自动用葬血强袭打完」'
+      + '「这个滑块限制就很背离计算逻辑了」）。每次占前台 2.884s（入场上挑 0.567s + 三连横斩 2.317s），'
+      + '由折叠环自然挤平A。默认 0 = 全部交给自动补足（想表达「打不到残痕敌人」请用残痕覆盖率）。',
+    default: 0,
     min: 0,
     max: 20,
     step: 1,
@@ -882,7 +1055,23 @@ export const claretMechanic: AgentMechanicModule = {
   id: 'agent:claret',
   agentIds: [CLARET_AGENT_ID],
   name: '克拉蕾',
-  description: 'v12：锐化伤害积累残痕值（每600点=1层，上限3），斩金断铁/葬血强袭消耗残痕触发毁伤；锐能进场60/秘血铸锋60发；核心被动暴击率+30%与残锋锐暴+25%；影画1锐暴积蓄+20%与毁伤×130%、2铭刻+2s与电抗无视18%、4+20%、6直接毁伤。',
+  characterCountInputs: [
+    {
+      field: 'claretBurialInterruptCount',
+      label: '葬血强袭打断',
+      title: '打断[特殊技：血华誓·葬血强袭]的次数：在 2.317s 的三连横斩打到一半时打断——**时间与伤害/失衡/喧响都减半**（2.317s→1.1585s、626.3%→313.15%、失衡 382.5→191.25、喧响 70.098→35.049），但**3 次毁伤照常全部触发**（毁伤挂在命中判定上，不随后半段走）。'
+        + '入场「斩金断铁·上挑」（153.6%/0.567s）两种结算都完整打。'
+        + '为什么是正收益：葬血强袭 DPS（≈270%/s）明显低于[锻星]平A（531.88%/s），省下的 1.1585s/次还给平A是净赚，且平A时间变多 ⇒ 残痕积累变多（锻星 120%/s > 血锻 100%/s）⇒ 毁伤更多。'
+        + '操作难度按一次闪避反击（1.2）计，不需要 boss 先出手。',
+    },
+  ],
+  /**
+   * CC-258：本角色引擎交互字段的**专属类型名**——打断葬血强袭在难度轴上是一个独立交互类型
+   * （不在通用六类里），按「一次闪避反击」权重 1.2 计，公式 `c*w`（不吃非失衡占比修正：
+   * 它不需要 boss 先出手，与快支/嘲讽取消同类，见 `teamCompare#BOSS_ATTACK_INTERACTIONS`）。
+   */
+  interactionFieldTypes: { claretBurialInterruptCount: 'claretBurialInterrupt' },
+  description: 'v12：锐化伤害积累残痕值（每600点=1层，上限3），毁伤按层数结算——滑块的斩金断铁/葬血强袭先扣、剩余层数自动由葬血强袭打完（不设次数上限，约束是时间）；葬血强袭可打断（数值减半但毁伤照常 3 次）；锐能进场60/秘血铸锋60发；核心被动暴击率+30%与残锋锐暴+25%；影画1锐暴积蓄+20%与毁伤×130%、2铭刻+2s与电抗无视18%、4+20%、6直接毁伤。',
   applyPanel: applyClaretPanel,
   buildCharConfig: buildClaretCharConfig,
   buildExecutions: buildClaretExecutions,
@@ -934,6 +1123,19 @@ declare module '@/types/resource/config' {
     claretExDecibelRecovery?: number
     /** 克拉蕾葬血强袭基础伤害倍率（倍率表 1611014 damage 行） */
     claretBloodBurialDamageMultiplier?: number
+    /** 葬血强袭（1611014）失衡/喧响表值——融合行需显式覆盖，见 `claretCleaveEntryDamage` */
+    claretBloodBurialDaze?: number
+    claretBloodBurialDecibel?: number
+    /** 葬血强袭入场段「斩金断铁·上挑」（1611011）时长（秒，catalog actionTime；缺省 `CLEAVE_ENTRY_SECONDS`） */
+    claretCleaveEntrySeconds?: number
+    /** 葬血强袭三连横斩段（1611014）时长（秒，catalog actionTime；缺省 `BURIAL_SECONDS`） */
+    claretBurialSeconds?: number
+    /** 葬血强袭入场段「斩金断铁·上挑」（1611011）的伤害/失衡/喧响表值（融合发行用） */
+    claretCleaveEntryDamage?: number
+    claretCleaveEntryDaze?: number
+    claretCleaveEntryDecibel?: number
+    /** 葬血强袭打断次数（交互栏 `claretBurialInterruptCount` 的 cfg 镜像） */
+    claretBurialInterruptCount?: number
     /** 克拉蕾命座等级（用于二命锐能额外回复） */
     claretCinemaLevel?: number
   }
@@ -967,20 +1169,27 @@ export interface ClaretSharpResourceSource {
   /** 反制支援送层数（= 整组化解的控制技组数）：琢形「重击命中**直接**添加1层[残痕]」，
    *  每组 +600 点且**不吃积蓄效率倍率**（用户口径 2026-09-12）；0 = 本次计算没有反制支援。 */
   counterAssistGashStacks?: number
-  /** 血华誓毁伤需求次数（斩金断铁×1 + 葬血强袭×3 + 影画6 连携/终结各1）——**展示用总量**。
+  /** 血华誓毁伤需求**段数**（斩金断铁×1 + 葬血强袭×3/次 + 影画6 连携/终结各1）——**展示用总量**。
+   *  按「招式段数」算（葬血强袭每次 3 段）；`gashStackConsumed` 按「层数」算，自动补足那发部分消耗时两者会差几层。
    *  ⚠ 不等于层预算：影画6 原文「不消耗[残痕]」⇒ 层预算只含斩金断铁/葬血强袭（R54 修正）。 */
   maimDemand: number
-  /** 命中残痕状态消耗的层数 = min(残痕层数, **层预算** cleave+3·burial) × 残痕覆盖率
-   *  （★ 层预算**不含**影画6 —— 它不消耗残痕；见 `claret.ts#computeClaretSharpResource` 的 R54 注释） */
+  /** 实际消耗的残痕层数 = 斩金断铁消耗 + 葬血强袭（声明+自动补足）消耗，已 × 覆盖率。
+   *  ★ 2026-10-09 起**不再被滑块封顶**——滑块声明的那几次先扣，剩余层数一律由葬血强袭打完；
+   *  层预算**不含**影画6（它不消耗残痕，R54）。 */
   gashStackConsumed: number
   /** 触发毁伤次数 = 消耗残痕层数 + 影画6 不消耗残痕的单体毁伤 */
   maimCount: number
   /** 斩金断铁触发的毁伤数 */
   maimFromCleave: number
-  /** 葬血强袭触发的毁伤数 */
+  /** 葬血强袭触发的毁伤数（含自动补足的那些次） */
   maimFromBurial: number
   /** 影画6 连携/终结重击直接触发的单体毁伤数（不消耗残痕） */
   maimFromC6: number
+  /** **葬血强袭实际结算次数** = 滑块声明 + 自动补足（剩余层数 ÷ 3 向上取整）。
+   *  引擎按它发行行（伤害/失衡/喧响/时间）——用户口径 2026-10-09「剩下的自动用葬血强袭打完」。 */
+  burialCastsSettled: number
+  /** 其中**自动补足**的次数（= `burialCastsSettled` − 滑块声明值），用于资源卡展示「自动 ×N」 */
+  autoBurialCasts: number
   /** 参与锐能账本的终结技次数（锐能额外来源 10/次） */
   ultimateCount: number
   /** 平A伤害秒均（%）＝常态基准 345.21 与铭刻基准 531.88 按铭刻时间占比加权 */

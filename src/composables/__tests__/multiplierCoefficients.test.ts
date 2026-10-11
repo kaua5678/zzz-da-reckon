@@ -17,6 +17,7 @@ import { describe, expect, it } from 'vitest'
 import type { Agent, AgentSkills } from '@/types/catalog'
 import { LEVEL1_TO_LEVEL12 } from '@/core/skillLevel'
 import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
+import { COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS, COUNTER_ASSIST_REGISTRY } from '@/data/counterAssists'
 import {
   buildDirectDamageTimeline,
   classifyMove,
@@ -115,6 +116,48 @@ describe('倍率表系数演算：角色纵向系数', () => {
   it('覆盖全部在册角色', () => {
     expect(report.vertical.length).toBeGreaterThanOrEqual(55)
     expect(report.vertical.length).toBeLessThanOrEqual(catalogData.agents.length)
+  })
+
+  /**
+   * 反制支援专属追击段必须排除在直伤锚点之外（用户口径 2026-10-09）。
+   *
+   * 背景：克拉蕾的 assist 段有**两条**「支援突击」（EN 同为 `Assist Follow-Up`）——
+   * 1611027 无垢熔锋（普通弹刀那条，引擎 `findAssistFollowUp` 取到的就是它）
+   * 与 1611030 琢形（**反制支援 1611028 的专属追击**，登记在 `data/counterAssists.ts`）。
+   * 两者一起取中位数会得到 206.8% 的假象；排除琢形后 = 122.7%。
+   *
+   * 本用例防两类回归：① 有人把 `COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS` 过滤删掉（值回到 2.07）；
+   * ② 有人「顺手」把过滤扩到所有 n≥2 的角色（1141/1411/1431 的两条支援突击都是**真·两条**，
+   * 它们不该被排除 —— 见下方 n=2 的三条断言）。
+   */
+  it('★克拉蕾(1611) 直伤锚点排除反制支援专属追击段：只算无垢熔锋 122.7%（不是两条中位数 206.8%）', () => {
+    const dd = verticalOf('1611').directDamage
+    expect(dd, '克拉蕾应有直伤系数').toBeDefined()
+    // 排除 1611030 后只剩 1611027 一条样本
+    expect(dd!.samples, '样本数应为 1（只剩无垢熔锋）').toBe(1)
+    expectNear(dd!.value, 1.227, 0.005, '克拉蕾 直伤锚点 = 1611027 比值')
+    // 反锁：被排除的那条确实是 2.909 的离群值（若它变回 1.0 左右，说明数据/分类变了，需重新裁决）
+    const followUp = report.moves.find((m) => m.moveId === '1611030')
+    expect(followUp, '1611030 应仍在演算表里（只是不进锚点）').toBeDefined()
+    const followUpRatio = followUp!.cells.find((c) => c.rowId === 'damage')?.ratio
+    expect(followUpRatio, '1611030 伤害比值').toBeCloseTo(2.909, 2)
+    // 反锁：COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS 只排除 followUp 段，不误伤同名真·双支援突击角色
+    for (const agentId of ['1141', '1411', '1431'] as const) {
+      const v = verticalOf(agentId).directDamage
+      expect(v, `${agentId} 应有直伤系数`).toBeDefined()
+      expect(v!.samples, `${agentId} 的两条支援突击都是真样本，不该被排除`).toBe(2)
+    }
+  })
+
+  it('反制支援追击段集合只含登记表的 followUpMoveId（防误伤同名的真·双支援突击）', () => {
+    const registered = COUNTER_ASSIST_REGISTRY.map((m) => m.followUpMoveId).sort()
+    expect([...COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS].sort()).toEqual(registered)
+    // 集合里的每条都必须是 assistFollowUp 分类（否则过滤无效、锚点静默不变）
+    for (const id of COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS) {
+      const m = report.moves.find((x) => x.moveId === id)
+      expect(m, `${id} 应在演算表里`).toBeDefined()
+      expect(m!.moveType, `${id} 应分类为支援突击`).toBe('assistFollowUp')
+    }
   })
 })
 

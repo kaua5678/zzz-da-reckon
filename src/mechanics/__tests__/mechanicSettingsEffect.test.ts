@@ -313,31 +313,25 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：拆分/消耗次�
   }, 300000)
 
   /**
-   * `claret.cleaveSpecialCount`：`claret.ts` 的 `max(0, floor(cfgSetting(…, 1)))` →
-   *   `maimStackBudget = cleave + 3·burial`（★ **层预算**，R54 起**不含** c6Extra）；
-   *   `maimDemand = maimStackBudget + c6Extra`（展示用总量）；
-   *   `gashStackConsumed = min(gashStacks, max(0, maimStackBudget)) · coverage`；
-   *   `maimFromCleave = min(gashStackConsumed, cleave)`。
+   * `claret.cleaveSpecialCount`（★ 2026-10-09 改口径：**毁伤按层数结算**）：
+   *   `maimFromCleave = min(stacks · coverage, cleave)`（斩金断铁先扣，照旧）；
+   *   剩余层数 `remaining = stacks·coverage − maimFromCleave − 3·burial` **一律由葬血强袭自动补足**
+   *   （`autoBurialCasts = ceil(remaining / 3)`，`burialCastsSettled = burial + autoBurialCasts`）；
+   *   `maimDemand = cleave + 3·burialCastsSettled + c6Extra`（**段数**口径，与层数口径会差几层）；
+   *   `gashStackConsumed = maimFromCleave + maimFromBurial`（**不再被滑块封顶**）。
    *
-   * ★ **R54（2026-09-20）修正**：旧版把 `c6Extra` 并进 `maimDemand` 后**又拿 demand 当层预算**，
-   *   白白抬高钳位上限 ⇒ `maimCount` 虚高（实测 62/253 夹具、最大 +8 次）。原文依据：
-   *   `talent.6.desc`「重击命中敌人时，**不消耗[残痕]**直接触发1次单体[毁伤]」。
-   *   本测试的闭式随之改为**层预算**口径（用 `maimDemand − maimFromC6` 解出，不硬编 burial）。
+   * 用户口径 2026-10-09（原话）：「不需要斩金断铁，只打葬血强袭。轴模式下有 斩金断铁和葬血强袭对总量的
+   * 消耗，剩下的自动用葬血强袭打完」「这个滑块限制就很背离计算逻辑了」「该结算就放」。
    *
-   * 闭式全部用**同一次读数里的字段**解，两条关键项都不硬编：
-   * · `c6Extra` 就是结果里的 `maimFromC6`（`claret.ts` 的 `maimFromC6: c6Extra`）——
-   *   R50 侦察实测它在两次运行里分别是 0 与 10（`chainCountTotal`/`ultimateCount` 收敛反馈敏感），
-   *   **禁止写死**。
-   * · `maimFromCleave === min(consumed, cleave)` 是**带上限的 min 形式**：`gashStacks` 不够时
-   *   提前触顶（把 cleave 抬到 6 实测 v=4 ⇒ 10 而非 12）。
-   *
-   * ⚠ v=0 **不是零效果点**：只是去掉斩金断铁那一份消耗，葬血强袭（默认 1）仍在。
-   * ⚠ 需要 `gashStacks > 0`（本队实测 6）；`gashStacks` 本身**不随覆盖率变化**。
+   * ⚠ 与旧闭式的**关键差别**：旧式 `gashStackConsumed = min(stacks, 层预算)` 让滑块成为结算上限
+   *   （实测默认夹具 48 层只结算 4 次）；新式把滑块降级为「前几次由谁打」，层数才是结算依据。
+   * ⚠ v=0 仍**不是零效果点**：去掉的是斩金断铁那一份，剩余层数照样由自动葬血强袭打完
+   *   ⇒ `maimCount` 不随 v 归零（旧式下 `v=0 且 burial=0` 会给 0）。
+   * ⚠ 需要 `gashStacks > 0`（本队实测 > 0）；`gashStacks` 本身**不随覆盖率变化**。
    */
-  it('claret.cleaveSpecialCount：maimFromCleave === min(consumed, v) 且 maimDemand === 层预算 + c6（三点 0 / 1 / 3）', async () => {
+  it('claret.cleaveSpecialCount：斩金断铁只吃前几层，剩余层数由葬血强袭自动补足（三点 0 / 1 / 3）', async () => {
     const team: HarnessTeamSlot[] = [{ agentId: '1611', ...RICH }, ...mates(['1481', '1371'])]
     const failures: string[] = []
-    const BURIAL_DEFAULT = 1 // `claret.ts` 的 cfgSetting fallback（本测试不动 burial）
     for (const v of [0, 1, 3]) {
       const src = await probe(team, 'claret.cleaveSpecialCount', v,
         calc => charOf(calc, '1611').claretSharpResourceSource)
@@ -346,37 +340,47 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：拆分/消耗次�
         failures.push(`v=${v}: 夹具失效 —— gashStacks = ${src.gashStacks}（需 > 0 才有消耗可观测）⇒ 本条退化成恒 0 假绿`)
         continue
       }
+      // 斩金断铁先扣（带上限的 min 形式：层不够时提前触顶）
       const expectedFromCleave = Math.min(src.gashStackConsumed, v)
       if (src.maimFromCleave !== expectedFromCleave) {
         failures.push(`v=${v}: maimFromCleave 应为 min(consumed=${src.gashStackConsumed}, ${v})=${expectedFromCleave}，实到 ${src.maimFromCleave}`)
       }
-      // 层预算 = cleave + 3·burial（★ R54：**不含** c6 —— C6 原文「不消耗[残痕]」）
-      const budget = v + BURIAL_MAIM_PER_CAST * BURIAL_DEFAULT
-      const expectedDemand = budget + (src.maimFromC6 ?? 0)
-      if (src.maimDemand !== expectedDemand) {
-        failures.push(`v=${v}: maimDemand 应为 层预算(${budget}) + c6(${src.maimFromC6})=${expectedDemand}，实到 ${src.maimDemand}`)
-      }
-      const expectedConsumed = Math.min(src.gashStacks, Math.max(0, budget))
+      // ★ 新口径：层预算**不封顶**——可消耗层数 = 层数（覆盖率默认 100）
+      const consumable = src.gashStacks
+      const expectedConsumed = Math.min(consumable, src.maimFromCleave + src.maimFromBurial)
       if (src.gashStackConsumed !== expectedConsumed) {
-        failures.push(`v=${v}: gashStackConsumed 应为 min(stacks=${src.gashStacks}, 层预算=${budget})=${expectedConsumed}（覆盖率默认 100），实到 ${src.gashStackConsumed}`)
+        failures.push(`v=${v}: gashStackConsumed 应为 min(层数=${consumable}, fromCleave+fromBurial)=${expectedConsumed}，实到 ${src.gashStackConsumed}`)
+      }
+      // 自动补足次数 = ceil(剩余 / 3)，且必须真的把剩余层数吃完（不白扔）
+      const declaredBurial = src.burialCastsSettled - src.autoBurialCasts
+      const remaining = Math.max(0, consumable - src.maimFromCleave - declaredBurial * BURIAL_MAIM_PER_CAST)
+      const expectedAuto = Math.ceil(remaining / BURIAL_MAIM_PER_CAST - 1e-9)
+      if (src.autoBurialCasts !== expectedAuto) {
+        failures.push(`v=${v}: autoBurialCasts 应为 ceil(剩余${remaining}/3)=${expectedAuto}，实到 ${src.autoBurialCasts}`)
+      }
+      // 段数口径的 demand = 斩金断铁句数 + 结算葬血强袭次数×3 + c6（不含 c6 的层预算另算）
+      const expectedDemand = v + BURIAL_MAIM_PER_CAST * src.burialCastsSettled + (src.maimFromC6 ?? 0)
+      if (src.maimDemand !== expectedDemand) {
+        failures.push(`v=${v}: maimDemand 应为 ${v} + 3×${src.burialCastsSettled} + c6(${src.maimFromC6})=${expectedDemand}，实到 ${src.maimDemand}`)
       }
     }
     expect(failures, failures.join('\n')).toEqual([])
   }, 300000)
 
   /**
-   * `claret.bloodBurialCount`：`claret.ts:410` 的 `max(0, floor(cfgSetting(…, 1)))` → `:235-239`
-   *   `maimFromBurial = min(gashStackConsumed − maimFromCleave, burial · BURIAL_MAIM_PER_CAST)`（3/次）。
+   * `claret.bloodBurialCount`（★ 2026-10-09 改口径）：滑块 = **声明**次数，不是结算上限。
+   *   `burialCastsSettled = v + autoBurialCasts`（自动补足 = `ceil(剩余层数 / 3)`）；
+   *   `maimFromBurial = 声明的 3v + 自动补足的层数`（都被层数夹住）。
    *
-   * ⚠ **单断言 `maimFromBurial === 3·v` 只在 `consumed − fromCleave ≥ 3v` 时成立** ——
-   * 把 cleave 抬到 6 会提前触顶（实测 v=4 ⇒ 10 而非 12）⇒ 本测试断言上面那条 **min 形式**。
-   * ⚠ 不要用 `maimDemand === cleave + 3v + c6Extra` 里的 `c6Extra` 常数（见上一条备注）；
-   * `maimFromBurial` 的 min 形式对 `c6Extra` **不敏感**（c6Extra 只抬高 demand，不抬高上限）。
-   * ★ R54：需求侧闭式改为「层预算 + c6」（层预算不含 c6，见上一条）。
+   * ⚠ 关键语义（用户原话「剩下的自动用葬血强袭打完」）：把 v 调大**不会**凭空造出毁伤——
+   *   层数不够时 `maimFromBurial` 仍被 `stacks` 夹住。本测试断言这条**封顶由层数给定**。
+   * ⚠ 旧式（`min(consumed − fromCleave, 3v)`）在 v=0 时给 0；新式 v=0 只是「不声明」，
+   *   剩余层数照样自动打完 ⇒ **`maimFromBurial` 不随 v 归零**（这是本次口径变更的核心）。
    */
-  it('claret.bloodBurialCount：maimFromBurial === min(consumed − fromCleave, 3·v)（三点 0 / 1 / 3）', async () => {
+  it('claret.bloodBurialCount：滑块只声明前几次，总消耗恒 = 层数（三点 0 / 1 / 3）', async () => {
     const team: HarnessTeamSlot[] = [{ agentId: '1611', ...RICH }, ...mates(['1481', '1371'])]
     const failures: string[] = []
+    const totals: number[] = []
     for (const v of [0, 1, 3]) {
       const src = await probe(team, 'claret.bloodBurialCount', v,
         calc => charOf(calc, '1611').claretSharpResourceSource)
@@ -385,33 +389,43 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：拆分/消耗次�
         failures.push(`v=${v}: 夹具失效 —— gashStacks = ${src.gashStacks} ⇒ 本条退化成恒 0 假绿`)
         continue
       }
-      const expected = Math.min(src.gashStackConsumed - src.maimFromCleave, BURIAL_MAIM_PER_CAST * v)
-      if (src.maimFromBurial !== expected) {
-        failures.push(`v=${v}: maimFromBurial 应为 min(${src.gashStackConsumed} − ${src.maimFromCleave}, ${BURIAL_MAIM_PER_CAST}×${v})=${expected}，实到 ${src.maimFromBurial}`)
+      // 声明部分（本测试不动 cleave，取默认 0）与自动补足部分之和必须吃满可用层数
+      const consumable = src.gashStacks
+      const expectedConsumed = Math.min(consumable, src.maimFromCleave + src.maimFromBurial)
+      if (src.gashStackConsumed !== expectedConsumed) {
+        failures.push(`v=${v}: gashStackConsumed 应为 min(层数=${consumable}, 拆解和)=${expectedConsumed}，实到 ${src.gashStackConsumed}`)
       }
-      // 同一份读数解出的需求侧恒等式（c6Extra 用结果里的 maimFromC6，不硬编）
-      // ★ R54：层预算 = cleave(1) + 3·v，**不含** c6
-      const budget = 1 + BURIAL_MAIM_PER_CAST * v // cleave 默认 1（本测试不动它）
-      const expectedDemand = budget + (src.maimFromC6 ?? 0)
-      if (src.maimDemand !== expectedDemand) {
-        failures.push(`v=${v}: maimDemand 应为 层预算(1 + ${BURIAL_MAIM_PER_CAST}×${v})=${budget} + c6(${src.maimFromC6})=${expectedDemand}，实到 ${src.maimDemand}`)
+      // 拆解恒等式（T4 的通用形式）：三段之和 === maimCount − c6
+      const parts = src.maimFromCleave + src.maimFromBurial
+      if (src.maimCount !== Math.floor(parts) + (src.maimFromC6 ?? 0)) {
+        failures.push(`v=${v}: maimCount 应为 floor(cleave+burial=${parts}) + c6(${src.maimFromC6})=${Math.floor(parts) + (src.maimFromC6 ?? 0)}，实到 ${src.maimCount}`)
       }
+      // ★ 新口径的核心断言：**总消耗与滑块无关**（滑块只搬运「谁打」，不改变总量）
+      totals.push(src.gashStackConsumed)
+      // 声明次数 = 结算次数 − 自动补足次数
+      if (src.burialCastsSettled - src.autoBurialCasts !== v) {
+        failures.push(`v=${v}: 声明次数应为 burialCastsSettled(${src.burialCastsSettled}) − auto(${src.autoBurialCasts})=${v}`)
+      }
+    }
+    // 三点总消耗相同 ⇒ 滑块不是上限（旧式下这三点会分别给出不同的 consumed）
+    if (new Set(totals).size > 1) {
+      failures.push(`总消耗应不随滑块变化（三点实测 ${totals.join(' / ')}）⇒ 滑块仍是上限，口径未生效`)
     }
     expect(failures, failures.join('\n')).toEqual([])
   }, 300000)
 
   /**
    * `claret.gashCoverage`：`claret.ts` 的 `max(0, min(1, min(100, cfgSetting(…, 100))/100))`
-   * → `gashStackConsumed = min(gashStacks, max(0, **层预算**)) · coverage`
-   * 与 `maimCount = floor(gashStackConsumed) + c6Extra`。
+   * → `consumableStacks = gashStacks · coverage`（★ 2026-10-09：**不再取 min(层数, 层预算)**，
+   * 层预算是滑块给的老上限，已废），再由它解出斩金断铁/葬血强袭/自动补足三段；
+   * `maimCount = floor(消耗层数) + c6Extra`。
    *
-   * 闭式 = `consumed === min(stacks, 层预算) · (min(100,v)/100)`。
-   * ★ R54：`层预算 = maimDemand − maimFromC6`（不含 c6；旧版误用 `maimDemand`）。
-   * ⚠ `floor` 在乘**之后**（`maimCount` 才 floor）⇒ 严格说 `consumed` 不是比例量，
-   * 但 0/50/100 三点上 `3 × 0.5 = 1.5` 不是整数 —— 本测试用**实测读数**解闭式，不假设整除。
-   * ⚠ 三点要落在「floor 后互不相同的区间」：本队 `min(stacks, 层预算) = 3`，0/1.5/3 安全。
+   * 闭式 = `consumed === min(stacks, fromCleave + fromBurial)` 且 `= stacks · v/100`（v ≤ 100 时）。
+   * ⚠ `floor` 在**之后**（只有 `maimCount` floor）⇒ `consumed` 是比例量，本测试按比例断言。
+   * ⚠ 覆盖率是**现在唯一能把结算压下来的闸**（滑块已降级为「谁打」）——用户口径：
+   *   「想表达打不到残痕敌人请用覆盖率」。
    */
-  it('claret.gashCoverage：gashStackConsumed === min(stacks, 层预算)·v/100 且 maimCount === floor(consumed)+c6（三点 0 / 50 / 100）', async () => {
+  it('claret.gashCoverage：gashStackConsumed === 层数·v/100 且 maimCount === floor(consumed)+c6（三点 0 / 50 / 100）', async () => {
     const team: HarnessTeamSlot[] = [{ agentId: '1611', ...RICH }, ...mates(['1481', '1371'])]
     const failures: string[] = []
     const seen: number[] = []
@@ -419,13 +433,11 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：拆分/消耗次�
       const src = await probe(team, 'claret.gashCoverage', v,
         calc => charOf(calc, '1611').claretSharpResourceSource)
       if (!src) { failures.push(`v=${v}: claretSharpResourceSource 缺失`); continue }
-      // ★ R54：层预算 = maimDemand − maimFromC6（C6 原文「不消耗[残痕]」⇒ 不进层预算）
-      const budget = src.maimDemand - (src.maimFromC6 ?? 0)
-      const cap = Math.min(src.gashStacks, Math.max(0, budget))
-      const expected = cap * (Math.min(100, v) / 100)
+      // ★ 新口径：可消耗层数 = 层数 × 覆盖率（**不再**被滑块层预算夹）
+      const expected = src.gashStacks * (Math.min(100, v) / 100)
       seen.push(src.gashStackConsumed)
       if (Math.abs(src.gashStackConsumed - expected) > 1e-9) {
-        failures.push(`v=${v}: gashStackConsumed 应为 min(${src.gashStacks}, 层预算${budget})×${v}/100=${expected}，实到 ${src.gashStackConsumed}`)
+        failures.push(`v=${v}: gashStackConsumed 应为 层数${src.gashStacks}×${v}/100=${expected}，实到 ${src.gashStackConsumed}`)
       }
       const expectedMaim = Math.floor(src.gashStackConsumed) + (src.maimFromC6 ?? 0)
       if (src.maimCount !== expectedMaim) {

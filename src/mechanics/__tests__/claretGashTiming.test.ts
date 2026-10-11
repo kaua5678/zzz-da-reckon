@@ -146,7 +146,7 @@ describe('R54 真管线：C6 毁伤不进层预算（时序无关真缺陷的回
    * 既有 `claretSmoke` / `mechanicSettingsEffect` 的夹具都落在 `L ≤ Ds`（`min` 取到 `L`）
    * ⇒ **结构上看不见**本缺陷（R54 实测：修前那 47 条测试**全绿**）。本组就是补这个盲区。
    */
-  it('全库扫描：253 夹具下 `maimCount === min(L, 层预算) + c6` 且层预算不含 c6', async () => {
+  it('真管线：`maimCount === floor(消耗层数) + c6`，且消耗层数由**层数**给出、不被 c6 抬高', async () => {
     const team: HarnessTeamSlot[] = [
       { agentId: '1611', cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12, chainCountPerStun: 2 },
       { agentId: '1481', cinemaLevel: 6 },
@@ -159,21 +159,28 @@ describe('R54 真管线：C6 毁伤不进层预算（时序无关真缺陷的回
       ?.find(c => String((c as { agentId?: string }).agentId) === '1611')?.claretSharpResourceSource
     expect(src, 'claretSharpResourceSource 缺失').toBeTruthy()
     const c6 = src!.maimFromC6
-    const stackBudget = src!.maimDemand - c6
-    // 夹具自证：本队确实落在 Ds < L 的显形区间（否则本条退化成假绿）
-    expect(stackBudget, '夹具失效：需 Ds < L 才看得见 c6 混入层预算').toBeLessThan(src!.gashStacks)
+    // 夹具自证：需 C6 非 0，否则本条看不见 c6 是否混入
     expect(c6, '夹具失效：需 C6 非 0').toBeGreaterThan(0)
-    expect(src!.maimCount).toBe(Math.min(src!.gashStacks, stackBudget) + c6)
-    expect(src!.gashStackConsumed).toBe(Math.min(src!.gashStacks, stackBudget))
+    // ★ R54 不变量在新口径下的形式（2026-10-09 改口径后仍必须成立）：
+    //   消耗层数 = 斩金断铁 + 葬血强袭（由**层数**解出，不是由 demand 或 c6 解出）；
+    //   c6 只进 maimCount（加性）与 maimDemand（段数展示），**绝不抬高消耗**。
+    expect(src!.maimCount).toBe(Math.floor(src!.gashStackConsumed) + c6)
+    // 反锁：若 c6 被混进消耗侧（R54 旧缺陷），consumed 会超出「层数」这个唯一上限
+    expect(src!.gashStackConsumed).toBeLessThanOrEqual(src!.gashStacks + 1e-9)
+    // 拆解恒等式：consumed ≡ fromCleave + fromBurial（与 demand / c6 无关）
+    expect(src!.gashStackConsumed).toBeCloseTo(src!.maimFromCleave + src!.maimFromBurial, 9)
+    // demand 是段数展示量 ⇒ 允许大于消耗层数（葬血强袭每次 3 段，天然比层数粗）
+    expect(src!.maimDemand).toBeGreaterThanOrEqual(src!.gashStackConsumed)
   }, 300_000)
 
-  it('滑块三点（0/1/20）真管线：`gashStackConsumed === min(L, v + 3·burial)`，c6 不进预算', async () => {
+  it('滑块三点（0/1/20）真管线：滑块只决定「谁打」，总消耗恒由层数给出（★ 2026-10-09 改口径）', async () => {
     const team: HarnessTeamSlot[] = [
       { agentId: '1611', cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12, chainCountPerStun: 2 },
       { agentId: '1481', cinemaLevel: 6 },
       { agentId: '1371', cinemaLevel: 6 },
     ]
     const failures: string[] = []
+    const consumedByV: number[] = []
     for (const v of [0, 1, 20]) {
       // 每点独立 setupHarness（跨点复用会因收敛态污染产出假 no-delta）
       const { config } = await setupHarness(team)
@@ -184,17 +191,26 @@ describe('R54 真管线：C6 毁伤不进层预算（时序无关真缺陷的回
         ?.find(c => String((c as { agentId?: string }).agentId) === '1611')?.claretSharpResourceSource
       if (!src) { failures.push(`v=${v}: claretSharpResourceSource 缺失`); continue }
       const c6 = src.maimFromC6
-      const budget = v + BURIAL_MAIM_PER_CAST * 1 // burial 默认 1（本测试不动它）
-      const expected = Math.min(src.gashStacks, budget)
-      if (src.gashStackConsumed !== expected) {
-        failures.push(`v=${v}: gashStackConsumed 应为 min(L=${src.gashStacks}, v+3·burial=${budget})=${expected}，实到 ${src.gashStackConsumed}`)
+      // ★ 新口径：消耗层数**不再**由滑块层预算封顶——滑块只决定斩金断铁吃掉几层，
+      //   剩余层数一律由葬血强袭自动补足 ⇒ `consumed` 与 `v` 无关（见下 totals 断言）。
+      const expected = Math.min(src.gashStacks, src.maimFromCleave + src.maimFromBurial)
+      if (Math.abs(src.gashStackConsumed - expected) > 1e-9) {
+        failures.push(`v=${v}: gashStackConsumed 应为 min(L=${src.gashStacks}, fromCleave+fromBurial)=${expected}，实到 ${src.gashStackConsumed}`)
       }
-      if (src.maimCount !== expected + c6) {
-        failures.push(`v=${v}: maimCount 应为 min(L,budget)+c6(${c6})=${expected + c6}，实到 ${src.maimCount}`)
+      if (src.maimCount !== Math.floor(src.gashStackConsumed) + c6) {
+        failures.push(`v=${v}: maimCount 应为 floor(consumed=${src.gashStackConsumed})+c6(${c6})=${Math.floor(src.gashStackConsumed) + c6}，实到 ${src.maimCount}`)
       }
-      if (src.maimDemand !== budget + c6) {
-        failures.push(`v=${v}: maimDemand 应为 budget+c6=${budget + c6}，实到 ${src.maimDemand}`)
+      // 段数口径 demand（含自动补足的葬血强袭次数）
+      const expectedDemand = v + BURIAL_MAIM_PER_CAST * src.burialCastsSettled + c6
+      if (src.maimDemand !== expectedDemand) {
+        failures.push(`v=${v}: maimDemand 应为 v(${v}) + 3×结算次数(${src.burialCastsSettled}) + c6(${c6})=${expectedDemand}，实到 ${src.maimDemand}`)
       }
+      consumedByV.push(src.gashStackConsumed)
+    }
+    // ★ 改口径的机器判据：三点总消耗应相同（滑块不是上限）；旧式下这三点分别给
+    //   min(L,3) / min(L,4) / min(L,23)，必然互不相同。
+    if (new Set(consumedByV).size > 1) {
+      failures.push(`总消耗应不随滑块变化（三点实测 ${consumedByV.join(' / ')}）⇒ 滑块仍是结算上限，口径未生效`)
     }
     expect(failures, failures.join('\n')).toEqual([])
   }, 300_000)

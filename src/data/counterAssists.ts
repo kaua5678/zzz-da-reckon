@@ -42,8 +42,28 @@ const COUNTER_ASSIST_MOVES: Record<string, CounterAssistMoves> = {
   [CLARET_COUNTER_ASSIST.agentId]: CLARET_COUNTER_ASSIST,
 }
 
+/** 全部已登记的反制支援配对（登记表的数组视图，供自检/判据遍历用；单一来源仍是上面的表） */
+export const COUNTER_ASSIST_REGISTRY: ReadonlyArray<CounterAssistMoves> = Object.values(COUNTER_ASSIST_MOVES)
+
 /** 该角色是否有反制支援招式（Boss 卡显示替换勾选、引擎判定承接槽位的唯一判据） */
 export function counterAssistOf(agentId: string | null | undefined): CounterAssistMoves | null {
   if (!agentId) return null
   return COUNTER_ASSIST_MOVES[agentId] ?? null
 }
+
+/**
+ * 反制支援专属追击段的 moveId 集合（全库并集）——**倍率表「支援突击」锚点必须排除它们**。
+ *
+ * 为什么：本表里 `followUpMoveId`（克拉蕾 1611030 琢形）在 catalog 里也挂在
+ * `assist` 段的「支援突击」名下（EN 同为 `Assist Follow-Up`），但它是**反制支援的专属追击**、
+ * 只在化解控制技时出现，**不是普通弹刀交互会用到的那条支援突击**（引擎 `findAssistFollowUp`
+ * 取 assist 段第一条 = 1611027 无垢熔锋，见 `core/resource/moveLookup.ts`）。
+ * 把两条一起取中位数会让版本直伤系数被本不该参与的行拖走 —— 实测克拉蕾
+ * （1.227 无垢熔锋 + 2.909 琢形）/2 = **206.8%**，而真实锚点（无垢熔锋）只有 **122.7%**。
+ *
+ * @fact data:反制支援/追击段不参与直伤锚点 口径: 反制支援专属追击段（`followUpMoveId`）不计入「版本直伤系数」的支援突击样本——它是化解控制技的专属追击，不是普通弹刀的支援突击；排除后克拉蕾(1611) 直伤锚点 = 1611027 无垢熔锋 = 122.7%（原 206.8% 是两条支援突击取中位数的假象） | 据 用户@2026-10-09（「克拉蕾的中心系数该用支援突击：血华誓·无垢熔锋 (1611027)」）·复核@2026-10-09 | 验 src/composables/__tests__/multiplierCoefficients.test.ts | 锚 src/data/counterAssists.ts#COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS | 信 确认
+ * ⟳复核: 新增锋御/反制支援角色时，确认其 followUpMoveId 同样不该进直伤锚点；若官方把「专属支援突击」与普通弹刀支援突击合并成同一行，本排除随之作废 | 到期 2027-03-31
+ */
+export const COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS: ReadonlySet<string> = new Set(
+  COUNTER_ASSIST_REGISTRY.map(m => m.followUpMoveId),
+)

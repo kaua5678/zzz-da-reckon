@@ -33,15 +33,16 @@ const LEGACY_BOUNDS: Record<ActionCountField, { min: number; max: number }> = {
   yixuanBackstageComboCount: { min: 0, max: 99 },
   promiaNiyingCount: { min: 0, max: 99 },
   tauntCancelCount: { min: 0, max: 99 },
+  claretBurialInterruptCount: { min: 0, max: 99 },
 }
 
 describe('ACTION_COUNT_BOUNDS（上下界表 = 数值口径的单一事实源）', () => {
-  it('与重构前的 15 个 setter 逐位一致（改数字就是数值回归）', () => {
+  it('与重构前的 15 个 setter 逐位一致（后加字段按其声明界补行）（改数字就是数值回归）', () => {
     expect(ACTION_COUNT_BOUNDS).toEqual(LEGACY_BOUNDS)
   })
 
-  it('字段数 = 16（新增/删除字段必须显式来改这条）', () => {
-    expect(Object.keys(ACTION_COUNT_BOUNDS)).toHaveLength(16)
+  it('字段数 = 17（新增/删除字段必须显式来改这条）', () => {
+    expect(Object.keys(ACTION_COUNT_BOUNDS)).toHaveLength(17)
   })
 })
 

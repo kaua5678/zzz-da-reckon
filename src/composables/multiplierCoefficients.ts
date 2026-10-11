@@ -2,7 +2,8 @@
  * 倍率表系数演算引擎 —— 把每个角色实际录入的倍率表与「标准职业稀有度倍率表」
  * （@/data/standardMultiplierTable）对比，推导三类结果：
  *   1. 角色纵向系数（每列跨招式中位数，如爱丽丝失衡 0.90、伊德海莉喧响 ~0.49）
- *   2. 版本直伤系数（支援突击伤害列比值——支援突击通常不随角色变化，作全队锚点）
+ *   2. 版本直伤系数（支援突击伤害列比值——支援突击通常不随角色变化，作全队锚点；
+ *      **反制支援的专属追击段必须排除**，它同挂「支援突击」名但不是普通弹刀那条，见 buildVertical）
  *   3. 招式特定偏差（单招式比值 vs 本角色该列基准：连携增强/大招削弱一类设计空间）
  *
  * 纯函数：输入 catalog 原始数组、输出类型化报告，页面（MultiplierCoeffPage）与测试共用同一实现。
@@ -26,6 +27,7 @@ import {
   type StandardRowId,
 } from '@/data/standardMultiplierTable'
 import { LEVEL1_TO_LEVEL12 } from '@/core/skillLevel'
+import { COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS } from '@/data/counterAssists'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 
 import { localized } from '@/utils/format'
@@ -365,8 +367,14 @@ function buildVertical(moves: MoveEval[]): AgentVerticalRow[] {
           .map((c) => c.ratio as number))
       if (ratios.length) coefficients[rowId] = { value: median(ratios), samples: ratios.length }
     }
+    // 版本直伤系数（中心系数）= 支援突击伤害列比值。
+    // ⚠ 必须排除**反制支援的专属追击段**（`data/counterAssists.ts#COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS`）：
+    //   它在 catalog 里同样挂在 assist 段的「支援突击」名下（EN 同为 `Assist Follow-Up`），但只在
+    //   化解控制技时出现，不是普通弹刀交互会用到的那条支援突击（引擎取 assist 段第一条 = 无垢熔锋）。
+    //   实测克拉蕾(1611)：两条一起取中位数 = (1.227 无垢熔锋 + 2.909 琢形)/2 = **206.8%**，
+    //   排除后 = **122.7%**（用户 2026-10-09 口径：「中心系数该用支援突击：血华誓·无垢熔锋 (1611027)」）。
     const ddRatios = list
-      .filter((m) => m.moveType === 'assistFollowUp')
+      .filter((m) => m.moveType === 'assistFollowUp' && !COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS.has(m.moveId))
       .flatMap((m) => m.cells.filter((c) => c.rowId === 'damage' && !c.dataGap && c.ratio != null).map((c) => c.ratio as number))
     rows.push({
       agentId,

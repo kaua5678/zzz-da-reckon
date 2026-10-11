@@ -192,7 +192,11 @@ export interface DifficultyWeights {
  *
  * **不吃的两类**（语义上不依赖 boss 出手）：
  *  · `quickAssist`（快速支援）= 队友被击飞时的**救场替换**动作（救的是队友不是躲 boss 攻击）；
- *  · `tauntCancel`（嘲讽取消）= 般岳自然后摇取消，配置类交互（weight 0）。
+ *  · `tauntCancel`（嘲讽取消）= 般岳自然后摇取消（**操作收益型**，权重 1.2；它不要求 boss 出手，
+ *    只取决于玩家取消得准不准 ⇒ 不吃本修正）；
+ *  · `claretBurialInterrupt`（克拉蕾·葬血强袭打断）= 同类操作收益型技巧（权重 1.2，同上不吃）。
+ *  ⚠ 2026-10-09 修正：`tauntCancel` 此前写成「配置类交互（weight 0）」——那是**错**的，它是操作收益型
+ *    （取消得越准越省后摇、平A 时间越多、总伤越高），用户裁决权重 = 一次闪反（1.2）。
  *
  * ⚠ 这只是**默认值**：用户在「难度权重」弹层可逐项开关/改公式（用户明确要求可抉择）。
  */
@@ -244,6 +248,8 @@ export const INTERACTION_LABELS: Record<string, string> = {
   yixuanPerfectBlock: '仪玄·e 弹（完美格挡）',
   perfectBlock: '完美格挡',
   tauntCancel: '嘲讽取消',
+  // 2026-10-09：克拉蕾·葬血强袭打断（角色专属交互，用户技巧）
+  claretBurialInterrupt: '克拉蕾·葬血强袭打断',
 }
 
 /** 补全 0 值交互条目（内置三类型 + 队伍角色专属），让预设里为 0 的字段也显示出来，方便照抄字段填数字。 */
@@ -351,7 +357,7 @@ export function computeDifficulty(
     const expr = weights.interactionFormula?.[it.type] ?? defaultInteractionFormula(it.type)
     const value = evalDifficultyFormula(expr, it.count, weight, nonStunRatio, exponent)
     interactionTotal += value
-    if (weight <= 0) continue // 配置类交互（如嘲讽取消，weight 0）不进难度明细
+    if (weight <= 0) continue // 权重 0 的交互不进难度明细（现在没有默认 0 的类型；用户可在权重弹层把某项调成 0）
     const label = it.label ?? INTERACTION_LABELS[it.type] ?? it.type
     parts.push(`${label}${it.count}×${weight}`)
     // 结果与裸和不同（= 公式真的起了作用）才打修正明细，用户看得见自己编的公式生效了。
@@ -893,6 +899,7 @@ export function applyPresetInteractions(
       case 'quickAssist': configStore.setActionCount(slot, 'quickAssistCount', it.count); break
       case 'block': configStore.setActionCount(slot, 'blockCount', it.count); break
       case 'tauntCancel': configStore.setActionCount(slot, 'tauntCancelCount', it.count); break // 般岳：嘲讽取消失衡外连段后摇
+      case 'claretBurialInterrupt': configStore.setActionCount(slot, 'claretBurialInterruptCount', it.count); break // 克拉蕾：打断葬血强袭（数值减半、毁伤照常）
     }
   }
 }

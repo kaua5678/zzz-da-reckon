@@ -458,7 +458,7 @@
   "outerExit": "stable"
  },
  "auto-1611-1621-1211": {
-  "slack": 0,
+  "slack": 0.7,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -530,7 +530,7 @@
   "outerExit": "stable"
  },
  "claret-roxy-rina": {
-  "slack": 0,
+  "slack": 0.7,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"

@@ -893,7 +893,7 @@ export interface AgentMechanicModule {
    * `dualCounterCount` 只有声明了类型名才进难度轴。
    * 值集合同时是队伍对比难度表要补 0 值条目的专属类型（`teamCompareInteractionTypes`，原 CC-68 `compareInteractionTypes` 并入）。
    */
-  interactionFieldTypes?: Readonly<Partial<Record<'blockCount' | 'dualCounterCount', string>>>
+  interactionFieldTypes?: Readonly<Partial<Record<'blockCount' | 'dualCounterCount' | 'claretBurialInterruptCount', string>>>
   /**
    * 异放占比可调声明（CC-55 2026-09-27；**展示层专用，不参与计算**）：本角色的 dominant 异放事件按元素分配次数时，
    * 引擎（resourceCalc/damagePoolRelease.ts）读机制设置 `${eventId.split('_')[0]}.releaseShare:<元素>`。

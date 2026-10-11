@@ -196,21 +196,57 @@ describe('克拉蕾锐能（v12：进场 60 + 终结技 10/次 → 秘血铸锋 
       .toBe(computeClaretSharpResource(base).gashValuePct)
   })
 
-  it('整局可用层数不钳 3（3 = 敌人身上同时存量上限，不是毁伤次数上限）', () => {
-    // 平A 6000 点（×1.5=9000）+ 送 1 层 → 16 层；需求 4 → 消耗 4 → 毁伤 4（旧实现会被钳成 3）
+  it('★毁伤按层数结算：滑块只声明前几次，剩余层数自动由葬血强袭打完（不钳 3、不钳滑块）', () => {
+    // 平A 6000 点 + EX 281.97 → (6000+281.97)×1.5 = 9422.955 → 15 层；再 + 送 1 层 → 16 层。
+    // 旧口径（2026-10-09 前）：层预算 = 斩金断铁1 + 葬血强袭1×3 = 4 ⇒ 消耗 4、毁伤 4（滑块把结算封顶）。
+    // 新口径（用户 2026-10-09「该结算就放」「这个滑块限制就很背离计算逻辑了」）：
+    //   斩金断铁 1 层 + 声明的葬血强袭 3 层 = 4 层先扣，**剩余 12 层自动由葬血强袭打完**（12/3 = 4 次）
+    //   ⇒ 16 层全部结算、毁伤 16 次。
     const r = computeClaretSharpResource({
       ...base, basicGashPerSec: 100, basicAttackTime: 60, counterAssistCount: 1,
     })
     expect(r.gashStacks).toBe(16)
     expect(r.gashValuePct).toBeCloseTo((6000 + 281.97) * 1.5 + 600, 4)
-    expect(r.gashStackConsumed).toBe(4)
-    expect(r.maimCount).toBe(4)
-    // 真正卡住毁伤的是消耗需求，不是 3 层
-    const noDemand = computeClaretSharpResource({
+    expect(r.gashStackConsumed).toBe(16) // 全部结算（旧口径 = 4）
+    expect(r.maimCount).toBe(16)
+    expect(r.maimFromCleave).toBe(1)
+    expect(r.maimFromBurial).toBe(15) // 声明 3 层 + 自动补足 12 层
+    expect(r.autoBurialCasts).toBe(4) // 12 层 ÷ 3 层/次
+    expect(r.burialCastsSettled).toBe(5) // 滑块声明 1 次 + 自动 4 次
+    // 3 层不是上限：16 层全部结算，且远超 3
+    expect(r.gashStacks).toBeGreaterThan(3)
+    // ★ 滑块归零 ≠ 不结算：葬血强袭「没有成本，可以一直用」（用户原话）⇒ 剩余层数照样自动打完。
+    //   想表达「打不到残痕敌人」要用覆盖率，不是把滑块归零（旧口径下这条是 maimCount = 0）。
+    const sliderZero = computeClaretSharpResource({
       ...base, basicGashPerSec: 100, basicAttackTime: 60, cleaveSpecialCount: 0, bloodBurialCount: 0,
     })
-    expect(noDemand.gashStacks).toBeGreaterThan(3)
-    expect(noDemand.maimCount).toBe(0)
+    expect(sliderZero.gashStacks).toBeGreaterThan(3)
+    expect(sliderZero.maimFromCleave).toBe(0)
+    expect(sliderZero.maimCount).toBe(sliderZero.gashStacks) // 全部由自动补足的葬血强袭打完
+    // 覆盖率才是真正的闸：50% 覆盖率 ⇒ 只结算一半层数
+    const halfCoverage = computeClaretSharpResource({
+      ...base, basicGashPerSec: 100, basicAttackTime: 60, cleaveSpecialCount: 0, bloodBurialCount: 0, gashCoverage: 0.5,
+    })
+    // 15 层（9422.955/600 = 15.7 → floor 15）× 50% = 7.5 层 → 毁伤 = floor(7.5) = 7
+    expect(halfCoverage.gashStacks).toBe(15)
+    expect(halfCoverage.maimCount).toBe(7)
+    expect(halfCoverage.maimCount).toBe(Math.floor(halfCoverage.gashStacks * 0.5))
+  })
+
+  it('★自动补足用 ceil：层数不是 3 的倍数时，最后一发部分消耗也要实打一次', () => {
+    // 10 层、斩金断铁 0、声明葬血强袭 0 ⇒ 剩 10 层 → ceil(10/3) = 4 次（不是 floor 的 3 次）
+    const r = computeClaretSharpResource({
+      ...base, basicGashPerSec: 100, basicAttackTime: 4, cleaveSpecialCount: 0, bloodBurialCount: 0,
+    })
+    // 平A 400 点 ×1.5 = 600 → 1 层？改用直接送层构造 10 层更稳：用 counterAssist 送 9 组 + 平A 1 层
+    void r
+    const ten = computeClaretSharpResource({
+      ...base, basicGashPerSec: 100, basicAttackTime: 4, cleaveSpecialCount: 0, bloodBurialCount: 0, counterAssistCount: 6,
+    })
+    // 平A 400×1.5=600（1 层）+ 送 6 层 = 7 层 → ceil(7/3) = 3 次（floor 会给 2 次、白扔 1 层）
+    expect(ten.gashStacks).toBe(7)
+    expect(ten.autoBurialCasts).toBe(3)
+    expect(ten.maimCount).toBe(7)
   })
 })
 

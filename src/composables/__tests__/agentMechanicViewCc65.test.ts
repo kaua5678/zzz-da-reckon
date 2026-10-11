@@ -1,6 +1,11 @@
 /**
  * CC-65：TeamConfigPage 角色专属计数输入框 → 模块声明 characterCountInputs。
  * 对照表 = 原页面写死 v-if 块（1551×2 / 1471 嘲讽取消 / 1541 / 1371×5）逐字段/标签/提示/title/口径。
+ *
+ * ⚠ 本表是**当时页面写死块的快照**，用途是防「迁移时字段/标签/顺序被改坏」。
+ *   **新增角色专属输入框不在本测试拦截面内**（它不是"迁移"）——新声明直接在表里加一行即可，
+ *   判据仍是「声明 == 表」（防止有人顺手改坏已有条目的文案/顺序）。
+ *   最近一次新增：克拉蕾 `claretBurialInterruptCount`（葬血强袭打断，用户口径 2026-10-09）。
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -20,6 +25,14 @@ const LEGACY: Record<string, Array<{ field: string; label: string; hint?: string
   '1541': [
     { field: 'promiaNiyingCount', label: '处刑式·匿影', title: '强特变体：耗强特能量（用户自控预算）；每次触发+10寒蚀值，之后可接特殊技「处刑式·重霜」' },
   ],
+  '1611': [
+    // 用户口径 2026-10-09：新交互（打断葬血强袭），非旧页面迁移项 ⇒ 本表补一行作快照
+    {
+      field: 'claretBurialInterruptCount',
+      label: '葬血强袭打断',
+      title: '打断[特殊技：血华誓·葬血强袭]的次数：在 2.317s 的三连横斩打到一半时打断——**时间与伤害/失衡/喧响都减半**（2.317s→1.1585s、626.3%→313.15%、失衡 382.5→191.25、喧响 70.098→35.049），但**3 次毁伤照常全部触发**（毁伤挂在命中判定上，不随后半段走）。入场「斩金断铁·上挑」（153.6%/0.567s）两种结算都完整打。为什么是正收益：葬血强袭 DPS（≈270%/s）明显低于[锻星]平A（531.88%/s），省下的 1.1585s/次还给平A是净赚，且平A时间变多 ⇒ 残痕积累变多（锻星 120%/s > 血锻 100%/s）⇒ 毁伤更多。操作难度按一次闪避反击（1.2）计，不需要 boss 先出手。',
+    },
+  ],
   '1371': [
     { field: 'yixuanInk2Count', label: '2连墨痕化形' },
     { field: 'yixuanInk3Count', label: '3连墨痕化形', hint: '≤0=自动', title: '≤0/清空 = 自动：总闪能打完失衡内消耗，剩余全部轴外打 3 连墨痕化形（60闪能/次）；填正数覆盖', mode: 'autoIfNonPositive' },
@@ -31,6 +44,7 @@ const LEGACY: Record<string, Array<{ field: string; label: string; hint?: string
 // 原页面 min/max
 const LEGACY_MINMAX: Record<string, [number, number]> = {
   perfectBlockCount: [0, 999], assaultOrderCount: [0, 999], tauntCancelCount: [0, 99], promiaNiyingCount: [0, 99],
+  claretBurialInterruptCount: [0, 99],
   yixuanInk2Count: [0, 99], yixuanInk3Count: [0, 99], yixuanPerfectBlockCount: [0, 99], yixuanExtremeAssistCount: [-1, 99], yixuanBackstageComboCount: [0, 99],
 }
 // 原页面 :value 表达式
@@ -38,6 +52,7 @@ const LEGACY_VALUE: Record<string, (x: number | undefined) => number | null> = {
   perfectBlockCount: x => x || 0,
   assaultOrderCount: x => x || 0,
   tauntCancelCount: x => x ?? 0,
+  claretBurialInterruptCount: x => x ?? 0,
   promiaNiyingCount: x => x ?? 0,
   yixuanInk2Count: x => x ?? 0,
   yixuanInk3Count: x => ((x ?? 0) > 0 ? x! : null),
@@ -58,7 +73,7 @@ describe('CC-65 角色专属计数输入框 → characterCountInputs', () => {
       expect(got, id).toEqual(LEGACY[id] ?? [])
       hits += got.length
     }
-    expect(hits).toBe(9)
+    expect(hits).toBe(10) // 旧页面 9 条 + 克拉蕾新增 1 条
     expect(agentCharacterCountInputs(null)).toEqual([])
     expect(agentCharacterCountInputs(undefined)).toEqual([])
   }, 60000)

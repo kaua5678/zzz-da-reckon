@@ -57,6 +57,9 @@ const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ConfigModel['team'
   { type: 'yixuanPerfectBlock', field: 'yixuanPerfectBlockCount' },
   { type: 'perfectBlock', field: 'perfectBlockCount' },
   { type: 'tauntCancel', field: 'tauntCancelCount' },
+  // 克拉蕾·葬血强袭打断（用户技巧 2026-10-09）：角色专属交互，权重 = 一次闪反（1.2），
+  // 公式 `c*w`（不吃非失衡占比修正——它不需要 boss 先出手，与快支/嘲讽取消同类）。
+  { type: 'claretBurialInterrupt', field: 'claretBurialInterruptCount' },
 ]
 
 /** CC-258：只有角色声明了专属类型名才进难度轴的引擎字段（般岳双反；通用角色的 dualCounterCount 恒 0 且无全局类型） */
