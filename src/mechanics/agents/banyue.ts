@@ -6,7 +6,7 @@ import { calcPenetrationPower } from '@/data/penetrationPower'
 import { fmt } from '@/utils/format'
 import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue as rowValue } from '@/data/moveTableQueries'
-import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { positiveWholeCounts } from '@/utils/finiteClamp'
 import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 import { PARRY_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
@@ -629,8 +629,11 @@ function patchBanyueExecutions({ cfg, executions }: AgentResourceInput): void {
       count: chongXiao,
       actionTime: time,
       totalTime: time * chongXiao,
-      ...ENERGY_RECOVERY_OFF,
       // 不设 damageMultiplierOverride：enrichExecutionPlan 按 moveId 1471029 从倍率表回填
+      // 回能**不写** ENERGY_RECOVERY_OFF（2026-10-11 撤）：原四键零块是初始提交的样板噪声，
+      // 其喧响半边已由 5761e024「喧响债务审计」按「整招独立执行的真债务 0 删掉、交 enrich 回填」撤除，
+      // 能量半边只因当时引擎还没有闪能通道（撤了也是 0）而遗留 ⇒ 是**历史遗留不是有意禁用**。
+      // 现按行存在性回填 flash_energy_recovery=4.668（冲霄的闪能回复，nanoka 原文）。
     }))
   }
 

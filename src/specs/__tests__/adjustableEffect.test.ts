@@ -129,7 +129,14 @@ const LINEAR_CASES: Array<[string, string, string, [string, string], number[], n
   // [settingId, resource, gain, 队友, 三点 rate, 三点期望绝对值]
   ['1021.nekomata_purr.nekomata_ex_gain.rate', 'nekomata_purr', 'nekomata_ex_gain', ['1381', '1211'], [0, 1, 2], [0, 65, 130]],
   ['1021.nekomata_purr.nekomata_ultimate_gain.rate', 'nekomata_purr', 'nekomata_ultimate_gain', ['1381', '1211'], [0, 1, 2], [0, 60, 120]],
-  ['1441.zhendou_heartfire.zhendou_special_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_special_heartfire_gain', ['1011', '1211'], [0, 1, 2], [0, 500, 1000]], // CC-154：physical 下心火来源随计数通道失衡次数变（600→500），线性不变
+  // CC-154：physical 下心火来源随计数通道失衡次数变（600→500），线性不变。
+  // ⚠ 2026-10-11 500→400（T130「命破闪能招式回复」通道接通的下游变化，**有意**）：
+  //   唯一变量 = helpers.ts 回能取行改「flash 优先、energy 兜底」⇒ 1441 的 17 条 flash 行不再静默归零
+  //   （闪避反击 1441017 = 3.402/次 × 12）。因果链（两探针对拍 HEAD 工作树逐位证实）：
+  //     闪能 skillRegen 72.05→103.66 ⇒ 强特 2→3 次 ⇒ 失衡次数 2→3（外层 2-环 → stable）
+  //     ⇒ 影画6 项 75×3=225（原 150）⇒ 蓄力次数 ceil((3.3×180 − 0 − 225)/100)=4（原 5）⇒ 基准 ×100 = 400。
+  //   rate=2 ⇒ 800 仍恰为 2×（线性未破）；本行锚值与夹具 stunCount 强耦合（公式见 zhendou.ts#computeZhendouChargeCount）。
+  ['1441.zhendou_heartfire.zhendou_special_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_special_heartfire_gain', ['1011', '1211'], [0, 1, 2], [0, 400, 800]],
   ['1301.orphie_xuyan.xuyan_ex_special_gain.rate', 'orphie_xuyan', 'xuyan_ex_special_gain', ['1011', '1211'], [0, 0.5, 1], [0, 170, 340]],
   ['1301.orphie_xuyan.xuyan_shiguang_gain.rate', 'orphie_xuyan', 'xuyan_shiguang_gain', ['1011', '1211'], [0, 0.5, 1], [0, 360, 720]],
   ['1521.xixifu_toxin.toxin_duya_hold.rate', 'xixifu_toxin', 'toxin_duya_hold', ['1011', '1211'], [0, 0.5, 1], [0, 15, 30]], // CC-194：安比 C4 回能真正注入，13.5 → 15（恰成线性）

@@ -266,7 +266,9 @@ export function enrichExecutionPlan(result: TeamResourceResult, catalogStore: Re
             // 同一口径）；只回头段会把雅一次连携的 230.15 记成 69.05（坑 31）。
             // 三态解析与记账层 rowDecibelTotal / rowEnergyTotal 同一函数（CC-466）——记账层 == 展示层由结构保证。
             const decibelValue = resolveRecoveryPerCount(exec.decibelRecovery, exec.decibelRecoveryOverride, fusedOf('decibel_recovery'))
-            const energyValue = resolveRecoveryPerCount(exec.energyRecovery, undefined, fusedOf('energy_recovery'))
+            // 同 `energyRecoveryByMoveId` 构造处：命破角色的招式回能长在 `flash_energy_recovery` 上，
+            // 只读 energy_recovery 会让执行行显示 0（记账层 == 展示层由同一判据保证）。
+            const energyValue = resolveRecoveryPerCount(exec.energyRecovery, undefined, fusedOf('flash_energy_recovery') || fusedOf('energy_recovery'))
             patch = {
               actionCode: move.id,
               moveName: move.name.zhCN || move.name.en || exec.moveName,
@@ -381,8 +383,18 @@ export function buildCharConfig(
       // 只回头段会把雅 230.15 记成 69.05）。兄弟段不单独成行（moveFusions 入表前提），无六计风险。
       decibelRecoveryByMoveId[String(m.id)]
         = fusedRowValue(skills, String(m.id), 'decibel_recovery') ?? getRowValue(m, 'decibel_recovery')
+      // @fact engine:energy/闪能招式回复 口径: 招式回能按**行存在性**取——同一 moveId 有 `flash_energy_recovery` 行就用它、否则用 `energy_recovery`（全库互斥：0 例同时有两行）；**判据不是角色**（`cfg.isFlashUser` 是 `flashEnergyRegen>0` 的代理量，真斗 1441 命破但该值为 0 ⇒ 会整只漏掉） | 据 实测@2026-10-11 | 验 flashEnergyRecoveryChannel.test.ts | 锚 src/composables/resourceCalc/helpers.ts#energyRecoveryByMoveId + src/core/resource/moveLookup.ts#calcBasicAttackRegenPerSec | 信 确认
+      // ⟳复核: catalog 是否新出现「同一 moveId 同时有 flash 与 energy 两行」或第 6 个 flash 角色（互斥前提破了就要改取法，不是改 `||` 顺序）| 到期 2027-04-11
+      // 回能通道**互斥且按行存在性取**（2026-10-11 修：此前只读 energy_recovery ⇒ 命破 61 条 flash 行全静默归零）。
+      // catalog 全库实测：同一 moveId 绝不同时有两行（0 例），命破 5 人（1051/1371/1441/1471/1531）只有
+      // `flash_energy_recovery`、其余 56 人只有 `energy_recovery` ⇒ 「有 flash 行就用 flash，否则用 energy」是数据驱动判据。
+      // ⚠ 判据**不是** `cfg.isFlashUser`：那是 `flashEnergyRegen > 0` 的代理量，真斗 1441 是命破（flashEnergyMax=120、
+      // 17 条 flash 行）但 flashEnergyRegen=0 ⇒ 代理量会整只漏掉它。与 `core/resource/moveLookup.ts` 平A通道同款口径
+      // （那里也是逐行取、不判角色）。`||` 而非 `??`：两侧都是 number（fusedRowValue 未登记组 → getRowValue 兜底），
+      // flash 行缺失/为 0 时落回 energy 行是正确语义（互斥保证不会双计）。
       energyRecoveryByMoveId[String(m.id)]
-        = fusedRowValue(skills, String(m.id), 'energy_recovery') ?? getRowValue(m, 'energy_recovery')
+        = (fusedRowValue(skills, String(m.id), 'flash_energy_recovery') ?? getRowValue(m, 'flash_energy_recovery'))
+        || (fusedRowValue(skills, String(m.id), 'energy_recovery') ?? getRowValue(m, 'energy_recovery'))
     }
   }
 
