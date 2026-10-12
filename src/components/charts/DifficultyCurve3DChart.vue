@@ -22,7 +22,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { project3d, type Camera3D, type VersionLane } from '@/composables/difficultyCurve3d'
-import type { CurveSeries } from '@/composables/difficultyCurve'
+import type { CurveDatum, CurveSeries } from '@/composables/difficultyCurve'
+import { axisKindLabel } from '@/composables/difficultyAxis'
 import { fmt } from '@/utils/format'
 import { readThemeVar, useThemeRedraw, withAlpha } from '@/utils/canvasTheme'
 
@@ -45,7 +46,8 @@ const props = defineProps<{
   costMax: number
   ratioMax: number
   colorOf: (presetId: string) => string
-  goalLabel: (id: string | null) => string
+  /** 点名 → 可读标签（`baseline` / `axis` / `progress` / `max`，T140c 关键旋钮点） */
+  pointLabel: (p: CurveDatum['point']) => string
   /** 版本轴标题（如「版本 = 击破位」） */
   axisLabel: string
   /** z 值口径：血量%（缺省，带击杀线平面）/ 绝对伤害（画选中 Boss 的 HP 膨胀曲线，替代平面） */
@@ -261,7 +263,7 @@ function onMove(e: MouseEvent) {
   const pt = s.points[best.p.ptIdx]!
   const lines = [
     `${s.name} · 版本：${lane.label}`,
-    `${pt.opened ? props.goalLabel(pt.opened) : '全关起点'}`,
+    `${props.pointLabel(pt.point)} · 轴态 ${axisKindLabel(pt.axis)}`,
     `操作难度 ${fmt(pt.cost, 0)} · 伤害 ${fmt(pt.ratio, 1)}%（${(pt.dmg / 1e6).toFixed(2)}M）`,
     ...pt.changes.filter(c => c.major).slice(0, 4).map(c => `${c.label} ${fmt(c.from, 1)} → ${fmt(c.to, 1)}`),
   ]

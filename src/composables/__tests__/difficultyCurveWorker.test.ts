@@ -14,7 +14,7 @@
  *    且它测的正是 worker 侧真正会失败的那一步。
  * 2. **回落路径 = 直接调用 `computeDifficultyCurves`，逐位相同**——回落不是「近似」，
  *    它是 worker 化前那条路径本身。用同一份输入分别走 `runDifficultyCurves`（无 Worker ⇒ 回落）
- *    与手写 `withAnalysisScenario` 逐队，断言 `base`/`final`/`points`/`opened`/`dropped` 全等。
+ *    与手写 `withAnalysisScenario` 逐队，断言 `base`/`final`/`points`/`steps`/`gain` 全等。
  * 3. **中止语义 = 优雅式**（`batchTask.ts` 的唯一口径）：中止后**保留已算部分**（不是丢弃、
  *    也不是抛错）。worker 模式下这是 `terminate()` 的即时硬停 + 已回传行照常发布。
  *
@@ -143,12 +143,13 @@ describe('难度曲线 worker 化', () => {
     expect(outcome.rows).toHaveLength(direct.length)
     const a = direct[0]!.ladder
     const b = outcome.rows[0]!.ladder
-    // 逐位相同：base/final 是浮点精确相等（不是 toBeCloseTo），points/opened/dropped 全等
+    // 逐位相同：base/final 是浮点精确相等（不是 toBeCloseTo），points/steps/gain 全等
     expect(b.base).toBe(a.base)
     expect(b.final).toBe(a.final)
     expect(b.points).toEqual(a.points)
-    expect(b.opened).toEqual(a.opened)
-    expect(b.dropped).toEqual(a.dropped)
+    expect(b.points.map(x => x.point)).toEqual(a.points.map(x => x.point))
+    expect(b.axisPointMissing).toBe(a.axisPointMissing)
+    expect(b.gain).toBe(a.gain)
     expect(outcome.rows[0]!.presetId).toBe(preset.id)
     expect(outcome.rows[0]!.name).toBe(preset.name)
   }, 300_000)

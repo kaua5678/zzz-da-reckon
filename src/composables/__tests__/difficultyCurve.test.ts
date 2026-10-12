@@ -11,16 +11,15 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import {
   assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource,
-  captureKeyCounts, diffKeyCounts, estimateLabelWidth, linkCountToDmg, majorChanges,
+  captureDmgBySource, captureKeyCounts, diffKeyCounts, estimateLabelWidth, linkCountToDmg, majorChanges,
   measureOperationalDifficulty, pickNonOverlapping, truncationHintAt, INTERACTION_CUT_MIN,
   type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
-import { DIFFICULTY_GOALS, clearDifficultyLevers, climbDifficultyLadder, containRatioOf, type LadderResult } from '@/composables/difficultyLadder'
+import { absorbCapOf, clearDifficultyLevers, climbDifficultyLadder, scanAbsorbGrid, type LadderResult, type LadderPoint } from '@/composables/difficultyLadder'
 import { applyTeamToStore, computeDifficulty } from '@/composables/teamCompare'
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { teamPresets } from '@/data/teamPresets'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
-import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 
 beforeEach(() => {
@@ -30,29 +29,51 @@ beforeEach(() => {
 
 // ========== 合成阶梯（纯函数判据用，不跑引擎） ==========
 
-/** 把 [累积代价, 伤害] 点列包成 LadderResult；opened 逐点对应（首点是全关起点） */
+/**
+ * 把 [操作难度, 伤害] 点列包成 `LadderResult`（T140c 关键点结构）。
+ *
+ * `points` = 点名序列（缺省 = `baseline → max`；给了就逐点对应）。
+ * 轴态缺省 `none`（合成夹具不跑引擎）；需要轴态的用例用 `axisKinds` 指定。
+ */
 function mkLadder(
   points: [number, number][],
-  opened: string[] = [],
-  dropped: LadderResult['dropped'] = [],
+  pointNames: LadderPoint['point'][] = [],
   counts: Record<string, number>[] = [],
   /**
-   * 逐档截断量（截断提醒判据用）：`[手填交互, 实打交互, 截断秒]`。
+   * 逐点截断量（截断提醒判据用）：`[手填交互, 实打交互, 截断秒]`。
    * 缺省 = 不采（`undefined`）⇒ `truncationHintAt` 一律返回 null（与 `capture` 未给时同口径）。
    */
   trunc: [number, number, number?][] = [],
+  axisKinds: LadderPoint['axis']['kind'][] = [],
+  gain?: number,
 ): LadderResult {
-  return {
-    base: points[0]![1],
-    final: points[points.length - 1]![1],
-    points: points.map(([x, dmg], i) => ({
-      x, dmg, opened: i === 0 ? null : (opened[i - 1] ?? null), counts: counts[i],
+  const names: LadderPoint['point'][] = pointNames.length > 0 ? pointNames : ['baseline', 'max']
+  const mkAxis = (kind: LadderPoint['axis']['kind']): LadderPoint['axis'] => ({
+    kind, skipped: { time: 0, decibel: 0, energy: 0 }, skippedTotal: 0, fallback: kind === 'infeasible',
+  })
+  const pts: LadderPoint[] = points.map(([x, dmg], i) => {
+    const name = names[Math.min(i, names.length - 1)]!
+    return {
+      x, dmg, point: name,
+      knobs: {
+        interactions: name === 'baseline' ? 'default' : 'joint',
+        absorb: name === 'baseline' ? 0 : name === 'max' ? 0.4 : 0.2,
+      },
+      axis: mkAxis(axisKinds[i] ?? 'none'),
+      counts: counts[i],
       ...(trunc[i]
         ? { interactionsFilled: trunc[i]![0], interactionsPlayed: trunc[i]![1], overflow: trunc[i]![2] ?? 0 }
         : {}),
-    })),
-    opened,
-    dropped,
+    }
+  })
+  const base = points[0]![1]
+  const final = points[points.length - 1]![1]
+  return {
+    base,
+    final,
+    points: pts,
+    axisPointMissing: !names.includes('axis'),
+    gain: gain ?? final - base,
   }
 }
 
@@ -75,8 +96,8 @@ describe('buildCurveChart（纯函数）', () => {
 
   it('比例 = 伤害/血量%；上界为 50 的倍数且 ≥100；刻度覆盖到 costMax', () => {
     const rows: DifficultyCurveRow[] = [
-      mkRow('a', 'A', mkLadder([[0, 45_000_000], [3, 90_000_000]], ['G2'])),
-      mkRow('b', 'B', mkLadder([[0, 20_000_000], [1, 22_000_000], [4, 30_000_000]], ['G1', 'G2'])),
+      mkRow('a', 'A', mkLadder([[0, 45_000_000], [3, 90_000_000]], ['baseline', 'max'])),
+      mkRow('b', 'B', mkLadder([[0, 20_000_000], [1, 22_000_000], [4, 30_000_000]], ['baseline', 'max', 'max'])),
     ]
     const c = buildCurveChart(rows, HP)
     expect(c.series).toHaveLength(2)
@@ -96,7 +117,7 @@ describe('buildCurveChart（纯函数）', () => {
     // （auto-1371-1391-1451：maxX=61.26 而末点 x=23.4 ⇒ cx=2763，viewBox 宽仅 1100）。
     const rows: DifficultyCurveRow[] = [
       // 先升后降：末点 x=2，但中途有 x=10 的点（G2 白拿）
-      mkRow('a', 'A', mkLadder([[0, 10], [10, 30], [2, 40]], ['G2', 'G1'])),
+      mkRow('a', 'A', mkLadder([[0, 10], [10, 30], [2, 40]], ['baseline', 'max', 'max'])),
     ]
     const c = buildCurveChart(rows, 100)
     expect(c.costMax).toBeGreaterThanOrEqual(10)
@@ -131,8 +152,8 @@ describe('buildCurveChart（纯函数）', () => {
 
   it('单调不减 + 提升倍数/斜率：每队自己的 x 不对齐也照样成立', () => {
     const rows: DifficultyCurveRow[] = [
-      mkRow('a', 'A', mkLadder([[0, 10], [1, 20], [4, 30], [6, 30]], ['G1', 'G2', 'G3'])),
-      mkRow('b', 'B', mkLadder([[0, 10], [3, 11]], ['G2'])),
+      mkRow('a', 'A', mkLadder([[0, 10], [1, 20], [4, 30], [6, 30]], ['baseline', 'axis', 'progress', 'max'])),
+      mkRow('b', 'B', mkLadder([[0, 10], [3, 11]], ['baseline', 'max'])),
     ]
     for (const s of buildCurveChart(rows, 100).series) {
       for (let i = 1; i < s.points.length; i++) {
@@ -156,7 +177,7 @@ describe('buildCurveChart（纯函数）', () => {
 
     // G4 代价 = 0：两点同 x（0 → 0），仍是两个可画的点
     const zeroCost = buildCurveChart(
-      [mkRow('z', 'Z', mkLadder([[0, 50_000_000], [0, 50_500_000]], ['G4']))], HP,
+      [mkRow('z', 'Z', mkLadder([[0, 50_000_000], [0, 50_500_000]], ['baseline', 'progress']))], HP,
     )
     expect(zeroCost.series[0]!.points).toHaveLength(2)
     expect(zeroCost.series[0]!.points.every(p => p.cost === 0)).toBe(true)
@@ -185,8 +206,7 @@ describe('关键次数差分（用户口径：难度上升到关键变化要标�
   it('buildCurveChart：changes = 相邻档差分；jumps 只留「多了一次」的档', () => {
     const rows: DifficultyCurveRow[] = [mkRow('a', 'A', mkLadder(
       [[0, 100], [1, 200], [4, 300]],
-      ['G1', 'G2'],
-      [],
+      ['baseline', 'progress', 'max'],
       [
         { 大招: 7, 连携: 8.9, 紊乱: 0 },
         { 大招: 8, 连携: 8.95, 紊乱: 0 },  // 大招 +1（major）；连携 +0.05（minor）
@@ -259,7 +279,7 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
     expect(def).not.toBe(6)
   })
 
-  it('集成：x 轴 = 实测操作难度（绝对值，与散点同尺），伤害单调增', async () => {
+  it('集成：x 轴 = 实测操作难度（绝对值，与散点同尺），④ ≥ ①', async () => {
     const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
@@ -268,10 +288,18 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
     expect(pts[0]!.x).toBeGreaterThan(0)          // x = 绝对操作难度（全关也不是 0：有基础交互）
     expect(pts[0]!.x).toBe(pts[0]!.difficulty)    // 与散点横轴同一口径，直接可比
     for (const p of pts) expect(p.x).toBeCloseTo(p.difficulty!, 6)
-    // ⚠️ 实测口径下 x **不保证单调**：有的杠杆减少交互次数（难度降、伤害升 = 白拿的优化）。
-    // 只要求伤害单调（曲线意义所在），并把「难度降过」这件事如实暴露出来。
-    for (let i = 1; i < pts.length; i++) expect(pts[i]!.dmg).toBeGreaterThan(pts[i - 1]!.dmg)
-    expect(pts.some((p, i) => i > 0 && p.x < pts[i - 1]!.x)).toBe(true) // 这条队实测就有降难度的一档
+    // ⚠️ **T140c 起不再断言「伤害严格单调增」**（旧契约随贪心阶梯失效）：
+    //  · x 不保证单调（joint 可能**减少**交互次数 ⇒ 难度降、伤害升 = 白拿的优化）——
+    //    实测本队 x 65.4 → 45.4，难度确实回落了；
+    //  · **相邻点伤害可以相等**：本队 ② 的轴在 (joint, 0) 下**已经完整** ⇒ ④ 把吸收抬到 0.4
+    //    对它是空操作（实测 ②=④=89.830M）。这是**实情**，不是缺陷——「提高合轴上限对这条队没用」
+    //    正是曲线该说的话（卡 §4：不回退该点，藏起来才是骗人）。
+    //  ⇒ 新契约 = **④ ≥ ①**（卡 §6.5 的机器判据）：「难度上升 ⇒ 总伤上升」是**总体**保证，
+    //    不是逐点严格递增（用户 §1(4)：低难度达不到资源要求就如实标注）。
+    const last = pts[pts.length - 1]!
+    expect(last.dmg).toBeGreaterThanOrEqual(pts[0]!.dmg - 1e-6)
+    expect(row!.ladder.gain).toBeGreaterThan(0)
+    expect(pts.some((p, i) => i > 0 && p.x < pts[i - 1]!.x)).toBe(true) // 这条队实测就有降难度的一点
   }, 300_000)
 })
 
@@ -309,157 +337,127 @@ describe('时间压力 = 硬溢出 + 合轴抵扣（用户 2026-09-11：合轴�
   }, 300_000)
 })
 
-describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动；v3 2026-09-19：动态吸收 + 上限；v4 2026-10-05：包容→封顶两档）', () => {
+describe('合轴吸收（T140c：纯收益 ⇒ 拉满；④ 的吸收率 == absorbCap）', () => {
   /**
-   * ★ v4 档位结构锁（用户 2026-10-05）：
-   * > 「合轴率分两档推上去其实没有意义。如果招式溢出了需要合轴包容，就来一次包容，而不是 20%。
-   * >  然后再来一次封顶的 40% 或者玩家设置的更高…如果该队伍算出来本来就没招式溢出，
-   * >  那么我们直接不算中间档位，只算最高合轴率表示一下合轴这一板块对伤害的影响就行」
+   * ## 本块的口径沿革（T140c 取代，**不是静默删除**）
    *
-   * 反证：把 `apply` 改回 v3 的 `cur + cap/2` 机械分档 ⇒ 本用例第一档断言
-   * （`contain` ≠ cap/2）即红（实测 `auto-1431-1481-1491` 加码 10 次交互后 r*=0.04，v3 给 0.2）。
+   * 旧块锁的是 v4 的「两档推进」：`DIFFICULTY_GOALS` 里 `G5` 是 `repeatable` 目标，
+   * 第一次 apply = 「刚好包容」（`containRatioOf`），第二次 = 封顶（用户上限）。
    *
-   * ⚠ 夹具沿革（2026-10-09，预设库重生成 85→77 条）：原 `auto-1431-1481-1491` 存活但**内容变了**
-   * （另一条实战 run），新内容 r=0 无溢出 ⇒ 不再触发「包容」档。
-   * **不再换队，改为在同一存活队上显式构造溢出前置**（主 C 弹刀/闪反各 +10）：
-   * 理由——普查全库 77 条 auto 预设，r=0 溢出 > 1s 的只剩 3 队（`auto-1051-1481-1451` /
-   * `auto-1531-1481-1451` / `yidhari-jufufu-lucia`），且它们的 `containRatioOf` 全为 `null`
-   * （结构性溢出，吸满也包不住）⇒ 本用例想锁的「有溢出的队第一档 = 刚好包容」**已无自然样本**。
-   * 加码 10 次后该队溢出 3.666s、r*=0.04，是「可包容溢出」的最小构造；且该构造对
-   * 「并行会话正在改的 ultimatePromote 单一口径」两种引擎状态给出**逐位相同**的结果
-   * （当前工作树与 HEAD 隔离树实测 d1=82472137.9、d2=83755870.4、r1=0.04 全等）。
+   * **T140c 删掉了「分档推进」这个概念**：用户 2026-10-12 口径「纯收益（合轴/取消后摇/墨影凝云合轴）
+   * **拉满**」⇒ 合轴不再是"一档"，而是**④ 最高点的定义**（吸收率 = `absorbCap`）。
+   * `DIFFICULTY_GOALS` / `repeatable` / `dropped` 随贪心阶梯一并删除（卡 §3.3/§3.4）。
+   *
+   * `containRatioOf` **本身保留**（它是纯函数，且 ② 的网格扫描与它同族）——它的容差口径
+   * （与引擎的量化地板同源）仍是活判据，见下方 `scanAbsorbGrid` 用例。
    */
-  it('★ v4：有溢出的队第一档 = 「刚好包容」（不是 cap/2），第二档 = 封顶', async () => {
+  it('★ ④ 的吸收率 == absorbCap（纯收益拉满），且不写静态合轴率覆盖', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1431-1481-1491')!
-    const ctx = { config, calc }
-    clearDifficultyLevers(ctx)
-    applyTeamToStore(config, preset)
-    // 构造「可包容溢出」前置（见上方夹具沿革）：主 C 弹刀 / 闪反各 +N ⇒ r=0 溢出。
-    // ⚠ 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 叶瞬光需求↓ ⇒ +10 次交互已**不再溢出**（r=0 overflow=0），
-    //    夹具前置失效。实测重新标定：+40 次 ⇒ r=0 溢出 19.08s、`containRatioOf`=0.060（远 ≠ cap/2=0.2，
-    //    「刚好包容」语义干净，且构造对「并行会话 ultimatePromote 口径」两态逐位相同）。
-    config.team[0]!.parryCount = (config.team[0]!.parryCount ?? 0) + 40
-    config.team[0]!.dodgeCounterCount = (config.team[0]!.dodgeCounterCount ?? 0) + 40
-    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0)
-    expect(calc.resourceResult.value!.overflowSeconds).toBeGreaterThan(1) // 确有溢出（前置条件）
-
-    const g5 = DIFFICULTY_GOALS.find(g => g.id === 'G5')!
-    g5.apply(ctx)
-    const r1 = config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)
-    // 第一档 ≠ 机械的 cap/2（0.2）——这是本用例的核心判据
-    expect(r1).not.toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO / 2, 3)
-    expect(r1).toBeGreaterThan(0)
-    expect(r1).toBeLessThanOrEqual(DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
-    // 「刚好包容」的语义：这一档必须把溢出**压到 0**（不是压小一点）
-    expect(calc.resourceResult.value!.overflowSeconds).toBeLessThanOrEqual(1e-3)
-    const d1 = calc.teamTotalDamage.value
-
-    // 第二档 = 封顶（用户上限），且伤害不低于第一档
-    g5.apply(ctx)
-    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 6)
-    expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(d1)
-    // 第三档 = 空操作（已到封顶，repeatable 的自然停点）
-    const atCap = config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)
-    g5.apply(ctx)
-    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(atCap, 9)
-    expect(Object.keys(config.comboAlignOverrides ?? {}).length).toBe(0) // 不再写静态合轴率覆盖
-  }, 300_000)
-
-  it('★ v4：无溢出的队跳过中间档，第一档直接 = 封顶（只表示合轴板块的影响）', async () => {
-    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    await catalog.loadBuildRecommendations()
-    const calc = useResourceCalc()
-    // 实测 r=0 无溢出、但提高合轴率仍涨伤害（57.53M → 76.01M，+32.1%：吸收释放平A池给主C）
-    // 夹具沿革（2026-10-09）：原 `auto-1461-1521-1031`（席德/希希芙/妮可）新库无 ⇒ 换存活等价的
-    // `auto-1461-1521-1491`（席德/希希芙/千夏）：同为「席德主C + 希希芙」结构、r=0 无溢出、
-    // 封顶档仍有 +32% 增益（旧夹具 +18%）。
     const preset = teamPresets.find(p => p.id === 'auto-1461-1521-1491')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
-    expect(calc.resourceResult.value!.overflowSeconds).toBeLessThanOrEqual(1e-3) // 前置：本来就没溢出
     const d0 = calc.teamTotalDamage.value
 
-    DIFFICULTY_GOALS.find(g => g.id === 'G5')!.apply(ctx)
-    // 一次 apply 就到封顶（不存在 20% 这种中间档）
-    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 6)
-    // 封顶档对该队仍有增益 ⇒ 不能因为「没溢出」就整条丢弃
-    expect(calc.teamTotalDamage.value).toBeGreaterThan(d0)
+    const r = climbDifficultyLadder(ctx, preset.team as [string, string, string], {
+      base: c => c.calc.teamTotalDamage.value,
+      capture: c => ({
+        counts: captureKeyCounts(c.calc), dmgBySource: captureDmgBySource(c.calc),
+        overflow: c.calc.resourceResult.value?.overflowSeconds ?? 0,
+      }),
+    })
+    const last = r.points[r.points.length - 1]!
+    expect(last.point).toBe('max')
+    expect(last.knobs.absorb).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 9)
+    expect(last.knobs.interactions).toBe('joint')
+    // 拉满对该队仍有增益 ⇒ 合轴这一维不是空操作（用户「直接不算中间档位，只算最高合轴率」）
+    expect(last.dmg).toBeGreaterThan(d0)
+    // 不写静态合轴率覆盖（动态吸收是唯一通道）
+    expect(Object.keys(config.comboAlignOverrides ?? {}).length).toBe(0)
   }, 300_000)
 
-  it('★ v4：亚秒级溢出 = 量化噪声，不算「需要包容」（容差与引擎同源 1s）', async () => {
+  it('★ `scanAbsorbGrid`：线性网格 + 命中即停 + 无论命中与否都还原（②③ 共用的唯一扫描器）', async () => {
+    // T140c 前这里锁的是 `containRatioOf`（G5 的「刚好包容」专用探测）。该函数随「分档推进」概念一并删除，
+    // 但它证明过的三件套（**线性网格 + try/finally 还原 + 不二分**）被抽成 `scanAbsorbGrid`，
+    // 成为 ②③ 共用的**唯一**「求最小旋钮值」实现 ⇒ 本用例改为直接锁这个共享件。
+    //
+    // 为什么不能二分：`overflow(r)` 与 `axisStands(r)` 都**非单调**（吸收改变并行判定 ⇒ 折叠环落点整体重排），
+    // 实测 `auto-1431-1481-1491` 的 overflow 序列为 `34.25 → 86.39（变差！）→ 36.35 → 22.52 → 19.80`。
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    // 用 `containRatioOf` 直接验容差口径（不依赖某个队「恰好」有亚秒溢出——
-    // 实测那类读数多半来自前一个队的残留配置，见本用例下方的显式注入）。
-    // 夹具沿革（2026-10-09）：原 `auto-1591-1161-1211`（希格莉德/莱特/丽娜）新库无 ⇒ 换存活等价的
-    // `auto-1591-1481-1211`（希格莉德/琉音/丽娜：同主C 希格莉德、r=0 无溢出 ⇒ 同走「无溢出」分支）。
     const preset = teamPresets.find(p => p.id === 'auto-1591-1481-1211')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
-    const real = calc.resourceResult.value!.overflowSeconds ?? 0
-    // ① 注入一个**亚秒级**溢出读数：容器判定必须拒绝（≤ 量化地板 ⇒ 不需要包容档）
-    expect(containRatioOf(ctx, DEFAULT_COMBO_ALIGN_ABSORB_RATIO, TIME_BUDGET_TOLERANCE_SECONDS)).toBeNull()
-    // ② 恰好超过量化地板 ⇒ 才进入扫描（真溢出才配「包容」档）
-    const justOver = containRatioOf(ctx, DEFAULT_COMBO_ALIGN_ABSORB_RATIO, TIME_BUDGET_TOLERANCE_SECONDS + 0.5)
-    // 该队真实溢出若本就 ≤1s，扫描找不到归零点（吸满也还是那个量化残差）⇒ null 也合法
-    if (real > TIME_BUDGET_TOLERANCE_SECONDS) expect(justOver).not.toBeNull()
-    // ③ 明确大于地板的注入值：必须给出一个 (0, cap] 内的比例，且**不是** cap/2 这种机械值
-    const r = containRatioOf(ctx, DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 30)
-    expect(r === null || (r > 0 && r <= DEFAULT_COMBO_ALIGN_ABSORB_RATIO)).toBe(true)
+    // 前置：全关 = 不吸收
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0)
+
+    // ① 命中即停 + 返回值 == 首个命中点（网格 = (0, cap] 的 5% 等分）
+    const seen: number[] = []
+    const hit = scanAbsorbGrid(ctx, 0.4, 0, r => { seen.push(r); return r >= 0.2 - 1e-9 }, 20)
+    expect(hit).toBeCloseTo(0.2, 9)
+    expect(seen[seen.length - 1], '命中后不得继续扫').toBeCloseTo(0.2, 9)
+    // 网格步长 = cap/steps = 0.4/20 = **0.02**（2% 网格，不是 5%）⇒ 0.2 是第 10 个点
+    expect(seen.length, '网格步长 = cap/steps = 0.02 ⇒ 0.2 是第 10 个点').toBe(10)
+    // ② **还原**：探测完吸收率必须回到进入前的值（本函数只探测，不落点）
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1), '无论命中与否都必须还原').toBe(0)
+
+    // ③ 全程不命中 ⇒ null，且同样还原
+    const miss = scanAbsorbGrid(ctx, 0.4, 0, () => false, 20)
+    expect(miss).toBeNull()
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0)
+
+    // ④ 空区间（from ≥ cap）⇒ 不扫、不抛错、直接 null
+    expect(scanAbsorbGrid(ctx, 0.4, 0.4, () => true, 20)).toBeNull()
+    expect(scanAbsorbGrid(ctx, 0, 0, () => true, 20)).toBeNull()
+
+    // ⑤ 起点 from > 0：网格落在 (from, cap] 上（③ 从 ② 的落点往上推进的语义）
+    const up: number[] = []
+    scanAbsorbGrid(ctx, 0.4, 0.2, r => { up.push(r); return false }, 4)
+    expect(up[0], '首个网格点必须 > from').toBeGreaterThan(0.2)
+    expect(up[up.length - 1], '末个网格点 == cap').toBeCloseTo(0.4, 9)
   }, 300_000)
 
-  it('v3 遗留保证：吸收单调不减、到上限伤害不低于全关（自动吸收真的省出前台时间）', async () => {
+  it('v3 遗留保证：吸收拉满时伤害不低于全关（自动吸收真的省出前台时间）', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
     // 时间压力队 auto-1471-1481-1451（般岳/琉音/卢西娅·艾洛温；实测 缺省 0.4：saved 28.63s，
     // 到上限伤害 56.82M ≥ 全关 45.76M）。
-    // 夹具沿革（2026-10-09，预设库重生成 85→77 条）：原 `auto-1371-1481-1451`（仪玄/琉音/卢西娅）
-    // id 虽存活，但**内容变了**（另一条实战 run：琉音/卢西娅音擎换非限定）⇒ 实测到上限伤害
-    // 60.86M **低于**全关 61.38M（−0.85%），不再满足「自动吸收真的省出前台时间」这条设计保证。
-    // 换成同支援核心（琉音+卢西娅·艾洛温）且该保证成立的存活队 `auto-1471-1481-1451`。
     const preset = teamPresets.find(p => p.id === 'auto-1471-1481-1451')!
     const ctx = { config, calc }
-    clearDifficultyLevers(ctx)                 // 全关基线（会清掉合轴率覆盖、吸收上限置 0 并记下用户上限）
+    clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
     const d0 = calc.teamTotalDamage.value
     const saved0 = frontlineOccupationBreakdown(calc.resourceResult.value!).saved
     expect(saved0).toBeCloseTo(0, 6)           // 全关 = 不吸收 ⇒ saved = 0
     expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0)
 
-    const g5 = DIFFICULTY_GOALS.find(g => g.id === 'G5')!
-    g5.apply(ctx)
-    const d1 = calc.teamTotalDamage.value
+    const r = climbDifficultyLadder(ctx, preset.team as [string, string, string], {
+      base: c => c.calc.teamTotalDamage.value,
+      // 跑完会还原现场 ⇒ 用 capture 在 ④ 那一刻读 saved（同一次求值）
+      capture: c => ({ counts: {}, dmgBySource: {}, overflow: 0,
+        interactionsFilled: 0, interactionsPlayed: 0,
+        ...(c === ctx ? {} : {}) }),
+    })
+    void r
+    // 直接验「拉满」这一档本身（阶梯跑完已还原，故这里显式施加一次）
+    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
     const saved1 = frontlineOccupationBreakdown(calc.resourceResult.value!).saved
     expect(Object.keys(config.comboAlignOverrides ?? {}).length).toBe(0) // 不再写静态合轴率覆盖
     expect(saved1).toBeGreaterThan(0.5)        // 解放出前台时间（队友前台被吸收）
-    // CC-261 后（主 C 交互 8/4 → 职业基准 6/10）吸收比例→伤害**逐档不单调**（扫描 0/0.05/0.2/0.3：
-    // 74.29/71.61/73.33/77.38M）。CC-262 定性（§24.103）：吸收只在溢出时起作用 ⇒ 让降配搜索
-    // 选更大交互档 s，多出的交互挤掉平 A、终结次数要到 s=1 才跨 7→8 ⇒ 整数台阶，非缺陷、不修。
-    // 这里只锁设计保证：saved 单调不减、到上限伤害不低于全关（§24.102）。
-    void d1
-    // 可重复：再套一次 ⇒ 到用户上限（缺省 0.4）；第三次 = 空操作（已到上限）
-    g5.apply(ctx)
-    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 6)
     // ⚠ **2026-10-05 改 `toBeGreaterThan` → `toBeGreaterThanOrEqual`**（§20.5-3 轴态吃吸收后暴露）：
     // 吸收量 = `min(溢出, 容量)`（`helpers.ts` 的 `take`）⇒ **溢出被吸满后，再提高比例不再增加 saved**。
     // 实测本队：saved 28.63s 恰为可吸收上限 ⇒ 0.4 档**无事可做**，两档 saved **精确相等**。
-    // ⇒ 「逐档严格变大」从来不是该设计的不变量（只是该队在溢出 > 容量时恰好成立的历史巧合）；
-    //    正确的设计保证 = **单调不减**（容量↑ ⇒ 可吸收量↑，但以溢出为上限）。
-    expect(frontlineOccupationBreakdown(calc.resourceResult.value!).saved).toBeGreaterThanOrEqual(saved1)
-    expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(d1)
+    // ⇒ 「逐档严格变大」从来不是该设计的不变量；正确的设计保证 = **单调不减**（容量↑ ⇒ 可吸收量↑，
+    //    但以溢出为上限）。
     expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(d0) // 到上限：伤害不低于全关
-    g5.apply(ctx)
-    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 6)
   }, 300_000)
 
-  it('试开回滚不留痕：G5 没被录取时，吸收上限与合轴率覆盖必须还原（阶梯快照含两者）', async () => {
+  it('现场恢复：跑完阶梯后合轴率覆盖与吸收率必须还原（只探测不落地）', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
@@ -468,20 +466,15 @@ describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动�
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
     const before = JSON.stringify(config.comboAlignOverrides ?? {})
-    // minGainRatio=10（1000%）⇒ G5 的增益必然低于门槛 ⇒ 试开后丢弃
-    const r = climbDifficultyLadder(ctx, preset.team as [string, string, string], {
-      goals: [DIFFICULTY_GOALS.find(g => g.id === 'G5')!],
-      minGainRatio: 10,
-      costOf: c => measureOperationalDifficulty(c, preset),
+    climbDifficultyLadder(ctx, preset.team as [string, string, string], {
+      base: c => c.calc.teamTotalDamage.value,
     })
-    expect(r.opened).toEqual([])
-    expect(r.dropped.map(d => d.id)).toEqual(['G5'])
     expect(JSON.stringify(config.comboAlignOverrides ?? {})).toBe(before) // 没留痕
-    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0) // 吸收上限也还原到全关的 0
+    expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0) // 吸收也还原到全关的 0
     expect(frontlineOccupationBreakdown(calc.resourceResult.value!).saved).toBeCloseTo(0, 6)
   }, 300_000)
 
-  it('CC-388 试开回滚按整表快照还原：试开时已存在的合轴率覆盖原样回来（非空表才看得出键形态拼错）', async () => {
+  it('CC-388 现场恢复按整表快照还原：跑前已存在的合轴率覆盖原样回来（非空表才看得出键形态拼错）', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
@@ -489,16 +482,13 @@ describe('G5 合轴吸收（自动杠杆，用户 2026-09-10：手填→自动�
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
-    // opts.base 跳过「全关」重置（resetDifficultyGoals 会有意清空合轴率覆盖），让覆盖在试开时确实存在
+    // opts.base 跳过「全关」重置（resetDifficultyGoals 会有意清空合轴率覆盖），让覆盖在跑的时候确实存在
     config.setComboAlignOverride(0, 'basic_attack', 0.37)
     const before = JSON.stringify(config.comboAlignOverrides ?? {})
     expect(before).not.toBe('{}')
-    const r = climbDifficultyLadder(ctx, preset.team as [string, string, string], {
-      goals: [DIFFICULTY_GOALS.find(g => g.id === 'G5')!],
-      minGainRatio: 10,
+    climbDifficultyLadder(ctx, preset.team as [string, string, string], {
       base: c => c.calc.teamTotalDamage.value,
     })
-    expect(r.dropped.map(d => d.id)).toEqual(['G5'])
     expect(JSON.stringify(config.comboAlignOverrides ?? {})).toBe(before)
     expect(config.getComboAlignOverride(0, 'basic_attack', -1)).toBeCloseTo(0.37, 9)
   }, 300_000)
@@ -515,7 +505,8 @@ describe('合轴节省秒数上曲线（用户：只需管合轴了多少时间�
     applyTeamToStore(config, preset)
     const p0 = captureKeyCounts(calc)
     expect(p0['合轴节省']).toBeCloseTo(0, 6)              // 全关：不吸收
-    DIFFICULTY_GOALS.find(g => g.id === 'G5')!.apply(ctx)
+    // ④ 的合轴语义 = 拉满到用户上限（T140c：不再有 G5 目标，纯收益直接拉满）
+    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, absorbCapOf(ctx))
     const p1 = captureKeyCounts(calc)
     const d = diffKeyCounts(p0, p1).find(c => c.label === '合轴节省')
     expect(d, '必须出现「合轴节省」涨幅').toBeTruthy()
@@ -676,8 +667,7 @@ describe('截断提醒：要达到手填的交互要求至少需要多少难度�
     // 般岳簇形态：全程填 66、实打 45→31→25 ⇒ 每一档都被砍、且曲线内无法达标
     const rows: DifficultyCurveRow[] = [mkRow('b', '般岳', mkLadder(
       [[63.7, 100], [45.8, 200], [33.6, 300]],
-      ['G1', 'G2'],
-      [],
+      ['baseline', 'progress', 'max'],
       [],
       [[66, 45], [66, 31], [66, 25]],
     ))]
@@ -692,15 +682,15 @@ describe('截断提醒：要达到手填的交互要求至少需要多少难度�
       expect(p.hint.maxPlayed).toBe(45)
     }
     // 只有起点被砍（爬梯档都足量交付）⇒ truncated 空，但起点 hint 在——面板据此给该队一行说明，不静默消失
-    const baseOnly = buildCurveChart([mkRow('o', 'O', mkLadder([[98, 10], [21, 20]], ['G1'], [], [], [[41, 30.5], [15, 15]]))], 100).series[0]!
+    const baseOnly = buildCurveChart([mkRow('o', 'O', mkLadder([[98, 10], [21, 20]], ['baseline', 'max'], [], [[41, 30.5], [15, 15]]))], 100).series[0]!
     expect(baseOnly.truncated).toEqual([])
     expect(baseOnly.points[0]!.hint).toMatchObject({ filled: 41, played: 30.5 })
     // 无截断的曲线：truncated 空、hint 全 null（提醒不出现 = 零视觉变化）
-    const clean = buildCurveChart([mkRow('a', 'A', mkLadder([[0, 10], [5, 20]], ['G1'], [], [], [[41, 41], [41, 41]]))], 100).series[0]!
+    const clean = buildCurveChart([mkRow('a', 'A', mkLadder([[0, 10], [5, 20]], ['baseline', 'max'], [], [[41, 41], [41, 41]]))], 100).series[0]!
     expect(clean.truncated).toEqual([])
     expect(clean.points.every(p => p.hint === null)).toBe(true)
     // 完全不采交互量（capture 未给）⇒ 也不提示
-    const noCap = buildCurveChart([mkRow('n', 'N', mkLadder([[0, 10], [5, 20]], ['G1']))], 100).series[0]!
+    const noCap = buildCurveChart([mkRow('n', 'N', mkLadder([[0, 10], [5, 20]], ['baseline', 'max']))], 100).series[0]!
     expect(noCap.truncated).toEqual([])
     expect(noCap.maxPlayed).toBeNull()
   })
@@ -764,11 +754,12 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
     // 起点 = 全关基线（静态预设权重档），且**确实爬出了增益**（这条队实测 +40% 量级）
     expect(ladder.base).toBeGreaterThan(0)
     expect(ladder.points[0]!.dmg).toBe(ladder.base)
-    expect(ladder.opened.length).toBeGreaterThanOrEqual(1)
-    // 伤害必须单调增（曲线意义所在）；x = 绝对操作难度，**允许回落**（杠杆减少交互次数时难度下降）
-    for (let i = 1; i < ladder.points.length; i++) {
-      expect(ladder.points[i]!.dmg).toBeGreaterThan(ladder.points[i - 1]!.dmg)
-    }
+    // 点数 2~4（①④ 恒存在）；④ ≥ ①（「难度上升 ⇒ 总伤上升」）
+    expect(ladder.points.length).toBeGreaterThanOrEqual(2)
+    expect(ladder.points.length).toBeLessThanOrEqual(4)
+    expect(ladder.gain).toBeGreaterThan(0)
+    // x = 绝对操作难度，**允许回落**（joint 可能减少交互次数 ⇒ 难度降、伤害升 = 白拿的优化）
+    // ⇒ 只要求「点名次序推进」，不要求 x 单调（卡 §4：下降段如实画出）
     for (const p of ladder.points) expect(p.x).toBe(p.difficulty)
 
     // 关键量快照：队伍级 7 项 + 「合轴节省」(秒) 齐备；changes 与相邻档差分逐位一致（面板/标注的数据源）
@@ -822,37 +813,30 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
     expect(config.appliedBoss).toEqual(before.boss)
   }, 300_000)
 
-  it('切轴档（altAxes，2026-09-13）：作为 AXIS 目标进入爬梯，录取或如实丢弃，且不破坏单调与现场', async () => {
+  it('切轴档（altAxes）T140c 取代：整条移出曲线（卡 §6.2「每队 1~4 点」不许第 5 点）', async () => {
+    // ## 本用例的沿革（**取代**，不是静默删除——卡 §7 要求留痕）
+    //
+    // 原锁：`preset.altAxes` 被做成一条贪心目标（`AXIS:*`）进入爬梯，录取或如实进 `dropped`。
+    // **T140c 让这条判据整体失效**：新结构只有四个定点、且卡 §6.2 要求「每队 1~4 点」
+    // ⇒ 第 5 个点会破判据。`altAxes` 表达的是「高难度段换一条轴」，而 ②③④ 已经在同一难度轴上
+    // **如实报轴态**（含「跳过 N 招」）⇒ 切轴档要表达的「高难段」由 ④ 的轴态如实承载。
+    //
+    // ⚠ 这是**有意的行为变更**（全库仅 `banyue-liuyin-lucia` 一条预设声明 altAxes）。
+    // 否决记录见 `docs/ENGINE_PIPELINE_GUIDE.md` §4。
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const preset = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')
-    expect(preset?.altAxes, '般琉卢应带 10大轴切轴档').toHaveLength(1)
+    expect(preset?.altAxes, '般琉卢应带 10大轴切轴档（本判据的前提：库里确有声明 altAxes 的预设）').toHaveLength(1)
 
-    // 2026-09-23 提速：基础目标去掉 G2（joint-levers 联合搜索）。实测耗时分解（单跑 299s）：
-    // G2 6 次试开 197s、G1 4 次 56s、其余 < 20s；本条契约（切轴档被裁决 / id 合法 / 录取单调 / 现场恢复）
-    // 与 G2 无关，G2 的真实爬梯已由上一条集成用例（缺省全目标）覆盖。切轴档仍由生产路径
-    // `baseGoals` + preset.altAxes 生成（不在测试里复刻 baseAxisSnap，防绑错轴仍绿）。
-    const baseGoals = DIFFICULTY_GOALS.filter(g => g.id !== 'G2')
-    const rows = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset!], boss: FAKE_BOSS, phase: FAKE_PHASE, baseGoals }))
+    const rows = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset!], boss: FAKE_BOSS, phase: FAKE_PHASE }))
     const ladder = rows[0]!.ladder
-    // 每一档的录取 id ∈ 基础目标集 ∪ AXIS:*；切轴档要么被录取（曲线高难段）、要么如实进 dropped
-    const baseIds = new Set(baseGoals.map(g => g.id))
-    for (const o of ladder.opened) {
-      expect(baseIds.has(o) || o.startsWith('AXIS:'), `录取 id ${o} 必须来自目标集或切轴档`).toBe(true)
+    // ① 点数仍 1~4（**没有**第 5 个切轴点）
+    expect(ladder.points.length).toBeLessThanOrEqual(4)
+    // ② 点名里不含任何 AXIS:*（该概念随贪心阶梯删除）
+    for (const pt of ladder.points) {
+      expect(['baseline', 'axis', 'progress', 'max']).toContain(pt.point)
     }
-    // 切轴档必须是生产路径按 preset.altAxes 生成的那一个（防「目标集覆盖」把它静默吞掉）
-    const axisId = `AXIS:${preset!.altAxes![0]!.id}`
-    const axisAccepted = ladder.opened.includes(axisId)
-    const axisDropped = ladder.dropped.some(d => d.id === axisId)
-    expect(axisAccepted || axisDropped, '切轴档必须被裁过决（录取或丢弃），不许静默消失').toBe(true)
-    // 若被录取：它必须是高难度端（伤害不低于前一档，单调契约照常成立）
-    if (axisAccepted) {
-      const idx = ladder.opened.findIndex(o => o.startsWith('AXIS:'))
-      expect(ladder.points[idx! + 1]!.dmg).toBeGreaterThanOrEqual(ladder.points[idx!]!.dmg)
-    }
-    // 现场恢复：切轴试开会改轴状态，跑完必须还原
+    // ③ 现场恢复：切轴档若真被施加过会改轴状态；跑完必须还原
     expect(config.useStunAxis).toBe(false) // FAKE_BOSS + 该预设：快照轴态是未启用
-    // 预算沿革：2026-09-22 300_000 → 420_000（只抬超时）；2026-09-23 全套 verify 仍超 420s ⇒
-    // 改为去掉与契约无关的 G2 联合搜索（见上），预算回到与同文件一致的 300_000。
   }, 300_000)
 })

@@ -1,17 +1,16 @@
 /**
- * 难度曲线展示层：把 `climbDifficultyLadder` 的逐队贪心阶梯变成可画、可比的形状。
+ * 难度曲线展示层：把 `climbDifficultyLadder` 的**关键旋钮点**变成可画、可比的形状。
  *
- * 用户 2026-09-10 口径（改这里前先读）：
+ * 用户 2026-10-12 口径（改这里前先读，取代 2026-09-10 的「五档贪心阶梯」）：
  *  ① **x 轴 = 每队自己的优化路径**，纵轴伤害、**x 是「自动算的操作难度」绝对值**
- *     （= Σ交互次数×权重 + **时间压力秒×权重**，与散点页横轴同一把尺；用户 2026-09-10：「难度系数肯定是自动算呀，
- *     参数可以修改，自变量就是交互值、吃掉队友的合轴时间等」）；**交互次数按装配期截断存活率缩**
- *     （`kept/requested`，见 `liveInteractions`——用户 2026-09-11：「不上升合轴率导致招式截断，
- *     那么对应的资源回复也应该降低，或者交互次数应该降低」）——**各队起点/走向不齐是特性**，
+ *     （= Σ交互次数×权重 + **时间压力秒×权重**，与散点页横轴同一把尺）；**交互次数按装配期截断存活率缩**
+ *     （`kept/requested`，见 `liveInteractions`）——**各队起点/走向不齐是特性**，
  *     对比看的是形状（起点 / 斜率 / 天花板 / 提升倍数）；
- *     ⚠️ 时间压力 = 硬溢出 + 合轴抵扣 **一笔秒数**（用户 2026-09-11：「通过合轴来让溢出时间降低这俩其实是一个东西」），
- *     只挂一个权重；x 仍**不保证单调**：有的杠杆减少交互次数（难度降、伤害升 = 白拿的优化，贪心优先做）；
- *  ② 点 = 累积开启的优化目标，档位数 = 录取到的目标数（最简版就是「全关 / 全开」两点）；
- *  ③ 开启顺序由贪心决定 ⇒ 这条曲线 = **该队的最优提升路径**。
+ *     ⚠️ 时间压力 = 硬溢出 + 合轴抵扣 **一笔秒数**，只挂一个权重；x 仍**不保证单调**；
+ *  ② 点 = **少量关键旋钮点**（`最低 / 刚好实现轴模式 / 重大进步 / 最高`，见 `difficultyLadder.ts` 文件头），
+ *     **不再是按性价比竞争的贪心路径**；
+ *  ③ 每点如实报**轴态**（完整轴 / 跳过 N 招 / 轴不可行 / 非轴队）——用户口径：「达不到资源要求而弃轴
+ *     或者跳过部分招式了，**标注没正常打完就行**」。
  *
  * **口径（与散点页对齐，别各自发明）**：
  *  · 全关基线 = `help teamCompare#applyTeamToStore`（预设声明的静态权重 / 交互 / 音擎 / 驱动盘）
@@ -21,33 +20,34 @@
  *    （曲线要的是跨队同口径的形状）⇒ 起点 ≠ 散点页某个点，页面已注明。
  *
  * **关键次数标注**（用户 2026-09-10 口径：「难度上升到关键变化后可以标注，比如大招多了一次，
- * 毁伤多一次，异常角色就紊乱多一次乱流多一次」）：阶梯每档采一次 `captureKeyCounts` 快照，
- * 相邻档差分后**只标注 Δ≥1 的跃迁**（引擎次数常带小数，+0.1 的微调不算"多一次"，只进 tooltip）；
- * 另加一项**「合轴节省」（秒）**——合轴率优化解放出来的前台时间，是 G5 的主指标（用户口径：只看省出多少秒）。
+ * 毁伤多一次，异常角色就紊乱多一次乱流多一次」）：每点采一次 `captureKeyCounts` 快照，
+ * 相邻点差分后**只标注 Δ≥1 的跃迁**（引擎次数常带小数，+0.1 的微调不算"多一次"，只进 tooltip）；
+ * 另加一项**「合轴节省」（秒）**——合轴率优化解放出来的前台时间。
  * 队伍级 7 项来自引擎字段，角色专属项来自模块自己的 `resourceSections` 展示行（`<数> 次`）——
  * **不在这里硬编码角色**，新增角色只要模块有那行就自动被标注。
  *
  * **伤害归因**：同一份快照里还采「伤害按来源分组」（直伤行用招式名、异常行用行 `type`），
- * 相邻档差分 → 「这一档 +N 伤害是谁贡献的，又被谁挤掉了」。**Σ 分组 ≡ 该档总伤害**
+ * 相邻点差分 → 「这一点 +N 伤害是谁贡献的，又被谁挤掉了」。**Σ 分组 ≡ 该点总伤害**
  * （`teamTotalDamage` 就是 `damagePoolRows` 求和）⇒ 归因是精确账，不是启发式；判据测试按这条不变量钉住。
  *
  * `buildCurveChart` 是纯函数（不碰 store / 引擎），判据测试在同名单测文件里。
  *
- * @fact engine:难度曲线/x轴 口径: x = **自动算的操作难度绝对值** = `computeDifficulty`(当前档实打交互次数, 时间压力秒, 用户权重) —— 与散点页横轴同一函数同一单位（故可直接对齐比较）；**时间压力 = 硬溢出 overflowSeconds + 合轴抵扣 saved，一笔秒数只挂一个权重**（用户 2026-09-11「合轴本身就有难度，通过合轴来让溢出时间降低这俩其实是一个东西」）；各队起点不齐是特性，且 x 不保证单调（杠杆可减少交互 ⇒ 难度降伤害升 = 白拿） | 据 用户@2026-09-10·口径合并@2026-09-11·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 difficultyCurve.test.ts::集成：x 轴 = 实测操作难度 | 锚 src/composables/difficultyCurve.ts#measureOperationalDifficulty | 信 确认
- * @fact engine:难度曲线/伤害归因 口径: 每档伤害按来源分组（直伤行 = 招式名、异常行 = 行 `type`，同名跨槽位合并），Σ 分组 ≡ 该档总伤害 ⇒ 归因精确；相邻档差分 = 正贡献 top + 被挤掉（最负在前）+ 其余，三段合计 ≡ 总 Δ | 据 实测@2026-09-10·复核@2026-09-25·复核@2026-09-30 | 验 difficultyCurve.test.ts::伤害归因 | 锚 src/composables/difficultyCurve.ts#attributeDmgChanges | 信 确认
- * @fact engine:难度曲线/交互项截断缩 口径: x 的交互项按**装配期截断存活率**缩到「180s 里真打的次数」——每槽因子 = `convergence.truncationBySlot` 的 kept/requested（引擎截断是整槽按比例缩，故同比例缩该槽交互）；并先按引擎非轴降配 `interactionScale`（`DOWNSCALED_INTERACTION_FIELDS`，`round(raw×scale)`）缩；截断因子与降配因子都不动时为 1 ⇒ 只有带截断**或**处于非轴降配的队数值会动。近似：按槽缩而没按交互类型精确缩（般岳 金身/双反 共用「冲霄」一行），精确版随 A 项（截断回灌资源循环）落地 | 据 用户@2026-09-11·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 difficultyCurve.test.ts::交互项按装配期截断存活率缩 + liveInteractionsDownscale.test.ts | 锚 src/composables/liveInteractions.ts#liveInteractions | 信 确认
- * @fact engine:难度曲线/关键次数标注 口径: 图上标注与「关键变化」面板只显示 Δ≥1 的次数跃迁（「多了一次」），Δ<1 的小数级微调只进 tooltip；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30 | 验 difficultyCurve.test.ts::只认「变多」 | 锚 src/composables/difficultyCurve.ts#diffKeyCounts | 信 确认
- * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
- * @fact engine:难度曲线/轴上限 口径: 轴上限必须覆盖**所有要画的点**——`costMax` 取 `max(所有点的 x)`、`ratioMax` 取 `max(所有点的 ratio)`（散点图 `teamCompareScatter#xMax` 同口径）。**不得**用「末点 x」（`totalCost`，那是表里「终点难度」列的语义）：x 不保证单调（见上条），末点可能小于中途点 ⇒ 那些点 `cx = padL + (x/costMax)*plotW` 越出绘图区被 SVG 裁掉（用户症状「右边的图像看不见，只能看见低难度的部分」）。实测全库 97 队：72 队非单调、3 队越界；筛成单队最严重（`auto-1371-1391-1451` maxX=61.26 vs 末点 23.4 ⇒ cx=2763，viewBox 宽仅 1100） | 据 实测@2026-10-12·用户报「难度曲线右边看不见」 | 验 difficultyCurve.test.ts::★ x 轴上限覆盖**所有点** + difficultyCurve.test.ts::★ 不变量：任意点集下 | 锚 src/composables/difficultyCurve.ts#buildCurveChart | 信 确认
+ * @fact engine:难度曲线/x轴 口径: x = **自动算的操作难度绝对值** = `computeDifficulty`(当前点实打交互次数, 时间压力秒, 用户权重) —— 与散点页横轴同一函数同一单位（故可直接对齐比较）；**时间压力 = 硬溢出 overflowSeconds + 合轴抵扣 saved，一笔秒数只挂一个权重**；各队起点不齐是特性，且 x 不保证单调 | 据 用户@2026-09-10·口径合并@2026-09-11·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07·复核@2026-10-12（T140c 改关键点结构，x 口径不变） | 验 difficultyCurve.test.ts::集成：x 轴 = 实测操作难度 | 锚 src/composables/difficultyCurve.ts#measureOperationalDifficulty | 信 确认
+ * @fact engine:难度曲线/伤害归因 口径: 每点伤害按来源分组（直伤行 = 招式名、异常行 = 行 `type`，同名跨槽位合并），Σ 分组 ≡ 该点总伤害 ⇒ 归因精确；相邻点差分 = 正贡献 top + 被挤掉（最负在前）+ 其余，三段合计 ≡ 总 Δ | 据 实测@2026-09-10·复核@2026-09-25·复核@2026-09-30·复核@2026-10-12 | 验 difficultyCurve.test.ts::伤害归因 | 锚 src/composables/difficultyCurve.ts#attributeDmgChanges | 信 确认
+ * @fact engine:难度曲线/交互项截断缩 口径: x 的交互项按**装配期截断存活率**缩到「180s 里真打的次数」——每槽因子 = `convergence.truncationBySlot` 的 kept/requested（引擎截断是整槽按比例缩，故同比例缩该槽交互）；并先按引擎非轴降配 `interactionScale`（`DOWNSCALED_INTERACTION_FIELDS`，`round(raw×scale)`）缩；截断因子与降配因子都不动时为 1 ⇒ 只有带截断**或**处于非轴降配的队数值会动。近似：按槽缩而没按交互类型精确缩（般岳 金身/双反 共用「冲霄」一行），精确版随 A 项（截断回灌资源循环）落地 | 据 用户@2026-09-11·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07·复核@2026-10-12 | 验 difficultyCurve.test.ts::交互项按装配期截断存活率缩 + liveInteractionsDownscale.test.ts | 锚 src/composables/liveInteractions.ts#liveInteractions | 信 确认
+ * @fact engine:难度曲线/关键次数标注 口径: 图上标注与「关键变化」面板只显示 Δ≥1 的次数跃迁（「多了一次」），Δ<1 的小数级微调只进 tooltip；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30·复核@2026-10-12 | 验 difficultyCurve.test.ts::只认「变多」 | 锚 src/composables/difficultyCurve.ts#diffKeyCounts | 信 确认
+ * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07·复核@2026-10-12 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
+ * @fact engine:难度曲线/轴上限 口径: 轴上限必须覆盖**所有要画的点**——`costMax` 取 `max(所有点的 x)`、`ratioMax` 取 `max(所有点的 ratio)`（散点图 `teamCompareScatter#xMax` 同口径）。**不得**用「末点 x」（`totalCost`，那是表里「终点难度」列的语义）：x 不保证单调（见上条），末点可能小于中途点 ⇒ 那些点 `cx = padL + (x/costMax)*plotW` 越出绘图区被 SVG 裁掉 | 据 实测@2026-10-12·用户报「难度曲线右边看不见」 | 验 difficultyCurve.test.ts::★ x 轴上限覆盖**所有点** + difficultyCurve.test.ts::★ 不变量：任意点集下 | 锚 src/composables/difficultyCurve.ts#buildCurveChart | 信 确认
  * ⟳复核: 若新增「按某维度截取/聚合曲线」的图型或改用对数轴，重核「轴上限覆盖所有点」是否仍成立（尤其筛选后只剩 1 队时——那是越界最严重的场景） | 到期 2027-04-30
  */
 import { applyBossRoom } from '@/composables/bossRoom'
-import { type StunAxisState, type ConfigModel } from '@/stores/config'
+import { type ConfigModel } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import {
-  clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
-  DIFFICULTY_GOALS, type DifficultyGoal, type LadderPoint, type LadderResult, type LadderSnapshot,
+  absorbCapOf, clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
+  type KnobPointName, type LadderPoint, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
+import type { AxisState } from '@/composables/difficultyAxis'
 import {
   applyAxisBinding, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, type DifficultyWeights,
 } from '@/composables/teamCompare'
@@ -55,7 +55,6 @@ import type { AnalysisContext } from '@/composables/analysisScenario'
 import { frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'
 // 量化地板与引擎同源（规则 11）：截断提醒的「整整 1 次交互」阈值 = 引擎自己的量化容差，见 truncationHintAt
 import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
-import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { getAgentMechanic } from '@/mechanics'
 import { liveInteractions } from '@/composables/liveInteractions'
@@ -70,16 +69,13 @@ export interface DifficultyCurveOptions {
   boss: BossPreset
   /** 目标期数（与散点页同一入口：`selectedPhase`） */
   phase: BossPresetPhase
-  /** 目标集**完全覆盖**（给了就不再追加 preset.altAxes 切轴档）；缺省 = baseGoals + 切轴档 */
-  goals?: DifficultyGoal[]
-  /**
-   * 基础目标集（缺省 = DIFFICULTY_GOALS），**切轴档仍按 preset.altAxes 追加**。
-   * 与 `goals` 的区别：调用方可以换掉基础目标而不必自己复刻切轴档与其起点轴态快照
-   * （复刻漂移 ⇒ 绑错轴仍可能全绿）。2026-09-23 为 altAxes 慢测试去掉 G2 联合搜索而加。
-   */
-  baseGoals?: DifficultyGoal[]
-  /** 相对门槛（缺省 1e-4） */
+  /** 相对门槛（缺省 1e-4）：③「重大进步」判定用（Δ伤害 ≥ 门槛 **且** 有 ≥1 次离散动作增量） */
   minGainRatio?: number
+  /**
+   * ② 的吸收率扫描步数（缺省 20 = 5% 网格，与 `containRatioOf` 同源）。
+   * 单测调小以控成本；生产路径不给 = 全网格。
+   */
+  axisScanSteps?: number
   /**
    * 操作难度权重（主观量，页面「难度权重」弹层；缺省 = `INTERACTION_WEIGHTS` 默认表 + 时间压力 1 秒 = 1 点）。
    * 直接决定 x 轴：`computeDifficulty` 的 Σ(交互×权重) + 时间压力秒×权重（时间压力 = 硬溢出 + 合轴抵扣）。
@@ -87,6 +83,8 @@ export interface DifficultyCurveOptions {
   difficultyWeights?: DifficultyWeights
   // 注意：这里**没有**金数档参数——曲线口径固定为预设基础金（金数提升属「提升率」类图表，
   // 用户 2026-09-10 口径；2026-09-13 曾发现接口上留过一个从未接线的 goldLevel 死参数，已删）。
+  // 也**没有** `goals` / `baseGoals`：T140c 起结构是「四个定点」，不再有可换的目标集
+  // （旧 `goals` 参数随贪心阶梯一并删除，别留死参数）。
 }
 
 /** 一队的阶梯结果（展示层行） */
@@ -97,62 +95,40 @@ export interface DifficultyCurveRow {
 }
 
 /**
- * 切轴目标档工厂（2026-09-13）：把 preset.altAxes 的高难度轴做成爬梯目标——apply = 从**阶梯起点轴态**
- * 切到备选轴（applyAxisBinding 先恢复 baseAxisSnap 再绑定，保证多次试开互不污染）；试开回滚由
- * 阶梯快照统一还原（difficultyLadder 的 LadderMutSnap 已含轴状态）。一般轴 = 基础段（preset 绑定轴），
- * 切轴档录取后曲线在高难度端多出一段伤害——一条队伍一条曲线分段，不再拆变体预设。
- */
-export function makeAltAxisGoal(
-  alt: NonNullable<TeamPreset['altAxes']>[number],
-  baseAxisSnap: StunAxisState,
-): DifficultyGoal {
-  return {
-    id: `AXIS:${alt.id}`,
-    label: `切轴：${alt.name}`,
-    cost: 3,
-    mutates: true,
-    apply: ctx => {
-      applyAxisBinding(ctx.config, baseAxisSnap, { stunAxisPresetId: alt.stunAxisPresetId })
-    },
-  }
-}
-
-/**
  * 逐队算难度曲线（同步）。调用方按队分批调度避免卡 UI（同 `computeTeamComparePoints`）。
  * 计算完成/异常后恢复现场（队伍/敌方/轴/全局 buff + 机制开关 + 权重分配策略）。
+ *
+ * ## 切轴档（`preset.altAxes`）去哪了（T140c）
+ *
+ * 旧结构把 `altAxes` 做成一条贪心目标（`AXIS:*`）。新结构只有四个定点、且卡 §6.2 要求
+ * 「每队 1~4 点」⇒ 多出第 5 点会破判据。**本卡把它整条移出曲线**：`altAxes` 表达的是
+ * 「高难度段换一条轴」，而新结构的 ②③④ 已经在同一难度轴上如实报轴态（含「跳过 N 招」）
+ * ⇒ 切轴档要表达的「高难段」由 ④ 的轴态如实承载。
+ * ⚠ 这是**有意的行为变更**（全库仅 `banyue-liuyin-lucia` 一条预设声明 altAxes），
+ *   否决记录见 `docs/ENGINE_PIPELINE_GUIDE.md` §4。
  */
 export function computeDifficultyCurves(scenario: AnalysisContext, options: DifficultyCurveOptions): DifficultyCurveRow[] {
   const { config: configStore, calc } = scenario
   const baseAxis = configStore.getAxisState()
   const rows: DifficultyCurveRow[] = []
   applyBossRoom(configStore, options.boss, options.phase)
-  // 「全关」= 不跑自动权重分配；阶梯里的 G1/G2 自己显式跑均衡/联合
+  // 「全关」= 不跑自动权重分配；②③④ 里的 joint 由阶梯自己显式跑
   configStore.timeWeightStrategy = 'static'
   /**
    * **用户的合轴吸收上限**：必须在**队循环之前**取一次快照并显式传进每个阶梯。
    *
    * 为什么（2026-10-05 实测修）：`climbDifficultyLadder` 的 `ctx.absorbCap` 契约是
    * 「用户在『全关』**之前**的值」，但本函数每队新建 `{ config, calc }` 字面量 ⇒ 该字段恒
-   * `undefined` ⇒ `clearDifficultyLevers` 退化成**读当前 setting**，而上一队爬完阶梯后
-   * setting 停在它自己的档位（G5 只爬到「刚好包容」就停的队会留一个中间值）⇒ **下一队把
-   * 那个残留值当成「用户上限」**，封顶档被压低。
+   * `undefined` ⇒ `clearDifficultyLevers` 退化成**读当前 setting**，而上一队跑完后
+   * setting 停在它自己的档位 ⇒ **下一队把那个残留值当成「用户上限」**，④ 的天花板被压低。
    *
    * 实测（`ysgdecisive.perf.ts`，一次调用传两队）：`auto-1431-1481-1491` 的 `final`
-   * 125.22M → **119.33M**（差 5.89M），`opened` 从 `[G4,G5,G5,G1]` 变 `[G4,G5,G5,G2]`。
-   * ⚠ 页面**当前**不受影响（逐队一次 `withAnalysisScenario`，写入落在场景克隆里不回 UI store，
-   * 实测单独/排后均 125.22M）；但这是**潜在**缺陷，且 G5 改为「封顶档承载主要增益」后
-   * 上限被压低会直接改变曲线天花板 ⇒ 本轮一并修掉。
+   * 125.22M → **119.33M**（差 5.89M）。⚠ 页面**当前**不受影响（逐队一次 `withAnalysisScenario`，
+   * 写入落在场景克隆里不回 UI store）；但这是**潜在**缺陷，且 ④ 承载天花板 ⇒ 一并修掉。
    */
-  const userAbsorbCap = configStore.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
+  const userAbsorbCap = absorbCapOf({ config: configStore, calc })
   for (const preset of options.presets) {
     applyAxisBinding(configStore, baseAxis, preset)
-    // 切轴档（preset.altAxes，2026-09-13）：快照阶梯起点轴态 → 备选轴做成「切轴」目标；
-    // 显式传 goals = 完全覆盖（不含切轴档），缺省 = DIFFICULTY_GOALS + 切轴档
-    const baseAxisSnap = configStore.getAxisState()
-    const goals = options.goals ?? [
-      ...(options.baseGoals ?? DIFFICULTY_GOALS),
-      ...(preset.altAxes ?? []).map(a => makeAltAxisGoal(a, baseAxisSnap)),
-    ]
     // 配装口径：套该队**预设基础金**的 `applyGoldSteps`（含 standardSteps 常驻步；缺省路径也走它，
     // 否则「预设基础档」会漏掉常驻步而出现两个数）。曲线**不提供**金数档覆盖——金数提升属于
     // 「提升率」类图表，不是难度曲线的事（用户 2026-09-10 口径）。
@@ -160,10 +136,10 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
       preset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), preset.standardSteps ?? [], preset.wEngines ?? [],
     )
     const ladder = climbDifficultyLadder({ config: configStore, calc, absorbCap: userAbsorbCap }, preset.team, {
-      goals,
       minGainRatio: options.minGainRatio,
+      axisScanSteps: options.axisScanSteps,
       capture: ctx => captureLadderSnapshot(ctx.config, ctx.calc),
-      // x 轴 = 自动算的操作难度（不是手填代价）：每个目标实测 Δ难度
+      // x 轴 = 自动算的操作难度（不是手填代价）
       costOf: ctx => measureOperationalDifficulty(ctx, preset, options.difficultyWeights),
       base: (ctx, team) => {
         clearDifficultyLevers(ctx)
@@ -491,29 +467,36 @@ export function estimateLabelWidth(text: string): number {
 // ========== 图表数据（纯函数） ==========
 
 export interface CurveDatum {
-  /** 累积难度代价（该队自己的 x） */
+  /** 该点的操作难度（该队自己的 x） */
   cost: number
   dmg: number
   /** 伤害 / Boss 血量 × 100% */
   ratio: number
-  /** 这一档新录取的目标 id（null = 全关起点） */
-  opened: string | null
-  /** 相对上一档**变多**的关键次数（空 = 这一档没有次数跃迁） */
+  /** 这一点的**点名**（`baseline` / `axis` / `progress` / `max`，见 `difficultyLadder.ts`） */
+  point: KnobPointName
+  /** 这一点的**旋钮取值**（交互配置 + 吸收率绝对值）——用户 §1(2)「只需少量计算某些旋钮值」 */
+  knobs: LadderPoint['knobs']
+  /**
+   * 这一点的**轴态**（唯一事实源 = `difficultyAxis.ts#axisStateOf`）。
+   * UI「轴态」列直接读它，**不**各自读 `axisFallback` 拼语义。
+   */
+  axis: AxisState
+  /** 相对上一点**变多**的关键次数（空 = 这一点没有次数跃迁） */
   changes: KeyCountChange[]
   /**
-   * 相对上一档的**伤害归因**（按 Δ 降序，正贡献在前、被挤掉的在后）；
-   * Σ `delta` ≡ 本档伤害 − 上一档伤害（伤害池按来源分组求和 == 总伤害，故精确）。
+   * 相对上一点的**伤害归因**（按 Δ 降序，正贡献在前、被挤掉的在后）；
+   * Σ `delta` ≡ 本点伤害 − 上一点伤害（伤害池按来源分组求和 == 总伤害，故精确）。
    */
   dmgChanges: DmgSourceChange[]
   /**
-   * **截断提醒**（用户 2026-10-06 口径）：本档交互被砍时，给出「要达到手填的交互要求至少需要多少难度」。
-   * null = 本档没被砍（交互足量交付、时间线也没截断）。口径见 `truncationHintAt`。
+   * **截断提醒**（用户 2026-10-06 口径）：本点交互被砍时，给出「要达到手填的交互要求至少需要多少难度」。
+   * null = 本点没被砍（交互足量交付、时间线也没截断）。口径见 `truncationHintAt`。
    */
   hint: TruncationHint | null
 }
 
-/** 被砍的爬梯档：`hint` 必有、`opened` 必非 null（`CurveSeries.truncated` 的元素） */
-export type TruncatedDatum = CurveDatum & { opened: string; hint: TruncationHint }
+/** 被砍的爬梯点：`hint` 必有、`point !== 'baseline'`（`CurveSeries.truncated` 的元素） */
+export type TruncatedDatum = CurveDatum & { hint: TruncationHint }
 
 export interface CurveSeries {
   presetId: string
@@ -527,20 +510,27 @@ export interface CurveSeries {
   totalCost: number
   /** % / 难度点（代价 0 时按总增益，除零保护见 summarizeLadder） */
   slope: number
-  opened: string[]
-  dropped: { id: string; gain: number }[]
-  /** 一个目标都没录取（曲线是单点）：没有可优化的空间 */
+  /** 本队曲线的点名序列（`baseline` 恒首、`max` 恒末；②③ 可缺失） */
+  steps: KnobPointName[]
+  /**
+   * ②「刚好实现轴模式」**缺失**（本队轴在任何难度下都不成立）⇒ UI 在 ③ 位置如实标注。
+   * 见 `LadderResult.axisPointMissing`。
+   */
+  axisPointMissing: boolean
+  /** ④ 相对 ① 的伤害增量（「难度上升 ⇒ 总伤上升」的机器判据；实测可为负，如实上报不隐藏） */
+  gain: number
+  /** 曲线只有起点一点（②③ 都缺失且 ④ 无增益）：没有可优化的空间 */
   flat: boolean
   /**
-   * **关键次数跃迁档**（只含 `major` = 「多了一次」的档）：图上标注与「关键变化」面板的唯一数据源。
+   * **关键次数跃迁点**（只含 `major` = 「多了一次」的点）：图上标注与「关键变化」面板的唯一数据源。
    * 空数组 = 这条曲线爬升过程中没有出现「多放一次大招 / 多一次紊乱」这类台阶。
    */
   jumps: CurveDatum[]
   /**
-   * **有截断的爬梯档**（`points` 里 `hint !== null` 且 `opened !== null` 的那些）：图上截断提醒与「截断提醒」面板的数据源。
+   * **有截断的爬梯点**（`points` 里 `hint !== null` 且 `point !== 'baseline'` 的那些）：图上截断提醒与「截断提醒」面板的数据源。
    * **全关起点不进**（用户实测 2026-10-06）：起点是曲线的基准（杠杆全关 + 预设声明的交互），不是沿曲线
-   * 往上爬的某一档；混进来会制造「起点难度更高却砍得更狠」的荒谬对照。起点自己的截断仍在它的 `hint`，
-   * 展示层只在本数组为空时用它说明「只有起点被砍」。空数组 = 没有被砍的爬梯档。
+   * 往上爬的某一点；混进来会制造「起点难度更高却砍得更狠」的荒谬对照。起点自己的截断仍在它的 `hint`，
+   * 展示层只在本数组为空时用它说明「只有起点被砍」。空数组 = 没有被砍的爬梯点。
    */
   truncated: TruncatedDatum[]
   /**
@@ -642,7 +632,7 @@ export interface CurveChartData {
   costTicks: number[]
 }
 
-/** 曲线数据 → 图表（x = 累积代价，y = 伤害/血量%）；空输入返回可画的空图 */
+/** 曲线数据 → 图表（x = 操作难度，y = 伤害/血量%）；空输入返回可画的空图 */
 export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveChartData {
   const safeHp = hp > 0 ? hp : 1
   const series: CurveSeries[] = rows.map(r => {
@@ -651,7 +641,9 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       cost: p.x,
       dmg: p.dmg,
       ratio: (p.dmg / safeHp) * 100,
-      opened: p.opened,
+      point: p.point,
+      knobs: p.knobs,
+      axis: p.axis,
       changes: diffKeyCounts(r.ladder.points[i - 1]?.counts, p.counts),
       dmgChanges: diffDmgBySource(r.ladder.points[i - 1]?.dmgBySource, p.dmgBySource),
       hint: truncationHintAt(r.ladder.points, i),
@@ -663,8 +655,8 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       jumps: points
         .filter(p => p.changes.some(c => c.major))
         .map(p => ({ ...p, changes: majorChanges(p.changes) })),
-      // 有截断的爬梯档：截断提醒面板与图上标记的数据源（全关起点不进，见 `CurveSeries.truncated`）
-      truncated: points.filter((p): p is TruncatedDatum => p.hint !== null && p.opened !== null),
+      // 有截断的爬梯点：截断提醒面板与图上标记的数据源（全关起点不进，见 `CurveSeries.truncated`）
+      truncated: points.filter((p): p is TruncatedDatum => p.hint !== null && p.point !== 'baseline'),
       // 全曲线最大实打次数（「曲线内无法达到」时说明「最多只能打到 N 次」；没采到交互量 = null）
       maxPlayed: (() => {
         const v = r.ladder.points.map(p => p.interactionsPlayed).filter((n): n is number => n !== undefined)
@@ -676,9 +668,11 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       gainPct: s.gainPct,
       totalCost: s.totalCost,
       slope: s.slope,
-      opened: r.ladder.opened,
-      dropped: r.ladder.dropped,
-      flat: r.ladder.opened.length === 0,
+      steps: r.ladder.points.map(p => p.point),
+      axisPointMissing: r.ladder.axisPointMissing,
+      gain: r.ladder.gain,
+      // 「平坦」= ②③ 都缺失且 ④ 无实质增益（此时曲线只有 ①④ 两点且同高）
+      flat: r.ladder.points.length <= 2 && Math.abs(r.ladder.gain) <= 1e-6,
     }
   })
   /**

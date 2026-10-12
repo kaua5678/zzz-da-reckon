@@ -105,7 +105,7 @@ describe.runIf(active)('探针：逐目标贪心阶梯（每队自己的难度�
       rows.push([
         `${p.id}: ${(s.base / 1e6).toFixed(1)}M → ${(s.final / 1e6).toFixed(1)}M (+${s.gainPct.toFixed(1)}%)`
         + ` · ${(s.final / s.base).toFixed(2)}× · 难度 ${s.totalCost} 点 · 斜率 ${s.slope.toFixed(1)}%/点`,
-        `  录取 ${r.opened.join('→') || '(无优化空间)'}${r.dropped.length ? ` · 丢弃 ${r.dropped.map(d => `${d.id}(${(d.gain / 1e6).toFixed(1)}M)`).join(',')}` : ''}`,
+        `  关键点 ${r.points.map(p => `${p.point}@吸收${p.knobs.absorb}`).join('→')}${r.axisPointMissing ? ' · ② 缺失（轴在任何难度下都不成立）' : ''}`,
         `  点 ${r.points.map(pt => `(${pt.x},${(pt.dmg / 1e6).toFixed(1)})`).join(' ')}`,
         // 关键次数跃迁（用户口径：难度上升到关键变化要标注）——按「这一档相对上一档变多了什么」列
         `  关键变化 ${describeCountChanges(buildCurveChart([row!], phase.hp).series[0]!.points)}`,

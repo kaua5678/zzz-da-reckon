@@ -97,7 +97,12 @@ export interface AutoEngineConfig {
  * 一般轴 = 基础段（stunAxisPresetId），altAxes = 高难段，一条队伍一条曲线分段呈现，不再拆变体预设。
  */
 export interface TeamAltAxis {
-  /** 档 id（英文 kebab，进爬梯目标 id：`AXIS:${id}`） */
+  /**
+   * 档 id（英文 kebab）。
+   * ⚠ **T140c（2026-10-12）起不再进难度曲线**（曲线改为四个关键旋钮点，容纳不下第 5 个点；
+   * 且实测该档在新结构下是空操作）⇒ 本字段目前**无生产消费者**，保留为数据契约与「高难段」声明。
+   * 改 ④ 的构成前先读 `docs/ENGINE_PIPELINE_GUIDE.md` §4 坑 43。
+   */
   id: string
   /** 展示名（如 "10大轴"） */
   name: string

@@ -27,7 +27,8 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
 import { applyTeamToStore, applyGoldToStore, baseGoldOf } from '@/composables/teamCompare'
 import { applyBossRoom } from '@/composables/bossRoom'
-import { clearDifficultyLevers, DIFFICULTY_GOALS, type LadderCtx } from '@/composables/difficultyLadder'
+import { clearDifficultyLevers, climbDifficultyLadder, type LadderCtx } from '@/composables/difficultyLadder'
+import { axisStands } from '@/composables/difficultyAxis'
 import { computeDifficultyCurves } from '@/composables/difficultyCurve'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
@@ -85,7 +86,13 @@ describe('T140b 现状锁：轴队「全关」档的保底键边际', () => {
     expect(dmgOf(calc) - off, '负控：非轴队的 guarantee.ultimate 必须真有边际').toBeGreaterThan(0)
   }, 300_000)
 
-  it('② 反证路线 (a)：清轴后没有任何阶梯目标会把轴开回来（整条曲线退化为非轴）', async () => {
+  it('② 反证路线 (a)：阶梯只动「交互配置 + 合轴吸收」两个旋钮，没有任何"开轴"旋钮', async () => {
+    // ## T140c 更新（本用例原锁的是「DIFFICULTY_GOALS 里没有开轴档」，该目标集已随贪心阶梯删除）
+    //
+    // 新结构的旋钮**只有两个**（`difficultyLadder.ts` 文件头）：交互配置（`default`/`joint`）与
+    // 合轴吸收率。两者都**不改轴绑定**（`applyTimeWeightAllocation` 只写权重/弹刀/嘲讽取消；
+    // `setMechanicSetting` 只写吸收率）⇒ 路线 (a)「清轴起点」在新结构下**依然**会让整条曲线退化为非轴。
+    // 本断言因此照旧有判别力：将来若有人新增「切轴/开轴」旋钮，这里变红。
     const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
@@ -99,13 +106,17 @@ describe('T140b 现状锁：轴队「全关」档的保底键边际', () => {
     config.autoYidhariAxis = false
     expect(calc.effectiveStunAxes.value.length, '(a) 之后起点确已 off').toBe(0)
 
-    // 逐档 apply 完全部目标 ⇒ 若无人把轴开回来，整条曲线就是非轴曲线
+    // 跑完整条曲线 ⇒ 若没有旋钮能把轴开回来，整条曲线就是非轴曲线
     const ctx: LadderCtx = { config, calc }
-    for (const g of DIFFICULTY_GOALS) g.apply(ctx)
+    const r = climbDifficultyLadder(ctx, preset.team as [string, string, string], {
+      base: c => c.calc.teamTotalDamage.value,
+    })
     expect(
       calc.effectiveStunAxes.value.length,
-      '阶梯目标集内没有任何"开轴"档 ⇒ (a) 会让整条曲线退化为非轴；若新增开轴档，本断言变红，请回来重估路线 (a)',
+      '旋钮集内没有任何"开轴"旋钮 ⇒ (a) 会让整条曲线退化为非轴；若新增开轴旋钮，本断言变红，请回来重估路线 (a)',
     ).toBe(0)
+    // 清轴起点下，整条曲线的轴态只能是 none（既没弃轴也没注入轴）
+    for (const pt of r.points) expect(pt.axis.kind).toBe('none')
   }, 300_000)
 
   it('③ guarantee.stun 不在自动勾选内：带弹刀预算 Boss 时对轴队仍是活杠杆', async () => {
@@ -138,8 +149,20 @@ describe('T140b 现状锁：轴队「全关」档的保底键边际', () => {
     ).toBeGreaterThan(0)
   }, 300_000)
 
-  it('④ 真实曲线路径（computeDifficultyCurves）：轴队的 G3 不进录取序列（现状）', async () => {
-    const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
+  it('④ T140c 取代：G3 不再是阶梯的一点（保底降级为轴可行性判定条件）', async () => {
+    // ## 本用例的沿革（**取代**，不是静默删除——卡 §7 要求留痕）
+    //
+    // T140b 原锁：「轴队的 G3 不进录取序列，如实进 `dropped`；负控 = 非轴队的 G3 仍被录取」。
+    // **T140c 让这条判据整体失效**，因为 `G3` 这个点**不再存在**：
+    //  - `DIFFICULTY_GOALS` / `dropped` / `opened` 三个概念随贪心阶梯一并删除（卡 §3.3 / §3.4）；
+    //  - 保底（`guarantee.fury` / `guarantee.ultimate`）**降级为轴可行性的判定条件**——
+    //    轴要立起来时由引擎自己补资源（`convergence.ts#guaranteeFury` 的「视同勾选」，用户裁决
+    //    2026-10-11，实现一字未动），**不再由阶梯打开**。
+    //
+    // 新判据锁的是同一件事的**新形态**：轴队与非轴队在**同一条曲线**上的轴态差异（这才是 G3 当初
+    // 想表达的东西），且曲线**不因保底而产生一个点**。
+    // 否决记录见 `docs/ENGINE_PIPELINE_GUIDE.md` §4。
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const preset = teamPresets.find(p => p.id === 'yixuan-roxy-lucia')!
     // 完整房间夹具（同 difficultyCurve.test.ts 的 FAKE_BOSS/FAKE_PHASE）：
@@ -160,30 +183,45 @@ describe('T140b 现状锁：轴队「全关」档的保底键边际', () => {
       damageResistances: { ...res20 }, stunResistances: { ...res20 },
       anomalyResistances: { ...res20 }, weakness: [], resistance: [],
     } as unknown as BossPresetPhase
-    // 负控队：同 Boss、同夹具，但**非轴**（`banyue-norma-lucia` 在该 Boss 下轴不生效）
-    const nonAxisPreset = teamPresets.find(p => p.id === 'banyue-norma-lucia')!
+    // 负控队：同 Boss、同夹具，但**非轴**。
+    // ⚠ 夹具沿革（T140c 重标定）：原用 `banyue-norma-lucia`，实测它在本 Boss 下**是轴队**
+    // （`baseline/轴不可行 → axis/完整轴 → progress/完整轴 → max/完整轴`）——那正是本卡的核心论点
+    // （「让轴可行」不只归保底，交互最优 + 合轴同样能让轴立起来）⇒ 它不再适合当「非轴」负控。
+    // 换 `auto-1431-1491-1311`：全库普查（`.zc/perf` 口径同源探针）中每一点轴态都是 `none` 的 58 队之一。
+    const nonAxisPreset = teamPresets.find(p => p.id === 'auto-1431-1491-1311')!
     const rows = await withAnalysisScenario(s =>
       computeDifficultyCurves(s, { presets: [preset, nonAxisPreset], boss, phase }))
     const axisLadder = rows.find(r => r.presetId === preset.id)!.ladder
     const nonAxisLadder = rows.find(r => r.presetId === nonAxisPreset.id)!.ladder
 
-    // ① 轴队：G3 三键里 fury/ultimate 被视同勾选吃掉、stun 又无 Boss 弹刀预算可推
-    //    ⇒ 该档没有可兑现的增益，如实进 dropped（不静默消失，UI 的「丢弃目标」列会列出它）
-    const g3 = axisLadder.dropped.find(d => d.id === 'G3')
-    expect(axisLadder.opened, '现状：轴队的 G3 不被录取').not.toContain('G3')
-    expect(g3, '现状：轴队的 G3 如实进 dropped（不静默消失）').toBeTruthy()
-    // ⚠ 不写 `toBe(0)`：阶梯里 G3 的试开发生在**别的目标已录取之后**，落点与「纯全关基线」不同
-    // ⇒ 增益是「在该落点上再开保底」的边际，允许是微小负值。判据取「没有实质增益」。
-    expect(
-      Math.abs(g3!.gain),
-      `现状锁：轴队的 G3 在阶梯落点上应无可观增益（实测 ${(g3!.gain / 1e6).toFixed(3)}M）`,
-    ).toBeLessThan(axisLadder.base * 0.01)
-
-    // ② 负控：非轴队在同一条曲线路径上 **G3 会被录取** ⇒ 上面那个「丢弃」是**轴态自动勾选**
-    //    造成的，不是阶梯本身不再录取 G3（否则本用例对泄漏零判别力）
-    expect(
-      nonAxisLadder.opened,
-      '负控：非轴队的 G3 在同一条曲线路径上必须仍被录取',
-    ).toContain('G3')
+    // ① **结构**：曲线里不再有任何「保底点」——点名只允许四个定点，`G3` 不在其中
+    const allowed = new Set(['baseline', 'axis', 'progress', 'max'])
+    for (const pt of axisLadder.points) {
+      expect(allowed.has(pt.point), `点名 ${pt.point} 必须是四个关键点之一`).toBe(true)
+    }
+    // ② **保底不再由阶梯打开**：直接在本 store 上跑一次阶梯，跑完三个保底键仍是「未打开」
+    //    （引擎的「视同勾选」只做本轮读数、不落 store —— 这正是该设计选择不写 store 的原因）。
+    //    ⚠ 必须**直接跑**而不是读上面 `withAnalysisScenario` 的 `config`：那是场景克隆，
+    //    外层的 store 本来就不会被写（隔离契约），拿它断言「阶梯没写保底」是**零判别力**的假判据。
+    {
+      const ctx: LadderCtx = { config, calc: useResourceCalc() }
+      clearDifficultyLevers(ctx)
+      applyTeamToStore(config, preset)
+      climbDifficultyLadder(ctx, preset.team as [string, string, string], {
+        base: c => c.calc.teamTotalDamage.value,
+      })
+      for (const k of KEYS) {
+        expect(config.getMechanicSetting(k, 0), `${k} 不得被阶梯写进 store`).not.toBe(1)
+      }
+      // 计数投影（G4 语义）同理：阶梯不再改它 ⇒ 保持 `clearDifficultyLevers` 写的 0
+      expect(config.getMechanicSetting('time.stunPlanProjection', -1), '计数口径不得随难度漂移').toBe(0)
+    }
+    // ③ **轴队 vs 非轴队的轴态差异如实可读**（G3 当初想表达的东西，现在由 `axis` 字段承载）：
+    //    负控队在本 Boss 下**从来不是轴队** ⇒ 它的每一点轴态都是 `none`，且 ② 如实缺失。
+    for (const pt of nonAxisLadder.points) {
+      expect(pt.axis.kind, '非轴队每一点的轴态都应是 none').toBe('none')
+      expect(axisStands(pt.axis)).toBe(false)
+    }
+    expect(nonAxisLadder.axisPointMissing, '非轴队 ② 必须如实缺失').toBe(true)
   }, 300_000)
 })

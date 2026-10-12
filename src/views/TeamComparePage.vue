@@ -443,7 +443,10 @@
         y = 伤害/血量%。<b>各队起点/走向不齐是特性</b>：比形状（起点 / 斜率 / 天花板 / 提升倍数）；
         <b>虚线段 = 难度回落</b>：那一步的杠杆把交互次数/时间压力减掉了（难度降而伤害升 = 白拿的优化，贪心优先做），
         所以折线会往左走一段（V 型就是这么来的）。
-        每档只录取有实际增益的目标，负收益目标被丢弃并在下表如实列出。每队约 3~4 秒。
+        曲线只算<b>少量关键旋钮点</b>（<b>最低 / 刚好实现轴模式 / 重大进步 / 最高</b>）——旋钮只有两个：
+        <b>操作难度</b>（交互次数，非纯收益 ⇒ 取最优分配）与<b>时间压力</b>（合轴吸收率，纯收益 ⇒ 拉满）。
+        每点如实报<b>轴态</b>（完整轴 / 跳过 N 招 / 轴不可行 / —）：低难度达不到资源要求而弃轴或跳过招式，
+        <b>标注没正常打完就行</b>；高难度到一定程度才打得完。每队约 3~4 秒。
       </div>
       <!-- 3D 版本轴（用户 2026-09-19）：x = 难度、深度 = 版本（预设里在变化的那个角色）、z = 伤害/血量% -->
       <div v-if="curveView === '3d'" class="chart-area">
@@ -482,7 +485,7 @@
           :cost-max="curveData.costMax"
           :ratio-max="curveData.ratioMax"
           :color-of="colorOf"
-          :goal-label="goalLabel"
+          :point-label="pointLabel"
           :axis-label="`版本（${slotName(versionAxis.defaultSlot)}）`"
           :z-mode="curveZMode"
           :abs-max="curveZAbsMax"
@@ -577,13 +580,13 @@
       <div class="detail-table-wrap">
         <table class="detail-table">
           <thead>
-            <tr><th>队伍</th><th>操作难度</th><th>本档新开</th><th>关键变化</th><th>伤害</th><th>伤害归因（相对上一档）</th></tr>
+            <tr><th>队伍</th><th>操作难度</th><th>关键点</th><th>关键变化</th><th>伤害</th><th>伤害归因（相对上一档）</th></tr>
           </thead>
           <tbody>
             <tr v-for="r in curveJumpRows" :key="r.key">
               <td class="td-team" :style="{ color: r.color }">{{ r.team }}</td>
               <td>{{ fmt(r.cost, 0) }} 点</td>
-              <td class="td-detail">{{ r.opened === null ? '全关起点' : goalLabel(r.opened) }}</td>
+              <td class="td-detail">{{ pointLabel(r.point) }}</td>
               <td class="td-detail"><div class="cell-clamp">{{ r.text }}</div></td>
               <td>
                 {{ compact(r.dmg) }}
@@ -625,13 +628,13 @@
       <div class="detail-table-wrap">
         <table class="detail-table">
           <thead>
-            <tr><th>队伍</th><th>操作难度</th><th>本档新开</th><th>本档交互 → 实打</th><th>被砍</th><th>达标所需难度</th></tr>
+            <tr><th>队伍</th><th>操作难度</th><th>关键点</th><th>本档交互 → 实打</th><th>被砍</th><th>达标所需难度</th></tr>
           </thead>
           <tbody>
             <tr v-for="r in curveTruncRows" :key="r.key">
               <td class="td-team" :style="{ color: r.color }">{{ r.team }}</td>
               <td>{{ fmt(r.cost, 0) }} 点</td>
-              <td class="td-detail">{{ goalLabel(r.opened) }}</td>
+              <td class="td-detail">{{ pointLabel(r.point) }}</td>
               <td>{{ cntNum(r.hint.filled) }} → {{ cntNum(r.hint.played) }}</td>
               <td class="curve-neg">
                 少 {{ cntNum(r.hint.cut) }} 次<template v-if="r.hint.overflow > 1"><br>截断 {{ fmt(r.hint.overflow, 1) }}s</template>
@@ -666,7 +669,7 @@
           <thead>
             <tr>
               <th>队伍</th><th>全关</th><th>终点</th><th>提升</th><th>倍数</th>
-              <th>操作难度</th><th>收益/难度</th><th>录取顺序</th><th>丢弃目标</th>
+              <th>操作难度</th><th>收益/难度</th><th>关键点</th><th>轴态</th>
             </tr>
           </thead>
           <tbody>
@@ -678,8 +681,8 @@
               <td>{{ fmt(s.gainX, 2) }}×</td>
               <td>{{ fmt(s.totalCost, 0) }} 点</td>
               <td>{{ fmt(s.slope, 1) }}%/点</td>
-              <td class="td-detail"><div class="cell-clamp">{{ s.flat ? '无优化空间（目标均无增益）' : s.opened.map(goalLabel).join(' → ') }}</div></td>
-              <td class="td-detail"><div class="cell-clamp">{{ s.dropped.length === 0 ? '—' : s.dropped.map(d => `${goalLabel(d.id)}（${compact(d.gain)}）`).join('、') }}</div></td>
+              <td class="td-detail"><div class="cell-clamp">{{ s.flat ? '无优化空间' : s.steps.map(pointLabel).join(' → ') }}</div></td>
+              <td class="td-detail"><div class="cell-clamp">{{ axisColumnText(s) }}</div></td>
             </tr>
           </tbody>
         </table>
@@ -740,8 +743,9 @@ import { persistedRef } from '@/composables/persistedRef'
 import { useBatchOwner } from '@/composables/batchTask'
 import { runDifficultyCurves } from '@/composables/difficultyCurveRunner'
 import { useLogicEditorStore } from '@/stores/logicEditor'
-import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
-import { DIFFICULTY_GOALS } from '@/composables/difficultyLadder'
+import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, type CurveSeries, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
+import { axisKindLabel } from '@/composables/difficultyAxis'
+import type { KnobPointName } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { teamPresets } from '@/data/teamPresets'
 import { usePresetTeamPicker } from '@/composables/usePresetTeamPicker'
@@ -1445,16 +1449,37 @@ const curveJumpRows = computed(() =>
       cost: j.cost,
       dmg: j.dmg,
       ratio: j.ratio,
-      opened: j.opened,
+      point: j.point,
       text: j.changes.map(c => cntRangeWithDmg(c, j.dmgChanges)).join('、'),
       attr: attributeDmgChanges(j.dmgChanges),
     })),
   ),
 )
-/** 目标 id → 可读标签（tooltip 与摘要表共用）；null = 全关起点 */
-function goalLabel(id: string | null): string {
-  if (id === null) return '全关起点'
-  return DIFFICULTY_GOALS.find(g => g.id === id)?.label ?? id
+/**
+ * 关键旋钮点 → 可读标签（tooltip / 面板 / 摘要表共用，**单一措辞来源**）。
+ * 点名本身是机器可判定的四态（`KnobPointName`），这里只负责措辞。
+ */
+const POINT_LABELS: Record<KnobPointName, string> = {
+  baseline: '① 最低（全关）',
+  axis: '② 刚好实现轴模式',
+  progress: '③ 重大进步',
+  max: '④ 最高（拉满）',
+}
+function pointLabel(p: KnobPointName): string {
+  return POINT_LABELS[p] ?? p
+}
+/**
+ * 摘要表「轴态」列：把该队**逐点轴态**压成一行（去重 + 计数），如 `完整轴 ×2 · 跳过 1 招`。
+ * ② 缺失时如实点名（用户 §1(4)「标注没正常打完就行」）。
+ */
+function axisColumnText(s: CurveSeries): string {
+  const seen = new Map<string, number>()
+  for (const p of s.points) {
+    const label = axisKindLabel(p.axis)
+    seen.set(label, (seen.get(label) ?? 0) + 1)
+  }
+  const body = [...seen.entries()].map(([k, n]) => (n > 1 ? `${k} ×${n}` : k)).join(' · ')
+  return s.axisPointMissing ? `${body}（② 轴在任何难度下都不成立）` : body
 }
 /**
  * 截断提醒面板的行（跨队铺平；数据源 = 各队 `truncated`）。
@@ -1469,7 +1494,7 @@ const curveTruncRows = computed(() =>
         team: s.name,
         color: s.color,
         cost: t.cost,
-        opened: t.opened,
+        point: t.point,
         hint: t.hint,
       })),
   ),
@@ -1480,7 +1505,7 @@ const curveTruncRows = computed(() =>
  */
 const curveTruncBaseOnly = computed(() =>
   curveSeriesPx.value.flatMap((s, si) => {
-    const hint = s.truncated.length === 0 ? s.points.find(p => p.opened === null)?.hint : null
+    const hint = s.truncated.length === 0 ? s.points.find(p => p.point === 'baseline')?.hint : null
     return hint ? [{ key: `${s.presetId}-${si}-base`, team: s.name, color: s.color, hint }] : []
   }),
 )
@@ -1519,7 +1544,10 @@ const curveHoverTips = computed(() => {
   const p = curveHoverPt.value
   if (!p) return []
   const { series: s, point } = p
-  const band = point.opened === null ? '全关起点（静态权重、无保底、投影 off）' : `本档新开：${goalLabel(point.opened)}`
+  const band = `${pointLabel(point.point)} · 轴态 ${axisKindLabel(point.axis)}`
+    + (point.point === 'baseline'
+      ? '（静态权重、无保底、投影 off）'
+      : `（交互 ${point.knobs.interactions === 'joint' ? '取最优分配' : '默认'} · 合轴吸收 ${fmt(point.knobs.absorb * 100, 0)}%）`)
   const major = majorChanges(point.changes)
   const minor = point.changes.length - major.length
   const attr = point.dmgChanges.length > 0 ? attributeDmgChanges(point.dmgChanges, 3, 1) : null
@@ -1528,14 +1556,16 @@ const curveHoverTips = computed(() => {
     `操作难度 ${fmt(point.cost, 0)} 点 · 伤害 ${compact(point.dmg)}（${fmt(point.ratio, 1)}%）`,
     attr
       ? `较上一档 Δ ${signedDmg(attr.totalDelta)} ← ${attr.top.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') || '（无正贡献）'}${attr.squeezed.length > 0 ? `｜挤掉 ${attr.squeezed.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、')}` : ''}`
-      : '本档无伤害变化（全关起点）',
+      : '本点无伤害变化（全关起点）',
     band,
     major.length > 0
       ? `跃迁：${major.map(c => cntRangeWithDmg(c, point.dmgChanges)).join('、')}${minor > 0 ? `（另有 ${minor} 项小数级微调）` : ''}`
       : (minor > 0 ? `仅小数级微调 ${point.changes.map(cntRange).join('、')}` : '本档无次数变化'),
     // 截断提醒（用户 2026-10-06）：只有被砍的档才有这一行
     ...(point.hint ? [`⚠ ${truncHintText(point.hint)}`] : []),
-    s.flat ? '四目标均无增益 ⇒ 无优化空间' : `累计录取 ${s.opened.map(goalLabel).join(' → ')}`,
+    s.flat
+      ? '无优化空间（④ 与 ① 同值）'
+      : `关键点 ${s.steps.map(pointLabel).join(' → ')}${s.axisPointMissing ? '｜② 轴在任何难度下都不成立' : ''}`,
   ]
 })
 
