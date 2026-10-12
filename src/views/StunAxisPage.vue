@@ -88,6 +88,16 @@
               :options="entryBarCandidates(axis).map(el => ({ label: entryBarLabel(el), value: el }))"
               @update:value="v => v && addEntryBar(ai, String(v))"
             />
+            <!-- 进轴残痕值（克拉蕾）：与「异常条」同族 = 进这段失衡时敌人身上已攒了多少。
+                 用户口径 2026-10-12「我想设置1800残痕进入也没显示」⇒ 1800 点 = 3 层，进轴即可打 3 次毁伤。 -->
+            <template v-if="gashAxisOwner(ai)">
+              <span class="sap-label">残痕</span>
+              <n-input-number :value="axis.entryGash ?? 0" size="small" style="width:100px"
+                :min="0" :max="99999" :step="600" suffix="点" :disabled="hasPlans"
+                :title="`进轴时敌人身上已有的残痕值（600 点 = 1 层）。当前 ${fmt((axis.entryGash ?? 0) / 600, 2)} 层`"
+                @update:value="v => setEntryGash(ai, v)" />
+              <span class="sap-stat">{{ fmt(Math.floor((axis.entryGash ?? 0) / 600), 0) }} 层起手</span>
+            </template>
             <n-button size="tiny" quaternary type="warning" @click="removeAxis(ai)">删除</n-button>
             <span class="sap-stat">实际 ×{{ fmt(axisResult?.axisDetails?.[ai]?.times, 1) }} 次 · 单轮 {{ (axisResult?.axisDetails?.[ai]?.axisDuration ?? 0).toFixed(1) }}s · 窗口 {{ fmt(maxDur, 1) }}s</span>
           </div>
@@ -219,6 +229,44 @@
           <span>轴轮数 {{ fmt(axisResult.totalAxisRounds, 1) }} 轮</span>
           <span>覆盖率 {{ (stunCoverage*100).toFixed(1) }}%</span>
         </div>
+        <!-- 残痕 · 毁伤结算（用户 2026-10-12：「你这个轴里面没表现毁伤次数和残痕积蓄呀」）：
+             轴内按执行先后推演「够不够消耗」——够才触发毁伤，不够则招式本体照打但不触发。 -->
+        <div v-if="gashSettlement" class="sap-stat-row" style="margin-top:6px">
+          <span :title="`进轴 ${fmt(gashSettlement.entryLayers, 2)} 层 + 轴内积累，共 ${gashSettlement.stacks} 层（600 点/层，上限 3 层同时存量）`">
+            残痕 {{ gashSettlement.stacks }} 层起手
+          </span>
+          <span :title="`轴内按执行先后触发 ${gashSettlement.axisMaim} 次；轴外自动补足 ${gashSettlement.outMaim} 次（吃不到失衡易伤）`">
+            毁伤 {{ gashSettlement.totalMaim }} 次（轴内 {{ gashSettlement.axisMaim }} + 轴外 {{ gashSettlement.outMaim }}）
+          </span>
+          <span v-if="gashSettlement.unfired > 0" class="sap-warn" style="margin:0"
+            :title="`轴内按执行先后推演：有 ${gashSettlement.unfired} 次毁伤因**残痕层数不够**未触发。`
+              + `这些招式本体照打（伤害/失衡/时间都算），但不消耗残痕、不产生毁伤——这是游戏真实行为，不是计算缺陷。`
+              + `处理：① 调高「残痕」起手值；② 轴内多放积累块（平A/连携/终结）；③ 少放消耗块。`">
+            ⚠ {{ gashSettlement.unfired }} 次毁伤因残痕不足未触发（招式照打、毁伤不出）
+          </span>
+          <span v-if="gashSettlement.unfired > 0 && gashSettlement.neededEntry !== null" class="sap-stat"
+            :title="`把「残痕」起手值调到这个数，轴内这几次就能全部触发（其余条件不变）。引擎二分求得，已考虑积蓄效率与单次上限`">
+            打满需起手 ≥ {{ gashSettlement.neededEntry }} 点（{{ fmt(gashSettlement.neededEntry / 600, 2) }} 层）
+          </span>
+          <span v-else-if="gashSettlement.unfired > 0" class="sap-warn" style="margin:0"
+            :title="`起手拉满（${gashSettlement.capPoints} 点 = 3 层上限）也不够——需要在轴内多放积累块（平A/连携/终结），或减少消耗块`">
+            起手拉满也不够（上限 {{ gashSettlement.capPoints }} 点）⇒ 轴内需多攒
+          </span>
+        </div>
+        <!-- 毁伤触发时间点（用户 2026-10-12：「你的毁伤我还是没看到哪里写了触发时间点，触发多少次」）：
+             逐步列出轴内每次毁伤「在几秒触发 / 打之前几层 / 打之后剩几层」，未触发的显式标红。 -->
+        <div v-if="gashTimeline.length > 0" class="sap-gash-timeline">
+          <div class="sap-gash-head muted">
+            毁伤触发时间轴（轴内按执行先后推演；「起手」只在<strong>第一窗</strong>给一次，
+            之后靠轴内积累，残痕跨窗保留）
+          </div>
+          <div v-for="(st, i) in gashTimeline" :key="i" class="sap-gash-row" :class="{ miss: st.miss }">
+            <span class="w">窗{{ st.window }}</span>
+            <span class="t">{{ st.at.toFixed(2) }}s</span>
+            <span class="m">{{ st.label }}</span>
+            <span class="v">{{ st.text }}</span>
+          </div>
+        </div>
         <div v-if="axisResult.globalWarnings.length" style="margin-top:6px">
           <div v-for="(w,i) in axisResult.globalWarnings" :key="i" class="sap-warn">{{ w }}</div>
         </div>
@@ -241,7 +289,7 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos, agentAxisBlockActionTime, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentAxisMoveBadge, agentAxisDurationInput, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLanes, agentAxisNonDecibelUltimates, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockActionTime, teamOwnsAxisGash, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentAxisMoveBadge, agentAxisDurationInput, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLanes, agentAxisNonDecibelUltimates, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel } from '@/composables/agentMechanicView'
 import type { AxisEditorBlockMark } from '@/mechanics/types'
 import type { TeamAxisWindowLane } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport, prefillPresetGuarantee } from '@/data/stunAxisPresets'
@@ -423,6 +471,89 @@ function entryBarLabel(el: string): string { return damageElementLabel(el) }
 function addEntryBar(ai: number, el: string) {
   editAxis(ai, target => { (target.entryBars ??= {})[el] = 50 })
 }
+/** 队内是否有残痕类轴内资源（克拉蕾）——决定「进轴残痕值」输入框是否渲染（能力声明驱动，不认 id） */
+const axisGashDecl = computed(() => teamOwnsAxisGash(configStore.team))
+/**
+ * 单次存量上限（点数）= 层数上限 × 每层点数。
+ * ⚠ 经**模块声明** `axisGashResource` 取（`perLayer` / `maxStacks`），不 import 引擎常量
+ *   —— 展示层直连 `@/mechanics` 会被判据「越层 import」拦（实测 2026-10-12 被拦）。
+ */
+const GASH_STACK_CAP_POINTS = computed(() => {
+  const d = axisGashDecl.value
+  return d ? d.maxStacks * d.perLayer : 0
+})
+/** 该轴是否该显示进轴残痕输入框（条件轴方案模式下只读，与异常条同口径） */
+function gashAxisOwner(_ai: number): boolean { return !!axisGashDecl.value }
+/**
+ * 残痕 · 毁伤结算读数（用户 2026-10-12：「你这个轴里面没表现毁伤次数和残痕积蓄呀」）。
+ * 轴内/轴外分列——轴内那部分吃失衡易伤（由 `attachedEvents` 跟随触发它的招式），轴外不吃。
+ */
+const gashSettlement = computed(() => {
+  if (!axisGashDecl.value) return null
+  // 按**槽位**取（`characters` 按位置压缩、槽位号 ≠ 下标 ⇒ 禁止 `arr[slot]`，见 AGENTS §2）
+  const src = resourceResult.value?.characters
+    ?.find(c => c.slot === axisGashDecl.value!.slot)?.claretSharpResourceSource
+  if (!src) return null
+  const perLayer = axisGashDecl.value.perLayer
+  const axisMaim = Math.max(0, Math.round(src.axisMaim ?? 0))
+  const unfired = Math.max(0, Math.round(src.axisMaimUnfired ?? 0))
+  return {
+    entryLayers: Math.max(0, Number(src.entryGashPoints ?? 0)) / perLayer,
+    stacks: src.gashStacks,
+    axisMaim,
+    totalMaim: src.maimCount,
+    outMaim: Math.max(0, src.maimCount - axisMaim - (src.maimFromC6 ?? 0)),
+    unfired,
+    /**
+     * 「全部触发」所需的**精确最小**进轴起手点数（引擎二分求得，用户口径 2026-10-12：只告警不自动补）。
+     *
+     * ⚠ 不能用「当前起手 + Σ缺口」近似：实测标准轴起手 0 时 Σ缺口 = 1913 > 上限 1800，
+     * 而 1800 **恰恰不够**（第二次仍差 113 点）⇒ 近似会给出一个填不进去、且填了也不达标的值。
+     * `null`（引擎给的 `minEntryForAllMaim === null`）= 连上限都不够 ⇒ 页面改为提示「需在轴内多放积累块」。
+     */
+    neededEntry: typeof src.minEntryForAllMaim === 'number' ? src.minEntryForAllMaim : null,
+    /** 单次存量上限（点数）= 3 层 × 600 —— 起手值不可能超过它 */
+    capPoints: GASH_STACK_CAP_POINTS.value,
+  }
+})
+
+/**
+ * 毁伤触发时间轴（用户 2026-10-12：「你的毁伤我还是没看到哪里写了触发时间点，触发多少次」）。
+ * 只列**消耗类**步骤（= 毁伤事件）：标出「几秒触发 / 打之前几层 / 打之后剩几层」，
+ * 未触发的标红（层数不足 ⇒ 招式照打但毁伤不出）。
+ */
+const gashTimeline = computed(() => {
+  const d = axisGashDecl.value
+  if (!d) return []
+  const ch = resourceResult.value?.characters.find(c => c.slot === d.slot)
+  const steps = ch?.claretSharpResourceSource?.axisGashSteps ?? []
+  const labelOf: Record<string, string> = { 1611014: '葬血强袭·毁伤', 1611012: '斩金断铁·毁伤' }
+  // 窗号直接取引擎给的真值（`StackSequenceEntry.window`）——不再按 `at` 回绕推断
+  // （轴是每窗重放的模板，同一时刻每窗都会出现一次；必须让用户看出是**第几窗**）：
+  // 用户口径 2026-10-12「每个轴开头都该给1800呀…那轴的复制性呢」。
+  return steps
+    .filter(st => st.kind === 'consume')
+    .map(st => {
+      return {
+        window: st.window,
+        at: st.at,
+        label: labelOf[st.moveId] ?? `${st.moveId} 毁伤`,
+        miss: !st.fired,
+        text: st.fired
+          ? `✅ 触发 ${st.layers} 次（剩 ${fmt(st.poolAfter / d.perLayer, 2)} 层）`
+          : `❌ 未触发（要 ${st.layers} 层，只有 ${fmt(st.poolAfter / d.perLayer, 2)} 层）`,
+      }
+    })
+})
+
+function setEntryGash(ai: number, v: number | null) {
+  editAxis(ai, axis => {
+    const n = Math.max(0, Math.round(Number(v ?? 0)))
+    if (n <= 0) delete axis.entryGash
+    else axis.entryGash = n
+  })
+}
+
 function setEntryBar(ai: number, el: string, v: number | null) {
   editAxis(ai, axis => {
     if (v === null || !Number.isFinite(v) || v <= 0) {
@@ -907,6 +1038,13 @@ function agentName(s: number) {
 .sap-t .sap-t-time { font-weight: 600; color: var(--wa-850); }
 .sap-ops { display: flex; gap: 2px; }
 .sap-stats { margin-top: 16px; padding: 10px; background: var(--wa-20); border-radius: 6px; }
+.sap-gash-timeline { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--wa-80); }
+.sap-gash-row { display: flex; gap: 10px; font-size: 12px; color: var(--wa-550); line-height: 1.7; }
+.sap-gash-head { font-size: 11px; margin-bottom: 2px; }
+.sap-gash-row .w { width: 34px; color: var(--wa-450); }
+.sap-gash-row .t { width: 52px; text-align: right; font-variant-numeric: tabular-nums; color: var(--wa-450); }
+.sap-gash-row .m { width: 116px; }
+.sap-gash-row.miss { color: var(--wa-700); }
 .sap-stat-row { display: flex; gap: 14px; font-size: 12px; color: var(--wa-550); }
 .sap-warn { font-size: 10px; color: #f0a020; }
 .sap-block.stale { opacity: .35; border: 1px dashed var(--app-accent-gold); }

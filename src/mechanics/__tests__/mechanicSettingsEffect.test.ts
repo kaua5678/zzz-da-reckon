@@ -78,13 +78,15 @@ async function probe<T>(
   settingId: string,
   value: number,
   read: (calc: ReturnType<typeof useResourceCalc>) => T,
-  opts: { lock?: number; battleTime?: number; axis?: boolean } = {},
+  opts: { lock?: number; battleTime?: number; axis?: boolean; autoAxisOff?: boolean } = {},
 ): Promise<T> {
   const { config } = await setupHarness(team)
   for (const buff of config.globalBuffs) buff.enabled = false
   if (opts.lock !== undefined) config.enemy.stunCountLock = opts.lock
   if (opts.battleTime !== undefined) config.enemy.battleTime = opts.battleTime
   if (opts.axis !== undefined) config.useStunAxis = opts.axis
+  // 关掉**自动轴总开关**（不是 useStunAxis）：autoActive 由它派生，见 NO_AXIS 注释
+  if (opts.autoAxisOff) config.autoYidhariAxis = false
   const calc = useResourceCalc()
   config.setMechanicSetting(settingId, value)
   await new Promise(r => setTimeout(r, 0))
@@ -890,6 +892,18 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：叶瞬光 / 仪�
     { agentId: '1371', ...RICH },
     { agentId: '1481', cinemaLevel: 6, chainCountPerStun: 2 },
   ]
+  /**
+   * ⚠ 显式**关掉自动轴总开关**——不能只靠「这队没有匹配的轴预设」。
+   *
+   * 2026-10-12 实测（本用例红）：克拉蕾的**通用**轴预设（`team: ['1611','*','*']`，保底方案）
+   * 上线后，本夹具（含 1611）被自动命中 ⇒ `autoActive` 为真 ⇒ `yixuan.stunExCoverage`
+   * 被轴强制 0 ⇒ 三点恒 90、断言全红。本用例语义是「**无轴队**」（it 名与注释都写明）。
+   *
+   * ⚠ 只设 `config.useStunAxis = false` **不够**：`convergence` 的门是
+   *   `!forceNoAxis && (useStunAxis || **autoActive**) && …` —— `autoActive` 仍为真。
+   *   正确的闸是**总开关** `autoYidhariAxis`（`autoStunAxisPresetOf` 首行就 `if (!autoYidhariAxis) return null`）。
+   */
+  const NO_AXIS = { autoAxisOff: true } as const
 
   /**
    * `yixuan.stunExCoverage`：声明 `yixuan.ts:964`；读 `:612`
@@ -914,13 +928,14 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：叶瞬光 / 仪�
         axisActive: (c as unknown as Record<string, unknown>).yixuanAxisActive,
         count: row?.count, dmgBonus: row?.dmgBonus, auto: calc.autoActive.value,
       }
-    }, { lock: 3 })
+    }, { lock: 3, ...NO_AXIS })
 
     const base = await readBonus(0)
     if (base.axisActive === true) {
       failures.push('夹具失效 —— yixuanAxisActive 为真（命中 axis preset？）⇒ 滑块被强制 0，本条退化成三点恒值')
     }
-    if (base.auto === true) failures.push(`夹具失效 —— autoActive 为真（matchedPlan=${'仪其他?'}）⇒ 请换无预设命中的队伍`)
+    if (base.auto === true) failures.push('夹具失效 —— autoActive 为真 ⇒ 通用轴预设（如克拉蕾 preset-1611-any）命中了本队；'
+      + '本用例语义是「无轴队」，已在 probe 显式传 axis: false')
     if (base.dmgBonus === undefined) {
       failures.push('v=0: 轴外墨烬影消行 1371026 不存在 ⇒ 本条无观测点（请固定用 [\'1611\',\'1371\',\'1481\']）')
     }

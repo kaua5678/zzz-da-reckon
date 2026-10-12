@@ -327,7 +327,22 @@ export interface CharacterOperationConfig {
    * ⚠ 这是**轴内本地**数据，不是全局事件排序：全局侧失衡轴仍是「从总量里选取一部分做计数判定」。
    * ⚠ 跨槽位并行 ⇒ 本序列已按槽切分，模块只能看本槽的相对先后。
    */
-  axisSequence?: ReadonlyArray<{ moveId: string; count: number }>
+  axisSequence?: ReadonlyArray<{ moveId: string; count: number; startTime: number; window: number }>
+  /**
+   * 进轴时敌人身上已有的**残痕值**（点数，600 = 1 层；轴模式由编排层注入，非轴 0）。
+   *
+   * 来源 = 轴编辑器的 `StunAxis.entryGash`（用户口径 2026-10-12：「我想设置1800残痕进入也没显示」）。
+   * 消费方 = 克拉蕾 `simulateAxisGashTimeline` 的 `entryGashValue`——1800 点表示进轴即可打 3 次毁伤。
+   */
+  axisEntryGash?: number
+  /**
+   * 轴**实际执行**的失衡窗口数（= `StackTraversalResult.windowsUsed`；非轴 0）。
+   *
+   * 用途：轴是「每窗重放的模板」⇒ 依赖进轴初值的资源应按「**单窗结算 × 窗数**」推演，
+   * 而不是把 N 窗串成一条长序列（那样后一窗会被前一窗残留污染，且各窗资源门控递减会破坏可复制性）。
+   * 用户口径 2026-10-12：「你为何是分为不同窗口的呢，我以为你直接复制计数就行了」。
+   */
+  axisWindowCount?: number
   /** 全队通用：轴内终结技块总次数（× 窗口数；轴模式注入，非轴 0；希希芙影画2 等消费） */
   axisUltimateTotal?: number
   /** 全队通用：以太帷幕开启总次数（照 veilCount + 爱芮/叶瞬光/千夏开帷幕；爱芮应援能量与叶瞬光溯影惊鸿消费） */

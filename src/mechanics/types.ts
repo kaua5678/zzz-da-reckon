@@ -1039,6 +1039,24 @@ export interface AgentMechanicModule {
    */
   axisMoveActionTime?(moveId: string, catalogActionTime: number): number
   /**
+   * **轴编辑器「进轴残痕值」输入框的归属声明**（2026-10-12）：声明本能力 = 本角色有「残痕」类
+   * 资源、且它的轴内结算依赖**进轴时已攒了多少**（克拉蕾：毁伤要判够不够消耗）。
+   *
+   * 展示层经门面 `agentMechanicView#teamOwnsAxisGash` 判定是否渲染该输入框——
+   * 与 `characterCountInputs` / `axisDurationInputs` 同族：**能力声明驱动 UI，不认 agentId**（规则 6）。
+   * 值 = 每层点数（克拉蕾 600），供 UI 把「点」换算成「层」显示。
+   */
+  axisGashResource?: {
+    perLayer: number
+    label: string
+    /**
+     * **单次存量上限**（层数）——用户口径 2026-10-12：「单次积累上限1800，我只能1800进去。
+     * 当然后面也能积攒出1800」⇒ 池满即溢出、消耗后可再攒满。
+     * 展示层据它与 `perLayer` 算「起手值上限 = maxStacks × perLayer」，不经越层 import 取常量。
+     */
+    maxStacks: number
+  }
+  /**
    * **轴块时长**（2026-10-12）：轴编辑器与引擎共用的**唯一**块时长来源。
    *
    * 为什么需要（用户报「葬血强袭打断时间不对」）：编辑器原自己按 `combo.moves` 求和算时长

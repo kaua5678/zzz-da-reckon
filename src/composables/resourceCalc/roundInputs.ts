@@ -21,7 +21,7 @@ import type { AnomalyPoolResult } from '@/types/resource/pools'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { StunAxis, ResourceCalcConfig, TeamResourceResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
-import type { ExecutedMoveCount, StackActionCost, StackAxisInput } from '@/core/stunAxisStack'
+import type { ExecutedMoveCount, StackActionCost, StackAxisInput, StackSequenceEntry } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
@@ -310,7 +310,11 @@ export function createConvergenceRoundInputs(deps: {
           ...(endsWindow ? { endsStunWindow: true } : {}),
         })
       }
-      return { actions: axisActions, count: axis.count, basicFillerSlot: axis.basicFillerSlot }
+      return {
+        actions: axisActions, count: axis.count, basicFillerSlot: axis.basicFillerSlot,
+        // 进轴残痕值（点数）：栈引擎只透传，消费方 = 克拉蕾模块的轴内时序推演
+        entryGash: Math.max(0, Number(axis.entryGash ?? 0)),
+      }
     })
   }
 
@@ -370,25 +374,29 @@ export function createConvergenceRoundInputs(deps: {
    * ⚠ 只做「键 → 真实 moveId」的展开，不做任何计数聚合 ⇒ 消费者拿到的是**有序事件流**。
    */
   function expandSequenceToMoveIds(
-    sequence: readonly ExecutedMoveCount[],
+    sequence: readonly StackSequenceEntry[],
     basicFillBySlot: Record<number, number>,
-  ): ExecutedMoveCount[] {
-    const out: ExecutedMoveCount[] = []
+  ): StackSequenceEntry[] {
+    const out: StackSequenceEntry[] = []
     for (const v of sequence) {
       if (v.count <= 0) continue
       const agentId = configStore.team[v.slot]?.agentId ?? ''
       const combo = getAgentMechanic(agentId)?.combos?.[v.moveId]
       if (combo) {
         for (const mv of combo.moves) {
-          if (mv.count > 0) out.push({ slot: v.slot, moveId: mv.moveId, count: mv.count * v.count })
+          // 连段各段共用块的 startTime（段内先后由 `count` 表达，不另造时刻）
+          if (mv.count > 0) out.push({ slot: v.slot, moveId: mv.moveId, count: mv.count * v.count, startTime: v.startTime, window: v.window })
         }
       } else {
-        out.push({ slot: v.slot, moveId: v.moveId, count: v.count })
+        out.push({ slot: v.slot, moveId: v.moveId, count: v.count, startTime: v.startTime, window: v.window })
       }
     }
-    // 兜底平A填充：追加在末尾（count = 秒数，消费方按自己的秒均积累率折算）
+    // 兜底平A填充：追加在末尾（count = 秒数，消费方按自己的秒均积累率折算）。
+    // ⚠ 无显式 startTime（填充发生在轴内块都放完之后，由栈内部决定起止）⇒ 记 0 表示「窗内末段」，
+    //   消费方展示时按「填充」标注即可，不要当成 t=0 的真实动作。
     for (const [slotStr, fillSec] of Object.entries(basicFillBySlot)) {
-      if (fillSec > 0) out.push({ slot: Number(slotStr), moveId: 'basic', count: fillSec })
+      // 兜底填充是**跨全部窗口的合计秒数**（不是每窗），故不标窗号语义、归到末窗之后（window = 0 = 不限窗）
+      if (fillSec > 0) out.push({ slot: Number(slotStr), moveId: 'basic', count: fillSec, startTime: 0, window: 0 })
     }
     return out
   }

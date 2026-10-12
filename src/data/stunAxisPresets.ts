@@ -317,6 +317,10 @@ export function normalizeAxesForExport(axes: StunAxis[]): StunAxis[] {
     if (axis.entryAnomaly && axis.entryAnomaly > 0) clean.entryAnomaly = axis.entryAnomaly
     const bars = Object.entries(axis.entryBars ?? {}).filter(([, v]) => v > 0)
     if (bars.length > 0) clean.entryBars = Object.fromEntries(bars)
+    // 进轴残痕值（克拉蕾）：**必须一起带走**——本函数是白名单，漏一个字段就会在
+    // 「导出预设 / 应用预设」时静默丢失（2026-10-12 实测：预设里写 1800，应用后归 0，
+    // 轴页显示「6 次毁伤因残痕不足未触发」，而单测里直读预设却是 6 次全触发）。
+    if (axis.entryGash && axis.entryGash > 0) clean.entryGash = axis.entryGash
     if (axis.suppressedTriggers && axis.suppressedTriggers.length > 0) clean.suppressedTriggers = [...axis.suppressedTriggers]
     return clean
   })

@@ -39,6 +39,11 @@ export interface StackAxisInput {
   count?: number
   /** 该轴的兜底平A角色槽位：资源不足时剩余窗口时间由该角色打平A填充；缺省不填充 */
   basicFillerSlot?: number
+  /**
+   * 进轴时敌人身上已有的**残痕值**（点数，600 = 1 层；用户口径 2026-10-12）。
+   * 栈引擎只做**透传**（本字段不参与时间/资源门控），由消费它的角色模块做轴内时序推演。
+   */
+  entryGash?: number
 }
 
 export interface StackTraversalInput {
@@ -62,7 +67,28 @@ export interface ExecutedMoveCount { slot: number; moveId: string; count: number
  * 顺序 = 栈引擎实际执行的先后（同槽位内为真实先后；跨槽位并行，消费者须按槽过滤）。
  * 语义边界 = **轴内本地**（全局侧仍是总量口径，见 `StackTraversalResult.sequence` 头注释）。
  */
-export interface StackSequenceEntry { slot: number; moveId: string; count: number }
+export interface StackSequenceEntry {
+  slot: number
+  moveId: string
+  count: number
+  /**
+   * **窗口序号**（从 1 起）——轴是**每窗重放的模板**，同一 moveId 会在每个窗口各出现一次。
+   *
+   * 用途：把「进轴值」（如克拉蕾残痕 `entryGash`）正确应用为**每窗开头**的初值，
+   * 而不是整条序列只给一次——用户口径 2026-10-12：「我预设开头给1800，每个轴开头都该给1800呀。
+   * 你这个静默清零搞得轴都没效果了，那轴的复制性呢」。
+   */
+  window: number
+  /**
+   * 该动作在**窗口内的开始时刻**（秒，相对失衡窗口起点；缺省 0）。
+   *
+   * 用途：把轴内推演结果（如克拉蕾的毁伤触发）标回时间轴上——用户口径 2026-10-12：
+   * 「你的毁伤我还是没看到哪里写了触发时间点，触发多少次」。
+   * ⚠ 跨窗口的重复执行都从各自窗口的 0 起算（栈是逐窗遍历的）⇒ 这是**窗内相对时刻**，
+   *   不是整局绝对时刻；消费方若要排整局时间轴需自行按窗序偏移。
+   */
+  startTime: number
+}
 
 export interface StackTraversalResult {
   /** 轴内实际执行的每个动作（跨所有窗口合计，key = `${slot}:${moveId}` → 次数） */
@@ -96,6 +122,11 @@ export interface StackTraversalResult {
   decibelUsed: number
   /** 全队可用喧响总量（提示资源是否充足） */
   totalDecibel: number
+  /**
+   * 进轴残痕值（点数）：**透传**自消费轴（`StackAxisInput.entryGash`），供编排层注入 cfg。
+   * 多轴时取**首条非零**（现实里只有一条轴会声明它；不设多轴求和以免语义含糊）。
+   */
+  entryGash: number
   /** 实际用到的窗口数（≤ stunCount） */
   windowsUsed: number
   /** 被跳过的动作（资源不足） */
@@ -160,7 +191,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   const energyLeft: Record<number, number> = { ...energyBySlot }
   const decibelLeft: Record<number, number> = { ...decibelBySlot }
 
-  const bump = (slot: number, moveId: string, count: number) => {
+  const bump = (slot: number, moveId: string, count: number, startTime = 0, win = 1) => {
     const key = `${slot}:${moveId}`
     const cur = executed[key]
     if (cur) cur.count += count
@@ -175,7 +206,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     //   执行先后（`window.actions` 的遍历序）如实暴露出来，供模块做**轴内本地**的时序推演。
     //   跨槽位是并行的，故消费者必须**只按本槽过滤**后再推演（不得跨槽比较先后）。
     // ⚠ 纯追加，既有字段一个不动 ⇒ 对未消费本字段的角色零行为变更。
-    if (count > 0) sequence.push({ slot, moveId, count })
+    if (count > 0) sequence.push({ slot, moveId, count, startTime: Math.max(0, Number(startTime)), window: win })
   }
 
   // 窗口调度：按轴顺序分配；count 有值 → 精确次数，缺省 → 兜底吃剩余。
@@ -186,7 +217,9 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     for (let i = 0; i < winAlloc[ai]; i++) schedule.push({ actions: axis.actions, basicFillerSlot: axis.basicFillerSlot })
   })
 
+  let windowNo = 0
   for (const window of schedule) {
+    windowNo++
     // 合轴：时间按槽位独立门控（各角色并行填窗口，互不挤占先后时间）
     const slotTime: Record<number, number> = {}
     // 各槽位时间线最晚结束时刻（max(startTime+actionTime)，仅执行成功的动作）——平A填充从这往后
@@ -235,7 +268,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
           decibelUsed += act.decibelCost
         }
         // 执行
-        bump(act.slot, act.moveId, 1)
+        bump(act.slot, act.moveId, 1, act.startTime ?? 0, windowNo)
         slotTime[act.slot] = used + act.actionTime
         // 时间线末尾：该槽位最晚结束时刻（startTime 负值=窗口外提前起手，按 0 起算）
         const end = Math.max(0, act.startTime ?? 0) + act.actionTime
@@ -307,6 +340,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     windowsUsed,
     basicFillSeconds,
     basicFillBySlot,
+    entryGash: axes.reduce((acc, ax) => acc || Math.max(0, Number(ax.entryGash ?? 0)), 0),
     skipped,
     note: `栈遍历：${windowsUsed} 窗口 × 单窗口 ${windowDuration}s；闪能消耗 ${energyUsed} / ${totalEnergy}，喧响 ${decibelUsed} / ${totalDecibel}；超时/资源不足 ${skipped.length} 个动作（固定轴：资源不足只提示，不自动变轴）。`,
   }

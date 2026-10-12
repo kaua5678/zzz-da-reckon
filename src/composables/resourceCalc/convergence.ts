@@ -41,7 +41,7 @@ import { DOWNSCALED_INTERACTION_FIELDS, downscaleInteractionCount } from './feas
 import type { CalcRoundThreads, PostRoundInput } from './roundThreads'
 import { computeParrySplit, GUARANTEE_STUN_TARGET } from '@/core/parrySplit'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
-import { calcStunAxisStack, allocateAxisWindows, type ExecutedMoveCount, type StackAxisInput } from '@/core/stunAxisStack'
+import { calcStunAxisStack, allocateAxisWindows, type ExecutedMoveCount, type StackAxisInput, type StackSequenceEntry } from '@/core/stunAxisStack'
 import {
   computeBossAnomalyStateTimeline,
   computeInStunAnomalyTimeline,
@@ -92,7 +92,7 @@ export function createRunCalcRound(deps: {
   buildStackAxes: (axes: StunAxis[]) => StackAxisInput[]
   expandExecutedToCounts: (executed: Record<string, ExecutedMoveCount>, basicFillBySlot: Record<number, number>) => Record<string, ExecutedMoveCount>
   /** 保序版展开（连段块 → 真实 moveId，不聚合）：克拉蕾轴内残痕时序消费，见 roundInputs 里的实现注释 */
-  expandSequenceToMoveIds: (sequence: readonly ExecutedMoveCount[], basicFillBySlot: Record<number, number>) => ExecutedMoveCount[]
+  expandSequenceToMoveIds: (sequence: readonly StackSequenceEntry[], basicFillBySlot: Record<number, number>) => StackSequenceEntry[]
   resolveAxes: (stunCount: number, goodReview: number, energyBySlot: Record<number, number>) => { axes: StunAxis[]; planName: string | null }
   calcAnomalyPoolInput: (stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number, giftedSlotFallback?: number) => AnomalyPoolResult
   extractAnomalyExecsFrom: (res: TeamResourceResult, skipGift?: boolean) => AnomalySkillExecution[]
@@ -451,7 +451,7 @@ export function createRunCalcRound(deps: {
      * 这里**按槽位切分**后注入——跨槽位是并行的，模块只能看本槽的相对先后（`StackSequenceEntry` 口径）。
      * ⚠ 这是**轴内本地**数据，不是全局事件排序（用户 2026-10-12 纠正）。
      */
-    const axisSequenceBySlot: Record<number, { moveId: string; count: number }[]> = {}
+    const axisSequenceBySlot: Record<number, { moveId: string; count: number; startTime: number; window: number }[]> = {}
     if (axisExecutedStack) {
       for (const c of base.characters) axisActionCountsBySlot[c.slot] = {}
       for (const v of Object.values(axisExecutedStack.executed)) {
@@ -461,7 +461,7 @@ export function createRunCalcRound(deps: {
       // 逐次序列要**展开连段块 → 真实 moveId 并保序**（`axisSequence` 里存的是块 key，
       // 如 `claret-burial`；模块按真实 moveId 查 gash/消耗表 ⇒ 不展开会整条落空）。
       for (const e of expandSequenceToMoveIds(axisExecutedStack.sequence, axisExecutedStack.basicFillBySlot)) {
-        ;(axisSequenceBySlot[e.slot] ??= []).push({ moveId: e.moveId, count: e.count })
+        ;(axisSequenceBySlot[e.slot] ??= []).push({ moveId: e.moveId, count: e.count, startTime: e.startTime, window: e.window })
       }
     } else {
       // 非轴：无轴内块（原 computeAxisActionCountsFor 在 !axisActive 时恒返回 {}）
@@ -496,6 +496,11 @@ export function createRunCalcRound(deps: {
         teamStunCoverage: provStunCoverage,
         axisActionCounts: axisActionCountsBySlot[cfg.slot],
         axisSequence: axisSequenceBySlot[cfg.slot] ?? [],
+        // 进轴残痕值（点数；用户 2026-10-12「我想设置1800残痕进入也没显示」）——给克拉蕾的轴内时序推演
+        axisEntryGash: axisExecutedStack?.entryGash ?? 0,
+        // 轴**实际执行**的窗数（不是轴声明的 count：资源不足时栈会少跑窗）。
+        // 克拉蕾的残痕按「单窗模板 × 窗数」结算（用户口径：「我以为你直接复制计数就行了」）。
+        axisWindowCount: axisExecutedStack?.windowsUsed ?? 0,
         axisUltimateTotal: axisUltimateTotal[cfg.slot] ?? 0,
         // 全队帷幕次数（上一轮收敛注入）：叶瞬光溯影惊鸿/爱芮合作舞台/千夏磨爪器在此轮 buildExecutions/buildAnomalyEvents 消费
         teamVeilCountTotal: prevTeamVeilCountTotal,

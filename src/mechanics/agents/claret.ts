@@ -316,6 +316,16 @@ export interface AxisGashStep {
   layers: number
   /** 消耗步骤：是否真的够层并触发了毁伤（积累步骤恒 true） */
   fired: boolean
+  /**
+   * **该步发生的时刻**（秒，相对失衡窗口起点）——用户口径 2026-10-12：
+   * 「你的毁伤我还是没看到哪里写了触发时间点，触发多少次」。
+   * 消耗步骤的该值即**毁伤触发时间点**；兜底平A填充记 0（见 `expandSequenceToMoveIds` 注释）。
+   */
+  at: number
+  /** 该步执行后池内的残痕点数（展示用：让用户看到「打之前有多少、打完剩多少」） */
+  poolAfter: number
+  /** 该步所属**失衡窗口序号**（从 1 起；0 = 不限窗，如跨窗合计的兜底平A填充） */
+  window: number
 }
 
 export function simulateAxisGashTimeline(input: {
@@ -323,7 +333,7 @@ export function simulateAxisGashTimeline(input: {
    * 该槽位轴内**逐次执行序列**（`cfg.axisSequence`，已按槽切分）。
    * ⚠ 跨槽位并行 ⇒ 只看本槽的相对先后（调用方保证已切分）。
    */
-  sequence: ReadonlyArray<{ moveId: string; count: number }>
+  sequence: ReadonlyArray<{ moveId: string; count: number; startTime?: number; window: number }>
   /** moveId → 该招一发的残痕积累表值（%）；不在表里 = 0（不积累） */
   gashByMoveId: Readonly<Record<string, number>>
   /**
@@ -337,6 +347,37 @@ export function simulateAxisGashTimeline(input: {
   perLayer?: number
   /** 覆盖该序列各 moveId 的**实打次数**（缺省 = `count`）；用于「一次块含多段」的折算 */
   castsByMoveId?: Readonly<Record<string, number>>
+  /**
+   * 轴内 `basic` 块的**残痕秒均**（%/s）——平A 在轴里的单位是**秒**不是「次」
+   * （`StunAxisAction`：「basic 单位=秒，其余单位=次」）。
+   *
+   * ⚠ 两条积累口径必须分开（2026-10-12 实测缺口）：
+   *   · 招式块（锻星/EX/连携…）：`gash_buildup` 是**每发**值 ⇒ 积累 = 表值 × 次数；
+   *   · `basic` 块：`count` = **秒数**，而 `gash_buildup` 表里的平A值是**每次命中**（血锻#3 = 55.3/次、
+   *     0.553s/次 ⇒ 100/s），直接按「秒数 × 表值」会算错一个数量级 ⇒ 必须用**秒均**。
+   *   不传 ⇒ `basic` 块不积累（旧行为，逐位不变）。
+   */
+  basicGashPerSec?: number
+  /**
+   * **残痕积蓄效率倍率**（= 1 + 核心 50% + 影画1 20%，见 `buildupMultiplier`）。
+   *
+   * ⚠ 必须传（2026-10-12 用户指出「我觉得你的积蓄效率没有计算」——实测确实漏了）：
+   * 轴内推演原用**原始表值**累加，而全局口径用 `baseGash × buildupMultiplier` ⇒ 两处不同源，
+   * 轴内被系统性低估 1/1.5（默认 C0 = ×1.5、C1 起 ×1.7）。
+   * 实测影响：标准轴两次葬血强袭之间原始 1529.9 点（2.55 层，**判为不够**）；
+   * ×1.5 后 = 2294.9 点（3.82 层，**实际够**）——漏倍率会把「够」误判成「不够」。
+   * 缺省 1（不缩放）= 显式声明「不吃效率」的调用方才这么传。
+   */
+  buildupMultiplier?: number
+  /**
+   * **单次积累上限**（点数；`GASH_MAX_STACKS × GASH_PER_LAYER` = 1800）。
+   *
+   * 用户口径 2026-10-12：「单次积累上限1800，我只能1800进去。当然后面也能积攒出1800」
+   * —— 即敌人身上**同时存量上限 3 层**：池子攒到 1800 就不再涨（超出溢出浪费），
+   * 但**消耗掉之后可以再攒满 1800**（这正是「后面也能积攒出1800」）。
+   * 缺省不封顶（0/undefined）——只有声明了上限的资源才需要。
+   */
+  maxGashValue?: number
 }): {
   /** 轴内触发的毁伤次数（= 真正扣掉层数的那几次） */
   maimCount: number
@@ -346,45 +387,107 @@ export function simulateAxisGashTimeline(input: {
   gashValueAfter: number
   /** 消耗块里因层数不足而**没触发**毁伤的次数（用户要看的「差几次」） */
   unfiredMaim: number
+  /**
+   * 未触发那几次合计**差多少点**（真实缺口；不是「每次 1 层 × 600」的近似）。
+   *
+   * 口径 = Σ `max(0, 该次所需点数 − 当时池内点数)`。实测（标准轴 C0、起手 1800）：
+   * 第二次葬血强袭时池内 1687 点、需 1800 ⇒ 差 **113 点**（0.19 层）；
+   * 若按「差 1 层 = 600 点」汇报会**高估 5 倍**。
+   */
+  unfiredPoints: number
   /** 逐条推演轨迹（展示 / 判据用） */
   steps: AxisGashStep[]
 } {
   const perLayer = Math.max(1, Number(input.perLayer ?? GASH_PER_LAYER))
-  let gash = Math.max(0, Number(input.entryGashValue))
+  const eff = Math.max(0, Number(input.buildupMultiplier ?? 1))
+  // 单次存量上限（点数）：0/缺省 = 不封顶；>0 = 池子攒满即溢出（用户口径「单次积累上限1800」）
+  const cap = Math.max(0, Number(input.maxGashValue ?? 0))
+  const clampPool = (v: number) => (cap > 0 ? Math.min(cap, Math.max(0, v)) : Math.max(0, v))
+  let gash = clampPool(Number(input.entryGashValue))
+  /**
+   * 进轴值**每窗开头都重置**（用户口径 2026-10-12）：
+   * 「我预设开头给1800，每个轴开头都该给1800呀。你这个静默清零搞得轴都没效果了，那轴的复制性呢」。
+   *
+   * 语义依据：轴是**每窗重放的模板**（`schedule` 按 `winAlloc` 把同一套 `actions` 铺到每个失衡窗口），
+   * 所以「进轴时敌人身上有多少残痕」在每个窗口入口都成立——不是「整局只送一次」。
+   * ⚠ 残痕本身跨窗保留（池子不清），但**进轴值是每窗的初值**（池至少有这么满）。
+   *   实测修正前：第 2 窗 t=0 那次葬血强袭读到上窗残留 0 ⇒ 静默不触发（轴等于失效一半）。
+   */
+  const entryValue = clampPool(Number(input.entryGashValue))
+  let curWindow = input.sequence[0]?.window ?? 1
   let maimCount = 0
   let consumedLayers = 0
   let unfiredMaim = 0
+  let unfiredPoints = 0
   const steps: AxisGashStep[] = []
   for (const entry of input.sequence) {
-    const count = Math.max(0, Math.floor(Number(input.castsByMoveId?.[entry.moveId] ?? entry.count)))
+    // ⚠ 时刻取自**序列条目本身**（`entry.startTime`），不能用「moveId → 时刻」的映射：
+    //   同一 moveId 可在轴里出现多次且时刻不同（标准轴的两次打断葬血强袭 = 0s / 10.9s），
+    //   映射会让它们互相覆盖（实测两次都显示 10.9s）。
+    const at = Math.max(0, Number(entry.startTime ?? 0))
+    // 进入新窗口 ⇒ 池子抬到「进轴值」（每窗初值；`window` 0/缺省 = 不限窗，不重置）
+    const win = Number(entry.window)
+    if (win > 0 && win !== curWindow) {
+      curWindow = win
+      gash = clampPool(Math.max(gash, entryValue))
+    }
+    const raw = Number(input.castsByMoveId?.[entry.moveId] ?? entry.count)
+    // ⚠ `basic` 的 count 是**秒数**（可为小数）⇒ **不得 floor**（会把 3.3745s 截成 3s、
+    //   少算 0.3745×秒均 ≈ 45 点；2026-10-12 用户指出「中间积攒不够吗」时查出）。
+    //   其余招式块 count = 施放次数（整数语义），仍按 floor 走。
+    const count = Math.max(0, entry.moveId === 'basic' ? raw : Math.floor(raw))
     if (count <= 0) continue
     const consumePerCast = Number(input.consumePerCastByMoveId[entry.moveId] ?? 0)
     if (consumePerCast > 0) {
-      // 消耗块：逐次判「够不够」——够才扣层并触发毁伤
-      for (let i = 0; i < count; i++) {
-        const pool = Math.floor(gash / perLayer)
-        const fired = pool >= consumePerCast
-        if (fired) {
-          // ⚠ 扣的是**层**（整数），不是「按比例扣点数」：残痕以层为原子消耗
-          gash = Math.max(0, gash - consumePerCast * perLayer)
-          consumedLayers += consumePerCast
-          maimCount += consumePerCast
-        } else {
-          // 不够：招式本体照打（调用方另行结算），但**不触发毁伤**、不扣层
-          unfiredMaim += consumePerCast
+      /**
+       * 消耗块：**逐段**判（不是逐次施放）—— 用户口径 2026-10-12：
+       * 「那他的1200也够触发2次啊」。
+       *
+       * 原文依据：葬血强袭 = 「向前方发动**连续3次横向斩击**…**每次**横向斩击命中持有[残痕]的敌人时，
+       * 对目标触发[毁伤]…招式内最多可以连续触发3次」。斩金断铁 = 单段横斩（1 段）。
+       * ⇒ **每一段各自消耗 1 层、各自触发 1 次毁伤**，段与段互不依赖。
+       *   池里 2 层时：第 1 段✅ 第 2 段✅ 第 3 段❌ ⇒ **触发 2 次**（不是「不够 3 层就 0 次」）。
+       *
+       * ⚠ 旧实现按「一次施放」判 `pool >= consumePerCast` ⇒ 要么满 3 次、要么 0 次 —— 这是**真缺陷**：
+       *   实测标准轴第 3 窗池 1266 点（2 层）本应触发 2 次，却报 0 次 + 3 次「未触发」。
+       */
+      for (let cast = 0; cast < count; cast++) {
+        // 一次施放 = `consumePerCast` 段；逐段结算
+        for (let seg = 0; seg < consumePerCast; seg++) {
+          const pool = Math.floor(gash / perLayer)
+          const fired = pool >= 1 // 每段只需 1 层
+          if (fired) {
+            // ⚠ 扣的是**层**（整数），不是「按比例扣点数」：残痕以层为原子消耗
+            gash = clampPool(gash - perLayer)
+            consumedLayers += 1
+            maimCount += 1
+          } else {
+            // 不够：招式本体照打（调用方另行结算），但该段**不触发毁伤**、不扣层。
+            unfiredMaim += 1
+            unfiredPoints += Math.max(0, perLayer - gash)
+          }
+          steps.push({ moveId: entry.moveId, kind: 'consume', layers: 1, fired, at, poolAfter: gash, window: win })
         }
-        steps.push({ moveId: entry.moveId, kind: 'consume', layers: consumePerCast, fired })
       }
       continue
     }
-    // 积累块：按表值 × 次数累加
+    // 积累块：`basic` 的单位是**秒** ⇒ 用秒均；其余招式按「表值 × 次数」
+    if (entry.moveId === 'basic') {
+      const perSec = Math.max(0, Number(input.basicGashPerSec ?? 0))
+      if (perSec <= 0) continue
+      // × 积蓄效率（与全局口径同源：`baseGash × buildupMultiplier`）
+      const total = perSec * count * eff
+      gash = clampPool(gash + total)
+      steps.push({ moveId: entry.moveId, kind: 'gain', layers: total / perLayer, fired: true, at, poolAfter: gash, window: win })
+      continue
+    }
     const gain = Number(input.gashByMoveId[entry.moveId] ?? 0)
     if (gain <= 0) continue
-    const total = gain * count
-    gash += total
-    steps.push({ moveId: entry.moveId, kind: 'gain', layers: total / perLayer, fired: true })
+    const total = gain * count * eff
+    gash = clampPool(gash + total)
+    steps.push({ moveId: entry.moveId, kind: 'gain', layers: total / perLayer, fired: true, at, poolAfter: gash, window: win })
   }
-  return { maimCount, consumedLayers, gashValueAfter: gash, unfiredMaim, steps }
+  return { maimCount, consumedLayers, gashValueAfter: gash, unfiredMaim, unfiredPoints, steps }
 }
 
 /**
@@ -409,6 +512,17 @@ export function computeClaretSharpResource(input: {
    *  旧实现只算平A+EX 且 EX 错读 `anomaly_buildup` 列）。取代旧的 `exGashValue`/`exCount` 两参。
    */
   moveGashTotal?: number
+  /**
+   * **进轴时已攒的残痕值**（点数，用户口径 2026-10-12「我想设置1800残痕进入也没显示」）。
+   *
+   * 它是**存量**不是积累 ⇒ 与「琢形送层」同族：**不吃积蓄效率倍率**（那是"积累效率"，
+   * 对已经在敌人身上的层不适用），直接加成点数进池。
+   */
+  entryGashPoints?: number
+  /** 让轴内毁伤全部触发所需的**最小进轴起手点数**（由 `buildClaretResourceSource` 二分求得）——仅回传展示 */
+  minEntryForAllMaim?: number | null
+  /** 轴内残痕逐步轨迹（含**毁伤触发时间点**与每次打前/打后的池内点数）——展示用 */
+  axisGashSteps?: AxisGashStep[]
   cleaveSpecialCount: number
   bloodBurialCount: number
   gashCoverage: number
@@ -460,7 +574,7 @@ export function computeClaretSharpResource(input: {
    * · `consumedLayers` 轴内已消耗的层 → 轴外可用层数先减掉它；
    * · `maimCount` 轴内已触发的毁伤数 → 直接加进总毁伤数（这部分吃失衡易伤）。
    */
-  axisGash?: { consumedLayers: number; maimCount: number; unfiredMaim: number } | undefined
+  axisGash?: { consumedLayers: number; maimCount: number; unfiredMaim: number; unfiredPoints?: number } | undefined
 }): ClaretSharpResourceSource {
   const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   // 平A = 秒均×时间（两态加权）；**其余全部招式** = Σ 实打次数 × 表列 `gash_buildup`
@@ -473,7 +587,12 @@ export function computeClaretSharpResource(input: {
   //
   // @fact agent:1611/琢形送残痕 口径: 反制支援整组化解一组控制技 = 琢形「重击命中直接为目标添加1层[残痕]」→ 每组 +600 点**且不吃积蓄效率倍率**（送层不是积累），仍受 3 层上限；表列 gash_buildup（1611028=446 / 1611030=134）按「非平A非E 不计」的全局同口径仍不计入 | 据 用户@2026-09-12（「残痕建模一下，他的确是送了」）+ nanoka full/1611.json 琢形条目·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/claretSmoke.test.ts::反制支援送残痕 | 锚 src/mechanics/agents/claret.ts#computeClaretSharpResource | 信 确认
   const counterAssistGashStacks = Math.max(0, Math.floor(input.counterAssistCount ?? 0))
-  const gashValuePct = baseGash * buildupMultiplier + counterAssistGashStacks * GASH_PER_LAYER
+  const entryGashPoints = Math.max(0, Number(input.entryGashPoints ?? 0))
+  const gashValuePct = baseGash * buildupMultiplier
+    + counterAssistGashStacks * GASH_PER_LAYER
+    // 进轴残痕值：**存量直接进池**、不吃积蓄效率倍率（与琢形送层同口径），
+    // 但受「同时存量上限 3 层」（用户口径「单次积累上限1800，我只能1800进去」）钳制。
+    + Math.min(entryGashPoints, GASH_MAX_STACKS * GASH_PER_LAYER)
   // 整局可用层数**不设 3 钳制**：3 层是敌人身上的同时存量上限（见 GASH_MAX_STACKS 注释），
   // 总量口径下攒够就消耗、消耗完继续攒，真正的上限是下面的消耗需求次数（斩金断铁/葬血强袭）。
   // debt: 残痕总量口径天花板 「同时存量≤3层」是时序约束，总量口径只能给出 `min(L, Ds)`（已证为**紧上界**：
@@ -586,6 +705,12 @@ export function computeClaretSharpResource(input: {
     basicGashValuePct: Math.max(0, input.basicGashPerSec * input.basicAttackTime) * buildupMultiplier,
     gashStacks,
     counterAssistGashStacks,
+    entryGashPoints,
+    axisMaim,
+    axisMaimUnfired: Math.max(0, Number(input.axisGash?.unfiredMaim ?? 0)),
+    axisMaimUnfiredPoints: Math.max(0, Number(input.axisGash?.unfiredPoints ?? 0)),
+    minEntryForAllMaim: input.minEntryForAllMaim,
+    axisGashSteps: input.axisGashSteps,
     maimDemand,
     gashStackConsumed,
     maimCount,
@@ -939,18 +1064,96 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
   // 轴内吃掉的层从轴外可消耗层数里**扣除**（同一池、总量守恒）——用户原话「捏了多少消耗多少后，
   // 剩下的自动计算然后放在失衡轴外，吃不到易伤」。非轴（`axisSequence` 空）⇒ 恒 null，零变化。
   const axisSequence = cfg.axisSequence ?? []
-  const axisGashSim = axisSequence.length > 0
+  /**
+   * ── 轴内残痕：**按「单窗模板 × 窗数」结算**（用户口径 2026-10-12 第二次纠正）──
+   *
+   * 用户原话：「你为何是分为不同窗口的呢，我以为你直接复制计数就行了」。
+   *
+   * 对：轴就是**每窗重放同一套模板**，所以每一窗的残痕推演**完全相同**（起点都是进轴值）。
+   * 早先的实现把 N 窗串成一条长序列跑，导致两个错误：
+   *   ① 后一窗被前一窗的残留污染（本该各窗独立）；
+   *   ② 各窗的资源门控（喧响/闪能）**逐窗递减** ⇒ 后面的窗会缺块 ⇒ **结果不可复制**
+   *      （实测 lock=3 时第 3 窗的终结技被喧响门控剔掉、少 601 点 ⇒ 第 3 窗第二次葬血不触发，
+   *        而第 1/2 窗都触发——轴失去了「每窗一样」这个基本性质）。
+   *
+   * 正解 = 只取**一个窗**的块序列推演一次，再 × 实际窗数。
+   * ⚠ 「一窗的块序列」取**前 N 条**（N = 首窗的块数）：`sequence` 已按窗连续排列，
+   *   第一窗的块就是 `window === 首窗号` 的那些。
+   * ⚠ 窗数取**实际执行**的窗数（`windowsUsed`，经编排层注入的 `axisWindowCount`），
+   *   不是轴声明的 `count`（资源不足时栈会少跑窗）。
+   */
+  const axisWindows = Math.max(1, Math.floor(Number(cfg.axisWindowCount ?? 1)))
+  const firstWindowNo = axisSequence[0]?.window ?? 1
+  const oneWindowSeq = axisSequence.filter(e => e.window === firstWindowNo)
+  const singleWindowSim = oneWindowSeq.length > 0
     ? simulateAxisGashTimeline({
-        sequence: axisSequence,
+        sequence: oneWindowSeq,
         gashByMoveId: cfg.claretGashByMoveId ?? {},
-        // 进轴残痕值 = 轴内积累**之前**已攒下的量。本模块用「轴内积累量」从总量里反推：
-        // 轴内各块的积累在总账里已计（下方 `moveGashTotal` 走全局次数），故进轴值取 0 起算，
-        // 轴内积累由序列自身提供 ⇒ 与用户例子「一开始1800进去」等价建模为
-        // 「轴内先攒 1800 再打 3 层」（序列里就有那 15 次锻星）。
-        entryGashValue: 0,
+        // 进轴残痕值 = 轴编辑器的 `entryGash`（用户口径 2026-10-12：「我想设置1800残痕进入也没显示」）。
+        // 用户例子「假设一开始1800残痕值进去，打3层毁伤」⇒ 该值直接作为推演起点，
+        // 轴内积累在其上继续累加（`sequence` 里的积累块）。
+        // 进轴值同样受「单次存量上限 3 层」钳制（用户口径「单次积累上限1800，我只能1800进去」）
+        entryGashValue: Math.max(0, Number(cfg.axisEntryGash ?? 0)),
         consumePerCastByMoveId: { [CLEAVE_SLASH_MOVE_ID]: 1, [BLOOD_BURIAL_MOVE_ID]: BURIAL_MAIM_PER_CAST },
+        // 轴内 `basic` 块单位是秒 ⇒ 传秒均（两态加权结果 `blended.gash`，与轴外同源）
+        basicGashPerSec: blended.gash,
+        // ⚠ 积蓄效率必须传（用户 2026-10-12 指出「我觉得你的积蓄效率没有计算」——确实漏了）：
+        //   全局口径是 `baseGash × buildupMultiplier`，轴内不乘就系统性低估 1/1.5。
+        buildupMultiplier: 1 + GASH_EFF_CORE / 100 + (cinemaLevelOf(cfg.claretCinemaLevel) >= 1 ? GASH_EFF_C1 / 100 : 0),
+        // 单次存量上限 3 层 = 1800 点（用户口径「单次积累上限1800…后面也能积攒出1800」）
+        maxGashValue: GASH_MAX_STACKS * GASH_PER_LAYER,
       })
     : null
+  /**
+   * **让轴内毁伤全部触发所需的最小进轴起手点数**（用户口径 2026-10-12「只告警」⇒ 只报数、不自动补）。
+   *
+   * 为什么不能简单用「当前起手 + 缺口」：缺口是**逐步**产生的（每次失败时池内点数不同），
+   * 且进轴值受**单次上限**（3 层 = 1800 点）钳制 ⇒ 简单相加会给出一个**填不进去的值**
+   * （实测标准轴起手 0 时 Σ缺口 = 1913 > 1800，而 1800 恰恰**不够**——第二次仍差 113 点）。
+   *
+   * 正解 = 在 `[当前起手, 上限]` 上**二分**（推演对起手单调：起手越多，触发次数只增不减），
+   * 得到精确的最小可行值；连上限都不够 ⇒ `null`（页面提示「起手拉满也不够，需在轴内多放积累块」）。
+   */
+  /**
+   * **单窗模板 × 实际窗数** = 轴内总结算（用户口径：「直接复制计数就行了」）。
+   *
+   * ⚠ 每窗的推演完全相同（同一起手值、同一块序）⇒ 直接乘窗数是**精确**的，不是近似；
+   *   而按长序列跑会因逐窗递减的资源门控而**不可复制**（实测 lock=3 第 3 窗终结技被门控剔掉）。
+   */
+  const axisGashSim = singleWindowSim
+    ? {
+        ...singleWindowSim,
+        maimCount: singleWindowSim.maimCount * axisWindows,
+        consumedLayers: singleWindowSim.consumedLayers * axisWindows,
+        unfiredMaim: singleWindowSim.unfiredMaim * axisWindows,
+        unfiredPoints: singleWindowSim.unfiredPoints * axisWindows,
+        // 轨迹：每窗复制一份并标上窗号（展示层逐窗列出，用户要看到「第几窗第几秒触发」）
+        steps: Array.from({ length: axisWindows }, (_, i) =>
+          singleWindowSim.steps.map(st => ({ ...st, window: i + 1 }))).flat(),
+      }
+    : null
+  const minEntryForAllMaim = (() => {
+    if (!axisGashSim || axisGashSim.unfiredMaim <= 0) return axisGashSim ? Math.max(0, Number(cfg.axisEntryGash ?? 0)) : null
+    const capPoints = GASH_MAX_STACKS * GASH_PER_LAYER
+    const runWith = (entry: number) => simulateAxisGashTimeline({
+      sequence: oneWindowSeq,
+      gashByMoveId: cfg.claretGashByMoveId ?? {},
+      entryGashValue: entry,
+      consumePerCastByMoveId: { [CLEAVE_SLASH_MOVE_ID]: 1, [BLOOD_BURIAL_MOVE_ID]: BURIAL_MAIM_PER_CAST },
+      basicGashPerSec: blended.gash,
+      buildupMultiplier: 1 + GASH_EFF_CORE / 100 + (cinemaLevelOf(cfg.claretCinemaLevel) >= 1 ? GASH_EFF_C1 / 100 : 0),
+      maxGashValue: capPoints,
+    })
+    if (runWith(capPoints).unfiredMaim > 0) return null // 拉满也不够
+    let lo = 0
+    let hi = capPoints
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2)
+      if (runWith(mid).unfiredMaim > 0) lo = mid + 1
+      else hi = mid
+    }
+    return lo
+  })()
   // ── 残痕：平A 之外的**全部招式**按「本局实打次数 × 该招 `gash_buildup` 表值」累加 ──
   // 次数取**引擎发行那些行时读的同一批字段**，不去翻已生成的行：模块的 buildExecutions 钩子在
   // 闪反/弹刀/支援突击/反制支援行**之前**派发（core/resource/helpers#buildExecutions 的顺序），
@@ -970,8 +1173,14 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     basicGashPerSec: blended.gash,
     basicAttackTime: Math.max(0, state.basicAttackTime),
     moveGashTotal,
+    entryGashPoints: axisGashSim ? Math.max(0, Number(cfg.axisEntryGash ?? 0)) : 0,
+    minEntryForAllMaim,
+    axisGashSteps: axisGashSim?.steps,
     axisGash: axisGashSim
-      ? { consumedLayers: axisGashSim.consumedLayers, maimCount: axisGashSim.maimCount, unfiredMaim: axisGashSim.unfiredMaim }
+      ? {
+          consumedLayers: axisGashSim.consumedLayers, maimCount: axisGashSim.maimCount,
+          unfiredMaim: axisGashSim.unfiredMaim, unfiredPoints: axisGashSim.unfiredPoints,
+        }
       : undefined,
     cleaveSpecialCount: Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount'))),
     bloodBurialCount: Math.max(0, Math.floor(cfgSetting(cfg, 'claret.bloodBurialCount'))),
@@ -1313,6 +1522,8 @@ export const claretMechanic: AgentMechanicModule = {
   },
   /** 轴内伪块展开（打断版葬血强袭 → 真实招式行 + 折算时长） */
   expandAxisAction: expandClaretAxisAction,
+  /** 轴编辑器「进轴残痕值」输入框归属（残痕 600 点 = 1 层；用户 2026-10-12） */
+  axisGashResource: { perLayer: GASH_PER_LAYER, label: '残痕', maxStacks: GASH_MAX_STACKS },
   /**
    * 轴块时长（**单一事实源**，2026-10-12 用户报「打断时间不对」后加）：
    * 轴编辑器与引擎都读这里，不再自行按 `combo.moves` 求和——
@@ -1447,6 +1658,23 @@ export interface ClaretSharpResourceSource {
   gashBuildupMultiplier: number
   /** 残痕层数 = floor(残痕值 / 100)，上限 3 层（溢出浪费） */
   gashStacks: number
+  /** 进轴时已攒的残痕值（点数，来自轴编辑器 `StunAxis.entryGash`；非轴 = 0）。
+   *  存量直接进池、**不吃积蓄效率倍率**（与琢形送层同口径）。 */
+  entryGashPoints?: number
+  /** **轴内**触发的毁伤数（按轴内执行先后推演得出；非轴 = 0）——展示用（吃失衡易伤的那部分） */
+  axisMaim?: number
+  /** 轴内因残痕不足而**未触发**的毁伤次数（招式本体照打但不消耗残痕）——展示用，>0 时页面告警 */
+  axisMaimUnfired?: number
+  /** 未触发那几次合计**差多少点**（真实缺口；用于展示「还差多少」并判断能否靠起手补足） */
+  axisMaimUnfiredPoints?: number
+  /**
+   * 让轴内毁伤**全部触发**所需的最小进轴起手点数（二分求得，受单次上限 1800 钳制）。
+   * `null` = 连上限都不够（需在轴内多放积累块，或减少消耗块）。非轴 / 已全触发 = 当前起手值。
+   */
+  minEntryForAllMaim?: number | null
+  /** 轴内残痕逐步轨迹（含**毁伤触发时间点** `at` 与每次打前/打后的池内点数 `poolAfter`）——展示用。
+   *  用户口径 2026-10-12：「你的毁伤我还是没看到哪里写了触发时间点，触发多少次」。 */
+  axisGashSteps?: AxisGashStep[]
   /** 反制支援送层数（= 整组化解的控制技组数）：琢形「重击命中**直接**添加1层[残痕]」，
    *  每组 +600 点且**不吃积蓄效率倍率**（用户口径 2026-09-12）；0 = 本次计算没有反制支援。 */
   counterAssistGashStacks?: number

@@ -40,6 +40,21 @@ export function agentCombos(agentId: string | null | undefined): AgentMechanicMo
  * 「按 `combo.moves` 求和」的通用口径）。轴编辑器与引擎共用它，避免两处各算一份而漂移
  * （用户报「葬血强袭打断时间不对」：编辑器把打断块显示成 0s、葬血强袭漏了入场上挑）。
  */
+/**
+ * 队内是否有声明了「残痕」类轴内资源的角色（轴编辑器据此渲染「进轴残痕值」输入框；
+ * 与 `characterCountInputs` 同族：能力声明驱动 UI，不认 agentId）。返回该槽位与换算率。
+ */
+export function teamOwnsAxisGash(
+  team: ReadonlyArray<{ agentId?: string | null } | null | undefined>,
+): { slot: number; perLayer: number; label: string; maxStacks: number } | null {
+  for (let slot = 0; slot < team.length; slot++) {
+    const id = team[slot]?.agentId
+    const decl = id ? getAgentMechanic(id)?.axisGashResource : undefined
+    if (decl) return { slot, perLayer: decl.perLayer, label: decl.label, maxStacks: decl.maxStacks }
+  }
+  return null
+}
+
 export function agentAxisBlockActionTime(
   agentId: string | null | undefined,
   input: { moveId: string; catalogActionTimeOf: (moveId: string) => number },
