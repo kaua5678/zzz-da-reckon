@@ -38,6 +38,8 @@
  * @fact engine:难度曲线/交互项截断缩 口径: x 的交互项按**装配期截断存活率**缩到「180s 里真打的次数」——每槽因子 = `convergence.truncationBySlot` 的 kept/requested（引擎截断是整槽按比例缩，故同比例缩该槽交互）；并先按引擎非轴降配 `interactionScale`（`DOWNSCALED_INTERACTION_FIELDS`，`round(raw×scale)`）缩；截断因子与降配因子都不动时为 1 ⇒ 只有带截断**或**处于非轴降配的队数值会动。近似：按槽缩而没按交互类型精确缩（般岳 金身/双反 共用「冲霄」一行），精确版随 A 项（截断回灌资源循环）落地 | 据 用户@2026-09-11·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 difficultyCurve.test.ts::交互项按装配期截断存活率缩 + liveInteractionsDownscale.test.ts | 锚 src/composables/liveInteractions.ts#liveInteractions | 信 确认
  * @fact engine:难度曲线/关键次数标注 口径: 图上标注与「关键变化」面板只显示 Δ≥1 的次数跃迁（「多了一次」），Δ<1 的小数级微调只进 tooltip；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30 | 验 difficultyCurve.test.ts::只认「变多」 | 锚 src/composables/difficultyCurve.ts#diffKeyCounts | 信 确认
  * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
+ * @fact engine:难度曲线/轴上限 口径: 轴上限必须覆盖**所有要画的点**——`costMax` 取 `max(所有点的 x)`、`ratioMax` 取 `max(所有点的 ratio)`（散点图 `teamCompareScatter#xMax` 同口径）。**不得**用「末点 x」（`totalCost`，那是表里「终点难度」列的语义）：x 不保证单调（见上条），末点可能小于中途点 ⇒ 那些点 `cx = padL + (x/costMax)*plotW` 越出绘图区被 SVG 裁掉（用户症状「右边的图像看不见，只能看见低难度的部分」）。实测全库 97 队：72 队非单调、3 队越界；筛成单队最严重（`auto-1371-1391-1451` maxX=61.26 vs 末点 23.4 ⇒ cx=2763，viewBox 宽仅 1100） | 据 实测@2026-10-12·用户报「难度曲线右边看不见」 | 验 difficultyCurve.test.ts::★ x 轴上限覆盖**所有点** + difficultyCurve.test.ts::★ 不变量：任意点集下 | 锚 src/composables/difficultyCurve.ts#buildCurveChart | 信 确认
+ * ⟳复核: 若新增「按某维度截取/聚合曲线」的图型或改用对数轴，重核「轴上限覆盖所有点」是否仍成立（尤其筛选后只剩 1 队时——那是越界最严重的场景） | 到期 2027-04-30
  */
 import { applyBossRoom } from '@/composables/bossRoom'
 import { type StunAxisState, type ConfigModel } from '@/stores/config'
@@ -679,11 +681,28 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       flat: r.ladder.opened.length === 0,
     }
   })
-  const costMax = Math.max(1, ...series.map(s => s.totalCost))
+  /**
+   * x 轴上限 = **所有点 x 的最大值**（不是「末点 x 的最大值」——那是 bug，2026-10-12 修）。
+   *
+   * ⚠ 为什么不能用 `s.totalCost`（= 末点 x）：口径明写 **x 不保证单调**（有的杠杆减少交互次数
+   * ⇒ 难度降、伤害升 = 白拿的优化，贪心优先做，见本文件顶部 @fact）。实测（全库 97 队）
+   * **72 队**的 `max(x) > 末点 x`，其中 **3 队**的 `max(x)` 超过「末点 x 的最大值」
+   * ⇒ 那些点算出的 `cx = padL + (x/costMax)*plotW` **超出绘图区右边界**、被 SVG 裁掉。
+   * 用户症状（2026-10-12）：「难度曲线右边的图像看不见，只能看见低难度的部分」。
+   * **筛成单队时最严重**：`auto-1371-1391-1451` 的 maxX=61.26 而末点 x=23.4
+   * ⇒ cx=2763（viewBox 宽仅 1100）= 整条右半段完全画到画布外。
+   *
+   * 与**同文件 y 轴**（`ratioMax` 取 `Math.max(...points.map(p => p.ratio))`）和
+   * **散点图 x 轴**（`teamCompareScatter#xMax` 取 `Math.max(...points.map(p => p.difficulty))`）
+   * 同口径：轴上限必须覆盖**所有要画的点**，不是「最后一个点」。
+   */
+  const costMax = Math.max(1, ...series.flatMap(s => s.points.map(p => p.cost)))
   const ratioMax = Math.max(100, Math.ceil(Math.max(...series.map(s => Math.max(...s.points.map(p => p.ratio), 0)), 150) / 50) * 50)
   const costStep = Math.max(1, Math.ceil(costMax / 5))
   const costTicks: number[] = []
   for (let v = 0; v <= costMax; v += costStep) costTicks.push(v)
+  // 末刻度补上真实轴上限：最后一段间隔会小于其它段（实测 0/22/44/66/88/108.44），
+  // 这是**有意**的——末刻度必须标出轴上限，否则最右那批点落在两刻度之间无从读数。
   if (costTicks[costTicks.length - 1] !== costMax) costTicks.push(costMax)
   return { series, costMax, ratioMax, costTicks }
 }

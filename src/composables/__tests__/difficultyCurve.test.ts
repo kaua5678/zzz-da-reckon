@@ -87,6 +87,48 @@ describe('buildCurveChart（纯函数）', () => {
     expect(c.costTicks[c.costTicks.length - 1]).toBe(4)
   })
 
+  it('★ x 轴上限覆盖**所有点**（不是末点）—— 非单调曲线不得越界（2026-10-12 修）', () => {
+    // 用户症状：「难度曲线右边的图像看不见，只能看见低难度的部分」。
+    // 根因：costMax 原取 `s.totalCost`（= **末点** x），而口径明写 **x 不保证单调**
+    // （有的杠杆减少交互 ⇒ 难度降、伤害升 = 白拿的优化，贪心优先做）。
+    // ⇒ 末点 x < 中途某点 x 时，那些点的 cx 超出绘图区右边界、被 SVG 裁掉。
+    // 实测（全库 97 队）：72 队非单调，3 队越界；筛成单队时最严重
+    // （auto-1371-1391-1451：maxX=61.26 而末点 x=23.4 ⇒ cx=2763，viewBox 宽仅 1100）。
+    const rows: DifficultyCurveRow[] = [
+      // 先升后降：末点 x=2，但中途有 x=10 的点（G2 白拿）
+      mkRow('a', 'A', mkLadder([[0, 10], [10, 30], [2, 40]], ['G2', 'G1'])),
+    ]
+    const c = buildCurveChart(rows, 100)
+    expect(c.costMax).toBeGreaterThanOrEqual(10)
+    // 不变量：**任何点都不得超出轴上限**（这正是「画到框外看不见」的机器判据）
+    for (const s of c.series) {
+      for (const p of s.points) expect(p.cost).toBeLessThanOrEqual(c.costMax + 1e-9)
+    }
+    // 末刻度必须落在轴上限（否则最右那批点无从读数）
+    expect(c.costTicks[c.costTicks.length - 1]).toBe(c.costMax)
+    // 末点 x 仍如实保留在 totalCost 里（表里「N 点」列用的是它，语义不变）
+    expect(c.series[0]!.totalCost).toBe(2)
+  })
+
+  it('★ 不变量：任意点集下，所有点 x 都落在 [0, costMax] 内（防越界回归）', () => {
+    // 与上一条同源，但用「乱序/回撤/平台」三种形状把不变量钉死——
+    // 上一条只覆盖「先升后降」，这条覆盖「回撤多次」「末点最小」等极端。
+    const shapes: [number, number][][] = [
+      [[0, 10], [5, 20], [3, 25], [8, 30], [1, 35]],       // 多次回撤、末点最小
+      [[0, 10], [12, 20], [0, 30]],                         // 回到起点
+      [[0, 10], [0, 10], [0, 10]],                          // 全平台
+      [[0, 10], [7, 20]],                                   // 单调（对照组）
+    ]
+    const rows = shapes.map((pts, i) => mkRow(`s${i}`, `S${i}`, mkLadder(pts, [])))
+    const c = buildCurveChart(rows, 100)
+    const allX = c.series.flatMap(s => s.points.map(p => p.cost))
+    expect(c.costMax).toBe(Math.max(1, ...allX))
+    for (const x of allX) {
+      expect(x).toBeGreaterThanOrEqual(0)
+      expect(x).toBeLessThanOrEqual(c.costMax + 1e-9)
+    }
+  })
+
   it('单调不减 + 提升倍数/斜率：每队自己的 x 不对齐也照样成立', () => {
     const rows: DifficultyCurveRow[] = [
       mkRow('a', 'A', mkLadder([[0, 10], [1, 20], [4, 30], [6, 30]], ['G1', 'G2', 'G3'])),
