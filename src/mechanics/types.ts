@@ -1039,6 +1039,24 @@ export interface AgentMechanicModule {
    */
   axisMoveActionTime?(moveId: string, catalogActionTime: number): number
   /**
+   * **轴块时长**（2026-10-12）：轴编辑器与引擎共用的**唯一**块时长来源。
+   *
+   * 为什么需要（用户报「葬血强袭打断时间不对」）：编辑器原自己按 `combo.moves` 求和算时长
+   * （`StunAxisPage` 里那行 reduce），而 `combo.moves` 表达不了两种块——
+   *   · **含前置段**的块（克拉蕾葬血强袭 = 入场上挑 0.567s + 三段横斩 2.317s = **2.884s**，
+   *     但 moves 只列 1611014 ⇒ 编辑器显示 2.317，**漏了上挑**）；
+   *   · **伪键块**（打断版 `claret-burial-interrupted` 在 catalog 里没有行 ⇒ 查表得 **0s**，
+   *     而实际是 1.7255s）。
+   * ⇒ 声明本能力的模块自己给时长，编辑器与引擎都不再自行推导。
+   *
+   * 入参 `catalogActionTimeOf(moveId)` 由展示层注入（mechanics 不能按值导入 stores）。
+   * 返回 `undefined` ⇒ 回落「按 `combo.moves` 求和」的通用口径（既有行为，零变化）。
+   */
+  axisBlockActionTime?(input: {
+    moveId: string
+    catalogActionTimeOf: (moveId: string) => number
+  }): number | undefined
+  /**
    * **角色专属异常附加行**（规则 6 迁移落点，CC-19a 2026-09-26，设计稿
    * `docs/mcp-cc19-extra-anomaly-rows.md` §2.1/§2.3）：
    * 由行所属角色的模块生成自己的异常尾段附加行，返回**分组**（`order` 取

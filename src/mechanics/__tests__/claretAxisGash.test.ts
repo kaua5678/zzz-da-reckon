@@ -24,6 +24,8 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
+import { useCatalogStore } from '@/stores/catalog'
+import { findMoveById } from '@/data/moveTableQueries'
 import { getAgentMechanic } from '@/mechanics'
 import {
   simulateAxisGashTimeline,
@@ -33,6 +35,8 @@ import {
   BLOOD_BURIAL_MOVE_ID,
   CLEAVE_ENTRY_MOVE_ID,
   MAIM_MOVE_ID,
+  BURIAL_FULL_SECONDS,
+  BURIAL_INTERRUPTED_SECONDS,
 } from '@/mechanics/agents/claret'
 
 /** 锻星#3（1611007）表值 = 204/次；用户例子里的「1800 点」≈ 该招若干次 */
@@ -174,6 +178,34 @@ describe('T3 真管线：轴内毁伤计入总数，轴外补足相应减少（�
     // 毁伤行仍由模块发行（附带事件只改易伤占比，不改行数）
     const maim = ch.executions.find(e => e.moveId === MAIM_MOVE_ID)
     expect(maim, '毁伤行必须存在').toBeTruthy()
+  })
+
+  it('★ 三个块的时长：编辑器与引擎**同一来源**且数值正确（用户报「打断时间不对」）', async () => {
+    // 用户 2026-10-12：「你的葬血打断，时间不对吧」——实测编辑器把打断块显示成 **0s**
+    // （`combo.moves` 里的伪键在 catalog 查不到），葬血强袭显示成 **2.317s**（漏入场上挑 0.567s）。
+    // 修法 = `axisBlockActionTime` 单调来源，编辑器与引擎都读它。
+    await setupHarness([{ agentId: '1611', cinemaLevel: 0 }, '', ''])
+    const catalog = useCatalogStore()
+    const mech = getAgentMechanic('1611')!
+    const skills = catalog.agentSkillsByAgentMap.get('1611')
+    const timeOf = (mid: string) => findMoveById(skills, mid)?.actionTime ?? 0
+    const blockTime = (moveId: string) => mech.axisBlockActionTime!({ moveId, catalogActionTimeOf: timeOf })
+
+    // ① 斩金断铁 = 上挑 + 横斩
+    expect(blockTime('claret-cleave')).toBeCloseTo(0.567 + 0.649, 9)
+    // ② 葬血强袭 = **含入场上挑** = 2.884（不是 1611014 单行的 2.317）
+    expect(blockTime('claret-burial')).toBeCloseTo(BURIAL_FULL_SECONDS, 9)
+    expect(blockTime('claret-burial')).toBeCloseTo(0.567 + 2.317, 9)
+    // ③ 打断 = 上挑 + 半段横斩（用户「时间也短了一半，变成1.1585s」→ 加回上挑 = 1.7255）
+    expect(blockTime(CLARET_INTERRUPT_BURIAL_BLOCK_ID)).toBeCloseTo(BURIAL_INTERRUPTED_SECONDS, 9)
+    expect(blockTime(CLARET_INTERRUPT_BURIAL_BLOCK_ID)).toBeCloseTo(0.567 + 2.317 * 0.5, 9)
+    // ④ **编辑器 == 引擎**：打断块的展开时长必须与块声明一致（两处漂移即红）
+    const expanded = mech.expandAxisAction!({
+      slot: 0, moveId: CLARET_INTERRUPT_BURIAL_BLOCK_ID, count: 1, startTime: 0, cinemaLevel: 0, actionTimeOf: timeOf,
+    })!
+    expect(expanded[0]!.actionTime).toBeCloseTo(blockTime(CLARET_INTERRUPT_BURIAL_BLOCK_ID)!, 9)
+    // ⑤ 负控护栏：未声明的块返回 undefined（调用方回落通用求和，不影响其它角色）
+    expect(blockTime('不存在的块')).toBeUndefined()
   })
 
   it('轴内块展开成真实招式（`claret-burial` → 1611014；打断块 → 1611014 但时间更短）', async () => {

@@ -164,7 +164,7 @@ export const BURIAL_MAIM_PER_CAST = 3
  * ⟳复核: 若官方改葬血强袭时长/段数（现 2.317s 三段），或实战实测打断点不在正中（现按 50% 结算），改 BURIAL_INTERRUPT_RATIO 与 BURIAL_SECONDS 并重跑 claretInterrupt | 到期 2027-03-31
  */
 export const BURIAL_INTERRUPT_RATIO = 0.5
-/** 葬血强袭单次动作时长（秒，catalog 1611014 actionTime）——打断时 × `BURIAL_INTERRUPT_RATIO` */
+/** 葬血强袭**三段横斩**的动作时长（秒，catalog 1611014 actionTime）——打断时 × `BURIAL_INTERRUPT_RATIO` */
 export const BURIAL_SECONDS = 2.317
 /** 斩金断铁·上挑段时长（秒）——葬血强袭的入场段，两种结算都完整打 */
 export const CLEAVE_ENTRY_SECONDS = 0.567
@@ -177,6 +177,18 @@ export const CLEAVE_ENTRY_SECONDS = 0.567
 export const CLEAVE_ENTRY_MOVE_ID = '1611011'
 /** 斩金断铁·横斩段表 id（1611012，v12 = 175.7%） */
 export const CLEAVE_SLASH_MOVE_ID = '1611012'
+/**
+ * 葬血强袭**一次完整施放**的时长（秒）= 入场上挑 + 三段横斩 = 0.567 + 2.317 = **2.884s**。
+ *
+ * ⚠ 与 `BURIAL_SECONDS` 的区别（2026-10-12 用户报「葬血打断时间不对」时查出的）：
+ * 原文「在[特殊技：血华誓·斩金断铁]**上挑期间**，保持长按…发动」⇒ 每次葬血强袭都含上挑那一下
+ * （用户 2026-10-09 确认），故**轴块/执行行的时长必须是 2.884，不是 2.317**。
+ * 轴编辑器原按 `combo.moves` 求和 ⇒ 只得到 1611014 的 2.317（漏上挑），
+ * 打断块更因伪键在 catalog 查不到而显示 **0**。现由 `axisBlockActionTime`（单一来源）统一给出。
+ */
+export const BURIAL_FULL_SECONDS = CLEAVE_ENTRY_SECONDS + BURIAL_SECONDS
+/** 葬血强袭·**打断**版一次施放时长（秒）= 上挑 + 半段横斩 = 0.567 + 2.317×50% = **1.7255s** */
+export const BURIAL_INTERRUPTED_SECONDS = CLEAVE_ENTRY_SECONDS + BURIAL_SECONDS * BURIAL_INTERRUPT_RATIO
 /**
  * 猩红铭刻平A基准段：锻星#3（表 id 1611007，531.88%/s、gash 120/s）。
  *
@@ -1048,9 +1060,11 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
   //   spec 的 `claret_blood_burial` 事件已停用（`1611.json` 的 `enabledField`）。
   // ⚠ 必须用**真 moveId 1611014**（不是自造 id）：`enrichExecutionPlan` 按 moveId 找行、`skillDamageTarget`
   //   定向、M4 的 `patchExecutions` 都依赖它；融合后的倍率/失衡/喧响全部走 `*Override` 显式覆盖。
-  // 段时长（秒）：catalog 为源、常量为兜底（见 buildClaretCharConfig）
+  // 段时长（秒）：catalog 为源、常量为兜底（见 buildClaretCharConfig）。
+  // ⚠ 兜底值必须与 `BURIAL_FULL_SECONDS` / `BURIAL_INTERRUPTED_SECONDS`（`axisBlockActionTime` 给编辑器看的）
+  //   同源——两处不一致就会出现「编辑器说 2.884、引擎按别的秒数排」的漂移（2026-10-12 用户报的正是这类）。
   const entrySeconds = Math.max(0, Number(cfg.claretCleaveEntrySeconds ?? CLEAVE_ENTRY_SECONDS))
-  const bodySeconds = Math.max(0, Number(cfg.claretBurialSeconds ?? BURIAL_SECONDS))
+  const bodySeconds = Math.max(0, Number(cfg.claretBurialSeconds ?? (BURIAL_FULL_SECONDS - CLEAVE_ENTRY_SECONDS)))
   const entry = {
     damage: Number(cfg.claretCleaveEntryDamage ?? 0),
     daze: Number(cfg.claretCleaveEntryDaze ?? 0),
@@ -1069,6 +1083,7 @@ function buildClaretExecutions({ cfg, state, executions }: AgentResourceInput): 
       moveName: '特殊技：血华誓·葬血强袭（含上挑）',
       category: 'special',
       count: fullBurialCount,
+      // 完整版 = 入场上挑 + 三段横斩（= `BURIAL_FULL_SECONDS`，catalog 在场时逐位相同）
       actionTime: entrySeconds + bodySeconds,
       totalTime: fullBurialCount * (entrySeconds + bodySeconds),
       damageMultiplier: entry.damage + body.damage,
@@ -1298,6 +1313,28 @@ export const claretMechanic: AgentMechanicModule = {
   },
   /** 轴内伪块展开（打断版葬血强袭 → 真实招式行 + 折算时长） */
   expandAxisAction: expandClaretAxisAction,
+  /**
+   * 轴块时长（**单一事实源**，2026-10-12 用户报「打断时间不对」后加）：
+   * 轴编辑器与引擎都读这里，不再自行按 `combo.moves` 求和——
+   * 那样算会把葬血强袭记成 2.317（**漏入场上挑 0.567s**）、把打断块记成 **0s**（伪键查不到）。
+   *
+   * @fact agent:1611/轴块时长 口径: 三个轴块时长由模块给出（单一来源，编辑器与引擎共用）：斩金断铁 = 上挑+横斩 = 1.216s；葬血强袭 = 含入场上挑 = **2.884s**（不是 1611014 单行的 2.317）；葬血强袭·打断 = 上挑 + 半段横斩 = **1.7255s** | 据 用户@2026-10-12（「你的葬血打断，时间不对吧」——编辑器把打断块显示为 0s、葬血强袭显示为 2.317s 漏了上挑） | 验 src/mechanics/__tests__/claretAxisGash.test.ts | 锚 src/mechanics/agents/claret.ts#BURIAL_FULL_SECONDS + src/mechanics/agents/claret.ts#axisBlockActionTime | 信 确认
+   * ⟳复核: 若官方调整上挑/横斩时长或打断比例（现 50%），改 BURIAL_INTERRUPT_RATIO 与 CLEAVE_ENTRY_SECONDS 后本函数自动跟随 | 到期 2027-03-31
+   */
+  axisBlockActionTime: ({ moveId, catalogActionTimeOf }): number | undefined => {
+    if (moveId === 'claret-cleave') {
+      // 斩金断铁 = 上挑 + 横斩：两段都查 catalog（规则 11：时长单一来源在数据，不在常量）
+      return (catalogActionTimeOf(CLEAVE_ENTRY_MOVE_ID) || CLEAVE_ENTRY_SECONDS)
+        + catalogActionTimeOf(CLEAVE_SLASH_MOVE_ID)
+    }
+    if (moveId === 'claret-burial') {
+      // ⚠ 含**入场上挑**（原文「在上挑期间…发动」）：2.884s，不是 1611014 单行的 2.317s
+      return (catalogActionTimeOf(CLEAVE_ENTRY_MOVE_ID) || CLEAVE_ENTRY_SECONDS)
+        + (catalogActionTimeOf(BLOOD_BURIAL_MOVE_ID) || BURIAL_SECONDS)
+    }
+    if (moveId === CLARET_INTERRUPT_BURIAL_BLOCK_ID) return BURIAL_INTERRUPTED_SECONDS
+    return undefined
+  },
   /**
    * **毁伤 = 附带事件**（用户口径 2026-10-12）：「就是我的特殊技可以触发毁伤，藏血强袭的
    * 前一段可以触发3次毁伤」。

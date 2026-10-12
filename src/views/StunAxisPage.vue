@@ -241,7 +241,7 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentAxisMoveBadge, agentAxisDurationInput, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLanes, agentAxisNonDecibelUltimates, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockActionTime, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentAxisMoveBadge, agentAxisDurationInput, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLanes, agentAxisNonDecibelUltimates, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel } from '@/composables/agentMechanicView'
 import type { AxisEditorBlockMark } from '@/mechanics/types'
 import type { TeamAxisWindowLane } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport, prefillPresetGuarantee } from '@/data/stunAxisPresets'
@@ -705,7 +705,12 @@ const allMoves = computed(() => {
     const combos = agentCombos(c.agentId)  // CC-47：经编排层门面（判据 7）
     if (combos) {
       for (const [comboId, combo] of Object.entries(combos)) {
-        const actionTime = combo.moves.reduce((s, mv) => s + (findMove(skills, mv.moveId)?.actionTime ?? 0) * mv.count, 0)
+        // 块时长优先问模块（`axisBlockActionTime`，单一来源）——`combo.moves` 求和表达不了
+        // 「含前置段」与「伪键」两种块（克拉蕾葬血强袭漏上挑 0.567s、打断块恒 0s，2026-10-12 实测）。
+        const actionTime = agentAxisBlockActionTime(c.agentId, {
+          moveId: comboId,
+          catalogActionTimeOf: mid => findMove(skills, mid)?.actionTime ?? 0,
+        }) ?? combo.moves.reduce((s, mv) => s + (findMove(skills, mv.moveId)?.actionTime ?? 0) * mv.count, 0)
         // 连段里含几个耗能强特 → 估算可放次数（remaining 只是提示）
         const exPerCombo = combo.moves.reduce((s, mv) => {
           const m = findMove(skills, mv.moveId)

@@ -35,6 +35,18 @@ export function agentCombos(agentId: string | null | undefined): AgentMechanicMo
   return agentId ? getAgentMechanic(agentId)?.combos : undefined
 }
 
+/**
+ * **轴块时长**（单调来源，2026-10-12）：模块声明优先，未声明 ⇒ `undefined`（调用方回落
+ * 「按 `combo.moves` 求和」的通用口径）。轴编辑器与引擎共用它，避免两处各算一份而漂移
+ * （用户报「葬血强袭打断时间不对」：编辑器把打断块显示成 0s、葬血强袭漏了入场上挑）。
+ */
+export function agentAxisBlockActionTime(
+  agentId: string | null | undefined,
+  input: { moveId: string; catalogActionTimeOf: (moveId: string) => number },
+): number | undefined {
+  return agentId ? getAgentMechanic(agentId)?.axisBlockActionTime?.(input) : undefined
+}
+
 export type AgentResourceSectionsInput = Parameters<NonNullable<AgentMechanicModule['resourceSections']>>[0]
 export type AgentResourceSections = ReturnType<NonNullable<AgentMechanicModule['resourceSections']>>
 
