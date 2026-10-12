@@ -20,6 +20,8 @@ import { pickThirdNamedBasicSegment, fusedRowValue, findMoveById, getRowValue } 
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import type { AgentAxisActionExpandInput } from '@/mechanics/typesHooks'
+import type { StackActionCost } from '@/core/stunAxisStack'
 
 const cfgSetting = mechanicSettingReader(() => settings)
 /**
@@ -235,6 +237,145 @@ function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelIn
 }
 
 /**
+ * 打断版葬血强袭的**轴内伪块 key**（用户口径 2026-10-12：「你可以把它作为一个单独的招式」）。
+ *
+ * 它在 catalog 里没有对应行（`1611014` 是完整版），故走 `expandAxisAction` 展开成真实招式：
+ * 上挑（1611011）+ 完整版葬血强袭行（1611014，时间由模块按 `BURIAL_INTERRUPT_RATIO` 折算——
+ * 但轴内时间门控用的是 `StackActionCost.actionTime`，所以这里**直接给折算后的时长**）。
+ */
+export const CLARET_INTERRUPT_BURIAL_BLOCK_ID = 'claret-burial-interrupted'
+
+/**
+ * 轴内伪块展开（CC-43f 协议，先例 = 希格莉德破阵连段）：把「葬血强袭·打断」展开成真实招式。
+ *
+ * 时间口径：打断版 = 入场上挑 0.567s + 三连横斩 2.317s × 50% = **1.7255s**；
+ * 完整版 = 2.884s（既有 `combos['claret-burial']` 走 moves 求和，无需展开）。
+ * 数值口径由 `buildClaretExecutions` 的打断行负责（伤害/失衡/喧响减半）——本函数只管**时间门控**。
+ */
+export function expandClaretAxisAction(input: AgentAxisActionExpandInput): StackActionCost[] | undefined {
+  if (input.moveId !== CLARET_INTERRUPT_BURIAL_BLOCK_ID) return undefined
+  const entryTime = input.actionTimeOf(CLEAVE_ENTRY_MOVE_ID) || CLEAVE_ENTRY_SECONDS
+  const bodyTime = input.actionTimeOf(BLOOD_BURIAL_MOVE_ID) || BURIAL_SECONDS
+  return [{
+    slot: input.slot,
+    // 用真实 moveId 进栈 ⇒ 它的轴内次数会被 `axisActionCounts`/`axisSequence` 记到 1611014 上，
+    // 与「完整版」同键累加——两者对残痕的消耗/毁伤完全一致（用户口径），故同键是**正确**的。
+    moveId: BLOOD_BURIAL_MOVE_ID,
+    count: input.count,
+    actionTime: entryTime + bodyTime * BURIAL_INTERRUPT_RATIO,
+    energyCost: 0,
+    decibelCost: 0,
+    startTime: input.startTime,
+  }]
+}
+
+/**
+ * **轴内残痕时序推演**（用户口径 2026-10-12）——回答「这一轮失衡轴内打了 6 次还是 7 次毁伤」。
+ *
+ * 用户原话（本函数全部判据的出处）：
+ *   「主要为了计算失衡轴内打了6次毁伤还是7次，是轴内专门计算的一个量，用于计算失衡内毁伤计数」
+ *   「你知道招式可以积累残痕值。假设一开始1800残痕值进去，打3层毁伤，残痕值归零，
+ *     然后又积累1800，又打毁伤3层。再积累600点，再打一次，如果时间足够，就可以在轴内打出7次」
+ *   「轴模式下，失衡轴内是选取了部分内容拿来吃易伤。自动补足的内容全在非失衡去了，也就是说
+ *     捏了多少消耗多少后，剩下的自动计算然后放在失衡轴外，吃不到易伤」
+ *   「要吃，这就是为什么我要你建模轴内的残痕数值，需要判断这次残痕是否达标，能否消耗残痕造成毁伤」
+ *
+ * ## 语义（与全局总量口径的关系）
+ * 全局侧不变：**失衡轴从总量里选取一部分来做计数判定**（用户 2026-10-12 纠正），
+ * 本函数只负责**轴内本地**的推演——按轴自身的**执行先后**逐条走：
+ *   · 遇到**积累**类块（平A/EX/连携/终结… 即 `gash_buildup > 0` 的招式）→ 累加残痕值；
+ *   · 遇到**消耗**类块（斩金断铁 1 层 / 葬血强袭 3 层）→ **先判够不够**：
+ *     够 ⇒ 扣层、该次毁伤**触发**；不够 ⇒ 招式本体照打（伤害/失衡/时间不减免），**但毁伤不触发**
+ *     （用户口径「不是说你这个招式就一定能消耗残痕打出毁伤的」）。
+ *
+ * ⚠ 与「自动补足」的分工（用户口径）：轴内捏了多少就消耗多少；**剩下的层数在轴外**按
+ *   `computeClaretSharpResource` 的既有口径自动补足（那部分吃不到失衡易伤）。
+ *   ⇒ 本函数产出的 `consumed` 要从轴外可消耗层数里**扣掉**（同一池、总量守恒）。
+ *
+ * @fact agent:1611/轴内残痕时序 口径: 轴内残痕按**执行先后**逐条推演（积累块加分、消耗块先判够不够再扣），够才触发毁伤、不够则招式本体照打但不触发毁伤；轴内消耗的层数从轴外「自动补足」的可消耗层数里扣除（同一池、总量守恒——用户「捏了多少消耗多少后，剩下的自动计算然后放在失衡轴外」） | 据 用户@2026-10-12（「假设一开始1800残痕值进去，打3层毁伤，残痕值归零，然后又积累1800，又打毁伤3层。再积累600点，再打一次…就可以在轴内打出7次」+「需要判断这次残痕是否达标，能否消耗残痕造成毁伤」）·复核@2026-10-12 | 验 src/mechanics/__tests__/claretAxisGash.test.ts | 锚 src/mechanics/agents/claret.ts#simulateAxisGashTimeline + src/mechanics/agents/claret.ts#buildClaretResourceSource | 信 确认
+ * ⟳复核: 若官方给出残痕的时长/衰减子句（当前无），或轴编辑器改为支持「同一块跨窗携带残痕状态」，重核本推演 | 到期 2027-03-31
+ */
+/** 轴内残痕推演的**一步**（`simulateAxisGashTimeline` 的轨迹元素；判据 29：同形状只写一次） */
+export interface AxisGashStep {
+  moveId: string
+  /** 该步是积累还是消耗 */
+  kind: 'gain' | 'consume'
+  /** 积累步骤 = 增加的点数/600（层）；消耗步骤 = 该次要消耗的层数 */
+  layers: number
+  /** 消耗步骤：是否真的够层并触发了毁伤（积累步骤恒 true） */
+  fired: boolean
+}
+
+export function simulateAxisGashTimeline(input: {
+  /**
+   * 该槽位轴内**逐次执行序列**（`cfg.axisSequence`，已按槽切分）。
+   * ⚠ 跨槽位并行 ⇒ 只看本槽的相对先后（调用方保证已切分）。
+   */
+  sequence: ReadonlyArray<{ moveId: string; count: number }>
+  /** moveId → 该招一发的残痕积累表值（%）；不在表里 = 0（不积累） */
+  gashByMoveId: Readonly<Record<string, number>>
+  /**
+   * 进轴时敌人身上已有的残痕值（%，已 × 积蓄效率）。
+   * 口径 = 轴外阶段攒下的值；由调用方给出（见 `buildClaretResourceSource`）。
+   */
+  entryGashValue: number
+  /** 各消耗类 moveId → 该招一次消耗的层数（斩金断铁 1 / 葬血强袭 3） */
+  consumePerCastByMoveId: Readonly<Record<string, number>>
+  /** 残痕值 → 层（每层 600 点） */
+  perLayer?: number
+  /** 覆盖该序列各 moveId 的**实打次数**（缺省 = `count`）；用于「一次块含多段」的折算 */
+  castsByMoveId?: Readonly<Record<string, number>>
+}): {
+  /** 轴内触发的毁伤次数（= 真正扣掉层数的那几次） */
+  maimCount: number
+  /** 轴内实际消耗的层数 */
+  consumedLayers: number
+  /** 走完整条序列后剩余的残痕值（%）——归还给轴外继续结算 */
+  gashValueAfter: number
+  /** 消耗块里因层数不足而**没触发**毁伤的次数（用户要看的「差几次」） */
+  unfiredMaim: number
+  /** 逐条推演轨迹（展示 / 判据用） */
+  steps: AxisGashStep[]
+} {
+  const perLayer = Math.max(1, Number(input.perLayer ?? GASH_PER_LAYER))
+  let gash = Math.max(0, Number(input.entryGashValue))
+  let maimCount = 0
+  let consumedLayers = 0
+  let unfiredMaim = 0
+  const steps: AxisGashStep[] = []
+  for (const entry of input.sequence) {
+    const count = Math.max(0, Math.floor(Number(input.castsByMoveId?.[entry.moveId] ?? entry.count)))
+    if (count <= 0) continue
+    const consumePerCast = Number(input.consumePerCastByMoveId[entry.moveId] ?? 0)
+    if (consumePerCast > 0) {
+      // 消耗块：逐次判「够不够」——够才扣层并触发毁伤
+      for (let i = 0; i < count; i++) {
+        const pool = Math.floor(gash / perLayer)
+        const fired = pool >= consumePerCast
+        if (fired) {
+          // ⚠ 扣的是**层**（整数），不是「按比例扣点数」：残痕以层为原子消耗
+          gash = Math.max(0, gash - consumePerCast * perLayer)
+          consumedLayers += consumePerCast
+          maimCount += consumePerCast
+        } else {
+          // 不够：招式本体照打（调用方另行结算），但**不触发毁伤**、不扣层
+          unfiredMaim += consumePerCast
+        }
+        steps.push({ moveId: entry.moveId, kind: 'consume', layers: consumePerCast, fired })
+      }
+      continue
+    }
+    // 积累块：按表值 × 次数累加
+    const gain = Number(input.gashByMoveId[entry.moveId] ?? 0)
+    if (gain <= 0) continue
+    const total = gain * count
+    gash += total
+    steps.push({ moveId: entry.moveId, kind: 'gain', layers: total / perLayer, fired: true })
+  }
+  return { maimCount, consumedLayers, gashValueAfter: gash, unfiredMaim, steps }
+}
+
+/**
  * 克拉蕾残痕/锐能资源（v12）：
  * **残痕值 = 平A聚合（两态秒均 × 平A时间）+ Σ 其余招式实打次数 × 该招 `gash_buildup` 表值**
  *   （2026-09-12 用户更正的口径：闪反/连携/终结/支援突击/反制支援… 每招都在实打实积累，
@@ -299,6 +440,15 @@ export function computeClaretSharpResource(input: {
   affordableExCountOverride?: number
   /** 反制支援（整组化解控制技）次数 → 琢形「重击命中**直接**为目标添加1层[残痕]」 */
   counterAssistCount?: number
+  /**
+   * **轴内残痕时序推演结果**（用户口径 2026-10-12；非轴 = undefined）。
+   *
+   * 语义：轴内按执行先后已经消耗掉的层数**从轴外可消耗层数里扣除**（同一池、总量守恒）——
+   * 「捏了多少消耗多少后，剩下的自动计算然后放在失衡轴外，吃不到易伤」。
+   * · `consumedLayers` 轴内已消耗的层 → 轴外可用层数先减掉它；
+   * · `maimCount` 轴内已触发的毁伤数 → 直接加进总毁伤数（这部分吃失衡易伤）。
+   */
+  axisGash?: { consumedLayers: number; maimCount: number; unfiredMaim: number } | undefined
 }): ClaretSharpResourceSource {
   const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
   // 平A = 秒均×时间（两态加权）；**其余全部招式** = Σ 实打次数 × 表列 `gash_buildup`
@@ -345,19 +495,31 @@ export function computeClaretSharpResource(input: {
   const coverage = Math.max(0, Math.min(1, input.gashCoverage))
   /** 覆盖率折算后可消耗的层数（层数本身不随覆盖率变化，见既有 `mechanicSettingsEffect` 口径） */
   const consumableStacks = Math.max(0, gashStacks * coverage)
-  const maimFromCleave = Math.min(consumableStacks, cleaveCount)
+  // ── 轴内先扣（用户口径 2026-10-12）──
+  // 轴内那部分「捏了多少消耗多少」，其层数由 `simulateAxisGashTimeline` 按**执行先后**推演得出；
+  // 这里把它从**轴外**可消耗层数里扣掉（同一池、总量守恒）。毁伤数则相加：
+  //   轴内触发的那部分吃失衡易伤（走 `attachedEvents` 的轴内占比），轴外自动补足的吃不到。
+  // 非轴（`axisGash` 缺省）⇒ 轴内消耗恒 0，逐位回到旧行为。
+  const axisConsumed = Math.max(0, Math.min(consumableStacks, Number(input.axisGash?.consumedLayers ?? 0)))
+  const axisMaim = Math.max(0, Number(input.axisGash?.maimCount ?? 0))
+  /** 轴外还能消耗的层数（= 轴内吃完剩下的） */
+  const outOfAxisStacks = Math.max(0, consumableStacks - axisConsumed)
+  const maimFromCleave = Math.min(outOfAxisStacks, cleaveCount)
   const declaredBurialStacks = burialCount * BURIAL_MAIM_PER_CAST
-  const declaredBurialConsumed = Math.min(Math.max(0, consumableStacks - maimFromCleave), declaredBurialStacks)
-  /** 声明部分吃完后还剩多少层 —— 这些**全部**由自动补足的葬血强袭打完 */
-  const remainingStacks = Math.max(0, consumableStacks - maimFromCleave - declaredBurialConsumed)
+  const declaredBurialConsumed = Math.min(Math.max(0, outOfAxisStacks - maimFromCleave), declaredBurialStacks)
+  /** 声明部分吃完后还剩多少层 —— 这些**全部**由自动补足的葬血强袭打完（均在轴外） */
+  const remainingStacks = Math.max(0, outOfAxisStacks - maimFromCleave - declaredBurialConsumed)
   // ⚠ 自动补足用 `ceil`（不是 floor）：层数不是 3 的整数倍时，最后一发**部分消耗**（1~2 层）
   //   也是实打的一次完整动作；floor 会让那几层白扔（且少算一次动作的时间/伤害）。
   const autoBurialCasts = Math.ceil(remainingStacks / BURIAL_MAIM_PER_CAST - 1e-9)
   const autoBurialConsumed = Math.min(remainingStacks, autoBurialCasts * BURIAL_MAIM_PER_CAST)
   const maimFromBurial = declaredBurialConsumed + autoBurialConsumed
-  /** 实际消耗的总层数（= 毁伤的消耗侧次数，影画6 不计入） */
-  const gashStackConsumed = maimFromCleave + maimFromBurial
-  const maimCount = Math.floor(gashStackConsumed) + c6Extra
+  /** **轴外**实际消耗的层数 */
+  const outOfAxisConsumed = maimFromCleave + maimFromBurial
+  /** 实际消耗的总层数（轴内 + 轴外；影画6 不计入） */
+  const gashStackConsumed = outOfAxisConsumed + axisConsumed
+  /** 毁伤总数 = 轴内已触发 + 轴外结算 + 影画6 直接毁伤 */
+  const maimCount = axisMaim + Math.floor(outOfAxisConsumed) + c6Extra
   /** 葬血强袭实际结算次数 = 滑块声明 + 自动补足（发行行与时间都按它） */
   const burialCastsSettled = burialCount + autoBurialCasts
   /**
@@ -491,15 +653,23 @@ function buildClaretCharConfig({ agent, skills, cinemaLevel, cfg, char }: AgentC
   // （2026-09-19 R37 清理）曾在此写 cfg.claretExMoveId / claretExDamageMultiplier：全仓零读取点的死诊断键
   //   （EX 行倍率由 enrichExecutionPlan 按 moveId 从倍率表回填，不经这里），判据 14 看不见 record 动态键 ⇒ 手工核销。
   /**
-   * 残痕积累表（moveId → 该招一发的 `gash_buildup` 点数）——**平A 段不入表**：
-   * 平A 按两态秒均 × 平A时间 计（见 `computeClaretBasicPerSec`），再按行计就是双计。
+   * 残痕积累表（moveId → 该招一发的 `gash_buildup` 点数）——**全类别**（**含 basic**）。
+   *
+   * ⚠ 平A段入表**不会**造成双计（这是本表与「平A两态秒均」的分工，2026-10-12 澄清）：
+   *   · **非轴**路径：`buildClaretResourceSource` 的 `moveGashTotal` 只查**非平A**的招式 id
+   *     （EX/闪反/弹防/支援突击/反制支援/终结/连携），平A 走「两态秒均 × 平A时间」⇒ 本表里的
+   *     basic 行（1611001–1611008/1611029）**在非轴路径上没有任何读取点**，不参与求和。
+   *   · **轴内**路径（2026-10-12 新增）：轴编辑器允许把**锻星/血锻四式**当作块拖进轴内
+   *     （它们就是轴内的积累来源）——`simulateAxisGashTimeline` 按 moveId 查本表，
+   *     若 basic 段不入表，轴内积累恒 0 ⇒ 轴内毁伤永远触发不了（实测 `1611007` 查表 undefined）。
+   *   ⇒ 两处读取口径不同、互不重叠：本表必须收全，非轴侧的「不含平A」由**调用点**保证。
+   *
    * 融合组走 `fusedRowValue`（反制支援 = 本体 446 + 琢形 134 = 580/次，一次动作一次积累）。
    * ⚠️ 历史坑（2026-09-12 更正）：这里原先只取秘血铸锋一发、且读的是 `anomaly_buildup` 列
    *   （234.96，真值 = `gash_buildup` 281.97）——列名混淆的老病根，见 GAME_TERM_TO_CODE_FIELD §11.1。
    */
   const gashByMoveId: Record<string, number> = {}
   for (const cat of skills.categories) {
-    if (cat.id === 'basic') continue
     for (const m of cat.moves) {
       const v = fusedRowValue(skills, String(m.id), 'gash_buildup') ?? getRowValue(m, 'gash_buildup')
       if (v > 0) gashByMoveId[String(m.id)] = v
@@ -752,6 +922,23 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
   // EX 发数 = 循环轮数（每轮 = 一次 EX 进场；窗口内也在回锐能，故轮数由上面的双约束解出）
   const affordableExCount = Math.max(0, Math.floor(twoState.entries))
   const blended = computeClaretBasicPerSecFromCfg(cfg, twoState.share)
+  // ── 轴内残痕时序（用户口径 2026-10-12）──
+  // 轴模式下：**轴内先按执行先后推演消耗**（积累 → 消耗 → 再积累，够不够决定这次毁伤触不触发），
+  // 轴内吃掉的层从轴外可消耗层数里**扣除**（同一池、总量守恒）——用户原话「捏了多少消耗多少后，
+  // 剩下的自动计算然后放在失衡轴外，吃不到易伤」。非轴（`axisSequence` 空）⇒ 恒 null，零变化。
+  const axisSequence = cfg.axisSequence ?? []
+  const axisGashSim = axisSequence.length > 0
+    ? simulateAxisGashTimeline({
+        sequence: axisSequence,
+        gashByMoveId: cfg.claretGashByMoveId ?? {},
+        // 进轴残痕值 = 轴内积累**之前**已攒下的量。本模块用「轴内积累量」从总量里反推：
+        // 轴内各块的积累在总账里已计（下方 `moveGashTotal` 走全局次数），故进轴值取 0 起算，
+        // 轴内积累由序列自身提供 ⇒ 与用户例子「一开始1800进去」等价建模为
+        // 「轴内先攒 1800 再打 3 层」（序列里就有那 15 次锻星）。
+        entryGashValue: 0,
+        consumePerCastByMoveId: { [CLEAVE_SLASH_MOVE_ID]: 1, [BLOOD_BURIAL_MOVE_ID]: BURIAL_MAIM_PER_CAST },
+      })
+    : null
   // ── 残痕：平A 之外的**全部招式**按「本局实打次数 × 该招 `gash_buildup` 表值」累加 ──
   // 次数取**引擎发行那些行时读的同一批字段**，不去翻已生成的行：模块的 buildExecutions 钩子在
   // 闪反/弹刀/支援突击/反制支援行**之前**派发（core/resource/helpers#buildExecutions 的顺序），
@@ -771,6 +958,9 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     basicGashPerSec: blended.gash,
     basicAttackTime: Math.max(0, state.basicAttackTime),
     moveGashTotal,
+    axisGash: axisGashSim
+      ? { consumedLayers: axisGashSim.consumedLayers, maimCount: axisGashSim.maimCount, unfiredMaim: axisGashSim.unfiredMaim }
+      : undefined,
     cleaveSpecialCount: Math.max(0, Math.floor(cfgSetting(cfg, 'claret.cleaveSpecialCount'))),
     bloodBurialCount: Math.max(0, Math.floor(cfgSetting(cfg, 'claret.bloodBurialCount'))),
     gashCoverage: Math.max(0, Math.min(1, Math.min(100, cfgSetting(cfg, 'claret.gashCoverage')) / 100)),
@@ -1071,6 +1261,60 @@ export const claretMechanic: AgentMechanicModule = {
    * 它不需要 boss 先出手，与快支/嘲讽取消同类，见 `teamCompare#BOSS_ATTACK_INTERACTIONS`）。
    */
   interactionFieldTypes: { claretBurialInterruptCount: 'claretBurialInterrupt' },
+  /**
+   * 轴编辑器「连段」块（用户口径 2026-10-12：「3个招式需要打包，一个是斩金，用来触发1次毁伤。
+   * 一个是葬血，用来触发3次毁伤。一个是取消了后半段的葬血，也能触发3次，但时间更短」）。
+   *
+   * 三个块都用**招式原名**（用户：「用招式原名，附带的毁伤事件另外表现，因为要判断残痕值够不够，
+   * 不是说你这个招式就一定能消耗残痕打出毁伤的」）⇒ 毁伤**不进块的 moves**：
+   * 它是附带事件，由 `simulateAxisGashTimeline` 按轴内残痕时序判定触发与否。
+   *
+   * ⚠ 块的 `moves` 只影响**时间/能量**（`roundInputs` 按 moves 求 actionTime），
+   *   `energyCost: 0` —— 斩金断铁/葬血强袭都是锐能之外的普通特殊技（消耗强化时间而非能量）。
+   * ⚠ 打断版是**独立块**（用户：「你可以把它作为一个单独的招式」），其 `moveId` 是自造键
+   *   `claret-burial-interrupted`：它只在轴内出现，由 `expandAxisAction` 展开成真实招式行
+   *   （否则引擎找不到该 moveId 的倍率/时间）。
+   */
+  combos: {
+    'claret-cleave': {
+      label: '斩金断铁',
+      energyCost: 0,
+      moves: [{ moveId: CLEAVE_ENTRY_MOVE_ID, count: 1 }, { moveId: CLEAVE_SLASH_MOVE_ID, count: 1 }],
+    },
+    'claret-burial': {
+      label: '葬血强袭',
+      energyCost: 0,
+      moves: [{ moveId: BLOOD_BURIAL_MOVE_ID, count: 1 }],
+    },
+    // 打断版：**独立块**（用户 2026-10-12「你可以把它作为一个单独的招式」）。
+    // moves 用自造键 ⇒ 走 `expandAxisAction` 展开（时间 = 上挑 + 半段三连斩 = 1.7255s）；
+    // 残痕消耗/毁伤触发与完整版**完全一致**（用户：「不变的是，触发3次毁伤的额外事件功能
+    // 是在前半段没有被掐断的」）——只是时间更短、伤害/失衡/喧响减半。
+    [CLARET_INTERRUPT_BURIAL_BLOCK_ID]: {
+      label: '葬血强袭·打断',
+      energyCost: 0,
+      moves: [{ moveId: CLARET_INTERRUPT_BURIAL_BLOCK_ID, count: 1 }],
+    },
+  },
+  /** 轴内伪块展开（打断版葬血强袭 → 真实招式行 + 折算时长） */
+  expandAxisAction: expandClaretAxisAction,
+  /**
+   * **毁伤 = 附带事件**（用户口径 2026-10-12）：「就是我的特殊技可以触发毁伤，藏血强袭的
+   * 前一段可以触发3次毁伤」。
+   *
+   * 登记父动作 → 毁伤子行，让毁伤吃**触发它的那一招**的轴内易伤占比（与般岳影画6 摧岳附伤同口径）：
+   *   · 斩金断铁的**横斩**（1611012）触发 1 次（原文「横向斩击命中持有[残痕]的敌人时，对目标
+   *     触发[毁伤]」——⚠ 是**横斩**不是上挑；上挑只积累不触发）；
+   *   · 葬血强袭（1611014）的三连横斩触发至多 3 次（原文「每次横向斩击命中…最多可以连续触发3次」）。
+   *
+   * ⚠ 毁伤**不是**「捏了块就一定出」——够不够消耗由 `simulateAxisGashTimeline` 按轴内残痕时序判定
+   *   （用户：「因为要判断残痕值够不够，不是说你这个招式就一定能消耗残痕打出毁伤的」）。
+   *   本声明只解决「触发时吃谁的易伤占比」。
+   */
+  attachedEvents: {
+    [CLEAVE_SLASH_MOVE_ID]: [MAIM_MOVE_ID],
+    [BLOOD_BURIAL_MOVE_ID]: [MAIM_MOVE_ID],
+  },
   description: 'v12：锐化伤害积累残痕值（每600点=1层，上限3），毁伤按层数结算——滑块的斩金断铁/葬血强袭先扣、剩余层数自动由葬血强袭打完（不设次数上限，约束是时间）；葬血强袭可打断（数值减半但毁伤照常 3 次）；锐能进场60/秘血铸锋60发；核心被动暴击率+30%与残锋锐暴+25%；影画1锐暴积蓄+20%与毁伤×130%、2铭刻+2s与电抗无视18%、4+20%、6直接毁伤。',
   applyPanel: applyClaretPanel,
   buildCharConfig: buildClaretCharConfig,

@@ -57,9 +57,25 @@ export interface StackTraversalInput {
 /** 某槽某招式在轴内的执行次数（`StackTraversalResult.executed` 的值，key = `${slot}:${moveId}`） */
 export interface ExecutedMoveCount { slot: number; moveId: string; count: number }
 
+/**
+ * 轴内**逐次执行序列**的一条（`StackTraversalResult.sequence` 的元素）。
+ * 顺序 = 栈引擎实际执行的先后（同槽位内为真实先后；跨槽位并行，消费者须按槽过滤）。
+ * 语义边界 = **轴内本地**（全局侧仍是总量口径，见 `StackTraversalResult.sequence` 头注释）。
+ */
+export interface StackSequenceEntry { slot: number; moveId: string; count: number }
+
 export interface StackTraversalResult {
   /** 轴内实际执行的每个动作（跨所有窗口合计，key = `${slot}:${moveId}` → 次数） */
   executed: Record<string, ExecutedMoveCount>
+  /**
+   * 轴内**逐次执行序列**（按实际执行先后；见 `StackSequenceEntry`）——**轴内本地数据**。
+   *
+   * 用途：角色专属资源在**轴内**的本地时序推演（克拉蕾残痕「积累 → 消耗 → 再积累」，
+   * 用于判断轴内这次够不够消耗、能否触发毁伤）。
+   * ⚠ 不是全局事件排序：全局侧失衡轴仍是「从总量里选取一部分做计数判定」（用户 2026-10-12 口径），
+   *   本字段只暴露轴自身的执行先后；跨槽位并行 ⇒ 消费者必须**只按本槽过滤**后再推演。
+   */
+  sequence: StackSequenceEntry[]
   /** 轴内执行总耗时（秒） */
   timeUsed: number
   /**
@@ -113,6 +129,19 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   const decibelBySlot = input.decibelBySlot ?? {}
 
   const executed: Record<string, ExecutedMoveCount> = {}
+  /**
+   * 逐次执行序列（**按实际执行顺序**追加，含 `count`——一次 `bump(count>1)` 记一条）。
+   *
+   * 为什么需要：`executed` 按 `${slot}:${moveId}` 聚合，顺序信息丢失。而角色专属资源若是
+   * **时序**过程（克拉蕾残痕：积累 → 消耗 → 再积累；够不够决定这一次毁伤触不触发），
+   * 就必须知道顺序——这是 `docs/ENGINE_PIPELINE_GUIDE.md` 坑 19 记的 R54 债务所指的
+   * 「引擎获得逐事件顺序通道（**不需要绝对时刻，只需顺序**）」。
+   *
+   * ⚠ 本字段是**纯追加**：既有字段一个不动 ⇒ 对未声明时序消费者的角色零影响。
+   * ⚠ `slot` 是**槽位号**（不是 `characters` 下标，见 `core/panel.ts#panelAt` 同族口径）；
+   *   跨槽位的相对顺序**不等于**真实同时性（各槽并行），故消费者必须**只按本槽过滤**后再推演。
+   */
+  const sequence: StackSequenceEntry[] = []
   const skipped: StackTraversalResult['skipped'] = []
   let timeUsed = 0
   let overlapSeconds = 0
@@ -136,6 +165,17 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     const cur = executed[key]
     if (cur) cur.count += count
     else executed[key] = { slot, moveId, count }
+    // 逐次执行序列（**轴内本地时序数据**，2026-10-12）：`executed` 是**按 key 聚合**的、丢了顺序；
+    // 而克拉蕾的残痕在轴内是「积累 → 消耗 → 再积累」的过程（用户口径：「一开始1800残痕值进去，
+    // 打3层毁伤，残痕值归零，然后又积累1800，又打毁伤3层。再积累600点，再打一次，如果时间足够，
+    // 就可以在轴内打出7次」）⇒ 轴内那一次单独计算需要知道**谁先谁后**。
+    //
+    // ⚠ 这**不是**全局事件排序能力、也不是全局口径变更（用户 2026-10-12 明确纠正）：
+    //   全局侧失衡轴依旧是「**从总量里选取一部分来做计数判定**」——本字段只是把轴**自己本来就有的**
+    //   执行先后（`window.actions` 的遍历序）如实暴露出来，供模块做**轴内本地**的时序推演。
+    //   跨槽位是并行的，故消费者必须**只按本槽过滤**后再推演（不得跨槽比较先后）。
+    // ⚠ 纯追加，既有字段一个不动 ⇒ 对未消费本字段的角色零行为变更。
+    if (count > 0) sequence.push({ slot, moveId, count })
   }
 
   // 窗口调度：按轴顺序分配；count 有值 → 精确次数，缺省 → 兜底吃剩余。
@@ -256,6 +296,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
 
   return {
     executed,
+    sequence,
     timeUsed,
     overlapSeconds,
     overlapByAction,

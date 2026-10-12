@@ -233,7 +233,7 @@ export function createResourceCalc(
   // 收敛轮输入簇已迁 resourceCalc/convergence.ts（#10 首批租户；逐字搬移，deps 注入 store/computed ref）
   const {
     extractAnomalyExecsFrom, extractStunExecsFrom, autoPreset, autoActive,
-    resolveAxes, buildStackAxes, expandExecutedToCounts, calcAnomalyPoolInput,
+    resolveAxes, buildStackAxes, expandExecutedToCounts, expandSequenceToMoveIds, calcAnomalyPoolInput,
   } = createConvergenceRoundInputs({ configStore, catalogStore, panels: resourcePanels, resourceConfig })
 
 
@@ -497,7 +497,7 @@ export function createResourceCalc(
   // 不注入任何下游 computed（单轮计算只经返回值流出，见 convergence.ts#createRunCalcRound 头注释）。
   const runCalcRound = createRunCalcRound({
     configStore, catalogStore, panels: resourcePanels, resourceConfig,
-    computeWindowDuration, computeStunCoverage, buildStackAxes, expandExecutedToCounts,
+    computeWindowDuration, computeStunCoverage, buildStackAxes, expandExecutedToCounts, expandSequenceToMoveIds,
     resolveAxes, calcAnomalyPoolInput, extractAnomalyExecsFrom, extractStunExecsFrom, autoActive,
   })
 

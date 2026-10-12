@@ -359,9 +359,43 @@ export function createConvergenceRoundInputs(deps: {
     return out
   }
 
+  /**
+   * 把栈遍历的**逐次执行序列**展开成真实 moveId，并**保留顺序**（2026-10-12，克拉蕾轴内残痕时序用）。
+   *
+   * 与 `expandExecutedToCounts` 的关系：后者按 key 聚合（丢顺序，用于「次数」类消费）；
+   * 本函数是它的**保序版**——连段块展开成内部招式（每个 term 一条，保持 term 声明序），
+   * 非连段块原样透传；兜底平A填充作为 `basic`（count = 秒数）**追加在末尾**
+   * （口径正确：平A填充发生在轴内块都放完之后，见 `stunAxisStack` 的 `basicFillBySlot`）。
+   *
+   * ⚠ 只做「键 → 真实 moveId」的展开，不做任何计数聚合 ⇒ 消费者拿到的是**有序事件流**。
+   */
+  function expandSequenceToMoveIds(
+    sequence: readonly ExecutedMoveCount[],
+    basicFillBySlot: Record<number, number>,
+  ): ExecutedMoveCount[] {
+    const out: ExecutedMoveCount[] = []
+    for (const v of sequence) {
+      if (v.count <= 0) continue
+      const agentId = configStore.team[v.slot]?.agentId ?? ''
+      const combo = getAgentMechanic(agentId)?.combos?.[v.moveId]
+      if (combo) {
+        for (const mv of combo.moves) {
+          if (mv.count > 0) out.push({ slot: v.slot, moveId: mv.moveId, count: mv.count * v.count })
+        }
+      } else {
+        out.push({ slot: v.slot, moveId: v.moveId, count: v.count })
+      }
+    }
+    // 兜底平A填充：追加在末尾（count = 秒数，消费方按自己的秒均积累率折算）
+    for (const [slotStr, fillSec] of Object.entries(basicFillBySlot)) {
+      if (fillSec > 0) out.push({ slot: Number(slotStr), moveId: 'basic', count: fillSec })
+    }
+    return out
+  }
+
   return {
     extractAnomalyExecsFrom, extractStunExecsFrom, autoPreset, autoActive,
-    resolveAxes, buildStackAxes, expandExecutedToCounts, calcAnomalyPoolInput,
+    resolveAxes, buildStackAxes, expandExecutedToCounts, expandSequenceToMoveIds, calcAnomalyPoolInput,
   }
 }
 

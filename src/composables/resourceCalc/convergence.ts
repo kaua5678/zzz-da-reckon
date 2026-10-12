@@ -91,6 +91,8 @@ export function createRunCalcRound(deps: {
   computeStunCoverage: (sp: Pick<StunPoolResult, 'stunCount'> | null | undefined, lostSeconds?: number) => number
   buildStackAxes: (axes: StunAxis[]) => StackAxisInput[]
   expandExecutedToCounts: (executed: Record<string, ExecutedMoveCount>, basicFillBySlot: Record<number, number>) => Record<string, ExecutedMoveCount>
+  /** 保序版展开（连段块 → 真实 moveId，不聚合）：克拉蕾轴内残痕时序消费，见 roundInputs 里的实现注释 */
+  expandSequenceToMoveIds: (sequence: readonly ExecutedMoveCount[], basicFillBySlot: Record<number, number>) => ExecutedMoveCount[]
   resolveAxes: (stunCount: number, goodReview: number, energyBySlot: Record<number, number>) => { axes: StunAxis[]; planName: string | null }
   calcAnomalyPoolInput: (stunCov: number, execs: AnomalySkillExecution[], giftedPolarAssaultOverride?: number, giftedSlotFallback?: number) => AnomalyPoolResult
   extractAnomalyExecsFrom: (res: TeamResourceResult, skipGift?: boolean) => AnomalySkillExecution[]
@@ -99,7 +101,7 @@ export function createRunCalcRound(deps: {
 }) {
   const {
     configStore, catalogStore, panels, resourceConfig,
-    computeWindowDuration, computeStunCoverage, buildStackAxes, expandExecutedToCounts,
+    computeWindowDuration, computeStunCoverage, buildStackAxes, expandExecutedToCounts, expandSequenceToMoveIds,
     resolveAxes, calcAnomalyPoolInput, extractAnomalyExecsFrom, extractStunExecsFrom, autoActive,
   } = deps
 
@@ -444,11 +446,22 @@ export function createRunCalcRound(deps: {
     // 把当前失衡次数/覆盖率/战斗时间传给角色配置（诺姆火力实验导弹舱、炮塔全程射击依赖）
     // 各槽位轴内捏块总次数：优先取栈的实际执行集合（般岳分支与下方 merged 均取同一来源）
     const axisActionCountsBySlot: Record<number, Record<string, number>> = {}
+    /**
+     * 各槽位轴内**逐次执行序列**（2026-10-12，克拉蕾残痕轴内时序用）：栈引擎按实际执行先后追加，
+     * 这里**按槽位切分**后注入——跨槽位是并行的，模块只能看本槽的相对先后（`StackSequenceEntry` 口径）。
+     * ⚠ 这是**轴内本地**数据，不是全局事件排序（用户 2026-10-12 纠正）。
+     */
+    const axisSequenceBySlot: Record<number, { moveId: string; count: number }[]> = {}
     if (axisExecutedStack) {
       for (const c of base.characters) axisActionCountsBySlot[c.slot] = {}
       for (const v of Object.values(axisExecutedStack.executed)) {
         const m = axisActionCountsBySlot[v.slot] ?? (axisActionCountsBySlot[v.slot] = {})
         m[v.moveId] = (m[v.moveId] ?? 0) + v.count
+      }
+      // 逐次序列要**展开连段块 → 真实 moveId 并保序**（`axisSequence` 里存的是块 key，
+      // 如 `claret-burial`；模块按真实 moveId 查 gash/消耗表 ⇒ 不展开会整条落空）。
+      for (const e of expandSequenceToMoveIds(axisExecutedStack.sequence, axisExecutedStack.basicFillBySlot)) {
+        ;(axisSequenceBySlot[e.slot] ??= []).push({ moveId: e.moveId, count: e.count })
       }
     } else {
       // 非轴：无轴内块（原 computeAxisActionCountsFor 在 !axisActive 时恒返回 {}）
@@ -482,6 +495,7 @@ export function createRunCalcRound(deps: {
         axisInSeconds,
         teamStunCoverage: provStunCoverage,
         axisActionCounts: axisActionCountsBySlot[cfg.slot],
+        axisSequence: axisSequenceBySlot[cfg.slot] ?? [],
         axisUltimateTotal: axisUltimateTotal[cfg.slot] ?? 0,
         // 全队帷幕次数（上一轮收敛注入）：叶瞬光溯影惊鸿/爱芮合作舞台/千夏磨爪器在此轮 buildExecutions/buildAnomalyEvents 消费
         teamVeilCountTotal: prevTeamVeilCountTotal,
