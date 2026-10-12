@@ -354,7 +354,16 @@ export interface InteractionTopUpInput {
   decibelHave: number
   /** 单次补齐弹刀的原始动作时间（招架支援 + 支援突击，秒）；缺省 0 = 不做时间合法性判定 */
   perParrySeconds?: number
-  /** 单次补齐双反的原始动作时间（秒）；cfg 暂未暴露该字段时留 0 */
+  /**
+   * 单次补齐双反的原始动作时间（秒）；缺省 0 = 不做时间合法性判定（与 `perParrySeconds` 同款容错）。
+   *
+   * ⚠ T140a 前**无生产写点**（字段声明了但调用方一直没递）⇒ 双反需求算出来的 `requiredSeconds`
+   * 只含弹刀，双反在时间面上完全不可见：既躲过 >200s 合法性判定，也躲过预算封顶
+   * （实测 r=0.5/0.6：封顶对 `dual=12` 无感，轴退化判据读到的净占用低于真装量）。
+   * 现由 `convergence.ts` 从 **catalog 动作时长**递入（`moveActionTimes`，单一事实来源，
+   * 见 `utils/moveActionTimeCfg`）：双反 = 不动如山(1471011) + 支援突击：冲霄(1471029)，
+   * 与本模块 `estimateExSpecialTime` 的 `blockDualTime` 同一对招式、同一份表。
+   */
   perDualSeconds?: number
   /** 战斗时间（秒，= `enemy.battleTime`）：闪能秒回按整场战斗折算（r726 前模块内写死 180） */
   battleTime: number

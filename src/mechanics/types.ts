@@ -1113,6 +1113,18 @@ export interface AgentMechanicModule {
    */
   computeInteractionTopUp?(opts: InteractionTopUpInput & { gate: InteractionTopUpGate }): InteractionTopUp | null
   /**
+   * T140a：补齐交互的**单次动作秒数**（每次弹刀 / 每次双反），由**拥有该补齐语义的模块**声明
+   * —— 招式 id 的家在模块里，编排层不认 id（判据 26）。
+   *
+   * 为什么必须由模块给：`computeInteractionTopUp` 只回填 `requiredSeconds`，而它要算秒数就得知道
+   * 本模块补齐的到底是哪两个招式（般岳 = 弹刀链 + 不动如山/冲霄）。编排层若自己按 moveId 查表，
+   * 就是把角色知识写回编排层（判据 26 硬门 0 条，实测正是被它拦下的）。
+   *
+   * 读法（`convergence.ts`）：找「挂出 `computeInteractionTopUp` 的那个槽位」，取本模块自己那份 cfg 调用。
+   * `perParrySeconds` 缺省时编排层仍按通用「招架支援 + 支援突击」字段回填（既有口径，零变化）。
+   */
+  interactionTopUpSeconds?(opts: { cfg: CharacterOperationConfig }): { perParrySeconds?: number; perDualSeconds?: number }
+  /**
    * 异常池入参设置（CC-25）：编排层（`roundInputs.ts` 的 `anomalyPoolSetupInfo`）找到本队第一个挂了
    * 本能力的槽位，按 `characters.find(c => c.slot === slot)` 取**本模块自己那份 cfg** 调用；返回 null =
    * 本轮不启用。返回的 `coweringConfig` 下发给异常池（畏缩 DOT + 紊乱倍率加成），该槽位同时作为

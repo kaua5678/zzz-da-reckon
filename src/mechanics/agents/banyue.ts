@@ -1036,6 +1036,25 @@ export const banyueMechanic: AgentMechanicModule = {
   // CC-295：门控在模块内判定（与 applyBanyueTeamConfig 同一函数）；关闭 ⇒ null，编排层保持上一轮值
   computeInteractionTopUp: ({ gate, ...opts }) =>
     banyueAutoTopUpEnabled(gate.axisActive, gate.guarantee, gate.settings) ? computeBanyueInteractionTopUp(opts) : null,
+  /**
+   * T140a：补齐交互的**单次动作秒数**（招式的家在本模块 ⇒ 由本模块给，编排层不认 id，判据 26）。
+   *
+   * - 弹刀：招架支援（轻弹刀） + 支援突击 —— 与 `convergence.ts` 既有的通用回填同源同值；
+   * - 双反：**不动如山(1471011) + 支援突击：冲霄(1471029)** —— 与 `estimateExSpecialTime` 里
+   *   `blockDualTime = chongXiao × (buDongRuShan + chongXiao)` **同一对招式、同一份表**
+   *   （`cfg.banyueMoveTimes`，`buildCharConfig` 从 catalog 预存）。
+   *
+   * 修前双反**恒无秒数**（`perDualSeconds` 无生产写点）⇒ 双反在时间面上完全不可见：
+   * 既躲过 >200s 合法性判定，也躲过「补齐是否把计划顶出预算」的判定。
+   */
+  interactionTopUpSeconds: ({ cfg }) => {
+    // `banyueMoveTimes` 是本模块自己声明并写入的 cfg 字段（见文件末 declare module），无需断言
+    const times = cfg.banyueMoveTimes ?? {}
+    return {
+      perParrySeconds: Math.max(0, cfg.defensiveAssistActionTime) + Math.max(0, cfg.assistFollowUpActionTime),
+      perDualSeconds: (times[MOVE.buDongRuShan] ?? 0) + (times[MOVE.chongXiao] ?? 0),
+    }
+  },
   // 失衡轴动作块：怒相连段（论道→狮子吼·怒 / 地动→山摇·怒）= 怒相技能，山威免费（4 山威/怒相 = 2 组），
   // 不耗闪能不回嗔火；怒相内 2 组连段可在两个块间自由分配（didong 块优先占山威配额），明王触发源两者皆认领
   combos: {

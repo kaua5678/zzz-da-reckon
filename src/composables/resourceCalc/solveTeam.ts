@@ -94,7 +94,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * （喧响/嗔火/轴内块 × 窗口数）超出时间预算 → 必要时间 > 战斗时间 → 该轴不可操作
    * （需 boss 秽盾等外界环境才打得成）→ 退化为一般轴（不注入轴块/连携覆盖/自动补齐）重算）。
    */
-  function runOuterLoop(forceNoAxis: boolean, interactionScale?: number): { out: CalcRoundResult; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: OuterExit; outerCyclePickedEarlier: boolean } {
+  function runOuterLoop(forceNoAxis: boolean, interactionScale?: number, interruptTopUp?: boolean): { out: CalcRoundResult; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: OuterExit; outerCyclePickedEarlier: boolean } {
     let stunCount = lockedStunCount >= 0 ? lockedStunCount : 0
     /** CC-418：`MAX_OUTER_ITER ≥ 1` ⇒ 循环体至少执行一次、首轮即赋值（runCalcRound 无 null 出口），故可定赋值断言。 */
     let out!: CalcRoundResult
@@ -196,7 +196,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       const locked = lockedStunCount >= 0
       // CC-418：runCalcRound 无 null 出口（CC-417 删空失衡池 null 后，剩余守卫与 calcOutput 同条件不可达），
       // 原「null 轮 ⇒ threadsAfterNullRound 回退 + 签名清空 + continue」分支随之删除。
-      out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale })
+      out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale, interruptTopUp })
       const t = out.threadsNext
       const rawNext = out.stunPool.stunCount
       // 净失衡缩放 + 时间可行性截断：非失衡占比缩放全来源净失衡，超出可容纳窗口数的残失衡按残差时间系数折成小数
@@ -358,8 +358,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
      * 可行集的必然产物**，不是状态泄漏：每个 scale 的试算结果与试算次序无关（实测 0.25 单独 vs 跟在
      * 0.0625 后，net 均 180.191/计数均 16/6）；次序只改「哪个 scale 先被采纳」。要动这条得先证可行集下闭。
      */
-    /** 净占用（计划 + 待装补齐，见 pendingTopUpSeconds） */
-    const netOf = (x: RoundOut) => frontlineTotalOf(x.out) + pendingTopUpSeconds(x.out, x.outPrev)
+    /** 净占用（**计划本身**的占用；补齐量不再计入——T140a） */
+    const netOf = (x: RoundOut) => frontlineTotalOf(x.out)
     const overBudgetNet = (x: RoundOut) =>
       stunEffTime > 0 && netOf(x) > stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
     const truncatedToo = (x: CalcRoundResult) =>
@@ -373,8 +373,49 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     if (lockedStunCount < 0) {
       // 非法补齐（自动填充交互 > 200s，用户口径 2026-09-01）与超预算同等对待：
       // 轴要的资源根本填不出来 ⇒ 轴不可操作 ⇒ 走同一条退化路径（补齐次数已在源头清零）
-      const topUpIllegal = (x: CalcRoundResult) => x.interactionTopUp.illegal === true
-      // 轴太厚判据按「计划 + 待装补齐」算（见 pendingTopUpSeconds 注释）
+      // 非法补齐判据（沿用用户裁决 2026-09-01「>200s 判非法 ⇒ 次数清零并走轴退化」）：
+      // ⚠ 除「下一轮量」外**还要看本轮已装量**（`threadsApplied`）。实测（`banyue.test` 厚轴夹具）：
+      // 模块在环的某一轮返回过非法量（`applied.illegal === true`），但外层环内选点落到的那个成员
+      // 其「下一轮量」已经回到合法（`interactionTopUp.illegal === false`）⇒ 只看前者会漏判，
+      // 该裁决退化成**轨迹依赖**（T140a 前它靠 `netOf` 里那份 232s 的待装秒数「顺带」触发弃轴）。
+      // 看已装量不重新引入病根：病根是「合法补齐的**秒数量级**参与轴可行性」，而本判据是
+      // 用户裁决的**非法旗标**（>200s = 轴要的资源根本填不出来），两者不是一回事。
+      const topUpIllegal = (x: CalcRoundResult) =>
+        x.interactionTopUp.illegal === true || x.threadsApplied.interactionTopUp.illegal === true
+      // ===== T140a「中断臂」：补齐超预算 ⇒ 先中断补齐，**不是**弃轴（用户口径 2026-10-11）=====
+      // > 「补齐应该是在 off 的基础上去补招式，如果中途超预算，那就只能中断，而不是去选一个更烂的结果」
+      //
+      // 病根（T140a 前）：`netOf` 把 `pendingTopUpSeconds`（待装补齐）算进了「轴装不装得下」的判定
+      // ⇒ **补齐越多越容易判「轴装不下」⇒ 越容易弃轴**，方向正好反了（r=0.8 实测：ON 45.477M/3 次失衡/弃轴
+      // vs OFF 57.074M/5 次失衡/保轴）。本块的 `netOf` 已只算计划本身，补齐量不再参与该判定。
+      //
+      // 为什么还需要「中断」这一臂：`netOf` 摘掉补齐后，轴态的**计划本身**仍可能超预算——那可能是
+      // ① 轴本身超预算（与补齐无关）或 ② **补齐已经装进计划**、把计划顶出预算（补齐行是真前台行，
+      // `applyBanyueTeamConfig` 把它累加进 `parryCount`/`dualCounterCount`）。②必须与①区分：
+      // 用户口径要求在②时**中断补齐**（退回非补齐基线），而不是弃轴（弃轴是「更烂的结果」）。
+      //
+      // 判据与次序（**中断优先于弃轴**）：轴态 + 超预算 ⇒ 先试「轴态 + 补齐整条通道不生效」
+      // （`interruptTopUp`；轴块/连携覆盖照旧注入，只有补齐让位）；
+      // ① 中断后不超预算 ⇒ 采纳它：轴保住、补齐中断，`axisFallback` **保持 false**（轴没退化）；
+      // ② 中断后仍超预算 ⇒ 轴自身超预算，走原有轴退化路径（下面那个 `if`）。
+      // ⚠ **不用更严的真预算（`net > stunEffTime`，无 2s 容差）当判据**：实测那会把「计划净占用
+      // 180.00s、落在既有 2s 容差内」的落点（`axisAutoGuarantee` 夹具）也判成超预算 ⇒ 误中断
+      // 一个本来可行的补齐（该点 ON 与 OFF 产出同值，中断它纯属有害）。容差与轴退化同源、同一把尺。
+      // ⚠ 只在本轮**真的有补齐量**时试（否则纯增一次完整外层求值而无收益）；非法补齐没有可中断的量。
+      // ⚠ 锁定失衡次数（`lockedStunCount >= 0`）不进来：本块本来就在 `lockedStunCount < 0` 分支内。
+      const loadedTopUp = (x: CalcRoundResult): number => {
+        const t = x.threadsApplied.interactionTopUp
+        return t.parry + t.dual
+      }
+      const wantsTopUp = (x: RoundOut): boolean =>
+        loadedTopUp(x.out) > 0 || x.out.interactionTopUp.parry > 0 || x.out.interactionTopUp.dual > 0
+      if ((overBudget(r) || topUpIllegal(r.out)) && r.out.resolvedAxes.length) {
+        hadAxis = true
+        // ① 中断臂（只在真有补齐量时试；非法补齐没有可中断的量）
+        if (!topUpIllegal(r.out) && wantsTopUp(r)) {
+          r = runOuterLoop(false, undefined, true)
+        }
+      }
       if ((overBudget(r) || topUpIllegal(r.out)) && r.out.resolvedAxes.length) {
         hadAxis = true
         const noAxis = runOuterLoop(true)
