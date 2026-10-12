@@ -358,7 +358,11 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
      * 可行集的必然产物**，不是状态泄漏：每个 scale 的试算结果与试算次序无关（实测 0.25 单独 vs 跟在
      * 0.0625 后，net 均 180.191/计数均 16/6）；次序只改「哪个 scale 先被采纳」。要动这条得先证可行集下闭。
      */
-    /** 净占用（**计划本身**的占用；补齐量不再计入——T140a） */
+    /**
+     * 净占用（**计划本身**的占用；补齐量不再计入——T140a）。口径见下方 `@fact`。
+     */
+    // @fact engine:轴可行性/净占用 口径: 轴退化的净占用判据 `netOf` **只算计划本身**（`frontlineTotalOf`），不含 `pendingTopUpSeconds`（待装补齐秒数）——补齐是「在 off 基线上做增量」，算进去会让**补得越多越容易判轴装不下**（方向反了，实测 r=0.8：ON 45.477M/弃轴 vs OFF 57.074M/保轴）；超预算的补齐由「中断臂」（同函数 `stageResolveFeasibility`：轴态超预算时先试「补齐整条通道不生效」，保住轴）在**收敛级**中断，而不是弃轴。⚠ `timeInconsistencyOf`（环内选点）里那份 `pendingTopUpSeconds` **保留**（它算「还欠多少补齐没装」，语义正确，不是同一把尺） | 据 用户@2026-10-12「补齐应该是在 off 的基础上去补招式，如果中途超预算，那就只能中断，而不是去选一个更烂的结果……一定大于非补齐」 | 验 src/composables/__tests__/topUpMonotonic.test.ts | 锚 src/composables/resourceCalc/solveTeam.ts#stageResolveFeasibility | 信 确认
+    // ⟳复核: 若「补齐的秒数是否参与轴退化判定」再被改动（如重新引入预算封顶、或改 `AXIS_FALLBACK_TOLERANCE_SEC` 容差口径），重跑 `.zc/perf/T140cross.perf.ts` 的 9 档 ON/OFF 单调性扫描确认无 VIOLATION | 到期 2027-04-30
     const netOf = (x: RoundOut) => frontlineTotalOf(x.out)
     const overBudgetNet = (x: RoundOut) =>
       stunEffTime > 0 && netOf(x) > stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
