@@ -103,7 +103,7 @@ export function createRunCalcRound(deps: {
     resolveAxes, calcAnomalyPoolInput, extractAnomalyExecsFrom, extractStunExecsFrom, autoActive,
   } = deps
 
-  function runCalcRound(stunCount: number, threads: CalcRoundThreads, opts?: { forceNoAxis?: boolean; interactionScale?: number }): CalcRoundResult {
+  function runCalcRound(stunCount: number, threads: CalcRoundThreads, opts?: { forceNoAxis?: boolean; interactionScale?: number; interruptTopUp?: boolean }): CalcRoundResult {
     const {
       goodReview: prevGoodReview,
       energyBySlot: prevEnergyBySlot,
@@ -454,6 +454,21 @@ export function createRunCalcRound(deps: {
       // 非轴：无轴内块（原 computeAxisActionCountsFor 在 !axisActive 时恒返回 {}）
       for (const c of base.characters) axisActionCountsBySlot[c.slot] = {}
     }
+    /**
+     * T140a「中断臂」（用户口径 2026-10-11「中途超预算，那就只能中断」）：
+     * `opts.interruptTopUp === true` ⇒ 本轮**补齐全不装**（交互栏输入照旧，轴块/连携覆盖照旧）。
+     *
+     * ⚠ 必须在**模块派发之前**改写 `threads.interactionTopUp`（不能只清零展示用的
+     * `interactionTopUpApplied`）：装载量由 `banyue.ts#applyBanyueTeamConfig` 直接读
+     * `threads.interactionTopUp` 决定（累加 `parryCount`/`dualCounterCount`）
+     * ⇒ 只改展示字段 = 计划里照样装着补齐、时间账一分不省（实测净占用仍 188.41s，中断臂形同未跑）。
+     * ⚠ **不动** `interactionTopUpNext` 的跨轮携带（CC-295 硬约束）：模块仍按原样算下一轮需求。
+     */
+    if (opts?.interruptTopUp === true) {
+      threads = { ...threads, interactionTopUp: { parry: 0, dual: 0, requiredSeconds: 0, illegal: false } }
+    }
+    /** 中断臂：本轮起**整条补齐通道**（含 `interactionTopUpNext` 回灌）都不生效 ⇒ 该臂 ≡ 模块关闭 */
+    const interruptTopUp = opts?.interruptTopUp === true
     const characters = base.characters.map(cfg => {
       // 轴模式：连携总次数完全由轴决定（未列连携块的槽位 = 0 次，轴即最终次数）
       const chainOverride = axisActive
@@ -751,7 +766,10 @@ export function createRunCalcRound(deps: {
     /** 本轮**真正装入**的补齐量（模块返回 null = gate 关 = 装入 0）。交互栏显示读它（CC-296/297），
      *  读 `interactionTopUpNext` 会在「gate 在末轮翻转」的落点上显示 +9 而实际装入 0（T134 实测）。 */
     let interactionTopUpApplied: typeof prevInteractionTopUp = prevInteractionTopUp
-    if (interactionTopUpSlot >= 0) {
+    // ⚠ `interruptTopUp` 时**整块跳过**（不是只清装载量）：块内会把 `interactionTopUpNext` 回灌，
+    // 下一轮又被 `applyBanyueTeamConfig` 当装载量吃掉 ⇒ 只清首轮等于「首轮不补、次轮照补」，
+    // 该臂就不再等于「模块关闭」基线（实测：确实还差 0.151M）。
+    if (interactionTopUpSlot >= 0 && !interruptTopUp) {
       const storeChar = configStore.team[interactionTopUpSlot]
       const ultNeed = axisUltimateNeed(resolvedAxes, countStun, interactionTopUpSlot) // CC-142：计数通道
       // 喧响供给取般岳个人（终结技次数 = 个人喧响 / 终结技消耗，非全队总和；曾用全队总和导致
@@ -777,9 +795,26 @@ export function createRunCalcRound(deps: {
         // ⚠ 按身份查（同 :1119；压缩数组下 `base.characters[interactionTopUpSlot]` 在空槽时会取错对象）
         perParrySeconds: (base.characters.find(c => c.slot === interactionTopUpSlot)?.defensiveAssistActionTime ?? 0)
           + (base.characters.find(c => c.slot === interactionTopUpSlot)?.assistFollowUpActionTime ?? 0),
+        // T140a：**双反单次动作时间**由模块给（`interactionTopUpSeconds` 能力，判据 26：id 的家在
+        // 模块里，编排层不认 moveId）。修前该字段无生产写点 ⇒ 双反在时间面上完全不可见：
+        // 既躲过 >200s 合法性判定，也躲过「补齐是否把计划顶出预算」的判定。
+        // ⚠ 只覆盖 `perDualSeconds`（弹刀一侧保持上面的通用回填，逐位不变）；模块未声明该能力时不填。
+        ...(() => {
+          const ownerCfg = base.characters.find(c => c.slot === interactionTopUpSlot)
+          const secs = storeChar?.agentId
+            ? getAgentMechanic(storeChar.agentId)?.interactionTopUpSeconds?.({ cfg: ownerCfg! })
+            : undefined
+          return secs?.perDualSeconds !== undefined ? { perDualSeconds: secs.perDualSeconds } : {}
+        })(),
       })
       // ⚠ 这里**不**清零 `interactionTopUpNext`（gate 关时保持上一轮值 = CC-295 迭代稳定性语义；
       // 下一轮 gate 重开时还要用它）。清零会破坏携带语义并改变数值（T134 实测 parry=12 档 43.74M→38.08M）。
+      // T140a：**不在产出侧做原地封顶**（曾试过按比例缩 / 全有或全无两种形态，均实测证伪，见
+      // `solveTeam#stageResolveFeasibility` 的「中断臂」注释与 T140a 报告的否决记录）——
+      // 逐轮改写 `interactionTopUpNext` 会让反馈签名与「模块关闭」基线不同形，把补齐臂推进
+      // 与基线不同的环成员（实测 r=0.7：不封顶 56.920M、封顶 54.865M < 非补齐 55.017M）。
+      // 预算约束统一由外层「中断臂」在**收敛级**兑现（整条通道不生效 ⇒ 与基线同形）。
+      // `opts.interruptTopUp` 已在模块派发之前处理（见 `characters` 之前的块），本处不再重复。
       if (topUpNext) interactionTopUpNext = topUpNext
       // 本轮**已装量**（交互栏显示读它，CC-296/297）= 模块接受了才装：`topUpNext === null` 就是模块
       // 本轮的 gate 判词（`banyueAutoTopUpEnabled` 为假），此时 `applyBanyueTeamConfig` 按字面量写 {0,0}

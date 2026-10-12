@@ -492,7 +492,19 @@ describe('夜D · 层③ 真管线端到端', () => {
     // ③ 确认有意：用户原话「预设的交互太多了……我之前只是想让般岳有 4 次嗔火而已」——
     //    6→5 是「腾出时间后喧响缺口变化」的副产物，方向无异常（仍 ≥ 保底所需）。
     // ④ 本锚更新；4 怒相是否保持由 `.zc/perf/banyueConfirm.perf.ts` 实测（六队 6/6 保持 4 次）。
-    expect(await readBanyueCfg(1, 0, true)).toEqual({ parry: 5, dual: 0, requiredSeconds: 11.665000000000001, illegal: false })
+    //
+    // ⚠ **2026-10-12 5 → 1（T140a：补齐量不再参与轴可行性判定）**：
+    // ① 量 delta：本队般岳保底补齐量 5 → **1**（11.665s → 2.333s），**同时 `interactionScale` 0.875 → undefined**
+    //    （该队不再是「装不下要降配」的队）、伤害 64.566M → 64.287M、失衡 4 与怒相 4 均不变。
+    // ② 逐项归因（唯一变量 = `solveTeam#netOf` 是否把 `pendingTopUpSeconds` 计入轴可行性）：
+    //    修前该队因「待装补齐秒数」被推进非轴降配（scale=0.875 ⇒ 用户交互次数被缩 12.5% ⇒
+    //    parry/block/dual 全变小 ⇒ 喧响缺口重算 = 5 刀）；修后补齐不参与该判定 ⇒ 不再降配 ⇒
+    //    交互次数按用户原值打满 ⇒ 缺口只剩 1 刀。**根因是补齐与时间面的耦合，不是补齐通道本身**。
+    //    A/B 同探针（`.zc/perf/T140a-nigD.perf.ts`）：只回退 `netOf` 一行即复现 5 / scale 0.875。
+    // ③ 确认有意：用户 2026-10-11 裁决「补齐应该是在 off 的基础上去补招式…一定大于非补齐」，
+    //    本队 ON 64.287M ≥ OFF 63.906M（单调性成立，见 `topUpMonotonic.test.ts`）。
+    // ④ 本锚更新；「模块写入 → 结果 cfg 可见」这层语义未变（parry=1 仍是模块写入并被 cfg 读到）。
+    expect(await readBanyueCfg(1, 0, true)).toEqual({ parry: 1, dual: 0, requiredSeconds: 2.333, illegal: false })
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 5 不是恒写）', async () => {
