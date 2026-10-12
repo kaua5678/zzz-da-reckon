@@ -162,8 +162,12 @@ const ddVisiblePoints = computed(() =>
 .dd-label {
   fill: var(--wa-820);
   font-size: 10px;
+  /* 描边光晕：**必须与 fill 成对跟随主题**（fill 是跟随主题的 --wa-820）。
+     原样写死 rgba(10,10,14,.85) ⇒ 亮色档 fill 变深墨、晕还是深墨 = 字形溶进光晕
+     （实测 fill-vs-stroke 仅 1.35:1，用户报「糊成一团」）。走 --chart-halo 后
+     夜间逐位不变、亮色转白晕（深墨字 + 白晕）。机器兜底 = check-tokens 判据 14。 */
   paint-order: stroke;
-  stroke: rgba(10, 10, 14, 0.85);
+  stroke: var(--chart-halo);
   stroke-width: 3px;
 }
 .dd-caption {

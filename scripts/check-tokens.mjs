@@ -37,6 +37,20 @@
 //  12. tinted-ink-closure —— **形状面**，与判据 11 成对：贴片规则里不得写字面量色值
 //      （= 该表面无法跟随主题）。只有行为面 ⇒ 「把 `--fg-2` 换回 `--wa-450`」看不见
 //      （--wa-450 自己没变、仍在白名单外但值合法）；只有形状面 ⇒ 「字面量换成同值的错令牌」看不见。
+//  13. input-contrast   —— **输入框自带表面**（inputColor / inputColorDisabled 叠底）上的墨达标
+//      ⚠ 第三类结构盲区（2026-10-12 用户报「有些输入框都看不清字了」）：判据 5 的背景
+//      **固定取 --app-panel/--app-bg**，而输入框在页面底上**又叠了一层**（与判据 11 同因、
+//      不同表面）。实测禁用墨 --wa-300 在输入框内只有 **2.67（暗）/ 1.89（亮）**、
+//      占位符 3.40 / 3.07，而**当时 12 条判据全绿**——因为 --wa-300 压根不在被断言的清单里，
+//      占位符那条又只按 --app-panel 算且门槛放宽到 3。修法 = 新增 --fg-disabled 令牌
+//      （输入框专属）+ 占位符提到 4.5 档 + 本条按**四种真实表面组合**取最差。
+//  14. halo-contrast    —— **描边光晕**（`paint-order: stroke` 的 stroke）与字形分离达标
+//      ⚠ 第四类「背景唯一」盲区（2026-10-12 用户报「直伤系数图明亮主题下糊成一团」）：
+//      前四条判据全是「**墨 vs 底**」，而光晕是「**墨 vs 墨**」——它只需与**字形**分离。
+//      实测 `.dd-label`：fill 跟随主题（亮色档=深墨）、stroke 写死近黑 ⇒ fill-vs-stroke
+//      **1.35:1**（字形溶进光晕），而 fill 单独看 vs 白卡 9.89:1 **超达标** ⇒ 旧判据全绿。
+//  15. halo-ink-closure —— **形状面**，与判据 14 成对：光晕不得手抄主题令牌值
+//      （fill 由内联数据色给时判据 14 会跳过，那条通路只有形状面看得见）。
 //
 // 用法：
 //   node scripts/check-tokens.mjs             # 检查（npm run check / verify 已挂载）
@@ -539,7 +553,11 @@ export const HARDCODED_BASELINE = {
   // 2026-09-14 直伤系数图抽组件（components/charts/DirectDamageChart.vue）：2 处字面色值是**逐字搬迁**——
   // 模板里测试服阴影的 rgba(246,173,85,.06) 与 .dd-label 的 paint-order 描边 rgba(10,10,14,.85)。
   // 页面侧同轮下降 33 → 32（删掉了随组件走的 4 条 dd-* 规则里的字面色值）。
-  'src/components/charts/DirectDamageChart.vue': 2,
+  // 2 → **1**（2026-10-12 修「亮色档描边光晕糊成一团」）：`.dd-label` 的 stroke 由字面量
+  // `rgba(10,10,14,.85)` 换成主题令牌 `--chart-halo`（该 fill 跟随主题 ⇒ 光晕必须成对跟随）。
+  // 剩 1 处 = 模板里测试服阴影的 rgba(246,173,85,.06)（装饰性色带，无墨色语义）。
+  // ⚠ 这是**棘轮要求的方向**（−1 处字面色值），不是放松。
+  'src/components/charts/DirectDamageChart.vue': 1,
   // 2026-09-14 控制面板抽组件（components/charts/TimeChartsControls.vue）：1 处字面色值是**逐字搬迁**
   // —— .boss-data-title 的 #f6ad55（原在 TimeChartsPage.css）。页面侧同轮 32 → 31。
   'src/components/charts/TimeChartsControls.vue': 0,
@@ -693,7 +711,21 @@ export const WA_REF_BASELINE = 419  /* ★ 2026-10-08 Chart 5 下线（用户裁
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 837  /* ★ 2026-10-11 自定义队伍编辑器：835 → **837**（+2）。
+export const VAR_TOTAL_BASELINE = 891  /* ★ 2026-10-12 图表描边光晕令牌：890 → **891**（+1）。
+                                        * 归因：`.dd-label` 的 stroke 由字面量换 `var(--chart-halo)`
+                                        * （修「亮色档深墨字+深墨晕糊成一团」，实测 fill-vs-stroke 1.35:1）。
+                                        * 同一改动使 HARDCODED 该文件 2 → 1（换掉一处字面色值）——
+                                        * **两个数字一起看**才说明这是「字面量 → 令牌」的正向迁移。
+                                        * ★ 2026-10-12 更新日志弹层：837 → **890**（+53）。
+                                        * 归因（规则 10：先量 delta、再逐条归因，禁止无归因重生成）：新增
+                                        * `src/components/ChangelogDialog.vue`（更新日志弹层；用户 2026-10-12 要求
+                                        * 「写个更新日志展示」并选定「页头图标按钮 → 弹层」形态）——该文件 **53 处** var() 引用，
+                                        * 全部走语义令牌（--fg-2/--fg-3/--line/--fill-hover/--fill-active/--app-* 与
+                                        * --c-*-strong/--c-danger-soft），**零字面色值**。
+                                        * 同轮对照：`--wa-*` 直接引用 **419 不变**、hardcoded-color 合计 **102 不变**
+                                        * ⇒ 是新代码「只用语义别名」的正常新增，**不是**把变量改回字面量。
+                                        * 同期 `AppHeader.vue` 只加入口按钮一枚（复用既有 .header-icon-btn 类，+0 var()）。
+                                        * ★ 2026-10-11 自定义队伍编辑器：835 → **837**（+2）。
                                         * 归因（规则 10：先量 delta、再逐条归因，禁止无归因重生成）：新增 CustomTeamsEditor.vue
                                         * （自定义队伍编辑器；用户 2026-10-11「两个都要」= 跨筛选自由勾选 + 手动组队）用到 **2 处**
                                         * `var(--fg-2)`（.ct-title 标题 / .ct-empty 空态，都是坐落在卡片底上的次级文字 ⇒
@@ -805,7 +837,7 @@ export const NAIVE_TOKEN_MAP = [
   ['darkCommon', 'tableColorStriped', '--wa-15'],
   ['darkCommon', 'tagColor', '--wa-60'],
   ['darkCommon', 'textColorBase', '--app-text'],
-  ['darkCommon', 'textColorDisabled', '--wa-300'],
+  ['darkCommon', 'textColorDisabled', '--fg-disabled'],
   ['darkCommon', 'placeholderColor', '--fg-placeholder'],
   ['darkCommon', 'scrollbarColor', '--scrollbar-thumb'],
   ['darkCommon', 'scrollbarColorHover', '--scrollbar-thumb-hover'],
@@ -822,7 +854,7 @@ export const NAIVE_TOKEN_MAP = [
   ['lightCommon', 'tableColorStriped', '--wa-15'],
   ['lightCommon', 'tagColor', '--wa-60'],
   ['lightCommon', 'textColorBase', '--app-text'],
-  ['lightCommon', 'textColorDisabled', '--wa-300'],
+  ['lightCommon', 'textColorDisabled', '--fg-disabled'],
   ['lightCommon', 'placeholderColor', '--fg-placeholder'],
   ['lightCommon', 'scrollbarColor', '--scrollbar-thumb'],
   ['lightCommon', 'scrollbarColorHover', '--scrollbar-thumb-hover'],
@@ -862,10 +894,79 @@ export const CONTRAST_EXTRA_PAIRS = [
   // Naive Tooltip 与自绘 SVG tooltip（.hover-card / .bar-tip / .chart-tooltip-box）共用这套值，
   // 任一侧在亮色模式下穿帮都会直接表现为「提示框里的字看不见」
   { label: 'tooltip', fg: '--app-tooltip-text', bg: '--app-tooltip-bg', min: 4.5 },
-  // 占位符不承载实质信息，门槛放宽（WCAG 对 placeholder 也没有 4.5 的硬性要求）。
-  // 用语义别名而非固定档位：明暗两侧需要不同墨色才都能过 3:1。
-  { label: 'placeholder', fg: '--fg-placeholder', bg: '--app-panel', min: 3 },
 ]
+
+/**
+ * 输入框墨色（判据 13 input-contrast）的断言表。
+ *
+ * 为什么必须单列（2026-10-12 用户报「有些输入框都看不清字了」）：
+ * 判据 5 的背景**固定取 --app-panel/--app-bg**，而输入框有自己的表面
+ * （`inputColor` / `inputColorDisabled` 叠在页面底上，见 App.vue 的 darkCommon/lightCommon）
+ * ⇒ 与判据 9（自绘场景）、判据 11（自带底色贴片）**同一类结构盲区**：假设背景唯一。
+ * 实测（CDP 读回真实叠层）：`--wa-300` 当禁用墨时，输入框内只有 **2.67（暗）/ 1.89（亮）**，
+ * 而判据 5 只验「--wa-300 vs --app-panel」= 2.69 却**从不断言**（它不在 CONTRAST_TEXT_PAIRS 里）
+ * ⇒ 12 条判据**全绿**而输入框不可读。占位符同理（3.40 暗 / 3.07 亮）。
+ *
+ * 表面口径 = 每个主题下 **enabled / disabled × over-card / over-page / over-tinted-row** 六种组合
+ * （真实页面里输入框既可能坐在卡片上、也可能坐在裸页上、还可能坐在**行贴片**上——
+ *  如 `.util-row` 的 `--wa-35`，实测底 rgb(44,51,68)；取六者最差）。
+ * ⚠ 门槛用正文 4.5：输入框里的**值**是正文，不是装饰。占位符按 WCAG 本可放宽，
+ *   但实测它在六表面上与值墨同档即可达标 ⇒ 同用 4.5，省掉一个"可以更糊"的口子。
+ * ⚠ 「行贴片」这一层是**实测发现**的（首版只建模 card/page 两层，判据绿而
+ *   ResourceUtilizationPage 的「不封顶」实测 4.43）⇒ 建模必须覆盖**真实观测到的**层数，
+ *   否则又是"判据全绿但页面读不出"。
+ */
+export const INPUT_INK_PAIRS = [
+  { label: '--fg-placeholder', role: '占位符' },
+  { label: '--fg-disabled', role: '禁用值' },
+]
+
+/**
+ * 输入框可能坐在其上的**行贴片**底（按主题给 α 与压底方式）。
+ * 为什么是 `--wa-35`：实测命中的是 `.util-row { background: var(--wa-35) }`
+ * （ResourceUtilizationPage），压在卡片上；这是当前仓库里输入框所在的最深一层贴片。
+ */
+export const INPUT_ROW_TINT = { dark: 0.035, light: 0.035 }
+
+/**
+ * 描边光晕（`paint-order: stroke` 的 stroke）判据 —— **第四类「背景唯一」盲区**。
+ *
+ * 为什么必须单列（2026-10-12 用户报「限定S首次UP·版本直伤系数图在明亮主题下字体糊成一团」）：
+ * 前面所有判据（5/9/11/13）断言的都是「**墨 vs 底**」。而描边光晕是**墨 vs 墨**——
+ * 它要挡的是标签背后的**图形**，所以必须与**字形本身**形成对比。
+ * 实测 `.dd-label`：fill = `--wa-820`（**跟随主题**，亮色档压成深墨），
+ * stroke 却写死近黑 `rgba(10,10,14,.85)` ⇒ 亮色档「深墨字 + 深墨晕」，
+ * **字形整个溶进光晕**（实测 fill-vs-stroke 仅 **1.35:1**，而暗色档 13.42:1）。
+ * ⚠ 而当时**全部 12 条判据全绿**：把 fill 单独拿去比卡片底是 9.89:1（超达标）
+ * —— 判据结构上看不见「光晕」这一层。这是与判据 9/11/13 同源的第四类盲区。
+ *
+ * 门槛取 3.0（图表门槛，与 CONTRAST_CHART_MIN 同源）：光晕是**图形**不是正文，
+ * 它只需把字形轮廓与背景图形分开（WCAG 对 non-text contrast 亦为 3:1）。
+ */
+export const HALO_MIN = 3.0
+
+/**
+ * 光晕判据的**豁免表**（键 = `file::selector`）。
+ *
+ * ⚠ **当前为空**，且这不是疏漏——是实测后**故意**的结论（2026-10-12）：
+ * 唯一看似需要豁免的 `.strength-label`（fill 是内联数据色 `PALETTE` + 写死黑晕，
+ * 「描边字」套路，那个深晕正是它的可读性来源）**对两条判据都不承重**：
+ *   · 判据 14 要求规则里**有 `fill` 声明**才比较 ⇒ 它的 fill 是内联给的，天然跳过（不误报）；
+ *   · 判据 15 只在 stroke **与某主题令牌逐位同值**时报错 ⇒ `rgba(0,0,0,.55)`
+ *     不等于任何令牌的值（实测），天然放过。
+ * ⇒ 给它登记豁免 = **死条目**（永不命中的豁免），正是本仓明令要防的「豁免腐烂」，
+ *   也会让「豁免仍有效」测试变成一道假绿灯。故**不登记**，改用**规则作用域**表达：
+ *   「有 fill 才比较」「与令牌同值才报错」这两条前提本身就精确地放过了数据色场景。
+ * ⚠ 若将来有人给 `.strength-label` **补一条 fill 声明**（或把晕改成某个令牌的值），
+ *   它会立刻进入判据视野 —— 那时**才**该按实际情况决定是改样式还是登记豁免。
+ *
+ * 用法（登记时的**硬性纪律**，由 checkTokens.test.ts 的「豁免仍有效」用例机器校验）：
+ *   ① 键里的 file 必须是**扫描面里的路径**（`.vue` 或 `src/styles/` 下的 css；
+ *      被 `<style src>` 引进来的 `views/<sub>/x.css` **自己不在扫描面**，键要写宿主 .vue）；
+ *   ② 该选择器在该文件里必须真实存在；③ 必须仍是一条 `paint-order: stroke` 规则；
+ *   ④ 其 stroke 必须仍是**字面量**（改成 var() 后豁免就该删）。
+ */
+export const HALO_LITERAL_ALLOW_SET = new Map()
 
 /**
  * 形状面（tinted-ink-closure）的**唯一豁免表**（键 = `file::selector`）。
@@ -1320,6 +1421,18 @@ export function runAllChecks(root = ROOT) {
   /** 该声明值里的**色值字面量**（hex / rgb[a]），用于形状面与"同值令牌"提示 */
   const colorLiterals = (value) =>
     [...value.matchAll(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g)].map(m => m[0])
+  /**
+   * 取一个扫描面文件的**样式正文**。
+   * ⚠ 独立 `.css` 文件没有 `<style>` 包裹 ⇒ 直接 `extractStyleBlocks` 会得到 **0 个块**
+   * （静默失明，与 scanVueFiles 头注释里那条「搬出 .vue 就三份计数一起消失」同型）。
+   * 判据 14 首版就踩了这个坑：它的第一条命中本该落在 `views/timeCharts/TimeChartsPage.css`
+   * （`.strength-label`），却因为读不到正文而完全不参与 —— 豁免表测试随即报「选择器不存在」。
+   */
+  const cssTextOf = (path) => {
+    const src = readFileSync(join(root, path), 'utf8')
+    if (path.endsWith('.css')) return stripComments(src)
+    return extractStyleBlocks(src, { root, filePath: path }).map(b => b.content).join('\n')
+  }
   /** 累加各主题下的最差对比度命中 */
   const checkTinted = (tokens, label, hits) => {
     const pageBg = resolveTokenColor(tokens, '--app-bg', null) ?? { r: 255, g: 255, b: 255, a: 1 }
@@ -1472,6 +1585,164 @@ export function runAllChecks(root = ROOT) {
     name: `tinted-ink-closure (贴片不得手抄主题令牌值: 抄了就冻在单主题)`,
     ok: tintedClosure.length === 0,
     detail: tintedClosure,
+  })
+
+  // ---- 13. input-contrast（输入框有自己的表面）----
+  // 为什么必须单列（2026-10-12 用户报「有些输入框都看不清字了」）：
+  // 判据 5 的背景**固定取 --app-panel/--app-bg**，而输入框**自带表面**——`inputColor` /
+  // `inputColorDisabled` 在页面底上又叠了一层（App.vue 的 darkCommon/lightCommon）。
+  // ⇒ 与判据 9（自绘场景）、判据 11（贴片）**同一类结构盲区**：都假设「背景唯一」。
+  // 实测（CDP 读回真实叠层）：--wa-300 当禁用墨时输入框内只有 **2.67（暗）/ 1.89（亮）**；
+  // 占位符 3.40 / 3.07 —— 而 **12 条判据全绿**（--wa-300 根本不在被断言的清单里，
+  // 占位符那条又只按 --app-panel 算、门槛还放宽到 3）。
+  // 算法：按每个主题的 **enabled/disabled × over-card/over-page** 四种真实组合取最差。
+  // ⚠ 表面色从 NAIVE_TOKEN_MAP 取（不另读 App.vue）——单一事实源，判据 8 已保证它与令牌同值。
+  const inputDetail = []
+  const inputSurfaceOf = (tokens, block, key, under) => {
+    const entry = NAIVE_TOKEN_MAP.find(([b, k]) => b === block && k === key)
+    if (!entry) return null
+    const raw = resolveTokenColor(tokens, entry[2], null)
+    if (!raw) return null
+    return raw.a < 1 ? flatten(raw, under) : raw
+  }
+  const checkInputs = (tokens, label, block) => {
+    const pageBg = resolveTokenColor(tokens, '--app-bg', null) ?? { r: 255, g: 255, b: 255, a: 1 }
+    const panel = resolveTokenColor(tokens, '--app-panel', pageBg) ?? pageBg
+    // 行贴片：把 --wa-35 那一档压到卡片上（暗=白α / 亮=墨α，与主题墨一致）
+    const tint = INPUT_ROW_TINT[label]
+    const tintInk = label === 'dark' ? { r: 255, g: 255, b: 255 } : { r: 23, g: 26, b: 31 }
+    const row = flatten({ ...tintInk, a: tint }, panel)
+    const surfaces = []
+    for (const [key, tag] of [['inputColor', 'enabled'], ['inputColorDisabled', 'disabled']]) {
+      for (const [under, where] of [[panel, 'over-card'], [pageBg, 'over-page'], [row, 'over-row']]) {
+        const bg = inputSurfaceOf(tokens, block, key, under)
+        if (!bg) { inputDetail.push(`  ✗ [${label}] 无法解析 ${block}.${key} 对应的令牌`); continue }
+        surfaces.push({ name: `${tag}/${where}`, bg })
+      }
+    }
+    for (const s of surfaces) {
+      for (const p of INPUT_INK_PAIRS) {
+        if (!tokens.has(p.label)) continue
+        const fgRaw = resolveTokenColor(tokens, p.label, null)
+        if (!fgRaw) { inputDetail.push(`  ✗ [${label}] 无法解析 ${p.label}`); continue }
+        const fg = fgRaw.a < 1 ? flatten(fgRaw, s.bg) : fgRaw
+        const ratio = contrastRatio(fg, s.bg)
+        if (ratio < CONTRAST_TEXT_MIN) {
+          inputDetail.push(
+            `  ✗ [${label}] 输入框(${s.name}) ${p.role} ${p.label} = ${ratio.toFixed(2)}:1 < ${CONTRAST_TEXT_MIN}`
+            + ` → 输入框墨要按**输入框自己的表面**选（不是页面底）：见 global.css 的 --fg-disabled 注释`,
+          )
+        }
+      }
+    }
+  }
+  checkInputs(darkTokens, 'dark', 'darkCommon')
+  checkInputs(lightTokens, 'light', 'lightCommon')
+  results.push({
+    name: `input-contrast (输入框自带表面的墨: 占位符/禁用值 ≥${CONTRAST_TEXT_MIN})`,
+    ok: inputDetail.length === 0,
+    detail: inputDetail,
+  })
+
+  // ---- 14. halo-contrast（描边光晕：墨坐在墨上）----
+  // 为什么必须单列（2026-10-12）：判据 5/9/11/13 断言的都是「墨 vs 底」，
+  // 而 `paint-order: stroke` 的光晕是**与字形相邻的墨**——它只需与**字形**分离。
+  // 实测 `.dd-label`：fill 跟随主题（亮色档=深墨）、stroke 写死近黑 ⇒ 亮色档
+  // fill-vs-stroke **1.35:1**（字形溶进光晕），而 fill 单独看 vs 白卡 9.89:1 **超达标**
+  // ⇒ 所有旧判据全绿。这是第四类「背景唯一」盲区：**漏掉了"光晕"这层**。
+  // 算法：对每条含 `paint-order: stroke` 的规则的 fill/stroke 求对比（两侧各算一遍，
+  // 因为 fill 可能内联给），fill 解析不到时跳过（数据色内联，由形状面兜）。
+  const haloDetail = []
+  const checkHalo = (tokens, label) => {
+    const pageBg = resolveTokenColor(tokens, '--app-bg', null) ?? { r: 255, g: 255, b: 255, a: 1 }
+    const panel = resolveTokenColor(tokens, '--app-panel', pageBg) ?? pageBg
+    for (const f of scanned) {
+      if (STYLE_SHEET_EXCLUDED.includes(f.path)) continue
+      let cssText
+      try { cssText = cssTextOf(f.path) } catch { continue }
+      for (const m of cssText.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        const selector = m[1].trim().split('\n').pop().trim()
+        const body = m[2]
+        if (!/paint-order\s*:\s*stroke/.test(body)) continue
+        if (HALO_LITERAL_ALLOW_SET.has(`${f.path}::${selector}`)) continue
+        const strokeM = body.match(/(?:^|;)\s*stroke\s*:\s*([^;]+)/)
+        if (!strokeM) continue // 没写 stroke ⇒ 无光晕（如只声明了 paint-order）
+        const strokeRaw = resolveCssValue(tokens, strokeM[1].trim(), panel)[0]
+        if (!strokeRaw) continue
+        const fillM = body.match(/(?:^|;)\s*fill\s*:\s*([^;]+)/)
+        if (!fillM) continue // fill 由内联/继承给（数据色）⇒ 由形状面 halo-ink-closure 管
+        const fillRaw = resolveCssValue(tokens, fillM[1].trim(), panel)[0]
+        if (!fillRaw) continue
+        const ratio = contrastRatio(fillRaw, strokeRaw)
+        if (ratio < HALO_MIN) {
+          haloDetail.push(
+            `  ✗ [${label}] ${f.path} 「${selector}」字形 fill ${fillM[1].trim()} vs 光晕 stroke ${strokeM[1].trim()} = ${ratio.toFixed(2)}:1 < ${HALO_MIN}`
+            + ` → 光晕是**与字形相邻的墨**：fill 跟随主题时光晕必须**成对跟随**（见 global.css 的 --chart-halo 注释）`,
+          )
+        }
+      }
+    }
+  }
+  checkHalo(darkTokens, 'dark')
+  checkHalo(lightTokens, 'light')
+  results.push({
+    name: `halo-contrast (描边光晕必须与字形分离: fill vs stroke ≥${HALO_MIN})`,
+    ok: haloDetail.length === 0,
+    detail: haloDetail,
+  })
+
+  // ---- 15. halo-ink-closure（**形状面**，与判据 14 成对）----
+  // 为什么判据 14 不够：它只在**能解析出 fill** 时报错；fill 由内联数据色给时它跳过
+  // （不跳过就是假红）。于是「光晕写死字面量」这件事本身它看不见 ——
+  // 而这正是「亮色档会不会失效」的**可证明根因**：
+  // 写死 = 该规则不跟随主题；fill 若跟随主题 ⇒ 亮色档必然同向塌陷。
+  // ⇒ 本判据钉**结构**：光晕规则里不得出现**手抄主题令牌值**的字面量（豁免表除外）。
+  const haloClosure = []
+  /**
+   * 主题相关令牌：双主题值**不同** ⇒ 抄成字面量就会冻在单主题。值 → 令牌名。
+   * ⚠ 这里**不套 `--(c-|app-|scene-)` 前缀**（判据 12 那套）：光晕令牌是 `--chart-halo`，
+   * 前缀是 `--chart-`（`--c-` 匹配不到 `--chart`）——套前缀会让本条**对刚修的那个令牌失明**，
+   * 实测：注入「写死 = --chart-halo 的暗色值」时判据 14 红而本条绿 ⇒ 形状面形同虚设。
+   * 光晕本就与 fill 成对，凡是「双主题不同值」的令牌都是它的合法来源，无需按前缀收窄。
+   */
+  const themeDependentByValueHalo = new Map()
+  for (const [k, v] of darkTokens) {
+    if (lightTokens.has(k) && sameValue(v, lightTokens.get(k))) continue
+    const c = parseColor(v)
+    if (c && !themeDependentByValueHalo.has(`${c.r},${c.g},${c.b},${c.a.toFixed(4)}`)) {
+      themeDependentByValueHalo.set(`${c.r},${c.g},${c.b},${c.a.toFixed(4)}`, k)
+    }
+  }
+  for (const f of scanned) {
+    if (STYLE_SHEET_EXCLUDED.includes(f.path)) continue
+    let cssText
+    try { cssText = cssTextOf(f.path) } catch { continue }
+    for (const m of cssText.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const selector = m[1].trim().split('\n').pop().trim()
+      const body = m[2]
+      if (!/paint-order\s*:\s*stroke/.test(body)) continue
+      if (HALO_LITERAL_ALLOW_SET.has(`${f.path}::${selector}`)) continue
+      const strokeM = body.match(/(?:^|;)\s*stroke\s*:\s*([^;]+)/)
+      if (!strokeM) continue
+      const sv = strokeM[1].trim()
+      if (/^var\(/.test(sv)) continue // 走令牌 = 正确写法
+      for (const lit of colorLiterals(sv)) {
+        const c = parseColor(lit)
+        if (!c) continue
+        const tok = themeDependentByValueHalo.get(`${c.r},${c.g},${c.b},${c.a.toFixed(4)}`)
+        if (tok) {
+          haloClosure.push(
+            `  ✗ ${f.path} 「${selector}」的光晕 stroke ${lit} 与主题令牌 ${tok} **逐位同值**`
+            + ` → 抄成字面量后该规则不跟随主题（fill 跟随 ⇒ 亮色档会塌回去）；直接写 var(${tok})`,
+          )
+        }
+      }
+    }
+  }
+  results.push({
+    name: `halo-ink-closure (光晕不得手抄主题令牌值: 抄了就冻在单主题)`,
+    ok: haloClosure.length === 0,
+    detail: haloClosure,
   })
 
   return { results, ok: results.every(r => r.ok), stats: { scanned, varTotal, waRefs, darkTokens, lightTokens } }

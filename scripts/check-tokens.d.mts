@@ -82,6 +82,26 @@ export declare const CONTRAST_CHART_MIN: number
 export interface ContrastExtraPair { label: string; fg: string; bg: string; min: number }
 export declare const CONTRAST_EXTRA_PAIRS: ContrastExtraPair[]
 
+// input-contrast 判据（输入框自带表面上的墨：占位符 / 禁用值）
+export interface InputInkPair { label: string; role: string }
+export declare const INPUT_INK_PAIRS: InputInkPair[]
+/**
+ * 输入框可能坐在其上的**行贴片**底（按主题给 α）：`.util-row` 的 `--wa-35`。
+ * 判据 13 用它构造第三种表面（card / page / row），取三者最差。
+ */
+export declare const INPUT_ROW_TINT: Record<string, number>
+
+// halo-contrast 判据（描边光晕：`paint-order: stroke` 的 stroke 必须与字形分离）
+export declare const HALO_MIN: number
+/**
+ * 光晕判据的豁免表，键 = `file::selector`。**当前为空，且是实测后的故意结论**：
+ * 唯一看似需要豁免的 `.strength-label`（fill 是内联数据色 ⇒ 深晕是「描边字」的
+ * 可读性来源）对两条判据都不承重（判据 14 要规则里有 fill 才比较、
+ * 判据 15 要与主题令牌逐位同值才报）⇒ 登记它 = 永不命中的死条目。
+ * 详见 check-tokens.mjs 处注释与 checkTokens.test.ts 的「作用域精确」用例。
+ */
+export declare const HALO_LITERAL_ALLOW_SET: Map<string, string>
+
 // naive-token-reuse 判据（App.vue 表面色 ↔ global.css 令牌）
 export declare const NAIVE_TOKEN_MAP: ReadonlyArray<[string, string, string]>
 

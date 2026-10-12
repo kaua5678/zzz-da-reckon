@@ -14,6 +14,7 @@ import {
   CONTRAST_EXTRA_PAIRS,
   NAIVE_TOKEN_MAP,
   FONT_SCALE,
+  HALO_LITERAL_ALLOW_SET,
   HARDCODED_WHITELIST,
   WA_REF_BASELINE,
   contrastRatio,
@@ -393,14 +394,15 @@ describe('scanComposableFiles（口径：把 composables 的 .ts 纳入 var() �
 })
 
 describe('仓库级自洽（真实扫描）', () => {
-  it('十二条判据全绿（tokens-defined / theme-parity / 硬编码棘轮 / 字号棘轮 / 对比度 / 别名棘轮 / 字体栈一致 / naive-token-reuse / scene-contrast / scene-ink-closure / tinted-contrast / tinted-ink-closure）', () => {
+  it('十五条判据全绿（tokens-defined / theme-parity / 硬编码棘轮 / 字号棘轮 / 对比度 / 别名棘轮 / 字体栈一致 / naive-token-reuse / scene-contrast / scene-ink-closure / tinted-contrast / tinted-ink-closure / input-contrast / halo-contrast / halo-ink-closure）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
     // ⚠ 这条计数是**有意**钉死的：加判据必须同步改这里，逼一次「新判据是否真有断言」的复核
     // （只看 ok 的话，一个恒真的空判据也能混进来）。历史：8 → 10（round 31 加两条 3D 场景判据）
-    // → 12（round 31-a2 加两条贴片墨判据）。
-    expect(results).toHaveLength(12)
+    // → 12（round 31-a2 加两条贴片墨判据）→ 13（2026-10-12 加 input-contrast）
+    // → 15（2026-10-12 加 halo-contrast + halo-ink-closure，修直伤系数图亮色档糊）。
+    expect(results).toHaveLength(15)
   })
 
   it('★ 场景判据成对存在（行为面 scene-contrast + 形状面 scene-ink-closure）', () => {
@@ -419,6 +421,70 @@ describe('仓库级自洽（真实扫描）', () => {
     const names = runAllChecks().results.map(r => r.name).join('\n')
     expect(names).toContain('tinted-contrast')
     expect(names).toContain('tinted-ink-closure')
+  })
+
+  it('★ 光晕判据成对存在（行为面 halo-contrast + 形状面 halo-ink-closure）', () => {
+    // 与 3D 场景 / 贴片墨那两组同构（2026-10-12）。两面缺一不可，实测两条独立注入：
+    //   注入①「亮色档 --chart-halo 也写成深色」⇒ 行为面**红**（1.35:1）、形状面绿
+    //     （引用名没变，仍是 var()）⇒ 行为面必要。
+    //   注入②「stroke 写死成与 :root --chart-halo 逐位同值的字面量」⇒ 两面**都**红；
+    //     ⚠ 首版形状面**漏了这一条**（前缀正则 `--(c-|app-|scene-)` 匹配不到 `--chart-`
+    //     开头的令牌）⇒ 那条注入下判据 14 红而判据 15 绿，形状面形同虚设。已修。
+    const names = runAllChecks().results.map(r => r.name).join('\n')
+    expect(names).toContain('halo-contrast')
+    expect(names).toContain('halo-ink-closure')
+  })
+
+  it('★ 光晕判据真的会红（防「恒真判据」：亮色档用深晕必须报错）', () => {
+    // 为什么单列：判据 14/15 是**新加的**。用**修复前的真实值**做反证：
+    // 修复前 --chart-halo 不存在，.dd-label 的 stroke 恒为 rgba(10,10,14,.85)，
+    // 而 fill 是跟随主题的 --wa-820 ⇒ 亮色档「深墨字 + 深墨晕」实测 1.35:1。
+    // 手法 = 拿真实令牌表算出两侧颜色，按判据的算法（fill vs stroke）复算。
+    const css = readFileSync(join(ROOT, 'src/styles/global.css'), 'utf8')
+    const { root, light } = parseGlobalTokens(css)
+    const haloOf = (tokens: Map<string, string>) => resolveTokenColor(tokens, '--chart-halo', null)!
+    // 修复前的字面量晕（暗色档值，被亮色档误用）
+    const legacyHalo = { r: 10, g: 10, b: 14, a: 0.85 }
+    // 亮色档：fill = --wa-820（深墨）+ 旧字面量晕 ⇒ 必须 < 3
+    const lightFill = resolveTokenColor(light, '--wa-820', null)!
+    expect(contrastRatio(lightFill, legacyHalo)).toBeLessThan(3)
+    // 修复后：亮色档 --chart-halo 是白晕 ⇒ 必须 ≥ 3（否则本判据自己就是红的）
+    expect(contrastRatio(lightFill, haloOf(light))).toBeGreaterThanOrEqual(3)
+    // 暗色档：fill = 浅墨 + 深晕，两侧都过（夜间**逐位不变**的保证）
+    const darkFill = resolveTokenColor(root, '--wa-820', null)!
+    expect(contrastRatio(darkFill, legacyHalo)).toBeGreaterThanOrEqual(3)
+    expect(contrastRatio(darkFill, haloOf(root))).toBeGreaterThanOrEqual(3)
+    // 行为面当前必须绿
+    const now = runAllChecks().results.find(r => r.name.includes('halo-contrast'))
+    expect(now, '判据 14 halo-contrast 不在结果里').toBeDefined()
+    expect(now!.ok).toBe(true)
+  })
+
+  it('★ 输入框判据真的会红（防「恒真判据」：把修复前的值灌回去必须报错）', () => {
+    // 为什么单列：判据 13 是**新加的**，而"恒真的空判据"是本仓库明令要防的东西
+    // （见上面计数那条注释）。这里用**修复前的真实值**做一次反证：
+    //   修复前 --fg-disabled = --wa-300 / --fg-placeholder = --wa-400（暗）·--wa-480（亮）
+    //   实测输入框内 2.67（暗）/ 1.89（亮），而当时 12 条判据全绿 ⇒ 必须能被本条抓住。
+    // 手法 = 直接调判据的实现路径：拿真实令牌表，把这两个令牌替换成旧值，再算一遍。
+    const css = readFileSync(join(ROOT, 'src/styles/global.css'), 'utf8')
+    const { root, light } = parseGlobalTokens(css)
+    const checkOne = (tokens: Map<string, string>, label: string, block: string, oldAlpha: number) => {
+      const entry = NAIVE_TOKEN_MAP.find(([b, k]) => b === block && k === 'inputColorDisabled')!
+      const pageBg = resolveTokenColor(tokens, '--app-bg', null)!
+      const panel = resolveTokenColor(tokens, '--app-panel', pageBg) ?? pageBg
+      const raw = resolveTokenColor(tokens, entry[2], null)!
+      const bg = raw.a < 1 ? flatten(raw, panel) : raw
+      const ink = label === 'dark' ? { r: 255, g: 255, b: 255 } : { r: 23, g: 26, b: 31 }
+      const fg = flatten({ ...ink, a: oldAlpha }, bg)
+      return contrastRatio(fg, bg)
+    }
+    // 旧值：暗 0.3 / 亮 0.3（都取 --wa-300 当禁用墨）
+    expect(checkOne(root, 'dark', 'darkCommon', 0.3)).toBeLessThan(4.5)
+    expect(checkOne(light, 'light', 'lightCommon', 0.3)).toBeLessThan(4.5)
+    // 现值必须过（否则本判据自己就是红的）
+    const now = runAllChecks().results.find(r => r.name.includes('input-contrast'))
+    expect(now, '判据 13 input-contrast 不在结果里').toBeDefined()
+    expect(now!.ok).toBe(true)
   })
 
   it('--wa-* 引用数不超过冻结基线（别名层推进方向）', () => {
@@ -450,6 +516,41 @@ describe('仓库级自洽（真实扫描）', () => {
       expect(/#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(rule?.[2] ?? ''), `豁免已无用：${key} 已不含字面量，删除豁免`).toBe(true)
       expect(reason.length).toBeGreaterThan(0)
     }
+  })
+
+  it('★ 光晕判据的作用域精确（数据色场景靠**规则前提**放过，不靠豁免）', () => {
+    // 为什么单列（2026-10-12 实测结论）：`.strength-label` 看起来需要豁免（fill 是内联数据色
+    // PALETTE + 写死黑晕），但**它对两条判据都不承重**：
+    //   · 判据 14 要求规则里**有 fill 声明**才比较 ⇒ 它的 fill 内联给，天然跳过（不误报）；
+    //   · 判据 15 只在 stroke **与某主题令牌逐位同值**时报错 ⇒ rgba(0,0,0,.55) 不等于任何令牌。
+    // ⇒ 给它登记豁免 = **死条目**（永不命中），正是本仓明令要防的「豁免腐烂」。
+    // 本用例把这个结论钉死：豁免表**必须为空**，且上述两条前提**必须仍然成立**
+    // （否则说明规则前提松了、数据色场景会开始被误报，那时才该登记豁免）。
+    expect(HALO_LITERAL_ALLOW_SET.size, '豁免表应为空（见 check-tokens.mjs 的说明）').toBe(0)
+
+    // 前提①：.strength-label 仍然**没有** fill 声明（⇒ 判据 14 跳过它）
+    const src = readFileSync(join(ROOT, 'src/views/TimeChartsPage.vue'), 'utf8')
+    const cssText = extractStyleBlocks(src, { root: ROOT, filePath: 'src/views/TimeChartsPage.vue' })
+      .map(b => b.content).join('\n')
+    const lastLine = (s: string) => s.trim().split('\n').pop() ?? ''
+    const rule = [...cssText.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .find(m => lastLine(m[1]) === '.strength-label')
+    expect(rule, '.strength-label 规则不存在（改名？那本用例要跟着改）').toBeDefined()
+    expect(/paint-order\s*:\s*stroke/.test(rule?.[2] ?? ''), '.strength-label 不再是光晕规则').toBe(true)
+    expect(/(?:^|;)\s*fill\s*:/.test(rule?.[2] ?? ''),
+      '.strength-label 新增了 fill 声明 ⇒ 它将进入判据 14 视野，请复核是否该登记豁免').toBe(false)
+
+    // 前提②：它的 stroke 字面量与任何「双主题不同值」的令牌都不同值（⇒ 判据 15 放过它）
+    const { root: dark, light } = parseGlobalTokens(readFileSync(join(ROOT, 'src/styles/global.css'), 'utf8'))
+    const strokeM = (rule?.[2] ?? '').match(/(?:^|;)\s*stroke\s*:\s*([^;]+)/)
+    expect(strokeM, '.strength-label 没有 stroke').toBeTruthy()
+    const lit = (strokeM?.[1] ?? '').trim()
+    let sameTok: string | null = null
+    for (const [k, v] of dark) {
+      if (light.has(k) && sameValue(v, light.get(k)!)) continue
+      if (sameValue(v, lit)) { sameTok = k; break }
+    }
+    expect(sameTok, `.strength-label 的 stroke ${lit} 与主题令牌 ${sameTok} 同值 ⇒ 判据 15 会报它，请复核豁免`).toBeNull()
   })
 })
 
