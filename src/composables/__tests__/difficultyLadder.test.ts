@@ -341,6 +341,44 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     for (const name of seq) expect(['baseline', 'progress', 'max']).toContain(name)
   }, 300_000)
 
+  it('★ 回归：② 缺失时 ③ 必须把**交互步**算作候选（否则非轴队塌成 2 点）', async () => {
+    // ## 修的是什么（2026-10-12 实测定位的真缺陷）
+    //
+    // ② 的第一步会**无条件**施加 joint（交互取最优）。② 缺失时旧实现把 ③ 的基准点设成
+    // 「joint + 吸收 0」⇒ **joint 那一步的跃迁被基准点预先吃掉**，③ 只剩吸收率可动 ⇒ 永远找不到
+    // 跃迁 ⇒ 非轴队塌成 2 点（①④）。
+    //
+    // 实测归因（`.zc/perf/T140cGap.perf.ts`，38 支 2 点队抽 12 支）：
+    // **S1 交互步带跃迁 11 队 / S2 吸收步带跃迁 0 队**；而 34/38 队在 ①→④ 之间确实有跃迁
+    // （`.zc/perf/T140cWhy2.perf.ts`）⇒ 这些队的 ③ 本该存在。
+    //
+    // 反证（负控）：把 `preJoint` 那段候选判定删掉 ⇒ 本用例的点位断言红（退回 ①④）。
+    const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    // 夹具 = `auto-1511-1561-1581`：实测 2 点队中「S1 交互步」跃迁最丰富的一支
+    // （大招 +1 / 异常触发 +3 / 乱流 +2，伤害 +8.81M）
+    const p = teamPresets.find(x => x.id === 'auto-1511-1561-1581')!
+    const r = climbDifficultyLadder({ config, calc, absorbCap: DEFAULT_COMBO_ALIGN_ABSORB_RATIO }, p.team as [string, string, string], {
+      capture: c => ({
+        counts: captureKeyCounts(c.calc), dmgBySource: captureDmgBySource(c.calc),
+        overflow: c.calc.resourceResult.value?.overflowSeconds ?? 0,
+      }),
+    })
+    // ① 该队非轴（② 如实缺失）
+    expect(r.axisPointMissing, '前提：该队非轴 ⇒ ② 缺失').toBe(true)
+    expect(r.points.map(x => x.point)).not.toContain('axis')
+    // ② ③ **必须存在**（交互步带跃迁）——这是本用例的核心判据
+    const prog = r.points.find(x => x.point === 'progress')
+    expect(prog, '② 缺失时 ③ 必须由**交互步**候选长出来（不得塌成 2 点）').toBeTruthy()
+    // ③ ③ 的交互配置是 joint（它描述的就是「交互取最优」这一步）
+    expect(prog!.knobs.interactions).toBe('joint')
+    // ④ 点位次序合法 + ①④ 恒存在
+    expect(r.points.map(x => x.point)).toEqual(['baseline', 'progress', 'max'])
+    // ⑤ ③ 相对 ① 确有增益（否则它不是「重大进步」）
+    expect(prog!.dmg).toBeGreaterThan(r.base)
+  }, 300_000)
+
   it('④ 的天花板 = 用户设置的上限（absorbCap 契约：队间不串味）', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     await catalog.loadBuildRecommendations()

@@ -436,6 +436,18 @@ export function climbDifficultyLadder(
   let progressBase: { st: PointState; counts?: Record<string, number> } | null = null
   /** ③ 的扫描起点吸收率（= 基准点的吸收率） */
   let progressFrom = 0
+  /**
+   * ③ 的**前置候选**：当 ② 缺失时，「① → (joint, 0)」这一步本身就是 ③ 的天然候选
+   * （交互从 `default` 变 `joint` 是一次真实的离散重分配）。
+   *
+   * ⚠ 为什么必须单列（2026-10-12 实测修，缺陷）：② 的第一步会**无条件**施加 joint，
+   * 而 ② 缺失时旧实现把 ③ 的基准点设成「joint + 吸收 0」⇒ **joint 那一步的跃迁被基准点预先吃掉**，
+   * ③ 只剩吸收率可动 ⇒ 永远找不到跃迁 ⇒ 非轴队塌成 2 点。
+   * 实测（`.zc/perf/T140cGap.perf.ts`，38 支 2 点队抽 12 支）：
+   * **S1 交互步带跃迁 11 队 / S2 吸收步带跃迁 0 队**，而其中 34 队在 ①→④ 之间确实有跃迁
+   * （`.zc/perf/T140cWhy2.perf.ts`）⇒ 这些队的 ③ 本该存在。
+   */
+  let preJoint: { st: PointState; counts?: Record<string, number> } | null = null
   {
     // ② 的第一步：交互取最优（守卫在 joint-levers 内部：伤害不降 + 不新增截断 + 吸收量不增）。
     // ⚠ 这一次调用之后，**joint 写下的权重/弹刀/嘲讽取消一直留在现场**，②③④ 都在它之上取值。
@@ -448,6 +460,7 @@ export function climbDifficultyLadder(
      */
     const jointOnly = readState(ctx, { interactions: 'joint', absorb: 0 })
     const jointCounts = capture?.(ctx)?.counts
+    preJoint = { st: jointOnly, counts: jointCounts }
     if (axisStands(jointOnly.axis)) {
       // 交互最优后轴**本就成立** ⇒ ② = (joint, 0)。
       // 用户 §4：合轴「拉满」与「轴成立」冲突时**优先让轴成立** ⇒ 这里不为好看去抬吸收率（0 已经够）。
@@ -469,8 +482,14 @@ export function climbDifficultyLadder(
       points.push(axisPoint)
       progressBase = { st: { dmg: axisPoint.dmg, knobs: axisPoint.knobs, axis: axisPoint.axis }, counts: axisPoint.counts }
     } else {
-      // ② 缺失（非轴队 / 轴在任何难度下都不成立）⇒ ③ 以「joint + 吸收 0」为基准
-      progressBase = { st: jointOnly, counts: jointCounts }
+      /**
+       * ② 缺失（非轴队 / 轴在任何难度下都不成立）⇒ ③ 以 **① 的交互状态**为基准，
+       * 让「交互 → joint」这一步本身成为 ③ 的第一个候选（见 `preJoint` 注释的实测归因）。
+       * 故这里**先把现场还原回 ①**（joint 已被上面的 `applyInteractionKnob` 写进现场）。
+       */
+      restore(ctx, before)
+      const base0 = points[0]!
+      progressBase = { st: readState(ctx, { interactions: 'default', absorb: 0 }), counts: base0.counts }
     }
     /** ③ 的扫描起点吸收率（= 基准点的吸收率；② 存在时就是它的落点） */
     progressFrom = progressBase.st.knobs.absorb
@@ -482,28 +501,43 @@ export function climbDifficultyLadder(
    * （`counts` 里任一项 Δ≥1）。无跃迁 ⇒ 该点**跳过**（如实，不硬造一个平台点）。
    *
    * ⚠ 需要 `opts.capture` 才能判「离散动作增量」；没给 capture 时退化为「只看 Δ伤害 ≥ 门槛」。
-   * ⚠ 现场此刻已是基准点的配置（joint + 基准吸收率）⇒ 循环里**只改吸收率**（成本纪律，见上）。
+   * ⚠ 成本纪律：② 存在时现场已是 ② 的配置 ⇒ 循环里**只改吸收率**；② 缺失时先试**交互步**
+   *   （`preJoint`，那是非轴队唯一真实的离散跃迁来源），再扫吸收率。
    */
   if (progressBase) {
     const baseCounts = progressBase.counts
-    const from = progressFrom
-    scanAbsorbGrid(ctx, cap, from, r => {
-      const st = readState(ctx, { interactions: 'joint', absorb: r })
-      if (st.dmg - progressBase.st.dmg < acceptAt) return false
-      // 「跃迁」= 出现 ≥1 次离散动作增量（用户 §1(2)「重大进步」；口径见 difficultyCurve#diffKeyCounts）
-      const jumped = baseCounts === undefined ? true : (() => {
+    /** 「跃迁」判据：基准点 → 候选点之间出现 ≥1 次离散动作增量（口径见 difficultyCurve#diffKeyCounts） */
+    const jumpedFrom = (from: Record<string, number> | undefined, to: Record<string, number> | undefined): boolean => {
+      if (from === undefined || to === undefined) return true
+      for (const [k, v] of Object.entries(to)) {
+        const prev = from[k]
+        if (prev !== undefined && v - prev >= 1 - 1e-6) return true
+      }
+      return false
+    }
+    // ② 缺失 ⇒ 先试「交互步」（`preJoint`）：它是非轴队 ①→④ 之间唯一带跃迁的候选
+    let landed = false
+    if (!axisPoint && preJoint) {
+      const st = preJoint.st
+      if (st.dmg - progressBase.st.dmg >= acceptAt && jumpedFrom(baseCounts, preJoint.counts)) {
+        // 现场切到 joint（`applyInteractionKnob` 幂等：joint 写下的值再跑一次结果相同）
+        applyInteractionKnob(ctx, 'joint')
+        points.push(land('progress', st))
+        landed = true
+      }
+    }
+    // 未落点 ⇒ 扫吸收率（② 存在时从 ② 的落点起；② 缺失且交互步未落点则从 0 起）
+    if (!landed) {
+      const from = progressFrom
+      scanAbsorbGrid(ctx, cap, from, r => {
+        const st = readState(ctx, { interactions: 'joint', absorb: r })
+        if (st.dmg - progressBase.st.dmg < acceptAt) return false
         const s = capture?.(ctx)
-        if (!s) return true
-        for (const [k, v] of Object.entries(s.counts)) {
-          const prev = baseCounts[k]
-          if (prev !== undefined && v - prev >= 1 - 1e-6) return true
-        }
-        return false
-      })()
-      if (!jumped) return false
-      points.push(land('progress', st)) // 命中即落点
-      return true
-    }, scanSteps)
+        if (!jumpedFrom(baseCounts, s?.counts)) return false
+        points.push(land('progress', st)) // 命中即落点
+        return true
+      }, scanSteps)
+    }
   }
 
   // ===== ④ max（最高）=====
