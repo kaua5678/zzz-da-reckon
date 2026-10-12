@@ -91,8 +91,8 @@ const darkCommon: CommonOverrides = {
   tableColorStriped: 'rgba(255, 255, 255, 0.015)', // --wa-15
   tagColor: 'rgba(255, 255, 255, 0.06)', // --wa-60
   textColorBase: 'rgba(255, 255, 255, 0.9)', // --app-text
-  textColorDisabled: 'rgba(255, 255, 255, 0.3)', // --wa-300
-  placeholderColor: 'rgba(255, 255, 255, 0.4)', // --fg-placeholder（暗底 3.75:1）
+  textColorDisabled: 'rgba(255, 255, 255, 0.52)', // --fg-disabled（输入框底 4.62:1）
+  placeholderColor: 'rgba(255, 255, 255, 0.52)', // --fg-placeholder（输入框底 4.62:1）
   scrollbarColor: 'rgba(148, 163, 184, 0.28)', // --scrollbar-thumb
   scrollbarColorHover: 'rgba(148, 163, 184, 0.42)', // --scrollbar-thumb-hover
   scrollbarBorderRadius: '6px', // --radius-md
@@ -119,8 +119,8 @@ const lightCommon: CommonOverrides = {
   tableColorStriped: 'rgba(23, 26, 31, 0.015)', // --wa-15
   tagColor: 'rgba(23, 26, 31, 0.06)', // --wa-60
   textColorBase: 'rgba(23, 26, 31, 0.9)', // --app-text
-  textColorDisabled: 'rgba(23, 26, 31, 0.3)', // --wa-300
-  placeholderColor: 'rgba(23, 26, 31, 0.48)', // --fg-placeholder（白底 3.15:1，比暗底用更浓的墨）
+  textColorDisabled: 'rgba(23, 26, 31, 0.65)', // --fg-disabled（输入框底 4.90:1）
+  placeholderColor: 'rgba(23, 26, 31, 0.65)', // --fg-placeholder（输入框底 4.90:1）
   scrollbarColor: 'rgba(51, 65, 85, 0.22)', // --scrollbar-thumb
   scrollbarColorHover: 'rgba(51, 65, 85, 0.34)', // --scrollbar-thumb-hover
   scrollbarBorderRadius: '6px', // --radius-md

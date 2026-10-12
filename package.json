@@ -20,6 +20,8 @@
     "specs:bootstrap": "node scripts/bootstrap-specs.mjs",
     "specs:coverage": "node scripts/spec-coverage.mjs",
     "docs:status": "node scripts/generate-implementation-status.mjs",
+    "gen:changelog": "node scripts/gen-changelog.mjs",
+    "changelog:check": "node scripts/gen-changelog.mjs --check",
     "sync:wengine-recs": "node scripts/sync-signature-wengine-recs.mjs",
     "verify:recording": "node scripts/verify-recording.mjs",
     "zc": "node scripts/zc.mjs",

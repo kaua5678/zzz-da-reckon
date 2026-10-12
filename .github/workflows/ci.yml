@@ -18,13 +18,17 @@ jobs:
       #（一条链；类型检查由 build 内的 vue-tsc -b 承担，2026-09-11 起不再单列 typecheck——-b 覆盖 app+node 两个 project）
       - run: npm run verify
 
-  # 文档漂移检查独立成 job：原先它是 verify job 里 `npm run verify` 之后的一个 step，
+  # 生成物与文档漂移检查独立成 job：原先它是 verify job 里 `npm run verify` 之后的一个 step，
   # 于是任何一条测试变红都会连带让文档护栏不再报信（一红全哑——实测发生过：
   # yixuanSmoke 长期红期间，docs:status 漂移检查其实一次都没跑）。拆开后两条护栏互不遮挡。
   docs-drift:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 更新日志由 git 历史生成（scripts/gen-changelog.mjs），**必须取全历史**：
+          # 默认的浅克隆只有 1 个提交，校验会因为「产物引用了不存在的历史」而假红。
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -35,3 +39,6 @@ jobs:
         run: |
           node scripts/generate-implementation-status.mjs
           git diff --exit-code -- docs/implementation-status.md
+      # 更新日志完整性：产物必须是 git 历史的忠实子集、且落后不超过阈值（口径见 gen-changelog.mjs 头注释）
+      - name: Changelog integrity check
+        run: npm run changelog:check

@@ -426,3 +426,63 @@ B/C 类（角色数值调低、机制设置、资源利用率等）留待办，�
 测试：`memoryFile.test.ts`（格式/迁移/幂等/队伍身份）、`configMemory.test.ts`（模式语义/分层/隔离/出厂/往返）。
 ⚠ 改「手关 buff 是否被队伍变化覆盖」这条语义时，必须**同步改写**
 `stores/__tests__/teammateBuffSelection.characterization.test.ts` 的 ★ 断言并注明口径变更（该文件头明令）。
+
+## 11. 更新日志（顶栏图标按钮 → 弹层，2026-10-12 新功能）
+
+入口：**顶栏右侧「报纸」图标**（与「设置」「主题切换」并列）。用户口径（2026-10-12）：
+「写个更新日志展示」+ 选定形态「页头图标按钮 → 弹层」、来源「git 提交自动生成」。
+
+### 11.1 用户操作
+
+- **搜索**：按**摘要 / 类型名 / commit hash** 过滤（hash 大小写不敏感）——常有人拿着一个 commit 号来问「这条是什么」。
+- **筛选**：`功能 / 修复 / 重构 / 文档 / 其他` 贴片，可点两次取消（点选中的那个 = 回到全部）。
+  贴片上的**数字随搜索词变化**（否则会出现「按钮说 333 条、点进去只有 12 条」）。
+- **分组**：按**作者日期**倒序，每天一条日期条 + 当天提交；被筛空的日期**不显示**（不留「0 条」的空日期）。
+- **刷新**：重新拉一次产物（通常不需要——产物随代码一起发布）。
+
+### 11.2 数据管道（唯一事实源 = git 历史）
+
+```bash
+npm run gen:changelog     # node scripts/gen-changelog.mjs —— 重新生成 public/static/changelog.json
+npm run changelog:check   # node scripts/gen-changelog.mjs --check —— CI 完整性校验
+```
+
+| 要改什么 | 改哪里 |
+| --- | --- |
+| 摘要怎么解析（type/scope/未识别怎么办） | `scripts/lib/changelog.mjs#parseCommitSubject`（正则与「大小写敏感」的判据理由在该文件头注释） |
+| 类型 → 中文名 / 分类 / 排序 | `scripts/lib/changelog.mjs#TYPE_META`（**唯一**类型表，UI 的贴片直接读产物里的 `kinds`，不另抄一份） |
+| 哪些提交进日志 | `gen-changelog.mjs` 的 git 参数（现为 `--no-merges`；**保留全部提交含 docs 与任务编号标题**，分类交给 `kind`，不删） |
+| 日期口径 | `%ad --date=short`（**作者**日期）——用 committer 日期会让 rebase/cherry-pick 把一批老提交堆到最新一天（实测 100 条 at≠ct） |
+| UI 文案 / 行高 / 配色 | `src/components/ChangelogDialog.vue`（逻辑在 `src/composables/changelogView.ts`，纯函数有单测） |
+
+### 11.3 口径与坑
+
+- **按需加载**：400 KB / 2460 条的历史数据**不进启动门**（`calculatorStartup` 只加载计算必需依赖），
+  打开弹层才 fetch（`stores/catalog.ts#loadChangelog`）。加载失败**只落在弹层里**，不阻断计算。
+- ⚠ **产物比它自己所在的那次提交落后一代**（源码与产物同提交进来 ⇒ 产物不含「本提交」）⇒
+  `changelog:check` 校验的是**完整性**（产物每条都在 git 里且逐字段相同 + 落后 ≤ `TOLERANCE` 条），
+  **不是**逐字等于刚生成的结果。改回逐字比对会让每次提交后 CI 必红（口径与理由见脚本头注释）。
+- ⚠ **CI 必须 `fetch-depth: 0`**：默认浅克隆只有 1 个提交，校验会因「产物引用了不存在的历史」而假红。
+- ⚠ **标题里的 `NaN` / `Infinity` 在产物侧规范化成「非数 / ∞」**：`ui-check` 的 DOM 体检把页面文本里
+  这两个词判为「未格式化数值」并让实机点通失败（r716 闸门）。闸门**不能放松**（它同时防着真的数值外露），
+  故换的是文本措辞（`sanitizeSummary`）—— 实测本仓库真有两提交标题在讲这两个词。
+- 入口按钮的无障碍名是 `aria-label="更新日志"`：`ui-check` 的 `performClick` 按**可见文本或
+  aria-label/title** 命中，纯图标按钮没有文本节点（该修复先例见 `ui-check-runtime.mjs` 里齿轮「设置」那条注释）。
+
+判据：`src/scripts/__tests__/changelog.test.ts`（解析/分类/规范化，23 条）、
+`src/composables/__tests__/changelogView.test.ts`（筛选/搜索/空日期/计数，16 条）、
+`src/stores/__tests__/changelogLoad.test.ts`（产物契约/store 接线/扫描器，14 条）。
+
+实机点通（本功能已跑过，PASS）：
+
+```bash
+node scripts/ui-check.mjs \
+  --step "click:更新日志" --step "wait:.cl-kind" \
+  --step "realclick:document.querySelector('.cl-search input')" --step "type:般岳" \
+  --step "wait:.cl-entry"
+```
+
+⚠ 两条 `ui-check` 使用注意（实测踩到，不是本功能的缺陷）：① `click:` 只在 `.n-button` 里找，
+而筛选贴片是原生 `<button>`（有意：贴片不是 Naive 按钮）⇒ 点它要用
+`--step "realclick:document.querySelectorAll('.cl-kind')[1]"`；② `type:` 往**当前聚焦元素**输入，
+必须先 realclick 一下搜索框，否则会打进别处。

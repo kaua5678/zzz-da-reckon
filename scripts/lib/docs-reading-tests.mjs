@@ -68,9 +68,22 @@ export const DOCS_READING_MIN_SCANNED = 800
  * ⚠ 2026-10-10 T128 追加 1 条（31 → **32**）：`fieldWriterUniqueness`（判据 30）——它按规则 ② 入选
  * （测试自身写 `scripts/lib/field-writer-uniqueness.mjs` 路径字面量），跑的是仓库级 AST 扫描
  * （读 `src/**` 现状，与 `idLiteralGate` 同族）。加清单条目是本判据规定的动作（checkGuards 的棘轮会红）。
+ *
+ * ⚠ 2026-10-12 更新日志功能追加 3 条（32 → **35**，由本判据派生后按棘轮登记）：
+ * - `changelog.test.ts` / `changelogLoad.test.ts` 按规则 ② 入选（测试自身写
+ *   `scripts/lib/changelog.mjs` / `scripts/lib/json-contract.mjs` 路径字面量）。
+ * - `changelogView.test.ts` 按规则 ① 入选，但这是**已知误报、非真读者**：它的闭包
+ *   （`composables/changelogView.ts` + `types/changelog.ts`）里 `'docs'` 这个信号来自
+ *   **更新日志的分类 id**（kind = `docs`，即「文档」类提交），与 `docs/` 目录无关
+ *   （该测试与它的闭包零 `docs/` 路径引用，实测核过）。
+ *   本判据的口径是**宁多勿漏的并集**，不区分「真读 docs」与「词形撞车」⇒ 按现状登记。
+ *   若将来要让清单更准，正解是收窄信号（区分路径 `docs/` 与裸词 `docs`），
+ *   **不是**手工把这条从派生集里摘掉——清单必须逐字等于派生集（棘轮判据 ①）。
  */
 export const DOCS_READING_TESTS = [
   'src/composables/__tests__/agentColorSingleSource.test.ts',
+  // 2026-10-12 更新日志：规则 ① 入选（闭包里的 `'docs'` 是 kind id 不是 docs/ 路径 ⇒ 已知误报，见文件头注释）
+  'src/composables/__tests__/changelogView.test.ts',
   'src/composables/__tests__/compactedSlotValueBlindSpot.test.ts',
   'src/composables/__tests__/multiplierRecord.test.ts',
   'src/composables/__tests__/outerContinuity.test.ts',
@@ -82,6 +95,8 @@ export const DOCS_READING_TESTS = [
   'src/mechanics/__tests__/specResourceTotalSingleSource.test.ts',
   'src/mechanics/__tests__/specTeamBuffSingleSource.test.ts',
   'src/scripts/__tests__/agentIdentity.test.ts',
+  // 2026-10-12 更新日志：规则 ② 入选（写 scripts/lib/changelog.mjs 路径字面量，读该模块的运行时导出）
+  'src/scripts/__tests__/changelog.test.ts',
   'src/scripts/__tests__/checkGuards.test.ts',
   'src/scripts/__tests__/checkTokens.test.ts',
   'src/scripts/__tests__/compactedSlotIndex.test.ts',
@@ -102,6 +117,8 @@ export const DOCS_READING_TESTS = [
   'src/scripts/__tests__/zcDeadChannels.test.ts',
   'src/scripts/__tests__/zcWhere.test.ts',
   'src/scripts/__tests__/zcWorkspace.test.ts',
+  // 2026-10-12 更新日志：规则 ② 入选（写 scripts/lib/json-contract.mjs 路径字面量，核静态入口登记）
+  'src/stores/__tests__/changelogLoad.test.ts',
 ]
 
 /** 源文件扩展名（闭包扫描面） */

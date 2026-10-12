@@ -5,6 +5,7 @@ import { defineStore } from 'pinia'
 import { ref, shallowRef, computed } from 'vue'
 import type { Catalog, Agent, WEngine, DriveDiscSet, AgentSkills, StatRules, Boss, TeammateBuffGroup, BuildRecommendations, CharacterBuildRecommendation } from '@/types/catalog'
 import type { BossPresetFile } from '@/types/bossPreset'
+import type { ChangelogFile } from '@/types/changelog'
 import type { RunArchiveFile } from '@/composables/runArchiveImport'
 import { getAgentSpecsByAgentId } from '@/specs/registry'
 import { specTeamBuffToTeammateBuff } from '@/specs/teamBuffConvert'
@@ -264,6 +265,31 @@ export const useCatalogStore = defineStore('catalog', () => {
     return bossPresetsPromise
   }
 
+  // 更新日志（changelog.json，由 scripts/gen-changelog.mjs 从 git 历史生成）：同 boss-presets 约定
+  // （浅层、整体赋值、并发去重、失败可重试）。**按需加载**——它是 400 KB / 2460 条的历史数据，
+  // 而用户打开计算器的目的不是读日志 ⇒ 不进启动门（启动只加载计算必需的依赖），
+  // 由 ChangelogDialog 打开时才 fetch（失败也只影响弹层，不阻断计算）。
+  const changelogFile = shallowRef<ChangelogFile | null>(null)
+  let changelogPromise: Promise<ChangelogFile> | null = null
+
+  /** 加载更新日志；失败抛错、不缓存失败（同 loadBossPresets/loadRunArchive）。返回对象只读。 */
+  async function loadChangelog(): Promise<ChangelogFile> {
+    if (changelogFile.value) return changelogFile.value
+    if (changelogPromise) return changelogPromise
+    changelogPromise = Promise.resolve().then(async () => {
+      try {
+        const res = await fetch(withBase('/static/changelog.json'))
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json() as ChangelogFile
+        changelogFile.value = data
+        return data
+      } finally {
+        changelogPromise = null
+      }
+    })
+    return changelogPromise
+  }
+
   /** 加载实战归档；失败抛错、不缓存失败（同 loadBossPresets）。返回对象各页共享，只读。 */
   async function loadRunArchive(): Promise<RunArchiveFile> {
     if (runArchiveFile.value) return runArchiveFile.value
@@ -342,6 +368,8 @@ export const useCatalogStore = defineStore('catalog', () => {
     loadBossPresets,
     runArchiveFile,
     loadRunArchive,
+    changelogFile,
+    loadChangelog,
     getAgent,
     agentName,
     getWEngine,

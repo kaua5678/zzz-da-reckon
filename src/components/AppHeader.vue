@@ -89,6 +89,23 @@
             circle
             size="small"
             class="header-icon-btn"
+            aria-label="更新日志"
+            @click="showChangelog = true"
+          >
+            <template #icon>
+              <n-icon><NewspaperOutline /></n-icon>
+            </template>
+          </n-button>
+        </template>
+        更新日志（从 git 历史自动生成）
+      </n-tooltip>
+      <n-tooltip trigger="hover">
+        <template #trigger>
+          <n-button
+            quaternary
+            circle
+            size="small"
+            class="header-icon-btn"
             aria-label="设置"
             @click="openSettings()"
           >
@@ -122,16 +139,18 @@
     </div>
 
     <SettingsDialog v-model:show="showSettings" />
+    <ChangelogDialog v-model:show="showChangelog" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { NButton, NIcon, NTabs, NTabPane, NTooltip } from 'naive-ui'
-import { MoonOutline, SettingsOutline, SunnyOutline } from '@vicons/ionicons5'
+import { MoonOutline, NewspaperOutline, SettingsOutline, SunnyOutline } from '@vicons/ionicons5'
 import { useUiStore } from '@/stores/ui'
 import { useThemeStore } from '@/stores/theme'
 import SettingsDialog from '@/components/SettingsDialog.vue'
+import ChangelogDialog from '@/components/ChangelogDialog.vue'
 
 const uiStore = useUiStore()
 const themeStore = useThemeStore()
@@ -141,6 +160,9 @@ const showSettings = ref(false)
 function openSettings() {
   showSettings.value = true
 }
+
+/** 更新日志弹层开关（数据按需加载，见 ChangelogDialog 头注释） */
+const showChangelog = ref(false)
 
 const setupTabs = ['team', 'attribute', 'resource']
 const analyzeTabs = ['result', 'resourceUtilization', 'stunAxis', 'timeline']

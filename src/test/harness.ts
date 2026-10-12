@@ -29,6 +29,8 @@ const catalogText = readFileSync(new URL('../../public/static/catalog.json', imp
 const teammateBuffsText = readFileSync(new URL('../../public/static/teammate-buffs.json', import.meta.url), 'utf8')
 const buildRecsText = readFileSync(new URL('../../public/static/build-recommendations.json', import.meta.url), 'utf8')
 const bossPresetsText = readFileSync(new URL('../../public/static/boss-presets.json', import.meta.url), 'utf8')
+// 更新日志（400 KB）：与 run-archive 同款「按需读」——不是每个用 harness 的测试都需要它
+const CHANGELOG_URL = new URL('../../public/static/changelog.json', import.meta.url)
 
 /** 单槽位默认配置（对齐 billySmoke 模板；各测试按需覆盖） */
 export const TEST_BASE_CHAR = {
@@ -51,7 +53,7 @@ export interface HarnessTeamSlot {
   [key: string]: unknown
 }
 
-/** stub fetch 返回四个静态文件（catalog/teammate-buffs/build-recommendations/boss-presets） */
+/** stub fetch 返回静态文件（catalog / teammate-buffs / build-recommendations / boss-presets / run-archive / changelog） */
 export function mockStaticFetch(): void {
   vi.stubGlobal('fetch', vi.fn(async (url: unknown) => {
     const u = String(url)
@@ -61,6 +63,8 @@ export function mockStaticFetch(): void {
     if (u.includes('/static/boss-presets.json')) return { ok: true, json: async () => JSON.parse(bossPresetsText) }
     // 3 MB：按需读（不在模块加载时读，免得每个用 harness 的测试文件都付这笔）
     if (u.includes('/static/run-archive.json')) return { ok: true, json: async () => JSON.parse(readFileSync(new URL('../../public/static/run-archive.json', import.meta.url), 'utf8')) }
+    // 400 KB，同上按需读（更新日志只有弹层的测试要）
+    if (u.includes('/static/changelog.json')) return { ok: true, json: async () => JSON.parse(readFileSync(CHANGELOG_URL, 'utf8')) }
     return { ok: false, json: async () => ({}) }
   }))
 }

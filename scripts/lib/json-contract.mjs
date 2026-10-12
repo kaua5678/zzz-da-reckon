@@ -37,6 +37,7 @@ export const JSON_CONTRACTS = [
   { json: 'public/static/build-recommendations.json', file: 'src/types/catalog.ts', type: 'BuildRecommendations' },
   { json: 'public/static/boss-presets.json', file: 'src/types/bossPreset.ts', type: 'BossPresetFile' },
   { json: 'public/static/run-archive.json', file: 'src/composables/runArchiveImport.ts', type: 'RunArchiveFile' },
+  { json: 'public/static/changelog.json', file: 'src/types/changelog.ts', type: 'ChangelogFile' },
   { dir: 'src/specs/agents', file: 'src/specs/types.ts', type: 'AgentMechanicSpec' },
   { dir: 'src/data/teamPresets', file: 'src/data/teamPresets.ts', type: 'TeamPresetFile' },
   { dir: 'src/data/stunAxisPresets', file: 'src/data/stunAxisPresets.ts', type: 'StunAxisPreset' },
@@ -213,6 +214,18 @@ export function checkJsonContracts(root = ROOT, contracts = JSON_CONTRACTS) {
   return { files, errors }
 }
 
+/**
+ * `fetch(...)` 里静态 JSON 路径的匹配式（**实现面单源**，见下方 `findUncoveredJsonEntries`）。
+ *
+ * ⚠ 必须容忍路径外再包一层包装函数：本仓库的静态请求统一走
+ * `fetch(withBase('/static/x.json'))`（`withBase` = 子路径部署的前缀拼接点，2026-10-11）。
+ * 早先的写法只认 `fetch('/static/…')` 紧邻字面量 —— 于是**全部 5 个真实入口一个都扫不到**
+ * （catalog / teammate-buffs / build-recommendations / boss-presets / run-archive），
+ * 判据「新入口不能绕过契约」实际是空的：把 fetch 换成别的文件它也照样绿。
+ * 现在收 `fetch(` + 可选一层 `标识符(` + 路径字面量。
+ */
+const FETCH_STATIC_JSON_RE = /fetch\(\s*(?:[A-Za-z_$][\w$]*\(\s*)?['"`]\/static\/([^'"`]+\.json)['"`]/g
+
 /** src 非测试代码里未登记进 `contracts` 的 JSON 入口（fetch / import.meta.glob） */
 export function findUncoveredJsonEntries(root = ROOT, contracts = JSON_CONTRACTS) {
   const known = new Set(contracts.map((c) => c.json ?? `${c.dir}/*.json`))
@@ -225,7 +238,7 @@ export function findUncoveredJsonEntries(root = ROOT, contracts = JSON_CONTRACTS
       const text = readFileSync(p, 'utf8')
       const rel = relative(root, p).split(sep).join('/')
       const at = (m) => `${rel}:${text.slice(0, m.index).split('\n').length}`
-      for (const m of text.matchAll(/fetch\(\s*['"`]\/static\/([^'"`]+\.json)['"`]/g)) {
+      for (const m of text.matchAll(FETCH_STATIC_JSON_RE)) {
         if (!known.has(`public/static/${m[1]}`)) out.push(`${at(m)} fetch /static/${m[1]}`)
       }
       for (const m of text.matchAll(/import\.meta\.glob\(\s*['"`]([^'"`]+\.json)['"`]/g)) {
