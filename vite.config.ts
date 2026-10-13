@@ -2,6 +2,22 @@ import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 import { readdirSync } from 'fs'
+import { availableParallelism, totalmem } from 'os'
+import { workerCap } from './scripts/lib/worker-cap.mjs'
+
+/**
+ * vitest worker 上限（自适应；CC-424 的固定 4 → 按 CPU/内存取最优）。
+ *
+ * 口径、实测表（4/6/8/10/12 档墙钟与峰值 RSS）与内存模型**单一事实源** =
+ * `scripts/lib/worker-cap.mjs`——抽出去是为了让测试能 import 到它
+ * （`vite.config.ts` 本身**不能被测试 import**，实测 `Cannot find module`）。
+ * 这里只负责把宿主实际参数喂进去：
+ *
+ * - CPU 用 `availableParallelism()` 而非 `cpus().length`：前者尊重 cgroup / taskset 亲和性，
+ *   CI 的 4 核 runner 上 = 4（`taskset -c 0-3` 实测），与固定 4 时代行为一致。
+ * - 覆盖优先级：命令行 `--maxWorkers=N` > `VITEST_MAX_WORKERS=N` > 本函数。
+ */
+const resolvedWorkers = workerCap(availableParallelism(), totalmem() / 1024 / 1024)
 
 /**
  * 本地图鉴图清单（构建期扫描，注入成常量给 `utils/image.ts`）。
@@ -85,10 +101,7 @@ export default defineConfig({
     // 这里只放开基础设施超时。
     testTimeout: 180_000,
     // CC-424（2026-10-03 r450）：worker 上限进配置，不再靠每个人记得加 `--maxWorkers=4`。
-    // 本机 16 vCPU / 9 GB 内存，vitest 默认按 CPU 数起 16 个 fork，每个 fork 载入全部角色模块后
-    // 内存合计超过物理内存 ⇒ 整个 WSL VM 被拖死（2026-10-02 r385 两次；2026-10-03 r450 另一会话
-    // 跑 `npm run check` 时 load 20+）。4 个 worker 实测全量约 200~240s、稳定。
-    // 覆盖方式：`VITEST_MAX_WORKERS=8 npx vitest run` 或命令行 `--maxWorkers=N`（CLI 优先于配置）。
-    maxWorkers: Number(process.env.VITEST_MAX_WORKERS) || 4,
+    // 2026-10-12 由固定 4 改为自适应（口径与实测见文件头 `workerCap` / scripts/lib/worker-cap.mjs）。
+    maxWorkers: Number(process.env.VITEST_MAX_WORKERS) || resolvedWorkers,
   },
 })
