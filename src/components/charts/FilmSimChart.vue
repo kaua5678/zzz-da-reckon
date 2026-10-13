@@ -87,7 +87,7 @@
       <text v-for="g in (simLegend.isVisible('gold') ? 4 : 0)" :key="'gp' + g" :x="svgW - padR + 2" :y="simGoldY((simGoldMax / 4) * g) + 3" class="axis-label gold-axis-label">{{ Math.round((simGoldMax / 4) * g) }}</text>
       <!-- 点 -->
       <g v-for="(p, i) in simPts" :key="'fp' + i">
-        <circle v-if="simLegend.isVisible('hp')" :cx="p.x" :cy="p.y" r="3.5" :fill="p.color" :style="{ stroke: simHover === i ? 'var(--app-text-solid)' : 'var(--wa-250)' }" :stroke-width="simHover === i ? 2 : 1" class="trend-point">
+        <circle v-if="simLegend.isVisible('hp')" :cx="p.x" :cy="p.y" r="3.5" :fill="p.color" :style="{ stroke: simHover === i ? 'var(--app-text-solid)' : 'var(--wa-250)', strokeWidth: simHover === i ? '2px' : '1px' }" class="trend-point">
           <title>{{ p.label }}：{{ fmt(p.hpRatio, 1) }}%（{{ p.totalGold }}金）</title>
         </circle>
       </g>

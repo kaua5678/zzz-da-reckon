@@ -1038,13 +1038,13 @@ function agentName(s: number) {
 .sap-t .sap-t-time { font-weight: 600; color: var(--wa-850); }
 .sap-ops { display: flex; gap: 2px; }
 .sap-stats { margin-top: 16px; padding: 10px; background: var(--wa-20); border-radius: 6px; }
-.sap-gash-timeline { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--wa-80); }
-.sap-gash-row { display: flex; gap: 10px; font-size: 12px; color: var(--wa-550); line-height: 1.7; }
+.sap-gash-timeline { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.sap-gash-row { display: flex; gap: 10px; font-size: 12px; color: var(--fg-3); line-height: 1.7; }
 .sap-gash-head { font-size: 11px; margin-bottom: 2px; }
-.sap-gash-row .w { width: 34px; color: var(--wa-450); }
-.sap-gash-row .t { width: 52px; text-align: right; font-variant-numeric: tabular-nums; color: var(--wa-450); }
+.sap-gash-row .w { width: 34px; color: var(--fg-3); }
+.sap-gash-row .t { width: 52px; text-align: right; font-variant-numeric: tabular-nums; color: var(--fg-3); }
 .sap-gash-row .m { width: 116px; }
-.sap-gash-row.miss { color: var(--wa-700); }
+.sap-gash-row.miss { color: var(--c-danger); }
 .sap-stat-row { display: flex; gap: 14px; font-size: 12px; color: var(--wa-550); }
 .sap-warn { font-size: 10px; color: #f0a020; }
 .sap-block.stale { opacity: .35; border: 1px dashed var(--app-accent-gold); }

@@ -46,6 +46,7 @@ import {
   formatMoveElementReconcile,
 } from './lib/move-element-reconcile.mjs'
 import { scanScopedStyleReach } from './lib/scoped-style-reach.mjs'
+import { scanSvgPresentationAttr } from './lib/svg-presentation-attr.mjs'
 import { scanCompactedSlotIndex, IDX_SAFE_ALLOWLIST } from './lib/compacted-slot-index.mjs'
 // 判据 19：录入层 → 编排层值倒置（2026-09-19 round 37，见 scripts/lib/layer-inversion.mjs 头注释）
 import {
@@ -79,6 +80,7 @@ import { scanDeadNullish, formatDeadNullish, DEAD_NULLISH_BASELINE } from './lib
 // 判据 29：类型只声明一次（r729，见 scripts/lib/type-restatement-gate.mjs 头注释）
 import { scanTypeRestatements, formatTypeRestatements, TYPE_RESTATEMENT_BASELINE } from './lib/type-restatement-gate.mjs'
 // 判据 30：通用字段的「唯一声明方」前提（T128，见 scripts/lib/field-writer-uniqueness.mjs 头注释）
+// 判据 31：SVG 呈现属性不被 CSS 类覆盖（2026-10-12，见 scripts/lib/svg-presentation-attr.mjs 头注释）
 // ⚠ 与判据 26–29 同款：**不**从本文件转出（`check-guards.d.mts` 是手写影子 API，多转出即 C 段漂移红；
 //    测试直接 `import … from '../../../scripts/lib/field-writer-uniqueness.mjs'`，先例 idLiteralGate.test.ts）
 import { scanFieldWriters, formatFieldWriters, SINGLE_WRITER_FIELDS } from './lib/field-writer-uniqueness.mjs'
@@ -1383,6 +1385,29 @@ export function runAllChecks(root = ROOT) {
         + `= 未登记 ${report.extra.length} / 登记过期 ${report.missing.length} / 扫 ${report.scanned} 文件 / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
       ok: report.ok,
       detail: report.ok ? [] : formatFieldWriters(report),
+    })
+  }
+
+  // ---- 判据 31：SVG 呈现属性被 CSS 类覆盖（2026-10-12 用户报「血量膨胀线条全是蓝色」）----
+  // 与判据 16 同族（都是「写了但吃不到」），机制不同：16 = scope id 失配；本条 = 层叠优先级被压。
+  // 实证：25 条折线的 `:stroke="b.color"`（attribute 20 种色）被 `.trend-line{stroke:var(--app-primary)}`
+  // 全压成一个蓝色；5 张图的 hover 加粗 `:stroke-width` 恒为 0.5px（实测 hover 前后 computed 不变）。
+  {
+    const violations = scanSvgPresentationAttr(root)
+    results.push({
+      name: `SVG 呈现属性未被 CSS 类压住 (判据 31: 动态 :stroke/:stroke-width 绑定被同名类的层叠覆盖) 死绑定 ${violations.length} 处`,
+      ok: violations.length === 0,
+      detail: [
+        ...violations.slice(0, 15).map(v => `  ✗ ${v.file} <${v.tag} class="${v.cls}"> 的 :${v.prop}="${v.bound}"`
+          + ` 被该类在样式表里的同名声明**覆盖**，这个绑定是死的`),
+        ...(violations.length > 15 ? [`  …另有 ${violations.length - 15} 处`] : []),
+        ...(violations.length > 0 ? [
+          '  → SVG 呈现属性（stroke/fill/stroke-width/opacity…）的层叠优先级等同「特异性 0 的 author 规则」，',
+          '     **任何类选择器都能覆盖它** ⇒ 共享表里声明了同名属性的类会让调用方的动态绑定静默失效。',
+          '  → 修法：把该属性挪进 `:style`（内联胜出），例如',
+          '     `:style="{ stroke: b.color }"` 而不是 `:stroke="b.color"`。',
+        ] : []),
+      ],
     })
   }
 

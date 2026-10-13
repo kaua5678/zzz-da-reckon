@@ -6,6 +6,13 @@
  */
 
 import type { PanelValues } from '../catalog'
+// 逐次执行序列的单条形状**只有一处定义**（core 的栈推演产出它）；这里派生而非复写
+// （判据 29：同形字面量写两处以上就起名/引用具名类型）。去掉 `slot` 是因为注入前已按槽切分，
+// 序列内部再带槽号是冗余信息（构造侧 `convergence.ts` 正是 `e.slot` 分组后才 push）。
+import type { StackSequenceEntry } from '@/core/stunAxisStack'
+
+/** `AgentConfig.axisSequence` 的元素：core 序列条目去掉已按槽切分的 `slot` */
+export type AxisSequenceEntry = Omit<StackSequenceEntry, 'slot'>
 import type { StunPlanProjection } from './time'
 
 // ============ 计算输入 ============
@@ -327,7 +334,14 @@ export interface CharacterOperationConfig {
    * ⚠ 这是**轴内本地**数据，不是全局事件排序：全局侧失衡轴仍是「从总量里选取一部分做计数判定」。
    * ⚠ 跨槽位并行 ⇒ 本序列已按槽切分，模块只能看本槽的相对先后。
    */
-  axisSequence?: ReadonlyArray<{ moveId: string; count: number; startTime: number; window: number }>
+  /**
+   * 轴内逐次执行序列的**单条**（各槽位切分后的元素）。
+   *
+   * 为什么起名（判据 29：同形字面量写两处以上就起名）：同一形状在**本文件**（`axisSequence`
+   * 的元素）与 `resourceCalc/convergence.ts`（构造 `axisSequenceBySlot` 时的值类型）各写了一遍
+   * 逐字段相同的字面量 ⇒ 抽成具名类型，两处引用名字（改形状只改一处）。
+   */
+  axisSequence?: ReadonlyArray<AxisSequenceEntry>
   /**
    * 进轴时敌人身上已有的**残痕值**（点数，600 = 1 层；轴模式由编排层注入，非轴 0）。
    *

@@ -646,11 +646,11 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('三十条判据全绿（判据 24 角色模块值依赖 ' + ROLE_MODULE_DEP_BASELINE + ' / fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖** / **无类型记录键死读** / **通用字段唯一声明方****)', () => {
+  it('三十一条判据全绿（判据 24 角色模块值依赖 ' + ROLE_MODULE_DEP_BASELINE + ' / fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖** / **无类型记录键死读** / **通用字段唯一声明方 + SVG 呈现属性****)', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(30)
+    expect(results).toHaveLength(31)
     expect(results.some(r => r.name.startsWith('role-module value-dep gate'))).toBe(true)
     // 判据 26：角色 / 招式 id 字面量只许在 data / mechanics/agents / specs（2026-10-04 CC-449 展示层 → CC-450 全 src）——判据 2/24 盯的是身份判定与值导入，裸字面量此前只有逐病灶的单文件锁
     expect(results.some(r => r.name.startsWith('id-literal gate'))).toBe(true)

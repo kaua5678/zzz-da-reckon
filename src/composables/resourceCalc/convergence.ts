@@ -42,6 +42,7 @@ import type { CalcRoundThreads, PostRoundInput } from './roundThreads'
 import { computeParrySplit, GUARANTEE_STUN_TARGET } from '@/core/parrySplit'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 import { calcStunAxisStack, allocateAxisWindows, type ExecutedMoveCount, type StackAxisInput, type StackSequenceEntry } from '@/core/stunAxisStack'
+import type { AxisSequenceEntry } from '@/types/resource/config'
 import {
   computeBossAnomalyStateTimeline,
   computeInStunAnomalyTimeline,
@@ -451,7 +452,7 @@ export function createRunCalcRound(deps: {
      * 这里**按槽位切分**后注入——跨槽位是并行的，模块只能看本槽的相对先后（`StackSequenceEntry` 口径）。
      * ⚠ 这是**轴内本地**数据，不是全局事件排序（用户 2026-10-12 纠正）。
      */
-    const axisSequenceBySlot: Record<number, { moveId: string; count: number; startTime: number; window: number }[]> = {}
+    const axisSequenceBySlot: Record<number, AxisSequenceEntry[]> = {}
     if (axisExecutedStack) {
       for (const c of base.characters) axisActionCountsBySlot[c.slot] = {}
       for (const v of Object.values(axisExecutedStack.executed)) {

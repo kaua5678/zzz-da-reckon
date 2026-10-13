@@ -48,8 +48,13 @@
             <text :x="svgW - padR - 4" :y="yOf(100) - 5" class="ref-label" text-anchor="end">100% 基准</text>
 
             <!-- 折线 + 数据点 -->
+            <!-- ⚠ 颜色必须走 `:style` 内联，**不能**写 `:stroke="b.color"`（2026-10-12 用户报
+                 「线条全是蓝色的」）：SVG presentation attribute 的优先级**低于** CSS 类选择器，
+                 而 `.trend-line` 在全局 `styles/charts.css` 里声明了 `stroke: var(--app-primary)`
+                 ⇒ 属性被静默覆盖，25 条线全渲染成同一个蓝色（实测 attribute 20 种 → computed 1 种）。
+                 内联 style 优先级高于类选择器 ⇒ 每队自己的颜色生效。 -->
             <g v-for="b in visibleSeries" :key="b.id">
-              <polyline :points="b.linePoints" :stroke="b.color" fill="none" class="trend-line" />
+              <polyline :points="b.linePoints" fill="none" class="trend-line" :style="{ stroke: b.color }" />
               <circle
                 v-for="p in b.points"
                 :key="p.seasonIdx"
@@ -133,8 +138,7 @@
             :cx="p.x" :cy="p.y" :r="p.point.lowSample ? 3 : 3.5"
             :fill="p.point.lowSample ? 'transparent' : 'var(--c-chart-4)'"
             class="trend-point"
-            :style="{ stroke: 'var(--c-chart-4)' }"
-            :stroke-width="p.point.lowSample ? 1.5 : 0.5"
+            :style="{ stroke: 'var(--c-chart-4)', strokeWidth: p.point.lowSample ? '1.5px' : '0.5px' }"
           >
             <title>{{ p.version }}：平均血量 {{ fmt(p.point.avgHp, 0) }}（{{ p.index.toFixed(1) }}%{{ p.point.momPct == null ? '' : '，环比 ' + (p.point.momPct >= 0 ? '+' : '') + p.point.momPct.toFixed(1) + '%' }}）· 样本 {{ p.point.samples }}{{ p.point.lowSample ? '（低样本）' : '' }}</title>
           </circle>

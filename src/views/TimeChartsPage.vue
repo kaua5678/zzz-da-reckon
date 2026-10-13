@@ -64,8 +64,7 @@
             :cx="pt.x" :cy="pt.y"
             :r="pt.isSwap ? 6 : 4"
             :fill="pt.color"
-            :style="{ stroke: hoverNode === i ? 'var(--app-text-solid)' : 'var(--wa-250)' }"
-            :stroke-width="hoverNode === i ? 2 : 1"
+            :style="{ stroke: hoverNode === i ? 'var(--app-text-solid)' : 'var(--wa-250)', strokeWidth: hoverNode === i ? '2px' : '1px' }"
             class="trend-point"
           />
         </g>
@@ -103,9 +102,7 @@
               :y="bossLaneY"
               :width="cellW + 0.5"
               :height="laneH"
-              :style="{ fill: selectedBossAppearances.has(n.nodeId) ? 'rgba(246,173,85,0.22)' : 'var(--wa-40)' }"
-              :stroke="selectedBossAppearances.has(n.nodeId) ? '#f6ad55' : 'none'"
-              stroke-width="1"
+              :style="{ fill: selectedBossAppearances.has(n.nodeId) ? 'rgba(246,173,85,0.22)' : 'var(--wa-40)', stroke: selectedBossAppearances.has(n.nodeId) ? '#f6ad55' : 'none', strokeWidth: '1px' }"
               class="lane-cell"
             >
               <title>{{ bossCellTitle(periodOf(n.nodeId)) }}</title>

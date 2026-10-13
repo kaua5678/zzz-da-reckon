@@ -76,8 +76,7 @@
         <circle
           v-if="scLegend.isVisible('A')"
           :cx="p.x" :cy="p.yA" r="4" :fill="SC_COLOR_A"
-          :style="{ stroke: scHover === i ? 'var(--app-text-solid)' : 'var(--line-strong)' }"
-          :stroke-width="scHover === i ? 2 : 1"
+          :style="{ stroke: scHover === i ? 'var(--app-text-solid)' : 'var(--line-strong)', strokeWidth: scHover === i ? '2px' : '1px' }"
           class="trend-point"
         >
           <title>{{ p.mainName }}：{{ p.teamA.map(agentName).join('+') }}（{{ fmt(p.hpRatioA, 1) }}%）</title>
@@ -85,8 +84,7 @@
         <circle
           v-if="scLegend.isVisible('B')"
           :cx="p.x" :cy="p.yB" r="4" :fill="SC_COLOR_B"
-          :style="{ stroke: scHover === i ? 'var(--app-text-solid)' : 'var(--line-strong)' }"
-          :stroke-width="scHover === i ? 2 : 1"
+          :style="{ stroke: scHover === i ? 'var(--app-text-solid)' : 'var(--line-strong)', strokeWidth: scHover === i ? '2px' : '1px' }"
           class="trend-point"
         >
           <title>{{ p.mainName }}：{{ p.teamB.map(agentName).join('+') }}（{{ fmt(p.hpRatioB, 1) }}%）</title>

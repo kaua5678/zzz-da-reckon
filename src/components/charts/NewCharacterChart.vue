@@ -95,8 +95,7 @@
           :cy="p.y"
           r="4.5"
           :fill="p.color"
-          :style="{ stroke: chart3Hover === i ? 'var(--app-text-solid)' : 'var(--wa-250)' }"
-          :stroke-width="chart3Hover === i ? 2 : 1"
+          :style="{ stroke: chart3Hover === i ? 'var(--app-text-solid)' : 'var(--wa-250)', strokeWidth: chart3Hover === i ? '2px' : '1px' }"
           class="trend-point"
         >
           <title>{{ p.charName }}：{{ p.teamNames.join('+') }}（{{ fmt(p.hpRatio, 1) }}%）</title>
