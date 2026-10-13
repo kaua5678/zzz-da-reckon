@@ -143,8 +143,8 @@
         </div>
       </div>
       <div class="usage-bar">
-        <span>强特 {{ fmt(result.exSpecialCount, 1) }} 次</span>
-        <span class="usage-detail">耗能 {{ fmt(result.exSpecialEnergyConsume) }}/次 × {{ fmt(result.exSpecialCount, 1) }} = {{ fmt(result.exSpecialEnergyConsume * result.exSpecialCount) }} 点</span>
+        <span>强特 {{ fmt(result.executedExSpecialCount, 1) }} 次</span>
+        <span class="usage-detail">耗能 {{ fmt(result.exSpecialEnergyConsume) }}/次 × {{ fmt(result.executedExSpecialCount, 1) }} = {{ fmt(result.exSpecialEnergyConsume * result.executedExSpecialCount) }} 点</span>
       </div>
     </div>
 
@@ -197,8 +197,8 @@
         </div>
       </div>
       <div class="usage-bar">
-        <span>终结技 {{ fmt(result.ultimateCount, 1) }} 次</span>
-        <span class="usage-detail">消耗 {{ fmt(result.ultimateCost) }}/次 × {{ fmt(result.ultimateCount, 1) }} = {{ fmt(result.ultimateCost * result.ultimateCount) }} 点</span>
+        <span>终结技 {{ fmt(result.executedUltimateCount, 1) }} 次</span>
+        <span class="usage-detail">消耗 {{ fmt(result.ultimateCost) }}/次 × {{ fmt(result.executedUltimateCount, 1) }} = {{ fmt(result.ultimateCost * result.executedUltimateCount) }} 点</span>
       </div>
     </div>
 

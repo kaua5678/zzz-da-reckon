@@ -306,17 +306,24 @@ export function calcTeamResources(config: ResourceCalcConfig): TeamResourceResul
   // 溢出 = **被时间线截断掉的秒数**（装配阶段实测）：为了塞进战斗时间砍掉了多少动作。
   // 截断后 Σ物化净占用恒 ≤ 预算，所以"账本超预算"（iterate 那份中间值）与"物化超预算"
   // 都不再是溢出——只有真被砍掉的时间才是。消费方：TeamComparePage 操作难度横轴（1秒=1难度点）。
-  // ✅ 债 2「截断不回灌资源循环（A 项）」**已于 2026-10-09 由用户裁决销号**（销号口径改写，非「截断为 0」）：
-  //    ① 被砍招式的行级回能/喧响按未截断 state 计账这件事**仍存在**，但它已被 `cfg.rowTimeLimit` 重折环
-  //       （`truncationRefold.ts`，只接受 Σcut 严格变小、≤3 轮、拒绝即整体回滚）从「静默失真」降级为
-  //       **如实上报**：残留截断逐槽进 `overflowSeconds` / `truncationCuts`，难度轴交互按存活率缩。
-  //    ② 原销号条件「结构性溢出队重折后截断为 0」**被本仓自己的测试判定为口径上不可达**——
-  //       `src/core/__tests__/truncationRefold.test.ts:90` 原文：「结构性溢出（必要行 > 预算），
-  //       重折不可能清零；**清零 = 口径变了**，去看 golden」；`:151` 仍钉着一条真残差
-  //       （`auto-1431-1341-1481` 槽2 +83.5175 dB，三态逐位相同 ⇒ 与任何近期改动无关）。
-  //    ③ ⇒ 销号口径**改写为**：`Σcut 只减不增且如实上报`（现状已达成，重折环 + 棘轮 + 逐槽清单三重保证）。
-  //       若日后要真做到「截断为 0」，那是**换口径**（= 立项实数化专项），须用户重新裁决，不是本条遗留。
-  // @fact engine:资源账本/截断 口径: 资源池能量/喧响收入按 feasibleRows 计（cfg.rowTimeLimit 缺省 = 未截断行；初装截断 > 容差时重折环按每槽装配 kept 注入、从 S2 入口重跑到装配，Σcut **不增**即接受（相等也接受——那正是「账本按真装得下的行计」的不动点态，接受后不动点即停机；实现 `src/core/resource/truncationRefold.ts`）、≤3 轮、拒绝即整体回滚、返回前删键），装配期截断只削招式行（伤害/失衡随之降）；残留截断如实上报（overflowSeconds/truncationCuts） | 据 用户@2026-09-11·实测般+诺+卢 · 债2批2-1@2026-09-19 R37·复核@2026-09-25·实测@2026-09-27（接受判据按 e4d970a「严格变小→不增」与 truncationRefold.ts 现状改写）·复核@2026-09-30·复核@2026-10-07·销号裁决@2026-10-09（口径改「Σcut 只减不增且如实上报」，原文「直到截断为 0」判为不可达） | 验 src/composables/__tests__/teamTimeSummary.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
+  // ✅ 债 2「截断不回灌资源循环（A 项）」**已销号**。销号史（两次口径改写，第二次是用户重新裁决）：
+  //    ① 2026-10-09 第一次销号：口径被改写为「Σcut 只减不增且如实上报」。理由 = 原条件
+  //       「结构性溢出队重折后截断为 0」被本仓自己的测试判为口径上不可达
+  //       （`truncationRefold.test.ts` 原文「结构性溢出（必要行 > 预算），重折不可能清零」）。
+  //    ② **2026-10-13 用户重新裁决 ⇒ 上面那次销号作废**（用户原话：「超时砍掉任何招式都该让其计数和
+  //       各项数据扣除，因为你**根本就打不出这招**。由于**计算顺序有问题**，所以你搞出回复次数了又截断
+  //       次数的矛盾行为，**一开始就不该回复啊**」）。
+  //       ⇒ 判据回到「被砍的招式不得被计数」，且**已达成**（2026-10-14 T151）：
+  //       展示口径改用 `executedExSpecialCount / executedUltimateCount / executedChainCountTotal`
+  //       （= `min(资源允许值, Σ物化行)`，见 `assembleSlot.ts`）⇒「展示的次数都真打得出来」。
+  //       ⚠ 关键设计：**不覆盖** `exSpecialCount / ultimateCount / chainCountTotal` ——
+  //       那三个字段同时是**外层失衡不动点的反馈量**（`outerCycle.ts#outerFeedbackSignature`、
+  //       `convergence.ts:1122-1132`），覆盖它们会把收敛轨迹改坏（实测 6~14 条结构性断言红）。
+  //       收敛按「资源允许的次数」走、展示按「真打出来的次数」走 —— 两者本就不是一回事。
+  //       生效测试 = `src/core/__tests__/truncationCountDeduction.test.ts`（含反空洞对照臂）。
+  // @fact engine:资源账本/截断·展示次数 口径: 被时间线截断砍掉的招式**不得计入展示次数**（用户裁决 2026-10-13「你根本就打不出这招…一开始就不该回复」）——展示读 `executedExSpecialCount / executedUltimateCount / executedChainCountTotal`（= min(资源允许值, Σ物化行)，`assembleSlot.ts`）；⚠ `exSpecialCount / ultimateCount / chainCountTotal` 仍是**资源允许值**且是外层失衡不动点的反馈量，**不得**被覆盖（覆盖实测 6~14 条结构性断言红） | 据 用户@2026-10-13「超时砍掉任何招式都该让其计数和各项数据扣除，因为你根本就打不出这招」 | 验 src/core/__tests__/truncationCountDeduction.test.ts | 锚 src/core/resource/assembleSlot.ts#assembleSlot | 信 确认
+  // ⟳复核: 展示次数口径或 `executed*` 消费面再动时，复核「全库有截断的槽：executed* ≤ 物化行 Σ」+「对照臂（旧资源允许值）确实超报」 | 到期 2027-03-31
+  // @fact engine:资源账本/截断 口径: 资源池能量/喧响收入按 feasibleRows 计（cfg.rowTimeLimit 缺省 = 未截断行；初装截断 > 容差时重折环按每槽装配 kept 注入、从 S2 入口重跑到装配，Σcut **不增**即接受（相等也接受——那正是「账本按真装得下的行计」的不动点态，接受后不动点即停机；实现 `src/core/resource/truncationRefold.ts`）、≤3 轮、拒绝即整体回滚、返回前删键），装配期截断只削招式行（伤害/失衡随之降）；残留截断如实上报（overflowSeconds/truncationCuts） | 据 用户@2026-09-11·实测般+诺+卢 · 债2批2-1@2026-09-19 R37·复核@2026-09-25·实测@2026-09-27（接受判据按 e4d970a「严格变小→不增」与 truncationRefold.ts 现状改写）·复核@2026-09-30·复核@2026-10-07·销号裁决@2026-10-09（口径改「Σcut 只减不增且如实上报」）·**重新裁决@2026-10-13（上一次销号作废，判据回到「被砍的招式不得被计数」，2026-10-14 T151 达成）** | 验 src/composables/__tests__/teamTimeSummary.test.ts + src/core/__tests__/truncationRefold.test.ts + src/core/__tests__/truncationCountDeduction.test.ts | 锚 src/core/resource.ts#calcTeamResources | 信 确认
   // ⟳复核: 重折环上限 / 接受判据 / kept 口径再动时，复核「默认路径（cut ≤ 1s 队）逐位 0 delta」+「1431 簇两队 Σcut 只减不增、cfg 无 rowTimeLimit 残留」（truncationRefold.test.ts + timeGolden） | 到期 2026-12-31
   config.overflowSeconds = timeTruncatedSeconds
 

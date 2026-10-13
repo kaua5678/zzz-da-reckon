@@ -117,8 +117,17 @@ export interface CharacterResourceResult {
    * 保留双字段的目的：让口径分裂可被测试/界面观测（差值 ≠ 0 即回归信号）。
    */
   derivedEnergy: number
-  /** 可用强特次数 = 总能量 ÷ 强特消耗 */
+  /** 可用强特次数 = 总能量 ÷ 强特消耗（**资源允许值**，同时是外层失衡不动点的反馈量） */
   exSpecialCount: number
+  /**
+   * **实打强特次数**（= `min(exSpecialCount, Σ物化 special 行)`）——债 2 / A 项（T151）。
+   *
+   * 用户口径 2026-10-13：「**超时砍掉任何招式都该让其计数和各项数据扣除，因为你根本就打不出这招**」。
+   * `exSpecialCount` 是**资源允许**的次数（收敛用），本字段是 180s 里**真打出来**的次数（展示/伤害用）。
+   * 二者在无截断时相等；有截断时差值 = 被砍掉的次数（正是本债要扣的东西）。
+   * ⚠ 展示层与模块派生量请读本字段；`exSpecialCount` 保留给收敛反馈（改它会改外层不动点轨迹）。
+   */
+  executedExSpecialCount: number
   /** 强特 move id */
   exSpecialMoveId: string
   /** 强特单次能量消耗 */
@@ -128,8 +137,10 @@ export interface CharacterResourceResult {
   decibelSource: DecibelSource
   /** 终结技消耗（默认3000，部分角色2000） */
   ultimateCost: number
-  /** 可用终结技次数 = 总喧响 ÷ 终结技消耗 */
+  /** 可用终结技次数 = 总喧响 ÷ 终结技消耗（**资源允许值**，同时是外层失衡不动点的反馈量） */
   ultimateCount: number
+  /** **实打终结技次数**（= `min(ultimateCount, 物化终结技行)`）；口径见 `executedExSpecialCount` */
+  executedUltimateCount: number
 
   // --- 专属资源 ---
   /** 般岳嗔火/怒相循环明细 */
@@ -140,8 +151,10 @@ export interface CharacterResourceResult {
   // --- 连携 ---
   /** 每次失衡的连携次数（用户可调） */
   chainCountPerStun: number
-  /** 总连携次数 = 每次失衡连携次数 × 失衡次数 */
+  /** 总连携次数 = 每次失衡连携次数 × 失衡次数（**资源允许值**） */
   chainCountTotal: number
+  /** **实打连携次数**（= `min(chainCountTotal, 物化连携行)`）；口径见 `executedExSpecialCount` */
+  executedChainCountTotal: number
 
   // --- 招式执行计划 ---
   executions: SkillExecution[]

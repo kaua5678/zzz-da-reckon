@@ -187,6 +187,45 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
     backstageTime: Math.max(0, totalTime - execFrontlineTime),
   }
   const anomalyEventExecutions = buildAnomalyEventExecutions(cfg, state, totalTime)
+  // ===== 截断计数回灌（债 2 / A 项「截断不回灌资源循环」，2026-10-14 T151）=====
+  // 用户口径 2026-10-13：「**超时砍掉任何招式都该让其计数和各项数据扣除，因为你根本就打不出这招**」。
+  //
+  // 病灶：`iterate` 的团队封顶第③层（`cappedNecessary = absorbedNet × feasibleScale + credit`）
+  // 只缩**账本**，而 `state.exSpecialCount / ultimateCount / chainCountTotal` 仍是未缩的值 ⇒
+  // 物化行按未缩次数产出 ⇒ 行 ≫ 账本 ⇒ 装配截断砍招式，而**报告次数**仍按未缩次数算
+  //（实测 `auto-1431-1341-1491` 弹刀 60：账本 79.30s、行想打 294.52s、报告强特 5 而物化 1）。
+  //
+  // 修法（**只在装配出口夹报告，不碰收敛**）：把本槽装配**真保住**的次数
+  //（`truncated.executions` 逐 moveId Σ）作为报告值 —— 于是「报告 == 物化」恒成立，
+  // 而 `iterate` 的收敛轨迹（`necessary` / `feasibleScale` / 平A池）**逐位不变**。
+  //
+  // ⚠ 三条已实测否决的作用面（勿再试，数字见 `.zc/reports/T151-DESIGN.md` §9/§10）：
+  //  ① 在 `iterate` 里夹 `state.exSpecialCount` ⇒ 它同时是**下一轮迭代的反馈量**
+  //     ⇒ 收敛轨迹被改（`outerCycleColdStart` 轮数 10→其它、`aire` 滑块差分、`adjustableEffect`
+  //     链式线性共 14 条结构性断言红）——报告值不该反向污染收敛；
+  //  ② 在 `buildExecutions` 出口夹行 ⇒ 那是**收入侧**物化入口（`feasibleRows` → `materializeRows`）
+  //     ⇒ 行收入同步下降 ⇒ 「计划削→收入削→次数削」下沉螺旋（`banyue-roxy-lucia` 伤害 32.01M→28.52M）；
+  //  ③ 夹账本 `necessary`（`capRowSeconds`）⇒ 改 `feasibleScale` 的输入 ⇒ 同上破坏旋钮语义。
+  const keptCountOf = (moveId: string | undefined): number => moveId === undefined
+    ? 0
+    : executions.reduce((sum, e) => (String(e.moveId) === String(moveId) ? sum + Math.max(0, e.count) : sum), 0)
+  // 强特是**跨多行总量**（模块接管时 `cfg.exSpecialMoveId` 只是其中一行，如琉音四行/般岳两行）
+  // ⇒ 按 `category === 'special'` 汇总；其余通道引擎各只产一行，按 moveId 取。
+  const keptSpecial = executions.reduce((sum, e) => (e.category === 'special' ? sum + Math.max(0, e.count) : sum), 0)
+  /**
+   * **实打次数**（截断后真兑现的动作数）——债 2 / A 项的交付面（T151）。
+   *
+   * ⚠ **刻意与 `exSpecialCount` / `ultimateCount` / `chainCountTotal` 分开**（不是覆盖它们）：
+   * 那三个字段同时是**外层失衡不动点的反馈量**（`outerCycle.ts#outerFeedbackSignature` 读
+   * `ultimateCount`、`convergence.ts:1122-1132` 读 ex/ult 算下一轮 `teamVeilCountTotal` 与
+   * `postRoundInput`）⇒ 直接覆盖它们会**改收敛轨迹**（实测 `outerCycleColdStart` 由 `stable`
+   * 退化成 `cycle`、7 条结构性断言红）。而收敛该按「资源允许的次数」走，展示才按「真打出来的次数」走
+   * ——两者不是一回事，**必须分开两个字段**。
+   */
+  const executedExSpecialCount = Math.min(state.exSpecialCount, keptSpecial)
+  const executedUltimateCount = Math.min(state.ultimateCount, keptCountOf(cfg.ultimateMoveId))
+  const executedChainCountTotal = Math.min(chainCountTotal, keptCountOf(cfg.chainMoveId))
+
   const mechanicResult = getAgentMechanic(cfg.agentId)?.buildResourceResult?.({
     cfg,
     state,
@@ -205,13 +244,16 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
     // 真正驱动 exSpecialCount 的收敛后总能量（iterate 末轮 totalEnergy）
     derivedEnergy: state.totalEnergy,
     exSpecialCount: state.exSpecialCount,
+    executedExSpecialCount,
     exSpecialMoveId: cfg.exSpecialMoveId,
     exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
     decibelSource: decibelSrc,
     ultimateCost: cfg.ultimateCost,
     ultimateCount: state.ultimateCount,
+    executedUltimateCount,
     chainCountPerStun: cfg.chainCountPerStun,
     chainCountTotal,
+    executedChainCountTotal,
     executions,
     anomalyEventExecutions,
     totalStunBuildUp: 0, // 后续由 damage.ts 补充

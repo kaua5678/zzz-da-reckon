@@ -977,8 +977,8 @@ const teamOverview = computed(() => {
       buildupPct: totalBuildUp > 0 ? (buildup / totalBuildUp) * 100 : 0,
       energy: resource?.energySource.total ?? 0,
       decibel: resource?.decibelSource.total ?? 0,
-      exSpecialCount: resource?.exSpecialCount ?? 0,
-      ultimateCount: resource?.ultimateCount ?? 0,
+      exSpecialCount: resource?.executedExSpecialCount ?? 0,
+      ultimateCount: resource?.executedUltimateCount ?? 0,
     }
   })
 })
