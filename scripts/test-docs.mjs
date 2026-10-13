@@ -3,7 +3,7 @@
  *
  * 用途：一次提交**只改 `docs/**`** 时，用「读 docs 的测试」显式清单代替全量 vitest。
  * 判据与清单的单一来源 = `scripts/lib/docs-reading-tests.mjs`（规则 11：不在 package.json 里
- * 复抄 34 条路径——复抄必然漂移）。
+ * 复抄路径——复抄必然漂移；条数也不在此写死，见该模块 `DOCS_READING_TESTS.length`）。
  *
  * 用法：
  *     node scripts/test-docs.mjs            # 先判 docs-only，不是就拒绝并退出 2

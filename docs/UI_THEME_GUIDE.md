@@ -75,6 +75,22 @@ SVG presentation attribute（`fill="var(...)"` / `stroke="var(...)"`）**不可�
 - **动态三目**：`:style` 绑定（如 TimeCharts 的 `:style="{stroke: hover ? 'var(--app-text-solid)' : 'var(--wa-250)'}"`）
 - **强品牌色**：直接 hex（如击杀线 `#e88080`，两主题通用）
 
+⚠ **动态值一律走 `:style`，不要用 `:stroke` / `:stroke-width` 这类属性绑定**（2026-10-12 用户报「血量膨胀线条全是蓝色的」）：
+
+- **层叠优先级**（规范，不是经验）：SVG 的 `stroke`/`fill`/`stroke-width`/`opacity` 等
+  **既是呈现属性又是 CSS 属性**，而呈现属性在层叠中**等同于「特异性 0 的 author 规则」**
+  ⇒ **任何类选择器都能覆盖它**（只有 `style=""` 内联才胜出）。
+- **实测后果**：`styles/charts.css` 的 `.trend-line { stroke: var(--app-primary) }` 把
+  血量膨胀页 25 条折线的 `:stroke="b.color"` 全压成同一个蓝
+  （attribute **20 种色** → computed **1 种** `rgb(68,147,248)`）；
+  5 张图的 hover 加粗 `:stroke-width="hover ? 2 : 1"` 全部恒为 `0.5px`（hover 前后 computed 不变）；
+  `.lane-cell` 的当期 Boss 橙描边同样失效。**共 9 处死绑定、跨 6 个文件。**
+- 机器兜底 = `check-guards` **判据 31**（`scripts/lib/svg-presentation-attr.mjs`）：
+  静态 `class` 命中样式表里声明了同名属性的类、且该元素又用 `:属性` 动态绑定时即红
+  （豁免：`:style` 里已有同名属性 / 动态 `:class` / 类没声明该属性）。
+- ⚠ **判据 16 与本条同族但不同机制**：16 = scoped 的 `data-v-*` 失配（规则根本选不中）；
+  本条 = 选择中了但**被压**。两者症状相同（「写了但吃不到」），都靠机器守。
+
 例外：泳道块上的深色描边光晕（`rgba(0,0,0,·)` paint-order stroke）是画在**彩色块**上的，两主题都成立，保留 hex。
 
 ⚠ **但「描边光晕」不是一个可以照抄的豁免——它的成立条件是「fill 是数据色」**（2026-10-12 纠正）：
@@ -168,6 +184,7 @@ SVG presentation attribute（`fill="var(...)"` / `stroke="var(...)"`）**不可�
 | 加第三个主题（如跟随系统） | `stores/theme.ts` 加 mode + `global.css` 加 `html.<name>` 块 + App.vue 加 overrides 分支 + index.html 脚本 |
 | 改亮暗切换动画 | `global.css` body 的 transition + `.n-card` 过渡 |
 | 新 SVG 图表颜色 | §4 三种写法，禁止 presentation attribute 写 var() |
+| **SVG 元素要按数据/状态动态改色（stroke/width/opacity）** | 一律 `:style="{ stroke: c }"`，**不要** `:stroke="c"`（呈现属性被同名类覆盖 ⇒ 死绑定）。判据 31 会验 |
 | **SVG 标签有描边光晕（`paint-order: stroke`）** | fill 跟随主题 ⇒ 光晕走 `--chart-halo`（成对）；fill 是数据色 ⇒ 写死 + 登记 `HALO_LITERAL_ALLOW_SET`。判据 14/15 会验 |
 | **新 Canvas（自绘）图表颜色** | 走 `--scene-*`（§2 表末）；**禁止** `ctx.fillStyle = 'var(--x)'`（静默忽略）⇒ 经 `src/utils/canvasTheme.ts` 读回真实值（`readThemeVar` / 一帧多读用 `themeReader()`，加 α 用 `withAlpha`；CC-348 起唯一入口，组件里不许自己 `getPropertyValue`）。需要新令牌时把它加进 `SCENE_ROOT_FALLBACK`（值须与 `:root` 逐字同，测试锁定）。机器兜底：`check-tokens` 判据 10 + `canvasTheme.test.ts` |
 | 检查明亮模式漏色 | grep 新改动文件里的 `rgba(255` / `#fff` / `#0f0f` 等字面值 |
@@ -219,3 +236,17 @@ SVG presentation attribute（`fill="var(...)"` / `stroke="var(...)"`）**不可�
      两条都不满足）⇒ 登记它 = **永不命中的死条目**（正是本仓明令防的「豁免腐烂」）。
      **最终删除豁免**，改用「规则作用域」表达，并把该结论写成单测
      （`★ 光晕判据的作用域精确`），前提一旦松动就红。
+- **2026-10-12 SVG 呈现属性死绑定（用户报「血量膨胀里面的线条全是蓝色的了」）**：
+  `styles/charts.css` 的 `.trend-line { stroke: var(--app-primary) }` 覆盖了模板的
+  `:stroke="b.color"`——SVG 呈现属性的层叠优先级**等同「特异性 0 的 author 规则」**，
+  任何类选择器都能压住它。实测（CDP 读回 computedStyle）：25 条折线的 attribute 有
+  **20 种颜色**，computed **只剩 1 种**（`rgb(68,147,248)`）。
+  同类缺陷（同一次全仓扫描查出，**共 9 处 / 6 文件**）：
+  5 张图的 hover 加粗 `:stroke-width="hover ? 2 : 1"` 恒为 `0.5px`（实测 hover 前后不变）、
+  `.lane-cell` 的当期 Boss 橙描边失效。修法 = 全部挪进 `:style`（内联胜出）。
+  新增 **判据 31**（`check-guards` 30→31 条，`scripts/lib/svg-presentation-attr.mjs`）——
+  与判据 16 同族（都是「写了但吃不到」）：16 = scoped 的 `data-v-*` 失配，本条 = **被压**。
+  ⚠ detector 首版有两个致命缺陷，都靠 A/B 注入当场抓出并写成单测：
+  ① `<template>` **非贪心**匹配 ⇒ 遇 Naive 卡片插槽 `<template #header>` 就截断
+  （实测「匹配到 0 个标签」= 恒真的空判据）；② 只收 `.vue` 内联 `<style>` ⇒ 漏掉
+  `src/styles/*.css`（真 bug 的 `.trend-line` 恰在全局表里）。

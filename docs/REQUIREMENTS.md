@@ -128,7 +128,7 @@
   改 `catalog.json` 选 0 个、改核心源文件选 222 个跑 204.9 秒而全量 242.7 秒且漏 27 个引用者；
   ③ 省 1.2 秒却丢 13 个预设的轴态覆盖；④ 零机器判据 + 有实测反例）。
   判定依据、命令与读数：`docs/mcp-dev-process-speed.md` §6 + §9。
-  护栏：`scripts/lib/docs-reading-tests.mjs`（34 条显式清单）+ `src/scripts/__tests__/checkGuards.test.ts` 棘轮
+  护栏：`scripts/lib/docs-reading-tests.mjs`（显式清单，条数见该模块 `DOCS_READING_TESTS`，不在此复抄）+ `src/scripts/__tests__/checkGuards.test.ts` 棘轮
   （清单逐字相等 / 条目存在 / 读 docs 源文件被覆盖 / 反空洞下限 / `check`·`verify` 不得引用快路）。
   **四条都不许接进 `check` / `verify`**；`verify` 仍是交付口径。
   立项提示词：`.claude/PROMPT-process-speed.md`。

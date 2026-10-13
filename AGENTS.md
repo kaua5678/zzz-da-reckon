@@ -159,7 +159,8 @@ node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --cli
 **派活方（写 brief 的人）**：
 1. **brief 四段式**（实测有效，缺哪段工人就自己猜哪段）：① 先读哪几个文件（给**绝对路径**）② 硬约束
    （哪些文件**不许**碰、哪些语义**必须逐位保留**）③ 验收命令（逐条，含期望输出）④ 报告必须包含什么。
-2. **不许让工人跑 `npm run verify`**：全量套件 12min+，且多工人并发跑会互相拖慢/抢 CPU。
+2. **不许让工人跑 `npm run verify`**：全量套件 3~4min（2026-10-12 起 worker 上限自适应到 8，实测 ~200s；
+   旧固定 4 时是 ~310s），且多工人并发跑会互相拖慢/抢 CPU。
    工人的验收面 = `npm run check-guards` + 相关 `npx vitest run <文件>` + `npm run build`；
    **全量 `verify` 由派活方在合并前统一跑一次**。
 3. **同一文件不派给两个工人**（规则 13 的租约解决不了跨会话的 brief 冲突）：用 `session_admin add_task`

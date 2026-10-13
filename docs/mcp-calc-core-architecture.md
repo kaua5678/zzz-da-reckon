@@ -118,7 +118,7 @@ node -e 'const a=require("/home/kaua/calc-arch/dump-A.json"),b=require("/home/ka
 #   任何**有意改数值**的提交落盘后必须重生成并在此行更新代次。
 npm run build                            # vue-tsc + vite，EXIT 0
 ```
-不许跑 `npm run verify`（12min+，lead 合并前统一跑）。报告写 `.zc/reports/<卡号>.md`，第一行 `STATUS: done|blocked`，
+不许跑 `npm run verify`（3~4min，2026-10-12 起 worker 上限自适应到 8，实测 ~200s；lead 合并前统一跑）。报告写 `.zc/reports/<卡号>.md`，第一行 `STATUS: done|blocked`，
 附上面每条命令的尾部输出；最后一条回复也带 STATUS。
 
 ## 5. 任务卡

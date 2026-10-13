@@ -109,9 +109,14 @@ export const DOCS_READING_TESTS = [
   'src/scripts/__tests__/recordKeyDeadReads.test.ts',
   'src/scripts/__tests__/recording.test.ts',
   'src/scripts/__tests__/scopedStyleReach.test.ts',
+  // 判据 31：读仓库现状（扫 src/**/*.vue 模板 + 样式表），属规则 ①（闭包命中 docs/ 信号）
+  'src/scripts/__tests__/svgPresentationAttr.test.ts',
   'src/scripts/__tests__/teammateBuffControls.test.ts',
   'src/scripts/__tests__/uiCheck.test.ts',
   'src/scripts/__tests__/uiCheckStartup.test.ts',
+  // 2026-10-12 worker 上限：规则 ② 入选（写 scripts/lib/worker-cap.mjs 路径字面量，且自身读仓库现状
+  // ——对 vite.config.ts 做源码文本断言「必须调用 workerCap + 保留 VITEST_MAX_WORKERS 覆盖口」）
+  'src/scripts/__tests__/workerCap.test.ts',
   'src/scripts/__tests__/zc.test.ts',
   'src/scripts/__tests__/zcBrief.test.ts',
   'src/scripts/__tests__/zcDeadChannels.test.ts',

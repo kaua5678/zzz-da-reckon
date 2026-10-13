@@ -17,9 +17,18 @@ const tick = () => new Promise(r => setTimeout(r, 40))
 const REPLACEMENT = '1311'
 const FIXED = stunAxisPresets.filter(p => p.axes && p.axes.length > 0 && !p.team.includes('*') && !p.team.includes(REPLACEMENT))
 
+/**
+ * 选一个「换人后**必有**动作残留」的槽位。
+ *
+ * ⚠ 必须是 `slot !== 0`（2026-10-12 修）：本用例的语义是「旧轴里**别人的**动作换人后不得执行」，
+ * 而 slot 0 上往往是主C 的轴 + `basic` 兜底填充块，而 `basic` 被 `isStaleAxisActionFor` **显式豁免**
+ * （通用填充，谁都能用，见 `roundInputs.ts:62`）⇒ 只含 slot 0 的预设（如克拉蕾标准轴，它是单槽轴）
+ * 会让 `staleSlotOf` 退化成 0，然后断言「0:basic 不该执行」——那是**夹具退化**，不是残留缺陷。
+ * 返回 -1 = 该预设不适合本用例（调用方跳过并计入反空洞下限）。
+ */
 function staleSlotOf(axes: StunAxis[]): number {
   const slots = new Set(axes.flatMap(a => a.actions.map(x => x.slot)))
-  return [...slots].find(x => x !== 0) ?? 0
+  return [...slots].find(x => x !== 0) ?? -1
 }
 
 async function run(team: readonly string[], axes: StunAxis[], swap?: { slot: number; agentId: string }) {
@@ -37,13 +46,17 @@ async function run(team: readonly string[], axes: StunAxis[], swap?: { slot: num
 }
 
 describe('CC-389 失衡轴残留的别人的动作不执行', () => {
-  it('夹具前提：至少一个固定轴预设可用', () => {
+  it('夹具前提：至少一个固定轴预设可用，且至少一个含**非 0 槽**动作（否则本组退化成空转）', () => {
     expect(FIXED.length).toBeGreaterThan(0)
+    // 反空洞（2026-10-12）：单槽轴会被 skipIf 跳过 ⇒ 必须证明仍有真正跑到断言的预设
+    expect(FIXED.filter(p => staleSlotOf(p.axes!) >= 0).length, '需至少一个多槽预设').toBeGreaterThan(0)
   })
 
   for (const preset of FIXED) {
-    it(`${preset.id}：带旧轴换人 = 换人前删掉该槽动作；该槽无执行记录`, async () => {
-      const s = staleSlotOf(preset.axes!)
+    const presetSlot = staleSlotOf(preset.axes!)
+    // 单槽轴（只有 slot 0）跳过：`basic` 豁免残留判定 ⇒ 本用例对它退化（见 staleSlotOf 注释）
+    it.skipIf(presetSlot < 0)(`${preset.id}：带旧轴换人 = 换人前删掉该槽动作；该槽无执行记录`, async () => {
+      const s = presetSlot
       const staleCount = preset.axes!.reduce((n, a) => n + a.actions.filter(x => x.slot === s).length, 0)
       expect(staleCount, '反空洞：该槽在轴里确有动作').toBeGreaterThan(0)
       const swap = { slot: s, agentId: REPLACEMENT }
