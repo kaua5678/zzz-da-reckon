@@ -186,6 +186,47 @@
           </n-checkbox>
         </div>
         </template>
+        <!-- 环境模式（只服务难度曲线图型）：勾了 = 看综合实力，不勾 = 看自身实力 -->
+        <template v-if="chartMode === 'curve'">
+          <!-- 环境模式（用户 2026-10-13）：勾了 = 看综合实力（各期血量膨胀 + 该期 buff），不勾 = 看自身实力 -->
+          <div class="version-picks" style="margin-bottom: 4px">
+            <n-checkbox
+              v-model:checked="curveEnv"
+              size="small"
+              title="勾上 = 综合实力：每条道走**该队版本内的每一期**（该期 Boss 血量 + 该期 buff 牌）；不勾 = 自身实力：全部队用当前选中那一期、不吃 buff"
+            >
+              环境（按期数）
+            </n-checkbox>
+            <template v-if="curveEnv">
+              <span>buff：</span>
+              <n-select
+                v-model:value="curveBuffMode"
+                :options="curveBuffModeOptions"
+                size="tiny"
+                style="width: 190px"
+              />
+              <n-select
+                v-if="curveBuffMode === 'manual'"
+                v-model:value="curveManualBuff"
+                :options="curveManualBuffOptions"
+                size="tiny"
+                style="width: 160px"
+                placeholder="选牌"
+              />
+              <span>期数范围：</span>
+              <n-select v-model:value="curvePeriodFrom" :options="curvePeriodOptions" size="tiny" style="width: 150px" />
+              <span>→</span>
+              <n-select v-model:value="curvePeriodTo" :options="curvePeriodOptions" size="tiny" style="width: 150px" />
+              <span v-if="curveEnvLanes.length > 0" style="opacity: 0.75">
+                （{{ curveEnvLanes.length }} 条道 = 各队 × 其版本内的期）
+              </span>
+              <!-- 一条道都没有时如实说明原因，否则「点了没反应」看着像坏了 -->
+              <span v-else style="opacity: 0.8; color: var(--c-warning)">
+                （当前队伍在这个期数范围里没有可跑的道：该队版本槽角色未收录实装版本，或选中 Boss 在这些期都没上岗）
+              </span>
+            </template>
+          </div>
+        </template>
         <!-- 选第三人：固定 2 个队友 + 候选范围（职业筛选/手选），不依赖预设队伍（求值口径同「同槽位角色对比」） -->
         <template v-if="chartMode === 'sweep'">
           <div class="ctl-field" title="第三人补进哪个槽位：其余两槽固定，该槽在候选池里逐个试算排名">
@@ -286,6 +327,22 @@
       <div v-else-if="chartMode === 'sweep' && !computing && !sweepResult" class="empty-hint guide-hint">
         选好第三人槽位与两个固定队友 → 圈定候选（「候选职业」勾异常/命破等，或「候选角色」手选）→ 点「计算第三人」。
         固定队友不必来自同一预设队——任何角色组合都可以比；结果为候选伤害排名表（伤害占比条 + 加金明细），直接回答「这两个队友下第三人选谁」。
+      </div>
+      <!--
+        ⚠ **难度曲线算完却一条道都没有**时必须有话说（2026-10-13 用户报「不出图」）：
+        此前 `curveData` 为 null ⇒ 四张卡片的 `v-if` 全假 ⇒ **整页空白且无提示**，
+        用户分不清「没数据」还是「算坏了」。这里如实说明原因与下一步动作。
+      -->
+      <div
+        v-else-if="chartMode === 'curve' && !computing && curveRows.length > 0 && curveData === null"
+        class="empty-hint guide-hint"
+      >
+        本批队伍在这个期数范围里**没有可跑的道**，所以没有曲线可画。环境模式（按期数）下每条道
+        =（队伍 × 该队实装之后、选中 Boss 上岗的某一期），因此「一条道都没有」通常是因为：
+        <b>① 选中 Boss 在你选的期数范围里没上岗</b>（换 Boss，或把「期数范围」放宽到头尾之外）；
+        <b>② 队伍版本槽角色的实装晚于这些期</b>（换队伍，或用「按主C快选」选个更早实装的）；
+        <b>③ 期数范围收得太窄</b>（把起点往前、终点往后各放一点）。
+        不想按期数看的话，把「环境（按期数）」**取消勾选**即可回到单期口径（每队一条曲线）。
       </div>
     </n-card>
 
@@ -475,21 +532,30 @@
             <n-radio-button value="percent">伤害/血量%（击杀线平面）</n-radio-button>
             <n-radio-button value="absolute">绝对伤害 + Boss 血量膨胀</n-radio-button>
           </n-radio-group>
-          <span v-if="curveZMode === 'absolute' && bossHpOverlay.length === 0" style="opacity: 0.7">
-            （{{ selectedBoss?.name }} 在当前版本道里没有血量记录——折线不出，绝对伤害仍可比）
+          <span v-if="bossHpCurve.length === 0" style="opacity: 0.7">
+            （{{ selectedBoss?.name }} 在当前版本道区间里没有血量记录——膨胀曲线不出，伤害仍可比）
           </span>
+        </div>
+        <div class="compare-note curve-note">
+          <b>版本轴上的血量膨胀曲线</b>（用户 2026-10-13）：<b>虚线 + 垂面</b> = 选中 Boss 的血量剖面，
+          横轴位置与各队版本道<b>同一坐标</b>，覆盖道位区间内的<b>每一个版本</b>（同一版本多期取平均；
+          该 Boss 没上岗的版本折线跨空档直连，不插值）。两档 z 口径都用它当参考线：
+          <b>伤害/血量%</b> 档 = 各版本血量 ÷ <b>当期血量</b>（= 血量膨胀指数，100% 就是当期那把共享尺）；
+          <b>绝对伤害</b> 档 = 血量绝对值本身，与各队绝对伤害同一把尺（比的是伤害与血量谁涨得快）。
+          位移虚线段 = 难度回落（与 2D 同语义）。
         </div>
         <DifficultyCurve3DChart
           :series="curveData.series"
-          :lanes="versionAxis.lanes"
+          :lanes="chart3dLanes"
           :cost-max="curveData.costMax"
           :ratio-max="curveData.ratioMax"
           :color-of="colorOf"
           :point-label="pointLabel"
-          :axis-label="`版本（${slotName(versionAxis.defaultSlot)}）`"
+          :axis-label="curveEnv ? '危局期数（环境：各期血量+buff）' : `版本（${slotName(versionAxis.defaultSlot)}）`"
           :z-mode="curveZMode"
           :abs-max="curveZAbsMax"
-          :boss-curve="{ name: `${selectedBoss?.name ?? ''} HP 膨胀`, points: bossHpOverlay }"
+          :base-hp="selectedPhase?.hp ?? 0"
+          :boss-curve="{ name: `${selectedBoss?.name ?? ''} 血量`, points: bossHpCurve }"
         />
       </div>
       <div v-else class="chart-area">
@@ -552,14 +618,14 @@
           <span class="legend-hint">点图例显隐 · {{ curveCounts.visible }}/{{ curveCounts.total }}</span>
           <span
             v-for="s in curveAllSeries"
-            :key="s.presetId"
+            :key="s.laneKey"
             class="lchip"
-            :class="{ off: !curveLegend.isVisible(s.presetId) }"
+            :class="{ off: !curveLegend.isVisible(s.laneKey) }"
             :style="{ borderColor: colorOf(s.presetId) }"
-            :title="`${s.name}：点击${curveLegend.isVisible(s.presetId) ? '隐藏' : '显示'}（隐藏后不参与坐标轴与明细表）`"
-            @click="curveLegend.toggle(s.presetId)"
+            :title="`${s.label}：点击${curveLegend.isVisible(s.laneKey) ? '隐藏' : '显示'}（隐藏后不参与坐标轴与明细表）`"
+            @click="curveLegend.toggle(s.laneKey)"
           >
-            <span class="ldot" :style="{ background: colorOf(s.presetId) }"></span>{{ s.name }}（{{ fmt(s.gainX, 2) }}× · +{{ fmt(s.gainPct, 1) }}%）
+            <span class="ldot" :style="{ background: colorOf(s.presetId) }"></span>{{ s.label }}（{{ fmt(s.gainX, 2) }}× · +{{ fmt(s.gainPct, 1) }}%）
           </span>
           <span class="legend-hint legend-action" @click="curveLegend.showAll()">全显示</span>
         </div>
@@ -669,18 +735,23 @@
 
     <!-- 曲线摘要表：难易强度对比看这几列 -->
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="detail-card">
-      <template #header>曲线摘要（{{ curveData.series.length }} 队可见）</template>
+      <template #header>
+        曲线摘要（{{ curveData.series.length }} 条道可见<template v-if="curveRowsStale"> · <span style="color: var(--c-warning)">环境设置已改，需重算</span></template>）
+      </template>
       <div class="detail-table-wrap">
         <table class="detail-table">
           <thead>
             <tr>
-              <th>队伍</th><th>全关</th><th>终点</th><th>提升</th><th>倍数</th>
+              <th>队伍</th><th v-if="curveRowsHavePeriod">期数</th><th v-if="curveRowsHavePeriod">该期血量</th>
+              <th>全关</th><th>终点</th><th>提升</th><th>倍数</th>
               <th>操作难度</th><th>收益/难度</th><th>关键点</th><th>轴态</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="s in curveData.series" :key="s.presetId" :class="{ 'curve-flat': s.flat }">
+            <tr v-for="s in curveData.series" :key="s.laneKey" :class="{ 'curve-flat': s.flat }">
               <td class="td-team" :style="{ color: colorOf(s.presetId) }">{{ s.name }}</td>
+              <td v-if="curveRowsHavePeriod" class="td-muted">{{ s.periodLabel || '—' }}</td>
+              <td v-if="curveRowsHavePeriod" class="td-muted">{{ (s.hp / 1e6).toFixed(0) }}M</td>
               <td>{{ compact(s.base) }}</td>
               <td>{{ compact(s.final) }}</td>
               <td :class="{ kill: s.gainPct > 0 }">+{{ fmt(s.gainPct, 1) }}%</td>
@@ -739,7 +810,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NPopover, NRadioGroup, NRadioButton } from 'naive-ui'
 import DifficultyCurve3DChart from '@/components/charts/DifficultyCurve3DChart.vue'
-import { deriveVersionAxis, buildBossHpOverlay } from '@/composables/difficultyCurve3d'
+import { buildBossHpCurve, buildEnvLanes, deriveVersionAxis, type VersionLane } from '@/composables/difficultyCurve3d'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, type PresetGoldAlternative } from '@/composables/teamCompare'
@@ -761,8 +832,9 @@ import { fmt, compact, localized } from '@/utils/format'
 import { useScatterGeometry } from '@/composables/teamCompareScatter'
 import { useSlotSweep } from '@/composables/teamCompareSweep'
 import { encodePointTimes, timeLegendRows } from '@/composables/pointTimeAxis'
-import type { BossPreset, PhaseView } from '@/types/bossPreset'
-import { releaseNodeOf, nodeIndexOf, VERSION_NODES } from '@/data/versionTimeline'
+import type { BossPreset, BossPresetPhase, PhaseBuffCard, PhaseView } from '@/types/bossPreset'
+import { releaseDateOf, releaseNodeOf, nodeIndexOf, VERSION_NODES } from '@/data/versionTimeline'
+import { buildPeriodAxis } from '@/composables/bossSchedule'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
 import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
 
@@ -1014,12 +1086,47 @@ const chartMode = ref<'scatter' | 'curve' | 'sweep'>('scatter')
 const curveRows = ref<DifficultyCurveRow[]>([])
 /** 难度曲线视图：2D 折线（原图）/ 3D 版本轴（用户 2026-09-19） */
 const curveView = ref<'2d' | '3d'>('2d')
+/**
+ * **环境模式**（用户 2026-10-13）：「勾选了环境，那么就不是看自身实力了，而是想看在不同期数的血量
+ * 膨胀上也可以选择对应期数的 buff 作为增幅的综合实力」。
+ *
+ * - 不勾（缺省）= 自身实力：全部队用当前选中那一期、不吃 buff ⇒ 与改动前**逐位相同**；
+ * - 勾上 = 综合实力：每条道 =（预设 × 该队版本内的**每一期**），各吃自己那期的**血量 + buff 牌**。
+ *   实测同一 Boss 每版本最多上 2 期 ⇒ 道数 ≈ 队数 × 1~2（用户口径「压力会变成 1~3 倍」）。
+ */
+const curveEnv = ref(false)
+/** buff 三态（用户「勾选与不勾选都要能做，你可以让用户自己选，也可以提供硬算功能」） */
+const curveBuffMode = ref<'none' | 'auto' | 'manual'>('none')
+const curveManualBuff = ref<string | null>(null)
+const curveBuffModeOptions = [
+  { value: 'none', label: '不吃 buff（快）' },
+  { value: 'auto', label: '每期自动取最优（硬算，慢）' },
+  { value: 'manual', label: '手选牌名' },
+]
+/** 期数范围（用户口径「加个新功能，就是限定期数的开头和结尾，这样相比默认的头尾就缩短了」） */
+const curvePeriodFrom = ref<string | null>(null)
+const curvePeriodTo = ref<string | null>(null)
 /** 3D 版本轴：多个槽位在变时逐队指定「当版本的角色」（presetId → slot），只在本页会话内有效 */
 const versionOverrides = ref<Record<string, number>>({})
 function setVersionOverride(presetId: string, slot: number | null) {
   if (slot === null || slot === undefined) delete versionOverrides.value[presetId]
   else versionOverrides.value[presetId] = slot
 }
+/**
+ * **输入侧的队伍清单**（选中预设，不依赖计算结果）。
+ *
+ * ⚠ 为什么必须有一份输入侧的轴（实机踩到）：`versionAxis` 是**从结果行**推的
+ * （`visibleCurveRows`），而**环境模式的道表要在发请求前算好**（worker 契约）——
+ * 用结果推道表就成了鸡生蛋：第一次点「计算曲线」时 `curveRows` 还是空的 ⇒ 道表为空 ⇒
+ * 零行 ⇒ 结果还是空的。实机症状 = **点计算曲线永远等不到图**（超时 300s，零 JS 错误）。
+ */
+const presetInputs = computed(() => selectedPresets.value.map(p => ({
+  presetId: p.id,
+  name: p.name,
+  team: (p.team ?? ['', '', '']) as readonly string[],
+})))
+
+/** 结果侧版本轴（展示用）：只覆盖**可见**队，隐藏队退出轴范围（图例筛选传导） */
 const versionAxis = computed(() => deriveVersionAxis(
   visibleCurveRows.value.map(r => {
     const p = teamPresets.find(t => t.id === r.presetId)
@@ -1030,6 +1137,144 @@ const versionAxis = computed(() => deriveVersionAxis(
   // ⑤ 道位按首次 UP 的版本节点序号留空档（未收录角色 → null → 全轴回退等距）
   id => releaseNodeIndexOf(id),
 ))
+
+/** **输入侧版本轴**（环境模式的道表/道位用；同一套 overrides 与解析器 ⇒ 与结果侧同槽口径） */
+const inputVersionAxis = computed(() => deriveVersionAxis(
+  presetInputs.value,
+  versionOverrides.value,
+  id => agentNameOf(id),
+  id => releaseNodeIndexOf(id),
+))
+/**
+ * 期数轴节点（环境模式的横轴单位）：**有选中 Boss 的期**才进轴（用户 2026-10-13
+ * 「并不是每期一个点，而是有 boss 的期数才会有点」）——`buildPeriodAxis` 收全部 Boss 的全部期，
+ * 这里按「选中 Boss 有没有这一期」过滤，并按用户给的头尾范围裁剪。
+ *
+ * 实测同版本 3 期里该 Boss 通常只上 1~2 期（死路屠夫 3.1 只有 690441/690421）⇒ 每队道数 1~2。
+ */
+const curvePeriodNodes = computed(() => {
+  const boss = selectedBoss.value
+  if (!boss) return []
+  const has = new Set(boss.phases.map(p => p.phaseId))
+  const all = buildPeriodAxis(bossPresets.value).filter(n => has.has(n.id))
+  const from = curvePeriodFrom.value
+  const to = curvePeriodTo.value
+  if (!from && !to) return all
+  const iFrom = from ? all.findIndex(n => n.id === from) : 0
+  const iTo = to ? all.findIndex(n => n.id === to) : all.length - 1
+  if (iFrom < 0 || iTo < 0) return all
+  const lo = Math.min(iFrom, iTo)
+  const hi = Math.max(iFrom, iTo)
+  return all.slice(lo, hi + 1)
+})
+const curvePeriodOptions = computed(() =>
+  curvePeriodNodes.value.map(n => ({ value: n.id, label: n.label })),
+)
+
+/** 选中 Boss 在某一期的 phase（环境模式取该期血量/敌人数值的唯一来源） */
+function phaseOfPeriod(periodId: string): BossPresetPhase | null {
+  return selectedBoss.value?.phases.find(p => p.phaseId === periodId) ?? null
+}
+
+/** 该期的 buff 牌（`phaseViews` 按期；测试服占位牌不算） */
+function buffsOfPeriod(periodId: string): PhaseBuffCard[] {
+  return (phaseViews.value.find(v => v.phaseId === periodId)?.buffs ?? []).filter(b => !b.testOnly)
+}
+
+/**
+ * 手选牌名的候选：当前期数范围内出现过的全部牌名（并集，去重）——用户要「手选」，候选就该是他
+ * 能看到的那些牌，而不是只有当前这一期的。
+ */
+const curveManualBuffOptions = computed(() => {
+  const names = new Set<string>()
+  for (const n of curvePeriodNodes.value) for (const b of buffsOfPeriod(n.id)) if (b.title) names.add(b.title)
+  return [...names].map(t => ({ value: t, label: t }))
+})
+
+/**
+ * **环境模式的道表**（发请求前算好的**纯数据**；worker 读不到页面 store，函数过不了 postMessage）。
+ *
+ * 一条道 =（预设 × 该队**版本槽角色**所属版本内的、选中 Boss 上岗的每一期）。版本槽口径复用
+ * `versionAxis`（`deriveVersionAxis` 已按「变化最多的槽 + 并列优先能解析的槽」定好），
+ * 再按**首次 UP 日期**把该角色落到期（`indexForDate` 的窗口口径）。
+ *
+ * 该队一条道都没有（角色未收录 / 该版本内 Boss 没上岗）⇒ 空数组，页面在摘要里如实标注，
+ * **不静默塞一条用当期血量的假道**（那会把两种口径混进同一张图）。
+ */
+const curveEnvLanes = computed(() => {
+  if (!curveEnv.value) return []
+  return buildEnvLanes(inputVersionAxis.value.lanes, curvePeriodNodes.value, {
+    versionOf: versionOfAgent,
+    dateOf: releaseDateOf,
+  }).map(l => {
+    const phase = phaseOfPeriod(l.periodId)
+    return phase ? { presetId: l.presetId, key: l.periodId, phase, buffs: buffsOfPeriod(l.periodId) } : null
+  }).filter((v): v is NonNullable<typeof v> => v !== null)
+})
+
+/** 角色实装版本号（回退归期用；与 `releaseNodeIndexOf` 同源） */
+function versionOfAgent(agentId: string): string | null {
+  const nodeId = releaseNodeOf(agentId)
+  if (!nodeId) return null
+  return VERSION_NODES[nodeIndexOf(nodeId)]?.version ?? null
+}
+
+/**
+ * **环境模式下的 3D 道**：一条道 =（预设 × 该期）——与 `curveEnvLanes` 同源，但这里产出的是
+ * 图表要的 `VersionLane` 形状（`frac` = 期数轴位置、`label` 带期标签、`versionIndex` = 期下标）。
+ *
+ * 为什么不用 `versionAxis.lanes`（版本道）：环境模式下**同期不同队才有可比性**，而版本道会把
+ * 同队的两期叠成一条（`frac` 相同）⇒ 图上看不出「同一队在 3.1 与 3.2 的差别」，而那正是本功能的
+ * 目的（用户 2026-10-13「你就要把版本换成更细致的期数才能表达完整」）。
+ */
+const curvePeriodAxis = computed(() => {
+  const nodes = curvePeriodNodes.value
+  const idxOf = new Map(nodes.map((n, i) => [n.id, i]))
+  const lanes: Array<VersionLane & { laneKey: string }> = []
+  const seen = new Set<string>()
+  // 颜色/标签按 curveEnvLanes 的顺序（= versionAxis 的道序 × 该队的期序），保证与结果行同序
+  for (const l of curveEnvLanes.value) {
+    /**
+     * ⚠ `laneKey` **必须传**（与 `CurveSeries.laneKey` 同一口径）：环境模式下同一队有多条道
+     * （一个 presetId 对应多期），图表靠它认 series——缺了就只能按 `presetId` 找，**多条道会一起
+     * 落回第一条 series**（图上只剩一条线，其他道画出重复的同一形状）。
+     */
+    const key = `${l.presetId}::${l.key}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const node = nodes.find(n => n.id === l.key)
+    const idx = idxOf.get(l.key) ?? null
+    lanes.push({
+      presetId: l.presetId,
+      laneKey: key,
+      name: node?.label ?? l.key,
+      slot: 0,
+      agentId: '',
+      // 带上队名：环境模式下多条道常落在同一期，光看期标签分不出谁是谁
+      label: `${presetNameOf(l.presetId)} · ${node?.label ?? l.key}`,
+      y: idx ?? 0,
+      versionIndex: idx,
+      frac: nodes.length <= 1 ? 0.5 : (idx ?? 0) / Math.max(1, nodes.length - 1),
+    })
+  }
+  const gapped = lanes.length > 0 && new Set(lanes.map(l => l.versionIndex)).size >= 2
+  if (!gapped) {
+    const n = lanes.length
+    lanes.forEach((l, i) => { l.frac = n <= 1 ? 0.5 : i / (n - 1) })
+  }
+  return { lanes, gapped }
+})
+
+/** 预设 id → 队名（环境道标签用；查不到就退回 id，不显示空串） */
+function presetNameOf(presetId: string): string {
+  return teamPresets.find(t => t.id === presetId)?.name ?? presetId
+}
+
+/** 3D 图实际用的道（环境模式 = 期数道；否则 = 版本道） */
+const chart3dLanes = computed<Array<VersionLane & { laneKey?: string }>>(() =>
+  curveEnv.value ? curvePeriodAxis.value.lanes : versionAxis.value.lanes,
+)
+
 /** 版本节点序号解析（versionTimeline）：agent → 首次 UP 节点 → 节点序号（未收录 → null） */
 function releaseNodeIndexOf(agentId: string): number | null {
   const nodeId = releaseNodeOf(agentId)
@@ -1057,15 +1302,23 @@ function cancelCurrentRun(): void {
 const curveRunCache = new Map<string, { rows: DifficultyCurveRow[] }>()
 const CURVE_RUN_CACHE_MAX = 24
 
-/** 3D z 口径（用户 2026-09-19②）：血量%（击杀线平面）/ 绝对伤害 + 选中 Boss 的 HP 膨胀曲线 */
+/**
+ * 3D z 口径（用户 2026-09-19②）：全队同一把当期尺（伤害/血量%，击杀线平面）/ 绝对伤害 + Boss 血量剖面。
+ * 两档**都**画血量剖面（用户 2026-10-13「侧视图没能在对应角色的版本编号中表现出选定 boss 在血量膨胀
+ * 板块的曲线……把点面改为选定 boss 的曲线面」）——`percent` 档下剖面按「该版本血量 ÷ 当期血量」
+ * 换成同一把尺（= 膨胀指数），故「按当前角色版本编号取 Boss 血量当 100%」不再需要第三档口径。
+ */
 const curveZMode = ref<'percent' | 'absolute'>('percent')
 
-/** 选中 Boss 的 HP 膨胀点（对齐到当前版本道；只在绝对模式与 3D 下消费） */
-const bossHpOverlay = computed(() => {
+/**
+ * 选中 Boss 的血量剖面：覆盖版本道区间内的**每一个版本**（不是只有各道所在的那几点）。
+ * 旧口径只取道位所在版本 ⇒ 每条道一个孤立点，3D 里连不成曲线（侧视更是每道一根竖柱）。
+ */
+const bossHpCurve = computed(() => {
   const boss = selectedBoss.value
   if (!boss) return []
   const mode = selectedPhase.value?.modeType ?? 'defense'
-  return buildBossHpOverlay(
+  return buildBossHpCurve(
     versionAxis.value.lanes,
     boss.phases,
     mode,
@@ -1079,7 +1332,7 @@ const curveZAbsMax = computed(() => {
   for (const s of curveData.value?.series ?? []) {
     for (const p of s.points) m = Math.max(m, p.dmg)
   }
-  for (const q of bossHpOverlay.value) m = Math.max(m, q.value)
+  for (const q of bossHpCurve.value) m = Math.max(m, q.value)
   return m
 })
 
@@ -1097,10 +1350,28 @@ const visiblePoints = computed(() => points.value.filter(p => scatterLegend.isVi
 /** 图例计数（顶层 ref 绑定 ⇒ 模板里自动解包，写 `scatterCounts.visible`） */
 const scatterCounts = scatterLegend.counts
 
-const curveLegend = useSeriesFilter(() => curveRows.value.map(r => ({ id: r.presetId, name: r.name })))
+/**
+ * 曲线图例的粒度 = **道**（环境模式下同一队有多条道：一个 presetId 对应多行）。
+ * 所以 id 必须是 `laneKeyOf(row)` 而不是 `presetId`——用 presetId 会让同队的两条道**互相覆盖显隐**
+ * （点一条藏掉全部）。自身实力模式下 `laneKeyOf = presetId`，与改动前逐位等价。
+ */
+const laneKeyOf = (r: DifficultyCurveRow): string => (r.periodKey === null ? r.presetId : `${r.presetId}::${r.periodKey}`)
+/**
+ * 表格的「期数/该期血量」列按**数据**决定（行里有没有期），**不按当前开关**——
+ * 否则「切了开关但还没重算」时，旧结果会被套上新列，显示成「期数 — / 血量 206M」这种
+ * 半新半旧的假象（实机点通实测到）。
+ */
+const curveRowsHavePeriod = computed(() => curveRows.value.some(r => r.periodKey !== null))
+/** 结果与当前环境设置不一致（改过开关/buff 态/期数范围但没重算）⇒ 如实提示，不假装结果是最新的 */
+const curveRowsStale = computed(() => curveRows.value.length > 0 && curveRowsHavePeriod.value !== curveEnv.value)
+const curveLegend = useSeriesFilter(() => curveRows.value.map(r => ({
+  id: laneKeyOf(r),
+  // 环境模式下同道多期：显示名带上期标签，否则图例里出现几个同名项无法区分
+  name: r.periodKey === null ? r.name : `${r.name} · ${r.label}`,
+})))
 const curveCounts = curveLegend.counts
 /** 可见曲线阶梯行（喂给 buildCurveChart，使其轴上限/刻度只按可见队算） */
-const visibleCurveRows = computed(() => curveRows.value.filter(r => curveLegend.isVisible(r.presetId)))
+const visibleCurveRows = computed(() => curveRows.value.filter(r => curveLegend.isVisible(laneKeyOf(r))))
 
 function goldLevels(): number[] {
   const levels: number[] = []
@@ -1174,12 +1445,25 @@ async function runCurves() {
   const phase = selectedPhase.value
   if (presets.length === 0 || !boss || !phase) return
   // ③ 会话缓存：输入逐字节相同 ⇒ 上次的结果数学等价，直接回放
+  // ⚠ 环境开关/buff 态/期数范围**必须进 key**：它们改变道表（哪些期、吃哪张牌），
+  //   漏进去会让「切了 buff 态却回放旧结果」看起来像开关失灵（本仓库踩过同类：漏传 fusionRules 数值静默漂移）
+  const envTable = curveEnv.value
+    ? {
+      lanes: Object.fromEntries(
+        [...new Set(curveEnvLanes.value.map(l => l.presetId))]
+          .map(id => [id, curveEnvLanes.value.filter(l => l.presetId === id).map(l => ({ key: l.key, phase: l.phase, buffs: l.buffs }))]),
+      ),
+      buffMode: curveBuffMode.value,
+      ...(curveBuffMode.value === 'manual' && curveManualBuff.value ? { manualBuffTitle: curveManualBuff.value } : {}),
+    }
+    : undefined
   const cacheKey = JSON.stringify({
     boss: boss.id,
     phase,
     snap: cloneConfigState(configStore.$state),
     weights: diffWeights.value,
     presets,
+    env: envTable,
   })
   const hit = curveRunCache.get(cacheKey)
   if (hit) {
@@ -1207,6 +1491,8 @@ async function runCurves() {
       interactionFormula: diffWeights.value.interactionFormula,
       interactionExponent: diffWeights.value.interactionExponent,
     },
+    // 环境模式的道表（纯数据；worker 读不到页面 store）。缺省 = undefined ⇒ 自身实力口径逐位不变
+    environment: envTable,
   }, {
     signal: run.signal,
     onProgress: (index, total, name) => {

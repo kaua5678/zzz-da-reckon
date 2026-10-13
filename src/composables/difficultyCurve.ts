@@ -32,6 +32,9 @@
  *
  * `buildCurveChart` 是纯函数（不碰 store / 引擎），判据测试在同名单测文件里。
  *
+ * @fact engine:难度曲线/环境模式 口径: `environment` 缺省 = **自身实力**（全部队用 `options.phase`、不吃 buff，与改动前逐位相同）；传了 = **综合实力**（每条道 =（预设 × 该队版本内**该 Boss 上岗的每一期**），各吃**该期血量 + 该期 buff**）。buff 三态 `none`/`auto`（该期牌里伤害最高，硬算）/`manual`（同名找不到 = 不吃，不静默换牌）；`lanesOf` 返回空 ⇒ **零行**，不塞假道 | 据 用户@2026-10-13（「勾选了环境……就是想看在不同期数的血量膨胀上也可以选择对应期数的 buff 作为增幅的综合实力」+「并不是每期一个点，而是有 boss 的期数才会有点」+「压力会变成 1-3 倍」） | 验 difficultyCurve.test.ts::★ 环境 ON：每队用**自己那一期**的敌人数值 | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
+ * ⟳复核: 若引擎改为「伤害也吃 Boss 血量」（如按血量百分比结算的机制），重核「只换 hp 的判据是 vacuous」这条注释是否仍成立 | 到期 2027-04-30
+ *
  * @fact engine:难度曲线/x轴 口径: x = **自动算的操作难度绝对值** = `computeDifficulty`(当前点实打交互次数, 时间压力秒, 用户权重) —— 与散点页横轴同一函数同一单位（故可直接对齐比较）；**时间压力 = 硬溢出 overflowSeconds + 合轴抵扣 saved，一笔秒数只挂一个权重**；各队起点不齐是特性，且 x 不保证单调 | 据 用户@2026-09-10·口径合并@2026-09-11·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07·复核@2026-10-12（T140c 改关键点结构，x 口径不变） | 验 difficultyCurve.test.ts::集成：x 轴 = 实测操作难度 | 锚 src/composables/difficultyCurve.ts#measureOperationalDifficulty | 信 确认
  * @fact engine:难度曲线/伤害归因 口径: 每点伤害按来源分组（直伤行 = 招式名、异常行 = 行 `type`，同名跨槽位合并），Σ 分组 ≡ 该点总伤害 ⇒ 归因精确；相邻点差分 = 正贡献 top + 被挤掉（最负在前）+ 其余，三段合计 ≡ 总 Δ | 据 实测@2026-09-10·复核@2026-09-25·复核@2026-09-30·复核@2026-10-12 | 验 difficultyCurve.test.ts::伤害归因 | 锚 src/composables/difficultyCurve.ts#attributeDmgChanges | 信 确认
  * @fact engine:难度曲线/交互项截断缩 口径: x 的交互项按**装配期截断存活率**缩到「180s 里真打的次数」——每槽因子 = `convergence.truncationBySlot` 的 kept/requested（引擎截断是整槽按比例缩，故同比例缩该槽交互）；并先按引擎非轴降配 `interactionScale`（`DOWNSCALED_INTERACTION_FIELDS`，`round(raw×scale)`）缩；截断因子与降配因子都不动时为 1 ⇒ 只有带截断**或**处于非轴降配的队数值会动。近似：按槽缩而没按交互类型精确缩（般岳 金身/双反 共用「冲霄」一行），精确版随 A 项（截断回灌资源循环）落地 | 据 用户@2026-09-11·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07·复核@2026-10-12 | 验 difficultyCurve.test.ts::交互项按装配期截断存活率缩 + liveInteractionsDownscale.test.ts | 锚 src/composables/liveInteractions.ts#liveInteractions | 信 确认
@@ -49,7 +52,8 @@ import {
 } from '@/composables/difficultyLadder'
 import type { AxisState } from '@/composables/difficultyAxis'
 import {
-  applyAxisBinding, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf, computeDifficulty, type DifficultyWeights,
+  applyAxisBinding, applyBuffToStore, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf,
+  computeDifficulty, type DifficultyWeights,
 } from '@/composables/teamCompare'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'
@@ -58,7 +62,7 @@ import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { getAgentMechanic } from '@/mechanics'
 import { liveInteractions } from '@/composables/liveInteractions'
-import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
+import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult, TeamResourceResult } from '@/types/resource'
 import type { TeamPreset } from '@/types/teamPreset'
 
@@ -69,6 +73,40 @@ export interface DifficultyCurveOptions {
   boss: BossPreset
   /** 目标期数（与散点页同一入口：`selectedPhase`） */
   phase: BossPresetPhase
+  /**
+   * **环境模式**（用户 2026-10-13：「如果勾选了环境，那么就不是看自身实力了，而是想看在不同期数的
+   * 血量膨胀上也可以选择对应期数的 buff 作为增幅的综合实力」）。
+   *
+   * - 不传 / `undefined` = **自身实力**：每个预设出**一条**曲线，用 `options.phase` 的 Boss 数值、
+   *   **不吃 buff** ⇒ 与改动前**逐位相同**（回归判据，见 `difficultyCurve.test.ts::环境 OFF`）；
+   * - 传了 = **综合实力**：由 `lanesOf(presetId)` 给出该队要跑的**若干条道**，道 = （预设 × 该期）。
+   *
+   * ## 为什么是「道」而不是「每队一条」
+   *
+   * 用户第二次回答把粒度说清了：**同版本血量相同、buff 不同** ⇒ 当前口径（不吃 buff）下同版本多期
+   * **确实没差别**，所以现在按版本算是对的；**勾了环境（吃该期牌）后期与期才有差别**，必须细到
+   * 「有该 Boss 的期」。而且**不是每期都有点**——实测同一 Boss 每版本最多上 2 期（如死路屠夫 3.1 只有
+   * 690441/690421 两期）⇒ 道数 = 预设 × 该范围的 1~3 期，压力 1~3 倍。
+   *
+   * 期数轴的构造与归期仍在展示层（`difficultyCurve3d#derivePeriodAxis` / 页面），本函数只按
+   * `lanesOf` 的表求值 ⇒ 保持「输入确定 ⇒ 输出确定」的纯求值器。
+   */
+  environment?: {
+    /**
+     * 该预设要跑的若干条道（`key` 只需在本预设内唯一——调用方拿它把结果行认回自己的道，
+     * 也是 `CurveRunRequest.environment.lanes` 的序列化单位）。空数组 = 该队本期没有可跑的道
+     * （页面如实标注，不静默塞一条假的）。
+     */
+    lanesOf: (presetId: string) => EnvLane[]
+    /**
+     * buff 三态：`none` 不吃（缺省）/ `auto` 每条道取该期伤害最高的牌 / `manual` 用 `manualBuffTitle`。
+     * ⚠ `auto` 是**硬算**（道 × 牌），把该道的求值成本乘上牌数——用户 2026-10-13
+     * 「buff 勾选与不勾选都要能做，你可以让用户自己选，也可以提供硬算功能」。
+     */
+    buffMode?: 'none' | 'auto' | 'manual'
+    /** `manual` 模式的牌名（找不到同名牌 = 不吃，不静默退化成别的牌） */
+    manualBuffTitle?: string
+  }
   /** 相对门槛（缺省 1e-4）：③「重大进步」判定用（Δ伤害 ≥ 门槛 **且** 有 ≥1 次离散动作增量） */
   minGainRatio?: number
   /**
@@ -87,11 +125,61 @@ export interface DifficultyCurveOptions {
   // （旧 `goals` 参数随贪心阶梯一并删除，别留死参数）。
 }
 
-/** 一队的阶梯结果（展示层行） */
+/**
+ * 环境模式下的一条道：该预设要跑的**一个期**（`key` 在本预设内唯一）。
+ * 三处共用同一形状（本文件的 `lanesOf` / `CurveRunRequest.environment.lanes` 的元素 / 页面的道表），
+ * 故起名引用而不是各写一遍字面量（判据 29：同形字面量写两处以上就起名）。
+ */
+export interface EnvLane {
+  key: string
+  phase: BossPresetPhase
+  buffs: PhaseBuffCard[]
+}
+
+/** 一条道（预设 × 期）的阶梯结果（展示层行） */
+/**
+ * **道键**（唯一事实源）：自身实力模式 = `presetId`（一队一道）；环境模式 = `${presetId}::${periodKey}`
+ * （一队 × 每期一道）。页面构造道、`CurveSeries.laneKey`、图表认 series 三处**必须同一口径**——
+ * 各写一份就会漂移（实机踩到：图表按 `presetId` 找 series，环境模式下同一队的多条道**全落回第一条**，
+ * 图上只剩一条线，其余道画出重复的同一形状）。
+ */
+export function laneKeyOf(presetId: string, periodKey: string | null): string {
+  return periodKey === null ? presetId : `${presetId}::${periodKey}`
+}
+
+/**
+ * 道 → 它的 series。先按 `laneKey` 精确匹配（环境模式必须走这条），再退回 `presetId`
+ * （版本轴口径：一个预设只有一条 series，`laneKey` 就是 `presetId`）。
+ *
+ * ⚠ 返回 `undefined` 而不是「随便给一条」：认不到就是认不到，让调用方跳过（画错线比不画更糟）。
+ */
+export function seriesForLane<T extends { laneKey: string; presetId: string }>(
+  series: readonly T[],
+  lane: { presetId: string; laneKey?: string },
+): T | undefined {
+  const key = lane.laneKey ?? lane.presetId
+  return series.find(x => x.laneKey === key) ?? series.find(x => x.laneKey === lane.presetId)
+}
+
 export interface DifficultyCurveRow {
   presetId: string
   name: string
   ladder: LadderResult
+  /**
+   * 该道的期键（环境模式 = 调用方给的道 key；**自身实力模式 = null**，行数 = 预设数）。
+   * 调用方靠它把行认回自己的道（一个预设可以有多行 —— 环境模式下每期一行）。
+   */
+  periodKey: string | null
+  /** 该道的期 id（`periodKey === null` 时为 null） */
+  periodId: string | null
+  /** 该道的展示标签（自身实力模式 = 预设名；环境模式 = 该期 label） */
+  label: string
+  /**
+   * 该道的 Boss 血量（环境模式 = **该期**的血量；自身实力模式 = `options.phase.hp`）。
+   * 行的 ratio = `dmg / hp` ⇒ 血量必须**逐行**带出，否则「逐期血量不同」在图上会被最后一行
+   * 的血量统一掉（用户 2026-10-13 要的正是「不同期数的血量膨胀」）。
+   */
+  hp: number
 }
 
 /**
@@ -127,30 +215,83 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
    * 写入落在场景克隆里不回 UI store）；但这是**潜在**缺陷，且 ④ 承载天花板 ⇒ 一并修掉。
    */
   const userAbsorbCap = absorbCapOf({ config: configStore, calc })
+  const env = options.environment
+  const buffMode = env?.buffMode ?? 'none'
+  /**
+   * **一条道 =（预设 × 一个期）**。无环境时每个预设恰好一条道（用 `options.phase`），
+   * 与环境 ON 走**同一套循环**——避免「两条路径各写一遍」造成的口径漂移（这正是改动前
+   * `environment` 那版实现的问题：OFF 分支和 ON 分支各有一份 apply 顺序）。
+   * `key === null` 标记「自身实力」道（调用方按 `presetId` 认领；行里 `periodKey` 为 null）。
+   */
+  interface Lane { preset: TeamPreset; key: string | null; phase: BossPresetPhase; buffs: PhaseBuffCard[] }
   for (const preset of options.presets) {
-    applyAxisBinding(configStore, baseAxis, preset)
-    // 配装口径：套该队**预设基础金**的 `applyGoldSteps`（含 standardSteps 常驻步；缺省路径也走它，
-    // 否则「预设基础档」会漏掉常驻步而出现两个数）。曲线**不提供**金数档覆盖——金数提升属于
-    // 「提升率」类图表，不是难度曲线的事（用户 2026-09-10 口径）。
-    const applied = applyGoldSteps(
-      preset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), preset.standardSteps ?? [], preset.wEngines ?? [],
-    )
-    const ladder = climbDifficultyLadder({ config: configStore, calc, absorbCap: userAbsorbCap }, preset.team, {
-      minGainRatio: options.minGainRatio,
-      axisScanSteps: options.axisScanSteps,
-      capture: ctx => captureLadderSnapshot(ctx.config, ctx.calc),
-      // x 轴 = 自动算的操作难度（不是手填代价）
-      costOf: ctx => measureOperationalDifficulty(ctx, preset, options.difficultyWeights),
-      base: (ctx, team) => {
-        clearDifficultyLevers(ctx)
-        applyTeamToStore(ctx.config, preset)
-        // 金步叠加：影画/精炼/音擎（驱动盘与权重/交互已由 applyTeamToStore 套好，金步不碰）
-        applyGoldAllocationToStore(ctx.config, applied)
-        void team
-        return ctx.calc.teamTotalDamage.value
-      },
-    })
-    rows.push({ presetId: preset.id, name: preset.name, ladder })
+    const lanes: Lane[] = env
+      ? env.lanesOf(preset.id).map(l => ({ preset, key: l.key, phase: l.phase, buffs: l.buffs }))
+      : [{ preset, key: null, phase: options.phase, buffs: [] }]
+    for (const lane of lanes) {
+      applyAxisBinding(configStore, baseAxis, preset)
+      // 每道**先摆房间**：Boss 数值按期取（无环境 = 当期，与改动前同一句、同一顺序）
+      applyBossRoom(configStore, options.boss, lane.phase)
+      /**
+       * **buff 三态**：`auto` = 该道在该期的牌里取伤害最高者（硬算，用户 2026-10-13「提供硬算功能」）；
+       * `manual` = 指定牌名（找不到同名牌 = 不吃，**不静默退化成别的牌**）；`none` = 不吃。
+       *
+       * ⚠ 硬算前必须把现场摆成「全关 + 该队」再比：否则算的是上一道残留现场的伤害
+       * （曲线要的基线 = 全关，见 `difficultyCurve.ts` 文件头）。
+       * ⚠ 牌按**全关现场**选一次、整条道复用（不随阶梯档位重选）：牌的收益跨难度档基本稳定，
+       * 逐档重选会把「挑最好的」噪声引进曲线，且成本翻倍。
+       */
+      let chosen: PhaseBuffCard | null = null
+      if (buffMode === 'manual') {
+        chosen = lane.buffs.filter(b => !b.testOnly).find(b => b.title === env?.manualBuffTitle) ?? null
+      } else if (buffMode === 'auto') {
+        const cards = lane.buffs.filter(b => !b.testOnly)
+        if (cards.length > 0) {
+          clearDifficultyLevers({ config: configStore, calc })
+          applyTeamToStore(configStore, preset)
+          let bestDmg = -1
+          for (const card of cards) {
+            applyBuffToStore(configStore, card)
+            const dmg = calc.teamTotalDamage.value
+            if (dmg > bestDmg) { bestDmg = dmg; chosen = card }
+          }
+        }
+      }
+      // 无环境时这一句是 `null`（= 清空牌表），与改动前 `computeTeamComparePoints` 的缺省同效；
+      // 环境 ON 时把选中的牌写进去（`null` = 不吃）
+      applyBuffToStore(configStore, chosen)
+      // 配装口径：套该队**预设基础金**的 `applyGoldSteps`（含 standardSteps 常驻步；缺省路径也走它，
+      // 否则「预设基础档」会漏掉常驻步而出现两个数）。曲线**不提供**金数档覆盖——金数提升属于
+      // 「提升率」类图表，不是难度曲线的事（用户 2026-09-10 口径）。
+      const applied = applyGoldSteps(
+        preset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), preset.standardSteps ?? [], preset.wEngines ?? [],
+      )
+      const ladder = climbDifficultyLadder({ config: configStore, calc, absorbCap: userAbsorbCap }, preset.team, {
+        minGainRatio: options.minGainRatio,
+        axisScanSteps: options.axisScanSteps,
+        capture: ctx => captureLadderSnapshot(ctx.config, ctx.calc),
+        // x 轴 = 自动算的操作难度（不是手填代价）
+        costOf: ctx => measureOperationalDifficulty(ctx, preset, options.difficultyWeights),
+        base: (ctx, team) => {
+          clearDifficultyLevers(ctx)
+          applyTeamToStore(ctx.config, preset)
+          // 金步叠加：影画/精炼/音擎（驱动盘与权重/交互已由 applyTeamToStore 套好，金步不碰）
+          applyGoldAllocationToStore(ctx.config, applied)
+          void team
+          return ctx.calc.teamTotalDamage.value
+        },
+      })
+      rows.push({
+        presetId: preset.id,
+        name: preset.name,
+        ladder,
+        periodKey: lane.key,
+        periodId: lane.key === null ? null : lane.phase.phaseId,
+        // 环境模式带上队名：同一期往往有多支队，只写期标签在图例/摘要里分不出谁是谁
+        label: lane.key === null ? preset.name : `${preset.name} · ${lane.phase.label}`,
+        hp: lane.phase.hp,
+      })
+    }
   }
   return rows
 }
@@ -530,6 +671,19 @@ export type TruncatedDatum = CurveDatum & { hint: TruncationHint }
 export interface CurveSeries {
   presetId: string
   name: string
+  /**
+   * **道的唯一键**：自身实力模式 = `presetId`（一队一条）；环境模式 = `${presetId}::${periodKey}`
+   * （一队 × 每期一条）⇒ 图与图例按它认道，别再假设「一个 presetId 只有一条曲线」。
+   */
+  laneKey: string
+  /** 该道的期 id（自身实力模式 = null；摘要表不直接显示它，显示 `periodLabel`） */
+  periodId: string | null
+  /** 该期的**可读**标签（如「3.2 · 2026-10-09」；自身实力模式 = ''）——摘要表「期数」列用它 */
+  periodLabel: string
+  /** 该道的展示标签（期 label / 预设名） */
+  label: string
+  /** 该道的 Boss 血量（该期血量；图上 ratio = dmg / hp） */
+  hp: number
   points: CurveDatum[]
   base: number
   final: number
@@ -663,8 +817,14 @@ export interface CurveChartData {
 
 /** 曲线数据 → 图表（x = 操作难度，y = 伤害/血量%）；空输入返回可画的空图 */
 export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveChartData {
-  const safeHp = hp > 0 ? hp : 1
+  const fallbackHp = hp > 0 ? hp : 1
   const series: CurveSeries[] = rows.map(r => {
+    /**
+     * ⚠ **血量逐行取**（`r.hp`），不用调用方那一个 `hp`：环境模式下同一队在**不同期**的血量不同
+     * （这正是「不同期数的血量膨胀」要表达的东西）——统一用当期血量会把逐期差异抹平。
+     * `hp` 参数保留为**自身实力模式**的口径与缺省兜底（`r.hp` 缺失/非正时用）。
+     */
+    const safeHp = Number.isFinite(r.hp) && r.hp > 0 ? r.hp : fallbackHp
     const s = summarizeLadder(r.ladder)
     const points: CurveDatum[] = r.ladder.points.map((p, i) => ({
       cost: p.x,
@@ -680,6 +840,12 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
     return {
       presetId: r.presetId,
       name: r.name,
+      laneKey: laneKeyOf(r.presetId, r.periodKey),
+      periodId: r.periodId,
+      // 期标签从行 label 里剥出队名（行 label = `${队名} · ${期标签}`）——摘要表分两列显示更清楚
+      periodLabel: r.periodKey === null ? '' : r.label.slice(r.name.length + 3),
+      label: r.label,
+      hp: safeHp,
       points,
       jumps: points
         .filter(p => p.changes.some(c => c.major))

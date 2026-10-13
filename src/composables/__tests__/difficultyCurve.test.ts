@@ -12,15 +12,15 @@ import { withAnalysisScenario } from '@/composables/analysisScenario'
 import {
   assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource,
   captureDmgBySource, captureKeyCounts, diffKeyCounts, estimateLabelWidth, linkCountToDmg, majorChanges,
-  measureOperationalDifficulty, pickNonOverlapping, truncationHintAt, INTERACTION_CUT_MIN,
-  type DifficultyCurveRow,
+  measureOperationalDifficulty, pickNonOverlapping, truncationHintAt, laneKeyOf, seriesForLane, INTERACTION_CUT_MIN,
+  type DifficultyCurveOptions, type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
 import { absorbCapOf, clearDifficultyLevers, climbDifficultyLadder, scanAbsorbGrid, type LadderResult, type LadderPoint } from '@/composables/difficultyLadder'
 import { applyTeamToStore, computeDifficulty } from '@/composables/teamCompare'
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { teamPresets } from '@/data/teamPresets'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
-import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
+import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
 
 beforeEach(() => {
   newPinia()
@@ -77,11 +77,10 @@ function mkLadder(
   }
 }
 
-/** 合成图行（纯函数判据不关心金档，填占位） */
-const mkRow = (presetId: string, name: string, ladder: LadderResult): DifficultyCurveRow =>
-  ({ presetId, name, ladder })
-
+/** 合成图行（纯函数判据不关心金档/期数，填占位；`period*`/`label`/`hp` 只在环境模式有意义） */
 const HP = 100_000_000
+const mkRow = (presetId: string, name: string, ladder: LadderResult, hp = HP): DifficultyCurveRow =>
+  ({ presetId, name, ladder, periodKey: null, periodId: null, label: name, hp })
 
 describe('buildCurveChart（纯函数）', () => {
   it('空输入返回可画的空图（不产生 NaN / 负上界）', () => {
@@ -182,6 +181,70 @@ describe('buildCurveChart（纯函数）', () => {
     expect(zeroCost.series[0]!.points).toHaveLength(2)
     expect(zeroCost.series[0]!.points.every(p => p.cost === 0)).toBe(true)
     expect(zeroCost.series[0]!.flat).toBe(false)
+  })
+})
+
+describe('buildCurveChart · 环境模式：血量**逐行**取（用户 2026-10-13「不同期数的血量膨胀」）', () => {
+  const mk = (hp: number) => mkRow('p1', '队', mkLadder([[0, 20_000_000], [10, 40_000_000]]), hp)
+
+  it('同一队两条道（不同期血量）⇒ ratio 各按自己的血量算，不被当期血量统一', () => {
+    const c = buildCurveChart([mk(20_000_000), mk(80_000_000)], 20_000_000)
+    expect(c.series).toHaveLength(2)
+    // 早期期：20M/20M = 100%、40M/20M = 200%
+    expect(c.series[0]!.points.map(p => p.ratio)).toEqual([100, 200])
+    // 后期期（血量 4 倍）：20M/80M = 25%、40M/80M = 50%
+    expect(c.series[1]!.points.map(p => p.ratio)).toEqual([25, 50])
+    // ★ 若误用调用方那一个 hp，两条会算出同一组 ratio ⇒ 这条判据就是防它的
+    expect(c.series[0]!.points.map(p => p.ratio)).not.toEqual(c.series[1]!.points.map(p => p.ratio))
+    expect(c.series[0]!.hp).toBe(20_000_000)
+    expect(c.series[1]!.hp).toBe(80_000_000)
+  })
+
+  it('道的唯一键：环境模式加期后缀（一个 presetId 可以有多条），自身实力模式 = presetId', () => {
+    const envRows: DifficultyCurveRow[] = [
+      { ...mk(20_000_000), periodKey: 'k0', periodId: 'pa', label: '早期' },
+      { ...mk(20_000_000), periodKey: 'k1', periodId: 'pb', label: '后期' },
+    ]
+    const c = buildCurveChart(envRows, 20_000_000)
+    expect(c.series.map(s => s.laneKey)).toEqual(['p1::k0', 'p1::k1'])
+    expect(new Set(c.series.map(s => s.laneKey)).size).toBe(2) // 键唯一 ⇒ 图例/选中不会互相覆盖
+    expect(c.series.map(s => s.label)).toEqual(['早期', '后期'])
+    expect(buildCurveChart([mk(20_000_000)], 20_000_000).series[0]!.laneKey).toBe('p1')
+  })
+
+  it('血量缺失/非正 ⇒ 退回调用方给的血量（自身实力模式的口径），不产生 Infinity/NaN', () => {
+    const c = buildCurveChart([mkRow('p1', '队', mkLadder([[0, 10_000_000]]), 0)], 50_000_000)
+    expect(c.series[0]!.hp).toBe(50_000_000)
+    expect(c.series[0]!.points[0]!.ratio).toBe(20)
+  })
+})
+
+describe('laneKeyOf / seriesForLane：一队多道时认对 series（实机踩到的回归）', () => {
+  const series = [
+    { laneKey: 'p1::a1', presetId: 'p1', tag: 'first' },
+    { laneKey: 'p1::a2', presetId: 'p1', tag: 'second' },
+    { laneKey: 'p2', presetId: 'p2', tag: 'solo' },
+  ]
+
+  it('道键：自身实力模式 = presetId；环境模式 = presetId::periodKey', () => {
+    expect(laneKeyOf('p1', null)).toBe('p1')
+    expect(laneKeyOf('p1', 'a2')).toBe('p1::a2')
+  })
+
+  it('★ 同一队的两条道各认到自己的 series（按 presetId 找会全落回第一条）', () => {
+    expect(seriesForLane(series, { presetId: 'p1', laneKey: 'p1::a1' })?.tag).toBe('first')
+    expect(seriesForLane(series, { presetId: 'p1', laneKey: 'p1::a2' })?.tag).toBe('second')
+    // ★ 回归判据：「该传 laneKey 却没传」（接线漏了）⇒ **认不到**，而不是随便落回第一条。
+    //   宁可那条道不画，也不要把两条道画成同一条线（画错比不画更难发现）。
+    expect(seriesForLane(series, { presetId: 'p1' })).toBeUndefined()
+    // 带上 laneKey 后，第二条道**不再**拿到 first（这正是修复要保证的）
+    expect(seriesForLane(series, { presetId: 'p1', laneKey: 'p1::a2' })?.tag).not.toBe('first')
+  })
+
+  it('版本轴口径（一个预设一条 series）仍能认到；认不到 ⇒ undefined，不瞎给一条', () => {
+    expect(seriesForLane(series, { presetId: 'p2' })?.tag).toBe('solo')
+    // 该队删了/筛选隐藏 ⇒ 认不到就 undefined（画错线比不画更糟）
+    expect(seriesForLane(series, { presetId: 'p9', laneKey: 'p9::x' })).toBeUndefined()
   })
 })
 
@@ -871,5 +934,97 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
     }
     // ③ 现场恢复：切轴档若真被施加过会改轴状态；跑完必须还原
     expect(config.useStunAxis).toBe(false) // FAKE_BOSS + 该预设：快照轴态是未启用
+  }, 300_000)
+})
+
+describe('computeDifficultyCurves · 环境模式（用户 2026-10-13：勾了环境 = 看综合实力）', () => {
+  const CARD: PhaseBuffCard = {
+    title: '凛冽',
+    testOnly: false,
+    effects: [{ stat: 'critDmg', value: 40 }],
+    unparsed: [],
+  }
+
+  it('环境 OFF（缺省）与传 `environment: undefined` 逐位相同：不吃 buff、全部队同一期', async () => {
+    const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
+    const base = { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE }
+    const [a] = await withAnalysisScenario(s => computeDifficultyCurves(s, base))
+    const [b] = await withAnalysisScenario(s => computeDifficultyCurves(s, base))
+    // 两次调用逐位相同（本函数是纯求值器：同输入同输出）
+    expect(b!.ladder.points.map(p => p.dmg)).toEqual(a!.ladder.points.map(p => p.dmg))
+    expect(b!.ladder.base).toBe(a!.ladder.base)
+  }, 300_000)
+
+  it('★ 环境 ON：每队用**自己那一期**的敌人数值（换期 ⇒ 伤害真的变，证明 periodOf 被应用）', async () => {
+    const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
+    /**
+     * ⚠ 分期必须让**影响伤害的敌人数值**不同，否则这条判据是空的（本会话踩过一次）：
+     * 血量只进 `ratio`（图上纵轴），**不进伤害** ⇒ 只换 `hp` 的「两期」跑出来逐位相同，
+     * 断言 `base` 不同会失败、而断言「都 ≥ 2 点」恒真（vacuous）。
+     * 这里改用**防御**（953 → 1906）——它进减伤乘区，是真正可观测的差。
+     */
+    const SOFT = { ...FAKE_PHASE, phaseId: 'p-soft', defense: 953, hp: 8_000_000 }
+    const HARD = { ...FAKE_PHASE, phaseId: 'p-hard', defense: 1906, hp: 32_000_000 }
+    const run = (phases: BossPresetPhase[]) => withAnalysisScenario(s => computeDifficultyCurves(s, {
+      presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE,
+      environment: {
+        lanesOf: () => phases.map((p, i) => ({ key: `k${i}`, phase: p, buffs: [] })),
+        buffMode: 'none',
+      },
+    }))
+    // ★ 一个预设 × 两期 ⇒ **两行**（道 = 预设 × 期；这正是「从版本细到期数」的落地形态）
+    const two = await run([SOFT, HARD])
+    expect(two).toHaveLength(2)
+    expect(two.map(r => r.periodId)).toEqual(['p-soft', 'p-hard'])
+    expect(two.map(r => r.periodKey)).toEqual(['k0', 'k1'])
+    const [soft, hard] = two
+    // ★ 换期 ⇒ 伤害真的不同（期被应用的最硬证据）
+    expect(hard!.ladder.base).not.toBeCloseTo(soft!.ladder.base, 3)
+    expect(hard!.ladder.base).toBeLessThan(soft!.ladder.base) // 防御翻倍 ⇒ 伤害更低
+    // label 带队名（同队多期时摘要/图例要能区分），故断言「含该期标签」而不是逐字相等
+    expect(hard!.label).toContain(HARD.label)
+    expect(hard!.label).toContain(preset.name)
+    // ★ lanesOf 返回空数组（该范围里没有可跑的道）⇒ **零行**，不塞假的
+    expect(await run([])).toHaveLength(0)
+  }, 300_000)
+
+  it('★ buff 三态：auto 取该期伤害最高的牌（≥ 不吃），manual 用指定牌，找不到同名牌 = 不吃', async () => {
+    const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
+    const run = (env: NonNullable<DifficultyCurveOptions['environment']>) =>
+      withAnalysisScenario(s => computeDifficultyCurves(s, {
+        presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE, environment: env,
+      }))
+    const lanesOf = () => [{ key: 'k', phase: FAKE_PHASE, buffs: [CARD] }]
+    const [none] = await run({ lanesOf: () => [{ key: 'k', phase: FAKE_PHASE, buffs: [CARD] }], buffMode: 'none' })
+    const [auto] = await run({ lanesOf, buffMode: 'auto' })
+    const [manual] = await run({ lanesOf, buffMode: 'manual', manualBuffTitle: '凛冽' })
+    const [miss] = await run({ lanesOf, buffMode: 'manual', manualBuffTitle: '不存在的牌' })
+    // auto 与 manual 都吃上了那张 +40% 暴伤牌 ⇒ 伤害严格高于不吃
+    expect(auto!.ladder.base).toBeGreaterThan(none!.ladder.base)
+    expect(manual!.ladder.base).toBeGreaterThan(none!.ladder.base)
+    // auto 就是「取最高」⇒ 单张牌场景下与 manual 逐位相同
+    expect(auto!.ladder.base).toBeCloseTo(manual!.ladder.base, 6)
+    // 找不到同名牌 ⇒ **不吃**（不静默退化成别的牌）
+    expect(miss!.ladder.base).toBeCloseTo(none!.ladder.base, 6)
+  }, 300_000)
+
+  it('buff 现场隔离：环境 ON 吃完牌，下一队不吃时牌必须被清掉（不残留）', async () => {
+    const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
+    const run = (mode: 'none' | 'auto') => withAnalysisScenario(s => computeDifficultyCurves(s, {
+      presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE,
+      environment: { lanesOf: () => [{ key: 'k', phase: FAKE_PHASE, buffs: [CARD] }], buffMode: mode },
+    }))
+    const [withBuff] = await run('auto')
+    const [afterNone] = await run('none')
+    // 若牌残留，第二次（none）会与第一次同高 ⇒ 这条判据就是防残留的
+    expect(afterNone!.ladder.base).toBeLessThan(withBuff!.ladder.base)
   }, 300_000)
 })

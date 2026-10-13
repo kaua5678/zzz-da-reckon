@@ -49,7 +49,7 @@
  * ⟳复核: 引擎新增影响 calcOutput 的**实例参数或线程局部状态**时复核——worker 内的 memo / 模块级单例是**另一份**（`useResourceCalc` 的跨实例共享只在同线程成立），若将来有状态不能只靠 postMessage 的输入重建，则本口径的「逐位不变」前提失效 | 到期 2027-01-09
  */
 import { toRaw } from 'vue'
-import { computeDifficultyCurves, type DifficultyCurveRow } from '@/composables/difficultyCurve'
+import { computeDifficultyCurves, type DifficultyCurveOptions, type DifficultyCurveRow, type EnvLane } from '@/composables/difficultyCurve'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import type { DifficultyWeights } from '@/composables/teamCompare'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
@@ -76,6 +76,30 @@ export interface CurveRunRequest {
   boss: BossPreset
   phase: BossPresetPhase
   difficultyWeights?: DifficultyWeights
+  /**
+   * **环境模式的道表**（用户 2026-10-13）：`presetId → 该队要跑的各期`。
+   * 缺省 = 无环境（每队一条道、用 `phase`、不吃 buff），与改动前逐位相同。
+   *
+   * ⚠ 必须是**纯数据**（`toCloneable` 兜底）：worker 里读不到页面 store，`lanesOf` 这类函数
+   * 过不了 postMessage ⇒ 页面在**发请求前**把「该队要跑哪几期 + 每期哪些牌」算好成表传进来
+   * （与 `fusionRules` 同一条硬约束，见本文件头）。
+   */
+  environment?: {
+    lanes: Record<string, EnvLane[]>
+    buffMode: 'none' | 'auto' | 'manual'
+    manualBuffTitle?: string
+  }
+}
+
+/** 请求里的环境表 → `DifficultyCurveOptions.environment`（主线程回落 / worker 两条路径共用，防止口径漂移） */
+export function environmentOptions(req: CurveRunRequest): DifficultyCurveOptions['environment'] {
+  if (!req.environment) return undefined
+  const table = req.environment
+  return {
+    lanesOf: presetId => table.lanes[presetId] ?? [],
+    buffMode: table.buffMode,
+    ...(table.manualBuffTitle === undefined ? {} : { manualBuffTitle: table.manualBuffTitle }),
+  }
 }
 
 /**
@@ -188,6 +212,7 @@ async function runOnMainThread(req: CurveRunRequest, hooks: CurveRunHooks): Prom
       boss: req.boss,
       phase: req.phase,
       difficultyWeights: req.difficultyWeights,
+      environment: environmentOptions(req),
     })))
   }
   return { rows, aborted: false, usedWorker: false }

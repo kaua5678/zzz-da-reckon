@@ -36,7 +36,7 @@ import { createConfigModel, type EvalConfig } from '@/stores/config'
 import { createAnalysisScenario } from '@/composables/analysisScenario'
 import { computeDifficultyCurves } from '@/composables/difficultyCurve'
 import { setActiveRowFusionRules } from '@/logicEditor/fusion'
-import type { CurveRunRequest, CurveWorkerMessage } from '@/composables/difficultyCurveRunner'
+import { environmentOptions, type CurveRunRequest, type CurveWorkerMessage } from '@/composables/difficultyCurveRunner'
 
 /** 类型化的 postMessage（`self` 在 DOM lib 里是 Window & typeof globalThis，需收窄到 worker 侧） */
 const ctx = self as unknown as {
@@ -46,7 +46,8 @@ const ctx = self as unknown as {
 
 ctx.onmessage = async (e: MessageEvent<CurveRunRequest>) => {
   try {
-    const { configState, fusionRules, presets, boss, phase, difficultyWeights } = e.data
+    const req = e.data
+    const { configState, fusionRules, presets, boss, phase, difficultyWeights } = req
     // worker 里没有主线程的 pinia 实例：自建一个，只为让 catalog / config model 能构造
     setActivePinia(createPinia())
     const catalog = useCatalogStore()
@@ -72,6 +73,8 @@ ctx.onmessage = async (e: MessageEvent<CurveRunRequest>) => {
           boss,
           phase,
           difficultyWeights,
+          // 环境模式的道表随请求传入（worker 里读不到页面 store；proto 见 CurveRunRequest）
+          environment: environmentOptions(req),
         })
         for (const row of rows) ctx.postMessage({ type: 'row', row })
       } finally {

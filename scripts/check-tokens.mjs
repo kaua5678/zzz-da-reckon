@@ -711,7 +711,11 @@ export const WA_REF_BASELINE = 419  /* ★ 2026-10-08 Chart 5 下线（用户裁
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 897  /* ★ 2026-10-13 同步 T141 遗留的陈旧基线 + SVG 死绑定修复：891 → **897**。
+export const VAR_TOTAL_BASELINE = 899  /* ★ 2026-10-13 难度曲线「环境模式」：897 → **899**（+2）。
+                                        * 归因：`views/TeamComparePage.vue` 两处「环境设置已改，需重算」
+                                        * 提示用 `--c-warning`（语义别名，方向正确）。逐文件用本文件
+                                        * 的扫描器在提交前后各跑一次核对过，不是估算。
+                                        * ★ 2026-10-13 同步 T141 遗留的陈旧基线 + SVG 死绑定修复：891 → **897**。
                                         * 两笔合并成一条（都属「先让 master 回绿」的账）：
                                         * · **+5 = 补记 ce0a2277（T141）**：那次给 `views/StunAxisPage.vue`
                                         *   新增毁伤时间轴样式（5 处 `--wa-*` + 5 处 var()）却没同步本基线，
