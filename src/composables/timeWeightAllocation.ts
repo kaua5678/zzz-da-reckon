@@ -299,6 +299,23 @@ export const jointLeverStrategy: TimeWeightStrategy = {
     }
     for (let round = 0; round < MAX_ROUNDS; round++) {
       let improved = false
+      /**
+       * **执行数门**（T141 加，用户口径 2026-10-12 / 卡 §2.3b）：
+       * > 「你击破耗那么多时间，**考虑过主c动作被挤压没有**…**时间截断才是强制的**。」
+       * > 「主c的时间被挤压后，喧响和能量都不够，**轴内估计全是空气了**。」
+       *
+       * 弹刀换的是失衡/喧响，但它**占主C 的前台时间**。只按总伤接受（旧实现）会放行
+       * 「总伤微涨、主C 强特次数被挤掉」的档——实测 `auto-1171-1561-1411`
+       * （`.zc/perf/T141tw2.perf.ts`）：弹刀 6/6→6/8 使总伤 74.478→75.639M（+1.16M）
+       * 但主C#1 强特 **15.948→15.758**（−0.19）。T141 吸收常开后这种「抢时间」更容易发生。
+       *
+       * 门 = **逐核心强特次数的合计不得下降**（`carries` 由单源 `carrySlotsOf` 取得）。
+       * ⚠ 用**合计**而非逐槽：双主C 队里一次弹刀可能让 A 槽降、B 槽升（资源在核心间再分配），
+       * 逐槽钉会误杀「把时间从低效核心挪给高效核心」这类**正当**优化；合计下降才是真的「动作打不出来」。
+       * ⚠ 弹刀**下调**（`dir < 0`）不受此门限制（减交互只会腾出时间，不会挤掉动作），仍受 `feasible()` 与伤害门约束。
+       */
+      const carryExSum = () => carries.reduce((a, s) => a + exOf(s), 0)
+      let bestCarryEx = carryExSum()
       for (let slot = 0; slot < 3; slot++) {
         for (const dir of [STEP, -STEP] as const) {
           const cur = Math.max(0, Number(configStore.team[slot]?.parryCount ?? 0))
@@ -307,10 +324,12 @@ export const jointLeverStrategy: TimeWeightStrategy = {
           if (dir < 0 && totalParries() + dir < minParryTotal) { floorBlocked = true; continue } // 强制次数下限
           configStore.setActionCount(slot, 'parryCount', next)
           const dmg = calc.teamTotalDamage.value
-          if (!feasible() || dmg <= best + 1e-6) {
-            configStore.setActionCount(slot, 'parryCount', cur) // 回滚：越界或没变好
+          const exSum = carryExSum()
+          if (!feasible() || dmg <= best + 1e-6 || (dir > 0 && exSum < bestCarryEx - 1e-9)) {
+            configStore.setActionCount(slot, 'parryCount', cur) // 回滚：越界 / 没变好 / 挤掉了核心动作
           } else {
             best = dmg
+            bestCarryEx = exSum
             improved = true
           }
         }

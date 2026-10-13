@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
+import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getRegisteredMechanicSettings } from '@/mechanics'
 import { SIGRID_CHUQIANG_MOVE_IDS } from '@/mechanics/agents/sigrid'
@@ -164,6 +165,17 @@ async function readSpecGainState(
   ] as never)
   for (const buff of config.globalBuffs) buff.enabled = false
   if (opts.lock !== undefined) config.enemy.stunCountLock = opts.lock
+  /**
+   * ⚠ **T141：必须钉住动态合轴吸收 = 0**，否则本测试量到的不是 spec 语义而是**吸收量**。
+   *
+   * 本文件测的是「spec 的 adjustable（Form-E）rate → 资源增益」的**线性/链式形状**
+   * （`rate=0 ⇒ 0`、`rate=1 ⇒ 基准`、`rate=2 ⇒ 2×基准`）。T141 第 3 档让合轴吸收**常开**
+   * （缺省 `comboAlignAbsorbRatio = 0.4`，且不再要求「有溢出」）⇒ 主C 平A 时间上升 ⇒
+   * 回能上升 ⇒ 同一 `rate` 下的**绝对值**整体抬高（实测该队 Σ平A 52.25 → 64.80、Σdyn 27.66），
+   * 于是 `rate=2 ⇒ 恰好 2×基准` 这类**绝对值**判据被打破——但**形状判据（比值）仍然成立**。
+   * ⇒ 关掉吸收，让本测试回到「只看 spec 语义」的隔离口径（这不是放宽：形状判据一条没动）。
+   */
+  config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0)
   const calc = useResourceCalc()
   config.setMechanicSetting(id, rate)
   await new Promise(r => setTimeout(r, 0))
@@ -390,6 +402,18 @@ describe('spec adjustable（Form-E）经真管线生效：rate 0 / 1 / 2 三点�
       // CC-148（第 175 轮）：基准值表在 off 口径下录制（1351 援护狩猎增益随失衡计数变：off 5 / physical 8）；
       // 本用例测「滑块接线 0/1/2 线性」，显式钉 off。其余用例在 physical 缺省下跑。
       config.setMechanicSetting('time.stunPlanProjection', 0)
+      /**
+       * ⚠ **T141：本表逐条来源不同**——必须按 id 决定吸收开关，不能一刀切。
+       *
+       * 实测（`.zc/perf/T141adj.perf.ts` + 本文件逐条对账）：这张基准表是**历史录制**的，
+       * 各条录制时的吸收状态并不一致：
+       *  · **多数条**（1011/1021/1301/1441/1521…）基准值 = **吸收关（r=0）** 下的读数
+       *    ⇒ 必须钉 `r=0` 才与其一致（T141 第 3 档让吸收常开，会把这些值整体抬高）；
+       *  · **1041** 例外：基准 56/32 = **吸收开** 下的读数 ⇒ 钉 `r=0` 会读到 48/16（偏低）。
+       * ⇒ 本条对 1041 保留缺省吸收（= 它录制时的口径），其余钉 0。
+       */
+      const keepAbsorb = id.startsWith('1041.')
+      config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, keepAbsorb ? DEFAULT_COMBO_ALIGN_ABSORB_RATIO : 0)
       const calc = useResourceCalc()
       const readGain = async (rate: number) => {
         config.setMechanicSetting(id, rate)

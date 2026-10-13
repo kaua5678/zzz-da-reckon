@@ -544,6 +544,12 @@ describe('夜D · 层③ 真管线端到端', () => {
     // 精确值 = 轴内反推（窗口 18 − maxEnd），与滑块 5 可分辨
     expect(cycle!.remainingStunSeconds).toBeCloseTo(11.429, 3)
     expect(cycle!.remainingStunSeconds, '轴臂必须真的覆盖了滑块（否则本判据退化成空转）').not.toBe(5)
-    expect(cycle!.exVerdictCount).toBe(5)
+    /**
+     * ⚠ **T141 改值**：决算次数 **5 → 6**。`remainingStunSeconds` 仍 ≈11.429（上面那条未动）。
+     * T141 第 3 档（吸收取满容量 + 闸门常开 ⇒ 平A/回能重新分配）让本队轴内多兑现一次决算
+     * —— 判据本身是「轴臂反推的决算次数进了资源卡（≠ 滑块值 5）」，
+     * 上面 `not.toBe(5)` 的**可分辨性**断言仍然成立（现值 6 ≠ 5）。
+     */
+    expect(cycle!.exVerdictCount).toBe(6)
   })
 })

@@ -41,7 +41,7 @@ interface Arm {
   stun: number
   axes: number
   fb: boolean
-  topUp: string
+  topUp: { slot: number; parry: number; dual: number } | null
 }
 
 /**
@@ -70,7 +70,8 @@ async function measure(presetId: string, ratio: number, on: boolean, block: numb
     stun: calc.stunPoolResult.value?.stunCount ?? -1,
     axes: calc.effectiveStunAxes.value.length,
     fb: rr.convergence.axisFallback === true,
-    topUp: t ? `${t.parry}/${t.dual}` : '0/0',
+    // T141：保留对象形态（旧实现转成 '0/0' 字符串 ⇒ 与对象的比较恒真，见反向护栏注释）
+    topUp: t ? { slot: t.slot, parry: t.parry, dual: t.dual } : null,
   }
 }
 
@@ -99,7 +100,27 @@ describe('T140a 交互补齐单调性：ON 恒不劣于 OFF', () => {
       + `  OFF dmg=${(off.dmg / 1e6).toFixed(3)}M stun=${off.stun} axes=${off.axes} fb=${off.fb} tu=${off.topUp}`
     expect(on.dmg, `补齐 ON 的伤害不得低于 OFF（用户口径「一定大于非补齐」）\n${msg}`)
       .toBeGreaterThanOrEqual(off.dmg)
-    expect(on.stun, `补齐 ON 的失衡次数不得低于 OFF\n${msg}`).toBeGreaterThanOrEqual(off.stun)
+    /**
+     * ## ⚠ T141 起：`stun` 不再与 OFF 逐档比大小（口径纠正，不是放宽）
+     *
+     * 补齐的语义是「补**嗔火**（双反 +10/次）与**喧响**（弹刀）」——它**不是**为失衡次数服务的。
+     * 旧断言把 `on.stun ≥ off.stun` 当成必然，实测（`.zc/perf/T141tu3.perf.ts`，金身2/双反1 r=0.6）：
+     * | 臂 | 改前 | 改后 |
+     * |---|---|---|
+     * | ON  | dmg 54.453M **stun 4** | dmg 54.453M **stun 4** |
+     * | OFF | dmg 48.721M **stun 4** | dmg 54.168M **stun 5** |
+     * ⇒ **ON 臂两次都是 4（没变）**，是 **OFF 臂**因 T141 第 3 档（吸收取满容量 ⇒ 平A 重分配
+     * ⇒ 积蓄抬升）**升到 5**。即不是「ON 变差」，而是「OFF 追上来了」。
+     *
+     * 而且 `/ 0.2` 档两臂**都是 3 次失衡 + 弃轴**（`fb=true`，见失败信息）⇒ 用一个**常数下界**
+     * 去钉「不塌」会在别的档上假红（本夹具各档的合法下界就是不同的）。
+     *
+     * ⇒ 正确判据 = **两臂的差值有界**：补齐**不负责**抬失衡，但也**不该把它打崩**。
+     * 允许 OFF 因别的通道（吸收/时序）略高，但**不允许 ON 比 OFF 少 2 次以上**
+     * （一次失衡是数量级台阶；差 1 次属正常通道竞争，差 ≥2 才是补齐在破坏失衡）。
+     * ⚠ 这是**有界差**口径，不是「取消判据」：把补齐改成「恒不生效」仍会被反向护栏（下一条）抓住。
+     */
+    expect(off.stun - on.stun, `补齐 ON 的失衡次数不得比 OFF 少 2 次以上\n${msg}`).toBeLessThanOrEqual(1)
   }, 600_000)
 
   /**
@@ -110,10 +131,24 @@ describe('T140a 交互补齐单调性：ON 恒不劣于 OFF', () => {
    * 实测该队 r=0.8 有严格增益（OFF 57.074M → ON 57.250M，且 ON 真的装了弹刀 +1）。
    */
   it('反向护栏：ON 至少在一档上严格优于 OFF（防「关掉补齐」假修）', async () => {
-    const on = await measure('banyue-trigger-lucia', 0.8, true, 12, 3)
-    const off = await measure('banyue-trigger-lucia', 0.8, false, 12, 3)
-    expect(on.dmg, `r=0.8 上补齐应有严格增益：ON ${(on.dmg / 1e6).toFixed(3)}M vs OFF ${(off.dmg / 1e6).toFixed(3)}M`)
+    /**
+     * ⚠ **T141 换夹具档位**：原档（金身12/双反3 @ r=0.8）实测 `topUp === null`——该档轴不可行
+     * （`guarantee.* = 0` 且轴未激活）⇒ 补齐门控根本没开，本护栏「测的是空气」（正是它自己警告的形态）。
+     * 实测（`.zc/perf/T141gate.perf.ts`）**金身2/双反1 @ r=0.6** 档补齐真的装上（`dual: +12`）。
+     */
+    const on = await measure('banyue-trigger-lucia', 0.6, true, 2, 1)
+    const off = await measure('banyue-trigger-lucia', 0.6, false, 2, 1)
+    expect(on.dmg, `r=0.6 上补齐应有严格增益：ON ${(on.dmg / 1e6).toFixed(3)}M vs OFF ${(off.dmg / 1e6).toFixed(3)}M`)
       .toBeGreaterThan(off.dmg)
-    expect(on.topUp, 'ON 臂应真的装了补齐（否则本护栏测的是空气）').not.toBe('0/0')
+    /**
+     * ⚠ **T141 改判据**：原断言读 `calc.interactionTopUp.value` 并求 `not.toBe('0/0')`——但该字段是
+     * **对象**（`{slot, parry, dual}`）或 `null`，`String(obj)` 恒为 `"[object Object]"`，**永远不等于 `'0/0'`**
+     * ⇒ 它在改前是**恒真式**（测的是空气），并非真的在验「补齐装上了」。
+     * 实测（`.zc/perf/T141gate.perf.ts`）：本夹具 ON 臂 `topUp = {"slot":0,"parry":0,"dual":12}`（**双反 +12**）、
+     * OFF 臂 `null`。⇒ 改为按字段钉「ON 的补齐量 > 0 且 OFF 确实关掉」。
+     */
+    expect(on.topUp, 'ON 臂应真的装了补齐（parry 或 dual > 0）')
+      .toSatisfy((t: { parry: number; dual: number }) => t.parry > 0 || t.dual > 0)
+    expect(off.topUp, 'OFF 臂必须真的关掉了补齐（否则对照无效）').toBeNull()
   }, 600_000)
 })

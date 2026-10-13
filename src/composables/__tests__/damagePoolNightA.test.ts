@@ -126,12 +126,20 @@ describe('R21 夜A 跳① 琉音 1481：非轴态强特只出专用块行（:428
       'liuyin-ex-1481011-nonstun', 'liuyin-ex-1481011-stun',
       'liuyin-ex-1481012-nonstun', 'liuyin-ex-1481013-nonstun',
     ])
-    // 分段计数口径：失衡次数 2、强化特殊技总次数 15 ⇒ 失衡内首个强特 2 次，
-    // 非失衡 13 次按 1→3 连打 = floor(15/3)/floor(14/3)/floor(13/3) = 5/4/4（精确值）
-    expect(liuyinSrc.exHeavyCount).toBe(15)
+    /**
+     * 分段计数口径：失衡次数 2、强化特殊技总次数 **16** ⇒ 失衡内首个强特 2 次，
+     * 非失衡 14 次按 1→3 连打 = `floor((14+2)/3)/floor((14+1)/3)/floor(14/3)` = **5/5/4**（精确值）。
+     *
+     * ⚠ **T141 改值**：总次数 **15 → 16**（`exHeavyCount = floor(exSpecialCount)`，`liuyin.ts:162`）。
+     * T141 第 3 档（吸收取满容量 + 闸门常开 ⇒ 平A/回能重新分配）让本队多打出一次强特
+     * ⇒ 非失衡段 13 → 14 次 ⇒ 剪刀位由 `floor(14/3)=4` 变 `floor(15/3)=5`。
+     * ⇒ 判据（分段公式本身）**没动**，只是输入次数变了；三个 tag 行的**结构**（石头 stun + 石头/剪刀/布 nonstun）
+     * 与上面 `dedicatedRows.length === 4` 一条也未变。
+     */
+    expect(liuyinSrc.exHeavyCount).toBe(16)
     expect(byId.get('liuyin-ex-1481011-stun')!.count).toBe(2)
     expect(byId.get('liuyin-ex-1481011-nonstun')!.count).toBe(5)
-    expect(byId.get('liuyin-ex-1481012-nonstun')!.count).toBe(4)
+    expect(byId.get('liuyin-ex-1481012-nonstun')!.count).toBe(5)
     expect(byId.get('liuyin-ex-1481013-nonstun')!.count).toBe(4)
     // 易伤口径：失衡内段吃满（stunMult > 1）、非失衡段不吃（stunMult 恰为 1）
     expect(byId.get('liuyin-ex-1481011-stun')!.stunMult!).toBeGreaterThan(1)

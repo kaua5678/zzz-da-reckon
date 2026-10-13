@@ -123,9 +123,14 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     )
     // 重冻 2026-09-28（CC-158 第 181 轮，折叠残差可退回 ⇒ 平A池重分、轴外行伤害占比微移）：旧 1.6900/0.6900/0.6273、
     // 案例 D 旧 1.7211/0.7211/0.6555；行级易伤（2.100 / 1.000、闪反两段）断言全部不变 ⇒ 仅权重漂移。
-    expect(s.weightedVuln).toBeCloseTo(1.6888, 3)
-    expect(s.weightedCredit).toBeCloseTo(0.6888, 3)
-    expect(s.coverageRate).toBeCloseTo(0.6262, 3)
+    //
+    // ⚠ **T141 重冻（2026-10-13）**：1.6888/0.6888/0.6262 → **1.6622/0.6622/0.6020**。
+    // 加权口径 = 逐行伤害占比对易伤倍数加权 ⇒ 任何改变**行伤害结构**的引擎改动都会动它
+    // （本次 = 合轴吸收改「取满容量」+ 闸门常开 ⇒ 平A池重分 ⇒ 各行占比微移）。
+    // 上面那组**行级**结构断言（2.100 / 1.000）一条未变 ⇒ 易伤机制本身没动，只是权重漂移。
+    expect(s.weightedVuln).toBeCloseTo(1.6622, 3)
+    expect(s.weightedCredit).toBeCloseTo(0.6622, 3)
+    expect(s.coverageRate).toBeCloseTo(0.6020, 3)
   })
 
   it('案例 D（加闪反块被轴认领一半）：加权快照 1.7198/0.7198/0.6543；闪反切成两行', async () => {
@@ -146,9 +151,11 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
       rows.map(r => ({ totalDamage: r.totalDamage, appliedStunMult: rowAppliedStunMultOf(r, p) })),
       full,
     )
-    expect(s.weightedVuln).toBeCloseTo(1.7198, 3)
-    expect(s.weightedCredit).toBeCloseTo(0.7198, 3)
-    expect(s.coverageRate).toBeCloseTo(0.6543, 3)
+    // ⚠ **T141 重冻**：1.7198/0.7198/0.6543 → **1.7647/0.7647/0.6952**（理由同上条：行伤害占比微移）。
+    // 本条的**结构**判据（闪反 `1291012` 恰好切两行、一行 >1.99 一行 <1.01）在上面，全部未变。
+    expect(s.weightedVuln).toBeCloseTo(1.7647, 3)
+    expect(s.weightedCredit).toBeCloseTo(0.7647, 3)
+    expect(s.coverageRate).toBeCloseTo(0.6952, 3)
   })
 })
 

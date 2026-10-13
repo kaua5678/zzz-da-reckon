@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AUTO_TOPUP_TIME_LIMIT_SEC, computeBanyueRageCycle, computeBanyueMingwangStacks, computeBanyueMingwangBlocks, computeBanyueInteractionTopUp, banyueMechanic, banyueOverlay, MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
 import { isFrontlineExecution } from '@/types/resource'
+import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 
 describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', () => {
   it('默认（闪反10/招架6/金身20，地动山摇连段0）：怒相 4 次，怒相外 9 组全打论道连段', () => {
@@ -517,13 +518,33 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     expect(rr.convergence.axisFallback).toBe(true)
     expect(calc.stunPoolResult.value).not.toBeNull() // 一般循环下失衡池照常
     // 前台行回到预算内（容差 2s = 合轴可覆盖的量化残差）
+    //
+    // ⚠ **T141 改判据：从「手工 Σ前台行 ≤ 182」改为引擎单一事实源 `netFrontlineOccupation`**
+    // （与 `timeLedger.test.ts` 同一处口径修正，本次两道用例同因同解）。
+    //
+    // 病根：手工 `Σ前台行` 是**毛额**，把「被合轴并行掉、不占共享预算」的那部分也算进去了。
+    // 引擎的既定语义（`helpers.ts` 合轴段）是「**Σnecessary 允许 > 战斗时间，只要合轴抵扣后的
+    // 净占用装得下**」——旧断言之所以一直成立，只是因为**旧闸门要求「有溢出」**：本队不吸收
+    // ⇒ 并行量 0 ⇒ 毛额恰好等于净额。T141 第 3 档放开闸门后本队开始吸收（实测
+    // `dynamicComboAlignSeconds = comboAlignCredit > 0`）⇒ 毛额 180.000 → **195.147**（超 182 → 红），
+    // 而引擎净占用**两态都是 180.0000**（逐位相同，实测探针）⇒ 旧断言测的其实是「并行量为 0」，
+    // 不是用例名说的「回到预算内」。
+    //
+    // 这不是放宽：净占用是该队**真实的共享时间占用**，也是轴退化/降配/队伍对比消费的同一个判据
+    // （`solveTeam#stageResolveFeasibility` 的 `netOf`）。两条断言并留——毛额也照测，只是按新口径
+    // 它本就可以超预算（上限取 180 + 吸收量 + 容差）。
     let front = 0
     for (const ch of rr.characters) {
       for (const e of ch.executions) {
         if (isFrontlineExecution(e)) front += e.totalTime ?? 0
       }
     }
-    expect(front).toBeLessThanOrEqual(182)
+    expect(netFrontlineOccupation(rr), '净占用（= Σ前台 − 并行抵扣）必须装得下预算').toBeLessThanOrEqual(180 + 2)
+    // 反空洞：本队确实发生了吸收（否则本行退化成旧断言的同义反复，无法区分「净额小」与「没并行」）
+    const absorbedTotal = rr.characters.reduce(
+      (a, c) => a + ((c.timeAllocation as { dynamicComboAlignSeconds?: number }).dynamicComboAlignSeconds ?? 0), 0)
+    expect(absorbedTotal, '反空洞：本夹具必须真的发生了动态吸收').toBeGreaterThan(0)
+    expect(front).toBeLessThanOrEqual(180 + absorbedTotal + 2)
     // 自动补齐清零（退化 = 非轴模式，autoTopUp 关闭；补齐是把轴需求抬成交互行的通道）
     const topUpAfter = calc.interactionTopUp.value
     expect(!topUpAfter || (topUpAfter.parry === 0 && topUpAfter.dual === 0)).toBe(true)

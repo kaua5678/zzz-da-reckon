@@ -399,6 +399,28 @@ describe('1141 莱卡恩：lycaonWindowDuration ← axis.windowSeconds（棘轮 
    * 围猎可用后台时间 = 180 − 3×24(失衡) − 莱卡恩前台 − 闪反时间(6×0.6s) ⇒ 平A被压到 **21.2465s**。
    * 实测两态：**接上 = 21.2465…**；短路（回落 `?? 16` ⇒ 只扣 3×16）= **24**（= 每次围猎 8s 封顶全用满）。
    * ⇒ 两者相差 2.7535s，且都不是 0（`?? 16` 兜底把断路伪装成合法值——正是本批反复强调的形态）。
+   *
+   * ⚠ **T141：接上态的读数 21.2465 → 14.9541**（吸收改「取满容量」+ 闸门常开）。
+   *
+   * 变的**不是**本用例要钉的那条链（`axis.windowSeconds → cfg.lycaonWindowDuration → windowDur`），
+   * 而是公式里的 **`frontTime`（= 本行生成时已 push 的前序行之和）被主C 的平A池顶大了**：
+   *
+   * ```
+   * huntBasicTotal = min(8×huntCount, 后台时间 − 闪反时间)          // lycaon.ts:306-311
+   * 后台时间        = 总时间 − 无敌 − huntCount×windowDur − frontTime
+   * ```
+   *
+   * `windowDur` 项（3×24 = 72s）逐位不变（实测：把消费端兜底从 `?? 16` 改成 `?? 40` 重跑同一探针，
+   * 读数仍是 14.9541 ⇒ `cfg.lycaonWindowDuration` 确实接上、兜底从未被走到；短路 `axis.windowSeconds`
+   * 的对照值仍是 **24**，判别力保留）。
+   *
+   * 减数 `frontTime` 实测 **83.1535 → 89.4459**（其中「平A汇总」行 **51.6915 → 57.9839**）：T141 吸收
+   * 常开后主C 平A池被顶到预算上沿，比莱卡恩**先**占走时间 ⇒ 莱卡恩后台时间
+   * **24.847 → 18.554** ⇒ 围猎平A **21.2465 → 14.9541**。
+   *
+   * **归因自证（扫 r）**：把 `comboAlignAbsorbRatio` 拨回 0（= 关掉吸收）重跑本夹具，读数**逐位回到
+   * 21.2465**、`dyn` 消失；r=0.4 时 `dyn = comboAlignCredit = 12.5848` ⇒ 差异完全由本夹具吸收量解释。
+   * ⇒ 是值漂移，不是断路。
    */
   it('★ 端到端：窗口时长经真管线落到围猎平A预算（短路 ⇒ 回落 ?? 16 得 24，不是 0）', async () => {
     await setupHarness([
@@ -413,9 +435,9 @@ describe('1141 莱卡恩：lycaonWindowDuration ← axis.windowSeconds（棘轮 
     const lycaon = calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
     const huntBasic = lycaon.executions.find(e => e.moveId === 'basic_attack' && e.moveName?.includes('围猎'))
     expect(huntBasic, '围猎后台平A行必须存在').toBeTruthy()
-    // 精确值（实测）：180 − 3×24(失衡) − 前台 − 闪反 ⇒ 平A预算 21.2465s
+    // 精确值（实测量）：180 − 3×24(失衡) − 前台(已吃吸收) − 闪反 ⇒ 平A预算 14.9541s
     expect(huntBasic!.totalTime, '围猎平A预算没吃 axis.windowSeconds（短路 ⇒ 回落 ?? 16 得 24）')
-      .toBeCloseTo(21.2465, 4)
+      .toBeCloseTo(14.9541, 4)
   })
 })
 

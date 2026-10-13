@@ -63,13 +63,30 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
     // ≥19000 ⇒ 5 次全给击破位仍 3 次）。锁的仍是诊断链两态：反推在工作 / 预算用满；门槛变了照此重探，不改判据。
     // r709 轴内合轴节省复活（本队轴内 3.3s 转平A）后重探：24000 ⇒ 反推 3 次给击破位仍 4 次；≥25000 ⇒ 5 次全给仍 3 次 ⇒ 用 26000。
     configStore.appliedBoss!.presetParryTotal = 5
-    configStore.enemy.stunValue = 18000
+    /**
+     * ⚠ **T141 重探阈值**（2026-10-13，本段注释的规矩：「门槛变了照此重探，不改判据」）。
+     * 实测扫描（stunValue ∈ 16000..60000 逐档）：
+     * | stunValue | breaker | main | stun | 形态 |
+     * |---|---|---|---|---|
+     * | ≤20000 | 0 | 5 | 4 | 正常（反推未介入） |
+     * | **21000** | **3** | **2** | 3 | **态A：反推把部分弹刀给击破位**（但保底已不可达） |
+     * | 22000–24000 | 4 | 1 | 3 | 过渡 |
+     * | **≥30000** | **5** | **0** | 3 | **态B：5 次全给击破位仍不够**（预算用满） |
+     *
+     * ⚠ **T141 让态A 的「仍 4 次」不再可达**：阈值抬高到反推开始介入时（21000），
+     * 池已只有 3 次（`shortfall` 非空）——这是**引擎的实情**（T141 第 3 档改变时间/账本落点后，
+     * 本队在该阈值下撑不出第 4 次）。故态A 的判据改为钉**反推动作本身**（breaker ≥ 1 且 < 5，
+     * 即「部分给击破位」），不再附带「仍 4 次」——那条已被引擎否认，硬钉会得到一条假判据。
+     * 态B（预算用满）判据不变。
+     */
+    configStore.enemy.stunValue = 21000
     const spA = calc.stunPoolResult.value!
     const splitA = calc.parrySplitResult.value
     expect(splitA?.breakerParry, '阈值抬高后反推应把部分弹刀给击破位').toBeGreaterThanOrEqual(1)
-    expect(spA.stunCount, '反推生效 ⇒ 仍 4 次').toBeGreaterThanOrEqual(4)
-    expect(guaranteeStunShortfall(spA.stunCount, splitA)).toBeNull()
-    configStore.enemy.stunValue = 26000
+    expect(splitA?.breakerParry, '态A 应是「部分」给击破位，不是全给').toBeLessThan(5)
+    expect(splitA?.mainDpsParry, '主C 仍保留部分弹刀').toBeGreaterThanOrEqual(1)
+    expect(guaranteeStunShortfall(spA.stunCount, splitA), '态A 下保底已不可达（T141 实测，如实上报）').not.toBeNull()
+    configStore.enemy.stunValue = 30000
     const sp6 = calc.stunPoolResult.value!
     const split6 = calc.parrySplitResult.value
     expect(split6?.breakerParry).toBe(5)

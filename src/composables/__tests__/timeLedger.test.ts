@@ -8,6 +8,7 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
+import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints } from '@/composables/teamCompare'
 import { isFrontlineExecution } from '@/types/resource'
@@ -76,7 +77,22 @@ describe('时间桶恒等式', () => {
     // 全队容差与逐角一致（+2s）：引擎折叠按文档容忍 ±1s 量化残差（资源:comment 口径：
     // 「floor 次数导致残差 ~1s 属合轴可覆盖，不追求精确 0」），1081 等强依赖队收敛
     // 残差可到 ~0.005s（2026-09-03 利用率修正后 伊德海莉队实测 180.0053）——1e-6 是误报源
-    expect(teamFrontline).toBeLessThanOrEqual(180 + 2)
+    /**
+     * ⚠ **T141 改口径：全队判据从「Σ前台行 ≤ 180」改为「净占用 ≤ 180」**（`netFrontlineOccupation`）。
+     *
+     * 引擎的**既定语义**（`helpers.ts` 合轴段原文）是「**Σnecessary 允许 > 战斗时间（Σ>180），
+     * 只要合轴抵扣后的净占用装得下**」——前台行总和本来就可以超 180，被并行掉的那部分不占共享预算。
+     * 旧断言 `Σfront ≤ 182` 之所以一直成立，只是因为**旧闸门要求「有溢出」**：本队 Σ净必要 134.9 < 180
+     * ⇒ 不吸收 ⇒ 并行量 0 ⇒ 两者恰好相等。T141 第 3 档放开闸门后本队开始吸收（实测 dyn 23.562s
+     * ⇒ Σ前台 201.006 / 净占用 **177.444** ≤ 180）⇒ 旧断言测的其实是「并行量为 0」，不是「装得下」。
+     *
+     * ⇒ 正确判据 = **净占用**（= Σ前台 − 并行抵扣，`timeOccupation#netFrontlineOccupation` 是唯一事实源）
+     * 不超过预算 + 容差。逐槽恒等式（`front ≤ necessary + basic + 2`）**一条没动**，仍在上面的循环里。
+     */
+    expect(netFrontlineOccupation(rr), '净占用（= Σ前台 − 并行抵扣）必须装得下预算').toBeLessThanOrEqual(180 + 2)
+    // 反空洞：本队确实发生了吸收（否则这条退化成旧断言的同义反复）
+    expect(rr.characters.reduce((a, c) => a + ((c.timeAllocation as { dynamicComboAlignSeconds?: number }).dynamicComboAlignSeconds ?? 0), 0),
+      '反空洞：本夹具必须真的发生了动态吸收（否则本条与「Σ前台 ≤ 180」无区别）').toBeGreaterThan(0)
     // 收敛健康度：折叠残差应接近 0（非静默耗尽上限）
     expect(rr.convergence?.timeBudgetResidualSeconds ?? 0).toBeLessThanOrEqual(2)
   })

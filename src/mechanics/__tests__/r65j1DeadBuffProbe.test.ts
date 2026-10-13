@@ -213,9 +213,38 @@ async function readingsFor(
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 0))
     const rows = calc.damagePoolRows.value as unknown as Array<Record<string, unknown>>
+    /**
+     * ## ⚠ T141：读数仪器**加宽**（从「只看伤害行」到「伤害行 + 异常池侧通道」）
+     *
+     * 本探针要回答的是「这条 buff 有没有接进**计算**」。旧仪器只看 `damagePoolRows` 的 hash，
+     * 于是**异常积蓄效率类 buff** 会假报「没接」——实测 `1091/miyabi_c1_team_buildup`
+     * （`.zc/perf/T141r65b.perf.ts`，本文件用的 2 人队）：
+     *
+     * | 臂 | 面板积蓄效率 | 异常触发 | 紊乱 | 伤害行 hash |
+     * |---|---|---|---|---|
+     * | OFF | 41.24 | 16 | 6 | 恒定 |
+     * | ON | **61.24**（+20 到账） | **17** | **6** | **恒定** |
+     *
+     * ⇒ buff **确实生效**（面板 +20、触发 +1），但伤害行逐位相同。原因是紊乱次数公式
+     * `disorderCount = min(sum−1, 2×(sum−max))` 的**绑定项饱和**：两元素队里加 1 次触发时
+     * `sum` 与 `max` **同时 +1** ⇒ `2×(sum−max)` 恒为 6 ⇒ 紊乱次数不变 ⇒ 伤害行不变。
+     * 也就是说变的是**触发器**（谁先触发），不是总数——这正是「仪器盲」而非「机制死」。
+     *
+     * ⇒ 把异常池侧通道并进 hash（`totalTriggerCount` / `disorderCount` / 逐元素触发数 /
+     * 喧响奖励），让「机制活着但没改伤害行」的形态不再被误判成「没接」。
+     * ⚠ 这**加强**了判据覆盖面（原本看不见的通道现在看得见），不是放宽：
+     * `declared-only` 反向抽查（拨动必须恒定）同样吃这条 hash ⇒ 它一并变严。
+     */
+    const ap = calc.anomalyPoolResult.value
+    const anomalySig = [
+      ap?.totalTriggerCount ?? -1,
+      ap?.disorderCount ?? -1,
+      ap?.decibelBonus ?? -1,
+      ...(ap?.perElement ?? []).map(e => `${e.element}:${e.triggerCount}`),
+    ].join(',')
     out.push({
       mode,
-      hash: rowHash(rows),
+      hash: rowHash(rows) + '#' + createHash('sha256').update(anomalySig).digest('hex').slice(0, 8),
       total: Math.round(rows.reduce((s, r) => s + Number(r.totalDamage ?? 0), 0) * 100) / 100,
       rows: rows.length,
     })

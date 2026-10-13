@@ -215,7 +215,13 @@ describe('R15-c 跳①：雨果非轴 —— 白名单 1.5 / 非白名单精确 
     const ult = rowsOf(calc, 0, '1291', '1291018')
     expect(ult.length).toBe(2)
     expect(ult.map(r => r.stunMult)).toEqual([1.5, 1.5])
-    expect(ult.map(r => r.count)).toEqual([2, 4])
+    /**
+     * ⚠ **T141 改值**：本体终结技次数 **2 → 3**（赠送行仍 4）。
+     * 本用例的判据是「两行**都吃满易伤**（`stunMult` 都是 1.5）」，与具体次数无关；
+     * 次数是 T141 第 3 档（吸收取满容量 ⇒ 平A/喧响重新分配 ⇒ 大招次数 +1）的**连带值**。
+     * 旧断言把「2」当成语义锚点，实际它只是当时的引擎落点。
+     */
+    expect(ult.map(r => r.count)).toEqual([3, 4])
 
     // ★ 决定性对照：若把 0 折成 null（回落覆盖率），强特起手会变成 1.2916… ⇒ 本对锁住该语义
     const otherSlotRow = calc.damagePoolRows.value.find(r => r.slot === 1 && r.type === '直伤' && r.stunMult !== undefined)

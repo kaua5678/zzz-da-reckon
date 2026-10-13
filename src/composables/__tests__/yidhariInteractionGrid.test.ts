@@ -83,19 +83,35 @@ async function baseConfig(): Promise<ResourceCalcConfig> {
  *     （iterations 远小于 100）、环成员次数**可行不透支**（ex=19 声明、E(18)=922.997 < 19×50=950
  *     ⇒ 19 是「自身撑得起」的 ⌊x*⌋）、结果确定、终局整数。
  */
-const CYCLE_ALLOWED = new Set(['2:6'])
+/**
+ * ⚠ **T141（2026-10-13）起本集合为空** —— 原唯一例外格 `2:6` 不再出 2 环。
+ *
+ * 实测（本文件加临时逐格打印）：全 5×6 网格**全部 `converged = true`**，
+ * 即「伊德海莉 refund 双稳态」在 T141 口径下消失了。归因：T141 第 3 档（合轴吸收取满容量
+ * + 闸门常开）让时间/账本落点整体移动 ⇒ 该格的整数映射不再 2-循环。
+ *
+ * ⇒ 这是**收敛面的改善**（原来要开例外的那格现在正常收敛），不是回归。
+ * **保留空集合而不是删掉本机制**：① 例外通道本身仍是护栏的一部分（将来出现新 2 环格时，
+ * 加进来的同时仍会被下面那组「折叠层/零截断/环成员」断言钉住，强度不降级）；
+ * ② 删掉它会让「曾有过例外」这段口径从代码里消失（规则 16：口径必须挂在活代码上）。
+ * ⚠ 若某天 `2:6` 又出 2 环，把它加回来即可——但**必须先确认**折叠层仍收敛、截断仍为 0。
+ */
+const CYCLE_ALLOWED = new Set<string>([])
 
 describe('伊德海莉 refund 双稳态护栏（交互网格）', () => {
   // 显式超时：本用例跑 5×6 网格 = 30 次完整 calcTeamResources（单跑 ~1.6s），
   // 全量并行下会被 CPU 竞争拖到 5s 以上而撞 vitest 默认 5000ms 上限（2026-09-10 实测 5535ms 假红）。
   it('parry×dodge 网格：收敛、整数次数', async () => {
     const base = await baseConfig()
+    /** 反空洞：空 `CYCLE_ALLOWED` 下若扫描面塌成 0 格，「全部收敛」会假绿（规则：判据必须自证扫到了东西） */
+    let scanned = 0
     for (let parry = 0; parry <= 8; parry += 2) {
       for (let dodge = 0; dodge <= 10; dodge += 2) {
         const cfg = JSON.parse(JSON.stringify(base)) as ResourceCalcConfig
         cfg.characters[0].parryCount = parry
         cfg.characters[0].dodgeCounterCount = dodge
         const cold = calcTeamResources(JSON.parse(JSON.stringify(cfg)))
+        scanned++
         if (!CYCLE_ALLOWED.has(`${parry}:${dodge}`)) {
           expect(cold.converged, `parry=${parry} dodge=${dodge} 应收敛`).toBe(true)
         } else {
@@ -111,5 +127,6 @@ describe('伊德海莉 refund 双稳态护栏（交互网格）', () => {
         expect(Number.isInteger(cold.characters[0].exSpecialCount), `parry=${parry} dodge=${dodge} 终局次数应为整数`).toBe(true)
       }
     }
+    expect(scanned, '反空洞：网格必须被真的扫到（5×6 = 30 格）').toBe(30)
   }, 30_000)
 })

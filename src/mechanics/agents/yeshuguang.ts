@@ -223,8 +223,31 @@ export function computeYeshuguangCycle(input: YeshuguangCycleInput): YeshuguangC
   const autoZhao = finalizeForms ? Math.floor(autoZhaoRaw) : autoZhaoRaw
   const zhaoSetting = Math.floor(input.zhaoyingCountSetting)
   let zhaoyingForms = Math.max(0, zhaoSetting >= 0 ? Math.min(zhaoSetting, autoZhao) : autoZhao)
-  // CC-160：终局照影 = 入口态实数轮数 floor 一次后冻结（余数剑势留着不打；装不下由重折/截断/降配承担）
-  if (finalizeForms && input.frozenZhaoying != null) zhaoyingForms = Math.max(0, input.frozenZhaoying)
+  /**
+   * CC-160：终局照影 = 入口态实数轮数 floor 一次后冻结（余数剑势留着不打；装不下由重折/截断/降配承担）。
+   *
+   * ## ⚠ T141 修：冻结值必须**回夹到终态可支付轮数**（`floor(终态剑势/6)`）
+   *
+   * CC-160 的原始前提是「**入口态 ≈ 终态**」（终局只剩终结技/平A随资源变化）。T141 第 3 档
+   * （合轴吸收取满容量 + 闸门常开）把这条前提**拉开了**：终局重推期平A 池相对入口态变化更大
+   * ⇒ 冻结的轮数可能**超出终态实际攒到的剑势**。
+   *
+   * 实测（`outerCycleColdStart.test.ts` 的 C1 夹具，`1431` C1 × `axis=2`）：
+   * | 口径 | zhao | 终态剑势 | `floor(剑势/6)` | 超支 |
+   * |---|---|---|---|---|
+   * | 改前（HEAD） | 4 | 25.5721 | 4 | −1.57（留余数，正常） |
+   * | 改后（T141，未修） | **6** | **33.0506** | **5** | **+2.95** ← 打了装不下的一轮 |
+   *
+   * 超支被 `YeshuguangCycleResult.remaining`（`Math.max(0, total − spend)`）**钳成 0**，
+   * 界面上看起来「刚好花完」⇒ 是**静默**的资源透支（物化了 6 轮、账本只够 5 轮）。
+   * ⇒ 取 `min(冻结值, floor(终态剑势/6))`：仍然坚持 CC-160「floor 一次、余数留着不打」的语义
+   * （夹的是**上界**，不是把冻结改回重推），也仍然切断整数态下的跨盆 2-循环。
+   * ⚠ 回退点：删掉 `Math.min` 的外层即可回到 CC-160 原语义（届时 `outerCycleColdStart` 的
+   * C1 axis=2 会红——那正是本修复的判据）。
+   */
+  if (finalizeForms && input.frozenZhaoying != null) {
+    zhaoyingForms = Math.max(0, Math.min(input.frozenZhaoying, autoZhao))
+  }
   // 喧响进轮 / 转大赠轮同样是离散事件（一次终结技 = 一轮），终局一并取整
   if (finalizeForms) {
     decibelForms = Math.floor(decibelForms)

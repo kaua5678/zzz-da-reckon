@@ -97,12 +97,12 @@ const CASES = [
   //   它现在的职责 = 钉住 `necessaryUncappedTime` 路径（`feasibleScale < 1`）的**落点**，不是度量残差塌陷。
   //   2026-10-09 剑势修复后落点 [117.328,38.085,59.918]/99.2892M（并发 ultimatePromote.ts 修复 + 剑势排除自己叠加）。
   {
-    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [117.328, 38.085, 59.918], dmg: 99.2892,
-    desc: '封顶队（scale<1，走 necessaryUncappedTime 路径）落点不变；acc 修前/修后同为 21.70 ⇒ 本条不度量残差塌陷',
+    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [119.263, 38.085, 61.853], dmg: 99.7299,
+    desc: '封顶队（scale<1，走 necessaryUncappedTime 路径）；acc 仍 21.70 ⇒ 本条不度量残差塌陷（落点已按 T141 重取，见下）',
   },
   // 旧 auto-1431-1491-1341：槽序互换（照↔千夏）⇒ 账本槽1/槽2 对调。
   // 2026-10-09 剑势修复后落点 [145.904,26.551,28.795]/93.6084M。
-  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [145.904, 26.551, 28.795], dmg: 93.6084, desc: '残差塌回地板（修前 22.74s）且落点不变' },
+  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [146.793, 26.551, 28.795], dmg: 93.7612, desc: '残差塌回地板（修前 22.74s）；落点已按 T141 重取（见下）' },
 ] as const
 
 describe('折叠残差不与团队封顶构成正反馈', () => {
@@ -128,8 +128,17 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
         + ' —— 折叠环又在对**封顶后**的账本收敛，与封顶构成正反馈',
       ).toBeLessThan(c.accCeiling)
 
-      // ② 落点/伤害**不变**：本修法不是中性记账的镜像——它对落点是恒等的
-      //    （封顶只由比值决定），所以这条是**防回归**：若哪天它开始推动落点，必须逐队归因。
+      /**
+       * ② 落点/伤害**认领值**：本修法不是中性记账的镜像——它对落点是恒等的（封顶只由比值决定），
+       *    所以这条是**防回归**：若哪天它开始推动落点，必须逐队归因。
+       *
+       * ⚠ **T141（2026-10-12）已重取本表**：合轴吸收改成「取满容量」后，本队开始吸收
+       *    ⇒ 账本/平A 重新分配。实测（`.zc/perf/T141fold.perf.ts`）：
+       *    `-1341-1481` ledger `[117.328,38.085,59.918] → [119.263,38.085,61.853]`、dmg 99.2892 → **99.7299**；
+       *    `-1341-1491` ledger `[145.904,…] → [146.793,…]`、dmg 93.6084 → **93.7612**。
+       *    `acc` 两条**都仍是 21.700**（本修法要钉的量未漂）⇒ 本用例的**原判据（残差塌回地板）依然有效**，
+       *    变的只是「落点认领值」——那本来就是随引擎口径走的锚点，不是不变量。
+       */
       const ledger = rr!.characters.map(x => x.timeAllocation.necessaryTime + x.timeAllocation.basicAttackTime)
       for (let i = 0; i < 3; i++) {
         expect(
@@ -258,14 +267,15 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
        *   是**旧槽序修前**的读数（实测旧槽序修前 0.75 / 188.681s / 111.221M），套到新槽序上是错的——已按实测改写。
        *   保留本用例 = 钉住该队的降配落点（数值一漂即红），不声称档位迁移。
        */
+      // ⚠ T141 重取：**档位不变（仍 0.125）**、dmg 98.1679 → **99.4656**（吸收改「取满容量」⇒ 平A 重新分配）。
       expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.125, 6)
       expect(
         Math.abs((rr!.overflowSeconds ?? 0) - 0),
         `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 98.1679),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 98.1679M`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 99.4656),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 99.4656M（T141 重取）`,
       ).toBeLessThan(0.01)
       // 残差仍在量化地板（本修法的目的）
       expect(rr!.convergence?.timeBudgetAccumulatedSeconds ?? 0).toBeLessThan(35)
@@ -284,10 +294,11 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
       expect(rr, '资源池未产出结果').toBeTruthy()
       // 2026-10-09 实测：折叠修复前 0.25 / 71.6412M（acc 13.9202）→ 修复后 0.125 / 69.6128M（acc 13.6020）。
       // 本队**不随**并发赠行时长修复漂（该修复前后逐位相同）⇒ 是折叠修复的干净判别夹具。
+      // ⚠ T141 重取：**档位不变（仍 0.125）**、dmg 69.6128 → **75.2791**（吸收改「取满容量」⇒ 平A 重新分配）。
       expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.125, 6)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 69.6128),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 69.6128M`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 75.2791),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 75.2791M（T141 重取）`,
       ).toBeLessThan(0.01)
     }, 200_000)
 

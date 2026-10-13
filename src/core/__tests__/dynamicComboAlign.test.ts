@@ -71,30 +71,38 @@ async function evalPreset(id: string, absorbRatio?: number) {
 type Evaluated = Awaited<ReturnType<typeof evalPreset>>
 
 /**
- * 吸收恒等式（口径「吸收多少由溢出决定、按容量比例分摊，不多不少」）：
- * 溢出 = Σ吸收前净必要 − 预算；吸收总量 = min(溢出, 队友容量)。用终态字段还原：吸收前净必要 = necessary − (credit − dynamic)
- * （feasibleScale=1 时精确；全额吸收时队友 necessary == credit，两支恒等式各在自己那支成立）。
- * 只钉「credit == 净必要」是全额那支的特例：2026-09-19 内层收敛专项里曾出现过 1431 落到 179.12（不贴顶）、溢出 90.71 < 容量 91.59 的
- * 部分吸收落点（63.77 + 26.94 = 90.71 精确成立），特例断言会误红——机制的定义性质是吸收量 == 溢出量，两种落点都必须过本恒等式。
+ * 吸收恒等式（**T141 第 3 档起的新口径**：吸收量 = 容量，不是溢出）。
+ *
+ * 用户口径 2026-10-12（逐字）：「如果有溢出，那么可以分为 3 档：1 个是合轴率 0 继续溢出，
+ * 1 个是提高合轴率刚好把溢出打出来，1 个是**拉满合轴率，不仅溢出能打，还能打更多资源和时间**。」
+ * ⇒ 吸收不再是「溢出消除器」（旧口径 `吸收 == min(溢出, 容量)`），而是**取满容量**：
+ *   · **不咬合**（溢出 ≤ 容量 `r·T`）⇒ `吸收 == r·T`（**第 3 档**：差额回流平A池给主C）；
+ *   · **咬合**（溢出 > 容量）⇒ 闭式小根 `g*·T`（T119 成果，严格 `< r·T`）。
+ * 两支都满足 `吸收 ≤ 容量`，判据按支分别钉**等号**（不是放宽成 ≤）。
+ *
+ * ⚠ 用终态字段还原吸收前净必要：`necessary − (credit − dynamic)`。不咬合支恒 `feasibleScale = 1`
+ * （`Σ吸收后净必要 ≤ 预算` 是该支的代数性质，见 `solveComboAlignTakeFullCapacity`）⇒ 还原精确。
  */
-function expectAbsorbedEqualsOverflow(r: Evaluated, op: Evaluated['slots'][number], ratio = 1) {
+function expectAbsorbedEqualsCapacity(r: Evaluated, op: Evaluated['slots'][number], ratio = 1) {
   const netBefore = (s: Evaluated['slots'][number]) => s.necessary - (s.credit - s.dynamic)
   const absorbed = r.slots.reduce((sum, s) => sum + s.dynamic, 0)
   const capacity = r.slots.reduce((sum, s) => sum + (s === op ? 0 : ratio * netBefore(s)), 0)
+  const overflow = r.slots.reduce((sum, s) => sum + netBefore(s), 0) - r.budget
   expect(op.dynamic, '操作角色不被吸收').toBe(0)
   expect(absorbed).toBeGreaterThan(0)
   expect(absorbed, '吸收总量 ≤ Σ 上限×净必要').toBeLessThanOrEqual(capacity + 1e-6)
-  if (absorbed < capacity - 1e-6) {
-    const overflow = r.slots.reduce((sum, s) => sum + netBefore(s), 0) - r.budget
-    expect(absorbed, '部分吸收：吸收总量 == 溢出量').toBeCloseTo(overflow, 3)
-  } else if (ratio >= 1) {
-    for (const s of r.slots) if (s !== op) expect(s.credit, `${s.agentId} 全额吸收：credit == 净必要`).toBeCloseTo(s.necessary, 3)
+  if (overflow <= capacity + 1e-6) {
+    // 第 3 档（T141）：容量没被溢出用满 ⇒ **吸满容量**（旧口径在此给 `溢出`，差额就是「更多资源和时间」）
+    expect(absorbed, `第 3 档：吸收 == 容量（溢出 ${overflow.toFixed(2)} ≤ 容量 ${capacity.toFixed(2)}）`).toBeCloseTo(capacity, 3)
+  } else {
+    // 容量真装不下溢出 ⇒ 闭式小根（严格小于容量）
+    expect(absorbed, '咬合支：吸收 < 容量（闭式小根）').toBeLessThan(capacity - 1e-6)
   }
   for (const s of r.slots) if (s !== op) expect(s.credit, `${s.agentId} credit ≤ 净必要`).toBeLessThanOrEqual(s.necessary + 1e-6)
 }
 
-describe('动态合轴 · 操作角色不动、队友前台按溢出量被合轴吸收', () => {
-  it('① 1431 簇两队（ratio=1，机制本体）：-1481-1491 截断 86.5s → ≤ 11s（余下 = 叶瞬光单人 > 180 的真剩余）；-1341-1481 合轴前已不截断（0 → 0）；队友前台按溢出量被吸收（吸收总量 == min(溢出, 容量)），单人前台 ≤ 战斗时间', async () => {
+describe('动态合轴 · 操作角色不动、队友前台按容量被合轴吸收（T141 第 3 档）', () => {
+  it('① 1431 簇两队（ratio=1，机制本体）：-1481-1491 截断 86.5s → ≤ 11s（余下 = 叶瞬光单人 > 180 的真剩余）；-1341-1481 合轴前已不截断（0 → 0）；队友前台按容量被吸收（T141 第 3 档：吸收 == 容量），单人前台 ≤ 战斗时间', async () => {
     const a = await evalPreset('auto-1431-1481-1491', 1)
     // 剩余 ≤ 11s = 叶瞬光单人 > 180s 的真剩余（操作角色 frontline 贴顶），不是合轴能解的
     expect(a.cut).toBeLessThan(11)
@@ -102,26 +110,32 @@ describe('动态合轴 · 操作角色不动、队友前台按溢出量被合轴
     const op = a.slots.reduce((m, s) => (s.necessary > m.necessary ? s : m), a.slots[0])
     expect(op.agentId).toBe('1431')
     /**
-     * 操作角色前台判据（2026-09-20 改为**不变量**，原为 `> budget − 1`）：
+     * 操作角色前台判据（**T141 第 3 档起改口径**，原为「不再独占战斗时间」）。
      *
-     * 口径是「操作角色不再独占战斗时间」（见 ②b 的同款断言），而「贴顶 179s」是**旧落点**的
-     * 过渡数字——那时叶瞬光的结构性溢出把队友时间压没了，只能靠前台顶满表达。冷启动环修复后
-     * 该队的截断已归零（86.5s → 0），叶瞬光前台 157.4s：溢出被合轴吸收完，**不需要**再顶满。
-     * 钉死不变量 = 「不再独占」+「单人 ≤ 预算」，把具体秒数交给 timeGolden。
+     * 旧断言 `op.frontline < budget − 5` 建立在旧语义上：`take = min(溢出, 容量)` ⇒ 吸收只吃掉溢出，
+     * 队友剩余前台仍占预算 ⇒ 操作角色停在 157.4s（**不独占**）。
+     *
+     * 第 3 档下 `take = 容量`（本档 r=1 ⇒ 全部队友净必要都被判并行）⇒ 团队净占用只剩操作角色自己，
+     * 腾出的预算回流平A池并**由操作角色继续打**（用户口径 6「合轴就是多打」+ 卡 §4「回流平A池」）。
+     * 实测本档：操作角色必要 110.34 → **173.35s**、前台 176.67s——**这正是「还能打更多资源和时间」**
+     * （资源变多 ⇒ 强特/大招次数上升 ⇒ 必要前台上升），不是回归到「独占」缺陷。
+     *
+     * ⇒ 本档（r=1，**用户明言「合轴不可能达到 100%」的数学极限**）只钉**物理不变量**；
+     *   「操作角色不独占」这条运营上有意义的判据在**用户上限档**钉（见 ①b 的 `budget − 30`）。
      */
-    expect(op.frontline, '操作角色不再独占战斗时间').toBeLessThan(a.budget - 5)
+    expect(op.frontline, '单人前台 ≤ 战斗时间（物理硬顶，任何 r 都成立）').toBeLessThanOrEqual(a.budget + 1e-6)
     expect(op.frontline, '但仍是主要占用者').toBeGreaterThan(a.budget / 2)
     for (const s of a.slots) {
       expect(s.frontline, `${s.agentId} 单人前台 ≤ 战斗时间`).toBeLessThanOrEqual(a.budget + 1e-6)
     }
-    expectAbsorbedEqualsOverflow(a, op)
+    expectAbsorbedEqualsCapacity(a, op)
     expect(a.damage).toBeGreaterThan(BEFORE['auto-1431-1481-1491'].dmg * 1.3)
 
     // ⚠ 第二支的 `BEFORE` 截断是 **0**（新槽序下合轴前已不截断，旧槽序 -1481-1341 才是 81.169s）⇒ 本支只查
     // 「合轴后不截断 + 吸收恒等式 + 伤害 ≥ 合轴前 × 1.3」，不声称「截断被降下来」。
     const b = await evalPreset('auto-1431-1341-1481', 1)
     expect(b.cut).toBeLessThanOrEqual(TIME_BUDGET_TOLERANCE_SECONDS)
-    expectAbsorbedEqualsOverflow(b, b.slots.reduce((m, s) => (s.necessary > m.necessary ? s : m), b.slots[0]))
+    expectAbsorbedEqualsCapacity(b, b.slots.reduce((m, s) => (s.necessary > m.necessary ? s : m), b.slots[0]))
     expect(b.damage).toBeGreaterThan(BEFORE['auto-1431-1341-1481'].dmg * 1.3)
   }, 180_000)
 
@@ -153,7 +167,7 @@ describe('动态合轴 · 操作角色不动、队友前台按溢出量被合轴
       /**
        * 上限判据（2026-09-20 改为**单向不变量**，原为 `份额 ≈ 0.4`）：
        *
-       * 机制定义性质是「吸收量 == min(溢出, 容量)」（见 `expectAbsorbedEqualsOverflow`）。原断言把
+       * 机制定义性质是「吸收量 == 容量（不咬合）/ 闭式小根（咬合）」（见 `expectAbsorbedEqualsCapacity`）。原断言把
        * 「容量绑住」这一支当成了唯一形态——只在上限档**确实装不下**（溢出 > 容量）时，每名队友的
        * 份额才会顶到 40%。冷启动环修复后 1431 簇的溢出降到容量以下（实测 `-1341-1491`：
        * absorbed 21.60 == overflow 21.60 < capacity 22.14），份额 0.390 是**受溢出限制**的正确值。
@@ -203,27 +217,54 @@ describe('动态合轴 · 操作角色不动、队友前台按溢出量被合轴
       const r = await evalPreset(id)
       expect(r.cut, `${id} 截断`).toBeLessThanOrEqual(TIME_BUDGET_TOLERANCE_SECONDS)
       const op = r.slots.reduce((m, s) => (s.necessary > m.necessary ? s : m), r.slots[0])
-      expectAbsorbedEqualsOverflow(r, op, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
+      expectAbsorbedEqualsCapacity(r, op, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
       expect(Math.abs(r.slack), `${id} 留白/超预算`).toBeLessThanOrEqual(1.5)
     }
   }, 300_000)
 
-  it('③ 吸收只发生在溢出队：全库预设口径（缺省上限）终态里带 dynamicComboAlignSeconds 的队 5~20 支（实测 13），含 1371-1481-1451；单人 sweep 永不吸收（无队友）', async () => {
+  it('③ 吸收发生在**全部多人队**（T141 第 3 档：不再要求有溢出），无溢出队吸收 == 容量；单人 sweep 永不吸收（无队友）', async () => {
+    /**
+     * ## 判据修订（T141，2026-10-12）——**旧判据「吸收只发生在溢出队」已作废**
+     *
+     * 旧断言把 `iterate` 的吸收闸门 `sumNetNecessary > budget`（= 「有溢出才吸收」）当成了机制定义性质。
+     * 用户口径 2026-10-12 推翻了它：「拉满合轴率，**不仅溢出能打，还能打更多资源和时间**」——
+     * **无溢出的队也要吸收**（腾出的前台回流平A池给主C），这正是第 3 档。
+     * 实测旧口径下全库 93 队里 **54 队** r 从 0 到 cap 逐位不变（`.zc/perf/T141census.perf.ts`）
+     * ⇒ 旧判据守的正是用户要删掉的那个语义。
+     *
+     * 新不变量（两支各自成立，都**不是**放宽成 ≤）：
+     *   · **不咬合**（溢出 ≤ 容量）⇒ `吸收 == 容量 r·T`（第 3 档；含 `溢出 ≤ 0` 的无溢出队）；
+     *   · **咬合**（溢出 > 容量）⇒ `吸收 < 容量`（闭式小根）。
+     * ⇒ 不再断言「必须溢出」，改为断言**两支恒等式**，并用「无溢出却有吸收的队数 > 0」做**活性面**
+     * （否则本判据可能因扫描面全是有溢出队而假绿）。
+     */
     const presets = teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3)
     const absorbed: string[] = []
-    const notOverflowing: string[] = []
+    /** 无溢出（Σ吸收前净必要 ≤ 预算）却仍然吸收的队 = 第 3 档的直接证据 */
+    const tier3NoOverflow: string[] = []
+    const badCap: string[] = []
+    const badBinding: string[] = []
     for (const p of presets) {
       const r = await evalPreset(p.id)
-      if (r.slots.some(s => s.dynamic > 0)) {
-        absorbed.push(p.id)
-        // 不变量本体：吸收只发生在溢出队（Σ 吸收前净必要 > 预算）
-        const overflow = r.slots.reduce((sum, s) => sum + s.necessary - (s.credit - s.dynamic), 0) - r.budget
-        if (!(overflow > 0)) notOverflowing.push(`${p.id} 溢出 ${overflow.toFixed(2)}s`)
+      if (!r.slots.some(s => s.dynamic > 0)) continue
+      absorbed.push(p.id)
+      const op = r.slots.reduce((m, s) => (s.necessary > m.necessary ? s : m), r.slots[0])
+      const netBefore = (s: (typeof r.slots)[number]) => s.necessary - (s.credit - s.dynamic)
+      const sum = r.slots.reduce((a, s) => a + s.dynamic, 0)
+      const cap = r.slots.reduce((a, s) => a + (s === op ? 0 : DEFAULT_COMBO_ALIGN_ABSORB_RATIO * netBefore(s)), 0)
+      const overflow = r.slots.reduce((a, s) => a + netBefore(s), 0) - r.budget
+      if (overflow <= 1e-9) tier3NoOverflow.push(p.id)
+      // 两支恒等式（口径见 `expectAbsorbedEqualsCapacity`）：不咬合吸满容量、咬合取小根
+      if (overflow <= cap + 1e-6) {
+        if (Math.abs(sum - cap) > 1e-3) badCap.push(`${p.id} 吸收 ${sum.toFixed(3)} ≠ 容量 ${cap.toFixed(3)}`)
+      } else if (!(sum < cap - 1e-6)) {
+        badBinding.push(`${p.id} 咬合却未小于容量（吸收 ${sum.toFixed(3)} vs 容量 ${cap.toFixed(3)}）`)
       }
     }
-    // 判据修订（CC-154，第 177 轮）：原「≤ 20 支」是「触发条件写宽了」的代理（按当时实测 13 支校准）。模块计数改读计数通道后
-    // 真溢出的队增多（必要时间↑，实测 23 支）而触发条件未改 ⇒ 代理误报。改为直接断言不变量：每支吸收队都真溢出。
-    expect(notOverflowing, `有吸收却不溢出（触发条件写宽了）：${notOverflowing.join('；')}`).toEqual([])
+    expect(badCap, `不咬合支必须吸满容量（第 3 档）：\n${badCap.join('\n')}`).toEqual([])
+    expect(badBinding, `咬合支必须小于容量（闭式小根）：\n${badBinding.join('\n')}`).toEqual([])
+    // 反空洞：扫描面必须真的走到「无溢出也吸收」这一支，否则本条对第 3 档零覆盖
+    expect(tier3NoOverflow.length, '第 3 档活性面：无溢出却吸收的队数应 > 0').toBeGreaterThan(0)
     expect(absorbed.length).toBeGreaterThanOrEqual(5)
     expect(absorbed).toContain('auto-1371-1481-1451')
     const { config } = await setupHarness([{ agentId: '1431', cinemaLevel: 0 }])

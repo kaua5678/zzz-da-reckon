@@ -166,8 +166,18 @@ describe('终局整数化：照影是离散触发，余数剑势留着不打', (
       expect(cycle!.decibelForms + cycle!.giftForms + cycle!.zhaoyingForms, `axis=${axis} 分项之和`).toBe(cycle!.totalForms)
       // 照影 = 剑势的整数商（余数留着不打）
       expect(cycle!.zhaoyingForms, `axis=${axis} 照影应为 floor(剑势/6)`).toBe(Math.floor(cycle!.outsideSword / 6))
-      // 默认口径（合轴率 0.4、弹6/闪10）下 = 9 轮（2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 照影 5→4、总轮 10→9）
-      expect(cycle!.totalForms, `axis=${axis} 默认口径`).toBe(9)
+      /**
+       * 默认口径（合轴率 0.4、弹6/闪10）的总轮数。
+       *
+       * 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 照影 5→4、总轮 10→9（三轴同落 9）。
+       * ⚠ **T141 改值**：归一档后 = **`[9, 10, 10][axis]`**（实测，修完下面的超支回夹之后）。
+       * 归因：T141 第 3 档（吸收取满容量 + 闸门常开）⇒ 队友前台腾出更多 ⇒ 叶瞬光平A ↑ ⇒
+       * 剑势 ↑（`axis=1` 25.51→**27.03**、`axis=2` 25.57→**27.0x**）⇒ 跨过第 5 次照影门槛所需的
+       * 总轮数随之上升。⚠ `axis=2` 的照影轮数由**超支回夹**（`yeshuguang.ts` 的 CC-160 修复）决定，
+       * 不是简单 +1：见该处注释与下面的 C1 判据。
+       */
+      const expectedTotal = [9, 10, 10][axis]!
+      expect(cycle!.totalForms, `axis=${axis} 默认口径`).toBe(expectedTotal)
     }
   }, 600_000)
 
@@ -232,7 +242,9 @@ describe('终局整数化：照影是离散触发，余数剑势留着不打', (
       }
       expect(cycle!.decibelForms + cycle!.giftForms + cycle!.zhaoyingForms, `axis=${axis} 分项之和`).toBe(cycle!.totalForms)
       expect(cycle!.zhaoyingForms, `axis=${axis} 照影 = floor(剑势/6)`).toBe(Math.floor(cycle!.outsideSword / 6))
-      expect(cycle!.totalForms, `axis=${axis} 现值`).toBe(10)
+      // ⚠ T141 改值：`axis=2` 由 10 → **11**（`axis=1` 仍 10）。归因同 C0 的三轴表——
+      // 吸收常开 ⇒ 剑势 ↑ ⇒ axis=2 跨到下一档；其照影轮数受 CC-160 超支回夹约束（见 231 行那条）。
+      expect(cycle!.totalForms, `axis=${axis} 现值`).toBe([10, 11][axis - 1])
     }
   }, 900_000)
 })

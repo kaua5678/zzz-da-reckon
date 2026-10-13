@@ -14,7 +14,7 @@
   "outerExit": "stable"
  },
  "auto-1021-1481-1031": {
-  "slack": 0,
+  "slack": 1.6,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -22,13 +22,13 @@
  "auto-1021-1481-1211": {
   "slack": 0,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "stable"
  },
  "auto-1021-1481-1311": {
   "slack": 0,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "stable"
  },
  "auto-1021-1481-1491": {
@@ -46,7 +46,7 @@
  "auto-1041-1161-1311": {
   "slack": 0,
   "over": 0,
-  "stun": 4,
+  "stun": 5,
   "outerExit": "stable"
  },
  "auto-1041-1571-1031": {
@@ -56,7 +56,7 @@
   "outerExit": "stable"
  },
  "auto-1041-1571-1151": {
-  "slack": 2,
+  "slack": 0,
   "over": 0,
   "stun": 4,
   "outerExit": "stable"
@@ -68,25 +68,25 @@
   "outerExit": "stable"
  },
  "auto-1041-1571-1311": {
-  "slack": 2,
+  "slack": 0,
   "over": 0,
-  "stun": 3,
+  "stun": 4,
   "outerExit": "stable"
  },
  "auto-1051-1141-1451": {
-  "slack": 0.5,
+  "slack": 2.3,
   "over": 0,
   "stun": 5,
   "outerExit": "stable"
  },
  "auto-1051-1481-1451": {
-  "slack": 1.2,
+  "slack": 0.4,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "auto-1091-1031-1311": {
-  "slack": 11.7,
+  "slack": 20.6,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -122,7 +122,7 @@
   "outerExit": "stable"
  },
  "auto-1171-1561-1411": {
-  "slack": 0.7,
+  "slack": 0.6,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -134,25 +134,25 @@
   "outerExit": "stable"
  },
  "auto-1181-1511-1411": {
-  "slack": 0.4,
+  "slack": 0.8,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "auto-1181-1561-1211": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
-  "outerExit": "stable"
- },
- "auto-1181-1561-1411": {
   "slack": 0.4,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
  },
- "auto-1181-1561-1581": {
+ "auto-1181-1561-1411": {
   "slack": 0,
+  "over": 0,
+  "stun": 2,
+  "outerExit": "stable"
+ },
+ "auto-1181-1561-1581": {
+  "slack": 0.8,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -194,13 +194,13 @@
   "outerExit": "stable"
  },
  "auto-1371-1481-1451": {
-  "slack": 0,
+  "slack": 0.3,
   "over": 0,
   "stun": 4,
   "outerExit": "stable"
  },
  "auto-1401-1411-1031": {
-  "slack": 1.4,
+  "slack": 17.6,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -274,7 +274,7 @@
  "auto-1461-1031-1521": {
   "slack": 0,
   "over": 0,
-  "stun": 3,
+  "stun": 4,
   "outerExit": "stable"
  },
  "auto-1461-1521-1491": {
@@ -284,13 +284,13 @@
   "outerExit": "stable"
  },
  "auto-1501-1141-1491": {
-  "slack": 0,
+  "slack": 1,
   "over": 0,
   "stun": 4,
   "outerExit": "stable"
  },
  "auto-1501-1411-1491": {
-  "slack": 0,
+  "slack": 1,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -309,7 +309,7 @@
  },
  "auto-1501-1561-1411": {
   "slack": 0,
-  "over": 0,
+  "over": 1,
   "stun": 2,
   "outerExit": "stable"
  },
@@ -344,7 +344,7 @@
   "outerExit": "stable"
  },
  "auto-1521-1481-1311": {
-  "slack": 0.3,
+  "slack": 0,
   "over": 0,
   "stun": 4,
   "outerExit": "stable"
@@ -352,7 +352,7 @@
  "auto-1521-1481-1491": {
   "slack": 0.3,
   "over": 0,
-  "stun": 4,
+  "stun": 5,
   "outerExit": "stable"
  },
  "auto-1531-1481-1451": {
@@ -368,7 +368,7 @@
   "outerExit": "stable"
  },
  "auto-1541-1331-1411": {
-  "slack": 0,
+  "slack": 1.1,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -410,19 +410,19 @@
   "outerExit": "stable"
  },
  "auto-1591-1481-1211": {
-  "slack": 0.2,
+  "slack": 0.6,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "auto-1591-1571-1211": {
-  "slack": 0,
-  "over": 1.4,
+  "slack": 1.3,
+  "over": 0,
   "stun": 4,
   "outerExit": "stable"
  },
  "auto-1611-1141-1211": {
-  "slack": 0,
+  "slack": 0.4,
   "over": 0,
   "stun": 5,
   "outerExit": "stable"
@@ -434,7 +434,7 @@
   "outerExit": "stable"
  },
  "auto-1611-1571-1211": {
-  "slack": 2.5,
+  "slack": 0,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -448,7 +448,7 @@
  "banyue-liuyin-lucia": {
   "slack": 0,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "stable"
  },
  "banyue-norma-lucia": {
@@ -482,7 +482,7 @@
   "outerExit": "stable"
  },
  "billy-qingyi-lucia": {
-  "slack": 0,
+  "slack": 1.4,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -494,7 +494,7 @@
   "outerExit": "stable"
  },
  "billy-trigger-lucia": {
-  "slack": 0.2,
+  "slack": 0,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -506,37 +506,37 @@
   "outerExit": "stable"
  },
  "claret-roxy-rina": {
-  "slack": 0.7,
+  "slack": 0,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "yidhari-jufufu-lucia": {
-  "slack": 3.4,
+  "slack": 1.1,
   "over": 0,
   "stun": 4,
   "outerExit": "stable"
  },
  "yidhari-norma-lucia": {
-  "slack": 3.3,
+  "slack": 1.3,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "yidhari-qingyi-lucia": {
-  "slack": 3.6,
+  "slack": 0.7,
   "over": 0,
-  "stun": 3,
+  "stun": 4,
   "outerExit": "stable"
  },
  "yidhari-roxy-lucia": {
-  "slack": 2,
+  "slack": 1.3,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
  },
  "yidhari-trigger-lucia": {
-  "slack": 2.2,
+  "slack": 0.6,
   "over": 0,
   "stun": 4,
   "outerExit": "stable"

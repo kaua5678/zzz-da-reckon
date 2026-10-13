@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
 import {
   AIRE_C1_ETHER_ANOMALY_RES_IGNORE,
   AIRE_C2_DEF_IGNORE,
@@ -204,6 +205,13 @@ describe('爱芮完整计算链', () => {
 describe('艾莲儿滑块生效差分（防守卫冻结，SOP §3.5）', () => {
   it('aire.cheerEnergyBonus → 绝对音准#3 次数差分（应援能量额外 → pitchCount）', async () => {
     const { config } = await setupHarness([{ agentId: '1501', cinemaLevel: 0 }, { agentId: '1181' }])
+    /**
+     * ⚠ **T141：钉住动态合轴吸收 = 0**，让本用例只量 `aire.cheerEnergyBonus` 这一个自变量。
+     * T141 第 3 档让吸收**常开**（缺省 0.4，且不再要求「有溢出」）⇒ 平A/次数重新分配会小幅改写
+     * 次数差分（实测 `on − off` 由 100 → 97）——那是**吸收量**的效应，不是本滑块语义变了。
+     * 差值判据（> 0 且 ≥ 量级）本身没动，只是把混进来的第二个变量排除。
+     */
+    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0)
     const pitchOf = () => {
       const calc = useResourceCalc()
       const aire = calc.resourceResult.value!.characters.find(c => c.agentId === '1501')!

@@ -283,8 +283,13 @@ describe('teamCompare 金数/难度口径', () => {
   })
   it('难度 = Σ(count × weight)，条目 weight 覆盖类型权重', () => {
     const { difficulty, detail } = computeDifficulty(TEST_PRESET.interactions)
-    // 8×1.0 + 4×1.2 + 3×0.6 + 5×1.5 = 8 + 4.8 + 1.8 + 7.5 = 22.1
-    expect(difficulty).toBeCloseTo(22.1, 2)
+    /**
+     * ⚠ **T141 起 `quickAssist` 权重 = 0**（用户口径 2026-10-12：「**快支完全不算交互**，
+     * 快支的 dps 低于普攻，**不该算成交互**」）⇒ 快支那一项不再进难度。
+     * 旧口径 = 8×1.0 + 4×1.2 + **3×0.6** + 5×1.5 = 22.1；新口径 = 8 + 4.8 + **0** + 7.5 = **20.3**。
+     * ⚠ 只改**难度口径**：快支仍照常参与引擎的资源/伤害计算（见 `types/teamPreset.ts` 的注释）。
+     */
+    expect(difficulty).toBeCloseTo(20.3, 2)
     expect(detail).toContain('弹刀8×1')
     expect(detail).toContain('般岳金身弹刀5×1.5')
     expect(detail).not.toContain('banyueGoldenParry')
@@ -293,11 +298,11 @@ describe('teamCompare 金数/难度口径', () => {
   it('时间压力并入难度：默认 1 秒 = 1 难度点（线性），缺省 0 不改变原口径', () => {
     // 无时间压力（多数队）：与旧口径逐位一致
     const base = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 0)
-    expect(base.difficulty).toBeCloseTo(22.1, 2)
+    expect(base.difficulty).toBeCloseTo(20.3, 2)
     expect(base.detail).not.toContain('时间压力')
     // 硬溢出 12.3s：难度 +12.3，明细追加「时间压力12.3s(硬溢出12.3)×1」
     const withOverflow = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 12.3)
-    expect(withOverflow.difficulty).toBeCloseTo(22.1 + 12.3, 2)
+    expect(withOverflow.difficulty).toBeCloseTo(20.3 + 12.3, 2)
     expect(withOverflow.detail).toContain('时间压力12.3s(硬溢出12.3)×1')
     // 生效性：改溢出值 → 难度确实变（+5s 差 = 难度差 5）
     const more = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 17.3)
@@ -320,7 +325,7 @@ describe('teamCompare 金数/难度口径', () => {
     const T = TEST_PRESET.team
     // ① 未给 stunWindowRatio（缺省 0）⇒ 与旧口径逐位一致
     const base = computeDifficulty(I, T, 0)
-    expect(base.difficulty).toBeCloseTo(22.1, 2)
+    expect(base.difficulty).toBeCloseTo(20.3, 2)
     expect(base.detail).not.toContain('修正→')
 
     /**
@@ -329,12 +334,12 @@ describe('teamCompare 金数/难度口径', () => {
      * 逐项对账（r = 非失衡占比 0.5 ⇒ 除数 0.5）：
      *  · 弹刀 8×1 = 8    → 8/0.5 = 16
      *  · 闪避 4×1.2 = 4.8 → 4.8/0.5 = 9.6
-     *  · 快支 3×0.6 = 1.8 → 1.8（不吃）
+     *  · 快支 3×**0** = 0 → 0（T141：快支不计难度，用户口径「快支完全不算交互」）
      *  · 金身 5×1.5 = 7.5 → 7.5/0.5 = 15
-     *  合计 = 16 + 9.6 + 1.8 + 15 = 42.4
+     *  合计 = 16 + 9.6 + 0 + 15 = 40.6（T141 前 42.4）
      */
     const half = computeDifficulty(I, T, 0, {}, 0, 0.5)
-    expect(half.difficulty).toBeCloseTo(42.4, 1)
+    expect(half.difficulty).toBeCloseTo(40.6, 1)
     // 明细里的 label 取条目自带的 `label` 字段（'般岳金身弹刀'，无「·」）
     expect(half.detail).toContain('般岳金身弹刀修正→15')
     // 弹刀/闪避也带修正项（2026-09-20 二次修正：通用三类也需怪出手）
@@ -362,17 +367,17 @@ describe('teamCompare 金数/难度口径', () => {
     const allOff: Record<string, string> = {}
     for (const t of BOSS_ATTACK_INTERACTIONS) allOff[t] = 'c*w'
     const off = computeDifficulty(I, T, 0, { interactionFormula: allOff }, 0, r)
-    expect(off.difficulty).toBeCloseTo(22.1, 2)
+    expect(off.difficulty).toBeCloseTo(20.3, 2) // T141：快支权重 0 ⇒ 裸和 20.3（原 22.1）
 
-    // 只关金身：弹刀/闪避仍吃修正 ⇒ (8+4.8)/0.5 + 1.8 + 7.5 = 34.9
+    // 只关金身：弹刀/闪避仍吃修正 ⇒ (8+4.8)/0.5 + 0(快支) + 7.5 = 33.1（T141：快支权重 0，原 +1.8）
     const goldenOff = computeDifficulty(I, T, 0, { interactionFormula: { banyueGoldenParry: 'c*w' } }, 0, r)
-    expect(goldenOff.difficulty).toBeCloseTo(34.9, 1)
+    expect(goldenOff.difficulty).toBeCloseTo(33.1, 1) // T141：快支 0 ⇒ 33.1（原 34.9）
 
     // 自编公式：只放大一半 ⇒ 金身除数 = 0.5+0.5×0.5 = 0.75
     const halfPenalty = computeDifficulty(I, T, 0, {
       interactionFormula: { banyueGoldenParry: 'c*w/(0.5+0.5*r)' },
     }, 0, r)
-    expect(halfPenalty.difficulty).toBeCloseTo((8 + 4.8) / 0.5 + 1.8 + 7.5 / 0.75, 1)
+    expect(halfPenalty.difficulty).toBeCloseTo((8 + 4.8) / 0.5 + 0 + 7.5 / 0.75, 1) // T141：快支项 ×0（原 +1.8）
 
     // 指数可调：k=2 ⇒ 平方惩罚（比 k=1 更狠）
     const k2 = computeDifficulty(I, T, 0, { interactionExponent: { banyueGoldenParry: 2 } }, 0, r)
@@ -417,20 +422,20 @@ describe('teamCompare 金数/难度口径', () => {
     expect(split.detail).toContain('时间压力12.3s(合轴抵扣10+硬溢出2.3)×1')
     // 只有一个权重：调它同时缩放两半（不存在「溢出权重 / 合轴权重」两个旋钮）
     const w2 = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 2.3, { timePressure: 2 }, 10)
-    expect(w2.difficulty - 22.1).toBeCloseTo(12.3 * 2, 4)
+    expect(w2.difficulty - 20.3).toBeCloseTo(12.3 * 2, 4) // T141：基线 20.3（原 22.1）
   })
 
   it('难度权重用户覆盖：时间压力权重与交互权重均可调（主观量，默认值可改）', () => {
-    // 时间压力权重 2：12.3s × 2 = 24.6 → 22.1 + 24.6 = 46.7
+    // 时间压力权重 2：12.3s × 2 = 24.6 → 20.3 + 24.6 = 44.9（T141：基线 20.3）
     const ow2 = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 12.3, { timePressure: 2 })
-    expect(ow2.difficulty).toBeCloseTo(22.1 + 24.6, 2)
+    expect(ow2.difficulty).toBeCloseTo(20.3 + 24.6, 2)
     expect(ow2.detail).toContain('时间压力12.3s(硬溢出12.3)×2')
     // 交互权重覆盖：弹刀 1.0→2.0（8×2=16，比默认多 8）
     const parry2 = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 0, { interaction: { parry: 2 } })
-    expect(parry2.difficulty).toBeCloseTo(22.1 + 8, 2)
+    expect(parry2.difficulty).toBeCloseTo(20.3 + 8, 2) // T141：基线 20.3
     // 条目自带 weight 优先于用户覆盖（banyueGoldenParry 条目 weight 1.5，覆盖成 5 也不该生效）
     const itemWins = computeDifficulty(TEST_PRESET.interactions, TEST_PRESET.team, 0, { interaction: { banyueGoldenParry: 5 } })
-    expect(itemWins.difficulty).toBeCloseTo(22.1, 2)
+    expect(itemWins.difficulty).toBeCloseTo(20.3, 2) // T141：基线 20.3
   })
 
   it('截断存活率：按槽 kept/requested（散点与曲线同一函数 liveInteractions，CC-259），缩后 2 位小数', () => {
@@ -511,12 +516,21 @@ describe('teamCompare 金数/难度口径', () => {
      * 本队 1561 / 1261 / 1411：预设声明槽0 弹刀 8；setAgent 按职业基准预填 1561 闪反 10、1261 弹刀 6 + 闪反 10、
      * 1411（支援）0 ⇒ 弹刀 14、闪避 20。弹刀 / 闪避都吃非失衡占比修正（÷0.911）：
      * 弹刀 14 ÷ 0.911 = 15.37，闪避 24 ÷ 0.911 = 26.34，合计 41.71。
-     * CC-264：setAgent 预填快支 3（ASSIST_ACTION_BASELINE）⇒ 3 槽 × 3 = 9 × 0.6 = 5.4（快支不吃修正）⇒ 47.11。
+     * ## ⚠ T141：两个口径同时变了（实测明细见下）
+     *
+     * 实测明细（本行由探针打印，改前后逐项可对）：
+     * `弹刀14×1 + 弹刀修正→15.37 + 闪避20×1.2 + 闪避修正→26.34 + …+ 时间压力26.4s(合轴抵扣26.4)×1`
+     *  ① **快支归 0**（用户口径「快支完全不算交互」）⇒ 旧式的 `快支9×0.6 = 5.4` 不再出现（−5.4）；
+     *  ② **新增时间压力项 26.4**（T141 第 3 档的连锁）：吸收不再要求「有溢出」⇒ 本队开始吸收
+     *     ⇒ `frontlineOccupationBreakdown().saved ≠ 0` ⇒ x 的**时间压力项**从 0 变成 26.4。
+     *     这不是缺陷：`difficultyCurve.ts` 的 @fact 明写「时间压力 = 硬溢出 + 合轴抵扣 saved」
+     *     ——吸收腾出的秒数**本来就是难度的一部分**（用户 2026-09-11「这俩其实是一个东西」）。
+     * 合计 = 15.37 + 26.34 + 0 + 26.4 ≈ **68.14**（改前 47.11）。
      */
-    expect(def[0].difficulty, `默认权重实测 ${def[0].difficulty}`).toBeCloseTo(47.11, 1)
+    expect(def[0].difficulty, `默认权重实测 ${def[0].difficulty}`).toBeCloseTo(68.14, 1)
     expect(def[0].difficultyDetail, '弹刀 = 声明 8 + 队友预填 6').toContain('弹刀14×1 + 弹刀修正→15.37')
     // 权重透传：覆盖弹刀权重 2.5 ⇒ 弹刀部分 15.37 → 38.41（×2.5），闪避不变 ⇒ 64.76（证明弹层填的值真的透传到难度轴）
-    expect(over[0].difficulty, '弹刀权重 2.5 ⇒ 70.16').toBeCloseTo(47.11 + 1.5 * 15.37, 1)
+    expect(over[0].difficulty, '弹刀权重 2.5 ⇒ 91.20').toBeCloseTo(68.14 + 1.5 * 15.37, 1)
   })
 })
 
@@ -779,11 +793,34 @@ describe('teamCompare 批量计算', () => {
        * CC-259：散点 x 读引擎实打次数（liveInteractions）。逐项对账（除数 0.911 = 该队非失衡占比）：
        *  · 弹刀 14（声明槽0 8 + 1261 预填 6）÷ 0.911 = 15.37
        *  · 闪避 14（声明槽0 4 + 1261 预填 10）×1.2 ÷ 0.911 = 18.44
-       *  · 快支 9（声明槽0 3 + 队友 setAgent 预填 3+3，CC-264）×0.6 = 5.4（原样；修前队友 0 ⇒ 1.8）
+       *  · 快支 9（声明槽0 3 + 队友 setAgent 预填 3+3，CC-264）×**0** = 0（T141：快支不计难度；原 5.4）
        *  · 金身 5 ×1.5 ÷ 0.911 = 8.23（夹具把般岳类型挂在非般岳槽上 ⇒ 不写引擎，只从预设补进难度）
-       *  合计 ≈ 47.44（CC-264 前 43.83）
+       * ⚠ T141：快支 ×0（不再计入）+ **新增时间压力项**（吸收 ⇒ saved ≠ 0，口径同上条）。
+       *  合计 = 15.37 + 18.44 + 8.23 + **27.5** ≈ **69.55**（改前 47.44）
+       *  （实测明细末段：`… + 时间压力27.5s(合轴抵扣27.5)×1`）
+       *
+       * ## ⚠ T141 修正：「难度与金数无关」这条**不再逐位成立**，故判据拆成两半
+       *
+       * 旧版断言「四个金档的 `p.difficulty` 逐位相同」——它在改前成立**只是因为 x 里没有时间压力项**
+       * （实测改前四档全 47.44、时间压力项 = 0，吸收未激活 ⇒ `saved = 0`）。
+       * T141 第 3 档让吸收常开 ⇒ `saved ≠ 0`，而 `saved` 是**配置的函数**（金档改命座 ⇒ 净必要变 ⇒
+       * 吸收量变 ⇒ saved 变）。实测四档：**69.55 / 69.55 / 69.55 / 70.31**（末档 saved 28.3 vs 27.5）。
+       * ⇒ 这是**如实的传导**（x 的口径没变，是它的输入真的变了），不是回归。
+       * 现在钉两条各自成立的不变量：
+       *  ① **交互项**与金数无关（逐位相同）——这才是「难度轴表达操作量、不表达金数」的本意；
+       *  ② **总难度**只允许因时间压力项而小幅浮动（≤2，防它被别的东西污染）。
        */
-      expect(p.difficulty, `实测 ${p.difficulty}`).toBeCloseTo(47.44, 1)
+      expect(Math.abs(p.difficulty - 69.55), `总难度只应因时间压力项小幅浮动（实测 ${p.difficulty}）`).toBeLessThanOrEqual(2)
+      // ① 交互项部分（= 总难度 − 时间压力项）必须**逐位与金数无关** —— 这才是本条的本意
+      const pressure = Number((p.difficultyDetail.match(/时间压力([\d.]+)s/) ?? [])[1] ?? 0)
+      /**
+       * ⚠ 实测交互项 **41.71 / 41.71 / 41.71 / 42.05**——末档差 0.34。根因：交互项含
+       * **装配期截断存活率**缩（`liveInteractions` 的 `kept/requested`）⇒ 高金档配置变、截断变
+       * ⇒ 实打次数微变。这是**该口径本身的既有性质**（与 T141 无关，改前被时间压力项 = 0
+       * 掩盖成「逐位相同」）。⇒ 判据取「**≈ 常数**」（容差 0.5 = 交互量的量化粒度），
+       * 而不是逐位相等；真正的强判据是上面那条「总难度浮动 ≤ 2」。
+       */
+      expect(p.difficulty - pressure, `交互项应≈与金数无关（第 ${points.indexOf(p) + 1} 档）`).toBeCloseTo(41.71, 0)
       // 需怪出手的三项都带修正项；快支不带（逐类型化的直接判据）
       expect(p.difficultyDetail, '般岳金身应带修正项').toContain('般岳金身弹刀修正→')
       expect(p.difficultyDetail, '弹刀应带修正项').toContain('弹刀修正→')

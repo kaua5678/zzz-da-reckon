@@ -114,7 +114,7 @@ describe('buildCurveChart（纯函数）', () => {
     // （有的杠杆减少交互 ⇒ 难度降、伤害升 = 白拿的优化，贪心优先做）。
     // ⇒ 末点 x < 中途某点 x 时，那些点的 cx 超出绘图区右边界、被 SVG 裁掉。
     // 实测（全库 97 队）：72 队非单调，3 队越界；筛成单队时最严重
-    // （auto-1371-1391-1451：maxX=61.26 而末点 x=23.4 ⇒ cx=2763，viewBox 宽仅 1100）。
+    // （实测样本：某队 maxX=61.26 而末点 x=23.4 ⇒ cx=2763，viewBox 宽仅 1100）。
     const rows: DifficultyCurveRow[] = [
       // 先升后降：末点 x=2，但中途有 x=10 的点（G2 白拿）
       mkRow('a', 'A', mkLadder([[0, 10], [10, 30], [2, 40]], ['baseline', 'max', 'max'])),
@@ -285,7 +285,13 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
     const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
     const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE }))
     const pts = row!.ladder.points
-    expect(pts[0]!.x).toBeGreaterThan(0)          // x = 绝对操作难度（全关也不是 0：有基础交互）
+    /**
+     * ⚠ **T141 改口径**：① 现在是「**全 0 交互**」（用户口径 4+5「低难度下就是全 0 交互的」）
+     * ⇒ 它的 x **不再保证 > 0**（交互项为 0；时间压力项仍可能 > 0）。
+     * 旧断言 `pts[0].x > 0` 建立在「① 走预设交互」上——那正是本卡删掉的语义。
+     * 保留的判据 = x 与 difficulty **同源同值**（绝对口径、与散点横轴同尺，这才是本条要钉的）。
+     */
+    expect(pts[0]!.x).toBeGreaterThanOrEqual(0)
     expect(pts[0]!.x).toBe(pts[0]!.difficulty)    // 与散点横轴同一口径，直接可比
     for (const p of pts) expect(p.x).toBeCloseTo(p.difficulty!, 6)
     // ⚠️ **T140c 起不再断言「伤害严格单调增」**（旧契约随贪心阶梯失效）：
@@ -299,7 +305,25 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
     const last = pts[pts.length - 1]!
     expect(last.dmg).toBeGreaterThanOrEqual(pts[0]!.dmg - 1e-6)
     expect(row!.ladder.gain).toBeGreaterThan(0)
-    expect(pts.some((p, i) => i > 0 && p.x < pts[i - 1]!.x)).toBe(true) // 这条队实测就有降难度的一点
+    /**
+     * ## T141：x 现在**单调不减**（旧断言钉的「有降难度的一点」已作废）
+     *
+     * 旧断言 `pts.some(p => p.x < 前一点.x)` 要求曲线里**存在**一个难度回落点——那是旧口径的
+     * **症状**：① 从预设交互起步，`joint` 优化时**减少**低效交互（弹刀 12→10 / 12→6）⇒
+     * 难度降、伤害升（实测锋御 5 队 Δx = **−16.9 ~ −24.2**，用户 2026-10-12 报的
+     * 「完全没有近似正相关的感觉」正是它）。
+     *
+     * 本卡修完后 ① 从**全 0 交互**起步 ⇒ 逐槽阶梯**只加不减** ⇒ x 自然单调不减。
+     * 全库实测（`.zc/perf/T141axis2.perf.ts`，93 队生产路径）：**Δx < 0 的队 = 0 支**
+     * （旧口径下锋御 5 队全为负）。
+     * ⚠ 这条是卡 §3.4「难度同向」的机器判据（④.x ≥ ①.x）；单点 x 仍**不保证**逐点严格增
+     * （相邻点可以相等——② 与 ④ 在轴已完整时同值，见上），故只钉「不减」。
+     */
+    expect(pts[pts.length - 1]!.x, '卡 §3.4：④ 的 x ≥ ① 的 x（难度同向）').toBeGreaterThanOrEqual(pts[0]!.x - 1e-9)
+    for (let i = 1; i < pts.length; i++) {
+      expect(pts[i]!.x, `x 单调不减（第 ${i} 点 ${pts[i]!.x} < 前一点 ${pts[i - 1]!.x}）`)
+        .toBeGreaterThanOrEqual(pts[i - 1]!.x - 1e-9)
+    }
   }, 300_000)
 })
 
@@ -371,7 +395,7 @@ describe('合轴吸收（T140c：纯收益 ⇒ 拉满；④ 的吸收率 == abso
     const last = r.points[r.points.length - 1]!
     expect(last.point).toBe('max')
     expect(last.knobs.absorb).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 9)
-    expect(last.knobs.interactions).toBe('joint')
+    expect(last.knobs.interactions, 'T141：④ 的非纯收益取最优 = 逐槽阶梯（slotLadder）').toBe('slotLadder')
     // 拉满对该队仍有增益 ⇒ 合轴这一维不是空操作（用户「直接不算中间档位，只算最高合轴率」）
     expect(last.dmg).toBeGreaterThan(d0)
     // 不写静态合轴率覆盖（动态吸收是唯一通道）
@@ -425,9 +449,11 @@ describe('合轴吸收（T140c：纯收益 ⇒ 拉满；④ 的吸收率 == abso
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    // 时间压力队 auto-1471-1481-1451（般岳/琉音/卢西娅·艾洛温；实测 缺省 0.4：saved 28.63s，
-    // 到上限伤害 56.82M ≥ 全关 45.76M）。
-    const preset = teamPresets.find(p => p.id === 'auto-1471-1481-1451')!
+    // 时间压力队 般岳/琉音/卢西娅·艾洛温（同为「般岳 4 怒相 + 琉音好评溢出」结构）。
+    // 2026-10-12：原用 `auto-1471-1481-1451`，该条与手编 `banyue-liuyin-lucia` 是同 3 人孪生
+    // ⇒ 按「成员集合唯一」口径删掉 auto- 那条，夹具改用存活的手编条目（同队同槽位）。
+    // ⚠ 本用例断言的是**不变量**（吸收拉满 ⇒ 伤害不低于全关），不依赖某套配装的具体数值。
+    const preset = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
@@ -789,10 +815,17 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
       expect(typeof p.interactionsFilled, '每档都要采到手填交互量').toBe('number')
       expect(typeof p.interactionsPlayed, '每档都要采到实打交互量').toBe('number')
       expect(typeof p.overflow, '每档都要采到截断秒数').toBe('number')
-      expect(p.interactionsFilled!).toBeGreaterThan(0)
-      expect(p.interactionsPlayed!).toBeGreaterThan(0)
+      expect(p.interactionsFilled!).toBeGreaterThanOrEqual(0)
+      expect(p.interactionsPlayed!).toBeGreaterThanOrEqual(0)
       expect(p.interactionsFilled!).toBeGreaterThanOrEqual(p.interactionsPlayed! - 1e-9)
     }
+    /**
+     * ⚠ **T141 改口径**：① 是「全 0 交互」⇒ 它的两个交互量**都是 0**（旧断言要求 > 0）。
+     * 反空洞挪到 ④：该队的逐槽阶梯确实加了交互（否则「① = 0」可能只是整条曲线都不加交互）。
+     */
+    expect(ladder.points[0]!.interactionsPlayed, '① 是全 0 交互（用户口径 4+5）').toBe(0)
+    const maxPt = ladder.points[ladder.points.length - 1]!
+    expect(maxPt.interactionsPlayed, '反空洞：④ 的实打交互量应 > 0').toBeGreaterThan(0)
     // 这条队实测**无截断**（全库 104 队里只有 20 队有截断档）⇒ truncated 为空、每档 hint = null：
     // 提醒对它是**零视觉变化**（这是「只做提示、不改任何计算」的直接体现）
     const chartSeries = buildCurveChart(rows, FAKE_PHASE.hp).series[0]!

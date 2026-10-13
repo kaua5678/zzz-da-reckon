@@ -712,7 +712,7 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
    * **72 队**的 `max(x) > 末点 x`，其中 **3 队**的 `max(x)` 超过「末点 x 的最大值」
    * ⇒ 那些点算出的 `cx = padL + (x/costMax)*plotW` **超出绘图区右边界**、被 SVG 裁掉。
    * 用户症状（2026-10-12）：「难度曲线右边的图像看不见，只能看见低难度的部分」。
-   * **筛成单队时最严重**：`auto-1371-1391-1451` 的 maxX=61.26 而末点 x=23.4
+   * **筛成单队时最严重**：某队 maxX=61.26 而末点 x=23.4
    * ⇒ cx=2763（viewBox 宽仅 1100）= 整条右半段完全画到画布外。
    *
    * 与**同文件 y 轴**（`ratioMax` 取 `Math.max(...points.map(p => p.ratio))`）和

@@ -116,8 +116,13 @@ export function legacyComboAlignTake(S: number, B: number, T: number, r: number)
   return take
 }
 
-/** 吸收子问题求解器的分支（= 控制流锁的判别量；见 `solveComboAlignTake`） */
-export type ComboAlignBranch = 'cap-not-binding' | 'r1-linear' | 'closed-form' | 'legacy-fallback'
+/**
+ * 吸收子问题求解器的分支（= 控制流锁的判别量；见 `solveComboAlignTake`）。
+ *
+ * `cap-full`（T141 第 3 档）**只由 `solveComboAlignTakeMax` 产出**，`solveComboAlignTake` 的四支
+ * 一字未动（卡 §5 硬约束：不许动闭式解推导，第 3 档**新增**而非改写）。
+ */
+export type ComboAlignBranch = 'cap-not-binding' | 'r1-linear' | 'closed-form' | 'legacy-fallback' | 'cap-full'
 
 /** `solveComboAlignTake` 的解：`take` = 吸收量；`branch`/`iterations`/`converged` = 诊断 + 锁用 */
 export interface ComboAlignSolution {
@@ -201,6 +206,55 @@ export function solveComboAlignTake(S: number, B: number, T: number, r: number):
   }
   // 小根 `g*`：代数上 = (P − √disc)/(2A)，此处用 2C/(P + √disc) 规避相消（见 `iterate` 段头注释）
   return { take: Math.min(T, 2 * r * B / (quadP + Math.sqrt(disc)) * T), branch: 'closed-form', iterations: 1, converged: true }
+}
+
+/**
+ * 吸收子问题的**第 3 档求解器**（T141，用户口径 2026-10-12）——**只**在容量不咬合时区别于
+ * `solveComboAlignTake`，咬合时原样委托（闭式解推导一字未动，卡 §5 硬约束）。
+ *
+ * ## 为什么需要它（用户逐字）
+ *
+ * > 「如果有溢出，那么可以分为 **3 档**：1 个是**合轴率 0 继续溢出**，1 个是**提高合轴率刚好把溢出打出来**，
+ * >  1 个是**拉满合轴率，不仅溢出能打，还能打更多资源和时间**。这是我认为的**正相关图景**。」
+ *
+ * 旧实现（`solveComboAlignTake`）把吸收写成了**溢出消除器**：`take = min(Δ, g·T)` ⇒ 溢出吸完即停
+ * （不咬合支 `take = Δ`），无溢出时整段不执行（`iterate` 侧的闸门）。
+ * ⇒ 第 3 档**结构性不存在**：`auto-1461-1521-1491` 在 r=0.40 就封顶（0.4/0.7/1.0 逐位相同），
+ *   `auto-1521-1481-1311` r 从 0 到 1.0 逐位不变（全库实测：93 队里 **54 队平坦**）。
+ *
+ * ## 本函数的口径 = 「吸收量 = 容量」
+ *
+ * 容量 = `r × T`（`T` = Σ非操作槽净必要）。不咬合（`Δ ≤ r·T`）时旧支给 `Δ`，本函数给**满容量 `r·T`**——
+ * 差额 `r·T − Δ` 就是用户说的「**还能打更多资源和时间**」：它经 `effectiveCredits` 回流平A池
+ * （`iterate` 的 `reliefWithDynamic` / `availableBasicTime`），主C 战场时间随之增加。
+ *
+ * 咬合（`Δ > r·T`）时容量真的装不下溢出，**没有第 3 档可言** ⇒ 委托 `solveComboAlignTake`
+ * （闭式解的小根，T119 成果，`comboAlignClosedForm.test.ts` 锁着）。
+ *
+ * ## 与既有四支的关系（`branch` 是控制流锁的判别量）
+ *
+ * | 输入 | 本函数 branch | 旧 `solveComboAlignTake` branch |
+ * |---|---|---|
+ * | `Δ ≤ r·T` | **`'cap-full'`**（新增，`take = r·T`） | `'cap-not-binding'`（`take = Δ`） |
+ * | `Δ > r·T`, `r < 1` | `'closed-form'`（委托） | `'closed-form'` |
+ * | `Δ > r·T`, `r ≥ 1` | `'r1-linear'`（委托） | `'r1-linear'` |
+ * | 判别式舍入为负 | `'legacy-fallback'`（委托） | `'legacy-fallback'` |
+ *
+ * ⇒ **旧四支的读数逐位不变**（同参数同返回值），新增的只有不咬合支。
+ *
+ * @param S Σ净必要（吸收前）
+ * @param B 预算（战斗时间 − 无敌）
+ * @param T 可吸收总量（Σ非操作槽净必要）
+ * @param r 吸收上限比例（用户设置，缺省 0.4）
+ */
+export function solveComboAlignTakeFullCapacity(S: number, B: number, T: number, r: number): ComboAlignSolution {
+  const overflow = S - B
+  // 第 3 档：容量没被溢出用满 ⇒ 吸收**满容量**（旧支在此返回 Δ，差额就是「更多资源和时间」）
+  if (overflow <= r * T) {
+    return { take: r * T, branch: 'cap-full', iterations: 1, converged: true }
+  }
+  // 容量真的装不下 ⇒ 没有第 3 档，原样走闭式解四支（推导与读数都不动）
+  return solveComboAlignTake(S, B, T, r)
 }
 
 /**
@@ -524,27 +578,39 @@ function iterateBody(
   // **吸收上限**（v3，用户口径 2026-09-19「全部吸收比较难，默认队友的 40% 可以被吸收（合轴率），超过了就无力合轴了」）：
   // 每名非操作角色的容量 = `comboAlignAbsorbRatio` × 其净必要（缺省 0.4，全局变量、可调、0 = 不吸收）；
   // 吸收不完的溢出**不再**被队友兜住 ⇒ 回到封顶 / 装配截断——结构性溢出队（1431 簇）在自由口径下重新可见。
-  // @fact engine:动态合轴吸收上限 口径: 非操作角色可被合轴吸收的前台 ≤ comboAlignAbsorbRatio × 其净必要前台（全局变量，缺省 0.4，0 = 不吸收）；吸收总量 = min(溢出, Σ容量)，超出部分照旧封顶/截断。**轴态与非轴态同吃本吸收**（轴内 axisOverlap 只覆盖失衡内，失衡外仍按本比例参与），两者按 max 取大不叠加 | 据 用户@2026-09-19「全部吸收比较难…默认队友的40%可以被吸收（合轴率），超过了就无力合轴了」·用户@2026-10-05「捏轴只代表失衡内…失衡外没有捏，所以还是要吃 40% 合轴率的总合轴时间」 | 验 src/core/__tests__/dynamicComboAlign.test.ts | 锚 src/core/resource/timeOccupation.ts#calcTimeAllocation | 信 确认
-  // ⟳复核: 用户再调缺省比例或改为按角色/按招式的上限时，复核「吸收总量 == min(溢出, Σ 0.4×净必要)」恒等式（dynamicComboAlign.test ①）+ 1431 簇预设口径截断量（timeGolden over 字段）| 到期 2026-12-31
+  // @fact engine:动态合轴吸收上限 口径: 非操作角色可被合轴吸收的前台 ≤ comboAlignAbsorbRatio × 其净必要前台（全局变量，缺省 0.4，0 = 不吸收）；**吸收总量 = 容量 r·T**（T141 第 3 档：容量没被溢出用满时也吸满，差额回流平A池；容量装不下溢出时取闭式解小根，超出部分照旧封顶/截断）。**轴态与非轴态同吃本吸收**（轴内 axisOverlap 只覆盖失衡内，失衡外仍按本比例参与），两者按 max 取大不叠加 | 据 用户@2026-09-19「全部吸收比较难…默认队友的40%可以被吸收（合轴率），超过了就无力合轴了」·用户@2026-10-05「捏轴只代表失衡内…失衡外没有捏，所以还是要吃 40% 合轴率的总合轴时间」·用户@2026-10-12「拉满合轴率，不仅溢出能打，还能打更多资源和时间」 | 验 src/core/__tests__/dynamicComboAlign.test.ts | 锚 src/core/resource/helpers.ts#solveComboAlignTakeFullCapacity | 信 确认
+  // ⟳复核: 用户再调缺省比例或改为按角色/按招式的上限时，复核「吸收总量 == r·T（不咬合）/ 闭式小根（咬合）」两支恒等式（dynamicComboAlign.test ①）+ 1431 簇预设口径截断量（timeGolden over 字段）| 到期 2027-04-30
   const absorbRatioRaw = globalCfg.comboAlignAbsorbRatio ?? DEFAULT_COMBO_ALIGN_ABSORB_RATIO
   const absorbRatio = Number.isFinite(absorbRatioRaw) ? Math.min(1, Math.max(0, absorbRatioRaw)) : DEFAULT_COMBO_ALIGN_ABSORB_RATIO
   const dynamicComboAlign: number[] = configs.map(() => 0)
-  if (absorbRatio > 0 && sumNetNecessary > budget + 1e-9 && configs.length > 1) {
+  /**
+   * ★ T141 第 3 档：**闸门不再要求「有溢出」**（旧条件 = `sumNetNecessary > budget + 1e-9`）。
+   *
+   * 用户口径（2026-10-12 逐字）：「拉满合轴率，**不仅溢出能打，还能打更多资源和时间**」——
+   * 无溢出的队拉高合轴率也应让主C 战场时间增加（吸收腾出的前台回流平A池）。
+   * 旧闸门把吸收写成了**溢出消除器** ⇒ 全库 93 队里 **54 队** r 从 0 到 cap 逐位不变（实测
+   * `.zc/perf/T141census.perf.ts`），用户要的第 3 档结构性不存在。
+   *
+   * ⚠ `absorbRatio > 0` 与 `configs.length > 1` 两条**保留**：r=0 = 用户主动关掉合轴（没有子问题可解），
+   *   单人队没有「队友」可吸收。两者都落进下方「真空收敛 + 0 轮」分支。
+   */
+  if (absorbRatio > 0 && configs.length > 1) {
     let operator = 0
     for (let i = 1; i < netNecessary.length; i++) if (netNecessary[i] > netNecessary[operator]) operator = i
     // 上限按**封顶后的最终前台**算，不是按吸收前的净必要：吸收不完的溢出会让下方 feasibleScale 把「未被吸收的部分」等比压缩，
     // 而被吸收的部分不压 ⇒ 若按吸收前净必要取 40%，队友终态前台里被并行的份额会远超 40%（实测 auto-1431-1481-1491：
     // 1481 终态 67.8s 里 57.1s 被判并行 = 84%）。令 s = 封顶比例、r = 上限，则约束 dyn_i ≤ r·[(net_i − dyn_i)·s + dyn_i]
     // ⇔ dyn_i ≤ net_i · g(s)，g(s) = r·s / (1 − r + r·s)；s 又由吸收量决定（s = 预算 / (Σ净必要 − Σdyn)）。
-    // **求解器已外提为 `solveComboAlignTake`**（T119 批 1，闭式解；推导、分支表与回退点全在该函数头注释，
-    // 口径与实测数字见 `docs/mcp-time-allocation-algorithms.md` §3.0/§3.1/§5 批 1）。本处只做「拆分 + 按容量比例摊」。
+    // **求解器已外提**：咬合支 = `solveComboAlignTake`（T119 批 1，闭式解；推导、分支表与回退点全在该函数头注释，
+    // 口径与实测数字见 `docs/mcp-time-allocation-algorithms.md` §3.0/§3.1/§5 批 1）；不咬合支 = T141 第 3 档
+    // `solveComboAlignTakeFullCapacity`（取满容量 r·T，差额回流平A池）。本处只做「拆分 + 按容量比例摊」。
     // 相对旧 8 轮迭代：`take`/`dyn` 差 ≤ 8.04e-8s（浮点量级，**不是 0**），`cut`/伤害逐位不变；迭代轮数 41 → 1（r=0.4）。
-    // @fact engine:动态合轴吸收/求解器 口径: 容量咬合（Δ > r·T）时吸收量取二次不动点方程 (★) 的小根 g*·T（闭式、一轮到位），不再跑 8 轮小迭代；r=1 走一次分支 take=min(Δ,T)；判别式舍入为负时回落原 8 轮迭代兜底 | 据 推导@T117（docs/mcp-time-allocation-algorithms.md §3.0）+ T119 采纳决策表 ② | 验 src/core/__tests__/comboAlignClosedForm.test.ts | 锚 src/core/resource/helpers.ts#solveComboAlignTake | 信 高
+    // @fact engine:动态合轴吸收/求解器 口径: 容量咬合（Δ > r·T）时吸收量取二次不动点方程 (★) 的小根 g*·T（闭式、一轮到位），不再跑 8 轮小迭代；r=1 走一次分支 take=min(Δ,T)；判别式舍入为负时回落原 8 轮迭代兜底；**不咬合（Δ ≤ r·T）时取满容量 r·T（T141 第 3 档，branch='cap-full'）** | 据 推导@T117（docs/mcp-time-allocation-algorithms.md §3.0）+ T119 采纳决策表 ② + 用户@2026-10-12（第 3 档） | 验 src/core/__tests__/comboAlignClosedForm.test.ts + src/core/__tests__/dynamicComboAlign.test.ts | 锚 src/core/resource/helpers.ts#solveComboAlignTakeFullCapacity | 信 高
     // ⟳复核: 若有人再改吸收上限的**口径**（改「上限按封顶后终态算」这条前提，如候选 B/C），则 (★) 的推导地基消失 ⇒ 重新推导并重取 `cut`/`dyn` 读数；另复核 `legacyComboAlignTake` 兜底是否真在生产 97 队上零触发 | 到期 2027-04-30
     const teammateNet = netNecessary.map((n, i) => (i === operator ? 0 : Math.max(0, n)))
     const teammateTotal = teammateNet.reduce((a, b) => a + b, 0)
     if (teammateTotal > 1e-9) {
-      const sol = solveComboAlignTake(sumNetNecessary, budget, teammateTotal, absorbRatio)
+      const sol = solveComboAlignTakeFullCapacity(sumNetNecessary, budget, teammateTotal, absorbRatio)
       // 批 2 诊断量（T123b）：把求解器的 `converged`/`iterations` 接到既有 `globalCfg` 副作用通道上
       // （与 `timeFeasibleScale`/`overflowSeconds` 同形：计算中途写回，调用前恒为 undefined）。
       // 读法与盲区见 `ResourceCalcConfig.dynamicComboAlignConverged` 与 `TeamResourceResult` 同名字段。

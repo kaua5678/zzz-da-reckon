@@ -11,6 +11,27 @@
  *   （1501007/1501008 以太积蓄）⇒ 爱芮异常触发 10→15（r0）、13→17（lead-empty）⇒ 虚耀池 / 支援技 / 普攻同增、终结技按
  *   3 个一批；简队的爱芮第三段占前台 ⇒ 简强击次数下降 ⇒ 6 命附伤 10→8。归因：删掉 aire.ts 的
  *   `extraNecessaryAction: aireExtraNecessaryActions` 一行即回到旧值。
+ * ⚠ **T141（2026-10-12，合轴吸收改「取满容量」+ 闸门常开）**更新 r2 / lead-empty / j0c6 / j2c6 / jempty / jr 六组：
+ *   动态合轴吸收从「溢出消除器」（`take = min(溢出, Σ容量)`、且**必须有溢出**才开闸）改为
+ *   **「取满容量」**（`solveComboAlignTakeFullCapacity`，`take = r·T`）且**闸门常开**（缺省
+ *   `comboAlignAbsorbRatio = 0.4`）⇒ 队友前台被吸收的量变大、腾出的前台回流平A池 ⇒ 主C 平A 时间增加
+ *   ⇒ **异常触发次数同向上升**（每个虚耀 = 一次队友异常触发）。
+ *   实测（off 口径 `time.stunPlanProjection = 0`，与用例同路径）：
+ *   | 组 | 量 | 旧 | 新 |
+ *   |---|---|---|---|
+ *   | `r2` | 虚耀池（1261:10/1331:12 → 11/13） | 22 | **24** |
+ *   | `r2` | 支援技 / 普攻 | 22 | **24** |
+ *   | `r2` | 终结技（按 3 个一批） | 21 | **24** |
+ *   | `lead-empty` | 虚耀池（1501:17 → 18） | 17 | **18** |
+ *   | `lead-empty` | 终结技 | 15 | **18** |
+ *   | `j0c6`/`j2c6` | 简 6 命强击附伤（物理强击次数上升） | 8 | **10** |
+ *   | `jempty` | 简 6 命强击附伤 | 13 | **14** |
+ *   | `jr` | 简 6 命强击附伤 | 11 | **13** |
+ *   | `jr` | 虚耀池（1261:11/1331:12 → 13/14） | 23 | **27** |
+ *   方向一致（吸收腾出更多平A ⇒ 次数↑），**不是结构性破坏**：`含蕾米/不含蕾米` 的空队判定（`none` = `[]`）、
+ *   简 5 命不出事件（`j0c5` = `[]`）、`dmgIds` 序列与槽序都逐位保持。
+ *   `r0` 组（显式钉 `stunPlanProjection=0` + 爱芮在队）实测不变 ⇒ 未列入。
+ *   归因经 A/B 反证：把 `helpers.ts` 的吸收闸门改回「必须有溢出」再跑本文件即回到全部旧值（`git stash` 可达）。
  * perf dump/rowsnap 覆盖不到，本测试是唯一判据。覆盖：蕾米在槽 0 / 槽 2 / 前导空槽 / 不在队。
  */
 import { describe, it, expect } from 'vitest'
@@ -85,12 +106,13 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "蕾米虚耀池",
       "source": "其他队友异常触发",
-      "count": 22,
+      // T141：22 → 24（吸收取满容量 ⇒ 队友前台腾出更多平A ⇒ 1261/1331 异常触发 +1/+1）
+      "count": 24,
       "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
       "fields": [
         "AnomalyPoolResult.perSlotAnomalyTriggers",
         "蕾米槽位",
-        "1261:10 / 1331:12"
+        "1261:11 / 1331:13"
       ],
       "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
     },
@@ -99,7 +121,8 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "支援技花羽轮舞·耀变",
       "source": "不消耗虚耀",
-      "count": 22,
+      // T141：22 → 24（= 虚耀池总数，随池同步）
+      "count": 24,
       "formula": "count = 虚耀池总数；每个虚耀打一次",
       "fields": [
         "voidflareTotal",
@@ -111,7 +134,8 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "终结技缭乱终幕·耀变",
       "source": "不消耗虚耀，按3个一批",
-      "count": 21,
+      // T141：21 → 24（floor(池/3)×3 随池 22→24 跨过一个 3 的整批）
+      "count": 24,
       "formula": "count = floor(voidflareTotal / 3) × 3；来源由用户选择1号队友0-3、2号队友3-0",
       "fields": [
         "voidflareTotal",
@@ -124,7 +148,8 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "普通攻击惊鸿·耀变",
       "source": "消耗并清空虚耀",
-      "count": 22,
+      // T141：22 → 24（= 虚耀池总数 ×1，随池同步）
+      "count": 24,
       "formula": "count = voidflareTotal × 1",
       "fields": [
         "voidflareTotal",
@@ -139,12 +164,13 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "蕾米虚耀池",
       "source": "其他队友异常触发",
-      "count": 17,
+      // T141：17 → 18（吸收取满容量 ⇒ 1501 异常触发 +1）
+      "count": 18,
       "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
       "fields": [
         "AnomalyPoolResult.perSlotAnomalyTriggers",
         "蕾米槽位",
-        ":0 / 1501:17"
+        ":0 / 1501:18"
       ],
       "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
     },
@@ -153,7 +179,8 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "支援技花羽轮舞·耀变",
       "source": "不消耗虚耀",
-      "count": 17,
+      // T141：17 → 18（= 虚耀池总数）
+      "count": 18,
       "formula": "count = 虚耀池总数；每个虚耀打一次",
       "fields": [
         "voidflareTotal",
@@ -165,7 +192,8 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "终结技缭乱终幕·耀变",
       "source": "不消耗虚耀，按3个一批",
-      "count": 15,
+      // T141：15 → 18（floor(池/3)×3 随池 17→18 跨过一个 3 的整批）
+      "count": 18,
       "formula": "count = floor(voidflareTotal / 3) × 3；来源由用户选择1号队友0-3、2号队友3-0",
       "fields": [
         "voidflareTotal",
@@ -178,7 +206,8 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "普通攻击惊鸿·耀变",
       "source": "消耗并清空虚耀",
-      "count": 17,
+      // T141：17 → 18（= 虚耀池总数 ×1）
+      "count": 18,
       "formula": "count = voidflareTotal × 1",
       "fields": [
         "voidflareTotal",
@@ -229,7 +258,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "anomaly_trigger",
         "label": "简6命强击暴击附伤",
         "source": "强击暴击次数",
-        "count": 8,
+        // T141：8 → 10（吸收取满容量 ⇒ 主C 平A 时间上升 ⇒ 物理强击次数上升）
+        "count": 10,
         "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
         "fields": [
           "强击次数",
@@ -250,7 +280,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "anomaly_trigger",
         "label": "简6命强击暴击附伤",
         "source": "强击暴击次数",
-        "count": 8,
+        // T141：8 → 10（吸收取满容量 ⇒ 主C 平A 时间上升 ⇒ 物理强击次数上升）
+        "count": 10,
         "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
         "fields": [
           "强击次数",
@@ -271,7 +302,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "anomaly_trigger",
         "label": "简6命强击暴击附伤",
         "source": "强击暴击次数",
-        "count": 13,
+        // T141：13 → 14（吸收取满容量 ⇒ 主C 平A 时间上升 ⇒ 物理强击次数上升）
+        "count": 14,
         "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
         "fields": [
           "强击次数",
@@ -299,7 +331,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "anomaly_trigger",
         "label": "简6命强击暴击附伤",
         "source": "强击暴击次数",
-        "count": 11,
+        // T141：11 → 13（吸收取满容量 ⇒ 主C 平A 时间上升 ⇒ 物理强击次数上升）
+        "count": 13,
         "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
         "fields": [
           "强击次数",
@@ -312,12 +345,13 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "蕾米虚耀池",
         "source": "其他队友异常触发",
-        "count": 23,
+        // T141：23 → 27（吸收取满容量 ⇒ 1261/1331 异常触发 11/12 → 13/14）
+        "count": 27,
         "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
         "fields": [
           "AnomalyPoolResult.perSlotAnomalyTriggers",
           "蕾米槽位",
-          "1261:11 / 1331:12"
+          "1261:13 / 1331:14"
         ],
         "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
       },
@@ -326,7 +360,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "支援技花羽轮舞·耀变",
         "source": "不消耗虚耀",
-        "count": 23,
+        // T141：23 → 27（= 虚耀池总数）
+        "count": 27,
         "formula": "count = 虚耀池总数；每个虚耀打一次",
         "fields": [
           "voidflareTotal",
@@ -338,7 +373,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "终结技缭乱终幕·耀变",
         "source": "不消耗虚耀，按3个一批",
-        "count": 21,
+        // T141：21 → 27（floor(池/3)×3 随池 23→27 跨过两个 3 的整批）
+        "count": 27,
         "formula": "count = floor(voidflareTotal / 3) × 3；来源由用户选择1号队友0-3、2号队友3-0",
         "fields": [
           "voidflareTotal",
@@ -351,7 +387,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "普通攻击惊鸿·耀变",
         "source": "消耗并清空虚耀",
-        "count": 23,
+        // T141：23 → 27（= 虚耀池总数 ×1）
+        "count": 27,
         "formula": "count = voidflareTotal × 1",
         "fields": [
           "voidflareTotal",

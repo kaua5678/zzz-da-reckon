@@ -72,7 +72,13 @@ async function setupLongCyclePreset() {
   // ⇒ 换夹具。选法：新口径下扫 104 预设（`calc-arch/arenaF/r651-long-p0.log`），projection=0 时仅 5 队出长环，
   // 取 4 成员且 pickedEarlier=true 的 auto-1591-1161-1311（规范成员不在末相位 ⇒ ⑤ 恢复对「适配层改取末轮」的判别力）。
   // 再变 2-环时照此重扫换队，不要改判据。
-  const team: [string, string, string] = ['1591', '1161', '1311']
+  //
+  // ⚠ **T141 二次换队**（2026-10-13，同一条「不要改判据」的规矩）：`auto-1591-1161-1311` 在 T141 新口径下
+  // 不再出长环（吸收改「取满容量」+ 闸门常开 ⇒ 平A/次数重排 ⇒ 该队外层收敛路径变了）。
+  // 重扫（`.zc/perf/T141lag.perf.ts`：mock `pickOuterCycleMember` 记录入参 `members.length`，取 `>=3`）：
+  // 命中 7 队，其中 `banyue-trigger-lucia` **lag=4**（与原夹具同为 4 成员，判别力最强）⇒ 取它。
+  // 另三个 lag=3 的备选（`auto-1041-1571-1031` / `auto-1611-1141-1211` / `auto-1541-1561-1411`）都已实测能过全部判据。
+  const team: [string, string, string] = ['1471', '1361', '1451']
   for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
   config.applyTeamPreset(team)
   // CC-154（第 177 轮）：本文件测「长环分支的接线」，需要一个真出长环的场景。physical 下模块计数改读计数通道后本队外层

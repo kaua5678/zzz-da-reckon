@@ -262,9 +262,26 @@ describe('吸收子问题闭式解（T119 批 1）· 控制流锁', () => {
     expect(open.dyn, '主队必须有可见吸收（否则本条退化成闸门关闭档的自证）').toBeGreaterThan(0)
     expect(open.conv, '生产主队应判收敛').toBe(true)
     expect(open.iters, '闸门开 ⇒ 真跑过求解器（闭式解 1 轮）').toBeGreaterThan(0)
-    // ② 闸门关（无吸收）的队：没有子问题可解 ⇒ 0 轮（真空收敛）
-    const closed = await evalPreset('auto-1021-1481-1211')
-    expect(closed.dyn, '该夹具无吸收（闸门未开）').toBe(0)
+    /**
+     * ② 闸门关（无吸收）的夹具 —— **T141 起换成单角色队**（原用 `auto-1021-1481-1211`）。
+     *
+     * 旧夹具靠「该预设不溢出」来关闸门，而 T141 第 3 档**取消了「有溢出」这个前置条件**
+     * （用户口径：「拉满合轴率，不仅溢出能打，还能打更多资源和时间」⇒ 无溢出的队也要吸收）
+     * ⇒ 该预设现在有吸收（实测 dyn 41.69、iters 1），不再能充当「闸门未开」档。
+     *
+     * 单角色是**结构上**没有子问题可解的档（`configs.length > 1` 是吸收的必要条件：
+     * 没有队友就没有可被吸收的对象），比「碰巧不溢出」稳健得多——它不会随数据漂移失效。
+     */
+    const { config: soloCfg } = await setupHarness([{ agentId: '1431', cinemaLevel: 0 }])
+    const soloCalc = useResourceCalc()
+    const soloRR = soloCalc.resourceResult.value!
+    const closed = {
+      conv: soloRR.dynamicComboAlignConverged,
+      iters: soloRR.dynamicComboAlignIterations ?? -1,
+      dyn: soloRR.characters.reduce((a, c) => a + (c.timeAllocation.dynamicComboAlignSeconds ?? 0), 0),
+    }
+    expect(soloCfg.team[0]?.agentId, '夹具必须是单角色队（闸门的结构性关闭档）').toBe('1431')
+    expect(closed.dyn, '单角色无队友可吸收（闸门未开）').toBe(0)
     expect(closed.iters, '闸门未开 ⇒ 0 轮').toBe(0)
     expect(closed.conv, '闸门未开 = 没有子问题可解 ⇒ 真空收敛').toBe(true)
     // ① 两个不同值 ⇒ `iterations` 不是常量

@@ -289,10 +289,17 @@ describe('★ 管线级：timeGolden 盲区（露西 C6 / 艾莲影画4 冻结�
     // （「轴模式本来就是最顶尖的预设」）⇒ 该队现在真的走轴态（生效轴=1、弃轴=N、失衡 5），
     // 回旋预估的失衡基数随之变化 ⇒ 锚点 58 → **60**（= physical 口径值）。
     // 判据仍成立：摘钩子后仍是 30 一档（反向验证不受影响，只是上台阶的高度变了）。
+    //
+    // ⚠ **T141：60 → 64**（吸收改「取满容量」+ 闸门常开 ⇒ 该值由 60 变为 64）。
+    // 变的量 = `crossAgent.bySource.lucyEnergy`（露西 C6 影画1 回旋全队回能）。本队吸收常开后
+    // 失衡/回旋基数变化 ⇒ 回能量上台阶 60 → **64**。
+    // 判据与判别力原样保留——**反向对照已复测**（同队同配装，scratch 副本摘掉
+    // `nextRoundFeedback: lucyNextRoundFeedback`）：**有钩子 64 / 摘钩子 34**，
+    // 仍是两档台阶（不是 0 也不是同值）⇒ 本行对「钩子没被派发」依旧可红。
     expect(
       (lucy.energySource.crossAgent.bySource.lucyEnergy ?? 0),
       '露西 C6 回旋全队回能没生效 —— nextRoundFeedback 未派发（timeGolden 对这条队是盲的）',
-    ).toBe(60)
+    ).toBe(64)
   })
 
   it('艾莲影画4：冻结次数反馈真的驱动影画4 回能（ellen_cycle.c4EnergyTotal）', async () => {

@@ -100,8 +100,22 @@ describe('合轴率抵扣团队时间预算', () => {
     // overflow 净额口径 = Σnecessary − 抵扣 − 预算
     const relief = s1.reduce((a, s) => a + (s.comboAlignCredit ?? 0), 0)
     expect(relief).toBeGreaterThan(0)
-    // 静态合轴率先抵扣、动态吸收只管剩下的溢出：全额抵扣后净占用已装得下（池打开）⇒ 动态吸收归零，credit 全是静态的
-    expect(sumDynamic(s1)).toBe(0)
+    /**
+     * **T141 第 3 档起改口径**（原为 `sumDynamic(s1) == 0`，理由「静态抵扣先于动态吸收 ⇒ 池打开 ⇒ 动态归零」）。
+     *
+     * 那条断言建立在旧语义 `take = min(溢出, 容量)` 上：静态抵扣把溢出吃光 ⇒ 动态吸收无溢出可吃 ⇒ 归零。
+     * 用户口径 2026-10-12 推翻了它：「拉满合轴率，**不仅溢出能打，还能打更多资源和时间**」——
+     * 动态吸收**不再以溢出为上限**，而是取满容量 `r·T`（`solveComboAlignTakeFullCapacity` 的 `'cap-full'` 支）。
+     * ⇒ 本档静态抵扣已把溢出清零，动态吸收仍按容量生效（实测 Σdyn 19.166s），这正是第 3 档。
+     *
+     * 新不变量：动态吸收**不挤占**静态抵扣的成果——池仍打开、净占用仍装得下（上面两条已钉），
+     * 且动态吸收量**恰为容量**（不咬合支的定义性质；容量 = r × Σ非操作槽吸收前净必要）。
+     */
+    expect(sumDynamic(s1), '第 3 档：静态抵扣清零溢出后，动态吸收仍按容量生效').toBeGreaterThan(0)
+    const op1 = s1.reduce((m, st, i) => (st.necessaryTime > s1[m]!.necessaryTime ? i : m), 0)
+    const netBefore = (st: IterationState) => st.necessaryTime - ((st.comboAlignCredit ?? 0) - (st.dynamicComboAlignSeconds ?? 0))
+    const cap1 = s1.reduce((a, st, i) => a + (i === op1 ? 0 : DEFAULT_COMBO_ALIGN_ABSORB_RATIO * Math.max(0, netBefore(st))), 0)
+    expect(sumDynamic(s1), '吸收总量 == 容量（不咬合支）').toBeCloseTo(cap1, 3)
   })
 
   it('单角色前台硬顶：平A份额超「总时间−必要」时截断到 180；无队友可接时留在池里', async () => {
@@ -154,12 +168,20 @@ describe('合轴率抵扣团队时间预算', () => {
 })
 
 describe('GROSS/NET 约定（防双重抵扣）', () => {
-  it('NET 模块（照）：合轴时间>0 但预算抵扣=0（E 已从 necessary 剔除）', async () => {
+  it('NET 模块（照）：合轴时间>0 但**静态**预算抵扣=0（E 已从 necessary 剔除）', async () => {
     const cfg = await capturedConfig(['1341', '1011', '1151'])
     cfg.characters[0].freeExSpecialCount = 5
     const s = iterate(cfg.characters, zeroStates(cfg), cfg)
     expect(s[0].comboAlignTime).toBeGreaterThan(0)
-    expect(s[0].comboAlignCredit ?? 0).toBe(0)
+    /**
+     * **T141 起改判据口径**：本条断言的是**静态**合轴率抵扣（`comboAlignTime` 对应的那一份），
+     * 而 `IterationState.comboAlignCredit` 是**静态 + 动态吸收**的合计（`effectiveCredits = comboAlignCredits + dynamicComboAlign`）。
+     * 第 3 档放开闸门后，照（1341）即便 NET 也会作为**队友**被动态吸收 ⇒ 合计 > 0 是正确行为，
+     * 与「NET 模块不重复抵扣」无关。⇒ 判据改钉**静态那一份**（`credit − dynamic`），
+     * 这才是本条要防的双重抵扣（照的 E 已从 necessary 剔除 ⇒ 静态抵扣必须为 0）。
+     */
+    expect((s[0].comboAlignCredit ?? 0) - (s[0].dynamicComboAlignSeconds ?? 0),
+      'NET 模块：静态抵扣必须为 0（E 已从 necessary 剔除，不得重复抵扣）').toBe(0)
   })
 
   it('GROSS 模块（11号）：合轴含在 necessary 内 → 抵扣=comboAlignTime', async () => {
@@ -263,12 +285,23 @@ describe('端到端（折叠循环 + 超时判定同口径）', () => {
     // 账本全额不缩（合轴只改重叠记账）：Σnecessary 仍 > 战斗时间
     expect(rr1.characters.reduce((a, c) => a + c.timeAllocation.necessaryTime, 0))
       .toBeGreaterThan(aligned.totalTime)
-    // 静态抵扣先于动态吸收：池打开 = 净占用装得下 ⇒ 抵扣队不再发生动态吸收
-    expect(rr1.characters.reduce((a, c) => a + (c.timeAllocation.dynamicComboAlignSeconds ?? 0), 0)).toBe(0)
+    // T141 第 3 档：静态抵扣清零溢出后，动态吸收仍按容量生效（旧口径「抵扣队不再发生动态吸收」已作废，
+    // 理由见本文件「Σnecessary>180 可行」条的同类注释）。此处只钉「不因此被误报超时」（上一行）。
+    expect(rr1.characters.reduce((a, c) => a + (c.timeAllocation.dynamicComboAlignSeconds ?? 0), 0)).toBeGreaterThan(0)
   })
 
   it('回归守卫：不设合轴率（缺省全 0）时与旧口径逐位一致', async () => {
+    /**
+     * ⚠ **T141 起必须显式关掉动态吸收**（`comboAlignAbsorbRatio = 0`）才能守住本条的原意。
+     *
+     * 本条钉的是**静态合轴率**（`comboAlignRatio`）机制的「纯 opt-in」性质：不设它 ⇒ 池 = `max(0, 预算 − Σ必要)`、
+     * 按权重分配，与旧口径逐位一致。而**动态合轴吸收是另一条机制**（T141 第 3 档后**缺省开启**，
+     * 缺省 `comboAlignAbsorbRatio = 0.4`）：它会独立地放宽预算、改写平A池 ⇒ 不关掉它就量不到静态那条。
+     * ⇒ 本守卫关掉动态吸收以隔离被测变量；动态吸收自己的恒等式在 `dynamicComboAlign.test.ts` 与
+     * 本文件「Σnecessary>180 可行」条钉。
+     */
     const cfg = await capturedConfig(['1061', '1011', '1151'])
+    cfg.comboAlignAbsorbRatio = 0
     const s = iterate(cfg.characters, zeroStates(cfg), cfg)
     for (const st of s) expect(st.comboAlignCredit ?? 0).toBe(0)
     // 旧口径公式：池 = max(0, 180 − Σ必要)，按权重分配
