@@ -193,12 +193,6 @@
   "stun": 2,
   "outerExit": "stable"
  },
- "auto-1371-1391-1451": {
-  "slack": 0,
-  "over": 0,
-  "stun": 4,
-  "outerExit": "stable"
- },
  "auto-1371-1481-1451": {
   "slack": 0,
   "over": 0,
@@ -287,12 +281,6 @@
   "slack": 0,
   "over": 0,
   "stun": 4,
-  "outerExit": "stable"
- },
- "auto-1471-1481-1451": {
-  "slack": 0,
-  "over": 0,
-  "stun": 2,
   "outerExit": "stable"
  },
  "auto-1501-1141-1491": {
@@ -433,12 +421,6 @@
   "stun": 4,
   "outerExit": "stable"
  },
- "auto-1611-1101-1211": {
-  "slack": 0,
-  "over": 0,
-  "stun": 5,
-  "outerExit": "stable"
- },
  "auto-1611-1141-1211": {
   "slack": 0,
   "over": 0,
@@ -453,12 +435,6 @@
  },
  "auto-1611-1571-1211": {
   "slack": 2.5,
-  "over": 0,
-  "stun": 3,
-  "outerExit": "stable"
- },
- "auto-1611-1621-1211": {
-  "slack": 0.7,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"

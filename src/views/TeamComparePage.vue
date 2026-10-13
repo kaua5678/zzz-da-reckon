@@ -61,7 +61,7 @@
             :fallback-option="presetLabelOf"
             style="width: 220px"
             placeholder="选择队伍（可多选）"
-            title="默认全选全部预设队；框内只显示首队 +N，点开下拉可逐个勾选/清空。筛选只决定下拉列出什么，不影响已经选中的队伍（跨分类自由勾选）"
+            title="默认选中当前筛选分类下的队伍；框内只显示首队 +N，点开下拉可逐个勾选/清空。筛选只决定下拉列出什么，不影响已经选中的队伍（跨分类自由勾选）"
           />
           <n-select
             v-model:value="quickPickMainC"
@@ -786,8 +786,12 @@ onMounted(async () => {
     const first = allPeriods.value[0]
     if (first) selectedPeriodId.value = first.phaseId
   } catch { /* boss 数据缺失时页面显示引导 */ }
-  // 预选全部队伍（不自动计算：计算含 buff 遍历较慢，由用户点「计算」触发）
-  selectedPresetIds.value = teamPresets.map(t => t.id)
+  // 默认选中 = **当前筛选分类下的队伍**（不是全库全选）。口径与实现见
+  // `usePresetTeamPicker#defaultSelection`（筛选函数只在 composable 里调用，规则 11 源码锁）。
+  // 2026-10-12 用户报障：「默认不要选择 97 个队伍」+「默认选中 97+ 队伍也没算出图啊，跟没选是一样的」。
+  // ⚠ 只在挂载时取一次，**不 watch 筛选**——2026-10-11 用户裁决「筛选只决定下拉列出什么，
+  // 不清空已选」（跨分类自由勾选），跟着筛选变会破坏那条口径。
+  selectedPresetIds.value = defaultSelection()
 })
 
 /**
@@ -871,7 +875,7 @@ watch([currentPhaseView], () => {
 })
 
 // ========== 预设队伍 ==========
-const { selectedPresetIds, presetGroupSel, presetSubSel, presetGroupOptionsC, presetSubOptions, presetFilteredOptions, presetLabelOf, quickPickMainC, mainCQuickOptions } = usePresetTeamPicker()  // CC-482：两级筛选 + 主C快选的状态簇，与另一比较页共用
+const { selectedPresetIds, defaultSelection, presetGroupSel, presetSubSel, presetGroupOptionsC, presetSubOptions, presetFilteredOptions, presetLabelOf, quickPickMainC, mainCQuickOptions } = usePresetTeamPicker()  // CC-482：两级筛选 + 主C快选的状态簇，与另一比较页共用
 const customTeams = useCustomTeamsStore()
 // 自定义队与预设队共用一个 id 命名空间 ⇒ 必须**合并解析**：只查预设库会让自定义队静默消失
 // （选中了但算不出来，比报错更难查）。解析口是 customTeams#resolveSelectedPresets，两页同源。

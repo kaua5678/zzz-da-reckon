@@ -113,8 +113,27 @@ export function usePresetTeamPicker() {
     if (!main) return
     selectedPresetIds.value = [...teamPresets, ...custom.presets].filter(t => t.team[0] === main).map(t => t.id)
   })
+  /**
+   * 默认选中 = **当前筛选分类下的队伍 id**（用户 2026-10-12：「默认不要选择 97 个队伍」
+   * +「默认选中 97+ 队伍也没算出图啊，跟没选是一样的」）。
+   *
+   * 旧行为是调用方自己 `teamPresets.map(t => t.id)` 全选 97 条，有两个问题：
+   * ① 与筛选器显示的分类完全脱节（用户看到「命破队·以太」，选中的却是全库）；
+   * ② 因为不自动计算，全选并不产出任何图，纯粹是噪音。
+   * 取当前筛选 ⇒ **所见即所选**，且与 `firstNonEmptyFilter()`（用户 2026-09-03
+   * 「打开即有队伍可选」）同一意图。
+   *
+   * ⚠ 只作**初值**用，不要在筛选变化时调用——2026-10-11 用户裁决「筛选只决定下拉列出什么，
+   * 不清空已选」（跨分类自由勾选），跟着筛选重置会破坏那条口径。
+   * ⚠ 筛选函数（`presetsForFilter`）**只在 composable 里调用**：页面直接用会被源码锁判红
+   * （规则 11 单一事实源，见 usePresetTeamPicker.test.ts 的「源码锁」用例）。
+   */
+  function defaultSelection(): string[] {
+    return f.teamOptions.value.map(o => o.value)
+  }
   return {
     selectedPresetIds,
+    defaultSelection,
     presetGroupSel: f.groupSel,
     presetSubSel: f.subSel,
     presetGroupOptionsC: f.groupOptions,

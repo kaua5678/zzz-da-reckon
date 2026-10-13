@@ -39,6 +39,30 @@ describe('teamPresets 预设队伍库', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
+  it('★ 成员集合唯一：同 3 人不得出现两条（防 auto-/手编孪生重复）', () => {
+    // 2026-10-12 用户报障「还有重复的队伍，仪玄卢西娅队」：库里有 4 组孪生——
+    // `auto-1371-1391-1451`(仪玄+橘福福+卢西娅·艾洛温) 与 `yixuan-jufufu-lucia`(仪玄+橘福福+卢西娅)
+    // 等，在下拉里就是同一支队出现两次。
+    //
+    // 口径（`src/data/teamPresets.ts` 头注释记的用户裁决 2026-09-11）：**成员集合 = 队伍身份，
+    // 顺序无关；同名队只留一条**。生成器侧已加「跳过已被现有预设覆盖的成员集」防复发
+    // （`scripts/gen-auto-presets.mjs`），本用例钉住**结果面**：无论哪条来源，库里都不得有重复成员集。
+    // ⚠ 顺序无关：`[a,b,c]` 与 `[b,a,c]` 是同一支队（生成器 2026-09-13 修过同一类顺序敏感 bug）。
+    const byTeam = new Map<string, string[]>()
+    for (const p of teamPresets) {
+      if (!Array.isArray(p.team) || p.team.length !== 3) continue
+      const sig = [...p.team].sort().join('|')
+      const cur = byTeam.get(sig)
+      if (cur) cur.push(p.id)
+      else byTeam.set(sig, [p.id])
+    }
+    const dupes = [...byTeam.entries()].filter(([, ids]) => ids.length > 1)
+    expect(
+      dupes.map(([sig, ids]) => `${sig} → ${ids.join(' , ')}`),
+      '同一 3 人出现多条（孪生重复）：保留哪条见 teamPresets.ts 头注释的 2026-09-11 裁决',
+    ).toEqual([])
+  })
+
   it('带琉音的预设都有对应的诺姆版队伍（琉音→诺姆，其余成员不变；auto- 孪生也算，手编优先）', () => {
     const key = (team: string[]) => [...team].sort().join('|')
     // 诺姆版队伍：手编优先，手编没有时认 auto- 孪生。2026-09-11 删掉 8 条与 auto- 完全重复的手编预设后，

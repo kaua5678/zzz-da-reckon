@@ -34,11 +34,31 @@
  *   ]
  * }
  *
- * 预设来源两种，同名队只留一条（用户 2026-09-11 裁决「去重吧，手动预设的都可以删了，那是早期的
- * 默认交互，现在有自动交互了，特别是难度提升效果，完全不需要以前这个死数值」）：
+ * 预设来源两种，**成员集合唯一**（同 3 人 = 同一支队，顺序无关；只留一条）。
+ *
+ * ⚠ **2026-10-12 口径澄清**（用户报障「还有重复的队伍，仪玄卢西娅队」时核对得出）：
+ * 上面 2026-09-11 那条裁决的原文是「手动预设的都可以删了……保留 auto- 为唯一来源」，
+ * 但**实现与测试后来走的是反方向**——现存手编条目带着 auto 全无的策划字段
+ * （`goldSteps` 加金顺序、`interactions`、`stunAxisPresetId`），且多处测试断言它们必须存在。
+ * 实测核对（2026-10-12，逐字段查活消费者）后确认**冲突可以消解**：
+ *   · `altAxes` —— **零活消费者**（T140c 已整条移出难度曲线，见 difficultyCurve.ts 头注释）；
+ *   · `interactions` —— 有消费者（`applyPresetInteractions`），但般岳那条的值与模块
+ *     `interactionDefaults` **逐位相同**（dodge10/parry6/block12/dual3）⇒ 冗余；
+ *   · `goldSteps` —— 对**难度曲线**无用（`resolveGoldLevel(g, base, base)` 恒 0 步，
+ *     即基础档与它无关），但**最优加金**路径会用它定候选顺序；用户 2026-10-12 裁决
+ *     「加金顺序也可以丢，从来没写过，这个完全可以用算法自动加最优顺序」
+ *     （`teamTimeline.ts#nextGoldCandidates` 已能从 catalog 推出同一套候选）。
+ * ⇒ 结论：**按「成员集合唯一」去重，保留哪一条不看来源、只看该条是否已被引用**。
+ *   本轮（2026-10-12）删掉的是 4 条 **auto- 孪生**（`auto-1371-1391-1451` / `auto-1471-1481-1451` /
+ *   `auto-1611-1101-1211` / `auto-1611-1621-1211`），因为同组的手编条目被多处测试引用、
+ *   且 `banyue-liuyin-lucia` 是 `stunAxisPresetId` 的唯一绑定方（该轴也可由队伍自动匹配命中）。
+ *   生成器侧已加「跳过已被现有预设覆盖的成员集」（`scripts/gen-auto-presets.mjs`）防复发，
+ *   结果面由 `src/data/__tests__/teamPresets.test.ts` 的「成员集合唯一」用例机器守住。
+ *
+ * 两类来源的差异（选择保留哪条时的判据）：
  *   · `auto-<主C-击破-辅助>.json` = `scripts/gen-auto-presets.mjs` 从**实战顶分归档**生成
- *     （最低金 +2 窗口；`goldSteps: []` 默认 01 基线、`interactions: []` 不预设，走角色职业基准 / 模块专属默认；旧 parry8/dodge4 占位已于 CC-261 删除）——保留为唯一来源；
- *   · 手编 `<主C>-<队友>-lucia.json` = 早期人工录入（交互/加金顺序是**修好的死数值**，只在没有 auto 孪生时保留）。
+ *     （最低金 +2 窗口；`goldSteps: []` 默认 01 基线、`interactions: []` 不预设，走角色职业基准 / 模块专属默认；旧 parry8/dodge4 占位已于 CC-261 删除）——**可重跑再生**；
+ *   · 手编 `<主C>-<队友>-lucia.json` = 人工录入（可能带策划字段；**不可再生**，删前先查引用）。
  *   2026-09-11 删掉的 8 条手编重复项：yidhari-lycaon-liuyin / yixuan-qingyi/liuyin/norma /
  *   banyue-norma / billy-liuyin/norma（各自 auto- 孪生仍在；清单同步进 `data/__tests__/teamPresets.test.ts`）。
  *

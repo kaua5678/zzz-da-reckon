@@ -30,6 +30,37 @@ describe('usePresetTeamPicker（CC-482）', () => {
     expect(p.selectedPresetIds.value).toEqual([])
   })
 
+  it('★ defaultSelection = 当前筛选分类下的队伍（不是全库全选）', () => {
+    // 2026-10-12 用户报障：「默认不要选择 97 个队伍」+「默认选中 97+ 队伍也没算出图啊，跟没选是一样的」。
+    // 旧行为由页面自己 `teamPresets.map(t => t.id)` 全选全库 ⇒ 与筛选器显示的分类脱节、且不产出图。
+    const p = usePresetTeamPicker()
+    const def = p.defaultSelection()
+    // ① 必须等于**当前筛选**下的选项，而不是全库
+    expect(def).toEqual(p.presetFilteredOptions.value.map(o => o.value))
+    expect(def.length).toBeLessThan(teamPresets.length)
+    expect(def.length).toBeGreaterThan(0)   // 打开即有队伍可选（firstNonEmptyFilter 的意图）
+    // ② 全是预设库里的真 id
+    const ids = new Set(teamPresets.map(t => t.id))
+    for (const id of def) expect(ids.has(id), `${id} 不是预设 id`).toBe(true)
+    // ③ 确实只含当前分类的队伍
+    for (const id of def) {
+      const preset = teamPresets.find(t => t.id === id)!
+      expect(preset.group).toBe(p.presetGroupSel.value)
+      expect(preset.subgroup).toBe(p.presetSubSel.value)
+    }
+  })
+
+  it('★ defaultSelection 只作初值：改筛选不改变已选（2026-10-11 跨分类勾选口径）', async () => {
+    const p = usePresetTeamPicker()
+    p.selectedPresetIds.value = p.defaultSelection()
+    const before = [...p.selectedPresetIds.value]
+    const other = presetGroupLabels.find(l => l !== p.presetGroupSel.value)
+    if (other) p.presetGroupSel.value = other
+    await nextTick()
+    // 筛选变了，但已选**不动**（defaultSelection 是初值工具，不是 watcher）
+    expect(p.selectedPresetIds.value).toEqual(before)
+  })
+
   it('换筛选保留已选（跨分类自由勾选）', async () => {
     const p = usePresetTeamPicker()
     const picked = p.presetFilteredOptions.value[0]!.value
@@ -137,9 +168,21 @@ describe('usePresetTeamPicker（CC-482）', () => {
       if (/\b(firstNonEmptyFilter|presetsForFilter|presetSubgroupLabelsFor)\(/.test(s)) offenders.push(f)
     }
     expect(offenders).toEqual([])
+    // 两个比较页都必须解构这个 composable，且拿到**共用字段全集**。
+    // ⚠ 用「逐个字段在场」而不是「整串逐字相等」：后者把字段清单钉死，
+    // 任何人新增一个字段（如 2026-10-12 的 defaultSelection）都会误伤本用例，
+    // 而本用例的意图是「筛选函数只在 composable 里调用 + 两页共用同一状态簇」，
+    // 不是「字段清单永远不变」。
+    const SHARED_FIELDS = [
+      'selectedPresetIds', 'presetGroupSel', 'presetSubSel', 'presetGroupOptionsC',
+      'presetSubOptions', 'presetFilteredOptions', 'presetLabelOf', 'quickPickMainC', 'mainCQuickOptions',
+    ]
     for (const f of ['PositionComparePage.vue', 'TeamComparePage.vue']) {
       const s = readFileSync(join(viewsDir, f), 'utf8')
-      expect(s).toMatch(/\{ selectedPresetIds, presetGroupSel, presetSubSel, presetGroupOptionsC, presetSubOptions, presetFilteredOptions, presetLabelOf, quickPickMainC, mainCQuickOptions \} = usePresetTeamPicker\(\)/)
+      const m = s.match(/\{([^}]*)\}\s*=\s*usePresetTeamPicker\(\)/)
+      expect(m, `${f} 未解构 usePresetTeamPicker`).toBeTruthy()
+      const got = m![1].split(',').map(x => x.trim())
+      for (const field of SHARED_FIELDS) expect(got, `${f} 缺少 ${field}`).toContain(field)
     }
     const cfg = readFileSync(join(viewsDir, 'TeamConfigPage.vue'), 'utf8')
     expect(cfg.match(/= usePresetFilter\(/g)?.length).toBe(2)

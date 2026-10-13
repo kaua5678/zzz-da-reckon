@@ -85,6 +85,37 @@ for (const r of frontier) {
   if (!cur || better(r, cur)) byTeam.set(sig, r)
 }
 
+/*
+ * ⚠ 跨来源去重：**已被现有预设覆盖的成员集，不再产出 auto- 孪生**（2026-10-12 用户报
+ * 「还有重复的队伍，仪玄卢西娅队」）。
+ *
+ * 上面那段只在本脚本**自己产出的** frontier 之间去重，对手编预设视而不见 ⇒ 同一 3 人
+ * 会同时存在 `auto-1371-1391-1451`（仪玄+橘福福+卢西娅·艾洛温）与 `yixuan-jufufu-lucia`
+ * （仪玄+橘福福+卢西娅）两条，在下拉里就是同一支队出现两次。
+ * 实测（修复前）：4 组这样的孪生——仪玄橘福福卢西娅 / 般岳琉音卢西娅 / 克拉蕾珂蕾妲丽娜 /
+ * 克拉蕾洛克茜丽娜。
+ *
+ * 口径依据 = `src/data/teamPresets.ts` 头注释记的用户裁决（2026-09-11）：
+ * 「同名队只留一条……auto- 保留为**唯一来源**；手编只在没有 auto 孪生时保留」。
+ * ⚠ 本脚本**不删手编**（那是数据改动，且手编可能带策划字段）——这里只保证**不再新增**孪生；
+ * 存量由人工按同一条口径清理。这样重跑本脚本不会把删掉的孪生又生成回来。
+ */
+const outDirForDedup = outDir
+const existingSignatures = new Set()
+for (const f of readdirSync(outDirForDedup)) {
+  if (!f.endsWith('.json') || f.startsWith('_') || f.startsWith('auto-')) continue
+  try {
+    const p = JSON.parse(readFileSync(join(outDirForDedup, f), 'utf8'))
+    if (!Array.isArray(p.team) || p.team.length !== 3) continue
+    existingSignatures.add([...p.team.map(String)].sort().join('+'))
+  } catch { /* 坏文件交给 validate:data 报，不在这里吞成「无冲突」 */ }
+}
+let skippedTwins = 0
+for (const sig of [...byTeam.keys()]) {
+  if (existingSignatures.has(sig)) { byTeam.delete(sig); skippedTwins++ }
+}
+if (skippedTwins) console.log(`跳过已被现有预设覆盖的成员集 ${skippedTwins} 条（防 auto- 孪生重复）`)
+
 const kebab = (s) => s.replace(/[^a-z0-9]+/gi, '-').toLowerCase().replace(/^-|-$/g, '')
 const presets = [...byTeam.values()].sort((a, b) => String(a.team[0].agentId).localeCompare(String(b.team[0].agentId))).flatMap(r => {
   // 一级/二级分类 = 队伍输出核心（槽位 0 是辅助位则退到队内输出位）的职业/属性
