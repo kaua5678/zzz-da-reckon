@@ -93,6 +93,11 @@ export declare function driftQueue(root?: string): {
 export interface Lease { path: string; lane: string; at: number; ttlMs: number }
 export declare function readLeases(): Lease[]
 export declare function writeLeases(leases: Lease[]): void
+/**
+ * 跨进程时钟容差（ms）：时间戳由别的进程写、`now` 由当前进程取时允许的抖动上限。
+ * 消费点 = `recentlyOwnedPaths`（`age` 的负向边界）——见 `scripts/zc.mjs` 该常量注释。
+ */
+export declare const CLOCK_SKEW_TOLERANCE_MS: number
 export declare function isExpired(lease: Lease, now?: number): boolean
 export declare function currentLane(explicit?: string): string
 export declare function findConflicts(

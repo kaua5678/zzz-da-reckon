@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { parsePorcelain, recentlyOwnedPaths, detectForeignWip } from '../../../scripts/zc.mjs'
+import { parsePorcelain, recentlyOwnedPaths, detectForeignWip, isExpired } from '../../../scripts/zc.mjs'
 import { withGitFixture, type GitFixture } from '@/test/gitHarness'
 
 /** 复制真实 CLI 到隔离仓库：状态文件也相对临时 ROOT，绝不碰主工作区 .zc。 */
@@ -70,15 +70,45 @@ describe('zc 收工归属：工作树快照不是所有权', () => {
     expect(recentlyOwnedPaths(entries, 'me', now)).toEqual([])
   })
 
-  it('明确 ownedPaths 去重，且只认本 lane、有效过去时间及时间窗内记录', () => {
+  it('明确 ownedPaths 去重，且只认本 lane、有效时间及时间窗内记录', () => {
     const entries = [
       { lane: 'me', at: at(), changed: ['a.ts', 'foreign.ts'], ownedPaths: ['a.ts', 'a.ts'] },
       { lane: 'other', at: at(), ownedPaths: ['other.ts'] },
       { lane: 'me', at: at(now - 13 * 3600_000), ownedPaths: ['old.ts'] },
       { lane: 'me', at: 'invalid', ownedPaths: ['invalid.ts'] },
-      { lane: 'me', at: at(now + 1000), ownedPaths: ['future.ts'] },
+      // 远超容差的未来时间戳 = 坏数据（不是时钟抖动）⇒ 仍要拒
+      { lane: 'me', at: at(now + 24 * 3600_000), ownedPaths: ['future.ts'] },
     ]
     expect(recentlyOwnedPaths(entries, 'me', now)).toEqual(['a.ts'])
+  })
+
+  it('★ 小幅时钟超前（跨进程抖动）不算无效：子进程写的 at 领先几百 ms 仍是自己的记录', () => {
+    /**
+     * 2026-10-13 修 flake：`zc done` 是**独立进程**，它写的 `at` 与调用方随后取的 `now`
+     * 之间会有墙钟抖动（WSL 高负载 / NTP 校时）。旧口径 `age < 0 ⇒ 丢弃` 会让自己的交付
+     * 记录被静默丢掉 —— 实测症状 = 下面这条「真 CLI」用例偶发 `own === []`
+     * （单跑 8/8 绿、全量分片偶红）。判据：容差内（±5min）一律算「刚发生」。
+     */
+    const skew = [{ lane: 'me', at: at(now + 300), ownedPaths: ['mine.ts'] }]
+    expect(recentlyOwnedPaths(skew, 'me', now)).toEqual(['mine.ts'])
+    // 反向（调用方时钟更快，age 为正）本来就正常
+    expect(recentlyOwnedPaths([{ lane: 'me', at: at(now - 300), ownedPaths: ['mine.ts'] }], 'me', now))
+      .toEqual(['mine.ts'])
+  })
+
+  it('★ 未来时间戳的租约不能被当成「永不过期」', () => {
+    /**
+     * 同源缺陷的另一处（`isExpired`）：旧写法 `now - at > ttl` 在 `at` 落在未来时恒 false
+     * ⇒ ttl 只有 1 秒的租约，只要时间戳超前一点就永远活跃、永远挡住别人。
+     * 新判据 = 取绝对值：无论时钟往哪边偏，偏离超过 ttl 就算过期。
+     */
+    // 小幅超前仍在 ttl 内 ⇒ 不算过期（这是正常抖动，不该误伤）
+    expect(isExpired({ path: 'x', lane: 'me', at: now + 300, ttlMs: 1000 }, now)).toBe(false)
+    // ★ 大幅超前（远超 ttl）⇒ 旧写法恒 false（永不过期），新写法正确判过期
+    expect(isExpired({ path: 'x', lane: 'me', at: now + 60_000, ttlMs: 1000 }, now)).toBe(true)
+    // 常规两向
+    expect(isExpired({ path: 'x', lane: 'me', at: now, ttlMs: 1000 }, now)).toBe(false)
+    expect(isExpired({ path: 'x', lane: 'me', at: now - 2000, ttlMs: 1000 }, now)).toBe(true)
   })
 
   it('目录租约覆盖子文件但不覆盖相似前缀；过期租约不隐藏变化', () => {

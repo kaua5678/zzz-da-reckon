@@ -792,8 +792,18 @@ export function writeLeases(leases) {
   writeFileSync(LEASES_FILE, JSON.stringify(leases, null, 2) + '\n')
 }
 
+/**
+ * 租约是否过期。
+ *
+ * ⚠ `at` 由**别的进程**写入（`zc claim` 是个独立进程），`now` 由**当前进程**取 ⇒ 两者跨进程，
+ * 墙钟可能回拨/抖动（WSL 高负载、NTP 校时）。若 `at` 落在 `now` 之后，`now - at` 为负，
+ * 旧写法 `> ttlMs` 恒 false ⇒ **未来时间戳的租约被永久当成活跃**（实测：`ttl=1s` 的租约在
+ * `at` 领先 300ms 时仍算活跃）。判据改成「**取绝对值**」：无论时钟往哪边偏，只要偏离超过 ttl
+ * 就算过期——时钟回拨不该把别人的租约变成永不过期。
+ */
 export function isExpired(lease, now = Date.now()) {
-  return now - lease.at > lease.ttlMs
+  const skew = now - lease.at
+  return Math.abs(skew) > lease.ttlMs
 }
 
 /** 当前车道标识：显式 --as > DSH 会话 id > 进程兜底 */
@@ -843,12 +853,33 @@ export function detectForeignWip(changed, leases, mtimes, now = Date.now(), wind
 }
 
 /** 只接受明确 ownedPaths；旧 changed 是全树快照，不能反推出所有权。 */
+/**
+ * 跨进程时钟容差（ms）：时间戳由**别的进程**写、`now` 由**当前进程**取时，允许的抖动上限。
+ *
+ * 为什么需要（2026-10-13 修 flake）：`zc done` 是独立进程，它写的 `at` 与调用方随后取的
+ * `now` 之间会有墙钟抖动（WSL 高负载下实测能到数百 ms）。旧写法把「age < 0」一律当无效
+ * ⇒ 自己的记录被静默丢弃。容差取 5 分钟：足够覆盖真实抖动（含 NTP 校时阶跃），
+ * 又远小于 12h/45min 的业务窗口 ⇒ 不会把坏数据放进来。
+ */
+export const CLOCK_SKEW_TOLERANCE_MS = 5 * 60 * 1000
+
 export function recentlyOwnedPaths(journal, lane, now = Date.now(), windowMs = 12 * 60 * 60 * 1000) {
   const out = new Set()
   for (const e of journal) {
     if (e.lane !== lane) continue
-    const age = now - Date.parse(e.at ?? '')
-    if (!Number.isFinite(age) || age < 0 || age > windowMs || !Array.isArray(e.ownedPaths)) continue
+    /**
+     * ⚠ **小幅负 age 不能当作「无效记录」丢弃**（2026-10-13 修 flake，实测定位）：
+     * `e.at` 是 `zc done` **子进程**写的，`now` 是**调用方**取的 ⇒ 两者跨进程，墙钟会抖动
+     * （WSL 高负载、NTP 校时）。子进程时钟只要比调用方快哪怕 300ms，`age` 就是负的，
+     * 旧写法 `age < 0 ⇒ continue` 会把自己的交付记录**静默丢掉**。实测症状：
+     * `zcWorkspace.test.ts` 的 `expect(own).toEqual(['mine.ts','src/child.ts'])` 偶发拿到 `[]`
+     * （单跑 8/8 绿、全量分片偶红——典型的跨进程时钟抖动）。
+     *
+     * 修法 = **容差**而非「一律接受」：`[-CLOCK_SKEW_TOLERANCE_MS, windowMs]` 内都算有效
+     * （小幅超前 = 刚发生）；**远超窗口的未来时间戳仍要拒**（那是坏数据，不是抖动）。
+     */
+    const raw = now - Date.parse(e.at ?? '')
+    if (!Number.isFinite(raw) || raw > windowMs || raw < -CLOCK_SKEW_TOLERANCE_MS || !Array.isArray(e.ownedPaths)) continue
     for (const p of e.ownedPaths) if (typeof p === 'string' && p.length > 0) out.add(p)
   }
   return [...out]
