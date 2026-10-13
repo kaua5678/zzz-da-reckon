@@ -24,6 +24,18 @@
  *     ⇒ 行收入同步下降 ⇒「计划削→收入削→次数削」下沉螺旋（`banyue-roxy-lucia` 32.01M→28.52M）；
  *  ③ 夹账本 `necessary`（`capRowSeconds`）⇒ 改 `feasibleScale` 的输入 ⇒ 同上破坏旋钮语义。
  *
+ * ⚠ **判据①的原版探针（`.zc/perf/T150impact.perf.ts`）有三处测量缺陷，报「47 分裂槽」是虚高**
+ * （2026-10-14 四臂归因实测 **47 → 39 → 27 → 0**；探针已就地修正并加对照臂）：
+ *  A. `ultRow` 原用 `category === 'ultimate'` 数终结技行 —— **该值全仓零生产者**
+ *     （终结技行是 `category: 'chain'`；合法值见 `src/types/resource/execution.ts:25` 注释
+ *     basic/special/dodge/chain/assist）⇒ `ultRow ≡ 0` ⇒ 判据退化成「凡有终结技即分裂」。
+ *     单独修此项 47 → 39（−8 全是假阳性）。
+ *  B. `exRow` 原用 `energyConsume > 0` 过滤 —— 漏掉免费强特行（如 `soldier11.ts:236` /
+ *     `roxy.ts:350` 的 `energyConsume: 0`）⇒ 分母偏小。单独修此项 39 → 27（−12 全是假阳性）。
+ *  C. 原探针读 `exSpecialCount / ultimateCount / chainCountTotal`（**资源允许值**），
+ *     而用户可见的展示值自 T151 起是 `executed*` ⇒ 量错了对象。修完 27 → **0**（真缺陷被修掉）。
+ *  ⇒ **27 才是本债的真实基线**；「47」里 20 个是尺子的错，不是被测对象的性质。
+ *
  * 判据：
  *  ① **不超报**（本债的正面判据）：全库预设 × 4 档弹刀，凡有截断的槽，
  *     `executed*` 一律 ≤ 对应物化行 Σ —— 即「展示的次数都是真打得出来的」；
