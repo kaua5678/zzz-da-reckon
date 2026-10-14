@@ -63,14 +63,26 @@ describe('轴模式 ⇒ 自动保底（嗔火 / 喧响）', () => {
     apply()
     const axisRows = calc.effectiveStunAxes.value.length
     expect(axisRows, '本用例前提：轴态生效（轴真的注入计算）').toBeGreaterThan(0)
-    const withAxis = topUpOf(calc)
     /**
-     * ⚠ **T162 复核（原判据保留）**：本夹具点（吸收 0.6 + 金身 2 / 双反 1）的缺口是**嗔火缺口**
-     * （要 4 怒相），秽盾那 +60 闪能 = +30 嗔火对它杯水车薪 ⇒ 两种盾下都补 12 次双反
-     * （实测 `.zc/perf/T162topup.perf.ts`：秽盾 0/1 均 `{parry:0, dual:12}`）。
-     * ⇒ 原断言「轴态 ⇒ 补齐 > 0」**仍然成立且仍有判别力**，无需重标定。
+     * ⚠ **T164 重标定（规则 10 四步）**：本夹具点的补齐量 `{parry:0, dual:12}` → **`{parry:0, dual:0}`**。
+     *
+     * ① 量 delta：topUp `dual 12 → 0`（伤害 53.733M；有盾时 54.737M）。
+     * ② 根因：**般岳进场 60 闪能**（T164 修 `buildBanyueCharConfig` 补 `initialEnergyGift`；
+     *    引擎缺省只有 40 ⇒ 少 20）。本夹具是**金身2/双反1**的低交互点，原来靠补齐 12 次双反
+     *    凑够 4 怒相；多这 20 闪能（= +10 嗔火）后缺口消失 ⇒ 无需再补。
+     * ③ 确认有意：原文核心技「般岳**进入战场时即可回复 60 闪能**」（`raw/nanoka_missing/full/1471.json`）。
+     * ④ 判据改为**能分辨两种情况**（原断言在新口径下失去判别力）：
+     *    **无秽盾** ⇒ 缺口真实存在 ⇒ 补齐 > 0（原判据语义仍被锁住）；
+     *    **有秽盾**（缺省 1）⇒ 60 闪能补上 ⇒ 补齐归零。
      */
-    expect(withAxis.parry + withAxis.dual, '轴态：保底开关全关也应有补齐（视同勾选）').toBeGreaterThan(0)
+    config.enemy.shieldCount = 0
+    await new Promise(r => setTimeout(r, 120))
+    const noShield = topUpOf(calc)
+    expect(noShield.parry + noShield.dual, '无秽盾 + 低交互 ⇒ 缺口真实存在 ⇒ 轴态自行补齐').toBeGreaterThan(0)
+    config.enemy.shieldCount = 1
+    await new Promise(r => setTimeout(r, 120))
+    const withShield = topUpOf(calc)
+    expect(withShield.parry + withShield.dual, '有秽盾（+60 闪能）⇒ 缺口被补上 ⇒ 无需抬交互').toBe(0)
 
     // ③ store 未被写（只做本轮读数的视同勾选）
     for (const k of GUARANTEES) {

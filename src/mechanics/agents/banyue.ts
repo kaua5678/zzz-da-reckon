@@ -483,6 +483,17 @@ function applyBanyueTeamConfig({ slot, cfg, phase, axis, guarantee, settings, th
 function buildBanyueCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.skipGenericExSpecial = true // 强特全部由模块生成（怒相山威/怒相外论道/地动）
   cfg.banyueCinemaLevel = cinemaLevel
+  /**
+   * **进场 60 闪能**（`FLASH_ENTRY`）—— 原文核心技（`data/raw/nanoka_missing/full/1471.json`）：
+   * > 「般岳**进入战场时即可回复 60 闪能**，在勘域模式中此效果 180 秒内最多触发一次。」
+   *
+   * ⚠ **T164 修**：`core/resource` 的 `initialEnergyGift` 缺省是**普通人 40**
+   * （`composables/resourceCalc/helpers.ts` 硬编码），而般岳的核心技给 **60** —— 模块此前
+   * **从未覆写**它 ⇒ 引擎闪能池**少 20 点**。同族先例：仪玄 `cfg.initialEnergyGift = ENTRY_FLASH`（120）、
+   * 星徽·比利 `ENTRY_FLASH + (C1 ? ENTRY_FLASH : 0)`（60/120）—— 都是模块自己覆写。
+   * 类型注释（`types/resource/energy.ts`）早写「般岳/比利 **60 闪能**」，但那 60 从未落地。
+   */
+  cfg.initialEnergyGift = FLASH_ENTRY
 
   // 预存倍率/动作时间（双键：常量名供 estimateExSpecialTime，moveId 供 buildExecutions 按招式查表）
   const times: Record<string, number> = {}

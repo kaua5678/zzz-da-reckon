@@ -1,5 +1,5 @@
 {
- "_note": "时间系统 golden 快照（阶段0 等价性脚手架）。重生成：TIME_GOLDEN_UPDATE=1 npx vitest run src/composables/__tests__/timeGolden.test.ts —— 重生成前必须先跑比对并把 delta 表贴进账本/提交说明；2026-10-14 T162 秽盾 60 闪能接入般岳嗔火公式（flashBase 原漏算 shieldBreakGift）⇒ 6 支般岳队 preset + 5 条 1471 命座档变化，其余 87 队零漂移。最大变化 = banyue-jufufu-lucia −11.657%（盾给全队资源 ⇒ 队友各多 1 次强特、Σfront +7.7s ⇒ 挤主C ⇒ 轴退化 axisFallback=true）；归因见 .zc/reports/T160-SPECIAL-VARIANTS.md §十五",
+ "_note": "时间系统 golden 快照（阶段0 等价性脚手架）。重生成：TIME_GOLDEN_UPDATE=1 npx vitest run src/composables/__tests__/timeGolden.test.ts —— 重生成前必须先跑比对并把 delta 表贴进账本/提交说明；2026-10-14 T164 般岳**进场 60 闪能**接入（原文核心技「进入战场时即可回复60闪能」；引擎缺省 initialEnergyGift=40，模块此前未覆写 ⇒ 少 20）⇒ 仅 banyue-trigger-lucia +0.430%，其余 104 预设零漂移",
  "agent:1011:c0": {
   "dmg": "606239",
   "stun": 3,
@@ -3649,12 +3649,12 @@
   ]
  },
  "preset:banyue-trigger-lucia": {
-  "dmg": "53220510",
+  "dmg": "53449357",
   "stun": 4,
   "slack": "0.000",
-  "over": "1.368",
+  "over": "1.928",
   "slots": [
-   "58.0000|4.0000|8.0000|0.000|157.839|141.671|38.329",
+   "59.0000|4.0000|8.0000|0.000|158.356|142.188|37.812",
    "5.0000|3.0000|0.0000|0.000|40.734|40.734|139.266",
    "12.0000|3.0000|0.0000|0.000|23.079|23.079|156.921"
   ]

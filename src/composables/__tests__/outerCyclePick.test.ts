@@ -78,7 +78,21 @@ async function setupLongCyclePreset() {
   // 重扫（`.zc/perf/T141lag.perf.ts`：mock `pickOuterCycleMember` 记录入参 `members.length`，取 `>=3`）：
   // 命中 7 队，其中 `banyue-trigger-lucia` **lag=4**（与原夹具同为 4 成员，判别力最强）⇒ 取它。
   // 另三个 lag=3 的备选（`auto-1041-1571-1031` / `auto-1611-1141-1211` / `auto-1541-1561-1411`）都已实测能过全部判据。
-  const team: [string, string, string] = ['1471', '1361', '1451']
+  /**
+   * ⚠ **T164 三次换队**（同一条「不要改判据」的规矩）：`[1471,1361,1451]` 含**般岳**，
+   * 而 T164 修了他的**进场 60 闪能**（`buildBanyueCharConfig` 补 `initialEnergyGift`，
+   * 原来只有引擎缺省的 40）⇒ +20 闪能 ⇒ 该队外层收敛路径变了、**不再出长环**。
+   * 重扫（`.zc/perf/T164lag.perf.ts`，同法 mock `pickOuterCycleMember` 记录 `members.length`）：
+   * 命中 8 队；按本用例的**两条硬前提**筛（`outerExit === 'cycle'` + `pickedEarlier === true`）：
+   * | 队 | lag | exit | earlier |
+   * |---|---|---|---|
+   * | **auto-1041-1571-1031** | 3 | **cycle** | **true** ← 取它 |
+   * | auto-1611-1141-1211 | 3 | cycle | true |
+   * | banyue-liuyin-lucia | 4 | stable | — |
+   * | banyue-qingyi-lucia | 4 | cycle | — |
+   * （原注释已写「另三个 lag=3 的备选都已实测能过全部判据」⇒ lag=3 可接受。）
+   */
+  const team: [string, string, string] = ['1041', '1571', '1031']
   for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
   config.applyTeamPreset(team)
   // CC-154（第 177 轮）：本文件测「长环分支的接线」，需要一个真出长环的场景。physical 下模块计数改读计数通道后本队外层
@@ -88,7 +102,7 @@ async function setupLongCyclePreset() {
 }
 
 describe('环内选点的接线：长环成员切片首尾对齐且取规范停点', () => {
-  it('auto-1591-1161-1311：长环分支只调用一次且成员闭环、选点与相位无关', async () => {
+  it('auto-1041-1571-1031：长环分支只调用一次且成员闭环、选点与相位无关', async () => {
     // 观察窗口从建队**之前**就打开：2026-10-03 `31fdfe8f`（音擎叠层覆盖率回填）在 useResourceCalc 里加了
     // `watch(..., { immediate: true, flush: 'post' })`，建队后的首个 await 就把整条管线算完并缓存，
     // 若此时才清空 observed，再读 resourceResult 命中缓存 ⇒ 长环分支「0 次」。建队期间（空队）不出长环，

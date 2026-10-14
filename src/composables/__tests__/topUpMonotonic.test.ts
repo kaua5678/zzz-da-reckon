@@ -180,11 +180,13 @@ describe('T140a 交互补齐单调性：ON 恒不劣于 OFF', () => {
      * ⚠ **T162 再换档位**：`金身2/双反1 @ r=0.6` 在秽盾修复后**不再有严格增益**（见主判据注释：
      * 补齐用一次失衡换第四次怒相）⇒ 本护栏在该档上会假红。实测扫描
      * （`.zc/perf/T162guard.perf.ts`）找到仍严格优的档：**金身6/双反3 @ r=0.8**
-     * （ON 58.653M vs OFF 55.631M，**+3.022M**，`topUp = {parry:2, dual:0}` 真的装上）。
+     * （+3.022M）—— 但 T164 补上般岳**进场 60 闪能**（原缺省 40，少 20）后该档也变成
+     * `ON == OFF`（58.509M 两边相同）⇒ 再扫，取 **金身2/双反2 @ r=0.8**
+     * （ON 60.337M vs OFF 56.377M，**+3.960M**，`topUp = {parry:2, dual:12}` 真的装上）。
      */
-    const on = await measure('banyue-trigger-lucia', 0.8, true, 6, 3)
-    const off = await measure('banyue-trigger-lucia', 0.8, false, 6, 3)
-    expect(on.dmg, `金身6/双反3 @ r=0.8 上补齐应有严格增益：ON ${(on.dmg / 1e6).toFixed(3)}M vs OFF ${(off.dmg / 1e6).toFixed(3)}M`)
+    const on = await measure('banyue-trigger-lucia', 0.8, true, 2, 2)
+    const off = await measure('banyue-trigger-lucia', 0.8, false, 2, 2)
+    expect(on.dmg, `金身2/双反2 @ r=0.8 上补齐应有严格增益：ON ${(on.dmg / 1e6).toFixed(3)}M vs OFF ${(off.dmg / 1e6).toFixed(3)}M`)
       .toBeGreaterThan(off.dmg)
     /**
      * ⚠ **T141 改判据**：原断言读 `calc.interactionTopUp.value` 并求 `not.toBe('0/0')`——但该字段是
