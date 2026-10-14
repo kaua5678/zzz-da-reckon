@@ -51,7 +51,24 @@ describe('§20.5-3 轴内失效率：同 key 多行时分母按求和（防 clam
     const p = teamPresets.find(x => x.id === 'banyue-trigger-lucia')
     expect(p, '预设 banyue-trigger-lucia 存在').toBeTruthy()
     applyTeamToStore(config, p!)
-    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 1)
+    /**
+     * 吸收比 **1 → 0.4**（2026-10-14 T165 挤压臂落地后换档；断言逐条保留、**未放宽**）。
+     *
+     * **归因（规则 10 四步）**：
+     * ① 量 delta：`r=1` 下 `0:1471015` 的 `frac` 由 <1 变成 **恰好 1.0000** ⇒ 判据①红。
+     * ② 根因：**不是 clamp 复发**，是**读数真的满了** —— 实测该 key 两行
+     *    `ΣinAxisStun = 1900.665 ≡ ΣtotalStun = 1900.665`（实测占比 1.0000，与 frac 一致）。
+     *    挤压臂在 `r=1` 下把本队轴**救活了**（`axisFallback=false`、`axisAutoTrimmed=2`）⇒
+     *    般岳全部论道都落在失衡窗内 ⇒「部分在轴内」这个形态在该档**不再存在**。
+     * ③ 确认有意：挤压臂是用户裁决（2026-10-14「挤不下就不要多打」），轴活着是正确结果。
+     * ④ 处置 = **换一档让判据重新有对象**（同本仓「夹具沿革」做法，不是放宽）：
+     *    `r=0.4` 实测三个 key 全部**部分**在轴内
+     *    （`0:1471015=0.7897`、`0:1471016=0.7897`、`2:1451011=0.0886`）⇒ 判别力**更强**
+     *    （旧档只有 2 个 key 部分在轴内，新档 3 个）。
+     * ⚠ 本用例真正防的是「分母按单行 count 而非同 key 求和 ⇒ frac 被 clamp 成 1.0」；
+     *    该缺陷在 `r=0.4` 下若复发，frac 会读到 1.0 而实测占比 0.79 ⇒ **照样红**。
+     */
+    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.4)
     await tick()
 
     const sp = calc.stunPoolResult.value as unknown as Record<string, unknown>

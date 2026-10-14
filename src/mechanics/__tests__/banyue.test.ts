@@ -221,7 +221,9 @@ describe('computeBanyueInteractionTopUp（轴模式自动补齐，保底语义�
 })
 
 // ===== 集成：轴内捏地动/山摇·怒 → 反馈执行计划（先扣闪能，剩余自动补连段）=====
-import { mockStaticFetch, newPinia } from '@/test/harness'
+import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
+import { teamPresets } from '@/data/teamPresets'
+import { applyTeamToStore, applyGoldToStore, applyAxisBinding, baseGoldOf } from '@/composables/teamCompare'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -1127,5 +1129,79 @@ describe('CC-18a：般岳 extraDirectRows（C6 摧岳附伤逐字）', () => {
       ...stubs,
     })
     expect(rows[0].stunOverride).toBe(1)
+  })
+})
+
+/**
+ * T165 挤压臂（用户口径 2026-10-14，逐字）：
+ * > 「我不希望**多打一次资源就导致挤不下然后取消轴模式导致巨大退化**，我希望你**挤不下就不要多打**。」
+ *
+ * 判据分两层：
+ *  ① **纯函数层**（`computeBanyueRageCycle` 的 `autoTrim`）：削 N 组 ⇒ `comboOutCount` 恰好少 N
+ *     （且不会削成负数）；不削（缺省）时逐位等于旧行为。
+ *  ② **管线层**（`solveTeam` 挤压臂）：轴态超预算时引擎逐个试 trim，取**首个真装得下**的值，
+ *     并把读数暴露在 `convergence.axisAutoTrimmed`。
+ *
+ * ## 负控（删掉被锁行为后本测试确实变红）
+ * - 删掉 `comboOutTotal` 的 `- autoTrim` ⇒ ① 三条断言红；
+ * - 删掉 `solveTeam` 的挤压臂 ⇒ ② 的 `axisAutoTrimmed > 0` 与「保轴」断言红；
+ * - 把挤压臂的采纳条件 `!overBudget(squeezed)` 改成恒真 ⇒ ② 的「trim 是最小可行值」断言红。
+ */
+describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
+  // 与 .zc/perf/T166AB.perf.ts 的 free=0/cut=N 对照同参：金身12/双反3/轴支320/怒相 4
+  const base = [10, 6, 12, 3, 0, 320, 6, 0, 180] as const
+
+  it('① 纯函数：autoTrim=N ⇒ 怒相外连段恰好少 N 组（缺省 0 = 逐位不变）', () => {
+    const c0 = computeBanyueRageCycle(...base)
+    // ⚠ 缺省值**实测**（不是按公式推的）：本夹具 flashIncome=580/axisSpend=320 ⇒ floor(260/60)=4，
+    // 再经怒相固定点收敛后为 3。写死实测值，公式一变本用例立刻红（这正是要锁的）。
+    expect(c0.comboOutCount, '缺省不削').toBe(3)
+    for (const trim of [1, 2, 3]) {
+      const c = computeBanyueRageCycle(...base, 0, 0, true, 0, trim)
+      expect(c.comboOutCount, `trim=${trim} 应恰好少 ${trim} 组`).toBe(Math.max(0, 3 - trim))
+      // 削连段 ⇒ 闪能支出同步下降（每少一组少 60）
+      expect(c.flashSpent).toBeCloseTo(c0.flashSpent - trim * 60, 6)
+      // 反空洞：本夹具的 trim 确实改变了读数（否则上面的等式是 5===5 的同义反复）
+      expect(c.comboOutCount).toBeLessThan(c0.comboOutCount)
+    }
+  })
+
+  it('① 纯函数：autoTrim 超过总量 ⇒ 夹到 0（不出现负连段）', () => {
+    const c = computeBanyueRageCycle(...base, 0, 0, true, 0, 99)
+    expect(c.comboOutCount).toBe(0)
+    expect(c.flashSpent).toBeGreaterThanOrEqual(0)
+  })
+
+  it('② 管线：轴态超预算时引擎削自动连段保轴（而非丢整个轴）', async () => {
+    /**
+     * ⚠ **必须用真预设**（`banyue-jufufu-lucia`）：挤压臂的触发条件是「轴态净占用被**自动多打**
+     * 顶出容差」，它需要「轴内块吃满闪能 + 交互行占满前台」同时成立。实测合成夹具
+     * （3×轴内块数 × 3×交互档 = 9 组，见 `.zc/perf/T166sq7.perf.ts`）**全部 trim=0**
+     * —— 合成队规模小、净占用本来就装得下 ⇒ 用合成夹具写的「挤压臂」用例是**假判据**
+     * （断言恒真、删掉实现也不红）。真预设才有那个临界。
+     */
+    const { config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
+    const catalog = useCatalogStore()
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'banyue-jufufu-lucia')!
+    const baseAxis = config.getAxisState()
+    applyTeamToStore(config, preset)
+    applyGoldToStore(config, preset, baseGoldOf(preset))
+    applyAxisBinding(config, baseAxis, preset)
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 250))
+    const rr = calc.resourceResult.value!
+    const trim = rr.convergence.axisAutoTrimmed ?? 0
+    // 两条断言必须**同时**成立才算「挤压臂生效」：
+    //   ① 轴保住了（没退化）；② 确实削了（trim > 0）——否则本用例只是「本来就装得下」
+    expect(rr.convergence.axisFallback, '挤压臂生效 ⇒ 轴不得退化').toBe(false)
+    expect(trim, '反空洞：本夹具必须真的触发挤压臂（否则断言退化成「本来就装得下」）').toBeGreaterThan(0)
+    // 净占用必须真的装得下（挤压臂的采纳条件就是这个）
+    expect(netFrontlineOccupation(rr), '削到装得下才采纳').toBeLessThanOrEqual(180 + 2)
+    // 般岳的怒相外连段确实被削了（模块侧读数与引擎读数同源）
+    const b = rr.characters.find(c => c.agentId === '1471') as unknown as { banyueRageCycle?: { comboOutCount: number } } | undefined
+    expect(b?.banyueRageCycle?.comboOutCount, '般岳连段数被削减').toBeDefined()
+    // 对照（T166AB 实测）：本队 trim=1、伤害 46.635M → 52.789M
+    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害显著高于丢轴态（46.635M）').toBeGreaterThan(50)
   })
 })

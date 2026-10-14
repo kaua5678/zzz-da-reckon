@@ -248,6 +248,18 @@ export function computeBanyueRageCycle(
    * 多打了连段，却**没进嗔火**）⇒ 「有盾才够 5 嗔火」这条口径在引擎里表达不出来。
    */
   shieldFlashGift = 0,
+  /**
+   * **T165 挤压臂的削减量**（怒相外连段组数；缺省 0 = 不削、逐位不变）。
+   *
+   * 用户口径 2026-10-14（逐字）：
+   * > 「我不希望**多打一次资源就导致挤不下然后取消轴模式导致巨大退化**，
+   * >   我希望你**挤不下就不要多打**。」
+   *
+   * 由引擎在**轴态真装不下**时逐个试传（`solveTeam#stageResolveFeasibility` 的挤压臂），
+   * 把「怒相外连段自动打满」下调为「按剩余预算打满」。字段契约见
+   * `CharacterOperationConfig.axisAutoTrim`。
+   */
+  autoTrim = 0,
 ): BanyueRageCycle {
   const dodge = Math.max(0, Math.floor(dodgeCount))
   const parry = Math.max(0, Math.floor(parryCount))
@@ -271,7 +283,12 @@ export function computeBanyueRageCycle(
   for (let iter = 0; iter < 12; iter++) {
     const flashIncome = flashBase + rage * swayRefundPerRage
     // 闪能扣掉轴内捏的普通强特后，剩余全部自动打成连段（不打单论道/单地动等零散招式，不足 60 的尾数忽略）
-    const comboOutTotal = Math.max(0, Math.floor((flashIncome - axisSpend) / COMBO_COST))
+    // ⚠ **T165 挤压臂**（用户口径 2026-10-14「挤不下就不要多打」）：`autoTrim` 由引擎在轴态
+    // 真装不下时逐个试传（见 `CharacterOperationConfig.axisAutoTrim`），把「自动打满」下调为
+    // 「**按剩余预算打满**」。缺省 0 ⇒ 逐位不变。
+    // ⚠ 只削**自动多打**的这一项：轴内捏的块（`axisSpend`）、用户交互次数（dodge/parry/block/dual）
+    // 都是用户显式意图，不在此削（超预算时由既有降配/截断臂处置）。
+    const comboOutTotal = Math.max(0, Math.floor((flashIncome - axisSpend) / COMBO_COST) - autoTrim)
     const flashSpent = axisSpend + comboOutTotal * COMBO_COST
     // 嗔火总量 = 初始 + 交互 + 闪能消耗 × 0.5
     const furyBase = INITIAL_FURY + dodge * FURY_DODGE + parry * FURY_PARRY + block * FURY_BLOCK + dual * FURY_DUAL
@@ -805,6 +822,8 @@ export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg'], shie
     !!cfg.banyueAxisActive,
     // 秽盾破后送的闪能：派发器按 `enemy.shieldCount × SHIELD_BREAK_GIFT` 写好（模块不读 configStore）
     Math.max(0, shieldFlashGift || cfg.banyueShieldFlashGift || 0),
+    // T165 挤压臂：引擎在轴态真装不下时逐个试传（缺省 0 ⇒ 逐位不变）
+    Math.max(0, Math.floor(cfg.axisAutoTrim ?? 0)),
   )
 }
 

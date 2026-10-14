@@ -71,6 +71,12 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
   const { runCalcRound, lockedStunCount, stunWindowDur, stunEffTime, resourceConfig } = input
   /** 轴退化判据容差（秒）：收敛后仍留 ~2s 合轴可覆盖的量化残差（与 timeLedger 测试口径一致） */
   const AXIS_FALLBACK_TOLERANCE_SEC = 2
+  /**
+   * T165 挤压臂的削减上限（份）。**为什么是小数字**：每个候选都是一次**完整外层求值**
+   * （含外层不动点），且现实里「自动多打」的量级有限（般岳怒相外连段实测 4~10 组）。
+   * 到顶仍装不下 ⇒ 落回原路径（退化臂），行为与改动前一致 ⇒ 上限只影响成本、不影响正确性。
+   */
+  const AXIS_AUTO_TRIM_MAX = 12
   /** Σ前台行净占用（扣轴内合轴节省 + 招式合轴抵扣，max 不叠加；与 iterate 平A池、
    *  teamCompare.actionTimeTotal 同口径，单一事实源 netFrontlineOccupation） */
   const frontlineTotalOf = (r: CalcRoundResult): number => {
@@ -94,7 +100,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * （喧响/嗔火/轴内块 × 窗口数）超出时间预算 → 必要时间 > 战斗时间 → 该轴不可操作
    * （需 boss 秽盾等外界环境才打得成）→ 退化为一般轴（不注入轴块/连携覆盖/自动补齐）重算）。
    */
-  function runOuterLoop(forceNoAxis: boolean, interactionScale?: number, interruptTopUp?: boolean): { out: CalcRoundResult; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: OuterExit; outerCyclePickedEarlier: boolean } {
+  function runOuterLoop(forceNoAxis: boolean, interactionScale?: number, interruptTopUp?: boolean, axisAutoTrim?: number): { out: CalcRoundResult; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: OuterExit; outerCyclePickedEarlier: boolean } {
     let stunCount = lockedStunCount >= 0 ? lockedStunCount : 0
     /** CC-418：`MAX_OUTER_ITER ≥ 1` ⇒ 循环体至少执行一次、首轮即赋值（runCalcRound 无 null 出口），故可定赋值断言。 */
     let out!: CalcRoundResult
@@ -196,7 +202,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       const locked = lockedStunCount >= 0
       // CC-418：runCalcRound 无 null 出口（CC-417 删空失衡池 null 后，剩余守卫与 calcOutput 同条件不可达），
       // 原「null 轮 ⇒ threadsAfterNullRound 回退 + 签名清空 + continue」分支随之删除。
-      out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale, interruptTopUp })
+      out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim })
       const t = out.threadsNext
       const rawNext = out.stunPool.stunCount
       // 净失衡缩放 + 时间可行性截断：非失衡占比缩放全来源净失衡，超出可容纳窗口数的残失衡按残差时间系数折成小数
@@ -333,7 +339,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
   type RoundOut = ReturnType<typeof runOuterLoop>
   const stageResolveFeasibility = (
     r0: RoundOut,
-  ): { r: RoundOut; axisFallback: boolean; interactionScale: number | undefined } => {
+  ): { r: RoundOut; axisFallback: boolean; interactionScale: number | undefined; axisAutoTrimmed: number } => {
     let r = r0
     /**
      * **触发判据两条臂**（2026-09-11 用户口径：「交互次数导致的必要招式，通常是达成目标的最少要求；
@@ -371,6 +377,10 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     const overBudget = overBudgetNet
     let axisFallback = false
     let interactionScale: number | undefined
+    /** T165 挤压臂：本轮为保轴削掉的「自动多打」份数（0 = 没削，逐位不变）；供展示与归因 */
+    let axisAutoTrimmed = 0
+    /** 中断臂是否已生效（挤压臂必须沿用该状态，否则会撤销中断成果 —— 见挤压臂注释） */
+    let interrupted = false
     let hadAxis = false
     // 锁定失衡次数（命座对比/锁窗测试）= 用户明确意图「操作够就能打 N 次失衡」，同锁定不回填口径：
     // 退化/降配会改变次数与交互结构，锁窗场景一律不触发（超时如实上报）。
@@ -418,6 +428,44 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         // ① 中断臂（只在真有补齐量时试；非法补齐没有可中断的量）
         if (!topUpIllegal(r.out) && wantsTopUp(r)) {
           r = runOuterLoop(false, undefined, true)
+          // ⚠ 记下「本轮是否已中断补齐」：挤压臂必须沿用这个状态（否则会把中断成果撤销，
+          // 见下方挤压臂注释的 `banyue-liuyin-lucia` 实测）。
+          interrupted = true
+        }
+      }
+      // ===== T165「挤压臂」：装不下就**削掉自动多打的那部分**，而不是丢整个轴 =====
+      // 用户口径 2026-10-14（逐字）：
+      // > 「我不希望**多打一次资源就导致挤不下然后取消轴模式导致巨大退化**，我希望你**挤不下就不要多打**。」
+      //
+      // 次序：**中断臂 → 挤压臂 → 退化臂**（越靠后代价越大）。
+      // · 中断臂治「补齐把计划顶出去」；本臂治「模块自己自动打满的内容把计划顶出去」；
+      // · 两者都救不回才退化为非轴（原行为）。
+      //
+      // 判据与终止：从 `axisAutoTrim = 1` 起逐个试到装得下为止，上限 `AXIS_AUTO_TRIM_MAX`。
+      // **为什么由引擎循环而不是模块自己循环**：只有引擎能回答「这样装得下吗」（要跑完整轮 +
+      // 净占用判定），模块侧看不到全队预算 ⇒ 循环只能住在这里。
+      // ⚠ 每个候选都是**一次完整外层求值**（含外层不动点），故上限取小（般岳怒相外连段现实量级
+      // ≤ 10 组）；到顶仍装不下 ⇒ 落回原路径（退化臂），行为与改动前一致。
+      // ⚠ **只在轴态**（`resolvedAxes.length`）且**非锁窗**（本块已在 `lockedStunCount < 0` 内）：
+      // 锁窗 = 用户明确意图，引擎不改结构（与退化/降配同款纪律）。
+      // ⚠ 只在**没有非法补齐**时试：非法补齐（>200s = 轴要的资源根本填不出来）不是「多打了」，
+      // 削内容救不了它，应直接走既有退化路径。
+      //
+      // ⚠ **必须沿用中断臂的结果状态**（`interrupted`）：若中断臂已经把补齐关掉（`r` 是中断后的
+      // 态），挤压臂再以「补齐开着」重跑就等于**把中断臂的成果撤销**——实测 `banyue-liuyin-lucia`
+      // 正是这样被拒的：中断臂关掉补齐后候选 net 已到 179.23（≤ 182，装得下），
+      // 而挤压臂重开补齐 ⇒ `illegalNext=true` ⇒ 采纳条件 `!topUpIllegal` 判假 ⇒ 12 个候选全被拒。
+      // ⇒ 本臂在「中断后」的基线上继续削，与次序「中断 → 挤压 → 退化」的语义一致。
+      if ((overBudget(r) || topUpIllegal(r.out)) && r.out.resolvedAxes.length && !topUpIllegal(r.out)) {
+        hadAxis = true
+        for (let trim = 1; trim <= AXIS_AUTO_TRIM_MAX; trim++) {
+          const squeezed = runOuterLoop(false, undefined, interrupted, trim)
+          // 采纳条件 = **真的装得下**（与中断臂同款「绝对可行」口径：净占用进容差且补齐合法）
+          if (!overBudget(squeezed) && !topUpIllegal(squeezed.out)) {
+            r = squeezed
+            axisAutoTrimmed = trim
+            break
+          }
         }
       }
       if ((overBudget(r) || topUpIllegal(r.out)) && r.out.resolvedAxes.length) {
@@ -515,10 +563,10 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         }
       }
     }
-    return { r, axisFallback, interactionScale }
+    return { r, axisFallback, interactionScale, axisAutoTrimmed }
   }
 
-  const { r: rAfterFeasibility, axisFallback, interactionScale } = stageResolveFeasibility(r)
+  const { r: rAfterFeasibility, axisFallback, interactionScale, axisAutoTrimmed } = stageResolveFeasibility(r)
   r = rAfterFeasibility
   const { out: baseOut, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier } = r
   const out = baseOut.resourceResult
@@ -533,6 +581,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
             outerExit,
             axisFallback,
             interactionScale,
+            // T165 挤压臂读数：0 = 没削（缺省不带该字段，与既有停点逐位同形）
+            axisAutoTrimmed: axisAutoTrimmed > 0 ? axisAutoTrimmed : undefined,
             outerCyclePickedEarlier: outerCyclePickedEarlier || undefined,
           },
         },

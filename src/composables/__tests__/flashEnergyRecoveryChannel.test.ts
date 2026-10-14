@@ -102,11 +102,30 @@ describe('命破闪能招式回复通道（flash_energy_recovery）', () => {
         expect(row.totalEnergyRecovery).toBe(row.energyRecovery! * Math.max(0, row.count))
       }
     }
-    // 实测锚（报告数字）：扬砾 ×6 → 22.41、冲霄 ×10 → 46.68
+    /**
+     * 实测锚（**count 无关的写法**，2026-10-14 T165 挤压臂后改）。
+     *
+     * **归因（规则 10 四步）**：原锚写死「扬砾 ×6 → 22.41、冲霄 ×10 → 46.68」，
+     * 而这两个 count 是**旧状态（该队轴退化）**的产物。挤压臂落地后本队轴被救活
+     * （`axisFallback=false`、`axisAutoTrimmed=4`），执行行 count 随之变化
+     * （扬砾 ×6→×10、冲霄 ×10→×15）⇒ 原锚红。
+     *
+     * ② 根因：锚测的是「本队这一档恰好打几次交互」，而那**不是本用例的主题** ——
+     *    本用例的主题是「**通道接通**：行级回能 == catalog flash 行值 × count」
+     *    （见上方循环里那三条断言，它们逐条保留、未动）。
+     * ③ 确认有意：轴活着是用户裁决（「挤不下就不要多打」）的正确结果。
+     * ④ 处置 = 把锚改成**同义但 count 稳健**的形式：`totalEnergyRecovery == 表值 × 实际 count`
+     *    （与循环内第 3 条同源），并保留「必须 > 0」的反空洞。**不放宽**：它仍会在
+     *    「通道断掉（回能恒 0）」或「total 与 per-count 不同源」时立刻红。
+     */
     const yangLi = rowsOf(banyue.executions, '1471019')[0]
-    expect(yangLi.totalEnergyRecovery).toBeCloseTo(22.41, 9)
+    expect(yangLi.totalEnergyRecovery, '扬砾：total == 表值 × 实际 count')
+      .toBeCloseTo(flash['1471019'] * yangLi.count, 9)
+    expect(yangLi.totalEnergyRecovery, '反空洞：通道必须真接通（回能 > 0）').toBeGreaterThan(0)
     const chongXiao = rowsOf(banyue.executions, '1471029')[0]
-    expect(chongXiao.totalEnergyRecovery).toBeCloseTo(46.68, 9)
+    expect(chongXiao.totalEnergyRecovery, '冲霄：total == 表值 × 实际 count')
+      .toBeCloseTo(flash['1471029'] * chongXiao.count, 9)
+    expect(chongXiao.totalEnergyRecovery, '反空洞：通道必须真接通（回能 > 0）').toBeGreaterThan(0)
   }, 120_000)
 
   it('② 真斗 1441 臂（防回归靶心）：无预设、手组队，有 flash 行的招式回能 > 0 且等于表值', async () => {

@@ -42,6 +42,12 @@
  * |---|---|---|
  * | 2026-10-11 一换 | `banyue-trigger-lucia` → `banyue-qingyi-lucia` | 预设交互下调（金身 20→12 / 双反 5→3）后 trigger 队自然 4 失衡 ⇒「0 次 = 3 失衡」前提不成立 |
  * | 2026-10-11 二换 | `banyue-qingyi-lucia` → `banyue-norma-lucia`（吸收比 0.4 → 0.5） | 般岳「嘲讽取消」口径改动后 qingyi 队的 `r12 ≤ r20` 破（归因见下） |
+ * | **2026-10-14 三换** | `banyue-norma-lucia @0.5` → **`auto-1041-1161-1311 @0.3`** | **T165 挤压臂**把 norma 队的轴救活（`axisFallback=false`/`trim=4`）⇒ 四档失衡由 `[3,3,4,4]` 变 `[4,4,4,4]`，原断言「不填弹刀 ⇒ 仍 3 次」前提失效。换**非般岳队**（挤压臂对它无作用面）：实测四档 `[5,5,6,7]`、`parrySplit` 由 `null→split`、单调性保留（详见用例内注释） |
+ *
+ * ⚠ **三换同时把绝对数字改成相对基线**（`r12.stun > r0.stun` 而非 `=== 4`）：前两次换夹具的病根
+ * 都是「把判据绑在某个落点细节上」（先是「trigger 队自然 4 失衡」，后是「norma 队 0 档恰好 3 失衡」）。
+ * 本用例的**主题**是「手填弹刀 ⇒ 反推链启动」，故判据应写成**相对**形式 + 直接证据
+ * （`parrySplit` 非空），落点怎么漂都不会假红。
  *
  * ⚠ **二换的归因**（嘲讽取消腾出后摇 4.653s ⇒ 非轴降配落点位移）：
  * - qingyi 队实测：0/6 → 3 失衡、12/20 → 4 失衡、`r0 37.66 ≤ r12 43.74` **全部仍成立**；
@@ -69,18 +75,36 @@ import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
 const tick = () => new Promise(r => setTimeout(r, 55))
 
 describe('§20.5-3 失衡次数四舍五入：用户调高弹刀即启动反推（无 Boss 亦然）', () => {
-  it('无 Boss 手填弹刀：0/6 次 = 3 失衡；12/20 次 ⇒ 4 失衡且单调', async () => {
+  it('无 Boss 手填弹刀：0/6 次 = 基线；12/20 次 ⇒ 更高且单调', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    // 夹具（2026-10-11 二换，归因见文件头「夹具沿革」）：般岳+诺姆+卢西娅，吸收比 0.5。
-    // 选它的理由 = 四档的降配落点对「嘲讽取消口径」不敏感（两种口径下都满足全部断言）。
-    const p = teamPresets.find(x => x.id === 'banyue-norma-lucia')
-    expect(p, '预设 banyue-norma-lucia 存在').toBeTruthy()
+    /**
+     * 夹具（**2026-10-14 三换**，归因见文件头「夹具沿革」）：11号+莱特+耀嘉音，吸收比 0.3。
+     *
+     * **归因（规则 10 四步）**：
+     * ① 量 delta：原夹具 `banyue-norma-lucia @ r=0.5` 四档失衡由 `[3,3,4,4]` 变成 `[4,4,4,4]`
+     *    ⇒ 断言「不填弹刀 ⇒ 仍 3 次」红（★ 反证点 `r12/r20 ≥ 4` **仍绿**）。
+     * ② 根因：**不是反推链坏了**，是 T165 挤压臂把该队的轴救活了
+     *    （实测 `r0` 档 `axisFallback=false`、`axisAutoTrimmed=4`）⇒ 轴活着改变失衡积蓄
+     *    ⇒ 基线由 3 抬到 4 ⇒ 原断言的**前提**（基线 = 3）不成立。
+     * ③ 确认有意：挤压臂是用户裁决（2026-10-14「挤不下就不要多打」）。
+     * ④ 处置 = 换**非般岳队**（挤压臂对它无作用面）+ 保留全部判别力：
+     *    实测 `auto-1041-1161-1311 @ r=0.3` 四档 = 失衡 `[5,5,6,7]`、伤害 `[47.76,47.76,48.36,50.91]`、
+     *    `parrySplit` 由 `null,null,split,split` ⇒ **★ 反证点与单调性逐条保留**，
+     *    且「0/6 档不变」（防「一律抬高」的过宽修法）由 `r0.stun === r6.stun` 锁住。
+     *
+     * ⚠ 基线值从「3」变「5」是**夹具细节**，不是判据 —— 判据是「**手填弹刀 ⇒ 反推链启动**」
+     *   （旧实现下 r12/r20 恒等于基线、`parrySplit` 恒 null）。故本用例把绝对数字改成
+     *   **相对基线**的写法：既保留判别力，又不再被「基线恰好是几」这种落点细节绊倒
+     *   （这正是本文件头记的前两次换夹具的同款病根）。
+     */
+    const p = teamPresets.find(x => x.id === 'auto-1041-1161-1311')
+    expect(p, '预设 auto-1041-1161-1311 存在').toBeTruthy()
 
     const run = async (parry: number) => {
       applyTeamToStore(config, p!)
-      config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.5)
+      config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.3)
       config.setMechanicSetting('guarantee.stun', 1)
       expect(config.appliedBoss, '本用例前提：无 Boss（appliedBoss 为空）').toBeFalsy()
       if (parry > 0) {
@@ -90,7 +114,7 @@ describe('§20.5-3 失衡次数四舍五入：用户调高弹刀即启动反推�
       await tick()
       const sp = calc.stunPoolResult.value as unknown as Record<string, number>
       expect(sp, '失衡池有结果').toBeTruthy()
-      return { stun: sp.stunCount, dmg: calc.teamTotalDamage.value / 1e6 }
+      return { stun: sp.stunCount, dmg: calc.teamTotalDamage.value / 1e6, split: calc.parrySplitResult.value }
     }
 
     const r0 = await run(0)
@@ -98,13 +122,17 @@ describe('§20.5-3 失衡次数四舍五入：用户调高弹刀即启动反推�
     const r12 = await run(12)
     const r20 = await run(20)
 
-    // ★ 反证点：旧实现下这里恒为 3（弹刀不进反推链）
-    expect(r12.stun, '手填 12 次弹刀 ⇒ 应达成 4 次失衡（旧实现为 3）').toBeGreaterThanOrEqual(4)
-    expect(r20.stun, '手填 20 次弹刀 ⇒ 应达成 4 次失衡').toBeGreaterThanOrEqual(4)
+    // ★ 反证点：旧实现下这里恒等于基线（弹刀不进反推链、parrySplit 恒 null）
+    //   —— 写成**相对基线**：判据是「手填抬高了次数」，不是「基线恰好是 4」。
+    expect(r12.stun, '手填 12 次弹刀 ⇒ 失衡次数应高于不填档（旧实现恒等于基线）').toBeGreaterThan(r0.stun)
+    expect(r20.stun, '手填 20 次弹刀 ⇒ 失衡次数应高于不填档').toBeGreaterThan(r0.stun)
+    // 反推链真的启动（旧实现恒 null）—— 这是本用例主题的**直接**证据，比失衡次数更贴近机理
+    expect(r12.split, '手填 12 次 ⇒ Boss 弹刀反推链启动（旧实现恒 null）').toBeTruthy()
+    expect(r20.split, '手填 20 次 ⇒ Boss 弹刀反推链启动').toBeTruthy()
 
     // 未达门槛的档位不受影响（防「一律抬高」的过宽修法）
-    expect(r0.stun, '不填弹刀 ⇒ 仍 3 次（不应被抬高）').toBe(3)
-    expect(r6.stun, '填 6 次（= 职业基准）⇒ 仍 3 次').toBe(3)
+    expect(r6.stun, '填 6 次（= 职业基准，未超出）⇒ 与不填档同值，不应被抬高').toBe(r0.stun)
+    expect(r6.split, '填 6 次（未超基准）⇒ 反推链不应启动').toBeFalsy()
 
     // ★ 单调性：旧实现下 12 次(41.66) < 0 次(42.51)，加弹刀反而降伤
     expect(r0.dmg, '加弹刀不应降低伤害（旧实现 12 次比 0 次低）').toBeLessThanOrEqual(r12.dmg)

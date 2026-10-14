@@ -107,7 +107,7 @@ export function createRunCalcRound(deps: {
     resolveAxes, calcAnomalyPoolInput, extractAnomalyExecsFrom, extractStunExecsFrom, autoActive,
   } = deps
 
-  function runCalcRound(stunCount: number, threads: CalcRoundThreads, opts?: { forceNoAxis?: boolean; interactionScale?: number; interruptTopUp?: boolean }): CalcRoundResult {
+  function runCalcRound(stunCount: number, threads: CalcRoundThreads, opts?: { forceNoAxis?: boolean; interactionScale?: number; interruptTopUp?: boolean; axisAutoTrim?: number }): CalcRoundResult {
     const {
       goodReview: prevGoodReview,
       energyBySlot: prevEnergyBySlot,
@@ -522,6 +522,14 @@ export function createRunCalcRound(deps: {
         axisUltimateTotal: axisUltimateTotal[cfg.slot] ?? 0,
         // 全队帷幕次数（上一轮收敛注入）：叶瞬光溯影惊鸿/爱芮合作舞台/千夏磨爪器在此轮 buildExecutions/buildAnomalyEvents 消费
         teamVeilCountTotal: prevTeamVeilCountTotal,
+        /**
+         * **为保轴而削减的「自动多打」份数**（T165，用户口径 2026-10-14「挤不下就不要多打」）：
+         * `solveTeam` 的「挤压臂」在轴态真超预算时逐个试传（0 = 不削，逐位不变）。
+         * 字段语义与「只许削自动多打的内容」纪律见 `CharacterOperationConfig.axisAutoTrim` 头注释。
+         *
+         * ⚠ **非轴模式恒 0**（`forceNoAxis` 退化臂下没有轴可保）⇒ 用 `axisActive &&` 再闸一道。
+         */
+        axisAutoTrim: axisActive ? Math.max(0, opts?.axisAutoTrim ?? 0) : 0,
       }
       // 非轴降配（用户口径 2026-08-30）：超预算时缩放用户交互次数（round）。只缩 store 侧输入——
       // 下方 boss 强制弹刀（parrySplit 直读 store 原值）与轴补齐注入在其后叠加，不被缩放。

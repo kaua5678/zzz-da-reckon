@@ -140,6 +140,15 @@ export interface ConvergenceReport {
    * （轴退化后配置本身仍超预算）。
    */
   interactionScale?: number
+  /**
+   * **T165 挤压臂读数**（用户口径 2026-10-14「挤不下就不要多打」）：轴态净占用超预算时，
+   * 引擎从 1 起逐个试「削掉模块自动多打的那部分」（般岳 = 怒相外连段组数），
+   * 取**首个真装得下**的削减量。`undefined` = 没削（逐位不变）；> 0 = 本轮为保轴削掉了这么多份。
+   *
+   * ⚠ 与 `axisFallback` 在本臂上**互斥**（本臂成功 ⇒ 轴保住 ⇒ `axisFallback` 保持 false）；
+   * 两者同时非空只可能来自别的臂（如非轴降配在轴退化后仍超预算）。
+   */
+  axisAutoTrimmed?: number
 }
 
 /** 队伍资源池计算结果 */
