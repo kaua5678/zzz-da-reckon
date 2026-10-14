@@ -184,7 +184,17 @@ export function axisKindOf(axis: Pick<AxisWindowShape, 'kind' | 'count'>): StunA
  * 轴窗分配的**可用资源**（T157，用户口径「升级轴…有资源就优先，没有就放过」）。
  *
  * 不传 ⇒ `bestEffort` 退回「有富余就给 1」（纯按剩余窗数判，旧行为）；
- * 传了 ⇒ 按资源判定（够才给，并扣减）。
+ * 传了 ⇒ 按**总量鸡兔同笼**判定（见下）。
+ *
+ * ## ★ 用户口径（2026-10-14，本型的判据来源）
+ * > 「≥120这个条件不对。你**无法确定进入三大轴的时刻好评点如何**。这里你只能根据**好评总量**，
+ * >   比如三大轴比普通多用了 60 点好评，在**普通×3+收尾×1** 的基础上，若**富余 60 点好评**
+ * >   就可以把一个普通换成三大轴，**鸡兔同笼**的感觉。如果富余 120 点可以换 2 个，
+ * >   变成**三大×2+普通×1+收尾×1**。」
+ *
+ * ⚠ **不是**「逐窗检查当前余额够不够下一窗」—— 那依赖**进入该窗的时刻余额**，而那是
+ * 不可预知的（前置动作的转大/回能随时在变）。正确算法 = **先按基础轴算总成本，再看总量富余
+ * 能换几个升级轴**（鸡兔同笼）。
  */
 export interface AxisWindowResources {
   /** 好评（摇人值）总量：轴内 60/90 转大块的每窗成本从这里扣 */
@@ -208,6 +218,20 @@ export interface AxisWindowShape {
     readonly energyCost?: number
     readonly decibelCost?: number
   }>
+}
+
+/** 槽位表求和（缺省 ⇒ 0） */
+function sumSlots(rec?: Readonly<Record<number, number>>): number {
+  return rec ? Object.values(rec).reduce((a, b) => a + Math.max(0, b), 0) : 0
+}
+
+/** 基础轴（= fallback）及其下标：升级轴的增量成本与「基础占满」的对照系 */
+function baseAxisOf(
+  axes: ReadonlyArray<AxisWindowShape>,
+  kinds: readonly StunAxisKind[],
+): { axis: AxisWindowShape; idx: number } | null {
+  const idx = kinds.lastIndexOf('fallback')
+  return idx >= 0 ? { axis: axes[idx], idx } : null
 }
 
 /** 单轴每窗资源成本（轴内所有动作的每窗成本求和） */
@@ -249,25 +273,64 @@ export function allocateAxisWindows(
     const w = Math.max(0, Math.min(axes[i].count ?? 0, remaining))
     wins[i] += w; remaining -= w
   }
-  // ③ 尽量打：**有资源就给 1、没有就放过**（用户口径「升级轴…有资源就优先，没有就放过」）。
-  // 传了 `res` ⇒ 按轴内每窗成本判定并从预算里扣（好评 / 闪能 / 喧响三通道）；
-  // 没传 ⇒ 退回「有富余就给 1」（纯按剩余窗数，旧行为，保证既有调用方逐位不变）。
-  const reviewLeft = res?.goodReview
-  const energyLeft: Record<number, number> | undefined = res?.energyBySlot ? { ...res.energyBySlot } : undefined
-  const decibelLeft: Record<number, number> | undefined = res?.decibelBySlot ? { ...res.decibelBySlot } : undefined
-  let reviewBudget = reviewLeft
+  // ③ 尽量打（升级轴）：**总量鸡兔同笼**（用户口径见 `AxisWindowResources` 文档）。
+  //
+  // 算法：先让**基础轴**（fallback）吃满它该吃的窗（`baseWindows`），据此算基础总成本
+  // （好评 / 闪能 / 喧响各自的总量），再问「**富余量能换几个升级窗**」——
+  // 每个升级窗的**增量成本** = 升级轴每窗成本 − 基础轴每窗成本（可为 0 或负 ⇒ 不限量）。
+  // 换出来的窗从基础轴扣、给升级轴（`u` 个基础窗变升级窗）。
+  //
+  // 多条 bestEffort 时按数组顺序依次消耗富余（每条独立算增量）；`remaining` 不足则不换。
   for (let i = 0; i < n; i++) {
     if (remaining <= 0) break
     if (kinds[i] !== 'bestEffort') continue
     if (res === undefined) { wins[i] += 1; remaining -= 1; continue }
-    const cost = axisWindowCostOf(axes[i])
-    // 三通道逐一判定：**任一不够就整条放过**（升级轴是「整套换上去」，不能只换一半）
-    const reviewOk = cost.review <= 0 || (reviewBudget !== undefined && reviewBudget >= cost.review)
-    const energyOk = cost.energy <= 0 || [...(energyLeft ? Object.values(energyLeft) : [])].reduce((a, b) => a + b, 0) >= cost.energy
-    const decibelOk = cost.decibel <= 0 || [...(decibelLeft ? Object.values(decibelLeft) : [])].reduce((a, b) => a + b, 0) >= cost.decibel
-    if (!reviewOk || !energyOk || !decibelOk) continue
-    if (cost.review > 0 && reviewBudget !== undefined) reviewBudget -= cost.review
-    wins[i] += 1; remaining -= 1
+    const base = baseAxisOf(axes, kinds)
+    if (!base) continue
+    const upCost = axisWindowCostOf(axes[i])
+    const baseCost = axisWindowCostOf(base.axis)
+    // 每个升级窗的增量（相对基础轴）；≤0 ⇒ 换上去不额外花钱 ⇒ 富余视为无限
+    const dReview = upCost.review - baseCost.review
+    const dEnergy = upCost.energy - baseCost.energy
+    const dDecibel = upCost.decibel - baseCost.decibel
+    const swapBy = (delta: number, budget: number | undefined): number => {
+      if (delta <= 0) return Number.POSITIVE_INFINITY
+      if (budget === undefined) return Number.POSITIVE_INFINITY
+      return Math.floor(Math.max(0, budget) / delta)
+    }
+    /**
+     * 富余 = **总量 − 所有「不吃升级时」的窗成本**。
+     *
+     * ⚠ **必须把 tail（收尾轴）等已分配轴的成本一起扣掉**（T158 修我自己写漏的一处）：
+     * 用户口径的基准是「**普通×3 + 收尾×1**」这个**完整形态**的总成本，
+     * 不是「基础轴 × 全部剩余窗」。实测（失衡4、5火10大）：基础 330 = 普通 3×60 + 收尾 150；
+     * 我最初只扣 `60 × 3 = 180` ⇒ 好评 330 时就换出 2 个三大（应为 0 个）。
+     */
+    const baseWindows = wins[base.idx] + remaining   // 基础轴当前 + 还没分的
+    const fixedCost = { review: baseCost.review * baseWindows, energy: baseCost.energy * baseWindows, decibel: baseCost.decibel * baseWindows }
+    for (let j = 0; j < n; j++) {
+      if (j === i || kinds[j] === 'bestEffort') continue   // 升级轴自己的成本不算「基础」
+      const c = axisWindowCostOf(axes[j])
+      fixedCost.review += c.review * wins[j]
+      fixedCost.energy += c.energy * wins[j]
+      fixedCost.decibel += c.decibel * wins[j]
+    }
+    const surplusReview = res.goodReview === undefined ? undefined : res.goodReview - fixedCost.review
+    const surplusEnergy = sumSlots(res.energyBySlot) - fixedCost.energy
+    const surplusDecibel = sumSlots(res.decibelBySlot) - fixedCost.decibel
+    const u = Math.max(0, Math.min(
+      Math.min(baseWindows, remaining),
+      swapBy(dReview, surplusReview),
+      swapBy(dEnergy, surplusEnergy),
+      swapBy(dDecibel, surplusDecibel),
+    ))
+    if (!Number.isFinite(u) || u <= 0) continue
+    const take = Math.min(u, remaining)
+    wins[i] += take; remaining -= take
+    // 换出来的窗从基础轴扣（基础轴在阶段④还会吃「剩余」，不必在此预扣）
+    wins[base.idx] = Math.max(0, wins[base.idx] - take)
+    remaining += take   // 扣回基础轴 ⇒ 那些窗重新可分配（给升级轴后 remaining 不变）
+    remaining -= take
   }
   // ④ 兜底：末条 fallback 吃剩余（前面的 fallback 得 0）
   const fallbackIdx = kinds.lastIndexOf('fallback')

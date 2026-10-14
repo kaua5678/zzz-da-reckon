@@ -61,30 +61,37 @@ describe('allocateAxisWindows', () => {
     // 与类型注释「多条轴时按顺序分配，末条兜底」一致（旧实现与文档自相矛盾）
   })
 
-  it('⑧ 升级轴（bestEffort）按**资源**判定：够就给、不够就放过（T157 用户口径）', () => {
+  it('⑧ 升级轴（bestEffort）按**总量鸡兔同笼**判定（T158 用户口径修正 T157 的错）', () => {
     /**
-     * 用户 2026-10-14 把「谁先拿窗」讲成**通用优先级**：
-     * > 「不用局限于 2 条轴，把 2 条轴先后判定修改为**优先级判断**，这样就可以有**无限多的轴**。
-     * >    **末尾指定了一次所以最优先**，**升级轴说是尽量打，有资源就优先，没有就放过，所以优先级第二**。
-     * >    **第三就是兜底了**」
-     * ⇒ 本用例锁「优先级 + 资源」两件事：三段式、末尾恒占 1、升级轴看好评、兜底吃剩余。
+     * 用户 2026-10-14 修正（逐字）：
+     * > 「**≥120这个条件不对**。你**无法确定进入三大轴的时刻好评点如何**。这里你只能根据**好评总量**，
+     * >   比如三大轴比普通多用了 60 点好评，在**普通×3+收尾×1** 的基础上，若**富余 60 点好评**
+     * >   就可以把一个普通换成三大轴，**鸡兔同笼**的感觉。如果富余 120 点可以换 2 个，
+     * >   变成**三大×2+普通×1+收尾×1**。」
+     *
+     * ⚠ T157 的错：做成「**逐窗**检查当前余额够不够下一窗」——依赖**进入该窗的时刻余额**，
+     * 而那是不可预知的（前置动作的转大/回能随时在变）。正解 = 先按**完整基础形态**算总成本
+     * （普通×3 + 收尾×1），再看总量富余能换几个。
      */
-    // 5火10大 的形态：循环(兜底, 每窗 60 好评) / 双转大(尽量打, 每窗 120) / 末尾(收尾, 每窗 150)
+    // 5火10大 形态：循环(兜底, 60/窗) / 双转大(升级, 120/窗) / 末尾(收尾, 150/窗)
     const axes = [
       { kind: 'fallback' as const, actions: [{ promoteVariant: '60', count: 1 }] },
       { kind: 'bestEffort' as const, actions: [{ promoteVariant: '60', count: 2 }] },
       { kind: 'tail' as const, actions: [{ promoteVariant: '60', count: 1 }, { promoteVariant: '90', count: 1 }] },
     ]
-    // 好评不足 ⇒ 升级轴放过、兜底吃剩余（[3,0,1] = 普通3 + 收尾1）
-    expect(allocateAxisWindows(axes, 4, { goodReview: 0 })).toEqual([3, 0, 1])
-    expect(allocateAxisWindows(axes, 4, { goodReview: 60 })).toEqual([3, 0, 1])
-    // 好评够（≥120）⇒ 升级轴拿到 1 窗 ⇒ **[2,1,1]** = 用户描述的「普通×2 + 三大×1 + 收尾×1」
-    expect(allocateAxisWindows(axes, 4, { goodReview: 150 })).toEqual([2, 1, 1])
-    expect(allocateAxisWindows(axes, 4, { goodReview: 900 })).toEqual([2, 1, 1])
+    const at = (goodReview: number) => allocateAxisWindows(axes, 4, { goodReview })
+    // 基础形态成本 = 普通 3×60 + 收尾 1×150 = 330；换一个三大要多 60（120−60）
+    expect(at(0), '富余为负 ⇒ 全普通').toEqual([3, 0, 1])
+    expect(at(330), '恰好够基础 ⇒ 全普通（收尾成本必须算进基础）').toEqual([3, 0, 1])
+    expect(at(389), '富余 59 < 60 ⇒ 换不动').toEqual([3, 0, 1])
+    expect(at(390), '富余 60 ⇒ 换 1 个').toEqual([2, 1, 1])
+    expect(at(450), '富余 120 ⇒ 换 2 个').toEqual([1, 2, 1])
+    expect(at(510), '富余 180 ⇒ 换 3 个（普通清零）').toEqual([0, 3, 1])
+    expect(at(9999), '富余再多也只换 3 个（基础窗数上限）').toEqual([0, 3, 1])
+    // 末尾优先不受资源影响
+    expect(allocateAxisWindows(axes, 1, { goodReview: 0 })).toEqual([0, 0, 1])
     // 不传资源 ⇒ 退回旧语义（纯按剩余窗数：有富余就给 1）——保证既有调用方逐位不变
     expect(allocateAxisWindows(axes, 4)).toEqual([2, 1, 1])
-    // 末尾优先不受资源影响：好评 0 也照占 1 窗
-    expect(allocateAxisWindows(axes, 1, { goodReview: 0 })).toEqual([0, 0, 1])
   })
 
   it('⑥ 反空洞：Σ 分配恒等于失衡次数（每个窗口都必须有归属轴）', () => {
