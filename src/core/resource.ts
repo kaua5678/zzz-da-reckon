@@ -30,6 +30,8 @@ import { runTailPipeline as runTailPipelinePure, type TailPipelineContext } from
 // 截断重折环（债 2 批 2-1）已外提 `./resource/truncationRefold.ts`（CC-5d，2026-09-25，零行为搬迁）：
 // `runTruncationRefold(ctx, init)` 逐字搬走原闭包；「从 S2 入口重跑到装配」三步经 `rerun` 回调注入
 // （回调内写回外层 `states` / `diag`，本文件只负责调用与结果写回）。
+// @fact engine:截断重折环/进环判据 口径: 进环判据 = **旧口径（Σcut > 1s 容差）∪ 有整次动作被砍**（`countBefore − countAfter ≥ 1`）；**不得**放宽为「有任意 cut」——整数装包的小数残渣（`countBefore 8.25→8.0`，`cutSeconds < 0.05`）不是「打不出来的招式」（0.25 次本就不可执行），拿它进环会把无动作损失的队拖进重折、落点漂移（实测 `auto-1051-1141-1451` slack 2.3→2.2）。旧口径单独用会漏掉 `0 < Σcut ≤ 1s` 却真砍了整次动作的槽（实测 `auto-1591-1481-1211`@弹刀20 `Σcut 0.933s` = 强特 10→9、`yidhari-trigger-lucia`@弹刀60 `0.950s` = 强特 11→10，都因 ≤1 从未进环 ⇒ 账本按未砍次数计 ⇒ 账本收入超保住行 Σ，全库 7 槽、最大 +133.98）——用户口径「超时砍掉任何招式都该让其计数和各项数据扣除」**不分秒数大小** | 据 用户@2026-10-13「超时砍掉任何招式都该让其计数和各项数据扣除，因为你根本就打不出这招」·实测@2026-10-14 T151（三版判据鉴别力对照 + 全库 93 队 A/B） | 验 src/core/__tests__/truncationCountDeduction.test.ts + src/core/__tests__/truncationRefold.test.ts | 锚 src/core/resource/truncationRefold.ts#runTruncationRefold | 信 确认
+// ⟳复核: 进环判据 / 容差 / `keptBySlot` 口径再动时，复核「全库有截断的槽：账本收入 ≤ 保住行 Σ（既有整数化残差豁免外）」+「无截断队逐位不变」（`.zc/perf/T151income.perf.ts` + timeFillRatchet） | 到期 2027-03-31
 import { runTruncationRefold } from './resource/truncationRefold'
 
 // ============ 单角色能量计算 ============
