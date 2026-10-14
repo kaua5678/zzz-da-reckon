@@ -504,7 +504,20 @@ describe('夜D · 层③ 真管线端到端', () => {
     // ③ 确认有意：用户 2026-10-11 裁决「补齐应该是在 off 的基础上去补招式…一定大于非补齐」，
     //    本队 ON 64.287M ≥ OFF 63.906M（单调性成立，见 `topUpMonotonic.test.ts`）。
     // ④ 本锚更新；「模块写入 → 结果 cfg 可见」这层语义未变（parry=1 仍是模块写入并被 cfg 读到）。
-    expect(await readBanyueCfg(1, 0, true)).toEqual({ parry: 1, dual: 0, requiredSeconds: 2.333, illegal: false })
+    /**
+     * ⚠ **T156 归因（parry 1 → 0，规则 10 四步）**：
+     * ① 量 delta：本档（`stunPlanOff` + 保底4喧响）般岳补齐量 `parry 1 → 0`，伤害 63.9 → 62.97M。
+     * ② 根因：**不是补齐通道变了，而是该队现在真的走轴模式了**。修前 `resolveWindowSplit` 在
+     *    `stunCount = 0`（外层首轮中间值）时返回**空数组**，而 `resolveStunAxisPlan` 仍把
+     *    `plan.name` 当命中返回 ⇒ 上层拿到「有名无轴」⇒ `axisActive = false` ⇒ **静默非轴**
+     *    （该档的 parry=1 就是这个非轴态下的读数）。T156 修了空数组（base 轴 ×0 兜底）⇒
+     *    轴形态成立 ⇒ 本队轴**真的参与**计算 ⇒ 补齐量按轴内时间面重算 = 0。
+     * ③ 确认有意：用户口径 2026-10-14「轴预设…有收尾轴那意思是最后打收尾轴」+「加标签吧，
+     *    不要隐藏逻辑」——「命中预设轴却静默不生效」正是要消除的隐藏行为。
+     * ④ 本锚按新口径更新：**轴态下**补齐量 0（轴内已覆盖般岳的必做需求，无需再补交互）。
+     * ⚠ 该档同时在 `guaranteeNightD` 的「轴退化」用例里另有覆盖（轴装不下 ⇒ axisFallback=true）。
+     */
+    expect(await readBanyueCfg(1, 0, true)).toEqual({ parry: 0, dual: 0, requiredSeconds: 0, illegal: false })
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 5 不是恒写）', async () => {

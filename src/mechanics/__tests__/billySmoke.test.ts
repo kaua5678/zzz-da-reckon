@@ -204,8 +204,22 @@ describe('星徽·比利全管线冒烟（1531）', () => {
       { agentId: '1451' },
     ])
     const preset = JSON.parse(biliLiuAxisText)
-    expect(preset.axes[0].count).toBe(3) // 常规轴 ×3
-    expect(preset.axes[1].count).toBe(1) // 喧响不够双连携 ×1
+    /**
+     * ⚠ **T155 改判据：从钉 count 字面量改为钉「轴类型 + 分配语义」**（用户口径 2026-10-14）。
+     *
+     * 原断言 `axes[0].count === 3` 钉的是**编辑期的手填数字**，而那个数不成立：
+     * 「常规轴」是**兜底轴**（用户口径「只有一个爆发轴说明这个就是兜底轴」+
+     * 「显示 4 次要不用，**失衡次数不确定**」⇒ 不该写死 3）。文字改动落地为
+     * `kind: 'fallback'` ⇒ 次数由分配算法按当轮失衡次数给出。
+     * `axes[1].count === 1`（「喧响不够双连携」= 显式固定 1 次）**保留为 fixed**。
+     *
+     * 语义等价性：失衡 4 次时新分配 = `[3, 1]`（兜底 3 + 固定 1），与原断言
+     * 「轴1×3 + 轴2×1」**逐位相同**；失衡 3/5 时兜底轴跟着变（旧实现在 5 次时
+     * 仍只打 3 次 = 白丢 2 个失衡窗）。
+     */
+    expect(preset.axes[0].kind).toBe('fallback') // 常规轴 = 兜底（吃剩余）
+    expect(preset.axes[0].count).toBeUndefined() // 兜底轴不写死次数
+    expect(preset.axes[1].count).toBe(1) // 喧响不够双连携 ×1（显式固定）
     config.useStunAxis = true
     config.stunAxes.splice(0, config.stunAxes.length, ...preset.axes)
 

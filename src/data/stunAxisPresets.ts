@@ -154,8 +154,22 @@ function resolveWindowSplit(
   const upgradeCount = delta > 0 ? Math.max(0, Math.min(n, Math.floor(extra / delta))) : 0
   const baseCount = n - upgradeCount
   const axes: StunAxis[] = []
+  // ⚠ **`fixed` 轴必须带 `count`**（T155 四阶段分配只认 fixed 的 count）；这里刻意不写 kind，
+  // 让 `axisKindOf` 按 `count ≥ 1 ⇒ fixed` 推断 —— 与 T155 之前逐位一致。
   if (upgradeCount > 0) axes.push({ ...cloneStunAxes([split.upgradeAxis])[0], count: upgradeCount })
   if (baseCount > 0) axes.push({ ...cloneStunAxes([split.baseAxis])[0], count: baseCount })
+  /**
+   * ⚠ **`n === 0` 时不能返回空数组**（T156 修）。`stunCount` 是**外层不动点的中间值**，
+   * 首轮常为 0（失衡还没收敛出来）；此时 `upgradeCount = baseCount = 0` ⇒ 两个 `if` 都不进
+   * ⇒ 返回 `[]`，而调用方 `resolveStunAxisPlan` **已经把 `plan.name` 当命中方案返回了**
+   * ⇒ 上层拿到「有名无轴」：`matchedPlanName` 有值但 `resolvedAxes.length === 0` ⇒
+   * `axisActive` 为假 ⇒ **整队静默退化成非轴**，而 UI 仍显示「已命中预设轴」。
+   * 实测（般岳+琉音+卢西娅，自动命中 `般琉通用`）：`matchedPlanName=般琉通用·好评溢出爆发轴`
+   * 但 `effectiveStunAxes=0 / stackTraversalResult=null`，Σ必要时间 202.7s 超预算。
+   * 兜底 = 给 base 轴 0 次（保留轴对象 ⇒ `resolvedAxes.length > 0` 成立、轴形态照旧可判，
+   * 只是这一轮不占窗；下一轮 `stunCount` 收敛上来后自然有值）。
+   */
+  if (axes.length === 0) axes.push({ ...cloneStunAxes([split.baseAxis])[0], count: 0 })
   return axes
 }
 

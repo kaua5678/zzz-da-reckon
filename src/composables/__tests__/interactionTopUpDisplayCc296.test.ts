@@ -11,7 +11,16 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 
 async function run(ultimate: number) {
   const { config } = await setupHarness([{ agentId: '1471' }, { agentId: '1481' }, { agentId: '1211' }] as any)
+  /**
+   * ⚠ **T156：`useStunAxis = false` 不足以得到非轴态**——本队含般岳+琉音，会命中轴预设
+   * ⇒ `autoActive === true` ⇒ `axisActive = (useStunAxis || autoActive) && …` 仍为真。
+   * 修前本用例绿，是因为 `resolveWindowSplit` 在 `stunCount = 0` 时返回**空数组**（T156 修的 bug）
+   * ⇒ `resolvedAxes.length === 0` ⇒ 碰巧非轴。现在显式关掉自动轴（真非轴态）。
+   */
+  config.autoYidhariAxis = false
   config.useStunAxis = false
+  config.stunAxes.splice(0, config.stunAxes.length)
+  config.stunAxisPlans.splice(0, config.stunAxisPlans.length)
   config.setMechanicSetting('guarantee.ultimate', ultimate)
   const calc = useResourceCalc()
   const banyue = calc.resourceResult.value!.characters.find(c => c.agentId === '1471')!

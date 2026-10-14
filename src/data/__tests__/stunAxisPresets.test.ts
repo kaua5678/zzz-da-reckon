@@ -55,6 +55,37 @@ describe('stunAxisPresets', () => {
     expect(plans[0].axes[0].name).toBe('双转大')
   })
 
+  it('★ T156：split 在 stunCount=0 时不得返回空轴（否则「命中预设」却静默非轴）', () => {
+    /**
+     * 病灶（T156 修）：`resolveWindowSplit` 里 `upgradeCount = baseCount = 0`（n=0）时两个 `if`
+     * 都不进 ⇒ 返回 `[]`；而 `resolveStunAxisPlan` **已经把 `plan.name` 当命中方案返回了**
+     * ⇒ 上层拿到「有名无轴」：`matchedPlanName` 有值、`resolvedAxes.length === 0`
+     * ⇒ `axisActive = false` ⇒ **整队静默退化成非轴**，UI 仍显示「已命中预设轴」。
+     *
+     * `stunCount` 是外层不动点的**中间值**，首轮常为 0 ⇒ 这条路径每支用 split 的队都会踩。
+     * 实测（般岳+琉音+卢西娅，自动命中 `般琉通用`）：`effectiveStunAxes=0 / stackTraversalResult=null`。
+     */
+    const split = {
+      algorithm: 'goodReviewOverflow' as const,
+      baseAxis: { name: '常规', actions: [] },
+      upgradeAxis: { name: '末尾爆发', actions: [] },
+    }
+    const plans = [{ name: '好评溢出', split }]
+    for (const stunCount of [0, 1, 2, 4]) {
+      for (const goodReview of [-1, 0, 300, 900]) {
+        const r = resolveStunAxisPlan(plans, { stunCount, goodReview })
+        expect(r, `stun=${stunCount} review=${goodReview}`).not.toBeNull()
+        // 反空洞：命中方案就必须给出**至少一条**轴（空数组 = 有名无轴）
+        expect(r!.axes.length, `stun=${stunCount} review=${goodReview} 命中「${r!.plan.name}」却零轴`).toBeGreaterThanOrEqual(1)
+      }
+    }
+    // 且轴的总窗数必须等于失衡次数（0 次时那条兜底轴 count=0，形态仍在）
+    const zero = resolveStunAxisPlan(plans, { stunCount: 0, goodReview: 0 })!
+    expect(zero.axes[0].count).toBe(0)
+    const four = resolveStunAxisPlan(plans, { stunCount: 4, goodReview: 0 })!
+    expect(four.axes.reduce((a, x) => a + (x.count ?? 0), 0)).toBe(4)
+  })
+
   it('resolveStunAxisPlan supports energy threshold (能量足够→3E / 不足→2E)', () => {
     const plans = [
       { name: '单连携+3E', when: { energyMin: 450, energySlot: 0 }, axes: [{ name: '3E', actions: [] }] },

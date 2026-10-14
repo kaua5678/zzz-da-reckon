@@ -37,7 +37,12 @@ export interface StackActionCost {
 export interface StackAxisInput {
   /** 优先级栈，数组顺序 = 优先级从高到低 */
   actions: StackActionCost[]
-  /** 该轴打几次失衡窗口；缺省 = 兜底（吃掉所有剩余窗口） */
+  /**
+   * 轴类型（T155）：`tail` 末尾优先占 1 窗 / `bestEffort` 有富余给 1 / `fallback` 末条吃剩余 /
+   * `fixed` 按 `count`。缺省按 `count` 推断（见 `axisKindOf`）。
+   */
+  kind?: StunAxisKind
+  /** 该轴打几次失衡窗口。**只在 `kind === 'fixed'` 时有语义**（其余类型的窗数由分配算法决定）。 */
   count?: number
   /** 该轴的兜底平A角色槽位：资源不足时剩余窗口时间由该角色打平A填充；缺省不填充 */
   basicFillerSlot?: number

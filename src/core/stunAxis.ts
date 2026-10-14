@@ -17,7 +17,7 @@
  */
 
 import type { StunAxis, StunAxisResult } from '@/types/resource'
-import { allocateAxisWindows } from './stunAxisStack'
+import { allocateAxisWindows, axisKindOf } from './stunAxisStack'
 import { fmt } from '@/utils/format'
 
 /** 全局资源池：`${slot}:${moveId}` → 全局可用次数/秒（basic='basic'→秒，其他→次数） */
@@ -64,10 +64,13 @@ export function calcStunAxis(input: CalcStunAxisInput): StunAxisResult {
   const consumed: Record<string, number> = {}
   let totalInAxisStun = 0
 
-  // 窗口分配与栈引擎同口径：count 有值 = 精确次数，缺省 = 兜底吃剩余
+  // 窗口分配与栈引擎同口径（T155 起按轴类型四阶段分配，见 `stunAxisStack#allocateAxisWindows`）
   const winAlloc = allocateAxisWindows(axes, stunCount)
   const totalAxisRounds = winAlloc.reduce((a, b) => a + b, 0)
-  const exactRoundsRequested = axes.reduce((sum, a) => sum + (a.count ?? 0), 0)
+  // 「固定轮数合计」只数 **fixed 轴**的 count：T155 之前这里无条件求和 `a.count`，
+  // 而类型化后 `count` 只在 fixed 轴上有语义（tail/bestEffort/fallback 的次数由分配算法决定）
+  // ⇒ 残留的 count 字段会造成**假告警**（如 `5火10大` 的末尾轴 count:1 只是历史编辑痕迹）。
+  const exactRoundsRequested = axes.reduce((sum, a) => sum + (axisKindOf(a) === 'fixed' ? (a.count ?? 0) : 0), 0)
   if (exactRoundsRequested > stunCount) {
     globalWarnings.push(`轴固定轮数合计 ${exactRoundsRequested} 超过失衡次数 ${stunCount}（尾部轴窗口被截断）`)
   }

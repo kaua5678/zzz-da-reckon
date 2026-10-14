@@ -35,9 +35,25 @@ function isolate(config: Awaited<ReturnType<typeof setupHarness>>['config']) {
   for (const b of config.globalBuffs) b.enabled = false
 }
 
-async function calcOf(team: Parameters<typeof setupHarness>[0]) {
+async function calcOf(team: Parameters<typeof setupHarness>[0], opts: { forceNoAxis?: boolean } = {}) {
   const { config } = await setupHarness(team)
   isolate(config)
+  /**
+   * ⚠ **T156：非轴臂必须显式关掉自动轴**（原来靠「恰好没轴」，已被证明是错的）。
+   *
+   * 队 `[1471,1481,1451]` **命中三个轴预设**（`般琉通用` plans/split、`5火10大`、`轴1`）
+   * ⇒ `autoActive === true` ⇒ 引擎走轴模式。而本文件的「非轴」用例（跳① 般岳明王 / 可琳扫除帮手）
+   * 断言的是**非轴折算臂**的 note。
+   * 修前它们绿，是因为 `resolveWindowSplit` 在 `stunCount = 0` 时返回**空数组**（T156 修的 bug）
+   * ⇒ `resolvedAxes.length === 0` ⇒ 碰巧退化成非轴。
+   * ⇒ 现在显式关闭：`autoYidhariAxis = false`（关掉自动轴总开关）+ 清空手动轴 ⇒ 真非轴态。
+   */
+  if (opts.forceNoAxis) {
+    config.autoYidhariAxis = false
+    config.useStunAxis = false
+    config.stunAxes.splice(0, config.stunAxes.length)
+    config.stunAxisPlans.splice(0, config.stunAxisPlans.length)
+  }
   const calc = useResourceCalc()
   await new Promise(r => setTimeout(r, 60))
   return { calc, config }
@@ -151,12 +167,13 @@ describe('R15-b 跳③：希格莉德浸染（与轴模式无关的标量臂）'
 // ── 跳①：真管线（含门控 + 跨槽泄漏反锁） ────────────────────────────────────────
 describe('R15-b 跳①：般岳非轴折算进伤害池（精确 note + 滑块端点）', () => {
   it('非6命非轴：默认 0.5 → note 精确「明王+7.5%（覆盖率近似）」；滑块 1 → 15.0；0 → 标记消失', async () => {
-    // 队 [1471, 1481, 1451]：1481 支援 ⇒ 般岳额外能力触发；无轴预设 ⇒ 非轴
+    // 队 [1471, 1481, 1451]：1481 支援 ⇒ 般岳额外能力触发。
+    // ⚠ 该队**命中轴预设**（般琉通用/5火10大/轴1）⇒ 必须显式关自动轴才是非轴态（见 calcOf 注释）。
     const { calc, config } = await calcOf([
       { agentId: '1471', cinemaLevel: 0 },
       { agentId: '1481', cinemaLevel: 0 },
       { agentId: '1451', cinemaLevel: 0 },
-    ])
+    ], { forceNoAxis: true })
     // 取一个有明王标注的行（轴外非 1471 的行必须没有）
     const marked = () => calc.damagePoolRows.value.filter(r => (r.note ?? '').includes('明王+'))
     expect(marked().length).toBeGreaterThan(0)

@@ -22,6 +22,7 @@ import type { StunSkillExecution } from '@/core/stunPool'
 import type { StunAxis, ResourceCalcConfig, TeamResourceResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { ExecutedMoveCount, StackActionCost, StackAxisInput, StackSequenceEntry } from '@/core/stunAxisStack'
+import { axisKindOf } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
@@ -311,7 +312,15 @@ export function createConvergenceRoundInputs(deps: {
         })
       }
       return {
-        actions: axisActions, count: axis.count, basicFillerSlot: axis.basicFillerSlot,
+        actions: axisActions,
+        // ⚠ `count` **只在 `fixed` 轴上有语义**（T155 四阶段分配：tail 恒 1 窗 / bestEffort 0-1 窗 /
+        // fallback 吃剩余）。非 fixed 轴上传 `count` 会让栈内部的 `allocateAxisWindows` 把它当精确次数
+        // ⇒ **覆盖掉外层已经算好的分配**（实测 `比琉通用` 轴0 残留 `count:3` + kind=fallback：
+        // 外层 winAlloc=[2,1] 正确，但栈按 3 执行 ⇒ 失衡 3 次却打 3 窗、伤害 24.99M vs 24.59M）。
+        // 故这里按 kind 过滤：只有 fixed 传递次数，其余传 undefined（= 让栈按同一套规则自行分配）。
+        count: axisKindOf(axis) === 'fixed' ? axis.count : undefined,
+        kind: axisKindOf(axis),
+        basicFillerSlot: axis.basicFillerSlot,
         // 进轴残痕值（点数）：栈引擎只透传，消费方 = 克拉蕾模块的轴内时序推演
         entryGash: Math.max(0, Number(axis.entryGash ?? 0)),
       }
