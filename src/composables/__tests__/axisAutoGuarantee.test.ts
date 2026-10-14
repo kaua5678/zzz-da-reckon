@@ -64,6 +64,12 @@ describe('轴模式 ⇒ 自动保底（嗔火 / 喧响）', () => {
     const axisRows = calc.effectiveStunAxes.value.length
     expect(axisRows, '本用例前提：轴态生效（轴真的注入计算）').toBeGreaterThan(0)
     const withAxis = topUpOf(calc)
+    /**
+     * ⚠ **T162 复核（原判据保留）**：本夹具点（吸收 0.6 + 金身 2 / 双反 1）的缺口是**嗔火缺口**
+     * （要 4 怒相），秽盾那 +60 闪能 = +30 嗔火对它杯水车薪 ⇒ 两种盾下都补 12 次双反
+     * （实测 `.zc/perf/T162topup.perf.ts`：秽盾 0/1 均 `{parry:0, dual:12}`）。
+     * ⇒ 原断言「轴态 ⇒ 补齐 > 0」**仍然成立且仍有判别力**，无需重标定。
+     */
     expect(withAxis.parry + withAxis.dual, '轴态：保底开关全关也应有补齐（视同勾选）').toBeGreaterThan(0)
 
     // ③ store 未被写（只做本轮读数的视同勾选）

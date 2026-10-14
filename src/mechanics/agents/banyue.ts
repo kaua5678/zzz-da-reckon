@@ -93,6 +93,11 @@ const RAGE_SWAY = 4 // 怒相进入 +4 山威
 const SWAY_REFUND = 10 // 山威强特回 10 闪能
 const FLASH_REGEN_PER_SEC = 2 // 闪能秒回 2/s（整场战斗）
 const FLASH_ENTRY = 60 // 进场 60 闪能
+/**
+ * 秽盾破后赠送单价 = 60 —— **单一事实源在 `core/resource/resourceIncome.ts#SHIELD_BREAK_GIFT`**，
+ * 由派发器算好后经 `AgentTeamConfigInput.shieldFlashGift` 传入（模块层不 import 编排层，判据 19）。
+ * 修前的缺陷形态正是「闪能池按 60 计、嗔火公式看不见」两处口径分叉。
+ */
 const EX_COST = 20 // 论道/地动 20 闪能
 const COMBO_COST = 60 // 连段（论道20 + 狮子吼·怒40）
 const RAGE_BUFF_SHEER = 300 // Lv.7 贯穿力
@@ -195,6 +200,10 @@ export function computeBanyueInteractionTopUp(opts: InteractionTopUpInput): Inte
     opts.axisEx['banyue-combo-didong'] ?? 0,
     0,
     true,
+    // ⚠ **秽盾闪能必须传**（T162 修）：漏传 ⇒ 这里按**无盾**口径算出一个**幻影嗔火缺口**
+    // ⇒ `dual` 补了本不需要的双反（`computeBanyueRageCycle` 的 flashBase 少 60）。
+    // 实测（`banyue-trigger-lucia` r=0.6 金身12/双反3 秽盾=1）：管线补 2 次弹刀 / 纯函数同参补 0 次。
+    Math.max(0, opts.shieldFlashGift ?? 0),
   )
   const furyShort = Math.max(0, (rageNeeded - cycle.rageCount) * FURY_ENTER)
   const dual = Math.ceil(furyShort / FURY_DUAL)
@@ -225,6 +234,20 @@ export function computeBanyueRageCycle(
   rageDiDongCombo = 0,
   tauntCancelCount = 0,
   axisActive = false,
+  /**
+   * **秽盾破后送的闪能**（点；缺省 0 = 该 Boss 不送盾）。
+   *
+   * 用户口径 2026-10-14（逐字）：
+   * > 「游戏里**秽息司祭、彷徨猎手**这种**送一次秽盾**的**可以达成 5 嗔火**，
+   * >   **没有秽盾送的 60 闪能，就达不到 5 嗔火**的标准。所以这俩 boss 的上限轴是
+   * >   **5嗔火10大**，其他 boss 要么 **4嗔火9大**，要么 **4嗔火10大**。」
+   *
+   * ⚠ 修前 `flashBase` **写死** `2/s × battleTime + 60`（秒回 + 进场），**漏掉秽盾那 60 点** ——
+   * 而引擎早已算出它（`core/resource/resourceIncome.ts:105` `shieldBreakGift = shieldCount × 60`）。
+   * 实测（`.zc/perf/T162shield.perf.ts`）：秽盾 0/1/2 ⇒ 嗔火**恒 409**（60 点进了闪能池、
+   * 多打了连段，却**没进嗔火**）⇒ 「有盾才够 5 嗔火」这条口径在引擎里表达不出来。
+   */
+  shieldFlashGift = 0,
 ): BanyueRageCycle {
   const dodge = Math.max(0, Math.floor(dodgeCount))
   const parry = Math.max(0, Math.floor(parryCount))
@@ -235,7 +258,8 @@ export function computeBanyueRageCycle(
   const axisCombo = Math.max(0, Math.floor(axisComboCount))
   const c2 = cinemaLevel >= 2
   const swayRefundPerRage = RAGE_SWAY * (SWAY_REFUND + (c2 ? C2_SWAY_REFUND_BONUS : 0))
-  const flashBase = FLASH_REGEN_PER_SEC * battleTime + FLASH_ENTRY
+  // 闪能总收入 = 秒回 × 战斗时间 + 进场 + **秽盾破后赠送**（用户 2026-10-14：有盾才够 5 嗔火）
+  const flashBase = FLASH_REGEN_PER_SEC * battleTime + FLASH_ENTRY + Math.max(0, shieldFlashGift)
   // 怒相内连段固定 2 组（山威免费，4 山威/怒相 = 2 组，明王触发源）；组数可按轴内捏的
   // banyue-combo-didong 块拆成「地动→山摇·怒」，其余打「论道→狮子吼·怒」；
   // 怒相外连段自动打满 = floor(剩余闪能/60)，由 diDongCombo 滑块拆分「地动→山摇·怒」vs「论道→狮子吼·怒」。
@@ -440,10 +464,12 @@ function banyueAutoTopUpEnabled(
     && settingOf(settings, 'banyue.autoTopUpInteractions') !== 0
 }
 
-function applyBanyueTeamConfig({ slot, cfg, phase, axis, guarantee, settings, threads }: AgentTeamConfigInput): void {
+function applyBanyueTeamConfig({ slot, cfg, phase, axis, guarantee, settings, threads, shieldFlashGift }: AgentTeamConfigInput): void {
   if (phase !== 'converge' || !axis || !guarantee) return
   cfg.banyueAxisEx = axis.actionCountsBySlot[slot] ?? {}
   cfg.banyueAxisActive = axis.active
+  // 秽盾闪能：三个相位都要写（`computeBanyueCycleFromCfg` 在 build/converge/postRound 都跑）
+  cfg.banyueShieldFlashGift = Math.max(0, shieldFlashGift ?? cfg.banyueShieldFlashGift ?? 0)
   // 轴模式自动补齐（保底）：轴模式之外，保底开关也可独立驱动（非轴亦生效）；设置可整体关闭。
   const autoTopUp = banyueAutoTopUpEnabled(axis.active, guarantee, settings)
   const topUp = autoTopUp ? (threads?.interactionTopUp ?? { parry: 0, dual: 0 }) : { parry: 0, dual: 0 }
@@ -748,7 +774,7 @@ function axisExSpendOf(counts: Record<string, number>): number {
  * 资源池迭代/能量计算共用入口：从 cfg 读取全部输入（触发次数/滑块/轴内强特/命座）并跑嗔火固定点。
  * core/resource 用同一口径计算般岳的强特总数与山威回闪能，避免「闪能/20」通用路径把免费强特算错。
  */
-export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg']): BanyueRageCycle {
+export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg'], shieldFlashGift = 0): BanyueRageCycle {
   const axisEx = readAxisExCounts(cfg)
   return computeBanyueRageCycle(
     cfg.dodgeCounterCount,
@@ -766,6 +792,8 @@ export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg']): Ban
     Math.max(0, Math.floor(cfg.tauntCancelCount)),
     // 轴模式：失衡内 = 轴内实际捏的连段块，失衡外 = 全部连段 − 轴内捏块（后摇按轴外单位数计）
     !!cfg.banyueAxisActive,
+    // 秽盾破后送的闪能：派发器按 `enemy.shieldCount × SHIELD_BREAK_GIFT` 写好（模块不读 configStore）
+    Math.max(0, shieldFlashGift || cfg.banyueShieldFlashGift || 0),
   )
 }
 
@@ -1091,6 +1119,11 @@ declare module '@/types/resource/config' {
     banyueMoveDmg?: Record<string, number>
     /** 般岳失衡轴内捏的强特/连段块次数（useResourceCalc 注入，moveId → 总次数；先扣闪能，剩余自动补连段） */
     banyueAxisEx?: Record<string, number>
+    /**
+     * 秽盾破后送的闪能（点；派发器按 `enemy.shieldCount × SHIELD_BREAK_GIFT` 算好，三个相位都写）。
+     * 用户 2026-10-14：「有秽盾送的 60 闪能才够 5 嗔火」。
+     */
+    banyueShieldFlashGift?: number
   }
 }
 

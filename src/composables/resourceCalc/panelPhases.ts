@@ -54,6 +54,7 @@ import { statSettlementMode } from '@/utils/statMeta'
 import { resolvePhaseBuffValue, teamSpecialtiesOf } from '@/utils/phaseBuff'
 import { getTeamAnomalyDurationBonus, findWindSlot } from './anomalyPanels'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
+import { SHIELD_BREAK_GIFT } from '@/core/resource/resourceIncome'
 
 export function buildMechanicTeamMembers(
   configStore: ConfigModel,
@@ -135,6 +136,12 @@ export function applyTeamMechanics(params: {
   phase: AgentTeamPhase
 } & AgentTeamRoundInput): void {
   const { characters, configStore, catalogStore, phase, combatTime } = params
+  /**
+   * 秽盾破后送的闪能/能量（点）：单价 60 **单一事实源**在 `core/resource/resourceIncome.ts`
+   * （`shieldBreakGift = shieldCount * 60`），这里只做同一份乘法的透传（规则 11）。
+   * 用户 2026-10-14：「有秽盾送的 60 闪能才够 5 嗔火」。
+   */
+  const shieldFlashGift = Math.max(0, configStore.enemy.shieldCount) * SHIELD_BREAK_GIFT
   if (characters.length === 0) return
   const team = buildMechanicTeamMembers(configStore, catalogStore)
   const settings = resolveMechanicSettings(configStore)
@@ -197,6 +204,7 @@ export function applyTeamMechanics(params: {
       anomalyBuildupElementBySlot,
       phase,
       combatTime,
+      shieldFlashGift,
       exCounts,
       ultimateCounts,
       stunCount,
@@ -709,3 +717,4 @@ function mergeTeamDiscEffectCoverages(
     }
   }
 }
+

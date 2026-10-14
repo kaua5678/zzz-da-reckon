@@ -289,6 +289,20 @@ export interface AgentTeamConfigInput {
   phase: AgentTeamPhase
   /** 战斗时间（秒） */
   combatTime: number
+  /**
+   * **秽盾破后送的闪能/能量**（点 = `shieldCount × 60`；0 = 该 Boss 不送盾）。
+   *
+   * 用户口径 2026-10-14（逐字）：
+   * > 「游戏里**秽息司祭、彷徨猎手**这种**送一次秽盾**的可以**达成 5 嗔火**，
+   * >   **没有秽盾送的 60 闪能，就达不到 5 嗔火**的标准。所以这俩 boss 的上限轴是
+   * >   **5嗔火10大**，其他 boss 要么 **4嗔火9大**，要么 **4嗔火10大**。」
+   *
+   * 为什么必须显式传（而不是让模块自己读 `configStore`）：模块层不 import 编排层
+   * （判据 19），且般岳的嗔火公式原来自算一份写死的 `flashBase` ⇒ 与引擎真实的闪能池
+   * （`core/resource/resourceIncome.ts#shieldBreakGift`）分叉，实测「有盾/无盾嗔火恒等」。
+   * 单价 60 **单一事实源**在 `core/resource/resourceIncome.ts`，本字段只承载结果值。
+   */
+  shieldFlashGift?: number
   /** 各槽位强特次数（build 阶段全 0；converge/postRound 为对应轮次的收敛值） */
   exCounts: number[]
   /** 各槽位终结技次数（build/converge 阶段全 0；postRound 为上一轮收敛值，与 exCounts 同序） */
@@ -443,7 +457,7 @@ export interface AgentTeamConfigInput {
  */
 export type AgentTeamRoundInput = Pick<AgentTeamConfigInput, 'combatTime'> & Partial<Pick<AgentTeamConfigInput,
   | 'exCounts' | 'ultimateCounts' | 'stunCount' | 'countStun' | 'teamEnergyConsumed'
-  | 'threads' | 'axis' | 'interactions' | 'guarantee' | 'boss'>>
+  | 'threads' | 'axis' | 'interactions' | 'guarantee' | 'boss' | 'shieldFlashGift'>>
 /**
  * 模块「下一轮反馈」键值（CC-31，2026-09-27）：各模块 `nextRoundFeedback` 的返回值，编排层**整份**
  * 存进 `CalcRoundThreads.moduleFeedback`（不逐键拆字段），下一轮各模块从 `threads.moduleFeedback.<键>` 自取。

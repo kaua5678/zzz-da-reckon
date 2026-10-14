@@ -352,6 +352,15 @@ export interface InteractionTopUpInput {
   ultimateCost: number
   /** 当前喧响供给（般岳个人；终结技次数 = 个人喧响 / 终结技消耗，非全队总和） */
   decibelHave: number
+  /**
+   * **秽盾破后送的闪能**（点 = `shieldCount × SHIELD_BREAK_GIFT`）。
+   *
+   * ⚠ **必须与 `computeBanyueRageCycle` 的闪能口径同源**：般岳的嗔火缺口按
+   * `flashBase = 秒回×战斗时间 + 进场 + 秽盾` 算。补齐侧漏传 ⇒ 按**无盾**口径算出一个
+   * **幻影嗔火缺口** ⇒ 补本不需要的交互（T162 实测：管线补 2 次弹刀、纯函数同参补 0 次，
+   * 伤害 54.825M → 54.257M，打破 `topUpMonotonic`）。
+   */
+  shieldFlashGift?: number
   /** 单次补齐弹刀的原始动作时间（招架支援 + 支援突击，秒）；缺省 0 = 不做时间合法性判定 */
   perParrySeconds?: number
   /**

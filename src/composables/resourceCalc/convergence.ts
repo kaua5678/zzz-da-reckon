@@ -67,6 +67,7 @@ import { computeTeamVeilCountTotal } from '@/mechanics/teamVeil'
 
 import type { CalcRoundResult } from './roundResult'
 import { chainCountTotalOf } from '@/core/chainCount'
+import { SHIELD_BREAK_GIFT } from '@/core/resource/resourceIncome'
 
 /**
  * 单轮计算本体（#10 收线刀，2026-09-12 自 `useResourceCalc.ts` 整体搬入 1180 行）。
@@ -807,6 +808,8 @@ export function createRunCalcRound(deps: {
     // 该臂就不再等于「模块关闭」基线（实测：确实还差 0.151M）。
     if (interactionTopUpSlot >= 0 && !interruptTopUp) {
       const storeChar = configStore.team[interactionTopUpSlot]
+      // 秽盾破后送的闪能（与般岳嗔火公式 / 派发器同源；单价 60 单一事实源在 resourceIncome）
+      const shieldFlashGift = Math.max(0, configStore.enemy.shieldCount) * SHIELD_BREAK_GIFT
       const ultNeed = axisUltimateNeed(resolvedAxes, countStun, interactionTopUpSlot) // CC-142：计数通道
       // 喧响供给取般岳个人（终结技次数 = 个人喧响 / 终结技消耗，非全队总和；曾用全队总和导致
       // 队友喧响把缺口抹平 → 保底4喧响不补齐、般岳卡在 9000 出头打不满 4 大）
@@ -826,6 +829,15 @@ export function createRunCalcRound(deps: {
         ultimateCost: base.characters.find(c => c.slot === interactionTopUpSlot)?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
         decibelHave,
         battleTime: base.totalTime,
+        /**
+         * ⚠ **秽盾闪能必须传**（T162 修）：般岳的嗔火缺口按 `flashBase = 秒回×战斗时间 + 进场 + 秽盾`
+         * 算（见 `banyue.ts#computeBanyueRageCycle`）。漏传 ⇒ 补齐模块按**无盾**口径算出一个
+         * **幻影嗔火缺口** ⇒ 补了本不需要的交互。实测（`banyue-trigger-lucia` r=0.6 金身12/双反3
+         * 秽盾=1）：管线补 2 次弹刀（4.666s）⇒ 伤害 54.825M → **54.257M**，
+         * 而同一组入参直接调纯函数（盾=60）⇒ **parry=0**（缺口本不存在）。
+         * 单价 60 与派发器同源（`SHIELD_BREAK_GIFT`）。
+         */
+        shieldFlashGift,
         // 单次补齐弹刀的原始动作时间 = 招架支援 + 支援突击（未扣合轴）：
         // 用来判「这次补齐是不是根本打不出来」（>200s = 非法，见 banyue.ts#AUTO_TOPUP_TIME_LIMIT_SEC）
         // ⚠ 按身份查（同 :1119；压缩数组下 `base.characters[interactionTopUpSlot]` 在空槽时会取错对象）

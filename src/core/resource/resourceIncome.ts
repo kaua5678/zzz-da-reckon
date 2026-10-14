@@ -22,6 +22,16 @@ import {
 import { feasibleRows } from './rowBuild'
 import { finiteOr0 } from '@/utils/finiteClamp'
 
+/**
+ * 秽盾破后赠送（点/盾）：**命破（闪能）角色给闪能、其他给能量**。
+ * 用户 2026-10-14 口径挂在它上面：「有秽盾送的 **60 闪能**才够 5 嗔火」。
+ * ⚠ **单一事实源**：般岳的嗔火公式（`mechanics/agents/banyue.ts`）与派发器
+ * （`composables/resourceCalc/panelPhases.ts`）都引用本常量，不许各写一份字面量（规则 11）。
+ */
+export const SHIELD_BREAK_GIFT = 60
+/** 能量盾破后赠送（点/盾）：**只给能量，不给命破加闪能**（故与上者分开） */
+export const ENERGY_SHIELD_BREAK_GIFT = 30
+
 /** 计算单角色能量回复（单次迭代，基于当前时间分配） */
 export function calcEnergySource(
   cfg: CharacterOperationConfig,
@@ -102,8 +112,8 @@ export function calcEnergySource(
   for (const e of bonusEntries) bonusEnergyTotal += e.value
 
   const initialGift = cfg.initialEnergyGift
-  const shieldBreakGift = shieldCount * 60
-  const energyShieldBreakGift = cfg.isFlashUser ? 0 : energyShieldCount * 30
+  const shieldBreakGift = shieldCount * SHIELD_BREAK_GIFT
+  const energyShieldBreakGift = cfg.isFlashUser ? 0 : energyShieldCount * ENERGY_SHIELD_BREAK_GIFT
 
   // 不含连续强特返还（refund）的固定源能量 E0（唯一来源：加一项固定源就补进这里，防两处漂移）
   const e0 = preEfficiencyAuto + gainEfficiencyBonus

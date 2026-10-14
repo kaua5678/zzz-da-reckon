@@ -517,7 +517,19 @@ describe('夜D · 层③ 真管线端到端', () => {
      * ④ 本锚按新口径更新：**轴态下**补齐量 0（轴内已覆盖般岳的必做需求，无需再补交互）。
      * ⚠ 该档同时在 `guaranteeNightD` 的「轴退化」用例里另有覆盖（轴装不下 ⇒ axisFallback=true）。
      */
-    expect(await readBanyueCfg(1, 0, true)).toEqual({ parry: 0, dual: 0, requiredSeconds: 0, illegal: false })
+    /**
+     * ⚠ **T162 再归因（parry 0 → 2，规则 10 四步）**：
+     * ① 量 delta：本档般岳补齐量 `parry 0 → 2`（4.666s），伤害 62.859M（OFF 臂 63.337M）。
+     * ② 根因：**秽盾 60 闪能接入嗔火/闪能公式**（`banyue.ts#computeBanyueRageCycle` 的
+     *    `flashBase` 原漏算 `shieldBreakGift`）。本夹具走 store 缺省 `shieldCount = 1`
+     *    ⇒ 闪能 +60 ⇒ 连段/资源面整体抬升 ⇒ 喧响缺口从 0 变 **309**（`4×3000 − 11691`）
+     *    ⇒ `ceil(309 / 301.35) = 2` 次弹刀。
+     * ③ 确认有意：用户 2026-10-14「**没有秽盾送的 60 闪能，就达不到 5 嗔火**的标准」——
+     *    有盾/无盾必须可分辨（修前实测嗔火**恒等**，该口径在引擎里表达不出来）。
+     * ④ 本锚按新口径更新；无盾档（`readBanyueCfg(1, 0, true)` 加 `shieldCount=0`）仍为 0
+     *    —— 由下方反证锁住。
+     */
+    expect(await readBanyueCfg(1, 0, true)).toEqual({ parry: 2, dual: 0, requiredSeconds: 4.666, illegal: false })
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 5 不是恒写）', async () => {

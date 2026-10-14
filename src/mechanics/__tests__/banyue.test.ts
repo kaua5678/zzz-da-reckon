@@ -285,8 +285,19 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     // 装配期截断 **43.21s → 0**（改动前是"必要行撑不下 → 按比例砍行"）。
     const lunDao = rows.filter(r => r.moveId === '1471015').map(r => r.count)
     const shiZiHouNu = rows.filter(r => r.moveId === '1471016').map(r => r.count)
-    expect(lunDao).toEqual([8, 9])
-    expect(shiZiHouNu).toEqual([8, 9])
+    /**
+     * ⚠ **T162 归因（怒相外连段 9 → 10，规则 10 四步）**：
+     * ① 量 delta：怒相外自动连段 9 → **10**（怒相内山威 8 不变）。
+     * ② 根因：**秽盾破后送的 60 闪能此前没进嗔火公式**。般岳的 `flashBase` 原写死
+     *    `2/s × battleTime + 60`（秒回 + 进场），漏掉 `shieldBreakGift`（引擎早已算出，
+     *    见 `core/resource/resourceIncome.ts#SHIELD_BREAK_GIFT`）⇒ 现按 `enemy.shieldCount`
+     *    一并计入（本夹具走 store 缺省 `shieldCount = 1` ⇒ +60 闪能 ⇒ 多 1 组连段）。
+     * ③ 确认有意：用户 2026-10-14 口径「**没有秽盾送的 60 闪能，就达不到 5 嗔火**的标准」——
+     *    有盾/无盾必须能分辨（修前实测嗔火**恒等**，那条口径在引擎里表达不出来）。
+     * ④ 本锚按新口径更新；`timeGolden` 同批重生成（delta 表在提交说明）。
+     */
+    expect(lunDao).toEqual([8, 10])
+    expect(shiZiHouNu).toEqual([8, 10])
     // 默认地动山摇连段 = 0 → 无地动/山摇·怒行
     expect(rows.some(r => r.moveId === '1471013' || r.moveId === '1471017')).toBe(false)
   })
@@ -444,20 +455,34 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     const recoveryTime = recoveryRows.reduce((s, e) => s + (e.totalTime ?? 0), 0)
     const lunDaoT = recoveryRows.find(e => e.moveId === 'banyue-recovery-lundao')?.actionTime ?? 0
     const diDongT = recoveryRows.find(e => e.moveId === 'banyue-recovery-didong')?.actionTime ?? 0
-    // 锁窗 2 基线（2026-08-23 重推导，净失衡+充足性约束后口径）：闪能收入 580（净失衡迭代后行情）
-    // → 轴内强特支出 160 → 怒相外自动连段 = floor((580−160)/60) = 7 组；总支出 = 160 + 7×60 = 580。
-    expect(cycle.rageCount).toBe(4)
+    /**
+     * 锁窗 2 基线（2026-08-23 重推导，净失衡+充足性约束后口径）：闪能收入 580（净失衡迭代后行情）
+     * → 轴内强特支出 160 → 怒相外自动连段 = floor((580−160)/60) = 7 组；总支出 = 160 + 7×60 = 580。
+     *
+     * ⚠ **T162 归因（怒相 4 → 5，规则 10 四步）**：
+     * ① 量 delta：`rageCount` 4 → **5**，`flashIncome` 580 → **680**。
+     * ② 根因：**秽盾破后送的 60 闪能此前没进嗔火公式** —— 般岳的 `flashBase` 原写死
+     *    `2/s × battleTime + 60`，漏掉引擎早已算出的 `shieldBreakGift`
+     *    （`core/resource/resourceIncome.ts#SHIELD_BREAK_GIFT = 60`）。本夹具走 store 缺省
+     *    `shieldCount = 1` ⇒ +60 闪能 ⇒ +30 嗔火 ⇒ 跨过 600 门槛 ⇒ 第 5 次怒相。
+     *    ⚠ 680 = 580 + **60（秽盾）** + **40（第 5 次怒相的山威返还）** —— 多一次怒相
+     *    同时多返还 `RAGE_SWAY(4) × SWAY_REFUND(10) = 40` 闪能，是**正反馈**而非单加 60。
+     * ③ 确认有意：用户 2026-10-14 口径「**没有秽盾送的 60 闪能，就达不到 5 嗔火**的标准」
+     *    —— 这条口径此前在引擎里**表达不出来**（实测有盾/无盾嗔火恒等）。
+     * ④ 本锚按新口径更新（`580 → 680` 与 `4 → 5` 同步）。
+     */
+    expect(cycle.rageCount).toBe(5)
     expect(cycle.axisInComboCount).toBe(4)
     expect(outStunRageGroups).toBe(2)
     expect(Math.ceil(outStunRageGroups / 2)).toBe(1)
     expect(cycle.outStunComboCount).toBe(cycle.comboOutCount + outStunRageGroups)
     expect(cycle.axisExSpend).toBe(160)
-    expect(cycle.flashIncome).toBe(580)
-    expect(cycle.comboOutCount).toBe(7)
-    expect(cycle.flashSpent).toBe(580)
+    expect(cycle.flashIncome).toBe(680)
+    expect(cycle.comboOutCount).toBe(8)
+    expect(cycle.flashSpent).toBe(640)
     expect(cycle.flashSpent).toBe(inStunFlash + outStunFlash)
     // 失衡外后摇：每连段组 1 次（含轴内未覆盖怒相组）→ 9 次；时间 = 论道组后摇 × 9（恢复行总时长计入必做前台）
-    expect(cycle.comboOutRecoveryCount).toBe(9)
+    expect(cycle.comboOutRecoveryCount).toBe(10)
     expect(recoveryTime).toBeCloseTo(cycle.lunDaoRecoveryCount * lunDaoT + cycle.diDongRecoveryCount * diDongT, 3)
     expect(recoveryTime).toBeCloseTo(cycle.lunDaoRecoveryCount * lunDaoT, 3)
     expect(c0.timeAllocation.necessaryTime).toBeGreaterThanOrEqual(recoveryTime - 1e-6)
@@ -500,6 +525,16 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
   it('轴退化（用户口径 2026-08）：轴需求补齐后必要时间超战斗预算 → 自动弃轴退化一般轴，前台行回到预算内', async () => {
     // 厚需求轴：每窗连段×4（2 怒相/窗）+ 终结技×2，交互全 0 → 自动补齐把金身链抬到超预算
     // → 轴不可操作（需外界环境如 boss 秽盾才打得成）→ 引擎退化一般轴（轴块不注入、补齐全关）
+    //
+    // ⚠ **T162 修正（规则 10 四步）**：上面那句「需外界环境如 boss 秽盾才打得成」**已经实现** ——
+    // 修前般岳的嗔火公式漏算秽盾送的 60 闪能（`flashBase` 写死 `2/s×时间 + 60`），
+    // 而 store 缺省 `shieldCount = 1` ⇒ 本夹具**实际带着一个盾**，修后这 60 闪能进了嗔火
+    // ⇒ 轴**装得下了**（`axisFallback = false`，实测 `{shield:1, fb:false, axes:1}`）。
+    // ① 量 delta：`axisFallback` true → **false**（轴保住、伤害 5.422M → 5.554M）。
+    // ② 根因：`shieldFlashGift` 接入（`banyue.ts#computeBanyueRageCycle` 的 `flashBase`）。
+    // ③ 确认有意：用户 2026-10-14「有秽盾送的 60 闪能才够」+ 本用例原注释的预判。
+    // ④ 判据改为**两态对照**（原单一断言在新口径下失去判别力，硬钉会得到假判据）：
+    //    显式无盾 ⇒ 轴仍不可操作 ⇒ 退化（原判据的语义）；有盾 ⇒ 轴成立（新口径的表达）。
     await setupTeam([{ name: '轴1', actions: [
       { slot: 0, moveId: 'banyue-combo', count: 4, startTime: 0 },
       { slot: 0, moveId: '1471009', count: 1, startTime: 8 },
@@ -515,8 +550,25 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     await new Promise(r => setTimeout(r, 80))
     const rr = calc.resourceResult.value!
     // 退化信号：轴定义仍解析（useStunAxis 开着）但本结果是无轴的一般循环
-    expect(rr.convergence.axisFallback).toBe(true)
-    expect(calc.stunPoolResult.value).not.toBeNull() // 一般循环下失衡池照常
+    // 有盾（缺省 1）⇒ 60 闪能补上嗔火缺口 ⇒ 轴成立
+    expect(rr.convergence.axisFallback, '有秽盾 ⇒ 轴装得下（T162）').toBe(false)
+    /**
+     * 反证：**把轴加厚到撑不下** ⇒ 退化（原判据「轴太厚 ⇒ 弃轴」的语义仍被锁住）。
+     *
+     * ⚠ 不用「去掉秽盾」做反证：实测本夹具**无盾时轴仍装得下**（`fb=false`）——
+     * 该轴本来就不厚（每窗 2 连段块 + 终结技×2），秽盾那 60 闪能只是让它更宽裕
+     * （伤害 5.422M → 5.554M），并不是「有盾才成立」的临界点。
+     * 真正触发退化的是**轴需求本身超预算** ⇒ 每窗连段块翻倍（4→8 = 4 怒相/窗）。
+     */
+    config.stunAxes = [{ name: '厚轴', actions: [
+      { slot: 0, moveId: 'banyue-combo', count: 8, startTime: 0 },
+      { slot: 0, moveId: '1471009', count: 1, startTime: 8 },
+      { slot: 0, moveId: '1471010', count: 1, startTime: 10 },
+      { slot: 0, moveId: '1471021', count: 2, startTime: 12 },
+    ] }] as never
+    await new Promise(r => setTimeout(r, 120))
+    const thick = calc.resourceResult.value!
+    expect(thick.convergence.axisFallback, '轴太厚（每窗 4 怒相）⇒ 撑不下 ⇒ 退化一般轴').toBe(true)
     // 前台行回到预算内（容差 2s = 合轴可覆盖的量化残差）
     //
     // ⚠ **T141 改判据：从「手工 Σ前台行 ≤ 182」改为引擎单一事实源 `netFrontlineOccupation`**
