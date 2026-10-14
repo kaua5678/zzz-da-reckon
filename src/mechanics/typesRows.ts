@@ -4,6 +4,7 @@
  */
 // 纯类型导入（判据 19 豁免 import type，运行时擦除）：CC-19a 异常附加行返回类型；CC-19b `anomalyPool` 字段类型从 DamagePoolContext 推导。
 import type { Agent, AgentSkills, PanelValues } from '@/types/catalog'
+import type { ActionCountField } from '@/stores/config'
 import type { AnomalyProgress, CharacterResourceResult, SkillExecution } from '@/types/resource'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import type { DamagePoolContext } from '@/composables/resourceCalc/damagePool'
@@ -200,4 +201,44 @@ export interface ExtraAnomalyRowsInput {
    * 只传面板之外的额外减防减抗（extraDefReduction / extraResReduction），结算面板上的由 calcAnomalyDamage 内部读。
    */
   anomalyDamage: (row: PoolAnomalyRow) => ReturnType<typeof calcPoolAnomalyDamageFn>
+}
+
+/**
+ * **「极限点」求解声明**（T166，用户口径 2026-10-14「自动上调合轴率只为算一个特殊值」）。
+ *
+ * ⚠ **为什么住在 `typesHooks.ts` 而不是 `types.ts`**：CC-83 拆分护栏
+ * （`typesSplitCc83.test.ts`）规定 `types.ts < 1400 行`，且引擎钩子契约一律进本文件
+ * （原注：「新卫星类型进 typesRows / typesHooks / typesView」）。本声明正是引擎钩子契约
+ * （编排层读它、模块实现它）⇒ 归此。
+ */
+export interface AgentLimitPointDecl {
+  /** 该极限目标的展示名（如「5嗔火10大」） */
+  name: string
+  /**
+   * 目标值 + 读法：编排层从角色结果里读**哪个量**、判「是否达标」。
+   * `read` 由模块给（字段的家在模块里 ⇒ 编排层不认角色字段名，判据 26）。
+   */
+  target: {
+    /** 要达成的目标值（般岳 5 嗔火 = 5 次怒相） */
+    value: number
+    /** 从本角色结果读当前值（般岳 = `banyueRageCycle.rageCount`）；返回 null = 该结果没这个量 */
+    read: (char: CharacterResourceResult) => number | null
+  }
+  /**
+   * 可扫的交互杠杆（编排层在这些字段上**逐个加**，每次 +1 到 `max`）。
+   * 般岳 = `dualCounterCount` 加到 28（无盾也需要）——`blockCount` **不在这里**（见 `zeroed`）。
+   */
+  levers?: ReadonlyArray<{ field: ActionCountField; max: number }>
+  /**
+   * 扫之前**清零**的交互字段（「用 A 替代 B」形态）。
+   *
+   * 般岳 = 清零 `blockCount`（金身弹刀）。**为什么不放进 `levers` 让它扫**：
+   * 用户的语义是**替代**不是**叠加**，且实测（`.zc/perf/T166x3.perf.ts`）命中点全部落在
+   * `金身=0` 那一档 —— 金身与双反**竞争同一份前台时间**，留着金身只是在挤掉双反。
+   * 依据 PROMPT-T166 §1(4) 逐字：
+   * > 「**仅仅是说双反和金身花费相同的内容，但是积攒更多嗔火**。
+   * >   如果对交互次数有限制，**双反可以用较少的次数达到嗔火目标**。」
+   * ⇒ 「同耗时、更高嗔火」的直接推论就是**全替**，扫金身档位是浪费求值次数。
+   */
+  zeroed?: ReadonlyArray<ActionCountField>
 }

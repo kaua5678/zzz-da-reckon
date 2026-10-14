@@ -756,7 +756,8 @@
               <th>队伍</th><th v-if="curveRowsHavePeriod">期数</th><th v-if="curveRowsHavePeriod">该期血量</th>
               <th>全关</th><th>终点</th><th>提升</th><th>倍数</th>
               <th>操作难度</th><th>收益/难度</th><th>关键点</th><th>轴态</th>
-                          <th v-if="curveHasAltPoints">曲线外补充点</th>
+                          <th v-if="curveHasLimitPoints">极限点</th>
+            <th v-if="curveHasAltPoints">曲线外补充点</th>
             </tr>
           </thead>
           <tbody>
@@ -772,6 +773,21 @@
               <td>{{ fmt(s.slope, 1) }}%/点</td>
               <td class="td-detail"><div class="cell-clamp">{{ s.flat ? '无优化空间' : s.steps.map(pointLabel).join(' → ') }}</div></td>
               <td class="td-detail"><div class="cell-clamp">{{ axisColumnText(s) }}</div></td>
+              <td v-if="curveHasLimitPoints" class="td-detail">
+                <div class="cell-clamp">
+                  <template v-if="s.limitPoint">
+                    <!-- 极限点（用户口径 2026-10-14「自动上调合轴率只为算一个特殊值」）：
+                         达成 ⇒ 报「吸收率 / 杠杆 / 伤害」；未达成 ⇒ 如实说「最多推到 N」。 -->
+                    <template v-if="s.limitPoint.found">
+                      {{ s.limitPoint.name }}：吸收 {{ (s.limitPoint.absorb! * 100).toFixed(0) }}%
+                      <template v-if="Object.keys(s.limitPoint.levers).length > 0">、{{ limitLeverText(s.limitPoint.levers) }}</template>
+                      → {{ compact(s.limitPoint.dmg ?? 0) }}
+                    </template>
+                    <template v-else>{{ s.limitPoint.name }}：最高 {{ s.limitPoint.bestTarget }}/{{ s.limitPoint.targetValue }}（未达成）</template>
+                  </template>
+                  <template v-else>—</template>
+                </div>
+              </td>
               <td v-if="curveHasAltPoints" class="td-detail">
                 <div class="cell-clamp">
                   <template v-if="s.altPoints.length > 0">
@@ -1392,6 +1408,16 @@ const curveRowsHavePeriod = computed(() => curveRows.value.some(r => r.periodKey
  * 给 90+ 队常驻一个空列是纯噪声）。
  */
 const curveHasAltPoints = computed(() => curveData.value?.series.some(s => s.altPoints.length > 0) ?? false)
+/**
+ * 本批可见曲线里**有没有极限点**（用户口径 2026-10-14「自动上调合轴率只为算一个特殊值」）——
+ * 没有就**不渲染那一列**（全库只有般岳声明 `limitPoint`）。
+ */
+const curveHasLimitPoints = computed(() => curveData.value?.series.some(s => s.limitPoint !== null) ?? false)
+/** 极限点杠杆的可读文案（字段名 → 「双反 ×N」；字段名住在声明里，页面只做展示映射） */
+function limitLeverText(levers: Record<string, number>): string {
+  const label: Record<string, string> = { dualCounterCount: '双反', blockCount: '金身', parryCount: '弹刀', dodgeCounterCount: '闪反' }
+  return Object.entries(levers).filter(([, v]) => v > 0).map(([k, v]) => `${label[k] ?? k} ×${v}`).join('、') || '无'
+}
 /** 结果与当前环境设置不一致（改过开关/buff 态/期数范围但没重算）⇒ 如实提示，不假装结果是最新的 */
 const curveRowsStale = computed(() => curveRows.value.length > 0 && curveRowsHavePeriod.value !== curveEnv.value)
 const curveLegend = useSeriesFilter(() => curveRows.value.map(r => ({

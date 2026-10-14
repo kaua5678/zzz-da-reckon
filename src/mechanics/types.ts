@@ -26,7 +26,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type，见设计稿
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
-import type { DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
+import type { AgentLimitPointDecl, DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
 import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput } from './typesHooks'
 // CC-451：展示层专用声明类型（CC-444/445/446/448 陆续长在本文件里，把 CC-83 预算顶破）拆出 typesView.ts；本文件原样转出，导入方不用改
 import type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
@@ -342,7 +342,6 @@ export interface AgentTeamConfigInput {
   /** 全队普通能量消耗（莱特影画4 用；build 阶段 0） */
   teamEnergyConsumed: number
 
-
   /**
    * 上一轮收敛线程（`CalcRoundThreads`）的**只读快照** —— 跨轮反馈的通用输入通道。
    *
@@ -475,7 +474,6 @@ export interface ModuleFeedback {
   /** 莱特后场：全队常态能量消耗（converge 相位经通用输入 `teamEnergyConsumed` 递给模块） */
   consumedTeamEnergy?: number
 }
-
 
 export interface AgentExSpecialTimeInput {
   cfg: CharacterOperationConfig
@@ -863,6 +861,9 @@ export interface AgentMechanicModule {
   interactionInputs?: Readonly<{ block?: { label: string }; dualCounter?: { label: string } }>
   /** CC-65b：队里有本角色才显示「保底4嗔火」开关（展示层；引擎侧由模块自身消费 guarantee.fury）。 */
   ownsGuaranteeFury?: boolean
+  /** 「极限点」求解声明（T166「自动上调合轴率只为算一个特殊值」）；契约在 `typesRows#AgentLimitPointDecl`。 */
+  limitPoint?: AgentLimitPointDecl
+
   /** CC-60：自动失衡轴「章」档位归属（预设 `chapter` 按本角色影画 0 命 → 0 章 / ≥1 命 → 1 章过滤；队中第一个声明者生效）。原 data/stunAxisPresets.ts 与 StunAxisPage 写死伊德海莉 id。 */
   axisPresetChapterOwner?: boolean
   /** CC-60：自动失衡轴同队多预设时，预设 team 含本角色者优先（StunAxisPage 横幅显示「有琉/无琉」）。原写死琉音 id。 */

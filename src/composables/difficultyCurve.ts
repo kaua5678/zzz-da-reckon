@@ -50,7 +50,7 @@ import {
   absorbCapOf, applyInteractionKnob, clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
   type KnobPointName, type LadderPoint, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
-import { axisStateOf, type AxisState } from '@/composables/difficultyAxis'
+import { axisStateOf, axisStands, type AxisState } from '@/composables/difficultyAxis'
 import {
   applyAxisBinding, applyBuffToStore, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf,
   computeDifficulty, type DifficultyWeights,
@@ -60,7 +60,7 @@ import { frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'
 // 量化地板与引擎同源（规则 11）：截断提醒的「整整 1 次交互」阈值 = 引擎自己的量化容差，见 truncationHintAt
 import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
-import { getAgentMechanic } from '@/mechanics'
+import { getAgentMechanic, type AgentMechanicModule } from '@/mechanics'
 import { liveInteractions } from '@/composables/liveInteractions'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult, TeamResourceResult } from '@/types/resource'
@@ -197,6 +197,11 @@ export interface DifficultyCurveRow {
    * 空数组 = 该预设没声明 `altAxes`（全库仅 `banyue-liuyin-lucia` 一条）或求值未启用。
    */
   altPoints: AltAxisPoint[]
+  /**
+   * **极限点**（用户口径 2026-10-14「自动上调合轴率只为算一个特殊值」）—— 见 `LimitPointResult`。
+   * `null` = 本队没有角色声明 `limitPoint`（**绝大多数队**；全库现仅般岳 1471）。
+   */
+  limitPoint: LimitPointResult | null
 }
 
 /**
@@ -342,6 +347,14 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
          *
          * ⚠ 成本：每个 `altAxes` 档 = **1 次全队求值**（全库只有 1 条预设声明它 ⇒ 至多 +1 次/道）。
          */
+        limitPoint: computeLimitPointFor({
+          ctx: { config: configStore, calc },
+          preset,
+          applied,
+          phaseHp: lane.phase.hp,
+          weights: options.difficultyWeights,
+          baseAxis,
+        }),
         altPoints: computeAltAxisPoints({
           ctx: { config: configStore, calc },
           preset,
@@ -426,6 +439,267 @@ function computeAltAxisPoints(args: {
     }
   } finally {
     // 现场恢复：本函数只负责**探测**（与 `climbDifficultyLadder` 同款契约）
+    ctx.config.setAxisState(baseAxis)
+  }
+  return out
+}
+
+// ========== 极限点（用户 2026-10-14 口径：「自动上调合轴率只为算一个特殊值」） ==========
+
+/**
+ * **极限点**（`DifficultyCurveRow.limitPoint`）—— 用户口径逐字：
+ * > 「受时间约束，但这个作为**特殊设置的难度点**，**可以上调合轴率试试能存活吗**。
+ * >   他和一般计算不同，**这本来就是一种非常极限的情况**，所以我们要**自动上调合轴率只为算一个特殊值**。」
+ *
+ * ## 它**不是**难度曲线上的点
+ *
+ * 曲线守「每队 1~4 点」（T140c 卡 §6.2）；极限点是**特殊值**（「这条队的极限在哪」），单列在此。
+ * 与 10大轴补充点的区别见用户口径：10大轴 = **同 x 不同 y**；**5嗔火 = 不同 x 不同 y**
+ * （「**是难度曲线的延伸**」）⇒ 它**会**移动 x，故落点时一并报出 x。
+ *
+ * ## ★ 搜索是**二维**的（实测推翻了卡 §4 的一维设想）
+ *
+ * 卡 §4 设想「自动上调合轴率试试能存活」。**实测证伪**（`.zc/perf/T166x1~x4.perf.ts`）：
+ * 只上调合轴率**不够** —— 命中点 = **金身 0 / 双反 14 / 合轴率 0.60**（怒相 5、轴 partial、90.905M）；
+ * 而 `金身>0` 时即便 r 拉到 0.85/1.0 仍 `infeasible`。
+ * ⇒ 本函数搜两个维度：**（模块声明的交互杠杆，合轴率）**。
+ *
+ * ## ★ 成本纪律（**粗到细**，不是全笛卡尔积）
+ *
+ * 暴力 = `Π(档位数) × 吸收网格`。单杠杆 28 档 × 20 网格 = **580 次全队求值/道** ——
+ * 而曲线本身才 ~45-65 次 ⇒ 不可接受（难点在于 `scanAbsorbGrid` 明写**不能二分**：网格非单调）。
+ * 故两阶段：
+ *   ① **粗扫**（杠杆步长 3、吸收 0.15 网格）取**首个**命中；
+ *   ② **细扫**（在①命中点邻域 ±3 档、±0.15 内按原始精度回扫）取**最小可行**杠杆值。
+ * 实测命中点（杠杆 14、r 0.60）落在①网格（12→15 覆盖 14；0.60 是 0.15 的倍数）⇒ ①即中，
+ * ②只做局部确认。**最坏**成本 ≈ (28/3+1) × 7 + 局部 ≈ 81 次，与曲线同量级。
+ *
+ * ⚠ **只对有 `limitPoint` 声明的队付这个成本**（全库仅般岳 ⇒ 绝大多数道零开销）。
+ */
+export interface LimitPointResult {
+  /** 该极限目标的展示名（模块声明，如「5嗔火10大」） */
+  name: string
+  /** 目标值（般岳 = 5 次怒相） */
+  targetValue: number
+  /** 是否找到「目标达成且轴成立」的组合 */
+  found: boolean
+  /** 达成时的操作难度（x）——「不同 x 不同 y」的 x；未找到 = null */
+  x: number | null
+  /** 达成时的伤害（y）；未找到 = null */
+  dmg: number | null
+  /** 达成时的轴态；未找到 = null */
+  axis: AxisState | null
+  /** 达成时的合轴率（用户口径点名的那个旋钮） */
+  absorb: number | null
+  /** 达成时各交互杠杆的取值（如 `{ dualCounterCount: 14 }`） */
+  levers: Record<string, number>
+  /** 过程中读到的**最大目标值**（未找到时说明「最多推到几」——如实，不编造） */
+  bestTarget: number
+}
+
+/**
+ * 极限点的合轴率**天花板 = 1.0**（不是用户的常规上限 `userAbsorbCap`）。
+ *
+ * 用户裁决（PROMPT-T166 §4 逐字）：
+ * > 「可以**上调合轴率**试试能存活吗…**自动上调合轴率只为算一个特殊值**。」
+ * > 「这个点**允许突破常规难度轴**，用**自动上调的合轴率**单独求解，作为『极限情况』展示。」
+ *
+ * ⇒ 卡 §4 明写「**允许突破常规难度轴**」⇒ 本求解器扫到 **1.0**，不受用户设置的 0.4 限制。
+ * ⚠ 实测这就是全部差别：同样条件在 r≤0.4 下**无解**（`bestTarget` 只到 4），
+ * 而放到 0.60 立刻命中 5 怒相（`.zc/perf/T166x3.perf.ts`）。
+ */
+const LIMIT_ABSORB_CEILING = 1
+
+/** 粗扫步长（成本纪律；细扫在命中邻域回到原始精度） */
+const LIMIT_COARSE_LEVER_STEP = 3
+const LIMIT_COARSE_ABSORB_STEPS = 7   // (0, cap] 上等分 ⇒ 步长 ≈ cap/7 ≈ 0.057（cap 0.4 时）
+const LIMIT_FINE_LEVER_RADIUS = 3
+const LIMIT_FINE_ABSORB_RADIUS = 0.15
+const LIMIT_FINE_ABSORB_STEPS = 6
+
+/**
+ * 求一队的**极限点**（同步）。调用方按队分批调度避免卡 UI。
+ *
+ * @param decl 该槽模块声明的 `limitPoint`（**由调用方注入**：本函数不直接遍历 registry，
+ *   与 `computeAltAxisPoints` 同款解耦；调用方按「谁声明了就用谁的」查找）。
+ * @param slot 该声明所属**槽位**（读结果时按 `slot` 身份 `.find`，⚠ 不按下标 —— `characters`
+ *   按位置压缩，AGENTS §2）。
+ */
+/**
+ * **找本队的极限点声明并求解**（编排层门面，判据 26：编排层不认字段名/角色 id）。
+ *
+ * 按槽位顺序找**第一个**声明了 `limitPoint` 的角色（与 `findInteractionTopUpSlot` 同款：
+ * 「能力存在即声明」，谁实现就用谁的）。找不到 ⇒ 返回 `null`（**不**为不支持的队编一个极限点）。
+ */
+function computeLimitPointFor(args: {
+  ctx: { config: ConfigModel; calc: Calc }
+  preset: TeamPreset
+  applied: ReturnType<typeof applyGoldSteps>
+  phaseHp: number
+  weights?: DifficultyWeights
+  baseAxis: ReturnType<ConfigModel['getAxisState']>
+}): LimitPointResult | null {
+  const { ctx, preset, applied, weights, baseAxis } = args
+  // ⚠ 按槽位顺序查（预设 team 数组 = 槽位序），取第一个声明者
+  for (let slot = 0; slot < preset.team.length; slot++) {
+    const agentId = preset.team[slot]
+    if (!agentId) continue
+    const decl = getAgentMechanic(agentId)?.limitPoint
+    if (!decl) continue
+    /**
+     * 极限点的名字（如「5嗔火10大」）里点名的轴 = `preset.altAxes` 里名字**被它包含**的那条。
+     *
+     * ⚠ 匹配方向实测踩过：`decl.name`（`5嗔火10大`）**不包含** `altAxis.name`（`10大轴`）——
+     * 逐字比对两边永远不成立（首次实现写成 `decl.name.includes(a.name)` ⇒ 静默退回默认轴，
+     * 求出的 42.006M 是**另一条轴**，与用户口径「5嗔火10大」不是同一件事）。
+     * 正确方向 = 拿 `altAxis.name` 的**核心词**（去掉「轴」后缀）去 `decl.name` 里找：
+     * `decl.name.includes('10大')` ⇒ true。
+     * 匹配不到 ⇒ null（跑预设默认绑定轴），**不静默换一条别的轴**（与 buffMode 'manual' 同款纪律）。
+     */
+    const targetAxisPresetId = preset.altAxes?.find(a => decl.name.includes(a.name.replace(/轴$/, '')))?.stunAxisPresetId ?? null
+    return computeLimitPoint({ ctx, preset, applied, weights, baseAxis, decl, slot, targetAxisPresetId })
+  }
+  return null
+}
+
+function computeLimitPoint(args: {
+  ctx: { config: ConfigModel; calc: Calc }
+  preset: TeamPreset
+  applied: ReturnType<typeof applyGoldSteps>
+  weights?: DifficultyWeights
+  baseAxis: ReturnType<ConfigModel['getAxisState']>
+  decl: NonNullable<AgentMechanicModule['limitPoint']>
+  slot: number
+  /** 极限点要跑的轴预设 id（`preset.altAxes` 里与 `decl` 同名的那条；缺省用预设默认绑定轴） */
+  targetAxisPresetId: string | null
+}): LimitPointResult {
+  const { ctx, preset, applied, weights, baseAxis, decl, slot, targetAxisPresetId } = args
+  const out: LimitPointResult = {
+    name: decl.name, targetValue: decl.target.value,
+    found: false, x: null, dmg: null, axis: null, absorb: null,
+    levers: {}, bestTarget: 0,
+  }
+  const levers = decl.levers ?? []
+  const zeroed = decl.zeroed ?? []
+  /** 读该槽当前的目标值（模块声明的读法；结果里没有该量 ⇒ null） */
+  const readTarget = (): number | null => {
+    const rr = ctx.calc.resourceResult.value
+    if (!rr) return null
+    const ch = rr.characters.find(c => c.slot === slot) // ⚠ 按 slot 身份查，不按下标
+    return ch ? decl.target.read(ch) : null
+  }
+  /**
+   * 把现场摆成「④ 的旋钮组合」（与 `computeAltAxisPoints` 同一套），供每档重来。
+   *
+   * ⚠ **轴必须取用户点名的那个**：极限点的名字（般岳「5嗔火**10大**」）里的「10大」
+   * 指的是 `preset.altAxes` 声明的那条轴，**不是**预设的默认绑定轴。
+   * 实测（`.zc/perf/T166limit.perf.ts`）：跑默认轴时求解器也「找到」了一个 5 怒相点，
+   * 但那是 42.006M 的**另一条轴**，与用户口径「5嗔火10大」不是同一件事
+   * （对照：10大轴上同条件 90.905M）。⇒ 用 `targetAxisPresetId` 显式指定。
+   */
+  const resetScene = () => {
+    clearDifficultyLevers(ctx)
+    applyTeamToStore(ctx.config, preset)
+    applyGoldAllocationToStore(ctx.config, applied)
+    applyInteractionKnob(ctx, 'zero')
+    applyInteractionKnob(ctx, 'slotLadder')
+    applyAxisBinding(ctx.config, baseAxis, preset)
+    if (targetAxisPresetId) {
+      const ap = stunAxisPresets.find(p => p.id === targetAxisPresetId)
+      if (ap) ctx.config.applyStunAxisPreset(ap)
+    }
+  }
+  /** 摆一档：清 `zeroed`、设各杠杆值、设吸收率 */
+  const setCombo = (vals: number[], r: number) => {
+    for (const f of zeroed) ctx.config.setActionCount(slot, f, 0)
+    const appliedLevers: Record<string, number> = {}
+    levers.forEach((l, i) => {
+      ctx.config.setActionCount(slot, l.field, vals[i]!)
+      appliedLevers[l.field] = vals[i]!
+    })
+    ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, r)
+    return appliedLevers
+  }
+  /** 判一档是否命中（目标达成 **且** 轴成立），顺带更新 bestTarget */
+  const hitAt = (): boolean => {
+    const t = readTarget()
+    if (t !== null && t > out.bestTarget) out.bestTarget = t
+    if (t === null || t < decl.target.value) return false
+    return axisStands(axisStateOf(ctx.calc))
+  }
+  /** 落点：把当前现场写成结果 */
+  const land = (r: number, appliedLevers: Record<string, number>) => {
+    out.found = true
+    out.x = measureOperationalDifficulty(ctx, preset, weights)
+    out.dmg = ctx.calc.teamTotalDamage.value
+    out.axis = axisStateOf(ctx.calc)
+    out.absorb = r
+    out.levers = appliedLevers
+  }
+  try {
+    if (levers.length === 0) return out
+    /** 第一根杠杆（本仓唯一形态；多杠杆时应改成笛卡尔积 —— 见函数头注释的成本纪律） */
+    const maxV = levers[0]!.max
+    /**
+     * ⚠ **成本纪律的关键**：`resetScene()` 会跑一次 `slotLadder`（~96 次全队求值），
+     * 而 `setCombo` 只是在那之上覆写几个字段 + 吸收率。
+     * ⇒ **每个杠杆档只 reset 一次**，吸收率在该档内扫（原实现每探一格都 reset ⇒ 实测 38.5s）。
+     */
+    const scanAbsorbInScene = (v: number, from: number, to: number, steps: number): boolean => {
+      for (let i = 0; i <= steps; i++) {
+        const r = Math.round((from + (to - from) * i / steps) * 1e4) / 1e4
+        const appliedLevers = setCombo([v], r)
+        if (!hitAt()) continue
+        land(r, appliedLevers)
+        return true
+      }
+      return false
+    }
+    /**
+     * ① **粗扫**：杠杆步长 `LIMIT_COARSE_LEVER_STEP`、吸收 `LIMIT_COARSE_ABSORB_STEPS` 等分。
+     * 两个循环都**从小到大** ⇒ 首个命中即**最小粗档**（用户要的是「能存活吗」= 存在性；
+     * 取最小而非最大，是因为「用更少交互达成同一目标」严格更优）。
+     */
+    let bestV = -1
+    let bestR = -1
+    coarse: for (let v = 0; v <= maxV; v += LIMIT_COARSE_LEVER_STEP) {
+      resetScene() // ← 每个杠杆档只做一次（见上）
+      for (let i = 1; i <= LIMIT_COARSE_ABSORB_STEPS; i++) {
+        const r = Math.round((LIMIT_ABSORB_CEILING * i / LIMIT_COARSE_ABSORB_STEPS) * 1e4) / 1e4
+        const appliedLevers = setCombo([v], r)
+        if (!hitAt()) continue
+        bestV = v; bestR = r
+        land(r, appliedLevers)
+        break coarse
+      }
+    }
+    /**
+     * ② **细扫**（仅在①命中后）：在粗档**下方**半径内找**更省**的杠杆值，再在同一杠杆档上
+     * 收窄吸收率。两步都只做**收窄** ⇒ 不改变「是否 found」的结论（细扫没找到更优解时，
+     * ①的落点**保持有效**，不会回退成「未找到」）。
+     */
+    if (bestV >= 0) {
+      const fineLo = Math.max(0, bestV - LIMIT_FINE_LEVER_RADIUS)
+      for (let v = fineLo; v < bestV; v++) {
+        resetScene()
+        const lo = Math.max(0, bestR - LIMIT_FINE_ABSORB_RADIUS)
+        if (scanAbsorbInScene(v, lo, bestR, LIMIT_FINE_ABSORB_STEPS)) { bestV = v; break }
+      }
+      // 同一杠杆档上收窄吸收率（现场需重摆：上面可能已经跑过别的 v）
+      resetScene()
+      const lo2 = Math.max(0, bestR - LIMIT_FINE_ABSORB_RADIUS)
+      for (let i = 0; i <= LIMIT_FINE_ABSORB_STEPS; i++) {
+        const r = Math.round((lo2 + (bestR - lo2) * i / LIMIT_FINE_ABSORB_STEPS) * 1e4) / 1e4
+        if (r >= bestR) continue
+        const appliedLevers = setCombo([bestV], r)
+        if (!hitAt()) continue
+        bestR = r
+        land(r, appliedLevers)
+        break
+      }
+    }
+  } finally {
+    // 现场恢复：本函数只负责**探测**（与 `climbDifficultyLadder` / `computeAltAxisPoints` 同款契约）
     ctx.config.setAxisState(baseAxis)
   }
   return out
@@ -861,6 +1135,11 @@ export interface CurveSeries {
    * 空数组 = 该道没有补充点（绝大多数队）。
    */
   altPoints: AltAxisPoint[]
+  /**
+   * **极限点**（用户口径 2026-10-14「自动上调合轴率只为算一个特殊值」）——
+   * 从 `DifficultyCurveRow.limitPoint` 原样带出。`null` = 该道没有极限点（绝大多数队）。
+   */
+  limitPoint: LimitPointResult | null
 }
 
 // ========== 截断提醒：要达到手填的交互要求至少需要多少难度（用户 2026-10-06 口径） ==========
@@ -1013,6 +1292,7 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
        * `lane.phase.hp`，二者在自身实力模式下同值；环境模式下也同源 ⇒ 重算只是防御性统一）。
        */
       altPoints: r.altPoints.map(a => ({ ...a, ratio: (a.dmg / safeHp) * 100 })),
+      limitPoint: r.limitPoint,
     }
   })
   /**

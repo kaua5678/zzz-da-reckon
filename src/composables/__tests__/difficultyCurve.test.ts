@@ -81,7 +81,7 @@ function mkLadder(
 const HP = 100_000_000
 const mkRow = (presetId: string, name: string, ladder: LadderResult, hp = HP): DifficultyCurveRow =>
   // `altPoints` 缺省空数组 = 该预设没声明 altAxes（全库仅 banyue-liuyin-lucia 一条）⇒ 图上没有补充点
-  ({ presetId, name, ladder, periodKey: null, periodId: null, label: name, hp, altPoints: [] })
+  ({ presetId, name, ladder, periodKey: null, periodId: null, label: name, hp, altPoints: [], limitPoint: null })
 
 describe('buildCurveChart（纯函数）', () => {
   it('空输入返回可画的空图（不产生 NaN / 负上界）', () => {
@@ -1079,5 +1079,67 @@ describe('曲线外的补充点（altPoints，用户口径 2026-10-14「同 x �
     expect(preset.altAxes, '反空洞：本夹具确实没有 altAxes').toBeFalsy()
     const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE }))
     expect(row!.altPoints).toEqual([])
+  }, 300_000)
+})
+
+/**
+ * **极限点**（用户口径 2026-10-14，逐字）：
+ * > 「受时间约束，但这个作为**特殊设置的难度点**，**可以上调合轴率试试能存活吗**。
+ * >   他和一般计算不同，**这本来就是一种非常极限的情况**，所以我们要**自动上调合轴率只为算一个特殊值**。」
+ *
+ * ## 锁什么
+ *
+ * ① **只对有 `limitPoint` 声明的队求解**（无声明 ⇒ `null`，**不**为不支持的队编一个极限点）；
+ * ② **能真的求出点**（`found=true` 且 `bestTarget` 达目标值）——般岳「5嗔火10大」的实测命中点；
+ * ③ **落点自洽**：`absorb` 与 `levers` 是**能达成目标**的组合（不是编出来的读数）。
+ *
+ * ## ★ 为什么必须扫到 1.0（而不是用户常规上限 0.4）
+ *
+ * 卡 §4 用户明写「这个点**允许突破常规难度轴**」。实测这就是全部差别：
+ * 同样条件在 `r ≤ 0.4` 下**无解**（只到 4 怒相），放到 0.60 立刻命中 5
+ * （`.zc/perf/T166x3.perf.ts`）⇒ 求解器的天花板是 `LIMIT_ABSORB_CEILING = 1`。
+ *
+ * ## 负控（**实测结论：只有第 ④ 条有判别力**，前三条如实记录为「无判别力」）
+ *
+ * 逐条试过（`FAKE_BOSS` 的 `shieldCount = 0` 场景下）：
+ *  ① 把 `LIMIT_ABSORB_CEILING` 改成 `0.4`（用户常规上限）⇒ **仍绿** ⇒ **无判别力**
+ *     （该夹具在 r≤0.4 下也能达成；我手测的「r≤0.4 无解」是 **盾1 + 金身0** 那个场景，
+ *      见 `.zc/perf/T166x3.perf.ts` —— 两个场景不可互推）；
+ *  ② 不跑 `slotLadder`（去掉交互最优那一趟）⇒ **仍绿** ⇒ 无判别力；
+ *  ③ 不执行 `zeroed` 清零（金身留着，不做「双反替代金身」）⇒ **仍绿** ⇒ 无判别力
+ *     （该夹具的 slotLadder 已把金身搜到 0 ⇒ 再显式清零是幂等的）；
+ *  ④ **移除 `banyueMechanic.limitPoint` 声明** ⇒ **红**（`expected null to be truthy`）✅
+ *
+ * ⇒ 本用例的有效判据是「**声明 → 求解 → 落点自洽**」这条链（④ 锁住了它的入口）。
+ *   ⚠ ①②③ 无判别力**不是说那些行为不重要**，而是说**本夹具证明不了它们** ——
+ *   如实记录，避免后继会话把「用例绿」误读成「那三条被锁住了」。
+ */
+describe('极限点（limitPoint，用户口径 2026-10-14「自动上调合轴率只为算一个特殊值」）', () => {
+  it('★ 般琉卢：求出 5 怒相 + 轴存活的极限点（扫到 1.0，突破常规上限 0.4）', async () => {
+    const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')!
+    const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE }))
+    const lp = row!.limitPoint
+    expect(lp, '般岳在队 ⇒ 应有极限点声明').toBeTruthy()
+    expect(lp!.name).toBe('5嗔火10大')
+    expect(lp!.targetValue).toBe(5)
+    // ② 能求出点（且 bestTarget 确实到过目标值 —— 反空洞：不是「没扫到就报 found」）
+    expect(lp!.found, '应求出「5 怒相 + 轴存活」的极限点').toBe(true)
+    expect(lp!.bestTarget, 'bestTarget 应达目标值').toBeGreaterThanOrEqual(5)
+    // ③ 落点自洽：有 x/y/轴态，且吸收率是「突破常规」的那一档
+    expect(lp!.x).toBeGreaterThan(0)
+    expect(lp!.dmg).toBeGreaterThan(0)
+    expect(lp!.axis?.kind).not.toBe('infeasible')
+    expect(lp!.absorb, '落点带吸收率（用户点名的那个旋钮）').toBeGreaterThan(0)
+    expect(lp!.levers.dualCounterCount, '落点带杠杆取值').toBeGreaterThanOrEqual(0)
+  }, 600_000)
+
+  it('无 limitPoint 声明的队 ⇒ null（不静默造点）', async () => {
+    const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
+    const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE }))
+    expect(row!.limitPoint).toBeNull()
   }, 300_000)
 })

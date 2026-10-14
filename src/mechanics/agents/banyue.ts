@@ -1087,6 +1087,31 @@ export const banyueMechanic: AgentMechanicModule = {
   interactionInputs: { block: { label: '金身格挡' }, dualCounter: { label: '双反' } },
   // CC-65b：「保底4嗔火」开关归属（原页面 teamHasBanyue 写死本角色 id）
   ownsGuaranteeFury: true,
+  /**
+   * **极限点声明**（T166，用户口径 2026-10-14「自动上调合轴率只为算一个特殊值」）——
+   * 契约见 `AgentMechanicModule.limitPoint` 头注释。
+   *
+   * 般岳的极限目标 = **5 次怒相**（用户口径「5嗔火10大」的「5嗔火」；一声「嗔火」= 一次怒相）。
+   * 读法 = `banyueRageCycle.rageCount`（本模块自己写的字段 ⇒ 编排层不认字段名，判据 26）。
+   *
+   * ⚠ **杠杆选 `dualCounterCount` 而不是 `blockCount`**（实测，`.zc/perf/T166x2/x3/x4.perf.ts`）：
+   * 命中点 = **金身 0 / 双反 14 / 合轴率 0.60**；`金身>0` 时 r 拉到 0.85/1.0 仍 `infeasible`。
+   * 依据是用户自己的口径（PROMPT-T166 §1(4) 逐字）：
+   * > 「**双反和金身花费相同的内容，但是积攒更多嗔火**……**双反可以用较少的次数达到嗔火目标**。」
+   * ⇒ 双反 10 嗔火/次 vs 金身 6 嗔火/次、**耗时相同** ⇒ 极限形态必然是「全用双反」。
+   * `max: 28` = 无盾时达成 5 怒相所需（T163 实测口径；有盾只需 16）——取大值让编排层自己扫到够。
+   */
+  limitPoint: {
+    name: '5嗔火10大',
+    target: {
+      value: 5,
+      read: char => char.banyueRageCycle?.rageCount ?? null,
+    },
+    levers: [{ field: 'dualCounterCount', max: 28 }],
+    // 「用双反替代金身」（用户 §1(4) 逐字：「双反和金身花费相同的内容，但是积攒更多嗔火」）
+    // ⇒ 金身清零，不扫档位（实测命中点全在 金身=0，见 `limitPoint` 头注释）
+    zeroed: ['blockCount'],
+  },
   // CC-258：引擎字段的专属交互类型名（金身格挡 / 双反；难度轴按此计权，队伍对比难度表按值补 0 条目，原 CC-68 compareInteractionTypes）
   interactionFieldTypes: { blockCount: 'banyueGoldenParry', dualCounterCount: 'banyueDualCounter' },
   // CC-23：补齐求解经模块能力派发（原 convergence.ts 直连 import 本函数）；
