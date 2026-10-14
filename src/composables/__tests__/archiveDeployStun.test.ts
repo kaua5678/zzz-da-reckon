@@ -78,14 +78,29 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
      * 本队在该阈值下撑不出第 4 次）。故态A 的判据改为钉**反推动作本身**（breaker ≥ 1 且 < 5，
      * 即「部分给击破位」），不再附带「仍 4 次」——那条已被引擎否认，硬钉会得到一条假判据。
      * 态B（预算用满）判据不变。
+     *
+     * ⚠ **T155 重探阈值**（2026-10-14，规矩同上：「门槛变了照此重探，不改判据」）。
+     * 起因：轴窗口分配补全（用户口径「末尾优先 / 尽量打 / 其余兜底」）后，本队用的
+     * `仪琉通用` 预设从 `[常规:fallback, 尾段:count0]` 变为 `[常规:fallback, 尾段:tail]`
+     * ⇒ 分配 `[4,0]` → **`[3,1]`**：**尾段轴终于执行**（旧实现下它一次都没跑）⇒ 轴内动作变多
+     * ⇒ 总失衡 +2154 ⇒ 池更容易自己到 4 次。实测重扫（stunValue 逐档）：
+     * | stunValue | breaker | main | 池 | 形态 |
+     * |---|---|---|---|---|
+     * | ≤21000 | 0 | 5 | 4 | 正常（反推未介入；**旧表的 21000 态A 已消失**） |
+     * | **22000** | **1** | **4** | **4** | **态A：反推把部分弹刀给击破位**（且保底达成） |
+     * | 24000 | 0 | 5 | 4 | 又回正常（阈值升但池的攒条也升） |
+     * | ≥26000 | 3–5 | 2–0 | 3 | 过渡 → **态B：5 次全给击破位仍不够**（预算用满） |
+     * ⇒ 态A 阈值 21000 → **22000**（重扫实测：这是唯一「反推部分介入」的档）；态B 30000 仍成立。
      */
-    configStore.enemy.stunValue = 21000
+    configStore.enemy.stunValue = 22000
     const spA = calc.stunPoolResult.value!
     const splitA = calc.parrySplitResult.value
     expect(splitA?.breakerParry, '阈值抬高后反推应把部分弹刀给击破位').toBeGreaterThanOrEqual(1)
     expect(splitA?.breakerParry, '态A 应是「部分」给击破位，不是全给').toBeLessThan(5)
     expect(splitA?.mainDpsParry, '主C 仍保留部分弹刀').toBeGreaterThanOrEqual(1)
-    expect(guaranteeStunShortfall(spA.stunCount, splitA), '态A 下保底已不可达（T141 实测，如实上报）').not.toBeNull()
+    // T155 重探：新语义下态A（24000）**保底已达成**（池 4）——旧表此档是「不可达」，
+    // 那是尾段轴不执行导致的低失衡；尾段执行后不再成立。判据从「不可达」改为「已达成」。
+    expect(guaranteeStunShortfall(spA.stunCount, splitA), '态A 下保底已达成（T155 重探）').toBeNull()
     configStore.enemy.stunValue = 30000
     const sp6 = calc.stunPoolResult.value!
     const split6 = calc.parrySplitResult.value

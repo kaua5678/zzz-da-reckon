@@ -11,8 +11,81 @@ const stack = [
   { slot: 0, moveId: '1051003', count: 1, actionTime: 1.55, energyCost: 0, decibelCost: 0 },
 ]
 
+/**
+ * 轴窗口分配（用户口径 2026-10-14）：
+ * > 「**末尾优先**，**双转大（尽量打的类别）看情况放 0-1 个**，**其余兜底**。」
+ * > 「如果只有一个轴那意思就是每次失衡都打这个。如果有收尾轴那意思是最后打收尾轴，
+ * >   其他时候打上一个普通轴。」
+ *
+ * 四阶段：① tail 先占 1 窗（末尾优先）② fixed 按 count ③ bestEffort 有富余给 1
+ * ④ fallback 末条吃剩余。**旧实现的缺陷**：count 缺省者吃光剩余（无论在第几位）⇒
+ * 后面的显式轴全被压成 0（`[None,1,1]`+4 曾得 `[4,0,0]`，用户口径 `[2,1,1]`）。
+ */
 describe('allocateAxisWindows', () => {
-  it('allocates exact counts then 兜底 eats the remainder', () => {
+  it('① 末尾优先：tail 先占 1 窗，fallback 吃剩余', () => {
+    // 仪琉：常规(兜底) + 尾段(收尾) ⇒ 失衡 4 = 常规3 + 尾段1（用户口径；旧实现 [4,0]）
+    const axes = [{ kind: 'fallback' as const }, { kind: 'tail' as const }]
+    expect(allocateAxisWindows(axes, 4)).toEqual([3, 1])
+    expect(allocateAxisWindows(axes, 3)).toEqual([2, 1])
+    expect(allocateAxisWindows(axes, 5)).toEqual([4, 1])
+  })
+
+  it('② 双转大（bestEffort）看情况放 0-1 个，其余兜底', () => {
+    // 5火10大：循环(兜底) + 双转大(尽量打) + 末尾(收尾)
+    const axes = [{ kind: 'fallback' as const }, { kind: 'bestEffort' as const }, { kind: 'tail' as const }]
+    expect(allocateAxisWindows(axes, 4)).toEqual([2, 1, 1])  // 用户口径
+    expect(allocateAxisWindows(axes, 3)).toEqual([1, 1, 1])
+    expect(allocateAxisWindows(axes, 5)).toEqual([3, 1, 1])
+    // 富余不足时 bestEffort 得 0（「看情况」的 0 侧）
+    expect(allocateAxisWindows(axes, 1)).toEqual([0, 0, 1])
+    expect(allocateAxisWindows(axes, 2)).toEqual([0, 1, 1])
+  })
+
+  it('③ 单轴 = 兜底轴（吃满），不写死次数', () => {
+    // 用户口径：「只有一个爆发轴说明这个就是兜底轴」+「显示 4 次不要用，失衡次数不确定」
+    for (const stun of [1, 3, 4, 5, 7]) {
+      expect(allocateAxisWindows([{ kind: 'fallback' as const }], stun)).toEqual([stun])
+    }
+  })
+
+  it('④ 显式 fixed 次数优先于 bestEffort，且不超剩余', () => {
+    const axes = [{ kind: 'fixed' as const, count: 3 }, { kind: 'fixed' as const, count: 1 }]
+    expect(allocateAxisWindows(axes, 4)).toEqual([3, 1])
+    expect(allocateAxisWindows(axes, 2)).toEqual([2, 0])   // 第二个固定轴被剩余量截断
+    expect(allocateAxisWindows(axes, 0)).toEqual([0, 0])
+  })
+
+  it('⑤ 多条 fallback：只有**最后一条**吃剩余（末条兜底，旧实现给了首条）', () => {
+    const axes = [{ kind: 'fallback' as const }, { kind: 'fallback' as const }]
+    expect(allocateAxisWindows(axes, 4)).toEqual([0, 4])
+    // 与类型注释「多条轴时按顺序分配，末条兜底」一致（旧实现与文档自相矛盾）
+  })
+
+  it('⑥ 反空洞：Σ 分配恒等于失衡次数（每个窗口都必须有归属轴）', () => {
+    const cases: { kind: 'fallback' | 'tail' | 'bestEffort' | 'fixed'; count?: number }[][] = [
+      [{ kind: 'fallback' }],
+      [{ kind: 'fallback' }, { kind: 'tail' }],
+      [{ kind: 'fallback' }, { kind: 'bestEffort' }, { kind: 'tail' }],
+      [{ kind: 'tail' }, { kind: 'tail' }, { kind: 'fallback' }],
+      [{ kind: 'fixed', count: 2 }, { kind: 'fallback' }],
+    ]
+    for (const axes of cases) {
+      for (const stun of [0, 1, 2, 3, 4, 5, 6, 9]) {
+        const w = allocateAxisWindows(axes, stun)
+        expect(w.reduce((a, b) => a + b, 0), `${JSON.stringify(axes)} stun=${stun} ⇒ ${JSON.stringify(w)}`).toBe(stun)
+        expect(w.every(x => x >= 0 && Number.isInteger(x))).toBe(true)
+      }
+    }
+  })
+
+  it('⑦ 缺省推断（兼容存量未标 kind 的数据）：count≥1 ⇒ fixed，否则 fallback', () => {
+    // 旧数据 `[缺省, 1, 1]`：首条缺省按 fallback ⇒ 得到用户口径 [2,1,1]（而非旧的 [4,0,0]）
+    expect(allocateAxisWindows([{}, { count: 1 }, { count: 1 }], 4)).toEqual([2, 1, 1])
+    // count:0 是历史编辑失误 ⇒ 按 fallback 处理（不再当「打 0 次」）
+    expect(allocateAxisWindows([{ count: 0 }, { count: 1 }], 4)).toEqual([3, 1])
+  })
+
+  it('legacy: allocates exact counts then 兜底 eats the remainder', () => {
     // 爆发轴 count=4 → 4 窗口，经济轴无 count → 兜底吃剩余
     const axes = [{ count: 4 }, { count: undefined }]
     expect(allocateAxisWindows(axes, 6)).toEqual([4, 2])

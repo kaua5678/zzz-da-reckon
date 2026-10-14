@@ -13,6 +13,8 @@
  * 本模块只做「哪些动作被执行」的纯函数决策，不碰面板/倍率/伤害。
  */
 
+import type { StunAxisKind } from '@/types/resource'
+
 export interface StackActionCost {
   slot: number
   moveId: string
@@ -139,17 +141,66 @@ export interface StackTraversalResult {
 }
 
 /**
- * 把失衡窗口数按轴顺序分配：count 有值 = 精确次数，缺省 = 兜底吃剩余。
+ * 轴类型推断（缺省标签时的兼容路径；轴页会把推断结果显示成标签，不隐藏）。
+ * `count` ≥ 1 ⇒ fixed（显式次数）；否则 ⇒ fallback（兜底吃剩余）。
+ */
+export function axisKindOf(axis: { readonly kind?: StunAxisKind; readonly count?: number }): StunAxisKind {
+  if (axis.kind !== undefined) return axis.kind
+  return axis.count !== undefined && axis.count >= 1 ? 'fixed' : 'fallback'
+}
+
+/**
+ * 把失衡窗口数按轴类型分配（用户口径 2026-10-14：「**末尾优先**，**双转大（尽量打的类别）
+ * 看情况放 0-1 个**，**其余兜底**」）。
+ *
+ * ## 分配顺序（四阶段，优先级从高到低）
+ *  ① **末尾优先**：`tail` 轴**先占 1 窗**（「最后打收尾轴」）——从后往前，每条 tail 预留 1 窗；
+ *  ② **显式固定**：`fixed` 轴按 `count` 精确分配（用户明确写下的次数）；
+ *  ③ **尽量打**：`bestEffort` 轴**有富余给 1、否则给 0**（「看情况放 0-1 个」）；
+ *  ④ **兜底**：`fallback` 轴吃**所有剩余**；多条 fallback 时只有**最后一条**吃剩余（末条兜底），
+ *     其余得 0。
+ *
+ * ## 为什么是这个顺序（旧实现的缺陷）
+ * 旧式 `count !== undefined ? min(count, remaining) : remaining` 把「缺省」一律当吃剩余，
+ * **无论它在第几位** ⇒ 首条缺省就吃光全部窗，其后的显式轴（含收尾轴）全被压成 0：
+ * 实测 `5火10大 [循环:缺省, 双转大:1, 末尾:1]` + 失衡 4 ⇒ `[4,0,0]`（用户口径 `[2,1,1]`）；
+ * `仪琉 [常规:缺省, 尾段:0]` ⇒ `[4,0]`（收尾轴从未执行，用户口径 `[3,1]`）。
+ * 且类型注释原写「多条轴时按顺序分配，**末条兜底**」——实现与文档自相矛盾（兜底给了首条）。
+ *
  * 返回每个轴分配到的窗口数（与 axes 同序）。供栈遍历、连携加权、转大加权共用同一套口径。
  */
-export function allocateAxisWindows(axes: ReadonlyArray<{ readonly count?: number }>, stunCount: number): number[] {
-  const wins: number[] = []
+export function allocateAxisWindows(axes: ReadonlyArray<{ readonly kind?: StunAxisKind; readonly count?: number }>, stunCount: number): number[] {
+  const n = axes.length
+  const wins = new Array<number>(n).fill(0)
+  // ⚠ **不取整**：`stunCount` 在轴栈侧可能是小数（外层不动点的计划值），旧实现原样使用。
+  // 本轮加过 `Math.floor` 造成非预期改动（banyue 轴退化用例翻转），已回退——分配语义只改
+  // 「谁先拿窗」，不改「一共几窗」。
   let remaining = Math.max(0, stunCount)
-  for (const axis of axes) {
-    if (remaining <= 0) { wins.push(0); continue }
-    const w = axis.count !== undefined ? Math.min(axis.count, remaining) : remaining
-    wins.push(w)
-    remaining -= w
+  if (n === 0 || remaining <= 0) return wins
+  const kinds = axes.map(a => axisKindOf(a))
+
+  // ① 末尾优先：tail 轴从后往前各预留 1 窗
+  for (let i = n - 1; i >= 0; i--) {
+    if (remaining <= 0) break
+    if (kinds[i] === 'tail') { wins[i] = 1; remaining -= 1 }
+  }
+  // ② 显式固定次数
+  for (let i = 0; i < n; i++) {
+    if (remaining <= 0) break
+    if (kinds[i] !== 'fixed') continue
+    const w = Math.max(0, Math.min(axes[i].count ?? 0, remaining))
+    wins[i] += w; remaining -= w
+  }
+  // ③ 尽量打：有富余给 1、否则 0
+  for (let i = 0; i < n; i++) {
+    if (remaining <= 0) break
+    if (kinds[i] === 'bestEffort') { wins[i] += 1; remaining -= 1 }
+  }
+  // ④ 兜底：末条 fallback 吃剩余（前面的 fallback 得 0）
+  const fallbackIdx = kinds.lastIndexOf('fallback')
+  if (fallbackIdx >= 0 && remaining > 0) {
+    wins[fallbackIdx] += remaining
+    remaining = 0
   }
   return wins
 }

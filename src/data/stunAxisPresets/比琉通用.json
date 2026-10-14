@@ -10,6 +10,7 @@
  "axes": [
   {
    "name": "常规轴",
+   "kind": "fallback",
    "actions": [
     {
      "slot": 0,

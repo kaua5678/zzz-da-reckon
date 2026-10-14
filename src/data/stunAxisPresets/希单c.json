@@ -10,7 +10,7 @@
   "axes": [
     {
       "name": "希希芙循环",
-      "count": 3,
+      "kind": "fallback",
       "basicFillerSlot": 0,
       "actions": [
         { "slot": 0, "moveId": "1521008", "count": 1 },

@@ -6,9 +6,25 @@
  *    `configStore.stunAxes`，而求解侧 `resolvedAxes` 在求解器回退（forceNoAxis）时会被清空，两者不总相等。
  *    日后若有其它编辑器派生量（窗口起止、轴内时长等），也放在这里。
  */
-import { allocateAxisWindows } from '@/core/stunAxisStack'
+import { allocateAxisWindows, axisKindOf } from '@/core/stunAxisStack'
+import type { StunAxisKind } from '@/types/resource'
 
-/** 各轴实际分到的失衡窗口数：按顺序分配，count 缺省 = 兜底吃剩余（与栈引擎同口径） */
-export function axisWindowCounts(axes: ReadonlyArray<{ readonly count?: number }>, stunCount: number): number[] {
+/**
+ * 各轴实际分到的失衡窗口数（与栈引擎同口径）。
+ * 分配规则见 `core/stunAxisStack#allocateAxisWindows`：**末尾优先（tail 先占 1 窗）→ 固定次数
+ * → 尽量打（bestEffort 0-1 窗）→ 兜底（末条 fallback 吃剩余）**。
+ */
+export function axisWindowCounts(
+  axes: ReadonlyArray<{ readonly kind?: StunAxisKind; readonly count?: number }>,
+  stunCount: number,
+): number[] {
   return allocateAxisWindows(axes, stunCount)
+}
+
+/**
+ * 轴类型（缺省标签时按 `count` 推断，与引擎同源）。
+ * 页面用它显示类型标签 —— 用户口径 2026-10-14：「加标签吧，**不要隐藏逻辑**」。
+ */
+export function axisKindOfView(axis: { readonly kind?: StunAxisKind; readonly count?: number }): StunAxisKind {
+  return axisKindOf(axis)
 }

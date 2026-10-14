@@ -66,9 +66,17 @@
         <div v-for="(axis, ai) in axes" :key="ai" class="sap-axis">
           <div class="sap-axis-head">
             <n-input :value="axis.name" @update:value="v => editAxis(ai, a => { a.name = v })" size="small" style="width:130px" placeholder="轴名" />
-            <span class="sap-label">×</span>
-            <n-input-number :value="axis.count" @update:value="v => editAxis(ai, a => { a.count = v ?? undefined })" size="small" :min="0" :max="20" style="width:60px" :placeholder="'兜底'" />
-            <span class="sap-label">次（空=兜底）</span>
+            <!-- 轴类型（用户口径 2026-10-14：「加标签吧，不要隐藏逻辑」）：
+                 四类语义显式可编辑，不再靠「count 空=兜底」这种隐式约定。
+                 `fixed` 才显示次数输入；其余类型次数由分配算法决定（末尾优先/看情况/吃剩余）。 -->
+            <n-select :value="axisKind(ai)" @update:value="v => setAxisKind(ai, v)" size="small" style="width:104px"
+              :options="axisKindOptions" :title="axisKindHint(axisKind(ai))" />
+            <template v-if="axisKind(ai) === 'fixed'">
+              <span class="sap-label">×</span>
+              <n-input-number :value="axis.count" @update:value="v => editAxis(ai, a => { a.count = v ?? undefined })"
+                size="small" :min="1" :max="20" style="width:78px" :show-button="false" title="该轴精确打几次失衡窗口" />
+              <span class="sap-label">次</span>
+            </template>
             <span class="sap-label">兜底平A</span>
             <n-select :value="fillerValue(ai)" @update:value="v => setFiller(ai, v)" size="small" style="width:110px" :options="fillerOptions" />
             <span class="sap-label">初始状态</span>
@@ -150,12 +158,12 @@
               <n-select :value="act.slot" @update:value="v => editAction(ai, aii, a => { a.slot = v })" :options="slotOptions" size="tiny" style="width:92px" />
               <n-select :value="act.moveId" :options="moveOptions(act.slot)" size="tiny" style="width:168px" @update:value="v => editAction(ai, aii, a => { a.moveId = v; a.sourceTag = undefined })" />
               <span>×</span>
-              <n-input-number :value="act.count" @update:value="v => editAction(ai, aii, a => { a.count = v ?? 1 })" size="tiny" :min="1" :max="99" style="width:52px" />
+              <n-input-number :value="act.count" @update:value="v => editAction(ai, aii, a => { a.count = v ?? 1 })" size="tiny" :min="1" :max="99" style="width:76px" :show-button="false" title="该动作在单个失衡窗口内打几次" />
               <n-select v-if="isPromotable(act)" :value="act.promoteVariant ?? ''" @update:value="v => editAction(ai, aii, a => { a.promoteVariant = v || undefined })" size="tiny" style="width:82px"
                 :options="[{label:'常规',value:''},{label:'60转大',value:'60'},{label:'90转大',value:'90'}]" />
               <template v-if="durationInputFor(act)">
                 <span class="sap-t" :title="durationInputFor(act)!.title">
-                  {{ durationInputFor(act)!.label }}<n-input-number :value="act.duration ?? durationInputFor(act)!.default" :min="durationInputFor(act)!.min" :max="durationInputFor(act)!.max" :step="durationInputFor(act)!.step" size="tiny" style="width:62px"
+                  {{ durationInputFor(act)!.label }}<n-input-number :value="act.duration ?? durationInputFor(act)!.default" :min="durationInputFor(act)!.min" :max="durationInputFor(act)!.max" :step="durationInputFor(act)!.step" size="tiny" style="width:84px" :show-button="false"
                     @update:value="v => editAction(ai, aii, a => { a.duration = v ?? durationInputFor(a)!.default })" />s
                 </span>
               </template>
@@ -299,7 +307,8 @@ import { axisTableDirectCandidates } from '@/composables/resourceCalc/axisTableD
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
 import { damageElementLabel } from '@/utils/agentLabelMaps'
-import type { StunAxisAction, StunAxis } from '@/types/resource'
+import type { StunAxisAction, StunAxis, StunAxisKind } from '@/types/resource'
+import { axisKindOfView } from '@/composables/stunAxisView'
 import { BOSS_ENTRY_ANOMALY_OPTIONS } from '@/data/bossEntryAnomalyOptions'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import { findUltimateMove, chainMoveKind } from '@/data/chainMoveKind'
@@ -445,6 +454,37 @@ function editAxis(ai: number, fn: (axis: StunAxis) => void) {
 function editAction(ai: number, aii: number, fn: (act: StunAxisAction) => void) {
   editAxis(ai, axis => { const act = axis.actions[aii]; if (act) fn(act) })
 }
+/**
+ * 轴类型（用户口径 2026-10-14：「加标签吧，不要隐藏逻辑」）。
+ * 缺省推断与 `core/stunAxisStack#axisKindOf` **同源**（页面只读、不另立口径）。
+ */
+function axisKind(ai: number): StunAxisKind {
+  const a = axes.value[ai]
+  return a ? axisKindOfView(a) : 'fallback'
+}
+function setAxisKind(ai: number, v: StunAxisKind | null) {
+  if (!v) return
+  editAxis(ai, target => {
+    target.kind = v
+    // 切到 fixed 且没有合法次数时给个起点（1 次）；切离 fixed 时清掉 count，
+    // 避免留下「类型是兜底、却还写着 count:3」这种自相矛盾的数据（正是本轮要消灭的隐式约定）。
+    if (v === 'fixed') { if (!(typeof target.count === 'number' && target.count >= 1)) target.count = 1 }
+    else target.count = undefined
+  })
+}
+/** 类型说明（鼠标悬停可读，不隐藏逻辑） */
+function axisKindHint(k: StunAxisKind): string {
+  if (k === 'fallback') return '兜底轴：吃掉所有剩余失衡窗口（多条兜底时只有最后一条吃剩余）'
+  if (k === 'tail') return '收尾轴：末尾优先，先预留 1 窗（最后一次失衡打这条）'
+  if (k === 'bestEffort') return '尽量打：有富余给 1 窗、没富余给 0 窗'
+  return '固定次数：按右侧填写的次数精确分配'
+}
+const axisKindOptions: { label: string; value: StunAxisKind }[] = [
+  { label: '兜底', value: 'fallback' },
+  { label: '收尾', value: 'tail' },
+  { label: '尽量打', value: 'bestEffort' },
+  { label: '固定次数', value: 'fixed' },
+]
 function removeAxis(ai: number) {
   if (!writableAxisAt(ai)) return
   configStore.stunAxes.splice(ai, 1)

@@ -1,5 +1,5 @@
 {
- "_note": "时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts —— 重生成前必须先 A/B 归因（见测试头注释）；2026-10-14 T151 重折环进环判据加「有整次动作被砍」支（截断不回灌资源循环·资源面）⇒ 全库仅 auto-1051-1141-1451 slack 2.3→2.2（该队无截断、cuts=0：外层不动点落在相邻的整数化边界，槽0 nec 66.861→66.608、时间转入平A池；伤害 23.4974→23.4972M。其余 92 队逐位不变）",
+ "_note": "时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts —— 重生成前必须先 A/B 归因（见测试头注释）；2026-10-14 T155 轴窗口分配补全（用户口径「末尾优先 / 尽量打 0-1 个 / 其余兜底」）⇒ 6 条：5 条是「单轴预设 count:3 改为兜底」导致轴吃满窗（auto-1461-1521-1491 4→5 / auto-1521-1461-1311 4→5 / auto-1521-1481-1491 5→6 / auto-1521-1481-1311 4→6 / auto-1521-1251-1311 5→8），1 条是「仪琉尾段 count:0 → tail」使收尾轴首次执行（auto-1051-1481-1451 slack 0.4→1.4）。逐队归因见 .zc/reports/T155-IMPLEMENTATION.md §六",
  "_tolerance": 1,
  "auto-1021-1031-1491": {
   "slack": 0,
@@ -80,7 +80,7 @@
   "outerExit": "stable"
  },
  "auto-1051-1481-1451": {
-  "slack": 0.4,
+  "slack": 1.4,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -280,7 +280,7 @@
  "auto-1461-1521-1491": {
   "slack": 0,
   "over": 0,
-  "stun": 4,
+  "stun": 5,
   "outerExit": "stable"
  },
  "auto-1501-1141-1491": {
@@ -334,25 +334,25 @@
  "auto-1521-1251-1311": {
   "slack": 0,
   "over": 0,
-  "stun": 5,
+  "stun": 8,
   "outerExit": "stable"
  },
  "auto-1521-1461-1311": {
   "slack": 0,
   "over": 0,
-  "stun": 4,
+  "stun": 5,
   "outerExit": "stable"
  },
  "auto-1521-1481-1311": {
   "slack": 0,
   "over": 0,
-  "stun": 4,
+  "stun": 6,
   "outerExit": "stable"
  },
  "auto-1521-1481-1491": {
   "slack": 0.3,
   "over": 0,
-  "stun": 5,
+  "stun": 6,
   "outerExit": "stable"
  },
  "auto-1531-1481-1451": {

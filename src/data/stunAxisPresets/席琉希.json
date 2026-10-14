@@ -10,7 +10,7 @@
   "axes": [
     {
       "name": "席德爆发+希希芙循环",
-      "count": 3,
+      "kind": "fallback",
       "basicFillerSlot": 0,
       "actions": [
         { "slot": 0, "moveId": "xide-bengzhui", "count": 3 },

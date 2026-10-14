@@ -10,6 +10,7 @@
   "axes": [
     {
       "name": "爆发轴",
+      "kind": "fallback",
       "actions": [
         {
           "slot": 0,
@@ -83,6 +84,7 @@
     },
     {
       "name": "末尾爆发轴",
+      "kind": "tail",
       "actions": [
         {
           "slot": 0,
