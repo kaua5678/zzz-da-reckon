@@ -1,5 +1,5 @@
 {
- "_note": "时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts —— 重生成前必须先 A/B 归因（见测试头注释）",
+ "_note": "时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts —— 重生成前必须先 A/B 归因（见测试头注释）；2026-10-14 T151 重折环进环判据加「有整次动作被砍」支（截断不回灌资源循环·资源面）⇒ 全库仅 auto-1051-1141-1451 slack 2.3→2.2（该队无截断、cuts=0：外层不动点落在相邻的整数化边界，槽0 nec 66.861→66.608、时间转入平A池；伤害 23.4974→23.4972M。其余 92 队逐位不变）",
  "_tolerance": 1,
  "auto-1021-1031-1491": {
   "slack": 0,
@@ -74,7 +74,7 @@
   "outerExit": "stable"
  },
  "auto-1051-1141-1451": {
-  "slack": 2.3,
+  "slack": 2.2,
   "over": 0,
   "stun": 5,
   "outerExit": "stable"

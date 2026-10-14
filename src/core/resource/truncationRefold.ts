@@ -71,10 +71,22 @@ export function runTruncationRefold(
     })
   }
   for (let refoldPass = 0; refoldPass < ROW_REFOLD_MAX_PASSES; refoldPass++) {
-    if (tail.timeTruncatedSeconds <= toleranceSeconds) break
+    // T151（2026-10-14）：进环判据在旧口径上**追加**「有整次动作被砍」这一支。
+    // 旧判据「Σcut ≤ 1s 就停」漏掉 0 < Σcut ≤ 1s 却真砍了整次动作的槽：
+    // 实测 `auto-1591-1481-1211` 槽0 弹刀 20（cut 0.933s = 强特 10→9）与
+    // `yidhari-trigger-lucia` 槽0 弹刀 60（cut 0.950s = 强特 11→10）都因 ≤1 从未进环
+    // ⇒ 账本按未砍次数计、装配只打砍后的次数 ⇒ 账本收入超保住行 Σ（实测 7 槽，最大 +133.98）。
+    // 用户口径「超时砍掉任何招式都该让其计数和各项数据扣除」**不分秒数大小**。
+    // ⚠ 用「整次」而非「有任意 cut」：整数装包的小数残渣（countBefore 8.25→8.0，cutSeconds < 0.05）
+    // 不是「打不出来的招式」（0.25 次本来就不可执行），拿它进环会把无动作损失的队拖进重折、
+    // 落点漂移（实测 auto-1051-1141-1451 slack 2.3→2.2）。
+    const wholeActionCut = tail.truncationCuts.some(c => c.countBefore - c.countAfter >= 1 - 1e-9)
+    if (tail.timeTruncatedSeconds <= toleranceSeconds && !wholeActionCut) break
     const keptBySlot = new Map<number, number>()
     for (const e of tail.truncationBySlot) {
-      if (e.cutSeconds > toleranceSeconds) keptBySlot.set(e.slot, e.kept)
+      // 与进环判据同源：旧口径（cut > 容差）**或**该槽有整次动作被砍
+      const slotHasWholeCut = tail.truncationCuts.some(c => c.slot === e.slot && c.countBefore - c.countAfter >= 1 - 1e-9)
+      if (e.cutSeconds > toleranceSeconds || slotHasWholeCut) keptBySlot.set(e.slot, e.kept)
     }
     if (keptBySlot.size === 0) break
     // 不动点：本轮装配 kept 与上一轮写入的 rowTimeLimit 逐槽一致 ⇒ 账本已按真装得下的行计，停

@@ -48,6 +48,8 @@ import { describe, it, expect } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
+import { rowDecibelTotal, rowEnergyTotal } from '@/core/resource/rowAccounting'
+import type { SkillExecution } from '@/types/resource'
 
 const fin = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
 /** 判据容差：次数是整数装包后的量，浮点尾数不算超报。 */
@@ -62,7 +64,10 @@ type CharResult = {
   executedExSpecialCount: number
   executedUltimateCount: number
   executedChainCountTotal: number
-  executions: { moveId: string; category: string; count: number }[]
+  energySource: { skillRegen: number }
+  decibelSource: { skillRegen: number }
+  // 用引擎的 SkillExecution（规则 15：行级收入必须交给引擎函数算，这里只做容器类型）
+  executions: SkillExecution[]
 }
 
 /**
@@ -81,6 +86,10 @@ async function runSweep() {
     allowedEx: number; execEx: number; rowSpecial: number
     allowedCh: number; execCh: number; rowChain: number
     allowedUlt: number; execUlt: number; rowUlt: number
+    /** 资源面（本债的另一半）：账本行级收入 vs 保住行的行级 Σ */
+    ledE: number; rowE: number; ledD: number; rowD: number
+    /** 重折环被拒（振荡队）：账本按上一次接受态计，恒等式不适用（如实排除，见 truncationRefold.test ④） */
+    rejected: boolean
   }[] = []
   for (const preset of presets) {
     const { catalog, config } = await setupHarness(['', '', ''])
@@ -110,6 +119,12 @@ async function runSweep() {
           rowSpecial: c.executions.filter(e => e.category === 'special').reduce((a, e) => a + fin(e.count), 0),
           allowedCh: c.chainCountTotal, execCh: c.executedChainCountTotal, rowChain: rowsOf(cfg.chainMoveId),
           allowedUlt: c.ultimateCount, execUlt: c.executedUltimateCount, rowUlt: rowsOf(cfg.ultimateMoveId),
+          // 资源面：**直接调引擎自己的函数**（规则 15：派生数值必须问引擎，禁止手工复刻口径）
+          ledE: c.energySource.skillRegen,
+          ledD: c.decibelSource.skillRegen,
+          rowE: c.executions.reduce((a, e) => a + rowEnergyTotal(cfg as never, e), 0),
+          rowD: c.executions.reduce((a, e) => a + rowDecibelTotal(cfg as never, e), 0),
+          rejected: rr.convergence?.truncationRefoldRejected ?? false,
         })
       }
     }
@@ -146,6 +161,39 @@ describe('债 2 / A 项 · 截断不回灌资源循环（executed* 展示口径�
       || r.allowedCh - r.execCh > COUNT_TOLERANCE
       || r.allowedUlt - r.execUlt > COUNT_TOLERANCE)
     expect(actuallyDeducted.length, '没有任何槽被扣次数 ⇒ 本修法未生效').toBeGreaterThan(0)
+  }, 1_800_000)
+
+  it('④ 资源面：账本行级收入 ≤ 保住行 Σ（被砍的招式不再贡献回能/喧响）', async () => {
+    const rows = await collectTruncatedSlots()
+    expect(rows.length, '全库无截断槽 ⇒ 判据无样本').toBeGreaterThan(0)
+    // 振荡队（重折环被拒）排除：账本按上一次接受态计，与最终 kept 差一截，恒等式不适用
+    // （同 `truncationRefold.test.ts` ④ 的既有豁免口径；实测唯一命中 = yixuan-trigger-lucia 弹刀 40 槽2）。
+    const applicable = rows.filter(r => !r.rejected)
+    expect(applicable.length, '可判定的槽为 0 ⇒ 判据空洞').toBeGreaterThan(0)
+    // 方向性：**账本 > 行Σ** 才是本债病灶（报了打不出来的回复）；
+    // **账本 < 行Σ** 属既有「整数次数行两侧计数不同」族（少报），不在本债范围，不在此判。
+    // 既有真残差（**与债 2 无关**，HEAD 上逐位相同 ⇒ 非本修法引入）：
+    // 账本按 `feasibleRows` 的**实数**次数计、装配按**整数**行计，两者在「整数化边界」上可分。
+    // 实测两条（`1371` 系，超报量 86.295 / 43.81 都是**非整数倍**行值 ⇒ 不是「少打一整次」）：
+    //  · yixuan-jufufu-lucia@弹刀40 槽0：1371009/1371023/1371025 三行实数次数与整数行不同；
+    //  · auto-1371-1481-1451@弹刀60 槽1：1481011/12/13/09 四行同理（琉音强特跨多行）。
+    // 同族残差在 `truncationRefold.test.ts` ④ 已有在册先例（`KNOWN_LEDGER_ROW_GAP`）。
+    const KNOWN_INCOME_GAP: Record<string, number> = {
+      'yixuan-jufufu-lucia@40@0': 86.30,
+      'auto-1371-1481-1451@60@1': 43.81,
+    }
+    const violations = applicable.filter(r => {
+      const known = KNOWN_INCOME_GAP[`${r.id}@${r.parry}@${r.slot}`] ?? 0
+      return r.ledE - r.rowE > 0.01 || r.ledD - r.rowD - known > 0.01
+    })
+    expect(
+      violations.map(v => `${v.id}@弹刀${v.parry} 槽${v.slot}(${v.agentId}) 截${v.cut.toFixed(2)}s `
+        + `能量 账本${v.ledE.toFixed(2)}>行Σ${v.rowE.toFixed(2)}(+${(v.ledE - v.rowE).toFixed(2)}) `
+        + `喧响 账本${v.ledD.toFixed(2)}>行Σ${v.rowD.toFixed(2)}(+${(v.ledD - v.rowD).toFixed(2)})`),
+      '账本收入超过保住行 = 报了打不出来的回复（本债资源面病灶复发）').toEqual([])
+    // 反空洞：确有槽发生过「账本 < 行Σ」或相等以外的情形，说明本判据量的是真数不是常数
+    expect(applicable.some(r => Math.abs(r.ledE - r.rowE) > 0.01 || Math.abs(r.ledD - r.rowD) > 0.01),
+      '所有槽账本与行Σ恒等 ⇒ 判据可能恒真').toBe(true)
   }, 1_800_000)
 
   it('③ 收敛零扰动：无截断的槽上 executed* 与资源允许值逐位相等（state 未被本修法改动）', async () => {
