@@ -47,10 +47,10 @@ import { applyBossRoom } from '@/composables/bossRoom'
 import { type ConfigModel } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import {
-  absorbCapOf, clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
+  absorbCapOf, applyInteractionKnob, clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
   type KnobPointName, type LadderPoint, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
-import type { AxisState } from '@/composables/difficultyAxis'
+import { axisStateOf, type AxisState } from '@/composables/difficultyAxis'
 import {
   applyAxisBinding, applyBuffToStore, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf,
   computeDifficulty, type DifficultyWeights,
@@ -64,6 +64,8 @@ import { getAgentMechanic } from '@/mechanics'
 import { liveInteractions } from '@/composables/liveInteractions'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult, TeamResourceResult } from '@/types/resource'
+import { stunAxisPresets } from '@/data/stunAxisPresets'
+import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
 import type { TeamPreset } from '@/types/teamPreset'
 
 type Calc = ResourceCalc
@@ -180,6 +182,50 @@ export interface DifficultyCurveRow {
    * 的血量统一掉（用户 2026-10-13 要的正是「不同期数的血量膨胀」）。
    */
   hp: number
+  /**
+   * **曲线外的补充点**（用户口径 2026-10-14，逐字）：
+   * > 「**10大就是选择与否，同 x 难度的不同 y，是难度曲线外面的补充点**。」
+   *
+   * 即：在**同一个难度 x** 上，「换不换这条轴」给出**不同的 y**。它**不进** `ladder.points`
+   * ——曲线仍守「每队 1~4 点」的判据（T140c 卡 §6.2），补充点单列在曲线**外面**。
+   *
+   * ⚠ **与「难度曲线的延伸」的区别**（用户同一次口径的另一半）：
+   * > 「**5嗔火涉及交互填充，是不同 x 的不同 y，是难度曲线的延伸**。」
+   * ⇒ 5嗔火（极限点）是**不同 x 不同 y**（曲线延伸，将来进 `points`）；
+   *   10大轴是**同 x 不同 y**（曲线外补充点，在本字段）。两者形态不同，**不许混用同一个容器**。
+   *
+   * 空数组 = 该预设没声明 `altAxes`（全库仅 `banyue-liuyin-lucia` 一条）或求值未启用。
+   */
+  altPoints: AltAxisPoint[]
+}
+
+/**
+ * **曲线外的补充点**（`DifficultyCurveRow.altPoints` 的元素）—— 用户口径见该字段头注释。
+ *
+ * 「同 x」的取法：**在 ④（max，纯收益拉满 + 交互取最优）的旋钮现场**上换轴重算。
+ * 为什么取 ④ 而不是 ①：④ 是曲线的天花板，也是「这支队真正打起来」的那一档；
+ * 在 ①（全 0 交互）上比换轴，比的是一个玩家不会用的配置。
+ */
+export interface AltAxisPoint {
+  /** `TeamAltAxis.id`（如 `fury5-ult10`） */
+  id: string
+  /** `TeamAltAxis.name`（如 `10大轴`） */
+  name: string
+  /** `TeamAltAxis.note`（达成条件说明，页面直接显示） */
+  note: string
+  /** 该补充点的操作难度（= 与它对照的曲线点的 x，**同 x** 的「同」就体现在这里） */
+  x: number
+  /** 该补充点的伤害（**不同 y**） */
+  dmg: number
+  /** 伤害 / Boss 血量 × 100% */
+  ratio: number
+  /** 轴态（唯一事实源 `difficultyAxis.ts#axisStateOf`，与曲线点同一把尺） */
+  axis: AxisState
+  /**
+   * 与「同 x 的曲线点」的伤害差（**换轴值不值**的直接读数）。
+   * 正 = 换这条轴更赚；负 = 更亏。页面按符号上色。
+   */
+  gainVsCurve: number
 }
 
 /**
@@ -290,14 +336,102 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
         // 环境模式带上队名：同一期往往有多支队，只写期标签在图例/摘要里分不出谁是谁
         label: lane.key === null ? preset.name : `${preset.name} · ${lane.phase.label}`,
         hp: lane.phase.hp,
+        /**
+         * **曲线外的补充点**（用户口径 2026-10-14「10大就是选择与否，同 x 难度的不同 y，
+         * 是难度曲线外面的补充点」）—— 见 `AltAxisPoint` 头注释。
+         *
+         * ⚠ 成本：每个 `altAxes` 档 = **1 次全队求值**（全库只有 1 条预设声明它 ⇒ 至多 +1 次/道）。
+         */
+        altPoints: computeAltAxisPoints({
+          ctx: { config: configStore, calc },
+          preset,
+          ladder,
+          applied,
+          phaseHp: lane.phase.hp,
+          userAbsorbCap,
+          weights: options.difficultyWeights,
+          baseAxis,
+        }),
       })
     }
   }
   return rows
 }
 
-// ========== 操作难度：自动算的 x 轴（用户 2026-09-10 口径） ==========
+// ========== 曲线外的补充点（用户 2026-10-14 口径） ==========
 
+/**
+ * **曲线外的补充点**（`DifficultyCurveRow.altPoints`）—— 用户口径逐字：
+ * > 「**10大就是选择与否，同 x 难度的不同 y，是难度曲线外面的补充点**。」
+ *
+ * ## 怎么保证「同 x」
+ *
+ * 在**曲线 ④（max）的旋钮现场**上换轴重算：
+ * ④ 的落点 = 吸收率拉满（`userAbsorbCap`）+ 交互取最优（`slotLadder`），
+ * 这正是 `climbDifficultyLadder` 算 ④ 时用的旋钮组合 ⇒ 复现它 = 复现「同一个 x」的前提。
+ * 换轴后**只重算伤害与轴态**，**不重算 x** ——
+ * 用户要的就是「难度不变、伤害变」（x 由交互次数 + 时间压力决定，换轴不该被算成难度变化）。
+ * ⚠ 若换轴后引擎报出不同的时间压力（`overflowSeconds` 变了），x 严格说会动；
+ * 本实现**如实把换轴后的实测 x 带出**（`AltAxisPoint.x`），让页面能看出「是否真的同 x」，
+ * 而不是伪造一个「与 ④ 相同的 x」。
+ *
+ * ## 为什么 ④ 缺失时返回空数组
+ *
+ * ④ 恒存在（卡 §4），故这条实际上不会触发；写成显式分支是为了不静默编一个落点。
+ */
+function computeAltAxisPoints(args: {
+  ctx: { config: ConfigModel; calc: Calc }
+  preset: TeamPreset
+  ladder: LadderResult
+  /** 该道已应用的加金步骤（与阶梯同一份现场，换轴时不能丢） */
+  applied: ReturnType<typeof applyGoldSteps>
+  phaseHp: number
+  userAbsorbCap: number
+  weights?: DifficultyWeights
+  /** 进入本道时的轴现场（用于还原） */
+  baseAxis: ReturnType<ConfigModel['getAxisState']>
+}): AltAxisPoint[] {
+  const { ctx, preset, ladder, applied, phaseHp, userAbsorbCap, weights, baseAxis } = args
+  const alts = preset.altAxes
+  if (!alts || alts.length === 0) return []
+  const maxPoint = ladder.points.find(p => p.point === 'max')
+  if (!maxPoint) return []
+  const safeHp = Number.isFinite(phaseHp) && phaseHp > 0 ? phaseHp : 1
+
+  const out: AltAxisPoint[] = []
+  try {
+    for (const alt of alts) {
+      const axisPreset = stunAxisPresets.find(p => p.id === alt.stunAxisPresetId)
+      if (!axisPreset) continue // 找不到预设 = 不静默换一条别的轴（与 buffMode 'manual' 同款纪律）
+      // 复现 ④ 的现场：预设 → 加金 → 吸收拉满 → 交互取最优
+      clearDifficultyLevers(ctx)
+      applyTeamToStore(ctx.config, preset)
+      applyGoldAllocationToStore(ctx.config, applied)
+      ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, userAbsorbCap)
+      applyInteractionKnob(ctx, 'zero')
+      applyInteractionKnob(ctx, 'slotLadder')
+      // 换轴：以该预设自己的轴绑定为底，再套 altAxes 指定的轴预设
+      applyAxisBinding(ctx.config, baseAxis, preset)
+      ctx.config.applyStunAxisPreset(axisPreset)
+      out.push({
+        id: alt.id,
+        name: alt.name,
+        note: alt.note ?? '',
+        x: measureOperationalDifficulty(ctx, preset, weights),
+        dmg: ctx.calc.teamTotalDamage.value,
+        ratio: (ctx.calc.teamTotalDamage.value / safeHp) * 100,
+        axis: axisStateOf(ctx.calc),
+        gainVsCurve: ctx.calc.teamTotalDamage.value - maxPoint.dmg,
+      })
+    }
+  } finally {
+    // 现场恢复：本函数只负责**探测**（与 `climbDifficultyLadder` 同款契约）
+    ctx.config.setAxisState(baseAxis)
+  }
+  return out
+}
+
+// ========== 操作难度：自动算的 x 轴（用户 2026-09-10 口径） ==========
 /**
  * **自动算的操作难度**（x 轴自变量）＝ 既有单一事实源 `teamCompare#computeDifficulty`：
  *   Σ(交互次数 × 权重) + **时间压力秒 × 权重**
@@ -721,6 +855,12 @@ export interface CurveSeries {
    * 「曲线内无法达到」时用它说明「这条曲线最多只能打到 N 次」——不给一个编出来的 x。
    */
   maxPlayed: number | null
+  /**
+   * **曲线外的补充点**（用户口径 2026-10-14「同 x 难度的不同 y，是难度曲线外面的补充点」）——
+   * 从 `DifficultyCurveRow.altPoints` 原样带出（`ratio` 已按本道血量算好）。
+   * 空数组 = 该道没有补充点（绝大多数队）。
+   */
+  altPoints: AltAxisPoint[]
 }
 
 // ========== 截断提醒：要达到手填的交互要求至少需要多少难度（用户 2026-10-06 口径） ==========
@@ -868,6 +1008,11 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       gain: r.ladder.gain,
       // 「平坦」= ②③ 都缺失且 ④ 无实质增益（此时曲线只有 ①④ 两点且同高）
       flat: r.ladder.points.length <= 2 && Math.abs(r.ladder.gain) <= 1e-6,
+      /**
+       * 曲线外的补充点：`ratio` 在这里**按本道血量重算**（`computeAltAxisPoints` 用的是
+       * `lane.phase.hp`，二者在自身实力模式下同值；环境模式下也同源 ⇒ 重算只是防御性统一）。
+       */
+      altPoints: r.altPoints.map(a => ({ ...a, ratio: (a.dmg / safeHp) * 100 })),
     }
   })
   /**

@@ -585,6 +585,17 @@
               class="scatter-dot" stroke-width="0.5"
               @mouseenter="curveHover = { si, pi }" @mouseleave="curveHover = null"
             />
+            <!-- **曲线外的补充点**（用户口径 2026-10-14「同 x 难度的不同 y，是难度曲线外面的
+                 补充点」）：空心菱形 + 名称/Δ伤害小字。与曲线点（实心圆）**不同形状** ⇒ 一眼看出
+                 「它在曲线外面」；不连线（它不在曲线上，只是同一难度上的另一个选择）。 -->
+            <g v-for="(a, ai) in s.altPts" :key="'ca' + si + '-' + ai">
+              <path
+                class="curve-alt"
+                :d="`M ${a.cx} ${a.cy - 5} L ${a.cx + 5} ${a.cy} L ${a.cx} ${a.cy + 5} L ${a.cx - 5} ${a.cy} Z`"
+                fill="none" :stroke="a.color" stroke-width="1.6" opacity="0.95"
+              />
+              <text :x="a.cx" :y="a.cy + 15" text-anchor="middle" class="curve-jump-label curve-alt-label" font-size="9">{{ a.text }}</text>
+            </g>
             <!-- 关键次数跃迁标注（「多了一次」量级）：加一圈 + 点上方文字 -->
             <g v-for="(j, ji) in s.jumpPts" :key="'cj' + si + '-' + ji">
               <circle :cx="j.cx" :cy="j.cy" r="6.5" fill="none" :stroke="s.color" stroke-width="1.2" opacity="0.85" />
@@ -745,6 +756,7 @@
               <th>队伍</th><th v-if="curveRowsHavePeriod">期数</th><th v-if="curveRowsHavePeriod">该期血量</th>
               <th>全关</th><th>终点</th><th>提升</th><th>倍数</th>
               <th>操作难度</th><th>收益/难度</th><th>关键点</th><th>轴态</th>
+                          <th v-if="curveHasAltPoints">曲线外补充点</th>
             </tr>
           </thead>
           <tbody>
@@ -760,6 +772,18 @@
               <td>{{ fmt(s.slope, 1) }}%/点</td>
               <td class="td-detail"><div class="cell-clamp">{{ s.flat ? '无优化空间' : s.steps.map(pointLabel).join(' → ') }}</div></td>
               <td class="td-detail"><div class="cell-clamp">{{ axisColumnText(s) }}</div></td>
+              <td v-if="curveHasAltPoints" class="td-detail">
+                <div class="cell-clamp">
+                  <template v-if="s.altPoints.length > 0">
+                    <!-- 曲线外补充点（「同 x 不同 y」）：名称 + 与 ④ 的伤害差 -->
+                    <span v-for="(a, ai) in s.altPoints" :key="a.id">
+                      <template v-if="ai > 0">、</template>
+                      {{ a.name }} {{ signedDmg(a.gainVsCurve) }}
+                    </span>
+                  </template>
+                  <template v-else>—</template>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -1362,6 +1386,12 @@ const laneKeyOf = (r: DifficultyCurveRow): string => (r.periodKey === null ? r.p
  * 半新半旧的假象（实机点通实测到）。
  */
 const curveRowsHavePeriod = computed(() => curveRows.value.some(r => r.periodKey !== null))
+/**
+ * 本批可见曲线里**有没有曲线外补充点**（用户口径 2026-10-14「10大就是选择与否，同 x 难度的
+ * 不同 y，是难度曲线外面的补充点」）——没有就**不渲染那一列**（全库只有 1 条预设声明 altAxes，
+ * 给 90+ 队常驻一个空列是纯噪声）。
+ */
+const curveHasAltPoints = computed(() => curveData.value?.series.some(s => s.altPoints.length > 0) ?? false)
 /** 结果与当前环境设置不一致（改过开关/buff 态/期数范围但没重算）⇒ 如实提示，不假装结果是最新的 */
 const curveRowsStale = computed(() => curveRows.value.length > 0 && curveRowsHavePeriod.value !== curveEnv.value)
 const curveLegend = useSeriesFilter(() => curveRows.value.map(r => ({
@@ -1662,6 +1692,18 @@ const curveSeriesPx = computed(() => {
         back: p.cost < prev.cost - 1e-9,
       }
     }),
+    /**
+     * **曲线外的补充点**（用户口径 2026-10-14「同 x 难度的不同 y，是难度曲线外面的补充点」）：
+     * 画成**空心菱形**（与曲线点的实心圆区分），不与曲线连线（它不在曲线上）。
+     * 空数组 = 该队没有补充点（绝大多数队）。
+     */
+    altPts: s.altPoints.map(a => ({
+      ...a,
+      cx: curveXOf(a.x),
+      cy: curveYOf(a.ratio),
+      color: colorOf(s.presetId),
+      text: `${a.name} ${signedDmg(a.gainVsCurve)}`,
+    })),
     jumpPts: s.jumps.map(j => ({
       ...j,
       cx: curveXOf(j.cost),

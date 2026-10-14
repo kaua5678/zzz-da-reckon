@@ -80,7 +80,8 @@ function mkLadder(
 /** 合成图行（纯函数判据不关心金档/期数，填占位；`period*`/`label`/`hp` 只在环境模式有意义） */
 const HP = 100_000_000
 const mkRow = (presetId: string, name: string, ladder: LadderResult, hp = HP): DifficultyCurveRow =>
-  ({ presetId, name, ladder, periodKey: null, periodId: null, label: name, hp })
+  // `altPoints` 缺省空数组 = 该预设没声明 altAxes（全库仅 banyue-liuyin-lucia 一条）⇒ 图上没有补充点
+  ({ presetId, name, ladder, periodKey: null, periodId: null, label: name, hp, altPoints: [] })
 
 describe('buildCurveChart（纯函数）', () => {
   it('空输入返回可画的空图（不产生 NaN / 负上界）', () => {
@@ -1026,5 +1027,57 @@ describe('computeDifficultyCurves · 环境模式（用户 2026-10-13：勾了�
     const [afterNone] = await run('none')
     // 若牌残留，第二次（none）会与第一次同高 ⇒ 这条判据就是防残留的
     expect(afterNone!.ladder.base).toBeLessThan(withBuff!.ladder.base)
+  }, 300_000)
+})
+
+/**
+ * **曲线外的补充点**（用户口径 2026-10-14，逐字）：
+ * > 「**10大就是选择与否，同 x 难度的不同 y，是难度曲线外面的补充点**。」
+ *
+ * ## 锁什么
+ *
+ * ① **形态**：`altPoints` 与 `ladder.points` **分开**（补充点不进曲线 ⇒ 曲线仍守「每队 1~4 点」，
+ *    T140c 卡 §6.2 的判据不被破）；
+ * ② **「不同 y」不是空操作**：`|altPoint.dmg − ④.dmg| > 0`（这正是 T140c 当时判它「空操作」的
+ *    那条理由 —— 那个结论建立在两个缺陷修复**之前**，现已不成立，见卡 §5）；
+ * ③ **同 x 的诚实性**：`altPoint.x` 带的是**换轴后实测**的 x（不伪造「与 ④ 相同」）；
+ * ④ **无声明 ⇒ 空数组**（不静默造点）。
+ *
+ * ## 负控（删掉被锁行为后本测试确实变红）
+ *
+ * - 把 `computeAltAxisPoints` 的返回改成恒 `[]` ⇒ ①②③ 全红；
+ * - 把换轴那两行（`applyAxisBinding` + `applyStunAxisPreset`）删掉 ⇒ ② 红（补充点与 ④ 同值 = 空操作）。
+ */
+describe('曲线外的补充点（altPoints，用户口径 2026-10-14「同 x 不同 y」）', () => {
+  it('★ 般琉卢的 10大轴：产出补充点、与 ④ 不同 y、且不进曲线点数组', async () => {
+    const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')
+    expect(preset?.altAxes, '反空洞：库里必须仍有声明 altAxes 的预设（否则本用例无对象）').toHaveLength(1)
+
+    const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset!], boss: FAKE_BOSS, phase: FAKE_PHASE }))
+    // ① 曲线本身仍守「1~4 点」，补充点在它外面
+    expect(row!.ladder.points.length, '补充点不得混进曲线点数组').toBeLessThanOrEqual(4)
+    expect(row!.altPoints, '声明了 altAxes ⇒ 应产出 1 个补充点').toHaveLength(1)
+
+    const alt = row!.altPoints[0]!
+    expect(alt.id).toBe('fury5-ult10')
+    expect(alt.name).toBe('10大轴')
+    expect(alt.x, 'x 是换轴后实测的操作难度（诚实读数，不伪造）').toBeGreaterThan(0)
+    expect(alt.ratio).toBeGreaterThan(0)
+
+    // ② 「不同 y」：与同 x 的曲线点（④ max）伤害**不同** —— 这正是 T140c「空操作」结论的反例
+    const maxPt = row!.ladder.points.find(p => p.point === 'max')!
+    expect(Math.abs(alt.gainVsCurve), '换轴必须真的改变伤害（否则该档是空操作）').toBeGreaterThan(0)
+    expect(alt.gainVsCurve, 'gainVsCurve 定义 = alt.dmg − ④.dmg').toBeCloseTo(alt.dmg - maxPt.dmg, 6)
+  }, 300_000)
+
+  it('无 altAxes 声明的预设 ⇒ altPoints 为空数组（不静默造点）', async () => {
+    const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
+    expect(preset.altAxes, '反空洞：本夹具确实没有 altAxes').toBeFalsy()
+    const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE }))
+    expect(row!.altPoints).toEqual([])
   }, 300_000)
 })
