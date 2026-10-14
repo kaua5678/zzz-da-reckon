@@ -150,6 +150,31 @@
   font-weight: 600;
 }
 
+/* 交互栏提示（用户口径 2026-10-14：软 = 平A被挤/合轴在吸收；硬 = 超合轴上限 ⇒ 招式被截断）。
+   ⚠ 这是**贴片**（自绘底色 + 墨），不是数据色 ⇒ 底与墨必须**成对**用同一档令牌
+   （`-soft` 底 + `-strong` 墨），否则亮色档对比度会掉到 1.x（UI_THEME_GUIDE「贴片」节实测）。
+   形状面判据：`tinted-contrast` + `tinted-ink-closure`（`npm run check-tokens`）。 */
+.interaction-hint {
+  margin: 2px 0 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  border-left: 3px solid transparent;
+}
+
+.interaction-hint.soft {
+  background: var(--c-warning-soft);
+  color: var(--c-warning-strong);
+  border-left-color: var(--c-warning);
+}
+
+.interaction-hint.hard {
+  background: var(--c-danger-soft);
+  color: var(--c-danger-strong);
+  border-left-color: var(--c-danger);
+}
+
 .wengine-stats {
   background: var(--wa-30);
   border-radius: 6px;

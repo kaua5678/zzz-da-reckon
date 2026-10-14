@@ -202,6 +202,11 @@
                         <span class="muted" style="font-size: 12px; margin-left: 8px">{{ interactionsLockedHint }}</span>
                       </div>
                       <div class="section-title">战斗动作次数</div>
+                      <!-- 交互栏提示（用户口径 2026-10-14）：软 = 平A 被挤压/合轴在吸收；硬 = 超合轴上限 ⇒ 招式被截断。
+                           纯函数 `buildInteractionHint`（引擎读数，非页面重算）⇒ 见 src/composables/interactionHint.ts -->
+                      <div v-if="interactionHint.level !== 'none'" class="interaction-hint" :class="interactionHint.level" :title="interactionHintTitle">
+                        {{ interactionHint.text }}
+                      </div>
                       <n-grid cols="6" :x-gap="8">
                       <n-gi>
                         <div class="field" title="对黄光的一次交互次数。招架型角色＝弹刀（轻弹刀＋支援突击）；回避型角色＝回避支援（1.166s 时停，不产伤害与失衡）＋支援突击。一个角色只能其一（用户 2026-09-15 口径）">
@@ -818,6 +823,7 @@ import { teamPresets } from '@/data/teamPresets'
 import { usePresetFilter } from '@/composables/usePresetTeamPicker'
 import { teamGoldOf, applyTeamPresetConfig } from '@/composables/teamCompare'
 import { useTeamConfigPresetIO } from '@/composables/teamConfigPresetIO'
+import { buildInteractionHint } from '@/composables/interactionHint'
 const presetSelectValue = ref<string | null>(null)
 
 /** 权重分配策略三态选项（默认 balanced；用户 2026-09-10 裁决，见 stores/config.ts#timeWeightStrategy） */
@@ -993,6 +999,28 @@ const guaranteeStunHint = computed(() => {
 const interactionTopUpForSlot = computed(() => {
   const t = interactionTopUp.value
   return t && t.slot === uiStore.selectedSlot ? t : null
+})
+/**
+ * **交互栏提示**（用户口径 2026-10-14，逐字）：
+ * > 「需要在交互栏旁边给个提示，**平A时间被挤压成多少秒，合轴率提升，是软提示**，
+ * >  **硬提示是你这个交互提升超过合轴上限后，招式因为超时而截断**。」
+ *
+ * 判据全在纯函数 `buildInteractionHint`（引擎读数：平A 池 / 合轴吸收 / 截断明细），
+ * 页面只做渲染与槽位传递。⚠ 传**槽位号**（`uiStore.selectedSlot`），函数内部按身份 `.find`
+ * —— `characters` 按位置压缩，槽位号 ≠ 下标（AGENTS §2）。
+ * ⚠ 容差用函数缺省（1s，= 引擎 `TIME_BUDGET_TOLERANCE_SECONDS`）——**展示层不得 import `@/core`**
+ * （exhibition-layer 棘轮），故不在此引用该常量；两处同值由 `interactionHint.test.ts` 锁。
+ */
+const interactionHint = computed(() =>
+  buildInteractionHint(resourceResult.value, uiStore.selectedSlot))
+const interactionHintTitle = computed(() => {
+  const h = interactionHint.value
+  const parts = [
+    `平A 池 ${h.basicAttackTime.toFixed(2)}s`,
+    h.absorbedSeconds > 0 ? `合轴吸收 ${h.absorbedSeconds.toFixed(1)}s` : '',
+    h.truncatedSeconds > 0 ? `时间截断 ${h.truncatedSeconds.toFixed(1)}s` : '',
+  ].filter(Boolean)
+  return parts.join(' · ')
 })
 // Boss 预设弹刀反推（失衡次数四舍五入）：击破位显示「→ 有效次数（含无突击弹刀/保底反推）」、未手填的主C 显示「→ 剩余（Boss 默认）」
 const parrySplitForSlot = computed<{ label: string } | null>(() => {
