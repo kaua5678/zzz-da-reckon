@@ -64,6 +64,12 @@ export interface StackTraversalInput {
   energyBySlot?: Record<number, number>
   /** 各槽位可用喧响（点）；缺省槽位按 0 */
   decibelBySlot?: Record<number, number>
+  /**
+   * 好评（摇人值）总量（T157）：`bestEffort` 升级轴的**资源门控**（轴内 60/90 转大块的成本从这里扣）。
+   * 缺省 / 负数 ⇒ 视作 0 ⇒ 升级轴一律「放过」（先打兜底轴），与用户口径
+   * 「升级轴…**有资源就优先，没有就放过**」一致。
+   */
+  goodReview?: number
 }
 
 /** 某槽某招式在轴内的执行次数（`StackTraversalResult.executed` 的值，key = `${slot}:${moveId}`） */
@@ -149,7 +155,7 @@ export interface StackTraversalResult {
  * 轴类型推断（缺省标签时的兼容路径；轴页会把推断结果显示成标签，不隐藏）。
  * `count` ≥ 1 ⇒ fixed（显式次数）；否则 ⇒ fallback（兜底吃剩余）。
  */
-export function axisKindOf(axis: { readonly kind?: StunAxisKind; readonly count?: number }): StunAxisKind {
+export function axisKindOf(axis: Pick<AxisWindowShape, 'kind' | 'count'>): StunAxisKind {
   if (axis.kind !== undefined) return axis.kind
   return axis.count !== undefined && axis.count >= 1 ? 'fixed' : 'fallback'
 }
@@ -174,7 +180,54 @@ export function axisKindOf(axis: { readonly kind?: StunAxisKind; readonly count?
  *
  * 返回每个轴分配到的窗口数（与 axes 同序）。供栈遍历、连携加权、转大加权共用同一套口径。
  */
-export function allocateAxisWindows(axes: ReadonlyArray<{ readonly kind?: StunAxisKind; readonly count?: number }>, stunCount: number): number[] {
+/**
+ * 轴窗分配的**可用资源**（T157，用户口径「升级轴…有资源就优先，没有就放过」）。
+ *
+ * 不传 ⇒ `bestEffort` 退回「有富余就给 1」（纯按剩余窗数判，旧行为）；
+ * 传了 ⇒ 按资源判定（够才给，并扣减）。
+ */
+export interface AxisWindowResources {
+  /** 好评（摇人值）总量：轴内 60/90 转大块的每窗成本从这里扣 */
+  goodReview?: number
+  /** 各槽位可用闪能（强化特殊技能量）：`energyCost > 0` 的块从这里扣 */
+  energyBySlot?: Readonly<Record<number, number>>
+  /** 各槽位可用喧响：`decibelCost > 0` 的块从这里扣 */
+  decibelBySlot?: Readonly<Record<number, number>>
+}
+
+/**
+ * 轴窗分配能看到的**轴的最小形状**（判据 29：同一形状出现两处以上就起名）。
+ * `StunAxis` / `StackAxisInput` 都满足它 —— 分配只需要这三样：类型、固定次数、逐动作成本。
+ */
+export interface AxisWindowShape {
+  readonly kind?: StunAxisKind
+  readonly count?: number
+  readonly actions?: ReadonlyArray<{
+    readonly promoteVariant?: string
+    readonly count?: number
+    readonly energyCost?: number
+    readonly decibelCost?: number
+  }>
+}
+
+/** 单轴每窗资源成本（轴内所有动作的每窗成本求和） */
+function axisWindowCostOf(axis: AxisWindowShape): { review: number; energy: number; decibel: number } {
+  let review = 0; let energy = 0; let decibel = 0
+  for (const act of axis.actions ?? []) {
+    const c = act.count ?? 1
+    if (act.promoteVariant === '60') review += 60 * c
+    else if (act.promoteVariant === '90') review += 90 * c
+    energy += Math.max(0, act.energyCost ?? 0) * c
+    decibel += Math.max(0, act.decibelCost ?? 0) * c
+  }
+  return { review, energy, decibel }
+}
+
+export function allocateAxisWindows(
+  axes: ReadonlyArray<AxisWindowShape>,
+  stunCount: number,
+  res?: AxisWindowResources,
+): number[] {
   const n = axes.length
   const wins = new Array<number>(n).fill(0)
   // ⚠ **不取整**：`stunCount` 在轴栈侧可能是小数（外层不动点的计划值），旧实现原样使用。
@@ -196,10 +249,25 @@ export function allocateAxisWindows(axes: ReadonlyArray<{ readonly kind?: StunAx
     const w = Math.max(0, Math.min(axes[i].count ?? 0, remaining))
     wins[i] += w; remaining -= w
   }
-  // ③ 尽量打：有富余给 1、否则 0
+  // ③ 尽量打：**有资源就给 1、没有就放过**（用户口径「升级轴…有资源就优先，没有就放过」）。
+  // 传了 `res` ⇒ 按轴内每窗成本判定并从预算里扣（好评 / 闪能 / 喧响三通道）；
+  // 没传 ⇒ 退回「有富余就给 1」（纯按剩余窗数，旧行为，保证既有调用方逐位不变）。
+  const reviewLeft = res?.goodReview
+  const energyLeft: Record<number, number> | undefined = res?.energyBySlot ? { ...res.energyBySlot } : undefined
+  const decibelLeft: Record<number, number> | undefined = res?.decibelBySlot ? { ...res.decibelBySlot } : undefined
+  let reviewBudget = reviewLeft
   for (let i = 0; i < n; i++) {
     if (remaining <= 0) break
-    if (kinds[i] === 'bestEffort') { wins[i] += 1; remaining -= 1 }
+    if (kinds[i] !== 'bestEffort') continue
+    if (res === undefined) { wins[i] += 1; remaining -= 1; continue }
+    const cost = axisWindowCostOf(axes[i])
+    // 三通道逐一判定：**任一不够就整条放过**（升级轴是「整套换上去」，不能只换一半）
+    const reviewOk = cost.review <= 0 || (reviewBudget !== undefined && reviewBudget >= cost.review)
+    const energyOk = cost.energy <= 0 || [...(energyLeft ? Object.values(energyLeft) : [])].reduce((a, b) => a + b, 0) >= cost.energy
+    const decibelOk = cost.decibel <= 0 || [...(decibelLeft ? Object.values(decibelLeft) : [])].reduce((a, b) => a + b, 0) >= cost.decibel
+    if (!reviewOk || !energyOk || !decibelOk) continue
+    if (cost.review > 0 && reviewBudget !== undefined) reviewBudget -= cost.review
+    wins[i] += 1; remaining -= 1
   }
   // ④ 兜底：末条 fallback 吃剩余（前面的 fallback 得 0）
   const fallbackIdx = kinds.lastIndexOf('fallback')
@@ -211,7 +279,7 @@ export function allocateAxisWindows(axes: ReadonlyArray<{ readonly kind?: StunAx
 }
 
 export function calcStunAxisStack(input: StackTraversalInput): StackTraversalResult {
-  const { axes, stunCount, windowDuration } = input
+  const { axes, stunCount, windowDuration, goodReview: goodReviewInput } = input
   const energyBySlot = input.energyBySlot ?? {}
   const decibelBySlot = input.decibelBySlot ?? {}
 
@@ -268,7 +336,13 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   // 窗口调度：按轴顺序分配；count 有值 → 精确次数，缺省 → 兜底吃剩余。
   // 每个窗口携带其来源轴的 filler slot（每轴可不同）。
   const schedule: { actions: StackActionCost[]; basicFillerSlot?: number }[] = []
-  const winAlloc = allocateAxisWindows(axes, stunCount)
+  // ⚠ 与编排层 `convergence` 的 6 处调用**同源同参**：否则升级轴（bestEffort）在两处拿到的窗数
+  // 不一致 ⇒ 栈执行的窗数与账本/转大计数对不上（T156 修的「残留 count 二次分配」是同族问题）。
+  const winAlloc = allocateAxisWindows(axes, stunCount, {
+    goodReview: goodReviewInput,
+    energyBySlot,
+    decibelBySlot,
+  })
   axes.forEach((axis, ai) => {
     for (let i = 0; i < winAlloc[ai]; i++) schedule.push({ actions: axis.actions, basicFillerSlot: axis.basicFillerSlot })
   })

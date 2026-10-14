@@ -61,6 +61,32 @@ describe('allocateAxisWindows', () => {
     // 与类型注释「多条轴时按顺序分配，末条兜底」一致（旧实现与文档自相矛盾）
   })
 
+  it('⑧ 升级轴（bestEffort）按**资源**判定：够就给、不够就放过（T157 用户口径）', () => {
+    /**
+     * 用户 2026-10-14 把「谁先拿窗」讲成**通用优先级**：
+     * > 「不用局限于 2 条轴，把 2 条轴先后判定修改为**优先级判断**，这样就可以有**无限多的轴**。
+     * >    **末尾指定了一次所以最优先**，**升级轴说是尽量打，有资源就优先，没有就放过，所以优先级第二**。
+     * >    **第三就是兜底了**」
+     * ⇒ 本用例锁「优先级 + 资源」两件事：三段式、末尾恒占 1、升级轴看好评、兜底吃剩余。
+     */
+    // 5火10大 的形态：循环(兜底, 每窗 60 好评) / 双转大(尽量打, 每窗 120) / 末尾(收尾, 每窗 150)
+    const axes = [
+      { kind: 'fallback' as const, actions: [{ promoteVariant: '60', count: 1 }] },
+      { kind: 'bestEffort' as const, actions: [{ promoteVariant: '60', count: 2 }] },
+      { kind: 'tail' as const, actions: [{ promoteVariant: '60', count: 1 }, { promoteVariant: '90', count: 1 }] },
+    ]
+    // 好评不足 ⇒ 升级轴放过、兜底吃剩余（[3,0,1] = 普通3 + 收尾1）
+    expect(allocateAxisWindows(axes, 4, { goodReview: 0 })).toEqual([3, 0, 1])
+    expect(allocateAxisWindows(axes, 4, { goodReview: 60 })).toEqual([3, 0, 1])
+    // 好评够（≥120）⇒ 升级轴拿到 1 窗 ⇒ **[2,1,1]** = 用户描述的「普通×2 + 三大×1 + 收尾×1」
+    expect(allocateAxisWindows(axes, 4, { goodReview: 150 })).toEqual([2, 1, 1])
+    expect(allocateAxisWindows(axes, 4, { goodReview: 900 })).toEqual([2, 1, 1])
+    // 不传资源 ⇒ 退回旧语义（纯按剩余窗数：有富余就给 1）——保证既有调用方逐位不变
+    expect(allocateAxisWindows(axes, 4)).toEqual([2, 1, 1])
+    // 末尾优先不受资源影响：好评 0 也照占 1 窗
+    expect(allocateAxisWindows(axes, 1, { goodReview: 0 })).toEqual([0, 0, 1])
+  })
+
   it('⑥ 反空洞：Σ 分配恒等于失衡次数（每个窗口都必须有归属轴）', () => {
     const cases: { kind: 'fallback' | 'tail' | 'bestEffort' | 'fixed'; count?: number }[][] = [
       [{ kind: 'fallback' }],
@@ -71,6 +97,10 @@ describe('allocateAxisWindows', () => {
     ]
     for (const axes of cases) {
       for (const stun of [0, 1, 2, 3, 4, 5, 6, 9]) {
+        for (const res of [undefined, { goodReview: 0 }, { goodReview: 300 }]) {
+          const w = allocateAxisWindows(axes, stun, res)
+          expect(w.reduce((a, b) => a + b, 0), `${JSON.stringify(axes)} stun=${stun} res=${JSON.stringify(res)} ⇒ ${JSON.stringify(w)}`).toBe(stun)
+        }
         const w = allocateAxisWindows(axes, stun)
         expect(w.reduce((a, b) => a + b, 0), `${JSON.stringify(axes)} stun=${stun} ⇒ ${JSON.stringify(w)}`).toBe(stun)
         expect(w.every(x => x >= 0 && Number.isInteger(x))).toBe(true)

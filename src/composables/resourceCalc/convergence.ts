@@ -157,6 +157,20 @@ export function createRunCalcRound(deps: {
     const countStun = projectStunPlanForCounts(stunCount, base.stunPlanProjection ?? 'off', threads.prevPoolStunCount)
     // 条件轴：按上一轮收敛出的好评/闪能（首轮缺省 → 条件方案未命中走兜底）解析生效轴
     const { axes: resolvedAxes, planName } = resolveAxes(stunCount, prevGoodReview, prevEnergyBySlot)
+    /**
+     * 轴窗**可用资源**（T157，用户口径「升级轴…**有资源就优先，没有就放过**」）：
+     * 本函数的 6 处 `allocateAxisWindows` 必须**同源**传它 —— 否则 `bestEffort` 轴（升级轴）
+     * 在不同消费者眼里拿到的窗数会不一致（栈遍历 / 转大计数 / 代表窗 / 决算）。
+     * · 好评 = 上一轮收敛值 `prevGoodReview`（首轮 -1 ⇒ 视作 0，升级轴不介入 = 先打普通轴）
+     * · 闪能 / 喧响 = 各槽总量（`base.characters` 的收敛后输入；栈侧另有逐轮实测值，这里给的是
+     *   外层可判定口径 —— 与 `axisHug` 用 `prevGoodReview` 同款「滞后一轮」语义）。
+     */
+    // ⚠ 闪能 / 喧响**不在本层**：`base.characters` 上没有「总量」字段（收敛后的总量在 `states[i]`
+    // 的 `totalEnergy` / `decibelSource.total`，而本层拿不到 states）。故此处只给好评 ——
+    // 它是升级轴的主要门控（`5火10大`/`般琉通用` 的升级判据都是好评）；闪能/喧响类轴
+    // （`energyOverflow`）继续走 `plans.split` 那条独立通道（`data/stunAxisPresets.ts`），
+    // 不由本函数的 bestEffort 承担。传 `undefined` 槽位表 = 这两通道不参与判定（不误拦）。
+    const axisWindowResources = { goodReview: Math.max(0, prevGoodReview) }
     // forceNoAxis（轴退化）：跳过轴注入（轴块/连携覆盖/自动补齐全关），退回 chainCountPerStun 兜底的一般循环
     const axisActive = !opts?.forceNoAxis && (configStore.useStunAxis || autoActive.value) && resolvedAxes.length > 0
     // 雨果槽位查找已删（CC-39a 2026-09-27）：唯一用途「决算失衡值返还」改由模块能力 `stunRefundRatio` 派发（见下方）。
@@ -165,7 +179,7 @@ export function createRunCalcRound(deps: {
     let verdictSecondsLost = 0
     if (axisActive) {
       const windowDur = computeWindowDuration()
-      const winAlloc = allocateAxisWindows(resolvedAxes, stunCount)
+      const winAlloc = allocateAxisWindows(resolvedAxes, stunCount, axisWindowResources)
       resolvedAxes.forEach((axis, ai) => {
         const wins = winAlloc[ai] ?? 0
         if (wins <= 0) return
@@ -290,7 +304,7 @@ export function createRunCalcRound(deps: {
     if (axisActive) {
       // CC-142：轴内连携次数属计数通道 ⇒ 窗口数读 countStun（off 下 ≡ stunCount）。
       // physical 模式下旧写法按计划值分窗：auto-1531-1481-1451 计划 0 ⇒ 0 窗 ⇒ 轴声明的连携一次也不给，而池物理 3 次。
-      const winAlloc = allocateAxisWindows(resolvedAxes, countStun)
+      const winAlloc = allocateAxisWindows(resolvedAxes, countStun, axisWindowResources)
       resolvedAxes.forEach((axis, ai) => {
         const wins = winAlloc[ai] ?? 0
         for (const act of axis.actions) {
@@ -324,7 +338,7 @@ export function createRunCalcRound(deps: {
     let axisHug: { hug60: number; hug90: number } | null = null
     if (axisActive) {
       let h60 = 0; let h90 = 0
-      const winAlloc = allocateAxisWindows(resolvedAxes, countStun) // CC-142：转大块次数属计数通道
+      const winAlloc = allocateAxisWindows(resolvedAxes, countStun, axisWindowResources) // CC-142：转大块次数属计数通道
       resolvedAxes.forEach((axis, ai) => {
         const wins = winAlloc[ai] ?? 0
         for (const act of axis.actions) {
@@ -404,7 +418,7 @@ export function createRunCalcRound(deps: {
     // （连段块 id 与成本档常量已回收进模块，规则 11 单一事实源）。
     // 轴内总时间（CD 自动动作用：仪玄C1落雷 6s / 卢西娅追击 8s 按轴内时间折算次数）
     const axisInSeconds = axisActive
-      ? allocateAxisWindows(resolvedAxes, stunCount).reduce((a, b) => a + b, 0) * computeWindowDuration()
+      ? allocateAxisWindows(resolvedAxes, stunCount, axisWindowResources).reduce((a, b) => a + b, 0) * computeWindowDuration()
       : 0
     // 轴内**实际执行**集合（资源门控后）= `axisActionCounts` / `axisUltimateTotal` / 合轴节省
     // `axisOverlapByAction` 的**唯一来源**（用户 2026-09-10 裁决「同一物理量只能有一份实现」）。
@@ -429,6 +443,8 @@ export function createRunCalcRound(deps: {
         windowDuration: computeWindowDuration(),
         energyBySlot: prevEnergyBySlot,
         decibelBySlot: prevDecibelRegenBySlot,
+        // T157：升级轴（bestEffort）的资源门控 —— 与下方 6 处同源
+        goodReview: Math.max(0, prevGoodReview),
       })
       // 终结技总次数（供希希芙影画2 等）：按实际执行集合计（含赠送块）
       const ultMoveOfSlot = new Map<number, string>()
@@ -678,7 +694,7 @@ export function createRunCalcRound(deps: {
         // `CalcRoundResult.resolvedAxes`（`forceNoAxis` 退化时被清空）语义不同，这是设计卡 §7-E7
         // 的待定点，本批选定「递局部 + active 标志」。
         axes: resolvedAxes,
-        windows: allocateAxisWindows(resolvedAxes, countStun), // CC-154：与同快照 actionCounts/chainTotal/ultimateTotal 同源（原为计划值）
+        windows: allocateAxisWindows(resolvedAxes, countStun, axisWindowResources), // CC-154：与同快照 actionCounts/chainTotal/ultimateTotal 同源（原为计划值）
         windowSeconds: computeWindowDuration(),
         actionCountsBySlot: axisActionCountsBySlot,
         chainTotalBySlot: axisChainTotal,
@@ -908,6 +924,7 @@ export function createRunCalcRound(deps: {
           windowDuration: windowDur,
           energyBySlot: stackEnergyBySlot,
           decibelBySlot: stackDecibelBySlot,
+          goodReview: Math.max(0, prevGoodReview),
         })
         const inAxisCounts = expandExecutedToCounts(stack.executed, stack.basicFillBySlot)
         const fraction: Record<string, number> = {}
@@ -1149,7 +1166,7 @@ export function createRunCalcRound(deps: {
       if (contribMap.size > 0) {
         // 单次失衡表达（v3.2 用户裁决）：每条生效轴条目模拟一个代表窗；该段打几次由
         // 「失衡次数」统计表达，不再逐窗展开、也无跨窗继承（窗口外未建模）。
-        const winAlloc = allocateAxisWindows(resolvedAxes, Math.round(countStun)) // CC-155：代表窗分配属计数通道（原为计划值）
+        const winAlloc = allocateAxisWindows(resolvedAxes, Math.round(countStun), axisWindowResources) // CC-155：代表窗分配属计数通道（原为计划值）
         const thresholdCoeff = configStore.enemy.anomalyCoeff * configStore.enemy.bossAnomalyCoeff
         const windows: InStunWindowInput[] = []
         const windowEntryIdx: number[] = []
