@@ -8,7 +8,8 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
     const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180)
     expect(c.rageCount).toBe(4)
     expect(c.comboOutCount).toBe(9) // floor(闪能收入/60) 自动打满
-    expect(c.furyTotal).toBeCloseTo(115 + 184 + 9 * 60 * 0.5, 1) // 569
+    // T168（2026-10-15）：闪能浪费改为**用户可调常数**（默认 50）⇒ 嗔火 = 基础 + (flashSpent − 50) × 0.5
+    expect(c.furyTotal).toBeCloseTo(115 + 184 + (9 * 60 - 50) * 0.5, 1) // 544
     expect(c.lunDaoRageCount).toBe(8) // 4怒相 × 2连段（固定论道→狮子吼·怒）
     expect(c.shiZiHouNuCount).toBe(8)
     expect(c.lunDaoOutCount).toBe(9) // 全打论道连段
@@ -43,11 +44,12 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
     expect(c2.flashIncome).toBeGreaterThan(c0.flashIncome)
   })
 
-  it('无闪反/招架/金身时：自动连段收敛（rage=2、连段 8 组、嗔火 355）', () => {
+  it('无闪反/招架/金身时：自动连段收敛（rage=2、连段 8 组、嗔火 330）', () => {
     const c = computeBanyueRageCycle(0, 0, 0, 0, 0, 0, 0, 0, 180)
+    // T168：闪能浪费 50 点为固定惩罚 ⇒ 嗔火 = 115 + (8×60 − 50)×0.5 = 330（怒相仍 2 次）
     expect(c.rageCount).toBe(2)
     expect(c.comboOutCount).toBe(8)
-    expect(c.furyTotal).toBeCloseTo(115 + 8 * 60 * 0.5, 1) // 355
+    expect(c.furyTotal).toBeCloseTo(115 + (8 * 60 - 50) * 0.5, 1) // 330
     expect(c.swayExCount).toBe(8)
   })
 
@@ -149,8 +151,9 @@ describe('computeBanyueRageCycle（轴内普通强特扣闪能 → 自动连段�
     const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 0, 0, 180)
     expect(c.axisExSpend).toBe(300)
     expect(c.comboOutCount).toBe(4)
-    // 最后一怒相窗口的付费强特闪能(300/4=75)不产有效嗔火，569 - 75×0.5 = 531.5
-    expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 300 / 4) * 0.5, 1) // 531.5
+    // T168（2026-10-15）：闪能浪费改为**用户可调常数**（默认 50 点），不再按 `axisSpend / rage` 均摊
+    // ⇒ 嗔火 = 115 + 184 + (300 + 4×60 − 50) × 0.5 = 544（旧口径 531.5，因旧式把浪费摊到每个怒相窗口）
+    expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 50) * 0.5, 1) // 544
     expect(c.rageCount).toBe(4)
     expect(c.flashSpent).toBe(300 + 4 * 60)
   })
@@ -167,21 +170,43 @@ describe('computeBanyueRageCycle（轴内普通强特扣闪能 → 自动连段�
     expect(c.axisComboCount).toBe(2)
     expect(c.axisExSpend).toBe(0) // 连段块不计闪能
     expect(c.comboOutCount).toBe(9) // 怒相外自动连段不受轴内免费连段块影响
-    expect(c.furyTotal).toBeCloseTo(115 + 184 + 9 * 60 * 0.5, 1)
+    // T168：闪能浪费 = 固定 50（用户可调），与轴内是否捏免费连段块无关
+    expect(c.furyTotal).toBeCloseTo(115 + 184 + (9 * 60 - 50) * 0.5, 1) // 544
   })
 
   it('轴内普通强特耗闪能并回复嗔火，免费连段块不回复', () => {
-    // 300 闪能普通强特：嗔火 = 115 + 184 + (300 + 4组连段×60 - 300/4)×0.5 = 531.5
+    // T168：300 闪能普通强特 ⇒ 嗔火 = 115 + 184 + (300 + 4组连段×60 − 50)×0.5 = 544
     const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 0, 0, 180)
     expect(c.axisExSpend).toBe(300)
     expect(c.flashSpent).toBe(300 + 4 * 60)
-    expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 300 / 4) * 0.5, 1)
+    expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 50) * 0.5, 1)
     // 同 300 但加 2 个免费连段块：连段块不产嗔火、不耗闪能，怒相外自动连段仍 4 组
     const c2 = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 2, 0, 180)
     expect(c2.axisComboCount).toBe(2)
     expect(c2.comboOutCount).toBe(4)
     expect(c2.flashSpent).toBe(300 + 4 * 60)
-    expect(c2.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 300 / 4) * 0.5, 1)
+    expect(c2.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 50) * 0.5, 1)
+  })
+
+  /**
+   * **T168：闪能浪费是「用户可调常数」，不是怒相次数的函数**（用户口径 2026-10-15）。
+   *
+   * 负控：把 `wastedFlash` 参数改回 `axisSpend / rage` 均摊 ⇒ 本用例红
+   * （怒相 4 与 3 两种情形会得到**不同**的扣除量，而下面的等式要求两者扣除量相同）。
+   */
+  it('闪能浪费是常数项：同一 wastedFlash 下扣除量与怒相次数无关', () => {
+    // 同参、只改 autoTrim 让怒相数不同：两者扣除量必须相同（都扣 50）
+    const base = [10, 6, 20, 0, 0, 300, 0, 0, 180] as const
+    const c0 = computeBanyueRageCycle(...base)                                   // 怒相 4
+    const cTrim = computeBanyueRageCycle(...base, 0, 0, true, 0, 3)              // 削 3 组
+    const furyBaseOf = (c: { flashSpent: number; furyTotal: number }) => c.flashSpent * 0.5 + 299 - c.furyTotal
+    // 反空洞：两种情形的 flashSpent 确实不同（否则下面的等式是同义反复）
+    expect(c0.flashSpent).not.toBe(cTrim.flashSpent)
+    expect(furyBaseOf(c0), '怒相 4 时扣除 25 点嗔火（= 50 闪能×0.5）').toBeCloseTo(25, 6)
+    expect(furyBaseOf(cTrim), '削连段后扣除量**不变**（常数项，不随怒相数变化）').toBeCloseTo(25, 6)
+    // 用户填 0 = 不计此惩罚（更容易打出高嗔火）
+    const cZero = computeBanyueRageCycle(...base, 0, 0, true, 0, 0, 0)
+    expect(cZero.furyTotal - c0.furyTotal, '填 0 比默认 50 多 25 点嗔火').toBeCloseTo(25, 6)
   })
 })
 
@@ -618,6 +643,33 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     const rows2 = calc.damagePoolRows.value
     const fenShen2 = rows2.find(r => r.moveId === '1471027')
     expect(fenShen2!.note).toContain('明王+15.0%（覆盖率近似）')
+  })
+
+  // 生效测试（T168，规则 5 + 判据 4「新增滑块必须被测试引用」）：闪能浪费滑块必须真的改账本。
+  // 用户口径 2026-10-15：它是**惩罚项**（最后一次怒相之后消耗的闪能产不出嗔火），由用户按自己的
+  // 轴/手法填，默认 50 点；填 0 = 不计此惩罚（更容易打出高嗔火）。本测试锁「滑块 → 嗔火/怒相」这条链。
+  it('闪能浪费滑块生效：默认 50 → 嗔火低于填 0；填 0 时嗔火恰好多 25 点', async () => {
+    await setupTeam(null)
+    const calc = useResourceCalc()
+    const config = useConfigStore()
+    const furyOf = () => {
+      const b = calc.resourceResult.value?.characters.find(c => c.agentId === '1471')
+      return (b as unknown as { banyueRageCycle?: { furyTotal: number } } | undefined)?.banyueRageCycle?.furyTotal
+    }
+    config.setMechanicSetting('banyue.wastedFlash', 0)
+    await new Promise(r => setTimeout(r, 60))
+    const furyFree = furyOf()
+    config.setMechanicSetting('banyue.wastedFlash', 50)
+    await new Promise(r => setTimeout(r, 60))
+    const furyDefault = furyOf()
+    expect(furyFree).toBeDefined()
+    expect(furyDefault).toBeDefined()
+    // 50 点闪能 × 0.5 = 25 点嗔火（惩罚项线性）
+    expect((furyFree ?? 0) - (furyDefault ?? 0), '填 0 比默认 50 恰好多 25 点嗔火').toBeCloseTo(25, 6)
+    // 反空洞：调大惩罚 ⇒ 嗔火更低（不是同义反复）
+    config.setMechanicSetting('banyue.wastedFlash', 200)
+    await new Promise(r => setTimeout(r, 60))
+    expect(furyOf(), '惩罚越大嗔火越低').toBeLessThan(furyDefault ?? 0)
   })
 
   // 生效测试：怒相增益覆盖率滑块必须真的改面板。
@@ -1148,17 +1200,22 @@ describe('CC-18a：般岳 extraDirectRows（C6 摧岳附伤逐字）', () => {
  * - 把挤压臂的采纳条件 `!overBudget(squeezed)` 改成恒真 ⇒ ② 的「trim 是最小可行值」断言红。
  */
 describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
-  // 与 .zc/perf/T166AB.perf.ts 的 free=0/cut=N 对照同参：金身12/双反3/轴支320/怒相 4
-  const base = [10, 6, 12, 3, 0, 320, 6, 0, 180] as const
+  // ⚠ **T168 换档（2026-10-15）**：原夹具 `[10,6,12,3,0,320,6,0,180]` 是**旧闪能浪费口径**
+  // （`axisSpend / rage` 均摊）下的临界点——那时缺省 comboOut=3。闪能浪费改成**用户可调常数**
+  // （默认 50）后，同夹具缺省 comboOut=4，且 trim=1/2/3 落到 2/1/0（**不是**恰好少 N），
+  // 因为削连段会连带改变怒相数（怒相 4→3 时 `swayRefundPerRage` 少一档 ⇒ flashIncome 也降）。
+  // 换到 `spend=300`：实测缺省 comboOut=4、trim=1/2/3 ⇒ 3/2/1（恰好少 N）、ΔflashSpent=60/120/180，
+  // 是本量下唯一逐档干净的档位（扫描 200/240/300/320/360/400 见 `.zc/perf/T168t165b.perf.ts`）。
+  const base = [10, 6, 12, 3, 0, 300, 6, 0, 180] as const
 
   it('① 纯函数：autoTrim=N ⇒ 怒相外连段恰好少 N 组（缺省 0 = 逐位不变）', () => {
     const c0 = computeBanyueRageCycle(...base)
-    // ⚠ 缺省值**实测**（不是按公式推的）：本夹具 flashIncome=580/axisSpend=320 ⇒ floor(260/60)=4，
-    // 再经怒相固定点收敛后为 3。写死实测值，公式一变本用例立刻红（这正是要锁的）。
-    expect(c0.comboOutCount, '缺省不削').toBe(3)
+    // ⚠ 缺省值**实测**（不是按公式推的）：本夹具 flashIncome=580/axisSpend=300 ⇒ floor(280/60)=4。
+    // 写死实测值，公式一变本用例立刻红（这正是要锁的）。
+    expect(c0.comboOutCount, '缺省不削').toBe(4)
     for (const trim of [1, 2, 3]) {
       const c = computeBanyueRageCycle(...base, 0, 0, true, 0, trim)
-      expect(c.comboOutCount, `trim=${trim} 应恰好少 ${trim} 组`).toBe(Math.max(0, 3 - trim))
+      expect(c.comboOutCount, `trim=${trim} 应恰好少 ${trim} 组`).toBe(Math.max(0, 4 - trim))
       // 削连段 ⇒ 闪能支出同步下降（每少一组少 60）
       expect(c.flashSpent).toBeCloseTo(c0.flashSpent - trim * 60, 6)
       // 反空洞：本夹具的 trim 确实改变了读数（否则上面的等式是 5===5 的同义反复）
@@ -1174,16 +1231,22 @@ describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
 
   it('② 管线：轴态超预算时引擎削自动连段保轴（而非丢整个轴）', async () => {
     /**
-     * ⚠ **必须用真预设**（`banyue-jufufu-lucia`）：挤压臂的触发条件是「轴态净占用被**自动多打**
-     * 顶出容差」，它需要「轴内块吃满闪能 + 交互行占满前台」同时成立。实测合成夹具
-     * （3×轴内块数 × 3×交互档 = 9 组，见 `.zc/perf/T166sq7.perf.ts`）**全部 trim=0**
-     * —— 合成队规模小、净占用本来就装得下 ⇒ 用合成夹具写的「挤压臂」用例是**假判据**
-     * （断言恒真、删掉实现也不红）。真预设才有那个临界。
+     * ⚠ **必须用真预设**：挤压臂的触发条件是「轴态净占用被**自动多打**顶出容差」，它需要
+     * 「轴内块吃满闪能 + 交互行占满前台」同时成立。实测合成夹具（3×轴内块数 × 3×交互档 = 9 组，
+     * 见 `.zc/perf/T166sq7.perf.ts`）**全部 trim=0** —— 合成队规模小、净占用本来就装得下
+     * ⇒ 用合成夹具写的「挤压臂」用例是**假判据**（断言恒真、删掉实现也不红）。真预设才有那个临界。
+     *
+     * ⚠ **T168 换夹具（2026-10-15）**：原用 `banyue-jufufu-lucia`，闪能浪费改成用户可调常数
+     * （默认 50）后，该队在默认交互档（闪10/金12/双3）+ 合轴率 40% 下**直接退化**（实测
+     * `.zc/perf/T168wsweep.perf.ts`：W=0/25/50/100 恒为「退化=Y / 块=0 / comboOut=10 / 46.63M」）。
+     * 按用户口径 2026-10-15，这正是「**中等难度装不下该轴**」——要用**更高难度**
+     * （双反替闪反+金身、合轴率突破 40%）才装得下，不是挤压臂该救的场景。
+     * `banyue-trigger-lucia` 在**默认档**仍是那个临界（实测 trim=2、net 181.55、53.49M）。
      */
     const { config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     const catalog = useCatalogStore()
     await catalog.loadBuildRecommendations()
-    const preset = teamPresets.find(p => p.id === 'banyue-jufufu-lucia')!
+    const preset = teamPresets.find(p => p.id === 'banyue-trigger-lucia')!
     const baseAxis = config.getAxisState()
     applyTeamToStore(config, preset)
     applyGoldToStore(config, preset, baseGoldOf(preset))
@@ -1201,8 +1264,8 @@ describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
     // 般岳的怒相外连段确实被削了（模块侧读数与引擎读数同源）
     const b = rr.characters.find(c => c.agentId === '1471') as unknown as { banyueRageCycle?: { comboOutCount: number } } | undefined
     expect(b?.banyueRageCycle?.comboOutCount, '般岳连段数被削减').toBeDefined()
-    // 对照（T166AB 实测）：本队 trim=1、伤害 46.635M → 52.789M
-    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害显著高于丢轴态（46.635M）').toBeGreaterThan(50)
+    // T168 实测：本队 trim=2、保轴后 53.4929M（丢轴态见 `.zc/perf/T168wsweep`，显著更低）
+    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害显著高于丢轴态').toBeGreaterThan(50)
   })
 })
 

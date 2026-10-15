@@ -374,6 +374,17 @@ export interface InteractionTopUpInput {
    * 与本模块 `estimateExSpecialTime` 的 `blockDualTime` 同一对招式、同一份表。
    */
   perDualSeconds?: number
+  /**
+   * **最后一怒相窗口的闪能浪费**（点；缺省 = 模块声明的默认）。
+   *
+   * ⚠ **必须与 `computeBanyueRageCycle` 的闪能口径同源**（同 `shieldFlashGift` 的 T162 先例，规则 11）：
+   * 补齐侧问的是「还差多少嗔火才够目标怒相数」，它内部要跑同一条嗔火固定点。漏传 ⇒ 补齐按**默认值**算、
+   * 而账本按**用户填写值**算 ⇒ 用户填 0 时补齐算出一个**幻影嗔火缺口**、补本不需要的交互
+   * （正是 T162「两套账」那类缺陷的形态）。由**模块自己**的能力包装器（`banyue.ts#computeInteractionTopUp`）
+   * 从 `gate.settings` 读同一设置 id 后递入（设置 id 的家在模块，判据 26；编排层只递 `gate.settings` 事实），
+   * 与账本路径的 `cfgNum(cfg, 'banyue.wastedFlash')` 同一 id。
+   */
+  wastedFlash?: number
   /** 战斗时间（秒，= `enemy.battleTime`）：闪能秒回按整场战斗折算（r726 前模块内写死 180） */
   battleTime: number
 }

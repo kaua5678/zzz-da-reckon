@@ -159,6 +159,11 @@ const ANG_XIAO_DECIBEL_RECOVERY = 86.35
 export const PARRY_TOPUP_DECIBEL_UNIT = PARRY_DECIBEL_BONUS + ANG_XIAO_DECIBEL_RECOVERY
 
 const DEFAULT_DIDONG_COMBO = 0 // 怒相外连段里分配给「地动→山摇·怒」的组数（默认 0 = 全打论道连段）
+/**
+ * 最后一怒相窗口的闪能浪费（点）——**用户口径 2026-10-15：改成用户可调项、默认 50**
+ * （惩罚机制，语义与来历见 `computeBanyueRageCycle` 内该用点的长注释）。
+ */
+const DEFAULT_WASTED_FLASH = 50
 
 
 /**
@@ -204,6 +209,11 @@ export function computeBanyueInteractionTopUp(opts: InteractionTopUpInput): Inte
     // ⇒ `dual` 补了本不需要的双反（`computeBanyueRageCycle` 的 flashBase 少 60）。
     // 实测（`banyue-trigger-lucia` r=0.6 金身12/双反3 秽盾=1）：管线补 2 次弹刀 / 纯函数同参补 0 次。
     Math.max(0, opts.shieldFlashGift ?? 0),
+    // T165 挤压臂的削减量：补齐侧不参与（那是引擎在轴态真装不下时另传的量）
+    0,
+    // ⚠ **闪能浪费必须与账本同源**（规则 11，同 `shieldFlashGift` 的 T162 先例）：漏传 ⇒ 补齐按默认值算、
+    // 账本按用户填写值算 ⇒ 用户填 0 时补齐算出**幻影嗔火缺口**、补本不需要的双反。
+    Math.max(0, opts.wastedFlash ?? DEFAULT_WASTED_FLASH),
   )
   const furyShort = Math.max(0, (rageNeeded - cycle.rageCount) * FURY_ENTER)
   const dual = Math.ceil(furyShort / FURY_DUAL)
@@ -260,6 +270,17 @@ export function computeBanyueRageCycle(
    * `CharacterOperationConfig.axisAutoTrim`。
    */
   autoTrim = 0,
+  /**
+   * **最后一怒相窗口的闪能浪费**（点；缺省 `DEFAULT_WASTED_FLASH` = 50，用户口径 2026-10-15）。
+   *
+   * 惩罚项语义与来历见函数内 `wastedFlash` 用点的长注释；用户原话：
+   * > 「这个我想做成一个**交互栏的调节选项，浪费多少让用户自己填，默认 50 点**，
+   * >   这样就不需要自动计算了，避免每个轴都在算。」
+   *
+   * 由 `computeBanyueCycleFromCfg` 读机制设置 `banyue.wastedFlash` 传入（不在这里直接读 cfg，
+   * 保持本函数是**纯函数**、27 处测试可直接调）。
+   */
+  wastedFlash = DEFAULT_WASTED_FLASH,
 ): BanyueRageCycle {
   const dodge = Math.max(0, Math.floor(dodgeCount))
   const parry = Math.max(0, Math.floor(parryCount))
@@ -293,11 +314,27 @@ export function computeBanyueRageCycle(
     // 嗔火总量 = 初始 + 交互 + 闪能消耗 × 0.5
     const furyBase = INITIAL_FURY + dodge * FURY_DODGE + parry * FURY_PARRY + block * FURY_BLOCK + dual * FURY_DUAL
     furyTotal = furyBase + flashSpent * FURY_PER_FLASH
-    // 最后一怒相窗口的付费强特闪能产生的嗔火是浪费的（怒相已开启，效果不满足下一轮怒相门槛）：
-    // 假设 axisSpend 在各怒相窗口均摊，减去最后一窗口的份额。
-    if (rage > 0 && axisSpend > 0) {
-      const wastedFlash = axisSpend / rage // 每怒相窗口的轴内闪能（近似均摊）
-      furyTotal = furyBase + (flashSpent - wastedFlash) * FURY_PER_FLASH
+    /**
+     * **最后一怒相窗口的闪能浪费**（用户口径 2026-10-15，**改为用户可调、不再自动计算**）。
+     *
+     * 用户原话（逐字）：
+     * > 「`wastedFlash` 这个是**惩罚机制**，意思是要求般岳在**最后一失衡开始前达到怒相积攒完毕**
+     * >   的状态，对嗔火的要求高了一些。这个我想做成一个**交互栏的调节选项，浪费多少让用户自己填，
+     * >   **默认 50 点**，这样就不需要自动计算了，避免每个轴都在算。当然用户如果填写浪费 0，
+     *   我们更容易打出高嗔火，第二条的操作也能少做点。」
+     *
+     * 语义：怒相开启后般岳无法再获得嗔火（原文核心技）⇒ 最后一次怒相**之后**消耗的闪能
+     * 产生的嗔火是白费的。这是一个**操作要求的惩罚项**（逼玩家提前攒够），不是从数据反推的量
+     * ——故由用户按自己的轴/手法填，默认 50 点闪能当量（= 25 点嗔火）。
+     *
+     * ⚠ **修前是 `axisSpend / rage`（按怒相数均摊）**，那个近似有两个问题（实测 `.zc/perf/T168trim.perf.ts`）：
+     * ① 它把浪费摊到**每一个**怒相窗口，而实际只有最后一次之后才浪费 ⇒ 系统性高估；
+     * ② 更糟的是它**与怒相数互为因果**：怒相 4→3 时分母变小 ⇒ 扣得更多（125→166.7 闪能当量）
+     *    ⇒ 嗔火更低 ⇒ 怒相更少 —— **自增强向下回路**，把挤压臂的一点点削减放大成 4→3 怒相。
+     * 改为常数后该回路消失（用户口径「避免每个轴都在算」）。
+     */
+    if (wastedFlash > 0) {
+      furyTotal = furyBase + Math.max(0, flashSpent - wastedFlash) * FURY_PER_FLASH
     }
     const nextRage = Math.max(0, Math.floor(furyTotal / FURY_ENTER))
     comboOut = comboOutTotal
@@ -824,6 +861,8 @@ export function computeBanyueCycleFromCfg(cfg: AgentCharConfigInput['cfg'], shie
     Math.max(0, shieldFlashGift || cfg.banyueShieldFlashGift || 0),
     // T165 挤压臂：引擎在轴态真装不下时逐个试传（缺省 0 ⇒ 逐位不变）
     Math.max(0, Math.floor(cfg.axisAutoTrim ?? 0)),
+    // 最后一怒相窗口的闪能浪费（用户口径 2026-10-15：交互栏可调、默认 50 点）
+    Math.max(0, cfgNum(cfg, 'banyue.wastedFlash')),
   )
 }
 
@@ -856,6 +895,16 @@ const settings: MechanicSetting[] = [
     min: 0,
     max: 1,
     step: 1,
+  },
+  {
+    id: 'banyue.wastedFlash',
+    label: '般岳·最后一怒相窗口的闪能浪费',
+    description: '惩罚机制（用户口径 2026-10-15）：般岳**处于怒相时无法再获得嗔火**，故**最后一次怒相之后**消耗的闪能所产生的嗔火是白费的。本项 = 这段「浪费掉」的闪能点数，默认 50 点（= 25 点嗔火）。它逼玩家在**最后一次失衡开始前**就把怒相攒满，故对嗔火的要求更高；填 0 = 不计此惩罚（更易打出高嗔火）。⚠ 修前是按「轴内闪能 ÷ 怒相次数」自动均摊——那会把惩罚摊到每个怒相窗口、且与怒相次数互为因果（怒相越少扣得越多）；按用户口径改为**常数项、不再自动计算**。',
+    default: DEFAULT_WASTED_FLASH,
+    min: 0,
+    max: 600,
+    step: 5,
+    suffix: '闪能',
   },
   {
     id: 'banyue.mingwangCoverage',
@@ -1117,8 +1166,19 @@ export const banyueMechanic: AgentMechanicModule = {
   // CC-23：补齐求解经模块能力派发（原 convergence.ts 直连 import 本函数）；
   // CC-293：挂出本能力即是交互补齐产出者（槽位归属 + 交互栏懒守卫，registry#findInteractionTopUpSlot），不再另设旗标
   // CC-295：门控在模块内判定（与 applyBanyueTeamConfig 同一函数）；关闭 ⇒ null，编排层保持上一轮值
+  //
+  // ⚠ **`wastedFlash` 必须从 `gate.settings` 递进纯函数**（规则 11「跨文件常量只从单一来源引用」）：
+  // 账本侧读 `cfgNum(cfg, 'banyue.wastedFlash')`（`computeBanyueCycleFromCfg`），补齐侧若仍用纯函数的
+  // 缺省值，两条路会在用户**改过滑块**后读到两个不同的数 ⇒ 补齐按默认值算出一个**幻影嗔火缺口**、
+  // 补本不需要的双反（与 T162 漏传 `shieldFlashGift` 完全同型，见 `InteractionTopUpInput.shieldFlashGift`）。
+  // 设置 id 的家在本模块（判据 26），故由本模块读 `gate.settings`，编排层只递事实。
   computeInteractionTopUp: ({ gate, ...opts }) =>
-    banyueAutoTopUpEnabled(gate.axisActive, gate.guarantee, gate.settings) ? computeBanyueInteractionTopUp(opts) : null,
+    banyueAutoTopUpEnabled(gate.axisActive, gate.guarantee, gate.settings)
+      ? computeBanyueInteractionTopUp({
+        ...opts,
+        wastedFlash: Math.max(0, settingOf(gate.settings, 'banyue.wastedFlash')),
+      })
+      : null,
   /**
    * T140a：补齐交互的**单次动作秒数**（招式的家在本模块 ⇒ 由本模块给，编排层不认 id，判据 26）。
    *

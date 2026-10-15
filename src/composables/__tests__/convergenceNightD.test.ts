@@ -428,7 +428,17 @@ describe('夜D · 层③ 真管线端到端', () => {
    * ⇒ 它在本测试的队形下**结构性不可能**非 null。这是既有设计（首页交互栏懒守卫），
    * 与本批迁移无关 ⇒ 本组改钉「模块写入的 cfg 字段」这一层，另加一条真管线读数。
    */
-  const readBanyueCfg = async (guaranteeUltimate: number, guaranteeFury = 0, stunPlanOff = false, shieldCount = 1) => {
+  const readBanyueCfg = async (
+    guaranteeUltimate: number,
+    guaranteeFury = 0,
+    stunPlanOff = false,
+    shieldCount = 1,
+    /**
+     * T168：般岳交互档（缺省 = 预设值闪10/弹6/金12/双3）。低交互档用于造出**喧响缺口**
+     * ——见下方「模块写入 → 结果 cfg 可见」锚的 T168 归因。
+     */
+    interact?: { dodge: number; parry: number; block: number; dual: number },
+  ) => {
     const { config } = await setupHarness(
       [{ agentId: '1471' }, { agentId: '1481' }, { agentId: '1451' }] as never, { recommendedBuild: true })
     config.setMechanicSetting('guarantee.ultimate', guaranteeUltimate)
@@ -437,6 +447,13 @@ describe('夜D · 层③ 真管线端到端', () => {
     if (stunPlanOff) config.setMechanicSetting('time.stunPlanProjection', 0)
     // T167：秽盾闪能（缺省 1 = 有盾）直接进 `flashBase` ⇒ 改变嗔火/喧响缺口，必须可逐档钉
     config.enemy.shieldCount = shieldCount
+    if (interact) {
+      const t0 = config.team[0] as unknown as Record<string, number>
+      t0.dodgeCounterCount = interact.dodge
+      t0.parryCount = interact.parry
+      t0.blockCount = interact.block
+      t0.dualCounterCount = interact.dual
+    }
     const calc = useResourceCalc()
     const res = calc.resourceResult.value as unknown as {
       characters: Array<{ slot: number; banyueInteractionTopUp?: { parry: number; dual: number; requiredSeconds?: number; illegal?: boolean } }>
@@ -549,7 +566,31 @@ describe('夜D · 层③ 真管线端到端', () => {
      *    正是本档历史上「轴退化」用例覆盖的同型行为。本条锁的是**通道可见性**（cfg 里有非零值），
      *    不是轴态，故该档成立。
      */
-    expect(await readBanyueCfg(1, 0, false, 0)).toEqual({ parry: 9, dual: 0, requiredSeconds: 20.997, illegal: false })
+    /**
+     * ⚠ **T168 再归因（档位与锚值再换，规则 10 四步）—— 判据语义仍是「模块写入 → cfg 可见」**。
+     *
+     * ① 量 delta：T167 选的档 `readBanyueCfg(1, 0, false, shieldCount=0)` 由
+     *    `{parry:9, requiredSeconds:20.997}` 变为 **`{parry:0, requiredSeconds:0}`**；
+     *    新档 `readBanyueCfg(1, 0, false, 1, {dodge:2,parry:2,block:2,dual:0})` ⇒
+     *    **`{parry:7, dual:0, requiredSeconds:16.331}`**。
+     * ② 根因：**闪能浪费从「`axisSpend / rage` 自动均摊」改成「用户可调常数、默认 50」**
+     *    （`banyue.ts#computeBanyueRageCycle`）。般岳嗔火少 25 点 ⇒ 怒相数与轴内终结技需求一起变
+     *    ⇒ 喧响缺口重算。实测（`.zc/perf/T168nd.perf.ts`）**16 个组合（保底×嗔火×stunPlan×盾）
+     *    在预设交互档下全部读到 parry=0** —— 轴活着时轴内已覆盖般岳全部必做需求，
+     *    预设交互（闪10/金12/双3）的喧响收入足够，**该档不再存在缺口**。
+     * ③ 确认有意：用户口径 2026-10-15「这个我想做成一个交互栏的调节选项，浪费多少让用户自己填，
+     *    默认 50 点」——常数化是本卡的目标，不是副作用。
+     * ④ 处置：**该锚锁的是「通道能写出非零值」，不是某个特定档** ⇒ 按 T167 同款办法换到仍能写出
+     *    非零补齐的档：把**交互调低**（闪2/弹2/金2/双0）即可造出喧响缺口 ⇒ `parry:7`。
+     *    实测（`.zc/perf/T168nd3.perf.ts`）同法其它档：盾0 ⇒ `{parry:24, req:55.992}`、
+     *    双保底 ⇒ `{parry:1, dual:12, req:42.329}`、无保底 ⇒ `{parry:0, dual:0}`（= 下方反证档）。
+     *    ⚠ 反空洞仍成立：本锚锁非零、下方「保底全关」锁零 ⇒ 「恒写」会同时红两条。
+     */
+    const cfg = await readBanyueCfg(1, 0, false, 1, { dodge: 2, parry: 2, block: 2, dual: 0 })
+    // 整数/布尔三字段逐字相等；`requiredSeconds` 是浮点乘积（7 刀 × 2.333s）⇒ 用 toBeCloseTo
+    // （T168 换档后 `16.331` 的二进制表示为 16.331000000000003，逐字相等会假红）
+    expect(cfg).toMatchObject({ parry: 7, dual: 0, illegal: false })
+    expect(cfg?.requiredSeconds).toBeCloseTo(16.331, 6)
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 9 不是恒写）', async () => {
