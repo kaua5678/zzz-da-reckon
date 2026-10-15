@@ -33,8 +33,10 @@ function topUpOf(calc: ReturnType<typeof useResourceCalc>): { parry: number; dua
 
 describe('轴模式 ⇒ 自动保底（嗔火 / 喧响）', () => {
   it('① 保底开关全关 + 轴态 ⇒ 仍有补齐；② 清掉轴 ⇒ 补齐归零且 store 未被写', async () => {
-    const preset = teamPresets.find(p => p.id === 'banyue-trigger-lucia')
-    expect(preset, '预设 banyue-trigger-lucia 存在').toBeTruthy()
+    // ⚠ T167 换预设：`banyue-trigger-lucia` 在本档的嗔火缺口已被「轴内连段块免费」补上
+    // （见下方 T167 归因 ④）⇒ 换 `banyue-roxy-lucia`，判据逐条保留。
+    const preset = teamPresets.find(p => p.id === 'banyue-roxy-lucia')
+    expect(preset, '预设 banyue-roxy-lucia 存在').toBeTruthy()
     const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
@@ -44,16 +46,16 @@ describe('轴模式 ⇒ 自动保底（嗔火 / 喧响）', () => {
       applyGoldToStore(config, preset!, baseGoldOf(preset!))
       // 关键前提：三个保底开关**全关**（模拟用户没勾）——轴态应自行按保底口径补齐
       for (const k of GUARANTEES) config.setMechanicSetting(k, 0)
-      // 夹具点（2026-10-11 重标定）：吸收比 0.6 + 金身格挡 2 / 双反 1。
+      // 夹具点（T167 重标定）：吸收比 0.4 + 金身格挡 0 / 双反 1（原 0.6 + 2/1，见下方 T167 归因）。
       //
       // 为什么必须重标定：T130 闪能通道接通（命破招式回能改取 flash_energy_recovery）后，本队闪能
       // 收入变化 ⇒ 旧的「0.8 + 模块默认 12/3」落点已越出可行域。实测（.zc/perf/T133rc.perf.ts）：
       // 该落点上「轴态 ⇒ 自动补齐」一旦生效，补齐量本身把轴挤出时间预算 ⇒ axisFallback=true、
       // effectiveStunAxes=0 ⇒ 下方「本用例前提：轴态生效」断言必然红。把补齐模块关掉，同一落点轴仍成立
       // （axes=1）⇒ 是**该落点落在可行域外**，不是轴解析或补齐通道失效。
-      // 新落点实测（.zc/perf/T133edge.perf.ts，0.01 分辨率）：吸收比 0.40–0.78 连续可行（39 档无洞），
-      // 0.6 距两端各 0.18 / 0.19；金身/双反邻域 1/1、2/2、3/2 均可（.zc/perf/T133decide.perf.ts）。
-      // 该点上补齐量 > 0 且**只**由轴态驱动：HEAD（无本 feature）同点 topUp 为 0/0 ⇒ 断言①对本 feature 有判别力。
+      // 新落点实测（.zc/perf/T167s_d.perf.ts，T167 扫 6 预设 × r × (block,dual)）：本档
+      // **盾0 ⇒ 补齐 {parry:0, dual:12}**、**盾1 ⇒ 归零**、轴行=1、退化=false。
+      // 该点上补齐量 > 0 且**只**由轴态驱动：清轴后归零（断言②）⇒ 断言①对本 feature 有判别力。
       config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.6)
       config.setActionCount(0, 'blockCount', 2)
       config.setActionCount(0, 'dualCounterCount', 1)
@@ -74,7 +76,27 @@ describe('轴模式 ⇒ 自动保底（嗔火 / 喧响）', () => {
      * ④ 判据改为**能分辨两种情况**（原断言在新口径下失去判别力）：
      *    **无秽盾** ⇒ 缺口真实存在 ⇒ 补齐 > 0（原判据语义仍被锁住）；
      *    **有秽盾**（缺省 1）⇒ 60 闪能补上 ⇒ 补齐归零。
+     *
+     * ⚠ **T167 再标定（2026-10-15，规则 10 四步）—— 换预设与档位，判据逐条保留、未放宽**。
+     * ① 量 delta：`banyue-trigger-lucia` @ `r=0.6 + 金身2/双反1 + 盾0` 的补齐量
+     *    `{parry:0, dual:12}` → **`{0,0}`**（`calc.interactionTopUp` 由对象变 `null`），断言①红。
+     * ② 根因：**轴内连段块的闪能账被修正**（`banyue.ts` 的 `combos[].energyCost` 60 → 0，
+     *    连段块是怒相内**山威免费**强特的轴内表达，不该占闪能预算）。闪能门不再跳过轴内连段块
+     *    ⇒ 这些块真的进轴执行 ⇒ `flashSpent` 上升 ⇒ 嗔火（`flashSpent × 0.5`）上升
+     *    ⇒ 本夹具原来的**嗔火缺口消失** ⇒ 无需再补 12 次双反。
+     *    A/B 实测（`.zc/perf/T167ab` 手法，两处修复隔离）：只回退账本 ⇒ 该点补齐恢复 `dual:12`。
+     * ③ 确认有意：用户口径「[怒] 怒相连段耗山威（每怒相 4 山威 = 2 组免费连段），**不耗闪能**、
+     *    不回复嗔火」+ 规则 17③「不许为保住好看的数字而维持错误的度量」。
+     * ④ 处置 = **换一支仍能分辨两种情况的预设**（同本仓「夹具沿革」做法）：
+     *    扫描 6 支般岳预设 × `ratio` × `(block,dual)`（`.zc/perf/T167s_d.perf.ts`）后，
+     *    `banyue-roxy-lucia` @ `r=0.4 + 金身0/双反1` 满足全部判据：
+     *    **盾0 ⇒ `{parry:0, dual:12}`（补齐 > 0）**、**盾1 ⇒ `null`（归零）**、轴行=1、退化=false。
+     *    ⇒ 断言①②③（含「清轴 ⇒ 归零」）逐条保留，只换夹具参数。
      */
+    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.4)
+    config.setActionCount(0, 'blockCount', 0)
+    config.setActionCount(0, 'dualCounterCount', 1)
+
     config.enemy.shieldCount = 0
     await new Promise(r => setTimeout(r, 120))
     const noShield = topUpOf(calc)

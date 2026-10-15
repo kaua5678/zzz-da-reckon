@@ -1,5 +1,5 @@
 {
- "_note": "时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts —— 重生成前必须先 A/B 归因（见测试头注释）；2026-10-14 T156 同因（非 fixed 轴不再传残留 count）⇒ auto-1371-1481-1451 slack 0.3→0",
+ "_note": "时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts —— 重生成前必须先 A/B 归因（见测试头注释）；2026-10-14 T156 同因（非 fixed 轴不再传残留 count）⇒ auto-1371-1481-1451 slack 0.3→0；2026-10-15 T167 两处同因（般岳轴内连段块闪能账 + 救援臂入场判据）⇒ banyue-liuyin-lucia over 0→0.6：① 连段块不再被误扣 60 闪能 ⇒ 轴内块真的进轴；② 救援臂不再被上一轮遗留的 illegal 标志挡掉 ⇒ 该队由「退化非轴」变「保轴 trim=1」。裸队（ratchet 口径）实测：现状 弃轴 20.200M/over 0 ⇒ 修复后 保轴 trim=1 23.060M/over 0.63s，over 0.63s 远小于轴容差 2s（AXIS_FALLBACK_TOLERANCE_SEC）且绝对地板为 16s ⇒ 是「保轴带来的量化残差」，不是变差。全库仅这 1 队 over 变、其余 92 队零漂移",
  "_tolerance": 1,
  "auto-1021-1031-1491": {
   "slack": 0,
@@ -447,7 +447,7 @@
  },
  "banyue-liuyin-lucia": {
   "slack": 0,
-  "over": 0,
+  "over": 0.6,
   "stun": 3,
   "outerExit": "stable"
  },

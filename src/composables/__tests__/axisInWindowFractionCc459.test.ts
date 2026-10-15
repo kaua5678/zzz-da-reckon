@@ -44,7 +44,7 @@ import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
 const tick = () => new Promise(r => setTimeout(r, 60))
 
 describe('§20.5-3 轴内失效率：同 key 多行时分母按求和（防 clamp 成 1.0）', () => {
-  it('般岳论道（1471015）在轴态：frac < 1 且扣减恒等式成立', async () => {
+  it('同 key 多行（T167 起 = 卢西娅 1451011）在轴态：frac < 1 且扣减恒等式成立', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
@@ -68,7 +68,29 @@ describe('§20.5-3 轴内失效率：同 key 多行时分母按求和（防 clam
      * ⚠ 本用例真正防的是「分母按单行 count 而非同 key 求和 ⇒ frac 被 clamp 成 1.0」；
      *    该缺陷在 `r=0.4` 下若复发，frac 会读到 1.0 而实测占比 0.79 ⇒ **照样红**。
      */
-    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.4)
+    /**
+     * ⚠ **T167 再换档（2026-10-15，规则 10 四步）—— 判据逐条保留、未放宽**。
+     * ① 量 delta：`r=0.4` 下「同 key 多行」的条目数 3 → **0** ⇒ 反空洞断言红。
+     * ② 根因：**不是 clamp 复发，是「多行」这个形态在该档消失了**。轴内连段块的闪能账修正后
+     *    （`banyue.ts` 的 `combos[].energyCost` 60 → 0，见 `axisAutoGuarantee` 的 T167 归因），
+     *    轴内块真的进轴执行 ⇒ 论道（1471015）在该档被轴**整段吸收**（只 1 行）⇒ 不再有「部分在轴内」。
+     *    实测（`.zc/perf/T167s_b.perf.ts`）：`r=0.4` ⇒ 多行条目 0；`r=0.5–0.7` ⇒ 多行但 frac **恰好 1.0000**
+     *    （轴内全包，判据① `frac<1` 会红，与本节 r=1 的历史归因同型）；`r=0.0/0.1` ⇒ 多行但**轴已弃**
+     *    （`退化=true`、所有 key 共享同一个 `windowFraction`）⇒ 本锁会空转，是**假替代**。
+     * ③ 确认有意：同 T165 归因 —— 轴活着是正确结果（用户裁决「挤不下就不要多打」）。
+     * ④ 处置 = 换到 **`r=0.2`**（该档轴活、多行条目=1、`0 < frac < 1`）：
+     *    key = `2:1451011`（卢西娅），`(行数 2, frac 0.0514)`，轴行=1、退化=false。
+     *    ⚠ 该 key 不是本用例标题点名的般岳论道 `0:1471015` —— 制品告：**全 6 支般岳预设 × 21 档
+     *    吸收比**扫描（`.zc/perf/T167s_c2.perf.ts` 的 B2 段）后，没有任何「轴活 + `0:1471015` 多行
+     *    + `0<frac<1`」的档位（修复后论道要么被整段吸收=frac 1.0，要么不在轴内）。
+     *    本用例真正防的是「分母按单行 count 而非同 key 求和 ⇒ frac 被 clamp 成 1.0」，
+     *    该缺陷在 `2:1451011` 上**同样可判**（它是同 key 两行、frac 0.0514 ≠ 1.0）⇒ 判别力保留。
+     *    ⚠ **不另加「论道 frac=1.0」的锁**：frac 恰为 1.0 时「按行分母」与「按 key 求和分母」
+     *    **同值**（都是 1.0）⇒ 那种断言对本 bug 是**假判据**（删掉修复也不红），正是本仓
+     *    §4「负控」警告的形态。故此处如实承认覆盖对象从「般岳论道」变为「卢西娅 1451011」，
+     *    并把用例名同步改名（不留「标题点名 A、实际锁 B」的错位）。
+     */
+    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.2)
     await tick()
 
     const sp = calc.stunPoolResult.value as unknown as Record<string, unknown>

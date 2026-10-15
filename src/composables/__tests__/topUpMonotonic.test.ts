@@ -184,9 +184,23 @@ describe('T140a 交互补齐单调性：ON 恒不劣于 OFF', () => {
      * `ON == OFF`（58.509M 两边相同）⇒ 再扫，取 **金身2/双反2 @ r=0.8**
      * （ON 60.337M vs OFF 56.377M，**+3.960M**，`topUp = {parry:2, dual:12}` 真的装上）。
      */
-    const on = await measure('banyue-trigger-lucia', 0.8, true, 2, 2)
-    const off = await measure('banyue-trigger-lucia', 0.8, false, 2, 2)
-    expect(on.dmg, `金身2/双反2 @ r=0.8 上补齐应有严格增益：ON ${(on.dmg / 1e6).toFixed(3)}M vs OFF ${(off.dmg / 1e6).toFixed(3)}M`)
+    /**
+     * ⚠ **T167 再换档（金身2/双反2 @ r=0.8 → 金身6/双反3 @ r=1.0；规则 10 四步）—— 判据未放宽**。
+     * ① 量 delta：原档 `ON 55.003M == OFF 55.003M`（严格增益消失）⇒ 护栏红。
+     * ② 根因：**轴内连段块的闪能账修正**（`banyue.ts` 的 `combos[].energyCost` 60 → 0）。
+     *    修后轴内块真的进轴执行 ⇒ 闪能被轴内吃掉 ⇒ 原档（低交互 2/2）在 OFF 臂也够 4 怒相
+     *    ⇒ 补齐不再产生增量（`ON == OFF`，两臂 `topUp` 都是 null）。
+     *    A/B 实测（两处修复隔离）：只回退账本 ⇒ 原档恢复严格增益。
+     * ③ 确认有意：用户口径「[怒] 怒相连段耗山威……**不耗闪能**」+ 规则 17③。
+     * ④ 处置 = **换到仍满足「ON 严格优于 OFF」的档位**（扫 `ratio × (block,dual)` 网格，
+     *    `.zc/perf/T167s_my.perf.ts` 的 A 段 42 档全表）：**金身6/双反3 @ r=1.0** 是唯一同时满足
+     *    「`ON.dmg > OFF.dmg`」+「ON 臂 `topUp` 真的装了（`{parry:3, dual:12}`）」+
+     *    「OFF 臂 `topUp === null`」三条件的档 ⇒ `ON 61.256M > OFF 59.103M`（**+2.153M**）。
+     *    ⚠ 本档 `stun` 两臂相同（5/5）⇒ 下方的失衡有界差断言仍成立。
+     */
+    const on = await measure('banyue-trigger-lucia', 1.0, true, 6, 3)
+    const off = await measure('banyue-trigger-lucia', 1.0, false, 6, 3)
+    expect(on.dmg, `金身6/双反3 @ r=1.0 上补齐应有严格增益：ON ${(on.dmg / 1e6).toFixed(3)}M vs OFF ${(off.dmg / 1e6).toFixed(3)}M`)
       .toBeGreaterThan(off.dmg)
     /**
      * ⚠ **T141 改判据**：原断言读 `calc.interactionTopUp.value` 并求 `not.toBe('0/0')`——但该字段是

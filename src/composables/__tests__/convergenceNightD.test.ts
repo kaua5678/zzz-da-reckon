@@ -428,16 +428,18 @@ describe('夜D · 层③ 真管线端到端', () => {
    * ⇒ 它在本测试的队形下**结构性不可能**非 null。这是既有设计（首页交互栏懒守卫），
    * 与本批迁移无关 ⇒ 本组改钉「模块写入的 cfg 字段」这一层，另加一条真管线读数。
    */
-  const readBanyueCfg = async (guaranteeUltimate: number, guaranteeFury = 0, stunPlanOff = false) => {
+  const readBanyueCfg = async (guaranteeUltimate: number, guaranteeFury = 0, stunPlanOff = false, shieldCount = 1) => {
     const { config } = await setupHarness(
       [{ agentId: '1471' }, { agentId: '1481' }, { agentId: '1451' }] as never, { recommendedBuild: true })
     config.setMechanicSetting('guarantee.ultimate', guaranteeUltimate)
     config.setMechanicSetting('guarantee.fury', guaranteeFury)
     // CC-152 逐用例钉：parry 精确补齐量是 off 场景录制值，physical 为 3
     if (stunPlanOff) config.setMechanicSetting('time.stunPlanProjection', 0)
+    // T167：秽盾闪能（缺省 1 = 有盾）直接进 `flashBase` ⇒ 改变嗔火/喧响缺口，必须可逐档钉
+    config.enemy.shieldCount = shieldCount
     const calc = useResourceCalc()
     const res = calc.resourceResult.value as unknown as {
-      characters: Array<{ slot: number; banyueInteractionTopUp?: { parry: number; dual: number } }>
+      characters: Array<{ slot: number; banyueInteractionTopUp?: { parry: number; dual: number; requiredSeconds?: number; illegal?: boolean } }>
     } | null
     return res?.characters.find(c => c.slot === 0)?.banyueInteractionTopUp
   }
@@ -529,11 +531,52 @@ describe('夜D · 层③ 真管线端到端', () => {
      * ④ 本锚按新口径更新；无盾档（`readBanyueCfg(1, 0, true)` 加 `shieldCount=0`）仍为 0
      *    —— 由下方反证锁住。
      */
-    expect(await readBanyueCfg(1, 0, true)).toEqual({ parry: 2, dual: 0, requiredSeconds: 4.666, illegal: false })
+    /**
+     * ⚠ **T167 再归因（`parry 2 → 0`，规则 10 四步）—— 改的是档位与锚值，判据语义未变**。
+     * ① 量 delta：本档（`stunPlanOff` + 保底4喧响 + 缺省盾1）般岳补齐量 `parry 2 → 0`
+     *    （`requiredSeconds 4.666 → 0`），`axisFallback` 仍 false、伤害 62.86 → 63.19M。
+     * ② 根因：**轴内连段块的闪能账修正**（`banyue.ts` 的 `combos[].energyCost` 60 → 0）。
+     *    修前那些块被闪能门跳过（`skipped` 含 `banyue-combo/energy`），修后真的进轴执行
+     *    （`axisCombo 8 → 12`、`axisSpend 280 → 480`）⇒ 般岳自身喧响供给抬升（`decibelSource`
+     *    11691 → 11025 但轴内终结技需求同步被满足）⇒ 原缺口消失 ⇒ 无需补 2 刀。
+     *    A/B 实测（两处修复隔离）：只回退账本 ⇒ 本档补齐恢复 `{parry:2, requiredSeconds:4.666}`。
+     * ③ 确认有意：用户口径「[怒] 怒相连段耗山威……**不耗闪能**」+ 规则 17③。
+     * ④ 处置：**「模块写入 → 结果 cfg 可见」这层语义必须继续被锁** ⇒ 换到**仍能写出非零补齐**的档：
+     *    实测（`.zc/perf/T167s_f.perf.ts`，扫 `ratio × (block,dual) × ult × shield`）
+     *    `readBanyueCfg(1, 0, false) + shieldCount=0` ⇒ `{parry:9, dual:0, requiredSeconds:20.997}`。
+     *    ⚠ 该档 `axisFallback=true`（轴弃）；这是**如实读数**而非缺陷 —— 保底4喧响在**无盾**
+     *    且**不关 stunPlanProjection** 时要 9 刀才能凑够目标，那 9 刀本身把轴顶出预算 ⇒ 弃轴，
+     *    正是本档历史上「轴退化」用例覆盖的同型行为。本条锁的是**通道可见性**（cfg 里有非零值），
+     *    不是轴态，故该档成立。
+     */
+    expect(await readBanyueCfg(1, 0, false, 0)).toEqual({ parry: 9, dual: 0, requiredSeconds: 20.997, illegal: false })
   })
 
-  it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 5 不是恒写）', async () => {
-    expect(await readBanyueCfg(0)).toEqual({ parry: 0, dual: 0 })
+  it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 9 不是恒写）', async () => {
+    /**
+     * ⚠ **T167 归因（形状 2 字段 → 4 字段，值仍全 0；规则 10 四步）**。
+     * ① 量 delta：本档返回由 `{parry:0, dual:0}`（字面量，2 字段）变为
+     *    **`{parry:0, dual:0, requiredSeconds:0, illegal:false}`**（线程对象，4 字段），**值仍全 0**。
+     * ② 根因：**不是补齐通道变了，而是本档的轴现在活着**。`applyBanyueTeamConfig` 写这份字段有两条分支
+     *    （`banyue.ts:492`）：`autoTopUp ? threads.interactionTopUp : {parry:0, dual:0}`；
+     *    而 `autoTopUp` 的门控含 `axisActive` —— 轴态**视同勾选保底**（用户裁决 2026-10-11），
+     *    故保底开关全关也走「读线程」那条 ⇒ 4 字段。
+     *    轴为何活着 = 本卡两处修复（轴内连段块闪能账 + 救援臂入场判据）：修前本档
+     *    `axisFallback=true`（轴弃，`autoTopUp=false` ⇒ 2 字段），修后 `trim=1` 保住轴
+     *    （`axisFallback=false` ⇒ 4 字段）。实测 A/B：只回退闸门 ⇒ 恢复 2 字段 + 弃轴。
+     * ③ 确认有意：轴活着是用户裁决「挤不下就不要多打」的目标；4 字段是同一对象的更完整表示
+     *    （`requiredSeconds`/`illegal` 本就是 `InteractionTopUp` 的成员）。
+     * ④ 处置：判据从「**对象形状逐字相等**」改为「**四个字段逐字为 0**」——
+     *    ⚠ 这**不是放宽**：本条的语义是「保底全关 ⇒ 补齐量为 0」（防恒写），
+     *    而 `requiredSeconds`/`illegal` 是**诊断读数**、不是「补齐量」；
+     *    形状差异只反映「轴活/轴弃」这条与本事无关的自由度。
+     *    反空洞由两条共同保证：上文 `readBanyueCfg(1, 0, false, 0)` 锁 **`parry:9` 非零**
+     *    （通道确实能写出非零），本条锁**关闭时为零** ⇒ 「恒写」会同时红两条。
+     */
+    const off = await readBanyueCfg(0)
+    expect(off, '保底全关 ⇒ 补齐量必须为 0（轴态视同勾选只影响是否读线程，不该凭空补）')
+      .toMatchObject({ parry: 0, dual: 0 })
+    expect(off!.illegal, '诊断读数：本档不得是「非法补齐」形态').toBe(false)
   })
 
   it('★ 只开保底4嗔火 ⇒ 喧响侧补齐量为 0（两开关各自独立驱动）', async () => {

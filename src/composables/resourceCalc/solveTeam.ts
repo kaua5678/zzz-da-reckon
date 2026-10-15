@@ -396,6 +396,22 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       // 用户裁决的**非法旗标**（>200s = 轴要的资源根本填不出来），两者不是一回事。
       const topUpIllegal = (x: CalcRoundResult) =>
         x.interactionTopUp.illegal === true || x.threadsApplied.interactionTopUp.illegal === true
+      /**
+       * **本轮算出的**补齐需求是否非法（**不看** `threadsApplied` 那份上一轮遗留的标志）。
+       *
+       * 为什么需要与 `topUpIllegal` 并存（T167，2026-10-15）：
+       * - `topUpIllegal`（OR 形态）是**保守/粘滞**判据，用于**退化臂**——它宁可多判一次非法，
+       *   这正是上方注释要的「防漏判」；
+       * - 但把同一把尺拿去当**救援臂的入场闸门**就错了：`threadsApplied` 是**上一轮**的遗留量，
+       *   与本轮计划无关。实测 `banyue-liuyin-lucia`（`.zc/perf/T167gate.perf.ts`）：
+       *   `illNext = {parry:60, dual:12, illegal:false}`（本轮需求**合法**）却因
+       *   `illApp = {0,0,illegal:true}`（遗留）⇒ 旧判据 `!(false||true) && true` = false
+       *   ⇒ 中断臂与挤压臂**同时被挡** ⇒ 直接退化（76.62M → 71.50M）；
+       *   而挤压臂其实**装得下**（trim=3 ⇒ net 179.47 ≤ 182，实测）。
+       * ⇒ 救援臂的入场只看**本轮**需求（用户口径 2026-09-01 的「非法 ⇒ 走轴退化」由
+       *   `topUpIllegalNow` 在入场处以 `!` 的形式保住：本轮真非法 ⇒ 两臂都不进场 ⇒ 落退化臂）。
+       */
+      const topUpIllegalNow = (x: CalcRoundResult) => x.interactionTopUp.illegal === true
       // ===== T140a「中断臂」：补齐超预算 ⇒ 先中断补齐，**不是**弃轴（用户口径 2026-10-11）=====
       // > 「补齐应该是在 off 的基础上去补招式，如果中途超预算，那就只能中断，而不是去选一个更烂的结果」
       //
@@ -425,8 +441,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         loadedTopUp(x.out) > 0 || x.out.interactionTopUp.parry > 0 || x.out.interactionTopUp.dual > 0
       if ((overBudget(r) || topUpIllegal(r.out)) && r.out.resolvedAxes.length) {
         hadAxis = true
-        // ① 中断臂（只在真有补齐量时试；非法补齐没有可中断的量）
-        if (!topUpIllegal(r.out) && wantsTopUp(r)) {
+        // ① 中断臂（入场判据 = 「本轮需求合法 且 真有补齐量可中断」，见 `topUpIllegalNow` 说明）
+        if (!topUpIllegalNow(r.out) && wantsTopUp(r)) {
           r = runOuterLoop(false, undefined, true)
           // ⚠ 记下「本轮是否已中断补齐」：挤压臂必须沿用这个状态（否则会把中断成果撤销，
           // 见下方挤压臂注释的 `banyue-liuyin-lucia` 实测）。
@@ -456,7 +472,16 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       // 正是这样被拒的：中断臂关掉补齐后候选 net 已到 179.23（≤ 182，装得下），
       // 而挤压臂重开补齐 ⇒ `illegalNext=true` ⇒ 采纳条件 `!topUpIllegal` 判假 ⇒ 12 个候选全被拒。
       // ⇒ 本臂在「中断后」的基线上继续削，与次序「中断 → 挤压 → 退化」的语义一致。
-      if ((overBudget(r) || topUpIllegal(r.out)) && r.out.resolvedAxes.length && !topUpIllegal(r.out)) {
+      // ⚠ **本臂入场同样只看「本轮需求是否合法」**（`topUpIllegalNow`，理由同中断臂）：
+      // 上一轮遗留的 `threadsApplied.illegal` 与本轮计划无关，不该挡住「削内容保轴」这条路。
+      // ⚠ **如实记录：本行对 93 预设是零 delta**（实测「只改中断臂」与「两臂都改」逐位相同）——
+      // 因为中断臂跑过之后 `threads` 被整块清零（`convergence.ts`：`interactionTopUp` 重置为
+      // `{0,0,0,false}`）⇒ 该路径上 `topUpIllegal ≡ topUpIllegalNow`。二者只在「中断臂**没跑**
+      // （本轮无补齐量可中断）而遗留标志为真」时分歧，而那一态未被任何预设触及。
+      // **保留理由 = 语义一致性而非实测增益**：同一问题（「本轮需求合不合法」）不该在两条臂上
+      // 用两把尺——那正是本卡修的「两套账」形态；且采纳条件（`!overBudget && !topUpIllegal`）
+      // 一字未动 ⇒ 只会让本臂**有机会尝试**，永不放行装不下的候选。
+      if ((overBudget(r) || topUpIllegal(r.out)) && r.out.resolvedAxes.length && !topUpIllegalNow(r.out)) {
         hadAxis = true
         for (let trim = 1; trim <= AXIS_AUTO_TRIM_MAX; trim++) {
           const squeezed = runOuterLoop(false, undefined, interrupted, trim)

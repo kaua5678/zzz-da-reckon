@@ -1140,15 +1140,18 @@ export const banyueMechanic: AgentMechanicModule = {
   },
   // 失衡轴动作块：怒相连段（论道→狮子吼·怒 / 地动→山摇·怒）= 怒相技能，山威免费（4 山威/怒相 = 2 组），
   // 不耗闪能不回嗔火；怒相内 2 组连段可在两个块间自由分配（didong 块优先占山威配额），明王触发源两者皆认领
+  //
+  // @fact agent:1471/轴内连段块能耗 口径: 两个连段块（`banyue-combo` / `banyue-combo-didong`）的 `energyCost` 恒为 **0**——它们是怒相内**山威免费强特**的轴内表达（耗山威不耗闪能），轴栈 `buildStackAxes` 按它做闪能门控；此前的 `COMBO_COST`(60) 是初始提交起的笔误，与本模块头注释 / `AXIS_EX_COST` 表注释 / `BANYUE_AXIS_MOVE_META`(cost 0) / `estimateExSpecialTime`(显式 continue) / `sideDetail` 文案五处声明矛盾（规则 11 同量多处实现）。付费连段走普通论道块 + 狮子吼·怒块（20+40） | 据 用户@2026-08「[怒] 怒相连段耗山威（每怒相 4 山威 = 2 组免费连段），不耗闪能、不回复嗔火」·修@2026-10-15 | 验 src/mechanics/__tests__/banyue.test.ts | 锚 src/mechanics/agents/banyue.ts#banyueMechanic + src/composables/resourceCalc/roundInputs.ts#buildStackAxes | 信 确认
+  // ⟳复核: 若「轴内连段块的闪能归属」再被动过——`combos[].energyCost`、`AXIS_EX_COST`、`BANYUE_AXIS_MOVE_META.cost` 三处出现不一致，或 `buildStackAxes` 连段分支改读别的字段（含新增 `energyCostAtCinema` 覆盖）——重跑 `npx vitest run src/mechanics/__tests__/banyue.test.ts -t 轴内连段块不扣闪能` 与 `.zc/perf/T166sweep.perf.ts`（93 预设应只有 4 支般岳队与现状不同） | 到期 2027-04-30
   combos: {
     'banyue-combo': {
       label: '怒相连段·论道',
-      energyCost: COMBO_COST,
+      energyCost: 0,
       moves: [{ moveId: MOVE.lunDao, count: 1 }, { moveId: MOVE.shiZiHouNu, count: 1 }],
     },
     'banyue-combo-didong': {
       label: '怒相连段·地动',
-      energyCost: COMBO_COST,
+      energyCost: 0,
       moves: [{ moveId: MOVE.diDong, count: 1 }, { moveId: MOVE.shanYaoNu, count: 1 }],
     },
   },

@@ -444,7 +444,21 @@ describe('平A池权重·分配策略', () => {
     const p = teamPresets.find(x => x.id === 'banyue-trigger-lucia')
     expect(p, '预设 banyue-trigger-lucia 存在').toBeTruthy()
     applyTeamToStore(config, p as never)
-    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.4)
+    /**
+     * ⚠ **T167 换档（0.4 → 0.6，规则 10 四步）—— 判据逐条保留、未放宽**。
+     * ① 量 delta：`r=0.4` 下入口 `comboOutRecoveryCount` 由 >0 变为 **0** ⇒ 反空洞断言红。
+     * ② 根因：**轴内连段块的闪能账修正**（`banyue.ts` 的 `combos[].energyCost` 60 → 0）。
+     *    修后轴内块真的进轴执行 ⇒ 闪能被轴内吃掉 ⇒ 怒相外自动连段被挤压到 0
+     *    ⇒ 没有「失衡外连段后摇」可取消 ⇒ 该档测不到本杠杆。
+     *    实测（`.zc/perf/T167s_chk.perf.ts` + `T167s_verify.perf.ts` 的 V5 段）：
+     *    `r=0.4` ⇒ `recBefore=**0**`（本条入口前提「确有未取消后摇」直接不成立 ⇒ 测不到任何东西）；
+     *    `r=0.5/0.6/0.8` ⇒ `recBefore=2`、`tauntAfter=2`、`recAfter=0`、恢复行=0、伤害不降
+     *    ⇒ 取 **`r=0.6`**（三档里居中，且实测伤害 +0.084M）。
+     * ③ 确认有意：轴活着 + 轴内块免费是用户口径（「挤不下就不要多打」+「[怒] 连段不耗闪能」）。
+     * ④ 判据全部保留：入口后摇 >0、joint 抬高 taunt、抬满后后摇归零、停在有效上限、
+     *    恢复行清零、总伤不降 —— 只换吸收比档位。
+     */
+    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.6)
     await nextTick()
     // 前提：入口 taunt=0（默认档）且确有待取消的后摇
     expect(Number(config.team[0]?.tauntCancelCount ?? 0), '入口默认档').toBe(0)

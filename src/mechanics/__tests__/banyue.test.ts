@@ -1205,3 +1205,68 @@ describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
     expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害显著高于丢轴态（46.635M）').toBeGreaterThan(50)
   })
 })
+
+describe('T167 轴内连段块闪能账 + 救援臂入场判据（规则 5 生效测试）', () => {
+  /**
+   * 缺陷 1（账本）：`combos[].energyCost` 与模块自己 5 处文档矛盾。
+   * 判据 = **轴栈的闪能门控不再因闪能跳过连段块**（这是 `energyCost` 的唯一消费者
+   * `resourceCalc/roundInputs.ts#buildStackAxes` 的直接读数）。
+   *
+   * ⚠ 反空洞：必须同时断言「本夹具的轴确实含连段块且轴活着」——否则
+   * 「skipped 里没有 banyue-combo/energy」在**弃轴**时也恒真（弃轴根本没有轴栈）。
+   */
+  it('① 轴内连段块不扣闪能：轴栈闪能门控不因 energy 跳过 banyue-combo / banyue-combo-didong', async () => {
+    const { config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
+    const catalog = useCatalogStore()
+    await catalog.loadBuildRecommendations()
+    // 用真预设（`banyue-liuyin-lucia` 的轴 = 每窗 2 连段块），与 .zc/perf 探针同源
+    const preset = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')!
+    const baseAxis = config.getAxisState()
+    applyTeamToStore(config, preset)
+    applyGoldToStore(config, preset, baseGoldOf(preset))
+    applyAxisBinding(config, baseAxis, preset)
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 250))
+    const st = calc.stackTraversalResult.value
+    // 反空洞①：轴活着（否则 skipped 断言退化成同义反复）
+    expect(st, '反空洞：本夹具必须真的跑出轴栈（弃轴时下面的断言恒真）').toBeTruthy()
+    // 反空洞②：轴内确实捏了连段块（否则「没被跳过」也是同义反复）
+    const comboBlocks = Object.keys(st!.executed).filter(k => k.includes('banyue-combo'))
+    const comboRequested = Object.values(st!.skipped).some(s => s.moveId.includes('banyue-combo')) ||
+      comboBlocks.length > 0
+    expect(comboRequested, '反空洞：本夹具的轴必须含连段块').toBe(true)
+    // ★ 主判据：连段块**不得**因闪能不足被跳过
+    const comboEnergySkipped = st!.skipped.filter(s => s.moveId.includes('banyue-combo') && s.reason === 'energy')
+    expect(comboEnergySkipped, '轴内连段块耗山威免费 ⇒ 不得因闪能被门控跳过').toEqual([])
+    // 且它们真的进了执行集合（不是"没请求"）
+    expect(comboBlocks.length, '连段块必须在轴内真的执行').toBeGreaterThan(0)
+  })
+
+  /**
+   * 缺陷 2（救援臂入场判据）：`topUpIllegal` 含 `threadsApplied.illegal`（**上一轮遗留**标志），
+   * 会把中断臂/挤压臂一起挡掉 ⇒ 直接退化。实测 `banyue-liuyin-lucia`：修账本后旧判据 ⇒ 丢轴
+   * 71.496M；只看「有补齐量可中断」⇒ 保轴 76.216M（trim=3）。
+   *
+   * 判据 = 该队**轴不得退化**，且挤压臂确实运行过（trim > 0）。
+   * ⚠ 反空洞：必须断言 trim > 0 —— 否则「没退化」可能只是「本来就装得下」，与本修复无关。
+   */
+  it('② 上一轮遗留的 illegal 标志不得挡掉救援臂（liuyin：修账本后仍保轴）', async () => {
+    const { config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
+    const catalog = useCatalogStore()
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')!
+    const baseAxis = config.getAxisState()
+    applyTeamToStore(config, preset)
+    applyGoldToStore(config, preset, baseGoldOf(preset))
+    applyAxisBinding(config, baseAxis, preset)
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 250))
+    const rr = calc.resourceResult.value!
+    expect(rr.convergence.axisFallback, '救援臂没被遗留标志挡掉 ⇒ 轴不得退化').toBe(false)
+    expect(rr.convergence.axisAutoTrimmed ?? 0,
+      '反空洞：本夹具必须真的触发挤压臂（否则断言退化成「本来就装得下」）').toBeGreaterThan(0)
+    expect(netFrontlineOccupation(rr), '削到装得下才采纳').toBeLessThanOrEqual(180 + 2)
+    // 对照实测：丢轴态 71.496M / 保轴态 76.216M ⇒ 取显著高于丢轴态的门槛
+    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害显著高于丢轴态（71.496M）').toBeGreaterThan(74)
+  })
+})
