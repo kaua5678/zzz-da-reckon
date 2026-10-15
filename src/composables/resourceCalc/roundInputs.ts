@@ -22,7 +22,7 @@ import type { StunSkillExecution } from '@/core/stunPool'
 import type { StunAxis, ResourceCalcConfig, TeamResourceResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import type { ExecutedMoveCount, StackActionCost, StackAxisInput, StackSequenceEntry } from '@/core/stunAxisStack'
-import { axisKindOf } from '@/core/stunAxisStack'
+import { axisKindOf, allocateAxisWindows } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
@@ -219,6 +219,44 @@ export function createConvergenceRoundInputs(deps: {
   }
 
   /** 把用户轴定义转换成栈遍历引擎的动作成本（含连段打包、转大不扣喧响、伊德海莉1命 60→50） */
+  /**
+   * **轴内角色专属资源的供给量**（T169）：按槽位问各角色模块要（`axisSwaySupply` 能力）。
+   *
+   * 为什么住这里：与 `buildStackAxes` 同层（同样的「按槽位派发模块能力」模式），
+   * 且两处栈调用点（`convergence.ts` 的 inAxisFractionProvider 与执行集合）必须**同源**——
+   * 放两份实现就会像闪能/喧响那样出现「一处传了、一处没传」的静默分歧（规则 11）。
+   * 未声明该能力的角色恒 0 ⇒ 不耗专属资源的块不受影响（纯追加语义）。
+   */
+  function buildStackSwaySupply(axes: StunAxis[], stunCount: number, goodReview: number, axisAutoTrim: number): Record<number, number> {
+    const out: Record<number, number> = {}
+    for (const cfg of resourceConfig.value?.characters ?? []) {
+      const supply = getAgentMechanic(cfg.agentId)?.axisSwaySupply
+      if (!supply) continue
+      // ⚠ **必须递真实轴定义 + 真实窗数**：供给量由「轴内捏了几块连段（× 窗口数）」推出
+      // （怒相需求 → 山威供给）。递空轴/零窗 ⇒ 模块只能回落读 cfg 里上一轮或构建相的字段
+      // ⇒ 怒相与供给量都不对（实测 liuyin 容量 6 块却放行 8 块，见 `banyue.ts#axisSwaySupply`）。
+      // ⚠ **必须递「总次数」口径**：`actionCountsBySlot` 在 `AgentAxisContext` 里的语义就是
+      // 「轴内捏块**总**次数（= 每窗模板 × 窗数）」，模块按它推怒相需求。递每窗模板会**少算窗数**
+      // ⇒ 需求偏低 ⇒ 供给偏低（实测把 10 块的轴按 2 块算）。
+      const winAlloc = allocateAxisWindows(axes, stunCount, { goodReview: Math.max(0, goodReview) })
+      const totalByMove: Record<string, number> = {}
+      axes.forEach((ax, ai) => {
+        for (const act of ax.actions) {
+          if (act.slot !== cfg.slot) continue
+          totalByMove[act.moveId] = (totalByMove[act.moveId] ?? 0) + Math.max(0, act.count) * (winAlloc[ai] ?? 0)
+        }
+      })
+      const v = supply({
+        slot: cfg.slot,
+        cfg,
+        axis: { axes, windows: winAlloc, actionCountsBySlot: { [cfg.slot]: totalByMove } },
+        axisAutoTrim,
+      })
+      if (v > 0) out[cfg.slot] = v
+    }
+    return out
+  }
+
   function buildStackAxes(axes: StunAxis[]): StackAxisInput[] {
     return axes.map(axis => {
       const axisActions: StackActionCost[] = []
@@ -270,9 +308,12 @@ export function createConvergenceRoundInputs(deps: {
         let energyCost = 0
         let actionTime = 0
         let decibelCost = 0
+        // T169：连段块可声明**角色专属资源**成本（般岳山威）——由栈做通用门控，供给侧见 `axisSwaySupply`
+        let swayCost = 0
         if (combo) {
           // 连段：能量按打包口径；影画覆盖经 combo.energyCostAtCinema（CC-69；如伊德海莉单次碾 1 命 60→50，原按 moveId 写死）
           energyCost = combo.energyCostAtCinema && cinema >= combo.energyCostAtCinema.minCinema ? combo.energyCostAtCinema.energyCost : combo.energyCost
+          swayCost = Math.max(0, combo.swayCost ?? 0)
           for (const mv of combo.moves) {
             const m = findMoveById(skills, mv.moveId)
             actionTime += (m?.actionTime ?? 0) * mv.count
@@ -306,6 +347,7 @@ export function createConvergenceRoundInputs(deps: {
           actionTime,
           energyCost,
           decibelCost,
+          ...(swayCost > 0 ? { swayCost } : {}),
           startTime: act.startTime ?? 0,
           // 佩洛伊斯右分支·永陷幽囚 / 雨果决算 = 决算：做完时清空窗口剩余失衡时间（填充归零+窗口截断）
           ...(endsWindow ? { endsStunWindow: true } : {}),
@@ -412,7 +454,7 @@ export function createConvergenceRoundInputs(deps: {
 
   return {
     extractAnomalyExecsFrom, extractStunExecsFrom, autoPreset, autoActive,
-    resolveAxes, buildStackAxes, expandExecutedToCounts, expandSequenceToMoveIds, calcAnomalyPoolInput,
+    resolveAxes, buildStackAxes, buildStackSwaySupply, expandExecutedToCounts, expandSequenceToMoveIds, calcAnomalyPoolInput,
   }
 }
 

@@ -739,6 +739,8 @@ const stackWarnings = computed(() => {
     const name = moveLabel(s.moveId) || s.moveId
     if (s.reason === 'energy') return `闪能不足：${agentName(s.slot)}·${name} 超支，仍按固定轴计入（共消耗 ${fmt(stack.value!.energyUsed, 1)}/${fmt(stack.value!.totalEnergy, 1)}）`
     if (s.reason === 'decibel') return `喧响不足：${agentName(s.slot)}·${name} 超支，仍按固定轴计入（共消耗 ${fmt(stack.value!.decibelUsed, 1)}/${fmt(stack.value!.totalDecibel, 1)}）`
+    // T169：角色专属资源不足（般岳山威）——超出「怒相数 × 2 组」的连段块打不出
+    if (s.reason === 'sway') return `专属资源不足：${agentName(s.slot)}·${name} 超出可供给量（如般岳山威：每怒相 4 点 = 2 组连段），该动作被舍弃`
     return `超时截断：${agentName(s.slot)}·${name} 超出失衡窗口，该动作被舍弃`
   })
 })

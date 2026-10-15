@@ -26,6 +26,20 @@ export interface StackActionCost {
   energyCost: number
   /** 单次喧响消耗（终结技/开帷幕；0 = 不耗喧响） */
   decibelCost: number
+  /**
+   * 单次**角色专属资源**消耗（点；0 = 不耗该资源）。
+   *
+   * 为什么需要（T169，2026-10-15）：闪能/喧响之外还有第三类「轴内会被打空」的资源——
+   * 般岳的**山威**：每进一次怒相得 4 点，一组免费连段（论道→狮子吼·怒）耗 2 点 ⇒
+   * 一次怒相最多 2 组。修前轴栈只认闪能/喧响/时间三类门，而连段块的闪能成本是 0
+   * （耗山威不耗闪能，见 `banyue.ts#combos`）⇒ **用户捏几块，栈就执行几块**，
+   * 超出怒相可供给量（`rage × 2` 组）的部分变成**没有伤害对应物的幽灵块**、
+   * 却照常占用轴内时间（实测 trigger/jufufu/liuyin 捏 10 块而容量 6 ⇒ 超额 4 块）。
+   *
+   * 资源的**供给侧**由角色自己的模块声明（`StackTraversalInput.swayBySlot`），
+   * 本引擎只做「够不够」的通用门控 —— 不认任何角色 id（判据 26）。
+   */
+  swayCost?: number
   /** 动作开始时间（秒，相对失衡窗口起点；缺省 0，可为负=窗口外提前起手）。
    *  平A填充用：从该槽位最后一个动作的结束时刻填到窗口结束（富余才填），不是「窗口 − Σ动作时长」。 */
   startTime?: number
@@ -64,6 +78,15 @@ export interface StackTraversalInput {
   energyBySlot?: Record<number, number>
   /** 各槽位可用喧响（点）；缺省槽位按 0 */
   decibelBySlot?: Record<number, number>
+  /**
+   * 各槽位可用**角色专属资源**（点；如般岳山威）；缺省槽位按 0 ⇒ `swayCost > 0` 的块一律跳过。
+   *
+   * ⚠ **供给侧是角色自己的事**：本引擎只做「够不够」的通用门控（同 `energyBySlot`/`decibelBySlot`），
+   * 不认识任何资源名或角色 id（判据 26）。目前唯一供给方 = 般岳模块
+   * （`axisRageCombos` 声明的两个连段块，`swayCost = 2`/块，供给 = `swayExCount` = 怒相数 × 4）。
+   * ⚠ 与闪能/喧响同款**滞后一轮**注入（首轮空表 ⇒ 耗该资源的块首轮被跳过，下一轮起正常）。
+   */
+  swayBySlot?: Record<number, number>
   /**
    * 好评（摇人值）总量（T157）：`bestEffort` 升级轴的**资源门控**（轴内 60/90 转大块的成本从这里扣）。
    * 缺省 / 负数 ⇒ 视作 0 ⇒ 升级轴一律「放过」（先打兜底轴），与用户口径
@@ -143,7 +166,7 @@ export interface StackTraversalResult {
   /** 实际用到的窗口数（≤ stunCount） */
   windowsUsed: number
   /** 被跳过的动作（资源不足） */
-  skipped: { slot: number; moveId: string; reason: 'energy' | 'decibel' | 'time' }[]
+  skipped: { slot: number; moveId: string; reason: 'energy' | 'decibel' | 'time' | 'sway' }[]
   /** 兜底平A填充总秒数（资源不足的剩余窗口时间，所有轴合计） */
   basicFillSeconds: number
   /** 各槽位兜底平A填充秒数（每轴可指定不同 filler slot） */
@@ -345,6 +368,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   const { axes, stunCount, windowDuration, goodReview: goodReviewInput } = input
   const energyBySlot = input.energyBySlot ?? {}
   const decibelBySlot = input.decibelBySlot ?? {}
+  const swayBySlot = input.swayBySlot ?? {}
 
   const executed: Record<string, ExecutedMoveCount> = {}
   /**
@@ -377,6 +401,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   // 比较，等于让 A 槽的大招花掉 B 槽的喧响（与引擎「每槽按自身产出推导次数」两套逻辑混合）。
   const energyLeft: Record<number, number> = { ...energyBySlot }
   const decibelLeft: Record<number, number> = { ...decibelBySlot }
+  const swayLeft: Record<number, number> = { ...swayBySlot }
 
   const bump = (slot: number, moveId: string, count: number, startTime = 0, win = 1) => {
     const key = `${slot}:${moveId}`
@@ -452,6 +477,14 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'energy' })
           continue
         }
+        // 角色专属资源门控（T169）：与上面两条**同口径**（超出本槽位总量就去掉，不许凭空创造）。
+        // 资源名不在引擎里 —— 供给侧由角色模块声明（`StackTraversalInput.swayBySlot`），
+        // 本引擎只判「够不够」。般岳山威：每怒相 4 点、一组免费连段 2 点 ⇒ 超出 `rage × 2` 组的
+        // 连段块在此被去掉（修前它们既无伤害对应物又照占轴内时间）。
+        if ((act.swayCost ?? 0) > 0 && (swayLeft[act.slot] ?? 0) + 1e-9 < (act.swayCost ?? 0)) {
+          skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'sway' })
+          continue
+        }
         if (act.energyCost > 0) {
           energyLeft[act.slot] = (energyLeft[act.slot] ?? 0) - act.energyCost
           energyUsed += act.energyCost
@@ -459,6 +492,9 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         if (act.decibelCost > 0) {
           decibelLeft[act.slot] = (decibelLeft[act.slot] ?? 0) - act.decibelCost
           decibelUsed += act.decibelCost
+        }
+        if ((act.swayCost ?? 0) > 0) {
+          swayLeft[act.slot] = (swayLeft[act.slot] ?? 0) - (act.swayCost ?? 0)
         }
         // 执行
         bump(act.slot, act.moveId, 1, act.startTime ?? 0, windowNo)

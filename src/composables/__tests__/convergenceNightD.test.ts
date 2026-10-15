@@ -585,12 +585,22 @@ describe('夜D · 层③ 真管线端到端', () => {
      *    实测（`.zc/perf/T168nd3.perf.ts`）同法其它档：盾0 ⇒ `{parry:24, req:55.992}`、
      *    双保底 ⇒ `{parry:1, dual:12, req:42.329}`、无保底 ⇒ `{parry:0, dual:0}`（= 下方反证档）。
      *    ⚠ 反空洞仍成立：本锚锁非零、下方「保底全关」锁零 ⇒ 「恒写」会同时红两条。
+     *
+     * ⚠⚠ **T169 再换档（2026-10-15）—— 山威门让原档的缺口消失**。
+     * ① 量 delta：T168 选定的档（低交互 + 保底终 + **盾1**）由 `{parry:7, req:16.331}`
+     *    变为 **`{parry:0, req:0}`**；改用 **盾0** ⇒ **`{parry:24, req:55.992}`**。
+     * ② 根因：轴栈新增**角色专属资源门控**（般岳山威）⇒ 轴内超量的连段块不再执行
+     *    ⇒ 轴内时间/闪能占用变小 ⇒ 般岳自身喧响供给与需求一起变 ⇒ **有盾（+60 闪能）时已无缺口**。
+     * ③ 确认有意：用户口径 2026-10-15「缺失那就加上呗，又没什么副作用」——让轴内内容如实。
+     * ④ 处置：按 T167/T168 同款办法换到**仍能写出非零补齐**的档 = 同低交互但**无秽盾**
+     *    （`.zc/perf/T169nd.perf.ts` 实测 8 档：有盾档全 0；无盾 ⇒ `parry:24`）。
+     *    ⚠ 该档同时是**反空洞**的更好载体（24 刀、55.992s 远离 0）。
      */
-    const cfg = await readBanyueCfg(1, 0, false, 1, { dodge: 2, parry: 2, block: 2, dual: 0 })
-    // 整数/布尔三字段逐字相等；`requiredSeconds` 是浮点乘积（7 刀 × 2.333s）⇒ 用 toBeCloseTo
-    // （T168 换档后 `16.331` 的二进制表示为 16.331000000000003，逐字相等会假红）
-    expect(cfg).toMatchObject({ parry: 7, dual: 0, illegal: false })
-    expect(cfg?.requiredSeconds).toBeCloseTo(16.331, 6)
+    const cfg = await readBanyueCfg(1, 0, false, 0, { dodge: 2, parry: 2, block: 2, dual: 0 })
+    // 整数/布尔三字段逐字相等；`requiredSeconds` 是浮点乘积（24 刀 × 2.333s）⇒ 用 toBeCloseTo
+    // （`55.992` 的二进制表示为 55.992000000000004，逐字相等会假红）
+    expect(cfg).toMatchObject({ parry: 24, dual: 0, illegal: false })
+    expect(cfg?.requiredSeconds).toBeCloseTo(55.992, 6)
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 9 不是恒写）', async () => {

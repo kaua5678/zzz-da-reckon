@@ -575,7 +575,6 @@ export interface ReleaseModifierInput {
   self: { slot: number; cinemaLevel: number; panel: DeepReadonly<PanelValues> | undefined }
 }
 
-
 /**
  * 在队模块 + 其槽位（r399 CC-373）—— `mechanics/registry.ts#teamMechanicSlots` 产出；
  * 异常池（`AnomalyPoolInput.teamMechanics`）据此只对在队模块派发钩子并附 `self`。
@@ -769,7 +768,7 @@ export interface AgentMechanicModule {
   attachedEvents?: Record<string, string[]>
   /** 连段动作：comboId → 复合招式（特殊技+重碾打包成一个栈单位，能量按打包口径一次扣除） */
   // CC-69：energyCostAtCinema = 影画 ≥ minCinema 时按 energyCost 覆盖打包能耗（roundInputs 非轴执行计划读；原写死伊德海莉单次碾 1 命 50）
-  combos?: Record<string, { label: string; energyCost: number; energyCostAtCinema?: { minCinema: number; energyCost: number }; moves: { moveId: string; count: number }[] }>
+  combos?: Record<string, { label: string; energyCost: number; energyCostAtCinema?: { minCinema: number; energyCost: number }; swayCost?: number; moves: { moveId: string; count: number }[] }>
   /**
    * 轴编辑器逐块标注（CC-48 2026-09-27；**展示层专用，不参与计算**）：返回 `${axisIndex}:${actionIndex}` → 标注。
    * 展示层经 `composables/agentMechanicView.ts#agentAxisBlockMarks` 以「本角色所在槽位」调用（判据 7：页面不值导入角色模块）。
@@ -806,8 +805,9 @@ export interface AgentMechanicModule {
   /**
    * 轴编辑器「怒相连段块」comboId 声明（CC-59；展示层专用）：primary = 主连段，didong = 与主连段共享配额、优先占用的变体连段。
    * 两者都是本模块 `combos` 的 key。StunAxisPage 用它画明王窗口条、按山威配额（怒相次数 × 2）算可放次数。现唯一：般岳。
-   */
+   * 下面 `axisSwaySupply`（T169）= 轴内角色专属资源的供给量（输入类型 `AxisSwaySupplyInput` 住 `typesHooks.ts`）。 */
   axisRageCombos?: { readonly primary: string; readonly didong: string }
+  axisSwaySupply?: (input: import('./typesHooks').AxisSwaySupplyInput) => number
   /**
    * 轴编辑器「角色专属块」（CC-61；展示层专用，不参与计算）：在候选池里追加的伪块（moveId 由编排层 / core 各自识别）。
    * `actionTimeOf(moveId)` 由展示层注入（查本槽技能表；mechanics 不能按值导入 stores）。quota = 候选块「可放」提示上限。

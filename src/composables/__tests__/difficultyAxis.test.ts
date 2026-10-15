@@ -23,7 +23,8 @@ import type { StackTraversalResult } from '@/core/stunAxisStack'
 function mkInput(opts: {
   fallback?: boolean
   stack?: boolean
-  skips?: { reason: 'time' | 'decibel' | 'energy' }[]
+  /** T169：改用**引擎类型**而不是就地重抄一遍联合 —— 引擎加 `reason` 取值时这里自动跟上（原先手抄，加 sway 就红了） */
+  skips?: { reason: StackTraversalResult['skipped'][number]['reason'] }[]
 }): AxisStateInput {
   const skipped = (opts.skips ?? []).map((s, i) => ({ slot: 0, moveId: `m${i}`, reason: s.reason }))
   return {
@@ -43,22 +44,27 @@ describe('axisStateOf（轴态唯一事实源）', () => {
     const a = axisStateOf(mkInput({ fallback: false, stack: true, skips: [] }))
     expect(a.kind).toBe('complete')
     expect(a.skippedTotal).toBe(0)
-    expect(a.skipped).toEqual({ time: 0, decibel: 0, energy: 0 })
+    expect(a.skipped).toEqual({ time: 0, decibel: 0, energy: 0, sway: 0 })
     expect(a.fallback).toBe(false)
     expect(axisStands(a)).toBe(true)
   })
 
-  it('② partial：轴已注入但按三条原因跳过招式（分类计数）', () => {
+  it('② partial：轴已注入但按四条原因跳过招式（分类计数）', () => {
     const a = axisStateOf(mkInput({
       fallback: false, stack: true,
       skips: [{ reason: 'time' }, { reason: 'energy' }, { reason: 'energy' }],
     }))
     expect(a.kind).toBe('partial')
-    expect(a.skipped).toEqual({ time: 1, decibel: 0, energy: 2 })
+    expect(a.skipped).toEqual({ time: 1, decibel: 0, energy: 2, sway: 0 })
     expect(a.skippedTotal).toBe(3)
     expect(axisStands(a)).toBe(true)
-    // 三条原因各自可读（UI「跳过 N 招」与诊断共用）
+    // 四条原因各自可读（UI「跳过 N 招」与诊断共用）
     expect(axisStateOf(mkInput({ fallback: false, stack: true, skips: [{ reason: 'decibel' }] })).skipped.decibel).toBe(1)
+    // T169：角色专属资源不足（般岳山威）也归 partial —— 它是**资源路**的第四个成员
+    const sw = axisStateOf(mkInput({ fallback: false, stack: true, skips: [{ reason: 'sway' }, { reason: 'sway' }] }))
+    expect(sw.kind).toBe('partial')
+    expect(sw.skipped.sway).toBe(2)
+    expect(sw.skippedTotal).toBe(2)
   })
 
   it('③ infeasible：时间路判不过（弃轴）—— 且**不得**读成 none（负控核心）', () => {
@@ -88,14 +94,16 @@ describe('axisStateOf（轴态唯一事实源）', () => {
     expect(axisKindLabel(axisStateOf(mkInput({ fallback: false, stack: false })))).toBe('—')
   })
 
-  it('★ 不变量：skippedTotal ≡ skipped 三项之和（任意输入）', () => {
-    const cases: { reason: 'time' | 'decibel' | 'energy' }[][] = [
+  it('★ 不变量：skippedTotal ≡ skipped 四项之和（任意输入）', () => {
+    const cases: { reason: StackTraversalResult['skipped'][number]['reason'] }[][] = [
       [], [{ reason: 'time' }], [{ reason: 'decibel' }, { reason: 'decibel' }],
       [{ reason: 'time' }, { reason: 'energy' }, { reason: 'decibel' }],
+      // T169：第四类原因也进同一条不变量（防「新理由加了但总数没算」）
+      [{ reason: 'sway' }, { reason: 'time' }, { reason: 'sway' }],
     ]
     for (const skips of cases) {
       const a = axisStateOf(mkInput({ fallback: false, stack: true, skips }))
-      expect(a.skippedTotal).toBe(a.skipped.time + a.skipped.decibel + a.skipped.energy)
+      expect(a.skippedTotal).toBe(a.skipped.time + a.skipped.decibel + a.skipped.energy + a.skipped.sway)
       expect(a.skippedTotal).toBe(skips.length)
     }
   })

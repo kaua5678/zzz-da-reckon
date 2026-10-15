@@ -1,5 +1,6 @@
 import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, InteractionTopUp, InteractionTopUpInput } from '../types'
 import { axisOverlayChannel, type AxisLike } from '../types'
+import { forEachSlotAxisAction } from '../stunWindows'
 import type { BanyueRageCycle, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import { calcPenetrationPower } from '@/data/penetrationPower'
@@ -164,6 +165,16 @@ const DEFAULT_DIDONG_COMBO = 0 // 怒相外连段里分配给「地动→山摇�
  * （惩罚机制，语义与来历见 `computeBanyueRageCycle` 内该用点的长注释）。
  */
 const DEFAULT_WASTED_FLASH = 50
+/**
+ * 一组怒相免费连段的**山威**成本（点）——每进一次怒相得 `RAGE_SWAY`(4) 点 ⇒ 一次怒相最多 2 组。
+ *
+ * 这是连段块的**真实成本**（耗山威不耗闪能 ⇒ `combos[].energyCost = 0`，见该处 `@fact`）。
+ * 轴栈据此做资源门控（T169）：超出 `怒相数 × 2` 组的连段块会被判 `reason: 'sway'` 跳过，
+ * 不再出现「无伤害对应物却照占轴内时间」的幽灵块。
+ */
+const COMBO_SWAY_COST = 2
+/** 一次怒相可供给的连段组数（4 山威 ÷ 2 山威/组） */
+const COMBO_GROUPS_PER_RAGE = 2
 
 
 /**
@@ -945,6 +956,56 @@ export const banyueMechanic: AgentMechanicModule = {
   },
   axisMoveMeta: BANYUE_AXIS_MOVE_META,
   axisRageCombos: BANYUE_AXIS_RAGE_COMBOS,
+  /**
+   * 轴内**山威供给量**（T169）：= `banyueRageCycle.swayExCount`（怒相数 × 4）。
+   *
+   * 与 `combos[].swayCost` 配对：轴栈用它做第三类资源门控（超出「怒相数 × 2 组」的连段块跳过）。
+   * ⚠ 供给**不是**「山威池上限」的精确模拟（真实过程是每窗进入怒相 +4、连段逐组消耗），
+   * 而是**整局总量**口径 —— 与闪能/喧响门控同款（用户 2026-09-08 裁决「轴从总量里挑招式」）。
+   * 单窗内的超额（同窗捏 4 块而该窗只有 1 次怒相）不在本门控语义内，见 `axisRageCombos` 的配额提示。
+   * ⚠ **无循环依赖**：连段块 `energyCost = 0` ⇒「执行几块」不影响怒相数。
+   */
+  axisSwaySupply: ({ slot, cfg, axis, axisAutoTrim }) => {
+    /**
+     * ⚠ **必须按轴定义现算，不能读 `banyueRageCycle` / `cfg.banyueAxisEx`**：
+     * 那两份都由 `applyBanyueTeamConfig` 在 **converge 相位**写入，而本能力在**栈遍历之前**
+     * （`convergence.ts` 里 `stackSwayBySlot` 先于本轮模块派发）被调用 ⇒ 读到的是**上一轮**
+     * （首轮是 build 相位、压根没写过轴字段）的怒相数。
+     * 实测该错位的代价（`.zc/perf/T169phase.perf.ts`）：`banyue-liuyin-lucia` 最终怒相 3
+     * （容量 6 块）却执行了 **8** 块 —— 多放的正是本该被门控掉的幽灵块。
+     * 按轴定义数块即可自洽：轴内捏的连段块数 → 需要的怒相数 → 山威供给，
+     * 而连段块 `energyCost = 0`（耗山威）⇒ 与闪能账无循环依赖。
+     */
+    // 「总次数」口径（= 每窗模板 × 窗数）由编排层算好递入；也兼容直接读轴的裸调用（测试/展示）
+    const counted = Math.max(0, Math.floor(
+      axis.actionCountsBySlot[slot]?.[BANYUE_AXIS_RAGE_COMBOS.primary] ?? 0))
+      + Math.max(0, Math.floor(axis.actionCountsBySlot[slot]?.[BANYUE_AXIS_RAGE_COMBOS.didong] ?? 0))
+    // 计划口径扫描走共享算子 `forEachSlotAxisAction`（CC-493 源码锁：agents 下不得手写 `axis.windows[ai]`）
+    let groups = counted
+    if (groups <= 0) {
+      forEachSlotAxisAction(axis, slot, (a, wins) => {
+        if (a.moveId !== BANYUE_AXIS_RAGE_COMBOS.primary && a.moveId !== BANYUE_AXIS_RAGE_COMBOS.didong) return
+        groups += Math.max(0, Math.floor(a.count)) * wins
+      })
+    }
+    // 轴内要求的怒相数 = 连段块总数 ÷ 2 组/怒相（与 `computeBanyueInteractionTopUp` 的 rageNeeded 同源）
+    const rageNeeded = Math.ceil(groups / COMBO_GROUPS_PER_RAGE)
+    // 该怒相数能否被嗔火供出来？用同一条固定点问（怒相数不足时供给同步变小 = 如实）。
+    // ⚠ `axisExSpend` **必须按轴定义算**（付费强特耗闪能 ⇒ 挤掉怒相外连段 ⇒ 压低怒相）。
+    // 传 0 会高估怒相 ⇒ 供给过量（实测 liuyin：传 0 时供给 16 = 8 块，而账本最终怒相 3 ⇒ 只有 6 块）。
+    const totalCounts: Record<string, number> = {}
+    for (const [k, v] of Object.entries(axis.actionCountsBySlot[slot] ?? {})) totalCounts[k] = Math.max(0, v)
+    const axisSpend = axisExSpendOf(totalCounts)
+    const cycle = computeBanyueRageCycle(
+      cfg.dodgeCounterCount, cfg.parryCount, cfg.blockCount, cfg.dualCounterCount,
+      cfgNum(cfg, 'banyue.diDongComboCount'), axisSpend, groups, cinemaLevelOf(cfg.banyueCinemaLevel),
+      cfg.battleTime, 0, Math.max(0, Math.floor(cfg.tauntCancelCount)), true,
+      Math.max(0, cfg.banyueShieldFlashGift ?? 0), Math.max(0, Math.floor(axisAutoTrim)),
+      Math.max(0, cfgNum(cfg, 'banyue.wastedFlash')),
+    )
+    const rage = Math.max(0, Math.min(rageNeeded, cycle.rageCount))
+    return rage * RAGE_SWAY
+  },
   // CC-62/CC-448：轴编辑器明王窗口 lane（展示层）：怒相连段块触发 8s 窗（首次 2 层、窗内再触发 3 层）；6 命满覆盖铺满
   axisWindowLane: {
     kind: 'mingwang',
@@ -1207,11 +1268,13 @@ export const banyueMechanic: AgentMechanicModule = {
     'banyue-combo': {
       label: '怒相连段·论道',
       energyCost: 0,
+      swayCost: COMBO_SWAY_COST,
       moves: [{ moveId: MOVE.lunDao, count: 1 }, { moveId: MOVE.shiZiHouNu, count: 1 }],
     },
     'banyue-combo-didong': {
       label: '怒相连段·地动',
       energyCost: 0,
+      swayCost: COMBO_SWAY_COST,
       moves: [{ moveId: MOVE.diDong, count: 1 }, { moveId: MOVE.shanYaoNu, count: 1 }],
     },
   },

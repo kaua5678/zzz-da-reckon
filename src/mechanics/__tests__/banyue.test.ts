@@ -585,17 +585,28 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
      * ⚠ 不用「去掉秽盾」做反证：实测本夹具**无盾时轴仍装得下**（`fb=false`）——
      * 该轴本来就不厚（每窗 2 连段块 + 终结技×2），秽盾那 60 闪能只是让它更宽裕
      * （伤害 5.422M → 5.554M），并不是「有盾才成立」的临界点。
-     * 真正触发退化的是**轴需求本身超预算** ⇒ 每窗连段块翻倍（4→8 = 4 怒相/窗）。
+     *
+     * ⚠⚠ **T169 换加厚手段（2026-10-15）—— 原手段（连段块翻倍）已被山威门堵死**。
+     * ① 量 delta：原 `banyue-combo count 4 → 8` 由「退化=Y」变为 **「退化=n」**（伤害 5.554M → 5.3125M）。
+     * ② 根因：本卡给轴栈加了**角色专属资源门控**（般岳山威，`combos[].swayCost = 2`/块，
+     *    供给 = 怒相数 × 4 = 8 ⇒ 容量 4 组/窗）。原反证想表达的「每窗 4 怒相 ⇒ 太厚」现在
+     *    **根本执行不了**：超出的块被判 `reason: 'sway'` **跳过**（实测 count 8/20/40 一律
+     *    只执行 4 块、跳过 12/36/76 个），轴不再被自己打不出的内容顶爆 ⇒ 不退化。
+     *    这正是本卡要修的缺陷（幽灵块），**不是判据失去意义**——「轴需求真超预算 ⇒ 弃轴」的语义照旧。
+     * ③ 确认有意：用户口径 2026-10-15「缺失那就加上呗，又没什么副作用」= 让轴内内容如实。
+     * ④ 处置：**换加厚手段到仍能真顶爆的维度 = 终结技块**（喧响需求，轴栈既有门控）。
+     *    实测扫描（`.zc/perf/T169thick3.perf.ts`）：每窗终结技 ×2/×4 装得下；**×6 起退化=Y**
+     *    （盾 1 与盾 0 皆然）⇒ 取 ×6（离临界最近、改动最小）。
      */
     config.stunAxes = [{ name: '厚轴', actions: [
-      { slot: 0, moveId: 'banyue-combo', count: 8, startTime: 0 },
+      { slot: 0, moveId: 'banyue-combo', count: 4, startTime: 0 },
       { slot: 0, moveId: '1471009', count: 1, startTime: 8 },
       { slot: 0, moveId: '1471010', count: 1, startTime: 10 },
-      { slot: 0, moveId: '1471021', count: 2, startTime: 12 },
+      { slot: 0, moveId: '1471021', count: 6, startTime: 12 },
     ] }] as never
     await new Promise(r => setTimeout(r, 120))
     const thick = calc.resourceResult.value!
-    expect(thick.convergence.axisFallback, '轴太厚（每窗 4 怒相）⇒ 撑不下 ⇒ 退化一般轴').toBe(true)
+    expect(thick.convergence.axisFallback, '轴太厚（每窗 6 终结技，喧响撑不下）⇒ 退化一般轴').toBe(true)
     // 前台行回到预算内（容差 2s = 合轴可覆盖的量化残差）
     //
     // ⚠ **T141 改判据：从「手工 Σ前台行 ≤ 182」改为引擎单一事实源 `netFrontlineOccupation`**
@@ -1241,12 +1252,22 @@ describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
      * `.zc/perf/T168wsweep.perf.ts`：W=0/25/50/100 恒为「退化=Y / 块=0 / comboOut=10 / 46.63M」）。
      * 按用户口径 2026-10-15，这正是「**中等难度装不下该轴**」——要用**更高难度**
      * （双反替闪反+金身、合轴率突破 40%）才装得下，不是挤压臂该救的场景。
-     * `banyue-trigger-lucia` 在**默认档**仍是那个临界（实测 trim=2、net 181.55、53.49M）。
+     * ⇒ 当时换到 `banyue-trigger-lucia`（trim=2、net 181.55、53.49M）。
+     *
+     * ⚠⚠ **T169 再换回 `banyue-jufufu-lucia`（2026-10-15）—— 山威门让该队恢复保轴**。
+     * ① 量 delta：`banyue-trigger-lucia` 的 `axisAutoTrimmed` 由 **2 → 0**（53.493 → 53.674M，
+     *    不再需要削）；`banyue-jufufu-lucia` 由「退化」变为 **trim=1、保轴、53.152M**（46.635 → 53.152M）。
+     * ② 根因：轴栈新增**角色专属资源门控**（般岳山威）⇒ 超出「怒相数 × 2 组」的幽灵连段块
+     *    在执行前被跳过 ⇒ 轴内时间不再被无伤害对应物的块撑大 ⇒ trigger 少占 ~2s（不必削）、
+     *    jufufu 由装不下变装得下。
+     * ③ 确认有意：用户口径 2026-10-15「缺失那就加上呗，又没什么副作用」——让轴内内容如实。
+     * ④ 处置：夹具换回 `jufufu`（本仓唯一仍走挤压臂的预设，实测 trim=1；
+     *    trigger/roxy/liuyin 为 0/2/3，但只有它是「靠削才保住的临界」）。判据全部保留。
      */
     const { config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     const catalog = useCatalogStore()
     await catalog.loadBuildRecommendations()
-    const preset = teamPresets.find(p => p.id === 'banyue-trigger-lucia')!
+    const preset = teamPresets.find(p => p.id === 'banyue-jufufu-lucia')!
     const baseAxis = config.getAxisState()
     applyTeamToStore(config, preset)
     applyGoldToStore(config, preset, baseGoldOf(preset))
@@ -1264,8 +1285,8 @@ describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
     // 般岳的怒相外连段确实被削了（模块侧读数与引擎读数同源）
     const b = rr.characters.find(c => c.agentId === '1471') as unknown as { banyueRageCycle?: { comboOutCount: number } } | undefined
     expect(b?.banyueRageCycle?.comboOutCount, '般岳连段数被削减').toBeDefined()
-    // T168 实测：本队 trim=2、保轴后 53.4929M（丢轴态见 `.zc/perf/T168wsweep`，显著更低）
-    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害显著高于丢轴态').toBeGreaterThan(50)
+    // T169 实测：本队 trim=1、保轴后 53.1522M（丢轴态 46.635M，见 `.zc/perf/T168wsweep`）
+    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害显著高于丢轴态（46.635M）').toBeGreaterThan(50)
   })
 })
 
@@ -1303,6 +1324,54 @@ describe('T167 轴内连段块闪能账 + 救援臂入场判据（规则 5 生�
     expect(comboEnergySkipped, '轴内连段块耗山威免费 ⇒ 不得因闪能被门控跳过').toEqual([])
     // 且它们真的进了执行集合（不是"没请求"）
     expect(comboBlocks.length, '连段块必须在轴内真的执行').toBeGreaterThan(0)
+  })
+
+  /**
+   * **T169：山威门 —— 轴内捏的连段块超出「怒相可供给量」时必须被跳过**（规则 5 生效测试）。
+   *
+   * 缺陷（T167 修 `energyCost` 后暴露）：连段块的真实成本是**山威**（4/怒相 = 2 组/怒相），
+   * 但轴栈在 T169 前只认闪能/喧响/时间三类门 ⇒ **用户捏几块就执行几块**。超出的块
+   * 既无伤害对应物（模块只按 `怒相数 × 2` 物化行）、又照占轴内时间。
+   *
+   * ## 负控（本测试的判别力来源）
+   * 删掉 `stunAxisStack` 的 sway 门控（或删掉 `combos[].swayCost`）⇒ ① 失败
+   * （捏 20 块会执行 20 块而非 4 块、零 sway 跳过）。
+   */
+  it('山威门：轴内连段块超出怒相容量 ⇒ 按 sway 跳过，不再执行幽灵块', async () => {
+    const { config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
+    const catalog = useCatalogStore()
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')!
+    const baseAxis = config.getAxisState()
+    applyTeamToStore(config, preset)
+    applyGoldToStore(config, preset, baseGoldOf(preset))
+    applyAxisBinding(config, baseAxis, preset)
+    // 把该预设的连段块加量到远超容量（原预设已含连段块；只改 count 不动形状）
+    config.stunAxes = config.stunAxes.map(a => ({
+      ...a,
+      actions: a.actions.map(x => x.moveId.includes('banyue-combo') ? { ...x, count: 20 } : x),
+    })) as never
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 150))
+    const st = calc.stackTraversalResult.value
+    const rr = calc.resourceResult.value!
+    // 反空洞①：轴真的跑起来了（弃轴时下面的断言恒真）
+    expect(st, '反空洞：本夹具必须真的跑出轴栈').toBeTruthy()
+    // ★ 主判据：超出的连段块被判 sway 跳过（「山威」是原因名，不是闪能/时间）
+    const swaySkipped = st!.skipped.filter(s => s.moveId.includes('banyue-combo') && s.reason === 'sway')
+    expect(swaySkipped.length, '超量连段块必须按 sway 跳过').toBeGreaterThan(0)
+    // 反空洞②：被跳过的**不是全部**——容量内的块仍要执行（否则「全跳过」也能让上面成立）
+    const executedBlocks = Object.entries(st!.executed)
+      .filter(([k]) => k.includes('banyue-combo'))
+      .reduce((a, [, v]) => a + (v as { count: number }).count, 0)
+    expect(executedBlocks, '容量内的连段块仍须执行').toBeGreaterThan(0)
+    // 容量口径（**整局总量**，与闪能/喧响门控同款「轴从总量里挑招式」，用户 2026-09-08 裁决）：
+    // 供给 = 怒相数 × 4 山威，每块耗 2 ⇒ 全轴最多执行 `怒相数 × 2` 块（**不乘窗口数**——
+    // 山威是整局累计的资源，不是每窗重置）。捏 20 块/窗只是把需求抬高，执行量仍由总量封顶。
+    const b = rr.characters.find(c => c.agentId === '1471') as unknown as { banyueRageCycle?: { rageCount: number; swayExCount: number } } | undefined
+    const rage = b?.banyueRageCycle?.rageCount ?? 0
+    expect(b?.banyueRageCycle?.swayExCount, '供给 = 怒相数 × 4（与模块同源）').toBe(rage * 4)
+    expect(executedBlocks, '执行块数被山威总量封顶 = 怒相数 × 2，不是捏的 20×窗').toBe(rage * 2)
   })
 
   /**

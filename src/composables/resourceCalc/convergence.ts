@@ -92,6 +92,8 @@ export function createRunCalcRound(deps: {
   computeWindowDuration: () => number
   computeStunCoverage: (sp: Pick<StunPoolResult, 'stunCount'> | null | undefined, lostSeconds?: number) => number
   buildStackAxes: (axes: StunAxis[]) => StackAxisInput[]
+  /** T169：角色专属资源（般岳山威）按槽位的供给量——两处栈遍历共用（见 `roundInputs#buildStackSwaySupply`） */
+  buildStackSwaySupply: (axes: StunAxis[], stunCount: number, goodReview: number, axisAutoTrim: number) => Record<number, number>
   expandExecutedToCounts: (executed: Record<string, ExecutedMoveCount>, basicFillBySlot: Record<number, number>) => Record<string, ExecutedMoveCount>
   /** 保序版展开（连段块 → 真实 moveId，不聚合）：克拉蕾轴内残痕时序消费，见 roundInputs 里的实现注释 */
   expandSequenceToMoveIds: (sequence: readonly StackSequenceEntry[], basicFillBySlot: Record<number, number>) => StackSequenceEntry[]
@@ -103,7 +105,7 @@ export function createRunCalcRound(deps: {
 }) {
   const {
     configStore, catalogStore, panels, resourceConfig,
-    computeWindowDuration, computeStunCoverage, buildStackAxes, expandExecutedToCounts, expandSequenceToMoveIds,
+    computeWindowDuration, computeStunCoverage, buildStackAxes, buildStackSwaySupply, expandExecutedToCounts, expandSequenceToMoveIds,
     resolveAxes, calcAnomalyPoolInput, extractAnomalyExecsFrom, extractStunExecsFrom, autoActive,
   } = deps
 
@@ -425,6 +427,22 @@ export function createRunCalcRound(deps: {
     // `axisOverlapByAction` 的**唯一来源**（用户 2026-09-10 裁决「同一物理量只能有一份实现」）。
     // 资源用**上一轮**收敛值（与其它线程同款滞后注入）；首轮无上一轮值 ⇒ 空表 ⇒ 耗资源块被门控掉
     //（只影响首轮：外层迭代下一轮起读上一轮值）。
+    /**
+     * T169：**角色专属资源**（般岳山威）按槽位的供给量——上面「执行集合」与下面
+     * `inAxisFractionProvider` 两次栈遍历**共用同一份**（规则 11）。
+     *
+     * 为什么必须同源：两处若各算各的，就会出现「转大不动点内层按 A 口径扣、最终账本按 B 口径扣」
+     * 的两套账——正是闪能/喧响历史上踩过的形态。本值只依赖各槽自己的 cfg（怒相数），
+     * 与本轮轴执行集合无关（连段块 `energyCost = 0` ⇒ 执行几块不影响怒相数）⇒ 无循环依赖。
+     */
+    /**
+     * ⚠ **必须随 `axisAutoTrim` 重算**：挤压臂削「怒相外自动连段」是为了保轴，但它同时
+     * 降低 `flashSpent` ⇒ 嗔火↓ ⇒ **怒相数↓** ⇒ 山威供给↓（实测 liuyin：trim 让怒相 4→3
+     * ⇒ 容量从 8 块降到 6 块）。若供给按 trim=0 算死，门控就会按**没被削**的口径放行连段块，
+     * 多出的块又是幽灵块（实测执行 8 块 vs 容量 6 块）。故按本轮真实 `axisAutoTrim` 现算。
+     */
+    const stackSwaySupplyOf = (autoTrim: number) =>
+      buildStackSwaySupply(resolvedAxes, threads.prevPoolStunCount ?? countStun, prevGoodReview, autoTrim)
     let axisExecutedStack: ReturnType<typeof calcStunAxisStack> | null = null
     /**
      * 轴内终结技块实际执行总次数：通用注入 cfg.axisUltimateTotal 供模块消费（希希芙影画2 等）。
@@ -444,6 +462,8 @@ export function createRunCalcRound(deps: {
         windowDuration: computeWindowDuration(),
         energyBySlot: prevEnergyBySlot,
         decibelBySlot: prevDecibelRegenBySlot,
+        // T169：角色专属资源（般岳山威）——与 inAxisFractionProvider 那次栈遍历同源
+        swayBySlot: stackSwaySupplyOf(Math.max(0, opts?.axisAutoTrim ?? 0)),
         // T157：升级轴（bestEffort）的资源门控 —— 与下方 6 处同源
         goodReview: Math.max(0, prevGoodReview),
       })
@@ -944,6 +964,7 @@ export function createRunCalcRound(deps: {
           windowDuration: windowDur,
           energyBySlot: stackEnergyBySlot,
           decibelBySlot: stackDecibelBySlot,
+          swayBySlot: stackSwaySupplyOf(Math.max(0, opts?.axisAutoTrim ?? 0)),
           goodReview: Math.max(0, prevGoodReview),
         })
         const inAxisCounts = expandExecutedToCounts(stack.executed, stack.basicFillBySlot)

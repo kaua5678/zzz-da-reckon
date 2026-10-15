@@ -578,3 +578,37 @@ export interface PromoteHugInput {
   /** 60 档上限覆盖：只有轴模式传（轴声明的 60 抱拳次数）；缺省 = 提供者读自己的设置 */
   hug60Cap?: number
 }
+/**
+ * **轴内角色专属资源的供给量**（T169，2026-10-15）：本槽在轴态可用于消耗该资源的**总量**（点）。
+ *
+ * 与 `combos[].swayCost` 配对使用：声明了消耗就必须声明供给（否则一律被门控跳过）。
+ * 引擎只把它透传给 `stunAxisStack` 的 `swayBySlot`，不认识资源名（判据 26）。
+ *
+ * 般岳：供给 = 轴内连段块数推出的怒相需求 × 4 点山威（每进一次怒相 +4）。
+ * ⚠ **无循环依赖**：连段块 `energyCost = 0`（耗山威）⇒「执行几块」不影响怒相数。
+ * ⚠ **住本文件**：`types.ts` 有 1400 行上限（`typesSplitCc83.test`），新卫星类型按 CC-83 放这里。
+ */
+/**
+ * 供给扫描只需要的「轴动作最小形状」——**不重抄 `ExecutedMoveCount`**（判据 29）：
+ * 这里要的是**轴定义里的动作**（`slot`/`moveId`/`count`），与「已执行招式的计数」是不同含义的量。
+ */
+export interface AxisSwaySupplyAction {
+  readonly slot: number
+  readonly moveId: string
+  readonly count: number
+}
+
+export interface AxisSwaySupplyInput {
+  slot: number
+  cfg: CharacterOperationConfig
+  /**
+   * 本轮生效轴（结构类型，不引 `types.ts#AgentAxisContext`——那会成环，
+   * 且扫描算子 `forEachSlotAxisAction` 只要求 `{ axes, windows }` 两样）。
+   */
+  axis: {
+    readonly axes: ReadonlyArray<{ readonly actions: ReadonlyArray<AxisSwaySupplyAction> }>
+    readonly windows: ReadonlyArray<number>
+    readonly actionCountsBySlot: Readonly<Record<number, Readonly<Record<string, number>>>>
+  }
+  /** T165 挤压臂本轮削减的「自动多打」份数（0 = 不削）——容量必须与账本同 trim，否则出幽灵块 */
+  axisAutoTrim: number}
