@@ -48,9 +48,9 @@ import { type ConfigModel } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import {
   absorbCapOf, applyInteractionKnob, clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
-  type KnobPointName, type LadderPoint, type LadderResult, type LadderSnapshot,
+  type AxisTruncatedPoint, type KnobPointName, type LadderPoint, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
-import { axisStateOf, axisStands, type AxisState } from '@/composables/difficultyAxis'
+import { axisKindLabel, axisStateOf, axisStands, type AxisState } from '@/composables/difficultyAxis'
 import {
   applyAxisBinding, applyBuffToStore, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf,
   computeDifficulty, type DifficultyWeights,
@@ -1108,6 +1108,14 @@ export interface CurveSeries {
    * 见 `LadderResult.axisPointMissing`。
    */
   axisPointMissing: boolean
+  /**
+   * **轴要求未满足而被截断的档位**（用户口径 2026-10-15：「轴模式已经限定了资源要求了……
+   * 你不算不就行了吗」）——这些档**不在 `points` 里**，因为它们不算轴模式的结果。
+   *
+   * ⚠ 与 `truncated`（交互被时间线砍）**不是一回事**：那个是「打了但被砍短」，这个是「整档不成立」。
+   * 本字段是「曲线从哪个难度起才成立」的唯一数据源；`points` 为空 = 这条曲线一个点都不成立。
+   */
+  axisTruncated: AxisTruncatedPoint[]
   /** ④ 相对 ① 的伤害增量（「难度上升 ⇒ 总伤上升」的机器判据；实测可为负，如实上报不隐藏） */
   gain: number
   /** 曲线只有起点一点（②③ 都缺失且 ④ 无增益）：没有可优化的空间 */
@@ -1203,6 +1211,34 @@ export interface TruncationHint {
  * 返回 null = 这一档没被砍（提醒不出现）——没采到交互量的档（`capture` 未给）也返回 null，
  * 因为「砍没砍」无从判断，宁可不提示也不误报。
  */
+/**
+ * 摘要表「轴态」列的文本（**唯一事实源**；页面 `axisColumnText` 直接调它）。
+ *
+ * ## ⚠ 2026-10-15 口径变更：轴要求未满足的档位**不出数**（用户裁决）
+ *
+ * 用户逐字：「**轴模式已经限定了资源要求了**，你没达到要求来问我能不能通融，**你不算不就行了吗**。
+ * 我要的是你**达到资源要求然后计算**」。
+ * ⇒ `series.points` 只含**轴成立**的点；被砍掉的档位在 `series.axisTruncated` 里（带理由）。
+ * 本函数必须把两者都读出来——只读 `points` 会在整条曲线被截断时显示**空白**，
+ * 而用户要的是「低难度**不该算**」，不是「低难度**看不见**」。
+ *
+ * 为什么住这里（而不是留在页面里）：与 `truncationHintAt` 同层——**展示口径要有机器判据**
+ * （规则 5），住页面就只能靠实机点通看，改坏了没人拦。
+ */
+export function axisColumnText(s: Pick<CurveSeries, 'points' | 'axisTruncated' | 'axisPointMissing'>): string {
+  const seen = new Map<string, number>()
+  for (const p of s.points) {
+    const label = axisKindLabel(p.axis)
+    seen.set(label, (seen.get(label) ?? 0) + 1)
+  }
+  const body = [...seen.entries()].map(([k, n]) => (n > 1 ? `${k} ×${n}` : k)).join(' · ')
+  // 被截断的档位：说清「几档不算」+ 首档理由（列宽有限，逐档明细不进这里）
+  const cut = s.axisTruncated
+  const cutText = cut.length > 0 ? `⛔ ${cut.length} 档不出数（${cut[0]!.reason}）` : ''
+  const head = [body, cutText].filter(Boolean).join(' · ') || '—'
+  return s.axisPointMissing ? `${head}（② 轴在任何难度下都不成立）` : head
+}
+
 export function truncationHintAt(
   points: Pick<LadderPoint, 'x' | 'overflow' | 'interactionsFilled' | 'interactionsPlayed'>[],
   index: number,
@@ -1284,6 +1320,8 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       slope: s.slope,
       steps: r.ladder.points.map(p => p.point),
       axisPointMissing: r.ladder.axisPointMissing,
+      // 轴要求未满足而被截断的档位（不在 points 里）——「曲线从哪个难度起才成立」的数据源
+      axisTruncated: r.ladder.axisTruncated,
       gain: r.ladder.gain,
       // 「平坦」= ②③ 都缺失且 ④ 无实质增益（此时曲线只有 ①④ 两点且同高）
       flat: r.ladder.points.length <= 2 && Math.abs(r.ladder.gain) <= 1e-6,

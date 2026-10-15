@@ -12,7 +12,7 @@ import { withAnalysisScenario } from '@/composables/analysisScenario'
 import {
   assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource,
   captureDmgBySource, captureKeyCounts, diffKeyCounts, estimateLabelWidth, linkCountToDmg, majorChanges,
-  measureOperationalDifficulty, pickNonOverlapping, truncationHintAt, laneKeyOf, seriesForLane, INTERACTION_CUT_MIN,
+  measureOperationalDifficulty, pickNonOverlapping, truncationHintAt, axisColumnText, laneKeyOf, seriesForLane, INTERACTION_CUT_MIN,
   type DifficultyCurveOptions, type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
 import { absorbCapOf, clearDifficultyLevers, climbDifficultyLadder, scanAbsorbGrid, type LadderResult, type LadderPoint } from '@/composables/difficultyLadder'
@@ -74,6 +74,8 @@ function mkLadder(
     points: pts,
     axisPointMissing: !names.includes('axis'),
     gain: gain ?? final - base,
+    // 本夹具直接构造 `points`（不走 `climbDifficultyLadder` 的截断门）⇒ 没有被截断的档位
+    axisTruncated: [],
   }
 }
 
@@ -346,7 +348,12 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
   it('集成：x 轴 = 实测操作难度（绝对值，与散点同尺），④ ≥ ①', async () => {
     const { catalog } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
-    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
+    /**
+     * ⚠ **2026-10-15（T170）换队**：原 `auto-1521-1481-1311` 在新口径下**一个点都算不出**
+     * （轴要求不满足 ⇒ 整条曲线被截断）⇒ `pts[0]` 为 undefined。
+     * 新队 `auto-1051-1481-1451` 实测四点全成立（`axisTruncated = 0`、`gain = +6.94M`）。
+     */
+    const preset = teamPresets.find(p => p.id === 'auto-1051-1481-1451')!
     const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE }))
     const pts = row!.ladder.points
     /**
@@ -443,7 +450,8 @@ describe('合轴吸收（T140c：纯收益 ⇒ 拉满；④ 的吸收率 == abso
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'auto-1461-1521-1491')!
+    // T170 换队：原 `auto-1461-1521-1491` 新口径下曲线被截断（见上一条用例的归因）
+    const preset = teamPresets.find(p => p.id === 'yidhari-norma-lucia')!
     const ctx = { config, calc }
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
@@ -698,6 +706,57 @@ describe('伤害归因（这一档 +N 伤害是谁贡献的）', () => {
   })
 })
 
+describe('轴态列文本：轴要求未满足的档位**不出数**（用户 2026-10-15 口径）', () => {
+  /**
+   * 判据对象 = `axisColumnText`（**展示口径的唯一事实源**，页面直接调它）。
+   *
+   * ## 为什么单列（这是新口径的**可读性**判据）
+   *
+   * 用户逐字：「**轴模式已经限定了资源要求了**……**你不算不就行了吗**」。
+   * ⇒ 被截断的档位不在 `points` 里，但**必须仍被说出来**——用户要的是「低难度**不该算**」，
+   * 不是「低难度**看不见**」。若本函数只读 `points`，整条曲线被截断时会显示**空白**，
+   * 用户无从知道是「轴没打完」还是「页面坏了」。
+   *
+   * ## 负控（删掉被锁行为后本测试确实变红）
+   *
+   * 把 `axisColumnText` 里的 `cutText` 一行删掉 ⇒ 「截断必须点名」两条断言红。
+   */
+  const mk = (
+    points: { kind: LadderPoint['axis']['kind']; skippedTotal?: number }[],
+    axisTruncated: { reason: string }[] = [],
+    axisPointMissing = false,
+  ) => ({
+    points: points.map(p => ({ axis: { kind: p.kind, skippedTotal: p.skippedTotal ?? 0 } })),
+    axisTruncated,
+    axisPointMissing,
+  }) as unknown as Parameters<typeof axisColumnText>[0]
+
+  it('轴成立的档位按标签去重计数；有截断时必须点名档数与首档理由', () => {
+    // 全成立 ⇒ 只有标签，无截断提示
+    expect(axisColumnText(mk([{ kind: 'complete' }, { kind: 'complete' }]))).toBe('完整轴 ×2')
+    // ★ 截断必须点名（含理由）——只读 points 会显示空白，用户以为页面坏了
+    const cut = axisColumnText(mk(
+      [{ kind: 'complete' }],
+      [{ reason: '轴没打完（专属资源不足 4 招）⇒ 资源要求未满足' }],
+    ))
+    expect(cut, '截断必须报出档数').toContain('⛔ 1 档不出数')
+    expect(cut, '截断必须给出理由').toContain('专属资源不足 4 招')
+    expect(cut, '成立的点仍要报').toContain('完整轴')
+  })
+
+  it('整条曲线被截断 ⇒ 不得显示空白（必须说明有几档不算）', () => {
+    const allCut = axisColumnText(mk([], [{ reason: '轴没打完（闪能不足 8 招）⇒ 资源要求未满足' }, { reason: 'x' }]))
+    expect(allCut).not.toBe('')
+    expect(allCut).not.toBe('—')
+    expect(allCut).toContain('⛔ 2 档不出数')
+  })
+
+  it('非轴队（无点无截断）显示 —；② 缺失时如实点名', () => {
+    expect(axisColumnText(mk([])), '非轴队 = 没有要求要满足，显示占位符').toBe('—')
+    expect(axisColumnText(mk([{ kind: 'complete' }], [], true))).toContain('② 轴在任何难度下都不成立')
+  })
+})
+
 describe('截断提醒：要达到手填的交互要求至少需要多少难度（用户 2026-10-06 口径）', () => {
   it('纯函数：达标所需 x = 曲线右边第一个实打 ≥ 本档手填量的档（x 不单调时取最小）', () => {
     // 逐档 [手填, 实打]：档0 填41→打13（被砍）、档1 填41→打13（仍被砍）、档2 填41→打41（达标）
@@ -826,8 +885,12 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
   it('每队一条曲线、伤害单调不减，且算完恢复现场（队伍/敌方/机制开关/权重策略）', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
-    const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')
-    expect(preset, '预设数据里应有 auto-1521-1481-1311（实测 +47.6% 的爬梯样本）').toBeTruthy()
+    /**
+     * ⚠ **2026-10-15（T170）换队**：原 `auto-1521-1481-1311` 在新口径下曲线被整条截断
+     * （轴要求不满足）⇒ 取不到 `points[0]`。新队 `auto-1051-1481-1451` 四点全成立。
+     */
+    const preset = teamPresets.find(p => p.id === 'auto-1051-1481-1451')
+    expect(preset, '预设数据里应有 auto-1051-1481-1451（新口径下四点全成立的爬梯样本）').toBeTruthy()
 
     const before = {
       agents: config.team.map(c => c.agentId),

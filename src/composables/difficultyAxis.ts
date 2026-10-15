@@ -38,6 +38,9 @@
  * ⚠ **本触发器已于 2026-10-15 触发并复核过一次（T169）**：`skipped.reason` 新增第四值 `'sway'`
  *   （角色专属资源不足，如般岳山威），`AxisSkipCounts` 同步加 `sway` 字段、`skippedTotal` 计入它、
  *   `NO_SKIPS` 补零；四态判据表**未变**（`sway` 仍属「资源路」⇒ 归 `partial`，不是新通道）。
+ *
+ * @fact engine:难度曲线/轴要求未满足 口径: **轴模式 = 硬资源要求**——`axisRequirementMet` 为 false 的档位（`partial` 跳过 N 招 / `infeasible` 弃轴）**不出数**（该点不进 `LadderResult.points`，改记 `axisTruncated` 带理由）；`none`（非轴队）**恒可出数**（没绑轴 = 没有要求要满足，不是没达标）⇒ 判据 = `axisStands(a) || a.kind === 'none'`；`axisStands` 同步收紧为**只认 `complete`**（旧口径 `partial` 也算成立） | 据 用户@2026-10-15「轴模式已经限定了资源要求了，你没达到要求来问我能不能通融，你不算不就行了吗。我要的是你达到资源要求然后计算」 | 验 src/composables/__tests__/difficultyAxis.test.ts::★ 新口径 + src/composables/__tests__/difficultyLadder.test.ts::① 点数 ≤4 + 截断如实 | 锚 src/composables/difficultyAxis.ts#axisRequirementMet | 信 确认
+ * ⟳复核: 若 `AxisKind` 增删取值、或引擎新增第三条轴态通道（现为「时间路 axisFallback + 资源路 skipped」两条），重核 `axisRequirementMet` 的「哪些态可出数」与 `axisTruncationReason` 的措辞是否仍覆盖全部形态 | 到期 2027-04-30
  */
 import type { StackTraversalResult } from '@/core/stunAxisStack'
 import type { TeamResourceResult } from '@/types/resource'
@@ -109,7 +112,49 @@ export function axisKindLabel(a: AxisState): string {
   }
 }
 
-/** 「轴成立」= 轴真的立起来了（完整或残缺都算）——② 点的判据；`infeasible` / `none` 都不算 */
+/**
+ * **为什么这一档不出数**（截断原因，UI 直接用）——与 `axisKindLabel` 同源措辞。
+ *
+ * 只在 `axisRequirementMet` 为 false 时有意义（`complete` / `none` 调用它是编程错误）。
+ * 分类计数取自 `AxisSkipCounts`，**不重算**引擎判定（规则 11）。
+ */
+export function axisTruncationReason(a: AxisState): string {
+  if (a.kind === 'infeasible') return '轴计划净占用超时间预算 ⇒ 弃轴'
+  const parts: string[] = []
+  if (a.skipped.energy > 0) parts.push(`闪能不足 ${a.skipped.energy} 招`)
+  if (a.skipped.decibel > 0) parts.push(`喧响不足 ${a.skipped.decibel} 招`)
+  if (a.skipped.time > 0) parts.push(`窗口时间装不下 ${a.skipped.time} 招`)
+  if (a.skipped.sway > 0) parts.push(`专属资源不足 ${a.skipped.sway} 招`)
+  return parts.length > 0
+    ? `轴没打完（${parts.join('、')}）⇒ 资源要求未满足`
+    : '轴没打完 ⇒ 资源要求未满足'
+}
+
+/**
+ * 「轴成立」= 轴**一招没少**地立起来了——② 点的判据。
+ *
+ * ⚠ **2026-10-15 口径收紧（用户裁决，推翻了 2026-10-12 的「残缺也算」）**：
+ * 旧判据把 `partial` 也算成立（「完整或残缺都算」），于是 ② 会落在「轴只打了一半」的档位上，
+ * 该档还照出伤害。用户口径逐字：
+ * > 「**轴模式已经限定了资源要求了**，你没达到要求来问我能不能通融，**你不算不就行了吗**。
+ * >  我要的是你**达到资源要求然后计算**」
+ * ⇒ `partial`（跳过 N 招）不再算成立：轴模式声明的资源要求没被满足，**那一档就不出数**。
+ * `infeasible`（弃轴）/ `none`（非轴队）同样不算——非轴队由 ② 的「无轴队跳过该点」分支处理。
+ */
 export function axisStands(a: AxisState): boolean {
-  return a.kind === 'complete' || a.kind === 'partial'
+  return a.kind === 'complete'
+}
+
+/**
+ * **该档能不能出数**（= 轴模式的要求被满足了）——低难度截断的判据。
+ *
+ * - `none`（非轴队）⇒ **能**：没绑轴就没有资源要求要满足（不适用 ≠ 不达标）；
+ * - `complete` ⇒ 能；
+ * - `partial` / `infeasible` ⇒ **不能**：轴没打完 / 轴崩了。
+ *
+ * 与 `axisStands` 的分工：`axisStands` 回答「② 点能不能落在这里」（非轴队恒 false ⇒ 跳过该点），
+ * 本函数回答「这一点要不要出数」（非轴队恒 true ⇒ 照出）。**后者由前者派生**，避免两套判据漂移。
+ */
+export function axisRequirementMet(a: AxisState): boolean {
+  return a.kind === 'none' || axisStands(a)
 }

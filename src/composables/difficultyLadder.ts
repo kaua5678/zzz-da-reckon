@@ -59,7 +59,8 @@
 import { type StunAxisState, type ConfigModel, type ComboAlignState } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
-import { axisStateOf, axisStands, type AxisState } from '@/composables/difficultyAxis'
+import { axisStateOf, axisStands, axisRequirementMet, axisTruncationReason, type AxisState } from '@/composables/difficultyAxis'
+import { getInteractionDefaults } from '@/mechanics/interactionBaseline'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 
 export interface LadderCtx {
@@ -230,6 +231,12 @@ export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void
     return n
   }
   const poolRows = () => ctx.calc.damagePoolRows.value.length
+  /**
+   * **轴内被跳过的招数**（`skippedTotal`）——接受门 ④ 的量（用户口径 2026-10-15）。
+   * 口径是**单调不恶化**（不得比上一步多跳），不是「必须为 0」：起点本就不成立时（全 0 交互
+   * 喂不饱轴）拿「必须为 0」当门会让阶梯一步都走不动 ⇒ ④ 退化成 ①，比截断更糟。
+   */
+  const skipCount = () => axisStateOf(ctx.calc).skippedTotal
   // 逐槽、逐类型坐标上升（弹刀 + 闪反 = 卡 §2.3 表里唯二被逐槽量过的两类）
   for (const key of ['parryCount', 'dodgeCounterCount'] as const) {
     for (let slot = 0; slot < 3; slot++) {
@@ -237,6 +244,7 @@ export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void
       let prevTrunc = truncated()
       let prevExec = executedCount()
       let prevRows = poolRows()
+      let prevSkips = skipCount()
       for (let n = 0; n < maxCount; n++) {
         const cur = Number((ctx.config.team[slot] as unknown as Record<string, number | undefined>)?.[key] ?? 0)
         const next = cur + 1
@@ -246,22 +254,34 @@ export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void
         const exec = executedCount()
         const rows = poolRows()
         /**
-         * 接受门（三条，全过才走）：
+         * 接受门（四条，全过才走）：
          *  ① **伤害严格增**（非纯收益杠杆的基本要求）；
          *  ② **不新增截断**（相对上一步、且不劣于本阶梯起点）；
          *  ③ **执行数不下降**（卡 §2.3b：`executed` 与伤害池行数都不得降）。
-         * ③ 是 T141 新加的：只看 ① 会把「加辅助交互 ⇒ 总伤微涨但主C 动作被挤掉」判成正收益
+         *  ③ 是 T141 新加的：只看 ① 会把「加辅助交互 ⇒ 总伤微涨但主C 动作被挤掉」判成正收益
          * （实测槽2 弹刀=2：伤害 57.615M vs 起点 58.053M 其实已跌，但更隐蔽的形态是
          * `executed` 39→32 而伤害因别处补回而微涨）。
+         *
+         *  ④ **不得让轴内被跳过的招数变多**（用户口径 2026-10-15「达到资源要求然后计算」）。
+         * ⚠ 这一条是实测逼出来的：`banyue-trigger-lucia` 的**预设交互**下轴是 `complete`，
+         * 而逐槽阶梯为了加伤害把弹刀加到 4 ⇒ 轴掉成 `partial`（跳过 4 招）⇒ 该点整档不成立。
+         * 用户口径「**我要的是你达到资源要求然后计算**」⇒ 优化器不能为了伤害把轴弄坏：
+         * 轴模式下的伤害只有在轴成立的档位上才有意义。
+         * 口径是**相对上一步**（`skips <= prevSkips`），故起点不成立时阶梯照样能走
+         * （只禁止「越加越糟」）。这与截断门互补：截断门决定这一点**算不算数**，
+         * 本条决定优化器**别把本来能成立的轴推坏**。
          */
+        const skips = skipCount()
         const ok = dmg > best + 1e-6
           && trunc <= prevTrunc + 1e-6 && trunc <= baselineTrunc + 1e-6
           && exec >= prevExec - 1e-6 && rows >= prevRows
+          && skips <= prevSkips
         if (ok) {
           best = dmg
           prevTrunc = trunc
           prevExec = exec
           prevRows = rows
+          prevSkips = skips
         } else {
           ctx.config.setActionCount(slot, key, cur) // 回滚：不涨 / 越界 / 挤掉动作
           break
@@ -362,6 +382,51 @@ export function clearInteractions(ctx: LadderCtx): void {
       if (cur === undefined) continue
       ctx.config.setActionCount(slot, key, 0)
     }
+  }
+}
+
+/**
+ * **把各槽交互恢复到「角色声明的基准」**（`getInteractionDefaults`，单一事实源）——
+ * ②③④ 的搜索起点，① 不用它（① 恒为全 0，见 `clearInteractions`）。
+ *
+ * ## 为什么必须有这一步（2026-10-15 实测修的缺陷，用户口径「达到资源要求然后计算」）
+ *
+ * ① 把 **14 个交互字段全清零**，而 `optimizeInteractionsPerSlot` 只爬
+ * **`parryCount` / `dodgeCounterCount`** 两个字段 ⇒ 其余 12 个字段**从 0 出发、永远不会被加回来**。
+ * 这对般岳是致命的：它的轴要靠**金身格挡（`blockCount`）+ 双反（`dualCounterCount`）**产嗔火
+ * （模块 `interactionDefaults: { parry:6, dodge:10, block:12, dual:3 }`）⇒ 轴永远喂不饱。
+ *
+ * 实测（`.zc/perf/T170climb.perf.ts`，生产路径 ②③④ 现场）：
+ * | 队 | 全 0 起爬（修前） | 恢复角色基准后 |
+ * |---|---|---|
+ * | `banyue-trigger-lucia` | `partial(4)` 49.91M | **`complete` 54.26M（+4.35M）** |
+ * | `banyue-liuyin-lucia` | `partial(2)` 85.31M | `partial(1)` 83.80M |
+ * ⇒ 修前不是「轴捏得不对」，而是**阶梯搜的维度不够**：它把角色声明会打的交互全清零后，
+ * 只肯加回弹刀/闪反两种，般岳的金身/双反再也回不来。
+ *
+ * ## 为什么是「角色基准」而不是「预设声明的交互」
+ *
+ * 用户 T141 口径「**预设只是难度曲线的其中一个点而已**」排除了预设声明值；而
+ * `interactionDefaults` 是**角色模块自己声明的固有行为**（与预设无关，`setAgent` 换人时也按它预填，
+ * 见 `stores/config.ts` 的 `interactionBaselineFor`）⇒ 拿它当搜索起点，既不自相矛盾，
+ * 又让曲线的 ②③④ 与「用户选完队拿到的现场」一致。
+ *
+ * 无声明角色恒为全 0 ⇒ **本函数对它们是 no-op**（纯追加语义，不改变既有 93 队的读数）。
+ *
+ * @fact engine:难度曲线/交互搜索起点 口径: ②③④ 的交互搜索从**角色声明的基准**（`getInteractionDefaults`）出发，**不是**从全 0 出发——① 清空 14 个交互字段、而 `optimizeInteractionsPerSlot` 只爬 `parryCount`/`dodgeCounterCount`，其余 12 个字段（含般岳的金身 `blockCount`/双反 `dualCounterCount`）从 0 出发**永不加回** ⇒ 轴恒喂不饱；① 本身仍恒为全 0（T141 难度原点，不受本函数影响） | 据 用户@2026-10-15「我要的是你达到资源要求然后计算」+ 实测 .zc/perf/T170climb.perf.ts | 验 src/composables/__tests__/difficultyLadder.test.ts::★ ②③④ 从「角色声明的交互基准」出发 | 锚 src/composables/difficultyLadder.ts#applyRoleInteractionBaseline | 信 确认
+ * ⟳复核: 若 `INTERACTION_COUNT_KEYS` 增删字段、或 `optimizeInteractionsPerSlot` 的爬升字段集扩大（届时基准可能变得多余），重核「搜索起点」是否仍应是角色基准 | 到期 2027-04-30
+ */
+export function applyRoleInteractionBaseline(ctx: LadderCtx): void {
+  for (let slot = 0; slot < 3; slot++) {
+    const agentId = ctx.config.team[slot]?.agentId
+    if (!agentId) continue
+    const d = getInteractionDefaults(agentId)
+    // 逐字段**只在声明非零时写**：写 0 会把「该字段缺省」与「声明为 0」混为一谈
+    // （后者是真实语义，如支援/防护职业基准全 0）。
+    if (d.parry > 0) ctx.config.setActionCount(slot, 'parryCount', d.parry)
+    if (d.dodge > 0) ctx.config.setActionCount(slot, 'dodgeCounterCount', d.dodge)
+    if (d.block > 0) ctx.config.setActionCount(slot, 'blockCount', d.block)
+    if (d.dual > 0) ctx.config.setActionCount(slot, 'dualCounterCount', d.dual)
   }
 }
 
@@ -493,6 +558,35 @@ export interface LadderResult {
    * **实测可为负**（如 G4 类口径漂移混入时）；本结构如实上报，不隐藏。
    */
   gain: number
+  /**
+   * **被截断的档位**（轴模式要求未满足 ⇒ 不出数，用户口径 2026-10-15）。
+   *
+   * 与 `points` 互补：`points` 是**算得出的**点，这里是**被砍掉的**点（含它为什么被砍）。
+   *
+   * 为什么要留痕而不是静默丢弃：用户要的是「低难度**不该算**」，不是「低难度**看不见**」——
+   * 曲线起点被砍掉时，UI 必须说清「这条曲线从哪个难度起才成立」，否则用户会以为轴坏了。
+   *
+   * ⚠ 命名与 `difficultyCurve#CurveSeries.truncated` **不是一回事**：那个指「交互被时间线砍」，
+   * 本字段指「轴没打完 ⇒ 整档不成立」。两者可能同时出现，别混用。
+   */
+  axisTruncated: AxisTruncatedPoint[]
+}
+
+/**
+ * 被截断的档位（轴要求未满足 ⇒ 不出数）。
+ *
+ * ⚠ `dmg` **有意保留**：它是「这一档本来会打出多少」的如实读数，供 UI 说明
+ * 「轴没打完时能打 N，但那个数不算轴模式的结果」。**它不得进入 `points`**
+ * （那正是本卡要禁的：把未达标的档当成曲线上的点）。
+ */
+export interface AxisTruncatedPoint {
+  point: KnobPointName
+  /** 这一档本来会打出的伤害（如实读数，仅用于解释，不作为结果） */
+  dmg: number
+  /** 这一档的轴态（`partial` = 跳过 N 招 / `infeasible` = 轴崩了） */
+  axis: AxisState
+  /** 被砍的原因（可读，UI 直接用） */
+  reason: string
 }
 
 export interface LadderOpts {
@@ -586,10 +680,23 @@ export function climbDifficultyLadder(
       : {}
   }
   /**
+   * **被截断的档位**（轴要求未满足 ⇒ 不出数，用户口径 2026-10-15）。
+   * `land` 命中就 push ⇒ 必须先于 `land` 声明（`const` 的 TDZ 不会等到调用时才报）。
+   */
+  const axisTruncated: AxisTruncatedPoint[] = []
+  /**
    * 把当前现场落成一个点（伤害已算好）。
    * `x` 与 `difficulty` 同源同值（绝对值口径），**只量一次** `costOf`（它是纯读，但仍别重复调用）。
+   *
+   * ⚠ **返回 null = 这一档不出数**（轴模式要求未满足，用户口径 2026-10-15）。
+   * 调用方必须把 null 当成「这一点不存在」——**不是**「伤害为 0 的点」。
+   * 判据本身在 `difficultyAxis#axisRequirementMet`（唯一事实源），本函数只执行它。
    */
-  const land = (name: KnobPointName, st: PointState): LadderPoint => {
+  const land = (name: KnobPointName, st: PointState): LadderPoint | null => {
+    if (!axisRequirementMet(st.axis)) {
+      axisTruncated.push({ point: name, dmg: st.dmg, axis: st.axis, reason: axisTruncationReason(st.axis) })
+      return null
+    }
     const x = costOf ? costOf(ctx) : 0
     return {
       x,
@@ -622,9 +729,19 @@ export function climbDifficultyLadder(
    */
   const before = snapshot(ctx)
   applyInteractionKnob(ctx, 'zero')
-  const points: LadderPoint[] = [land('baseline', readState(ctx, { interactions: 'zero', absorb: 0 }))]
-  /** ① 的伤害 = 曲线的难度原点（`acceptAt` 的基准也跟着它，见上方注释） */
-  const base = points[0]!.dmg
+  const baseState = readState(ctx, { interactions: 'zero', absorb: 0 })
+  /** ① 的关键次数快照（③ 的跃迁基准；与 `land` 内的 `snap()` 同源同刻） */
+  const baseCounts = capture?.(ctx)?.counts
+  const basePt = land('baseline', baseState)
+  const points: LadderPoint[] = basePt ? [basePt] : []
+  /**
+   * ① 的伤害 = 曲线的难度原点（`acceptAt` 的基准也跟着它，见上方注释）。
+   *
+   * ⚠ **① 被截断时仍取它**：截断只决定「这一点算不算结果」，不改变「难度门槛按什么量级算」——
+   * 门槛是全关伤害的一个比例，与这一点是否达标无关。若改取 `points[0].dmg`，① 被砍时门槛会
+   * 跟着塌向 0 ⇒ ③ 的跃迁判据整体失真（那是比截断更隐蔽的错误）。
+   */
+  const base = baseState.dmg
   const acceptAt = Math.max(0, base * minGainRatio)
 
   /**
@@ -666,6 +783,16 @@ export function climbDifficultyLadder(
    */
   let preJoint: { st: PointState; counts?: Record<string, number> } | null = null
   {
+    /**
+     * **②③④ 的搜索起点 = 角色声明的交互基准**（`applyRoleInteractionBaseline`，2026-10-15 新增）。
+     *
+     * ⚠ 必须在这里、且在 `joint` **之前**：① 刚把 14 个字段清零，若直接 `joint`，般岳的
+     * 金身/双反（轴产嗔火的来源）就再也加不回来了（`optimizeInteractionsPerSlot` 只爬弹刀/闪反）
+     * ⇒ 轴恒不成立。实测 `banyue-trigger-lucia`：修前 `partial(4)` 49.91M、
+     * 恢复基准后 `complete` 54.26M。
+     * ⚠ **只影响 ②③④，不影响 ①**：① 仍是「全 0 交互」的难度原点（T141 用户口径）。
+     */
+    applyRoleInteractionBaseline(ctx)
     // ② 的第一步：交互取最优（守卫在 joint-levers 内部：伤害不降 + 不新增截断 + 吸收量不增）。
     // ⚠ 这一次调用之后，**joint 写下的权重/弹刀/嘲讽取消一直留在现场**，②③④ 都在它之上取值。
     applyInteractionKnob(ctx, 'joint')
@@ -710,8 +837,11 @@ export function climbDifficultyLadder(
        * `points[0].dmg`，③ 的跃迁判据（`st.dmg − progressBase.dmg ≥ acceptAt`）整体偏移。
        */
       applyInteractionKnob(ctx, 'zero')
-      const base0 = points[0]!
-      progressBase = { st: readState(ctx, { interactions: 'zero', absorb: 0 }), counts: base0.counts }
+      /**
+       * ⚠ **不能用 `points[0].counts`**：① 可能被截断（轴要求未满足）⇒ `points` 为空 ⇒ 崩。
+       * ① 的关键次数快照在截断与否下都存在（`snap()` 是纯读），故单独采一次。
+       */
+      progressBase = { st: readState(ctx, { interactions: 'zero', absorb: 0 }), counts: baseCounts }
     }
     /** ③ 的扫描起点吸收率（= 基准点的吸收率；② 存在时就是它的落点） */
     progressFrom = progressBase.st.knobs.absorb
@@ -744,8 +874,8 @@ export function climbDifficultyLadder(
       if (st.dmg - progressBase.st.dmg >= acceptAt && jumpedFrom(baseCounts, preJoint.counts)) {
         // 现场切到 joint（`applyInteractionKnob` 幂等：joint 写下的值再跑一次结果相同）
         applyInteractionKnob(ctx, 'joint')
-        points.push(land('progress', st))
-        landed = true
+        const pt = land('progress', st)
+        if (pt) { points.push(pt); landed = true }
       }
     }
     // 未落点 ⇒ 扫吸收率（② 存在时从 ② 的落点起；② 缺失且交互步未落点则从 0 起）
@@ -756,7 +886,9 @@ export function climbDifficultyLadder(
         if (st.dmg - progressBase.st.dmg < acceptAt) return false
         const s = capture?.(ctx)
         if (!jumpedFrom(baseCounts, s?.counts)) return false
-        points.push(land('progress', st)) // 命中即落点
+        const pt = land('progress', st) // 命中即落点
+        if (!pt) return false // 轴要求未满足 ⇒ 这一点不出数（继续往后扫，别停）
+        points.push(pt)
         return true
       }, scanSteps)
     }
@@ -821,14 +953,26 @@ export function climbDifficultyLadder(
   restore(ctx, before) // ← 回到进入本函数前的现场（= ① 的权重/合轴率底子）
   ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, cap)
   applyInteractionKnob(ctx, 'zero')
+  /**
+   * ⚠ 与 ② 同源：④ 也从「全 0 + 角色声明的交互基准」出发（不是从 0 出发）。
+   * 少了这一句，④ 会重新落回「般岳金身/双反 = 0」的喂不饱现场 ⇒ 天花板整档不成立
+   * （而 ② 却成立）——那正是修前 `banyue-trigger-lucia` 的形态。
+   */
+  applyRoleInteractionBaseline(ctx)
   applyInteractionKnob(ctx, 'slotLadder')
-  points.push(land('max', readState(ctx, { interactions: 'slotLadder', absorb: cap })))
+  const maxState = readState(ctx, { interactions: 'slotLadder', absorb: cap })
+  const maxPt = land('max', maxState)
+  if (maxPt) points.push(maxPt)
 
   // 现场恢复：本函数只负责**探测**，调用方（`computeDifficultyCurves` 的调用方）按契约还原
   restore(ctx, before)
 
-  const final = points[points.length - 1]!.dmg
-  return { base, final, points, axisPointMissing, gain: final - base }
+  /**
+   * `final` = **最后一个算得出的点**的伤害；一个点都算不出（轴要求在任何难度下都不满足）
+   * ⇒ 退化为 `base`（全关读数）。⚠ **不得**回退成 `points[0]`（可能为空 ⇒ 崩）。
+   */
+  const final = points[points.length - 1]?.dmg ?? base
+  return { base, final, points, axisPointMissing, gain: final - base, axisTruncated }
 }
 
 /** 曲线摘要（用于"难易强度"比较）：全关 / 终点 / 提升率 / 单位难度收益 */

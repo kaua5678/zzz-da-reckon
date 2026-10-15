@@ -860,7 +860,7 @@ import { persistedRef } from '@/composables/persistedRef'
 import { useBatchOwner } from '@/composables/batchTask'
 import { runDifficultyCurves } from '@/composables/difficultyCurveRunner'
 import { useLogicEditorStore } from '@/stores/logicEditor'
-import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, type CurveSeries, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
+import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
 import type { KnobPointName } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
@@ -1831,19 +1831,6 @@ const POINT_LABELS: Record<KnobPointName, string> = {
 }
 function pointLabel(p: KnobPointName): string {
   return POINT_LABELS[p] ?? p
-}
-/**
- * 摘要表「轴态」列：把该队**逐点轴态**压成一行（去重 + 计数），如 `完整轴 ×2 · 跳过 1 招`。
- * ② 缺失时如实点名（用户 §1(4)「标注没正常打完就行」）。
- */
-function axisColumnText(s: CurveSeries): string {
-  const seen = new Map<string, number>()
-  for (const p of s.points) {
-    const label = axisKindLabel(p.axis)
-    seen.set(label, (seen.get(label) ?? 0) + 1)
-  }
-  const body = [...seen.entries()].map(([k, n]) => (n > 1 ? `${k} ×${n}` : k)).join(' · ')
-  return s.axisPointMissing ? `${body}（② 轴在任何难度下都不成立）` : body
 }
 /**
  * 截断提醒面板的行（跨队铺平；数据源 = 各队 `truncated`）。

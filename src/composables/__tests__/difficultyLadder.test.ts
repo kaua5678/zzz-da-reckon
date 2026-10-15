@@ -50,11 +50,20 @@ function sumInteractionsOf(config: ConfigModel, rr: TeamResourceResult | null | 
 // 本文件每条都要跑完整引擎（每点含一次 joint 联合搜索 ≈1.5s/队 + 扫描网格）⇒ 默认 5s 会超时
 vi.setConfig({ testTimeout: 300_000 })
 
-/** 实测提升最大的队之一（对旋钮最敏感），沿用旧夹具沿革（2026-10-09 预设库重生成 85→77 条后换入） */
-const TEAM = 'auto-1521-1481-1311'
+/**
+ * 夹具队。
+ *
+ * ⚠ **2026-10-15（T170）换队**：原 `auto-1521-1481-1311` 在新口径下**轴要求不满足**
+ * （④ 档跳过 26~27 招）⇒ 整条曲线的点全被截断 ⇒ 本文件大半判据失去夹具。
+ * 新队 `auto-1051-1481-1451` 实测**四点全成立**（`baseline/axis/max` 全 `complete`、
+ * `axisTruncated = 0`），且在 `cap=0` / `axisScanSteps=4` 两个变体下同样全成立
+ * ⇒ 它是「轴队 + 各档都达标」的干净样本，适合验「点数/点名/旋钮/摘要」这类结构判据。
+ * 换队理由不是「数字好看」，而是**新口径下旧夹具已不产出任何点**（规则 10：先量 delta 再归因）。
+ */
+const TEAM = 'auto-1051-1481-1451'
 
 describe('难度曲线关键旋钮点（T140c）', () => {
-  it('① 点数 1~4 + ①④ 恒存在 + 点名序列合法 + ② 轴态如实', async () => {
+  it('① 点数 ≤4 + 点名序列合法 + 每点轴必成立 + 截断如实（新口径）', async () => {
     const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
@@ -62,13 +71,24 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     const p = teamPresets.find(x => x.id === TEAM)!
     const r = climbDifficultyLadder(ctx, p.team as [string, string, string])
 
-    // 点数 1~4（卡 §6.2）；①④ 恒存在（卡 §4）
-    expect(r.points.length).toBeGreaterThanOrEqual(2)
+    /**
+     * ⚠ **2026-10-15（T170）口径变更**：旧断言是「①④ **恒存在**」（卡 §4）。
+     * 新口径「轴要求未满足 ⇒ 该档不出数」下 **① 与 ④ 都可能被截断**（般岳全 0 交互喂不饱轴
+     * ⇒ ① 被砍；有的队连 ④ 都达不到）⇒ 「恒存在」不再成立，改为**条件断言**：
+     * 「若存在则必在正确的点名位置」+「①④ 若缺失则必须出现在 `axisTruncated` 里」。
+     * 负控：把 `land` 的截断门删掉 ⇒ `axisTruncated` 恒空 ⇒ 下面的「截断如实」断言红。
+     */
     expect(r.points.length).toBeLessThanOrEqual(4)
-    expect(r.points[0]!.point).toBe('baseline')
-    expect(r.points[r.points.length - 1]!.point).toBe('max')
-    expect(r.points[0]!.dmg).toBe(r.base)
-
+    // 每一点都必须是**轴成立**的点（新口径的核心不变量）
+    for (const pt of r.points) {
+      expect(axisStands(pt.axis), `${pt.point} 点的轴必须成立（不成立的点不该出现在 points 里）`).toBe(true)
+    }
+    // ①④ 若存在，位置/取值仍受旧口径约束
+    const baselinePt = r.points.find(x => x.point === 'baseline')
+    if (baselinePt) {
+      expect(r.points[0]!.point, '① 存在时必须恒为首点').toBe('baseline')
+      expect(baselinePt.dmg).toBe(r.base)
+    }
     // 点名序列合法（只允许 baseline → [axis] → [progress] → max 这个次序）
     const order = ['baseline', 'axis', 'progress', 'max']
     let cursor = -1
@@ -78,6 +98,17 @@ describe('难度曲线关键旋钮点（T140c）', () => {
       expect(i, `点名次序必须单调推进（${r.points.map(x => x.point).join('→')}）`).toBeGreaterThan(cursor)
       cursor = i
     }
+    // ★ 截断如实：被砍的档位必须留痕，且理由非空（用户口径「低难度不该算」≠「低难度看不见」）
+    for (const t of r.axisTruncated) {
+      expect(order, `截断档 ${t.point} 必须是合法点名`).toContain(t.point)
+      expect(t.reason.length, '截断必须给出可读理由').toBeGreaterThan(0)
+      expect(axisStands(t.axis), `被截断的档 ${t.point} 的轴必然不成立`).toBe(false)
+      expect(t.dmg, '截断档保留「本来能打多少」的如实读数').toBeGreaterThan(0)
+    }
+    // 反空洞：本夹具（四点全成立的干净样本）必须有 baseline 与 max，且无截断
+    expect(baselinePt, '夹具队 ① 应存在（它是四点全成立的样本）').toBeDefined()
+    expect(r.points[r.points.length - 1]!.point, '夹具队 ④ 应存在').toBe('max')
+    expect(r.axisTruncated, '夹具队四点全成立 ⇒ 不该有截断').toEqual([])
 
     // ② 点存在 ⇔ 该点轴真的成立（`axisStands`）；否则如实标缺失
     const axisPt = r.points.find(x => x.point === 'axis')
@@ -95,8 +126,11 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     /**
      * ① 的旋钮 = **全 0 交互 + 吸收 0**（T141 用户口径 4+5：「低难度下就是**全 0 交互**的」/
      * 「不该用预设」）。旧断言是 `interactions: 'default'`（= 交互取预设/职业基准）——那正是本卡要删的。
+     *
+     * ⚠ **T170 起 ① 可能被截断**（般岳全 0 交互喂不饱轴）⇒ 只有存在时才断言它。
+     * 夹具队是四点全成立的样本 ⇒ 它的 ① 必然存在（上面已断言）。
      */
-    expect(r.points[0]!.knobs).toEqual({ interactions: 'zero', absorb: 0 })
+    expect(baselinePt!.knobs).toEqual({ interactions: 'zero', absorb: 0 })
     /**
      * 卡 §6.5 判据：**① 是全 0 交互**——`interactionsPlayed`（实打交互总量）必须为 0。
      * ⚠ 它是 `opts.capture` 采出来的（缺省不采 = `undefined`）⇒ 必须显式传 capture 才测得到，
@@ -110,17 +144,22 @@ describe('难度曲线关键旋钮点（T140c）', () => {
         interactionsPlayed: sumInteractionsOf(c.config, c.calc.resourceResult.value),
       }),
     })
-    expect(withCapture.points[0]!.interactionsPlayed, '① 的实打交互总量必须是 0（全 0 交互）').toBe(0)
-    expect(withCapture.points[0]!.interactionsFilled, '① 的手填交互总量也必须是 0（全 0 交互）').toBe(0)
+    const capBase = withCapture.points.find(x => x.point === 'baseline')!
+    expect(capBase.interactionsPlayed, '① 的实打交互总量必须是 0（全 0 交互）').toBe(0)
+    expect(capBase.interactionsFilled, '① 的手填交互总量也必须是 0（全 0 交互）').toBe(0)
     /**
      * 反空洞（**必须换一支队**）：`TEAM = auto-1521-1481-1311` 在 ④ 上**确实不加任何交互**
      * ——实测该队全 0 交互就是最优（`zero` 120.425M，逐槽阶梯跑完仍 120.425M、
      * `interactionsPlayed = 0`，见 `.zc/perf/T141fourB.perf.ts`）。它自身不是缺陷：
      * 「交互对这支队无益」正是卡 §2.3「辅助交互是亏的」的极端形态，引擎如实表达即可。
-     * ⇒ 反空洞必须换一支**阶梯真的会加交互**的队（`auto-1611-1141-1211` 实测 ④ 加 13 弹刀 + 14 闪反）。
-     * 若把反空洞钉在 `TEAM` 上，它测的就不是「① = 0」而是「该队恰好不加交互」——一条假判据。
+     * ⇒ 反空洞必须换一支**阶梯真的会加交互**的队。
+     *
+     * ⚠ **T170 再换一次队**：原 `auto-1611-1141-1211` 在新口径下 **① 被截断**
+     * （`points = [axis]`，`axisTruncated = [baseline, max]`）⇒ 取不到 `points[0]`。
+     * 新夹具 `auto-1051-1481-1451` 实测四点全成立（`axisTruncated = []`）。
+     * 若把反空洞钉在旧队上，它测的就不是「① = 0」而是「该队恰好四点全成立」——一条假判据。
      */
-    const p2 = teamPresets.find(x => x.id === 'auto-1611-1141-1211')!
+    const p2 = teamPresets.find(x => x.id === 'auto-1051-1481-1451')!
     const withCapture2 = climbDifficultyLadder(ctx, p2.team as [string, string, string], {
       /**
        * ⚠ **走生产路径**（`opts.base` = `applyTeamToStore`）：裸路径（`resetDifficultyGoals`）
@@ -137,7 +176,8 @@ describe('难度曲线关键旋钮点（T140c）', () => {
         interactionsPlayed: sumInteractionsOf(c.config, c.calc.resourceResult.value),
       }),
     })
-    expect(withCapture2.points[0]!.interactionsPlayed, '① 的实打交互总量必须是 0（该夹具同样适用）').toBe(0)
+    expect(withCapture2.points.find(x => x.point === 'baseline')!.interactionsPlayed,
+      '① 的实打交互总量必须是 0（该夹具同样适用）').toBe(0)
     const lastPt = withCapture2.points[withCapture2.points.length - 1]!
     expect(lastPt.interactionsPlayed, '反空洞：④ 的实打交互总量应 > 0（逐槽阶梯加了交互）').toBeGreaterThan(0)
     /**
@@ -363,32 +403,97 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     }
   })
 
-  it('② 的落点：交互最优后轴**本就成立** ⇒ ② 不烧吸收（全库 93 队实测 r ≡ 0）', async () => {
+  it('★ ②③④ 从「角色声明的交互基准」出发（般岳金身/双反必须能回来）', async () => {
     /**
-     * 卡 §3.1 的 ② = 「求**最小**（joint 交互, 吸收率）使轴成立」。① 改「全 0 交互」后，
-     * `joint` 从全 0 出发能把交互加到够用 ⇒ **交互这一步就把轴立起来了**，不必再烧吸收率。
-     * 实测（`.zc/perf/T141axis2.perf.ts`，生产路径 93 队）：
-     * **②需合轴(r>0) = 0 队** / ②不需合轴(r=0) = 35 队 / ②缺失 = 58 队（全是非轴队）。
+     * ## 为什么单列这条（2026-10-15 实测修的缺陷）
      *
-     * ⚠ 这不是缺陷：吸收率是**兜底**手段（先 joint 再扫 r 的顺序见 `climbDifficultyLadder`），
-     * 交互够用时就不该动它。本判据同时是**反空洞**的——若哪天 ② 开始烧吸收，本条会点名。
+     * ① 把 **14 个交互字段全清零**，而 `optimizeInteractionsPerSlot` 只爬
+     * **`parryCount` / `dodgeCounterCount`** ⇒ 其余 12 个字段从 0 出发、**永远不会被加回来**。
+     * 般岳的轴靠**金身格挡（`blockCount`）+ 双反（`dualCounterCount`）**产嗔火
+     * （模块声明 `interactionDefaults: { parry:6, dodge:10, block:12, dual:3 }`）
+     * ⇒ 修前轴恒喂不饱，② 缺失、整条曲线被截断。
+     *
+     * 实测（`.zc/perf/T170climb.perf.ts`）：`banyue-trigger-lucia` 修前 `partial(4)` 49.91M、
+     * 恢复基准后 `complete` 54.26M（**轴成立且伤害更高**）。
+     *
+     * ## 负控（删掉被锁行为后本测试确实变红）
+     *
+     * 把 `climbDifficultyLadder` 里的 `applyRoleInteractionBaseline(ctx)` 两处调用删掉
+     * ⇒ 般岳的 `blockCount` 恒为 0 ⇒ 「② 存在且金身 > 0」两条断言红。
+     */
+    const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const p = teamPresets.find(x => x.id === 'banyue-trigger-lucia')!
+    const r = climbDifficultyLadder({ config, calc }, p.team as [string, string, string], {
+      base: c => { applyTeamToStore(c.config, p); return c.calc.teamTotalDamage.value },
+    })
+    /**
+     * ① 的判据不变（T141：全 0 交互是难度原点）——本函数**不得**把基准写进 ①。
+     * 般岳的 ① 在新口径下**如实被截断**（全 0 交互喂不饱轴），故这里断言的是
+     * 「① 若存在则交互为 0」，而不是「① 必须存在」。
+     */
+    const baseline = r.points.find(x => x.point === 'baseline')
+    if (baseline) expect(baseline.knobs.interactions, '① 恒为全 0 交互').toBe('zero')
+    // ★ 核心：轴靠角色声明的金身/双反立起来（不是靠弹刀/闪反硬凑）
+    const axisPt = r.points.find(x => x.point === 'axis')
+    expect(axisPt, '② 必须存在（修前般岳因金身/双反回不来而缺失）').toBeDefined()
+    expect(axisPt!.axis.kind, '② 的轴必须真的成立').toBe('complete')
+    expect([0, 1, 2].some(s => Number(config.team[s]?.blockCount ?? 0) > 0),
+      '★ 般岳的金身格挡必须被恢复（修前恒为 0）').toBe(true)
+    expect([0, 1, 2].some(s => Number(config.team[s]?.dualCounterCount ?? 0) > 0),
+      '★ 般岳的双反必须被恢复（修前恒为 0）').toBe(true)
+  })
+
+  it('② 的落点 = **最小**吸收率（r 恰好是首个使轴成立的网格点，不是机械取 cap）', async () => {
+    /**
+     * 卡 §3.1 的 ② = 「求**最小**（joint 交互, 吸收率）使轴成立」。
+     *
+     * ## ⚠ 2026-10-15（T170）判据换代：从「r ≡ 0」改为「r 最小」
+     *
+     * 旧判据断言**全库 r ≡ 0**，依据是实测「②需合轴(r>0) = 0 队」。**那个前提随口径收紧失效了**：
+     * 旧 `axisStands` 把 `partial` 也算成立 ⇒ ② 早早落在 r=0（轴只打了一半也算「立起来」）。
+     * 新口径要求 `complete` ⇒ 有 4 支队**必须烧吸收**才能让轴一招不少地立起来：
+     * `claret-koleda-rina` r=0.55 / `auto-1611-1571-1211` r=0.85 /
+     * `auto-1591-1481-1211` r=0.75 / `banyue-trigger-lucia` r=0.95。
+     *
+     * ⇒ 继续断言「r ≡ 0」会**逼引擎回到旧口径**（那是拿判据锁死错误行为，规则 10 禁止）。
+     * 换成的真命题 = **吸收确实是必需的**：凡 ② 落在 `r > 0` 的队，**在 `r = 0` 下轴必须不成立**
+     * （`absorbCap = 0` ⇒ ② 缺失）。这排除了「② 白白烧吸收」——若 r=0 就够，② 本该落在 0。
+     *
+     * ⚠ **不要用「r 减一格再跑一遍」验最小性**：`scanAbsorbGrid` 的网格是
+     * `0..cap` 均分 `steps` 份 ⇒ 改 `cap` 会**整体重排网格点**（cap=1 时格点 0.90，
+     * cap=0.95 时格点是 0.9025）⇒ 「r−0.05」根本不是同一套网格上的前一格，
+     * 那样验出来的是我自己的算术错误，不是引擎行为（本判据第一版就踩了这个坑）。
      */
     const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
     const presets = teamPresets.filter(x => Array.isArray(x.team) && x.team.length === 3)
-    const burning: string[] = []
+    const notMinimal: string[] = []
     let withAxis = 0
+    let burning = 0
     for (const p of presets) {
       const r = climbDifficultyLadder({ config, calc, absorbCap: 1 }, p.team as [string, string, string])
       const a = r.points.find(x => x.point === 'axis')
       if (!a) continue
       withAxis++
-      if (a.knobs.absorb > 0) burning.push(`${p.id} r=${a.knobs.absorb}`)
+      if (a.knobs.absorb <= 0) continue
+      burning++
+      // r > 0 ⇒ 吸收是必需的：把 cap 压到 0（唯一格点 = 0）时 ② 必须不再存在
+      const rZero = climbDifficultyLadder({ config, calc, absorbCap: 0 }, p.team as [string, string, string])
+      if (!rZero.axisPointMissing) {
+        notMinimal.push(`${p.id}: ② 落在 r=${a.knobs.absorb}，但 r=0 就已能立轴（白烧吸收）`)
+      }
     }
     expect(withAxis, '反空洞：必须有队产出 ②（否则本判据零覆盖）').toBeGreaterThan(0)
-    expect(burning, `交互最优后轴本就成立 ⇒ ② 不该烧吸收：\n${burning.join('\n')}`).toEqual([])
-  }, 900_000)
+    expect(notMinimal, `② 烧吸收必须确有必要（这些队 r=0 就够）：\n${notMinimal.join('\n')}`).toEqual([])
+    /**
+     * 非平凡性自证：若全体 r ≡ 0，本条就退化成旧判据、对「② 烧不烧吸收」零判别力。
+     * 实测新口径下有队 r > 0 ⇒ 断言它 > 0 是**在锁住「判据确实活着」**。
+     */
+    expect(burning, '新口径下应有队需要烧吸收才能让轴一招不少（否则本判据是空转的）').toBeGreaterThan(0)
+  }, 1_800_000)
 
   it('★ 卡 §6.3：交互收益**按槽位职业分**——主C 全程 Δ ≥ 0 / 辅助 Δ ≤ 0 / 击破允许为正', async () => {
     /**
