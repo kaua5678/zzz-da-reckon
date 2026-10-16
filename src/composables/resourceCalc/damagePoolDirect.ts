@@ -254,10 +254,44 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
       emitExecDirect(inUnits, 1, '', ' · 失衡内（伴随事件跟随父动作）')
       emitExecDirect(totalUnits - inUnits, 0, '-out', ' · 轴外（伴随事件跟随父动作）')
     } else if (isAxis && axisSlots.has(slot)) {
-      // 捏轴：把总单位切成轴内（易伤=1）/轴外（易伤=0）两段
-      const split = axisSplitFor(slot, exec.moveId, totalUnits)
-      emitExecDirect(split.inUnits, 1, '', '', exec.source)
-      emitExecDirect(split.outUnits, 0, '-out', ' · 轴外（无失衡易伤）')
+      /**
+       * ## ⚠ T173（2026-10-15 用户口径）：**模块自报优先于轴内外拆分**
+       *
+       * 用户逐字：
+       * > 「叶瞬光的**特殊机制**导致她**可以直接调用失衡易伤**，所以**无需束缚于失衡**。
+       * >   他有**自己的失衡体系**，不是按照轴内外拆分」
+       *
+       * 修前本分支**无条件**按 `axisSplitFor` 拆「轴内吃易伤 / 轴外不吃」，
+       * **从不问模块的 `stunOverrideForMove`**（那个只在下面兜底臂被问，而兜底臂要求
+       * `!axisSlots.has(slot)`）⇒ 叶瞬光的「明心境满易伤」在轴模式下**永远失效**。
+       *
+       * 实测后果（一次性探针，叶瞬光手组队锁 1 窗）：
+       * | 轴配置 | 总伤 | 1431 行里吃满易伤(1.3) |
+       * |---|---|---|
+       * | 不放任何块 | 2.7356M | **8 / 11** |
+       * | 放斩妄 `1431027` | 2.0351M | **1 / 12** |
+       * | 放逐云 `1431025`（真喧响大） | 2.0047M | **0 / 11** |
+       * | 放**别的槽**的块 | 1.9585M | **0 / 11** |
+       *
+       * ⇒ **放任何块**（含别的角色）都让叶瞬光的满易伤大面积失效——而模块头注释写着
+       * 「无需失衡轴：白毛（明心境）关键伤害**一律满易伤**」，且 `damagePoolBatchR17c.test.ts:102`
+       * **明确锁了**「`isAxis` 真假都认领」⇒ **设计意图是轴模式下也认领，但生产路径绕过了它**
+       * （原判据只单测了 hook 本身、没测**接线**，所以一直是绿的）。
+       *
+       * 现判据：轴模式下**先问模块**——
+       * · 认领（**叶瞬光**关键招，其钩子刻意无 `!isAxis` 项）⇒ 走模块的满易伤（明心境自成体系）；
+       * · 不认领（**雨果**：其钩子 `isAxis=true` 时**刻意返回 null**，见 `hugo.ts:468`）
+       *   ⇒ 落到轴内外拆分 ⇒ **雨果零变化**（两处不对称口径原样保留）。
+       */
+      const axisClaimed = mechanic?.stunOverrideForMove?.({ slot, moveId: exec.moveId, isAxis: true })
+      if (axisClaimed) {
+        emitExecDirect(totalUnits, axisClaimed.stunOverride, '', axisClaimed.note, exec.source)
+      } else {
+        // 捏轴：把总单位切成轴内（易伤=1）/轴外（易伤=0）两段
+        const split = axisSplitFor(slot, exec.moveId, totalUnits)
+        emitExecDirect(split.inUnits, 1, '', '', exec.source)
+        emitExecDirect(split.outUnits, 0, '-out', ' · 轴外（无失衡易伤）')
+      }
     } else {
       // 兜底臂 = **轴模式下未进轴的槽位**（如换的辅助、没捏进轴）或**非轴模式**。
       // 2026-09-16 round 17 编排层棘轮（R15-c）：原来这里住着两条 `charResult.agentId` 判据
