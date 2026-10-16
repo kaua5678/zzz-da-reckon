@@ -552,13 +552,13 @@ export interface InteractionCounts { parry: number; dodge: number; block: number
  *    MechanicSetting** 读——**默认值只写在模块 settings 里**（规则 11 / CC-508 单一来源），
  *    本契约不复制常量。
  */
-export interface InteractionClimbInput {
-  /** 本轮装配后的全队资源结果（`calc.resourceResult.value`）；未就绪时调用方不入场 */
-  rr: TeamResourceResult
-  /** 槽位 → 本轮的交互对数值（设计草稿的另一形态；当前由 `anchorOf(rr)` 承担，保留给后续按槽声明） */
-  bySlot: ReadonlyMap<number, number>
-}
-/** `AgentMechanicModule.interactionClimb` 的形状（见 `InteractionClimbInput` 头注释） */
+/**
+ * `AgentMechanicModule.interactionClimb` 的形状（契约三条见上方头注释）。
+ *
+ * ⚠ **T176 清理**：原同时导出一个 `InteractionClimbInput`（`{ rr; bySlot }`）——
+ * 它**全仓零消费者**（`anchorOf(rr)` 直接收 `TeamResourceResult`，不需要那层包装），
+ * 被 `deadChannelLs` 判为死导出 ⇒ 已删（规则 12：YAGNI，留着的"设计草稿形态"没人用就是负担）。
+ */
 export interface InteractionClimbDecl {
   /** 被爬升的次数字段（`ActionCountField`；⚠ 哨兵语义字段不得声明进来——`0` 与「不做」同义的字段爬了会改语义） */
   field: ActionCountField

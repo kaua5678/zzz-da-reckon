@@ -1,5 +1,16 @@
 /**
  * CC-61：agentAxisExtraBlocks 与原 StunAxisPage 写死的诺姆 1571 / 希格莉德 1591 专属块逐字段一致。
+ *
+ * ## ⚠ T176（2026-10-16）：伊德海莉「寒冰触手」已从本清单**移除**（有意变更，非漂移）
+ *
+ * 用户口径逐字：
+ * > 「我说的自动是橘福福后台连携，**扳机后台攻击**，**章鱼触手cd**，卢西娅后台追击」
+ * > 「**这个是通用逻辑，我认为自动攻击无需手捏计数，直接全局均匀计数，哪些吃易伤哪些打失衡就有了**」
+ *
+ * 触手次数是**纯自动**的（`floor(有效战斗时间 / yidhari.tentacleInterval)`，玩家调**间隔**而非次数），
+ * 原 `axisExtraBlocks` 手捏块**不改变次数**、**只改变易伤归属**（实测捏×1 让总伤掉 5%）。
+ * 现改走通用机制 `autoSplitByStun`（与猫又/扳机/蕾米埃尔同款）⇒ 候选池里再列出它只会误导。
+ * ⇒ 本测试的 `legacy()` 对照表同步删掉 1051 那一行，`hits` 由 21 降为 **14**（2 角色 × 影画 0..6）。
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -12,8 +23,7 @@ import type { AgentSkills } from '@/types/catalog'
 // 对照基准：照抄原页面两段 if 块（remaining 的 9 = quota）
 function legacy(agentId: string, cinemaLevel: number, skills: AgentSkills | undefined) {
   if (agentId === '1571') return [{ moveId: 'norma-hat-chain', label: '诺姆转连携', actionTime: 0, quota: 9 }]
-  // CC-433：原页面 `findMove(skills, '1051024')` 分支（伊德海莉寒冰触手，0 时长，remaining 9）
-  if (agentId === '1051') return [{ moveId: '1051024', label: '寒冰触手', actionTime: 0, quota: 9 }]
+  // T176：原 CC-433 的伊德海莉寒冰触手分支已移除（改走 autoSplitByStun，不再手捏；理由见文件头）
   if (agentId === '1591') {
     const pzSum = ['1591007', '1591008', '1591022'].reduce((sum, mid) => sum + (findMoveById(skills, mid)?.actionTime ?? 0), 0)
     const pzScale = cinemaLevel >= 6 ? 0.75 : 1
@@ -36,7 +46,7 @@ describe('CC-61 专属轴块 → 模块声明 axisExtraBlocks', () => {
         hits += got.length
       }
     }
-    expect(hits).toBe(21)  // 3 个角色 × 影画 0..6（CC-433 加伊德海莉）
+    expect(hits).toBe(14)  // T176：2 个角色 × 影画 0..6（诺姆 + 希格莉德；伊德海莉触手已移除改走 autoSplitByStun）
     // 破阵块行动时间非零（技能表三段都查得到），C6 恰为 0.75 倍
     const sk = catalog.getAgentSkills('1591')
     const at = (c: number) => agentAxisExtraBlocks('1591', { cinemaLevel: c, actionTimeOf: mid => findMoveById(sk, mid)?.actionTime ?? 0 })[0]?.actionTime ?? 0

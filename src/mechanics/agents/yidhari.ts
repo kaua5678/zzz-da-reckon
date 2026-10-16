@@ -313,7 +313,31 @@ function buildYidhariExecutions({ cfg, state, executions }: AgentResourceInput):
       ...RECOVERY_OFF,
       damageMultiplier: 158.4 * dmgCoef,
       damageMultiplierOverride: true,
-      skillTableNote: `寒冰触手 ${tentacleCount} 次：158.4%${dmgCoef !== 1 ? `×技能等级${dmgCoef.toFixed(4)}` : ''} 只有伤害，每 ${tentacleInterval}s 触发一次（需额外能力）`,
+      /**
+       * **T176（2026-10-16 用户口径）**：寒冰触手是 **CD 驱动的后台自动攻击**
+       * ⇒ 走通用机制 `autoSplitByStun`，**不按捏轴认领**。
+       *
+       * 用户逐字：
+       * > 「我说的自动是橘福福后台连携，**扳机后台攻击**，**章鱼触手cd**，卢西娅后台追击」
+       * > 「**这个是通用逻辑，我认为自动攻击无需手捏计数，直接全局均匀计数，哪些吃易伤哪些打失衡就有了**」
+       *
+       * **修前缺陷**（实测）：
+       * - 次数本来就是**纯自动**（`floor(有效战斗时间 / tentacleInterval)`，玩家调的是**间隔滑块**
+       *   `yidhari.tentacleInterval` 而非次数）——但它同时挂 `axisExtraBlocks` 手捏块
+       *   ⇒ 手捏**不改变次数**，**只改变易伤归属**；
+       * - 且捏少了反而更低：实测（伊德海莉手组队锁 2 窗）
+       *   | 轴配置 | 资源行触手 | 池行 | 总伤 |
+       *   |---|---|---|---|
+       *   | 不放 | 13 | c=13 易伤=1.089 | **3.7178M** |
+       *   | 放×1 | **13** | c=2 吃1.5 + c=11 吃1.0 | **3.5186M**（低 5%） |
+       *   | 放×9 | **13** | c=13 易伤=1.5 | 3.6058M |
+       *   ⇒ 手捏既无意义又会让数字变差。
+       *
+       * **通用机制已有 6 个角色在用**（猫又 / **扳机** / 蕾米埃尔 / 奥菲 / 千夏…），
+       * 注释统一写「**不靠放置**」「轴模式按失衡时间占比吃易伤」⇒ 触手本就该走这条。
+       */
+      autoSplitByStun: true,
+      skillTableNote: `寒冰触手 ${tentacleCount} 次：158.4%${dmgCoef !== 1 ? `×技能等级${dmgCoef.toFixed(4)}` : ''} 只有伤害，每 ${tentacleInterval}s 触发一次（需额外能力；CD 自动行，按失衡时间占比吃易伤）`,
     }))
   }
 }
@@ -456,10 +480,16 @@ export const yidhariMechanic: AgentMechanicModule = {
   // CC-393：连携固定用 1051025（涌泉帷幕强化连携，见 buildYidhariCharConfig「覆盖默认的 1051015 #1」，无条件）⇒ 1051015 永不出手；
   // 不隐藏时编辑器会以 [表] 块提供它，放进轴 = 在 #2 的连携次数之外再按 #1 倍率加一份直伤（重复计伤）
   axisHiddenMoves: ['1051012', '1051015'],
-  // CC-433：轴编辑器「寒冰触手」常驻候选块（原 StunAxisPage 写死 findMove(skills, '1051024') 分支，逐字段搬入）。
-  // 0 时长（额外能力触发，不占行动时间）；quota 9 与诺姆转连携同为候选「可放」提示上限，不是机制次数——
-  // 机制次数在上面 tentacleCount = floor(有效战斗时长 / 13.5)。core/stunAxis 按 moveId 1051024 识别为轴专属块。
-  axisExtraBlocks: () => [{ moveId: TENTACLE, label: '寒冰触手', actionTime: 0, quota: 9 }],
+  /**
+   * ⚠ **T176（2026-10-16）：寒冰触手的手捏候选块已移除**（原 CC-433 声明）。
+   *
+   * 移除理由 = 用户口径「**自动攻击无需手捏计数**」：
+   * 触手次数是**纯自动**的（`floor(有效战斗时间 / yidhari.tentacleInterval)`，玩家调**间隔**而非次数），
+   * 手捏块**不改变次数**、**只改变易伤归属**，实测捏×1 还让总伤掉 5%（见该行 `autoSplitByStun` 处注释）。
+   *
+   * 现它走通用机制 `autoSplitByStun`（与猫又/扳机/蕾米埃尔同款）⇒ **不靠放置**、
+   * 轴模式按失衡时间占比吃易伤 ⇒ 候选池里再列出它只会误导（捏了没意义）。
+   */
   name: '伊德海莉',
   description: '蓄力循环（1s烧血→霜寒拥覆#3→碎惘沉击#4）+ 极寒重碾（失衡内2/非失衡回15闪能）+ 低血增伤100%覆盖。',
   applyPanel: applyYidhariPanel,
