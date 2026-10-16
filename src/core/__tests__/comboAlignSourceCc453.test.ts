@@ -59,9 +59,16 @@ describe('CC-453 合轴率来源标记', () => {
     expect(comboAlignEditable({ comboAlignSource: 'fixed' })).toBe(false)
     expect(comboAlignEditable({})).toBe(false)
   })
-  it('ResultPage 弹窗：滑块 / 数字框按 comboAlignEditable 只读', () => {
+  it('ResultPage 弹窗：滑块 / 数字框按 comboAlignEditable 只读（只读标签分行原因）', () => {
     const src = readFileSync(resolve(__dirname, '../../views/ResultPage.vue'), 'utf-8')
-    expect(src.match(/:disabled="!comboAlignEditable\(exec\)"/g)?.length).toBe(2)
-    expect(src).toMatch(/v-if="!comboAlignEditable\(exec\)"/)
+    expect(src.match(/:disabled="!comboAlignEditable\(exec\)"/g)?.length, '两个控件（滑块 + 数字框）都要按它只读').toBe(2)
+    /**
+     * 只读标签改用**分行原因**（用户口径 2026-10-16「很多是固定的不让调，我不知道为什么」）：
+     * 原断言钉的是 `v-if="!comboAlignEditable(exec)"`，现改为按 `comboAlignFixedReasonOf` 判
+     * （三种原因给不同标签与 hover 说明）。**语义未变**：仍然是「不可调 ⇒ 显示只读标签」。
+     */
+    expect(src).toMatch(/v-if="comboAlignFixedReasonOf\(exec\)"/)
+    expect(src, '标签要走 comboAlignFixedLabelOf（分行原因）').toMatch(/comboAlignFixedLabelOf\(exec\)/)
+    expect(src, 'hover 说明要走 comboAlignFixedHintOf').toMatch(/:title="comboAlignFixedHintOf\(exec\)"/)
   })
 })

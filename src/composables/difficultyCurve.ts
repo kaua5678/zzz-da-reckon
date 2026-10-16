@@ -1116,6 +1116,19 @@ export interface CurveDatum {
 /** 被砍的爬梯点：`hint` 必有、`point !== 'baseline'`（`CurveSeries.truncated` 的元素） */
 export type TruncatedDatum = CurveDatum & { hint: TruncationHint }
 
+/**
+ * **被轴砍掉的档**（`CurveSeries.axisTruncated` 的元素）= 引擎的 `AxisTruncatedPoint` + 图上要的 `ratio`。
+ *
+ * 为什么不在引擎层加 `ratio`：`ratio = dmg / hp` 依赖**该道的血量**（环境模式下同期不同队血量不同），
+ * 是展示层的口径（`buildCurveChart` 已有 `safeHp`）⇒ 在展示层算才算得对。
+ * 用户口径 2026-10-16：「低难度的计算点要说明其是**自动轴（非轴）**，高难度的计算点就是**完整轴模式**，
+ * 要能让人看出来**难度提升、轴、和伤害提升的大致关系**」——`ratio` 就是那个「伤害」轴。
+ */
+export interface CurveTruncatedPoint extends AxisTruncatedPoint {
+  /** 伤害 / 本道血量 × 100%（与曲线点同一个 y 轴口径） */
+  ratio: number
+}
+
 export interface CurveSeries {
   presetId: string
   name: string
@@ -1155,7 +1168,7 @@ export interface CurveSeries {
    * ⚠ 与 `truncated`（交互被时间线砍）**不是一回事**：那个是「打了但被砍短」，这个是「整档不成立」。
    * 本字段是「曲线从哪个难度起才成立」的唯一数据源；`points` 为空 = 这条曲线一个点都不成立。
    */
-  axisTruncated: AxisTruncatedPoint[]
+  axisTruncated: CurveTruncatedPoint[]
   /**
    * 该道的**求值起点现场**（值快照；本次运行所有道共用一份）。与每个点的 `scene.delta` 配对重放。
    * 仅当 `collectScenes` 开着才在（缺省 undefined ⇒ 页面显示「该档未采现场」而不是编一个）。
@@ -1366,8 +1379,9 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       slope: s.slope,
       steps: r.ladder.points.map(p => p.point),
       axisPointMissing: r.ladder.axisPointMissing,
-      // 轴要求未满足而被截断的档位（不在 points 里）——「曲线从哪个难度起才成立」的数据源
-      axisTruncated: r.ladder.axisTruncated,
+      // 轴要求未满足而被截断的档位（不在 points 里）——「曲线从哪个难度起才成立」的数据源。
+      // ratio 按本道血量算（与曲线点同一个 y 口径，用户要求「看出难度↔轴↔伤害的关系」）。
+      axisTruncated: r.ladder.axisTruncated.map(t => ({ ...t, ratio: (t.dmg / safeHp) * 100 })),
       ...(r.sceneBase ? { sceneBase: r.sceneBase } : {}),
       gain: r.ladder.gain,
       // 「平坦」= ②③ 都缺失且 ④ 无实质增益（此时曲线只有 ①④ 两点且同高）

@@ -215,10 +215,39 @@
               <span class="pool-stat-value">{{ fmt(-teamTimeSummary.poolResidual, 1) }}s</span>
               <span class="pool-stat-detail">平A分配超过了可分配池（欠打回填放宽所致），抵掉一部分留白</span>
             </div>
+            <!-- 合轴抵扣·三项分解（用户口径 2026-10-16「这个也要在时间统计里面标注合轴了多少时间」）。
+                 系统里有**两个独立旋钮**：综合吸收（引擎按 comboAlignAbsorbRatio 闭式解）与逐招合轴
+                 （结果页弹窗逐行调）；再加轴预设自带的轴内节省。三项都列出来，用户才看得出
+                 「我调的那个 40% 到底贡献了多少」——此前只有一个汇总量。 -->
             <div v-if="teamTimeSummary.comboAlignDeduction > 1" class="pool-stat">
               <span class="pool-stat-label">其中合轴抵扣</span>
               <span class="pool-stat-value">{{ fmt(teamTimeSummary.comboAlignDeduction, 1) }}s</span>
               <span class="pool-stat-detail">被队友合轴吸收掉的前台时间，账本已扣、物化行仍在，故表现为留白</span>
+            </div>
+            <div v-if="teamTimeSummary.comboAlignBreakdown.absorb > 0.5" class="pool-stat pool-stat-indent">
+              <span class="pool-stat-label">· 综合吸收</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.comboAlignBreakdown.absorb, 1) }}s</span>
+              <span class="pool-stat-detail">
+                队友前台按「合轴吸收率 {{ Math.round(comboAlignAbsorbPct) }}%」并行让出（0% = 关掉它）——
+                <b>这是引擎按该比例闭式解算出来的</b>，不是逐招填的
+              </span>
+            </div>
+            <div v-if="teamTimeSummary.comboAlignBreakdown.perMove > 0.5" class="pool-stat pool-stat-indent">
+              <span class="pool-stat-label">· 逐招合轴</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.comboAlignBreakdown.perMove, 1) }}s</span>
+              <span class="pool-stat-detail">
+                下面「合轴率调节」里逐行填的比例（用户覆盖 ?? 倍率表默认）
+              </span>
+            </div>
+            <div v-if="teamTimeSummary.comboAlignBreakdown.axisOverlap > 0.5" class="pool-stat pool-stat-indent">
+              <span class="pool-stat-label">· 轴内节省</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.comboAlignBreakdown.axisOverlap, 1) }}s</span>
+              <span class="pool-stat-detail">轴预设自带的失衡内跨角色并行（如般岳强特时琉音抱拳）</span>
+            </div>
+            <div v-if="teamTimeSummary.comboAlignBreakdown.axisOverlapOverridden > 0.5" class="pool-stat pool-stat-indent">
+              <span class="pool-stat-label">· 其中被取大吃掉</span>
+              <span class="pool-stat-value">{{ fmt(teamTimeSummary.comboAlignBreakdown.axisOverlapOverridden, 1) }}s</span>
+              <span class="pool-stat-detail">轴内节省与逐招/吸收重叠的部分，引擎只认较大的那一份（防双计，故不叠加）</span>
             </div>
             <!-- UV 面：池物化成模块行（时间真花掉，非留白）。**故意不挂「其中」**——
                  它不计入留白分解，列在这里只为回答「我的平A池去哪了」。 -->
@@ -763,7 +792,13 @@
                   <span class="combo-align-time-display">
                     合轴{{ exec.totalComboAlignTime.toFixed(1) }}s
                   </span>
-                  <n-text v-if="!comboAlignEditable(exec)" depth="3" style="font-size: 11px" title="该行合轴率由角色模块 / 引擎直写，结果页覆盖不生效">固定</n-text>
+                  <!-- 「固定」分三种原因（用户口径 2026-10-16「很多是固定的不让调，我不知道为什么」）：
+                       引擎记账行 / 赠送行 / 机制行——理由不同故分别显示，不再统一一个「固定」。 -->
+                  <n-text
+                    v-if="comboAlignFixedReasonOf(exec)"
+                    depth="3" style="font-size: 11px"
+                    :title="comboAlignFixedHintOf(exec)"
+                  >{{ comboAlignFixedLabelOf(exec) }}</n-text>
                 </div>
               </div>
             </div>
@@ -802,7 +837,8 @@ import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slac
 import { computePerSlotBuildUp } from '@/composables/positionCompare'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'
 import { axisFallbackNoticeOf } from '@/composables/axisFallbackNotice'
-import { comboAlignEditable, totalComboAlignTimeOf } from '@/composables/resourceCalc/comboAlignDisplay'
+import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
+import { comboAlignEditable, comboAlignFixedHint, comboAlignFixedLabel, comboAlignFixedReason, totalComboAlignTimeOf } from '@/composables/resourceCalc/comboAlignDisplay'
 import type { AnomalyEventRecord } from '@/types/resource'
 
 /** 特殊动作喧响卡说明文字「单价/次 · 伴随 单价×50%」（CC-232：单价与伴随比例读 data 单一来源，不再手写） */
@@ -1058,6 +1094,20 @@ const activeResultTab = ref('pool')
 // ============ 合轴率调节弹窗 ============
 
 const showComboAlignModal = ref(false)
+/** 「固定」行的原因（三种：引擎记账 / 赠送 / 机制）——弹窗里按原因给标签与 hover 说明 */
+const comboAlignFixedReasonOf = (exec: Parameters<typeof comboAlignFixedReason>[0]) => comboAlignFixedReason(exec)
+const comboAlignFixedLabelOf = (exec: Parameters<typeof comboAlignFixedReason>[0]) => {
+  const r = comboAlignFixedReason(exec)
+  return r ? comboAlignFixedLabel(r) : ''
+}
+const comboAlignFixedHintOf = (exec: Parameters<typeof comboAlignFixedReason>[0]) => {
+  const r = comboAlignFixedReason(exec)
+  return r ? comboAlignFixedHint(r) : ''
+}
+
+/** 合轴吸收率（综合旋钮，缺省 40%）——三项分解里「综合吸收」那行的口径说明要显示它 */
+const comboAlignAbsorbPct = computed(() =>
+  Math.round(configStore.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO) * 100))
 
 // 读数来自引擎行 `exec.comboAlignRatio` / `exec.totalComboAlignTime`（CC-452：三来源的有效值，不在页面重算）
 /** 设置某角色某招式的合轴率（写侧：用户覆盖；模块行直写的比例不受覆盖影响，阶段 2 加来源标记后只读） */

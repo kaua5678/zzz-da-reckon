@@ -4,6 +4,7 @@
  * 用户 2026-09-10 口径：**每队的 x 不一定对齐**（x = 该队自己的累积难度代价），
  * 所以判据不是「同一 x 上比大小」，而是：曲线单调不减、平台队如实标 flat、现场必恢复。
  */
+import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { liveInteractions } from '@/composables/liveInteractions'
@@ -1246,6 +1247,41 @@ describe('逐点现场差分（collectScenes）', () => {
       expect(p.scene, '每档都要带现场差分').toBeTruthy()
       const dmg = await recompute(p.scene as { base: Record<string, unknown>; delta: Record<string, unknown> })
       expect(dmg, `${p.point} 档重算伤害必须与落点读数逐位相等`).toBe(p.dmg)
+    }
+  }, 600_000)
+
+  /**
+   * ★ 用户口径 2026-10-16：「**低难度的计算点要说明其是自动轴（非轴）**，高难度的计算点就是
+   * **完整轴模式**，要能让人看出来**难度提升、轴、和伤害提升的大致关系**」。
+   *
+   * ⇒ 被轴砍掉的档必须**能落图**：需要 `x`（图上横坐标）与 `ratio`（纵坐标）。
+   * 缺了它们页面只能显示一个汇总列，画不出「难度 ↔ 轴 ↔ 伤害」的关系。
+   */
+  it('★ 被轴砍掉的档带 x 与 ratio ⇒ 能画在图上', async () => {
+    const { catalog } = await setupHarness([{ agentId: '1471' }, { agentId: '1251' }, { agentId: '1451' }], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'banyue-qingyi-lucia')!
+    /**
+     * ⚠ 用**真实 Boss 期**（熔狱行赭 3.3）而不是 `FAKE_BOSS`：实测本队在合成 Boss 下四点全成立、
+     * `axisTruncated` 为空 ⇒ 断言会因「夹具不产生该形态」而假红（踩过）。
+     * ⚠ `collectScenes` 不开（本用例只关心 x/ratio 两个展示量，不需要现场差分）。
+     */
+    const bossFile = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as { bosses: BossPreset[] }
+    const realBoss = bossFile.bosses.find(b => b.id === '30052')!
+    const realPhase = realBoss.phases.find(p => p.phaseId === '690501')!
+    const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss: realBoss, phase: realPhase }))
+    const ladder = row!.ladder
+    expect(ladder.axisTruncated.length, '反空洞：本队确实有被砍的档').toBeGreaterThan(0)
+    for (const t of ladder.axisTruncated) {
+      expect(typeof t.x, `被砍档 ${t.point} 必须带 x（否则落不了图）`).toBe('number')
+      expect(t.x!).toBeGreaterThanOrEqual(0)
+    }
+    // 展示层转换：补上 ratio（图上 y 轴口径）
+    const series = buildCurveChart([row!], realPhase.hp).series[0]!
+    expect(series.axisTruncated.length).toBe(ladder.axisTruncated.length)
+    for (const t of series.axisTruncated) {
+      expect(typeof t.ratio, '被砍档必须带 ratio（图上 y 轴）').toBe('number')
+      expect(t.ratio).toBeCloseTo((t.dmg / realPhase.hp) * 100, 6)
     }
   }, 600_000)
 

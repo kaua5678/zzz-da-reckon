@@ -764,6 +764,14 @@ export interface LadderResult {
  */
 export interface AxisTruncatedPoint {
   point: KnobPointName
+  /**
+   * 这一档的**操作难度**（= 与曲线点同一个 `costOf` 量的；缺失 = 调用方没给 `costOf`）。
+   *
+   * 用户口径 2026-10-16：「**低难度的计算点要说明其是自动轴（非轴），高难度的计算点就是完整轴模式，
+   * 要能让人看出来难度提升、轴、和伤害提升的大致关系**」⇒ 被砍的档要能在图上被**画出来**
+   * （画在曲线**下方**作对照，不进曲线），没有 `x` 就落不了图。
+   */
+  x?: number
   /** 这一档本来会打出的伤害（如实读数，仅用于解释，不作为结果） */
   dmg: number
   /** 这一档的轴态（`partial` = 跳过 N 招 / `infeasible` = 轴崩了） */
@@ -892,8 +900,16 @@ export function climbDifficultyLadder(
    */
   const land = (name: KnobPointName, st: PointState): LadderPoint | null => {
     if (!axisRequirementMet(st.axis)) {
-      // 被砍的档也带现场（用户问的「有没有 4 失衡」往往正是这些档）：它有完整读数，只是不进曲线
-      axisTruncated.push({ point: name, dmg: st.dmg, axis: st.axis, reason: axisTruncationReason(st.axis), ...sceneSnap() })
+      /**
+       * 被砍的档也带**现场**（用户问的「有没有 4 失衡」往往正是这些档）与 **x**（用户 2026-10-16
+       * 要求图上能看出「难度 ↔ 轴 ↔ 伤害」的关系 ⇒ 它们要能被画在曲线下方作对照）。
+       * ⚠ `x` 与曲线点同一个 `costOf`（量一次）——两把尺会让对照错位。
+       */
+      axisTruncated.push({
+        point: name, dmg: st.dmg, axis: st.axis, reason: axisTruncationReason(st.axis),
+        ...(costOf ? { x: costOf(ctx) } : {}),
+        ...sceneSnap(),
+      })
       return null
     }
     const x = costOf ? costOf(ctx) : 0

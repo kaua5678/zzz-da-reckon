@@ -15,6 +15,27 @@ import { effectiveBattleTime } from '@/core/effectiveTime'
 import { isFrontlineExecution } from '@/types/resource'
 import type { SkillExecution, TeamResourceResult, TruncationCut } from '@/types/resource'
 
+/**
+ * 合轴抵扣的三项分解（见 `TeamTimeSummary.comboAlignBreakdown`）。
+ *
+ * ⚠ `absorb` 与 `perMove` **互斥且完备**（逐招那条已把动态吸收减掉）：
+ * `absorb + perMove ≡ Σ comboAlignCredit`；三项之和与 `comboAlignDeduction` 的差 =
+ * `axisOverlapOverridden`（被 max 取大吃掉的重叠量）。
+ */
+export interface ComboAlignBreakdown {
+  /** 综合吸收（引擎按 `comboAlignAbsorbRatio` 闭式求解出的并行量） */
+  absorb: number
+  /** 逐招合轴（用户覆盖 ?? 倍率表默认，结果页弹窗里能逐行调的那部分） */
+  perMove: number
+  /** 轴内节省（轴预设自带的失衡内并行） */
+  axisOverlap: number
+  /**
+   * 被 `max` 取大吃掉的重叠量 = `absorb + perMove + axisOverlap − comboAlignDeduction`（恒 ≥ 0）。
+   * > 0 = 该队同时有逐招/吸收与轴内节省，引擎只认较大的那一份（防双计）。
+   */
+  axisOverlapOverridden: number
+}
+
 export interface TeamTimeSlotSummary {
   slot: number
   name: string
@@ -43,6 +64,22 @@ export interface TeamTimeSummary {
   actionFrontline: number
   /** 账本：Σ 合轴抵扣（每槽 max(招式合轴 comboAlignCredit, 轴内合轴节省)，与 iterate relief 同一份按槽量） */
   comboAlignDeduction: number
+  /**
+   * 合轴抵扣的三项分解（用户口径 2026-10-16：「**这个也要在时间统计里面标注合轴了多少时间**」）。
+   *
+   * 系统里有**两个独立的合轴旋钮**，此前只显示它们的汇总量 ⇒ 用户看不出自己调的 40% 贡献了多少：
+   *
+   * | 项 | 来源 | 语义 |
+   * |---|---|---|
+   * | `absorb` | `TimeAllocation.dynamicComboAlignSeconds` | **综合吸收**：队友前台按 `comboAlignAbsorbRatio`（缺省 40%）被并行吸收，**引擎闭式解算出** |
+   * | `perMove` | `comboAlignCredit − dynamicComboAlignSeconds` | **逐招合轴**：结果页弹窗里逐行调的那些比例（用户输入 ?? 倍率表默认） |
+   * | `axisOverlap` | `axisOverlapByAction` 按槽 | **轴内节省**：轴预设自带的失衡内跨角色并行 |
+   *
+   * ⚠ **三项的相加口径不是简单求和**：引擎是 `max(逐招+吸收, 轴内节省)`（取大不叠加，见
+   * `iterations` 的 `overlapDynamicDup` 抵扣）⇒ 本分解**按槽**报告，三项之和可能 ≥
+   * `comboAlignDeduction`（差值 = 被 max 吃掉的重叠量，单列在 `axisOverlapOverridden`）。
+   */
+  comboAlignBreakdown: ComboAlignBreakdown
   /** 账本：必要前台净占用 = actionFrontline − comboAlignDeduction */
   requiredFrontline: number
   /** 账本：Σ 平A时间（可分配池实际分出去的量） */
@@ -131,6 +168,31 @@ export function buildTeamTimeSummary(args: {
   const budget = effectiveBattleTime({ battleTime, invincibleTime })
   const actionFrontline = chars.reduce((sum, c) => sum + c.timeAllocation.necessaryTime, 0)
   const comboAlignDeduction = chars.reduce((sum, c) => sum + reliefOf(c), 0)
+  /**
+   * 三项分解（用户 2026-10-16 要求：「时间统计里面标注合轴了多少时间」）。
+   * `absorb` 从 `dynamicComboAlignSeconds` 读**实际读数**（不按比例重算——引擎走闭式解，
+   * 页面重算会分叉，见 `interactionHint.ts` 的口径说明）；`perMove` = credit − 吸收。
+   */
+  const comboAlignBreakdown: ComboAlignBreakdown = (() => {
+    let absorb = 0
+    let perMove = 0
+    let axisOverlap = 0
+    for (const c of chars) {
+      const t = c.timeAllocation
+      const dyn = Math.max(0, t.dynamicComboAlignSeconds ?? 0)
+      const credit = Math.max(0, t.comboAlignCredit ?? 0)
+      absorb += dyn
+      perMove += Math.max(0, credit - dyn)
+      axisOverlap += overlapBySlot[c.slot] ?? 0
+    }
+    return {
+      absorb,
+      perMove,
+      axisOverlap,
+      // 恒 ≥ 0：relief 逐槽取 max ⇒ Σmax ≤ Σ(两项之和)。数值上可能留 1e-12 级残差，钳零。
+      axisOverlapOverridden: Math.max(0, absorb + perMove + axisOverlap - comboAlignDeduction),
+    }
+  })()
   const requiredFrontline = Math.max(0, actionFrontline - comboAlignDeduction)
   const basicTotal = chars.reduce((sum, c) => sum + c.timeAllocation.basicAttackTime, 0)
   const rowsNet = rr ? netFrontlineOccupation(rr) : 0
@@ -152,6 +214,7 @@ export function buildTeamTimeSummary(args: {
     budget,
     actionFrontline,
     comboAlignDeduction,
+    comboAlignBreakdown,
     requiredFrontline,
     basicTotal,
     remainingFrontlinePool: Math.max(0, budget - requiredFrontline),

@@ -607,6 +607,21 @@
               />
               <text :x="a.cx" :y="a.cy + 15" text-anchor="middle" class="curve-jump-label curve-alt-label" font-size="9">{{ a.text }}</text>
             </g>
+            <!-- **被轴砍掉的档**（用户口径 2026-10-16：要能看出「难度 ↔ 轴 ↔ 伤害」的关系）：
+                 空心 ×（与实心圆/空心菱形/空心方框都不同形状）+ 轴态小字，画在曲线**下方**、不连线
+                 —— 它们不在曲线上（轴要求未满足不出数），只是「本来会打多少」的对照。 -->
+            <g v-for="(d, di) in s.deadPts" :key="'cd' + si + '-' + di">
+              <path
+                class="curve-dead"
+                :d="`M ${d.cx - 4} ${d.cy - 4} L ${d.cx + 4} ${d.cy + 4} M ${d.cx + 4} ${d.cy - 4} L ${d.cx - 4} ${d.cy + 4}`"
+                :stroke="s.color" stroke-width="1.4" opacity="0.55"
+              />
+              <text
+                :x="d.cx" :y="d.cy + 14" text-anchor="middle"
+                class="curve-dead-label" font-size="9" :fill="s.color" opacity="0.75"
+              >{{ d.label }}</text>
+              <title>{{ `${s.label} · ${pointLabel(d.point)}：轴没打完（${d.reason}）⇒ 不进曲线，此点仅作对照` }}</title>
+            </g>
             <!-- 关键次数跃迁标注（「多了一次」量级）：加一圈 + 点上方文字 -->
             <g v-for="(j, ji) in s.jumpPts" :key="'cj' + si + '-' + ji">
               <circle :cx="j.cx" :cy="j.cy" r="6.5" fill="none" :stroke="s.color" stroke-width="1.2" opacity="0.85" />
@@ -636,6 +651,12 @@
         </svg>
 
         <!-- 图例（点击显隐该队曲线；隐藏的队同时退出坐标轴与两张明细表） -->
+        <div class="chart-legend">
+          <span class="legend-hint">
+            实心圆 = 曲线点（轴成立）｜<b>空心 ×</b> = 轴没打完的档（不进曲线，仅对照）
+            {{ curveHasDeadPoints ? '：本图有 ' + curveDeadCount + ' 个' : '' }}
+          </span>
+        </div>
         <div class="chart-legend">
           <span class="legend-hint">点图例显隐 · {{ curveCounts.visible }}/{{ curveCounts.total }}</span>
           <span
@@ -1729,6 +1750,15 @@ const legendPresets = computed(() => {
 const curveData = computed(() =>
   visibleCurveRows.value.length > 0 ? buildCurveChart(visibleCurveRows.value, selectedPhase.value?.hp ?? 1) : null,
 )
+/**
+ * 被轴砍掉的档数量（图上空心 ×）——用户口径 2026-10-16：「低难度的计算点要说明其是**自动轴（非轴）**，
+ * 高难度的计算点就是**完整轴模式**，要能让人看出来**难度提升、轴、和伤害提升的大致关系**」
+ * ⇒ 图上有这种点时必须说明它是什么，否则用户会把它当成曲线上的点读错。
+ */
+const curveDeadCount = computed(() =>
+  (curveData.value?.series ?? []).reduce((n, s) => n + s.axisTruncated.length, 0))
+const curveHasDeadPoints = computed(() => curveDeadCount.value > 0)
+
 /** 图例要展示**含隐藏队**的完整清单（否则隐藏后图例项消失，点不回来）；数字仍用可见集算的 gainX/gainPct */
 const curveAllSeries = computed(() => (curveRows.value.length > 0 ? buildCurveChart(curveRows.value, selectedPhase.value?.hp ?? 1).series : []))
 function curveXOf(v: number): number {
@@ -1779,6 +1809,21 @@ const curveSeriesPx = computed(() => {
     ...s,
     color: colorOf(s.presetId),
     pts: s.points.map(p => ({ ...p, cx: curveXOf(p.cost), cy: curveYOf(p.ratio) })),
+    /**
+     * **被轴砍掉的档**（用户口径 2026-10-16：「低难度的计算点要说明其是**自动轴（非轴）**，
+     * 高难度的计算点就是**完整轴模式**，要能让人看出来**难度提升、轴、和伤害提升的大致关系**」）。
+     *
+     * 画成**空心 ×**（与曲线点实心圆、补充点空心菱形、截断提醒空心方框都不同形状），
+     * **画在曲线下方且不连线**——它们不是曲线上的点（轴要求未满足不出数，T170），
+     * 只是让用户看到「如果轴没成立，这一档本来会打多少」。
+     * 无 `x`（调用方没给 costOf）的档跳过——落不了图就不硬编一个位置。
+     */
+    deadPts: s.axisTruncated.filter(p => p.x !== undefined).map(p => ({
+      ...p,
+      cx: curveXOf(p.x!),
+      cy: curveYOf(p.ratio),
+      label: axisKindLabel(p.axis),
+    })),
     // 线段化（而不是一条 polyline）：难度**回落**的那段画虚线，一眼看出「白拿的优化」
     segs: s.points.slice(1).map((p, i) => {
       const prev = s.points[i]!
