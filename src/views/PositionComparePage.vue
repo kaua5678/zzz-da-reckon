@@ -148,7 +148,7 @@ import CustomTeamsEditor from '@/components/CustomTeamsEditor.vue'
 import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
-import { computePositionCompare, type ComparePosition, type PositionCompareRow } from '@/composables/positionCompare'
+import { computePositionCompare, MAIN_SPECIALTIES, type ComparePosition, type PositionCompareRow } from '@/composables/positionCompare'
 import type { BossPreset } from '@/types/bossPreset'
 
 const bossPresets = ref<BossPreset[]>([])
@@ -163,17 +163,40 @@ const selectedPresets = computed(() =>
 const results = ref<PositionCompareRow[]>([])
 const computing = ref(false)
 /** 对比位置：主C / 击破手 / 辅助 */
-const position = ref<ComparePosition>('breaker')
+const position = ref<ComparePosition>(1)
 /** 同款限定金数：所有参比队伍按同一金档应用各自预设 goldSteps */
 const gold = ref(6)
 
+/**
+ * 位置选项 = **槽位号**（T180，用户口径 2026-10-16）。
+ *
+ * > 「位置对比中，分的职业，但是如果**多个同职业角色在同队就不能分辨了，不智能**，
+ * >   希望改成**几号位的自由对比**。」
+ *
+ * 原按职业（主C/击破手/辅助）+ `findPositionSlot` 取**第一个**匹配槽位
+ * ⇒ 全库 **28+ 支预设队含同职业重复**（如 `auto-1541-1561-1581` 三人全是 `anomaly`）时无法选后者。
+ */
 const positionOptions: { value: ComparePosition; label: string }[] = [
-  { value: 'main', label: '主C' },
-  { value: 'breaker', label: '击破手' },
-  { value: 'support', label: '辅助' },
+  { value: 0, label: '1 号位' },
+  { value: 1, label: '2 号位' },
+  { value: 2, label: '3 号位' },
 ]
-const positionLabel = computed(() => positionOptions.find(p => p.value === position.value)?.label ?? '击破手')
-const isMain = computed(() => position.value === 'main')
+/**
+ * 展示名 = **该号位实际是谁**（动态，不再是职业名）。
+ *
+ * ⚠ 各队的同一号位可能是**不同角色**（本页正是「同一号位换人对比」）⇒ 取**首行**的角色名做标题；
+ * 无结果时回落号位名。
+ */
+const positionLabel = computed(() => {
+  const opts = positionOptions.find(p => p.value === position.value)?.label ?? '号位'
+  const who = results.value[0]?.agentName
+  return who ? `${opts}·${who}` : opts
+})
+/** 该号位是否本队主C（决定是否显示伤害构成列）——按**该槽角色职业**判，与号位顺序无关 */
+const isMain = computed(() => {
+  const r = results.value[0]
+  return !!r && MAIN_SPECIALTIES.has(useCatalogStore().getAgent(r.agentId)?.specialty ?? '')
+})
 
 onMounted(async () => {
   try {

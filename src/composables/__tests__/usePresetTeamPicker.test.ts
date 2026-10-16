@@ -30,24 +30,26 @@ describe('usePresetTeamPicker（CC-482）', () => {
     expect(p.selectedPresetIds.value).toEqual([])
   })
 
-  it('★ defaultSelection = 当前筛选分类下的队伍（不是全库全选）', () => {
-    // 2026-10-12 用户报障：「默认不要选择 97 个队伍」+「默认选中 97+ 队伍也没算出图啊，跟没选是一样的」。
-    // 旧行为由页面自己 `teamPresets.map(t => t.id)` 全选全库 ⇒ 与筛选器显示的分类脱节、且不产出图。
+  it('★ defaultSelection = **空**（2026-10-16：不要自动勾选任何队伍）', () => {
+    /**
+     * ## 沿革（两次口径收紧，本条锁最新一次）
+     *
+     * | 时点 | 行为 | 用户反馈 |
+     * |---|---|---|
+     * | 更早 | 页面自己 `teamPresets.map(t => t.id)` **全选 97 条** | 「默认不要选择 97 个队伍」+「选中 97+ 也没算出图，跟没选一样」（2026-10-12） |
+     * | 2026-10-12 | 折中为**选中当前筛选分类下全部** | — |
+     * | **2026-10-16** | **改为空** | 「预设队伍会**自动勾选克拉蕾的 5 个队**，希望**不要自动勾选**」 |
+     *
+     * ⇒ **按分类全选仍然是自动勾选**（默认分类是克拉蕾 ⇒ 自动勾上她 5 支），只是范围小了些
+     * —— 用户要的是**一个都不勾**。
+     *
+     * ⚠ 与 2026-10-11「筛选变化不清空已选」**不冲突**：那条管的是**筛选变化时**的行为，
+     * 本条只说**初值**为空；两者同在「筛选不替用户做选择」的意图上。
+     */
     const p = usePresetTeamPicker()
-    const def = p.defaultSelection()
-    // ① 必须等于**当前筛选**下的选项，而不是全库
-    expect(def).toEqual(p.presetFilteredOptions.value.map(o => o.value))
-    expect(def.length).toBeLessThan(teamPresets.length)
-    expect(def.length).toBeGreaterThan(0)   // 打开即有队伍可选（firstNonEmptyFilter 的意图）
-    // ② 全是预设库里的真 id
-    const ids = new Set(teamPresets.map(t => t.id))
-    for (const id of def) expect(ids.has(id), `${id} 不是预设 id`).toBe(true)
-    // ③ 确实只含当前分类的队伍
-    for (const id of def) {
-      const preset = teamPresets.find(t => t.id === id)!
-      expect(preset.group).toBe(p.presetGroupSel.value)
-      expect(preset.subgroup).toBe(p.presetSubSel.value)
-    }
+    expect(p.defaultSelection(), '★ 不得自动勾选任何队伍').toEqual([])
+    // 反空洞：候选池必须非空（否则「没得勾」也能让上一条变绿）
+    expect(p.presetFilteredOptions.value.length, '候选池必须非空（防「没得勾」的空洞）').toBeGreaterThan(0)
   })
 
   it('★ defaultSelection 只作初值：改筛选不改变已选（2026-10-11 跨分类勾选口径）', async () => {

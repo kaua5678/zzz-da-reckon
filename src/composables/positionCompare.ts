@@ -38,10 +38,26 @@ import { applyGoldToStore, applyAxisBinding, applyTeamToStore } from '@/composab
 import type { AnalysisContext } from '@/composables/analysisScenario'
 
 /** 对比位置 */
-export type ComparePosition = 'main' | 'breaker' | 'support'
+/**
+ * 对比位置 = **槽位号**（T180，用户口径 2026-10-16）。
+ *
+ * ## 沿革（为什么从「职业」改成「号位」）
+ *
+ * 原为 `'main' | 'breaker' | 'support'`（按**职业**选人），用户指出：
+ * > 「位置对比中，分的职业，但是如果**多个同职业角色在同队就不能分辨了，不智能**，
+ * >   希望改成**几号位的自由对比**。」
+ *
+ * 实测该缺陷真实：全库 **28+ 支预设队含同职业重复**（如 `auto-1541-1561-1581` 三人**全是
+ * `anomaly`**），而原 `findPositionSlot` 遍历时**返回第一个匹配槽位** ⇒ 同职业时永远只认第一个，
+ * 用户无法选另一个人。
+ *
+ * ⇒ 现按**槽位**（0/1/2 = 1/2/3 号位）自由对比，**无歧义**。
+ * 展示名由页面按「该槽实际是谁」动态给出（见 `PositionComparePage#positionLabel`）。
+ */
+export type ComparePosition = 0 | 1 | 2
 
-/** 主C 职业：直伤型 / 异常型 / 命破型 */
-const MAIN_SPECIALTIES = new Set(['attack', 'anomaly', 'rupture'])
+/** 主C 职业：直伤型 / 异常型 / 命破型（用途：判「该槽是否本队主C」⇒ 决定要不要算拐力差分与伤害构成列） */
+export const MAIN_SPECIALTIES = new Set(['attack', 'anomaly', 'rupture'])
 
 export interface PositionCompareRow {
   presetId: string
@@ -82,18 +98,19 @@ export interface PositionCompareRow {
 }
 
 /** 识别某位置的角色槽位（按 specialty），无则 -1 */
+/**
+ * 目标槽位（T180：**直接用号位**，不再按职业猜）。
+ *
+ * ⚠ 修前是按职业遍历 + 返回**第一个**匹配 ⇒ 同队两个同职业时用户无法选后者
+ * （全库 28+ 支预设队有这种情况，如 `auto-1541-1561-1581` 三人全是 `anomaly`）。
+ * 现 `position` 本身就是槽位号 ⇒ 直接返回；越界/该槽为空 ⇒ -1（调用方跳过该队）。
+ */
 function findPositionSlot(
   team: { agentId?: string | null }[],
-  catalogStore: ReturnType<typeof useCatalogStore>,
   position: ComparePosition,
 ): number {
-  for (let s = 0; s < team.length; s++) {
-    const spec = catalogStore.getAgent(team[s]?.agentId ?? '')?.specialty ?? ''
-    if (position === 'main' && MAIN_SPECIALTIES.has(spec)) return s
-    if (position === 'breaker' && spec === 'stun') return s
-    if (position === 'support' && (spec === 'support' || spec === 'defense')) return s
-  }
-  return -1
+  if (position < 0 || position >= team.length) return -1
+  return team[position]?.agentId ? position : -1
 }
 
 /**
@@ -136,7 +153,7 @@ export function computePositionCompare(
 ): PositionCompareRow[] {
   const { config: configStore, calc } = scenario
   const catalogStore = useCatalogStore()
-  const position = options.position ?? 'breaker'
+  const position = options.position ?? 1
   const baseAxis = configStore.getAxisState()
   const out: PositionCompareRow[] = []
   const gold = options.gold ?? 6
@@ -151,7 +168,7 @@ export function computePositionCompare(
 
     // 识别目标位置角色
     const team = configStore.team.map(c => ({ agentId: c.agentId }))
-    const posSlot = findPositionSlot(team, catalogStore, position)
+    const posSlot = findPositionSlot(team, position)
     if (posSlot < 0) continue
     const agentId = configStore.team[posSlot]?.agentId ?? ''
     const agentName = catalogStore.agentName(agentId)
@@ -180,9 +197,19 @@ export function computePositionCompare(
       .reduce((sum, r) => sum + r.totalDamage, 0)
     const anomalyOtherDamage = Math.max(0, selfDamage - directDamage - releaseDamage - disorderDamage)
 
-    // 拐力差分：仅非输出位（主C 的 buff 多为自拐，非「拐队友」，差分无对比意义且多一倍全量重算）
+    /**
+     * 拐力差分：仅**非主C位**（主C 的 buff 多为自拐，非「拐队友」，差分无对比意义且多一倍全量重算）。
+     *
+     * ⚠ T180 口径变更：原判据是 `position !== 'main'`（职业语义）。
+     * 现 `position` 是槽位号 ⇒ 改为**该槽是不是本队的主C**——
+     * 判据 = 「该槽角色职业 ∈ `MAIN_SPECIALTIES`」，与队伍顺序无关
+     * （用户要的是「几号位自由对比」，所以「1 号位」不等于「主C」）。
+     */
+    const posIsMain = MAIN_SPECIALTIES.has(
+      catalogStore.getAgent(agentId)?.specialty ?? '',
+    )
     let buffContribution = 0
-    if (position !== 'main') {
+    if (!posIsMain) {
       const group = catalogStore.getTeammateBuffGroup(agentId)
       if (group && group.buffs.length > 0) {
         for (const buff of group.buffs) {
