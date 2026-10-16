@@ -237,17 +237,32 @@ describe('仪玄 spec 机制（1371）', () => {
     const yixuan = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!
     const chain = yixuan.yixuanExChain!
     // 自动完美格挡 = **有效**弹刀次数。
-    // ⛔ **2026-10-05 用户裁决：本条沿革整条是错的**——旧期望（6→5→4）把「引擎降配行为」误当「游戏事实」。
-    // 用户原话：「弹刀想打多少次都行，**这就是你断言的问题了**，我说过断言根本就是儿戏。
-    // 弹刀才花费几秒，消耗一次黄光，**何来打不完一说**。」
-    // ⇒ 弹刀是低成本黄光反应，**不存在「必要动作撑不下预算 ⇒ 必须砍弹刀」的物理约束**；
-    // 旧沿革每次因引擎降配漂移就改写一次期望值（6→5→4），方向本身就错。
-    // ⇒ 正解 = **配置值本身**（本用例 `teamChar` 弹刀缺省 6）。
-    // 2026-10-05 §20.5-3（轴态也吃动态合轴吸收）后不再触发降配 ⇒ 有效弹刀 = 6。
-    // ⟳复核: 若本队再次出现「有效弹刀 < 配置值」，应查是否又触发降配（引擎行为），
-    //         而不是改写本期望值——弹刀次数不受时间预算约束 | 到期 2027-03-31
-    expect(chain.perfectBlockCount).toBe(6)
-    expect(chain.ink2).toBe(6)
+    /**
+     * ## ⚠ 2026-10-15（T171）期望值 6 → 4：**降配是合法行为**，且「弹刀免预算」是**误读**
+     *
+     * 本用例上一次改期望值（6→5→4）被 2026-10-05 判为「方向本身就错」，理由是
+     * 「弹刀是低成本黄光反应，不存在撑不下预算的物理约束」。**用户 2026-10-15 纠正了那条裁决的语义**：
+     * > 「这个裁决的意思是**弹刀可以自动填充**，解决的问题是之前**弹刀总是被固定住不能填充**。
+     * >   实际上**弹刀该吃时间预算**，你这里交互降配感觉又是老问题了，**你从默认 0 往上爬为什么会降配**」
+     * ⇒ 那条裁决要的是「**别把弹刀钉死**」（自动填充），**不是**「弹刀免时间预算」。
+     *
+     * ### 本次为何重新触发降配（实测归因，非猜测）
+     *
+     * T171 修了「仪玄符法千重被按喧响收费」⇒ 本队轴从**弃轴**变**可行** ⇒ 轴内动作开始占前台时间
+     * ⇒ 超 180s ⇒ 引擎按既有机制降配（`DOWNSCALED_INTERACTION_FIELDS` 含 `parryCount`）：
+     *
+     * | | 轴态 | interactionScale | 净占用 | 完美格挡 |
+     * |---|---|---|---|---|
+     * | 修前 | 弃轴 `fallback=true` | 1（无降配） | 179.1s（overflow 1.217s） | 6 |
+     * | 修后 | 轴可行 | **0.625** | 176.8s（overflow 0） | **4**（`round(6×0.625)`） |
+     *
+     * ⚠ **这不是「爬升导致降配」**：全库 16 支空曲线队实测 `scale=1`（压根没降配，是真·资源不足）；
+     * 降配只在本队这类「轴刚变可行、时间刚好卡线」的队上出现，且降配后净占用确实落回预算内（176.8 ≤ 180）。
+     * ⇒ 判据保留原意「有效弹刀 = 配置值 × 降配」——只是**降配在合法时会发生**。
+     * ⟳复核: 若本队有效弹刀再次偏离 4，先查 `interactionScale` 是否变了（引擎行为），再考虑改本期望值 | 到期 2027-03-31
+     */
+    expect(chain.perfectBlockCount).toBe(4)
+    expect(chain.ink2).toBe(4)
     // 自动 3 连：income（= 循环当量 × 60）打完轴内消耗后剩余全部打 3 连（60/次）→ 轴外凝云清零
     expect(chain.ink2Count).toBe(0)
     // 时间轴喧响轨（2026-08-31）：队友大招削减 → 玄墨暗涌闪能归零 → income 回落。
@@ -311,6 +326,59 @@ describe('仪玄 spec 机制（1371）', () => {
     expect(axisCloud).toBeTruthy()
     expect(axisCloud!.dmgBonus ?? 0).toBeGreaterThanOrEqual(90)
     expect(calc.teamTotalDamage.value).toBeGreaterThan(0)
+  })
+
+  it('★ 符法千重（1371020）不扣喧响——术法值购买的大招不是喧响大（用户口径 2026-10-15）', async () => {
+    /**
+     * ## 锁什么
+     *
+     * 用户口径逐字：
+     * > 「**很多角色都有多个大招**，虽然有大招标签，但其实**不是喧响大**。但实际这种是**不耗喧响**的，
+     * >   **术法大自己消耗术法值，不消耗喧响**。……我不知道还有哪些角色逻辑错误了，**目前你就先修仪玄吧**。」
+     *
+     * 修前缺陷：编排层判「是不是大招」只看英文名是否以 `Ultimate:` 开头
+     * （`data/chainMoveKind#chainMoveKind`）⇒ 符法千重（EN `Ultimate: Endless Talisman Suppression`）
+     * 被收满 3000 喧响。实测后果：4 支仪玄队全被判「喧响不足」而截断
+     * （`.zc/perf/T171scope2.perf.ts`：`yixuan-trigger-lucia` 喧响 12692 ÷ 3000 = **4.23 个**，
+     * 本够打 4 个大招，却因多收这一个而差 4 招）。
+     *
+     * ## 负控（删掉被锁行为后本测试确实变红）
+     *
+     * 删掉模块的 `axisMoveFreeOfDecibel` 声明 ⇒ 「栈不为符法千重扣喧响」断言红。
+     */
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const config = useConfigStore()
+    config.team[0] = teamChar(0, '1371')
+    config.team[1] = teamChar(1, '1251')
+    config.team[2] = teamChar(2, '1271')
+    config.useStunAxis = true
+    // 轴里同时捏「真喧响大」（1371014）与「术法值大」（1371020），逐块对账
+    config.stunAxes = [
+      {
+        name: '对账轴', count: 1,
+        actions: [
+          { slot: 0, moveId: '1371014', count: 1 }, // 青溟云影：**真喧响大**，应扣 3000
+          { slot: 0, moveId: '1371020', count: 1 }, // 符法千重：术法值购买，**不应扣喧响**
+        ],
+        basicFillerSlot: 0,
+      },
+    ]
+    config.enemy.stunCountLock = 1
+    const calc = useResourceCalc()
+    const st = calc.stackTraversalResult.value
+    expect(st, '轴应被注入（否则本判据零覆盖）').not.toBeNull()
+    /**
+     * 栈的 `decibelUsed` 只应含**真喧响大**那一个 3000。
+     * 修前 = 6000（两个都被按 ultimate 收费）⇒ 本断言即负控。
+     */
+    expect(st!.decibelUsed, '符法千重不该扣喧响（只应扣青溟云影的 3000）').toBeCloseTo(3000, 6)
+    // 反空洞：真喧响大**必须**照扣（否则「都免了」也能让上一条变绿）
+    expect(st!.decibelUsed, '青溟云影是真喧响大，必须照扣').toBeGreaterThan(0)
+    // 该块仍占窗口时间（只免喧响、不免时间）
+    const exec = Object.values(st!.executed).find(e => e.moveId === '1371020')
+    expect(exec, '符法千重仍应被执行（免的是喧响不是执行）').toBeTruthy()
   })
 
   it('失衡轴模式：轴内凝云时长可调（duration 覆盖）、轴内行 +30% 失衡强特增伤、C1 落雷按轴内时间/CD 自动', async () => {

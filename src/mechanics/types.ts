@@ -804,8 +804,8 @@ export interface AgentMechanicModule {
   axisDurationInputs?: Readonly<Record<string, AxisDurationInputDecl>>
   /**
    * 轴编辑器「怒相连段块」comboId 声明（CC-59；展示层专用）：primary = 主连段，didong = 与主连段共享配额、优先占用的变体连段。
-   * 两者都是本模块 `combos` 的 key。StunAxisPage 用它画明王窗口条、按山威配额（怒相次数 × 2）算可放次数。现唯一：般岳。
-   * 下面 `axisSwaySupply`（T169）= 轴内角色专属资源的供给量（输入类型 `AxisSwaySupplyInput` 住 `typesHooks.ts`）。 */
+   * 两者都是 `combos` 的 key；StunAxisPage 用它画明王窗口条、按山威配额（怒相次数 × 2）算可放次数。现唯一：般岳。
+   * `axisSwaySupply`（T169）= 轴内专属资源供给量；`axisMoveFreeOfDecibel`（T171）= 本角色轴块不扣喧响。 */
   axisRageCombos?: { readonly primary: string; readonly didong: string }
   axisSwaySupply?: (input: import('./typesHooks').AxisSwaySupplyInput) => number
   /**
@@ -1048,11 +1048,9 @@ export interface AgentMechanicModule {
    * 读取方：`resourceCalc/anomalyPanels.ts#getWindInfectionTargetSlot`，按槽位 agentId 派发。现实现：蕾米埃尔。
    */
   excludeFromWindInfectionPick?: boolean
-  /**
-   * **轴块动作时长兜底**（CC-39b）：入参为倍率表 / 块 duration 给出的时长，返回实际用于窗口截断的时长。
-   * 用于无倍率表条目的合成行。现唯一实现：雨果（`1291_ex_verdict_final` 且 ≤ 0 时取 1.805s）。
-   */
+  /** **轴块动作时长兜底**（CC-39b）：返回实际用于窗口截断的时长；现唯一实现：雨果（`1291_ex_verdict_final` 且 ≤ 0 时取 1.805s）。 */
   axisMoveActionTime?(moveId: string, catalogActionTime: number): number
+  axisMoveFreeOfDecibel?(moveId: string): boolean
   /**
    * **轴编辑器「进轴残痕值」输入框的归属声明**（2026-10-12）：声明本能力 = 本角色有「残痕」类
    * 资源、且它的轴内结算依赖**进轴时已攒了多少**（克拉蕾：毁伤要判够不够消耗）。

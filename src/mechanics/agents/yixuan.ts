@@ -1056,6 +1056,27 @@ export const yixuanMechanic: AgentMechanicModule = {
   patchExecutions: patchYixuanExecutions,
   buildResourceResult: buildYixuanResourceResult,
   resourceSections: buildYixuanResourceSections,
+  /**
+   * **符法千重（`1371020`）不扣喧响**（T171，用户口径 2026-10-15）。
+   *
+   * 它是**术法值购买**的终结技（`SHUFA_ULT_COST` = spec `yixuan_extra_ult_spend`，单次 120 术法值），
+   * 不是喧响大。但编排层判「是不是大招」只看英文名是否以 `Ultimate:` 开头
+   * （`data/chainMoveKind#chainMoveKind`）⇒ 修前被收满 3000 喧响。
+   *
+   * 用户口径逐字：
+   * > 「**很多角色都有多个大招**，虽然有大招标签，但其实**不是喧响大**。但实际这种是**不耗喧响**的，
+   * >   **术法大自己消耗术法值，不消耗喧响**。还有什么**叶瞬光斩妄开天是收尾，不消耗喧响**。
+   * >   我不知道还有哪些角色逻辑错误了，**目前你就先修仪玄吧**。」
+   *
+   * 实测（`.zc/perf/T171scope2.perf.ts`）：修前 4 支仪玄队全被判「喧响不足」而截断——
+   * `yixuan-trigger-lucia` 喧响 12692 ÷ 3000 = **4.23 个**，本够打 4 个大招，
+   * 却因多收这一个符法千重的 3000 而差 4 招。
+   *
+   * ⚠ **只免喧响，不免窗口时间**：它照样占失衡窗（`actionTime` 不动）。
+   * ⚠ **术法值不够时由模块自己封顶**（`shufaUltCountOf` = `min(滑块, floor(术法值/120))`）
+   * ⇒ 本钩子只回答「收不收喧响」，不承担资源量门控。
+   */
+  axisMoveFreeOfDecibel: moveId => moveId === MOVE.extraUlt,
   // 墨影凝云合轴自动填充（用户口径 2026-09-07）：合轴可自动填充、不占前台不计难度，反推至
   // 保底 4 次失衡。声明式（编排层通用执行，无 agentId 分支）：moveIds=合轴招式行（实测每对失衡），
   // perPairBase=每对基础失衡（玄墨极阵440.8+青溟震击160.2；超出玄墨值的墨影凝云版 600.4 近似同值），

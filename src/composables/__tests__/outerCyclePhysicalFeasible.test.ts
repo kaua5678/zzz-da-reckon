@@ -28,7 +28,14 @@ describe('CC-153 physical 外层 2-环：不可行成员不参选', () => {
     const row = calc.resourceResult.value?.characters?.[0]?.executions?.find(e => e.moveId === YIXUAN_CHAIN_MOVE_ID)?.count ?? -1
     expect({ pool, stack, row }, '池 / 轴栈 / 资源行必须同源').toEqual({ pool: row, stack: row, row })
     // r652 CC-469′：轴态逐招份额与未覆盖窗口份额复合扣除（不再双重扣除）+ N 二分自洽后本队失衡 3→4（同源断言不变，只是现值变）
-    expect(row, 'physical 现值').toBe(4)
+    /**
+     * ⚠ **T171（2026-10-15）现值 4 → 5**：修了「仪玄符法千重（1371020）被按喧响收费」
+     * （它是**术法值购买**的大招，用户口径「术法大自己消耗术法值，不消耗喧响」）
+     * ⇒ 本队喧响多出 3000 ⇒ 大招 +1 ⇒ 失衡 4→5 ⇒ 连携次数同步 4→5。
+     * **同源断言（池 == 轴栈 == 资源行）仍然成立**——变的只是这个共同现值，
+     * 与本用例上一轮沿革（3→4）同款处置：**同源断言不变，只是现值变**。
+     */
+    expect(row, 'physical 现值').toBe(5)
   })
 
   /**

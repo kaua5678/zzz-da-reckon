@@ -741,3 +741,15 @@ export function axisMoveActionTimeOf(agentId: string | undefined, moveId: string
   const fn = agentId ? getAgentMechanic(agentId)?.axisMoveActionTime : undefined
   return fn ? fn(moveId, actionTime) : actionTime
 }
+
+/**
+ * T171：**本角色的轴块是否不扣喧响**（按本槽角色派发模块能力 `axisMoveFreeOfDecibel`）。
+ * 无此能力 / 空槽 ⇒ false（= 照旧按 `chainMoveKind === 'ultimate'` 收费）。
+ *
+ * 用户口径 2026-10-15：「很多角色都有多个大招，虽然有大招标签，但其实**不是喧响大**……
+ * **术法大自己消耗术法值，不消耗喧响**。还有什么**叶瞬光斩妄开天是收尾，不消耗喧响**。」
+ * ⇒ 名字带 `Ultimate:` ≠ 由喧响购买，收费判据必须能按角色覆盖。
+ */
+export function axisMoveFreeOfDecibelOf(agentId: string | undefined, moveId: string): boolean {
+  return !!(agentId && getAgentMechanic(agentId)?.axisMoveFreeOfDecibel?.(moveId))
+}

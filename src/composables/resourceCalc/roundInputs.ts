@@ -25,7 +25,7 @@ import type { ExecutedMoveCount, StackActionCost, StackAxisInput, StackSequenceE
 import { axisKindOf, allocateAxisWindows } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
-import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf } from './helpers'
+import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf, axisMoveFreeOfDecibelOf } from './helpers'
 import { findMoveById } from '@/data/moveTableQueries'
 import { findWindSlot } from './anomalyPanels'
 import { chainMoveKind } from '@/data/chainMoveKind'
@@ -331,6 +331,18 @@ export function createConvergenceRoundInputs(deps: {
           decibelCost = resolveAxisUltimateDecibelCost(chainMoveKind(skills, act.moveId) === 'ultimate', resourceConfig.value?.characters, act.slot)
           // 60/90 转大块是琉音好评赠送的终结技（白送，不耗目标喧响），只占窗口时间不扣喧响
           if (act.promoteVariant) decibelCost = 0
+          /**
+           * T171：**名字带 `Ultimate:` ≠ 由喧响购买** —— 本槽角色声明「这个块不扣喧响」时按 0 收。
+           *
+           * 用户口径 2026-10-15 逐字：「很多角色都有多个大招，虽然有大招标签，但其实**不是喧响大**……
+           * **术法大自己消耗术法值，不消耗喧响**。还有什么**叶瞬光斩妄开天是收尾，不消耗喧响**。」
+           *
+           * 实测缺陷：仪玄 `1371020`（符法千重）由**术法值**购买（模块 `SHUFA_ULT_COST`，spec 单一来源），
+           * 却因英文名是 `Ultimate: Endless Talisman Suppression` 被收满 3000 喧响
+           * ⇒ 4 支仪玄队全被判「喧响不足」而截断（`yixuan-trigger` 喧响 12692 ÷ 3000 = **4.23 个**，
+           * 本够打 4 个大招）。**只免喧响，不免窗口时间**（`actionTime` 不受影响）。
+           */
+          if (axisMoveFreeOfDecibelOf(configStore.team[act.slot]?.agentId, act.moveId)) decibelCost = 0
         }
         // 合成行（无倍率表条目）的动作时长兜底由本槽模块能力 `axisMoveActionTime` 提供（CC-39b；
         // 现唯一实现 = 雨果强特终结一击），保证窗口截断按「块结束时刻」而非「块起点」算剩余失衡时间。

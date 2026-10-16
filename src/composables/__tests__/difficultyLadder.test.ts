@@ -25,7 +25,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
 import { applyTeamToStore } from '@/composables/teamCompare'
 import {
-  absorbCapOf, climbDifficultyLadder, summarizeLadder, resetDifficultyGoals, clearDifficultyLevers, scanAbsorbGrid,
+  absorbCapOf, climbDifficultyLadder, summarizeLadder, resetDifficultyGoals, clearDifficultyLevers, scanAbsorbGrid, climbFieldsOf,
   optimizeInteractionsPerSlot, applyInteractionKnob, clearInteractions,
   type LadderCtx,
 } from '@/composables/difficultyLadder'
@@ -401,6 +401,48 @@ describe('难度曲线关键旋钮点（T140c）', () => {
       expect(r.points[0]!.point).toBe('baseline')
       expect(r.points[r.points.length - 1]!.point).toBe('max')
     }
+  })
+
+  it('★ 爬升面 = 基础两字段 + 各槽角色声明的特色字段（T171 声明式，新角色零额外声明）', async () => {
+    /**
+     * ## 锁什么（用户口径 2026-10-15）
+     *
+     * > 「**每个角色都有自己特色的交互**，比如**仪玄的后台墨痕化形可以在后台造成攻击**。」
+     * > 「你这种改动可以复用吧？比如**新角色有什么交互要求最好能简单设置下就能用上**。」
+     *
+     * 修前 `optimizeInteractionsPerSlot` **写死 `['parryCount','dodgeCounterCount']`**，
+     * 而 ① 清空 14 个字段 ⇒ 般岳的金身/双反永远加不回来（T170 用「起点 = interactionDefaults」
+     * 缓解，但只能回到声明值、不能再往上爬）。
+     *
+     * 现口径 = 基础两字段恒在 + 该槽角色 `interactionDefaults` 里非零的 block/dual 自动追加
+     * ⇒ **新角色接入零额外声明**（它已经声明了自己会打什么）。
+     *
+     * ## 负控（删掉被锁行为后本测试确实变红）
+     *
+     * 把 `climbFieldsOf` 改回 `['parryCount','dodgeCounterCount']` 常量 ⇒ 般岳那条断言红。
+     */
+    const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const ctx: LadderCtx = { config, calc }
+    // 般岳（声明 block:12 / dual:3）⇒ 四个字段全爬
+    const banyue = teamPresets.find(x => x.id === 'banyue-trigger-lucia')!
+    applyTeamToStore(config, banyue)
+    expect(climbFieldsOf(ctx), '★ 般岳的特色交互（金身/双反）必须自动进爬升面')
+      .toEqual(['parryCount', 'dodgeCounterCount', 'blockCount', 'dualCounterCount'])
+    // 无特色声明的队 ⇒ 只剩基础两字段（纯追加语义，不改既有读数）
+    const plain = teamPresets.find(x => x.id === 'auto-1051-1481-1451')!
+    applyTeamToStore(config, plain)
+    expect(climbFieldsOf(ctx), '无特色声明的角色不得凭空多出字段').toEqual(['parryCount', 'dodgeCounterCount'])
+    /**
+     * ⚠ **哨兵语义字段必须不在爬升面里**：`yixuanInk3Count` 的 `0` = 自动（消耗全部闪能），
+     * 爬它会把「自动吃满」变成「一次都不打」。它不在 `interactionDefaults` 的四个键里 ⇒ 天然排除。
+     */
+    const yixuan = teamPresets.find(x => x.id === 'yixuan-trigger-lucia')!
+    applyTeamToStore(config, yixuan)
+    const yxFields = climbFieldsOf(ctx)
+    expect(yxFields, '哨兵字段（≤0=自动）绝不能被自动爬升').not.toContain('yixuanInk3Count')
+    expect(yxFields, '哨兵字段（≤0=自动）绝不能被自动爬升').not.toContain('yixuanPerfectBlockCount')
   })
 
   it('★ ②③④ 从「角色声明的交互基准」出发（般岳金身/双反必须能回来）', async () => {

@@ -56,7 +56,7 @@
  *
  * 判据测试：`__tests__/difficultyLadder.test.ts`（点数 / ①④ 恒存在 / 轴态 / 单调）+ `difficultyAxis.test.ts`。
  */
-import { type StunAxisState, type ConfigModel, type ComboAlignState } from '@/stores/config'
+import { type StunAxisState, type ConfigModel, type ComboAlignState, type ActionCountField } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
 import { axisStateOf, axisStands, axisRequirementMet, axisTruncationReason, type AxisState } from '@/composables/difficultyAxis'
@@ -202,6 +202,41 @@ export function applyInteractionKnob(ctx: LadderCtx, knob: InteractionKnob): voi
  * 旧读数；逐槽表在 16 次仍是正），且再高只增成本。步长 1（不是 2）：失衡台阶是**离散**的
  * （实测 1371 在 2→3 之间跳 +2.62M），步长 2 会跳过奇数台阶。
  */
+/**
+ * **本队该爬哪些交互字段**（T171 声明式爬升面）——基础两字段 + 各槽角色声明的特色字段。
+ *
+ * ## 口径（用户 2026-10-15「每个角色都有自己特色的交互……新角色最好能简单设置下就能用上」）
+ *
+ * - **基础两字段恒在**：`parryCount` / `dodgeCounterCount`（卡 §2.3 表里唯二被逐槽量过的通用杠杆，
+ *   所有角色都有 ⇒ 无声明角色也照爬，纯追加语义）；
+ * - **特色字段按槽追加**：该槽角色 `interactionDefaults` 里非零的 `block` / `dual`
+ *   → `blockCount` / `dualCounterCount`。
+ *
+ * ⚠ **为什么复用 `interactionDefaults` 而不是新增一份声明**：它已是「本角色有哪些交互」的
+ * **单一事实源**（`setAgent` 换人预填、`applyRoleInteractionBaseline` 同源）⇒
+ * **新角色接入 = 零额外声明**，声明了自己会打的交互就自动爬得到（规则 11 单一来源）。
+ *
+ * ⚠ **哨兵语义字段（`0` = 自动）天然不在表内**：`interactionDefaults` 只有
+ * `parry` / `dodge` / `block` / `dual` 四个键，而 `yixuanInk3Count`（≤0 = 自动消耗全部闪能）、
+ * `yixuanExtremeAssistCount`（-1 = 自动）都不在其中 ⇒ **白名单天然安全**，
+ * 不会把「自动吃满」爬成「一次都不打」（那是盲目遍历 14 字段会踩的坑）。
+ *
+ * ⚠ 顺序稳定（基础两字段在前、特色字段按槽序）：坐标上升的落点依赖顺序，抖动会让曲线不可复现。
+ */
+export function climbFieldsOf(ctx: LadderCtx): ActionCountField[] {
+  const out: ActionCountField[] = ['parryCount', 'dodgeCounterCount']
+  const seen = new Set<ActionCountField>(out)
+  for (let slot = 0; slot < 3; slot++) {
+    const agentId = ctx.config.team[slot]?.agentId
+    if (!agentId) continue
+    const d = getInteractionDefaults(agentId)
+    // `block` / `dual` 是该表里唯二映射到「非基础字段」的项（parry/dodge 已在前两行）
+    if (d.block > 0 && !seen.has('blockCount')) { out.push('blockCount'); seen.add('blockCount') }
+    if (d.dual > 0 && !seen.has('dualCounterCount')) { out.push('dualCounterCount'); seen.add('dualCounterCount') }
+  }
+  return out
+}
+
 export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void {
   const rr = () => ctx.calc.resourceResult.value
   /** 当前截断秒数（每次求值后读，**不是**一次性的地板——见下方注释） */
@@ -237,8 +272,36 @@ export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void
    * 喂不饱轴）拿「必须为 0」当门会让阶梯一步都走不动 ⇒ ④ 退化成 ①，比截断更糟。
    */
   const skipCount = () => axisStateOf(ctx.calc).skippedTotal
-  // 逐槽、逐类型坐标上升（弹刀 + 闪反 = 卡 §2.3 表里唯二被逐槽量过的两类）
-  for (const key of ['parryCount', 'dodgeCounterCount'] as const) {
+  /**
+   * ## 爬升面（T171 改声明式，用户口径 2026-10-15）
+   *
+   * 用户逐字：
+   * > 「**每个角色都有自己特色的交互**，比如**仪玄的后台墨痕化形可以在后台造成攻击**。」
+   * > 「你这种改动可以复用吧？比如**新角色有什么交互要求最好能简单设置下就能用上**。」
+   *
+   * ### 修前缺陷（实测）
+   *
+   * 这里**写死 `['parryCount', 'dodgeCounterCount']`**，而 ① 会把 **14 个交互字段全清零**
+   * ⇒ 其余 12 个字段（含般岳的金身/双反、仪玄的墨痕化形系列）从 0 出发、**永不加回**。
+   * T170 已用「搜索起点 = 角色声明的 `interactionDefaults`」缓解（般岳因此能立轴），
+   * 但**只能回到声明值**、不能再往上爬 ⇒ 需要比声明值更多时仍搜不到。
+   *
+   * ### 现口径：基础两字段 + 各槽角色声明的特色字段
+   *
+   * - **基础两字段恒在**（`parryCount` / `dodgeCounterCount`）：它们是卡 §2.3 表里唯二被逐槽量过的
+   *   通用杠杆，且所有角色都有（无声明角色也靠它们）；
+   * - **特色字段按槽追加**：取该槽角色模块声明的 `interactionDefaults` 里**非零**的项
+   *   （`block` → `blockCount`、`dual` → `dualCounterCount`）。
+   *   ⚠ **用 `interactionDefaults` 而不是新声明**：它已经是「本角色有哪些交互」的**单一事实源**
+   *   （`setAgent` 换人预填、`applyRoleInteractionBaseline` 都用它）⇒ 新角色接入 = **零额外声明**，
+   *   只要它声明了自己会打的交互，本阶梯就自动爬得到。
+   * - **哨兵语义字段不在此列**（`yixuanInk3Count` 等 `0 = 自动` 的字段）：它们**不在**
+   *   `interactionDefaults` 的四个键里（那张表只有 parry/dodge/block/dual）
+   *   ⇒ 白名单天然安全，不会把「自动吃满」爬成「一次都不打」。
+   */
+  const climbKeys = climbFieldsOf(ctx)
+  // 逐槽、逐类型坐标上升
+  for (const key of climbKeys) {
     for (let slot = 0; slot < 3; slot++) {
       let best = ctx.calc.teamTotalDamage.value
       let prevTrunc = truncated()

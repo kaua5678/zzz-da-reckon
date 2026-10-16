@@ -94,13 +94,30 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
      * ⇒ 态A 取 **21000**（唯一「部分介入」档且保底不可达，与 T141 原判据形态一致）；
      * 态B 30000 仍成立（breaker 5）。
      */
-    configStore.enemy.stunValue = 21000
+    /**
+     * ⚠ **T171 重探阈值**（2026-10-15，本段注释的规矩：「门槛变了照此重探，不改判据」）。
+     *
+     * 起因：T171 修了「仪玄符法千重（1371020）被按喧响收费」⇒ 本队喧响多出 3000
+     * ⇒ 大招次数 +1 ⇒ 攒条上移 ⇒ **态A 的门槛从 21000 抬到 22000**。
+     * 实测重扫（`presetParryTotal = 5`，`.zc/perf/T171scan4.perf.ts`）：
+     * | stunValue | breaker | main | stun | 形态 |
+     * |---|---|---|---|---|
+     * | ≤21000 | 0 | 5 | 4 | 正常（反推未介入） |
+     * | 22000 | 1 | 4 | 4 | 部分介入，但**保底可达**（缺口 n）——不是本判据要的形态 |
+     * | **22500** | **2** | **3** | **3** | **态A：部分给击破位 + 保底不可达**（本判据要的两态同时成立） |
+     * | 23000–24500 | 3~5 | 2~0 | 3 | 更深的态A（全给击破位仍 3 次） |
+     * | 25000–27000 | 2~4 | 3~1 | 4 | 又回正常（阈值升但攒条也升） |
+     * | ≥27500 | 5 | 0 | 3 | **态B：5 次全给击破位仍不够**（预算用满） |
+     * ⇒ 态A 取 **22500**（唯一同时满足「部分介入」+「保底不可达」的档，与 T141/T155 原判据形态一致）；
+     * 判据形态**不变**（breaker ≥ 1 且 < 5、main ≥ 1、缺口如实上报）。
+     */
+    configStore.enemy.stunValue = 22500
     const spA = calc.stunPoolResult.value!
     const splitA = calc.parrySplitResult.value
     expect(splitA?.breakerParry, '阈值抬高后反推应把部分弹刀给击破位').toBeGreaterThanOrEqual(1)
     expect(splitA?.breakerParry, '态A 应是「部分」给击破位，不是全给').toBeLessThan(5)
     expect(splitA?.mainDpsParry, '主C 仍保留部分弹刀').toBeGreaterThanOrEqual(1)
-    // T155/T156 重探：态A（21000）下**保底不可达**（池 3）——与 T141 原判据形态一致，
+    // T171 重探：态A（22500）下**保底不可达**（池 3）——与 T141/T155 原判据形态一致，
     // 保留 not.toBeNull()（如实上报，不硬凑）。
     expect(guaranteeStunShortfall(spA.stunCount, splitA), '态A 下保底不可达（如实上报）').not.toBeNull()
     configStore.enemy.stunValue = 30000
