@@ -101,6 +101,8 @@ function runPreset(index: number): void {
       environment: environmentOptions(req),
       // 每档现场差分（页面「点曲线上的点 → 看那一档资源池」的数据源；缺省不采）
       collectScenes: req.collectScenes,
+      // 非轴参照曲线（用户口径「展示非轴模式的数据，表示模拟均匀战斗」；缺省不算）
+      collectNoAxis: req.collectNoAxis,
     })
     for (const row of rows) ctx.postMessage({ type: 'row', presetIndex: index, row })
   } finally {

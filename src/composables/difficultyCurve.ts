@@ -123,6 +123,23 @@ export interface DifficultyCurveOptions {
    */
   difficultyWeights?: DifficultyWeights
   /**
+   * **算「非轴参照曲线」**（用户口径 2026-10-16，逐字）：
+   *
+   * > 「原来是砍掉了，**砍掉是正确的**，因为**残缺的数值不适合展示**。我本意是想展示**非轴模式**的数据的，
+   * >  表示**模拟均匀战斗**而不是集中利用失衡易伤。」
+   *
+   * ⇒ 每个点上额外给一条「**同一支队、关掉轴**」的难度-伤害参照：非轴时引擎把失衡易伤**按时间均匀摊**
+   * （`stunCoverage = min(1, 失衡次数×单窗/有效时长)`，不集中在轴内高倍率招式上）——
+   * 这正是用户说的「均匀战斗」。有了它，图上就能直接读出「集中利用失衡易伤」比「均匀摊」多赚多少。
+   *
+   * ⚠ **不是把被砍的档画出来**（那些是「轴没打完」的残缺读数，用户明确说「残缺的数值不适合展示」）；
+   * 本项是**同一难度点上的另一种打法**，与轴态无关。
+   *
+   * 成本：每个点一次完整求值（关轴 + 清轴状态）。点数为 1~4 ⇒ 每队多 1~4 次求值（现有每队 35~65 次）。
+   * 缺省关（`ops.collectNoAxis`）⇒ 载荷与行为与改动前逐字节相同。
+   */
+  collectNoAxis?: boolean
+  /**
    * **采「每档现场差分」**（用户 2026-10-16「能显示其资源池吗」「我本来想看看有没有 4 失衡，伤害为什么低」）。
    *
    * 开了它：每个点（含**被轴砍掉**的档）带 `scene`（现场差分）、每行带 `sceneBase`（运行基线），
@@ -353,6 +370,13 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
         // 而不是改签名，也不必写 `as unknown as` 断言。
         ...(sceneBase
           ? { sceneOf: () => ({ base: sceneBase, delta: stateDeltaOf(sceneBase, captureState(configStore)) }) }
+          : {}),
+        /**
+         * 非轴参照（用户 2026-10-16）：**在同一个落点上关轴重算一次**。
+         * `noAxisOf` 由阶梯在「伤害已算好、即将落点」时调用 ⇒ 现场 = 该点现场。
+         */
+        ...(options.collectNoAxis
+          ? { noAxisOf: (ctx: { config: ConfigModel; calc: ResourceCalc }) => measureNoAxisAt(ctx, preset, options.difficultyWeights) }
           : {}),
         // x 轴 = 自动算的操作难度（不是手填代价）
         costOf: ctx => measureOperationalDifficulty(ctx, preset, options.difficultyWeights),
@@ -739,6 +763,41 @@ function computeLimitPoint(args: {
   return out
 }
 
+/**
+ * 在**当前现场**关轴重算一次，返回「非轴模式的难度-伤害」（用户 2026-10-16 口径）。
+ *
+ * ## 怎么关（三条都要，缺一不算真非轴）
+ *
+ * 1. 清手动轴（`stunAxes` / `stunAxisPlans`）+ 关总开关（`useStunAxis = false`）；
+ * 2. **关自动轴**（`autoYidhariAxis = false`）——否则引擎会按槽位重新命中预设轴；
+ * 3. 不碰别的东西：交互 / 权重 / 配装 / 合轴吸收率全部沿用该点现场
+ *    （用户要的是「同配置下换打法」，不是「另一套配置」）。
+ *
+ * ## 为什么用 `calc.teamTotalDamage.value` 就够
+ *
+ * 引擎的轴态是 `resolvedAxes.length` 派生的（`axisActive`）⇒ 清完轴状态后重读即得非轴结果，
+ * **不需要**另跑一条管线（且手搓管线会与生产路径分叉，见 `analysisScenario` 的纪律）。
+ *
+ * ⚠ 本函数**只读现场**（调用方负责把现场摆成该点）；轴状态由调用方在调用后恢复
+ * （`climbDifficultyLadder` 的 `restore` 契约）。
+ */
+export function measureNoAxisAt(
+  ctx: { config: ConfigModel; calc: Calc },
+  preset: Pick<TeamPreset, 'interactions' | 'team'>,
+  weights?: DifficultyWeights,
+): { dmg: number; cost: number } {
+  const savedAxis = ctx.config.getAxisState()
+  try {
+    ctx.config.setAxisState({ stunAxes: [], stunAxisPlans: [], useStunAxis: false })
+    ctx.config.autoYidhariAxis = false
+    const dmg = ctx.calc.teamTotalDamage.value
+    return { dmg, cost: measureOperationalDifficulty(ctx, preset, weights) }
+  } finally {
+    ctx.config.setAxisState(savedAxis)
+    ctx.config.autoYidhariAxis = true
+  }
+}
+
 // ========== 操作难度：自动算的 x 轴（用户 2026-09-10 口径） ==========
 /**
  * **自动算的操作难度**（x 轴自变量）＝ 既有单一事实源 `teamCompare#computeDifficulty`：
@@ -1111,6 +1170,12 @@ export interface CurveDatum {
    * 判据：`difficultyCurve.test.ts::★ 重放每点现场 ⇒ 重算伤害与该点 dmg 逐位相等`。
    */
   scene?: LadderPointScene
+  /**
+   * 这一点的**非轴参照**（仅当 `DifficultyCurveOptions.collectNoAxis` 开着才在）——
+   * 用户口径 2026-10-16：「我本意是想展示**非轴模式**的数据的，表示**模拟均匀战斗**而不是
+   * **集中利用失衡易伤**」。图上与轴点成对画（灰色空心圆 + 虚线），直接读出「集中利用」多赚多少。
+   */
+  noAxis?: { dmg: number; cost: number }
 }
 
 /** 被砍的爬梯点：`hint` 必有、`point !== 'baseline'`（`CurveSeries.truncated` 的元素） */
@@ -1124,6 +1189,22 @@ export type TruncatedDatum = CurveDatum & { hint: TruncationHint }
  * 用户口径 2026-10-16：「低难度的计算点要说明其是**自动轴（非轴）**，高难度的计算点就是**完整轴模式**，
  * 要能让人看出来**难度提升、轴、和伤害提升的大致关系**」——`ratio` 就是那个「伤害」轴。
  */
+/**
+ * **非轴参照点**（`CurveSeries.noAxisPoints` 的元素）。
+ *
+ * 与 `CurveDatum` 的区别：只有图上要的三个量（难度 / 伤害 / 比例）与它配对的点名——
+ * 它**不是**一个「关键旋钮点」（没有旋钮、没有轴态、没有跃迁归因），故不塞进 `points`。
+ */
+export interface NoAxisDatum {
+  /** 配对的关键点（与 `CurveDatum.point` 同一套点名，用于 tooltip 与对照） */
+  point: KnobPointName
+  /** 非轴时的操作难度（同一把 `costOf` 尺） */
+  cost: number
+  dmg: number
+  /** 伤害 / 本道血量 × 100%（与曲线点同一个 y 轴口径） */
+  ratio: number
+}
+
 export interface CurveTruncatedPoint extends AxisTruncatedPoint {
   /** 伤害 / 本道血量 × 100%（与曲线点同一个 y 轴口径） */
   ratio: number
@@ -1169,6 +1250,15 @@ export interface CurveSeries {
    * 本字段是「曲线从哪个难度起才成立」的唯一数据源；`points` 为空 = 这条曲线一个点都不成立。
    */
   axisTruncated: CurveTruncatedPoint[]
+  /**
+   * **非轴参照曲线**（用户口径 2026-10-16）：与 `points` **逐点配对**（同 `point` 点名），
+   * 表示「同一支队关掉轴、失衡易伤按时间**均匀摊**」时的难度-伤害。
+   *
+   * 空数组 = 没采（`collectNoAxis` 未开）或所有点都没采到。
+   * ⚠ 与 `axisTruncated` **不是一回事**：那个是「轴没打完的残缺档」（用户明确说**不该展示**），
+   * 本项是**同一难度上的另一种打法**（非轴），数值完整可比。
+   */
+  noAxisPoints: NoAxisDatum[]
   /**
    * 该道的**求值起点现场**（值快照；本次运行所有道共用一份）。与每个点的 `scene.delta` 配对重放。
    * 仅当 `collectScenes` 开着才在（缺省 undefined ⇒ 页面显示「该档未采现场」而不是编一个）。
@@ -1350,6 +1440,7 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       dmgChanges: diffDmgBySource(r.ladder.points[i - 1]?.dmgBySource, p.dmgBySource),
       hint: truncationHintAt(r.ladder.points, i),
       ...(p.scene ? { scene: p.scene } : {}),
+      ...(p.noAxis ? { noAxis: p.noAxis } : {}),
     }))
     return {
       presetId: r.presetId,
@@ -1382,6 +1473,15 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       // 轴要求未满足而被截断的档位（不在 points 里）——「曲线从哪个难度起才成立」的数据源。
       // ratio 按本道血量算（与曲线点同一个 y 口径，用户要求「看出难度↔轴↔伤害的关系」）。
       axisTruncated: r.ladder.axisTruncated.map(t => ({ ...t, ratio: (t.dmg / safeHp) * 100 })),
+      // 非轴参照曲线（用户 2026-10-16）：与 points 逐点配对，ratio 按本道血量算（同 y 口径）
+      noAxisPoints: r.ladder.points
+        .filter(p => p.noAxis)
+        .map(p => ({
+          point: p.point,
+          cost: p.noAxis!.cost,
+          dmg: p.noAxis!.dmg,
+          ratio: (p.noAxis!.dmg / safeHp) * 100,
+        })),
       ...(r.sceneBase ? { sceneBase: r.sceneBase } : {}),
       gain: r.ladder.gain,
       // 「平坦」= ②③ 都缺失且 ④ 无实质增益（此时曲线只有 ①④ 两点且同高）

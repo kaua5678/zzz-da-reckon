@@ -104,6 +104,13 @@ export interface CurveRunRequest {
    * 缺省 false ⇒ 载荷与行为与改动前逐字节相同（判据 `difficultyCurve.test.ts::缺省不采`）。
    */
   collectScenes?: boolean
+  /**
+   * **算「非轴参照曲线」**（用户口径 2026-10-16）：「我本意是想展示**非轴模式**的数据的，
+   * 表示**模拟均匀战斗**而不是集中利用失衡易伤」。
+   *
+   * 缺省 false ⇒ 载荷与行为与改动前逐字节相同；开启后每点多一次完整求值（点 1~4）。
+   */
+  collectNoAxis?: boolean
 }
 
 /** 请求里的环境表 → `DifficultyCurveOptions.environment`（主线程回落 / worker 两条路径共用，防止口径漂移） */
@@ -373,6 +380,7 @@ async function runOnMainThread(req: CurveRunRequest, hooks: CurveRunHooks): Prom
       difficultyWeights: req.difficultyWeights,
       environment: environmentOptions(req),
       collectScenes: req.collectScenes,
+      collectNoAxis: req.collectNoAxis,
     })))
   }
   return { rows, aborted: false, usedWorker: false }

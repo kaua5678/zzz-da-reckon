@@ -698,6 +698,14 @@ export interface LadderPoint {
    * 契约与判据见 `configDelta.ts` 与 `configDelta.test.ts`（★ 往返逐字节相同）。
    */
   scene?: LadderPointScene
+  /**
+   * 这一点的**非轴参照**（仅当 `opts.noAxisOf` 给了才在，用户口径 2026-10-16）：
+   * 同一现场关掉轴时的伤害与操作难度。
+   *
+   * 用户逐字：「我本意是想展示**非轴模式**的数据的，表示**模拟均匀战斗**而不是**集中利用失衡易伤**」
+   * ⇒ 与轴点成对，图上直接读出「集中利用」比「均匀摊」多赚多少。
+   */
+  noAxis?: { dmg: number; cost: number }
 }
 
 /**
@@ -823,6 +831,11 @@ export interface LadderOpts {
    * 与 `capture` 的分工：`capture` 采**读数**（次数/伤害来源），本项采**输入**（配置现场）。
    */
   sceneOf?: (ctx: LadderCtx) => LadderPointScene
+  /**
+   * **每点采一次「非轴参照」**（缺省不采 = 零开销）：在同一现场关轴重算，返回该点的非轴伤害与难度。
+   * 见 `LadderPoint.noAxis`。成本 = 每点一次完整求值（点 1~4 ⇒ 每队多 1~4 次）。
+   */
+  noAxisOf?: (ctx: LadderCtx) => { dmg: number; cost: number }
 }
 
 /** 一个「点位」的完整现场（写盘前先试算，够好才落地） */
@@ -913,6 +926,11 @@ export function climbDifficultyLadder(
       return null
     }
     const x = costOf ? costOf(ctx) : 0
+    /**
+     * 非轴参照（用户 2026-10-16）——**必须在伤害已算好、现场仍是该点**时采；
+     * `noAxisOf` 内部自带轴状态保存/恢复，采完现场不变（继续落点）。
+     */
+    const noAxis = opts.noAxisOf?.(ctx)
     return {
       x,
       dmg: st.dmg,
@@ -921,6 +939,7 @@ export function climbDifficultyLadder(
       axis: st.axis,
       ...snap(),
       ...sceneSnap(),
+      ...(noAxis ? { noAxis } : {}),
       ...(costOf ? { difficulty: x } : {}),
     }
   }

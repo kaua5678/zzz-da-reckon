@@ -1285,6 +1285,44 @@ describe('逐点现场差分（collectScenes）', () => {
     }
   }, 600_000)
 
+  /**
+   * ★ 用户口径 2026-10-16（二次澄清，推翻我上一版）：
+   * > 「原来是砍掉了，**砍掉是正确的**，因为**残缺的数值不适合展示**。我本意是想展示**非轴模式**的数据的，
+   * >   表示**模拟均匀战斗**而不是集中利用失衡易伤。」
+   *
+   * ⇒ 图上要画的是「同一支队**关掉轴**」的参照曲线（不是残缺档）。本用例钉三件事：
+   * ① 缺省不算（载荷不变）；② 开启后每点都有配对；③ **非轴恒 ≤ 轴**（集中利用失衡易伤必然不亏——
+   * 这正是用户要看的「多赚多少」；反过来说明参照值有意义）。
+   */
+  it('★ 非轴参照曲线：缺省不采 / 开启后逐点配对 / 非轴 ≤ 轴', async () => {
+    const { catalog } = await setupHarness([{ agentId: '1471' }, { agentId: '1251' }, { agentId: '1451' }], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'banyue-qingyi-lucia')!
+    const bossFile = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as { bosses: BossPreset[] }
+    const boss = bossFile.bosses.find(b => b.id === '30052')!
+    const phase = boss.phases.find(p => p.phaseId === '690501')!
+    // ① 缺省：不算、载荷与改动前一致
+    const off = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss, phase }))
+    const sOff = buildCurveChart(off, phase.hp).series[0]!
+    expect(sOff.noAxisPoints, '缺省 ⇒ 空数组').toEqual([])
+    for (const p of sOff.points) expect(p.noAxis, '缺省 ⇒ 点不带 noAxis').toBeUndefined()
+    // ② 开启：点亮时逐点配对
+    const on = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss, phase, collectNoAxis: true }))
+    const sOn = buildCurveChart(on, phase.hp).series[0]!
+    expect(sOn.noAxisPoints.length, '开启 ⇒ 每个亮着的点都有配对').toBe(sOn.points.length)
+    expect(sOn.noAxisPoints.map(p => p.point)).toEqual(sOn.points.map(p => p.point))
+    for (const p of sOn.noAxisPoints) {
+      expect(Number.isFinite(p.cost), '带 x（难度）').toBe(true)
+      expect(p.dmg, '带伤害').toBeGreaterThan(0)
+      expect(p.ratio).toBeCloseTo((p.dmg / phase.hp) * 100, 6)
+    }
+    // ③ 非轴 ≤ 轴（集中利用失衡易伤不亏；差值就是用户要看的「多赚多少」）
+    for (const p of sOn.noAxisPoints) {
+      const axisPt = sOn.points.find(x => x.point === p.point)!
+      expect(p.dmg, `${p.point}：非轴(${p.dmg.toFixed(0)}) 不应高于轴(${axisPt.dmg.toFixed(0)})`).toBeLessThanOrEqual(axisPt.dmg + 1e-6)
+    }
+  }, 600_000)
+
   it('缺省不采 ⇒ 无 sceneBase / scene（载荷与改动前一致）', async () => {
     const { catalog } = await setupHarness([{ agentId: '1611' }, { agentId: '1141' }, { agentId: '1211' }], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
