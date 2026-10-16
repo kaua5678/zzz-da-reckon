@@ -1205,6 +1205,24 @@ export interface NoAxisDatum {
   ratio: number
 }
 
+/**
+ * **「这条轴比不打轴还差」的诊断**（用户口径 2026-10-16）：
+ *
+ * > 「你说非轴恒 ≤ 轴，这个是我**预设的好轴**才有的关系。如果**轴内捏一些垃圾招**，
+ * >  可能**还不如非轴**。」
+ *
+ * ⇒ 「轴 ≥ 非轴」是**好轴的属性，不是引擎不变量**。本函数把它当**信号**而不是判据：
+ * 返回 > 0 表示该点「打轴反而亏这么多伤害」⇒ 该预设的轴值得复查（轴内是不是掺了垃圾招）。
+ *
+ * ⚠ **不要把它写成断言/护栏**：一旦有人录入烂轴预设，断言会红而**代码没错**——
+ * 那会诱导下一个人去改引擎（本仓最危险的形态）。它是**给用户的提示**，不是给 CI 的门。
+ */
+export function axisWorseThanNoAxis(p: Pick<CurveDatum, 'dmg' | 'noAxis'>): number | null {
+  if (!p.noAxis) return null
+  const deficit = p.noAxis.dmg - p.dmg
+  return deficit > 1e-6 ? deficit : null
+}
+
 export interface CurveTruncatedPoint extends AxisTruncatedPoint {
   /** 伤害 / 本道血量 × 100%（与曲线点同一个 y 轴口径） */
   ratio: number

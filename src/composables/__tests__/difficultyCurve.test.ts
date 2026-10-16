@@ -14,6 +14,7 @@ import {
   assignLabelLanes, attributeDmgChanges, buildCurveChart, computeDifficultyCurves, diffDmgBySource,
   captureDmgBySource, captureKeyCounts, diffKeyCounts, estimateLabelWidth, linkCountToDmg, majorChanges,
   measureOperationalDifficulty, pickNonOverlapping, truncationHintAt, axisColumnText, laneKeyOf, seriesForLane, INTERACTION_CUT_MIN,
+  axisWorseThanNoAxis,
   type DifficultyCurveOptions, type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
 import { absorbCapOf, clearDifficultyLevers, climbDifficultyLadder, scanAbsorbGrid, type LadderResult, type LadderPoint } from '@/composables/difficultyLadder'
@@ -1294,7 +1295,7 @@ describe('逐点现场差分（collectScenes）', () => {
    * ① 缺省不算（载荷不变）；② 开启后每点都有配对；③ **非轴恒 ≤ 轴**（集中利用失衡易伤必然不亏——
    * 这正是用户要看的「多赚多少」；反过来说明参照值有意义）。
    */
-  it('★ 非轴参照曲线：缺省不采 / 开启后逐点配对 / 非轴 ≤ 轴', async () => {
+  it('★ 非轴参照曲线：缺省不采 / 开启后逐点配对 / 数值有限', async () => {
     const { catalog } = await setupHarness([{ agentId: '1471' }, { agentId: '1251' }, { agentId: '1451' }], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
     const preset = teamPresets.find(p => p.id === 'banyue-qingyi-lucia')!
@@ -1316,12 +1317,44 @@ describe('逐点现场差分（collectScenes）', () => {
       expect(p.dmg, '带伤害').toBeGreaterThan(0)
       expect(p.ratio).toBeCloseTo((p.dmg / phase.hp) * 100, 6)
     }
-    // ③ 非轴 ≤ 轴（集中利用失衡易伤不亏；差值就是用户要看的「多赚多少」）
+    /**
+     * ③ **不设「非轴 ≤ 轴」的不变量**（用户口径 2026-10-16 纠正，勿回退）：
+     *
+     * > 「你说非轴恒 ≤ 轴，这个是我**预设的好轴**才有的关系。如果**轴内捏一些垃圾招**，
+     * >  可能**还不如非轴**。」
+     *
+     * ⇒ 「轴 ≥ 非轴」是**好轴的属性，不是引擎保证**（引擎如实执行你捏的轴，含垃圾招）。
+     * 把它写成断言 = 把「用户的轴质量」当成引擎不变量 ⇒ 一旦有人录入一条烂轴预设，
+     * 这条测试会红而**代码没错**，下一个人可能因此去改引擎（**这是最危险的形态**）。
+     *
+     * 正确做法 = 把它当**诊断信号**：轴 < 非轴 ⇒ 该预设的轴值得复查（由 `axisWorseThanNoAxis` 判）。
+     */
     for (const p of sOn.noAxisPoints) {
       const axisPt = sOn.points.find(x => x.point === p.point)!
-      expect(p.dmg, `${p.point}：非轴(${p.dmg.toFixed(0)}) 不应高于轴(${axisPt.dmg.toFixed(0)})`).toBeLessThanOrEqual(axisPt.dmg + 1e-6)
+      // 只断言「两个数都是有限正数」（采集正确性），不断言大小关系
+      expect(Number.isFinite(p.dmg) && p.dmg > 0, `${p.point}：非轴伤害应为有限正数`).toBe(true)
+      expect(Number.isFinite(axisPt.dmg) && axisPt.dmg > 0, `${p.point}：轴伤害应为有限正数`).toBe(true)
     }
   }, 600_000)
+
+  /**
+   * ★ 用户口径 2026-10-16 纠正：「你说**非轴恒 ≤ 轴**，这个是我**预设的好轴**才有的关系。
+   * 如果**轴内捏一些垃圾招**，可能**还不如非轴**。」
+   *
+   * ⇒ `axisWorseThanNoAxis` 是**诊断信号**（打轴反而亏多少），**不是判据**：
+   * 它必须能**同时**返回「无信号」（好轴）与「有信号」（烂轴），否则就是假的。
+   * 本用例用合成 datum 直接喂两种情形（不依赖某条预设恰好是好轴/烂轴——那会让用例随数据漂移）。
+   */
+  it('★ 坏轴信号：好轴无信号、烂轴报缺口（不是断言，是提示）', () => {
+    // 好轴：轴 100M > 非轴 80M ⇒ 无信号
+    expect(axisWorseThanNoAxis({ dmg: 100, noAxis: { dmg: 80, cost: 10 } }), '好轴不该有信号').toBeNull()
+    // 平局（差 < 1e-6，浮点噪声）⇒ 无信号
+    expect(axisWorseThanNoAxis({ dmg: 100, noAxis: { dmg: 100, cost: 10 } })).toBeNull()
+    // 烂轴：轴 70M < 非轴 90M ⇒ 信号 = 缺口 20M（用户说的「轴里捏垃圾招」）
+    expect(axisWorseThanNoAxis({ dmg: 70, noAxis: { dmg: 90, cost: 10 } }), '烂轴应报缺口').toBeCloseTo(20, 6)
+    // 没采非轴 ⇒ 不判
+    expect(axisWorseThanNoAxis({ dmg: 70 })).toBeNull()
+  })
 
   it('缺省不采 ⇒ 无 sceneBase / scene（载荷与改动前一致）', async () => {
     const { catalog } = await setupHarness([{ agentId: '1611' }, { agentId: '1141' }, { agentId: '1211' }], { recommendedBuild: false })
