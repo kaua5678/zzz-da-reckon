@@ -29,25 +29,49 @@
 import { describe, expect, it } from 'vitest'
 import { getRegisteredAgentMechanics } from '@/mechanics'
 import '@/mechanics'
+import { findUltimateMove } from '@/data/chainMoveKind'
+import { useCatalogStore } from '@/stores/catalog'
+import { beforeEach } from 'vitest'
+import { mockStaticFetch, newPinia } from '@/test/harness'
 
 /**
- * 各角色**真·喧响大**的 moveId（= 引擎会按 `ultimateCost` 收费的那个）。
- * 口径：模块里由 `ultimateCount`（= 喧响 ÷ ultimateCost）驱动的那个终结技。
- * 只列**已声明豁免的角色**的相关项即可——本表是「不许误免」的黑名单，不是全量清单。
+ * **不许误免**的黑名单：各角色的**真·喧响大**。
+ *
+ * ## ⚠ 为什么不能写死（这是本条护栏能否自动覆盖新声明者的关键）
+ *
+ * 写死一张表 ⇒ **T133 那类工人给新角色加豁免时，该角色不在表里 ⇒ 漏检**。
+ * 故改为**从引擎派生**：真·喧响大 = 该角色倍率表里**第一个**英文名以 `Ultimate:` 开头的招式
+ * （`data/chainMoveKind#findUltimateMove`，引擎自己就是用这个算 `ultimateCount` 的
+ * ⇒ 与收费侧同源，规则 11）。
+ *
+ * 例外表只用于「引擎派生结果**不是**真喧响大」的反常角色（须逐个写明理由），当前为空。
  */
-const REAL_DECIBEL_ULT: Record<string, string> = {
-  '1371': '1371014', // 青溟云影：仪玄的真喧响大（1371020 符法千重才是术法值买的那个）
+const REAL_DECIBEL_ULT_OVERRIDES: Record<string, string | null> = {}
+
+/** 从倍率表派生某角色的真·喧响大 moveId（引擎同源：`findUltimateMove`） */
+function realDecibelUltOf(agentId: string): string | null {
+  if (agentId in REAL_DECIBEL_ULT_OVERRIDES) return REAL_DECIBEL_ULT_OVERRIDES[agentId]!
+  const skills = useCatalogStore().agentSkillsByAgentMap.get(agentId)
+  if (!skills) return null
+  return findUltimateMove(skills)?.id ?? null
 }
 
 describe('轴块喧响豁免（axisMoveFreeOfDecibel）护栏', () => {
+  beforeEach(async () => {
+    newPinia()
+    mockStaticFetch()
+    await useCatalogStore().load()
+  })
+
   it('① 豁免不得波及本角色的真·喧响大（误免 = 白送一次大招）', () => {
     const violations: string[] = []
     for (const mod of getRegisteredAgentMechanics()) {
       const free = mod.axisMoveFreeOfDecibel
       if (!free) continue
       for (const id of mod.agentIds ?? []) {
-        const realUlt = REAL_DECIBEL_ULT[id]
+        const realUlt = realDecibelUltOf(id)
         if (!realUlt) continue
+        // 若该角色「唯一的真喧响大」被豁免 ⇒ 这个角色在轴里将一次喧响都不花 ⇒ 白送
         if (free(realUlt)) violations.push(`${id}: 真喧响大 ${realUlt} 被误判为「不扣喧响」`)
       }
     }
