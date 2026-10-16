@@ -516,6 +516,31 @@ export const phoenixMechanic: AgentMechanicModule = {
   buildResourceResult: buildPhoenixResourceResult,
   resourceSections: buildPhoenixResourceSections,
   releaseModifier: phoenixReleaseModifier,
+  /**
+   * **终结技：入场（`1641019`）不扣喧响**（T172）。
+   *
+   * 与叶瞬光斩妄开天**同型**（用户口径 2026-10-15：「还有什么**叶瞬光斩妄开天是收尾，
+   * 不消耗喧响**」——用户点名的是**类别**：名字带「终结技」但语义是**收尾/追加**、
+   * 由父大招触发而非由喧响购买）。
+   *
+   * **原文实证**（`data/raw/nanoka_missing/full/1641.json` 的 `skill.chain.description`，逐字）：
+   *  · `1641013`（终结技）：首句「**喧响等级达到[极]时**，点按 发动：……**招式发动后，
+   *    可点按 发动[终结技：入场]**」⇒ **喧响买的是本体**；
+   *  · `1641019`（终结技：入场）：首句「**当菲欧妮陷入[消亡]状态时**，切换至菲欧妮或菲欧妮
+   *    通过快速支援入场时发动：」⇒ 触发条件是**状态/入场**，**没有「喧响等级达到」购买句**
+   *    ⇒ 它**不由喧响购买**。
+   *
+   * 本模块早已按此语义物化（`buildPhoenixExecutions` 上方注释）：`count = ultimateCount`
+   * （「每次终结后点按触发一次」）、**不占前台时间**（收尾追加攻击，卢西娅 1451007 同款 0 时间
+   * 先例）。缺的只是**收费侧**的同一声明——修前它在轴里被按 `Ultimate:` 名字收满 3000 喧响。
+   *
+   * ⚠ **为什么免它不会让喧响免费**：父块 `1641013` 与它**同在执行行池里**且父块照收 3000
+   * ⇒ 一次「终结技 + 入场」仍是 3000（实测：轴内两块同放 `decibelUsed` 修前 6000 /
+   * 修后 3000，见 `phoenix.test.ts` 的 ★ 用例）。
+   *
+   * ⚠ **只免喧响，不免窗口时间**：它照样占失衡窗（`actionTime` 不动）。
+   */
+  axisMoveFreeOfDecibel: moveId => moveId === PHOENIX_ENTRY_MOVE_ID,
   settings,
 }
 

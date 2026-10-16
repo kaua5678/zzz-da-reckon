@@ -877,6 +877,28 @@ export const yeshuguangMechanic: AgentMechanicModule = {
     if (!YESHUGUANG_FULL_STUN_MOVES.has(moveId)) return null
     return { stunOverride: 1, note: ' · 明心境满易伤' }
   },
+  /**
+   * **斩妄开天（`1431027`）不扣喧响**（T172，用户口径 2026-10-15 点名）。
+   *
+   * 用户口径逐字：
+   * > 「很多角色都有多个大招，虽然有大招标签，但其实**不是喧响大**。但实际这种是**不耗喧响**的，
+   * >   **术法大自己消耗术法值，不消耗喧响**。还有什么**叶瞬光斩妄开天是收尾，不消耗喧响**。」
+   *
+   * **原文实证**（`data/raw/nanoka_missing/full/1431.json` 的 `skill.chain.description`，
+   * 逐字）：
+   * > 「消耗喧响值发动[终结技：逐云惊霆]后，在[明心境]状态下，点按 或[青溟剑势]消耗尽后，长按 发动：
+   * >  召唤巨剑……**该招式不消耗喧响值**；招式发动期间拥有无敌效果。」
+   *
+   * ⇒ 它是**父大招的收尾**：喧响买的是 `1431025`（逐云惊霆，原文首句「喧响等级达到[极]时」），
+   * 斩妄由「本次逐云消耗了喧响」这一**前提**触发，**本身不消耗喧响**。
+   *
+   * ⚠ **为什么免它不会让喧响免费**：父块 `1431025` 与它**同在执行行池里**且父块照收 3000
+   * ⇒ 一次「逐云+斩妄」仍是 3000，与原文 1:1 语义逐位一致（实测：轴内两块同放
+   * `decibelUsed` 修前 6000 / 修后 3000，见 `yeshuguang.test.ts` 的 ★ 用例）。
+   *
+   * ⚠ **只免喧响，不免窗口时间**：它照样占失衡窗（`actionTime` 不动，catalog 1431027 = 0.001s）。
+   */
+  axisMoveFreeOfDecibel: moveId => moveId === MOVE.zhanwang,
   buildResourceResult,
   resourceSections,
 }

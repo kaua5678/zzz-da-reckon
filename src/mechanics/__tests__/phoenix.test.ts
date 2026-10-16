@@ -246,3 +246,92 @@ describe('菲欧妮（1641）⚠️3.3 测试服临时录入', () => {
     ])
   })
 })
+
+describe('★ 终结技：入场（1641019）不扣喧响——收尾大招不是喧响大（T172）', () => {
+  beforeEach(() => {
+    newPinia()
+    mockStaticFetch()
+  })
+
+  /** 本 describe 自带的装配（`setup` 是上面 describe 的块内函数，作用域不外泄） */
+  async function setupAxis(agentIds: [string, string, string]) {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const config = useConfigStore()
+    agentIds.forEach((agentId, slot) => {
+      config.team[slot] = { slot, agentId, cinemaLevel: 0, ...baseConfig } as any
+    })
+    config.syncTeammateBuffsFromTeam()
+    return { catalog, config }
+  }
+  /**
+   * ## 锁什么
+   *
+   * 与叶瞬光斩妄开天**同型**（用户口径 2026-10-15：「还有什么**叶瞬光斩妄开天是收尾，
+   * 不消耗喧响**」——点名的是**类别**：名字带「终结技」但语义是**收尾/追加**、由父大招触发，
+   * 不是由喧响购买）。
+   *
+   * **原文实证**（`data/raw/nanoka_missing/full/1641.json` 的 `skill.chain.description`，逐字）：
+   *  · `1641013`（终结技）：首句「**喧响等级达到[极]时**，点按 发动：……招式发动后，
+   *    可点按 发动[终结技：入场]」⇒ **喧响买的是本体**；
+   *  · `1641019`（终结技：入场）：首句「**当菲欧妮陷入[消亡]状态时**，切换至菲欧妮或菲欧妮
+   *    通过快速支援入场时发动：」⇒ 触发条件是**状态/入场**，**没有「喧响等级达到」购买句**
+   *    ⇒ 不由喧响购买。
+   *
+   * 本模块早已按此语义物化（`buildPhoenixExecutions`：`count = ultimateCount`「每次终结后点按
+   * 触发一次」+ **不占前台时间**的收尾追加攻击）。缺的只是**收费侧**的同一声明。
+   *
+   * ## 判据形状（照抄 yixuanSmoke 的 ★ 用例）
+   *
+   * 轴里同时捏「真喧响大」（`1641013` 终结技）与「不扣喧响的大」（`1641019` 入场），
+   * 断言 `stackTraversalResult.decibelUsed` **只含真喧响大那份 3000**。
+   *
+   * ## 负控（删掉被锁行为后本测试确实变红）
+   *
+   * 删掉模块的 `axisMoveFreeOfDecibel` 声明 ⇒ 第一条断言 3000 → 6000，**当场红**。
+   */
+  it('轴里同放终结技 + 入场 ⇒ 栈只收 3000（入场免喧响）', async () => {
+    const { config } = await setupAxis(['1641', '1031', '1491'])
+    config.useStunAxis = true
+    config.stunAxes = [{
+      name: '对账轴', count: 1,
+      actions: [
+        { slot: 0, moveId: '1641013', count: 1 }, // 终结技本体：**真喧响大**，应扣 3000
+        { slot: 0, moveId: '1641019', count: 1 }, // 终结技：入场（收尾追加），**不应扣喧响**
+      ],
+      basicFillerSlot: 0,
+    }]
+    config.enemy.stunCountLock = 1
+    const calc = useResourceCalc()
+    const st = calc.stackTraversalResult.value
+    expect(st, '轴应被注入（否则本判据零覆盖）').not.toBeNull()
+    expect(st!.decibelUsed, '终结技：入场不该扣喧响（只应扣本体 1641013 的 3000）').toBeCloseTo(3000, 6)
+    // 反空洞：真喧响大**必须**照扣（否则「都免了」也能让上一条变绿）
+    expect(st!.decibelUsed, '终结技本体是喧响的购买点，必须照扣').toBeGreaterThan(0)
+    // 该块仍被执行（免的是喧响不是执行）
+    const exec = Object.values(st!.executed).find(e => e.moveId === '1641019')
+    expect(exec, '终结技：入场仍应被执行').toBeTruthy()
+  })
+
+  /**
+   * 反空洞（第二臂）：**只放本体**时照扣 3000。
+   *
+   * 若把声明写成 `axisMoveFreeOfDecibel: () => true`（或把本体一起免掉），上一条仍绿——
+   * 而**本体才是喧响的购买点**（原文「喧响等级达到[极]时」）。本臂钉死「免的只有入场那一个」。
+   */
+  it('反空洞：单独放终结技本体仍扣 3000（免的是入场，不是整个角色）', async () => {
+    const { config } = await setupAxis(['1641', '1031', '1491'])
+    config.useStunAxis = true
+    config.stunAxes = [{
+      name: '单块轴', count: 1,
+      actions: [{ slot: 0, moveId: '1641013', count: 1 }],
+      basicFillerSlot: 0,
+    }]
+    config.enemy.stunCountLock = 1
+    const calc = useResourceCalc()
+    const st = calc.stackTraversalResult.value
+    expect(st).not.toBeNull()
+    expect(st!.decibelUsed, '终结技本体必须照扣 3000').toBeCloseTo(3000, 6)
+  })
+})
