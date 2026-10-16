@@ -11,7 +11,11 @@
         <button class="dc3d-btn" @click="setView('iso')">重置</button>
       </div>
     </div>
-    <div ref="wrapRef" class="dc3d-canvas-wrap" @mousedown="onDown" @mousemove="onMove" @mouseleave="onLeave" @wheel.prevent="onWheel">
+    <div
+      ref="wrapRef" class="dc3d-canvas-wrap"
+      @mousedown="onDown" @mousemove="onMove" @mouseleave="onLeave" @wheel.prevent="onWheel"
+      @click="onClick"
+    >
       <canvas ref="canvasRef" class="dc3d-canvas" />
       <div v-if="hover" class="dc3d-tip" :style="{ left: hover.px + 12 + 'px', top: hover.py + 12 + 'px' }">
         <div v-for="(line, i) in hover.lines" :key="i">{{ line }}</div>
@@ -80,6 +84,13 @@ const props = defineProps<{
   /** 当期 Boss 血量（`percent` 口径下把剖面的绝对血量换成同一把尺的分母；≤0 或缺失 ⇒ 剖面不画） */
   baseHp?: number
 }>()
+
+/**
+ * **点选某一道上的某个档**（用户 2026-10-16「能显示其资源池吗」）：
+ * 与 2D 图同一条链（页面 `inspectCurvePoint` ⇒ 现场重放 + 重算 ⇒ 资源池卡片）。
+ * 只报「哪一道的哪个档」，怎么用由页面决定（本组件不碰 store、不取数）。
+ */
+const emit = defineEmits<{ pick: [laneKey: string, point: CurveDatum['point'], cost: number] }>()
 
 const wrapRef = ref<HTMLDivElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -351,8 +362,38 @@ function draw() {
 
 // ---- 交互 ----
 let dragging: { x: number; y: number; yaw: number; pitch: number } | null = null
+/**
+ * 拖动与点选共用一次按下：`moved` 记录这次按下有没有真的拖动过
+ * （阈值 3px——鼠标手抖不该被当成点选；拖动旋转后也不该误触发资源池面板）。
+ */
+let pressed: { x: number; y: number; moved: boolean } | null = null
 function onDown(e: MouseEvent) {
   dragging = { x: e.clientX, y: e.clientY, yaw: cam.value.yaw, pitch: cam.value.pitch }
+  pressed = { x: e.clientX, y: e.clientY, moved: false }
+}
+/** 命中测试：返回最近的道与档（与 `onMove` 的悬停同一把尺：10px 内最近者） */
+function pickAt(e: MouseEvent): { laneKey: string; point: CurveDatum['point']; cost: number } | null {
+  const wrap = wrapRef.value
+  if (!wrap) return null
+  const rect = wrap.getBoundingClientRect()
+  const px = e.clientX - rect.left; const py = e.clientY - rect.top
+  let best: { d: number; p: Pt } | null = null
+  for (const p of projectedPts) {
+    const d = Math.hypot(p.sx - px, p.sy - py)
+    if (d <= 10 && (!best || d < best.d)) best = { d, p }
+  }
+  if (!best) return null
+  const lane = props.lanes[best.p.laneIdx]
+  const s = lane ? seriesForLane(props.series, lane) : undefined
+  const pt = s?.points[best.p.ptIdx]
+  if (!lane || !pt) return null
+  return { laneKey: lane.laneKey ?? lane.presetId, point: pt.point, cost: pt.cost }
+}
+/** 点选（松手时判：没拖动过才算点选） */
+function onClick(e: MouseEvent) {
+  if (pressed?.moved !== false) return
+  const hit = pickAt(e)
+  if (hit) emit('pick', hit.laneKey, hit.point, hit.cost)
 }
 function onMove(e: MouseEvent) {
   const wrap = wrapRef.value
@@ -360,6 +401,8 @@ function onMove(e: MouseEvent) {
   const rect = wrap.getBoundingClientRect()
   const px = e.clientX - rect.left; const py = e.clientY - rect.top
   if (dragging && (e.buttons & 1)) {
+    // 超过 3px 才算拖动（点选手抖不算）；一旦拖动，本次按下就不再触发点选
+    if (pressed && Math.hypot(e.clientX - pressed.x, e.clientY - pressed.y) > 3) pressed.moved = true
     cam.value = {
       ...cam.value,
       yaw: dragging.yaw + (e.clientX - dragging.x) * 0.5,

@@ -63,6 +63,7 @@ import { axisStateOf, axisStands, axisRequirementMet, axisTruncationReason, type
 import { getInteractionDefaults } from '@/mechanics/interactionBaseline'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
+import type { StateDelta } from '@/composables/configDelta'
 
 export interface LadderCtx {
   config: ConfigModel
@@ -689,6 +690,26 @@ export interface LadderPoint {
   interactionsFilled?: number
   /** 这一点**实打（缩后）的交互总次数** = x 轴交互项真正用的那个量（`liveInteractions` 传本点 rr） */
   interactionsPlayed?: number
+  /**
+   * 这一点的**现场差分**（仅当 `opts.sceneOf` 给了才在）——「这一点是在什么配置下算出来的」。
+   *
+   * 展示层拿它**按需重算**该档的完整资源池（`restoreStateDelta` + 新建独立场景 + 求值），
+   * 而不是随点携带 41.5KB 的整份引擎结果（实测：整份结果 41.5KB/点 vs 差分 2.1KB/点）。
+   * 契约与判据见 `configDelta.ts` 与 `configDelta.test.ts`（★ 往返逐字节相同）。
+   */
+  scene?: LadderPointScene
+}
+
+/**
+ * 一档的**现场差分**（相对本次运行基线）。
+ *
+ * `base` = 运行起点的整份 `$state` 值快照（每次 `computeDifficultyCurves` 一份，所有道共用），
+ * `delta` = 该档与基线的差分。重放 = `restoreStateDelta(config, base, delta)`
+ * ⇒ 现场与落点那刻**逐字节相同**（判据 `difficultyCurve.test.ts::★ 重放每点现场`）。
+ */
+export interface LadderPointScene {
+  base: Record<string, unknown>
+  delta: StateDelta
 }
 
 /**
@@ -749,6 +770,14 @@ export interface AxisTruncatedPoint {
   axis: AxisState
   /** 被砍的原因（可读，UI 直接用） */
   reason: string
+  /**
+   * 这一档的**现场差分**（仅当 `opts.sceneOf` 给了才在）。
+   *
+   * ⚠ 被砍的档**也有完整现场**：它算得出伤害（`dmg` 就是这么来的），只是轴要求没满足而不进曲线。
+   * 用户 2026-10-16「我本来想看看有没有 4 失衡，伤害为什么低」问的往往正是这些档 ⇒ 明细面板
+   * 必须能给它们看资源池（页面按 `axisTruncated` 如实标注「轴没打完」）。
+   */
+  scene?: LadderPointScene
 }
 
 export interface LadderOpts {
@@ -779,6 +808,13 @@ export interface LadderOpts {
    * 单测可调小以控成本。
    */
   axisScanSteps?: number
+  /**
+   * **每档采一次现场差分**（缺省不采 = 零开销）——落点与被砍的档都采（见 `LadderPointScene`）。
+   *
+   * 成本：一次 `JSON.stringify` 全表比对（实测 ~0.2ms/档，相对 50–120ms 的一次全队求值可忽略）。
+   * 与 `capture` 的分工：`capture` 采**读数**（次数/伤害来源），本项采**输入**（配置现场）。
+   */
+  sceneOf?: (ctx: LadderCtx) => LadderPointScene
 }
 
 /** 一个「点位」的完整现场（写盘前先试算，够好才落地） */
@@ -856,7 +892,8 @@ export function climbDifficultyLadder(
    */
   const land = (name: KnobPointName, st: PointState): LadderPoint | null => {
     if (!axisRequirementMet(st.axis)) {
-      axisTruncated.push({ point: name, dmg: st.dmg, axis: st.axis, reason: axisTruncationReason(st.axis) })
+      // 被砍的档也带现场（用户问的「有没有 4 失衡」往往正是这些档）：它有完整读数，只是不进曲线
+      axisTruncated.push({ point: name, dmg: st.dmg, axis: st.axis, reason: axisTruncationReason(st.axis), ...sceneSnap() })
       return null
     }
     const x = costOf ? costOf(ctx) : 0
@@ -867,6 +904,7 @@ export function climbDifficultyLadder(
       knobs: st.knobs,
       axis: st.axis,
       ...snap(),
+      ...sceneSnap(),
       ...(costOf ? { difficulty: x } : {}),
     }
   }
@@ -890,6 +928,14 @@ export function climbDifficultyLadder(
    * 跑完阶梯后 `parryCount` 停在 `[0,0,0]` 而跑前是 `[6,6,0]`）。
    */
   const before = snapshot(ctx)
+  /**
+   * 现场差分通道（`opts.sceneOf`）：只读地采当前现场，**不改任何东西**。
+   * 采在 ① 之前/之后都不影响数值，但必须与 `land` 同一刻的现场一致——两者都在「伤害已算好」时调用。
+   */
+  const sceneSnap = (): { scene?: LadderPointScene } => {
+    const s = opts.sceneOf?.(ctx)
+    return s ? { scene: s } : {}
+  }
   applyInteractionKnob(ctx, 'zero')
   const baseState = readState(ctx, { interactions: 'zero', absorb: 0 })
   /** ① 的关键次数快照（③ 的跃迁基准；与 `land` 内的 `snap()` 同源同刻） */

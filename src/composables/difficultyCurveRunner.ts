@@ -59,6 +59,7 @@
 import { toRaw } from 'vue'
 import { computeDifficultyCurves, type DifficultyCurveOptions, type DifficultyCurveRow, type EnvLane } from '@/composables/difficultyCurve'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { dedupeSceneBases } from '@/composables/configDelta'
 import type { DifficultyWeights } from '@/composables/teamCompare'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
@@ -97,6 +98,12 @@ export interface CurveRunRequest {
     buffMode: 'none' | 'auto' | 'manual'
     manualBuffTitle?: string
   }
+  /**
+   * **采每档现场差分**（用户 2026-10-16「能显示其资源池吗」）：每行带 `sceneBase`、每点带 `scene`，
+   * 页面据此**按需重算**该档完整资源池（不随点携带 41.5KB 的整份结果）。
+   * 缺省 false ⇒ 载荷与行为与改动前逐字节相同（判据 `difficultyCurve.test.ts::缺省不采`）。
+   */
+  collectScenes?: boolean
 }
 
 /** 请求里的环境表 → `DifficultyCurveOptions.environment`（主线程回落 / worker 两条路径共用，防止口径漂移） */
@@ -365,6 +372,7 @@ async function runOnMainThread(req: CurveRunRequest, hooks: CurveRunHooks): Prom
       phase: req.phase,
       difficultyWeights: req.difficultyWeights,
       environment: environmentOptions(req),
+      collectScenes: req.collectScenes,
     })))
   }
   return { rows, aborted: false, usedWorker: false }
@@ -403,8 +411,26 @@ export async function runDifficultyCurves(req: CurveRunRequest, hooks: CurveRunH
   const factory = hooks.createWorker ?? (curveWorkerSupported() ? createCurveWorker : null)
   if (factory) {
     const outcome = await runWithWorkerPool(req, hooks, factory)
-    if (outcome.aborted || outcome.rows.length > 0 || req.presets.length === 0) return outcome
+    if (outcome.aborted || outcome.rows.length > 0 || req.presets.length === 0) return dedupeOutcomeBases(outcome)
     console.warn('[难度曲线] worker 未产出任何结果，回落主线程计算')
   }
-  return runOnMainThread(req, hooks)
+  return dedupeOutcomeBases(await runOnMainThread(req, hooks))
+}
+
+/**
+ * **基线去重**（主线程侧统一后处理，两条路径都覆盖）。
+ *
+ * 页面口径是逐队一个新场景 ⇒ 每行的 `sceneBase` 都是**独立拷贝**（实测 10.9KB/份，8 队 = 87KB 纯重复，
+ * 而差分只有 2.1KB/档）。这里把内容相同的基线归一化成同一个对象——**只在内容相同时复用**
+ * （见 `configDelta#dedupeSceneBases` 的安全论证）。
+ *
+ * ⚠ 放这里而不是页面：worker 与回落两条路径都要覆盖，而页面只走其中一条。
+ */
+function dedupeOutcomeBases(outcome: CurveRunOutcome): CurveRunOutcome {
+  const bases = dedupeSceneBases(outcome.rows.map(r => r.sceneBase))
+  outcome.rows.forEach((r, i) => {
+    const b = bases[i]
+    if (b) r.sceneBase = b
+  })
+  return outcome
 }

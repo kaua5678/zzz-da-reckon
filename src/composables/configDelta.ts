@@ -4,9 +4,17 @@
  * ## 为什么要有它
  *
  * 分析器（难度曲线 / 散点 / 位置对比）逐档改写 config 再求值，每档现场与运行基线往往只差
- * **两三个键**（实测：`team` + `mechanicSettings`），但整份 `$state` 是 12KB。逐点存整份现场
- * （或逐点存整份引擎结果 41.5KB）会让「逐点明细」把页面内存顶上去（实测 24 键 LRU × 10 队 × 6 档
- * ≈ 38MB）；只存差分则 2.1KB/点，**降 6 倍**，且差分本身是**可重放的**（`restoreStateDelta`）。
+ * **两三个键**（实测：`team` + `mechanicSettings`），但整份 `$state` 是 11–12KB。逐点存整份现场
+ * （或逐点存整份引擎结果 **41.5KB/档**）会让「逐点明细」把页面内存顶上去（LRU 24 键 × 10 队 × 6 档
+ * ≈ 38MB）；只存差分则 **2.1KB/档**（实测 `.zc/perf/T181payload.perf.ts`），且差分是**可重放的**
+ * （`restoreStateDelta`）。
+ *
+ * ⚠ **差分值不是「patch 压缩」**：单个 delta 里的 `team` 仍是一整份队伍数组（逐档都会变），
+ * 所以实测 delta ≈ 2.1KB（不是 200B 量级）。真正省下来的部分来自
+ * ① 不带 41.5KB 的引擎结果、② **基线只存一份**（页面把所有道的 `sceneBase` 归一化成同一个对象，
+ * 见 `dedupeSceneBases`：实测两份 base 内容相同的 JSON 各 10.9KB，归一化后只留一份）。
+ * 换算下来「基线 + 差分」≈ **13.3KB/档**（实测两队 7 档共 93.1KB）⇒ 相对随点带结果省 ~3 倍，
+ * 且**点开才算**（50–120ms/次），不点不花。
  *
  * ## 语义（三条，缺一条就静默错值）
  *
@@ -92,4 +100,34 @@ export function restoreStateDelta(config: DeltaRestorable, base: Record<string, 
 /** 差分里变化的键（诊断 / 判据用；UI 想显示「这一点动了什么」直接读它） */
 export function deltaKeys(delta: StateDelta | undefined | null): string[] {
   return delta ? Object.keys(delta) : []
+}
+
+/**
+ * **基线去重**：把 N 份「内容相同但对象不同」的现场基线归一化成**同一个对象**。
+ *
+ * ## 为什么需要（实测，不是过早优化）
+ *
+ * 页面口径是**逐队一个新场景**（worker 里每队 `createAnalysisScenario(source)`）⇒ 每队的
+ * `sceneBase` 都是**独立拷贝**：实测两份内容相同的 base 各 **10.9KB**（JSON），
+ * 8 队就是 87KB 纯重复；而差分本身只有 2.1KB/档。基线去重后「基线 + 差分」≈ 13.3KB/档。
+ *
+ * ⚠ **只在内容真的相同时复用**（`JSON.stringify` 比对，与 `stateDeltaOf` 同一把尺）：
+ * 内容不同却复用会让重放写出**别的队的现场**（静默错值，正是本模块存在的意义要防的事）。
+ *
+ * ⚠ 复用是**安全的**，因为基线按契约是**只读**的（`restoreStateDelta` 只从它读、`cloneConfigState`
+ * 拷贝后才写进现场）。调用方**不得**改写传入的 base。
+ *
+ * @param bases 按出现顺序给出的基线（`undefined` = 该行没采现场，跳过）
+ * @returns 与输入等长的数组，内容相同的项指向同一个对象
+ */
+export function dedupeSceneBases<T extends Record<string, unknown>>(bases: (T | undefined)[]): (T | undefined)[] {
+  const seen = new Map<string, T>()
+  return bases.map(b => {
+    if (!b) return undefined
+    const key = JSON.stringify(b)
+    const hit = seen.get(key)
+    if (hit) return hit
+    seen.set(key, b)
+    return b
+  })
 }

@@ -100,3 +100,32 @@
 
 **仍留的口子**（未做，量过但没论证清楚）：③ 的网格在「整档被轴砍」时扫满 20 步才放弃——那 7s/队的
 队就是这么来的；早停要过 `landingPointUniqueness`（落点唯一性）判据，属**改引擎语义**，不在本轮。
+
+## 第 4 轮（续）：逐点资源池明细 = 现场差分 + 按需重算（不改引擎）
+
+用户要「点曲线上的点 ⇒ 看那一档的资源池」（「我本来想看看有没有 4 失衡，伤害为什么低」）。
+直接随点携带三份引擎结果 = **41.5KB/档**（`.zc/perf/T181resPoolSize.perf.ts`：队级 30.7KB +
+失衡池 4.7KB + 异常池 6.0KB；且**被轴砍掉的档也各占一份**，一队 2 点 + 2 截断 = 166KB；
+页面 LRU 24 键 × 10 队 ≈ **38MB**）。改成：
+
+| 方案 | 每档内存 | 点开时成本 |
+|---|---|---|
+| 随点带整份引擎结果 | 41.5KB | 0（已算好） |
+| **现场差分 + 按需重算**（本实现） | **13.3KB**（唯一基线 10.9KB + 差分 2.1KB/档，实测两队 7 档共 93.1KB） | **50–120ms** 一次全队求值 |
+
+- 差分 = `composables/configDelta.ts`（`captureState` / `stateDeltaOf` / `restoreStateDelta` /
+  `dedupeSceneBases`）：**基线只存一份**（页面逐队新场景 ⇒ 每行 base 是独立拷贝，实测同内容两份各 10.9KB，
+  去重后归一成同一对象），逐档只存「与基线的差异键」。
+- 重算 = `composables/curvePointPool.ts`（`useCurvePointPool`）：重放现场 → 独立场景 → 求值 → 三份结果。
+- **数值归属判据**（这是唯一会静默出错的地方）：重算伤害与该点 `dmg` **逐位相等** + 三份结果同源
+  （`stunPool.stunCount` ≡ 该点快照的「失衡」）+ UI 现场不被污染 + 竞态后发者胜
+  （`__tests__/curvePointPool.test.ts` 4 条 + `__tests__/difficultyCurve.test.ts` 2 条 +
+  `__tests__/configDelta.test.ts` 5 条）。
+- **被轴砍掉的档也给**（用户口径 2026-10-15「达不到要求就不算」只决定它**不进曲线**，不决定看不见）：
+  面板如实标注「轴没打完（喧响不足 N 招）⇒ 不在曲线上」。
+- 实测（同一份构建，5 队 / 16 行，`perf-curve-longtask.mjs --pool 1|6`）：池 1 = **9.32s**、
+  池 6 = **2.93s（3.2×）**；主线程最长 task 91 → 89ms（现场采集的开销落在噪声内）。
+
+⚠ **worker 边界**：`anomalyPoolResult` **原样过不了** `postMessage`（`damageInputs.dmgConfig.enemyResistances`
+是响应式代理 ⇒ `DataCloneError`），而 `resourceResult` / `stunPoolResult` 原样可过。当前实现只在
+**主线程**重算资源池（不跨 worker），故不涉及；若将来要把重算搬进 worker，必须走 `toCloneable`。

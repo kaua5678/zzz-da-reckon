@@ -16,6 +16,7 @@ import {
   type DifficultyCurveOptions, type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
 import { absorbCapOf, clearDifficultyLevers, climbDifficultyLadder, scanAbsorbGrid, type LadderResult, type LadderPoint } from '@/composables/difficultyLadder'
+import { restoreStateDelta } from '@/composables/configDelta'
 import { applyTeamToStore, computeDifficulty } from '@/composables/teamCompare'
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { teamPresets } from '@/data/teamPresets'
@@ -1204,5 +1205,56 @@ describe('极限点（limitPoint，用户口径 2026-10-14「自动上调合轴�
     const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
     const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE }))
     expect(row!.limitPoint).toBeNull()
+  }, 300_000)
+})
+
+/**
+ * **逐点现场差分**（T181，用户 2026-10-16「能显示其资源池吗」「我本来想看看有没有 4 失衡，伤害为什么低」）。
+ *
+ * 展示层要「点曲线上的点 → 看那一档的资源池」，而随点携带整份引擎结果 = 41.5KB/点（实测，LRU 24 键
+ * × 10 队 × 6 档 ≈ 38MB）。改为：每点只带**现场差分**（实测 2.1KB/点），展开时重放现场 + 重算一次
+ * （50–120ms）。这组判据钉住那条链的**全部前提**：
+ *  ① 开了 `collectScenes` ⇒ 每行有 `sceneBase`、每点有 `scene`（**含被轴砍掉的档**）；
+ *  ② **重放 + 重算出来的伤害与该点的 `dmg` 逐位相等**——这是「按需重算的资源池 = 那个点的资源池」的全部依据；
+ *  ③ 关着（缺省）⇒ 不带 `sceneBase`/`scene`（载荷与行为与改动前一致）。
+ */
+describe('逐点现场差分（collectScenes）', () => {
+  it('★ 重放每点现场 ⇒ 重算伤害与该点 dmg 逐位相等（含被轴砍掉的档）', async () => {
+    const { catalog } = await setupHarness([{ agentId: '1611' }, { agentId: '1141' }, { agentId: '1211' }], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'auto-1611-1141-1211')!
+    const rows = await withAnalysisScenario(s => computeDifficultyCurves(s, {
+      presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE, collectScenes: true,
+    }))
+    const row = rows[0]!
+    expect(row.sceneBase, '开了 collectScenes ⇒ 每行带运行基线').toBeTruthy()
+
+    /** 重放一档现场并重算（= 页面展开明细时要跑的那条链） */
+    const recompute = async (scene: { base: Record<string, unknown>; delta: Record<string, unknown> }) =>
+      withAnalysisScenario(s => {
+        restoreStateDelta(s.config, scene.base, scene.delta)
+        return s.calc.teamTotalDamage.value
+      })
+
+    const allPoints = [
+      ...row.ladder.points,
+      // ⚠ 被轴砍掉的档**也有现场**：用户问的「有没有 4 失衡」往往正是这些档
+      ...row.ladder.axisTruncated,
+    ]
+    expect(allPoints.length, '本队至少要有若干档可查').toBeGreaterThan(0)
+    for (const p of allPoints) {
+      expect(p.scene, '每档都要带现场差分').toBeTruthy()
+      const dmg = await recompute(p.scene as { base: Record<string, unknown>; delta: Record<string, unknown> })
+      expect(dmg, `${p.point} 档重算伤害必须与落点读数逐位相等`).toBe(p.dmg)
+    }
+  }, 600_000)
+
+  it('缺省不采 ⇒ 无 sceneBase / scene（载荷与改动前一致）', async () => {
+    const { catalog } = await setupHarness([{ agentId: '1611' }, { agentId: '1141' }, { agentId: '1211' }], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'auto-1611-1141-1211')!
+    const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE }))
+    expect(row!.sceneBase).toBeUndefined()
+    for (const p of row!.ladder.points) expect(p.scene).toBeUndefined()
   }, 300_000)
 })

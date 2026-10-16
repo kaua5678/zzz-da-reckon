@@ -99,6 +99,8 @@ function runPreset(index: number): void {
       difficultyWeights: req.difficultyWeights,
       // 环境模式的道表随请求传入（worker 里读不到页面 store；proto 见 CurveRunRequest）
       environment: environmentOptions(req),
+      // 每档现场差分（页面「点曲线上的点 → 看那一档资源池」的数据源；缺省不采）
+      collectScenes: req.collectScenes,
     })
     for (const row of rows) ctx.postMessage({ type: 'row', presetIndex: index, row })
   } finally {

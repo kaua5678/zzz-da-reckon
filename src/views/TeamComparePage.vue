@@ -546,6 +546,7 @@
         </div>
         <DifficultyCurve3DChart
           :series="curveData.series"
+          @pick="onCurve3dPick"
           :lanes="chart3dLanes"
           :cost-max="curveData.costMax"
           :ratio-max="curveData.ratioMax"
@@ -579,12 +580,22 @@
               :stroke="s.color" :stroke-width="g.back ? 1.6 : 2" :opacity="g.back ? 0.7 : 0.9"
               :stroke-dasharray="g.back ? '4,3' : undefined"
             />
-            <circle
-              v-for="(p, pi) in s.pts" :key="'cp' + si + '-' + pi"
-              :cx="p.cx" :cy="p.cy" :r="3.5" :fill="s.color" opacity="0.9"
-              class="scatter-dot" stroke-width="0.5"
-              @mouseenter="curveHover = { si, pi }" @mouseleave="curveHover = null"
-            />
+            <!-- 曲线点：**可点** ⇒ 下方展开该档资源池（用户 2026-10-16）。命中区比可见圆大
+                 （r=3.5 太小点不中）：外包一层 r=9 的透明圆接指针事件。 -->
+            <g v-for="(p, pi) in s.pts" :key="'cp' + si + '-' + pi">
+              <circle
+                :cx="p.cx" :cy="p.cy" :r="3.5" :fill="s.color" opacity="0.9"
+                class="scatter-dot" stroke-width="0.5"
+              />
+              <circle
+                :cx="p.cx" :cy="p.cy" :r="9" fill="transparent"
+                :class="{ 'curve-hit': canInspectPoint(p), 'curve-hit-on': curvePoolPick && curvePoolPick.laneKey === s.laneKey && curvePoolPick.point === p.point && curvePoolPick.cost === p.cost }"
+                @mouseenter="curveHover = { si, pi }" @mouseleave="curveHover = null"
+                @click="inspectCurvePoint(s.laneKey, p, 'point')"
+              >
+                <title>{{ `${s.label} · ${pointLabel(p.point)}：点击查看该档资源池` }}</title>
+              </circle>
+            </g>
             <!-- **曲线外的补充点**（用户口径 2026-10-14「同 x 难度的不同 y，是难度曲线外面的
                  补充点」）：空心菱形 + 名称/Δ伤害小字。与曲线点（实心圆）**不同形状** ⇒ 一眼看出
                  「它在曲线外面」；不连线（它不在曲线上，只是同一难度上的另一个选择）。 -->
@@ -744,6 +755,56 @@
       </div>
     </n-card>
 
+    <!-- 逐点资源池明细（用户 2026-10-16）：点曲线上的点 ⇒ 该档的完整资源池 -->
+    <n-card v-if="chartMode === 'curve' && curvePoolPick" size="small" :bordered="true" class="detail-card">
+      <template #header>
+        <div class="curve-head">
+          <span>
+            该档资源池 · {{ pointLabel(curvePoolPick.point) }} · 操作难度 {{ fmt(curvePoolPick.cost, 1) }} 点
+            <span class="td-muted">（{{ curvePoolPick.laneKey }}）</span>
+          </span>
+          <n-button size="tiny" @click="curvePoolPick = null; curvePool.clear()">收起</n-button>
+        </div>
+      </template>
+      <div class="compare-note curve-note">
+        <b>口径 = 那一点的现场重放</b>（不是全关档、也不是终点档）：面板把该点采到的现场差分写回一个独立场景
+        （<code>restoreStateDelta</code>）再算一次 ⇒ <b>伤害与该点读数逐位相等</b>（判据 <code>curvePointPool.test.ts</code>）。
+        所以这里的三张资源卡 = <b>曲线该档的资源池</b>：能量/喧响/失衡/积蓄与招式执行计划都按那一档的交互与吸收率算。
+        <template v-if="curvePoolPickReason">
+          <br>⚠ <b>这一档轴没打完</b>（{{ curvePoolPickReason }}）⇒ 它<b>不在曲线上</b>（按你的口径「达不到要求就不算」），
+          但引擎算过的数如实给出来，用来看「差在哪」。
+        </template>
+      </div>
+      <div v-if="curvePoolChangedKeys.length > 0" class="compare-note curve-note">
+        这一档相对曲线起点的<b>输入变动</b>：{{ curvePoolChangedKeys.map(stateKeyLabel).join('、') }}
+        <span class="td-muted">（面板重算用的就是这份差分；判据 `curvePointPool.test.ts` 断言重算伤害与该点读数逐位相等）</span>
+      </div>
+      <div v-if="curvePool.loading.value" class="empty-hint">重算该档资源池中…</div>
+      <div v-else-if="curvePool.error.value" class="empty-hint curve-neg">重算失败：{{ curvePool.error.value }}</div>
+      <template v-else-if="curvePool.pool.value">
+        <div class="compare-note curve-note">
+          总伤害 {{ compact(curvePool.pool.value.damage) }} · 迭代 {{ curvePool.pool.value.resourceResult.iterations }} 次
+          {{ curvePool.pool.value.resourceResult.converged ? '·已收敛' : '·未收敛' }}
+          · 失衡 {{ curvePool.pool.value.stunPool?.stunCount ?? 0 }} 次
+          · 连携 {{ curvePool.pool.value.stunPool?.chainCountTotal ?? 0 }} 次
+          · 重算耗时 {{ fmt(curvePool.pool.value.ms, 0) }}ms
+        </div>
+        <div class="resource-cards">
+          <ResourceResultCard
+            v-for="c in curvePool.pool.value.resourceResult.characters"
+            :key="c.slot"
+            :result="c"
+            :agent-name="agentNameOf(c.agentId) || c.agentName || c.agentId"
+            :specialty="specialtyOf(c.agentId)"
+            :stun-pool-result="curvePool.pool.value.stunPool"
+            :anomaly-pool-result="curvePool.pool.value.anomalyPool"
+            :total-time="curvePool.pool.value.resourceResult.totalTime"
+          />
+        </div>
+      </template>
+      <div v-else class="empty-hint">该档未采现场（本次曲线没有带现场差分）⇒ 不显示资源池，也不编数据。</div>
+    </n-card>
+
     <!-- 曲线摘要表：难易强度对比看这几列 -->
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="detail-card">
       <template #header>
@@ -859,8 +920,11 @@ import { DOWNGRADE_MODS } from '@/composables/downgradeWEngine'
 import { persistedRef } from '@/composables/persistedRef'
 import { useBatchOwner } from '@/composables/batchTask'
 import { runDifficultyCurves } from '@/composables/difficultyCurveRunner'
+import { useCurvePointPool } from '@/composables/curvePointPool'
+import { deltaKeys } from '@/composables/configDelta'
+import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import { useLogicEditorStore } from '@/stores/logicEditor'
-import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
+import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, type CurveDatum, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
 import type { KnobPointName } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
@@ -1549,6 +1613,8 @@ async function runCurves() {
     },
     // 环境模式的道表（纯数据；worker 读不到页面 store）。缺省 = undefined ⇒ 自身实力口径逐位不变
     environment: envTable,
+    // 逐点现场差分（用户 2026-10-16「能显示其资源池吗」）：每点 ~2.1KB，点开时才重算资源池
+    collectScenes: true,
   }, {
     signal: run.signal,
     onProgress: (index, total, name) => {
@@ -1582,6 +1648,10 @@ const {
 
 function agentNameOf(id: string | null | undefined): string {
   return id ? catalogStore.agentName(id) : '—'
+}
+/** 职业（资源卡上的标签）；与 RunArchivePage#getSpecialty 同口径（catalog 是唯一来源） */
+function specialtyOf(id: string): string {
+  return catalogStore.getAgent(id)?.specialty ?? ''
 }
 function teamNames(team: [string, string, string]): string {
   return team.map(agentNameOf).join(' + ')
@@ -1860,6 +1930,68 @@ const curveTruncBaseOnly = computed(() =>
     return hint ? [{ key: `${s.presetId}-${si}-base`, team: s.name, color: s.color, hint }] : []
   }),
 )
+/**
+ * **逐点资源池明细**（用户 2026-10-16：「难度曲线中的点对应了计算值吗，能显示其资源池吗」
+ * /「我本来想看看有没有 4 失衡，伤害为什么低」）。
+ *
+ * 数据源 = 该点的**现场差分**（`point.scene`，~2.1KB/点）+ 点开时重算一次（50–120ms，
+ * `useCurvePointPool`）——不随点携带 41.5KB 的整份引擎结果（LRU 24 键 × 10 队 × 6 档 ≈ 38MB）。
+ * 判据：`curvePointPool.test.ts`（重算伤害与该点 `dmg` 逐位相等 / 三份结果同源 / 竞态后发者胜）。
+ */
+const curvePool = useCurvePointPool()
+/** 当前选中的点（`null` = 面板收起）。键 = 道键 + 点名，跨队不串味 */
+const curvePoolPick = ref<{ laneKey: string; point: KnobPointName; cost: number } | null>(null)
+/** 点是否可查明细：该档采到了现场（`collectScenes` 开着） */
+function canInspectPoint(p: { scene?: unknown }): boolean {
+  return !!p.scene
+}
+/**
+ * 3D 图点选 → 认回 2D 那套「哪一道的哪个档」（`CurveDatum` 从 `buildCurveChart` 的 series 里按
+ * `laneKey` + 点名 + 难度三元组查回——3D 组件只报身份，不搬数据，见其 `pick` 事件）。
+ */
+function onCurve3dPick(laneKey: string, point: KnobPointName, cost: number) {
+  const s = curveData.value?.series.find(x => x.laneKey === laneKey)
+  const p = s?.points.find(x => x.point === point && Math.abs(x.cost - cost) < 1e-9)
+  if (s && p) void inspectCurvePoint(s.laneKey, p, 'point')
+}
+
+/** 点开/收起某一档的资源池明细（`source` = 被轴砍掉的档时带理由，面板上如实标注） */
+async function inspectCurvePoint(laneKey: string, p: CurveDatum, source: 'point' | 'axisTruncated', reason = '') {
+  const same = curvePoolPick.value?.laneKey === laneKey && curvePoolPick.value?.point === p.point && curvePoolPick.value?.cost === p.cost
+  if (same) { curvePoolPick.value = null; curvePool.clear(); return }
+  curvePoolPick.value = { laneKey, point: p.point, cost: p.cost }
+  curvePoolPickReason.value = source === 'axisTruncated' ? reason : ''
+  await curvePool.load(p.scene)
+}
+const curvePoolPickReason = ref('')
+/** 选中点相对运行起点的**输入变动键**（诊断用：一眼看出这一档改了队伍还是机制设置） */
+const curvePoolChangedKeys = computed<string[]>(() => {
+  const pick = curvePoolPick.value
+  if (!pick) return []
+  const s = curveData.value?.series.find(x => x.laneKey === pick.laneKey)
+  const p = s?.points.find(x => x.point === pick.point && Math.abs(x.cost - pick.cost) < 1e-9)
+  return deltaKeys(p?.scene?.delta)
+})
+/** config state 键 → 可读名（只列难度曲线真会动的那些，其余回落键名——不编一个看起来像真的中文） */
+const STATE_KEY_LABELS: Record<string, string> = {
+  team: '队伍配置（角色/命座/音擎/驱动盘/交互次数/权重）',
+  mechanicSettings: '机制设置（合轴吸收率等）',
+  enemy: '敌人（Boss 数值）',
+  globalBuffs: '全局 Buff（含关卡 buff）',
+  appliedBoss: '已应用 Boss 预设',
+  stunAxes: '失衡轴',
+  stunAxisPlans: '轴内计划',
+  useStunAxis: '轴模式开关',
+  timeWeightStrategy: '时间权重策略',
+  interactionsLocked: '交互锁定',
+  teammateBuffSelections: '队友 Buff 勾选',
+  wEngineEffectCoverages: '音擎效果覆盖率',
+  discEffectCoverages: '驱动盘效果覆盖率',
+  comboAlignOverrides: '合轴率覆盖',
+}
+function stateKeyLabel(key: string): string {
+  return STATE_KEY_LABELS[key] ?? key
+}
 const curveHover = ref<{ si: number; pi: number } | null>(null)
 const curveHoverPt = computed(() => {
   const h = curveHover.value

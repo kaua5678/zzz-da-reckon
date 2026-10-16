@@ -44,11 +44,12 @@
  * ⟳复核: 若新增「按某维度截取/聚合曲线」的图型或改用对数轴，重核「轴上限覆盖所有点」是否仍成立（尤其筛选后只剩 1 队时——那是越界最严重的场景） | 到期 2027-04-30
  */
 import { applyBossRoom } from '@/composables/bossRoom'
+import { captureState, stateDeltaOf } from '@/composables/configDelta'
 import { type ConfigModel } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import {
   absorbCapOf, applyInteractionKnob, clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
-  type AxisTruncatedPoint, type KnobPointName, type LadderPoint, type LadderResult, type LadderSnapshot,
+  type AxisTruncatedPoint, type KnobPointName, type LadderPoint, type LadderPointScene, type LadderResult, type LadderSnapshot,
 } from '@/composables/difficultyLadder'
 import { axisKindLabel, axisStateOf, axisStands, type AxisState } from '@/composables/difficultyAxis'
 import {
@@ -121,6 +122,16 @@ export interface DifficultyCurveOptions {
    * 直接决定 x 轴：`computeDifficulty` 的 Σ(交互×权重) + 时间压力秒×权重（时间压力 = 硬溢出 + 合轴抵扣）。
    */
   difficultyWeights?: DifficultyWeights
+  /**
+   * **采「每档现场差分」**（用户 2026-10-16「能显示其资源池吗」「我本来想看看有没有 4 失衡，伤害为什么低」）。
+   *
+   * 开了它：每个点（含**被轴砍掉**的档）带 `scene`（现场差分）、每行带 `sceneBase`（运行基线），
+   * 展示层可 `restoreStateDelta` + 新建独立场景**按需重算**该档完整资源池。
+   * 关着（缺省）：不采 ⇒ 载荷与行为与改动前逐字节相同。
+   *
+   * 成本：每档一次 `JSON.stringify` 全表比对（实测 ~0.2ms/档，相对 50–120ms 的一次全队求值可忽略）。
+   */
+  collectScenes?: boolean
   // 注意：这里**没有**金数档参数——曲线口径固定为预设基础金（金数提升属「提升率」类图表，
   // 用户 2026-09-10 口径；2026-09-13 曾发现接口上留过一个从未接线的 goldLevel 死参数，已删）。
   // 也**没有** `goals` / `baseGoals`：T140c 起结构是「四个定点」，不再有可换的目标集
@@ -167,6 +178,16 @@ export interface DifficultyCurveRow {
   presetId: string
   name: string
   ladder: LadderResult
+  /**
+   * 该道**求值起点的整份 config 现场**（值快照；本次运行的基线，所有道共用一份）。
+   *
+   * 与 `LadderPoint.scene.delta` 配对使用：`restoreStateDelta(config, base, delta)` ⇒ 现场回到落点那刻
+   * （判据 `configDelta.test.ts` ③ 往返逐字节相同）。展示层据此**按需重算**该档的完整资源池，
+   * 而不是随点携带 41.5KB 的整份引擎结果（实测：整份结果 41.5KB/点 vs 差分 2.1KB/点）。
+   *
+   * 缺省不采（`opts.sceneOf` 未给）⇒ 该字段缺席，页面显示「该档未采现场」而不是编一个。
+   */
+  sceneBase?: Record<string, unknown>
   /**
    * 该道的期键（环境模式 = 调用方给的道 key；**自身实力模式 = null**，行数 = 预设数）。
    * 调用方靠它把行认回自己的道（一个预设可以有多行 —— 环境模式下每期一行）。
@@ -248,6 +269,11 @@ export interface AltAxisPoint {
  */
 export function computeDifficultyCurves(scenario: AnalysisContext, options: DifficultyCurveOptions): DifficultyCurveRow[] {
   const { config: configStore, calc } = scenario
+  /**
+   * **求值起点的整份现场**（运行基线）——必须在任何改写之前采（`clearDifficultyLevers` / `applyBossRoom` /
+   * 每道的 apply 都在下面），否则差分就不是相对起点、而是相对半路状态（重放会漏掉前面的改动）。
+   */
+  const sceneBase = options.collectScenes ? captureState(configStore) : null
   const baseAxis = configStore.getAxisState()
   const rows: DifficultyCurveRow[] = []
   applyBossRoom(configStore, options.boss, options.phase)
@@ -321,6 +347,13 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
         minGainRatio: options.minGainRatio,
         axisScanSteps: options.axisScanSteps,
         capture: ctx => captureLadderSnapshot(ctx.config, ctx.calc),
+        // 每档现场差分（含被轴砍掉的档）：展示层按需重算该档资源池，见 `DifficultyCurveOptions.collectScenes`
+        // ⚠ 闭包里直接用 `configStore`（= 传给阶梯的那个 `ctx.config` 本身，同引用）：`LadderCtx.config` 的
+        // 静态类型 `ConfigModel` 不含 `$state`（差分读它），而 `sceneOf` 的入参类型由阶梯给定 ⇒ 用闭包
+        // 而不是改签名，也不必写 `as unknown as` 断言。
+        ...(sceneBase
+          ? { sceneOf: () => ({ base: sceneBase, delta: stateDeltaOf(sceneBase, captureState(configStore)) }) }
+          : {}),
         // x 轴 = 自动算的操作难度（不是手填代价）
         costOf: ctx => measureOperationalDifficulty(ctx, preset, options.difficultyWeights),
         base: (ctx, team) => {
@@ -336,6 +369,7 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
         presetId: preset.id,
         name: preset.name,
         ladder,
+        ...(sceneBase ? { sceneBase } : {}),
         periodKey: lane.key,
         periodId: lane.key === null ? null : lane.phase.phaseId,
         // 环境模式带上队名：同一期往往有多支队，只写期标签在图例/摘要里分不出谁是谁
@@ -1071,6 +1105,12 @@ export interface CurveDatum {
    * null = 本点没被砍（交互足量交付、时间线也没截断）。口径见 `truncationHintAt`。
    */
   hint: TruncationHint | null
+  /**
+   * 这一点的**现场差分**（仅当 `DifficultyCurveOptions.collectScenes` 开着才在）——
+   * 页面「点曲线上的点 → 看那一档资源池」的数据源（重放现场 + 重算，不随点携带 41.5KB 的整份结果）。
+   * 判据：`difficultyCurve.test.ts::★ 重放每点现场 ⇒ 重算伤害与该点 dmg 逐位相等`。
+   */
+  scene?: LadderPointScene
 }
 
 /** 被砍的爬梯点：`hint` 必有、`point !== 'baseline'`（`CurveSeries.truncated` 的元素） */
@@ -1116,6 +1156,11 @@ export interface CurveSeries {
    * 本字段是「曲线从哪个难度起才成立」的唯一数据源；`points` 为空 = 这条曲线一个点都不成立。
    */
   axisTruncated: AxisTruncatedPoint[]
+  /**
+   * 该道的**求值起点现场**（值快照；本次运行所有道共用一份）。与每个点的 `scene.delta` 配对重放。
+   * 仅当 `collectScenes` 开着才在（缺省 undefined ⇒ 页面显示「该档未采现场」而不是编一个）。
+   */
+  sceneBase?: Record<string, unknown>
   /** ④ 相对 ① 的伤害增量（「难度上升 ⇒ 总伤上升」的机器判据；实测可为负，如实上报不隐藏） */
   gain: number
   /** 曲线只有起点一点（②③ 都缺失且 ④ 无增益）：没有可优化的空间 */
@@ -1291,6 +1336,7 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       changes: diffKeyCounts(r.ladder.points[i - 1]?.counts, p.counts),
       dmgChanges: diffDmgBySource(r.ladder.points[i - 1]?.dmgBySource, p.dmgBySource),
       hint: truncationHintAt(r.ladder.points, i),
+      ...(p.scene ? { scene: p.scene } : {}),
     }))
     return {
       presetId: r.presetId,
@@ -1322,6 +1368,7 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       axisPointMissing: r.ladder.axisPointMissing,
       // 轴要求未满足而被截断的档位（不在 points 里）——「曲线从哪个难度起才成立」的数据源
       axisTruncated: r.ladder.axisTruncated,
+      ...(r.sceneBase ? { sceneBase: r.sceneBase } : {}),
       gain: r.ladder.gain,
       // 「平坦」= ②③ 都缺失且 ④ 无实质增益（此时曲线只有 ①④ 两点且同高）
       flat: r.ladder.points.length <= 2 && Math.abs(r.ladder.gain) <= 1e-6,

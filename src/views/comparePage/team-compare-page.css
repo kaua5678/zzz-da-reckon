@@ -331,3 +331,32 @@
 .curve-flat {
   opacity: 0.6;
 }
+
+/* 曲线点的**点选命中区**（T181：点曲线上的点 ⇒ 展开该档资源池）。
+   可见圆只有 r=3.5（太小点不中），故外包一层 r=9 的透明圆接指针事件；
+   该档没采现场（collectScenes 未开）时不给 pointer 光标 —— 点不动就是点不动，别假装能点。 */
+.curve-hit {
+  cursor: default;
+}
+.curve-hit:not([class*='curve-hit-on']) {
+  cursor: default;
+}
+svg .curve-hit {
+  cursor: pointer;
+}
+/* 选中态：外圈描边（用页面墨色，深浅主题都可读） */
+.curve-hit-on {
+  stroke: var(--app-text-solid);
+  stroke-width: 1.2;
+  stroke-dasharray: 2, 2;
+}
+
+/* 逐点资源池面板里的三张资源卡（与结果页/归档页同一版式） */
+.resource-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 1200px) {
+  .resource-cards { grid-template-columns: 1fr; }
+}

@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { captureState, deltaKeys, restoreStateDelta, stateDeltaOf } from '@/composables/configDelta'
+import { captureState, dedupeSceneBases, deltaKeys, restoreStateDelta, stateDeltaOf } from '@/composables/configDelta'
 import { applyBossRoom } from '@/composables/bossRoom'
 import { teamPresets } from '@/data/teamPresets'
 import { cloneConfigState } from '@/composables/analysisScenario'
@@ -64,6 +64,17 @@ describe('config 现场差分', () => {
       restoreStateDelta(config, base, delta)
       expect(plain(config.$state), '重放后的现场必须与采集时逐字节相同').toBe(plain(now))
     }
+  })
+
+  it('⑤ 基线去重：内容相同的两份归一成同一对象（省内存）；内容不同**不得**复用（否则重放写错现场）', () => {
+    const a = { team: [{ agentId: '1611' }], mechanicSettings: {} }
+    const sameContent = { team: [{ agentId: '1611' }], mechanicSettings: {} }
+    const different = { team: [{ agentId: '1141' }], mechanicSettings: {} }
+    const [x, y, z, undef] = dedupeSceneBases([a, sameContent, different, undefined])
+    expect(x, '第一份原样保留').toBe(a)
+    expect(y, '内容相同 ⇒ 复用同一个对象（省一份 10.9KB 的拷贝）').toBe(a)
+    expect(z, '内容不同 ⇒ 绝不复用').toBe(different)
+    expect(undef, 'undefined 原样通过（该行没采现场）').toBeUndefined()
   })
 
   it('④ 差分确实更省：典型档位差分 < 整份现场的 1/3，且结构化克隆可传（worker 边界）', async () => {

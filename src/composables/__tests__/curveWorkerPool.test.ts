@@ -106,6 +106,8 @@ function makeFakeWorker(catalog: Awaited<ReturnType<typeof setupHarness>>['catal
           presets: [preset as never],
           boss: (request as unknown as { boss: BossPreset }).boss,
           phase: (request as unknown as { phase: BossPresetPhase }).phase,
+          // 与真实 worker 同构：请求里开了 collectScenes 就采现场（判据 ⑥ 用）
+          collectScenes: (request as unknown as { collectScenes?: boolean }).collectScenes,
         })
         for (const row of rows) send({ type: 'row', presetIndex: index, row })
       } finally {
@@ -202,6 +204,22 @@ describe('难度曲线 worker 池', () => {
       },
     })
     expect(outcome.rows.map(r => r.presetId).sort(), '崩掉那一队必须由别的 worker 算出来').toEqual([...TEAMS].sort())
+  }, 300_000)
+
+  it('⑥ 基线去重：内容相同的 `sceneBase` 在整批后归一成同一个对象（省内存）', async () => {
+    const { catalog, config } = await setupHarness(['', '', ''], { recommendedBuild: false })
+    await catalog.loadBuildRecommendations()
+    const presets = TEAMS.slice(0, 3).map(id => teamPresets.find(p => p.id === id)!)
+    const outcome = await runDifficultyCurves({
+      ...makeRequest(config, presets),
+      collectScenes: true,
+    } as never, {
+      createWorker: () => makeFakeWorker(catalog, { delayOf: () => 1 }),
+    })
+    const bases = outcome.rows.map(r => r.sceneBase).filter(Boolean)
+    expect(bases.length, '开了 collectScenes ⇒ 每行都要有基线').toBe(outcome.rows.length)
+    // 同一次运行里基线内容相同（源现场同一份）⇒ 必须是同一个对象引用
+    expect(bases.every(b => b === bases[0]), '内容相同的基线必须复用同一对象').toBe(true)
   }, 300_000)
 
   it('⑤ 协议形状：row 消息必须带 presetIndex（归位的唯一依据）', async () => {
