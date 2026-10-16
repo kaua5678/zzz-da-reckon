@@ -136,6 +136,25 @@
         </div>
       </div>
 
+      <!-- 弃轴提示（用户口径 2026-10-16：「用户选择了轴就是想看轴，悄悄退化等于欺骗用户」；
+           且要「引导用户提高合轴率」。非轴模式恒不显示——那种模式没有资源要求）。
+           ⚠ 放在状态卡**下方、面板与 tabs 之前**：它改变的是「下面这些数是怎么算出来的」，
+           必须比伤害数字先被读到。 -->
+      <n-alert v-if="axisNotice.show" type="warning" size="small" class="axis-fallback-alert">
+        <template #header>{{ axisNotice.title }}</template>
+        <div style="font-size:12px;line-height:1.7">
+          <div>{{ axisNotice.detail }}</div>
+          <div v-if="axisNotice.action === 'raise-absorb'" class="axis-fallback-actions">
+            <n-button size="tiny" type="primary" @click="showComboAlignModal = true">
+              去调合轴率
+            </n-button>
+            <span class="axis-fallback-hint">
+              当前 {{ Math.round(axisNotice.currentAbsorb * 100) }}% → 可试到 {{ Math.round(axisNotice.ceiling * 100) }}%
+            </span>
+          </div>
+        </div>
+      </n-alert>
+
       <!-- 最终面板与乘区（局外→局内，调命座/装备后用于核对最终属性是否生效） -->
       <FinalPanel v-if="hasTeam" :effect-coverages="effectiveWEngineCoverages" />
 
@@ -782,6 +801,7 @@ import TeamDamage3DChart from '@/components/charts/TeamDamage3DChart.vue'
 import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf, truncationHint as truncationHintOf } from '@/composables/teamTimeSummary'
 import { computePerSlotBuildUp } from '@/composables/positionCompare'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'
+import { axisFallbackNoticeOf } from '@/composables/axisFallbackNotice'
 import { comboAlignEditable, totalComboAlignTimeOf } from '@/composables/resourceCalc/comboAlignDisplay'
 import type { AnomalyEventRecord } from '@/types/resource'
 
@@ -808,7 +828,25 @@ const {
   ultPromoteCount,
   ultPromoteHug60,
   effectiveWEngineCoverages,
+  autoActive,
 } = useResourceCalc()
+
+/**
+ * **弃轴提示**（用户口径 2026-10-16：「用户选择了轴就是想看轴，**悄悄退化等于欺骗用户**」，
+ * 且要「**引导用户提高合轴率**」）。
+ *
+ * 判据住 `composables/axisFallbackNotice.ts`（纯函数 + 单测），本处只注入读数：
+ *  · `fallback` = 引擎 `convergence.axisFallback`（唯一事实源，不自己拼语义）；
+ *  · `axisRequested` = 手动轴开关 **或** 自动轴命中（两者任一都表示「用户期望看到轴」）；
+ *  · 吸收率从机制设置读（用户可调旋钮）。
+ *
+ * ⚠ **非轴模式恒不提示**：那种模式没有资源要求，合轴率保持缺省是正常的（用户口径第一句）。
+ */
+const axisNotice = computed(() => axisFallbackNoticeOf(
+  configStore,
+  resourceResult.value?.convergence.axisFallback === true,
+  autoActive.value,
+))
 
 /** 琉音好评转大收敛拆分（60=吃连携窗口 / 90=无窗口白送；90 = 总转大 − 60），注入结果卡展示（零求值影响） */
 const liuyinHugSplit = computed(() => ({
