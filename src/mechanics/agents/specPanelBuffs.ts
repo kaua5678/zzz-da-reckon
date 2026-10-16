@@ -572,7 +572,7 @@ function pushJufufuExec(
   category: string,
   count: number,
   multiplier: number,
-  opts: { override?: boolean; dmgBonus?: number; skillDamageTarget?: SkillExecution['skillDamageTarget']; note?: string; element?: string } = {},
+  opts: { override?: boolean; dmgBonus?: number; skillDamageTarget?: SkillExecution['skillDamageTarget']; note?: string; element?: string; autoSplitByStun?: boolean } = {},
 ) {
   if (count <= 0 || multiplier <= 0) return
   executions.push(moduleExecRow({
@@ -585,6 +585,7 @@ function pushJufufuExec(
     damageMultiplierOverride: opts.override ?? true,
     element: opts.element ?? 'fire',
     dmgBonus: opts.dmgBonus ?? 0,
+    ...(opts.autoSplitByStun ? { autoSplitByStun: true } : {}),
     skillDamageTarget: opts.skillDamageTarget,
     skillTableNote: opts.note ?? '',
   }))
@@ -733,7 +734,19 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
       {
         dmgBonus: c6Bonus,
         skillDamageTarget: 'chain',
-        note: `虎釜震煞 ×${cycle.tigerChainCount}（威风 ${cycle.aweTotal.toFixed(0)}/100；影画6 连携+${c6Bonus}%）`,
+        /**
+         * **T179（2026-10-16 用户口径）**：虎釜震煞是**后台连携自动攻击** ⇒ 走通用 `autoSplitByStun`，
+         * **不按捏轴认领**。
+         *
+         * 用户逐字：「我说的自动是**橘福福后台连携**，扳机后台攻击，章鱼触手cd，卢西娅后台追击」。
+         *
+         * 次数 = `floor(威风总量 / 100)`，而威风来自**虎威后台自动攻击**（`floor(后场时间/4s)`，
+         * 见 `jufufuTigerRoarMechanic` 的「后台每 4 秒 1 次（用户确认）」）⇒ **纯自动**。
+         * 修前实测（锁 2 窗，基准轴放别槽块）：手捏虎釜块会把它的易伤归属切乱
+         * （`c=2 吃1.5 + c=22 吃1.0`），而它本该按**失衡时间占比**统一拆。
+         */
+        autoSplitByStun: true,
+        note: `虎釜震煞 ×${cycle.tigerChainCount}（威风 ${cycle.aweTotal.toFixed(0)}/100；影画6 连携+${c6Bonus}%；后台自动行，按失衡时间占比吃易伤）`,
       },
     )
 
