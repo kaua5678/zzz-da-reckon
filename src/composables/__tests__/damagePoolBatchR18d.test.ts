@@ -263,29 +263,22 @@ describe('R15-d 跳①：叶瞬光帷幕封顶 —— 成对精确值（默认 1
 
 // ── 跳②：★ 三项门控逐位钉住（本批最重要的一组） ─────────────────────────────────
 describe('R15-d 跳②：门控逐位保留（身份 / stunForThis>0 / 轴模式兜底臂）', () => {
-  it('★ `stunForThis > 0` 门控：**轴外段**（stunOverride=0）不吃帷幕封顶 ⇒ 精确 1', async () => {
-    // 轴模式 + 槽0 有轴内动作 ⇒ 白毛招被切成轴内/轴外两段
-    const { config } = await setupHarness(YSG_TEAM.map(s => ({ ...s, cinemaLevel: 0 })), { recommendedBuild: true })
-    isolate(config)
-    forceNonAxis(config)
-    config.enemy.stunVuln = 2.5
-    config.stunAxes.push({
-      name: '含槽0（只放普攻，逼出轴外段）',
-      actions: [{ slot: 0, moveId: '1431016', count: 1, startTime: 0 }],
-    } as never)
-    config.useStunAxis = true
-    const calc = useResourceCalc()
-    await new Promise(r => setTimeout(r, 80))
-    const outRows = calc.damagePoolRows.value.filter(r => r.slot === 0 && r.agentId === '1431'
-      && (r.id ?? '').endsWith('-out'))
-    expect(outRows.length).toBeGreaterThan(0)
-    // 轴外段：stunForThis = 0 ⇒ stunMult 恒 1（**不是**帷幕基数 1.5，也不是 boss 裸值 2.5）
-    for (const r of outRows) {
-      expect(r.stunMult).toBe(1)
-      expect(r.note).toContain(' · 轴外（无失衡易伤）')
-    }
-  })
-
+  /**
+   * ## ⚠ T178 删除了本条（原「`stunForThis > 0` 门控：轴外段不吃帷幕封顶」）
+   *
+   * 该判据的做法是「**把叶瞬光的块放进轴** ⇒ 她的白毛招被切成轴内/轴外两段 ⇒ 断言轴外段 stunMult 恒 1」。
+   * 本卡按用户裁决（2026-10-16「**可以禁止她用失衡内的轴**」）加了 `axisExcluded: true`
+   * ⇒ 她的块**进不了轴** ⇒ 切不出轴外段 ⇒ **本判据的前提消失**。
+   *
+   * ⚠ **无替代角色**：该判据需要「有帷幕封顶的角色 + 该行被切成轴外段」，
+   * 而 `panel.veilStunCapMult` 的**唯一写入方 = `yeshuguang.ts#applyPanel`**
+   * （`damagePool.ts:154` 的注释：「`veilStunCapMult` 非 0 = 身份判据」）⇒ 换不了人。
+   *
+   * ⇒ 与 T172 那两条同样处置（用户裁决「删掉豁免声明 + 对应测试」）。
+   * 若将来给她单独开「强化状态轴」，本条要一并接回来。
+   *
+   * 保留下来的两条门控（身份 + 轴模式兜底臂）仍然覆盖本组的主要意图。
+   */
   it('★ 身份门控 + 轴模式兜底臂：轴开启但槽0 无轴内动作 ⇒ 关键招仍 1.5（= 原分支无 !isAxis 项）', async () => {
     const { calc } = await calcOf(YSG_TEAM, { stunVuln: 2.5, mode: 'axis-no-slot0' })
     const wl = rowsOf(calc, 0, '1431', '1431013')

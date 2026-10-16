@@ -779,6 +779,7 @@ export interface AgentMechanicModule {
   axisMoveMeta?: Readonly<Record<string, { tag: string; cost: number }>>
   /** 轴编辑器候选池隐藏的招式（CC-57；展示层专用）。现唯一：伊德海莉 1051012 裸极寒重碾（用连段表达能量消耗更准，避免误导闪能计算） */
   axisHiddenMoves?: readonly string[]
+  axisExcluded?: boolean // T178 用户裁决：本角色不用失衡内轴（唯一=叶瞬光 1431）；消费方 roundInputs#isStaleAxisActionFor + StunAxisPage 候选池
   /**
    * 非喧响终结技（CC-448；展示层专用）：由术法值 / 赠送等触发、不走喧响条的终结技 moveId，轴编辑器不给 60/90 转大变体选项。
    * 现唯一：仪玄 1371020 符法千重（原 StunAxisPage#isPromotable 写死）。

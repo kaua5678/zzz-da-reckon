@@ -62,6 +62,14 @@ export function isStaleAxisActionFor(
 ): boolean {
   if (act.moveId === 'basic' || act.moveId === 'norma-hat-chain') return false
   const own = team[act.slot]?.agentId ?? ''
+  /**
+   * T178（用户裁决 2026-10-16）：**本角色声明不用失衡内轴 ⇒ 落在它槽里的轴块一律丢弃**。
+   * 用户逐字：「因为我已经捏了他的3种强化状态的流程了。**失衡次数是用来计数连携的**。
+   * 所以她已经有自己的所谓爆发轴了。**可以禁止她用失衡内的轴**」。
+   * 现唯一声明者 = 叶瞬光 1431（`yeshuguang.ts#axisExcluded`）。
+   * 走本函数 = 复用既有的「残留块丢弃」通路（UI 标灰 + 引擎不执行），无需新机制。
+   */
+  if (own && getAgentMechanic(own)?.axisExcluded) return true
   if (axisActionResolvableBy(own, act, catalog)) return false
   for (const other of catalog.agentSkillsByAgentMap.keys()) {
     if (other !== own && axisActionResolvableBy(other, act, catalog)) return true

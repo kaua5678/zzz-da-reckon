@@ -297,7 +297,7 @@ import { NCollapse, NCollapseItem, NButton, NInput, NInputNumber, NSelect, NSwit
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { agentCombos, agentAxisBlockActionTime, teamOwnsAxisGash, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentAxisMoveBadge, agentAxisDurationInput, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLanes, agentAxisNonDecibelUltimates, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel } from '@/composables/agentMechanicView'
+import { agentCombos, agentAxisBlockActionTime, teamOwnsAxisGash, agentAxisBlockMarks, agentAxisMoveMeta, agentAxisHiddenMoves, agentAxisMoveSuffix, agentAxisMoveBadge, agentAxisDurationInput, agentOwnsPromoteVariantAxisBlocks, teamPromoteVariantOwnerSlot, agentAxisRageCombos, agentAxisExtraBlocks, teamAxisWindowLanes, agentAxisNonDecibelUltimates, teamAxisPresetChapterOwnerSlot, axisPresetPreferredLabel, agentExcludedFromAxis } from '@/composables/agentMechanicView'
 import type { AxisEditorBlockMark } from '@/mechanics/types'
 import type { TeamAxisWindowLane } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport, prefillPresetGuarantee } from '@/data/stunAxisPresets'
@@ -806,6 +806,14 @@ const allMoves = computed(() => {
       // 模块声明隐藏的招式（CC-57，现唯一 = 伊德海莉裸极寒重碾 1051012：用连段表达能量消耗更准，避免误导闪能计算）
       // CC-392：伴随子行（并入 agentAxisHiddenMoves）与 CD / 时间驱动的自动行（autoSplitByStun）放进轴不起作用，不进候选池
       if (exec.autoSplitByStun || agentAxisHiddenMoves(c.agentId).includes(exec.moveId)) continue
+      /**
+       * T178（用户裁决 2026-10-16）：**本角色不用失衡内轴 ⇒ 整个槽不进候选池**。
+       * 用户逐字：「因为我已经捏了他的3种强化状态的流程了。**失衡次数是用来计数连携的**。
+       * 所以她已经有自己的所谓爆发轴了。**可以禁止她用失衡内的轴**」。
+       * 现唯一声明者 = 叶瞬光 1431（`axisExcluded`）；引擎侧**同源判据**见
+       * `resourceCalc/roundInputs#isStaleAxisActionFor`（两处读同一字段 ⇒ 手编预设也拦得住）。
+       */
+      if (agentExcludedFromAxis(c.agentId)) continue
       // 固定轴：资源不足（count 0）的招式也显示为 ×0 灰色块，供轴放置/标记 60/90 转大；
       // 连携/赠送动作的可用数按失衡次数兜底（连携可用 = 失衡次数）。
       const mid = exec.moveId

@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
-import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   computeOutsideSwordGain,
   computeYeshuguangCycle,
@@ -436,81 +435,13 @@ describe('帷幕易伤封顶（用户 2026-09-01 裁决：吃满基础+易伤buf
   })
 })
 
-describe('★ 斩妄开天（1431027）不扣喧响——收尾大招不是喧响大（T172，用户口径 2026-10-15）', () => {
-  beforeEach(() => { newPinia(); mockStaticFetch() })
-
-  /**
-   * ## 锁什么
-   *
-   * 用户口径逐字：
-   * > 「很多角色都有多个大招，虽然有大招标签，但其实**不是喧响大**。但实际这种是**不耗喧响**的，
-   * >   **术法大自己消耗术法值，不消耗喧响**。还有什么**叶瞬光斩妄开天是收尾，不消耗喧响**。」
-   *
-   * **原文实证**（`data/raw/nanoka_missing/full/1431.json` 的 `skill.chain.description`，逐字）：
-   *  · `1431025`（逐云惊霆）：「**喧响等级达到[极]时**，点按 发动：……若消耗了喧响值，
-   *    则可以在该次[明心境]中点按 发动不消耗喧响值的[终结技：斩妄开天]」⇒ 喧响买的是它；
-   *  · `1431027`（斩妄开天）：「消耗喧响值发动[终结技：逐云惊霆]后，……**该招式不消耗喧响值**」
-   *    ⇒ 原文**逐字**写明不消耗喧响。
-   *
-   * 修前缺陷：编排层判「是不是大招」只看英文名是否以 `Ultimate:` 开头
-   * （`data/chainMoveKind#chainMoveKind`）⇒ 斩妄开天（EN `Ultimate: Cleaving Heavens`）
-   * 与逐云惊霆**各收一次 3000**，一次「逐云+斩妄」共 6000 —— 而原文语义是 1:1（一次喧响买一对）。
-   *
-   * ## 判据形状（照抄 yixuanSmoke 的 ★ 用例）
-   *
-   * 轴里同时捏「真喧响大」（`1431025` 逐云惊霆）与「不扣喧响的大」（`1431027` 斩妄开天），
-   * 断言 `stackTraversalResult.decibelUsed` **只含真喧响大那份 3000**。
-   *
-   * ## 负控（删掉被锁行为后本测试确实变红）
-   *
-   * 删掉模块的 `axisMoveFreeOfDecibel` 声明 ⇒ 下面第一条断言 3000 → 6000，**当场红**。
-   */
-  it('轴里同放逐云惊霆 + 斩妄开天 ⇒ 栈只收 3000（斩妄免喧响）', async () => {
-    await setup([{ agentId: '1431', cinemaLevel: 0 }, { agentId: '1031', cinemaLevel: 0 }, { agentId: '1491', cinemaLevel: 0 }])
-    const config = useConfigStore()
-    config.useStunAxis = true
-    config.stunAxes = [
-      {
-        name: '对账轴', count: 1,
-        actions: [
-          { slot: 0, moveId: '1431025', count: 1 }, // 逐云惊霆：**真喧响大**，应扣 3000
-          { slot: 0, moveId: '1431027', count: 1 }, // 斩妄开天：收尾，**不应扣喧响**
-        ],
-        basicFillerSlot: 0,
-      },
-    ]
-    config.enemy.stunCountLock = 1
-    const calc = useResourceCalc()
-    const st = calc.stackTraversalResult.value
-    expect(st, '轴应被注入（否则本判据零覆盖）').not.toBeNull()
-    expect(st!.decibelUsed, '斩妄开天不该扣喧响（只应扣逐云惊霆的 3000）').toBeCloseTo(3000, 6)
-    // 反空洞：真喧响大**必须**照扣（否则「都免了」也能让上一条变绿）
-    expect(st!.decibelUsed, '逐云惊霆是真喧响大，必须照扣').toBeGreaterThan(0)
-    // 该块仍占窗口时间（只免喧响、不免时间）
-    const exec = Object.values(st!.executed).find(e => e.moveId === '1431027')
-    expect(exec, '斩妄开天仍应被执行（免的是喧响不是执行）').toBeTruthy()
-  })
-
-  /**
-   * 反空洞（第二臂）：**只放逐云**时照扣 3000。
-   *
-   * 为什么需要这一臂：上面的用例只证明「两块同放时不双收」。若把声明写成
-   * `axisMoveFreeOfDecibel: () => true`（或把逐云也一起免掉），上面仍绿——而**逐云才是
-   * 喧响的购买点**（原文「喧响等级达到[极]时」）。本臂钉死「免的只有收尾那一个 moveId」。
-   */
-  it('反空洞：单独放逐云惊霆仍扣 3000（免的是斩妄，不是整个角色）', async () => {
-    await setup([{ agentId: '1431', cinemaLevel: 0 }, { agentId: '1031', cinemaLevel: 0 }, { agentId: '1491', cinemaLevel: 0 }])
-    const config = useConfigStore()
-    config.useStunAxis = true
-    config.stunAxes = [{
-      name: '单块轴', count: 1,
-      actions: [{ slot: 0, moveId: '1431025', count: 1 }],
-      basicFillerSlot: 0,
-    }]
-    config.enemy.stunCountLock = 1
-    const calc = useResourceCalc()
-    const st = calc.stackTraversalResult.value
-    expect(st).not.toBeNull()
-    expect(st!.decibelUsed, '逐云惊霆是喧响的购买点，必须照扣 3000').toBeCloseTo(3000, 6)
-  })
-})
+/**
+ * ## ⚠ T178 删除了 T172 的「斩妄开天不扣喧响」两条用例（**用户裁决：删掉**）
+ *
+ * 原用例靠「把 `1431025` / `1431027` 放进轴」来验证 `axisMoveFreeOfDecibel` 豁免。
+ * 本卡按用户裁决「**可以禁止她用失衡内的轴**」加了 `axisExcluded: true`
+ * ⇒ 她的块**再也进不了轴** ⇒ 该豁免的可达路径消失（死代码）⇒ 声明与用例一并删。
+ *
+ * 原文事实保留在 `yeshuguang.ts`（`axisExcluded` 附近）备查：
+ * 「该招式**不消耗喧响值**」——将来若给她单独开「强化状态轴」，这条要一并接回来。
+ */

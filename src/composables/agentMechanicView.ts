@@ -138,6 +138,21 @@ export function agentAxisHiddenMoves(agentId: string | null | undefined): readon
   return axisHiddenMovesOf(agentId) // CC-393：规则下沉 mechanics/registry（resourceCalc 的 [表] 判定也要用，不得反向依赖本门面）
 }
 
+/**
+ * **本角色是否不用失衡内轴**（T178，用户裁决 2026-10-16）——模块声明 `axisExcluded`。
+ *
+ * 用户逐字：「因为**我已经捏了他的3种强化状态的流程了**。**失衡次数是用来计数连携的**。
+ * 所以**她已经有自己的所谓爆发轴了**。**可以禁止她用失衡内的轴**」。现唯一声明者 = 叶瞬光 1431。
+ *
+ * ⚠ 与 `agentAxisHiddenMoves` 的分工：那个是**逐个 moveId** 隐藏，且**引擎不读**
+ * （伊德海莉的 `1051012` 仍被 6 处预设捏着**且有产出**）⇒ **不能**拿它表达「整槽禁用」；
+ * 本函数是**整角色级**，且**引擎侧有同源判据**（`roundInputs#isStaleAxisActionFor`）
+ * ⇒ 手编预设也拦得住（展示层的限制不是安全边界）。
+ */
+export function agentExcludedFromAxis(agentId: string | null | undefined): boolean {
+  return !!(agentId && getAgentMechanic(agentId)?.axisExcluded)
+}
+
 /** 轴编辑器候选块名后缀（CC-57）：模块声明 `axisMoveSuffix`；未声明 ⇒ ''。原位置 StunAxisPage.vue 写死 1371 + 1371022/1371026 */
 export function agentAxisMoveSuffix(agentId: string | null | undefined, moveId: string): string {
   return (agentId ? getAgentMechanic(agentId)?.axisMoveSuffix?.[moveId] : undefined) ?? ''
