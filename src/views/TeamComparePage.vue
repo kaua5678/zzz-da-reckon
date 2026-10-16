@@ -949,7 +949,7 @@ import { useCurvePointPool } from '@/composables/curvePointPool'
 import { deltaKeys } from '@/composables/configDelta'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import { useLogicEditorStore } from '@/stores/logicEditor'
-import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, type CurveDatum, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
+import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, axisWorseThanNoAxis, type CurveDatum, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
 import type { KnobPointName } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
@@ -2075,9 +2075,22 @@ const curveHoverTips = computed(() => {
   const major = majorChanges(point.changes)
   const minor = point.changes.length - major.length
   const attr = point.dmgChanges.length > 0 ? attributeDmgChanges(point.dmgChanges, 3, 1) : null
+  /**
+   * 非轴对照 + 坏轴提示（用户口径 2026-10-16）：
+   * · 非轴参照 = 「同一支队关掉轴、易伤按时间均匀摊」的伤害（用户要的「模拟均匀战斗」对照）；
+   * · 轴 < 非轴 ⇒ **这条轴比不打轴还差**（用户原话：「如果轴内捏一些垃圾招，可能还不如非轴」）——
+   *   提示用户复查这条轴，**不是引擎缺陷**（见 `axisWorseThanNoAxis` 头注释）。
+   */
+  const na = point.noAxis
+  const worse = axisWorseThanNoAxis(point)
+  const vsNoAxis = na && na.dmg > 0
+    ? (point.dmg >= na.dmg
+        ? `｜非轴参照 ${compact(na.dmg)}（集中利用多赚 ${fmt((point.dmg / na.dmg - 1) * 100, 1)}%）`
+        : `｜非轴参照 ${compact(na.dmg)}（⚠ 打轴反而亏 ${fmt((1 - point.dmg / na.dmg) * 100, 1)}%）`)
+    : ''
   return [
     s.name,
-    `操作难度 ${fmt(point.cost, 0)} 点 · 伤害 ${compact(point.dmg)}（${fmt(point.ratio, 1)}%）`,
+    `操作难度 ${fmt(point.cost, 0)} 点 · 伤害 ${compact(point.dmg)}（${fmt(point.ratio, 1)}%）${vsNoAxis}`,
     attr
       ? `较上一档 Δ ${signedDmg(attr.totalDelta)} ← ${attr.top.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') || '（无正贡献）'}${attr.squeezed.length > 0 ? `｜挤掉 ${attr.squeezed.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、')}` : ''}`
       : '本点无伤害变化（全关起点）',
@@ -2085,6 +2098,8 @@ const curveHoverTips = computed(() => {
     major.length > 0
       ? `跃迁：${major.map(c => cntRangeWithDmg(c, point.dmgChanges)).join('、')}${minor > 0 ? `（另有 ${minor} 项小数级微调）` : ''}`
       : (minor > 0 ? `仅小数级微调 ${point.changes.map(cntRange).join('、')}` : '本档无次数变化'),
+    // 坏轴提示（用户 2026-10-16：「轴内捏一些垃圾招，可能还不如非轴」）——提示复查预设，不是引擎缺陷
+    ...(worse ? [`⚠ 这条轴比不打轴还差 ${compact(worse)}（轴内可能有低收益招式）⇒ 建议复查该预设的轴`] : []),
     // 截断提醒（用户 2026-10-06）：只有被砍的档才有这一行
     ...(point.hint ? [`⚠ ${truncHintText(point.hint)}`] : []),
     s.flat
