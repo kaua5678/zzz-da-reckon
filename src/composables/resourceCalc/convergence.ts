@@ -58,6 +58,7 @@ import { calcTeamResources } from '@/core/resource'
 import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
 import { chainMoveKind } from '@/data/chainMoveKind'
+import { axisMoveFreeOfDecibelOf } from './helpers'
 import { applyTeamMechanics, collectNextRoundFeedback, resolveMechanicSettings } from './panelPhases'
 import { enrichExecutionPlan, axisMoveEndsStunWindow, axisMoveActionTimeOf, normalizeDisplayTime } from './helpers'
 
@@ -286,7 +287,19 @@ export function createRunCalcRound(deps: {
     // 弹刀注入槽位 0（主C，弹刀喧响经伴随覆盖全队），轮间经 prevDecibelParry 线程收敛。
     const decibelParryActive = guaranteeUltimate && interactionTopUpSlot < 0
 
-    /** 轴内某槽位终结技块总次数（× 窗口数）。判定走 `chainMoveKind`（CC-319：只认 chain 分类，青衣普攻 Penultimate 不算） */
+    /**
+     * 轴内某槽位**真·喧响大**的块总次数（× 窗口数）——判据走 `chainMoveKind`
+     * （CC-319：只认 chain 分类，青衣普攻 Penultimate 不算）。
+     *
+     * ⚠ **T171（2026-10-15）与 `roundInputs` 的收费判据同源**：名字带 `Ultimate:` ≠ 由喧响购买
+     * （仪玄符法千重是**术法值**买的、叶瞬光斩妄开天是收尾）。本函数数的是「**需要多少喧响**」，
+     * 故与收费侧共用同一个豁免判据 `axisMoveFreeOfDecibelOf`——否则会把不耗喧响的块算进缺口
+     * ⇒ 补出**本不需要的弹刀**（T162「幻影缺口」同族）。
+     *
+     * ⚠ **今天不可触发**（唯一声明 `computeInteractionTopUp` 的是般岳，它没有非喧响大），
+     * 但任何「有非喧响大 + 声明补齐能力」的角色一上线就会踩 ⇒ 属**潜在同族缺陷**，
+     * 与收费侧同批修掉（规则 11 单一事实源：两处判据必须同源）。
+     */
     const axisUltimateNeed = (axes: StunAxis[], stunCountN: number, slot: number): number => {
       const winAlloc = allocateAxisWindows(axes, stunCountN)
       let n = 0
@@ -295,7 +308,10 @@ export function createRunCalcRound(deps: {
         for (const act of axis.actions) {
           if (act.slot !== slot || act.sourceTag === 'gift') continue
           const skills = catalogStore.agentSkillsByAgentMap.get(configStore.team[slot]?.agentId ?? '')
-          if (chainMoveKind(skills, act.moveId) === 'ultimate') n += act.count * wins
+          if (chainMoveKind(skills, act.moveId) !== 'ultimate') continue
+          // 与收费侧同源：不扣喧响的块**不进喧响缺口**（用户口径「术法大自己消耗术法值，不消耗喧响」）
+          if (axisMoveFreeOfDecibelOf(configStore.team[slot]?.agentId, act.moveId)) continue
+          n += act.count * wins
         }
       })
       return n

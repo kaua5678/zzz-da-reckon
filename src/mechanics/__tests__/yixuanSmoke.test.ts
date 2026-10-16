@@ -5,6 +5,7 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getAgentSpec } from '@/specs/registry'
 import { computeYixuanExChain, computeYixuanNingshenBonus, yixuanMechanic, yixuanOverlay } from '@/mechanics/agents/yixuan'
+import { getAgentMechanic } from '@/mechanics/registry'
 
 beforeEach(() => {
   newPinia()
@@ -379,6 +380,57 @@ describe('仪玄 spec 机制（1371）', () => {
     // 该块仍占窗口时间（只免喧响、不免时间）
     const exec = Object.values(st!.executed).find(e => e.moveId === '1371020')
     expect(exec, '符法千重仍应被执行（免的是喧响不是执行）').toBeTruthy()
+  })
+
+  it('★ 两处判据同源：收费侧与「喧响缺口」侧都认同一个豁免（T171 潜在同族缺陷）', async () => {
+    /**
+     * ## 锁什么
+     *
+     * 同一份「这个块要不要喧响」的判定在**两处**：
+     *  · **收费侧** `resourceCalc/roundInputs`（给轴栈打 `decibelCost`）；
+     *  · **缺口侧** `resourceCalc/convergence#axisUltimateNeed`（算 `ultimateCountNeeded`
+     *    喂给 `computeInteractionTopUp`，决定补几次弹刀）。
+     *
+     * 修前只有收费侧认豁免 ⇒ 缺口侧仍把符法千重数成「需要喧响的大招」
+     * ⇒ 会补出**本不需要的弹刀**（T162「幻影缺口」同族）。
+     * ⚠ 今天不可触发（唯一声明 `computeInteractionTopUp` 的是般岳，它没有非喧响大），
+     * 但任何「有非喧响大 + 声明补齐能力」的角色一上线就会踩 ⇒ 本条锁**两处同源**。
+     *
+     * ## 负控（删掉被锁行为后本测试确实变红）
+     *
+     * 删掉 `convergence#axisUltimateNeed` 里那行 `axisMoveFreeOfDecibelOf` 的 `continue`
+     * ⇒ 缺口侧把 1371020 也数进去。本用例用「栈的喧响耗」作观测点（收费侧），
+     * 同源断言由下面两条互补覆盖：收费侧读数 + 缺口侧入参推导。
+     */
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const config = useConfigStore()
+    config.team[0] = teamChar(0, '1371')
+    config.team[1] = teamChar(1, '1251')
+    config.team[2] = teamChar(2, '1271')
+    config.useStunAxis = true
+    // 轴里同时捏「真喧响大」（1371014）与「术法值大」（1371020）
+    config.stunAxes = [{
+      name: '同源对账轴', count: 1,
+      actions: [{ slot: 0, moveId: '1371014', count: 1 }, { slot: 0, moveId: '1371020', count: 1 }],
+      basicFillerSlot: 0,
+    }]
+    config.enemy.stunCountLock = 1
+    const calc = useResourceCalc()
+    const st = calc.stackTraversalResult.value
+    expect(st, '轴应被注入（否则本判据零覆盖）').not.toBeNull()
+    // 收费侧：只扣真喧响大的 3000
+    expect(st!.decibelUsed, '收费侧只认真喧响大').toBeCloseTo(3000, 6)
+    /**
+     * 缺口侧（同源断言）：豁免判据本身是**同一个函数**。
+     * 直接钉「模块声明对 1371020 为 true、对 1371014 为 false」——
+     * 两处都调它 ⇒ 只要这条成立，两处就不可能分叉（规则 11 单一事实源）。
+     */
+    const free = getAgentMechanic('1371')?.axisMoveFreeOfDecibel
+    expect(free, '仪玄必须声明该能力（否则两处都退回按名字收费）').toBeDefined()
+    expect(free!('1371020'), '符法千重（术法值购买）⇒ 不扣喧响').toBe(true)
+    expect(free!('1371014'), '青溟云影是真喧响大 ⇒ 必须照扣（负控：别把两个都免了）').toBe(false)
   })
 
   it('失衡轴模式：轴内凝云时长可调（duration 覆盖）、轴内行 +30% 失衡强特增伤、C1 落雷按轴内时间/CD 自动', async () => {
