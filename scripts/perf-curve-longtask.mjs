@@ -39,11 +39,17 @@
  *   --url <URL>        默认 http://127.0.0.1:8099/
  *   --label <名字>     读数落盘文件名（默认 `run-<时间戳>`），如 before / after
  *   --teams <n>        选前 n 队（默认 3；n=1 时单队原子段最干净）
+ *                      ⚠ 只作**上限**：页面按「按主C快选」第一项筛队，该主C有 1 队时就只跑 1 队
+ *                      （实测「「席德」」= 2 队）——读数里 `dom.summaryRows` 才是实际队数。
  *   --out <目录>       读数输出目录，默认 /tmp/zzz-perf-curve
  *   --port <端口>      CDP 端口，默认 9231（与 ui-check 的 9222 错开，可并行）
  *   --wait-timeout <ms> 等结果上限，默认 300000
  *   --wait-for <选择器|表达式> 结果判据，默认 `.curve-seg`
  *   --keep-open        跑完不关浏览器
+ *   --pool <n>         覆盖 worker 池大小（`window.CURVE_WORKER_POOL=n`；1 = 池化前的串行形态）
+ *                      —— 同一份构建里做 A/B，比跨构建对照可信（T181 用它量并行加速）
+ *   --main-c <文本>    「按主C快选」里选哪个主C（缺省第一个）；队数取决于该主C有几支队
+ *                      （实测：「席德」2 队、「克拉蕾」5 队）
  *
  * 退出码：0 = 量到了读数；1 = 起不来 / 动作没命中 / 超时（读数不可信就不冒充成功）。
  */
@@ -67,6 +73,8 @@ const LABEL = arg('label', `run-${Date.now()}`)
 const TEAMS = Number(arg('teams', '3'))
 const WAIT_TIMEOUT = Number(arg('wait-timeout', '300000'))
 const WAIT_FOR = arg('wait-for', '.curve-seg')
+const POOL = arg('pool', '')
+const MAIN_C = arg('main-c', '')
 const CHROME_LIBS = process.env.CHROME_LIBS || arg('chrome-libs', '') || join(homedir(), '.local', 'chrome-deps')
 
 /** 找 Chromium：优先 chrome-headless-shell（依赖更少），其次完整 chrome（与 ui-check 同口径） */
@@ -285,9 +293,10 @@ try {
     return { ok: true }
   })()`))
   await step('等下拉选项', () => waitFor(`document.querySelectorAll('.n-base-select-option').length > 0`, 15000, '下拉'))
-  await step('选第一个主C', () => evaluate(`(() => {
+  await step(MAIN_C ? `选主C「${MAIN_C}」` : '选第一个主C', () => evaluate(`(() => {
     const opts = [...document.querySelectorAll('.n-base-select-option')]
-    const o = opts[0]
+    const want = ${JSON.stringify(MAIN_C)}
+    const o = want ? opts.find(x => (x.textContent || '').includes(want)) : opts[0]
     if (!o) return { ok: false, reason: 'NOT_FOUND(选项)' }
     o.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
     o.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
@@ -295,9 +304,29 @@ try {
     return { ok: true, text: (o.textContent || '').trim() }
   })()`))
   await sleep(600)
+  // 上限 n：页面默认「按主C快选」第一项可能只有 1~2 队；不足 n 时补勾同分类的其余队。
+  // 为什么需要（实测 2026-10-16 T181）：该主C只有 2 队时，池化前后都是 2 队，
+  // 量出来的墙钟差不代表 8 队的收益 —— 而「并行加速」这条结论正是要靠多队才看得见。
+  await step(`补勾到 ${TEAMS} 队`, () => evaluate(`(async () => {
+    const cur = () => Number((document.body.textContent.match(/已选\\s*(\\d+)\\s*队/) || [])[1] ?? 0)
+    const boxes = () => [...document.querySelectorAll('.n-checkbox')]
+      .filter(b => !b.classList.contains('n-checkbox--disabled'))
+    let added = 0
+    for (const b of boxes()) {
+      if (cur() >= ${TEAMS}) break
+      const input = b.querySelector('input')
+      if (input?.checked) continue
+      input?.click()
+      added++
+      await new Promise(r => setTimeout(r, 30))
+    }
+    return { added, now: cur() }
+  })()`))
   await step('读已选队数', () => evaluate(`(document.body.textContent.match(/已选\\s*(\\d+)\\s*队/) || [])[1] ?? null`))
 
   // 3) 装探针 → begin → 点计算 → 等结果 → finish
+  // 池大小覆盖（A/B 用）：必须在「计算曲线」之前写，池大小是每次运行的入参
+  if (POOL) await step(`池大小 = ${POOL}`, () => evaluate(`(window.CURVE_WORKER_POOL = ${Number(POOL) || 1}, window.CURVE_WORKER_POOL)`))
   await step('装探针', () => evaluate(INSTALL_PROBE))
   const observer = await evaluate(`window.__perf.observer`)
   if (observer !== 'longtask') failures.push(`PerformanceObserver('longtask') 不可用：${observer}`)

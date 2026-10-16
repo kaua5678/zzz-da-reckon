@@ -27,6 +27,13 @@
  * ⇒ 不但没变慢（−2.2%），主线程阻塞**归零**；且 3 队 `base`/`final` 与主线程**逐位相同**
  * （85856056.3863818 / 75769070.26204889 / 64320742.757028736）。
  *
+ * ## 池化（2026-10-16 T181：单 worker 串行 → N worker 动态领队）
+ *
+ * 池化前只有 1 个 worker、队在它内部 `for` 串行 ⇒ 单队 0.8–9.6s、8 队实测 **34.3s**，
+ * 而机器 16 核、单 worker 只占 1 核。同队集 4 进程并行实测 **12.5s（2.7×）**、内存 +31MB/进程
+ * ⇒ 池化是**近乎线性的纯提速**（数值路径零改动：worker 调的仍是同一个 `computeDifficultyCurves`）。
+ * 池大小 = `min(6, 队数)`（见 `curveWorkerPoolSize`），调度与不变量见 `runWithWorkerPool`。
+ *
  * ## 硬约束
  *
  * - **只搬不改**：worker 调用的就是同一个 `computeDifficultyCurves`，`computeDifficultyCurves`
@@ -43,9 +50,10 @@
  *   base 从 85.86M 变 37.43M）。
  *
  * 判据：`__tests__/difficultyCurveWorker.test.ts`（① `DifficultyCurveRow` 的 structuredClone 契约
- * ② 无 Worker 环境回落主线程且与直接调用**逐位相同**）。
+ * ② 无 Worker 环境回落主线程且与直接调用**逐位相同** ③ **池化调度**：假 worker 下动态派发 / 顺序归位 /
+ * 中止保留已算部分 / 单 worker 死亡后重派）。
  *
- * @fact engine:难度曲线/运行线程 口径: 难度曲线整批跑在 Web Worker 里（worker 自建 pinia+catalog、自 fetch 静态数据、逐队回传 `DifficultyCurveRow`）；无 `Worker` 的环境（node/vitest）与 worker 启动失败（一行未产出）**回落主线程原路径**，回落语义 = 改动前逐字相同；中止仍是优雅式（停算 + 保留已算部分），worker 模式下 `terminate()` 即时硬停 | 据 任务@2026-10-09（两条路取舍以实测为准：B 的最大不可切块 p50=511/p90=1545/max=2293ms 且恒定是 G2 联合搜索 apply，切不到 50ms 以下；A 墙钟不亏且阻塞归零） | 验 src/composables/__tests__/difficultyCurveWorker.test.ts | 锚 src/composables/difficultyCurveRunner.ts#runDifficultyCurves | 信 确认
+ * @fact engine:难度曲线/运行线程 口径: 难度曲线整批跑在 **Web Worker 池**里（池大小 `min(6, 队数)`，见 `curveWorkerPoolSize`；worker 自建 pinia+catalog、自 fetch 静态数据、init 一次后逐队领活，逐行回传带 `presetIndex` 的 `DifficultyCurveRow` ⇒ **结果顺序 = 输入顺序**）；无 `Worker` 的环境（node/vitest）与 worker 启动失败（一行未产出）**回落主线程原路径**，回落语义 = 改动前逐字相同；中止仍是优雅式（停算 + 保留已算部分），worker 模式下 `terminate()` 即时硬停；单 worker 崩溃 ⇒ 它未算完的队**重派**给别的 worker（不整批放弃） | 据 任务@2026-10-09（两条路取舍以实测为准：B 的最大不可切块 p50=511/p90=1545/max=2293ms 且恒定是 G2 联合搜索 apply，切不到 50ms 以下；A 墙钟不亏且阻塞归零）+ 实测@2026-10-16（单 worker 串行 8 队 34.3s vs 4 进程并行 12.5s = 2.7×；内存 +31MB/进程） | 验 src/composables/__tests__/difficultyCurveWorker.test.ts | 锚 src/composables/difficultyCurveRunner.ts#runDifficultyCurves | 信 确认
  * ⟳复核: 引擎新增影响 calcOutput 的**实例参数或线程局部状态**时复核——worker 内的 memo / 模块级单例是**另一份**（`useResourceCalc` 的跨实例共享只在同线程成立），若将来有状态不能只靠 postMessage 的输入重建，则本口径的「逐位不变」前提失效 | 到期 2027-01-09
  */
 import { toRaw } from 'vue'
@@ -126,19 +134,57 @@ export function toCloneable<T>(value: T): T {
   return out as T
 }
 
-/** 主↔worker 消息（worker 逐队回传，便于进度与「中止保留已算部分」） */
+/**
+ * 主↔worker 消息。
+ *
+ * ## 协议（池化后）
+ *
+ * 主 → worker：`{type:'init', request}`（建场景 + 自 fetch 静态数据，完成后回 `ready`）
+ * → 之后每条 `{type:'preset', index}` 算**一个**预设（预设表在 `request.presets` 里，索引寻址，
+ * 不重复传队伍数据）。
+ *
+ * worker → 主：`ready` / `progress` / `row`（带 `presetIndex`，主线程按它归位 ⇒ 结果顺序与输入一致）
+ * / `presetDone`（主线程据此派下一个队）/ `error`。
+ */
 export type CurveWorkerMessage =
+  /** 场景就绪（catalog 三件套 + 行融合规则 + 源现场都建好了），可以开始派队 */
+  | { type: 'ready' }
   | { type: 'progress'; index: number; total: number; name: string }
-  | { type: 'row'; row: DifficultyCurveRow }
-  /** 全部队跑完（正常收尾） */
-  | { type: 'done' }
+  | { type: 'row'; presetIndex: number; row: DifficultyCurveRow }
+  /** 该预设算完（含 0 行的情形）——主线程据此把下一个队派给这个 worker */
+  | { type: 'presetDone'; presetIndex: number }
   /** 中途失败：`error` 是原始 stack，**不吞**——调用方按「一行未产出」判是否回落主线程 */
   | { type: 'error'; error: string }
+
+/** 主 → worker 消息 */
+export type CurveWorkerRequest =
+  | { type: 'init'; request: CurveRunRequest }
+  | { type: 'preset'; index: number }
+
+/**
+ * worker 的最小契约。
+ *
+ * 为什么不用 DOM 的 `Worker` 类型：node/vitest 没有它，而**池化调度本身**（动态派发 / 顺序归位 /
+ * 中止 / 单 worker 死亡后重派）正是最容易错、也最值得测的部分。声明这个窄接口后，测试可以注入一个
+ * 「假 worker」（同步跑同一套 `computeDifficultyCurves`），在 node 里把池化路径完整跑一遍
+ * ——这是 worker 化以来第一次能测 worker 侧调度（此前只能测回落路径）。
+ */
+export interface CurveWorkerLike {
+  postMessage(message: unknown): void
+  terminate(): void
+  onmessage: ((e: { data: CurveWorkerMessage }) => void) | null
+  onerror: ((e: unknown) => void) | null
+}
 
 export interface CurveRunHooks {
   /** 中止信号（`batchTask#BatchRun.signal`）：worker 模式下即时 terminate，回落模式下在队边界生效 */
   signal?: AbortSignal
   onProgress?: (index: number, total: number, name: string) => void
+  /**
+   * **测试缝**：worker 工厂（缺省 = `new Worker(...)`，环境不支持时返回 null）。
+   * 生产不传 ⇒ 走真实 worker；测试传假 worker ⇒ 在 node 里跑通池化调度。
+   */
+  createWorker?: () => CurveWorkerLike | null
 }
 
 export interface CurveRunOutcome {
@@ -155,43 +201,149 @@ export function curveWorkerSupported(): boolean {
 }
 
 /**
- * 起一个 worker 跑完整批。**构造失败返回 null**（调用方回落主线程）；
- * 已起但中途报错则 resolve 出**已回传的行**（不吞异常：`error` 消息带原文，调用方自行判断是否回落）。
+ * 真实 worker 工厂（缺省路径）。
+ *
+ * `new Worker` 在 node/vitest 里必然抛（没有 Worker 构造子）⇒ 返回 null，调用方回落主线程。
+ * 生产环境构造失败（如 CSP 禁 worker）也返回 null，走同一条回落。
  */
-function startCurveWorker(req: CurveRunRequest, hooks: CurveRunHooks): Promise<CurveRunOutcome> | null {
-  let worker: Worker
+export function createCurveWorker(): CurveWorkerLike | null {
   try {
-    worker = new Worker(new URL('./difficultyCurveWorker.ts', import.meta.url), { type: 'module' })
+    return new Worker(new URL('./difficultyCurveWorker.ts', import.meta.url), { type: 'module' }) as unknown as CurveWorkerLike
   } catch {
     return null
   }
-  const rows: DifficultyCurveRow[] = []
+}
+
+/** 一个 worker 的运行时状态（池的最小单元） */
+interface PoolWorker {
+  worker: CurveWorkerLike
+  ready: boolean
+  /** 正在算的预设下标；null = 空闲 */
+  busy: number | null
+  /** 该 worker 已死（error / terminate）——不再派活，其已回传的行仍算数 */
+  dead: boolean
+}
+
+/**
+ * **worker 池调度**：N 个 worker 各建一次场景，按「谁空派谁」动态领队，结果按 `presetIndex` 归位。
+ *
+ * ## 为什么池化（实测 2026-10-16 T181）
+ *
+ * 此前只有 **1 个** worker、队在它内部 `for` 串行 ⇒ 单队 0.8–9.6s、8 队实测 **34.3s**，
+ * 而机器 16 核、单 worker 只占 1 核。同队集 4 进程并行实测 **12.5s（2.7×）**，几乎线性。
+ *
+ * ## 顺序与中止（两条不变量）
+ *
+ * 1. **结果顺序 = 输入顺序**：`rows` 预置成与 `presets` 等长的槽位，收到 `row` 时按
+ *    `presetIndex` 写进自己的槽 ⇒ 与串行版**逐位同序**（曲线图 / 摘要表都按输入顺序读）。
+ *    某个预设 0 行（环境模式下该期无道）时槽位保持空数组 ⇒ 拼接后自然跳过它。
+ * 2. **中止 = 优雅式（保留已算部分）**：中止即 `terminate()` 全部 worker，已回传的行照常发布
+ *    ——与单 worker 版 `terminate()` 的语义逐字相同（`batchTask` 的唯一口径）。
+ *
+ * ## 失败语义
+ *
+ * 某个 worker `error` / 崩掉 ⇒ 只把它标 `dead`，**它没算完的队重新入队**（另一个 worker 接着算），
+ * 不整批放弃。全部 worker 都死了且**一行未产出** ⇒ 由调用方回落主线程（与单 worker 版同判据）。
+ */
+function runWithWorkerPool(
+  req: CurveRunRequest,
+  hooks: CurveRunHooks,
+  factory: () => CurveWorkerLike | null,
+): Promise<CurveRunOutcome> {
+  const total = req.presets.length
+  /** 每个预设的结果行（槽位对齐输入顺序；同一预设多道 = 多行） */
+  const rows: DifficultyCurveRow[][] = req.presets.map(() => [])
+  /** 待派发的预设下标队列（FIFO；失败的 worker 把没算完的队塞回队首） */
+  const pending: number[] = req.presets.map((_, i) => i)
+  const pool: PoolWorker[] = []
+  const concurrency = Math.min(curveWorkerPoolSize(), Math.max(1, total))
+  let aborted = false
+  let settled = false
+  let anyRow = false
+  let doneCount = 0
+
   return new Promise<CurveRunOutcome>(resolve => {
-    let settled = false
-    let onAbort: (() => void) | null = null
-    const finish = (aborted: boolean) => {
+    const cleanup = () => {
+      if (hooks.signal && onAbort) hooks.signal.removeEventListener('abort', onAbort)
+      for (const w of pool) { try { w.worker.terminate() } catch { /* 已退出 */ } }
+    }
+    const finish = (wasAborted: boolean) => {
       if (settled) return
       settled = true
-      if (onAbort) hooks.signal?.removeEventListener('abort', onAbort)
-      try { worker.terminate() } catch { /* 已退出 */ }
-      resolve({ rows, aborted, usedWorker: true })
+      aborted = wasAborted
+      cleanup()
+      resolve({ rows: rows.flat(), aborted, usedWorker: true })
     }
-    worker.onmessage = (e: MessageEvent<CurveWorkerMessage>) => {
-      const m = e.data
-      if (m.type === 'progress') hooks.onProgress?.(m.index, m.total, m.name)
-      else if (m.type === 'row') rows.push(m.row)
-      else if (m.type === 'error') {
-        // 失败原文不吞：一行未产出的失败由调用方回落主线程，已产出部分照常发布
-        console.warn('[难度曲线] worker 计算失败：' + m.error)
-        finish(false)
-      } else finish(false)
-    }
-    worker.onerror = () => finish(false)
+    const onAbort = () => finish(true)
     if (hooks.signal?.aborted) { finish(true); return }
-    onAbort = () => finish(true)
     hooks.signal?.addEventListener('abort', onAbort, { once: true })
-    // 边界兜底：调用方可能递进响应式代理（页面 selectedBoss/selectedPhase 就是）⇒ 原样传必抛 DataCloneError
-    worker.postMessage(toCloneable(req))
+
+    /** 派活：给空闲且未死的 worker 各发一个队（没有待派就什么都不做） */
+    const dispatch = () => {
+      if (settled) return
+      for (const w of pool) {
+        if (settled) return
+        if (w.dead || !w.ready || w.busy !== null) continue
+        const next = pending.shift()
+        if (next === undefined) return
+        w.busy = next
+        w.worker.postMessage({ type: 'preset', index: next } satisfies CurveWorkerRequest)
+      }
+    }
+
+    for (let i = 0; i < concurrency; i++) {
+      const worker = factory()
+      if (!worker) break
+      const entry: PoolWorker = { worker, ready: false, busy: null, dead: false }
+      pool.push(entry)
+      worker.onmessage = (e: { data: CurveWorkerMessage }) => {
+        const m = e.data
+        if (settled) return
+        if (m.type === 'ready') { entry.ready = true; dispatch(); return }
+        if (m.type === 'progress') { hooks.onProgress?.(m.index, m.total, m.name); return }
+        if (m.type === 'row') {
+          anyRow = true
+          rows[m.presetIndex]?.push(m.row)
+          return
+        }
+        if (m.type === 'presetDone') {
+          entry.busy = null
+          doneCount++
+          if (doneCount >= total) { finish(false); return }
+          dispatch()
+          return
+        }
+        // error：原文不吞（诊断）；该 worker 未算完的队重派给别的 worker
+        console.warn('[难度曲线] worker 计算失败：' + m.error)
+        failWorker(entry)
+      }
+      worker.onerror = () => failWorker(entry)
+      // 边界兜底：调用方可能递进响应式代理（页面 selectedBoss/selectedPhase 就是）⇒ 原样传必抛 DataCloneError
+      worker.postMessage({ type: 'init', request: toCloneable(req) } satisfies CurveWorkerRequest)
+    }
+
+    /** 一个 worker 死了：它手上没算完的队塞回队首，其余 worker 接着算；全死且零产出 ⇒ 交由调用方回落 */
+    function failWorker(w: PoolWorker) {
+      if (settled || w.dead) return
+      w.dead = true
+      if (w.busy !== null) { pending.unshift(w.busy); w.busy = null }
+      const alive = pool.some(x => !x.dead)
+      if (!alive) {
+        if (anyRow) finish(false)
+        else resolveFallback()
+        return
+      }
+      dispatch()
+    }
+    /** 零产出且无可用 worker ⇒ 回落主线程（与单 worker 版「一行未产出」同判据） */
+    function resolveFallback() {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve({ rows: [], aborted: false, usedWorker: false })
+    }
+
+    if (pool.length === 0) resolveFallback()
   })
 }
 
@@ -219,20 +371,40 @@ async function runOnMainThread(req: CurveRunRequest, hooks: CurveRunHooks): Prom
 }
 
 /**
- * 跑一批难度曲线：**能起 worker 就用 worker，否则回落主线程**。
+ * 池大小（实测 2026-10-16 T181）：4 个 worker 已把 8 队的墙钟从 34.3s 压到 12.5s（2.7×）。
+ *
+ * 为什么不是「核数」（16）：每个 worker 是一整个引擎实例 + 自己的 catalog 副本
+ * （实测常驻 ~104MB/个，见 `docs/ARCHITECTURE.md` 的性能表），而本应用还要与
+ * `dsh web` / vite dev / 用户浏览器共享内存。上限 6 = 在 16 核机器上仍留足余量，
+ * 且预设数少时自动降（`min(6, 队数)`）——3 队的常见场景就是 3 个 worker。
+ *
+ * 可用 `CURVE_WORKER_POOL` 覆盖（排查/基准对比用；非正整数或 0 ⇒ 回落缺省）。
+ */
+export const CURVE_WORKER_POOL_MAX = 6
+export function curveWorkerPoolSize(): number {
+  // 与 `core/probeTrace` / `core/resource/foldLoop` 同款：运行时全局用 `unknown as` 收窄
+  // （判据 27 禁「类型字面量 as」——那是让缺字段对象编译通过的那一类断言）
+  const raw = Number((globalThis as unknown as { CURVE_WORKER_POOL?: unknown }).CURVE_WORKER_POOL ?? 0)
+  const n = Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : CURVE_WORKER_POOL_MAX
+  return Math.max(1, n)
+}
+
+/**
+ * 跑一批难度曲线：**能起 worker 就用 worker 池，否则回落主线程**。
  *
  * 回落判据 = 「worker 一行未产出且未中止」：预设非空时 worker 成功必然逐队产出，故 0 行只可能是
  * 启动/加载失败（如 worker 里 fetch 静态文件失败）。这条比「catch 异常」可靠——worker 的失败
  * 经 `onerror`/`error` 消息到达，不走 Promise rejection。
+ *
+ * ⚠ `hooks.createWorker` 只作用于 **worker 路径**（测试缝）：传了它就跳过 `curveWorkerSupported()`
+ * 的环境探测——测试要验的正是「池化调度」，而 node 里没有 `Worker`。
  */
 export async function runDifficultyCurves(req: CurveRunRequest, hooks: CurveRunHooks = {}): Promise<CurveRunOutcome> {
-  if (curveWorkerSupported()) {
-    const pending = startCurveWorker(req, hooks)
-    if (pending) {
-      const outcome = await pending
-      if (outcome.aborted || outcome.rows.length > 0 || req.presets.length === 0) return outcome
-      console.warn('[难度曲线] worker 未产出任何结果，回落主线程计算')
-    }
+  const factory = hooks.createWorker ?? (curveWorkerSupported() ? createCurveWorker : null)
+  if (factory) {
+    const outcome = await runWithWorkerPool(req, hooks, factory)
+    if (outcome.aborted || outcome.rows.length > 0 || req.presets.length === 0) return outcome
+    console.warn('[难度曲线] worker 未产出任何结果，回落主线程计算')
   }
   return runOnMainThread(req, hooks)
 }

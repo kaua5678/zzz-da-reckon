@@ -66,3 +66,37 @@
 
 `materializeRows` 1.53s（约 1/3 走「键集变化」慢路径：模块往 cfg **新增**同调用缓存键、恢复时 delete ⇒ cfg 变形）·
 `runInnerLoop` 0.73s · GC 0.63s · `iterateBody` 0.57s · `buildExecutions` 0.49s · `enrichExecutionPlan` 包含 0.55s。
+
+## 第 4 轮（2026-10-16 T181）：难度曲线**并行化**（不改引擎，改调度）
+
+用户报「目前的计算速度也很慢不知道什么情况」。拆解（探针 `.zc/perf/T181curvePerf.perf.ts`）：
+
+| 量 | 实测 |
+|---|---|
+| 单次全队求值（记忆化关） | **120ms**（memo 命中率 ~39%，miss 都是必要的新配置） |
+| 单队求值次数 | **35 miss / 22 hit**（① 1 + `joint` 11 + `slotLadder` 21 + 吸收网格 ≤20×2） |
+| 单队墙钟 | 0.8–9.6s（**最贵的是「全档被轴砍掉」的队**：0 出数点却扫满网格） |
+| memo 键序列化 | 0.43ms/次（≈1%，**不是**瓶颈） |
+| 8 队墙钟 | 串行（单 worker）**34.3s** → 4 进程并行 **12.5s** |
+
+⇒ 瓶颈是**调度**：此前只有 1 个 worker、队在它内部串行，16 核机器只用 1 核。改成 **worker 池**
+（`difficultyCurveRunner#runWithWorkerPool`，池大小 `min(6, 队数)`，动态领队 + 按 `presetIndex` 归位）。
+
+同一份构建的浏览器 A/B（`scripts/perf-curve-longtask.mjs --pool 1|6 --main-c 克拉蕾`，5 队 / 16 行）：
+
+| 池大小 | 墙钟（点按钮 → 出图） | 主线程最长 task |
+|---|---|---|
+| 1（池化前形态） | **8.89s** | 86ms |
+| 6 | **3.24s** | 88ms |
+
+⇒ **2.7×**，与进程级并行实测一致；主线程阻塞不变（worker 化已归零，池化只动墙钟）。
+
+**内存代价**：每个 worker 一个引擎实例 + 自己的 catalog 副本，实测常驻 **+31MB**（裸 fork 63MB →
+载入目录 + 首算 167MB，含 vitest 自身）；6 个 ≈ +190MB。池上限取 6（不是核数 16）就是为了这条。
+
+**不变量**（判据 `__tests__/curveWorkerPool.test.ts`，5 条）：结果顺序 = 输入顺序（`row.presetIndex` 归位）、
+动态派发（≥2 个 worker 领到活，防退回串行）、中止 = 优雅式（保留已算部分）、单 worker 崩溃 ⇒ 其未算完的队**重派**、
+`row` 必须带 `presetIndex`。
+
+**仍留的口子**（未做，量过但没论证清楚）：③ 的网格在「整档被轴砍」时扫满 20 步才放弃——那 7s/队的
+队就是这么来的；早停要过 `landingPointUniqueness`（落点唯一性）判据，属**改引擎语义**，不在本轮。
