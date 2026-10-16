@@ -531,6 +531,51 @@ export interface ReleaseModifier { enemyResReduction: number; enemyDefReduction?
 /** 四种交互的次数（弹刀 / 闪反 / 格挡 / 双反）：角色声明的默认（`interactionDefaults`）与职业基准同一形状 */
 export interface InteractionCounts { parry: number; dodge: number; block: number; dual: number }
 
+/**
+ * **交互爬升声明**（T173，用户口径 2026-10-15；见 `AgentMechanicModule.interactionClimb`）。
+ *
+ * ## 为什么需要它（与 `interactionDefaults` 的分工）
+ *
+ * `interactionDefaults` 只能表达「本角色会打哪些交互」+「从 0 爬到基准」。
+ * 而仪玄的后台墨影凝云是另一种形态——用户逐字：
+ * > 「**仪玄后台墨痕化形可以爬升，相当于白给的招式**，但注意**自动爬升上限是他已有后台的 50%**，
+ * >   不能说他后台全都在合轴。**这个值也可以调整**。」
+ *
+ * ⇒ 它是「**相对已有量按比例放宽**」的旋钮，不是「绝对值从 0 爬到某数」。故单列一条声明通道。
+ *
+ * ## 契约（三条，缺一条会静默失效）
+ *
+ * 1. `field` 是**次数类** store 字段（`ActionCountField`）——爬升 = 逐档 `setActionCount`；
+ * 2. `anchorOf(rr)` 读出**本轮**该角色的「已有量」（分母）。⚠ **必须按轮取**：它是收敛后的值
+ *    （外层不动点每轮都可能变），构建期算一次会把上限钉死在首轮；
+ * 3. `capOf(anchor, get)` 给出上限 = `floor(anchor × 比例)`，比例经 `get` 从**模块声明的
+ *    MechanicSetting** 读——**默认值只写在模块 settings 里**（规则 11 / CC-508 单一来源），
+ *    本契约不复制常量。
+ */
+export interface InteractionClimbInput {
+  /** 本轮装配后的全队资源结果（`calc.resourceResult.value`）；未就绪时调用方不入场 */
+  rr: TeamResourceResult
+  /** 槽位 → 本轮的交互对数值（设计草稿的另一形态；当前由 `anchorOf(rr)` 承担，保留给后续按槽声明） */
+  bySlot: ReadonlyMap<number, number>
+}
+/** `AgentMechanicModule.interactionClimb` 的形状（见 `InteractionClimbInput` 头注释） */
+export interface InteractionClimbDecl {
+  /** 被爬升的次数字段（`ActionCountField`；⚠ 哨兵语义字段不得声明进来——`0` 与「不做」同义的字段爬了会改语义） */
+  field: ActionCountField
+  /**
+   * **本轮已有量**（上限的分母）。参数是模块自己的结果行 `CharacterResourceResult`；
+   * 模块查不到自己那份 ⇒ 返回 0（= 无已有后台 ⇒ 上限 0 ⇒ 不爬，语义即「没得爬」）。
+   * ⚠ 用 `CharacterResourceResult` 而不是 cfg：已有量是**收敛后**的读数，cfg 上那份是输入。
+   */
+  anchorOf(rr: TeamResourceResult): number
+  /**
+   * **爬升终点上限**（该字段允许被写到的最大值，**含 anchor 本身**）：
+   * 「自动爬升 ≤ 已有后台 × 比例」⇒ 返回 `anchor + floor(anchor × 比例)`。
+   * 比例从 `get(settingId, default)` 读——**默认值只在模块 `settings` 声明里**（CC-508 单一来源）。
+   */
+  capOf(anchor: number, get: (settingId: string, fallback: number) => number): number
+}
+
 /** `expandAxisAction` 的入参（`actionTimeOf` 由编排层提供） */
 export interface AgentAxisActionExpandInput {
   slot: number

@@ -23,9 +23,11 @@ import { describe, it, expect, vi } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
+import { getAgentMechanic } from '@/mechanics/registry'
 import { applyTeamToStore } from '@/composables/teamCompare'
 import {
   absorbCapOf, climbDifficultyLadder, summarizeLadder, resetDifficultyGoals, clearDifficultyLevers, scanAbsorbGrid, climbFieldsOf,
+  applyRoleInteractionBaseline,
   optimizeInteractionsPerSlot, applyInteractionKnob, clearInteractions,
   type LadderCtx,
 } from '@/composables/difficultyLadder'
@@ -755,3 +757,108 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     expect(DEFAULT_COMBO_ALIGN_ABSORB_RATIO).toBe(0.4) // 缺省仍是 0.4（对照）
   })
 })
+
+describe('T173 后台墨痕化形可爬升（上限 = 已有后台 × 1.5，比例可调）', () => {
+  /**
+   * 用户逐字（2026-10-15）：
+   * > 「**仪玄后台墨痕化形可以爬升，相当于白给的招式**，但注意**自动爬升上限是他已有后台的 50%**，
+   * >   不能说他后台全都在合轴。**这个值也可以调整**。」
+   *
+   * ## 锁什么
+   *
+   * ① **进爬升面**：`climbFieldsOf` 含 `yixuanBackstageComboCount`（声明式 `interactionClimb`）；
+   * ② **上限 = anchor + floor(anchor × 比例)**，且 `anchorOf` 读的是**本轮结果行**（不是 cfg 输入）；
+   * ③ **改比例参数 ⇒ 上限跟着变**（用户口径「这个值也可以调整」）；
+   * ④ **爬升结果 ≤ 上限**（真管线端到端，不是只在纯函数上算）。
+   *
+   * ## 负控（必做）
+   *
+   * 把上限去掉（`optimizeInteractionsPerSlot` 里不判 cap）⇒ ④ 红（见收尾报告实测输出）。
+   */
+  const YX_CLIMB_PRESET = 'yixuan-trigger-lucia'
+
+  /** 跑「④ 的现场」：全关基线 → 全 0 交互 → 角色基准 → joint（= ladder ②③④ 的搜索起点） */
+  async function setupLadderPath() {
+    const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const ctx: LadderCtx = { config, calc }
+    const preset = teamPresets.find(x => x.id === YX_CLIMB_PRESET)!
+    resetDifficultyGoals(ctx, preset.team as [string, string, string])
+    applyInteractionKnob(ctx, 'zero')
+    applyRoleInteractionBaseline(ctx)
+    applyInteractionKnob(ctx, 'joint')
+    return { ctx, config, calc }
+  }
+
+  it('★ 声明式通道：仪玄的后台合轴进爬升面；哨兵字段（≤0=自动）仍在外面', async () => {
+    const { ctx } = await setupLadderPath()
+    const fields = climbFieldsOf(ctx)
+    expect(fields, '用户点名的后台墨痕化形必须能爬').toContain('yixuanBackstageComboCount')
+    /**
+     * ⚠ **哨兵语义字段不得进爬升面**（T171 已锁，本卡不改它）：
+     * `yixuanInk2Count` / `yixuanInk3Count` / `yixuanPerfectBlockCount` 的 `≤0` = **自动**
+     * ⇒ 爬它会把「自动吃满」变成「一次都不打」。
+     * 本卡给它们换的是**比例滑块**（`yixuanInk3Ratio`，是 MechanicSetting 不是 ActionCountField）。
+     */
+    for (const f of ['yixuanInk2Count', 'yixuanInk3Count', 'yixuanPerfectBlockCount', 'yixuanExtremeAssistCount']) {
+      expect(fields, `哨兵字段 ${f} 绝不能被自动爬升`).not.toContain(f)
+    }
+  }, 300_000)
+
+  it('★ 上限 = 已有后台 + floor(已有 × 比例)：读本轮结果行，且比例参数可调（改它上限跟着变）', async () => {
+    const { config, calc } = await setupLadderPath()
+    const climb = getAgentMechanic('1371')!.interactionClimb!
+    expect(climb.field).toBe('yixuanBackstageComboCount')
+
+    // ① anchor 读的是**本轮结果行**（不是 cfg 上的输入）：cfg 输入为 0 时 anchor 仍 > 0
+    expect(config.team[0]!.yixuanBackstageComboCount ?? 0, '前提：手动字段未填（走自动反推）').toBe(0)
+    const anchor = climb.anchorOf(calc.resourceResult.value!)
+    expect(anchor, 'anchor 必须读到自动反推出来的已有后台（>0）').toBeGreaterThan(0)
+
+    /**
+     * ② 上限闭式 = `anchor + floor(anchor × 比例)`，各档比例都验一次。
+     * ⚠ 比例走 `clampRatio`（仓库统一口径 [0,1]）⇒ 越界输入被钳到 1，
+     * 且**声明里的 `max` 也是 1**（UI 与实现同界，见 `yixuan.backstageClimbRatio` 声明）。
+     */
+    for (const ratio of [0, 0.25, 0.5, 1]) {
+      const cap = climb.capOf(anchor, () => ratio)
+      expect(cap, `ratio=${ratio}：cap = anchor + floor(anchor × ratio)`).toBe(anchor + Math.floor(anchor * ratio))
+    }
+    expect(climb.capOf(anchor, () => 2), '比例经 clampRatio 钳到 1（越界不得放大上限）').toBe(anchor * 2)
+    expect(climb.capOf(anchor, () => -1), '负比例钳到 0（= 不爬）').toBe(anchor)
+    // ③ 用户点名的默认：50% ⇒ 上限 = anchor × 1.5（正是用户说的「已有后台的 50%」）
+    expect(climb.capOf(anchor, (id, fb) => config.getMechanicSetting(id, fb)), '默认比例 = 0.5').toBe(anchor + Math.floor(anchor * 0.5))
+    expect(config.getMechanicSetting('yixuan.backstageClimbRatio', 0.5)).toBe(0.5)
+    // ④ 「这个值也可以调整」：改参数 ⇒ 上限跟着变（单调）
+    const capLo = climb.capOf(anchor, () => 0)
+    const capHi = climb.capOf(anchor, () => 1)
+    expect(capLo).toBe(anchor)
+    expect(capHi).toBe(anchor * 2)
+    expect(capHi).toBeGreaterThan(capLo)
+    // ⑤ anchor = 0 ⇒ cap = 0（「没得爬」）
+    expect(climb.capOf(0, () => 0.5)).toBe(0)
+  }, 300_000)
+
+  it('★ 端到端：逐槽阶梯爬完后「后台合轴 ≤ 上限」，且比例越大爬得越多', async () => {
+    for (const ratio of [0, 0.5, 1]) {
+      const { ctx, config, calc } = await setupLadderPath()
+      config.setMechanicSetting('yixuan.backstageClimbRatio', ratio)
+      const climb = getAgentMechanic('1371')!.interactionClimb!
+      const anchor = climb.anchorOf(calc.resourceResult.value!)
+      const cap = climb.capOf(anchor, (id, fb) => config.getMechanicSetting(id, fb))
+      optimizeInteractionsPerSlot(ctx)
+      const after = config.team[0]!.yixuanBackstageComboCount ?? 0
+      expect(anchor, '前提：该队有已有后台可爬').toBeGreaterThan(0)
+      expect(after, `ratio=${ratio}：爬升结果 ${after} 不得超过上限 ${cap}`).toBeLessThanOrEqual(cap)
+      /**
+       * ratio=0 ⇒ 上限 = anchor ⇒ **一步都爬不动** ⇒ 整步回滚把物化也撤掉，
+       * 字段回到进入阶梯前的值（本用例是 0 = 仍在自动档）。
+       * ⚠ 这里锁的是「没有净收益就不要落地」，不是「字段必须等于 anchor」——物化那一下
+       * 自己会动外层不动点（实测 −0.61%），故 ratio=0 时整步整体撤销才是正确行为。
+       */
+      if (ratio === 0) expect(after, 'ratio=0 ⇒ 上限 = anchor ⇒ 一步都爬不动 ⇒ 整步回滚到原值').toBe(0)
+    }
+  }, 900_000)
+})
+

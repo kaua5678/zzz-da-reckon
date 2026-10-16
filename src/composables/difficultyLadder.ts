@@ -61,6 +61,7 @@ import type { ResourceCalc } from '@/composables/useResourceCalc'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
 import { axisStateOf, axisStands, axisRequirementMet, axisTruncationReason, type AxisState } from '@/composables/difficultyAxis'
 import { getInteractionDefaults } from '@/mechanics/interactionBaseline'
+import { getAgentMechanic } from '@/mechanics/registry'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 
 export interface LadderCtx {
@@ -233,6 +234,18 @@ export function climbFieldsOf(ctx: LadderCtx): ActionCountField[] {
     // `block` / `dual` 是该表里唯二映射到「非基础字段」的项（parry/dodge 已在前两行）
     if (d.block > 0 && !seen.has('blockCount')) { out.push('blockCount'); seen.add('blockCount') }
     if (d.dual > 0 && !seen.has('dualCounterCount')) { out.push('dualCounterCount'); seen.add('dualCounterCount') }
+    /**
+     * ★ **比例型爬升声明**（T173，用户口径 2026-10-15）——「相对已有量按比例放宽」的旋钮
+     * （仪玄后台墨影凝云：上限 = 已有后台 × 1.5）。契约见 `typesHooks#InteractionClimbDecl`。
+     *
+     * ⚠ **形态与 `interactionDefaults` 不同，故单列一条通道**：那张表只能表达「从 0 爬到绝对值 N」，
+     * 而这些字段的起点是**本轮收敛出来的已有量**（每轮可能变）⇒ 起点与上限都要按轮从结果里取。
+     * ⚠ **哨兵语义字段依旧排除**：声明里 `field` 是模块显式写的（仪玄只声明了
+     * `yixuanBackstageComboCount`，没声明 `yixuanInk3Count`/`yixuanPerfectBlockCount`）
+     * ⇒ `0 = 自动` 的字段不会被爬（爬它会把「自动吃满」变「一次都不打」）。
+     */
+    const climb = getAgentMechanic(agentId)?.interactionClimb
+    if (climb && !seen.has(climb.field)) { out.push(climb.field); seen.add(climb.field) }
   }
   return out
 }
@@ -300,6 +313,43 @@ export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void
    *   ⇒ 白名单天然安全，不会把「自动吃满」爬成「一次都不打」。
    */
   const climbKeys = climbFieldsOf(ctx)
+  /**
+   * ★ **比例型爬升字段的按轮上限**（T173，用户口径 2026-10-15「**自动爬升上限是他已有后台的 50%**，
+   * 不能说他后台全都在合轴」）——返回该槽该字段**本轮允许爬到**的最大值；非比例型字段返回 `null`（无上限）。
+   *
+   * ## 口径（三条，缺一条即静默失效）
+   *
+   * 1. **上限在「进入本字段的阶梯前」取一次**：`anchor` 是**收敛后的读数**（不是构建期算的常量），
+   *    但**必须在写第一个值之前**读——见下方 ⚠ 自指陷阱。同一个字段在 ③/④ 各走一遍阶梯时各取一次
+   *    ⇒ 「按轮取」；换队/换档/收敛变了都会重新读。
+   * 2. **上限是「终点值」不是「增量」**：`capOf(anchor)` 返回 `anchor + floor(anchor × 比例)`，
+   *    故判据写成 `next <= cap`（而不是 `next - anchor <= 增量`）——两者等价，
+   *    因为阶梯是**从已有量往上走**的（`anchor` 就是起点），故「终点 ≤ 已有 × 1.5」即「增量 ≤ 已有 × 0.5」。
+   * 3. **anchor 只认声明字段所在槽**：`anchorOf(rr)` 由模块自己按结果行算（它知道自己是谁），
+   *    本函数只负责把 store 读取器递给它（`capOf` 的第二参），**不复制比例默认值**（规则 11）。
+   *
+   * ⚠ **anchor = 0 ⇒ 上限 = 0**（模块契约）：没有已有后台 ⇒ 一次都不能爬
+   * （「没得爬」的语义，与用户口径「不能说他后台全都在合轴」一致）。
+   *
+   * ## ⚠ 自指陷阱（**逐字改这条前必读**，2026-10-16 实测）
+   *
+   * 直觉写法是「每步重读 anchor」——**那是自指的，上限会随爬升自己长大**：
+   * 被爬字段是 `yixuanBackstageComboCount`（**手动**字段），而模块的锚读的是**本轮结果行**
+   * （`max(手动, 自动)`）⇒ 写下 `m` 之后 anchor 就变成 `m`、上限随之变成 `1.5m`
+   * ⇒ 每步 +50% 的**几何增长**，上限形同不存在。
+   * 实测（`.zc/perf/T134probe8.perf.ts`，`yixuan-trigger-lucia`，anchor=11）：
+   * `m=11 → anchorNow=11 capNow=16`、`m=12 → 12/18`、…、`m=17 → 17/25` ⇒ **cap 永不生效**，阶梯一路爬到 `maxCount`。
+   * ⇒ 正解 = **在写第一个值之前把 anchor 钉住**（它就是「已有后台」，爬升不应改变自己的分母）。
+   */
+  const climbCapAt = (slot: number, key: ActionCountField, which: 'cap' | 'anchor' = 'cap'): number | null => {
+    const agentId = ctx.config.team[slot]?.agentId
+    const climb = agentId ? getAgentMechanic(agentId)?.interactionClimb : undefined
+    if (!climb || climb.field !== key) return null
+    const rr = ctx.calc.resourceResult.value
+    if (!rr) return 0
+    const anchor = climb.anchorOf(rr)
+    return which === 'anchor' ? anchor : climb.capOf(anchor, ctx.config.getMechanicSetting)
+  }
   // 逐槽、逐类型坐标上升
   for (const key of climbKeys) {
     for (let slot = 0; slot < 3; slot++) {
@@ -308,9 +358,50 @@ export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void
       let prevExec = executedCount()
       let prevRows = poolRows()
       let prevSkips = skipCount()
+      /**
+       * ⚠ **必须在循环外、写第一个值之前取**（自指陷阱见 `climbCapAt` 头注释）：
+       * 每步重读 anchor 会让上限跟着爬升一起长大 ⇒ 门形同不存在（实测几何增长）。
+       */
+      const cap = climbCapAt(slot, key)
+      /**
+       * ★ **比例型字段的起点 = 已有量（anchor），不是 0**（T173）。
+       *
+       * 为什么必须显式落地（**实测，不是设计偏好**）：锚读的是**本轮结果行**，而手动字段为 0 时
+       * 结果行由引擎的自动反推提供（`backstageAutoFill`）⇒ 起点**在盘上不是 0、在 store 里是 0**。
+       * 只给上限不落地会产生两个错：
+       * ① 阶梯第 1 步把 0 写成 1 ⇒ 反推被**手动覆盖**顶掉 ⇒ 对数从 11 掉到 1 ⇒ 伤害**暴跌**
+       *    （实测 `yixuan-trigger-lucia`：57.16M → 5.34M）⇒ 接受门第 ① 条当场回滚，阶梯一步都走不动；
+       * ② 上限因此永远够不到（起点离上限 10+ 步，而第一步就被拒）。
+       *
+       * ⚠ **物化不是逐位 0 delta**（实测）：锚读的是**自动反推**那一份的读数，而把它写进手动字段后
+       * 外层不动点落点会变（实测 `yixuan-trigger-lucia`：auto `iter=2` / manual 写回 `iter=3`，
+       * 同为 12 对但伤害 57.913M → 57.561M，**−0.35M / −0.61%**）。⇒ 物化必须与随后的爬升**同生共死**：
+       * 整步（物化 + 爬升）结束时若**反而更差**，就把整步回滚（`materialized` 标记 + 末尾判据）。
+       * 这样「爬升」永远不会让 ④ 的天花板比不爬更低（本模块的单调性契约）。
+       */
+      const anchorStart = cap !== null ? climbCapAt(slot, key, 'anchor') : null
+      const cur0 = Number((ctx.config.team[slot] as unknown as Record<string, number | undefined>)?.[key] ?? 0)
+      let materialized = false
+      let dmgBeforeMaterialize = 0
+      if (anchorStart !== null && anchorStart > cur0) {
+        dmgBeforeMaterialize = ctx.calc.teamTotalDamage.value
+        ctx.config.setActionCount(slot, key, anchorStart)
+        materialized = true
+        // 物化改变了现场 ⇒ 接受门的四个读数全部重新基线（否则第一步会拿「物化前」的伤害比）
+        best = ctx.calc.teamTotalDamage.value
+        prevTrunc = truncated()
+        prevExec = executedCount()
+        prevRows = poolRows()
+        prevSkips = skipCount()
+      }
       for (let n = 0; n < maxCount; n++) {
         const cur = Number((ctx.config.team[slot] as unknown as Record<string, number | undefined>)?.[key] ?? 0)
         const next = cur + 1
+        /**
+         * ⚠ **上限门必须在写之前判**（写进去再回滚会让引擎多算一次、也会在别的判据上留下痕迹）：
+         * 越界即**视为阶梯终点**（`break`，与「加不动」同一条出路——它不是失败，是这条字段爬到头了）。
+         */
+        if (cap !== null && next > cap) break
         ctx.config.setActionCount(slot, key, next)
         const dmg = ctx.calc.teamTotalDamage.value
         const trunc = truncated()
@@ -349,6 +440,14 @@ export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void
           ctx.config.setActionCount(slot, key, cur) // 回滚：不涨 / 越界 / 挤掉动作
           break
         }
+      }
+      /**
+       * ⚠ **物化整步回滚**（T173；与上面注释的实测数字同源）：物化那一下自己会动外层不动点，
+       * 若整步走完（物化 + 后续爬升）**比物化前更低**，说明这一步净亏 ⇒ 整体还原成 `cur0`。
+       * 保证「爬升」不会让这一档的天花板比不爬低（本模块 ④ ≥ ① 的结构性保证之一）。
+       */
+      if (materialized && ctx.calc.teamTotalDamage.value + 1e-6 < dmgBeforeMaterialize) {
+        ctx.config.setActionCount(slot, key, cur0)
       }
     }
   }

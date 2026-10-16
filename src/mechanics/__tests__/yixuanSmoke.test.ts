@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { mockStaticFetch, newPinia } from '@/test/harness'
+import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { getAgentSpec } from '@/specs/registry'
-import { computeYixuanExChain, computeYixuanNingshenBonus, yixuanMechanic, yixuanOverlay } from '@/mechanics/agents/yixuan'
+import { DEFAULT_INK3_RATIO, computeYixuanExChain, computeYixuanNingshenBonus, splitInkByRatio, yixuanMechanic, yixuanOverlay } from '@/mechanics/agents/yixuan'
 import { getAgentMechanic } from '@/mechanics/registry'
 
 beforeEach(() => {
@@ -734,3 +734,117 @@ describe('CC-17：仪玄 directRowBonus（凝神，标量优先 / 轴臂桶 / �
     })).toBeNull()
   })
 })
+
+describe('T173 2连/3连比例滑块（用户口径 2026-10-15）', () => {
+  /**
+   * 用户逐字：
+   * > 「我预定的轴模式会**优先耗闪能**，剩下的能量就给**非失衡期的三连**……这两个不用在交互这里让用户填了，
+   * >   而是**用滑块让用户选择比例，全打3连或者全打2连或者在中间**。」
+   *
+   * ## 锁什么
+   *
+   * ① **三档比例（0 / 0.5 / 1）下 2连:3连 分配按比例变**；
+   * ② **总量守恒**：`ink2 + ink3` 不随比例变（比例只重分配，不改总量推导）；
+   * ③ **默认 r=1 逐位等于改前**（全 3 连 = 旧自动口径 ⇒ 未动滑块的队 0 delta）。
+   *
+   * ## 负控（必做）
+   *
+   * 把 `ink3RatioOf` 写死成 0（或忽略参数）⇒ 本用例红（见收尾报告实测输出）。
+   */
+  async function runRatio(ratio: number) {
+    await setupHarness([{ agentId: '1371' } as never, { agentId: '1251' } as never, { agentId: '1271' } as never])
+    const config = useConfigStore()
+    config.setMechanicSetting('yixuan.ink3Ratio', ratio)
+    const calc = useResourceCalc()
+    const chain = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!.yixuanExChain!
+    return { chain, dmg: calc.teamTotalDamage.value }
+  }
+
+  it('★ 三档比例：2连:3连 按比例分配，且总量守恒（0 → 全2连 / 1 → 全3连）', async () => {
+    /**
+     * ⚠ **纯函数层先锁守恒**（管线层会因外层不动点反馈有 ±1 的迭代差，见下条断言）：
+     * `splitInkByRatio(total, r)` 是**唯一**做分配的地方，它的契约是「只搬不改总量」。
+     */
+    for (const total of [0, 1, 3, 7, 15, 16, 23]) {
+      for (const r of [0, 0.25, 0.5, 0.75, 1]) {
+        const s = splitInkByRatio(total, r)
+        expect(s.ink2 + s.ink3, `total=${total} r=${r} 必须守恒`).toBe(total)
+        expect(s.ink2).toBeGreaterThanOrEqual(0)
+        expect(s.ink3).toBeGreaterThanOrEqual(0)
+      }
+    }
+    // 端点语义：0 = 全 2 连、1 = 全 3 连（用户口径「全打3连或者全打2连」）
+    expect(splitInkByRatio(15, 0)).toEqual({ ink2: 15, ink3: 0 })
+    expect(splitInkByRatio(15, 1)).toEqual({ ink2: 0, ink3: 15 })
+    // 中间：按比例（15 × 0.5 = 7.5 → round = 8 次 3 连，补数给 2 连）
+    expect(splitInkByRatio(15, 0.5)).toEqual({ ink2: 7, ink3: 8 })
+
+    // 真管线：三档比例下 3 连次数单调不降、2 连次数单调不增（方向判据，不锁具体收敛值）
+    const at = [] as Array<{ r: number; ink2: number; ink3: number; total: number }>
+    for (const r of [0, 0.5, 1]) {
+      const { chain } = await runRatio(r)
+      at.push({ r, ink2: chain.ink2Count ?? 0, ink3: chain.ink3Count ?? 0, total: (chain.ink2Count ?? 0) + (chain.ink3Count ?? 0) })
+    }
+    for (const a of at) {
+      if (a.r === 0) expect(a.ink3, 'r=0 = 全 2 连 ⇒ 0 次 3 连').toBe(0)
+      if (a.r === 1) expect(a.ink2, 'r=1 = 全 3 连 ⇒ 0 次 2 连').toBe(0)
+    }
+    expect(at[0]!.ink2, 'r=0 必须比 r=0.5 的 2 连多').toBeGreaterThan(at[1]!.ink2)
+    expect(at[2]!.ink3, 'r=1 必须比 r=0.5 的 3 连多').toBeGreaterThan(at[1]!.ink3)
+    /**
+     * ⚠ **总量守恒在管线层是「±1 迭代差」而不是逐位相等**（实测，写清免得后人误判为缺陷）：
+     * 分配结果反过来喂 `exSpecialCount`（`估算 2连/3连 的闪能消耗 → income → 循环当量`）⇒
+     * 外层不动点在不同分配下可能停在相邻档（实测 r=0/1 收到 14~15、r=0.5 收到 15~16）。
+     * ⇒ 这里锁的是**同一分配下的守恒**（纯函数已逐位锁死）+ 管线层**量级不漂**（≤2）。
+     */
+    for (const a of at) expect(Math.abs(a.total - at[0]!.total), `r=${a.r} 总量不得偏离基线 ${at[0]!.total} 超过 2`).toBeLessThanOrEqual(2)
+  }, 300_000)
+
+  it('★ 默认 r=1（全 3 连）= 改前自动口径：不设滑块与显式设 1 逐位相同（0 delta）', async () => {
+    /**
+     * 规则 10「不静默改数」的机器面：默认值必须复现改前行为，
+     * 否则全库所有仪玄队的读数都会在无人动过滑块的情况下变。
+     */
+    const { chain: withDefault, dmg: d1 } = await runRatio(1)
+    await setupHarness([{ agentId: '1371' } as never, { agentId: '1251' } as never, { agentId: '1271' } as never])
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    const chain = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!.yixuanExChain!
+    // 显式设 1 vs 缺省（注册 default = 1）
+    expect(chain.ink2Count).toBe(withDefault.ink2Count)
+    expect(chain.ink3Count).toBe(withDefault.ink3Count)
+    expect(chain.cloudOut).toBe(withDefault.cloudOut)
+    expect(chain.flashSpent).toBe(withDefault.flashSpent)
+    expect(calc.teamTotalDamage.value).toBeCloseTo(d1, 6)
+    expect(config.getMechanicSetting('yixuan.ink3Ratio', DEFAULT_INK3_RATIO)).toBe(1)
+  }, 300_000)
+
+  it('★ 手填优先：任一输入框填正数 ⇒ 比例滑块不生效（与既有 ≤0=自动 哨兵一致）', async () => {
+    /**
+     * 用户口径「这两个不用在交互这里让用户填了，而是用滑块」——但**手填通道没被删**
+     * （`yixuanSmoke` 多条既有用例锁着 2连×2+3连×1 的手填口径，删了会静默改它们的读数）。
+     * ⇒ 三档优先级：手填 3连 ≥1 ＞ 手填 2连 ≥1 ＞ 比例滑块。
+     */
+    await setupHarness([{ agentId: '1371' } as never, { agentId: '1251' } as never, { agentId: '1271' } as never])
+    const config = useConfigStore()
+    const calc = useResourceCalc()
+    // 比例设成 0（全 2 连），但手填 3连 = 1 ⇒ 必须仍打 1 次 3 连（比例不生效）
+    config.setMechanicSetting('yixuan.ink3Ratio', 0)
+    config.setActionCount(0, 'yixuanInk3Count', 1)
+    config.setActionCount(0, 'yixuanInk2Count', 2)
+    let chain = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!.yixuanExChain!
+    expect(chain.ink3Count, '手填 3连=1 ⇒ 比例 0 不得把它清成 0（哨兵语义）').toBe(1)
+    expect(chain.ink2Count, '手填 2连=2 原样').toBe(2)
+    // 只手填 2连 ⇒ 3连走改前的自动算式（不与比例相乘）
+    config.setActionCount(0, 'yixuanInk3Count', 0)
+    chain = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!.yixuanExChain!
+    expect(chain.ink2Count).toBe(2)
+    expect(chain.ink3Count).toBeGreaterThan(0)
+    // 清空两个手填 ⇒ 回到比例档（r=0 ⇒ 全 2 连、0 次 3 连）
+    config.setActionCount(0, 'yixuanInk2Count', 0)
+    chain = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!.yixuanExChain!
+    expect(chain.ink3Count).toBe(0)
+    expect(chain.ink2Count).toBeGreaterThan(0)
+  }, 300_000)
+})
+

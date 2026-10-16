@@ -1,6 +1,7 @@
 import { clampRatio, finiteOr0, positiveWholeCounts } from '@/utils/finiteClamp'
-import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
+import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, InteractionClimbDecl } from '../types'
 import type { ModuleFeedback } from '../types'
+import type { TeamResourceResult } from '@/types/resource'
 import { axisOverlayChannel, type AxisLike } from '../types'
 import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
@@ -165,6 +166,36 @@ const C4_STUN_EX_BONUS = 30
 // 影画6·动静相宜：
 const C6_GIFT_INTERVAL = 30 // [调息] 30s CD 最多获得一次（封顶 floor(战斗时间/30)）
 const DEFAULT_C6_GIFT_ULT_COUNT = -1 // 调息赠送符法千重次数：-1 = 自动取大招次数（喧响大的次数），滑块可调
+
+/**
+ * **2连 / 3连墨痕化形比例**（T173，用户口径 2026-10-15）。
+ *
+ * 用户逐字：
+ * > 「我预定的轴模式会优先耗闪能，剩下的能量就给非失衡期的三连……**这两个不用在交互这里让用户填了，
+ * >   而是用滑块让用户选择比例，全打3连或者全打2连或者在中间**。」
+ *
+ * - `0` = 全 2 连（40 闪能/次）· `1` = 全 3 连（60 闪能/次）· 中间按比例分配；
+ * - **总量口径不变**（这是本参数不改变任何既有推导的前提）：总次数 `T` 仍由闪能与轴内消耗推出
+ *   （`floor((闪能收入 − 轴内凝云消耗) / 60)`，与改前「自动 = 全打 3 连」的分子分母逐位相同），
+ *   **滑块只决定这 T 次里 2 连 : 3 连 的分配**；
+ * - **默认 `1`（全 3 连）= 改前的自动口径**，故未启用滑块的队伍数值**逐位不变**（规则 10：不静默改数）。
+ *
+ * ⚠ **哨兵语义**：`yixuanInk3Count` 的 `0` = 自动（不是「一次都不打」）⇒ 本参数与它**并存**且
+ * **手填优先**（见 `resolveYixuanAutoInputs`）；爬升面**不得**写这个字段（`climbFieldsOf` 白名单已排除）。
+ */
+export const DEFAULT_INK3_RATIO = 1
+
+/**
+ * 后台墨痕化形（墨影凝云合轴）**自动爬升上限比例**（T173，用户口径 2026-10-15）。
+ *
+ * 用户逐字：
+ * > 「**仪玄后台墨痕化形可以爬升，相当于白给的招式**，但注意**自动爬升上限是他已有后台的 50%**，
+ * >   不能说他后台全都在合轴。**这个值也可以调整**。」
+ *
+ * ⇒ 上限 = `已有后台 × 本值`，默认 `0.5`，**用户可调**（机制参数 `yixuan.backstageClimbRatio`）。
+ * 「已有后台」= **本轮**实际打出的合轴对数（收敛后的读数，按轮取，见 `interactionClimb.anchorOf`）。
+ */
+const DEFAULT_BACKSTAGE_CLIMB_RATIO = 0.5
 
 // 术法值驱动的符法千重实际次数（用户口径，文本框可填）：
 // -1 = 自动 = 全部（术法值理论可打次数 floor(术法值/120)）；手动填则封顶于理论可打次数。
@@ -550,37 +581,95 @@ function resolveYixuanExtremeAssists(
   return Math.min(assistInput >= 0 ? assistInput : cap, cap)
 }
 
+/**
+ * **2连 : 3连按比例分配**（T173 纯函数；`ratio` 0 = 全 2 连、1 = 全 3 连）。
+ *
+ * ⚠ **总数守恒是硬契约**（`ink2 + ink3 === total`，取整只在两者之间搬）：调用方传进来的
+ * `total` 由闪能推出，本函数**不改变总量**——它只回答「这 T 次里几次打 2 连」。
+ * 用户口径 2026-10-15：「这其实是一种**消耗资源的选择**……用滑块让用户选择比例」。
+ */
+export function splitInkByRatio(total: number, ratio: number): { ink2: number; ink3: number } {
+  const t = Math.max(0, Math.floor(total))
+  const r = Math.max(0, Math.min(1, Number.isFinite(ratio) ? ratio : DEFAULT_INK3_RATIO))
+  const ink3 = Math.round(t * r)
+  return { ink2: t - ink3, ink3 } // ⚠ 用减法取补数，保证守恒（不各算一次 round）
+}
+
+/** `cfg` 上的 2连/3连比例（机制参数 `yixuan.ink3Ratio`，缺省=声明 default） */
+function ink3RatioOf(cfg: AgentCharConfigInput['cfg']): number {
+  return clampRatio(cfgNum(cfg, 'yixuan.ink3Ratio'))
+}
+
 function resolveYixuanAutoInputs(
   cfg: AgentCharConfigInput['cfg'],
   income: number,
-  ink2: number,
+  ink2Manual: number,
   axisCloudSpent: number,
-): { ink3: number; perfectBlocks: number } {
+): { ink2: number; ink3: number; perfectBlocks: number } {
   const ink3Raw = Number(cfg.yixuanInk3Count ?? 0)
-  const ink3 = ink3Raw >= 1
-    ? Math.floor(ink3Raw)
-    : Math.floor(Math.max(0, income - ink2 * INK2_COST - axisCloudSpent) / INK3_COST)
   const perfectBlocks = resolveYixuanPerfectBlocks(cfg)
-  // 影画4 静心（增伤载体=凝云/墨烬影消）：自动口径下留 1 轮凝云（60 闪能）当载体，
-  // 否则轴外凝云全被 3 连吃掉 → C4 0 增幅 —— 用户口径 2026-08
-  const cinemaLevel = cinemaLevelOf(cfg.yixuanCinemaLevel)
-  if (cinemaLevel >= 4 && ink3 > 0) {
-    const reserved = Math.min(ink3, 1) // 留 1 轮凝云 = 少打 1 次 3 连
-    return { ink3: ink3 - reserved, perfectBlocks }
+  /**
+   * ## 三档优先级（T173；**手动优先于比例**，与 `≤0 = 自动` 的既有哨兵一致）
+   *
+   * | 手填 `yixuanInk3Count` | 手填 `yixuanInk2Count` | 走哪档 | 与改前 |
+   * |---|---|---|---|
+   * | ≥1 | 任意 | **完全手动**（比例不生效） | **逐位一致** |
+   * | ≤0（自动） | ≥1 | **2连手动**（比例不生效） | **逐位一致** |
+   * | ≤0（自动） | ≤0（自动） | ★ **比例档**（`yixuan.ink3Ratio`） | ratio=1 时**逐位一致** |
+   *
+   * ⚠ 前两档**刻意不接比例**：它们今天就在跑（`yixuanSmoke` 多例锁着 2连×2+3连×1 的手填口径），
+   * 接比例会静默改既有读数。用户抱怨的是「**要填**两个框」，而比例档让**不填**也有意义——
+   * 手动填仍然是可用的覆盖通道（见模块头「2连/3连比例」）。
+   */
+  let ink2: number
+  let ink3: number
+  if (ink3Raw >= 1) {
+    ink3 = Math.floor(ink3Raw)
+    ink2 = ink2Manual
+  } else if (ink2Manual >= 1) {
+    ink2 = ink2Manual
+    ink3 = Math.floor(Math.max(0, income - ink2 * INK2_COST - axisCloudSpent) / INK3_COST)
+  } else {
+    /**
+     * ★ 比例档：**总量口径与改前「自动 = 全打 3 连」逐位相同**——
+     * `total = floor((income − axisCloudSpent) / 60)` 就是改前 `ink3` 的算式（那时 `ink2` 手填为 0）
+     * ⇒ 比例只在这 T 次里重分配 2连 : 3连，**不改总量推导**（改它会动一大片数字，见任务书 §2）。
+     */
+    const total = Math.floor(Math.max(0, income - axisCloudSpent) / INK3_COST)
+    const split = splitInkByRatio(total, ink3RatioOf(cfg))
+    ink2 = split.ink2
+    ink3 = split.ink3
   }
-  return { ink3, perfectBlocks }
+  /**
+   * 影画4 静心（增伤载体 = 凝云/墨烬影消）：自动口径下**留够 1 轮凝云（60 闪能）**当载体，
+   * 否则轴外凝云全被墨痕化形吃掉 → C4 0 增幅（用户口径 2026-08）。
+   *
+   * ⚠ T173 泛化：改前写死「少打 1 次 3 连」（= 60 闪能，恰好 1 轮凝云）；比例档下若 3 连为 0
+   * （全 2 连）则改从 2 连里拿（40/次，取到累计 ≥60 为止）⇒ **释放量恒 ≥60，cloudOut 恒 +≥1**，
+   * 与 r=1 时的旧行为**逐位相同**（1 次 3 连即 60，循环立刻退出）。
+   */
+  const cinemaLevel = cinemaLevelOf(cfg.yixuanCinemaLevel)
+  if (cinemaLevel >= 4 && (ink3 > 0 || ink2 > 0)) {
+    let freed = 0
+    while (freed < CLOUD_CYCLE_COST && (ink3 > 0 || ink2 > 0)) {
+      if (ink3 > 0) { ink3 -= 1; freed += INK3_COST } else { ink2 -= 1; freed += INK2_COST }
+    }
+  }
+  return { ink2, ink3, perfectBlocks }
 }
 
 /** 从 cfg 读链输入并分解（buildExecutions/estimate/resourceSections 共用） */
 function resolveYixuanChain(cfg: AgentCharConfigInput['cfg'], exSpecialCount: number): YixuanExChain {
-  const ink2 = Math.max(0, Math.floor(Number(cfg.yixuanInk2Count ?? 0)))
+  const ink2Manual = Math.max(0, Math.floor(Number(cfg.yixuanInk2Count ?? 0)))
   const axisEx = readAxisEx(cfg)
   const axisCloud = axisEx[MOVE.cloud] ?? 0
   const axisSec = Number(cfg.yixuanAxisCloudSeconds ?? CLOUD_MAX_SECONDS) || CLOUD_MAX_SECONDS
   // 池子隐含收入（上轮口径）：exSpecialCount × 循环当量 60 —— 收敛后 ≈ 闪能总收入（含队友终结/异常触发）
   const income = Math.max(0, exSpecialCount) * CLOUD_CYCLE_COST
   const axisCloudSpent = axisCloud * (ASHEN_COST + axisSec * (CLOUD_MAX_COST / CLOUD_MAX_SECONDS))
-  const { ink3, perfectBlocks } = resolveYixuanAutoInputs(cfg, income, ink2, axisCloudSpent)
+  // T173：比例档下 ink2/ink3 由 resolveYixuanAutoInputs 一并分配（总量守恒）；
+  // 手填档逐位沿用改前的两条通路（见该函数的三档表）。
+  const { ink2, ink3, perfectBlocks } = resolveYixuanAutoInputs(cfg, income, ink2Manual, axisCloudSpent)
   // 动作时间读 cfg.moveActionTimes（catalog，CC-409）
   return computeYixuanExChain(income, ink2, ink3, perfectBlocks, axisCloud, axisSec, {
     ink2Seconds: cfgMoveActionTime(cfg, MOVE.ink2),
@@ -943,6 +1032,39 @@ const settings: MechanicSetting[] = [
     step: 0.05,
     suffix: '%',
   },
+  /**
+   * **2连 : 3连墨痕化形比例**（T173，用户口径 2026-10-15）——用户要的「一个比例滑块」。
+   *
+   * ⚠ 只在**两个次数输入框都 ≤0（自动档）**时生效：手填正数仍然完全接管
+   * （与既有 `≤0 = 自动` 哨兵一致，见 `resolveYixuanAutoInputs` 的三档表）。
+   * 默认 `1` = 全 3 连 = **改前的自动口径** ⇒ 未动过滑块的队数值逐位不变。
+   */
+  {
+    id: 'yixuan.ink3Ratio',
+    label: '仪玄·2连/3连墨痕化形比例（0=全2连，1=全3连）',
+    description: '自动档下决定这批次墨痕化形里 2 连（40闪能/次）与 3 连（60闪能/次）的分配比例；总次数仍由闪能推出、不随本滑块变（总量守恒），只改 2连:3连 的分法。0 = 全打 2 连、1 = 全打 3 连（默认，= 改前自动口径）。两个次数输入框手填正数时本滑块不生效（手动优先）。',
+    default: DEFAULT_INK3_RATIO,
+    min: 0,
+    max: 1,
+    step: 0.05,
+    suffix: '%',
+  },
+  /**
+   * **后台墨痕化形（墨影凝云合轴）自动爬升上限比例**（T173，用户口径 2026-10-15）。
+   *
+   * ⚠ 爬升**增量** ≤ 已有后台 × 本值（默认 0.5 = 用户点名的那 50%）。
+   * 消费点 = `interactionClimb.capOf`（难度曲线逐槽阶梯），见模块的 `interactionClimb` 声明。
+   */
+  {
+    id: 'yixuan.backstageClimbRatio',
+    label: '仪玄·后台墨痕化形自动爬升上限比例',
+    description: '难度曲线自动爬升「墨影凝云合轴」次数的上限 = 本轮已有合轴对数 + floor(已有 × 本比例)（默认 0.5 = 用户口径「上限是他已有后台的 50%」；0 = 不爬、1 = 上限翻倍）。爬升量按轮重算，已有后台变多时上限跟着变。',
+    default: DEFAULT_BACKSTAGE_CLIMB_RATIO,
+    min: 0,
+    max: 1,
+    step: 0.05,
+    suffix: '%',
+  },
 ]
 
 /**
@@ -978,6 +1100,57 @@ function yixuanNextRoundFeedback({ teamResult, anomalyPool }: AgentNextRoundFeed
   // 并在外层 stable 条件里单独比较；现归仪玄模块产出，走 moduleFeedback（CC-314 起整体入签名）。
   const auricInkTriggers = anomalyPool.perElement.find(p => p.element === 'ether_ink')?.triggerCount ?? 0
   return auricInkTriggers > 0 ? { teamUltimateExtra, auricInkTriggers } : { teamUltimateExtra }
+}
+
+/**
+ * **后台墨影凝云（合轴）自动爬升的锚（分母）**：本轮实际打出的合轴对数。
+ *
+ * 口径（用户 2026-10-15 逐字「**自动爬升上限是他已有后台的 50%**，不能说他后台全都在合轴」）：
+ * - 「已有后台」= **本轮**结果行里合轴主招式行（玄墨极阵 1371021 / 墨影凝云 1371005）的次数和；
+ * - ⚠ **必须按轮读结果行、不能读 cfg**：`yixuanBackstageComboCount` 是**输入**，而实际对数由
+ *   外层不动点（反推线程 / 手动值）决定，每轮都可能变 ⇒ 构建期算一次会把上限钉死在首轮；
+ * - 本函数是 `interactionClimb.anchorOf` 的实现体（契约见 `typesHooks#InteractionClimbDecl`）。
+ */
+function backstageAnchorOf(teamResult: TeamResourceResult): number {
+  const self = teamResult.characters.find(c => c.agentId === AGENT_ID)
+  if (!self) return 0
+  let pairs = 0
+  for (const e of self.executions) {
+    if (e.moveId === '1371021' || e.moveId === BACKSTAGE_INK_MOVE) pairs += e.count
+  }
+  return Math.max(0, Math.floor(pairs))
+}
+
+/**
+ * **爬升上限 = 已有后台 + floor(已有后台 × 比例)**（默认比例 0.5 ⇒ 上限 = 已有 × 1.5）。
+ *
+ * 用户逐字「自动爬升上限是他已有后台的 50%」⇒ 爬升**增量** ≤ 已有 × 比例。
+ * 比例经 `get` 从**模块声明的 MechanicSetting**（`yixuan.backstageClimbRatio`）读，默认值只写在
+ * `settings` 声明里（规则 11 / CC-508 单一来源，本函数不复制常量）。
+ *
+ * ⚠ 参数 `anchor` 是**本轮**读数 ⇒ 上限也按轮重算（已有后台变多时上限跟着变）。
+ */
+function backstageClimbCapOf(anchor: number, get: (settingId: string, fallback: number) => number): number {
+  const a = Math.max(0, Math.floor(anchor))
+  const ratio = clampRatio(get('yixuan.backstageClimbRatio', DEFAULT_BACKSTAGE_CLIMB_RATIO))
+  return a + Math.floor(a * ratio)
+}
+
+/**
+ * **仪玄的后台爬升声明**（T173；契约见 `typesHooks#InteractionClimbDecl`）。
+ *
+ * 为什么走新声明通道而不是 `interactionDefaults`：那张表只能表达「绝对值从 0 爬到某数」，
+ * 而用户要的是「**相对已有量按比例放宽**」（上限 = 已有后台 × 1.5，随轮变）⇒ 形态不同，单列一条。
+ *
+ * ⚠ **爬的是 `yixuanBackstageComboCount`（手动字段），不是 `…AutoCount`（引擎反推写回字段）**：
+ * 反推字段每轮由外层不动点覆盖写（`convergence.ts#backstageAutoNext`）⇒ 爬它会被下一轮抹掉；
+ * 而手动字段 >0 时模块优先采用（`buildExecutions` 的三元），爬升才留得住。
+ * 上升沿即「用户本来没填 → 曲线帮他填上」——正是这条需求要的形态。
+ */
+const interactionClimb: InteractionClimbDecl = {
+  field: 'yixuanBackstageComboCount',
+  anchorOf: backstageAnchorOf,
+  capOf: backstageClimbCapOf,
 }
 
 /** 凝神加成值（暴伤 % / 贯穿 %）；C6 臂、非轴折算臂、轴臂桶值同形。 */
@@ -1077,6 +1250,10 @@ export const yixuanMechanic: AgentMechanicModule = {
    * ⇒ 本钩子只回答「收不收喧响」，不承担资源量门控。
    */
   axisMoveFreeOfDecibel: moveId => moveId === MOVE.extraUlt,
+  // T173：后台墨影凝云（合轴）可被难度曲线爬升，上限 = 本轮已有后台 + floor(已有 × 比例)
+  //（用户口径 2026-10-15「相当于白给的招式，但注意自动爬升上限是他已有后台的 50%」）——
+  // 声明式通道，编排层通用执行（零 agentId 分支）；形态与实现见上方 interactionClimb。
+  interactionClimb,
   // 墨影凝云合轴自动填充（用户口径 2026-09-07）：合轴可自动填充、不占前台不计难度，反推至
   // 保底 4 次失衡。声明式（编排层通用执行，无 agentId 分支）：moveIds=合轴招式行（实测每对失衡），
   // perPairBase=每对基础失衡（玄墨极阵440.8+青溟震击160.2；超出玄墨值的墨影凝云版 600.4 近似同值），
