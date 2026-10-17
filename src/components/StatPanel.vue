@@ -516,7 +516,7 @@ import { getPanelStat } from '@/utils/panelStat'
 import { ref, computed } from 'vue'
 import { NCollapse, NCollapseItem } from 'naive-ui'
 import type { DamageElement, PanelValues, SkillDamageTarget } from '@/types/catalog'
-import { SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
+import { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
 import { getStatMeta, isPctStat } from '@/utils/statMeta'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
@@ -567,15 +567,20 @@ const critMultiplier = computed(() => {
 })
 
 // ========== 增伤乘区 ==========
+/**
+ * 招式类型增伤标签：`skillDmgBonus` + 全招式族 `skillDmgBonus__<族>`。
+ *
+ * 2026-10-18：原先手写 8 个键，**漏了 dashAttack / additionalAttack** ⇒ 这两个招式族的
+ * 定向招式增伤在面板上不显示（同 dmgBonus__ 的可见性缺口）。现由 `SKILL_DMG_TARGETS` 生成，
+ * 新增招式族自动跟上（单一来源 = `data/skillDamageTargets`）。
+ */
 const SKILL_DMG_LABELS: Record<string, string> = {
   skillDmgBonus: '全部招式伤害加成',
-  skillDmgBonus__basic: '普通攻击伤害加成',
-  skillDmgBonus__special: '特殊技伤害加成',
-  skillDmgBonus__exSpecial: '强化特殊技伤害加成',
-  skillDmgBonus__ultimate: '终结技伤害加成',
-  skillDmgBonus__chain: '连携技伤害加成',
-  skillDmgBonus__assist: '支援技伤害加成',
-  skillDmgBonus__dodgeCounter: '闪避反击伤害加成',
+  ...Object.fromEntries(
+    SKILL_DMG_TARGETS
+      .filter(t => t !== 'all')
+      .map(t => [`skillDmgBonus__${t}`, `${SKILL_DMG_TARGET_LABELS[t]}伤害加成`]),
+  ),
 }
 
 const skillDmgRows = computed(() => {
