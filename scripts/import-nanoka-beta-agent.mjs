@@ -157,6 +157,9 @@ function actionTime(etherRaw, zhName) {
 const added = []
 for (const id of ids) {
   if (existingIds.has(id) && !force) { console.log(`skip ${id}（catalog 已存在，--force 覆盖）`); continue }
+  // --force 重导时保住**手工裁决字段**：`basicBenchmarkMoveId` 是 catalog 里唯一不来自 nanoka 的
+  // 角色字段（平A基准段，2026-10 为 1631/1641 等显式钉过），整条删了重建会静默退回「第 3 段」启发式。
+  const previousAgent = existingIds.has(id) ? catalog.agents.find(a => a.id === id) : undefined
   if (existingIds.has(id)) {
     catalog.agents = catalog.agents.filter(a => a.id !== id)
     catalog.agentSkills = catalog.agentSkills.filter(s => s.agentId !== id)
@@ -193,16 +196,18 @@ for (const id of ids) {
     // 口径：level60 = **满级满突破面板**（core/panel#calcBasePanel 直接读，别处无补偿通道）。
     critRate: ruleOf('critRate')(full),
     critDmg: ruleOf('critDmg')(full),
-    impact: num(st.break_stun),
+    impact: ruleOf('impact')(full),
     // ⚠ 映射方向（2026-09-12 实证订正，勿照字面联想）：
     // **异常精通 = element_mystery，异常掌控 = element_abnormal_power**——与字段名直觉相反。
     // 证据三条：① 47 个角色里 42 个按此方向匹配；② 全部异常主C 的精通都落在较大那个值上
     // （1091 星见雅 148 / 1331 薇薇安 118 / 1501 爱芮 116），符合「精通是累计值、掌控是百分比基底」；
     // ③ extra_level 里 `31201` 的 name 就是「异常精通」、`31401` 是「异常掌控」，可交叉验证。
     // 旧代码两行写反（精通←abnormal_power），实测 1621 洛克茜被落成了 精通110/掌控63（反的）。
-    anomalyProficiency: num(st.element_mystery),
-    anomalyMastery: num(st.element_abnormal_power),
-    energyRegen: Math.round(num(st.sp_recover)) / 100,
+    // ⚠ 2026-10-17：改走规则表——原实现漏了 31201/31401 满级突破（1641 掌控 116+36=152 被落成 116，
+    // 连「灼蚀暴击率 = 30 + 0.7×(掌控-155)」的阈值判定都会翻转）。同 critRate 那条事故同类。
+    anomalyProficiency: ruleOf('anomalyProficiency')(full),
+    anomalyMastery: ruleOf('anomalyMastery')(full),
+    energyRegen: ruleOf('energyRegen')(full),
     energyMax: num(st.sp_bar_point) || 120,
     penRatio: 0,
   }
@@ -269,6 +274,7 @@ for (const id of ids) {
     damageElement: element,
     sources: [`https://zzz.nanoka.cc/character/${id}`],
     hidden: false,
+    ...(previousAgent?.basicBenchmarkMoveId ? { basicBenchmarkMoveId: previousAgent.basicBenchmarkMoveId } : {}),
   })
   catalog.agentSkills.push({ id, agentId: id, name: { zhCN: zh, en }, categories })
   list[id] = {

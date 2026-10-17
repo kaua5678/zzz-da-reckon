@@ -1,8 +1,8 @@
 {
   "id": 1641,
   "icon": "IconRole1641",
-  "name": "(Test1)菲欧妮",
-  "code_name": "(Test1)Phoenix",
+  "name": "菲欧妮",
+  "code_name": "Phoenix",
   "rarity": 4,
   "weapon_type": {
     "3": "异常"
@@ -20,10 +20,10 @@
   "gender": 2,
   "partner_info": {
     "birthday": "...",
-    "full_name": "菲欧妮·蕾法爱菈",
+    "full_name": "...",
     "gender": "女",
     "icon_path": "UI/Sprite/A1DynamicLoad/IconRoleCircle/UnPacker/IconRoleCircle1641.png",
-    "inter_knot_icon": "",
+    "inter_knot_icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/InterKnot/UnPacker/IconInterknotAvatar/IconInterKnotRole1641.png",
     "impression_f": "...",
     "impression_m": "...",
     "impressions": [
@@ -48,10 +48,22 @@
   },
   "skin": {
     "3116410": {
-      "name": "AvatarSkin_Pheony_Name_000",
-      "desc": "AvatarSkin_Pheony_Desc_000",
+      "name": "...",
+      "desc": "...",
       "obtain_desc": "",
       "image": "IconRole1641"
+    },
+    "3116411": {
+      "name": "...",
+      "desc": "...",
+      "obtain_desc": "",
+      "image": "IconRole1641_01"
+    },
+    "3116412": {
+      "name": "...",
+      "desc": "...",
+      "obtain_desc": "",
+      "image": "IconRole1641_02"
     }
   },
   "stats": {
@@ -168,102 +180,102 @@
     "1": {
       "max_level": 15,
       "extra": {
-        "12101": {
-          "prop": 12101,
-          "name": "基础攻击力",
-          "format": "{0:0.#}",
-          "value": 0
-        },
         "31401": {
           "prop": 31401,
           "name": "异常掌控",
           "format": "{0:0.#}",
           "value": 12
+        },
+        "12101": {
+          "prop": 12101,
+          "name": "基础攻击力",
+          "format": "{0:0.#}",
+          "value": 0
         }
       }
     },
     "2": {
       "max_level": 25,
       "extra": {
-        "12101": {
-          "prop": 12101,
-          "name": "基础攻击力",
-          "format": "{0:0.#}",
-          "value": 25
-        },
         "31401": {
           "prop": 31401,
           "name": "异常掌控",
           "format": "{0:0.#}",
           "value": 12
+        },
+        "12101": {
+          "prop": 12101,
+          "name": "基础攻击力",
+          "format": "{0:0.#}",
+          "value": 25
         }
       }
     },
     "3": {
       "max_level": 35,
       "extra": {
-        "12101": {
-          "prop": 12101,
-          "name": "基础攻击力",
-          "format": "{0:0.#}",
-          "value": 25
-        },
         "31401": {
           "prop": 31401,
           "name": "异常掌控",
           "format": "{0:0.#}",
           "value": 24
+        },
+        "12101": {
+          "prop": 12101,
+          "name": "基础攻击力",
+          "format": "{0:0.#}",
+          "value": 25
         }
       }
     },
     "4": {
       "max_level": 45,
       "extra": {
-        "12101": {
-          "prop": 12101,
-          "name": "基础攻击力",
-          "format": "{0:0.#}",
-          "value": 50
-        },
         "31401": {
           "prop": 31401,
           "name": "异常掌控",
           "format": "{0:0.#}",
           "value": 24
+        },
+        "12101": {
+          "prop": 12101,
+          "name": "基础攻击力",
+          "format": "{0:0.#}",
+          "value": 50
         }
       }
     },
     "5": {
       "max_level": 55,
       "extra": {
-        "12101": {
-          "prop": 12101,
-          "name": "基础攻击力",
-          "format": "{0:0.#}",
-          "value": 50
-        },
         "31401": {
           "prop": 31401,
           "name": "异常掌控",
           "format": "{0:0.#}",
           "value": 36
+        },
+        "12101": {
+          "prop": 12101,
+          "name": "基础攻击力",
+          "format": "{0:0.#}",
+          "value": 50
         }
       }
     },
     "6": {
       "max_level": 60,
       "extra": {
-        "12101": {
-          "prop": 12101,
-          "name": "基础攻击力",
-          "format": "{0:0.#}",
-          "value": 75
-        },
         "31401": {
           "prop": 31401,
           "name": "异常掌控",
           "format": "{0:0.#}",
           "value": 36
+        },
+        "12101": {
+          "prop": 12101,
+          "name": "基础攻击力",
+          "format": "{0:0.#}",
+          "value": 75
         }
       }
     }
@@ -334,52 +346,47 @@
     "basic": {
       "description": [
         {
-          "name": "(Test1)普通攻击",
-          "desc": "(Test1)点按 <IconMap:Icon_Normal> 发动：\n向前方进行至多四段攻击，造成<color=#FF5521>火属性伤害</color>；\n第三段以及第四段[普通攻击]视为[燃烧攻击]。",
+          "name": "普通攻击：裁生",
+          "desc": "点按 <IconMap:Icon_Normal> 发动：\n向前方进行至多四段攻击，造成<color=#FF5521>火属性伤害</color>；\n第三段以及第四段[普通攻击]视为<Term:1000046></Term>。",
           "potential": []
         },
         {
-          "name": "(Test1)燃烧攻击",
-          "desc": "(Test1)[燃烧攻击]造成伤害时，会回复[余火]，菲欧妮最多拥有120点[余火]；\n[燃烧攻击]发动期间，抗打断等级提升，点按 <IconMap:Icon_Special> 可直接衔接[特殊技：追斩]的上挑动作。",
+          "name": "普通攻击：焚罪",
+          "desc": "<Term:1000047></Term>足够时，消耗90点[燔焰]，长按 <IconMap:Icon_Normal> 发动：\n菲欧妮掷出武器，对前方范围的敌人造成大量<color=#FF5521>火属性伤害</color>；\n终结一击命中处于<color=#98EFF0>冰属性异常状态</color>、<color=#FE437E>以太异常状态</color>、<color=#2EB6FF>电属性异常状态</color>、<color=#FF5521>火属性异常状态</color>、<color=#F0D12B>物理属性异常状态</color>、<color=#A6C5FD>风属性异常状态</color>的敌人时，触发1次<color=#FFFFFF>[异放]</color>效果，结算<color=#2BAD00>{CAL:225+20*(AvatarSkillLevel(0)-1),1,2}%</color>倍率的对应属性的属性异常伤害；\n该次<color=#FFFFFF>[异放]</color>效果触发暴击时，其暴击伤害额外提升40%；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)普通攻击：普通攻击长按",
-          "desc": "(Test1)[余火]足够时，消耗90点[余火]，长按 <IconMap:Icon_Normal> 发动：\n菲欧妮掷出武器，对前方范围的敌人造成大量<color=#FF5521>火属性伤害</color>；\n终结一击命中处于<color=#98EFF0>冰属性异常状态</color>、<color=#FE437E>以太异常状态</color>、<color=#2EB6FF>电属性异常状态</color>、<color=#FF5521>火属性异常状态</color>、<color=#F0D12B>物理属性异常状态</color>、<color=#A6C5FD>风属性异常状态</color>的敌人时，触发1次<color=#FFFFFF>[异放]</color>效果，结算<color=#2BAD00>{CAL:225+20*(AvatarSkillLevel(0)-1),1,2}%</color>倍率的对应属性的属性异常伤害；\n该次<color=#FFFFFF>[异放]</color>效果触发暴击时，其暴击伤害额外提升<color=#2BAD00>20%</color>\n招式发动期间拥有无敌效果。",
+          "name": "普通攻击：熔毁",
+          "desc": "发动[特殊技：掠火]没有触发完美格挡效果时，点按 <IconMap:Icon_Normal> 发动：\n向前突击，造成<color=#FF5521>火属性伤害</color>；\n视为<Term:1000046></Term>；\n招式发动期间，点按 <IconMap:Icon_Normal> 可衔接第三段[普通攻击]。",
           "potential": []
         },
         {
-          "name": "(Test1)普通攻击：分支攻击",
-          "desc": "(Test1)发动[特殊技：追斩]后，可点按 <IconMap:Icon_Normal> 发动：\n向前突击，造成<color=#FF5521>火属性伤害</color>；\n视为[燃烧攻击]；\n招式发动期间，点按 <IconMap:Icon_Normal> 可衔接第三段[普通攻击]。",
-          "potential": []
-        },
-        {
-          "name": "(Test1)普通攻击",
+          "name": "普通攻击：裁生",
           "param": [
             {
               "name": "一段伤害倍率",
               "desc": "{Skill:1641001, Prop:1001}",
               "param": {
                 "1641001": {
-                  "main": 3120,
-                  "growth": 290,
+                  "main": 1560,
+                  "growth": 150,
                   "format": "%",
-                  "damage_percentage": 3120,
-                  "damage_percentage_growth": 290,
-                  "stun_ratio": 1980,
-                  "stun_ratio_growth": 90,
-                  "sp_recovery": 6480,
+                  "damage_percentage": 1560,
+                  "damage_percentage_growth": 150,
+                  "stun_ratio": 1320,
+                  "stun_ratio_growth": 60,
+                  "sp_recovery": 3240,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 49500,
+                  "fever_recovery": 33000,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 1800,
+                  "attribute_infliction": 1200,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 1800
+                  "ether_purify": 1200
                 }
               },
               "potential": []
@@ -389,25 +396,25 @@
               "desc": "{Skill:1641002, Prop:1001}",
               "param": {
                 "1641002": {
-                  "main": 10320,
-                  "growth": 940,
+                  "main": 6770,
+                  "growth": 620,
                   "format": "%",
-                  "damage_percentage": 10320,
-                  "damage_percentage_growth": 940,
-                  "stun_ratio": 5980,
-                  "stun_ratio_growth": 280,
-                  "sp_recovery": 19570,
+                  "damage_percentage": 6770,
+                  "damage_percentage_growth": 620,
+                  "stun_ratio": 4550,
+                  "stun_ratio_growth": 210,
+                  "sp_recovery": 12130,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 149600,
+                  "fever_recovery": 113850,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 5433,
+                  "attribute_infliction": 4133,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 5434
+                  "ether_purify": 4134
                 }
               },
               "potential": []
@@ -417,25 +424,25 @@
               "desc": "{Skill:1641003, Prop:1001}",
               "param": {
                 "1641003": {
-                  "main": 19930,
-                  "growth": 1820,
+                  "main": 17810,
+                  "growth": 1620,
                   "format": "%",
-                  "damage_percentage": 19930,
-                  "damage_percentage_growth": 1820,
-                  "stun_ratio": 10650,
-                  "stun_ratio_growth": 490,
-                  "sp_recovery": 33170,
+                  "damage_percentage": 17810,
+                  "damage_percentage_growth": 1620,
+                  "stun_ratio": 9750,
+                  "stun_ratio_growth": 450,
+                  "sp_recovery": 30230,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 253550,
+                  "fever_recovery": 231000,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 11712,
+                  "attribute_infliction": 11362,
                   "sp_consume": 0,
                   "attack_data": [
-                    80239
+                    70239
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 9214
+                  "ether_purify": 8398
                 }
               },
               "potential": []
@@ -445,25 +452,25 @@
               "desc": "{Skill:1641004, Prop:1001}",
               "param": {
                 "1641004": {
-                  "main": 38330,
-                  "growth": 3490,
+                  "main": 38920,
+                  "growth": 3540,
                   "format": "%",
-                  "damage_percentage": 38330,
-                  "damage_percentage_growth": 3490,
-                  "stun_ratio": 20300,
-                  "stun_ratio_growth": 930,
-                  "sp_recovery": 71040,
+                  "damage_percentage": 38920,
+                  "damage_percentage_growth": 3540,
+                  "stun_ratio": 20860,
+                  "stun_ratio_growth": 950,
+                  "sp_recovery": 69950,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 542850,
+                  "fever_recovery": 534325,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 24330,
+                  "attribute_infliction": 23917,
                   "sp_consume": 0,
                   "attack_data": [
-                    147634
+                    169072
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 19733
+                  "ether_purify": 19430
                 }
               },
               "potential": []
@@ -473,25 +480,25 @@
               "desc": "{Skill:1641001, Prop:1002}",
               "param": {
                 "1641001": {
-                  "main": 1980,
-                  "growth": 90,
+                  "main": 1320,
+                  "growth": 60,
                   "format": "%",
-                  "damage_percentage": 3120,
-                  "damage_percentage_growth": 290,
-                  "stun_ratio": 1980,
-                  "stun_ratio_growth": 90,
-                  "sp_recovery": 6480,
+                  "damage_percentage": 1560,
+                  "damage_percentage_growth": 150,
+                  "stun_ratio": 1320,
+                  "stun_ratio_growth": 60,
+                  "sp_recovery": 3240,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 49500,
+                  "fever_recovery": 33000,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 1800,
+                  "attribute_infliction": 1200,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 1800
+                  "ether_purify": 1200
                 }
               },
               "potential": []
@@ -501,25 +508,25 @@
               "desc": "{Skill:1641002, Prop:1002}",
               "param": {
                 "1641002": {
-                  "main": 5980,
-                  "growth": 280,
+                  "main": 4550,
+                  "growth": 210,
                   "format": "%",
-                  "damage_percentage": 10320,
-                  "damage_percentage_growth": 940,
-                  "stun_ratio": 5980,
-                  "stun_ratio_growth": 280,
-                  "sp_recovery": 19570,
+                  "damage_percentage": 6770,
+                  "damage_percentage_growth": 620,
+                  "stun_ratio": 4550,
+                  "stun_ratio_growth": 210,
+                  "sp_recovery": 12130,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 149600,
+                  "fever_recovery": 113850,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 5433,
+                  "attribute_infliction": 4133,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 5434
+                  "ether_purify": 4134
                 }
               },
               "potential": []
@@ -529,25 +536,25 @@
               "desc": "{Skill:1641003, Prop:1002}",
               "param": {
                 "1641003": {
-                  "main": 10650,
-                  "growth": 490,
+                  "main": 9750,
+                  "growth": 450,
                   "format": "%",
-                  "damage_percentage": 19930,
-                  "damage_percentage_growth": 1820,
-                  "stun_ratio": 10650,
-                  "stun_ratio_growth": 490,
-                  "sp_recovery": 33170,
+                  "damage_percentage": 17810,
+                  "damage_percentage_growth": 1620,
+                  "stun_ratio": 9750,
+                  "stun_ratio_growth": 450,
+                  "sp_recovery": 30230,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 253550,
+                  "fever_recovery": 231000,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 11712,
+                  "attribute_infliction": 11362,
                   "sp_consume": 0,
                   "attack_data": [
-                    80239
+                    70239
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 9214
+                  "ether_purify": 8398
                 }
               },
               "potential": []
@@ -557,25 +564,25 @@
               "desc": "{Skill:1641004, Prop:1002}",
               "param": {
                 "1641004": {
-                  "main": 20300,
-                  "growth": 930,
+                  "main": 20860,
+                  "growth": 950,
                   "format": "%",
-                  "damage_percentage": 38330,
-                  "damage_percentage_growth": 3490,
-                  "stun_ratio": 20300,
-                  "stun_ratio_growth": 930,
-                  "sp_recovery": 71040,
+                  "damage_percentage": 38920,
+                  "damage_percentage_growth": 3540,
+                  "stun_ratio": 20860,
+                  "stun_ratio_growth": 950,
+                  "sp_recovery": 69950,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 542850,
+                  "fever_recovery": 534325,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 24330,
+                  "attribute_infliction": 23917,
                   "sp_consume": 0,
                   "attack_data": [
-                    147634
+                    169072
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 19733
+                  "ether_purify": 19430
                 }
               },
               "potential": []
@@ -584,25 +591,25 @@
           "potential": []
         },
         {
-          "name": "(Test1)普通攻击：普通攻击长按",
+          "name": "普通攻击：焚罪",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1641005, Prop:1001}",
               "param": {
                 "1641005": {
-                  "main": 68250,
-                  "growth": 6210,
+                  "main": 54730,
+                  "growth": 4980,
                   "format": "%",
-                  "damage_percentage": 68250,
-                  "damage_percentage_growth": 6210,
+                  "damage_percentage": 54730,
+                  "damage_percentage_growth": 4980,
                   "stun_ratio": 27500,
                   "stun_ratio_growth": 1250,
-                  "sp_recovery": 89990,
+                  "sp_recovery": 45000,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 687500,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 54996,
+                  "attribute_infliction": 36196,
                   "sp_consume": 0,
                   "attack_data": [
                     0
@@ -622,15 +629,15 @@
                   "main": 27500,
                   "growth": 1250,
                   "format": "%",
-                  "damage_percentage": 68250,
-                  "damage_percentage_growth": 6210,
+                  "damage_percentage": 54730,
+                  "damage_percentage_growth": 4980,
                   "stun_ratio": 27500,
                   "stun_ratio_growth": 1250,
-                  "sp_recovery": 89990,
+                  "sp_recovery": 45000,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 687500,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 54996,
+                  "attribute_infliction": 36196,
                   "sp_consume": 0,
                   "attack_data": [
                     0
@@ -641,28 +648,33 @@
                 }
               },
               "potential": []
+            },
+            {
+              "name": "异放倍率",
+              "desc": "{CAL:225+20*(AvatarSkillLevel(0)-1),1,2}%",
+              "potential": []
             }
           ],
           "potential": []
         },
         {
-          "name": "(Test1)普通攻击：分支攻击",
+          "name": "普通攻击：熔毁",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1641006, Prop:1001}",
               "param": {
                 "1641006": {
-                  "main": 22060,
-                  "growth": 2010,
+                  "main": 17810,
+                  "growth": 1620,
                   "format": "%",
-                  "damage_percentage": 22060,
-                  "damage_percentage_growth": 2010,
-                  "stun_ratio": 12320,
-                  "stun_ratio_growth": 560,
-                  "sp_recovery": 49970,
+                  "damage_percentage": 17810,
+                  "damage_percentage_growth": 1620,
+                  "stun_ratio": 9630,
+                  "stun_ratio_growth": 440,
+                  "sp_recovery": 35280,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 285725,
+                  "fever_recovery": 240625,
                   "fever_recovery_growth": 0,
                   "attribute_infliction": 12879,
                   "sp_consume": 0,
@@ -671,7 +683,7 @@
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 10381
+                  "ether_purify": 8748
                 }
               },
               "potential": []
@@ -681,16 +693,16 @@
               "desc": "{Skill:1641006, Prop:1002}",
               "param": {
                 "1641006": {
-                  "main": 12320,
-                  "growth": 560,
+                  "main": 9630,
+                  "growth": 440,
                   "format": "%",
-                  "damage_percentage": 22060,
-                  "damage_percentage_growth": 2010,
-                  "stun_ratio": 12320,
-                  "stun_ratio_growth": 560,
-                  "sp_recovery": 49970,
+                  "damage_percentage": 17810,
+                  "damage_percentage_growth": 1620,
+                  "stun_ratio": 9630,
+                  "stun_ratio_growth": 440,
+                  "sp_recovery": 35280,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 285725,
+                  "fever_recovery": 240625,
                   "fever_recovery_growth": 0,
                   "attribute_infliction": 12879,
                   "sp_consume": 0,
@@ -699,7 +711,7 @@
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 10381
+                  "ether_purify": 8748
                 }
               },
               "potential": []
@@ -760,47 +772,47 @@
     "dodge": {
       "description": [
         {
-          "name": "(Test1)闪避：闪避",
-          "desc": "(Test1)点按 <IconMap:Icon_Evade> 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。",
+          "name": "闪避：飘摇",
+          "desc": "点按 <IconMap:Icon_Evade> 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)冲刺攻击",
-          "desc": "(Test1)闪避时，点按 <IconMap:Icon_Normal> 发动：\n向前方进行突进斩击，造成<color=#FF5521>火属性伤害</color>。",
+          "name": "冲刺攻击：倾身",
+          "desc": "闪避时，点按 <IconMap:Icon_Normal> 发动：\n向前方进行突进斩击，造成<color=#FF5521>火属性伤害</color>。",
           "potential": []
         },
         {
-          "name": "(Test1)闪避反击",
-          "desc": "(Test1)触发<color=#FFFFFF>[极限闪避]</color>时，点按 <IconMap:Icon_Normal> 发动：\n向前方突进并发动快速斩击，造成<color=#FF5521>火属性伤害</color>；\n招式发动期间拥有无敌效果。",
+          "name": "闪避反击：业火两渡",
+          "desc": "触发<color=#FFFFFF>[极限闪避]</color>时，点按 <IconMap:Icon_Normal> 发动：\n向前方突进并发动快速斩击，造成<color=#FF5521>火属性伤害</color>；\n招式发动期间拥有无敌效果，点按 <IconMap:Icon_Normal> 可衔接第三段[普通攻击]。",
           "potential": []
         },
         {
-          "name": "(Test1)冲刺攻击",
+          "name": "冲刺攻击：倾身",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1641010, Prop:1001}",
               "param": {
                 "1641010": {
-                  "main": 10180,
-                  "growth": 930,
+                  "main": 10400,
+                  "growth": 950,
                   "format": "%",
-                  "damage_percentage": 10180,
-                  "damage_percentage_growth": 930,
-                  "stun_ratio": 4310,
+                  "damage_percentage": 10400,
+                  "damage_percentage_growth": 950,
+                  "stun_ratio": 4400,
                   "stun_ratio_growth": 200,
-                  "sp_recovery": 14100,
+                  "sp_recovery": 14400,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 107800,
+                  "fever_recovery": 110000,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 3915,
+                  "attribute_infliction": 3998,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 3916
+                  "ether_purify": 3999
                 }
               },
               "potential": []
@@ -810,25 +822,25 @@
               "desc": "{Skill:1641010, Prop:1002}",
               "param": {
                 "1641010": {
-                  "main": 4310,
+                  "main": 4400,
                   "growth": 200,
                   "format": "%",
-                  "damage_percentage": 10180,
-                  "damage_percentage_growth": 930,
-                  "stun_ratio": 4310,
+                  "damage_percentage": 10400,
+                  "damage_percentage_growth": 950,
+                  "stun_ratio": 4400,
                   "stun_ratio_growth": 200,
-                  "sp_recovery": 14100,
+                  "sp_recovery": 14400,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 107800,
+                  "fever_recovery": 110000,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 3915,
+                  "attribute_infliction": 3998,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 3916
+                  "ether_purify": 3999
                 }
               },
               "potential": []
@@ -837,32 +849,32 @@
           "potential": []
         },
         {
-          "name": "(Test1)闪避反击",
+          "name": "闪避反击：业火两渡",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1641011, Prop:1001}",
               "param": {
                 "1641011": {
-                  "main": 29340,
-                  "growth": 2670,
+                  "main": 29620,
+                  "growth": 2700,
                   "format": "%",
-                  "damage_percentage": 29340,
-                  "damage_percentage_growth": 2670,
-                  "stun_ratio": 21630,
-                  "stun_ratio_growth": 990,
-                  "sp_recovery": 34790,
+                  "damage_percentage": 29620,
+                  "damage_percentage_growth": 2700,
+                  "stun_ratio": 21820,
+                  "stun_ratio_growth": 1000,
+                  "sp_recovery": 35390,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 265925,
+                  "fever_recovery": 270600,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 9663,
+                  "attribute_infliction": 9830,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 24664
+                  "ether_purify": 24831
                 }
               },
               "potential": []
@@ -872,25 +884,25 @@
               "desc": "{Skill:1641011, Prop:1002}",
               "param": {
                 "1641011": {
-                  "main": 21630,
-                  "growth": 990,
+                  "main": 21820,
+                  "growth": 1000,
                   "format": "%",
-                  "damage_percentage": 29340,
-                  "damage_percentage_growth": 2670,
-                  "stun_ratio": 21630,
-                  "stun_ratio_growth": 990,
-                  "sp_recovery": 34790,
+                  "damage_percentage": 29620,
+                  "damage_percentage_growth": 2700,
+                  "stun_ratio": 21820,
+                  "stun_ratio_growth": 1000,
+                  "sp_recovery": 35390,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 265925,
+                  "fever_recovery": 270600,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 9663,
+                  "attribute_infliction": 9830,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 24664
+                  "ether_purify": 24831
                 }
               },
               "potential": []
@@ -951,38 +963,38 @@
     "special": {
       "description": [
         {
-          "name": "(Test1)特殊技：追斩",
-          "desc": "(Test1)点按或长按 <IconMap:Icon_Special> 发动：\n持续蓄力，松开 <IconMap:Icon_Special> 时发动上挑动作，造成大量<color=#FF5521>火属性伤害</color>\n蓄力期间，受到的伤害降低40%；\n上挑攻击开始瞬间受到伤害以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果，免疫该次伤害，点按 <IconMap:Icon_Normal> 可直接发动第三段[普通攻击]；\n触发完美格挡效果时，获得5点[余火]，10秒内最多触发一次；\n招式发动期间抗打断等级提升。",
+          "name": "特殊技：掠火",
+          "desc": "点按 <IconMap:Icon_Special> 发动：\n后撤过后，快速向前方发动上挑攻击，造成<color=#FF5521>火属性伤害</color>；\n后撤期间，受到的伤害降低40%；\n上挑攻击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果，免疫该次伤害，点按 <IconMap:Icon_Normal> 可直接发动第三段[普通攻击]；\n招式发动期间抗打断等级提升。",
           "potential": []
         },
         {
-          "name": "(Test1)强化特殊技：第一段",
-          "desc": "(Test1)能量足够时，点按 <IconMap:Icon_SpecialReady> 发动：\n快速转动身体，对敌人造成大量<color=#FF5521>火属性伤害</color>；\n攻击开始瞬间受到伤害以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 <IconMap:Icon_Normal> 可衔接第三段[普通攻击]。",
+          "name": "强化特殊技：燎斩",
+          "desc": "拥有<Term:1000049></Term>效果时，消耗1点[升变]，点按 <IconMap:Icon_Special> 发动：\n后撤过后，快速向前方进行强力上挑斩击，造成大量<color=#FF5521>火属性伤害</color>；\n后撤过程中按住 <IconMap:Icon_Special> 可持续蓄力；\n蓄力期间，松开 <IconMap:Icon_Special> 时发动强力上挑斩击，造成大量<color=#FF5521>火属性伤害</color>；\n衔接在<color=#FFFFFF><Term:1000046></Term></color>后可以跳过后撤进入上挑攻击；\n后撤以及蓄力期间，受到的伤害降低40%；\n上挑斩击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 <IconMap:Icon_Normal> 可衔接第三段[普通攻击]。",
           "potential": []
         },
         {
-          "name": "(Test1)强化特殊技：第二段",
-          "desc": "(Test1)能量足够时，长按 <IconMap:Icon_SpecialReady> 发动：\n升空后掷出武器，对敌人造成大量<color=#FF5521>火属性伤害</color>；\n攻击开始瞬间受到伤害以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 <IconMap:Icon_Normal> 可衔接第三段[普通攻击]。",
+          "name": "强化特殊技：眩焰",
+          "desc": "能量足够时，点按 <IconMap:Icon_SpecialReady> 发动：\n快速转动身体，对敌人造成大量<color=#FF5521>火属性伤害</color>；\n转动开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为<Term:1000046></Term>;\n招式发动期间拥有无敌效果，点按 <IconMap:Icon_Normal> 可衔接第三段[普通攻击]。",
           "potential": []
         },
         {
-          "name": "(Test1)蓄能",
-          "desc": "(Test1)[强化特殊技：第二段]、[普通攻击：普通攻击长按]、[终结技]的重击命中敌人时，可获得1点[蓄能]效果；\n当有[蓄能]效果时，下次重击将会对目标发动一次额外攻击，造成<color=#FF5521>火属性伤害</color>，且该攻击视为[强化特殊技]。",
+          "name": "强化特殊技：坠阳",
+          "desc": "[强化特殊技：眩焰]发动后，能量足够时，点按或长按 <IconMap:Icon_SpecialReady> 发动：\n升空后掷出武器，对敌人造成大量<color=#FF5521>火属性伤害</color>；\n招式发动时可获得1点[升变]，最多拥有1点[升变]；\n升空开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为<Term:1000046></Term>;\n招式发动期间拥有无敌效果，点按 <IconMap:Icon_Normal> 可衔接第三段[普通攻击]。",
           "potential": []
         },
         {
-          "name": "(Test1)特殊技：追斩",
+          "name": "特殊技：掠火",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1641007, Prop:1001}",
               "param": {
                 "1641007": {
-                  "main": 6990,
-                  "growth": 640,
+                  "main": 4560,
+                  "growth": 420,
                   "format": "%",
-                  "damage_percentage": 6990,
-                  "damage_percentage_growth": 640,
+                  "damage_percentage": 4560,
+                  "damage_percentage_growth": 420,
                   "stun_ratio": 3860,
                   "stun_ratio_growth": 180,
                   "sp_recovery": 0,
@@ -1009,8 +1021,8 @@
                   "main": 3860,
                   "growth": 180,
                   "format": "%",
-                  "damage_percentage": 6990,
-                  "damage_percentage_growth": 640,
+                  "damage_percentage": 4560,
+                  "damage_percentage_growth": 420,
                   "stun_ratio": 3860,
                   "stun_ratio_growth": 180,
                   "sp_recovery": 0,
@@ -1033,25 +1045,87 @@
           "potential": []
         },
         {
-          "name": "(Test1)强化特殊技：第一段",
+          "name": "强化特殊技：燎斩",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1641023, Prop:1001}",
+              "param": {
+                "1641023": {
+                  "main": 38050,
+                  "growth": 3460,
+                  "format": "%",
+                  "damage_percentage": 38050,
+                  "damage_percentage_growth": 3460,
+                  "stun_ratio": 25640,
+                  "stun_ratio_growth": 1170,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 259875,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 22783,
+                  "sp_consume": 0,
+                  "attack_data": [
+                    90300
+                  ],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 5250
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1641023, Prop:1002}",
+              "param": {
+                "1641023": {
+                  "main": 25640,
+                  "growth": 1170,
+                  "format": "%",
+                  "damage_percentage": 38050,
+                  "damage_percentage_growth": 3460,
+                  "stun_ratio": 25640,
+                  "stun_ratio_growth": 1170,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 259875,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 22783,
+                  "sp_consume": 0,
+                  "attack_data": [
+                    90300
+                  ],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 5250
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "强化特殊技：眩焰",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1641008, Prop:1001}",
               "param": {
                 "1641008": {
-                  "main": 52260,
-                  "growth": 4760,
+                  "main": 45760,
+                  "growth": 4160,
                   "format": "%",
-                  "damage_percentage": 52260,
-                  "damage_percentage_growth": 4760,
-                  "stun_ratio": 33640,
-                  "stun_ratio_growth": 1530,
+                  "damage_percentage": 45760,
+                  "damage_percentage_growth": 4160,
+                  "stun_ratio": 31190,
+                  "stun_ratio_growth": 1420,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 1293600,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 36773,
+                  "attribute_infliction": 28440,
                   "sp_consume": 0,
                   "attack_data": [
                     150189
@@ -1068,18 +1142,18 @@
               "desc": "{Skill:1641008, Prop:1002}",
               "param": {
                 "1641008": {
-                  "main": 33640,
-                  "growth": 1530,
+                  "main": 31190,
+                  "growth": 1420,
                   "format": "%",
-                  "damage_percentage": 52260,
-                  "damage_percentage_growth": 4760,
-                  "stun_ratio": 33640,
-                  "stun_ratio_growth": 1530,
+                  "damage_percentage": 45760,
+                  "damage_percentage_growth": 4160,
+                  "stun_ratio": 31190,
+                  "stun_ratio_growth": 1420,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 1293600,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 36773,
+                  "attribute_infliction": 28440,
                   "sp_consume": 0,
                   "attack_data": [
                     150189
@@ -1093,39 +1167,39 @@
             },
             {
               "name": "能量消耗",
-              "desc": "(Test1)40",
+              "desc": "40点",
               "potential": []
             }
           ],
           "potential": []
         },
         {
-          "name": "(Test1)强化特殊技：第二段",
+          "name": "强化特殊技：坠阳",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1641009, Prop:1001}",
               "param": {
                 "1641009": {
-                  "main": 59540,
-                  "growth": 5420,
+                  "main": 62300,
+                  "growth": 5670,
                   "format": "%",
-                  "damage_percentage": 59540,
-                  "damage_percentage_growth": 5420,
-                  "stun_ratio": 39360,
-                  "stun_ratio_growth": 1790,
+                  "damage_percentage": 62300,
+                  "damage_percentage_growth": 5670,
+                  "stun_ratio": 41050,
+                  "stun_ratio_growth": 1870,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 1458600,
+                  "fever_recovery": 1472075,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 42173,
+                  "attribute_infliction": 40119,
                   "sp_consume": 0,
                   "attack_data": [
-                    196990
+                    200851
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 16837
+                  "ether_purify": 17167
                 }
               },
               "potential": []
@@ -1135,94 +1209,32 @@
               "desc": "{Skill:1641009, Prop:1002}",
               "param": {
                 "1641009": {
-                  "main": 39360,
-                  "growth": 1790,
+                  "main": 41050,
+                  "growth": 1870,
                   "format": "%",
-                  "damage_percentage": 59540,
-                  "damage_percentage_growth": 5420,
-                  "stun_ratio": 39360,
-                  "stun_ratio_growth": 1790,
+                  "damage_percentage": 62300,
+                  "damage_percentage_growth": 5670,
+                  "stun_ratio": 41050,
+                  "stun_ratio_growth": 1870,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 1458600,
+                  "fever_recovery": 1472075,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 42173,
+                  "attribute_infliction": 40119,
                   "sp_consume": 0,
                   "attack_data": [
-                    196990
+                    200851
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 16837
+                  "ether_purify": 17167
                 }
               },
               "potential": []
             },
             {
               "name": "能量消耗",
-              "desc": "(Test1)40",
-              "potential": []
-            }
-          ],
-          "potential": []
-        },
-        {
-          "name": "(Test1)蓄能",
-          "param": [
-            {
-              "name": "伤害倍率",
-              "desc": "{Skill:1641021, Prop:1001}",
-              "param": {
-                "1641021": {
-                  "main": 4070,
-                  "growth": 370,
-                  "format": "%",
-                  "damage_percentage": 4070,
-                  "damage_percentage_growth": 370,
-                  "stun_ratio": 3440,
-                  "stun_ratio_growth": 160,
-                  "sp_recovery": 0,
-                  "sp_recovery_growth": 0,
-                  "fever_recovery": 0,
-                  "fever_recovery_growth": 0,
-                  "attribute_infliction": 0,
-                  "sp_consume": 0,
-                  "attack_data": [
-                    0
-                  ],
-                  "rp_recovery": 0,
-                  "rp_recovery_growth": 0,
-                  "ether_purify": 0
-                }
-              },
-              "potential": []
-            },
-            {
-              "name": "失衡倍率",
-              "desc": "{Skill:1641021, Prop:1002}",
-              "param": {
-                "1641021": {
-                  "main": 3440,
-                  "growth": 160,
-                  "format": "%",
-                  "damage_percentage": 4070,
-                  "damage_percentage_growth": 370,
-                  "stun_ratio": 3440,
-                  "stun_ratio_growth": 160,
-                  "sp_recovery": 0,
-                  "sp_recovery_growth": 0,
-                  "fever_recovery": 0,
-                  "fever_recovery_growth": 0,
-                  "attribute_infliction": 0,
-                  "sp_consume": 0,
-                  "attack_data": [
-                    0
-                  ],
-                  "rp_recovery": 0,
-                  "rp_recovery_growth": 0,
-                  "ether_purify": 0
-                }
-              },
+              "desc": "40点",
               "potential": []
             }
           ],
@@ -1281,43 +1293,43 @@
     "chain": {
       "description": [
         {
-          "name": "(Test1)连携技",
-          "desc": "(Test1)触发<color=#FFFFFF>[连携技]</color>时，选择对应角色发动：\n向前方发动多段攻击，<color=#FF5521>火属性伤害</color>；\n视为[燃烧攻击]；\n招式发动时，若处于[消亡]状态，则会退出[消亡]状态并使该次<color=#FFFFFF>[连携技]</color>累积的属性异常积蓄提升30%；\n招式发动期间拥有无敌效果。",
+          "name": "连携技：绝处逢生",
+          "desc": "触发<color=#FFFFFF>[连携技]</color>时，选择对应角色发动：\n向前方发动多段攻击，造成<color=#FF5521>火属性伤害</color>；\n视为<Term:1000046></Term>；\n招式发动期间拥有无敌效果，点按 <IconMap:Icon_Normal> 可衔接第三段[普通攻击]。",
           "potential": []
         },
         {
-          "name": "(Test1)终结技",
-          "desc": "(Test1)喧响等级达到<color=#FFFFFF>[极]</color>时，点按 <IconMap:Icon_UltimateReady> 发动：\n飞上高空后俯冲向敌人，消耗自身的所有生命值，引发爆炸，造成大量<color=#FF5521>火属性伤害</color>，并陷入[消亡]状态；\n终结一击命中处于<color=#98EFF0>冰属性异常状态</color>、<color=#FE437E>以太异常状态</color>、<color=#2EB6FF>电属性异常状态</color>、<color=#FF5521>火属性异常状态</color>、<color=#F0D12B>物理属性异常状态</color>、<color=#A6C5FD>风属性异常状态</color>的敌人时，触发1次<color=#FFFFFF>[异放]</color>效果，结算<color=#2BAD00>{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%</color>倍率的对应属性的属性异常伤害；\n该次<color=#FFFFFF>[异放]</color>效果触发暴击时，其暴击伤害额外提升<color=#2BAD00>20%</color>；\n招式发动后，可点按 <IconMap:Icon_Normal> 发动[终结技：入场]；\n招式发动期间拥有无敌效果。",
+          "name": "终结技：万死重明",
+          "desc": "喧响等级达到<color=#FFFFFF>[极]</color>时，点按 <IconMap:Icon_UltimateReady> 发动：\n飞上高空后俯冲向敌人，消耗自身的所有生命值，引发爆炸，造成大量<color=#FF5521>火属性伤害</color>，进入[生竭]状态，并触发下一个角色的[快速支援]；\n视为<Term:1000046></Term>；\n[生竭]状态下无法主动进攻；\n招式发动后一段时间自动释放[烬火追魂]，也可点按 <IconMap:Icon_Normal> 快速发动[烬火追魂]；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)终结技：入场",
-          "desc": "(Test1)当菲欧妮陷入[消亡]状态时，切换至菲欧妮或菲欧妮通过快速支援入场时发动：\n周身环绕火焰，对周围敌人造成<color=#FF5521>火属性伤害</color>，持续回复自身生命值；\n招式发动期间拥有无敌效果。",
+          "name": "烬火追魂",
+          "desc": "当菲欧妮处于[生竭]状态时，下一次普通换入、快速支援、招架支援换入前场时发动：\n周身环绕火焰，对周围敌人造成<color=#FF5521>火属性伤害</color>，视为[终结技]伤害，并退出[生竭]状态，回复<color=#FFFFFF>[终结技：万死重明]</color>消耗的所有生命值，并额外回复自身10%生命值上限的生命值；\n终结一击命中处于<color=#98EFF0>冰属性异常状态</color>、<color=#FE437E>以太异常状态</color>、<color=#2EB6FF>电属性异常状态</color>、<color=#FF5521>火属性异常状态</color>、<color=#F0D12B>物理属性异常状态</color>、<color=#A6C5FD>风属性异常状态</color>的敌人时，触发1次<color=#FFFFFF>[异放]</color>效果，结算<color=#2BAD00>{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%</color>倍率的对应属性的属性异常伤害；\n该次<color=#FFFFFF>[异放]</color>效果触发暴击时，其暴击伤害额外提升40%；\n当处于[生竭]状态的菲欧妮通过<color=#FFFFFF>[连携技：绝处逢生]</color>、<color=#FFFFFF>[终结技：万死重明]</color>入场时，也会触发上述生命值回复与<color=#FFFFFF>[异放]</color>效果；\n招式发动期间拥有无敌效果，点按 <IconMap:Icon_Normal> 可衔接第三段[普通攻击]。",
           "potential": []
         },
         {
-          "name": "(Test1)连携技",
+          "name": "连携技：绝处逢生",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1641012, Prop:1001}",
               "param": {
                 "1641012": {
-                  "main": 83080,
-                  "growth": 7560,
+                  "main": 88270,
+                  "growth": 8030,
                   "format": "%",
-                  "damage_percentage": 83080,
-                  "damage_percentage_growth": 7560,
+                  "damage_percentage": 88270,
+                  "damage_percentage_growth": 8030,
                   "stun_ratio": 26410,
                   "stun_ratio_growth": 1210,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 2489025,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 43953,
+                  "attribute_infliction": 61243,
                   "sp_consume": 0,
                   "attack_data": [
-                    148821
+                    199228
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
@@ -1334,18 +1346,18 @@
                   "main": 26410,
                   "growth": 1210,
                   "format": "%",
-                  "damage_percentage": 83080,
-                  "damage_percentage_growth": 7560,
+                  "damage_percentage": 88270,
+                  "damage_percentage_growth": 8030,
                   "stun_ratio": 26410,
                   "stun_ratio_growth": 1210,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 2489025,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 43953,
+                  "attribute_infliction": 61243,
                   "sp_consume": 0,
                   "attack_data": [
-                    148821
+                    199228
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
@@ -1358,32 +1370,32 @@
           "potential": []
         },
         {
-          "name": "(Test1)终结技",
+          "name": "终结技：万死重明",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1641013, Prop:1001}",
               "param": {
                 "1641013": {
-                  "main": 115870,
-                  "growth": 10540,
+                  "main": 181390,
+                  "growth": 16490,
                   "format": "%",
-                  "damage_percentage": 115870,
-                  "damage_percentage_growth": 10540,
-                  "stun_ratio": 6610,
-                  "stun_ratio_growth": 310,
+                  "damage_percentage": 181390,
+                  "damage_percentage_growth": 16490,
+                  "stun_ratio": 18290,
+                  "stun_ratio_growth": 840,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 51902,
+                  "attribute_infliction": 90361,
                   "sp_consume": 0,
                   "attack_data": [
-                    288150
+                    185430
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 36002
+                  "ether_purify": 64119
                 }
               },
               "potential": []
@@ -1393,25 +1405,25 @@
               "desc": "{Skill:1641013, Prop:1002}",
               "param": {
                 "1641013": {
-                  "main": 6610,
-                  "growth": 310,
+                  "main": 18290,
+                  "growth": 840,
                   "format": "%",
-                  "damage_percentage": 115870,
-                  "damage_percentage_growth": 10540,
-                  "stun_ratio": 6610,
-                  "stun_ratio_growth": 310,
+                  "damage_percentage": 181390,
+                  "damage_percentage_growth": 16490,
+                  "stun_ratio": 18290,
+                  "stun_ratio_growth": 840,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 51902,
+                  "attribute_infliction": 90361,
                   "sp_consume": 0,
                   "attack_data": [
-                    288150
+                    185430
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 36002
+                  "ether_purify": 64119
                 }
               },
               "potential": []
@@ -1420,32 +1432,32 @@
           "potential": []
         },
         {
-          "name": "(Test1)终结技：入场",
+          "name": "烬火追魂",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1641019, Prop:1001}",
               "param": {
                 "1641019": {
-                  "main": 77250,
-                  "growth": 7030,
+                  "main": 9550,
+                  "growth": 870,
                   "format": "%",
-                  "damage_percentage": 77250,
-                  "damage_percentage_growth": 7030,
-                  "stun_ratio": 4410,
-                  "stun_ratio_growth": 210,
+                  "damage_percentage": 9550,
+                  "damage_percentage_growth": 870,
+                  "stun_ratio": 960,
+                  "stun_ratio_growth": 50,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 34601,
+                  "attribute_infliction": 4756,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 24001
+                  "ether_purify": 3375
                 }
               },
               "potential": []
@@ -1455,27 +1467,32 @@
               "desc": "{Skill:1641019, Prop:1002}",
               "param": {
                 "1641019": {
-                  "main": 4410,
-                  "growth": 210,
+                  "main": 960,
+                  "growth": 50,
                   "format": "%",
-                  "damage_percentage": 77250,
-                  "damage_percentage_growth": 7030,
-                  "stun_ratio": 4410,
-                  "stun_ratio_growth": 210,
+                  "damage_percentage": 9550,
+                  "damage_percentage_growth": 870,
+                  "stun_ratio": 960,
+                  "stun_ratio_growth": 50,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 34601,
+                  "attribute_infliction": 4756,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 24001
+                  "ether_purify": 3375
                 }
               },
+              "potential": []
+            },
+            {
+              "name": "异放倍率",
+              "desc": "{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%",
               "potential": []
             }
           ],
@@ -1534,22 +1551,22 @@
     "assist": {
       "description": [
         {
-          "name": "(Test1)快速支援",
-          "desc": "(Test1)当前操作中的角色被击飞时，点按 <IconMap:Icon_Switch> 发动：\n向前方突进并发动快速斩击，造成<color=#FF5521>火属性伤害</color>；\n招式发动期间拥有无敌效果。",
+          "name": "快速支援：急救",
+          "desc": "当前操作中的角色被击飞时，点按 <IconMap:Icon_Switch> 发动：\n向前方突进并发动快速斩击，造成<color=#FF5521>火属性伤害</color>；\n招式发动期间拥有无敌效果，点按 <IconMap:Icon_Normal> 可衔接第三段[普通攻击]。",
           "potential": []
         },
         {
-          "name": "(Test1)招架支援",
-          "desc": "(Test1)前场角色即将被攻击时，点按 <IconMap:Icon_Switch> 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。",
+          "name": "招架支援：久病成医",
+          "desc": "前场角色即将被攻击时，点按 <IconMap:Icon_Switch> 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)支援突击",
-          "desc": "(Test1)发动<color=#FFFFFF>[招架支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n向敌人掷出武器，随后收回武器发动斩击，造成<color=#FF5521>火属性伤害</color>；\n招式发动期间拥有无敌效果。",
+          "name": "支援突击：再生疗法",
+          "desc": "发动<color=#FFFFFF>[招架支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n向敌人掷出武器，随后收回武器发动斩击，造成<color=#FF5521>火属性伤害</color>；\n招式发动期间拥有无敌效果，点按 <IconMap:Icon_Normal> 可衔接第三段[普通攻击]。",
           "potential": []
         },
         {
-          "name": "(Test1)快速支援",
+          "name": "快速支援：急救",
           "param": [
             {
               "name": "伤害倍率",
@@ -1611,7 +1628,7 @@
           "potential": []
         },
         {
-          "name": "(Test1)招架支援",
+          "name": "招架支援：久病成医",
           "param": [
             {
               "name": "轻招架失衡倍率",
@@ -1701,7 +1718,7 @@
           "potential": []
         },
         {
-          "name": "(Test1)支援突击",
+          "name": "支援突击：再生疗法",
           "param": [
             {
               "name": "伤害倍率",
@@ -1813,20 +1830,159 @@
       }
     }
   },
-  "skill_priority": [],
-  "skill_list": {},
+  "skill_priority": [
+    {
+      "id": 1641001,
+      "avatar_id": 1641,
+      "first_priority": [
+        5,
+        0
+      ],
+      "second_priority": [
+        1,
+        3
+      ],
+      "third_priority": [
+        6,
+        2
+      ],
+      "potential_levels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    }
+  ],
+  "skill_list": {
+    "1641001": {
+      "name": "普通攻击：裁生",
+      "desc": "<IconMap:Icon_Normal>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641002": {
+      "name": "普通攻击：熔毁",
+      "desc": "<IconMap:Icon_Normal>（特殊技：掠火后点按）",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641003": {
+      "name": "普通攻击：焚罪",
+      "desc": "<IconMap:Icon_Normal>（燔焰达90点时长按）",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641004": {
+      "name": "特殊技：掠火",
+      "desc": "<IconMap:Icon_Special>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641005": {
+      "name": "强化特殊技：燎斩",
+      "desc": "<IconMap:Icon_SpecialReady>（拥有升变后点按）",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641006": {
+      "name": "强化特殊技：眩焰",
+      "desc": "<IconMap:Icon_SpecialReady>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641007": {
+      "name": "强化特殊技：坠阳",
+      "desc": "<IconMap:Icon_SpecialReady>（发动强化特殊技：眩焰后一定时间内点按）",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641008": {
+      "name": "冲刺攻击：倾身",
+      "desc": "<IconMap:Icon_Evade> ; <IconMap:Icon_Normal>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641009": {
+      "name": "闪避反击：业火两渡",
+      "desc": "<IconMap:Icon_Evade>（极限） ; <IconMap:Icon_Normal>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641010": {
+      "name": "闪避：飘摇",
+      "desc": "<IconMap:Icon_Evade> ；<IconMap:Icon_Evade> （闪避后长按）",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641011": {
+      "name": "连携技：绝处逢生",
+      "desc": "<IconMap:Icon_QTE>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641012": {
+      "name": "终结技：万死重明",
+      "desc": "<IconMap:Icon_UltimateReady>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641013": {
+      "name": "烬火追魂",
+      "desc": "<IconMap:Icon_Normal>（发动终结技后） ；<IconMap:Icon_Switch> （下一次换入前场）",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641014": {
+      "name": "快速支援：急救",
+      "desc": "<IconMap:Icon_Switch>（触发快速支援时）",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641015": {
+      "name": "招架支援：久病成医",
+      "desc": "<IconMap:Icon_Switch>（触发招架支援时）",
+      "element_type": 0,
+      "hit_type": 0,
+      "potential": []
+    },
+    "1641016": {
+      "name": "支援突击：再生疗法",
+      "desc": "<IconMap:Icon_Normal>（发动招架支援后）",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    }
+  },
   "passive": {
     "level": {
       "1641501": {
         "level": 1,
         "id": 1641501,
         "name": [
-          "(Test1)核心被动：",
-          "(Test1)额外能力：额外能力"
+          "核心被动：涅槃",
+          "额外能力：黑枝王牌"
         ],
         "desc": [
-          "(Test1)菲欧妮的异常精通提升<color=#2BAD00>20</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[脆弱]状态，持续20秒；[脆弱]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为<color=#2BAD00>15%</color>，暴击伤害为15%，若菲欧妮的异常掌控大于145点，每点异常掌控会使得该效果的暴击率额外提升<color=#2BAD00>0.35%</color>；\n菲欧妮死亡退场后，可触发[重生]效果，可再次被切入场并回复50%最大生命值，每300秒最多触发一次。",
-          "(Test1)队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n当队伍中<color=#FFFFFF>[异常]</color>角色数量为2/3时，[脆弱]状态下的敌人受到属性异常伤害的暴击伤害提升为25%/40%；"
+          "菲欧妮的异常精通提升<color=#2BAD00>43</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为<color=#2BAD00>12.5%</color>，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮<color=#2BAD00>25%</color>攻击力的<color=#FF5521>火属性伤害</color>，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 <IconMap:Icon_Special> 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动<color=#FFFFFF>[强化特殊技]</color>时，进入<color=#FFFFFF>[枯荣]</color>状态，持续20秒，<color=#FFFFFF>[燃烧攻击]</color>命中敌人或重复施加时刷新持续时间；\n<color=#FFFFFF>[枯荣]</color>状态下，发动<color=#FFFFFF>[强化特殊技：眩焰]</color>后，下次发动<color=#FFFFFF>[强化特殊技：眩焰]</color>会替换为发动<color=#FFFFFF>[强化特殊技：坠阳]</color>。",
+          "队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n<Term:1000048></Term>状态下的敌人受到属性异常伤害的暴击伤害提升15%。"
         ],
         "extra_property": {},
         "potential": []
@@ -1835,12 +1991,12 @@
         "level": 2,
         "id": 1641502,
         "name": [
-          "(Test1)核心被动：",
-          "(Test1)额外能力：额外能力"
+          "核心被动：涅槃",
+          "额外能力：黑枝王牌"
         ],
         "desc": [
-          "(Test1)菲欧妮的异常精通提升<color=#2BAD00>23</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[脆弱]状态，持续20秒；[脆弱]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为<color=#2BAD00>17.5%</color>，暴击伤害为15%，若菲欧妮的异常掌控大于145点，每点异常掌控会使得该效果的暴击率额外提升<color=#2BAD00>0.41%</color>；\n菲欧妮死亡退场后，可触发[重生]效果，可再次被切入场并回复50%最大生命值，每300秒最多触发一次。",
-          "(Test1)队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n当队伍中<color=#FFFFFF>[异常]</color>角色数量为2/3时，[脆弱]状态下的敌人受到属性异常伤害的暴击伤害提升为25%/40%；"
+          "菲欧妮的异常精通提升<color=#2BAD00>50</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为<color=#2BAD00>14.6%</color>，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮<color=#2BAD00>29%</color>攻击力的<color=#FF5521>火属性伤害</color>，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 <IconMap:Icon_Special> 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动<color=#FFFFFF>[强化特殊技]</color>时，进入<color=#FFFFFF>[枯荣]</color>状态，持续20秒，<color=#FFFFFF>[燃烧攻击]</color>命中敌人或重复施加时刷新持续时间；\n<color=#FFFFFF>[枯荣]</color>状态下，发动<color=#FFFFFF>[强化特殊技：眩焰]</color>后，下次发动<color=#FFFFFF>[强化特殊技：眩焰]</color>会替换为发动<color=#FFFFFF>[强化特殊技：坠阳]</color>。",
+          "队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n<Term:1000048></Term>状态下的敌人受到属性异常伤害的暴击伤害提升15%。"
         ],
         "extra_property": {},
         "potential": []
@@ -1849,12 +2005,12 @@
         "level": 3,
         "id": 1641503,
         "name": [
-          "(Test1)核心被动：",
-          "(Test1)额外能力：额外能力"
+          "核心被动：涅槃",
+          "额外能力：黑枝王牌"
         ],
         "desc": [
-          "(Test1)菲欧妮的异常精通提升<color=#2BAD00>27</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[脆弱]状态，持续20秒；[脆弱]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为<color=#2BAD00>20%</color>，暴击伤害为15%，若菲欧妮的异常掌控大于145点，每点异常掌控会使得该效果的暴击率额外提升<color=#2BAD00>0.47%</color>；\n菲欧妮死亡退场后，可触发[重生]效果，可再次被切入场并回复50%最大生命值，每300秒最多触发一次。",
-          "(Test1)队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n当队伍中<color=#FFFFFF>[异常]</color>角色数量为2/3时，[脆弱]状态下的敌人受到属性异常伤害的暴击伤害提升为25%/40%；"
+          "菲欧妮的异常精通提升<color=#2BAD00>57</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为<color=#2BAD00>16.7%</color>，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮<color=#2BAD00>33%</color>攻击力的<color=#FF5521>火属性伤害</color>，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 <IconMap:Icon_Special> 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动<color=#FFFFFF>[强化特殊技]</color>时，进入<color=#FFFFFF>[枯荣]</color>状态，持续20秒，<color=#FFFFFF>[燃烧攻击]</color>命中敌人或重复施加时刷新持续时间；\n<color=#FFFFFF>[枯荣]</color>状态下，发动<color=#FFFFFF>[强化特殊技：眩焰]</color>后，下次发动<color=#FFFFFF>[强化特殊技：眩焰]</color>会替换为发动<color=#FFFFFF>[强化特殊技：坠阳]</color>。",
+          "队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n<Term:1000048></Term>状态下的敌人受到属性异常伤害的暴击伤害提升15%。"
         ],
         "extra_property": {},
         "potential": []
@@ -1863,12 +2019,12 @@
         "level": 4,
         "id": 1641504,
         "name": [
-          "(Test1)核心被动：",
-          "(Test1)额外能力：额外能力"
+          "核心被动：涅槃",
+          "额外能力：黑枝王牌"
         ],
         "desc": [
-          "(Test1)菲欧妮的异常精通提升<color=#2BAD00>30</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[脆弱]状态，持续20秒；[脆弱]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为<color=#2BAD00>22.5%</color>，暴击伤害为15%，若菲欧妮的异常掌控大于145点，每点异常掌控会使得该效果的暴击率额外提升<color=#2BAD00>0.53%</color>；\n菲欧妮死亡退场后，可触发[重生]效果，可再次被切入场并回复50%最大生命值，每300秒最多触发一次。",
-          "(Test1)队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n当队伍中<color=#FFFFFF>[异常]</color>角色数量为2/3时，[脆弱]状态下的敌人受到属性异常伤害的暴击伤害提升为25%/40%；"
+          "菲欧妮的异常精通提升<color=#2BAD00>64</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为<color=#2BAD00>18.8%</color>，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮<color=#2BAD00>38%</color>攻击力的<color=#FF5521>火属性伤害</color>，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 <IconMap:Icon_Special> 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动<color=#FFFFFF>[强化特殊技]</color>时，进入<color=#FFFFFF>[枯荣]</color>状态，持续20秒，<color=#FFFFFF>[燃烧攻击]</color>命中敌人或重复施加时刷新持续时间；\n<color=#FFFFFF>[枯荣]</color>状态下，发动<color=#FFFFFF>[强化特殊技：眩焰]</color>后，下次发动<color=#FFFFFF>[强化特殊技：眩焰]</color>会替换为发动<color=#FFFFFF>[强化特殊技：坠阳]</color>。",
+          "队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n<Term:1000048></Term>状态下的敌人受到属性异常伤害的暴击伤害提升15%。"
         ],
         "extra_property": {},
         "potential": []
@@ -1877,12 +2033,12 @@
         "level": 5,
         "id": 1641505,
         "name": [
-          "(Test1)核心被动：",
-          "(Test1)额外能力：额外能力"
+          "核心被动：涅槃",
+          "额外能力：黑枝王牌"
         ],
         "desc": [
-          "(Test1)菲欧妮的异常精通提升<color=#2BAD00>33</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[脆弱]状态，持续20秒；[脆弱]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为<color=#2BAD00>25%</color>，暴击伤害为15%，若菲欧妮的异常掌控大于145点，每点异常掌控会使得该效果的暴击率额外提升<color=#2BAD00>0.58%</color>；\n菲欧妮死亡退场后，可触发[重生]效果，可再次被切入场并回复50%最大生命值，每300秒最多触发一次。",
-          "(Test1)队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n当队伍中<color=#FFFFFF>[异常]</color>角色数量为2/3时，[脆弱]状态下的敌人受到属性异常伤害的暴击伤害提升为25%/40%；"
+          "菲欧妮的异常精通提升<color=#2BAD00>71</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为<color=#2BAD00>20.8%</color>，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮<color=#2BAD00>42%</color>攻击力的<color=#FF5521>火属性伤害</color>，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 <IconMap:Icon_Special> 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动<color=#FFFFFF>[强化特殊技]</color>时，进入<color=#FFFFFF>[枯荣]</color>状态，持续20秒，<color=#FFFFFF>[燃烧攻击]</color>命中敌人或重复施加时刷新持续时间；\n<color=#FFFFFF>[枯荣]</color>状态下，发动<color=#FFFFFF>[强化特殊技：眩焰]</color>后，下次发动<color=#FFFFFF>[强化特殊技：眩焰]</color>会替换为发动<color=#FFFFFF>[强化特殊技：坠阳]</color>。",
+          "队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n<Term:1000048></Term>状态下的敌人受到属性异常伤害的暴击伤害提升15%。"
         ],
         "extra_property": {},
         "potential": []
@@ -1891,12 +2047,12 @@
         "level": 6,
         "id": 1641506,
         "name": [
-          "(Test1)核心被动：",
-          "(Test1)额外能力：额外能力"
+          "核心被动：涅槃",
+          "额外能力：黑枝王牌"
         ],
         "desc": [
-          "(Test1)菲欧妮的异常精通提升<color=#2BAD00>37</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[脆弱]状态，持续20秒；[脆弱]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为<color=#2BAD00>27.5%</color>，暴击伤害为15%，若菲欧妮的异常掌控大于145点，每点异常掌控会使得该效果的暴击率额外提升<color=#2BAD00>0.64%</color>；\n菲欧妮死亡退场后，可触发[重生]效果，可再次被切入场并回复50%最大生命值，每300秒最多触发一次。",
-          "(Test1)队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n当队伍中<color=#FFFFFF>[异常]</color>角色数量为2/3时，[脆弱]状态下的敌人受到属性异常伤害的暴击伤害提升为25%/40%；"
+          "菲欧妮的异常精通提升<color=#2BAD00>78</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为<color=#2BAD00>22.9%</color>，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮<color=#2BAD00>46%</color>攻击力的<color=#FF5521>火属性伤害</color>，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 <IconMap:Icon_Special> 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动<color=#FFFFFF>[强化特殊技]</color>时，进入<color=#FFFFFF>[枯荣]</color>状态，持续20秒，<color=#FFFFFF>[燃烧攻击]</color>命中敌人或重复施加时刷新持续时间；\n<color=#FFFFFF>[枯荣]</color>状态下，发动<color=#FFFFFF>[强化特殊技：眩焰]</color>后，下次发动<color=#FFFFFF>[强化特殊技：眩焰]</color>会替换为发动<color=#FFFFFF>[强化特殊技：坠阳]</color>。",
+          "队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n<Term:1000048></Term>状态下的敌人受到属性异常伤害的暴击伤害提升15%。"
         ],
         "extra_property": {},
         "potential": []
@@ -1905,12 +2061,12 @@
         "level": 7,
         "id": 1641507,
         "name": [
-          "(Test1)核心被动：",
-          "(Test1)额外能力：额外能力"
+          "核心被动：涅槃",
+          "额外能力：黑枝王牌"
         ],
         "desc": [
-          "(Test1)菲欧妮的异常精通提升<color=#2BAD00>40</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[脆弱]状态，持续20秒；[脆弱]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为<color=#2BAD00>30%</color>，暴击伤害为15%，若菲欧妮的异常掌控大于145点，每点异常掌控会使得该效果的暴击率额外提升<color=#2BAD00>0.7%</color>；\n菲欧妮死亡退场后，可触发[重生]效果，可再次被切入场并回复50%最大生命值，每300秒最多触发一次。",
-          "(Test1)队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n当队伍中<color=#FFFFFF>[异常]</color>角色数量为2/3时，[脆弱]状态下的敌人受到属性异常伤害的暴击伤害提升为25%/40%；"
+          "菲欧妮的异常精通提升<color=#2BAD00>85</color>点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为<color=#2BAD00>25%</color>，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮<color=#2BAD00>50%</color>攻击力的<color=#FF5521>火属性伤害</color>，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 <IconMap:Icon_Special> 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动<color=#FFFFFF>[强化特殊技]</color>时，进入<color=#FFFFFF>[枯荣]</color>状态，持续20秒，<color=#FFFFFF>[燃烧攻击]</color>命中敌人或重复施加时刷新持续时间；\n<color=#FFFFFF>[枯荣]</color>状态下，发动<color=#FFFFFF>[强化特殊技：眩焰]</color>后，下次发动<color=#FFFFFF>[强化特殊技：眩焰]</color>会替换为发动<color=#FFFFFF>[强化特殊技：坠阳]</color>。",
+          "队伍中存在其他<color=#FFFFFF>[异常]</color>角色或同阵营角色时触发：\n<Term:1000048></Term>状态下的敌人受到属性异常伤害的暴击伤害提升15%。"
         ],
         "extra_property": {},
         "potential": []
@@ -1930,57 +2086,57 @@
       },
       "4": {
         "10": 60000,
-        "110011": 2,
-        "110514": 9
+        "110514": 9,
+        "110011": 2
       },
       "5": {
         "10": 100000,
-        "110011": 3,
-        "110514": 15
+        "110514": 15,
+        "110011": 3
       },
       "6": {
         "10": 200000,
-        "110011": 4,
-        "110514": 30
+        "110514": 30,
+        "110011": 4
       }
     }
   },
   "talent": {
     "1": {
       "level": 1,
-      "name": "(Test1)...",
-      "desc": "(Test1)进入战场时，菲欧妮获得1点<color=#FFFFFF>[蓄能]</color>，在勘域模式中此效果180秒内最多触发一次；\n菲欧妮攻击命中处于<color=#FFFFFF>[脆弱]</color>状态下的敌人，或队伍中任意角色对处于<color=#FFFFFF>[脆弱]</color>状态下的敌人触发属性异常伤害时，当属性异常伤害触发暴击时，其暴击伤害额外提升20%；\n<color=#FFFFFF>[燃烧攻击]</color>造成伤害时，<color=#FFFFFF>[余火]</color>的获取效率提升15%。",
-      "desc2": "(Test1)..."
+      "name": "痛觉残留与刺激游行",
+      "desc": "进入战场时，菲欧妮获得1点<color=#FFFFFF>[升变]</color>，在勘域模式中此效果180秒内最多触发一次；\n<color=#FFFFFF>[灼蚀]</color>状态下的敌人受到属性异常伤害的暴击伤害额外提升25%；\n<color=#FFFFFF>[燃烧攻击]</color>造成伤害时，<color=#FFFFFF>[燔焰]</color>的获取效率提升15%。",
+      "desc2": "..."
     },
     "2": {
       "level": 2,
-      "name": "(Test1)...",
-      "desc": "(Test1)菲欧妮发动<color=#FFFFFF>[强化特殊技]</color>时，进入<color=#FFFFFF>[焚化]</color>状态，持续10秒；\n<color=#FFFFFF>[焚化]</color>状态下，<color=#FFFFFF>[燃烧攻击]</color>命中或重复施加时刷新持续时间；\n<color=#FFFFFF>[焚化]</color>状态下，菲欧妮造成的属性异常积蓄效率提升15%，且会保留当前的<color=#FFFFFF>[强化特殊技]</color>段数；\n发动<color=#FFFFFF>[强化特殊技：第二段]</color>时，回复8点能量。",
-      "desc2": "(Test1)..."
+      "name": "好奇心害不死猫",
+      "desc": "菲欧妮对敌人施加<color=#FF5521>[灼烧]</color>效果时，该效果的持续时间提升2秒；\n菲欧妮对<color=#FFFFFF>[灼蚀]</color>状态下的敌人造成的伤害提升30%。",
+      "desc2": "..."
     },
     "3": {
       "level": 3,
-      "name": "(Test1)...",
+      "name": "稻草人症候群",
       "desc": "<color=#FFFFFF>[普通攻击]</color>、<color=#FFFFFF>[闪避]</color>、<color=#FFFFFF>[支援技]</color>、<color=#FFFFFF>[特殊技]</color>、<color=#FFFFFF>[连携技]</color> 技能等级+2",
-      "desc2": "(Test1)..."
+      "desc2": "..."
     },
     "4": {
       "level": 4,
-      "name": "(Test1)...",
-      "desc": "(Test1)菲欧妮发动<color=#FFFFFF>[长按普通攻击]</color>时，获得200点喧响值。",
-      "desc2": "(Test1)..."
+      "name": "生命尽头与冷酷仙境",
+      "desc": "<color=#FFFFFF>[烬火追魂]</color>以及<color=#FFFFFF>[普通攻击：焚罪]</color>终结一击命中处于异常状态的敌人时，\n额外触发一次<color=#FFFFFF>[异放]</color>效果，固定结算600%倍率的对应属性的属性异常伤害。",
+      "desc2": "..."
     },
     "5": {
       "level": 5,
-      "name": "(Test1)...",
+      "name": "狂欢马戏团",
       "desc": "<color=#FFFFFF>[普通攻击]</color>、<color=#FFFFFF>[闪避]</color>、<color=#FFFFFF>[支援技]</color>、<color=#FFFFFF>[特殊技]</color>、<color=#FFFFFF>[连携技]</color> 技能等级+2",
-      "desc2": "(Test1)..."
+      "desc2": "..."
     },
     "6": {
       "level": 6,
-      "name": "(Test1)...",
-      "desc": "(Test1)额外能力所需的<color=#FFFFFF>[异常]</color>角色数量减1；\n<color=#FFFFFF>[强化特殊技]</color>的终结一击命中处于属性异常状态的敌人时，触发1次<color=#FFFFFF>[异放]</color>效果，固定结算200%倍率的对应属性的属性异常伤害；\n菲欧妮造成的<color=#FFFFFF>[异放]</color>效果无视敌人15%防御力。",
-      "desc2": "(Test1)..."
+      "name": "禁闭室手记",
+      "desc": "菲欧妮无视目标15%全属性伤害抗性；\n菲欧妮发动<color=#FFFFFF>[强化特殊技：眩焰]</color>时，获得1点<color=#FFFFFF>[升变]</color>；\n菲欧妮触发的<color=#FFFFFF>[异放]</color>效果无视敌人40%防御力。",
+      "desc2": "..."
     }
   },
   "fairy_recommend": {
@@ -2046,9 +2202,9 @@
   },
   "strategy": [
     "03",
-    "(Test1)<IconMap:Icon_GeneralBuff_Fire>火属性，<IconMap:Icon_AvatarClass_Anomaly>异常输出",
-    "(Test1)测试占位文本",
-    "(Test1)测试占位文本"
+    "<IconMap:Icon_GeneralBuff_Fire>火属性，<IconMap:Icon_AvatarClass_Anomaly>异常输出",
+    "使全队全属性异常伤害有概率触发暴击",
+    "受到致命伤害时触发[重明]效果可再次入场"
   ],
   "potential": [],
   "potential_detail": {}

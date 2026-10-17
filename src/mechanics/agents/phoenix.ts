@@ -1,20 +1,35 @@
 /**
- * 菲欧妮（1641，火属性·异常，坎卜斯黑枝）—— ⚠️ 3.3 测试服临时录入（nanoka 3.3.2+18895034）。
- * 原文来源：data/raw/nanoka_missing/full/1641.json（双源对账 data/raw/gachabase/1641.json）。
+ * 菲欧妮（1641，火属性·异常，坎卜斯黑枝）—— nanoka 3.3.12+19629936（v12 正式数值）。
+ * 原文来源：data/raw/nanoka_missing/full/1641.json（证据契约 data/recordings/1641.json）。
  *
- * - 核心被动：异常精通 +40；[脆弱]敌方 debuff——属性异常伤害可暴击：
- *   anomalyCritRate 30 + 0.7×(异常掌控-145)、anomalyCritDmg 15/25/40（队伍异常角色数 2/3，
- *   额外能力门控），影画1 再 +20。引擎异常结算区已有 EV 乘区（calcAnomalyCritExpect = 1+率×伤，
- *   爱芮异放暴击同通道）——不造新乘区。
- * - 异放（普罗米娅绝裁同款固定 releaseMultiplier 通道）：
- *   长按普攻 1641005（225+20×(s-1)，s=普攻技能等级）、终结技 1641013（300+27×(s-1)）、
- *   影画6 强特 200% + releaseModifier 无视 15% 防御（异放限定）。
- * - [余火]→长按普攻：燃烧攻击行 attack_data_0（moveId×倍率表直算——**buildExecutions 阶段
- *   totalSpecialResourceRecovery 未 enrich 回填为 0**，2026-09-12 探针修正）×影画1 效率 / 90 = 次数。
- * - [蓄能]附加攻击 1641021：次数 = 强特二段 + 长按普攻 + 终结（重击命中来源）。
- * - 影画2 焚化积蓄效率 +15%×覆盖率；第二段回 8 能量（行级）；影画4 长按普攻 +200 喧响（行级）。
+ * - 核心被动·涅槃：异常精通 **+85**；[灼蚀]（v12 取代旧[脆弱]）——队伍任意角色造成属性异常伤害时
+ *   使敌人陷入 20 秒；[灼蚀] 敌人受到属性异常伤害**有概率暴击**：
+ *   · 基础暴击率 30%、暴击伤害 **25%**（v12 不再随异常角色数分档）；
+ *   · 菲欧妮**初始异常掌控 > 155** 时，每点 +0.7% 暴击率；
+ *   · 初始异常掌控达 **255** 时暴击率达到最大值（30 + 0.7×100 = 100）。
+ *   · **[灼蚀] 敌人每 8 秒受到菲欧妮 50% 攻击力火属性伤害，视为[强化特殊技]伤害**（v12 新增，
+ *     走 direct_damage 事件通道，非异放）。
+ * - 额外能力：队伍有其他[异常]或同阵营角色 → [灼蚀] 敌人受到属性异常伤害的**暴击伤害 +15%**
+ *   （v12 起固定 +15，不再按异常角色数 2/3 → 25%/40%）。
+ * - 异放（固定 releaseMultiplier）：
+ *   · [普通攻击：焚罪]（1641005）终结一击 225+20×(s-1)，暴击时暴伤额外 +40%；
+ *   · [烬火追魂]（1641019）终结一击 300+27×(s-1)，暴击时暴伤额外 +40%；
+ *   · 影画4：上述两者命中异常状态敌人时**额外触发一次异放，固定 600%**。
+ * - [燔焰]：上限 120；[燃烧攻击]（普攻三/四段、熔毁、燎斩、眩焰、坠阳、连携、终结）造成伤害时按
+ *   倍率表 attack_data_0 回复；完美格挡 +5（10 秒一次）；影画1 效率 +15%。
+ *   满 90 长按普攻发动[焚罪]（消耗 90 点）。
+ * - [升变]：发动[坠阳]获得 1 点（上限 1）；影画1 入场 +1；影画6 眩焰 +1；持有可发动[燎斩]（1641023）。
+ * - [枯荣]：发动强化特殊技进入 20 秒；[枯荣]下发动[眩焰]后，下次[眩焰]替换为[坠阳]。
+ *   ⇒ 强特循环 = 眩焰(40) → 坠阳(40, +1升变) → 燎斩(0 耗能，消耗升变)。
+ * - 影画1：入场 +1 升变；[灼蚀] 暴伤额外 +25%；[燃烧攻击] 燔焰获取效率 +15%。
+ * - 影画2：[灼烧]持续时间 +2 秒；对[灼蚀] 敌人造成的伤害 +30%（dmgBonus）。
+ * - 影画4：焚罪/烬火追魂终结一击额外一次异放 600%。
+ * - 影画6：无视目标 15% 全属性伤害抗性；眩焰获得 1 点升变；异放无视 40% 防御力。
+ * - [烬火追魂]（1641019，191.2%）不占前台时间（收尾追加攻击，卢西娅 1451007 先例），
+ *   计数 = 终结次数（[生竭] → 下一次换入前场触发）。
  *
- * 未建模（spec notes 在册）：[重生]/[消亡]状态机、影画2 保留段数、队友向脆弱异常暴击。
+ * 未建模（spec notes 在册）：[生竭]/[重明] 状态机本体（回血无乘区）、[枯荣] 逐时序状态机
+ * （按「每轮眩焰→坠阳→燎斩」稳态口径）、[灼烧] 持续时间 +2 秒的 DPS 折算（异常 DPS 走引擎异常池）。
  */
 import { clampRatio, whole } from '@/utils/finiteClamp'
 import type {
@@ -30,110 +45,120 @@ import type {
   ReleaseModifierInput,
 } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
-import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
+import { minusInvincibleTime } from '@/core/effectiveTime'
 
 const setting = mechanicSettingReader(() => settings)
-const settingOf = mechanicSettingPanelReader(() => settings)
 export const PHOENIX_ID = '1641'
-/** 核心被动：异常精通 +40 */
-export const PHOENIX_CORE_PROFICIENCY = 40
-/** [脆弱]：基础暴击率 30%、暴伤 15%；掌控>145 每点 +0.7% 率 */
-export const PHOENIX_WEAKNESS_CRIT_RATE = 30
-export const PHOENIX_WEAKNESS_CRIT_DMG = 15
-export const PHOENIX_WEAKNESS_MASTERY_THRESHOLD = 145
-export const PHOENIX_WEAKNESS_PER_POINT_RATE = 0.7
-/** 额外能力：队伍异常角色数 2/3 → 脆弱暴伤提升为 25/40（门控 additionalAbilityActive） */
-export const PHOENIX_WEAKNESS_CRIT_DMG_BY_COUNT: Record<number, number> = { 1: 15, 2: 25, 3: 40 }
-/** 影画1：脆弱目标异常伤害触发暴击时暴伤 +20。实际承载 = spec teamBuff `phoenix.cinema1_weakness_crit_dmg`（全队 anomalyCritDmg +20，与脆弱异常暴击同为通用机制）；本常量只喂资源卡展示（CC-122 订正旧注释「近似为自身」）。 */
-export const PHOENIX_C1_CRIT_DMG = 20
-/** 影画1：燃烧攻击余火获取效率 +15% */
+/** 核心被动：异常精通 +85（v12；旧 40） */
+export const PHOENIX_CORE_PROFICIENCY = 85
+/** [灼蚀]：基础暴击率 30%、暴击伤害 25%（v12） */
+export const PHOENIX_SCORCH_CRIT_RATE = 30
+export const PHOENIX_SCORCH_CRIT_DMG = 25
+/** [灼蚀]：初始异常掌控 > 155 每点 +0.7% 暴击率；达 255 时封顶 */
+export const PHOENIX_SCORCH_MASTERY_THRESHOLD = 155
+export const PHOENIX_SCORCH_PER_POINT_RATE = 0.7
+export const PHOENIX_SCORCH_MASTERY_CAP = 255
+/** [灼蚀] 每 8 秒 50% 攻击力火伤（视为强化特殊技伤害） */
+export const PHOENIX_SCORCH_DOT_INTERVAL = 8
+export const PHOENIX_SCORCH_DOT_RATIO = 50
+/** 额外能力：[灼蚀] 敌人受到属性异常伤害的暴击伤害 +15（v12 固定，不再分档） */
+export const PHOENIX_ADDITIONAL_SCORCH_CRIT_DMG = 15
+/** 影画1：[灼蚀] 暴伤额外 +25%；燔焰获取效率 +15%；入场 +1 升变 */
+export const PHOENIX_C1_CRIT_DMG = 25
 export const PHOENIX_C1_EMBER_EFFICIENCY = 15
-/** 影画2：焚化下异常积蓄效率 +15% × 覆盖率；第二段回 8 能量 */
-export const PHOENIX_C2_BUILDUP_EFF = 15
-export const PHOENIX_C2_EX2_ENERGY = 8
-/** 影画4：长按普攻 +200 喧响 */
-export const PHOENIX_C4_CHARGED_DECIBEL = 200
-/** 影画6：异放无视 15% 防御 */
-export const PHOENIX_C6_RELEASE_DEF_IGNORE = 15
+/** 影画2：对[灼蚀] 敌人造成的伤害 +30% */
+export const PHOENIX_C2_SCORCH_DMG_BONUS = 30
+/** 影画4：焚罪/烬火追魂终结一击额外一次异放，固定 600% 倍率 */
+export const PHOENIX_C4_RELEASE_MULT = 600
+/** 影画6：无视 15% 全属性伤害抗性；异放无视 40% 防御 */
+export const PHOENIX_C6_RES_IGNORE = 15
+export const PHOENIX_C6_RELEASE_DEF_IGNORE = 40
+/** 异放暴击时暴伤额外 +40%（焚罪/烬火追魂共有） */
+export const PHOENIX_RELEASE_CRIT_EXTRA_DMG = 40
 
-/** moveId（param 空间） */
-export const PHOENIX_CHARGED_MOVE_ID = '1641005' // 强化特殊技：第一段
-export const PHOENIX_EX2_MOVE_ID = '1641009' // 强化特殊技：第二段
-export const PHOENIX_ENERGIZE_MOVE_ID = '1641021' // 蓄能附加攻击（视为强化特殊技）
-export const PHOENIX_ULT_MOVE_ID = '1641013' // 终结技
-export const PHOENIX_ENTRY_MOVE_ID = '1641019' // 终结技：入场（终结「招式发动后，可点按发动」→ 每次终结一次，用户口径 2026-09-12）
-export const PHOENIX_CHAIN_MOVE_ID = '1641012' // 连携技（[消亡]消费：退出消亡并+30%积蓄）
-/** 消亡消费：连携技积蓄 +30%（原文「若处于[消亡]状态，则会退出[消亡]状态并使该次[连携技]累积的属性异常积蓄提升30%」） */
-export const PHOENIX_WANGLIANG_CHAIN_BUILDUP_PCT = 30
-/**
- * 消亡→连携加成次数（消费型状态机，2026-09-12 用户纠错建模）：
- * 消亡由终结技进入（进入次数 = 终结次数），每次消亡被**下一次连携**消费退出
- * → 加成次数 = min(终结次数, 连携次数)。状态机本体不建，但次数驱动的乘区不丢。
- */
-export function phoenixWangliangChainBonus(ultCount: number, chainCount: number): number {
-  return Math.max(0, Math.min(Math.floor(ultCount || 0), Math.floor(chainCount || 0)))
-}
-/** 长按普攻消耗余火 */
+/** moveId（param 空间，v12 重排后） */
+export const PHOENIX_CHARGED_MOVE_ID = '1641005' // 普通攻击：焚罪（长按，消耗 90 燔焰）
+export const PHOENIX_BRANCH_MOVE_ID = '1641006' // 普通攻击：熔毁（分支攻击）
+export const PHOENIX_EX_FIRST_MOVE_ID = '1641008' // 强化特殊技：眩焰（40 能量）
+export const PHOENIX_EX_SECOND_MOVE_ID = '1641009' // 强化特殊技：坠阳（40 能量，+1 升变）
+export const PHOENIX_EX_LIAOZHAN_MOVE_ID = '1641023' // 强化特殊技：燎斩（消耗 1 升变，不耗能）
+export const PHOENIX_ULT_MOVE_ID = '1641013' // 终结技：万死重明
+export const PHOENIX_ENTRY_MOVE_ID = '1641019' // 烬火追魂（[生竭] 后下一次换入前场）
+export const PHOENIX_CHAIN_MOVE_ID = '1641012' // 连携技：绝处逢生
+/** 长按普攻消耗燔焰 */
 export const PHOENIX_CHARGED_EMBER_COST = 90
-/** [燃烧攻击]集合（余火来源：倍率表 `attack_data_0` 列 = **每次命中的余火获取**）。
+/** [燔焰] 上限（原文「菲欧妮最多拥有120点[燔焰]」） */
+export const PHOENIX_EMBER_CAP = 120
+/**
+ * [燃烧攻击]集合（燔焰来源：倍率表 `attack_data_0` 列 = **每次命中的燔焰获取**）。
  *
- * 标度口径（2026-09-14 用户复核「每次回复应该是十几」后**确认**，此前标 `[猜测·低]`）：
- * 这批整型列统一是 **×10000**——同一行的 `energy_gain_base=71040` 在 catalog 里就是
- * `energy_recovery 7.104`（`node scripts/resolve.mjs 招式 1641 1641004` 可查），
- * 故 `attack_data[1641004]=147634` → **14.7634 余火/次**（三段 8.02 / 四段 14.76 /
- * 强特 15.02+19.70 / 连携 14.88 / 终结 28.82），双源（gachabase + nanoka_missing/full）同值。
- * 反证 `/100` 读法：那会给出 1476 余火/次，而长按只花 90 ⇒ 一次燃烧攻击即可连放 16 次长按，明显不成立。
- *
- * 分支攻击 1641006（追斩后点按）不计入自动收入——操作向量，滑块/人工次数覆盖。 */
+ * 标度口径（2026-09-14 用户复核确认）：这批整型列统一 **×10000**——同一行的
+ * `energy_gain_base=71040` 在 catalog 里就是 `energy_recovery 7.104`，
+ * 故 `attack_data[1641004]=169072` → **16.9072 燔焰/次**（v12 重导后的真实值）。
+ * 分支攻击 1641006（熔毁）为操作向量，滑块/人工次数覆盖。
+ */
 export const PHOENIX_COMBUSTION_MOVE_IDS: ReadonlySet<string> = new Set([
   '1641003', '1641004', // 普攻三/四段
-  '1641008', '1641009', // 强化特殊技第一/二段
-  '1641012', '1641013', // 连携/终结
+  PHOENIX_BRANCH_MOVE_ID, // 分支攻击：熔毁
+  PHOENIX_EX_LIAOZHAN_MOVE_ID, // 强化特殊技：燎斩
+  PHOENIX_EX_FIRST_MOVE_ID, PHOENIX_EX_SECOND_MOVE_ID, // 眩焰 / 坠阳
+  PHOENIX_CHAIN_MOVE_ID, PHOENIX_ULT_MOVE_ID, // 连携 / 终结
 ])
-/** 平A段循环（普攻一~四段，余火按第三/四段命中计） */
+/** 平A段循环（普攻一~四段，燔焰按第三/四段命中计） */
 export const PHOENIX_BASIC_SEGMENT_IDS: readonly string[] = ['1641001', '1641002', '1641003', '1641004']
-/** 异放固定倍率（满级 s=12）：长按普攻 225+20×11=445、终结 300+27×11=597、影画6 强特 200 */
-export const PHOENIX_RELEASE_BASE = { charged: 225, chargedPerLevel: 20, ult: 300, ultPerLevel: 27, c6Ex: 200 } as const
+/** 异放固定倍率（满级 s=12）：焚罪 225+20×11=445、烬火追魂 300+27×11=597 */
+export const PHOENIX_RELEASE_BASE = { charged: 225, chargedPerLevel: 20, entry: 300, entryPerLevel: 27 } as const
 /** 通用技能等级口径：影画3 +2、影画5 累计 +4 */
 export function phoenixSkillLevel(cinemaLevel: number): number {
   const cinema = cinemaLevelOf(cinemaLevel)
   return 12 + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
 }
 
-
 export interface PhoenixCycle {
   cinemaLevel: number
   additionalActive: boolean
   coreProficiency: number
-  weaknessCritRate: number
-  weaknessCritDmg: number
-  teamAnomalyCount: number
-  c2BuildUpEff: number
+  scorchCritRate: number
+  scorchCritDmg: number
+  scorchDmgBonus: number
+  scorchDotCount: number
+  emberCap: number
   chargedCount: number
+  exCount: number
+  liaozhanCount: number
+  entryCount: number
+  c1CritDmg: number
+  c2ScorchDmgBonus: number
+  c4ReleaseMult: number
+  c6ResIgnore: number
+  c6ReleaseDefIgnore: number
   note: string
 }
 
-/** 脆弱异常暴击：率 = 30 + 0.7×(掌控-145)；伤 = 15/25/40（队伍异常数，需额外能力门控） */
-export function computePhoenixWeaknessCrit(input: {
-  anomalyMastery: number
+/**
+ * [灼蚀] 异常暴击（v12）：率 = 30 + 0.7×min(掌控,255)−155 的超出量（达 255 封顶 = 100）；
+ * 伤 = 25 + 额外能力 15 + 影画1 25。
+ *
+ * `mastery` 必须是**初始异常掌控**（局外面板）——原文两处都写「初始」。
+ */
+export function computePhoenixScorchCrit(input: {
+  initialMastery: number
   additionalActive: boolean
-  teamAnomalyCount: number
   cinemaLevel: number
 }): { rate: number; dmg: number } {
-  const mastery = Math.max(0, Number.isFinite(input.anomalyMastery) ? input.anomalyMastery : 0)
-  const rate = PHOENIX_WEAKNESS_CRIT_RATE
-    + Math.max(0, mastery - PHOENIX_WEAKNESS_MASTERY_THRESHOLD) * PHOENIX_WEAKNESS_PER_POINT_RATE
-  // 影画6：额外能力所需异常角色数 -1 → 同等编成下档位更高
-  const effectiveCount = Math.min(3, Math.max(1, input.teamAnomalyCount + (input.cinemaLevel >= 6 ? 1 : 0)))
-  const tierDmg = input.additionalActive
-    ? (PHOENIX_WEAKNESS_CRIT_DMG_BY_COUNT[effectiveCount] ?? PHOENIX_WEAKNESS_CRIT_DMG)
-    : PHOENIX_WEAKNESS_CRIT_DMG
-  const c1 = input.cinemaLevel >= 1 ? PHOENIX_C1_CRIT_DMG : 0
-  return { rate, dmg: tierDmg + c1 }
+  const mastery = Math.max(0, Math.min(PHOENIX_SCORCH_MASTERY_CAP, Number(input.initialMastery) || 0))
+  const rate = PHOENIX_SCORCH_CRIT_RATE
+    + Math.max(0, mastery - PHOENIX_SCORCH_MASTERY_THRESHOLD) * PHOENIX_SCORCH_PER_POINT_RATE
+  const cinema = cinemaLevelOf(input.cinemaLevel)
+  const dmg = PHOENIX_SCORCH_CRIT_DMG
+    + (input.additionalActive ? PHOENIX_ADDITIONAL_SCORCH_CRIT_DMG : 0)
+    + (cinema >= 1 ? PHOENIX_C1_CRIT_DMG : 0)
+  return { rate: Math.min(100, rate), dmg }
 }
 
 /**
@@ -152,10 +177,9 @@ export function phoenixBasicCombustionHits(basicTime: number, cycle: { moveId: s
 }
 
 /**
- * 余火收入：按 **moveId × 倍率表 attack_data_0** 直算（2026-09-12 探针修正）。
- * ⚠️ buildExecutions 阶段 executions 的 `totalSpecialResourceRecovery` **尚未 enrich 回填**，
- * 直接读它是 0（第一版因此长按普攻 0 次、1641 单人伤害全库垫底 #62/62）。分支攻击 1641006
- *（追斩后点按）是操作向量，不计自动收入。
+ * 燔焰收入：按 **moveId × 倍率表 attack_data_0** 直算。
+ * ⚠️ buildExecutions 阶段 executions 的 `totalSpecialResourceRecovery` **尚未 enrich 回填**，直接读是 0。
+ * 完美格挡 +5（10 秒一次）按 cfg.perfectBlockCount/10 折算并入。
  */
 function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
   const meta = cfg.phoenixCombustionMeta ?? {}
@@ -166,12 +190,16 @@ function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResour
   for (const e of executions) {
     if (!e.moveId || !PHOENIX_COMBUSTION_MOVE_IDS.has(e.moveId)) continue
     if (e.moveId === '1641003' || e.moveId === '1641004') continue // 平A段已按段循环计
+    if (e.moveId === PHOENIX_BRANCH_MOVE_ID) continue // 分支攻击是操作向量
     income += Math.max(0, e.count) * (meta[e.moveId] ?? 0)
   }
+  // 完美格挡 +5 燔焰 / 10 秒一次
+  const blocks = Math.max(0, Math.floor(cfg.perfectBlockCount))
+  income += Math.floor(blocks / 10) * 5
   return income
 }
 
-/** 长按普攻次数（估时与物化唯一共用入口）：floor(余火收入×效率/90)，滑块覆盖优先 */
+/** 长按普攻（焚罪）次数：floor(燔焰收入×影画1效率/90)，滑块覆盖优先 */
 export function phoenixChargedCount(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
   const override = setting(cfg, 'phoenix.chargedAttackCount')
   if (override > 0) return whole(override)
@@ -180,32 +208,17 @@ export function phoenixChargedCount(cfg: AgentCharConfigInput['cfg'], state: Age
   return Math.floor(phoenixEmberIncome(cfg, state, executions) * eff / PHOENIX_CHARGED_EMBER_COST)
 }
 
-function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: AgentCharConfigInput): void {
+function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, outOfCombatPanel }: AgentCharConfigInput): void {
   cfg.phoenixCinemaLevel = cinemaLevel
-  cfg.phoenixAnomalyMastery = panel.anomalyMastery
-  const teamAnomalyCount = team ? team.filter(m => m.agent?.specialty === 'anomaly').length : 0
-  cfg.phoenixTeamAnomalyCount = teamAnomalyCount > 0 ? teamAnomalyCount : 1
-  // 影画4：长按普攻 +200 喧响/次——行级 decibel 会被 enrich 按倍率表回填，改走 initialDecibelGift。
-  // 次数：滑块覆盖优先；自动按 战斗时长/15s 一次长按普攻估算 [猜测·低]（余火循环收敛值在 buildExecutions 才有）。
-  if (cinemaLevel >= 4) {
-    const override = setting(cfg, 'phoenix.chargedAttackCount')
-    const count = override > 0 ? whole(override) : Math.max(0, Math.floor(cfg.battleTime / 15))
-    cfg.initialDecibelGift = cfg.initialDecibelGift + PHOENIX_C4_CHARGED_DECIBEL * count
-  }
-  // 影画2「发动[强化特殊技：第二段]时回复8点能量」：第二段=通用强特行（下述），行级 energyRecovery
-  // 会被 enrich 回填 → 按估算强特次数并入 initialEnergyGift [猜测·低：战斗时长/15s 一次强特]。
-  if (cinemaLevel >= 2) {
-    cfg.initialEnergyGift = cfg.initialEnergyGift + PHOENIX_C2_EX2_ENERGY * Math.max(0, Math.floor(cfg.battleTime / 15))
-  }
-  // 强化特殊技（2026-09-12 组队对账修正）：原文「第一段=点按 / 第二段=长按」是**同一强特的两种释放变体**
-  //（二选一），不是每轮连段——主循环取长按优选（第二段 1191.6% > 第一段 1046.2%），单段耗能 40。
-  // 第一段（1641008）= 点按变体，不进自动循环。
+  // 原文两处都写「初始异常掌控」⇒ 取局外面板
+  cfg.phoenixInitialMastery = outOfCombatPanel ? outOfCombatPanel.anomalyMastery : panel.anomalyMastery
+  // 强化特殊技：眩焰（40 能量）走通用强特通道；[枯荣] 循环下每轮另有坠阳（40）+ 燎斩（0）。
   const special = skills.categories.find(c => c.id === 'special')?.moves
-  const exHold = special?.find(m => m.id === PHOENIX_EX2_MOVE_ID)
-  if (exHold) {
-    cfg.exSpecialMoveId = PHOENIX_EX2_MOVE_ID
-    if (exHold.actionTime) cfg.exSpecialActionTime = exHold.actionTime
-    const ec = parseFloat(exHold.energyCost?.['Energy Cost'] ?? '')
+  const exFirst = special?.find(m => m.id === PHOENIX_EX_FIRST_MOVE_ID)
+  if (exFirst) {
+    cfg.exSpecialMoveId = PHOENIX_EX_FIRST_MOVE_ID
+    if (exFirst.actionTime) cfg.exSpecialActionTime = exFirst.actionTime
+    const ec = parseFloat(exFirst.energyCost?.['Energy Cost'] ?? '')
     if (Number.isFinite(ec) && ec > 0) cfg.exSpecialEnergyConsume = ec
   }
   const all = skills.categories.flatMap(c => c.moves)
@@ -220,7 +233,7 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: Agent
       energyCost: parseFloat(m?.energyCost?.['Energy Cost'] ?? '') || 0,
     }
   }
-  // 燃烧攻击余火获取（attack_data_0 列，moveId → 每次命中余火）
+  // 燃烧攻击燔焰获取（attack_data_0 列，moveId → 每次命中燔焰）
   const combustion: Record<string, number> = {}
   for (const moveId of PHOENIX_COMBUSTION_MOVE_IDS) {
     const m = all.find(mm => mm.id === moveId)
@@ -229,200 +242,240 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, team }: Agent
   cfg.phoenixCombustionMeta = combustion
   cfg.phoenixBasicCycle = PHOENIX_BASIC_SEGMENT_IDS.map(metaOf)
   cfg.phoenixChargedMeta = metaOf(PHOENIX_CHARGED_MOVE_ID)
-  cfg.phoenixEnergizeMeta = metaOf(PHOENIX_ENERGIZE_MOVE_ID)
+  cfg.phoenixExSecondMeta = metaOf(PHOENIX_EX_SECOND_MOVE_ID)
+  cfg.phoenixLiaozhanMeta = metaOf(PHOENIX_EX_LIAOZHAN_MOVE_ID)
   cfg.phoenixEntryMeta = metaOf(PHOENIX_ENTRY_MOVE_ID)
 }
 
 /**
- * 面板层只剩自面板部分：异常精通 +40、影画2 积蓄效率。
- * [脆弱] 异常暴击（率/伤）**不在这里写**——2026-09-12 改为 spec teamBuffs 声明式承载
- *（phoenix.weakness_anomaly_crit_*，公式读源面板掌控；自体与队友同吃，引擎 EV 乘区通用消费；
- * 额外能力门控走 computePanelPhases 的 buff-id 过滤，SOP §6.2 标准接线），防双通道双计。
+ * 面板层（v12）：核心异常精通 +85；影画6 无视 15% 全属性伤害抗性；影画2 对[灼蚀]目标增伤 30%。
+ *
+ * [灼蚀] 异常暴击（率/伤）**不在这里写**——走 spec teamBuffs 声明式承载
+ * （phoenix.scorch_anomaly_crit_*），公式读**初始**异常掌控；自体与队友同吃，引擎 EV 乘区通用消费。
+ * 防双通道双计。
  */
-function applyPhoenixPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
+function applyPhoenixPanel({ cinemaLevel, panel }: AgentPanelInput): void {
   if (!panel) return
+  const cinema = cinemaLevelOf(cinemaLevel)
   panel.anomalyProficiency = panel.anomalyProficiency + PHOENIX_CORE_PROFICIENCY
-  if (cinemaLevel >= 2) {
-    const cov = clampRatio(settingOf(settings, 'phoenix.c2IncinerationCoverage'))
-    panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + PHOENIX_C2_BUILDUP_EFF * cov
-  }
+  if (cinema >= 6) panel.enemyResReduction = panel.enemyResReduction + PHOENIX_C6_RES_IGNORE
+  // 影画2：对[灼蚀]状态下的敌人造成的伤害 +30%（[灼蚀] 由队伍异常伤害施加，默认满覆盖）
+  if (cinema >= 2) panel.dmgBonus = panel.dmgBonus + PHOENIX_C2_SCORCH_DMG_BONUS
 }
 
-/** 影画6：异放限定无视 15% 防御（普罗米娅同款通道） */
+/** 影画6：异放限定无视 40% 防御（普罗米娅同款通道） */
 function phoenixReleaseModifier({ self }: ReleaseModifierInput): ReleaseModifier {
   return self.cinemaLevel >= 6
     ? { enemyResReduction: 0, enemyDefReduction: PHOENIX_C6_RELEASE_DEF_IGNORE, note: `；影画6：异放无视 ${PHOENIX_C6_RELEASE_DEF_IGNORE}% 防御（releaseModifier 异放限定）` }
     : { enemyResReduction: 0, note: '' }
 }
 
-/** 长按普攻/强化特殊技第二段/蓄能附加攻击执行行 */
+/**
+ * 执行行：焚罪（长按普攻）、燎斩（拥有升变时的强化特殊技）、烬火追魂（终结后换入）。
+ *
+ * 强特循环口径（[枯荣] 稳态）：每轮 = 眩焰（通用 exSpecialCount 通道，40 能量）
+ * → 坠阳（40 能量，+1 升变）→ 燎斩（消耗升变，0 耗能）。
+ * 坠阳与燎斩各自按 exCount 计次（一轮一次），坠阳耗能 40 由本行显式记账。
+ */
 function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
   const chargedCount = phoenixChargedCount(cfg, state, executions)
   cfg.phoenixChargedCount = chargedCount
   const exCount = Math.max(0, state.exSpecialCount)
   const ultCount = Math.max(0, state.ultimateCount)
+  cfg.phoenixExCount = exCount
+  cfg.phoenixEntryCount = ultCount
 
   const chargedMeta = cfg.phoenixChargedMeta
   if (chargedMeta && chargedCount > 0) {
     executions.push(moduleExecRow({
       moveId: chargedMeta.moveId,
-      moveName: '普通攻击：普通攻击长按（消耗90余火）',
+      moveName: '普通攻击：焚罪（消耗90燔焰）',
       category: 'basic',
       element: 'fire',
       count: chargedCount,
       actionTime: chargedMeta.actionTime,
       totalTime: chargedCount * chargedMeta.actionTime,
-      // 影画4 喧响走 initialDecibelGift（行级 decibel 会被 enrich 按倍率表回填）
-      skillTableNote: `余火驱动 ×${chargedCount}${cinema >= 4 ? `；影画4 +${PHOENIX_C4_CHARGED_DECIBEL} 喧响/次（initialDecibelGift）` : ''}`,
+      skillTableNote: `燔焰驱动 ×${chargedCount}（90 点/次）`,
     }))
   }
-  // 强化特殊技第二段（1641009）= 通用强特通道行（exSpecialMoveId，长按优选，单段耗能 40），
-  // 不再单独 push（2026-09-12 组队对账修正：第一/二段是点按/长按二选一变体，非连段）。
-  // 蓄能附加攻击（视为强化特殊技）：重击命中来源 = 强特(第二段) + 长按普攻 + 终结
-  const energizeCount = exCount + chargedCount + ultCount
-  const energizeMeta = cfg.phoenixEnergizeMeta
-  if (energizeMeta && energizeCount > 0) {
+  // 坠阳（1641009）：[枯荣] 下眩焰之后每轮一次，40 能量；+1 升变
+  const exSecondMeta = cfg.phoenixExSecondMeta
+  if (exSecondMeta && exCount > 0) {
     executions.push(moduleExecRow({
-      moveId: energizeMeta.moveId,
-      moveName: '蓄能附加攻击（视为强化特殊技）',
+      moveId: exSecondMeta.moveId,
+      moveName: '强化特殊技：坠阳',
       category: 'special',
       element: 'fire',
-      count: energizeCount,
-      actionTime: energizeMeta.actionTime,
-      skillTableNote: `重击命中送 ×${energizeCount}（强特+长按普攻+终结；附加攻击不占前台时间）`,
+      count: exCount,
+      actionTime: exSecondMeta.actionTime,
+      totalTime: exCount * exSecondMeta.actionTime,
+      energyConsume: exSecondMeta.energyCost,
+      totalEnergyConsume: exCount * exSecondMeta.energyCost,
+      skillTableNote: `[枯荣]下每轮眩焰后发动 ×${exCount}（40 能量/次，获得 1 点[升变]）`,
     }))
   }
-  // 终结技：入场（1641019，1545.8%）——终结「招式发动后，可点按发动」→ 每次终结后点按触发一次
-  //（用户口径 2026-09-12「喧响大后按攻击可以触发一次」，仪玄影画6「赠送次数=大招次数」同款计数）。
-  // **不占前台时间**（2026-09-12 组队对账修正：终结收尾追加攻击，卢西娅追加攻击 1451007 同款 0 时间先例；
-  // 计 2.4s×N 会把队内平A池挤光→余火断供→长按普攻打到 1 次，时间账失真放大近似误差）。
+  // 燎斩（1641023）：消耗 1 点[升变]，不耗能
+  const liaozhanMeta = cfg.phoenixLiaozhanMeta
+  if (liaozhanMeta && exCount > 0) {
+    executions.push(moduleExecRow({
+      moveId: liaozhanMeta.moveId,
+      moveName: '强化特殊技：燎斩',
+      category: 'special',
+      element: 'fire',
+      count: exCount,
+      actionTime: liaozhanMeta.actionTime,
+      totalTime: exCount * liaozhanMeta.actionTime,
+      skillTableNote: `消耗[升变] ×${exCount}（坠阳产出 1 点/轮，不耗能量）`,
+    }))
+  }
+  // 烬火追魂（1641019）：[生竭] → 下一次换入前场发动，计数 = 终结次数；收尾追加攻击不占前台时间
   const entryMeta = cfg.phoenixEntryMeta
   if (entryMeta && ultCount > 0) {
     executions.push(moduleExecRow({
       moveId: entryMeta.moveId,
-      moveName: '终结技：入场（终结后点按）',
+      moveName: '烬火追魂（终结后换入发动）',
       category: 'chain',
       element: 'fire',
       count: ultCount,
       actionTime: entryMeta.actionTime,
-      skillTableNote: `每次终结后点按发动 ×${ultCount}（计数=终结次数；收尾追加攻击不占前台时间）`,
+      skillTableNote: `[生竭]后换入发动 ×${ultCount}（计数=终结次数；收尾追加攻击不占前台时间）`,
     }))
   }
 }
 
-/**
- * 消亡消费（2026-09-12 用户纠错建模）：终结进入[消亡]，下一次连携退出并+30%积蓄——
- * 加成次数 = min(终结次数, 连携次数)（phoenixWangliangChainBonus），按占比乘到连携行积蓄
- *（南宫羽 ×1.35 / 妮可C1 行级乘法同款先例；anomalyBuildUpOverride 同步防 enrich 回填）。
- */
-function patchPhoenixExecutions({ state, executions }: AgentResourceInput): void {
-  const ultCount = Math.max(0, state.ultimateCount)
-  if (ultCount <= 0) return
-  const chainExec = executions.find(e => e.moveId === PHOENIX_CHAIN_MOVE_ID)
-  if (!chainExec) return
-  const chainCount = Math.max(0, chainExec.count)
-  if (chainCount <= 0) return
-  const consume = phoenixWangliangChainBonus(ultCount, chainCount)
-  if (consume <= 0) return
-  const base = Math.max(0, Number(chainExec.anomalyBuildUp ?? 0))
-  if (base <= 0) return
-  const ratio = consume / chainCount
-  chainExec.anomalyBuildUp = base * (1 + PHOENIX_WANGLIANG_CHAIN_BUILDUP_PCT / 100 * ratio)
-  chainExec.anomalyBuildUpOverride = true
-  if (chainExec.totalAnomalyBuildUp != null) {
-    chainExec.totalAnomalyBuildUp = chainExec.anomalyBuildUp * chainCount
-  }
-  chainExec.skillTableNote = `${chainExec.skillTableNote ?? ''}；[消亡]消费 ×${consume}/${chainCount}：连携积蓄+${PHOENIX_WANGLIANG_CHAIN_BUILDUP_PCT}%×占比${(ratio * 100).toFixed(0)}%`
-}
-
-/** 必做前台时间：长按普攻 + 强特第二段 + 终结入场（次数读上一轮 buildExecutions 的收敛值/终结次数） */
-/** 必做前台时间：通用强特（第二段/长按优选）+ 长按普攻（次数读上一轮 buildExecutions 的收敛值）。
- *  终结入场 = 收尾追加攻击不计时（1451007 先例）；强特点按变体（第一段）不进自动循环。 */
+/** 必做前台时间：通用强特（眩焰）+ 坠阳 + 燎斩 + 焚罪 */
 function phoenixExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
   const exTime = Math.max(0, exSpecialCount) * cfg.exSpecialActionTime
   const chargedMeta = cfg.phoenixChargedMeta
   const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
   const chargedTime = chargedMeta ? chargedCount * chargedMeta.actionTime : 0
+  const exSecond = cfg.phoenixExSecondMeta
+  const liaozhan = cfg.phoenixLiaozhanMeta
+  const exSecondTime = exSecond ? Math.max(0, exSpecialCount) * exSecond.actionTime : 0
+  const liaozhanTime = liaozhan ? Math.max(0, exSpecialCount) * liaozhan.actionTime : 0
   return {
-    necessaryTime: exTime + chargedTime,
+    necessaryTime: exTime + chargedTime + exSecondTime + liaozhanTime,
     comboAlignTime: exTime * cfg.exSpecialComboAlignRatio,
   }
 }
 
-/** 异放事件：长按普攻终结一击 + 终结技终结一击（+ 影画6 强特） */
-function buildPhoenixAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
+/**
+ * 事件层：
+ * ① 异放（焚罪/烬火追魂终结一击，固定 releaseMultiplier，附异常暴击参数 releaseCrit）
+ * ② 影画4：上述两者各**额外触发一次异放 600%**
+ * ③ [灼蚀] DoT：每 8 秒 50% 攻击力火伤（direct_damage，视为强化特殊技伤害）
+ */
+function buildPhoenixAnomalyEvents({ cfg, events, totalTime }: AgentEventInput): void {
   const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
   const s = phoenixSkillLevel(cinema)
   const coverage = clampRatio(setting(cfg, 'phoenix.releaseCoverage'))
-  if (coverage <= 0) return
   const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
-  const exCount = Math.max(0, state.exSpecialCount)
-  const ultCount = Math.max(0, state.ultimateCount)
+  const entryCount = whole(Number(cfg.phoenixEntryCount ?? 0))
+  const mastery = Number(cfg.phoenixInitialMastery ?? 0)
+  const additionalActive = additionalAbilityActiveOf(cfg.panel)
+  const crit = computePhoenixScorchCrit({ initialMastery: mastery, additionalActive, cinemaLevel: cinema })
 
-  const chargedRelease = Math.round(chargedCount * coverage)
-  if (chargedRelease > 0) {
-    const mult = PHOENIX_RELEASE_BASE.charged + PHOENIX_RELEASE_BASE.chargedPerLevel * (s - 1)
-    events.push({
-      eventId: 'phoenix_charged_release',
-      eventName: '长按普攻终结一击·异放',
-      eventType: 'release',
-      element: 'dominant',
-      carrierMoveId: PHOENIX_CHARGED_MOVE_ID,
-      carrierMoveName: '普通攻击：普通攻击长按（终结一击）',
-      followCarrierInStun: true,
-      count: chargedRelease,
-      formula: `releaseMultiplier=${mult}（225+20×(${s}-1)，固定倍率）`,
-      fields: [`releaseMultiplier=${mult}`, `charged=${chargedCount}`, `coverage=${coverage}`],
-      note: `终结一击命中属性异常状态敌人触发（异常队默认满覆盖，滑块 phoenix.releaseCoverage）；元素按目标当前异常分配。`,
-    })
-  }
-  const ultRelease = Math.round(ultCount * coverage)
-  if (ultRelease > 0) {
-    const mult = PHOENIX_RELEASE_BASE.ult + PHOENIX_RELEASE_BASE.ultPerLevel * (s - 1)
-    events.push({
-      eventId: 'phoenix_ultimate_release',
-      eventName: '终结技终结一击·异放',
-      eventType: 'release',
-      element: 'dominant',
-      carrierMoveId: PHOENIX_ULT_MOVE_ID,
-      carrierMoveName: '终结技（终结一击）',
-      followCarrierInStun: true,
-      count: ultRelease,
-      formula: `releaseMultiplier=${mult}（300+27×(${s}-1)，固定倍率）`,
-      fields: [`releaseMultiplier=${mult}`, `ult=${ultCount}`, `coverage=${coverage}`],
-      note: '终结一击命中属性异常状态敌人触发；元素按目标当前异常分配。',
-    })
-  }
-  if (cinema >= 6) {
-    const c6Release = Math.round(exCount * coverage)
-    if (c6Release > 0) {
+  if (coverage > 0 && chargedCount > 0) {
+    const chargedRelease = Math.round(chargedCount * coverage)
+    if (chargedRelease > 0) {
+      const mult = PHOENIX_RELEASE_BASE.charged + PHOENIX_RELEASE_BASE.chargedPerLevel * (s - 1)
       events.push({
-        eventId: 'phoenix_c6_ex_release',
-        eventName: '影画6·强化特殊技异放',
+        eventId: 'phoenix_charged_release',
+        eventName: '焚罪终结一击·异放',
         eventType: 'release',
         element: 'dominant',
-        carrierMoveId: PHOENIX_EX2_MOVE_ID,
-        carrierMoveName: '强化特殊技：第二段（终结一击）',
+        carrierMoveId: PHOENIX_CHARGED_MOVE_ID,
+        carrierMoveName: '普通攻击：焚罪（终结一击）',
         followCarrierInStun: true,
-        count: c6Release,
-        formula: `releaseMultiplier=${PHOENIX_RELEASE_BASE.c6Ex}（固定倍率）`,
-        fields: [`releaseMultiplier=${PHOENIX_RELEASE_BASE.c6Ex}`, `ex=${exCount}`],
-        note: `影画6：终结一击命中异常状态敌人触发 1 次异放 200%，异放无视 15% 防御（releaseModifier）。整局约 ${totalTime}s。`,
+        count: chargedRelease,
+        formula: `releaseMultiplier=${mult}（225+20×(${s}-1)，固定倍率）+ 暴击时暴伤额外+${PHOENIX_RELEASE_CRIT_EXTRA_DMG}`,
+        fields: [`releaseMultiplier=${mult}`, `charged=${chargedCount}`, `coverage=${coverage}`],
+        note: '终结一击命中属性异常状态敌人触发；异放暴击时暴伤额外 +40%（异常暴击参数见 spec teamBuffs）。',
       })
     }
+    if (cinema >= 4) {
+      const c4Count = Math.round(chargedCount * coverage)
+      if (c4Count > 0) {
+        events.push({
+          eventId: 'phoenix_c4_charged_release',
+          eventName: '影画4·焚罪额外异放',
+          eventType: 'release',
+          element: 'dominant',
+          carrierMoveId: PHOENIX_CHARGED_MOVE_ID,
+          carrierMoveName: '普通攻击：焚罪（终结一击）',
+          followCarrierInStun: true,
+          count: c4Count,
+          formula: `releaseMultiplier=${PHOENIX_C4_RELEASE_MULT}（固定倍率）`,
+          fields: [`releaseMultiplier=${PHOENIX_C4_RELEASE_MULT}`, `charged=${chargedCount}`],
+          note: '影画4：焚罪终结一击命中异常状态敌人时额外触发一次异放，固定 600%。',
+        })
+      }
+    }
+  }
+  if (coverage > 0 && entryCount > 0) {
+    const entryRelease = Math.round(entryCount * coverage)
+    if (entryRelease > 0) {
+      const mult = PHOENIX_RELEASE_BASE.entry + PHOENIX_RELEASE_BASE.entryPerLevel * (s - 1)
+      events.push({
+        eventId: 'phoenix_entry_release',
+        eventName: '烬火追魂终结一击·异放',
+        eventType: 'release',
+        element: 'dominant',
+        carrierMoveId: PHOENIX_ENTRY_MOVE_ID,
+        carrierMoveName: '烬火追魂（终结一击）',
+        followCarrierInStun: true,
+        count: entryRelease,
+        formula: `releaseMultiplier=${mult}（300+27×(${s}-1)，固定倍率）+ 暴击时暴伤额外+${PHOENIX_RELEASE_CRIT_EXTRA_DMG}`,
+        fields: [`releaseMultiplier=${mult}`, `entry=${entryCount}`, `coverage=${coverage}`],
+        note: '烬火追魂终结一击命中属性异常状态敌人触发；异放暴击时暴伤额外 +40%。',
+      })
+    }
+    if (cinema >= 4) {
+      const c4Count = Math.round(entryCount * coverage)
+      if (c4Count > 0) {
+        events.push({
+          eventId: 'phoenix_c4_entry_release',
+          eventName: '影画4·烬火追魂额外异放',
+          eventType: 'release',
+          element: 'dominant',
+          carrierMoveId: PHOENIX_ENTRY_MOVE_ID,
+          carrierMoveName: '烬火追魂（终结一击）',
+          followCarrierInStun: true,
+          count: c4Count,
+          formula: `releaseMultiplier=${PHOENIX_C4_RELEASE_MULT}（固定倍率）`,
+          fields: [`releaseMultiplier=${PHOENIX_C4_RELEASE_MULT}`, `entry=${entryCount}`],
+          note: '影画4：烬火追魂终结一击命中异常状态敌人时额外触发一次异放，固定 600%。',
+        })
+      }
+    }
+  }
+  // ③ [灼蚀] 每 8 秒 50% 攻击力火伤（视为强化特殊技伤害）
+  const scorchCoverage = clampRatio(setting(cfg, 'phoenix.scorchCoverage'))
+  const effectiveSeconds = minusInvincibleTime(totalTime, cfg)
+  const ticks = Math.max(0, Math.floor((effectiveSeconds * scorchCoverage) / PHOENIX_SCORCH_DOT_INTERVAL))
+  if (ticks > 0) {
+    events.push({
+      eventId: 'phoenix_scorch_dot',
+      eventName: '[灼蚀]周期火伤',
+      eventType: 'direct_damage',
+      element: 'fire',
+      carrierMoveId: PHOENIX_CHARGED_MOVE_ID,
+      carrierMoveName: '[灼蚀]',
+      count: ticks,
+      damageMultiplier: PHOENIX_SCORCH_DOT_RATIO,
+      formula: `每 ${PHOENIX_SCORCH_DOT_INTERVAL}s 造成 ${PHOENIX_SCORCH_DOT_RATIO}% 攻击力火属性伤害；次数 = floor(战斗时长 × 覆盖率 / ${PHOENIX_SCORCH_DOT_INTERVAL})`,
+      fields: ['totalTime', 'phoenix.scorchCoverage', 'PHOENIX_SCORCH_DOT_INTERVAL', 'PHOENIX_SCORCH_DOT_RATIO'],
+      note: `[灼蚀] 敌人每 8 秒受到菲欧妮 50% 攻击力火伤（视为强化特殊技伤害）；次数按 ${effectiveSeconds.toFixed(1)}s（已扣无敌）× ${(scorchCoverage * 100).toFixed(0)}% 近似。异常暴击 率${crit.rate.toFixed(1)}%/伤${crit.dmg}% 由 spec teamBuffs 承载。`,
+    })
   }
 }
 
 function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
   const additionalActive = additionalAbilityActiveOf(cfg.panel)
-  const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
-  const teamAnomalyCount = Math.max(1, whole(Number(cfg.phoenixTeamAnomalyCount ?? 2)))
-  const weakness = computePhoenixWeaknessCrit({
-    anomalyMastery: Number(cfg.phoenixAnomalyMastery ?? 0),
+  const crit = computePhoenixScorchCrit({
+    initialMastery: Number(cfg.phoenixInitialMastery ?? 0),
     additionalActive,
-    teamAnomalyCount,
     cinemaLevel: cinema,
   })
   return {
@@ -430,12 +483,21 @@ function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput): Partial<
       cinemaLevel: cinema,
       additionalActive,
       coreProficiency: PHOENIX_CORE_PROFICIENCY,
-      weaknessCritRate: Math.round(weakness.rate * 100) / 100,
-      weaknessCritDmg: weakness.dmg,
-      teamAnomalyCount,
-      c2BuildUpEff: cinema >= 2 ? PHOENIX_C2_BUILDUP_EFF : 0,
-      chargedCount,
-      note: '脆弱暴击承载 = spec teamBuffs（含队友受益）；重生/消亡状态机未建模；余火按总量口径。',
+      scorchCritRate: Math.round(crit.rate * 100) / 100,
+      scorchCritDmg: crit.dmg,
+      scorchDmgBonus: cinema >= 2 ? PHOENIX_C2_SCORCH_DMG_BONUS : 0,
+      scorchDotCount: 0,
+      emberCap: PHOENIX_EMBER_CAP,
+      chargedCount: whole(Number(cfg.phoenixChargedCount ?? 0)),
+      exCount: whole(Number(cfg.phoenixExCount ?? 0)),
+      liaozhanCount: whole(Number(cfg.phoenixExCount ?? 0)),
+      entryCount: whole(Number(cfg.phoenixEntryCount ?? 0)),
+      c1CritDmg: cinema >= 1 ? PHOENIX_C1_CRIT_DMG : 0,
+      c2ScorchDmgBonus: cinema >= 2 ? PHOENIX_C2_SCORCH_DMG_BONUS : 0,
+      c4ReleaseMult: cinema >= 4 ? PHOENIX_C4_RELEASE_MULT : 0,
+      c6ResIgnore: cinema >= 6 ? PHOENIX_C6_RES_IGNORE : 0,
+      c6ReleaseDefIgnore: cinema >= 6 ? PHOENIX_C6_RELEASE_DEF_IGNORE : 0,
+      note: '[灼蚀] 异常暴击承载 = spec teamBuffs（含队友受益）；[生竭]/[重明] 状态机未建模（回血无乘区）；[枯荣] 按稳态循环（眩焰→坠阳→燎斩）。',
     },
   }
 }
@@ -445,14 +507,20 @@ function buildPhoenixResourceSections({ result }: AgentResourceSectionsInput) {
   if (!cycle) return []
   return [{
     id: 'phoenix-cycle',
-    title: '菲欧妮·脆弱与余火',
-    summary: `异常精通 +${cycle.coreProficiency} · 脆弱暴击 率${Math.round(cycle.weaknessCritRate * 100) / 100}%/伤${cycle.weaknessCritDmg}% · 长按普攻 ×${cycle.chargedCount}`,
+    title: '菲欧妮·灼蚀与燔焰',
+    summary: `异常精通 +${cycle.coreProficiency} · [灼蚀] 暴击 率${cycle.scorchCritRate}%/伤${cycle.scorchCritDmg}% · 焚罪 ×${cycle.chargedCount} · 燎斩 ×${cycle.liaozhanCount}`,
     rows: [
       { label: '核心异常精通', value: `+${cycle.coreProficiency}`, detail: '计入面板' },
-      { label: '脆弱异常暴击率', value: `${cycle.weaknessCritRate}%`, detail: '30 + 0.7×(掌控-145)' },
-      { label: '脆弱异常暴伤', value: `${cycle.weaknessCritDmg}%`, detail: `${cycle.additionalActive ? '额外能力已触发（2档口径）' : '额外能力未触发（基础15）'}${cycle.cinemaLevel >= 1 ? ' +影画1 20' : ''}；3档/影画6 档位+1 见 teamBuffs 说明` },
-      { label: '影画2焚化积蓄效率', value: `+${cycle.c2BuildUpEff}%`, detail: '×覆盖率' },
-      { label: '长按普攻次数', value: `×${cycle.chargedCount}`, detail: '余火收入/90' },
+      { label: '[灼蚀] 异常暴击率', value: `${cycle.scorchCritRate}%`, detail: '30 + 0.7×(初始掌控−155)，255 封顶' },
+      { label: '[灼蚀] 异常暴伤', value: `${cycle.scorchCritDmg}%`, detail: `25${cycle.additionalActive ? ' +额外能力15' : ''}${cycle.c1CritDmg > 0 ? ' +影画1 25' : ''}` },
+      { label: '[灼蚀] 周期火伤', value: '8s/次 · 50%', detail: '视为强化特殊技伤害' },
+      { label: '影画2目标增伤', value: `+${cycle.scorchDmgBonus}%`, detail: '对[灼蚀]敌人' },
+      { label: '影画4额外异放', value: `${cycle.c4ReleaseMult}%`, detail: '焚罪/烬火追魂各一次' },
+      { label: '影画6无视抗性', value: `+${cycle.c6ResIgnore}%`, detail: '全属性伤害抗性' },
+      { label: '影画6异放无视防御', value: `+${cycle.c6ReleaseDefIgnore}%`, detail: '异放限定' },
+      { label: '焚罪次数', value: `×${cycle.chargedCount}`, detail: '燔焰收入/90' },
+      { label: '燎斩次数', value: `×${cycle.liaozhanCount}`, detail: '[升变]驱动（=眩焰次数）' },
+      { label: '烬火追魂次数', value: `×${cycle.entryCount}`, detail: '=终结次数' },
     ],
     footer: cycle.note,
   }]
@@ -461,8 +529,8 @@ function buildPhoenixResourceSections({ result }: AgentResourceSectionsInput) {
 const settings: MechanicSetting[] = [
   {
     id: 'phoenix.chargedAttackCount',
-    label: '菲欧妮·长按普攻次数覆盖',
-    description: '手动指定整局长按普通攻击（消耗90余火）次数；0=自动（燃烧攻击行 attack_data 余火收入×影画1效率1.15/90）。',
+    label: '菲欧妮·焚罪次数覆盖',
+    description: '手动指定整局[普通攻击：焚罪]（消耗90燔焰）次数；0=自动（燃烧攻击行 attack_data_0 燔焰收入×影画1效率1.15/90）。',
     default: 0,
     min: 0,
     max: 40,
@@ -472,7 +540,7 @@ const settings: MechanicSetting[] = [
   {
     id: 'phoenix.releaseCoverage',
     label: '菲欧妮·异放触发覆盖率',
-    description: '长按普攻/终结技/影画6 强特的终结一击命中「属性异常状态敌人」的占比（异常队默认满覆盖）。',
+    description: '焚罪/烬火追魂终结一击命中「属性异常状态敌人」的占比（异常队默认满覆盖）。',
     default: 1,
     min: 0,
     max: 1,
@@ -480,9 +548,9 @@ const settings: MechanicSetting[] = [
     suffix: '%',
   },
   {
-    id: 'phoenix.c2IncinerationCoverage',
-    label: '菲欧妮·影画2焚化覆盖率',
-    description: '影画2 [焚化]状态（强特进入10秒，燃烧攻击命中刷新）的整局覆盖率——异常积蓄效率+15%。',
+    id: 'phoenix.scorchCoverage',
+    label: '菲欧妮·[灼蚀]覆盖率',
+    description: '[灼蚀]（20 秒，队伍任意角色造成属性异常伤害时施加）的整局覆盖率——[灼蚀]周期火伤（每 8 秒 50% 攻击力）按此折算。',
     default: 1,
     min: 0,
     max: 1,
@@ -494,51 +562,21 @@ const settings: MechanicSetting[] = [
 export const phoenixMechanic: AgentMechanicModule = {
   id: 'agent:phoenix',
   agentIds: [PHOENIX_ID],
-  // CC-67 / CC-331：额外能力门控修正——原文「当队伍中[异常]角色数量为2/3时，暴击伤害提升为25%/40%」（影画6 需求-1 = 有效数+1）。
-  // 同阵营非异常队友（如坎卜斯黑枝 1451/1471/1481/1591）触发额外能力但仅 1 名异常角色时，tier2 须要求有效异常数 ≥2；
-  // 本槽命座按 m.slot === slot 查找（兼容压缩 team 数组）。
-  adjustAdditionalAbilityGates: ({ team, slot, gates }) => {
-    const cinemaLevel = cinemaLevelOf(team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel)
-    const anomalyCount = team.filter(m => m.agent?.specialty === 'anomaly').length + (cinemaLevel >= 6 ? 1 : 0)
-    const tier2 = 'phoenix.weakness_anomaly_crit_dmg_tier2'
-    const tier3 = 'phoenix.weakness_anomaly_crit_dmg_tier3'
-    gates.set(tier2, gates.get(tier2) === true && anomalyCount >= 2)
-    gates.set(tier3, gates.get(tier3) === true && anomalyCount >= 3)
-  },
-  name: '菲欧妮·脆弱',
-  description: '⚠️3.3 测试服临时录入：核心异常精通+40、影画2 积蓄效率×覆盖率；脆弱异常暴击走 spec teamBuffs 通用承载（公式读源面板掌控，自体+队友同吃 EV 乘区）；长按普攻/终结/影画6 异放（固定 releaseMultiplier）；余火→长按普攻计数；终结入场=每次终结后点按一次（1641019 计数=终结次数）；[消亡]消费：连携积蓄+30%×min(终结,连携)/连携占比；影画4 喧响、蓄能附加攻击。',
+  name: '菲欧妮·涅槃',
+  description: 'v12：核心异常精通+85、[灼蚀] 异常暴击（率30+0.7×(初始掌控−155) 封顶255、伤25）+额外能力暴伤+15、[灼蚀]周期火伤（8s/50%攻击力）；异放（焚罪445/烬火追魂597，暴击再+40暴伤）+影画4 额外600%；[燔焰]120→焚罪90、[升变]→燎斩、[枯荣] 眩焰→坠阳→燎斩稳态；影画6 无视15%抗性+异放无视40%防御。',
   applyPanel: applyPhoenixPanel,
   buildCharConfig: buildPhoenixCharConfig,
   estimateExSpecialTime: phoenixExSpecialTime,
   buildExecutions: buildPhoenixExecutions,
-  patchExecutions: patchPhoenixExecutions,
   buildAnomalyEvents: buildPhoenixAnomalyEvents,
   buildResourceResult: buildPhoenixResourceResult,
   resourceSections: buildPhoenixResourceSections,
   releaseModifier: phoenixReleaseModifier,
   /**
-   * **终结技：入场（`1641019`）不扣喧响**（T172）。
-   *
-   * 与叶瞬光斩妄开天**同型**（用户口径 2026-10-15：「还有什么**叶瞬光斩妄开天是收尾，
-   * 不消耗喧响**」——用户点名的是**类别**：名字带「终结技」但语义是**收尾/追加**、
-   * 由父大招触发而非由喧响购买）。
-   *
-   * **原文实证**（`data/raw/nanoka_missing/full/1641.json` 的 `skill.chain.description`，逐字）：
-   *  · `1641013`（终结技）：首句「**喧响等级达到[极]时**，点按 发动：……**招式发动后，
-   *    可点按 发动[终结技：入场]**」⇒ **喧响买的是本体**；
-   *  · `1641019`（终结技：入场）：首句「**当菲欧妮陷入[消亡]状态时**，切换至菲欧妮或菲欧妮
-   *    通过快速支援入场时发动：」⇒ 触发条件是**状态/入场**，**没有「喧响等级达到」购买句**
-   *    ⇒ 它**不由喧响购买**。
-   *
-   * 本模块早已按此语义物化（`buildPhoenixExecutions` 上方注释）：`count = ultimateCount`
-   * （「每次终结后点按触发一次」）、**不占前台时间**（收尾追加攻击，卢西娅 1451007 同款 0 时间
-   * 先例）。缺的只是**收费侧**的同一声明——修前它在轴里被按 `Ultimate:` 名字收满 3000 喧响。
-   *
-   * ⚠ **为什么免它不会让喧响免费**：父块 `1641013` 与它**同在执行行池里**且父块照收 3000
-   * ⇒ 一次「终结技 + 入场」仍是 3000（实测：轴内两块同放 `decibelUsed` 修前 6000 /
-   * 修后 3000，见 `phoenix.test.ts` 的 ★ 用例）。
-   *
-   * ⚠ **只免喧响，不免窗口时间**：它照样占失衡窗（`actionTime` 不动）。
+   * **烬火追魂（`1641019`）不扣喧响**：原文首句「当菲欧妮处于[生竭]状态时，下一次普通换入/
+   * 快速支援/招架支援换入前场时发动」——触发条件是**状态+换入**，没有「喧响等级达到[极]」购买句
+   * ⇒ 它不由喧响购买。父块 `1641013`（终结技）与它同在执行行池里且父块照收 3000。
+   * 只免喧响，不免窗口时间。
    */
   axisMoveFreeOfDecibel: moveId => moveId === PHOENIX_ENTRY_MOVE_ID,
   settings,
@@ -556,22 +594,26 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 菲尼克斯命座等级（buildCharConfig 写） */
     phoenixCinemaLevel?: number
-    /** 菲尼克斯异常掌控（buildCharConfig 由 panel 预存） */
-    phoenixAnomalyMastery?: number
-    /** 菲尼克斯：队伍异常角色数（buildCharConfig 写，最少 1） */
-    phoenixTeamAnomalyCount?: number
-    /** 菲尼克斯燃烧攻击余火获取（moveId → 每次命中余火，attack_data_0 列） */
+    /** 菲尼克斯**初始**异常掌控（buildCharConfig 由局外面板预存；[灼蚀] 暴击公式读它） */
+    phoenixInitialMastery?: number
+    /** 菲尼克斯燃烧攻击燔焰获取（moveId → 每次命中燔焰，attack_data_0 列） */
     phoenixCombustionMeta?: Record<string, number>
     /** 菲尼克斯平A各段元数据（buildCharConfig 从 catalog 预存） */
     phoenixBasicCycle?: PhoenixMoveMeta[]
-    /** 菲尼克斯蓄力招式元数据 */
+    /** 菲尼克斯焚罪（长按普攻）招式元数据 */
     phoenixChargedMeta?: PhoenixMoveMeta
-    /** 菲尼克斯充能招式元数据 */
-    phoenixEnergizeMeta?: PhoenixMoveMeta
-    /** 菲尼克斯入场招式元数据 */
+    /** 菲尼克斯坠阳（强特第二段）招式元数据 */
+    phoenixExSecondMeta?: PhoenixMoveMeta
+    /** 菲尼克斯燎斩（升变消耗）招式元数据 */
+    phoenixLiaozhanMeta?: PhoenixMoveMeta
+    /** 菲尼克斯烬火追魂（终结后换入）招式元数据 */
     phoenixEntryMeta?: PhoenixMoveMeta
-    /** 菲尼克斯蓄力次数（资源阶段写） */
+    /** 菲尼克斯焚罪次数（资源阶段写） */
     phoenixChargedCount?: number
+    /** 菲尼克斯眩焰次数（资源阶段写） */
+    phoenixExCount?: number
+    /** 菲尼克斯烬火追魂次数（资源阶段写 = 终结次数） */
+    phoenixEntryCount?: number
   }
 }
 

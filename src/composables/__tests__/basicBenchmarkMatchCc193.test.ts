@@ -58,12 +58,15 @@ describe('CC-193 生产路径：汇总平A行命中模块普攻段', () => {
     }
   }, 60000)
 
-  it('赛维里安 C1：普攻暴伤 +60% 落到平A行', async () => {
+  it('赛维里安 C1（v12）：普攻暴伤不再加成（旧 +60% 已随影画1 改版删除），改为无视 15% 风抗进面板', async () => {
     await setupHarness(['1631', '1181', '1311'].map(agentId => ({ agentId })), { recommendedBuild: true })
     const config = useConfigStore()
     config.setActionCount(0, 'basicAttackTimeWeight', 3)
+    config.setCinemaLevel(0, 0)
+    const bare = basicRow(0)?.critDmgBonus ?? 0
     config.setCinemaLevel(0, 1)
-    expect(basicRow(0)?.critDmgBonus ?? 0).toBeGreaterThanOrEqual(60)
+    // v12 影画1 换成了「连携流息50 / 影猎+1凭风 / 无视15%风抗」——平A行不再有暴伤加成
+    expect(basicRow(0)?.critDmgBonus ?? 0).toBe(bare)
   }, 60000)
 })
 

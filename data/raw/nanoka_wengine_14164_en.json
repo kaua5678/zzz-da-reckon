@@ -1,10 +1,10 @@
 {
   "id": 14164,
   "code_name": "Weapon_S_1641",
-  "name": "Phoenix Test Engine",
-  "desc": "Phoenix Test Engine Description",
+  "name": "Plume of Rebirth",
+  "desc": "...",
   "desc2": "Equip to increase Anomaly Agents' combat capabilities",
-  "desc3": "Phoenix Test Engine Short Description",
+  "desc3": "...",
   "rarity": 4,
   "icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/ItemIconWeapon/UnPacker/Weapon_S_1641.png",
   "weapon_type": {
@@ -358,24 +358,24 @@
   "materials": "10:12000,101012:4|10:28000,101022:12|10:60000,101022:20|10:100000,101032:10|10:200000,101032:20",
   "talents": {
     "1": {
-      "name": "Phoenix Test Engine",
-      "desc": "Increases the equipper's Anomaly Proficiency by <color=#2BAD00>75</color> points. When any squad member's Attribute Anomaly DMG dealt to enemies scores a CRIT, the equipper's <color=#FF5521>Fire DMG</color> increases by <color=#2BAD00>40%</color> for 20s. Repeated triggers refresh the duration."
+      "name": "Hatching Day",
+      "desc": "The equipper's Anomaly Proficiency increases by <color=#2BAD00>90</color>. When Anomaly DMG dealt by any squad member to an enemy triggers a critical hit, the equipper's <color=#FF5521>Fire DMG</color> increases by <color=#2BAD00>40%</color> for 20s. Repeated triggers reset the duration."
     },
     "2": {
-      "name": "Phoenix Test Engine",
-      "desc": "Increases the equipper's Anomaly Proficiency by <color=#2BAD00>86</color> points. When any squad member's Attribute Anomaly DMG dealt to enemies scores a CRIT, the equipper's <color=#FF5521>Fire DMG</color> increases by <color=#2BAD00>46%</color> for 20s. Repeated triggers refresh the duration."
+      "name": "Hatching Day",
+      "desc": "The equipper's Anomaly Proficiency increases by <color=#2BAD00>99</color>. When Anomaly DMG dealt by any squad member to an enemy triggers a critical hit, the equipper's <color=#FF5521>Fire DMG</color> increases by <color=#2BAD00>44%</color> for 20s. Repeated triggers reset the duration."
     },
     "3": {
-      "name": "Phoenix Test Engine",
-      "desc": "Increases the equipper's Anomaly Proficiency by <color=#2BAD00>98</color> points. When any squad member's Attribute Anomaly DMG dealt to enemies scores a CRIT, the equipper's <color=#FF5521>Fire DMG</color> increases by <color=#2BAD00>52%</color> for 20s. Repeated triggers refresh the duration."
+      "name": "Hatching Day",
+      "desc": "The equipper's Anomaly Proficiency increases by <color=#2BAD00>108</color>. When Anomaly DMG dealt by any squad member to an enemy triggers a critical hit, the equipper's <color=#FF5521>Fire DMG</color> increases by <color=#2BAD00>48%</color> for 20s. Repeated triggers reset the duration."
     },
     "4": {
-      "name": "Phoenix Test Engine",
-      "desc": "The equipper's Anomaly Proficiency increases by <color=#2BAD00>109</color> points. When Attribute Anomaly DMG dealt to an enemy by any squad member scores a CRIT, the equipper's <color=#FF5521>Fire DMG</color> increases by <color=#2BAD00>58%</color> for 20s. Repeated triggers refresh the duration."
+      "name": "Hatching Day",
+      "desc": "The equipper's Anomaly Proficiency increases by <color=#2BAD00>117</color>. When Anomaly DMG dealt by any squad member to an enemy triggers a critical hit, the equipper's <color=#FF5521>Fire DMG</color> increases by <color=#2BAD00>52%</color> for 20s. Repeated triggers reset the duration."
     },
     "5": {
-      "name": "Phoenix Test Engine",
-      "desc": "The equipper's Anomaly Proficiency increases by <color=#2BAD00>120</color> points. When any squad member's Attribute Anomaly DMG dealt to enemies scores a CRIT, the equipper's <color=#FF5521>Fire DMG</color> increases by <color=#2BAD00>64%</color> for 20s. Repeated triggers refresh the duration."
+      "name": "Hatching Day",
+      "desc": "The equipper's Anomaly Proficiency increases by <color=#2BAD00>126</color>. When Anomaly DMG dealt by any squad member to an enemy triggers a critical hit, the equipper's <color=#FF5521>Fire DMG</color> increases by <color=#2BAD00>56%</color> for 20s. Repeated triggers reset the duration."
     }
   }
 }

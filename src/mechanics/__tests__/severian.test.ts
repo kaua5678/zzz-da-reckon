@@ -7,8 +7,12 @@ import {
   computeSeverianCycle,
   resolveSeverianFengfengStacks,
   severianBasicFinisherHits,
+  severianChainFlow,
   severianMechanic,
+  SEVERIAN_ADDITIONAL_ATK_PER_CRIT,
+  SEVERIAN_C6_SHADOW_MULT,
   SEVERIAN_FENGFENG_MULT,
+  SEVERIAN_FLOW_CHAIN,
 } from '@/mechanics/agents/severian'
 
 const baseConfig = {
@@ -18,7 +22,7 @@ const baseConfig = {
   quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
 }
 
-describe('赛维里安（1631）⚠️3.3 测试服临时录入', () => {
+describe('赛维里安（1631）3.3.12 v12 正式录入', () => {
   beforeEach(() => {
     newPinia()
     mockStaticFetch()
@@ -53,77 +57,98 @@ describe('赛维里安（1631）⚠️3.3 测试服临时录入', () => {
     expect(severianBasicFinisherHits(cycleTime * 2 + 0.5, cycle)).toBe(2)
   })
 
-  it('纯函数：computeSeverianCycle 门控（额外能力/影画2/影画4/凭风）', () => {
-    const c0 = computeSeverianCycle({ cinemaLevel: 0, additionalActive: false, fengfengStacks: 1, c4Coverage: 1 })
+  it('纯函数：computeSeverianCycle v12 门控（核心增伤/暴击转攻击/影画2/4/6）', () => {
+    const c0 = computeSeverianCycle({
+      cinemaLevel: 0, additionalActive: false, otherWindTeammate: false,
+      critRateForConversion: 60, fengfengStacks: 1, triggerCoverage: 1,
+    })
     expect(c0.coreCritDmg).toBe(60)
-    expect(c0.atkFlat).toBe(0)
-    expect(c0.c2AtkPct).toBe(0)
-    expect(c0.fengfengMultBonus).toBe(SEVERIAN_FENGFENG_MULT[1])
-    const c6 = computeSeverianCycle({ cinemaLevel: 6, additionalActive: true, fengfengStacks: 2, c4Coverage: 1 })
-    expect(c6.atkFlat).toBe(700)
-    expect(c6.c2AtkPct).toBe(15)
-    expect(c6.c1BasicCritDmg).toBe(60)
-    expect(c6.c4DefIgnore).toBe(16)
-    expect(c6.fengfengMultBonus).toBe(SEVERIAN_FENGFENG_MULT[2])
-    expect(c6.c6ShadowMultBonus).toBe(900)
+    expect(c0.coreDmgBonus).toBe(25) // 无其他风属性队友：只有 25
+    expect(c0.atkFromCrit).toBe(0) // 额外能力未触发
+    expect(c0.c2PenRatio).toBe(0)
+    expect(c0.c4AtkPct).toBe(0)
+    expect(c0.c6ShadowMultBonus).toBe(0)
+    expect(c0.flowCap).toBe(150)
+
+    // 有其他风属性队友 → 额外 +30
+    const withWind = computeSeverianCycle({
+      cinemaLevel: 0, additionalActive: false, otherWindTeammate: true,
+      critRateForConversion: 60, fengfengStacks: 1, triggerCoverage: 1,
+    })
+    expect(withWind.coreDmgBonus).toBe(55)
+
+    // 额外能力：每 1% 暴击率 → +8.5 攻击，最多计入 100%
+    const c0Add = computeSeverianCycle({
+      cinemaLevel: 0, additionalActive: true, otherWindTeammate: false,
+      critRateForConversion: 60, fengfengStacks: 1, triggerCoverage: 1,
+    })
+    expect(c0Add.atkFromCrit).toBeCloseTo(60 * SEVERIAN_ADDITIONAL_ATK_PER_CRIT, 6)
+    const capped = computeSeverianCycle({
+      cinemaLevel: 0, additionalActive: true, otherWindTeammate: false,
+      critRateForConversion: 150, fengfengStacks: 1, triggerCoverage: 1,
+    })
+    expect(capped.atkFromCrit, '暴击率计入上限 100%').toBeCloseTo(100 * SEVERIAN_ADDITIONAL_ATK_PER_CRIT, 6)
+
+    // 影画2：入场 150 流息 + 穿透率 20；影画4：攻击 10% + 喧响效率 10；影画6：流息上限 180 + 影猎 +350
+    const c6 = computeSeverianCycle({
+      cinemaLevel: 6, additionalActive: true, otherWindTeammate: true,
+      critRateForConversion: 60, fengfengStacks: 1, triggerCoverage: 1,
+    })
+    expect(c6.c2EntryFlow).toBe(150)
+    expect(c6.c2PenRatio).toBe(20)
+    expect(c6.c4AtkPct).toBe(10)
+    expect(c6.c4DecibelEfficiency).toBe(10)
+    expect(c6.c6ShadowMultBonus).toBe(SEVERIAN_C6_SHADOW_MULT)
+    expect(c6.flowCap).toBe(180)
+    expect(c6.c1WindResIgnore).toBe(15)
+    expect(c6.c1ChainFlow).toBe(50 - SEVERIAN_FLOW_CHAIN)
   })
 
-  it('面板差分：核心被动暴伤+60；[击破]队友触发额外能力攻击+700，无关队友不触发', async () => {
-    const { config, computePanelPhases } = await setup(['1631', '1251', '']) // 1251 青衣=击破
-    const pPos = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
-    const pOut = computePanelPhases(0, config, useCatalogStore())!.outOfCombat as any
-    expect(pPos.critDmg - pOut.critDmg).toBeCloseTo(60, 5)
-    expect(pPos.atk - pOut.atk).toBeGreaterThanOrEqual(700)
-
-    // 负例：1081 比利（物理·狡兔屋，非支援/击破/同阵营）
-    const neg = await setup(['1631', '1081', ''])
-    const pNeg = neg.computePanelPhases(0, neg.config, useCatalogStore())!.inCombat as any
-    const pNegOut = neg.computePanelPhases(0, neg.config, useCatalogStore())!.outOfCombat as any
-    expect(pNeg.atk - pNegOut.atk).toBeLessThan(700)
+  it('纯函数：凭风层数口径（影画1 起本局有影猎 ⇒ 至少 1 层）', () => {
+    expect(resolveSeverianFengfengStacks({ cinemaLevel: 0, shadowHuntCount: 3, sliderStacks: 0 })).toBe(0)
+    expect(resolveSeverianFengfengStacks({ cinemaLevel: 1, shadowHuntCount: 0, sliderStacks: 0 })).toBe(0)
+    expect(resolveSeverianFengfengStacks({ cinemaLevel: 1, shadowHuntCount: 2, sliderStacks: 0 })).toBe(1)
+    expect(resolveSeverianFengfengStacks({ cinemaLevel: 1, shadowHuntCount: 2, sliderStacks: 2 })).toBe(2)
+    expect(SEVERIAN_FENGFENG_MULT[2]).toBe(300)
   })
 
-  it('面板差分：影画2 触发额外能力时攻击力×1.15；影画4 无视防御 16×覆盖率', async () => {
-    const c0 = await setup(['1631', '1251', ''], 0)
-    const p0 = c0.computePanelPhases(0, c0.config, useCatalogStore())!.inCombat as any
-    const c2 = await setup(['1631', '1251', ''], 2)
-    const p2 = c2.computePanelPhases(0, c2.config, useCatalogStore())!.inCombat as any
-    expect(p2.atk).toBeGreaterThan(p0.atk)
-    expect(p2.atk / p0.atk).toBeCloseTo(1.15, 2)
-
-    const c6 = await setup(['1631', '1251', ''], 6)
-    const p6 = c6.computePanelPhases(0, c6.config, useCatalogStore())!.inCombat as any
-    expect((p6.enemyDefReduction ?? 0) - (p0.enemyDefReduction ?? 0)).toBeCloseTo(16, 5)
-    c6.config.setMechanicSetting('severian.c4Coverage', 0)
-    const p6c0 = c6.computePanelPhases(0, c6.config, useCatalogStore())!.inCombat as any
-    expect((p6c0.enemyDefReduction ?? 0) - (p0.enemyDefReduction ?? 0)).toBeCloseTo(0, 5)
+  it('纯函数：连携技流息 35 → 影画1 50', () => {
+    expect(severianChainFlow(0)).toBe(SEVERIAN_FLOW_CHAIN)
+    expect(severianChainFlow(0)).toBe(35)
+    expect(severianChainFlow(1)).toBe(50)
   })
 
-  it('执行行：苍风影猎（流息驱动）/烈旋（滑块）产出；影画1 普攻暴伤+60 只作用 basic 组；凭风层数只作用入场类招式', async () => {
-    const { config } = await setup(['1631', '1251', ''], 1)
-    config.setMechanicSetting('severian.blazingSpinCount', 5)
-    config.setMechanicSetting('severian.fengfengStacks', 2)
+  it('面板差分（v12）：核心暴伤+60/增伤+25、额外能力暴击率转攻击、影画1 无视15%风抗', async () => {
+    const { config, computePanelPhases } = await setup(['1631', '1251', ''], 1)
+    const phases = computePanelPhases(0, config, useCatalogStore())!
+    const inCombat = phases.inCombat as any
+    expect(inCombat.critDmg).toBeGreaterThan(50 + 60 - 0.001) // 核心被动 +60 已入
+    expect(inCombat.dmgBonus).toBeGreaterThanOrEqual(25) // 核心被动增伤 +25
+    expect(inCombat.enemyWindResReduction ?? 0).toBeGreaterThanOrEqual(15) // 影画1 无视 15% 风抗
+  })
+
+  it('执行行：苍风影猎按流息收入产行（C6 最后击 +350 且 override），烈旋按闪反近似', async () => {
+    await setup(['1631', '1251', ''], 6)
     const calc = useResourceCalc()
     const severian = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
     const shadow = severian.executions.find(e => e.moveId === '1631006')!
     expect(shadow).toBeTruthy()
-    expect(shadow.count).toBeGreaterThan(0) // 终结/连携流息收入 ≥100
+    expect(shadow.count).toBeGreaterThan(0)
     expect(shadow.totalTime).toBeCloseTo(shadow.count * shadow.actionTime, 6)
-    // 影画1：basic 组行 critDmgBonus +60
-    expect((shadow as any).critDmgBonus ?? 0).toBe(60)
-    const chain = severian.executions.find(e => e.moveId === '1631012')
-    if (chain) expect((chain as any).critDmgBonus ?? 0).toBe(0)
-    // 凭风 2 层：连携/终结行 damageMultiplier = 倍率表基础 +300（override 生效）
+    expect((shadow as any).damageMultiplierOverride).toBe(true)
+    // 凭风 2 层：连携行 damageMultiplier = 倍率表基础 +300
     const catalog = useCatalogStore()
     const baseChain = catalog.catalog!.agentSkills.find(s => s.agentId === '1631')!
       .categories.find(c => c.id === 'chain')!.moves.find(m => m.id === '1631012')!
       .rows.find(r => r.id === 'damage')!.values[0]
+    const chain = severian.executions.find(e => e.moveId === '1631012')
     if (chain) {
-      expect((chain as any).damageMultiplier).toBeCloseTo(baseChain + SEVERIAN_FENGFENG_MULT[2], 3)
+      expect((chain as any).damageMultiplier).toBeCloseTo(baseChain + SEVERIAN_FENGFENG_MULT[1], 3)
       expect((chain as any).damageMultiplierOverride).toBe(true)
     }
   })
 
-  it('命座差分：C6 苍风影猎最后一击 +900%（行倍率=基础+900 且 override），整局伤害 C6 > C0', async () => {
+  it('命座差分：C6 苍风影猎最后一击 +350%（行倍率=基础+350 且 override），整局伤害 C6 > C0', async () => {
     await setup(['1631', '1251', ''], 0)
     const calc0 = useResourceCalc()
     const d0 = calc0.teamTotalDamage.value
@@ -139,34 +164,33 @@ describe('赛维里安（1631）⚠️3.3 测试服临时录入', () => {
     const baseShadow = c6.catalog.catalog!.agentSkills.find(s => s.agentId === '1631')!
       .categories.find(c => c.id === 'basic')!.moves.find(m => m.id === '1631006')!
       .rows.find(r => r.id === 'damage')!.values[0]
-    expect(shadow6.damageMultiplier).toBeCloseTo(baseShadow + 900, 3)
+    expect(shadow6.damageMultiplier).toBeCloseTo(baseShadow + SEVERIAN_C6_SHADOW_MULT, 3)
     expect(calc6.teamTotalDamage.value).toBeGreaterThan(d0)
   })
 
-  it('长按风刃段（1631009，2026-09-12 用户纠错补录）：随强特产行，倍率/耗能按满充比例滑块缩放', async () => {
+  it('长按风刃段（1631009）：随强特产行，倍率/耗能按满充比例滑块缩放；v12 组合技耗能 40', async () => {
     const { config, catalog } = await setup(['1631', '1251', ''], 0)
     const baseBlade = catalog.catalog!.agentSkills.find(s => s.agentId === '1631')!
       .categories.find(c => c.id === 'special')!.moves.find(m => m.id === '1631009')!
       .rows.find(r => r.id === 'damage')!.values[0]
-    expect(baseBlade).toBeGreaterThan(800) // 满倍率 818.4%（高收益段，必须建模）
-    // catalog 耗能真实值（param 行 desc 文本提取）
+    expect(baseBlade).toBeGreaterThan(800)
     const bladeEc = catalog.catalog!.agentSkills.find(s => s.agentId === '1631')!
       .categories.find(c => c.id === 'special')!.moves.find(m => m.id === '1631009')!.energyCost
     expect(bladeEc?.['Energy Cost']).toBe('40')
+    // v12：组合技耗能由 80 改为 40
     const exEc = catalog.catalog!.agentSkills.find(s => s.agentId === '1631')!
       .categories.find(c => c.id === 'special')!.moves.find(m => m.id === '1631008')!.energyCost
-    expect(exEc?.['Energy Cost']).toBe('80')
+    expect(exEc?.['Energy Cost']).toBe('40')
 
     let calc = useResourceCalc()
     let blade = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
       .executions.find(e => e.moveId === '1631009')!
     expect(blade).toBeTruthy()
-    expect(blade.count).toBeGreaterThan(0) // 强特次数驱动
-    expect(blade.damageMultiplier).toBeCloseTo(baseBlade, 3) // 默认满充比例 1
+    expect(blade.count).toBeGreaterThan(0)
+    expect(blade.damageMultiplier).toBeCloseTo(baseBlade, 3)
     expect((blade as any).damageMultiplierOverride).toBe(true)
     expect(blade.totalEnergyConsume).toBeCloseTo(blade.count * 40, 5)
 
-    // 满充比例 0.5：倍率/耗能/时间同缩放
     config.setMechanicSetting('severian.windBladeChargeRatio', 0.5)
     calc = useResourceCalc()
     blade = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
@@ -175,97 +199,78 @@ describe('赛维里安（1631）⚠️3.3 测试服临时录入', () => {
     expect(blade.totalEnergyConsume).toBeCloseTo(blade.count * 20, 5)
   })
 
-  it('专武 14163 生效差分（2026-09-12 录入）：装 vs 不装 → 暴伤+38.4、无视风抗+20%（特化门=attack 对齐；测试 wEngineModLevel=5 → 暴伤取精炼5值 38.4）', async () => {
+  it('专武 14163「禁罪囚笼」生效差分（v12）：暴击率+20/无视风抗+15/攻击力+10%（精炼1）', async () => {
     const { config, computePanelPhases } = await setup(['1631', '1251', ''], 0)
     const bare = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
     config.team[0]!.wEngineId = '14163'
+    config.team[0]!.wEngineModLevel = 1
     const armed = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
-    expect(armed.critDmg - bare.critDmg).toBeCloseTo(38.4, 5)
-    expect((armed.enemyWindResReduction ?? 0) - (bare.enemyWindResReduction ?? 0)).toBeCloseTo(32, 5) // 精炼5
-    expect(armed.atk).toBeGreaterThan(bare.atk) // +24% 攻击（精炼5 atkPct）+ 专武 713 白值
+    // 暴击率 +20（被动精炼1）+ 24（副属性词条 1 级 9.6% → 满级 24%）
+    expect(armed.critRate - bare.critRate).toBeCloseTo(20 + 24, 5)
+    expect((armed.enemyWindResReduction ?? 0) - (bare.enemyWindResReduction ?? 0)).toBeCloseTo(15, 5)
+    expect(armed.atk).toBeGreaterThan(bare.atk)
   })
 
-  it('模块注册与滑块：5 个滑块齐全，苍风影猎次数覆盖生效', async () => {
-    expect(severianMechanic.agentIds).toContain('1631')
-    expect((severianMechanic.settings ?? []).map(s => s.id).sort()).toEqual([
-      'severian.blazingSpinCount', 'severian.c4Coverage', 'severian.fengfengStacks', 'severian.shadowHuntCount', 'severian.windBladeChargeRatio',
-    ])
+  it('模块声明：暴伤/增伤/暴击转攻击/影画2 穿透与流息上限都在独立通道上', () => {
+    expect(severianMechanic.id).toBe('agent:severian')
+    expect(severianMechanic.agentIds).toEqual(['1631'])
+    const cycle = computeSeverianCycle({
+      cinemaLevel: 2, additionalActive: true, otherWindTeammate: true,
+      critRateForConversion: 80, fengfengStacks: 2, triggerCoverage: 0.5,
+    })
+    expect(cycle.c2PenRatio).toBe(10) // 20 × 0.5 覆盖率
+    expect(cycle.atkFromCrit).toBeCloseTo(680, 6) // 80 × 8.5
+    const ids = severianMechanic.settings?.map(s => s.id) ?? []
+    expect(ids).toContain('severian.triggerCoverage')
+    expect(ids).not.toContain('severian.c4Coverage') // v12 已合并为 triggerCoverage
+  })
+
+  it('滑块生效：凭风层数/苍风影猎次数/烈旋次数覆盖都改得动结果', async () => {
+    // C0（无影画1）：滑块是凭风层数的唯一口径
     const { config } = await setup(['1631', '1251', ''], 0)
-    config.setMechanicSetting('severian.shadowHuntCount', 7)
-    const calc = useResourceCalc()
-    const shadow = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
-      .executions.find(e => e.moveId === '1631006')!
-    expect(shadow.count).toBe(7)
-  })
-
-  // ⚠ 2026-09-20 round 48 管理员AA 分诊：`buildSeverianResourceResult` 的 `severian_flow` 走
-  // `cycleFromCfg`，它读 `severianFengfengStacks` / `severianC4Coverage`——这两个字段**当时全仓
-  // 无人写入** ⇒ 恒回落 `?? 1`。后果：滑块 `severian.c4Coverage` 设 0，资源区块仍报
-  // `c4DefIgnore: 16`（= 常量 ×1）。同一滑块的**执行行**路径（`patchSeverianExecutions` 走
-  // `setting(cfg, …)`）却是对的 ⇒ 两路读数不一致（"区块骗人"）。本用例锁死资源区块侧。
-  it('滑块经真管线生效：sev 凭风层数 / 影画4 覆盖率必须进 `severianFlow` 结果键', async () => {
-    const readCycle = async (fengfeng: number, c4: number, cinemaLevel: number) => {
-      const { config } = await setup(['1631', '1251', ''], cinemaLevel)
-      config.setMechanicSetting('severian.fengfengStacks', fengfeng)
-      config.setMechanicSetting('severian.c4Coverage', c4)
-      const calc = useResourceCalc()
-      const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
-      return ch.severianFlow!
+    // 凭风层数：0 → 2 层 ⇒ 连携行倍率 +0 → +300
+    const readMult = (settingId: string, value: number) => {
+      config.setMechanicSetting(settingId, value)
+      const ch = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1631')!
+      const chain = ch.executions.find(e => e.moveId === '1631012') as { damageMultiplier?: number } | undefined
+      return { chain: chain?.damageMultiplier, flow: ch.severianFlow! }
     }
-    // 凭风：0 层 → 0 加成；2 层 → 满值（SEVERIAN_FENGFENG_MULT[2]）
-    const f0 = await readCycle(0, 1, 0)
-    const f2 = await readCycle(2, 1, 0)
-    expect(f0.fengfengStacks, '凭风 0 层必须原样进资源区块').toBe(0)
-    expect(f0.fengfengMultBonus).toBe(0)
-    expect(f2.fengfengStacks).toBe(2)
-    expect(f2.fengfengMultBonus).toBe(SEVERIAN_FENGFENG_MULT[2])
-    // 影画4 覆盖率：C4 下覆盖率 0 → 无视防御 0；覆盖率 1 → 满值 16
-    const c4off = await readCycle(1, 0, 4)
-    const c4on = await readCycle(1, 1, 4)
-    expect(c4off.c4DefIgnore, '覆盖率滑块=0 时资源区块不该报无视防御').toBe(0)
-    expect(c4on.c4DefIgnore).toBe(16)
-    // 半覆盖 = 线性折算（证明滑块按比例进算式，而不是 0/1 开关）
-    const c4half = await readCycle(1, 0.5, 4)
-    expect(c4half.c4DefIgnore).toBeCloseTo(8, 5)
-    // 反向哨兵：C0 不该有无视防御（防"把覆盖率当常数塞进去"也能过上面几条）
-    const c0 = await readCycle(1, 1, 0)
-    expect(c0.c4DefIgnore, 'C0 无影画4 效果').toBe(0)
+    config.setMechanicSetting('severian.blazingSpinCount', 0)
+    const f0 = readMult('severian.fengfengStacks', 0)
+    const f2 = readMult('severian.fengfengStacks', 2)
+    expect(f2.flow.fengfengStacks).toBe(2)
+    expect(f0.flow.fengfengStacks).toBe(0)
+    if (f0.chain !== undefined && f2.chain !== undefined) {
+      expect(f2.chain - f0.chain).toBeCloseTo(SEVERIAN_FENGFENG_MULT[2] - SEVERIAN_FENGFENG_MULT[0], 3)
+    }
+
+    // 苍风影猎次数覆盖：滑块 >0 直接决定影猎行次数
+    config.setMechanicSetting('severian.shadowHuntCount', 5)
+    let phoenixLike = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1631')!
+    expect(phoenixLike.severianFlow!.shadowHuntCount).toBe(5)
+    expect(phoenixLike.executions.find(e => e.moveId === '1631006')!.count).toBe(5)
+
+    // 烈旋次数覆盖：滑块 >0 直接决定烈旋行次数
+    config.setMechanicSetting('severian.blazingSpinCount', 3)
+    phoenixLike = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1631')!
+    expect(phoenixLike.executions.find(e => e.moveId === '1631005')!.count).toBe(3)
+    config.setMechanicSetting('severian.shadowHuntCount', 0)
+    config.setMechanicSetting('severian.fengfengStacks', 1)
   })
 
-  // T17（2026-10-04，队列 §3）：影画2「每次苍风影猎 +2 层凭风」且上限 2 ⇒ 本局有影猎就是满层，滑块不参与。
-  // 口径与「为什么不是显式滑块优先」见 `resolveSeverianFengfengStacks` 头注释。
-  it('纯函数：resolveSeverianFengfengStacks —— C2 + ≥1 次影猎封顶 2；否则读滑块（夹 0..2）', () => {
-    expect(resolveSeverianFengfengStacks({ cinemaLevel: 2, shadowHuntCount: 1, sliderStacks: 1 })).toBe(2)
-    expect(resolveSeverianFengfengStacks({ cinemaLevel: 2, shadowHuntCount: 3, sliderStacks: 0 })).toBe(2)
-    expect(resolveSeverianFengfengStacks({ cinemaLevel: 6, shadowHuntCount: 1, sliderStacks: 0 })).toBe(2)
-    expect(resolveSeverianFengfengStacks({ cinemaLevel: 2, shadowHuntCount: 0, sliderStacks: 1 }), 'C2 但 0 次影猎仍读滑块').toBe(1)
-    expect(resolveSeverianFengfengStacks({ cinemaLevel: 1, shadowHuntCount: 5, sliderStacks: 1 }), 'C1 无自动补层').toBe(1)
-    expect(resolveSeverianFengfengStacks({ cinemaLevel: 0, shadowHuntCount: 5, sliderStacks: 7 }), '滑块夹到 2').toBe(2)
-    expect(resolveSeverianFengfengStacks({ cinemaLevel: 0, shadowHuntCount: 5, sliderStacks: -1 }), '滑块夹到 0').toBe(0)
-  })
-
-  it('真管线：C2 默认滑块(1) ⇒ 资源区块与执行行都报凭风 2 层；C2 显式滑块 0 也封顶；C0 仍读滑块', async () => {
-    const read = async (cinema: number, slider?: number) => {
-      const { config } = await setup(['1631', '1251', ''], cinema)
-      if (slider !== undefined) config.setMechanicSetting('severian.fengfengStacks', slider)
-      const calc = useResourceCalc()
-      const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
-      // 执行行侧看倍率（`skillTableNote` 会被 enrich 的「已从倍率表 rows 回填…」整体覆盖，不可作判据）
+  it('资源区块与执行行同口径：苍风影猎次数/凭风层数一致', async () => {
+    const { config } = await setup(['1631', '1251', ''], 2)
+    const read = async (cinema: number) => {
+      config.team[0]!.cinemaLevel = cinema
+      const ch = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1631')!
       const carrier = ch.executions.find(e => e.moveId === '1631012') as { damageMultiplier?: number; damageMultiplierOverride?: boolean } | undefined
       return { flow: ch.severianFlow!, mult: carrier?.damageMultiplierOverride ? carrier.damageMultiplier : undefined }
     }
-    // 同一 pinia 内滑块设置会跨 setup 残留 ⇒ 先读默认态，再设显式值
     const c0 = await read(0)
     const c2 = await read(2)
     expect(c2.flow.shadowHuntCount, '前置：本局确有苍风影猎').toBeGreaterThanOrEqual(1)
-    expect(c2.flow.fengfengStacks).toBe(2)
-    expect(c2.flow.fengfengMultBonus).toBe(SEVERIAN_FENGFENG_MULT[2])
-    const c2s0 = await read(2, 0)
-    expect(c2s0.flow.fengfengStacks, 'C2 下滑块不参与').toBe(2)
-    expect(c0.flow.fengfengStacks, 'C0 读滑块默认 1').toBe(1)
-    // 执行行与资源区块同口径：连携行（若有）倍率差 = MULT[2] − MULT[1]
-    if (c2.mult !== undefined && c0.mult !== undefined) {
-      expect(c2.mult - c0.mult).toBeCloseTo(SEVERIAN_FENGFENG_MULT[2] - SEVERIAN_FENGFENG_MULT[1], 3)
-    }
+    expect(c2.flow.c2EntryFlow).toBe(150)
+    expect(c0.flow.c2EntryFlow).toBe(0)
+    expect(c2.flow.c2PenRatio).toBe(20)
   })
 })

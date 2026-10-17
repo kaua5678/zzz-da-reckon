@@ -19,39 +19,45 @@
   },
   "gender": 1,
   "partner_info": {
-    "birthday": "Partner_Birthday_1631",
-    "full_name": "Partner_Name_1631",
+    "birthday": "...",
+    "full_name": "...",
     "gender": "Male",
     "icon_path": "UI/Sprite/A1DynamicLoad/IconRoleCircle/UnPacker/IconRoleCircle1631.png",
-    "inter_knot_icon": "",
-    "impression_f": "Partner_Impression_f_1631",
-    "impression_m": "Partner_Impression_m_1631",
+    "inter_knot_icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/InterKnot/UnPacker/IconInterknotAvatar/IconInterKnotRole1631.png",
+    "impression_f": "...",
+    "impression_m": "...",
     "impressions": [
-      "SenderNote1_241631",
-      "SenderNote2_241631",
-      "SenderNote3_241631"
+      "...",
+      "...",
+      "..."
     ],
-    "profile_desc": "Partner_ProfileDesc_1631",
+    "profile_desc": "...",
     "role_icon": "IconRole/UnPacker/IconRole1631",
-    "stature": "Partner_Stature_1631",
+    "stature": "...",
     "unlock_condition": [
       "Obtain Agent",
-      "Partner_Unlock_Condition_Chapter033",
+      "...",
       "Complete the \"Anby's Problem\" commission"
     ],
     "trust_lv": {
-      "1": "Partner_ProfileDesc_1631",
+      "1": "...",
       "2": "",
-      "3": "Partner_ProfileDesc_1631_1",
+      "3": "...",
       "4": ""
     }
   },
   "skin": {
     "3116310": {
-      "name": "AvatarSkin_Severian_Name_000",
-      "desc": "AvatarSkin_Severian_Desc_000",
+      "name": "...",
+      "desc": "...",
       "obtain_desc": "",
       "image": "IconRole1631"
+    },
+    "3116311": {
+      "name": "...",
+      "desc": "...",
+      "obtain_desc": "",
+      "image": "IconRole1631_01"
     }
   },
   "stats": {
@@ -168,102 +174,102 @@
     "1": {
       "max_level": 15,
       "extra": {
+        "21101": {
+          "prop": 21101,
+          "name": "CRIT DMG",
+          "format": "{0:0.#%}",
+          "value": 960
+        },
         "12101": {
           "prop": 12101,
           "name": "Base ATK",
           "format": "{0:0.#}",
           "value": 0
-        },
-        "20101": {
-          "prop": 20101,
-          "name": "CRIT Rate",
-          "format": "{0:0.#%}",
-          "value": 480
         }
       }
     },
     "2": {
       "max_level": 25,
       "extra": {
+        "21101": {
+          "prop": 21101,
+          "name": "CRIT DMG",
+          "format": "{0:0.#%}",
+          "value": 960
+        },
         "12101": {
           "prop": 12101,
           "name": "Base ATK",
           "format": "{0:0.#}",
           "value": 25
-        },
-        "20101": {
-          "prop": 20101,
-          "name": "CRIT Rate",
-          "format": "{0:0.#%}",
-          "value": 480
         }
       }
     },
     "3": {
       "max_level": 35,
       "extra": {
+        "21101": {
+          "prop": 21101,
+          "name": "CRIT DMG",
+          "format": "{0:0.#%}",
+          "value": 1920
+        },
         "12101": {
           "prop": 12101,
           "name": "Base ATK",
           "format": "{0:0.#}",
           "value": 25
-        },
-        "20101": {
-          "prop": 20101,
-          "name": "CRIT Rate",
-          "format": "{0:0.#%}",
-          "value": 960
         }
       }
     },
     "4": {
       "max_level": 45,
       "extra": {
+        "21101": {
+          "prop": 21101,
+          "name": "CRIT DMG",
+          "format": "{0:0.#%}",
+          "value": 1920
+        },
         "12101": {
           "prop": 12101,
           "name": "Base ATK",
           "format": "{0:0.#}",
           "value": 50
-        },
-        "20101": {
-          "prop": 20101,
-          "name": "CRIT Rate",
-          "format": "{0:0.#%}",
-          "value": 960
         }
       }
     },
     "5": {
       "max_level": 55,
       "extra": {
+        "21101": {
+          "prop": 21101,
+          "name": "CRIT DMG",
+          "format": "{0:0.#%}",
+          "value": 2880
+        },
         "12101": {
           "prop": 12101,
           "name": "Base ATK",
           "format": "{0:0.#}",
           "value": 50
-        },
-        "20101": {
-          "prop": 20101,
-          "name": "CRIT Rate",
-          "format": "{0:0.#%}",
-          "value": 1440
         }
       }
     },
     "6": {
       "max_level": 60,
       "extra": {
+        "21101": {
+          "prop": 21101,
+          "name": "CRIT DMG",
+          "format": "{0:0.#%}",
+          "value": 2880
+        },
         "12101": {
           "prop": 12101,
           "name": "Base ATK",
           "format": "{0:0.#}",
           "value": 75
-        },
-        "20101": {
-          "prop": 20101,
-          "name": "CRIT Rate",
-          "format": "{0:0.#%}",
-          "value": 1440
         }
       }
     }
@@ -335,17 +341,17 @@
       "description": [
         {
           "name": "Basic Attack: Swift Edge",
-          "desc": "Press <IconMap:Icon_Normal> to activate:\nLaunches up to 4 consecutive attacks forward, dealing <color=#A6C5FD>Wind DMG</color>;\nAfter the 4th attack hits an enemy, accumulates 20 <Term:1000041></Term>;\nThe moment the 4th attack is launched, it has a dodge window. If an enemy attack is successfully dodged, the DMG Multiplier and Daze Multiplier of this Basic Attack become equal to those of <color=#FFFFFF>[Basic Attack: Fierce Spin]</color>, and additionally accumulates 15 <color=#FFFFFF>[Flux]</color>;\nCharacter is invulnerable during the 4th attack;\nWhen Severian uses <color=#FFFFFF>[Dodge]</color>, <color=#FFFFFF>[Dash Attack]</color>, <color=#FFFFFF>[Dodge Counter]</color>, or <color=#FFFFFF>[Dodge: Freeform]</color> during a <color=#FFFFFF>[Basic Attack]</color>, the <color=#FFFFFF>[Basic Attack]</color> combo count will not be interrupted.",
+          "desc": "Press <IconMap:Icon_Normal> to activate:\nLaunches up to 4 attacks forward, dealing <color=#A6C5FD>Wind DMG</color>.\nWhen the 4th attack hits an enemy, it accumulates 20 <Term:1000041></Term>.\nThe 4th attack can dodge enemy attacks upon the moment of activation. Upon successfully dodging an enemy attack, this Basic Attack's DMG Multiplier and Daze Multiplier are increased to those of <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>, and an additional 15 <color=#FFFFFF>Flow</color> is accumulated.\nCharacter is invulnerable during the 4th attack.\nWhen Severian uses a <color=#FFFFFF>Dash Attack</color>, <color=#FFFFFF>Dodge Counter</color>, or <color=#FFFFFF>Dodge: Spontaneity</color> during a <color=#FFFFFF>Basic Attack</color> combo, it does not interrupt the <color=#FFFFFF>Basic Attack</color> combo sequence.",
           "potential": []
         },
         {
-          "name": "Basic Attack: Blazing Spin",
-          "desc": "Automatically activates when hit by an enemy attack at the instant of launching the first three Basic Attacks, or when hit by a non-Control Skill enemy attack while the <color=#FFFFFF>[Flickering Shadow]</color> effect is active and the character does not have an invulnerable effect:\nDashes forward, dealing massive <color=#A6C5FD>Wind DMG</color> to enemies in front;\nUpon activating this skill, accumulates 15 <Term:1000041></Term>. Hitting an enemy additionally accumulates 20 <color=#FFFFFF>[Flowing Breath]</color>;\nUpon activating this skill, hold <IconMap:Icon_Normal> to Quick Launch <color=#FFFFFF>[Basic Attack: Galewind Shadow Hunt]</color>;\nCharacter is invulnerable while using this skill.",
+          "name": "Basic Attack: Raging Whirlwind",
+          "desc": "Automatically activates when Severian is attacked at the moment he launches the first three attacks of his Basic Attack, or when he has <color=#FFFFFF>Shadowflash</color> and is hit by a non-Control Skill enemy attack while not invulnerable:\nDash forward, dealing massive <color=#A6C5FD>Wind DMG</color> to enemies in an area ahead.\nUpon activating this skill, accumulates 15 <Term:1000041></Term>. Upon hitting an enemy, an additional 20 <color=#FFFFFF>Flow</color> is accumulated.\nHold <IconMap:Icon_Normal> while activating this skill to Quick Launch <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color>. When the final hit of <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color> is unleashed, it accumulates 20 <color=#FFFFFF>Flow</color>.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Basic Attack: Shadow Hunt of the Azure Wind",
-          "desc": "When <Term:1000041></Term> is sufficient, consume 100 points of <color=#FFFFFF>[Flowing Breath]</color> and hold <IconMap:Icon_Normal> to activate:\nFirst, dodge backward to gather momentum, then continuously dash across the battlefield unleashing relentless Slashes, dealing massive <color=#A6C5FD>Wind DMG</color> to enemies in front;\nDuring the backward dodge, dodge detection is active. Successfully dodging an enemy attack triggers <color=#FFFFFF>[Vital View]</color> and accumulates 15 points of <color=#FFFFFF>[Flowing Breath]</color>;\nCharacter is invulnerable while using this skill.",
+          "name": "Basic Attack: Azure Wind's Shadowhunt",
+          "desc": "With enough <Term:1000041></Term>, consume 100 <color=#FFFFFF>Flow</color> and hold <IconMap:Icon_Normal> to activate:\nDodge backward and charge up, then continuously dart around the field while unleashing slashes, dealing massive <color=#A6C5FD>Wind DMG</color> to enemies in an area in front.\nThe backward dodge can dodge enemy attacks. Successfully dodging an enemy attack triggers <color=#FFFFFF>Vital View</color> and accumulates 15 <color=#FFFFFF>Flow</color>.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
@@ -434,11 +440,11 @@
               "desc": "{Skill:1631004, Prop:1001}",
               "param": {
                 "1631004": {
-                  "main": 30000,
-                  "growth": 2730,
+                  "main": 24160,
+                  "growth": 2200,
                   "format": "%",
-                  "damage_percentage": 30000,
-                  "damage_percentage_growth": 2730,
+                  "damage_percentage": 24160,
+                  "damage_percentage_growth": 2200,
                   "stun_ratio": 12840,
                   "stun_ratio_growth": 590,
                   "sp_recovery": 49510,
@@ -456,15 +462,15 @@
               "potential": []
             },
             {
-              "name": "DMG Multiplier on Successful 4-Sequence Perfect Dodge",
+              "name": "4th Attack Successful Perfect Dodge DMG Multiplier",
               "desc": "{Skill:1631020, Prop:1001}",
               "param": {
                 "1631020": {
-                  "main": 74650,
-                  "growth": 6790,
+                  "main": 33820,
+                  "growth": 3080,
                   "format": "%",
-                  "damage_percentage": 74650,
-                  "damage_percentage_growth": 6790,
+                  "damage_percentage": 33820,
+                  "damage_percentage_growth": 3080,
                   "stun_ratio": 13390,
                   "stun_ratio_growth": 610,
                   "sp_recovery": 43820,
@@ -567,8 +573,8 @@
                   "main": 12840,
                   "growth": 590,
                   "format": "%",
-                  "damage_percentage": 30000,
-                  "damage_percentage_growth": 2730,
+                  "damage_percentage": 24160,
+                  "damage_percentage_growth": 2200,
                   "stun_ratio": 12840,
                   "stun_ratio_growth": 590,
                   "sp_recovery": 49510,
@@ -586,15 +592,15 @@
               "potential": []
             },
             {
-              "name": "Daze Multiplier on successful 4-Sequence Perfect Dodge",
+              "name": "4th Attack Successful Perfect Dodge Daze Multiplier",
               "desc": "{Skill:1631020, Prop:1002}",
               "param": {
                 "1631020": {
                   "main": 13390,
                   "growth": 610,
                   "format": "%",
-                  "damage_percentage": 74650,
-                  "damage_percentage_growth": 6790,
+                  "damage_percentage": 33820,
+                  "damage_percentage_growth": 3080,
                   "stun_ratio": 13390,
                   "stun_ratio_growth": 610,
                   "sp_recovery": 43820,
@@ -615,18 +621,18 @@
           "potential": []
         },
         {
-          "name": "Basic Attack: Blazing Spin",
+          "name": "Basic Attack: Raging Whirlwind",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1631005, Prop:1001}",
               "param": {
                 "1631005": {
-                  "main": 74650,
-                  "growth": 6790,
+                  "main": 33820,
+                  "growth": 3080,
                   "format": "%",
-                  "damage_percentage": 74650,
-                  "damage_percentage_growth": 6790,
+                  "damage_percentage": 33820,
+                  "damage_percentage_growth": 3080,
                   "stun_ratio": 13390,
                   "stun_ratio_growth": 610,
                   "sp_recovery": 43820,
@@ -651,8 +657,8 @@
                   "main": 13390,
                   "growth": 610,
                   "format": "%",
-                  "damage_percentage": 74650,
-                  "damage_percentage_growth": 6790,
+                  "damage_percentage": 33820,
+                  "damage_percentage_growth": 3080,
                   "stun_ratio": 13390,
                   "stun_ratio_growth": 610,
                   "sp_recovery": 43820,
@@ -673,21 +679,21 @@
           "potential": []
         },
         {
-          "name": "Basic Attack: Shadow Hunt of the Azure Wind",
+          "name": "Basic Attack: Azure Wind's Shadowhunt",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1631006, Prop:1001}",
               "param": {
                 "1631006": {
-                  "main": 183870,
-                  "growth": 16720,
+                  "main": 202770,
+                  "growth": 18440,
                   "format": "%",
-                  "damage_percentage": 183870,
-                  "damage_percentage_growth": 16720,
+                  "damage_percentage": 202770,
+                  "damage_percentage_growth": 18440,
                   "stun_ratio": 31170,
                   "stun_ratio_growth": 1420,
-                  "sp_recovery": 101990,
+                  "sp_recovery": 51000,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 779350,
                   "fever_recovery_growth": 0,
@@ -709,11 +715,11 @@
                   "main": 31170,
                   "growth": 1420,
                   "format": "%",
-                  "damage_percentage": 183870,
-                  "damage_percentage_growth": 16720,
+                  "damage_percentage": 202770,
+                  "damage_percentage_growth": 18440,
                   "stun_ratio": 31170,
                   "stun_ratio_growth": 1420,
-                  "sp_recovery": 101990,
+                  "sp_recovery": 51000,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 779350,
                   "fever_recovery_growth": 0,
@@ -783,27 +789,27 @@
     "dodge": {
       "description": [
         {
-          "name": "Dodge: Drift Fold",
-          "desc": "Press <IconMap:Icon_Evade> to activate:\nA quick dash dodge;\nTriggering <color=#FFFFFF>[Perfect Dodge]</color> via <color=#FFFFFF>[Dodge: Drift]</color> accumulates 15 <Term:1000041></Term>. This effect can trigger once every 0.5 sec;\nCharacter is invulnerable while using this skill.",
+          "name": "Dodge: Windshift",
+          "desc": "Press <IconMap:Icon_Evade> to activate:\nA quick dash dodge.\nWhen <color=#FFFFFF>Dodge: Windshift</color> triggers a <color=#FFFFFF>Perfect Dodge</color>, it accumulates 15 <Term:1000041></Term>. This effect can trigger once every 0.5s.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Dash Attack: Lynn Strike",
-          "desc": "Press <IconMap:Icon_Normal> during a dodge to activate:\nLaunches an attack forward, dealing <color=#A6C5FD>Wind DMG</color>.",
+          "name": "Dash Attack: Sheer Assault",
+          "desc": "Press <IconMap:Icon_Normal> during a dodge to activate:\nAttack forward, dealing <color=#A6C5FD>Wind DMG</color>.",
           "potential": []
         },
         {
-          "name": "Dodge Counter: Treetop Kill",
-          "desc": "When <color=#FFFFFF>[Perfect Dodge]</color> is triggered via <color=#FFFFFF>[Dodge: Drift]</color>, Press <IconMap:Icon_Normal> to activate:\nLaunches a rapid slash forward, dealing <color=#A6C5FD>Wind DMG</color>;\nIf the character switches off-field at the moment <color=#FFFFFF>[Perfect Dodge]</color> is triggered via <color=#FFFFFF>[Dodge: Drift]</color>, this skill will be activated automatically;\nCharacter is invulnerable while using this skill.",
+          "name": "Dodge Counter: Fatal End",
+          "desc": "When <color=#FFFFFF>Dodge: Windshift</color> triggers a <color=#FFFFFF>Perfect Dodge</color>, press <IconMap:Icon_Normal> to activate:\nLaunch a quick slash forward, dealing <color=#A6C5FD>Wind DMG</color>.\nIf switched off-field immediately after triggering a <color=#FFFFFF>Perfect Dodge</color> with <color=#FFFFFF>Dodge: Windshift</color>, this skill activates automatically.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Dodge: Freeform",
-          "desc": "After a Backstep, hold <IconMap:Icon_Evade> to activate:\nProvoke the enemy;\nIf hit during this skill, consume <color=#FFFFFF>[Flash Shadow]</color> to trigger <color=#FFFFFF>[Basic Attack: Blazing Spin]</color>. The triggered <color=#FFFFFF>[Basic Attack: Blazing Spin]</color> is guaranteed to CRIT, and CRIT DMG is increased by 10%.",
+          "name": "Dodge: Spontaneity",
+          "desc": "After dodging backward, hold <IconMap:Icon_Evade> to activate:\nProvoke the enemy.",
           "potential": []
         },
         {
-          "name": "Dash Attack: Lynn Strike",
+          "name": "Dash Attack: Sheer Assault",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -861,7 +867,7 @@
           "potential": []
         },
         {
-          "name": "Dodge Counter: Treetop Kill",
+          "name": "Dodge Counter: Fatal End",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -971,17 +977,17 @@
     "special": {
       "description": [
         {
-          "name": "Special Attack: Flash Wind Break",
-          "desc": "Press <IconMap:Icon_Special> to activate:\nUnleashes slashes and thrusts forward, dealing <color=#A6C5FD>Wind DMG</color>.",
+          "name": "Special Attack: Gale Rend",
+          "desc": "Press <IconMap:Icon_Special> to activate:\nUnleash slashes and stabs forward, dealing <color=#A6C5FD>Wind DMG</color>.",
           "potential": []
         },
         {
-          "name": "EX Special Attack: Instant Wind Shatter",
-          "desc": "With enough Energy, press <IconMap:Icon_SpecialReady> to activate:\nUnleash a combo of Slash, claw, and cannon strikes, dealing massive <color=#A6C5FD>Wind DMG</color> to enemies and gaining 1 stack of <Term:1000042></Term>;\nHold <IconMap:Icon_SpecialReady> to continuously consume Energy before the cannon strike, launching wind blades that deal <color=#A6C5FD>Wind DMG</color> to enemies;\nWhen Energy Cost reaches max, gain an additional stack of <color=#FFFFFF>[Shimmer]</color>;\nCharacter is invulnerable while using this skill.",
+          "name": "EX Special Attack: Swiftwind Rupture",
+          "desc": "With enough Energy, press <IconMap:Icon_SpecialReady> to activate:\nUnleash a combination of slashes, claw strikes, and cannon fire forward, dealing massive <color=#A6C5FD>Wind DMG</color> and gaining 1 stack of <Term:1000042></Term>.\nHold <IconMap:Icon_SpecialReady> to continuously consume Energy before the cannon attack, and repeatedly launch wind blades that deal <color=#A6C5FD>Wind DMG</color> to enemies.\nWhen reaching the maximum Energy consumed, gain an additional stack of <color=#FFFFFF>Shadowflash</color>.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Special Attack: Flash Wind Break",
+          "name": "Special Attack: Gale Rend",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1039,10 +1045,10 @@
           "potential": []
         },
         {
-          "name": "EX Special Attack: Instant Wind Shatter",
+          "name": "EX Special Attack: Swiftwind Rupture",
           "param": [
             {
-              "name": "Combo DMG Multiplier",
+              "name": "Combo Skill DMG Multiplier",
               "desc": "{Skill:1631008, Prop:1001}",
               "param": {
                 "1631008": {
@@ -1068,7 +1074,7 @@
               "potential": []
             },
             {
-              "name": "Combo Daze Multiplier",
+              "name": "Combo Skill Daze Multiplier",
               "desc": "{Skill:1631008, Prop:1002}",
               "param": {
                 "1631008": {
@@ -1095,11 +1101,11 @@
             },
             {
               "name": "Combo Skill Energy Cost",
-              "desc": "80",
+              "desc": "40",
               "potential": []
             },
             {
-              "name": "Maximum Wind Blade DMG Multiplier",
+              "name": "Wind Blade Max DMG Multiplier",
               "desc": "{Skill:1631009, Prop:1001}",
               "param": {
                 "1631009": {
@@ -1125,7 +1131,7 @@
               "potential": []
             },
             {
-              "name": "Maximum Wind Blade Daze Multiplier",
+              "name": "Wind Blade Max Daze Multiplier",
               "desc": "{Skill:1631009, Prop:1002}",
               "param": {
                 "1631009": {
@@ -1211,17 +1217,17 @@
     "chain": {
       "description": [
         {
-          "name": "Chain Attack: Frost Blade Reap",
-          "desc": "When a <color=#FFFFFF>Chain Attack</color> is triggered, select the character to activate:\nUnleashes consecutive attacks forward, dealing massive <color=#A6C5FD>Wind DMG</color>.\nAfter using this skill, accumulate 50 <Term:1000041></Term>.\nCharacter is invulnerable while using this skill.",
+          "name": "Chain Attack: Coldblade Reap",
+          "desc": "When a <color=#FFFFFF>Chain Attack</color> is triggered, select the character to activate:\nPerform a series of attacks forward, dealing massive <color=#A6C5FD>Wind DMG</color>.\nAfter using this skill, accumulate 35 <Term:1000041></Term>.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
           "name": "Ultimate: Annihilating Windstorm",
-          "desc": "When Decibel Rating is at <color=#FFFFFF>Maximum</color>, press <IconMap:Icon_UltimateReady> to activate:\nUnleashes multiple rapid Slashes in succession, dealing massive <color=#A6C5FD>Wind DMG</color>;\nAfter using this skill, accumulates 100 points of <Term:1000041></Term>;\nCharacter is invulnerable while using this skill.",
+          "desc": "When Decibel Rating is at <color=#FFFFFF>Maximum</color>, press <IconMap:Icon_UltimateReady> to activate:\nUnleash multiple rapid slashes in succession, dealing massive <color=#A6C5FD>Wind DMG</color>.\nAccumulate 100 <Term:1000041></Term> after using this skill.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Chain Attack: Frost Blade Reap",
+          "name": "Chain Attack: Coldblade Reap",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1389,27 +1395,27 @@
     "assist": {
       "description": [
         {
-          "name": "Quick Assist: Frontline Orders",
-          "desc": "When the active character is launched, press <IconMap:Icon_Switch> to activate:\nDash forward swiftly, unleashing claw strikes and slashes on enemies ahead, dealing <color=#A6C5FD>Wind DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Quick Assist: Field Orders",
+          "desc": "When the active character is launched, press <IconMap:Icon_Switch> to activate:\nDash forward quickly, unleashing claw strikes and slashes at enemies ahead, dealing <color=#A6C5FD>Wind DMG</color>.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Defensive Assist: Provocation Ban",
+          "name": "Defensive Assist: Provocation Prohibited",
           "desc": "When the on-field character is about to be attacked, press <IconMap:Icon_Switch> to activate:\nParries the enemy's attack, dealing massive Daze.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Cease Hostility with Hostility",
-          "desc": "Press <IconMap:Icon_Normal> after a <color=#FFFFFF>Defensive Assist</color> to activate:\nUnleashes a Slash, claw strike, and cannon blast on enemies in sequence, dealing <color=#A6C5FD>Wind DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Assist Follow-Up: Fight Force with Force",
+          "desc": "Press <IconMap:Icon_Normal> after a <color=#FFFFFF>Defensive Assist</color> to activate:\nUnleash slashes, claw strikes, and cannon fire against enemies in sequence, dealing <color=#A6C5FD>Wind DMG</color>.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Entry Skill: Clearing Time",
-          "desc": "When Severian has the <Term:1000043> effect and is in-combat, press <IconMap:Icon_Switch> to switch from off field to on field:\nLaunches a powerful Slash at enemies ahead, dealing <color=#A6C5FD>Wind DMG</color>;\nUpon activating this skill, it counts as a <color=#FFFFFF>[Quick Assist]</color>;\nCharacter is invulnerable while using this skill.",
+          "name": "Entry Skill: Clear Out",
+          "desc": "When Severian has <Term:1000043></Term> and is in combat, press <IconMap:Icon_Switch> to switch him into battle and activate:\nUnleashes a powerful slash against enemies ahead, dealing <color=#A6C5FD>Wind DMG</color>.\nActivating this skill is considered activating a <color=#FFFFFF>Quick Assist</color>.\nThis skill is not counted as a heavy attack.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Quick Assist: Frontline Orders",
+          "name": "Quick Assist: Field Orders",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1467,7 +1473,7 @@
           "potential": []
         },
         {
-          "name": "Defensive Assist: Provocation Ban",
+          "name": "Defensive Assist: Provocation Prohibited",
           "param": [
             {
               "name": "Light Defensive Daze Multiplier",
@@ -1551,7 +1557,7 @@
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Cease Hostility with Hostility",
+          "name": "Assist Follow-Up: Fight Force with Force",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1609,7 +1615,7 @@
           "potential": []
         },
         {
-          "name": "Entry Skill: Clearing Time",
+          "name": "Entry Skill: Clear Out",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1717,7 +1723,33 @@
       }
     }
   },
-  "skill_priority": [],
+  "skill_priority": [
+    {
+      "id": 1631001,
+      "avatar_id": 1631,
+      "first_priority": [
+        5,
+        0
+      ],
+      "second_priority": [
+        3,
+        1,
+        6
+      ],
+      "third_priority": [
+        2
+      ],
+      "potential_levels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    }
+  ],
   "skill_list": {
     "1631001": {
       "name": "Basic Attack: Swift Edge",
@@ -1727,56 +1759,56 @@
       "potential": []
     },
     "1631002": {
-      "name": "Basic Attack: Blazing Spin",
-      "desc": "<IconMap:Icon_Normal> (Triggered when hit by an enemy attack during the first three stages of Basic Attack) (Automatically triggered when hit by an enemy attack while a Shimmer Shadow is present)",
+      "name": "Basic Attack: Raging Whirlwind",
+      "desc": "<IconMap:Icon_Normal> (When attacked at the moment any of the first 3 Basic Attack hits are performed) (automatically triggers when attacked with Shadowflash)",
       "element_type": 204,
       "hit_type": 101,
       "potential": []
     },
     "1631003": {
-      "name": "Basic Attack: Shadow Hunt of the Azure Wind",
-      "desc": "<IconMap:Icon_Normal>(Hold when Flow reaches 100)",
+      "name": "Basic Attack: Azure Wind's Shadowhunt",
+      "desc": "<IconMap:Icon_Normal> (Hold when Flow reaches 100)",
       "element_type": 204,
       "hit_type": 101,
       "potential": []
     },
     "1631004": {
-      "name": "Special Attack: Flash Wind Break",
+      "name": "Special Attack: Gale Rend",
       "desc": "<IconMap:Icon_Special>",
       "element_type": 204,
       "hit_type": 101,
       "potential": []
     },
     "1631005": {
-      "name": "EX Special Attack: Instant Wind Shatter",
-      "desc": "<IconMap:Icon_SpecialReady> (press or hold)",
+      "name": "EX Special Attack: Swiftwind Rupture",
+      "desc": "<IconMap:Icon_SpecialReady> (Press or Hold)",
       "element_type": 204,
       "hit_type": 101,
       "potential": []
     },
     "1631006": {
-      "name": "Dash Attack: Lynn Strike",
+      "name": "Dash Attack: Sheer Assault",
       "desc": "<IconMap:Icon_Evade> ; <IconMap:Icon_Normal>",
       "element_type": 204,
       "hit_type": 101,
       "potential": []
     },
     "1631007": {
-      "name": "Dodge Counter: Treetop Kill",
-      "desc": "<IconMap:Icon_Evade> (Maximum) ; <IconMap:Icon_Normal> (Can be automatically triggered by switching to off-field at the moment of a Perfect Dodge)",
+      "name": "Dodge Counter: Fatal End",
+      "desc": "<IconMap:Icon_Evade> (Perfect) ; <IconMap:Icon_Normal> (Automatically triggers when switched off-field at the moment of a Perfect Dodge)",
       "element_type": 204,
       "hit_type": 101,
       "potential": []
     },
     "1631008": {
-      "name": "Dodge: Freeform",
-      "desc": "<IconMap:Icon_Evade> ; <IconMap:Icon_Evade> (tap then hold after Evade)",
-      "element_type": 204,
-      "hit_type": 101,
+      "name": "Dodge: Spontaneity",
+      "desc": "<IconMap:Icon_Evade> ; <IconMap:Icon_Evade> (Hold after a dodge)",
+      "element_type": 0,
+      "hit_type": 0,
       "potential": []
     },
     "1631009": {
-      "name": "Chain Attack: Frost Blade Reap",
+      "name": "Chain Attack: Coldblade Reap",
       "desc": "<IconMap:Icon_QTE>",
       "element_type": 204,
       "hit_type": 101,
@@ -1790,29 +1822,29 @@
       "potential": []
     },
     "1631011": {
-      "name": "Quick Assist: Frontline Orders",
+      "name": "Quick Assist: Field Orders",
       "desc": "<IconMap:Icon_Switch> (When Triggering Quick Assist)",
       "element_type": 204,
       "hit_type": 101,
       "potential": []
     },
     "1631012": {
-      "name": "Defensive Assist: Provocation Ban",
+      "name": "Defensive Assist: Provocation Prohibited",
       "desc": "<IconMap:Icon_Switch> (When Triggering Defensive Assist)",
       "element_type": 0,
       "hit_type": 0,
       "potential": []
     },
     "1631013": {
-      "name": "Assist Follow-Up: Cease Hostility with Hostility",
+      "name": "Assist Follow-Up: Fight Force with Force",
       "desc": "<IconMap:Icon_Normal> (After Defensive Assist)",
       "element_type": 204,
       "hit_type": 101,
       "potential": []
     },
     "1631014": {
-      "name": "Entry Skill: Clearing Time",
-      "desc": "<IconMap:Icon_Switch> (Switch when Riding Wind effect is active)",
+      "name": "Entry Skill: Clear Out",
+      "desc": "<IconMap:Icon_Switch> (Switch characters while the Windborne effect is active)",
       "element_type": 204,
       "hit_type": 101,
       "potential": []
@@ -1824,12 +1856,12 @@
         "level": 1,
         "id": 1631501,
         "name": [
-          "Core Passive: Endless Wind",
-          "Additional Ability: Optimal Orchestration"
+          "Core Passive: Endless Breeze",
+          "Additional Ability: Optimal Setup"
         ],
         "desc": [
-          "Severian's CRIT DMG increases by <color=#2BAD00>30%</color>;\nWhen Severian launches <color=#FFFFFF>[Basic Attack: Swift Edge]</color> at the exact moment an enemy attack is about to land, she can dodge that attack. If she dodges the attack through the first three Basic Attack hits, <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color> is automatically triggered. If it is the fourth Basic Attack hit, that hit's DMG Multiplier and Daze Multiplier are increased to match <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nWhen Severian enters the battlefield, she gains 1 stack of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode;\nWhen Severian has <color=#FFFFFF>[Gleaming Shadow]</color> and does not have an Invulnerable effect, if she is hit by a non-Control Skill enemy attack and fails to actively dodge or parry the attack, Severian will consume 1 stack of <color=#FFFFFF>[Gleaming Shadow]</color> to automatically dodge the attack and trigger <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nWhen Severian successfully dodges an enemy attack by launching <color=#FFFFFF>[Basic Attack: Swift Edge]</color>, triggers an automatic dodge via <color=#FFFFFF>[Gleaming Shadow]</color>, or directly dodges an enemy attack, all count as a <color=#FFFFFF>[Perfect Dodge]</color>;\n<color=#FFFFFF>[Gleaming Shadow]</color> can stack up to 2 times. If <color=#FFFFFF>[Gleaming Shadow]</color> is gained while at max stacks, Severian gains 1 stack of <Term:1000043></Term> and the next <color=#FFFFFF>[Basic Attack: Swift Edge]</color> is enhanced to <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nEach Perfect Dodge grants Severian 1 stack of the <color=#FFFFFF>[Wind Riding]</color> effect, stacking up to 2 times. When Severian has the <color=#FFFFFF>[Wind Riding]</color> effect, switching to Severian or having Severian enter via Quick Assist will automatically trigger her <color=#FFFFFF>[Entry Skill]</color>;\nWhen the <color=#FFFFFF>[Wind Riding]</color> effect is active, if Severian enters the field via <color=#FFFFFF>[Entry Skill]</color>, <color=#FFFFFF>[Chain Attack]</color>, or <color=#FFFFFF>[Ultimate]</color>, all <color=#FFFFFF>[Wind Riding]</color> stacks are consumed. Consuming 1 stack of <color=#FFFFFF>[Wind Riding]</color> increases the DMG Multiplier of the final hit of the above skills by a fixed <color=#2BAD00>30%</color>. Consuming 2 stacks increases the DMG Multiplier by a fixed <color=#2BAD00>150%</color>;\nWhen Severian hits an enemy with a fixed skill or triggers a Perfect Dodge, she gains <Term:1000041></Term>. <color=#FFFFFF>[Flowing Breath]</color> has a maximum cap of 150 points;\nWhen <color=#FFFFFF>[Flowing Breath]</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 points of <color=#FFFFFF>[Flowing Breath]</color> and launch <color=#FFFFFF>[Basic Attack: Azure Wind Shadow Hunt]</color>.",
-          "When another character in your squad is <color=#FFFFFF>[Assist]</color>, <color=#FFFFFF>[Stun]</color>, or shares the same Faction:\nWhen Severian enters combat or switches on field, his ATK increases by 100 points. This effect scales with character Lv., increasing by 10 points per level, up to a maximum increase of 700 points. Lasts for 30s; repeated triggers reset the duration."
+          "Severian's CRIT DMG increases by <color=#2BAD00>30%</color>, and his DMG increases by <color=#2BAD00>12.5%</color>. If there is another Wind character in the squad, his DMG increases by an additional <color=#2BAD00>15%</color>.\nWhen Severian uses <color=#FFFFFF>Basic Attack: Swift Edge</color> just before being hit by an enemy attack, he can dodge the attack. If he dodges it with any of the first three hits of his Basic Attack, he automatically launches <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>. If he dodges it with the 4th hit, that Basic Attack's DMG Multiplier and Daze Multiplier are increased to match <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nWhen Severian enters the battlefield, he gains 2 stacks of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode.\nWhen Severian has <color=#FFFFFF>Shadowflash</color> and is not invulnerable, if he is hit by a non-Control Skill enemy attack that he fails to actively dodge or parry, he consumes 1 stack of <color=#FFFFFF>Shadowflash</color> to automatically dodge the attack and launch <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nSuccessfully dodging an enemy attack with <color=#FFFFFF>Basic Attack: Swift Edge</color>, automatically dodging an enemy attack with <color=#FFFFFF>Shadowflash</color>, or directly dodging an enemy attack all count as a <color=#FFFFFF>Perfect Dodge</color>.\n<color=#FFFFFF>Shadowflash</color> can stack up to 2 times. If Severian gains <color=#FFFFFF>Shadowflash</color> while already possessing maximum stacks, he gains 1 stack of <Term:1000043></Term> instead, and the next <color=#FFFFFF>Basic Attack: Swift Edge</color> is enhanced to <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nEach time Severian performs a Perfect Dodge, he gains 1 stack of <color=#FFFFFF>Windborne</color>. While Severian has <color=#FFFFFF>Windborne</color> and is in combat, press <IconMap:Icon_Switch> to switch him from off-field to on-field and launch an <color=#FFFFFF>Entry Skill</color>.\nSeverian gains <Term:1000041></Term> by hitting enemies with certain skills or triggering a Perfect Dodge. <color=#FFFFFF>Flow</color> is capped at 150 points.\nWhen <color=#FFFFFF>Flow</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 <color=#FFFFFF>Flow</color> and launch <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color>.",
+          "When another character in your squad is a <color=#FFFFFF>Support</color> or <color=#FFFFFF>Stun</color> character, or shares the same faction:\nFor every 1% CRIT Rate Severian has, his ATK increases by 8.5, up to 100% CRIT Rate."
         ],
         "extra_property": {},
         "potential": []
@@ -1838,12 +1870,12 @@
         "level": 2,
         "id": 1631502,
         "name": [
-          "Core Passive: Endless Wind",
-          "Additional Ability: Optimal Orchestration"
+          "Core Passive: Endless Breeze",
+          "Additional Ability: Optimal Setup"
         ],
         "desc": [
-          "Severian's CRIT DMG is increased by <color=#2BAD00>35%</color>;\nWhen Severian launches <color=#FFFFFF>[Basic Attack: Swift Edge]</color> at the instant an enemy attack is about to land, she can dodge that attack. If the dodge is performed during the first three Basic Attack strikes, <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color> is automatically triggered. If it is the fourth Basic Attack strike, the DMG Multiplier and Daze Multiplier of that strike are increased to match those of <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nWhen Severian enters the battlefield, she gains 1 stack of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode;\nWhen Severian has <color=#FFFFFF>[Gleaming Shadow]</color> and is not Invulnerable, if she is hit by a non-Control Skill enemy attack and fails to actively dodge or parry it, Severian will consume 1 stack of <color=#FFFFFF>[Gleaming Shadow]</color> to automatically dodge the attack and trigger <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nDodging an enemy attack by launching <color=#FFFFFF>[Basic Attack: Swift Edge]</color>, triggering <color=#FFFFFF>[Gleaming Shadow]</color> to automatically dodge an enemy attack, and directly dodging an enemy attack are all considered <color=#FFFFFF>[Perfect Dodge]</color>;\n<color=#FFFFFF>[Gleaming Shadow]</color> can stack up to 2 times. If <color=#FFFFFF>[Gleaming Shadow]</color> is gained when already at max stacks, Severian gains 1 stack of <Term:1000043></Term> and the next <color=#FFFFFF>[Basic Attack: Swift Edge]</color> will be enhanced to <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nEach Perfect Dodge grants Severian 1 stack of <color=#FFFFFF>[Wind Rider]</color>, stacking up to 2 times. When Severian has the <color=#FFFFFF>[Wind Rider]</color> effect, switching to Severian or having Severian enter via Quick Assist will automatically trigger her <color=#FFFFFF>[Entry Skill]</color>;\nWhen the <color=#FFFFFF>[Wind Rider]</color> effect is active, if Severian enters the field via <color=#FFFFFF>[Entry Skill]</color>, <color=#FFFFFF>[Chain Attack]</color>, or <color=#FFFFFF>[Ultimate]</color>, all <color=#FFFFFF>[Wind Rider]</color> stacks are consumed. Consuming 1 stack of <color=#FFFFFF>[Wind Rider]</color> increases the DMG Multiplier of the final hit of the aforementioned skills by a fixed <color=#2BAD00>35%</color>. Consuming 2 stacks increases the DMG Multiplier by a fixed <color=#2BAD00>175%</color>;\nWhen Severian hits an enemy with a fixed skill or triggers a Perfect Dodge, she gains <Term:1000041></Term>. The upper limit of <color=#FFFFFF>[Flow Breath]</color> is 150 points;\nWhen <color=#FFFFFF>[Flow Breath]</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 points of <color=#FFFFFF>[Flow Breath]</color> and launch <color=#FFFFFF>[Basic Attack: Azure Wind Shadow Hunt]</color>.",
-          "When another character in your squad is <color=#FFFFFF>[Assist]</color>, <color=#FFFFFF>[Stun]</color>, or shares the same Faction:\nWhen Severian enters combat or switches on field, his ATK increases by 100 points. This effect scales with character Lv., increasing by 10 points per level, up to a maximum increase of 700 points. Lasts for 30s; repeated triggers reset the duration."
+          "Severian's CRIT DMG increases by <color=#2BAD00>35%</color>, and his DMG increases by <color=#2BAD00>14.6%</color>. If there is another Wind character in the squad, his DMG increases by an additional <color=#2BAD00>17.5%</color>.\nWhen Severian uses <color=#FFFFFF>Basic Attack: Swift Edge</color> just before being hit by an enemy attack, he can dodge the attack. If he dodges it with any of the first three hits of his Basic Attack, he automatically launches <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>. If he dodges it with the 4th hit, that Basic Attack's DMG Multiplier and Daze Multiplier are increased to match <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nWhen Severian enters the battlefield, he gains 2 stacks of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode.\nWhen Severian has <color=#FFFFFF>Shadowflash</color> and is not invulnerable, if he is hit by a non-Control Skill enemy attack that he fails to actively dodge or parry, he consumes 1 stack of <color=#FFFFFF>Shadowflash</color> to automatically dodge the attack and launch <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nSuccessfully dodging an enemy attack with <color=#FFFFFF>Basic Attack: Swift Edge</color>, automatically dodging an enemy attack with <color=#FFFFFF>Shadowflash</color>, or directly dodging an enemy attack all count as a <color=#FFFFFF>Perfect Dodge</color>.\n<color=#FFFFFF>Shadowflash</color> can stack up to 2 times. If Severian gains <color=#FFFFFF>Shadowflash</color> while already possessing maximum stacks, he gains 1 stack of <Term:1000043></Term> instead, and the next <color=#FFFFFF>Basic Attack: Swift Edge</color> is enhanced to <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nEach time Severian performs a Perfect Dodge, he gains 1 stack of <color=#FFFFFF>Windborne</color>. While Severian has <color=#FFFFFF>Windborne</color> and is in combat, press <IconMap:Icon_Switch> to switch him from off-field to on-field and launch an <color=#FFFFFF>Entry Skill</color>.\nSeverian gains <Term:1000041></Term> by hitting enemies with certain skills or triggering a Perfect Dodge. <color=#FFFFFF>Flow</color> is capped at 150 points.\nWhen <color=#FFFFFF>Flow</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 <color=#FFFFFF>Flow</color> and launch <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color>.",
+          "When another character in your squad is a <color=#FFFFFF>Support</color> or <color=#FFFFFF>Stun</color> character, or shares the same faction:\nFor every 1% CRIT Rate Severian has, his ATK increases by 8.5, up to 100% CRIT Rate."
         ],
         "extra_property": {},
         "potential": []
@@ -1852,12 +1884,12 @@
         "level": 3,
         "id": 1631503,
         "name": [
-          "Core Passive: Endless Wind",
-          "Additional Ability: Optimal Orchestration"
+          "Core Passive: Endless Breeze",
+          "Additional Ability: Optimal Setup"
         ],
         "desc": [
-          "Severian's CRIT DMG increases by <color=#2BAD00>40%</color>;\nWhen Severian launches <color=#FFFFFF>[Basic Attack: Swift Edge]</color> at the instant an enemy attack is about to land, she can dodge that attack. If the dodge is performed during the first three Basic Attack segments, she will automatically launch <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>. If it is performed during the fourth Basic Attack segment, that Basic Attack's DMG Multiplier and Daze Multiplier are increased to match those of <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nWhen Severian enters the battlefield, she gains 1 stack of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode;\nWhen Severian has <color=#FFFFFF>[Gleaming Shadow]</color> and is not Invulnerable, if she is hit by a non-Control Skill enemy attack and fails to actively dodge or parry it, she will consume 1 stack of <color=#FFFFFF>[Gleaming Shadow]</color> to automatically dodge the attack and launch <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nSuccessfully dodging an enemy attack by launching <color=#FFFFFF>[Basic Attack: Swift Edge]</color>, automatically dodging via <color=#FFFFFF>[Gleaming Shadow]</color>, and directly dodging an enemy attack are all considered <color=#FFFFFF>[Perfect Dodge]</color>;\n<color=#FFFFFF>[Gleaming Shadow]</color> can stack up to 2 times. If <color=#FFFFFF>[Gleaming Shadow]</color> is gained while already at max stacks, Severian gains 1 stack of <Term:1000043></Term> and her next <color=#FFFFFF>[Basic Attack: Swift Edge]</color> is upgraded to <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nEach Perfect Dodge grants Severian 1 stack of the <color=#FFFFFF>[Wind Riding]</color> effect, stacking up to 2 times. While the <color=#FFFFFF>[Wind Riding]</color> effect is active, switching to Severian or having Severian enter via Quick Assist will automatically trigger <color=#FFFFFF>[Deployment Skill]</color>;\nWhile the <color=#FFFFFF>[Wind Riding]</color> effect is active, when Severian enters the field via <color=#FFFFFF>[Deployment Skill]</color>, <color=#FFFFFF>[Chain Attack]</color>, or <color=#FFFFFF>[Ultimate]</color>, all <color=#FFFFFF>[Wind Riding]</color> stacks are consumed. Consuming 1 stack of <color=#FFFFFF>[Wind Riding]</color> increases the DMG Multiplier of the final hit of the aforementioned skills by a flat <color=#2BAD00>40%</color>. Consuming 2 stacks increases the DMG Multiplier by a flat <color=#2BAD00>200%</color>;\nWhen Severian hits an enemy with a set skill or triggers a Perfect Dodge, she gains <Term:1000041></Term>. The upper limit of <color=#FFFFFF>[Flowing Breath]</color> is 150 points;\nWhen <color=#FFFFFF>[Flowing Breath]</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 points of <color=#FFFFFF>[Flowing Breath]</color> and launch <color=#FFFFFF>[Basic Attack: Azure Wind Shadow Hunt]</color>.",
-          "When another character in your squad is <color=#FFFFFF>[Assist]</color>, <color=#FFFFFF>[Stun]</color>, or shares the same Faction:\nWhen Severian enters combat or switches on field, his ATK increases by 100 points. This effect scales with character Lv., increasing by 10 points per level, up to a maximum increase of 700 points. Lasts for 30s; repeated triggers reset the duration."
+          "Severian's CRIT DMG increases by <color=#2BAD00>40%</color>, and his DMG increases by <color=#2BAD00>16.7%</color>. If there is another Wind character in the squad, his DMG increases by an additional <color=#2BAD00>20%</color>.\nWhen Severian uses <color=#FFFFFF>Basic Attack: Swift Edge</color> just before being hit by an enemy attack, he can dodge the attack. If he dodges it with any of the first three hits of his Basic Attack, he automatically launches <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>. If he dodges it with the 4th hit, that Basic Attack's DMG Multiplier and Daze Multiplier are increased to match <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nWhen Severian enters the battlefield, he gains 2 stacks of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode.\nWhen Severian has <color=#FFFFFF>Shadowflash</color> and is not invulnerable, if he is hit by a non-Control Skill enemy attack that he fails to actively dodge or parry, he consumes 1 stack of <color=#FFFFFF>Shadowflash</color> to automatically dodge the attack and launch <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nSuccessfully dodging an enemy attack with <color=#FFFFFF>Basic Attack: Swift Edge</color>, automatically dodging an enemy attack with <color=#FFFFFF>Shadowflash</color>, or directly dodging an enemy attack all count as a <color=#FFFFFF>Perfect Dodge</color>.\n<color=#FFFFFF>Shadowflash</color> can stack up to 2 times. If Severian gains <color=#FFFFFF>Shadowflash</color> while already possessing maximum stacks, he gains 1 stack of <Term:1000043></Term> instead, and the next <color=#FFFFFF>Basic Attack: Swift Edge</color> is enhanced to <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nEach time Severian performs a Perfect Dodge, he gains 1 stack of <color=#FFFFFF>Windborne</color>. While Severian has <color=#FFFFFF>Windborne</color> and is in combat, press <IconMap:Icon_Switch> to switch him from off-field to on-field and launch an <color=#FFFFFF>Entry Skill</color>.\nSeverian gains <Term:1000041></Term> by hitting enemies with certain skills or triggering a Perfect Dodge. <color=#FFFFFF>Flow</color> is capped at 150 points.\nWhen <color=#FFFFFF>Flow</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 <color=#FFFFFF>Flow</color> and launch <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color>.",
+          "When another character in your squad is a <color=#FFFFFF>Support</color> or <color=#FFFFFF>Stun</color> character, or shares the same faction:\nFor every 1% CRIT Rate Severian has, his ATK increases by 8.5, up to 100% CRIT Rate."
         ],
         "extra_property": {},
         "potential": []
@@ -1866,12 +1898,12 @@
         "level": 4,
         "id": 1631504,
         "name": [
-          "Core Passive: Endless Wind",
-          "Additional Ability: Optimal Orchestration"
+          "Core Passive: Endless Breeze",
+          "Additional Ability: Optimal Setup"
         ],
         "desc": [
-          "Severian's CRIT DMG is increased by <color=#2BAD00>45%</color>;\nWhen Severian launches <color=#FFFFFF>[Basic Attack: Swift Edge]</color> at the instant an enemy attack is about to land, she can dodge that attack. If the dodge is performed during the first three Basic Attack strikes, <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color> is automatically triggered. If it is the fourth Basic Attack strike, the DMG Multiplier and Daze Multiplier of that strike are increased to match those of <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nWhen Severian enters the battlefield, she gains 1 stack of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode;\nWhen Severian has <color=#FFFFFF>[Gleaming Shadow]</color> and is not Invulnerable, if she is hit by a non-Control Skill enemy attack and fails to actively dodge or parry it, Severian will consume 1 stack of <color=#FFFFFF>[Gleaming Shadow]</color> to automatically dodge the attack and trigger <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nDodging an enemy attack by launching <color=#FFFFFF>[Basic Attack: Swift Edge]</color>, triggering <color=#FFFFFF>[Gleaming Shadow]</color> to automatically dodge an enemy attack, and directly dodging an enemy attack are all considered <color=#FFFFFF>[Perfect Dodge]</color>;\n<color=#FFFFFF>[Gleaming Shadow]</color> can stack up to 2 times. If <color=#FFFFFF>[Gleaming Shadow]</color> is gained when already at max stacks, Severian gains 1 stack of <Term:1000043></Term> and the next <color=#FFFFFF>[Basic Attack: Swift Edge]</color> will be enhanced to <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nEach Perfect Dodge grants Severian 1 stack of <color=#FFFFFF>[Wind Rider]</color>, stacking up to 2 times. When Severian has the <color=#FFFFFF>[Wind Rider]</color> effect, switching to Severian or having Severian enter via Quick Assist will automatically trigger her <color=#FFFFFF>[Entry Skill]</color>;\nWhen the <color=#FFFFFF>[Wind Rider]</color> effect is active, if Severian enters the field via <color=#FFFFFF>[Entry Skill]</color>, <color=#FFFFFF>[Chain Attack]</color>, or <color=#FFFFFF>[Ultimate]</color>, all <color=#FFFFFF>[Wind Rider]</color> stacks are consumed. Consuming 1 stack of <color=#FFFFFF>[Wind Rider]</color> increases the DMG Multiplier of the final hit of the aforementioned skills by a fixed <color=#2BAD00>45%</color>. Consuming 2 stacks increases the DMG Multiplier by a fixed <color=#2BAD00>225%</color>;\nWhen Severian hits an enemy with a fixed skill or triggers a Perfect Dodge, she gains <Term:1000041></Term>. The upper limit of <color=#FFFFFF>[Flow Breath]</color> is 150 points;\nWhen <color=#FFFFFF>[Flow Breath]</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 points of <color=#FFFFFF>[Flow Breath]</color> and launch <color=#FFFFFF>[Basic Attack: Azure Wind Shadow Hunt]</color>.",
-          "When another character in your squad is <color=#FFFFFF>[Assist]</color>, <color=#FFFFFF>[Stun]</color>, or shares the same Faction:\nWhen Severian enters combat or switches on field, his ATK increases by 100 points. This effect scales with character Lv., increasing by 10 points per level, up to a maximum increase of 700 points. Lasts for 30s; repeated triggers reset the duration."
+          "Severian's CRIT DMG increases by <color=#2BAD00>45%</color>, and his DMG increases by <color=#2BAD00>18.8%</color>. If there is another Wind character in the squad, his DMG increases by an additional <color=#2BAD00>22.5%</color>.\nWhen Severian uses <color=#FFFFFF>Basic Attack: Swift Edge</color> just before being hit by an enemy attack, he can dodge the attack. If he dodges it with any of the first three hits of his Basic Attack, he automatically launches <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>. If he dodges it with the 4th hit, that Basic Attack's DMG Multiplier and Daze Multiplier are increased to match <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nWhen Severian enters the battlefield, he gains 2 stacks of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode.\nWhen Severian has <color=#FFFFFF>Shadowflash</color> and is not invulnerable, if he is hit by a non-Control Skill enemy attack that he fails to actively dodge or parry, he consumes 1 stack of <color=#FFFFFF>Shadowflash</color> to automatically dodge the attack and launch <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nSuccessfully dodging an enemy attack with <color=#FFFFFF>Basic Attack: Swift Edge</color>, automatically dodging an enemy attack with <color=#FFFFFF>Shadowflash</color>, or directly dodging an enemy attack all count as a <color=#FFFFFF>Perfect Dodge</color>.\n<color=#FFFFFF>Shadowflash</color> can stack up to 2 times. If Severian gains <color=#FFFFFF>Shadowflash</color> while already possessing maximum stacks, he gains 1 stack of <Term:1000043></Term> instead, and the next <color=#FFFFFF>Basic Attack: Swift Edge</color> is enhanced to <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nEach time Severian performs a Perfect Dodge, he gains 1 stack of <color=#FFFFFF>Windborne</color>. While Severian has <color=#FFFFFF>Windborne</color> and is in combat, press <IconMap:Icon_Switch> to switch him from off-field to on-field and launch an <color=#FFFFFF>Entry Skill</color>.\nSeverian gains <Term:1000041></Term> by hitting enemies with certain skills or triggering a Perfect Dodge. <color=#FFFFFF>Flow</color> is capped at 150 points.\nWhen <color=#FFFFFF>Flow</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 <color=#FFFFFF>Flow</color> and launch <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color>.",
+          "When another character in your squad is a <color=#FFFFFF>Support</color> or <color=#FFFFFF>Stun</color> character, or shares the same faction:\nFor every 1% CRIT Rate Severian has, his ATK increases by 8.5, up to 100% CRIT Rate."
         ],
         "extra_property": {},
         "potential": []
@@ -1880,12 +1912,12 @@
         "level": 5,
         "id": 1631505,
         "name": [
-          "Core Passive: Endless Wind",
-          "Additional Ability: Optimal Orchestration"
+          "Core Passive: Endless Breeze",
+          "Additional Ability: Optimal Setup"
         ],
         "desc": [
-          "Severian's CRIT DMG is increased by <color=#2BAD00>50%</color>;\nWhen Severian launches <color=#FFFFFF>[Basic Attack: Swift Edge]</color> at the instant an enemy attack is about to land, she can dodge that attack. If the dodge is performed during the first three Basic Attack strikes, <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color> is automatically triggered. If it is the fourth Basic Attack strike, the DMG Multiplier and Daze Multiplier of that strike are increased to match those of <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nWhen Severian enters the battlefield, she gains 1 stack of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode;\nWhen Severian has <color=#FFFFFF>[Gleaming Shadow]</color> and is not Invulnerable, if she is hit by a non-Control Skill enemy attack and fails to actively dodge or parry it, Severian will consume 1 stack of <color=#FFFFFF>[Gleaming Shadow]</color> to automatically dodge the attack and trigger <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nDodging an enemy attack by launching <color=#FFFFFF>[Basic Attack: Swift Edge]</color>, triggering <color=#FFFFFF>[Gleaming Shadow]</color> to automatically dodge an enemy attack, and directly dodging an enemy attack are all considered <color=#FFFFFF>[Perfect Dodge]</color>;\n<color=#FFFFFF>[Gleaming Shadow]</color> can stack up to 2 times. If <color=#FFFFFF>[Gleaming Shadow]</color> is gained when already at max stacks, Severian gains 1 stack of <Term:1000043></Term> and the next <color=#FFFFFF>[Basic Attack: Swift Edge]</color> will be enhanced to <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nEach Perfect Dodge grants Severian 1 stack of <color=#FFFFFF>[Wind Rider]</color>, stacking up to 2 times. When Severian has the <color=#FFFFFF>[Wind Rider]</color> effect, switching to Severian or having Severian enter via Quick Assist will automatically trigger her <color=#FFFFFF>[Entry Skill]</color>;\nWhen the <color=#FFFFFF>[Wind Rider]</color> effect is active, if Severian enters the field via <color=#FFFFFF>[Entry Skill]</color>, <color=#FFFFFF>[Chain Attack]</color>, or <color=#FFFFFF>[Ultimate]</color>, all <color=#FFFFFF>[Wind Rider]</color> stacks are consumed. Consuming 1 stack of <color=#FFFFFF>[Wind Rider]</color> increases the DMG Multiplier of the final hit of the aforementioned skills by a fixed <color=#2BAD00>50%</color>. Consuming 2 stacks increases the DMG Multiplier by a fixed <color=#2BAD00>250%</color>;\nWhen Severian hits an enemy with a fixed skill or triggers a Perfect Dodge, she gains <Term:1000041></Term>. The upper limit of <color=#FFFFFF>[Flow Breath]</color> is 150 points;\nWhen <color=#FFFFFF>[Flow Breath]</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 points of <color=#FFFFFF>[Flow Breath]</color> and launch <color=#FFFFFF>[Basic Attack: Azure Wind Shadow Hunt]</color>.",
-          "When another character in your squad is <color=#FFFFFF>[Assist]</color>, <color=#FFFFFF>[Stun]</color>, or shares the same Faction:\nWhen Severian enters combat or switches on field, his ATK increases by 100 points. This effect scales with character Lv., increasing by 10 points per level, up to a maximum increase of 700 points. Lasts for 30s; repeated triggers reset the duration."
+          "Severian's CRIT DMG increases by <color=#2BAD00>50%</color>, and his DMG increases by <color=#2BAD00>20.8%</color>. If there is another Wind character in the squad, his DMG increases by an additional <color=#2BAD00>25%</color>.\nWhen Severian uses <color=#FFFFFF>Basic Attack: Swift Edge</color> just before being hit by an enemy attack, he can dodge the attack. If he dodges it with any of the first three hits of his Basic Attack, he automatically launches <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>. If he dodges it with the 4th hit, that Basic Attack's DMG Multiplier and Daze Multiplier are increased to match <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nWhen Severian enters the battlefield, he gains 2 stacks of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode.\nWhen Severian has <color=#FFFFFF>Shadowflash</color> and is not invulnerable, if he is hit by a non-Control Skill enemy attack that he fails to actively dodge or parry, he consumes 1 stack of <color=#FFFFFF>Shadowflash</color> to automatically dodge the attack and launch <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nSuccessfully dodging an enemy attack with <color=#FFFFFF>Basic Attack: Swift Edge</color>, automatically dodging an enemy attack with <color=#FFFFFF>Shadowflash</color>, or directly dodging an enemy attack all count as a <color=#FFFFFF>Perfect Dodge</color>.\n<color=#FFFFFF>Shadowflash</color> can stack up to 2 times. If Severian gains <color=#FFFFFF>Shadowflash</color> while already possessing maximum stacks, he gains 1 stack of <Term:1000043></Term> instead, and the next <color=#FFFFFF>Basic Attack: Swift Edge</color> is enhanced to <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nEach time Severian performs a Perfect Dodge, he gains 1 stack of <color=#FFFFFF>Windborne</color>. While Severian has <color=#FFFFFF>Windborne</color> and is in combat, press <IconMap:Icon_Switch> to switch him from off-field to on-field and launch an <color=#FFFFFF>Entry Skill</color>.\nSeverian gains <Term:1000041></Term> by hitting enemies with certain skills or triggering a Perfect Dodge. <color=#FFFFFF>Flow</color> is capped at 150 points.\nWhen <color=#FFFFFF>Flow</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 <color=#FFFFFF>Flow</color> and launch <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color>.",
+          "When another character in your squad is a <color=#FFFFFF>Support</color> or <color=#FFFFFF>Stun</color> character, or shares the same faction:\nFor every 1% CRIT Rate Severian has, his ATK increases by 8.5, up to 100% CRIT Rate."
         ],
         "extra_property": {},
         "potential": []
@@ -1894,12 +1926,12 @@
         "level": 6,
         "id": 1631506,
         "name": [
-          "Core Passive: Endless Wind",
-          "Additional Ability: Optimal Orchestration"
+          "Core Passive: Endless Breeze",
+          "Additional Ability: Optimal Setup"
         ],
         "desc": [
-          "Severian's CRIT DMG increases by <color=#2BAD00>55%</color>;\nWhen Severian launches <color=#FFFFFF>[Basic Attack: Swift Edge]</color> at the moment an enemy attack is about to land, she can dodge the attack. If she dodges the attack through the first three Basic Attack hits, <color=#FFFFFF>[Basic Attack: Blazing Whirl]</color> is automatically launched. If it is the fourth Basic Attack hit, the DMG Multiplier and Daze Multiplier of this Basic Attack are increased to match those of <color=#FFFFFF>[Basic Attack: Blazing Whirl]</color>;\nWhen Severian enters the battlefield, she gains 1 stack of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode;\nWhen Severian has <color=#FFFFFF>[Glint Shadow]</color> and is not Invulnerable, if she is hit by a non-Control Skill enemy attack and fails to actively dodge or parry the attack, Severian will consume 1 stack of <color=#FFFFFF>[Glint Shadow]</color> to automatically dodge the attack and launch <color=#FFFFFF>[Basic Attack: Blazing Whirl]</color>;\nWhen Severian successfully dodges an enemy attack by launching <color=#FFFFFF>[Basic Attack: Swift Edge]</color>, triggers an automatic dodge via <color=#FFFFFF>[Glint Shadow]</color>, or directly dodges an enemy attack, all are considered a <color=#FFFFFF>[Perfect Dodge]</color>;\n<color=#FFFFFF>[Glint Shadow]</color> can be obtained up to 2 stacks. If <color=#FFFFFF>[Glint Shadow]</color> is gained while already at max stacks, she gains 1 stack of <Term:1000043></Term> and her next <color=#FFFFFF>[Basic Attack: Swift Edge]</color> is upgraded to <color=#FFFFFF>[Basic Attack: Blazing Whirl]</color>;\nEach Perfect Dodge Severian performs grants 1 stack of <color=#FFFFFF>[Wind Rider]</color>, stacking up to 2 times. When Severian has the <color=#FFFFFF>[Wind Rider]</color> effect, switching to Severian or having Severian enter via Quick Assist will automatically launch her <color=#FFFFFF>[Entrance Skill]</color>;\nWhen the <color=#FFFFFF>[Wind Rider]</color> effect is active, if Severian enters the field via <color=#FFFFFF>[Entrance Skill]</color>, <color=#FFFFFF>[Chain Attack]</color>, or <color=#FFFFFF>[Ultimate]</color>, all <color=#FFFFFF>[Wind Rider]</color> stacks are consumed. Consuming 1 stack of <color=#FFFFFF>[Wind Rider]</color> increases the DMG Multiplier of the final hit of the aforementioned skills by a fixed <color=#2BAD00>55%</color>. Consuming 2 stacks increases the DMG Multiplier by a fixed <color=#2BAD00>275%</color>;\nWhen Severian hits an enemy with a fixed skill or triggers a Perfect Dodge, she gains <Term:1000041></Term>. <color=#FFFFFF>[Flowing Breath]</color> has a cap of 150 points;\nWhen <color=#FFFFFF>[Flowing Breath]</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 points of <color=#FFFFFF>[Flowing Breath]</color> and launch <color=#FFFFFF>[Basic Attack: Azure Wind Shadow Hunt]</color>.",
-          "When another character in your squad is <color=#FFFFFF>[Assist]</color>, <color=#FFFFFF>[Stun]</color>, or shares the same Faction:\nWhen Severian enters combat or switches on field, his ATK increases by 100 points. This effect scales with character Lv., increasing by 10 points per level, up to a maximum increase of 700 points. Lasts for 30s; repeated triggers reset the duration."
+          "Severian's CRIT DMG increases by <color=#2BAD00>55%</color>, and his DMG increases by <color=#2BAD00>22.9%</color>. If there is another Wind character in the squad, his DMG increases by an additional <color=#2BAD00>27.5%</color>.\nWhen Severian uses <color=#FFFFFF>Basic Attack: Swift Edge</color> just before being hit by an enemy attack, he can dodge the attack. If he dodges it with any of the first three hits of his Basic Attack, he automatically launches <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>. If he dodges it with the 4th hit, that Basic Attack's DMG Multiplier and Daze Multiplier are increased to match <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nWhen Severian enters the battlefield, he gains 2 stacks of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode.\nWhen Severian has <color=#FFFFFF>Shadowflash</color> and is not invulnerable, if he is hit by a non-Control Skill enemy attack that he fails to actively dodge or parry, he consumes 1 stack of <color=#FFFFFF>Shadowflash</color> to automatically dodge the attack and launch <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nSuccessfully dodging an enemy attack with <color=#FFFFFF>Basic Attack: Swift Edge</color>, automatically dodging an enemy attack with <color=#FFFFFF>Shadowflash</color>, or directly dodging an enemy attack all count as a <color=#FFFFFF>Perfect Dodge</color>.\n<color=#FFFFFF>Shadowflash</color> can stack up to 2 times. If Severian gains <color=#FFFFFF>Shadowflash</color> while already possessing maximum stacks, he gains 1 stack of <Term:1000043></Term> instead, and the next <color=#FFFFFF>Basic Attack: Swift Edge</color> is enhanced to <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nEach time Severian performs a Perfect Dodge, he gains 1 stack of <color=#FFFFFF>Windborne</color>. While Severian has <color=#FFFFFF>Windborne</color> and is in combat, press <IconMap:Icon_Switch> to switch him from off-field to on-field and launch an <color=#FFFFFF>Entry Skill</color>.\nSeverian gains <Term:1000041></Term> by hitting enemies with certain skills or triggering a Perfect Dodge. <color=#FFFFFF>Flow</color> is capped at 150 points.\nWhen <color=#FFFFFF>Flow</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 <color=#FFFFFF>Flow</color> and launch <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color>.",
+          "When another character in your squad is a <color=#FFFFFF>Support</color> or <color=#FFFFFF>Stun</color> character, or shares the same faction:\nFor every 1% CRIT Rate Severian has, his ATK increases by 8.5, up to 100% CRIT Rate."
         ],
         "extra_property": {},
         "potential": []
@@ -1908,12 +1940,12 @@
         "level": 7,
         "id": 1631507,
         "name": [
-          "Core Passive: Endless Wind",
-          "Additional Ability: Optimal Orchestration"
+          "Core Passive: Endless Breeze",
+          "Additional Ability: Optimal Setup"
         ],
         "desc": [
-          "Severian's CRIT DMG is increased by <color=#2BAD00>60%</color>;\nWhen Severian launches <color=#FFFFFF>[Basic Attack: Swift Edge]</color> at the moment an enemy attack is about to land, she can dodge that attack. If the dodge is performed during the first three Basic Attack hits, <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color> is automatically triggered. If the dodge is performed during the fourth Basic Attack hit, the DMG Multiplier and Daze Multiplier of that hit are increased to match <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nWhen Severian enters the battlefield, she gains 1 stack of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode;\nWhen Severian has <color=#FFFFFF>[Gleaming Shadow]</color> and is not Invulnerable, if she is hit by a non-Control Skill enemy attack and fails to actively dodge or parry the attack, Severian will consume 1 stack of <color=#FFFFFF>[Gleaming Shadow]</color> to automatically dodge the attack and trigger <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nDodging an enemy attack by launching <color=#FFFFFF>[Basic Attack: Swift Edge]</color>, triggering <color=#FFFFFF>[Gleaming Shadow]</color> to automatically dodge an enemy attack, and directly dodging an enemy attack are all considered a <color=#FFFFFF>[Perfect Dodge]</color>;\n<color=#FFFFFF>[Gleaming Shadow]</color> can stack up to 2 times. If <color=#FFFFFF>[Gleaming Shadow]</color> is gained while already at max stacks, Severian gains 1 stack of the <Term:1000043></Term> effect and her next <color=#FFFFFF>[Basic Attack: Swift Edge]</color> is enhanced to <color=#FFFFFF>[Basic Attack: Fierce Whirl]</color>;\nEach Perfect Dodge grants Severian 1 stack of the <color=#FFFFFF>[Wind Rider]</color> effect, stacking up to 2 times. When Severian has the <color=#FFFFFF>[Wind Rider]</color> effect, switching to Severian or having Severian enter via Quick Assist will automatically trigger <color=#FFFFFF>[Deployment Skill]</color>;\nWhen the <color=#FFFFFF>[Wind Rider]</color> effect is active, Severian entering the field via <color=#FFFFFF>[Deployment Skill]</color>, <color=#FFFFFF>[Chain Attack]</color>, or <color=#FFFFFF>[Ultimate]</color> will consume all <color=#FFFFFF>[Wind Rider]</color> stacks. Consuming 1 stack of <color=#FFFFFF>[Wind Rider]</color> increases the DMG Multiplier of the final hit of the above skills by a fixed <color=#2BAD00>60%</color>. Consuming 2 stacks increases the DMG Multiplier by a fixed <color=#2BAD00>300%</color>;\nWhen Severian hits an enemy with a fixed skill or triggers a Perfect Dodge, she gains <Term:1000041></Term>. <color=#FFFFFF>[Flowing Breath]</color> has a maximum of 150 points;\nWhen <color=#FFFFFF>[Flowing Breath]</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 points of <color=#FFFFFF>[Flowing Breath]</color> and launch <color=#FFFFFF>[Basic Attack: Azure Wind Hunt]</color>.",
-          "When another character in your squad is <color=#FFFFFF>[Assist]</color>, <color=#FFFFFF>[Stun]</color>, or shares the same Faction:\nWhen Severian enters combat or switches on field, his ATK increases by 100 points. This effect scales with character Lv., increasing by 10 points per level, up to a maximum increase of 700 points. Lasts for 30s; repeated triggers reset the duration."
+          "Severian's CRIT DMG increases by <color=#2BAD00>60%</color>, and his DMG increases by <color=#2BAD00>25%</color>. If there is another Wind character in the squad, his DMG increases by an additional <color=#2BAD00>30%</color>.\nWhen Severian uses <color=#FFFFFF>Basic Attack: Swift Edge</color> just before being hit by an enemy attack, he can dodge the attack. If he dodges it with any of the first three hits of his Basic Attack, he automatically launches <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>. If he dodges it with the 4th hit, that Basic Attack's DMG Multiplier and Daze Multiplier are increased to match <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nWhen Severian enters the battlefield, he gains 2 stacks of <Term:1000042></Term>. This effect can trigger once every 180s in Investigation Zone mode.\nWhen Severian has <color=#FFFFFF>Shadowflash</color> and is not invulnerable, if he is hit by a non-Control Skill enemy attack that he fails to actively dodge or parry, he consumes 1 stack of <color=#FFFFFF>Shadowflash</color> to automatically dodge the attack and launch <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nSuccessfully dodging an enemy attack with <color=#FFFFFF>Basic Attack: Swift Edge</color>, automatically dodging an enemy attack with <color=#FFFFFF>Shadowflash</color>, or directly dodging an enemy attack all count as a <color=#FFFFFF>Perfect Dodge</color>.\n<color=#FFFFFF>Shadowflash</color> can stack up to 2 times. If Severian gains <color=#FFFFFF>Shadowflash</color> while already possessing maximum stacks, he gains 1 stack of <Term:1000043></Term> instead, and the next <color=#FFFFFF>Basic Attack: Swift Edge</color> is enhanced to <color=#FFFFFF>Basic Attack: Raging Whirlwind</color>.\nEach time Severian performs a Perfect Dodge, he gains 1 stack of <color=#FFFFFF>Windborne</color>. While Severian has <color=#FFFFFF>Windborne</color> and is in combat, press <IconMap:Icon_Switch> to switch him from off-field to on-field and launch an <color=#FFFFFF>Entry Skill</color>.\nSeverian gains <Term:1000041></Term> by hitting enemies with certain skills or triggering a Perfect Dodge. <color=#FFFFFF>Flow</color> is capped at 150 points.\nWhen <color=#FFFFFF>Flow</color> reaches 100 points, hold <IconMap:Icon_Normal> to consume 100 <color=#FFFFFF>Flow</color> and launch <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color>.",
+          "When another character in your squad is a <color=#FFFFFF>Support</color> or <color=#FFFFFF>Stun</color> character, or shares the same faction:\nFor every 1% CRIT Rate Severian has, his ATK increases by 8.5, up to 100% CRIT Rate."
         ],
         "extra_property": {},
         "potential": []
@@ -1933,65 +1965,126 @@
       },
       "4": {
         "10": 60000,
-        "110010": 2,
-        "110516": 9
+        "110516": 9,
+        "110010": 2
       },
       "5": {
         "10": 100000,
-        "110010": 3,
-        "110516": 15
+        "110516": 15,
+        "110010": 3
       },
       "6": {
         "10": 200000,
-        "110010": 4,
-        "110516": 30
+        "110516": 30,
+        "110010": 4
       }
     }
   },
   "talent": {
     "1": {
       "level": 1,
-      "name": "Severian_Talent_01_Title",
-      "desc": "Gain 100 <color=#FFFFFF>[Flow]</color> upon entering the battlefield. In Investigation Zone mode, this effect can trigger once every 180s.\nSeverian's Basic Attack CRIT DMG is increased by 60%.",
-      "desc2": "Severian_Talent_01_Desc_02"
+      "name": "Double Espresso",
+      "desc": "When Severian uses a <color=#FFFFFF>Chain Attack</color>, the accumulated <color=#FFFFFF>Flow</color> increases to 50.\nWhen Severian switches in through <color=#FFFFFF>Entry Skill: Clear Out</color>, the skill is replaced with a <color=#FFFFFF>Chain Attack</color>. The entry type is not changed, and it is treated as a non-heavy attack. This effect can trigger once every 60s.\nEach time Severian uses <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color>, he gains 1 stack of <color=#FFFFFF>Windborne</color>.\nWhen Severian's attacks hit a target, they ignore 15% of the target's Wind RES.",
+      "desc2": "..."
     },
     "2": {
       "level": 2,
-      "name": "Severian_Talent_02_Title",
-      "desc": "When Severian enters the field via <color=#FFFFFF>[Entry Skill: Clearing Time]</color>, the skill is replaced with a <color=#FFFFFF>[Chain Attack]</color>. The entry type of this skill will not be changed. This effect can trigger at most once every 20 second(s).\nEach time Severian uses <color=#FFFFFF>[Basic Attack: Gale Shadow Hunt]</color>, he gains 2 stacks of <color=#FFFFFF>[Wind Riding]</color>.\nWhen Severian triggers <color=#FFFFFF>[Core Passive: Optimal Arrangement]</color>, he additionally increases his own ATK by 15%.",
-      "desc2": "Severian_Talent_02_Desc_02"
+      "name": "Reins of Reason",
+      "desc": "When Severian enters the battlefield, he recovers 150 <color=#FFFFFF>Flow</color>. In Investigation Zone mode, this effect can trigger once every 180s.\nWhen Severian triggers a <color=#FFFFFF>Perfect Dodge</color> or uses <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color>, his PEN Ratio increases by 20% for 25s.",
+      "desc2": "..."
     },
     "3": {
       "level": 3,
-      "name": "Severian_Talent_03_Title",
+      "name": "The Last Light",
       "desc": "<color=#FFFFFF>Basic Attack</color>, <color=#FFFFFF>Dodge</color>, <color=#FFFFFF>Assist</color>, <color=#FFFFFF>Special Attack</color>, and <color=#FFFFFF>Chain Attack</color> Lv. +2",
-      "desc2": "Severian_Talent_03_Desc_02"
+      "desc2": "..."
     },
     "4": {
       "level": 4,
-      "name": "Severian_Talent_04_Title",
-      "desc": "When Severian triggers <color=#FFFFFF>[Perfect Dodge]</color> or uses <color=#FFFFFF>[Basic Attack: Galewind Shadow Hunt]</color>, his attacks ignore 16% of enemies' DEF for 15s.",
-      "desc2": "Severian_Talent_04_Desc_02"
+      "name": "Between Light and Shadow",
+      "desc": "When Severian enters combat or switches on-field, his ATK increases by 10% for 30s. Repeated triggers reset the duration.\nWhen Severian uses <color=#FFFFFF>Basic Attack: Raging Whirlwind</color> or <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color>, his Decibel Generation Rate increases by 10% for 15s.",
+      "desc2": "..."
     },
     "5": {
       "level": 5,
-      "name": "Severian_Talent_05_Title",
+      "name": "A Heart Above 0°C",
       "desc": "<color=#FFFFFF>Basic Attack</color>, <color=#FFFFFF>Dodge</color>, <color=#FFFFFF>Assist</color>, <color=#FFFFFF>Special Attack</color>, and <color=#FFFFFF>Chain Attack</color> Lv. +2",
-      "desc2": "Severian_Talent_05_Desc_02"
+      "desc2": "..."
     },
     "6": {
       "level": 6,
-      "name": "Severian_Talent_06_Title",
-      "desc": "Severian's <color=#FFFFFF>[Flowing Breath]</color> upper limit increases to 180.\n<color=#FFFFFF>[Basic Attack: Pale Wind Shadow Hunt]</color> final hit's extra DMG Multiplier receives a fixed increase of 900%.\nUpon releasing the final hit of <color=#FFFFFF>[Basic Attack: Pale Wind Shadow Hunt]</color>, gain the <color=#FFFFFF>[Wind Rise]</color> effect: accumulates 10 point(s) of <color=#FFFFFF>[Flowing Breath]</color> per second for 3s; repeated triggers reset the duration.",
-      "desc2": "Severian_Talent_06_Desc_02"
+      "name": "Beneath a Little Star",
+      "desc": "Severian's max <color=#FFFFFF>Flow</color> increases to 180, and the <color=#FFFFFF>Flow</color> gained when entering the battlefield increases to 180.\nThe additional DMG Multiplier of the final hit of <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color> is increased by a fixed 350%.\nUpon using the final hit of <color=#FFFFFF>Basic Attack: Azure Wind's Shadowhunt</color>, Severian gains <color=#FFFFFF>Windrise</color>: Accumulates 5 <color=#FFFFFF>Flow</color>/s for 5s. Repeated triggers reset the duration.",
+      "desc2": "..."
     }
   },
-  "fairy_recommend": {},
+  "fairy_recommend": {
+    "slot4": 33300,
+    "slot2": 31100,
+    "slot_sub": 32700,
+    "part_sub_list": [
+      20103,
+      21103,
+      12102
+    ],
+    "alt_build": [
+      {
+        "suit_list": [
+          33300,
+          31100
+        ],
+        "part_sub_list": [
+          20103,
+          21103
+        ]
+      },
+      {
+        "suit_list": [
+          31000,
+          31100
+        ],
+        "part_sub_list": [
+          23103,
+          32303
+        ]
+      },
+      {
+        "suit_list": [],
+        "part_sub_list": [
+          12102
+        ]
+      }
+    ],
+    "part4": {
+      "prop": 20103,
+      "name": "CRIT Rate",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCrit.png"
+    },
+    "part5": {
+      "prop": 21103,
+      "name": "CRIT DMG",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCritDam.png"
+    },
+    "part6": {
+      "prop": 23103,
+      "name": "PEN Ratio",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconPenRatio.png"
+    },
+    "part_sub": {
+      "prop": 12102,
+      "name": "ATK",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png"
+    }
+  },
   "strategy": [
     "03",
-    "StrategyGuide_Overview_1631_1|06",
-    "StrategyGuide_Overview_1631_2|06",
-    "StrategyGuide_Overview_1631_3"
+    "<IconMap:Icon_GeneralBuff_Wind>Wind, <IconMap:Icon_AvatarClass_Attack> Attack on-field DMG dealer",
+    "Launches [Enhanced Basic Attacks] to deal massive DMG",
+    "Automatically dodges enemy attacks and counters"
   ],
   "potential": [],
   "potential_detail": {}

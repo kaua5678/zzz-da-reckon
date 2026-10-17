@@ -6,7 +6,7 @@
  * T118 曾把 1631 推荐为「可松弛」（报告 §④：`floor(flow/100)×30` 是**累加触发**，松弛与有序级联 12/12 档同解）。
  * **T122 实测证伪该结论**：1631 与 1591 同属 **(a) 有序级联**——第 N 次苍风影猎的 `+30` 流息
  * 只在第 N 次**消耗之后**到账，付不了第 N 次自己的 100 点成本。
- * ⇒ 松弛解 `f = base/0.7`（迭代期不 floor）兑现的是**不可达的余数**，在 `base mod 70 < 30` 的档位恒 **+1** 次影猎。
+ * ⇒ 松弛解 `f = base/0.7`（迭代期不 floor）兑现的是**不可达的余数**，在 `base mod (COST−WIND) < WIND` 的档位恒 **+1** 次影猎。
  *
  * T118 §④ 表把 `base=150` 一行写成「有序级联 `210/2`」——`210` 是**最大不动点**（另一个根），
  * 代码实际输出（= 有序级联 = 最小不动点）是 `180/1`；四行全部如此。详见报告 §②。
@@ -69,7 +69,8 @@ function flowOf(input: { ult: number; chain: number; dodge: number; cinema?: num
 } {
   // 残缺夹具（只给本判据读的字段）：与本仓既有模块测试同款（orphieSelf.test.ts:150 / jufufu.test.ts:213）
   const res = severianMechanic.buildResourceResult!({
-    cfg: { severianCinemaLevel: input.cinema ?? 6, dodgeCounterCount: input.dodge },
+    // `panel` 是 CharacterOperationConfig 的必填字段（v12 起额外能力暴击率转攻击要读它）——残缺夹具也得给
+    cfg: { severianCinemaLevel: input.cinema ?? 6, dodgeCounterCount: input.dodge, panel: { critRate: 5 } },
     state: {
       ultimateCount: input.ult,
       chainCountTotal: input.chain,
@@ -153,23 +154,25 @@ describe('债 1a · 1631 赛维里安流息方程 = (a) 有序级联（不可松
 
   /**
    * D：**反空洞 + 定量**。判据 A/B 只有在扫描面真的覆盖「松弛 ≠ 级联」时才有效。
-   * 这里同时把「松弛会错多少」钉成数字：`base mod 70 < 30` 的档位恒 **+1**。
+   * 这里同时把「松弛会错多少」钉成数字：`base mod (COST−WIND) < WIND` 的档位恒 **+1**。
    */
-  it('D 反空洞：松弛在 base mod 70 < 30 的档位恒 +1（否则 A/B 是空断言）', () => {
+  it('D 反空洞：松弛在 base mod (COST−WIND) < WIND 的档位恒 +1（否则 A/B 是空断言）', () => {
+    // 模数 = COST − WIND（= 每多一次影猎的净成本）。v12 风起 10×3=30 → 5×5=25 ⇒ 70 → 75。
+    const MOD = COST - WIND
     const rows: Array<{ base: number; mod: number; reachable: number; relaxed: number }> = []
     for (const g of GRID) {
       const { base } = flowOf(g)
-      rows.push({ base, mod: base % 70, reachable: reachableMaxHunt(base), relaxed: relaxedHunt(base) })
+      rows.push({ base, mod: base % MOD, reachable: reachableMaxHunt(base), relaxed: relaxedHunt(base) })
     }
     const over = rows.filter(r => r.relaxed > r.reachable)
     expect(over.length, '反空洞：必须存在松弛超出的档位').toBeGreaterThan(0)
-    // 超出条件充要：base mod 70 < 30
-    expect(over.every(r => r.mod < WIND), `超出档位必须全部满足 base mod 70 < 30；反例=${JSON.stringify(over.find(r => r.mod >= WIND))}`).toBe(true)
+    // 超出条件充要：base mod (COST−WIND) < WIND
+    expect(over.every(r => r.mod < WIND), `超出档位必须全部满足 base mod (COST−WIND) < WIND；反例=${JSON.stringify(over.find(r => r.mod >= WIND))}`).toBe(true)
     // 超出量恒为 +1（不是「多很多」——正是「余数机会兑现一次」的形状）
     expect(over.every(r => r.relaxed === r.reachable + 1), '松弛超出量必须恒为 +1').toBe(true)
     // 两档都要有采样（否则判据只在单边成立）
-    expect(rows.some(r => r.mod < WIND), '必须有 base mod 70 < 30 的档位').toBe(true)
-    expect(rows.some(r => r.mod >= WIND), '必须有 base mod 70 ≥ 30 的档位').toBe(true)
+    expect(rows.some(r => r.mod < WIND), '必须有 base mod (COST−WIND) < WIND 的档位').toBe(true)
+    expect(rows.some(r => r.mod >= WIND), '必须有 base mod (COST−WIND) ≥ WIND 的档位').toBe(true)
   })
 
   /**
@@ -190,7 +193,7 @@ describe('债 1a · 1631 赛维里安流息方程 = (a) 有序级联（不可松
    * E：**全管线**（T118 验收面）。`teamPresets` 里 0 支 1631 ⇒ 预设面对本模块全盲，
    * 只能手组队。读数与 T118 §④ 现场一致（`nec` 已复现），但**影猎次数**按可达值解释。
    *
-   * ⚠ **夹具必须落在「判别档」**（`base mod 70 < 30`）：初版用的 `sev+1481+1311/c6`（base=1100）
+   * ⚠ **夹具必须落在「判别档」**（`base mod (COST−WIND) < WIND`）：初版用的 `sev+1481+1311/c6`（base=1100）
    * 与 `sev+1211+1311/c6`（base=1240）**都在非判别档** ⇒ 注入松弛的反证下 E **仍然全绿**（实测）。
    * 现用两支经 `sevdist.perf.ts` 实测确认在判别档（干净树 base=1050 / 1200）——这才是 E 的牙。
    *
@@ -221,7 +224,7 @@ describe('债 1a · 1631 赛维里安流息方程 = (a) 有序级联（不可松
       const flow = (ch as unknown as { severianFlow?: { flowIncome: number; shadowHuntCount: number } }).severianFlow!
       const base = flow.flowIncome - WIND * flow.shadowHuntCount
       if (relaxedHunt(base) > reachableMaxHunt(base)) discriminatingSeen++
-      rows.push(`${tag}/c${cin}: base=${base} mod70=${base % 70} 影猎=${flow.shadowHuntCount} 松弛=${relaxedHunt(base)} nec=${ch.timeAllocation.necessaryTime.toFixed(3)}`)
+      rows.push(`${tag}/c${cin}: base=${base} mod=${base % (COST - WIND)} 影猎=${flow.shadowHuntCount} 松弛=${relaxedHunt(base)} nec=${ch.timeAllocation.necessaryTime.toFixed(3)}`)
       if (flow.shadowHuntCount > 0) {
         const need = COST * flow.shadowHuntCount + WIND
         if (flow.flowIncome < need - 1e-9) violations.push(`${tag}/c${cin}: ${flow.flowIncome} < ${need}`)

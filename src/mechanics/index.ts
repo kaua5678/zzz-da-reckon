@@ -140,7 +140,7 @@ registerWithSpecSettings(zhaoMechanic)
 registerWithSpecSettings(benMechanic)
 registerWithSpecSettings(aireMechanic)
 registerWithSpecSettings(promiaMechanic)
-// ⚠️ 3.3 测试服临时录入（nanoka 3.3.2+18895034；正式服改版后需重抓重核）
+// nanoka 3.3.12+19629936（v12 正式数值，2026-10-17 重录；原文证据契约 data/recordings/1631.json / 1641.json）
 registerWithSpecSettings(severianMechanic)
 registerWithSpecSettings(phoenixMechanic)
 registerWithSpecSettings(peiluoProminenceMechanic)

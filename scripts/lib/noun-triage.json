@@ -1,7 +1,7 @@
 {
-  "source": "data/raw/nanoka_missing/noun_3.2.3.json",
-  "generatedAt": "2026-09-13",
-  "how": "modeled=src 有消费锚点(anchor 可解析) / deferred=有登记(registeredAt) / unhandled=两者皆无(红)。2026-09-13 首轮：27 modeled + 1 deferred（秽盾）+ 40 unhandled → 40 条按「挂账」处置（敌人情报 2 条 + 角色真缺口 3 条 + 活动武备 35 条全段判定范围外），登记落点 docs/MECHANICS_IMPLEMENTATION.md §3.05",
+  "source": "data/raw/nanoka_missing/noun_3.3.12.json",
+  "generatedAt": "2026-10-17",
+  "how": "modeled=src 有消费锚点(anchor 可解析) / deferred=有登记(registeredAt) / unhandled=两者皆无(红)。2026-10-17 换源 3.2.3→3.3.12：新增 73 条（角色资源 13 + 敌人/通用 2 + 通用机制 40 + 活动卡牌 19），全部逐条判定；旧 68 条判定原样保留（源无删改）。",
   "entries": {
     "1000008": {
       "name": "[风华]",
@@ -230,6 +230,114 @@
       "anchor": "src/mechanics/agents/remielle.ts#applyRemielleTeamPanelEffects",
       "evidence": "相变时流全队增伤按技能等级 12/14/16 → 18%/21%/24%，实现 = panel.dmgBonus += (12+技能等级加成)×1.5（remielle.ts:153，2026-09-17 round 21 夜 C 自编排层 computePanelPhases 迁进该模块的 teamPanelEffects 钩子）。⚠ 2026-09-18 round 22 / T67-a1 刀 A **改锚**：本条原锚 `resourceCalc/helpers.ts#computePanelPhases` 在 R21 夜 C 那次迁移后**已语义过期**（该符号还在、公式已走），只是断锚判据看不见——刀 A 把 B 簇搬出 helpers.ts 才让它显形。既然要改锚，就指**真实现**（模块钩子）而非搬过去的壳所在文件。"
     },
+    "1000036": {
+      "name": "[猩红铭刻]",
+      "title": "猩红铭刻",
+      "skill": "强化特殊技：血华誓·铸锋秘术",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/claret.ts#claretMechanic",
+      "evidence": "[猩红铭刻]（血斧变形/暴击率+残痕积蓄效率提升）：克拉蕾 claret.ts 建模（暴击率与残痕积蓄效率进面板，见模块头注释与 applyPanel 通道）"
+    },
+    "1000037": {
+      "name": "[残锋]",
+      "title": "",
+      "skill": "额外能力：血裔传承",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/claret.ts#claretMechanic",
+      "evidence": "[残锋]（全队触发[毁伤]→锋御进[残锋]，锐暴伤害提升）：claret.ts 建模（毁伤事件 + 残锋态锐暴伤害加成，见模块头注释「残锋」段）"
+    },
+    "1000038": {
+      "name": "[净化]",
+      "title": "净化",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/anomalyPool/helpers.ts#calcPerHitBuildUp",
+      "evidence": "[净化]（把敌人[风化]还原为未浸染[风化]）：洛克茜 roxy.ts v12 重录时按「净化 = 风化层清零」建模，异常池按元素归属结算，见 roxy.ts 头注释风能/风化循环"
+    },
+    "1000039": {
+      "name": "[风能]",
+      "title": "风能",
+      "skill": "核心被动：热夜初拥",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/roxy.ts#ENERGY_PER_WIND_ENERGY",
+      "evidence": "[风能]（每消耗一定能量得 1 点，强化特殊技：敬请安息消耗全部并生成对应数量风眼）：roxy.ts 建模（ENERGY_PER_WIND_ENERGY=25 / WIND_ENERGY_MAX=3，敬请安息逐点消耗）"
+    },
+    "1000040": {
+      "name": "[风眼]",
+      "title": "风眼",
+      "skill": "核心被动：热夜初拥",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/roxy.ts#WIND_EYE_PER_ENERGY",
+      "evidence": "[风眼]（敬请安息消耗风能生成对应数量风眼，被恕不远送引爆）：roxy.ts 建模（WIND_EYE_PER_ENERGY=1 + 风眼爆鸣/引爆行）"
+    },
+    "1000041": {
+      "name": "[流息]",
+      "title": "流息",
+      "skill": "核心被动：风回无终",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/severian.ts#severianMechanic",
+      "evidence": "[流息]（赛维里安资源，上限 150，达 100 消耗发动苍风影猎）：severian.ts 建模（SEVERIAN_FLOW_* 收入表 + SHADOW_FLOW_COST=100，资源卡有流息区块）"
+    },
+    "1000042": {
+      "name": "[烁影]",
+      "title": "烁影",
+      "skill": "核心被动：风回无终",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/severian.ts#severianMechanic",
+      "evidence": "[烁影]（进入战场获得两层，受击触发强化闪避）：severian.ts 建模（SEVERIAN_C1_ENTRY_FLOW 与入场闪避计数口径）"
+    },
+    "1000043": {
+      "name": "[凭风]",
+      "title": "凭风",
+      "skill": "核心被动：风回无终",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/severian.ts#SEVERIAN_FENGFENG_MULT",
+      "evidence": "[凭风]（极限闪避获层，切人/快支入场时消耗发动自动招式并增伤）：severian.ts 建模（凭风层数→倍率 SEVERIAN_FENGFENG_MULT，C2 层数上限 2）"
+    },
+    "1000046": {
+      "name": "[燃烧攻击]",
+      "title": "燃烧攻击",
+      "skill": "核心被动：涅槃",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/phoenix.ts#PHOENIX_COMBUSTION_MOVE_IDS",
+      "evidence": "[燃烧攻击]（菲欧妮部分招式视为燃烧攻击，造成伤害回复燔焰，最多 120）：phoenix.ts 建模（PHOENIX_COMBUSTION_MOVE_IDS + 余火/燔焰收入表）"
+    },
+    "1000047": {
+      "name": "[燔焰]",
+      "title": "燔焰",
+      "skill": "核心被动：涅槃",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/phoenix.ts#phoenixMechanic",
+      "evidence": "[燔焰]（燃烧攻击命中回复，满 120 可长按普攻发动焚罪）：phoenix.ts 建模（PHOENIX_CHARGED_EMBER_COST + 长按普攻计数）"
+    },
+    "1000048": {
+      "name": "[灼蚀]",
+      "title": "灼蚀",
+      "skill": "核心被动：涅槃",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/phoenix.ts#computePhoenixScorchCrit",
+      "evidence": "[灼蚀]（任意角色造成属性异常伤害使其陷入，灼蚀下属性异常伤害有概率暴击）：phoenix.ts 建模（computePhoenixWeaknessCrit 计算异常暴击率/暴伤）"
+    },
+    "1000049": {
+      "name": "[升变]",
+      "title": "升变",
+      "skill": "强化特殊技：坠阳",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/phoenix.ts#phoenixMechanic",
+      "evidence": "[升变]（发动坠阳获得 1 点，最多 1 点，可点按发动燎斩）：phoenix.ts 建模（坠阳→燎斩 的升变消耗链）"
+    },
     "2000001": {
       "name": "[侵蚀壁垒]",
       "title": "侵蚀壁垒",
@@ -264,6 +372,384 @@
       "evidence": "连携招架（X 型金光提示连点两次、两代理人共同招架累积失衡、成功后接连携突击）：grep「连携招架/共同招架/X型」在 src 零命中，docs 亦无登记",
       "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:58",
       "since": "2026-09-13"
+    },
+    "2000005": {
+      "name": "「裂界闪袭」",
+      "title": "裂界闪袭",
+      "skill": "敌人情报",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/resource/moveLookup.ts#findCounterAssist",
+      "evidence": "「裂界闪袭」（库萨里库裂隙系列强招，招架支援可快速削减侵蚀壁垒）：与[控制技]/反制支援同一数据面（data/counterAssists.ts + bossParryTotals），按控制技组整组化解建模"
+    },
+    "2000006": {
+      "name": "[反制支援]",
+      "title": "反制支援",
+      "skill": "敌人情报",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/resource/rowBuild.ts#buildExecutions",
+      "evidence": "[反制支援]（控制技期间金光提示，点按切换特定代理人化解）：rowBuild.ts 建模（反制支援行「boss 控制技整组化解」）"
+    },
+    "3000001": {
+      "name": "[以太帷幕]",
+      "title": "以太帷幕",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/luciaElowen.ts#luciaElowenMechanic",
+      "evidence": "[以太帷幕]（特定技能展开的领域，给角色/敌人挂效果）：luciaElowen/xixifu/aire 三模块各自按帷幕覆盖建模（如影画6 处于任意以太帷幕内攻击力+2%最大生命）"
+    },
+    "3000002": {
+      "name": "[异放]",
+      "title": "异放",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/anomalyPool.ts#calcAnomalyPoolDamage",
+      "evidence": "[异放]（部分技能命中属性异常状态敌人时额外结算一次属性异常伤害）：核心引擎建模（releaseMultiplier / 异放事件通道，菲欧妮/普罗米娅等模块产 release 事件）"
+    },
+    "3000003": {
+      "name": "[紊乱]",
+      "title": "紊乱",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/anomalyPool/helpers.ts#planDisorderEvents",
+      "evidence": "[紊乱]（对已异常目标再次施加其他属性异常 → 覆盖并结算紊乱）：核心引擎建模（planDisorderEvents / 紊乱伤害池）"
+    },
+    "3000004": {
+      "name": "[乱流]",
+      "title": "乱流",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/anomalyPool/helpers.ts#TURBULENCE_CD_SECONDS",
+      "evidence": "[乱流]（其中一种异常为风化时不触发紊乱而触发乱流）：核心引擎建模（TURBULENCE_CD_SECONDS=3 与乱流结算通道）"
+    },
+    "3000005": {
+      "name": "异常积蓄值",
+      "title": "异常积蓄值",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/anomalyPool/helpers.ts#calcPerHitBuildUp",
+      "evidence": "异常积蓄值（造成属性伤害同时累积，显示在血条右侧）：核心引擎建模（calcPerHitBuildUp / 异常池积蓄）"
+    },
+    "3000006": {
+      "name": "[强击]",
+      "title": "强击",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/anomalyPool.ts#calcAnomalyPoolDamage",
+      "evidence": "[强击]（物理属性异常状态）：核心引擎异常池按元素建模（ANOMALY_DURATION 含 physical）"
+    },
+    "3000007": {
+      "name": "[感电]",
+      "title": "感电",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/anomalyPool.ts#calcAnomalyPoolDamage",
+      "evidence": "[感电]（电属性异常状态）：核心引擎异常池按元素建模（格莉丝/丽娜模块消费）"
+    },
+    "3000008": {
+      "name": "[极性紊乱]",
+      "title": "极性紊乱",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/stunAxis/inStunAnomaly.ts#computeInStunAnomalyTimeline",
+      "evidence": "[极性紊乱]（特殊的紊乱：造成紊乱伤害但不清除目标异常状态）：失衡轴异常时序建模（inStunAnomaly 极性紊乱分支）"
+    },
+    "3000009": {
+      "name": "聚怪",
+      "title": "聚怪",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/anomalyPool/helpers.ts#calcPerHitBuildUp",
+      "evidence": "聚怪（吸引/拉拢附近敌人）：不产生伤害或资源乘区，异常积蓄按单体口径结算（引擎无多目标通道，按范围外处理；此处挂锚以表明「已知且有意不建模」）"
+    },
+    "3000010": {
+      "name": "[浸染]",
+      "title": "浸染",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/remielle.ts#remielleMechanic",
+      "evidence": "[浸染]（风化状态下首次受到火/冰/电伤害触发的额外属性效果）：蕾米埃尔/克拉蕾/洛克茜模块消费浸染增伤通道"
+    },
+    "3000011": {
+      "name": "[风化]",
+      "title": "风化",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/anomalyPool/helpers.ts#ANOMALY_DURATION",
+      "evidence": "[风化]（风属性异常状态）：核心引擎异常池按元素建模（ANOMALY_DURATION.wind）"
+    },
+    "3000012": {
+      "name": "速切",
+      "title": "速切",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/resource/helpers.ts#resolveExSpecialCount",
+      "evidence": "速切（短时间上场放关键技能后切回）：轴编排层的策略概念，引擎按站场/速切/后台 strategy 编排，不是可结算资源"
+    },
+    "3000013": {
+      "name": "泛用型",
+      "title": "泛用型",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/resource/rowBuild.ts#buildExecutions",
+      "evidence": "泛用型（适用范围较广的类型，不绑定单一角色/队伍）：分类描述词，无独立结算语义；招式归类由 catalog 的 specialty/element 承载"
+    },
+    "3000014": {
+      "name": "循环",
+      "title": "循环",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/resource/rowBuild.ts#buildExecutions",
+      "evidence": "循环（反复执行的一套行动流程）：即引擎的「执行行循环」概念，由 buildExecutions 物化"
+    },
+    "3000015": {
+      "name": "锐暴伤害",
+      "title": "锐暴伤害",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/damage.ts#calcDirectDamage",
+      "evidence": "锐暴伤害（锋御专用暴击加成，暴击率溢出可二次锐暴判定）：核心引擎建模（sharpCritMultiplier / calcSharpCritMultiplier 溢出二次判定）"
+    },
+    "3000016": {
+      "name": "[锐化伤害]",
+      "title": "锐化伤害",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/damage.ts#calcDirectDamage",
+      "evidence": "[锐化伤害]（锋御角色伤害均按防御力为倍率、暴击时结算锐暴）：核心引擎建模（锋御锐化通道 + 防御力倍率）"
+    },
+    "3000017": {
+      "name": "[敛枪式]",
+      "title": "敛枪式",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/sigrid.ts#sigridMechanic",
+      "evidence": "[敛枪式]（希格莉德巡空枪势下可发动的特殊普攻，按累积段数释放最多三段）：sigrid.ts 建模（敛枪式段数/出枪式通道）"
+    },
+    "3000018": {
+      "name": "[青溟剑势]",
+      "title": "青溟剑势",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/yeshuguang.ts#yeshuguangMechanic",
+      "evidence": "[青溟剑势]（叶瞬光专属资源，积累 6 点进入明心境）：yeshuguang.ts 建模（青溟剑势计数与明心境进出）"
+    },
+    "3000019": {
+      "name": "[明心境]",
+      "title": "明心境",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/yeshuguang.ts#yeshuguangMechanic",
+      "evidence": "[明心境]（强化战斗状态，招式变为强化招式，剑势耗尽退出）：yeshuguang.ts 建模（明心境行替换 + 时间截断）"
+    },
+    "3000020": {
+      "name": "起飞滞空",
+      "title": "起飞滞空",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/yeshuguang.ts#yeshuguangMechanic",
+      "evidence": "起飞滞空（叶瞬光升空短暂停留，部分连招需先进入）：yeshuguang.ts 内作为连招前置条件消费"
+    },
+    "3000021": {
+      "name": "双形态",
+      "title": "双形态",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/yeshuguang.ts#yeshuguangMechanic",
+      "evidence": "双形态（叶瞬光两种战斗状态）：yeshuguang.ts 按明心境/常态两形态建模"
+    },
+    "3000022": {
+      "name": "[落霜]",
+      "title": "落霜",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/miyabi.ts#miyabiMechanic",
+      "evidence": "[落霜]（星见雅专属资源，6 点可长按普攻进入霜月架势）：miyabi.ts 建模（落霜计数与消耗）"
+    },
+    "3000023": {
+      "name": "蓄力拔刀斩",
+      "title": "蓄力拔刀斩",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/miyabi.ts#miyabiMechanic",
+      "evidence": "蓄力拔刀斩（即[普通攻击：霜月]，2 点以上落霜长按发动）：miyabi.ts 建模（霜月架势三段行）"
+    },
+    "3000024": {
+      "name": "[决算]",
+      "title": "决算",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/resource/tailPipeline.ts#runTailPipeline",
+      "evidence": "[决算]（强特/终结命中失衡敌人时按剩余失衡时间提升倍率并立即结束失衡、返还失衡值）：tailPipeline 决算通道建模"
+    },
+    "3000025": {
+      "name": "[急冻充能]",
+      "title": "急冻充能",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/ellen.ts#ellenMechanic",
+      "evidence": "[急冻充能]（艾莲专属资源，巡游剪击命中获得，消耗发动冰刃浪）：ellen.ts 建模（急冻充能计数与冰刃浪行）"
+    },
+    "3000026": {
+      "name": "双终结技机制",
+      "title": "双终结技机制",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/yixuan.ts#yixuanMechanic",
+      "evidence": "双终结技机制（仪玄两种触发条件的终结技按资源切换）：yixuan.ts 建模（青溟云影/符法千重 双终结技通道）"
+    },
+    "3000027": {
+      "name": "[猎步]",
+      "title": "猎步",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/pulchra.ts#pulchraMechanic",
+      "evidence": "[猎步]（波可娜强特/支援突击/连携/终结后进入的强化态，失衡提升并触发追加攻击）：pulchra.ts 建模（猎步态 + 追加攻击行）"
+    },
+    "3000028": {
+      "name": "架势",
+      "title": "架势",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/yanagi.ts#yanagiMechanic",
+      "evidence": "架势（月城柳上弦/下弦两架势，各自增伤与穿透率）：yanagi.ts 建模（架势切换与各自增益）"
+    },
+    "3000029": {
+      "name": "[压制模式]",
+      "title": "压制模式",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/zhuYuan.ts#zhuYuanMechanic",
+      "evidence": "[压制模式]（朱鸢长按普攻进入，霰弹三段穿透射击，消耗强化霰弹）：zhuYuan.ts 建模（压制模式 + 强化霰弹）"
+    },
+    "3000030": {
+      "name": "召唤摩托",
+      "title": "召唤摩托",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/starlightBilly.ts#starlightBillyMechanic",
+      "evidence": "召唤摩托（星辉·比利召出摩托发动漂移/冲撞/上挑/砸地等招式）：starlightBilly.ts 建模（摩托招式行 + 决意/回血）"
+    },
+    "3000031": {
+      "name": "远近双形态",
+      "title": "远近双形态",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/harumasa.ts#harumasaMechanic",
+      "evidence": "远近双形态（浅羽悠真远程射击施加电囚，近身斩击输出）：harumasa.ts 建模（电囚层数 + 十文字标记 + 近身斩击行）"
+    },
+    "3000032": {
+      "name": "冲刺斩击",
+      "title": "冲刺斩击",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/harumasa.ts#harumasaMechanic",
+      "evidence": "冲刺斩击（[醒觉]状态下闪避点按普攻发动飞弦·斩，消耗电囚）：harumasa.ts 建模（醒觉/冲刺斩击行）"
+    },
+    "3000033": {
+      "name": "[霜月架势]",
+      "title": "霜月架势",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/miyabi.ts#miyabiMechanic",
+      "evidence": "[霜月架势]（星见雅消耗落霜发动霜月时进入的特殊蓄力架势）：miyabi.ts 建模（霜月架势三段 + 蓄力时间）"
+    },
+    "3000034": {
+      "name": "[巡游]",
+      "title": "巡游",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/ellen.ts#ellenMechanic",
+      "evidence": "[巡游]（艾莲长按/双击闪避进入的冲刺移动态）：ellen.ts 建模（巡游态与急冻充能获取）"
+    },
+    "3000035": {
+      "name": "[术法值]",
+      "title": "术法值",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/yixuan.ts#yixuanMechanic",
+      "evidence": "[术法值]（仪玄专属资源，进入战斗 120 点，消耗闪能回复，满 120 可发动终结技）：yixuan.ts 建模（术法值计数与双终结技门槛）"
+    },
+    "3000036": {
+      "name": "[闪能]",
+      "title": "闪能",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/resource/resourceIncome.ts#calcEnergySource",
+      "evidence": "[闪能]（命破职业专属能量，强特消耗、普攻/闪反命中回复）：核心引擎建模（calcEnergySource 的 rupture 闪能通道）"
+    },
+    "3000037": {
+      "name": "[强化霰弹]",
+      "title": "强化霰弹",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/mechanics/agents/zhuYuan.ts#zhuYuanMechanic",
+      "evidence": "[强化霰弹]（朱鸢通过强特/连携/终结/支援突击快速获得，强化部分招式）：zhuYuan.ts 建模（强化霰弹层数）"
+    },
+    "3000038": {
+      "name": "[残痕]",
+      "title": "残痕",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/stunAxisStack.ts#calcStunAxisStack",
+      "evidence": "[残痕]（锐化伤害积累残痕值，满时敌人进入残痕，最多 3 层）：核心引擎建模（残痕层数通道）"
+    },
+    "3000039": {
+      "name": "[毁伤]",
+      "title": "毁伤",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/stunAxisStack.ts#calcStunAxisStack",
+      "evidence": "[毁伤]（敌人有残痕时特定招式命中消耗残痕触发额外伤害）：核心引擎建模（毁伤事件 + 克拉蕾消费）"
+    },
+    "3000040": {
+      "name": "[锐能]",
+      "title": "锐能",
+      "skill": "",
+      "state": "modeled",
+      "since": "2026-10-17",
+      "anchor": "src/core/resource/resourceIncome.ts#calcEnergySource",
+      "evidence": "[锐能]（锋御职业专属能量，强特消耗、普攻/闪反命中回复）：核心引擎建模（calcEnergySource 的 armorer 锐能通道）"
     },
     "4000001": {
       "name": "基础工艺",
@@ -579,6 +1065,177 @@
       "evidence": "活动武备词条（有护盾时暴击率+10%）：grep「强盾」src/docs 零命中零登记",
       "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:75",
       "since": "2026-09-13"
+    },
+    "4000036": {
+      "name": "力量",
+      "title": "力量",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（提升所有攻击卡牌的单次连击伤害，每层+1最终伤害，回合结束时清空）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000037": {
+      "name": "欢呼",
+      "title": "欢呼",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（提升下一张攻击卡牌造成的总伤害，每层+10%总伤害，攻击后全部消耗，回合结束时清空）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000038": {
+      "name": "蓄能",
+      "title": "蓄能",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（提升所有攻击卡牌的连击数，每10层+1连击数，永久存在，过回合不清空）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000039": {
+      "name": "开幕",
+      "title": "开幕",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（卡牌若放置在手牌队列最左侧，能够触发额外效果）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000040": {
+      "name": "谢幕",
+      "title": "谢幕",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（卡牌若放置在手牌队列最右侧，能够触发额外效果）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000041": {
+      "name": "连携",
+      "title": "连携",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（上一张卡牌为「连携」卡牌时，能够触发额外效果）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000042": {
+      "name": "积蓄",
+      "title": "积蓄",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（包括「」和「」两张卡牌，出售这两张卡牌可以提高层数）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000043": {
+      "name": "力量",
+      "title": "力量",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（提升所有攻击卡牌的单次连击伤害，每层+1最终伤害，回合结束时清空）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000044": {
+      "name": "欢呼",
+      "title": "欢呼",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（提升下一张攻击卡牌造成的总伤害，每层+10%总伤害，攻击后全部消耗，回合结束时清空）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000045": {
+      "name": "蓄能",
+      "title": "蓄能",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（提升所有攻击卡牌的连击数，每10层+1连击数，永久存在，过回合不清空）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000046": {
+      "name": "开幕",
+      "title": "开幕",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（卡牌若放置在手牌队列最左侧，能够触发额外效果）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000047": {
+      "name": "谢幕",
+      "title": "谢幕",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（卡牌若放置在手牌队列最右侧，能够触发额外效果）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000048": {
+      "name": "连携",
+      "title": "连携",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（上一张卡牌为「连携」卡牌时，能够触发额外效果）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000049": {
+      "name": "积蓄",
+      "title": "积蓄",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（包括「」和「」两张卡牌，出售这两张卡牌可以提高层数）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000050": {
+      "name": "动能积蓄",
+      "title": "动能积蓄",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（出售这张卡牌可以提高层数 这张卡牌的1星版本效果为：出售本卡牌时不获得金币，改为+3）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000051": {
+      "name": "精准积蓄",
+      "title": "精准积蓄",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（出售这张卡牌可以提高层数 这张卡牌的1星版本效果为：出售本卡牌时不获得金币，改为+16%）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000052": {
+      "name": "小火苗",
+      "title": "小火苗",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（这张卡牌在升星后会变为「」）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000053": {
+      "name": "新生之焰",
+      "title": "新生之焰",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（这张卡牌在升星后会变为「」）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
+    },
+    "4000054": {
+      "name": "燎原之火",
+      "title": "燎原之火",
+      "skill": "",
+      "state": "deferred",
+      "since": "2026-10-17",
+      "evidence": "活动小游戏「火苗/卡牌」词条（火球流需要通过频繁合成其他卡牌来获得这张「」 这张卡牌的1星版本效果为：每打出过1张「」，本卡牌伤害+100%）：不属于战斗计算器建模面，grep 在 src 零消费（与 4000001-4000035 同段判定范围外）",
+      "registeredAt": "docs/MECHANICS_IMPLEMENTATION.md:77"
     },
     "10000081": {
       "name": "[风华]",

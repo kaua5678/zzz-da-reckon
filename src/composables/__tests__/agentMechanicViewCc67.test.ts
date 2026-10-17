@@ -13,11 +13,11 @@ import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 
 describe('CC-67 额外能力门控修正 → adjustAdditionalAbilityGates', () => {
-  it('仅凯撒 1071 / 菲欧妮 1641 声明', async () => {
+  it('v12 起只剩凯撒 1071 声明（菲欧妮的 tier2/tier3 分档随 [脆弱]→[灼蚀] 改版删除）', async () => {
     const { catalog } = await setupHarness([{ agentId: '1071' }, '', ''])
     const ids = [...new Set(catalog.agentsMap.keys())]
     const got = ids.filter(id => !!getAgentMechanic(id)?.adjustAdditionalAbilityGates).sort()
-    expect(got).toEqual(['1071', '1641'])
+    expect(got).toEqual(['1071'])
   }, 60000)
 
   it('全 catalog 角色 × 凯撒/菲欧妮组队：门控 == 原写死实现', async () => {
@@ -38,17 +38,12 @@ describe('CC-67 额外能力门控修正 → adjustAdditionalAbilityGates', () =
         if (slot >= 0 && team.some(m => m.slot !== slot && !!m.agentId)) activeByAgent.set('1071', true) }
       const gates = new Map<string, boolean>()
       for (const [agentId, buffIds] of Object.entries(ADDITIONAL_GATE_BUFFS)) for (const b of buffIds) gates.set(b, activeByAgent.get(agentId) === true)
-      { const slot = slotByAgentId.get('1641') ?? -1
-        const cinemaLevel = slot >= 0 ? (team.find(m => m.slot === slot)?.cinemaLevel ?? team[slot]?.cinemaLevel ?? 0) : 0
-        const anomalyCount = team.filter(m => m.agent?.specialty === 'anomaly').length + (cinemaLevel >= 6 ? 1 : 0)
-        const t2 = 'phoenix.weakness_anomaly_crit_dmg_tier2'
-        const t3 = 'phoenix.weakness_anomaly_crit_dmg_tier3'
-        gates.set(t2, gates.get(t2) === true && anomalyCount >= 2)
-        gates.set(t3, gates.get(t3) === true && anomalyCount >= 3) }
+      // v12：菲欧妮的 tier2/tier3 分档与 adjustAdditionalAbilityGates 修正一并删除
+      //（[脆弱]→[灼蚀]，额外能力改成固定 +15 单档，只由 additionalAbility 声明式门控）
       return gates
     }
     let n = 0
-    for (const lead of ['1071', '1641']) {
+    for (const lead of ['1071']) {
       for (const x of ['', ...ids]) {
         for (const cin of [0, 6]) {
           const agents = [lead, x, x === '1261' ? '1561' : '1261']
@@ -67,7 +62,7 @@ describe('CC-67 额外能力门控修正 → adjustAdditionalAbilityGates', () =
     const src = readFileSync(resolve(__dirname, '../../mechanics/additionalAbilityGates.ts'), 'utf-8')
     const k = src.indexOf('export function evalAdditionalAbilityBuffGates')
     const body = src.slice(k, src.indexOf('\n}\n', k))
-    for (const id of ['1071', '1641']) expect(body).not.toContain(`'${id}'`)
+    for (const id of ['1071']) expect(body).not.toContain(`'${id}'`)
     expect(body).toContain('adjustAdditionalAbilityGates')
   })
 })

@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-/* 【一次性】3.3 测试服新角色 1631 赛维里安 / 1641 菲欧妮 录入后同步状态档案：
- * character-mechanics.json（核心被动/额外能力）+ character-constellations.json（影画逐级）。
- * 只改 characters['1631'|'1641']，不动其他角色（SOP §6.9）。审计痕迹保留。
+/* 3.3.12+19629936（v12）新角色 1631 赛维里安 / 1641 菲欧妮 状态档案与配装推荐同步：
+ * character-mechanics.json（核心被动/额外能力）+ character-constellations.json（影画逐级）
+ * + build-recommendations.json（fairy_recommend 真实数据 + 专武）。
+ * 只改 characters['1631'|'1641']，不动其他角色（SOP §6.9）。
  *
- * ⚠️ 数据源为 nanoka 3.3.2+18895034 测试服快照，正式服改版后需重核状态描述。
+ * 数据源 = nanoka 3.3.12+19629936（v12，用户说明「已经最后一版 v12」）；原文证据契约
+ * data/recordings/1631.json / 1641.json，口径与实现见 src/mechanics/agents/{severian,phoenix}.ts。
  */
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
@@ -26,13 +28,13 @@ const PATCH = {
         implementation: 'implemented_approximation',
         status: 'implemented_approximation',
         implementedParts: [
-          '暴击伤害 +60%（applyPanel panel.critDmg）。',
-          '[凭风]：入场技/连携技/终结技最后一击伤害倍率固定 +60%/300%（层数滑块 severian.fengfengStacks，damageMultiplierOverride 同区加算，patchExecutions）。',
-          '[流息]→苍风影猎：次数 = 流息收入/100（疾锋四段×20+烈旋×35+极限闪避×15+连携×50+终结×100，buildExecutions 产行 + estimateExSpecialTime 同源计时）。',
-          '长按风刃段（1631009，818.4%）：随强特产行，倍率/耗能40/时间按满充比例滑块 severian.windBladeChargeRatio 缩放（2026-09-12 用户纠错补录；强特组合技耗能 80 为真实值）。',
+          '暴击伤害 +60%、造成的伤害 +25%（若队伍中存在其他风属性角色则额外 +30%）——applyPanel panel.critDmg / panel.dmgBonus。',
+          '[凭风]：入场技/连携技/终结技最后一击伤害倍率固定 +60%/300%（层数滑块 severian.fengfengStacks，damageMultiplierOverride 同区加算，patchExecutions）；影画1 起本局有苍风影猎则至少 1 层。',
+          '[流息]→苍风影猎：次数 = 流息收入/100（疾锋四段×20 + 烈旋×35 + 极限闪避×15 + 连携×35/影画1 50 + 终结×100 + 影画2 入场150；影画6[风起] +25/次定点迭代），buildExecutions 产行 + estimateExSpecialTime 同源计时。',
+          '长按风刃段（1631009，818.4%）：随强特产行，倍率/耗能40/时间按满充比例滑块 severian.windBladeChargeRatio 缩放（组合技 1631008 耗能 40 走 exSpecialEnergyConsume）。',
         ],
         pendingParts: [
-          '烁影层数状态机与自动闪避触发率；疾锋四段闪避成功强化（1631020 无计数来源）；流息上限 150/180 截断（总量口径）。',
+          '烁影层数状态机与自动闪避触发率；疾锋四段闪避成功强化（1631020）；影画1「登场技替换为连携技」招式替换本体；流息上限 180 截断（总量口径）。',
         ],
         codePaths: ['src/mechanics/agents/severian.ts'],
         pending: ['烁影状态机/闪避判定成功率未建模（操作向量）。'],
@@ -43,18 +45,18 @@ const PATCH = {
         implementation: 'implemented_approximation',
         status: 'implemented_approximation',
         implementedParts: [
-          '队伍存在[支援]/[击破]/同阵营（声明式门控）：攻击力 +700（Lv60，局内小攻击，applyPanel）；影画2 触发时额外 +15% 攻击力。',
+          '队伍存在[支援]/[击破]/同阵营（声明式门控）：每拥有 1% 暴击率使自身攻击力提升 8.5 点，最多计入 100% 暴击率（≤ +850），applyPanel 直加 panel.atk。',
         ],
-        pendingParts: ['30 秒持续/重复刷新按整局常驻近似。'],
+        pendingParts: ['转模读 applyPanel 当下的 panel.critRate，队伍后置暴击加成不回溯（与诺玛 1571 同口径）。'],
         codePaths: ['src/mechanics/agents/severian.ts'],
         pending: [],
       },
     ],
     cinemas: {
-      1: { status: 'implemented_approximation', implemented: ['进入战场 +100 流息（整局一次近似，并入流息收入计数）；普通攻击暴击伤害 +60%（basic 组 moveId 限定，patchExecutions critDmgBonus）。'], pending: ['勘域 180s 一次的触发窗口不建模。'] },
-      2: { status: 'implemented_approximation', implemented: ['触发最优编配时额外 +15% 攻击力（applyPanel）；每次苍风影猎获得 2 层凭风（并入凭风层数滑块口径，需手动调 2 层）。'], pending: ['「登场技替换为连携技」的招式替换未建模；凭风获得后需手动调滑块（未自动按苍风影猎次数补层）。'] },
-      4: { status: 'implemented_approximation', implemented: ['极限闪避/苍风影猎触发时无视 16% 防御 × 覆盖率滑块 severian.c4Coverage（panel.enemyDefReduction）。'], pending: [] },
-      6: { status: 'implemented_approximation', implemented: ['苍风影猎最后一击伤害倍率固定 +900%（行倍率同区加算 + damageMultiplierOverride）；[风起] 每次苍风影猎 +30 流息（countFromFlow 定点迭代反馈）。'], pending: ['流息上限 180 的截断未建模（总量口径）。'] },
+      1: { status: 'implemented_approximation', implemented: ['连携技累积流息提升至 50 点（severianChainFlow）；每次苍风影猎 +1 层凭风（resolveSeverianFengfengStacks 下限）；攻击命中无视目标 15% 风属性抗性（panel.enemyWindResReduction）。'], pending: ['登场技替换为连携技的招式替换本体未建模；勘域 180s/60s 触发窗口不建模。'] },
+      2: { status: 'implemented_approximation', implemented: ['进入战场回复 150 点流息（并入流息收入）；极限闪避/苍风影猎时穿透率 +20%、25 秒（panel.penRatio × 覆盖率滑块 severian.triggerCoverage）。'], pending: [] },
+      4: { status: 'implemented_approximation', implemented: ['进入战斗/换入前场攻击力 +10%（panel.atk）；烈旋/苍风影猎时喧响值获取效率 +10%、15 秒（panel.decibelGainEfficiency × 覆盖率滑块）。'], pending: [] },
+      6: { status: 'implemented_approximation', implemented: ['流息上限提升至 180 且入场回复 180（资源卡展示 + 收入计数）；苍风影猎最后一击倍率固定 +350%（行倍率同区加算 + damageMultiplierOverride）；[风起] 每次苍风影猎 +25 流息（定点迭代反馈）。'], pending: ['流息上限 180 的截断未建模（总量口径）。'] },
     },
   },
   1641: {
@@ -62,41 +64,42 @@ const PATCH = {
     mechanics: [
       {
         id: 'core_passive_1641',
-        name: '核心被动：脆弱',
+        name: '核心被动：涅槃',
         implementation: 'implemented_approximation',
         status: 'implemented_approximation',
         implementedParts: [
-          '异常精通 +40（applyPanel）。',
-          '[脆弱] 异常伤害暴击：**spec teamBuffs 通用承载**（rate 公式 30+max(0,掌控-145)×0.7 读源面板；伤 基础15 + 额外能力档位 tier2 +10（buff-id 过滤门控）+ 影画一 +20（中文数字 source 命座门控））——自体与队友同吃，引擎 EV 乘区 calcAnomalyCritExpect 通用消费。',
-          '长按普攻/终结技终结一击异放：固定 releaseMultiplier 445%/597%（s=12 满级；影画3/5 技能等级 +2/+4 随动），buildAnomalyEvents（普罗米娅绝裁同款通道）。',
-          '[余火]→长按普攻：燃烧攻击行 attack_data 收入×影画1 效率 1.15/90 = 次数（buildExecutions 产行）。',
-          '终结技：入场 1641019（1545.8%）：每次终结后点按一次，计数=ultimateCount（产行+计时，2026-09-12 用户纠错）。',
-          '[消亡]消费：终结进入（次数=终结次数）→下一次连携退出并+30%积蓄，加成次数=min(终结,连携)按占比乘连携行 anomalyBuildUp（行级乘法）。',
+          '异常精通 +85（applyPanel）。',
+          '[灼蚀] 异常伤害暴击：**spec teamBuffs 通用承载**（rate 公式 min(100, 30+max(0,min(初始掌控,255)−155)×0.7) 读**局外**面板；伤 = 25 基础 + 15 额外能力 + 25 影画一）——自体与队友同吃，引擎 EV 乘区 calcAnomalyCritExpect 通用消费。',
+          '[灼蚀] 周期火伤：每 8 秒 50% 攻击力火属性伤害（视为强化特殊技伤害），direct_damage 事件，次数 = floor(有效时长×覆盖率/8)。',
+          '焚罪/烬火追魂终结一击异放：固定 releaseMultiplier 445%/597%（s=12 满级；影画3/5 技能等级 +2/+4 随动），buildAnomalyEvents。',
+          '[燔焰]→焚罪：燃烧攻击行 attack_data 收入×影画1 效率 1.15 + 完美格挡 5/10s，除以 90 = 次数（buildExecutions 产行）。',
+          '[枯荣] 稳态强特循环：眩焰（40 能量）→ 坠阳（40 能量，+1[升变]）→ 燎斩（消耗[升变]，0 耗能），三者按 exCount 同源计次。',
+          '[生竭]→烬火追魂 1641019（191.2%）：计数 = ultimateCount，收尾追加攻击不占前台时间且免喧响。',
         ],
         pendingParts: [
-          '[重生]（无乘区）；[消亡]逐时序状态机本体（次数驱动乘区已建模）。',
+          '[生竭]/[重明] 状态机本体（回血无乘区）；[枯荣] 逐时序状态机；影画2「[灼烧] 持续 +2 秒」的 DPS 折算。',
         ],
-        codePaths: ['src/mechanics/agents/phoenix.ts', 'src/specs/agents/1641.json (teamBuffs)', 'src/composables/resourceCalc/helpers.ts (AA buff-id 过滤)'],
-        pending: ['余火获取速率按 attack_data /10000 口径解读 [猜测·低]，待正式服复核。'],
+        codePaths: ['src/mechanics/agents/phoenix.ts', 'src/specs/agents/1641.json (teamBuffs)'],
+        pending: [],
       },
       {
         id: 'additional_ability_1641',
-        name: '额外能力：脆弱暴伤档位',
+        name: '额外能力：[灼蚀] 暴伤强化',
         implementation: 'implemented_approximation',
         status: 'implemented_approximation',
         implementedParts: [
-          '队伍存在其他[异常]/同阵营（声明式门控）：脆弱暴伤 +10（15→25，2 档）——spec teamBuffs tier2 条 + computePanelPhases buff-id 过滤（SOP §6.2）。',
+          '队伍存在其他[异常]/同阵营（声明式门控）：[灼蚀] 敌人受到属性异常伤害的暴击伤害 +15（v12 固定档）——spec teamBuffs 条 + computePanelPhases buff-id 过滤（SOP §6.2）。',
         ],
         pendingParts: [],
-        codePaths: ['src/mechanics/agents/phoenix.ts', 'src/composables/resourceCalc/helpers.ts'],
+        codePaths: ['src/mechanics/agents/phoenix.ts', 'src/specs/agents/1641.json'],
         pending: [],
       },
     ],
     cinemas: {
-      1: { status: 'implemented_approximation', implemented: ['脆弱目标异常伤害触发暴击时暴伤 +20（spec teamBuffs，source「影画一」自动命座门控，全队含自身同吃）；燃烧攻击余火获取效率 +15%（余火计数 ×1.15）。'], pending: ['入场 +1 点蓄能勘域窗口不建模。'] },
-      2: { status: 'implemented_approximation', implemented: ['[焚化] 异常积蓄效率 +15% × 覆盖率滑块 phoenix.c2IncinerationCoverage（panel.anomalyBuildUpEfficiency）；强化特殊技第二段回 8 能量（行级 energyRecovery）。'], pending: ['「保留当前强化特殊技段数」状态机未建模。'] },
-      4: { status: 'implemented_approximation', implemented: ['长按普攻 +200 喧响/次（initialDecibelGift；次数=滑块覆盖，自动=战斗时长/15s 估算）。'], pending: [] },
-      6: { status: 'implemented_approximation', implemented: ['强化特殊技终结一击异放 200%（buildAnomalyEvents）；异放无视 15% 防御（releaseModifier 异放限定）；额外能力所需异常角色数 -1（helpers 编成计数有效数+1，2026-09-12 组队对账落地）。'], pending: [] },
+      1: { status: 'implemented_approximation', implemented: ['进入战场获得 1 点[升变]（并入燎斩次数口径）；[灼蚀] 暴伤额外 +25%（spec teamBuffs，source「影画一」自动命座门控，全队含自身同吃）；[燃烧攻击] 燔焰获取效率 +15%（燔焰计数 ×1.15）。'], pending: ['勘域 180s 窗口不建模。'] },
+      2: { status: 'implemented_approximation', implemented: ['对[灼蚀] 状态下的敌人造成的伤害 +30%（panel.dmgBonus）。'], pending: ['「[灼烧] 持续时间 +2 秒」的 DPS 折算走引擎异常池，不单独建模。'] },
+      4: { status: 'implemented_approximation', implemented: ['[烬火追魂] 与 [普通攻击：焚罪] 终结一击命中异常状态敌人时额外触发一次异放，固定 600%（buildAnomalyEvents，两条独立事件）。'], pending: [] },
+      6: { status: 'implemented_approximation', implemented: ['无视目标 15% 全属性伤害抗性（panel.enemyResReduction）；眩焰获得 1 点[升变]（并入燎斩次数口径）；异放无视 40% 防御（releaseModifier 异放限定）。'], pending: [] },
     },
   },
 }
@@ -127,13 +130,11 @@ writeJsonCompact(mechanicsPath, mechanics)
 writeJsonCompact(constellationsPath, constellations)
 console.log('已写入 character-mechanics.json + character-constellations.json（紧凑）')
 
-// ===== build-recommendations（2026-09-12 第二版：真实推荐，替换掉 1611 fallback 占位）=====
-// beta 角色不在 nanoka 正式服索引（sync-build-recommendations 会崩）→ 从 full JSON 的
-// fairy_recommend（邦布精灵推荐，1641 有）+ catalog 专武/盘组直接构造；1631 fairy_recommend 为空，
-// 盘组/主词条按通用输出口径并显式标注。数据源版本 = nanoka 3.3.2+18895034 测试服。
+// ===== build-recommendations：v12 fairy_recommend（两角色现在都有真实推荐）=====
 const recsPath = resolve(root, 'public/static/build-recommendations.json')
 const recs = JSON.parse(readFileSync(recsPath, 'utf8'))
 const catalog = JSON.parse(readFileSync(resolve(root, 'public/static/catalog.json'), 'utf8'))
+const VERSION = '3.3.12+19629936'
 
 function wengineBlock(id) {
   const w = catalog.wEngines.find(x => x.id === id)
@@ -165,34 +166,32 @@ function statBlock(prop, name, format, icon) {
   return { prop, name, format, icon }
 }
 
-// 1631 赛维里安：专武 14163 真实；盘组/主词条 fairy_recommend 空缺 → 通用输出口径（显式标注）
+// 1631 赛维里安：fairy_recommend 4pc 拂晓生花 + 2pc 河豚电音；主词条 暴击率/暴伤/穿透率
 recs.characters['1631'] = {
   name: { zhCN: '赛维里安', en: 'Severian' },
   nanoka_id: '1631',
   source_url: 'https://zzz.nanoka.cc/character/1631',
   strategy: [
-    '⚠️ 3.3 测试服（3.3.2+18895034）：nanoka fairy_recommend 为空——盘组沿用通用占位（荆棘玫瑰4pc+啄木鸟2pc），主词条按通用输出口径（暴伤/攻击力%/攻击力%），待正式服推荐上线后重导。',
+    `来源：nanoka fairy_recommend（${VERSION}）——4pc 拂晓生花 + 2pc 河豚电音（备选 啄木鸟电音+河豚电音 / 纯攻击力）。主词条 4 暴击率 / 5 暴击伤害 / 6 穿透率，副词条优先攻击力%。`,
   ],
-  drive_disc_sets: { four_piece: discSetBlock('34200'), two_piece: discSetBlock('31000') },
+  drive_disc_sets: { four_piece: discSetBlock('33300'), two_piece: discSetBlock('31100') },
   main_stats: {
-    '4': statBlock('21103', '暴击伤害', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCritDam.png'),
-    '5': statBlock('12102', '攻击力', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png'),
-    '6': statBlock('12102', '攻击力', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png'),
+    '4': statBlock('20103', '暴击率', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCrit.png'),
+    '5': statBlock('21103', '暴击伤害', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCritDam.png'),
+    '6': statBlock('23103', '穿透率', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconPenRatio.png'),
   },
   substats: [
-    statBlock('20103', '暴击率', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCrit.png'),
-    statBlock('21103', '暴击伤害', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCritDam.png'),
     statBlock('12102', '攻击力', '{0:0.#%}', 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png'),
   ],
   wengine: wengineBlock('14163'),
 }
-// 1641 菲欧妮：fairy_recommend 真实推荐（自由蓝调4pc+法厄同之歌2pc；备选混沌爵士2pc+法厄同2pc）
+// 1641 菲欧妮：fairy_recommend 4pc 自由蓝调 + 2pc 法厄同之歌
 recs.characters['1641'] = {
   name: { zhCN: '菲欧妮', en: 'Phoenix' },
   nanoka_id: '1641',
   source_url: 'https://zzz.nanoka.cc/character/1641',
   strategy: [
-    '来源：nanoka fairy_recommend（3.3.2+18895034 测试服）——4pc 自由蓝调 + 2pc 法厄同之歌；备选 2pc 混沌爵士 + 2pc 法厄同之歌。主词条 4 异常掌控 / 5 异常精通 / 6 火伤，副词条优先攻击力%。',
+    `来源：nanoka fairy_recommend（${VERSION}）——4pc 自由蓝调 + 2pc 法厄同之歌；备选 2pc 混沌爵士 + 2pc 法厄同之歌。主词条 4 异常掌控 / 5 异常精通 / 6 火伤，副词条优先攻击力%。`,
   ],
   drive_disc_sets: { four_piece: discSetBlock('31300'), two_piece: discSetBlock('33000') },
   main_stats: {
@@ -206,6 +205,6 @@ recs.characters['1641'] = {
   ],
   wengine: wengineBlock('14164'),
 }
-console.log('recs 真实推荐写入 1631（专武+通用输出口径）/ 1641（fairy_recommend 全量）')
+console.log('recs v12 真实推荐写入 1631 / 1641')
 writeJsonCompact(recsPath, recs)
 console.log('已写入 build-recommendations.json（紧凑）')

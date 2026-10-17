@@ -1,8 +1,8 @@
 {
   "id": 1631,
   "icon": "IconRole1631",
-  "name": "(Test1)赛维里安",
-  "code_name": "(Test1)Severian",
+  "name": "赛维里安",
+  "code_name": "Severian",
   "rarity": 4,
   "weapon_type": {
     "1": "强攻"
@@ -23,7 +23,7 @@
     "full_name": "...",
     "gender": "男",
     "icon_path": "UI/Sprite/A1DynamicLoad/IconRoleCircle/UnPacker/IconRoleCircle1631.png",
-    "inter_knot_icon": "",
+    "inter_knot_icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/InterKnot/UnPacker/IconInterknotAvatar/IconInterKnotRole1631.png",
     "impression_f": "...",
     "impression_m": "...",
     "impressions": [
@@ -48,10 +48,16 @@
   },
   "skin": {
     "3116310": {
-      "name": "AvatarSkin_Severian_Name_000",
-      "desc": "AvatarSkin_Severian_Desc_000",
+      "name": "...",
+      "desc": "...",
       "obtain_desc": "",
       "image": "IconRole1631"
+    },
+    "3116311": {
+      "name": "...",
+      "desc": "...",
+      "obtain_desc": "",
+      "image": "IconRole1631_01"
     }
   },
   "stats": {
@@ -168,102 +174,102 @@
     "1": {
       "max_level": 15,
       "extra": {
+        "21101": {
+          "prop": 21101,
+          "name": "暴击伤害",
+          "format": "{0:0.#%}",
+          "value": 960
+        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 0
-        },
-        "20101": {
-          "prop": 20101,
-          "name": "暴击率",
-          "format": "{0:0.#%}",
-          "value": 480
         }
       }
     },
     "2": {
       "max_level": 25,
       "extra": {
+        "21101": {
+          "prop": 21101,
+          "name": "暴击伤害",
+          "format": "{0:0.#%}",
+          "value": 960
+        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 25
-        },
-        "20101": {
-          "prop": 20101,
-          "name": "暴击率",
-          "format": "{0:0.#%}",
-          "value": 480
         }
       }
     },
     "3": {
       "max_level": 35,
       "extra": {
+        "21101": {
+          "prop": 21101,
+          "name": "暴击伤害",
+          "format": "{0:0.#%}",
+          "value": 1920
+        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 25
-        },
-        "20101": {
-          "prop": 20101,
-          "name": "暴击率",
-          "format": "{0:0.#%}",
-          "value": 960
         }
       }
     },
     "4": {
       "max_level": 45,
       "extra": {
+        "21101": {
+          "prop": 21101,
+          "name": "暴击伤害",
+          "format": "{0:0.#%}",
+          "value": 1920
+        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 50
-        },
-        "20101": {
-          "prop": 20101,
-          "name": "暴击率",
-          "format": "{0:0.#%}",
-          "value": 960
         }
       }
     },
     "5": {
       "max_level": 55,
       "extra": {
+        "21101": {
+          "prop": 21101,
+          "name": "暴击伤害",
+          "format": "{0:0.#%}",
+          "value": 2880
+        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 50
-        },
-        "20101": {
-          "prop": 20101,
-          "name": "暴击率",
-          "format": "{0:0.#%}",
-          "value": 1440
         }
       }
     },
     "6": {
       "max_level": 60,
       "extra": {
+        "21101": {
+          "prop": 21101,
+          "name": "暴击伤害",
+          "format": "{0:0.#%}",
+          "value": 2880
+        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 75
-        },
-        "20101": {
-          "prop": 20101,
-          "name": "暴击率",
-          "format": "{0:0.#%}",
-          "value": 1440
         }
       }
     }
@@ -334,22 +340,22 @@
     "basic": {
       "description": [
         {
-          "name": "(Test1)普通攻击：疾锋",
-          "desc": "(Test1)点按 <IconMap:Icon_Normal> 发动：\n向前方进行至多四段攻击，造成<color=#A6C5FD>风属性伤害</color>；\n第四段攻击命中敌人后，累积20点<Term:1000041></Term>；\n第四段攻击发动瞬间具备闪避判定，如果成功闪避敌人攻击，本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致，并额外累积15点<color=#FFFFFF>[流息]</color>；\n第四段攻击发动期间拥有无敌效果；\n赛维里安在<color=#FFFFFF>[普通攻击]</color>期间发动<color=#FFFFFF>[闪避]</color>、<color=#FFFFFF>[冲刺攻击]</color>、<color=#FFFFFF>[闪避反击]</color>和<color=#FFFFFF>[闪避：写意]</color>时，不会打断<color=#FFFFFF>[普通攻击]</color>的连击段数。",
+          "name": "普通攻击：疾锋",
+          "desc": "点按 <IconMap:Icon_Normal> 发动：\n向前方进行至多四段攻击，造成<color=#A6C5FD>风属性伤害</color>；\n第四段攻击命中敌人后，累积20点<Term:1000041></Term>；\n第四段攻击发动瞬间具备闪避判定，如果成功闪避敌人攻击，本次普攻的伤害倍率和失衡倍率提升至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致，并额外累积15点<color=#FFFFFF>[流息]</color>；\n第四段攻击发动期间拥有无敌效果；\n赛维里安在<color=#FFFFFF>[普通攻击]</color>期间发动<color=#FFFFFF>[冲刺攻击]</color>、<color=#FFFFFF>[闪避反击]</color>和<color=#FFFFFF>[闪避：写意]</color>时，不会打断<color=#FFFFFF>[普通攻击]</color>的连击段数。",
           "potential": []
         },
         {
-          "name": "(Test1)普通攻击：烈旋",
-          "desc": "(Test1)前三段普通攻击发动的瞬间受到敌人攻击或自身存在<color=#FFFFFF>[烁影]</color>效果且不拥有无敌效果时受到敌人非控制技攻击会自动发动：\n向前方进行突进，对前方范围的敌人造成大量<color=#A6C5FD>风属性伤害</color>；\n招式发动时累积15点<Term:1000041></Term>，命中敌人后额外累积20点<color=#FFFFFF>[流息]</color>；\n招式发动时保持长按 <IconMap:Icon_Normal>，可以快速发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>；\n招式发动期间拥有无敌效果。",
+          "name": "普通攻击：烈旋",
+          "desc": "前三段普通攻击发动的瞬间受到敌人攻击或自身存在<color=#FFFFFF>[烁影]</color>效果且不拥有无敌效果时受到敌人非控制技攻击会自动发动：\n向前方进行突进，对前方范围的敌人造成大量<color=#A6C5FD>风属性伤害</color>；\n招式发动时累积15点<Term:1000041></Term>，命中敌人后额外累积20点<color=#FFFFFF>[流息]</color>；\n招式发动时保持长按 <IconMap:Icon_Normal>，可以快速发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>且<color=#FFFFFF>[普通攻击：苍风影猎]</color>的最后一击释放时会累积20点<color=#FFFFFF>[流息]</color>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)普通攻击：苍风影猎",
-          "desc": "(Test1)<Term:1000041></Term>足够时，消耗100点<color=#FFFFFF>[流息]</color>，长按 <IconMap:Icon_Normal> 发动：\n先向后闪避并蓄势，随后在站场中不断穿梭并不断发动斩击，对前方范围的敌人造成大量<color=#A6C5FD>风属性伤害</color>；\n向后闪避期间，具备闪避判定，如果成功闪避敌人攻击，会触发<color=#FFFFFF>[极限视域]</color>，并累积15点<color=#FFFFFF>[流息]</color>；\n招式发动期间拥有无敌效果。",
+          "name": "普通攻击：苍风影猎",
+          "desc": "<Term:1000041></Term>足够时，消耗100点<color=#FFFFFF>[流息]</color>，长按 <IconMap:Icon_Normal> 发动：\n先向后闪避并蓄势，随后在站场中不断穿梭并不断发动斩击，对前方范围的敌人造成大量<color=#A6C5FD>风属性伤害</color>；\n向后闪避期间，具备闪避判定，如果成功闪避敌人攻击，会触发<color=#FFFFFF>[极限视域]</color>，并累积15点<color=#FFFFFF>[流息]</color>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)普通攻击：疾锋",
+          "name": "普通攻击：疾锋",
           "param": [
             {
               "name": "一段伤害倍率",
@@ -434,11 +440,11 @@
               "desc": "{Skill:1631004, Prop:1001}",
               "param": {
                 "1631004": {
-                  "main": 30000,
-                  "growth": 2730,
+                  "main": 24160,
+                  "growth": 2200,
                   "format": "%",
-                  "damage_percentage": 30000,
-                  "damage_percentage_growth": 2730,
+                  "damage_percentage": 24160,
+                  "damage_percentage_growth": 2200,
                   "stun_ratio": 12840,
                   "stun_ratio_growth": 590,
                   "sp_recovery": 49510,
@@ -456,15 +462,15 @@
               "potential": []
             },
             {
-              "name": "(Test1)四段极限闪避成功时伤害倍率",
+              "name": "四段极限闪避成功时伤害倍率",
               "desc": "{Skill:1631020, Prop:1001}",
               "param": {
                 "1631020": {
-                  "main": 74650,
-                  "growth": 6790,
+                  "main": 33820,
+                  "growth": 3080,
                   "format": "%",
-                  "damage_percentage": 74650,
-                  "damage_percentage_growth": 6790,
+                  "damage_percentage": 33820,
+                  "damage_percentage_growth": 3080,
                   "stun_ratio": 13390,
                   "stun_ratio_growth": 610,
                   "sp_recovery": 43820,
@@ -567,8 +573,8 @@
                   "main": 12840,
                   "growth": 590,
                   "format": "%",
-                  "damage_percentage": 30000,
-                  "damage_percentage_growth": 2730,
+                  "damage_percentage": 24160,
+                  "damage_percentage_growth": 2200,
                   "stun_ratio": 12840,
                   "stun_ratio_growth": 590,
                   "sp_recovery": 49510,
@@ -586,15 +592,15 @@
               "potential": []
             },
             {
-              "name": "(Test1)四段极限闪避成功时失衡倍率",
+              "name": "四段极限闪避成功时失衡倍率",
               "desc": "{Skill:1631020, Prop:1002}",
               "param": {
                 "1631020": {
                   "main": 13390,
                   "growth": 610,
                   "format": "%",
-                  "damage_percentage": 74650,
-                  "damage_percentage_growth": 6790,
+                  "damage_percentage": 33820,
+                  "damage_percentage_growth": 3080,
                   "stun_ratio": 13390,
                   "stun_ratio_growth": 610,
                   "sp_recovery": 43820,
@@ -615,18 +621,18 @@
           "potential": []
         },
         {
-          "name": "(Test1)普通攻击：烈旋",
+          "name": "普通攻击：烈旋",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1631005, Prop:1001}",
               "param": {
                 "1631005": {
-                  "main": 74650,
-                  "growth": 6790,
+                  "main": 33820,
+                  "growth": 3080,
                   "format": "%",
-                  "damage_percentage": 74650,
-                  "damage_percentage_growth": 6790,
+                  "damage_percentage": 33820,
+                  "damage_percentage_growth": 3080,
                   "stun_ratio": 13390,
                   "stun_ratio_growth": 610,
                   "sp_recovery": 43820,
@@ -651,8 +657,8 @@
                   "main": 13390,
                   "growth": 610,
                   "format": "%",
-                  "damage_percentage": 74650,
-                  "damage_percentage_growth": 6790,
+                  "damage_percentage": 33820,
+                  "damage_percentage_growth": 3080,
                   "stun_ratio": 13390,
                   "stun_ratio_growth": 610,
                   "sp_recovery": 43820,
@@ -673,21 +679,21 @@
           "potential": []
         },
         {
-          "name": "(Test1)普通攻击：苍风影猎",
+          "name": "普通攻击：苍风影猎",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1631006, Prop:1001}",
               "param": {
                 "1631006": {
-                  "main": 183870,
-                  "growth": 16720,
+                  "main": 202770,
+                  "growth": 18440,
                   "format": "%",
-                  "damage_percentage": 183870,
-                  "damage_percentage_growth": 16720,
+                  "damage_percentage": 202770,
+                  "damage_percentage_growth": 18440,
                   "stun_ratio": 31170,
                   "stun_ratio_growth": 1420,
-                  "sp_recovery": 101990,
+                  "sp_recovery": 51000,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 779350,
                   "fever_recovery_growth": 0,
@@ -709,11 +715,11 @@
                   "main": 31170,
                   "growth": 1420,
                   "format": "%",
-                  "damage_percentage": 183870,
-                  "damage_percentage_growth": 16720,
+                  "damage_percentage": 202770,
+                  "damage_percentage_growth": 18440,
                   "stun_ratio": 31170,
                   "stun_ratio_growth": 1420,
-                  "sp_recovery": 101990,
+                  "sp_recovery": 51000,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 779350,
                   "fever_recovery_growth": 0,
@@ -783,27 +789,27 @@
     "dodge": {
       "description": [
         {
-          "name": "(Test1)闪避：飘折",
-          "desc": "(Test1)点按 <IconMap:Icon_Evade> 发动：\n快速的冲刺闪避；\n通过<color=#FFFFFF>[闪避：飘折]</color>触发<color=#FFFFFF>[极限闪避]</color>时，累积15点<Term:1000041></Term>，此效果0.5秒内最多触发一次；\n招式发动期间拥有无敌效果。",
+          "name": "闪避：飘折",
+          "desc": "点按 <IconMap:Icon_Evade> 发动：\n快速的冲刺闪避；\n通过<color=#FFFFFF>[闪避：飘折]</color>触发<color=#FFFFFF>[极限闪避]</color>时，累积15点<Term:1000041></Term>，此效果0.5秒内最多触发一次；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)冲刺攻击：凛袭",
-          "desc": "(Test1)闪避时，点按 <IconMap:Icon_Normal> 发动：\n向前方进行攻击，造成<color=#A6C5FD>风属性伤害</color>。",
+          "name": "冲刺攻击：凛袭",
+          "desc": "闪避时，点按 <IconMap:Icon_Normal> 发动：\n向前方进行攻击，造成<color=#A6C5FD>风属性伤害</color>。",
           "potential": []
         },
         {
-          "name": "(Test1)闪避反击：梢杀",
-          "desc": "(Test1)通过<color=#FFFFFF>[闪避：飘折]</color>触发<color=#FFFFFF>[极限闪避]</color>时，点按 <IconMap:Icon_Normal> 发动：\n向前方发动快速斩击，造成<color=#A6C5FD>风属性伤害</color>；\n若通过<color=#FFFFFF>[闪避：飘折]</color>触发<color=#FFFFFF>[极限闪避]</color>瞬间切入后台，会自动发动本招式；\n招式发动期间拥有无敌效果。",
+          "name": "闪避反击：梢杀",
+          "desc": "通过<color=#FFFFFF>[闪避：飘折]</color>触发<color=#FFFFFF>[极限闪避]</color>时，点按 <IconMap:Icon_Normal> 发动：\n向前方发动快速斩击，造成<color=#A6C5FD>风属性伤害</color>；\n若通过<color=#FFFFFF>[闪避：飘折]</color>触发<color=#FFFFFF>[极限闪避]</color>瞬间切入后台，会自动发动本招式；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)闪避：写意",
-          "desc": "(Test1)后闪后，持续长按<IconMap:Icon_Evade> 发动：\n向敌人发起挑衅；\n招式发动期间受到攻击消耗<color=#FFFFFF>[烁影]</color>触发<color=#FFFFFF>[普通攻击：烈旋]</color>时，触发的<color=#FFFFFF>[普通攻击：烈旋]</color>必定暴击，且暴击伤害提升10%。",
+          "name": "闪避：写意",
+          "desc": "后闪后，持续长按<IconMap:Icon_Evade> 发动：\n向敌人发起挑衅。",
           "potential": []
         },
         {
-          "name": "(Test1)冲刺攻击：凛袭",
+          "name": "冲刺攻击：凛袭",
           "param": [
             {
               "name": "伤害倍率",
@@ -861,7 +867,7 @@
           "potential": []
         },
         {
-          "name": "(Test1)闪避反击：梢杀",
+          "name": "闪避反击：梢杀",
           "param": [
             {
               "name": "伤害倍率",
@@ -971,17 +977,17 @@
     "special": {
       "description": [
         {
-          "name": "(Test1)特殊技：瞬风斩破",
-          "desc": "(Test1)点按 <IconMap:Icon_Special> 发动：\n向前方发动斩击和刺击，造成<color=#A6C5FD>风属性伤害</color>。",
+          "name": "特殊技：瞬风斩破",
+          "desc": "点按 <IconMap:Icon_Special> 发动：\n向前方发动斩击和刺击，造成<color=#A6C5FD>风属性伤害</color>。",
           "potential": []
         },
         {
-          "name": "(Test1)强化特殊技：瞬风裂毁",
-          "desc": "(Test1)能量足够时，点按 <IconMap:Icon_SpecialReady> 发动：\n向前发动斩击、爪击和炮击的组合技，对敌人造成大量<color=#A6C5FD>风属性伤害</color>，并获得一层<Term:1000042></Term>；\n长按 <IconMap:Icon_SpecialReady> 可以在炮击前持续消耗能量不断发动风刃对敌人造成<color=#A6C5FD>风属性伤害</color>；\n能量消耗达最大时，额外获得一层<color=#FFFFFF>[烁影]</color>;\n招式发动期间拥有无敌效果。",
+          "name": "强化特殊技：瞬风裂毁",
+          "desc": "能量足够时，点按 <IconMap:Icon_SpecialReady> 发动：\n向前发动斩击、爪击和炮击的组合技，对敌人造成大量<color=#A6C5FD>风属性伤害</color>，并获得一层<Term:1000042></Term>；\n长按 <IconMap:Icon_SpecialReady> 可以在炮击前持续消耗能量不断发动风刃对敌人造成<color=#A6C5FD>风属性伤害</color>；\n能量消耗达最大时，额外获得一层<color=#FFFFFF>[烁影]</color>;\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)特殊技：瞬风斩破",
+          "name": "特殊技：瞬风斩破",
           "param": [
             {
               "name": "伤害倍率",
@@ -1039,10 +1045,10 @@
           "potential": []
         },
         {
-          "name": "(Test1)强化特殊技：瞬风裂毁",
+          "name": "强化特殊技：瞬风裂毁",
           "param": [
             {
-              "name": "(Test1)组合技伤害倍率",
+              "name": "组合技伤害倍率",
               "desc": "{Skill:1631008, Prop:1001}",
               "param": {
                 "1631008": {
@@ -1068,7 +1074,7 @@
               "potential": []
             },
             {
-              "name": "(Test1)组合技失衡倍率",
+              "name": "组合技失衡倍率",
               "desc": "{Skill:1631008, Prop:1002}",
               "param": {
                 "1631008": {
@@ -1094,12 +1100,12 @@
               "potential": []
             },
             {
-              "name": "(Test1)组合技能量消耗",
-              "desc": "(Test1)80点",
+              "name": "组合技能量消耗",
+              "desc": "40点",
               "potential": []
             },
             {
-              "name": "(Test1)风刃最大伤害倍率",
+              "name": "风刃最大伤害倍率",
               "desc": "{Skill:1631009, Prop:1001}",
               "param": {
                 "1631009": {
@@ -1125,7 +1131,7 @@
               "potential": []
             },
             {
-              "name": "(Test1)风刃最大失衡倍率",
+              "name": "风刃最大失衡倍率",
               "desc": "{Skill:1631009, Prop:1002}",
               "param": {
                 "1631009": {
@@ -1151,8 +1157,8 @@
               "potential": []
             },
             {
-              "name": "(Test1)风刃最大能量消耗",
-              "desc": "(Test1)40点",
+              "name": "风刃最大能量消耗",
+              "desc": "40点",
               "potential": []
             }
           ],
@@ -1211,17 +1217,17 @@
     "chain": {
       "description": [
         {
-          "name": "(Test1)连携技：冽刃收割",
-          "desc": "(Test1)触发<color=#FFFFFF>[连携技]</color>时，选择对应角色发动：\n向前方发动多段攻击，造成大量<color=#A6C5FD>风属性伤害</color>；\n招式发动后，累积50点<Term:1000041></Term>；\n招式发动期间拥有无敌效果。",
+          "name": "连携技：冽刃收割",
+          "desc": "触发<color=#FFFFFF>[连携技]</color>时，选择对应角色发动：\n向前方发动多段攻击，造成大量<color=#A6C5FD>风属性伤害</color>；\n招式发动后，累积35点<Term:1000041></Term>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)终结技：戮灭的风灾",
-          "desc": "(Test1)喧响等级达到<color=#FFFFFF>[极]</color>时，点按 <IconMap:Icon_UltimateReady> 发动：\n连续发动多次快速斩击，造成大量<color=#A6C5FD>风属性伤害</color>；\n招式发动后，累积100点<Term:1000041></Term>；\n招式发动期间拥有无敌效果。",
+          "name": "终结技：戮灭的风灾",
+          "desc": "喧响等级达到<color=#FFFFFF>[极]</color>时，点按 <IconMap:Icon_UltimateReady> 发动：\n连续发动多次快速斩击，造成大量<color=#A6C5FD>风属性伤害</color>；\n招式发动后，累积100点<Term:1000041></Term>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)连携技：冽刃收割",
+          "name": "连携技：冽刃收割",
           "param": [
             {
               "name": "伤害倍率",
@@ -1279,7 +1285,7 @@
           "potential": []
         },
         {
-          "name": "(Test1)终结技：戮灭的风灾",
+          "name": "终结技：戮灭的风灾",
           "param": [
             {
               "name": "伤害倍率",
@@ -1389,27 +1395,27 @@
     "assist": {
       "description": [
         {
-          "name": "(Test1)快速支援：火线调令",
-          "desc": "(Test1)当前操作中的角色被击飞时，点按 <IconMap:Icon_Switch> 发动：\n快速突进，对前方敌人发动爪击和斩击，造成<color=#A6C5FD>风属性伤害</color>；\n招式发动期间拥有无敌效果。",
+          "name": "快速支援：火线调令",
+          "desc": "当前操作中的角色被击飞时，点按 <IconMap:Icon_Switch> 发动：\n快速突进，对前方敌人发动爪击和斩击，造成<color=#A6C5FD>风属性伤害</color>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)招架支援：寻衅禁止",
-          "desc": "(Test1)前场角色即将被攻击时，点按 <IconMap:Icon_Switch> 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。",
+          "name": "招架支援：寻衅禁止",
+          "desc": "前场角色即将被攻击时，点按 <IconMap:Icon_Switch> 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)支援突击：以戈止戈",
-          "desc": "(Test1)发动<color=#FFFFFF>[招架支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n依次对敌人发动斩击，爪击和炮击，造成<color=#A6C5FD>风属性伤害</color>；\n招式发动期间拥有无敌效果。",
+          "name": "支援突击：以戈止戈",
+          "desc": "发动<color=#FFFFFF>[招架支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n依次对敌人发动斩击，爪击和炮击，造成<color=#A6C5FD>风属性伤害</color>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)登场技：清场时刻",
-          "desc": "(Test1)当赛维里安存在<Term:1000043></Term>效果且处于接战状态下点按 <IconMap:Icon_Switch> 从后场切换至前场发动：\n对前方敌人发动大力斩击，造成<color=#A6C5FD>风属性伤害</color>；\n招式发动时视为发动<color=#FFFFFF>[快速支援]</color>；\n招式发动期间拥有无敌效果。",
+          "name": "登场技：清场时刻",
+          "desc": "当赛维里安拥有<Term:1000043></Term>效果且处于接战状态下点按 <IconMap:Icon_Switch> 从后场切换至前场发动：\n对前方敌人发动大力斩击，造成<color=#A6C5FD>风属性伤害</color>；\n招式发动时视为发动<color=#FFFFFF>[快速支援]</color>；\n招式视为非重击；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)快速支援：火线调令",
+          "name": "快速支援：火线调令",
           "param": [
             {
               "name": "伤害倍率",
@@ -1467,7 +1473,7 @@
           "potential": []
         },
         {
-          "name": "(Test1)招架支援：寻衅禁止",
+          "name": "招架支援：寻衅禁止",
           "param": [
             {
               "name": "轻招架失衡倍率",
@@ -1551,7 +1557,7 @@
           "potential": []
         },
         {
-          "name": "(Test1)支援突击：以戈止戈",
+          "name": "支援突击：以戈止戈",
           "param": [
             {
               "name": "伤害倍率",
@@ -1609,7 +1615,7 @@
           "potential": []
         },
         {
-          "name": "(Test1)登场技：清场时刻",
+          "name": "登场技：清场时刻",
           "param": [
             {
               "name": "伤害倍率",
@@ -1717,7 +1723,33 @@
       }
     }
   },
-  "skill_priority": [],
+  "skill_priority": [
+    {
+      "id": 1631001,
+      "avatar_id": 1631,
+      "first_priority": [
+        5,
+        0
+      ],
+      "second_priority": [
+        3,
+        1,
+        6
+      ],
+      "third_priority": [
+        2
+      ],
+      "potential_levels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    }
+  ],
   "skill_list": {
     "1631001": {
       "name": "普通攻击：疾锋",
@@ -1770,9 +1802,9 @@
     },
     "1631008": {
       "name": "闪避：写意",
-      "desc": "<IconMap:Icon_Evade> ；<IconMap:Icon_Evade> （闪按后长按）",
-      "element_type": 204,
-      "hit_type": 101,
+      "desc": "<IconMap:Icon_Evade> ；<IconMap:Icon_Evade> （闪避后长按）",
+      "element_type": 0,
+      "hit_type": 0,
       "potential": []
     },
     "1631009": {
@@ -1824,12 +1856,12 @@
         "level": 1,
         "id": 1631501,
         "name": [
-          "(Test1)核心被动：风回无终",
-          "(Test1)额外能力：最优编配"
+          "核心被动：风回无终",
+          "额外能力：最优编配"
         ],
         "desc": [
-          "(Test1)赛维里安的暴击伤害提升<color=#2BAD00>30%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得一层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安存在<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，最多叠加2层，当赛维里安存在<color=#FFFFFF>[凭风]</color>效果时，切换至赛维里安或赛维里安通过快速支援入场时会自动发动<color=#FFFFFF>[入场技]</color>；\n当自身存在<color=#FFFFFF>[凭风]</color>效果时，赛维里安通过<color=#FFFFFF>[入场技]</color>，<color=#FFFFFF>[连携技]</color>，<color=#FFFFFF>[终结技]</color>入场时，将消耗所有<color=#FFFFFF>[凭风]</color>效果，消耗一层<color=#FFFFFF>[凭风]</color>效果时，使上述招式的最后一击的伤害倍率固定提升<color=#2BAD00>30%</color>，消耗两层则使伤害倍率固定提升<color=#2BAD00>150%</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
-          "(Test1)队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安进入战斗或换入前场时使自身攻击力提升100点，该效果随角色等级提升，每级增加10点，最多提升700点，持续持续30秒，重复触发时刷新持续时间。"
+          "赛维里安的暴击伤害提升<color=#2BAD00>30%</color>，造成的伤害提升<color=#2BAD00>12.5%</color>，若队伍中存在其他风属性角色则伤害额外提升<color=#2BAD00>15%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得两层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，当赛维里安拥有<color=#FFFFFF>[凭风]</color>效果且处于接战状态下点按 <IconMap:Icon_Switch> 从后场切换至前场发动<color=#FFFFFF>[登场技]</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
+          "队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安每拥有1%暴击率，会使自身的攻击力提升8.5点，最多计入100%暴击率。"
         ],
         "extra_property": {},
         "potential": []
@@ -1838,12 +1870,12 @@
         "level": 2,
         "id": 1631502,
         "name": [
-          "(Test1)核心被动：风回无终",
-          "(Test1)额外能力：最优编配"
+          "核心被动：风回无终",
+          "额外能力：最优编配"
         ],
         "desc": [
-          "(Test1)赛维里安的暴击伤害提升<color=#2BAD00>35%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得一层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安存在<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，最多叠加2层，当赛维里安存在<color=#FFFFFF>[凭风]</color>效果时，切换至赛维里安或赛维里安通过快速支援入场时会自动发动<color=#FFFFFF>[入场技]</color>；\n当自身存在<color=#FFFFFF>[凭风]</color>效果时，赛维里安通过<color=#FFFFFF>[入场技]</color>，<color=#FFFFFF>[连携技]</color>，<color=#FFFFFF>[终结技]</color>入场时，将消耗所有<color=#FFFFFF>[凭风]</color>效果，消耗一层<color=#FFFFFF>[凭风]</color>效果时，使上述招式的最后一击的伤害倍率固定提升<color=#2BAD00>35%</color>，消耗两层则使伤害倍率固定提升<color=#2BAD00>175%</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
-          "(Test1)队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安进入战斗或换入前场时使自身攻击力提升100点，该效果随角色等级提升，每级增加10点，最多提升700点，持续持续30秒，重复触发时刷新持续时间。"
+          "赛维里安的暴击伤害提升<color=#2BAD00>35%</color>，造成的伤害提升<color=#2BAD00>14.6%</color>，若队伍中存在其他风属性角色则伤害额外提升<color=#2BAD00>17.5%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得两层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，当赛维里安拥有<color=#FFFFFF>[凭风]</color>效果且处于接战状态下点按 <IconMap:Icon_Switch> 从后场切换至前场发动<color=#FFFFFF>[登场技]</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
+          "队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安每拥有1%暴击率，会使自身的攻击力提升8.5点，最多计入100%暴击率。"
         ],
         "extra_property": {},
         "potential": []
@@ -1852,12 +1884,12 @@
         "level": 3,
         "id": 1631503,
         "name": [
-          "(Test1)核心被动：风回无终",
-          "(Test1)额外能力：最优编配"
+          "核心被动：风回无终",
+          "额外能力：最优编配"
         ],
         "desc": [
-          "(Test1)赛维里安的暴击伤害提升<color=#2BAD00>40%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得一层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安存在<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，最多叠加2层，当赛维里安存在<color=#FFFFFF>[凭风]</color>效果时，切换至赛维里安或赛维里安通过快速支援入场时会自动发动<color=#FFFFFF>[入场技]</color>；\n当自身存在<color=#FFFFFF>[凭风]</color>效果时，赛维里安通过<color=#FFFFFF>[入场技]</color>，<color=#FFFFFF>[连携技]</color>，<color=#FFFFFF>[终结技]</color>入场时，将消耗所有<color=#FFFFFF>[凭风]</color>效果，消耗一层<color=#FFFFFF>[凭风]</color>效果时，使上述招式的最后一击的伤害倍率固定提升<color=#2BAD00>40%</color>，消耗两层则使伤害倍率固定提升<color=#2BAD00>200%</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
-          "(Test1)队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安进入战斗或换入前场时使自身攻击力提升100点，该效果随角色等级提升，每级增加10点，最多提升700点，持续持续30秒，重复触发时刷新持续时间。"
+          "赛维里安的暴击伤害提升<color=#2BAD00>40%</color>，造成的伤害提升<color=#2BAD00>16.7%</color>，若队伍中存在其他风属性角色则伤害额外提升<color=#2BAD00>20%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得两层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，当赛维里安拥有<color=#FFFFFF>[凭风]</color>效果且处于接战状态下点按 <IconMap:Icon_Switch> 从后场切换至前场发动<color=#FFFFFF>[登场技]</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
+          "队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安每拥有1%暴击率，会使自身的攻击力提升8.5点，最多计入100%暴击率。"
         ],
         "extra_property": {},
         "potential": []
@@ -1866,12 +1898,12 @@
         "level": 4,
         "id": 1631504,
         "name": [
-          "(Test1)核心被动：风回无终",
-          "(Test1)额外能力：最优编配"
+          "核心被动：风回无终",
+          "额外能力：最优编配"
         ],
         "desc": [
-          "(Test1)赛维里安的暴击伤害提升<color=#2BAD00>45%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得一层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安存在<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，最多叠加2层，当赛维里安存在<color=#FFFFFF>[凭风]</color>效果时，切换至赛维里安或赛维里安通过快速支援入场时会自动发动<color=#FFFFFF>[入场技]</color>；\n当自身存在<color=#FFFFFF>[凭风]</color>效果时，赛维里安通过<color=#FFFFFF>[入场技]</color>，<color=#FFFFFF>[连携技]</color>，<color=#FFFFFF>[终结技]</color>入场时，将消耗所有<color=#FFFFFF>[凭风]</color>效果，消耗一层<color=#FFFFFF>[凭风]</color>效果时，使上述招式的最后一击的伤害倍率固定提升<color=#2BAD00>45%</color>，消耗两层则使伤害倍率固定提升<color=#2BAD00>225%</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
-          "(Test1)队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安进入战斗或换入前场时使自身攻击力提升100点，该效果随角色等级提升，每级增加10点，最多提升700点，持续持续30秒，重复触发时刷新持续时间。"
+          "赛维里安的暴击伤害提升<color=#2BAD00>45%</color>，造成的伤害提升<color=#2BAD00>18.8%</color>，若队伍中存在其他风属性角色则伤害额外提升<color=#2BAD00>22.5%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得两层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，当赛维里安拥有<color=#FFFFFF>[凭风]</color>效果且处于接战状态下点按 <IconMap:Icon_Switch> 从后场切换至前场发动<color=#FFFFFF>[登场技]</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
+          "队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安每拥有1%暴击率，会使自身的攻击力提升8.5点，最多计入100%暴击率。"
         ],
         "extra_property": {},
         "potential": []
@@ -1880,12 +1912,12 @@
         "level": 5,
         "id": 1631505,
         "name": [
-          "(Test1)核心被动：风回无终",
-          "(Test1)额外能力：最优编配"
+          "核心被动：风回无终",
+          "额外能力：最优编配"
         ],
         "desc": [
-          "(Test1)赛维里安的暴击伤害提升<color=#2BAD00>50%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得一层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安存在<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，最多叠加2层，当赛维里安存在<color=#FFFFFF>[凭风]</color>效果时，切换至赛维里安或赛维里安通过快速支援入场时会自动发动<color=#FFFFFF>[入场技]</color>；\n当自身存在<color=#FFFFFF>[凭风]</color>效果时，赛维里安通过<color=#FFFFFF>[入场技]</color>，<color=#FFFFFF>[连携技]</color>，<color=#FFFFFF>[终结技]</color>入场时，将消耗所有<color=#FFFFFF>[凭风]</color>效果，消耗一层<color=#FFFFFF>[凭风]</color>效果时，使上述招式的最后一击的伤害倍率固定提升<color=#2BAD00>50%</color>，消耗两层则使伤害倍率固定提升<color=#2BAD00>250%</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
-          "(Test1)队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安进入战斗或换入前场时使自身攻击力提升100点，该效果随角色等级提升，每级增加10点，最多提升700点，持续持续30秒，重复触发时刷新持续时间。"
+          "赛维里安的暴击伤害提升<color=#2BAD00>50%</color>，造成的伤害提升<color=#2BAD00>20.8%</color>，若队伍中存在其他风属性角色则伤害额外提升<color=#2BAD00>25%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得两层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，当赛维里安拥有<color=#FFFFFF>[凭风]</color>效果且处于接战状态下点按 <IconMap:Icon_Switch> 从后场切换至前场发动<color=#FFFFFF>[登场技]</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
+          "队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安每拥有1%暴击率，会使自身的攻击力提升8.5点，最多计入100%暴击率。"
         ],
         "extra_property": {},
         "potential": []
@@ -1894,12 +1926,12 @@
         "level": 6,
         "id": 1631506,
         "name": [
-          "(Test1)核心被动：风回无终",
-          "(Test1)额外能力：最优编配"
+          "核心被动：风回无终",
+          "额外能力：最优编配"
         ],
         "desc": [
-          "(Test1)赛维里安的暴击伤害提升<color=#2BAD00>55%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得一层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安存在<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，最多叠加2层，当赛维里安存在<color=#FFFFFF>[凭风]</color>效果时，切换至赛维里安或赛维里安通过快速支援入场时会自动发动<color=#FFFFFF>[入场技]</color>；\n当自身存在<color=#FFFFFF>[凭风]</color>效果时，赛维里安通过<color=#FFFFFF>[入场技]</color>，<color=#FFFFFF>[连携技]</color>，<color=#FFFFFF>[终结技]</color>入场时，将消耗所有<color=#FFFFFF>[凭风]</color>效果，消耗一层<color=#FFFFFF>[凭风]</color>效果时，使上述招式的最后一击的伤害倍率固定提升<color=#2BAD00>55%</color>，消耗两层则使伤害倍率固定提升<color=#2BAD00>275%</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
-          "(Test1)队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安进入战斗或换入前场时使自身攻击力提升100点，该效果随角色等级提升，每级增加10点，最多提升700点，持续持续30秒，重复触发时刷新持续时间。"
+          "赛维里安的暴击伤害提升<color=#2BAD00>55%</color>，造成的伤害提升<color=#2BAD00>22.9%</color>，若队伍中存在其他风属性角色则伤害额外提升<color=#2BAD00>27.5%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得两层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，当赛维里安拥有<color=#FFFFFF>[凭风]</color>效果且处于接战状态下点按 <IconMap:Icon_Switch> 从后场切换至前场发动<color=#FFFFFF>[登场技]</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
+          "队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安每拥有1%暴击率，会使自身的攻击力提升8.5点，最多计入100%暴击率。"
         ],
         "extra_property": {},
         "potential": []
@@ -1908,12 +1940,12 @@
         "level": 7,
         "id": 1631507,
         "name": [
-          "(Test1)核心被动：风回无终",
-          "(Test1)额外能力：最优编配"
+          "核心被动：风回无终",
+          "额外能力：最优编配"
         ],
         "desc": [
-          "(Test1)赛维里安的暴击伤害提升<color=#2BAD00>60%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得一层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安存在<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，最多叠加2层，当赛维里安存在<color=#FFFFFF>[凭风]</color>效果时，切换至赛维里安或赛维里安通过快速支援入场时会自动发动<color=#FFFFFF>[入场技]</color>；\n当自身存在<color=#FFFFFF>[凭风]</color>效果时，赛维里安通过<color=#FFFFFF>[入场技]</color>，<color=#FFFFFF>[连携技]</color>，<color=#FFFFFF>[终结技]</color>入场时，将消耗所有<color=#FFFFFF>[凭风]</color>效果，消耗一层<color=#FFFFFF>[凭风]</color>效果时，使上述招式的最后一击的伤害倍率固定提升<color=#2BAD00>60%</color>，消耗两层则使伤害倍率固定提升<color=#2BAD00>300%</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
-          "(Test1)队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安进入战斗或换入前场时使自身攻击力提升100点，该效果随角色等级提升，每级增加10点，最多提升700点，持续持续30秒，重复触发时刷新持续时间。"
+          "赛维里安的暴击伤害提升<color=#2BAD00>60%</color>，造成的伤害提升<color=#2BAD00>25%</color>，若队伍中存在其他风属性角色则伤害额外提升<color=#2BAD00>30%</color>；\n赛维里安在即将受到敌人攻击的瞬间发动<color=#FFFFFF>[普通攻击：疾锋]</color>时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动<color=#FFFFFF>[普通攻击：烈旋]</color>，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与<color=#FFFFFF>[普通攻击：烈旋]</color>一致；\n赛维里安进入战场时可获得两层<Term:1000042></Term>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有<color=#FFFFFF>[烁影]</color>且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层<color=#FFFFFF>[烁影]</color>自动闪避本次攻击并发动<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安通过发动<color=#FFFFFF>[普通攻击：疾锋]</color>成功闪避敌人攻击，触发<color=#FFFFFF>[烁影]</color>自动闪避敌人攻击和直接闪避敌人攻击都视为<color=#FFFFFF>[极限闪避]</color>；\n<color=#FFFFFF>[烁影]</color>最多获取两层，若满层时再获取<color=#FFFFFF>[烁影]</color>，将获得一层<Term:1000043></Term>效果且下次的<color=#FFFFFF>[普通攻击：疾锋]</color>会被提升为<color=#FFFFFF>[普通攻击：烈旋]</color>；\n赛维里安每次极限闪避都能获得一层<color=#FFFFFF>[凭风]</color>效果，当赛维里安拥有<color=#FFFFFF>[凭风]</color>效果且处于接战状态下点按 <IconMap:Icon_Switch> 从后场切换至前场发动<color=#FFFFFF>[登场技]</color>；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得<Term:1000041></Term>，<color=#FFFFFF>[流息]</color>上限为150点；\n当<color=#FFFFFF>[流息]</color>达到100点时，长按 <IconMap:Icon_Normal> 可以消耗100点<color=#FFFFFF>[流息]</color>发动<color=#FFFFFF>[普通攻击：苍风影猎]</color>。",
+          "队伍中存在<color=#FFFFFF>[支援]</color>、<color=#FFFFFF>[击破]</color>或与自身阵营相同的角色时触发：\n赛维里安每拥有1%暴击率，会使自身的攻击力提升8.5点，最多计入100%暴击率。"
         ],
         "extra_property": {},
         "potential": []
@@ -1933,65 +1965,126 @@
       },
       "4": {
         "10": 60000,
-        "110010": 2,
-        "110516": 9
+        "110516": 9,
+        "110010": 2
       },
       "5": {
         "10": 100000,
-        "110010": 3,
-        "110516": 15
+        "110516": 15,
+        "110010": 3
       },
       "6": {
         "10": 200000,
-        "110010": 4,
-        "110516": 30
+        "110516": 30,
+        "110010": 4
       }
     }
   },
   "talent": {
     "1": {
       "level": 1,
-      "name": "(Test1)...",
-      "desc": "(Test1)进入战场时可获得100点<color=#FFFFFF>[流息]</color>，在勘域模式中此效果180秒内最多触发一次。\n赛维里安的普通攻击暴击伤害提升60%。",
-      "desc2": "(Test1)..."
+      "name": "双份浓缩",
+      "desc": "赛维里安释放<color=#FFFFFF>[连携技]</color>累积的<color=#FFFFFF>[流息]</color>值提升至50点；\n赛维里安通过<color=#FFFFFF>[登场技：清场时刻]</color>入场时，会将招式替换为<color=#FFFFFF>[连携技]</color>，该招式入场类型不会被改变，且视为非重击，此效果60秒最多生效一次；\n赛维里安每次释放<color=#FFFFFF>[普通攻击：苍风影猎]</color>会获得1层<color=#FFFFFF>[凭风]</color>效果；\n赛维里安的攻击命中目标时无视目标15%的风属性抗性。",
+      "desc2": "..."
     },
     "2": {
       "level": 2,
-      "name": "(Test1)...",
-      "desc": "(Test1)赛维里安通过<color=#FFFFFF>[登场技：清场时刻]</color>入场时，会将招式替换为<color=#FFFFFF>[连携技]</color>，该招式入场类型不会被改变，此效果20秒最多生效一次。\n赛维里安每次释放<color=#FFFFFF>[普通攻击：苍风影猎]</color>会获得2层<color=#FFFFFF>[凭风]</color>效果。\n赛维里安触发<color=#FFFFFF>[核心被动：最优编配]</color>时，额外提升自身15%攻击力。",
-      "desc2": "(Test1)..."
+      "name": "理性的缰绳",
+      "desc": "赛维里安进入战场时回复150点<color=#FFFFFF>[流息]</color>，在勘域模式中此效果180秒内最多触发一次；\n赛维里安触发<color=#FFFFFF>[极限闪避]</color>时或释放<color=#FFFFFF>[普通攻击：苍风影猎]</color>时，使自身穿透率提升20%，持续25秒。",
+      "desc2": "..."
     },
     "3": {
       "level": 3,
-      "name": "(Test1)...",
+      "name": "最后一盏灯",
       "desc": "<color=#FFFFFF>[普通攻击]</color>、<color=#FFFFFF>[闪避]</color>、<color=#FFFFFF>[支援技]</color>、<color=#FFFFFF>[特殊技]</color>、<color=#FFFFFF>[连携技]</color> 技能等级+2",
-      "desc2": "(Test1)..."
+      "desc2": "..."
     },
     "4": {
       "level": 4,
-      "name": "(Test1)...",
-      "desc": "(Test1)赛维里安触发<color=#FFFFFF>[极限闪避]</color>时或释放<color=#FFFFFF>[普通攻击：苍风影猎]</color>时，使自身攻击无视敌人16%防御力，持续15秒。",
-      "desc2": "(Test1)..."
+      "name": "光与影的界限",
+      "desc": "赛维里安进入战斗或换入前场时使自身攻击力提升10%，持续30秒，重复触发时刷新持续时间；\n赛维里安释放<color=#FFFFFF>[普通攻击：烈旋]</color>或释放<color=#FFFFFF>[普通攻击：苍风影猎]</color>时，提升自身10%喧响值获取效率，持续15秒。",
+      "desc2": "..."
     },
     "5": {
       "level": 5,
-      "name": "(Test1)...",
+      "name": "非零度的心",
       "desc": "<color=#FFFFFF>[普通攻击]</color>、<color=#FFFFFF>[闪避]</color>、<color=#FFFFFF>[支援技]</color>、<color=#FFFFFF>[特殊技]</color>、<color=#FFFFFF>[连携技]</color> 技能等级+2",
-      "desc2": "(Test1)..."
+      "desc2": "..."
     },
     "6": {
       "level": 6,
-      "name": "(Test1)...",
-      "desc": "(Test1)赛维里安的<color=#FFFFFF>[流息]</color>上限提升至180。\n<color=#FFFFFF>[普通攻击：苍风影猎]</color>最后一击额外伤害倍率固定提升900%。\n<color=#FFFFFF>[普通攻击：苍风影猎]</color>最后一击释放时获得<color=#FFFFFF>[风起]</color>效果：每秒积累10点<color=#FFFFFF>[流息]</color>，持续3秒，重复触发时刷新持续时间。",
-      "desc2": "(Test1)..."
+      "name": "在一颗小星星下",
+      "desc": "赛维里安的<color=#FFFFFF>[流息]</color>上限提升至180，进入战场时回复的流息提升至180点；\n<color=#FFFFFF>[普通攻击：苍风影猎]</color>最后一击额外伤害倍率固定提升350%；\n<color=#FFFFFF>[普通攻击：苍风影猎]</color>最后一击释放时获得<color=#FFFFFF>[风起]</color>效果：每秒积累5点<color=#FFFFFF>[流息]</color>，持续5秒，重复触发时刷新持续时间。",
+      "desc2": "..."
     }
   },
-  "fairy_recommend": {},
+  "fairy_recommend": {
+    "slot4": 33300,
+    "slot2": 31100,
+    "slot_sub": 32700,
+    "part_sub_list": [
+      20103,
+      21103,
+      12102
+    ],
+    "alt_build": [
+      {
+        "suit_list": [
+          33300,
+          31100
+        ],
+        "part_sub_list": [
+          20103,
+          21103
+        ]
+      },
+      {
+        "suit_list": [
+          31000,
+          31100
+        ],
+        "part_sub_list": [
+          23103,
+          32303
+        ]
+      },
+      {
+        "suit_list": [],
+        "part_sub_list": [
+          12102
+        ]
+      }
+    ],
+    "part4": {
+      "prop": 20103,
+      "name": "暴击率",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCrit.png"
+    },
+    "part5": {
+      "prop": 21103,
+      "name": "暴击伤害",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCritDam.png"
+    },
+    "part6": {
+      "prop": 23103,
+      "name": "穿透率",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconPenRatio.png"
+    },
+    "part_sub": {
+      "prop": 12102,
+      "name": "攻击力",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png"
+    }
+  },
   "strategy": [
     "03",
-    "(Test1)<IconMap:Icon_GeneralBuff_Wind>风属性，<IconMap:Icon_AvatarClass_Attack>强攻输出",
-    "(Test1)测试占位文本",
-    "(Test1)测试占位文本"
+    "<IconMap:Icon_GeneralBuff_Wind>风属性，<IconMap:Icon_AvatarClass_Attack>强攻站场输出",
+    "发动[强化普攻]造成高额伤害",
+    "可自动闪避敌人攻击并反击"
   ],
   "potential": [],
   "potential_detail": {}

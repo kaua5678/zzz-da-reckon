@@ -689,8 +689,15 @@ function listTrackedFiles(root) {
 
 /** 名词表三态对账文件（逐条判定 + 证据；由人工/子代理维护，本判据校验其自洽性） */
 export const NOUN_TRIAGE_FILE = 'scripts/lib/noun-triage.json'
-/** 名词表源（nanoka 原文；`noun*.json` 的当前唯一实文件） */
-export const NOUN_SOURCE_FILE = 'data/raw/nanoka_missing/noun_3.2.3.json'
+/**
+ * 名词表源（nanoka 原文）。
+ *
+ * ⚠ **换源纪律**：这里是「当前版本」的唯一指针，不是历史清单——`record-agent.mjs` 的
+ * `loadPacket` 取 `noun_<版本>.json` 里**排序最高**的那份做术语解析，本常量必须与它一致，
+ * 否则「判据审的表」和「录入用的表」会是两份不同的东西（2026-10-17 3.2.3 → 3.3.12 换源：
+ * 68 条 → 141 条，新增 [流息]/[凭风]/[灼蚀]/[升变]/[异放] 等 73 条）。
+ */
+export const NOUN_SOURCE_FILE = 'data/raw/nanoka_missing/noun_3.3.12.json'
 /** 三态取值（改这里 = 改判据语义，diff 里留痕） */
 export const NOUN_STATES = ['modeled', 'deferred', 'unhandled']
 
@@ -702,7 +709,7 @@ export const NOUN_STATES = ['modeled', 'deferred', 'unhandled']
  * 源文件是 nanoka 原文转录的**外部事实面**，不该由本仓库的对账动作反向改写——
  * 键数一旦减少就是「源被削了」，必须红。要合法减少先改这个常量并写清为什么。
  */
-export const NOUN_SOURCE_MIN_KEYS = 68
+export const NOUN_SOURCE_MIN_KEYS = 141
 
 /**
  * 校验名词表三态对账。返回 { ok, source, triage, missing, extra, badState, noEvidence,

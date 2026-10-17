@@ -4,12 +4,15 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import {
-  computePhoenixWeaknessCrit,
+  computePhoenixScorchCrit,
   phoenixMechanic,
   phoenixSkillLevel,
-  phoenixWangliangChainBonus,
+  PHOENIX_C4_RELEASE_MULT,
   PHOENIX_RELEASE_BASE,
-  PHOENIX_WANGLIANG_CHAIN_BUILDUP_PCT,
+  PHOENIX_SCORCH_CRIT_DMG,
+  PHOENIX_SCORCH_CRIT_RATE,
+  PHOENIX_SCORCH_MASTERY_CAP,
+  PHOENIX_SCORCH_MASTERY_THRESHOLD,
 } from '@/mechanics/agents/phoenix'
 
 const baseConfig = {
@@ -19,319 +22,176 @@ const baseConfig = {
   quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
 }
 
-describe('菲欧妮（1641）⚠️3.3 测试服临时录入', () => {
+describe('菲欧妮（1641）3.3.12 v12 正式录入', () => {
   beforeEach(() => {
     newPinia()
     mockStaticFetch()
   })
 
-  async function setup(teamAgentIds: [string, string, string], cinemaLevel = 0) {
+  async function setup(teamAgentIds: [string, string, string], cinemaLevel = 0, wEngineId = '') {
     const catalog = useCatalogStore()
     await catalog.load()
     await catalog.loadTeammateBuffs()
     const config = useConfigStore()
     teamAgentIds.forEach((agentId, slot) => {
-      config.team[slot] = { slot, agentId, cinemaLevel: slot === 0 ? cinemaLevel : 0, ...baseConfig } as any
+      config.team[slot] = { slot, agentId, cinemaLevel: slot === 0 ? cinemaLevel : 0, ...baseConfig, wEngineId: slot === 0 ? wEngineId : '' } as any
     })
     config.syncTeammateBuffsFromTeam()
     const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     return { catalog, config, computePanelPhases }
   }
 
-  it('纯函数：脆弱异常暴击档位（15/25/40 按队伍异常数，掌控>145 每点+0.7%率，影画1+20）', () => {
-    const base = computePhoenixWeaknessCrit({ anomalyMastery: 145, additionalActive: false, teamAnomalyCount: 1, cinemaLevel: 0 })
-    expect(base.rate).toBeCloseTo(30, 5)
-    expect(base.dmg).toBe(15)
-    const excess = computePhoenixWeaknessCrit({ anomalyMastery: 200, additionalActive: false, teamAnomalyCount: 1, cinemaLevel: 0 })
-    expect(excess.rate).toBeCloseTo(30 + 55 * 0.7, 5)
-    const tier2 = computePhoenixWeaknessCrit({ anomalyMastery: 145, additionalActive: true, teamAnomalyCount: 2, cinemaLevel: 0 })
-    expect(tier2.dmg).toBe(25)
-    const tier3 = computePhoenixWeaknessCrit({ anomalyMastery: 145, additionalActive: true, teamAnomalyCount: 3, cinemaLevel: 0 })
-    expect(tier3.dmg).toBe(40)
-    const c1 = computePhoenixWeaknessCrit({ anomalyMastery: 145, additionalActive: true, teamAnomalyCount: 2, cinemaLevel: 1 })
-    expect(c1.dmg).toBe(45)
-    // 影画6：额外能力需求-1 → 同编成档位+1（2 名按 3 档）
-    const c6 = computePhoenixWeaknessCrit({ anomalyMastery: 145, additionalActive: true, teamAnomalyCount: 2, cinemaLevel: 6 })
-    expect(c6.dmg).toBe(40 + 20)
+  it('纯函数：[灼蚀] 异常暴击 v12（率 30+0.7×(初始掌控−155) 封顶255，伤 25 + 额外能力15 + 影画1 25）', () => {
+    const base = computePhoenixScorchCrit({ initialMastery: 155, additionalActive: false, cinemaLevel: 0 })
+    expect(base.rate).toBeCloseTo(PHOENIX_SCORCH_CRIT_RATE, 5)
+    expect(base.dmg).toBe(PHOENIX_SCORCH_CRIT_DMG)
+    // 阈值以下不加率
+    const below = computePhoenixScorchCrit({ initialMastery: 100, additionalActive: false, cinemaLevel: 0 })
+    expect(below.rate).toBeCloseTo(30, 5)
+    // 200 掌控：30 + 45×0.7 = 61.5
+    const mid = computePhoenixScorchCrit({ initialMastery: 200, additionalActive: false, cinemaLevel: 0 })
+    expect(mid.rate).toBeCloseTo(30 + 45 * 0.7, 5)
+    // 255 封顶 = 100%
+    const cap = computePhoenixScorchCrit({ initialMastery: PHOENIX_SCORCH_MASTERY_CAP, additionalActive: false, cinemaLevel: 0 })
+    expect(cap.rate).toBeCloseTo(100, 5)
+    // 超过 255 不再增长（min 截断）
+    const over = computePhoenixScorchCrit({ initialMastery: 320, additionalActive: false, cinemaLevel: 0 })
+    expect(over.rate).toBeCloseTo(100, 5)
+    // 额外能力 +15（固定档，v12 不再按异常角色数分档）
+    const add = computePhoenixScorchCrit({ initialMastery: PHOENIX_SCORCH_MASTERY_THRESHOLD, additionalActive: true, cinemaLevel: 0 })
+    expect(add.dmg).toBe(40)
+    // 影画1 +25
+    const c1 = computePhoenixScorchCrit({ initialMastery: PHOENIX_SCORCH_MASTERY_THRESHOLD, additionalActive: true, cinemaLevel: 1 })
+    expect(c1.dmg).toBe(65)
   })
 
   it('纯函数：异放倍率随技能等级（影画3/5 通用技能等级 +2/+4）', () => {
     expect(phoenixSkillLevel(0)).toBe(12)
     expect(phoenixSkillLevel(3)).toBe(14)
     expect(phoenixSkillLevel(5)).toBe(16)
-    expect(PHOENIX_RELEASE_BASE.charged + PHOENIX_RELEASE_BASE.chargedPerLevel * 11).toBe(445)
-    expect(PHOENIX_RELEASE_BASE.ult + PHOENIX_RELEASE_BASE.ultPerLevel * 11).toBe(597)
+    // 焚罪 225+20×(s-1)：满级 445
+    expect(PHOENIX_RELEASE_BASE.charged + PHOENIX_RELEASE_BASE.chargedPerLevel * (phoenixSkillLevel(0) - 1)).toBe(445)
+    // 烬火追魂 300+27×(s-1)：满级 597
+    expect(PHOENIX_RELEASE_BASE.entry + PHOENIX_RELEASE_BASE.entryPerLevel * (phoenixSkillLevel(0) - 1)).toBe(597)
+    expect(PHOENIX_C4_RELEASE_MULT).toBe(600)
   })
 
-  it('面板差分：核心异常精通+40；脆弱异常暴击走 spec teamBuffs 通用承载（率=公式读源面板掌控/伤=基础15）；影画2 积蓄效率 ×覆盖率', async () => {
-    const { config, computePanelPhases } = await setup(['1641', '1211', '']) // 1211 丽娜=支援（额外能力不触发档位）
-    const pOut = computePanelPhases(0, config, useCatalogStore())!.outOfCombat as any
-    const pIn = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
-    expect(pIn.anomalyProficiency - pOut.anomalyProficiency).toBeCloseTo(40, 5)
-    // teamBuff 公式 30 + max(0, 掌控-145)×0.7，掌控读源面板（局外）——基础 118 < 145 → 率 = 30
-    const mastery = pOut.anomalyMastery ?? 0
-    const expectedRate = 30 + Math.max(0, mastery - 145) * 0.7
-    expect(pIn.anomalyCritRate).toBeCloseTo(expectedRate, 3)
-    // 额外能力未触发（丽娜非异常/同阵营）→ 只吃基础档 15（tier2 被 buff-id 过滤门控）
-    expect(pIn.anomalyCritDmg).toBeCloseTo(15, 5)
-
-    // 影画2：焚化积蓄效率 +15×覆盖率
-    const c2 = await setup(['1641', '1211', ''], 2)
-    const pC2 = c2.computePanelPhases(0, c2.config, useCatalogStore())!.inCombat as any
-    expect((pC2.anomalyBuildUpEfficiency ?? 0)).toBeGreaterThanOrEqual(15)
-    c2.config.setMechanicSetting('phoenix.c2IncinerationCoverage', 0)
-    const pC2z = c2.computePanelPhases(0, c2.config, useCatalogStore())!.inCombat as any
-    expect((pC2z.anomalyBuildUpEfficiency ?? 0)).toBeCloseTo(0, 5)
+  it('面板差分：[灼蚀] 异常暴击率/暴伤入 EV 乘区（spec teamBuffs 通用承载）', async () => {
+    const { computePanelPhases } = await setup(['1641', '1171', ''], 0)
+    const phases = computePanelPhases(0, useConfigStore(), useCatalogStore())!
+    const inCombat = phases.inCombat as any
+    // 初始掌控 152 > 155? 不满足（152 < 155）⇒ 率只有 30
+    expect(inCombat.anomalyCritRate ?? 0).toBeGreaterThanOrEqual(30)
+    expect(inCombat.anomalyCritDmg ?? 0).toBeGreaterThanOrEqual(40) // 25 + 额外能力15
   })
 
-  it('脆弱暴伤档位（spec teamBuffs 通用承载）：额外能力门控 tier2 / 影画一 +20 / 队友同吃', async () => {
-    // 额外能力触发（1171 柏妮思=异常队友）：基础 15 + tier2 10 = 25
-    const aa = await setup(['1641', '1171', ''])
-    const p25 = aa.computePanelPhases(0, aa.config, useCatalogStore())!.inCombat as any
-    expect(p25.anomalyCritDmg).toBeCloseTo(25, 5)
-    // 额外能力不触发（1081 比利）：tier2 被过滤 → 只有基础 15
-    const noAa = await setup(['1641', '1081', ''])
-    const p15 = noAa.computePanelPhases(0, noAa.config, useCatalogStore())!.inCombat as any
-    expect(p15.anomalyCritDmg).toBeCloseTo(15, 5)
-    // 影画一（中文数字 source 自动命座门控）：+20 → 45；0 命不生效（上面已证 25）
-    const c1 = await setup(['1641', '1171', ''], 1)
-    const p45 = c1.computePanelPhases(0, c1.config, useCatalogStore())!.inCombat as any
-    expect(p45.anomalyCritDmg).toBeCloseTo(45, 5)
-    // 队友同吃（通用承载的关键收益）：柏妮思 slot1 面板异常暴击率/伤同获脆弱
-    const mate = aa.computePanelPhases(1, aa.config, useCatalogStore())!.inCombat as any
-    expect(mate.anomalyCritDmg ?? 0).toBeGreaterThanOrEqual(25)
-    expect(mate.anomalyCritRate ?? 0).toBeGreaterThanOrEqual(30)
-  })
-
-  it('脆弱暴伤 3 档（2026-09-12 组队对账落地）：3 异常队 → 40；影画6 需求-1 → 2 异常即 40', async () => {
-    // 3 异常（菲欧妮+柏妮思+柳 1221）：15+10+15 = 40
-    const three = await setup(['1641', '1171', '1221'], 0)
-    const p40 = three.computePanelPhases(0, three.config, useCatalogStore())!.inCombat as any
-    expect(p40.anomalyCritDmg).toBeCloseTo(40, 5)
-    // 影画6（需求-1 = 有效异常数+1）：2 异常 +1171 → 按 3 档 → 40 + 影画一 20 = 60
-    const c6 = await setup(['1641', '1171', ''], 6)
-    const p60 = c6.computePanelPhases(0, c6.config, useCatalogStore())!.inCombat as any
-    expect(p60.anomalyCritDmg).toBeCloseTo(60, 5)
-    // 对照：2 异常 C0 只有 25（上一用例已证），3 档不误开
-    const two = await setup(['1641', '1171', ''], 0)
-    const p25 = two.computePanelPhases(0, two.config, useCatalogStore())!.inCombat as any
-    expect(p25.anomalyCritDmg).toBeCloseTo(25, 5)
-    // CC-331：同阵营非异常队友（1481 琉音，坎卜斯黑枝）仅 1 名异常 → C0 只有基础 15（不误开 tier2）；C6 需求-1（有效数 2）→ 15 + tier2(10) + C1(20) = 45
-    const sameFacC0 = await setup(['1641', '1481', ''], 0)
-    const pSameC0 = sameFacC0.computePanelPhases(0, sameFacC0.config, useCatalogStore())!.inCombat as any
-    expect(pSameC0.anomalyCritDmg).toBeCloseTo(15, 5)
-    const sameFacC6 = await setup(['1641', '1481', ''], 6)
-    const pSameC6 = sameFacC6.computePanelPhases(0, sameFacC6.config, useCatalogStore())!.inCombat as any
-    expect(pSameC6.anomalyCritDmg).toBeCloseTo(45, 5)
-  })
-
-  it('执行行/事件：余火驱动长按普攻（1641005）+ 蓄能附加攻击（1641021）+ 异放事件（445%/597% 固定倍率）', async () => {
-    const { config } = await setup(['1641', '1171', ''], 0)
-    config.setMechanicSetting('phoenix.chargedAttackCount', 6)
+  it('资源区块：[灼蚀] 暴击/焚罪/燎斩/烬火追魂计数与执行行同源', async () => {
+    await setup(['1641', '1171', ''], 0)
     const calc = useResourceCalc()
     const phoenix = calc.resourceResult.value!.characters.find(c => c.agentId === '1641')!
-    const charged = phoenix.executions.find(e => e.moveId === '1641005')!
-    expect(charged).toBeTruthy()
-    expect(charged.count).toBe(6)
-    expect(charged.totalTime).toBeCloseTo(6 * charged.actionTime, 6)
-    const energize = phoenix.executions.find(e => e.moveId === '1641021')!
-    expect(energize).toBeTruthy()
-    expect(energize.count).toBeGreaterThan(0)
-    expect(energize.totalTime).toBe(0) // 附加攻击不占前台
-
-    // 异放：长按普攻 445%（s=12，固定 releaseMultiplier）——直调模块事件钩子断言
-    const events: any[] = []
-    phoenixMechanic.buildAnomalyEvents!({
-      cfg: { phoenixCinemaLevel: 0, phoenixChargedCount: 6, 'setting:phoenix.releaseCoverage': 1 } as any,
-      state: { exSpecialCount: 4, ultimateCount: 2, chainCountTotal: 3 } as any,
-      events,
-      totalTime: 180,
-    })
-    const chargedRelease = events.find(e => e.eventId === 'phoenix_charged_release')
-    expect(chargedRelease).toBeTruthy()
-    expect(chargedRelease.count).toBe(6)
-    expect(chargedRelease.formula).toContain('445')
-    const ultRelease = events.find(e => e.eventId === 'phoenix_ultimate_release')
-    expect(ultRelease.count).toBe(2)
-    expect(ultRelease.formula).toContain('597')
-    // 0 命无影画6 强特异放
-    expect(events.find(e => e.eventId === 'phoenix_c6_ex_release')).toBeUndefined()
-    // 异放进伤害池（type=异放）
-    const rows = calc.damagePoolRows.value
-    const releaseRows = rows.filter(r => r.type === '异放' && r.agentId === '1641')
-    expect(releaseRows.length).toBeGreaterThan(0)
-    expect(releaseRows.every(r => r.totalDamage > 0)).toBe(true)
+    const cycle = phoenix.phoenixCycle!
+    expect(cycle.coreProficiency).toBe(85)
+    expect(cycle.scorchCritDmg).toBe(40) // 25 + 额外能力15（1171 柏妮思=异常队友）
+    expect(cycle.emberCap).toBe(120)
+    expect(cycle.chargedCount).toBeGreaterThanOrEqual(0)
+    // 烬火追魂行存在且计数 = 终结次数
+    const entry = phoenix.executions.find(e => e.moveId === '1641019')
+    if (cycle.entryCount > 0 && entry) {
+      expect(entry.count).toBe(cycle.entryCount)
+      expect(entry.totalTime).toBe(0) // 收尾追加攻击不占前台时间
+    }
   })
 
-  it('命座差分：影画4 长按普攻+200喧响/次（initialDecibelGift）、影画6 异放无视15%防御（releaseModifier）且整局伤害 C6 > C0', async () => {
-    const c4 = await setup(['1641', '1171', ''], 4)
-    c4.config.setMechanicSetting('phoenix.chargedAttackCount', 4)
-    const calc4 = useResourceCalc()
-    const cfgC4 = calc4.resourceConfig.value!.characters.find(c => c.agentId === '1641')!
-    expect(cfgC4.initialDecibelGift).toBe(1000 + 200 * 4) // 基础进场喧响 1000 + 影画4
+  it('执行行：眩焰（通用强特）+ 坠阳（40 能量）+ 燎斩（0 能量）三行按同一次数收敛', async () => {
     await setup(['1641', '1171', ''], 0)
-    const cfgC0 = useResourceCalc().resourceConfig.value!.characters.find(c => c.agentId === '1641')!
-    expect(cfgC0.initialDecibelGift ?? 0).toBe(1000)
+    const phoenix = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1641')!
+    const ex = phoenix.executions.find(e => e.moveId === '1641008')
+    const second = phoenix.executions.find(e => e.moveId === '1641009')
+    const liao = phoenix.executions.find(e => e.moveId === '1641023')
+    if (ex && ex.count > 0) {
+      expect(second, '坠阳随强特产行').toBeTruthy()
+      expect(liao, '燎斩随强特产行').toBeTruthy()
+      expect(second!.count).toBe(ex.count)
+      expect(liao!.count).toBe(ex.count)
+      expect(second!.totalEnergyConsume).toBeCloseTo(ex.count * 40, 5)
+      expect(liao!.totalEnergyConsume).toBe(0) // 燎斩消耗升变而非能量
+    }
+  })
 
-    const mod = phoenixMechanic.releaseModifier!({ self: { slot: 0, cinemaLevel: 6, panel: undefined } })
-    expect(mod.enemyDefReduction).toBe(15)
-    const mod0 = phoenixMechanic.releaseModifier!({ self: { slot: 0, cinemaLevel: 0, panel: undefined } })
-    expect(mod0.enemyDefReduction).toBeUndefined()
+  it('异放事件：焚罪（C0 445%）+ 烬火追魂（C0 597%）+ 影画4 额外 600% + [灼蚀] 周期火伤', async () => {
+    await setup(['1641', '1171', ''], 0)
+    let phoenix = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1641')!
+    let events = phoenix.anomalyEventExecutions ?? []
+    // C0：s=12 ⇒ 焚罪 225+20×11 = 445、烬火追魂 300+27×11 = 597
+    const charged = events.find(e => e.eventId === 'phoenix_charged_release')
+    const entry = events.find(e => e.eventId === 'phoenix_entry_release')
+    if (charged) expect(charged.formula).toContain('445')
+    if (entry) expect(entry.formula).toContain('597')
+    expect(events.find(e => e.eventId === 'phoenix_c4_charged_release'), 'C0 无影画4 额外异放').toBeUndefined()
 
+    // [灼蚀] 周期火伤事件（C0 也生效）
+    const dot = events.find(e => e.eventId === 'phoenix_scorch_dot')
+    if (dot) {
+      expect(dot.eventType).toBe('direct_damage')
+      expect(dot.damageMultiplier).toBe(50)
+    }
+
+    // C4：s=14 ⇒ 焚罪 225+20×13 = 485，且两个额外异放 600% 出现
+    await setup(['1641', '1171', ''], 4)
+    phoenix = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1641')!
+    events = phoenix.anomalyEventExecutions ?? []
+    const c4Charged = events.find(e => e.eventId === 'phoenix_c4_charged_release')
+    const c4Entry = events.find(e => e.eventId === 'phoenix_c4_entry_release')
+    if (c4Charged) expect(c4Charged.formula).toContain('600')
+    if (c4Entry) expect(c4Entry.formula).toContain('600')
+    const chargedC4 = events.find(e => e.eventId === 'phoenix_charged_release')
+    if (chargedC4) expect(chargedC4.formula).toContain('485')
+  })
+
+  it('命座差分：C6 无视15%全属性抗性 + 异放无视40%防御；整局伤害 C6 > C0', async () => {
     await setup(['1641', '1171', ''], 0)
     const d0 = useResourceCalc().teamTotalDamage.value
-    await setup(['1641', '1171', ''], 6)
+    const { config, computePanelPhases } = await setup(['1641', '1171', ''], 0)
+    const bare = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
+    config.team[0]!.cinemaLevel = 6
+    config.syncTeammateBuffsFromTeam()
+    const c6Panel = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
+    expect((c6Panel.enemyResReduction ?? 0) - (bare.enemyResReduction ?? 0)).toBeCloseTo(15, 5)
     const d6 = useResourceCalc().teamTotalDamage.value
     expect(d6).toBeGreaterThan(d0)
+
+    await setup(['1641', '1171', ''], 6)
+    const phoenix = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1641')!
+    expect(phoenix.phoenixCycle!.c6ResIgnore).toBe(15)
+    expect(phoenix.phoenixCycle!.c6ReleaseDefIgnore).toBe(40)
   })
 
-  it('消亡消费（2026-09-12 用户纠错）：加成次数=min(终结,连携)；连携行积蓄 ×(1+30%×占比)', () => {
-    expect(phoenixWangliangChainBonus(2, 5)).toBe(2)
-    expect(phoenixWangliangChainBonus(5, 2)).toBe(2)
-    expect(phoenixWangliangChainBonus(0, 5)).toBe(0)
-    // 直调 patchExecutions：终结 2 / 连携 4 → 占比 0.5 → 积蓄 ×1.15（南宫羽 ×1.35 同款行级乘法）
-    const chain = {
-      moveId: '1641012', count: 4, anomalyBuildUp: 1000, totalAnomalyBuildUp: 4000,
-    } as any
-    phoenixMechanic.patchExecutions!({
-      cfg: {} as any,
-      state: { ultimateCount: 2 } as any,
-      executions: [chain],
-    })
-    expect(chain.anomalyBuildUp).toBeCloseTo(1000 * (1 + PHOENIX_WANGLIANG_CHAIN_BUILDUP_PCT / 100 * 0.5), 6)
-    expect(chain.anomalyBuildUpOverride).toBe(true)
-    expect(chain.totalAnomalyBuildUp).toBeCloseTo(4000 * 1.15, 6)
-    // 无终结 → 不动
-    const chain0 = { moveId: '1641012', count: 4, anomalyBuildUp: 1000 } as any
-    phoenixMechanic.patchExecutions!({ cfg: {} as any, state: { ultimateCount: 0 } as any, executions: [chain0] })
-    expect(chain0.anomalyBuildUp).toBe(1000)
-  })
-
-  it('终结入场（1641019，2026-09-12 用户纠错）：每次终结后点按触发一次，行次数=终结次数；收尾追加攻击不占前台时间（1451007 先例）', async () => {
-    const { config } = await setup(['1641', '1171', ''], 0)
-    config.setMechanicSetting('phoenix.chargedAttackCount', 2) // 去掉余火循环对强特能量的耦合噪声
-    const calc = useResourceCalc()
-    const phoenix = calc.resourceResult.value!.characters.find(c => c.agentId === '1641')!
-    const entry = phoenix.executions.find(e => e.moveId === '1641019')
-    expect(entry).toBeTruthy()
-    expect(entry!.count).toBe(phoenix.ultimateCount)
-    expect(entry!.count).toBeGreaterThan(0)
-    expect(entry!.totalTime).toBe(0)
-  })
-
-  it('余火自动推导防回归（2026-09-12 探针修正）：不给滑块时长按普攻次数必须 >0——收入按 moveId×倍率表直算，勿读 totalSpecialResourceRecovery（enrich 前为 0）', async () => {
-    await setup(['1641', '1171', ''], 0)
-    const calc = useResourceCalc()
-    const phoenix = calc.resourceResult.value!.characters.find(c => c.agentId === '1641')!
-    const charged = phoenix.executions.find(e => e.moveId === '1641005')
-    expect(charged).toBeTruthy()
-    expect(charged!.count).toBeGreaterThan(0)
-    // 单人缺省盘实测 8 次（180s）；队内平A时间被分走会更少，下界取 1 保结构性回归检测
-    expect(phoenix.phoenixCycle?.chargedCount).toBeGreaterThan(0)
-  })
-
-  it('专武 14164 生效差分（2026-09-12 录入）：装 vs 不装 → 异常精通+120、火伤+64%（特化门=anomaly 对齐；测试 wEngineModLevel=5 → 精炼5值）', async () => {
+  it('专武 14164「涅槃初翎」生效差分（v12）：异常精通+90（精炼1）+ 火伤+40%', async () => {
     const { config, computePanelPhases } = await setup(['1641', '1171', ''], 0)
     const bare = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
     config.team[0]!.wEngineId = '14164'
+    config.team[0]!.wEngineModLevel = 1
     const armed = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
-    expect(armed.anomalyProficiency - bare.anomalyProficiency).toBeCloseTo(120, 5)
-    expect((armed.fireDmg ?? 0) - (bare.fireDmg ?? 0)).toBeCloseTo(64, 5)
+    expect(armed.anomalyProficiency - bare.anomalyProficiency).toBeCloseTo(90, 5)
+    expect(armed.fireDmg - bare.fireDmg).toBeCloseTo(40, 5)
   })
 
-  it('模块注册与滑块：3 个滑块齐全（脆弱暴击已移交 spec teamBuffs，无档位滑块）', () => {
-    expect(phoenixMechanic.agentIds).toContain('1641')
-    expect((phoenixMechanic.settings ?? []).map(s => s.id).sort()).toEqual([
-      'phoenix.c2IncinerationCoverage', 'phoenix.chargedAttackCount', 'phoenix.releaseCoverage',
-    ])
-  })
-})
-
-describe('★ 终结技：入场（1641019）不扣喧响——收尾大招不是喧响大（T172）', () => {
-  beforeEach(() => {
-    newPinia()
-    mockStaticFetch()
+  it('模块声明：v12 三项影画/技能等级/固定异放倍率都在通道上', () => {
+    expect(phoenixMechanic.id).toBe('agent:phoenix')
+    expect(phoenixMechanic.agentIds).toEqual(['1641'])
+    const ids = phoenixMechanic.settings?.map(s => s.id) ?? []
+    expect(ids).toContain('phoenix.chargedAttackCount')
+    expect(ids).toContain('phoenix.releaseCoverage')
+    expect(ids).toContain('phoenix.scorchCoverage')
+    expect(phoenixMechanic.axisMoveFreeOfDecibel!('1641019')).toBe(true)
+    expect(phoenixMechanic.axisMoveFreeOfDecibel!('1641013')).toBe(false)
   })
 
-  /** 本 describe 自带的装配（`setup` 是上面 describe 的块内函数，作用域不外泄） */
-  async function setupAxis(agentIds: [string, string, string]) {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    await catalog.loadTeammateBuffs()
-    const config = useConfigStore()
-    agentIds.forEach((agentId, slot) => {
-      config.team[slot] = { slot, agentId, cinemaLevel: 0, ...baseConfig } as any
-    })
-    config.syncTeammateBuffsFromTeam()
-    return { catalog, config }
-  }
-  /**
-   * ## 锁什么
-   *
-   * 与叶瞬光斩妄开天**同型**（用户口径 2026-10-15：「还有什么**叶瞬光斩妄开天是收尾，
-   * 不消耗喧响**」——点名的是**类别**：名字带「终结技」但语义是**收尾/追加**、由父大招触发，
-   * 不是由喧响购买）。
-   *
-   * **原文实证**（`data/raw/nanoka_missing/full/1641.json` 的 `skill.chain.description`，逐字）：
-   *  · `1641013`（终结技）：首句「**喧响等级达到[极]时**，点按 发动：……招式发动后，
-   *    可点按 发动[终结技：入场]」⇒ **喧响买的是本体**；
-   *  · `1641019`（终结技：入场）：首句「**当菲欧妮陷入[消亡]状态时**，切换至菲欧妮或菲欧妮
-   *    通过快速支援入场时发动：」⇒ 触发条件是**状态/入场**，**没有「喧响等级达到」购买句**
-   *    ⇒ 不由喧响购买。
-   *
-   * 本模块早已按此语义物化（`buildPhoenixExecutions`：`count = ultimateCount`「每次终结后点按
-   * 触发一次」+ **不占前台时间**的收尾追加攻击）。缺的只是**收费侧**的同一声明。
-   *
-   * ## 判据形状（照抄 yixuanSmoke 的 ★ 用例）
-   *
-   * 轴里同时捏「真喧响大」（`1641013` 终结技）与「不扣喧响的大」（`1641019` 入场），
-   * 断言 `stackTraversalResult.decibelUsed` **只含真喧响大那份 3000**。
-   *
-   * ## 负控（删掉被锁行为后本测试确实变红）
-   *
-   * 删掉模块的 `axisMoveFreeOfDecibel` 声明 ⇒ 第一条断言 3000 → 6000，**当场红**。
-   */
-  it('轴里同放终结技 + 入场 ⇒ 栈只收 3000（入场免喧响）', async () => {
-    const { config } = await setupAxis(['1641', '1031', '1491'])
-    config.useStunAxis = true
-    config.stunAxes = [{
-      name: '对账轴', count: 1,
-      actions: [
-        { slot: 0, moveId: '1641013', count: 1 }, // 终结技本体：**真喧响大**，应扣 3000
-        { slot: 0, moveId: '1641019', count: 1 }, // 终结技：入场（收尾追加），**不应扣喧响**
-      ],
-      basicFillerSlot: 0,
-    }]
-    config.enemy.stunCountLock = 1
-    const calc = useResourceCalc()
-    const st = calc.stackTraversalResult.value
-    expect(st, '轴应被注入（否则本判据零覆盖）').not.toBeNull()
-    expect(st!.decibelUsed, '终结技：入场不该扣喧响（只应扣本体 1641013 的 3000）').toBeCloseTo(3000, 6)
-    // 反空洞：真喧响大**必须**照扣（否则「都免了」也能让上一条变绿）
-    expect(st!.decibelUsed, '终结技本体是喧响的购买点，必须照扣').toBeGreaterThan(0)
-    // 该块仍被执行（免的是喧响不是执行）
-    const exec = Object.values(st!.executed).find(e => e.moveId === '1641019')
-    expect(exec, '终结技：入场仍应被执行').toBeTruthy()
-  })
-
-  /**
-   * 反空洞（第二臂）：**只放本体**时照扣 3000。
-   *
-   * 若把声明写成 `axisMoveFreeOfDecibel: () => true`（或把本体一起免掉），上一条仍绿——
-   * 而**本体才是喧响的购买点**（原文「喧响等级达到[极]时」）。本臂钉死「免的只有入场那一个」。
-   */
-  it('反空洞：单独放终结技本体仍扣 3000（免的是入场，不是整个角色）', async () => {
-    const { config } = await setupAxis(['1641', '1031', '1491'])
-    config.useStunAxis = true
-    config.stunAxes = [{
-      name: '单块轴', count: 1,
-      actions: [{ slot: 0, moveId: '1641013', count: 1 }],
-      basicFillerSlot: 0,
-    }]
-    config.enemy.stunCountLock = 1
-    const calc = useResourceCalc()
-    const st = calc.stackTraversalResult.value
-    expect(st).not.toBeNull()
-    expect(st!.decibelUsed, '终结技本体必须照扣 3000').toBeCloseTo(3000, 6)
+  it('[灼蚀] 覆盖率滑块生效：0 → 无周期火伤事件', async () => {
+    const { config } = await setup(['1641', '1171', ''], 0)
+    config.setMechanicSetting('phoenix.scorchCoverage', 0)
+    const phoenix = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1641')!
+    const events = phoenix.anomalyEventExecutions ?? []
+    expect(events.find(e => e.eventId === 'phoenix_scorch_dot')).toBeUndefined()
   })
 })

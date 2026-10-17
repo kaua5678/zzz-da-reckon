@@ -5,12 +5,12 @@
     "agentId": "1031",
     "source": {
       "raw": "data/raw/nanoka_missing/full/1031.json",
-      "nouns": "data/raw/nanoka_missing/noun_3.2.3.json"
+      "nouns": "data/raw/nanoka_missing/noun_3.3.12.json"
     },
     "passiveLevel": 7,
     "hashes": {
       "raw": "7cda15009d22fb2f82688e2313fc1ee25f26b591b934398cd308b092bc05fd8f",
-      "nouns": "b515eb2654baf4815768a1997f1f4f12583cf702d0784ac96a6ff2abad8f1e56",
+      "nouns": "35db6f0b30a275554585731fb8a7454a3ebeeded7706673726c572cfeb880a1e",
       "moves": "275b66d8582778e718441346e98eb41fcb7d8ab65cff278f7a9197906054aa3f"
     },
     "moves": [

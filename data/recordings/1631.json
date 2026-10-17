@@ -1,0 +1,2889 @@
+{
+  "version": 1,
+  "packet": {
+    "version": 1,
+    "agentId": "1631",
+    "source": {
+      "raw": "data/raw/nanoka_missing/full/1631.json",
+      "nouns": "data/raw/nanoka_missing/noun_3.3.12.json"
+    },
+    "passiveLevel": 7,
+    "hashes": {
+      "raw": "9e7d8c5b78087a42ce727a270dcad08a62af0e2a49914268e76a311d28d023ef",
+      "nouns": "35db6f0b30a275554585731fb8a7454a3ebeeded7706673726c572cfeb880a1e",
+      "moves": "0425bc78a7df6c16aa0aacbeef8879cba47aea7170e03f3f559d6138c7e4e20b"
+    },
+    "moves": [
+      {
+        "id": "1631",
+        "agentId": "1631",
+        "name": {
+          "zhCN": "赛维里安",
+          "en": "Severian"
+        },
+        "categories": [
+          {
+            "id": "basic",
+            "name": {
+              "zhCN": "basic",
+              "en": "basic"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1631001",
+                "name": {
+                  "zhCN": "普通攻击：疾锋",
+                  "en": "Basic Attack: Swift Edge"
+                },
+                "damageElement": "wind",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      131.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      41.1
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.177
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      10.9175
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      32.66
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      32.67
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.327
+              },
+              {
+                "id": "1631002",
+                "name": {
+                  "zhCN": "普通攻击：疾锋",
+                  "en": "Basic Attack: Swift Edge"
+                },
+                "damageElement": "wind",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      213.3
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      74.9
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      2.04
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      16.7475
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      56.63
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      56.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.566
+              },
+              {
+                "id": "1631003",
+                "name": {
+                  "zhCN": "普通攻击：疾锋",
+                  "en": "Basic Attack: Swift Edge"
+                },
+                "damageElement": "wind",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      356.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      134.1
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      3.533
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      26.785
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      98.13
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      98.14
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.981
+              },
+              {
+                "id": "1631004",
+                "name": {
+                  "zhCN": "普通攻击：疾锋",
+                  "en": "Basic Attack: Swift Edge"
+                },
+                "damageElement": "wind",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      483.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      193.3
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      4.951
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      34.98
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      137.52
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      137.53
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.375
+              },
+              {
+                "id": "1631005",
+                "name": {
+                  "zhCN": "普通攻击：烈旋",
+                  "en": "Basic Attack: Raging Whirlwind"
+                },
+                "damageElement": "wind",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      677
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      201
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      4.382
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      33.4675
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      121.69
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      121.7
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.217
+              },
+              {
+                "id": "1631006",
+                "name": {
+                  "zhCN": "普通攻击：苍风影猎",
+                  "en": "Basic Attack: Azure Wind's Shadowhunt"
+                },
+                "damageElement": "wind",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      4056.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      467.9
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      5.1
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      77.935
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      283.3
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      283.31
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 2.833
+              },
+              {
+                "id": "1631020",
+                "name": {
+                  "zhCN": "普通攻击：疾锋",
+                  "en": "Basic Attack: Swift Edge"
+                },
+                "damageElement": "wind",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      677
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      201
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      4.382
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      33.4675
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      121.69
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      121.7
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.217
+              }
+            ]
+          },
+          {
+            "id": "dodge",
+            "name": {
+              "zhCN": "dodge",
+              "en": "dodge"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1631010",
+                "name": {
+                  "zhCN": "冲刺攻击：凛袭",
+                  "en": "Dash Attack: Sheer Assault"
+                },
+                "damageElement": "wind",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      215.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      64.2
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.381
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      10.56
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      38.34
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      38.35
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.384
+              },
+              {
+                "id": "1631011",
+                "name": {
+                  "zhCN": "闪避反击：梢杀",
+                  "en": "Dodge Counter: Fatal End"
+                },
+                "damageElement": "wind",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      613.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      316.5
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      3.302
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      25.2175
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      91.69
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      241.7
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.917
+              }
+            ]
+          },
+          {
+            "id": "special",
+            "name": {
+              "zhCN": "special",
+              "en": "special"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1631007",
+                "name": {
+                  "zhCN": "特殊技：瞬风斩破",
+                  "en": "Special Attack: Gale Rend"
+                },
+                "damageElement": "wind",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      117.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      69
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      11.4675
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      41.66
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      41.67
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.417
+              },
+              {
+                "id": "1631008",
+                "name": {
+                  "zhCN": "强化特殊技：瞬风裂毁",
+                  "en": "EX Special Attack: Swiftwind Rupture"
+                },
+                "damageElement": "wind",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1132.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      554.1
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      130.0475
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      369.98
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      130.04
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.3,
+                "energyCost": {
+                  "Energy Cost": "40"
+                }
+              },
+              {
+                "id": "1631009",
+                "name": {
+                  "zhCN": "强化特殊技：瞬风裂毁",
+                  "en": "EX Special Attack: Swiftwind Rupture"
+                },
+                "damageElement": "wind",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      818.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      382.5
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      97.02
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      261.94
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      50
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.5,
+                "energyCost": {
+                  "Energy Cost": "40"
+                }
+              }
+            ]
+          },
+          {
+            "id": "chain",
+            "name": {
+              "zhCN": "chain",
+              "en": "chain"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1631012",
+                "name": {
+                  "zhCN": "连携技：冽刃收割",
+                  "en": "Chain Attack: Coldblade Reap"
+                },
+                "damageElement": "wind",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1743.7
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      369
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      244.31
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      422.86
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      223.37
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 2.234
+              },
+              {
+                "id": "1631013",
+                "name": {
+                  "zhCN": "终结技：戮灭的风灾",
+                  "en": "Ultimate: Annihilating Windstorm"
+                },
+                "damageElement": "wind",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      5353.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      523.3
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      316.66
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      816.67
+                    ]
+                  }
+                ],
+                "timeType": "ultimate",
+                "actionTime": 3.167
+              }
+            ]
+          },
+          {
+            "id": "assist",
+            "name": {
+              "zhCN": "assist",
+              "en": "assist"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1631014",
+                "name": {
+                  "zhCN": "快速支援：火线调令",
+                  "en": "Quick Assist: Field Orders"
+                },
+                "damageElement": "wind",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      129.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      75.8
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.651
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      12.6225
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      45.84
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      45.85
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.459
+              },
+              {
+                "id": "1631015",
+                "name": {
+                  "zhCN": "招架支援：寻衅禁止·轻招架失衡倍率",
+                  "en": "Defensive Assist: Provocation Prohibited"
+                },
+                "damageElement": "wind",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      407.7
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      366.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166
+              },
+              {
+                "id": "1631016",
+                "name": {
+                  "zhCN": "招架支援：寻衅禁止·重招架失衡倍率",
+                  "en": "Defensive Assist: Provocation Prohibited"
+                },
+                "damageElement": "wind",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      514.4
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      416.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.666
+              },
+              {
+                "id": "1631017",
+                "name": {
+                  "zhCN": "招架支援：寻衅禁止·连续招架失衡倍率",
+                  "en": "Defensive Assist: Provocation Prohibited"
+                },
+                "damageElement": "wind",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      250.4
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      116.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166
+              },
+              {
+                "id": "1631018",
+                "name": {
+                  "zhCN": "支援突击：以戈止戈",
+                  "en": "Assist Follow-Up: Fight Force with Force"
+                },
+                "damageElement": "wind",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      729.9
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      367.5
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      82.1975
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      241.22
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      106.67
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.067
+              },
+              {
+                "id": "1631019",
+                "name": {
+                  "zhCN": "登场技：清场时刻",
+                  "en": "Entry Skill: Clear Out"
+                },
+                "damageElement": "wind",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      309.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      91.4
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      3.962
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      30.2775
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      110.03
+                    ],
+                    "damageElement": "wind"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      110.04
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.1
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "units": [
+      {
+        "id": "/skill/assist/description/0/desc:0",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：火线调令",
+        "category": "assist",
+        "quote": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n快速突进，对前方敌人发动爪击和斩击，造成风属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:1",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：火线调令",
+        "category": "assist",
+        "quote": "快速突进，对前方敌人发动爪击和斩击，造成风属性伤害；",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n快速突进，对前方敌人发动爪击和斩击，造成风属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:2",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：火线调令",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n快速突进，对前方敌人发动爪击和斩击，造成风属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:0",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：寻衅禁止",
+        "category": "assist",
+        "quote": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:1",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：寻衅禁止",
+        "category": "assist",
+        "quote": "招架敌人的攻击，累积大量失衡值；",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:2",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：寻衅禁止",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:0",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：以戈止戈",
+        "category": "assist",
+        "quote": "发动[招架支援]后，点按 [普攻键] 发动：",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n依次对敌人发动斩击，爪击和炮击，造成风属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:1",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：以戈止戈",
+        "category": "assist",
+        "quote": "依次对敌人发动斩击，爪击和炮击，造成风属性伤害；",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n依次对敌人发动斩击，爪击和炮击，造成风属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:2",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：以戈止戈",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n依次对敌人发动斩击，爪击和炮击，造成风属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/3/desc:0",
+        "pointer": "/skill/assist/description/3/desc",
+        "title": "登场技：清场时刻",
+        "category": "assist",
+        "quote": "当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动：",
+        "context": "当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动：\n对前方敌人发动大力斩击，造成风属性伤害；\n招式发动时视为发动[快速支援]；\n招式视为非重击；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/3/desc:1",
+        "pointer": "/skill/assist/description/3/desc",
+        "title": "登场技：清场时刻",
+        "category": "assist",
+        "quote": "对前方敌人发动大力斩击，造成风属性伤害；",
+        "context": "当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动：\n对前方敌人发动大力斩击，造成风属性伤害；\n招式发动时视为发动[快速支援]；\n招式视为非重击；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/3/desc:2",
+        "pointer": "/skill/assist/description/3/desc",
+        "title": "登场技：清场时刻",
+        "category": "assist",
+        "quote": "招式发动时视为发动[快速支援]；",
+        "context": "当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动：\n对前方敌人发动大力斩击，造成风属性伤害；\n招式发动时视为发动[快速支援]；\n招式视为非重击；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/3/desc:3",
+        "pointer": "/skill/assist/description/3/desc",
+        "title": "登场技：清场时刻",
+        "category": "assist",
+        "quote": "招式视为非重击；",
+        "context": "当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动：\n对前方敌人发动大力斩击，造成风属性伤害；\n招式发动时视为发动[快速支援]；\n招式视为非重击；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/3/desc:4",
+        "pointer": "/skill/assist/description/3/desc",
+        "title": "登场技：清场时刻",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动：\n对前方敌人发动大力斩击，造成风属性伤害；\n招式发动时视为发动[快速支援]；\n招式视为非重击；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:0",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：疾锋",
+        "category": "basic",
+        "quote": "点按 [普攻键] 发动：",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成风属性伤害；\n第四段攻击命中敌人后，累积20点[流息]；\n第四段攻击发动瞬间具备闪避判定，如果成功闪避敌人攻击，本次普攻的伤害倍率和失衡倍率提升至与[普通攻击：烈旋]一致，并额外累积15点[流息]；\n第四段攻击发动期间拥有无敌效果；\n赛维里安在[普通攻击]期间发动[冲刺攻击]、[闪避反击]和[闪避：写意]时，不会打断[普通攻击]的连击段数。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:1",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：疾锋",
+        "category": "basic",
+        "quote": "向前方进行至多四段攻击，造成风属性伤害；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成风属性伤害；\n第四段攻击命中敌人后，累积20点[流息]；\n第四段攻击发动瞬间具备闪避判定，如果成功闪避敌人攻击，本次普攻的伤害倍率和失衡倍率提升至与[普通攻击：烈旋]一致，并额外累积15点[流息]；\n第四段攻击发动期间拥有无敌效果；\n赛维里安在[普通攻击]期间发动[冲刺攻击]、[闪避反击]和[闪避：写意]时，不会打断[普通攻击]的连击段数。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:2",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：疾锋",
+        "category": "basic",
+        "quote": "第四段攻击命中敌人后，累积20点[流息]；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成风属性伤害；\n第四段攻击命中敌人后，累积20点[流息]；\n第四段攻击发动瞬间具备闪避判定，如果成功闪避敌人攻击，本次普攻的伤害倍率和失衡倍率提升至与[普通攻击：烈旋]一致，并额外累积15点[流息]；\n第四段攻击发动期间拥有无敌效果；\n赛维里安在[普通攻击]期间发动[冲刺攻击]、[闪避反击]和[闪避：写意]时，不会打断[普通攻击]的连击段数。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:3",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：疾锋",
+        "category": "basic",
+        "quote": "第四段攻击发动瞬间具备闪避判定，如果成功闪避敌人攻击，本次普攻的伤害倍率和失衡倍率提升至与[普通攻击：烈旋]一致，并额外累积15点[流息]；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成风属性伤害；\n第四段攻击命中敌人后，累积20点[流息]；\n第四段攻击发动瞬间具备闪避判定，如果成功闪避敌人攻击，本次普攻的伤害倍率和失衡倍率提升至与[普通攻击：烈旋]一致，并额外累积15点[流息]；\n第四段攻击发动期间拥有无敌效果；\n赛维里安在[普通攻击]期间发动[冲刺攻击]、[闪避反击]和[闪避：写意]时，不会打断[普通攻击]的连击段数。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:4",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：疾锋",
+        "category": "basic",
+        "quote": "第四段攻击发动期间拥有无敌效果；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成风属性伤害；\n第四段攻击命中敌人后，累积20点[流息]；\n第四段攻击发动瞬间具备闪避判定，如果成功闪避敌人攻击，本次普攻的伤害倍率和失衡倍率提升至与[普通攻击：烈旋]一致，并额外累积15点[流息]；\n第四段攻击发动期间拥有无敌效果；\n赛维里安在[普通攻击]期间发动[冲刺攻击]、[闪避反击]和[闪避：写意]时，不会打断[普通攻击]的连击段数。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:5",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：疾锋",
+        "category": "basic",
+        "quote": "赛维里安在[普通攻击]期间发动[冲刺攻击]、[闪避反击]和[闪避：写意]时，不会打断[普通攻击]的连击段数。",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成风属性伤害；\n第四段攻击命中敌人后，累积20点[流息]；\n第四段攻击发动瞬间具备闪避判定，如果成功闪避敌人攻击，本次普攻的伤害倍率和失衡倍率提升至与[普通攻击：烈旋]一致，并额外累积15点[流息]；\n第四段攻击发动期间拥有无敌效果；\n赛维里安在[普通攻击]期间发动[冲刺攻击]、[闪避反击]和[闪避：写意]时，不会打断[普通攻击]的连击段数。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:0",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：烈旋",
+        "category": "basic",
+        "quote": "前三段普通攻击发动的瞬间受到敌人攻击或自身存在[烁影]效果且不拥有无敌效果时受到敌人非控制技攻击会自动发动：",
+        "context": "前三段普通攻击发动的瞬间受到敌人攻击或自身存在[烁影]效果且不拥有无敌效果时受到敌人非控制技攻击会自动发动：\n向前方进行突进，对前方范围的敌人造成大量风属性伤害；\n招式发动时累积15点[流息]，命中敌人后额外累积20点[流息]；\n招式发动时保持长按 [普攻键]，可以快速发动[普通攻击：苍风影猎]且[普通攻击：苍风影猎]的最后一击释放时会累积20点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:1",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：烈旋",
+        "category": "basic",
+        "quote": "向前方进行突进，对前方范围的敌人造成大量风属性伤害；",
+        "context": "前三段普通攻击发动的瞬间受到敌人攻击或自身存在[烁影]效果且不拥有无敌效果时受到敌人非控制技攻击会自动发动：\n向前方进行突进，对前方范围的敌人造成大量风属性伤害；\n招式发动时累积15点[流息]，命中敌人后额外累积20点[流息]；\n招式发动时保持长按 [普攻键]，可以快速发动[普通攻击：苍风影猎]且[普通攻击：苍风影猎]的最后一击释放时会累积20点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:2",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：烈旋",
+        "category": "basic",
+        "quote": "招式发动时累积15点[流息]，命中敌人后额外累积20点[流息]；",
+        "context": "前三段普通攻击发动的瞬间受到敌人攻击或自身存在[烁影]效果且不拥有无敌效果时受到敌人非控制技攻击会自动发动：\n向前方进行突进，对前方范围的敌人造成大量风属性伤害；\n招式发动时累积15点[流息]，命中敌人后额外累积20点[流息]；\n招式发动时保持长按 [普攻键]，可以快速发动[普通攻击：苍风影猎]且[普通攻击：苍风影猎]的最后一击释放时会累积20点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:3",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：烈旋",
+        "category": "basic",
+        "quote": "招式发动时保持长按 [普攻键]，可以快速发动[普通攻击：苍风影猎]且[普通攻击：苍风影猎]的最后一击释放时会累积20点[流息]；",
+        "context": "前三段普通攻击发动的瞬间受到敌人攻击或自身存在[烁影]效果且不拥有无敌效果时受到敌人非控制技攻击会自动发动：\n向前方进行突进，对前方范围的敌人造成大量风属性伤害；\n招式发动时累积15点[流息]，命中敌人后额外累积20点[流息]；\n招式发动时保持长按 [普攻键]，可以快速发动[普通攻击：苍风影猎]且[普通攻击：苍风影猎]的最后一击释放时会累积20点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:4",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：烈旋",
+        "category": "basic",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "前三段普通攻击发动的瞬间受到敌人攻击或自身存在[烁影]效果且不拥有无敌效果时受到敌人非控制技攻击会自动发动：\n向前方进行突进，对前方范围的敌人造成大量风属性伤害；\n招式发动时累积15点[流息]，命中敌人后额外累积20点[流息]；\n招式发动时保持长按 [普攻键]，可以快速发动[普通攻击：苍风影猎]且[普通攻击：苍风影猎]的最后一击释放时会累积20点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:0",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：苍风影猎",
+        "category": "basic",
+        "quote": "[流息]足够时，消耗100点[流息]，长按 [普攻键] 发动：",
+        "context": "[流息]足够时，消耗100点[流息]，长按 [普攻键] 发动：\n先向后闪避并蓄势，随后在站场中不断穿梭并不断发动斩击，对前方范围的敌人造成大量风属性伤害；\n向后闪避期间，具备闪避判定，如果成功闪避敌人攻击，会触发[极限视域]，并累积15点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:1",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：苍风影猎",
+        "category": "basic",
+        "quote": "先向后闪避并蓄势，随后在站场中不断穿梭并不断发动斩击，对前方范围的敌人造成大量风属性伤害；",
+        "context": "[流息]足够时，消耗100点[流息]，长按 [普攻键] 发动：\n先向后闪避并蓄势，随后在站场中不断穿梭并不断发动斩击，对前方范围的敌人造成大量风属性伤害；\n向后闪避期间，具备闪避判定，如果成功闪避敌人攻击，会触发[极限视域]，并累积15点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:2",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：苍风影猎",
+        "category": "basic",
+        "quote": "向后闪避期间，具备闪避判定，如果成功闪避敌人攻击，会触发[极限视域]，并累积15点[流息]；",
+        "context": "[流息]足够时，消耗100点[流息]，长按 [普攻键] 发动：\n先向后闪避并蓄势，随后在站场中不断穿梭并不断发动斩击，对前方范围的敌人造成大量风属性伤害；\n向后闪避期间，具备闪避判定，如果成功闪避敌人攻击，会触发[极限视域]，并累积15点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:3",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：苍风影猎",
+        "category": "basic",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "[流息]足够时，消耗100点[流息]，长按 [普攻键] 发动：\n先向后闪避并蓄势，随后在站场中不断穿梭并不断发动斩击，对前方范围的敌人造成大量风属性伤害；\n向后闪避期间，具备闪避判定，如果成功闪避敌人攻击，会触发[极限视域]，并累积15点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:0",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：冽刃收割",
+        "category": "chain",
+        "quote": "触发[连携技]时，选择对应角色发动：",
+        "context": "触发[连携技]时，选择对应角色发动：\n向前方发动多段攻击，造成大量风属性伤害；\n招式发动后，累积35点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:1",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：冽刃收割",
+        "category": "chain",
+        "quote": "向前方发动多段攻击，造成大量风属性伤害；",
+        "context": "触发[连携技]时，选择对应角色发动：\n向前方发动多段攻击，造成大量风属性伤害；\n招式发动后，累积35点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:2",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：冽刃收割",
+        "category": "chain",
+        "quote": "招式发动后，累积35点[流息]；",
+        "context": "触发[连携技]时，选择对应角色发动：\n向前方发动多段攻击，造成大量风属性伤害；\n招式发动后，累积35点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:3",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：冽刃收割",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "触发[连携技]时，选择对应角色发动：\n向前方发动多段攻击，造成大量风属性伤害；\n招式发动后，累积35点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:0",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：戮灭的风灾",
+        "category": "chain",
+        "quote": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n连续发动多次快速斩击，造成大量风属性伤害；\n招式发动后，累积100点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:1",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：戮灭的风灾",
+        "category": "chain",
+        "quote": "连续发动多次快速斩击，造成大量风属性伤害；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n连续发动多次快速斩击，造成大量风属性伤害；\n招式发动后，累积100点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:2",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：戮灭的风灾",
+        "category": "chain",
+        "quote": "招式发动后，累积100点[流息]；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n连续发动多次快速斩击，造成大量风属性伤害；\n招式发动后，累积100点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:3",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：戮灭的风灾",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n连续发动多次快速斩击，造成大量风属性伤害；\n招式发动后，累积100点[流息]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:0",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：飘折",
+        "category": "dodge",
+        "quote": "点按 [Icon_Evade] 发动：",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n通过[闪避：飘折]触发[极限闪避]时，累积15点[流息]，此效果0.5秒内最多触发一次；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:1",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：飘折",
+        "category": "dodge",
+        "quote": "快速的冲刺闪避；",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n通过[闪避：飘折]触发[极限闪避]时，累积15点[流息]，此效果0.5秒内最多触发一次；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:2",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：飘折",
+        "category": "dodge",
+        "quote": "通过[闪避：飘折]触发[极限闪避]时，累积15点[流息]，此效果0.5秒内最多触发一次；",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n通过[闪避：飘折]触发[极限闪避]时，累积15点[流息]，此效果0.5秒内最多触发一次；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:3",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：飘折",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n通过[闪避：飘折]触发[极限闪避]时，累积15点[流息]，此效果0.5秒内最多触发一次；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:0",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：凛袭",
+        "category": "dodge",
+        "quote": "闪避时，点按 [普攻键] 发动：",
+        "context": "闪避时，点按 [普攻键] 发动：\n向前方进行攻击，造成风属性伤害。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:1",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：凛袭",
+        "category": "dodge",
+        "quote": "向前方进行攻击，造成风属性伤害。",
+        "context": "闪避时，点按 [普攻键] 发动：\n向前方进行攻击，造成风属性伤害。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:0",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：梢杀",
+        "category": "dodge",
+        "quote": "通过[闪避：飘折]触发[极限闪避]时，点按 [普攻键] 发动：",
+        "context": "通过[闪避：飘折]触发[极限闪避]时，点按 [普攻键] 发动：\n向前方发动快速斩击，造成风属性伤害；\n若通过[闪避：飘折]触发[极限闪避]瞬间切入后台，会自动发动本招式；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:1",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：梢杀",
+        "category": "dodge",
+        "quote": "向前方发动快速斩击，造成风属性伤害；",
+        "context": "通过[闪避：飘折]触发[极限闪避]时，点按 [普攻键] 发动：\n向前方发动快速斩击，造成风属性伤害；\n若通过[闪避：飘折]触发[极限闪避]瞬间切入后台，会自动发动本招式；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:2",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：梢杀",
+        "category": "dodge",
+        "quote": "若通过[闪避：飘折]触发[极限闪避]瞬间切入后台，会自动发动本招式；",
+        "context": "通过[闪避：飘折]触发[极限闪避]时，点按 [普攻键] 发动：\n向前方发动快速斩击，造成风属性伤害；\n若通过[闪避：飘折]触发[极限闪避]瞬间切入后台，会自动发动本招式；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:3",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：梢杀",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "通过[闪避：飘折]触发[极限闪避]时，点按 [普攻键] 发动：\n向前方发动快速斩击，造成风属性伤害；\n若通过[闪避：飘折]触发[极限闪避]瞬间切入后台，会自动发动本招式；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/3/desc:0",
+        "pointer": "/skill/dodge/description/3/desc",
+        "title": "闪避：写意",
+        "category": "dodge",
+        "quote": "后闪后，持续长按[Icon_Evade] 发动：",
+        "context": "后闪后，持续长按[Icon_Evade] 发动：\n向敌人发起挑衅。"
+      },
+      {
+        "id": "/skill/dodge/description/3/desc:1",
+        "pointer": "/skill/dodge/description/3/desc",
+        "title": "闪避：写意",
+        "category": "dodge",
+        "quote": "向敌人发起挑衅。",
+        "context": "后闪后，持续长按[Icon_Evade] 发动：\n向敌人发起挑衅。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:0",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：瞬风斩破",
+        "category": "special",
+        "quote": "点按 [特技键] 发动：",
+        "context": "点按 [特技键] 发动：\n向前方发动斩击和刺击，造成风属性伤害。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:1",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：瞬风斩破",
+        "category": "special",
+        "quote": "向前方发动斩击和刺击，造成风属性伤害。",
+        "context": "点按 [特技键] 发动：\n向前方发动斩击和刺击，造成风属性伤害。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:0",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：瞬风裂毁",
+        "category": "special",
+        "quote": "能量足够时，点按 [Icon_SpecialReady] 发动：",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前发动斩击、爪击和炮击的组合技，对敌人造成大量风属性伤害，并获得一层[烁影]；\n长按 [Icon_SpecialReady] 可以在炮击前持续消耗能量不断发动风刃对敌人造成风属性伤害；\n能量消耗达最大时，额外获得一层[烁影];\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:1",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：瞬风裂毁",
+        "category": "special",
+        "quote": "向前发动斩击、爪击和炮击的组合技，对敌人造成大量风属性伤害，并获得一层[烁影]；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前发动斩击、爪击和炮击的组合技，对敌人造成大量风属性伤害，并获得一层[烁影]；\n长按 [Icon_SpecialReady] 可以在炮击前持续消耗能量不断发动风刃对敌人造成风属性伤害；\n能量消耗达最大时，额外获得一层[烁影];\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:2",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：瞬风裂毁",
+        "category": "special",
+        "quote": "长按 [Icon_SpecialReady] 可以在炮击前持续消耗能量不断发动风刃对敌人造成风属性伤害；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前发动斩击、爪击和炮击的组合技，对敌人造成大量风属性伤害，并获得一层[烁影]；\n长按 [Icon_SpecialReady] 可以在炮击前持续消耗能量不断发动风刃对敌人造成风属性伤害；\n能量消耗达最大时，额外获得一层[烁影];\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:3",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：瞬风裂毁",
+        "category": "special",
+        "quote": "能量消耗达最大时，额外获得一层[烁影];",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前发动斩击、爪击和炮击的组合技，对敌人造成大量风属性伤害，并获得一层[烁影]；\n长按 [Icon_SpecialReady] 可以在炮击前持续消耗能量不断发动风刃对敌人造成风属性伤害；\n能量消耗达最大时，额外获得一层[烁影];\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:4",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：瞬风裂毁",
+        "category": "special",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前发动斩击、爪击和炮击的组合技，对敌人造成大量风属性伤害，并获得一层[烁影]；\n长按 [Icon_SpecialReady] 可以在炮击前持续消耗能量不断发动风刃对敌人造成风属性伤害；\n能量消耗达最大时，额外获得一层[烁影];\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/passive/level/1631507/desc/0:0",
+        "pointer": "/passive/level/1631507/desc/0",
+        "title": "核心被动：风回无终",
+        "category": "passive",
+        "quote": "赛维里安的暴击伤害提升60%，造成的伤害提升25%，若队伍中存在其他风属性角色则伤害额外提升30%；",
+        "context": "赛维里安的暴击伤害提升60%，造成的伤害提升25%，若队伍中存在其他风属性角色则伤害额外提升30%；\n赛维里安在即将受到敌人攻击的瞬间发动[普通攻击：疾锋]时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动[普通攻击：烈旋]，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与[普通攻击：烈旋]一致；\n赛维里安进入战场时可获得两层[烁影]，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有[烁影]且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层[烁影]自动闪避本次攻击并发动[普通攻击：烈旋]；\n赛维里安通过发动[普通攻击：疾锋]成功闪避敌人攻击，触发[烁影]自动闪避敌人攻击和直接闪避敌人攻击都视为[极限闪避]；\n[烁影]最多获取两层，若满层时再获取[烁影]，将获得一层[凭风]效果且下次的[普通攻击：疾锋]会被提升为[普通攻击：烈旋]；\n赛维里安每次极限闪避都能获得一层[凭风]效果，当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动[登场技]；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得[流息]，[流息]上限为150点；\n当[流息]达到100点时，长按 [普攻键] 可以消耗100点[流息]发动[普通攻击：苍风影猎]。"
+      },
+      {
+        "id": "/passive/level/1631507/desc/0:1",
+        "pointer": "/passive/level/1631507/desc/0",
+        "title": "核心被动：风回无终",
+        "category": "passive",
+        "quote": "赛维里安在即将受到敌人攻击的瞬间发动[普通攻击：疾锋]时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动[普通攻击：烈旋]，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与[普通攻击：烈旋]一致；",
+        "context": "赛维里安的暴击伤害提升60%，造成的伤害提升25%，若队伍中存在其他风属性角色则伤害额外提升30%；\n赛维里安在即将受到敌人攻击的瞬间发动[普通攻击：疾锋]时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动[普通攻击：烈旋]，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与[普通攻击：烈旋]一致；\n赛维里安进入战场时可获得两层[烁影]，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有[烁影]且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层[烁影]自动闪避本次攻击并发动[普通攻击：烈旋]；\n赛维里安通过发动[普通攻击：疾锋]成功闪避敌人攻击，触发[烁影]自动闪避敌人攻击和直接闪避敌人攻击都视为[极限闪避]；\n[烁影]最多获取两层，若满层时再获取[烁影]，将获得一层[凭风]效果且下次的[普通攻击：疾锋]会被提升为[普通攻击：烈旋]；\n赛维里安每次极限闪避都能获得一层[凭风]效果，当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动[登场技]；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得[流息]，[流息]上限为150点；\n当[流息]达到100点时，长按 [普攻键] 可以消耗100点[流息]发动[普通攻击：苍风影猎]。"
+      },
+      {
+        "id": "/passive/level/1631507/desc/0:2",
+        "pointer": "/passive/level/1631507/desc/0",
+        "title": "核心被动：风回无终",
+        "category": "passive",
+        "quote": "赛维里安进入战场时可获得两层[烁影]，在勘域模式中此效果180秒内最多触发一次；",
+        "context": "赛维里安的暴击伤害提升60%，造成的伤害提升25%，若队伍中存在其他风属性角色则伤害额外提升30%；\n赛维里安在即将受到敌人攻击的瞬间发动[普通攻击：疾锋]时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动[普通攻击：烈旋]，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与[普通攻击：烈旋]一致；\n赛维里安进入战场时可获得两层[烁影]，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有[烁影]且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层[烁影]自动闪避本次攻击并发动[普通攻击：烈旋]；\n赛维里安通过发动[普通攻击：疾锋]成功闪避敌人攻击，触发[烁影]自动闪避敌人攻击和直接闪避敌人攻击都视为[极限闪避]；\n[烁影]最多获取两层，若满层时再获取[烁影]，将获得一层[凭风]效果且下次的[普通攻击：疾锋]会被提升为[普通攻击：烈旋]；\n赛维里安每次极限闪避都能获得一层[凭风]效果，当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动[登场技]；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得[流息]，[流息]上限为150点；\n当[流息]达到100点时，长按 [普攻键] 可以消耗100点[流息]发动[普通攻击：苍风影猎]。"
+      },
+      {
+        "id": "/passive/level/1631507/desc/0:3",
+        "pointer": "/passive/level/1631507/desc/0",
+        "title": "核心被动：风回无终",
+        "category": "passive",
+        "quote": "赛维里安拥有[烁影]且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层[烁影]自动闪避本次攻击并发动[普通攻击：烈旋]；",
+        "context": "赛维里安的暴击伤害提升60%，造成的伤害提升25%，若队伍中存在其他风属性角色则伤害额外提升30%；\n赛维里安在即将受到敌人攻击的瞬间发动[普通攻击：疾锋]时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动[普通攻击：烈旋]，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与[普通攻击：烈旋]一致；\n赛维里安进入战场时可获得两层[烁影]，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有[烁影]且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层[烁影]自动闪避本次攻击并发动[普通攻击：烈旋]；\n赛维里安通过发动[普通攻击：疾锋]成功闪避敌人攻击，触发[烁影]自动闪避敌人攻击和直接闪避敌人攻击都视为[极限闪避]；\n[烁影]最多获取两层，若满层时再获取[烁影]，将获得一层[凭风]效果且下次的[普通攻击：疾锋]会被提升为[普通攻击：烈旋]；\n赛维里安每次极限闪避都能获得一层[凭风]效果，当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动[登场技]；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得[流息]，[流息]上限为150点；\n当[流息]达到100点时，长按 [普攻键] 可以消耗100点[流息]发动[普通攻击：苍风影猎]。"
+      },
+      {
+        "id": "/passive/level/1631507/desc/0:4",
+        "pointer": "/passive/level/1631507/desc/0",
+        "title": "核心被动：风回无终",
+        "category": "passive",
+        "quote": "赛维里安通过发动[普通攻击：疾锋]成功闪避敌人攻击，触发[烁影]自动闪避敌人攻击和直接闪避敌人攻击都视为[极限闪避]；",
+        "context": "赛维里安的暴击伤害提升60%，造成的伤害提升25%，若队伍中存在其他风属性角色则伤害额外提升30%；\n赛维里安在即将受到敌人攻击的瞬间发动[普通攻击：疾锋]时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动[普通攻击：烈旋]，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与[普通攻击：烈旋]一致；\n赛维里安进入战场时可获得两层[烁影]，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有[烁影]且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层[烁影]自动闪避本次攻击并发动[普通攻击：烈旋]；\n赛维里安通过发动[普通攻击：疾锋]成功闪避敌人攻击，触发[烁影]自动闪避敌人攻击和直接闪避敌人攻击都视为[极限闪避]；\n[烁影]最多获取两层，若满层时再获取[烁影]，将获得一层[凭风]效果且下次的[普通攻击：疾锋]会被提升为[普通攻击：烈旋]；\n赛维里安每次极限闪避都能获得一层[凭风]效果，当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动[登场技]；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得[流息]，[流息]上限为150点；\n当[流息]达到100点时，长按 [普攻键] 可以消耗100点[流息]发动[普通攻击：苍风影猎]。"
+      },
+      {
+        "id": "/passive/level/1631507/desc/0:5",
+        "pointer": "/passive/level/1631507/desc/0",
+        "title": "核心被动：风回无终",
+        "category": "passive",
+        "quote": "[烁影]最多获取两层，若满层时再获取[烁影]，将获得一层[凭风]效果且下次的[普通攻击：疾锋]会被提升为[普通攻击：烈旋]；",
+        "context": "赛维里安的暴击伤害提升60%，造成的伤害提升25%，若队伍中存在其他风属性角色则伤害额外提升30%；\n赛维里安在即将受到敌人攻击的瞬间发动[普通攻击：疾锋]时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动[普通攻击：烈旋]，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与[普通攻击：烈旋]一致；\n赛维里安进入战场时可获得两层[烁影]，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有[烁影]且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层[烁影]自动闪避本次攻击并发动[普通攻击：烈旋]；\n赛维里安通过发动[普通攻击：疾锋]成功闪避敌人攻击，触发[烁影]自动闪避敌人攻击和直接闪避敌人攻击都视为[极限闪避]；\n[烁影]最多获取两层，若满层时再获取[烁影]，将获得一层[凭风]效果且下次的[普通攻击：疾锋]会被提升为[普通攻击：烈旋]；\n赛维里安每次极限闪避都能获得一层[凭风]效果，当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动[登场技]；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得[流息]，[流息]上限为150点；\n当[流息]达到100点时，长按 [普攻键] 可以消耗100点[流息]发动[普通攻击：苍风影猎]。"
+      },
+      {
+        "id": "/passive/level/1631507/desc/0:6",
+        "pointer": "/passive/level/1631507/desc/0",
+        "title": "核心被动：风回无终",
+        "category": "passive",
+        "quote": "赛维里安每次极限闪避都能获得一层[凭风]效果，当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动[登场技]；",
+        "context": "赛维里安的暴击伤害提升60%，造成的伤害提升25%，若队伍中存在其他风属性角色则伤害额外提升30%；\n赛维里安在即将受到敌人攻击的瞬间发动[普通攻击：疾锋]时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动[普通攻击：烈旋]，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与[普通攻击：烈旋]一致；\n赛维里安进入战场时可获得两层[烁影]，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有[烁影]且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层[烁影]自动闪避本次攻击并发动[普通攻击：烈旋]；\n赛维里安通过发动[普通攻击：疾锋]成功闪避敌人攻击，触发[烁影]自动闪避敌人攻击和直接闪避敌人攻击都视为[极限闪避]；\n[烁影]最多获取两层，若满层时再获取[烁影]，将获得一层[凭风]效果且下次的[普通攻击：疾锋]会被提升为[普通攻击：烈旋]；\n赛维里安每次极限闪避都能获得一层[凭风]效果，当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动[登场技]；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得[流息]，[流息]上限为150点；\n当[流息]达到100点时，长按 [普攻键] 可以消耗100点[流息]发动[普通攻击：苍风影猎]。"
+      },
+      {
+        "id": "/passive/level/1631507/desc/0:7",
+        "pointer": "/passive/level/1631507/desc/0",
+        "title": "核心被动：风回无终",
+        "category": "passive",
+        "quote": "赛维里安通过固定招式命中敌人或触发极限闪避时，会获得[流息]，[流息]上限为150点；",
+        "context": "赛维里安的暴击伤害提升60%，造成的伤害提升25%，若队伍中存在其他风属性角色则伤害额外提升30%；\n赛维里安在即将受到敌人攻击的瞬间发动[普通攻击：疾锋]时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动[普通攻击：烈旋]，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与[普通攻击：烈旋]一致；\n赛维里安进入战场时可获得两层[烁影]，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有[烁影]且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层[烁影]自动闪避本次攻击并发动[普通攻击：烈旋]；\n赛维里安通过发动[普通攻击：疾锋]成功闪避敌人攻击，触发[烁影]自动闪避敌人攻击和直接闪避敌人攻击都视为[极限闪避]；\n[烁影]最多获取两层，若满层时再获取[烁影]，将获得一层[凭风]效果且下次的[普通攻击：疾锋]会被提升为[普通攻击：烈旋]；\n赛维里安每次极限闪避都能获得一层[凭风]效果，当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动[登场技]；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得[流息]，[流息]上限为150点；\n当[流息]达到100点时，长按 [普攻键] 可以消耗100点[流息]发动[普通攻击：苍风影猎]。"
+      },
+      {
+        "id": "/passive/level/1631507/desc/0:8",
+        "pointer": "/passive/level/1631507/desc/0",
+        "title": "核心被动：风回无终",
+        "category": "passive",
+        "quote": "当[流息]达到100点时，长按 [普攻键] 可以消耗100点[流息]发动[普通攻击：苍风影猎]。",
+        "context": "赛维里安的暴击伤害提升60%，造成的伤害提升25%，若队伍中存在其他风属性角色则伤害额外提升30%；\n赛维里安在即将受到敌人攻击的瞬间发动[普通攻击：疾锋]时，可以闪避本次攻击，若通过前三段普攻闪避了本次攻击则自动发动[普通攻击：烈旋]，若是第四段普攻则提升本次普攻的伤害倍率和失衡倍率至与[普通攻击：烈旋]一致；\n赛维里安进入战场时可获得两层[烁影]，在勘域模式中此效果180秒内最多触发一次；\n赛维里安拥有[烁影]且不具有无敌效果时，若受到敌人非控制技攻击且未能主动闪避或招架此次攻击，赛维里安会消耗一层[烁影]自动闪避本次攻击并发动[普通攻击：烈旋]；\n赛维里安通过发动[普通攻击：疾锋]成功闪避敌人攻击，触发[烁影]自动闪避敌人攻击和直接闪避敌人攻击都视为[极限闪避]；\n[烁影]最多获取两层，若满层时再获取[烁影]，将获得一层[凭风]效果且下次的[普通攻击：疾锋]会被提升为[普通攻击：烈旋]；\n赛维里安每次极限闪避都能获得一层[凭风]效果，当赛维里安拥有[凭风]效果且处于接战状态下点按 [Icon_Switch] 从后场切换至前场发动[登场技]；\n赛维里安通过固定招式命中敌人或触发极限闪避时，会获得[流息]，[流息]上限为150点；\n当[流息]达到100点时，长按 [普攻键] 可以消耗100点[流息]发动[普通攻击：苍风影猎]。"
+      },
+      {
+        "id": "/passive/level/1631507/desc/1:0",
+        "pointer": "/passive/level/1631507/desc/1",
+        "title": "额外能力：最优编配",
+        "category": "passive",
+        "quote": "队伍中存在[支援]、[击破]或与自身阵营相同的角色时触发：",
+        "context": "队伍中存在[支援]、[击破]或与自身阵营相同的角色时触发：\n赛维里安每拥有1%暴击率，会使自身的攻击力提升8.5点，最多计入100%暴击率。"
+      },
+      {
+        "id": "/passive/level/1631507/desc/1:1",
+        "pointer": "/passive/level/1631507/desc/1",
+        "title": "额外能力：最优编配",
+        "category": "passive",
+        "quote": "赛维里安每拥有1%暴击率，会使自身的攻击力提升8.5点，最多计入100%暴击率。",
+        "context": "队伍中存在[支援]、[击破]或与自身阵营相同的角色时触发：\n赛维里安每拥有1%暴击率，会使自身的攻击力提升8.5点，最多计入100%暴击率。"
+      },
+      {
+        "id": "/talent/1/desc:0",
+        "pointer": "/talent/1/desc",
+        "title": "双份浓缩",
+        "category": "talent",
+        "quote": "赛维里安释放[连携技]累积的[流息]值提升至50点；",
+        "context": "赛维里安释放[连携技]累积的[流息]值提升至50点；\n赛维里安通过[登场技：清场时刻]入场时，会将招式替换为[连携技]，该招式入场类型不会被改变，且视为非重击，此效果60秒最多生效一次；\n赛维里安每次释放[普通攻击：苍风影猎]会获得1层[凭风]效果；\n赛维里安的攻击命中目标时无视目标15%的风属性抗性。"
+      },
+      {
+        "id": "/talent/1/desc:1",
+        "pointer": "/talent/1/desc",
+        "title": "双份浓缩",
+        "category": "talent",
+        "quote": "赛维里安通过[登场技：清场时刻]入场时，会将招式替换为[连携技]，该招式入场类型不会被改变，且视为非重击，此效果60秒最多生效一次；",
+        "context": "赛维里安释放[连携技]累积的[流息]值提升至50点；\n赛维里安通过[登场技：清场时刻]入场时，会将招式替换为[连携技]，该招式入场类型不会被改变，且视为非重击，此效果60秒最多生效一次；\n赛维里安每次释放[普通攻击：苍风影猎]会获得1层[凭风]效果；\n赛维里安的攻击命中目标时无视目标15%的风属性抗性。"
+      },
+      {
+        "id": "/talent/1/desc:2",
+        "pointer": "/talent/1/desc",
+        "title": "双份浓缩",
+        "category": "talent",
+        "quote": "赛维里安每次释放[普通攻击：苍风影猎]会获得1层[凭风]效果；",
+        "context": "赛维里安释放[连携技]累积的[流息]值提升至50点；\n赛维里安通过[登场技：清场时刻]入场时，会将招式替换为[连携技]，该招式入场类型不会被改变，且视为非重击，此效果60秒最多生效一次；\n赛维里安每次释放[普通攻击：苍风影猎]会获得1层[凭风]效果；\n赛维里安的攻击命中目标时无视目标15%的风属性抗性。"
+      },
+      {
+        "id": "/talent/1/desc:3",
+        "pointer": "/talent/1/desc",
+        "title": "双份浓缩",
+        "category": "talent",
+        "quote": "赛维里安的攻击命中目标时无视目标15%的风属性抗性。",
+        "context": "赛维里安释放[连携技]累积的[流息]值提升至50点；\n赛维里安通过[登场技：清场时刻]入场时，会将招式替换为[连携技]，该招式入场类型不会被改变，且视为非重击，此效果60秒最多生效一次；\n赛维里安每次释放[普通攻击：苍风影猎]会获得1层[凭风]效果；\n赛维里安的攻击命中目标时无视目标15%的风属性抗性。"
+      },
+      {
+        "id": "/talent/2/desc:0",
+        "pointer": "/talent/2/desc",
+        "title": "理性的缰绳",
+        "category": "talent",
+        "quote": "赛维里安进入战场时回复150点[流息]，在勘域模式中此效果180秒内最多触发一次；",
+        "context": "赛维里安进入战场时回复150点[流息]，在勘域模式中此效果180秒内最多触发一次；\n赛维里安触发[极限闪避]时或释放[普通攻击：苍风影猎]时，使自身穿透率提升20%，持续25秒。"
+      },
+      {
+        "id": "/talent/2/desc:1",
+        "pointer": "/talent/2/desc",
+        "title": "理性的缰绳",
+        "category": "talent",
+        "quote": "赛维里安触发[极限闪避]时或释放[普通攻击：苍风影猎]时，使自身穿透率提升20%，持续25秒。",
+        "context": "赛维里安进入战场时回复150点[流息]，在勘域模式中此效果180秒内最多触发一次；\n赛维里安触发[极限闪避]时或释放[普通攻击：苍风影猎]时，使自身穿透率提升20%，持续25秒。"
+      },
+      {
+        "id": "/talent/3/desc:0",
+        "pointer": "/talent/3/desc",
+        "title": "最后一盏灯",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/4/desc:0",
+        "pointer": "/talent/4/desc",
+        "title": "光与影的界限",
+        "category": "talent",
+        "quote": "赛维里安进入战斗或换入前场时使自身攻击力提升10%，持续30秒，重复触发时刷新持续时间；",
+        "context": "赛维里安进入战斗或换入前场时使自身攻击力提升10%，持续30秒，重复触发时刷新持续时间；\n赛维里安释放[普通攻击：烈旋]或释放[普通攻击：苍风影猎]时，提升自身10%喧响值获取效率，持续15秒。"
+      },
+      {
+        "id": "/talent/4/desc:1",
+        "pointer": "/talent/4/desc",
+        "title": "光与影的界限",
+        "category": "talent",
+        "quote": "赛维里安释放[普通攻击：烈旋]或释放[普通攻击：苍风影猎]时，提升自身10%喧响值获取效率，持续15秒。",
+        "context": "赛维里安进入战斗或换入前场时使自身攻击力提升10%，持续30秒，重复触发时刷新持续时间；\n赛维里安释放[普通攻击：烈旋]或释放[普通攻击：苍风影猎]时，提升自身10%喧响值获取效率，持续15秒。"
+      },
+      {
+        "id": "/talent/5/desc:0",
+        "pointer": "/talent/5/desc",
+        "title": "非零度的心",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/6/desc:0",
+        "pointer": "/talent/6/desc",
+        "title": "在一颗小星星下",
+        "category": "talent",
+        "quote": "赛维里安的[流息]上限提升至180，进入战场时回复的流息提升至180点；",
+        "context": "赛维里安的[流息]上限提升至180，进入战场时回复的流息提升至180点；\n[普通攻击：苍风影猎]最后一击额外伤害倍率固定提升350%；\n[普通攻击：苍风影猎]最后一击释放时获得[风起]效果：每秒积累5点[流息]，持续5秒，重复触发时刷新持续时间。"
+      },
+      {
+        "id": "/talent/6/desc:1",
+        "pointer": "/talent/6/desc",
+        "title": "在一颗小星星下",
+        "category": "talent",
+        "quote": "[普通攻击：苍风影猎]最后一击额外伤害倍率固定提升350%；",
+        "context": "赛维里安的[流息]上限提升至180，进入战场时回复的流息提升至180点；\n[普通攻击：苍风影猎]最后一击额外伤害倍率固定提升350%；\n[普通攻击：苍风影猎]最后一击释放时获得[风起]效果：每秒积累5点[流息]，持续5秒，重复触发时刷新持续时间。"
+      },
+      {
+        "id": "/talent/6/desc:2",
+        "pointer": "/talent/6/desc",
+        "title": "在一颗小星星下",
+        "category": "talent",
+        "quote": "[普通攻击：苍风影猎]最后一击释放时获得[风起]效果：每秒积累5点[流息]，持续5秒，重复触发时刷新持续时间。",
+        "context": "赛维里安的[流息]上限提升至180，进入战场时回复的流息提升至180点；\n[普通攻击：苍风影猎]最后一击额外伤害倍率固定提升350%；\n[普通攻击：苍风影猎]最后一击释放时获得[风起]效果：每秒积累5点[流息]，持续5秒，重复触发时刷新持续时间。"
+      }
+    ]
+  },
+  "decisions": [
+    {
+      "sourceId": "/skill/assist/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/3/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_fengfeng"
+      ]
+    },
+    {
+      "sourceId": "/skill/assist/description/3/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/3/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式分类声明（视为[快速支援]/非重击）由 catalog 行分类承载",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/3/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式分类声明（视为[快速支援]/非重击）由 catalog 行分类承载",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/3/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:5",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_liexuan"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_flow",
+        "sev_c1"
+      ]
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/3/desc:1",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "v12 原文有此句但本体未建模（已在 spec notes 未建模项登记），收益≈0 或操作向量（组合技本体在倍率表 1631008；「获得一层[烁影]」的层数状态机未建）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_windblade"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "v12 原文有此句但本体未建模（已在 spec notes 未建模项登记），收益≈0 或操作向量（烁影层数状态机未建）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1631507/desc/0:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_core_dmg"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1631507/desc/0:1",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1631507/desc/0:2",
+      "status": "out_of_scope",
+      "reason": "v12 原文有此句但本体未建模（已在 spec notes 未建模项登记），收益≈0 或操作向量（烁影层数状态机未建，入场层数按操作向量处理）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1631507/desc/0:3",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/闪避判定属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1631507/desc/0:4",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1631507/desc/0:5",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_fengfeng"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1631507/desc/0:6",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_fengfeng"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1631507/desc/0:7",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1631507/desc/0:8",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1631507/desc/1:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_additional_atk"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1631507/desc/1:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_additional_atk"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_c1",
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "v12 原文有此句但本体未建模（已在 spec notes 未建模项登记），收益≈0 或操作向量（登场技替换为连携技的招式替换本体未建，次数口径并入连携/终结收入）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/1/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_c1",
+        "sev_fengfeng"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_c1"
+      ]
+    },
+    {
+      "sourceId": "/talent/2/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_c2",
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/talent/2/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_c2"
+      ]
+    },
+    {
+      "sourceId": "/talent/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式分类声明（视为[快速支援]/非重击）由 catalog 行分类承载（技能等级 +2 走引擎通用命座技能等级规则 cinemaSkillLevel）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/4/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_c4"
+      ]
+    },
+    {
+      "sourceId": "/talent/4/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_c4"
+      ]
+    },
+    {
+      "sourceId": "/talent/5/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/6/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_c6",
+        "sev_flow"
+      ]
+    },
+    {
+      "sourceId": "/talent/6/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_c6"
+      ]
+    },
+    {
+      "sourceId": "/talent/6/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "sev_c6",
+        "sev_flow"
+      ]
+    }
+  ],
+  "mechanics": [
+    {
+      "id": "sev_core_dmg",
+      "sources": [
+        "/passive/level/1631507/desc/0:0"
+      ],
+      "dimension": "D1",
+      "certainty": "L0",
+      "trigger": "角色在队即生效（核心被动·风回无终）",
+      "target": "自身面板 critDmg / dmgBonus",
+      "gate": "无（核心被动恒生效）；+30 档额外要求队伍存在其他风属性角色",
+      "formula": "panel.critDmg += 60；panel.dmgBonus += 25 + (有其他风属性队友 ? 30 : 0)",
+      "field": "PanelValues.critDmg / PanelValues.dmgBonus",
+      "countSource": "恒为 1（静态面板加成）",
+      "duration": "常驻",
+      "cap": "无",
+      "assumptions": [
+        {
+          "premise": "「队伍中存在其他风属性角色」按同队其他槽位 agent.attribute === wind 判定，排除自身",
+          "falsifier": "若实测自身风属性被计入，则单风队也会 +30，面板 dmgBonus 会恒为 55"
+        }
+      ],
+      "decisionEvidence": "",
+      "implementation": {
+        "spec": "src/specs/agents/1631.json#/notes/10",
+        "consumer": "src/mechanics/agents/severian.ts#applySeverianPanel"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "单风队 1631 + 1251",
+          "expected": "dmgBonus 至少 +25",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "面板差分（v12）：核心暴伤+60/增伤+25、额外能力暴击率转攻击、影画1 无视15%风抗"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "有其他风属性队友",
+          "expected": "dmgBonus 比单风队多 30",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "纯函数：computeSeverianCycle v12 门控（核心增伤/暴击转攻击/影画2/4/6）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "cinemaLevel=0",
+          "expected": "coreDmgBonus=25 / coreCritDmg=60",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "纯函数：computeSeverianCycle v12 门控（核心增伤/暴击转攻击/影画2/4/6）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sev_additional_atk",
+      "sources": [
+        "/passive/level/1631507/desc/1:0",
+        "/passive/level/1631507/desc/1:1"
+      ],
+      "dimension": "D5",
+      "certainty": "L0",
+      "trigger": "额外能力·最优编配触发（队伍存在[支援]/[击破]/同阵营角色）",
+      "target": "自身面板 atk（固定值直加）",
+      "gate": "additionalAbilityActive 门控（spec additionalAbility.teamConditions 声明式判定）",
+      "formula": "atk += min(100, panel.critRate) × 8.5",
+      "field": "PanelValues.atk",
+      "countSource": "读自身面板 critRate（同一 applyPanel 阶段的当下值）",
+      "duration": "常驻",
+      "cap": "计入上限 100% 暴击率（= 最多 +850 攻击）",
+      "assumptions": [
+        {
+          "premise": "转模读 applyPanel 时的 panel.critRate，队伍后置加成不回溯（与诺玛 1571 暴击率转模同口径）",
+          "falsifier": "若队友后置暴击 buff 也应计入，则实战攻击会比本实现高（差 = 后置暴击率 × 8.5）"
+        }
+      ],
+      "decisionEvidence": "",
+      "implementation": {
+        "spec": "src/specs/agents/1631.json#/notes/10",
+        "consumer": "src/mechanics/agents/severian.ts#computeSeverianCycle"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "critRate=60, additionalActive=true",
+          "expected": "atkFromCrit = 510",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "纯函数：computeSeverianCycle v12 门控（核心增伤/暴击转攻击/影画2/4/6）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "additionalActive=false",
+          "expected": "atkFromCrit = 0",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "纯函数：computeSeverianCycle v12 门控（核心增伤/暴击转攻击/影画2/4/6）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "critRate=150",
+          "expected": "atkFromCrit = 850（100% 封顶）",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "纯函数：computeSeverianCycle v12 门控（核心增伤/暴击转攻击/影画2/4/6）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sev_flow",
+      "sources": [
+        "/skill/basic/description/0/desc:2",
+        "/skill/basic/description/0/desc:3",
+        "/skill/basic/description/1/desc:2",
+        "/skill/basic/description/1/desc:3",
+        "/skill/basic/description/2/desc:0",
+        "/skill/basic/description/2/desc:2",
+        "/skill/chain/description/0/desc:2",
+        "/skill/chain/description/1/desc:2",
+        "/skill/dodge/description/0/desc:2",
+        "/passive/level/1631507/desc/0:4",
+        "/passive/level/1631507/desc/0:7",
+        "/passive/level/1631507/desc/0:8",
+        "/talent/1/desc:0",
+        "/talent/2/desc:0",
+        "/talent/6/desc:0",
+        "/talent/6/desc:2"
+      ],
+      "dimension": "D3",
+      "certainty": "L1",
+      "trigger": "固定招式命中 / 极限闪避 / 连携 / 终结 / 影画2 入场",
+      "target": "自身资源[流息] → 苍风影猎次数",
+      "gate": "流息达 100 才能发动一次苍风影猎（cost=100）",
+      "formula": "flow = 疾锋四段×20 + 烈旋×35 + 极限闪避×15 + 连携×(影画1?50:35) + 终结×100 + 影画2?150 + 影画6?25×影猎；影猎次数 = floor(flow/100)（影画6 定点迭代）",
+      "field": "cfg 派生：severianFlow.flowIncome / shadowHuntCount（执行行 count）",
+      "countSource": "平A段循环计数 + 状态计数器（chainCountTotal/ultimateCount/dodgeCounterCount）",
+      "duration": "整局累计",
+      "cap": "流息上限 150（影画6 180）仅入资源卡展示，获取不截断（总量口径）",
+      "assumptions": [
+        {
+          "premise": "流息按「来多少打多少」总量口径结算，不做上限截断（与普罗米娅同款）",
+          "falsifier": "若实际上限会截断溢出，则高收入档位影猎次数会系统性偏多（差值 = floor(溢出/100)）"
+        },
+        {
+          "premise": "影画6[风起]（每次影猎 +25 流息）为自指反馈，用定点迭代求最小不动点（与「有序级联」同口径：退款在消耗之后到账）",
+          "falsifier": "若改成松弛式（迭代期不 floor），base mod 75 < 25 的档位会恒多 1 次影猎（severianFlowCascade.test.ts 会红）"
+        }
+      ],
+      "decisionEvidence": "风起 5点/秒×5秒=25（v12 原文），迭代式见 severianFlowState；级联口径见 severianFlowCascade.test.ts 头注释（T122 实测证伪松弛解）",
+      "implementation": {
+        "spec": "src/specs/agents/1631.json#/notes/10",
+        "consumer": "src/mechanics/agents/severian.ts#buildSeverianExecutions"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "C6 全套收入",
+          "expected": "影猎次数 = floor(flow/100) 且行 count 与资源卡一致",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "资源区块与执行行同口径：苍风影猎次数/凭风层数一致"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "流息不足 100",
+          "expected": "影猎 0 次、不产 1631006 行",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "执行行：苍风影猎按流息收入产行（C6 最后击 +350 且 override），烈旋按闪反近似"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C6 风起自指",
+          "expected": "flowIncome ≥ 100×影猎 + 25（可达性不变量）",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "纯函数：疾锋四段循环 #4 命中计数（完整循环 1 次/轮，尾部推进到 #4 再 +1）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sev_fengfeng",
+      "sources": [
+        "/skill/assist/description/3/desc:0",
+        "/passive/level/1631507/desc/0:5",
+        "/passive/level/1631507/desc/0:6",
+        "/talent/1/desc:2"
+      ],
+      "dimension": "D2",
+      "certainty": "L1",
+      "trigger": "极限闪避获得层数（影画1 起苍风影猎每次 +1 层）；持有凭风时切换/快支入场消耗",
+      "target": "入场技 1631019 / 连携 1631012 / 终结 1631013 最后一击倍率",
+      "gate": "仅入场类型招式的最后一击；层数由滑块 + 影画1 下限共同决定",
+      "formula": "倍率 += [0, 60, 300][层数]（同区加算，damageMultiplierOverride）",
+      "field": "SkillExecution.damageMultiplier / damageMultiplierOverride",
+      "countSource": "滑块 severian.fengfengStacks + 影猎次数（影画1）",
+      "duration": "每次入场消耗（层数不跨入场累积）",
+      "cap": "最多 2 层",
+      "assumptions": [
+        {
+          "premise": "影画1「每次苍风影猎获得1层凭风」使本局有影猎时至少 1 层，滑块低于 1 时抬到 1",
+          "falsifier": "若影猎不产凭风，则 C1 且滑块 0 时连携行不应有 +60"
+        }
+      ],
+      "decisionEvidence": "v12 影画2 改为穿透率 +20%，旧「C2 自动满 2 层」口径已废弃（resolveSeverianFengfengStacks 头注释）",
+      "implementation": {
+        "spec": "src/specs/agents/1631.json#/notes/10",
+        "consumer": "src/mechanics/agents/severian.ts#resolveSeverianFengfengStacks"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "C1 + 影猎≥1 + 滑块0",
+          "expected": "fengfengStacks = 1",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "纯函数：凭风层数口径（影画1 起本局有影猎 ⇒ 至少 1 层）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "C0 + 滑块0",
+          "expected": "fengfengStacks = 0，连携行无覆盖",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "滑块生效：凭风层数/苍风影猎次数/烈旋次数覆盖都改得动结果"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "滑块2",
+          "expected": "fengfengMultBonus = 300",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "纯函数：凭风层数口径（影画1 起本局有影猎 ⇒ 至少 1 层）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sev_c1",
+      "sources": [
+        "/skill/chain/description/0/desc:2",
+        "/talent/1/desc:0",
+        "/talent/1/desc:2",
+        "/talent/1/desc:3"
+      ],
+      "dimension": "D4",
+      "certainty": "L0",
+      "trigger": "影画1（双份浓缩）",
+      "target": "连携流息 35→50；命中无视 15% 风抗；影猎给凭风",
+      "gate": "cinemaLevel ≥ 1",
+      "formula": "连携流息 = 50；panel.enemyWindResReduction += 15",
+      "field": "PanelValues.enemyWindResReduction / severianChainFlow 返回值",
+      "countSource": "恒为 1（静态）",
+      "duration": "常驻",
+      "cap": "无",
+      "assumptions": [],
+      "decisionEvidence": "",
+      "implementation": {
+        "spec": "src/specs/agents/1631.json#/notes/10",
+        "consumer": "src/mechanics/agents/severian.ts#severianChainFlow"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "cinemaLevel=1",
+          "expected": "severianChainFlow = 50",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "纯函数：连携技流息 35 → 影画1 50"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "cinemaLevel=0",
+          "expected": "severianChainFlow = 35",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "纯函数：连携技流息 35 → 影画1 50"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C1 面板",
+          "expected": "enemyWindResReduction ≥ 15",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "面板差分（v12）：核心暴伤+60/增伤+25、额外能力暴击率转攻击、影画1 无视15%风抗"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sev_c2",
+      "sources": [
+        "/talent/2/desc:0",
+        "/talent/2/desc:1"
+      ],
+      "dimension": "D4",
+      "certainty": "L0",
+      "trigger": "影画2（理性的缰绳）",
+      "target": "入场 +150 流息；穿透率 +20%（25 秒）",
+      "gate": "cinemaLevel ≥ 2；穿透按覆盖率滑块 severian.triggerCoverage 折算",
+      "formula": "flow += 150（整局一次）；panel.penRatio += 20 × 覆盖率",
+      "field": "PanelValues.penRatio / severianFlow.flowIncome",
+      "countSource": "恒为 1（入场一次）+ 覆盖率滑块",
+      "duration": "穿透 25 秒 → 按覆盖率折算",
+      "cap": "无",
+      "assumptions": [],
+      "decisionEvidence": "",
+      "implementation": {
+        "spec": "src/specs/agents/1631.json#/notes/10",
+        "consumer": "src/mechanics/agents/severian.ts#computeSeverianCycle"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "cinemaLevel=2 覆盖率1",
+          "expected": "c2PenRatio = 20 / c2EntryFlow = 150",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "资源区块与执行行同口径：苍风影猎次数/凭风层数一致"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "cinemaLevel=0",
+          "expected": "c2PenRatio = 0 / c2EntryFlow = 0",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "资源区块与执行行同口径：苍风影猎次数/凭风层数一致"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "覆盖率 0.5",
+          "expected": "c2PenRatio = 10",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "模块声明：暴伤/增伤/暴击转攻击/影画2 穿透与流息上限都在独立通道上"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sev_c4",
+      "sources": [
+        "/talent/4/desc:0",
+        "/talent/4/desc:1"
+      ],
+      "dimension": "D4",
+      "certainty": "L0",
+      "trigger": "影画4（光与影的界限）：进入战斗/换入前场 +10% 攻击；烈旋/影猎 +10% 喧响效率",
+      "target": "PanelValues.atk / decibelGainEfficiency",
+      "gate": "cinemaLevel ≥ 4；喧响效率按覆盖率滑块折算",
+      "formula": "panel.atk *= 1.10；panel.decibelGainEfficiency += 10 × 覆盖率",
+      "field": "PanelValues.atk / PanelValues.decibelGainEfficiency",
+      "countSource": "恒为 1 + 覆盖率滑块",
+      "duration": "攻击 30 秒 / 喧响 15 秒 → 按覆盖率折算",
+      "cap": "无",
+      "assumptions": [],
+      "decisionEvidence": "",
+      "implementation": {
+        "spec": "src/specs/agents/1631.json#/notes/10",
+        "consumer": "src/mechanics/agents/severian.ts#applySeverianPanel"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "cinemaLevel=4",
+          "expected": "c4AtkPct = 10 / c4DecibelEfficiency = 10",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "纯函数：computeSeverianCycle v12 门控（核心增伤/暴击转攻击/影画2/4/6）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "cinemaLevel=2",
+          "expected": "c4AtkPct = 0",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "纯函数：computeSeverianCycle v12 门控（核心增伤/暴击转攻击/影画2/4/6）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "覆盖率 0",
+          "expected": "c4DecibelEfficiency = 0",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "模块声明：暴伤/增伤/暴击转攻击/影画2 穿透与流息上限都在独立通道上"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sev_c6",
+      "sources": [
+        "/talent/6/desc:0",
+        "/talent/6/desc:1",
+        "/talent/6/desc:2"
+      ],
+      "dimension": "D4",
+      "certainty": "L0",
+      "trigger": "影画6（在一颗小星星下）：流息上限 180 + 入场回复 180；苍风影猎最后击 +350%；风起 25/次",
+      "target": "流息上限 / 苍风影猎行倍率 / 流息收入",
+      "gate": "cinemaLevel ≥ 6",
+      "formula": "flowCap = 180；shadow row damageMultiplier = 表值 + 350（override）；每次影猎 +25 流息",
+      "field": "SkillExecution.damageMultiplier / severianFlow.flowCap / flowIncome",
+      "countSource": "影猎次数（定点迭代）",
+      "duration": "常驻",
+      "cap": "流息上限 180",
+      "assumptions": [],
+      "decisionEvidence": "",
+      "implementation": {
+        "spec": "src/specs/agents/1631.json#/notes/10",
+        "consumer": "src/mechanics/agents/severian.ts#buildSeverianExecutions"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "cinemaLevel=6",
+          "expected": "影猎行 damageMultiplier = 表值 + 350 且 override",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "命座差分：C6 苍风影猎最后一击 +350%（行倍率=基础+350 且 override），整局伤害 C6 > C0"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "cinemaLevel=0",
+          "expected": "影猎行无 override",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "命座差分：C6 苍风影猎最后一击 +350%（行倍率=基础+350 且 override），整局伤害 C6 > C0"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C6 流息上限",
+          "expected": "flowCap = 180",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "模块声明：暴伤/增伤/暴击转攻击/影画2 穿透与流息上限都在独立通道上"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sev_windblade",
+      "sources": [
+        "/skill/special/description/1/desc:2"
+      ],
+      "dimension": "D6",
+      "certainty": "L1",
+      "trigger": "强化特殊技长按（1631009 风刃段）",
+      "target": "风刃行倍率 / 耗能 / 时间",
+      "gate": "每次强特按满充比例滑块 severian.windBladeChargeRatio 缩放",
+      "formula": "倍率 = 表值 × r；耗能 = 40 × r；时间 = actionTime × r",
+      "field": "SkillExecution.damageMultiplier / totalEnergyConsume / totalTime",
+      "countSource": "exSpecialCount",
+      "duration": "整局",
+      "cap": "风刃满充能量消耗 40 点",
+      "assumptions": [
+        {
+          "premise": "满充比例滑块是「长按多久」的用户近似（原文未给固定满充时长）",
+          "falsifier": "若实测每次强特必满充，则滑块应恒为 1，滑块调低时结果会失真"
+        }
+      ],
+      "decisionEvidence": "",
+      "implementation": {
+        "spec": "src/specs/agents/1631.json#/notes/10",
+        "consumer": "src/mechanics/agents/severian.ts#buildSeverianExecutions"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "r=1",
+          "expected": "倍率 = 表值、耗能 = count×40",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "长按风刃段（1631009）：随强特产行，倍率/耗能按满充比例滑块缩放；v12 组合技耗能 40"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "r=0",
+          "expected": "不产风刃行",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "长按风刃段（1631009）：随强特产行，倍率/耗能按满充比例滑块缩放；v12 组合技耗能 40"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "r=0.5",
+          "expected": "倍率×0.5、耗能×0.5",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "长按风刃段（1631009）：随强特产行，倍率/耗能按满充比例滑块缩放；v12 组合技耗能 40"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sev_liexuan",
+      "sources": [
+        "/skill/basic/description/1/desc:0"
+      ],
+      "dimension": "D7",
+      "certainty": "L2",
+      "trigger": "前三段普攻瞬间受击 / 持有烁影时受非控制技攻击 → 自动发动烈旋",
+      "target": "烈旋 1631005 执行行次数",
+      "gate": "湍影层数与受击事件为操作向量，按极限闪避/闪反次数近似（滑块可覆盖）",
+      "formula": "count = cfg.dodgeCounterCount（滑块 severian.blazingSpinCount > 0 时以滑块为准）",
+      "field": "SkillExecution.count（moveId 1631005）",
+      "countSource": "cfg.dodgeCounterCount（交互栏录入）",
+      "duration": "整局",
+      "cap": "无",
+      "assumptions": [
+        {
+          "premise": "受击/烁影驱动不可观测 ⇒ 用极限闪避次数作代理（两者同源：都是「被攻击」事件）",
+          "falsifier": "若实战烈旋次数显著高于闪避次数（连续受击多次），本实现会低估烈旋次数与流息收入"
+        },
+        {
+          "premise": "疾锋四段闪避成功强化的 1631020 不计次（倍率与烈旋相同 677%，主体伤害已由烈旋行承载）",
+          "falsifier": "若 1631020 触发频率与烈旋同量级，则少计一份 677% 伤害"
+        }
+      ],
+      "decisionEvidence": "v12 烈旋倍率 1493.4%→677%，与 1631020（四段闪避强化）同值 ⇒ 强化段被烈旋行完全覆盖，增量≈0（spec notes 未建模项）",
+      "implementation": {
+        "spec": "src/specs/agents/1631.json#/notes/10",
+        "consumer": "src/mechanics/agents/severian.ts#buildSeverianExecutions"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "dodgeCounterCount=6",
+          "expected": "烈旋行 count = 6",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "执行行：苍风影猎按流息收入产行（C6 最后击 +350 且 override），烈旋按闪反近似"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "dodgeCounterCount=0",
+          "expected": "无烈旋行",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "执行行：苍风影猎按流息收入产行（C6 最后击 +350 且 override），烈旋按闪反近似"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "滑块 blazingSpinCount=3",
+          "expected": "烈旋行 count = 3",
+          "test": {
+            "file": "src/mechanics/__tests__/severian.test.ts",
+            "title": "滑块生效：凭风层数/苍风影猎次数/烈旋次数覆盖都改得动结果"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -84,9 +84,9 @@ describe('CC-203 额外能力硬门控表：从数据派生、与 store 默认�
     }
     // 安比（狡兔屋/电）与凯撒不同阵营：spec 声明本身不满足，凯撒模块「有任意队友」近似放行
     expect(await enabledFor([{ agentId: '1071' }, { agentId: '1011' }, ''], 'caesar.additional_battle_spirit_dmg')).toBe(true)
-    // 菲欧妮 + 简：额外能力触发（tier2 开），异常数 2 < 3 ⇒ tier3 默认不勾
-    expect(await enabledFor([{ agentId: '1641' }, { agentId: '1261' }, ''], 'phoenix.weakness_anomaly_crit_dmg_tier2')).toBe(true)
-    expect(await enabledFor([{ agentId: '1641' }, { agentId: '1261' }, ''], 'phoenix.weakness_anomaly_crit_dmg_tier3')).toBe(false)
+    // 菲欧妮 + 简：异常队友触发额外能力 ⇒ [灼蚀] 暴伤 +15 默认勾上（v12 起固定单档，不再按异常数分 tier2/tier3）
+    expect(await enabledFor([{ agentId: '1641' }, { agentId: '1261' }, ''], 'phoenix.scorch_anomaly_crit_dmg_additional')).toBe(true)
+    expect(await enabledFor([{ agentId: '1641' }, { agentId: '1011' }, ''], 'phoenix.scorch_anomaly_crit_dmg_additional')).toBe(false)
   })
 
   it('莱卡恩 1141：额外能力未触发时强行勾上也被引擎拦住；触发时放行', async () => {
@@ -222,28 +222,22 @@ describe('evalAdditionalAbilityBuffGates 门控语义（迁移前散落逻辑的
     expect(off.get('rina.additional_electric_damage')).toBe(false)
   })
 
-  it('菲欧妮 1641：tier2 由额外能力激活；tier3 另需队伍异常数≥3（影画6 = 需求-1）', async () => {
-    // 无触发队友：全关
+  it('菲欧妮 1641（v12）：[灼蚀] 暴伤 +15 是固定单档，只由额外能力门控', async () => {
+    // 无触发队友（1011 安比：强攻/狡兔屋，非异常非同阵营）⇒ 关
     const inactive = await gatesFor([{ agentId: '1641' }, { agentId: '1011' }, ''])
-    expect(inactive.get('phoenix.weakness_anomaly_crit_dmg_tier2')).toBe(false)
-    expect(inactive.get('phoenix.weakness_anomaly_crit_dmg_tier3')).toBe(false)
-    // 简（1261，异常）触发额外能力；异常数 = 2 → tier2 开 / tier3 关
-    const twoAnomaly = await gatesFor([{ agentId: '1641' }, { agentId: '1261' }, ''])
-    expect(twoAnomaly.get('phoenix.weakness_anomaly_crit_dmg_tier2')).toBe(true)
-    expect(twoAnomaly.get('phoenix.weakness_anomaly_crit_dmg_tier3')).toBe(false)
-    // 三异常 → tier3 开
+    expect(inactive.get('phoenix.scorch_anomaly_crit_dmg_additional')).toBe(false)
+    // 简（1261，异常）触发额外能力 ⇒ 开
+    const anomalyMate = await gatesFor([{ agentId: '1641' }, { agentId: '1261' }, ''])
+    expect(anomalyMate.get('phoenix.scorch_anomaly_crit_dmg_additional')).toBe(true)
+    // v12 不再按异常角色数分档：再加一名异常角色，档位不变（仍是同一条 buff）
     const threeAnomaly = await gatesFor([{ agentId: '1641' }, { agentId: '1261' }, { agentId: '1561' }])
-    expect(threeAnomaly.get('phoenix.weakness_anomaly_crit_dmg_tier3')).toBe(true)
-    // 影画6：2 异常 + 有效数+1 → tier3 开
-    const cinema6 = await gatesFor([{ agentId: '1641', cinemaLevel: 6 }, { agentId: '1261' }, { agentId: '1011' }])
-    expect(cinema6.get('phoenix.weakness_anomaly_crit_dmg_tier3')).toBe(true)
-    // CC-331：同阵营非异常队友（1481 琉音，坎卜斯黑枝·击破）触发额外能力但仅 1 名异常 → C0 时 tier2/tier3 均关；C6（需求-1 → 有效数 2）时 tier2 开、tier3 关
-    const sameFactionC0 = await gatesFor([{ agentId: '1641', cinemaLevel: 0 }, { agentId: '1481' }, ''])
-    expect(sameFactionC0.get('phoenix.weakness_anomaly_crit_dmg_tier2')).toBe(false)
-    expect(sameFactionC0.get('phoenix.weakness_anomaly_crit_dmg_tier3')).toBe(false)
-    const sameFactionC6 = await gatesFor([{ agentId: '1481' }, { agentId: '1641', cinemaLevel: 6 }, ''])
-    expect(sameFactionC6.get('phoenix.weakness_anomaly_crit_dmg_tier2')).toBe(true)
-    expect(sameFactionC6.get('phoenix.weakness_anomaly_crit_dmg_tier3')).toBe(false)
+    expect(threeAnomaly.get('phoenix.scorch_anomaly_crit_dmg_additional')).toBe(true)
+    // 同阵营非异常队友（1481 琉音，坎卜斯黑枝·击破）也满足额外能力（同阵营档）
+    const sameFaction = await gatesFor([{ agentId: '1641' }, { agentId: '1481' }, ''])
+    expect(sameFaction.get('phoenix.scorch_anomaly_crit_dmg_additional')).toBe(true)
+    // 旧 tier2/tier3 id 已随 v12 删除（表里不应再有）
+    expect(threeAnomaly.get('phoenix.weakness_anomaly_crit_dmg_tier2')).toBeUndefined()
+    expect(threeAnomaly.get('phoenix.weakness_anomaly_crit_dmg_tier3')).toBeUndefined()
   })
 
   it('潘引壶 1421：两条 buff（额外能力 + 影画1）同门控，开/关一致', async () => {

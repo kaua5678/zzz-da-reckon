@@ -1,10 +1,10 @@
 {
   "id": 14163,
   "code_name": "Weapon_S_1631",
-  "name": "Severian Test Engine",
-  "desc": "Severian Test Engine Description",
+  "name": "Incarcerating Grip",
+  "desc": "...",
   "desc2": "Equip to increase Attack Agents' combat capabilities",
-  "desc3": "Severian Test Engine Short Description",
+  "desc3": "...",
   "rarity": 4,
   "icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/ItemIconWeapon/UnPacker/Weapon_S_1631.png",
   "weapon_type": {
@@ -358,24 +358,24 @@
   "materials": "10:12000,101010:4|10:28000,101020:12|10:60000,101020:20|10:100000,101030:10|10:200000,101030:20",
   "talents": {
     "1": {
-      "name": "Severian Test Engine",
-      "desc": "Increases the equipper's CRIT DMG by <color=#2BAD00>24%</color>. When the equipper's <color=#FFFFFF>[Basic Attack]</color> hits an enemy, increases their own ATK by <color=#2BAD00>15%</color>, and DMG dealt ignores <color=#2BAD00>20%</color> of the target's <color=#A6C5FD>Wind DMG RES</color> for 20s."
+      "name": "Evil Caught in Hand",
+      "desc": "The equipper's CRIT Rate increases by <color=#2BAD00>20%</color>. When the equipper's <color=#FFFFFF>Basic Attack</color> hits an enemy, their ATK increases by <color=#2BAD00>10%</color>, and their DMG ignores <color=#2BAD00>15%</color> of the target's <color=#A6C5FD>Wind RES</color> for 16s."
     },
     "2": {
-      "name": "Severian Test Engine",
-      "desc": "Increases the equipper's CRIT DMG by <color=#2BAD00>27.6%</color>. When the equipper's <color=#FFFFFF>[Basic Attack]</color> hits an enemy, increases own ATK by <color=#2BAD00>17.3%</color>, and DMG dealt ignores <color=#2BAD00>23%</color> of the target's <color=#A6C5FD>Wind DMG RES</color> for 20s."
+      "name": "Evil Caught in Hand",
+      "desc": "The equipper's CRIT Rate increases by <color=#2BAD00>23%</color>. When the equipper's <color=#FFFFFF>Basic Attack</color> hits an enemy, their ATK increases by <color=#2BAD00>11.5%</color>, and their DMG ignores <color=#2BAD00>17.3%</color> of the target's <color=#A6C5FD>Wind RES</color> for 16s."
     },
     "3": {
-      "name": "Severian Test Engine",
-      "desc": "The equipper's CRIT DMG increases by <color=#2BAD00>31.2%</color>. When the equipper's <color=#FFFFFF>[Basic Attack]</color> hits an enemy, increases own ATK by <color=#2BAD00>19.5%</color>, and DMG dealt ignores <color=#2BAD00>26%</color> of the target's <color=#A6C5FD>Wind DMG RES</color> for 20s."
+      "name": "Evil Caught in Hand",
+      "desc": "The equipper's CRIT Rate increases by <color=#2BAD00>26%</color>. When the equipper's <color=#FFFFFF>Basic Attack</color> hits an enemy, their ATK increases by <color=#2BAD00>13%</color>, and their DMG ignores <color=#2BAD00>19.5%</color> of the target's <color=#A6C5FD>Wind RES</color> for 16s."
     },
     "4": {
-      "name": "Severian Test Engine",
-      "desc": "Increases the equipper's CRIT DMG by <color=#2BAD00>34.8%</color>. When the equipper's <color=#FFFFFF>[Basic Attack]</color> hits an enemy, increases their own ATK by <color=#2BAD00>21.8%</color>, and DMG dealt ignores <color=#2BAD00>29%</color> of the target's <color=#A6C5FD>Wind DMG RES</color>. Lasts 20s."
+      "name": "Evil Caught in Hand",
+      "desc": "The equipper's CRIT Rate increases by <color=#2BAD00>29%</color>. When the equipper's <color=#FFFFFF>Basic Attack</color> hits an enemy, their ATK increases by <color=#2BAD00>14.5%</color>, and their DMG ignores <color=#2BAD00>21.8%</color> of the target's <color=#A6C5FD>Wind RES</color> for 16s."
     },
     "5": {
-      "name": "Severian Test Engine",
-      "desc": "Increases the equipper's CRIT DMG by <color=#2BAD00>38.4%</color>. When the equipper's <color=#FFFFFF>[Basic Attack]</color> hits an enemy, increases own ATK by <color=#2BAD00>24%</color>, and DMG dealt ignores <color=#2BAD00>32%</color> of the target's <color=#A6C5FD>Wind DMG RES</color> for 20s."
+      "name": "Evil Caught in Hand",
+      "desc": "The equipper's CRIT Rate increases by <color=#2BAD00>32%</color>. When the equipper's <color=#FFFFFF>Basic Attack</color> hits an enemy, their ATK increases by <color=#2BAD00>16%</color>, and their DMG ignores <color=#2BAD00>24%</color> of the target's <color=#A6C5FD>Wind RES</color> for 16s."
     }
   }
 }

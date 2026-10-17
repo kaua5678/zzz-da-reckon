@@ -19,39 +19,51 @@
   },
   "gender": 2,
   "partner_info": {
-    "birthday": "Partner_Birthday_1641",
-    "full_name": "Partner_Name_1641",
+    "birthday": "...",
+    "full_name": "...",
     "gender": "Female",
     "icon_path": "UI/Sprite/A1DynamicLoad/IconRoleCircle/UnPacker/IconRoleCircle1641.png",
-    "inter_knot_icon": "",
-    "impression_f": "Partner_Impression_f_1641",
-    "impression_m": "Partner_Impression_m_1641",
+    "inter_knot_icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/InterKnot/UnPacker/IconInterknotAvatar/IconInterKnotRole1641.png",
+    "impression_f": "...",
+    "impression_m": "...",
     "impressions": [
-      "SenderNote1_221641",
-      "SenderNote2_221641",
-      "SenderNote3_221641"
+      "...",
+      "...",
+      "..."
     ],
-    "profile_desc": "Partner_ProfileDesc_1641",
+    "profile_desc": "...",
     "role_icon": "IconRole/UnPacker/IconRole1641",
-    "stature": "Partner_Stature_1641",
+    "stature": "...",
     "unlock_condition": [
       "Obtain Agent",
-      "Partner_Unlock_Condition_Chapter033",
+      "...",
       "Complete the \"Anby's Problem\" commission"
     ],
     "trust_lv": {
-      "1": "Partner_ProfileDesc_1641",
+      "1": "...",
       "2": "",
-      "3": "Partner_ProfileDesc_1641_1",
+      "3": "...",
       "4": ""
     }
   },
   "skin": {
     "3116410": {
-      "name": "AvatarSkin_Pheony_Name_000",
-      "desc": "AvatarSkin_Pheony_Desc_000",
+      "name": "...",
+      "desc": "...",
       "obtain_desc": "",
       "image": "IconRole1641"
+    },
+    "3116411": {
+      "name": "...",
+      "desc": "...",
+      "obtain_desc": "",
+      "image": "IconRole1641_01"
+    },
+    "3116412": {
+      "name": "...",
+      "desc": "...",
+      "obtain_desc": "",
+      "image": "IconRole1641_02"
     }
   },
   "stats": {
@@ -168,102 +180,102 @@
     "1": {
       "max_level": 15,
       "extra": {
-        "12101": {
-          "prop": 12101,
-          "name": "Base ATK",
-          "format": "{0:0.#}",
-          "value": 0
-        },
         "31401": {
           "prop": 31401,
           "name": "Anomaly Mastery",
           "format": "{0:0.#}",
           "value": 12
+        },
+        "12101": {
+          "prop": 12101,
+          "name": "Base ATK",
+          "format": "{0:0.#}",
+          "value": 0
         }
       }
     },
     "2": {
       "max_level": 25,
       "extra": {
-        "12101": {
-          "prop": 12101,
-          "name": "Base ATK",
-          "format": "{0:0.#}",
-          "value": 25
-        },
         "31401": {
           "prop": 31401,
           "name": "Anomaly Mastery",
           "format": "{0:0.#}",
           "value": 12
+        },
+        "12101": {
+          "prop": 12101,
+          "name": "Base ATK",
+          "format": "{0:0.#}",
+          "value": 25
         }
       }
     },
     "3": {
       "max_level": 35,
       "extra": {
-        "12101": {
-          "prop": 12101,
-          "name": "Base ATK",
-          "format": "{0:0.#}",
-          "value": 25
-        },
         "31401": {
           "prop": 31401,
           "name": "Anomaly Mastery",
           "format": "{0:0.#}",
           "value": 24
+        },
+        "12101": {
+          "prop": 12101,
+          "name": "Base ATK",
+          "format": "{0:0.#}",
+          "value": 25
         }
       }
     },
     "4": {
       "max_level": 45,
       "extra": {
-        "12101": {
-          "prop": 12101,
-          "name": "Base ATK",
-          "format": "{0:0.#}",
-          "value": 50
-        },
         "31401": {
           "prop": 31401,
           "name": "Anomaly Mastery",
           "format": "{0:0.#}",
           "value": 24
+        },
+        "12101": {
+          "prop": 12101,
+          "name": "Base ATK",
+          "format": "{0:0.#}",
+          "value": 50
         }
       }
     },
     "5": {
       "max_level": 55,
       "extra": {
-        "12101": {
-          "prop": 12101,
-          "name": "Base ATK",
-          "format": "{0:0.#}",
-          "value": 50
-        },
         "31401": {
           "prop": 31401,
           "name": "Anomaly Mastery",
           "format": "{0:0.#}",
           "value": 36
+        },
+        "12101": {
+          "prop": 12101,
+          "name": "Base ATK",
+          "format": "{0:0.#}",
+          "value": 50
         }
       }
     },
     "6": {
       "max_level": 60,
       "extra": {
-        "12101": {
-          "prop": 12101,
-          "name": "Base ATK",
-          "format": "{0:0.#}",
-          "value": 75
-        },
         "31401": {
           "prop": 31401,
           "name": "Anomaly Mastery",
           "format": "{0:0.#}",
           "value": 36
+        },
+        "12101": {
+          "prop": 12101,
+          "name": "Base ATK",
+          "format": "{0:0.#}",
+          "value": 75
         }
       }
     }
@@ -334,52 +346,47 @@
     "basic": {
       "description": [
         {
-          "name": "Basic Attack",
-          "desc": "Press <IconMap:Icon_Normal> to activate:\nLaunches up to 4 strikes forward, dealing <color=#FF5521>Fire DMG</color>;\nThe 3rd and 4th hits of the [Basic Attack] are considered [Burning Attacks].",
+          "name": "Basic Attack: Sever Life",
+          "desc": "Press <IconMap:Icon_Normal> to activate:\nPerforms up to 4 attacks forward, dealing <color=#FF5521>Fire DMG</color>.\nThe 3rd and 4th Basic Attacks are considered <Term:1000046>Combustion Attacks</Term>.",
           "potential": []
         },
         {
-          "name": "Burn Attack",
-          "desc": "Dealing DMG with [Burning Attack] restores [Embers]. Phoenix can hold up to 120 [Embers].\nWhile [Burning Attack] is active, Anti-Interrupt Lv. is increased. Press <IconMap:Icon_Special> to immediately follow up with the launcher Action of [Special Attack: Pursuit Slash].",
+          "name": "Basic Attack: Purifying Flame",
+          "desc": "With enough <Term:1000047></Term>, consume 90 Pyre and hold <IconMap:Icon_Normal> to activate:\nPhoenix throws her weapon, dealing massive <color=#FF5521>Fire DMG</color> to enemies in an area ahead.\nWhen the Finishing Move hits an enemy affected by <color=#98EFF0>Ice Anomaly</color>, <color=#FE437E>Ether Anomaly</color>, <color=#2EB6FF>Electric Anomaly</color>, <color=#FF5521>Fire Anomaly</color>, <color=#F0D12B>Physical Anomaly</color>, or <color=#A6C5FD>Wind Anomaly</color>, it triggers 1 instance of <color=#FFFFFF>Abloom</color>, dealing Anomaly DMG of the corresponding attribute with a <color=#2BAD00>{CAL:225+20*(AvatarSkillLevel(0)-1),1,2}%</color> multiplier.\nWhen this instance of <color=#FFFFFF>Abloom</color> triggers a critical hit, its CRIT DMG is increased by an additional 40%.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Basic Attack: Basic Attack Hold",
-          "desc": "When [Embers] are sufficient, consume 90 [Embers] and hold <IconMap:Icon_Normal> to activate:\nPhoenix hurls her weapon, dealing massive <color=#FF5521>Fire DMG</color> to enemies in the area ahead;\nWhen the Finishing Move hits enemies afflicted with <color=#98EFF0>Ice Attribute Anomaly</color>, <color=#FE437E>Ether Attribute Anomaly</color>, <color=#2EB6FF>Electric Attribute Anomaly</color>, <color=#FF5521>Fire Attribute Anomaly</color>, <color=#F0D12B>Physical Attribute Anomaly</color>, or <color=#A6C5FD>Wind Attribute Anomaly</color>, it triggers 1 instance of the <color=#FFFFFF>[Abloom]</color> effect, dealing Attribute Anomaly DMG of the corresponding attribute at a <color=#2BAD00>{CAL:225+20*(AvatarSkillLevel(0)-1),1,2}%</color> multiplier;\nWhen this <color=#FFFFFF>[Abloom]</color> effect triggers a critical hit, its CRIT DMG is additionally increased by <color=#2BAD00>20%</color>\nCharacter is invulnerable while using this skill.",
+          "name": "Basic Attack: Meltdown",
+          "desc": "If Special Attack: Fire Sweep does not trigger a Perfect Block, press <IconMap:Icon_Normal> to activate:\nCharge forward, dealing <color=#FF5521>Fire DMG</color>.\nConsidered a <Term:1000046></Term>.\nDuring this skill, press <IconMap:Icon_Normal> to follow up with the 3rd hit of a Basic Attack.",
           "potential": []
         },
         {
-          "name": "Basic Attack: Alt Attack",
-          "desc": "After activating [Special Attack: Pursuit Slash], Press <IconMap:Icon_Normal> to activate:\nDash forward, dealing <color=#FF5521>Fire DMG</color>;\nCounts as a [Burning Attack];\nDuring this skill, press <IconMap:Icon_Normal> to chain into the 3rd hit of [Basic Attack].",
-          "potential": []
-        },
-        {
-          "name": "Basic Attack",
+          "name": "Basic Attack: Sever Life",
           "param": [
             {
               "name": "1st-Hit DMG Multiplier",
               "desc": "{Skill:1641001, Prop:1001}",
               "param": {
                 "1641001": {
-                  "main": 3120,
-                  "growth": 290,
+                  "main": 1560,
+                  "growth": 150,
                   "format": "%",
-                  "damage_percentage": 3120,
-                  "damage_percentage_growth": 290,
-                  "stun_ratio": 1980,
-                  "stun_ratio_growth": 90,
-                  "sp_recovery": 6480,
+                  "damage_percentage": 1560,
+                  "damage_percentage_growth": 150,
+                  "stun_ratio": 1320,
+                  "stun_ratio_growth": 60,
+                  "sp_recovery": 3240,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 49500,
+                  "fever_recovery": 33000,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 1800,
+                  "attribute_infliction": 1200,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 1800
+                  "ether_purify": 1200
                 }
               },
               "potential": []
@@ -389,25 +396,25 @@
               "desc": "{Skill:1641002, Prop:1001}",
               "param": {
                 "1641002": {
-                  "main": 10320,
-                  "growth": 940,
+                  "main": 6770,
+                  "growth": 620,
                   "format": "%",
-                  "damage_percentage": 10320,
-                  "damage_percentage_growth": 940,
-                  "stun_ratio": 5980,
-                  "stun_ratio_growth": 280,
-                  "sp_recovery": 19570,
+                  "damage_percentage": 6770,
+                  "damage_percentage_growth": 620,
+                  "stun_ratio": 4550,
+                  "stun_ratio_growth": 210,
+                  "sp_recovery": 12130,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 149600,
+                  "fever_recovery": 113850,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 5433,
+                  "attribute_infliction": 4133,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 5434
+                  "ether_purify": 4134
                 }
               },
               "potential": []
@@ -417,25 +424,25 @@
               "desc": "{Skill:1641003, Prop:1001}",
               "param": {
                 "1641003": {
-                  "main": 19930,
-                  "growth": 1820,
+                  "main": 17810,
+                  "growth": 1620,
                   "format": "%",
-                  "damage_percentage": 19930,
-                  "damage_percentage_growth": 1820,
-                  "stun_ratio": 10650,
-                  "stun_ratio_growth": 490,
-                  "sp_recovery": 33170,
+                  "damage_percentage": 17810,
+                  "damage_percentage_growth": 1620,
+                  "stun_ratio": 9750,
+                  "stun_ratio_growth": 450,
+                  "sp_recovery": 30230,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 253550,
+                  "fever_recovery": 231000,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 11712,
+                  "attribute_infliction": 11362,
                   "sp_consume": 0,
                   "attack_data": [
-                    80239
+                    70239
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 9214
+                  "ether_purify": 8398
                 }
               },
               "potential": []
@@ -445,25 +452,25 @@
               "desc": "{Skill:1641004, Prop:1001}",
               "param": {
                 "1641004": {
-                  "main": 38330,
-                  "growth": 3490,
+                  "main": 38920,
+                  "growth": 3540,
                   "format": "%",
-                  "damage_percentage": 38330,
-                  "damage_percentage_growth": 3490,
-                  "stun_ratio": 20300,
-                  "stun_ratio_growth": 930,
-                  "sp_recovery": 71040,
+                  "damage_percentage": 38920,
+                  "damage_percentage_growth": 3540,
+                  "stun_ratio": 20860,
+                  "stun_ratio_growth": 950,
+                  "sp_recovery": 69950,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 542850,
+                  "fever_recovery": 534325,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 24330,
+                  "attribute_infliction": 23917,
                   "sp_consume": 0,
                   "attack_data": [
-                    147634
+                    169072
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 19733
+                  "ether_purify": 19430
                 }
               },
               "potential": []
@@ -473,25 +480,25 @@
               "desc": "{Skill:1641001, Prop:1002}",
               "param": {
                 "1641001": {
-                  "main": 1980,
-                  "growth": 90,
+                  "main": 1320,
+                  "growth": 60,
                   "format": "%",
-                  "damage_percentage": 3120,
-                  "damage_percentage_growth": 290,
-                  "stun_ratio": 1980,
-                  "stun_ratio_growth": 90,
-                  "sp_recovery": 6480,
+                  "damage_percentage": 1560,
+                  "damage_percentage_growth": 150,
+                  "stun_ratio": 1320,
+                  "stun_ratio_growth": 60,
+                  "sp_recovery": 3240,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 49500,
+                  "fever_recovery": 33000,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 1800,
+                  "attribute_infliction": 1200,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 1800
+                  "ether_purify": 1200
                 }
               },
               "potential": []
@@ -501,25 +508,25 @@
               "desc": "{Skill:1641002, Prop:1002}",
               "param": {
                 "1641002": {
-                  "main": 5980,
-                  "growth": 280,
+                  "main": 4550,
+                  "growth": 210,
                   "format": "%",
-                  "damage_percentage": 10320,
-                  "damage_percentage_growth": 940,
-                  "stun_ratio": 5980,
-                  "stun_ratio_growth": 280,
-                  "sp_recovery": 19570,
+                  "damage_percentage": 6770,
+                  "damage_percentage_growth": 620,
+                  "stun_ratio": 4550,
+                  "stun_ratio_growth": 210,
+                  "sp_recovery": 12130,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 149600,
+                  "fever_recovery": 113850,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 5433,
+                  "attribute_infliction": 4133,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 5434
+                  "ether_purify": 4134
                 }
               },
               "potential": []
@@ -529,25 +536,25 @@
               "desc": "{Skill:1641003, Prop:1002}",
               "param": {
                 "1641003": {
-                  "main": 10650,
-                  "growth": 490,
+                  "main": 9750,
+                  "growth": 450,
                   "format": "%",
-                  "damage_percentage": 19930,
-                  "damage_percentage_growth": 1820,
-                  "stun_ratio": 10650,
-                  "stun_ratio_growth": 490,
-                  "sp_recovery": 33170,
+                  "damage_percentage": 17810,
+                  "damage_percentage_growth": 1620,
+                  "stun_ratio": 9750,
+                  "stun_ratio_growth": 450,
+                  "sp_recovery": 30230,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 253550,
+                  "fever_recovery": 231000,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 11712,
+                  "attribute_infliction": 11362,
                   "sp_consume": 0,
                   "attack_data": [
-                    80239
+                    70239
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 9214
+                  "ether_purify": 8398
                 }
               },
               "potential": []
@@ -557,25 +564,25 @@
               "desc": "{Skill:1641004, Prop:1002}",
               "param": {
                 "1641004": {
-                  "main": 20300,
-                  "growth": 930,
+                  "main": 20860,
+                  "growth": 950,
                   "format": "%",
-                  "damage_percentage": 38330,
-                  "damage_percentage_growth": 3490,
-                  "stun_ratio": 20300,
-                  "stun_ratio_growth": 930,
-                  "sp_recovery": 71040,
+                  "damage_percentage": 38920,
+                  "damage_percentage_growth": 3540,
+                  "stun_ratio": 20860,
+                  "stun_ratio_growth": 950,
+                  "sp_recovery": 69950,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 542850,
+                  "fever_recovery": 534325,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 24330,
+                  "attribute_infliction": 23917,
                   "sp_consume": 0,
                   "attack_data": [
-                    147634
+                    169072
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 19733
+                  "ether_purify": 19430
                 }
               },
               "potential": []
@@ -584,25 +591,25 @@
           "potential": []
         },
         {
-          "name": "Basic Attack: Basic Attack Hold",
+          "name": "Basic Attack: Purifying Flame",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1641005, Prop:1001}",
               "param": {
                 "1641005": {
-                  "main": 68250,
-                  "growth": 6210,
+                  "main": 54730,
+                  "growth": 4980,
                   "format": "%",
-                  "damage_percentage": 68250,
-                  "damage_percentage_growth": 6210,
+                  "damage_percentage": 54730,
+                  "damage_percentage_growth": 4980,
                   "stun_ratio": 27500,
                   "stun_ratio_growth": 1250,
-                  "sp_recovery": 89990,
+                  "sp_recovery": 45000,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 687500,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 54996,
+                  "attribute_infliction": 36196,
                   "sp_consume": 0,
                   "attack_data": [
                     0
@@ -622,15 +629,15 @@
                   "main": 27500,
                   "growth": 1250,
                   "format": "%",
-                  "damage_percentage": 68250,
-                  "damage_percentage_growth": 6210,
+                  "damage_percentage": 54730,
+                  "damage_percentage_growth": 4980,
                   "stun_ratio": 27500,
                   "stun_ratio_growth": 1250,
-                  "sp_recovery": 89990,
+                  "sp_recovery": 45000,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 687500,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 54996,
+                  "attribute_infliction": 36196,
                   "sp_consume": 0,
                   "attack_data": [
                     0
@@ -641,28 +648,33 @@
                 }
               },
               "potential": []
+            },
+            {
+              "name": "Abloom Multiplier",
+              "desc": "{CAL:225+20*(AvatarSkillLevel(0)-1),1,2}%",
+              "potential": []
             }
           ],
           "potential": []
         },
         {
-          "name": "Basic Attack: Alt Attack",
+          "name": "Basic Attack: Meltdown",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1641006, Prop:1001}",
               "param": {
                 "1641006": {
-                  "main": 22060,
-                  "growth": 2010,
+                  "main": 17810,
+                  "growth": 1620,
                   "format": "%",
-                  "damage_percentage": 22060,
-                  "damage_percentage_growth": 2010,
-                  "stun_ratio": 12320,
-                  "stun_ratio_growth": 560,
-                  "sp_recovery": 49970,
+                  "damage_percentage": 17810,
+                  "damage_percentage_growth": 1620,
+                  "stun_ratio": 9630,
+                  "stun_ratio_growth": 440,
+                  "sp_recovery": 35280,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 285725,
+                  "fever_recovery": 240625,
                   "fever_recovery_growth": 0,
                   "attribute_infliction": 12879,
                   "sp_consume": 0,
@@ -671,7 +683,7 @@
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 10381
+                  "ether_purify": 8748
                 }
               },
               "potential": []
@@ -681,16 +693,16 @@
               "desc": "{Skill:1641006, Prop:1002}",
               "param": {
                 "1641006": {
-                  "main": 12320,
-                  "growth": 560,
+                  "main": 9630,
+                  "growth": 440,
                   "format": "%",
-                  "damage_percentage": 22060,
-                  "damage_percentage_growth": 2010,
-                  "stun_ratio": 12320,
-                  "stun_ratio_growth": 560,
-                  "sp_recovery": 49970,
+                  "damage_percentage": 17810,
+                  "damage_percentage_growth": 1620,
+                  "stun_ratio": 9630,
+                  "stun_ratio_growth": 440,
+                  "sp_recovery": 35280,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 285725,
+                  "fever_recovery": 240625,
                   "fever_recovery_growth": 0,
                   "attribute_infliction": 12879,
                   "sp_consume": 0,
@@ -699,7 +711,7 @@
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 10381
+                  "ether_purify": 8748
                 }
               },
               "potential": []
@@ -760,47 +772,47 @@
     "dodge": {
       "description": [
         {
-          "name": "Dodge: Dodge",
-          "desc": "Press <IconMap:Icon_Evade> to activate:\nA quick dash dodge;\nCharacter is invulnerable while using this skill.",
+          "name": "Dodge: Drifting Sway",
+          "desc": "Press <IconMap:Icon_Evade> to activate:\nA quick dash dodge.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Dash Attack",
-          "desc": "Press <IconMap:Icon_Normal> during a dodge to activate:\nLaunch a dashing slash forward, dealing <color=#FF5521>Fire DMG</color>.",
+          "name": "Dash Attack: Lunge",
+          "desc": "Press <IconMap:Icon_Normal> during a dodge to activate:\nDashes forward and slashes, dealing <color=#FF5521>Fire DMG</color>.",
           "potential": []
         },
         {
-          "name": "Dodge Counter",
-          "desc": "Press <IconMap:Icon_Normal> during a <color=#FFFFFF>Perfect Dodge</color> to activate:\nDash forward and perform a rapid slash, dealing <color=#FF5521>Fire DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Dodge Counter: Twin Passage of Karmic Fire",
+          "desc": "After triggering a <color=#FFFFFF>Perfect Dodge</color>, press <IconMap:Icon_Normal> to activate:\nDash forward and unleash a quick slash, dealing <color=#FF5521>Fire DMG</color>.\nCharacter is invulnerable while using this skill. Press <IconMap:Icon_Normal> to follow up with the 3rd hit of a Basic Attack.",
           "potential": []
         },
         {
-          "name": "Dash Attack",
+          "name": "Dash Attack: Lunge",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1641010, Prop:1001}",
               "param": {
                 "1641010": {
-                  "main": 10180,
-                  "growth": 930,
+                  "main": 10400,
+                  "growth": 950,
                   "format": "%",
-                  "damage_percentage": 10180,
-                  "damage_percentage_growth": 930,
-                  "stun_ratio": 4310,
+                  "damage_percentage": 10400,
+                  "damage_percentage_growth": 950,
+                  "stun_ratio": 4400,
                   "stun_ratio_growth": 200,
-                  "sp_recovery": 14100,
+                  "sp_recovery": 14400,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 107800,
+                  "fever_recovery": 110000,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 3915,
+                  "attribute_infliction": 3998,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 3916
+                  "ether_purify": 3999
                 }
               },
               "potential": []
@@ -810,25 +822,25 @@
               "desc": "{Skill:1641010, Prop:1002}",
               "param": {
                 "1641010": {
-                  "main": 4310,
+                  "main": 4400,
                   "growth": 200,
                   "format": "%",
-                  "damage_percentage": 10180,
-                  "damage_percentage_growth": 930,
-                  "stun_ratio": 4310,
+                  "damage_percentage": 10400,
+                  "damage_percentage_growth": 950,
+                  "stun_ratio": 4400,
                   "stun_ratio_growth": 200,
-                  "sp_recovery": 14100,
+                  "sp_recovery": 14400,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 107800,
+                  "fever_recovery": 110000,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 3915,
+                  "attribute_infliction": 3998,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 3916
+                  "ether_purify": 3999
                 }
               },
               "potential": []
@@ -837,32 +849,32 @@
           "potential": []
         },
         {
-          "name": "Dodge Counter",
+          "name": "Dodge Counter: Twin Passage of Karmic Fire",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1641011, Prop:1001}",
               "param": {
                 "1641011": {
-                  "main": 29340,
-                  "growth": 2670,
+                  "main": 29620,
+                  "growth": 2700,
                   "format": "%",
-                  "damage_percentage": 29340,
-                  "damage_percentage_growth": 2670,
-                  "stun_ratio": 21630,
-                  "stun_ratio_growth": 990,
-                  "sp_recovery": 34790,
+                  "damage_percentage": 29620,
+                  "damage_percentage_growth": 2700,
+                  "stun_ratio": 21820,
+                  "stun_ratio_growth": 1000,
+                  "sp_recovery": 35390,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 265925,
+                  "fever_recovery": 270600,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 9663,
+                  "attribute_infliction": 9830,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 24664
+                  "ether_purify": 24831
                 }
               },
               "potential": []
@@ -872,25 +884,25 @@
               "desc": "{Skill:1641011, Prop:1002}",
               "param": {
                 "1641011": {
-                  "main": 21630,
-                  "growth": 990,
+                  "main": 21820,
+                  "growth": 1000,
                   "format": "%",
-                  "damage_percentage": 29340,
-                  "damage_percentage_growth": 2670,
-                  "stun_ratio": 21630,
-                  "stun_ratio_growth": 990,
-                  "sp_recovery": 34790,
+                  "damage_percentage": 29620,
+                  "damage_percentage_growth": 2700,
+                  "stun_ratio": 21820,
+                  "stun_ratio_growth": 1000,
+                  "sp_recovery": 35390,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 265925,
+                  "fever_recovery": 270600,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 9663,
+                  "attribute_infliction": 9830,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 24664
+                  "ether_purify": 24831
                 }
               },
               "potential": []
@@ -951,38 +963,38 @@
     "special": {
       "description": [
         {
-          "name": "Special Attack: Pursuit Slash",
-          "desc": "Press or hold <IconMap:Icon_Special> to activate:\nContinuously charge, and release <IconMap:Icon_Special> to perform a launching attack, dealing massive <color=#FF5521>Fire DMG</color>.\nWhile charging, DMG taken is reduced by 40%;\nIf DMG is taken at the moment the launching attack begins, or if the attack hits an enemy displaying a red or yellow flash, a Perfect Block effect is triggered, granting Immunity to that instance of DMG. Press <IconMap:Icon_Normal> to directly perform the 3rd hit of [Basic Attack];\nWhen the Perfect Block effect is triggered, gain 5 [Ember] point(s). This effect can trigger once every 10s;\nAnti-Interrupt level is increased while using this skill.",
+          "name": "Special Attack: Fire Sweep",
+          "desc": "Press <IconMap:Icon_Special> to activate:\nAfter retreating back, quickly launch an upward slash forward, dealing <color=#FF5521>Fire DMG</color>.\nDuring the retreat, DMG taken is reduced by 40%.\nIf attacked at the instant the upward slash begins, or if the slash hits an enemy flashing red or yellow, a Perfect Block is triggered, negating that instance of DMG. Press <IconMap:Icon_Normal> to immediately follow up with the 3rd hit of a Basic Attack.\nAnti-Interrupt level is increased while using this skill.",
           "potential": []
         },
         {
-          "name": "EX Special Attack: Phase 1",
-          "desc": "With enough Energy, press <IconMap:Icon_SpecialReady> to activate:\nRapidly spins the body, dealing massive <color=#FF5521>Fire DMG</color> to enemies;\nTaking DMG at the instant the attack begins or hitting an enemy flashing red or yellow can trigger the Perfect Block effect;\nCounts as a [Burning Attack];\nCharacter is invulnerable while using this skill, and pressing <IconMap:Icon_Normal> can chain into the 3rd hit of [Basic Attack].",
+          "name": "EX Special Attack: Blazing Slash",
+          "desc": "With <Term:1000049></Term>, consume 1 point of Ascension and press <IconMap:Icon_Special> to activate:\nAfter retreating, quickly perform a powerful upward slash, dealing massive <color=#FF5521>Fire DMG</color>.\nHold <IconMap:Icon_Special> while retreating to continue charging.\nWhile charging, release <IconMap:Icon_Special> to perform a powerful upward slash, dealing massive <color=#FF5521>Fire DMG</color>.\nWhen chained into from a <color=#FFFFFF><Term:1000046></Term></color>, skip the retreat and immediately perform the upward slash.\nDMG taken while retreating and charging is reduced by 40%.\nReceiving an attack just as the upward slash begins or hitting an enemy flashing red or yellow triggers a Perfect Block.\nThis skill counts as a Combustion Attack.\nCharacter is invulnerable while using this skill. Press <IconMap:Icon_Normal> to follow up with the 3rd hit of a Basic Attack.",
           "potential": []
         },
         {
-          "name": "EX Special Attack: Phase 2",
-          "desc": "With enough energy, hold <IconMap:Icon_SpecialReady> to activate:\nLaunch into the air and hurl the weapon at enemies, dealing massive <color=#FF5521>Fire DMG</color>;\nTaking DMG at the moment the attack begins or hitting enemies flashing red or yellow can trigger the Perfect Block effect;\nCounts as a [Burning Attack];\nCharacter is invulnerable while using this skill. Press <IconMap:Icon_Normal> to chain into the 3rd hit of [Basic Attack].",
+          "name": "EX Special Attack: Dazzling Flare",
+          "desc": "With enough Energy, press <IconMap:Icon_SpecialReady> to activate:\nQuickly spin around, dealing massive <color=#FF5521>Fire DMG</color> to enemies.\nReceiving an attack at the moment the spin begins or hitting an enemy flashing red or yellow triggers a Perfect Block.\nThis skill is considered a <Term:1000046></Term>.\nCharacter is invulnerable while using this skill. Press <IconMap:Icon_Normal> to follow up with the 3rd hit of a Basic Attack.",
           "potential": []
         },
         {
-          "name": "Energize",
-          "desc": "When a heavy attack from [EX Special Attack: Part 2], [Basic Attack: Basic Attack hold], or [Ultimate] hits an enemy, gain 1 stack of [Energize];\nWhen [Energize] is active, the next heavy attack will launch an additional attack against the target, dealing <color=#FF5521>Fire DMG</color>, and this attack is considered an [EX Special Attack].",
+          "name": "EX Special Attack: Falling Sun",
+          "desc": "After using EX Special Attack: Dazzling Flare, and with enough Energy, press or hold <IconMap:Icon_SpecialReady> to activate:\nRises into the air and throws her weapon, dealing massive <color=#FF5521>Fire DMG</color> to enemies.\nGain 1 point of Ascension when the skill is activated. Up to 1 point of Ascension can be held.\nReceiving an attack at the moment she starts rising or hitting an enemy flashing red or yellow triggers a Perfect Block.\nThis skill is considered a <Term:1000046></Term>.\nCharacter is invulnerable while using this skill. Press <IconMap:Icon_Normal> to follow up with the 3rd hit of a Basic Attack.",
           "potential": []
         },
         {
-          "name": "Special Attack: Pursuit Slash",
+          "name": "Special Attack: Fire Sweep",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1641007, Prop:1001}",
               "param": {
                 "1641007": {
-                  "main": 6990,
-                  "growth": 640,
+                  "main": 4560,
+                  "growth": 420,
                   "format": "%",
-                  "damage_percentage": 6990,
-                  "damage_percentage_growth": 640,
+                  "damage_percentage": 4560,
+                  "damage_percentage_growth": 420,
                   "stun_ratio": 3860,
                   "stun_ratio_growth": 180,
                   "sp_recovery": 0,
@@ -1009,8 +1021,8 @@
                   "main": 3860,
                   "growth": 180,
                   "format": "%",
-                  "damage_percentage": 6990,
-                  "damage_percentage_growth": 640,
+                  "damage_percentage": 4560,
+                  "damage_percentage_growth": 420,
                   "stun_ratio": 3860,
                   "stun_ratio_growth": 180,
                   "sp_recovery": 0,
@@ -1033,25 +1045,87 @@
           "potential": []
         },
         {
-          "name": "EX Special Attack: Phase 1",
+          "name": "EX Special Attack: Blazing Slash",
+          "param": [
+            {
+              "name": "DMG Multiplier",
+              "desc": "{Skill:1641023, Prop:1001}",
+              "param": {
+                "1641023": {
+                  "main": 38050,
+                  "growth": 3460,
+                  "format": "%",
+                  "damage_percentage": 38050,
+                  "damage_percentage_growth": 3460,
+                  "stun_ratio": 25640,
+                  "stun_ratio_growth": 1170,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 259875,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 22783,
+                  "sp_consume": 0,
+                  "attack_data": [
+                    90300
+                  ],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 5250
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "Daze Multiplier",
+              "desc": "{Skill:1641023, Prop:1002}",
+              "param": {
+                "1641023": {
+                  "main": 25640,
+                  "growth": 1170,
+                  "format": "%",
+                  "damage_percentage": 38050,
+                  "damage_percentage_growth": 3460,
+                  "stun_ratio": 25640,
+                  "stun_ratio_growth": 1170,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 259875,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 22783,
+                  "sp_consume": 0,
+                  "attack_data": [
+                    90300
+                  ],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 5250
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "EX Special Attack: Dazzling Flare",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1641008, Prop:1001}",
               "param": {
                 "1641008": {
-                  "main": 52260,
-                  "growth": 4760,
+                  "main": 45760,
+                  "growth": 4160,
                   "format": "%",
-                  "damage_percentage": 52260,
-                  "damage_percentage_growth": 4760,
-                  "stun_ratio": 33640,
-                  "stun_ratio_growth": 1530,
+                  "damage_percentage": 45760,
+                  "damage_percentage_growth": 4160,
+                  "stun_ratio": 31190,
+                  "stun_ratio_growth": 1420,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 1293600,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 36773,
+                  "attribute_infliction": 28440,
                   "sp_consume": 0,
                   "attack_data": [
                     150189
@@ -1068,18 +1142,18 @@
               "desc": "{Skill:1641008, Prop:1002}",
               "param": {
                 "1641008": {
-                  "main": 33640,
-                  "growth": 1530,
+                  "main": 31190,
+                  "growth": 1420,
                   "format": "%",
-                  "damage_percentage": 52260,
-                  "damage_percentage_growth": 4760,
-                  "stun_ratio": 33640,
-                  "stun_ratio_growth": 1530,
+                  "damage_percentage": 45760,
+                  "damage_percentage_growth": 4160,
+                  "stun_ratio": 31190,
+                  "stun_ratio_growth": 1420,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 1293600,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 36773,
+                  "attribute_infliction": 28440,
                   "sp_consume": 0,
                   "attack_data": [
                     150189
@@ -1100,32 +1174,32 @@
           "potential": []
         },
         {
-          "name": "EX Special Attack: Phase 2",
+          "name": "EX Special Attack: Falling Sun",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1641009, Prop:1001}",
               "param": {
                 "1641009": {
-                  "main": 59540,
-                  "growth": 5420,
+                  "main": 62300,
+                  "growth": 5670,
                   "format": "%",
-                  "damage_percentage": 59540,
-                  "damage_percentage_growth": 5420,
-                  "stun_ratio": 39360,
-                  "stun_ratio_growth": 1790,
+                  "damage_percentage": 62300,
+                  "damage_percentage_growth": 5670,
+                  "stun_ratio": 41050,
+                  "stun_ratio_growth": 1870,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 1458600,
+                  "fever_recovery": 1472075,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 42173,
+                  "attribute_infliction": 40119,
                   "sp_consume": 0,
                   "attack_data": [
-                    196990
+                    200851
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 16837
+                  "ether_purify": 17167
                 }
               },
               "potential": []
@@ -1135,25 +1209,25 @@
               "desc": "{Skill:1641009, Prop:1002}",
               "param": {
                 "1641009": {
-                  "main": 39360,
-                  "growth": 1790,
+                  "main": 41050,
+                  "growth": 1870,
                   "format": "%",
-                  "damage_percentage": 59540,
-                  "damage_percentage_growth": 5420,
-                  "stun_ratio": 39360,
-                  "stun_ratio_growth": 1790,
+                  "damage_percentage": 62300,
+                  "damage_percentage_growth": 5670,
+                  "stun_ratio": 41050,
+                  "stun_ratio_growth": 1870,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 1458600,
+                  "fever_recovery": 1472075,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 42173,
+                  "attribute_infliction": 40119,
                   "sp_consume": 0,
                   "attack_data": [
-                    196990
+                    200851
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 16837
+                  "ether_purify": 17167
                 }
               },
               "potential": []
@@ -1161,68 +1235,6 @@
             {
               "name": "Energy Cost",
               "desc": "40",
-              "potential": []
-            }
-          ],
-          "potential": []
-        },
-        {
-          "name": "Energize",
-          "param": [
-            {
-              "name": "DMG Multiplier",
-              "desc": "{Skill:1641021, Prop:1001}",
-              "param": {
-                "1641021": {
-                  "main": 4070,
-                  "growth": 370,
-                  "format": "%",
-                  "damage_percentage": 4070,
-                  "damage_percentage_growth": 370,
-                  "stun_ratio": 3440,
-                  "stun_ratio_growth": 160,
-                  "sp_recovery": 0,
-                  "sp_recovery_growth": 0,
-                  "fever_recovery": 0,
-                  "fever_recovery_growth": 0,
-                  "attribute_infliction": 0,
-                  "sp_consume": 0,
-                  "attack_data": [
-                    0
-                  ],
-                  "rp_recovery": 0,
-                  "rp_recovery_growth": 0,
-                  "ether_purify": 0
-                }
-              },
-              "potential": []
-            },
-            {
-              "name": "Daze Multiplier",
-              "desc": "{Skill:1641021, Prop:1002}",
-              "param": {
-                "1641021": {
-                  "main": 3440,
-                  "growth": 160,
-                  "format": "%",
-                  "damage_percentage": 4070,
-                  "damage_percentage_growth": 370,
-                  "stun_ratio": 3440,
-                  "stun_ratio_growth": 160,
-                  "sp_recovery": 0,
-                  "sp_recovery_growth": 0,
-                  "fever_recovery": 0,
-                  "fever_recovery_growth": 0,
-                  "attribute_infliction": 0,
-                  "sp_consume": 0,
-                  "attack_data": [
-                    0
-                  ],
-                  "rp_recovery": 0,
-                  "rp_recovery_growth": 0,
-                  "ether_purify": 0
-                }
-              },
               "potential": []
             }
           ],
@@ -1281,43 +1293,43 @@
     "chain": {
       "description": [
         {
-          "name": "Chain Attack",
-          "desc": "When a <color=#FFFFFF>Chain Attack</color> is triggered, select the character to activate:\nLaunches multiple attacks forward, dealing <color=#FF5521>Fire DMG</color>;\nCounts as a [Burning Attack];\nUpon activating this skill, if in [Dissolution] state, exits [Dissolution] state and increases the Attribute Anomaly buildup accumulated by this <color=#FFFFFF>Chain Attack</color> by 30%;\nCharacter is invulnerable while using this skill.",
+          "name": "Chain Attack: Last-Minute Salvation",
+          "desc": "When a <color=#FFFFFF>Chain Attack</color> is triggered, select the character to activate:\nUnleash multiple attacks forward, dealing <color=#FF5521>Fire DMG</color>.\nConsidered a <Term:1000046></Term>.\nCharacter is invulnerable while using this skill. Press <IconMap:Icon_Normal> to follow up with the 3rd hit of a Basic Attack.",
           "potential": []
         },
         {
-          "name": "Ultimate",
-          "desc": "When Decibel Rating is at <color=#FFFFFF>Maximum</color>, press <IconMap:Icon_UltimateReady> to activate:\nSoars into the sky and dive-bombs the enemy, consuming all of the character's HP to trigger an explosion, dealing massive <color=#FF5521>Fire DMG</color> and entering the [Annihilation] state;\nWhen the Finishing Move hits enemies afflicted with <color=#98EFF0>Ice Attribute Anomaly</color>, <color=#FE437E>Ether Attribute Anomaly</color>, <color=#2EB6FF>Electric Attribute Anomaly</color>, <color=#FF5521>Fire Attribute Anomaly</color>, <color=#F0D12B>Physical Attribute Anomaly</color>, or <color=#A6C5FD>Wind Attribute Anomaly</color>, triggers 1 instance of the <color=#FFFFFF>[Abloom]</color> effect, dealing Attribute Anomaly DMG of the corresponding attribute with a <color=#2BAD00>{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%</color> multiplier;\nWhen this <color=#FFFFFF>[Abloom]</color> effect triggers a critical hit, its CRIT DMG is additionally increased by <color=#2BAD00>20%</color>;\nAfter using this skill, press <IconMap:Icon_Normal> to activate [Ultimate: Deployment];\nCharacter is invulnerable while using this skill.",
+          "name": "Ultimate: Perpetual Resurrection",
+          "desc": "When Decibel Rating is at <color=#FFFFFF>Maximum</color>, press <IconMap:Icon_UltimateReady> to activate:\nFly into the air, then dive at the enemy, consuming all of Phoenix's HP to trigger an explosion, dealing massive <color=#FF5521>Fire DMG</color>, then enter the Wither state, and trigger the next character's Quick Assist.\nConsidered a <Term:1000046></Term>.\nActive attacks cannot be performed while in the Wither state.\nA short while after using this skill, Soul-Searching Blaze is automatically activated after a short period. Press <IconMap:Icon_Normal> to quickly activate Soul-Searching Blaze.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Ultimate: Entrance",
-          "desc": "When Phoenix enters the [Downed] state, activates upon switching to Phoenix or when Phoenix enters the field via Quick Assist:\nSurrounds herself with flames, dealing <color=#FF5521>Fire DMG</color> to nearby enemies and continuously recovering her own HP.\nCharacter is invulnerable while using this skill.",
+          "name": "Soul-Searching Blaze",
+          "desc": "Triggered when Phoenix is in the Wither state, the next time she enters the field through a normal switch, Quick Assist, or Defensive Assist:\nPhoenix is wreathed in flames, dealing <color=#FF5521>Fire DMG</color> to nearby enemies, which is also considered Ultimate DMG, and exiting the Wither state. She recovers all HP consumed by <color=#FFFFFF>Ultimate: Perpetual Resurrection</color>, plus an additional 10% of her Max HP.\nWhen the Finishing Move hits an enemy affected by <color=#98EFF0>Ice Anomaly</color>, <color=#FE437E>Ether Anomaly</color>, <color=#2EB6FF>Electric Anomaly</color>, <color=#FF5521>Fire Anomaly</color>, <color=#F0D12B>Physical Anomaly</color>, or <color=#A6C5FD>Wind Anomaly</color>, it triggers 1 instance of <color=#FFFFFF>Abloom</color>, resolving the corresponding Attribute Anomaly at a <color=#2BAD00>{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%</color> multiplier.\nWhen this <color=#FFFFFF>Abloom</color> effect triggers a critical hit, its CRIT DMG is increased by an additional 40%.\nWhen Phoenix enters the field via <color=#FFFFFF>Chain Attack: Last-Minute Salvation</color> or <color=#FFFFFF>Ultimate: Perpetual Resurrection</color> while in the Wither state, the HP recovery and <color=#FFFFFF>Abloom</color> effects described above are also triggered.\nCharacter is invulnerable while using this skill. Press <IconMap:Icon_Normal> to follow up with the 3rd hit of a Basic Attack.",
           "potential": []
         },
         {
-          "name": "Chain Attack",
+          "name": "Chain Attack: Last-Minute Salvation",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1641012, Prop:1001}",
               "param": {
                 "1641012": {
-                  "main": 83080,
-                  "growth": 7560,
+                  "main": 88270,
+                  "growth": 8030,
                   "format": "%",
-                  "damage_percentage": 83080,
-                  "damage_percentage_growth": 7560,
+                  "damage_percentage": 88270,
+                  "damage_percentage_growth": 8030,
                   "stun_ratio": 26410,
                   "stun_ratio_growth": 1210,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 2489025,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 43953,
+                  "attribute_infliction": 61243,
                   "sp_consume": 0,
                   "attack_data": [
-                    148821
+                    199228
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
@@ -1334,18 +1346,18 @@
                   "main": 26410,
                   "growth": 1210,
                   "format": "%",
-                  "damage_percentage": 83080,
-                  "damage_percentage_growth": 7560,
+                  "damage_percentage": 88270,
+                  "damage_percentage_growth": 8030,
                   "stun_ratio": 26410,
                   "stun_ratio_growth": 1210,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 2489025,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 43953,
+                  "attribute_infliction": 61243,
                   "sp_consume": 0,
                   "attack_data": [
-                    148821
+                    199228
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
@@ -1358,32 +1370,32 @@
           "potential": []
         },
         {
-          "name": "Ultimate",
+          "name": "Ultimate: Perpetual Resurrection",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1641013, Prop:1001}",
               "param": {
                 "1641013": {
-                  "main": 115870,
-                  "growth": 10540,
+                  "main": 181390,
+                  "growth": 16490,
                   "format": "%",
-                  "damage_percentage": 115870,
-                  "damage_percentage_growth": 10540,
-                  "stun_ratio": 6610,
-                  "stun_ratio_growth": 310,
+                  "damage_percentage": 181390,
+                  "damage_percentage_growth": 16490,
+                  "stun_ratio": 18290,
+                  "stun_ratio_growth": 840,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 51902,
+                  "attribute_infliction": 90361,
                   "sp_consume": 0,
                   "attack_data": [
-                    288150
+                    185430
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 36002
+                  "ether_purify": 64119
                 }
               },
               "potential": []
@@ -1393,25 +1405,25 @@
               "desc": "{Skill:1641013, Prop:1002}",
               "param": {
                 "1641013": {
-                  "main": 6610,
-                  "growth": 310,
+                  "main": 18290,
+                  "growth": 840,
                   "format": "%",
-                  "damage_percentage": 115870,
-                  "damage_percentage_growth": 10540,
-                  "stun_ratio": 6610,
-                  "stun_ratio_growth": 310,
+                  "damage_percentage": 181390,
+                  "damage_percentage_growth": 16490,
+                  "stun_ratio": 18290,
+                  "stun_ratio_growth": 840,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 51902,
+                  "attribute_infliction": 90361,
                   "sp_consume": 0,
                   "attack_data": [
-                    288150
+                    185430
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 36002
+                  "ether_purify": 64119
                 }
               },
               "potential": []
@@ -1420,32 +1432,32 @@
           "potential": []
         },
         {
-          "name": "Ultimate: Entrance",
+          "name": "Soul-Searching Blaze",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1641019, Prop:1001}",
               "param": {
                 "1641019": {
-                  "main": 77250,
-                  "growth": 7030,
+                  "main": 9550,
+                  "growth": 870,
                   "format": "%",
-                  "damage_percentage": 77250,
-                  "damage_percentage_growth": 7030,
-                  "stun_ratio": 4410,
-                  "stun_ratio_growth": 210,
+                  "damage_percentage": 9550,
+                  "damage_percentage_growth": 870,
+                  "stun_ratio": 960,
+                  "stun_ratio_growth": 50,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 34601,
+                  "attribute_infliction": 4756,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 24001
+                  "ether_purify": 3375
                 }
               },
               "potential": []
@@ -1455,27 +1467,32 @@
               "desc": "{Skill:1641019, Prop:1002}",
               "param": {
                 "1641019": {
-                  "main": 4410,
-                  "growth": 210,
+                  "main": 960,
+                  "growth": 50,
                   "format": "%",
-                  "damage_percentage": 77250,
-                  "damage_percentage_growth": 7030,
-                  "stun_ratio": 4410,
-                  "stun_ratio_growth": 210,
+                  "damage_percentage": 9550,
+                  "damage_percentage_growth": 870,
+                  "stun_ratio": 960,
+                  "stun_ratio_growth": 50,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 34601,
+                  "attribute_infliction": 4756,
                   "sp_consume": 0,
                   "attack_data": [
                     0
                   ],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 24001
+                  "ether_purify": 3375
                 }
               },
+              "potential": []
+            },
+            {
+              "name": "Abloom Multiplier",
+              "desc": "{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%",
               "potential": []
             }
           ],
@@ -1534,22 +1551,22 @@
     "assist": {
       "description": [
         {
-          "name": "Quick Assist",
-          "desc": "When the active character is launched, press <IconMap:Icon_Switch> to activate:\nDash forward and unleash a rapid slash, dealing <color=#FF5521>Fire DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Quick Assist: Emergency Aid",
+          "desc": "When the active character is launched, press <IconMap:Icon_Switch> to activate:\nDash forward and unleash a quick slash, dealing <color=#FF5521>Fire DMG</color>.\nCharacter is invulnerable while using this skill. Press <IconMap:Icon_Normal> to follow up with the 3rd hit of a Basic Attack.",
           "potential": []
         },
         {
-          "name": "Defensive Assist",
+          "name": "Defensive Assist: Patient Turned Doctor",
           "desc": "When the on-field character is about to be attacked, press <IconMap:Icon_Switch> to activate:\nParries the enemy's attack, dealing massive Daze.\nCharacter is invulnerable while using this skill.",
           "potential": []
         },
         {
-          "name": "Assist Follow-Up",
-          "desc": "Press <IconMap:Icon_Normal> after a <color=#FFFFFF>Defensive Assist</color> to activate:\nHurls weapon at the enemy, then retrieves it to unleash a Slash, dealing <color=#FF5521>Fire DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Assist Follow-Up: Regeneration Therapy",
+          "desc": "Press <IconMap:Icon_Normal> after a <color=#FFFFFF>Defensive Assist</color> to activate:\nThrows her weapon at the enemy, then recalls it and performs a slash, dealing <color=#FF5521>Fire DMG</color>.\nCharacter is invulnerable while using this skill. Press <IconMap:Icon_Normal> to follow up with the 3rd hit of a Basic Attack.",
           "potential": []
         },
         {
-          "name": "Quick Assist",
+          "name": "Quick Assist: Emergency Aid",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1611,7 +1628,7 @@
           "potential": []
         },
         {
-          "name": "Defensive Assist",
+          "name": "Defensive Assist: Patient Turned Doctor",
           "param": [
             {
               "name": "Light Defensive Daze Multiplier",
@@ -1701,7 +1718,7 @@
           "potential": []
         },
         {
-          "name": "Assist Follow-Up",
+          "name": "Assist Follow-Up: Regeneration Therapy",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1813,20 +1830,159 @@
       }
     }
   },
-  "skill_priority": [],
-  "skill_list": {},
+  "skill_priority": [
+    {
+      "id": 1641001,
+      "avatar_id": 1641,
+      "first_priority": [
+        5,
+        0
+      ],
+      "second_priority": [
+        1,
+        3
+      ],
+      "third_priority": [
+        6,
+        2
+      ],
+      "potential_levels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    }
+  ],
+  "skill_list": {
+    "1641001": {
+      "name": "Basic Attack: Sever Life",
+      "desc": "<IconMap:Icon_Normal>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641002": {
+      "name": "Basic Attack: Meltdown",
+      "desc": "<IconMap:Icon_Normal> (Press after Special Attack: Fire Sweep)",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641003": {
+      "name": "Basic Attack: Purifying Flame",
+      "desc": "<IconMap:Icon_Normal> (Hold with 90 Pyre)",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641004": {
+      "name": "Special Attack: Fire Sweep",
+      "desc": "<IconMap:Icon_Special>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641005": {
+      "name": "EX Special Attack: Blazing Slash",
+      "desc": "<IconMap:Icon_SpecialReady> (Press with Ascension)",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641006": {
+      "name": "EX Special Attack: Dazzling Flare",
+      "desc": "<IconMap:Icon_SpecialReady>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641007": {
+      "name": "EX Special Attack: Falling Sun",
+      "desc": "<IconMap:Icon_SpecialReady> (Press within a certain period after using EX Special Attack: Dazzling Flare)",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641008": {
+      "name": "Dash Attack: Lunge",
+      "desc": "<IconMap:Icon_Evade> ; <IconMap:Icon_Normal>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641009": {
+      "name": "Dodge Counter: Twin Passage of Karmic Fire",
+      "desc": "<IconMap:Icon_Evade> (Perfect) ; <IconMap:Icon_Normal>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641010": {
+      "name": "Dodge: Drifting Sway",
+      "desc": "<IconMap:Icon_Evade> ; <IconMap:Icon_Evade> (Hold after a dodge)",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641011": {
+      "name": "Chain Attack: Last-Minute Salvation",
+      "desc": "<IconMap:Icon_QTE>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641012": {
+      "name": "Ultimate: Perpetual Resurrection",
+      "desc": "<IconMap:Icon_UltimateReady>",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641013": {
+      "name": "Soul-Searching Blaze",
+      "desc": "<IconMap:Icon_Normal> (After an Ultimate) ; <IconMap:Icon_Switch> (Next time switching on-field)",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641014": {
+      "name": "Quick Assist: Emergency Aid",
+      "desc": "<IconMap:Icon_Switch> (When Triggering Quick Assist)",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    },
+    "1641015": {
+      "name": "Defensive Assist: Patient Turned Doctor",
+      "desc": "<IconMap:Icon_Switch> (When Triggering Defensive Assist)",
+      "element_type": 0,
+      "hit_type": 0,
+      "potential": []
+    },
+    "1641016": {
+      "name": "Assist Follow-Up: Regeneration Therapy",
+      "desc": "<IconMap:Icon_Normal> (After Defensive Assist)",
+      "element_type": 201,
+      "hit_type": 101,
+      "potential": []
+    }
+  },
   "passive": {
     "level": {
       "1641501": {
         "level": 1,
         "id": 1641501,
         "name": [
-          "Core Passive:",
-          "Additional Ability: Additional Ability"
+          "Core Passive: Nirvana",
+          "Additional Ability: Krampus Ace"
         ],
         "desc": [
-          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>20</color> points;\nWhen any squad member deals Attribute Anomaly DMG to an enemy, the enemy enters the [Weakened] state for 20s; When enemies in the [Weakened] state take Attribute Anomaly DMG, there is a chance to trigger a critical hit. The Base CRIT Rate is <color=#2BAD00>15%</color>, and the CRIT DMG is 15%. If Phoenix's Anomaly Mastery exceeds 145 points, each point of Anomaly Mastery further increases this effect's CRIT Rate by <color=#2BAD00>0.35%</color>;\nAfter Phoenix is knocked out, the [Rebirth] effect can be triggered, allowing her to be switched back in and recover 50% of her Max HP. This can be triggered at most once every 300s.",
-          "When another character in your squad is an <color=#FFFFFF>[Anomaly]</color> Character or from the same Faction, triggers:\nWhen there are 2/3 <color=#FFFFFF>[Anomaly]</color> Characters in the squad, the CRIT DMG of Attribute Anomaly DMG dealt to enemies afflicted with [Weakened] increases to 25%/40%;"
+          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>43</color>.\nWhen any squad member deals Anomaly DMG to an enemy, the enemy enters the Sear state for 20s. Repeated triggers reset the duration. When an enemy in the Sear state takes Anomaly DMG, the DMG has a chance to trigger a critical hit, with a base CRIT Rate of 30% and CRIT DMG of <color=#2BAD00>12.5%</color>. If Phoenix's initial Anomaly Mastery exceeds 155, each point above this threshold increases this effect's CRIT Rate by an additional 0.7%.\nWhen Phoenix's initial Anomaly Mastery reaches 255, the CRIT Rate of Anomaly DMG dealt to enemies in the Sear state reaches its maximum.\nEnemies in the Sear state take <color=#FF5521>Fire DMG</color> equal to <color=#2BAD00>25%</color> of Phoenix's ATK every 8s. This DMG is considered EX Special Attack DMG.\nDuring Combustion Attacks, Anti-Interrupt Level increases, and dealing DMG grants Pyre. Phoenix can have up to 120 Pyre.\nAfter Combustion Attacks, press <IconMap:Icon_Special> to skip the backward retreat of Special Attack: Fire Sweep and EX Special Attack: Blazing Slash, immediately following up with a rising attack.\nWhen Phoenix takes fatal DMG, she will not be defeated and leave the field. Instead, Rebirth is triggered. The next time Phoenix enters the field through a normal switch, Quick Assist, or Defensive Assist, she recovers HP equal to 50% of her Max HP. In Investigation Zone Mode, this effect can trigger once every 1,200s.\nWhen Phoenix triggers a Perfect Block, she gains 5 Pyre. This effect can trigger once every 10s.\nWhen Phoenix uses an <color=#FFFFFF>EX Special Attack</color>, she enters the <color=#FFFFFF>Wither and Bloom</color> state for 20s. Hitting an enemy with a <color=#FFFFFF>Combustion Attack</color> or reapplying this state refreshes its duration.\nWhile in the <color=#FFFFFF>Wither and Bloom</color> state, after using <color=#FFFFFF>EX Special Attack: Dazzling Flare</color>, the next <color=#FFFFFF>EX Special Attack: Dazzling Flare</color> is replaced with <color=#FFFFFF>EX Special Attack: Falling Sun</color>.",
+          "When another character in your squad is an <color=#FFFFFF>Anomaly</color> character or shares the same faction:\nAnomaly DMG against enemies in the <Term:1000048></Term> state gains 15% increased CRIT DMG."
         ],
         "extra_property": {},
         "potential": []
@@ -1835,12 +1991,12 @@
         "level": 2,
         "id": 1641502,
         "name": [
-          "Core Passive:",
-          "Additional Ability: Additional Ability"
+          "Core Passive: Nirvana",
+          "Additional Ability: Krampus Ace"
         ],
         "desc": [
-          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>23</color> points;\nWhen any squad member deals Attribute Anomaly DMG to an enemy, the enemy is inflicted with the [Weakened] state for 20s; Enemies in the [Weakened] state have a chance to trigger a critical hit when taking Attribute Anomaly DMG, with a Base CRIT Rate of <color=#2BAD00>17.5%</color> and CRIT DMG of 15%. If Phoenix's Anomaly Mastery exceeds 145 points, each point of Anomaly Mastery additionally increases this effect's CRIT Rate by <color=#2BAD00>0.41%</color>;\nAfter Phoenix is defeated and leaves the field, a [Rebirth] effect can be triggered, allowing her to be switched back in and recover 50% of her Max HP. This can be triggered at most once every 300s.",
-          "When another character in your squad is an <color=#FFFFFF>[Anomaly]</color> Character or from the same Faction, triggers:\nWhen there are 2/3 <color=#FFFFFF>[Anomaly]</color> Characters in the squad, the CRIT DMG of Attribute Anomaly DMG dealt to enemies afflicted with [Weakened] increases to 25%/40%;"
+          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>50</color>.\nWhen any squad member deals Anomaly DMG to an enemy, the enemy enters the Sear state for 20s. Repeated triggers reset the duration. When an enemy in the Sear state takes Anomaly DMG, the DMG has a chance to trigger a critical hit, with a base CRIT Rate of 30% and CRIT DMG of <color=#2BAD00>14.6%</color>. If Phoenix's initial Anomaly Mastery exceeds 155, each point above this threshold increases this effect's CRIT Rate by an additional 0.7%.\nWhen Phoenix's initial Anomaly Mastery reaches 255, the CRIT Rate of Anomaly DMG dealt to enemies in the Sear state reaches its maximum.\nEnemies in the Sear state take <color=#FF5521>Fire DMG</color> equal to <color=#2BAD00>29%</color> of Phoenix's ATK every 8s. This DMG is considered EX Special Attack DMG.\nDuring Combustion Attacks, Anti-Interrupt Level increases, and dealing DMG grants Pyre. Phoenix can have up to 120 Pyre.\nAfter Combustion Attacks, press <IconMap:Icon_Special> to skip the backward retreat of Special Attack: Fire Sweep and EX Special Attack: Blazing Slash, immediately following up with a rising attack.\nWhen Phoenix takes fatal DMG, she will not be defeated and leave the field. Instead, Rebirth is triggered. The next time Phoenix enters the field through a normal switch, Quick Assist, or Defensive Assist, she recovers HP equal to 50% of her Max HP. In Investigation Zone Mode, this effect can trigger once every 1,200s.\nWhen Phoenix triggers a Perfect Block, she gains 5 Pyre. This effect can trigger once every 10s.\nWhen Phoenix uses an <color=#FFFFFF>EX Special Attack</color>, she enters the <color=#FFFFFF>Wither and Bloom</color> state for 20s. Hitting an enemy with a <color=#FFFFFF>Combustion Attack</color> or reapplying this state refreshes its duration.\nWhile in the <color=#FFFFFF>Wither and Bloom</color> state, after using <color=#FFFFFF>EX Special Attack: Dazzling Flare</color>, the next <color=#FFFFFF>EX Special Attack: Dazzling Flare</color> is replaced with <color=#FFFFFF>EX Special Attack: Falling Sun</color>.",
+          "When another character in your squad is an <color=#FFFFFF>Anomaly</color> character or shares the same faction:\nAnomaly DMG against enemies in the <Term:1000048></Term> state gains 15% increased CRIT DMG."
         ],
         "extra_property": {},
         "potential": []
@@ -1849,12 +2005,12 @@
         "level": 3,
         "id": 1641503,
         "name": [
-          "Core Passive:",
-          "Additional Ability: Additional Ability"
+          "Core Passive: Nirvana",
+          "Additional Ability: Krampus Ace"
         ],
         "desc": [
-          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>27</color> points;\nWhen any squad member deals Attribute Anomaly DMG to an enemy, the enemy becomes [Weakened] for 20s; When a [Weakened] enemy takes Attribute Anomaly DMG, there is a chance to trigger a critical hit, with a Base CRIT Rate of <color=#2BAD00>20%</color> and CRIT DMG of 15%. If Phoenix's Anomaly Mastery exceeds 145 points, each point of Anomaly Mastery additionally increases this effect's CRIT Rate by <color=#2BAD00>0.47%</color>;\nAfter Phoenix is knocked out, a [Rebirth] effect can be triggered, allowing her to be switched back in and recover 50% of her Max HP. This can be triggered at most once every 300s.",
-          "When another character in your squad is an <color=#FFFFFF>[Anomaly]</color> Character or from the same Faction, triggers:\nWhen there are 2/3 <color=#FFFFFF>[Anomaly]</color> Characters in the squad, the CRIT DMG of Attribute Anomaly DMG dealt to enemies afflicted with [Weakened] increases to 25%/40%;"
+          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>57</color>.\nWhen any squad member deals Anomaly DMG to an enemy, the enemy enters the Sear state for 20s. Repeated triggers reset the duration. When an enemy in the Sear state takes Anomaly DMG, the DMG has a chance to trigger a critical hit, with a base CRIT Rate of 30% and CRIT DMG of <color=#2BAD00>16.7%</color>. If Phoenix's initial Anomaly Mastery exceeds 155, each point above this threshold increases this effect's CRIT Rate by an additional 0.7%.\nWhen Phoenix's initial Anomaly Mastery reaches 255, the CRIT Rate of Anomaly DMG dealt to enemies in the Sear state reaches its maximum.\nEnemies in the Sear state take <color=#FF5521>Fire DMG</color> equal to <color=#2BAD00>33%</color> of Phoenix's ATK every 8s. This DMG is considered EX Special Attack DMG.\nDuring Combustion Attacks, Anti-Interrupt Level increases, and dealing DMG grants Pyre. Phoenix can have up to 120 Pyre.\nAfter Combustion Attacks, press <IconMap:Icon_Special> to skip the backward retreat of Special Attack: Fire Sweep and EX Special Attack: Blazing Slash, immediately following up with a rising attack.\nWhen Phoenix takes fatal DMG, she will not be defeated and leave the field. Instead, Rebirth is triggered. The next time Phoenix enters the field through a normal switch, Quick Assist, or Defensive Assist, she recovers HP equal to 50% of her Max HP. In Investigation Zone Mode, this effect can trigger once every 1,200s.\nWhen Phoenix triggers a Perfect Block, she gains 5 Pyre. This effect can trigger once every 10s.\nWhen Phoenix uses an <color=#FFFFFF>EX Special Attack</color>, she enters the <color=#FFFFFF>Wither and Bloom</color> state for 20s. Hitting an enemy with a <color=#FFFFFF>Combustion Attack</color> or reapplying this state refreshes its duration.\nWhile in the <color=#FFFFFF>Wither and Bloom</color> state, after using <color=#FFFFFF>EX Special Attack: Dazzling Flare</color>, the next <color=#FFFFFF>EX Special Attack: Dazzling Flare</color> is replaced with <color=#FFFFFF>EX Special Attack: Falling Sun</color>.",
+          "When another character in your squad is an <color=#FFFFFF>Anomaly</color> character or shares the same faction:\nAnomaly DMG against enemies in the <Term:1000048></Term> state gains 15% increased CRIT DMG."
         ],
         "extra_property": {},
         "potential": []
@@ -1863,12 +2019,12 @@
         "level": 4,
         "id": 1641504,
         "name": [
-          "Core Passive:",
-          "Additional Ability: Additional Ability"
+          "Core Passive: Nirvana",
+          "Additional Ability: Krampus Ace"
         ],
         "desc": [
-          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>30</color> points;\nWhen any squad member deals Attribute Anomaly DMG to an enemy, the enemy becomes [Weakened] for 20s; When a [Weakened] enemy takes Attribute Anomaly DMG, there is a chance to trigger a critical hit. The Base CRIT Rate is <color=#2BAD00>22.5%</color>, and the CRIT DMG is 15%. If Phoenix's Anomaly Mastery exceeds 145 points, each point of Anomaly Mastery additionally increases this effect's CRIT Rate by <color=#2BAD00>0.53%</color>;\nAfter Phoenix is defeated and leaves the field, a [Resurrection] effect can be triggered, allowing her to be switched back in and recover 50% of her Max HP. This can be triggered at most once every 300s.",
-          "When another character in your squad is an <color=#FFFFFF>[Anomaly]</color> Character or from the same Faction, triggers:\nWhen there are 2/3 <color=#FFFFFF>[Anomaly]</color> Characters in the squad, the CRIT DMG of Attribute Anomaly DMG dealt to enemies afflicted with [Weakened] increases to 25%/40%;"
+          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>64</color>.\nWhen any squad member deals Anomaly DMG to an enemy, the enemy enters the Sear state for 20s. Repeated triggers reset the duration. When an enemy in the Sear state takes Anomaly DMG, the DMG has a chance to trigger a critical hit, with a base CRIT Rate of 30% and CRIT DMG of <color=#2BAD00>18.8%</color>. If Phoenix's initial Anomaly Mastery exceeds 155, each point above this threshold increases this effect's CRIT Rate by an additional 0.7%.\nWhen Phoenix's initial Anomaly Mastery reaches 255, the CRIT Rate of Anomaly DMG dealt to enemies in the Sear state reaches its maximum.\nEnemies in the Sear state take <color=#FF5521>Fire DMG</color> equal to <color=#2BAD00>38%</color> of Phoenix's ATK every 8s. This DMG is considered EX Special Attack DMG.\nDuring Combustion Attacks, Anti-Interrupt Level increases, and dealing DMG grants Pyre. Phoenix can have up to 120 Pyre.\nAfter Combustion Attacks, press <IconMap:Icon_Special> to skip the backward retreat of Special Attack: Fire Sweep and EX Special Attack: Blazing Slash, immediately following up with a rising attack.\nWhen Phoenix takes fatal DMG, she will not be defeated and leave the field. Instead, Rebirth is triggered. The next time Phoenix enters the field through a normal switch, Quick Assist, or Defensive Assist, she recovers HP equal to 50% of her Max HP. In Investigation Zone Mode, this effect can trigger once every 1,200s.\nWhen Phoenix triggers a Perfect Block, she gains 5 Pyre. This effect can trigger once every 10s.\nWhen Phoenix uses an <color=#FFFFFF>EX Special Attack</color>, she enters the <color=#FFFFFF>Wither and Bloom</color> state for 20s. Hitting an enemy with a <color=#FFFFFF>Combustion Attack</color> or reapplying this state refreshes its duration.\nWhile in the <color=#FFFFFF>Wither and Bloom</color> state, after using <color=#FFFFFF>EX Special Attack: Dazzling Flare</color>, the next <color=#FFFFFF>EX Special Attack: Dazzling Flare</color> is replaced with <color=#FFFFFF>EX Special Attack: Falling Sun</color>.",
+          "When another character in your squad is an <color=#FFFFFF>Anomaly</color> character or shares the same faction:\nAnomaly DMG against enemies in the <Term:1000048></Term> state gains 15% increased CRIT DMG."
         ],
         "extra_property": {},
         "potential": []
@@ -1877,12 +2033,12 @@
         "level": 5,
         "id": 1641505,
         "name": [
-          "Core Passive:",
-          "Additional Ability: Additional Ability"
+          "Core Passive: Nirvana",
+          "Additional Ability: Krampus Ace"
         ],
         "desc": [
-          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>33</color> points;\nWhen any squad member deals Attribute Anomaly DMG to an enemy, the enemy is inflicted with the [Weakened] state for 20s; Enemies in the [Weakened] state have a chance to trigger a critical hit when taking Attribute Anomaly DMG, with a Base CRIT Rate of <color=#2BAD00>25%</color> and CRIT DMG of 15%. If Phoenix's Anomaly Mastery exceeds 145 points, each point of Anomaly Mastery additionally increases this effect's CRIT Rate by <color=#2BAD00>0.58%</color>;\nAfter Phoenix is defeated and leaves the field, a [Resurrection] effect can be triggered, allowing her to be switched back in and recover 50% of her Max HP. This can be triggered at most once every 300s.",
-          "When another character in your squad is an <color=#FFFFFF>[Anomaly]</color> Character or from the same Faction, triggers:\nWhen there are 2/3 <color=#FFFFFF>[Anomaly]</color> Characters in the squad, the CRIT DMG of Attribute Anomaly DMG dealt to enemies afflicted with [Weakened] increases to 25%/40%;"
+          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>71</color>.\nWhen any squad member deals Anomaly DMG to an enemy, the enemy enters the Sear state for 20s. Repeated triggers reset the duration. When an enemy in the Sear state takes Anomaly DMG, the DMG has a chance to trigger a critical hit, with a base CRIT Rate of 30% and CRIT DMG of <color=#2BAD00>20.8%</color>. If Phoenix's initial Anomaly Mastery exceeds 155, each point above this threshold increases this effect's CRIT Rate by an additional 0.7%.\nWhen Phoenix's initial Anomaly Mastery reaches 255, the CRIT Rate of Anomaly DMG dealt to enemies in the Sear state reaches its maximum.\nEnemies in the Sear state take <color=#FF5521>Fire DMG</color> equal to <color=#2BAD00>42%</color> of Phoenix's ATK every 8s. This DMG is considered EX Special Attack DMG.\nDuring Combustion Attacks, Anti-Interrupt Level increases, and dealing DMG grants Pyre. Phoenix can have up to 120 Pyre.\nAfter Combustion Attacks, press <IconMap:Icon_Special> to skip the backward retreat of Special Attack: Fire Sweep and EX Special Attack: Blazing Slash, immediately following up with a rising attack.\nWhen Phoenix takes fatal DMG, she will not be defeated and leave the field. Instead, Rebirth is triggered. The next time Phoenix enters the field through a normal switch, Quick Assist, or Defensive Assist, she recovers HP equal to 50% of her Max HP. In Investigation Zone Mode, this effect can trigger once every 1,200s.\nWhen Phoenix triggers a Perfect Block, she gains 5 Pyre. This effect can trigger once every 10s.\nWhen Phoenix uses an <color=#FFFFFF>EX Special Attack</color>, she enters the <color=#FFFFFF>Wither and Bloom</color> state for 20s. Hitting an enemy with a <color=#FFFFFF>Combustion Attack</color> or reapplying this state refreshes its duration.\nWhile in the <color=#FFFFFF>Wither and Bloom</color> state, after using <color=#FFFFFF>EX Special Attack: Dazzling Flare</color>, the next <color=#FFFFFF>EX Special Attack: Dazzling Flare</color> is replaced with <color=#FFFFFF>EX Special Attack: Falling Sun</color>.",
+          "When another character in your squad is an <color=#FFFFFF>Anomaly</color> character or shares the same faction:\nAnomaly DMG against enemies in the <Term:1000048></Term> state gains 15% increased CRIT DMG."
         ],
         "extra_property": {},
         "potential": []
@@ -1891,12 +2047,12 @@
         "level": 6,
         "id": 1641506,
         "name": [
-          "Core Passive:",
-          "Additional Ability: Additional Ability"
+          "Core Passive: Nirvana",
+          "Additional Ability: Krampus Ace"
         ],
         "desc": [
-          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>37</color> points;\nWhen any squad member deals Attribute Anomaly DMG to an enemy, the enemy becomes [Weakened] for 20s; When a [Weakened] enemy takes Attribute Anomaly DMG, there is a chance to trigger a critical hit, with a Base CRIT Rate of <color=#2BAD00>27.5%</color> and CRIT DMG of 15%. If Phoenix's Anomaly Mastery exceeds 145 points, each point of Anomaly Mastery additionally increases this effect's CRIT Rate by <color=#2BAD00>0.64%</color>;\nAfter Phoenix is knocked out, a [Rebirth] effect can be triggered, allowing her to be switched back in and recover 50% of her Max HP. This can be triggered at most once every 300s.",
-          "When another character in your squad is an <color=#FFFFFF>[Anomaly]</color> Character or from the same Faction, triggers:\nWhen there are 2/3 <color=#FFFFFF>[Anomaly]</color> Characters in the squad, the CRIT DMG of Attribute Anomaly DMG dealt to enemies afflicted with [Weakened] increases to 25%/40%;"
+          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>78</color>.\nWhen any squad member deals Anomaly DMG to an enemy, the enemy enters the Sear state for 20s. Repeated triggers reset the duration. When an enemy in the Sear state takes Anomaly DMG, the DMG has a chance to trigger a critical hit, with a base CRIT Rate of 30% and CRIT DMG of <color=#2BAD00>22.9%</color>. If Phoenix's initial Anomaly Mastery exceeds 155, each point above this threshold increases this effect's CRIT Rate by an additional 0.7%.\nWhen Phoenix's initial Anomaly Mastery reaches 255, the CRIT Rate of Anomaly DMG dealt to enemies in the Sear state reaches its maximum.\nEnemies in the Sear state take <color=#FF5521>Fire DMG</color> equal to <color=#2BAD00>46%</color> of Phoenix's ATK every 8s. This DMG is considered EX Special Attack DMG.\nDuring Combustion Attacks, Anti-Interrupt Level increases, and dealing DMG grants Pyre. Phoenix can have up to 120 Pyre.\nAfter Combustion Attacks, press <IconMap:Icon_Special> to skip the backward retreat of Special Attack: Fire Sweep and EX Special Attack: Blazing Slash, immediately following up with a rising attack.\nWhen Phoenix takes fatal DMG, she will not be defeated and leave the field. Instead, Rebirth is triggered. The next time Phoenix enters the field through a normal switch, Quick Assist, or Defensive Assist, she recovers HP equal to 50% of her Max HP. In Investigation Zone Mode, this effect can trigger once every 1,200s.\nWhen Phoenix triggers a Perfect Block, she gains 5 Pyre. This effect can trigger once every 10s.\nWhen Phoenix uses an <color=#FFFFFF>EX Special Attack</color>, she enters the <color=#FFFFFF>Wither and Bloom</color> state for 20s. Hitting an enemy with a <color=#FFFFFF>Combustion Attack</color> or reapplying this state refreshes its duration.\nWhile in the <color=#FFFFFF>Wither and Bloom</color> state, after using <color=#FFFFFF>EX Special Attack: Dazzling Flare</color>, the next <color=#FFFFFF>EX Special Attack: Dazzling Flare</color> is replaced with <color=#FFFFFF>EX Special Attack: Falling Sun</color>.",
+          "When another character in your squad is an <color=#FFFFFF>Anomaly</color> character or shares the same faction:\nAnomaly DMG against enemies in the <Term:1000048></Term> state gains 15% increased CRIT DMG."
         ],
         "extra_property": {},
         "potential": []
@@ -1905,12 +2061,12 @@
         "level": 7,
         "id": 1641507,
         "name": [
-          "Core Passive:",
-          "Additional Ability: Additional Ability"
+          "Core Passive: Nirvana",
+          "Additional Ability: Krampus Ace"
         ],
         "desc": [
-          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>40</color> points;\nWhen any squad member deals Attribute Anomaly DMG to an enemy, the enemy becomes [Weakened] for 20s; When a [Weakened] enemy takes Attribute Anomaly DMG, there is a chance to trigger a critical hit. The Base CRIT Rate is <color=#2BAD00>30%</color>, and the CRIT DMG is 15%. If Phoenix's Anomaly Mastery exceeds 145 points, each point of Anomaly Mastery additionally increases this effect's CRIT Rate by <color=#2BAD00>0.7%</color>;\nAfter Phoenix is defeated and leaves the field, a [Resurrection] effect can be triggered, allowing her to be switched back in and recover 50% of her Max HP. This can be triggered at most once every 300s.",
-          "When another character in your squad is an <color=#FFFFFF>[Anomaly]</color> Character or from the same Faction, triggers:\nWhen there are 2/3 <color=#FFFFFF>[Anomaly]</color> Characters in the squad, the CRIT DMG of Attribute Anomaly DMG dealt to enemies afflicted with [Weakened] increases to 25%/40%;"
+          "Phoenix's Anomaly Proficiency increases by <color=#2BAD00>85</color>.\nWhen any squad member deals Anomaly DMG to an enemy, the enemy enters the Sear state for 20s. Repeated triggers reset the duration. When an enemy in the Sear state takes Anomaly DMG, the DMG has a chance to trigger a critical hit, with a base CRIT Rate of 30% and CRIT DMG of <color=#2BAD00>25%</color>. If Phoenix's initial Anomaly Mastery exceeds 155, each point above this threshold increases this effect's CRIT Rate by an additional 0.7%.\nWhen Phoenix's initial Anomaly Mastery reaches 255, the CRIT Rate of Anomaly DMG dealt to enemies in the Sear state reaches its maximum.\nEnemies in the Sear state take <color=#FF5521>Fire DMG</color> equal to <color=#2BAD00>50%</color> of Phoenix's ATK every 8s. This DMG is considered EX Special Attack DMG.\nDuring Combustion Attacks, Anti-Interrupt Level increases, and dealing DMG grants Pyre. Phoenix can have up to 120 Pyre.\nAfter Combustion Attacks, press <IconMap:Icon_Special> to skip the backward retreat of Special Attack: Fire Sweep and EX Special Attack: Blazing Slash, immediately following up with a rising attack.\nWhen Phoenix takes fatal DMG, she will not be defeated and leave the field. Instead, Rebirth is triggered. The next time Phoenix enters the field through a normal switch, Quick Assist, or Defensive Assist, she recovers HP equal to 50% of her Max HP. In Investigation Zone Mode, this effect can trigger once every 1,200s.\nWhen Phoenix triggers a Perfect Block, she gains 5 Pyre. This effect can trigger once every 10s.\nWhen Phoenix uses an <color=#FFFFFF>EX Special Attack</color>, she enters the <color=#FFFFFF>Wither and Bloom</color> state for 20s. Hitting an enemy with a <color=#FFFFFF>Combustion Attack</color> or reapplying this state refreshes its duration.\nWhile in the <color=#FFFFFF>Wither and Bloom</color> state, after using <color=#FFFFFF>EX Special Attack: Dazzling Flare</color>, the next <color=#FFFFFF>EX Special Attack: Dazzling Flare</color> is replaced with <color=#FFFFFF>EX Special Attack: Falling Sun</color>.",
+          "When another character in your squad is an <color=#FFFFFF>Anomaly</color> character or shares the same faction:\nAnomaly DMG against enemies in the <Term:1000048></Term> state gains 15% increased CRIT DMG."
         ],
         "extra_property": {},
         "potential": []
@@ -1930,57 +2086,57 @@
       },
       "4": {
         "10": 60000,
-        "110011": 2,
-        "110514": 9
+        "110514": 9,
+        "110011": 2
       },
       "5": {
         "10": 100000,
-        "110011": 3,
-        "110514": 15
+        "110514": 15,
+        "110011": 3
       },
       "6": {
         "10": 200000,
-        "110011": 4,
-        "110514": 30
+        "110514": 30,
+        "110011": 4
       }
     }
   },
   "talent": {
     "1": {
       "level": 1,
-      "name": "Pheony_Talent_01_Title",
-      "desc": "When Phoenix enters the battlefield, she gains 1 stack of <color=#FFFFFF>[Energize]</color>. In Investigation Zone mode, this effect can trigger once every 180 second(s);\nWhen Phoenix's attacks hit an enemy afflicted with <color=#FFFFFF>[Weakened]</color>, or when any squad member triggers Attribute Anomaly DMG against an enemy afflicted with <color=#FFFFFF>[Weakened]</color>, if the Attribute Anomaly DMG triggers a critical hit, its CRIT DMG is additionally increased by 20%;\nWhen <color=#FFFFFF>[Burning Attack]</color> deals DMG, <color=#FFFFFF>[Embers]</color> acquisition efficiency is increased by 15%.",
-      "desc2": "Pheony_Talent_01_Desc_02"
+      "name": "Lingering Pain and Thrilling Procession",
+      "desc": "Upon entering the battlefield, Phoenix gains 1 point of <color=#FFFFFF>Ascension</color>. In Investigation Zone mode, this effect can trigger once every 180s.\nThe CRIT DMG of Anomaly DMG dealt to enemies in the <color=#FFFFFF>Sear</color> state is increased by an additional 25%.\nWhen a <color=#FFFFFF>Combustion Attack</color> deals DMG, <color=#FFFFFF>Pyre</color> generation efficiency increases by 15%.",
+      "desc2": "..."
     },
     "2": {
       "level": 2,
-      "name": "Pheony_Talent_02_Title",
-      "desc": "When Phoenix activates her <color=#FFFFFF>[EX Special Attack]</color>, she enters the <color=#FFFFFF>[Incineration]</color> state, lasting 10 seconds;\nWhile in the <color=#FFFFFF>[Incineration]</color> state, landing or reapplying a <color=#FFFFFF>[Burning attack]</color> refreshes the duration;\nWhile in the <color=#FFFFFF>[Incineration]</color> state, Phoenix's Anomaly Buildup Rate is increased by 15%, and the current <color=#FFFFFF>[EX Special Attack]</color> stacks are retained;\nWhen activating <color=#FFFFFF>[EX Special Attack: Phase 2]</color>, recovers 8 Energy.",
-      "desc2": "Pheony_Talent_02_Desc_02"
+      "name": "Curiosity Won't Kill the Cat",
+      "desc": "When Phoenix applies <color=#FF5521>Burn</color> to an enemy, its duration is increased by 2s.\nPhoenix's DMG against enemies in the <color=#FFFFFF>Sear</color> state increases by 30%.",
+      "desc2": "..."
     },
     "3": {
       "level": 3,
-      "name": "Pheony_Talent_03_Title",
+      "name": "Scarecrow Complex",
       "desc": "<color=#FFFFFF>Basic Attack</color>, <color=#FFFFFF>Dodge</color>, <color=#FFFFFF>Assist</color>, <color=#FFFFFF>Special Attack</color>, and <color=#FFFFFF>Chain Attack</color> Lv. +2",
-      "desc2": "Pheony_Talent_03_Desc_02"
+      "desc2": "..."
     },
     "4": {
       "level": 4,
-      "name": "Pheony_Talent_04_Title",
-      "desc": "When Phoenix activates <color=#FFFFFF>[Hold Basic Attack]</color>, she gains 200 Decibels.",
-      "desc2": "Pheony_Talent_04_Desc_02"
+      "name": "Life's End and the Heartless Wonderland",
+      "desc": "When the Finishing Move of <color=#FFFFFF>Soul-Searching Blaze</color> or <color=#FFFFFF>Basic Attack: Purifying Flame</color> hits an enemy affected by an Anomaly, it triggers 1 additional instance of <color=#FFFFFF>Abloom</color>, resolving the corresponding Attribute Anomaly at a fixed 600% multiplier.",
+      "desc2": "..."
     },
     "5": {
       "level": 5,
-      "name": "Pheony_Talent_05_Title",
+      "name": "Carnival of Madness",
       "desc": "<color=#FFFFFF>Basic Attack</color>, <color=#FFFFFF>Dodge</color>, <color=#FFFFFF>Assist</color>, <color=#FFFFFF>Special Attack</color>, and <color=#FFFFFF>Chain Attack</color> Lv. +2",
-      "desc2": "Pheony_Talent_05_Desc_02"
+      "desc2": "..."
     },
     "6": {
       "level": 6,
-      "name": "Pheony_Talent_06_Title",
-      "desc": "The number of <color=#FFFFFF>[Anomaly]</color> Characters required for the Additional Ability is reduced by 1;\nWhen the <color=#FFFFFF>[EX Special Attack]</color>'s Finishing Move hits an enemy afflicted with an Attribute Anomaly status, triggers 1 <color=#FFFFFF>[Abloom]</color> effect, dealing a fixed 200% multiplier of the corresponding attribute's Attribute Anomaly DMG;\nAttribute Anomaly DMG caused by Phoenix's <color=#FFFFFF>[Abloom]</color> effect ignores 15% of the enemy's DEF.",
-      "desc2": "Pheony_Talent_06_Desc_02"
+      "name": "Notes From Confinement",
+      "desc": "Phoenix ignores 15% of targets' All-Attribute RES.\nWhen Phoenix uses <color=#FFFFFF>EX Special Attack: Dazzling Flare</color>, she gains 1 point of <color=#FFFFFF>Ascension</color>.\n<color=#FFFFFF>Abloom</color> effects triggered by Phoenix ignore 40% of enemy DEF.",
+      "desc2": "..."
     }
   },
   "fairy_recommend": {
@@ -2046,9 +2202,9 @@
   },
   "strategy": [
     "03",
-    "StrategyGuide_Overview_1641_1|06",
-    "StrategyGuide_Overview_1641_2|06",
-    "StrategyGuide_Overview_1641_3"
+    "<IconMap:Icon_GeneralBuff_Fire>Fire, <IconMap:Icon_AvatarClass_Anomaly> Anomaly DMG dealer",
+    "Grants a chance for the whole squad's Attribute Anomaly DMG to trigger a CRIT",
+    "Triggers [Rebirth] upon taking fatal DMG, allowing re-entry into battle"
   ],
   "potential": [],
   "potential_detail": {}

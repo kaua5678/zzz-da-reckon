@@ -141,8 +141,12 @@ export const RATCHET_BURNDOWN = [
   },
   {
     id: '名词表未处理',
-    file: 'scripts/lib/noun-triage.json（源 = data/raw/nanoka_missing/noun_3.2.3.json）',
-    frozen: 40,  // 2026-09-14 口径纠正（T15 审计 #4）：原写 frozen: 0 且度量只数 unhandled ⇒
+    file: 'scripts/lib/noun-triage.json（源 = data/raw/nanoka_missing/noun_3.3.12.json）',
+    frozen: 59,  // 2026-10-17 换源 3.2.3 → 3.3.12（68 → 141 条）：新增 73 条里 54 条判 modeled、
+    // 19 条（活动卡牌小游戏词条 4000036–4000054）判范围外挂账 ⇒ deferred 40 → 59。
+    // 这是**源面变更**（不是代码退步），按规则 17②「换尺：新尺量出更多存量 ⇒ 上调到实测值并
+    // 注明口径纠正」处置（同 2026-09-12 的 frozen 8 → 78 先例）。
+    // —— 以下为 2026-09-14 的口径纠正沿革（保留）：原写 frozen: 0 且度量只数 unhandled ⇒
     // 判据 13 上线时就把 40 条判成 deferred 清零，**current 恒 0 / done=true，41 条挂账从提醒面消失**
     // ——与「游戏语义口径复核触发器」首版同型缺陷（存量一登记，棘轮就自称还清）。
     // 现度量 = unhandled（红灯）+ deferred（已挂账存量）＝ 41（27 modeled / 41 deferred / 0 unhandled，

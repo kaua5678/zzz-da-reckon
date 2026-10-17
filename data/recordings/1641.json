@@ -1,0 +1,3159 @@
+{
+  "version": 1,
+  "packet": {
+    "version": 1,
+    "agentId": "1641",
+    "source": {
+      "raw": "data/raw/nanoka_missing/full/1641.json",
+      "nouns": "data/raw/nanoka_missing/noun_3.3.12.json"
+    },
+    "passiveLevel": 7,
+    "hashes": {
+      "raw": "3540d90c5a936f21219c926baed779d45b03e69f678a851c28b8c050235e67b7",
+      "nouns": "35db6f0b30a275554585731fb8a7454a3ebeeded7706673726c572cfeb880a1e",
+      "moves": "ede68698bbc32261afe4fdf88786160d83e7f6505ea4545ac36bbd099604486f"
+    },
+    "moves": [
+      {
+        "id": "1641",
+        "agentId": "1641",
+        "name": {
+          "zhCN": "菲欧妮",
+          "en": "Phoenix"
+        },
+        "categories": [
+          {
+            "id": "basic",
+            "name": {
+              "zhCN": "basic",
+              "en": "basic"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1641001",
+                "name": {
+                  "zhCN": "普通攻击：裁生",
+                  "en": "Basic Attack: Sever Life"
+                },
+                "damageElement": "fire",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      32.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      19.8
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      0.324
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      3.3
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      12
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      12
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.12
+              },
+              {
+                "id": "1641002",
+                "name": {
+                  "zhCN": "普通攻击：裁生",
+                  "en": "Basic Attack: Sever Life"
+                },
+                "damageElement": "fire",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      135.9
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      68.6
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.213
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      11.385
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      41.33
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      41.34
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.413
+              },
+              {
+                "id": "1641003",
+                "name": {
+                  "zhCN": "普通攻击：裁生",
+                  "en": "Basic Attack: Sever Life"
+                },
+                "damageElement": "fire",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      356.3
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      147
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      3.023
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      23.1
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      113.62
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      7.0239
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      83.98
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.84
+              },
+              {
+                "id": "1641004",
+                "name": {
+                  "zhCN": "普通攻击：裁生",
+                  "en": "Basic Attack: Sever Life"
+                },
+                "damageElement": "fire",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      778.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      313.1
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      6.995
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      53.4325
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      239.17
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      16.9072
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      194.3
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.943
+              },
+              {
+                "id": "1641005",
+                "name": {
+                  "zhCN": "普通攻击：焚罪",
+                  "en": "Basic Attack: Purifying Flame"
+                },
+                "damageElement": "fire",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1095.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      412.5
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      4.5
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      68.75
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      361.96
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      199.98
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 2
+              },
+              {
+                "id": "1641006",
+                "name": {
+                  "zhCN": "普通攻击：熔毁",
+                  "en": "Basic Attack: Meltdown"
+                },
+                "damageElement": "fire",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      356.3
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      144.7
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      3.528
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      24.0625
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      128.79
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      8.0238
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      87.48
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.875
+              }
+            ]
+          },
+          {
+            "id": "dodge",
+            "name": {
+              "zhCN": "dodge",
+              "en": "dodge"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1641010",
+                "name": {
+                  "zhCN": "冲刺攻击：倾身",
+                  "en": "Dash Attack: Lunge"
+                },
+                "damageElement": "fire",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      208.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      66
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.44
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      11
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      39.98
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      39.99
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.4
+              },
+              {
+                "id": "1641011",
+                "name": {
+                  "zhCN": "闪避反击：业火两渡",
+                  "en": "Dodge Counter: Twin Passage of Karmic Fire"
+                },
+                "damageElement": "fire",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      593.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      328.2
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      3.539
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      27.06
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      98.3
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      248.31
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.983
+              }
+            ]
+          },
+          {
+            "id": "special",
+            "name": {
+              "zhCN": "special",
+              "en": "special"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1641007",
+                "name": {
+                  "zhCN": "特殊技：掠火",
+                  "en": "Special Attack: Fire Sweep"
+                },
+                "damageElement": "fire",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      91.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      58.4
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      9.6525
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      35
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      35.01
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.35
+              },
+              {
+                "id": "1641008",
+                "name": {
+                  "zhCN": "强化特殊技：眩焰",
+                  "en": "EX Special Attack: Dazzling Flare"
+                },
+                "damageElement": "fire",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      915.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      468.1
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      129.36
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      284.4
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      15.0189
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      128.37
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.284,
+                "energyCost": {
+                  "Energy Cost": "40"
+                }
+              },
+              {
+                "id": "1641009",
+                "name": {
+                  "zhCN": "强化特殊技：坠阳",
+                  "en": "EX Special Attack: Falling Sun"
+                },
+                "damageElement": "fire",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1246.7
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      616.2
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      147.2075
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      401.19
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      20.0851
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      171.67
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.717,
+                "energyCost": {
+                  "Energy Cost": "40"
+                }
+              },
+              {
+                "id": "1641023",
+                "name": {
+                  "zhCN": "强化特殊技：燎斩",
+                  "en": "EX Special Attack: Blazing Slash"
+                },
+                "damageElement": "fire",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      761.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      385.1
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      25.9875
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      227.83
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      9.03
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      52.5
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.525
+              }
+            ]
+          },
+          {
+            "id": "chain",
+            "name": {
+              "zhCN": "chain",
+              "en": "chain"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1641012",
+                "name": {
+                  "zhCN": "连携技：绝处逢生",
+                  "en": "Chain Attack: Last-Minute Salvation"
+                },
+                "damageElement": "fire",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1766
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      397.2
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      248.9025
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      612.43
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      19.9228
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      240.04
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 2.4
+              },
+              {
+                "id": "1641013",
+                "name": {
+                  "zhCN": "终结技：万死重明",
+                  "en": "Ultimate: Perpetual Resurrection"
+                },
+                "damageElement": "fire",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      3627.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      275.3
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      903.61
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "attack_data_0",
+                    "kind": "special",
+                    "values": [
+                      18.543
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      641.19
+                    ]
+                  }
+                ],
+                "timeType": "ultimate",
+                "actionTime": 1.412
+              },
+              {
+                "id": "1641019",
+                "name": {
+                  "zhCN": "烬火追魂",
+                  "en": "Soul-Searching Blaze"
+                },
+                "damageElement": "fire",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      191.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      15.1
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      47.56
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      33.75
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.338
+              }
+            ]
+          },
+          {
+            "id": "assist",
+            "name": {
+              "zhCN": "assist",
+              "en": "assist"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1641014",
+                "name": {
+                  "zhCN": "快速支援：急救",
+                  "en": "Quick Assist: Emergency Aid"
+                },
+                "damageElement": "fire",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      191.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      121.4
+                    ]
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      2.64
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      20.185
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      73.31
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      73.32
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.733
+              },
+              {
+                "id": "1641015",
+                "name": {
+                  "zhCN": "招架支援：久病成医·轻招架失衡倍率",
+                  "en": "Defensive Assist: Patient Turned Doctor"
+                },
+                "damageElement": "fire",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      407.7
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      366.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166
+              },
+              {
+                "id": "1641016",
+                "name": {
+                  "zhCN": "招架支援：久病成医·重招架失衡倍率",
+                  "en": "Defensive Assist: Patient Turned Doctor"
+                },
+                "damageElement": "fire",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      514.4
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      416.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.666
+              },
+              {
+                "id": "1641017",
+                "name": {
+                  "zhCN": "招架支援：久病成医·连续招架失衡倍率",
+                  "en": "Defensive Assist: Patient Turned Doctor"
+                },
+                "damageElement": "fire",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      250.4
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      116.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166
+              },
+              {
+                "id": "1641018",
+                "name": {
+                  "zhCN": "支援突击：再生疗法",
+                  "en": "Assist Follow-Up: Regeneration Therapy"
+                },
+                "damageElement": "fire",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      853.3
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "dazeMultiplier",
+                    "values": [
+                      470.6
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      102.135
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      306.42
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      154.97
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.55
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "units": [
+      {
+        "id": "/skill/assist/description/0/desc:0",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：急救",
+        "category": "assist",
+        "quote": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n向前方突进并发动快速斩击，造成火属性伤害；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:1",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：急救",
+        "category": "assist",
+        "quote": "向前方突进并发动快速斩击，造成火属性伤害；",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n向前方突进并发动快速斩击，造成火属性伤害；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:2",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：急救",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n向前方突进并发动快速斩击，造成火属性伤害；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:0",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：久病成医",
+        "category": "assist",
+        "quote": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:1",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：久病成医",
+        "category": "assist",
+        "quote": "招架敌人的攻击，累积大量失衡值；",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:2",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：久病成医",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:0",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：再生疗法",
+        "category": "assist",
+        "quote": "发动[招架支援]后，点按 [普攻键] 发动：",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n向敌人掷出武器，随后收回武器发动斩击，造成火属性伤害；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:1",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：再生疗法",
+        "category": "assist",
+        "quote": "向敌人掷出武器，随后收回武器发动斩击，造成火属性伤害；",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n向敌人掷出武器，随后收回武器发动斩击，造成火属性伤害；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:2",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：再生疗法",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n向敌人掷出武器，随后收回武器发动斩击，造成火属性伤害；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:0",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：裁生",
+        "category": "basic",
+        "quote": "点按 [普攻键] 发动：",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成火属性伤害；\n第三段以及第四段[普通攻击]视为[燃烧攻击]。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:1",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：裁生",
+        "category": "basic",
+        "quote": "向前方进行至多四段攻击，造成火属性伤害；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成火属性伤害；\n第三段以及第四段[普通攻击]视为[燃烧攻击]。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:2",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：裁生",
+        "category": "basic",
+        "quote": "第三段以及第四段[普通攻击]视为[燃烧攻击]。",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成火属性伤害；\n第三段以及第四段[普通攻击]视为[燃烧攻击]。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:0",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：焚罪",
+        "category": "basic",
+        "quote": "[燔焰]足够时，消耗90点[燔焰]，长按 [普攻键] 发动：",
+        "context": "[燔焰]足够时，消耗90点[燔焰]，长按 [普攻键] 发动：\n菲欧妮掷出武器，对前方范围的敌人造成大量火属性伤害；\n终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:225+20*(AvatarSkillLevel(0)-1),1,2}%倍率的对应属性的属性异常伤害；\n该次[异放]效果触发暴击时，其暴击伤害额外提升40%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:1",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：焚罪",
+        "category": "basic",
+        "quote": "菲欧妮掷出武器，对前方范围的敌人造成大量火属性伤害；",
+        "context": "[燔焰]足够时，消耗90点[燔焰]，长按 [普攻键] 发动：\n菲欧妮掷出武器，对前方范围的敌人造成大量火属性伤害；\n终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:225+20*(AvatarSkillLevel(0)-1),1,2}%倍率的对应属性的属性异常伤害；\n该次[异放]效果触发暴击时，其暴击伤害额外提升40%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:2",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：焚罪",
+        "category": "basic",
+        "quote": "终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:225+20*(AvatarSkillLevel(0)-1),1,2}%倍率的对应属性的属性异常伤害；",
+        "context": "[燔焰]足够时，消耗90点[燔焰]，长按 [普攻键] 发动：\n菲欧妮掷出武器，对前方范围的敌人造成大量火属性伤害；\n终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:225+20*(AvatarSkillLevel(0)-1),1,2}%倍率的对应属性的属性异常伤害；\n该次[异放]效果触发暴击时，其暴击伤害额外提升40%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:3",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：焚罪",
+        "category": "basic",
+        "quote": "该次[异放]效果触发暴击时，其暴击伤害额外提升40%；",
+        "context": "[燔焰]足够时，消耗90点[燔焰]，长按 [普攻键] 发动：\n菲欧妮掷出武器，对前方范围的敌人造成大量火属性伤害；\n终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:225+20*(AvatarSkillLevel(0)-1),1,2}%倍率的对应属性的属性异常伤害；\n该次[异放]效果触发暴击时，其暴击伤害额外提升40%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:4",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：焚罪",
+        "category": "basic",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "[燔焰]足够时，消耗90点[燔焰]，长按 [普攻键] 发动：\n菲欧妮掷出武器，对前方范围的敌人造成大量火属性伤害；\n终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:225+20*(AvatarSkillLevel(0)-1),1,2}%倍率的对应属性的属性异常伤害；\n该次[异放]效果触发暴击时，其暴击伤害额外提升40%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:0",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：熔毁",
+        "category": "basic",
+        "quote": "发动[特殊技：掠火]没有触发完美格挡效果时，点按 [普攻键] 发动：",
+        "context": "发动[特殊技：掠火]没有触发完美格挡效果时，点按 [普攻键] 发动：\n向前突击，造成火属性伤害；\n视为[燃烧攻击]；\n招式发动期间，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:1",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：熔毁",
+        "category": "basic",
+        "quote": "向前突击，造成火属性伤害；",
+        "context": "发动[特殊技：掠火]没有触发完美格挡效果时，点按 [普攻键] 发动：\n向前突击，造成火属性伤害；\n视为[燃烧攻击]；\n招式发动期间，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:2",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：熔毁",
+        "category": "basic",
+        "quote": "视为[燃烧攻击]；",
+        "context": "发动[特殊技：掠火]没有触发完美格挡效果时，点按 [普攻键] 发动：\n向前突击，造成火属性伤害；\n视为[燃烧攻击]；\n招式发动期间，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:3",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：熔毁",
+        "category": "basic",
+        "quote": "招式发动期间，点按 [普攻键] 可衔接第三段[普通攻击]。",
+        "context": "发动[特殊技：掠火]没有触发完美格挡效果时，点按 [普攻键] 发动：\n向前突击，造成火属性伤害；\n视为[燃烧攻击]；\n招式发动期间，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:0",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：绝处逢生",
+        "category": "chain",
+        "quote": "触发[连携技]时，选择对应角色发动：",
+        "context": "触发[连携技]时，选择对应角色发动：\n向前方发动多段攻击，造成火属性伤害；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:1",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：绝处逢生",
+        "category": "chain",
+        "quote": "向前方发动多段攻击，造成火属性伤害；",
+        "context": "触发[连携技]时，选择对应角色发动：\n向前方发动多段攻击，造成火属性伤害；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:2",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：绝处逢生",
+        "category": "chain",
+        "quote": "视为[燃烧攻击]；",
+        "context": "触发[连携技]时，选择对应角色发动：\n向前方发动多段攻击，造成火属性伤害；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:3",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：绝处逢生",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。",
+        "context": "触发[连携技]时，选择对应角色发动：\n向前方发动多段攻击，造成火属性伤害；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:0",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：万死重明",
+        "category": "chain",
+        "quote": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n飞上高空后俯冲向敌人，消耗自身的所有生命值，引发爆炸，造成大量火属性伤害，进入[生竭]状态，并触发下一个角色的[快速支援]；\n视为[燃烧攻击]；\n[生竭]状态下无法主动进攻；\n招式发动后一段时间自动释放[烬火追魂]，也可点按 [普攻键] 快速发动[烬火追魂]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:1",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：万死重明",
+        "category": "chain",
+        "quote": "飞上高空后俯冲向敌人，消耗自身的所有生命值，引发爆炸，造成大量火属性伤害，进入[生竭]状态，并触发下一个角色的[快速支援]；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n飞上高空后俯冲向敌人，消耗自身的所有生命值，引发爆炸，造成大量火属性伤害，进入[生竭]状态，并触发下一个角色的[快速支援]；\n视为[燃烧攻击]；\n[生竭]状态下无法主动进攻；\n招式发动后一段时间自动释放[烬火追魂]，也可点按 [普攻键] 快速发动[烬火追魂]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:2",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：万死重明",
+        "category": "chain",
+        "quote": "视为[燃烧攻击]；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n飞上高空后俯冲向敌人，消耗自身的所有生命值，引发爆炸，造成大量火属性伤害，进入[生竭]状态，并触发下一个角色的[快速支援]；\n视为[燃烧攻击]；\n[生竭]状态下无法主动进攻；\n招式发动后一段时间自动释放[烬火追魂]，也可点按 [普攻键] 快速发动[烬火追魂]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:3",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：万死重明",
+        "category": "chain",
+        "quote": "[生竭]状态下无法主动进攻；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n飞上高空后俯冲向敌人，消耗自身的所有生命值，引发爆炸，造成大量火属性伤害，进入[生竭]状态，并触发下一个角色的[快速支援]；\n视为[燃烧攻击]；\n[生竭]状态下无法主动进攻；\n招式发动后一段时间自动释放[烬火追魂]，也可点按 [普攻键] 快速发动[烬火追魂]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:4",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：万死重明",
+        "category": "chain",
+        "quote": "招式发动后一段时间自动释放[烬火追魂]，也可点按 [普攻键] 快速发动[烬火追魂]；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n飞上高空后俯冲向敌人，消耗自身的所有生命值，引发爆炸，造成大量火属性伤害，进入[生竭]状态，并触发下一个角色的[快速支援]；\n视为[燃烧攻击]；\n[生竭]状态下无法主动进攻；\n招式发动后一段时间自动释放[烬火追魂]，也可点按 [普攻键] 快速发动[烬火追魂]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:5",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：万死重明",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n飞上高空后俯冲向敌人，消耗自身的所有生命值，引发爆炸，造成大量火属性伤害，进入[生竭]状态，并触发下一个角色的[快速支援]；\n视为[燃烧攻击]；\n[生竭]状态下无法主动进攻；\n招式发动后一段时间自动释放[烬火追魂]，也可点按 [普攻键] 快速发动[烬火追魂]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/2/desc:0",
+        "pointer": "/skill/chain/description/2/desc",
+        "title": "烬火追魂",
+        "category": "chain",
+        "quote": "当菲欧妮处于[生竭]状态时，下一次普通换入、快速支援、招架支援换入前场时发动：",
+        "context": "当菲欧妮处于[生竭]状态时，下一次普通换入、快速支援、招架支援换入前场时发动：\n周身环绕火焰，对周围敌人造成火属性伤害，视为[终结技]伤害，并退出[生竭]状态，回复[终结技：万死重明]消耗的所有生命值，并额外回复自身10%生命值上限的生命值；\n终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%倍率的对应属性的属性异常伤害；\n该次[异放]效果触发暴击时，其暴击伤害额外提升40%；\n当处于[生竭]状态的菲欧妮通过[连携技：绝处逢生]、[终结技：万死重明]入场时，也会触发上述生命值回复与[异放]效果；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/chain/description/2/desc:1",
+        "pointer": "/skill/chain/description/2/desc",
+        "title": "烬火追魂",
+        "category": "chain",
+        "quote": "周身环绕火焰，对周围敌人造成火属性伤害，视为[终结技]伤害，并退出[生竭]状态，回复[终结技：万死重明]消耗的所有生命值，并额外回复自身10%生命值上限的生命值；",
+        "context": "当菲欧妮处于[生竭]状态时，下一次普通换入、快速支援、招架支援换入前场时发动：\n周身环绕火焰，对周围敌人造成火属性伤害，视为[终结技]伤害，并退出[生竭]状态，回复[终结技：万死重明]消耗的所有生命值，并额外回复自身10%生命值上限的生命值；\n终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%倍率的对应属性的属性异常伤害；\n该次[异放]效果触发暴击时，其暴击伤害额外提升40%；\n当处于[生竭]状态的菲欧妮通过[连携技：绝处逢生]、[终结技：万死重明]入场时，也会触发上述生命值回复与[异放]效果；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/chain/description/2/desc:2",
+        "pointer": "/skill/chain/description/2/desc",
+        "title": "烬火追魂",
+        "category": "chain",
+        "quote": "终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%倍率的对应属性的属性异常伤害；",
+        "context": "当菲欧妮处于[生竭]状态时，下一次普通换入、快速支援、招架支援换入前场时发动：\n周身环绕火焰，对周围敌人造成火属性伤害，视为[终结技]伤害，并退出[生竭]状态，回复[终结技：万死重明]消耗的所有生命值，并额外回复自身10%生命值上限的生命值；\n终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%倍率的对应属性的属性异常伤害；\n该次[异放]效果触发暴击时，其暴击伤害额外提升40%；\n当处于[生竭]状态的菲欧妮通过[连携技：绝处逢生]、[终结技：万死重明]入场时，也会触发上述生命值回复与[异放]效果；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/chain/description/2/desc:3",
+        "pointer": "/skill/chain/description/2/desc",
+        "title": "烬火追魂",
+        "category": "chain",
+        "quote": "该次[异放]效果触发暴击时，其暴击伤害额外提升40%；",
+        "context": "当菲欧妮处于[生竭]状态时，下一次普通换入、快速支援、招架支援换入前场时发动：\n周身环绕火焰，对周围敌人造成火属性伤害，视为[终结技]伤害，并退出[生竭]状态，回复[终结技：万死重明]消耗的所有生命值，并额外回复自身10%生命值上限的生命值；\n终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%倍率的对应属性的属性异常伤害；\n该次[异放]效果触发暴击时，其暴击伤害额外提升40%；\n当处于[生竭]状态的菲欧妮通过[连携技：绝处逢生]、[终结技：万死重明]入场时，也会触发上述生命值回复与[异放]效果；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/chain/description/2/desc:4",
+        "pointer": "/skill/chain/description/2/desc",
+        "title": "烬火追魂",
+        "category": "chain",
+        "quote": "当处于[生竭]状态的菲欧妮通过[连携技：绝处逢生]、[终结技：万死重明]入场时，也会触发上述生命值回复与[异放]效果；",
+        "context": "当菲欧妮处于[生竭]状态时，下一次普通换入、快速支援、招架支援换入前场时发动：\n周身环绕火焰，对周围敌人造成火属性伤害，视为[终结技]伤害，并退出[生竭]状态，回复[终结技：万死重明]消耗的所有生命值，并额外回复自身10%生命值上限的生命值；\n终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%倍率的对应属性的属性异常伤害；\n该次[异放]效果触发暴击时，其暴击伤害额外提升40%；\n当处于[生竭]状态的菲欧妮通过[连携技：绝处逢生]、[终结技：万死重明]入场时，也会触发上述生命值回复与[异放]效果；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/chain/description/2/desc:5",
+        "pointer": "/skill/chain/description/2/desc",
+        "title": "烬火追魂",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。",
+        "context": "当菲欧妮处于[生竭]状态时，下一次普通换入、快速支援、招架支援换入前场时发动：\n周身环绕火焰，对周围敌人造成火属性伤害，视为[终结技]伤害，并退出[生竭]状态，回复[终结技：万死重明]消耗的所有生命值，并额外回复自身10%生命值上限的生命值；\n终结一击命中处于冰属性异常状态、以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、风属性异常状态的敌人时，触发1次[异放]效果，结算{CAL:300+27*(AvatarSkillLevel(3)-1),1,2}%倍率的对应属性的属性异常伤害；\n该次[异放]效果触发暴击时，其暴击伤害额外提升40%；\n当处于[生竭]状态的菲欧妮通过[连携技：绝处逢生]、[终结技：万死重明]入场时，也会触发上述生命值回复与[异放]效果；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:0",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：飘摇",
+        "category": "dodge",
+        "quote": "点按 [Icon_Evade] 发动：",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:1",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：飘摇",
+        "category": "dodge",
+        "quote": "快速的冲刺闪避；",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:2",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：飘摇",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:0",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：倾身",
+        "category": "dodge",
+        "quote": "闪避时，点按 [普攻键] 发动：",
+        "context": "闪避时，点按 [普攻键] 发动：\n向前方进行突进斩击，造成火属性伤害。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:1",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：倾身",
+        "category": "dodge",
+        "quote": "向前方进行突进斩击，造成火属性伤害。",
+        "context": "闪避时，点按 [普攻键] 发动：\n向前方进行突进斩击，造成火属性伤害。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:0",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：业火两渡",
+        "category": "dodge",
+        "quote": "触发[极限闪避]时，点按 [普攻键] 发动：",
+        "context": "触发[极限闪避]时，点按 [普攻键] 发动：\n向前方突进并发动快速斩击，造成火属性伤害；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:1",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：业火两渡",
+        "category": "dodge",
+        "quote": "向前方突进并发动快速斩击，造成火属性伤害；",
+        "context": "触发[极限闪避]时，点按 [普攻键] 发动：\n向前方突进并发动快速斩击，造成火属性伤害；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:2",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：业火两渡",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。",
+        "context": "触发[极限闪避]时，点按 [普攻键] 发动：\n向前方突进并发动快速斩击，造成火属性伤害；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:0",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：掠火",
+        "category": "special",
+        "quote": "点按 [特技键] 发动：",
+        "context": "点按 [特技键] 发动：\n后撤过后，快速向前方发动上挑攻击，造成火属性伤害；\n后撤期间，受到的伤害降低40%；\n上挑攻击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果，免疫该次伤害，点按 [普攻键] 可直接发动第三段[普通攻击]；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:1",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：掠火",
+        "category": "special",
+        "quote": "后撤过后，快速向前方发动上挑攻击，造成火属性伤害；",
+        "context": "点按 [特技键] 发动：\n后撤过后，快速向前方发动上挑攻击，造成火属性伤害；\n后撤期间，受到的伤害降低40%；\n上挑攻击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果，免疫该次伤害，点按 [普攻键] 可直接发动第三段[普通攻击]；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:2",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：掠火",
+        "category": "special",
+        "quote": "后撤期间，受到的伤害降低40%；",
+        "context": "点按 [特技键] 发动：\n后撤过后，快速向前方发动上挑攻击，造成火属性伤害；\n后撤期间，受到的伤害降低40%；\n上挑攻击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果，免疫该次伤害，点按 [普攻键] 可直接发动第三段[普通攻击]；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:3",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：掠火",
+        "category": "special",
+        "quote": "上挑攻击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果，免疫该次伤害，点按 [普攻键] 可直接发动第三段[普通攻击]；",
+        "context": "点按 [特技键] 发动：\n后撤过后，快速向前方发动上挑攻击，造成火属性伤害；\n后撤期间，受到的伤害降低40%；\n上挑攻击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果，免疫该次伤害，点按 [普攻键] 可直接发动第三段[普通攻击]；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:4",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：掠火",
+        "category": "special",
+        "quote": "招式发动期间抗打断等级提升。",
+        "context": "点按 [特技键] 发动：\n后撤过后，快速向前方发动上挑攻击，造成火属性伤害；\n后撤期间，受到的伤害降低40%；\n上挑攻击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果，免疫该次伤害，点按 [普攻键] 可直接发动第三段[普通攻击]；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:0",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：燎斩",
+        "category": "special",
+        "quote": "拥有[升变]效果时，消耗1点[升变]，点按 [特技键] 发动：",
+        "context": "拥有[升变]效果时，消耗1点[升变]，点按 [特技键] 发动：\n后撤过后，快速向前方进行强力上挑斩击，造成大量火属性伤害；\n后撤过程中按住 [特技键] 可持续蓄力；\n蓄力期间，松开 [特技键] 时发动强力上挑斩击，造成大量火属性伤害；\n衔接在[燃烧攻击]后可以跳过后撤进入上挑攻击；\n后撤以及蓄力期间，受到的伤害降低40%；\n上挑斩击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:1",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：燎斩",
+        "category": "special",
+        "quote": "后撤过后，快速向前方进行强力上挑斩击，造成大量火属性伤害；",
+        "context": "拥有[升变]效果时，消耗1点[升变]，点按 [特技键] 发动：\n后撤过后，快速向前方进行强力上挑斩击，造成大量火属性伤害；\n后撤过程中按住 [特技键] 可持续蓄力；\n蓄力期间，松开 [特技键] 时发动强力上挑斩击，造成大量火属性伤害；\n衔接在[燃烧攻击]后可以跳过后撤进入上挑攻击；\n后撤以及蓄力期间，受到的伤害降低40%；\n上挑斩击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:2",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：燎斩",
+        "category": "special",
+        "quote": "后撤过程中按住 [特技键] 可持续蓄力；",
+        "context": "拥有[升变]效果时，消耗1点[升变]，点按 [特技键] 发动：\n后撤过后，快速向前方进行强力上挑斩击，造成大量火属性伤害；\n后撤过程中按住 [特技键] 可持续蓄力；\n蓄力期间，松开 [特技键] 时发动强力上挑斩击，造成大量火属性伤害；\n衔接在[燃烧攻击]后可以跳过后撤进入上挑攻击；\n后撤以及蓄力期间，受到的伤害降低40%；\n上挑斩击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:3",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：燎斩",
+        "category": "special",
+        "quote": "蓄力期间，松开 [特技键] 时发动强力上挑斩击，造成大量火属性伤害；",
+        "context": "拥有[升变]效果时，消耗1点[升变]，点按 [特技键] 发动：\n后撤过后，快速向前方进行强力上挑斩击，造成大量火属性伤害；\n后撤过程中按住 [特技键] 可持续蓄力；\n蓄力期间，松开 [特技键] 时发动强力上挑斩击，造成大量火属性伤害；\n衔接在[燃烧攻击]后可以跳过后撤进入上挑攻击；\n后撤以及蓄力期间，受到的伤害降低40%；\n上挑斩击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:4",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：燎斩",
+        "category": "special",
+        "quote": "衔接在[燃烧攻击]后可以跳过后撤进入上挑攻击；",
+        "context": "拥有[升变]效果时，消耗1点[升变]，点按 [特技键] 发动：\n后撤过后，快速向前方进行强力上挑斩击，造成大量火属性伤害；\n后撤过程中按住 [特技键] 可持续蓄力；\n蓄力期间，松开 [特技键] 时发动强力上挑斩击，造成大量火属性伤害；\n衔接在[燃烧攻击]后可以跳过后撤进入上挑攻击；\n后撤以及蓄力期间，受到的伤害降低40%；\n上挑斩击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:5",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：燎斩",
+        "category": "special",
+        "quote": "后撤以及蓄力期间，受到的伤害降低40%；",
+        "context": "拥有[升变]效果时，消耗1点[升变]，点按 [特技键] 发动：\n后撤过后，快速向前方进行强力上挑斩击，造成大量火属性伤害；\n后撤过程中按住 [特技键] 可持续蓄力；\n蓄力期间，松开 [特技键] 时发动强力上挑斩击，造成大量火属性伤害；\n衔接在[燃烧攻击]后可以跳过后撤进入上挑攻击；\n后撤以及蓄力期间，受到的伤害降低40%；\n上挑斩击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:6",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：燎斩",
+        "category": "special",
+        "quote": "上挑斩击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；",
+        "context": "拥有[升变]效果时，消耗1点[升变]，点按 [特技键] 发动：\n后撤过后，快速向前方进行强力上挑斩击，造成大量火属性伤害；\n后撤过程中按住 [特技键] 可持续蓄力；\n蓄力期间，松开 [特技键] 时发动强力上挑斩击，造成大量火属性伤害；\n衔接在[燃烧攻击]后可以跳过后撤进入上挑攻击；\n后撤以及蓄力期间，受到的伤害降低40%；\n上挑斩击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:7",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：燎斩",
+        "category": "special",
+        "quote": "视为[燃烧攻击]；",
+        "context": "拥有[升变]效果时，消耗1点[升变]，点按 [特技键] 发动：\n后撤过后，快速向前方进行强力上挑斩击，造成大量火属性伤害；\n后撤过程中按住 [特技键] 可持续蓄力；\n蓄力期间，松开 [特技键] 时发动强力上挑斩击，造成大量火属性伤害；\n衔接在[燃烧攻击]后可以跳过后撤进入上挑攻击；\n后撤以及蓄力期间，受到的伤害降低40%；\n上挑斩击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:8",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：燎斩",
+        "category": "special",
+        "quote": "招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。",
+        "context": "拥有[升变]效果时，消耗1点[升变]，点按 [特技键] 发动：\n后撤过后，快速向前方进行强力上挑斩击，造成大量火属性伤害；\n后撤过程中按住 [特技键] 可持续蓄力；\n蓄力期间，松开 [特技键] 时发动强力上挑斩击，造成大量火属性伤害；\n衔接在[燃烧攻击]后可以跳过后撤进入上挑攻击；\n后撤以及蓄力期间，受到的伤害降低40%；\n上挑斩击开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击]；\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:0",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：眩焰",
+        "category": "special",
+        "quote": "能量足够时，点按 [Icon_SpecialReady] 发动：",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n快速转动身体，对敌人造成大量火属性伤害；\n转动开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:1",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：眩焰",
+        "category": "special",
+        "quote": "快速转动身体，对敌人造成大量火属性伤害；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n快速转动身体，对敌人造成大量火属性伤害；\n转动开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:2",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：眩焰",
+        "category": "special",
+        "quote": "转动开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n快速转动身体，对敌人造成大量火属性伤害；\n转动开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:3",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：眩焰",
+        "category": "special",
+        "quote": "视为[燃烧攻击];",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n快速转动身体，对敌人造成大量火属性伤害；\n转动开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:4",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：眩焰",
+        "category": "special",
+        "quote": "招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n快速转动身体，对敌人造成大量火属性伤害；\n转动开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/3/desc:0",
+        "pointer": "/skill/special/description/3/desc",
+        "title": "强化特殊技：坠阳",
+        "category": "special",
+        "quote": "[强化特殊技：眩焰]发动后，能量足够时，点按或长按 [Icon_SpecialReady] 发动：",
+        "context": "[强化特殊技：眩焰]发动后，能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n升空后掷出武器，对敌人造成大量火属性伤害；\n招式发动时可获得1点[升变]，最多拥有1点[升变]；\n升空开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/3/desc:1",
+        "pointer": "/skill/special/description/3/desc",
+        "title": "强化特殊技：坠阳",
+        "category": "special",
+        "quote": "升空后掷出武器，对敌人造成大量火属性伤害；",
+        "context": "[强化特殊技：眩焰]发动后，能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n升空后掷出武器，对敌人造成大量火属性伤害；\n招式发动时可获得1点[升变]，最多拥有1点[升变]；\n升空开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/3/desc:2",
+        "pointer": "/skill/special/description/3/desc",
+        "title": "强化特殊技：坠阳",
+        "category": "special",
+        "quote": "招式发动时可获得1点[升变]，最多拥有1点[升变]；",
+        "context": "[强化特殊技：眩焰]发动后，能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n升空后掷出武器，对敌人造成大量火属性伤害；\n招式发动时可获得1点[升变]，最多拥有1点[升变]；\n升空开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/3/desc:3",
+        "pointer": "/skill/special/description/3/desc",
+        "title": "强化特殊技：坠阳",
+        "category": "special",
+        "quote": "升空开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；",
+        "context": "[强化特殊技：眩焰]发动后，能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n升空后掷出武器，对敌人造成大量火属性伤害；\n招式发动时可获得1点[升变]，最多拥有1点[升变]；\n升空开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/3/desc:4",
+        "pointer": "/skill/special/description/3/desc",
+        "title": "强化特殊技：坠阳",
+        "category": "special",
+        "quote": "视为[燃烧攻击];",
+        "context": "[强化特殊技：眩焰]发动后，能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n升空后掷出武器，对敌人造成大量火属性伤害；\n招式发动时可获得1点[升变]，最多拥有1点[升变]；\n升空开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/skill/special/description/3/desc:5",
+        "pointer": "/skill/special/description/3/desc",
+        "title": "强化特殊技：坠阳",
+        "category": "special",
+        "quote": "招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。",
+        "context": "[强化特殊技：眩焰]发动后，能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n升空后掷出武器，对敌人造成大量火属性伤害；\n招式发动时可获得1点[升变]，最多拥有1点[升变]；\n升空开始瞬间受到攻击以及命中出现红色闪光或黄色闪光的敌人时，可触发完美格挡效果；\n视为[燃烧攻击];\n招式发动期间拥有无敌效果，点按 [普攻键] 可衔接第三段[普通攻击]。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/0:0",
+        "pointer": "/passive/level/1641507/desc/0",
+        "title": "核心被动：涅槃",
+        "category": "passive",
+        "quote": "菲欧妮的异常精通提升85点；",
+        "context": "菲欧妮的异常精通提升85点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为25%，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮50%攻击力的火属性伤害，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 [特技键] 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动[强化特殊技]时，进入[枯荣]状态，持续20秒，[燃烧攻击]命中敌人或重复施加时刷新持续时间；\n[枯荣]状态下，发动[强化特殊技：眩焰]后，下次发动[强化特殊技：眩焰]会替换为发动[强化特殊技：坠阳]。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/0:1",
+        "pointer": "/passive/level/1641507/desc/0",
+        "title": "核心被动：涅槃",
+        "category": "passive",
+        "quote": "队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；",
+        "context": "菲欧妮的异常精通提升85点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为25%，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮50%攻击力的火属性伤害，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 [特技键] 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动[强化特殊技]时，进入[枯荣]状态，持续20秒，[燃烧攻击]命中敌人或重复施加时刷新持续时间；\n[枯荣]状态下，发动[强化特殊技：眩焰]后，下次发动[强化特殊技：眩焰]会替换为发动[强化特殊技：坠阳]。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/0:2",
+        "pointer": "/passive/level/1641507/desc/0",
+        "title": "核心被动：涅槃",
+        "category": "passive",
+        "quote": "[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为25%，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；",
+        "context": "菲欧妮的异常精通提升85点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为25%，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮50%攻击力的火属性伤害，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 [特技键] 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动[强化特殊技]时，进入[枯荣]状态，持续20秒，[燃烧攻击]命中敌人或重复施加时刷新持续时间；\n[枯荣]状态下，发动[强化特殊技：眩焰]后，下次发动[强化特殊技：眩焰]会替换为发动[强化特殊技：坠阳]。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/0:3",
+        "pointer": "/passive/level/1641507/desc/0",
+        "title": "核心被动：涅槃",
+        "category": "passive",
+        "quote": "当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；",
+        "context": "菲欧妮的异常精通提升85点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为25%，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮50%攻击力的火属性伤害，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 [特技键] 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动[强化特殊技]时，进入[枯荣]状态，持续20秒，[燃烧攻击]命中敌人或重复施加时刷新持续时间；\n[枯荣]状态下，发动[强化特殊技：眩焰]后，下次发动[强化特殊技：眩焰]会替换为发动[强化特殊技：坠阳]。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/0:4",
+        "pointer": "/passive/level/1641507/desc/0",
+        "title": "核心被动：涅槃",
+        "category": "passive",
+        "quote": "[灼蚀]状态下的敌人每8秒受到菲欧妮50%攻击力的火属性伤害，该伤害视为[强化特殊技]伤害；",
+        "context": "菲欧妮的异常精通提升85点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为25%，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮50%攻击力的火属性伤害，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 [特技键] 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动[强化特殊技]时，进入[枯荣]状态，持续20秒，[燃烧攻击]命中敌人或重复施加时刷新持续时间；\n[枯荣]状态下，发动[强化特殊技：眩焰]后，下次发动[强化特殊技：眩焰]会替换为发动[强化特殊技：坠阳]。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/0:5",
+        "pointer": "/passive/level/1641507/desc/0",
+        "title": "核心被动：涅槃",
+        "category": "passive",
+        "quote": "[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；",
+        "context": "菲欧妮的异常精通提升85点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为25%，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮50%攻击力的火属性伤害，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 [特技键] 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动[强化特殊技]时，进入[枯荣]状态，持续20秒，[燃烧攻击]命中敌人或重复施加时刷新持续时间；\n[枯荣]状态下，发动[强化特殊技：眩焰]后，下次发动[强化特殊技：眩焰]会替换为发动[强化特殊技：坠阳]。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/0:6",
+        "pointer": "/passive/level/1641507/desc/0",
+        "title": "核心被动：涅槃",
+        "category": "passive",
+        "quote": "[燃烧攻击]发动后，点按 [特技键] 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；",
+        "context": "菲欧妮的异常精通提升85点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为25%，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮50%攻击力的火属性伤害，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 [特技键] 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动[强化特殊技]时，进入[枯荣]状态，持续20秒，[燃烧攻击]命中敌人或重复施加时刷新持续时间；\n[枯荣]状态下，发动[强化特殊技：眩焰]后，下次发动[强化特殊技：眩焰]会替换为发动[强化特殊技：坠阳]。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/0:7",
+        "pointer": "/passive/level/1641507/desc/0",
+        "title": "核心被动：涅槃",
+        "category": "passive",
+        "quote": "菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；",
+        "context": "菲欧妮的异常精通提升85点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为25%，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮50%攻击力的火属性伤害，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 [特技键] 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动[强化特殊技]时，进入[枯荣]状态，持续20秒，[燃烧攻击]命中敌人或重复施加时刷新持续时间；\n[枯荣]状态下，发动[强化特殊技：眩焰]后，下次发动[强化特殊技：眩焰]会替换为发动[强化特殊技：坠阳]。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/0:8",
+        "pointer": "/passive/level/1641507/desc/0",
+        "title": "核心被动：涅槃",
+        "category": "passive",
+        "quote": "菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；",
+        "context": "菲欧妮的异常精通提升85点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为25%，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮50%攻击力的火属性伤害，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 [特技键] 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动[强化特殊技]时，进入[枯荣]状态，持续20秒，[燃烧攻击]命中敌人或重复施加时刷新持续时间；\n[枯荣]状态下，发动[强化特殊技：眩焰]后，下次发动[强化特殊技：眩焰]会替换为发动[强化特殊技：坠阳]。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/0:9",
+        "pointer": "/passive/level/1641507/desc/0",
+        "title": "核心被动：涅槃",
+        "category": "passive",
+        "quote": "菲欧妮发动[强化特殊技]时，进入[枯荣]状态，持续20秒，[燃烧攻击]命中敌人或重复施加时刷新持续时间；",
+        "context": "菲欧妮的异常精通提升85点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为25%，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮50%攻击力的火属性伤害，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 [特技键] 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动[强化特殊技]时，进入[枯荣]状态，持续20秒，[燃烧攻击]命中敌人或重复施加时刷新持续时间；\n[枯荣]状态下，发动[强化特殊技：眩焰]后，下次发动[强化特殊技：眩焰]会替换为发动[强化特殊技：坠阳]。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/0:10",
+        "pointer": "/passive/level/1641507/desc/0",
+        "title": "核心被动：涅槃",
+        "category": "passive",
+        "quote": "[枯荣]状态下，发动[强化特殊技：眩焰]后，下次发动[强化特殊技：眩焰]会替换为发动[强化特殊技：坠阳]。",
+        "context": "菲欧妮的异常精通提升85点；\n队伍中任意角色对敌人造成属性异常伤害时，会使其陷入[灼蚀]状态，持续20秒，重复触发刷新持续时间；[灼蚀]状态下的敌人受到属性异常伤害时有概率触发暴击，基础暴击率为30%，暴击伤害为25%，若菲欧妮的初始异常掌控大于155点，每点超过的异常掌控会使得该效果的暴击率额外提升0.7%；\n当菲欧妮的初始异常掌控达到255点时，[灼蚀]状态下的敌人受到属性异常伤害的暴击率达到最大值；\n[灼蚀]状态下的敌人每8秒受到菲欧妮50%攻击力的火属性伤害，该伤害视为[强化特殊技]伤害；\n[燃烧攻击]发动期间，抗打断等级提升，造成伤害时，会回复[燔焰]，菲欧妮最多拥有120点[燔焰]；\n[燃烧攻击]发动后，点按 [特技键] 可跳过[特殊技：掠火]以及[强化特殊技：燎斩]的后撤动作，直接衔接上挑攻击；\n菲欧妮受到致命伤害时不会战败退场，可触发[重明]效果，下一次普通换入、快速支援、招架支援换入前场时会回复50%最大生命值，在勘域模式中此效果1200秒内最多触发一次；\n菲欧妮触发完美格挡效果时，获得5点[燔焰]，10秒内最多触发一次；\n菲欧妮发动[强化特殊技]时，进入[枯荣]状态，持续20秒，[燃烧攻击]命中敌人或重复施加时刷新持续时间；\n[枯荣]状态下，发动[强化特殊技：眩焰]后，下次发动[强化特殊技：眩焰]会替换为发动[强化特殊技：坠阳]。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/1:0",
+        "pointer": "/passive/level/1641507/desc/1",
+        "title": "额外能力：黑枝王牌",
+        "category": "passive",
+        "quote": "队伍中存在其他[异常]角色或同阵营角色时触发：",
+        "context": "队伍中存在其他[异常]角色或同阵营角色时触发：\n[灼蚀]状态下的敌人受到属性异常伤害的暴击伤害提升15%。"
+      },
+      {
+        "id": "/passive/level/1641507/desc/1:1",
+        "pointer": "/passive/level/1641507/desc/1",
+        "title": "额外能力：黑枝王牌",
+        "category": "passive",
+        "quote": "[灼蚀]状态下的敌人受到属性异常伤害的暴击伤害提升15%。",
+        "context": "队伍中存在其他[异常]角色或同阵营角色时触发：\n[灼蚀]状态下的敌人受到属性异常伤害的暴击伤害提升15%。"
+      },
+      {
+        "id": "/talent/1/desc:0",
+        "pointer": "/talent/1/desc",
+        "title": "痛觉残留与刺激游行",
+        "category": "talent",
+        "quote": "进入战场时，菲欧妮获得1点[升变]，在勘域模式中此效果180秒内最多触发一次；",
+        "context": "进入战场时，菲欧妮获得1点[升变]，在勘域模式中此效果180秒内最多触发一次；\n[灼蚀]状态下的敌人受到属性异常伤害的暴击伤害额外提升25%；\n[燃烧攻击]造成伤害时，[燔焰]的获取效率提升15%。"
+      },
+      {
+        "id": "/talent/1/desc:1",
+        "pointer": "/talent/1/desc",
+        "title": "痛觉残留与刺激游行",
+        "category": "talent",
+        "quote": "[灼蚀]状态下的敌人受到属性异常伤害的暴击伤害额外提升25%；",
+        "context": "进入战场时，菲欧妮获得1点[升变]，在勘域模式中此效果180秒内最多触发一次；\n[灼蚀]状态下的敌人受到属性异常伤害的暴击伤害额外提升25%；\n[燃烧攻击]造成伤害时，[燔焰]的获取效率提升15%。"
+      },
+      {
+        "id": "/talent/1/desc:2",
+        "pointer": "/talent/1/desc",
+        "title": "痛觉残留与刺激游行",
+        "category": "talent",
+        "quote": "[燃烧攻击]造成伤害时，[燔焰]的获取效率提升15%。",
+        "context": "进入战场时，菲欧妮获得1点[升变]，在勘域模式中此效果180秒内最多触发一次；\n[灼蚀]状态下的敌人受到属性异常伤害的暴击伤害额外提升25%；\n[燃烧攻击]造成伤害时，[燔焰]的获取效率提升15%。"
+      },
+      {
+        "id": "/talent/2/desc:0",
+        "pointer": "/talent/2/desc",
+        "title": "好奇心害不死猫",
+        "category": "talent",
+        "quote": "菲欧妮对敌人施加[灼烧]效果时，该效果的持续时间提升2秒；",
+        "context": "菲欧妮对敌人施加[灼烧]效果时，该效果的持续时间提升2秒；\n菲欧妮对[灼蚀]状态下的敌人造成的伤害提升30%。"
+      },
+      {
+        "id": "/talent/2/desc:1",
+        "pointer": "/talent/2/desc",
+        "title": "好奇心害不死猫",
+        "category": "talent",
+        "quote": "菲欧妮对[灼蚀]状态下的敌人造成的伤害提升30%。",
+        "context": "菲欧妮对敌人施加[灼烧]效果时，该效果的持续时间提升2秒；\n菲欧妮对[灼蚀]状态下的敌人造成的伤害提升30%。"
+      },
+      {
+        "id": "/talent/3/desc:0",
+        "pointer": "/talent/3/desc",
+        "title": "稻草人症候群",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/4/desc:0",
+        "pointer": "/talent/4/desc",
+        "title": "生命尽头与冷酷仙境",
+        "category": "talent",
+        "quote": "[烬火追魂]以及[普通攻击：焚罪]终结一击命中处于异常状态的敌人时，",
+        "context": "[烬火追魂]以及[普通攻击：焚罪]终结一击命中处于异常状态的敌人时，\n额外触发一次[异放]效果，固定结算600%倍率的对应属性的属性异常伤害。"
+      },
+      {
+        "id": "/talent/4/desc:1",
+        "pointer": "/talent/4/desc",
+        "title": "生命尽头与冷酷仙境",
+        "category": "talent",
+        "quote": "额外触发一次[异放]效果，固定结算600%倍率的对应属性的属性异常伤害。",
+        "context": "[烬火追魂]以及[普通攻击：焚罪]终结一击命中处于异常状态的敌人时，\n额外触发一次[异放]效果，固定结算600%倍率的对应属性的属性异常伤害。"
+      },
+      {
+        "id": "/talent/5/desc:0",
+        "pointer": "/talent/5/desc",
+        "title": "狂欢马戏团",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/6/desc:0",
+        "pointer": "/talent/6/desc",
+        "title": "禁闭室手记",
+        "category": "talent",
+        "quote": "菲欧妮无视目标15%全属性伤害抗性；",
+        "context": "菲欧妮无视目标15%全属性伤害抗性；\n菲欧妮发动[强化特殊技：眩焰]时，获得1点[升变]；\n菲欧妮触发的[异放]效果无视敌人40%防御力。"
+      },
+      {
+        "id": "/talent/6/desc:1",
+        "pointer": "/talent/6/desc",
+        "title": "禁闭室手记",
+        "category": "talent",
+        "quote": "菲欧妮发动[强化特殊技：眩焰]时，获得1点[升变]；",
+        "context": "菲欧妮无视目标15%全属性伤害抗性；\n菲欧妮发动[强化特殊技：眩焰]时，获得1点[升变]；\n菲欧妮触发的[异放]效果无视敌人40%防御力。"
+      },
+      {
+        "id": "/talent/6/desc:2",
+        "pointer": "/talent/6/desc",
+        "title": "禁闭室手记",
+        "category": "talent",
+        "quote": "菲欧妮触发的[异放]效果无视敌人40%防御力。",
+        "context": "菲欧妮无视目标15%全属性伤害抗性；\n菲欧妮发动[强化特殊技：眩焰]时，获得1点[升变]；\n菲欧妮触发的[异放]效果无视敌人40%防御力。"
+      }
+    ]
+  },
+  "decisions": [
+    {
+      "sourceId": "/skill/assist/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_ember"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_ember"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_release"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_release"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_ember"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:3",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_ember"
+      ]
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_entry"
+      ]
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式分类声明（视为[燃烧攻击]/可衔接第三段）由 catalog 行分类承载",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:4",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_entry"
+      ]
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:5",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/2/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_entry"
+      ]
+    },
+    {
+      "sourceId": "/skill/chain/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "v12 原文有此句但本体未建模（已在 spec notes 未建模项登记），收益≈0 或操作向量（[生竭] 退出与回血无乘区；伤害本体在 1641019 行）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/2/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_release"
+      ]
+    },
+    {
+      "sourceId": "/skill/chain/description/2/desc:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_release"
+      ]
+    },
+    {
+      "sourceId": "/skill/chain/description/2/desc:4",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/2/desc:5",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "v12 原文有此句但本体未建模（已在 spec notes 未建模项登记），收益≈0 或操作向量（减伤 40% 无伤害侧乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_kuRong"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:4",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:5",
+      "status": "out_of_scope",
+      "reason": "v12 原文有此句但本体未建模（已在 spec notes 未建模项登记），收益≈0 或操作向量（减伤 40% 无伤害侧乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:6",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:7",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_ember"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:8",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_kuRong"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_ember"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/3/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_kuRong"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/3/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_ember"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/3/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_kuRong"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/3/desc:3",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/3/desc:4",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_ember"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/3/desc:5",
+      "status": "out_of_scope",
+      "reason": "招式无敌帧不计伤害/资源，引擎按 effectiveTime 统一扣无敌时长",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/0:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_c1"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/0:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_scorch_crit"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/0:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_scorch_crit"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/0:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_scorch_crit"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/0:4",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_scorch_dot"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/0:5",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_ember"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/0:6",
+      "status": "out_of_scope",
+      "reason": "触发条件/连段保持/完美格挡时机属操作向量，按交互栏次数录入，不建状态机",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/0:7",
+      "status": "out_of_scope",
+      "reason": "v12 原文有此句但本体未建模（已在 spec notes 未建模项登记），收益≈0 或操作向量（[重明] 回血 50% 无乘区，正确跳过）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/0:8",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_ember"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/0:9",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_kuRong"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/0:10",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_kuRong"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/1:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄由 catalog 倍率表承载（非机制乘区）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1641507/desc/1:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_scorch_crit"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_c1"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_c1"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_ember"
+      ]
+    },
+    {
+      "sourceId": "/talent/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "v12 原文有此句但本体未建模（已在 spec notes 未建模项登记），收益≈0 或操作向量（[灼烧] 持续时间 +2 秒的 DPS 折算走引擎异常池）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/2/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_c2"
+      ]
+    },
+    {
+      "sourceId": "/talent/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式分类声明（视为[燃烧攻击]/可衔接第三段）由 catalog 行分类承载（技能等级 +2 走引擎通用命座技能等级规则）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/4/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_c4_release"
+      ]
+    },
+    {
+      "sourceId": "/talent/4/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_c4_release"
+      ]
+    },
+    {
+      "sourceId": "/talent/5/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式分类声明（视为[燃烧攻击]/可衔接第三段）由 catalog 行分类承载（技能等级 +2 走通用规则）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/6/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_c6"
+      ]
+    },
+    {
+      "sourceId": "/talent/6/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_kuRong"
+      ]
+    },
+    {
+      "sourceId": "/talent/6/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "phx_c6"
+      ]
+    }
+  ],
+  "mechanics": [
+    {
+      "id": "phx_scorch_crit",
+      "sources": [
+        "/passive/level/1641507/desc/0:1",
+        "/passive/level/1641507/desc/0:2",
+        "/passive/level/1641507/desc/0:3",
+        "/passive/level/1641507/desc/1:1"
+      ],
+      "dimension": "D5",
+      "certainty": "L1",
+      "trigger": "队伍任意角色对敌人造成属性异常伤害 → 施加[灼蚀] 20 秒；[灼蚀] 敌人受到属性异常伤害时有概率暴击",
+      "target": "全队属性异常伤害（引擎 EV 乘区 anomalyCritRate/anomalyCritDmg）",
+      "gate": "恒生效（[灼蚀] 由队伍异常伤害自行施加，默认满覆盖）；额外 +15 档要求 additionalAbilityActive",
+      "formula": "rate = min(100, 30 + max(0, min(初始掌控,255) − 155) × 0.7)；dmg = 25 + (额外能力 ? 15 : 0) + (影画1 ? 25 : 0)",
+      "field": "PanelValues.anomalyCritRate / anomalyCritDmg（spec teamBuffs 声明式承载）",
+      "countSource": "读**局外**面板异常掌控（原文两处都写「初始」）",
+      "duration": "[灼蚀] 20 秒（默认满覆盖）",
+      "cap": "暴击率封顶 100%（初始掌控 255）",
+      "assumptions": [
+        {
+          "premise": "「初始异常掌控」取局外面板（outOfCombatPanel.anomalyMastery），不吃局内 buff",
+          "falsifier": "若应吃局内掌控，则实战暴击率会比本实现高（差 = 局内掌控增量 × 0.7%）"
+        },
+        {
+          "premise": "[灼蚀] 由队伍异常伤害施加且异常队默认满覆盖 ⇒ 暴击乘区按 100% 覆盖结算（覆盖率不可调，与旧 [脆弱] 同口径）",
+          "falsifier": "若实战经常断灼蚀，则异常伤害暴击收益被系统性高估"
+        }
+      ],
+      "decisionEvidence": "v12 原文「基础暴击率30%…暴击伤害25%…初始掌控>155 每点+0.7%…达255 时暴击率最大值」+ 额外能力「暴击伤害提升15%」+ 影画1「额外提升25%」；旧 tier2/tier3 分档与 adjustAdditionalAbilityGates 已随 v12 删除",
+      "implementation": {
+        "spec": "src/specs/agents/1641.json#/notes/10",
+        "consumer": "src/mechanics/agents/phoenix.ts#computePhoenixScorchCrit"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "初始掌控 200, 额外能力触发",
+          "expected": "rate = 61.5 / dmg = 40",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "纯函数：[灼蚀] 异常暴击 v12（率 30+0.7×(初始掌控−155) 封顶255，伤 25 + 额外能力15 + 影画1 25）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "初始掌控 100",
+          "expected": "rate = 30（阈值以下不加）",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "纯函数：[灼蚀] 异常暴击 v12（率 30+0.7×(初始掌控−155) 封顶255，伤 25 + 额外能力15 + 影画1 25）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "初始掌控 255 / 320",
+          "expected": "rate = 100（封顶）",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "纯函数：[灼蚀] 异常暴击 v12（率 30+0.7×(初始掌控−155) 封顶255，伤 25 + 额外能力15 + 影画1 25）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phx_scorch_dot",
+      "sources": [
+        "/passive/level/1641507/desc/0:4"
+      ],
+      "dimension": "D3",
+      "certainty": "L1",
+      "trigger": "[灼蚀] 状态下的敌人每 8 秒",
+      "target": "敌人受到菲欧妮 50% 攻击力火属性伤害（视为[强化特殊技]伤害）",
+      "gate": "[灼蚀] 覆盖（覆盖率滑块 phoenix.scorchCoverage）；已扣 boss 无敌时长",
+      "formula": "ticks = floor(有效时长 × 覆盖率 / 8)；每次 damageMultiplier = 50（% 攻击力，火属性）",
+      "field": "AnomalyEventExecution（eventType=direct_damage, element=fire, damageMultiplier=50）",
+      "countSource": "totalTime 与 cfg（minusInvincibleTime）",
+      "duration": "每 8 秒一跳",
+      "cap": "无",
+      "assumptions": [
+        {
+          "premise": "周期伤害按「有效时长 / 8」的跳数结算，不做逐跳时间轴对齐（引擎无逐跳绝对时刻通道）",
+          "falsifier": "若实战灼蚀经常中断再施加，跳数会比本实现少（每中断一次少 floor(空档/8) 跳）"
+        },
+        {
+          "premise": "「视为[强化特殊技]伤害」由倍率表 1641005 的 skillType 承载（direct 事件按火属性直伤结算）",
+          "falsifier": "若该伤害应吃强特专属增伤/失衡区，本实现会少算那部分"
+        }
+      ],
+      "decisionEvidence": "v12 新增句（旧 3.3.2 beta 无此条）；通道 = direct_damage 事件（与薇薇安预言 DoT 同款）",
+      "implementation": {
+        "spec": "src/specs/agents/1641.json#/notes/10",
+        "consumer": "src/mechanics/agents/phoenix.ts#buildPhoenixAnomalyEvents"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "覆盖率 1，战斗 60s",
+          "expected": "跳数 = 7，damageMultiplier = 50",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "异放事件：焚罪（C0 445%）+ 烬火追魂（C0 597%）+ 影画4 额外 600% + [灼蚀] 周期火伤"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "覆盖率 0",
+          "expected": "无该事件",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "[灼蚀] 覆盖率滑块生效：0 → 无周期火伤事件"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "战斗 8s",
+          "expected": "跳数 = 1",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "异放事件：焚罪（C0 445%）+ 烬火追魂（C0 597%）+ 影画4 额外 600% + [灼蚀] 周期火伤"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phx_release",
+      "sources": [
+        "/skill/basic/description/1/desc:2",
+        "/skill/basic/description/1/desc:3",
+        "/skill/chain/description/2/desc:2",
+        "/skill/chain/description/2/desc:3"
+      ],
+      "dimension": "D8",
+      "certainty": "L0",
+      "trigger": "[普通攻击：焚罪] / [烬火追魂] 终结一击命中属性异常状态敌人",
+      "target": "触发 1 次[异放]（额外结算一次对应属性异常伤害）",
+      "gate": "目标处于属性异常状态（覆盖率滑块 phoenix.releaseCoverage，异常队默认 1）",
+      "formula": "焚罪 mult = 225 + 20×(s−1)；烬火追魂 mult = 300 + 27×(s−1)；s = 12 + (影画5?4 : 影画3?2 : 0)；暴击时暴伤额外 +40%",
+      "field": "AnomalyEventExecution.releaseMultiplier（固定倍率通道）",
+      "countSource": "焚罪次数 = 燔焰收入/90；烬火追魂次数 = 终结次数",
+      "duration": "瞬时",
+      "cap": "无",
+      "assumptions": [
+        {
+          "premise": "异放暴击参数（率/伤）复用 spec teamBuffs 的[灼蚀]暴击档，外加 +40 暴伤",
+          "falsifier": "若异放暴击独立于[灼蚀]暴击，则异放收益会与本实现不同"
+        }
+      ],
+      "decisionEvidence": "",
+      "implementation": {
+        "spec": "src/specs/agents/1641.json#/notes/10",
+        "consumer": "src/mechanics/agents/phoenix.ts#buildPhoenixAnomalyEvents"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "C0, s=12",
+          "expected": "焚罪 445 / 烬火追魂 597",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "异放事件：焚罪（C0 445%）+ 烬火追魂（C0 597%）+ 影画4 额外 600% + [灼蚀] 周期火伤"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "覆盖率 0",
+          "expected": "无异放事件",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "异放事件：焚罪（C0 445%）+ 烬火追魂（C0 597%）+ 影画4 额外 600% + [灼蚀] 周期火伤"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C3/C5 技能等级",
+          "expected": "s=14 → 485 / s=16 → 525",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "纯函数：异放倍率随技能等级（影画3/5 通用技能等级 +2/+4）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phx_c4_release",
+      "sources": [
+        "/talent/4/desc:0",
+        "/talent/4/desc:1"
+      ],
+      "dimension": "D8",
+      "certainty": "L0",
+      "trigger": "影画4：焚罪/烬火追魂终结一击命中异常状态敌人",
+      "target": "额外触发一次[异放]，固定结算 600% 倍率",
+      "gate": "cinemaLevel ≥ 4 且命中异常状态敌人",
+      "formula": "releaseMultiplier = 600（固定）",
+      "field": "AnomalyEventExecution.releaseMultiplier",
+      "countSource": "同主异放次数（焚罪次数 / 终结次数）",
+      "duration": "瞬时",
+      "cap": "无",
+      "assumptions": [],
+      "decisionEvidence": "",
+      "implementation": {
+        "spec": "src/specs/agents/1641.json#/notes/10",
+        "consumer": "src/mechanics/agents/phoenix.ts#buildPhoenixAnomalyEvents"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "C4",
+          "expected": "出现 phoenix_c4_charged_release / phoenix_c4_entry_release，倍率 600",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "异放事件：焚罪（C0 445%）+ 烬火追魂（C0 597%）+ 影画4 额外 600% + [灼蚀] 周期火伤"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "C0",
+          "expected": "无影画4 事件",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "异放事件：焚罪（C0 445%）+ 烬火追魂（C0 597%）+ 影画4 额外 600% + [灼蚀] 周期火伤"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C6",
+          "expected": "仍为 600（不随技能等级变化）",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "纯函数：异放倍率随技能等级（影画3/5 通用技能等级 +2/+4）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phx_ember",
+      "sources": [
+        "/skill/basic/description/0/desc:2",
+        "/skill/basic/description/1/desc:0",
+        "/skill/basic/description/2/desc:2",
+        "/skill/chain/description/0/desc:2",
+        "/skill/special/description/1/desc:7",
+        "/skill/special/description/2/desc:3",
+        "/skill/special/description/3/desc:1",
+        "/skill/special/description/3/desc:4",
+        "/passive/level/1641507/desc/0:5",
+        "/passive/level/1641507/desc/0:8",
+        "/talent/1/desc:2"
+      ],
+      "dimension": "D3",
+      "certainty": "L1",
+      "trigger": "[燃烧攻击]（普攻三/四段、熔毁、燎斩、眩焰、坠阳、连携、终结）造成伤害时；完美格挡 +5（10 秒一次）",
+      "target": "自身资源[燔焰]（上限 120）→ 长按普攻[焚罪]次数",
+      "gate": "焚罪需 90 点燔焰",
+      "formula": "income = Σ(招式次数 × attack_data_0) + floor(完美格挡次数/10)×5；焚罪次数 = floor(income × 影画1效率1.15 / 90)",
+      "field": "SkillExecution.count（moveId 1641005）/ phoenixCycle.chargedCount",
+      "countSource": "平A段循环计数 + 执行行次数 + 交互栏完美格挡次数",
+      "duration": "整局累计",
+      "cap": "[燔焰] 上限 120（总量口径不截断）",
+      "assumptions": [
+        {
+          "premise": "attack_data 列标度 = ×10000（同列 energy_gain 与 catalog energy_recovery 互证）",
+          "falsifier": "若标度实为 ×100，则一次命中即可连放十几次焚罪，与 90 点消耗明显矛盾"
+        },
+        {
+          "premise": "[燔焰] 按「来多少打多少」总量口径结算，不做 120 上限截断",
+          "falsifier": "若上限会截断，高收入档位焚罪次数会系统性偏多"
+        }
+      ],
+      "decisionEvidence": "标度口径 @fact 1641·燔焰标度（docs/GAME_TERM_TO_CODE_FIELD.md §8.3）；v12 换 [余火]→[燔焰]，标度不变",
+      "implementation": {
+        "spec": "src/specs/agents/1641.json#/notes/10",
+        "consumer": "src/mechanics/agents/phoenix.ts#phoenixChargedCount"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "正常战斗",
+          "expected": "焚罪次数 ≥ 0 且与资源卡一致",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "资源区块：[灼蚀] 暴击/焚罪/燎斩/烬火追魂计数与执行行同源"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "滑块 chargedAttackCount=0 且收入为 0",
+          "expected": "焚罪 0 次、不产 1641005 行",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "资源区块：[灼蚀] 暴击/焚罪/燎斩/烬火追魂计数与执行行同源"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "收入恰好 90",
+          "expected": "焚罪 1 次",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "资源区块：[灼蚀] 暴击/焚罪/燎斩/烬火追魂计数与执行行同源"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phx_kuRong",
+      "sources": [
+        "/skill/special/description/1/desc:0",
+        "/skill/special/description/2/desc:0",
+        "/skill/special/description/3/desc:0",
+        "/skill/special/description/3/desc:2",
+        "/passive/level/1641507/desc/0:9",
+        "/passive/level/1641507/desc/0:10",
+        "/talent/6/desc:1"
+      ],
+      "dimension": "D2",
+      "certainty": "L1",
+      "trigger": "发动[强化特殊技]进入[枯荣] 20 秒；[枯荣]下发动[眩焰]后，下次[眩焰]替换为[坠阳]",
+      "target": "强特循环：眩焰（40 能量）→ 坠阳（40 能量，+1[升变]）→ 燎斩（消耗[升变]，0 耗能）",
+      "gate": "[枯荣] 状态（强特进入，燃烧攻击命中刷新）",
+      "formula": "exCount 轮 = 眩焰 + 坠阳 + 燎斩各 exCount 次；坠阳耗能 40/次，燎斩 0",
+      "field": "SkillExecution（moveId 1641008 / 1641009 / 1641023）的 count 与 totalEnergyConsume",
+      "countSource": "state.exSpecialCount（眩焰走通用强特通道）",
+      "duration": "[枯荣] 20 秒",
+      "cap": "[升变] 上限 1 点",
+      "assumptions": [
+        {
+          "premise": "[枯荣] 逐时序状态机不建，按「每轮眩焰→坠阳→燎斩」稳态循环结算",
+          "falsifier": "若实战常因能量/升变断档跳过坠阳或燎斩，则本实现高估这两招次数"
+        }
+      ],
+      "decisionEvidence": "v12 原文「发动[眩焰]后，下次发动[眩焰]会替换为发动[坠阳]」+「发动[坠阳]获得1点[升变]」+「拥有[升变]可发动[燎斩]」",
+      "implementation": {
+        "spec": "src/specs/agents/1641.json#/notes/10",
+        "consumer": "src/mechanics/agents/phoenix.ts#buildPhoenixExecutions"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "exCount > 0",
+          "expected": "坠阳/燎斩 count = exCount，坠阳耗能 40/次、燎斩 0",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "执行行：眩焰（通用强特）+ 坠阳（40 能量）+ 燎斩（0 能量）三行按同一次数收敛"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "exCount = 0",
+          "expected": "无坠阳/燎斩行",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "执行行：眩焰（通用强特）+ 坠阳（40 能量）+ 燎斩（0 能量）三行按同一次数收敛"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "[升变] 上限 1",
+          "expected": "燎斩次数不超过坠阳次数",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "执行行：眩焰（通用强特）+ 坠阳（40 能量）+ 燎斩（0 能量）三行按同一次数收敛"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phx_c1",
+      "sources": [
+        "/passive/level/1641507/desc/0:0",
+        "/talent/1/desc:0",
+        "/talent/1/desc:1"
+      ],
+      "dimension": "D4",
+      "certainty": "L0",
+      "trigger": "影画1（痛觉残留与刺激游行）",
+      "target": "入场 +1[升变]；[灼蚀] 暴伤额外 +25；[燔焰] 获取效率 +15%",
+      "gate": "cinemaLevel ≥ 1",
+      "formula": "anomalyCritDmg += 25（spec teamBuff cinema1）；燔焰收入 ×1.15",
+      "field": "PanelValues.anomalyCritDmg / phoenixChargedCount 的 eff 系数",
+      "countSource": "恒为 1（静态）",
+      "duration": "常驻",
+      "cap": "无",
+      "assumptions": [],
+      "decisionEvidence": "",
+      "implementation": {
+        "spec": "src/specs/agents/1641.json#/notes/10",
+        "consumer": "src/mechanics/agents/phoenix.ts#applyPhoenixPanel"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "C1",
+          "expected": "scorchCritDmg = 65（25+15+25）",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "纯函数：[灼蚀] 异常暴击 v12（率 30+0.7×(初始掌控−155) 封顶255，伤 25 + 额外能力15 + 影画1 25）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "C0",
+          "expected": "scorchCritDmg = 25/40",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "纯函数：[灼蚀] 异常暴击 v12（率 30+0.7×(初始掌控−155) 封顶255，伤 25 + 额外能力15 + 影画1 25）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "燔焰效率",
+          "expected": "焚罪次数 = floor(收入×1.15/90)",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "资源区块：[灼蚀] 暴击/焚罪/燎斩/烬火追魂计数与执行行同源"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phx_c2",
+      "sources": [
+        "/talent/2/desc:1"
+      ],
+      "dimension": "D4",
+      "certainty": "L0",
+      "trigger": "影画2（好奇心害不死猫）",
+      "target": "对[灼蚀] 敌人造成的伤害 +30%；[灼烧] 持续 +2 秒",
+      "gate": "cinemaLevel ≥ 2",
+      "formula": "panel.dmgBonus += 30",
+      "field": "PanelValues.dmgBonus",
+      "countSource": "恒为 1（[灼蚀] 默认满覆盖）",
+      "duration": "常驻",
+      "cap": "无",
+      "assumptions": [
+        {
+          "premise": "[灼蚀] 满覆盖 ⇒ 影画2 的 +30% 按全伤害结算（不按覆盖率折算）",
+          "falsifier": "若实战断灼蚀，则这 30% 被高估"
+        }
+      ],
+      "decisionEvidence": "[灼烧] 持续时间 +2 秒的 DPS 折算未建（异常 DPS 走引擎异常池，spec notes 未建模项）",
+      "implementation": {
+        "spec": "src/specs/agents/1641.json#/notes/10",
+        "consumer": "src/mechanics/agents/phoenix.ts#applyPhoenixPanel"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "C2",
+          "expected": "scorchDmgBonus = 30",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "资源区块：[灼蚀] 暴击/焚罪/燎斩/烬火追魂计数与执行行同源"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "C0",
+          "expected": "scorchDmgBonus = 0",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "资源区块：[灼蚀] 暴击/焚罪/燎斩/烬火追魂计数与执行行同源"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C6",
+          "expected": "dmgBonus 增量仍为 30（不叠加）",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "资源区块：[灼蚀] 暴击/焚罪/燎斩/烬火追魂计数与执行行同源"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phx_c6",
+      "sources": [
+        "/talent/6/desc:0",
+        "/talent/6/desc:2"
+      ],
+      "dimension": "D4",
+      "certainty": "L0",
+      "trigger": "影画6（禁闭室手记）",
+      "target": "无视目标 15% 全属性伤害抗性；眩焰获得 1 点[升变]；异放无视 40% 防御力",
+      "gate": "cinemaLevel ≥ 6",
+      "formula": "panel.enemyResReduction += 15；releaseModifier.enemyDefReduction = 40（异放限定）",
+      "field": "PanelValues.enemyResReduction / ReleaseModifier.enemyDefReduction",
+      "countSource": "恒为 1（静态）",
+      "duration": "常驻",
+      "cap": "无",
+      "assumptions": [],
+      "decisionEvidence": "",
+      "implementation": {
+        "spec": "src/specs/agents/1641.json#/notes/10",
+        "consumer": "src/mechanics/agents/phoenix.ts#applyPhoenixPanel"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "C6",
+          "expected": "enemyResReduction +15；c6ReleaseDefIgnore = 40",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "命座差分：C6 无视15%全属性抗性 + 异放无视40%防御；整局伤害 C6 > C0"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "C0",
+          "expected": "两者均 0",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "命座差分：C6 无视15%全属性抗性 + 异放无视40%防御；整局伤害 C6 > C0"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C6 面板差分",
+          "expected": "enemyResReduction 差 = 15",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "命座差分：C6 无视15%全属性抗性 + 异放无视40%防御；整局伤害 C6 > C0"
+          }
+        }
+      ]
+    },
+    {
+      "id": "phx_entry",
+      "sources": [
+        "/skill/chain/description/1/desc:1",
+        "/skill/chain/description/1/desc:4",
+        "/skill/chain/description/2/desc:0"
+      ],
+      "dimension": "D7",
+      "certainty": "L1",
+      "trigger": "[生竭] 状态下，下一次普通换入/快速支援/招架支援换入前场时",
+      "target": "[烬火追魂] 1641019 执行行（191.2%）",
+      "gate": "每次终结技进入[生竭]一次 ⇒ 计数 = 终结次数",
+      "formula": "count = state.ultimateCount；不占前台时间（totalTime = 0）；不扣喧响",
+      "field": "SkillExecution.count（moveId 1641019）/ axisMoveFreeOfDecibel",
+      "countSource": "state.ultimateCount",
+      "duration": "瞬时（收尾追加）",
+      "cap": "无",
+      "assumptions": [
+        {
+          "premise": "收尾追加攻击不占前台时间（卢西娅 1451007 同款 0 时间先例）",
+          "falsifier": "若实测占窗口时间，则按 0.338s×终结数计时会低估必要时间"
+        },
+        {
+          "premise": "「通过连携/终结入场时也触发」是同一结算的另一触发面，按稳定计数口径不重复加",
+          "falsifier": "若两条触发面会各自独立结算一次异放，则异放次数少算一倍"
+        }
+      ],
+      "decisionEvidence": "旧 beta 的 1641019 = 「终结技：入场」1545.8%；v12 改为 [生竭] 触发的[烬火追魂] 191.2%，且原文明确「也可点按快速发动」",
+      "implementation": {
+        "spec": "src/specs/agents/1641.json#/notes/10",
+        "consumer": "src/mechanics/agents/phoenix.ts#buildPhoenixExecutions"
+      },
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "ultCount > 0",
+          "expected": "entry 行 count = ultCount、totalTime = 0",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "资源区块：[灼蚀] 暴击/焚罪/燎斩/烬火追魂计数与执行行同源"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "ultCount = 0",
+          "expected": "无 1641019 行",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "模块声明：v12 三项影画/技能等级/固定异放倍率都在通道上"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "喧响",
+          "expected": "axisMoveFreeOfDecibel(1641019)=true、1641013=false",
+          "test": {
+            "file": "src/mechanics/__tests__/phoenix.test.ts",
+            "title": "模块声明：v12 三项影画/技能等级/固定异放倍率都在通道上"
+          }
+        }
+      ]
+    }
+  ]
+}

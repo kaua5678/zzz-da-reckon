@@ -957,8 +957,8 @@ describe('auditNounTriage（判据 13：名词表三态）', () => {
     expect(mini.ok).toBe(true)
   })
 
-  it('下限常量为实测值 68（改小它必须先说明为什么源可以变少）', () => {
-    expect(NOUN_SOURCE_MIN_KEYS).toBe(68)
+  it('下限常量为实测值 141（2026-10-17 换源 3.2.3→3.3.12；改小它必须先说明为什么源可以变少）', () => {
+    expect(NOUN_SOURCE_MIN_KEYS).toBe(141)
   })
 
   // T15 对抗审计 #9 发现（本轮修复）：`if (!e.evidence)` 不 trim ⇒ 纯空格算「有证据」。
@@ -968,10 +968,10 @@ describe('auditNounTriage（判据 13：名词表三态）', () => {
     expect(r.noEvidence).toHaveLength(1)
   })
 
-  it('仓库现状：68 条全部有着落（unhandled=0，每条 modeled 锚可解析）', () => {
+  it('仓库现状：141 条全部有着落（unhandled=0，每条 modeled 锚可解析）', () => {
     const r = must(auditNounTriage())
-    // 条数 = 源文件键数（68；含 10000081 与 1000008 的重复条目——源如此，如实对账）
-    expect(r.sourceKeys).toHaveLength(68)
+    // 条数 = 源文件键数（141 = noun_3.3.12.json；含 10000081 与 1000008 的重复条目——源如此，如实对账）
+    expect(r.sourceKeys).toHaveLength(141)
     expect(r.unhandled).toEqual([])
     expect(r.brokenAnchor).toEqual([])
     expect(r.missing).toEqual([])
