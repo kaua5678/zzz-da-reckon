@@ -38,7 +38,13 @@ export function getTeamAnomalyDurationBonus(
   element: string,
 ): number {
   // CC-35c（2026-09-27）：通用规则臂改由在队模块能力 `teamAnomalyDurationBonus` 提供（原按 1171 / 1211 / 1261 写死：
-  // 柏妮思 火 +3、丽娜 电 +3（额外能力激活）、简 物理 +5）。多个提供者取最大值，现状每种属性至多一个，与原先的提前返回等价。
+  // 柏妮思 火 +3、丽娜 电 +3（额外能力激活）、简 物理 +5）。
+  //
+  // ⚠ **2026-10-17 订正：多个提供者 = 加算，不是取最大值。**
+  // 原注释写「多个提供者取最大值，现状每种属性至多一个」——这个前提在菲欧妮（1641）录入后**破了**：
+  // 火属性第一次同时有柏妮思（+3）与菲欧妮影画2（+2）两个提供者，取 max 会吞掉后者。
+  // 用户口径（2026-10-17）：「菲和柏组队可以把燃烧提高到 15s，这俩是加算」
+  // = 基础灼烧 10 + 柏妮思 3 + 菲欧妮 2。对单提供者属性（电/物理）加算与 max 等价，只有火会变。
   // 队伍快照只在确有提供者时才构建（本函数每次面板计算要调 4 次）。本库 teammateBuffId 全部等于自身 id（2026-09-27 实查），
   // 所以按 agentId 派发模块与原 `teamHasAgent`（agentId 或 teammateBuffId 命中）等价。
   let bonus = 0
@@ -51,7 +57,7 @@ export function getTeamAnomalyDurationBonus(
     if (!mod?.teamAnomalyDurationBonus) continue
     team ??= buildMechanicTeamMembers(configStore, catalogStore)
     const member = team[i]
-    bonus = Math.max(bonus, mod.teamAnomalyDurationBonus({ element, slot: member.slot, agent: member.agent, team }))
+    bonus += mod.teamAnomalyDurationBonus({ element, slot: member.slot, agent: member.agent, team })
   }
   // ★ 以太臂**已删除**（R63，2026-09-20 round 63）：原先写作
   // `element === 'ether' && teamHasAgent(..., ['aria'])`，但 `'aria'` 在本库**没有任何**命中 ——

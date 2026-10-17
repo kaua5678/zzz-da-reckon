@@ -78,6 +78,8 @@ export const SEVERIAN_FLOW_LIEXUAN = 35
 export const SEVERIAN_FLOW_DODGE = 15
 export const SEVERIAN_FLOW_CHAIN = 35
 export const SEVERIAN_FLOW_ULT = 100
+/** 苍风影猎最后一击释放时返还 20 点[流息]（烈旋长按路线，basic/description/1 原文） */
+export const SEVERIAN_FLOW_SHADOW_LASTHIT = 20
 /** 苍风影猎消耗 100 流息 */
 export const SEVERIAN_SHADOW_FLOW_COST = 100
 
@@ -186,7 +188,16 @@ export function severianChainFlow(cinemaLevel: number): number {
   return cinemaLevelOf(cinemaLevel) >= 1 ? SEVERIAN_C1_CHAIN_FLOW : SEVERIAN_FLOW_CHAIN
 }
 
-/** 流息基础收入（不含影画6[风起]反馈项，反馈在 severianFlowState 定点迭代里加） */
+/**
+ * 每次[苍风影猎]的事后返还流息：最后一击 +20（烈旋长按路线，basic/description/1 原文），
+ * 影画6 再叠加[风起] +25。两者都是「释放之后才到账」⇒ 都不能付本次自己的 100 点成本，
+ * 必须走 `severianFlowState` 的有序级联迭代（T122 口径）。
+ */
+export function severianShadowRefundFlow(cinemaLevel: number): number {
+  return SEVERIAN_FLOW_SHADOW_LASTHIT + (cinemaLevelOf(cinemaLevel) >= 6 ? SEVERIAN_C6_WINDRISE_FLOW : 0)
+}
+
+/** 流息基础收入（不含[苍风影猎]事后返还项，返还项在 severianFlowState 定点迭代里加） */
 function severianFlowIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
   const cinema = cinemaLevelOf(cfg.severianCinemaLevel)
   const basicCycle = cfg.severianBasicCycle ?? []
@@ -211,19 +222,18 @@ function severianFlowState(
 ): { flowIncome: number; shadowHuntCount: number } {
   const cinema = cinemaLevelOf(cfg.severianCinemaLevel)
   const base = severianFlowIncome(cfg, state)
+  const refund = severianShadowRefundFlow(cinema)
   const override = setting(cfg, 'severian.shadowHuntCount')
   if (override > 0) {
     const shadowHuntCount = whole(override)
-    const flowIncome = base + (cinema >= 6 ? shadowHuntCount * SEVERIAN_C6_WINDRISE_FLOW : 0)
-    return { flowIncome, shadowHuntCount }
+    return { flowIncome: base + shadowHuntCount * refund, shadowHuntCount }
   }
   let flow = base
-  if (cinema >= 6) {
-    for (let i = 0; i < 8; i++) {
-      const next = base + Math.floor(flow / SEVERIAN_SHADOW_FLOW_COST) * SEVERIAN_C6_WINDRISE_FLOW
-      if (next === flow) break
-      flow = next
-    }
+  // 有序级联：第 N 次的返还只在第 N 次**消耗之后**到账（付款前库存 = base + (N−1)·refund）
+  for (let i = 0; i < 16; i++) {
+    const next = base + Math.floor(flow / SEVERIAN_SHADOW_FLOW_COST) * refund
+    if (next === flow) break
+    flow = next
   }
   return { flowIncome: flow, shadowHuntCount: Math.floor(flow / SEVERIAN_SHADOW_FLOW_COST) }
 }

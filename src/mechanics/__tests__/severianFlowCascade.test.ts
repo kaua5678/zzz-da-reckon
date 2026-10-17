@@ -54,12 +54,13 @@ import { useResourceCalc, setCalcOutputMemoEnabled } from '@/composables/useReso
 import { useConfigStore } from '@/stores/config'
 import {
   severianMechanic,
-  SEVERIAN_C6_WINDRISE_FLOW,
   SEVERIAN_SHADOW_FLOW_COST,
+  severianShadowRefundFlow,
 } from '@/mechanics/agents/severian'
 
 const COST = SEVERIAN_SHADOW_FLOW_COST
-const WIND = SEVERIAN_C6_WINDRISE_FLOW
+/** 每次影猎的事后返还 = 最后一击 20 +（C6 时）[风起] 25（v12 起两项并存，唯一事实源在模块） */
+const WIND = severianShadowRefundFlow(6)
 
 /** 读模块**自己**的流息输出（`buildResourceResult` 是 `severianFlowState` 的唯一公开入口） */
 function flowOf(input: { ult: number; chain: number; dodge: number; cinema?: number }): {
@@ -80,22 +81,22 @@ function flowOf(input: { ult: number; chain: number; dodge: number; cinema?: num
     prePatchExecutions: [],
   } as any)
   const flow = res.severianFlow!
-  // base = 影画6 反馈项扣掉之后的「基础收入」（模块输出里唯一可反推 base 的量）：
-  // C6 下 flowIncome = base + 30×影猎 ⇒ base = flowIncome − 30×影猎；非 C6 无反馈项。
-  const c6 = (input.cinema ?? 6) >= 6
+  // base = 事后返还扣掉之后的「基础收入」（模块输出里唯一可反推 base 的量）：
+  // flowIncome = base + refund×影猎（refund = 20 + C6?25:0）⇒ base = flowIncome − refund×影猎。
+  const refund = severianShadowRefundFlow(input.cinema ?? 6)
   return {
-    base: c6 ? flow.flowIncome - WIND * flow.shadowHuntCount : flow.flowIncome,
+    base: flow.flowIncome - refund * flow.shadowHuntCount,
     flowIncome: flow.flowIncome,
     shadowHuntCount: flow.shadowHuntCount,
   }
 }
 
-/** 松弛解（迭代期不 floor）：`f = base + 0.3f ⇒ f = base/0.7`，终局 floor 一次 */
+/** 松弛解（迭代期不 floor）：`f = base + (refund/COST)·f ⇒ f = base/(1−refund/COST)`，终局 floor 一次 */
 function relaxedHunt(base: number): number {
   return Math.floor(base / (1 - WIND / COST) / COST)
 }
 
-/** 有序级联的可达上界：`base + 30(N−1) ≥ 100N ⇒ N ≤ floor((base−30)/70)` */
+/** 有序级联的可达上界：`base + refund·(N−1) ≥ COST·N ⇒ N ≤ floor((base−refund)/(COST−refund))` */
 function reachableMaxHunt(base: number): number {
   return Math.max(0, Math.floor((base - WIND) / (COST - WIND)))
 }
@@ -183,7 +184,7 @@ describe('债 1a · 1631 赛维里安流息方程 = (a) 有序级联（不可松
   it('C 源码锁：迭代式必须对 flow 取整（floor 不得被移出迭代期）', () => {
     const src = STRIP(new URL('../agents/severian.ts', import.meta.url))
     expect(src, '迭代期必须 floor（有序级联 ⇒ 退款不能用于支付本次成本）')
-      .toMatch(/base \+ Math\.floor\(flow \/ SEVERIAN_SHADOW_FLOW_COST\) \* SEVERIAN_C6_WINDRISE_FLOW/)
+      .toMatch(/base \+ Math\.floor\(flow \/ SEVERIAN_SHADOW_FLOW_COST\) \* refund/)
     expect(src, '不得改成松弛式（迭代期不 floor）——1631 是 (a) 有序级联，松弛 = 兑现不可达余数')
       .not.toMatch(/base \+ \(flow \/ SEVERIAN_SHADOW_FLOW_COST\)/)
     expect(src, '终局次数必须仍由 floor(flow/100) 给出').toMatch(/shadowHuntCount: Math\.floor\(flow \/ SEVERIAN_SHADOW_FLOW_COST\)/)

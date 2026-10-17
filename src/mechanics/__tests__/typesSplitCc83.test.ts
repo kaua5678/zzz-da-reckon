@@ -17,7 +17,12 @@ describe('CC-83 mechanics/types.ts 拆分', () => {
     // CC-451（2026-10-04）：CC-444/445/446/448 的展示层声明把本预算顶到 1483，红了 15 小时才被全量 vitest 抓到——
     // 展示层声明一律进 typesView.ts（允许 `| null`）；引擎钩子契约进 typesHooks.ts（禁 `| null`，CC-435）；行类型进 typesRows.ts。
     const src = readFileSync(resolve(__dirname, '../types.ts'), 'utf-8')
-    expect(src.split('\n').length).toBeLessThan(1400)
+    // ⚠ 2026-10-17 口径订正：原写 `src.split('\n').length < 1400`。文件以换行结尾时，结尾那个 `\n`
+    // 会多切出一个空串 ⇒ 实测「1399 行的文件」被判成 1400 而报红，等价于把上限偷偷变成 1399，
+    // 且**上限值取决于文件有没有末尾换行**（加/删一个换行就能骗过判据）。改成先按行切、再去掉末尾空项，
+    // 让「行数」就是行数。判据要防的是「新类型又写回 types.ts」，不是「行尾格式」。
+    const lineCount = src.split('\n').filter((_, i, all) => i < all.length - 1 || all[i] !== '').length
+    expect(lineCount).toBeLessThan(1400)
     expect(src).toContain("from './typesRows'")
     expect(src).toContain("from './typesHooks'")
     expect(src).toContain("from './typesView'")

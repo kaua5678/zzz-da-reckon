@@ -73,6 +73,8 @@ export const PHOENIX_C1_CRIT_DMG = 25
 export const PHOENIX_C1_EMBER_EFFICIENCY = 15
 /** 影画2：对[灼蚀] 敌人造成的伤害 +30% */
 export const PHOENIX_C2_SCORCH_DMG_BONUS = 30
+/** 影画2：施加[灼烧]时其持续时间 +2 秒（走 teamAnomalyDurationBonus 通用臂） */
+export const PHOENIX_C2_BURN_DURATION_BONUS = 2
 /** 影画4：焚罪/烬火追魂终结一击额外一次异放，固定 600% 倍率 */
 export const PHOENIX_C4_RELEASE_MULT = 600
 /** 影画6：无视 15% 全属性伤害抗性；异放无视 40% 防御 */
@@ -162,6 +164,21 @@ export function computePhoenixScorchCrit(input: {
 }
 
 /**
+ * 异放专属暴击参数（引擎 `releaseCrit` 通道，爱芮同款）：率取[灼蚀]档，伤取[灼蚀]档 + 40。
+ *
+ * 原文：「该次[异放]效果触发暴击时，其暴击伤害额外提升40%」——**只加在异放这一跳上**，
+ * 不是面板暴伤，所以必须走事件级 releaseCrit 而不是 panel。
+ */
+function releaseCritOf(crit: { rate: number; dmg: number }, _mastery: number) {
+  return {
+    releaseCrit: {
+      ratePct: crit.rate,
+      dmgPct: crit.dmg + PHOENIX_RELEASE_CRIT_EXTRA_DMG,
+    },
+  }
+}
+
+/**
  * 平A三/四段（燃烧攻击）命中次数：按段循环计数（第三段=打完前两段后到达，第四段=再打完第三段）。
  */
 export function phoenixBasicCombustionHits(basicTime: number, cycle: { moveId: string; actionTime: number }[]): { third: number; fourth: number } {
@@ -215,11 +232,17 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, outOfCombatPa
   // 强化特殊技：眩焰（40 能量）走通用强特通道；[枯荣] 循环下每轮另有坠阳（40）+ 燎斩（0）。
   const special = skills.categories.find(c => c.id === 'special')?.moves
   const exFirst = special?.find(m => m.id === PHOENIX_EX_FIRST_MOVE_ID)
+  const exSecond = special?.find(m => m.id === PHOENIX_EX_SECOND_MOVE_ID)
   if (exFirst) {
     cfg.exSpecialMoveId = PHOENIX_EX_FIRST_MOVE_ID
     if (exFirst.actionTime) cfg.exSpecialActionTime = exFirst.actionTime
-    const ec = parseFloat(exFirst.energyCost?.['Energy Cost'] ?? '')
-    if (Number.isFinite(ec) && ec > 0) cfg.exSpecialEnergyConsume = ec
+    // 一轮[枯荣]强特 = 眩焰(40) + 坠阳(40) ⇒ 引擎按「轮」计次数，收费必须收两段合计 80。
+    // 柏妮思同款（`(c1+c2)/2` 合并计价）：只收 40 会让强特次数翻倍（实测可用能量 473 却排出 11 轮）。
+    const ecFirst = parseFloat(exFirst.energyCost?.['Energy Cost'] ?? '')
+    const ecSecond = parseFloat(exSecond?.energyCost?.['Energy Cost'] ?? '')
+    const perRound = (Number.isFinite(ecFirst) && ecFirst > 0 ? ecFirst : 0)
+      + (Number.isFinite(ecSecond) && ecSecond > 0 ? ecSecond : 0)
+    if (perRound > 0) cfg.exSpecialEnergyConsume = perRound
   }
   const all = skills.categories.flatMap(c => c.moves)
   const metaOf = (moveId: string) => {
@@ -388,6 +411,7 @@ function buildPhoenixAnomalyEvents({ cfg, events, totalTime }: AgentEventInput):
         carrierMoveName: '普通攻击：焚罪（终结一击）',
         followCarrierInStun: true,
         count: chargedRelease,
+        ...releaseCritOf(crit, mastery),
         formula: `releaseMultiplier=${mult}（225+20×(${s}-1)，固定倍率）+ 暴击时暴伤额外+${PHOENIX_RELEASE_CRIT_EXTRA_DMG}`,
         fields: [`releaseMultiplier=${mult}`, `charged=${chargedCount}`, `coverage=${coverage}`],
         note: '终结一击命中属性异常状态敌人触发；异放暴击时暴伤额外 +40%（异常暴击参数见 spec teamBuffs）。',
@@ -425,6 +449,7 @@ function buildPhoenixAnomalyEvents({ cfg, events, totalTime }: AgentEventInput):
         carrierMoveName: '烬火追魂（终结一击）',
         followCarrierInStun: true,
         count: entryRelease,
+        ...releaseCritOf(crit, mastery),
         formula: `releaseMultiplier=${mult}（300+27×(${s}-1)，固定倍率）+ 暴击时暴伤额外+${PHOENIX_RELEASE_CRIT_EXTRA_DMG}`,
         fields: [`releaseMultiplier=${mult}`, `entry=${entryCount}`, `coverage=${coverage}`],
         note: '烬火追魂终结一击命中属性异常状态敌人触发；异放暴击时暴伤额外 +40%。',
@@ -572,6 +597,18 @@ export const phoenixMechanic: AgentMechanicModule = {
   buildResourceResult: buildPhoenixResourceResult,
   resourceSections: buildPhoenixResourceSections,
   releaseModifier: phoenixReleaseModifier,
+  /**
+   * 影画2：「菲欧妮对敌人施加[灼烧]效果时，该效果的持续时间提升2秒」。
+   *
+   * 走引擎通用臂 `teamAnomalyDurationBonus`（柏妮思 火+3 / 丽娜 电+3 / 简 物理+5 同款，**加算**）。
+   * 影响乱流/紊乱窗口与持续单属性覆盖——按你的口径这是经典字段，不该省。
+   */
+  teamAnomalyDurationBonus: ({ element, slot, team }) => {
+    // `MechanicTeamMember.cinemaLevel` 已归一化（非空槽恒有值）⇒ 直接比较，不走 cinemaLevelOf、也不写 `?? 0`
+    const member = team.find(m => m.slot === slot)
+    if (!member || member.cinemaLevel < 2) return 0
+    return element === 'fire' ? PHOENIX_C2_BURN_DURATION_BONUS : 0
+  },
   /**
    * **烬火追魂（`1641019`）不扣喧响**：原文首句「当菲欧妮处于[生竭]状态时，下一次普通换入/
    * 快速支援/招架支援换入前场时发动」——触发条件是**状态+换入**，没有「喧响等级达到[极]」购买句
