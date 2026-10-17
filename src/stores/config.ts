@@ -475,6 +475,13 @@ export function createConfigModel(
 
   // 驱动盘套装效果覆盖率（effectId -> 0-100）：条件类 4pc/2pc 效果的 uptime 折算，与音擎覆盖率同模式
   const discEffectCoverages = ref<Record<string, number>>({})
+
+  /**
+   * 按槽位记录「副词条分配被用户手改过」（2026-10-18，用户裁决「不是什么时候都开，改了就用」）。
+   * 置位 = `setSubStatCount`；清除 = `applyBuildRecommendationForSlot`（那是显式「恢复自动分配」的动作）。
+   * 用途只有一个：副词条预算设置变化时**不覆盖**手改过的槽位（见下方 watcher 的注释）。
+   */
+  const subStatAllocationManual = ref<Record<number, boolean>>({})
   function setDiscEffectCoverage(effectId: string, coverage: number) {
     discEffectCoverages.value[effectId] = Math.max(0, Math.min(100, coverage))
   }
@@ -712,6 +719,8 @@ export function createConfigModel(
     const safeCount = Math.max(0, Math.min(54, count))
     if (safeCount <= 0) delete char.driveDisc.subStatAllocation[statId]
     else char.driveDisc.subStatAllocation[statId] = safeCount
+    // 手改即离开「自动分配」：之后改预算设置不再覆盖这一槽（用户 2026-10-18 裁决）
+    subStatAllocationManual.value[slot] = true
   }
 
   // ========== 角色动作次数：唯一写入通道 ==========
@@ -767,7 +776,9 @@ export function createConfigModel(
       if (statId) char.driveDisc.mainStats[slotNum] = statId
     }
 
+    // 这是显式的「恢复自动分配」动作 ⇒ 清掉手改标记（用户手改后的预算变更不再覆盖本槽）
     char.driveDisc.subStatAllocation = {}
+    subStatAllocationManual.value[slot] = false
     if (rec.substats.length) {
       const agent = catalogStore.getAgent(char.agentId)
       const wEngine = char.wEngineId ? catalogStore.getWEngine(char.wEngineId) : undefined
@@ -1191,6 +1202,9 @@ export function createConfigModel(
   if (initialState) {
     const stateRefs: Record<string, { value: unknown }> = {
       team, globalBuffs, teammateBuffSelections, wEngineEffectCoverages, discEffectCoverages,
+      // 2026-10-18：新增 state ref 必须同步登记（分析场景按 `$state` 键整体克隆，缺一项就抛
+      // 「initialState 含未登记的 state 键」）。这是「新增 state 忘了登记」的响亮失败点，别改成静默跳过。
+      subStatAllocationManual,
       resourceUtilization, mechanicSettings, teamMechanicSettings, anomalyUtilizationRates, anomalySettlementShares,
       enemy, comboAlignOverrides, stunAxes, stunAxisPlans, useStunAxis, autoYidhariAxis,
       interactionsLocked, timeWeightStrategy, appliedBoss,
@@ -1348,12 +1362,25 @@ export function createConfigModel(
     }
   )
 
-  // 监听副词条设置变化，自动重算默认分配
+  /**
+   * 监听副词条预算设置（单属性上限 / 总步数档）变化，重算默认分配。
+   *
+   * ⚠ **只重算「自动分配」的槽位，不碰用户手改过的**（2026-10-18，用户裁决「不是说什么时候都开，
+   * 改了就用」）：修前这里对 3 个槽位无条件调 `applyBuildRecommendationForSlot`，会把
+   * 用户手填的 `subStatAllocation` **整份覆盖**——实测「手改成 暴击3/攻击20」后把上限从 20 调到 15，
+   * 分配被重置成 `{critRate:6,critDmg:15,atkPct:15,penFlat:7}`，用户看不到任何提示。
+   * 这正是「B 档（估算级）自动逻辑静默替用户改配置」的形态（见 ENGINE_PIPELINE_GUIDE §4 坑 53）。
+   *
+   * 判定 = `subStatAllocationManual`（按槽位记的用户手改标记，由 `setSubStatCount` 置位、
+   * `applyBuildRecommendationForSlot` 清除）。未标记 = 仍是自动分配 ⇒ 跟随预算重算。
+   */
   watch(
     () => SUBSTAT_BUDGET_SETTINGS.map(id => mechanicSettings.value[id]),
     () => {
       for (let i = 0; i < 3; i++) {
-        if (team.value[i]?.agentId) applyBuildRecommendationForSlot(i)
+        if (!team.value[i]?.agentId) continue
+        if (subStatAllocationManual.value[i]) continue
+        applyBuildRecommendationForSlot(i)
       }
     },
   )
@@ -1365,6 +1392,8 @@ export function createConfigModel(
     teammateBuffSelections,
     wEngineEffectCoverages,
     discEffectCoverages,
+    /** 按槽位的「副词条被手改过」标记（true ⇒ 改预算设置不覆盖；见 setSubStatCount / watcher） */
+    subStatAllocationManual,
     resourceUtilization,
     mechanicSettings,
     teamMechanicSettings,

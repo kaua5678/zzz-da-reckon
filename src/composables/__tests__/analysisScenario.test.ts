@@ -92,15 +92,27 @@ describe('分析器独立场景', () => {
     expect(config.team[0]!.agentId).not.toBe('sentinel-changed')
   })
 
-  it('① 反例：出生之后逐键注水，副词条 watcher 下一拍把配装刷回推荐值', async () => {
+  /**
+   * ★ 反例（2026-10-18 改写）：出生之后逐键注水仍会被 **pre-flush watcher** 改写。
+   *
+   * 原版用「槽 0 手改过的副词条」当判别器：注水后下一拍被预算 watcher 刷回推荐值。
+   * 2026-10-18 起预算 watcher **不再覆盖手改槽位**（`subStatAllocationManual` 标记，
+   * 见 ENGINE_PIPELINE_GUIDE §4 坑 53），那条判别器失效——**不是回归，是自动逻辑收窄**。
+   * 现判别器换成「注入的预算设置与注入的配装不一致」：watcher 仍会在下一拍按**新预算**
+   * 重算未手改的槽位 ⇒ 朴素注水照样改写现场。这条反例要证明的东西没变：
+   * **不能靠逐键注水复刻现场，必须走 `createAnalysisScenario` 的出生态构造。**
+   */
+  it('① 反例：出生之后逐键注水，预算 watcher 下一拍按新设置重算未手改的槽位', async () => {
     const { catalog, config } = await customizedSource()
     const scope = effectScope(true)
     try {
       const naive = scope.run(() => reactive(createConfigModel(catalog)))! as unknown as Record<string, unknown>
       for (const [key, value] of Object.entries(config.$state)) naive[key] = cloneConfigState(value)
-      expect(plain(naive.team)).toBe(plain(config.team))
+      // 注入一个与现场配装不一致的预算：现场按 18 步算，注水后按 15 步
+      const settings = naive.mechanicSettings as Record<string, number>
+      settings[SUBSTAT_CAP_SETTING] = 15
       await flush()
-      expect(plain(naive.team)).not.toBe(plain(config.team))
+      expect(plain(naive.team), '朴素注水后 watcher 未改写现场 ⇒ 本条反例已失效，需换判别器').not.toBe(plain(config.team))
     } finally {
       scope.stop()
     }

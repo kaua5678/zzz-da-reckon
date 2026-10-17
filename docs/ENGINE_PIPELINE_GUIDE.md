@@ -1052,3 +1052,13 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
    （先例：坑 51 的 R14 默认开，全库 +12.2% 且破坏「影画升级不降伤」）。
    **A 档的「静默」是允许的**（用户不需要知道 100% 封顶），**B/C 档的静默是缺陷**。
 
+   **实修一例（2026-10-18，B 档静默覆盖）**：副词条预算设置（`optimizer.substatCap` / `optimizer.totalSteps*`）
+   的 watcher 原先对三个槽位**无条件**调 `applyBuildRecommendationForSlot` ⇒ 用户手改的
+   `subStatAllocation` 被整份覆盖。实测：手改成 `暴击3/爆伤20/攻击20`，把单属性上限 20→15，
+   分配被重置成 `{critRate:6,critDmg:15,atkPct:15,penFlat:7}`，**页面没有任何提示**。
+   修法 = 按槽位的 `subStatAllocationManual` 标记（`setSubStatCount` 置位、显式「一键应用推荐」清除）：
+   预算变更只重算未手改的槽位；页面副词条标题旁标「自动（跟随预算设置）/ 手动」。
+   判据 `src/stores/__tests__/substatBudgetManual.test.ts`。
+   **判据（新增自动写入前先问）**：「这个自动动作会不会覆盖用户已经填过的东西？」
+   ——会，就必须有「谁填的」标记 + 显式恢复入口，不能靠「反正再点一次就回来了」。
+

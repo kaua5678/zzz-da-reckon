@@ -532,9 +532,16 @@
                     <div class="section-title">
                       <n-space align="center" justify="space-between" style="width: 100%">
                         <span>副词条分配</span>
-                        <n-text depth="3" style="font-size: 11px">
-                          总词条：{{ totalSubStats }}
-                        </n-text>
+                        <n-space align="center" size="small">
+                          <!-- 自动/手改状态：预算设置只重算「自动」的槽位（见 stores/config.ts 的 watcher），
+                               手改后要恢复自动分配，点「配装推荐 · 一键应用」 -->
+                          <n-tag size="tiny" :bordered="false" :type="subStatManual ? 'warning' : 'default'">
+                            {{ subStatManual ? '手动' : '自动（跟随预算设置）' }}
+                          </n-tag>
+                          <n-text depth="3" style="font-size: 11px">
+                            总词条：{{ totalSubStats }}
+                          </n-text>
+                        </n-space>
                       </n-space>
                     </div>
 
@@ -1301,6 +1308,9 @@ function getSubStatValue(stat: string): string {
   const value = step * count // count即升级步数，不再乘2.25
   return formatStatValue(stat, value, isPctStat(stat) ? 'pct' : 'flat')
 }
+
+/** 当前槽位的副词条是「手改」还是「自动分配」（决定改预算设置时会不会被重算，见 stores/config.ts） */
+const subStatManual = computed(() => !!configStore.subStatAllocationManual[uiStore.selectedSlot])
 
 const totalSubStats = computed(() => {
   const alloc = selectedChar.value?.driveDisc?.subStatAllocation
