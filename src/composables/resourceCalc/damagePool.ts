@@ -35,6 +35,8 @@ import {
 } from './helpers'
 // CC-9a：尾段已外提 `./damagePoolAnomaly`，本文件只剩 `getWindInfectionElement` 一个消费者。
 import { getWindInfectionElement } from './anomalyPanels'
+// R14 / T139：无轴易伤集中度估算（纯函数，见模块头注释的落地形态对照表）
+import { applyConcEstimate, damagePerMultiplierBySlot } from '@/composables/axisConcEstimate'
 // CC-9a（2026-09-25）：异常/附加伤害尾段（原 :1142–1725）已原样外提 `./damagePoolAnomaly.ts`。
 import { emitAnomalyRows } from './damagePoolAnomaly'
 // CC-9b（2026-09-25）：逐角色主循环三段（原 :423–671 / :672–927 / :928–1131）已原样外提。
@@ -81,13 +83,26 @@ export interface DamagePoolContext {
   axisOverlayBySlot: Map<number, AgentAxisOverlay>
   /** 当前窗口时长（秒）：函数注入（读 configStore 失衡延时等实时口径） */
   computeWindowDuration: () => number
+  /**
+   * **R14 / T139：无轴易伤集中度估算**（`composables/axisConcEstimate.ts` 的入参 + 开关）。
+   *
+   * 口径：`无轴有效覆盖率 = 时间覆盖率 × conc_est(N) × k`——**只在非轴分支生效**，
+   * 轴模式的覆盖率仍是 1/0 两档（真实按轴内位置），**不乘** `conc_est`（R14 硬约束 1）。
+   *
+   * 缺省 `undefined` = 不启用（旧口径，逐位相同）。这是为了让**既有调用方/测试夹具**
+   * 不传它也拿到逐位相同的结果——开关语义在 `useResourceCalc` 侧（读 configStore）。
+   */
+  noAxisConcEstimate?: {
+    enabled: boolean
+    k: number
+  }
 }
 
 export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
 
     const {
     configStore, catalogStore,
-    adjustedResourceResult, damagePanels, stunCoverage, axisAllocation: allocMap, attachedInAxisMap: attachedInAxis,
+    adjustedResourceResult, damagePanels, stunCoverage: rawStunCoverage, axisAllocation: allocMap, attachedInAxisMap: attachedInAxis,
     anomalyPoolResult, inStunAnomalyState,
     globalAnomalyMultiplier, agentNames,
     isAxis,
@@ -120,6 +135,18 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       claimedInAxis[key] = already + inUnits
       return { inUnits, outUnits: totalUnits - inUnits }
     }
+
+    /**
+     * **非轴模式的有效失衡易伤覆盖率**（R14 / T139）：`时间覆盖率 × conc_est(N) × k`。
+     *
+     * ⚠ 建池**期间**一律用旧的均匀覆盖率（`rawStunCoverage`）——估算的输入要读已建好的
+     * 无轴直伤行（每槽每点倍率折成伤害），此刻 rows 还在长。真正的估算在**建池之后**
+     * 一次性后处理（见函数末尾 `R14 / T139` 段）：只把「按全局覆盖率吃易伤」的行按新标量
+     * 等比缩放（伤害对失衡乘区是线性的）。
+     *
+     * 这样做的额外好处：建池逻辑**逐字未变**，开关关掉时连浮点都不会动（硬约束 2 的硬判据）。
+     */
+    const stunCoverage = rawStunCoverage
 
     /** 伴随事件易伤：非轴模式用全局覆盖率；轴模式跟随父动作是否完全落在窗口内（0/1） */
     function axisStunFor(moveId: string): number {
@@ -396,6 +423,52 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       inWindowFraction, nonWindInAxisFraction, ultimateInAxisFraction,
       axisStunFor, pushRelease,
     })
+
+  // ===== R14 / T139：无轴易伤集中度估算（**后处理**，必须在建池之后） =====
+  //
+  // 为什么是后处理而不是在建池前算好：估算的输入要读**已建好的无轴直伤行**
+  // （`damagePerMultiplierBySlot` 要「每槽每点倍率折成伤害」，只看裸倍率会差 12.3% vs 9.4%），
+  // 而建池过程中 rows 还在长。硬约束 1（不污染轴模式）由 isAxis 短路保证。
+  //
+  // 逐位等价性（开关关掉）：非轴模式下每行 `stunCoverage` 恒 = 传入的 `stunCoverage`（均匀），
+  // 估算只改**那个标量**，行结构（id/顺序/type/name/note/count）一个不动 ⇒ 关掉时连浮点都不会变。
+  if (!isAxis && ctx.noAxisConcEstimate?.enabled && rows.length > 0) {
+    const perMult = damagePerMultiplierBySlot(rows)
+    const weights: { slot: number; weight: number }[] = []
+    for (const ch of adjustedResourceResult.characters) {
+      const slotScale = perMult.get(ch.slot) ?? 1
+      for (const e of ch.executions) {
+        const w = (e.damageMultiplier ?? 0) * Math.max(0, e.count)
+        if (w > 0) weights.push({ slot: ch.slot, weight: w * slotScale })
+      }
+      const mod = getAgentMechanic(ch.agentId)
+      for (const combo of Object.values(mod?.combos ?? {})) {
+        const w = combo.moves.reduce((s, mv) => s + mv.count, 0) * slotScale
+        if (w > 0) weights.push({ slot: ch.slot, weight: w })
+      }
+    }
+    const detail = applyConcEstimate(
+      { timeCoverage: rawStunCoverage, weights },
+      { enabled: true, k: ctx.noAxisConcEstimate.k },
+    )
+    // 伤害对失衡易伤乘区**线性**（core/damage.ts 的失衡乘区是纯乘数）⇒ 按行重算即可，不必重建池。
+    // 只动「按全局覆盖率吃易伤」的行（stunOverride / 轴内段 / 模块认领段由自己的 stunCoverage 决定，
+    // 不跟随全局覆盖率 ⇒ 非轴模式下它们的 stunCoverage 与 rawStunCoverage 不同，这里按行值等值判定）。
+    const target = detail.effectiveCoverage
+    for (const row of rows) {
+      if (row.stunCoverage === undefined) continue
+      if (Math.abs(row.stunCoverage - rawStunCoverage) > 1e-12) continue
+      if (Math.abs(rawStunCoverage) < 1e-12) continue
+      const oldMult = 1 + ((row.stunVulnBase ?? 0) - 1) * row.stunCoverage
+      const newMult = 1 + ((row.stunVulnBase ?? 0) - 1) * target
+      if (!(oldMult > 0) || oldMult === newMult) continue
+      const ratio = newMult / oldMult
+      row.perDamage *= ratio
+      row.totalDamage *= ratio
+      row.stunMult = newMult
+      row.stunCoverage = target
+    }
+  }
 
   return rows.filter(row => row.totalDamage > 0)
 }

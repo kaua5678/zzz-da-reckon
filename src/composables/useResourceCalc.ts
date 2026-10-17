@@ -13,6 +13,8 @@ import { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
 import { findInteractionTopUpSlot, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import { calcAnomalyPoolDamage } from '@/core/anomalyPool'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
+// R14 / T139：无轴易伤集中度估算（开关 + 系数 k 的机制参数键）
+import { DEFAULT_NO_AXIS_CONC_K, NO_AXIS_CONC_ENABLED_SETTING, NO_AXIS_CONC_K_SETTING } from './axisConcEstimate'
 import { freezeCached } from './resourceCalc/freezeCached'
 import { createRunCalcRound } from './resourceCalc/convergence'
 import { createConvergenceRoundInputs } from './resourceCalc/roundInputs'
@@ -676,6 +678,12 @@ export function createResourceCalc(
     isAxis: axisMode.value,
     axisOverlayBySlot: axisOverlays.value,
     computeWindowDuration,
+    // R14 / T139：无轴易伤集中度估算（开关 + 系数 k）。**只作用于非轴分支**——
+    // 轴模式的覆盖率仍是 1/0 两档，damagePool 里由 isAxis 短路（硬约束 1）。
+    noAxisConcEstimate: {
+      enabled: configStore.getMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 1) !== 0,
+      k: configStore.getMechanicSetting(NO_AXIS_CONC_K_SETTING, DEFAULT_NO_AXIS_CONC_K),
+    },
   }))
 
   /**

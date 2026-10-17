@@ -729,6 +729,14 @@
               <span class="damage-pool-footer-sub">（兑现 {{ (p.coverageRate * 100).toFixed(0) }}% · 额外伤害 {{ fmt(p.total - p.total / p.weightedVuln, 0) }}）</span>
             </span>
           </div>
+          <!-- R14 / T139：来源可见（硬约束 2）——用户能看出「无轴现在是估算的」，并能一键回到旧口径 -->
+          <div v-if="noAxisConcNotice" class="damage-pool-row damage-pool-conc-note">
+            <span class="damage-pool-footer-label">无轴易伤</span>
+            <span class="damage-pool-footer-value">
+              <span class="damage-pool-footer-sub">{{ noAxisConcNotice }}</span>
+              <n-button size="tiny" quaternary type="primary" style="margin-left: 8px" @click="setNoAxisConcEnabled(false)">回到均匀摊</n-button>
+            </span>
+          </div>
         </div>
       </n-card>
         </n-tab-pane>
@@ -837,6 +845,14 @@ import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slac
 import { computePerSlotBuildUp } from '@/composables/positionCompare'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'
 import { axisFallbackNoticeOf } from '@/composables/axisFallbackNotice'
+// R14 / T139：无轴易伤估算的「来源可见」标注（硬约束 2）
+import {
+  DEFAULT_NO_AXIS_CONC_K,
+  damagePerMultiplierBySlot,
+  noAxisConcNoticeOf,
+  NO_AXIS_CONC_ENABLED_SETTING,
+  NO_AXIS_CONC_K_SETTING,
+} from '@/composables/axisConcEstimate'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { comboAlignEditable, comboAlignFixedHint, comboAlignFixedLabel, comboAlignFixedReason, totalComboAlignTimeOf } from '@/composables/resourceCalc/comboAlignDisplay'
 import type { AnomalyEventRecord } from '@/types/resource'
@@ -848,6 +864,7 @@ function unitPriceText(unit: number): string {
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
+const calc = useResourceCalc()
 const {
   resourceResult,
   stunPoolResult,
@@ -865,8 +882,38 @@ const {
   ultPromoteHug60,
   effectiveWEngineCoverages,
   autoActive,
-} = useResourceCalc()
+} = calc
 
+// R14 / T139：无轴易伤估算的「来源可见」标注（硬约束 2）。
+// 权重来源与引擎同源（`damagePool` 末尾同一份 `damagePerMultiplierBySlot` + 执行计划），
+// 这里只给用户看个账，**不参与**伤害计算（伤害由引擎侧改）。
+const noAxisConcK = computed(() =>
+  configStore.getMechanicSetting(NO_AXIS_CONC_K_SETTING, DEFAULT_NO_AXIS_CONC_K))
+const noAxisConcEnabled = computed(() =>
+  configStore.getMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 1) !== 0)
+function setNoAxisConcEnabled(v: boolean) {
+  configStore.setMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, v ? 1 : 0)
+}
+const noAxisConcNotice = computed<string | null>(() => {
+  const perMult = damagePerMultiplierBySlot(calc.damagePoolRows.value ?? [])
+  const weights: { slot: number; weight: number }[] = []
+  for (const ch of calc.resourceResult.value?.characters ?? []) {
+    const slotScale = perMult.get(ch.slot) ?? 1
+    for (const e of ch.executions) {
+      const w = (e.damageMultiplier ?? 0) * Math.max(0, e.count)
+      if (w > 0) weights.push({ slot: ch.slot, weight: w * slotScale })
+    }
+  }
+  return noAxisConcNoticeOf({
+    // 轴模式判据与引擎同源：`axisMode` 不在 ResourceCalc 的公开面里，用公开的 `stunAxisResult` 判定
+    // （轴模式下非空）。⚠ 若两者口径分叉，标注会与引擎对不上——见单测。
+    isAxis: calc.stunAxisResult.value !== null,
+    enabled: noAxisConcEnabled.value,
+    k: noAxisConcK.value,
+    timeCoverage: calc.stunCoverage.value,
+    weights,
+  })
+})
 /**
  * **弃轴提示**（用户口径 2026-10-16：「用户选择了轴就是想看轴，**悄悄退化等于欺骗用户**」，
  * 且要「**引导用户提高合轴率**」）。
