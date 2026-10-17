@@ -852,7 +852,7 @@ import {
   noAxisConcNoticeOf,
   NO_AXIS_CONC_ENABLED_SETTING,
   NO_AXIS_CONC_K_SETTING,
-} from '@/composables/axisConcEstimate'
+} from '@/composables/resourceCalc/concEstimate'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { comboAlignEditable, comboAlignFixedHint, comboAlignFixedLabel, comboAlignFixedReason, totalComboAlignTimeOf } from '@/composables/resourceCalc/comboAlignDisplay'
 import type { AnomalyEventRecord } from '@/types/resource'

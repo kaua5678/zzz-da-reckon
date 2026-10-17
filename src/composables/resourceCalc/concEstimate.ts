@@ -75,83 +75,47 @@
  * 4. **判据 = 逐档误差**：见本文件头表（以手动轴为靶子）。
  * 5. 只改易伤覆盖率的标量 ⇒ 时间/物化行零 delta（timeGolden / timeFillRatchet 预期零 delta）。
  */
-import type { DamagePoolRow } from './resourceCalc/helpers'
+import type { DamagePoolRow } from './helpers'
 
-/** 机制参数键：无轴易伤估算总开关（0 = 关 = 旧口径；非 0/缺省 = 开） */
+/** 机制设置键：无轴易伤估算开关（0 = 关）与用户系数 k */
 export const NO_AXIS_CONC_ENABLED_SETTING = 'stunVuln.noAxisConcEstimate'
-/** 机制参数键：用户系数 k（缺省 1.0；conc_est 被乘上它） */
 export const NO_AXIS_CONC_K_SETTING = 'stunVuln.noAxisConcK'
-/** 用户系数 k 的缺省值（= 数据驱动估算，不额外放大） */
 export const DEFAULT_NO_AXIS_CONC_K = 1.0
 
-/**
- * 估算式系数（在 980 格普查上以 ln(conc_A) 为目标做最小二乘，见文件头表）。
- *
- * ⚠ 改这些数 = 改口径：必须重跑 .zc/perf/T139conc.perf.ts 的 dump + 重拟合，
- * 并更新文件头的逐档误差表，否则判据无从复核。
- */
-export const CONC_EST_COEFFS = {
-  a: 0.782015,
-  b: -1.447331,
-  c: 1.210691,
-  d: 0.351966,
-} as const
+/** 拟合系数（来源与误差表见本文件头注释） */
+export const CONC_EST_COEFFS = { a: 0.782015, b: -1.447331, c: 1.210691, d: 0.351966 }
 
-/** conc_est 的输入：全部来自**无轴**执行计划 + 引擎既有的时间覆盖率 */
 export interface ConcEstimateInput {
-  /** 时间覆盖率（引擎既有 stunCoverage，含决算截断损失秒） */
+  /** 时间覆盖率 = 引擎既有 `stunCoverage`（含决算截断损失秒） */
   timeCoverage: number
-  /** 每个执行行 / 连段块的「伤害权重」= 倍率 × 次数 × 该槽每点倍率的伤害（缺省 1 = 只看倍率） */
+  /** 计划侧伤害权重（slot + weight；weight = 倍率 × 次数 × 该槽每点倍率折成的伤害） */
   weights: { slot: number; weight: number }[]
 }
 
-/** 估算细节（供结果页/单测观察，不进伤害计算） */
 export interface ConcEstimateDetail {
-  /** 集中度倍数 conc_est（N 依赖；1.0 = 完全均匀） */
   conc: number
-  /** 计划侧 Herfindahl 指数（Σ份额²；均摊时 = 1/行数） */
   hhi: number
-  /** 主 C 槽（倍率份额最高）的份额 */
   mainShare: number
-  /** 有效覆盖率 = min(1, timeCoverage × conc × k)；开关关掉时 = timeCoverage */
   effectiveCoverage: number
-  /** 是否走了估算（false = 旧口径，逐位等于 timeCoverage） */
   applied: boolean
 }
 
-/**
- * 估算「无轴时高倍率招集中在失衡窗」的集中度倍数 conc_est。
- *
- * **纯函数**：只吃「时间覆盖率 + 执行计划的伤害权重」，不碰 store、不跑引擎、无副作用。
- * 输入退化（无权重 / 覆盖率为 0）⇒ 返回 1.0（= 均匀摊，与旧口径一致）。
- *
- * ⚠ 返回值**不钳到 1**：真实玩家也可能把窗口打空（conc < 1），本仓坑 47 明令
- * 「不许把用户的输入质量写成不变量」——不钉「估算一定 ≥ 均匀摊」。
- */
 export function estimateConcentration(input: ConcEstimateInput): { conc: number; hhi: number; mainShare: number } {
   const tc = Number.isFinite(input.timeCoverage) ? Math.max(0, Math.min(1, input.timeCoverage)) : 0
   const items = input.weights.filter(w => Number.isFinite(w.weight) && w.weight > 0)
   const total = items.reduce((s, w) => s + w.weight, 0)
   if (total <= 0) return { conc: 1, hhi: 0, mainShare: 0 }
-  // Herfindahl：Σ(份额²)。均摊 n 行 = 1/n，全压一行 = 1
   const hhi = items.reduce((s, w) => s + (w.weight / total) ** 2, 0)
   const bySlot = new Map<number, number>()
   for (const w of items) bySlot.set(w.slot, (bySlot.get(w.slot) ?? 0) + w.weight)
   const mainShare = Math.max(0, ...[...bySlot.values()].map(v => v / total))
   const { a, b, c, d } = CONC_EST_COEFFS
   const raw = Math.exp(a + b * tc + c * hhi + d * mainShare)
-  // 有限性护栏：系数是拟合值，极端输入可能给出很大的数，但它随后会被 min(1, ·) 钳住；
-  // 这里只拦 NaN/Infinity，**不**替用户判断「合理上限」
+  // 只拦 NaN/Infinity，**不**替用户判断「合理上限」（坑 47：不把用户输入质量写成不变量）
   const conc = Number.isFinite(raw) && raw > 0 ? raw : 1
   return { conc, hhi, mainShare }
 }
 
-/**
- * 把「无轴覆盖率」按估算式改写：有效覆盖率 = min(1, tc × conc_est × k)。
- *
- * **开关关掉（enabled=false）⇒ 返回的 effectiveCoverage 与传入的 timeCoverage 逐位相同**
- * （这是 R14 硬约束 2 的硬判据，单测逐位钉住）。
- */
 export function applyConcEstimate(
   input: ConcEstimateInput,
   opts: { enabled: boolean; k: number },
@@ -166,18 +130,22 @@ export function applyConcEstimate(
   return { conc: est.conc, hhi: est.hhi, mainShare: est.mainShare, effectiveCoverage, applied: true }
 }
 
-/**
- * 从**无轴伤害池行**抽「每槽每点倍率的伤害」= 该槽 ΣtotalDamage / Σ(count × multiplier)。
- *
- * 为什么需要它：执行计划的 damageMultiplier 是**裸倍率**，不同槽的每点倍率折成伤害差 10× 以上
- * （面板/增伤/暴击/防御各区不同）。只用裸倍率算 HHI 会把辅助的高倍率大招当成主力
- * （实测：只用裸倍率的 HHI 版本逐格中位 **12.3%**，加权后 **9.4%**）。
- *
- * ⚠ 这里读的是**无轴**伤害池行（每行 stunCoverage 均匀 = timeCoverage），
- * 而 totalDamage 已含该均匀覆盖率下的易伤 ⇒ 各槽被同一比例缩放，
- * **不改变 HHI**（实测：把每行易伤按行 stunMult 反推掉后再算 HHI，|Δ| 中位 5.6e-17、最大 6.6e-3）。
- * ⇒ 用它不会让「覆盖率 → HHI → 覆盖率」成环。
- */
+export function damagePerMultiplierBySlot(
+  rows: (Pick<DamagePoolRow, 'slot' | 'totalDamage' | 'count'> & { multiplier?: number })[],
+): Map<number, number> {
+  const dmg = new Map<number, number>()
+  const mult = new Map<number, number>()
+  for (const r of rows) {
+    const m = (r.multiplier ?? 0) * Math.max(0, r.count)
+    if (!(m > 0)) continue
+    dmg.set(r.slot, (dmg.get(r.slot) ?? 0) + Math.max(0, r.totalDamage))
+    mult.set(r.slot, (mult.get(r.slot) ?? 0) + m)
+  }
+  const out = new Map<number, number>()
+  for (const [slot, m] of mult) out.set(slot, m > 0 ? (dmg.get(slot) ?? 0) / m : 1)
+  return out
+}
+
 /**
  * R14 / T139：结果页「无轴易伤是估算的」标注（硬约束 2：**必须可关 + 来源可见**）。
  *
@@ -208,20 +176,4 @@ export function noAxisConcNoticeOf(opts: {
   return `按「你会把大技能留给失衡」估算：时间覆盖 ${pct(opts.timeCoverage)}`
     + ` × 估算 ${d.conc.toFixed(2)}× × 你调的 ${opts.k.toFixed(1)}`
     + ` = ${pct(d.effectiveCoverage)}（关掉这一项就回到「每招均匀」）`
-}
-
-export function damagePerMultiplierBySlot(
-  rows: (Pick<DamagePoolRow, 'slot' | 'totalDamage' | 'count'> & { multiplier?: number })[],
-): Map<number, number> {
-  const dmg = new Map<number, number>()
-  const mult = new Map<number, number>()
-  for (const r of rows) {
-    const m = (r.multiplier ?? 0) * Math.max(0, r.count)
-    if (!(m > 0)) continue
-    dmg.set(r.slot, (dmg.get(r.slot) ?? 0) + Math.max(0, r.totalDamage))
-    mult.set(r.slot, (mult.get(r.slot) ?? 0) + m)
-  }
-  const out = new Map<number, number>()
-  for (const [slot, m] of mult) out.set(slot, m > 0 ? (dmg.get(slot) ?? 0) / m : 1)
-  return out
 }

@@ -658,7 +658,13 @@
         <div class="chart-legend">
           <span class="legend-hint">
             实心圆 = <b>轴模式</b>（失衡易伤集中在轴内高倍率招式）｜
-            灰色空心圆 + 虚线 = <b>非轴参照</b>（同一支队关掉轴，失衡易伤按时间均匀摊 = 模拟均匀战斗）
+            灰色空心圆 + 虚线 = <b>非轴参照</b>（同一支队关掉轴）——
+            <template v-if="noAxisConcEnabled">
+              当前口径：<b>估算的典型玩家</b>（会把大技能留给失衡 ⇒ 覆盖率已含估算；关掉「无轴时的失衡易伤估算」即为完美均匀摊）
+            </template>
+            <template v-else>
+              当前口径：<b>完全均匀摊</b>（每招按同一比例吃易伤 = 最坏情况）
+            </template>
           </span>
         </div>
         <div class="chart-legend">
@@ -951,6 +957,7 @@ import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import { useLogicEditorStore } from '@/stores/logicEditor'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, axisWorseThanNoAxis, type CurveDatum, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
+import { NO_AXIS_CONC_ENABLED_SETTING } from '@/composables/resourceCalc/concEstimate'
 import type { KnobPointName } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { teamPresets } from '@/data/teamPresets'
@@ -968,6 +975,17 @@ import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
 import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
 
 const configStore = useConfigStore()
+/**
+ * R14（T139）无轴易伤估算的开关——**图例必须如实标注非轴参照用哪种口径**
+ * （R14 硬约束 2「来源可见」在难度曲线页的延伸）。
+ *
+ * 为什么需要：非轴参照点（T192）是**关掉轴重算**的 ⇒ 它会自动吃到 R14 的估算加成；
+ * 而轴点是真实轴、不吃。实测「轴 vs 非轴」差距因此被压缩（58.1% → 31.4% 等）。
+ * 那是设计上的必然（参照语义从「最坏情况」变成「典型玩家」），但**不能让用户以为
+ * 自己看的是均匀摊**——所以图例随开关切换措辞。
+ */
+const noAxisConcEnabled = computed(() =>
+  configStore.getMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 1) !== 0)
 const catalogStore = useCatalogStore()
 /** 行融合规则是计算输入（`logicEditor/fusion` 的模块级快照）：worker 里读不到用户改过的规则 ⇒ 随请求显式传 */
 const logicStore = useLogicEditorStore()

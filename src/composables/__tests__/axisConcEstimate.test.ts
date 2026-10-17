@@ -15,14 +15,13 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
-  applyConcEstimate,
   DEFAULT_NO_AXIS_CONC_K,
-  damagePerMultiplierBySlot,
-  estimateConcentration,
   noAxisConcNoticeOf,
   NO_AXIS_CONC_ENABLED_SETTING,
   NO_AXIS_CONC_K_SETTING,
-} from '@/composables/axisConcEstimate'
+} from '@/composables/resourceCalc/concEstimate'
+// 纯函数核心从**最近来源**导入（门面只转出被生产多处消费的符号——判据 16 死通道扫描）
+import { applyConcEstimate, damagePerMultiplierBySlot, estimateConcentration } from '@/composables/resourceCalc/concEstimate'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 
 // ============ A. 纯函数 ============

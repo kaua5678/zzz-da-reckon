@@ -14,7 +14,7 @@ import { findInteractionTopUpSlot, getAgentMechanic, teamMechanicSlots } from '@
 import { calcAnomalyPoolDamage } from '@/core/anomalyPool'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
 // R14 / T139：无轴易伤集中度估算（开关 + 系数 k 的机制参数键）
-import { DEFAULT_NO_AXIS_CONC_K, NO_AXIS_CONC_ENABLED_SETTING, NO_AXIS_CONC_K_SETTING } from './axisConcEstimate'
+import { DEFAULT_NO_AXIS_CONC_K, NO_AXIS_CONC_ENABLED_SETTING, NO_AXIS_CONC_K_SETTING } from './resourceCalc/concEstimate'
 import { freezeCached } from './resourceCalc/freezeCached'
 import { createRunCalcRound } from './resourceCalc/convergence'
 import { createConvergenceRoundInputs } from './resourceCalc/roundInputs'
@@ -680,8 +680,14 @@ export function createResourceCalc(
     computeWindowDuration,
     // R14 / T139：无轴易伤集中度估算（开关 + 系数 k）。**只作用于非轴分支**——
     // 轴模式的覆盖率仍是 1/0 两档，damagePool 里由 isAxis 短路（硬约束 1）。
+    //
+    // ⚠ **缺省 OFF（opt-in）**，不是默认开。lead 复核 2026-10-17（T205 实测）否决了默认开：
+    //   ① 它让「相邻影画档位伤害不下降」这条**真实不变量**失效 —— `1371` 实测 c3 = 4.24M > c4 = 4.23M
+    //      （影画升级反而降伤），因为 `conc_est` 依赖 `HHI_plan`/`mainShare`，它们随影画档位变化；
+    //   ② 它会在用户没要求时把**全库无轴伤害静默 +12.2%**（358 条 golden delta）。
+    //   ⇒ 能力保留（用户要的「无轴更真实」），但让用户**自己开**（开了有来源标注 + 滑块）。
     noAxisConcEstimate: {
-      enabled: configStore.getMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 1) !== 0,
+      enabled: configStore.getMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 0) !== 0,
       k: configStore.getMechanicSetting(NO_AXIS_CONC_K_SETTING, DEFAULT_NO_AXIS_CONC_K),
     },
   }))

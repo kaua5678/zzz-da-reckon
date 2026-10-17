@@ -858,7 +858,7 @@ T137 实测**引擎里没有「自动轴」**（`selectAutoStunAxisPreset` = 命
 
 **前置数据齐备**（§十全表 + §十二缺口量化），**不需要重跑探针**。
 
-**状态**：**✅ 已落地**（2026-10-17 T139）。实现 = `composables/axisConcEstimate.ts`（纯函数）+
+**状态**：**✅ 已落地**（2026-10-17 T139）。实现 = `composables/resourceCalc/concEstimate.ts`（纯函数）+
 `resourceCalc/damagePool.ts` 的**建池后处理**（只缩放「按全局覆盖率吃易伤」的行）；
 开关 `stunVuln.noAxisConcEstimate` + 系数 `stunVuln.noAxisConcK`（队伍配置页「战斗动作与保底目标」）。
 

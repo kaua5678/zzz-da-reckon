@@ -877,7 +877,7 @@ npx vitest run --config .zc/perf/vitest.perf.config.ts .zc/perf/T137autoVuln.per
 
 ### 12.5 落地结果（T139，2026-10-17）
 
-**形态 = 闭式估算式**（`composables/axisConcEstimate.ts`）：
+**形态 = 闭式估算式**（`composables/resourceCalc/concEstimate.ts`）：
 
 ```
 conc_est = exp(0.782015 − 1.447331·tc + 1.210691·HHI_plan + 0.351966·mainShare)
@@ -909,3 +909,21 @@ N=8 时池子几乎全进窗）。`k` 滑块正是为此存在（用户口径「
 **判据实测**：`src/composables/__tests__/axisConcEstimate.test.ts` 10 条全绿，
 含「关开关 ⇒ 行快照 `toEqual` 逐位相同」「k 线性」「轴模式零影响」。
 `timeGolden` 358 条 delta **全是 `dmg`**（时间账零变化）；`timeFillRatchet` 零 delta。
+
+### ★ lead 复核发现的**副作用**（R14 × 非轴参照曲线，T204 实测）
+
+R14 默认**开**（`getMechanicSetting(..., 1)`）⇒ 难度曲线的「非轴参照点」（T192，**关掉轴重算**）
+**自动吃到了估算加成**，而轴点是真实轴、不吃 ⇒ **「轴 vs 非轴」的差距被系统性压缩**：
+
+| 队 | 开关 OFF 时的差距 | 开关 ON 时的差距 |
+|---|---:|---:|
+| auto-1611-1141-1211 | **58.1%** | 31.4% |
+| banyue-liuyin-lucia | **35.5%** | 20.1% |
+| banyue-qingyi-lucia | 25.6% | 11.6% |
+
+**这是设计上的必然，不是 bug**：非轴参照的语义从「完全均匀摊（最坏情况）」变成了
+「**估算的典型玩家**」。但**两种语义都有用**，且用户可能想看原始的「均匀摊」对照。
+
+⇒ **待办**（下一轮或用户决定）：非轴参照面板要**标明它现在是哪一种口径**，
+或提供「参照 = 均匀摊 / 估算」的切换。**当前状态是「静默变成估算」**——
+这恰恰违反了 R14 自己的硬约束 2（「来源可见」）在**难度曲线页**的延伸。

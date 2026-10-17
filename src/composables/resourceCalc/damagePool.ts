@@ -35,8 +35,10 @@ import {
 } from './helpers'
 // CC-9a：尾段已外提 `./damagePoolAnomaly`，本文件只剩 `getWindInfectionElement` 一个消费者。
 import { getWindInfectionElement } from './anomalyPanels'
-// R14 / T139：无轴易伤集中度估算（纯函数，见模块头注释的落地形态对照表）
-import { applyConcEstimate, damagePerMultiplierBySlot } from '@/composables/axisConcEstimate'
+// R14 / T139：无轴易伤集中度估算（纯核心住 `./concEstimate.ts`）。
+// ⚠ 必须从**本目录**导入：分层锁 CC-245/246 规定 `composables/resourceCalc/` 的运行时依赖闭包
+// 不得进入它以外的 composables ⇒ 纯估算核心就住在本目录的 `./concEstimate.ts`。
+import { applyConcEstimate, damagePerMultiplierBySlot } from './concEstimate'
 // CC-9a（2026-09-25）：异常/附加伤害尾段（原 :1142–1725）已原样外提 `./damagePoolAnomaly.ts`。
 import { emitAnomalyRows } from './damagePoolAnomaly'
 // CC-9b（2026-09-25）：逐角色主循环三段（原 :423–671 / :672–927 / :928–1131）已原样外提。
@@ -84,7 +86,7 @@ export interface DamagePoolContext {
   /** 当前窗口时长（秒）：函数注入（读 configStore 失衡延时等实时口径） */
   computeWindowDuration: () => number
   /**
-   * **R14 / T139：无轴易伤集中度估算**（`composables/axisConcEstimate.ts` 的入参 + 开关）。
+   * **R14 / T139：无轴易伤集中度估算**（入参 + 开关，核心在 `./concEstimate.ts`）。
    *
    * 口径：`无轴有效覆盖率 = 时间覆盖率 × conc_est(N) × k`——**只在非轴分支生效**，
    * 轴模式的覆盖率仍是 1/0 两档（真实按轴内位置），**不乘** `conc_est`（R14 硬约束 1）。
