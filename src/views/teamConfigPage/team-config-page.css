@@ -137,6 +137,29 @@
   gap: 4px;
 }
 
+/**
+ * 交互栏网格（2026-10-17 用户报「交互栏太小了，输入框的数字都显示不出来」）。
+ *
+ * ⚠ 这里必须是**自适应列宽**，不能写回 `repeat(6, 1fr)` 或 naive 的 `cols="6"`：
+ * 那两种都是**固定列数等分**，格子宽度跟着容器走。半栏容器实测 421px ⇒ 每格 63.5px，
+ * 而 `n-input-number` 自带加减按钮（后缀实测 36px）⇒ 输入区只剩 5.5px，
+ * 「10」这种两位数**直接被裁掉**（实测 clientWidth=6 / scrollWidth=18）。
+ *
+ * 定宽下限 96px 的来历：3 位数（如 99）+ 加减按钮 36px + naive 内边距 18px ≈ 90px，
+ * 取 96 留余量；`minmax(96px, 1fr)` 让余量在列间均分，不会出现半列宽度。
+ * 421px 半栏 ⇒ 4 列；整栏（如折叠面板展开时）⇒ 6~7 列，不需要为宽度写媒体查询。
+ */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px 8px;
+}
+
+/* 权重分配策略的 n-select 写死了 108px：网格格子最小 96px ⇒ 溢出。让它跟着格子走 */
+.action-grid .field > .n-select {
+  width: 100%;
+}
+
 .field-label {
   font-size: 11px;
   color: var(--wa-500);

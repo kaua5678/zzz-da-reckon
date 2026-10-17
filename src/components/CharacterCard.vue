@@ -4,75 +4,72 @@
     :class="{ selected: isSelected, empty: !agent }"
     @click="handleCardClick"
   >
-    <div class="card-header">
-      <span class="slot-label">槽位 {{ slot + 1 }}</span>
-      <span v-if="agent" class="cinema-level">影画 {{ cinemaLevel }}</span>
-    </div>
-
     <div v-if="agent" class="card-body">
-      <div class="char-portrait-row">
-        <div v-if="agentImageUrl" class="char-portrait-wrapper">
-          <img :src="agentImageUrl" :alt="agentName" class="char-portrait" @error="imgError = true" />
+      <div v-if="agentImageUrl" class="char-portrait-wrapper">
+        <img :src="agentImageUrl" :alt="agentName" class="char-portrait" @error="imgError = true" />
+      </div>
+      <div class="char-info">
+        <div class="char-name-row">
+          <div class="char-name" :title="agentName">{{ agentName }}</div>
+          <n-tag :type="rarityTag" size="tiny" round>
+            {{ agent.rarity }}
+          </n-tag>
+          <n-tag size="tiny" :color="specialtyTag">
+            {{ specialtyLabel }}
+          </n-tag>
+          <n-tag size="tiny" :color="attributeTag" round>
+            {{ attributeLabel }}
+          </n-tag>
+          <n-popselect
+            v-model:show="pickerOpen"
+            :value="char?.agentId ?? null"
+            :options="filteredOptions"
+            trigger="click"
+            placement="bottom-end"
+            size="small"
+            style="width: 320px"
+            @update:value="onSelectAgent"
+          >
+            <template #header>
+              <n-input
+                ref="searchInputRef"
+                v-model:value="searchText"
+                size="small"
+                clearable
+                placeholder="搜索角色"
+              />
+            </template>
+            <template #empty>
+              <span class="picker-empty">无匹配角色</span>
+            </template>
+            <n-button text size="tiny" class="char-switch" title="换人" @click.stop>
+              <n-icon size="14"><chevron-down-outline /></n-icon>
+            </n-button>
+          </n-popselect>
         </div>
-        <div class="char-info">
-          <div class="char-name-row">
-            <div class="char-name">{{ agentName }}</div>
-            <n-popselect
-              v-model:show="pickerOpen"
-              :value="char?.agentId ?? null"
-              :options="filteredOptions"
-              trigger="click"
-              placement="bottom-end"
-              size="small"
-              style="width: 320px"
-              @update:value="onSelectAgent"
-            >
-              <template #header>
-                <n-input
-                  ref="searchInputRef"
-                  v-model:value="searchText"
-                  size="small"
-                  clearable
-                  placeholder="搜索角色"
-                />
-              </template>
-              <template #empty>
-                <span class="picker-empty">无匹配角色</span>
-              </template>
-              <n-button text size="tiny" @click.stop>
-                <n-icon size="14"><chevron-down-outline /></n-icon>
-              </n-button>
-            </n-popselect>
-          </div>
-          <div class="char-tags">
-            <n-tag :type="rarityTag" size="tiny" round>
-              {{ agent.rarity }}
-            </n-tag>
-            <n-tag size="tiny" :color="specialtyTag">
-              {{ specialtyLabel }}
-            </n-tag>
-            <n-tag size="tiny" :color="attributeTag" round>
-              {{ attributeLabel }}
-            </n-tag>
-          </div>
-          <div class="wengine-name">
-            <n-icon size="12" style="margin-right: 4px">
-              <musical-notes-outline />
-            </n-icon>
-            {{ wengineName }}
-          </div>
+        <div class="wengine-name" :title="wengineName">
+          <n-icon size="12" style="margin-right: 4px">
+            <musical-notes-outline />
+          </n-icon>
+          <span class="wengine-name-text">{{ wengineName }}</span>
         </div>
+      </div>
+      <!-- 槽位/影画挪到右缘：与左侧人像同一行，省掉卡头整行高度 -->
+      <div class="card-meta">
+        <span class="slot-label">槽位 {{ slot + 1 }}</span>
+        <span class="cinema-level">影画 {{ cinemaLevel }}</span>
       </div>
     </div>
 
     <div v-else class="card-empty">
+      <span class="slot-label">槽位 {{ slot + 1 }}</span>
       <n-select
         :value="null"
         :options="availableOptions"
         size="small"
         filterable
         placeholder="选择角色"
-        style="width: 100%"
+        style="flex: 1; min-width: 0"
         @click.stop
         @update:value="onSelectAgent"
       />
@@ -204,16 +201,21 @@ function handleCardClick() {
 </script>
 
 <style scoped>
+/* 紧凑横条（2026-10-17 用户口径「首页的角色选择占了 3 大块，可以缩小吗」）：
+   原卡是「卡头一行 + 56px 人像 + 名字行 + 标签行 + 音擎行」竖向堆叠，min-height 120px、
+   实测 126px 高 × 3 列。现在压成**单行横条**：人像 40px 与文字并排，槽位/影画挪到右缘，
+   标签与名字同一行、音擎在下一行 —— 实测高度 126 → 58px，一屏腾出约 68px。
+   ⚠ 不要写回 min-height: 120px：那会把整条再撑高（本组件的高度就是首页最贵的垂直预算）。 */
 .character-card {
   background: var(--wa-40);
   border: 1px solid var(--wa-80);
   border-radius: 10px;
-  padding: 14px;
+  padding: 8px 10px;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-height: 120px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  min-width: 0;
 }
 
 .character-card:hover {
@@ -227,22 +229,11 @@ function handleCardClick() {
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
 }
 
-.character-card.empty {
-  justify-content: center;
-  align-items: center;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
 .slot-label {
   font-size: 11px;
   color: var(--wa-400);
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .cinema-level {
@@ -251,24 +242,21 @@ function handleCardClick() {
      strong 在两侧主题的彩色底上都 >4.5（影画等级是关键信息，值得提档） */
   color: var(--c-warning-strong);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .card-body {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.char-portrait-row {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
 }
 
 .char-portrait-wrapper {
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
   overflow: hidden;
   background: var(--wa-50);
@@ -285,24 +273,34 @@ function handleCardClick() {
 
 .char-info {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
 
 .char-name {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   /* 原 #fff：明亮模式卡片是白底，白字不可见 */
   color: var(--app-text-solid);
   line-height: 1.3;
-  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .char-name-row {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+}
+
+/* 换人箭头：贴名字右侧，不占整行 */
+.char-switch {
+  flex-shrink: 0;
 }
 
 /* 搜索无命中时的空态（NPopselect #empty 槽；底是 naive 弹层，不是页面底 ⇒ 用次级墨 --fg-2） */
@@ -311,31 +309,35 @@ function handleCardClick() {
   font-size: 12px;
 }
 
-.char-tags {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
 .wengine-name {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--wa-500);
   display: flex;
   align-items: center;
-  margin-top: 2px;
+  min-width: 0;
+}
+
+/* 音擎名可能很长（「月相-望」这类短，但「浮波柚叶」类活动音擎会顶满）⇒ 单行省略，别撑高整条 */
+.wengine-name-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 槽位/影画右缘竖排：与左侧同一行，省掉原「卡头」整行 */
+.card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
 .card-empty {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 8px;
   flex: 1;
-}
-
-.empty-text {
-  font-size: 13px;
-  color: var(--wa-300);
+  min-width: 0;
 }
 </style>

@@ -224,138 +224,146 @@
                       <div v-if="interactionHint.level !== 'none'" class="interaction-hint" :class="interactionHint.level" :title="interactionHintTitle">
                         {{ interactionHint.text }}
                       </div>
-                      <n-grid cols="6" :x-gap="8">
-                      <n-gi>
-                        <div class="field" title="对黄光的一次交互次数。招架型角色＝弹刀（轻弹刀＋支援突击）；回避型角色＝回避支援（1.166s 时停，不产伤害与失衡）＋支援突击。一个角色只能其一（用户 2026-09-15 口径）">
-                          <span class="field-label">弹刀/回避次数<span v-if="interactionTopUpForSlot && interactionTopUpForSlot.parry > 0" class="field-hint">+{{ interactionTopUpForSlot.parry }}（自动补齐）</span><span v-if="parrySplitForSlot" class="field-hint">{{ parrySplitForSlot.label }}</span><span v-if="counterAssistForSlot > 0" class="field-hint">（控制技 {{ counterAssistForSlot }} 组已转反制支援）</span></span>
-                          <n-input-number
-                            :value="selectedChar.parryCount || interactionDefaults.parry"
-                            :min="0"
-                            :max="99"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'parryCount', v ?? 0)"
-                          />
+                      <!--
+                        交互栏自适应网格（2026-10-17 用户报「交互栏太小了，输入框的数字都显示不出来」）。
+                        原写法 `n-grid cols="6"` ⇒ 6 列**固定等分**：半栏宽 421px 减去 5×8px 间隙后
+                        每格 **63.5px**，而 naive 的 n-input-number 默认带**加减按钮**（后缀实测占 36px）
+                        ⇒ 输入区只剩 **5.5px**（实测 clientWidth=6、scrollWidth=9~18）⇒ 「10」这种两位数
+                        直接看不见。现在改成 CSS 网格 auto-fill：每格至少 96px（够显示 3 位数 + 加减按钮），
+                        半栏放 4 列、整栏放 6+ 列，按可用宽度自动排 —— 不再写死列数。
+                      -->
+                      <div class="action-grid">
+                        <div>
+                          <div class="field" title="对黄光的一次交互次数。招架型角色＝弹刀（轻弹刀＋支援突击）；回避型角色＝回避支援（1.166s 时停，不产伤害与失衡）＋支援突击。一个角色只能其一（用户 2026-09-15 口径）">
+                            <span class="field-label">弹刀/回避次数<span v-if="interactionTopUpForSlot && interactionTopUpForSlot.parry > 0" class="field-hint">+{{ interactionTopUpForSlot.parry }}（自动补齐）</span><span v-if="parrySplitForSlot" class="field-hint">{{ parrySplitForSlot.label }}</span><span v-if="counterAssistForSlot > 0" class="field-hint">（控制技 {{ counterAssistForSlot }} 组已转反制支援）</span></span>
+                            <n-input-number
+                              :value="selectedChar.parryCount || interactionDefaults.parry"
+                              :min="0"
+                              :max="99"
+                              size="small"
+                              style="width: 100%"
+                              @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'parryCount', v ?? 0)"
+                            />
+                          </div>
                         </div>
-                      </n-gi>
-                      <n-gi>
-                        <div class="field">
-                          <span class="field-label">闪避反击</span>
-                          <n-input-number
-                            :value="selectedChar.dodgeCounterCount || interactionDefaults.dodge"
-                            :min="0"
-                            :max="99"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'dodgeCounterCount', v ?? 0)"
-                          />
+                        <div>
+                          <div class="field">
+                            <span class="field-label">闪避反击</span>
+                            <n-input-number
+                              :value="selectedChar.dodgeCounterCount || interactionDefaults.dodge"
+                              :min="0"
+                              :max="99"
+                              size="small"
+                              style="width: 100%"
+                              @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'dodgeCounterCount', v ?? 0)"
+                            />
+                          </div>
                         </div>
-                      </n-gi>
-                      <n-gi v-if="interactionInputs.block">
-                        <div class="field">
-                          <span class="field-label">{{ interactionInputs.block?.label }}</span>
-                          <n-input-number
-                            :value="selectedChar.blockCount || interactionDefaults.block"
-                            :min="0"
-                            :max="99"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'blockCount', v ?? 0)"
-                          />
+                        <div v-if="interactionInputs.block">
+                          <div class="field">
+                            <span class="field-label">{{ interactionInputs.block?.label }}</span>
+                            <n-input-number
+                              :value="selectedChar.blockCount || interactionDefaults.block"
+                              :min="0"
+                              :max="99"
+                              size="small"
+                              style="width: 100%"
+                              @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'blockCount', v ?? 0)"
+                            />
+                          </div>
                         </div>
-                      </n-gi>
-                      <n-gi v-if="interactionInputs.dualCounter">
-                        <div class="field">
-                          <span class="field-label">{{ interactionInputs.dualCounter?.label }}<span v-if="interactionTopUpForSlot && interactionTopUpForSlot.dual > 0" class="field-hint">+{{ interactionTopUpForSlot.dual }}（自动补齐）</span></span>
-                          <n-input-number
-                            :value="selectedChar.dualCounterCount || interactionDefaults.dual"
-                            :min="0"
-                            :max="99"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'dualCounterCount', v ?? 0)"
-                          />
+                        <div v-if="interactionInputs.dualCounter">
+                          <div class="field">
+                            <span class="field-label">{{ interactionInputs.dualCounter?.label }}<span v-if="interactionTopUpForSlot && interactionTopUpForSlot.dual > 0" class="field-hint">+{{ interactionTopUpForSlot.dual }}（自动补齐）</span></span>
+                            <n-input-number
+                              :value="selectedChar.dualCounterCount || interactionDefaults.dual"
+                              :min="0"
+                              :max="99"
+                              size="small"
+                              style="width: 100%"
+                              @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'dualCounterCount', v ?? 0)"
+                            />
+                          </div>
                         </div>
-                      </n-gi>
-                      <!-- CC-65：角色专属计数输入框 → 模块声明 characterCountInputs（原 1551×2 / 1471 嘲讽取消 / 1541 / 1371×5 写死块） -->
-                      <n-gi v-for="inp in characterCountInputs" :key="inp.field">
-                        <div class="field" :title="inp.title">
-                          <span class="field-label">{{ inp.label }}<span v-if="inp.hint" class="field-hint">{{ inp.hint }}</span></span>
-                          <n-input-number
-                            :value="characterCountInputValue(inp, selectedChar[inp.field])"
-                            :min="ACTION_COUNT_BOUNDS[inp.field].min"
-                            :max="ACTION_COUNT_BOUNDS[inp.field].max"
-                            size="small"
-                            style="width: 100%"
-                            :placeholder="inp.mode === 'autoIfNonPositive' ? '自动' : undefined"
-                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, inp.field, v ?? characterCountInputClearValue(inp))"
-                          />
+                        <!-- CC-65：角色专属计数输入框 → 模块声明 characterCountInputs（原 1551×2 / 1471 嘲讽取消 / 1541 / 1371×5 写死块） -->
+                        <div v-for="inp in characterCountInputs" :key="inp.field">
+                          <div class="field" :title="inp.title">
+                            <span class="field-label">{{ inp.label }}<span v-if="inp.hint" class="field-hint">{{ inp.hint }}</span></span>
+                            <n-input-number
+                              :value="characterCountInputValue(inp, selectedChar[inp.field])"
+                              :min="ACTION_COUNT_BOUNDS[inp.field].min"
+                              :max="ACTION_COUNT_BOUNDS[inp.field].max"
+                              size="small"
+                              style="width: 100%"
+                              :placeholder="inp.mode === 'autoIfNonPositive' ? '自动' : undefined"
+                              @update:value="v => configStore.setActionCount(uiStore.selectedSlot, inp.field, v ?? characterCountInputClearValue(inp))"
+                            />
+                          </div>
                         </div>
-                      </n-gi>
-                      <n-gi>
-                        <div class="field">
-                          <span class="field-label">快速支援</span>
-                          <n-input-number
-                            :value="selectedChar.quickAssistCount ?? 0"
-                            :min="0"
-                            :max="99"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'quickAssistCount', v ?? 0)"
-                          />
+                        <div>
+                          <div class="field">
+                            <span class="field-label">快速支援</span>
+                            <n-input-number
+                              :value="selectedChar.quickAssistCount ?? 0"
+                              :min="0"
+                              :max="99"
+                              size="small"
+                              style="width: 100%"
+                              @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'quickAssistCount', v ?? 0)"
+                            />
+                          </div>
                         </div>
-                      </n-gi>
-                      <n-gi>
-                        <div class="field">
-                          <span class="field-label">连携次数/失衡</span>
-                          <n-input-number
-                            :value="selectedChar.chainCountPerStun ?? 1"
-                            :min="0"
-                            :max="3"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'chainCountPerStun', v ?? 0)"
-                          />
+                        <div>
+                          <div class="field">
+                            <span class="field-label">连携次数/失衡</span>
+                            <n-input-number
+                              :value="selectedChar.chainCountPerStun ?? 1"
+                              :min="0"
+                              :max="3"
+                              size="small"
+                              style="width: 100%"
+                              @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'chainCountPerStun', v ?? 0)"
+                            />
+                          </div>
                         </div>
-                      </n-gi>
-                      <n-gi>
-                        <div class="field">
-                          <span class="field-label">平A时间权重</span>
-                          <n-input-number
-                            :value="selectedChar.basicAttackTimeWeight ?? selectedAgentDefaultTimeWeight"
-                            :min="0"
-                            :max="99"
-                            :step="0.1"
-                            size="small"
-                            style="width: 100%"
-                            @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'basicAttackTimeWeight', v ?? 0)"
-                          />
+                        <div>
+                          <div class="field">
+                            <span class="field-label">平A时间权重</span>
+                            <n-input-number
+                              :value="selectedChar.basicAttackTimeWeight ?? selectedAgentDefaultTimeWeight"
+                              :min="0"
+                              :max="99"
+                              :step="0.1"
+                              size="small"
+                              style="width: 100%"
+                              @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'basicAttackTimeWeight', v ?? 0)"
+                            />
+                          </div>
                         </div>
-                      </n-gi>
-                      <n-gi>
-                        <div class="field">
-                          <span class="field-label">
-                            权重分配策略
-                            <n-tooltip trigger="hover" style="max-width: 360px">
-                              <template #trigger><span class="field-hint">?</span></template>
-                              **静态** = 不自动分配，用静态默认权重（强攻/异常/击破=1、支援/防护=0）或手填值。
-                              **均衡（快，默认）** = 按**团队总伤**在槽位间转移平A 时间（≈3 倍求值）。
-                              **联合（慢）** = 均衡 + 再搜**弹刀次数**（≈15~20 次求值 ~1.5s），硬门=不发生时间线截断
-                              （前台净占用不超过总时间），越界候选一律回滚，所以弹刀不会无限加。
-                              后两档都是坐标上升（只接受总伤上升）⇒ 逐队总伤不会变差；失衡次数/时间账的挪动如实上报。
-                              队伍变更/切换档位时触发；**切回静态不会还原已写回的值**（要干净静态值就重新套一次预设）。
-                            </n-tooltip>
-                          </span>
-                          <n-select
-                            :value="configStore.timeWeightStrategy"
-                            size="small"
-                            style="width: 108px"
-                            :options="timeWeightModeOptions"
-                            @update:value="v => configStore.setTimeWeightStrategy(v)"
-                          />
+                        <div>
+                          <div class="field">
+                            <span class="field-label">
+                              权重分配策略
+                              <n-tooltip trigger="hover" style="max-width: 360px">
+                                <template #trigger><span class="field-hint">?</span></template>
+                                **静态** = 不自动分配，用静态默认权重（强攻/异常/击破=1、支援/防护=0）或手填值。
+                                **均衡（快，默认）** = 按**团队总伤**在槽位间转移平A 时间（≈3 倍求值）。
+                                **联合（慢）** = 均衡 + 再搜**弹刀次数**（≈15~20 次求值 ~1.5s），硬门=不发生时间线截断
+                                （前台净占用不超过总时间），越界候选一律回滚，所以弹刀不会无限加。
+                                后两档都是坐标上升（只接受总伤上升）⇒ 逐队总伤不会变差；失衡次数/时间账的挪动如实上报。
+                                队伍变更/切换档位时触发；**切回静态不会还原已写回的值**（要干净静态值就重新套一次预设）。
+                              </n-tooltip>
+                            </span>
+                            <n-select
+                              :value="configStore.timeWeightStrategy"
+                              size="small"
+                              style="width: 100%"
+                              :options="timeWeightModeOptions"
+                              @update:value="v => configStore.setTimeWeightStrategy(v)"
+                            />
+                          </div>
                         </div>
-                      </n-gi>
-                    </n-grid>
+                      </div>
                     </n-collapse-item>
                   </n-collapse>
 
@@ -813,7 +821,7 @@ import { effectAtModLevel } from '@/composables/wEngineEffectDisplay'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanel } from '@/composables/resourceCalc/panelPhases'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
-import { DEFAULT_NO_AXIS_CONC_K, NO_AXIS_CONC_ENABLED_SETTING, NO_AXIS_CONC_K_SETTING } from '@/composables/axisConcEstimate'
+import { DEFAULT_NO_AXIS_CONC_K, NO_AXIS_CONC_ENABLED_SETTING, NO_AXIS_CONC_K_SETTING } from '@/composables/resourceCalc/concEstimate'
 import CharacterCard from '@/components/CharacterCard.vue'
 import StatPanel from '@/components/StatPanel.vue'
 import { computeOutOfCombatPanel } from '@/composables/outOfCombatPanel'
@@ -984,7 +992,7 @@ function setGuarantee(kind: 'stun' | 'fury' | 'ultimate', v: boolean) {
   configStore.setMechanicSetting(`guarantee.${kind}`, v ? 1 : 0)
 }
 // R14 / T139：无轴时的失衡易伤估算（开关 + 系数 k）。机制参数键与缺省值走单一来源
-// （composables/axisConcEstimate.ts），页面不复制字面量（规则 11）。
+// （composables/resourceCalc/concEstimate.ts），页面不复制字面量（规则 11）。
 // 措辞按 docs/axis-vuln-uplift-reference.md §12.4 的「游戏场景措辞」——**不出现「集中度」这种术语**。
 const noAxisConcEnabled = computed(() =>
   configStore.getMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 1) !== 0)
