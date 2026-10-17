@@ -15,6 +15,8 @@
 import type { EffectRequirement, LocalizedString } from '@/types/catalog'
 import { getStatMeta, isPctStat } from './statMeta'
 import { localized } from './format'
+import { normalizeSkillDamageTarget, SKILL_DMG_TARGET_LABELS, SKILL_TAG_TARGET } from '@/data/skillDamageTargets'
+import type { SkillDamageTarget } from '@/types/catalog'
 
 interface EffectLike {
   id?: string
@@ -28,9 +30,37 @@ interface EffectLike {
   condition?: string
   coverage?: unknown
   requirement?: EffectRequirement
-  target?: unknown
+  target?: EffectTargetLike
   stackGroup?: string
   durationSeconds?: number | null
+  /** 显式招式目标（旧字段，与 `target.skillTargets` 同义；`core/buff.ts#effectSkillDamageTargets` 两处都读） */
+  targetSkillType?: string
+}
+
+interface EffectTargetLike {
+  skillTargets?: { kind?: string; skillType?: string; skillTag?: string }[]
+}
+
+/**
+ * 效果实际落在哪些招式族上（与引擎 `core/buff.ts#effectSkillDamageTargets` **同一份判定**）。
+ *
+ * 为什么展示层需要它（2026-10-18，用户报「拂晓四件套明明是加普攻伤害，为什么显示的全部增伤」）：
+ * 引擎把带 `target` 的 `dmgBonus` 写进 `dmgBonus__basic` 这种**定向字段**，而本模块只按 `stat`
+ * 取标签 ⇒ 三条「普通攻击」效果全显示成「通用伤害加成」。标签口径因此必须按目标分叉。
+ *
+ * 返回 `'all'`（无目标 / 目标不可识别）= 全招式，与引擎的回落一致。
+ */
+function skillTargetsOf(e: EffectLike): SkillDamageTarget[] {
+  const explicit = e.targetSkillType
+  if (explicit) return [normalizeSkillDamageTarget(explicit)]
+  const out: SkillDamageTarget[] = []
+  for (const t of e.target?.skillTargets ?? []) {
+    if (t.kind === 'skillType' && t.skillType) out.push(normalizeSkillDamageTarget(t.skillType))
+    // skillTag → 招式族：`assistAttack` 归一到 `assist`（与 `core/buff.ts#SKILL_TAG_TARGET` 同表）
+    if (t.kind === 'skillTag' && t.skillTag) out.push(normalizeSkillDamageTarget(SKILL_TAG_TARGET[t.skillTag] ?? 'all'))
+  }
+  const unique = [...new Set(out)]
+  return unique.length > 0 ? unique : ['all']
 }
 
 interface PieceLike {
@@ -127,19 +157,32 @@ function rowsOfPiece(
     const condition = [groupCondition, typeof e.condition === 'string' ? e.condition : ''].filter(Boolean).join('；')
     const key = String(e.id ?? `${setId}-${scope}-${i}`)
     const statId = String(e.stat ?? '')
+    // 定向标签（2026-10-18）：引擎把带 `target` 的 dmgBonus 写进 `dmgBonus__basic` 这类定向字段，
+    // 展示层此前只按 stat 取标签 ⇒ 拂晓生花三条「普通攻击」效果全显示成「通用伤害加成」。
+    // 多目标时并列出全部招式族（如 31800「强化特殊技 + 支援攻击」）。
+    const targets = skillTargetsOf(e)
+    const targeted = targets[0] !== 'all'
+    const baseLabel = labels.stat ? labels.stat(statId) : getStatMeta(statId).label
+    const label = targeted
+      ? `${baseLabel}（${targets.map(t => SKILL_DMG_TARGET_LABELS[t] ?? t).join(' / ')}限定）`
+      : baseLabel
     return {
       key,
       setId,
       scope,
       stat: statId,
-      label: labels.stat ? labels.stat(statId) : getStatMeta(statId).label,
+      label,
       valueText: valueTextOf(e),
       // 门槛类由引擎按面板自动判定，再挂 uptime 滑块会双重打折 → 不给
       // CC-111（R5 D7）：带持续时间（效果级或组级）的效果也给滑块——引擎按 effect.id 读覆盖率、fixed 同样乘；默认 100% 不变
-      adjustable: !gate && !!e.id && (!!e.condition || !!e.maxStacks || !!e.coverage || e.durationSeconds != null || piece?.durationSeconds != null),
+      // 2026-10-18：`condition` **或** `durationSeconds` 任一存在就给滑块，不看门槛（门槛只决定「自动判定」标注）。
+      // 修前是 `!gate && ...`：带门槛 + 触发/限时的效果（拂晓生花 4pc 第二段「强攻角色发动强特/终结后 +20%，25 秒」）
+      // 被短路成 adjustable=false ⇒ 页面没有 uptime 滑块，引擎恒按 100% 覆盖率结算 ⇒ 静默高估。
+      // 门槛与 uptime 是**两个正交维度**：门槛自动判定（不给用户拨），触发频率仍要用户表达。
+      adjustable: !!e.id && (!!e.condition || !!e.maxStacks || !!e.coverage || e.durationSeconds != null || piece?.durationSeconds != null),
       ...(gate ? { gateText: gate } : {}),
       ...(condition ? { condition } : {}),
-      ...(e.target ? { targeted: true } : {}),
+      ...(targeted ? { targeted: true } : {}),
       ...(e.stackGroup ? { stackGroup: e.stackGroup } : {}),
     }
   })

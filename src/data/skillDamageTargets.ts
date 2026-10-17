@@ -29,3 +29,20 @@ export function normalizeSkillDamageTarget(target?: string): SkillDamageTarget {
   if (target && (SKILL_DMG_TARGETS as string[]).includes(target)) return target as SkillDamageTarget
   return 'all'
 }
+
+/**
+ * `target.skillTargets[].skillTag` → 招式族。
+ *
+ * CC-105（R5 D21）：补 `assistAttack → assist`（31800 混沌爵士 4pc「[支援攻击]伤害提升」修前被静默丢弃）。
+ * 未登记的 tag 仍被忽略——`core/__tests__/skillTargetsCoverage.test.ts` 会对 catalog 中出现的每个 tag 报错，
+ * 新增 tag 时在这里登记。
+ *
+ * ⚠ 2026-10-18 从 `core/buff.ts` 下沉到这里：驱动盘套装效果行的定向标签（`utils/discEffectRows.ts`）
+ * 必须与引擎用**同一张表**，而 `src/utils` 不能 import `@/core`（ARCHITECTURE §0 分层）。
+ */
+export const SKILL_TAG_TARGET: Record<string, SkillDamageTarget> = {
+  exSpecial: 'exSpecial',
+  dashAttack: 'dashAttack',
+  additionalAttack: 'additionalAttack',
+  assistAttack: 'assist',
+}

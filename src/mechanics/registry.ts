@@ -118,3 +118,23 @@ export function getRegisteredAgentMechanics(): AgentMechanicModule[] {
 export function getRegisteredMechanicSettings(): MechanicSetting[] {
   return [...settingDefaults.values()]
 }
+
+/**
+ * 机制滑块解析（`setting id → 当前值`，用户值优先、缺省回落声明 default）。
+ *
+ * 单一事实源：编排层 `composables/resourceCalc/panelPhases.ts#resolveMechanicSettings` 与
+ * store 的配装推荐（`applyBuildRecommendationForSlot` 的副词条基线面板）都必须用同一份解析，
+ * 否则两处面板的滑块取值会分叉（2026-10-18 百暴溢出修复时把这条抽到 mechanics 层，
+ * store 与 composables 都能 import，而不必让 store 反向依赖 composables）。
+ */
+export function resolveMechanicSettingMap(
+  values: Readonly<Record<string, number>>,
+  settings: readonly MechanicSetting[] = getRegisteredMechanicSettings(),
+): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const setting of settings) {
+    const value = values[setting.id]
+    out[setting.id] = typeof value === 'number' && Number.isFinite(value) ? value : setting.default
+  }
+  return out
+}

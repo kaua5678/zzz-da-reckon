@@ -11,7 +11,7 @@ import { GENERATED_ENEMY_DEBUFF_STAT_IDS, LEGACY_ENEMY_DEBUFF_STAT_IDS, normaliz
 import { elementStatKey, type ElementStatKind } from '@/utils/elementStatKeys'
 import { wEngineConditionMet, wEngineEffectRequirementMet, type WEngineConditionContext } from '@/core/wengineConditions'
 
-import { normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
+import { normalizeSkillDamageTarget, SKILL_TAG_TARGET } from '@/data/skillDamageTargets'
 import { calcEnergyRegenTotal, calcFlashEnergyRegenTotal } from '@/data/agentPanelStats'
 import { evalSandboxedFormula } from '@/utils/formulaSandbox'
 
@@ -62,18 +62,8 @@ const TARGETABLE_STATS = new Set([
   ...LEGACY_ENEMY_DEBUFF_STAT_IDS,
 ])
 
-/**
- * skillTag → 招式族。CC-105（R5 D21）：补 `assistAttack → assist`（31800 混沌爵士 4pc「[支援攻击]伤害提升」
- * 修前被静默丢弃）。未登记的 tag 仍被忽略——`skillTargetsCoverage.test.ts` 会对 catalog 中出现的
- * 每个 tag 报错，新增 tag 时在这里登记。
- */
-const SKILL_TAG_TARGET: Record<string, SkillDamageTarget> = {
-  exSpecial: 'exSpecial',
-  dashAttack: 'dashAttack',
-  additionalAttack: 'additionalAttack',
-  assistAttack: 'assist',
-}
-
+// skillTag → 招式族（`SKILL_TAG_TARGET`）住在 `@/data/skillDamageTargets`（2026-10-18 下沉）：
+// 展示层（驱动盘套装效果行的定向标签）与引擎必须用同一张表，而 `src/utils` 不能 import `@/core`。
 function effectSkillDamageTargets(effect: BuffEffect): SkillDamageTarget[] {
   const explicit = effect.targetSkillType
   if (explicit) return [normalizeSkillDamageTarget(explicit)]

@@ -18,6 +18,8 @@ import type {
 } from '@/types/catalog'
 import { calcPanel, type PanelCalcConfig } from './panel'
 import { getAgentMechanic } from '@/mechanics/registry'
+import type { MechanicTeamMember } from '@/mechanics/types'
+import { applyAgentPanelHooks } from './agentPanelPhases'
 
 /** 暴击率副词条步长（S 级 +2.4%/步；原 SUBSTAT_POOL.critRate，只剩「百暴」缺口在用） */
 const CRIT_RATE_STEP = 2.4
@@ -173,6 +175,38 @@ export interface DefaultSubStatInput {
   statCap?: number
   /** 总步数。缺省或 0 = 按模板词条数分档（2→32 / 3→39 / ≥4→43，见 TOTAL_STEP_TIERS）。 */
   totalSteps?: number
+  /**
+   * 角色面板钩子（`applyPanel`）所需的上下文；缺省 = **不派发**（只有 `calcPanel` 的纯 buff 面板）。
+   *
+   * 为什么必须传（2026-10-18 修「百暴溢出」）：`calcPanel` 只跑 buff 管线，角色模块的
+   * `applyPanel`（核心被动/额外能力/影画面板段）与 3/5 命技能等级通用规则在**编排层**才跑。
+   * 不派发 ⇒ 「百暴」基线读到的是**没有角色面板**的暴击率，实测 62 角色里 8 个把暴击词条配到溢出
+   * （希格莉德基线 19.4% / 真实 85.4%，满 20 步后 133.4%，浪费 13 步）。细节见 `core/agentPanelPhases.ts`。
+   *
+   * ⚠ 有意**不**在 `computeNoSubstatPanel` 里从 store 反查：core 不依赖 store（调用方组装）。
+   * store 的配装推荐传 `teammateBuffs: []`（推荐配装与队友无关的口径），这里同样只补角色自身面板。
+   */
+  panelHooks?: DefaultSubStatPanelHooks
+}
+
+/** 角色面板钩子入参（由调用方从 store 组装；core 只认字段不认 store） */
+export interface DefaultSubStatPanelHooks {
+  /** 槽位号（`applyPanel` 的 `slot` 字段；`teamPanelEffects` 按它取自己） */
+  slot: number
+  /** 已解析的机制滑块（`resolveMechanicSettings` 同形）；缺省 `{}` ⇒ 模块内走声明缺省 */
+  settings?: Readonly<Record<string, number>>
+  /** 额外能力门控（1 = 生效）；缺省 = 由调用方判定的结果，未给则保持 calcPanel 的面板值 */
+  additionalAbilityActive?: number
+  /** 敌方失衡易伤基础值（叶瞬光帷幕算式的外部输入） */
+  enemyStunVuln?: number
+  /** 队伍成员快照（`MechanicTeamMember[]`）；缺省 = 只有本槽的空队 */
+  team?: readonly MechanicTeamMember[]
+  /**
+   * 是否把**队友给本槽的面板加成**（`teamPanelEffects`）也算进基线。
+   * - 编排层优化器（起点要与伤害管线同面板）传 `true`；
+   * - store 配装推荐（推荐配装与队友无关的口径）不传 ⇒ 只算角色自身面板。
+   */
+  withTeamPanelEffects?: boolean
 }
 
 /** 不含副词条的局内面板（只用于「百暴」缺口：暴击率） */
@@ -197,7 +231,25 @@ function computeNoSubstatPanel(input: DefaultSubStatInput): PanelValues {
       enemyWeakness: input.config.enemyWeakness,
     },
   )
-  return { ...result.inCombat }
+  const panel: PanelValues = { ...result.inCombat }
+  // 角色面板钩子：与 computePanelPhases 的派发顺序一致（门控标记 → applyPanel → 技能等级）。
+  // 不传上下文 = 调用方明确要求「纯 buff 面板」（例如只比较套装/音擎差异的夹具）。
+  if (input.panelHooks) {
+    applyAgentPanelHooks({
+      agent: input.agent,
+      panel,
+      outOfCombatPanel: result.outOfCombat,
+      slot: input.panelHooks.slot,
+      cinemaLevel: input.config.cinemaLevel,
+      potentialLevel: input.config.potentialLevel ?? 6,
+      team: input.panelHooks.team ?? [],
+      settings: input.panelHooks.settings ?? {},
+      additionalAbilityActive: input.panelHooks.additionalAbilityActive,
+      enemyStunVuln: input.panelHooks.enemyStunVuln,
+      withTeamPanelEffects: input.panelHooks.withTeamPanelEffects,
+    })
+  }
+  return panel
 }
 
 /**

@@ -65,6 +65,13 @@
             <span class="stat-label">暴击伤害</span>
             <span class="stat-value">{{ formatPercent(panel.critDmg) }}</span>
           </div>
+          <!-- 定向暴击（`critRate__<招式族>` / `critDmg__<招式族>`）：引擎按招式读回
+               （`core/damage.ts` 的 `getTargetedStat(panel,'critRate',target)`），
+               而「暴击率」那一行只显示基础字段 ⇒ 招式限定暴击在页面上不可见（同 dmgBonus__ 的问题）。 -->
+          <div class="stat-row" v-for="row in targetedCritRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}</span>
+            <span class="stat-value">+{{ formatPercent(row.value) }}</span>
+          </div>
         </div>
       </n-collapse-item>
 
@@ -91,6 +98,13 @@
           <div class="stat-row" v-if="panel.dmgBonus !== 0">
             <span class="stat-label">通用伤害加成</span>
             <span class="stat-value">+{{ formatPercent(panel.dmgBonus) }}</span>
+          </div>
+          <!-- 定向通用增伤（`dmgBonus__basic` 一族）：引擎把「[普通攻击]造成的伤害提升」这类效果
+               写进定向字段（`core/buff.ts#applyTargetedStat`），此前面板**一处都不显示**——
+               拂晓生花 4pc 的 55% 普攻增伤在面板上完全不可见（用户 2026-10-18 报「显示的全部增伤」）。 -->
+          <div class="stat-row" v-for="row in targetedDmgRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}</span>
+            <span class="stat-value">+{{ formatPercent(row.value) }}</span>
           </div>
           <div class="stat-section-title" v-if="skillDmgRows.length > 0">招式类型增伤</div>
           <div class="stat-row" v-for="row in skillDmgRows" :key="row.key">
@@ -501,7 +515,8 @@
 import { getPanelStat } from '@/utils/panelStat'
 import { ref, computed } from 'vue'
 import { NCollapse, NCollapseItem } from 'naive-ui'
-import type { DamageElement, PanelValues } from '@/types/catalog'
+import type { DamageElement, PanelValues, SkillDamageTarget } from '@/types/catalog'
+import { SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
 import { getStatMeta, isPctStat } from '@/utils/statMeta'
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
 import { expectedCritMultiplier } from '@/data/critMultiplier'
@@ -567,6 +582,36 @@ const skillDmgRows = computed(() => {
   return Object.entries(SKILL_DMG_LABELS)
     .map(([key, label]) => ({ key, label, value: getPanelStat(props.panel, key) ?? 0 }))
     .filter(row => row.value !== 0)
+})
+
+/**
+ * 定向通用增伤（`dmgBonus__<招式族>`）：引擎把「[普通攻击]造成的伤害提升 20%」这类效果写进定向键
+ * （`core/buff.ts#applyTargetedStat`，`core/damage.ts` 按当前招式读回）。此前面板只列 `dmgBonus`，
+ * 这一整族**一处都不显示** ⇒ 拂晓生花 4pc 的 55% 普攻增伤在面板上完全不可见（2026-10-18 用户报）。
+ */
+const targetedDmgRows = computed(() => {
+  return Object.entries(props.panel)
+    .filter(([key, value]) => key.startsWith('dmgBonus__') && typeof value === 'number' && value !== 0)
+    .map(([key, value]) => {
+      const target = key.slice('dmgBonus__'.length)
+      return { key, label: `通用伤害加成（${SKILL_DMG_TARGET_LABELS[target as SkillDamageTarget] ?? target}限定）`, value: value as number }
+    })
+})
+
+/** 定向暴击（`critRate__*` / `critDmg__*`）：与 dmgBonus__ 同族，引擎按招式读回，面板此前不显示 */
+const targetedCritRows = computed(() => {
+  const prefixLabel: Record<string, string> = { critRate__: '暴击率', critDmg__: '暴击伤害', sharpCritDmg__: '锐暴伤害' }
+  return Object.entries(props.panel)
+    .filter(([key, value]) => Object.keys(prefixLabel).some(p => key.startsWith(p)) && typeof value === 'number' && value !== 0)
+    .map(([key, value]) => {
+      const prefix = Object.keys(prefixLabel).find(p => key.startsWith(p))!
+      const target = key.slice(prefix.length)
+      return {
+        key,
+        label: `${prefixLabel[prefix]}（${SKILL_DMG_TARGET_LABELS[target as SkillDamageTarget] ?? target}限定）`,
+        value: value as number,
+      }
+    })
 })
 
 const totalSkillDmgBonusForPanel = computed(() => skillDmgRows.value.reduce((sum, row) => sum + row.value, 0))

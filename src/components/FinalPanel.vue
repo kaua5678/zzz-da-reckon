@@ -109,7 +109,8 @@ import { calcPenetrationPower, penetrationPowerFormulaLabel, penetrationPowerFor
 import { isPctStat } from '@/utils/statMeta'
 import { elementStatKey } from '@/utils/elementStatKeys'
 import { fmt, pct } from '@/utils/format'
-import type { PanelValues } from '@/types/catalog'
+import type { PanelValues, SkillDamageTarget } from '@/types/catalog'
+import { SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -197,11 +198,19 @@ const panels = computed(() => {
     }
 
     // 直伤增伤区：只有通用/元素/招式三类（锐化/贯穿/异常/紊乱是独立乘区）
+    // 定向通用增伤（`dmgBonus__basic` 一族）单独列行：引擎把「[普通攻击]造成的伤害提升」写进定向键，
+    // 此前终局面板只列 `dmgBonus` ⇒ 拂晓生花 4pc 的 55% 普攻增伤不可见（2026-10-18 用户报）。
     const dmgRows: FinalRow[] = [
       makeRow(pOut, pIn, 'dmgBonus', '通用增伤'),
       ...(elementDmgKey ? [makeRow(pOut, pIn, elementDmgKey, `元素增伤（${element}）`)] : []),
       makeRow(pOut, pIn, 'skillDmgBonus', '全招式增伤'),
     ]
+    for (const r of targetedRows(pIn, 'dmgBonus', t => SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t)) {
+      dmgRows.push({
+        stat: r.stat, label: r.label, out: disp(r.stat, 0), in: disp(r.stat, r.value),
+        delta: r.value, deltaText: `+${disp(r.stat, r.value)}`,
+      })
+    }
     for (const r of skillTargeted) {
       dmgRows.push({
         stat: r.stat, label: r.label, out: disp(r.stat, 0), in: disp(r.stat, r.value),

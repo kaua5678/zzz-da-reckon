@@ -128,9 +128,12 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     // 加权口径 = 逐行伤害占比对易伤倍数加权 ⇒ 任何改变**行伤害结构**的引擎改动都会动它
     // （本次 = 合轴吸收改「取满容量」+ 闸门常开 ⇒ 平A池重分 ⇒ 各行占比微移）。
     // 上面那组**行级**结构断言（2.100 / 1.000）一条未变 ⇒ 易伤机制本身没动，只是权重漂移。
-    expect(s.weightedVuln).toBeCloseTo(1.6622, 3)
-    expect(s.weightedCredit).toBeCloseTo(0.6622, 3)
-    expect(s.coverageRate).toBeCloseTo(0.6020, 3)
+    // ⚠ **2026-10-18 重冻**：1.6622/0.6622/0.6020 → **1.6645/0.6645/0.6041**。
+    // 归因：副词条「百暴」基线改用真实面板（含角色 applyPanel）⇒ 1291 雨果的暴击词条不再溢出
+    // （修前 4 步白扔）⇒ 行伤害结构微移。行级易伤（2.100 / 1.000）与轴结构断言全部未变。
+    expect(s.weightedVuln).toBeCloseTo(1.6645, 3)
+    expect(s.weightedCredit).toBeCloseTo(0.6645, 3)
+    expect(s.coverageRate).toBeCloseTo(0.6041, 3)
   })
 
   it('案例 D（加闪反块被轴认领一半）：加权快照 1.7198/0.7198/0.6543；闪反切成两行', async () => {
@@ -153,9 +156,10 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     )
     // ⚠ **T141 重冻**：1.7198/0.7198/0.6543 → **1.7647/0.7647/0.6952**（理由同上条：行伤害占比微移）。
     // 本条的**结构**判据（闪反 `1291012` 恰好切两行、一行 >1.99 一行 <1.01）在上面，全部未变。
-    expect(s.weightedVuln).toBeCloseTo(1.7647, 3)
-    expect(s.weightedCredit).toBeCloseTo(0.7647, 3)
-    expect(s.coverageRate).toBeCloseTo(0.6952, 3)
+    // ⚠ **2026-10-18 重冻**：1.7647/0.7647/0.6952 → **1.7665/0.7665/0.6971**（同上条：百暴基线修正 ⇒ 行占比微移）。
+    expect(s.weightedVuln).toBeCloseTo(1.7665, 3)
+    expect(s.weightedCredit).toBeCloseTo(0.7665, 3)
+    expect(s.coverageRate).toBeCloseTo(0.6971, 3)
   })
 })
 

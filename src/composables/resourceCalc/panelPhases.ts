@@ -19,7 +19,6 @@ import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import {
   discEffectCoverageOf,
-  mechanicSettingOf,
   teammateBuffCoverageOf,
   teammateBuffEnabledOf,
   wEngineEffectCoverageMapOf,
@@ -30,7 +29,7 @@ import type { CalcRoundThreads } from './roundThreads'
 import type { ModuleFeedback } from '@/mechanics/types'
 import {
   getAgentMechanic,
-  getRegisteredMechanicSettings,
+  resolveMechanicSettingMap,
   type AgentTeamPhase,
   type AgentTeamRoundInput,
   type AgentAxisOverlay,
@@ -46,7 +45,7 @@ import type {
   CharacterOperationConfig,
   StunAxis,
 } from '@/types/resource'
-import type { Agent, PanelValues, TeammateBuff, DriveDiscConfig } from '@/types/catalog'
+import type { PanelValues, TeammateBuff, DriveDiscConfig } from '@/types/catalog'
 // 结算口径单一事实源（全局 Buff → TeammateBuff.effect.mode）。**不要**用展示口径 `isPctStat`：
 // 两者对本仓 39 个字段结论相反（其中 34 个 mode 敏感），详见 statMeta.ts#statSettlementMode 头注释。
 import { statSettlementMode } from '@/utils/statMeta'
@@ -71,18 +70,31 @@ export function buildMechanicTeamMembers(
   }))
 }
 
-/** 角色 combatBuffs 是否已自带 3/5 命技能等级提升（避免通用规则重复叠加） */
-function applyDefaultCinemaSkillLevelBonus(panel: PanelValues, agent: Agent | undefined, cinema: number): void {
-  if (!agentHasCinemaSkillLevelBuff(agent)) {
-    panel.skillLevelBonus = panel.skillLevelBonus + (cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0)
-  }
+/**
+ * 额外能力门控（`spec.additionalAbility` → `evalAdditionalAbility`）的**单独求值口**。
+ *
+ * 面板管线里它是内联在 `computePanelPhases` 的一行；这里给「只跑 `calcPanel` 的消费者」
+ * （副词条基线的起点面板等）一个同源入口，避免它们各自 `?? 0` 或干脆漏判。
+ * 无声明 ⇒ 返回 `undefined`（= 不写标记，保持面板原值，与 `computePanelPhases` 同形）。
+ */
+export function additionalAbilityActiveForPanel(
+  slot: number,
+  configStore: ConfigModel,
+  catalogStore: ReturnType<typeof useCatalogStore>,
+): number | undefined {
+  const char = configStore.team[slot]
+  const agent = char?.agentId ? catalogStore.agentsMap.get(char.agentId) : undefined
+  if (!agent) return undefined
+  const spec = getAgentSpec(agent.id)?.additionalAbility
+  if (!spec) return undefined
+  return evalAdditionalAbility(buildMechanicTeamMembers(configStore, catalogStore), slot, agent, spec) ? 1 : 0
 }
 
-function agentHasCinemaSkillLevelBuff(agent: Agent | undefined): boolean {
-  return (agent?.combatBuffs.cinemaBuffs ?? []).some((cinema) =>
-    (cinema.buff?.effects ?? []).some((e) => e.stat === 'skillLevelBonus'),
-  )
-}
+// 3/5 命技能等级 +2/+4 的通用规则已下沉到 core（`core/agentPanelPhases.ts`，2026-10-18）：
+// 副词条「百暴」基线（`core/substatOptimizer.ts#computeNoSubstatPanel`）与其它只走 `calcPanel` 的
+// 消费者必须与编排层面板看到**同一份** `skillLevelBonus`，否则两处面板又开始分叉。
+// 本文件转出这两个符号，保持既有 import 路径与 `@fact` 锚点（anton.ts / cinemaAxisBatchR62）可用。
+import { applyDefaultCinemaSkillLevelBonus } from '@/core/agentPanelPhases'
 
 /**
  * 蕾米埃尔「额外能力三档失衡提升」的算式**已迁进** `src/mechanics/agents/remielle.ts`
@@ -113,13 +125,10 @@ function agentHasCinemaSkillLevelBuff(agent: Agent | undefined): boolean {
 export function resolveMechanicSettings(
   configStore: ConfigModel,
 ): Readonly<Record<string, number>> {
-  const out: Record<string, number> = {}
-  // 直读 state + 共享纯函数，不经 pinia action 包装（原因与口径单一来源见 `@/stores/selectionReads` 头注释）
-  const values = configStore.mechanicSettings
-  for (const setting of getRegisteredMechanicSettings()) {
-    out[setting.id] = mechanicSettingOf(values, setting.id, setting.default)
-  }
-  return out
+  // 解析口径的单一事实源在 mechanics/registry（store 侧配装推荐的副词条基线面板也调它，
+  // 不能反向 import composables）：2026-10-18 百暴溢出修复时下沉。
+  // 直读 state + 共享纯函数，不经 pinia action 包装（原因与口径单一来源见 `@/stores/selectionReads` 头注释）。
+  return resolveMechanicSettingMap(configStore.mechanicSettings)
 }
 
 /**

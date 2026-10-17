@@ -89,20 +89,23 @@ const CASES = [
   //   ⇒ 团队预算重分配 ⇒ 三队 ledger/dmg 落点都变（本测试核心判据 = acc 残差与 converged，两者实测**不变**：
   //   acc 9.27/21.70/21.70、converged 恒 true ⇒ 折叠环未受剑势修复影响，落点变化纯属「修正 bug 后资源重排」）。
   {
-    id: 'auto-1431-1481-1491', accCeiling: 20, before: 62.57, ledger: [135.478, 42.103, 32.100], dmg: 111.3180,
-    desc: '残差塌回地板（修前 62.57s）且落点不变',
+    id: 'auto-1431-1481-1491', accCeiling: 20, before: 62.57, ledger: [135.478, 42.103, 32.100], dmg: 121.7222,
+    desc: '残差塌回地板（修前 62.57s）且落点不变（dmg 2026-10-18 重取：百暴基线修正 +9.346%，账本/acc 零变化）',
   },
   // 旧 auto-1431-1481-1341：新槽序下 scale 0.375（封顶激活）。
   // ⚠ 本条**不再是 acc 判别器**：新槽序 + 在飞赠行时长修复下 acc 修前/修后同为 21.70（旧槽序是 45.40→21.70）。
   //   它现在的职责 = 钉住 `necessaryUncappedTime` 路径（`feasibleScale < 1`）的**落点**，不是度量残差塌陷。
   //   2026-10-09 剑势修复后落点 [117.328,38.085,59.918]/99.2892M（并发 ultimatePromote.ts 修复 + 剑势排除自己叠加）。
   {
-    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [119.263, 38.085, 61.853], dmg: 99.7299,
+    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [119.263, 38.085, 61.853], dmg: 108.2399,
     desc: '封顶队（scale<1，走 necessaryUncappedTime 路径）；acc 仍 21.70 ⇒ 本条不度量残差塌陷（落点已按 T141 重取，见下）',
   },
   // 旧 auto-1431-1491-1341：槽序互换（照↔千夏）⇒ 账本槽1/槽2 对调。
   // 2026-10-09 剑势修复后落点 [145.904,26.551,28.795]/93.6084M。
-  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [146.793, 26.551, 28.795], dmg: 93.7612, desc: '残差塌回地板（修前 22.74s）；落点已按 T141 重取（见下）' },
+  // ⚠ 2026-10-18 重取 dmg 93.7612 → 101.3291：副词条「百暴」基线改用真实面板（含角色 applyPanel）后，
+  //    1431 叶瞬光的暴击词条不再溢出（修前 7 步白扔）⇒ 同一预设伤害 +8.071%，**时间账与落点零变化**。
+  //    与 timeGolden 的同名 delta 逐位一致（同一次口径修复），不是本用例的被测逻辑变化。
+  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [146.793, 26.551, 28.795], dmg: 101.3291, desc: '残差塌回地板（修前 22.74s）；落点已按 T141 重取（见下）' },
 ] as const
 
 describe('折叠残差不与团队封顶构成正反馈', () => {
@@ -274,8 +277,8 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
         `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 99.4656),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 99.4656M（T141 重取）`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 108.0162),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 108.0162M（2026-10-18 百暴基线修正后重取）`,
       ).toBeLessThan(0.01)
       // 残差仍在量化地板（本修法的目的）
       expect(rr!.convergence?.timeBudgetAccumulatedSeconds ?? 0).toBeLessThan(35)
@@ -338,8 +341,8 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
         `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s（剑势修正后截断归零）`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 81.9685),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 86.0752M`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 88.8599),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 88.8599M（2026-10-18 百暴基线修正后重取）`,
       ).toBeLessThan(0.01)
     }, 200_000)
   })

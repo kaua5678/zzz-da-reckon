@@ -29,7 +29,12 @@ import { computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocatio
 import type { DriveDiscConfig } from '@/types/catalog'
 import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
-import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhases'
+import {
+  additionalAbilityActiveForPanel,
+  buildMechanicTeamMembers,
+  resolveMechanicSettings,
+  resolveSlotPanelBuffInputs,
+} from '@/composables/resourceCalc/panelPhases'
 
 /**
  * CC-183（第 206 轮）：真实伤害精修。
@@ -116,6 +121,17 @@ export function computeSubstatAllocationForSlot(
       statRules: catalogStore.statRules,
       ...budget,
       config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel, potentialLevel: char.potentialLevel, sourcePanelsByOwner: setInfo.sourcePanelsByOwner, effectCoverageMap: setInfo.effectCoverageMap, enemyWeakness: configStore.enemy.weakness },
+      // 起点面板必须与伤害管线同口径（2026-10-18 百暴溢出修复）：calcPanel 不跑角色模块 applyPanel，
+      // 不传 panelHooks ⇒「百暴」缺口按没跑核心被动的暴击率算（希格莉德 19.4% vs 真实 85.4%）。
+      panelHooks: {
+        slot,
+        settings: resolveMechanicSettings(configStore),
+        additionalAbilityActive: additionalAbilityActiveForPanel(slot, configStore, catalogStore),
+        team: buildMechanicTeamMembers(configStore, catalogStore),
+        enemyStunVuln: configStore.enemy.stunVuln,
+        // 编排层优化器的起点必须复刻伤害管线面板 ⇒ 队友给本槽的面板加成也要算
+        withTeamPanelEffects: true,
+      },
     })
   } catch {
     return null

@@ -131,15 +131,37 @@ function showAgent(a) {
   console.log('  暴击预算/面板等派生数值 → 引擎探针 PROBE_AGENT=' + a.id + ' npm run probe:panel（勿手工加 JSON）')
 }
 
+/** 招式目标后缀（与引擎 `core/buff.ts#effectSkillDamageTargets` 同口径；AI 查证时最容易漏的一维） */
+const SKILL_TARGET_LABELS = {
+  all: '全部招式', basic: '普通攻击', special: '特殊技', exSpecial: '强化特殊技', ultimate: '终结技',
+  chain: '连携技', assist: '支援技', dodgeCounter: '闪避反击', dashAttack: '冲刺攻击', additionalAttack: '追加攻击',
+}
+const SKILL_TAG_TO_TARGET = { exSpecial: 'exSpecial', dashAttack: 'dashAttack', additionalAttack: 'additionalAttack', assistAttack: 'assist' }
+function skillTargetText(f) {
+  if (f.targetSkillType) return SKILL_TARGET_LABELS[f.targetSkillType] ?? f.targetSkillType
+  const list = []
+  for (const t of f.target?.skillTargets ?? []) {
+    if (t.kind === 'skillType' && t.skillType) list.push(SKILL_TARGET_LABELS[t.skillType] ?? t.skillType)
+    if (t.kind === 'skillTag' && t.skillTag) list.push(SKILL_TARGET_LABELS[SKILL_TAG_TO_TARGET[t.skillTag]] ?? t.skillTag)
+  }
+  return [...new Set(list)].join(' / ')
+}
+
 function showSet(s) {
   console.log(`== 驱动盘套装 ${idName(s)} ==`)
   for (const f of s.twoPiece?.effects ?? []) {
-    line('2件套', `${f.stat} +${f.value}${f.type !== 'fixed' ? ` · ${f.type}` : ''}`)
+    const tgt = skillTargetText(f)
+    line('2件套', `${f.stat} +${f.value}${f.type !== 'fixed' ? ` · ${f.type}` : ''}${tgt ? ` · 仅 ${tgt}` : ''}`)
   }
   if (s.fourPiece?.effectText) line('4件套文本', zh(s.fourPiece.effectText).slice(0, 120) + '…')
   for (const f of s.fourPiece?.selfBuff?.effects ?? []) {
     const ladder = f.modificationValues?.value ?? f.modificationValues?.valuePerStack
-    line('4件套效果', `${f.stat} ${ladder ? ladder.join('/') : '+' + (f.value ?? f.valuePerStack ?? '?')}${f.maxStacks ? ` ×层(上限${f.maxStacks})` : ''} · ${f.type}`)
+    const tgt = skillTargetText(f)
+    line('4件套效果', `${f.stat} ${ladder ? ladder.join('/') : '+' + (f.value ?? f.valuePerStack ?? '?')}${f.maxStacks ? ` ×层(上限${f.maxStacks})` : ''} · ${f.type}${tgt ? ` · 仅 ${tgt}` : ''}${f.condition ? ` · 条件:${f.condition}` : ''}`)
+  }
+  for (const f of s.fourPiece?.teamBuff?.effects ?? []) {
+    const tgt = skillTargetText(f)
+    line('4件套全队', `${f.stat} +${f.value ?? f.valuePerStack ?? '?'} · ${f.type}${tgt ? ` · 仅 ${tgt}` : ''}`)
   }
 }
 

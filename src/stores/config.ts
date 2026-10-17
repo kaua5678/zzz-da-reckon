@@ -11,7 +11,9 @@ import { computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocatio
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { useCatalogStore } from './catalog'
 import { signatureWEngineOf } from '@/composables/signatureWEngine'
-import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic } from '@/mechanics'
+import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, getRegisteredMechanicSettings, resolveMechanicSettingMap } from '@/mechanics'
+import { getAgentSpec } from '@/specs/registry'
+import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { interactionBaselineFor } from '@/mechanics/interactionBaseline'
 // CC-478（r658）：交互基准纯函数簇（getInteractionDefaults / roleInteractionBaseline / interactionBaselineFor / hasCustomInteractionDefaults）
 // 下沉到 mechanics/interactionBaseline.ts——它们只读角色模块声明，不碰 pinia；原先住在 store 里让引擎（composables/resourceCalc）
@@ -775,6 +777,12 @@ export function createConfigModel(
         // 分支生产不可达，它写的 perSlotMarginalGains 永远为空。求最优走编排层真实伤害精修（composables/substatOptimizer.ts）。
         // 详见 docs/mcp-stun-dual-source.md §24.33。
         // 预算（设置键 / 缺省 / 分档）与写回规整的唯一来源在 core/substatOptimizer（arena-D 第 361 轮）
+        // ⚠ 必须带 `panelHooks`（2026-10-18 百暴溢出修复）：`calcPanel` 只跑 buff 管线，角色模块的
+        // `applyPanel`（核心被动/额外能力/影画面板段）与 3/5 命技能等级通用规则只在编排层派发。
+        // 不带 ⇒「百暴」基线读到没跑角色面板的暴击率：实测 8/62 角色把暴击词条配到溢出
+        // （希格莉德基线 19.4% / 真实 85.4% ⇒ 满 20 步后 133.4%，浪费 13 步）。
+        // 这里仍传 `teammateBuffs: []`（推荐配装与队友无关的口径，见 mcp-r6 §8 第 361 轮）——
+        // 只补角色**自身**面板，不引入队友拐力。
         const alloc = computeDefaultSubStatAllocation({
           agent,
           wEngine,
@@ -784,6 +792,39 @@ export function createConfigModel(
           statRules: catalogStore.statRules,
           ...resolveSubstatBudget(getTemplate(agent), getMechanicSetting),
           config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel, potentialLevel: char.potentialLevel, enemyWeakness: enemy.value.weakness },
+          panelHooks: {
+            slot,
+            // 机制滑块：store 是唯一写入方，直接读 state + 声明缺省（与
+            // composables/resourceCalc/panelPhases.ts#resolveMechanicSettings 同一份数据，但 store 不能 import composables）
+            settings: resolveMechanicSettingMap(mechanicSettings.value, getRegisteredMechanicSettings()),
+            // 额外能力门控：与 computePanelPhases 同源（spec.additionalAbility → evalAdditionalAbility）。
+            // 推荐配装不接队友 buff，但门控要看**队友职业/属性**（如希格莉德「队伍中存在支援或击破」⇒ +840 攻击），
+            // 所以队伍快照照传、buff 列表仍为空。
+            additionalAbilityActive: (() => {
+              const spec = getAgentSpec(agent.id)?.additionalAbility
+              if (!spec) return undefined
+              const members = team.value.map((c, s) => ({
+                slot: s,
+                agentId: c.agentId,
+                agent: c.agentId ? catalogStore.getAgent(c.agentId) ?? null : null,
+                cinemaLevel: c.cinemaLevel,
+                potentialLevel: c.potentialLevel ?? 6,
+                wEngineId: c.wEngineId,
+                wEngineModLevel: c.wEngineModLevel,
+              }))
+              return evalAdditionalAbility(members, slot, agent, spec) ? 1 : 0
+            })(),
+            team: team.value.map((c, s) => ({
+              slot: s,
+              agentId: c.agentId,
+              agent: c.agentId ? catalogStore.getAgent(c.agentId) ?? null : null,
+              cinemaLevel: c.cinemaLevel,
+              potentialLevel: c.potentialLevel ?? 6,
+              wEngineId: c.wEngineId,
+              wEngineModLevel: c.wEngineModLevel,
+            })),
+            enemyStunVuln: enemy.value.stunVuln,
+          },
         })
         char.driveDisc.subStatAllocation = normalizeSubstatAllocation(alloc)
       }
