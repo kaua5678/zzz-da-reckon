@@ -384,21 +384,15 @@
         </svg>
 
         <!-- 图例（点击显隐该队；隐藏的队同时退出坐标轴与明细表） -->
-        <div class="chart-legend">
-          <span class="legend-hint">点图例显隐 · {{ scatterCounts.visible }}/{{ scatterCounts.total }}</span>
-          <span
-            v-for="p in legendPresets"
-            :key="p.id"
-            class="lchip"
-            :class="{ off: !scatterLegend.isVisible(p.id) }"
-            :style="{ borderColor: p.color }"
-            :title="`${p.name}：点击${scatterLegend.isVisible(p.id) ? '隐藏' : '显示'}（隐藏后不参与坐标轴与明细表）`"
-            @click="scatterLegend.toggle(p.id)"
-          >
-            <span class="ldot" :style="{ background: p.color }"></span>{{ p.name }}（{{ p.minGold }}~{{ p.maxGold }}金）
-          </span>
-          <span class="legend-hint legend-action" @click="scatterLegend.showAll()">全显示</span>
-        </div>
+        <ChartLegend
+          :items="scatterLegendItems"
+          :color-of="colorOf"
+          :is-visible="scatterLegend.isVisible"
+          :hint="'点图例显隐 · ' + scatterCounts.visible + '/' + scatterCounts.total"
+          show-all
+          @toggle="scatterLegend.toggle"
+          @show-all="scatterLegend.showAll"
+        />
 
         <!-- 第三轴图例（主C首池时间档；只在开启着色时显示，避免与队伍图例抢注意力） -->
         <div v-if="colorByRelease" class="chart-legend time-legend">
@@ -416,15 +410,7 @@
     <!-- 明细表（跟随图例筛选：隐藏的队不出行） -->
     <n-card v-if="chartMode === 'scatter' && points.length > 0" size="small" :bordered="true" class="detail-card">
       <template #header>明细（{{ visiblePoints.length }}/{{ points.length }} 点）</template>
-      <div class="detail-table-wrap">
-        <table class="detail-table">
-          <thead>
-            <tr>
-              <th>队伍</th><th>限定金</th><th>Buff</th><th>伤害</th><th>伤害/血量</th>
-              <th>难度</th><th>交互明细</th><th>影画</th><th>精炼</th><th>时间</th>
-            </tr>
-          </thead>
-          <tbody>
+      <ChartTable :columns="scatterTableColumns" table-class="detail-table chart-table-nowrap" align="right" dense>
             <tr v-for="(p, i) in visiblePoints" :key="i" :class="{ 'time-warn': p.timeExceeded }">
               <td class="td-team" :style="{ color: colorOf(p.presetId) }">{{ p.presetName }}</td>
               <td>
@@ -443,9 +429,7 @@
               <td>{{ p.wengineMods.join('/') }}</td>
               <td :class="{ 'time-ok': !p.timeExceeded, 'time-exceeded': p.timeExceeded }">{{ p.timeDetail }}</td>
             </tr>
-          </tbody>
-        </table>
-      </div>
+      </ChartTable>
     </n-card>
 
     <!-- 同金分配对比（用户 2026-09-14：「同队的不同武器、命座等金数对比」） -->
@@ -458,14 +442,7 @@
         贪婪搜索每档会试算**全部**候选（各槽位的下一级影画/精炼/专武本体），此表把被淘汰的也列出来。
         「代价」= 相对该档最优分配的伤害损失（列内按损失升序，★ = 贪婪实际选中的那个）。
       </div>
-      <div class="detail-table-wrap">
-        <table class="detail-table">
-          <thead>
-            <tr>
-              <th>队伍</th><th>金数</th><th>这笔金投给</th><th>伤害</th><th>代价</th><th>分配后状态</th>
-            </tr>
-          </thead>
-          <tbody>
+      <ChartTable :columns="goldAltTableColumns" table-class="detail-table chart-table-nowrap" align="right" dense>
             <tr v-for="(a, i) in goldAltRows" :key="'ga' + i" :class="{ 'ga-best': a.isBest }">
               <td class="td-team" :style="{ color: colorOf(a.presetId) }">{{ a.presetName }}</td>
               <td>{{ a.budgetGold }}金</td>
@@ -474,9 +451,7 @@
               <td :class="{ 'ga-loss': !a.isBest }">{{ a.isBest ? '— 最优' : '−' + fmt(a.lossPct, 2) + '%' }}</td>
               <td>{{ a.state.cinemas.join('/') }} 命 · 精炼 {{ a.state.wengineMods.join('/') }}</td>
             </tr>
-          </tbody>
-        </table>
-      </div>
+      </ChartTable>
     </n-card>
 
     <!-- 难度曲线：每队自己的贪心提升路径（x = 自动算的操作难度，各队不对齐是特性） -->
@@ -667,21 +642,15 @@
             </template>
           </span>
         </div>
-        <div class="chart-legend">
-          <span class="legend-hint">点图例显隐 · {{ curveCounts.visible }}/{{ curveCounts.total }}</span>
-          <span
-            v-for="s in curveAllSeries"
-            :key="s.laneKey"
-            class="lchip"
-            :class="{ off: !curveLegend.isVisible(s.laneKey) }"
-            :style="{ borderColor: colorOf(s.presetId) }"
-            :title="`${s.label}：点击${curveLegend.isVisible(s.laneKey) ? '隐藏' : '显示'}（隐藏后不参与坐标轴与明细表）`"
-            @click="curveLegend.toggle(s.laneKey)"
-          >
-            <span class="ldot" :style="{ background: colorOf(s.presetId) }"></span>{{ s.label }}（{{ fmt(s.gainX, 2) }}× · +{{ fmt(s.gainPct, 1) }}%）
-          </span>
-          <span class="legend-hint legend-action" @click="curveLegend.showAll()">全显示</span>
-        </div>
+        <ChartLegend
+          :items="curveLegendItems"
+          :color-of="colorOf"
+          :is-visible="curveLegend.isVisible"
+          :hint="'点图例显隐 · ' + curveCounts.visible + '/' + curveCounts.total"
+          show-all
+          @toggle="curveLegend.toggle"
+          @show-all="curveLegend.showAll"
+        />
       </div>
     </n-card>
 
@@ -702,12 +671,7 @@
         被砍掉的是性价比低的那部分（实测大招/紊乱各减，同时强特/角色专属资源增）。
         所以每一点都是<b>有涨有跌、净额为正</b>。
       </div>
-      <div class="detail-table-wrap">
-        <table class="detail-table">
-          <thead>
-            <tr><th>队伍</th><th>操作难度</th><th>关键点</th><th>关键变化</th><th>伤害</th><th>伤害归因（相对上一档）</th></tr>
-          </thead>
-          <tbody>
+      <ChartTable :columns="curveJumpTableColumns" table-class="detail-table chart-table-nowrap" align="right" dense>
             <tr v-for="r in curveJumpRows" :key="r.key">
               <td class="td-team" :style="{ color: r.color }">{{ r.team }}</td>
               <td>{{ fmt(r.cost, 0) }} 点</td>
@@ -733,9 +697,7 @@
                 （鼠标停在曲线点上可看每档明细）。
               </td>
             </tr>
-          </tbody>
-        </table>
-      </div>
+      </ChartTable>
     </n-card>
 
     <!-- 截断提醒板块：交互被砍的档，「要达到手填的交互要求至少需要多少难度」（用户 2026-10-06 口径） -->
@@ -750,12 +712,7 @@
         ⚠ 这是<b>提示不是保证</b>：它说的是「这条曲线自己的档位里有没有达标档」，不代表那个难度一定打得出来
         （x 不单调，详见上方口径说明）。
       </div>
-      <div class="detail-table-wrap">
-        <table class="detail-table">
-          <thead>
-            <tr><th>队伍</th><th>操作难度</th><th>关键点</th><th>本档交互 → 实打</th><th>被砍</th><th>达标所需难度</th></tr>
-          </thead>
-          <tbody>
+      <ChartTable :columns="curveTruncTableColumns" table-class="detail-table chart-table-nowrap" align="right" dense>
             <tr v-for="r in curveTruncRows" :key="r.key">
               <td class="td-team" :style="{ color: r.color }">{{ r.team }}</td>
               <td>{{ fmt(r.cost, 0) }} 点</td>
@@ -781,9 +738,7 @@
                 本次曲线每一档的交互都足量交付（没有降配缩交互、也没有时间截断）——每一档配置的交互次数都打出来了。
               </td>
             </tr>
-          </tbody>
-        </table>
-      </div>
+      </ChartTable>
     </n-card>
 
     <!-- 逐点资源池明细（用户 2026-10-16）：点曲线上的点 ⇒ 该档的完整资源池 -->
@@ -841,18 +796,7 @@
       <template #header>
         曲线摘要（{{ curveData.series.length }} 条道可见<template v-if="curveRowsStale"> · <span style="color: var(--c-warning)">环境设置已改，需重算</span></template>）
       </template>
-      <div class="detail-table-wrap">
-        <table class="detail-table">
-          <thead>
-            <tr>
-              <th>队伍</th><th v-if="curveRowsHavePeriod">期数</th><th v-if="curveRowsHavePeriod">该期血量</th>
-              <th>全关</th><th>终点</th><th>提升</th><th>倍数</th>
-              <th>操作难度</th><th>收益/难度</th><th>关键点</th><th>轴态</th>
-                          <th v-if="curveHasLimitPoints">极限点</th>
-            <th v-if="curveHasAltPoints">曲线外补充点</th>
-            </tr>
-          </thead>
-          <tbody>
+      <ChartTable :columns="curveSummaryColumns" table-class="detail-table chart-table-nowrap" align="right" dense>
             <tr v-for="s in curveData.series" :key="s.laneKey" :class="{ 'curve-flat': s.flat }">
               <td class="td-team" :style="{ color: colorOf(s.presetId) }">{{ s.name }}</td>
               <td v-if="curveRowsHavePeriod" class="td-muted">{{ s.periodLabel || '—' }}</td>
@@ -893,9 +837,7 @@
                 </div>
               </td>
             </tr>
-          </tbody>
-        </table>
-      </div>
+      </ChartTable>
     </n-card>
     <!-- 选第三人排名表：固定 2 队友下，第三人候选按伤害排名（背景条 = 伤害占比） -->
     <n-card v-if="chartMode === 'sweep' && sweepResult" size="small" :bordered="true" class="detail-card">
@@ -908,14 +850,7 @@
         同一 Boss / 期数 / 限定金预算（{{ sweepBudget }}金）下逐候选求值（{{ sweepOptimalGold ? '逐金贪婪最优加金' : '主C优先确定性分配' }}）；
         按伤害降序，名字条长度 = 相对第 1 名的伤害占比。不含当期 buff / 自动下位；各队总金可能低于预算（低于基础金时钳制）。
       </div>
-      <div class="detail-table-wrap">
-        <table class="detail-table">
-          <thead>
-            <tr>
-              <th>排名</th><th>第三人</th><th>伤害</th><th>伤害/血量</th><th>限定金</th><th>加金明细</th><th>队伍</th>
-            </tr>
-          </thead>
-          <tbody>
+      <ChartTable :columns="sweepTableColumns" table-class="detail-table chart-table-nowrap" align="right" dense>
             <tr v-for="(p, i) in sweepResult.points" :key="p.candidateId" class="sweep-row">
               <td>{{ i + 1 }}</td>
               <td
@@ -931,9 +866,7 @@
             <tr v-if="sweepResult.points.length === 0">
               <td colspan="7" class="td-detail">没有可用候选：全部未收敛或候选池为空（检查固定队友选择）。</td>
             </tr>
-          </tbody>
-        </table>
-      </div>
+      </ChartTable>
     </n-card>
   </div>
 </template>
@@ -946,6 +879,8 @@ import { buildBossHpCurve, buildEnvLanes, deriveVersionAxis, type VersionLane } 
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, type PresetGoldAlternative } from '@/composables/teamCompare'
+import { datasetFromTeamGold } from '@/composables/analysis/dataset'
+import { publishAnalysis } from '@/composables/analysis/transfer'
 import { cloneConfigState, withAnalysisScenario } from '@/composables/analysisScenario'
 import { DOWNGRADE_MODS } from '@/composables/downgradeWEngine'
 import { persistedRef } from '@/composables/persistedRef'
@@ -964,6 +899,8 @@ import { teamPresets } from '@/data/teamPresets'
 import { usePresetTeamPicker } from '@/composables/usePresetTeamPicker'
 import { useCustomTeamsStore, resolveSelectedPresets } from '@/composables/customTeams'
 import CustomTeamsEditor from '@/components/CustomTeamsEditor.vue'
+import ChartLegend from '@/components/charts/ChartLegend.vue'
+import ChartTable from '@/components/charts/ChartTable.vue'
 import { fmt, compact, localized } from '@/utils/format'
 import { useScatterGeometry } from '@/composables/teamCompareScatter'
 import { useSlotSweep } from '@/composables/teamCompareSweep'
@@ -1520,6 +1457,22 @@ const curveHasAltPoints = computed(() => curveData.value?.series.some(s => s.alt
  * 没有就**不渲染那一列**（全库只有般岳声明 `limitPoint`）。
  */
 const curveHasLimitPoints = computed(() => curveData.value?.series.some(s => s.limitPoint !== null) ?? false)
+/** 曲线摘要表的动态列（期数/极限点/曲线外补充点只在有数据时出现） */
+const curveSummaryColumns = computed(() => {
+  const cols = [{ key: 'team', label: '队伍' }]
+  if (curveRowsHavePeriod.value) {
+    cols.push({ key: 'period', label: '期数' }, { key: 'hp', label: '该期血量' })
+  }
+  cols.push(
+    { key: 'start', label: '全关' }, { key: 'end', label: '终点' },
+    { key: 'gain', label: '提升' }, { key: 'x', label: '倍数' },
+    { key: 'cost', label: '操作难度' }, { key: 'perCost', label: '收益/难度' },
+    { key: 'knob', label: '关键点' }, { key: 'axis', label: '轴态' },
+  )
+  if (curveHasLimitPoints.value) cols.push({ key: 'limit', label: '极限点' })
+  if (curveHasAltPoints.value) cols.push({ key: 'alt', label: '曲线外补充点' })
+  return cols
+})
 /** 极限点杠杆的可读文案（字段名 → 「双反 ×N」；字段名住在声明里，页面只做展示映射） */
 function limitLeverText(levers: Record<string, number>): string {
   const label: Record<string, string> = { dualCounterCount: '双反', blockCount: '金身', parryCount: '弹刀', dodgeCounterCount: '闪反' }
@@ -1588,6 +1541,12 @@ async function runCompare() {
     points.value = all
     progress.value = { pct: 1, text: `完成：${all.length} 个点` }
     computing.value = false
+    if (all.length > 0) {
+      const golds = new Set(all.map(p => p.goldCount))
+      const label = `${presets.length} 队 × ${golds.size} 金 · ${all.length} 点`
+      publishAnalysis({ id: 'team-gold-damage', source: '队伍对比', label, dataset: datasetFromTeamGold(all, { metric: 'damage' }) })
+      publishAnalysis({ id: 'team-gold-hp', source: '队伍对比', label: label + ' · 血量%', dataset: datasetFromTeamGold(all, { metric: 'hpRatio' }) })
+    }
   })
 }
 
@@ -1770,6 +1729,41 @@ const legendPresets = computed(() => {
   })
 })
 
+/** 共享表格列定义（表头从 markup 移到数据；单元格仍由 slot 给） */
+const scatterTableColumns = [
+  { key: 'team', label: '队伍' }, { key: 'gold', label: '限定金' }, { key: 'buff', label: 'Buff' },
+  { key: 'damage', label: '伤害' }, { key: 'ratio', label: '伤害/血量' }, { key: 'difficulty', label: '难度' },
+  { key: 'detail', label: '交互明细' }, { key: 'cinema', label: '影画' },
+  { key: 'wengine', label: '精炼' }, { key: 'time', label: '时间' },
+]
+const goldAltTableColumns = [
+  { key: 'team', label: '队伍' }, { key: 'gold', label: '金数' }, { key: 'target', label: '这笔金投给' },
+  { key: 'damage', label: '伤害' }, { key: 'cost', label: '代价' }, { key: 'state', label: '分配后状态' },
+]
+const curveJumpTableColumns = [
+  { key: 'team', label: '队伍' }, { key: 'cost', label: '操作难度' }, { key: 'point', label: '关键点' },
+  { key: 'change', label: '关键变化' }, { key: 'damage', label: '伤害' },
+  { key: 'attr', label: '伤害归因（相对上一档）' },
+]
+const curveTruncTableColumns = [
+  { key: 'team', label: '队伍' }, { key: 'cost', label: '操作难度' }, { key: 'point', label: '关键点' },
+  { key: 'hint', label: '本档交互 → 实打' }, { key: 'cut', label: '被砍' },
+  { key: 'needed', label: '达标所需难度' },
+]
+const sweepTableColumns = [
+  { key: 'rank', label: '排名' }, { key: 'third', label: '第三人' }, { key: 'damage', label: '伤害' },
+  { key: 'ratio', label: '伤害/血量' }, { key: 'gold', label: '限定金' },
+  { key: 'goldDetail', label: '加金明细' }, { key: 'team', label: '队伍' },
+]
+
+/** 共享图例项：标签/颜色/悬浮说明都由页面给，ChartLegend 只管外观与事件 */
+const scatterLegendItems = computed(() => legendPresets.value.map(p => ({
+  id: p.id,
+  label: p.name + '（' + p.minGold + '~' + p.maxGold + '金）',
+  color: p.color,
+  title: p.name + '：点击' + (scatterLegend.isVisible(p.id) ? '隐藏' : '显示') + '（隐藏后不参与坐标轴与明细表）',
+})))
+
 // ========== 难度曲线图表（x = 自动算的操作难度，y = 伤害/血量%） ==========
 // 只喂可见行 ⇒ costMax/ratioMax/costTicks 全部按可见队算（② 筛选传导到轴）
 const curveData = computed(() =>
@@ -1777,6 +1771,12 @@ const curveData = computed(() =>
 )
 /** 图例要展示**含隐藏队**的完整清单（否则隐藏后图例项消失，点不回来）；数字仍用可见集算的 gainX/gainPct */
 const curveAllSeries = computed(() => (curveRows.value.length > 0 ? buildCurveChart(curveRows.value, selectedPhase.value?.hp ?? 1).series : []))
+const curveLegendItems = computed(() => curveAllSeries.value.map(s => ({
+  id: s.laneKey,
+  label: s.label + '（' + fmt(s.gainX, 2) + '× · +' + fmt(s.gainPct, 1) + '%）',
+  color: colorOf(s.presetId),
+  title: s.label + '：点击' + (curveLegend.isVisible(s.laneKey) ? '隐藏' : '显示') + '（隐藏后不参与坐标轴与明细表）',
+})))
 function curveXOf(v: number): number {
   return padL + (v / Math.max(1, curveData.value?.costMax ?? 1)) * plotW.value
 }

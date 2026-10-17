@@ -54,12 +54,15 @@ describe('自由对比求值器（真引擎）', () => {
       metricId,
       constraints: { boss, baseTeammates: [VELINA, ''] },
     }))
-    const dmg = (await run('teamTotalDamage')).series[0].values
+    const dmgRes = await run('teamTotalDamage')
+    const dmg = dmgRes.series[0].values
     const ratio = (await run('dmgBossHpRatio')).series[0].values
     expect(dmg.every(v => typeof v === 'number' && v > 0)).toBe(true)
     // 血量比 × 该期血量 = 总伤：两期各自成立 ⇒ 装配确实换到了该期，且 env 是装配后读的
     expect(ratio[0]! * Math.round(p1.hp)).toBeCloseTo(dmg[0]!, -2)
     expect(ratio[1]! * Math.round(p2.hp)).toBeCloseTo(dmg[1]!, -2)
+    // 期数在 x 轴上逐档变化 ⇒ 环境摘要不能只写第一期（否则与图上的档位矛盾）
+    expect(dmgRes.environmentSummary).not.toContain(p1.label)
   })
 
   it('★ 调用方 store 全程不被改写（r372：求值只在独立场景里发生，不再依赖「跑完还原」）', async () => {
@@ -195,6 +198,62 @@ describe('自由对比求值器（真引擎）', () => {
     // r372：求值只在独立场景里发生 ⇒ UI store 的 3 号槽全程是用户原来的菲欧妮（不再依赖 finally 恢复）
     expect(config.team[2].agentId).toBe(PHOENIX)
     expect(config.team[2].cinemaLevel).toBe(2)
+  })
+
+  // ---------- 切片维度（2026-10-17 用户：3D 图 / 多重二维切片）----------
+
+  it('★ 第二维度：x=专武精炼 × 切片=影画 真的逐片换命座，且每片各持一份值', async () => {
+    const seen: Array<{ cinema: number; wengine: number }> = []
+    const res = await withAnalysisScenario(scenario => computeFreeCompare(scenario, {
+      series: [{ id: 's', kind: 'agent', members: [BURNICE], code: code('21') }],
+      axisId: 'wengine',
+      axisOptions: { wengineMax: 1, cinemaMax: 1 },
+      metricId: 'teamTotalDamage',
+      constraints: { baseTeammates: [VELINA, ''] },
+      slice: { kind: 'axis', axisId: 'cinema' },
+      onProgress: () => seen.push({
+        cinema: scenario.config.team[0].cinemaLevel,
+        wengine: scenario.config.team[0].wEngineModLevel,
+      }),
+    }))
+    expect(res.slices.map(s => s.label)).toEqual(['0命', '1命'])
+    expect(res.sliceLabel).toBe('影画')
+    expect(res.series, '旧字段 series 保持 = 第一片').toBe(res.slices[0].series)
+    // 档位顺序：片外层、x 内层 ⇒ 0 命两档后才是 1 命两档
+    expect(seen.map(x => x.cinema)).toEqual([0, 0, 1, 1])
+    // 每片各自一份 values（共享数组会把两片画成同一条线）
+    expect(res.slices[0].series[0].values).not.toBe(res.slices[1].series[0].values)
+    for (const sl of res.slices) expect(sl.series[0].values.every(v => v !== null)).toBe(true)
+    expect(res.environmentSummary).toContain('切片：影画')
+  })
+
+  it('★ 条件切片：维琳娜 0/1/2 命逐片套进场景（不用改条件重跑）', async () => {
+    const seen: number[] = []
+    const res = await withAnalysisScenario(scenario => computeFreeCompare(scenario, {
+      series: [{ id: 's', kind: 'agent', members: [BURNICE], code: code('01') }],
+      axisId: 'setupCode',
+      axisOptions: { setupCodes: ['01', '21'], conditionCinemaMax: 2 },
+      metricId: 'teamTotalDamage',
+      constraints: { baseTeammates: [VELINA, ''], conditions: [{ agentId: VELINA, cinema: 6 }] },
+      slice: { kind: 'condition', agentId: VELINA },
+      onProgress: () => seen.push(scenario.config.team[1].cinemaLevel),
+    }))
+    expect(res.slices.map(s => s.label)).toEqual(['0命', '1命', '2命'])
+    // 每片两档（01/21）⇒ 0 命两档、1 命两档、2 命两档；片间不残留上一档
+    expect(seen).toEqual([0, 0, 1, 1, 2, 2])
+    expect(res.environmentSummary).toContain('维琳娜 影画')
+    expect(res.environmentSummary, '条件切片不能把被切的基线值 6命 写进环境').not.toContain('维琳娜 6命')
+  })
+
+  it('★ 切片与 x 抢同一字段：响亮拒绝（不静默二选一）', async () => {
+    await expect(withAnalysisScenario(scenario => computeFreeCompare(scenario, {
+      series: [{ id: 's', kind: 'agent', members: [BURNICE], code: code('01') }],
+      axisId: 'cinema',
+      axisOptions: { cinemaMax: 0 },
+      metricId: 'teamTotalDamage',
+      constraints: { baseTeammates: [VELINA, ''] },
+      slice: { kind: 'axis', axisId: 'cinema' },
+    }))).rejects.toThrow('覆盖同一字段')
   })
 
   // ---------- 当期 buff 三态（2026-10-02 用户裁决：可以带也可以不带；本体 vs 吃拐并排呈现）----------

@@ -77,10 +77,15 @@ describe('canvasTheme', () => {
     }
   })
 
-  it('三个 canvas 组件都接了 useThemeRedraw（否则切主题后画面停在旧主题）', () => {
-    for (const f of ['TeamDamage3DChart.vue', 'DifficultyCurve3DChart.vue', 'ResponseSurface3D.vue']) {
-      expect(readFileSync(join(SRC, 'components/charts', f), 'utf8'), f).toMatch(/\buseThemeRedraw\(/)
+  it('四个 3D 组件统一走 useCanvasScene（DPR/尺寸/主题不在组件里各写一份）', () => {
+    for (const f of ['TeamDamage3DChart.vue', 'DifficultyCurve3DChart.vue', 'ResponseSurface3D.vue', 'FreeCompare3DChart.vue']) {
+      const src = readFileSync(join(SRC, 'components/charts', f), 'utf8')
+      expect(src, f).toMatch(/\buseCanvasScene\(/)
+      expect(src, f).not.toMatch(/window\.devicePixelRatio|new ResizeObserver|\buseThemeRedraw\(/)
     }
+    // 共享壳本身必须订阅主题翻转，否则所有接入它的组件一起停在旧主题
+    expect(readFileSync(join(SRC, 'composables/charts/useCanvasScene.ts'), 'utf8'))
+      .toMatch(/\buseThemeRedraw\(/)
   })
 
   it('源码锁：src 里读 CSS 变量（getPropertyValue）只在 utils/canvasTheme.ts', () => {

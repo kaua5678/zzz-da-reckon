@@ -714,7 +714,43 @@ export const WA_REF_BASELINE = 418  /* ★ 2026-10-17 首页紧凑化：419 → 
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 908  /* ★ 2026-10-17 首页紧凑化（用户「角色选择占 3 大块 + 交互栏输入框数字看不见」）：
+export const VAR_TOTAL_BASELINE = 961  /* ★ 2026-10-17 位置对比贡献构成条（PositionCompareChart）：
+                                       939 → **961**（+22），`--wa-*` 直引 **418 不变**。
+                                       归因：新增 `components/charts/PositionCompareChart.vue` 自身样式（堆叠段色 --c-info/
+                                       --c-success/--c-warning/--c-danger、文本/边框/轨道 --fg-2/--fg-3/--app-*、
+                                       轨道/行线语义别名 --line/--fill-hover）；新代码未加 raw --wa-*，零字面量。
+                                       * ★ 2026-10-17 跨页导入（队伍对比/时间图表/血量膨胀 → 长表 → 工作台）：
+                                       937 → **939**（+2），`--wa-*` 直引 **418 不变**。
+                                       归因：导入条 `.import-row` 的 `--app-border`（+1）、导入横幅 `.fc-import` 的
+                                       `--c-info`（+1）；零字面量。
+                                       * ★ 2026-10-17 共享表格 + 3D 场景壳：
+                                       936 → **937**（+1），`--wa-*` 直引 **418 不变**。
+                                       归因：新增全局 `styles/chart-table.css`（--app-border/--app-text/
+                                       --app-tablehead-bg/--fg-3，+4）；FreeCompareTable 删除自带 .tl-table 基座
+                                       （−3，同义令牌改由全局基座提供）⇒ 净 +1。3D 场景壳无新增 var（仍走 canvasTheme）。
+                                       新增样式零字面量。
+                                       * ★ 2026-10-17 图例共享迁移（ChartLegend 接入 4 页 + 5 个时间图表子图）：
+                                       933 → **936**（+3），`--wa-*` 直引 **418 不变**。
+                                       归因：ChartLegend 兜底墨 `var(--fg-3)`（+1，item.color 缺省时用）、
+                                       FilmSim 图例色 `var(--app-primary)` / `var(--c-warning)`（+2，与图上 stroke 同源）。
+                                       旧页面图例 markup 已删除，但其 CSS 规则仍保留（清样式时再降基线）；
+                                       新增引用全是语义/表面令牌，零字面量。
+                                       * ★ 2026-10-17 分析工作台（预设 + 视图联动）：
+                                       931 → **933**（+2），`--wa-*` 直引 **418 不变**。
+                                       归因：新增 `ChartLegend.vue`（--app-text/--fg-3/--link-color = +3）、
+                                       切片面板选中态（--c-success/--c-success-soft = +2）；
+                                       同轮删除页面旧图例与逐片表样式（−3）⇒ 净 +2。
+                                       新增样式零字面量（grep 无 #hex/rgba）。
+                                       * ★ 2026-10-17 自由对比切片（3D 图 + 多重二维切片）：
+                                       908 → **931**（+23），`--wa-*` 直引 **418 不变**。
+                                       归因：新增 `charts/SliceGridChart.vue`（6 处）、
+                                       `charts/FreeCompare3DChart.vue`（10 处场景/语义令牌）、
+                                       `FreeCompareTable.vue`（7 处）与页面新的切片工具条；
+                                       同轮删掉页面内联表格样式（−5 处 var()）后 +24；
+                                       随后删除组件里未使用的 `.fc-table-caption`（−1，纯删除）。
+                                       新增样式**零字面量**（grep 无 #hex/rgba），底/墨成对（双主题）。
+                                       ⇒ 按「只增不减」上调基线，不是把变量改回字面量。
+                                       * ★ 2026-10-17 首页紧凑化（用户「角色选择占 3 大块 + 交互栏输入框数字看不见」）：
                                        909 → **908**（−1），`--wa-*` 直引同步 419 → **418**（−1）。
                                        纯删除：`CharacterCard.vue` 的 `.empty-text` 是**死 CSS**
                                        （模板零引用，规则正文只有一条 `color: var(--wa-300)`）⇒ 删规则即两数各 −1。

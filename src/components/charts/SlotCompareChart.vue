@@ -43,16 +43,12 @@
 
   <!-- 双折线 SVG -->
   <div v-if="scPoints.length > 0" class="timeline-wrap chart3-plot">
-    <div class="sc-legend">
-      <span class="sc-legend-item sc-legend-click" :class="{ off: !scLegend.isVisible('A') }" @click="scLegend.toggle('A')">
-        <span class="sc-dot" :style="{ background: SC_COLOR_A }"></span>{{ agentName(scAgentA) }} 队
-      </span>
-      <span class="sc-legend-item sc-legend-click" :class="{ off: !scLegend.isVisible('B') }" @click="scLegend.toggle('B')">
-        <span class="sc-dot" :style="{ background: SC_COLOR_B }"></span>{{ agentName(scAgentB) }} 队
-      </span>
-      <span class="sc-legend-item">Boss：{{ scBossName }}</span>
-      <span class="legend-hint">点队名显隐该线（纵轴按剩下的线缩放）</span>
-    </div>
+    <ChartLegend
+      :items="scLegendItems"
+      :is-visible="scLegend.isVisible"
+      :hint="'Boss：' + scBossName + ' · 点队名显隐该线（纵轴按剩下的线缩放）'"
+      @toggle="scLegend.toggle"
+    />
     <svg
       :viewBox="`0 0 ${svgW} ${scSvgH}`"
       class="timeline-svg"
@@ -156,6 +152,7 @@ import { NButton, NCard, NProgress, NSelect } from 'naive-ui'
 import { fmt, compact, localized } from '@/utils/format'
 import { useCatalogStore } from '@/stores/catalog'
 import { useSeriesFilter } from '@/composables/seriesFilter'
+import ChartLegend from '@/components/charts/ChartLegend.vue'
 import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'
 import { nearestIndexByX, xHitTolerance } from '@/composables/svgHitTest'
 import { colorOf, slotCompareTableRows } from '@/composables/charts/agentPresentation'
@@ -259,6 +256,20 @@ const scSvgH = props.padT + props.plotH + 30
 const scLegend = useSeriesFilter(() => [
   { id: 'A', name: agentName(scAgentA.value) },
   { id: 'B', name: agentName(scAgentB.value) },
+])
+const scLegendItems = computed(() => [
+  {
+    id: 'A',
+    label: agentName(scAgentA.value) + ' 队',
+    color: SC_COLOR_A,
+    title: '点击' + (scLegend.isVisible('A') ? '隐藏' : '显示') + ' A 队（纵轴按剩下的线缩放）',
+  },
+  {
+    id: 'B',
+    label: agentName(scAgentB.value) + ' 队',
+    color: SC_COLOR_B,
+    title: '点击' + (scLegend.isVisible('B') ? '隐藏' : '显示') + ' B 队（纵轴按剩下的线缩放）',
+  },
 ])
 /** 纵轴贴合可见线的伤害范围（±8% 边距），不看 Boss 血量/击杀线，只看相对强弱 */
 const scYRange = computed(() => scYRangeOf(scPoints.value.flatMap(p => [

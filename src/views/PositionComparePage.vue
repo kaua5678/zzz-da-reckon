@@ -73,36 +73,20 @@
       </div>
     </n-card>
 
-    <n-card v-if="results.length > 0" class="result-card" :title="`贡献构成（${positionLabel}视角）`">
-      <n-table :bordered="true" size="small">
-        <thead>
-          <tr>
-            <th>队伍</th>
-            <th>{{ positionLabel }}</th>
-            <th>失衡次数</th>
-            <th>失衡值</th>
-            <th>失衡占比</th>
-            <template v-if="isMain">
-              <th>积蓄量</th>
-              <th>积蓄占比</th>
-              <th>总伤</th>
-              <th>主C自身</th>
-              <th>直伤</th>
-              <th>异放</th>
-              <th>紊乱</th>
-              <th>其他异常</th>
-            </template>
-            <template v-else>
-              <th>总伤</th>
-              <th>自身</th>
-              <th>送连携/赠送</th>
-              <th>拐力提升(差分)</th>
-              <th>其他</th>
-            </template>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="r in results" :key="r.presetId">
+    <n-card v-if="results.length > 0" class="result-card">
+      <template #header>
+        <div class="result-head">
+          <span>贡献构成（{{ positionLabel }}视角）</span>
+          <div class="sort-control">
+            <span class="label">排序</span>
+            <n-select v-model:value="sortKey" :options="sortOptions" size="tiny" style="width: 120px" />
+          </div>
+        </div>
+      </template>
+      <PositionCompareChart :rows="displayRows" :is-main="isMain" :position-label="positionLabel" />
+      <h4 class="detail-title">明细</h4>
+      <ChartTable :columns="tableColumns" table-class="position-table chart-table-nowrap" align="right" dense>
+          <tr v-for="r in displayRows" :key="r.presetId">
             <td>{{ r.presetName }}</td>
             <td>{{ r.agentName }}</td>
             <td>{{ r.stunCount }}</td>
@@ -126,8 +110,7 @@
               <td class="num">{{ fmt(r.otherDamage) }} <span class="pct">{{ pct(r.otherDamage, r.totalDamage) }}</span></td>
             </template>
           </tr>
-        </tbody>
-      </n-table>
+      </ChartTable>
       <p class="hint">
         同款限定金数：所有参比队伍先按同一金档应用各自预设 goldSteps 再比较（公平换人边际）。
         失衡值/占比来自失衡池逐槽统计，后台自动招式（莱卡恩围猎闪反、橘福福虎威、露西、丽娜邦布、仪玄合轴等）的失衡贡献已计入。
@@ -141,7 +124,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { NCard, NSelect, NButton, NTable, NInputNumber } from 'naive-ui'
+import { NCard, NSelect, NButton, NInputNumber } from 'naive-ui'
 import { usePresetTeamPicker } from '@/composables/usePresetTeamPicker'
 import { useCustomTeamsStore, resolveSelectedPresets } from '@/composables/customTeams'
 import CustomTeamsEditor from '@/components/CustomTeamsEditor.vue'
@@ -149,6 +132,8 @@ import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
 import { computePositionCompare, MAIN_SPECIALTIES, type ComparePosition, type PositionCompareRow } from '@/composables/positionCompare'
+import PositionCompareChart from '@/components/charts/PositionCompareChart.vue'
+import ChartTable from '@/components/charts/ChartTable.vue'
 import type { BossPreset } from '@/types/bossPreset'
 
 const bossPresets = ref<BossPreset[]>([])
@@ -196,6 +181,54 @@ const positionLabel = computed(() => {
 const isMain = computed(() => {
   const r = results.value[0]
   return !!r && MAIN_SPECIALTIES.has(useCatalogStore().getAgent(r.agentId)?.specialty ?? '')
+})
+
+type SortKey = 'order' | 'damage' | 'daze' | 'buildUp'
+const sortKey = ref<SortKey>('order')
+const sortOptions: Array<{ value: SortKey; label: string }> = [
+  { value: 'order', label: '选择顺序' },
+  { value: 'damage', label: '总伤' },
+  { value: 'daze', label: '失衡占比' },
+  { value: 'buildUp', label: '积蓄占比' },
+]
+/** 显示顺序（图与表共用；不改 results 本身，切换排序不重算） */
+const displayRows = computed(() => {
+  const rows = [...results.value]
+  if (sortKey.value === 'order') return rows
+  const field = sortKey.value === 'damage' ? 'totalDamage' : sortKey.value === 'daze' ? 'dazeShare' : 'buildUpShare'
+  return rows.sort((a, b) => b[field] - a[field])
+})
+
+/** 明细表列：主C/非主C两套；表头从 markup 移到数据，单元格仍由 slot 给 */
+const tableColumns = computed(() => {
+  const cols = [
+    { key: 'preset', label: '队伍' },
+    { key: 'agent', label: positionLabel.value },
+    { key: 'stun', label: '失衡次数' },
+    { key: 'daze', label: '失衡值' },
+    { key: 'dazeShare', label: '失衡占比' },
+  ]
+  if (isMain.value) {
+    cols.push(
+      { key: 'buildUp', label: '积蓄量' },
+      { key: 'buildUpShare', label: '积蓄占比' },
+      { key: 'total', label: '总伤' },
+      { key: 'self', label: '主C自身' },
+      { key: 'direct', label: '直伤' },
+      { key: 'release', label: '异放' },
+      { key: 'disorder', label: '紊乱' },
+      { key: 'anomaly', label: '其他异常' },
+    )
+  } else {
+    cols.push(
+      { key: 'total', label: '总伤' },
+      { key: 'self', label: '自身' },
+      { key: 'gift', label: '送连携/赠送' },
+      { key: 'buff', label: '拐力提升(差分)' },
+      { key: 'other', label: '其他' },
+    )
+  }
+  return cols
 })
 
 onMounted(async () => {
@@ -282,6 +315,24 @@ function pct(part: number, total: number): string {
 }
 .result-card {
   margin-top: 16px;
+}
+.result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.detail-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-2);
+  margin: 0 0 8px;
 }
 .num {
   text-align: right;

@@ -167,6 +167,27 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 页面注册 | `src/views/CalculatorView.vue` pageMap + `src/components/AppHeader.vue`（`teamCompare` tab） |
 | 测试 | `src/composables/__tests__/teamCompare.test.ts`（金数/难度/批量/现场恢复/buff 推荐/buff 条件/自动下位择优） |
 
+## 3.5 分析工作台（「自由对比」Tab，2026-10-17 工作台化）
+
+**用户操作**：
+
+1. 「模板」下拉选一个起点（内置：角色配置对比 / 命座曲线 / 专武精炼 / Boss 期数 / 配置×命座切片 / 维琳娜命座切片），或直接改参数。
+2. 场景（Boss/Buff/队友/配装/条件）+ 系列 + x/切片/指标 → 点「对比」。
+3. 结果卡用「表格 / 长表 / 折线 / 切片 / 3D / 差值」换视角；图例显隐与「当前片」跨视角共用；点切片面板或 3D 折线切当前片；差值视角可选基准系列。长表 = 同一份结果摊平成 `x × 切片 × 系列 → 值`，可导出 CSV（表内滚动，440px 上限）。
+4. **从其他页导入**：在队伍对比（加金散点）/ 时间图表 / 血量膨胀跑一次，回工作台在「导入」下拉选最近结果 →「导入」。导入只转换形状、不重新求值（表头显示「导入结果 · 未重新求值」），可直接用表格/长表/折线/差值。
+5. 「存为」输入名字 →「保存当前」写 localStorage；「删除」只删 `user:` 预设。
+
+**口径**：
+
+- 预设只存**输入**；结果由一次求值产出，切换视角不重算（`composables/freeCompare/views.ts`）。
+- 与 x 轴抢同一档位字段的切片不出现/引擎拒绝（`sliceConflicts`）；Boss 期数切片需先选 Boss。
+- 用户预设读取时逐条净化，坏条目丢弃；写失败（quota/隐私模式）明确报错（`presets.ts`）。
+- 差值 = `(值 − 基准) / |基准| × 100`；基准 0 / 缺失的点断线，不画成 0。
+- 长表是数据层的统一形状（`composables/analysis/dataset.ts`）：行 = x × 切片 × 系列；缺失读数保留 `null`。CSV 只是**可选导出**（原始精度、UTF-8 BOM + CRLF），不是跨页通道；跨页数据在应用内由 `analysis/transfer.ts` 直接传递。
+- 跨页适配器：队伍加金（x = 限定金，系列 = 队伍，伤害/血量% 两份）、时间图表（x = 版本/期数，系列 = 主C 的最优队包络）、血量膨胀（x = 期数，系列 = Boss，值 = 版本系数）。专业页跑完经 `analysis/transfer.ts` 发布；工作台 `resultFromDataset` 转成只读结果，`evaluations = 0`。
+
+**修改入口**：`freeCompare/views.ts` / `freeCompare/presets.ts` / `analysis/dataset.ts` / `analysis/transfer.ts` / `data/analysisPresets.ts` / `views/FreeComparePage.vue`；共享图例 = `components/charts/ChartLegend.vue`（已接分析工作台、队伍对比散点/曲线、时间图表强度带、血量膨胀、直伤系数/新角色/菲林/抽卡规划/同槽位对比；筛选状态仍统一在 `useSeriesFilter`）；共享表格 = `components/charts/ChartTable.vue`。
+
 ## 4. 时间图表（「时间图表」Tab）
 
 ### 4.1 用户操作
@@ -300,13 +321,15 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 
 回答「某个位置选谁」：同一支队伍只换该位置的角色（如击破手 诺姆 ↔ 琉音、辅助 卢西娅 ↔ 丽娜），按该位置跑完整局计算。
 
-- **三个位置**（顶部「位置」切换，按 `specialty` 识别）：
-  - **主C** = `attack / anomaly / rupture`：自身总伤拆成 直伤 / 异放 / 紊乱 / 其他异常 四块（其余异常 = 灼烧/感电/侵蚀/风化/强击/碎冰/乱流/耀变/极性强击/极性紊乱/畏缩DOT 等），另给 失衡值/占比 与 积蓄量/占比。
-  - **击破手** = `stun`、**辅助** = `support / defense`：总伤拆成 自身直伤 / 送连携·赠送 / 拐力差分 / 其他 四块，另给 失衡值/占比。
+- **三个号位**（顶部「位置」切换 = 槽位 0/1/2，不按职业猜；同队同职业也能分辨）：
+  - 该号位角色职业 ∈ `attack / anomaly / rupture`（主C视角）：自身总伤拆成 直伤 / 异放 / 紊乱 / 其他异常 四块（其余异常 = 灼烧/感电/侵蚀/风化/强击/碎冰/乱流/耀变/极性强击/极性紊乱/畏缩DOT 等），另给 失衡值/占比 与 积蓄量/占比。
+  - 否则（击破/辅助视角）：总伤拆成 自身直伤 / 送连携·赠送 / 拐力差分 / 其他 四块，另给 失衡值/占比。
+- **贡献构成条**（结果卡顶部）：每队一行；「按总伤」= 条长随全队总伤缩放、条内按贡献堆叠（同时看总量与构成），「按占比」= 每队归一 100%（只看构成）；条下两条迷你条 = 该号位失衡占比 / 积蓄占比。表格保留精确数值。实现 `components/charts/PositionCompareChart.vue`。
+- **排序**（结果卡右上）：选择顺序 / 总伤 / 失衡占比 / 积蓄占比；只改显示顺序，不重新求值，图与表同步。明细表已接共享 `components/charts/ChartTable.vue`（粘头、横向滚动、`dense` 行距）。
 - **同款限定金数**：所有参比队伍先按同一金档应用各自预设 `goldSteps`（控件「限定金」，缺省 6）再比较——公平看换该位置的边际收益。
 - **失衡值 / 失衡占比**：来自失衡池逐槽统计（`perSlotStun`）。**后台自动招式（莱卡恩围猎闪反/蓄力平A、橘福福虎威、露西、丽娜邦布、仪玄合轴等）的失衡贡献已计入**——这些行 daze 经倍率表回填进失衡池，分子分母都含。
 - **积蓄量 / 积蓄占比**：按「异属性赠送归接收人」口径逐槽归因（与资源池页 `teamOverview` 同口径）——赋彩/赠送等异属性贡献（贡献元素 ≠ 角色伤害元素）记在该元素同属性主贡献者槽，不记赠送者。
-- 各队自动匹配各自预设轴；拐力 = 关掉该位置角色 teammate-buffs 重算的总伤差值。实现 `composables/positionCompare.ts` + `views/PositionComparePage.vue`（旧名 `breakerCompare.ts` / `StunBreakerComparePage.vue`，路由 key 仍为 `breakerCompare`）。
+- 各队自动匹配各自预设轴；拐力 = 关掉该位置角色 teammate-buffs 重算的总伤差值。实现 `composables/positionCompare.ts` + `components/charts/PositionCompareChart.vue` + `views/PositionComparePage.vue`（旧名 `breakerCompare.ts` / `StunBreakerComparePage.vue`，路由 key 仍为 `breakerCompare`）。
 
 ## 7. 实战对比（「实战对比」Tab）
 
@@ -375,6 +398,15 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 | 时间图表页 | 抽卡规划器 | 泳道（购买 / 期分 / 房1~房3；隐藏后留空位不重排，避免开关一下整图跳动） |
 | 时间图表页 | 同槽位角色对比 | A/B 两条线（隐藏一队后纵轴按剩下的线缩放） |
 | 血量膨胀页 | Boss 版本系数 | Boss（隐藏线的系数退出 Y 轴上限） |
+
+### 7.7 图表共享外观（图例 / 表格 / 3D 场景壳，2026-10-17）
+
+- **长表数据层** = `composables/analysis/dataset.ts`：把「一次求值」摊平成 `x × 切片 × 系列 → 值`，并提供 CSV（`datasetCsv`）。视图只消费行；已接自由对比、队伍加金、时间图表、血量膨胀。专业页经 `composables/analysis/transfer.ts` 发布，工作台用 `resultFromDataset` 转成只读结果（无引擎求值）。
+- **图例** = `components/charts/ChartLegend.vue`：只画外观与抛事件，筛选状态仍在 `useSeriesFilter`；item 可带 `color` / `title`。已接分析工作台、队伍对比散点/曲线、时间图表强度带、血量膨胀与 5 个时间图表子图；不再新写 legend markup。
+- **表格** = `components/charts/ChartTable.vue` + 全局 `src/styles/chart-table.css`：统一外层滚动、表头/粘头/边框；单元格由页面 slot 给（富单元格不压成字符串）。为什么基座是全局：slot 内容属父组件 scope，子组件 scoped 样式够不到。已接分析工作台汇总表/长表、时间图表「各版本节点明细」、队伍对比全部 6 张 `detail-table`（`dense` 保留 4px 行距）；长表用 `max-height` 表内滚动。
+- **3D 场景壳** = `composables/charts/useCanvasScene.ts`：DPR 尺寸、ResizeObserver、主题重绘、rAF 合帧；业务绘制只拿 `ctx + size`。四个 canvas 组件（`TeamDamage3DChart` / `DifficultyCurve3DChart` / `ResponseSurface3D` / `FreeCompare3DChart`）全部接入；自转开/关都会主动起帧。
+
+**判据**：图例状态 = `seriesFilter.test.ts`；canvas 主题锁 = `canvasTheme.test.ts`（组件必须直连 `useThemeRedraw` 或接 `useCanvasScene`，且场景壳本身订阅主题）；表格/3D 改动跑对应页的 `scripts/ui-check.mjs`。
 
 ## 8. 验证命令
 

@@ -5,19 +5,12 @@
     title="限定S首次UP · 版本直伤系数（中心系数 = 支援突击伤害 / 标准值；支援突击通常不随角色改版，偏离即历代直伤膨胀档位）"
   >
     <!-- 档位筛选（点图例显隐；三档就是散点颜色的语义，与图例同一把尺） -->
-    <div class="legend">
-      <span class="legend-hint">点图例显隐档位</span>
-      <div
-        v-for="band in ddBandDefs"
-        :key="band.id"
-        class="legend-item"
-        :class="{ off: !ddLegend.isVisible(band.id) }"
-        :title="`${band.desc}：点击${ddLegend.isVisible(band.id) ? '隐藏' : '显示'}该档（Y 轴固定 0.7~1.3 档位口径，不随筛选缩放）`"
-        @click="ddLegend.toggle(band.id)"
-      >
-        <span class="swatch" :style="{ background: band.color }"></span><span class="name">{{ band.label }}</span>
-      </div>
-    </div>
+    <ChartLegend
+      :items="ddLegendItems"
+      :is-visible="ddLegend.isVisible"
+      hint="点图例显隐档位"
+      @toggle="ddLegend.toggle"
+    />
     <svg :width="svgW" :height="ddSvgH" class="dd-svg">
       <!-- 测试服节点阴影 -->
       <rect
@@ -91,6 +84,7 @@
  */
 import { computed } from 'vue'
 import { NCard } from 'naive-ui'
+import ChartLegend from '@/components/charts/ChartLegend.vue'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { VERSION_NODES } from '@/data/versionTimeline'
 import {
@@ -131,6 +125,12 @@ function ddLabelY(p: DirectDamagePoint): number { return dd.value.labelY(p) }
 
 const ddBandDefs = DD_BAND_DEFS
 const ddLegend = useSeriesFilter(() => ddBandDefs.map(b => ({ id: b.id, name: b.label })))
+const ddLegendItems = computed(() => ddBandDefs.map(b => ({
+  id: b.id,
+  label: b.label,
+  color: b.color,
+  title: b.desc + '：点击' + (ddLegend.isVisible(b.id) ? '隐藏' : '显示') + '该档（Y 轴固定 0.7~1.3 档位口径，不随筛选缩放）',
+})))
 /** 可见点（图上画什么）；注意 ddLabelSlots 仍按全量算，筛选不改变标签槽位分配 */
 const ddVisiblePoints = computed(() =>
   props.points.filter(p => p.value == null || ddLegend.isVisible(ddBandOf(p.value))))

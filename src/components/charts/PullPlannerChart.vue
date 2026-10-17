@@ -61,20 +61,14 @@
     </div>
 
     <!-- 泳道图例（点击显隐；泳道各自 y 固定，隐藏后留空位而不重排——避免开关一下整张图跳动） -->
-    <div class="legend">
-      <span class="legend-hint">点图例显隐泳道</span>
-      <div
-        v-for="d in ppLaneDefs"
-        :key="d.id"
-        class="legend-item"
-        :class="{ off: !ppLegend.isVisible(d.id) }"
-        :title="`${d.desc}：点击${ppLegend.isVisible(d.id) ? '隐藏' : '显示'}`"
-        @click="ppLegend.toggle(d.id)"
-      >
-        <span class="swatch" :style="{ background: d.color }"></span><span class="name">{{ d.label }}</span>
-      </div>
-      <span class="legend-hint legend-action" @click="ppLegend.showAll()">全显示</span>
-    </div>
+    <ChartLegend
+      :items="ppLegendItems"
+      :is-visible="ppLegend.isVisible"
+      hint="点图例显隐泳道"
+      show-all
+      @toggle="ppLegend.toggle"
+      @show-all="ppLegend.showAll"
+    />
 
     <!-- 策略甘特：期数 × 购买/队伍 -->
     <div class="timeline-wrap pp-plot">
@@ -197,6 +191,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
 import { useSeriesFilter } from '@/composables/seriesFilter'
+import ChartLegend from '@/components/charts/ChartLegend.vue'
 import { colorOf } from '@/composables/charts/agentPresentation'
 import {
   buildPlannerChart,
@@ -296,6 +291,12 @@ const ppc = computed(() => buildPlannerChart({
 }))
 const ppLaneDefs = PP_LANE_DEFS
 const ppLegend = useSeriesFilter(() => ppLaneDefs.map(d => ({ id: d.id, name: d.label })))
+const ppLegendItems = computed(() => ppLaneDefs.map(d => ({
+  id: d.id,
+  label: d.label,
+  color: d.color,
+  title: d.desc + '：点击' + (ppLegend.isVisible(d.id) ? '隐藏' : '显示'),
+})))
 const ppLabelW = ppc.value.labelW
 const ppPadT = ppc.value.padT
 const ppXLabelH = ppc.value.xLabelH

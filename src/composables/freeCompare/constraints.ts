@@ -11,6 +11,13 @@
 import type { SetupCode } from './axes'
 import type { BossPreset, PhaseBuffCard } from '@/types/bossPreset'
 
+/** 一个锁定条件（场景角色 + 影画/精炼） */
+export interface ConditionSpec {
+  agentId: string
+  cinema: number
+  wengine?: number
+}
+
 /**
  * 约束（条件）：求值前套到 store 上、求值后恢复（快照/恢复口径同 `teamCompare.ts`）。
  * 全部字段可选 = 不约束（沿用用户当前页面配置）。
@@ -37,7 +44,7 @@ export interface ConstraintSpec {
    * 多项 = 同时锁定（例如同时锁维琳娜 2 命 + 卢西娅 0 命）。
    * 条件角色的配置码**不进系列 id**（它不是被比的东西，是场景）。
    */
-  conditions?: Array<{ agentId: string; cinema: number; wengine?: number }>
+  conditions?: ConditionSpec[]
   /**
    * 当期危局 buff 牌清单（= 所选 Boss 期的 `phaseViews[].buffs`，页面从 boss-presets.json 取来传入）。
    * 为什么不从 boss 对象反查：期视图（含 buff 牌）挂在 boss-presets.json **顶层**，不在单个 Boss 预设里
@@ -63,6 +70,21 @@ export function conditionLabel(c: { agentId: string; cinema: number }, nameOf: (
 }
 
 /**
+ * 条件切片：把某个条件角色的影画固定到 `cinema`（其余条件逐字保留）。
+ * 该角色不在条件里时**追加**一条——切片语义是「这个角色的这一档」，不是「只改已有条件」。
+ * 纯函数（不碰 store）：求值器对每个切片都基于**用户给的基线条件**重算，
+ * 不把上一片的改动带进下一片（否则 1 命片会继承 0 命片的残留）。
+ */
+export function withConditionCinema(
+  conditions: ReadonlyArray<ConditionSpec> | undefined,
+  patch: { agentId: string; cinema: number },
+): ConditionSpec[] {
+  const out = (conditions ?? []).map(c => (c.agentId === patch.agentId ? { ...c, cinema: patch.cinema } : { ...c }))
+  if (!out.some(c => c.agentId === patch.agentId)) out.push({ agentId: patch.agentId, cinema: patch.cinema })
+  return out
+}
+
+/**
  * 整份约束的一行摘要（图表副标题用）。
  * 用户裁决 2026-10-02：「比较的环境 buff 期数 boss 条件等是决定数据质量的关键，不同情况结论不同，
  * 不能掐头去尾给结论」⇒ 摘要必须含 Boss/期数/buff 状态/锁定条件/配装模式/交互与失衡轴声明；
@@ -72,11 +94,13 @@ export function constraintSummary(
   cs: ConstraintSpec,
   nameOf: (id: string) => string,
   appliedBuffLabel?: string,
+  opts: { omitPhase?: boolean } = {},
 ): string {
   const parts: string[] = []
   if (cs.boss) {
+    // x 轴或切片 = Boss 期数时，期数逐档变化 ⇒ 写死「某一期」会与图上档位矛盾（只留 Boss 名，期数看轴/切片标签）
     const phase = cs.boss.phases.find(p => p.phaseId === cs.phaseId) ?? cs.boss.phases[0]
-    parts.push(phase ? `${cs.boss.name}（${phase.label}）` : cs.boss.name)
+    parts.push(opts.omitPhase ? cs.boss.name : phase ? `${cs.boss.name}（${phase.label}）` : cs.boss.name)
   }
   for (const c of cs.conditions ?? []) parts.push(conditionLabel({ ...c, cinema: c.cinema }, nameOf))
   parts.push(cs.autoBuild ? '推荐配装' : '轻量速算')

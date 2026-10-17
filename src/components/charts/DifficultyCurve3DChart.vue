@@ -30,7 +30,8 @@ import { project3d, versionGridOf, zGridOf, type BossHpPoint, type Camera3D, typ
 import { seriesForLane, type CurveDatum, type CurveSeries } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
 import { fmt } from '@/utils/format'
-import { readThemeVar, useThemeRedraw, withAlpha } from '@/utils/canvasTheme'
+import { readThemeVar, withAlpha } from '@/utils/canvasTheme'
+import { useCanvasScene } from '@/composables/charts/useCanvasScene'
 
 /**
  * 场景色一律走 `--scene-*` 令牌（自绘 canvas 场景不能借页面墨色 --wa-* 或 --fg-*：明亮主题下压在场景底上对比度会塌，
@@ -94,6 +95,10 @@ const emit = defineEmits<{ pick: [laneKey: string, point: CurveDatum['point'], c
 
 const wrapRef = ref<HTMLDivElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+/** 共享 canvas 场景壳：DPR/尺寸/ResizeObserver/主题重绘都由它管 */
+const scene = useCanvasScene({ wrapRef, canvasRef, render: drawFrame })
+const size = scene.size
+const requestRender = scene.requestRender
 const cam = ref<Camera3D>({ yaw: 32, pitch: 28, zoom: 1 })
 const view = ref<'iso' | 'front' | 'side'>('iso')
 const ribbons = ref(true)
@@ -108,7 +113,6 @@ function setView(v: 'iso' | 'front' | 'side') {
 
 type Pt = { sx: number; sy: number; depth: number; laneIdx: number; ptIdx: number }
 let projectedPts: Pt[] = []
-let size = { w: 0, h: 0 }
 
 const laneCount = computed(() => Math.max(1, props.lanes.length))
 
@@ -144,21 +148,7 @@ function zTipOf(pt: { dmg: number; ratio: number }): string {
   return props.zMode === 'absolute' ? `伤害 ${abs}` : `伤害 ${fmt(pt.ratio, 1)}%（${abs}）`
 }
 
-function draw() {
-  const canvas = canvasRef.value
-  const wrap = wrapRef.value
-  if (!canvas || !wrap) return
-  const dpr = window.devicePixelRatio || 1
-  size = { w: wrap.clientWidth, h: wrap.clientHeight }
-  if (size.w === 0 || size.h === 0) return
-  if (canvas.width !== size.w * dpr || canvas.height !== size.h * dpr) {
-    canvas.width = size.w * dpr
-    canvas.height = size.h * dpr
-  }
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  ctx.clearRect(0, 0, size.w, size.h)
+function drawFrame(ctx: CanvasRenderingContext2D) {
   projectedPts = []
   const costMax = Math.max(1, props.costMax)
   const absMode = props.zMode === 'absolute'
@@ -435,19 +425,9 @@ function onWheel(e: WheelEvent) {
 }
 const onGlobalUp = () => { dragging = null }
 
-let ro: ResizeObserver | null = null
-// 切主题重绘（否则画面停在旧主题；CC-348）
-useThemeRedraw(draw)
-onMounted(() => {
-  draw()
-  window.addEventListener('mouseup', onGlobalUp)
-  if (typeof ResizeObserver !== 'undefined' && wrapRef.value) {
-    ro = new ResizeObserver(() => draw())
-    ro.observe(wrapRef.value)
-  }
-})
-onBeforeUnmount(() => { ro?.disconnect(); ro = null; window.removeEventListener('mouseup', onGlobalUp) })
-watch(() => [props.series, props.lanes, props.costMax, props.ratioMax, props.zMode, props.absMax, props.bossCurve, props.baseHp, cam.value, ribbons.value, wall.value], () => draw(), { deep: true })
+onMounted(() => { window.addEventListener('mouseup', onGlobalUp) })
+onBeforeUnmount(() => { window.removeEventListener('mouseup', onGlobalUp) })
+watch(() => [props.series, props.lanes, props.costMax, props.ratioMax, props.zMode, props.absMax, props.bossCurve, props.baseHp, cam.value, ribbons.value, wall.value], () => requestRender(), { deep: true })
 </script>
 
 <style scoped>

@@ -3,12 +3,39 @@
     <n-card size="small" :bordered="true">
       <template #header>
         <div class="card-header">
-          <span>自由对比工作台</span>
+          <span>分析工作台</span>
           <span class="muted">
-            系列 = 自选实体 × 自选配置码 · x = 自选维度 · y = 自选指标 · 其余（Boss/队友/锁定角色/配装）都是条件
+            预设 = 一组输入参数 · 一次求值 = 一份结果 · 视角 = 表格/折线/切片/3D/差值 · 其余（Boss/队友/锁定角色/配装）都是场景
           </span>
         </div>
       </template>
+
+      <!-- ===== 分析模板（预设） ===== -->
+      <div class="ctl-block">
+        <div class="ctl-block-title">
+          分析模板
+          <span class="ctl-hint">预设只存输入（系列/轴/切片/指标/场景）；同一份结果再切视角，避免重复求值</span>
+        </div>
+        <div class="ctl-row">
+          <div class="ctl-field">
+            <span class="ctl-label">模板</span>
+            <n-select
+              v-model:value="presetId"
+              :options="presetOptions"
+              size="small"
+              style="width: 280px"
+              @update:value="applyPresetById"
+            />
+          </div>
+          <div class="ctl-field">
+            <span class="ctl-label">存为</span>
+            <n-input v-model:value="presetName" size="small" style="width: 160px" placeholder="预设名" />
+            <n-button size="small" @click="saveCurrentPreset">保存当前</n-button>
+            <n-button size="small" quaternary :disabled="!isUserPreset(presetId)" @click="deleteCurrentPreset">删除</n-button>
+          </div>
+          <span class="ctl-hint">{{ presetHint }}</span>
+        </div>
+      </div>
 
       <!-- ===== 系列（被比的东西）===== -->
       <div class="ctl-block">
@@ -52,6 +79,10 @@
             <n-select v-model:value="metricId" :options="metricOpts" size="small" style="width: 170px" />
           </div>
           <div class="ctl-field">
+            <span class="ctl-label">切片维度（第二变量）</span>
+            <n-select v-model:value="sliceKey" :options="sliceOpts" size="small" style="width: 220px" />
+          </div>
+          <div class="ctl-field">
             <span class="ctl-label">影画上限</span>
             <n-input-number v-model:value="cinemaMax" :min="0" :max="6" size="small" style="width: 84px" />
           </div>
@@ -66,6 +97,9 @@
           </div>
           <div class="ctl-field ctl-hint">
             <span class="ctl-label">{{ axisHint }}</span>
+          </div>
+          <div class="ctl-field ctl-hint">
+            <span class="ctl-label">{{ sliceHint }}</span>
           </div>
         </div>
       </div>
@@ -123,6 +157,23 @@
         </div>
       </div>
 
+      <!-- ===== 从其他页导入（只读结果，不重新求值） ===== -->
+      <div class="ctl-row import-row">
+        <span class="ctl-label">导入</span>
+        <n-select
+          v-model:value="importId"
+          :options="transferOptions"
+          size="small"
+          clearable
+          style="width: 280px"
+          placeholder="先在队伍对比/时间图表/血量膨胀跑一次"
+        />
+        <n-button size="small" :disabled="!importId || computing" @click="applyImport">导入</n-button>
+        <span class="muted">
+          {{ transferOptions.length ? '应用内导入，不重新求值；CSV 只是可选导出' : '暂无跨页结果' }}
+        </span>
+      </div>
+
       <!-- ===== 跑 ===== -->
       <div class="ctl-row run-row">
         <n-button type="primary" size="small" :loading="computing" @click="runCompare">对比</n-button>
@@ -133,33 +184,42 @@
         <n-progress type="line" :percentage="Math.round((progress?.pct ?? 0) * 100)" :show-indicator="false" :height="6" />
         <span class="progress-text">{{ progress?.text ?? '' }}</span>
       </div>
-      <n-alert v-if="error" type="error" title="跑批失败" style="margin-top: 8px">{{ error }}</n-alert>
+      <n-alert v-if="error" type="error" title="操作失败" style="margin-top: 8px">{{ error }}</n-alert>
     </n-card>
 
     <!-- ===== 图 ===== -->
     <n-card v-if="result && result.series.length > 0" size="small" :bordered="true">
       <template #header>
         <div class="card-header">
-          <span>{{ result.metricLabel }} · x = {{ result.axisLabel }}</span>
+          <span>
+            {{ result.metricLabel }} · x = {{ result.axisLabel }}
+            <template v-if="result.sliceLabel"> · 切片 = {{ result.sliceLabel }}</template>
+          </span>
           <span class="muted">
-            {{ result.evaluations }} 次求值<template v-if="result.pickEvaluations > 0"> + {{ result.pickEvaluations }} 次下位择优</template>
-            · 耗时 {{ (result.durationMs / 1000).toFixed(1) }}s
-            <template v-if="result.skipped > 0"> · {{ result.skipped }} 档无读数</template>
+            <template v-if="imported">导入结果 · 未重新求值</template>
+            <template v-else>
+              {{ result.evaluations }} 次求值<template v-if="result.pickEvaluations > 0"> + {{ result.pickEvaluations }} 次下位择优</template>
+              <template v-if="hasSlices"> · {{ result.slices.length }} 片</template>
+              · 耗时 {{ (result.durationMs / 1000).toFixed(1) }}s
+              <template v-if="result.skipped > 0"> · {{ result.skipped }} 档无读数</template>
+            </template>
           </span>
         </div>
       </template>
 
-      <div class="fc-legend">
-        <span
-          v-for="s in result.series"
-          :key="s.id"
-          class="fc-legend-item fc-legend-click"
-          :class="{ off: !legend.isVisible(s.id) }"
-          @click="legend.toggle(s.id)"
-        >
-          <span class="fc-dot" :style="{ background: colorOf(s.id) }"></span>{{ s.label }}
-        </span>
-        <span class="legend-hint">点系列名显隐（纵轴按剩下的线缩放）<template v-if="hasBuffSplit"> · 实线 = 本体（无 buff），虚线 = 吃当期牌</template></span>
+      <ChartLegend
+        :items="legendItems"
+        :color-of="colorOf"
+        :is-visible="legend.isVisible"
+        :hint="legendHint"
+        show-all
+        @toggle="legend.toggle"
+        @show-all="legend.showAll"
+      />
+
+      <div v-if="imported" class="fc-note fc-import">
+        <span class="fc-note-label">导入：</span>
+        <span>{{ imported.source }} · {{ imported.label }}（只读，未重新求值）</span>
       </div>
 
       <!-- 环境声明（用户裁决 2026-10-02：环境条件是数据质量关键，不能掐头去尾 ⇒ 每张图自带完整口径） -->
@@ -168,66 +228,129 @@
         <span>{{ result.environmentSummary }}</span>
       </div>
 
+      <div class="fc-toolbar">
+        <div class="fc-view-switch">
+          <button
+            v-for="v in viewDefs"
+            :key="v.id"
+            class="fc-view-btn"
+            :class="{ active: viewMode === v.id }"
+            :aria-pressed="viewMode === v.id"
+            :title="v.hint"
+            @click="viewMode = v.id"
+          >{{ v.label }}</button>
+        </div>
+        <div v-if="result.slices.length > 1" class="ctl-field">
+          <span class="ctl-label">当前片</span>
+          <n-select v-model:value="selectedSliceId" :options="sliceSelectOptions" size="small" style="width: 150px" />
+        </div>
+        <div v-if="viewMode === 'delta'" class="ctl-field">
+          <span class="ctl-label">基准</span>
+          <n-select v-model:value="baselineEntityId" :options="baselineOptions" size="small" style="width: 210px" />
+        </div>
+        <button
+          class="fc-view-btn fc-export"
+          title="导出完整长表（x × 切片 × 系列；不受图例筛选）"
+          @click="exportDatasetCsv"
+        >导出 CSV（可选）</button>
+        <span class="legend-hint">{{ viewHint }}</span>
+        <span v-if="viewMode === 'long'" class="legend-hint">共 {{ longRows.length }} 行（表内滚动）</span>
+      </div>
+
+      <div class="fc-view">
+        <FreeCompareTable
+          v-if="viewMode === 'table' && selectedSlice"
+          :levels="result.levels"
+          :series="visibleSeries"
+          :def="resultDef"
+        />
+        <ChartTable
+          v-else-if="viewMode === 'long'"
+          :columns="longColumns"
+          :empty="longRows.length ? '' : '暂无数据'"
+          max-height="440px"
+        >
+          <tr v-for="(r, i) in longRows" :key="i">
+            <td>{{ r.xLabel }}</td>
+            <td>{{ r.sliceLabel || '全部' }}</td>
+            <td>
+              <span class="fc-long-dot" :style="{ background: colorOf(r.seriesId) }"></span>{{ r.seriesLabel }}
+            </td>
+            <td>{{ formatLongValue(r.value) }}</td>
+          </tr>
+        </ChartTable>
+        <div v-else-if="viewMode === 'line'" class="fc-plot-wrap">
+          <svg :viewBox="`0 0 ${svgW} ${svgH}`" class="fc-svg">
+            <g v-for="(y, i) in yGrid" :key="'g' + i">
+              <line :x1="padL" :x2="svgW - padR" :y1="y" :y2="y" class="grid-line" />
+              <text :x="padL - 8" :y="y + 3" class="axis-label" text-anchor="end">{{ yLabel(i) }}</text>
+            </g>
+            <g v-for="(lv, i) in result.levels" :key="'x' + i">
+              <text :x="levelX(i)" :y="svgH - 8" class="axis-label x-label" text-anchor="middle">{{ lv.label }}</text>
+            </g>
+            <polyline
+              v-for="s in visibleLines" :key="s.id" :points="s.points" class="fc-line"
+              :style="{ stroke: colorOf(s.id) }"
+              :stroke-dasharray="s.buffTitle ? '6 4' : undefined"
+            />
+            <template v-for="s in visibleLines" :key="'p' + s.id">
+              <circle
+                v-for="(p, i) in s.pts"
+                :key="i"
+                :cx="p.x" :cy="p.y" r="4"
+                :fill="colorOf(s.id)"
+                class="trend-point"
+              >
+                <title>{{ s.label }} · {{ result.levels[i]?.label }}：{{ p.text }}</title>
+              </circle>
+            </template>
+          </svg>
+        </div>
+        <SliceGridChart
+          v-else-if="viewMode === 'grid'"
+          :levels="result.levels"
+          :panels="slicePanels"
+          :color-of="colorOf"
+          :format="formatValue"
+          :selected-id="selectedSliceId"
+          @select="selectedSliceId = $event"
+        />
+        <FreeCompare3DChart
+          v-else-if="viewMode === '3d'"
+          :levels="result.levels"
+          :slices="result.slices"
+          :series="series3d"
+          :color-of="colorOf"
+          :format="formatValue"
+          :x-label="result.axisLabel"
+          :slice-label="result.sliceLabel ?? ''"
+          :z-label="result.metricLabel"
+          :selected-slice-id="selectedSliceId"
+          @select-slice="selectedSliceId = $event"
+        />
+        <SliceGridChart
+          v-else-if="viewMode === 'delta'"
+          :levels="result.levels"
+          :panels="deltaPanels"
+          :color-of="colorOf"
+          :format="formatDeltaPercent"
+          :selected-id="selectedSliceId"
+          @select="selectedSliceId = $event"
+        />
+      </div>
+
       <!-- 无专武档实际穿的下位件：按伤害择优挑的（实测同职业三把 A 级差 3~8pp），不显示就没法核对 -->
       <div v-if="downgradeNotes.length > 0" class="fc-note">
         <span class="fc-note-label">无专武档实际穿的下位（按伤害择优）：</span>
         <span v-for="n in downgradeNotes" :key="n" class="fc-note-item">{{ n }}</span>
       </div>
-
-      <div class="fc-plot-wrap">
-        <svg :viewBox="`0 0 ${svgW} ${svgH}`" class="fc-svg">
-          <g v-for="(y, i) in yGrid" :key="'g' + i">
-            <line :x1="padL" :x2="svgW - padR" :y1="y" :y2="y" class="grid-line" />
-            <text :x="padL - 8" :y="y + 3" class="axis-label" text-anchor="end">{{ yLabel(i) }}</text>
-          </g>
-          <g v-for="(lv, i) in result.levels" :key="'x' + i">
-            <text :x="levelX(i)" :y="svgH - 8" class="axis-label x-label" text-anchor="middle">{{ lv.label }}</text>
-          </g>
-          <polyline
-            v-for="s in visibleLines" :key="s.id" :points="s.points" class="fc-line"
-            :style="{ stroke: colorOf(s.id) }"
-            :stroke-dasharray="s.buffTitle ? '6 4' : undefined"
-          />
-          <template v-for="s in visibleLines" :key="'p' + s.id">
-            <circle
-              v-for="(p, i) in s.pts"
-              :key="i"
-              :cx="p.x" :cy="p.y" r="4"
-              :fill="colorOf(s.id)"
-              class="trend-point"
-            >
-              <title>{{ s.label }} · {{ result.levels[i]?.label }}：{{ p.text }}</title>
-            </circle>
-          </template>
-        </svg>
-      </div>
-
-      <!-- 汇总表（CC-204：每档最优系列绿底标出，方向按指标 higherBetter；单系列 / 全员并列不着色） -->
-      <div v-if="result.series.length > 1" class="legend-hint fc-best-hint">
-        绿底 = 该档最优（{{ resultDef?.higherBetter === false ? '本指标越小越好' : '越大越好' }}）
-      </div>
-      <div class="table-wrap">
-        <table class="tl-table">
-          <thead>
-            <tr>
-              <th>x</th>
-              <th v-for="s in result.series" :key="s.id">{{ s.label }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(lv, i) in result.levels" :key="i">
-              <td>{{ lv.label }}</td>
-              <td v-for="(s, si) in result.series" :key="s.id" :class="{ 'fc-best': bestByLevel[i]?.has(si) }">{{ cellText(s.values[i]) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
     </n-card>
 
     <div v-else class="empty-hint">
       选好系列（谁跟谁比）与 x/y，点「对比」。
-      默认就是用户要的那个场景：柏妮思 vs 菲欧妮，配置码 01/11/21/20，y = 队伍总伤；
-      「维琳娜几命」放进下面的<b>条件</b>里锁定。
+      模板栏可一键套用「角色配置对比 / 命座曲线 / 专武精炼 / Boss 期数 / 配置×命座切片 / 维琳娜命座切片」；
+      「维琳娜几命」这类场景放进<b>条件</b>里锁定。
+      结果出来后用<b>表格 / 折线 / 切片 / 3D / 差值</b>换视角——同一份结果，不重复求值。
     </div>
   </div>
 </template>
@@ -246,6 +369,18 @@
  * 判据：① 改任一维不动其余；② 加指标/加 x 维度 = 往注册表加一行（`metrics.ts` / `axes.ts`），
  * 本文件不感知具体有哪些指标 —— 下拉是 `METRICS` 直接渲染的。
  *
+ * **第二变量（2026-10-17）**：切片维度 = 轴切片（复用 `AXES`）或条件角色影画切片；
+ * 与 x 轴抢同一档位字段的组合由 `axes.ts#sliceConflicts` 拒绝（否则一条轴静默失效 = 假维度）。
+ * 呈现：多重二维切片（`SliceGridChart`，**纵轴共用一把尺**）+ 3D 折线阵（`FreeCompare3DChart`，
+ * 复用 `difficultyCurve3d#project3d` 投影；只读 props、不碰 store）。
+ *
+ * **工作台化（2026-10-17 第二轮；用户：输入/输出/显示/预设都是重复内容）**：
+ * - 输入 = 内置模板 + 用户预设（`freeCompare/presets.ts` / `data/analysisPresets.ts`），预设只存参数；
+ * - 求值 = 仍然只调一次 `computeFreeCompare`（不因换视角重算）；
+ * - 输出 = 同一份 `FreeCompareResult` 的投影（`freeCompare/views.ts`：表格/折线/切片/3D/差值）；
+ * - 联动 = 图例显隐与「当前片」跨视角共用；点切片面板/3D 折线同步切换当前片。
+ * 判据：加一种视角 = 往 `ANALYSIS_VIEWS` + 一个 `v-else-if`；加一个模板 = 往 `data/analysisPresets` 加一条。
+ *
  * 复用（规则 12，逐个真查过再引用）：
  * - `seriesFilter.ts#useSeriesFilter`：图例点选显隐（隐藏必须同时退出派生量 —— 纵轴按可见线缩放）
  * - `versionChartGeometry#scYRangeOf / scYStepOf / scYOf / scYGridOf / scGridStartOf`：纵轴几何直接复用（CC-427；
@@ -257,22 +392,59 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { FREE_COMPARE_AGENTS } from '@/data/viewAgentDefaults'
 import { NAlert, NButton, NCard, NCheckbox, NInput, NInputNumber, NProgress, NSelect, NTag } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
+import SliceGridChart from '@/components/charts/SliceGridChart.vue'
+import FreeCompare3DChart from '@/components/charts/FreeCompare3DChart.vue'
+import ChartLegend from '@/components/charts/ChartLegend.vue'
+import FreeCompareTable from '@/components/FreeCompareTable.vue'
+import { BUILTIN_ANALYSIS_PRESETS } from '@/data/analysisPresets'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { colorOf } from '@/composables/charts/agentPresentation'
+import ChartTable from '@/components/charts/ChartTable.vue'
+import { datasetCsv, datasetFromFreeCompare, resultFromDataset } from '@/composables/analysis/dataset'
+import { transferredAnalyses, type TransferredAnalysis } from '@/composables/analysis/transfer'
 import { computeFreeCompare } from '@/composables/freeCompare/engine'
 import {
   AXIS_BY_ID,
   DEFAULT_AXIS_ID,
+  EMPTY_SERIES_SPEC,
   type AxisId,
+  type AxisOptions,
   type SeriesSpec,
+  type SliceSpec,
   axisOptions as buildAxisOptions,
   formatSetupCode,
   parseSetupCode,
   setupCodeLabel,
+  parseSliceKey,
+  sliceKeyOf,
+  sliceConflicts,
+  sliceLevelsOf,
+  sliceOptions,
+  sliceTitleOf,
 } from '@/composables/freeCompare/axes'
-import { bestSeriesIndexByLevel, formatMetric, metricDef, metricOptions } from '@/composables/freeCompare/metrics'
+import { METRICS, formatMetric, metricDef, metricOptions, type MetricDef } from '@/composables/freeCompare/metrics'
+import {
+  deleteUserPreset,
+  isUserPreset,
+  loadUserPresets,
+  newUserPresetId,
+  saveUserPreset,
+  type WorkbenchPreset,
+} from '@/composables/freeCompare/presets'
+import {
+  ANALYSIS_VIEWS,
+  availableViews,
+  baselineOptionsOf,
+  defaultBaselineId,
+  deltaPanelsOf,
+  fallbackView,
+  formatDeltaPercent,
+  selectedSliceOf,
+  seriesItemsOf,
+  type AnalysisView,
+} from '@/composables/freeCompare/views'
 import { scGridStartOf, scYGridOf, scYOf, scYRangeOf, scYStepOf } from '@/composables/versionChartGeometry'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
 
@@ -312,6 +484,43 @@ const cinemaMax = ref(6)
 /** 配置码维度的档位序列（用户原话「21/11/20/01」）—— 逗号分隔，非法码在跑批前被拦下 */
 const setupCodesText = ref('01,11,21,20')
 const autoBuild = ref(false)
+/** 切片维度（第二变量）：'' = 单张 2D 图；取值编码见 axes.ts 的 sliceKeyOf/parseSliceKey */
+const sliceKey = ref('')
+/** 规格 ↔ 下拉值：读取解码，失效时经 setter 编码回 ''（编码只有一份，避免两处手写 `axis:${id}`） */
+const sliceSpec = computed<SliceSpec | null>({
+  get: () => parseSliceKey(sliceKey.value),
+  set: spec => { sliceKey.value = sliceKeyOf(spec) },
+})
+/** 当前视角：同一份结果的不同投影（切换不重算） */
+const viewMode = ref<AnalysisView>('line')
+/** 当前片（表格/折线/3D 选中态共用；空 = 结果到达后取第一片） */
+const selectedSliceId = ref('')
+/** 差值视角的基准系列 */
+const baselineEntityId = ref('')
+
+// ---------- 预设（参数模板；结果另算） ----------
+const presetId = ref('')
+const presetName = ref('')
+const userPresets = ref<WorkbenchPreset[]>([])
+/** 从其他页导入的分析结果（只读；导入不重新求值） */
+const importId = ref('')
+const imported = ref<TransferredAnalysis | null>(null)
+const transferOptions = computed(() => transferredAnalyses.value.map(x => ({
+  value: x.id,
+  label: x.source + ' · ' + x.label,
+})))
+const allPresets = computed<WorkbenchPreset[]>(() => [...BUILTIN_ANALYSIS_PRESETS, ...userPresets.value])
+const presetOptions = computed(() => [
+  { value: '', label: '（自定义 / 不套模板）' },
+  ...BUILTIN_ANALYSIS_PRESETS.map(p => ({ value: p.id, label: '内置 · ' + p.name })),
+  ...userPresets.value.map(p => ({ value: p.id, label: '我的 · ' + p.name })),
+])
+const currentPreset = computed(() => allPresets.value.find(p => p.id === presetId.value) ?? null)
+const presetHint = computed(() => {
+  const p = currentPreset.value
+  if (!p) return '模板只改输入参数；结果要重新点「对比」'
+  return (p.note ? p.note + ' · ' : '') + '模板只改输入参数；结果要重新点「对比」'
+})
 
 const bossId = ref('')
 // ---------- 当期 Buff（用户裁决 2026-10-02：可以带也可以不带；全状态 = 本体 vs 吃拐并排）----------
@@ -342,7 +551,7 @@ watch(currentBuffs, () => {
   const cur = buffChoice.value
   if (cur.startsWith('card:') && !currentBuffs.value.some(b => `card:${b.title}` === cur)) buffChoice.value = 'none'
 })
-const mateA = ref(VELINA) // 默认把维琳娜当基底队友（对上用户原话的场景）
+const mateA = ref<string>(VELINA) // 默认把维琳娜当基底队友（对上用户原话的场景）
 const mateB = ref('')
 const condAgentId = ref('')
 const condCinema = ref(0)
@@ -365,6 +574,13 @@ const periodOptions = computed(() => [...(bossPresets.value.find(b => b.id === b
 const metricOpts = metricOptions()
 const axisOptions = buildAxisOptions()
 const axisHint = computed(() => AXIS_BY_ID.get(axisId.value)?.hint ?? '')
+/** 切片下拉：不与 x 轴抢同一字段；已锁定的条件角色可单独切片（Boss 期数需先选 Boss） */
+const sliceOpts = computed(() => sliceOptions(axisId.value, conditions.value, agentName, periodOptions.value.length > 0))
+watch([axisId, () => conditions.value.map(c => c.agentId).join(','), () => periodOptions.value.length], () => {
+  if (!sliceKey.value) return
+  const opt = sliceOpts.value.find(o => o.value === sliceKey.value)
+  if (!opt || opt.disabled) sliceSpec.value = null
+})
 
 function agentName(id: string): string {
   return catalog.agentName(id)
@@ -372,6 +588,94 @@ function agentName(id: string): string {
 function codeReadable(code: string): string {
   const c = parseSetupCode(code)
   return c ? setupCodeLabel(c) : '（两位数字）'
+}
+
+/** 套用模板：只改输入，并清掉旧结果（参数变了还挂着旧图 = 静默错读） */
+function applyPresetById(id: string) {
+  presetId.value = id
+  if (!id) return
+  const p = allPresets.value.find(x => x.id === id)
+  if (!p) return
+  series.value = p.series.map(s => ({ key: keySeq++, agentId: s.agentId, code: s.code }))
+  axisId.value = p.axisId
+  sliceKey.value = p.sliceKey
+  metricId.value = p.metricId
+  cinemaMax.value = p.cinemaMax
+  setupCodesText.value = p.setupCodesText
+  if (p.bossId) bossId.value = p.bossId
+  buffChoice.value = p.buffChoice
+  mateA.value = p.mateA
+  mateB.value = p.mateB
+  autoBuild.value = p.autoBuild
+  conditions.value = p.conditions.map(c => ({ ...c }))
+  viewMode.value = p.view ?? 'line'
+  result.value = null
+  imported.value = null
+  selectedSliceId.value = ''
+  baselineEntityId.value = ''
+  error.value = ''
+}
+
+/** 导入其他页的结果：转成同一 FreeCompareResult 形状，复用现有视角（不求值） */
+function applyImport(): void {
+  const item = transferredAnalyses.value.find(x => x.id === importId.value)
+  if (!item) return
+  // readonly 清单里的对象不能直接赋给可变 ref；复制一层（行数可能多，但只在手动导入时发生）
+  imported.value = {
+    id: item.id,
+    source: item.source,
+    label: item.label,
+    createdAt: item.createdAt,
+    dataset: {
+      rows: item.dataset.rows.map(r => ({ ...r })),
+      xLabel: item.dataset.xLabel,
+      sliceLabel: item.dataset.sliceLabel,
+      measure: { ...item.dataset.measure },
+    },
+  }
+  presetId.value = ''
+  result.value = resultFromDataset(imported.value.dataset)
+  error.value = ''
+}
+
+function saveCurrentPreset() {
+  const name = presetName.value.trim()
+  if (!name) { error.value = '先给预设起个名字'; return }
+  const rows = series.value.filter(s => s.agentId)
+  if (rows.length === 0) { error.value = '至少选一个系列再保存预设'; return }
+  if (rows.some(s => !parseSetupCode(s.code))) { error.value = '配置码不合法，先修正再保存预设'; return }
+  const preset: WorkbenchPreset = {
+    id: newUserPresetId(),
+    name,
+    series: rows.map(s => ({ agentId: s.agentId, code: s.code })),
+    axisId: axisId.value,
+    sliceKey: sliceKey.value,
+    metricId: metricId.value,
+    cinemaMax: cinemaMax.value,
+    setupCodesText: setupCodesText.value,
+    bossId: bossId.value,
+    buffChoice: buffChoice.value,
+    mateA: mateA.value,
+    mateB: mateB.value,
+    autoBuild: autoBuild.value,
+    conditions: conditions.value.map(c => ({ ...c })),
+    view: viewMode.value,
+  }
+  const list = saveUserPreset(preset)
+  if (!list) { error.value = '预设保存失败：浏览器存储不可用或已满'; return }
+  userPresets.value = list
+  presetId.value = preset.id
+  presetName.value = ''
+  error.value = ''
+}
+
+function deleteCurrentPreset() {
+  if (!isUserPreset(presetId.value)) return
+  const list = deleteUserPreset(presetId.value)
+  if (!list) { error.value = '预设删除失败'; return }
+  userPresets.value = list
+  presetId.value = ''
+  error.value = ''
 }
 
 // ---------- 跑批 ----------
@@ -393,22 +697,51 @@ function parseSetupCodesText(): string[] | null {
 }
 const setupCodes = computed(() => parseSetupCodesText())
 
+/** 求值器/档位枚举共用的档位参数（x 轴与切片各取所需；影画上限同时管条件切片的档数） */
+const axisOpts = computed<AxisOptions>(() => ({
+  cinemaMax: cinemaMax.value,
+  setupCodes: setupCodes.value ?? [],
+  periods: periodOptions.value,
+  conditionCinemaMax: cinemaMax.value,
+}))
+
+/** 切片档数（无切片 = 1）——代价预告与切片提示共用 */
+const sliceCount = computed(() => {
+  const s = sliceSpec.value
+  if (!s) return 1
+  return sliceLevelsOf(EMPTY_SERIES_SPEC, s, axisOpts.value).length
+})
+
+/** 条件切片时该角色必须在场（基底队友或系列成员）——不在场 ⇒ 每片数值相同，必须点名而不是静默出平线 */
+const sliceConditionInScene = computed(() => {
+  const s = sliceSpec.value
+  if (!s || s.kind !== 'condition') return true
+  return mateA.value === s.agentId || mateB.value === s.agentId || series.value.some(row => row.agentId === s.agentId)
+})
+
+const sliceHint = computed(() => {
+  const s = sliceSpec.value
+  if (!s) return '可选：第二个变量——把图切成多片（或叠成 3D）；与 x 轴抢同一字段的维度不出现'
+  const n = sliceCount.value
+  const missing = sliceConditionInScene.value ? '' : ' · ⚠ 该角色不在基底队友/系列里，各片数值会相同'
+  return '切片 = ' + sliceTitleOf(s, agentName) + ' · ' + n + ' 片（求值量 ×' + n + '）' + missing
+})
+
 /** 代价预告：单次全量求值 ~0.3-0.4s（由 TeamComparePage 注释「每队 ~10 次 ≈ 3~4 秒」推算） */
 const costHint = computed(() => {
-  const levels = AXIS_BY_ID.get(axisId.value)?.levels(
-    { id: '', kind: 'agent', members: [], code: { cinema: 0, wengine: 1 } },
-    { cinemaMax: cinemaMax.value, setupCodes: setupCodes.value ?? [], periods: periodOptions.value },
-  ).length ?? 0
+  const levels = AXIS_BY_ID.get(axisId.value)?.levels(EMPTY_SERIES_SPEC, axisOpts.value).length ?? 0
   const nSeries = series.value.filter(s => s.agentId).length
-  // 全状态对比：每个主系列拆 本体+每张可用牌 条输出系列（求值量 ×(牌数+1)）
+  // 全状态对比：每个主系列拆 本体+每张可用牌 条输出系列（求值量 ×(牌数+1)）；切片再 × 片数
   const buffMult = buffChoice.value === 'all' ? currentBuffs.value.filter(b => !b.testOnly).length + 1 : 1
-  const n = levels * nSeries * buffMult
+  const slices = sliceCount.value
+  const n = levels * nSeries * buffMult * slices
   if (n === 0) return ''
   // 含「无专武」档时每系列多 ~(池大小−1) 次择优试算（同 (队友,角色,命座) 键后续档位走缓存；择优结果跨 buff 态复用同缓存）
-  const hasNoWengine = (setupCodes.value ?? []).some(c => c[1] === '0')
-  const picks = hasNoWengine ? nSeries * buffMult * 2 : 0
+  const sliceIsWengine = sliceSpec.value?.kind === 'axis' && sliceSpec.value.axisId === 'wengine'
+  const hasNoWengine = (setupCodes.value ?? []).some(c => c[1] === '0') || axisId.value === 'wengine' || sliceIsWengine
+  const picks = hasNoWengine ? nSeries * buffMult * 2 * (slices > 1 ? slices : 1) : 0
   const sec = Math.round((n + picks) * 0.35)
-  return `预计 ${n + picks} 次求值 ≈ ${sec}s${autoBuild.value ? '（开了推荐配装，会更慢）' : ''}${buffMult > 1 ? `（全状态对比 ×${buffMult}）` : ''}`
+  return `预计 ${n + picks} 次求值 ≈ ${sec}s${autoBuild.value ? '（开了推荐配装，会更慢）' : ''}${buffMult > 1 ? `（全状态对比 ×${buffMult}）` : ''}${slices > 1 ? `（${slices} 片）` : ''}`
 })
 
 async function runCompare() {
@@ -428,6 +761,14 @@ async function runCompare() {
   }
 
   if (axisId.value === 'period' && periodOptions.value.length === 0) { error.value = 'x = Boss 期数时，先在「条件」里选一个 Boss（期数 = 该 Boss 的各期危局）'; return }
+  const slice = sliceSpec.value
+  // 防御：下拉已排除抢字段的组合，但直接改 URL/旧状态进来也要响亮拒绝（静默二选一 = 假维度）
+  if (slice && slice.kind === 'axis' && sliceConflicts(slice, axisId.value)) {
+    error.value = '切片维度与 x 轴覆盖同一字段，会互相覆盖；请换一个切片维度'; return
+  }
+  if (slice && sliceCount.value === 0) {
+    error.value = '切片维度没有可用档位：Boss 期数切片要先在「条件」里选 Boss'; return
+  }
 
   const run = batchOwner.start()
   computing.value = true
@@ -437,8 +778,9 @@ async function runCompare() {
     const res = await withAnalysisScenario(scenario => computeFreeCompare(scenario, {
       series: specs,
       axisId: axisId.value,
-      axisOptions: { cinemaMax: cinemaMax.value, setupCodes: setupCodes.value ?? [], periods: periodOptions.value },
+      axisOptions: axisOpts.value,
       metricId: metricId.value,
+      slice,
       constraints: {
         boss: bossPresets.value.find(b => b.id === bossId.value),
         baseTeammates: [mateA.value, mateB.value],
@@ -454,7 +796,10 @@ async function runCompare() {
       control: { signal: run.signal },
       onProgress: p => run.commit(() => { progress.value = p }),
     }))
-    run.commit(() => { result.value = res })
+    run.commit(() => {
+      imported.value = null
+      result.value = res
+    })
   } catch (e) {
     run.commit(() => { error.value = e instanceof Error ? e.message : String(e) })
   } finally {
@@ -477,7 +822,27 @@ const padT = 18
 const plotH = 250
 
 const legend = useSeriesFilter(() => (result.value?.series ?? []).map(s => ({ id: s.id, name: s.label })))
-const visibleSeries = computed(() => legend.filter(result.value?.series ?? []))
+const legendItems = computed(() => seriesItemsOf(result.value))
+/** 当前片：表格/折线/3D 选中态共用；id 失效时回落第一片 */
+const selectedSlice = computed(() => selectedSliceOf(result.value, selectedSliceId.value))
+const visibleSeries = computed(() => legend.filter(selectedSlice.value?.series ?? []))
+/** 图例显隐对所有视角生效：按系列 id 过滤（隐藏必须退出派生量） */
+const visibleIds = computed(() => new Set(visibleSeries.value.map(s => s.id)))
+const sliceSelectOptions = computed(() => (result.value?.slices ?? []).map(s => ({ value: s.id, label: s.label || '全部' })))
+/** 可用视角：无切片时隐藏「切片/3D」（与折线重复） */
+const viewDefs = computed(() => {
+  const allowed = new Set(availableViews(result.value?.slices.length ?? 1))
+  return ANALYSIS_VIEWS.filter(v => allowed.has(v.id))
+})
+const viewHint = computed(() => {
+  const def = ANALYSIS_VIEWS.find(v => v.id === viewMode.value)
+  const count = result.value?.slices.length ?? 0
+  return (def ? def.hint : '') + (count > 1 && viewMode.value === 'line' ? ' · 共 ' + count + ' 片，点「切片」看全部' : '')
+})
+const baselineOptions = computed(() => baselineOptionsOf(result.value))
+const deltaPanels = computed(() => result.value
+  ? deltaPanelsOf(result.value, baselineEntityId.value, visibleIds.value)
+  : [])
 
 /** 纵轴范围：只看可见系列（隐藏必须退出派生量，否则筛选看着没生效）；几何复用 versionChartGeometry（CC-427） */
 const yRange = computed(() =>
@@ -495,8 +860,7 @@ function yOf(v: number): number {
 function yLabel(i: number): string {
   const step = scYStepOf(yRange.value)
   const v = scGridStartOf(yRange.value, step) + i * step
-  const def = resultDef.value
-  return def ? formatMetric(def, v) : String(Math.round(v))
+  return formatValue(v)
 }
 function levelX(i: number): number {
   const n = result.value?.levels.length ?? 0
@@ -507,46 +871,114 @@ function levelX(i: number): number {
 /**
  * 结果所属指标的定义。CC-204：表格 / 折线 / 纵轴的格式化此前读下拉框当前值 `metricId`——对比完再切指标，
  * 旧结果会按新指标的单位与小数位显示（百分比指标 ×100 等）。一律改读结果自带的 `result.metricId`。
+ * 兜底取 METRICS[0]：结果一定带指标（求值器拒绝未注册 id），这里只为让类型非空，格式化点不再逐个判空。
  */
-const resultDef = computed(() => metricDef(result.value?.metricId ?? metricId.value))
-/** 每个 x 档的最优系列下标（汇总表着色） */
-const bestByLevel = computed(() => {
-  const def = resultDef.value
+const resultDef = computed<MetricDef>(() => {
+  if (imported.value) {
+    const m = imported.value.dataset.measure
+    return {
+      id: m.id,
+      label: m.label,
+      hint: '导入自其他页面的分析结果',
+      scope: 'team',
+      digits: m.digits ?? 1,
+      unit: m.unit ?? '',
+      higherBetter: m.higherBetter ?? true,
+      // 导入结果没有引擎向量；只用上面的格式化字段，read 不应被调用
+      read: () => ({}),
+    }
+  }
+  return metricDef(result.value?.metricId ?? metricId.value) ?? METRICS[0]
+})
+/** 同一份结果的长表表示（x × 切片 × 系列）；后续跨页分析类型也产出这个形状 */
+const dataset = computed(() => (result.value ? datasetFromFreeCompare(result.value) : null))
+/** 长表只显示图例可见系列（跨全部切片），与表格/折线同一把尺 */
+const longRows = computed(() => (dataset.value?.rows ?? []).filter(r => visibleIds.value.has(r.seriesId)))
+const longColumns = computed(() => [
+  { key: 'x', label: 'x · ' + (result.value?.axisLabel ?? '') },
+  { key: 'slice', label: result.value?.sliceLabel ?? '切片' },
+  { key: 'series', label: '系列' },
+  { key: 'value', label: result.value?.metricLabel ?? '值' },
+])
+
+function formatValue(v: number): string {
+  return formatMetric(resultDef.value, v)
+}
+function formatLongValue(v: number | null): string {
+  return v === null ? '—' : formatValue(v)
+}
+
+/** 导出完整长表（不受图例筛选；CSV 保留原始精度） */
+function exportDatasetCsv(): void {
+  if (!dataset.value) return
+  const blob = new Blob([datasetCsv(dataset.value)], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'zzz-analysis-long.csv'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+/** 本次结果是否有多个切片（无切片 = 单张 2D 图，沿用原图） */
+const hasSlices = computed(() => (result.value?.slices.length ?? 0) > 1)
+const slicePanels = computed(() => (result.value?.slices ?? []).map(sl => ({
+  id: sl.id,
+  label: sl.label,
+  series: sl.series.filter(s => visibleIds.value.has(s.id)),
+})))
+/** 3D 图数据：每个可见系列在每片里的一条道（值按系列 id 对齐，不靠下标跨片对齐） */
+const series3d = computed(() => {
   const r = result.value
-  return def && r ? bestSeriesIndexByLevel(def, r.series) : []
+  if (!r) return []
+  const ids = visibleIds.value
+  return r.series
+    .filter(s => ids.has(s.id))
+    .map(s => ({
+      id: s.id,
+      label: s.label,
+      values: r.slices.map(sl => sl.series.find(x => x.id === s.id)?.values ?? []),
+    }))
 })
 
-const visibleLines = computed(() => {
-  const def = resultDef.value
-  return visibleSeries.value.map(s => {
-    const pts = s.values.map((v, i) => ({
-      x: levelX(i),
-      y: v === null ? yOf(yRange.value.min) : yOf(v),
-      text: v === null ? '—' : def ? formatMetric(def, v) : String(v),
-    }))
-    return { id: s.id, label: s.label, buffTitle: s.buffTitle, pts, points: pts.map(p => `${p.x},${p.y}`).join(' ') }
-  })
-})
+const visibleLines = computed(() => visibleSeries.value.map(s => {
+  const pts = s.values.map((v, i) => ({
+    x: levelX(i),
+    y: v === null ? yOf(yRange.value.min) : yOf(v),
+    text: v === null ? '—' : formatValue(v),
+  }))
+  return { id: s.id, label: s.label, buffTitle: s.buffTitle, pts, points: pts.map(p => `${p.x},${p.y}`).join(' ') }
+}))
 
 /** 本次结果是否含 buff 拆分（全状态对比 ⇒ 图例提示线型口径） */
 const hasBuffSplit = computed(() => (result.value?.series ?? []).some(s => s.buffTitle !== null))
+const legendHint = computed(() =>
+  '点系列名显隐（表格/折线/切片/3D/差值共用）'
+  + (hasBuffSplit.value ? ' · 折线：实线 = 本体，虚线 = 吃当期牌' : ''),
+)
 
-/** 无专武档实际穿的下位件（去重；空 = 本次没跑无专武档） */
+/** 无专武档实际穿的下位件（去重；空 = 本次没跑无专武档；切片时逐片收集） */
 const downgradeNotes = computed(() => {
   const out: string[] = []
-  for (const s of result.value?.series ?? []) {
-    for (const d of s.downgrades ?? []) if (!out.includes(d)) out.push(d)
+  for (const sl of result.value?.slices ?? []) {
+    for (const s of sl.series) {
+      for (const d of s.downgrades ?? []) if (!out.includes(d)) out.push(d)
+    }
   }
   return out
 })
 
-function cellText(v: number | null): string {
-  const def = resultDef.value
-  if (v === null) return '—'
-  return def ? formatMetric(def, v) : String(Math.round(v))
-}
+watch(result, r => {
+  if (!r) return
+  selectedSliceId.value = r.slices[0]?.id ?? ''
+  baselineEntityId.value = defaultBaselineId(r)
+  viewMode.value = fallbackView(viewMode.value, r.slices.length)
+})
 
 onMounted(async () => {
+  userPresets.value = loadUserPresets()
   try {
     const data = await useCatalogStore().loadBossPresets()
     bossPresets.value = data.bosses ?? []
@@ -645,32 +1077,6 @@ onMounted(async () => {
   font-size: 12px;
   color: var(--fg-3);
 }
-.fc-legend {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin-bottom: 6px;
-}
-.fc-legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: var(--app-text);
-}
-.fc-legend-click {
-  cursor: pointer;
-}
-.fc-legend-item.off {
-  opacity: 0.35;
-}
-.fc-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  display: inline-block;
-}
 .legend-hint {
   font-size: 12px;
   color: var(--fg-3);
@@ -683,6 +1089,14 @@ onMounted(async () => {
   margin-bottom: 6px;
   font-size: 12px;
   color: var(--fg-3);
+}
+.fc-import {
+  color: var(--c-info);
+}
+.import-row {
+  border-top: 1px dashed var(--app-border);
+  padding-top: 8px;
+  margin-top: 8px;
 }
 .fc-note-label {
   color: var(--fg-2);
@@ -717,38 +1131,43 @@ onMounted(async () => {
   stroke: var(--line-strong);
   stroke-width: 1;
 }
-.table-wrap {
-  overflow-x: auto;
-  margin-top: 10px;
+.fc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 4px 0 8px;
 }
-.tl-table {
-  width: 100%;
-  border-collapse: collapse;
+.fc-view-switch {
+  display: inline-flex;
+  gap: 4px;
+}
+.fc-view-btn {
   font-size: 12px;
-}
-.tl-table th,
-.tl-table td {
-  padding: 5px 8px;
-  text-align: right;
-  border-bottom: 1px solid var(--app-border);
+  padding: 2px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: transparent;
   color: var(--app-text);
+  cursor: pointer;
 }
-.tl-table th:first-child,
-.tl-table td:first-child {
-  text-align: left;
+.fc-export {
+  margin-left: 4px;
+  border-style: dashed;
 }
-.tl-table td.fc-best {
+.fc-long-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 50%;
+}
+.fc-view-btn.active {
+  border-color: var(--c-success);
   color: var(--c-success);
-  background: var(--c-success-soft);
-  font-weight: 600;
 }
-.fc-best-hint {
-  margin: 4px 0;
-}
-.tl-table th {
-  background: var(--app-tablehead-bg);
-  position: sticky;
-  top: 0;
+.fc-view {
+  min-width: 0;
 }
 .empty-hint {
   font-size: 13px;

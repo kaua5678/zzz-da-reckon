@@ -110,21 +110,14 @@
     </svg>
 
     <!-- 图例（点击显隐某支队；隐藏队的点不画，且退出 Y 轴刻度与悬浮命中——筛选传导到派生量） -->
-    <div class="legend">
-      <span class="legend-hint">点图例显隐 · 显示 {{ chart3Counts.visible }}/{{ chart3Counts.total }} 支队</span>
-      <div
-        v-for="s in chart3Series"
-        :key="s.id"
-        class="legend-item"
-        :class="{ off: !chart3Legend.isVisible(s.id) }"
-        :title="`${s.name}：点击${chart3Legend.isVisible(s.id) ? '隐藏' : '显示'}（隐藏后不参与 Y 轴刻度）`"
-        @click="chart3Legend.toggle(s.id)"
-      >
-        <span class="swatch" :style="{ background: colorOf(s.id) }"></span>
-        <span class="name">{{ s.name }}</span>
-      </div>
-      <span class="legend-hint legend-action" @click="chart3Legend.showAll()">全显示</span>
-    </div>
+    <ChartLegend
+      :items="chart3LegendItems"
+      :is-visible="chart3Legend.isVisible"
+      :hint="'点图例显隐 · 显示 ' + chart3Counts.visible + '/' + chart3Counts.total + ' 支队'"
+      show-all
+      @toggle="chart3Legend.toggle"
+      @show-all="chart3Legend.showAll"
+    />
 
     <!-- 悬浮卡外壳见 components/ChartHoverCard.vue -->
     <ChartHoverCard
@@ -176,6 +169,7 @@ import { runChart3Compute } from '@/composables/charts/chartRunners'
 import { useBatchOwner } from '@/composables/batchTask'
 import { chart3HoverRows as buildChart3HoverRows } from '@/composables/charts/hoverCardRows'
 import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
+import ChartLegend from '@/components/charts/ChartLegend.vue'
 import {
   buildChart3Scatter,
   chart3YGridOf,
@@ -277,6 +271,12 @@ const chart3Series = computed(() => {
 })
 const chart3Legend = useSeriesFilter(() => chart3Series.value)
 const chart3Counts = chart3Legend.counts
+const chart3LegendItems = computed(() => chart3Series.value.map(s => ({
+  id: s.id,
+  label: s.name,
+  color: colorOf(s.id),
+  title: s.name + '：点击' + (chart3Legend.isVisible(s.id) ? '隐藏' : '显示') + '（隐藏后不参与 Y 轴刻度）',
+})))
 /** 可见散点（Y 轴刻度、散点、悬浮命中三者同源 ⇒ 隐藏高值队后轴跟着降） */
 const chart3VisiblePts = computed(() => chart3Points.value.filter(p => chart3Legend.isVisible(p.team.join(','))))
 const chart3Pts = computed(() => buildChart3Scatter({

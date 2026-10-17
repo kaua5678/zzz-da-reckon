@@ -57,7 +57,7 @@
           class="td3d-icon-btn"
           :class="{ active: autoRotate }"
           :title="autoRotate ? '停止旋转' : '自动旋转'"
-          @click="autoRotate = !autoRotate"
+          @click="toggleAutoRotate"
         >
           🔄 旋转
         </button>
@@ -123,9 +123,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { fmt } from '@/utils/format'
-import { isLightTheme, readThemeVar, SCENE_ROOT_FALLBACK, useThemeRedraw } from '@/utils/canvasTheme'
+import { isLightTheme, readThemeVar, SCENE_ROOT_FALLBACK } from '@/utils/canvasTheme'
+import { useCanvasScene } from '@/composables/charts/useCanvasScene'
 
 export interface DamageShareCategory {
   key: string
@@ -151,6 +152,11 @@ const props = defineProps<{
 const viewDimension = ref<'category' | 'character'>('category')
 const displayMode = ref<'3d-donut' | '3d-bars' | '2d-donut'>('3d-donut')
 const autoRotate = ref(false)
+/** 开/关自转都要主动起一帧；关时不画也没关系，开时不能等下一次鼠标事件 */
+function toggleAutoRotate(): void {
+  autoRotate.value = !autoRotate.value
+  requestRender()
+}
 
 // 元素/类型标准色系表
 const TYPE_COLOR_MAP: Record<string, string> = {
@@ -238,6 +244,8 @@ const currentSlices = computed<SliceData[]>(() => {
 // 交互状态
 const containerRef = ref<HTMLDivElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const scene = useCanvasScene({ wrapRef: containerRef, canvasRef, render: drawFrame })
+const requestRender = scene.requestRender
 const hoveredIndex = ref<number>(-1)
 
 const rotationAngle = ref<number>(0.2) // 绕 Z 轴旋转弧度
@@ -254,35 +262,12 @@ interface HoverHUD {
 }
 const hoveredSlice = ref<HoverHUD | null>(null)
 
-let animId: number | null = null
-
-function requestRender() {
-  if (animId !== null) return
-  animId = requestAnimationFrame(() => {
-    animId = null
-    render()
-  })
-}
-
 // ========== 3D Canvas 渲染核心 ==========
-function render() {
-  const canvas = canvasRef.value
-  if (!canvas) return
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
-  const dpr = window.devicePixelRatio || 1
-  const w = canvas.clientWidth
-  const h = canvas.clientHeight
-
-  if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-    canvas.width = w * dpr
-    canvas.height = h * dpr
-  }
+function drawFrame(ctx: CanvasRenderingContext2D) {
+  const w = scene.size.w
+  const h = scene.size.h
 
   ctx.save()
-  ctx.scale(dpr, dpr)
-  ctx.clearRect(0, 0, w, h)
 
   const cx = w / 2
   const cy = h / 2 - (displayMode.value === '3d-donut' ? 8 : 0)
@@ -620,23 +605,6 @@ function detectHover(e: MouseEvent) {
   requestRender()
 }
 
-// 尺寸监听与初始化
-let ro: ResizeObserver | null = null
-// 切主题重绘（否则画面停在旧主题，直到下一次悬停/缩放；CC-348）
-useThemeRedraw(requestRender)
-
-onMounted(() => {
-  if (containerRef.value) {
-    ro = new ResizeObserver(() => requestRender())
-    ro.observe(containerRef.value)
-  }
-  requestRender()
-})
-
-onUnmounted(() => {
-  if (ro) ro.disconnect()
-  if (animId !== null) cancelAnimationFrame(animId)
-})
 
 watch(
   () => [props.totalDamage, props.categories, props.characters],

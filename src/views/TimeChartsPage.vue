@@ -178,21 +178,15 @@
 
       <!-- 图例（点击显隐某队横带）。筛选是**纯展示**：Top-K 排名与淘汰判定是数据性质
            （K 是游戏约束，不是显示选项），隐藏某队不会让别的队「递补存活」——只少画一条带 -->
-      <div class="legend">
-        <span class="legend-hint">点图例显隐 · 显示 {{ strengthCounts.visible }}/{{ strengthCounts.total }} 队</span>
-        <div
-          v-for="b in strengthBands"
-          :key="b.seed.key"
-          class="legend-item"
-          :class="{ off: !strengthLegend.isVisible(b.seed.key) }"
-          :title="`${b.seed.team.map(agentName).join(' + ')}：点击${strengthLegend.isVisible(b.seed.key) ? '隐藏' : '显示'}这条存活带（Top-K 排名不变——K 是游戏约束）`"
-          @click="strengthLegend.toggle(b.seed.key)"
-        >
-          <span class="swatch" :style="{ background: colorOf(b.seed.key) }"></span>
-          <span class="name">{{ b.seed.shortLabel }} {{ fmt(b.seed.hpRatio, 1) }}%</span>
-        </div>
-        <span class="legend-hint legend-action" @click="strengthLegend.showAll()">全显示</span>
-      </div>
+      <ChartLegend
+        :items="strengthLegendItems"
+        :color-of="colorOf"
+        :is-visible="strengthLegend.isVisible"
+        :hint="'点图例显隐 · 显示 ' + strengthCounts.visible + '/' + strengthCounts.total + ' 队'"
+        show-all
+        @toggle="strengthLegend.toggle"
+        @show-all="strengthLegend.showAll"
+      />
 
       <div class="timeline-wrap">
         <svg :viewBox="`0 0 ${svgW} ${strengthSvgH}`" class="timeline-svg">
@@ -250,20 +244,11 @@
 
     <!-- ============ 明细表 ============ -->
     <n-card v-if="result" size="small" :bordered="true" title="各版本节点明细">
-      <div class="table-wrap">
-        <table class="tl-table">
-          <thead>
-            <tr>
-              <th>期数</th>
-              <th>队伍（{{ result.mainName }} + 队友）</th>
-              <th>伤害</th>
-              <th>伤害/血量%</th>
-              <th>金数明细</th>
-              <th>当期Boss</th>
-              <th>变化</th>
-            </tr>
-          </thead>
-          <tbody>
+      <ChartTable
+        :columns="timelineTableColumns"
+        table-class="tl-table chart-table-nowrap"
+        :empty="result.nodes.length ? '' : '暂无明细'"
+      >
             <tr
               v-for="(r, i) in result.nodes"
               :key="r.nodeId"
@@ -301,9 +286,7 @@
                 <span v-else class="no-change">—</span>
               </td>
             </tr>
-          </tbody>
-        </table>
-      </div>
+      </ChartTable>
     </n-card>
 
     <!-- 未计算时的引导 -->
@@ -401,6 +384,10 @@ import FilmSimChart from '@/components/charts/FilmSimChart.vue'
 import SlotCompareChart from '@/components/charts/SlotCompareChart.vue'
 import PullPlannerChart from '@/components/charts/PullPlannerChart.vue'
 import TimeChartsControls from '@/components/charts/TimeChartsControls.vue'
+import ChartLegend from '@/components/charts/ChartLegend.vue'
+import ChartTable from '@/components/charts/ChartTable.vue'
+import { datasetFromTimeline } from '@/composables/analysis/dataset'
+import { publishAnalysis } from '@/composables/analysis/transfer'
 import { buildTimelineHoverInfo } from '@/composables/charts/hoverInfoBuilders'
 import { buildPeriodAxis, latestPhaseOf, type PeriodAxisNode } from '@/composables/bossSchedule'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
@@ -516,6 +503,16 @@ const candidateOptions = Object.keys(AGENT_RELEASE_NODE)
 const computing = ref(false)
 const progress = ref<{ pct: number; text: string } | null>(null)
 const result = ref<TeamTimelineResult | null>(null)
+/** 共享表格的列定义（期数/队伍/伤害/血量%/金数/Boss/变化） */
+const timelineTableColumns = computed(() => [
+  { key: 'node', label: '期数' },
+  { key: 'team', label: '队伍（' + (result.value?.mainName ?? '') + ' + 队友）' },
+  { key: 'damage', label: '伤害' },
+  { key: 'ratio', label: '伤害/血量%' },
+  { key: 'gold', label: '金数明细' },
+  { key: 'boss', label: '当期Boss' },
+  { key: 'delta', label: '变化' },
+])
 /** 批任务归属（S4，CC-343）：重算吊销上一次，离开页面也吊销 */
 const chartOwner = useBatchOwner()
 
@@ -534,6 +531,12 @@ async function runCompute() {
     autoBuild: autoBuild.value,
     optimalGold: optimalGold.value,
   })
+  const res = result.value
+  if (res) {
+    const label = `${res.mainName} · ${res.bossName} · ${res.phaseLabel}`
+    publishAnalysis({ id: 'timeline-damage', source: '时间图表', label, dataset: datasetFromTimeline(res, { metric: 'damage' }) })
+    publishAnalysis({ id: 'timeline-hp', source: '时间图表', label: label + ' · 血量%', dataset: datasetFromTimeline(res, { metric: 'hpRatio' }) })
+  }
 }
 
 // ========== 颜色 ==========
@@ -594,6 +597,12 @@ const strengthLegend = useSeriesFilter(() =>
   strengthBands.value.map(b => ({ id: b.seed.key, name: b.seed.shortLabel })),
 )
 const strengthCounts = strengthLegend.counts
+const strengthLegendItems = computed(() => strengthBands.value.map(b => ({
+  id: b.seed.key,
+  label: b.seed.shortLabel + ' ' + fmt(b.seed.hpRatio, 1) + '%',
+  color: colorOf(b.seed.key),
+  title: b.seed.team.map(agentName).join(' + ') + '：点击' + (strengthLegend.isVisible(b.seed.key) ? '隐藏' : '显示') + '这条存活带（Top-K 排名不变——K 是游戏约束）',
+})))
 /** 图上真正画出的带（隐藏的跳过；排名/淘汰标注仍按全量算） */
 const visibleStrengthBands = computed(() => strengthBands.value.filter(b => strengthLegend.isVisible(b.seed.key)))
 const strengthSvgH = computed(() => padT + plotH + 12 + xLabelH)

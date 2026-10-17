@@ -47,25 +47,12 @@
 
   <!-- 折线图：血量%主线 + 金数副线（图例可点显隐） -->
   <div v-if="simPoints.length > 0" class="timeline-wrap sim-plot">
-    <div class="legend">
-      <span class="legend-hint">点图例显隐</span>
-      <div
-        class="legend-item"
-        :class="{ off: !simLegend.isVisible('hp') }"
-        title="队伍强度（伤害/当期 Boss 血量%）"
-        @click="simLegend.toggle('hp')"
-      >
-        <span class="swatch sim-swatch-hp"></span><span class="name">队伍强度 %</span>
-      </div>
-      <div
-        class="legend-item"
-        :class="{ off: !simLegend.isVisible('gold') }"
-        title="累计限定金数（右轴）"
-        @click="simLegend.toggle('gold')"
-      >
-        <span class="swatch sim-swatch-gold"></span><span class="name">金数（右轴）</span>
-      </div>
-    </div>
+    <ChartLegend
+      :items="simLegendItems"
+      :is-visible="simLegend.isVisible"
+      hint="点图例显隐"
+      @toggle="simLegend.toggle"
+    />
     <svg
       :viewBox="`0 0 ${svgW} ${simSvgH}`"
       class="timeline-svg"
@@ -152,6 +139,7 @@ import { filmSimHoverRows as buildFilmSimHoverRows } from '@/composables/charts/
 import { buildFilmSimHoverInfo } from '@/composables/charts/hoverInfoBuilders'
 import { buildFilmSimChart } from '@/composables/filmSimChart'
 import ChartHoverCard, { type HoverCardRow } from '@/components/ChartHoverCard.vue'
+import ChartLegend from '@/components/charts/ChartLegend.vue'
 import type { FilmSimPoint } from '@/composables/teamTimelineFilm'
 import type { PeriodAxisNode } from '@/composables/bossSchedule'
 import type { BossPreset } from '@/types/bossPreset'
@@ -240,6 +228,20 @@ const simGoldLine = computed(() => sim.value.goldLine)
 const simLegend = useSeriesFilter(() => [
   { id: 'hp', name: '队伍强度 %' },
   { id: 'gold', name: '金数（右轴）' },
+])
+const simLegendItems = computed(() => [
+  {
+    id: 'hp',
+    label: '队伍强度 %',
+    color: 'var(--app-primary)',
+    title: '队伍强度（伤害/当期 Boss 血量%）：点击' + (simLegend.isVisible('hp') ? '隐藏' : '显示'),
+  },
+  {
+    id: 'gold',
+    label: '金数（右轴）',
+    color: 'var(--c-warning)',
+    title: '累计限定金数（右轴）：点击' + (simLegend.isVisible('gold') ? '隐藏' : '显示'),
+  },
 ])
 const simHover = ref(-1)
 const simHoverInfo = computed(() =>

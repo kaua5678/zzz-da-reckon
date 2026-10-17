@@ -1,0 +1,49 @@
+/* 共享图表的表格基座（只有外观；单元格内容/列仍由页面 slot 提供）。
+ *
+ * 为什么是全局样式：<ChartTable> 的 <tbody> 来自调用方 slot，子组件的 scoped 样式
+ * **作用不到 slot 内容**（slot 带的是父组件 scope id）。所以基座规则必须是全局、
+ * 用 .chart-table 前缀隔离；页面自己的单元格类（.td-team/.cell-clamp…）仍留 scoped。 */
+.chart-table-wrap {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+.chart-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.chart-table th,
+.chart-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border);
+  color: var(--app-text);
+}
+.chart-table th {
+  background: var(--app-tablehead-bg);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+.chart-table-num-right th,
+.chart-table-num-right td {
+  text-align: right;
+}
+.chart-table-num-right th:first-child,
+.chart-table-num-right td:first-child {
+  text-align: left;
+}
+.chart-table-nowrap th,
+.chart-table-nowrap td {
+  white-space: nowrap;
+}
+.chart-table-dense th,
+.chart-table-dense td {
+  padding: 4px 8px;
+}
+.chart-table-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--fg-3);
+  font-size: 12px;
+}

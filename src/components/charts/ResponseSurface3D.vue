@@ -97,7 +97,7 @@
           <n-button size="tiny" quaternary @click="resetCamera">
             复位
           </n-button>
-          <n-button size="tiny" quaternary :type="autoSpin ? 'warning' : 'default'" @click="autoSpin = !autoSpin">
+          <n-button size="tiny" quaternary :type="autoSpin ? 'warning' : 'default'" @click="toggleAutoSpin">
             {{ autoSpin ? '停止自转' : '缓动自转' }}
           </n-button>
         </div>
@@ -194,14 +194,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick, type VNodeChild } from 'vue'
+import { ref, computed, watch, nextTick, type VNodeChild } from 'vue'
 import { NButton, NSelect, NProgress } from 'naive-ui'
 import { fmt } from '@/utils/format'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
 import { sampleImpactSurface } from '@/composables/impactSampling'
 import type { TeamImpactVariable } from '@/composables/impactVariables'
-import { isLightTheme, SCENE_ROOT_FALLBACK, themeReader, useThemeRedraw, withAlpha, type SceneVar } from '@/utils/canvasTheme'
+import { isLightTheme, SCENE_ROOT_FALLBACK, themeReader, withAlpha, type SceneVar } from '@/utils/canvasTheme'
+import { useCanvasScene } from '@/composables/charts/useCanvasScene'
 
 const props = defineProps<{
   allVars: TeamImpactVariable[]
@@ -270,12 +271,18 @@ const maxDeltaPct = computed(() => {
 // 3D 摄像机与渲染选项
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const containerRef = ref<HTMLDivElement | null>(null)
+const scene = useCanvasScene({ wrapRef: containerRef, canvasRef, render: drawFrame })
+const requestRender = scene.requestRender
 
 const cameraMode = ref<'iso' | 'top' | 'side'>('iso')
 const renderStyle = ref<'surface' | 'wireframe'>('surface')
 const showContours = ref(true)
 const showFloorContours = ref(true)
 const autoSpin = ref(false)
+function toggleAutoSpin(): void {
+  autoSpin.value = !autoSpin.value
+  requestRender()
+}
 
 const yaw = ref(42) // 绕 Z 轴方位角（度）
 const pitch = ref(30) // 绕 X 轴俯仰角（度）
@@ -382,7 +389,6 @@ async function runCompute() {
 }
 
 // ========== 3D Canvas 渲染引擎 ==========
-let animationFrameId: number | null = null
 
 /**
  * Canvas 主题色桥（`--scene-*` → 真实色值）。
@@ -433,18 +439,11 @@ function sceneInk(read: (name: SceneVar) => string = themeReader()): SceneInk {
 /** 无 DOM（SSR/测试）时的兜底 = 夜间档（单源：utils/canvasTheme.ts 的 SCENE_ROOT_FALLBACK，与 :root 由测试锁定） */
 const SCENE_INK_FALLBACK: SceneInk = sceneInk(name => SCENE_ROOT_FALLBACK[name])
 
-/** 当前墨基色三元组 + 主题态（`drawScene` 每帧刷新，供各绘制函数派生任意 α / 选档） */
+/** 当前墨基色三元组 + 主题态（`drawFrame` 每帧刷新，供各绘制函数派生任意 α / 选档） */
 let inkRgb = SCENE_INK_FALLBACK.rgb
 let ink: SceneInk = SCENE_INK_FALLBACK
 let isLight = false
 
-function requestRender() {
-  if (animationFrameId !== null) return
-  animationFrameId = requestAnimationFrame(() => {
-    animationFrameId = null
-    drawScene()
-  })
-}
 
 // 颜色映射函数（由低到高的渐变色）
 function getZColor(normalizedZ: number, lighting = 1.0): { r: number; g: number; b: number; css: string } {
@@ -537,24 +536,11 @@ function projectPoint(
   }
 }
 
-function drawScene() {
-  const canvas = canvasRef.value
-  if (!canvas) return
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
-  const dpr = window.devicePixelRatio || 1
-  const w = canvas.clientWidth
-  const h = canvas.clientHeight
-
-  if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-    canvas.width = w * dpr
-    canvas.height = h * dpr
-  }
+function drawFrame(ctx: CanvasRenderingContext2D) {
+  const w = scene.size.w
+  const h = scene.size.h
 
   ctx.save()
-  ctx.scale(dpr, dpr)
-  ctx.clearRect(0, 0, w, h)
 
   // 主题墨色每帧读一次（见 sceneInk 注释）；浅色主题下网格/描边/文字全部换成深墨
   ink = sceneInk()
@@ -1044,31 +1030,6 @@ function checkHover(e: MouseEvent) {
   hoverInfo.value = hit
 }
 
-// 窗口尺寸自适应
-let resizeObserver: ResizeObserver | null = null
-// 切主题重绘（否则画面停在旧主题，直到下一次拖动/缩放；CC-348）
-useThemeRedraw(requestRender)
-
-onMounted(() => {
-  if (containerRef.value) {
-    resizeObserver = new ResizeObserver(() => {
-      requestRender()
-    })
-    resizeObserver.observe(containerRef.value)
-  }
-  requestRender()
-})
-
-onUnmounted(() => {
-  if (resizeObserver) {
-    resizeObserver.disconnect()
-    resizeObserver = null
-  }
-  if (animationFrameId !== null) {
-    cancelAnimationFrame(animationFrameId)
-    animationFrameId = null
-  }
-})
 
 // 监听外层队伍与伤害变化
 watch(

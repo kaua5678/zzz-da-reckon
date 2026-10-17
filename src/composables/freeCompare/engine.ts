@@ -30,10 +30,16 @@ import {
   type AxisOptions,
   type SeriesSpec,
   type SetupCode,
+  type SliceLevel,
+  type SliceSpec,
   AXIS_BY_ID,
+  EMPTY_SERIES_SPEC,
   DEFAULT_AXIS_ID,
+  sliceConflicts,
+  sliceLevelsOf,
+  sliceTitleOf,
 } from './axes'
-import { type ConstraintSpec, conditionToCode, constraintSummary } from './constraints'
+import { type ConstraintSpec, conditionToCode, constraintSummary, withConditionCinema } from './constraints'
 import {
   type MetricDef,
   type MetricEnv,
@@ -67,11 +73,29 @@ export interface FreeCompareSeries {
   downgrades?: string[]
 }
 
+/**
+ * 一个切片（切片维度上的一个档位）：内部装着该片里**全部系列**的取值。
+ * 无切片维度时也恒有 1 片（`label = ''`），调用方不必区分两种形状。
+ */
+export interface FreeCompareSlice {
+  /** 切片 id（轴切片 `axis:<axisId>:<i>` / 条件切片 `condition:<agentId>:<cinema>`；无切片时 `''`） */
+  id: string
+  /** 切片标题（如「2命」；无切片时 `''`） */
+  label: string
+  /** 该切片内各系列的取值（顺序与 `FreeCompareResult.series` 同源） */
+  series: FreeCompareSeries[]
+}
+
 export interface FreeCompareResult {
   axisId: AxisId
   axisLabel: string
   levels: AxisLevel[]
+  /** 第一片的系列（无切片维度时就是全部）——保留旧字段，既有调用方不必区分有没有切片 */
   series: FreeCompareSeries[]
+  /** 全部切片（无切片维度时长度 1；`series` 恒等于 `slices[0].series`） */
+  slices: FreeCompareSlice[]
+  /** 切片维度的展示名（`null` = 单张 2D 图） */
+  sliceLabel: string | null
   metricId: string
   metricLabel: string
   /** 耗时（毫秒） */
@@ -99,6 +123,8 @@ export interface FreeCompareOptions extends BatchTaskOptions {
   axisOptions?: AxisOptions
   metricId: string
   constraints?: ConstraintSpec
+  /** 切片维度（第二变量）：缺省/null = 单张 2D 图；与 x 轴抢同一字段会被拒绝（`sliceConflicts`） */
+  slice?: SliceSpec | null
 }
 
 // ========== 装配 ==========
@@ -233,8 +259,25 @@ export async function computeFreeCompare(
   const cs = options.constraints ?? {}
 
   const series = options.series
+  const nameOf = catalog.agentName
+  const axisOpts = options.axisOptions ?? {}
   // 档位按第一个系列枚举（x 维度与系列无关 ⇒ 取任一即可，取第一个保证 label 稳定）
-  const levels = series.length > 0 ? axis.levels(series[0], options.axisOptions ?? {}) : []
+  const levels = series.length > 0 ? axis.levels(series[0], axisOpts) : []
+
+  // ---- 切片维度（第二变量）----
+  // 用户 2026-10-17：「加入3维图或者多重二维切片，便于某些变量情况下的比较」。
+  // 切片 = 把同一组 x/系列按另一个变量切成多片；求值量 × 片数（代价预告在页面）。
+  const sliceSpec = options.slice ?? null
+  if (sliceSpec && sliceSpec.kind === 'axis' && sliceConflicts(sliceSpec, axis.id)) {
+    const conflictLabel = AXIS_BY_ID.get(sliceSpec.axisId)?.label ?? sliceSpec.axisId
+    throw new Error(`[freeCompare] 切片维度「${conflictLabel}」与 x 轴「${axis.label}」覆盖同一字段，会互相覆盖（假维度）；请换一个切片维度`)
+  }
+  const sliceLevels: SliceLevel[] = sliceSpec
+    ? sliceLevelsOf(series[0] ?? EMPTY_SERIES_SPEC, sliceSpec, axisOpts)
+    : [{ id: '', label: '' }]
+  if (sliceLevels.length === 0) {
+    throw new Error('[freeCompare] 切片维度没有可用档位（选 Boss 期数切片时先选 Boss）')
+  }
 
   // ---- buff 状态展开（用户裁决 2026-10-02「本体强度 + 吃 buff 强度都要算」）----
   // 三态：'none' = 不使用（每个主系列 1 条输出）；'all' = 全状态对比（本体 + 每张可用牌各一条）；
@@ -263,104 +306,141 @@ export async function computeFreeCompare(
     ? (usableBuffs.length > 0 ? `全状态对比（本体 + ${usableBuffs.length} 张牌）` : '全状态对比（当期无可用牌，仅本体）')
     : choice0 === 'none' ? '' : choice0.title
 
-  const out: FreeCompareSeries[] = runRows.map(r => ({
-    id: r.outKey,
-    baseId: r.baseId,
-    buffTitle: r.buff?.title ?? null,
-    label: '',
-    values: new Array(levels.length).fill(null),
-    skipped: 0,
+  // 每个切片各自持有一份输出系列——多片之间**不共享 values**（否则 3D/小倍数会把两片画成同一条线）
+  const slices: FreeCompareSlice[] = sliceLevels.map(sl => ({
+    id: sl.id,
+    label: sl.label,
+    series: runRows.map(r => ({
+      id: r.outKey,
+      baseId: r.baseId,
+      buffTitle: r.buff?.title ?? null,
+      label: '',
+      values: Array<number | null>(levels.length).fill(null),
+      skipped: 0,
+    })),
   }))
   // 择优自身的试算次数由解析器累计（`downgrade.evaluations`），单独计，避免它被误读成"档位求值"
   const downgrade = makeDowngradeResolver(calc, configStore, catalog)
   let evaluations = 0
   let skipped = 0
+  const totalEvaluations = levels.length * runRows.length * slices.length
 
-  const nameOf = catalog.agentName
-  for (let si = 0; si < runRows.length; si++) {
-    const { spec, buff } = runRows[si]
-    const baseLabel = seriesLabelOf(spec, nameOf)
-    // 全状态模式下牌名进系列标签（「柏妮思 21 · 本体」/「柏妮思 21 · 异象」）；单牌/无牌模式保持原标签
-    out[si].label = (cs.buffChoice ?? 'none') === 'all' && buff ? `${baseLabel} · ${buff.title}` : baseLabel
+  for (let pi = 0; pi < slices.length; pi++) {
+    const slice = sliceLevels[pi]
+    // 条件切片：每片都从**基线条件**重算（纯函数，不带上一片残留——否则 1 命片会继承 0 命片）
+    const sliceCs: ConstraintSpec = slice.condition
+      ? { ...cs, conditions: withConditionCinema(cs.conditions, slice.condition) }
+      : cs
 
-    for (let li = 0; li < levels.length; li++) {
-      if (isBatchAborted(options.control)) return finalize()
-      const level = levels[li]
+    for (let si = 0; si < runRows.length; si++) {
+      const { spec, buff } = runRows[si]
+      const outs = slices[pi].series[si]
+      const baseLabel = seriesLabelOf(spec, nameOf)
+      // 全状态模式下牌名进系列标签（「柏妮思 21 · 本体」/「柏妮思 21 · 异象」）；单牌/无牌模式保持原标签
+      outs.label = (cs.buffChoice ?? 'none') === 'all' && buff ? `${baseLabel} · ${buff.title}` : baseLabel
 
-      // ---- 装配：约束 → 系列成员 → x 档位覆盖 ----
-      // period 维度：档位的 periodId 覆盖约束里的 phaseId（CC-189；此前该覆盖从未被读 ⇒ 期数轴是假轴）
-      applyConstraintBaseline(configStore, catalog, spec, cs, level.override.periodId ?? cs.phaseId)
-      // 当期 buff 牌：整表替换成这张牌（保留关卡固有 layer-buff；`applyBuffToStore` 单一口径，与队伍对比页同源）
-      applyBuffToStore(configStore, buff)
-      const code: SetupCode = {
-        cinema: level.override.cinema ?? spec.code.cinema,
-        wengine: level.override.wengine ?? spec.code.wengine,
-      }
-      const team = teamOf(spec, cs)
-      // 条件角色先定位槽位。条件与系列成员重叠时**条件胜**（用户原话「维琳娜0命1命2命的情况下」
-      // 是场景约束，系列只描述「谁跟谁比」；场景约束理应对该角色生效）
-      const condSlots = new Map<number, SetupCode>()
-      for (const c of cs.conditions ?? []) {
-        const s = team.indexOf(c.agentId)
-        if (s >= 0) condSlots.set(s, conditionToCode(c))
-      }
-      // 第一遍：把三槽的角色/命座/专武写全（**择优要读全队伤害，必须等队伍齐了再试**）
-      // CC-338：空槽（!agentId）必须显式清空——否则 autoBuild=false（默认轻量速算）时，
-      // 用户页面原有槽位或上一条 3 人系列的残留角色会漏进本系列的 1~2 人队求值。
-      const needPick: Array<{ slot: number; agentId: string; cinema: number }> = []
-      for (let slot = 0; slot < 3; slot++) {
-        const agentId = team[slot]
-        if (!agentId) {
-          configStore.setAgent(slot, '')
-          configStore.setCinemaLevel(slot, 0)
-          configStore.setWEngine(slot, '')
-          configStore.setWEngineModLevel(slot, 1)
-          continue
+      for (let li = 0; li < levels.length; li++) {
+        if (isBatchAborted(options.control)) return finalize()
+        const level = levels[li]
+
+        // ---- 装配：约束 → 系列成员 → x 档位覆盖 → 切片档位覆盖 ----
+        // period 维度：x 档位的 periodId 覆盖约束里的 phaseId（CC-189；此前该覆盖从未被读 ⇒ 期数轴是假轴）；
+        // 切片档位同理（两轴抢同一字段已被 `sliceConflicts` 拦下，这里只会有一个来源）。
+        const periodId = level.override.periodId ?? slice.axisOverride?.periodId ?? cs.phaseId
+        applyConstraintBaseline(configStore, catalog, spec, sliceCs, periodId)
+        // 当期 buff 牌：整表替换成这张牌（保留关卡固有 layer-buff；`applyBuffToStore` 单一口径，与队伍对比页同源）
+        applyBuffToStore(configStore, buff)
+        const code: SetupCode = {
+          cinema: level.override.cinema ?? slice.axisOverride?.cinema ?? spec.code.cinema,
+          wengine: level.override.wengine ?? slice.axisOverride?.wengine ?? spec.code.wengine,
         }
-        const slotCode = condSlots.get(slot) ?? code
-        applyCodeToSlot(configStore, catalog, slot, agentId, slotCode, '', 1)
-        if (slotCode.wengine === 0) needPick.push({ slot, agentId, cinema: slotCode.cinema })
-      }
-      // 第二遍：无专武的槽位按伤害择优挑下位（池>1 时内部会试算；缓存跨档位复用）
-      for (const p of needPick) {
-        const picked = downgrade.resolve(p.slot, p.agentId, p.cinema, `${team.join(',')}|${code.cinema}${code.wengine}`)
-        if (picked) {
-          const list = (out[si].downgrades ??= [])
-          const tag = `${nameOf(p.agentId)}：${picked.label}`
-          if (!list.includes(tag)) list.push(tag)
+        const team = teamOf(spec, sliceCs)
+        // 条件角色先定位槽位。条件与系列成员重叠时**条件胜**（用户原话「维琳娜0命1命2命的情况下」
+        // 是场景约束，系列只描述「谁跟谁比」；场景约束理应对该角色生效）
+        const condSlots = new Map<number, SetupCode>()
+        for (const c of sliceCs.conditions ?? []) {
+          const s = team.indexOf(c.agentId)
+          if (s >= 0) condSlots.set(s, conditionToCode(c))
         }
+        // 第一遍：把三槽的角色/命座/专武写全（**择优要读全队伤害，必须等队伍齐了再试**）
+        // CC-338：空槽（!agentId）必须显式清空——否则 autoBuild=false（默认轻量速算）时，
+        // 用户页面原有槽位或上一条 3 人系列的残留角色会漏进本系列的 1~2 人队求值。
+        const needPick: Array<{ slot: number; agentId: string; cinema: number }> = []
+        for (let slot = 0; slot < 3; slot++) {
+          const agentId = team[slot]
+          if (!agentId) {
+            configStore.setAgent(slot, '')
+            configStore.setCinemaLevel(slot, 0)
+            configStore.setWEngine(slot, '')
+            configStore.setWEngineModLevel(slot, 1)
+            continue
+          }
+          const slotCode = condSlots.get(slot) ?? code
+          applyCodeToSlot(configStore, catalog, slot, agentId, slotCode, '', 1)
+          if (slotCode.wengine === 0) needPick.push({ slot, agentId, cinema: slotCode.cinema })
+        }
+        // 第二遍：无专武的槽位按伤害择优挑下位（池>1 时内部会试算；缓存跨档位复用）
+        for (const p of needPick) {
+          const picked = downgrade.resolve(p.slot, p.agentId, p.cinema, `${team.join(',')}|${code.cinema}${code.wengine}`)
+          if (picked) {
+            const list = (outs.downgrades ??= [])
+            const tag = `${nameOf(p.agentId)}：${picked.label}`
+            if (!list.includes(tag)) list.push(tag)
+          }
+        }
+
+        // ---- 求值 ----
+        // env 必须在装配之后读：Boss / 期数由装配段写入，提前读会拿到用户页面原来那个 Boss 的血量（CC-189 修）
+        const env: MetricEnv = { hp: configStore.enemy.hp }
+        const value = readMetric(calc, m, env, spec)
+        evaluations++
+        if (value === null) { skipped++; outs.skipped++; outs.values[li] = null }
+        else outs.values[li] = value
+
+        const done = (pi * runRows.length + si) * levels.length + li + 1
+        const slicePrefix = slice.label ? `${slice.label} · ` : ''
+        options.onProgress?.({
+          pct: totalEvaluations > 0 ? done / totalEvaluations : 1,
+          text: `${slicePrefix}${outs.label} · ${level.label}`,
+        })
       }
-
-      // ---- 求值 ----
-      // env 必须在装配之后读：Boss / 期数由装配段写入，提前读会拿到用户页面原来那个 Boss 的血量（CC-189 修）
-      const env: MetricEnv = { hp: configStore.enemy.hp }
-      const value = readMetric(calc, m, env, spec)
-      evaluations++
-      if (value === null) { skipped++; out[si].skipped++; out[si].values[li] = null }
-      else out[si].values[li] = value
-
-      const done = si * levels.length + li + 1
-      options.onProgress?.({
-        pct: (levels.length * runRows.length) > 0 ? done / (levels.length * runRows.length) : 1,
-        text: `${out[si].label} · ${level.label}`,
-      })
     }
   }
   return finalize()
 
   function finalize(): FreeCompareResult {
+    const sliceTitle = sliceSpec ? sliceTitleOf(sliceSpec, nameOf) : null
+    // 条件切片：摘要里的基线条件把**被切的那个角色**去掉（否则会写「维琳娜 2命」，而图上 0~6 命全有）
+    const conditionSlice = sliceSpec && sliceSpec.kind === 'condition' ? sliceSpec : null
+    // 期数在 x 轴或切片上逐档变化 ⇒ 环境摘要不写死「某一期」（与图头/切片标签矛盾）
+    const periodVaries = axis.id === 'period' || (sliceSpec?.kind === 'axis' && sliceSpec.axisId === 'period')
+    const baseSummary = constraintSummary(
+      conditionSlice
+        ? { ...cs, conditions: (cs.conditions ?? []).filter(c => c.agentId !== conditionSlice.agentId) }
+        : cs,
+      nameOf,
+      buffModeLabel || undefined,
+      { omitPhase: periodVaries },
+    )
+    const firstLabel = slices[0].label
+    const rangeText = slices.length > 1
+      ? `${firstLabel} → ${slices[slices.length - 1].label}，${slices.length} 片`
+      : `${firstLabel}，1 片`
+    const sliceNote = sliceTitle ? `切片：${sliceTitle}（${rangeText}）` : ''
     return {
       axisId: axis.id,
       axisLabel: axis.label,
       levels,
-      series: out,
+      series: slices[0].series,
+      slices,
+      sliceLabel: sliceTitle,
       metricId: m.id,
       metricLabel: m.label,
       durationMs: Date.now() - started,
       evaluations,
       skipped,
       pickEvaluations: downgrade.evaluations,
-      environmentSummary: constraintSummary(cs, nameOf, buffModeLabel || undefined),
+      environmentSummary: sliceNote ? `${baseSummary} · ${sliceNote}` : baseSummary,
     }
   }
 }

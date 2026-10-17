@@ -18,6 +18,12 @@ import {
   parseSetupCode,
   formatSetupCode,
   setupCodeLabel,
+  parseSliceKey,
+  sliceConflicts,
+  sliceKeyOf,
+  sliceLevelsOf,
+  sliceOptions,
+  sliceTitleOf,
 } from '@/composables/freeCompare/axes'
 import {
   METRICS,
@@ -28,7 +34,7 @@ import {
   bestSeriesIndexByLevel,
   type MetricEnv,
 } from '@/composables/freeCompare/metrics'
-import { constraintSummary } from '@/composables/freeCompare/constraints'
+import { constraintSummary, withConditionCinema } from '@/composables/freeCompare/constraints'
 
 const spec = (members: string[], code: string): SeriesSpec => ({
   id: `${members.join('-')}-${code}`,
@@ -194,6 +200,85 @@ describe('约束（用户原话「维琳娜 0命1命2命」是条件不是系列
       nameOf,
     )
     expect(s).toContain('维琳娜 2命')
+  })
+
+  it('Boss 期数在轴/切片上变化时不写死某一期（omitPhase）', () => {
+    const boss = { name: '测试 Boss', phases: [{ phaseId: 'p1', label: '第1期' }, { phaseId: 'p2', label: '第2期' }] } as never
+    expect(constraintSummary({ boss }, id => id)).toContain('测试 Boss（第1期）')
+    const omitted = constraintSummary({ boss }, id => id, undefined, { omitPhase: true })
+    expect(omitted).toContain('测试 Boss')
+    expect(omitted).not.toContain('第1期')
+  })
+})
+
+describe('切片维度（第二变量：3D / 多重二维切片）', () => {
+  const teamSpec = spec(['1171', '1641'], '21')
+
+  it('★ 抢同一档位字段的组合被禁止（否则一条轴静默失效 = 假维度）', () => {
+    expect(sliceConflicts({ kind: 'axis', axisId: 'cinema' }, 'cinema')).toBe(true)
+    expect(sliceConflicts({ kind: 'axis', axisId: 'setupCode' }, 'wengine')).toBe(true)
+    expect(sliceConflicts({ kind: 'axis', axisId: 'wengine' }, 'setupCode')).toBe(true)
+    expect(sliceConflicts({ kind: 'axis', axisId: 'period' }, 'period')).toBe(true)
+    // 不重叠：专武 × 影画、期数 × 配置码、条件切片永远不抢
+    expect(sliceConflicts({ kind: 'axis', axisId: 'wengine' }, 'cinema')).toBe(false)
+    expect(sliceConflicts({ kind: 'axis', axisId: 'period' }, 'setupCode')).toBe(false)
+    expect(sliceConflicts({ kind: 'condition', agentId: '1561' }, 'cinema')).toBe(false)
+  })
+
+  it('轴切片复用 x 注册表（档位/覆盖逐位一致）', () => {
+    const levels = sliceLevelsOf(teamSpec, { kind: 'axis', axisId: 'wengine' }, {})
+    expect(levels.map(l => l.axisOverride?.wengine)).toEqual([0, 1, 2, 3, 4, 5])
+    expect(levels[0].label).toBe('无专武')
+    expect(levels.every(l => l.condition === undefined)).toBe(true)
+    expect(levels[0].id).toBe('axis:wengine:0')
+  })
+
+  it('条件切片 = 0..上限命，且带条件补丁（维琳娜 0/1/2）', () => {
+    const levels = sliceLevelsOf(teamSpec, { kind: 'condition', agentId: '1561' }, { conditionCinemaMax: 2 })
+    expect(levels.map(l => l.label)).toEqual(['0命', '1命', '2命'])
+    expect(levels[2].condition).toEqual({ agentId: '1561', cinema: 2 })
+    expect(levels.every(l => l.axisOverride === undefined)).toBe(true)
+  })
+
+  it('切片下拉：排除抢字段的轴、保留条件角色、期数缺 Boss 置灰', () => {
+    const opts = sliceOptions('setupCode', [{ agentId: '1561' }], id => (id === '1561' ? '维琳娜' : id), false)
+    const values = opts.map(o => o.value)
+    expect(values[0]).toBe('')
+    expect(values).toContain('axis:period')
+    expect(values).not.toContain('axis:cinema')
+    expect(values).not.toContain('axis:wengine')
+    expect(values).toContain('condition:1561')
+    expect(opts.find(o => o.value === 'condition:1561')?.label).toContain('维琳娜')
+    expect(opts.find(o => o.value === 'axis:period')?.disabled).toBe(true)
+    // 有 Boss 时不再置灰
+    expect(sliceOptions('setupCode', [], id => id, true).find(o => o.value === 'axis:period')?.disabled).toBe(false)
+  })
+
+  it('sliceKey 往返 + 非法串返回 null（旧状态/手改 URL 不该炸）', () => {
+    expect(sliceKeyOf(null)).toBe('')
+    expect(sliceKeyOf({ kind: 'axis', axisId: 'cinema' })).toBe('axis:cinema')
+    expect(sliceKeyOf({ kind: 'condition', agentId: '1561' })).toBe('condition:1561')
+    for (const key of ['', 'axis:cinema', 'condition:1561']) expect(sliceKeyOf(parseSliceKey(key))).toBe(key)
+    expect(parseSliceKey('axis:nope')).toBeNull()
+    expect(parseSliceKey('wat:1')).toBeNull()
+    expect(parseSliceKey('no-colon')).toBeNull()
+  })
+
+  it('切片标题用短名（影画而不是「影画 0→N」）', () => {
+    expect(sliceTitleOf({ kind: 'axis', axisId: 'cinema' }, id => id)).toBe('影画')
+    expect(sliceTitleOf({ kind: 'condition', agentId: '1561' }, () => '维琳娜')).toBe('维琳娜 影画')
+  })
+})
+
+describe('条件切片的重设口径', () => {
+  it('★ 逐片重设该角色命座，不动其它条件、不改基线（纯函数）', () => {
+    const base = [{ agentId: '1561', cinema: 2 }, { agentId: '1091', cinema: 0 }]
+    const next = withConditionCinema(base, { agentId: '1561', cinema: 0 })
+    expect(next).toEqual([{ agentId: '1561', cinema: 0 }, { agentId: '1091', cinema: 0 }])
+    expect(base[0].cinema, '基线不能被切片改写（否则下一片继承上一片）').toBe(2)
+    // 不在条件里的角色 → 追加（切片语义是「这个角色的这一档」）
+    expect(withConditionCinema(base, { agentId: '1171', cinema: 1 }))
+      .toEqual([...base, { agentId: '1171', cinema: 1 }])
   })
 })
 

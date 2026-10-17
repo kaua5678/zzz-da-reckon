@@ -13,21 +13,14 @@
 
       <template v-else>
         <!-- 图例（点击显隐；筛选是纯展示——隐藏的 Boss 同时退出 Y 轴上限，否则轴按隐藏数据缩放） -->
-        <div class="legend">
-          <span class="legend-hint">点图例显隐 · 显示 {{ legendCounts.visible }}/{{ legendCounts.total }}</span>
-          <div
-            v-for="b in bossSeries"
-            :key="b.id"
-            class="legend-item"
-            :class="{ off: !filter.isVisible(b.id) }"
-            :title="`${b.name}：点击${filter.isVisible(b.id) ? '隐藏' : '显示'}`"
-            @click="filter.toggle(b.id)"
-          >
-            <span class="swatch" :style="{ background: b.color }"></span>
-            <span class="name">{{ b.name }}{{ b.isCriticalAssault ? '·困难' : '' }}</span>
-          </div>
-          <span class="legend-hint legend-action" @click="filter.showAll()">全显示</span>
-        </div>
+        <ChartLegend
+          :items="bossLegendItems"
+          :is-visible="filter.isVisible"
+          :hint="'点图例显隐 · 显示 ' + legendCounts.visible + '/' + legendCounts.total"
+          show-all
+          @toggle="filter.toggle"
+          @show-all="filter.showAll"
+        />
 
         <!-- SVG 折线图 -->
         <div class="chart-wrap">
@@ -159,9 +152,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NAlert } from 'naive-ui'
 import { useSeriesFilter } from '@/composables/seriesFilter'
+import ChartLegend from '@/components/charts/ChartLegend.vue'
+import { datasetFromBossInflation } from '@/composables/analysis/dataset'
+import { publishAnalysis } from '@/composables/analysis/transfer'
 import type { BossPreset } from '@/types/bossPreset'
 import { fmt } from '@/utils/format'
 import { buildInflationSeries, buildReleaseStrengths, type InflationMode } from '@/composables/inflationCurve'
@@ -304,6 +300,13 @@ const bossSeries = computed<BossSeries[]>(() => {
 const filter = useSeriesFilter(() => bossSeries.value)
 const legendCounts = filter.counts
 
+const bossLegendItems = computed(() => bossSeries.value.map(b => ({
+  id: b.id,
+  label: b.name + (b.isCriticalAssault ? '·困难' : ''),
+  color: b.color,
+  title: b.name + '：点击' + (filter.isVisible(b.id) ? '隐藏' : '显示'),
+})))
+
 /** 可见系列（纯数据，供 maxCoeff 与坐标计算；不依赖坐标 → 无循环依赖） */
 const visibleData = computed(() => filter.filter(bossSeries.value))
 /** 可见系列（含折线坐标；依赖 visibleData + maxCoeff，晚于 maxCoeff 求值） */
@@ -313,6 +316,17 @@ const visibleSeries = computed(() =>
     linePoints: b.points.map(p => `${xOf(p.seasonIdx)},${yOf(p.coeff)}`).join(' '),
   })),
 )
+
+/** 数据到达后把 Boss 系列摊成长表，供分析工作台导入（不重复求值） */
+watch(bossSeries, series => {
+  if (series.length === 0) return
+  publishAnalysis({
+    id: 'boss-inflation',
+    source: '血量膨胀',
+    label: `${series.length} 个 Boss · ${seasons.value.length} 期`,
+    dataset: datasetFromBossInflation(series, { seasonLabel }),
+  })
+}, { immediate: true })
 
 function seasonLabel(seasonIdx: number): string {
   return seasons.value[seasonIdx]?.label ?? ''
