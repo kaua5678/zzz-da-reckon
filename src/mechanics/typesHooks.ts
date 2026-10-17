@@ -6,7 +6,7 @@
 import type { DeepReadonly } from 'vue'
 import type { ActionCountField } from '@/stores/config'
 import type { AgentSkills, PanelValues } from '@/types/catalog'
-import type { AnomalyContribution, AnomalyPoolResult, CharacterOperationConfig, IterationState, StunAxis, TeamResourceResult } from '@/types/resource'
+import type { AnomalyContribution, AnomalyPoolResult, CharacterOperationConfig, IterationState, NumericCfgField, StunAxis, TeamResourceResult } from '@/types/resource'
 import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 
 /**
@@ -657,3 +657,107 @@ export interface AxisSwaySupplyInput {
   }
   /** T165 挤压臂本轮削减的「自动多打」份数（0 = 不削）——容量必须与账本同 trim，否则出幽灵块 */
   axisAutoTrim: number}
+
+// ---- 模块「能力声明形状」（CC-83 第二批，2026-10-17）：原先是 `AgentMechanicModule` 里的内联字面量。
+//      按判据 29③ 的口径起名——「两处以上的类型字面量彼此逐字段相同，又没有名字」时给它起名，
+//      各处改成引用名字。这里六个形状**目前各只有一个声明方**，起名的直接收益是：
+//      ① 消费方（门面 / 引擎执行器）能用名字标注，不再 `Parameters<NonNullable<...>>` 反推；
+//      ② `AgentMechanicModule` 的成员注释不再被形状体撑开，接口读起来是「能力清单」而不是「形状仓库」。
+//      ⚠ 低于判据 29③ 门槛的两个（`AxisRageCombos` / `ReleaseShareSpec`，各 2 成员）一并起名：
+//      它们与其余四个同族（都是模块往接口上挂的声明），留着内联会让「哪些是形状、哪些是标量」看不出来。
+
+/** `AgentMechanicModule.backstageAutoFill`：后台合轴自动填充声明（用户口径 2026-09-07） */
+export interface BackstageAutoFillSpec {
+  /** 合轴招式行 moveIds（编排层据此实测每对有效失衡） */
+  moveIds: string[]
+  /** 每对基础失衡（catalog 倍率和；首轮探测用，次轮起实测） */
+  perPairBase: number
+  /** 自动次数写回的 cfg 字段名（须为 cfg 上声明的数字字段） */
+  cfgField: NumericCfgField
+  /** 手动输入字段名（>0 优先于自动；须为 cfg 上声明的数字字段） */
+  manualField: NumericCfgField
+  /** 一对合轴的最短节奏（秒）——供给上限分母 */
+  minPeriodSeconds: number
+  /** 跟随招式与主招式的失衡值比（每对 = 主招式实测 × (1+ratio)；主招式须为后台独占行，防基础轮转行污染实测） */
+  followUpDazeRatio?: number
+}
+
+/** `AgentMechanicModule.axisRageCombos`：轴编辑器「怒相连段块」comboId 声明（CC-59；展示层专用） */
+export interface AxisRageCombos {
+  /** 主连段 */
+  readonly primary: string
+  /** 与主连段共享配额、优先占用的变体连段 */
+  readonly didong: string
+}
+
+/** `AgentMechanicModule.releaseShare`：异放占比可调声明（CC-55；展示层专用，不参与计算） */
+export interface ReleaseShareSpec {
+  /** 必须 == 本模块 dominant 异放事件 eventId 的首段（burnice_flowfire_release ⇒ 'burnice'） */
+  readonly namespace: string
+  /** 控件标题用的显示名（「<label>元素分配」「<label>·<元素>占比」） */
+  readonly label: string
+}
+
+/** `AgentMechanicModule.teammateSplit`：「另两名队友分摊 N 个单位」的队伍级设置声明（CC-56；展示层专用，引擎读同一键） */
+export interface TeammateSplitSpec {
+  /** 设置键前缀：键 = `${settingPrefix}:${本角色槽位}`（getTeamMechanicSetting） */
+  readonly settingPrefix: string
+  /** 每批总个数 */
+  readonly total: number
+  /** 第一位队友的缺省个数（第二位 = total − 第一位） */
+  readonly defaultFirst: number
+  /** 卡片标题 */
+  readonly title: string
+  /** 第一位队友输入框的后缀 */
+  readonly firstSuffix: string
+  /** 每批说明文案 */
+  readonly batchNote: string
+}
+
+/** `AgentMechanicModule.axisGashResource`：轴编辑器「进轴残痕值」输入框的归属声明（2026-10-12；展示层专用） */
+export interface AxisGashResourceSpec {
+  /** 每层点数（克拉蕾 600），供 UI 把「点」换算成「层」显示 */
+  perLayer: number
+  /** 显示名 */
+  label: string
+  /**
+   * **单次存量上限**（层数）——用户口径 2026-10-12：「单次积累上限1800，我只能1800进去。
+   * 当然后面也能积攒出1800」⇒ 池满即溢出、消耗后可再攒满。
+   * 展示层据它与 `perLayer` 算「起手值上限 = maxStacks × perLayer」，不经越层 import 取常量。
+   */
+  maxStacks: number
+}
+
+/**
+ * `AgentMechanicModule.finalizePass`：**终局整数重推**（规则 6 引擎落点，2026-09-25 CC-6c；1531/1431/1051 先例）。
+ *
+ * 契约：`applies` / `begin` / `reset` 都是**只碰自己那份 cfg** 的操作（`applies` 是纯判据）。
+ * 引擎拥有 ≤12 轮 `iterate` + 全状态逐位判稳 + `converged` 上报（执行器
+ * `core/resource/finalizePasses.ts#runFinalizePasses`）。
+ *
+ * ⚠ `stage` 逐位保留两个既有调用时机，**不可合并**（合并会改数值）：
+ *   · `'preTail'`：S2 折叠之后、S3a 欠打回填之前（1531 / 1431）
+ *   · `'tail'`   ：S3a 欠打回填之后、S4 装配之前（1051）
+ *
+ * ⚠ `reset` 的**不对称语义由模块自己保留**：`resetFinalizePasses` 对所有声明者都调 `reset`，
+ * 但叶瞬光须在 `reset` 内部先判 `yeshuguangContinuousForms === 1` 再写（否则 `undefined → false`
+ * 会漂进 cfg / 热启动键），比利 / 伊德海莉无条件写 `false`。
+ */
+export interface FinalizePassSpec {
+  stage: 'preTail' | 'tail'
+  /** 本模块本 stage 是否参与重推（纯判据，只读自己 cfg） */
+  applies(cfg: CharacterOperationConfig): boolean
+  /**
+   * 置位自己的终局旗标（引擎在重推循环前调用）。`entry` = 本槽的终局入口态（S2 折叠收敛后）——
+   * 模块可据它把实数推导量 floor 一次并冻结（CC-160 叶瞬光照影轮数），只读、不得改写。
+   */
+  begin(cfg: CharacterOperationConfig, entry: IterationState): void
+  /**
+   * 可选（CC-160，第 187 轮）：终局重推后由引擎**重折一次**（`runFoldLoop`），按整数行重算 S2 折叠残差。
+   * 适用：整数化会让本槽物化行明显缩短/伸长（叶瞬光少一轮 ≈ 10.9s），实数期残差原样留下即虚高留白。
+   * 未声明 = 不重折（比利实测重折会改 golden/adjustable 且未归因，第 187 轮暂不开，见 stun-dual-source §24.9）。
+   */
+  refoldAfter?: boolean
+  /** 装配后复位（引擎在装配之后调用；不对称语义见上方说明） */
+  reset(cfg: CharacterOperationConfig): void
+}

@@ -9,7 +9,6 @@ import type {
   CharacterOperationConfig,
   CharacterResourceResult,
   IterationState,
-  NumericCfgField,
   MechanicSetting,
   SkillExecution,
   SpecialResourceSection,
@@ -27,7 +26,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { AgentLimitPointDecl, DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, BackstageAutoFillSpec, AxisRageCombos, ReleaseShareSpec, TeammateSplitSpec, AxisGashResourceSpec, FinalizePassSpec } from './typesHooks'
 // CC-451：展示层专用声明类型（CC-444/445/446/448 陆续长在本文件里，把 CC-83 预算顶破）拆出 typesView.ts；本文件原样转出，导入方不用改
 import type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
 
@@ -638,20 +637,7 @@ export interface AgentMechanicModule {
    * 声明式（编排层通用执行，无 agentId 分支）：编排层按 deficit=保底目标×bossStunValue−非合轴失衡
    * 反推次数，封顶 floor(可用后台时间/minPeriodSeconds)，写回 cfgField；手动字段 >0 时模块优先用手动。
    */
-  backstageAutoFill?: {
-    /** 合轴招式行 moveIds（编排层据此实测每对有效失衡） */
-    moveIds: string[]
-    /** 每对基础失衡（catalog 倍率和；首轮探测用，次轮起实测） */
-    perPairBase: number
-    /** 自动次数写回的 cfg 字段名（须为 cfg 上声明的数字字段） */
-    cfgField: NumericCfgField
-    /** 手动输入字段名（>0 优先于自动；须为 cfg 上声明的数字字段） */
-    manualField: NumericCfgField
-    /** 一对合轴的最短节奏（秒）——供给上限分母 */
-    minPeriodSeconds: number
-    /** 跟随招式与主招式的失衡值比（每对 = 主招式实测 × (1+ratio)；主招式须为后台独占行，防基础轮转行污染实测） */
-    followUpDazeRatio?: number
-  }
+  backstageAutoFill?: BackstageAutoFillSpec
   /** 向招式执行计划追加专属动作 */
   buildExecutions?(input: AgentResourceInput): void
   /**
@@ -807,7 +793,7 @@ export interface AgentMechanicModule {
    * 轴编辑器「怒相连段块」comboId 声明（CC-59；展示层专用）：primary = 主连段，didong = 与主连段共享配额、优先占用的变体连段。
    * 两者都是 `combos` 的 key；StunAxisPage 用它画明王窗口条、按山威配额（怒相次数 × 2）算可放次数。现唯一：般岳。
    * `axisSwaySupply`（T169）= 轴内专属资源供给量；`axisMoveFreeOfDecibel`（T171）= 本角色轴块不扣喧响。 */
-  axisRageCombos?: { readonly primary: string; readonly didong: string }
+  axisRageCombos?: AxisRageCombos
   axisSwaySupply?: (input: import('./typesHooks').AxisSwaySupplyInput) => number
   /**
    * 轴编辑器「角色专属块」（CC-61；展示层专用，不参与计算）：在候选池里追加的伪块（moveId 由编排层 / core 各自识别）。
@@ -919,21 +905,14 @@ export interface AgentMechanicModule {
    *   改名会让用户已存的设置失效。label 用于控件标题（「<label>元素分配」「<label>·<元素>占比」）。
    * 现唯一声明：柏妮思。引擎侧对 grace/vivian/aire/yanagi/promia/nangong/phoenix 的 dominant 事件同样读该键，但 UI 未开放（见 census §5.62 未决项）。
    */
-  releaseShare?: { readonly namespace: string; readonly label: string }
+  releaseShare?: ReleaseShareSpec
   /**
    * 「另两名队友分摊 N 个单位」的队伍级设置声明（CC-56 2026-09-27；**展示层专用**，引擎读同一键）：
    * 设置键 = `${settingPrefix}:${本角色槽位}`（getTeamMechanicSetting），值 = 第一位队友每批提供的个数（0~total，缺省 defaultFirst），
    * 第二位 = total − 第一位。资源页经 agentMechanicView#teamTeammateSplit 出卡片，文案取 title / firstSuffix / batchNote。
    * 现唯一声明：蕾米埃尔（Q 每批 3 个耀变，键 remielle.q:<slot>；引擎侧 remielle.ts 用同一常量读取）。
    */
-  teammateSplit?: {
-    readonly settingPrefix: string
-    readonly total: number
-    readonly defaultFirst: number
-    readonly title: string
-    readonly firstSuffix: string
-    readonly batchNote: string
-  }
+  teammateSplit?: TeammateSplitSpec
   /**
    * 失衡轴窗口覆盖声明（规则 6 迁移落点，2026-09-12 #10 真清偿）：
    * 模块按「轴内时间轴窗口」算出逐 moveId 的加权覆盖量，供伤害池消费。
@@ -1061,16 +1040,7 @@ export interface AgentMechanicModule {
    * 与 `characterCountInputs` / `axisDurationInputs` 同族：**能力声明驱动 UI，不认 agentId**（规则 6）。
    * 值 = 每层点数（克拉蕾 600），供 UI 把「点」换算成「层」显示。
    */
-  axisGashResource?: {
-    perLayer: number
-    label: string
-    /**
-     * **单次存量上限**（层数）——用户口径 2026-10-12：「单次积累上限1800，我只能1800进去。
-     * 当然后面也能积攒出1800」⇒ 池满即溢出、消耗后可再攒满。
-     * 展示层据它与 `perLayer` 算「起手值上限 = maxStacks × perLayer」，不经越层 import 取常量。
-     */
-    maxStacks: number
-  }
+  axisGashResource?: AxisGashResourceSpec
   /**
    * **轴块时长**（2026-10-12）：轴编辑器与引擎共用的**唯一**块时长来源。
    *
@@ -1370,24 +1340,7 @@ export interface AgentMechanicModule {
    * 但叶瞬光须在 `reset` 内部先判 `yeshuguangContinuousForms === 1` 再写（否则 `undefined → false`
    * 会漂进 cfg / 热启动键），比利 / 伊德海莉无条件写 `false`。
    */
-  finalizePass?: {
-    stage: 'preTail' | 'tail'
-    /** 本模块本 stage 是否参与重推（纯判据，只读自己 cfg） */
-    applies(cfg: CharacterOperationConfig): boolean
-    /**
-     * 置位自己的终局旗标（引擎在重推循环前调用）。`entry` = 本槽的终局入口态（S2 折叠收敛后）——
-     * 模块可据它把实数推导量 floor 一次并冻结（CC-160 叶瞬光照影轮数），只读、不得改写。
-     */
-    begin(cfg: CharacterOperationConfig, entry: IterationState): void
-    /**
-     * 可选（CC-160，第 187 轮）：终局重推后由引擎**重折一次**（`runFoldLoop`），按整数行重算 S2 折叠残差。
-     * 适用：整数化会让本槽物化行明显缩短/伸长（叶瞬光少一轮 ≈ 10.9s），实数期残差原样留下即虚高留白。
-     * 未声明 = 不重折（比利实测重折会改 golden/adjustable 且未归因，第 187 轮暂不开，见 stun-dual-source §24.9）。
-     */
-    refoldAfter?: boolean
-    /** 装配后复位（引擎在装配之后调用；不对称语义见上方说明） */
-    reset(cfg: CharacterOperationConfig): void
-  }
+  finalizePass?: FinalizePassSpec
 }
 
 // CC-83（2026-09-27，census §5.90）：卫星类型拆到同级 typesRows.ts / typesHooks.ts，这里原样转出，
