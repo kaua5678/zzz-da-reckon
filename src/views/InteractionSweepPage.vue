@@ -205,11 +205,12 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { NAlert, NButton, NCard, NInputNumber, NSelect, useMessage } from 'naive-ui'
 import { useBatchOwner, type BatchProgress } from '@/composables/batchTask'
-import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { cloneConfigState, withAnalysisScenario } from '@/composables/analysisScenario'
 import { applyAxisBinding, applyTeamToStore } from '@/composables/teamCompare'
 import { applyBossRoom } from '@/composables/bossRoom'
 import { runInteractionSweep, type SweepSeries, type SweepResult, type SweepStep } from '@/composables/interactionSweep'
-import { runInteractionSurface, type SweepSurface } from '@/composables/interactionSurface'
+import { type SweepSurface } from '@/composables/interactionSurface'
+import { runSurfaceInWorker } from '@/composables/interactionSurfaceRunner'
 import InteractionSurface3D from '@/components/charts/InteractionSurface3D.vue'
 import { useCatalogStore } from '@/stores/catalog'
 import { teamPresets } from '@/data/teamPresets'
@@ -349,20 +350,36 @@ async function runSurface() {
   surfaceProgress.value = { pct: 0, text: '准备中…' }
   error.value = null
   try {
-    const res = await withAnalysisScenario(async s => {
+    /**
+     * **走 worker 通道**（`interactionSurfaceRunner`）：
+     *
+     * 单格内部是引擎同步代码（降配格要跑满 8 档 DOWNSCALE_SCALES），主线程会卡 5~6s；
+     * 换线程后主线程彻底解放，网格再大也不影响交互。
+     *
+     * ⚠ 场景装配（Boss 房 / 队伍 / 轴绑定）必须在**取快照之前**落到配置上——
+     * 两条通道都从这份快照复刻场景；先在临时场景里装配、取出装配后的 state、再交给 runner。
+     * 这样 worker 与主线程回落**看到的是同一份输入**（数值逐位相同，判据见 runner 头注释）。
+     */
+    const prepared = await withAnalysisScenario(s => {
       applyBossRoom(s.config, boss, phase)
       applyTeamToStore(s.config, preset)
       applyAxisBinding(s.config, s.config.getAxisState(), preset)
-      return runInteractionSurface(s, {
+      return cloneConfigState(s.config.$state) as unknown as Record<string, unknown>
+    })
+    const outcome = await runSurfaceInWorker(
+      {
         preset, boss, phase,
         maxCount: surfaceMaxCount.value,
         countStep: 2,
         ratioSteps: surfaceRatioSteps.value,
-        control: { signal: run.signal },
+        configState: prepared,
+      },
+      {
+        signal: run.signal,
         onProgress: p => { if (run.isCurrent()) surfaceProgress.value = p },
-      })
-    })
-    run.commit(() => { surface.value = res })
+      },
+    )
+    if (!outcome.aborted) run.commit(() => { surface.value = outcome.surface })
   } catch (e) {
     if (run.isCurrent()) error.value = (e as Error).message
   } finally {
