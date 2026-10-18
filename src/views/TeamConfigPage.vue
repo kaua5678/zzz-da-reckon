@@ -1256,8 +1256,13 @@ function collectWEngineGroupEffects(group: BuffGroup | null | undefined, source:
       label: phaseStatLabel(effect.stat, group?.scope ?? 'inCombat'),
       valueText: effectValueText(effect),
       stackText,
-      // CC-111（R5 D7）：带持续时间（效果级或组级）的 fixed 效果也给滑块（引擎 applyEffect 对 fixed 同样乘覆盖率；默认 100% 不变）
-      hasCoverage: effect.type === 'stacked' || !!effect.coverage
+      // CC-111（R5 D7）：带持续时间（效果级或组级）的 fixed 效果也给滑块（引擎 applyEffect 对 fixed 同样乘覆盖率；默认 100% 不变）。
+      // 2026-10-18（与驱动盘 `discEffectRows#adjustable` 同一口径）：`condition` 也是触发信号 ——
+      // 「拥有充能效果」「从背后攻击命中」「拥有 2 层增益效果」这类**没有时长也没有 coverage 字段**的条件效果
+      // 修前既没有滑块、引擎又恒按 100% 结算 ⇒ 页面上看不出「这条到底按多少覆盖率算的」。
+      // 实测 7 条（14124/14102/14138/14146×2/14152）。给了滑块后默认仍是 100%（行为不变），
+      // 但用户能把「打不满」的情况表达出来。
+      hasCoverage: effect.type === 'stacked' || !!effect.coverage || !!effect.condition
         || effect.durationSeconds != null || group?.durationSeconds != null,
     }
   })

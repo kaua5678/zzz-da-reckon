@@ -317,6 +317,13 @@ interface BuffEffectBase {
   stackGroup?: string
   /** 效果自带持续时间秒数（`scripts/patch-disc-sets.mjs` 写在效果级；CC-111 据此给 fixed 效果覆盖率滑块） */
   durationSeconds?: number
+  /**
+   * 触发条件的**自由散文**（catalog 数据带，如「拥有充能效果」「从背后攻击命中」）。
+   * **引擎不读**（不可机判；条件类效果按覆盖率滑块近似，见 `docs/ENGINE_PIPELINE_GUIDE.md` 坑 52b）；
+   * 展示层读它来决定「要不要给 uptime 滑块」与 tooltip 文案（`TeamConfigPage#collectWEngineGroupEffects` /
+   * `utils/discEffectRows.ts`）。组级同名字段见 `BuffGroup.condition`。
+   */
+  condition?: string
   /** 音擎精修 1–5 档的替换值（catalog 音擎 effect 带，`applyWEngineModLevel` 读）。r407 前 `as any` 读取、未声明 */
   modificationValues?: { value?: number[]; valuePerStack?: number[] }
   /** 该效果不作用于这些目标角色 id（teammate-buffs 数据带，`isExcludedForTarget` 读） */
