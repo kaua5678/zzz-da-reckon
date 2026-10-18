@@ -12,11 +12,10 @@
  *   - gateText：属性/职业/局外属性门槛 → 引擎自动判定，不折算 uptime
  *   - unmodeled：有官方文本但无数值效果（生存向/机制向）→ 明说未建模，不留空白
  */
-import type { EffectRequirement, LocalizedString } from '@/types/catalog'
+import type { EffectRequirement, EffectTarget, LocalizedString } from '@/types/catalog'
 import { getStatMeta, isPctStat } from './statMeta'
 import { localized } from './format'
-import { normalizeSkillDamageTarget, SKILL_DMG_TARGET_LABELS, SKILL_TAG_TARGET } from '@/data/skillDamageTargets'
-import type { SkillDamageTarget } from '@/types/catalog'
+import { skillTargetsOf, withSkillTargetLabel } from './skillTargetLabel'
 
 interface EffectLike {
   id?: string
@@ -37,31 +36,11 @@ interface EffectLike {
   targetSkillType?: string
 }
 
-interface EffectTargetLike {
-  skillTargets?: { kind?: string; skillType?: string; skillTag?: string }[]
-}
+// 招式目标形状直接用 types/catalog 的具名类型（判据 29：别写字面量副本）
+type EffectTargetLike = EffectTarget
 
-/**
- * 效果实际落在哪些招式族上（与引擎 `core/buff.ts#effectSkillDamageTargets` **同一份判定**）。
- *
- * 为什么展示层需要它（2026-10-18，用户报「拂晓四件套明明是加普攻伤害，为什么显示的全部增伤」）：
- * 引擎把带 `target` 的 `dmgBonus` 写进 `dmgBonus__basic` 这种**定向字段**，而本模块只按 `stat`
- * 取标签 ⇒ 三条「普通攻击」效果全显示成「通用伤害加成」。标签口径因此必须按目标分叉。
- *
- * 返回 `'all'`（无目标 / 目标不可识别）= 全招式，与引擎的回落一致。
- */
-function skillTargetsOf(e: EffectLike): SkillDamageTarget[] {
-  const explicit = e.targetSkillType
-  if (explicit) return [normalizeSkillDamageTarget(explicit)]
-  const out: SkillDamageTarget[] = []
-  for (const t of e.target?.skillTargets ?? []) {
-    if (t.kind === 'skillType' && t.skillType) out.push(normalizeSkillDamageTarget(t.skillType))
-    // skillTag → 招式族：`assistAttack` 归一到 `assist`（与 `core/buff.ts#SKILL_TAG_TARGET` 同表）
-    if (t.kind === 'skillTag' && t.skillTag) out.push(normalizeSkillDamageTarget(SKILL_TAG_TARGET[t.skillTag] ?? 'all'))
-  }
-  const unique = [...new Set(out)]
-  return unique.length > 0 ? unique : ['all']
-}
+// 招式目标判定已下沉到 `@/utils/skillTargetLabel`（2026-10-18）：驱动盘套装行与音擎效果行
+// 必须用同一份「这条效果作用在哪些招式族」判定，两处各写一份必然漂移（音擎侧就漂了）。
 
 interface PieceLike {
   effects?: EffectLike[] | null
@@ -159,13 +138,10 @@ function rowsOfPiece(
     const statId = String(e.stat ?? '')
     // 定向标签（2026-10-18）：引擎把带 `target` 的 dmgBonus 写进 `dmgBonus__basic` 这类定向字段，
     // 展示层此前只按 stat 取标签 ⇒ 拂晓生花三条「普通攻击」效果全显示成「通用伤害加成」。
-    // 多目标时并列出全部招式族（如 31800「强化特殊技 + 支援攻击」）。
-    const targets = skillTargetsOf(e)
-    const targeted = targets[0] !== 'all'
+    // 多目标时并列出全部招式族（如 31800「强化特殊技 + 支援攻击」）。判定与音擎行共用 `utils/skillTargetLabel`。
+    const targeted = skillTargetsOf(e).length > 0
     const baseLabel = labels.stat ? labels.stat(statId) : getStatMeta(statId).label
-    const label = targeted
-      ? `${baseLabel}（${targets.map(t => SKILL_DMG_TARGET_LABELS[t] ?? t).join(' / ')}限定）`
-      : baseLabel
+    const label = withSkillTargetLabel(baseLabel, e)
     return {
       key,
       setId,

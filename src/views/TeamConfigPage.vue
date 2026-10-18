@@ -841,6 +841,7 @@ import { fmt, localized } from '@/utils/format'
 import { discSetGapLabel } from '@/utils/modelingGaps'
 import { SPECIALTY_LABEL, ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
 import { buildDiscEffectRows } from '@/utils/discEffectRows'
+import { withSkillTargetLabel } from '@/utils/skillTargetLabel'
 import { stackGroupPeerIds } from '@/utils/stackGroupCoverage'
 import type { WEngine, WEngineAdvancedStat, PanelValues, CharacterBuildRecommendation, BuffEffect, BuffGroup } from '@/types/catalog'
 import type { CharacterConfig } from '@/stores/config'
@@ -1253,7 +1254,10 @@ function collectWEngineGroupEffects(group: BuffGroup | null | undefined, source:
     return {
       ...effect,
       source,
-      label: phaseStatLabel(effect.stat, group?.scope ?? 'inCombat'),
+      // 定向标签（2026-10-18）：与驱动盘套装行共用 `utils/skillTargetLabel`。
+      // 修前音擎行只显示「招式类型伤害加成」，看不出这条是普攻/冲刺攻击/终结技限定
+      // （实测 14124 两条 basic/dashAttack、14146 两条 basic/ultimate 全部丢失招式信息）。
+      label: withSkillTargetLabel(phaseStatLabel(effect.stat, group?.scope ?? 'inCombat'), effect),
       valueText: effectValueText(effect),
       stackText,
       // CC-111（R5 D7）：带持续时间（效果级或组级）的 fixed 效果也给滑块（引擎 applyEffect 对 fixed 同样乘覆盖率；默认 100% 不变）。
