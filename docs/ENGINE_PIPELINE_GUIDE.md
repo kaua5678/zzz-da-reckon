@@ -1036,6 +1036,20 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
    ② 这个字段**有没有消费者**？（规则 16①：`grep -rn '<字段>' src` 零调用点 = 死口径）
    ③ 它的**基线面板是哪一份**？（`calcPanel` 还是 `computePanelPhases`；两者差的就是 `applyPanel`）
 
+   **(d) 展示层同一件事写两遍 ⇒ 只修一处必留一处（2026-10-18 同日第二例）。** 招式目标判定
+   （`target.skillTargets` → 「（普通攻击限定）」）在驱动盘套装行与音擎效果行各写了一份：
+   修好前者后，音擎行仍显示「招式类型伤害加成」——实测 14124 两条（basic / dashAttack）、
+   14146 两条（basic / ultimate）**招式信息全丢**。修法 = `utils/skillTargetLabel.ts` 作单一事实源，
+   两处都改调它；护栏 `utils/__tests__/skillTargetLabel.test.ts` 含**两处源码锁**。
+   同理 `skillDmgBonus__*` 的标签表曾手写 8 个键、漏 dashAttack / additionalAttack ⇒ 改成由
+   `SKILL_DMG_TARGETS` 生成（护栏 `skillDmgLabelsCoverage.test.ts`）。
+   **判据**：同一类「把数据翻译成人话」的逻辑出现第二次时，先抽函数再改，别复制第二份。
+
+   **(e) 类型没声明 ≠ 数据没有（静默字段）。** 效果级 `condition` 在 catalog 里有 **51 条**在用，
+   但 `BuffEffectBase` 从未声明它 ⇒ 只有直接读它的 TS 代码会报错，**JSON 侧完全合法**、
+   校验与测试都看不见。修法 = 补声明（`BuffEffectBase.condition`）。判据：新增字段先在
+   `src/types/catalog.ts` 找归属；`grep -c '"<field>"' public/static/*.json` 有量而类型没有 = 静默字段。
+
 53. **自动优化必须分类，不能「改了就用」（2026-10-18 用户裁决）**：
    用户逐字：「百暴算是一种优化，防止溢出 0 收益的优化。这些你得分类处理，不是说什么时候都开，
    改了就用，之前静默乱用导致暴击溢出和词条实现错误就是例子。」⇒ 任何「自动帮用户做得更好」的
