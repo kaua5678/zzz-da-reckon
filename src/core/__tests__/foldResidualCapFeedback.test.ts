@@ -88,8 +88,11 @@ const CASES = [
   // ⚠ 2026-10-09 溯影惊鸿排除自己（yeshuguang.ts#computeOutsideSwordGain）：剑势 −18 ⇒ 照影轮↓ ⇒ 叶瞬光需求↓
   //   ⇒ 团队预算重分配 ⇒ 三队 ledger/dmg 落点都变（本测试核心判据 = acc 残差与 converged，两者实测**不变**：
   //   acc 9.27/21.70/21.70、converged 恒 true ⇒ 折叠环未受剑势修复影响，落点变化纯属「修正 bug 后资源重排」）。
+  // ⚠ 2026-10-18 重取三队 ledger/dmg：用户裁决「快支全角色默认 0 / 支援连携 0」⇒ 三槽少 3 次快支、
+  //   柚叶/千夏等支援位连携归零 ⇒ 团队预算重分配 ⇒ 落点整体位移（acc 与 converged **逐位不变**：
+  //   9.268 / 21.70 / 21.70、恒 true ⇒ 折叠环本身没被这条口径碰到，只是资源重排后的新落点）。
   {
-    id: 'auto-1431-1481-1491', accCeiling: 20, before: 62.57, ledger: [135.478, 42.103, 32.100], dmg: 121.7222,
+    id: 'auto-1431-1481-1491', accCeiling: 20, before: 62.57, ledger: [140.215, 42.995, 23.312], dmg: 124.7465,
     desc: '残差塌回地板（修前 62.57s）且落点不变（dmg 2026-10-18 重取：百暴基线修正 +9.346%，账本/acc 零变化）',
   },
   // 旧 auto-1431-1481-1341：新槽序下 scale 0.375（封顶激活）。
@@ -97,7 +100,7 @@ const CASES = [
   //   它现在的职责 = 钉住 `necessaryUncappedTime` 路径（`feasibleScale < 1`）的**落点**，不是度量残差塌陷。
   //   2026-10-09 剑势修复后落点 [117.328,38.085,59.918]/99.2892M（并发 ultimatePromote.ts 修复 + 剑势排除自己叠加）。
   {
-    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [119.263, 38.085, 61.853], dmg: 108.2399,
+    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [123.578, 27.201, 65.635], dmg: 107.9225,
     desc: '封顶队（scale<1，走 necessaryUncappedTime 路径）；acc 仍 21.70 ⇒ 本条不度量残差塌陷（落点已按 T141 重取，见下）',
   },
   // 旧 auto-1431-1491-1341：槽序互换（照↔千夏）⇒ 账本槽1/槽2 对调。
@@ -105,7 +108,7 @@ const CASES = [
   // ⚠ 2026-10-18 重取 dmg 93.7612 → 101.3291：副词条「百暴」基线改用真实面板（含角色 applyPanel）后，
   //    1431 叶瞬光的暴击词条不再溢出（修前 7 步白扔）⇒ 同一预设伤害 +8.071%，**时间账与落点零变化**。
   //    与 timeGolden 的同名 delta 逐位一致（同一次口径修复），不是本用例的被测逻辑变化。
-  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [146.793, 26.551, 28.795], dmg: 101.3291, desc: '残差塌回地板（修前 22.74s）；落点已按 T141 重取（见下）' },
+  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [151.673, 23.534, 23.678], dmg: 101.5079, desc: '残差塌回地板（修前 22.74s）；落点已按 T141 重取（2026-10-18 快支归零后再取一次）' },
 ] as const
 
 describe('折叠残差不与团队封顶构成正反馈', () => {
@@ -271,14 +274,16 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
        *   保留本用例 = 钉住该队的降配落点（数值一漂即红），不声称档位迁移。
        */
       // ⚠ T141 重取：**档位不变（仍 0.125）**、dmg 98.1679 → **99.4656**（吸收改「取满容量」⇒ 平A 重新分配）。
+      // ⚠ 2026-10-18 重取：档位不变（仍 0.125）、dmg 108.0162 → **93.9895**（用户裁决「快支全角色默认 0 /
+      // 支援连携 0」⇒ 每槽少 3 次快支、喧响供给下降 ⇒ 重排后同一档位伤害变化）；截断仍 0s（判据不变）。
       expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.125, 6)
       expect(
         Math.abs((rr!.overflowSeconds ?? 0) - 0),
         `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 108.0162),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 108.0162M（2026-10-18 百暴基线修正后重取）`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 93.9895),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 93.9895M（2026-10-18 快支归零后重取）`,
       ).toBeLessThan(0.01)
       // 残差仍在量化地板（本修法的目的）
       expect(rr!.convergence?.timeBudgetAccumulatedSeconds ?? 0).toBeLessThan(35)
@@ -298,10 +303,12 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
       // 2026-10-09 实测：折叠修复前 0.25 / 71.6412M（acc 13.9202）→ 修复后 0.125 / 69.6128M（acc 13.6020）。
       // 本队**不随**并发赠行时长修复漂（该修复前后逐位相同）⇒ 是折叠修复的干净判别夹具。
       // ⚠ T141 重取：**档位不变（仍 0.125）**、dmg 69.6128 → **75.2791**（吸收改「取满容量」⇒ 平A 重新分配）。
+      // ⚠ 2026-10-18 重取：档位不变（仍 0.125）、dmg 75.2791 → **74.5324**（快支 3→0 ⇒ 喧响供给下降）。
+      // 判据「档位认领值变了要重新归因」照旧：这次归因 = 快支基准裁决（用户 2026-10-18），非回归。
       expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.125, 6)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 75.2791),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 75.2791M（T141 重取）`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 74.5324),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 74.5324M（2026-10-18 快支归零后重取）`,
       ).toBeLessThan(0.01)
     }, 200_000)
 
@@ -335,14 +342,15 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
       expect(rr, '资源池未产出结果').toBeTruthy()
       // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 照影轮↓ ⇒ 真实溢出减轻 ⇒ 截断 12.10→0.00（改善）；
       // dmg 86.0752→81.9685（降：ratio=0 无合轴吸收，叶瞬光轮数减少的损失大于队友多打的收益——那 18 剑势本不该有）。
-      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.125, 6)
+      // ⚠ 2026-10-18 重取：档位 0.125 → **0.25**、dmg 88.8599 → **89.3524**（快支 3→0 改写了本档落点）；截断仍 0s。
+      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.25, 6)
       expect(
         Math.abs((rr!.overflowSeconds ?? 0) - 0),
         `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s（剑势修正后截断归零）`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 88.8599),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 88.8599M（2026-10-18 百暴基线修正后重取）`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 89.3524),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 89.3524M（2026-10-18 快支归零后重取）`,
       ).toBeLessThan(0.01)
     }, 200_000)
   })

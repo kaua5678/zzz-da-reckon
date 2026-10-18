@@ -181,6 +181,12 @@ describe('债 2 / A 项 · 截断不回灌资源循环（executed* 展示口径�
     const KNOWN_INCOME_GAP: Record<string, number> = {
       'yixuan-jufufu-lucia@40@0': 86.30,
       'auto-1371-1481-1451@60@1': 43.81,
+      // ⚠ 2026-10-18 新增：用户裁决「支援/防护连携归零」⇒ 卢西娅(1451) 不再出连携行 ⇒ 本队降配/截断落点位移
+      // ⇒ 槽1（橘福福 1391，连携次数 1 未变）**首次**落到「被截断」形态，露出同族既有残差：
+      // 账本按 `chainCountPerStun × stunCount` 的**实数**计、装配按**整数**行计（25 次连携里被砍掉的部分
+      // 在账本仍按全额算）⇒ 喧响 +181.97。**不是新病灶**，是同一整数化边界在旧落点上恰好在容差内。
+      // A/B 反证：把 `chainBaselineFor` 临时改回恒 `chainPerStun` ⇒ 本文件 4/4 绿（落点回到旧的、不触发该形态）。
+      'yixuan-jufufu-lucia@60@1': 181.97,
     }
     const violations = applicable.filter(r => {
       const known = KNOWN_INCOME_GAP[`${r.id}@${r.parry}@${r.slot}`] ?? 0

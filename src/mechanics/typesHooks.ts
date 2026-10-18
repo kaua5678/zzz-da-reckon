@@ -698,21 +698,24 @@ export interface ReleaseShareSpec {
   readonly label: string
 }
 
-/** `AgentMechanicModule.teammateSplit`：「另两名队友分摊 N 个单位」的队伍级设置声明（CC-56；展示层专用，引擎读同一键） */
-export interface TeammateSplitSpec {
-  /** 设置键前缀：键 = `${settingPrefix}:${本角色槽位}`（getTeamMechanicSetting） */
+/**
+ * `AgentMechanicModule.teammateDrop`：「每个队友可丢弃的 N 次资源」的队伍级设置声明（2026-10-18；展示层专用，引擎读同一键）。
+ *
+ * 用户口径：「丢弃开关也很粗糙，不做开关，需要改为丢弃部分，这样子剩余部分进入细致分配算法
+ * 就会自动算出打的更少的子弹，实现部分丢弃。如果丢弃全部，进入这个算法也会实现丢弃全部。」
+ * ⇒ 每个队友一个「丢弃次数」输入框，丢弃后的剩余次数才进分配 ⇒ 轮数/归属/浪费全自动跟着算。
+ */
+export interface TeammateDropSpec {
+  /** 设置键前缀：键 = `${settingPrefix}:${队友槽位}`（getTeamMechanicSetting） */
   readonly settingPrefix: string
-  /** 每批总个数 */
-  readonly total: number
-  /** 第一位队友的缺省个数（第二位 = total − 第一位） */
-  readonly defaultFirst: number
   /** 卡片标题 */
   readonly title: string
-  /** 第一位队友输入框的后缀 */
-  readonly firstSuffix: string
-  /** 每批说明文案 */
-  readonly batchNote: string
+  /** 输入框后缀（如「次」） */
+  readonly suffix: string
+  /** 卡片说明 */
+  readonly note: string
 }
+
 
 /** `AgentMechanicModule.axisGashResource`：轴编辑器「进轴残痕值」输入框的归属声明（2026-10-12；展示层专用） */
 export interface AxisGashResourceSpec {

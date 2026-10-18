@@ -235,13 +235,24 @@ export function clampActionCount(field: ActionCountField, count: number): number
 
 /**
  * **快支 / 连携基准**（CC-264 单一来源；setAgent 预填、轻量装配 teamTimelineStore、部署 runArchiveDeploy 共用）。
- * 口径 = 用户 2026-08-30 部署口径（runArchiveDeploy 原注释）：「快支固定 3 作为喧响基础供给；连携基准 1
- * （轴模式由轴内连携块反推覆盖）」。修前 setAgent 不写这两项 ⇒ 散点 / 难度曲线 / 定位对比对 auto 预设
- * 继承用户 store 里的隐藏值（新用户 = defaultCharacter 0/0，即**完全没有连携**：104 预设伤害中位 −3.3%、最多 −23.7%），
- * 而轻量装配与部署是 3/1 ⇒ 同一支队在不同页面口径不同。全体角色同值（含支援位与 noGenericInteraction：
- * 那条声明只管弹刀 / 闪反归属）。回退：setAgent 删两行赋值即回到「继承用户值」。
+ *
+ * @fact engine:快支/连携基准 口径: 快速支援默认 0（全角色无例外）、连携次数默认 1 但支援/防护为 0——「快支本身和平A差不多，不需要加快支」+「辅助的连携次数也该是 0」（辅助上场的连携位应让给主C/击破）；修前 3/1 是 2026-08-30 的部署口径「快支固定 3 作为喧响基础供给」，已作废 | 据 用户@2026-10-18「快支全角色都默认0，改一下。辅助的连携次数也该是0」·复核@2026-10-18 | 验 src/composables/__tests__/presetLoopActionCounts.test.ts | 锚 src/stores/config.ts#ASSIST_ACTION_BASELINE | 信 确认
+ * ⟳复核: 官方若给快支/连携新的基础供给口径（如新角色自带连携位）→ 重核本基准与 `chainBaselineFor` 的职业轴 | 到期 2027-03-31
+ *
+ * 为什么仍要「setAgent 预填」而不是「继承用户值」：散点 / 难度曲线 / 定位对比对 auto 预设若继承用户
+ * store 里的隐藏值（新用户 = defaultCharacter 0/0），同一支队在不同页面口径不同（CC-264 的原始动机）。
+ * 回退：setAgent 删两行赋值即回到「继承用户值」。
  */
-export const ASSIST_ACTION_BASELINE = { quickAssist: 3, chainPerStun: 1 } as const
+export const ASSIST_ACTION_BASELINE = { quickAssist: 0, chainPerStun: 1 } as const
+
+/**
+ * 连携基准按职业取（ASSIST_ACTION_BASELINE.chainPerStun 的「支援 / 防护 = 0」臂）：
+ * 辅助上场打的连携 = 抢主C 的连携位，模型里应归零（用户 2026-10-18）。
+ * 与 `roleInteractionBaseline` 同一条职业轴（support / defense），故写在一起。
+ */
+export function chainBaselineFor(specialty: string | undefined): number {
+  return specialty === 'support' || specialty === 'defense' ? 0 : ASSIST_ACTION_BASELINE.chainPerStun
+}
 
 
 /** 推荐主词条 prop name → catalog statId 映射（含中文别名）。
@@ -622,9 +633,10 @@ export function createConfigModel(
       char.dodgeCounterCount = base.dodge
       char.blockCount = base.block
       char.dualCounterCount = base.dual
-      // CC-264：快支 / 连携同为「默认会打」的基础交互，按单一来源预填（预设显式声明仍在其后覆盖）
+      // CC-264：快支 / 连携按单一来源预填（预设显式声明仍在其后覆盖）。
+      // 用户 2026-10-18：快支全角色默认 0、支援/防护连携默认 0（见 ASSIST_ACTION_BASELINE 的 @fact）。
       char.quickAssistCount = ASSIST_ACTION_BASELINE.quickAssist
-      char.chainCountPerStun = ASSIST_ACTION_BASELINE.chainPerStun
+      char.chainCountPerStun = chainBaselineFor(agent.specialty)
 
       // 自动推荐音擎：优先该角色的专属音擎（ownerAgentId），其次同职业第一个 S 级，最后任意 S 级
       const wEngines = catalogStore.displayWEngines

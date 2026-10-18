@@ -44,6 +44,35 @@ const VELINA_AGENT_ID = '1561'
 const VELINA_EYE_MOVE_ID = '1561006' // EX Special Attack: Wind Shear - Eye of the Storm
 const VELINA_SWEEPING_CYCLONE_1_MOVE_ID = '1561007' // Sweeping Cyclone #1（广域气旋）
 const VELINA_SWEEPING_CYCLONE_2_MOVE_ID = '1561020' // Sweeping Cyclone #2
+/**
+ * 广域气旋 #1（1561007）单段基础异常积蓄 = catalog `anomaly_buildup` 行值。
+ * 只有「风蚀替换广域」的注入行需要它（主行由 `transformSkillExecutions` 从倍率表取同一行）。
+ * 守卫：`velinaCorrosionBuildUpSource.test.ts` 断言它 === catalog 1561007 的该行值，防数据更新后静默漂移。
+ */
+export const VELINA_BROAD_CYCLONE_1_BASE_BUILDUP = 45
+
+/**
+ * 维琳娜**积蓄区**（招式限定）的单一事实源：额外能力减抗 7%/14% + 广域气旋积蓄 15% + 6 命风属性积蓄 20%。
+ *
+ * ⚠ 用户 2026-10-18：「他为什么计算不走标准公式呢，基础积蓄×积蓄区，非要自己单独用 45 干什么」——
+ * 修前 `transformVelinaAnomalyPool`（风蚀替换广域的注入行）**绕过了本函数**，把 baseBuildUp 写死 45，
+ * 而同一条物理招式在 `transformSkillExecutions` 的主行里是 45 × 本乘数（实测 45→59）。
+ * 两条路径两套基数 = 同一招式两种积蓄，现共用本函数。
+ *
+ * 口径：这三项都乘在**基础积蓄**上（与主行既有写法一致），再进标准公式
+ * `calcPerHitBuildUp` = 基础 × 异常掌控区 × 积蓄效率区 × 抗性区（`data/anomalyElement`）。
+ */
+function velinaBuildUpMultiplier(
+  panel: PanelValues | null | undefined,
+  element: string | undefined,
+  isBroadCyclone: boolean,
+  hasCinema6: boolean,
+): number {
+  const additionalAbilityActive = additionalAbilityActiveOf(panel)
+  return (1 + (additionalAbilityActive ? 14 : 7) / 100)
+    * (isBroadCyclone && additionalAbilityActive ? 1.15 : 1)
+    * (hasCinema6 && element === 'wind' ? 1.2 : 1)
+}
 
 function velinaColorElement(team: ReadonlyTeam, _slot: number): string {
   return team
@@ -279,13 +308,18 @@ function transformVelinaAnomalyPool(input: AgentAnomalyTransformInput): void {
 
   const bcCount = corrosion.broadCycloneCount
   if (bcCount <= 0) return
-  // 每次风蚀替换广域 = Sweeping Cyclone #1(1561007) ×10 段，单次积蓄 45
-  // 积蓄归属维琳娜自己的槽位（`self.slot`），不是 windCharSlot：
-  // 旧写法把广域积蓄记到「第一个风角色」名下，非维琳娜风队会凭空多出风积蓄。
+  // 每次风蚀替换广域 = Sweeping Cyclone #1(1561007) ×10 段。
+  // ⚠ 用户 2026-10-18：「他为什么计算不走标准公式呢，基础积蓄×积蓄区，非要自己单独用 45 干什么」
+  // —— 修前这里**绕过了** `transformVelinaSkillExecutions` 给同一招式算的 `velinaBuildUpMult`
+  // （额外能力 14% 抗性削减 + 广域 15% 积蓄 + 6 命风 20%），同一条物理招式两条路径两套基数
+  // （主行 45→59、注入行仍是 45）。现与主行同源：同一个 `velinaBuildUpMultiplier`（单一事实源），
+  // 再进标准公式 `calcPerHitBuildUp`（异常掌控区 × 积蓄效率区 × 抗性区）。
+  // 45 = catalog 1561007 的 anomaly_buildup 行值（`VELINA_BROAD_CYCLONE_1_BASE_BUILDUP`，守卫测试钉住）。
   const velinaSlot = input.self.slot
   const velinaPanel = input.self.panel ?? emptyPanel()
   const windRes = enemyResistanceOf(input.enemyAnomalyResistances, 'wind')
-  const perHit = input.calcPerHitBuildUp(45, velinaPanel, windRes, 'wind')
+  const baseBuildUp = VELINA_BROAD_CYCLONE_1_BASE_BUILDUP * velinaBuildUpMultiplier(velinaPanel, 'wind', true, (velinaPanel.velinaCinema6 ?? 0) > 0)
+  const perHit = input.calcPerHitBuildUp(baseBuildUp, velinaPanel, windRes, 'wind')
   const totalCount = bcCount * 10
   const contrib = {
     moveId: 'velina_corrosion_broad',
@@ -293,7 +327,7 @@ function transformVelinaAnomalyPool(input: AgentAnomalyTransformInput): void {
     slot: velinaSlot,
     element: 'wind',
     count: totalCount,
-    baseBuildUp: 45,
+    baseBuildUp,
     perHitBuildUp: perHit,
     totalBuildUp: perHit * totalCount,
   }
@@ -339,12 +373,10 @@ function transformVelinaSkillExecutions(input: AgentSkillTransformInput): void {
     const anomaly = getRowValue(foundMove, 'anomaly_buildup')
     const moveName = exec.moveName.replace(/（.*）/g, '').trim()
     const isVelinaBroadCyclone = foundMove.id === VELINA_SWEEPING_CYCLONE_1_MOVE_ID || foundMove.id === VELINA_SWEEPING_CYCLONE_2_MOVE_ID
-    const velinaResReductionMult = 1 + (additionalAbilityActive ? 14 : 7) / 100
     const velinaCinema1 = cinemaLevel >= 1
     const velinaCinema6 = cinemaLevel >= 6
-    const velinaBuildUpMult = velinaResReductionMult
-      * (isVelinaBroadCyclone && additionalAbilityActive ? 1.15 : 1)
-      * (velinaCinema6 && foundElement === 'wind' ? 1.2 : 1)
+    // 积蓄区单一事实源（2026-10-18）：风蚀替换广域的注入行共用同一个函数，别再各写一份
+    const velinaBuildUpMult = velinaBuildUpMultiplier(panel, foundElement, isVelinaBroadCyclone, velinaCinema6)
     const velinaDazeMult = isVelinaBroadCyclone
       ? (additionalAbilityActive ? 1.3 : 1) * (velinaCinema1 ? 1.2 : 1)
       : 1

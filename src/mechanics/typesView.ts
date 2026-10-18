@@ -85,4 +85,10 @@ export interface AgentResourceSectionsInput {
   liuyinHug?: { hug60: number; hug90: number } | null
   /** 全队 agentId→展示名，多角色归因行用（如卢西娅帷幕队友来源）；缺省回退显示 agentId */
   agentNames?: Readonly<Record<string, string>>
+  /**
+   * **队伍级机制设置**（`configStore.teamMechanicSettings`，键 = `${settingPrefix}:${slot}`）。
+   * 2026-10-18：蕾米「每队友丢弃 N 次异常」的丢弃量存在这里（不是 MechanicSetting），
+   * 资源卡要在展示层算「丢弃后的池 / 轮次构成」，只能从这里读——与 `liuyinHug` 同类（纯展示载荷，缺省不显示）。
+   */
+  teamSettings?: Readonly<Record<string, number>>
 }

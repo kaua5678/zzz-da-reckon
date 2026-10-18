@@ -140,7 +140,8 @@ describe('CC-83 mechanics/types.ts 拆分', () => {
       ['backstageAutoFill', 'BackstageAutoFillSpec'],
       ['axisRageCombos', 'AxisRageCombos'],
       ['releaseShare', 'ReleaseShareSpec'],
-      ['teammateSplit', 'TeammateSplitSpec'],
+      // 2026-10-18：teammateSplit（Q 分配）被 teammateDrop（每队友丢弃 N 次）取代，具名类型随之换名
+      ['teammateDrop', 'TeammateDropSpec'],
       ['axisGashResource', 'AxisGashResourceSpec'],
       ['finalizePass', 'FinalizePassSpec'],
     ] as const) {

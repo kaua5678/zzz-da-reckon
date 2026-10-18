@@ -310,6 +310,9 @@ import { fmt } from '@/utils/format'
 import { buildActionOperationRows, buildTimeChartRows } from '@/composables/resourceCard/actionOperationRows'
 import { damageElementLabel as elementLabel, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import { agentResourceSections, agentResultCardCorrosion, crossAgentEnergyLabels } from '@/composables/agentMechanicView'
+import { useConfigStore } from '@/stores/config'
+
+const configStore = useConfigStore()
 
 const props = defineProps<{
   result: CharacterResourceResult
@@ -366,6 +369,8 @@ const specialResourceSections = computed(() =>
     anomalyPoolResult: props.anomalyPoolResult,
     liuyinHug: props.liuyinHug ?? null,
     agentNames: props.agentNames ?? {},
+    // 队伍级设置（蕾米「每队友丢弃 N 次」）：资源卡要在展示层算丢弃后的池/轮次构成
+    teamSettings: configStore.teamMechanicSettings,
   }),
 )
 

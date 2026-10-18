@@ -19,7 +19,9 @@ const LEGACY_DEFAULTS: Record<string, typeof ZERO> = {
   // 故随裁决同步；「4 怒相仍成立」由 `.zc/perf/banyueConfirm.perf.ts` 六队实测（4怒相 6/6）。
   '1471': { parry: 6, dodge: 10, block: 12, dual: 3 },
 }
-const LEGACY_NO_GENERIC = new Set(['1051'])
+// 2026-10-18 用户裁决「蕾米和柚叶这种辅助，初始交互次数也该是 0」⇒ 蕾米埃尔
+// 声明 noGenericInteraction（后台飞行型异常辅助，平A 权重本来也是 0）。本表 = 「模块声明 == 原写死表」的对照。
+const LEGACY_NO_GENERIC = new Set(['1051', '1581'])
 function legacyBaseline(id: string, spec?: string) {
   if (LEGACY_NO_GENERIC.has(id)) return ZERO
   const d = LEGACY_DEFAULTS[id] ?? ZERO

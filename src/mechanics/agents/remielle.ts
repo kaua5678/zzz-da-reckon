@@ -1,5 +1,6 @@
 import type {
   AgentCharConfigInput,
+  ExtraNecessaryAction,
   AgentMechanicModule,
   AgentPanelInput,
   AgentBackstageRowsInput,
@@ -20,10 +21,10 @@ import type { Agent, PanelValues, SkillMove } from '@/types/catalog'
 import type { AnomalyEventRecord, CharacterOperationConfig, CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
-import { fmt } from '@/utils/format'
+import { fmt, localized } from '@/utils/format'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '@/core/damageMultipliers'
-import { calcPanelStunMultiplier } from '@/core/anomalyPool/helpers'
+import { calcPanelStunMultiplier, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
 import { enemyResistanceOf, panelElementStat } from '@/utils/elementStatKeys'
 import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
 import { channelMetricsOf, type ChannelMoveInfo, type MoveTableLike } from '@/core/resource/moveLookup'
@@ -40,6 +41,7 @@ const LUMINIZE_MULTIPLIER_PER_AP = 0.2
 
 export function computeRemielleMechanic(input: {
   anomalyProficiency: number
+  splitRounds?: number
 }): RemielleMechanicSource {
   const ap = Math.max(0, input.anomalyProficiency)
   return {
@@ -47,6 +49,7 @@ export function computeRemielleMechanic(input: {
     voidflareMax: VOIDFLARE_MAX,
     refringeCoefficient: ap * REFRINGE_COEFFICIENT_PER_AP,
     luminizeMultiplierBonus: ap * LUMINIZE_MULTIPLIER_PER_AP,
+    splitRounds: Math.max(0, Math.floor(input.splitRounds ?? 0)),
     note: '虚曜：最多储存3个，队友触发异常反应生成；花羽轮舞/缭乱终幕/垂虹/惊鸿命中后触发耀变，按储存异常效果强度结算招式对应倍率；异化系数=异常精通×0.02%，耀变倍率提升=异常精通×0.2%。耀变次数由异常池按队友异常触发自动结算，不由用户直接调整。',
   }
 }
@@ -55,21 +58,97 @@ function buildRemielleResourceResult({ cfg }: AgentResourceResultInput): Partial
   return {
     remielleMechanicSource: computeRemielleMechanic({
       anomalyProficiency: cfg.panel.anomalyProficiency,
+      splitRounds: cfg.panel.remielleSplitRounds ?? 0,
+
     }),
   }
 }
 
-function buildRemielleResourceSections({ result }: AgentResourceSectionsInput) {
+/**
+ * 蕾米**飞行轮数**（玩家交流制表口径，用户 2026-10-18：「蕾米队伍中会飞几轮需要额外标注一下，这个是玩家交流的制表之一」）。
+ *
+ * 一轮 = 攒满 3 个虚曜 → 蕾米出来打「入场（花羽轮舞）→ 有大招放大招（缭乱终幕）→ 最后长按平A（惊鸿）」→
+ * 虚曜被长按A 清空 → 回后台继续攒。故轮数 = ⌊虚曜池 / 3⌋（池 = Σ 非本槽的异常触发次数）。
+ * 每轮的耀变次数 = 3（入场）+ 3（长按A）+ 3（有大招时）= 6 或 9。
+ *
+ * 与伤害行同源（`extraAnomalyRows` 用 `cycles` 算载体次数），这里只是把它暴露给资源卡与外部制表。
+ */
+export function remielleFlightRounds(
+  ownSlot: number,
+  perSlotAnomalyTriggers: ReadonlyArray<number> | undefined,
+): number {
+  const pool = [0, 1, 2]
+    .filter(slot => slot !== ownSlot)
+    .reduce((sum, slot) => sum + Math.max(0, Math.floor(perSlotAnomalyTriggers?.[slot] ?? 0)), 0)
+  return Math.floor(pool / REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND)
+}
+
+function buildRemielleResourceSections({ result, anomalyPoolResult, teamSettings }: AgentResourceSectionsInput) {
   const source = result.remielleMechanicSource
   if (!source) return []
+  // 池 = Σ(队友异常次数 − 该队友丢弃次数)；丢弃后的剩余次数才进分配（与 extraAnomalyRows 同口径）
+  const drops: Record<string, number> = {}
+  for (const [k, v] of Object.entries(teamSettings ?? {})) {
+    const m = /^remielle\.drop:(\d+)$/.exec(k)
+    if (m && v > 0) drops[m[1]!] = Math.floor(v)
+  }
+  const perSlot = [0, 1, 2]
+    .filter(slot => slot !== result.slot)
+    .map(slot => {
+      const total = Math.max(0, Math.floor(anomalyPoolResult?.perSlotAnomalyTriggers[slot] ?? 0))
+      const dropped = Math.max(0, Math.min(total, Math.floor(drops[String(slot)] ?? 0)))
+      return { slot, total, dropped, kept: total - dropped }
+    })
+  const pool = perSlot.reduce((sum, x) => sum + x.kept, 0)
+  const droppedTotal = perSlot.reduce((sum, x) => sum + x.dropped, 0)
+  // 战斗时长 = 前台 + 后台（引擎的 totalTime）；只有资源结果齐全时才知道，缺省按豆子侧判。
+  // 飞行段吃的是**后台**时长（相变时流自主行动），她自己的入场/惊鸿是前台、不占这 15s
+  const backstageTime = result.timeAllocation.backstageTime
+  const beanRounds = remielleFlightRounds(result.slot, anomalyPoolResult?.perSlotAnomalyTriggers)
+  const rounds = remielleRoundCount(pool, backstageTime)
+  const timeCapped = rounds < beanRounds
+  // 拆轮构成（用户 2026-10-18：「调成 1 你就写 6 惊鸿 2 垂鸿」）：拆 1 轮惊鸿 = 2 轮垂虹
+  const split = Math.max(0, Math.min(REMIELLE_SPLIT_ROUND_MAX, Math.floor(source.splitRounds)))
+  const appliedSplit = Math.min(split, rounds > 0 ? REMIELLE_MAX_FLOWER_FEATHER_ROUNDS : 0)
+  const graceRounds = Math.max(0, Math.min(rounds, REMIELLE_MAX_FLOWER_FEATHER_ROUNDS - appliedSplit))
+  const rainbowRounds = Math.max(0, Math.min(rounds - graceRounds, appliedSplit * 2))
   return [
     {
       id: 'remielle-voidflare',
       title: '蕾米埃尔虚曜·耀变',
-      summary: `虚曜 ${source.voidflareStored}/${source.voidflareMax} · 耀变由异常池自动结算`,
+      summary: `飞行 ${rounds} 轮（${graceRounds} 惊鸿 + ${rainbowRounds} 垂虹）· 虚曜池 ${pool}`,
       rows: [
+        {
+          label: '飞行轮数',
+          value: `${rounds} 轮`,
+          detail: timeCapped
+            ? `豆子够 ${beanRounds} 轮，但后台只有 ${fmt(backstageTime)}s ⇒ 只够飞 ${rounds} 轮（每轮后台飞行 ${fmt(REMIELLE_LUMEN_FLIGHT_SECONDS)}s）`
+            : `虚曜池 ${pool} ÷ 3 = ${beanRounds} 轮（后台 ${fmt(backstageTime)}s ÷ ${fmt(REMIELLE_LUMEN_FLIGHT_SECONDS)}s = ${Math.floor(backstageTime / REMIELLE_LUMEN_FLIGHT_SECONDS)} 轮上限，未咬合）`,
+        },
+        { label: '每轮耀变', value: '6 / 9 次', detail: '入场 3 + 长按A 3（无大招 6 次）；有大招再 +3（9 次）；6 命垂虹/惊鸿耀变次数 ×2' },
+        {
+          label: '轮次构成',
+          value: `${graceRounds} 惊鸿 + ${rainbowRounds} 垂虹`,
+          detail: split > 0
+            ? `拆轮 ${appliedSplit}：每拆 1 轮惊鸿 ⇒ 少 1 轮惊鸿、多 2 轮垂虹（垂虹也清空 3 豆，故总轮次 +${appliedSplit}）`
+            : `拆轮 0（默认）：7 轮全部打惊鸿，多出来的虚曜浪费——普通玩家打法`,
+        },
+        {
+          label: '每轮时长',
+          value: `${fmt(REMIELLE_LUMEN_FLIGHT_SECONDS)}s + 入场 + 惊鸿`,
+          detail: `浮晖 ${REMIELLE_LUMEN_DRAIN_PER_SECOND}/s 消耗，${REMIELLE_LUMEN_MAX} → ${REMIELLE_LUMEN_FLOWER_FEATHER_THRESHOLD} 需 ${fmt(REMIELLE_LUMEN_FLIGHT_SECONDS)}s 飞行；到阈值退出相变时流，花羽轮舞（≤${REMIELLE_LUMEN_FLOWER_FEATHER_THRESHOLD} 免费，原价 ${REMIELLE_LUMEN_GAIN.flowerFeatherCost} 点）进映曜，惊鸿 +${REMIELLE_LUMEN_GAIN.fleetingGrace} 回满`,
+        },
+        {
+          label: '首轮可能打垂虹',
+          value: '耀变 ×½',
+          detail: '开局的映曜来自连携技（交叠舞步）；若第一轮只有攒满的 3 豆、没有连携/免费映曜，长按A 只能打垂虹（耀变 160% 而非惊鸿 320%）',
+        },
+        {
+          label: '子弹丢弃',
+          value: droppedTotal > 0 ? `${droppedTotal} 次` : '无',
+          detail: perSlot.map(x => `${x.slot + 1}号 ${x.dropped}/${x.total}`).join(' · ') + '（丢弃后剩余次数进分配，轮数与归属自动跟着算）',
+        },
         { label: '虚曜储存', value: `${source.voidflareStored}/${source.voidflareMax}`, detail: '队友异常反应生成，最多存3个' },
-        { label: '耀变触发', value: '自动', detail: '花羽轮舞/缭乱终幕/垂虹/惊鸿命中后触发，次数由队友异常触发池自动计算' },
         { label: '异化系数', value: `${fmt(source.refringeCoefficient)}%`, detail: '异常精通 × 0.02%' },
         { label: '耀变倍率提升', value: `${fmt(source.luminizeMultiplierBonus)}%`, detail: '异常精通 × 0.2%' },
       ],
@@ -103,6 +182,92 @@ export function getRemielleLevelValue(row: SkillMove['rows'][number] | undefined
 
 /** 一命「开局特殊虚耀」每轮个数（状态表 1 命：开局 3 个；1 轮 = 3 个豆 = 打 1 次垂虹） */
 export const REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND = 3
+
+// ============================================================================
+// 浮晖（Term:1000032）与「一轮」的时长约束（用户 2026-10-18 玩法口径）
+//
+// 原文：蕾米通过普攻获得浮晖；浮晖达最大值 120 时可进入转换姿态；相变时流状态下浮晖随时间消耗；
+// 花羽轮舞「若发动时自身剩余浮晖小于等于 90 点，则本次不再消耗浮晖，并且自身进入映曜状态」，
+// 映曜 ⇒ 下一次垂虹升级为惊鸿（耀变 320% vs 垂虹 160%，正好一倍）。
+//
+// 闭环（用户口述 + 实测段长互相验证）：惊鸿 +120 回满 → 进相变时流 → 2/s 消耗 → 到 90 时退出
+// ⇒ 立刻花羽轮舞（≤90 免费，进映曜）→ 惊鸿（+120 回满）→ 再进。
+// ⇒ **一轮的物理时长 = 飞行段 15s + 花羽轮舞 + 惊鸿**，与豆子够不够无关；
+//    豆子只决定「能不能打满 3 个虚曜」，时长决定「180s 里最多飞几轮」。
+// ============================================================================
+/** 浮晖上限（原文「最大值 120 点」） */
+export const REMIELLE_LUMEN_MAX = 120
+/** 花羽轮舞「免费进映曜」的浮晖阈值（原文「小于等于 90 点」） */
+export const REMIELLE_LUMEN_FLOWER_FEATHER_THRESHOLD = 90
+/**
+ * 相变时流期间浮晖消耗速率（点/秒）。
+ *
+ * @fact agent:1581/浮晖消耗速率 口径: 相变时流期间浮晖按 2 点/秒 消耗（120→90 需 15s，与实战段长中位 15.5s 吻合）；消耗是**纯时间驱动**，自主攻击不额外扣浮晖（段长与攻击数 r=0.895 只是「攻击次数是时间的函数」） | 据 用户@2026-10-18「飞行状态通常15s左右…120自动下降到90需要15s左右，期间有3次攻击」+ 67 段日志反推 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/mechanics/agents/remielle.ts#REMIELLE_LUMEN_DRAIN_PER_SECOND | 信 确认
+ * ⟳复核: 若官方给出明确消耗速率（或相变时流改成固定时长而非资源驱动）⇒ 重核本常量与 `remielleRoundSeconds` | 到期 2027-03-31
+ */
+export const REMIELLE_LUMEN_DRAIN_PER_SECOND = 2
+/** 满值飞到「可免费进映曜」阈值所需秒数 = (120 − 90) / 2 = **15s**（= 一轮里的后台飞行段） */
+export const REMIELLE_LUMEN_FLIGHT_SECONDS
+  = (REMIELLE_LUMEN_MAX - REMIELLE_LUMEN_FLOWER_FEATHER_THRESHOLD) / REMIELLE_LUMEN_DRAIN_PER_SECOND
+/**
+ * **一场最多打几轮「完整惊鸿」**（用户 2026-10-18）：「通常玩家只能打 7 轮完整惊鸿，更高轮次肯定是把惊鸿轮拆成了
+ * 2 次垂鸿轮」。
+ *
+ * 物理依据：一轮 = 飞行 15s + 花羽轮舞 2.683s + 惊鸿 3.533s ≈ 21.2s ⇒ 180s 里 7 轮 = 148.5s，第 8 轮就要 170s。
+ * 超过 7 轮时浮晖循环撑不住（来不及回满再进相变时流）⇒ 长按A 退化为垂虹（耀变 160% / 直伤 390.8%，正好是惊鸿的一半/三分之一）。
+ */
+/** 默认能打几轮**完整惊鸿**（用户 2026-10-18：「我们默认 7 轮上限」）。 */
+export const REMIELLE_MAX_FLOWER_FEATHER_ROUNDS = 7
+/**
+ * **拆轮**（用户 2026-10-18 逐字）：「如果一个队伍的轮次想达到 8，就要拆一轮惊鸿，如果想达到 9，就要拆 2 轮。
+ * 但是垂鸿很少见，普通玩家就正常打 6-7 轮就行，溢出的积蓄也只能浪费。」
+ *
+ * 机制：一轮完整惊鸿需要后台飞满 15s（120→90）。想多飞一轮，就得有某一波**不到 15s 就换出来**
+ * ——那时浮晖还没掉到 90，拿不到映曜 ⇒ 长按A 只能打垂虹（耀变 160% 而非 320%、直伤 390.8% 而非 1194.5%）。
+ * 所以「拆 N 轮」= 总轮次 +N，其中 **N 轮由惊鸿降级为垂虹**。
+ *
+ * 默认 0 = 只打 7 轮完整惊鸿，多余的虚曜**浪费**（这正是普通玩家的打法）。
+ */
+export const REMIELLE_SPLIT_ROUND_SETTING = 'remielle.splitRounds'
+/** 拆轮上限（4 轮：180s 里再多就打不完了） */
+export const REMIELLE_SPLIT_ROUND_MAX = 4
+/**
+ * 浮晖收支表（原文 `skill.basic.description[4..7].param` 与 `skill.assist.description[7].param[3]`）。
+ * 只作展示与文档锚点；引擎只用到 `FLOWER_FEATHER_COST` 与上面两个常量（本轮次模型不逐次模拟浮晖）。
+ */
+export const REMIELLE_LUMEN_GAIN = {
+  basic1: 5,
+  basic2: 5,
+  basic3: 15,
+  basic4: 35,
+  solo: 30,
+  rainbowEnd: 120,
+  fleetingGrace: 120,
+  flowerFeatherCost: 40,
+} as const
+
+/**
+ * **一轮能飞几次 = min(豆子够打几轮, 后台够飞几段)**。
+ *
+ * - 豆子侧：虚曜池 ÷ 3（每轮惊鸿清空 3 个）；
+ * - 时间侧：**后台时间 ÷ 15s**。飞行段吃的是她**在后台**的时长（相变时流自主行动），
+ *   她自己的入场/惊鸿是前台，不占这 15s。
+ *
+ * 用户口径（2026-10-18 逐字）：「他的前台变成 60s，后台不足 120s，不足 8 次 15s……
+ * 如果想提高轮次，那肯定有些波次是 15s 以内就打出来的，这时候还没掉到 90，导致打不了惊鸿，
+ * 只能打垂鸿。所以这里需要做一个计算，我们默认 7 轮上限，如果一个队伍的轮次想达到 8，就要拆一轮惊鸿，
+ * 如果想达到 9，就要拆 2 轮。」
+ *
+ * ⇒ 本函数只算**总轮次**（豆子 ∩ 后台飞行段）；「前 7 轮惊鸿、超出部分垂虹」由
+ *   `REMIELLE_MAX_FLOWER_FEATHER_ROUNDS` 在载体侧拆（`extraNecessaryAction` / `extraAnomalyRows`）。
+ */
+export function remielleRoundCount(voidflareTotal: number, backstageTime: number): number {
+  const beanRounds = Math.floor(Math.max(0, voidflareTotal) / REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND)
+  // 后台时长缺省/为 0（无资源结果的外部直调）⇒ 只按豆子判，不引入时间上限
+  if (!(backstageTime > 0)) return beanRounds
+  const flightRounds = Math.floor(backstageTime / REMIELLE_LUMEN_FLIGHT_SECONDS)
+  return Math.max(0, Math.min(beanRounds, flightRounds))
+}
 
 /**
  * 特殊虚耀载体「普通攻击：垂虹」施放次数（用户裁决 2026-09-30）：每次垂虹清空全部 3 个特殊虚曜点（1 轮 = 3 个豆 = 打 1 次垂虹）。
@@ -250,9 +415,21 @@ function remielleDazeBonusPct(slot: number, agent: Agent, team: ReadonlyTeam): n
  * `applyPanel` 只在蕾米那槽被派发 —— 与迁移前 `if (agent.id === '1581' …)` 的守卫同义。
  */
 function applyRemiellePanel({ slot, agent, team, panel, settings }: AgentPanelInput): void {
-  void settings
   if (!isRemielleAgent(agent)) return
   panel.remielleRadiantTurnDazeBonusPct = remielleDazeBonusPct(slot, agent, team)
+  // 拆轮数（用户 2026-10-18）：默认 0 = 只打 7 轮完整惊鸿，多余虚曜浪费
+  panel.remielleSplitRounds = Math.max(0, Math.min(
+    REMIELLE_SPLIT_ROUND_MAX,
+    Math.floor(settings[REMIELLE_SPLIT_ROUND_SETTING] ?? 0),
+  ))
+  // 丢弃设置（`remielle.drop:<slot>`）：蕾米自己的 applyPanel 读全队三条，写进**自己的**面板
+  // （资源卡与 extraAnomalyRows 都从 cfg.panel 读；队友面板不承载这个量）。
+  const drops: Record<string, number> = {}
+  for (let s = 0; s < 3; s++) {
+    const v = Math.max(0, Math.floor(settings[`${REMIELLE_DROP.settingPrefix}:${s}`] ?? REMIELLE_DROP.default))
+    if (v > 0) drops[String(s)] = v
+  }
+  panel.remielleTeammateDrops = drops
 }
 
 /**
@@ -311,6 +488,39 @@ export function findRemielleRainbowEnd(agentSkills: MoveTableLike): ChannelMoveI
   }
 }
 
+/**
+ * 从倍率表提取蕾米「普通攻击：惊鸿」（长按A 正版，320% 耀变 / 1194.5% 直伤）。
+ *
+ * 与垂虹（`findRemielleRainbowEnd`，160% / 390.8%）是**同一按键的两个形态**：
+ * 有映曜 ⇒ 惊鸿；无映曜 ⇒ 垂虹。倍率差一倍是耀变侧、差三倍是直伤侧。
+ */
+export function findRemielleFleetingGrace(agentSkills: MoveTableLike): ChannelMoveInfo | null {
+  const basic = agentSkills.categories.find(c => c.id === 'basic')
+  if (!basic) return null
+  const move = basic.moves.find(m => {
+    const name = localized(m.name)
+    const en = localized(m.name && typeof m.name === 'object' && 'en' in m.name ? m.name.en : '').toLowerCase()
+    return m.id === '1581008' || en.includes('fleeting grace') || name.includes('惊鸿')
+  })
+  if (!move) return null
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move, fusedRowReader)
+  return { moveId: move.id, actionTime, decibelRecovery, comboAlignRatio: move.comboAlignRatio ?? 0 }
+}
+
+/** 从倍率表提取蕾米「支援技：花羽轮舞」（每轮入场自动发动，直伤 907.8% / 耀变 320%） */
+export function findRemielleFlowerFeatherDance(agentSkills: MoveTableLike): ChannelMoveInfo | null {
+  const assist = agentSkills.categories.find(c => c.id === 'assist')
+  if (!assist) return null
+  const move = assist.moves.find(m => {
+    const name = localized(m.name)
+    const en = localized(m.name && typeof m.name === 'object' && 'en' in m.name ? m.name.en : '').toLowerCase()
+    return m.id === '1581015' || en.includes('flower feather') || name.includes('花羽轮舞')
+  })
+  if (!move) return null
+  const { actionTime, decibelRecovery } = channelMetricsOf(agentSkills, move, fusedRowReader)
+  return { moveId: move.id, actionTime, decibelRecovery, comboAlignRatio: move.comboAlignRatio ?? 0 }
+}
+
 /** 从倍率表提取蕾米后台 Radiant Turn 信息 */
 export function findRemielleRadiantTurn(agentSkills: MoveTableLike): ChannelMoveInfo | null {
   const special = agentSkills.categories.find(c => c.id === 'special')
@@ -348,6 +558,16 @@ function buildRemielleCharConfig({ slot, agent, skills, team, cfg }: AgentCharCo
   cfg.remielleRadiantTurnMoveId = radiantTurn?.moveId ?? ''
   cfg.remielleRadiantTurnActionTime = radiantTurn?.actionTime ?? 0
   cfg.remielleRadiantTurnDecibelRecovery = radiantTurn?.decibelRecovery ?? 0
+  // 惊鸿（长按A 正版，映曜状态）+ 花羽轮舞（入场）——两招的**直伤**与**时间**都用这里存的参数
+  const fleetingGrace = findRemielleFleetingGrace(skills)
+  const flowerFeather = findRemielleFlowerFeatherDance(skills)
+  cfg.remielleFleetingGraceMoveId = fleetingGrace?.moveId ?? ''
+  cfg.remielleFleetingGraceActionTime = fleetingGrace?.actionTime ?? 0
+  cfg.remielleFleetingGraceComboAlignRatio = fleetingGrace?.comboAlignRatio ?? 0
+  cfg.remielleFlowerFeatherMoveId = flowerFeather?.moveId ?? ''
+  cfg.remielleFlowerFeatherActionTime = flowerFeather?.actionTime ?? 0
+  cfg.remielleFlowerFeatherComboAlignRatio = flowerFeather?.comboAlignRatio ?? 0
+  // 轮数（本轮的「飞了几次」）由资源侧跨轮反馈写回；buildCharConfig 只管招式参数
   // 一命「花羽轮舞」喧响：CC-41（2026-09-27）起改走跨轮反馈（remielleNextRoundFeedback → applyTeamConfig），
   // 原先这里乘的面板次数 `remielleFlowerFeatherDanceCount` 没有任何写入方（效果恒 0），已删除。
   const dazeBonusPct = remielleDazeBonusPct(slot, agent, team)
@@ -386,26 +606,34 @@ export function remielleFlowerFeatherDanceCasts(
 function remielleNextRoundFeedback({ slot, anomalyPool, combatTime }: AgentNextRoundFeedbackInput): ModuleFeedback {
   return {
     remielleFlowerFeatherDanceCasts: remielleFlowerFeatherDanceCasts(slot, anomalyPool.perSlotAnomalyTriggers, combatTime),
+    // 本轮飞了几轮（豆子侧 ∩ 时间侧）——下一轮 converge 写回 cfg，供 extraNecessaryAction 补「入场 + 惊鸿」两条必做动作行
+    remielleRoundsThisRound: remielleFlightRounds(slot, anomalyPool.perSlotAnomalyTriggers),
   }
 }
 
 /** CC-41：converge 相位把上一轮花羽轮舞次数 × 每次喧响（面板值，影画 < 1 时为 0）累加进 extraSelfDecibelReward。 */
 function applyRemielleTeamConfig({ cfg, phase, threads }: AgentTeamConfigInput): void {
   if (phase !== 'converge' || !threads) return
+  // 轮数写回：下一轮 `extraNecessaryAction` 用它补「入场（花羽轮舞）+ 长按A（惊鸿）」两条必做动作行
+  // （用户 2026-10-18：「入场技的直伤也没算呀」「打了什么就算什么很难吗」）。
+  cfg.remielleRoundsThisRound = Math.max(0, Math.floor(threads.moduleFeedback.remielleRoundsThisRound ?? 0))
   const casts = Math.max(0, Math.floor(threads.moduleFeedback.remielleFlowerFeatherDanceCasts ?? 0))
   const perUse = Math.max(0, cfg.panel.remielleFlowerFeatherDanceDecibelPerUse)
   if (casts <= 0 || perUse <= 0) return
   cfg.extraSelfDecibelReward = cfg.extraSelfDecibelReward + perUse * casts
 }
 
-/** CC-56：Q 耀变分摊设置（键 `remielle.q:<蕾米槽位>`）——引擎（下方 firstPerBatch）与资源页卡片共用这一处声明 */
-const REMIELLE_Q_SPLIT = {
-  settingPrefix: 'remielle.q',
-  total: 3,
-  defaultFirst: 1,
-  title: '蕾米 Q 耀变分配',
-  firstSuffix: '提供虚耀',
-  batchNote: 'Q 每次固定打 3 个耀变',
+/**
+ * **丢弃**（用户 2026-10-18）：「丢弃开关也很粗糙，不做开关，需要改为丢弃部分，这样子剩余部分进入
+ * 细致分配算法就会自动算出打的更少的子弹，实现部分丢弃。如果丢弃全部，进入这个算法也会实现丢弃全部。」
+ *
+ * 键 = `remielle.drop:<槽位>`，值 = 该队友**丢弃的异常次数**（默认 0）。
+ * 丢弃后的剩余次数进 `distributeIntegerByWeight` ⇒ 轮数 / 子弹归属 / 浪费量全部自动跟着算，
+ * 不做单独分支（丢弃 0 = 全参与；丢弃全部 = 该槽彻底不产子弹）。
+ */
+const REMIELLE_DROP = {
+  settingPrefix: 'remielle.drop',
+  default: 0,
 } as const
 
 /** CC-64b：受档位门控的 buff id → 附加条件（原 store resolveSpecialTeammateBuffEnabled 的 5 个分支） */
@@ -428,12 +656,37 @@ function remielleTeammateBuffGate({ buffId, team, self }: TeammateBuffGateInput)
 }
 
 export const remielleMechanic: AgentMechanicModule = {
-  // CC-56：资源页「Q 耀变分配」卡经 agentMechanicView#teamTeammateSplit 查询（原页面写死 1581）
-  teammateSplit: REMIELLE_Q_SPLIT,
+  // 拆轮（用户 2026-10-18）：默认 0 = 7 轮完整惊鸿；每 +1 就多飞一轮，代价是该轮长按A 降级为垂虹
+  settings: [
+    {
+      id: REMIELLE_SPLIT_ROUND_SETTING,
+      label: '蕾米拆轮（多飞的轮次）',
+      description: '一轮完整惊鸿需要后台飞满 15s（浮晖 120→90）。想多飞一轮就得有一波不到 15s 就换出来——那时浮晖还没到 90，拿不到映曜，长按A 只能打垂虹（耀变 160% 而非 320%、直伤 390.8% 而非 1194.5%）。默认 0 = 只打 7 轮完整惊鸿，多余虚曜浪费（普通玩家打法）。',
+      default: 0,
+      min: 0,
+      max: REMIELLE_SPLIT_ROUND_MAX,
+      step: 1,
+      suffix: '轮',
+    },
+  ],
+
   // CC-64b：额外能力档位门控队友 buff（原 stores/config.ts 写死 1581 + 5 个 buff id）
   teammateBuffGate: remielleTeammateBuffGate,
   // CC-64：新上阵默认不分配平A时间（原 stores/config.ts#defaultBasicAttackTimeWeight 写死 1581）
   defaultBasicAttackTimeWeight: 0,
+  // 2026-10-18 用户口径：「蕾米和柚叶这种辅助，初始交互次数也该是 0」——蕾米是**后台飞行**型异常辅助
+  // （自身平A权重本来就声明 0），给她发通用弹刀6/闪反10 与「后台型」自相矛盾：实测预设
+  // `auto-1581-1511-1411` 清零后 C0 +2.6% / C6 +7.9%（弹刀/闪反白占前台、挤掉队友）。
+  // 与伊德海莉同一条通道（`interactionBaseline.ts#interactionBaselineFor`），不是写死名单。
+  noGenericInteraction: true,
+  // 子弹来源与丢弃（用户 2026-10-18）：每个队友可「丢弃 N 次异常」——丢弃后的剩余次数才进池 ⇒
+  // 轮数 / 子弹归属 / 浪费量全部由 `distributeIntegerByWeight` 自动算出（不做单独开关分支）。
+  teammateDrop: {
+    settingPrefix: REMIELLE_DROP.settingPrefix,
+    title: '蕾米虚曜子弹来源',
+    suffix: '次',
+    note: '每轮只存最新 3 个虚曜。这里填该队友**丢弃的异常次数**（0 = 全参与）：丢弃后剩余次数进分配算法，轮数与子弹归属自动跟着算——填满就实现了「洗掉垃圾子弹」。',
+  },
   // CC-42：风化浸染默认挑槽时排除（原 anomalyPanels 内的 isRemielleAgent 跨槽判定）
   excludeFromWindInfectionPick: true,
   // CC-41：一命花羽轮舞喧响（跨轮反馈）
@@ -445,18 +698,76 @@ export const remielleMechanic: AgentMechanicModule = {
   backstageAutoRows: remielleRadiantTurnRows,
   // CC-28：虚耀池/耀变/特殊虚耀事件记录（原 useResourceCalc.ts remielleVoidflareEvents 编排层分支，逐字搬迁）
   anomalyEventRecords: remielleAnomalyEventRecords,
-  // CC-26：一/四/六命「特殊虚耀 → 垂虹」必做动作（原 core/resource/rowBuild + helpers 内联）
+  /**
+   * 必做动作（三类，全部由资源侧轮数/命座驱动）：
+   *
+   * ① **入场：支援技花羽轮舞**（每轮 1 次）—— 原文「下次普通换入时自动发动」。
+   *    它是**真打出来的招式**（907.8% 直伤 + 320% 耀变），必须占前台时间、必须进直伤池。
+   * ② **长按A：普通攻击惊鸿**（每轮 1 次，有映曜时）—— 1194.5% 直伤 + 320% 耀变，同样必须进池。
+   * ③ **特殊虚耀载体：垂虹**（一/四/六命，见 CC-26）。
+   *
+   * 用户口径（2026-10-18 逐字）：「入场技的直伤也没算呀」「打了什么就算什么很难吗」「这个本来就是他的必要时间，
+   * 你拿了他的时间算，还不想还吗」——蕾米的前台时间本来就被这些动作占着，补行不是「新增开销」，
+   * 是把本来就该记的账记上（修前这些时间没进 necessary，等于白送给她）。
+   */
   extraNecessaryAction: (cfg) => {
-    const count = remielleSpecialVoidflareUseCount(cfg)
-    if (count <= 0) return null
-    return {
-      count,
-      moveId: cfg.remielleRainbowEndMoveId || undefined,
-      moveName: '普通攻击：垂虹（特殊虚耀载体）',
-      actionTime: cfg.remielleRainbowEndActionTime ?? 0,
-      comboAlignRatio: cfg.remielleRainbowEndComboAlignRatio ?? 0,
-      decibelRecovery: cfg.remielleRainbowEndDecibelRecovery ?? 0,
+    const actions: ExtraNecessaryAction[] = []
+    // 总轮次 = min(豆子侧, 后台侧) 里**能飞的部分**；拆轮数决定其中几轮打惊鸿、几轮降级垂虹
+    const beanRounds = Math.max(0, Math.floor(cfg.remielleRoundsThisRound ?? 0))
+    const split = Math.max(0, Math.min(REMIELLE_SPLIT_ROUND_MAX, Math.floor(cfg.panel.remielleSplitRounds ?? 0)))
+    const rounds = Math.min(beanRounds, REMIELLE_MAX_FLOWER_FEATHER_ROUNDS + split)
+    /**
+     * 长按A 的**形态拆分**（用户 2026-10-18）：「通常玩家只能打 7 轮完整惊鸿，更高轮次肯定是把惊鸿轮拆成了
+     * 2 次垂鸿轮」。浮晖循环一场只撑得住 7 轮完整惊鸿（15 + 2.683 + 3.533 ≈ 21.2s × 7 = 148.5s，
+     * 第 8 轮要 170s）；超过的部分长按A 退化为垂虹（耀变 160% vs 320%、直伤 390.8% vs 1194.5%）。
+     * 每多一轮超额 = 1 次花羽轮舞 + 1 次垂虹（而不是 1 次惊鸿）。
+     */
+    // 拆轮语义（用户 2026-10-18 逐字）：「调成 1 你就写 6 惊鸿 2 垂鸿」——
+    // **拆 1 轮惊鸿 = 把它变成 2 轮垂虹**（每轮仍清空 3 豆 ⇒ 拆一轮要多花 3 个豆）。
+    // 总轮次 = 7 + split，构成 = (7 − split) 惊鸿 + 2·split 垂虹。
+    const appliedSplit = Math.min(split, rounds > 0 ? REMIELLE_MAX_FLOWER_FEATHER_ROUNDS : 0)
+    const graceRounds = Math.max(0, Math.min(rounds, REMIELLE_MAX_FLOWER_FEATHER_ROUNDS - appliedSplit))
+    const rainbowRounds = Math.max(0, Math.min(rounds - graceRounds, appliedSplit * 2))
+    if (rounds > 0 && cfg.remielleFlowerFeatherMoveId) {
+      actions.push({
+        count: rounds,
+        moveId: cfg.remielleFlowerFeatherMoveId,
+        moveName: '支援技：花羽轮舞（入场）',
+        actionTime: cfg.remielleFlowerFeatherActionTime ?? 0,
+        comboAlignRatio: cfg.remielleFlowerFeatherComboAlignRatio ?? 0,
+      })
     }
+    if (graceRounds > 0 && cfg.remielleFleetingGraceMoveId) {
+      actions.push({
+        count: graceRounds,
+        moveId: cfg.remielleFleetingGraceMoveId,
+        moveName: '普通攻击：惊鸿（长按A）',
+        actionTime: cfg.remielleFleetingGraceActionTime ?? 0,
+        comboAlignRatio: cfg.remielleFleetingGraceComboAlignRatio ?? 0,
+      })
+    }
+    if (rainbowRounds > 0 && cfg.remielleRainbowEndMoveId) {
+      actions.push({
+        count: rainbowRounds,
+        moveId: cfg.remielleRainbowEndMoveId,
+        moveName: '普通攻击：垂虹（超额轮·无映曜）',
+        actionTime: cfg.remielleRainbowEndActionTime ?? 0,
+        comboAlignRatio: cfg.remielleRainbowEndComboAlignRatio ?? 0,
+        decibelRecovery: cfg.remielleRainbowEndDecibelRecovery ?? 0,
+      })
+    }
+    const specialCount = remielleSpecialVoidflareUseCount(cfg)
+    if (specialCount > 0) {
+      actions.push({
+        count: specialCount,
+        moveId: cfg.remielleRainbowEndMoveId || undefined,
+        moveName: '普通攻击：垂虹（特殊虚耀载体）',
+        actionTime: cfg.remielleRainbowEndActionTime ?? 0,
+        comboAlignRatio: cfg.remielleRainbowEndComboAlignRatio ?? 0,
+        decibelRecovery: cfg.remielleRainbowEndDecibelRecovery ?? 0,
+      })
+    }
+    return actions.length > 0 ? actions : null
   },
   // CC-26：特殊虚耀异常事件（原 core/resource/rowBuild.ts#buildAnomalyEventExecutions 内联，逐字搬迁）
   buildAnomalyEvents: ({ cfg, events }) => {
@@ -503,14 +814,25 @@ export const remielleMechanic: AgentMechanicModule = {
    * 保持块体逐字（派发循环里本模块只被自己那槽调用 ⇒ `remielleSlot >= 0` 恒真，别名等价）。
    */
   extraAnomalyRows: ({
-    slot, panel, entryPanel, skills, panelOf, teamElement, getTeamMechanicSetting,
-    enemy, enemyDamageRes, stunCoverage, anomalyPool, teamAgentId, agentName, elementLabel,
+    slot, panel, entryPanel, skills, panelOf, teamElement,
+    enemy, enemyDamageRes, stunCoverage, anomalyPool, teamAgentId, agentName, elementLabel, charResult,
   }: ExtraAnomalyRowsInput): ExtraAnomalyRowGroup[] => {
     const rows: DamagePoolRow[] = []
     const remielleSlot = slot
     const remiellePanel = panel
     const remielleEntryPanel = entryPanel
     const remielleSkills = skills
+    /**
+     * 蕾米**本轮实际打出的动作次数**（用户 2026-10-18：「蕾米根本没有打虚耀的动作但是虚耀自动结算了」）。
+     *
+     * 原文（`Term:1000034` 耀变）：「基于已储存的所有[虚曜]…对敌人造成**招式对应倍率**的属性异常伤害」——
+     * 耀变是**招式结束后的附加结算**，没有那个招式就没有耀变。修前三个载体行按「虚曜池 × 每虚曜一次」算
+     * （`countsBySlot` = 池大小），与蕾米实际打了几下完全脱钩：队里没出终结技也照算终结技耀变。
+     * 现按「招式次数」封顶：花羽轮舞 / 缭乱终幕 / 惊鸿各自 ≤ 本轮执行行里该招式的次数；
+     * 惊鸿另受 C6 翻倍与虚曜供给（每发清空 3 豆）双重约束。
+     */
+    const actionCountOf = (moveId: string): number =>
+      Math.max(0, Math.floor(charResult?.executions.find(e => e.moveId === moveId)?.count ?? 0))
     if (remiellePanel && remielleEntryPanel) {
       const otherSlots = [0, 1, 2].filter(slot => slot !== remielleSlot)
       const perSlotAnomaly = anomalyPool?.perSlotAnomalyTriggers ?? []
@@ -528,38 +850,109 @@ export const remielleMechanic: AgentMechanicModule = {
       const c1ResIgnore = remiellePanel.remielleCinema1SpecialVoidflareCount > 0 ? 50 : 0
       if (voidflareTotal > 0 && remielleSkills) {
         const fleetingGraceMultiplier = remielleFleetingGraceMultiplier(remiellePanel)
-        const qBatches = Math.floor(voidflareTotal / 3)
-        const firstOtherSlot = otherSlots[0]
-        const secondOtherSlot = otherSlots[1]
-        const firstPerBatch = otherSlots.length === 1
-          ? 3
-          : Math.max(0, Math.min(REMIELLE_Q_SPLIT.total, Math.floor(getTeamMechanicSetting(`${REMIELLE_Q_SPLIT.settingPrefix}:${remielleSlot}`, REMIELLE_Q_SPLIT.defaultFirst))))
-        const secondPerBatch = Math.max(0, 3 - firstPerBatch)
-        const qCountBySlot: Record<string, number> = {}
-        if (otherSlots.length === 1) {
-          qCountBySlot[String(firstOtherSlot)] = qBatches * 3
-        } else {
-          qCountBySlot[String(firstOtherSlot)] = qBatches * firstPerBatch
-          qCountBySlot[String(secondOtherSlot)] = qBatches * secondPerBatch
+        // ---- 一轮 = 3 个虚曜（用户 2026-10-18 玩法口径，逐字）----
+        // 「蕾米放 e 就切后台，然后队友打出 3 次异常，积攒 3 个豆，蕾米就出来打入场、有大招放大招、
+        //  最后长按平 a。0 命这一套打了 9 次耀变，如果没大招就打 2 个动作 6 次耀变。这就是一轮。」
+        // ⇒ ① **每次动作结算「已储存的全部虚曜」**（最多 3 个，不是池里 20 个全算）；
+        //    ② 一轮消耗 3 个（惊鸿/垂虹清空）⇒ 轮数 = ⌊虚曜池 / 3⌋；
+        //    ③ 每轮里每个载体**各结算一次**（入场 / 大招 / 长按A），且**不能超过蕾米本轮实际打的招式数**
+        //       —— 修前按「虚曜池 × 每虚曜一次」算，与蕾米有没有出手完全脱钩（用户：
+        //       「蕾米根本没有打虚耀的动作但是虚耀自动结算了」）。
+        /**
+         * **丢弃**（用户 2026-10-18）：「丢弃开关也很粗糙，不做开关，需要改为丢弃部分，这样子剩余部分进入
+         * 细致分配算法就会自动算出打的更少的子弹，实现部分丢弃。如果丢弃全部，进入这个算法也会实现丢弃全部。」
+         *
+         * ⇒ 丢弃不是「开关」，而是**每个队友一个可丢弃的次数**（`remielle.drop:<slot>`，默认 0）。
+         * 丢弃后的剩余次数才进池 ⇒ 轮数、子弹分配、浪费量全部自动跟着算，不需要额外分支。
+         */
+        const effectiveBySlot = new Map<number, number>()
+        for (const item of voidflareBySlot) {
+          const dropped = Math.max(0, Math.floor(remiellePanel.remielleTeammateDrops?.[String(item.slot)] ?? REMIELLE_DROP.default))
+          effectiveBySlot.set(item.slot, Math.max(0, item.count - dropped))
         }
+        const effectiveTotal = [...effectiveBySlot.values()].reduce((a, b) => a + b, 0)
+        const storedTotal = Math.min(VOIDFLARE_MAX, effectiveTotal)
+        /**
+         * **轮数 = ⌊池 / 3⌋，但默认封顶 7**（用户 2026-10-18）：「可以飞九轮但是不能默认飞 9 轮，
+         * 提速垂鸿需要部分队伍很严格的效率才行，正常就是 7 轮」⇒ 豆子再多也只按 7 轮打，
+         * 想多飞必须显式调 `remielle.splitRounds`（每拆 1 轮 = 少 1 惊鸿、多 2 垂虹）。
+         */
+        const cycles = Math.min(
+          Math.floor(effectiveTotal / REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND),
+          REMIELLE_MAX_FLOWER_FEATHER_ROUNDS + Math.max(0, Math.min(REMIELLE_SPLIT_ROUND_MAX, Math.floor(remiellePanel.remielleSplitRounds ?? 0))),
+        )
+        /**
+         * **细致分配**（用户 2026-10-18：「大招固定一个 a 子弹，但总量只有 3 个 a，却打了 7 次大招，
+         * 不符合实际」）：不再「入场/长按A 按比例、大招按滑块」两套口径，而是**按每个队友的可用次数
+         * 占全部可用次数的比例，把「本次实际要结算的子弹数」整数分摊到各槽**——每次载体各分一次，
+         * 于是 A 只有 3 次时，7 次大招里只有 3 次能算成 A 的，其余归 B。
+         *
+         * 为什么这就是「最新 3 个」的正确近似：池只存最新 3 个，所以每个载体的 3 个子弹天然按
+         * 「谁在这一轮里贡献得多」分；分摊到每轮后，A 的 3 个只可能出现在 3 轮里（不会 7 轮都有）。
+         */
+        const weightSlots = otherSlots.filter(slot => (effectiveBySlot.get(slot) ?? 0) > 0)
+        const weightValues = weightSlots.map(slot => effectiveBySlot.get(slot) ?? 0)
+        const storedCountBySlot: Record<string, number> = {}
+        for (const [slot, n] of distributeIntegerByWeight(storedTotal, weightValues).entries()) {
+          if (n > 0) storedCountBySlot[String(weightSlots[slot]!)] = n
+        }
+        /**
+         * 每轮的三个载体次数（用户 2026-10-18 玩法口径）：
+         * - 入场 = 支援技花羽轮舞（原文「下次普通换入时自动发动」）⇒ 每轮 1 次，**不受执行行限制**
+         *   （引擎不物化该动作：它是换入时自动触发，不是前台动作）；
+         * - 大招 = 缭乱终幕 ⇒ 每轮 ≤ 1 次，**受本轮实际大招次数封顶**（没大打就不结算）；
+         * - 长按A = 惊鸿 ⇒ 每轮 1 次，消耗并清空虚耀。
+         * ⇒ 有大招一轮 9 次（3+3+3）、没大招一轮 6 次（3+3），与用户实测一致。
+         */
+        // 拆轮（用户 2026-10-18）：「默认 7 轮上限，如果一个队伍的轮次想达到 8，就要拆一轮惊鸿，
+        // 如果想达到 9，就要拆 2 轮」⇒ 总轮次受 `7 + split` 封顶，其中超出 7 的部分降级为垂虹。
+        // 拆 1 轮惊鸿 = 2 轮垂虹（每轮清空 3 豆）⇒ 总轮次 = 7 + split，构成 = (7 − split) 惊鸿 + 2·split 垂虹。
+        const split = Math.max(0, Math.min(REMIELLE_SPLIT_ROUND_MAX, Math.floor(remiellePanel.remielleSplitRounds ?? 0)))
+        const appliedSplit = Math.min(split, cycles > 0 ? REMIELLE_MAX_FLOWER_FEATHER_ROUNDS : 0)
+        const assistUses = Math.min(cycles, REMIELLE_MAX_FLOWER_FEATHER_ROUNDS + appliedSplit)
+        const basicUses = Math.max(0, Math.min(cycles, REMIELLE_MAX_FLOWER_FEATHER_ROUNDS - appliedSplit))
+        const overflowRainbowUses = Math.max(0, Math.min(cycles - basicUses, appliedSplit * 2))
+        const ultimateUses = Math.min(actionCountOf('1581016'), assistUses)
+        /**
+         * 每个载体**各自**按可用次数比例分摊（不再是「入场按比例、大招按滑块」两套口径）：
+         * 载体次数 × 该槽占比。于是 A 只有 3 次时，7 次大招里只有 3 次算 A 的。
+         */
+        // ⚠ 按**总子弹数**分摊，不是按「每轮的 3 个」分摊：后者会让 15:15 变成每次 2:1（余数取整的偏置被轮数放大成 14:7）。
+        // 正确做法 = 先算总子弹数（= 载体次数 × 3），再整数分摊给各槽。
+        const allocateTotal = (uses: number): Record<string, number> => {
+          const out: Record<string, number> = {}
+          for (const [i, n] of distributeIntegerByWeight(storedTotal * uses, weightValues).entries()) {
+            if (n > 0) out[String(weightSlots[i]!)] = n
+          }
+          return out
+        }
+        const scaleCounts = (bySlot: Record<string, number>, uses: number, mult = 1): Record<string, number> =>
+          Object.fromEntries(Object.entries(bySlot).map(([s, c]) => [s, c * uses * mult]))
         const actionRows = [
           {
             id: 'remielle-luminize-assist',
             name: '支援技花羽轮舞·耀变',
             moveId: '1581015',
-            countsBySlot: Object.fromEntries(voidflareBySlot.map(item => [item.slot, item.count])),
+            countsBySlot: allocateTotal(assistUses),
           },
           {
             id: 'remielle-luminize-ultimate',
             name: '终结技缭乱终幕·耀变',
             moveId: '1581016',
-            countsBySlot: qCountBySlot,
+            countsBySlot: allocateTotal(ultimateUses),
           },
           {
             id: 'remielle-luminize-basic',
             name: '普通攻击惊鸿·耀变',
             moveId: '1581008',
-            countsBySlot: Object.fromEntries(voidflareBySlot.map(item => [item.slot, item.count * fleetingGraceMultiplier])),
+            countsBySlot: scaleCounts(allocateTotal(basicUses), 1, fleetingGraceMultiplier),
+          },
+          {
+            // 超额轮的长按A 退化为垂虹（160% 而非 320%）：不是少打，是形态降级
+            id: 'remielle-luminize-rainbow',
+            name: '普通攻击垂虹·耀变（超额轮）',
+            moveId: '1581007',
+            countsBySlot: scaleCounts(allocateTotal(overflowRainbowUses), 1, fleetingGraceMultiplier),
           },
         ]
 
@@ -700,7 +1093,12 @@ export function remielleAnomalyEventRecords({ slot: ownSlot, panel, teamAgentIds
   // 依赖虚耀池的记录 count 为 0，由末尾 filter(count > 0) 自然剔除。
 
   const remiellePanel = panel
-  const qBatches = Math.floor(voidflareTotal / 3)
+  // 2026-10-18 用户玩法口径（与 extraAnomalyRows 同源，见那里的注释）：
+  // 一轮 = 3 个豆 = 一个动作周期（入场 / 大招 / 长按A 各结算「已储存的全部虚曜」）。
+  // 与 `extraAnomalyRows` 的差异只在**载体次数**：本函数是事件账本，不拿执行行（不 in 那个钩子），
+  // 故只报「按虚曜供给可结算的轮数 × 每轮结算数」，与伤害行口径同构（伤害行再乘实际动作次数）。
+  const storedTotal = Math.min(VOIDFLARE_MAX, voidflareTotal)
+  const cycles = Math.floor(voidflareTotal / REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND)
   const fleetingGraceMultiplier = remielleFleetingGraceMultiplier(remiellePanel)
   const specialCount = remielleSpecialVoidflareCount(remiellePanel)
   const perSlotText = otherSlots
@@ -722,28 +1120,28 @@ export function remielleAnomalyEventRecords({ slot: ownSlot, panel, teamAgentIds
       id: 'remielle-luminize-assist',
       type: 'luminize',
       label: '支援技花羽轮舞·耀变',
-      source: '不消耗虚耀',
-      count: voidflareTotal,
-      formula: 'count = 虚耀池总数；每个虚耀打一次',
-      fields: ['voidflareTotal', '1581015 luminizeMultiplier'],
+      source: '不消耗虚耀（换入时自动发动）',
+      count: cycles * storedTotal,
+      formula: 'count = 轮数 × 已储存虚曜数（每轮换入结算一次，最多 3 个）',
+      fields: ['voidflareTotal', `rounds=floor(voidflareTotal/${REMIELLE_SPECIAL_VOIDFLARE_PER_ROUND})`, 'storedTotal', '1581015 luminizeMultiplier'],
     },
     {
       id: 'remielle-luminize-ultimate',
       type: 'luminize',
       label: '终结技缭乱终幕·耀变',
-      source: '不消耗虚耀，按3个一批',
-      count: qBatches * 3,
-      formula: 'count = floor(voidflareTotal / 3) × 3；来源由用户选择1号队友0-3、2号队友3-0',
-      fields: ['voidflareTotal', 'qBatches', 'remielle.q:{slot}'],
+      source: '不消耗虚耀，每轮一次（有大招才结算）',
+      count: cycles * storedTotal,
+      formula: 'count = 轮数 × 已储存虚曜数；伤害行再按本轮实际大招次数封顶（来源由用户选择1号队友0-3、2号队友3-0）',
+      fields: ['voidflareTotal', 'storedTotal', 'remielle.drop:{slot}'],
     },
     {
       id: 'remielle-luminize-basic',
       type: 'luminize',
       label: '普通攻击惊鸿·耀变',
       source: '消耗并清空虚耀',
-      count: voidflareTotal * fleetingGraceMultiplier,
-      formula: `count = voidflareTotal × ${fleetingGraceMultiplier}${fleetingGraceMultiplier > 1 ? '（6命翻倍）' : ''}`,
-      fields: ['voidflareTotal', 'remielleCinema6FleetingGraceVoidflareTriggerMultiplier', '1581008 luminizeMultiplier'],
+      count: cycles * storedTotal * fleetingGraceMultiplier,
+      formula: `count = 轮数 × 已储存虚曜数 × ${fleetingGraceMultiplier}${fleetingGraceMultiplier > 1 ? '（6命翻倍）' : ''}`,
+      fields: ['voidflareTotal', 'storedTotal', 'remielleCinema6FleetingGraceVoidflareTriggerMultiplier', '1581008 luminizeMultiplier'],
     },
     {
       id: 'remielle-special-voidflare',
@@ -770,6 +1168,18 @@ declare module '@/types/resource/config' {
     remielleRainbowEndDecibelRecovery?: number
     /** 蕾米「普通攻击：垂虹」合轴率 0-1 */
     remielleRainbowEndComboAlignRatio?: number
+    /** 蕾米「普通攻击：惊鸿」move id / actionTime / 合轴率（长按A 正版，映曜状态） */
+    remielleFleetingGraceMoveId?: string
+    remielleFleetingGraceActionTime?: number
+    remielleFleetingGraceComboAlignRatio?: number
+    /** 蕾米「支援技：花羽轮舞」move id / actionTime / 合轴率（每轮入场自动发动） */
+    remielleFlowerFeatherMoveId?: string
+    remielleFlowerFeatherActionTime?: number
+    remielleFlowerFeatherComboAlignRatio?: number
+    /** 本轮飞了几轮（跨轮反馈写入；0/缺省 = 未结算） */
+    remielleRoundsThisRound?: number
+    /** 每队友槽丢弃的异常次数（键 = 槽位字符串；applyPanel 写，资源卡/分配读） */
+    remielleTeammateDrops?: Readonly<Record<string, number>>
     /** 蕾米后台 Radiant Turn move id */
     remielleRadiantTurnMoveId?: string
     /** 蕾米后台 Radiant Turn actionTime */
@@ -793,6 +1203,8 @@ declare module '@/mechanics/types' {
   interface ModuleFeedback {
     /** 蕾米埃尔一命：上一轮花羽轮舞施放次数（= 队友虚曜数，按 18s 冷却封顶；CC-41，读回方 remielle.ts#applyRemielleTeamConfig） */
     remielleFlowerFeatherDanceCasts?: number
+    /** 上一轮飞了几轮（豆子侧 ⌊池/3⌋；读回方 remielle.ts#applyRemielleTeamConfig ⇒ cfg.remielleRoundsThisRound ⇒ extraNecessaryAction 补入场/惊鸿行） */
+    remielleRoundsThisRound?: number
   }
 }
 
@@ -815,6 +1227,8 @@ export interface RemielleMechanicSource {
   voidflareMax: number
   refringeCoefficient: number
   luminizeMultiplierBonus: number
+  /** 拆轮数（面板值透传；资源卡按它展示「N 惊鸿 + M 垂虹」） */
+  splitRounds: number
   note: string
 }
 
@@ -826,5 +1240,9 @@ declare module '@/types/catalog' {
   interface PanelValues {
     /** 失衡加成百分比（`remielleDazeBonusPct`）：本文件写读 */
     remielleRadiantTurnDazeBonusPct?: number
+    /** 拆轮数（用户 2026-10-18）：多飞 N 轮，代价是 N 轮惊鸿降级为垂虹。applyPanel 写、载体侧读 */
+    remielleSplitRounds?: number
+    /** 每队友槽丢弃的异常次数（applyPanel 写；资源卡与 extraAnomalyRows 读） */
+    remielleTeammateDrops?: Record<string, number>
   }
 }

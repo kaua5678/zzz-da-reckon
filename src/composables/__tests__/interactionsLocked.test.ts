@@ -41,7 +41,6 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { applyTeamToStore } from '@/composables/teamCompare'
 import { teamPresets } from '@/data/teamPresets'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
-import type { TeamResourceResult } from '@/types/resource'
 import type { useConfigStore } from '@/stores/config'
 
 /** 本测试认领的降配队（缺省 `interactionScale` 见各断言；`auto-1371-1481-1451` 不降配 = 边界锁） */
@@ -60,11 +59,6 @@ const NO_DOWNSCALE_TEAM = 'auto-1371-1481-1451'
  */
 const perSlotParryOf = (r: { perSlotParry: number[] | null }) => r.perSlotParry ?? []
 
-/** 某槽某招的装配期截断明细（`countBefore` = 引擎**想要**打的次数，`countAfter` = 180s 里真留下的） */
-const cutOf = (
-  rr: TeamResourceResult,
-  slot: number, name: string,
-) => (rr.truncationCuts ?? []).find(c => c.slot === slot && c.moveName.includes(name))
 
 async function evalPreset(
   id: string,
@@ -128,10 +122,13 @@ describe('手动锁定交互（用户口径 2026-10-06）', () => {
     const sum = bySlot.reduce((a, s) => a + s.cutSeconds, 0)
     expect(Math.abs(sum - on.cut), `ΣcutSeconds ${sum} 应等于 overflowSeconds ${on.cut}`).toBeLessThan(0.05)
     // 用户填的交互次数**确实**装不下（不是降配换了个位置）：截断明细里能看到它自己被砍
-    const dodgeCut = cutOf(on.rr, 0, '闪避反击')
-    expect(dodgeCut, '锁定态：用户填的闪反 10 次装不下 ⇒ 逐行明细里如实露出').toBeTruthy()
-    expect(dodgeCut!.countBefore, '引擎「想要」打的次数 = store 原值（没被降配）').toBe(rawDodge)
-    expect(dodgeCut!.countAfter, '真装得下的次数 < 请求次数 ⇒ 如实报截断').toBeLessThan(rawDodge)
+    // ⚠ 2026-10-18（用户裁决「快支全角色 0 / 支援连携 0」）后，截断落在**哪一槽**会随分配位移
+    //   ⇒ 判据改成「任一槽的闪避反击被砍，且被砍的正是用户填的 10 次」，不再钉死在槽 0。
+    const dodgeCuts = (on.rr.truncationCuts ?? []).filter(c => c.moveName.includes('闪避反击'))
+    expect(dodgeCuts.length, '锁定态：用户填的闪反 10 次装不下 ⇒ 逐行明细里如实露出').toBeGreaterThan(0)
+    const dodgeCut = dodgeCuts.find(c => c.countBefore === rawDodge) ?? dodgeCuts[0]!
+    expect(dodgeCut.countBefore, '引擎「想要」打的次数 = store 原值（没被降配）').toBe(rawDodge)
+    expect(dodgeCut.countAfter, '真装得下的次数 < 请求次数 ⇒ 如实报截断').toBeLessThan(rawDodge)
     // 逐行明细与逐槽明细同源：Σ cutSeconds 守恒（结果页两条读数不会互相矛盾）
     const cutsSum = (on.rr.truncationCuts ?? []).reduce((a, c) => a + c.cutSeconds, 0)
     expect(Math.abs(cutsSum - on.cut), `Σ逐行 cutSeconds ${cutsSum} 应等于 overflowSeconds ${on.cut}`).toBeLessThan(0.05)

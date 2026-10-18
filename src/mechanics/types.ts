@@ -26,7 +26,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { AgentLimitPointDecl, DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, BackstageAutoFillSpec, AxisRageCombos, ReleaseShareSpec, TeammateSplitSpec, AxisGashResourceSpec, FinalizePassSpec } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, BackstageAutoFillSpec, AxisRageCombos, ReleaseShareSpec, TeammateDropSpec, AxisGashResourceSpec, FinalizePassSpec } from './typesHooks'
 // CC-451：展示层专用声明类型（CC-444/445/446/448 陆续长在本文件里，把 CC-83 预算顶破）拆出 typesView.ts；本文件原样转出，导入方不用改
 import type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
 
@@ -906,13 +906,14 @@ export interface AgentMechanicModule {
    * 现唯一声明：柏妮思。引擎侧对 grace/vivian/aire/yanagi/promia/nangong/phoenix 的 dominant 事件同样读该键，但 UI 未开放（见 census §5.62 未决项）。
    */
   releaseShare?: ReleaseShareSpec
+
   /**
-   * 「另两名队友分摊 N 个单位」的队伍级设置声明（CC-56 2026-09-27；**展示层专用**，引擎读同一键）：
-   * 设置键 = `${settingPrefix}:${本角色槽位}`（getTeamMechanicSetting），值 = 第一位队友每批提供的个数（0~total，缺省 defaultFirst），
-   * 第二位 = total − 第一位。资源页经 agentMechanicView#teamTeammateSplit 出卡片，文案取 title / firstSuffix / batchNote。
-   * 现唯一声明：蕾米埃尔（Q 每批 3 个耀变，键 remielle.q:<slot>；引擎侧 remielle.ts 用同一常量读取）。
+   * 「每个队友可丢弃的 N 次资源」的队伍级设置声明（2026-10-18；**展示层专用**，引擎读同一键）。
+   * 设置键 = `${settingPrefix}:${队友槽位}`，值 = 该队友丢弃的次数（缺省 0 = 全参与）。
+   * 丢弃后的剩余次数进模块的细致分配算法 ⇒ 轮数 / 子弹归属 / 浪费量全部自动跟着算。
+   * 现唯一声明：蕾米埃尔（`remielle.drop:<slot>`；引擎侧 remielle.ts 用同一常量读取）。
    */
-  teammateSplit?: TeammateSplitSpec
+  teammateDrop?: TeammateDropSpec
   /**
    * 失衡轴窗口覆盖声明（规则 6 迁移落点，2026-09-12 #10 真清偿）：
    * 模块按「轴内时间轴窗口」算出逐 moveId 的加权覆盖量，供伤害池消费。

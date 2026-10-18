@@ -70,9 +70,17 @@ describe('CC-454 爱丽丝星芒圆舞曲 #3 合轴进账本', () => {
     const expected = sw3!.count * sw3!.actionTime * (sw3!.comboAlignRatio ?? 0)
     expect(expected, '星芒圆舞曲的合轴秒数必须 > 0（否则本锁恒真）').toBeGreaterThan(1)
     const credit = ch.timeAllocation.comboAlignCredit ?? 0
-    // credit 还含通用项（终结技/连携等，本队为 0），故断言「≥ 本项」且「≈ 本项」
+    /**
+     * credit = 星芒圆舞曲（本项）+ **通用项**（终结技 / 连携 / 闪反 / 弹刀…各 count × actionTime × ratio）。
+     * ⚠ 2026-10-18 用户裁决「快支全角色默认 0」后，本队不再有快支供给的喧响 ⇒ 终结技/连携次数位移
+     * ⇒ 通用项由 0 变成 2.983s（实测：HEAD 23.864 / 现 26.847）。**判据不变**——仍是
+     * 「credit 含本项」+「余额只够通用项」：反证（删 `aliceMechanic.extraNecessaryAction`）时
+     * credit 掉到 2.983，两条断言同时红。
+     */
+    const GENERIC = 2.983
     expect(credit, '爱丽丝 credit 未含星芒圆舞曲的合轴（CC-454 回归：行上比例是死数据）')
       .toBeGreaterThanOrEqual(expected - 1e-6)
-    expect(credit).toBeCloseTo(expected, 6)
+    expect(credit - expected, '除本项外只应剩通用项（多出来 = 有别的合轴项被算漏/双计）')
+      .toBeCloseTo(GENERIC, 3)
   })
 })

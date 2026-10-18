@@ -5,7 +5,7 @@ import { buildAnomalyVirtualPanel } from '@/composables/resourceCalc/anomalyPane
 import { computePanelPhases, computeEntrySnapshotPanel } from '@/composables/resourceCalc/panelPhases'
 import { findMoveById } from '@/data/moveTableQueries'
 import { emptyPanel } from '@/core/panel'
-import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic, remielleFlowerFeatherDanceCasts, remielleFleetingGraceMultiplier, remielleSpecialVoidflareCount, remielleSpecialVoidflareRainbowCount, remielleSpecialVoidflareUseCount } from '@/mechanics/agents/remielle'
+import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic, remielleFlowerFeatherDanceCasts, remielleFleetingGraceMultiplier, remielleSpecialVoidflareCount, remielleSpecialVoidflareRainbowCount, remielleSpecialVoidflareUseCount, REMIELLE_LUMEN_DRAIN_PER_SECOND, REMIELLE_LUMEN_FLIGHT_SECONDS, REMIELLE_LUMEN_FLOWER_FEATHER_THRESHOLD, REMIELLE_LUMEN_GAIN, REMIELLE_LUMEN_MAX, remielleRoundCount, REMIELLE_SPLIT_ROUND_MAX } from '@/mechanics/agents/remielle'
 import type { AgentSkills } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { emptyAnomalyPool } from '@/test/fixtures'
@@ -225,30 +225,50 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
     expect(records.map(r => r.id)).toEqual(['remielle-special-voidflare'])
   })
 
-  it('2 个队友虚耀计数：order=60，耀变行 id/count 逐字', () => {
+  it('2 个队友虚耀计数：order=60，耀变行按「每动作结算已储存虚曜」逐字（用户 2026-10-18）', () => {
     const groups = remielleMechanic.extraAnomalyRows!(input({
       anomalyPool: { perSlotAnomalyTriggers: [0, 2, 3] } as never,
     }))
     expect(groups).toHaveLength(1)
     expect(groups[0].order).toBe(60)
-    // 3 个载体 × 2 个队友槽 = 6 行，顺序为 actionRows 外层循环 × voidflareBySlot 内层循环
+    // 池 5 ⇒ 轮数 ⌊5/3⌋=1、每轮结算「已储存的 3 个」（按供给比例 2:3 整数分摊 ⇒ 1 / 2）
+    // 无大招执行行（charResult 缺省）⇒ 终结技载体 0 次，只剩入场 + 长按A 两个载体 × 2 个队友槽 = 4 行
     expect(groups[0].rows.map(r => r.id)).toEqual([
       'remielle-luminize-assist-1', 'remielle-luminize-assist-2',
-      'remielle-luminize-ultimate-1', 'remielle-luminize-ultimate-2',
       'remielle-luminize-basic-1', 'remielle-luminize-basic-2',
     ])
-    // 支援技按队友虚耀次数原样；终结技按 q 批次（5 次 ⇒ 1 批：firstPerBatch=1, secondPerBatch=2）
     expect(groups[0].rows[0]).toMatchObject({
       slot: 0, agentId: '1581', agentName: '蕾米埃尔', type: '耀变',
       name: '支援技花羽轮舞·耀变', element: 'electric',
-      source: '队友1 的电异常虚耀', count: 2,
+      source: '队友1 的电异常虚耀', count: 1,
     })
-    expect(groups[0].rows[1]).toMatchObject({ id: 'remielle-luminize-assist-2', count: 3 })
-    expect(groups[0].rows[2]).toMatchObject({ id: 'remielle-luminize-ultimate-1', count: 1 })
-    expect(groups[0].rows[3]).toMatchObject({ id: 'remielle-luminize-ultimate-2', count: 2 })
+    expect(groups[0].rows[1]).toMatchObject({ id: 'remielle-luminize-assist-2', count: 2 })
     // 惊鸿 × (1 + remielleCinema6FleetingGraceVoidflareTriggerMultiplier)；emptyPanel 初值 0 ⇒ 0 命 ×1（CC-165）
-    expect(groups[0].rows[4]).toMatchObject({ id: 'remielle-luminize-basic-1', count: 2 })
-    expect(groups[0].rows[5]).toMatchObject({ id: 'remielle-luminize-basic-2', count: 3 })
+    expect(groups[0].rows[2]).toMatchObject({ id: 'remielle-luminize-basic-1', count: 1 })
+    expect(groups[0].rows[3]).toMatchObject({ id: 'remielle-luminize-basic-2', count: 2 })
+  })
+
+  it('用户 2026-10-18 玩法口径：一轮 3 豆 ⇒ 入场/长按A 各结算 3 次；有大招再加 3 次（共 9）', () => {
+    const execs = (...ids: string[]) => ({ executions: ids.map(moveId => ({ moveId, count: 1 })) }) as never
+    // ① 没大招：2 个动作 6 次耀变（3 入场 + 3 长按A）
+    const noUlt = remielleMechanic.extraAnomalyRows!(input({
+      anomalyPool: { perSlotAnomalyTriggers: [0, 3, 0] } as never,
+      charResult: execs('1581014'),
+    }))
+    expect(noUlt[0].rows.reduce((s, r) => s + r.count, 0)).toBe(6)
+    // ② 有大招：3 个动作 9 次耀变（3 入场 + 3 大招 + 3 长按A）
+    const withUlt = remielleMechanic.extraAnomalyRows!(input({
+      anomalyPool: { perSlotAnomalyTriggers: [0, 3, 0] } as never,
+      charResult: execs('1581014', '1581016'),
+    }))
+    expect(withUlt[0].rows.reduce((s, r) => s + r.count, 0)).toBe(9)
+    // ③ 没有大招执行行 ⇒ 终结技载体不结算（修前按「虚曜池 × 每虚曜一次」算，与蕾米打没打大招无关）
+    const noUltAction = remielleMechanic.extraAnomalyRows!(input({
+      anomalyPool: { perSlotAnomalyTriggers: [0, 3, 0] } as never,
+    }))
+    expect(noUltAction[0].rows.some(r => r.id.startsWith('remielle-luminize-ultimate'))).toBe(false)
+    // 入场（花羽轮舞）与长按A（惊鸿）是每轮固定动作 ⇒ 仍在（3 豆一轮 ⇒ 各 3 次）
+    expect(noUltAction[0].rows.reduce((s, r) => s + r.count, 0)).toBe(6)
   })
 
   it('C1（remielleCinema1SpecialVoidflareCount>0）时含 remielle-special-voidflare 行', () => {
@@ -284,7 +304,11 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
       remielleRainbowEndDecibelRecovery: 20.625,
     } as never)
     expect([c1, c4, c6].map(p => remielleSpecialVoidflareUseCount(cfgOf(p)))).toEqual([1, 2, 2])
-    expect([c1, c4, c6].map(p => (remielleMechanic.extraNecessaryAction!(cfgOf(p)) as { count?: number } | null)?.count)).toEqual([1, 2, 2])
+    // 2026-10-18 起 extraNecessaryAction 返回**数组**（入场/惊鸿/垂虹三类），垂虹是最后一项
+    expect([c1, c4, c6].map(p => {
+      const got = remielleMechanic.extraNecessaryAction!(cfgOf(p)) as ReadonlyArray<{ moveId?: string; count: number }> | null
+      return got?.find(a => a.moveId === '1581007')?.count ?? 0
+    })).toEqual([1, 2, 2])
     expect([c1, c4, c6].map(p => {
       const events: Array<{ count: number }> = []
       remielleMechanic.buildAnomalyEvents!({ cfg: cfgOf(p), state: {} as never, events: events as never, totalTime: 180 })
@@ -301,7 +325,8 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
       anomalyPool: { perSlotAnomalyTriggers: [0, 2, 3] } as never,
     }))
     expect(groups[0].rows.find(r => r.id === 'remielle-special-voidflare')).toBeUndefined()
-    expect(groups[0].rows.length).toBe(6)
+    // 无大招执行行 ⇒ 入场 + 长按A 两个载体 × 2 个队友槽 = 4 行（2026-10-18 起载体次数受招式封顶）
+    expect(groups[0].rows.length).toBe(4)
   })
 })
 
@@ -417,5 +442,238 @@ describe('CC-35a：异常虚拟面板「异化度」列由模块能力 anomalyRe
     const prog = { element: 'electric', totalBuildUp: 100, contributions: [{ slot: 0, totalBuildUp: 100 }] }
     const built = buildAnomalyVirtualPanel(prog as never, panels, config, catalog)!
     expect(built.rows[0].refringe).toBe(0)
+  })
+})
+
+/**
+ * 浮晖（Term:1000032）与飞行轮数（用户 2026-10-18 玩法口径）。
+ *
+ * 原文：浮晖上限 120；相变时流状态下随时间消耗；花羽轮舞「若发动时剩余浮晖 ≤ 90，则不扣浮晖并进入映曜」；
+ * 映曜 ⇒ 下一次垂虹升级为惊鸿（耀变 320% vs 垂虹 160%）。
+ * 用户实测：120 → 90 约 15s ⇒ 2 点/秒；一轮 = 飞行段 + 花羽轮舞 + 惊鸿。
+ */
+describe('蕾米埃尔浮晖与飞行轮数', () => {
+  it('浮晖常量与原文数值表一致', () => {
+    expect(REMIELLE_LUMEN_MAX).toBe(120)
+    expect(REMIELLE_LUMEN_FLOWER_FEATHER_THRESHOLD).toBe(90)
+    expect(REMIELLE_LUMEN_DRAIN_PER_SECOND).toBe(2)
+    // 120 → 90 需 15s（用户实测「通常15s左右」）
+    expect(REMIELLE_LUMEN_FLIGHT_SECONDS).toBe(15)
+    // 普攻段位与两招的回复量（原文 param 表）
+    expect(REMIELLE_LUMEN_GAIN.basic1).toBe(5)
+    expect(REMIELLE_LUMEN_GAIN.basic2).toBe(5)
+    expect(REMIELLE_LUMEN_GAIN.basic3).toBe(15)
+    expect(REMIELLE_LUMEN_GAIN.basic4).toBe(35)
+    expect(REMIELLE_LUMEN_GAIN.solo).toBe(30)
+    expect(REMIELLE_LUMEN_GAIN.rainbowEnd).toBe(120)
+    expect(REMIELLE_LUMEN_GAIN.fleetingGrace).toBe(120)
+    expect(REMIELLE_LUMEN_GAIN.flowerFeatherCost).toBe(40)
+  })
+
+  it('轮数 = min(豆子够打几轮, 时间够飞几轮)', () => {
+    // 池 27 ⇒ 9 轮；后台 180s ÷ 15s = 12 轮 ⇒ 取 9（豆子侧咬合）
+    expect(remielleRoundCount(27, 180)).toBe(9)
+    // 用户口径：前台 60s ⇒ 后台 120s ⇒ 120/15 = 8 轮；池 60 ⇒ 20 轮豆子够 ⇒ 取 8
+    expect(remielleRoundCount(60, 120)).toBe(8)
+    // 后台不足（< 15s）⇒ 0 轮
+    expect(remielleRoundCount(27, 10)).toBe(0)
+    // 无后台时长（外部直调）⇒ 只按豆子判
+    expect(remielleRoundCount(27, 0)).toBe(9)
+    // 池不满一轮 ⇒ 0
+    expect(remielleRoundCount(2, 180)).toBe(0)
+  })
+
+  it('资源卡标注飞行轮数与每轮时长', () => {
+    const result = {
+      slot: 2,
+      remielleMechanicSource: computeRemielleMechanic({ anomalyProficiency: 100 }),
+      // 战斗时长 = 前台 + 后台；180s / 15s 飞行段 = 12 轮（池 15 ⇒ 5 轮，时间侧未咬合）
+      timeAllocation: { frontlineTime: 18.3, backstageTime: 161.7 },
+    }
+    const sections = remielleMechanic.resourceSections!({
+      result,
+      anomalyPoolResult: { perSlotAnomalyTriggers: [12, 3, 0] },
+    } as never)
+    expect(sections).toHaveLength(1)
+    const labels = sections[0]!.rows.map(r => r.label)
+    expect(labels).toContain('飞行轮数')
+    expect(labels).toContain('每轮时长')
+    expect(labels).toContain('首轮可能打垂虹')
+    // 池 = 12 + 3 = 15 ⇒ 5 轮
+    expect(sections[0]!.summary).toContain('飞行 5 轮')
+  })
+})
+
+/**
+ * 拆轮（用户 2026-10-18 逐字）：
+ * 「他的前台变成 60s，后台不足 120s……如果想提高轮次，那肯定有些波次是 15s 以内就打出来的，
+ *  这时候还没掉到 90，导致打不了惊鸿，只能打垂鸿。所以这里需要做一个计算，我们默认 7 轮上限，
+ *  如果一个队伍的轮次想达到 8，就要拆一轮惊鸿，如果想达到 9，就要拆 2 轮。」
+ */
+describe('蕾米拆轮：7 轮完整惊鸿 + 拆轮降级为垂虹', () => {
+  const panelOf = (split: number) => ({
+    ...emptyPanel(), atk: 1000, anomalyProficiency: 100, skillLevelBonus: 0,
+    remielleSplitRounds: split,
+  }) as never
+
+  it('默认 0：只打 7 轮惊鸿，第 8 轮起不再产惊鸿行', () => {
+    const runs = (split: number, pool: number) => {
+      const groups = remielleMechanic.extraAnomalyRows!({
+        slot: 0,
+        charResult: undefined,
+        windRate: 0,
+        anomalyProgress: () => undefined,
+        buildVirtualPanel: () => null,
+        buildSettlementEntries: () => [],
+        axisStunFor: () => 0,
+        enemy: { defense: 0, level: 60, stunVuln: 1.5 },
+        enemyDamageRes: {},
+        anomalyMultiplier: 1,
+        teamAgentId: (s: number) => (s === 0 ? '1581' : s === 1 ? '1331' : '1221'),
+        agentName: (_id: string, s: number) => (s === 0 ? '蕾米埃尔' : `队友${s}`),
+        panel: panelOf(split),
+        cinemaLevel: 0,
+        isAxis: false,
+        stunCoverage: 1,
+        inWindowFraction: () => 1,
+        ultimateInAxisFraction: () => 1,
+        axisInUnits: () => 0,
+        getMechanicSetting: (_k: string, d: number) => d,
+        getTeamMechanicSetting: (_k: string, d: number) => d,
+        anomalyPool: { perSlotAnomalyTriggers: [0, pool, 0] },
+        entryPanel: panelOf(split),
+        // 四个招式的耀变倍率行（与上面 CC-19c-2 的 skills() 同形，values=[100] ⇒ multiplier=100）
+        skills: {
+          id: '1581', agentId: '1581', name: { zhCN: '蕾米埃尔', en: 'Remielle' },
+          categories: [{
+            id: 'c', name: { zhCN: '', en: '' }, levelRange: { min: 1, max: 12, default: 12 },
+            moves: ['1581015', '1581016', '1581008', '1581007'].map(id => ({
+              id, name: { zhCN: '', en: '' },
+              rows: [{ id: 'luminize_multiplier', label: { zhCN: '', en: '' }, kind: 'luminizeMultiplier', values: [100] }],
+            })),
+          }],
+        },
+        panelOf: () => panelOf(split),
+        teamElement: () => 'electric',
+        elementLabel: (e: string) => e,
+        directDamage: () => ({ damage: 0, formula: '' }),
+        anomalyDamage: () => ({ damage: 0, formula: '' }),
+      } as never)
+      const byKind: Record<string, number> = {}
+      for (const r of groups[0]?.rows ?? []) {
+        const k = r.id.replace('remielle-luminize-', '').split('-')[0]!
+        byKind[k] = (byKind[k] ?? 0) + r.count
+      }
+      return byKind
+    }
+    // 池 24 ⇒ 8 轮豆子够；split=0 ⇒ 只有 7 轮惊鸿（21 次），没有垂虹超额行
+    const d0 = runs(0, 24)
+    expect(d0.basic).toBe(21)
+    expect(d0.rainbow ?? 0).toBe(0)
+    // 入场（花羽轮舞）仍按 7 轮结算
+    expect(d0.assist).toBe(21)
+    // split=1（用户口径「调成 1 你就写 6 惊鸿 2 垂鸿」）：
+    // 拆 1 轮惊鸿 ⇒ 少 1 轮惊鸿（6 轮 = 18 次）、多 2 轮垂虹（2 轮 = 6 次），总轮次 8
+    const d1 = runs(1, 24)
+    expect(d1.basic).toBe(18)
+    expect(d1.rainbow).toBe(6)
+    expect(d1.assist).toBe(24)
+    // split=2 ⇒ 5 惊鸿 + 4 垂虹 = 9 轮（池 27 才够，这里给 27）
+    const d2 = runs(2, 27)
+    expect(d2.basic).toBe(15)
+    expect(d2.rainbow).toBe(12)
+    expect(d2.assist).toBe(27)
+  })
+
+  it('拆轮上限 4（再多 180s 也打不完）；滑块 id 与声明同源', () => {
+    expect(REMIELLE_SPLIT_ROUND_MAX).toBe(4)
+    // 滑块 `remielle.splitRounds` 的生效判据：声明存在 + 面板字段按它写（applyPanel 单写者）
+    const decl = remielleMechanic.settings?.find(s => s.id === 'remielle.splitRounds')
+    expect(decl, '滑块必须声明（规则 12）').toBeTruthy()
+    expect(decl!.default).toBe(0)
+    expect(decl!.max).toBe(REMIELLE_SPLIT_ROUND_MAX)
+    // 改滑块 ⇒ 面板字段跟着变（面板字段 = 载体侧唯一读点）
+    for (const split of [0, 1, 4]) {
+      const p = emptyPanel()
+      remielleMechanic.applyPanel!({
+        slot: 0, agent: { id: '1581' } as never, team: [] as never, panel: p,
+        settings: { 'remielle.splitRounds': split },
+      } as never)
+      expect(p.remielleSplitRounds, `滑块 ${split} ⇒ 面板字段同步`).toBe(split)
+    }
+  })
+})
+
+/**
+ * 子弹来源与丢弃（用户 2026-10-18 逐字）：
+ * 「丢弃开关也很粗糙，不做开关，需要改为丢弃部分，这样子剩余部分进入细致分配算法就会自动算出
+ *  打的更少的子弹，实现部分丢弃。如果丢弃全部，进入这个算法也会实现丢弃全部。」
+ * 以及「大招固定一个 a 子弹，但总量只有 3 个 a，却打了 7 次大招，不符合实际」⇒ 细致分配。
+ */
+describe('蕾米虚曜子弹：细致分配 + 丢弃', () => {
+  const allocSkills = {
+    id: '1581', agentId: '1581', name: { zhCN: '', en: '' },
+    categories: [{
+      id: 'c', name: { zhCN: '', en: '' }, levelRange: { min: 1, max: 12, default: 12 },
+      moves: ['1581015', '1581016', '1581008', '1581007'].map(id => ({
+        id, name: { zhCN: '', en: '' },
+        rows: [{ id: 'luminize_multiplier', label: { zhCN: '', en: '' }, kind: 'luminizeMultiplier', values: [100] }],
+      })),
+    }],
+  }
+  // drops 现在走面板字段（applyPanel 从 settings 读 → 面板 → extraAnomalyRows）
+  const panelOf2 = (drops: Record<number, number> = {}) => ({
+    ...emptyPanel(), atk: 1000, anomalyProficiency: 100, skillLevelBonus: 0,
+    remielleTeammateDrops: Object.fromEntries(Object.entries(drops).map(([k, v]) => [String(k), v])),
+  }) as never
+  const alloc = (triggers: [number, number, number], drops: Record<number, number> = {}) => {
+    const groups = remielleMechanic.extraAnomalyRows!({
+      slot: 0, charResult: { executions: [{ moveId: '1581016', count: 7 }] }, windRate: 0,
+      anomalyProgress: () => undefined, buildVirtualPanel: () => null, buildSettlementEntries: () => [],
+      axisStunFor: () => 0, enemy: { defense: 0, level: 60, stunVuln: 1.5 }, enemyDamageRes: {},
+      anomalyMultiplier: 1, teamAgentId: (s: number) => (s === 0 ? '1581' : s === 1 ? 'A' : 'B'),
+      agentName: (id: string) => id, panel: panelOf2(drops), cinemaLevel: 0, isAxis: false, stunCoverage: 1,
+      inWindowFraction: () => 1, ultimateInAxisFraction: () => 1, axisInUnits: () => 0,
+      getMechanicSetting: (_k: string, d: number) => d,
+      getTeamMechanicSetting: (_k: string, d: number) => d,
+      anomalyPool: { perSlotAnomalyTriggers: triggers }, entryPanel: panelOf2(drops),
+      skills: allocSkills, panelOf: () => panelOf2(drops), teamElement: () => 'electric',
+      elementLabel: (e: string) => e,
+      directDamage: () => ({ damage: 0, formula: '' }),
+      anomalyDamage: () => ({ damage: 0, formula: '' }),
+    } as never)
+    const out: Record<string, number> = {}
+    for (const r of groups[0]?.rows ?? []) out[r.id] = (out[r.id] ?? 0) + r.count
+    return out
+  }
+
+  it('细致分配：A 只有 3 次异常 ⇒ 21 次载体里 A 只占 2~3 次（不再固定每轮 1 个）', () => {
+    // 池 28 ⇒ 9 轮豆子够，但默认封顶 7 轮 ⇒ 7 轮 × 3 = 21 次每载体
+    const r = alloc([0, 3, 25])
+    expect(r['remielle-luminize-basic-1']! + r['remielle-luminize-basic-2']!).toBe(21)
+    // 3:25 ⇒ A 占比 10.7%，21 次里约 2.2 ⇒ 整数分摊 2
+    expect(r['remielle-luminize-basic-1']).toBe(2)
+    expect(r['remielle-luminize-basic-2']).toBe(19)
+    // 三个载体口径一致（不再「入场按比例、大招按滑块」两套）
+    expect(r['remielle-luminize-assist-1']).toBe(2)
+    expect(r['remielle-luminize-ultimate-1']).toBe(2)
+  })
+
+  it('丢弃全部 B ⇒ 只剩 A 的 3 次，轮数自动降到 1 轮', () => {
+    const r = alloc([0, 3, 25], { 2: 25 })
+    expect(r['remielle-luminize-basic-1']).toBe(3)
+    expect(r['remielle-luminize-basic-2']).toBeUndefined()
+  })
+
+  it('丢弃部分 B ⇒ 剩余次数进分配，轮数与归属自动跟着算', () => {
+    // 丢 20 次 ⇒ B 剩 5、A 3 ⇒ 池 8 ⇒ 2 轮 ⇒ 每载体 6 次，3:5 分摊 = 2 / 4
+    const r = alloc([0, 3, 25], { 2: 20 })
+    expect(r['remielle-luminize-basic-1']).toBe(2)
+    expect(r['remielle-luminize-basic-2']).toBe(4)
+  })
+
+  it('默认封顶 7 轮（豆子够 9 轮也不飞 9 轮）', () => {
+    const r = alloc([0, 15, 15])
+    expect(r['remielle-luminize-basic-1']! + r['remielle-luminize-basic-2']!).toBe(21)
   })
 })

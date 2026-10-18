@@ -34,22 +34,26 @@
         </div>
       </n-card>
 
-      <n-card v-if="remielleQSetting" size="small" class="mechanic-card" :bordered="true">
-        <template #header>{{ remielleQSetting.split.title }}</template>
-        <div class="mechanic-row">
+      <n-card v-if="remielleDropSetting" size="small" class="mechanic-card" :bordered="true">
+        <template #header>{{ remielleDropSetting.drop.title }}</template>
+        <div class="field-desc" style="margin-bottom: 8px">
+          {{ remielleDropSetting.drop.note }}
+        </div>
+        <div v-for="tm in remielleDropSetting.teammates" :key="tm.slot" class="mechanic-row">
           <div class="mechanic-copy">
-            <div class="field-title">{{ remielleQSetting?.firstName }} {{ remielleQSetting?.split.firstSuffix }}</div>
+            <div class="field-title">{{ tm.name }} · 共 {{ tm.total }} 次异常</div>
             <div class="field-desc">
-              {{ remielleQSetting?.split.batchNote }}；剩余 {{ (remielleQSetting?.split.total ?? 3) - (remielleQSetting?.firstCount ?? 1) }} 个由 {{ remielleQSetting?.secondName }} 提供。
+              丢弃 {{ tm.dropped }} 次 ⇒ 参与 {{ Math.max(0, tm.total - tm.dropped) }} 次
             </div>
           </div>
           <n-input-number
-            :value="remielleQSetting?.firstCount ?? 1"
+            :value="tm.dropped"
             size="small"
             :min="0"
-            :max="remielleQSetting?.split.total ?? 3"
+            :max="tm.total"
             :step="1"
-            @update:value="v => remielleQSetting && configStore.setTeamMechanicSetting(`${remielleQSetting.split.settingPrefix}:${remielleQSetting.slot}`, v ?? remielleQSetting.split.defaultFirst)"
+            :suffix="remielleDropSetting.drop.suffix"
+            @update:value="v => remielleDropSetting && configStore.setTeamMechanicSetting(`${remielleDropSetting.drop.settingPrefix}:${tm.slot}`, Math.max(0, Math.min(tm.total, Math.floor(v ?? 0))))"
           />
         </div>
       </n-card>
@@ -335,9 +339,9 @@ import {
 import { fmt } from '@/utils/format'
 import { panelElementStat } from '@/utils/elementStatKeys'
 import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
-import { teamMechanicSettings, teamReleaseShares, teamTeammateSplit } from '@/composables/agentMechanicView'
+import { teamMechanicSettings, teamReleaseShares, teamTeammateDrop } from '@/composables/agentMechanicView'
 import { resolveWindInfectionPick, getWindInfectionCoverage, buildAnomalySettlementEntries } from '@/composables/resourceCalc/anomalyPanels'
-import type { TeammateSplitDecl } from '@/composables/agentMechanicView'
+import type { TeammateDropDecl } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 
 const configStore = useConfigStore()
@@ -357,32 +361,30 @@ const hasTeam = computed(() => configStore.team.some(c => !!c.agentId))
 // CC-47：经编排层门面读模块声明（判据 7：展示层不直接 import '@/mechanics'）
 const mechanicSettings = computed<MechanicSetting[]>(() => teamMechanicSettings(configStore.team))
 
-// CC-56：原按写死蕾米埃尔 ID 1581 找槽位，改为查模块声明 teammateSplit（agentMechanicView#teamTeammateSplit）
-const remielleQSetting = computed<{
+// 2026-10-18 用户口径：Q 分配滑块（只控制大招那 3 个）改成「每个队友可丢弃 N 次异常」——
+// 丢弃后的剩余次数进模块的细致分配算法，轮数/子弹归属/浪费量全部自动跟着算。
+const remielleDropSetting = computed<{
   slot: number
-  split: TeammateSplitDecl
-  firstSlot: number
-  secondSlot: number
-  firstName: string
-  secondName: string
-  firstCount: number
+  drop: TeammateDropDecl
+  teammates: { slot: number; name: string; total: number; dropped: number }[]
 } | null>(() => {
-  const found = teamTeammateSplit(configStore.team, id => catalogStore.getAgent(id))
+  const found = teamTeammateDrop(configStore.team, id => catalogStore.getAgent(id))
   if (!found) return null
-  const { slot: remielleSlot, split } = found
-  const otherSlots = [0, 1, 2].filter(slot => slot !== remielleSlot)
-  if (otherSlots.length < 2) return null
-  const [firstSlot, secondSlot] = otherSlots
-  const firstChar = configStore.team[firstSlot]
-  const secondChar = configStore.team[secondSlot]
-  const firstName = firstChar?.agentId
-    ? catalogStore.getAgent(firstChar.agentId)?.name?.zhCN || firstChar.agentId
-    : `槽${firstSlot + 1}`
-  const secondName = secondChar?.agentId
-    ? catalogStore.getAgent(secondChar.agentId)?.name?.zhCN || secondChar.agentId
-    : `槽${secondSlot + 1}`
-  const firstCount = Math.max(0, Math.min(split.total, Math.floor(configStore.getTeamMechanicSetting(`${split.settingPrefix}:${remielleSlot}`, split.defaultFirst))))
-  return { slot: remielleSlot, split, firstSlot, secondSlot, firstName, secondName, firstCount }
+  const { slot: remielleSlot, drop } = found
+  const triggers = anomalyPoolResult.value?.perSlotAnomalyTriggers ?? []
+  const teammates = [0, 1, 2]
+    .filter(slot => slot !== remielleSlot)
+    .map(slot => {
+      const char = configStore.team[slot]
+      const id = char?.agentId ?? ''
+      return {
+        slot,
+        name: id ? (catalogStore.getAgent(id)?.name?.zhCN || id) : `槽${slot + 1}`,
+        total: Math.max(0, Math.floor(triggers[slot] ?? 0)),
+        dropped: Math.max(0, Math.floor(configStore.getTeamMechanicSetting(`${drop.settingPrefix}:${slot}`, 0))),
+      }
+    })
+  return { slot: remielleSlot, drop, teammates }
 })
 
 // CC-55：原按写死的柏妮思 ID 1171 查找，改为查模块声明 releaseShare（agentMechanicView#teamReleaseShares）。

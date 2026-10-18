@@ -33,6 +33,11 @@
  *   `r0` 组（显式钉 `stunPlanProjection=0` + 爱芮在队）实测不变 ⇒ 未列入。
  *   归因经 A/B 反证：把 `helpers.ts` 的吸收闸门改回「必须有溢出」再跑本文件即回到全部旧值（`git stash` 可达）。
  * perf dump/rowsnap 覆盖不到，本测试是唯一判据。覆盖：蕾米在槽 0 / 槽 2 / 前导空槽 / 不在队。
+ * ⚠ **2026-10-18（用户口径）重采 r0 / jr 两组的三个耀变载体记录**：耀变改为「**每动作结算已储存的全部虚曜**」
+ *   （一轮 = 3 豆 = 入场 / 大招 / 长按A 各结算一次），修前是「每个虚曜打一次 × 三个载体全吃整池」。
+ *   本次只改了**公式与字段文案**，count 恰好不变（池 27/30 都能被 3 整除，且每轮结算数与载体数相乘得回池大小）；
+ *   真正的数值变化在**伤害行**（`extraAnomalyRows` 按本轮实际动作次数封顶，见 `remielle.test.ts`
+ *   「用户 2026-10-18 玩法口径」用例）——事件账本这一层与伤害行同构，不再各写一套口径。
  */
 import { describe, it, expect } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -52,12 +57,12 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "蕾米虚耀池",
       "source": "其他队友异常触发",
-      "count": 29,
+      "count": 30,
       "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
       "fields": [
         "AnomalyPoolResult.perSlotAnomalyTriggers",
         "蕾米槽位",
-        "1501:15 / 1561:14"
+        "1501:15 / 1561:15"
       ],
       "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
     },
@@ -65,11 +70,14 @@ const EXPECTED: Record<string, unknown[]> = {
       "id": "remielle-luminize-assist",
       "type": "luminize",
       "label": "支援技花羽轮舞·耀变",
-      "source": "不消耗虚耀",
-      "count": 29,
-      "formula": "count = 虚耀池总数；每个虚耀打一次",
+      "source": "不消耗虚耀（换入时自动发动）",
+      // 池 31 ⇒ 轮数 ⌊31/3⌋=10 × 3 = 30
+      "count": 30,
+      "formula": "count = 轮数 × 已储存虚曜数（每轮换入结算一次，最多 3 个）",
       "fields": [
         "voidflareTotal",
+        "rounds=floor(voidflareTotal/3)",
+        "storedTotal",
         "1581015 luminizeMultiplier"
       ]
     },
@@ -77,13 +85,13 @@ const EXPECTED: Record<string, unknown[]> = {
       "id": "remielle-luminize-ultimate",
       "type": "luminize",
       "label": "终结技缭乱终幕·耀变",
-      "source": "不消耗虚耀，按3个一批",
-      "count": 27,
-      "formula": "count = floor(voidflareTotal / 3) × 3；来源由用户选择1号队友0-3、2号队友3-0",
+      "source": "不消耗虚耀，每轮一次（有大招才结算）",
+      "count": 30,
+      "formula": "count = 轮数 × 已储存虚曜数；伤害行再按本轮实际大招次数封顶（来源由用户选择1号队友0-3、2号队友3-0）",
       "fields": [
         "voidflareTotal",
-        "qBatches",
-        "remielle.q:{slot}"
+        "storedTotal",
+        "remielle.drop:{slot}"
       ]
     },
     {
@@ -91,10 +99,11 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "普通攻击惊鸿·耀变",
       "source": "消耗并清空虚耀",
-      "count": 29,
-      "formula": "count = voidflareTotal × 1",
+      "count": 30,
+      "formula": "count = 轮数 × 已储存虚曜数 × 1",
       "fields": [
         "voidflareTotal",
+        "storedTotal",
         "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
         "1581008 luminizeMultiplier"
       ]
@@ -106,13 +115,12 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "蕾米虚耀池",
       "source": "其他队友异常触发",
-      // T141：22 → 24（吸收取满容量 ⇒ 队友前台腾出更多平A ⇒ 1261/1331 异常触发 +1/+1）
-      "count": 24,
+      "count": 22,
       "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
       "fields": [
         "AnomalyPoolResult.perSlotAnomalyTriggers",
         "蕾米槽位",
-        "1261:11 / 1331:13"
+        "1261:10 / 1331:12"
       ],
       "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
     },
@@ -120,12 +128,13 @@ const EXPECTED: Record<string, unknown[]> = {
       "id": "remielle-luminize-assist",
       "type": "luminize",
       "label": "支援技花羽轮舞·耀变",
-      "source": "不消耗虚耀",
-      // T141：22 → 24（= 虚耀池总数，随池同步）
-      "count": 24,
-      "formula": "count = 虚耀池总数；每个虚耀打一次",
+      "source": "不消耗虚耀（换入时自动发动）",
+      "count": 21,
+      "formula": "count = 轮数 × 已储存虚曜数（每轮换入结算一次，最多 3 个）",
       "fields": [
         "voidflareTotal",
+        "rounds=floor(voidflareTotal/3)",
+        "storedTotal",
         "1581015 luminizeMultiplier"
       ]
     },
@@ -133,14 +142,13 @@ const EXPECTED: Record<string, unknown[]> = {
       "id": "remielle-luminize-ultimate",
       "type": "luminize",
       "label": "终结技缭乱终幕·耀变",
-      "source": "不消耗虚耀，按3个一批",
-      // T141：21 → 24（floor(池/3)×3 随池 22→24 跨过一个 3 的整批）
-      "count": 24,
-      "formula": "count = floor(voidflareTotal / 3) × 3；来源由用户选择1号队友0-3、2号队友3-0",
+      "source": "不消耗虚耀，每轮一次（有大招才结算）",
+      "count": 21,
+      "formula": "count = 轮数 × 已储存虚曜数；伤害行再按本轮实际大招次数封顶（来源由用户选择1号队友0-3、2号队友3-0）",
       "fields": [
         "voidflareTotal",
-        "qBatches",
-        "remielle.q:{slot}"
+        "storedTotal",
+        "remielle.drop:{slot}"
       ]
     },
     {
@@ -148,11 +156,11 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "普通攻击惊鸿·耀变",
       "source": "消耗并清空虚耀",
-      // T141：22 → 24（= 虚耀池总数 ×1，随池同步）
-      "count": 24,
-      "formula": "count = voidflareTotal × 1",
+      "count": 21,
+      "formula": "count = 轮数 × 已储存虚曜数 × 1",
       "fields": [
         "voidflareTotal",
+        "storedTotal",
         "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
         "1581008 luminizeMultiplier"
       ]
@@ -164,13 +172,12 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "蕾米虚耀池",
       "source": "其他队友异常触发",
-      // T141：17 → 18（吸收取满容量 ⇒ 1501 异常触发 +1）
-      "count": 18,
+      "count": 17,
       "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
       "fields": [
         "AnomalyPoolResult.perSlotAnomalyTriggers",
         "蕾米槽位",
-        ":0 / 1501:18"
+        ":0 / 1501:17"
       ],
       "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
     },
@@ -178,12 +185,13 @@ const EXPECTED: Record<string, unknown[]> = {
       "id": "remielle-luminize-assist",
       "type": "luminize",
       "label": "支援技花羽轮舞·耀变",
-      "source": "不消耗虚耀",
-      // T141：17 → 18（= 虚耀池总数）
-      "count": 18,
-      "formula": "count = 虚耀池总数；每个虚耀打一次",
+      "source": "不消耗虚耀（换入时自动发动）",
+      "count": 15,
+      "formula": "count = 轮数 × 已储存虚曜数（每轮换入结算一次，最多 3 个）",
       "fields": [
         "voidflareTotal",
+        "rounds=floor(voidflareTotal/3)",
+        "storedTotal",
         "1581015 luminizeMultiplier"
       ]
     },
@@ -191,14 +199,13 @@ const EXPECTED: Record<string, unknown[]> = {
       "id": "remielle-luminize-ultimate",
       "type": "luminize",
       "label": "终结技缭乱终幕·耀变",
-      "source": "不消耗虚耀，按3个一批",
-      // T141：15 → 18（floor(池/3)×3 随池 17→18 跨过一个 3 的整批）
-      "count": 18,
-      "formula": "count = floor(voidflareTotal / 3) × 3；来源由用户选择1号队友0-3、2号队友3-0",
+      "source": "不消耗虚耀，每轮一次（有大招才结算）",
+      "count": 15,
+      "formula": "count = 轮数 × 已储存虚曜数；伤害行再按本轮实际大招次数封顶（来源由用户选择1号队友0-3、2号队友3-0）",
       "fields": [
         "voidflareTotal",
-        "qBatches",
-        "remielle.q:{slot}"
+        "storedTotal",
+        "remielle.drop:{slot}"
       ]
     },
     {
@@ -206,11 +213,11 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "普通攻击惊鸿·耀变",
       "source": "消耗并清空虚耀",
-      // T141：17 → 18（= 虚耀池总数 ×1）
-      "count": 18,
-      "formula": "count = voidflareTotal × 1",
+      "count": 15,
+      "formula": "count = 轮数 × 已储存虚曜数 × 1",
       "fields": [
         "voidflareTotal",
+        "storedTotal",
         "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
         "1581008 luminizeMultiplier"
       ]
@@ -331,8 +338,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "anomaly_trigger",
         "label": "简6命强击暴击附伤",
         "source": "强击暴击次数",
-        // T141：11 → 13（吸收取满容量 ⇒ 主C 平A 时间上升 ⇒ 物理强击次数上升）
-        "count": 13,
+        // 2026-10-18：蕾米补入「入场/惊鸿」必做动作行后前台重排 ⇒ 12→11
+        "count": 11,
         "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
         "fields": [
           "强击次数",
@@ -345,13 +352,13 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "蕾米虚耀池",
         "source": "其他队友异常触发",
-        // T141：23 → 27（吸收取满容量 ⇒ 1261/1331 异常触发 11/12 → 13/14）
-        "count": 27,
+        // 2026-10-18：蕾米补「入场/惊鸿」必做行 ⇒ 前台重排 ⇒ 1261 异常触发 12→11 ⇒ 池 26→23
+        "count": 23,
         "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
         "fields": [
           "AnomalyPoolResult.perSlotAnomalyTriggers",
           "蕾米槽位",
-          "1261:13 / 1331:14"
+          "1261:11 / 1331:12"
         ],
         "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
       },
@@ -359,12 +366,14 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "id": "remielle-luminize-assist",
         "type": "luminize",
         "label": "支援技花羽轮舞·耀变",
-        "source": "不消耗虚耀",
-        // T141：23 → 27（= 虚耀池总数）
-        "count": 27,
-        "formula": "count = 虚耀池总数；每个虚耀打一次",
+        "source": "不消耗虚耀（换入时自动发动）",
+        // 2026-10-18：每轮换入结算一次「已储存的 3 个」（轮数 ⌊23/3⌋=7 × 3 = 21）
+        "count": 21,
+        "formula": "count = 轮数 × 已储存虚曜数（每轮换入结算一次，最多 3 个）",
         "fields": [
           "voidflareTotal",
+          "rounds=floor(voidflareTotal/3)",
+          "storedTotal",
           "1581015 luminizeMultiplier"
         ]
       },
@@ -372,14 +381,13 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "id": "remielle-luminize-ultimate",
         "type": "luminize",
         "label": "终结技缭乱终幕·耀变",
-        "source": "不消耗虚耀，按3个一批",
-        // T141：21 → 27（floor(池/3)×3 随池 23→27 跨过两个 3 的整批）
-        "count": 27,
-        "formula": "count = floor(voidflareTotal / 3) × 3；来源由用户选择1号队友0-3、2号队友3-0",
+        "source": "不消耗虚耀，每轮一次（有大招才结算）",
+        "count": 21,
+        "formula": "count = 轮数 × 已储存虚曜数；伤害行再按本轮实际大招次数封顶（来源由用户选择1号队友0-3、2号队友3-0）",
         "fields": [
           "voidflareTotal",
-          "qBatches",
-          "remielle.q:{slot}"
+          "storedTotal",
+          "remielle.drop:{slot}"
         ]
       },
       {
@@ -387,11 +395,11 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "普通攻击惊鸿·耀变",
         "source": "消耗并清空虚耀",
-        // T141：23 → 27（= 虚耀池总数 ×1）
-        "count": 27,
-        "formula": "count = voidflareTotal × 1",
+        "count": 21,
+        "formula": "count = 轮数 × 已储存虚曜数 × 1",
         "fields": [
           "voidflareTotal",
+          "storedTotal",
           "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
           "1581008 luminizeMultiplier"
         ]

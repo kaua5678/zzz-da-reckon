@@ -685,7 +685,29 @@ function iterateBody(
     + (globalCfg.timeBudgetRefund ?? 0))
 
   // 按权重分配平A时间
-  const totalWeight = configs.reduce((a, c) => a + c.timeWeight, 0)
+  /**
+   * **全队权重皆为 0 ⇒ 一号位（slot 0）独享整个平A池**（用户 2026-10-18 裁决）。
+   *
+   * 场景：三人都是「后台型/不分配平A」的角色（蕾米 0 + 支援 0 + 支援 0 这类），静态权重恒 0
+   * ⇒ 旧实现 `totalWeight = 0` 直接跳过分配 ⇒ 平A池整池蒸发、留白，主C 一点能量都拿不到。
+   * 用户原话：「如果三人平a权重都是0，默认一号位享有全部平a」。
+   *
+   * 实现 = 只改**本处的分配权重**（不写回 store）：`effectiveWeights[0] = 1`，其余 0 —— 于是沿同一套
+   * 水填法分给 slot 0（含其单人物理上限截断与回流），store 里的 0 保持原样、界面不显示 1，
+   * 用户随时可以自己改回。若 slot 0 缺席（空槽，`configs` 按位置压缩）则退回第一个在队槽。
+   */
+  const effectiveWeights = (() => {
+    const weights = configs.map(c => Math.max(0, c.timeWeight))
+    if (weights.some(w => w > 0)) return weights
+    // 单人（golden / 探针的「单角色」档）不适用：那条口径是「有人在该打」的队内分工，
+    // 单人没有第二种时间用途，让支援把 180s 全拿来平A 是没有意义的读数（实测会让
+    // `agent:1451:c0..c6` 六条 golden 的平A 从 0 跳到 151.7s、失衡 0→1）。
+    if (weights.length < 2) return weights
+    const first = configs.reduce((best, c, i) => (c.slot < configs[best]!.slot ? i : best), 0)
+    weights[first] = 1
+    return weights
+  })()
+  const totalWeight = effectiveWeights.reduce((a, w) => a + w, 0)
   // 截断份额回流队友（2026-09-05 用户裁决，替代 09-04 的「留池蒸发」口径）：单人前台
   // （必要 + 平A）≤ 战斗总时长是物理上限，某槽按权重分到的份额超出他的剩余物理时间时，
   // 旧做法是把超出量直接丢在池里蒸发——合轴抵扣放宽团队预算后尤其浪费（池打开了，
@@ -698,7 +720,7 @@ function iterateBody(
       const open: Array<{ idx: number; headroom: number; w: number }> = []
       for (let i = 0; i < configs.length; i++) {
         const headroom = Math.max(0, totalTime - totalNecessary[i]) - basicAlloc[i]
-        if (configs[i].timeWeight > 0 && headroom > 1e-9) open.push({ idx: i, headroom, w: configs[i].timeWeight })
+        if (effectiveWeights[i]! > 0 && headroom > 1e-9) open.push({ idx: i, headroom, w: effectiveWeights[i]! })
       }
       if (open.length === 0) break
       const wSum = open.reduce((a, o) => a + o.w, 0)

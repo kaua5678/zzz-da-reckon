@@ -10,7 +10,7 @@ import { setupHarness } from '@/test/harness'
 import { teamPresets } from '@/data/teamPresets'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
 import { baseStateFor } from '@/composables/teamTimelineStore'
-import { ASSIST_ACTION_BASELINE, interactionBaselineFor } from '@/stores/config'
+import { ASSIST_ACTION_BASELINE, chainBaselineFor, interactionBaselineFor } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 
 describe('CC-266 装配入口不重复写基准', () => {
@@ -28,7 +28,11 @@ describe('CC-266 装配入口不重复写基准', () => {
           const c = config.team[s]!
           const tag = `${team.join('-')} slot${s} autoBuild=${autoBuild}`
           expect([c.parryCount, c.dodgeCounterCount, c.blockCount, c.dualCounterCount], tag).toEqual([b.parry, b.dodge, b.block, b.dual])
-          expect([c.quickAssistCount, c.chainCountPerStun], tag).toEqual([ASSIST_ACTION_BASELINE.quickAssist, ASSIST_ACTION_BASELINE.chainPerStun])
+          // 连携基准按职业（支援/防护 0），快支全角色 0（用户 2026-10-18）
+          expect([c.quickAssistCount, c.chainCountPerStun], tag).toEqual([
+            ASSIST_ACTION_BASELINE.quickAssist,
+            chainBaselineFor(catalog.getAgent(id)?.specialty),
+          ])
         })
       }
     }

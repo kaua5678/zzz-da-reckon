@@ -198,25 +198,26 @@ function identityModules(agent: AgentIdentity | null | undefined): AgentMechanic
   return mod ? [mod] : []
 }
 
-export type TeammateSplitDecl = NonNullable<AgentMechanicModule['teammateSplit']>
+export type TeammateDropDecl = NonNullable<AgentMechanicModule['teammateDrop']>
 
 /**
- * 队伍里第一个声明 `teammateSplit` 的槽位（CC-56）；无 ⇒ null。
- * 原位置：ResourceUtilizationPage.vue `remielleQSetting` 的 `findIndex(agent?.id === '1581' || agent?.teammateBuffId === '1581')`。
+ * 队伍里第一个声明 `teammateDrop` 的槽位（2026-10-18）；无 ⇒ null。
+ * 口径：每个队友一个「丢弃 N 次资源」输入框，丢弃后的剩余次数进模块的细致分配算法。
  */
-export function teamTeammateSplit(
+export function teamTeammateDrop(
   team: ReadonlyArray<{ agentId?: string | null } | null | undefined>,
   getAgent: (id: string) => AgentIdentity | null | undefined,
-): { slot: number; split: TeammateSplitDecl } | null {
+): { slot: number; drop: TeammateDropDecl } | null {
   for (let slot = 0; slot < team.length; slot++) {
     const char = team[slot]
     if (!char?.agentId) continue
     for (const mod of identityModules(getAgent(char.agentId))) {
-      if (mod.teammateSplit) return { slot, split: mod.teammateSplit }
+      if (mod.teammateDrop) return { slot, drop: mod.teammateDrop }
     }
   }
   return null
 }
+
 
 /**
  * 角色是否「拥有」轴预设里的 60/90 转大块（CC-58）：模块声明 `ownsPromoteVariantAxisBlocks`（CC-43e），

@@ -1,17 +1,19 @@
 /**
- * CC-56：teamTeammateSplit 与原 ResourceUtilizationPage 写死 1581 的判断逐值一致。
- * 对照基准（legacy*）照抄原页面写法（写死 ID 只允许出现在测试里当基准）。
+ * CC-56 后继（2026-10-18）：`teamTeammateSplit` 已被 `teamTeammateDrop` 取代——
+ * 用户口径「Q 分配只控制大招那 3 个，不贴合实际；改成每个队友可丢弃 N 次，
+ * 剩余次数进细致分配算法，轮数/归属/浪费量全部自动跟着算」。
+ *
+ * 本用例保留原主题（「页面写死 1581 → 模块声明」的等价性），但基准换成新声明：
+ * 槽位仍须与原 `findIndex` 一致；声明内容 = `remielle.drop` 前缀 + 文案取自模块。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { teamTeammateSplit } from '@/composables/agentMechanicView'
+import { teamTeammateDrop } from '@/composables/agentMechanicView'
 
-const legacyIsRemielle = (agent: { id: string; teammateBuffId?: string } | null | undefined) =>
-  agent?.id === '1581' || agent?.teammateBuffId === '1581'
+const legacyIsRemielle = (agent: { id: string } | null | undefined) => agent?.id === '1581'
 
-// CC-304：agentExcludedFromWindInfectionPick 已删（页面改读引擎 anomalyPanels#resolveWindInfectionPick），其用例随之删。
-describe('CC-56 agentMechanicView：蕾米埃尔两处写死 → 模块声明', () => {
-  it('teamTeammateSplit：槽位与原 findIndex 相等；声明内容 = 引擎口径（remielle.q / 3 / 默认 1）', async () => {
+describe('CC-56 agentMechanicView：蕾米埃尔写死 → 模块声明（2026-10-18 换声明）', () => {
+  it('teamTeammateDrop：槽位与原 findIndex 相等；声明内容 = 引擎口径（remielle.drop / 文案）', async () => {
     for (const team of [
       [{ agentId: '1161' }, { agentId: '1581' }, { agentId: '1211' }],
       [{ agentId: '1581' }, { agentId: '1311' }, { agentId: '1211' }],
@@ -19,14 +21,13 @@ describe('CC-56 agentMechanicView：蕾米埃尔两处写死 → 模块声明', 
     ]) {
       const { config, catalog } = await setupHarness(team)
       const legacySlot = config.team.findIndex(char => legacyIsRemielle(char.agentId ? catalog.getAgent(char.agentId) : null))
-      const got = teamTeammateSplit(config.team, id => catalog.getAgent(id))
+      const got = teamTeammateDrop(config.team, (id: string) => catalog.getAgent(id))
       expect(got?.slot ?? -1).toBe(legacySlot)
       if (got) {
-        expect(got.split.settingPrefix).toBe('remielle.q')
-        expect(got.split.total).toBe(3)
-        expect(got.split.defaultFirst).toBe(1)
-        expect(got.split.title).toBe('蕾米 Q 耀变分配')
-        expect(`${got.split.batchNote}；`).toBe('Q 每次固定打 3 个耀变；')
+        expect(got.drop.settingPrefix).toBe('remielle.drop')
+        expect(got.drop.title).toBe('蕾米虚曜子弹来源')
+        expect(got.drop.suffix).toBe('次')
+        expect(got.drop.note).toContain('丢弃')
       }
     }
   }, 60000)

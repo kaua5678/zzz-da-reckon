@@ -11,6 +11,7 @@ import { setupHarness } from '@/test/harness'
 import { teamPresets } from '@/data/teamPresets'
 import { applyTeamToStore } from '@/composables/teamCompare'
 import { ACTION_COUNT_BOUNDS, ASSIST_ACTION_BASELINE, type ActionCountField } from '@/stores/config'
+import { useCatalogStore } from '@/stores/catalog'
 
 const FIELDS = Object.keys(ACTION_COUNT_BOUNDS) as ActionCountField[]
 
@@ -46,14 +47,22 @@ describe('CC-267 换人重置全部动作次数', () => {
     expect(config.team.map(c => c.potentialLevel)).toEqual([6, 6, 6])
   })
 
-  it('CC-264：setAgent 预填快支 / 连携基准（ASSIST_ACTION_BASELINE）', async () => {
+  it('CC-264 / 用户 2026-10-18：setAgent 预填快支 0、连携按职业（支援/防护 0）', async () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
-    for (const c of config.team) { c.quickAssistCount = 0; c.chainCountPerStun = 0 }
-    const auto = teamPresets.find(p => p.id.startsWith('auto-') && !(p.interactions ?? []).some(i => i.type === 'quickAssist'))!
+    // 先塞非零值，验证 setAgent 确实按基准覆盖（不是「继承用户值」）
+    for (const c of config.team) { c.quickAssistCount = 3; c.chainCountPerStun = 2 }
+    // 队里必须有支援/防护才咬得住「按职业」这一臂：取一条含支援位的 auto 预设
+    const auto = teamPresets.find(p => p.id.startsWith('auto-')
+      && !(p.interactions ?? []).some(i => i.type === 'quickAssist' || i.type === 'chain'))!
     applyTeamToStore(config, auto)
-    expect(config.team.map(c => c.quickAssistCount)).toEqual([3, 3, 3])
-    expect(config.team.map(c => c.chainCountPerStun)).toEqual([1, 1, 1])
-    expect(ASSIST_ACTION_BASELINE).toEqual({ quickAssist: 3, chainPerStun: 1 })
+    expect(config.team.map(c => c.quickAssistCount)).toEqual([0, 0, 0])
+    expect(ASSIST_ACTION_BASELINE).toEqual({ quickAssist: 0, chainPerStun: 1 })
+    // 连携：支援 / 防护 = 0，其余 = 1（职业轴与 roleInteractionBaseline 同源）
+    for (const c of config.team) {
+      const specialty = useCatalogStore().getAgent(c.agentId)?.specialty
+      const isSupport = specialty === 'support' || specialty === 'defense'
+      expect(c.chainCountPerStun, `${c.agentId}(${specialty})`).toBe(isSupport ? 0 : 1)
+    }
     const root = resolve(__dirname, '..')
     for (const file of ['teamTimelineStore.ts', 'runArchiveDeploy.ts']) {
       const src = readFileSync(resolve(root, file), 'utf-8')

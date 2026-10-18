@@ -92,7 +92,12 @@ async function setupLongCyclePreset() {
    * | banyue-qingyi-lucia | 4 | cycle | — |
    * （原注释已写「另三个 lag=3 的备选都已实测能过全部判据」⇒ lag=3 可接受。）
    */
-  const team: [string, string, string] = ['1041', '1571', '1031']
+  // **2026-10-18 四次换队**（同一条「不要改判据」的规矩）：用户裁决「快支全角色默认 0 / 支援连携 0」
+  // ⇒ 每槽少 3 次快支、喧响供给下降 ⇒ 外层收敛路径变，原 auto-1041-1571-1031 不再出长环（实测 0 次调用）。
+  // 重扫（同法 mock pickOuterCycleMember 记录 members.length >= 3 与 pickedEarlier）后，
+  // 满足本用例两条硬前提（长环 + pickedEarlier=true）的只剩 banyue-norma-lucia 一支（般岳队）。
+  // ⚠ 般岳队会吃 T164 的闪能口径，但那是**已落地**的既有口径（不是本轮的改动面）⇒ 可用。
+  const team: [string, string, string] = ['1471', '1361', '1451']
   for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
   config.applyTeamPreset(team)
   // CC-154（第 177 轮）：本文件测「长环分支的接线」，需要一个真出长环的场景。physical 下模块计数改读计数通道后本队外层
