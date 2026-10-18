@@ -30,7 +30,9 @@
 
     <div
       ref="wrapRef" class="is3d-canvas-wrap"
-      @mousedown="onDown" @mousemove="onMove" @mouseleave="onLeave" @wheel.prevent="onWheel"
+      @pointerdown="onDown" @pointermove="onMove" @pointerleave="onLeave"
+      @pointerup="endDrag" @pointercancel="endDrag" @lostpointercapture="endDrag"
+      @wheel.prevent="onWheel"
     >
       <canvas ref="canvasRef" class="is3d-canvas" />
       <div v-if="hover" class="is3d-tip" :style="{ left: hover.px + 12 + 'px', top: hover.py + 12 + 'px' }">
@@ -448,15 +450,34 @@ function drawLabels(ctx: CanvasRenderingContext2D, cx: number, cy: number, scale
   ctx.restore()
 }
 
+/**
+ * 拖拽状态（2026-10-19 修「点一次后就粘在手上，一直跟着鼠标转」）。
+ *
+ * 根因：原先只在 `mouseleave` 清标志。鼠标**在画布内松开**（最常见）或
+ * **在画布外松开**（拖出去放手）都不会触发 `mouseleave` ⇒ `dragging` 恒 true
+ * ⇒ 之后每次 `mousemove` 都被当成拖拽，图形跟着鼠标转。
+ *
+ * 修法两层：
+ * ① `pointerdown` 时 `setPointerCapture` —— 指针被画布捕获，之后无论在哪里松开，
+ *    `pointerup` 都回到本元素（浏览器保证），状态必被清；
+ * ② 另挂 `pointerup` / `pointercancel` / `lostpointercapture` 三重兜底（alt-tab、
+ *    右键菜单、系统手势中断等场景），任一命中即释放。
+ */
 let dragging = false
 let lastX = 0
 let lastY = 0
-function onDown(e: MouseEvent) {
+function onDown(e: PointerEvent) {
   dragging = true
   lastX = e.clientX
   lastY = e.clientY
+  // 捕获指针：松开事件必定回到本元素（即使鼠标已移出画布）
+  try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch { /* 老浏览器无此 API，靠下面的兜底 */ }
 }
-function onMove(e: MouseEvent) {
+function endDrag() {
+  if (!dragging) return
+  dragging = false
+}
+function onMove(e: PointerEvent) {
   if (dragging) {
     yaw.value = (yaw.value + (e.clientX - lastX) * 0.5) % 360
     pitch.value = Math.max(-10, Math.min(89, pitch.value + (e.clientY - lastY) * 0.35))
@@ -496,7 +517,8 @@ function onMove(e: MouseEvent) {
   requestRender()
 }
 function onLeave() {
-  dragging = false
+  // 离开画布不一定代表松开（可能正拖着）⇒ 拖拽中不闪提示；拖拽由 pointerup 家族释放
+  if (dragging) return
   hover.value = null
   requestRender()
 }
