@@ -537,7 +537,6 @@ export const HARDCODED_BASELINE = {
   'src/views/CharIncrementPage.vue': 3,
   'src/views/DebugPage.vue': 1,
   'src/views/LogicEditorPage.vue': 1,
-  'src/views/MechanicsTablePage.vue': 0,
   'src/views/PositionComparePage.vue': 3,
   'src/views/ResourceUtilizationPage.vue': 2,
   'src/views/ResultPage.vue': 3,
@@ -641,7 +640,6 @@ export const FONT_SIZE_BASELINE = {
   'src/components/BossCard.vue': 1,
   'src/components/FinalPanel.vue': 4,
   'src/views/CharIncrementPage.vue': 2,
-  'src/views/MechanicsTablePage.vue': 1,
   'src/views/ResourcePage.vue': 2,
   'src/views/StunAxisPage.vue': 1,
   // 同上：11.5px 随样式搬入 ChartHoverCard（原就在页面的离群基线里，本次仅文件归属变化）
@@ -668,7 +666,14 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--fg-2/--fg-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 418  /* ★ 2026-10-17 首页紧凑化：419 → **418**（−1）。纯删除——
+export const WA_REF_BASELINE = 407  /* ★ 2026-10-18 MechanicsTablePage 下线：418 → **407**（−11）。
+  纯删除——整页删除（用户裁决：该页只镜像 spec 字段、17/62 角色四张表全空），其 11 处 --wa-* 直引随之消失；
+  没有任何变量改回字面量（hardcoded-color 合计不变）。
+  VAR_TOTAL_BASELINE 同步 961 → 946（同一批删除：页面 15 处 var() = 11 处 --wa-* + 4 处语义别名）。
+  ⚠ 读数**只按已跟踪文件算**：并行会话的 InteractionSweepPage / InteractionSurface3D 是未跟踪 WIP
+  （合计 +1 wa / +27 var），把它们算进基线的后果是——提交后它们不在树里，基线立刻反报「有变量改回字面量」
+  （本批实测踩过：先按含 WIP 的 408/956 提交，在 HEAD 上 15/15 变 14/15）。
+  ★ 2026-10-17 首页紧凑化：419 → **418**（−1）。纯删除——
   `CharacterCard.vue` 的死规则 `.empty-text`（模板零引用，正文唯一条 `var(--wa-300)`）随紧凑化删除；
   没有任何变量改回字面量（hardcoded-color 合计仍是 3）。VAR_TOTAL_BASELINE 同步 909 → 908（同一批删除）。
   ★ 2026-10-08 Chart 5 下线（用户裁决：抽卡价值用计算器算，不用统计估）：431 → **419**（−12）。纯删除——`PullValueChart.vue` 与其 `pull-value-chart.css` 整体删除，两者的 `var(--wa-*)` 直引一并消失，没有任何变量改回字面量（VAR_TOTAL_BASELINE 同步 792 → 774，同一批删除）。 ★ 2026-10-05 r667 T22（`3f399d82`）：437 → **431**（−6）。纯删除：result-page.css `@media (max-width:1200px)` 内与基础规则逐字相同的 10 条无效覆盖（−61 行）——var() 总数与 --wa-* 直引一起下降，都是删重复规则，不是改回字面量（CC-481 分片时被本棘轮抓到，master 红了 10 分钟）。 ★ 2026-09-28 CC-186（第 209 轮）：447 → **437**（−10）。纯删除：ResourceUtilizationPage「全队边际收益」卡片与
@@ -714,7 +719,10 @@ export const WA_REF_BASELINE = 418  /* ★ 2026-10-17 首页紧凑化：419 → 
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 961  /* ★ 2026-10-17 位置对比贡献构成条（PositionCompareChart）：
+export const VAR_TOTAL_BASELINE = 946  /* ★ 2026-10-18 MechanicsTablePage 下线：961 → **946**（−15）。
+                                        纯删除：整页 15 处 var()（11 --wa-* + 4 语义别名 --app-text-solid/--fg-2）随文件消失；
+                                        只按已跟踪文件计数（并行会话未跟踪页不并入基线，理由见 WA_REF_BASELINE 注释）。
+                                        ★ 2026-10-17 位置对比贡献构成条（PositionCompareChart）：
                                        939 → **961**（+22），`--wa-*` 直引 **418 不变**。
                                        归因：新增 `components/charts/PositionCompareChart.vue` 自身样式（堆叠段色 --c-info/
                                        --c-success/--c-warning/--c-danger、文本/边框/轨道 --fg-2/--fg-3/--app-*、

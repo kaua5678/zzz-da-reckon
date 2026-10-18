@@ -260,20 +260,21 @@ check(`stunAxisPresets ids are unique across files${axisPresetIdDupes.length ? '
 
 // ===== 状态表同步护栏（README §3.7）：新增角色必须同步两张状态表 =====
 // 历史欠账白名单：数据补齐后逐条删除（删除后即强制）。护栏只约束「新增缺口」，不自动补数据。
-const KNOWN_MISSING_MECHANICS_CHARACTERS = new Set([
-  '1261', '1411', '1171', '1511', '1491', '1341', '1311', '1151', '1031',
-  '1131', '1221', '1161', '1251', '1361', '1241', '1071', '1521', '1301',
-  '1461', '1421', '1611', '1621',
-])
+// 2026-10-18 清零：最后 15 条历史欠账（1031/1071/1131/1151/1161/1171/1301/1311/1421/1461/
+// 1491/1511/1521/1611/1621）已按代码逐个核对后补录 character-mechanics.json（条目内容来自各角色
+// 模块头注释 + spec + teammate-buffs 组，逐条标注 implementedParts / pendingParts / codePaths）。
+// 白名单里另有 7 条（1221/1241/1251/1261/1341/1361/1411）此前已有条目、是过期残留，一并删除。
+// ⇒ 现在**任何角色缺条目都会直接红**（护栏由「冻结」转为「强制」）。
+const KNOWN_MISSING_MECHANICS_CHARACTERS = new Set()
 const KNOWN_MISSING_CONSTELLATION_CHARACTERS = new Set(['1611', '1621'])
 
 const mechanicsChars = new Set(Object.keys((load('public/static/character-mechanics.json').characters ?? {})))
 const constellationChars = new Set(Object.keys((load('public/static/character-constellations.json').characters ?? {})))
 
 const missingMechanics = agents.filter(a => !mechanicsChars.has(String(a.id)) && !KNOWN_MISSING_MECHANICS_CHARACTERS.has(String(a.id)))
-check('every catalog agent has a character-mechanics.json entry (or whitelisted historical debt)',
+check('every catalog agent has a character-mechanics.json entry',
   missingMechanics.length === 0,
-  `缺 mechanics 条目: ${missingMechanics.map(a => a.id).join(', ')} → 同步 README §3.7，补齐后从 KNOWN_MISSING_MECHANICS_CHARACTERS 删除`)
+  `缺 mechanics 条目: ${missingMechanics.map(a => a.id).join(', ')} → 在 character-mechanics.json 补一条（core_passive_<id> / additional_ability_<id>，实现位置写 codePaths），不要再走白名单`)
 
 const missingConstellations = agents.filter(a => !constellationChars.has(String(a.id)) && !KNOWN_MISSING_CONSTELLATION_CHARACTERS.has(String(a.id)))
 check('every catalog agent has a character-constellations.json entry (or whitelisted historical debt)',

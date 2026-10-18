@@ -22,8 +22,8 @@ async function setup(cinemaLevel = 0) {
 }
 
 describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
-  it('CC-120：spec resources 的 luminizeMasteryRatio（仅供机制表展示，不参与计算）与模块/引擎口径一致', () => {
-    // spec 曾写 0.1（与模块 @fact 记载的旧转写错误相同）；resources 不被执行，只进机制表和逻辑编辑器，所以只错在展示
+  it('CC-120：spec resources 的 luminizeMasteryRatio（spec 记录值，不参与计算）与模块/引擎口径一致', () => {
+    // spec 曾写 0.1（与模块 @fact 记载的旧转写错误相同）；resources 不被执行，只进逻辑编辑器，所以只错在展示
     const ratio = getAgentSpec('1581')?.resources?.find(r => r.id === 'remielle_voidflare')?.properties.luminizeMasteryRatio
     expect(ratio).toBe(computeRemielleMechanic({ anomalyProficiency: 100 }).luminizeMultiplierBonus / 100)
     expect(ratio).toBe(0.2)

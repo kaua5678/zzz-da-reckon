@@ -93,7 +93,6 @@ const pageMap: Record<string, Component> = {
   debug: lazyPage(() => import('@/views/DebugPage.vue')),
   wengineFields: lazyPage(() => import('@/views/WEngineFieldPage.vue')),
   logic: lazyPage(() => import('@/views/LogicEditorPage.vue')),
-  mechanic: lazyPage(() => import('@/views/MechanicsTablePage.vue')),
   multiplierCoeff: lazyPage(() => import('@/views/MultiplierCoeffPage.vue')),
   runArchive: lazyPage(() => import('@/views/RunArchivePage.vue')),
   charIncrement: lazyPage(() => import('@/views/CharIncrementPage.vue')),

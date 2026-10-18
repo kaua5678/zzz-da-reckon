@@ -75,11 +75,12 @@ export const EXHIBITION_LAYER_FORBIDDEN = /@\/(?:core|mechanics|specs)(?:\/|['"]
  *
  * ★ 2026-09-27 CC-47~CC-53 真清偿 14 → **1**（逐处经编排层透出：agentMechanicView / teammateBuffContext /
  * stunAxisView / outOfCombatPanel / substatOptimizer / impactVariables），上面「剩 14 处」清单已成历史。
- * ★ CC-54 拍板：剩下的 1 处 = MechanicsTablePage.vue 的 `agentSpecs`（@/specs/registry，只读 JSON 数据表）
- * **永久保留**，RATCHET_BURNDOWN target=1；不做纯转发（只压数字、不降耦合）。基线 1 **不上调**：
- * 展示层任何新增越层 import 仍判红。依据详见 docs/mcp-r22d1-batch12-field-census.md §5.61。
+ * ★ CC-54 曾拍板保留 1 处 = MechanicsTablePage.vue 的 `agentSpecs`（@/specs/registry，只读 JSON 数据表）。
+ * **2026-10-18 该页整体下线（用户裁决：台账页只镜像 spec 字段、17/62 角色四张表全空，读它不如读代码）**
+ * ⇒ 基线 1 → **0**。这不是「搬运压数字」：页面连同它的 import 一起删了，展示层真实归零。
+ * 判据语义一字未动，展示层任何新增越层 import 仍判红。
  */
-export const EXHIBITION_LAYER_IMPORT_BASELINE = 1   // 2026-09-27 CC-53 2→1（ImpactChart 影响变量表 + 读写 IMPACT_VARIABLES/readImpactVar/writeImpactVar → composables/impactVariables.ts）；CC-52 3→2（ImpactChart runOptimizerForSlot0 的 computeOptimalSubStats+getTemplate → composables/substatOptimizer.ts）；CC-51 5→3（TeamConfigPage 局外面板 calcPanel+applyTargetedStat → composables/outOfCombatPanel.ts）；CC-50 6→5（StunAxisPage allocateAxisWindows → composables/stunAxisView.ts）；CC-49 8→6（buildTeammateBuffSourceContext×2 → composables/teammateBuffContext.ts）；CC-48 10→8（StunAxisPage 的 banyue/yixuan 值导入 → 模块能力 axisEditorBlockMarks/axisMoveMeta）；CC-47 14→10（getAgentMechanic×4 → composables/agentMechanicView.ts）
+export const EXHIBITION_LAYER_IMPORT_BASELINE = 0   // 2026-10-18 MechanicsTablePage 下线 1→0（真删除，非搬运）；2026-09-27 CC-53 2→1（ImpactChart 影响变量表 + 读写 IMPACT_VARIABLES/readImpactVar/writeImpactVar → composables/impactVariables.ts）；CC-52 3→2（ImpactChart runOptimizerForSlot0 的 computeOptimalSubStats+getTemplate → composables/substatOptimizer.ts）；CC-51 5→3（TeamConfigPage 局外面板 calcPanel+applyTargetedStat → composables/outOfCombatPanel.ts）；CC-50 6→5（StunAxisPage allocateAxisWindows → composables/stunAxisView.ts）；CC-49 8→6（buildTeammateBuffSourceContext×2 → composables/teammateBuffContext.ts）；CC-48 10→8（StunAxisPage 的 banyue/yixuan 值导入 → 模块能力 axisEditorBlockMarks/axisMoveMeta）；CC-47 14→10（getAgentMechanic×4 → composables/agentMechanicView.ts）
 
 // ---- 判据 12：引擎层「静态依赖具体角色模块」棘轮 ----
 //

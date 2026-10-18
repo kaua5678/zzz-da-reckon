@@ -158,7 +158,7 @@ useResourceCalc()                         composables/useResourceCalc.ts:87
 
 实测（探针：对 62 份 spec 逐个 `getAgentMechanic(agentIds[0])`，按模块 id 找到源文件，查它是否调用 `getAgentSpec` / `specToMechanicModule` / `computeSpecResources` / `buildSpecEventExecutions` / `buildSpecAnomalyEvents`）：
 - 注册规则（`mechanics/index.ts:138–142`）：**有手写模块时，spec 不会自动执行**；只有 `settings` 会合并进模块（`mechanics/registry.ts:25–33`），`teamBuffs` 由 `stores/catalog.ts#mergeSpecTeamBuffs` 并入队友 buff（与模块无关，始终生效），`additionalAbility` 由 `panelPhases.ts:448/567` 与 `stores/config.ts:408` 直接读。
-- 62 份 spec 中，**26 个对应模块完全不调用 spec 解释器**。这 26 个里，spec 仍写着 resources 的有 10 个（1121、1171、1261、1281、1291、1411、1471、1511、1571、1581），写着 events 的有 3 个（1081、1331、1471），写着 attributeConversions 的有 1571（3 条）。这些 spec 条目**不被执行**，只供 `MechanicsTablePage` 与逻辑编辑器展示；真实行为在模块里手写。
+- 62 份 spec 中，**26 个对应模块完全不调用 spec 解释器**。这 26 个里，spec 仍写着 resources 的有 10 个（1121、1171、1261、1281、1291、1411、1471、1511、1571、1581），写着 events 的有 3 个（1081、1331、1471），写着 attributeConversions 的有 1571（3 条）。这些 spec 条目**不被执行**，只供逻辑编辑器展示（原 `MechanicsTablePage` 已于 2026-10-18 下线）；真实行为在模块里手写。
 - 典型：1481 琉音、1571 诺玛的 attributeConversions 在 spec 里写了 threshold / stepSize / valuePerStep / cap，note 自己写「实现位置：mechanics/agents/*.ts applyPanel，非 spec runtime 执行」。同一组常数存在两份，改一处另一处不会跟着变（CC-109 洛克茜就是 spec 注记与模块数值分叉的先例）。
 - 反例（已归一）：`alice.ts:115`、`luciaElowen.ts:135` 直接调 `applySpecAttributeConversions(getAgentSpec(...).attributeConversions)`，常数只在 spec 一处。
 - 转为候选 **C7**（§5）。
