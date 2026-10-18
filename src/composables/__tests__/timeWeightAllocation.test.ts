@@ -470,16 +470,41 @@ describe('平A池权重·分配策略', () => {
     // ① 杠杆真的被抬（不是恒零的摆设）
     const tauntAfter = Number(config.team[0]?.tauntCancelCount ?? 0)
     expect(tauntAfter, 'joint 应自动抬高 tauntCancelCount').toBeGreaterThan(0)
-    // ② 抬到有效上限即停（引擎按失衡外连段数封顶）⇒ 后摇归零，且不会一路冲到 99 的虚高值
+    /**
+     * ② **后摇确实被取消掉一部分**（本杠杆的价值就在这）——但**不再要求「归零」**。
+     *
+     * ## 2026-10-19 改判据（规则 10 四步，用户裁决「修正本身是对的……这是必要性开发内容」）
+     *
+     * ① **量 delta**：`5021d549` 把冲霄 `1471029` 的 `actionTime` 由 2.667s 修正为 **1.167s**
+     *    （导入脚本按英文名匹配类型加成表得 0 ⇒ (秽骨 266.7 − 0)/100 = 2.667；真值 = 秽骨 266.7 − 支援突击加成 150
+     *    = 116.7 ⇒ 1.167s，`catalog.json` 实测已为 1.167）。修正后本队 `outStunComboCount` 1 → **2**。
+     * ② **根因不是 joint 坏了，是「抬满」不再划算**：逐档实测（r=0.6）
+     *    ```
+     *    taunt | 后摇 | outStunCombo | 必要前台 | 伤害
+     *      0   |  2   |      2       | 220.00s | 58.645M
+     *      1   |  1   |      2       | 219.48s | 58.684M   ← joint 停在这里（伤害最高）
+     *      2   |  0   |      2       | 215.87s | 58.081M   ← 后摇归零，但伤害 -0.603M
+     *    ```
+     *    ⇒ `taunt=2` 确实让后摇归零、必要前台省 3.6s，**但总伤掉 0.603M** ⇒ joint 的接受条件
+     *    （`dmg > best` 或「伤害不变且必要前台下降」）**正确地拒绝了它**，停在 1。
+     *    旧断言「抬满后后摇归零」与「总伤不降」在本队上**互相矛盾**——冲霄变短后，取消第二次后摇
+     *    换来的 3.6s 已经不值 0.603M 的伤害损失。
+     * ③ **确认有意**：冲霄时间修正是用户点名的必要性开发（「倍率演算页使用，资源引擎没接……不蒙骗用户」）。
+     * ④ **判据处置**：只删「归零」这一条**与总伤判据冲突**的断言，其余全部保留并**加强**：
+     *    - 后摇**必须严格减少**（`recAfter < recBefore`）——比「归零」更本质：杠杆生效了；
+     *    - 后摇恢复行数**必须等于** `recAfter`（行与读数同源，这才是原来那条断言真正想锁的）；
+     *    - 停在有效上限而非 99（原样保留）；
+     *    - 总伤不降（原样保留）。
+     */
     const recAfter = calc.resourceResult.value!.characters.find(c => c.slot === 0)!.banyueRageCycle!.comboOutRecoveryCount
-    expect(recAfter, '抬满后后摇归零').toBe(0)
+    expect(recAfter, 'joint 必须真的取消掉一部分后摇（杠杆生效）').toBeLessThan(recBefore)
     expect(tauntAfter, '停在有效上限而非 99（越过封顶是空操作，不该录取）').toBeLessThanOrEqual(recBefore)
-    // ③ 时间面确实回收（本杠杆的价值就在这）：恢复行整批消失 ⇒ 后摇占用归零。
+    // ③ 时间面确实回收：后摇恢复行数 == 剩余后摇次数（行与读数同源）。
     // ⚠ 不拿「必要前台总量下降」当判据：joint 里 ② 弹刀阶梯同时在加交互时间，两者叠加后总量可能反升
     // （实测 202.665→205.818s），拿总量比会把弹刀的账算到嘲讽取消头上。
     const recRows = (calc.resourceResult.value!.characters.find(c => c.slot === 0)!.executions ?? [])
       .filter(e => e.moveId?.startsWith('banyue-recovery'))
-    expect(recRows.length, '抬满后不应再有后摇恢复行').toBe(0)
+    expect(recRows.length, '后摇恢复行数应等于剩余后摇次数（行与读数同源）').toBe(recAfter)
     expect(calc.teamTotalDamage.value, '总伤不降（联合搜索单调不劣）').toBeGreaterThanOrEqual(dmgBefore - 1e-6)
     // ④ 非般岳队零影响：能力声明驱动（不认 agentId），无该声明的队杠杆槽位为空
     const { catalog: c2, config: cfg2 } = await setupHarness(['', '', ''] as never, { recommendedBuild: false } as never)

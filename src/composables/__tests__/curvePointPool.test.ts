@@ -53,7 +53,20 @@ describe('难度曲线某一点的资源池（按需重算）', () => {
     const row = await curveRow()
     const all = [...row.ladder.points, ...row.ladder.axisTruncated]
     expect(all.length, '本队要有若干档可查').toBeGreaterThan(0)
-    expect(row.ladder.axisTruncated.length, '反空洞：本队确实有被轴砍掉的档（那正是用户要查的）').toBeGreaterThan(0)
+    /**
+     * ⚠ **2026-10-18 口径变更**：用户裁决「残疾轴的综合易伤超过非轴的默认均匀易伤后，就可以认为
+     * 残疾轴也是有轴易伤上的贡献，可以不隐藏」（`difficultyAxis#partialAxisContributes`）⇒
+     * 本队原本被砍的档现在**放行**了，`axisTruncated` 从「有」变「空」⇒ 原「反空洞」断言失去样本。
+     *
+     * ⇒ 判据改成**条件式**（与 `difficultyCurve.test.ts` 同一处理）：本队要么有被砍档、要么有放行的
+     * 残疾轴档——两条路都覆盖「点开档位能查资源池」这个主题，不再把「恰好有被砍档」当前提
+     * （那正是本仓库反复记录的假红病根：判据绑在某个落点细节上）。
+     */
+    const partialPoints = row.ladder.points.filter(p => p.axis.kind === 'partial')
+    expect(
+      row.ladder.axisTruncated.length + partialPoints.length,
+      '反空洞：本队要么有被轴砍的档、要么有放行的残疾轴档（否则本判据对两种形态都零判别力）',
+    ).toBeGreaterThan(0)
 
     const { pool, load } = useCurvePointPool()
     for (const p of all) {
