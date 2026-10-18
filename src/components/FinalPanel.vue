@@ -152,6 +152,25 @@ function targetedRows(pIn: PanelValues, prefix: string, labelOf: (t: string) => 
     .map(([key, v]) => ({ stat: key, label: `${labelOf(key.replace(`${prefix}__`, ''))}（定向）`, value: v as number }))
 }
 
+/**
+ * 定向字段（`<stat>__<招式族>`）→ 终局面板行。
+ * 用于「引擎按招式读回、但基础行看不到」的那一族（`dmgBonus__*` / `critRate__*` / `critDmg__*`）。
+ */
+function targetedStatRows(
+  pIn: PanelValues,
+  prefix: string,
+  labelOf: (t: string) => string,
+): FinalRow[] {
+  return targetedRows(pIn, prefix, labelOf).map(r => ({
+    stat: r.stat,
+    label: r.label,
+    out: disp(r.stat, 0),
+    in: disp(r.stat, r.value),
+    delta: r.value,
+    deltaText: `+${disp(r.stat, r.value)}`,
+  }))
+}
+
 const panels = computed(() => {
   return [0, 1, 2].map(slot => {
     const char = configStore.team[slot]
@@ -205,12 +224,7 @@ const panels = computed(() => {
       ...(elementDmgKey ? [makeRow(pOut, pIn, elementDmgKey, `元素增伤（${element}）`)] : []),
       makeRow(pOut, pIn, 'skillDmgBonus', '全招式增伤'),
     ]
-    for (const r of targetedRows(pIn, 'dmgBonus', t => SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t)) {
-      dmgRows.push({
-        stat: r.stat, label: r.label, out: disp(r.stat, 0), in: disp(r.stat, r.value),
-        delta: r.value, deltaText: `+${disp(r.stat, r.value)}`,
-      })
-    }
+    dmgRows.push(...targetedStatRows(pIn, 'dmgBonus', t => SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t))
     for (const r of skillTargeted) {
       dmgRows.push({
         stat: r.stat, label: r.label, out: disp(r.stat, 0), in: disp(r.stat, r.value),
@@ -230,12 +244,16 @@ const panels = computed(() => {
     if (elementSheerKey) sheerRows.push(makeRow(pOut, pIn, elementSheerKey, `元素贯穿增伤（${element}）`))
 
     // 暴击区（直伤暴击；异常暴击在异常区）
+    // 定向暴击（`critRate__<招式族>` 一族）：引擎按招式读回（`core/damage.ts#getTargetedStat`），
+    // 此前终局面板只列基础字段 ⇒ 招式限定暴击不可见（与 dmgBonus__ 同形，2026-10-18）。
     const critRows = [
       makeRow(pOut, pIn, 'critRate', '暴击率'),
       makeRow(pOut, pIn, 'critDmg', '暴击伤害'),
       makeRow(pOut, pIn, 'sharpCritDmg', '锐暴伤害'),
       makeRow(pOut, pIn, 'assaultCritRate', '强击暴击率'),
       makeRow(pOut, pIn, 'assaultCritDmg', '强击暴击伤害'),
+      ...targetedStatRows(pIn, 'critRate', t => `暴击率（${SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t}）`),
+      ...targetedStatRows(pIn, 'critDmg', t => `暴击伤害（${SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t}）`),
     ]
 
     const debuffRows = [
