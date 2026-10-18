@@ -256,9 +256,15 @@ const panels = computed(() => {
       ...targetedStatRows(pIn, 'critDmg', t => `暴击伤害（${SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t}）`),
     ]
 
+    // 招式限定的敌方减益（`enemyDefReduction__basic` 一族）：引擎按招式读回（`core/damage.ts`），
+    // 终局面板此前不显示（2026-10-18：机巧心种 14146 普攻/终结无视防御、心弦夜响 14132 连携/终结无视火抗）。
+    const targetedDebuffRows = targetedStatRows(pIn, 'enemyDefReduction', t => `减防（${SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t}）`)
+      .concat(targetedStatRows(pIn, 'enemyResReduction', t => `减抗（${SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t}）`))
+
     const debuffRows = [
       makeRow(pOut, pIn, 'enemyResReduction', '全属性减抗'),
       ...(elementResKey ? [makeRow(pOut, pIn, elementResKey, `元素减抗（${element}）`)] : []),
+      ...targetedDebuffRows,
       makeRow(pOut, pIn, 'enemyDefReduction', '减防（%）'),
       makeRow(pOut, pIn, 'enemyDefFlatReduction', '减防（固定）'),
       makeRow(pOut, pIn, 'enemyDamageTakenBonus', '敌人受伤害提升（易伤）'),

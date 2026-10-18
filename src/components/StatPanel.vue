@@ -412,6 +412,12 @@
             <span class="stat-label">敌方防御降低（通用）</span>
             <span class="stat-value debuff">{{ formatPercent(panel.enemyDefReduction) }}</span>
           </div>
+          <!-- 招式限定减防（`enemyDefReduction__<招式族>`）：引擎按招式读回（`core/damage.ts`），
+               此前面板只列基础字段 ⇒ 机巧心种 14146「普攻/终结无视防御 20%」不可见（2026-10-18）。 -->
+          <div class="stat-row" v-for="row in targetedEnemyDefRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}</span>
+            <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
+          </div>
           <div class="stat-row" v-if="hasElementDefReduction">
             <span class="stat-label">元素专属减防</span>
             <span class="stat-value debuff">{{ elementDefReductionSummary }}</span>
@@ -424,6 +430,11 @@
           <div class="stat-row" v-if="panel.enemyResReduction !== 0">
             <span class="stat-label">敌方伤害抗性降低/无视（全元素）</span>
             <span class="stat-value debuff">{{ formatPercent(panel.enemyResReduction) }}</span>
+          </div>
+          <!-- 招式限定减抗（`enemy<Element>ResReduction__<招式族>`）：心弦夜响 14132「连携/终结无视火抗」 -->
+          <div class="stat-row" v-for="row in targetedEnemyResRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}</span>
+            <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
           </div>
           <div class="stat-row" v-if="panel.enemyLumifluxResReduction !== 0 && (!compactPreview || damageElement === 'lumiflux')">
             <span class="stat-label">辉光/耀变抗性降低/无视</span>
@@ -535,6 +546,7 @@ import { elementAnomalyBuildUpEfficiency, anomalyBuildUpAfterMasteryAndEfficienc
 import { calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import { elementStatKey, panelElementStat } from '@/utils/elementStatKeys'
 import { DAMAGE_ELEMENTS, ELEMENT_FIELD_PREFIX } from '@/utils/enemyDebuffStats'
+import { targetedPanelRows } from '@/utils/targetedPanelRows'
 import { damageElementLabel } from '@/utils/agentLabelMaps'
 
 const props = defineProps<{
@@ -805,6 +817,24 @@ const elementResReductionSummary = computed(() => {
 })
 const elementStunResRows = computed(() => elementDebuffRows('enemyStunRes'))
 const elementAnomalyResRows = computed(() => elementDebuffRows('enemyAnomalyRes'))
+
+/**
+ * 招式限定的敌方减益（`<stat>__<招式族>`）：引擎按招式读回，页面上此前**一条都不显示**。
+ * 现役数据：14146 机巧心种 `enemyDefReduction__basic/__ultimate`、14132 心弦夜响
+ * `enemyFireResReduction__chain/__ultimate`（2026-10-18 审计）。
+ */
+const ENEMY_DEBUFF_BASE_STATS: readonly string[] = [
+  'enemyDefReduction', 'enemyResReduction', 'enemyStunResReduction', 'enemyAnomalyResReduction',
+  // 元素专属字段名一律经 `elementStatKey` 解析（判据 CC-225：不许手拼元素字段名）
+  ...DAMAGE_ELEMENTS.flatMap(el =>
+    (['enemyDef', 'enemyRes', 'enemyStunRes', 'enemyAnomalyRes'] as const)
+      .map(kind => elementStatKey(kind, el))
+      .filter((key): key is string => !!key),
+  ),
+]
+const targetedEnemyDebuffRows = computed(() => targetedPanelRows(props.panel, ENEMY_DEBUFF_BASE_STATS))
+const targetedEnemyDefRows = computed(() => targetedEnemyDebuffRows.value.filter(r => r.base.includes('DefReduction')))
+const targetedEnemyResRows = computed(() => targetedEnemyDebuffRows.value.filter(r => r.base.includes('ResReduction') && !r.base.includes('StunRes') && !r.base.includes('AnomalyRes')))
 
 const hasElementDefReduction = computed(() => elementDefReductionSummary.value.length > 0)
 const hasElementResReduction = computed(() => elementResReductionSummary.value.length > 0)
