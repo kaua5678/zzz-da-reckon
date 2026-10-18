@@ -438,6 +438,11 @@
             <span class="stat-label">敌方失衡抗性降低/无视</span>
             <span class="stat-value debuff">{{ formatPercent(panel.enemyStunResReduction) }}</span>
           </div>
+          <!-- 元素专属失衡抗性（`enemy<Element>StunResReduction`）：此前面板只汇总通用字段 ⇒ 元素专属那部分不可见 -->
+          <div class="stat-row" v-for="row in elementStunResRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}失衡抗性降低/无视</span>
+            <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
+          </div>
           <div class="stat-row" v-if="panel.enemyStunTakenBonus !== 0">
             <span class="stat-label">敌方受到失衡值提升</span>
             <span class="stat-value debuff">+{{ formatPercent(panel.enemyStunTakenBonus) }}</span>
@@ -446,6 +451,11 @@
           <div class="stat-row" v-if="panel.enemyAnomalyResReduction !== 0">
             <span class="stat-label">敌方积蓄抗性降低/无视</span>
             <span class="stat-value debuff">{{ formatPercent(panel.enemyAnomalyResReduction) }}</span>
+          </div>
+          <!-- 元素专属积蓄抗性（`enemy<Element>AnomalyResReduction`）：此前面板只汇总通用字段 ⇒ 元素专属那部分不可见 -->
+          <div class="stat-row" v-for="row in elementAnomalyResRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}积蓄抗性降低/无视</span>
+            <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
           </div>
           <div class="stat-section-title">伤害相关</div>
           <div class="stat-row" v-if="panel.enemyDamageTakenBonus !== 0">
@@ -524,7 +534,7 @@ import { calcPenetrationPower, penetrationPowerFormulaLabel, penetrationPowerFor
 import { elementAnomalyBuildUpEfficiency, anomalyBuildUpAfterMasteryAndEfficiency } from '@/data/anomalyElement'
 import { calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import { elementStatKey, panelElementStat } from '@/utils/elementStatKeys'
-import { ELEMENT_FIELD_PREFIX } from '@/utils/enemyDebuffStats'
+import { DAMAGE_ELEMENTS, ELEMENT_FIELD_PREFIX } from '@/utils/enemyDebuffStats'
 import { damageElementLabel } from '@/utils/agentLabelMaps'
 
 const props = defineProps<{
@@ -766,12 +776,35 @@ const allPanelRows = computed(() => {
 const currentElementPrefix = computed(() => props.damageElement ? ELEMENT_FIELD_PREFIX[props.damageElement] : undefined)
 
 // CC-225：旧写法遍历 7 元素标签表再过滤出当前元素，等价于直接读当前元素字段（标签走 DAMAGE_ELEMENT_LABEL，7 基础元素逐字相同）
-function currentElementDebuffSummary(kind: 'enemyDef' | 'enemyRes'): string {
-  const value = panelElementStat(props.panel, kind, props.damageElement)
-  return value !== 0 && props.damageElement ? `${damageElementLabel(props.damageElement)}${formatPercent(value)}` : ''
+/**
+ * 元素专属减益汇总：当前伤害元素 + **其余元素**（2026-10-18）。
+ *
+ * 修前只显示当前伤害元素那一项 ⇒ 队友给别的属性上的减抗/减防（如莱卡恩给冰以外的属性 +30% 易伤、
+ * 音擎的 `enemyElectricDefReduction`）在面板上不可见。现在非零的**全部**元素都列出来
+ * （`enemyDefReduction` / `enemyResReduction` / `enemyStunResReduction` / `enemyAnomalyResReduction` 四族），
+ * 当前伤害元素排在最前。
+ */
+function elementDebuffRows(kind: 'enemyDef' | 'enemyRes' | 'enemyStunRes' | 'enemyAnomalyRes'): { key: string; label: string; value: number }[] {
+  const rows: { key: string; label: string; value: number }[] = []
+  for (const element of DAMAGE_ELEMENTS) {
+    const value = panelElementStat(props.panel, kind, element)
+    if (!value) continue
+    rows.push({ key: `${kind}__${element}`, label: `${damageElementLabel(element)}专属`, value })
+  }
+  // 当前伤害元素优先
+  const cur = props.damageElement
+  return rows.sort((a, b) => Number(b.key.endsWith(`__${cur}`)) - Number(a.key.endsWith(`__${cur}`)))
 }
-const elementDefReductionSummary = computed(() => currentElementDebuffSummary('enemyDef'))
-const elementResReductionSummary = computed(() => currentElementDebuffSummary('enemyRes'))
+const elementDefReductionSummary = computed(() => {
+  const value = panelElementStat(props.panel, 'enemyDef', props.damageElement)
+  return value !== 0 && props.damageElement ? `${damageElementLabel(props.damageElement)}${formatPercent(value)}` : ''
+})
+const elementResReductionSummary = computed(() => {
+  const value = panelElementStat(props.panel, 'enemyRes', props.damageElement)
+  return value !== 0 && props.damageElement ? `${damageElementLabel(props.damageElement)}${formatPercent(value)}` : ''
+})
+const elementStunResRows = computed(() => elementDebuffRows('enemyStunRes'))
+const elementAnomalyResRows = computed(() => elementDebuffRows('enemyAnomalyRes'))
 
 const hasElementDefReduction = computed(() => elementDefReductionSummary.value.length > 0)
 const hasElementResReduction = computed(() => elementResReductionSummary.value.length > 0)
