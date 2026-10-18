@@ -35,6 +35,7 @@
  */
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
+import { batchReporter, isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
 import { frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
@@ -120,9 +121,12 @@ export interface SweepSurface {
    * （实测 n=10 设置 10/10 × 降配 0.375 = 4/4 → 实打 10/10）。带上 `parryCount` 时本标志为 true。
    */
   downscaleLeak: boolean
+  /** 是否跑完（false = 用户中途取消，`series` 只含已算部分） */
+  complete: boolean
 }
 
-export interface SurfaceOptions {
+/** 复用仓库统一的批任务选项（进度载荷 `{pct,text}` + 取消信号），与一维扫描同源 */
+export interface SurfaceOptions extends BatchTaskOptions {
   preset: TeamPreset
   boss: BossPreset
   phase: BossPresetPhase
@@ -179,13 +183,23 @@ function interactionsOfSlots(ctx: AnalysisContext): number {
   return acc
 }
 
+/** 让出主线程一拍（宏任务）：每格一次全队求值约 0.3~0.5s，不让出 ⇒ 页面整段时间点不动 */
+const yieldToMacrotask = () => new Promise<void>(resolve => setTimeout(resolve, 0))
+
 /**
- * 跑一次二维面扫描（同步，调用方负责在独立场景里调用，见 `analysisScenario#withAnalysisScenario`）。
+ * 跑一次二维面扫描（**异步分片**，调用方负责在独立场景里调用，见 `analysisScenario#withAnalysisScenario`）。
+ *
+ * ## 为什么是 async（2026-10-19 修「点进页面就卡死」）
+ *
+ * 缺省 12 次 × 4 档 = 48 格、每格一次全队求值 ≈ **20~40s**；调细到 20×6 = 120 格更是 1~2 分钟。
+ * 原先写成同步函数 ⇒ 主线程独占，页面完全无响应（不是崩溃，是**卡死**）。
+ * 现在每格 `await` 一次宏任务，与 `composables/impactSampling.ts#sampleImpactSurface`
+ * （资源利用率页那张 3D 响应面）同一套做法：让出、报进度、可取消。
  *
  * ⚠ **每格都从基线重放**（与一维扫描同纪律）：先写回基线交互值、再写本格值；扫完必须还原
  * 交互与合轴率两项，否则会污染调用方后续的读数。
  */
-export function runInteractionSurface(ctx: AnalysisContext, options: SurfaceOptions): SweepSurface {
+export async function runInteractionSurface(ctx: AnalysisContext, options: SurfaceOptions): Promise<SweepSurface> {
   const maxCount = Math.max(2, Math.trunc(options.maxCount ?? 20))
   const countStep = Math.max(1, Math.trunc(options.countStep ?? 2))
   const ratioSteps = Math.max(2, Math.trunc(options.ratioSteps ?? 6))
@@ -203,7 +217,28 @@ export function runInteractionSurface(ctx: AnalysisContext, options: SurfaceOpti
     : requested.filter(key => [0, 1, 2].some(slot => readKey(ctx, slot, key) > 0))
 
   let evaluations = 0
+  const report = batchReporter(options)
   const series: SurfaceSeries[] = []
+  const totalCells = keys.length * ratios.length * counts.length
+
+  /**
+   * 提前结束（取消）的统一出口：**必须还原现场**（交互基线 + 合轴率），
+   * 否则取消后调用方读到的就是最后一格的中间态。返回已算部分，`complete: false`。
+   */
+  const finishEarly = (): SweepSurface => {
+    ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, capRaw)
+    return {
+      presetId: options.preset.id,
+      presetName: options.preset.name,
+      bossName: options.boss.name,
+      phaseLabel: options.phase.label,
+      series,
+      evaluations,
+      absorbCap,
+      downscaleLeak: false,
+      complete: false,
+    }
+  }
 
   for (const key of keys) {
     const base = [0, 1, 2].map(slot => readKey(ctx, slot, key))
@@ -212,6 +247,10 @@ export function runInteractionSurface(ctx: AnalysisContext, options: SurfaceOpti
       ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, ratio)
       const row: SurfaceCell[] = []
       for (const count of counts) {
+        if (isBatchAborted(options.control)) {
+          for (let slot = 0; slot < 3; slot++) ctx.config.setActionCount(slot, key, base[slot] ?? 0)
+          return finishEarly()
+        }
         // 每格从基线重放
         for (let slot = 0; slot < 3; slot++) ctx.config.setActionCount(slot, key, base[slot] ?? 0)
         // 本格值：只改「基线非零的槽」+ 槽 0（主C 恒有交互），与一维扫描同口径
@@ -220,6 +259,9 @@ export function runInteractionSurface(ctx: AnalysisContext, options: SurfaceOpti
         }
         row.push(captureCell(ctx, count, ratio))
         evaluations++
+        report(evaluations / totalCells, '二维面 ' + evaluations + '/' + totalCells + ' 格')
+        // 让出主线程：浏览器才能重绘进度条、响应「取消」与页面切换
+        await yieldToMacrotask()
       }
       rows.push(row)
     }
@@ -273,6 +315,7 @@ export function runInteractionSurface(ctx: AnalysisContext, options: SurfaceOpti
     // 弹刀这一类只要有降配格、且实打次数 ≠ 设置次数 ⇒ 命中已知泄漏（见 SweepSurface.downscaleLeak）
     downscaleLeak: series.some(s => s.key === 'parryCount'
       && s.cells.some(row => row.some(c => c.downscale !== undefined && Math.abs(c.actualCount - c.count) > 0.5))),
+    complete: true,
   }
 }
 

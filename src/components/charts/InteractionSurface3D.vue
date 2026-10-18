@@ -11,12 +11,19 @@
         >{{ s.label }}</span>
       </div>
       <div class="is3d-btns">
-        <button class="is3d-btn" :class="{ active: view === 'iso' }" @click="setView('iso')">斜视</button>
-        <button class="is3d-btn" :class="{ active: view === 'front' }" @click="setView('front')">正视</button>
-        <button class="is3d-btn" :class="{ active: view === 'top' }" @click="setView('top')">俯视</button>
+        <span class="is3d-group-label">视角</span>
+        <button class="is3d-btn" :class="{ active: view === 'iso' }" @click="setView('iso')">等轴</button>
+        <button class="is3d-btn" :class="{ active: view === 'front' }" @click="setView('front')">侧视</button>
+        <button class="is3d-btn" :class="{ active: view === 'top' }" @click="setView('top')">顶视</button>
+        <button class="is3d-btn" :class="{ active: autoSpin }" @click="toggleAutoSpin">缓动自转</button>
+        <span class="is3d-group-label">渲染</span>
+        <button class="is3d-btn" :class="{ active: renderStyle === 'surface' }" @click="renderStyle = 'surface'; requestRender()">光照曲面</button>
+        <button class="is3d-btn" :class="{ active: renderStyle === 'wireframe' }" @click="renderStyle = 'wireframe'; requestRender()">霓虹网格</button>
+        <span class="is3d-group-label">叠加</span>
         <button class="is3d-btn" :class="{ active: showPaths }" @click="toggle('paths')">参考路径</button>
         <button class="is3d-btn" :class="{ active: showFrontier }" @click="toggle('frontier')">梯度线</button>
         <button class="is3d-btn" :class="{ active: showDirty }" @click="toggle('dirty')">不可行格</button>
+        <button class="is3d-btn" :class="{ active: showFloorContours }" @click="showFloorContours = !showFloorContours; requestRender()">底面投影</button>
         <button class="is3d-btn" @click="setView('iso')">重置</button>
       </div>
     </div>
@@ -146,8 +153,24 @@ const view = ref<"iso" | "front" | "top">("iso")
 const yaw = ref(38)
 const pitch = ref(26)
 const zoom = ref(1)
+/**
+ * 图像设置：与资源利用率页那张 3D 响应面（`ResponseSurface3D`）同一套——
+ * 用户口径 2026-10-19「他的图像设置你不能直接套用么」。
+ *
+ * - 视角三档（等轴 / 顶视 / 侧视）+ 缓动自转：看形状与看局部各取所需
+ * - 渲染样式：光照曲面（默认，靠明暗读高度）/ 霓虹网格（读格子边界，脏格更清楚）
+ * - 底面投影：把等高线画到地面，俯视时不丢信息
+ */
+const autoSpin = ref(false)
+const renderStyle = ref<"surface" | "wireframe">("surface")
+const showFloorContours = ref(true)
+function toggleAutoSpin() {
+  autoSpin.value = !autoSpin.value
+  requestRender()
+}
 function setView(v: "iso" | "front" | "top") {
   view.value = v
+  autoSpin.value = false
   if (v === "iso") { yaw.value = 38; pitch.value = 26 }
   else if (v === "front") { yaw.value = 0; pitch.value = 8 }
   else { yaw.value = 0; pitch.value = 88 }
@@ -223,6 +246,11 @@ function drawFrame(ctx: CanvasRenderingContext2D) {
   const s = activeSeries.value
   ctx.clearRect(0, 0, w, h)
   drawFloor(ctx, cx, cy, scale)
+  // 缓动自转：每帧推进方位角并请求下一帧（停止时自然不再排队）
+  if (autoSpin.value) {
+    yaw.value = (yaw.value + 0.35) % 360
+    requestRender()
+  }
   if (!s) return
   const nx = s.counts.length
   const ny = s.ratios.length
@@ -253,16 +281,52 @@ function drawFrame(ctx: CanvasRenderingContext2D) {
     }
   }
   quads.sort((a, b) => a.depth - b.depth)
+  /**
+   * 两种渲染样式（用户口径：套用资源利用率页那张 3D 图的图像设置）：
+   * - `surface`：填充 + 极淡描边 ⇒ 靠明暗读高度，形状最连续；
+   * - `wireframe`：只描边不填充 ⇒ 读格子边界，脏格/断崖的位置更清楚（与底色叠加不糊）。
+   */
+  const wire = renderStyle.value === "wireframe"
   for (const q of quads) {
     ctx.beginPath()
     ctx.moveTo(q.pts[0]!.sx, q.pts[0]!.sy)
     for (let i = 1; i < q.pts.length; i++) ctx.lineTo(q.pts[i]!.sx, q.pts[i]!.sy)
     ctx.closePath()
-    ctx.fillStyle = q.fill
-    ctx.fill()
-    ctx.strokeStyle = "rgba(0,0,0,0.10)"
-    ctx.lineWidth = 0.5
+    if (!wire) {
+      ctx.fillStyle = q.fill
+      ctx.fill()
+      ctx.strokeStyle = sceneInk(0.10)
+      ctx.lineWidth = 0.5
+      ctx.stroke()
+    } else {
+      ctx.strokeStyle = q.fill
+      ctx.lineWidth = 0.8
+      ctx.stroke()
+    }
+  }
+
+  /**
+   * 底面投影：把**干净边界**（每档合轴下还能加到几次交互）投到地面。
+   *
+   * 不是等高线——本面真正要读的「边界」是可行域边缘，投到地面后俯视也读得出来；
+   * 画在 z=0 平面上（贴地），不与曲面本身抢视线。
+   */
+  if (showFloorContours.value) {
+    ctx.setLineDash([3, 3])
+    ctx.strokeStyle = sceneInk(0.35)
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    s.cleanLimitByRatio.forEach((lim, ri) => {
+      if (lim < 0) return
+      const ci = s.counts.indexOf(lim)
+      if (ci < 0) return
+      const t = cellXYZ(s, ci, ri)
+      // 贴地：z 传 0 ⇒ 投到 z=0 平面
+      const p = project(t.wx, t.wy, 0, cx, cy, scale)
+      if (ri === 0) ctx.moveTo(p.sx, p.sy); else ctx.lineTo(p.sx, p.sy)
+    })
     ctx.stroke()
+    ctx.setLineDash([])
   }
 
   if (showDirty.value) {
@@ -449,6 +513,12 @@ function onWheel(e: WheelEvent) {
 .is3d-chip { padding: 2px 10px; border-radius: 10px; cursor: pointer; font-size: 12px;
   border: 1px solid var(--app-border); color: var(--app-text-dim); }
 .is3d-chip.on { border-color: var(--app-primary); color: var(--app-primary); }
+.is3d-group-label {
+  color: var(--fg-3);
+  font-size: var(--text-sm);
+  margin-left: var(--space-3);
+  margin-right: var(--space-1);
+}
 .is3d-btns { display: flex; gap: 4px; flex-wrap: wrap; }
 .is3d-btn { padding: 2px 8px; font-size: 12px; border-radius: 4px; cursor: pointer;
   border: 1px solid var(--app-border); background: transparent; color: var(--app-text-dim); }

@@ -26,7 +26,7 @@ const TEAM_ID = 'banyue-liuyin-lucia'
  *   与生产路径同口径，才能锁住「非般岳队不出现格挡/双反」这条判据。
  */
 async function withFixture(
-  fn: (r: ReturnType<typeof runInteractionSweep>, ctx: Parameters<Parameters<typeof withAnalysisScenario>[0]>[0]) => void,
+  fn: (r: Awaited<ReturnType<typeof runInteractionSweep>>, ctx: Parameters<Parameters<typeof withAnalysisScenario>[0]>[0]) => void,
   keys?: readonly (typeof SWEEP_INTERACTION_KEYS)[number][],
   maxCount = 8,
 ) {
@@ -36,11 +36,13 @@ async function withFixture(
   const boss = (data.bosses ?? []).find((b: BossPreset) => b.id === '30041')!
   const phase = (boss.phases.find(p => p.modeType === 'critical_assault') ?? boss.phases[0]!) as BossPresetPhase
   const preset = teamPresets.find(p => p.id === TEAM_ID)!
-  await withAnalysisScenario(s => {
+  await withAnalysisScenario(async s => {
     applyBossRoom(s.config, boss, phase)
     applyTeamToStore(s.config, preset)
     applyAxisBinding(s.config, s.config.getAxisState(), preset)
-    fn(runInteractionSweep(s, { preset, boss, phase, maxCount, ...(keys ? { keys } : {}) }), s)
+    // 采样器自 2026-10-19 起是**异步分片**（每格让出主线程，防页面卡死）⇒ 必须 await
+    const result = await runInteractionSweep(s, { preset, boss, phase, maxCount, ...(keys ? { keys } : {}) })
+    fn(result, s)
   })
 }
 

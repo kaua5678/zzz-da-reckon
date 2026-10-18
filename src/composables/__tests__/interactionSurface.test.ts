@@ -9,7 +9,7 @@
  * ③ **可行域形状**：合轴率越高，干净格能容纳的交互次数越多（用户描述「先拉合轴再拉交互」的机器面）；
  * ④ **帕累托前沿单调**：`frontier` 沿 (ratio, count) 升序扫描时伤害**严格递增**、两项都不回头；
  * ⑤ **反空洞**：面上确实存在「不干净」的格（否则第 ③④ 条对「离散分支」零判别力），
- *    且两条参考路径的收益**不同号**（实测 r=0 时先交互会掉下去——这正是本页要说明的事）。
+ *    且「先交互」的**途中最低点**严格低于「先合轴」（两条路径终点相同 ⇒ 只能比途中掉多深）。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -24,7 +24,7 @@ import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 const TEAM_ID = 'banyue-liuyin-lucia'
 
 async function withSurface(
-  fn: (r: ReturnType<typeof runInteractionSurface>, s: Parameters<Parameters<typeof withAnalysisScenario>[0]>[0]) => void,
+  fn: (r: Awaited<ReturnType<typeof runInteractionSurface>>, s: Parameters<Parameters<typeof withAnalysisScenario>[0]>[0]) => void,
 ) {
   const { catalog } = await setupHarness(['', '', ''], { productionBasicWeights: true })
   await catalog.loadBuildRecommendations()
@@ -32,11 +32,13 @@ async function withSurface(
   const boss = (data.bosses ?? []).find((b: BossPreset) => b.id === '30041')!
   const phase = (boss.phases.find(p => p.modeType === 'critical_assault') ?? boss.phases[0]!) as BossPresetPhase
   const preset = teamPresets.find(p => p.id === TEAM_ID)!
-  await withAnalysisScenario(s => {
+  await withAnalysisScenario(async s => {
     applyBossRoom(s.config, boss, phase)
     applyTeamToStore(s.config, preset)
     applyAxisBinding(s.config, s.config.getAxisState(), preset)
-    fn(runInteractionSurface(s, { preset, boss, phase, maxCount: 12, countStep: 2, ratioSteps: 4 }), s)
+    // 采样器自 2026-10-19 起是**异步分片**（每格让出主线程，防页面卡死）⇒ 必须 await
+    const surface = await runInteractionSurface(s, { preset, boss, phase, maxCount: 12, countStep: 2, ratioSteps: 4 })
+    fn(surface, s)
   })
 }
 

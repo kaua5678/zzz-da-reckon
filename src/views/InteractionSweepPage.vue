@@ -49,6 +49,7 @@
         </div>
         <div class="ctl-field">
           <n-button type="primary" size="small" :loading="computing" @click="runSweep">计算</n-button>
+          <n-button v-if="computing" size="small" quaternary @click="cancel">取消</n-button>
         </div>
         <div class="ctl-field ctl-hint">
           <span class="ctl-label">
@@ -56,6 +57,11 @@
             起点 = 你当前配置里该交互的次数（不是全 0）——这是诊断工具，看的是「在我这队上继续加会怎样」。
           </span>
         </div>
+      </div>
+
+      <div v-if="computing && sweepProgress" class="progress-row">
+        <n-progress type="line" :percentage="sweepProgress.pct" :show-indicator="false" status="info" processing />
+        <span class="progress-text">{{ sweepProgress.text }}</span>
       </div>
 
       <n-alert v-if="error" type="error" title="计算失败" style="margin-top: 8px">{{ error }}</n-alert>
@@ -84,10 +90,16 @@
         </div>
         <div class="ctl-field">
           <n-button type="primary" size="small" :loading="surfaceComputing" @click="runSurface">生成二维面</n-button>
+          <n-button v-if="surfaceComputing" size="small" quaternary @click="cancel">取消</n-button>
         </div>
         <div class="ctl-field ctl-hint">
-          <span class="ctl-label">每格一次全队求值；20 次 × 6 档 = 120 次 ≈ 40~60s。</span>
+          <span class="ctl-label">每格一次全队求值；12 次 × 4 档 = 48 次 ≈ 20~30s（采样会让出主线程，页面不会卡）。</span>
         </div>
+      </div>
+
+      <div v-if="surfaceComputing && surfaceProgress" class="progress-row">
+        <n-progress type="line" :percentage="surfaceProgress.pct" :show-indicator="false" status="info" processing />
+        <span class="progress-text">{{ surfaceProgress.text }}</span>
       </div>
       <n-alert v-if="surface?.downscaleLeak" type="warning" style="margin-top: 8px">
         弹刀反推绕过了非轴降配：设置值被缩放，但 parrySplit 用 store 原值覆盖回去 ⇒
@@ -192,6 +204,7 @@
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import { NAlert, NButton, NCard, NInputNumber, NSelect, useMessage } from 'naive-ui'
+import { useBatchOwner, type BatchProgress } from '@/composables/batchTask'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { applyAxisBinding, applyTeamToStore } from '@/composables/teamCompare'
 import { applyBossRoom } from '@/composables/bossRoom'
@@ -216,10 +229,18 @@ const result = ref<SweepResult | null>(null)
 /** 二维面（交互 × 合轴）状态 */
 const surface = ref<SweepSurface | null>(null)
 const surfaceComputing = ref(false)
+/** 批任务进度（`{pct 0-1, text}`）；页面只渲染，不参与计算 */
+const sweepProgress = ref<BatchProgress | null>(null)
+const surfaceProgress = ref<BatchProgress | null>(null)
+/**
+ * 当前运行的取消句柄。两个扫描共用一条通道（`batchTask` 的唯一取消通道 = AbortSignal）：
+ * 页面同一时刻只跑一个扫描，新的 `start` 会顶掉旧的。
+ */
+const owner = useBatchOwner()
+/** 取消当前扫描（两个按钮共用） */
+function cancel() { owner.cancel() }
 const surfaceMaxCount = ref(12)
 const surfaceRatioSteps = ref(4)
-/** 进页面自动算一次粗网格（用户口径：可视化要一打开就有图，不能是空地板） */
-const autoRan = ref(false)
 const ratioStepOptions = [
   { label: '粗 (4 档)', value: 4 },
   { label: '标准 (6 档)', value: 6 },
@@ -273,18 +294,6 @@ watch(bossId, () => {
 
 onMounted(() => { void loadBosses() })
 
-/**
- * 队伍 / Boss / 期数一齐备就自动跑一次面（只跑一次）。
- *
- * 空地板看着像坏图——可视化必须一打开就有形。首次用粗网格（12 × 4 = 48 格 ≈ 17s），
- * 用户要更细再自己调「交互扫到 / 合轴采样」点「生成二维面」。
- */
-watch([presetId, bossId, phaseId], () => {
-  if (autoRan.value || surfaceComputing.value) return
-  if (!presetId.value || !bossId.value || !phaseId.value) return
-  autoRan.value = true
-  void runSurface()
-})
 
 /** 跑一次扫描（独立场景，不污染 UI 现场） */
 async function runSweep() {
@@ -295,19 +304,28 @@ async function runSweep() {
     message.warning('先选队伍 / Boss / 期数')
     return
   }
+  const run = owner.start()
   computing.value = true
+  sweepProgress.value = { pct: 0, text: '准备中…' }
   error.value = null
   try {
-    result.value = await withAnalysisScenario(s => {
+    const res = await withAnalysisScenario(async s => {
       applyBossRoom(s.config, boss, phase)
       applyTeamToStore(s.config, preset)
       applyAxisBinding(s.config, s.config.getAxisState(), preset)
-      return runInteractionSweep(s, { preset, boss, phase, maxCount: maxCount.value })
+      return runInteractionSweep(s, {
+        preset, boss, phase,
+        maxCount: maxCount.value,
+        control: { signal: run.signal },
+        onProgress: p => { if (run.isCurrent()) sweepProgress.value = p },
+      })
     })
+    // 只有当前运行能提交结果（被新运行顶掉 / 页面已离开 ⇒ 丢弃）
+    run.commit(() => { result.value = res })
   } catch (e) {
-    error.value = (e as Error).message
+    if (run.isCurrent()) error.value = (e as Error).message
   } finally {
-    computing.value = false
+    if (run.isCurrent()) { computing.value = false; sweepProgress.value = null }
   }
 }
 
@@ -326,10 +344,12 @@ async function runSurface() {
     message.warning('先选队伍 / Boss / 期数')
     return
   }
+  const run = owner.start()
   surfaceComputing.value = true
+  surfaceProgress.value = { pct: 0, text: '准备中…' }
   error.value = null
   try {
-    surface.value = await withAnalysisScenario(s => {
+    const res = await withAnalysisScenario(async s => {
       applyBossRoom(s.config, boss, phase)
       applyTeamToStore(s.config, preset)
       applyAxisBinding(s.config, s.config.getAxisState(), preset)
@@ -338,12 +358,15 @@ async function runSurface() {
         maxCount: surfaceMaxCount.value,
         countStep: 2,
         ratioSteps: surfaceRatioSteps.value,
+        control: { signal: run.signal },
+        onProgress: p => { if (run.isCurrent()) surfaceProgress.value = p },
       })
     })
+    run.commit(() => { surface.value = res })
   } catch (e) {
-    error.value = (e as Error).message
+    if (run.isCurrent()) error.value = (e as Error).message
   } finally {
-    surfaceComputing.value = false
+    if (run.isCurrent()) { surfaceComputing.value = false; surfaceProgress.value = null }
   }
 }
 
@@ -425,6 +448,22 @@ void (0 as unknown as SweepStep)
 .ctl-hint .ctl-label {
   color: var(--fg-3);
   line-height: 1.5;
+}
+/* 批任务进度行：采样器每格让出主线程，进度条才能动；文字给「已算/总格数」 */
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-top: var(--space-4);
+}
+.progress-row :deep(.n-progress) {
+  flex: 1 1 auto;
+}
+.progress-text {
+  flex: 0 0 auto;
+  color: var(--fg-3);
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
 }
 .muted {
   color: var(--fg-3);
