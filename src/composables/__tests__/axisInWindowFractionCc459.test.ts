@@ -90,6 +90,23 @@ describe('§20.5-3 轴内失效率：同 key 多行时分母按求和（防 clam
      *    §4「负控」警告的形态。故此处如实承认覆盖对象从「般岳论道」变为「卢西娅 1451011」，
      *    并把用例名同步改名（不留「标题点名 A、实际锁 B」的错位）。
      */
+    /**
+     * ⚠ **第三次换档（2026-10-18，规则 10 四步）—— 判据逐条保留、未放宽**，档位 **0.2 → 0.4**。
+     * ① 量 delta：`r=0.2` 下「同 key 多行且有轴内扣减」2 条，但**全部 frac = 1.0**
+     *    ⇒ 判据①（`frac < 1`）红；`r=0.4` 下 multi=3、partial=1（`2:1451011` 行2 frac 0.0281）。
+     * ② 根因：**冲霄动作时间**（catalog `1471029`）2.667 → 1.167（`scripts/lib/type-bonus-time.mjs`）
+     *    ⇒ 每对金身/双反少 1.5s 前台 ⇒ 本队 180s 里腾出约 30s ⇒ 轴内块重新有「部分在窗内」的形态。
+     *    换档方向与 T165/T167 两次同型（都是「夹具档位的形态没了 ⇒ 换一档让它回来」）。
+     * ③ 确认有意：时间修正是用户口径（「正确的时间计算公式就是该 1.83」），不是回归。
+     * ④ 处置：**同时换夹具预设**——`r=0.4` 下本队仍有一条 key（`0:1471015` 论道）被整段吸收
+     *    （frac 恰好 1.0），判据①对它无判别力。扫描 6 支般岳预设 × 11 档吸收比
+     *    （`.zc/perf/findFixture.probe.test.ts`）后取 **`banyue-liuyin-lucia` @ `r=0.2`**：
+     *    唯一的多行 key = `2:1451011`（卢西娅，行 2、frac 0.0801）、其余 key 均非多行
+     *    ⇒ 判据①对**每一条**多行 key 都有判别力（本队是修正后唯一满足「全 partial」的组合）。
+     */
+    const presetForLock = teamPresets.find(x => x.id === 'banyue-liuyin-lucia')
+    expect(presetForLock, '预设 banyue-liuyin-lucia 存在').toBeTruthy()
+    applyTeamToStore(config, presetForLock!)
     config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.2)
     await tick()
 

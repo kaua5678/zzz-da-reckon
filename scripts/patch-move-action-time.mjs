@@ -23,6 +23,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { writeJsonCompact } from './lib/jsonio.mjs'
+import { inferTypeBonusFromRows, inferTypeBonusFromName, TYPE_BONUS_TOLERANCE } from './lib/type-bonus-time.mjs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -56,13 +57,23 @@ const USER_TIME_OVERRIDES = {
   1341023: 0.367, // 终结技：兔兔连斩 #2（积蓄 36.7）
 }
 
+/**
+ * 类型加成：**数据优先、名字佐证**（2026-10-18 用户口径）。
+ *
+ * 修前只看名字 ⇒ 般岳「支援突击：冲霄」（英文名 Assist Follow-Up，不含任何类型关键词）
+ * 的 150 闪反加成判不出来，时间取成 秽盾/100 = 2.667s（真实 1.167s）。
+ * 现规则 = `秽盾 − 积蓄 ∈ {150,250,500}±2` ⇒ 加成由数据直接给出；名字只在与数据冲突时
+ * 报错（全库 0 例，见 scripts/audit-type-bonus.mjs），避免静默改错别人的时间。
+ */
 function typeBonus(move) {
-  const zh = move.name?.zhCN ?? ''
-  const en = move.name?.en ?? ''
-  if (move.timeType === 'ultimate' || zh.includes('终结技') || /Ultimate/.test(en)) return 500
-  if (zh.startsWith('闪避反击') || /Dodge Counter/.test(en)) return 150
-  if (zh.startsWith('招架支援') || /Defensive Assist/.test(en)) return 250
-  return 0
+  const ether = rowValue(move, 'ether_purify')
+  const buildup = rowValue(move, 'anomaly_buildup')
+  const byData = inferTypeBonusFromRows({ etherPurify: ether, anomalyBuildup: buildup })
+  const byName = inferTypeBonusFromName(move)
+  if (byData > 0 && byName > 0 && byData !== byName) {
+    console.warn(`⚠ ${move.id} ${move.name?.zhCN ?? ''}: 数据加成 ${byData} 与名字加成 ${byName} 冲突，按数据修正；请核对秽盾/积蓄`)
+  }
+  return byData > 0 ? byData : byName
 }
 
 function rowValue(move, rowId) {
@@ -85,14 +96,22 @@ for (const skills of catalog.agentSkills ?? []) {
         const ether = rowValue(move, 'ether_purify')
         const buildup = rowValue(move, 'anomaly_buildup')
         if (bonus > 0 && ether > 0 && buildup > 0 && Math.abs(ether - buildup) <= 2) {
+          // 秽盾 ≈ 积蓄：秽盾里**没有**类型加成（数据缺口），真实时间 = 积蓄/100
           target = Math.round(buildup / 100 * 10000) / 10000
           reason = `加成缺失（秽盾${ether}≈积蓄${buildup}）→ 积蓄/100`
         } else if (bonus > 0 && ether > 0 && buildup <= 0 && ether <= bonus) {
           target = Math.round(ether / 100 * 1000) / 1000
           reason = `无加成无积蓄（秽盾${ether}≤加成${bonus}）→ 秽盾/100`
+        } else if (bonus > 0 && ether > 0 && buildup > 0 && Math.abs(ether - buildup - bonus) <= 2) {
+          // 秽盾 − 积蓄 = 类型加成：**加成确实存在**，真实时间 = (秽盾−加成)/100。
+          // 修前这里没有分支 ⇒ 走兜底 ether/100（把加成当成时间），般岳冲霄因此 2.667s（应 1.167s）。
+          target = Math.round((ether - bonus) / 100 * 10000) / 10000
+          reason = `秽盾${ether} = 积蓄${buildup} + 加成${bonus} → (秽盾−加成)/100`
         }
       }
-      if (target == null || target === before) continue
+      // 只改**实质偏差**（> 0.01s = 1 厘秒）：catalog 里大量招式是 3 位小数、按 (秽盾−加成)/100 重算
+      // 会得到 4 位小数（0.934 → 0.9337，差 0.3ms）——这类量化抖动不是修正，是噪声，不改。
+      if (target == null || Math.abs(target - before) <= 0.01) continue
       console.log(`patch ${move.id} ${move.name?.zhCN ?? ''}: ${before} → ${target}（${reason}）`)
       move.actionTime = target
       changed++

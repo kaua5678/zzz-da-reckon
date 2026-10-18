@@ -35,8 +35,9 @@ describe('轴模式 ⇒ 自动保底（嗔火 / 喧响）', () => {
   it('① 保底开关全关 + 轴态 ⇒ 仍有补齐；② 清掉轴 ⇒ 补齐归零且 store 未被写', async () => {
     // ⚠ T167 换预设：`banyue-trigger-lucia` 在本档的嗔火缺口已被「轴内连段块免费」补上
     // （见下方 T167 归因 ④）⇒ 换 `banyue-roxy-lucia`，判据逐条保留。
-    const preset = teamPresets.find(p => p.id === 'banyue-roxy-lucia')
-    expect(preset, '预设 banyue-roxy-lucia 存在').toBeTruthy()
+    // 2026-10-18：再换到 `banyue-trigger-lucia`（修冲霄时间后 roxy 档的盾差消失，归因见下方「第二次换夹具」）
+    const preset = teamPresets.find(p => p.id === 'banyue-trigger-lucia')
+    expect(preset, '预设 banyue-trigger-lucia 存在').toBeTruthy()
     const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
@@ -93,9 +94,20 @@ describe('轴模式 ⇒ 自动保底（嗔火 / 喧响）', () => {
      *    **盾0 ⇒ `{parry:0, dual:12}`（补齐 > 0）**、**盾1 ⇒ `null`（归零）**、轴行=1、退化=false。
      *    ⇒ 断言①②③（含「清轴 ⇒ 归零」）逐条保留，只换夹具参数。
      */
-    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.4)
+    /**
+     * ⚠ **第二次换夹具（2026-10-18，规则 10 四步）—— 判据逐条保留**。
+     * ① 量 delta：`r=0.4 + 金身0/双反1` 下「盾 1 ⇒ 归零」不再成立（实测盾0=盾1={0,12}）。
+     * ② 根因：**冲霄动作时间** 2.667 → 1.167（`scripts/lib/type-bonus-time.mjs`）⇒ 180s 腾出约 30s
+     *    ⇒ 怒相数 3 → 5（盾1 档）⇒ 嗔火缺口被**更多怒相自身**填掉，盾的 60 闪能不再是「补上缺口的唯一
+     *    那一下」。
+     * ③ 确认有意：时间修正是用户口径（「正确的时间计算公式就是该 1.83」），不是回归。
+     * ④ 处置 = 扫描 6 支般岳预设 × 7 档 ratio × 4 组交互（`.zc/perf/findShieldFixture.probe.test.ts`），
+     *    取 **`banyue-trigger-lucia` @ `r=0.2` + 金身0/双反0**：实测 **盾0 = {parry:0, dual:12}**、
+     *    **盾1 = {parry:0, dual:0}** —— 判据①②③（含「清轴 ⇒ 归零」）逐条不变，只换夹具档位。
+     */
+    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.2)
     config.setActionCount(0, 'blockCount', 0)
-    config.setActionCount(0, 'dualCounterCount', 1)
+    config.setActionCount(0, 'dualCounterCount', 0)
 
     config.enemy.shieldCount = 0
     await new Promise(r => setTimeout(r, 120))

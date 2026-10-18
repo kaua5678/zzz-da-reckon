@@ -319,5 +319,41 @@ check('character-mechanics has no cinemaImplementation(s) mirror (single source 
     presets.length > 0 && bad.length === 0, bad.slice(0, 8).join('; '))
 }
 
+// 判据 31（动作时间的类型加成）：秽盾（ether_purify）在录制时带按招式类型的固定加成
+// （闪反 +150 / 招架 +250 / 终结 +500），真实动作时间 = (秽盾 − 加成)/100。
+// 修前 `scripts/import-nanoka-missing.mjs` 只按**名字**判加成，般岳「支援突击：冲霄」英文名
+// `Assist Follow-Up: Pierce Heavens` 不含任何类型关键词 ⇒ 加成判 0 ⇒ 时间取 秽盾/100 = 2.667s
+// （真实 1.167s）；而倍率演算页用 `MOVE_TIME_ADJUSTMENTS` 手写 −1.5 补上 ⇒ **同一招两个页面
+// 两个时间**（用户 2026-10-18：「算的什么就展示什么，不蒙骗用户」）。
+// 现规则数据驱动、单源 `scripts/lib/type-bonus-time.mjs`；本判据锁「catalog 与规则一致」。
+// @fact engine:招式时间/类型加成 口径: 秽盾 − 积蓄 ∈ {150,250,500}±2 ⇒ 真实动作时间 = (秽盾−加成)/100（数据优先、名字佐证）；全库 94 条命中，修前仅 1471029 不一致 | 据 用户@2026-10-18 | 验 npm run validate:data | 锚 scripts/lib/type-bonus-time.mjs#inferTypeBonusFromRows | 信 确认
+// ⟳复核: nanoka 若改秽盾录制口径（不再带类型加成）或新增第 4 种加成值，须重跑 scripts/patch-move-action-time.mjs 并复核本判据命中数（当前 94 条） | 到期 2027-04-30
+{
+  const { inferTypeBonusFromRows } = await import('./lib/type-bonus-time.mjs')
+  const badTime = []
+  let checked = 0
+  for (const skills of catalog.agentSkills ?? []) {
+    for (const category of skills.categories ?? []) {
+      for (const move of category.moves ?? []) {
+        const row = id => (move.rows ?? []).find(r => r.id === id)?.values?.[0] ?? 0
+        const ether = row('ether_purify')
+        const buildup = row('anomaly_buildup')
+        const bonus = inferTypeBonusFromRows({ etherPurify: ether, anomalyBuildup: buildup })
+        if (bonus <= 0) continue
+        checked++
+        const expect = Math.round((ether - bonus) / 100 * 10000) / 10000
+        const actual = typeof move.actionTime === 'number' ? move.actionTime : NaN
+        // 容差 0.01s：catalog 有 3 位小数记录（0.934），重算得 0.9337，属量化抖动不是错
+        if (!(Math.abs(actual - expect) <= 0.01)) {
+          badTime.push(`${move.id} ${move.name?.zhCN ?? ''}: actionTime=${actual} 应为 ${expect}（秽盾${ether} = 积蓄${buildup} + 加成${bonus}）`)
+        }
+      }
+    }
+  }
+  check(`agentSkills: actionTime matches type-bonus rule (${checked} moves with type bonus)`,
+    checked > 0 && badTime.length === 0,
+    `${badTime.slice(0, 8).join('; ')} → 跑 node scripts/patch-move-action-time.mjs 重算`)
+}
+
 console.log(failed === 0 ? `\n${checks} data checks passed` : `\n${failed} data check(s) failed`)
 process.exit(failed === 0 ? 0 : 1)

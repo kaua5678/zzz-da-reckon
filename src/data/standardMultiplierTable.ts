@@ -251,14 +251,20 @@ export const MOVE_TYPE_OVERRIDES: Record<string, MoveType | 'other'> = {
 }
 
 /**
- * 定点时间修正（moveId → actionTime 增量，秒）：
- * - 1471029 般岳「支援突击：冲霄」：录制 t=2.667s 含金身格挡持盾时间，闪反公式口径需 −1.5
- *   （有效 t=1.167s）。三列同时验证：秽盾 150+100×1.167=266.7（实录精确相等）、积蓄/喧响 ≈1.000；
- *   伤害/失衡在该 t 下为 ~0.94/~0.93，属般岳自身特调，由偏差清单呈现。
+ * 定点时间修正（moveId → actionTime 增量，秒）。
+ *
+ * **当前为空**（2026-10-18 用户口径）：原唯一条目 `1471029: -1.5` 是「支援突击：冲霄」
+ * 录制含金身格挡持盾时间的补丁，只被倍率演算页消费、**资源引擎没接** ⇒ 同一招在两个页面
+ * 两个时间（页面 1.167s / 引擎 2.667s），违反「算的什么就展示什么」。现改由
+ * 数据驱动规则在 **catalog 源头**修正：`秽盾 − 积蓄 ∈ {150,250,500}±2` ⇒ `actionTime =
+ * (秽盾−加成)/100`（`scripts/lib/type-bonus-time.mjs` 单一事实源 + `validate:data` 护栏），
+ * 两个页面读同一个 `actionTime`，本表不再需要手写补丁。
+ *
+ * 保留本表：它是「公式推不出、只能用户核对」的逃生口（先例：
+ * `scripts/patch-move-action-time.mjs` 的 `USER_TIME_OVERRIDES`）。新条目必须在注释里写清
+ * 为什么数据推不出来。
  */
-export const MOVE_TIME_ADJUSTMENTS: Record<string, number> = {
-  '1471029': -1.5,
-}
+export const MOVE_TIME_ADJUSTMENTS: Record<string, number> = {}
 
 /** 招式类型级时间缩放：quickAssistLegacy 录制的 actionTime 是真实有效时间的 1/2（秽盾 50t 基准），评估时 ×2 还原 */
 export const MOVE_TYPE_TIME_SCALE: Partial<Record<MoveType, number>> = {

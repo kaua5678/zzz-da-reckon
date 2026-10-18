@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { writeJsonCompact } from './lib/jsonio.mjs'
 import { resolveMoveElements } from './lib/move-elements.mjs'
+import { inferTypeBonusFromRows, inferTypeBonusFromName } from './lib/type-bonus-time.mjs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -71,7 +72,11 @@ function actionTime(skill) {
   const ether = num(skill.ether_purify)
   const buildup = num(skill.anomaly_buildup)
   const name = skill.name || ''
-  const bonus = /Dodge Counter/.test(name) ? 150 : /Defensive Assist/.test(name) ? 250 : /Ultimate/.test(name) ? 500 : 0
+  // 类型加成：**数据优先、名字佐证**（2026-10-18）。修前只看英文名关键词，般岳「支援突击：冲霄」
+  // （Assist Follow-Up: Pierce Heavens）判 0 ⇒ 时间取 秽盾/100 = 2.667s，真实 1.167s（秽盾 = 积蓄 + 150）。
+  // 规则单源 = scripts/lib/type-bonus-time.mjs；这里只做「数据判不出时回落名字」的兼容。
+  const bonus = inferTypeBonusFromRows({ etherPurify: ether, anomalyBuildup: buildup })
+    || inferTypeBonusFromName({ name: { en: name }, timeType: '' })
   // 秽盾语义 = 动作时间×100 + 类型加成（闪反+150/弹刀+250/终结+500）。
   // 加成缺失时秽盾即裸时间、与积蓄相等：真实时间 = 积蓄/100（佩洛伊斯凯旋坦途、叶瞬光大招等）；
   // 无积蓄时 = 秽盾/100（招架支援#3 的秽盾本就是裸时间，被 -2.5 会错钳成 0.001）。
@@ -80,6 +85,11 @@ function actionTime(skill) {
   if (bonus > 0 && ether > 0) {
     if (buildup > 0 && Math.abs(ether - buildup) <= 2) return Math.round(buildup / 100 * 10000) / 10000
     if (buildup <= 0 && ether <= bonus) return Math.round(ether / 100 * 1000) / 1000
+  }
+  // 加成确实存在（秽盾 − 积蓄 = 加成）⇒ 真实时间 = (秽盾−加成)/100。
+  // 修前这里没有分支，直接落到下方「ether/100 再减类型常数」，对名字判不出类型的招式就是错的。
+  if (bonus > 0 && buildup > 0 && Math.abs(ether - buildup - bonus) <= 2) {
+    return Math.round((ether - bonus) / 100 * 1000) / 1000
   }
   let t = ether > 0 ? ether / 100 : 0
   if (/Dodge Counter/.test(name)) t -= 1.5

@@ -596,11 +596,23 @@ describe('夜D · 层③ 真管线端到端', () => {
      *    （`.zc/perf/T169nd.perf.ts` 实测 8 档：有盾档全 0；无盾 ⇒ `parry:24`）。
      *    ⚠ 该档同时是**反空洞**的更好载体（24 刀、55.992s 远离 0）。
      */
-    const cfg = await readBanyueCfg(1, 0, false, 0, { dodge: 2, parry: 2, block: 2, dual: 0 })
-    // 整数/布尔三字段逐字相等；`requiredSeconds` 是浮点乘积（24 刀 × 2.333s）⇒ 用 toBeCloseTo
-    // （`55.992` 的二进制表示为 55.992000000000004，逐字相等会假红）
-    expect(cfg).toMatchObject({ parry: 24, dual: 0, illegal: false })
-    expect(cfg?.requiredSeconds).toBeCloseTo(55.992, 6)
+    /**
+     * ⚠ **2026-10-18 换档（规则 10 四步）—— 判据语义仍是「模块写入 → cfg 可见」**。
+     * ① 量 delta：T169 选定的档（`readBanyueCfg(1,0,false,shield0,{2,2,2,0})`）由
+     *    `{parry:24, req:55.992}` 变为 **`{parry:0, req:0}`**；
+     *    同参数**关掉 stunPlanProjection**（第 3 参 `true`）⇒ **`{parry:5, dual:24, req:55.657}`**。
+     * ② 根因：**冲霄动作时间** 2.667 → 1.167（`scripts/lib/type-bonus-time.mjs`）⇒ 180s 里腾出约 30s
+     *    ⇒ 轴内需求被自身覆盖，喧响缺口消失；只剩「关掉 stunPlanProjection（计数通道退回计划值）」
+     *    这一档仍造得出缺口（实测 `.zc/perf/scanTopup.probe.test.ts` 扫 12 组合：
+     *    唯一非零档 = `off=true`，其余全 `{0,0,0,false}`）。
+     * ③ 确认有意：时间修正是用户口径（「正确的时间计算公式就是该 1.83」），不是回归。
+     * ④ 处置：换到 `off=true` 档，锚值按实测更新（`parry:5, dual:24, req:55.657`）；
+     *    「保底全关 ⇒ 全 0」的**反向锁**不变（`gu=0` 各档实测仍全 0）。
+     */
+    const cfg = await readBanyueCfg(1, 0, true, 0, { dodge: 2, parry: 2, block: 2, dual: 0 })
+    // 整数/布尔三字段逐字相等；`requiredSeconds` 是浮点乘积（5 刀×2.333 + 24 刀×1.833）⇒ 用 toBeCloseTo
+    expect(cfg).toMatchObject({ parry: 5, dual: 24, illegal: false })
+    expect(cfg?.requiredSeconds).toBeCloseTo(55.657, 6)
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 9 不是恒写）', async () => {

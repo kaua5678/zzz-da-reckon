@@ -488,6 +488,14 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
      *
      * ⚠ **T162 归因（怒相 4 → 5，规则 10 四步）**：
      * ① 量 delta：`rageCount` 4 → **5**，`flashIncome` 580 → **680**。
+     *
+     * ⚠ **2026-10-18 回摆（4 / 640，规则 10 四步）**：`rageCount` 5 → **4**、`flashIncome` 680 → **640**。
+     * ① 量 delta：本夹具（`blockCount` 20 未变）挤压臂从 **trim=0** 变成 **trim=3**（见下方 squeeze 断言），
+     *    削掉 3 组自动连段 ⇒ 闪能支出 640 → 340 的差额回到嗔火 ⇒ 598 嗔火 < 600 门槛。
+     * ② 根因：**冲霄动作时间**（catalog `1471029`）2.667 → 1.167（`scripts/lib/type-bonus-time.mjs`）⇒
+     *    金身/双反每对少 1.5s 前台 ⇒ 180s 里让出约 30s，挤压臂不再需要「全都不削」。
+     * ③ 确认有意：时间修正本身是用户口径（「正确的时间计算公式就是该 1.83」），不是回归。
+     * ④ 本锚同步更新。
      * ② 根因：**秽盾破后送的 60 闪能此前没进嗔火公式** —— 般岳的 `flashBase` 原写死
      *    `2/s × battleTime + 60`，漏掉引擎早已算出的 `shieldBreakGift`
      *    （`core/resource/resourceIncome.ts#SHIELD_BREAK_GIFT = 60`）。本夹具走 store 缺省
@@ -498,13 +506,13 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
      *    —— 这条口径此前在引擎里**表达不出来**（实测有盾/无盾嗔火恒等）。
      * ④ 本锚按新口径更新（`580 → 680` 与 `4 → 5` 同步）。
      */
-    expect(cycle.rageCount).toBe(5)
+    expect(cycle.rageCount).toBe(4)
     expect(cycle.axisInComboCount).toBe(4)
     expect(outStunRageGroups).toBe(2)
     expect(Math.ceil(outStunRageGroups / 2)).toBe(1)
     expect(cycle.outStunComboCount).toBe(cycle.comboOutCount + outStunRageGroups)
     expect(cycle.axisExSpend).toBe(160)
-    expect(cycle.flashIncome).toBe(680)
+    expect(cycle.flashIncome).toBe(640)
     expect(cycle.comboOutCount).toBe(8)
     expect(cycle.flashSpent).toBe(640)
     expect(cycle.flashSpent).toBe(inStunFlash + outStunFlash)
@@ -1267,7 +1275,10 @@ describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
     const { config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     const catalog = useCatalogStore()
     await catalog.loadBuildRecommendations()
-    const preset = teamPresets.find(p => p.id === 'banyue-jufufu-lucia')!
+    // ⚠ 2026-10-18 夹具再换：修「冲霄动作时间」（2.667 → 1.167）后，180s 里让出约 30s，
+    // **jufufu 不再需要挤压**（trim 0，实测 59.758M）——夹具改取 **norma**（修正后唯一仍 trim=1 的预设，
+    // 实测 81.172M / net 181.38）。判据形状不变：轴保住 + 真的削了 + 削到装得下。
+    const preset = teamPresets.find(p => p.id === 'banyue-norma-lucia')!
     const baseAxis = config.getAxisState()
     applyTeamToStore(config, preset)
     applyGoldToStore(config, preset, baseGoldOf(preset))
@@ -1285,8 +1296,8 @@ describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
     // 般岳的怒相外连段确实被削了（模块侧读数与引擎读数同源）
     const b = rr.characters.find(c => c.agentId === '1471') as unknown as { banyueRageCycle?: { comboOutCount: number } } | undefined
     expect(b?.banyueRageCycle?.comboOutCount, '般岳连段数被削减').toBeDefined()
-    // T169 实测：本队 trim=1、保轴后 53.1522M（丢轴态 46.635M，见 `.zc/perf/T168wsweep`）
-    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害显著高于丢轴态（46.635M）').toBeGreaterThan(50)
+    // 2026-10-18 实测：norma trim=1、保轴后 81.172M（net 181.38 → 削到装得下）
+    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害落在实测档位（81.172M）').toBeGreaterThan(75)
   })
 })
 
@@ -1386,11 +1397,15 @@ describe('T167 轴内连段块闪能账 + 救援臂入场判据（规则 5 生�
     const { config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     const catalog = useCatalogStore()
     await catalog.loadBuildRecommendations()
+    // ⚠ 2026-10-18：修冲霄时间后，该队**默认交互**下 trim=0（90.745M / net 179.23，本来就装得下）
+    // ⇒ 反空洞断言会退化成同义反复。夹具把金身抬到 20（实测 trim=3、保轴 84.448M / net 180.62），
+    // 让它重新回到「靠削才保住的临界」——**抬交互而不是改判据**，判据形状不变。
     const preset = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')!
     const baseAxis = config.getAxisState()
     applyTeamToStore(config, preset)
     applyGoldToStore(config, preset, baseGoldOf(preset))
     applyAxisBinding(config, baseAxis, preset)
+    config.setActionCount(0, 'blockCount', 20)
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 250))
     const rr = calc.resourceResult.value!
@@ -1398,7 +1413,7 @@ describe('T167 轴内连段块闪能账 + 救援臂入场判据（规则 5 生�
     expect(rr.convergence.axisAutoTrimmed ?? 0,
       '反空洞：本夹具必须真的触发挤压臂（否则断言退化成「本来就装得下」）').toBeGreaterThan(0)
     expect(netFrontlineOccupation(rr), '削到装得下才采纳').toBeLessThanOrEqual(180 + 2)
-    // 对照实测：丢轴态 71.496M / 保轴态 76.216M ⇒ 取显著高于丢轴态的门槛
-    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害显著高于丢轴态（71.496M）').toBeGreaterThan(74)
+    // 2026-10-18 实测：金身 20 档 trim=3、保轴 84.448M（丢轴态见同探针 72.08M@blockCount=26）
+    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害落在实测档位（84.448M）').toBeGreaterThan(78)
   })
 })
