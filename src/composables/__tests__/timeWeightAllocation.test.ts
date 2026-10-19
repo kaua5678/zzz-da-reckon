@@ -512,16 +512,51 @@ describe('平A池权重·分配策略', () => {
      *    —— 用户判断正确，这就是那个「其他因素」。
      * ④ **判据处置**：恢复「抬满后后摇归零」（`recAfter === 0`），其余断言全部保留。
      */
-    const recAfter = calc.resourceResult.value!.characters.find(c => c.slot === 0)!.banyueRageCycle!.comboOutRecoveryCount
-    expect(recAfter, 'joint 抬满后后摇应归零（T172 起与「总伤不降」不再冲突）').toBe(0)
-    expect(recAfter, 'joint 必须真的取消掉后摇（杠杆生效）').toBeLessThan(recBefore)
-    expect(tauntAfter, '停在有效上限而非 99（越过封顶是空操作，不该录取）').toBeLessThanOrEqual(recBefore)
-    // ③ 时间面确实回收：后摇恢复行数 == 剩余后摇次数（行与读数同源）。
+    /**
+     * ⚠ **2026-10-19 撤回「归零」判据（改回 T172 之前的形态；规则 10 四步）**。
+     *
+     * ① 量 delta：`recAfter` **0 → 3**（`taunt` 2、`parry` 6 → 8、`outStun` 2 → 5、`combo` 2 → 3），
+     *    伤害 **60.998M → 63.767M（+2.77M）**。
+     * ② 根因：「归零」这条断言的前提是「joint 只抬 taunt」——实测**不成立**：joint 同轮还把
+     *    `parryCount` 6 → 8（弹刀阶梯），而那会**真的多打出连段**（`outStun 2 → 5`）⇒ 后摇**基数**
+     *    从 2 涨到 5，taunt 抬到 2 只抹掉 2 个 ⇒ 剩 3。断言拿「基数不变的绝对 0」当判据，
+     *    等于要求「抬 taunt 的同时不许动别的杠杆」，那不是本用例要锁的东西。
+     *    逐档实测（`.zc/perf/jointTaunt.perf.ts`，固定其余输入只动 taunt）：
+     *    ```
+     *    taunt | rec | dmg      | 必要前台
+     *      0   |  2  | 61.3552M | 225.350s
+     *      1   |  1  | 61.3972M | 224.833s
+     *      2   |  0  | 61.4393M | 224.316s   ← 杠杆本身仍然单调、仍然能归零
+     *    ```
+     *    ⇒ 杠杆没坏，坏的是「在 joint 组合里断言绝对 0」这个写法。
+     * ③ 确认有意：`rec=3` 的那份计划**伤害更高**（63.767 vs 61.439），joint 选它是对的。
+     * ④ 判据处置：改成**引擎自己的恒等式**（与「基数」无关，因而与 joint 动了哪些杠杆无关）：
+     *    `后摇 = 失衡外连段数 − 嘲讽取消数`（`comboOutRecovery = outStun − taunt`，见
+     *    `computeBanyueRageCycle` 末尾那段），外加「取消数被夹到失衡外连段数」。
+     *    「后摇归零」这条只在「其余输入不动」的纯函数层面成立（上面的逐档表已覆盖），
+     *    不再在 joint 组合断言里表达。
+     */
+    const cycleAfter = calc.resourceResult.value!.characters.find(c => c.slot === 0)!.banyueRageCycle!
+    const recAfter = cycleAfter.comboOutRecoveryCount
+    expect(recAfter, '后摇 = 失衡外连段 − 嘲讽取消（引擎恒等式）')
+      .toBe(cycleAfter.outStunComboCount - cycleAfter.tauntCancelCount)
+    expect(cycleAfter.tauntCancelCount, '取消数被夹到失衡外连段数（不虚高）')
+      .toBeLessThanOrEqual(cycleAfter.outStunComboCount)
+    expect(cycleAfter.tauntCancelCount, '杠杆真的抬了（>入口 0）').toBeGreaterThan(0)
+    // ③ 时间面确实回收：后摇恢复行**计入的秒数** == 剩余后摇次数 × 末尾强特时长（行与读数同源）。
     // ⚠ 不拿「必要前台总量下降」当判据：joint 里 ② 弹刀阶梯同时在加交互时间，两者叠加后总量可能反升
     // （实测 202.665→205.818s），拿总量比会把弹刀的账算到嘲讽取消头上。
-    const recRows = (calc.resourceResult.value!.characters.find(c => c.slot === 0)!.executions ?? [])
-      .filter(e => e.moveId?.startsWith('banyue-recovery'))
-    expect(recRows.length, '后摇恢复行数应等于剩余后摇次数（行与读数同源）').toBe(recAfter)
+    // ⚠ 也**不拿「行条数」当判据**（2026-10-19）：`buildBanyueExecutions` 按**连段类型**出行
+    // （论道后摇 / 地动山摇后摇各至多一行、行上带 `count`），所以行数 ∈ {0,1,2} 与 recAfter 无关；
+    // 旧断言在 `recAfter === 1` 时恰好成立（单类型单行），本批 joint 组合变成 3 才暴露。
+    // 判据改为「Σ 行秒数 == recAfter × 对应末尾强特时长」——这才是「行与读数同源」的真正表达。
+    const execsAfter = calc.resourceResult.value!.characters.find(c => c.slot === 0)!.executions ?? []
+    const recRows = execsAfter.filter(e => e.moveId?.startsWith('banyue-recovery'))
+    const recSeconds = recRows.reduce((s, e) => s + (e.totalTime ?? 0), 0)
+    const perRecovery = recRows.reduce((s, e) => s + (e.actionTime ?? 0) * (e.count ?? 0), 0)
+    expect(recSeconds, '恢复行计入的秒数 == 各自的 次数×时长（行内自洽）').toBeCloseTo(perRecovery, 6)
+    expect(recRows.reduce((s, e) => s + (e.count ?? 0), 0), '恢复行**次数合计** == 剩余后摇次数（行与读数同源）')
+      .toBe(recAfter)
     expect(calc.teamTotalDamage.value, '总伤不降（联合搜索单调不劣）').toBeGreaterThanOrEqual(dmgBefore - 1e-6)
     // ④ 非般岳队零影响：能力声明驱动（不认 agentId），无该声明的队杠杆槽位为空
     const { catalog: c2, config: cfg2 } = await setupHarness(['', '', ''] as never, { recommendedBuild: false } as never)

@@ -736,6 +736,19 @@ export function axisMoveEndsStunWindow(agentId: string | undefined, moveId: stri
   return !!(agentId && getAgentMechanic(agentId)?.endsStunWindow?.(moveId, cinemaLevel))
 }
 
+/**
+ * **决算块施放时的窗口延长秒数**（佩洛伊斯·永陷幽囚 3s，2026-10-20）：按本槽角色派发模块能力
+ * `stunWindowExtendOnEnd`。无该能力 / 返回 ≤ 0 ⇒ 0（不延长，其余角色逐位不变）。
+ *
+ * 与 `axisMoveEndsStunWindow` 的分工：那个回答「这一招结束窗口吗」，本函数回答
+ * 「结束时把窗口放宽多少秒让这一招打得完」。佩洛伊斯两者都有。
+ */
+export function axisMoveExtendOnEndOf(agentId: string | undefined, moveId: string, cinemaLevel: number): number {
+  const fn = agentId ? getAgentMechanic(agentId)?.stunWindowExtendOnEnd : undefined
+  const v = fn ? fn(moveId, cinemaLevel) : 0
+  return Number.isFinite(v) && v > 0 ? v : 0
+}
+
 /** CC-39b：轴块动作时长兜底，按本槽角色派发模块能力 `axisMoveActionTime`；无此能力 ⇒ 原值。 */
 export function axisMoveActionTimeOf(agentId: string | undefined, moveId: string, actionTime: number): number {
   const fn = agentId ? getAgentMechanic(agentId)?.axisMoveActionTime : undefined

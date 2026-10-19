@@ -42,6 +42,14 @@ export interface BanyueRageCycle {
   furyTotal: number
   /** 怒相外连段总数（论道连段 + 地动山摇连段，闪能支付 60/组，自动 = floor(剩余闪能/60)） */
   comboOutCount: number
+  /**
+   * 余数单发的**论道**次数（0~2；用户口径 2026-10-19「剩余不够 60 的只能打 0-2 次 20 能量的了」）。
+   *
+   * 连段打满后的余数 `spare ∈ [0, 60)` 按 20/次花掉——40 的狮子吼·怒**不能单放**（必须紧跟论道）
+   * ⇒ 余数只可能换成论道。`flashSpent` 已含这部分（`+ lunDaoSpareCount × 20`），
+   * 执行行/时间账/强特次数各自读它，不要再自己 `floor(余数/20)`。
+   */
+  lunDaoSpareCount: number
   /** 怒相外「地动→山摇·怒」连段组数（滑块分配，默认 0 = 全打论道连段） */
   diDongComboCount: number
   /** 失衡轴内捏的普通强特消耗的总闪能（默认 0，轴模式由捏轴反馈；连段块免费不计） */

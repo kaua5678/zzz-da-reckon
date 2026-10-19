@@ -98,6 +98,17 @@ export interface StackTraversalInput {
    * 「升级轴…**有资源就优先，没有就放过**」一致。
    */
   goodReview?: number
+  /**
+   * **决算块的窗口延长秒数**（佩洛伊斯·永陷幽囚；2026-10-20 用户口径两条简化）。
+   *
+   * 返回 > 0 ⇒ 该窗口的**有效时长** = `windowDuration + N`：
+   * ① 该块整段算在窗内（不做跨界小数——「大招在最后不会出窗口」）；
+   * ② 该块结束即窗口结束（「大招后立即决算不用算窗口时间」），不再向后延。
+   *
+   * 由编排层按**本槽角色模块能力** `stunWindowExtendOnEnd` 派发后传入（引擎不认 id，判据 26）；
+   * 缺省 / 返回 0 ⇒ 逐位不变。
+   */
+  extendOnEndOf?: (slot: number, moveId: string) => number
 }
 
 /**
@@ -497,6 +508,22 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     // 窗口终结（决算）：执行过 endsStunWindow 动作后，窗口剩余失衡时间被清空（截断结束时刻取最晚）
     let windowTruncEnd = -1
 
+    /**
+     * **决算块的有效窗口时长**（佩洛伊斯·永陷幽囚，2026-10-20 用户口径两条简化）：
+     * ① 「大招在最后不会出窗口，不计算跨窗易伤」⇒ 该块 `fits` 恒 1（不做跨界小数）；
+     * ② 「大招后立即决算不用算窗口时间」⇒ 窗口有效结束时刻 = 该块结束时刻（不再向后延）。
+     *
+     * 实现：进入本窗口时先扫一遍，若含 `stunWindowExtendOnEnd` 声明的块，则把**有效窗口时长**
+     * 放宽 N 秒（让它在窗尾也能整段打进窗口），并把 `windowTruncEnd` 记到该块结束处。
+     * 无该声明的角色 ⇒ `effectiveWindowDuration === windowDuration`，逐位不变。
+     */
+    let effectiveWindowDuration = windowDuration
+    for (const act of window.actions) {
+      if (!act.endsStunWindow) continue
+      const extend = Math.max(0, input.extendOnEndOf?.(act.slot, act.moveId) ?? 0)
+      if (extend > 0) { effectiveWindowDuration = windowDuration + extend; break }
+    }
+
     for (const act of window.actions) {
       for (let i = 0; i < act.count; i++) {
         const used = slotTime[act.slot] ?? 0
@@ -518,9 +545,11 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
          * ——理由见 `ExecutedMoveCount` 头注释。
          * ⚠ 例外不变：窗口终结动作（佩洛伊斯决算）无视时间阀门，恒整段吃满。
          */
+        // ⚠ 用 `effectiveWindowDuration`（含决算块的窗口延长）：佩洛伊斯决算块按用户口径
+        // 「大招在最后不会出窗口」⇒ 它总能整段打进窗内（fits = 1）。
         const fits = act.endsStunWindow || act.actionTime <= 0
           ? 1
-          : Math.max(0, Math.min(1, (windowDuration - used) / act.actionTime))
+          : Math.max(0, Math.min(1, (effectiveWindowDuration - used) / act.actionTime))
         // 窗口剩余为负（前序动作把该槽位撑爆）⇒ 一点都进不了窗口：按整段跳过（与旧口径同形态）
         if (fits <= 0 && !act.endsStunWindow && act.actionTime > 0) {
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'time' })
@@ -617,7 +646,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
       // 兜底平A：从该槽位最后一个动作的结束时刻填到窗口结束（窗口有富余才填）。
       // 动作之间的空隙（startTime 留白）不算平A——平A只补「最后一个动作之后」的富余。
       const end = slotMaxEnd[window.basicFillerSlot] ?? 0
-      const fillSec = Math.max(0, windowDuration - end)
+      const fillSec = Math.max(0, effectiveWindowDuration - end)
       basicFillSeconds += fillSec
       basicFillBySlot[window.basicFillerSlot] = (basicFillBySlot[window.basicFillerSlot] ?? 0) + fillSec
     }

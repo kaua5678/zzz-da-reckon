@@ -106,6 +106,16 @@ interface GoldenEntry {
   dmg: string
   /** 失衡次数（池答案） */
   stun: number
+  /**
+   * 单次失衡窗口时长（秒）——**必须入快照**（2026-10-20 补）。
+   *
+   * 为什么：`slots` 里的 7 个字段（ex/ult/chain/basic/nec/front/back）**没有一个记录窗口时长**，
+   * 于是「窗口时长变了」这件事在时间账上**完全不可见**。实测代价：给洛克茜补上原文的
+   * 「失衡时长 +2s」（`applyRoxyPanel`，此前只在注释里）后，`agent:1621:c*` 的 `stun` 1→2、
+   * 伤害 +1.0~1.6%，而 `slots`/`slack`/`over` **逐位不变** ⇒ 被 R23-N2 判据当成
+   * 「纯伤害回归」**判红**——而它其实是有意的机制修正。补上本字段后该类改动可被正确归类。
+   */
+  windowDur: string
   /** 留白 / 超预算（3 位） */
   slack: string
   over: string
@@ -162,6 +172,11 @@ export function diffEntry(
   const info: string[] = []
   const num = (x: string) => Number(x)
   if (a.stun !== b.stun) out.push(`${key}.stun: ${a.stun} → ${b.stun}`)
+  // 窗口时长是**时间账**的一部分（决定失衡窗口占用多少秒），必须参与硬判据——
+  // 否则「窗口时长变了」在 `slots`/`slack`/`over` 上可能逐位不变，被误判成「纯伤害回归」。
+  // 老基线条目无此字段 ⇒ 用 `?? ''` 兜底（首轮重生成后自然补齐）。
+  const aw = a.windowDur ?? ''
+  if (aw !== b.windowDur) out.push(`${key}.windowDur: ${aw || '(无)'} → ${b.windowDur}`)
   if (a.slack !== b.slack) out.push(`${key}.slack: ${a.slack} → ${b.slack} (${(num(b.slack) - num(a.slack)).toFixed(3)})`)
   if (a.over !== b.over) out.push(`${key}.over: ${a.over} → ${b.over} (${(num(b.over) - num(a.over)).toFixed(3)})`)
   const n = Math.max(a.slots.length, b.slots.length)
@@ -240,6 +255,7 @@ describe('时间系统 golden 快照（重构等价性验收面）', () => {
       measured[`preset:${p.id}`] = {
         dmg: String(Math.round(calc.teamTotalDamage.value)),
         stun: calc.stunPoolResult.value?.stunCount ?? 0,
+        windowDur: (calc.windowDuration?.value ?? 0).toFixed(3),
         slack: Math.max(0, t.slack).toFixed(3),
         over: Math.max(0, -t.slack).toFixed(3),
         slots: rr!.characters.map(c => slotSig(c as never)),
@@ -264,6 +280,7 @@ describe('时间系统 golden 快照（重构等价性验收面）', () => {
         measured[`agent:${agentId}:c${cinemaLevel}`] = {
           dmg: String(Math.round(calc.teamTotalDamage.value)),
           stun: calc.stunPoolResult.value?.stunCount ?? 0,
+          windowDur: (calc.windowDuration?.value ?? 0).toFixed(3),
           slack: Math.max(0, t.slack).toFixed(3),
           over: Math.max(0, -t.slack).toFixed(3),
           slots: rr!.characters.map(c => slotSig(c as never)),
@@ -322,7 +339,7 @@ describe('时间系统 golden 快照（重构等价性验收面）', () => {
  */
 describe('diffEntry 归类（R23-N2：dmg → fail 的两侧判据）', () => {
   const base: GoldenEntry = {
-    dmg: '1000', stun: 3, slack: '1.000', over: '0.000',
+    dmg: '1000', stun: 3, windowDur: '16.000', slack: '1.000', over: '0.000',
     slots: ['1.0000|2.0000|0.0000|10.000|20.000|30.000|40.000'],
   }
   const onlyDmg: GoldenEntry = { ...base, dmg: '1200' }

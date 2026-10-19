@@ -1026,6 +1026,29 @@ export interface AgentMechanicModule {
    */
   endsStunWindow?(moveId: string, cinemaLevel: number): boolean
   /**
+   * **本角色的「结束失衡窗口」招式在施放时，把当前窗口延长 N 秒**（佩洛伊斯·决算专属，2026-10-20）。
+   *
+   * 原文（佩洛伊斯 1551，右分支·永陷幽囚）：「**招式发动时**，使所有处于失衡状态的敌人
+   * **失衡持续时间提升 3 秒**，终结一击命中时敌人失衡结束」。
+   *
+   * ## 为什么不能像般岳/仪玄那样直接加 `panel.stunDurationBonusSeconds`
+   * 般岳（摧岳命中 → +2s）/仪玄（终结技 → +3s）/琉音/诺姆/洛克茜/南宫羽/蕾米埃尔的 +N 秒是
+   * **窗口开始时就已生效**的常驻延长（进入失衡那一刻窗口就更长）⇒ 面板级累加即可。
+   * 佩洛伊斯不同：它由**决算招式自己**在施放瞬间触发，且**同一窗口只发生一次**，
+   * 作用是「让你在窗口最后 0.1s 放大招也能打完」（用户口径 2026-10-20 逐字：
+   * 「就算你大招放在失衡的最后 0.1s，他也能触发延时让你打完大招然后触发决算」）。
+   * ⇒ 它是**条件性、按次**的窗口延长，不是常驻加成。若按面板加，会让**每一次**失衡窗口
+   * 都多 3s（而决算只发生在有决算的那些窗口），系统性高估非决算窗口的时长。
+   *
+   * ## 消费方
+   * `core/stunAxisStack.ts`：窗口内遇到 `endsStunWindow` 块时，把该窗口的**有效结束时刻**
+   * 放宽 `N` 秒（时间门 `fits` 与截断点都按 `windowDuration + N` 算）——即「这一招允许
+   * 打完，打完再结束窗口」。`convergence.ts` 的决算截断秒数同步按放宽后的窗长算。
+   *
+   * 现实现：佩洛伊斯（`1551016`，3s）。缺省 `undefined` = 不延长（其余角色逐位不变）。
+   */
+  stunWindowExtendOnEnd?(moveId: string, cinemaLevel: number): number
+  /**
    * CC-42（2026-09-27）：风化浸染「默认挑槽」时跳过本角色（首选轮排除；兜底轮仍可被选中，语义同原 `!isRemielle`）。
    * 读取方：`resourceCalc/anomalyPanels.ts#getWindInfectionTargetSlot`，按槽位 agentId 派发。现实现：蕾米埃尔。
    */

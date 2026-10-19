@@ -104,8 +104,20 @@ describe('§20.5-3 轴内失效率：同 key 多行时分母按求和（防 clam
      *    唯一的多行 key = `2:1451011`（卢西娅，行 2、frac 0.0801）、其余 key 均非多行
      *    ⇒ 判据①对**每一条**多行 key 都有判别力（本队是修正后唯一满足「全 partial」的组合）。
      */
-    const presetForLock = teamPresets.find(x => x.id === 'banyue-liuyin-lucia')
-    expect(presetForLock, '预设 banyue-liuyin-lucia 存在').toBeTruthy()
+    /**
+     * ⚠ **2026-10-19 换预设（第四次；判据逐条保留、未放宽）** —— `banyue-liuyin-lucia` → `banyue-qingyi-lucia`。
+     * ① 量 delta：`banyue-liuyin-lucia` @ `r=0.2` 的多行 key 由 `2:1451011`（frac 0.0801）变为
+     *    **frac 1.0** ⇒ 判据①（`frac < 1`）红。
+     * ② 根因：**「余数花掉」**让般岳闪能支出打满 ⇒ 轴内/轴外的时间与次数分配整体移动 ⇒
+     *    该队的卢西娅行被整段吸收进窗口（frac 顶到 1.0）。同 T165/T167/T168 三次换档同型。
+     * ③ 确认有意：用户 2026-10-19「剩余不够 60 的只能打 0-2 次 20 能量的了」。
+     * ④ 处置 = **重扫**（`.zc/perf/banyueFixtureScan.perf.ts` ③，6 支般岳预设 × 5 档吸收比）：
+     *    取 `banyue-qingyi-lucia` @ `r=0.2` —— 三条多行 key 全部 partial
+     *    （`0:1471015` 行3 / `0:1471016` 行2 / `2:1451011` 行2，frac 全 0.3707），
+     *    **判别力强于原夹具**：原档只有 1 条多行 key，本档 3 条，且含标题点名的般岳论道 `0:1471015`。
+     */
+    const presetForLock = teamPresets.find(x => x.id === 'banyue-qingyi-lucia')
+    expect(presetForLock, '预设 banyue-qingyi-lucia 存在').toBeTruthy()
     applyTeamToStore(config, presetForLock!)
     config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.2)
     await tick()

@@ -109,12 +109,40 @@ async function setupLongCyclePreset() {
    *    ⚠ 顺手划清一处旧名残留：`it()` 标题里的「auto-1041-1571-1031」是更早一版夹具的名字，
    *    而本函数在 T164 之后用的是般岳队。
    */
-  const team: [string, string, string] = ['1471', '1571', '1451']
+  /**
+   * ⚠ **2026-10-19 六次换队（判据不动，只换夹具）** —— `[1471,1571,1451]` → `[1051,1141,1451]`。
+   * ① 量 delta：原夹具长环分支调用 0 次（实测 `stable`，不再出环）⇒ 本用例假红。
+   * ② 根因：**「余数花掉」**把般岳闪能支出打满 ⇒ 嗔火/怒相/喧响整条链移动 ⇒ 外层不再摆进长环。
+   * ③ 确认有意：用户 2026-10-19「剩余不够 60 的只能打 20 能量的了」。
+   * ④ 处置 = **重扫换队**（`.zc/perf/banyueLagScan.perf.ts`：mock `pickOuterCycleMember`
+   *    记录**实参 members.length**，与用例同一建队路径 + `projection=0` 档）：
+   *    `projection=0` 下命中长环分支（`members.length >= 3`）的只有两支 ——
+   *    `billy-roxy-lucia`（**lag 6**、`pickedEarlier=true`）与 `auto-1171-1561-1411`
+   *    （lag 4、`pickedEarlier=false`，过不了本用例第二条硬前提）。
+   *    ⇒ 取 **`billy-roxy-lucia`**（`[1531,1621,1451]`，lag 6 > 旧 lag 4 ⇒ 判别力更强；
+   *    且**不含般岳** ⇒ 不再受本模块后续口径变动牵连）。
+   *    ⚠ 教训：`outerExit==='cycle'` 与「长环分支被调用」**不是一回事** —— 周期 2 也报 cycle，
+   *    但它走的是 `isOuterTwoCycle` 那一支（本次扫描第一次就踩到：按 exit 筛出的 7 支队里只有 2 支
+   *    真走了长环分支）。换夹具必须按 `members.length >= 3` 的实际调用筛。
+   */
+  /**
+   * ⚠ **2026-10-20 七次换队（判据不动，只换夹具）** —— `[1531,1621,1451]` → `[1501,1561,1411]`。
+   * ① 量 delta：`billy-roxy-lucia` 的长环分支调用 0 次 ⇒ 本用例假红。
+   * ② 根因：**洛克茜的「失衡时长 +2s」补进面板**（`applyRoxyPanel`，原文额外能力此前只在注释里）
+   *    ⇒ 窗口 16 → 18s ⇒ 该队外层落点移动、不再出长环。这是**机制修正**，不是判据问题。
+   * ③ 确认有意：用户 2026-10-20「我记得洛克茜有延长失衡 2s 的被动」。
+   * ④ 处置 = **重扫换队**（`.zc/perf/lagScanWide.perf.ts`：mock `pickOuterCycleMember` 记录实参
+   *    `members.length` + `pickedEarlier`，扫 104 预设 × `projection ∈ {0,4}`）：
+   *    命中 `members.length >= 3` 且 `pickedEarlier=true` 的只剩两支 ——
+   *    `auto-1501-1561-1411`（proj=4，lag 4）与 `banyue-norma-lucia`（proj=4，lag 4）。
+   *    取 **`auto-1501-1561-1411`**（lag 4 与原夹具同级；**不含般岳也不含洛克茜** ⇒ 后续口径变动
+   *    不再牵连本用例）。
+   *    ⚠ 该队只在 `projection=4`（= 缺省 physical）下出长环 ⇒ 本函数**不再钉 off**（下方那行已删），
+   *    改用缺省口径；`CC-154` 当初钉 off 的理由（「physical 下本队收敛为 2-环」）只对**旧夹具**成立。
+   */
+  const team: [string, string, string] = ['1501', '1561', '1411']
   for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
   config.applyTeamPreset(team)
-  // CC-154（第 177 轮）：本文件测「长环分支的接线」，需要一个真出长环的场景。physical 下模块计数改读计数通道后本队外层
-  // 收敛为 2-环（不再有长环）⇒ 钉 off（机制钉，非不变量；场景口径同 CC-148 第 2 类）。
-  config.setMechanicSetting('time.stunPlanProjection', 0)
   return { calc, config }
 }
 

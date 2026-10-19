@@ -44,6 +44,11 @@ const PEILUO_ULT_COST = 2000
 const PEILUO_ULT_UPPER = '1551015' // 万军诛绝
 const PEILUO_ULT_LOWER = '1551014' // 凯旋坦途
 const PEILUO_ULT_VERDICT = '1551016' // 永陷幽囚（决算）
+/**
+ * 决算「招式发动时使敌人失衡持续时间提升 3 秒」——**按块的窗口延长**，不是常驻面板加成。
+ * 见 `peiluoProminenceMechanic.stunWindowExtendOnEnd` 的注释与 `docs/STUN_WINDOW_DURATION.md`。
+ */
+export const PEILUO_VERDICT_WINDOW_EXTEND = 3
 const PEILUO_FLARE_ENERGY = 15 // 耀斑：能量获得效率 +15%
 const PEILUO_FLARE_DMG = 40 // 耀斑：造成的伤害 +40%
 export const PEILUO_KAGEROU_CRIT = 40 // 阳炎：终结技对失衡敌人暴伤 +40%
@@ -195,6 +200,19 @@ export const peiluoProminenceMechanic: AgentMechanicModule = {
   }],
   // CC-39b：右分支决算结束失衡窗口（原为 convergence / roundInputs 里的字面量判定）
   endsStunWindow: (moveId) => moveId === PEILUO_ULT_VERDICT,
+  /**
+   * **决算块的窗口延长 3s**（原文：「招式发动时，使所有处于失衡状态的敌人失衡持续时间提升3秒，
+   * 终结一击命中时敌人失衡结束」）。
+   *
+   * ⚠ **不能按常驻面板加**（`panel.stunDurationBonusSeconds`）：那个口径是「每一次失衡窗口都更长」，
+   * 而决算只发生在**有决算**的窗口，作用是「让你在窗口最后 0.1s 放大招也能打完」
+   * （用户口径 2026-10-20 逐字）。⇒ 声明为**按块的窗口延长**，由轴栈/编排层消费。
+   *
+   * 用户同批给的**两条简化**（本仓据此建模，不再追跨窗细节）：
+   * ① 「大招在最后不会出窗口，不计算跨窗易伤」⇒ 该块 `fits` 恒 1；
+   * ② 「大招后立即决算不用算窗口时间」⇒ 该块结束即窗口结束。
+   */
+  stunWindowExtendOnEnd: (moveId) => (moveId === PEILUO_ULT_VERDICT ? PEILUO_VERDICT_WINDOW_EXTEND : 0),
   /**
    * 阳炎轴窗口覆盖（规则 6 迁入，棘轮站点 6/8，2026-09-12 #10 真清偿；
    * **非轴折算臂** 2026-09-17 round 21 夜 A 自 `damagePool.ts:540` 迁入）：

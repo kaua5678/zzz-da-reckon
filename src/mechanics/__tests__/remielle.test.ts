@@ -22,6 +22,19 @@ async function setup(cinemaLevel = 0) {
 }
 
 describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
+  /**
+   * 惊鸿（长按平A）：「招式命中处于失衡状态的敌人时，敌人的失衡持续时间提升3秒」。
+   *
+   * 缺陷形态：2026-10-20 普查发现**完全未实现**——采集侧 `teammate-buffs.json` 的 1581 组里没有这条
+   * （1511/1551 有、走采集 buff；1581 没有 ⇒ 需模块自己加）。实测该队 `stunDurationBonusSeconds` 恒 0。
+   * 负控：删掉 `applyRemiellePanel` 里那行 ⇒ 本用例红。
+   */
+  it('惊鸿：失衡持续时间 +3s 进面板（此前完全未实现）', () => {
+    const p = { stunDurationBonusSeconds: 0 } as never as Record<string, number>
+    remielleMechanic.applyPanel!({ slot: 0, agent: { id: '1581' }, team: [], panel: p, settings: {} } as never)
+    expect(p.stunDurationBonusSeconds).toBeCloseTo(3)
+  })
+
   it('CC-120：spec resources 的 luminizeMasteryRatio（spec 记录值，不参与计算）与模块/引擎口径一致', () => {
     // spec 曾写 0.1（与模块 @fact 记载的旧转写错误相同）；resources 不被执行，只进逻辑编辑器，所以只错在展示
     const ratio = getAgentSpec('1581')?.resources?.find(r => r.id === 'remielle_voidflare')?.properties.luminizeMasteryRatio

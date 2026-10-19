@@ -626,10 +626,27 @@ describe('夜D · 层③ 真管线端到端', () => {
      *    总 req = 8×2.333 + 24×1.833 = 62.656）。**不断言"某个特定刀数才对"**——本条锁的是
      *    「模块写入 → 结果 cfg 可见」，刀数随补齐口径走（T167/T168/T169 三次换档同款）。
      */
-    const cfg = await readBanyueCfg(1, 0, true, 0, { dodge: 2, parry: 2, block: 2, dual: 0 })
-    // 整数/布尔三字段逐字相等；`requiredSeconds` 是浮点乘积（8 刀×2.333 + 24 刀×1.833）⇒ 用 toBeCloseTo
-    expect(cfg).toMatchObject({ parry: 8, dual: 24, illegal: false })
-    expect(cfg?.requiredSeconds).toBeCloseTo(62.656, 6)
+    /**
+     * ⚠ **2026-10-19 再归因（parry 8 → 0，改档而非改判据；规则 10 四步）**。
+     *
+     * ① 量 delta：原档 `readBanyueCfg(1, 0, true, 0, {2,2,2,0})` 由 `{parry:8, req:62.656}`
+     *    变为 **`{parry:0, req:0}`** ⇒ 本用例失去「cfg 里有非零补齐量」这个被锁对象。
+     * ② 根因：**「余数花掉」让般岳闪能支出打满**（余数按 20/次换成论道）⇒ 嗔火抬高
+     *    ⇒ 怒相数/山威回能一变，轴内自身喧响供给把原来的缺口吃掉。同 T167/T168/T169 三次
+     *    「换档」同型：修的是模型，不是本用例判据。
+     * ③ 确认有意：用户 2026-10-19「剩余不够 60 的只能打 0-2 次 20 能量的了」——
+     *    那部分闪能**真的花掉**，喧响/嗔火账必须跟着变。
+     * ④ 处置 = **重扫换档**（`.zc/perf/banyueFixtureScan.perf.ts` ②，同 `readBanyueCfg` 建队路径）：
+     *    取仍写出非零补齐、且双反也非零的档 = `readBanyueCfg(1, 0, true, 0, {4,4,4,0})`。
+     *    该档实测 **`{parry:6, dual:12, req:35.994}`**——比 T172 的 8 刀更少，因为同批落地的
+     *    「**实测饱和 ⇒ 不再往回砍**」把虚增削掉了（`computeBanyueInteractionTopUp` 的
+     *    `saturated` 分支：本档弹刀行已被轴/交互预算钳住、再多装不产喧响 ⇒ 缺口不再按
+     *    常数单价 301.35 虚增成 14 刀）。判据语义仍是「模块写入 → cfg 可见」。
+     */
+    const cfg = await readBanyueCfg(1, 0, true, 0, { dodge: 4, parry: 4, block: 4, dual: 0 })
+    // 整数/布尔三字段逐字相等；`requiredSeconds` 是浮点乘积（6 刀×2.333 + 12 刀×1.833）⇒ 用 toBeCloseTo
+    expect(cfg).toMatchObject({ parry: 6, dual: 12, illegal: false })
+    expect(cfg?.requiredSeconds).toBeCloseTo(35.994, 6)
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 9 不是恒写）', async () => {
@@ -660,7 +677,13 @@ describe('夜D · 层③ 真管线端到端', () => {
   })
 
   it('★ 只开保底4嗔火 ⇒ 喧响侧补齐量为 0（两开关各自独立驱动）', async () => {
-    expect(await readBanyueCfg(0, 1)).toEqual({ parry: 0, dual: 0, requiredSeconds: 0, illegal: false })
+    /**
+     * ⚠ **2026-10-19 起改 `toMatchObject`（规则 10 四步）**：`InteractionTopUp` new 了第 5 个字段
+     * `measured`（割线步的读数存根 `{applied, next, decibelNow}`，见 `typesHooks.ts` 该字段注释）。
+     * 判据语义未变 —— 本条锁的是「**补齐量**为 0」，`measured` 是诊断读数不是补齐量；
+     * 与上面「保底全关」那条同处置（`toMatchObject` + 单独断零字段），不是放宽。
+     */
+    expect(await readBanyueCfg(0, 1)).toMatchObject({ parry: 0, dual: 0, requiredSeconds: 0, illegal: false })
   })
 
   it('★ 无般岳队 ⇒ 没有任何槽位带 `banyueInteractionTopUp`（反向锁）', async () => {

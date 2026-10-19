@@ -333,6 +333,17 @@ export interface InteractionTopUp {
   requiredSeconds: number
   /** 补齐时间超过 AUTO_TOPUP_TIME_LIMIT_SEC → 本次补齐非法（次数已清零，轴应退化） */
   illegal: boolean
+  /**
+   * **割线步的读数存根**：本轮「已装刀数 → 该槽喧响」的那一格（2026-10-19）。
+   *
+   * 为什么挂在返回值上：模块是纯函数、不持有跨轮历史，而割线步要的是 `(applied[k-1], dec[k-1])`
+   * 与 `(applied[k], dec[k])` 两个点。上一轮的 `dec` 在 `threads` 里没有独立字段
+   * （`decibelRegenBySlot` 是**本轮写、下一轮读**的预算，不是上一轮读数）⇒ 由本字段随补齐量
+   * 一起跨轮携带，`convergence.ts` 下一轮直接读它当「prev」，不另开线程字段。
+   *
+   * 缺省（老调用方 / 纯函数直调）= 不给 ⇒ 模块回落常数单价 301.35（逐位等于旧行为）。
+   */
+  measured?: { applied: number; next: number; decibelNow: number }
 }
 
 /** `computeInteractionTopUp` 能力入参（CC-23 自 banyue.ts `computeBanyueInteractionTopUp` 的 opts 迁入，字段逐字保留） */
@@ -400,6 +411,23 @@ export interface InteractionTopUpInput {
    * 因为缺口从不算净量）。编排层必须递真实值（见 `convergence.ts`）。
    */
   appliedParryCount?: number
+  /**
+   * **实测边际单价的两个读数对**（割线步；缺省 = 回落常数 `PARRY_TOPUP_DECIBEL_UNIT`）。
+   *
+   * 为什么需要它：常数单价 301.35 假设「每多装一刀 = 多 301.35 喧响」，而实测该边际
+   * **随队塌缩到 0**（弹刀行被轴/交互预算钳住后，再多装刀也不产喧响）⇒ 常数单价给出
+   * 「还缺 5 刀」的假缺口 ⇒ 「缺 ⇒ 装 ⇒ 不涨 ⇒ 还缺」的极限环。用实测 `Δ喧响/Δ弹刀`
+   * 当分母即可让缺口算式与真实供给同量纲（`solveTeam.ts` 那条否决记录的末句药方）。
+   *
+   * `appliedPrev/decibelPrev` = **上一轮**的（已装刀数, 该槽喧响），`appliedNow/decibelNow` = **本轮**。
+   * 由 `convergence.ts` 从 `prevInteractionTopUp` 与本轮 `rr.characters[slot].decibelSource.total` 填。
+   */
+  measuredParryUnit?: {
+    appliedPrev: number
+    decibelPrev: number
+    appliedNow: number
+    decibelNow: number
+  }
 }
 
 /**

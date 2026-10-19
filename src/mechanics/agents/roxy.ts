@@ -80,6 +80,19 @@ export const ROXY_C6_ECHO_BURSTS = 2
 // ⟳复核: 官方若给出「随角色等级提升」的等级-数值对照表（或本仓引入角色等级输入）时复核本上限 | 到期 2027-03-31
 export const ROXY_AA_DMG_BONUS_LV60 = 80
 export const ROXY_AA_ENTER_ENERGY = 40
+/**
+ * 额外能力·辉金心脏：「攻击命中 → **失衡时长 +2s**」（原文见本文件头注释）。
+ *
+ * ⚠ **此前只在注释里、从未写进面板**（2026-10-20 用户点出：「我记得洛克茜有延长失衡 2s 的被动」）——
+ * `applyRoxyPanel` 自 v12 重录起就没有这一项 ⇒ 含洛克茜的队失衡窗口恒按 `stunTime + 4`（缺省 16s）算，
+ * 而不是原文的 18s。实测（`.zc/perf/windowDurationAudit.perf.ts`）：`banyue-roxy-lucia` 全槽
+ * `stunDurationBonusSeconds = 0` ⇒ W=16。
+ *
+ * 口径：**满覆盖**（与同文件其它「攻击命中 →」条目同款近似：失衡窗口内洛克茜的攻击必然命中）。
+ * 门控：额外能力需「强攻/命破/锋御」队友——由 `additionalAbilityActiveOf(panel)` 判定（与伤害 +80%
+ * 同一处门控；原文把两条写在同一句里）。
+ */
+export const ROXY_AA_STUN_DURATION = 2
 /** 转模：初始能量回复 >1.2 → 每 0.01：攻击 +5（上限 960）、冲击 +0.4（上限 76.8） */
 export const ROXY_REGEN_ATK_PER_0_01 = 5
 export const ROXY_REGEN_ATK_CAP = 960
@@ -386,6 +399,15 @@ function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if (impactBonus > 0) panel.impact = panel.impact + impactBonus
   // 额外能力：自身伤害 +80%（Lv60 上限；门控由团队条件，面板统一施加——无强攻/命破/锋御队略高估，note）
   panel.dmgBonus = panel.dmgBonus + ROXY_AA_DMG_BONUS_LV60
+  /**
+   * 额外能力同一句的**另一半**：「攻击命中 → 失衡时长 +2s」（用户 2026-10-20 点出「我记得洛克茜有
+   * 延长失衡 2s 的被动」）。此前只在文件头注释里、**从未写进面板** ⇒ 含洛克茜的队窗口恒 16s 而非 18s。
+   *
+   * 满覆盖近似（同上面那条「攻击命中」）：失衡窗口内洛克茜的攻击必然命中，故按常驻 +2s 计。
+   * 门控与伤害那条**同一句原文**（强攻/命破/锋御队友），故同样统一施加——本仓现有含洛克茜的预设
+   * 都满足该条件（般岳=命破），无该条件的队会略高估，与 `dmgBonus` 那条同款的已知近似。
+   */
+  panel.stunDurationBonusSeconds = panel.stunDurationBonusSeconds + ROXY_AA_STUN_DURATION
   const cinema = cinemaLevelOf(cinemaLevel)
   if (cinema >= 1) {
     panel.critDmg = panel.critDmg + ROXY_C1_CRIT_DMG

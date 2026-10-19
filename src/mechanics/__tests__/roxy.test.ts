@@ -21,6 +21,7 @@ import {
   ROXY_C2_EX_CHILL_DAZE_BONUS,
   ROXY_C4_ULT_DAZE_BONUS,
   ROXY_C6_MEGA_DAZE_BONUS,
+  ROXY_AA_STUN_DURATION,
   ENERGY_PER_WIND_ENERGY,
   computeRoxyWindEnergy,
   roxyMechanic,
@@ -39,6 +40,22 @@ describe('洛克茜（1621）v4 影画', () => {
     expect(p6.enemyResReduction).toBeCloseTo(ROXY_C1_RES_REDUCTION)
     expect(p6.stunDmgMultiplierBonus).toBeCloseTo(30)
     expect(p6.enemyWindResReduction).toBeCloseTo(ROXY_C6_WIND_RES_REDUCTION)
+  })
+
+  /**
+   * 额外能力·辉金心脏的另一半：「攻击命中 → **失衡时长 +2s**」（用户 2026-10-20 点出）。
+   *
+   * 缺陷形态：这句话自 v12 重录起**只写在文件头注释里**，`applyRoxyPanel` 从未写入
+   * `stunDurationBonusSeconds` ⇒ 含洛克茜的队窗口恒按 `stunTime + 4`（缺省 16s）算，而不是原文的 18s。
+   * 本用例锁「面板确实 +2s」；队伍层面的 `W=18` 由 `stunCycleSettleCc542.test` 的 A/B 条覆盖。
+   *
+   * 负控：删掉 `applyRoxyPanel` 里那行 `panel.stunDurationBonusSeconds += ROXY_AA_STUN_DURATION` ⇒ 本用例红。
+   */
+  it('额外能力·失衡时长 +2s 进面板（此前只在注释里，窗口恒 16s 而非 18s）', () => {
+    const p: any = { stunDurationBonusSeconds: 0 }
+    roxyMechanic.applyPanel!({ cinemaLevel: 0, panel: p, settings: {} } as any)
+    expect(p.stunDurationBonusSeconds, '失衡时长 +2s（原文额外能力·辉金心脏）')
+      .toBeCloseTo(ROXY_AA_STUN_DURATION)
   })
 
   it('影画4 回能（招架1 + 闪反2/次）并入 initialEnergyGift（另含额外能力进场 40）', () => {

@@ -101,6 +101,13 @@ const FLASH_ENTRY = 60 // 进场 60 闪能
  */
 const EX_COST = 20 // 论道/地动 20 闪能
 const COMBO_COST = 60 // 连段（论道20 + 狮子吼·怒40）
+/**
+ * 余数最多能花几次**单发论道**（用户口径 2026-10-19）。
+ *
+ * 结构来源（不是拍脑袋的数）：40 能量的狮子吼·怒**不能单独释放**、必须紧跟 20 能量的论道
+ * ⇒ 能单放的只有论道，而余数 `spare ∈ [0, 60)` ⇒ 最多 2 次（3 次要 60 点，那时就该走连段了）。
+ */
+const SPARE_SINGLE_MAX = 2
 const RAGE_BUFF_SHEER = 300 // Lv.7 贯穿力
 const RAGE_BUFF_FIRE = 36 // Lv.7 火伤%
 const RAGE_BUFF_CRIT = 36 // Lv.7 暴伤%
@@ -200,6 +207,28 @@ export const AUTO_TOPUP_TIME_LIMIT_SEC = 200
  *   —— 见 `PARRY_TOPUP_DECIBEL_UNIT` 与 T129 报告 §①（用户裁决 2026-10-10）。
  * 有效次数 = 用户输入 + 返回值；怒相不足/喧响不足分别由双反/弹刀单独补齐，互不干扰。
  */
+/**
+ * **实测边际单价**（割线步的分母）：`Δ喧响 / Δ已装刀数`，来自上一轮的 `(applied, decibelHave)` 对。
+ *
+ * 由 `convergence.ts` 递两个相邻轮次的读数（见 `InteractionTopUpInput.measuredParryUnit`），
+ * 这里只做「能用就用、不能用就回落常数」的判定（单一事实源在调用方，模块不自己存历史）：
+ * - 缺任一读数 / 分母为 0 / 非有限 ⇒ `undefined`（回落 `PARRY_TOPUP_DECIBEL_UNIT`）；
+ * - `m <= 0`（装刀不产喧响或反向）⇒ `undefined`（同样回落：用负斜率反推会让缺口永远算不平）。
+ *
+ * 为什么门槛是「正斜率」而不是「斜率 > 某个下限」：本仓已有一条实测否决记录——
+ * 「单调夹住上一轮」会把首轮超补永久锁死（1471 锚 12→20 弹刀）。割线步不夹任何量，
+ * 只换分母 ⇒ 超补仍能被削回（`decibelShort <= 0` ⇒ `parry = 0`）。
+ */
+function measuredParryUnitOf(opts: InteractionTopUpInput): number | undefined {
+  const pair = opts.measuredParryUnit
+  if (!pair) return undefined
+  const dApplied = pair.appliedNow - pair.appliedPrev
+  const dDecibel = pair.decibelNow - pair.decibelPrev
+  if (!(dApplied > 0)) return undefined
+  const unit = dDecibel / dApplied
+  return Number.isFinite(unit) && unit > 0 ? unit : undefined
+}
+
 export function computeBanyueInteractionTopUp(opts: InteractionTopUpInput): InteractionTopUp {
   const rageGroups = (opts.axisEx['banyue-combo'] ?? 0) + (opts.axisEx['banyue-combo-didong'] ?? 0)
   const rageNeeded = Math.max(Math.ceil(rageGroups / 2), opts.minRageCount ?? 0) // 每组连段 2 块 = 一次怒相
@@ -249,13 +278,107 @@ export function computeBanyueInteractionTopUp(opts: InteractionTopUpInput): Inte
     - opts.decibelHave)
   // 分母 = **一次普通弹刀完整链**的实测收益（301.35，含支援突击：昂霄），不是招架判定单段的 215：
   // 缺口问的是「还差几刀」，一刀兑现的是整条链的喧响 ⇒ 用 215 会把次数抬高约 40%（T129）。
-  const parry = Math.ceil(decibelShort / PARRY_TOPUP_DECIBEL_UNIT)
+  /**
+   * ## 反环：用**实测边际**判「装刀还能不能收窄缺口」**（2026-10-19，与「余数花掉」同批）
+   *
+   * ### 为什么需要它
+   * 常数单价 301.35 假设「每多装一刀 = 多 301.35 喧响」，但实测该边际**随队塌缩到 0**——
+   * `banyue-trigger-lucia` @ r=0.6 实测 parry 1→8 的 `dec` 恒 **15300**（`1471023/1471026`
+   * 行数被轴/交互预算钳住，再多装刀也不产喧响）。常数单价于是给出「还缺 5 刀」的假缺口 ⇒
+   * 「缺 ⇒ 装 ⇒ 不涨 ⇒ 还缺」的**极限环**（实测三相 `dec` 14873 → 15057 → 15312 → 15068，
+   * `parry` 5→6→5→5→4→4→5）。
+   *
+   * ### 怎么做的
+   * 编排层递**相邻两轮**的 `(已装刀数, 该槽喧响)` 读数对（`measuredParryUnit`），模块算斜率
+   * `m = Δdec / Δapplied`。两种情况**都不当分母**、只做判据：
+   * - `m > 0`：有真实边际 ⇒ 走常数单价（**不用 m 当分母**：斜率为小正数时会把缺口放大成
+   *   几十刀，实测 roxy 队由 stable 变 cycle/20）；
+   * - `m <= 0` 或无读数对：回落常数单价。
+   * 真正落地的是下面 `saturated` 那一支：**缺口为正 + 有读数对 + 斜率为 0** ⇒ 保持已装量不变
+   * （不再加、也不归零）。语义 = 「这个缺口不是补刀能解决的，如实停在这里」。
+   *
+   * ## ⛔ 否决记录（2026-10-19，本批实测；规则 16③）
+   * **「补到够就停」的无条件夹子**（`parry = max(applied, 旧式)`）**试过并放弃**——
+   * 与 `solveTeam.ts` 里那条已登记的否决同源：
+   * ① **首轮超补被永久锁死**：`1471/1571/1451` 手动队首轮算出 9 刀、装上后 `dec` 已满足
+   *    ⇒ 夹子让 9 永不下降，留白 **0 → 4.4s**（`timeFillRatchet` 实测）。
+   * ② 窄化到「只吸收 ±1 那一格」也不够：本队的环不是 ±1，而是三相环，
+   *    夹子只削平其中一格 ⇒ 环照旧（实测 cycle 队 5 → **7**）。
+   * ③ **用实测斜率当分母**也不行：斜率可能很小（204/刀）⇒ 缺口被放大成几十刀，
+   *    `banyue-roxy-lucia` 由 stable 变 cycle/20（实测）。
+   * ⇒ 只有「饱和（斜率 = 0）」这一支是安全的：它既不锁超补（`decibelShort <= 0` 时不触发），
+   * 也不改单价。
+   */
+  /**
+   * `solveTeam.ts` 那条否决记录末句开出的药方：「要根治应改割线步（用实测 Δ喧响/Δ弹刀）」）。
+   *
+   * 为什么必须换：常数单价假设「每多装一刀 = 多 301.35 喧响」，但实测该边际**随队塌缩**——
+   * 本队（`banyue-trigger-lucia` @ r=0.6）parry 1→8 的 `dec` 恒 **15300**（`1471023/1471026`
+   * 行数被轴/交互预算钳住，再多装刀也不产喧响）。常数单价于是给出「还缺 5 刀」的假缺口 ⇒
+   * 「缺 ⇒ 装 ⇒ 不涨 ⇒ 还缺」的**极限环**（实测三相：`dec 14873 → 15057 → 15312 → 15068`）。
+   *
+   * 割线步把同一等式里的单价换成**上一轮实测斜率**：`m = Δdec / Δapplied`。
+   * 无可用斜率（首轮 / 分母为 0 / 非有限）时回落常数单价 ⇒ 逐位等于旧行为。
+   * ⚠ `m <= 0`（装刀反而不产喧响）时**不**用它——那会让缺口永远算不平；此时按
+   * `PARRY_TOPUP_DECIBEL_UNIT` 兜底（保守：宁可多补一刀，也不假装够了）。
+   */
+  const measuredUnit = measuredParryUnitOf(opts)
+  // ⚠ 分母**恒用常数单价**：实测斜率只用来判「是否已饱和」（下面 `saturated`），不用来当分母——
+  // 斜率可能是「小正数」（如本队实测 204/刀），拿它当分母会把缺口放大成几十刀（实测 roxy 队
+  // 由 stable 变 cycle/20）。饱和判据本身已表达「再多装也不产喧响」，不需要把斜率塞进分母。
+  const unit = PARRY_TOPUP_DECIBEL_UNIT
+  /**
+   * **装刀已不能收窄缺口 ⇒ 不再加刀**（2026-10-19；本批唯一落地的反环手段）。
+   *
+   * 判据 = 三个条件同时成立：
+   * ① 缺口为正（`decibelShort > 0`）——真的还差；
+   * ② 有实测斜率且 `m <= 0`——**实测**证明「再多装一刀产不出喧响」（供给饱和）；
+   * ③ 本轮已装 > 0——首轮没有读数对，不做判断（走常数单价，行为不变）。
+   *
+   * 此时保持 `appliedParry` 不动（不是「多加」，也不是「归零」）：
+   * 缺口靠装刀关不上，继续加只会让 `requiredSeconds` 虚高、把轴顶出预算；而归零会让
+   * 「本轮已装的那几刀」凭空消失、下一轮再被算回来 ⇒ 正是本批实测到的三相极限环
+   * （`banyue-trigger-lucia` 的 `parry 5→6→5→5→4→4→5`）。「保持」是这两者之外的第三档，
+   * 语义 = 「**这个缺口不是补刀能解决的，如实停在这里**」。
+   *
+   * ⚠ 与已否决的「无条件单调夹住上一轮」的分水岭（规则 16③）**三条都不重叠**：
+   * - 否决记录 ①「首轮超补被永久锁死」：本夹子要求 `m <= 0`（实测饱和）⇒ 首轮无读数不触发；
+   *   而 `decibelShort <= 0`（已超补）时 `m` 通常为正，同样不触发 ⇒ 超补仍能被削回。
+   * - 否决记录 ②「窄化到 ±1 也不够」：那条是**无条件**吸收一格，本条只在实测饱和时生效。
+   * - 兜底仍走常数单价 ⇒ 无测量时逐位等于旧行为。
+   */
+  const recomputed = Math.ceil(decibelShort / unit)
+  /**
+   * ⚠ 条件里 **`decibelShort > 0` 是必需项**（本批实测踩过：漏了它 ⇒ 已超供时反而锁住已装量）。
+   * `recomputed < applied` 有两种来源，本夹子只拦第 ① 种：
+   *  ① 供给饱和（`dec` 不涨 ⇒ 缺口不缩）——要拦的那一支；
+   *  ② **已超供**（`dec >= 需求` ⇒ `decibelShort` 被 `max(0, …)` 夹成 0 ⇒ `recomputed = 0`）
+   *     ——这一档**必须削回 0**，否则就是「无条件单调夹住」那条已登记否决记录的形态
+   *     （首轮超补被永久锁死：`timeFillRatchet` 实测留白 0 → 4.4s）。
+   *     ⚠ **不能拿 `recomputed < applied` 当条件**：它把 ①② 混在一起（② 也满足它），
+   *     实测 `banyue-roxy-lucia` 的 `applied=5 / dec=14618 / need=12000` 就被误锁在 5 ⇒
+   *     外层 `ultNeed 4↔5` 跟着抖 ⇒ `cycle/20`。判据只能是 `decibelShort > 0`（= 真的还差）。
+   */
+  const saturated = measuredUnit === undefined
+    && opts.measuredParryUnit !== undefined
+    && appliedParry > 0
+    && decibelShort > 0
+  const parry = saturated ? appliedParry : recomputed
   const requiredSeconds = parry * Math.max(0, opts.perParrySeconds ?? 0) + dual * Math.max(0, opts.perDualSeconds ?? 0)
   // 时长未知（调用方没传）时 requiredSeconds = 0，天然不触发判定：
   // 宁可不管，也不要用假时长把合法补齐判成非法
   const illegal = requiredSeconds > AUTO_TOPUP_TIME_LIMIT_SEC
-  if (illegal) return { parry: 0, dual: 0, requiredSeconds, illegal }
-  return { parry, dual, requiredSeconds, illegal }
+  /**
+   * 读数存根（割线步的读数点）。**两个字段必须都记**：
+   * - `applied` = 本轮**实际装进计划**的刀数（= 入参 `appliedParryCount`，与 `decibelHave` 同轮）；
+   * - `next`    = 本轮**算出、下一轮才会装**的刀数。
+   * 只记 `applied` 会让下一轮的 `Δapplied` 恒 0（下一轮读到的 `appliedPrev` 与它自己这一轮的
+   * `appliedNow` 是**同一个数**）⇒ 割线步永远拿不到斜率，等于没接（本批实测踩过：
+   * 加了 `measured` 却零效果）。配对必须是「(本轮装的, 本轮读到的)」与「(上轮装的, 上轮读到的)」。
+   */
+  const measured = { applied: appliedParry, next: parry, decibelNow: opts.decibelHave }
+  if (illegal) return { parry: 0, dual: 0, requiredSeconds, illegal, measured }
+  return { parry, dual, requiredSeconds, illegal, measured }
 }
 
 /** 嗔火→怒相 固定点收敛（用户口径） */
@@ -329,6 +452,7 @@ export function computeBanyueRageCycle(
 
   let rage = 0
   let comboOut = 0
+  let singleOut = 0
   let furyTotal = 0
   for (let iter = 0; iter < 12; iter++) {
     const flashIncome = flashBase + rage * swayRefundPerRage
@@ -338,8 +462,34 @@ export function computeBanyueRageCycle(
     // 「**按剩余预算打满**」。缺省 0 ⇒ 逐位不变。
     // ⚠ 只削**自动多打**的这一项：轴内捏的块（`axisSpend`）、用户交互次数（dodge/parry/block/dual）
     // 都是用户显式意图，不在此削（超预算时由既有降配/截断臂处置）。
-    const comboOutTotal = Math.max(0, Math.floor((flashIncome - axisSpend) / COMBO_COST) - autoTrim)
-    const flashSpent = axisSpend + comboOutTotal * COMBO_COST
+    /**
+     * **自动多打的闪能预算** = 收入 − 轴内捏块支出 − 挤压臂削减（`autoTrim` 组 × 60）。
+     *
+     * 削减写成「从预算里扣」而不是「从连段数里扣」，是为了让**余数花掉**与它自洽：
+     * 削 1 组不是简单地把连段数 −1（那样余数会凭空变成 ~100 点，与「不足 60 才单发」矛盾），
+     * 而是把这 60 点从自动多打里拿走、剩下的余额重新按「连段 60 打满 + 余数 20 单发」分配。
+     * 由此 `flashSpent` 对 `autoTrim` 严格线性（每削 1 组恰好少 60），既有断言口径不变。
+     */
+    const playBudget = Math.max(0, (flashIncome - axisSpend) - autoTrim * COMBO_COST)
+    const comboOutTotal = Math.floor(playBudget / COMBO_COST)
+    /**
+     * **余数花掉**（用户口径 2026-10-19，逐字）：
+     * > 「有些角色比如般岳有 20 能量和 40 能量的强特，组合 60 能量连段有一点数据奖励，
+     * >   所以我设置的是尽量全打 60，剩余不够 60 的只能打 0-2 次 20 能量的了。」
+     * > 「准确的说 60 连段的奖励是 **40 能量的招式**带来的，但 **40 能量的招式必须跟在 20 能量后面**，
+     * >   所以必须 60 能量才能释放。」
+     *
+     * 招式结构 ⇒ 余数只能怎么花：20 = 论道（**可单独释放**）/ 40 = 狮子吼·怒（**不能单放**，必须紧跟论道）
+     * ⇒ `spare ∈ [0, 60)` 只可能再打 0/1/2 次论道，**永远不会**出现「40 单发」。
+     * 修前余数被整段丢掉（`floor(spare / 60) = 0` ⇒ 那 0~59 点闪能换成 0 次动作，账上凭空消失），
+     * 修后按 `floor(spare / 20)` 打满、且不超过 2 次（`[0, 60)` 的结构上限）。
+     *
+     * ⚠ `autoTrim`（T165 挤压臂「挤不下就不要多打」）按**组**计数、且同属「自动多打」：
+     * 它削的是自动多打的**总预算**（见上方 `playBudget`），削完的余额再按本函数重新分配。
+     */
+    const spareFlash = Math.max(0, playBudget - comboOutTotal * COMBO_COST)
+    const singleOutTotal = Math.min(SPARE_SINGLE_MAX, Math.floor(spareFlash / EX_COST))
+    const flashSpent = axisSpend + comboOutTotal * COMBO_COST + singleOutTotal * EX_COST
     // 嗔火总量 = 初始 + 交互 + 闪能消耗 × 0.5
     const furyBase = INITIAL_FURY + dodge * FURY_DODGE + parry * FURY_PARRY + block * FURY_BLOCK + dual * FURY_DUAL
     furyTotal = furyBase + flashSpent * FURY_PER_FLASH
@@ -367,6 +517,7 @@ export function computeBanyueRageCycle(
     }
     const nextRage = Math.max(0, Math.floor(furyTotal / FURY_ENTER))
     comboOut = comboOutTotal
+    singleOut = singleOutTotal
     if (nextRage === rage) {
       rage = nextRage
       break
@@ -385,7 +536,9 @@ export function computeBanyueRageCycle(
   // 怒相外连段拆分：地动山摇连段 ≤ 总数，其余打论道连段（执行计划行保持怒相外口径不变）
   const diDongComboOut = Math.min(diDongCombo, comboOut)
   const lunDaoComboOut = Math.max(0, comboOut - diDongComboOut)
-  const flashSpent = axisSpend + comboOut * COMBO_COST
+  // 闪能支出重算（循环外重算一次，用循环落定的 comboOut / singleOut）：
+  // 连段 60/组 + 余数单发论道 20/次（用户口径 2026-10-19，见循环内 spareFlash 的长注释）
+  const flashSpent = axisSpend + comboOut * COMBO_COST + singleOut * EX_COST
   // 失衡内/外拆分（用户口径，2026-08 修正）：怒相基本在失衡内打完（焚身→连段→倾山→摧岳都在失衡窗口内，
   // 连携/大招/瞬拳取消后摇，不计），失衡外以闪能连段为主——轴模式轴内强特耗闪能，富余能量在失衡外打连段
   // （次数由捏轴控制）；轴内未覆盖的怒相组最多算一组怒相（2 组）在失衡外。非轴模式无轴可捏 → 怒相内连段
@@ -414,6 +567,7 @@ export function computeBanyueRageCycle(
     furyTotal: furyTotal,
     dualCounterCount: dual,
     comboOutCount: comboOut,
+    lunDaoSpareCount: singleOut,
     diDongComboCount: diDongComboOut,
     axisExSpend: axisSpend,
     axisComboCount: axisCombo,
@@ -673,6 +827,10 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
   push(MOVE.cuiYue, '普通攻击：摧岳', rage, 'basic', `摧岳 ×${rage}：756.7%`)
   // 怒相外连段（自动 = floor(剩余闪能/60)，滑块拆分论道连段/地动山摇连段）
   push(MOVE.lunDao, '强化特殊技：论道（怒相外·论道连段）', cycle.lunDaoOutCount, 'special', `怒相外论道连段 ×${cycle.lunDaoOutCount}：325.2%`, EX_COST)
+  // 余数单发论道（用户口径 2026-10-19）：连段打满后的 [0,60) 余数按 20/次花掉，最多 2 次。
+  // 单独成行（不与上面的连段行合并）：连段行的组数被轴内捏块/挤压臂/后摇拆分多处消费，
+  // 把余数并进去会让「连段组数」这个读数不再等于 floor(闪能/60)。
+  push(MOVE.lunDao, '强化特殊技：论道（怒相外·余数单发）', cycle.lunDaoSpareCount, 'special', `余数单发 ×${cycle.lunDaoSpareCount}：325.2%（不足 60 的余数按 20/次花掉，狮子吼·怒不能单放）`, EX_COST)
   push(MOVE.shiZiHouNu, '强化特殊技：狮子吼·怒（怒相外·论道连段）', cycle.shiZiHouNuOutCount, 'special', `怒相外论道连段 ×${cycle.shiZiHouNuOutCount}：600.4%（论道派生）`, 40)
   push(MOVE.diDong, '强化特殊技：地动（怒相外·地动山摇连段）', cycle.diDongOutCount, 'special', `怒相外地动山摇连段 ×${cycle.diDongOutCount}：510%`, EX_COST)
   push(MOVE.shanYaoNu, '强化特殊技：山摇·怒（怒相外·地动山摇连段）', cycle.shanYaoNuOutCount, 'special', `怒相外地动山摇连段 ×${cycle.shanYaoNuOutCount}：650.6%（地动派生）`, 40)
@@ -820,6 +978,11 @@ function buildBanyueResourceSections({ result }: AgentResourceSectionsInput) {
         detail: `山威免费：耗 1 山威、不耗闪能 ⇒ 不产嗔火，每发回 10 闪能（影画2 +5）已计入上方「闪能·招式回复」；每怒相 4 个，怒相内 2 组连段可自由分配论道/地动山摇（轴内捏块决定）`,
       },
       { label: '怒相外连段', value: `论道连段×${cycle.lunDaoOutCount} + 地动山摇连段×${cycle.diDongComboCount}`, detail: `共 ${cycle.comboOutCount} 组（60闪能/组，自动=floor(剩余闪能/60)）；[普]耗闪能产嗔火、[怒]耗山威免费；闪能收入 ${fmt(cycle.flashIncome, 0)} / 支出 ${fmt(cycle.flashSpent, 0)}` },
+      {
+        label: '余数单发（论道）',
+        value: `×${cycle.lunDaoSpareCount}`,
+        detail: `连段打满后不足 60 的余数按 20/次花掉（0~2 次）：40 的狮子吼·怒必须紧跟论道、不能单放 ⇒ 余数只可能换成论道。这部分闪能同样产嗔火（+10/次），已计入上方支出与嗔火来源`,
+      },
       { label: '怒相序列', value: `焚身→${[cycle.lunDaoRageCount ? `论道→狮子吼·怒×${cycle.lunDaoRageCount}` : '', cycle.diDongRageCount ? `地动→山摇·怒×${cycle.diDongRageCount}` : ''].filter(Boolean).join(' + ') || '（无连段）'}→倾山→摧岳`, detail: '每次怒相 120 嗔火；倾山退出、摧岳（C6 附伤载体）' },
       { label: '强特连段后摇', value: `失衡外 ×${cycle.comboOutRecoveryCount}（嘲讽取消 ${cycle.tauntCancelCount}）`, detail: recoveryDetail },
       { label: '后摇损失伤害（估算）', value: `${recoveryTime.toFixed(2)}s 平A时间 · 占平A ${lossPct.toFixed(1)}%`, detail: `未取消的失衡外连段末尾后摇计入必做前台时间，直接压缩平A时间池 → 平A伤害损失 ≈ 损失时间 ÷ (平A时间 + 损失时间)；全部嘲讽取消可回收 ${recoveryTime.toFixed(2)}s 平A时间。` },
@@ -1089,6 +1252,8 @@ export const banyueMechanic: AgentMechanicModule = {
       + c.diDongRageCount + c.shanYaoNuRageCount
       + c.lunDaoOutCount + c.shiZiHouNuOutCount
       + c.diDongOutCount + c.shanYaoNuOutCount
+      // 余数单发论道（用户口径 2026-10-19）：也是真打出来的强特，次数与时间都要算
+      + c.lunDaoSpareCount
       + axisNormal
   },
   estimateExSpecialTime: ({ cfg, exSpecialCount: _exSpecialCount, ultimateCount: _ultimateCount }) => {
@@ -1106,7 +1271,7 @@ export const banyueMechanic: AgentMechanicModule = {
       if (mid === 'banyue-combo' || mid === 'banyue-combo-didong') continue
       axisExTime += cnt * (times[mid] ?? 0)
     }
-    const exTime = (cycle.lunDaoRageCount + cycle.lunDaoOutCount) * (times.lunDao ?? 0)
+    const exTime = (cycle.lunDaoRageCount + cycle.lunDaoOutCount + cycle.lunDaoSpareCount) * (times.lunDao ?? 0)
       + (cycle.shiZiHouNuCount + cycle.shiZiHouNuOutCount) * (times.shiZiHouNu ?? 0)
       + cycle.shanYaoRageCount * (times.shanYao ?? 0)
       + (cycle.diDongRageCount + cycle.diDongOutCount) * (times.diDong ?? 0)

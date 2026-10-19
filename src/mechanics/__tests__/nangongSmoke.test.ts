@@ -42,6 +42,18 @@ describe('南宫羽（1511）核心被动面板区', () => {
     expect(on.anomalyBuildUpEfficiency - off.anomalyBuildUpEfficiency).toBeCloseTo(35)
     expect(on.stunBuildUpBonus - off.stunBuildUpBonus).toBeCloseTo(20)
   })
+
+  /**
+   * 踉跄：「该效果下的敌人进入失衡状态后的失衡持续时间提升3秒」（核心被动·天使队长）。
+   *
+   * 缺陷形态：此前**只在 `skillTableNote` 里提过「走 teamBuffs」**，而采集侧
+   * `teammate-buffs.json` 的 stat 词表没有 `stunDuration` ⇒ 从未生效。
+   * 负控：删掉 `applyNangongPanel` 里那行 ⇒ 本用例红。
+   */
+  it('踉跄：失衡持续时间 +3s 进面板（此前只在 skillTableNote 提过、从未生效）', async () => {
+    const { config, catalog } = await setupNangong(0)
+    expect(computePanelPhases(0, config, catalog)!.inCombat.stunDurationBonusSeconds).toBeCloseTo(3)
+  })
 })
 
 describe('南宫羽重拍账本 → 地雷撞执行行', () => {

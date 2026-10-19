@@ -59,13 +59,25 @@ async function withPreset(lock?: number) {
 }
 
 describe('banyue-roxy-lucia 外层环（源头修复后）', () => {
-  it('A/B 解锁态：外层 stable、池 5、池与已排窗数同源', async () => {
+  it('A/B 解锁态：外层 stable、池 4、池与已排窗数同源', async () => {
     const { calc, rr } = await withPreset()
     const conv = rr.convergence
     expect(conv.outerExit, '修前 = cycle/20（自旋按满发记 ⇒ 剩余能量进不了账 ⇒ 窗数抖动）').toBe('stable')
     expect(conv.outerConverged).toBe(true)
     const pool = calc.stunPoolResult.value!.stunCount
-    expect(pool, '池次数 = 物理 5').toBe(5)
+    /**
+     * ⚠ **2026-10-20 锚值 5 → 4（规则 10 四步）——判据语义（stable + 池与窗数同源）未变**。
+     *
+     * ① 量 delta：`pool` 5 → **4**（`continuousStunCount` 4.7121 ⇒ `floor` = 4），`outerExit` 仍 `stable`。
+     * ② 根因：**洛克茜的「失衡时长 +2s」补进面板**（`applyRoxyPanel` 新增 `ROXY_AA_STUN_DURATION`）。
+     *    原文额外能力·辉金心脏写着「攻击命中 → 失衡时长 +2s」，但自 v12 重录起**只在注释里**、
+     *    从未写进 `stunDurationBonusSeconds` ⇒ 本队窗口恒按 `12 + 4 = 16s` 算。修后 = `18s`。
+     *    窗口变长 ⇒ 每窗可容纳的爆发更多、非失衡时间更少 ⇒ 池 4（而不是旧的 5）。
+     * ③ 确认有意：用户 2026-10-20 逐字「**我记得洛克茜有延长失衡 2s 的被动**」；同队 `W` 实测 16 → 18。
+     * ④ 本条**只改锚值**：`stable`、`outerConverged`、`pool === floor(连续值)` 三条判据逐条保留。
+     *    ⚠ 反空洞仍在：`pool === floor(cont)` 若被钳位/硬凑会立刻红（4 ≠ floor(4.7121) 才怪）。
+     */
+    expect(pool, '池次数 = 物理 4（窗口 18s 后的自洽值）').toBe(4)
     // 同源判据：池不得高于「连续值」的 floor —— 高于就说明那份计划没按这么多窗排过
     // （`stunPoolContinuous.test` 的 stable 契约，本队同一口径）。
     const cont = continuousStunCount(calc.stunPoolResult.value!)

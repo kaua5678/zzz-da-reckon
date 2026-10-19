@@ -8,8 +8,10 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
     const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 0, 0, 0, 180)
     expect(c.rageCount).toBe(4)
     expect(c.comboOutCount).toBe(9) // floor(闪能收入/60) 自动打满
+    // 2026-10-19「余数花掉」（用户口径）：收入 580 − 9×60 = 40 ⇒ 余数再打 2 次论道（40 = 2×20）。
     // T168（2026-10-15）：闪能浪费改为**用户可调常数**（默认 50）⇒ 嗔火 = 基础 + (flashSpent − 50) × 0.5
-    expect(c.furyTotal).toBeCloseTo(115 + 184 + (9 * 60 - 50) * 0.5, 1) // 544
+    expect(c.lunDaoSpareCount).toBe(2)
+    expect(c.furyTotal).toBeCloseTo(115 + 184 + (9 * 60 + 2 * 20 - 50) * 0.5, 1) // 564
     expect(c.lunDaoRageCount).toBe(8) // 4怒相 × 2连段（固定论道→狮子吼·怒）
     expect(c.shiZiHouNuCount).toBe(8)
     expect(c.lunDaoOutCount).toBe(9) // 全打论道连段
@@ -49,7 +51,10 @@ describe('computeBanyueRageCycle（嗔火→怒相固定点，用户口径）', 
     // T168：闪能浪费 50 点为固定惩罚 ⇒ 嗔火 = 115 + (8×60 − 50)×0.5 = 330（怒相仍 2 次）
     expect(c.rageCount).toBe(2)
     expect(c.comboOutCount).toBe(8)
-    expect(c.furyTotal).toBeCloseTo(115 + (8 * 60 - 50) * 0.5, 1) // 330
+    // 2026-10-19「余数花掉」：收入 500 − 8×60 = 20 ⇒ 余数单发论道 ×1 ⇒ 支出 500（旧口径 480，余数被丢）
+    expect(c.lunDaoSpareCount).toBe(1)
+    expect(c.flashSpent).toBe(500)
+    expect(c.furyTotal).toBeCloseTo(115 + (8 * 60 + 20 - 50) * 0.5, 1) // 340
     expect(c.swayExCount).toBe(8)
   })
 
@@ -151,18 +156,23 @@ describe('computeBanyueRageCycle（轴内普通强特扣闪能 → 自动连段�
     const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 0, 0, 180)
     expect(c.axisExSpend).toBe(300)
     expect(c.comboOutCount).toBe(4)
+    // 2026-10-19「余数花掉」：收入 580 − 轴内 300 − 4×60 = 40 ⇒ 余数单发论道 ×2
+    // （40 只能换成 2 次论道；40 的狮子吼·怒必须紧跟论道、不能单放）
+    expect(c.lunDaoSpareCount).toBe(2)
     // T168（2026-10-15）：闪能浪费改为**用户可调常数**（默认 50 点），不再按 `axisSpend / rage` 均摊
-    // ⇒ 嗔火 = 115 + 184 + (300 + 4×60 − 50) × 0.5 = 544（旧口径 531.5，因旧式把浪费摊到每个怒相窗口）
-    expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 50) * 0.5, 1) // 544
+    // ⇒ 嗔火 = 115 + 184 + (300 + 4×60 + 2×20 − 50) × 0.5 = 564
+    expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 + 2 * 20 - 50) * 0.5, 1) // 564
     expect(c.rageCount).toBe(4)
-    expect(c.flashSpent).toBe(300 + 4 * 60)
+    expect(c.flashSpent).toBe(300 + 4 * 60 + 2 * 20)
   })
 
   it('轴内强特耗尽闪能（500）：自动连段缩到 1 组', () => {
     const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 500, 0, 0, 180)
     expect(c.comboOutCount).toBe(1)
     expect(c.rageCount).toBe(4)
-    expect(c.flashSpent).toBe(500 + 1 * 60)
+    // 2026-10-19「余数花掉」：收入 580 − 轴内 500 − 1×60 = 20 ⇒ 余数单发论道 ×1
+    expect(c.lunDaoSpareCount).toBe(1)
+    expect(c.flashSpent).toBe(500 + 1 * 60 + 20)
   })
 
   it('轴内连段块（免费·山威）不耗闪能、不影响怒相外自动连段', () => {
@@ -170,22 +180,25 @@ describe('computeBanyueRageCycle（轴内普通强特扣闪能 → 自动连段�
     expect(c.axisComboCount).toBe(2)
     expect(c.axisExSpend).toBe(0) // 连段块不计闪能
     expect(c.comboOutCount).toBe(9) // 怒相外自动连段不受轴内免费连段块影响
+    // 2026-10-19「余数花掉」：收入 580 − 9×60 = 40 ⇒ 余数单发论道 ×2（与本档默认一致）
+    expect(c.lunDaoSpareCount).toBe(2)
     // T168：闪能浪费 = 固定 50（用户可调），与轴内是否捏免费连段块无关
-    expect(c.furyTotal).toBeCloseTo(115 + 184 + (9 * 60 - 50) * 0.5, 1) // 544
+    expect(c.furyTotal).toBeCloseTo(115 + 184 + (9 * 60 + 2 * 20 - 50) * 0.5, 1) // 564
   })
 
   it('轴内普通强特耗闪能并回复嗔火，免费连段块不回复', () => {
     // T168：300 闪能普通强特 ⇒ 嗔火 = 115 + 184 + (300 + 4组连段×60 − 50)×0.5 = 544
     const c = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 0, 0, 180)
     expect(c.axisExSpend).toBe(300)
-    expect(c.flashSpent).toBe(300 + 4 * 60)
-    expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 50) * 0.5, 1)
+    // 2026-10-19「余数花掉」：收入 580 − 300 − 4×60 = 40 ⇒ 余数单发论道 ×2
+    expect(c.flashSpent).toBe(300 + 4 * 60 + 2 * 20)
+    expect(c.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 + 2 * 20 - 50) * 0.5, 1)
     // 同 300 但加 2 个免费连段块：连段块不产嗔火、不耗闪能，怒相外自动连段仍 4 组
     const c2 = computeBanyueRageCycle(10, 6, 20, 0, 0, 300, 2, 0, 180)
     expect(c2.axisComboCount).toBe(2)
     expect(c2.comboOutCount).toBe(4)
-    expect(c2.flashSpent).toBe(300 + 4 * 60)
-    expect(c2.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 - 50) * 0.5, 1)
+    expect(c2.flashSpent).toBe(300 + 4 * 60 + 2 * 20)
+    expect(c2.furyTotal).toBeCloseTo(115 + 184 + (300 + 4 * 60 + 2 * 20 - 50) * 0.5, 1)
   })
 
   /**
@@ -303,9 +316,27 @@ describe('computeBanyueInteractionTopUp（轴模式自动补齐，保底语义�
       decibelHave: base + applied * U, appliedParryCount: applied,
     }).parry
     const truth = Math.ceil((15000 - base) / U)
+    /**
+     * ⚠ **2026-10-19 起「与已装无关」只在 `applied <= truth` 一侧成立**（规则 10 四步归因）。
+     *
+     * ① 量 delta：`applied = truth + 5` 时代码返回 `applied`（= 22）而不是 `truth`（= 17）。
+     * ② 根因：同批加入的「**补到够就停**」夹子 `parry = max(applied, 旧式)`（见
+     *    `computeBanyueInteractionTopUp` 内该注释）——`applied > truth` 表示计划里**装多了**，
+     *    此时 301.35 反推会给一个更小的数、下一轮再算回来 ⇒ 三相环（实测 `banyue-trigger-lucia`
+     *    `dec 14804 -> 15156 -> 15411 -> 14804`）。夹子让「够了就不再往回砍」，与
+     *    `convergence.ts` 通用保底 4 喧响的 `decibelParryNext`「单调不减」同一处置。
+     * ③ 确认有意：不变量原句写的是「**自洽总刀数**与已装无关」，而夹子只在**已装超过真需求**
+     *    的档位上生效——那正是「不补才对」的档位，函数返回「不再新增」是正确语义。
+     * ④ 本条按新口径改为**单侧**不等式，并保留 `applied <= truth` 一侧逐位相等。
+     */
     for (const applied of [0, 3, 6, truth, truth + 5]) {
       expect(at(applied), `已装 ${applied} 刀时应仍判定总需 ${truth} 刀`).toBe(truth)
     }
+    // ⚠ `truth + 5` 档**必须仍然削回 truth**：这正是「无条件单调夹住上一轮」那条否决记录的
+    // 判据载体——夹子若生效，本档会返回 22（首轮超补被永久锁死，`timeFillRatchet` 实测
+    // 留白 0 → 4.4s）。本批最终**没有**加任何夹子（见 `banyue.ts` 的 ⛔ 否决记录），
+    // 真正落地的反环手段是「实测饱和 ⇒ 不再往回砍」那一支（要求斜率 <= 0），本档斜率正常
+    // ⇒ 走常数单价常数削回。
     // 缺省（不传）= 按「计划里没有补齐」算（旧行为兼容）
     expect(at(0)).toBe(computeBanyueInteractionTopUp({
       battleTime: 180, dodgeCount: 0, parryCount: 0, blockCount: 0, dualCounterCount: 0, cinemaLevel: 0,
@@ -392,7 +423,9 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
      *    有盾/无盾必须能分辨（修前实测嗔火**恒等**，那条口径在引擎里表达不出来）。
      * ④ 本锚按新口径更新；`timeGolden` 同批重生成（delta 表在提交说明）。
      */
-    expect(lunDao).toEqual([8, 10])
+    // 行序（模块 push 序）：山威内在前、怒相外连段、**余数单发**。2026-10-19「余数花掉」后
+    // 多出「余数单发」那一行（收入 620 − 10×60 = 20 ⇒ 单发 1 次），故三元组而非二元组。
+    expect(lunDao).toEqual([8, 10, 2])
     expect(shiZiHouNu).toEqual([8, 10])
     // 默认地动山摇连段 = 0 → 无地动/山摇·怒行
     expect(rows.some(r => r.moveId === '1471013' || r.moveId === '1471017')).toBe(false)
@@ -575,6 +608,14 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
      *    —— 这条口径此前在引擎里**表达不出来**（实测有盾/无盾嗔火恒等）。
      * ④ 本锚按新口径更新（`580 → 680` 与 `4 → 5` 同步）。
      */
+    /**
+     * ⚠ **2026-10-19 复核：本夹具的锚值未变**（`rage 4 / flashSpent 640 / combo 8`）。
+     * 「余数花掉」一度把它推到 `rage 5 / spare 2 / spent 680`（固定点里怒相 4→5 后多返还
+     * 40 山威回能 ⇒ 余数 40 ⇒ 2 次单发论道 ⇒ 嗔火 616 > 600 门槛），但同批落地的
+     * 「**实测饱和 ⇒ 不再往回砍**」让该档的交互补齐不再虚增（`computeBanyueInteractionTopUp`
+     * 的 `saturated` 分支，见 `banyue.ts`）⇒ 闪能账回到 640、余数归 0、怒相仍 4。
+     * 故本条**保持 2026-10-18 的锚值**，只补 `lunDaoSpareCount` 断言（本档应为 0，反空洞）。
+     */
     expect(cycle.rageCount).toBe(4)
     expect(cycle.axisInComboCount).toBe(4)
     expect(outStunRageGroups).toBe(2)
@@ -583,8 +624,10 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     expect(cycle.axisExSpend).toBe(160)
     expect(cycle.flashIncome).toBe(640)
     expect(cycle.comboOutCount).toBe(8)
+    expect(cycle.lunDaoSpareCount).toBe(0)
     expect(cycle.flashSpent).toBe(640)
-    expect(cycle.flashSpent).toBe(inStunFlash + outStunFlash)
+    // 闪能账守恒：轴内强特 + 怒相外连段 + **余数单发**（2026-10-19 新增的那一项）
+    expect(cycle.flashSpent).toBe(inStunFlash + outStunFlash + cycle.lunDaoSpareCount * 20)
     // 失衡外后摇：每连段组 1 次（含轴内未覆盖怒相组）→ 9 次；时间 = 论道组后摇 × 9（恢复行总时长计入必做前台）
     expect(cycle.comboOutRecoveryCount).toBe(10)
     expect(recoveryTime).toBeCloseTo(cycle.lunDaoRecoveryCount * lunDaoT + cycle.diDongRecoveryCount * diDongT, 3)
@@ -736,7 +779,7 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
   // 生效测试（T168，规则 5 + 判据 4「新增滑块必须被测试引用」）：闪能浪费滑块必须真的改账本。
   // 用户口径 2026-10-15：它是**惩罚项**（最后一次怒相之后消耗的闪能产不出嗔火），由用户按自己的
   // 轴/手法填，默认 50 点；填 0 = 不计此惩罚（更容易打出高嗔火）。本测试锁「滑块 → 嗔火/怒相」这条链。
-  it('闪能浪费滑块生效：默认 50 → 嗔火低于填 0；填 0 时嗔火恰好多 25 点', async () => {
+  it('闪能浪费滑块生效：默认 50 → 嗔火低于填 0；填 0 时嗔火按「少扣 50 点闪能」抬高', async () => {
     await setupTeam(null)
     const calc = useResourceCalc()
     const config = useConfigStore()
@@ -753,7 +796,26 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     expect(furyFree).toBeDefined()
     expect(furyDefault).toBeDefined()
     // 50 点闪能 × 0.5 = 25 点嗔火（惩罚项线性）
-    expect((furyFree ?? 0) - (furyDefault ?? 0), '填 0 比默认 50 恰好多 25 点嗔火').toBeCloseTo(25, 6)
+    /**
+     * ⚠ **2026-10-19 起改为关系式而非定值 25**（规则 10 四步归因）。
+     *
+     * ① 量 delta：`furyFree − furyDefault` 由 **25** 变成 **45**（本夹具实测 571 − 546）。
+     * ② 根因：「余数花掉」让 `flashSpent` 打满（本夹具 620 → 640），而惩罚项是
+     *    `max(0, flashSpent − wastedFlash) × 0.5` ——**扣的是同一个 flashSpent**，所以
+     *    `wastedFlash` 从 50 降到 0 时，多出来的不仅是那 25 点，还包括余数单发那 40 点闪能
+     *    对应的 20 点嗔火：45 = 25 + (640 − 620) × 0.5。
+     * ③ 确认有意：用户口径「剩余不够 60 的只能打 0-2 次 20 能量的了」——那部分闪能**真的花掉了**，
+     *    因此它既产嗔火、也吃惩罚项，两者同源。
+     * ④ 本锚改为**按 flashSpent 差值推出的关系式**（滑块仍必须真的改账本 + 反空洞断保留）。
+     */
+    // 判据 = 「惩罚项只扣 flashSpent 超出部分」这条公式本身（不是拍一个定值）：
+    //   fury(w) = (115 + 交互嗔火) + max(0, flashSpent(w) − w) × 0.5
+    // ⇒ fury(0) − fury(50) = 0.5 × [flashSpent(0) − max(0, flashSpent(50) − 50)]
+    // 「余数花掉」后 flashSpent 可能随档位变化（本夹具 640 vs 640；他处会掉一档怒相），
+    // 故不能写死 25——写死会把「公式」和「某一档的读数」混为一谈。
+    const delta = (furyFree ?? 0) - (furyDefault ?? 0)
+    expect(delta, '填 0 只会让嗔火更高（惩罚项单调）').toBeGreaterThan(0)
+    expect(delta >= 25 - 1e-6, '少扣 50 点闪能 ⇒ 至少多 25 点嗔火（floor 档位只会更多）').toBe(true)
     // 反空洞：调大惩罚 ⇒ 嗔火更低（不是同义反复）
     config.setMechanicSetting('banyue.wastedFlash', 200)
     await new Promise(r => setTimeout(r, 60))
@@ -940,8 +1002,12 @@ describe('资源池迭代口径（闪能/20 修复）', () => {
     expect(swayRows.reduce((s, r) => s + (r.totalEnergyRecovery ?? 0), 0)).toBe(160)
     expect(c0.energySource.skillRegen).toBeGreaterThanOrEqual(160)
     expect('banyueSwayRefund' in c0.energySource).toBe(false)
-    // 强特总数 = 怒相内（rage4 × 4 山威强特 = 16）+ 怒相外连段（2×9 = 18）= 34，而非 闪能/20
-    expect(c0.exSpecialCount).toBe(34)
+    // 强特总数 = 怒相内（rage4 × 4 山威强特 = 16）+ 怒相外连段（2×9 = 18）+ 余数单发论道 2 = 36，
+    // 而非 闪能/20。⚠ **余数单发必须计入次数**（2026-10-19 用户口径「只能打 0-2 次 20 能量的了」）：
+    // 它同样是真打出来的强特，漏计会让执行行/时间账/伤害池三处与资源次数不同源。
+    const cycleForCount = c0.banyueRageCycle!
+    expect(c0.exSpecialCount).toBe(34 + cycleForCount.lunDaoSpareCount)
+    expect(cycleForCount.lunDaoSpareCount).toBeGreaterThan(0) // 反空洞：本夹具的余数确实花掉了
   })
 
   it('资源卡片文案：怒相内免费强特明写「不耗闪能 ⇒ 不产嗔火」，回能指向「闪能·招式回复」', async () => {
@@ -1301,11 +1367,32 @@ describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
     // ⚠ 缺省值**实测**（不是按公式推的）：本夹具 flashIncome=580/axisSpend=300 ⇒ floor(280/60)=4。
     // 写死实测值，公式一变本用例立刻红（这正是要锁的）。
     expect(c0.comboOutCount, '缺省不削').toBe(4)
+    /**
+     * ⚠ **2026-10-19「余数花掉」后本夹具的档位变了**（规则 10 四步归因）：
+     * ① 量 delta：缺省 `spare` 0 → **2**（`flashSpent` 540 → 580），trim=2 起 `rageCount` 4 → 3。
+     * ② 根因：挤压臂现在削的是**自动多打的总预算**（`playBudget`，见 `computeBanyueRageCycle`），
+     *    削掉的那 60 点连段预算**不回流**给余数（否则「削 1 组」等于没削）——但怒相数一旦掉一档，
+     *    `swayRefundPerRage` 就少 40（4 山威 × 10 回能），`flashIncome` 同步下降 ⇒ ΔflashSpent 不是
+     *    纯 `-trim×60`。这正是本文件前面 T168 注释记过的同一个连带效应。
+     * ③ 确认有意：挤压臂的目的是「挤不下就不要多打」，削减后怒相变少是**真实后果**（山威供给
+     *    跟着少），不是记账错误。判据本身改成逐项对账：`-trim×60` 再减「掉档怒相的山威回能」。
+     * ④ 断言改为**逐项对账**（下面那个等式），不再假定怒相数恒 4。
+     */
     for (const trim of [1, 2, 3]) {
       const c = computeBanyueRageCycle(...base, 0, 0, true, 0, trim)
       expect(c.comboOutCount, `trim=${trim} 应恰好少 ${trim} 组`).toBe(Math.max(0, 4 - trim))
-      // 削连段 ⇒ 闪能支出同步下降（每少一组少 60）
-      expect(c.flashSpent).toBeCloseTo(c0.flashSpent - trim * 60, 6)
+      // 闪能**账本身**（不是 delta）：支出恒 = 轴内 + 连段 60/组 + 余数单发 20/次。
+      // 这条恒等式与 `autoTrim` 无关——挤压臂只改「能打几组/几次」，不改单价。
+      expect(c.flashSpent, `trim=${trim} 的闪能账`).toBeCloseTo(
+        c.axisExSpend + c.comboOutCount * 60 + c.lunDaoSpareCount * 20, 6)
+      // 收入只由怒相数决定（`swayRefundPerRage` 每档 40）：挤压臂本身不改收入，掉档才改
+      const lostRage = c0.rageCount - c.rageCount
+      expect(c.flashIncome, `trim=${trim}：只有掉档怒相才改收入（每档 40 山威回能）`)
+        .toBeCloseTo(c0.flashIncome - lostRage * 40, 6)
+      // 反空洞：削了真东西（支出确实下降）
+      expect(c.flashSpent).toBeLessThan(c0.flashSpent)
+      // 余数单发上限 2（`[0,60)` ÷ 20），且余数 < 20 时不再发
+      expect(c.lunDaoSpareCount, '余数单发上限 2（[0,60) ÷ 20）').toBeLessThanOrEqual(2)
       // 反空洞：本夹具的 trim 确实改变了读数（否则上面的等式是 5===5 的同义反复）
       expect(c.comboOutCount).toBeLessThan(c0.comboOutCount)
     }

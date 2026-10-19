@@ -104,19 +104,14 @@
   "teamBuffs": [
     {
       "id": "peiluo_core_stun_duration",
-      "name": "佩洛伊斯｜核心被动",
+      "name": "佩洛伊斯｜核心被动（决算窗口延长）",
       "source": "核心被动",
       "description": "下分支[终结技：永陷幽囚]发动时，所有处于失衡状态的敌人失衡持续时间提升 3 秒。",
       "target": "enemy",
       "coverage": 1,
-      "effects": [
-        {
-          "stat": "stunDurationBonusSeconds",
-          "value": 3,
-          "mode": "flat"
-        }
-      ],
-      "status": "implemented_approximation"
+      "effects": [],
+      "status": "implemented_approximation",
+      "note": "⚠ 2026-10-20 改：**不再按常驻面板加成建模**（原 `stat: stunDurationBonusSeconds` value 3）。那个口径会让**每一次**失衡窗口都多 3s，而决算只发生在有决算的窗口，且它的作用是「让你在窗口最后 0.1s 放大招也能打完」（用户口径 2026-10-20 逐字：「就算你大招放在失衡的最后0.1s，他也能触发延时让你打完大招然后触发决算」）。现改为**按块的窗口延长**：模块能力 `stunWindowExtendOnEnd`（`specPanelBuffs.ts` 的 `PEILUO_VERDICT_WINDOW_EXTEND = 3`），由 `core/stunAxisStack.ts` 在决算块施放时把该窗口的有效时长放宽 3s。两条同批简化（用户口径）：① 大招在最后不会出窗口 ⇒ 该块 fits 恒 1、不计算跨窗易伤；② 大招后立即决算 ⇒ 该块结束即窗口结束、不再向后延。effects 留空是有意的：本条目只承载**文档与门控语义**，数值走模块能力（`scripts` 的 spec 校验允许空 effects + note）。"
     }
   ],
   "additionalAbility": {

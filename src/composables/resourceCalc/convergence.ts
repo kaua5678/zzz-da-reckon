@@ -60,7 +60,7 @@ import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
 import { chainMoveKind } from '@/data/chainMoveKind'
 import { axisMoveFreeOfDecibelOf } from './helpers'
 import { applyTeamMechanics, collectNextRoundFeedback, resolveMechanicSettings } from './panelPhases'
-import { enrichExecutionPlan, axisMoveEndsStunWindow, axisMoveActionTimeOf, normalizeDisplayTime } from './helpers'
+import { enrichExecutionPlan, axisMoveEndsStunWindow, axisMoveExtendOnEndOf, axisMoveActionTimeOf, normalizeDisplayTime } from './helpers'
 
 /** 保底 4 喧响的四舍五入阈值（自 useResourceCalc 顶层随迁；那里改为了 import） */
 const DECIBEL_ROUND_THRESHOLD = 1500
@@ -188,6 +188,7 @@ export function createRunCalcRound(deps: {
         const wins = winAlloc[ai] ?? 0
         if (wins <= 0) return
         let truncEnd = -1
+        let winExtend = 0
         for (const act of axis.actions) {
           const cinema = configStore.team[act.slot]?.cinemaLevel ?? 0
           // CC-39b：是否截断窗口由本槽角色模块能力 `endsStunWindow` 判定（与 roundInputs 的 endsStunWindow 同源）
@@ -198,8 +199,10 @@ export function createRunCalcRound(deps: {
           let dur = act.duration ?? move?.actionTime ?? 0
           dur = axisMoveActionTimeOf(configStore.team[act.slot]?.agentId, act.moveId, dur)
           truncEnd = Math.max(truncEnd, Math.max(0, act.startTime ?? 0) + dur)
+          // 决算块把窗口延长 N 秒（佩洛伊斯 3s）：截断损失按**延长后**的窗长算
+          winExtend = Math.max(winExtend, axisMoveExtendOnEndOf(configStore.team[act.slot]?.agentId, act.moveId, cinema))
         }
-        if (truncEnd >= 0) verdictSecondsLost += Math.max(0, windowDur - truncEnd) * wins
+        if (truncEnd >= 0) verdictSecondsLost += Math.max(0, windowDur + winExtend - truncEnd) * wins
       })
     }
     // 雨果轴模式剩余失衡时间 + 决算次数（原在此从轴内块反推）已于 2026-09-17 round 21 夜D
@@ -482,6 +485,8 @@ export function createRunCalcRound(deps: {
         swayBySlot: stackSwaySupplyOf(Math.max(0, opts?.axisAutoTrim ?? 0)),
         // T157：升级轴（bestEffort）的资源门控 —— 与下方 6 处同源
         goodReview: Math.max(0, prevGoodReview),
+        // 决算块的窗口延长（佩洛伊斯 3s）：按本槽角色派发，与下方 inAxisFractionProvider 同源
+        extendOnEndOf: (slot, moveId) => axisMoveExtendOnEndOf(configStore.team[slot]?.agentId, moveId, configStore.team[slot]?.cinemaLevel ?? 0),
       })
       // 终结技总次数（供希希芙影画2 等）：按实际执行集合计（含赠送块）
       const ultMoveOfSlot = new Map<number, string>()
@@ -891,6 +896,23 @@ export function createRunCalcRound(deps: {
          * 累加进 `cfg.parryCount` 的是同一个值，见上方 540-543 行注释）。
          */
         appliedParryCount: prevInteractionTopUp.parry,
+        /**
+         * **割线步的读数对**（2026-10-19，与「余数花掉」同批）：
+         * `appliedPrev/decibelPrev` = 上一轮的（已装刀数, 该槽喧响），`appliedNow/decibelNow` = 本轮。
+         *
+         * 为什么必须由编排层递：模块是纯函数、不持有跨轮历史（27 处测试直接调它）。
+         * 而「上一轮的喧响」在 `threads` 里**没有**独立字段（`decibelRegenBySlot` 是**本轮**写入的
+         * 下一轮预算，不是上一轮读数）⇒ 只能从 `prevInteractionTopUp` 里随附（见该字段类型注释）。
+         * 缺省 = 不给 ⇒ 模块回落常数单价 301.35（逐位等于旧行为）。
+         */
+        measuredParryUnit: prevInteractionTopUp.measured?.decibelNow !== undefined
+          ? {
+            appliedPrev: prevInteractionTopUp.measured.applied,
+            decibelPrev: prevInteractionTopUp.measured.decibelNow,
+            appliedNow: prevInteractionTopUp.measured.next,
+            decibelNow: decibelHave,
+          }
+          : undefined,
         battleTime: base.totalTime,
         /**
          * ⚠ **秽盾闪能必须传**（T162 修）：般岳的嗔火缺口按 `flashBase = 秒回×战斗时间 + 进场 + 秽盾`
@@ -1001,6 +1023,8 @@ export function createRunCalcRound(deps: {
           decibelBySlot: stackDecibelBySlot,
           swayBySlot: stackSwaySupplyOf(Math.max(0, opts?.axisAutoTrim ?? 0)),
           goodReview: Math.max(0, prevGoodReview),
+          // 与上方 axisExecutedStack 同源（决算块窗口延长）
+        extendOnEndOf: (slot, moveId) => axisMoveExtendOnEndOf(configStore.team[slot]?.agentId, moveId, configStore.team[slot]?.cinemaLevel ?? 0),
         })
         const inAxisCounts = expandExecutedToCounts(stack.executed, stack.basicFillBySlot)
         const fraction: Record<string, number> = {}

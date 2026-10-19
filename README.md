@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（95 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（97 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -84,6 +84,8 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/ARCHITECTURE-OVERVIEW.md` | **架构全景（实测版，R6 第 1 步）**：脚本测得的各层规模与依赖边、与 ARCHITECTURE.md §0 的差异 A1–A5（core 经 `@/mechanics` index 形成模块环、stores 直接调引擎、data 层读全局可变状态等）、效果管线函数级图、R6 候选 C1–C4；ARCHITECTURE.md 是规划，本文件是现状 |
 | `docs/ENTITY_CARDS.md` | **实体卡（AI 陈述性知识层）**：音擎/角色/驱动盘等实体的完整结构与权威指针表 + 事故登记；配套查证工具 `node scripts/resolve.mjs` 与引擎探针 `npm run probe:panel`（跨实体断言/派生数值必用） |
 | `docs/ENGINE_PIPELINE_GUIDE.md` | **引擎管线导读**：一轮计算的数据流、模块钩子调用顺序、常见坑（AI 录入排查用） |
+| `docs/STUN_WINDOW_DURATION.md` | **失衡窗口时长口径与缺口普查**：`stunDurationBonusSeconds` 怎么加总成窗口 W、为什么「原文有 +N 秒但没生效」这类漏检逃得过面板测试（全队加总量 + 无专属显示位 + 原文 5 种措辞）、10 个提到该词的角色逐条实现状态（1511/1551/1581 仍未实现）；改窗口/补角色失衡时长前必读 |
+| `docs/STUN_TIMELINE_PROJECT.md` | **大工程提示词：失衡窗口「时间轴级」建模**（从聚合近似 → 逐窗口可推演）——四期施工图（时间轴数据结构 / 替换聚合口径 / 修量纲错配 / 窗口剩余时间给队友填充）、用户口径逐字、纪律与起点指针；下一个 agent 开工读这份 |
 | `docs/AGENT_RECORDING_SOP.md` | **角色录入 SOP（AI 快速上手）**：spec 字段→消费者→生效测试清单、防死数据铁律、踩坑清单 |
 | `docs/MECHANIC_PATTERNS.md` | **机制模式目录**：游戏文本 → 计算逻辑的翻译词典——九个计算维度、确定性四级（L0 直读/L1 直译/L2 近似/L3 凹分拍板）、凹分思想提炼路径（录新角色先做模式匹配） |
 | `docs/GAME_TERM_TO_CODE_FIELD.md` | 中文游戏术语 → 计算器字段映射（AI 录入时查字段用） |
@@ -177,6 +179,6 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-guard-audit-surface-work.md` | **判据「表面功夫」审计（2026-10-17）**：A/B/C 三类坏法的清点与分布、逐条四栏判定（判据位置/类别/想防什么/为什么拦不住/建议改法）、最妨碍开发的 Top 5、以及「看着像表面功夫、实际有牙」的反向清单（防误删）与「不该动」清单 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（95 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（97 份，与节标题一致），新增文档需同步本表。
 > **判据 9 已递归到子目录**（`docs/**/*.md`）：子目录里的文档同样必须登记，路径按 `docs/<相对路径>` 写
 > （2026-10-06 修：`docs/proposals/pull-value-optimization.md` 曾因 glob 只扫顶层而长期不在表内 = agent 找不到）。

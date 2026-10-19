@@ -205,6 +205,15 @@ export const REMIELLE_LUMEN_FLOWER_FEATHER_THRESHOLD = 90
  * @fact agent:1581/浮晖消耗速率 口径: 相变时流期间浮晖按 2 点/秒 消耗（120→90 需 15s，与实战段长中位 15.5s 吻合）；消耗是**纯时间驱动**，自主攻击不额外扣浮晖（段长与攻击数 r=0.895 只是「攻击次数是时间的函数」） | 据 用户@2026-10-18「飞行状态通常15s左右…120自动下降到90需要15s左右，期间有3次攻击」+ 67 段日志反推 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/mechanics/agents/remielle.ts#REMIELLE_LUMEN_DRAIN_PER_SECOND | 信 确认
  * ⟳复核: 若官方给出明确消耗速率（或相变时流改成固定时长而非资源驱动）⇒ 重核本常量与 `remielleRoundSeconds` | 到期 2027-03-31
  */
+/**
+ * 惊鸿（长按平A）命中失衡敌人 → **失衡持续时间 +3s**（原文：「招式命中处于失衡状态的敌人时，
+ * 敌人的失衡持续时间提升3秒，同一敌人在一次失衡状态下最多受到一次此效果，与同类效果不可叠加」）。
+ *
+ * ⚠ 2026-10-20 前**完全未实现**：采集侧 `teammate-buffs.json` 的 1581 组里**没有**这条
+ * （1511/1551 有、走采集 buff；1581 没有 ⇒ 需模块自己加）。见 `docs/STUN_WINDOW_DURATION.md`。
+ * 口径：**满覆盖**——每轮循环都以惊鸿收尾（见本文件「一轮 = 攒满 3 虚曜 → 入场 → 大招 → 惊鸿」）。
+ */
+export const REMIELLE_GRACE_STUN_DURATION = 3
 export const REMIELLE_LUMEN_DRAIN_PER_SECOND = 2
 /** 满值飞到「可免费进映曜」阈值所需秒数 = (120 − 90) / 2 = **15s**（= 一轮里的后台飞行段） */
 export const REMIELLE_LUMEN_FLIGHT_SECONDS
@@ -430,6 +439,8 @@ function applyRemiellePanel({ slot, agent, team, panel, settings }: AgentPanelIn
     if (v > 0) drops[String(s)] = v
   }
   panel.remielleTeammateDrops = drops
+  // 惊鸿命中失衡敌人 → 失衡持续时间 +3s（原文；此前完全未实现，见常量注释）
+  panel.stunDurationBonusSeconds = panel.stunDurationBonusSeconds + REMIELLE_GRACE_STUN_DURATION
 }
 
 /**
