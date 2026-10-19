@@ -4,7 +4,7 @@ import type { CharacterResourceResult, MechanicSetting, SkillExecution } from '@
 import { fmt } from '@/utils/format'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
-import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import { findMoveById } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
@@ -358,17 +358,23 @@ function buildLuciaResourceSections({ result, agentNames }: AgentResourceSection
 }
 
 /**
- * 追加攻击次数上限 = min(滑块/默认, CD 封顶)。
- * CD 封顶（2026-08-30 相位延后口径，core/effectiveTime.ts）= floor(有效后台时间 / 等效CD)：
+ * 追加攻击次数上限 = `capOfAuto(自动, 滑块)`（用户口径 2026-10-19：「**是修改上限而不是修改招式次数，
+ * 次数应该自动计算**」「手动可以限制最大数值，因为玩家可能有特殊操作导致吞技能」）。
+ *
+ * 自动值 = CD 封顶（2026-08-30 相位延后口径，core/effectiveTime.ts）= floor(有效后台时间 / 等效CD)：
  * 等效CD = 8s + 前台占比×前台块长/2——卢西娅本人被换上前台做动作（A5/强特/终结/合轴）时，
  * 队友命中触发的追击同样会被她自己的前台块延后；无敌期间不结算。
+ * 梦境值预算（500/25 = 20）在 `computeLuciaDreamPlan` 里与之取 min，**不受滑块影响**。
+ *
+ * 滑块 `0` = 不设上限（交给自动）；`>0` 只能把次数**压下来**，不能顶上去。
  */
+
 function additionalAttackCapOf(
   cfg: AgentCharConfigInput['cfg'],
   state: AgentResourceInput['state'],
   frontActionCount: number,
 ): number {
-  const slider = cfgNum(cfg, 'lucia.additionalAttackCount')
+  const cap = cfgNum(cfg, 'lucia.additionalAttackCount')
   const w = effectiveBattleTime(cfg)
   const f = state.frontlineTime
   const b = effectiveBackstageTime(state.backstageTime, cfg)
@@ -379,17 +385,18 @@ function additionalAttackCapOf(
     ADDITIONAL_ATTACK_CD_SECONDS,
   )
   const cd = phaseDelayedCooldown(ADDITIONAL_ATTACK_CD_SECONDS, f, w, block)
-  return Math.min(slider, Math.floor(b / cd))
+  // 自动 = CD 封顶；滑块只压上限（0 = 不设上限）
+  return capOfAuto(Math.floor(b / cd), cap)
 }
 
 const settings: MechanicSetting[] = [
   {
     id: 'lucia.additionalAttackCount',
-    label: '卢西娅·追加攻击次数',
-    description: '全局追加攻击（合唱）次数；默认 20 次（≈500 梦境值 ÷ 25/次，CD 8s 队友命中触发、不限失衡窗口；受相位延后 CD 封顶 = 有效后台时间/等效CD）。',
+    label: '卢西娅·追加攻击次数上限',
+    description: '全局追加攻击（合唱）次数的**上限**（次数本身自动算：CD 封顶 = 有效后台时间/等效CD，再受梦境值预算 500÷25 = 20 封顶；不限失衡窗口）。默认 20 = 不额外设限；调低 = 你手动吞掉一部分（玩家特殊操作）。填 0 = 不设上限。',
     default: DEFAULT_ADDITIONAL_ATTACK_COUNT,
     min: 0,
-    max: 40,
+    max: 20,
     step: 1,
     suffix: '次',
   },

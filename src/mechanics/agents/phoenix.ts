@@ -45,7 +45,7 @@ import type {
   ReleaseModifierInput,
 } from '../types'
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
@@ -216,13 +216,12 @@ function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResour
   return income
 }
 
-/** 长按普攻（焚罪）次数：floor(燔焰收入×影画1效率/90)，滑块覆盖优先 */
+/** 长按普攻（焚罪）次数：自动 = floor(燔焰收入×影画1效率/90)；滑块 = **上限**（用户口径 2026-10-19），0 = 不设上限 */
 export function phoenixChargedCount(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
-  const override = setting(cfg, 'phoenix.chargedAttackCount')
-  if (override > 0) return whole(override)
   const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
   const eff = cinema >= 1 ? 1 + PHOENIX_C1_EMBER_EFFICIENCY / 100 : 1
-  return Math.floor(phoenixEmberIncome(cfg, state, executions) * eff / PHOENIX_CHARGED_EMBER_COST)
+  const auto = Math.floor(phoenixEmberIncome(cfg, state, executions) * eff / PHOENIX_CHARGED_EMBER_COST)
+  return capOfAuto(auto, whole(setting(cfg, 'phoenix.chargedAttackCount')))
 }
 
 function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, outOfCombatPanel }: AgentCharConfigInput): void {
@@ -554,8 +553,8 @@ function buildPhoenixResourceSections({ result }: AgentResourceSectionsInput) {
 const settings: MechanicSetting[] = [
   {
     id: 'phoenix.chargedAttackCount',
-    label: '菲欧妮·焚罪次数覆盖',
-    description: '手动指定整局[普通攻击：焚罪]（消耗90燔焰）次数；0=自动（燃烧攻击行 attack_data_0 燔焰收入×影画1效率1.15/90）。',
+    label: '菲欧妮·焚罪次数上限',
+    description: '[普通攻击：焚罪]（消耗 90 燔焰）整局次数的**上限**。次数自动 = 燃烧攻击行 attack_data_0 燔焰收入 × 影画1效率1.15 ÷ 90；调低 = 你手动吞掉一部分。0 = 不设上限。',
     default: 0,
     min: 0,
     max: 40,

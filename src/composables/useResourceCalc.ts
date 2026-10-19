@@ -13,8 +13,8 @@ import { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
 import { findInteractionTopUpSlot, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import { calcAnomalyPoolDamage } from '@/core/anomalyPool'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
-// R14 / T139：无轴易伤集中度估算（开关 + 系数 k 的机制参数键）
-import { DEFAULT_NO_AXIS_CONC_K, NO_AXIS_CONC_ENABLED_SETTING, NO_AXIS_CONC_K_SETTING } from './resourceCalc/concEstimate'
+// R14 订正（2026-10-19）：非轴不再自动估算易伤，改为用户自填贡献率 φ
+import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from './resourceCalc/concEstimate'
 import { freezeCached } from './resourceCalc/freezeCached'
 import { createRunCalcRound } from './resourceCalc/convergence'
 import { createConvergenceRoundInputs } from './resourceCalc/roundInputs'
@@ -678,18 +678,14 @@ export function createResourceCalc(
     isAxis: axisMode.value,
     axisOverlayBySlot: axisOverlays.value,
     computeWindowDuration,
-    // R14 / T139：无轴易伤集中度估算（开关 + 系数 k）。**只作用于非轴分支**——
-    // 轴模式的覆盖率仍是 1/0 两档，damagePool 里由 isAxis 短路（硬约束 1）。
+    // R14 订正（用户裁决 2026-10-19）：**非轴不再自动认领易伤**，改为用户自填「易伤贡献率」。
     //
-    // ⚠ **缺省 OFF（opt-in）**，不是默认开。lead 复核 2026-10-17（T205 实测）否决了默认开：
-    //   ① 它让「相邻影画档位伤害不下降」这条**真实不变量**失效 —— `1371` 实测 c3 = 4.24M > c4 = 4.23M
-    //      （影画升级反而降伤），因为 `conc_est` 依赖 `HHI_plan`/`mainShare`，它们随影画档位变化；
-    //   ② 它会在用户没要求时把**全库无轴伤害静默 +12.2%**（358 条 golden delta）。
-    //   ⇒ 能力保留（用户要的「无轴更真实」），但让用户**自己开**（开了有来源标注 + 滑块）。
-    noAxisConcEstimate: {
-      enabled: configStore.getMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 0) !== 0,
-      k: configStore.getMechanicSetting(NO_AXIS_CONC_K_SETTING, DEFAULT_NO_AXIS_CONC_K),
-    },
+    // > 「轴模式下已经认定了易伤认领啊，非轴模式下想自动认领也不能仅仅靠连携和大招，
+    // >  还有其他很多招式啊，所以非轴就只能不做，让用户自己填易伤贡献率。」
+    //
+    // ⇒ 关掉自动估算（原 conc_est(N) × k，缺省本就是 OFF），只保留用户显式填的贡献率：
+    //   非轴行级覆盖率 = 时间覆盖率 × φ（φ 缺省 1 = 旧口径的「每招均匀」，逐位不变）。
+    noAxisVulnShare: configStore.getMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, DEFAULT_NO_AXIS_VULN_SHARE),
   }))
 
   /**

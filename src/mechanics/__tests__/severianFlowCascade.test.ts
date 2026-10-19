@@ -187,7 +187,11 @@ describe('债 1a · 1631 赛维里安流息方程 = (a) 有序级联（不可松
       .toMatch(/base \+ Math\.floor\(flow \/ SEVERIAN_SHADOW_FLOW_COST\) \* refund/)
     expect(src, '不得改成松弛式（迭代期不 floor）——1631 是 (a) 有序级联，松弛 = 兑现不可达余数')
       .not.toMatch(/base \+ \(flow \/ SEVERIAN_SHADOW_FLOW_COST\)/)
-    expect(src, '终局次数必须仍由 floor(flow/100) 给出').toMatch(/shadowHuntCount: Math\.floor\(flow \/ SEVERIAN_SHADOW_FLOW_COST\)/)
+    // 2026-10-19 用户裁决：滑块 = **上限** ⇒ 自动值仍是 floor(flow/100)，再经 capOfAuto 压上限。
+    // 旧锁直接断言最终字段 = floor(...)；现在自动值先落变量（语义不变，锁换形，有归因）。
+    expect(src, '自动次数必须仍由 floor(flow/100) 给出').toMatch(/const autoCount = Math\.floor\(flow \/ SEVERIAN_SHADOW_FLOW_COST\)/)
+    expect(src, '自动值必须经 capOfAuto 才成为最终次数（上限语义，不能直接赋值）')
+      .toMatch(/shadowHuntCount = capOfAuto\(autoCount, whole\(setting\(cfg, 'severian\.shadowHuntCount'\)\)\)/)
   })
 
   /**

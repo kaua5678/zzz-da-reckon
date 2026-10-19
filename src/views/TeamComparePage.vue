@@ -634,11 +634,10 @@
           <span class="legend-hint">
             实心圆 = <b>轴模式</b>（失衡易伤集中在轴内高倍率招式）｜
             灰色空心圆 + 虚线 = <b>非轴参照</b>（同一支队关掉轴）——
-            <template v-if="noAxisConcEnabled">
-              当前口径：<b>估算的典型玩家</b>（会把大技能留给失衡 ⇒ 覆盖率已含估算；关掉「无轴时的失衡易伤估算」即为完美均匀摊）
-            </template>
-            <template v-else>
-              当前口径：<b>完全均匀摊</b>（每招按同一比例吃易伤 = 最坏情况）
+            <template v-if="noAxisVulnShare != null">
+              当前口径：<b>你填的易伤贡献率 {{ Math.round(noAxisVulnShare * 100) }}%</b>（非轴不自动认领；
+              <template v-if="noAxisVulnShare < 1">低于 100% = 你认为只兑现了这么多失衡易伤</template>
+              <template v-else>100% = 每招按同一比例吃易伤，完全均匀摊</template>）
             </template>
           </span>
         </div>
@@ -892,7 +891,7 @@ import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import { useLogicEditorStore } from '@/stores/logicEditor'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, axisWorseThanNoAxis, type CurveDatum, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
-import { NO_AXIS_CONC_ENABLED_SETTING } from '@/composables/resourceCalc/concEstimate'
+import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from '@/composables/resourceCalc/concEstimate'
 import type { KnobPointName } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { teamPresets } from '@/data/teamPresets'
@@ -921,8 +920,9 @@ const configStore = useConfigStore()
  * 那是设计上的必然（参照语义从「最坏情况」变成「典型玩家」），但**不能让用户以为
  * 自己看的是均匀摊**——所以图例随开关切换措辞。
  */
-const noAxisConcEnabled = computed(() =>
-  configStore.getMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 1) !== 0)
+// 用户裁决 2026-10-19：非轴不做自动认领，曲线页只用来说明「非轴参照吃的是哪个口径」
+const noAxisVulnShare = computed(() =>
+  configStore.getMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, DEFAULT_NO_AXIS_VULN_SHARE))
 const catalogStore = useCatalogStore()
 /** 行融合规则是计算输入（`logicEditor/fusion` 的模块级快照）：worker 里读不到用户改过的规则 ⇒ 随请求显式传 */
 const logicStore = useLogicEditorStore()

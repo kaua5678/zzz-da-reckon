@@ -196,22 +196,18 @@
                         />
                         <span class="muted" style="font-size: 12px; margin-left: 8px">% 队友前台可被吸收（0 = 不吸收；缺省 40）</span>
                       </div>
-                      <!-- R14 / T139：无轴时的失衡易伤估算（用户 2026-10-17「最好可以调整，因为这种很难确定」） -->
-                      <div class="guarantee-row" title="没捏轴（非轴模式）时，引擎按「每招均匀落在失衡里」算易伤，会比真人打出的低——真人会把大技能留到失衡窗。开了这一项就按「你会把大技能留给失衡」估算（不同失衡次数下 1.0×~2.8×），你打得越集中，下面的系数可以拉得越高。关掉 = 回到「每招均匀」的老算法。轴模式不受影响（轴里已经写明了每一招在不在失衡里）。">
-                        <n-checkbox :checked="noAxisConcEnabled" @update:checked="v => setNoAxisConcEnabled(v)">无轴时的失衡易伤估算</n-checkbox>
-                        <span class="muted" style="font-size: 12px; margin-left: 8px">{{ noAxisConcEnabled ? '按「你会把大技能留给失衡」算' : '按「每招均匀落在失衡里」算（旧算法）' }}</span>
-                      </div>
-                      <div v-if="noAxisConcEnabled" class="guarantee-row" title="1.0 = 数据驱动的估算（不同失衡次数下 1.0×~2.8×，中位误差约 9%）。觉得偏保守就拉高、偏激进就拉低；拉到 0 = 完全均匀（等价于关掉估算）。">
-                        <span class="section-title" style="margin-right: 12px">估算强度</span>
+                      <!-- 非轴「易伤贡献率」（用户裁决 2026-10-19：非轴不做自动认领，让用户自己填） -->
+                      <div class="guarantee-row" title="没捏轴（非轴模式）时，引擎按「每招均匀落在失衡里」算易伤——真人会把大技能留到失衡窗，实际兑现的易伤比均匀摊更高，但哪个招式进窗只有你自己知道。所以这一项不由引擎猜：你按自己的打法填「时间覆盖率里实际兑现了多少」。100% = 每招均匀摊（旧口径，缺省）；觉得偏低就往下调。轴模式不受影响（轴里已经写明了每一招在不在失衡里）。">
+                        <span class="section-title" style="margin-right: 12px">非轴·易伤贡献率</span>
                         <n-slider
-                          :value="noAxisConcK"
+                          :value="noAxisVulnSharePct"
                           :min="0"
-                          :max="2.5"
-                          :step="0.1"
+                          :max="100"
+                          :step="5"
                           style="width: 220px; display: inline-block; vertical-align: middle"
-                          @update:value="v => setNoAxisConcK(v)"
+                          @update:value="v => setNoAxisVulnSharePct(v ?? 100)"
                         />
-                        <span class="muted" style="font-size: 12px; margin-left: 8px">×{{ noAxisConcK.toFixed(1) }}（1.0 = 实测缺省；0 = 均匀；越高 = 你越会把大技能留到失衡）</span>
+                        <span class="muted" style="font-size: 12px; margin-left: 8px">{{ noAxisVulnSharePct }}%（100% = 每招均匀摊；调低 = 你认为无轴打法只兑现了这么多失衡易伤）</span>
                       </div>
                       <!-- 手动锁定交互（用户口径 2026-10-06）：勾选 = 下方交互次数是用户明确意图，引擎不缩量、装不下如实报截断 -->
                       <div class="guarantee-row" title="勾选：下方「战斗动作次数」按你填的算——次数是明确的难度设定，引擎不再自动缩减交互，而是尽量用合轴（队友前台并行吸收）装下；实在装不下就在结果页如实报「时间截断 X 秒」。不勾选：引擎按难度曲线自动计算低/高交互档（超时会自动缩小交互次数）。">
@@ -828,7 +824,7 @@ import { effectAtModLevel } from '@/composables/wEngineEffectDisplay'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanel } from '@/composables/resourceCalc/panelPhases'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
-import { DEFAULT_NO_AXIS_CONC_K, NO_AXIS_CONC_ENABLED_SETTING, NO_AXIS_CONC_K_SETTING } from '@/composables/resourceCalc/concEstimate'
+import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from '@/composables/resourceCalc/concEstimate'
 import CharacterCard from '@/components/CharacterCard.vue'
 import StatPanel from '@/components/StatPanel.vue'
 import { computeOutOfCombatPanel } from '@/composables/outOfCombatPanel'
@@ -999,19 +995,14 @@ const guaranteeUltimateHint = computed(() => {
 function setGuarantee(kind: 'stun' | 'fury' | 'ultimate', v: boolean) {
   configStore.setMechanicSetting(`guarantee.${kind}`, v ? 1 : 0)
 }
-// R14 / T139：无轴时的失衡易伤估算（开关 + 系数 k）。机制参数键与缺省值走单一来源
-// （composables/resourceCalc/concEstimate.ts），页面不复制字面量（规则 11）。
-// 措辞按 docs/axis-vuln-uplift-reference.md §12.4 的「游戏场景措辞」——**不出现「集中度」这种术语**。
-const noAxisConcEnabled = computed(() =>
-  configStore.getMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 1) !== 0)
-const noAxisConcK = computed(() =>
-  configStore.getMechanicSetting(NO_AXIS_CONC_K_SETTING, DEFAULT_NO_AXIS_CONC_K))
-function setNoAxisConcEnabled(v: boolean) {
-  configStore.setMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, v ? 1 : 0)
-}
-function setNoAxisConcK(v: number) {
-  const k = Number.isFinite(v) ? Math.min(2.5, Math.max(0, v)) : DEFAULT_NO_AXIS_CONC_K
-  configStore.setMechanicSetting(NO_AXIS_CONC_K_SETTING, Math.round(k * 10) / 10)
+// 非轴·易伤贡献率 φ（用户裁决 2026-10-19：引擎不替用户认领，改成用户自己填）。机制参数键与缺省值
+// 走单一来源（composables/resourceCalc/concEstimate.ts），页面不复制字面量（规则 11）。
+// 措辞按「游戏场景措辞」——**不出现「集中度」这种术语**。
+const noAxisVulnSharePct = computed(() =>
+  Math.round(configStore.getMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, DEFAULT_NO_AXIS_VULN_SHARE) * 100))
+function setNoAxisVulnSharePct(v: number) {
+  const pct = Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : DEFAULT_NO_AXIS_VULN_SHARE * 100
+  configStore.setMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, Math.round(pct) / 100)
 }
 
 // 动态合轴吸收上限（机制参数 time.comboAlignAbsorbRatio，0..1；页面按百分比录入）

@@ -22,7 +22,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import { findMoveById } from '@/data/moveTableQueries'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
@@ -226,12 +226,10 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
 
   // 霜灼·破直伤执行（倍率固定1500%×（1+C4），毕业终局）
   // 次数：默认按紊乱次数估算（每次紊乱伴随烈霜异常触发，贴近霜灼·破频率），用户可调上限
-  const frostburnCountSetting = setting(cfg, 'miyabi.frostburnBreakCount')
+  // 次数自动 = 强特次数 × 比率；滑块 = 上限（用户口径 2026-10-19「是修改上限而不是修改招式次数」），0 = 不设上限
+  const frostburnCountCap = setting(cfg, 'miyabi.frostburnBreakCount')
   const safeRate = Math.max(0, Math.min(2, setting(cfg, 'miyabi.frostburnBreakRate')))
-  const baseCount = frostburnCountSetting > 0
-    ? frostburnCountSetting
-    : Math.max(0, Math.floor(state.exSpecialCount * safeRate))
-  const frostbreakCount = baseCount
+  const frostbreakCount = capOfAuto(Math.max(0, Math.floor(state.exSpecialCount * safeRate)), frostburnCountCap)
   if (frostbreakCount > 0) {
     const hasC4 = cinemaLevel >= 4
     const perDecibel = hasC4 ? C4_FROSTBURN_DECIBEL : 0
@@ -409,8 +407,8 @@ export const miyabiMechanic: AgentMechanicModule = {
     },
     {
       id: 'miyabi.frostburnBreakCount',
-      label: '雅·霜灼·破次数',
-      description: '霜灼·破直伤触发次数。默认 0 表示按强特次数估算；填正数则直接指定次数。',
+      label: '雅·霜灼·破次数上限',
+      description: '霜灼·破直伤触发次数的**上限**。次数自动 = 强特次数 × 利用率；调低 = 你手动吞掉一部分。填 0 = 不设上限。',
       default: 0,
       min: 0,
       max: 60,

@@ -38,7 +38,6 @@ import { getWindInfectionElement } from './anomalyPanels'
 // R14 / T139：无轴易伤集中度估算（纯核心住 `./concEstimate.ts`）。
 // ⚠ 必须从**本目录**导入：分层锁 CC-245/246 规定 `composables/resourceCalc/` 的运行时依赖闭包
 // 不得进入它以外的 composables ⇒ 纯估算核心就住在本目录的 `./concEstimate.ts`。
-import { applyConcEstimate, damagePerMultiplierBySlot } from './concEstimate'
 // CC-9a（2026-09-25）：异常/附加伤害尾段（原 :1142–1725）已原样外提 `./damagePoolAnomaly.ts`。
 import { emitAnomalyRows } from './damagePoolAnomaly'
 // CC-9b（2026-09-25）：逐角色主循环三段（原 :423–671 / :672–927 / :928–1131）已原样外提。
@@ -86,18 +85,16 @@ export interface DamagePoolContext {
   /** 当前窗口时长（秒）：函数注入（读 configStore 失衡延时等实时口径） */
   computeWindowDuration: () => number
   /**
-   * **R14 / T139：无轴易伤集中度估算**（入参 + 开关，核心在 `./concEstimate.ts`）。
+   * **非轴「易伤贡献率」φ**（用户裁决 2026-10-19，取代 R14 的自动估算 conc_est）。
    *
-   * 口径：`无轴有效覆盖率 = 时间覆盖率 × conc_est(N) × k`——**只在非轴分支生效**，
-   * 轴模式的覆盖率仍是 1/0 两档（真实按轴内位置），**不乘** `conc_est`（R14 硬约束 1）。
+   * > 「轴模式下已经认定了易伤认领啊，非轴模式下想自动认领也不能仅仅靠连携和大招，
+   * >  还有其他很多招式啊，所以非轴就只能不做，让用户自己填易伤贡献率。」
    *
-   * 缺省 `undefined` = 不启用（旧口径，逐位相同）。这是为了让**既有调用方/测试夹具**
-   * 不传它也拿到逐位相同的结果——开关语义在 `useResourceCalc` 侧（读 configStore）。
+   * 口径：非轴行级覆盖率 = 时间覆盖率 × φ（钳到 [0,1]）。φ = 1 = 旧口径「每招均匀」，**逐位不变**；
+   * φ < 1 = 用户认为自己的无轴打法只兑现了这么多失衡易伤。轴模式**不读它**（轴内 1 / 轴外 0 是引擎按轴实算）。
+   * 缺省不传 = 1（既有调用方/测试夹具逐位相同）。
    */
-  noAxisConcEstimate?: {
-    enabled: boolean
-    k: number
-  }
+  noAxisVulnShare?: number
 }
 
 export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
@@ -139,16 +136,20 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     }
 
     /**
-     * **非轴模式的有效失衡易伤覆盖率**（R14 / T139）：`时间覆盖率 × conc_est(N) × k`。
+     * **非轴模式的有效失衡易伤覆盖率** = 时间覆盖率 × 用户填的「易伤贡献率」φ（用户裁决 2026-10-19）。
      *
-     * ⚠ 建池**期间**一律用旧的均匀覆盖率（`rawStunCoverage`）——估算的输入要读已建好的
-     * 无轴直伤行（每槽每点倍率折成伤害），此刻 rows 还在长。真正的估算在**建池之后**
-     * 一次性后处理（见函数末尾 `R14 / T139` 段）：只把「按全局覆盖率吃易伤」的行按新标量
-     * 等比缩放（伤害对失衡乘区是线性的）。
-     *
-     * 这样做的额外好处：建池逻辑**逐字未变**，开关关掉时连浮点都不会动（硬约束 2 的硬判据）。
+     * φ 缺省 1 ⇒ 与旧口径**逐位相同**（行级 stunCoverage 恒 = 时间覆盖率）。
+     * 自动估算（conc_est）已按用户口径撤掉：非轴想自动认领，「不能仅仅靠连携和大招，还有其他很多招式」
+     * ⇒ 引擎不做，交给用户自己填。轴模式**不读 φ**（轴内 1 / 轴外 0 是引擎按轴实算）。
      */
-    const stunCoverage = rawStunCoverage
+    const vulnShare = !isAxis && Number.isFinite(ctx.noAxisVulnShare) ? Math.max(0, Math.min(1, ctx.noAxisVulnShare as number)) : 1
+    const stunCoverage = isAxis ? rawStunCoverage : Math.max(0, Math.min(1, rawStunCoverage * vulnShare))
+    /**
+     * ⚠ 外提段（`damagePoolDirect` / `damagePoolRelease` / `damagePoolAnomaly`）从 `env.ctx.stunCoverage`
+     * 读覆盖率，**不读**上面的局部量 ⇒ 这里必须给它们一份「已乘 φ」的 ctx，否则 φ 只在本文件闭包里生效
+     * （实测：只改局部量时行级覆盖率逐位不动）。
+     */
+    const effCtx: DamagePoolContext = vulnShare === 1 ? ctx : { ...ctx, stunCoverage }
 
     /** 伴随事件易伤：非轴模式用全局覆盖率；轴模式跟随父动作是否完全落在窗口内（0/1） */
     function axisStunFor(moveId: string): number {
@@ -403,7 +404,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     const seenDirectIds = new Map<string, number>()
 
     const charEnv: CharRowsEnv = {
-      ctx, rows, isAxis, axisSlots, axisSplitFor, axisStunFor,
+      ctx: effCtx, rows, isAxis, axisSlots, axisSplitFor, axisStunFor,
       pushDirect, pushRelease, releaseMultiplierFor, inStunAttributionCandidates,
       releaseStunSegments, seenDirectIds, agentName,
       ultimateInAxisFraction,
@@ -421,56 +422,17 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     }
 
     emitAnomalyRows({
-      ctx, rows, agentName, enemyDamageRes, isAxis, poolEnv,
+      ctx: effCtx, rows, agentName, enemyDamageRes, isAxis, poolEnv,
       inWindowFraction, nonWindInAxisFraction, ultimateInAxisFraction,
       axisStunFor, pushRelease,
     })
 
-  // ===== R14 / T139：无轴易伤集中度估算（**后处理**，必须在建池之后） =====
+  // ===== 非轴「易伤贡献率」φ 已在建池前并进 stunCoverage（见上方 vulnShare） =====
   //
-  // 为什么是后处理而不是在建池前算好：估算的输入要读**已建好的无轴直伤行**
-  // （`damagePerMultiplierBySlot` 要「每槽每点倍率折成伤害」，只看裸倍率会差 12.3% vs 9.4%），
-  // 而建池过程中 rows 还在长。硬约束 1（不污染轴模式）由 isAxis 短路保证。
-  //
-  // 逐位等价性（开关关掉）：非轴模式下每行 `stunCoverage` 恒 = 传入的 `stunCoverage`（均匀），
-  // 估算只改**那个标量**，行结构（id/顺序/type/name/note/count）一个不动 ⇒ 关掉时连浮点都不会变。
-  if (!isAxis && ctx.noAxisConcEstimate?.enabled && rows.length > 0) {
-    const perMult = damagePerMultiplierBySlot(rows)
-    const weights: { slot: number; weight: number }[] = []
-    for (const ch of adjustedResourceResult.characters) {
-      const slotScale = perMult.get(ch.slot) ?? 1
-      for (const e of ch.executions) {
-        const w = (e.damageMultiplier ?? 0) * Math.max(0, e.count)
-        if (w > 0) weights.push({ slot: ch.slot, weight: w * slotScale })
-      }
-      const mod = getAgentMechanic(ch.agentId)
-      for (const combo of Object.values(mod?.combos ?? {})) {
-        const w = combo.moves.reduce((s, mv) => s + mv.count, 0) * slotScale
-        if (w > 0) weights.push({ slot: ch.slot, weight: w })
-      }
-    }
-    const detail = applyConcEstimate(
-      { timeCoverage: rawStunCoverage, weights },
-      { enabled: true, k: ctx.noAxisConcEstimate.k },
-    )
-    // 伤害对失衡易伤乘区**线性**（core/damage.ts 的失衡乘区是纯乘数）⇒ 按行重算即可，不必重建池。
-    // 只动「按全局覆盖率吃易伤」的行（stunOverride / 轴内段 / 模块认领段由自己的 stunCoverage 决定，
-    // 不跟随全局覆盖率 ⇒ 非轴模式下它们的 stunCoverage 与 rawStunCoverage 不同，这里按行值等值判定）。
-    const target = detail.effectiveCoverage
-    for (const row of rows) {
-      if (row.stunCoverage === undefined) continue
-      if (Math.abs(row.stunCoverage - rawStunCoverage) > 1e-12) continue
-      if (Math.abs(rawStunCoverage) < 1e-12) continue
-      const oldMult = 1 + ((row.stunVulnBase ?? 0) - 1) * row.stunCoverage
-      const newMult = 1 + ((row.stunVulnBase ?? 0) - 1) * target
-      if (!(oldMult > 0) || oldMult === newMult) continue
-      const ratio = newMult / oldMult
-      row.perDamage *= ratio
-      row.totalDamage *= ratio
-      row.stunMult = newMult
-      row.stunCoverage = target
-    }
-  }
+  // 这里**故意不再做后处理**：R14 的 conc_est 后处理（读已建好的行 → 估集中度 → 按行等比缩放）
+  // 已按用户裁决 2026-10-19 撤掉（「非轴模式下想自动认领也不能仅仅靠连携和大招，还有其他很多招式，
+  // 所以非轴就只能不做，让用户自己填易伤贡献率」）。φ 是一个**输入标量**，建池时直接乘进覆盖率，
+  // 行结构（id/顺序/type/name/note/count）与建池逻辑逐字未变 ⇒ φ = 1 时连浮点都不会动。
 
   return rows.filter(row => row.totalDamage > 0)
 }

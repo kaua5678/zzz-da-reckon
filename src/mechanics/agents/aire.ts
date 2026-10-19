@@ -33,7 +33,7 @@ import type {
   ExtraNecessaryAction,
 } from '../types'
 import { basicComboCycleSeconds, findMoveById } from '@/data/moveTableQueries'
-import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
@@ -152,8 +152,6 @@ export function aireAbsolutePitchCount(
   state: { exSpecialCount: number; chainCountTotal: number; basicAttackTime?: number; ultimateCount?: number },
   totalTime: number,
 ): number {
-  const manualCount = Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount')))
-  if (manualCount > 0) return manualCount
   const additionalActive = additionalAbilityActiveOf(cfg.panel)
   const teamVeilCount = Math.max(0, Math.floor(Number(cfg.teamVeilCountTotal ?? 0) || 0))
   const basicCycle = Number(cfg.aireBasicCheerCycleSeconds ?? 0)
@@ -171,7 +169,9 @@ export function aireAbsolutePitchCount(
   const cheerGain = cinemaLevelOf(cfg.aireCinemaLevel) >= 6
     ? Math.floor(totalTime / AIRE_CHEER_CD_SECONDS) + (ultCount > 0 ? 3 : 0)
     : 3 * ultCount
-  return Math.floor(cheerEnergy / 2) + cheerGain
+  // 次数自动 = 应援能量/2 + 全场应援；滑块 = **上限**（用户口径 2026-10-19「是修改上限而不是修改招式次数」），0 = 不设上限
+  const auto = Math.floor(cheerEnergy / 2) + cheerGain
+  return capOfAuto(auto, Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount'))))
 }
 
 /** 强化版占比：影画6 妄想时刻不退出 ⇒ 1；否则 = min(1, 终结次数 × 15s / 战斗时长)（CC-197 可逆近似） */
@@ -318,7 +318,7 @@ export const aireMechanic: AgentMechanicModule = {
   description: '异常精通+90、影画1以太积蓄抗性无视+异放暴击、影画2无视防御、影画4异放回能/喧响、影画6进场喧响+强化直伤；核心异放已按异常比例结算。',
   settings: [
     { id: 'aire.c2DelusionCoverage', label: '妄想时刻覆盖率', description: '影画2妄想时刻内额外无视8%防御的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
-    { id: 'aire.absolutePitchCount', label: '绝对音准#3次数覆盖', description: '第三段[普通攻击：绝对音准 #3]整局次数的手动覆盖；0=自动（应援能量/2+全场应援），>0 强制用该值', default: 0, min: 0, max: 200, step: 1 },
+    { id: 'aire.absolutePitchCount', label: '绝对音准#3次数上限', description: '第三段[普通攻击：绝对音准 #3]整局次数的**上限**。次数自动 = 应援能量/2 + 全场应援；调低 = 你手动吞掉一部分。0 = 不设上限。', default: 0, min: 0, max: 200, step: 1 },
     { id: 'aire.cheerEnergyBonus', label: '应援能量额外', description: '应援能量总量额外补充（自动公式已含强特×3+连携×4+帷幕4个/次×全队帷幕次数，此处补甜心四段等次要来源）', default: 0, min: 0, max: 400, step: 10 },
   ],
   applyPanel: applyAirePanel,

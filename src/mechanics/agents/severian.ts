@@ -33,7 +33,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting } from '@/types/resource'
-import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
@@ -223,11 +223,6 @@ function severianFlowState(
   const cinema = cinemaLevelOf(cfg.severianCinemaLevel)
   const base = severianFlowIncome(cfg, state)
   const refund = severianShadowRefundFlow(cinema)
-  const override = setting(cfg, 'severian.shadowHuntCount')
-  if (override > 0) {
-    const shadowHuntCount = whole(override)
-    return { flowIncome: base + shadowHuntCount * refund, shadowHuntCount }
-  }
   let flow = base
   // 有序级联：第 N 次的返还只在第 N 次**消耗之后**到账（付款前库存 = base + (N−1)·refund）
   for (let i = 0; i < 16; i++) {
@@ -235,7 +230,11 @@ function severianFlowState(
     if (next === flow) break
     flow = next
   }
-  return { flowIncome: flow, shadowHuntCount: Math.floor(flow / SEVERIAN_SHADOW_FLOW_COST) }
+  // 次数自动 = 流息收入 / 100；滑块 = 上限（用户口径 2026-10-19），0 = 不设上限。
+  // 上限生效时流息收入按**实际打出来的次数**重算（少打 N 次 ⇒ 少 N 次返还），不是只改行数。
+  const autoCount = Math.floor(flow / SEVERIAN_SHADOW_FLOW_COST)
+  const shadowHuntCount = capOfAuto(autoCount, whole(setting(cfg, 'severian.shadowHuntCount')))
+  return { flowIncome: base + shadowHuntCount * refund, shadowHuntCount }
 }
 
 function severianShadowHuntCount(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
@@ -243,9 +242,8 @@ function severianShadowHuntCount(cfg: AgentCharConfigInput['cfg'], state: AgentR
 }
 
 function severianLiexuanCount(cfg: AgentCharConfigInput['cfg']): number {
-  const override = setting(cfg, 'severian.blazingSpinCount')
-  if (override > 0) return whole(override)
-  return Math.max(0, cfg.dodgeCounterCount)
+  // 自动 = 极限闪避/闪反次数（烁影与受击驱动未建模）；滑块 = 上限，0 = 不设上限
+  return capOfAuto(Math.max(0, cfg.dodgeCounterCount), whole(setting(cfg, 'severian.blazingSpinCount')))
 }
 
 /** 队伍里是否有**其他**风属性角色（核心被动 +30% 的唯一判定） */
@@ -480,8 +478,8 @@ const settings: MechanicSetting[] = [
   },
   {
     id: 'severian.shadowHuntCount',
-    label: '赛维里安·苍风影猎次数覆盖',
-    description: '手动指定整局苍风影猎次数；0=自动（流息收入/100：疾锋四段×20+烈旋×35+极限闪避×15+连携×35（影画1 50）+终结×100+影画2入场150，影画6[风起]定点反馈）。',
+    label: '赛维里安·苍风影猎次数上限',
+    description: '苍风影猎次数的**上限**。次数自动 = 流息收入/100（疾锋四段×20+烈旋×35+极限闪避×15+连携×35（影画1 50）+终结×100+影画2入场150，影画6[风起]定点反馈）；调低 = 你手动吞掉一部分（少打也少返还流息）。0 = 不设上限。',
     default: 0,
     min: 0,
     max: 40,
@@ -490,8 +488,8 @@ const settings: MechanicSetting[] = [
   },
   {
     id: 'severian.blazingSpinCount',
-    label: '赛维里安·烈旋次数覆盖',
-    description: '[普通攻击：烈旋]整局次数；0=自动（按极限闪避/闪反次数近似——烁影与受击驱动未建模）。',
+    label: '赛维里安·烈旋次数上限',
+    description: '[普通攻击：烈旋]整局次数的**上限**。次数自动 = 极限闪避/闪反次数（烁影与受击驱动未建模）；调低 = 你手动吞掉一部分。0 = 不设上限。',
     default: 0,
     min: 0,
     max: 60,

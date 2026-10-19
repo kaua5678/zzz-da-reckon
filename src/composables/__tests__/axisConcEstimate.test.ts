@@ -6,19 +6,26 @@
  *
  * - **A. 纯函数**（`estimateConcentration` / `applyConcEstimate`）：靶子 = 手动轴实测 `conc` 的逐档中位
  *   （§10.2 表），报逐档误差；**反空洞**：N=1 与 N=8 的估算值必须不同（防退化成常数）。
- * - **B. 引擎接线**（规则 12 的滑块判据）：改 k ⇒ 覆盖率与伤害跟着变；**关开关 ⇒ 逐位回到旧值**。
+ * - **B. 引擎接线**（规则 12 的滑块判据）：改 φ（易伤贡献率）⇒ 覆盖率与伤害跟着变；
+ *   φ = 100%（缺省）⇒ **逐位回到旧口径**。
+ *
+ * ## ⚠ 2026-10-19 用户裁决：**引擎侧不再自动认领非轴易伤**
+ *
+ * > 「轴模式下已经认定了易伤认领啊，非轴模式下想自动认领也不能仅仅靠连携和大招，
+ * >  还有其他很多招式啊，所以非轴就只能不做，让用户自己填易伤贡献率。」
+ *
+ * ⇒ A 段（conc_est 纯函数）**保留为参考算法**的判据（函数还在、误差表还成立），
+ * 但**不再有生产消费者**；B 段已改判 φ。若有人把 conc_est 接回引擎，B 段会红。
  *
  * ⚠ 本仓坑 47：**不钉「估算一定 ≥ 均匀摊」**——用户打得不集中时 `conc < 1` 是合法的。
- * 这里只钉「代码行为」：开关关掉 = 旧口径、N 依赖存在、k 线性生效。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
-  DEFAULT_NO_AXIS_CONC_K,
+  DEFAULT_NO_AXIS_VULN_SHARE,
   noAxisConcNoticeOf,
-  NO_AXIS_CONC_ENABLED_SETTING,
-  NO_AXIS_CONC_K_SETTING,
+  NO_AXIS_VULN_SHARE_SETTING,
 } from '@/composables/resourceCalc/concEstimate'
 // 纯函数核心从**最近来源**导入（门面只转出被生产多处消费的符号——判据 16 死通道扫描）
 import { applyConcEstimate, damagePerMultiplierBySlot, estimateConcentration } from '@/composables/resourceCalc/concEstimate'
@@ -152,64 +159,57 @@ function directCoverage(calc: Calc): number {
   return dmg > 0 ? direct.reduce((a, r) => a + r.totalDamage * (r.stunCoverage ?? 0), 0) / dmg : 0
 }
 
-describe('B. 引擎接线（滑块 + 开关）', () => {
-  it('★ 关开关 ⇒ 与旧口径**逐位相同**（行级 totalDamage 与 stunCoverage 逐行 ===）', async () => {
+describe('B. 引擎接线（易伤贡献率 φ）', () => {
+  it('★ φ = 100%（缺省）⇒ 与旧口径**逐位相同**（行级 totalDamage 与 stunCoverage 逐行 ===）', async () => {
     // 槽位 1 = 莱卡恩（1141）给全队挂失衡易伤 +35%：让易伤通道真的咬合
     const { config } = await setupHarness([{ agentId: '1011' }, { agentId: '1141' }, { agentId: '1031' }], { recommendedBuild: true })
     const calc = useResourceCalc()
     config.useStunAxis = false
 
-    // ① 旧口径：开关关掉（= 改动前的行为）
-    config.setMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 0)
+    // ① 缺省（不碰滑块）= 旧口径「每招均匀摊」
     const off = rowSnapshot(calc)
     const offCoverage = directCoverage(calc)
     const offTotal = calc.teamTotalDamage.value
+    expect(config.getMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, DEFAULT_NO_AXIS_VULN_SHARE)).toBe(1)
 
-    // ② 开：估算生效（行级覆盖率被抬高）
-    config.setMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 1)
-    config.setMechanicSetting(NO_AXIS_CONC_K_SETTING, DEFAULT_NO_AXIS_CONC_K)
-    const on = rowSnapshot(calc)
-    const onCoverage = directCoverage(calc)
-    const onTotal = calc.teamTotalDamage.value
+    // ② 填 50%：非轴覆盖率整体打对折
+    config.setMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, 0.5)
+    const half = rowSnapshot(calc)
+    expect(directCoverage(calc)).toBeCloseTo(offCoverage * 0.5, 9)
+    expect(calc.teamTotalDamage.value).toBeLessThan(offTotal)
 
-    // ③ 再关回去：必须逐位回到 ①（不是「接近」，是 ===）
-    config.setMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 0)
-    const back = rowSnapshot(calc)
-    expect(back).toEqual(off)
+    // ③ 再填回 100%：必须逐位回到 ①（不是「接近」，是 ===）
+    config.setMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, 1)
+    expect(rowSnapshot(calc)).toEqual(off)
     expect(directCoverage(calc)).toBe(offCoverage)
     expect(calc.teamTotalDamage.value).toBe(offTotal)
-
-    // 开 vs 关必须真的不同（否则「估算」是空的）
-    expect(on).not.toEqual(off)
-    expect(onCoverage).toBeGreaterThan(offCoverage)
-    expect(onTotal).toBeGreaterThan(offTotal)
+    expect(half).not.toEqual(off)
   }, 600000)
 
-  it('★ 滑块生效：改 k ⇒ 覆盖率与伤害跟着变，且单调（规则 12 的滑块判据）', async () => {
+  it('★ 滑块生效：改 φ ⇒ 覆盖率与伤害跟着变，且单调（规则 12 的滑块判据）', async () => {
     const { config } = await setupHarness([{ agentId: '1011' }, { agentId: '1141' }, { agentId: '1031' }], { recommendedBuild: true })
     const calc = useResourceCalc()
     config.useStunAxis = false
-    config.setMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 1)
 
-    const read = (k: number) => {
-      config.setMechanicSetting(NO_AXIS_CONC_K_SETTING, k)
+    const read = (share: number) => {
+      config.setMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, share)
       return { cov: directCoverage(calc), total: calc.teamTotalDamage.value }
     }
-    const k0 = read(0)
-    const k1 = read(1)
-    const k2 = read(2)
+    const s0 = read(0)
+    const s5 = read(0.5)
+    const s10 = read(1)
 
-    // k=0 ⇒ 估算被抵消 ⇒ 覆盖率 0（与「关掉」不同：关掉是回旧口径）
-    expect(k0.cov).toBeCloseTo(0, 9)
+    // φ = 0 ⇒ 非轴完全不吃失衡易伤（覆盖率 0）
+    expect(s0.cov).toBeCloseTo(0, 9)
     // 单调递增
-    expect(k1.cov).toBeGreaterThan(k0.cov)
-    expect(k2.cov).toBeGreaterThan(k1.cov)
+    expect(s5.cov).toBeGreaterThan(s0.cov)
+    expect(s10.cov).toBeGreaterThan(s5.cov)
     // 伤害也跟着变（不是只改了展示量）
-    expect(k1.total).toBeGreaterThan(k0.total)
-    expect(k2.total).toBeGreaterThan(k1.total)
+    expect(s5.total).toBeGreaterThan(s0.total)
+    expect(s10.total).toBeGreaterThan(s5.total)
   }, 600000)
 
-  it('★ 轴模式不受影响：覆盖率仍是 1/0 两档，不乘 conc_est（R14 硬约束 1）', async () => {
+  it('★ 轴模式不受影响：覆盖率仍是 1/0 两档，不乘 φ（R14 硬约束 1）', async () => {
     const { config } = await setupHarness([{ agentId: '1011' }, { agentId: '1141' }, { agentId: '1031' }], { recommendedBuild: true })
     const calc = useResourceCalc()
     // 一条只放平A的 fixed 轴 ⇒ 引擎判定轴模式成立，直伤行按轴内/轴外拆
@@ -218,12 +218,11 @@ describe('B. 引擎接线（滑块 + 开关）', () => {
       stunAxisPlans: [],
       useStunAxis: true,
     })
-    config.setMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 0)
+    config.setMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, 1)
     const off = rowSnapshot(calc)
-    config.setMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 1)
-    config.setMechanicSetting(NO_AXIS_CONC_K_SETTING, 2)
+    config.setMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, 0.3)
     const on = rowSnapshot(calc)
-    // 轴模式：估算开关对结果**逐位无影响**
+    // 轴模式：易伤贡献率滑块对结果**逐位无影响**
     expect(on).toEqual(off)
     // 且行级覆盖率仍只有 0 / 1 两档（轴内吃满 / 轴外不吃；未进轴槽位回落全局覆盖率的行不计）
     const axisSlots = new Set((calc.damagePoolRows.value ?? []).filter(r => r.type === '直伤').map(r => r.slot))

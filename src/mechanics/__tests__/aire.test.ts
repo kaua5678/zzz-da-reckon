@@ -98,8 +98,12 @@ describe('爱芮完整计算链', () => {
   })
 
   it('核心异放事件：dominant 元素 + 比例模式 + 绝对音准载体', () => {
-    const cfg = { 'setting:aire.absolutePitchCount': 8 } as any
-    const state = { frontlineTime: 120, backstageTime: 60, ultimateCount: 2 } as any
+    // 2026-10-19 口径：滑块 = **上限**（次数自动）。这里上限给足（999）⇒ 事件次数 = 自动值
+    const cfg = { 'setting:aire.absolutePitchCount': 999 } as any
+    // 次数自动 = 应援能量/2 + 全场应援 ⇒ 计数类字段（强特/连携）必须给全，否则自动值为 0
+    const state = { frontlineTime: 120, backstageTime: 60, ultimateCount: 2, exSpecialCount: 8, chainCountTotal: 4 } as any
+    const autoCount = aireAbsolutePitchCount(cfg, state, 180)
+    expect(autoCount).toBeGreaterThan(0)
     const events: any[] = []
     aireMechanic.buildAnomalyEvents!({ cfg, state, events, totalTime: 180 })
     expect(events).toHaveLength(1)
@@ -108,7 +112,7 @@ describe('爱芮完整计算链', () => {
       eventType: 'release',
       element: 'dominant',
       carrierMoveId: AIRE_ABSOLUTE_PITCH_MOVE_ID,
-      count: 8,
+      count: autoCount,
     })
     expect(events[0].releaseRatio).toMatchObject({
       basis: 'anomalyMastery',
@@ -148,8 +152,8 @@ describe('爱芮完整计算链', () => {
   })
 
   it('影画1：异放事件带 releaseCrit（基础25/25，掌控>100每点+0.5）', () => {
-    const state = { frontlineTime: 120, backstageTime: 60, ultimateCount: 2 } as any
-    const cfg = { 'setting:aire.absolutePitchCount': 8, aireCinemaLevel: 1 } as any
+    const state = { frontlineTime: 120, backstageTime: 60, ultimateCount: 2, exSpecialCount: 8, chainCountTotal: 4 } as any
+    const cfg = { 'setting:aire.absolutePitchCount': 999, aireCinemaLevel: 1 } as any
     const events: any[] = []
     aireMechanic.buildAnomalyEvents!({ cfg, state, events, totalTime: 180 })
     expect(events[0].releaseCrit).toMatchObject({
@@ -158,7 +162,7 @@ describe('爱芮完整计算链', () => {
       masteryThreshold: 100,
       masteryPerPointRatePct: 0.5,
     })
-    const cfg0 = { 'setting:aire.absolutePitchCount': 8, aireCinemaLevel: 0 } as any
+    const cfg0 = { 'setting:aire.absolutePitchCount': 999, aireCinemaLevel: 0 } as any
     const events0: any[] = []
     aireMechanic.buildAnomalyEvents!({ cfg: cfg0, state, events: events0, totalTime: 180 })
     expect(events0[0].releaseCrit).toBeUndefined()
@@ -249,7 +253,8 @@ describe('CC-125：「初始异常掌控」读局外面板', () => {
     aireMechanic.buildCharConfig!({ cinemaLevel: 1, cfg, panel: { anomalyMastery: 180 }, outOfCombatPanel: { anomalyMastery: 140 } } as any)
     expect(cfg.aireInitialMastery).toBe(140)
     const events: any[] = []
-    aireMechanic.buildAnomalyEvents!({ cfg: { ...cfg, 'setting:aire.absolutePitchCount': 8 }, state: { frontlineTime: 120, backstageTime: 60 } as any, events, totalTime: 180 })
+    // 2026-10-19：次数自动，上限给足 ⇒ 事件次数由应援能量推导（计数类字段必须给全）
+    aireMechanic.buildAnomalyEvents!({ cfg: { ...cfg, 'setting:aire.absolutePitchCount': 999 }, state: { frontlineTime: 120, backstageTime: 60, exSpecialCount: 8, chainCountTotal: 4 } as any, events, totalTime: 180 })
     expect(events[0].releaseRatio.basisValue).toBe(140)
     expect(events[0].releaseCrit.masteryValue).toBe(140)
   })

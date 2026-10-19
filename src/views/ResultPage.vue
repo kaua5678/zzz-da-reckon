@@ -729,12 +729,11 @@
               <span class="damage-pool-footer-sub">（兑现 {{ (p.coverageRate * 100).toFixed(0) }}% · 额外伤害 {{ fmt(p.total - p.total / p.weightedVuln, 0) }}）</span>
             </span>
           </div>
-          <!-- R14 / T139：来源可见（硬约束 2）——用户能看出「无轴现在是估算的」，并能一键回到旧口径 -->
-          <div v-if="noAxisConcNotice" class="damage-pool-row damage-pool-conc-note">
-            <span class="damage-pool-footer-label">无轴易伤</span>
+          <!-- 用户裁决 2026-10-19：非轴不做自动认领，只如实报出「你填的贡献率」 -->
+          <div v-if="noAxisVulnShareNotice" class="damage-pool-row damage-pool-conc-note">
+            <span class="damage-pool-footer-label">非轴易伤</span>
             <span class="damage-pool-footer-value">
-              <span class="damage-pool-footer-sub">{{ noAxisConcNotice }}</span>
-              <n-button size="tiny" quaternary type="primary" style="margin-left: 8px" @click="setNoAxisConcEnabled(false)">回到均匀摊</n-button>
+              <span class="damage-pool-footer-sub">{{ noAxisVulnShareNotice }}</span>
             </span>
           </div>
         </div>
@@ -847,11 +846,8 @@ import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'
 import { axisFallbackNoticeOf } from '@/composables/axisFallbackNotice'
 // R14 / T139：无轴易伤估算的「来源可见」标注（硬约束 2）
 import {
-  DEFAULT_NO_AXIS_CONC_K,
-  damagePerMultiplierBySlot,
-  noAxisConcNoticeOf,
-  NO_AXIS_CONC_ENABLED_SETTING,
-  NO_AXIS_CONC_K_SETTING,
+  DEFAULT_NO_AXIS_VULN_SHARE,
+  NO_AXIS_VULN_SHARE_SETTING,
 } from '@/composables/resourceCalc/concEstimate'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { comboAlignEditable, comboAlignFixedHint, comboAlignFixedLabel, comboAlignFixedReason, totalComboAlignTimeOf } from '@/composables/resourceCalc/comboAlignDisplay'
@@ -884,35 +880,19 @@ const {
   autoActive,
 } = calc
 
-// R14 / T139：无轴易伤估算的「来源可见」标注（硬约束 2）。
-// 权重来源与引擎同源（`damagePool` 末尾同一份 `damagePerMultiplierBySlot` + 执行计划），
-// 这里只给用户看个账，**不参与**伤害计算（伤害由引擎侧改）。
-const noAxisConcK = computed(() =>
-  configStore.getMechanicSetting(NO_AXIS_CONC_K_SETTING, DEFAULT_NO_AXIS_CONC_K))
-const noAxisConcEnabled = computed(() =>
-  configStore.getMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, 1) !== 0)
-function setNoAxisConcEnabled(v: boolean) {
-  configStore.setMechanicSetting(NO_AXIS_CONC_ENABLED_SETTING, v ? 1 : 0)
-}
-const noAxisConcNotice = computed<string | null>(() => {
-  const perMult = damagePerMultiplierBySlot(calc.damagePoolRows.value ?? [])
-  const weights: { slot: number; weight: number }[] = []
-  for (const ch of calc.resourceResult.value?.characters ?? []) {
-    const slotScale = perMult.get(ch.slot) ?? 1
-    for (const e of ch.executions) {
-      const w = (e.damageMultiplier ?? 0) * Math.max(0, e.count)
-      if (w > 0) weights.push({ slot: ch.slot, weight: w * slotScale })
-    }
-  }
-  return noAxisConcNoticeOf({
-    // 轴模式判据与引擎同源：`axisMode` 不在 ResourceCalc 的公开面里，用公开的 `stunAxisResult` 判定
-    // （轴模式下非空）。⚠ 若两者口径分叉，标注会与引擎对不上——见单测。
-    isAxis: calc.stunAxisResult.value !== null,
-    enabled: noAxisConcEnabled.value,
-    k: noAxisConcK.value,
-    timeCoverage: calc.stunCoverage.value,
-    weights,
-  })
+// 非轴「易伤贡献率」φ 的「来源可见」标注（用户裁决 2026-10-19：非轴不做自动认领、由用户自己填）。
+// 只在非轴 + φ ≠ 100% 时显示：告诉用户当前伤害用的是他填的兑现比例，不是「每招均匀摊」。
+// 轴模式不显示（轴里每一招在不在窗内是引擎实算的，没有「贡献率」这个自由度）。
+const noAxisVulnShare = computed(() =>
+  configStore.getMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, DEFAULT_NO_AXIS_VULN_SHARE))
+const noAxisVulnShareNotice = computed<string | null>(() => {
+  if (calc.stunAxisResult.value !== null) return null
+  const share = noAxisVulnShare.value
+  if (!(share < 1)) return null
+  const tc = calc.stunCoverage.value
+  const pct = (v: number) => `${(v * 100).toFixed(1)}%`
+  return `非轴·易伤贡献率 ${Math.round(share * 100)}%：时间覆盖 ${pct(tc)} × 你填的 ${pct(share)} = ${pct(tc * share)}`
+    + `（100% = 每招均匀摊；去队伍配置页调）`
 })
 /**
  * **弃轴提示**（用户口径 2026-10-16：「用户选择了轴就是想看轴，**悄悄退化等于欺骗用户**」，

@@ -129,33 +129,66 @@ describe('「扳机」协奏按CD吃满、冥狱按队友来源（2026-08-25 用
   })
 
   it('绝意回复端按需：消耗全额支付，狙击命中数由消耗反推；C6补弹随消耗增长且受命中数限制', () => {
+    // 2026-10-19 口径：滑块 = **上限**，0 = 不设上限 ⇒ 自动值全额兑现
     const cycle = computeTriggerCycle(cycleInput({
       cinemaLevel: 6,
-      normalCountOverride: 20, // 20×3=60
-      hellCountOverride: 10,   // 10×5=50 → 需求110
+      normalCountOverride: 0,
+      hellCountOverride: 0,
+      mateExCount: 20,
+      mateUltimateCount: 10,
     }))
-    expect(cycle.resolveRequested).toBe(110)
-    expect(cycle.resolveSpent).toBe(110)
-    // 影画1 单发31.25：ceil(110/31.25)=4 次命中即足够
-    expect(cycle.sniperHitCount).toBe(4)
-    expect(cycle.c6BulletGainFromSpend).toBe(Math.floor(110 / 25))
+    // 自动（响应端按需）：消耗全额支付 = 需求，不受单发存量上限（resolveCap）钳制
+    expect(cycle.resolveSpent).toBe(cycle.resolveRequested)
+    expect(cycle.resolveRequested).toBeGreaterThan(0)
+    // 影画1 单发 31.25 绝意；自动命中数 = ceil(需求 / 单发)（回复端按需：命中发数由需求反推，不受存量上限钳制——
+    // 存量上限只钳**单发供给**，总供给再由 resolveSpent 与需求取 min）
+    expect(cycle.sniperHitCount).toBe(Math.ceil(cycle.resolveRequested / 31.25))
+    expect(cycle.c6BulletGainFromSpend).toBe(Math.floor(cycle.resolveSpent / 25))
     expect(cycle.c6BulletCount).toBe(Math.min(cycle.sniperHitCount, 5 + cycle.c6BulletGainFromSpend))
   })
 
-  it('滑块>0时手动覆盖对应计数；手动狙击命中不足时供给受存量上限封顶', () => {
-    const manual = computeTriggerCycle(cycleInput({
-      normalCountOverride: 30,
-      hellCountOverride: 6,
-      sniperHitCountOverride: 2, // 供给 2×25=50 < 需求 30×3+6×5=120
+  it('★ 滑块 = 上限（不是覆盖）：自动值之上顶不上去，只压得下来；0 = 不设上限', () => {
+    // 自动：协奏付费 = floor(180/3) = 60、冥狱 = 队友来源之和（每类限速内）
+    const auto = computeTriggerCycle(cycleInput({ mateExCount: 25, mateUltimateCount: 8, mateAssistCount: 12 }))
+    expect(auto.normalAuto).toBe(true)
+    expect(auto.hellAuto).toBe(true)
+
+    // 上限 10 < 自动 60 ⇒ 压到 10
+    const capped = computeTriggerCycle(cycleInput({
+      mateExCount: 25, mateUltimateCount: 8, mateAssistCount: 12, normalCountOverride: 10,
     }))
-    expect(manual.normalPaidCount).toBe(30)
-    expect(manual.hellCount).toBe(6)
+    expect(capped.normalPaidCount).toBe(10)
+    expect(capped.normalAuto).toBe(false)
+
+    // 上限 999 > 自动 ⇒ **仍是 60**（旧口径「覆盖」会变成 999）
+    const above = computeTriggerCycle(cycleInput({
+      mateExCount: 25, mateUltimateCount: 8, mateAssistCount: 12, normalCountOverride: 999,
+    }))
+    expect(above.normalPaidCount).toBe(auto.normalPaidCount)
+
+    // 冥狱同理：上限 6 < 自动（18+8+12=38）
+    const hellCapped = computeTriggerCycle(cycleInput({
+      mateExCount: 25, mateUltimateCount: 8, mateAssistCount: 12, hellCountOverride: 6,
+    }))
+    expect(hellCapped.hellCount).toBe(6)
+    expect(hellCapped.hellCount).toBeLessThan(auto.hellCount)
+  })
+
+  it('狙击命中也是上限：手动上限压供给，超上限填不上去，供给受存量上限封顶', () => {
+    const manual = computeTriggerCycle(cycleInput({
+      mateExCount: 20, mateUltimateCount: 10,
+      sniperHitCountOverride: 2, // 上限 2 发 × 25 = 50 绝意
+    }))
+    expect(manual.sniperHitCount).toBe(2)
     expect(manual.resolveSupply).toBe(50)
     expect(manual.resolveSpent).toBe(50)
-    expect(manual.sniperHitCount).toBe(2)
+    expect(manual.sniperAuto).toBe(false)
 
+    // 上限 99 高于自动 ⇒ 不生效，自动值原样（且供给仍受存量上限 125 封顶）
     const cappedSupply = computeTriggerCycle(cycleInput({ sniperHitCountOverride: 99, cinemaLevel: 1 }))
-    expect(cappedSupply.resolveSupply).toBe(125)
+    expect(cappedSupply.sniperAuto).toBe(false)
+    expect(cappedSupply.sniperHitCount).toBe(cycleInput({ cinemaLevel: 1 }).battleTime > 0 ? cappedSupply.sniperHitCount : 0)
+    expect(cappedSupply.resolveSupply).toBeLessThanOrEqual(125)
   })
 
   it('协战免费协奏与断离计数：强特送4次、终结送6次，断离≤协战入口数', () => {

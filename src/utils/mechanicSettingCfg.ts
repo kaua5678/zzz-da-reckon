@@ -74,6 +74,25 @@ export function mechanicSettingGetterReader(
   const defaultOf = declaredDefault(declared)
   return (get, id) => get(id, defaultOf(id))
 }
+/**
+ * **次数滑块 = 上限，不是次数**（用户口径 2026-10-19）：
+ *
+ * > 「这一类招式都是一个处理方式，手动可以限制最大数值，因为玩家可能有特殊操作导致吞技能。
+ * >  默认释放次数就是自动计算。……是修改上限而不是修改招式次数，次数应该自动计算。」
+ *
+ * 模型：自动次数按资源/CD 推导，玩家只能用滑块把**上限**压下来（吞掉技能 = 少打），
+ * 但**不能**用滑块把次数顶上去（多打 = 凭空产出）。语义等价于
+ * `count = min(auto, cap)`，滑块 `0` = 不设上限（交给自动）。
+ *
+ * ⚠ 旧实现在多个模块里写成 `if (override > 0) return override` —— 那是「覆盖」不是「上限」，
+ * 手填值可以**超过**自动值。这条 helper 是唯一转换点，不要再各模块各写一份。
+ */
+export function capOfAuto(auto: number, cap: number): number {
+  const a = Number.isFinite(auto) ? Math.max(0, auto) : 0
+  const c = Number.isFinite(cap) ? Math.max(0, cap) : 0
+  return c > 0 ? Math.min(a, c) : a
+}
+
 /** 三个 reader 共用：惰性建「id → 声明 default」表；未声明 ⇒ 抛错 */
 function declaredDefault(declared: () => ReadonlyArray<{ id: string; default: number }> | undefined): (id: string) => number {
   let defaults: Map<string, number> | undefined

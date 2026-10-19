@@ -42,7 +42,7 @@ import type {
   AgentTeamConfigInput,
 } from '../types'
 import { minusInvincibleTime } from '@/core/effectiveTime'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
@@ -127,24 +127,28 @@ export function computeTriggerCycle(input: {
   const resolveCap = cinema >= 1 ? 125 : 100
 
   // 协奏狙杀：全队 CD 吃满（次数由战斗时长反推）
+  //
+  // ⚠ **滑块 = 上限，不是次数**（用户口径 2026-10-19「是修改上限而不是修改招式次数，次数应该自动计算」）：
+  // 自动值恒按 CD 反推，`capOfAuto` 只把它压下来（吞技能），绝不顶上去；0 = 不设上限。
   const normalCdSeconds = cinema >= 1 ? TRIGGER_NORMAL_CD_C1_SECONDS : TRIGGER_NORMAL_CD_SECONDS
-  const normalAuto = !(whole(input.normalCountOverride) > 0)
-  const normalPaidCount = normalAuto
-    ? Math.floor(battleTime / normalCdSeconds)
-    : whole(input.normalCountOverride)
+  const normalAutoCount = Math.floor(battleTime / normalCdSeconds)
+  const normalCap = whole(input.normalCountOverride)
+  const normalAuto = !(normalCap > 0)
+  const normalPaidCount = capOfAuto(normalAutoCount, normalCap)
 
   // 冥狱：队友强特/支援突击/终结技重击触发，每类 20 秒内最多 2 次
   const hellRateCapPerType = TRIGGER_HELL_RATE_PER_WINDOW
     * Math.ceil(battleTime / TRIGGER_HELL_RATE_WINDOW_SECONDS)
-  const hellAuto = !(whole(input.hellCountOverride) > 0)
   const mateExCount = whole(input.mateExCount)
   const mateUltimateCount = whole(input.mateUltimateCount)
   const mateAssistCount = whole(input.mateAssistCount)
-  const hellCount = hellAuto
-    ? Math.min(mateExCount, hellRateCapPerType)
-      + Math.min(mateUltimateCount, hellRateCapPerType)
-      + Math.min(mateAssistCount, hellRateCapPerType)
-    : whole(input.hellCountOverride)
+  const hellAutoCount = Math.min(mateExCount, hellRateCapPerType)
+    + Math.min(mateUltimateCount, hellRateCapPerType)
+    + Math.min(mateAssistCount, hellRateCapPerType)
+  // 滑块 = 上限（同上）：0 = 不设上限，交给自动反推
+  const hellCap = whole(input.hellCountOverride)
+  const hellAuto = !(hellCap > 0)
+  const hellCount = capOfAuto(hellAutoCount, hellCap)
 
   // 协战免费协奏：强特进入协战送4次、终结技送6次（整局总量近似，不建逐秒窗口）
   const ownEx = whole(input.ownExSpecialCount)
@@ -156,15 +160,18 @@ export function computeTriggerCycle(input: {
   // 绝意：回复端按需——自动模式下消耗全额支付；手动命中数时供给受存量上限封顶
   const resolveRequested = normalPaidCount * TRIGGER_RESOLVE_PER_NORMAL
     + hellCount * TRIGGER_RESOLVE_PER_HELL
-  const sniperAuto = !(whole(input.sniperHitCountOverride) > 0)
-  const sniperManualHits = whole(input.sniperHitCountOverride)
+  // 狙击命中：自动 = 由绝意需求反推（回复端按需）；滑块 = 上限（0 = 不设上限）
+  const sniperAutoCount = Math.ceil(resolveRequested / resolveGainPerSniperHit)
+  const sniperCap = whole(input.sniperHitCountOverride)
+  const sniperAuto = !(sniperCap > 0)
+  const sniperHitCount = capOfAuto(sniperAutoCount, sniperCap)
+  // 供给口径与旧实现**逐位一致**（别顺手「修」成统一封顶）：
+  //  · 自动 = 回复端按需，直接支付全部需求（**不**再过 resolveCap——那是单发存量，不是整局总量）；
+  //  · 手动/上限生效 = 命中数 × 单发收益，再受存量上限封顶。
   const resolveSupply = sniperAuto
     ? resolveRequested
-    : Math.min(resolveCap, sniperManualHits * resolveGainPerSniperHit)
+    : Math.min(resolveCap, sniperHitCount * resolveGainPerSniperHit)
   const resolveSpent = Math.min(resolveSupply, resolveRequested)
-  const sniperHitCount = sniperAuto
-    ? Math.ceil(resolveSpent / resolveGainPerSniperHit)
-    : sniperManualHits
 
   // C4 断离：每次进入/延长协战标记下一次协奏（狙杀或冥狱）
   const c4DuanliCount = cinema >= 4
@@ -414,9 +421,9 @@ export const triggerMechanic: AgentMechanicModule = {
   name: '「扳机」',
   description: '失衡易伤拐、追加攻击定向失衡、协奏CD吃满与冥狱来源驱动、影画4断离（伤害+失衡入池）、影画6破甲凶弹。',
   settings: [
-    { id: 'trigger.sniperHitCount', label: '狙击命中（0=自动）', description: '连续射击/蓄力反击的有效命中次数；0=按绝意需求自动反推', default: 0, min: 0, max: 60, step: 1, suffix: '次' },
-    { id: 'trigger.normalCoordinatedCount', label: '协奏狙杀次数（0=自动）', description: '付费协奏次数；0=按全队CD吃满（3秒，影画1后2秒）', default: 0, min: 0, max: 120, step: 1, suffix: '次' },
-    { id: 'trigger.hellCoordinatedCount', label: '冥狱次数（0=自动）', description: '0=按队友强特/终结/支援突击来源并受每类20秒2次限速', default: 0, min: 0, max: 60, step: 1, suffix: '次' },
+    { id: 'trigger.sniperHitCount', label: '狙击命中·上限（0=不设限）', description: '连续射击/蓄力反击有效命中次数的**上限**。次数自动 = 按绝意需求反推；调低 = 你手动吞掉一部分。0 = 不设上限。', default: 0, min: 0, max: 60, step: 1, suffix: '次' },
+    { id: 'trigger.normalCoordinatedCount', label: '协奏狙杀·上限（0=不设限）', description: '付费协奏次数的**上限**。次数自动 = 按全队 CD 吃满（3 秒，影画1后 2 秒）；调低 = 你手动吞掉一部分。0 = 不设上限。', default: 0, min: 0, max: 120, step: 1, suffix: '次' },
+    { id: 'trigger.hellCoordinatedCount', label: '冥狱·上限（0=不设限）', description: '冥狱次数的**上限**。次数自动 = 按队友强特/终结/支援突击来源并受每类 20 秒 2 次限速；调低 = 你手动吞掉一部分。0 = 不设上限。', default: 0, min: 0, max: 60, step: 1, suffix: '次' },
   ],
   applyPanel: applyTriggerPanel,
   applyTeamConfig: applyTriggerTeamConfig,

@@ -1,7 +1,18 @@
 /**
  * R14 / T139：**无轴模式的「失衡易伤集中度」估算**（conc_est）。
  *
- * ## 用户口径（逐字，2026-10-17）
+ * ## ⛔ 2026-10-19 用户裁决：**非轴不再自动认领易伤**（本模块的 conc_est 已从引擎撤下）
+ *
+ * > 「轴模式下已经认定了易伤认领啊，非轴模式下想自动认领也不能仅仅靠连携和大招，
+ * >  还有其他很多招式啊，所以非轴就只能不做，**让用户自己填易伤贡献率**。」
+ *
+ * ⇒ 引擎侧（`damagePool`）**不再调用** `applyConcEstimate`；非轴覆盖率改由用户填的
+ * 「易伤贡献率」φ 决定（`stunVuln.noAxisVulnShare`，缺省 1 = 旧口径「每招均匀」，逐位不变）。
+ * 本文件的纯函数（`estimateConcentration` / `applyConcEstimate` / `noAxisConcNoticeOf`）
+ * **保留**：它们是已实测的参考算法（逐档中位误差 9.4%），撤下的只是「引擎静默替用户认领」这个行为。
+ * 若要恢复自动估算，需用户重新裁决——不要因为「函数还在」就把它接回生产路径。
+ *
+ * ## 原用户口径（逐字，2026-10-17）
  *
  * > 「**不用自动生成轴**，我只是想让**无轴的易伤更真实，接近有轴**。」
  * > 「**最好可以调整**，因为这种很难确定。」
@@ -77,10 +88,23 @@
  */
 import type { DamagePoolRow } from './helpers'
 
-/** 机制设置键：无轴易伤估算开关（0 = 关）与用户系数 k */
+/** 机制设置键：无轴易伤估算开关（0 = 关）与用户系数 k（**2026-10-19 起不再接生产路径**，见文件头） */
 export const NO_AXIS_CONC_ENABLED_SETTING = 'stunVuln.noAxisConcEstimate'
 export const NO_AXIS_CONC_K_SETTING = 'stunVuln.noAxisConcK'
 export const DEFAULT_NO_AXIS_CONC_K = 1.0
+
+/**
+ * **非轴易伤贡献率 φ**（用户裁决 2026-10-19：「非轴就只能不做，让用户自己填易伤贡献率」）。
+ *
+ * 引擎口径：非轴行级覆盖率 = 时间覆盖率 × φ（钳 [0,1]），在 `damagePool` 建池时一次乘进 `stunCoverage`。
+ * 缺省 1 = 旧口径「每招均匀摊」，**逐位不变**（既有 golden / 夹具零漂移）。
+ * 轴模式不读 φ —— 轴内 1 / 轴外 0 由引擎按轴实算。
+ *
+ * ⚠ 为什么不做「自动认领」：非轴没有轴模板，想自动把所有该进窗的招式认出来，
+ * 就只能靠连携/大招这类粗代理，漏掉其余招式 ⇒ 用户裁决直接不做，把不确定性交回给用户。
+ */
+export const NO_AXIS_VULN_SHARE_SETTING = 'stunVuln.noAxisVulnShare'
+export const DEFAULT_NO_AXIS_VULN_SHARE = 1
 
 /** 拟合系数（来源与误差表见本文件头注释） */
 export const CONC_EST_COEFFS = { a: 0.782015, b: -1.447331, c: 1.210691, d: 0.351966 }

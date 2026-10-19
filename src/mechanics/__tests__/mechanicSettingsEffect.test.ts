@@ -660,7 +660,12 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：卢西娅 / 南�
    * ⇒ 三点必须落在**你自己实测的上限内**（这里取 0 / 10 / 17），或断言
    * `count === min(v, baseline(v=40))`。本测试两条都做：三点绝对值 + 上限自洽。
    */
-  it('lucia.additionalAttackCount：count === v 且 cost === 25·v（三点 0 / 10 / 17，另验 40 触顶）', async () => {
+  /**
+   * ⚠ **2026-10-19 用户裁决：滑块 = 上限，不是次数**
+   * （「是修改上限而不是修改招式次数，次数应该自动计算」/「手动可以限制最大数值，因为玩家可能有特殊操作导致吞技能」）
+   * ⇒ 断言从「count === v」改成「count === min(自动, v)」，并**反证**「填超过自动值顶不上去」。
+   */
+  it('lucia.additionalAttackCount：上限语义（count === min(自动, v)；填超自动值顶不上去；0 = 不设上限）', async () => {
     const team: HarnessTeamSlot[] = [{ agentId: '1451', ...RICH }, ...mates(['1371', '1431'])]
     const failures: string[] = []
     const readCount = (v: number) => probe(team, 'lucia.additionalAttackCount', v, calc => {
@@ -668,24 +673,26 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：卢西娅 / 南�
       return { count: src?.additionalAttackCount, cost: src?.additionalAttackDreamCost, dream: src?.dreamTotal }
     }, { lock: 3 })
 
-    // 先测运行时上限（v=40 必然被夹到上限）——闭式用它，不硬编 16/17
-    const cap = (await readCount(40)).count ?? 0
-    if (cap <= 0) failures.push(`上限读数为 ${cap} ⇒ 本条无从观测`)
-    for (const v of [0, 10, 17]) {
+    // 自动值 = 不设上限（v=0）时的读数
+    const auto = (await readCount(0)).count ?? 0
+    if (auto <= 0) failures.push(`自动值读数为 ${auto} ⇒ 本条无从观测`)
+    // 上限给到自动值以上 ⇒ 次数仍是自动值（旧「覆盖」口径会变成 999）
+    const above = (await readCount(999)).count ?? 0
+    if (above !== auto) failures.push(`上限 999 > 自动 ${auto} ⇒ 次数应仍为 ${auto}，实到 ${above}（滑块被当成覆盖了）`)
+    for (const v of [1, Math.max(1, auto - 1)]) {
       const r = await readCount(v)
-      const expected = Math.min(v, cap)
+      const expected = Math.min(v, auto)
       if (r.count !== expected) {
-        failures.push(`v=${v}: additionalAttackCount 应为 min(${v}, cap=${cap})=${expected}，实到 ${r.count}`)
+        failures.push(`v=${v}: additionalAttackCount 应为 min(${v}, 自动=${auto})=${expected}，实到 ${r.count}`)
       }
       const expectedCost = 25 * (r.count ?? 0)
       if (r.cost !== expectedCost) {
         failures.push(`v=${v}: additionalAttackDreamCost 应为 25×count(${r.count})=${expectedCost}，实到 ${r.cost}`)
       }
     }
-    // 防退化：三点读数必须两两不同（全同 = 三点都落在饱和支 ⇒ 断言退化，不是滑块坏）
-    const vals = [(await readCount(0)).count, (await readCount(10)).count, (await readCount(17)).count]
-    if (new Set(vals).size !== vals.length) {
-      failures.push(`三点读数出现重复（${JSON.stringify(vals)}）⇒ 至少一点已饱和，请下移点位`)
+    // 防退化：低调位与自动值必须不同（全同 = 上限根本没生效）
+    if (auto > 1 && (await readCount(1)).count === auto) {
+      failures.push(`上限 1 未压住自动值 ${auto} ⇒ 上限失效`)
     }
     expect(failures, failures.join('\n')).toEqual([])
   }, 300000)
