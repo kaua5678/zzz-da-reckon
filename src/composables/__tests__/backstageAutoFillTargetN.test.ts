@@ -29,7 +29,13 @@ async function run(stunValue?: number) {
   const decl = getAgentMechanic('1371')!.backstageAutoFill!
   const pairs = sp.contributions.filter(r => r.slot === 0 && decl.moveIds.slice(0, 2).includes(String(r.moveId))).reduce((s, r) => s + (r.count ?? 0), 0)
   const ta = rr.characters[0]!.timeAllocation
-  const supplyCap = Math.floor(Math.max(0, 180 - ((ta.necessaryTime ?? 0) + (ta.basicAttackTime ?? 0))) / decl.minPeriodSeconds)
+  /**
+   * ⚠ 2026-10-19 口径对齐（与 `convergence.ts` 的 `supplyCap` 同源）：
+   * 剩余时间按**净占用**算——合轴吸收掉的时间（`comboAlignCredit`）本来就不占前台，
+   * 用毛额会把它算成占用 ⇒ 上限自锁（后台墨痕化形写真实耗时后实测 pairs 23 → 0）。
+   */
+  const netUsed = (ta.necessaryTime ?? 0) - (ta.comboAlignCredit ?? 0) + (ta.basicAttackTime ?? 0)
+  const supplyCap = Math.floor(Math.max(0, 180 - netUsed) / decl.minPeriodSeconds)
   return { pairs, supplyCap, N: sp.stunCount }
 }
 describe('CC-475 后台合轴自动填充：缺口按目标次数的扣除口径算', () => {

@@ -1,5 +1,7 @@
 import { clampRatio, finiteOr0, positiveWholeCounts } from '@/utils/finiteClamp'
 import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, InteractionClimbDecl } from '../types'
+import type { CharacterOperationConfig } from '@/types/resource/config'
+import type { ExtraNecessaryAction } from '../typesHooks'
 import type { ModuleFeedback } from '../types'
 import type { TeamResourceResult } from '@/types/resource'
 import { axisOverlayChannel, type AxisLike } from '../types'
@@ -185,6 +187,47 @@ const DEFAULT_C6_GIFT_ULT_COUNT = -1 // 调息赠送符法千重次数：-1 = �
  */
 export const DEFAULT_INK3_RATIO = 1
 
+/**
+ * **后台墨痕化形的账本预留**（2026-10-19，用户订正「它本身耗时还是正常的」）。
+ *
+ * 走通用 `extraNecessaryAction`（**不带 moveId** ⇒ 引擎只预留时间、不补行；行仍由
+ * `buildYixuanExecutions` 产出）。与爱丽丝 CC-454 `aliceSwordWillReserve` 同构。
+ *
+ * ## 用户口径（逐字）
+ *
+ * > 「这是设置的问题，设置 0 秒全合轴然后进行数量填写，**相当于全不合轴然后进行合轴率填写**。
+ * >   它本身耗时还是正常的，**你用合轴率并不能掩盖他本身耗时的事实，只是他时间和队友重合而已**」
+ *
+ * ⇒ 「耗时」是 `actionTime`（事实，抄 catalog），「与谁重合」是 `comboAlignRatio: 1`。写 0 等于抹掉事实。
+ *
+ * ## 为什么必须走这个通道
+ *
+ * `helpers.ts` 明写「账本不读 `exec.comboAlignRatio`」——模块写在行上的比例只有经本通道
+ * 才进 `comboAlignCredits`，否则是**死数据**。走通道后：毛额进 `necessaryTime`、等额进
+ * `comboAlignCredit` ⇒ `netNecessary = 0`（时间不白占），同时两组量在账本上都可读。
+ *
+ * ⚠ 配套修了 `convergence.ts` 的供给上限：原式拿 `necessaryTime` 毛额算剩余时间，
+ * 会把这段「本该被抵扣掉」的时间算成占用 ⇒ 上限自锁（实测 pairs 23 → 0）。
+ */
+function yixuanBackstageReserve(cfg: CharacterOperationConfig): ExtraNecessaryAction[] | null {
+  const manual = Math.max(0, Math.floor(Number(cfg.yixuanBackstageComboCount ?? 0)))
+  const n = manual > 0 ? manual : Math.max(0, Math.floor(Number(cfg.yixuanBackstageAutoCount ?? 0)))
+  if (n <= 0) return null
+  // 按产行同一条拆分：玄墨值够的部分「玄墨极阵+青溟震击」，超出「墨影凝云+霄云劲#5」
+  const xuanmo = Math.max(0, Math.floor(Number(cfg.yixuanXuanmoGain ?? 0)))
+  const strikeCount = Math.min(n, xuanmo)
+  const inkCount = Math.max(0, n - xuanmo)
+  const strikeSeconds = cfgMoveActionTime(cfg, '1371021') + cfgMoveActionTime(cfg, '1371007')
+  const inkSeconds = cfgMoveActionTime(cfg, BACKSTAGE_INK_MOVE) + cfgMoveActionTime(cfg, BACKSTAGE_STRIKE_MOVE)
+  const out: ExtraNecessaryAction[] = []
+  if (strikeCount > 0) {
+    out.push({ count: strikeCount, moveName: '后台墨痕化形·玄墨极阵（账本预留）', actionTime: strikeSeconds, comboAlignRatio: 1, decibelRecovery: 0 })
+  }
+  if (inkCount > 0) {
+    out.push({ count: inkCount, moveName: '后台墨痕化形·墨影凝云（账本预留）', actionTime: inkSeconds, comboAlignRatio: 1, decibelRecovery: 0 })
+  }
+  return out.length > 0 ? out : null
+}
 /**
  * 后台墨痕化形（墨影凝云合轴）**自动爬升上限比例**（T173，用户口径 2026-10-15）。
  *
@@ -796,9 +839,20 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 
   // 墨影凝云合轴（用户口径）：合轴次数 N；玄墨值 M 把合轴招式替换为玄墨极阵+青溟震击
-  // （N ≤ M 全打玄墨极阵+青溟震击；N > M 超出部分打墨影凝云+A5）；全部 actionTime=0 不占战场时间
+  // （N ≤ M 全打玄墨极阵+青溟震击；N > M 超出部分打墨影凝云+A5）。
   // 合轴次数：手动输入 >0 优先；否则吃自动填充（useResourceCalc 反推至保底 4 次失衡，
   // 用户口径 2026-09-07：合轴可自动填充、不占前台不计难度）
+  //
+  // ⚠ **2026-10-19 修正：真实耗时必须写在行上**（用户订正逐字）：
+  // > 「这是设置的问题，设置 0 秒全合轴然后进行数量填写，**相当于全不合轴然后进行合轴率填写**。
+  // >   它本身耗时还是正常的，你用合轴率并不能掩盖他本身耗时的事实，只是他时间和队友重合而已」
+  //
+  // 旧写法 `actionTime: 0`（`@KEEP0@` 保留 0）把「和队友重合」写成了「不存在耗时」——
+  // 那抹掉了事实：玄墨极阵 2.667s / 青溟震击 0.966s / 墨影凝云 2.667s / 霄云劲#5 0.961s
+  // （catalog 同值）。38 对 ≈ 138s 的真实动作时间被当成 0。
+  // 现在：行上带**真实 actionTime** + `comboAlignRatio: 1`（= 这段时间 100% 与队友重合），
+  // 账本经 `extraNecessaryAction`（`yixuanBackstageReserve`）按 `count × actionTime × ratio` 抵扣，
+  // 与爱丽丝 CC-454 / 雅 CC-202 同构——引擎不读行上的 ratio（`helpers.ts:499`），必须走预留通道。
   const manualBackstage = Math.max(0, Math.floor(Number(cfg.yixuanBackstageComboCount ?? 0)))
   const backstageCount = manualBackstage > 0
     ? manualBackstage
@@ -816,13 +870,19 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
       [BACKSTAGE_STRIKE_MOVE, '普通攻击：霄云劲 #5（合轴）', inkCombo],
     ] as const) {
       if (cnt <= 0) continue
+      // 真实耗时（catalog 同值）：合轴不改变「耗时」这件事，只改变「与谁重合」
+      const t = cfgMoveActionTime(cfg, mid)
       executions.push(moduleExecRow({
         moveId: mid,
         moveName: mname,
         category: 'basic',
         count: cnt,
+        actionTime: t,
         comboAlignRatio: 1,
-        /*@KEEP0@*/
+        // ⚠ `moduleExecRow` 的 `totalTime` 缺省 0（「要 actionTime × count 的自己传」，见其头注释）——
+        // 只写 actionTime 的话行时间是 0，时间账看不到（2026-10-19 实测踩到）
+        totalTime: cnt * t,
+        totalComboAlignTime: cnt * t,
         ...ENERGY_RECOVERY_OFF,
         skillTableNote: `合轴 ×${cnt}${xuanmoStrike > 0 && mid === '1371021' ? `（玄墨值替换，总 ${totalFuFaUlts}）` : ''}`,
       }))
@@ -1268,6 +1328,9 @@ export const yixuanMechanic: AgentMechanicModule = {
     // 一对合轴的最短节奏（秒）——供给上限分母 [猜测·待校准]
     minPeriodSeconds: 3,
   },
+  // 后台墨痕化形的时间进账本：真实耗时全额预留 + 全额合轴抵扣 ⇒ 净值 0（不白占前台），
+  // 但「耗时」与「重合」两组量都留在账本上可读。配套修了 convergence.ts 的供给上限按净额算。
+  extraNecessaryAction: yixuanBackstageReserve,
   buildAnomalyEvents: input => specBase.buildAnomalyEvents?.(input),
   /**
    * 凝神轴窗口覆盖（规则 6 迁入，棘轮站点 5/8，2026-09-12 #10 真清偿；

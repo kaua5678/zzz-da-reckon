@@ -1136,7 +1136,17 @@ export function createRunCalcRound(deps: {
         // CC-472（r653）：缺口按池自身计数律的反函数算（首次 b、之后每次 b(1−r)、赠送已抵扣），不再写死 4×bossStunValue。
         const deficit = Math.max(0, stunBuildUpForCount(pool, BACKSTAGE_FLOOR_STUNS) - (pool.totalStunBuildUp - ownDaze))
         const ownField = rr.characters.find(c => c.slot === cfg.slot)
-        const ownFieldTime = (ownField?.timeAllocation.necessaryTime ?? 0) + (ownField?.timeAllocation.basicAttackTime ?? 0)
+        /**
+         * **剩余可用时间必须按「净占用」算**（2026-10-19 修）：
+         * 原式用 `necessaryTime` 毛额，而合轴吸收掉的时间（`comboAlignCredit`）本来就不占前台
+         * ——毛额高估占用 ⇒ 后台墨痕化形一旦把真实耗时写上行（用户口径「它本身耗时还是正常的，
+         * 只是他时间和队友重合而已」），供给上限就会被自己的耗时吃掉 ⇒ `supplyCap = 0` ⇒ 自动填充瘫痪
+         * （实测 pairs 23 → 0，判据 `backstageAutoFillTargetN` 当场变红）。
+         * ⇒ 与 `helpers.ts` 的 `netNecessary = 毛额 − 抵扣` 同一条口径，这里补扣 `comboAlignCredit`。
+         */
+        const ownFieldTime = (ownField?.timeAllocation.necessaryTime ?? 0)
+          - (ownField?.timeAllocation.comboAlignCredit ?? 0)
+          + (ownField?.timeAllocation.basicAttackTime ?? 0)
         const supplyCap = Math.max(0, Math.floor(Math.max(0, base.totalTime - ownFieldTime) / decl.minPeriodSeconds))
         // 原 ×1.2 冗余（注释「实测 18 对只涨 3.85×」）就是 u 随 N 增大的效应，已由 poolAt(4) 显式算进 ⇒ 删（CC-475）。
         // CC-477（r659）：线性估计只对当前分支成立，回削会跨到 N−1 分支再估回来 ⇒ 外层 2-环 + CC-150 钳 ⇒ 同输入两个 N。

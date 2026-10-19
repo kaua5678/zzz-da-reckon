@@ -192,7 +192,17 @@ describe('仪玄 spec 机制（1371）', () => {
     const xuanmoStrike = yixuan.executions.find(e => e.moveId === '1371021')
     expect(xuanmoStrike).toBeTruthy()
     expect(xuanmoStrike!.count).toBe(3)
-    expect(xuanmoStrike!.actionTime).toBe(0)
+    /**
+     * ⚠ 2026-10-19 口径变更（用户订正逐字）：
+     * > 「这是设置的问题，设置 0 秒全合轴然后进行数量填写，相当于全不合轴然后进行合轴率填写。
+     * >   它本身耗时还是正常的，你用合轴率并不能掩盖他本身耗时的事实，只是他时间和队友重合而已」
+     *
+     * ⇒ 行上写**真实耗时**（catalog 同值 2.667s），「与队友重合」由 `comboAlignRatio: 1` 表达。
+     * 修前这里断言 `actionTime === 0`，那是把「重合」写成了「不存在耗时」。
+     */
+    expect(xuanmoStrike!.actionTime, '真实耗时（catalog 1371021 = 2.667s），不是 0').toBe(2.667)
+    expect(xuanmoStrike!.comboAlignRatio, '合轴率表达「与队友重合」').toBe(1)
+    expect(xuanmoStrike!.totalTime, '行时间 = count × actionTime').toBe(3 * 2.667)
     expect(xuanmoStrike!.damageMultiplier).toBe(611)
     const qingmingStrike = yixuan.executions.find(e => e.moveId === '1371007')
     expect(qingmingStrike!.count).toBe(3)
