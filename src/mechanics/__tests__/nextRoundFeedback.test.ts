@@ -293,13 +293,19 @@ describe('★ 管线级：timeGolden 盲区（露西 C6 / 艾莲影画4 冻结�
     // ⚠ **T141：60 → 64**（吸收改「取满容量」+ 闸门常开 ⇒ 该值由 60 变为 64）。
     // 变的量 = `crossAgent.bySource.lucyEnergy`（露西 C6 影画1 回旋全队回能）。本队吸收常开后
     // 失衡/回旋基数变化 ⇒ 回能量上台阶 60 → **64**。
-    // 判据与判别力原样保留——**反向对照已复测**（同队同配装，scratch 副本摘掉
-    // `nextRoundFeedback: lucyNextRoundFeedback`）：**有钩子 64 / 摘钩子 34**，
-    // 仍是两档台阶（不是 0 也不是同值）⇒ 本行对「钩子没被派发」依旧可红。
+    //
+    // ⚠ **2026-10-19：64 → 66**（诺姆强特改「满长按 + 1 次零散长按把能量放完」）。
+    // 用户裁决：「诺姆的长按和洛克茜一样」⇒ `computeNormaExCount` 让本队诺姆余数 48.2 点
+    // （E≈608 / 满按耗能 80 ⇒ 7 满发 + 余 48.2 ≥ 40 激活线）**多打一发零散长按** ⇒ 诺姆 7→8 次强特
+    // ⇒ 它给露西 C6 回旋的基数上台阶 ⇒ `lucyEnergy` 64 → **66**。
+    // A/B 实测（`git checkout a161c015 -- src/mechanics/agents/norma.ts` 后跑同一探针）：
+    //   旧口径 诺姆 7 次 / lucyEnergy **64**；新口径 诺姆 8 次 / lucyEnergy **66**。
+    // 判据与判别力原样保留——**反向对照仍成立**（摘 `nextRoundFeedback: lucyNextRoundFeedback`
+    // ⇒ 落到 **34** 一档），仍是两档台阶 ⇒ 本行对「钩子没被派发」依旧可红：漏派发会掉回 34 而不是 66。
     expect(
       (lucy.energySource.crossAgent.bySource.lucyEnergy ?? 0),
       '露西 C6 回旋全队回能没生效 —— nextRoundFeedback 未派发（timeGolden 对这条队是盲的）',
-    ).toBe(64)
+    ).toBe(66)
   })
 
   it('艾莲影画4：冻结次数反馈真的驱动影画4 回能（ellen_cycle.c4EnergyTotal）', async () => {
