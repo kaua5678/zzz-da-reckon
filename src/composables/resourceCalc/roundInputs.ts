@@ -399,20 +399,24 @@ export function createConvergenceRoundInputs(deps: {
     basicFillBySlot: Record<number, number>,
   ): Record<string, ExecutedMoveCount> {
     const out: Record<string, ExecutedMoveCount> = {}
-    const add = (slot: number, moveId: string, count: number) => {
+    /**
+     * @param inAxisCount 其中落在失衡窗口内的部分（跨界小数；见 `ExecutedMoveCount`）
+     */
+    const add = (slot: number, moveId: string, count: number, inAxisCount = count) => {
       if (count <= 0) return
       const key = `${slot}:${moveId}`
       const cur = out[key]
-      if (cur) cur.count += count
-      else out[key] = { slot, moveId, count }
+      if (cur) { cur.count += count; cur.inAxisCount += inAxisCount } else out[key] = { slot, moveId, count, inAxisCount }
     }
     for (const v of Object.values(executed)) {
       const agentId = configStore.team[v.slot]?.agentId ?? ''
       const combo = getAgentMechanic(agentId)?.combos?.[v.moveId]
       if (combo) {
-        for (const mv of combo.moves) add(v.slot, mv.moveId, mv.count * v.count)
+        // 连段展开：内部招式按**同一跨界比例**摊（连段块整体跨界时，内部各招同比例进窗）
+        const ratio = v.count > 0 ? v.inAxisCount / v.count : 1
+        for (const mv of combo.moves) add(v.slot, mv.moveId, mv.count * v.count, mv.count * v.count * ratio)
       } else {
-        add(v.slot, v.moveId, v.count)
+        add(v.slot, v.moveId, v.count, v.inAxisCount)
       }
     }
     for (const [slotStr, fillSec] of Object.entries(basicFillBySlot)) {

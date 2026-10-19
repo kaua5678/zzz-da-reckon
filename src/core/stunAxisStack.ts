@@ -6,8 +6,13 @@
  *    - 闪能（强特）→ **超出总量的动作直接去掉**（用户口径 2026-09-08：通用规则，耗资源的招式
  *      都从总量里拿，不许凭空创造；四舍五入开关在**总量侧**补缺口，见下）；
  *    - 喧响（终结技/开帷幕）→ 同口径**去掉**（总回复只够 3 次大招时，轴里捏的第 4 次打不出来 → 扣除）；
- *    - 时间 → 累计动作时长，超过失衡窗口就停（后面的动作整段舍弃）。
+ *    - 时间 → 累计动作时长；**第一个装不下的动作照常施放、按窗口剩余比例部分进窗**
+ *      （`inAxisCount`，2026-10-18 用户口径「超时不是应该把最后一个动作算部分易伤吗？」），
+ *      其后的动作整段舍弃；窗口剩余为 0 时也与整段舍弃同形态（记 `skipped.time`）。
  * 2. 循环到资源耗尽或窗口填满。
+ *
+ * ⚠ **`count` 恒为整数**（用户 2026-10-18：「count 肯定是整数……也不可否认这是一次完整的释放大招」）
+ * ——一次施放扣一次资源、占满一次前台时间；只有 `inAxisCount` 可以是小数（吃易伤的那部分）。
  *
  * 效果：资源全够 = 爆发轴（栈顶到底全打）；资源不够 = 低优先级动作被跳过 = 经济轴自然分化。
  * 本模块只做「哪些动作被执行」的纯函数决策，不碰面板/倍率/伤害。
@@ -95,8 +100,43 @@ export interface StackTraversalInput {
   goodReview?: number
 }
 
-/** 某槽某招式在轴内的执行次数（`StackTraversalResult.executed` 的值，key = `${slot}:${moveId}`） */
-export interface ExecutedMoveCount { slot: number; moveId: string; count: number }
+/**
+ * 某槽某招式在轴内的执行次数（StackTraversalResult.executed 的值，key = `${slot}:${moveId}`）。
+ *
+ * ## count 与 inAxisCount 的分工（跨界小数，2026-10-18）
+ *
+ * 用户口径 2026-10-18：「超时不是应该把最后一个动作算部分易伤吗？」+「小数这一块要做就要做完，
+ * 不要显示一半骗一半」⇒ 窗口装不下的那个动作**不是整段消失**，而是「打出来了，但只有一部分
+ * 落在失衡窗口里」：
+ *
+ *   count       = 施放次数（整数）：玩家确实起手了这个动作，它照常扣闪能/喧响、照常占前台时间
+ *   inAxisCount = 其中落在失衡窗口内的部分（0..count）：只有这部分吃失衡易伤
+ *
+ * 例：18s 窗口，末动作 15.9s 起手、时长 4.083s ⇒ count += 1、inAxisCount += 2.1/4.083 = 0.514。
+ *
+ * ⚠ **为什么必须两个字段**（而不是把 count 直接改成 0.514）：
+ *  - **资源**要按 count（整次）扣：玩家已经起手，闪能/喧响是真花掉了；按 0.514 扣会让「喧响够不够
+ *    下一次大招」的判断凭空变宽松（用户 2026-10-18 明确：**喧响不够就是不能算**，那是资源口径，
+ *    与跨界无关）；
+ *  - **时间账**同理：动作占满它自己的 4.083s 前台，不是 2.1s；
+ *  - **伤害 / 失衡**按 inAxisCount 拆：窗内那段吃易伤、窗外那段不吃（damagePool#axisSplitFor），
+ *    窗内那段也不攒下一次失衡条（convergence#inAxisFractionProvider 的分子）。
+ *
+ * 缺省全在窗内（inAxisCount === count）时逐位等价于旧口径 ⇒ 未跨界的行为零变化。
+ */
+export interface ExecutedMoveCount {
+  slot: number
+  moveId: string
+  /** 施放次数（整数） */
+  count: number
+  /**
+   * 其中**落在失衡窗口内**的部分（0..count，可为小数）。
+   *
+   * ⚠ **恒有值**（不写「缺省 = count」）：两个消费方（伤害池拆分 / 失衡分数）都直接读它，
+   * 差一个 `?? count` 就是静默把跨界那一次算成全额吃易伤——那正是「显示一半骗一半」。
+   */
+  inAxisCount: number
+}
 
 /**
  * 轴内**逐次执行序列**的一条（`StackTraversalResult.sequence` 的元素）。
@@ -403,11 +443,16 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   const decibelLeft: Record<number, number> = { ...decibelBySlot }
   const swayLeft: Record<number, number> = { ...swayBySlot }
 
-  const bump = (slot: number, moveId: string, count: number, startTime = 0, win = 1) => {
+  /**
+   * 记录一次施放。
+   *
+   * @param count       施放次数（整数，资源/时间按它扣）
+   * @param inAxisCount 其中落在失衡窗口内的部分（0..count；跨界时 < count）
+   */
+  const bump = (slot: number, moveId: string, count: number, startTime = 0, win = 1, inAxisCount = count) => {
     const key = `${slot}:${moveId}`
     const cur = executed[key]
-    if (cur) cur.count += count
-    else executed[key] = { slot, moveId, count }
+    if (cur) { cur.count += count; cur.inAxisCount += inAxisCount } else executed[key] = { slot, moveId, count, inAxisCount }
     // 逐次执行序列（**轴内本地时序数据**，2026-10-12）：`executed` 是**按 key 聚合**的、丢了顺序；
     // 而克拉蕾的残痕在轴内是「积累 → 消耗 → 再积累」的过程（用户口径：「一开始1800残痕值进去，
     // 打3层毁伤，残痕值归零，然后又积累1800，又打毁伤3层。再积累600点，再打一次，如果时间足够，
@@ -455,9 +500,29 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     for (const act of window.actions) {
       for (let i = 0; i < act.count; i++) {
         const used = slotTime[act.slot] ?? 0
-        // 时间门控（优先级只作用于超时部分）：该槽位放不下 → 跳过（超时被截断）。
-        // 例外：窗口终结动作（佩洛伊斯决算）无视时间阀门——发动时锁定失衡，即便失衡最后一刻放出也吃满易伤。
-        if (!act.endsStunWindow && act.actionTime > 0 && used + act.actionTime > windowDuration) {
+        /**
+         * ## 时间门（2026-10-18 改「跨界小数」，用户口径「小数这一块要做要做完」）
+         *
+         * 旧口径：`used + actionTime > windowDuration` ⇒ **整段跳过**，动作落到轴外吃 1.0 倍
+         * （伤害池里 `stunCoverage = 0`），引擎里从来没有「部分吃易伤」这回事。
+         *
+         * 新口径：动作**照常施放**（扣资源、占时间），但只有 `(windowDuration − used) / actionTime`
+         * 这一段落在窗口里 ⇒ 那段吃失衡易伤、那段之外的**不吃**（也**不攒**下一次失衡条）。
+         *
+         * `fits` = 窗口剩余秒数装得下的**比例**（0..1）：
+         *  - 1 = 整段在窗内（未跨界，逐位等价旧口径）；
+         *  - 0 < fits < 1 = 跨界（本卡要表达的形态）；
+         *  - 0 = 一点都放不下（起点就在窗外）。
+         *
+         * ⚠ **动作仍要计入 `count`**（资源/时间按整次算），只有 `inAxisCount` 按 fits 打折
+         * ——理由见 `ExecutedMoveCount` 头注释。
+         * ⚠ 例外不变：窗口终结动作（佩洛伊斯决算）无视时间阀门，恒整段吃满。
+         */
+        const fits = act.endsStunWindow || act.actionTime <= 0
+          ? 1
+          : Math.max(0, Math.min(1, (windowDuration - used) / act.actionTime))
+        // 窗口剩余为负（前序动作把该槽位撑爆）⇒ 一点都进不了窗口：按整段跳过（与旧口径同形态）
+        if (fits <= 0 && !act.endsStunWindow && act.actionTime > 0) {
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'time' })
           continue
         }
@@ -496,8 +561,10 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         if ((act.swayCost ?? 0) > 0) {
           swayLeft[act.slot] = (swayLeft[act.slot] ?? 0) - (act.swayCost ?? 0)
         }
-        // 执行
-        bump(act.slot, act.moveId, 1, act.startTime ?? 0, windowNo)
+        // 执行：整次计入 count（资源/时间按整次），只有 inAxisCount 按 fits 打折
+        bump(act.slot, act.moveId, 1, act.startTime ?? 0, windowNo, fits)
+        // ⚠ 槽位占用时间**按整段**推进（不是 fits×actionTime）：动作真的占满 4.083s 前台，
+        // 窗内 2.1s 只是「吃易伤的那一段」。按 fits 推进会让后续动作凭空多出时间。
         slotTime[act.slot] = used + act.actionTime
         // 时间线末尾：该槽位最晚结束时刻（startTime 负值=窗口外提前起手，按 0 起算）
         const end = Math.max(0, act.startTime ?? 0) + act.actionTime

@@ -495,7 +495,16 @@ export interface StunAxisPlan {
 export interface StunAxisAllocation {
   slot: number
   moveId: string
-  /** 轴内单位数（次或秒，跨边界按比例折算，可为小数） */
+  /**
+   * 轴内单位数（次或秒）。**跨界时可为小数**（2026-10-18 起）：窗口装不下的那个动作
+   * 只有一部分落在失衡窗口里，那部分吃易伤、其余不吃。
+   *
+   * ⚠ 这个字段有两份来源，**口径不同别混**：
+   *  · **算伤害的那份**（`useResourceCalc#axisAllocation` → `damagePool#axisSplitFor`）
+   *    读 `StackTraversalResult.executed[].inAxisCount` ⇒ 跨界是真小数，伤害池按它两段拆；
+   *  · **失衡轴页展示的那份**（`core/stunAxis#calcStunAxis` 的 `allocation`）走
+   *    `computeInAxisRatio` 的比例折算 ⇒ 也是小数，但它**不进伤害计算**。
+   */
   inAxisUnits: number
   /** 轴外单位数（次或秒） */
   outAxisUnits: number

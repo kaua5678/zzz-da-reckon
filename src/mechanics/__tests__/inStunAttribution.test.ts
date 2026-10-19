@@ -573,8 +573,15 @@ describe('极性强击（爱丽丝 1401）失衡轴：首算存在 + 易伤跟�
   it('轴内 SW3 多量放置：易伤按栈实际执行数占比折算（窗口门控下部分在窗）', async () => {
     const full = await setupAlice(8)
     const none = await setupAlice(0)
-    // 栈执行数 = 窗口时长门控下的真实轴内单位（窗口放不下全部时截断，如 4/9）
-    const execCount = full.calc.stackTraversalResult.value?.executed['0:1401012']?.count ?? 0
+    /**
+     * ⚠ **2026-10-18 改读 `inAxisCount`**（跨界小数）：栈的 `count` 是**施放次数**（整数，
+     * 资源/时间按整次扣），`inAxisCount` 才是**落在失衡窗口内**的那部分 = 吃易伤的额度。
+     * 本用例的语义正是「按轴内单位折算占比」⇒ 必须读后者；读 `count` 会在跨界时把整次算进窗内。
+     */
+    const entry = full.calc.stackTraversalResult.value?.executed['0:1401012']
+    expect(entry?.count ?? 0).toBeGreaterThan(0)
+    expect(Number.isInteger(entry!.count), '施放次数必须是整数（用户口径 2026-10-18）').toBe(true)
+    const execCount = entry!.inAxisCount
     expect(execCount).toBeGreaterThan(0)
     const frac = Math.min(1, execCount / full.spark)
     expect(frac).toBeLessThanOrEqual(1)

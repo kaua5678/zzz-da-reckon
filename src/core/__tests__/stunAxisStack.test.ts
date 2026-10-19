@@ -182,7 +182,18 @@ describe('calcStunAxisStack', () => {
     expect(r.decibelUsed).toBe(3000)
   })
 
-  it('short window stops at overflow (超窗口停，后面动作舍弃)', () => {
+  /**
+   * ⚠ **2026-10-18 口径变更**（用户：「超时不是应该把最后一个动作算部分易伤吗？」+「小数这一块
+   * 要做就要做完，不要显示一半骗一半」）：
+   *
+   * 旧口径 = 「超窗口停，**动作整段舍弃**」（`executed.count === 0`）——那一招落到轴外吃 1.0 倍，
+   * 但引擎里从来没有「部分吃易伤」，于是「最后一招差 0.2s 装不下」= 整招白丢一次易伤。
+   *
+   * 新口径 = 「**第一个装不下的动作照常施放、按窗口剩余比例部分吃易伤**，其后的动作整段舍弃」：
+   *  - `count` = 施放次数（整数，资源/时间按它扣）；
+   *  - `inAxisCount` = 其中落在窗口内的部分（0..count）。
+   */
+  it('short window：首个跨界动作按剩余比例部分进窗，其后动作整段舍弃', () => {
     const r = calcStunAxisStack({
       axes: [{ actions: stack }],
       stunCount: 1,
@@ -190,8 +201,16 @@ describe('calcStunAxisStack', () => {
       energyBySlot: { 0: 360 },
       decibelBySlot: { 0: 18000 },
     })
-    expect(r.executed['0:1051012']?.count ?? 0).toBe(0)
-    expect(r.skipped.some(s => s.reason === 'time')).toBe(true)
+    // 前序动作占 2.517+1.766×2+0.95×2 = 7.949s ⇒ 第一个 1051012（2.6s）只剩 0.051s
+    // ⇒ count=1（施放了一次）、inAxisCount≈0.0196（只有这一点在窗内）
+    const first = r.executed['0:1051012']!
+    expect(first.count).toBe(1)
+    expect(first.inAxisCount).toBeCloseTo((8 - 7.949) / 2.6, 6)
+    // 其后的动作（1051012 第二次 / 1051007 / 1051003）整段舍弃（槽位时间已超窗）
+    expect(r.skipped.filter(s => s.reason === 'time').length).toBeGreaterThanOrEqual(3)
+    // 整段舍弃的那些**不进 executed**（不是「进了但 inAxisCount=0」）
+    expect(r.executed['0:1051007']).toBeUndefined()
+    expect(r.executed['0:1051003']).toBeUndefined()
   })
 
   it('合轴：各槽位时间独立，互不挤占（琉音并行）', () => {

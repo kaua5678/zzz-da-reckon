@@ -597,14 +597,21 @@ export function createResourceCalc(
     return calcOutput.value?.axisStack ?? null
   })
 
-  /** (slot, moveId) → 轴内单位数分配（来自栈遍历 executed，连段展开成招式，outAxisUnits 由 axisSplitFor 反推） */
+  /**
+   * (slot, moveId) → 轴内单位数分配（来自栈遍历 executed，连段展开成招式，outAxisUnits 由 axisSplitFor 反推）。
+   *
+   * ⚠ **读 `inAxisCount` 不读 `count`**（2026-10-18 跨界小数）：`count` 是**施放次数**（整数，
+   * 资源/时间按整次扣），`inAxisCount` 才是**落在失衡窗口内**的部分 = 吃易伤的额度。
+   * 读 `count` 会把跨界那一次当成全额吃易伤（「显示一半骗一半」）。
+   * 与 `convergence#inAxisFractionProvider`（失衡分数）同一口径、同一个字段。
+   */
   const axisAllocation = computed(() => {
     const exec = stackTraversalResult.value?.executed
     if (!exec) return {}
     const counts = expandExecutedToCounts(exec, stackTraversalResult.value.basicFillBySlot)
     const out: Record<string, StunAxisAllocation> = {}
     for (const v of Object.values(counts)) {
-      out[`${v.slot}:${v.moveId}`] = { slot: v.slot, moveId: v.moveId, inAxisUnits: v.count, outAxisUnits: 0 }
+      out[`${v.slot}:${v.moveId}`] = { slot: v.slot, moveId: v.moveId, inAxisUnits: v.inAxisCount, outAxisUnits: 0 }
     }
     return out
   })
