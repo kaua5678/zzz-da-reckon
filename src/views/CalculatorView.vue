@@ -87,6 +87,7 @@ const pageMap: Record<string, Component> = {
   resourceUtilization: lazyPage(() => import('@/views/ResourceUtilizationPage.vue')),
   stunAxis: lazyPage(() => import('@/views/StunAxisPage.vue')),
   teamCompare: lazyPage(() => import('@/views/TeamComparePage.vue')),
+  interactionSweep: lazyPage(() => import('@/views/InteractionSweepPage.vue')),
   breakerCompare: lazyPage(() => import('@/views/PositionComparePage.vue')),
   freeCompare: lazyPage(() => import('@/views/FreeComparePage.vue')),
   timeline: lazyPage(() => import('@/views/TimeChartsPage.vue')),

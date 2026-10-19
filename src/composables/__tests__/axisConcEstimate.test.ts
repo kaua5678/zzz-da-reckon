@@ -22,13 +22,17 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+// 生产口径符号（引擎仍在用）：易伤贡献率 φ 的设置键
 import {
   DEFAULT_NO_AXIS_VULN_SHARE,
-  noAxisConcNoticeOf,
   NO_AXIS_VULN_SHARE_SETTING,
 } from '@/composables/resourceCalc/concEstimate'
-// 纯函数核心从**最近来源**导入（门面只转出被生产多处消费的符号——判据 16 死通道扫描）
-import { applyConcEstimate, damagePerMultiplierBySlot, estimateConcentration } from '@/composables/resourceCalc/concEstimate'
+/**
+ * ⚠ **2026-10-19：conc_est 参考算法已搬进 `src/test/`**（引擎撤下自动认领后零生产消费者，
+ * `deadChannelLs` 判据 ⑫ 会报「只被测试引用 = 生产死代码」）。本文件是它唯一的消费者，
+ * 实现与回归测试同处；将来若要恢复自动估算（需用户重新裁决），从这里搬回 `resourceCalc/`。
+ */
+import { applyConcEstimate, damagePerMultiplierBySlot, estimateConcentration, noAxisConcNoticeOf } from '@/test/concEstimateReference'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 
 // ============ A. 纯函数 ============

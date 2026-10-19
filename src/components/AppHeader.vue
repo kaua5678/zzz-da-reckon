@@ -46,6 +46,7 @@
           @update:value="onTabChange"
         >
           <n-tab-pane name="teamCompare" tab="队伍对比" />
+          <n-tab-pane name="interactionSweep" tab="交互扫描" />
           <n-tab-pane name="breakerCompare" tab="位置对比" />
           <n-tab-pane name="freeCompare" tab="自由对比" />
           <n-tab-pane name="runArchive" tab="实战对比" />
@@ -165,7 +166,7 @@ const showChangelog = ref(false)
 
 const setupTabs = ['team', 'attribute', 'resource']
 const analyzeTabs = ['result', 'resourceUtilization', 'stunAxis', 'timeline']
-const compareTabs = ['teamCompare', 'breakerCompare', 'freeCompare', 'runArchive']
+const compareTabs = ['teamCompare', 'interactionSweep', 'breakerCompare', 'freeCompare', 'runArchive']
 const planTabs = ['charIncrement', 'bossHp']
 const developerTabs = ['debug', 'wengineFields', 'logic', 'multiplierCoeff']
 const sectionValue = (tabs: string[]) =>

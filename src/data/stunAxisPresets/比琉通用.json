@@ -6,11 +6,12 @@
   "1481",
   "*"
  ],
- "note": "自动轴（用户口径）：队伍含 星徽·比利(1531)+琉音(1481) 自动开启并选用；4 次失衡、3 次终结（喧响够 3 个大）：轴1「常规轴」打 3 次窗口（每窗 抓地→星光→60转大终结→抓地→连携→普通终结），轴2「喧响不够双连携」打 1 次（双连携 + 90 转大白送）。轴1 count:3 / 轴2 count:1 共 4 窗；第三槽通配（轴内无第三槽动作）。",
+ "note": "自动轴（用户口径）：队伍含 星徽·比利(1531)+琉音(1481) 自动开启并选用；4 次失衡、3 次终结（喧响够 3 个大）：轴1「常规轴」打 3 次窗口（每窗 抓地→星光→60转大终结→抓地→连携→普通终结），轴2「喧响不够双连携」打 1 次（双连携 + 90 转大白送）。轴1 = 兜底吃剩余窗（不写死次数）/ 轴2 = 固定 1 窗；第三槽通配（轴内无第三槽动作）。⚠ 双连携窗单槽累计 19.249s > 18s 窗口（12 stunTime + 4 连携 + 琉音 2）⇒ 末位动作**跨界**：照常施放（扣资源、占满前台时间），只有落在窗口内的那段吃失衡易伤（`ExecutedMoveCount.inAxisCount`，用户口径 2026-10-18「超时不是应该把最后一个动作算部分易伤吗？」+「小数这一块要做就要做完」）。实测：末位 90 转大跨界 `count=7 / inAxis=6.694`，部署 67.35M、曲线 4 点全部完整轴。⚠ 引擎的时间门按**数组顺序**累计该槽占用秒数（`startTime` 只决定合轴区间起点）⇒ 数组顺序决定**谁**跨界，不影响轴态。",
  "axes": [
   {
    "name": "常规轴",
    "kind": "fallback",
+   "basicFillerSlot": 0,
    "actions": [
     {
      "slot": 0,
@@ -27,20 +28,20 @@
      "slot": 0,
      "moveId": "1531016",
      "count": 1,
-     "startTime": 5.4,
+     "startTime": 5.3,
      "promoteVariant": "60"
     },
     {
      "slot": 0,
      "moveId": "1531009",
      "count": 1,
-     "startTime": 9.5
+     "startTime": 9.4
     },
     {
      "slot": 0,
      "moveId": "1531015",
      "count": 1,
-     "startTime": 11.7
+     "startTime": 11.5
     },
     {
      "slot": 1,
@@ -52,26 +53,21 @@
      "slot": 1,
      "moveId": "1481011",
      "count": 1,
-     "startTime": 11
+     "startTime": 10.8
     },
     {
      "slot": 0,
      "moveId": "1531016",
      "count": 1,
-     "startTime": 14.1
+     "startTime": 13.9
     }
-   ],
-   "basicFillerSlot": 0
+   ]
   },
   {
    "name": "喧响不够双连携",
+   "count": 1,
+   "basicFillerSlot": 0,
    "actions": [
-    {
-     "slot": 0,
-     "moveId": "1531009",
-     "count": 1,
-     "startTime": 3.2
-    },
     {
      "slot": 0,
      "moveId": "1531010",
@@ -79,38 +75,42 @@
     },
     {
      "slot": 0,
+     "moveId": "1531009",
+     "count": 1,
+     "startTime": 3
+    },
+    {
+     "slot": 0,
      "moveId": "1531015",
      "count": 1,
-     "startTime": 5.3
+     "startTime": 5.1
     },
     {
      "slot": 0,
      "moveId": "1531009",
      "count": 1,
-     "startTime": 7.7
+     "startTime": 7.5
     },
     {
      "slot": 0,
      "moveId": "1531015",
      "count": 1,
-     "startTime": 9.8
+     "startTime": 9.6
     },
     {
      "slot": 0,
      "moveId": "1531010",
      "count": 1,
-     "startTime": 12.2
+     "startTime": 15.9
     },
     {
      "slot": 0,
      "moveId": "1531016",
      "count": 1,
-     "startTime": 15.3,
+     "startTime": 11.9,
      "promoteVariant": "90"
     }
-   ],
-   "basicFillerSlot": 0,
-   "count": 1
+   ]
   }
  ]
 }

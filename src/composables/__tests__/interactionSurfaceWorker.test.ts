@@ -20,7 +20,7 @@ import { applyAxisBinding, applyTeamToStore } from '@/composables/teamCompare'
 import { applyBossRoom } from '@/composables/bossRoom'
 import { runInteractionSurface } from '@/composables/interactionSurface'
 import {
-  runSurfaceInWorker, surfaceWorkerSupported, type SurfaceWorkerLike,
+  runSurfaceInWorker, type SurfaceWorkerLike,
 } from '@/composables/interactionSurfaceRunner'
 import type { SurfaceWorkerMessage, SurfaceWorkerRequest } from '@/composables/interactionSurfaceWorker'
 import { teamPresets } from '@/data/teamPresets'
@@ -82,7 +82,9 @@ function fakeWorker(produce: () => SurfaceWorkerMessage[]): SurfaceWorkerLike {
 
 describe('二维面 worker 通道', () => {
   it('② 无 Worker 环境回落主线程，且与直接调用逐位相同', async () => {
-    expect(surfaceWorkerSupported(), 'vitest/node 环境没有 Worker ⇒ 必须走回落').toBe(false)
+    // ⚠ 2026-10-19：原第一行读内部探测 `surfaceWorkerSupported()`（已不导出，见该函数注释）。
+    // 它锁的语义 =「本环境没有 Worker」由下面的 `out.usedWorker === false` 直接表达（对外契约），
+    // 且更强——它同时证明「回落路径真的被走到」，而不只是「探测函数返回了 false」。
     const { preset, boss, phase, configState, direct } = await fixture()
     const out = await runSurfaceInWorker({
       preset, boss, phase, maxCount: 6, countStep: 3, ratioSteps: 2, configState,

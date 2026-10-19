@@ -120,11 +120,6 @@ export interface SurfaceRunOutcome {
   aborted: boolean
 }
 
-/** 本环境能否起 Web Worker（node/vitest = false ⇒ 一律回落主线程） */
-export function surfaceWorkerSupported(): boolean {
-  return typeof Worker !== 'undefined'
-}
-
 /** 真实 worker 工厂（缺省路径）；构造失败（CSP 禁 worker 等）返回 null ⇒ 回落 */
 export function createSurfaceWorker(): SurfaceWorkerLike | null {
   try {

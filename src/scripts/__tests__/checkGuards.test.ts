@@ -7,6 +7,7 @@
  * ③ 仓库级 runAllChecks 全绿（在 vitest 里给出定位到行的失败信息，不用等 CI）
  */
 import { describe, expect, it } from 'vitest'
+import { execFileSync } from 'node:child_process'
 import { readFileSync, readdirSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -646,11 +647,11 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('三十一条判据全绿（判据 24 角色模块值依赖 ' + ROLE_MODULE_DEP_BASELINE + ' / fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖** / **无类型记录键死读** / **通用字段唯一声明方 + SVG 呈现属性****)', () => {
+  it('三十二条判据全绿（判据 24 角色模块值依赖 ' + ROLE_MODULE_DEP_BASELINE + ' / fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖** / **无类型记录键死读** / **通用字段唯一声明方 + SVG 呈现属性** / **测试三环****)', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(31)
+    expect(results).toHaveLength(32)
     expect(results.some(r => r.name.startsWith('role-module value-dep gate'))).toBe(true)
     // 判据 26：角色 / 招式 id 字面量只许在 data / mechanics/agents / specs（2026-10-04 CC-449 展示层 → CC-450 全 src）——判据 2/24 盯的是身份判定与值导入，裸字面量此前只有逐病灶的单文件锁
     expect(results.some(r => r.name.startsWith('id-literal gate'))).toBe(true)
@@ -729,14 +730,24 @@ describe('仓库级自洽（真实扫描）', () => {
     const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as {
       scripts: Record<string, string>
     }
+    /**
+     * ## T186（2026-10-18）：清单搬进 `scripts/test-ring.mjs`，本用例改验**委派**而不是清单
+     *
+     * 改前 `test:fast` 是一条 16 个 `--exclude` 的长命令行，而真相在
+     * `EXPECTED_FAST_EXCLUDES` 常量里 ⇒ **同一条事实两处写**。现在三环（core / fast / full）
+     * 的单一事实源 = `scripts/test-ring.mjs`（嵌套与存在性由 `check-guards` 判据 32 守），
+     * 本用例只剩两件事：**别绕过环** 与 **别让排除项腐烂**。
+     */
     const fast = pkg.scripts['test:fast'] ?? ''
-    // ① 排除项必须与本清单逐字一致（加/删都要显式改这里 ⇒ 强制复核，而不是顺手放宽）
-    const excludes = [...fast.matchAll(/--exclude='\*\*\/([^']+)'/g)].map(m => m[1])
+    // ① 快环必须委派给三环脚本（否则清单又会分叉成两份）
     expect(
-      [...excludes].sort(),
-      '排除集变了：`test:fast` 的 --exclude 与 EXPECTED_FAST_EXCLUDES 不一致。加/删排除项必须同时'
-      + '改本清单（它是防"快环越来越空"的棘轮），并确认被排除的确实是重型全库扫描/搜索类用例。',
-    ).toEqual([...EXPECTED_FAST_EXCLUDES].sort())
+      fast,
+      '`test:fast` 必须委派给 `node scripts/test-ring.mjs fast`（三环清单的单一事实源）。'
+      + '看到这条红 ⇒ 有人把 --exclude 清单又抄回 package.json 了；请改 scripts/test-ring.mjs 的 FAST_MAX_SECONDS。',
+    ).toBe('node scripts/test-ring.mjs fast')
+    const excludes = JSON.parse(execFileSync(process.execPath,
+      [join(process.cwd(), 'scripts/test-ring.mjs'), 'excludes', 'fast'], { encoding: 'utf8' })) as string[]
+    expect(excludes.length, '快环排除集为空 ⇒ 快环 = 全量（收益消失且无人察觉）').toBeGreaterThan(0)
     // ② 排除项必须真实存在（防重命名后静默失效 ⇒ 快环退化成全量而无人察觉）
     const allTests = listTestFiles(join(process.cwd(), 'src'))
     for (const f of excludes) {
@@ -796,26 +807,21 @@ describe('仓库级自洽（真实扫描）', () => {
 })
 
 /**
- * `test:fast` 允许排除的**重型用例**名单（棘轮：加/删都要显式改这里，见上方用例）。
+ * ⚠ **本常量已退役**（T186，2026-10-18）：`test:fast` 的排除集不再是这里的手写清单，
+ * 而是 `scripts/test-ring.mjs` 的 **三环**（core / fast / full）单一事实源。
  *
- * 入选标准（三条同时满足）：① 单文件 ≥ 30s；② 全库扫描/搜索类（与单文件改动弱相关）；
+ * 为什么搬走：同一条事实两处写（package.json 的 16 条 `--exclude` + 本常量）——
+ * 加一个文件要改两处，漏一处就红，而且**没法表达「环之间是包含关系」**。
+ * 现在：
+ * - 清单与实测秒数 = `scripts/test-ring.mjs` 的 `CORE_EXCLUDES` / `FAST_MAX_SECONDS`；
+ * - 嵌套关系（core ⊂ fast ⊂ full）、默认环 = core、全量有独立出口 = `check-guards` **判据 32**；
+ * - 本文件的用例只验**委派**（`test:fast` 必须等于 `node scripts/test-ring.mjs fast`）+ 排除项真实存在。
+ *
+ * 历史入选标准（保留作口径）：① 单文件 ≥ 30s；② 全库扫描/搜索类（与单文件改动弱相关）；
  * ③ **在 `npm test` / `verify` 里仍会被跑**（快环只是延后，不是跳过）。
  * ⚠ 排除它 ≠ 它不重要：timeGolden 是时间账权威、difficultyCurve/teamTimeline 是图表搜索，
- * 改引擎/时间/图表时必须跑全量 `npm run check` 或 `npm test`。
+ * 改引擎/时间/图表时必须升环（`node scripts/test-ring.mjs advise` 会按 git diff 提示）。
  */
-const EXPECTED_FAST_EXCLUDES = [
-  'charIncrementInt.test.ts',
-  'cinemaUplift.test.ts',
-  'difficultyCurve.test.ts',
-  'difficultyLadder.test.ts',
-  'moveFusion.test.ts',
-  'pullPlannerEngine.test.ts',
-  'teamTimeline.test.ts',
-  'timeFillRatchet.test.ts',
-  'timeGolden.test.ts',
-  'timeLedgerInvariants.test.ts',
-  'timeWeightAllocation.test.ts',
-] as const
 
 /** 列出 src 下所有测试文件（快环排除项的存在性核验用；不引 vitest 配置，保持独立） */
 function listTestFiles(dir: string): string[] {
