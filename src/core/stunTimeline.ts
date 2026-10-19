@@ -1,0 +1,223 @@
+/**
+ * 失衡窗口**时间轴**（`docs/STUN_TIMELINE_PROJECT.md` 期 1 的地基模块，2026-10-20）。
+ *
+ * ## 为什么需要它（现状 = 聚合近似）
+ * 引擎目前只回答「窗口总共占多少秒」：`stunWindowFraction(N, W, effTime) = clamp(N×W / effTime)`
+ * （`core/effectiveTime.ts`，CC-217 全仓唯一实现）。它把 N 个窗口当成**等长且连续占满**，
+ * 于是回答不了用户要的三件事：**每一个窗口什么时候开、开多久、里面打了什么**——
+ * 更别说「最后一窗时间残疾」（用户口径 2026-10-20：最后一窗要么失衡不够导致时间慢，
+ * 要么资源回复来不及导致动作次数残疾，**如实上报**，不要抹平）。
+ *
+ * 本模块把「N 个窗口」摊到战斗时钟上，产出**逐窗口**的 `StunWindowSlot`：
+ * 起点 / 名义窗长 / 决算类按块延长 / 实际可用秒数 / 是否被决算提前结束 / 是否被时钟截短 /
+ * 窗内动作（来自轴栈逐窗轨迹）/ 窗内剩余秒数（期 4 的输入）。
+ *
+ * ## 期 1 的边界（**零 delta**）
+ * 本模块**不改任何既有数值**：`stunWindowFraction`、池、伤害全部照旧。唯一生产出口 =
+ * `useResourceCalc#stunTimeline`（`computed`，惰性：没有消费者时零求值成本），供结果页/探针
+ * 读「逐窗时间轴」；期 1 起它还兼作「导出必须有生产消费点」的落点（`deadChannelLs` ⑫ 全仓死导出为空）。
+ * 期 2 才把 `stunWindowFraction` 换成 `Σ slots[].effectiveSeconds / effTime`
+ * （那时会改数值，按规则 10 四步逐队归因 + 重生成 `timeGolden`/`timeFillRatchet`）。
+ *
+ * ## 恒等式（本期的验收判据）
+ * ```
+ * Σ slots[].effectiveSeconds + outsideSeconds === effectiveTime   （零容差）
+ * slots[i].startSeconds === slots[i-1].startSeconds + slots[i-1].effectiveSeconds  （无缝隙、无重叠）
+ * ```
+ * `outsideSeconds` 由**排布本身**得出（= effectiveTime − Σ），不是另算一遍的近似：
+ * 每个窗口的 `effectiveSeconds` 都被时钟钳过（`start + effective ≤ effectiveTime`），
+ * 故 Σ ≤ effectiveTime 恒成立，`outsideSeconds ≥ 0`。
+ *
+ * ## 口径（用户 2026-10-20 逐字，见 `docs/STUN_TIMELINE_PROJECT.md` §2）
+ * 1. **失衡窗口时间计入 180s**（不是白送时间）⇒ 窗口占用与窗外时间共用同一本时钟；
+ * 2. 窗口内动作占**窗口时间**，不额外占窗外时间；
+ * 3. 合轴吸收是合法的（全局合轴率算），本模块不为此做特殊处理；
+ * 4. 最后一窗允许「残疾」，**如实上报**（`clippedByClock` / `effectiveSeconds < nominalSeconds`），
+ *    不用吸收或补齐抹平；
+ * 5. 窗口内的剩余时间（`unusedSeconds`）可以给队友技能填充——期 4 才做，本期只**度量**。
+ *
+ * ## 与轴栈的分工（单一事实源）
+ * 「窗内发生了什么」只有轴栈知道（`core/stunAxisStack.ts#calcStunAxisStack`）。故它**纯追加**地
+ * 暴露 `windowTrace: StunWindowTrace[]`（逐窗：延长 / 截断时刻 / 动作 / 毛占用 / 合轴节省 / 平A填充），
+ * 本模块只做**排布与聚合**，不重新推演窗口内容（否则就是第二套账）。
+ * 非轴模式没有轴栈（`axisStack = null`）⇒ 调用方不传 `windows`，此时
+ * `hasTrace === false`、`actions` 为空、`unusedSeconds` 记 0（**不代表打满**，只表示「不可推演」）。
+ *
+ * ## 已知差异（期 2 / 期 3 的活，本期只如实记录）
+ * 佩洛伊斯决算队的 `calc.stunCoverage × effTime` **不等于**本模块的 Σ effectiveSeconds：
+ * 聚合口径用**计划窗数**（实数 2.3909）扣决算损失（2.3909 × 16.7164 = 39.9669 ⇒ 48 − 39.9669 = 8.033s），
+ * 而轴栈**物理上只填了 3 个窗**、每窗在决算处截断（3 × 2.2836 = 6.851s）。
+ * 差 1.18s 正是「计划值 vs 物理逐窗」的量纲错配——`docs/STUN_TIMELINE_PROJECT.md` 期 3 要修的东西。
+ */
+
+import { finiteOr0 } from '@/utils/finiteClamp'
+
+/** 窗内一条动作（来自轴栈逐窗轨迹；非轴模式为空） */
+export interface StunWindowAction {
+  slot: number
+  moveId: string
+  /** 施放次数（整数；轴栈一次 `bump` 记 1 条） */
+  count: number
+  /** 落在窗口内的部分（0..count，跨界小数；见 `ExecutedMoveCount.inAxisCount`） */
+  inAxisCount: number
+  /** 窗内相对开始时刻（秒，相对窗口起点） */
+  startTime: number
+  /** 单次动作时长（秒） */
+  actionTime: number
+}
+
+/**
+ * 轴栈的**逐窗轨迹**一条（`StackTraversalResult.windowTrace` 的元素）。
+ *
+ * 纯追加：不改变栈的任何既有判定（时间门 / 资源门 / 合轴 / 平A填充），只是把每窗**已经算出来的**
+ * 那几个量记下来，供时间轴排布。窗口按调度顺序编号（0-based），**每个被调度的窗口都有一条**
+ * （含一个动作都没执行的空窗——聚合口径里它照样占一个名义窗长）。
+ */
+export interface StunWindowTrace {
+  index: number
+  /** 名义窗长（= `StackTraversalInput.windowDuration`） */
+  nominalSeconds: number
+  /** 决算块按块延长（0 = 本窗无延长；佩洛伊斯 3s） */
+  extendSeconds: number
+  /** 窗口有效结束时刻（窗内相对秒）：有决算截断 = 截断时刻，否则 = nominal + extend */
+  endSeconds: number
+  /** 是否被决算提前结束（`endsStunWindow` 块做完即清空剩余失衡时间） */
+  truncated: boolean
+  /** 窗内执行的动作（按实际执行顺序；含跨界小数） */
+  actions: StunWindowAction[]
+  /** 窗内动作毛占用（秒，= Σ actionTime 整段，未扣合轴） */
+  actionSeconds: number
+  /** 窗内合轴节省（秒，跨槽位并集口径，见栈引擎 `overlapSeconds`） */
+  overlapSeconds: number
+  /** 兜底平A填充（秒；决算截断窗恒 0） */
+  fillSeconds: number
+}
+
+/** 时间轴上的一个失衡窗口 */
+export interface StunWindowSlot {
+  /** 第几个窗口（0-based） */
+  index: number
+  /** 窗口开始时刻（绝对秒） */
+  startSeconds: number
+  /** 名义窗长 W（含所有常驻延长） */
+  nominalSeconds: number
+  /** 决算类按块延长（佩洛伊斯 +3s；其余 0） */
+  extendedSeconds: number
+  /** 实际可用于爆发的秒数（= nominal + extended − 决算截断 − 时钟截短） */
+  effectiveSeconds: number
+  /** 是否被决算提前结束 */
+  truncated: boolean
+  /** 是否被战斗时钟截短（「最后一窗时间残疾」；与 `truncated` 是两回事） */
+  clippedByClock: boolean
+  /** 窗内动作（来自轴栈；非轴模式为空 = 走比例近似） */
+  actions: StunWindowAction[]
+  /**
+   * 窗内剩余秒数 = `effectiveSeconds − (动作毛占用 − 合轴节省 + 平A填充)`（下限 0）。
+   * ⚠ 无轴轨迹（`hasTrace === false`）时记 0：**不代表打满**，只表示本模式不可逐窗推演。
+   */
+  unusedSeconds: number
+}
+
+/** 时间轴输入 */
+export interface StunTimelineInput {
+  /**
+   * 失衡次数（**实际窗口数 = `floor(它)`**，与轴栈 `for (i < wins)` 同口径）。
+   * 传池的整数次数（`stunPoolResult.stunCount`，= 轴栈实际排窗依据）即可；
+   * 传外层计划实数（可能带小数）时小数部分只进 `plannedWindows`、**不产生窗口**（期 3 才消费）。
+   */
+  stunCount: number
+  /** 名义窗长 W（`core/effectiveTime.ts#stunWindowDuration`） */
+  windowDuration: number
+  /** 有效战斗时间（`core/effectiveTime.ts#effectiveBattleTime`） */
+  effectiveTime: number
+  /**
+   * 逐窗轨迹（轴栈 `windowTrace`；非轴模式缺省）。
+   * 轨迹比窗口数短时，缺的那几窗按「无轨迹」处理（`actions` 空、`unusedSeconds` 记 0）。
+   */
+  windows?: readonly StunWindowTrace[]
+}
+
+/** 时间轴产物 */
+export interface StunTimeline {
+  /** 有效战斗时间（恒等式的另一端） */
+  effectiveTime: number
+  /** 输入失衡次数原值（可能带小数；如实上报，**不参与**本期排布——窗口数见 `windows`） */
+  plannedWindows: number
+  /** 实际排出的窗口数 = `slots.length` = `floor(stunCount)`（与轴栈 `for (i < wins)` 同口径） */
+  windows: number
+  slots: StunWindowSlot[]
+  /** Σ `slots[].effectiveSeconds`（窗口总占用） */
+  windowSeconds: number
+  /** 窗外时间 = `effectiveTime − windowSeconds`（≥ 0） */
+  outsideSeconds: number
+  /** 是否拿到轴栈逐窗轨迹（false ⇒ `actions` 恒空、`unusedSeconds` 恒 0） */
+  hasTrace: boolean
+}
+
+// @fact engine:stun/时间轴 口径: 逐窗口时间轴 = 「N 个窗口按有效时长连续排在战斗时钟上」，恒等式 Σ effectiveSeconds + outsideSeconds === effectiveTime（零容差）；窗口数取 floor(计划值) 与轴栈 `for (i < wins)` 同口径，末窗允许被时钟截短（`clippedByClock`，用户口径 2026-10-20「最后一窗口时间残疾如实上报」），决算块按块延长/提前结束走轴栈 `windowTrace` 不另算第二套账；期 1 零 delta（唯一生产出口 = `useResourceCalc#stunTimeline` 的惰性 computed，不参与任何计算），期 2 才替换 `stunWindowFraction` | 据 用户@2026-10-20（「失衡是需要计入 180s 的……4 次就是 180s」「最后一窗口要么失衡不够导致时间慢了，最后失衡窗口时间残疾」）·复核@2026-10-20 | 验 src/core/__tests__/stunTimeline.test.ts | 锚 src/core/stunTimeline.ts#buildStunTimeline | 信 确认
+// ⟳复核: 期 2 把 `stunWindowFraction` 换成 `Σ slots[].effectiveSeconds / effTime` 时，确认本恒等式与「末窗残疾」口径未被聚合钳位（clamp 1）抹平，且 `plannedWindows` 的小数残差（期 3）有明确归属 | 到期 2027-04-30
+/**
+ * 把 N 个失衡窗口摊到战斗时钟上（纯函数，无副作用、无 store、无 I/O）。
+ *
+ * 排布规则（与聚合口径 `stunWindowFraction` 保持同源）：
+ * - 窗口数 = `floor(stunCount)`（轴栈按 `for (i < wins)` 执行，小数部分不产生窗口）；
+ * - 第 i 窗起点 = 前 i−1 窗的有效时长之和（**连续占满**，与「N 个窗口等长且连续」的旧假设一致，
+ *   差别只在「每窗长度可以不同」+「末窗可以被时钟截短」）；
+ * - 每窗有效时长 = `nominal + extended`，有决算截断取 `min(·, 截断时刻)`，再被时钟钳
+ *   （`start + effective ≤ effectiveTime`，截短时 `clippedByClock = true`）；
+ * - `outsideSeconds` 由排布得出，**不另算**。
+ */
+export function buildStunTimeline(input: StunTimelineInput): StunTimeline {
+  const effectiveTime = Math.max(0, finiteOr0(input.effectiveTime))
+  const nominal = Math.max(0, finiteOr0(input.windowDuration))
+  const plannedWindows = Math.max(0, finiteOr0(input.stunCount))
+  const windows = Math.floor(plannedWindows)
+  const trace = input.windows
+  const hasTrace = !!trace && trace.length > 0
+
+  const slots: StunWindowSlot[] = []
+  /** 当前排到的时刻（= 上一窗的结束时刻；恒 ≤ effectiveTime） */
+  let cursor = 0
+  for (let i = 0; i < windows; i++) {
+    const t = trace?.[i]
+    const extendedSeconds = Math.max(0, finiteOr0(t?.extendSeconds))
+    const truncated = t?.truncated === true
+    let effectiveSeconds = nominal + extendedSeconds
+    // 决算截断（佩洛伊斯：决算做完即清空窗口剩余失衡时间）——截断时刻是**窗内相对秒**
+    if (truncated) effectiveSeconds = Math.min(effectiveSeconds, Math.max(0, finiteOr0(t?.endSeconds)))
+    // 时钟钳：窗口放不进剩余战斗时间 ⇒ 如实截短（用户口径「最后一窗口时间残疾」）
+    const startSeconds = Math.min(cursor, effectiveTime)
+    let clippedByClock = false
+    if (startSeconds + effectiveSeconds > effectiveTime) {
+      effectiveSeconds = Math.max(0, effectiveTime - startSeconds)
+      clippedByClock = true
+    }
+    // 窗内占用 = 动作毛时长 − 合轴节省 + 平A填充（与栈引擎的记账同源）
+    const occupied = t
+      ? Math.max(0, finiteOr0(t.actionSeconds) - finiteOr0(t.overlapSeconds) + finiteOr0(t.fillSeconds))
+      : 0
+    slots.push({
+      index: i,
+      startSeconds,
+      nominalSeconds: nominal,
+      extendedSeconds,
+      effectiveSeconds,
+      truncated,
+      clippedByClock,
+      actions: t?.actions ? [...t.actions] : [],
+      unusedSeconds: t ? Math.max(0, effectiveSeconds - occupied) : 0,
+    })
+    cursor = startSeconds + effectiveSeconds
+  }
+
+  return {
+    effectiveTime,
+    plannedWindows,
+    windows: slots.length,
+    slots,
+    // 用游标而不是再 reduce 一次：两者本应逐位相同，但游标与逐窗 end 严格同源（恒等式零容差靠它）
+    windowSeconds: cursor,
+    outsideSeconds: Math.max(0, effectiveTime - cursor),
+    hasTrace,
+  }
+}

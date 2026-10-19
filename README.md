@@ -85,7 +85,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/ENTITY_CARDS.md` | **实体卡（AI 陈述性知识层）**：音擎/角色/驱动盘等实体的完整结构与权威指针表 + 事故登记；配套查证工具 `node scripts/resolve.mjs` 与引擎探针 `npm run probe:panel`（跨实体断言/派生数值必用） |
 | `docs/ENGINE_PIPELINE_GUIDE.md` | **引擎管线导读**：一轮计算的数据流、模块钩子调用顺序、常见坑（AI 录入排查用） |
 | `docs/STUN_WINDOW_DURATION.md` | **失衡窗口时长口径与缺口普查**：`stunDurationBonusSeconds` 怎么加总成窗口 W、为什么「原文有 +N 秒但没生效」这类漏检逃得过面板测试（全队加总量 + 无专属显示位 + 原文 5 种措辞）、10 个提到该词的角色逐条实现状态（1511/1551/1581 仍未实现）；改窗口/补角色失衡时长前必读 |
-| `docs/STUN_TIMELINE_PROJECT.md` | **大工程提示词：失衡窗口「时间轴级」建模**（从聚合近似 → 逐窗口可推演）——四期施工图（时间轴数据结构 / 替换聚合口径 / 修量纲错配 / 窗口剩余时间给队友填充）、用户口径逐字、纪律与起点指针；下一个 agent 开工读这份 |
+| `docs/STUN_TIMELINE_PROJECT.md` | **大工程：失衡窗口「时间轴级」建模**（从聚合近似 → 逐窗口可推演）——四期施工图（时间轴数据结构 / 替换聚合口径 / 修量纲错配 / 窗口剩余时间给队友填充）、用户口径逐字、纪律与起点指针；**期 1 已落地**（`core/stunTimeline.ts` + 轴栈逐窗轨迹 `windowTrace`，零 delta），期 2 从这里接 |
 | `docs/AGENT_RECORDING_SOP.md` | **角色录入 SOP（AI 快速上手）**：spec 字段→消费者→生效测试清单、防死数据铁律、踩坑清单 |
 | `docs/MECHANIC_PATTERNS.md` | **机制模式目录**：游戏文本 → 计算逻辑的翻译词典——九个计算维度、确定性四级（L0 直读/L1 直译/L2 近似/L3 凹分拍板）、凹分思想提炼路径（录新角色先做模式匹配） |
 | `docs/GAME_TERM_TO_CODE_FIELD.md` | 中文游戏术语 → 计算器字段映射（AI 录入时查字段用） |

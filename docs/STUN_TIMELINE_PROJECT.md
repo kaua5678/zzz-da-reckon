@@ -45,9 +45,10 @@
 
 ## 3. 施工分四期（每期独立可验收，别一次全做）
 
-### 期 1：窗口时间轴（Time-axis）数据结构 —— **地基**
+### 期 1：窗口时间轴（Time-axis）数据结构 —— **地基** ✅ 2026-10-20 已落地
 
-新增一个纯函数模块 `src/core/stunTimeline.ts`：
+新增纯函数模块 `src/core/stunTimeline.ts`（**返回整份时间轴对象**，不是裸数组——窗口总数 /
+窗外时间 / 是否拿到轴栈轨迹都是恒等式的组成部分，裸数组会让调用方各算一遍）：
 
 ```ts
 export interface StunWindowSlot {
@@ -55,18 +56,39 @@ export interface StunWindowSlot {
   startSeconds: number       // 窗口开始时刻（绝对秒）
   nominalSeconds: number     // 名义窗长 W（含所有常驻延长）
   extendedSeconds: number    // 决算类按块延长（佩洛伊斯 +3s）
-  effectiveSeconds: number   // 实际可用于爆发的秒数（= nominal + extended − 决算截断）
+  effectiveSeconds: number   // 实际可用于爆发的秒数（= nominal + extended − 决算截断 − 时钟截短）
   truncated: boolean         // 是否被决算提前结束
+  clippedByClock: boolean    // 是否被战斗时钟截短（「末窗时间残疾」，与 truncated 是两回事）
   actions: StunWindowAction[]// 窗内动作（来自轴；非轴模式为空 = 走比例近似）
-  unusedSeconds: number      // 窗内剩余（给期 4 用）
+  unusedSeconds: number      // 窗内剩余（给期 4 用；无轴轨迹时记 0 = 不可推演，不是打满）
 }
-export function buildStunTimeline(input: {...}): StunWindowSlot[]
+export function buildStunTimeline(input: StunTimelineInput): StunTimeline
 ```
 
-**验收**：对 6 支般岳队 + 佩洛伊斯队输出窗口时间轴，`Σ effectiveSeconds + 窗外时间 == 180`
-（恒等式，零容差）。新测试 `stunTimeline.test.ts` 锁这条恒等式。
+**接线面（期 1）**：唯一生产出口 = `useResourceCalc#stunTimeline`（惰性 `computed`，不参与任何计算
+⇒ 零 delta；供结果页/探针读逐窗时间轴）。§4 纪律 3 的 `check:full` 会把 `deadChannelLs` ⑫「全仓死导出为空」
+跑一遍——**新导出的纯函数必须有一个生产消费点**，只被测试引用会被判死导出（本轮实际踩到）。
 
-⚠ **不要**在这一期改动任何既有数值；只新增模块 + 测试（零 delta）。
+**窗内内容从哪来（单一事实源）**：轴栈 `core/stunAxisStack.ts#calcStunAxisStack` **纯追加**了
+`StackTraversalResult.windowTrace: StunWindowTrace[]`（逐窗：决算延长 / 截断时刻 / 执行了哪些动作
+（含跨界 `inAxisCount`）/ 毛占用 / 合轴节省 / 平A填充）。时间轴只做**排布与聚合**，不重新推演窗口内容。
+排布规则：窗口数 = `floor(池次数)`（与轴栈 `for (i < wins)` 同口径），逐窗**连续**排在战斗时钟上，
+末窗放不下就被时钟钳短（`clippedByClock`）——**如实上报，不抹平**。
+
+**验收**（`src/core/__tests__/stunTimeline.test.ts`，8 例全绿）：
+- 6 支般岳队 + 佩洛伊斯决算队：`Σ effectiveSeconds + outsideSeconds === effectiveTime`（**零容差**，
+  浮点下 `a + (T − a) === T` 恒成立）+ 逐窗无缝隙无重叠；
+- 与聚合口径同源：无决算截断的队上 `windowSeconds / effTime` 与 `calc.stunCoverage` **逐位相等**
+  （证明时间轴不是第三本账）；
+- 反空洞：≥5 队非零窗口、≥4 队拿到轴栈轨迹、非轴队（`banyue-qingyi-lucia` 轴退化）走 `hasTrace=false` 路径；
+- 佩洛伊斯队：每窗都 `truncated`、`extendedSeconds === 3`、窗内动作 = 决算块 `1551016`。
+
+⚠ **零 delta**：期 1 不接线（无生产调用点），不改 `stunWindowFraction` / 池 / 伤害；`npm run check` 全绿。
+
+**期 1 顺带量到的量纲错配（期 3 的直接证据）**：佩洛伊斯队的时间轴占比 `0.03806`（3 窗 × 2.2836s
+决算截断）**低于**引擎 `stunCoverage` `0.04463`（= 48 − 2.3909 × 16.7164）。差的 1.18s 就是
+「聚合口径按**计划实数** 2.3909 窗扣损失 vs 轴栈**物理**只填 3 窗」——期 3 要修的那条量纲错配，
+测试里**有意断言「不等」**（不锁固定差值，免得把期 3 的修法锁死）。
 
 ### 期 2：用时间轴替换 `stunWindowFraction` 的聚合口径
 
@@ -104,8 +126,14 @@ export function buildStunTimeline(input: {...}): StunWindowSlot[]
 ## 5. 起点指针
 
 - 口径与缺口：`docs/STUN_WINDOW_DURATION.md`（含 §7 佩洛伊斯按块延长）
+- **期 1 已落地**：`core/stunTimeline.ts#buildStunTimeline`（+ `core/stunAxisStack.ts` 的
+  `StackTraversalResult.windowTrace` 逐窗轨迹）⇒ 期 2 从这里接：把 `stunWindowFraction` 的调用点
+  换成 `buildStunTimeline(...).windowSeconds / effectiveTime`，注意源锁
+  `core/__tests__/effectiveTimeSingleSource.test.ts`（WINDOW_FRACTION 正则）要同步。
 - 现状代码：`core/effectiveTime.ts#stunWindowFraction`、`core/stunAxisStack.ts`、
   `composables/resourceCalc/solveTeam.ts`（外层不动点 + 非失衡时间约束）、
   `composables/resourceCalc/ultimatePromote.ts`（`runPool`/`windowFractionAt`）
-- 探针模板：`.zc/perf/stunAudit3.perf.ts`（正确判据 = 跑 `computePanelPhases` 读真实面板值）
+- 探针模板：`.zc/perf/stunAudit3.perf.ts`（正确判据 = 跑 `computePanelPhases` 读真实面板值）；
+  时间轴探针 `.zc/perf/stunTimelinePhase1.perf.ts`（6 般岳队 + 佩洛伊斯队的逐窗 dump，跑法
+  `npx vitest run --config .zc/perf/vitest.perf.config.ts .zc/perf/stunTimelinePhase1.perf.ts`）
 - 本批已落地的能力声明：`mechanics/types.ts#stunWindowExtendOnEnd`（佩洛伊斯决算按块延长）

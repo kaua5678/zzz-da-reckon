@@ -19,6 +19,7 @@
  */
 
 import type { StunAxisKind } from '@/types/resource'
+import type { StunWindowTrace } from './stunTimeline'
 
 export interface StackActionCost {
   slot: number
@@ -222,6 +223,17 @@ export interface StackTraversalResult {
   basicFillSeconds: number
   /** 各槽位兜底平A填充秒数（每轴可指定不同 filler slot） */
   basicFillBySlot: Record<number, number>
+  /**
+   * **逐窗轨迹**（`docs/STUN_TIMELINE_PROJECT.md` 期 1，2026-10-20；纯追加）。
+   *
+   * 每个**被调度的**窗口一条（含一个动作都没执行的空窗——聚合口径里它照样占一个名义窗长），
+   * 记录该窗的：决算块延长 / 截断时刻 / 执行了哪些动作（含跨界 `inAxisCount`）/ 毛占用 /
+   * 合轴节省 / 平A填充。时间轴排布（`core/stunTimeline.ts#buildStunTimeline`）读它，
+   * 不重新推演窗口内容（否则就是第二套账）。
+   *
+   * ⚠ 只**追加记录**，不参与任何判定：本字段对栈的时间门/资源门/合轴/填充零影响。
+   */
+  windowTrace: StunWindowTrace[]
   note: string
 }
 
@@ -442,6 +454,11 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   let windowsUsed = 0
   let basicFillSeconds = 0
   const basicFillBySlot: Record<number, number> = {}
+  /**
+   * 逐窗轨迹（期 1，纯追加）：每个被调度的窗口追加一条，见 `StackTraversalResult.windowTrace`。
+   * 只记**已经算出来的**量，不参与任何判定。
+   */
+  const windowTrace: StunWindowTrace[] = []
   let energyUsed = 0
   let decibelUsed = 0
 
@@ -505,6 +522,10 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     const slotCursor: Record<number, number> = {}
     let windowDidSomething = false
     let windowTimeSum = 0
+    /** 本窗合轴节省（期 1 逐窗轨迹用；窗口区间数 ≤ 1 时恒 0） */
+    let windowTraceOverlap = 0
+    /** 本窗执行的动作（期 1 逐窗轨迹；按实际执行顺序，含跨界 `inAxisCount`） */
+    const windowActions: StunWindowTrace['actions'] = []
     // 窗口终结（决算）：执行过 endsStunWindow 动作后，窗口剩余失衡时间被清空（截断结束时刻取最晚）
     let windowTruncEnd = -1
 
@@ -592,6 +613,15 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         }
         // 执行：整次计入 count（资源/时间按整次），只有 inAxisCount 按 fits 打折
         bump(act.slot, act.moveId, 1, act.startTime ?? 0, windowNo, fits)
+        // 逐窗轨迹（期 1，纯追加）：同一 moveId 在本窗的多次施放各记一条，顺序 = 实际执行顺序
+        windowActions.push({
+          slot: act.slot,
+          moveId: act.moveId,
+          count: 1,
+          inAxisCount: fits,
+          startTime: Math.max(0, act.startTime ?? 0),
+          actionTime: act.actionTime,
+        })
         // ⚠ 槽位占用时间**按整段**推进（不是 fits×actionTime）：动作真的占满 4.083s 前台，
         // 窗内 2.1s 只是「吃易伤的那一段」。按 fits 推进会让后续动作凭空多出时间。
         slotTime[act.slot] = used + act.actionTime
@@ -632,6 +662,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
       }
       unionLen += curT1 - curT0
       const windowOverlap = Math.max(0, windowTimeSum - unionLen)
+      windowTraceOverlap = windowOverlap
       if (windowOverlap > 1e-9) {
         for (const iv of windowIntervals) {
           const share = windowOverlap * ((iv.t1 - iv.t0) / windowTimeSum)
@@ -642,6 +673,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     }
     // 决算截断窗（windowTruncEnd ≥ 0）不填平A：剩余失衡时间在决算做完时已被清空，没有可填充的富余。
     // 覆盖率要扣的截断损失秒不在这里算——那是时间账，由 convergence 决算截断段按实数窗口算（verdictSecondsLost）。
+    let windowFillSec = 0
     if (windowTruncEnd < 0 && window.basicFillerSlot !== undefined && windowDidSomething) {
       // 兜底平A：从该槽位最后一个动作的结束时刻填到窗口结束（窗口有富余才填）。
       // 动作之间的空隙（startTime 留白）不算平A——平A只补「最后一个动作之后」的富余。
@@ -649,7 +681,21 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
       const fillSec = Math.max(0, effectiveWindowDuration - end)
       basicFillSeconds += fillSec
       basicFillBySlot[window.basicFillerSlot] = (basicFillBySlot[window.basicFillerSlot] ?? 0) + fillSec
+      windowFillSec = fillSec
     }
+    // 逐窗轨迹（期 1，纯追加）：本窗的延长 / 截断 / 动作 / 占用 / 合轴 / 填充。
+    // ⚠ 空窗（一个动作都没执行）也记一条——聚合口径里它照样占一个名义窗长。
+    windowTrace.push({
+      index: windowNo - 1,
+      nominalSeconds: windowDuration,
+      extendSeconds: Math.max(0, effectiveWindowDuration - windowDuration),
+      endSeconds: windowTruncEnd >= 0 ? windowTruncEnd : effectiveWindowDuration,
+      truncated: windowTruncEnd >= 0,
+      actions: windowActions,
+      actionSeconds: windowTimeSum,
+      overlapSeconds: windowTraceOverlap,
+      fillSeconds: windowFillSec,
+    })
   }
 
   return {
@@ -665,6 +711,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     windowsUsed,
     basicFillSeconds,
     basicFillBySlot,
+    windowTrace,
     entryGash: axes.reduce((acc, ax) => acc || Math.max(0, Number(ax.entryGash ?? 0)), 0),
     skipped,
     note: `栈遍历：${windowsUsed} 窗口 × 单窗口 ${windowDuration}s；闪能消耗 ${energyUsed} / ${totalEnergy}，喧响 ${decibelUsed} / ${totalDecibel}；超时/资源不足 ${skipped.length} 个动作（固定轴：资源不足只提示，不自动变轴）。`,

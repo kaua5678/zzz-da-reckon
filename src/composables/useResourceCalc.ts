@@ -37,6 +37,7 @@ import type { PanelValues } from '@/types/catalog'
 import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_ANOMALY_LABEL, standardDot } from '@/core/anomalyPool/helpers'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
+import { buildStunTimeline } from '@/core/stunTimeline'
 import { stackDurationSeconds, stackEnergyEvents, stacksToCoverage } from '@/data/wEngineStackCoverage'
 import { elementLabel, buildCharConfig, computeDamageSourceBreakdown } from './resourceCalc/helpers'
 import { computePanel, computeEntrySnapshotPanel, applyTeamMechanics, collectAxisWindowOverlays } from './resourceCalc/panelPhases'
@@ -598,6 +599,24 @@ export function createResourceCalc(
   })
 
   /**
+   * **失衡窗口时间轴**（`docs/STUN_TIMELINE_PROJECT.md` 期 1，2026-10-20）：
+   * 把池次数个窗口摊到战斗时钟上，逐窗给出「何时开 / 开多久 / 里面打了什么 / 还剩多少」。
+   *
+   * 期 1 只**暴露读数**、不参与计算（零 delta）：`stunCoverage` / 池 / 伤害仍走各自的既有通道。
+   * 输入三个量全部来自既有单一来源：
+   * - 窗口数 = 池的**整数**次数（`stunPoolResult.stunCount`，与轴栈排窗依据同源）；
+   * - 名义窗长 = `windowDuration`（`stunWindowDuration`，全队失衡延时已含）；
+   * - 有效战斗时间 = `effectiveBattleTime(configStore.enemy)`（扣无敌）。
+   * 窗内内容只从轴栈 `windowTrace` 读（非轴队为 undefined ⇒ `hasTrace === false`，不编造动作）。
+   */
+  const stunTimeline = computed(() => buildStunTimeline({
+    stunCount: stunPoolResult.value?.stunCount ?? 0,
+    windowDuration: windowDuration.value,
+    effectiveTime: effectiveBattleTime(configStore.enemy),
+    windows: stackTraversalResult.value?.windowTrace,
+  }))
+
+  /**
    * (slot, moveId) → 轴内单位数分配（来自栈遍历 executed，连段展开成招式，outAxisUnits 由 axisSplitFor 反推）。
    *
    * ⚠ **读 `inAxisCount` 不读 `count`**（2026-10-18 跨界小数）：`count` 是**施放次数**（整数，
@@ -808,6 +827,7 @@ const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
     autoPreset,
     autoActive,
     windowDuration,
+    stunTimeline,
     /**
      * **失衡窗口占比（0..1）**——含**决算截断损失秒**的权威口径
      * （`stunSeconds = 次数 × 窗长 − verdictSecondsLost`，见 `runCalcRound` 的决算段）。
