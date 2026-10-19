@@ -42,7 +42,7 @@
 
 | 触发条件 | 开什么 | 闭合方式 |
 |---|---|---|
-| `fast` 档 / 一条 `zc done --verifier` 就能交代 | **不开外部环**，走仓库轻闭环（`zc claim` → 改 → `npm run check` → `zc done`） | verifier 绿即闭 |
+| `fast` 档 / 一条 `zc done --verifier` 就能交代 | **不开外部环**，走仓库轻闭环（`zc claim` → 改 → `npm run check`（**核心环，104s**）→ `zc done`） | verifier 绿即闭 |
 | `loop` 档，或跨多轮但完成判据说得清 | `create_goal`（agent 可自主推断长任务，无需用户点名）+ §4 账本 | goal 判据达成 → `update_goal complete` |
 | **排查数值/机制错误**（伤害偏低、失衡次数错这类） | **预测先行**：动手前把「预测值 + 判据」写进账本 `Next`，再跑盘上实测对账（`npx vitest run <相关测试>` / `PROBE_AGENT=<id> npm run probe:panel` / 现成门控探针见 `docs/mcp-default-suite-probes.md` §8.3 / `subagent` 跑一次性探针） | 实测与预测吻合才闭合；**discrepancy 即回炉，不许就地改预测** |
 | 跨会话、需留痕的大项目 | 多工人派发（§5）+ 每步 `zc done` 落账 | **真人确认**后终验；agent 不得自行宣布验收 |
@@ -52,6 +52,10 @@
 ## 1. 硬性规则
 
 1. **基线先绿再动手**：改代码前跑 `npm run check` 确认通过；改完跑 check + `npm run build`（验收命令见 §3）。
+   ⚠ `npm run check` = **核心环**（~107s，含 `vue-tsc -b` 增量类型检查 1.7s + core vitest 105s），**不是全量**。
+   要不要升环**看改动性质，不看日历**（用户裁决 2026-10-18）：动到计算路径/时间账/数值数据/角色模块/护栏脚本
+   ⇒ 先 `node scripts/test-ring.mjs advise`，它给 `full` 才跑 `npm run check:full`（542s）；
+   它给 `core` 就是**真的不用跑全量**（没碰危险面，跑了也没有增量信息）。
 2. **数值唯一事实源 = `public/static/catalog.json`**：改数值走 `scripts/` 导入/爬取脚本重跑，不要手改 JSON 本体。
 3. **执行行匹配一律用 `moveId`**，不按 name/note（`enrichExecutionPlan` 会从倍率表回填覆盖它们）。
 4. **自定义 TS 模块角色**（`src/mechanics/agents/*.ts` 注册过）的 spec 字段是死数据：adjustable 滑块/attributeConversions 必须在模块里实现，spec 只作记录（`validate:specs` 已强制：模块角色的 attributeConversions 必须可证明被消费——模块显式调用 `applySpecAttributeConversions` 或条目 note 标注「实现位置：」，否则校验失败）。
@@ -115,9 +119,41 @@
 
 ## 3. 验收命令
 
+### 3.1 三环：**每个对话跑 core，不是跑全量**（用户裁决 2026-10-18）
+
+> 「全量只需要每隔几天做一次就行了，现在属于每个对话都做。」
+
+修前 `npm run check` 里挂的是 `npm test`（**全量**，实测 542s）⇒ 每个对话都付全价；
+`.zc/journal.jsonl` 的 1201 条收工记录里 735 条 `verify` + 66 条 `check`（同为全量），仅 1 条定向 vitest。
+
+| 环 | 命令 | 何时跑 | 实测 |
+|---|---|---|---|
+| **core** | `npm run check` | **每个对话收工**（规则 1） | **~107s** |
+| **fast** | `npm run check:fast` | 合并前 / 半天的活收尾 | 249s |
+| **full** | `npm run check:full` / `npm run verify` | **改到危险面时**（见下）/ 合并前 / CI | 542s |
+
+**三环里都含 `npm run typecheck:inc`（`vue-tsc -b`）**：实测空跑 **1.7s**、改一个文件 **2.6s**（tsbuildinfo 增量）。
+类型错是编译期就死的那类错，不该等到全量才发现——这条过去藏在 `verify` 的 `build` 里，等于让每个对话
+要么等全量、要么漏掉它。⚠ 别换成非增量的 `npm run typecheck`（`-p tsconfig.app.json --noEmit`，每次 ~17s）。
+
+清单与嵌套关系的单一事实源 = `scripts/test-ring.mjs`（core ⊂ fast ⊂ full 由 `check-guards` **判据 32** 机器断言，
+默认环不许改回全量也是它守）。**改了东西先问要不要升环**：
+
+```bash
+node scripts/test-ring.mjs advise   # 按 git status 的路径提示「这次该跑到哪一环」
+```
+
+判据（不是按时长拍的）：动到 **计算路径 / 时间账 / 数值数据 / 角色模块 / 护栏脚本** ⇒ 必须 **full**；
+动**展示层** ⇒ fast；只改 **docs / 文案 / 单条测试** ⇒ core 够用。
+
+⚠ **不是"每隔几天跑一次全量"**（用户裁决 2026-10-18 二改）：全量的触发条件是**改动性质**，不是日历。
+**没碰危险面就不需要全量**——用 `advise` 判，它给 core 就是真的不用跑。
+
 ```bash
 npm run verify        # check-guards + check-tokens + validate:data + validate:specs + verify:recording + vitest + build（build = vue-tsc -b && vite build，类型检查已含在内，故不再单列 typecheck）
-npm run check         # 快速环（改完必跑）
+npm run check         # 核心环（**改完必跑**；~107s，含增量类型检查，不是全量）
+npm run check:fast    # 快环（合并前；249s）
+npm run check:full    # 全量（advise 说动到危险面时 / 合并前；542s）
 npm run check-guards  # 机器护栏（条数会随加固变化，故本文不写死数字）——判据清单与实测阈值跑一次就打印，逐项口径写在 scripts/check-guards.mjs 头注释（本文不复制）
 npm run verify:recording  # 录入完成判据（判据细节见下）
 npm run docs:status   # 重新生成 docs/implementation-status.md（CI 会检查漂移，漏跑即红）
@@ -173,10 +209,10 @@ node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --cli
 **派活方（写 brief 的人）**：
 1. **brief 四段式**（实测有效，缺哪段工人就自己猜哪段）：① 先读哪几个文件（给**绝对路径**）② 硬约束
    （哪些文件**不许**碰、哪些语义**必须逐位保留**）③ 验收命令（逐条，含期望输出）④ 报告必须包含什么。
-2. **不许让工人跑 `npm run verify`**：全量套件 3~4min（2026-10-12 起 worker 上限自适应到 8，实测 ~200s；
-   旧固定 4 时是 ~310s），且多工人并发跑会互相拖慢/抢 CPU。
-   工人的验收面 = `npm run check-guards` + 相关 `npx vitest run <文件>` + `npm run build`；
-   **全量 `verify` 由派活方在合并前统一跑一次**。
+2. **不许让工人跑全量**（`npm run verify` / `npm run check:full`：542~638s，591 个文件）：
+   多工人并发跑会互相拖慢/抢 CPU，而且**三环已经分好**（§3.1）——工人的验收面 =
+   `npm run check`（**core 环，104s**）+ 相关 `npx vitest run <文件>` + `node scripts/build` 类检查；
+   **fast/full 由派活方在合并前统一跑一次**（`npm run check:fast` 249s / `npm run check:full` 542s）。
 3. **同一文件不派给两个工人**（规则 13 的租约解决不了跨会话的 brief 冲突）：用 `session_admin add_task`
    的 `dependsOn` 串行化，或让两个工人改完全不相交的文件集。
 4. **要求工人 `zc claim` 它要改的文件**，收工时 `zc done`——否则它的声明只活在它的对话里，下一个会话继承不到。

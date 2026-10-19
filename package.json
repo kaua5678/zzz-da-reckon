@@ -8,9 +8,10 @@
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit",
+    "typecheck:inc": "vue-tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:fast": "vitest run --exclude='**/teamTimeline.test.ts' --exclude='**/difficultyCurve.test.ts' --exclude='**/charIncrementInt.test.ts' --exclude='**/timeWeightAllocation.test.ts' --exclude='**/timeGolden.test.ts' --exclude='**/pullPlannerEngine.test.ts' --exclude='**/moveFusion.test.ts' --exclude='**/difficultyLadder.test.ts' --exclude='**/timeFillRatchet.test.ts' --exclude='**/timeLedgerInvariants.test.ts' --exclude='**/cinemaUplift.test.ts'",
+    "test:fast": "node scripts/test-ring.mjs fast",
     "test:docs": "node scripts/test-docs.mjs",
     "validate:data": "node scripts/validate-data.mjs",
     "minify:static": "node scripts/minify-static.mjs",
@@ -29,8 +30,9 @@
     "check-tokens": "node scripts/check-tokens.mjs",
     "gen:multiplier-record": "GEN_MULTIPLIER_RECORD=1 vitest run src/composables/__tests__/multiplierRecord.test.ts",
     "probe:panel": "vitest run src/core/__tests__/panelProbe.test.ts",
-    "check": "npm run check-guards && npm run check-tokens && npm run validate:data && npm run validate:specs && npm test",
-    "check:fast": "npm run check-guards && npm run check-tokens && npm run validate:data && npm run validate:specs && npm run test:fast",
+    "check": "npm run check-guards && npm run typecheck:inc && npm run check-tokens && npm run validate:data && npm run validate:specs && node scripts/test-ring.mjs core",
+    "check:fast": "npm run check-guards && npm run typecheck:inc && npm run check-tokens && npm run validate:data && npm run validate:specs && node scripts/test-ring.mjs fast",
+    "check:full": "npm run check-guards && npm run typecheck:inc && npm run check-tokens && npm run validate:data && npm run validate:specs && npm test",
     "verify": "npm run check-guards && npm run check-tokens && npm run validate:data && npm run validate:specs && npm run verify:recording && npm test && npm run build"
   },
   "dependencies": {

@@ -1006,11 +1006,22 @@ async function verbStatus(root = ROOT) {
   const entropy = scanStructureEntropy(root)
   const openItems = scanOpenItemsHygiene(root)
   const journal = allJournal.slice(-3)
+  /**
+   * 三环建议（T186，2026-10-18）：按当前 git 改动路径提示「这次该跑到哪一环」。
+   * 用户裁决「全量每隔几天一次」——但"少跑"不能变成"该跑时也没跑"，
+   * 故在**开局体检**就把环号摆出来（与 `node scripts/test-ring.mjs advise` 同源，规则 11）。
+   * 只报不红：判断权在人（可能是别的会话的 WIP）。
+   */
+  let ring = null
+  try {
+    const { adviseFor } = await import(pathToFileURL(join(root, 'scripts/test-ring.mjs')).href)
+    ring = adviseFor(paths)
+  } catch { /* 三环脚本不可用时不阻塞 status */ }
   const next = foreign.length > 0
     ? 'zc lanes  # 有 ' + foreign.length + ' 个文件疑似并行会话在改：先确认归属再动手（规则 13）'
     : 'zc claim <你要改的文件>  # 占道后再动手'
   return envelope('status', true, {
-    branch, ahead: Number(ahead), changed: changed.length, changedPaths: paths, leases, foreignWip: foreign, debt, burndown, backlog, journal,
+    branch, ahead: Number(ahead), changed: changed.length, changedPaths: paths, leases, foreignWip: foreign, debt, burndown, backlog, journal, ring,
     facts: { authored: authored.scanned.length, broken: authored.violations.length, reviewQueue: drift.length },
     deadClaims: deadClaimScan.dead,
     overExportedClaims: deadClaimScan.overExported,
@@ -1248,6 +1259,13 @@ function humanize(res) {
         + ' → 原样移到 .claude/archive/，主文件只留活条目（AGENTS §4）')
     }
     if (d.facts) lines.push('手写事实 ' + d.facts.authored + ' 条' + (d.facts.broken ? ' / ✗ 断锚 ' + d.facts.broken : '') + (d.facts.reviewQueue ? ' / ⟳ 待复核 ' + d.facts.reviewQueue : ''))
+    // 三环建议（T186）：按当前改动路径给「这次该跑到哪一环」——少跑的前提是"该跑时没漏"。
+    if (d.ring) {
+      lines.push('验证环 建议 **' + d.ring.ring + '**'
+        + (d.ring.ring === 'core' ? '（没有命中升环规则 ⇒ 核心环够用）' : '（命中 ' + d.ring.hits.length + ' 条升环规则）')
+        + ' · npm run ' + (d.ring.ring === 'full' ? 'check:full' : d.ring.ring === 'fast' ? 'check:fast' : 'check'))
+      for (const h of d.ring.hits.slice(0, 3)) lines.push('  · ' + h.path + ' → ' + h.ring + '：' + h.why)
+    }
     for (const b of d.backlog ?? []) lines.push('待办 ' + b.dim + '：已实现 ' + b.done + ' / 未描述 ' + b.undescribed + ' / 待办条目 ' + b.pending)
     for (const j of d.journal ?? []) lines.push('最近验证 [' + (j.at ?? '').slice(0, 16) + '] ' + (j.verifier ?? j.kind) + ' → ' + (j.coverage ?? ''))
   } else if (res.verb === 'facts') {

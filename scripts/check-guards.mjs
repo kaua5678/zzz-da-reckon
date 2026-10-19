@@ -30,7 +30,7 @@
 //   - agentId 棘轮：基线只减不增。下调（进步）需在提交说明写明；上调没有合法路径——
 //     角色特例逻辑属于 src/mechanics/agents/<id>.ts 的 applyTeamConfig（派发器在
 //     composables/resourceCalc/panelPhases.ts，见规则 6 / ARCHITECTURE §3）
-import { execSync } from 'node:child_process'
+import { execFileSync, execSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -1418,7 +1418,101 @@ export function runAllChecks(root = ROOT) {
     })
   }
 
+  // ---- 判据 32：测试三环的嵌套关系 + 默认环不许退化成全量（T186，2026-10-18）----
+  // 动机（用户裁决）：「全量只需要每隔几天做一次就行了，现在属于每个对话都做」。
+  // 修前 `npm run check` = 全量 vitest（实测 542s）⇒ 每个对话都付全价；
+  // journal 实测 1201 条收工记录里 735 条 verify + 66 条 check，仅 1 条定向 vitest。
+  // 本条防两件事：① 环之间错位（core 里有而 fast 没有 ⇒ 有人手改了单环清单）；
+  //              ② 默认环（check）被悄悄改回全量（那就回到"每对话全量"）。
+  {
+    const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+    const scripts = pkg.scripts ?? {}
+    // 三环常量**只从 scripts/test-ring.mjs 取**（规则 11：单一事实源，本文件不复制清单）。
+    // 走 CLI 而不是 import()：runAllChecks 是同步函数，import() 会把整条链改成 async
+    // （判据 14-C 的 async 进口是历史包袱，新判据不往里加）。
+    const readRing = (ring) => JSON.parse(execFileSync(process.execPath,
+      [join(root, 'scripts/test-ring.mjs'), 'excludes', ring], { cwd: root, encoding: 'utf8' }))
+    let core = null
+    let fast = null
+    let full = null
+    const detail = []
+    try {
+      core = readRing('core')
+      fast = readRing('fast')
+      full = readRing('full')
+    } catch (e) {
+      detail.push('  ✗ scripts/test-ring.mjs 不可用（三环的单一事实源丢了）：' + String(e?.message ?? e).slice(0, 120))
+    }
+    if (!core) {
+      // 已经记红，跳过后续断言
+    } else {
+      // ① 嵌套：excl(core) ⊇ excl(fast) ⊇ excl(full) = ∅
+      for (const f of fast) if (!core.includes(f)) detail.push('  ✗ ' + f + ' 在 fast 排除集里却不在 core 里（环错位：fast 应只砍 core 的子集）')
+      if (full.length !== 0) detail.push('  ✗ full 不得有排除项（全量 = 一个都不砍），实到 ' + full.length + ' 条')
+      // ② 每条排除项必须带实测秒数 + 真实存在的测试文件（防"清单腐坏"：改名/删除后静默失效）
+      const testFiles = new Set(listTestFilesUnder(join(root, 'src')))
+      // ② 每条排除项必须**真是现存测试文件**（改名/删除后清单腐坏 ⇒ 该环静默变宽）
+      for (const f of core) {
+        if (!testFiles.has(f)) detail.push('  ✗ core 排除项 ' + f + ' 不是现存测试文件（改名/删除后清单腐坏 ⇒ 该环静默变宽）')
+      }
+      if (fast.length > core.length) detail.push('  ✗ fast 排除项比 core 还多（嵌套反了）')
+      // ④ 默认环 = core（`npm run check` 的 vitest 段）；全量必须有独立出口 `check:full`
+      if (!String(scripts['check'] ?? '').includes('test-ring.mjs core')) {
+        detail.push('  ✗ `check` 必须走 `node scripts/test-ring.mjs core`（默认环 = 每对话那圈；改回 npm test 就等于每对话跑全量）')
+      }
+      if (String(scripts['check'] ?? '').includes('npm test')) {
+        detail.push('  ✗ `check` 不得直接跑 `npm test`（那是全量；全量的出口是 check:full / verify）')
+      }
+      if (!String(scripts['check:full'] ?? '').includes('npm test')) {
+        detail.push('  ✗ 缺 `check:full`（= 全量出口；没有它，"每对话 core" 就会把全量挤出常规路径）')
+      }
+      if (!String(scripts['verify'] ?? '').includes('npm test')) {
+        detail.push('  ✗ `verify` 必须是全量（CI / 合并前口径），不得改用任一快环')
+      }
+      // ⑤ 类型检查必须在**每一个环**里（T186，2026-10-18）。
+      // 为什么单列：类型错是「编译期就死」的那类错，等全量才发现的成本远高于 1.7s。
+      // 实测 `vue-tsc -b`（tsbuildinfo 增量）空跑 1.7~2.1s、改一个文件 2.6s ⇒ 没有任何理由等。
+      // 判据取 `typecheck:inc` 而不是 `typecheck`：后者是 `-p tsconfig.app.json --noEmit`（**非增量**，
+      // 每次全量重检 ~17s，旧流程里正是它被挪进 build 的原因）。
+      for (const ring of ['check', 'check:fast', 'check:full']) {
+        const cmd = String(scripts[ring] ?? '')
+        if (!cmd.includes('typecheck:inc')) {
+          detail.push('  ✗ `' + ring + '` 必须含 `npm run typecheck:inc`（vue-tsc -b 增量 ≈1.7s；'
+            + '类型错不该等到全量才发现）')
+        }
+      }
+      if (!String(scripts['typecheck:inc'] ?? '').includes('vue-tsc -b')) {
+        detail.push('  ✗ `typecheck:inc` 必须是 `vue-tsc -b`（增量；非增量的 typecheck 每次 ~17s，不该进每对话的环）')
+      }
+      if (String(scripts['check'] ?? '').includes('npm run typecheck ')) {
+        detail.push('  ✗ `check` 不得用非增量的 `typecheck`（每次全量重检 ~17s）')
+      }
+    }
+    const ok = detail.length === 0
+    results.push({
+      name: '测试三环 (判据 32: core ⊂ fast ⊂ full，默认环 = core，全量有独立出口 check:full / verify) '
+        + (core ? 'core 排除 ' + core.length + ' / fast 排除 ' + fast.length + ' / full 排除 0' : '三环不可加载'),
+      ok,
+      detail,
+    })
+  }
+
   return { results, ok: results.every(r => r.ok) }
+}
+
+/** 列出 src 下所有 `*.test.ts` 的相对文件名（判据 32 的存在性核验用；不引 vitest 配置，保持独立） */
+function listTestFilesUnder(dir) {
+  const out = []
+  const walk = (d) => {
+    if (!existsSync(d)) return
+    for (const n of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, n.name)
+      if (n.isDirectory()) walk(p)
+      else if (n.name.endsWith('.test.ts')) out.push(n.name)
+    }
+  }
+  walk(dir)
+  return out
 }
 
 // ---- CLI ----
