@@ -228,7 +228,25 @@ export function computeBanyueInteractionTopUp(opts: InteractionTopUpInput): Inte
   )
   const furyShort = Math.max(0, (rageNeeded - cycle.rageCount) * FURY_ENTER)
   const dual = Math.ceil(furyShort / FURY_DUAL)
-  const decibelShort = Math.max(0, opts.ultimateCountNeeded * (opts.ultimateCost || ULTIMATE_COST) - opts.decibelHave)
+  const appliedParry = Math.max(0, Math.floor(opts.appliedParryCount ?? 0))
+  /**
+   * **目标 = 需求 + 已装**（T172 修）。
+   *
+   * `decibelHave` 是**含**已装那 N 刀自己喧响的读数 ⇒ 「需求 − decibelHave」问的其实是
+   * 「**已经够不够**」，而不是「还要再补几刀」。旧实现把这个差额直接当**总刀数**，于是
+   * 装得越多、算出的总需求越小（装 N → 算 0 → 再装 N 的 2-环，T172 实测 taunt=1：已装 1→算出 4、
+   * 已装 4→算出 1）。加回 `appliedParry × 单刀收益` 后，等式两边同量纲：
+   * `parry = applied + ceil((需求 + applied×单价 − decibelHave) / 单价)`，不动点处 `decibelHave = 需求`，
+   * 即「补齐正好补到够」，多装一刀会立刻算回少装 ⇒ 不动点唯一。
+   *
+   * ⚠ 试过并否决：把已装从 `decibelHave` 里**减掉**（`decibelHave − applied×单价`）——那等于
+   * 每轮把已装当「还没装」，实测无界累加 5→11→16→…→69 刀（`.zc/perf/tauntAfterFix.perf.ts`）。
+   * 差额是**总需求**不是**增量**，这是两种写法的分水岭。
+   */
+  const decibelShort = Math.max(0,
+    opts.ultimateCountNeeded * (opts.ultimateCost || ULTIMATE_COST)
+    + appliedParry * PARRY_TOPUP_DECIBEL_UNIT
+    - opts.decibelHave)
   // 分母 = **一次普通弹刀完整链**的实测收益（301.35，含支援突击：昂霄），不是招架判定单段的 215：
   // 缺口问的是「还差几刀」，一刀兑现的是整条链的喧响 ⇒ 用 215 会把次数抬高约 40%（T129）。
   const parry = Math.ceil(decibelShort / PARRY_TOPUP_DECIBEL_UNIT)

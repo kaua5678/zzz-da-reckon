@@ -387,6 +387,19 @@ export interface InteractionTopUpInput {
   wastedFlash?: number
   /** 战斗时间（秒，= `enemy.battleTime`）：闪能秒回按整场战斗折算（r726 前模块内写死 180） */
   battleTime: number
+  /**
+   * **本轮计划里已经装进去的弹刀补齐量**（= 上一轮 `threads.interactionTopUp.parry`）。
+   *
+   * ⚠ 为什么必须递：`decibelHave` 是**已经含**这 N 刀自己喧响的读数（补齐刀会产凶响、
+   * 还会挤平A产凶响）。若缺口仍按「需求 − decibelHave」算 ⇒ **装得越多、算出的缺口越小**
+   * ⇒ 反推不动（装 N → 算 0 → 再装 N）。T172 实测 `banyue-trigger-lucia` r=0.6 落进
+   * `已装 1 → 算出 4` / `已装 4 → 算出 1` 的 2-环，而 taunt（后摇）只是改变环相位
+   * ⇒ 外层「取最后一轮」选中不同成员 ⇒ 取消后摇反而掉伤害（用户 2026-10-19 报的那个现象）。
+   *
+   * 缺省 0 = 「假装计划里没有补齐」⇒ 与 T172 之前的行为**不同**（旧行为等价于恒按已装 0 算，
+   * 因为缺口从不算净量）。编排层必须递真实值（见 `convergence.ts`）。
+   */
+  appliedParryCount?: number
 }
 
 /**

@@ -609,10 +609,27 @@ describe('夜D · 层③ 真管线端到端', () => {
      * ④ 处置：换到 `off=true` 档，锚值按实测更新（`parry:5, dual:24, req:55.657`）；
      *    「保底全关 ⇒ 全 0」的**反向锁**不变（`gu=0` 各档实测仍全 0）。
      */
+    /**
+     * ⚠ **T172 再归因（parry 5 → 8，规则 10 四步）—— 判据语义仍是「模块写入 → cfg 可见」**。
+     *
+     * ① **量 delta**：本档 `{parry: 5, requiredSeconds: 55.657}` → **`{parry: 8, requiredSeconds: 62.656}`**。
+     * ② **根因**：`computeBanyueInteractionTopUp` 的喧响缺口算式把**已装补齐自己产的喧响**
+     *    当成既有收入 ⇒ 装得越多、算出的缺口越小 ⇒ 反推落进 2-环（本档实测环成员 = **5 ↔ 2**）。
+     *    修法 = 缺口按「需求 + 已装×单刀收益 − 已读喧响」算（等式两边同量纲），不动点处
+     *    `decibelHave = 需求` ⇒ 本档收敛到**真的补够**的 8 刀（`.zc/perf/ndTopupDiag.perf.ts`）。
+     *    ⚠ 旧值 5 **本身就是一个装不够的环内成员**：实测 5 刀时般岳喧响 **10981 < 12000**（缺口 1019），
+     *    按定义还差 4 刀；它之所以"看着像答案"，正是环被相位决定的那一半缺陷。
+     * ③ **确认有意**：用户 2026-10-19 报的正是「取消后摇反而掉伤害」，根因同一条环
+     *    （`banyue-trigger-lucia` r=0.6 的 taunt 1/2 = 环成员 4/1）。修后该档 **stable**（不再 cycle），
+     *    且补齐单调性（`topUpMonotonic`）与「保底全关 ⇒ 全 0」反向锁都仍绿。
+     * ④ **判据处置**：锚值按实测更新为 `parry: 8, requiredSeconds: 62.656`（8 刀×2.333 = 18.664；
+     *    总 req = 8×2.333 + 24×1.833 = 62.656）。**不断言"某个特定刀数才对"**——本条锁的是
+     *    「模块写入 → 结果 cfg 可见」，刀数随补齐口径走（T167/T168/T169 三次换档同款）。
+     */
     const cfg = await readBanyueCfg(1, 0, true, 0, { dodge: 2, parry: 2, block: 2, dual: 0 })
-    // 整数/布尔三字段逐字相等；`requiredSeconds` 是浮点乘积（5 刀×2.333 + 24 刀×1.833）⇒ 用 toBeCloseTo
-    expect(cfg).toMatchObject({ parry: 5, dual: 24, illegal: false })
-    expect(cfg?.requiredSeconds).toBeCloseTo(55.657, 6)
+    // 整数/布尔三字段逐字相等；`requiredSeconds` 是浮点乘积（8 刀×2.333 + 24 刀×1.833）⇒ 用 toBeCloseTo
+    expect(cfg).toMatchObject({ parry: 8, dual: 24, illegal: false })
+    expect(cfg?.requiredSeconds).toBeCloseTo(62.656, 6)
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 9 不是恒写）', async () => {

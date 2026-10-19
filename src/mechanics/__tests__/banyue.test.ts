@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { AUTO_TOPUP_TIME_LIMIT_SEC, computeBanyueRageCycle, computeBanyueMingwangStacks, computeBanyueMingwangBlocks, computeBanyueInteractionTopUp, banyueMechanic, banyueOverlay, MINGWANG_BASE_PER_STACK } from '@/mechanics/agents/banyue'
+import { AUTO_TOPUP_TIME_LIMIT_SEC, computeBanyueRageCycle, computeBanyueMingwangStacks, computeBanyueMingwangBlocks, computeBanyueInteractionTopUp, banyueMechanic, banyueOverlay, MINGWANG_BASE_PER_STACK, PARRY_TOPUP_DECIBEL_UNIT } from '@/mechanics/agents/banyue'
 import { isFrontlineExecution } from '@/types/resource'
 import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 
@@ -242,6 +242,75 @@ describe('computeBanyueInteractionTopUp（轴模式自动补齐，保底语义�
     // 6 组块 = 3 次怒相 → 差 1 次 × 120 → 双反 12
     expect(t.dual).toBe(12)
     expect(t.parry).toBe(0)
+  })
+
+  /**
+   * ## T172：缺口必须对「已装补齐」不动（反 2-环）
+   *
+   * 用户 2026-10-19 报「取消后摇纯送前台时间、伤害反而掉」⇒ 根因不在后摇，而在这里：
+   * `decibelHave` 是**含已装那 N 刀自己喧响**的读数，旧式把它当"已有收入"直接减
+   * ⇒ **装得越多、算出的总需求越小** ⇒ 反推落进 2-环（taunt=1 实测 已装1→算出4 / 已装4→算出1），
+   * 而外层环内选点取"最后一轮" ⇒ 选中谁取决于环相位 ⇒ taunt 一改就换成员 ⇒ 伤害乱跳。
+   *
+   * 判据 = **不动点性质**：把任意 `appliedParryCount` 喂进去，函数给出的总刀数 N 必须满足
+   * 「N 刀装进去后正好够」即 `D(N) >= 需求` 且 `D(N−1) < 需求`（D = 已读喧响 + N×单刀收益）。
+   * 下面的桩用一个**线性** D 直接表达该恒等式，从而把「反推与已装无关」钉成纯函数不变量。
+   */
+  it('T172：反推总刀数与「已装补齐」无关（不动点唯一，不会 装N→算0→再装N）', () => {
+    const unit = PARRY_TOPUP_DECIBEL_UNIT
+    const need = 15000
+    /** 桩：装 N 刀时引擎读数 = 基础 10000 + N×单刀收益（即「已装自己产喧响」） */
+    const decibelAt = (n: number) => 10000 + n * unit
+    const base = {
+      battleTime: 180, dodgeCount: 0, parryCount: 0, blockCount: 0, dualCounterCount: 0, cinemaLevel: 0,
+      axisEx: {}, ultimateCountNeeded: 5, ultimateCost: 3000,
+    }
+    // 从「假装没装」起步，逐轮按上一轮结果重算（模拟外层不动点迭代）
+    let applied = 0
+    const trace: number[] = []
+    for (let i = 0; i < 6; i++) {
+      applied = computeBanyueInteractionTopUp({
+        ...base, decibelHave: decibelAt(applied), appliedParryCount: applied,
+      }).parry
+      trace.push(applied)
+    }
+    // 不动点：连续两轮不再变化（旧实现在这里会 4↔1 / 5↔2 地摆）
+    expect(trace[trace.length - 1], `迭代轨迹 ${trace.join('→')} 必须收敛`).toBe(trace[trace.length - 2])
+    // 且收敛值就是「真正够用」的最小刀数
+    const need16 = need - 10000
+    expect(trace[trace.length - 1]).toBe(Math.ceil(need16 / unit))
+    // 反空洞：不是恒 0
+    expect(trace[trace.length - 1]).toBeGreaterThan(0)
+  })
+
+  /**
+   * **最关键的不变量**（配合上一条）：读数 `decibelHave` **已经含**已装那 N 刀自己的喧响，
+   * 所以「自洽总刀数」应当**与已装无关**——它只由「(读数 − 已装×单价) 还差多少」决定。
+   *
+   * 代数：设读数 `D = base + applied×U`（每刀自己产 U），目标是 `D >= need`：
+   * `parry = ceil((need + applied×U − D)/U) = ceil((need − base)/U)` ⇒ **与 applied 无关**。
+   * 这正是"不动点唯一"的来源（旧实现少了 `+applied×U`，于是 parry 随 applied 变小 ⇒ 2-环）。
+   *
+   * ⚠ 试过并否决的另一种写法：把已装从读数里**减掉**（`D − applied×U`）——那等于每轮都当"还没装"，
+   * 实测无界累加 5→11→16→…→69 刀（`.zc/perf/tauntAfterFix.perf.ts`）。
+   */
+  it('T172：自洽总刀数与已装无关（读数已含已装 ⇒ 不变量不随 applied 漂移）', () => {
+    const U = PARRY_TOPUP_DECIBEL_UNIT
+    const base = 10000
+    const at = (applied: number) => computeBanyueInteractionTopUp({
+      battleTime: 180, dodgeCount: 0, parryCount: 0, blockCount: 0, dualCounterCount: 0, cinemaLevel: 0,
+      axisEx: {}, ultimateCountNeeded: 5, ultimateCost: 3000,
+      decibelHave: base + applied * U, appliedParryCount: applied,
+    }).parry
+    const truth = Math.ceil((15000 - base) / U)
+    for (const applied of [0, 3, 6, truth, truth + 5]) {
+      expect(at(applied), `已装 ${applied} 刀时应仍判定总需 ${truth} 刀`).toBe(truth)
+    }
+    // 缺省（不传）= 按「计划里没有补齐」算（旧行为兼容）
+    expect(at(0)).toBe(computeBanyueInteractionTopUp({
+      battleTime: 180, dodgeCount: 0, parryCount: 0, blockCount: 0, dualCounterCount: 0, cinemaLevel: 0,
+      axisEx: {}, ultimateCountNeeded: 5, ultimateCost: 3000, decibelHave: base,
+    }).parry)
   })
 })
 

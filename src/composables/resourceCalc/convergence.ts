@@ -488,6 +488,8 @@ export function createRunCalcRound(deps: {
       for (const c of base.characters) ultMoveOfSlot.set(c.slot, c.ultimateMoveId)
       for (const v of Object.values(axisExecutedStack.executed)) {
         if (ultMoveOfSlot.get(v.slot) === v.moveId) {
+          // ⚠ 读 `count`（整数施放次数）——用户口径 2026-10-18「这是一次完整的释放大招」：
+          // 大招打出来了就是打出来了，只有「吃多少易伤」才按 `inAxisCount` 拆。
           axisUltimateTotal[v.slot] = (axisUltimateTotal[v.slot] ?? 0) + v.count
         }
       }
@@ -510,6 +512,15 @@ export function createRunCalcRound(deps: {
       for (const c of base.characters) axisActionCountsBySlot[c.slot] = {}
       for (const v of Object.values(axisExecutedStack.executed)) {
         const m = axisActionCountsBySlot[v.slot] ?? (axisActionCountsBySlot[v.slot] = {})
+        /**
+         * ⚠ **读 `count`（整数施放次数），不读 `inAxisCount`**（用户口径 2026-10-18 逐字）：
+         * > 「count 肯定是整数，你虽然前半部分用来吃易伤，后半部分用来打失衡，
+         * >   但也不可否认这是一次**完整的释放大招**。」
+         *
+         * 本字段喂的是「轴内打了几次 ⇒ 换多少资源」（般岳山威组数 / 猫又穿刺 / 希希芙影画2 毒素）——
+         * 那些是**资源**，一次完整施放就按一次算。只有**吃多少失衡易伤**才按 `inAxisCount` 拆
+         * （见 `damagePool#axisSplitFor`）。
+         */
         m[v.moveId] = (m[v.moveId] ?? 0) + v.count
       }
       // 逐次序列要**展开连段块 → 真实 moveId 并保序**（`axisSequence` 里存的是块 key，
@@ -872,6 +883,14 @@ export function createRunCalcRound(deps: {
         minRageCount: guaranteeFury ? 4 : 0,
         ultimateCost: base.characters.find(c => c.slot === interactionTopUpSlot)?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
         decibelHave,
+        /**
+         * ⚠ **本轮计划里已装的补齐刀数**（T172）：`decibelHave` 含着它们自己产的喧响，
+         * 不扣就会「装得越多、算出的缺口越小」⇒ 反推不动形成 2-环（外层取最后一轮 + 环相位
+         * 决定选中谁 ⇒ 用户看到的「取消后摇反而掉伤害」）。
+         * 递 `prevInteractionTopUp` = 本轮**真正装入**的那份（与 `applyBanyueTeamConfig`
+         * 累加进 `cfg.parryCount` 的是同一个值，见上方 540-543 行注释）。
+         */
+        appliedParryCount: prevInteractionTopUp.parry,
         battleTime: base.totalTime,
         /**
          * ⚠ **秽盾闪能必须传**（T162 修）：般岳的嗔火缺口按 `flashBase = 秒回×战斗时间 + 进场 + 秽盾`
@@ -1008,7 +1027,12 @@ export function createRunCalcRound(deps: {
         }
         for (const e of execs) {
           const lookKey = e.moveId === 'basic_attack' ? `${e.slot}:basic` : `${e.slot}:${e.moveId}`
-          const inUnits = inAxisCounts[lookKey]?.count ?? 0
+          /**
+           * ⚠ **读 `inAxisCount`**（2026-10-18 跨界小数）：`frac` 的语义是「轴内单位 / 全局总数」，
+           * 跨界那一次只有部分在轴内 ⇒ 只有那部分不攒下一次失衡条。
+           * 读 `count` 会把整次算成「轴内」⇒ 有效失衡值少算一段（份额过大）。
+           */
+          const inUnits = inAxisCounts[lookKey]?.inAxisCount ?? 0
           const key = `${e.slot}:${e.moveId}`
           if (e.moveId === 'basic_attack') {
             const totalSec = basicTimeBySlot[e.slot] ?? 0

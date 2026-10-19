@@ -97,7 +97,19 @@ async function setupLongCyclePreset() {
   // 重扫（同法 mock pickOuterCycleMember 记录 members.length >= 3 与 pickedEarlier）后，
   // 满足本用例两条硬前提（长环 + pickedEarlier=true）的只剩 banyue-norma-lucia 一支（般岳队）。
   // ⚠ 般岳队会吃 T164 的闪能口径，但那是**已落地**的既有口径（不是本轮的改动面）⇒ 可用。
-  const team: [string, string, string] = ['1471', '1361', '1451']
+  /**
+   * ⚠ **T172 五次换队**（同一条「不要改判据」的规矩：环消失就重扫换队，不动判据）。
+   * ① 量 delta：原夹具 `[1471,1361,1451]` 由 `cycle/20` 变 **`stable/7`** ⇒ 长环分支 0 次调用、本用例假红。
+   * ② 根因：**交互补齐的 2-环被修掉**（`computeBanyueInteractionTopUp` 的缺口不再把「已装那 N 刀
+   *    自己产的喧响」当成既有收入）⇒ 般岳队外层不再摆进环。修的是缺陷，不是本用例判据。
+   * ③ 确认有意：用户 2026-10-19 报的「取消后摇反而掉伤害」正是这条环（见 `banyue.ts` 该处注释）。
+   * ④ 处置：按本函数既有规矩**重扫换队**（`.zc/perf/findCycle2.perf.ts`，与用例同一建队路径），
+   *    取同满足两条硬前提（`outerExit==='cycle'` + `pickedEarlier===true`）且 lag **更大**的
+   *    **`billy-roxy-lucia`**（`[1531,1621,1451]`，`cycle/10`、earlier=true）——判别力强于原 lag=4。
+   *    ⚠ 顺手划清一处旧名残留：`it()` 标题里的「auto-1041-1571-1031」是更早一版夹具的名字，
+   *    而本函数在 T164 之后用的是般岳队。
+   */
+  const team: [string, string, string] = ['1471', '1571', '1451']
   for (let i = 0; i < 3; i++) config.setAgent(i, team[i])
   config.applyTeamPreset(team)
   // CC-154（第 177 轮）：本文件测「长环分支的接线」，需要一个真出长环的场景。physical 下模块计数改读计数通道后本队外层

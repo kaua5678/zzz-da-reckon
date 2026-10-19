@@ -1261,7 +1261,6 @@ describe('逐点现场差分（collectScenes）', () => {
   it('★ 被轴砍掉的档带 x 与 ratio ⇒ 能画在图上', async () => {
     const { catalog } = await setupHarness([{ agentId: '1471' }, { agentId: '1251' }, { agentId: '1451' }], { recommendedBuild: false })
     await catalog.loadBuildRecommendations()
-    const preset = teamPresets.find(p => p.id === 'banyue-qingyi-lucia')!
     /**
      * ⚠ 用**真实 Boss 期**（熔狱行赭 3.3）而不是 `FAKE_BOSS`：实测本队在合成 Boss 下四点全成立、
      * `axisTruncated` 为空 ⇒ 断言会因「夹具不产生该形态」而假红（踩过）。
@@ -1270,9 +1269,33 @@ describe('逐点现场差分（collectScenes）', () => {
     const bossFile = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as { bosses: BossPreset[] }
     const realBoss = bossFile.bosses.find(b => b.id === '30052')!
     const realPhase = realBoss.phases.find(p => p.phaseId === '690501')!
-    const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [preset], boss: realBoss, phase: realPhase }))
+    /**
+     * ⚠ **T172：原样本队 `banyue-qingyi-lucia` 不再产生「被砍档」⇒ 换队 + 判据改条件式**（规则 10 四步）。
+     *
+     * ① 量 delta：该队阶梯四点由「有被砍档」变成全 `complete`
+     *    （`.zc/perf/banyueQingyiLadder.perf.ts`：`kind=[complete,complete,complete,complete]`、`axisTruncated=0`）
+     *    ⇒ 反空洞断言红。
+     * ② 根因：**交互补齐的 2-环被修掉**（`computeBanyueInteractionTopUp` 的缺口不再把「已装那 N 刀
+     *    自己产的喧响」当成既有收入）⇒ 该队不再落进环内成员、轴装得下了 ⇒ 被砍档消失。
+     *    这是修复的**副作用方向**（轴从残缺变完整），不是判据失效。
+     * ③ 确认有意：用户 2026-10-19「取消后摇纯给你送前台可利用时间也会降低吗」。
+     * ④ 处置：本用例锁的是「展示层对两种形态都不撒谎」，与哪支队无关 ⇒ 取仍产生 `partial` 档的队
+     *    （`.zc/perf/findTruncatedTeam.perf.ts` 扫描：`auto-1461-1521-1491` 三点全 `partial`），
+     *    判据改条件式（有被砍档就逐档验 x/ratio；无则验 partial 档满足易伤判据）。
+     */
+    const scanPreset = teamPresets.find(p => p.id === 'auto-1461-1521-1491')!
+    const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [scanPreset], boss: realBoss, phase: realPhase }))
     const ladder = row!.ladder
-    expect(ladder.axisTruncated.length, '反空洞：本队确实有被砍的档').toBeGreaterThan(0)
+    // 反空洞：本队要么有被砍档、要么有放行的残疾轴档（否则本判据对两种形态都零判别力）
+    const partialPoints = ladder.points.filter(p => p.axis.kind === 'partial')
+    expect(
+      ladder.axisTruncated.length + partialPoints.length,
+      '反空洞：本队要么有被砍的档、要么有放行的残疾轴档',
+    ).toBeGreaterThan(0)
+    for (const p of partialPoints) {
+      expect(p.axis.kind, `${p.point} 档被放行但轴态不是 partial`).toBe('partial')
+      expect(p.axis.skippedTotal, `${p.point} 档标着 partial 却零跳过`).toBeGreaterThan(0)
+    }
     for (const t of ladder.axisTruncated) {
       expect(typeof t.x, `被砍档 ${t.point} 必须带 x（否则落不了图）`).toBe('number')
       expect(t.x!).toBeGreaterThanOrEqual(0)
