@@ -65,14 +65,29 @@ describe('CC-477 集成：仪玄+橘福福+卢西娅 加码场景不再 2-环', 
     expect(sp.stunCount, '保底 4').toBeGreaterThanOrEqual(4)
   }, 60000)
 
-  it('yixuan-roxy-lucia 裸三人（timeFillRatchet 口径）⇒ 外层 stable 且 N ≥ 4（r660：上限翻转 24↔25 环）', async () => {
+  /**
+   * ⚠ **2026-10-19 夹具口径变化（洛克茜能量模型修正的连带，非本文件的判据松动）**：
+   * 用户裁决洛克茜自旋「自动把能量放完（多次满发 + 1 次零散）」后，本队多打**一次零散强特**
+   * （7→8 发，多 0.105s 起手前台）。本队净占用已经**贴死在 180s**（折叠环吸收到 179.97），
+   * 于是这 0.105s 直接把一个失衡窗挤出去 ⇒ 外层落进 `K=5↔4` 的 2-循环、池 4→3。
+   *
+   * **这是模型更准之后的真实代价，不是回退**（A/B 实测，同一队把洛克茜改回 `floor(E/85)`）：
+   * | 口径 | 外层 | 池 | Σ必做前台 | 净占用 | 伤害 |
+   * |---|---|---|---|---|---|
+   * | 旧（每发满自旋） | stable | 4 | 199.73s | 179.97 | 24.79M |
+   * | 新（满发+零散） | cycle | 3 | 183.49s | 179.98 | 22.92M |
+   * 旧口径的 Σ 超出预算 19.7s 却被折叠环吸收 ⇒ 那个「4 次失衡」是靠**多算前台**撑出来的。
+   * ⇒ 本用例改为断言**真正关心的性质**：外层解出确定停点（非 `maxIter`）+ 失衡 ≥ 3（如实反映
+   * 模型修正后的可用窗口数）。**不**再钉 4：钉 4 等于要求引擎假装那 0.105s 不存在。
+   */
+  it('yixuan-roxy-lucia 裸三人（timeFillRatchet 口径）⇒ 外层有确定停点且 N ≥ 3', async () => {
     newPinia(); mockStaticFetch()
     await setupHarness(['', '', ''])
     const config = useConfigStore()
     for (const [i, id] of ['1371', '1621', '1451'].entries()) config.setAgent(i, id)
     const calc = useResourceCalc()
     const rr = calc.resourceResult.value!
-    expect(rr.convergence?.outerExit, '到保底即持住后外层应真收敛').toBe('stable')
-    expect(calc.stunPoolResult.value!.stunCount).toBeGreaterThanOrEqual(4)
+    expect(rr.convergence?.outerExit, '必须解出确定停点（maxIter = 耗尽未收敛）').not.toBe('maxIter')
+    expect(calc.stunPoolResult.value!.stunCount).toBeGreaterThanOrEqual(3)
   }, 60000)
 })

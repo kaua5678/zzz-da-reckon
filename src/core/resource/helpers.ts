@@ -93,6 +93,76 @@ export function resolveExSpecialCount(cfg: CharacterOperationConfig, totalEnergy
 }
 
 /**
+ * **读数**：某槽「距离下一次强特还差多少点闪能」（已够 = 0）。
+ *
+ * 存在的理由（用户原话）：「预留 19 点闪能，平A回能到 20，额外释放一个强化特殊技，导致平A收益
+ * 在这一点比交互高」——而 `resolveExSpecialCount` 是收敛后的 `floor(总量/消耗)`（或实数通道），
+ * **中间没有任何「差一点」的表达** ⇒ 引擎里看不见这个门槛。本函数把它显式化。
+ *
+ * ⚠ **纯读数，不参与任何次数推导**（不得反过来喂 `resolveExSpecialCount` / 补齐反推 / 时间账）。
+ * 口径与 `resolveExSpecialCount` **逐分支同源**（同一 consume、同一 `freeExSpecialCount` /
+ * `exReservedCount` / resource 型分支），避免两套账。**恒 0 的三类不适用**：
+ * `exSpecialCostType === 'resource'`（次数由模块资源账本给、不扣闪能）、
+ * `exSpecialEnergyConsume <= 0`（强特不耗闪能，无门槛可言）、模块 `exSpecialCount` 能力认领
+ * （如般岳嗔火/怒相循环：免费强特与付费强特混编，闪能单价不成立）。
+ * `freeExSpecialCount` 只加次数、不挪闪能门槛；`exReservedCount` 按同一分支的成本口径走门槛
+ * （成本 `exReservedEnergyCost ?? 预留量 × consume`，为 0 时退化成每 `consume` 一档）。
+ *
+ * 读数口径（判据 = `src/core/__tests__/exSpecialShortfall.test.ts`）：
+ *  - **恰在门槛上**（能量正好够到已经兑现的那一发，如 `E = k × consume`）⇒ **0**；
+ *  - 否则 = 距**下一个**门槛还差多少点，恒在 `(0, consume]`——这就是「再补 1 点就能多打一次」；
+ *  - `E ≤ 0`（连一发都攒不出）⇒ 一发消耗，不报 0（报 0 会被读成「已经够了」）；
+ *  - 恒等式：`shortfall > 0 ⇒ n(E + shortfall) = n(E) + 1` 且 `n(E + shortfall − ε) = n(E)`
+ *    （门槛可达、且不虚高；`n` = `resolveExSpecialCount`）。
+ *
+ * 非有限输入（NaN / ±Infinity）⇒ 读数记为 `consume`，**不产生 NaN**。
+ */
+export function exSpecialShortfallOf(cfg: CharacterOperationConfig, totalEnergy: number): number {
+  // 与 resolveExSpecialCount 第 1/2 支同口径：替代资源型 / 不耗闪能 ⇒ 无闪能门槛
+  if (cfg.exSpecialCostType === 'resource') return 0
+  const consume = cfg.exSpecialEnergyConsume
+  if (!(consume > 0)) return 0
+  // 与 resolveExSpecialCount 同口径：模块能力认领次数（如般岳嗔火/怒相循环，免费强特混编）
+  // ⇒ 闪能单价不成立，不能按「补到下一发」折算
+  if (getAgentMechanic(cfg.agentId)?.exSpecialCount !== undefined) return 0
+  /**
+   * ⚠ **单价本身是「可调时长」的角色的门槛不存在**（2026-10-19 用户纠正，逐字）：
+   * > 「洛克茜的能量不是非得90才能整数释放，他有中间的持续释放滑块呀」
+   *
+   * `consume = 起手 + 每秒 × 持续秒数`，而「持续秒数」是用户滑块（洛克茜 `roxy.spinSeconds`、
+   * 诺姆 `norma.holdSeconds`、莱卡恩 `lycaon.exHoldRatio`、柏妮思喷射秒数…）⇒ 玩家**可以把这一发转短一点**
+   * 来放进这点剩余能量，门槛不是 `floor(E / consume)` 的整数台阶。此时报「还差 X 点」是**假门槛**：
+   * 实测洛克茜 `E=765.3 / consume=85` 报 84.67，而她只要把自旋从 2.5s 缩到 0.08s 就能再打一发。
+   *
+   * 判据（本函数与 `resolveExSpecialCount` 的分工）：凡次数**不由 `E/consume` 决定**的通路，门槛恒 0 ——
+   *  · `skipGenericExSpecial`（模块自己产强特行：般岳/琉音/仪玄/洛克茜/诺姆/柏妮思/莱卡恩…）；
+   *  · `exSpecialCountFractional`（持续型强特按**小数期望值**计，本就不取整 ⇒ 无台阶可跨）；
+   *  · `exContinuous`（实数通道，同 `yidhari` 的 `@fact yidhari:refund不动点`）。
+   * 这三条与 `resolveExSpecialCount` 的分支**同源**（同一批字段、同一处判断），不是新口径。
+   */
+  if (cfg.skipGenericExSpecial === true) return 0
+  if (cfg.exSpecialCountFractional === true) return 0
+  if (cfg.exContinuous === true) return 0
+  // 非有限能量（NaN / ±Infinity）按「一发都还打不出」读，避免 NaN 传播
+  if (!Number.isFinite(totalEnergy)) return consume
+  if (cfg.exReservedCount !== undefined) {
+    // 与 resolveExSpecialCount 的 exReservedCount 分支同源：预留量强制计入总次数、其成本先扣
+    // （`exReservedEnergyCost ?? exReservedCount × consume`，可以为 0 = 失衡内那发不花钱）。
+    // 该分支的门槛序列 = cost + k × consume（k ≥ 1）：`E = cost` 处并不跨门槛（剩余恰好 0）
+    // ⇒ 低于 cost 时缺口 = cost + consume − E，而不是 `consume − E`。
+    const inStun = Math.max(0, cfg.exReservedCount)
+    const inStunCost = cfg.exReservedEnergyCost ?? inStun * consume
+    if (!Number.isFinite(inStunCost)) return consume
+    if (totalEnergy <= inStunCost) return inStunCost + consume - totalEnergy
+    const rem = (totalEnergy - inStunCost) % consume
+    return rem > 0 ? consume - rem : 0
+  }
+  if (totalEnergy <= 0) return consume
+  const rem = totalEnergy % consume
+  return rem > 0 ? consume - rem : 0
+}
+
+/**
  * 动态合轴吸收子问题的**旧求解器**（8 轮小不动点迭代）：`docs/mcp-time-allocation-algorithms.md` §5 批 1 的
  * **单点回退**，现只作闭式解在浮点极端参数下判别式舍入为负时的兜底（生产 97 队实测不触发，`disc<0` 数学上不可达——
  * `disc ≥ 4(1−r)·rB·(S−T) ≥ 0`，因 `S ≥ T` 恒成立）。

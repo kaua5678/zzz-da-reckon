@@ -13,10 +13,8 @@ import { fmt } from '@/utils/format'
 import { getAgentSpec } from '@/specs/registry'
 import { buildSpecEventExecutions } from '@/specs/mechanics'
 import { specAdjustableRate } from '@/specs/resources'
-import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
-const cfgSetting = mechanicSettingReader(() => settings)
 
 /**
  * 洛克茜（1621）v12 重录（2026-09-03，nanoka 3.2.12+18601660）：
@@ -38,6 +36,11 @@ const cfgSetting = mechanicSettingReader(() => settings)
  */
 const ROXY_AGENT_ID = '1621'
 /** 风能：每 25 能量 +1 点（核心被动 Lv.7），存量上限 3；终结技额外 +1 点 */
+/**
+ * 满自旋秒数 = 长按到攒满 3 风能松手（75 能量 / 30 每秒）。**不是滑块**——用户裁决 2026-10-19：
+ * 自旋秒数由能量预算自动算（若干满发 + 1 次零散），见 `computeRoxyExCount`。
+ */
+export const ROXY_FULL_SPIN_SECONDS = 2.5
 export const ENERGY_PER_WIND_ENERGY = 25
 export const WIND_ENERGY_MAX = 3
 /** 敬请安息每消耗 1 点[风能]：额外 1621021（52.5%）+ 生成 1 个[风眼] */
@@ -107,19 +110,75 @@ export const ROXY_WIND_EYE_RATE_ID = '1621.roxy_wind_eye.wind_eye_from_cannon.ra
  * 每轮敬请安息消耗 3 点（= 3 额外段 1621021 + 3 风眼）→ 恕不远送 = floor(消耗/3) = 每轮 1 次巨旋风（1s），
  * 无余数（3/轮 手法下小旋风恒 0，留作余数兜底）。
  */
+/**
+ * 洛克茜强特**次数**：若干次满自旋 + 1 次零散发把能量放完（用户口径 2026-10-19）。
+ *
+ * 用户原话：「用户滑块感觉也没必要，这里的自旋秒数应该自动计算，自动把能量放完。
+ * 他会放多次满秒数和1次零散的，打出全部能量。」
+ *
+ * 旧实现走通用 `floor(E / 满发耗能)` ⇒ 剩余能量只要够一发（哪怕只有启动那 10 点）就被丢掉，
+ * 少算一整次强特。本式：
+ *   n_full = floor(E / 满发耗能)，R = E − n_full × 满发耗能；
+ *   R ≥ 启动耗能（10）⇒ 还能打**一次零散发**（自旋秒数由 R 反推）⇒ 次数 +1。
+ * R < 10 时确实打不出来（连启动都付不起），与旧式相同。
+ */
+export function computeRoxyExCount(totalEnergy: number, fullSpinSeconds: number): number {
+  const fullSpin = Math.max(0, fullSpinSeconds)
+  const start = 10
+  const perSecond = 30
+  const fullCost = start + fullSpin * perSecond
+  if (!Number.isFinite(totalEnergy) || totalEnergy <= 0 || fullCost <= 0) return 0
+  const nFull = Math.floor(totalEnergy / fullCost)
+  const remainder = totalEnergy - nFull * fullCost
+  /**
+   * 剩余够启动（10 点）⇒ 还能打**一次零散发**（自旋秒数由剩余反推，可以很短）。
+   *
+   * ⚠ **不设「最短自旋秒数」门槛**（试过 1 秒，实测否决）：用户口径是「**打出全部能量**」，
+   * 只要付得起启动就打得出来。加门槛会让 `banyue-roxy-lucia` 丢掉那一发（0.204s ⇒ 不计）
+   * ⇒ 它的外层环立刻复发（`cycle/20`）——**那正是本卡要修的形态**，所以门槛不能有。
+   * 时间账上的代价由「零散发只占它自己的秒数」承担（见 `partialSpinSeconds` / 执行行拆两行）。
+   *
+   * ⚠ **`Math.floor` 只对满发数取整，零散发是「有/无」的 0-1 台阶**——这是**真实的不连续**，
+   * 不是建模瑕疵：能量刚好跨过 10 点启动线时，玩家确实多打一次。它的副作用是「迭代相位
+   * 不同 ⇒ 收敛到不同格」，实测 `landingPointUniqueness` 的 claret 夹具三槽 `totalDecibel`
+   * 差 1.5254（`weighted` 相位 vs 其它三个）。**不为此加平滑**：平滑会让「差 1 点就能多打一发」
+   * 这个用户明确关心的台阶消失（那正是本卡的 B 项）。
+   */
+  return nFull + (remainder >= start - 1e-9 ? 1 : 0)
+}
+
 export function computeRoxyWindEnergy(input: {
   exSpecialCount: number
   exSpecialEnergyConsume?: number
   ultimateCount?: number
+  /** 满自旋秒数（默认 2.5s = 长按到 3 风能松手）。零散发由剩余能量反推，见 `partialSpinSeconds` */
   spinSeconds?: number
+  /**
+   * 本局可用能量总额（点）。给了 ⇒ 自旋秒数按「放完全部能量」求解（若干次满自旋 + 1 次零散），
+   * 不给 ⇒ 退回旧口径（每次强特都按满自旋记）。用户口径 2026-10-19。
+   */
+  totalEnergy?: number
   cinemaLevel?: number
   /** 风能转化率（spec `adjustable`，生产侧已按声明钳到区间；未传 = 1 不缩放）——缩放「每轮耗能」这一侧，见下 */
   energyRate?: number
   /** 风眼转化率（spec `adjustable`，生产侧已按声明钳到区间；未传 = 1 不缩放）——缩放「风能 → 风眼」的生成数，见下 */
   eyeRate?: number
 }): RoxyWindEnergySource {
+  /**
+   * ## 自旋秒数 = **自动放完能量**（用户口径 2026-10-19，取代固定滑块）
+   *
+   * 用户原话：「用户滑块感觉也没必要，这里的自旋秒数应该自动计算，自动把能量放完。
+   * 他会放多次满秒数和1次零散的，打出全部能量。」
+   *
+   * ⇒ 一次强特 = 10 启动 + 30/s 自旋；玩家会用**若干次满自旋**（`fullSpinSeconds`，默认 2.5s）
+   * 加**一次零散自旋**（把剩下的能量放完，可能 0 秒）来清空能量池。旧实现把「每次强特都满 2.5s」
+   * 当固定口径 ⇒ 剩余能量不足一发满自旋时，要么少算一发、要么整发按 85 记（虚构耗能）。
+   *
+   * 本函数现在按「总能量 → 拆成满发 + 零散发」求解：`fullSpinSeconds` 只决定**满发那一档多长**，
+   * 零散发的秒数由剩余能量反推（`partialSpinSeconds`）。不传 `totalEnergy` 时退回旧口径（每次满秒）。
+   */
+  const fullSpinSeconds = Math.max(0, Number(input.spinSeconds ?? 2.5))
   const exCount = Math.max(0, Math.floor(input.exSpecialCount))
-  const spinSeconds = Math.max(0, Number(input.spinSeconds ?? 2.5))
   const cinema = cinemaLevelOf(input.cinemaLevel)
   const energyRate = input.energyRate ?? 1
   const eyeRate = input.eyeRate ?? 1
@@ -129,14 +188,58 @@ export function computeRoxyWindEnergy(input: {
   // 一份 scratch 摘要（`data/raw/_archive/scratch/spec_notes_1621.txt:4`）的**笔误**，
   // `docs/MECHANICS_IMPLEMENTATION.md:149` 早已记为「旧口径已废除」⇒ **不要**把 25 改成 30
   // （R51 隔离 worktree 实测：改成 30 ⇒ `roxy`/`specialMechanics` 5 failed，全管线伤害 −1.59%）。
+  /**
+   * **每次强特的耗能拆解**（用户口径 2026-10-19「他会放多次满秒数和 1 次零散的，打出全部能量」）。
+   *
+   * 满发自旋 = `fullSpinSeconds`、每秒 30 点、启动 10 点 ⇒ 满发耗能 = `10 + 30 × fullSpinSeconds`。
+   * 给了 `totalEnergy` 时：先按满发数出能打几次，**最后那一次用剩余能量决定自旋秒数**
+   * （`partialSpinSeconds = (剩余 − 10) / 30`，剩余连 10 点启动都不够 ⇒ 打不出零散发）。
+   * 不给 `totalEnergy` ⇒ 旧口径（每次都是满发）。
+   *
+   * ⚠ 这修掉的是**旧实现的两个虚假量**：① 每次强特都按满发记耗能 ⇒ 最后一次虚构了用不掉的能量；
+   * ② 次数 = `floor(能量 / 满发耗能)` ⇒ 剩余能量永远进不了账 ⇒ 自旋总时长被系统性少算。
+   */
+  const exStart = 10
+  const perSecond = 30
   const perExEnergy = input.exSpecialEnergyConsume !== undefined && input.exSpecialEnergyConsume > 0
     ? input.exSpecialEnergyConsume
-    : (10 + spinSeconds * 30)
-  const energySpentTotal = exCount * perExEnergy
+    : (exStart + fullSpinSeconds * perSecond)
+  const totalEnergy = Number(input.totalEnergy)
+  const haveEnergyBudget = Number.isFinite(totalEnergy) && totalEnergy > 0
+  /** 零散发自旋秒数：由剩余能量反推；不够启动（10 点）⇒ 0 = 这一发不存在 */
+  const partialSpinSeconds = (() => {
+    if (!haveEnergyBudget) return fullSpinSeconds
+    /**
+     * ⚠ 零散发**也是 exCount 里的那一发**（次数已由 `computeRoxyExCount` 算成「满发 + 零散」），
+     * 不是「满发之外的额外一发」。故剩余 = 总能量 − (满发数 − 1) × 满发耗能 − 启动。
+     * 用 `exCount × perExEnergy` 会多减一整发 ⇒ 算出的零散秒数恒偏小、行耗能对不上账
+     * （实测 spin=2.5：预算 396.45 / 5 发 / 行耗能 350，差 46.45 = 一整发的 46.45s 自旋）。
+     */
+    const nFull = Math.max(0, exCount - 1)
+    const remainder = totalEnergy - nFull * perExEnergy
+    if (remainder < exStart) return 0
+    return Math.max(0, (remainder - exStart) / perSecond)
+  })()
+  /** 最后一次是零散发（自旋秒数 > 0 且 < 满发）⇒ 它的耗能按实际秒数记，不是满发 */
+  const lastIsPartial = haveEnergyBudget && exCount > 0 && partialSpinSeconds > 0 && partialSpinSeconds < fullSpinSeconds
+  /** 实际自旋总秒数 = 满发次数 × 满发秒 + （零散发时）零散秒 */
+  const effectiveSpinSecondsTotal = lastIsPartial
+    ? (exCount - 1) * fullSpinSeconds + partialSpinSeconds
+    : exCount * fullSpinSeconds
+  const energySpentTotal = lastIsPartial
+    ? (exCount - 1) * perExEnergy + (exStart + partialSpinSeconds * perSecond)
+    : exCount * perExEnergy
   // `adjustable` 的计数源就是「每消耗 N 点能量」⇒ 比例必须乘在**耗能**这一侧（不是 gain）：
   // 乘 gain 会让 `energySpentTotal`（有独立执行行 `totalEnergyConsume`）与风能脱钩 ⇒ 双账。
   const energyPerRound = perExEnergy * energyRate
-  const windEnergyGain = exCount * Math.floor(energyPerRound / ENERGY_PER_WIND_ENERGY)
+  /**
+   * 风能 = 每消耗 25 能量 +1。**按实际耗能算**（含零散发那一发比满发少的部分）——
+   * 旧实现按「次数 × 满发耗能」算 ⇒ 零散发被当成满发，凭空多给风能。
+   */
+  const windEnergyGain = (lastIsPartial
+    ? (exCount - 1) * Math.floor(energyPerRound / ENERGY_PER_WIND_ENERGY)
+      + Math.floor(((exStart + partialSpinSeconds * perSecond) * energyRate) / ENERGY_PER_WIND_ENERGY)
+    : exCount * Math.floor(energyPerRound / ENERGY_PER_WIND_ENERGY))
     + Math.max(0, Math.floor(Number(input.ultimateCount ?? 0)))
   // 存量上限 3：每发敬请安息至多消耗 3 点 → 总消耗 = min(总获得, 强特次数 × 3)
   const windEnergyConsumed = Math.min(windEnergyGain, exCount * WIND_ENERGY_MAX)
@@ -217,7 +320,13 @@ export function computeRoxyWindEnergy(input: {
     megaTornadoCount,
     miniTornadoCount,
     miniTornadoSeconds: miniTornadoCount * MINI_TORNADO_SECONDS,
-    spinSeconds,
+    spinSeconds: fullSpinSeconds,
+    /** 零散发（最后一发）的自旋秒数；未走「放完全部能量」口径时等于满发秒数 */
+    partialSpinSeconds,
+    /** 实际自旋总秒数（满发 × 满发秒 + 零散秒）——执行行与伤害按它算 */
+    effectiveSpinSecondsTotal,
+    /** 最后一发是不是零散发（自旋秒数 < 满发，耗能按实际秒数记） */
+    lastIsPartial,
     note: 'v12+手法（用户 2026-09-03）：长按强特攒满 3 风能（自旋 2.5s×30/s≈75 能量）松手 → 敬请安息消耗 3（3 额外段+3 风眼）→ 恕不远送 1 次巨旋风（1s）；终结技 +1 风能。',
   }
 }
@@ -226,7 +335,7 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
   cfg.skipGenericExSpecial = true
   cfg.roxyCinemaLevel = cinemaLevelOf(cinemaLevel)
   // v12 moveIds
-  const spinSeconds = Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds'))
+  const spinSeconds = ROXY_FULL_SPIN_SECONDS
   // CC-109（R5 D28）：一次强特 = 小心风寒启动 + 自旋 spinSeconds 秒，耗能按 catalog 两项合计。
   // 修前沿用通用 findExSpecial 的「Energy Cost」10（只算启动），自旋 30/s 零扣费 ⇒ 强特次数按 能量/10 推，
   // 而风能账本 computeRoxyWindEnergy 按 10 + 30×秒 记耗能，两本账不一致。
@@ -292,13 +401,15 @@ function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
 
 function roxyWindEnergySourceOf(
   cfg: AgentResourceInput['cfg'],
-  state: Pick<AgentResourceInput['state'], 'exSpecialCount' | 'ultimateCount'>,
+  state: Pick<AgentResourceInput['state'], 'exSpecialCount' | 'ultimateCount' | 'totalEnergy'>,
 ): RoxyWindEnergySource {
   return computeRoxyWindEnergy({
     exSpecialCount: state.exSpecialCount,
     exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
     ultimateCount: state.ultimateCount,
-    spinSeconds: Math.max(0, cfgSetting(cfg, 'roxy.spinSeconds')),
+    spinSeconds: ROXY_FULL_SPIN_SECONDS,
+    // 用户口径 2026-10-19：自旋秒数自动算（放完全部能量）⇒ 需要能量总额
+    totalEnergy: state.totalEnergy,
     cinemaLevel: cinemaLevelOf(cfg.roxyCinemaLevel),
     energyRate: specAdjustableRate(cfg, ROXY_WIND_ENERGY_RATE_ID),
     eyeRate: specAdjustableRate(cfg, ROXY_WIND_EYE_RATE_ID),
@@ -328,20 +439,34 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
     const spinDecibelPerSec = Number(cfg.roxySpinSecondDecibel ?? 0)
     if (source.spinSeconds > 0) {
       // @fact agent:1621/自旋喧响每秒口径 口径: 自旋(1621008)倍率表 damage=2608.6 与 decibel_recovery=84.343 同为「每秒」值——damage 侧已按 每秒×spinSeconds 录入并被 roxy 测试锁定，喧响同构：行值=84.343×spinSeconds/次、总=×exCount；表值直填会把持续段少算 spinSeconds 倍，故 decibelRecoveryOverride 跳过 enrich 表值覆盖 | 据 catalog 1621008 行值+damage 侧已录口径@2026-09-08·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/core/__tests__/decibelRowParity.test.ts | 锚 src/mechanics/agents/roxy.ts#buildRoxyExecutions + src/core/resource/rowAccounting.ts#resolveRecoveryPerCount | 信 高
-      executions.push({
-        moveId: SPIN_SECOND_MOVE_ID, moveName: '自旋（每秒，耗能 30/s）', category: 'special',
-        count: exCount, actionTime: 0, comboAlignRatio: 0,
-        totalTime: 0, totalComboAlignTime: 0,
-        energyConsume: Number(cfg.roxySpinEnergyPerSecond ?? 30) * source.spinSeconds,
-        totalEnergyConsume: exCount * Number(cfg.roxySpinEnergyPerSecond ?? 30) * source.spinSeconds,
-        decibelRecovery: spinDecibelPerSec * source.spinSeconds,
-        totalDecibelRecovery: exCount * spinDecibelPerSec * source.spinSeconds,
-        decibelRecoveryOverride: true,
-        energyRecovery: 0, totalEnergyRecovery: 0,
-        timeBucket: 'backstage',
-        damageMultiplier: spinMoveMult * source.spinSeconds,
-        damageMultiplierOverride: true,
-      })
+      /**
+       * 自旋段**拆成两行**（用户口径 2026-10-19「他会放多次满秒数和 1 次零散的，打出全部能量」）：
+       *  · 满发行：`count = 满发次数`，每发 2.5s；
+       *  · 零散发行：`count` 恒 ≤1，秒数 = 剩余能量反推（`partialSpinSeconds`），可能整行不存在。
+       * 拆行的理由 = 行模型的口径是「每行一个 `count × 每发量`」⇒ 把「满发 + 零散」塞进一行会让
+       * `decibelRecovery`（单发值）变成一个谁都不认识的加权平均（实测 159.31 vs 应有 210.86）。
+       */
+      const perSecondEnergy = Number(cfg.roxySpinEnergyPerSecond ?? 30)
+      const pushSpinRow = (count: number, secondsEach: number) => {
+        if (count <= 0 || secondsEach <= 0) return
+        executions.push({
+          moveId: SPIN_SECOND_MOVE_ID, moveName: '自旋（每秒，耗能 30/s）', category: 'special',
+          count, actionTime: 0, comboAlignRatio: 0,
+          totalTime: 0, totalComboAlignTime: 0,
+          energyConsume: perSecondEnergy * secondsEach,
+          totalEnergyConsume: perSecondEnergy * secondsEach * count,
+          decibelRecovery: spinDecibelPerSec * secondsEach,
+          totalDecibelRecovery: spinDecibelPerSec * secondsEach * count,
+          decibelRecoveryOverride: true,
+          energyRecovery: 0, totalEnergyRecovery: 0,
+          timeBucket: 'backstage',
+          damageMultiplier: spinMoveMult * secondsEach,
+          damageMultiplierOverride: true,
+        })
+      }
+      const fullCasts = source.lastIsPartial ? Math.max(0, exCount - 1) : exCount
+      pushSpinRow(fullCasts, source.spinSeconds)
+      if (source.lastIsPartial) pushSpinRow(1, source.partialSpinSeconds)
     }
     executions.push({
       moveId: REST_PEACE_MOVE_ID, moveName: '强化特殊技：敬请安息（风炮）', category: 'special',
@@ -432,16 +557,19 @@ function buildRoxyResourceSections({ result }: AgentResourceSectionsInput) {
 }
 
 const settings: MechanicSetting[] = [
-  {
-    id: 'roxy.spinSeconds',
-    label: '洛克茜自旋秒数',
-    description: '手法（用户 2026-09-03）：长按强特到获得 3 风能就松手 = 自旋 75 能量/30每秒 = 2.5 秒；自旋每秒 2608.6% 风伤。',
-    default: 2.5,
-    min: 0,
-    max: 10,
-    step: 0.5,
-    suffix: '秒',
-  },
+  /**
+   * ## 为什么**不是**滑块（用户裁决 2026-10-19）
+   *
+   * 用户原话：「用户滑块感觉也没必要，这里的自旋秒数应该自动计算，自动把能量放完。
+   * 他会放多次满秒数和1次零散的，打出全部能量。」
+   *
+   * ⇒ 自旋秒数不是玩家选的档位，而是**能量预算的算术结果**：满发 2.5s（长按到 3 风能松手）
+   * 打若干次，最后用一次零散发把余额放完（`computeRoxyExCount` + `partialSpinSeconds`）。
+   * 滑块留着只会让人误以为可以「少放点能量」，而那在游戏里没有对应操作。
+   *
+   * 保留的常量 `ROXY_FULL_SPIN_SECONDS` 只表达**满发档位**（3 风能 = 75 能量 = 2.5s），
+   * 不是可调项。回退点：把它写回 `settings` 并恢复 `cfgSetting(cfg, 'roxy.spinSeconds')` 两处读点。
+   */
 ]
 
 export const roxyMechanic: AgentMechanicModule = {
@@ -460,6 +588,13 @@ export const roxyMechanic: AgentMechanicModule = {
   description: 'v12：风能（25能量/点+终结+1）→ 敬请安息（消耗全部，每点额外段+1风眼）→ 风眼爆鸣/恕不远送（引爆至多3 → 巨旋风或小旋风）+ 自旋每秒伤害；核心转模（能量回复>1.2→攻击/冲击）；C1 全抗-15%/暴伤+40%、C2 易伤+30%、C4 回能+终结+20%、C6 风抗15%+巨旋风×250%。',
   applyPanel: applyRoxyPanel,
   buildCharConfig: buildRoxyCharConfig,
+  /**
+   * 引擎期强特次数求解（规则 6 引擎落点）：洛克茜的自旋秒数是**自动放完能量**的
+   * （用户口径 2026-10-19：「他会放多次满秒数和 1 次零散的，打出全部能量」）⇒
+   * 次数不能用通用 `floor(E / 满发耗能)`（那会把剩余能量里能打出的那次零散发丢掉）。
+   * 纯函数：只读 `totalEnergy` 与 cfg 上的满自旋秒数。
+   */
+  exSpecialCount: ({ totalEnergy }) => computeRoxyExCount(totalEnergy, ROXY_FULL_SPIN_SECONDS),
   buildExecutions: buildRoxyExecutions,
   patchExecutions: patchRoxyExecutions,
   buildResourceResult: buildRoxyResourceResult,
@@ -528,7 +663,17 @@ export interface RoxyWindEnergySource {
   miniTornadoCount: number
   /** 小旋风总秒数 = miniTornadoCount × 1s（v12 持续 1 秒） */
   miniTornadoSeconds: number
-  /** 自旋秒数（滑块，30 能量/s） */
+  /** 满自旋秒数（滑块，30 能量/s）：一次「长按到攒满 3 风能」的满发时长 */
   spinSeconds: number
+  /**
+   * **零散发**（最后一发）的自旋秒数——用户口径 2026-10-19：玩家会「放多次满秒数和 1 次零散的，
+   * 打出全部能量」⇒ 最后一发的秒数由剩余能量反推，可以 < 满发（甚至 0 = 这一发打不出来）。
+   * 未走「放完全部能量」口径（没传 `totalEnergy`）时等于 `spinSeconds`。
+   */
+  partialSpinSeconds: number
+  /** 实际自旋总秒数 = 满发次数 × 满发秒 + 零散秒（执行行/伤害按它算，不是次数 × 满发秒） */
+  effectiveSpinSecondsTotal: number
+  /** 最后一发是否是**零散发**（自旋秒数 < 满发）：执行行据此拆成「满发行 + 零散发行」 */
+  lastIsPartial: boolean
   note: string
 }

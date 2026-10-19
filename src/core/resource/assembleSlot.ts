@@ -22,6 +22,7 @@ import { frontlineRowSeconds } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { calcEnergySource, calcRawDecibelParts, calcDecibelSource } from './resourceIncome'
 import { calcTimeAllocation } from './timeOccupation'
+import { exSpecialShortfallOf } from './helpers'
 import { buildAnomalyEventExecutions } from './rowBuild'
 import { calcCrossAgentEnergy } from './crossAgentEnergy'
 import { truncateExecutionsToFrontline } from './timeTruncation'
@@ -247,6 +248,9 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
     executedExSpecialCount,
     exSpecialMoveId: cfg.exSpecialMoveId,
     exSpecialEnergyConsume: cfg.exSpecialEnergyConsume,
+    // 距下一次强特还差多少点闪能（纯读数，不参与次数推导）：取 iterate 收敛终态的能量快照，
+    // 与 `exSpecialCount` 同源同参（消费 = `state.totalEnergy`，即驱动次数的那个量）。
+    exSpecialEnergyShortfall: exSpecialShortfallOf(cfg, state.totalEnergy),
     decibelSource: decibelSrc,
     ultimateCost: cfg.ultimateCost,
     ultimateCount: state.ultimateCount,

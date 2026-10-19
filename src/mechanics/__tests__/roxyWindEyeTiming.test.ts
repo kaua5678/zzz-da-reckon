@@ -147,23 +147,28 @@ describe('R52 风眼时序：逐事件 FIFO 队列 vs 引擎总量口径', () =>
     expect(failures, failures.join('\n')).toEqual([])
   }, 300000)
 
-  it('★ 负控 B：`spinSeconds`=0.5（单发 <3）时余留眼让 `mini` **必须**分叉；9 上限仍不咬合', async () => {
+  it('★ 负控 B：单发 <3 时余留眼让 `mini` **必须**分叉；9 上限仍不咬合', async () => {
     const failures: string[] = []
-    // CC-109（R5 D28）起强特按 10 + 30/s×自旋秒 扣能量，强特次数大幅下降，单一采样点的余数可能恰为 0；
-    // 改为在多个单发 <3 的采样点里**至少一个**分叉（负控仍然必须可观测）。
+    /**
+     * ⚠ **本用例的采样维度变了**（2026-10-19 用户裁决：自旋秒数**不再是滑块**，改为「自动放完能量 =
+     * 多次满发 + 1 次零散」）⇒ 单发风眼数 = `floor(每发耗能 / 25)` 现在由**能量预算**决定，
+     * 不由用户档位决定。要制造「单发 < 3」，正确旋钮是 `eyeRate < 1`（`1621.roxy_wind_eye...rate`）
+     * ——它直接缩放风眼/耗能比，与旧的 `spinSeconds` 起同一作用。
+     * 判据本身不变：**至少一个采样点**必须与 FIFO 预言机分叉，且 9 上限不可达。
+     */
     const seen: string[] = []
     let diverged = 0
-    for (const spin of [0.5, 1, 1.5, 2]) {
-      const r = await probe({ [SPIN]: spin, [EYE_RATE]: 1 })
+    for (const eyeRate of [0.3, 0.5, 0.7, 0.9]) {
+      const r = await probe({ [EYE_RATE]: eyeRate })
       if (!(r.perCast < SEND_OFF_BURST_MAX)) {
-        failures.push(`spinSeconds=${spin} 时单发应 <3（实到 ${r.perCast.toFixed(3)}）`)
+        failures.push(`eyeRate=${eyeRate} 时单发应 <3（实到 ${r.perCast.toFixed(3)}）`)
       }
       const fifo = windEyeFifo(spreadEyes(r.ex, r.eyes, r.front))
-      seen.push(`spin=${spin}: 现行式 mini=${r.mini} / FIFO mini=${fifo.mini}`)
+      seen.push(`eyeRate=${eyeRate}: 现行式 mini=${r.mini} / FIFO mini=${fifo.mini}（perCast=${r.perCast.toFixed(2)}）`)
       if (fifo.mini !== r.mini) diverged++
-      // ★ 但 9 上限在单发 <3 时**仍然**不可达（这是结构性论证的一半）
+      // ★ 9 上限在单发 <3 时**仍然**不可达（结构性论证的一半）
       if (fifo.overflow !== 0) {
-        failures.push(`spin=${spin} 单发 ${r.perCast.toFixed(3)}<3 时 9 上限竟咬合了 ${fifo.overflow} 次 ⇒ 结构性论证有误`)
+        failures.push(`eyeRate=${eyeRate} 单发 ${r.perCast.toFixed(3)}<3 时 9 上限竟咬合了 ${fifo.overflow} 次 ⇒ 结构性论证有误`)
       }
     }
     if (diverged === 0) {

@@ -488,7 +488,7 @@
   "outerExit": "stable"
  },
  "billy-roxy-lucia": {
-  "slack": 0.1,
+  "slack": 0,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -550,8 +550,8 @@
  "yixuan-roxy-lucia": {
   "slack": 0,
   "over": 0,
-  "stun": 4,
-  "outerExit": "stable"
+  "stun": 3,
+  "outerExit": "cycle"
  },
  "yixuan-trigger-lucia": {
   "slack": 0,

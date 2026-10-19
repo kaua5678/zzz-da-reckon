@@ -1079,6 +1079,20 @@ export function createRunCalcRound(deps: {
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
     const flinch1 = ap0.coverage.physicalCoverageRate
     const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio, lockForPool)
+    // CC-542：失衡分数逐轮打表（`PROBE_TRACE_AXISFRAC=1`，关着零成本）。r770 起用于定位 banyue-roxy-lucia 的
+    // 「读入 K ↔ 池次数」自反环：环载体是不是 `threads.prevPoolStunCount`（K 线程）经轴栈窗数 + countStun 自激。
+    probePush('PROBE_TRACE_AXISFRAC', '__axisFracRounds', () => {
+      const frac: Record<string, number> = {}
+      for (const c of sp1.pool.contributions) {
+        if (c.totalStun > 0) frac[`${c.slot}:${c.moveId}`] = Number(c.inAxisFraction.toFixed(6))
+      }
+      return {
+        key: probeKey(), agentId: 'stun', stunIn: stunCount, countStun, prevPool: threads.prevPoolStunCount ?? null,
+        pool: sp1.pool.stunCount, cont: Number(continuousStunCount(sp1.pool).toFixed(6)),
+        gross: Math.round(sp1.pool.grossStunBuildUp), eff: Math.round(sp1.pool.totalStunBuildUp),
+        frac, axisWindows: axisExecutedStack?.windowsUsed ?? 0,
+      }
+    })
 
     // Boss 预设弹刀反推下一轮量（失衡次数四舍五入）：本轮失衡池（含注入的击破位弹刀）→ 非弹刀基数 → 缺口 → 补齐。
     // 击破位弹刀行（轻弹刀 + 支援突击，count 随弹刀次数缩放）：行贡献剔出非弹刀基数（防 0↔T 振荡），

@@ -18,6 +18,7 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { ROXY_FULL_SPIN_SECONDS } from '@/mechanics/agents/roxy'
 import { buildExecutions } from '@/core/resource/rowBuild'
 import { calcRawDecibelParts } from '@/core/resource/resourceIncome'
 import { emptyPanel } from '@/core/panel'
@@ -104,16 +105,34 @@ describe('喧响账本行级 Σ parity（记账层 == 展示层）', () => {
     const roxy = rc.characters.find(c => c.agentId === '1621')!
     const perSec = Number((roxy as unknown as Record<string, unknown>).roxySpinSecondDecibel ?? 0)
     expect(perSec, '自旋每秒喧响表值（catalog 1621008 decibel_recovery=84.343）').toBeGreaterThan(0)
-    const spinSeconds = Number((roxy as unknown as Record<string, unknown>)['setting:roxy.spinSeconds'] ?? 0)
+    // ⚠ 2026-10-19 用户裁决：自旋秒数**不再是滑块**（`setting:roxy.spinSeconds` 已删）⇒
+    // 实际自旋秒数 = 满发 2.5s × 满发次数 + 1 次零散发，由能量预算决定（见 `computeRoxyExCount`）。
+    // 本用例改用**实际自旋总秒数**做基准（口径与 `buildRoxyExecutions` 同源）。
+    const spinSeconds = ROXY_FULL_SPIN_SECONDS
     expect(spinSeconds).toBeGreaterThan(0)
     const st = stateOf({ exSpecialCount: 3 })
     const rows = buildExecutions(roxy, st, st.chainCountTotal, 50)
-    const spin = rows.find(r => r.moveId === '1621008')
+    const spinRows = rows.filter(r => r.moveId === '1621008')
+    const spin = spinRows[0]
     expect(spin, '自旋行必须物化').toBeTruthy()
+    /** 自旋可能拆成「满发行 + 零散发行」两行（用户口径 2026-10-19）⇒ 总量按 Σ 判 */
+    const spinTotalDecibel = spinRows.reduce((a, r) => a + Number(r.totalDecibelRecovery ?? 0), 0)
     expect(spin!.decibelRecoveryOverride, '每秒口径必须走 override（表值直填会少算 spinSeconds 倍）').toBe(true)
+    // 行内 `decibelRecovery` 是**单发**口径 = 每秒值 × 该行的秒数（满发行 = 满发秒）。
     expect(spin!.decibelRecovery).toBeCloseTo(perSec * spinSeconds, 6)
+    /**
+     * 合成 state 带 `totalEnergy: 200` ⇒ 有能量预算 ⇒ 3 发里 **2 发满发 + 1 发零散**（200 = 2×85 + 30 剩余）。
+     * 这正是用户口径 2026-10-19「放多次满秒数和 1 次零散的，打出全部能量」的形态。
+     */
+    // 由**行自身**反推实际自旋总秒（`buildExecutions` 不产 `roxyWindEnergySource`，那是 buildResourceResult 的活）
+    const spinSecondsTotal = spinRows.reduce((a, r) => a + Number(r.totalDecibelRecovery ?? 0) / perSec, 0)
+    expect(spinRows.length, '满发 + 零散 ⇒ 两行（200 能量 = 2×85 + 30 剩余）').toBe(2)
+    expect(spinRows[1].count, '零散发行只打一次').toBe(1)
+    // 200 能量：2 发满发(85×2=170) + 零散发(剩余 30 ⇒ 启动 10 + 自旋 20/30 = 0.667s)
+    expect(spinSecondsTotal, 'Σ实际自旋秒 = 2×满发 + 零散(0.667s)').toBeCloseTo(2 * spinSeconds + (30 - 10) / 30, 6)
+    expect(spinTotalDecibel, 'Σ行总量 = 每秒值 × 实际自旋总秒').toBeCloseTo(perSec * spinSecondsTotal, 6)
     const parts = calcRawDecibelParts(roxy, st, st.chainCountTotal, st.exSpecialCount, st.ultimateCount, 180, 50)
-    // 账本含 自旋总量 = 每秒 × 秒数 × 次数（旧 decibelRecovery:0 硬编码曾全额漏计）
+    // 账本含 自旋总量 = 每秒 × 实际自旋总秒（旧 decibelRecovery:0 硬编码曾全额漏计）
     expect(parts.skillRegen).toBeGreaterThanOrEqual(perSec * spinSeconds * 3 - 1e-6)
   }, 60000)
 

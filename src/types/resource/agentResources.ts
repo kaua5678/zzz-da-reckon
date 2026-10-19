@@ -132,6 +132,25 @@ export interface CharacterResourceResult {
   exSpecialMoveId: string
   /** 强特单次能量消耗 */
   exSpecialEnergyConsume: number
+  /**
+   * **读数**：距下一次强特还**差多少点闪能**（已够 = 0）。纯增量字段，**不参与任何次数推导**。
+   *
+   * 语义：「差 1 点闪能就能多打一次强特」这个门槛在引擎里的可见表达——`exSpecialCount` 是
+   * 收敛后 `floor(总量/消耗)`（或实数通道），中间没有「差一点」的读数。本字段与
+   * `resolveExSpecialCount` **同一口径**（同一 consume、同一 `freeExSpecialCount` /
+   * `exReservedCount` / resource 型分支），计算点见 `core/resource/helpers.ts#exSpecialShortfallOf`；
+   * 单位 = 一次强特的闪能消耗（`exSpecialEnergyConsume`）。
+   *
+   * 读数口径：**恰在门槛上**（能量正好够到已兑现的下一发）⇒ 0；否则 = 距下一个门槛还差多少点
+   * （`(0, consume]`，`consume` = 一次强特消耗）；`E ≤ 0` ⇒ 一发消耗（不报 0，报 0 会被读成「够了」）。
+   * 恒 0 的三类**不适用**：① 替代资源型强特（`exSpecialCostType === 'resource'`：次数由模块
+   * 资源账本给出、不扣闪能）；② 强特不耗闪能（`exSpecialEnergyConsume <= 0`）；③ 次数由模块能力
+   * 接管（`exSpecialCount` 能力认领，如般岳嗔火/怒相循环——免费强特与付费混编，闪能单价不成立）。
+   *
+   * ⚠ 不许把本字段当「次数」或塞进任何补齐/反推的分母：它只是把「还差多少点」暴露给展示层，
+   * 加它前后全库其它数字逐位不变。
+   */
+  exSpecialEnergyShortfall: number
 
   // --- 喧响 ---
   decibelSource: DecibelSource

@@ -111,7 +111,8 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：规范值型（�
       'claret.cleaveSpecialCount', 'claret.gashCoverage', 'liuyin.c6EchoMax', 'liuyin.hug60Count',
       'liuyin.previousTeammateSlot', 'lucia.additionalAttackCount', 'lucia.frontSwitchRatio',
       'nangong.releaseCoverage', 'nangong.vibratoStacksPerRelease', 'norma.holdSeconds',
-      'roxy.spinSeconds', 'sigrid.cinema4Coverage', 'yeshuguang.zhaoyingCount',
+      // ⚠ `roxy.spinSeconds` 已删除（用户裁决 2026-10-19：自旋秒数自动按能量预算算，不是滑块）
+      'sigrid.cinema4Coverage', 'yeshuguang.zhaoyingCount',
       'yixuan.c6GiftUltCount', 'yixuan.stunExCoverage',
     ]
     const missing = ids.filter(id => !REGISTERED.has(id))
@@ -138,38 +139,38 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：规范值型（�
     }
     expect(failures, failures.join('\n')).toEqual([])
   }, 300000)
-
   /**
-   * `roxy.spinSeconds`：`roxy.ts:157` 的 `max(0, cfgSetting(…, 2))` → `:247-259` 自旋行
-   * `1621008` 的 `decibelRecovery = 表值(84.343) · spinSeconds`（`decibelRecoveryOverride: true`）。
+   * `roxy` 自旋段（2026-10-19 用户裁决后**没有滑块**了）：
+   * 用户原话「用户滑块感觉也没必要，这里的自旋秒数应该自动计算，自动把能量放完。
+   * 他会放多次满秒数和1次零散的，打出全部能量。」
    *
-   * ⚠ 只断言**行级** `decibelRecovery` / `damageMultiplier`（无上限、精确线性）：
-   * 风能/风眼/送别系在 `spinSeconds ≥ 2.1667` 后饱和（`windEnergyConsumed` 封顶 3/EX，
-   * v=2.5 与 v=4/5 都是 129，v=10 甚至回落到 123）⇒ 拿风能做三点会得出"滑块反向"的假结论。
-   * v=0 时该行**不存在**（`source.spinSeconds > 0` 守卫），断言行缺失而不是 count=0。
+   * ⇒ 本用例从「滑块三点线性」改为**能量闭合**判据：
+   *   ① 自旋行 1621008 存在且 `totalEnergyConsume` = 能量预算 − 启动耗能合计（放完，无余量）；
+   *   ② 行级 `decibelRecovery` = 84.343 × **实际自旋秒数**（满发 + 零散，不是次数 × 满发秒）。
+   * 口径来历见 `roxy.ts#computeRoxyExCount` / `partialSpinSeconds`。
    */
-  it('roxy.spinSeconds：行 1621008 decibelRecovery === 84.343·v（三点 0 / 1 / 2.5）', async () => {
+  it('roxy：自旋段把能量放完（行耗能 = 预算 − 启动），喧响按实际自旋秒数', async () => {
     const team: HarnessTeamSlot[] = [{ agentId: '1621', ...RICH }, ...mates(['1371', '1431'])]
-    const failures: string[] = []
     const DECIBEL_PER_SEC = 84.343 // catalog `1621008` decibel_recovery（每秒口径，@fact agent:1621/自旋喧响每秒口径）
-    for (const v of [0, 1, 2.5]) {
-      const row = await probe(team, 'roxy.spinSeconds', v,
-        calc => charOf(calc, '1621').executions.find(e => e.moveId === '1621008'), { lock: 3 })
-      if (v === 0) {
-        if (row) failures.push(`v=0: 自旋行应缺失（spinSeconds>0 守卫），实到 ${JSON.stringify(row)}`)
-        continue
-      }
-      if (!row) { failures.push(`v=${v}: 自旋行不存在 ⇒ 滑块没接线`); continue }
-      const expected = DECIBEL_PER_SEC * v
-      // ⚠ `decibelRecovery` 在 `SkillExecution` 里是可选的（`execution.ts:39`）⇒ 缺字段读成
-      // `undefined` 会让 `Math.abs(NaN) > 1e-6` 静默为 false、**假绿**；必须显式判缺失。
-      if (row.decibelRecovery === undefined) {
-        failures.push(`v=${v}: 自旋行缺少 decibelRecovery 字段（override 没落上）`)
-      } else if (Math.abs(row.decibelRecovery - expected) > 1e-6) {
-        failures.push(`v=${v}: decibelRecovery 应为 ${expected}，实到 ${row.decibelRecovery}`)
-      }
+    const { catalog } = await setupHarness(team)
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const c = charOf(calc, '1621') as unknown as {
+      executions: Array<{ moveId: string; decibelRecovery?: number; totalDecibelRecovery?: number; totalEnergyConsume?: number }>
+      exSpecialCount: number; derivedEnergy: number; roxyWindEnergySource?: { effectiveSpinSecondsTotal: number }
     }
-    expect(failures, failures.join('\n')).toEqual([])
+    // 自旋可能拆成「满发行 + 零散发行」两行（用户口径 2026-10-19）⇒ 按 Σ 判
+    const spinRows = c.executions.filter(e => e.moveId === '1621008')
+    expect(spinRows.length, '自旋行必须存在（能量预算 > 0 时恒有一次以上自旋）').toBeGreaterThan(0)
+    const src = c.roxyWindEnergySource!
+    expect(src.effectiveSpinSecondsTotal, '实际自旋总秒数应 > 0').toBeGreaterThan(0)
+    // ② 喧响 = 每秒值 × 实际自旋总秒数（行级 override 口径）
+    const spinDecibel = spinRows.reduce((a, r) => a + Number(r.totalDecibelRecovery ?? 0), 0)
+    expect(spinDecibel).toBeCloseTo(DECIBEL_PER_SEC * src.effectiveSpinSecondsTotal, 6)
+    // ① 能量闭合：启动 10×次数 + 自旋 30/s×实际秒数 = 预算（零散发已把余量用掉）
+    const startTotal = 10 * Math.floor(c.exSpecialCount)
+    expect(startTotal + 30 * src.effectiveSpinSecondsTotal, '自旋+启动应恰好用光能量预算'
+    ).toBeCloseTo(c.derivedEnergy, 4)
   }, 300000)
 
   /**

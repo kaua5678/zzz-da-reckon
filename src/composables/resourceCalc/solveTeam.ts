@@ -234,6 +234,10 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       probePush('PROBE_TRACE_OUTER', '__outerRounds', () => ({
         key: probeKey(), round: outerStunHistory.length + 1, stunIn: stunCount, stunNext: next, sig: curSig,
         poolStun: out.stunPool.stunCount, forceNoAxis, interactionScale: interactionScale ?? null,
+        // CC-542：K 线程（= 下一轮喂给轴栈窗数与 countStun 的量）——环载体判据
+        prevPoolIn: threads.prevPoolStunCount ?? null,
+        topUpParry: out.threadsApplied.interactionTopUp.parry,
+        topUpParryNext: out.interactionTopUp.parry,
       }))
       const feedbackStable = curSig === prevFeedbackSignature
       if (lockedStunCount >= 0) {
