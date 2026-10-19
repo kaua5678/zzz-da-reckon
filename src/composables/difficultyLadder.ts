@@ -54,12 +54,14 @@
  * `difficultyCurve.ts` 用 `opts.base` 换掉「全关」基线（预设静态权重/交互，与散点页同口径）
  * ——本模块自己不依赖 `teamCompare`，保持纯策略。轴态的唯一事实源是 `difficultyAxis.ts#axisStateOf`。
  *
- * 判据测试：`__tests__/difficultyLadder.test.ts`（点数 / ①④ 恒存在 / 轴态 / 单调）+ `difficultyAxis.test.ts`。
+ * 判据测试：`__tests__/difficultyLadder.test.ts`（点数 / ①④ 恒存在 / 轴态 / 单调）+ `difficultyAxis.test.ts`；
+ * 「② 烧吸收确有必要」全库判据拆 4 片并行跑（`__tests__/difficultyLadderBurnShard{0..3}.test.ts`，
+ * 共用 `src/test/ladderBurnShard.ts`；拆片理由与实测成本表见该文件头）。
  */
 import { type StunAxisState, type ConfigModel, type ComboAlignState, type ActionCountField } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
-import { axisStateOf, axisStands, axisRequirementMet, axisTruncationReason, type AxisState } from '@/composables/difficultyAxis'
+import { axisStateOf, axisStands, axisRequirementMet, axisTruncationReason, partialAxisContributes, type AxisState } from '@/composables/difficultyAxis'
 import { getInteractionDefaults } from '@/mechanics/interactionBaseline'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
@@ -167,9 +169,39 @@ export type InteractionKnob = 'zero' | 'default' | 'joint' | 'slotLadder'
 export function applyInteractionKnob(ctx: LadderCtx, knob: InteractionKnob): void {
   if (knob === 'zero') { clearInteractions(ctx); return }
   if (knob === 'default') return // 全关 = 不动权重（调用方已由 clearDifficultyLevers 复位）
+  /**
+   * **嘲讽取消 = 纯收益杠杆 ⇒ 拉满**（用户口径 2026-10-19 逐字）：
+   *
+   * > 「取消损失也算白给的收益吧，**前台时间多了就像合轴率一样的**。
+   * >   次数上限是你的**后摇次数上限**，最高是把后摇减到 0s」
+   * > 「我是说**提升难度的时候**才能自动拉满，比如**提高合轴率的时候，也要考虑这个值**。」
+   *
+   * ⇒ 与合轴吸收率（`absorbCapOf`：纯收益 ⇒ 拉满到 cap）同族，但**只在 ②③④ 拉、① 不拉**：
+   * ① 是「全 0 交互」的难度下限（连嘲讽都不打）；②③④ 逐步加操作量，取消后摇是
+   * 「同样的操作量换更多前台时间」⇒ 该给就给。
+   *
+   * **上限不由本模块计算**：写 `bounds.max`（见 TAUNT_CANCEL_FULL），引擎
+   * `computeBanyueRageCycle` 用 `min(手填, 失衡外连段数)` 硬截断 ⇒ 等价「拉到后摇归零」，不会超发。
+   * 这样本模块**不需要知道**后摇有多少——那取决于怒相/连段/轴态，是引擎的活。
+   */
+  for (let slot = 0; slot < 3; slot++) {
+    const row = ctx.config.team[slot] as unknown as Record<string, number | undefined> | undefined
+    // 只给**声明了该字段**的槽拉满（般岳专属；别的角色没有这个旋钮）
+    if (row?.tauntCancelCount === undefined) continue
+    ctx.config.setActionCount(slot, 'tauntCancelCount', TAUNT_CANCEL_FULL)
+  }
   applyTimeWeightAllocation({ calc: ctx.calc, configStore: ctx.config }, 'joint-levers')
   if (knob === 'slotLadder') optimizeInteractionsPerSlot(ctx)
 }
+
+/**
+ * 「嘲讽取消拉满」的写入值。
+ *
+ * 取 `ACTION_COUNT_BOUNDS.tauntCancelCount.max`（99）而不是「后摇次数」：后摇次数由引擎在
+ * 怒相/连段/轴态上算出来，编排层拿不到也不该复制那套推导（规则 11 单一事实源）。
+ * 引擎侧 `Math.min(手填, 失衡外连段数)` 保证写 99 与写真实值结果**逐位相同**。
+ */
+const TAUNT_CANCEL_FULL = 99
 
 /**
  * **按槽位职业分别求交互最优**（T141 卡 §3.2/§4 的既定口径）。
@@ -729,6 +761,17 @@ export interface LadderPointScene {
 export interface LadderSnapshot {
   counts: Record<string, number>
   dmgBySource: Record<string, number>
+  /**
+   * **本档的加权失衡易伤**（Σ行伤害×行覆盖率 / Σ行伤害，0..1）——残疾轴放行判据的左边。
+   *
+   * 用户口径 2026-10-18：「这个**残疾轴的综合易伤超过非轴的默认均匀易伤**后，就可以认为残疾轴
+   * 也是有轴易伤上的贡献，可以不隐藏。」判据消费方 = `difficultyAxis#partialAxisContributes`。
+   *
+   * ⚠ **必须由 `capture` 在本档求值时采**（与 `counts` / `dmgBySource` 同一刻）：
+   * `land` 里现读 `calc.damagePoolRows.value` 会与阶梯的其它读取构成**级联重算**（实测把
+   * `difficultyLadder.test` 卡死 10min+）。缺省（旧调用方没采）= 不判残疾轴（保持旧口径）。
+   */
+  weightedStunCoverage?: number
   /** 本点时间线截断秒数（引擎 `overflowSeconds`） */
   overflow?: number
   /** 本点手填（声明）交互总次数（缩前） */
@@ -889,12 +932,13 @@ export function climbDifficultyLadder(
   const capture = opts.capture
   const costOf = opts.costOf
   /** 采一点快照（同一点的全部字段读同一份 `resourceResult`，见 `LadderSnapshot` 注释） */
-  const snap = (): Pick<LadderPoint, 'counts' | 'dmgBySource' | 'overflow' | 'interactionsFilled' | 'interactionsPlayed'> => {
+  const snap = (): Pick<LadderPoint, 'counts' | 'dmgBySource' | 'overflow' | 'interactionsFilled' | 'interactionsPlayed'> & { weightedStunCoverage?: number } => {
     const s = capture?.(ctx)
     return s
       ? {
           counts: s.counts, dmgBySource: s.dmgBySource,
           overflow: s.overflow, interactionsFilled: s.interactionsFilled, interactionsPlayed: s.interactionsPlayed,
+          ...(s.weightedStunCoverage !== undefined ? { weightedStunCoverage: s.weightedStunCoverage } : {}),
         }
       : {}
   }
@@ -912,18 +956,39 @@ export function climbDifficultyLadder(
    * 判据本身在 `difficultyAxis#axisRequirementMet`（唯一事实源），本函数只执行它。
    */
   const land = (name: KnobPointName, st: PointState): LadderPoint | null => {
+    /**
+     * ⚠ **快照只采一次**（`snap()` 内部调 `capture`，后者含一次全队求值级联）：
+     * 旧写法在「残疾轴放行」分支再调一次 `snap()` 判覆盖率 ⇒ 每档多一次求值，
+     * 实测把 `difficultyLadder.test` 从 ~60s 拖到 6min+（CPU 满载）。
+     */
+    const snapshot = snap()
     if (!axisRequirementMet(st.axis)) {
       /**
-       * 被砍的档也带**现场**（用户问的「有没有 4 失衡」往往正是这些档）与 **x**（用户 2026-10-16
-       * 要求图上能看出「难度 ↔ 轴 ↔ 伤害」的关系 ⇒ 它们要能被画在曲线下方作对照）。
-       * ⚠ `x` 与曲线点同一个 `costOf`（量一次）——两把尺会让对照错位。
+       * **残疾轴放行**（用户口径 2026-10-18）：`partial`（跳过 N 招）不再一律不出数——
+       * 只要**这一档的整体易伤确实高于非轴均匀摊**，就说明轴真的贡献了集中易伤，应当展示。
+       * 用户原话：「只有少数招式打不了的可以展示……**这个残疾轴的综合易伤超过非轴的默认均匀易伤后**，
+       * 就可以认为残疾轴也是有轴易伤上的贡献，可以不隐藏。」
+       * 判据唯一事实源 = `difficultyAxis#partialAxisContributes`。
+       * `infeasible`（弃轴）天然不过（轴没执行 ⇒ 加权易伤退回非轴口径 ⇒ 差值 ≈ 0）。
        */
-      axisTruncated.push({
-        point: name, dmg: st.dmg, axis: st.axis, reason: axisTruncationReason(st.axis),
-        ...(costOf ? { x: costOf(ctx) } : {}),
-        ...sceneSnap(),
-      })
-      return null
+      // 覆盖率取**本档快照**（`capture` 与 `counts`/`dmgBySource` 同刻采），不在这里现读伤害池
+      // ——现读会与阶梯的其它读取构成级联重算（实测卡死 10min+），见 `LadderSnapshot.weightedStunCoverage`。
+      const weighted = snapshot.weightedStunCoverage
+      const passes = st.axis.kind === 'partial' && weighted !== undefined
+        && partialAxisContributes(weighted, ctx.calc.stunCoverage.value)
+      if (!passes) {
+        /**
+         * 被砍的档也带**现场**（用户问的「有没有 4 失衡」往往正是这些档）与 **x**（用户 2026-10-16
+         * 要求图上能看出「难度 ↔ 轴 ↔ 伤害」的关系 ⇒ 它们要能被画在曲线下方作对照）。
+         * ⚠ `x` 与曲线点同一个 `costOf`（量一次）——两把尺会让对照错位。
+         */
+        axisTruncated.push({
+          point: name, dmg: st.dmg, axis: st.axis, reason: axisTruncationReason(st.axis),
+          ...(costOf ? { x: costOf(ctx) } : {}),
+          ...sceneSnap(),
+        })
+        return null
+      }
     }
     const x = costOf ? costOf(ctx) : 0
     /**
@@ -937,7 +1002,7 @@ export function climbDifficultyLadder(
       point: name,
       knobs: st.knobs,
       axis: st.axis,
-      ...snap(),
+      ...snapshot,
       ...sceneSnap(),
       ...(noAxis ? { noAxis } : {}),
       ...(costOf ? { difficulty: x } : {}),
