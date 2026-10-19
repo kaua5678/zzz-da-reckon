@@ -158,6 +158,12 @@ node scripts/ui-check.mjs --tab 队伍对比 --radio 难度曲线 --main-c --cli
 - 候选想法（尚未决定做的方案）须带**证伪闸门**两行——依赖的**前提假设** + 假设为假时的**可观察失败**
   （AI 是论证机器不是检验机器，防「精致的垃圾」），过不了闸门不进「可开工」段。
 - 跨会话/长间隔恢复时先读 `OPEN-ITEMS.md` + `zc status` 再接续。短任务不写。
+- **⚠ 写 `OPEN-ITEMS.md` 只能用 `edit` 局部替换或 shell 追加，禁止「`read` 全文 → 拼接 → `write` 回盘」**
+  （2026-10-19 事故：`read` 对 >2000 行的文件会**静默截断**，当时只拿到 1811 行里的前 514 行，
+  按它拼接后 `write` 全量覆盖 ⇒ **丢掉 904 行，且该文件在 .gitignore 内、git 无兜底**）。
+  改前先 `cp .claude/OPEN-ITEMS.md .claude/OPEN-ITEMS.md.bak-$(date +%Y%m%d)`。
+  本次从 DSH 会话日志（`~/.dsh/sessions/.../session.v4.jsonl.zstd` 里的 read 输出）恢复了 910/1811 行，
+  仍缺 7 段（原位留 `<!-- LOST: ... -->`）——**看到 LOST 标记不要当成「本来就没有」**。
 
 ## 5. 多工人协作（把活派给别的会话时，派活方与接活方都读这段）
 
