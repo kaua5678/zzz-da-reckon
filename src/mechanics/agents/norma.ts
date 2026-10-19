@@ -283,6 +283,27 @@ export function resolveNormaHoldSeconds(cfg: unknown): number {
 }
 
 /**
+ * 诺姆强特**次数**：若干次满长按 + 1 次零散长按把能量放完（用户口径 2026-10-19）。
+ *
+ * 用户原话（回答「其他长按角色是否也一样」）：「**诺姆的长按和洛克茜一样**」。
+ * ⇒ 与 `computeRoxyExCount` 同构：`n_full = floor(E / (40 + 20×满按秒))`，
+ * 余数够激活（40 点）⇒ 还能打一次**零散长按**（长按秒数由余数反推，可以为 0 = 只打激活段）。
+ * 旧实现走通用 `floor(E / 满按耗能)` ⇒ 余数只要不够一整次满按就被丢掉（少算一整发）。
+ *
+ * 实测（全库 93 预设）当前**零 delta**：各队诺姆余数都 < 40 激活线 ⇒ 本式与旧式同值。
+ * 保留它是为了把口径写进代码（将来能量变化 / 换队时自动生效），不是为了一次性涨数值。
+ */
+export function computeNormaExCount(totalEnergy: number, fullHoldSeconds: number): number {
+  const fullHold = Math.max(0, Math.min(2, fullHoldSeconds))
+  const fullCost = EX_SPECIAL_ENERGY_COST + HOLD_ENERGY_PER_SEC * fullHold
+  if (!Number.isFinite(totalEnergy) || totalEnergy <= 0 || fullCost <= 0) return 0
+  const nFull = Math.floor(totalEnergy / fullCost)
+  const remainder = totalEnergy - nFull * fullCost
+  // 余数够激活（40）就还能打一次零散（长按秒数由余数反推，0 秒 = 只打激活段）
+  return nFull + (remainder >= EX_SPECIAL_ENERGY_COST - 1e-9 ? 1 : 0)
+}
+
+/**
  * cfg + 迭代状态 → 诺姆机制源（CC-279：执行行与资源结果原先各抄一份入参装配，新增入参只改一处会让
  * 伤害行与展示结果静默分叉；收成唯一装配点）。
  */
@@ -538,6 +559,12 @@ export const normaMechanic: AgentMechanicModule = {
   ],
   applyPanel: applyNormaPanel,
   buildCharConfig: buildNormaCharConfig,
+  /**
+   * 引擎期强特次数求解（规则 6 引擎落点）：与洛克茜同构——**满长按若干次 + 1 次零散长按把能量放完**
+   * （用户口径 2026-10-19：「诺姆的长按和洛克茜一样」）。
+   * 旧实现走通用 `floor(E / 满按耗能)` ⇒ 余数不够一整次满按就整块丢掉，少算一整发。
+   */
+  exSpecialCount: ({ cfg, totalEnergy }) => computeNormaExCount(totalEnergy, resolveNormaHoldSeconds(cfg)),
   /**
    * converge 阶段：把本轮失衡次数 / 覆盖率写进本槽 cfg（诺姆火力实验导弹舱与
    * 失衡内资源循环消费）。2026-09-15 arch 棘轮自 `convergence.ts` 的 `merged.agentId === '1571'`
