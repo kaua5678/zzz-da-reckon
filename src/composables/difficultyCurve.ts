@@ -949,13 +949,35 @@ export function attributeDmgChanges(changes: DmgSourceChange[], topN = 3, squeez
   return { top, squeezed, restDelta, totalDelta }
 }
 
-/** 一档快照（构成 = 关键次数 + 伤害来源 + 截断/交互量），交给 `climbDifficultyLadder#opts.capture` */
+/**
+ * **本档的加权失衡易伤**（Σ行伤害×行覆盖率 / Σ行伤害）。
+ *
+ * 用户口径 2026-10-18：「这个**残疾轴的综合易伤超过非轴的默认均匀易伤**后，就可以认为残疾轴
+ * 也是有轴易伤上的贡献，可以不隐藏。」⇒ 判据 `difficultyAxis#partialAxisContributes` 的左边。
+ *
+ * 与 `captureDmgBySource` 同源（同一份 `damagePoolRows`），只是按行覆盖率加权——
+ * `stunCoverage` 是引擎最终的每行读数（轴内=1 / 轴外=0 / 未进轴槽位=全局覆盖率），**不重算**。
+ */
+export function captureWeightedStunCoverage(calc: Calc): number {
+  let num = 0
+  let den = 0
+  for (const row of calc.damagePoolRows.value) {
+    const dmg = row.totalDamage || 0
+    if (dmg <= 0) continue
+    den += dmg
+    num += dmg * (row.stunCoverage ?? 0)
+  }
+  return den > 0 ? num / den : 0
+}
+
+/** 一档快照（构成 = 关键次数 + 伤害来源 + 截断/交互量 + 加权易伤），交给 `climbDifficultyLadder#opts.capture` */
 function captureLadderSnapshot(config: ConfigModel, calc: Calc): LadderSnapshot {
   // ⚠️ 全部字段读**同一份** `resourceResult.value`（同一次求值的结果）——分两次读会与档位错配
   const rr = calc.resourceResult.value
   return {
     counts: captureKeyCounts(calc),
     dmgBySource: captureDmgBySource(calc),
+    weightedStunCoverage: captureWeightedStunCoverage(calc),
     overflow: rr?.overflowSeconds ?? 0,
     // 交互量两读口：`preset` 传 undefined ⇒ 只用**当前配置**（与 x 轴同源；预设声明只补引擎没有的类型，
     // 而 `liveInteractions` 内部已按 `preset.interactions` 补过，见该函数）。rr 缺省 = 不缩 = 手填量。

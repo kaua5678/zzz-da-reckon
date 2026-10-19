@@ -9,16 +9,18 @@ import { createConvergenceRoundInputs } from '@/composables/resourceCalc/roundIn
 import { findMoveById } from '@/data/moveTableQueries'
 import type { AgentSkills } from '@/types/catalog'
 
-type Out = Record<string, { slot: number; moveId: string; count: number }>
+type Out = Record<string, { slot: number; moveId: string; count: number; inAxisCount: number }>
 // 对照基准：照抄原 roundInputs.ts 的 if/else（只含平A兜底部分）
+// ⚠ `inAxisCount` 是 2026-10-18 新增的跨界小数字段：**平A兜底恒在窗内**（fill 只补窗口剩余秒数）
+// ⇒ `inAxisCount === count`，与旧口径逐位等价。
 function legacy(agentIdOf: (slot: number) => string, skillsOf: (id: string) => AgentSkills | undefined, fill: Record<number, number>): Out {
   const out: Out = {}
   const add = (slot: number, moveId: string, count: number) => {
     if (count <= 0) return
     const key = `${slot}:${moveId}`
     const cur = out[key]
-    if (cur) cur.count += count
-    else out[key] = { slot, moveId, count }
+    if (cur) { cur.count += count; cur.inAxisCount += count }
+    else out[key] = { slot, moveId, count, inAxisCount: count }
   }
   for (const [slotStr, fillSec] of Object.entries(fill)) {
     const slot = Number(slotStr)
@@ -60,9 +62,9 @@ describe('CC-63 平A兜底 → 模块钩子 expandBasicFill', () => {
     expect(fixed['0:1051007'].count).toBeGreaterThan(0)
     expect(fixed['1:1041008'].count).toBeGreaterThan(0)
     // 已有连段展开的 executed 与兜底叠加（同 key 累加顺序不变）
-    const ex = { a: { slot: 0, moveId: '1051007', count: 2 } }
+    const ex = { a: { slot: 0, moveId: '1051007', count: 2, inAxisCount: 2 } }
     const legacyEx = legacy(agentIdOf, skillsOf, fill)
-    legacyEx['0:1051007'] = { slot: 0, moveId: '1051007', count: 2 + legacyEx['0:1051007'].count }
+    legacyEx['0:1051007'] = { slot: 0, moveId: '1051007', count: 2 + legacyEx['0:1051007'].count, inAxisCount: 2 + legacyEx['0:1051007'].inAxisCount }
     expect(inputs.expandExecutedToCounts(ex, fill)['0:1051007']).toEqual(legacyEx['0:1051007'])
     // 全 catalog 角色轮流放 0 槽（查别名误报）
     const ids = [...catalog.agentsMap.keys()]

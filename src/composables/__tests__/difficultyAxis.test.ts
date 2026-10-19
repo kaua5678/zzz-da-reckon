@@ -19,7 +19,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-  axisKindLabel, axisRequirementMet, axisStands, axisStateOf, axisTruncationReason, type AxisStateInput,
+  axisKindLabel, axisRequirementMet, axisStands, axisStateOf, axisTruncationReason, partialAxisContributes,
+  type AxisStateInput,
 } from '@/composables/difficultyAxis'
 import type { StackTraversalResult } from '@/core/stunAxisStack'
 
@@ -143,5 +144,34 @@ describe('axisStateOf（轴态唯一事实源）', () => {
       expect(a.skippedTotal).toBe(a.skipped.time + a.skipped.decibel + a.skipped.energy + a.skipped.sway)
       expect(a.skippedTotal).toBe(skips.length)
     }
+  })
+
+  /**
+   * ★ 用户口径 2026-10-18：「只有少数招式打不了的可以展示，怎么界定范围呢？
+   *   **就是这个残疾轴的综合易伤超过非轴的默认均匀易伤后**，就可以认为残疾轴也是有轴易伤上的贡献，
+   *   **可以不隐藏**。这样也能看到残疾轴提高交互变成完善轴的提升。」
+   *
+   * 判据 = `partialAxisContributes(加权易伤, 非轴均匀易伤)`，**严格大于**才放行（不带人为阈值）。
+   * 实测锚点（命破队 × 彷徨猎手）：放行档差值 **+0.195 ~ +0.514**（如 `banyue-liuyin` 0.818 vs 0.303）；
+   * 弃轴档差值 ≈ **−0.006**（轴没执行 ⇒ 加权易伤退回非轴口径）。
+   */
+  describe('★ 残疾轴放行判据 partialAxisContributes（2026-10-18）', () => {
+    it('易伤确实更高 ⇒ 放行', () => {
+      expect(partialAxisContributes(0.818, 0.303)).toBe(true)
+      expect(partialAxisContributes(0.4051, 0.405)).toBe(true) // 极窄差也放行（判据不带人为阈值）
+    })
+
+    it('易伤相等或更低 ⇒ 不放行（弃轴档的形态）', () => {
+      expect(partialAxisContributes(0.4045, 0.4045)).toBe(false) // 相等：没有额外贡献
+      expect(partialAxisContributes(0.398, 0.4045)).toBe(false) // 弃轴档实测 −0.006
+      expect(partialAxisContributes(0, 0.4)).toBe(false)
+    })
+
+    it('反空洞：判据不是恒真也不是恒假', () => {
+      const cases: [number, number][] = [[0.818, 0.303], [0.398, 0.4045], [0.5, 0.5], [0.6, 0.4]]
+      const results = cases.map(([a, b]) => partialAxisContributes(a, b))
+      expect(results.some(r => r), '恒假 ⇒ 残疾轴永远放不进来').toBe(true)
+      expect(results.some(r => !r), '恒真 ⇒ 弃轴档也会被放进来').toBe(true)
+    })
   })
 })

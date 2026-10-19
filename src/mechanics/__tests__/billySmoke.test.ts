@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { axisStateOf } from '@/composables/difficultyAxis'
 import { computeBillyHpModel, starlightBillyMechanic } from '@/mechanics/agents/starlightBilly'
 import type { CharacterOperationConfig, IterationState } from '@/types/resource'
 
@@ -298,5 +299,99 @@ describe('星徽·比利全管线冒烟（1531）', () => {
     expect(billy.executions.some(e => e.moveId === '1531_c6_radiant')).toBe(false)
     // 无 C6 增伤
     expect(calc.teamTotalDamage.value).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * 比琉通用轴（`preset-1531-1481-*`）的**跨窗行为**回归。
+ *
+ * ## 背景（2026-10-18 实测，用户报「星辉比利伤害直接丢失」）
+ *
+ * 该轴的「喧响不够双连携」窗单槽累计 **19.249s** > 18s 失衡窗（12s stunTime + 4s 连携 + 琉音 2s）。
+ * 修前引擎的时间门是「整段砍」⇒ 末位动作被 `skipped.time` 丢掉 ⇒ 轴态恒 `partial` ⇒
+ * `axisRequirementMet` 为假 ⇒ **难度曲线上每一档都不出数**（21 档全进 `axisTruncated`）。
+ * 部署侧也少一次大招（66.72M vs 现在 67.35M）。
+ *
+ * ## 修法（用户口径 2026-10-18，两轮）
+ *
+ * ① 「**超时不是应该把最后一个动作算部分易伤吗？**」+「**小数这一块要做就要做完，不要显示一半骗一半**」
+ *    ⇒ 引擎改成**跨界小数**：动作照常施放（`count` 整数，资源/时间按整次扣），
+ *    只有落在窗口内的那段（`inAxisCount`）吃失衡易伤。
+ * ② 「**count 肯定是整数**，你虽然前半部分用来吃易伤，后半部分用来打失衡，
+ *    但也不可否认这是一次完整的释放大招」⇒ 明确 `count` 不得折成小数。
+ * ③ 「**你把这个轴最后的星光加回去**」⇒ 末次星光回到轴里（走跨界逻辑，不再删）。
+ *
+ * ## 判据钉什么
+ *
+ * 不钉秒数（补录新招式/调 actionTime 会无谓变红），钉**语义**：
+ * ① `count` 是整数（施放次数）——用户口径 ② 的机器面；
+ * ② 跨界项的 `inAxisCount < count` 且 `inAxisCount > 0`（真的按比例拆，不是整段丢也不是全额给）；
+ * ③ 轴态在默认配置下 = `complete`（跨界不再判 `partial` ⇒ 难度曲线能出点）；
+ * ④ 伤害池里那条跨界招式真的被拆成「窗内段 cov>0 + 窗外段 cov=0」两行。
+ */
+describe('比琉通用轴：跨窗行为（2026-10-18 用户报「比利伤害直接丢失」）', () => {
+  /** 该预设的必备成员（`team: ['1531','1481','*']` ⇒ 槽0/1 固定），第三槽任意 */
+  const TEAM = [{ agentId: '1531' }, { agentId: '1481' }, { agentId: '1451' }]
+
+  it('★ count 恒为整数；跨界项的 inAxisCount 落在 (0, count) 开区间', async () => {
+    await setupHarness(TEAM)
+    const calc = useResourceCalc()
+    const stack = calc.stackTraversalResult.value
+    expect(stack, '比琉预设应命中并注入轴').not.toBeNull()
+    const entries = Object.values(stack!.executed)
+    expect(entries.length).toBeGreaterThan(0)
+    for (const e of entries) {
+      // ① 施放次数恒为整数（用户口径 2026-10-18）
+      expect(Number.isInteger(e.count), `${e.slot}:${e.moveId} count=${e.count} 必须是整数（一次完整施放）`).toBe(true)
+      // ② 窗内部分必须在 [0, count] 内，且不是「整段丢」（0）也不是「全额给」（>count）
+      expect(e.inAxisCount, `${e.slot}:${e.moveId} inAxisCount=${e.inAxisCount} 越界`).toBeGreaterThanOrEqual(0)
+      expect(e.inAxisCount, `${e.slot}:${e.moveId} inAxisCount=${e.inAxisCount} > count=${e.count}`).toBeLessThanOrEqual(e.count + 1e-9)
+    }
+    // ③ 本轴确实有跨界项（19.249s > 18s）——否则这条判据对「跨界」零判别力
+    const straddling = entries.filter(e => e.inAxisCount < e.count - 1e-9)
+    expect(straddling.length, '本轴应至少有一个跨界项（末位动作超出 18s 窗口）').toBeGreaterThan(0)
+    for (const e of straddling) {
+      expect(e.inAxisCount, `${e.slot}:${e.moveId} 跨界但窗内部分为 0 = 整段丢了易伤`).toBeGreaterThan(0)
+    }
+  })
+
+  it('★ 跨界招式的伤害池拆成「窗内吃易伤 + 窗外不吃」两行', async () => {
+    await setupHarness(TEAM)
+    const calc = useResourceCalc()
+    const stack = calc.stackTraversalResult.value!
+    const straddling = Object.entries(stack.executed)
+      .filter(([, v]) => v.inAxisCount < v.count - 1e-9)
+      .map(([, v]) => v.moveId)
+    expect(straddling.length).toBeGreaterThan(0)
+    for (const moveId of straddling) {
+      const rows = calc.damagePoolRows.value.filter(r => r.moveId === moveId)
+      const inRows = rows.filter(r => (r.stunCoverage ?? 0) > 0)
+      const outRows = rows.filter(r => (r.stunCoverage ?? 0) === 0)
+      expect(inRows.length, `${moveId} 缺「窗内段」`).toBeGreaterThan(0)
+      expect(outRows.length, `${moveId} 缺「窗外段」（跨界 = 部分进窗，必须有窗外段）`).toBeGreaterThan(0)
+      /**
+       * ⚠ **不拿池行合计去对 `executed.count`**：本招还有「好评转大·赠送」行（琉音转大，
+       * `sourceTag='gift'`）——那是**额外赠送**的终结技，不经过轴栈执行 ⇒ 池行合计天然大于
+       * `executed.count`（实测 7 vs 5）。判据只钉**池内自洽**与**跨界比例**：
+       *  · 池内「窗内段」次数合计 == `executed.inAxisCount`（这部分吃易伤的额度一分不多一分不少）；
+       *  · 窗内 + 窗外 == 池内该招总数（拆分守恒）。
+       */
+      const inSum = inRows.reduce((a, r) => a + r.count, 0)
+      const outSum = outRows.reduce((a, r) => a + r.count, 0)
+      const total = inSum + outSum
+      expect(total, `${moveId} 拆分不守恒`).toBeCloseTo(rows.reduce((a, r) => a + r.count, 0), 6)
+      // 窗内段合计应 ≥ executed 的 inAxisCount（gift 行可能额外贡献窗内额度），且不得超过总数
+      const exec = Object.values(stack.executed).find(v => v.moveId === moveId && v.slot === 0)!
+      expect(inSum, `${moveId} 窗内段合计 ${inSum} 应覆盖 executed.inAxisCount=${exec.inAxisCount}`).toBeGreaterThanOrEqual(exec.inAxisCount - 1e-6)
+    }
+  })
+
+  it('★ 默认配置下轴态 = complete（跨界不算 partial ⇒ 难度曲线能出点）', async () => {
+    const { config } = await setupHarness(TEAM)
+    // 自动轴默认开 ⇒ 命中比琉预设
+    const calc = useResourceCalc()
+    const st = axisStateOf(calc)
+    expect(st.kind, `轴态 ${st.kind}（skipped=${JSON.stringify(st.skipped)}）——轴没打完时难度曲线整档不出数`).toBe('complete')
+    expect(config.autoYidhariAxis).toBe(true)
   })
 })

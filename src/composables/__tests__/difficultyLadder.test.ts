@@ -489,55 +489,29 @@ describe('难度曲线关键旋钮点（T140c）', () => {
       '★ 般岳的双反必须被恢复（修前恒为 0）').toBe(true)
   })
 
-  it('② 的落点 = **最小**吸收率（r 恰好是首个使轴成立的网格点，不是机械取 cap）', async () => {
-    /**
-     * 卡 §3.1 的 ② = 「求**最小**（joint 交互, 吸收率）使轴成立」。
-     *
-     * ## ⚠ 2026-10-15（T170）判据换代：从「r ≡ 0」改为「r 最小」
-     *
-     * 旧判据断言**全库 r ≡ 0**，依据是实测「②需合轴(r>0) = 0 队」。**那个前提随口径收紧失效了**：
-     * 旧 `axisStands` 把 `partial` 也算成立 ⇒ ② 早早落在 r=0（轴只打了一半也算「立起来」）。
-     * 新口径要求 `complete` ⇒ 有 4 支队**必须烧吸收**才能让轴一招不少地立起来：
-     * `claret-koleda-rina` r=0.55 / `auto-1611-1571-1211` r=0.85 /
-     * `auto-1591-1481-1211` r=0.75 / `banyue-trigger-lucia` r=0.95。
-     *
-     * ⇒ 继续断言「r ≡ 0」会**逼引擎回到旧口径**（那是拿判据锁死错误行为，规则 10 禁止）。
-     * 换成的真命题 = **吸收确实是必需的**：凡 ② 落在 `r > 0` 的队，**在 `r = 0` 下轴必须不成立**
-     * （`absorbCap = 0` ⇒ ② 缺失）。这排除了「② 白白烧吸收」——若 r=0 就够，② 本该落在 0。
-     *
-     * ⚠ **不要用「r 减一格再跑一遍」验最小性**：`scanAbsorbGrid` 的网格是
-     * `0..cap` 均分 `steps` 份 ⇒ 改 `cap` 会**整体重排网格点**（cap=1 时格点 0.90，
-     * cap=0.95 时格点是 0.9025）⇒ 「r−0.05」根本不是同一套网格上的前一格，
-     * 那样验出来的是我自己的算术错误，不是引擎行为（本判据第一版就踩了这个坑）。
-     */
-    const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
-    await catalog.loadBuildRecommendations()
-    const calc = useResourceCalc()
-    const presets = teamPresets.filter(x => Array.isArray(x.team) && x.team.length === 3)
-    const notMinimal: string[] = []
-    let withAxis = 0
-    let burning = 0
-    for (const p of presets) {
-      const r = climbDifficultyLadder({ config, calc, absorbCap: 1 }, p.team as [string, string, string])
-      const a = r.points.find(x => x.point === 'axis')
-      if (!a) continue
-      withAxis++
-      if (a.knobs.absorb <= 0) continue
-      burning++
-      // r > 0 ⇒ 吸收是必需的：把 cap 压到 0（唯一格点 = 0）时 ② 必须不再存在
-      const rZero = climbDifficultyLadder({ config, calc, absorbCap: 0 }, p.team as [string, string, string])
-      if (!rZero.axisPointMissing) {
-        notMinimal.push(`${p.id}: ② 落在 r=${a.knobs.absorb}，但 r=0 就已能立轴（白烧吸收）`)
-      }
-    }
-    expect(withAxis, '反空洞：必须有队产出 ②（否则本判据零覆盖）').toBeGreaterThan(0)
-    expect(notMinimal, `② 烧吸收必须确有必要（这些队 r=0 就够）：\n${notMinimal.join('\n')}`).toEqual([])
-    /**
-     * 非平凡性自证：若全体 r ≡ 0，本条就退化成旧判据、对「② 烧不烧吸收」零判别力。
-     * 实测新口径下有队 r > 0 ⇒ 断言它 > 0 是**在锁住「判据确实活着」**。
-     */
-    expect(burning, '新口径下应有队需要烧吸收才能让轴一招不少（否则本判据是空转的）').toBeGreaterThan(0)
-  }, 1_800_000)
+  /**
+   * ## ★ 「② 的落点 = 最小吸收率」的全库判据已**迁出本文件**（T182，2026-10-18）
+   *
+   * 判据内容（`r > 0 ⇒ absorbCap=0 时 ② 必须缺失`，即「吸收确实必需」）**一字未改**，
+   * 只是拆成 4 个文件并行跑 —— 它单条实测 **592s**，是整套 `npm run verify` 的唯一长尾
+   * （全量 691s 里占 86%），而 vitest 只做**文件级**并行。
+   *
+   * | 文件 | 承担 |
+   * |---|---|
+   * | `difficultyLadderBurnShard{0..3}.test.ts` | 全库 3 槽预设按排序后下标 `% 4` 分片（24/23/23/23 队，实测 101/146/122/146s） |
+   * | `difficultyLadderBurnCoverage.test.ts` | 分片并集 == 全库、两两互斥、无空片（纯静态，~0s） |
+   * | `difficultyLadderBurnWitness.test.ts` | 原用例末尾 `burning > 0` 的**非平凡性闸门**（见证队跨 r=0.4/0.55/0.85 三档） |
+   *
+   * 共用实现 = `src/test/ladderBurnShard.ts`（其文件头记了分片理由、实测成本表与「判据一字未改」的承诺）。
+   * ⚠ 原用例的两条**判据换代历史**仍有效，改这条判据前必读：
+   *
+   * - **2026-10-15（T170）从「r ≡ 0」改为「r 最小」**：旧 `axisStands` 把 `partial` 也算成立 ⇒ ② 早落 r=0；
+   *   新口径要求 `complete` ⇒ 有队必须烧吸收才立得起来。继续断言「r ≡ 0」会**逼引擎回到旧口径**
+   *   （拿判据锁死错误行为，规则 10 禁止）。
+   * - ⚠ **不要用「r 减一格再跑一遍」验最小性**：`scanAbsorbGrid` 的网格是 `0..cap` 均分 `steps` 份 ⇒
+   *   改 `cap` 会**整体重排网格点**（cap=1 时格点 0.90，cap=0.95 时格点是 0.9025）⇒ 「r−0.05」根本
+   *   不是同一套网格上的前一格，那样验出来的是自己的算术错误，不是引擎行为（判据第一版踩过）。
+   */
 
   it('★ 卡 §6.3：交互收益**按槽位职业分**——主C 全程 Δ ≥ 0 / 辅助 Δ ≤ 0 / 击破允许为正', async () => {
     /**

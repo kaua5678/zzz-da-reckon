@@ -202,7 +202,7 @@ describe('倍率表系数演算：招式分类', () => {
     expect(ult!.cells.find((c) => c.rowId === 'attack_data_0')?.actual).toBeCloseTo(80, 1)
   })
 
-  it('定点分类覆盖：般岳「支援突击：冲霄」实为闪避反击公式（金身格挡后招式，时间 −1.5s）', () => {
+  it('定点分类覆盖：般岳「支援突击：冲霄」实为闪避反击公式（金身格挡后招式）', () => {
     expect(classifyMove(mkMove({ id: '1471029', name: { zhCN: '支援突击：冲霄' } }), 'assist', 'rupture')).toBe('dodgeCounter')
     // 锚点由「支援突击：昂霄」承担：与支援突击公式五列比值 ≈1.000
     const axiao = report.moves.find((m) => m.moveId === '1471026')
@@ -212,8 +212,10 @@ describe('倍率表系数演算：招式分类', () => {
       expect(cell, `昂霄 ${rowId} 格应存在`).toBeDefined()
       expectNear(cell!.ratio ?? NaN, 1.0, 0.01, `昂霄 ${rowId}`)
     }
-    // 冲霄有效时间 = 2.667 − 1.5 = 1.167s：秽盾 150+100×1.167=266.7 精确相等，积蓄/喧响 ≈1.000；
-    // 伤害/失衡为 ~0.94/~0.93（般岳自身特调，偏差清单呈现）
+    // 冲霄有效时间 = 1.167s：**catalog 源头已修正**（2026-10-18：秽盾 266.7 = 积蓄 116.69 + 闪反加成 150
+    // ⇒ (秽盾−加成)/100 = 1.167，规则单源 `scripts/lib/type-bonus-time.mjs`）。
+    // 修前靠 `MOVE_TIME_ADJUSTMENTS['1471029'] = -1.5` 只在**本页**补时间、资源引擎没接（2.667s），
+    // 同一招两个页面两个时间；现两边读同一个 catalog actionTime，本表已清空。
     const cxiao = report.moves.find((m) => m.moveId === '1471029')
     expect(cxiao, '冲霄应在演算结果中').toBeDefined()
     expectNear(cxiao!.t ?? 0, 1.167, 0.001, '冲霄有效时间')
