@@ -18,7 +18,7 @@
  */
 import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
-import { withStunCount } from '@/core/stunPool'
+import { withStunCount, withStunCountRebuilt } from '@/core/stunPool'
 import { stunWindowFraction } from '@/core/effectiveTime'
 import type { OuterExit, ResourceCalcConfig } from '@/types/resource'
 import { initialCalcRoundThreads } from './roundThreads'
@@ -322,7 +322,22 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     if (outerExit === 'cycle' && stunWindowDur > 0 && stunEffTime > 0) {
       const nec = out.resourceResult.characters.reduce(
         (s, c) => s + c.timeAllocation.necessaryTime, 0)
-      const cap = Math.max(0, Math.ceil((stunEffTime - nec) / stunWindowDur))
+      /**
+       * ⚠ **cap 的下界必须是「池本来能打出的次数」的一个保守估计**，不能只按 nec 算。
+       *
+       * 实测翻车（2026-10-20）：`banyue-jufufu-lucia` nec=165.1、W=16 ⇒ cap=1，
+       * 重跑后池被钉到 1、再算出 0 ⇒ **整队失衡归零**，窗口 0 个。
+       * `banyue-norma-lucia` nec=200.7、W=18 ⇒ cap=-1 ⇒ 同样归零。
+       * 但这两队显然打得满（原本 pool=4），把它们的失衡清空违反用户口径
+       * 「**保全前面失衡**的前提下争取最后一次」。
+       *
+       * 修正：`nec` 是**全队必要动作**，其中已经含了「失衡窗口外要打的东西」；
+       * 用它反推可容窗口数会**系统性低估**（nec 里有一部分本来就发生在窗口外）。
+       * 取 `max(1, cap)`：**至少保住 1 次失衡** —— 这是「前面那几次完整失衡」的下限，
+       * 也是用户说的「达不到 4 就打 3」里最极端的「只能打 1」。
+       * `cap < 1` 时不再往下压（真正的装不下由可行性处置/如实上报负责，不在这里静默清零）。
+       */
+      const cap = Math.max(1, Math.ceil((stunEffTime - nec) / stunWindowDur))
       if (out.stunPool.stunCount > cap) {
         /**
          * ⚠ **必须按 cap 重跑一整轮**，不能只改字段。
@@ -351,8 +366,19 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           } finally {
             resourceConfig.stunCountLockOverride = prevOverride
           }
+          /**
+           * ⚠ **重跑后仍要对齐失衡值合计**（2026-10-20 实测）：`locked` 路径只把「次数」钉到 cap，
+           * 池内部的 `totalStunBuildUp` 仍可能按自算次数累加 ⇒ 恒等式
+           * `floor(continuousStunCount(pool)) === pool.stunCount` 破掉
+           * （实测 auto-1371-1481-1451：池报 1、连续值 6.349）。
+           * 用 `withStunCountRebuilt`（以 `stunBuildUpForCount` 反函数重建失衡值总量）收尾。
+           */
+          const aligned = {
+            ...rerun.out,
+            stunPool: withStunCountRebuilt(rerun.out.stunPool, cap),
+          }
           return {
-            out: rerun.out,
+            out: aligned,
             outPrev: rerun.outPrev,
             outerRounds: outerRounds + rerun.outerRounds,
             outerConverged: true,

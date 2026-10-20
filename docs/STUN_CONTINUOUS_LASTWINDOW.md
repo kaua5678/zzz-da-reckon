@@ -660,3 +660,35 @@ round 6 我把「锁 5 比锁 4 低 11M + 葬血强袭整行消失」判成**要
 | **既有**（与本改动无关） | `moduleAnomalyEventRecords`×2、`outerCycleColdStart`×2、`outerCyclePick`、`inStunAttribution` | 部分为 C3 遗留 |
 
 ⚠ **本轮未重生成基线**：18 条红未归因完前不能重生成（否则把未解释的漂移一起认领）。
+
+## 24. 归因进展（2026-10-20 round 9）：18 条红 → 9 条
+
+### 已清零（9 条）
+
+| 测试 | 处置 | 理由 |
+|---|---|---|
+| `stunCoveragePoolSync` | 更新反空洞断言 | 原要求「扫描面必须有 cycle 队」——环归零后前提消失，改为断言扫描面非空 |
+| `stunTimeline` | **自动修复** | 我的 `cap` 曾把 `banyue-jufufu`/`banyue-norma` 压到 0 窗口；加 `max(1, cap)` 下界后恢复 |
+| `comboAbsorbBeforeTruncation` | 自动修复 | 同上 |
+| `moduleAnomalyEventRecords` ×2 | 自动修复 | 同上 |
+| `outerCyclePick` | **skip 并说明** | 它验证「真实出环 ⇒ 长环分支被调用」——环归零后该分支全库不再调用；
+  纯函数判据仍在 `outerCycle.test.ts`（35 条） |
+| `stunPoolContinuous` ② | **修复真缺陷** | `locked` 路径只钉次数、不重算失衡值总量 ⇒ `floor(连续)` ≠ `stunCount`
+  （实测 auto-1371：池报 1、连续值 6.349）。新增 `withStunCountRebuilt`（用 `stunBuildUpForCount` 反函数重建）后闭合 |
+
+### 剩余 9 条（8 文件）
+
+| 测试 | 断言 | 性质 |
+|---|---|---|
+| `axisAutoGuarantee` | `expected 15 to be 0`（补齐量） | **手工调参夹具**：该用例历史上换过 3 次预设（`banyue-roxy` → `banyue-trigger`），每次都是为让数值落进可行域。cap 改了失衡次数 ⇒ 这个手调点再次越界 |
+| `archiveDeployStun` | `expected 0 to be >= 1`（反推弹刀） | 同上：反推输入随失衡次数变 |
+| `foldAccumulatorExit` / `foldResidualCapFeedback`×2 | 账本秒数偏离基线 6.04s | **重跑改变时序**的真实后果，需规则 10 归因 |
+| `axisExecutedCountChannelCc298` / `damagePoolBatchR18d` / `outerCycleColdStart` / `inStunAttribution` | 各类快照 | 同类 |
+
+### 本轮的关键判断
+
+**这 9 条不是「改坏了」，而是「改动改变了结果，快照需要重取」**——但**不能无脑重取**：
+`axisAutoGuarantee` / `archiveDeployStun` 那两条的夹具是**为了绕开旧约束而调出来的**，
+环归零后应当**重新选一个自然的夹具**，而不是把期望值改成新数字（那会让判据失去判别力）。
+
+⚠ 本轮**未重生成 timeGolden/timeFillRatchet 基线**：9 条红未归因完之前重生成 = 把未解释的漂移一起认领。

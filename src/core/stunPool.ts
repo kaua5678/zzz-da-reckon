@@ -282,3 +282,25 @@ export function relaxAutoFillStep(prev: number | undefined | null, est: number, 
   if (e > prev) return Math.min(cap, prev + Math.ceil((e - prev) / 2))
   return prev
 }
+/**
+ * **按次数重建池，含失衡值总量**（连续失衡 capacity 结算专用，2026-10-20）。
+ *
+ * 与 `withStunCount` 的区别：后者**刻意**只改次数派生字段、保留失衡值合计
+ *（CC-150 的语义 = 「按 K 分配时间，池报 K」，失衡值不该被伪造）。
+ *
+ * 但连续失衡的 capacity 结算要的是**另一件事**：按「时间只容得下 cap 次」重算整局，
+ * 池的失衡值**本来就该按 cap 次重建**（`stunBuildUpForCount` 是 `continuousStunCount` 的反函数，
+ * CC-472 已锁其往返一致）。否则恒等式 `floor(continuousStunCount(pool)) === pool.stunCount` 破掉
+ * —— 实测 `auto-1371-1481-1451`：池被钉到 1、失衡值仍是按 6 次算的 ⇒ 连续值 6.349、池报 1。
+ *
+ * 判据：`stunPoolContinuous.test.ts` ②（stable 停点上 `floor(连续) === stunCount`）。
+ */
+export function withStunCountRebuilt(pool: StunPoolResult, stunCount: number): StunPoolResult {
+  const rebuilt = withStunCount(pool, stunCount)
+  return {
+    ...rebuilt,
+    // 失衡值总量按 cap 次重建（反函数保证 continuousStunCount(它) ≈ stunCount）
+    totalStunBuildUp: stunBuildUpForCount(pool, stunCount),
+    grossStunBuildUp: Math.min(pool.grossStunBuildUp, stunBuildUpForCount(pool, stunCount)),
+  }
+}

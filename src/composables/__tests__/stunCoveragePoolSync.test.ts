@@ -32,6 +32,8 @@ describe('C：覆盖率与失衡池次数同源', () => {
     expect(presets.length, '预设扫描面塌了').toBeGreaterThanOrEqual(80)
     const violations: string[] = []
     let cycleTeams = 0
+    let scanned = 0
+    let nonZeroCoverage = 0
     let truncatedTeams = 0
     for (const preset of presets) {
       const { catalog, config } = await setupHarness(['', '', ''])
@@ -42,10 +44,12 @@ describe('C：覆盖率与失衡池次数同源', () => {
       const rr = calc.resourceResult.value
       const pool = calc.stunPoolResult.value
       if (!rr || !pool) continue
+      scanned++
       if (rr.convergence.outerExit === 'cycle') cycleTeams++
       const effTime = effectiveBattleTime(config.enemy)
       const W = calc.windowDuration.value
       const cov = calc.stunCoverage.value
+      if (cov > 0) nonZeroCoverage++
       if (cov < 0.999 && Math.abs(cov * effTime / W - pool.stunCount) > 0.02) truncatedTeams++
       /**
        * 直接判据：覆盖率隐含的窗口数 == 池次数（决算队按 lost 修正后比）。
@@ -58,8 +62,12 @@ describe('C：覆盖率与失衡池次数同源', () => {
       }
     }
     expect(violations, `覆盖率与池次数不同源（同一结果里两个物理量）：\n${violations.join('\n')}`).toEqual([])
-    // 反空洞：扫描面里必须真有 cycle 队，否则钳位分支根本没被覆盖
-    expect(cycleTeams, '预设里没有 cycle 队 ⇒ 钳位分支未被本判据覆盖').toBeGreaterThan(0)
-    expect(truncatedTeams, '决算截断队为 0 ⇒ 弱形式判据恒真').toBeGreaterThanOrEqual(0)
+    // 反空洞（2026-10-20 更新）：原先要求「扫描面里必须有 cycle 队」以覆盖 CC-150 钳位分支。
+    // 连续失衡落地后**环已归零**（全库 cycles=0，见 continuousStunMonotonic.test.ts 判据①）
+    // ⇒ 该前提不再成立，但**判据本身更强了**：既然没有 cycle 队，就不存在「钳位后覆盖率
+    // 与池不同源」的窗口期 —— 同源必须无条件成立。故改为直接断言扫描面非空。
+    expect(scanned, '扫描面塌了（一个预设都没跑到）').toBeGreaterThan(80)
+    // 反空洞②：覆盖率必须真的被算出过非零值，否则判据恒真
+    expect(nonZeroCoverage, '全库覆盖率恒 0 ⇒ 本判据恒真').toBeGreaterThan(0)
   }, 900_000)
 })

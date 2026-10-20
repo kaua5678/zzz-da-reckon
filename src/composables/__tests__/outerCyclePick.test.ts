@@ -146,7 +146,23 @@ async function setupLongCyclePreset() {
   return { calc, config }
 }
 
-describe('环内选点的接线：长环成员切片首尾对齐且取规范停点', () => {
+/**
+ * ⚠ **本用例已于 2026-10-20 退役（skip），原因 = 它测的现象已不存在**。
+ *
+ * 它验证的是「真实出环 ⇒ `findOuterLongCycleLag` 命中 ⇒ 长环分支被调用一次 ⇒
+ * 成员切片首尾对齐 ⇒ 规范选点与相位无关 ⇒ 最终结果就是选中的那一轮」。
+ *
+ * 连续失衡落地后（`solveTeam` 的 capacity 结算，commit 5f022094 起），
+ * **全库环归零**（93 预设 `outerExit` 全为 `stable`，见 `continuousStunMonotonic.test.ts` 判据①），
+ * 长环分支在全库**一次都不会被调用** ⇒ 本用例的前提不再成立。
+ *
+ * **纯函数层的判据没有丢**：`outerCycle.test.ts`（35 条）仍完整覆盖
+ * `pickOuterCycleMember` / `findOuterLongCycleLag` 的选点与长环识别逻辑。
+ * 本文件保留而不删除，是为了让后来者知道「这条接线曾经存在、为什么退役」。
+ *
+ * 若要恢复：先找一个真的会出环的夹具（当前全库没有），再放开 skip。
+ */
+describe.skip('环内选点的接线：长环成员切片首尾对齐且取规范停点（已随环消除退役）', () => {
   it('auto-1041-1571-1031：长环分支只调用一次且成员闭环、选点与相位无关', async () => {
     // 观察窗口从建队**之前**就打开：2026-10-03 `31fdfe8f`（音擎叠层覆盖率回填）在 useResourceCalc 里加了
     // `watch(..., { immediate: true, flush: 'post' })`，建队后的首个 await 就把整条管线算完并缓存，
@@ -182,7 +198,14 @@ describe('环内选点的接线：长环成员切片首尾对齐且取规范停�
       expect([rotated[rp.index].stunIn, rotated[rp.index].next], `旋转 ${r} 后选中的不是同一成员`).toEqual([picked.stunIn, picked.next])
     }
     // ④ 出口与选点标志
-    expect(rr!.convergence?.outerExit).toBe('cycle')
+    /**
+     * ⚠ 2026-10-20 更新：连续失衡落地后**全库环归零**（cycles=0，见 continuousStunMonotonic 判据①），
+     * 本夹具 `auto-1041-1571-1031` 从 `cycle` 变成 `stable` ⇒ 原 `toBe('cycle')` 不再成立。
+     * 但本用例的**核心价值是验证环内选点纯函数**（上方 ②③⑤ 的旋转不变性与落点同一性），
+     * 那部分不依赖「真的跑出环」。故这里改为：出口**不再是 cycle**（记录新事实），
+     * 纯函数选点仍按真实成员的 `tail` 验证。
+     */
+    expect(rr!.convergence?.outerExit, '连续失衡后本队应已收敛（不再是 cycle）').toBe('stable')
     expect(Boolean(rr!.convergence?.outerCyclePickedEarlier)).toBe(result.pickedEarlier) // 与纯函数返回值同源（r427 前恒 true，取决于相位；false 时字段不写）
     // ⑤ 落点同一性：最终结果就是纯函数选中的那一轮，而不是末轮（适配层吞掉 index 时只有这条会红）
     expect(tail.length).toBe(n)
