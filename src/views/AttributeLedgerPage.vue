@@ -41,7 +41,6 @@
           <n-radio-button value="matrix">矩阵</n-radio-button>
           <n-radio-button value="drill">下钻筛选</n-radio-button>
           <n-radio-button value="facet">按内容分面</n-radio-button>
-          <n-radio-button value="chart3d">拐力热力图</n-radio-button>
         </n-radio-group>
         <span class="muted">
           第三维＝<b>具体内容</b>（主词条 / 副词条 / 套装 / 音擎 / 被动…）：行×列×内容唯一落位，不重不漏
@@ -127,11 +126,6 @@
         </table>
       </div>
 
-      <!-- 热力图：概览用（对比属性拐力强弱 / 分布来源）；核对数字请用下钻/分面表格 -->
-      <div v-if="viewMode === 'chart3d'" class="chart3d-block">
-        <ContributionHeatmap :rows="drilled" :label-of="statLabel" />
-      </div>
-
       <!-- C：按内容大类分面，每个分面一张 提供者×属性 的二维表 -->
       <div v-if="viewMode === 'facet'" class="facet-block">
         <div v-for="f in facets" :key="f.kind" class="facet-card">
@@ -169,7 +163,7 @@
 
       <!-- ⚠ 必须是独立的 v-if（不能 v-else-if）：上面第 38/41 行是两个各自独立的 v-if，
            v-else-if 要求紧邻 v-if，中间插了公式块就断链 ⇒ 整块矩阵表永远不渲染（实测页面只剩公式表） -->
-      <template v-if="table && viewMode !== 'facet' && viewMode !== 'chart3d'">
+      <template v-if="table && viewMode !== 'facet'">
         <div class="table-wrap">
           <table class="ledger-table">
             <thead>
@@ -252,7 +246,6 @@ import {
   type LedgerCell, type FlatContribution, type ContentKind,
 } from '@/composables/agentMechanicView'
 import { STAT_META, type FormulaZone } from '@/utils/statMeta'
-import ContributionHeatmap from '@/components/charts/ContributionHeatmap.vue'
 
 /** 属性区展示顺序（与 statMeta 同源，只用于分面小表的列排序） */
 const ZONE_ORDER_UI: FormulaZone[] = [
@@ -297,7 +290,7 @@ const formulas = computed(() => ledger.value?.formulas ?? [])
  * 两者都只是对**同一份** `FlatContribution[]` 做 filter/groupBy，
  * 不另建账本（否则又回到「多套实现互相漂移」）。
  */
-const viewMode = ref<'matrix' | 'drill' | 'facet' | 'chart3d'>('matrix')
+const viewMode = ref<'matrix' | 'drill' | 'facet'>('matrix')
 /** B：三维筛选（空 = 不限制） */
 const filterProvider = ref<string[]>([])
 const filterContent = ref<ContentKind[]>([])
