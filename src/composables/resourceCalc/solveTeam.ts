@@ -433,7 +433,24 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        * 重跑一次 = 「按 K 窗排时间重新算一遍」，池与覆盖率都由这一次自己产出 ⇒ 天然同源。
        */
       const chosenK = kStar
-      const chosenRun: ReturnType<typeof runOuterLoop> | null = kStar > 0 ? evalLocked(kStar) : null
+      /**
+       * **能复用环成员就复用，省掉那次整轮重跑**（性能实测驱动）。
+       *
+       * 可复用的条件 = 该成员**本身就是「按 K 排窗」的产物**：`m.prev.pool === kStar` 且
+       * `m.out.stunPool.stunCount === kStar`（池恰好等于读入 K，不存在「池 > 读入」需要钳位的情况）。
+       * 此时它跑的就是「按 kStar 窗排一整轮」，与 `evalLocked(kStar)` 是同一件事
+       * （实测逐位相同：auto-1501/auto-1611/banyue-jufufu/banyue-norma 的 kStar 成员都满足）。
+       * 不满足（池 ≠ K）才重跑——那种成员钳位后覆盖率会与池不同源（坑 6）。
+       *
+       * 收益：`charIncrement` 的单位工作量判据从 1.01×（差 1% 就红）回到阈值内。
+       */
+      const reusable = lastCycleMembers.find(m =>
+        m.prev?.stunPool.stunCount === kStar && m.out.stunPool.stunCount === kStar)
+      const chosenRun: ReturnType<typeof runOuterLoop> | null = kStar <= 0
+        ? null
+        : reusable
+          ? { out: reusable.out, outPrev: reusable.prev, outerRounds: 0, outerConverged: true, outerExit: 'stable' as const, outerCyclePickedEarlier: false, capacityResolved: false }
+          : evalLocked(kStar)
       /**
        * ⚠ **重跑本身必须真的收敛**（实测踩过）：`auto-1591` 的 K=4 重跑 stable、但叶瞬光手组队
        * （B 类反馈环）的 kStar 档重跑是 `maxIter`（20 轮仍在两态间跳）。把那种重跑标成 stable
