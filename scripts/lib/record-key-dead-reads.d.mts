@@ -12,6 +12,12 @@ export interface RecordKeyDeadRead {
 export interface RecordKeyDeadReadReport {
   scanned: number
   reads: number
+  /**
+   * `git ls-files` 有、磁盘上没有的文件（rm 未 add）。
+   * 已从扫描面剔除并**显式报告**——不能静默当成空文件，否则「文件消失 ⇒ 命中变少 ⇒ 棘轮变绿」
+   * 会伪装成进步（2026-10-20 实测：删文件后 check-guards 直接 ENOENT 崩掉）。
+   */
+  missing: string[]
   dead: RecordKeyDeadRead[]
   fresh: RecordKeyDeadRead[]
   staleAllow: string[]

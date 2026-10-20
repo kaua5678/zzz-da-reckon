@@ -41,6 +41,8 @@
           <n-radio-button value="matrix">矩阵</n-radio-button>
           <n-radio-button value="drill">下钻筛选</n-radio-button>
           <n-radio-button value="facet">按内容分面</n-radio-button>
+          <n-radio-button value="multiplier">倍率账</n-radio-button>
+          <n-radio-button value="decibel">喧响账</n-radio-button>
         </n-radio-group>
         <span class="muted">
           第三维＝<b>具体内容</b>（主词条 / 副词条 / 套装 / 音擎 / 被动…）：行×列×内容唯一落位，不重不漏
@@ -126,6 +128,70 @@
         </table>
       </div>
 
+      <!-- 倍率账：招式 × 行类型（伤害/失衡/积蓄） × 逐段拆解 -->
+      <div v-if="viewMode === 'multiplier' && multiplierLedger" class="table-wrap">
+        <table class="ledger-table">
+          <thead>
+            <tr>
+              <th class="th-provider">招式</th>
+              <th v-for="col in multiplierLedger.columns" :key="col" class="th-stat">
+                {{ MULTIPLIER_ROW_LABELS[col as never] ?? col }}
+              </th>
+              <th class="th-stat">逐段</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in multiplierLedger.rows" :key="row.origin.key">
+              <td class="td-provider">{{ row.origin.label }}</td>
+              <td v-for="col in multiplierLedger.columns" :key="col" class="td-value">
+                <span v-if="row.cells.get(col)" class="cell-value">{{ formatCell({ amount: row.cells.get(col)!.amount }, col) }}%</span>
+                <span v-else class="cell-empty">—</span>
+              </td>
+              <td class="td-value detail-cell-inline">
+                <span v-for="c in row.cells.values()" :key="c.key" class="seg-chip">
+                  <span v-for="(e, i) in c.entries" :key="i">{{ e.detail }} {{ formatCell({ amount: e.amount }, c.key) }}%</span>
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 喧响账：来源 × 可分享/不可分享 -->
+      <div v-if="viewMode === 'decibel'" class="decibel-block">
+        <div class="decibel-summary">
+          合计 <b>{{ fmtNum(decibelLedger.sum) }}</b>
+          · 引擎 total <b>{{ fmtNum(decibelLedger.engineTotal) }}</b>
+          <span v-if="Math.abs(decibelLedger.uncovered) > 1e-9" class="decibel-gap">
+            · 未覆盖 {{ fmtNum(decibelLedger.uncovered) }}（有字段没登记进 FIELD_TO_KIND）
+          </span>
+        </div>
+        <div v-if="!decibelLedger.table.rows.length" class="muted">当前槽没有喧响数据</div>
+        <table v-else class="ledger-table">
+          <thead>
+            <tr>
+              <th class="th-provider">来源</th>
+              <th v-for="col in decibelLedger.table.columns" :key="col" class="th-stat">{{ col }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in decibelLedger.table.rows" :key="row.origin.key">
+              <td class="td-provider">{{ row.origin.label }}</td>
+              <td v-for="col in decibelLedger.table.columns" :key="col" class="td-value">
+                <span v-if="row.cells.get(col)" class="cell-value">{{ fmtNum(row.cells.get(col)!.amount) }}</span>
+                <span v-else class="cell-empty">—</span>
+              </td>
+            </tr>
+            <tr class="row-sum">
+              <td class="td-provider">合计</td>
+              <td v-for="col in decibelLedger.table.columns" :key="col" class="td-value">
+                <span class="sum-value">{{ fmtNum(decibelLedger.table.totals.get(col) ?? 0) }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <!-- C：按内容大类分面，每个分面一张 提供者×属性 的二维表 -->
       <div v-if="viewMode === 'facet'" class="facet-block">
         <div v-for="f in facets" :key="f.kind" class="facet-card">
@@ -163,7 +229,7 @@
 
       <!-- ⚠ 必须是独立的 v-if（不能 v-else-if）：上面第 38/41 行是两个各自独立的 v-if，
            v-else-if 要求紧邻 v-if，中间插了公式块就断链 ⇒ 整块矩阵表永远不渲染（实测页面只剩公式表） -->
-      <template v-if="table && viewMode !== 'facet'">
+      <template v-if="table && viewMode !== 'facet' && viewMode !== 'multiplier' && viewMode !== 'decibel'">
         <div class="table-wrap">
           <table class="ledger-table">
             <thead>
@@ -243,8 +309,10 @@ import { useCatalogStore } from '@/stores/catalog'
 import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import {
   buildAttributeLedger, zoneOfStat, flattenLedger, filterContributions, facetByContent, CONTENT_KIND_ORDER,
+  buildMultiplierLedger, buildDecibelLedger, MULTIPLIER_ROW_LABELS,
   type LedgerCell, type FlatContribution, type ContentKind,
 } from '@/composables/agentMechanicView'
+import { useResourceCalc } from '@/composables/useResourceCalc'
 import { STAT_META, type FormulaZone } from '@/utils/statMeta'
 
 /** 属性区展示顺序（与 statMeta 同源，只用于分面小表的列排序） */
@@ -290,7 +358,24 @@ const formulas = computed(() => ledger.value?.formulas ?? [])
  * 两者都只是对**同一份** `FlatContribution[]` 做 filter/groupBy，
  * 不另建账本（否则又回到「多套实现互相漂移」）。
  */
-const viewMode = ref<'matrix' | 'drill' | 'facet'>('matrix')
+const viewMode = ref<'matrix' | 'drill' | 'facet' | 'multiplier' | 'decibel'>('matrix')
+
+/** 倍率账：当前槽角色全部招式的 damage/daze/积蓄拆解（同一份倍率表来源） */
+const multiplierLedger = computed(() => {
+  const char = configStore.team[slot.value]
+  if (!char?.agentId) return null
+  const skills = catalogStore.agentSkillsByAgentMap.get(char.agentId)
+  if (!skills) return null
+  const moveIds = skills.categories.flatMap(c => c.moves).map(m => m.id)
+  return buildMultiplierLedger(skills, moveIds)
+})
+
+/** 喧响账：当前槽角色的 DecibelSource 摊平（字段直取，不重算） */
+const decibelLedger = computed(() => {
+  const calc = useResourceCalc()
+  const row = (calc.resourceResult.value?.characters ?? []).find(c => c.slot === slot.value)
+  return buildDecibelLedger(row?.decibelSource)
+})
 /** B：三维筛选（空 = 不限制） */
 const filterProvider = ref<string[]>([])
 const filterContent = ref<ContentKind[]>([])
@@ -573,6 +658,11 @@ async function copyMarkdown() {
 }
 .src-out { border-left: 2px solid var(--app-primary); }
 .src-in { border-left: 2px solid var(--app-accent-gold); }
+.detail-cell-inline { text-align: left; max-width: 420px; white-space: normal; }
+.seg-chip { display: inline-block; margin-right: 8px; font-size: 11px; color: var(--app-text-dim); }
+.decibel-block { display: flex; flex-direction: column; gap: 10px; }
+.decibel-summary { font-size: 13px; }
+.decibel-gap { color: var(--app-accent-gold); }
 .detail-collapse { margin-top: 12px; }
 .detail-row { padding: 6px 0; border-bottom: 1px dashed var(--app-border); }
 .detail-provider { font-weight: 500; margin-bottom: 4px; }

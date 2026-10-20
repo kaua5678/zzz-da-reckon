@@ -28,8 +28,7 @@
  * 它只随仓库规模变，不随 D2 进度变。D2 做完后读取数趋近 0 属正常，届时本判据自然失去对象、由编译器接管。
  */
 import { execSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { readTextsTolerant } from './fs-tolerant.mjs'
 
 /** 反空洞下限：扫描到的非测试 src 文件数低于此值 ⇒ 扫描面缺失，「零命中」不可采信（2026-10-02 实测 319，取 250） */
 export const RECORD_KEY_MIN_SCANNED_FILES = 250
@@ -114,18 +113,31 @@ export function detectorSelfTest() {
 export function scanRecordKeyDeadReads(root, allowlist = {}) {
   const files = execSync("git ls-files 'src/*.ts' 'src/*.vue'", { cwd: root, encoding: 'utf8' })
     .split('\n').filter(f => f && !/__tests__|\.test\.ts$|\.spec\.ts$/.test(f))
-  const texts = new Map(files.map(f => [f, readFileSync(join(root, f), 'utf8')]))
+  /**
+   * ⚠ 用**容错读取**（2026-10-20）：`git ls-files` 给的是**索引**里的文件，
+   * 而开发中常见「已 rm 但还没 git add」⇒ 索引有、磁盘无。
+   * 直接 `readFileSync` 会抛 ENOENT 让整张护栏表崩掉（实测删两个图表组件后 `check-guards` 停摆）。
+   * 缺失文件从扫描面剔除并单独报告——**不能静默当成空文件**，否则「文件消失 ⇒ 命中变少 ⇒ 棘轮变绿」
+   * 会伪装成进步（扫描面塌陷正是本仓 6 条身份棘轮加反空洞下限要防的事）。
+   */
+  const { texts, missing } = readTextsTolerant(root, files)
   const { reads, dead } = findRecordKeyDeadReads(texts)
   const fresh = dead.filter(d => !(d.key in allowlist))
   const staleAllow = Object.keys(allowlist).filter(k => !dead.some(d => d.key === k))
   const selfTest = detectorSelfTest()
-  const belowFloor = files.length < RECORD_KEY_MIN_SCANNED_FILES
-  return { scanned: files.length, reads, dead, fresh, staleAllow, selfTest, belowFloor,
+  const belowFloor = texts.size < RECORD_KEY_MIN_SCANNED_FILES
+  return { scanned: texts.size, missing, reads, dead, fresh, staleAllow, selfTest, belowFloor,
     ok: fresh.length === 0 && staleAllow.length === 0 && selfTest.ok && !belowFloor }
 }
 
 export function formatRecordKeyDeadReads(report) {
   const lines = []
+  // 缺失文件（索引有、磁盘无）单独点名：不崩，但也不静默——它会让扫描面变小
+  if (report.missing?.length) {
+    lines.push(`  ⚠ ${report.missing.length} 个文件在 git 索引里但磁盘上已不存在（已 rm 未 add？）——已从扫描面剔除：`)
+    for (const f of report.missing.slice(0, 5)) lines.push(`    ${f}`)
+    if (report.missing.length > 5) lines.push(`    …（另有 ${report.missing.length - 5} 个）`)
+  }
   if (report.belowFloor) lines.push(`  ✗ 仅扫到 ${report.scanned} 个文件 < 下限 ${RECORD_KEY_MIN_SCANNED_FILES}：扫描面缺失，零命中不可采信`)
   if (!report.selfTest.ok) lines.push('  ✗ detector 自证失败：', ...report.selfTest.failures.map(f => '    ' + f))
   for (const d of report.fresh) lines.push(`  ✗ ${d.key}：全仓除记录读取外零出现（无写入/声明）⇒ 恒取缺省值 — ${d.sites.join(' ')}`)

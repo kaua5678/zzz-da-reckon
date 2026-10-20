@@ -1328,7 +1328,9 @@ export function runAllChecks(root = ROOT) {
     results.push({
       name: `无类型记录键死读 (判据 25: Record<string, unknown> 按键读取却全仓零写入/声明 ⇒ 恒取缺省) `
         + `死读 ${report.fresh.length} 处 / 记录读取 ${report.reads} 处 / 豁免 ${Object.keys(RECORD_KEY_DEAD_READ_ALLOWLIST).length}`
-        + ` / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`,
+        + ` / detector 自证 ${report.selfTest.ok ? '过' : '失败'}`
+        // 索引有、磁盘无（rm 未 add）的文件已从扫描面剔除，这里露出数量
+        + (report.missing?.length ? ` / ⚠缺失文件 ${report.missing.length}` : ''),
       ok: report.ok,
       detail: report.ok ? [] : formatRecordKeyDeadReads(report),
     })

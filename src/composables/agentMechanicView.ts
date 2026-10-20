@@ -376,3 +376,11 @@ export {
   contentKindOf,
   CONTENT_KIND_ORDER,
 } from '@/core/contributionLedger'
+// 倍率账 / 喧响账（通用贡献账的另两个适配器，与属性账同形）
+export {
+  buildMultiplierLedger,
+  splitMoveMultiplier,
+  MULTIPLIER_ROW_LABELS,
+  type MultiplierRowKind,
+} from '@/composables/resourceCalc/multiplierLedger'
+export { buildDecibelLedger } from '@/core/decibelLedger'

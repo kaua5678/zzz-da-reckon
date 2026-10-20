@@ -60,3 +60,34 @@ describe('判据 25 仓库级', () => {
     expect(r.ok).toBe(true)
   })
 })
+
+/**
+ * 2026-10-20 实测事故：`rm src/components/charts/ContributionHeatmap.vue` 后（还没 `git add`），
+ * `check-guards` 直接 `Error: ENOENT` 崩掉，整张护栏表停摆。
+ *
+ * 根因：扫描器用 `git ls-files`（**索引**）取清单、再 `readFileSync`（**磁盘**）读，
+ * 「已删除未暂存」的窗口必然 ENOENT。
+ *
+ * 修法 = `fs-tolerant`：文件不存在 ⇒ 返回 null 并计入 `missing`（剔除出扫描面但**显式报告**）。
+ * 负控：把容错改回直接 readFileSync ⇒ 本用例抛 ENOENT 而不是断言失败。
+ */
+describe('扫描器容错：git 索引与磁盘不一致（rm 未 add）', () => {
+  it('缺失文件被剔除且计入 missing，不抛 ENOENT', async () => {
+    const { readTextsTolerant } = await import('../../../scripts/lib/fs-tolerant.mjs')
+    const r = readTextsTolerant(ROOT, [
+      'package.json',                          // 存在
+      'src/components/charts/__不存在__.vue',   // 不存在
+    ])
+    expect(r.texts.has('package.json')).toBe(true)
+    expect(r.missing).toEqual(['src/components/charts/__不存在__.vue'])
+    // 并集恒等：存在的 + 缺失的 === 输入条数
+    expect(r.texts.size + r.missing.length).toBe(2)
+  })
+
+  it('仓库级扫描不因缺失文件崩溃，且 missing 显式暴露', () => {
+    const r = scanRecordKeyDeadReads(ROOT, RECORD_KEY_DEAD_READ_ALLOWLIST)
+    expect(Array.isArray(r.missing)).toBe(true)
+    // 扫描面 = 实际读到的文件数（缺失的不计入分母）
+    expect(r.scanned).toBeGreaterThan(0)
+  })
+})
