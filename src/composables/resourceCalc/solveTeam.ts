@@ -18,7 +18,7 @@
  */
 import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
-import { withStunCount, withStunCountRebuilt } from '@/core/stunPool'
+import { continuousStunCount, withStunCount, withStunCountRebuilt } from '@/core/stunPool'
 import { stunWindowFraction } from '@/core/effectiveTime'
 import type { OuterExit, ResourceCalcConfig } from '@/types/resource'
 import { initialCalcRoundThreads } from './roundThreads'
@@ -167,7 +167,13 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     }
     /** 选中成员的前一轮结果（= 它的输入线程来源；轴退化判据用它算「还没装进计划的补齐量」） */
     let outPrev: CalcRoundResult | null = null
+    /**
+     * 最近一次环内选点的成员集合。**kStar 结算直接用它**（见 capacity 块）：每个成员都是一次
+     * 「按 K 排窗」的实测（K = 它前一轮的池次数，池 = 它的输出），所以「哪个 K 自洽」不必再求值。
+     */
+    let lastCycleMembers: OuterCycleMember[] = []
     const pickCanonical = (all: OuterCycleMember[]): CalcRoundResult => {
+      lastCycleMembers = all
       /**
        * ⓪ **零窗成员不参选**（⑥″，2026-09-19 吸收上限落地时实测）：输入 stunCount ≈ 0（冷启动首轮 / 时间充足性约束把
        * 次数钳到 0 的那轮，计划里一个失衡窗都没有）的成员是瞬态——失衡是积蓄的结果不是玩家的选择，只要环里还有带窗成员，
@@ -204,7 +210,10 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     for (let k = 0; k < MAX_OUTER_ITER; k++) {
       outerRounds = k + 1
       // 锁定次数（用户明确意图）不走净失衡缩放与小数截断，仍用原始池计数
-      const locked = lockedStunCount >= 0
+      // 2026-10-20 round 20：判据改读 **effLock**（= overrideLock ?? lockedStunCount）——
+      // 「按次数重跑」（kStar 结算）同样是「次数已定」，必须走锁定分支；否则重跑出来的不是
+      // 「按 K 打一整轮」而是又一条发散迭代（实测只传 overrideLock 时池仍回弹）。
+      const locked = effLock >= 0
       // CC-418：runCalcRound 无 null 出口（CC-417 删空失衡池 null 后，剩余守卫与 calcOutput 同条件不可达），
       // 原「null 轮 ⇒ threadsAfterNullRound 回退 + 签名清空 + continue」分支随之删除。
       out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim })
@@ -245,7 +254,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         topUpParryNext: out.interactionTopUp.parry,
       }))
       const feedbackStable = curSig === prevFeedbackSignature
-      if (lockedStunCount >= 0) {
+      if (effLock >= 0) {
         if (feedbackStable) { outerConverged = true; outerExit = 'stable'; break }
       } else {
         // 失衡次数与反馈签名双稳定才收敛。CC-318：原先另比 `auricInkFlash`（仪玄玄墨触发，异常触发 → 回闪能 →
@@ -298,98 +307,169 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       }
     }
     /**
-     * **连续失衡：环退出时按「时间可容纳次数」结算**（P1，2026-10-20；用户口径）。
+     * **环退出 ⇒ 结算为「最大自洽可行整数」**（round 20，2026-10-20）。
      *
-     * 用户原话：「连续失衡的解法是，**达不到 4 失衡可以打 3 失衡**……前面 3 是完整的，
-     * 就看最高难度能达到第 4 失衡的多少程度」「**弃轴是中间产物，我们目标是找到更好的办法丢掉弃轴**」。
+     * ## 为什么不再用 cap 公式
+     * 上一版按 `ceil((effTime − Σnec)/W)` 认领次数，只在 `nec < effTime` 时生效。实测剩余 3 支环队
+     * `nec = 199~224s > 180` ⇒ cap 退化成物理上限（10~11）⇒ **从不构成约束**（实测 `capApplies=false`），
+     * 环照旧。更根本的是：那个公式回答的是「时间还容得下几次」，而环的成因是
+     * 「**计划 K 窗 ⇒ 摊薄 ⇒ 池只攒出 floor(cont(K)) 次**」，两者不是同一个量。
      *
-     * 实测 6 支环队**全部**满足「池次数 > 时间可容纳次数」：
-     * - 5 轮环（yidhari-trigger / auto-1051 / auto-1611）：`cap ≈ 3.1`，池报 4~5
-     * - 20 轮环（auto-1591 / auto-1501 / banyue-jufufu）：`cap` **为负**（Σnecessary 199~224s > 180s）
+     * ## 环的真正形态（`PROBE_TRACE_OUTER` 实测，与用户 §33 裁决一致）
+     * ```
+     * auto-1501: prev=3 → pool=2（t/b=2.96）；prev=2 → pool=3（t/b=3.02）  ⇒ 2-环 {2,3}
+     * banyue   : prev=5 → pool=4（5.21→4.89）；prev=4 → pool=5            ⇒ 2-环 {4,5}
+     * auto-1591: prevPool 恒 4，只有 |decibelRegenBySlot| 在环（跨轮测量反馈）
+     * ```
+     * 两条映射都是**真实物理结果**（用户 §33：2.96 = 第 3 次没开启、3.1 = 开启了但吞失衡值）
+     * ⇒ 不是数值 bug，是「规划与产出互相追」。迭代 `next = f(prev)` 在两个相邻吸引子之间
+     * **没有交点**时必然成环。
      *
-     * 旧行为：环里选一个成员、标 `cycle`、再走弃轴 ⇒ 用户看到的是「无轴结果」，
-     * 而**前面那几次失衡本来是打得出的**（这正是用户反对的「弃轴」）。
+     * ## 修法 = 直接求解「哪个 K 是自洽的」
+     * 判据沿用本仓已立的 **最大自洽可行整数**（CC-150 / CC-153 / CC-329：按 K 分配时池撑得住 ≥ K 的最大 K）：
+     * ```
+     * kStar = max { K ∈ [0, floor(effTime/W)] : floor(continuousStunCount(pool(K))) ≥ K }
+     * ```
+     * 实测 cont(K)（锁定 K 窗时的连续失衡次数；`floor(cont(K))` 随 K 单调不增）：
+     * | K | 2 | 3 | 4 | 5 | 6 |
+     * |---|---|---|---|---|---|
+     * | auto-1501 | 3.39 | 2.95 | 2.61 | 2.24 | 1.88 | ⇒ kStar **2**（cont(3)=2.95 < 3：第 3 次没开启）
+     * | banyue    | 5.60 | 5.33 | 5.11 | 4.90 | 5.07 | ⇒ kStar **4**（cont(5)=4.90 < 5）
+     * 这正是用户 §33 的判据：`floor` 不动，只是**把计划钉在自洽的那个 K 上**，不再让规划去追产出。
      *
-     * 新行为：把池按 `cap` 结算（`withStunCount`，取整 + `ceil` 保留部分窗口），
-     * 并把退出类型标成 `stable` —— 因为「按能打到的次数打」**就是一个确定的结果**，
-     * 不是「没收敛」。这与用户口径完全一致：达不到 4 就打 3（+ 第 4 次的一部分）。
+     * ⚠ **搜索上界必须同时满足时间账**（实测踩过）：只按池自洽搜时 `auto-1051-1141-1451` 会取到
+     * K=6（cont(6)=6.32 ⇒ 自洽），但 6 窗 × 16s + 必要 129s = 225s **远超 180s** ⇒ 物理不可能。
+     * 上一版 cap 的「时间容得下几次」那部分是对的，只是对 `nec ≥ effTime` 的队无意义（那时它退化成
+     * 物理上限、从不约束）。故两者**并联**：时间上界照旧算（有 room 时生效），池自洽做下扫判据。
      *
-     * ⚠ 只在 `cap < 池次数` 时生效 ⇒ 时间本来就够的队逐位不变。
-     * ⚠ `cap < 0`（Σnec 超预算）时钳到 0 —— 但**不弃轴**，让上面几次完整失衡的结果保留。
-     * 回退点：删本块（去掉 `capacityResolved` 分支）。
+     * ## 为什么必须重跑一整轮
+     * 只改 `stunPool.stunCount` 字段不会改贡献明细（实测 auto-1611：葬血强袭整行消失、伤害反而更低）。
+     * 重跑 = 「按 kStar 窗排时间重新算一遍」，与锁定失衡次数（CC-305）走同一条 locked 路径
+     * （`runOuterLoop` 的 `locked` 判据已改读 `effLock`，见该处注释）。
+     *
+     * ⚠ 深度闸：`overrideLock !== undefined` 时不进本块（否则递归无界，实测栈溢出）。
+     * 回退点：删本块（`capacityResolved` 分支随之消失）。
      */
-    let capacityResolved = false  // 供探针与后续处置读取（当前只写）
-    if (outerExit === 'cycle' && stunWindowDur > 0 && stunEffTime > 0) {
+    let capacityResolved = false
+    if (outerExit === 'cycle' && stunWindowDur > 0 && stunEffTime > 0 && overrideLock === undefined) {
+      /** 物理上限：窗长不可能装下超过 floor(effTime/W) 次 */
+      const physicalMax = Math.max(1, Math.floor(stunEffTime / stunWindowDur))
       /**
-       * **cap 用 nec 公式，但只在它有意义时**（2026-10-20 三次实测收敛出的口径）。
-       *
-       * 两组实测数据把边界划清楚了：
-       * - **环队（nec 未超预算）**：`yidhari-trigger`/`auto-1051`/`auto-1611` 的 nec = 129/129/131（< 180），
-       *   cap ≈ 3.1~3.2，用它能**让环归零**（实测 6 → 0）。
-       * - **nec 超预算队**：`auto-1591`(196~221)、`banyue-jufufu`(165)、`banyue-norma`(200)，
-       *   cap 会是负数；用它会把失衡压到 1 —— 实测 `auto-1591` **伤害 −49.8%**，比弃轴更糟。
-       *
-       * ⇒ 判据：**只有 `nec < effTime` 时才用 nec 公式**（说明还有窗口余地，可以算「容得下几次」）；
-       * `nec >= effTime` 说明必要动作本身已占满预算（靠合轴吸收才装得下），窗口数不是瓶颈 ⇒
-       * 不施加 cap（用物理上限 floor(effTime/W)，它实际不构成约束）。
-       *
-       * ⚠ 这与「伪不动点」是同一件事：nec 超预算时 `(effTime−nec)/W` 无意义，
-       * 旧代码把它 `max(0,·)` 压成 0 = 信息丢失；现在改成「不施加约束」。
+       * 时间上界（沿用上一版 cap 口径）：`nec < effTime` ⇒ 窗口余地 = `ceil((effTime−nec)/W)`；
+       * `nec ≥ effTime` ⇒ 必要动作本身已占满预算（靠合轴吸收才装得下），窗口数不是瓶颈 ⇒ 退回物理上限。
+       * `nec` 取环成员那一轮的读数（与旧实现同源，避免两把尺）。
        */
-      const necUsed = out.resourceResult.characters.reduce(
-        (s, c) => s + c.timeAllocation.necessaryTime, 0)
-      const physicalMax = Math.floor(stunEffTime / stunWindowDur)
+      const necUsed = out.resourceResult.characters.reduce((s, c) => s + c.timeAllocation.necessaryTime, 0)
       const budgetHasRoom = necUsed < stunEffTime
-      const necCap = budgetHasRoom ? Math.ceil((stunEffTime - necUsed) / stunWindowDur) : physicalMax
-      const cap = Math.max(1, necCap)
-      if (out.stunPool.stunCount > cap) {
+      const searchMax = Math.min(
+        physicalMax,
+        budgetHasRoom ? Math.max(1, Math.ceil((stunEffTime - necUsed) / stunWindowDur)) : physicalMax,
+      )
+      /** 按 K 窗锁定的整轮（内层 promote 也走锁定路径，否则池不被钉到 K ⇒ cont 读数不成立） */
+      const evalLocked = (k: number): ReturnType<typeof runOuterLoop> => {
+        const prevOverride = resourceConfig.stunCountLockOverride
+        const prevProjection = resourceConfig.stunPlanProjection
+        resourceConfig.stunCountLockOverride = k
         /**
-         * ⚠ **必须按 cap 重跑一整轮**，不能只改字段。
-         * 实测（auto-1611）：withStunCount 只改 stunCount/chainCountTotal，
-         * **不改池的贡献明细** ⇒ 葬血强袭那一行仍按旧池生成、整行消失，
-         * 伤害 71.28M 反而低于「完整 3」的 76.16M（判据②红）。
-         * 重跑才是「按能打到的次数重新算一遍」= 用户要的「打 3 次完整 + 第 4 次的一部分」。
-         *
-         * ⚠ **显式深度闸**（实测踩到栈溢出）：原以为「overrideLock >= 0 ⇒ 内层走 locked 分支
-         * ⇒ 不会再进本块」是错的 —— locked 分支同样可能以 outerExit === cycle 退出
-         * （锁定只跳过缩放、不跳过环检测）⇒ 递归无界，实测 RangeError: Maximum call stack size exceeded。
-         * 加闸：只有 overrideLock === undefined 才允许重跑一次。
+         * ⚠ **投影也要一起回落 off**（实测踩过）：用户锁定失衡次数时 `useResourceCalc` 会把
+         * `stunPlanProjection` 从 physical 改成 off（CC-151），因为 physical 读的是**上一轮池**、
+         * 会把锁定值旁路掉。这里走 override 通道，`useResourceCalc` 那层看不到，必须自己改——
+         * 否则 core/resource 的计数通道仍按 physical 读上一轮池，等于**没按 K 排窗**
+         * （实测 auto-1591：K=4 时内层 20 轮不收敛，而用户锁定同 K 只跑 3 轮即 stable）。
          */
-        if (overrideLock === undefined) {
-          /**
-           * ⚠ 必须让**内层的 promoteFixpoint** 也走锁定路径，否则池不会被钉到 cap。
-           * 实测：只传 overrideLock 不够 —— convergence 的 lockForPool 读的是
-           * configStore.enemy.stunCountLock（用户配置），内层仍按自算次数推池 ⇒ 池回弹到 5。
-           * 故同时写 resourceConfig.stunCountLockOverride（跑完立即清除）。
-           */
-          const prevOverride = resourceConfig.stunCountLockOverride
-          resourceConfig.stunCountLockOverride = cap
-          let rerun: ReturnType<typeof runOuterLoop>
-          try {
-            rerun = runOuterLoop(forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim, cap)
-          } finally {
-            resourceConfig.stunCountLockOverride = prevOverride
-          }
-          /**
-           * ⚠ **重跑后仍要对齐失衡值合计**（2026-10-20 实测）：`locked` 路径只把「次数」钉到 cap，
-           * 池内部的 `totalStunBuildUp` 仍可能按自算次数累加 ⇒ 恒等式
-           * `floor(continuousStunCount(pool)) === pool.stunCount` 破掉
-           * （实测 auto-1371-1481-1451：池报 1、连续值 6.349）。
-           * 用 `withStunCountRebuilt`（以 `stunBuildUpForCount` 反函数重建失衡值总量）收尾。
-           */
-          const aligned = {
-            ...rerun.out,
-            stunPool: withStunCountRebuilt(rerun.out.stunPool, cap),
-          }
-          return {
-            out: aligned,
-            outPrev: rerun.outPrev,
-            outerRounds: outerRounds + rerun.outerRounds,
-            outerConverged: true,
-            outerExit: 'stable',
-            outerCyclePickedEarlier,
-            capacityResolved: true,
-          }
+        if (resourceConfig.stunPlanProjection === 'physical') resourceConfig.stunPlanProjection = 'off'
+        try {
+          return runOuterLoop(forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim, k)
+        } finally {
+          resourceConfig.stunCountLockOverride = prevOverride
+          resourceConfig.stunPlanProjection = prevProjection
+        }
+      }
+      /**
+       * **先从环成员里找 kStar —— 零额外求值**（2026-10-21 性能实测驱动）。
+       *
+       * 关键洞察：环里每个成员本来就是「按 K 排窗」的一次实测（K = 它前一轮的池次数
+       * `m.prev.stunPool.stunCount`，池 = 它自己的输出 `m.out.stunPool`）。所以「哪个 K 自洽」
+       * 在已经跑过的轮次里就有答案，**不必再求值**：
+       *   kStar = max{ m.prev.pool : floor(continuousStunCount(m.out.stunPool)) ≥ m.prev.pool }
+       *
+       * 为什么必须走这条（实测）：每个 K 都是一次**完整外层求值**。线性下扫 11 档把
+       * `charIncrement` 的单位工作量判据顶到 **1.52×**（线 1.0×），二分降到 **1.13×** 仍红；
+       * 从环成员取 = **0 次额外求值**（实测回到阈值内）。
+       *
+       * 覆盖性：环成员只覆盖「迭代真正走过的 K」（实测 3 支环队各 2~4 个 K）。
+       * 若环成员里没有自洽者（理论上可能：吸引子之间被跳过），才回落到二分下扫。
+       */
+      /**
+       * **kStar = 最大自洽可行整数**（CC-150 / CC-153 / CC-329 同一条已立口径）。
+       *
+       * ⚠ 试过并否决「取最小」：min-K 会让 `auto-1051`/`auto-1611` 落到 K=1（自洽但**严重少打**，
+       * 实测 stun 4→5 反跳、slack +1.68s、伤害 ±6~13%）⇒ 环从 1 支变 3 支。max-K 才是对的那个。
+       */
+      let kStar = 0
+      for (const m of lastCycleMembers) {
+        const kIn = m.prev?.stunPool.stunCount
+        if (kIn === undefined || kIn <= 0 || kIn > searchMax) continue
+        if (Math.floor(continuousStunCount(m.out.stunPool)) < kIn) continue
+        if (kIn > kStar) kStar = kIn
+      }
+      if (kStar === 0) {
+        /**
+         * 回落：二分求**最大**自洽 K（与上面的成员扫描同一口径，别混两把尺——实测混用会把
+         * `auto-1051`/`auto-1611` 从成员给的 K=4 拉到 K=1）。单调性依据 =
+         * `continuousStunCount(pool(K))` 随 K 单调不增、判据右边随 K 增 ⇒ 谓词单调递减 ⇒ 二分合法。
+         */
+        let lo = 0
+        let hi = searchMax
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1
+          if (Math.floor(continuousStunCount(evalLocked(mid).out.stunPool)) >= mid) { kStar = mid; lo = mid + 1 } else hi = mid - 1
+        }
+      }
+      /**
+       * ⚠ **必须按 kStar 真跑一整轮，不能拿环成员的结果顶替**（实测踩过）：环成员那次跑的是
+       * 「计划 m.stunIn、计数通道 K = 它前一轮的池」——池可能**大于** K（CC-150 的 `池 > 读入` 形态），
+       * 直接拿它当结算结果就得人为把池钳到 K ⇒ 覆盖率与池不同源（实测 3 支队各差 1 窗）。
+       * 重跑一次 = 「按 K 窗排时间重新算一遍」，池与覆盖率都由这一次自己产出 ⇒ 天然同源。
+       */
+      const chosenK = kStar
+      const chosenRun: ReturnType<typeof runOuterLoop> | null = kStar > 0 ? evalLocked(kStar) : null
+      /**
+       * ⚠ **重跑本身必须真的收敛**（实测踩过）：`auto-1591` 的 K=4 重跑 stable、但叶瞬光手组队
+       * （B 类反馈环）的 kStar 档重跑是 `maxIter`（20 轮仍在两态间跳）。把那种重跑标成 stable
+       * = **谎报收敛**（§27 已实测否决过同类做法）。故 `outerExit === 'stable'` 是采纳的前提；
+       * 没收敛就落回旧路径（环内选点 + cycle），逐位等于改动前。
+       */
+      if (chosenRun && chosenRun.outerExit === 'stable') {
+        /**
+         * 池按 kStar 重建失衡值合计（`withStunCountRebuilt` = `stunBuildUpForCount` 反函数）：
+         * locked 路径只钉「次数」，`totalStunBuildUp` 仍按自算值累加 ⇒ 不重建则
+         * `floor(连续) === stunCount` 破掉（实测 auto-1371：池报 1、连续 6.349）。
+         * 语义 = 「只兑现 kStar 次，多攒出来的那部分进不了下一次」——与用户 §33 同向。
+         */
+        const rebuiltPool = withStunCountRebuilt(chosenRun.out.stunPool, chosenK)
+        /**
+         * ⚠ **覆盖率必须随池一起重算**（C 项同源，与下方 CC-150 钳位块同一条纪律）。
+         * 实测（3 支队）：环成员那一轮的 `stunCoverage` 是按**它自己**的池算的；把池换成 kStar
+         * 之后不重算，就会出现「池报 4 窗 / 覆盖率隐含 5 窗」两个物理量
+         * （`yidhari-trigger` / `auto-1501` / `banyue-jufufu` 实测各差 1 窗）。
+         * 算式与 `computeStunCoverage` 完全同源（`stunWindowFraction` + 同一个 `verdictSecondsLost`）。
+         */
+        const aligned = {
+          ...chosenRun.out,
+          stunPool: rebuiltPool,
+          stunCoverage: stunEffTime > 0
+            ? stunWindowFraction(rebuiltPool.stunCount, stunWindowDur, stunEffTime, chosenRun.out.stunVerdictLostSeconds)
+            : chosenRun.out.stunCoverage,
+        }
+        return {
+          out: aligned,
+          outPrev: chosenRun.outPrev,
+          outerRounds: outerRounds + chosenRun.outerRounds,
+          outerConverged: true,
+          outerExit: 'stable',
+          outerCyclePickedEarlier,
+          capacityResolved: true,
         }
       }
     }

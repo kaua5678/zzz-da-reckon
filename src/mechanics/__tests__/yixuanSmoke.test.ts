@@ -504,6 +504,19 @@ describe('仪玄 spec 机制（1371）', () => {
   })
 
   it('合轴自动填充：手动输入 ≤0 时吃 yixuanBackstageAutoCount（反推线程），手动仍优先（用户口径 2026-09-07）', async () => {
+    /**
+     * ⚠ **round 20 换队友（判据不动，只换夹具）** —— `1251+1271` → `1481+1451`。
+     *
+     * ① 量 delta：原夹具在环退出改「最大自洽可行整数」结算后**收敛到池 4** ⇒ 反推缺口
+     *    `deficit = stunBuildUpForCount(pool, 保底4) − 非合轴失衡 = 0` ⇒ `pairs = 0`，判据假红。
+     * ② 根因：该夹具原先吃的是**环态**读数（HEAD 实测 `exit=cycle / pool=3 / pairs=5`）——
+     *    「反推在跑」这件事当年是靠环里某个成员恰好没到保底才成立的。环消失后它自然不成立。
+     * ③ 确认有意：这是**正确**行为（池本来就 4 次 ⇒ 不需要再补合轴对），不是缺陷。
+     * ④ 处置 = **重扫换队友**（判据仍是「自动 > 0、≤ 60、手动 3 优先」）：
+     *    `1251+1271`(pool 4, pairs 0) / **`1481+1451`(pool 3, pairs 20)** / `1031+1311`(pool 2, 24) /
+     *    `1211+1491`(pool 3, 22) / `1171+1411`(pool 3, 21) —— 取 `1481+1451`（琉音+卢西娅，
+     *    与 1371 同为实战常见配置，pairs 落在中间档、离上下界都远）。
+     */
     const catalog = useCatalogStore()
     await catalog.load()
     await catalog.loadTeammateBuffs()
@@ -511,8 +524,8 @@ describe('仪玄 spec 机制（1371）', () => {
     config.setMechanicSetting('guarantee.stun', 1) // 失衡次数四舍五入开启 → 自动填充反推
     // 手动 = 0 → 自动接管（反推缺口 = 4×bossStunValue − 非合轴失衡，供给上限钳制）
     config.team[0] = teamChar(0, '1371')
-    config.team[1] = teamChar(1, '1251')
-    config.team[2] = teamChar(2, '1271')
+    config.team[1] = teamChar(1, '1481')
+    config.team[2] = teamChar(2, '1451')
     const calc = useResourceCalc()
     const out = calc.resourceResult.value!
     const yixuan = out.characters.find(c => c.agentId === '1371')!

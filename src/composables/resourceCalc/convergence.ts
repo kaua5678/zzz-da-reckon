@@ -159,7 +159,17 @@ export function createRunCalcRound(deps: {
      * `stunPlanProjection='off'` 时恒等于 `stunCount`（现行口径 0 delta）；打开则把计划值投影成整数，
      * **只影响把它当次数乘的地方**（连携/喧响/能量）。时间账与不动点迭代继续用实数的 `stunCount`。
      */
-    const countStun = projectStunPlanForCounts(stunCount, base.stunPlanProjection ?? 'off', threads.prevPoolStunCount)
+    /**
+     * ⚠ 2026-10-20 round 20：**内部锁定覆盖也要回落 `off`**（与 CC-151 的用户锁定同一条规则）。
+     * `stunCountLockOverride`（solveTeam 的 kStar 结算 / 按次数重跑）语义同样是「次数已定」——
+     * 若仍走 `physical`，计数通道读的是**上一轮池**而不是被钉住的 K ⇒ 这一轮其实没有按 K 排窗，
+     * 自洽判据就测的不是它要测的东西（实测 auto-1591：kStar 误判为 4）。
+     */
+    const countStun = projectStunPlanForCounts(
+      stunCount,
+      (base.stunCountLockOverride ?? -1) >= 0 ? 'off' : (base.stunPlanProjection ?? 'off'),
+      threads.prevPoolStunCount,
+    )
     // 条件轴：按上一轮收敛出的好评/闪能（首轮缺省 → 条件方案未命中走兜底）解析生效轴
     const { axes: resolvedAxes, planName } = resolveAxes(stunCount, prevGoodReview, prevEnergyBySlot)
     /**

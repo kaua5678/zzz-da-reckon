@@ -111,16 +111,32 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
      * ⇒ 态A 取 **22500**（唯一同时满足「部分介入」+「保底不可达」的档，与 T141/T155 原判据形态一致）；
      * 判据形态**不变**（breaker ≥ 1 且 < 5、main ≥ 1、缺口如实上报）。
      */
-    configStore.enemy.stunValue = 22500
+    /**
+     * ⚠ **round 20 重探阈值**（2026-10-20，本段注释的规矩：「门槛变了照此重探，不改判据」）。
+     *
+     * 起因：外层环退出改「最大自洽可行整数」结算（`solveTeam` capacity 块，kStar）⇒ 本队在各
+     * `stunValue` 下的落点整体移动。实测重扫（`presetParryTotal = 5`，18000..40000 逐 500）：
+     * | stunValue | breaker | main | stun | 形态 |
+     * |---|---|---|---|---|
+     * | ≤21000 | 0 | 5 | 4 | 正常（反推未介入） |
+     * | 21500–22500 | 1~4 | 4~1 | 4 | 部分介入，但**保底可达**（不是本判据要的形态） |
+     * | **23000** | **1** | **4** | **3** | **态A：部分给击破位 + 保底不可达**（本判据要的两态同时成立） |
+     * | 23500–27500 | 0~3 | 3~5 | 4 | 又回正常 |
+     * | 28000–30500 | 2~4 | 1~3 | 3 | 更深的态A（部分给击破位、保底不可达） |
+     * | **≥31000** | **5** | **0** | **3** | **态B：5 次全给击破位仍不够**（预算用满） |
+     * ⇒ 态A 取 **23000**、态B 取 **31000**。判据形态**一字未改**（breaker ≥ 1 且 < 5、main ≥ 1、
+     * 缺口如实上报；态B = `parry-exhausted`）。
+     */
+    configStore.enemy.stunValue = 23000
     const spA = calc.stunPoolResult.value!
     const splitA = calc.parrySplitResult.value
     expect(splitA?.breakerParry, '阈值抬高后反推应把部分弹刀给击破位').toBeGreaterThanOrEqual(1)
     expect(splitA?.breakerParry, '态A 应是「部分」给击破位，不是全给').toBeLessThan(5)
     expect(splitA?.mainDpsParry, '主C 仍保留部分弹刀').toBeGreaterThanOrEqual(1)
-    // T171 重探：态A（22500）下**保底不可达**（池 3）——与 T141/T155 原判据形态一致，
+    // 态A（23000）下**保底不可达**（池 3）——与 T141/T155 原判据形态一致，
     // 保留 not.toBeNull()（如实上报，不硬凑）。
     expect(guaranteeStunShortfall(spA.stunCount, splitA), '态A 下保底不可达（如实上报）').not.toBeNull()
-    configStore.enemy.stunValue = 30000
+    configStore.enemy.stunValue = 31000
     const sp6 = calc.stunPoolResult.value!
     const split6 = calc.parrySplitResult.value
     expect(split6?.breakerParry).toBe(5)

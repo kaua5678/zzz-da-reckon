@@ -105,9 +105,19 @@ describe('轴模式 ⇒ 自动保底（嗔火 / 喧响）', () => {
      *    取 **`banyue-trigger-lucia` @ `r=0.2` + 金身0/双反0**：实测 **盾0 = {parry:0, dual:12}**、
      *    **盾1 = {parry:0, dual:0}** —— 判据①②③（含「清轴 ⇒ 归零」）逐条不变，只换夹具档位。
      */
-    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0.2)
+    /**
+     * ⚠ **第三次换夹具（2026-10-21 round 20，规则 10 四步）—— 判据逐条保留**。
+     * ① 量 delta：`r=0.2 + 金身0/双反0` 下「盾 1 ⇒ 归零」不再成立（实测盾0 = 盾1 = {0,12}）。
+     * ② 根因：**外层环退出改「最大自洽可行整数」结算** ⇒ 该档落点由环态变为真收敛，怒相/嗔火
+     *    读数随之移动（同一次改动下 `banyue-jufufu`/`banyue-norma` 的落点也各动一格）。
+     * ③ 确认有意：环归零是本次改动的**目标**，不是回归。
+     * ④ 处置 = 扫描 6 支般岳预设 × 4 档 ratio × 3 组交互（`.zc/perf` 同法），取仍能分辨两种情况的点：
+     *    **`banyue-trigger-lucia` @ `r=0` + 金身0/双反1** —— 实测 **盾0 = {parry:0, dual:12}**、
+     *    **盾1 = {parry:0, dual:0}**。断言①②③（含「清轴 ⇒ 归零」）一字未改，只换夹具档位。
+     */
+    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0)
     config.setActionCount(0, 'blockCount', 0)
-    config.setActionCount(0, 'dualCounterCount', 0)
+    config.setActionCount(0, 'dualCounterCount', 1)
 
     config.enemy.shieldCount = 0
     await new Promise(r => setTimeout(r, 120))
