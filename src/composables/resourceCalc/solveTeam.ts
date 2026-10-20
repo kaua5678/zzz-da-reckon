@@ -320,24 +320,28 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
      */
     let capacityResolved = false  // 供探针与后续处置读取（当前只写）
     if (outerExit === 'cycle' && stunWindowDur > 0 && stunEffTime > 0) {
-      const nec = out.resourceResult.characters.reduce(
-        (s, c) => s + c.timeAllocation.necessaryTime, 0)
       /**
-       * ⚠ **cap 的下界必须是「池本来能打出的次数」的一个保守估计**，不能只按 nec 算。
+       * **cap 用 nec 公式，但只在它有意义时**（2026-10-20 三次实测收敛出的口径）。
        *
-       * 实测翻车（2026-10-20）：`banyue-jufufu-lucia` nec=165.1、W=16 ⇒ cap=1，
-       * 重跑后池被钉到 1、再算出 0 ⇒ **整队失衡归零**，窗口 0 个。
-       * `banyue-norma-lucia` nec=200.7、W=18 ⇒ cap=-1 ⇒ 同样归零。
-       * 但这两队显然打得满（原本 pool=4），把它们的失衡清空违反用户口径
-       * 「**保全前面失衡**的前提下争取最后一次」。
+       * 两组实测数据把边界划清楚了：
+       * - **环队（nec 未超预算）**：`yidhari-trigger`/`auto-1051`/`auto-1611` 的 nec = 129/129/131（< 180），
+       *   cap ≈ 3.1~3.2，用它能**让环归零**（实测 6 → 0）。
+       * - **nec 超预算队**：`auto-1591`(196~221)、`banyue-jufufu`(165)、`banyue-norma`(200)，
+       *   cap 会是负数；用它会把失衡压到 1 —— 实测 `auto-1591` **伤害 −49.8%**，比弃轴更糟。
        *
-       * 修正：`nec` 是**全队必要动作**，其中已经含了「失衡窗口外要打的东西」；
-       * 用它反推可容窗口数会**系统性低估**（nec 里有一部分本来就发生在窗口外）。
-       * 取 `max(1, cap)`：**至少保住 1 次失衡** —— 这是「前面那几次完整失衡」的下限，
-       * 也是用户说的「达不到 4 就打 3」里最极端的「只能打 1」。
-       * `cap < 1` 时不再往下压（真正的装不下由可行性处置/如实上报负责，不在这里静默清零）。
+       * ⇒ 判据：**只有 `nec < effTime` 时才用 nec 公式**（说明还有窗口余地，可以算「容得下几次」）；
+       * `nec >= effTime` 说明必要动作本身已占满预算（靠合轴吸收才装得下），窗口数不是瓶颈 ⇒
+       * 不施加 cap（用物理上限 floor(effTime/W)，它实际不构成约束）。
+       *
+       * ⚠ 这与「伪不动点」是同一件事：nec 超预算时 `(effTime−nec)/W` 无意义，
+       * 旧代码把它 `max(0,·)` 压成 0 = 信息丢失；现在改成「不施加约束」。
        */
-      const cap = Math.max(1, Math.ceil((stunEffTime - nec) / stunWindowDur))
+      const necUsed = out.resourceResult.characters.reduce(
+        (s, c) => s + c.timeAllocation.necessaryTime, 0)
+      const physicalMax = Math.floor(stunEffTime / stunWindowDur)
+      const budgetHasRoom = necUsed < stunEffTime
+      const necCap = budgetHasRoom ? Math.ceil((stunEffTime - necUsed) / stunWindowDur) : physicalMax
+      const cap = Math.max(1, necCap)
       if (out.stunPool.stunCount > cap) {
         /**
          * ⚠ **必须按 cap 重跑一整轮**，不能只改字段。
