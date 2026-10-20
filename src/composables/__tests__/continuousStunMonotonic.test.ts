@@ -1,8 +1,3 @@
-import { describe, it, expect } from 'vitest'
-import { setupHarness } from '@/test/harness'
-import { useResourceCalc } from '@/composables/useResourceCalc'
-import { teamPresets } from '@/data/teamPresets'
-
 /**
  * **连续失衡的验收判据（用户 2026-10-20 标准 + 同日两次纠正后的最终形态）**
  *
@@ -85,9 +80,12 @@ describe('连续失衡验收判据', () => {
       if (free.exit !== 'stable') continue // ① 已单独判
       const lo = Math.max(1, Math.floor(free.pool))
       const a = await snapshot(id, lo - 1 < 1 ? 1 : lo - 1)
-      const b = await snapshot(id, lo + 1)
-      expect(free.dmg, `${id}: 连续态 应 ≥ 完整${lo - 1}`).toBeGreaterThanOrEqual(a.dmg * 0.995)
-      expect(b.dmg, `${id}: 完整${lo + 1} 应 ≥ 连续态`).toBeGreaterThanOrEqual(free.dmg * 0.995)
+      const b = await snapshot(id, lo)
+      // 只判「下限」：连续态不得低于**更低的完整档**（那是真正的缺陷）。
+      // ⚠ 不判上限：用户 2026-10-20 明确「完整 5 < 完整 4 是符合实战的」
+      //（资源竞争 / 只有 4 个大招 / 般岳嗔火 4 轮）⇒ 连续态高于完整 N+1 是**正确**的。
+      expect(free.dmg, `${id}: 连续态 应 ≥ 完整${Math.max(1, lo - 1)}`).toBeGreaterThanOrEqual(a.dmg * 0.995)
+      expect(free.dmg, `${id}: 连续态 应 ≥ 完整${lo}`).toBeGreaterThanOrEqual(b.dmg * 0.995)
     }
   }, 900_000)
 

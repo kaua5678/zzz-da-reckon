@@ -1100,7 +1100,11 @@ export function createRunCalcRound(deps: {
     // CC-300 / CC-305：锁定失衡（`enemy.stunCountLock ≥ 0`，命座对比「操作够就能打 N 次」）⇒ 两次不动点都按计数通道值
     // countStun（CC-151：锁定时 ≡ 锁定值 / 其投影）单趟求值、池次数钉到它。原 CC-300 只在 sp1 之后钳池，
     // 不动点内部的转大次数仍按自算次数推（命座抬失衡值的假提升从 promote 漏出）⇒ 锁定下沉进 promoteFixpoint。
-    const stunLockN = configStore.enemy.stunCountLock
+    /**
+     * 锁定值：**内部覆盖优先**（连续失衡按 cap 重跑，2026-10-20）。
+     * 缺省 undefined ⇒ 与原来逐位相同（读用户配置）。
+     */
+    const stunLockN = base.stunCountLockOverride ?? configStore.enemy.stunCountLock
     const lockForPool = stunLockN >= 0 ? countStun : undefined
     // Round 0：无易伤 → 畏缩覆盖率初算
     const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio, lockForPool)

@@ -492,6 +492,14 @@ export interface ResourceCalcConfig {
   dynamicComboAlignConverged?: boolean
   /** 动态合轴吸收子问题的实际迭代轮数（同 `dynamicComboAlignConverged` 的写回时机与口径） */
   dynamicComboAlignIterations?: number
+  /**
+   * **内部锁定覆盖**（连续失衡「按时间可容纳次数重跑」，2026-10-20）。
+   *
+   * 与用户配置的 `enemy.stunCountLock` 分离：后者是**用户意图**（命座对比「操作够就能打 N 次」），
+   * 本条是引擎内部为连续失衡临时按 cap 求值一次。`>= 0` 时优先级高于用户配置。
+   * 缺省 undefined ⇒ 逐位不变。
+   */
+  stunCountLockOverride?: number
   /** 失衡次数输入（连携次数 = chainCountPerStun × stunCount）；由外部失衡池不动点收敛后回填 */
   stunCount?: number
   /**

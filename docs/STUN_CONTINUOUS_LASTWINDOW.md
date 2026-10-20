@@ -623,3 +623,40 @@ round 6 我把「锁 5 比锁 4 低 11M + 葬血强袭整行消失」判成**要
 用户纠正后：那是**正确的资源竞争结果**。
 ⇒ 克拉蕾的 `consumableStacks = gashStacks × coverage` 耦合**不是 bug**，不需要动。
 （我 round 7 开头正准备去修它——幸好判据先红了、纠正先到了。）
+
+## 23. ★★★ 环归零（2026-10-20 round 8，第 8 次尝试成功）
+
+### 做法（三处联动，缺一不可）
+
+1. **`solveTeam` 新增 `overrideLock` 参数**：允许按指定次数重跑整轮（而不是只改字段）。
+2. **capacity 结算**：`cycle` 退出时算 `cap = ceil((effTime − Σnecessary) / W)`，
+   若 `pool > cap` ⇒ **按 cap 重跑一整轮**，并把 `outerExit` 标成 `stable`。
+   理由 = 用户口径「达不到 4 失衡可以打 3 失衡」「弃轴是中间产物，目标是丢掉弃轴」。
+3. **`resourceConfig.stunCountLockOverride`**：让内层 `promoteFixpoint` 也走锁定路径
+   （否则池不钉到 cap，会回弹）。
+
+### 结果
+
+```
+改前：cycles=6  fallback=4
+改后：cycles=0  fallback=4   ← 环全部归零
+```
+
+验收判据 `continuousStunMonotonic.test.ts`：**3/3 全绿**。
+
+### 过程中踩的两个坑（都已修）
+
+| # | 坑 | 症状 | 教训 |
+|---|---|---|---|
+| 1 | 用 `withStunCount` 只改字段 | 葬血强袭整行消失、连续态低于完整 3 | 只改字段 ≠ 重算；必须重跑整轮 |
+| 2 | 递归无界 | **栈溢出** `Maximum call stack size exceeded`（449s 才失败） | 「内层走 locked 分支就不会再进本块」是错的——locked 分支同样可能 cycle 退出 |
+
+### 已知遗留（18 条红，需逐条归因）
+
+| 类别 | 测试 | 性质 |
+|---|---|---|
+| **目标改动直接后果**（需按新口径更新） | `stunPoolContinuous` ②、`stunTimeline`、`stunCoveragePoolSync` | 这三条锁的是「cycle 停点由 CC-150 钳位接管」等旧口径，环归零后前提变了 |
+| **行为回归**（需逐条归因） | `foldAccumulatorExit`、`comboAbsorbBeforeTruncation`、`foldResidualCapFeedback`×2 | 重跑改变了时序（实测账本 140.2s → 134.2s），须按规则 10 归因 |
+| **既有**（与本改动无关） | `moduleAnomalyEventRecords`×2、`outerCycleColdStart`×2、`outerCyclePick`、`inStunAttribution` | 部分为 C3 遗留 |
+
+⚠ **本轮未重生成基线**：18 条红未归因完前不能重生成（否则把未解释的漂移一起认领）。

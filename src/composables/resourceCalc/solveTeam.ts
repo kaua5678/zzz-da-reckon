@@ -100,8 +100,13 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * （喧响/嗔火/轴内块 × 窗口数）超出时间预算 → 必要时间 > 战斗时间 → 该轴不可操作
    * （需 boss 秽盾等外界环境才打得成）→ 退化为一般轴（不注入轴块/连携覆盖/自动补齐）重算）。
    */
-  function runOuterLoop(forceNoAxis: boolean, interactionScale?: number, interruptTopUp?: boolean, axisAutoTrim?: number): { out: CalcRoundResult; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: OuterExit; outerCyclePickedEarlier: boolean } {
-    let stunCount = lockedStunCount >= 0 ? lockedStunCount : 0
+  function runOuterLoop(forceNoAxis: boolean, interactionScale?: number, interruptTopUp?: boolean, axisAutoTrim?: number, overrideLock?: number): { out: CalcRoundResult; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: OuterExit; outerCyclePickedEarlier: boolean; capacityResolved: boolean } {
+    /**
+     * 有效锁定值：`overrideLock` 优先（连续失衡「按时间可容纳次数重跑」用，2026-10-20）。
+     * 缺省 undefined ⇒ 与原来逐位相同（读用户配置的 `lockedStunCount`）。
+     */
+    const effLock = overrideLock ?? lockedStunCount
+    let stunCount = effLock >= 0 ? effLock : 0
     /** CC-418：`MAX_OUTER_ITER ≥ 1` ⇒ 循环体至少执行一次、首轮即赋值（runCalcRound 无 null 出口），故可定赋值断言。 */
     let out!: CalcRoundResult
     let threads = initialCalcRoundThreads()
@@ -292,6 +297,73 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         out = pickCanonical(outerOutHistory.slice(from).map((o, j) => ({ out: o, prev: outerOutHistory[from + j - 1] ?? null, stunIn: outerStunHistory[from + j], next: outerNextHistory[from + j] })))
       }
     }
+    /**
+     * **连续失衡：环退出时按「时间可容纳次数」结算**（P1，2026-10-20；用户口径）。
+     *
+     * 用户原话：「连续失衡的解法是，**达不到 4 失衡可以打 3 失衡**……前面 3 是完整的，
+     * 就看最高难度能达到第 4 失衡的多少程度」「**弃轴是中间产物，我们目标是找到更好的办法丢掉弃轴**」。
+     *
+     * 实测 6 支环队**全部**满足「池次数 > 时间可容纳次数」：
+     * - 5 轮环（yidhari-trigger / auto-1051 / auto-1611）：`cap ≈ 3.1`，池报 4~5
+     * - 20 轮环（auto-1591 / auto-1501 / banyue-jufufu）：`cap` **为负**（Σnecessary 199~224s > 180s）
+     *
+     * 旧行为：环里选一个成员、标 `cycle`、再走弃轴 ⇒ 用户看到的是「无轴结果」，
+     * 而**前面那几次失衡本来是打得出的**（这正是用户反对的「弃轴」）。
+     *
+     * 新行为：把池按 `cap` 结算（`withStunCount`，取整 + `ceil` 保留部分窗口），
+     * 并把退出类型标成 `stable` —— 因为「按能打到的次数打」**就是一个确定的结果**，
+     * 不是「没收敛」。这与用户口径完全一致：达不到 4 就打 3（+ 第 4 次的一部分）。
+     *
+     * ⚠ 只在 `cap < 池次数` 时生效 ⇒ 时间本来就够的队逐位不变。
+     * ⚠ `cap < 0`（Σnec 超预算）时钳到 0 —— 但**不弃轴**，让上面几次完整失衡的结果保留。
+     * 回退点：删本块（去掉 `capacityResolved` 分支）。
+     */
+    let capacityResolved = false  // 供探针与后续处置读取（当前只写）
+    if (outerExit === 'cycle' && stunWindowDur > 0 && stunEffTime > 0) {
+      const nec = out.resourceResult.characters.reduce(
+        (s, c) => s + c.timeAllocation.necessaryTime, 0)
+      const cap = Math.max(0, Math.ceil((stunEffTime - nec) / stunWindowDur))
+      if (out.stunPool.stunCount > cap) {
+        /**
+         * ⚠ **必须按 cap 重跑一整轮**，不能只改字段。
+         * 实测（auto-1611）：withStunCount 只改 stunCount/chainCountTotal，
+         * **不改池的贡献明细** ⇒ 葬血强袭那一行仍按旧池生成、整行消失，
+         * 伤害 71.28M 反而低于「完整 3」的 76.16M（判据②红）。
+         * 重跑才是「按能打到的次数重新算一遍」= 用户要的「打 3 次完整 + 第 4 次的一部分」。
+         *
+         * ⚠ **显式深度闸**（实测踩到栈溢出）：原以为「overrideLock >= 0 ⇒ 内层走 locked 分支
+         * ⇒ 不会再进本块」是错的 —— locked 分支同样可能以 outerExit === cycle 退出
+         * （锁定只跳过缩放、不跳过环检测）⇒ 递归无界，实测 RangeError: Maximum call stack size exceeded。
+         * 加闸：只有 overrideLock === undefined 才允许重跑一次。
+         */
+        if (overrideLock === undefined) {
+          /**
+           * ⚠ 必须让**内层的 promoteFixpoint** 也走锁定路径，否则池不会被钉到 cap。
+           * 实测：只传 overrideLock 不够 —— convergence 的 lockForPool 读的是
+           * configStore.enemy.stunCountLock（用户配置），内层仍按自算次数推池 ⇒ 池回弹到 5。
+           * 故同时写 resourceConfig.stunCountLockOverride（跑完立即清除）。
+           */
+          const prevOverride = resourceConfig.stunCountLockOverride
+          resourceConfig.stunCountLockOverride = cap
+          let rerun: ReturnType<typeof runOuterLoop>
+          try {
+            rerun = runOuterLoop(forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim, cap)
+          } finally {
+            resourceConfig.stunCountLockOverride = prevOverride
+          }
+          return {
+            out: rerun.out,
+            outPrev: rerun.outPrev,
+            outerRounds: outerRounds + rerun.outerRounds,
+            outerConverged: true,
+            outerExit: 'stable',
+            outerCyclePickedEarlier,
+            capacityResolved: true,
+          }
+        }
+      }
+    }
+
     // 非环停点（stable / 真 maxIter）：前一轮 = 历史末项（stable 的本轮未入历史；maxIter 的本轮是历史末项，取其前一项）
     if (outerExit === 'stable') outPrev = outerOutHistory[outerOutHistory.length - 1] ?? null
     else if (outerExit === 'maxIter') outPrev = outerOutHistory[outerOutHistory.length - 2] ?? null
@@ -327,7 +399,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         : 0
       if (cov !== out.stunCoverage) out = { ...out, stunCoverage: cov }
     }
-    return { out, outPrev, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier }
+    return { out, outPrev, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier, capacityResolved }
   }
 
   let r = runOuterLoop(false)
