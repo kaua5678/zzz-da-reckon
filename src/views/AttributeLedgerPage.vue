@@ -41,7 +41,7 @@
           <n-radio-button value="matrix">矩阵</n-radio-button>
           <n-radio-button value="drill">下钻筛选</n-radio-button>
           <n-radio-button value="facet">按内容分面</n-radio-button>
-          <n-radio-button value="chart3d">3D 演示</n-radio-button>
+          <n-radio-button value="chart3d">拐力热力图</n-radio-button>
         </n-radio-group>
         <span class="muted">
           第三维＝<b>具体内容</b>（主词条 / 副词条 / 套装 / 音擎 / 被动…）：行×列×内容唯一落位，不重不漏
@@ -127,9 +127,9 @@
         </table>
       </div>
 
-      <!-- A：三维演示图（只读小玩具；核对请用 B/C 表格） -->
+      <!-- 热力图：概览用（对比属性拐力强弱 / 分布来源）；核对数字请用下钻/分面表格 -->
       <div v-if="viewMode === 'chart3d'" class="chart3d-block">
-        <Contribution3DChart :rows="drilled" :label-of="statLabel" />
+        <ContributionHeatmap :rows="drilled" :label-of="statLabel" />
       </div>
 
       <!-- C：按内容大类分面，每个分面一张 提供者×属性 的二维表 -->
@@ -252,7 +252,7 @@ import {
   type LedgerCell, type FlatContribution, type ContentKind,
 } from '@/composables/agentMechanicView'
 import { STAT_META, type FormulaZone } from '@/utils/statMeta'
-import Contribution3DChart from '@/components/charts/Contribution3DChart.vue'
+import ContributionHeatmap from '@/components/charts/ContributionHeatmap.vue'
 
 /** 属性区展示顺序（与 statMeta 同源，只用于分面小表的列排序） */
 const ZONE_ORDER_UI: FormulaZone[] = [

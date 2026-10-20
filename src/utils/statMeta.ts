@@ -27,6 +27,15 @@ export interface StatMeta {
 }
 
 export const STAT_META: StatMeta[] = [
+  /**
+   * **最终合成值**（hp/atk/def）：面板上这三个字段本身是可展示属性，
+   * 但此前没登记 ⇒ 属性贡献账/热力图的列标题只能显示原始键名（`hp` / `atk` / `def`），
+   * 中文名缺失（用户 2026-10-20 看图时列头出现英文键）。
+   * 它们的「大/小词条」是另外两条（`outOfCombatHpPct` 等），不冲突。
+   */
+  { value: 'hp', label: '生命值', zone: '基础属性', mode: 'flat', description: '最终生命值 = 基础生命 × (1 + Σ大词条%) + Σ小词条固定值（见属性贡献账的公式分解）' },
+  { value: 'atk', label: '攻击力', zone: '基础属性', mode: 'flat', description: '最终攻击力 = 基础攻击 × (1 + Σ大词条%) + Σ小词条固定值（见属性贡献账的公式分解）' },
+  { value: 'def', label: '防御力', zone: '基础属性', mode: 'flat', description: '最终防御力 = 基础防御 × (1 + Σ大词条%) + Σ小词条固定值（见属性贡献账的公式分解）' },
   { value: 'outOfCombatHpFlat', label: '局外生命小词条', zone: '基础属性', mode: 'flat', description: '局外固定生命：加到 基础生命×(1+Σ局外生命%) 之后；驱动盘固定生命等使用' },
   { value: 'outOfCombatHpPct', label: '局外生命大词条', zone: '基础属性', mode: 'pct', description: '局外百分比生命：以基础生命为基数；驱动盘主副词条、无条件2件套等使用' },
   { value: 'outOfCombatAtkFlat', label: '局外攻击小词条', zone: '基础属性', mode: 'flat', description: '局外固定攻击：加到 基础攻击×(1+Σ局外攻击%) 之后；驱动盘固定攻击等使用' },
