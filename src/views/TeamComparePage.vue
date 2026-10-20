@@ -868,10 +868,18 @@
         <span class="td-muted">
           · {{ selectedPresets[0]?.name ?? '（未选队伍）' }} · {{ slotLabels[upliftSlot] ?? '' }}
           · C0→C{{ upliftMaxLevel }} 累计
+          · 期数 {{ upliftPhaseView?.label || selectedPeriodId || '（未选）' }}
         </span>
       </template>
+      <!-- 期数没有可选牌时的如实提示（2026-10-20：最新 3.3 期的牌全是 (Test1)TBD 占位牌） -->
+      <div v-if="upliftUsableCards.length === 0" class="empty-hint guide-hint">
+        当前期数「{{ upliftPhaseView?.label || selectedPeriodId }}」<b>没有可用的环境 buff 牌</b>
+        <template v-if="upliftPhaseView">（{{ upliftPhaseView.buffs.length }} 张全是测试服占位牌 `(Test1)TBD`）</template>
+        ⇒ 网格只会有一列「不吃 buff」。想看吃 buff 的对比，把顶部「期数」切到有正式牌的那一期
+        （例如 3.2 或更早）。
+      </div>
       <div v-if="!upliftResult" class="td-muted">
-        选一队 → 点「计算提升率网格」。行 = 所选期数里出现过的 Boss（各取最新期），列 = 该期可选 buff 牌
+        选一队 → 点「计算提升率网格」。行 = <b>当前期数</b>里出现过的 Boss，列 = <b>同一期</b>的可选 buff 牌
         （首列恒「不吃」）。每格跑 <b>{{ upliftMaxLevel + 1 }}</b> 次全量求值（锁口径）；
         勾「含失衡通道」再翻一倍，用来量「不锁失衡次数时命座多拿的收益」。
       </div>
@@ -1268,28 +1276,51 @@ const upliftMaxLevel = ref(6)
 const upliftIncludeFree = ref(false)
 const upliftResult = ref<CinemaUpliftGridResult | null>(null)
 const upliftOwner = useBatchOwner()
+/** 期数/队伍/槽位/命座上限一变，旧结果就作废（行与列都按「当前期数」派生 ⇒ 不清会显示上一期的格子） */
+watch([selectedPeriodId, selectedPresetIds, upliftSlot, upliftMaxLevel, upliftIncludeFree], () => {
+  upliftResult.value = null
+})
 
-/** 网格行：所选期数范围里出现过的 Boss（每 Boss 取最新一期），按 Boss 数上限截断 */
+/**
+ * 网格行：**当前选中期数**（页面顶部的「期数」下拉）里出现过的 Boss。
+ *
+ * ⚠ 2026-10-20 修（用户报「没显示吃 buff 的数据」）：原实现是「每 Boss 取它自己的最新期」，
+ * 而列取「全局最新期视图」——两者**根本不是同一期**。最新三个 3.3 期（690501/690491/690481）
+ * 的牌全是 `(Test1)TBD` 占位牌（`testOnly: true`）且 `begin` 为空串 ⇒ 列被过滤得只剩「不吃」，
+ * 用户看到的就是「没有吃 buff 的数据」。现在行与列**同源同一期**。
+ */
 const upliftRows = computed<GridRowSpec[]>(() => {
+  const periodId = selectedPeriodId.value
+  if (!periodId) return []
   const out: GridRowSpec[] = []
   const seen = new Set<string>()
   for (const b of bossPresets.value) {
     if (seen.has(b.id)) continue
-    const phase = [...b.phases].sort((x, y) => (y.begin || y.phaseId).localeCompare(x.begin || x.phaseId))[0]
-    if (!phase) continue
+    const phases = b.phases.filter(p => p.phaseId === periodId)
+    if (phases.length === 0) continue
     seen.add(b.id)
+    const phase = phases.find(p => p.modeType === 'critical_assault') ?? phases[0]
+    if (!phase) continue
     out.push({ boss: b, phase })
     if (out.length >= upliftBossRows.value) break
   }
   return out
 })
 
-/** 网格列：所选期的最新期视图里的可用牌（非 testOnly），按牌数上限截断；首列恒「不吃」 */
+/** 当前期视图（与行同源：行和列必须是同一期，否则「吃 buff」比较的是两个不同的关卡） */
+const upliftPhaseView = computed<PhaseView | null>(
+  () => phaseViews.value.find(v => v.phaseId === selectedPeriodId.value) ?? null,
+)
+
+/** 该期**可用的** buff 牌（排除 testOnly 占位牌）；0 张 = 该期没有可选牌 */
+const upliftUsableCards = computed(() => (upliftPhaseView.value?.buffs ?? []).filter(b => !b.testOnly))
+
+/** 网格列：该期可用牌，按牌数上限截断；首列恒「不吃」。无可用牌时只有「不吃」一列 */
 const upliftCols = computed<GridColSpec[]>(() => {
-  const pv = [...phaseViews.value].sort((x, y) => (y.begin || y.phaseId).localeCompare(x.begin || x.phaseId))[0]
-  const cards = (pv?.buffs ?? []).filter(b => !b.testOnly).slice(0, upliftBuffCols.value)
   const out: GridColSpec[] = [{ id: 'none', label: '不吃 buff', card: null }]
-  for (const c of cards) out.push({ id: c.title, label: c.title, card: c })
+  for (const c of upliftUsableCards.value.slice(0, upliftBuffCols.value)) {
+    out.push({ id: c.title, label: c.title, card: c })
+  }
   return out
 })
 
