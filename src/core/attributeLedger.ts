@@ -79,7 +79,39 @@ const ZONE_ORDER: FormulaZone[] = [
  * 用户 2026-10-20：「你这 UI 只显示了攻击生命防御冲击属性啊」——
  * 修前只有 4 条乘算型，加法型属性（暴击率、暴击伤害、异常精通、穿透率…）完全不出现。
  */
-const CORE_STAT_FORMULAS: { stat?: 'Atk' | 'Hp' | 'Def' | 'Impact'; label: string; key: string }[] = [
+/**
+ * **非属性类内部字段**：引擎状态、开关、档位、结果占位。它们出现在面板上但不是「属性」，
+ * 不该进公式表（否则公式表会被 `__buffPhase` / `potentialLevel` 这类噪声淹没）。
+ */
+const NON_STAT_FIELDS = new Set([
+  '__buffPhase', 'slot', 'potentialLevel', 'skillLevelBonus', 'additionalAbilityActive',
+  'energyMax', 'flashEnergyMax', 'energyRegenOutOfCombat', 'energyRegenTotal', 'flashEnergyRegenTotal',
+  'windInfectionRate', 'stunDurationBonusSeconds',
+])
+
+/**
+ * 判断某面板字段是不是「属性值」——**不靠列举角色专属字段名**。
+ *
+ * 修前这里硬编码了 `remielleCinema1SpecialVoidflareCount` 等字段，
+ * 被判据 22 当场抓出（「角色知识回模块：引擎不读 `<角色>Xxx` 字段」）——
+ * 在 core 里写角色前缀字段名，等于把角色知识泄漏回引擎。
+ *
+ * 改为**结构性判据**：引擎里的「属性」都是 `STAT_META` 登记过的（统一口径、可展示、有 mode），
+ * 角色专属的计数/档位/开关一律不在表内 ⇒ 用 `STAT_META` 兜底即可，不需要认识任何角色。
+ */
+const KNOWN_STAT_KEYS = new Set(STAT_META.map(m => m.value))
+
+/**
+ * 公式行的规格：`stat` 有值 = 乘算型（走累加器，有大小词条）；无值 = 加法型（面板直接累加）。
+ * 单一形状、单一名字——不要在别处再写一遍字面量（判据 29）。
+ */
+interface FormulaSpec {
+  stat?: 'Atk' | 'Hp' | 'Def' | 'Impact'
+  label: string
+  key: string
+}
+
+const CORE_STAT_FORMULAS: FormulaSpec[] = [
   { stat: 'Atk', label: '攻击力', key: 'atk' },
   { stat: 'Hp', label: '生命值', key: 'hp' },
   { stat: 'Def', label: '防御力', key: 'def' },
@@ -112,6 +144,14 @@ export function zoneOfStat(stat: string): FormulaZone {
 interface EffectItem {
   effect: BuffEffect
   value: number
+  /**
+   * **转模说明**（用户 2026-10-20：「你的精通转模还是没算进去」）。
+   *
+   * `formula` 型效果的值 = `表达式(sourceStat 的值)`，例如蕾米异化系数 = 异常精通 × 0.02。
+   * 修前 `detail` 只说「核心被动」，用户看不到**它是由哪个属性按什么式子转来的**
+   * ⇒ 以为转模没算。这里把「源属性 = 源值 × 表达式」显式带出来。
+   */
+  transform?: { sourceStat: string; sourceValue: number; expression: string }
 }
 
 function originOfEffect(effect: BuffEffect): ContributionOrigin {
@@ -136,11 +176,20 @@ const effectAdapter: ContributionAdapter<EffectItem, string> = {
     return STAT_MODE.get(stat) ?? (item.effect.mode === 'pct' ? 'pct' : 'flat')
   },
   originOf: item => originOfEffect(item.effect),
-  detailOf: item => item.effect.origin?.source ?? '未标注来源',
+  detailOf: item => {
+    const base = item.effect.origin?.source ?? '未标注来源'
+    // 转模可视化：核心被动（异常精通 648 × 0.02 = 12.96）
+    if (!item.transform) return base
+    const { sourceStat, sourceValue, expression } = item.transform
+    const src = STAT_META.find(m => m.value === sourceStat)?.label ?? sourceStat
+    return `${base}（${src} ${Number(sourceValue.toFixed(2))} × ${expression} = ${Number(item.value.toFixed(2))}）`
+  },
   idOf: item => item.effect.id,
-  // 第三维「具体内容」：effect id 本身就是唯一内容标识（核心被动 / 影画2 / 套装2pc…），
-  // 配合 origin 的提供者，三者共同构成「提供者 × 属性 × 内容」的唯一落位。
-  slotKeyOf: item => item.effect.id,
+  // 第三维「具体内容」：优先用收集期盖的 `origin.contentSlot`（`套装2pc:34200` / `影画2` /
+  // `核心被动` …，语义化且可读）；没有时回落 effect id（仍保证唯一）。
+  // 修前一律用 effect id ⇒ 内容维只落到「effect_wiki_xxx」这种机器串上，
+  // 用户看到的仍然是「套装」「角色被动」的大类，做不到「二件套/四件套/副词条/核心技」分开。
+  slotKeyOf: item => item.effect.origin?.contentSlot ?? item.effect.id,
   orderKey: stat => ZONE_ORDER.indexOf(zoneOfStat(stat)),
 }
 
@@ -241,7 +290,15 @@ export function buildAttributeLedgerTable(
   for (const effect of effects) {
     const value = resolveEffectValue(effect, evalPanel, coverageMap?.get(effect.id))
     if (value === null) continue
-    items.push({ effect, value })
+    // 转模：formula 型带出「源属性 / 源值 / 表达式」，让「精通×0.02」这类换算可见
+    const transform = effect.type === 'formula' && effect.sourceStat
+      ? {
+        sourceStat: effect.sourceStat,
+        sourceValue: getPanelStat(evalPanel, effect.sourceStat) ?? 0,
+        expression: effect.formula?.expression ?? '',
+      }
+      : undefined
+    items.push({ effect, value, transform })
   }
   const table = buildLedgerTable(items, effectAdapter)
   return { ...table, phase, zoneOf: zoneOfStat }
@@ -453,12 +510,50 @@ export function buildAttributeLedger(
    * （`outOfCombatDefPct` / `inCombatDefPct` …）——此前累加器算完就把输入丢了，
    * 导致「克拉蕾的局内大防御、局外大防御都没算」在展示层无从查证。
    */
-  const formulas: StatFormula[] = CORE_STAT_FORMULAS.map(({ stat, label, key }) => {
+  /**
+   * 属性清单 = **写死的核心属性 ∪ 账本里实际出现过的全部属性**。
+   *
+   * 用户 2026-10-20：「感觉你这个只是肌层 2 维而已，没有做到全属性相加，比如蕾米异化度提升 30%
+   * 最终值 30%，这里还是漏了」——修前 `CORE_STAT_FORMULAS` 只有 11 条写死的核心属性，
+   * 角色专属字段（`remielleRefringeCoefficientBonusPct` / `remielleLuminizeMultiplierBonus` …）
+   * 虽然**账本里有**，却从不出现在公式表里 ⇒ 用户要看的「全属性相加」做不到。
+   *
+   * 改成派生：核心属性保证顺序与中文名在前，其余按属性区补在后面（角色专属属性自动纳入）。
+   */
+  // 只排除「相位累加器内部键」（`__base` / `outOfCombat*Pct` 这类），**不排除**以 Pct 结尾的
+  // 真实面板字段（`remielleRefringeCoefficientBonusPct` 就是用户点名要看的「异化度提升」）。
+  const ledgerStatKeys = [...new Set([
+    ...inCombat.totals.keys(),
+    ...base.totals.keys(),
+    ...final.totals.keys(),
+  ])].filter(k =>
+    // 排除：累加器内部键、相位前缀键、以及**非属性类内部字段**
+    // （`__buffPhase` / `potentialLevel` / `additionalAbilityActive` / `skillLevelBonus` 等
+    //  是引擎状态/开关，不是「属性」，混进公式表只会淹没真正的数值来源）
+    !k.startsWith('__')
+    && !k.endsWith('__base')
+    && !/^(outOfCombat|inCombat)[A-Z]/.test(k)
+    && !NON_STAT_FIELDS.has(k)
+    && KNOWN_STAT_KEYS.has(k),
+  )
+  const knownKeys = new Set(CORE_STAT_FORMULAS.map(f => f.key))
+  const extraFormulas = ledgerStatKeys
+    .filter(k => !knownKeys.has(k))
+    .filter(k => {
+      // 只要「能在账本里找到来源」的属性（避免把纯空字段也列出来）
+      const v = getPanelStat(panels.inCombat, k) ?? getPanelStat(panels.outOfCombat, k) ?? 0
+      return v !== 0
+    })
+    .sort((a, b) => ZONE_ORDER.indexOf(zoneOfStat(a)) - ZONE_ORDER.indexOf(zoneOfStat(b)) || a.localeCompare(b))
+    .map(key => ({ label: STAT_META.find(m => m.value === key)?.label ?? key, key }))
+
+  const formulas: StatFormula[] = ([...CORE_STAT_FORMULAS, ...extraFormulas] as FormulaSpec[])
+    .map(({ stat, label, key }) => {
     const base = getPanelStat(panels.base ?? panels.outOfCombat, key) ?? 0
-    const outPct = getPanelStat(panels.outOfCombat, `outOfCombat${stat}Pct`) ?? 0
-    const outFlat = getPanelStat(panels.outOfCombat, `outOfCombat${stat}Flat`) ?? 0
-    const inPct = getPanelStat(panels.inCombat, `inCombat${stat}Pct`) ?? 0
-    const inFlat = getPanelStat(panels.inCombat, `inCombat${stat}Flat`) ?? 0
+    const outPct = stat ? (getPanelStat(panels.outOfCombat, `outOfCombat${stat}Pct`) ?? 0) : 0
+    const outFlat = stat ? (getPanelStat(panels.outOfCombat, `outOfCombat${stat}Flat`) ?? 0) : 0
+    const inPct = stat ? (getPanelStat(panels.inCombat, `inCombat${stat}Pct`) ?? 0) : 0
+    const inFlat = stat ? (getPanelStat(panels.inCombat, `inCombat${stat}Flat`) ?? 0) : 0
     // 来源拆解：把「大/小词条」按提供者归集（主副词条一条、套装/buff/队友各一条）
     const sources: StatFormula['sources'] = []
     const pctStat = `${key}Pct`
@@ -483,6 +578,31 @@ export function buildAttributeLedger(
     }
     push('outOfCombat', outOfCombat, '局外 buff/套装')
     push('inCombat', inCombat, '局内 buff/队友')
+    /**
+     * **加法型/角色专属属性的来源**（用户：「蕾米异化度提升 30% … 这里还是漏了」）。
+     *
+     * 上面 `push` 只找 `${key}Pct` / `${key}Flat` 两个派生键，覆盖不到直接以自身为列的字段
+     * （`remielleRefringeCoefficientBonusPct` / `remielleLuminizeMultiplierBonus` …）。
+     * 这里把账本里**该属性本身的贡献**逐条补进来，保证「每一行都能看到是谁给的」。
+     */
+    for (const table of [
+      { phase: 'outOfCombat' as const, t: outOfCombat },
+      { phase: 'inCombat' as const, t: inCombat },
+    ]) {
+      for (const row of table.t.rows) {
+        const cell = row.cells.get(key)
+        if (!cell) continue
+        for (const entry of cell.entries) {
+          sources.push({
+            phase: table.phase,
+            label: `${row.origin.label}·${entry.detail}`,
+            kind: cell.mode,
+            value: entry.amount,
+            slotKey: entry.slotKey,
+          })
+        }
+      }
+    }
     // 加法型（暴击/增伤/精通…）没有「白值」，面板值就是总量；乘算型保留 base 与大小词条
     return {
       stat: key,

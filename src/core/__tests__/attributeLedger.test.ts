@@ -388,6 +388,57 @@ describe('属性矩阵：列和必须等于引擎真实面板（不重不漏）'
     }
   })
 
+  /**
+   * 2026-10-20 用户两连报：「**蕾米异化度提升 30% 最终值 30%，这里还是漏了**」
+   * 与「**你精通转模还是没算进去**」。
+   *
+   * 根因：公式表原来只有 11 条**写死**的核心属性 ⇒ 角色专属字段
+   * （`remielleRefringeCoefficientBonusPct` 等）虽然账本里有、却从不出现在表里；
+   * 且 formula 型效果只显示「核心被动」，看不出「精通 648 × 0.02」这层换算。
+   * 修法：属性清单改为「核心属性 ∪ 账本实际出现的属性」，转模把源值/表达式带进 detail。
+   */
+  it('全属性覆盖：角色专属属性（异化度提升）必须出现在公式表且有来源', async () => {
+    const { config, catalog } = await setupHarness([
+      { agentId: '1581', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1331', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1221', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    ], { recommendedBuild: true })
+    for (const buff of config.globalBuffs) buff.enabled = false
+    const phases = computePanelPhases(0, config, catalog)!
+    const ledger = buildAttributeLedger(
+      phases.buffs, phases, phases.effectCoverageMap,
+      phases.teamPanelContributions, phases.discContributions,
+    )
+    const bonus = ledger.formulas.find(f => f.stat === 'remielleRefringeCoefficientBonusPct')
+    expect(bonus, '异化度提升必须出现在公式表').toBeTruthy()
+    // 值 = 面板值（C2：影画2 的 20 + 3异常的 10 = 30）
+    expect(bonus!.inTotal).toBeCloseTo(30, 6)
+    // 来源必须能点名到「影画2」和「核心被动」两条
+    const labels = bonus!.sources.map(s => s.label).join('|')
+    expect(labels).toContain('影画')
+    expect(labels).toContain('核心被动')
+    expect(bonus!.sources.reduce((a, s) => a + s.value, 0)).toBeCloseTo(30, 6)
+  })
+
+  it('精通转模可见：异化系数 detail 必须带出「源属性 × 表达式」', async () => {
+    const { ledger } = await buildFor(0)
+    const f = ledger.formulas.find(x => x.stat === 'remielleRefringeCoefficient')
+    expect(f, '异化系数必须在公式表').toBeTruthy()
+    const detail = f!.sources[0]?.label ?? ''
+    expect(detail, `转模说明缺失：${detail}`).toMatch(/异常精通/)
+    expect(detail).toMatch(/0\.02/)
+  })
+
+  it('第三维细化：套装2pc/4pc、影画、核心被动必须是不同内容类', async () => {
+    const { ledger } = await buildFor(0)
+    const flat = flattenLedger(ledger.inCombat)
+    const contents = new Set(flat.map(r => r.content))
+    // 至少要能区分「核心被动 / 影画 / 音擎 / 套装」这些语义维度，
+    // 而不是全部塌成「套装」「角色被动」两个大类
+    expect(contents.has('核心被动') || contents.has('影画')).toBe(true)
+    expect(contents.has('套装 4pc') || contents.has('套装 2pc')).toBe(true)
+  })
+
   it('环境类 buff（危局/boss）归「环境」，不归队友', async () => {
     const { config, catalog } = await setupHarness(TEAM, { recommendedBuild: true })
     const row = config.globalBuffs[0]

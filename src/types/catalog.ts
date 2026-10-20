@@ -298,6 +298,15 @@ export interface BuffEffectOrigin {
   slot: number
   /** 来源细分（核心被动 / 额外能力 / 影画N / 音擎效果 / 套装 4pc …） */
   source: string
+  /**
+   * **第三维「具体内容」的稳定标识**（2026-10-20 用户：「你的二件套羁绊、四件套、副词条、
+   * 蕾米被动、蕾米核心技这些也没有展开，维度还是 2 维」）。
+   *
+   * 与 `source` 的区别：`source` 是给人看的文案（可能重复），`contentSlot` 是**唯一落位键**，
+   * 用于「提供者 × 属性 × 内容」三维定位。取值形如：
+   * `核心被动` / `额外能力` / `影画2` / `套装2pc:34200` / `套装4pc:34200` / `音擎效果:14158`。
+   */
+  contentSlot?: string
 }
 
 interface BuffEffectBase {

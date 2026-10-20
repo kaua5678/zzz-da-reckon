@@ -423,13 +423,13 @@ function collectAgentBuffs(agent: Agent, cinemaLevel: number): CollectedBuffs {
   if (cb) {
     // 核心被动
     for (const e of extractEffects(cb.corePassive)) {
-      const tagged = withOrigin(e, { kind: 'agent', provider, slot: -1, source: '核心被动' })
+      const tagged = withOrigin(e, { kind: 'agent', provider, slot: -1, source: '核心被动', contentSlot: '核心被动' })
       if (cb.corePassive?.scope === 'outOfCombat') out.push(tagged)
       else inCombat.push(tagged)
     }
     // 额外能力
     for (const e of extractEffects(cb.additionalAbility)) {
-      const tagged = withOrigin(e, { kind: 'agent', provider, slot: -1, source: '额外能力' })
+      const tagged = withOrigin(e, { kind: 'agent', provider, slot: -1, source: '额外能力', contentSlot: '额外能力' })
       if (cb.additionalAbility?.scope === 'outOfCombat') out.push(tagged)
       else inCombat.push(tagged)
     }
@@ -437,7 +437,7 @@ function collectAgentBuffs(agent: Agent, cinemaLevel: number): CollectedBuffs {
     for (const cinema of cb.cinemaBuffs) {
       if (cinema.cinemaLevel > cinemaLevel) continue
       for (const e of extractEffects(cinema.buff)) {
-        const tagged = withOrigin(e, { kind: 'agent', provider, slot: -1, source: `影画${cinema.cinemaLevel}` })
+        const tagged = withOrigin(e, { kind: 'agent', provider, slot: -1, source: `影画${cinema.cinemaLevel}`, contentSlot: `影画${cinema.cinemaLevel}` })
         if (cinema.buff?.scope === 'outOfCombat') out.push(tagged)
         else inCombat.push(tagged)
       }
@@ -482,7 +482,7 @@ function collectWEngineBuffs(
     for (let e of extractEffects(group)) {
       if (!wEngineEffectRequirementMet(e.requirement, gate)) continue
       e = applyWEngineModLevel(e, modLevel)
-      const tagged = withOrigin(e, { kind: 'wEngine', provider, slot: -1, source: '音擎效果' })
+      const tagged = withOrigin(e, { kind: 'wEngine', provider, slot: -1, source: '音擎效果', contentSlot: `音擎效果:${wEngine.id}` })
       if (group?.scope === 'outOfCombat') out.push(tagged)
       else inCombat.push(tagged)
     }
@@ -584,7 +584,7 @@ function collectDriveDiscBuffs(
         if (!discRequirementMet(e.requirement, ctx.agent, ctx.outOfCombatStats)) continue
         out.push(withOrigin(
           resolveDiscStatTemplate(e, ctx.agent.attribute),
-          { kind: 'driveDisc', provider: setProvider, slot: -1, source: '套装 2pc' },
+          { kind: 'driveDisc', provider: setProvider, slot: -1, source: '套装 2pc', contentSlot: `套装2pc:${setId}` },
         ))
       }
     }
@@ -597,7 +597,7 @@ function collectDriveDiscBuffs(
         if (!discRequirementMet(e.requirement, ctx.agent, ctx.outOfCombatStats)) continue
         const tagged = withOrigin(
           resolveDiscStatTemplate(e, ctx.agent.attribute),
-          { kind: 'driveDisc', provider: setProvider, slot: -1, source: '套装 4pc' },
+          { kind: 'driveDisc', provider: setProvider, slot: -1, source: '套装 4pc', contentSlot: `套装4pc:${setId}` },
         )
         if (group.scope === 'outOfCombat') out.push(tagged)
         else inCombat.push(tagged)
@@ -667,6 +667,10 @@ function collectTeammateBuffs(teammateBuffs: TeammateBuff[], sourcePanels?: Sour
         provider: localized(buff.ownerName, buff.ownerId),
         slot: -1,
         source: localized(buff.sourceLabel, buff.id),
+        // 内容标识：环境类用行名（危局buff / boss），队友类用「来源·buffId」保证唯一
+        contentSlot: kind === 'team'
+          ? `环境:${localized(buff.ownerName, buff.ownerId)}`
+          : `队友:${buff.id}`,
       })
       if (buff.scope === 'outOfCombat') out.push(tagged)
       else inCombat.push(tagged)

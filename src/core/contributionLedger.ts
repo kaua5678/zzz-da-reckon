@@ -225,7 +225,12 @@ export function reconcileLedger<Key extends string = string>(
 // ============================================================================
 
 /** 内容大类：把 `slotKey` 的前缀归成可读的「第三维取值」 */
-export type ContentKind = '主词条' | '副词条' | '固定主词条' | '套装' | '音擎' | '角色被动' | '队友 buff' | '环境' | '其他'
+export type ContentKind =
+  | '主词条' | '副词条' | '固定主词条'
+  | '套装 2pc' | '套装 4pc'
+  | '音擎'
+  | '核心被动' | '额外能力' | '影画'
+  | '队友 buff' | '环境' | '其他'
 
 /**
  * `slotKey` → 内容大类。
@@ -239,14 +244,20 @@ export function contentKindOf(slotKey: string | undefined, originKind: string): 
     case '主词条': return '主词条'
     case '副词条': return '副词条'
     case '固定主词条': return '固定主词条'
-    case '套装': return '套装'
+    case '套装2pc': return '套装 2pc'
+    case '套装4pc': case '套装': return '套装 4pc'
     case '音擎': case '音擎高级词条': return '音擎'
+    case '核心被动': return '核心被动'
+    case '额外能力': return '额外能力'
+    case '影画1': case '影画2': case '影画3': case '影画4': case '影画5': case '影画6': return '影画'
+    case '队友': return '队友 buff'
+    case '环境': return '环境'
     default: break
   }
   switch (originKind) {
-    case 'driveDisc': return '套装'
+    case 'driveDisc': return '套装 4pc'
     case 'wEngine': return '音擎'
-    case 'agent': return '角色被动'
+    case 'agent': return '核心被动'
     case 'teammate': case 'teamEffect': return '队友 buff'
     case 'team': return '环境'
     default: return '其他'
@@ -323,5 +334,6 @@ export function facetByContent(rows: readonly FlatContribution[]): Map<ContentKi
 
 /** 内容大类的稳定展示顺序（主词条在最前：它是「看得见的那一条」，随后是副词条/套装/音擎/被动/队友/环境） */
 export const CONTENT_KIND_ORDER: ContentKind[] = [
-  '主词条', '副词条', '固定主词条', '套装', '音擎', '角色被动', '队友 buff', '环境', '其他',
+  '主词条', '副词条', '固定主词条', '套装 2pc', '套装 4pc', '音擎',
+  '核心被动', '额外能力', '影画', '队友 buff', '环境', '其他',
 ]
