@@ -468,3 +468,43 @@ svg .curve-hit {
   line-height: 1.5;
 }
 
+
+/* 锁值横幅（2026-10-20，用户「怕误解就改 ui」）：
+   把锁值从单元格提到表头 —— 锁值是**整把尺子**，不同锁值下的数字不可横向比
+   （整数台阶型命座实测差 6 倍：克拉蕾 C1 锁 5 = 42.7% / 锁 6 = 7.0%）。 */
+.uplift-lock-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  border-left: 3px solid var(--line-strong);
+}
+.uplift-lock-banner.lock-uniform {
+  background: var(--fill-hover);
+  border-left-color: var(--c-success);
+  color: var(--fg-2);
+}
+.uplift-lock-banner.lock-mixed {
+  background: var(--fill-active);
+  border-left-color: var(--c-warning);
+  color: var(--fg-2);
+}
+.uplift-lock-banner .lock-hint {
+  color: var(--fg-3);
+  font-size: 11px;
+}
+/* 行首「锁值」单列：窄、居中、读数用等宽数字 */
+.uplift-grid .th-lock {
+  width: 56px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+}
+.uplift-grid thead .th-lock {
+  color: var(--fg-3);
+  font-weight: 600;
+}
+

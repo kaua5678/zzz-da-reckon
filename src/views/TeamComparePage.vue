@@ -880,6 +880,8 @@
           · 期数 {{ upliftPhaseView?.label || selectedPeriodId || '（未选）' }}
         </span>
       </template>
+      <!-- 前置条件不满足时的如实提示（原来这些是静默 return，点按钮毫无反应） -->
+      <div v-if="upliftHint" class="empty-hint guide-hint uplift-hint">{{ upliftHint }}</div>
       <!-- 期数没有可选牌时的如实提示（2026-10-20：最新 3.3 期的牌全是 (Test1)TBD 占位牌） -->
       <div v-if="upliftUsableCards.length === 0" class="empty-hint guide-hint">
         当前期数「{{ upliftPhaseView?.label || selectedPeriodId }}」<b>没有可用的环境 buff 牌</b>
@@ -893,24 +895,39 @@
         勾「含失衡通道」再翻一倍，用来量「不锁失衡次数时命座多拿的收益」。
       </div>
       <div v-else class="uplift-grid-wrap">
+        <!--
+          锁值横幅（用户 2026-10-20「怕误解就改 ui」）：把锁值从**单元格**提到**表头**。
+          原来每格都写「锁 N 窗」，读者会以为那是独立参数、进而横向比较不同锁值下的数字 —— 而
+          整数台阶型命座（克拉蕾 C1 残痕效率 +20%，层数 = floor(积蓄/层)）在锁 5 / 锁 6 下差 6 倍
+          （实测 42.7% vs 7.0%）。锁值是**整把尺子**，必须一眼看出全表用的是不是同一把。
+        -->
+        <div class="uplift-lock-banner" :class="upliftLockUniform ? 'lock-uniform' : 'lock-mixed'">
+          <template v-if="upliftLockUniform">
+            <b>全表统一锁 {{ upliftLockValue }} 窗</b>
+            <span class="lock-hint">同一把尺子 ⇒ 各行可直接横向比较</span>
+          </template>
+          <template v-else>
+            <b>⚠ 逐行锁值不同（{{ upliftLockSummary }}）</b>
+            <span class="lock-hint">锁值不同 ⇒ <b>不同行之间不可直接比</b>；要比请切「锁值 = 整表统一」</span>
+          </template>
+        </div>
         <table class="uplift-grid">
           <thead>
             <tr>
-              <th class="th-corner">Boss ＼ 环境 buff</th>
+              <th class="th-corner">Boss</th>
+              <th class="th-lock">锁值</th>
               <th v-for="label in upliftResult.colLabels" :key="label">{{ label }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in upliftGrid" :key="row.label">
               <td class="th-row">{{ row.label }}</td>
+              <td class="th-lock">{{ row.lock ?? '—' }}</td>
               <td v-for="(cell, ci) in row.cells" :key="ci" class="uplift-cell">
                 <template v-if="cell">
                   <div class="cell-total">{{ signed1(cell.lockedTotalPct) }}%</div>
-                  <div class="cell-sub">
-                    锁 {{ cell.baseStunCount || '—' }} 窗
-                    <template v-if="cell.freeTotalPct != null">
-                      · 不锁 {{ signed1(cell.freeTotalPct) }}%
-                    </template>
+                  <div v-if="cell.freeTotalPct != null" class="cell-sub">
+                    不锁 {{ signed1(cell.freeTotalPct) }}%
                   </div>
                   <div v-if="cell.stunChannelDeltaPct != null" class="cell-delta" :class="upliftCellClass(cell.stunChannelDeltaPct)">
                     失衡通道 {{ signed1(cell.stunChannelDeltaPct) }}pp
@@ -1299,6 +1316,8 @@ const upliftIncludeFree = ref(false)
  */
 const upliftLockMode = ref<'row' | 'grid'>('grid')
 const upliftResult = ref<CinemaUpliftGridResult | null>(null)
+/** 无法开始计算时的**可见**原因（空 = 无异常）。原来这些前置条件失败是静默 return。 */
+const upliftHint = ref('')
 const upliftOwner = useBatchOwner()
 /** 期数/队伍/槽位/命座上限一变，旧结果就作废（行与列都按「当前期数」派生 ⇒ 不清会显示上一期的格子） */
 watch([selectedPeriodId, selectedPresetIds, upliftSlot, upliftMaxLevel, upliftIncludeFree, upliftLockMode], () => {
@@ -1361,24 +1380,45 @@ function upliftCellClass(v: number | null | undefined): string {
   return n > 0 ? 'cell-pos' : 'cell-neg'
 }
 
-/** 网格按行优先渲染：每个 Boss 一行，行里按列顺序取格 */
+/** 网格按行优先渲染：每个 Boss 一行，行里按列顺序取格（`lock` = 该行的锁值，提到行首单列显示） */
 const upliftGrid = computed(() => {
   const r = upliftResult.value
   if (!r) return []
   const byId = new Map(r.cells.map(c => [c.id, c]))
-  return upliftResult.value!.rowLabels.map((label, ri) => ({
-    label,
-    cells: r.colLabels.map((_, ci) => {
-      const row = upliftRows.value[ri]
+  return r.rowLabels.map((label, ri) => {
+    const row = upliftRows.value[ri]
+    const cells = r.colLabels.map((_, ci) => {
       const col = upliftCols.value[ci]
       return row && col ? byId.get(`${r.cells[0]?.presetId}|${row.boss.id}|${row.phase.phaseId}|${col.id}`) ?? null : null
-    }),
-  }))
+    })
+    /** 行锁值：取该行第一个非空格（同行为行级锁，逐位相同；全空 = 中止时没算到这行） */
+    const lock = cells.find(c => c != null)?.baseStunCount ?? null
+    return { label, lock, cells }
+  })
 })
+
+/** 全表是否同一把尺子（决定横幅是绿是黄 —— 用户「怕误解就改 ui」的核心） */
+const upliftLockUniform = computed(() => {
+  const locks = upliftGrid.value.map(r => r.lock).filter((v): v is number => v != null)
+  return locks.length === 0 ? true : new Set(locks).size === 1
+})
+/** 统一时的锁值（空格场景返回 0，模板里只在 uniform 时用） */
+const upliftLockValue = computed(() => upliftGrid.value.find(r => r.lock != null)?.lock ?? 0)
+/** 不统一时给一句摘要，如「5 / 6 / 5」 */
+const upliftLockSummary = computed(() => upliftGrid.value.map(r => r.lock ?? '—').join(' / '))
 
 async function runUpliftGrid() {
   const presets = selectedPresets.value
-  if (presets.length === 0) return
+  /**
+   * ⚠ 提前 return 必须**说出来**（2026-10-20 实机点通时抓到）：修前这里直接 `return`，
+   * 用户没选队伍时点「计算提升率网格」**什么都不发生**——没有报错、没有进度、没有提示，
+   * 和「按钮坏了」无法区分（ui-check 也因此在 300s 后超时才暴露）。
+   */
+  if (presets.length === 0) {
+    upliftHint.value = '还没选队伍：先在上方「预设队伍」里勾至少一支（或新建自定义队伍），再点计算。'
+    return
+  }
+  upliftHint.value = ''
   const task = upliftOwner.start()
   computing.value = true
   progress.value = null
