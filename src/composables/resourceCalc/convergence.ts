@@ -53,7 +53,8 @@ import {
 import { BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/helpers'
 import { getBaseElement } from '@/data/anomalyElement'
 import { calcSpecialActionBonus } from '@/core/anomalyPool'
-import { PARRY_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
+import { PARRY_DECIBEL_BONUS, STUN_TRIGGER_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
+import { withCompanionShare } from '@/data/decibelCompanion'
 import { calcTeamResources } from '@/core/resource'
 import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
@@ -821,6 +822,16 @@ export function createRunCalcRound(deps: {
       configStore.team.map(c => c.quickAssistCount),
     )
     const specialBonusPerSlot = specialActionBonusRound.perSlotBonus
+    /**
+     * **进入失衡喧响**（每次失衡 20/人，含队友伴随 50%；用户 2026-10-20 裁决「每人」）。
+     *
+     * 口径：失衡 N 次 ⇒ 每名角色**自己**得 20N，再按伴随比例收别人的 50%
+     * （与弹刀/连携那 4 项同一套伴随规则，只是"own"部分人人相同而不是按动作次数分）。
+     * 用 `countStun`（计数通道值）而不是物理窗口数：它才是本轮实际兑现的失衡次数，
+     * 与连携次数 `chainCountTotalOf(cfg, countStun)` 同源。
+     */
+    const stunTriggerOwn = configStore.team.map(() => countStun * STUN_TRIGGER_DECIBEL_BONUS)
+    const stunTriggerBonusPerSlot = withCompanionShare(stunTriggerOwn)
     // 异常/紊乱/乱流喧响奖励：上一轮异常池结果回填（首轮 0），在外层不动点内收敛
     const anomalyBonusPerSlot = configStore.team.map((_, s) => prevAnomalyDecibelBonus[s] ?? 0)
 
@@ -833,6 +844,7 @@ export function createRunCalcRound(deps: {
       axisOverlapByAction,
       ...(axisUltimatePromote ? { axisUltimatePromote } : {}),
       specialActionDecibelBonusPerSlot: specialBonusPerSlot,
+      stunTriggerDecibelBonusPerSlot: stunTriggerBonusPerSlot,
       anomalyDecibelBonusPerSlot: anomalyBonusPerSlot,
       // 时间轴喧响轨（对轴模块，用户口径 2026-08-31）：轴模式按窗口时序推演每槽实际可放大招数
       //（180s 分失衡/非失衡段，喧响均匀回复 3000 上限，进窗够 3000 放大清空、不够削减该窗大招）。

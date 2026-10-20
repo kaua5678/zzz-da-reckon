@@ -120,6 +120,8 @@ export function assembleSlot(ctx: AssembleSlotContext, cfg: CharacterOperationCo
     + giftDecibel,
     config.specialActionDecibelBonusPerSlot?.[i] ?? 0,
     config.anomalyDecibelBonusPerSlot?.[i] ?? 0,
+    // 进入失衡奖励（每次 20/人）：用户 2026-10-20 裁决「每人」，与特殊动作的「谁做谁拿」不同通道
+    config.stunTriggerDecibelBonusPerSlot?.[i] ?? 0,
     teammateFrontlineSeconds)
   // 物化钩子派发前的引擎行快照：供 buildResourceResult 复现钩子当时看到的行基准
   // （阶段1 第二刀——卢西娅 cap 等派生量不再经 cfg 回写传递）

@@ -189,6 +189,13 @@
           <span class="bd-value">{{ fmt(result.decibelSource.specialActionBonus) }}</span>
           <span class="bd-detail">弹刀/闪避/快支 · 含队友伴随50% · 已计入次数</span>
         </div>
+        <!-- 进入失衡喧响（用户 2026-10-20 裁决「每人」）：与上面「特殊动作」口径不同 —
+             那 4 项是「谁做的动作谁拿」，本条是「每次失衡全队三名角色各得 20」，故单列一行。 -->
+        <div v-if="(result.decibelSource.stunTriggerBonus ?? 0) > 0" class="breakdown-row">
+          <span class="bd-label">进入失衡</span>
+          <span class="bd-value">{{ fmt(result.decibelSource.stunTriggerBonus) }}</span>
+          <span class="bd-detail">每次失衡每人 20 · 含队友伴随50% · 已计入次数</span>
+        </div>
         <!-- CC-233：不可分享额外喧响计入 total（resourceIncome），此前卡片漏列（1051 自身烧血少 3000~4000、1541 少 2700） -->
         <div v-if="(result.decibelSource.unshareableBonus ?? 0) > 0" class="breakdown-row">
           <span class="bd-label">专属额外</span>

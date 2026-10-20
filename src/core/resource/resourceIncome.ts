@@ -232,6 +232,8 @@ export function calcDecibelSource(
   specialActionBonus = 0,
   /** 异常/紊乱/乱流奖励（含伴随50%），由全局配置按槽位注入（上一轮异常池结果） */
   anomalyBonus = 0,
+  /** 进入失衡奖励（每次失衡 20/人，含伴随50%），由全局配置按槽位注入（用户 2026-10-20 裁决「每人」） */
+  stunTriggerBonus = 0,
   /** Σ 队友前台秒（行级喧响 buildExecutions 需要，与装配层同语义：不含自己） */
   teamFrontlineSeconds = 0,
 ): DecibelSource {
@@ -262,9 +264,10 @@ export function calcDecibelSource(
   ) * efficiency
   const specialActionBonusWithEfficiency = specialActionBonus * efficiency
   const anomalyBonusWithEfficiency = anomalyBonus * efficiency
+  const stunTriggerBonusWithEfficiency = stunTriggerBonus * efficiency
   const shareableTotal = skillRegen + bonusRegen
   const total = initialGift + shareableTotal + teammateShareWithEfficiency + unshareableBonus
-    + specialActionBonusWithEfficiency + anomalyBonusWithEfficiency
+    + specialActionBonusWithEfficiency + anomalyBonusWithEfficiency + stunTriggerBonusWithEfficiency
 
   return {
     initialGift,
@@ -273,6 +276,7 @@ export function calcDecibelSource(
     timeSliceDecibel,
     specialActionBonus: specialActionBonusWithEfficiency,
     anomalyBonus: anomalyBonusWithEfficiency,
+    stunTriggerBonus: stunTriggerBonusWithEfficiency,
     teammateShare: teammateShareWithEfficiency,
     unshareableBonus,
     selfBurnDecibel,

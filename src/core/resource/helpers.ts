@@ -442,9 +442,20 @@ function iterateBody(
       // 次数与门控由模块经 `crossAgentSupply` 自报（本文件不再 import 角色模块、不写 id）。
       + giftDecibelForCfg(configs, prevStates, cfg, totalTime)
       + selfBurn
-    // 特殊动作奖励（本轮即时按连携/弹刀/闪反/快支次数结算）+ 异常奖励（上一轮异常池回填），均含队友伴随
+    /**
+     * 外部注入的喧响奖励，三路并列（均含队友伴随）：
+     * ① 特殊动作（本轮即时按连携/弹刀/闪反/快支次数结算）
+     * ② 异常奖励（上一轮异常池回填）
+     * ③ **进入失衡**（每次失衡每人 20，用户 2026-10-20 裁决「每人」）
+     *
+     * ⚠ 三路必须**同时在**这里与 assembleSlot#calcDecibelSource 出现，否则「迭代期用于推大招次数的
+     * 喧响总量」与「装配期展示的 decibelSource.total」会脱钩——实测漏掉③时
+     * auto-1611-1361-1211 的 decSourceTotal/cost = 4.11 却只算出 ult = 3
+     * （装配层已把 200 喧响算进 total，迭代层没算进 floor）。
+     */
     const externalDecibelBonus = (globalCfg.specialActionDecibelBonusPerSlot?.[i] ?? 0)
       + (globalCfg.anomalyDecibelBonusPerSlot?.[i] ?? 0)
+      + (globalCfg.stunTriggerDecibelBonusPerSlot?.[i] ?? 0)
     const totalDecibel = (cfg.initialDecibelGift + shareableDecibels[i] + teammateShares[i] + extraSelfDecibel
       + externalDecibelBonus) * decibelEfficiencyMultiplier(cfg)
     decibels.push(totalDecibel)

@@ -22,3 +22,19 @@ export const CHAIN_DECIBEL_BONUS = 10
 export const DODGE_COUNTER_DECIBEL_BONUS = 10
 /** 快速支援单次个人喧响 */
 export const QUICK_ASSIST_DECIBEL_BONUS = 20
+
+/**
+ * **进入失衡**单次个人喧响（全队每人各得，含队友伴随 50%）。
+ *
+ * 用户裁决 2026-10-20（逐字：「1.每人。」）：回答「失衡触发 20/次 归属是每人还是全队」——
+ * **每人**，即失衡 N 次 ⇒ 三名角色各得 20N，不是「打出最后一击的人拿 20N」。
+ *
+ * ⚠ 与上面 4 项特殊动作**口径不同**：那 4 项是「谁做的动作谁拿」（别人的次数不计给自己），
+ * 本项是「每人都有」。故在 `calcDecibelSource` 里走独立通道 `stunTriggerBonus`，
+ * 不并进 `specialActionBonus`（并进去结果卡就说不清「这 20 算给了谁」）。
+ *
+ * ⚠ 历史：`core/stunPool.ts` 头注释记着 CC-231 删过一条「失衡次数 × 20」字段——那条是
+ * **失衡池卡片上的展示字段**（无消费者、归属未定），删得对；本次是按新裁决**重新接线到喧响收入**，
+ * 不是把它加回去。
+ */
+export const STUN_TRIGGER_DECIBEL_BONUS = 20

@@ -28,7 +28,7 @@ import type { DecibelSource } from '@/types/resource'
 /** 喧响来源的类别（= 矩阵的行） */
 export type DecibelSourceKind =
   | '开局赠送' | '招式回复' | '奖励回复' | '时光切片' | '特殊动作'
-  | '异常奖励' | '队友伴随' | '不可分享' | '自身烧血'
+  | '异常奖励' | '失衡触发' | '队友伴随' | '不可分享' | '自身烧血'
 
 /**
  * 各字段属于「可分享」还是「不可分享」。
@@ -44,6 +44,9 @@ const SHAREABLE: Record<DecibelSourceKind, boolean> = {
   时光切片: true,
   特殊动作: true,
   异常奖励: true,
+  // 失衡触发 = 每次失衡每人 20（用户 2026-10-20 裁决「每人」）；与特殊动作一样按次数结算，
+  // 口径上属于「可分享」——伴随 50% 已由 withCompanionShare 在注入前算好。
+  失衡触发: true,
   队友伴随: true,
   不可分享: false,
   自身烧血: false,
@@ -57,6 +60,7 @@ const FIELD_TO_KIND: { field: keyof DecibelSource; kind: DecibelSourceKind }[] =
   { field: 'timeSliceDecibel', kind: '时光切片' },
   { field: 'specialActionBonus', kind: '特殊动作' },
   { field: 'anomalyBonus', kind: '异常奖励' },
+  { field: 'stunTriggerBonus', kind: '失衡触发' },
   { field: 'teammateShare', kind: '队友伴随' },
   { field: 'unshareableBonus', kind: '不可分享' },
   { field: 'selfBurnDecibel', kind: '自身烧血' },

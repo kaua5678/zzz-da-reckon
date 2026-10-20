@@ -99,6 +99,13 @@ export interface DecibelSource {
   timeSliceDecibel: number
   /** 特殊动作奖励（弹刀215/闪反10/连携10/快支20，含队友伴随50%）；参与终结技次数推导 */
   specialActionBonus: number
+  /**
+   * **进入失衡奖励**（每次失衡 20/人，含队友伴随 50%；用户 2026-10-20 裁决「每人」）；参与终结技次数推导。
+   *
+   * 与 `specialActionBonus` 分开记：后者是「谁做的动作谁拿」，本条是「每人都有」——两者口径不同，
+   * 混在一个字段里会让结果卡无法说清「这 20 到底算给了谁」。
+   */
+  stunTriggerBonus: number
   /** 异常/紊乱/乱流触发奖励（含队友伴随50%）；参与终结技次数推导 */
   anomalyBonus: number
   /** 队友伴随获得（其他队友招式回复的 50% 或 52.5%） */

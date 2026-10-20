@@ -13,7 +13,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 const ENERGY_ROWS = ['autoRegen', 'pctRegenBonus', 'flatRegenBonus', 'backstageBonus', 'comboAlignBonus', 'gainEfficiencyBonus',
   'skillRegen', 'timeSliceEnergy', 'zhenyuanEnergy', 'supportUltimateRegen', 'initialGift', 'shieldBreakGift', 'energyShieldBreakGift', 'exRefundEnergy'] as const
 /** 卡片显示的喧响顶层行（timeSliceDecibel 已含在 bonusRegen、selfBurnDecibel 已含在 unshareableBonus，只作说明，不重复加） */
-const DECIBEL_ROWS = ['initialGift', 'skillRegen', 'bonusRegen', 'teammateShare', 'anomalyBonus', 'specialActionBonus', 'unshareableBonus'] as const
+const DECIBEL_ROWS = ['initialGift', 'skillRegen', 'bonusRegen', 'teammateShare', 'anomalyBonus', 'specialActionBonus', 'stunTriggerBonus', 'unshareableBonus'] as const
 
 const TEAMS = [['1051', '1311', '1221'], ['1541', '1331', '1411'], ['1451', '1371', '1311']]
 
@@ -54,7 +54,7 @@ describe('CC-233 结果卡明细 = 总数', () => {
       for (const c of useResourceCalc().resourceResult.value!.characters) {
         const d = c.decibelSource
         const rowLevel = d.skillRegen
-        const nonRow = d.initialGift + d.bonusRegen + d.teammateShare + d.specialActionBonus + d.anomalyBonus + d.unshareableBonus
+        const nonRow = d.initialGift + d.bonusRegen + d.teammateShare + d.specialActionBonus + d.stunTriggerBonus + d.anomalyBonus + d.unshareableBonus
         expect(rowLevel + nonRow, `${c.agentId} 拆分两段之和 ≠ total`).toBeCloseTo(d.total, 6)
         // 反空洞：确实存在非行级通道（否则拆分条没有信息量）
         if (nonRow > 1) checked++

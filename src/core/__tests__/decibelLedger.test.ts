@@ -16,6 +16,7 @@ function mkSource(overrides: Partial<DecibelSource> = {}): DecibelSource {
     bonusRegen: 0,
     timeSliceDecibel: 0,
     specialActionBonus: 0,
+    stunTriggerBonus: 0,
     anomalyBonus: 0,
     teammateShare: 0,
     unshareableBonus: 0,
