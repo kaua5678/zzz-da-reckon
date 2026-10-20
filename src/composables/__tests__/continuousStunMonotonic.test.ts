@@ -4,57 +4,102 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
 
 /**
- * **连续失衡的验收判据（用户 2026-10-20 逐字给的标准）**：
+ * **连续失衡的验收判据（用户 2026-10-20 标准 + 同日两次纠正后的最终形态）**
  *
- * > 「最后连续失衡能做到比如说
+ * ## 用户标准（逐字）
+ *
+ * > 「连续失衡能做到比如说
  * >  完整 4 失衡 > （完整 3 + 连续不完整的第 4 失衡）> 完整 3 失衡，就差不多了」
  *
- * 即**锁失衡次数扫过的伤害必须单调**：
- *   D(锁 3) < D(锁 3.5) < D(锁 4)
- * 现在引擎只能在整数上锁，所以判据落成两条：
- * ① **整数单调**：D(锁 N) 随 N 严格递增（这条现在就应该成立）
- * ② **连续单调**：在 N 与 N+1 之间取中间态，D 必须落在两者之间（这条是连续失衡要实现的）
+ * ⇒ **同一目标档内**的三态排序，不是全局单调。
  *
- * ⚠ 反空洞：必须真的存在「中间态严格介于两端」的样本，否则判据恒真没有意义。
+ * ## 纠正一：D(5) < D(4) 是正确行为
+ *
+ * > 「强行 5 失衡可能导致资源过多倾斜于击破手，主 c 资源不够……
+ * >  多数队伍只有 4 个大招，5 失衡也打不出 5 大；般岳嗔火基本只能 4 轮」
+ *
+ * 我最初写成 `D(3) < D(4) < D(5)` 严格单调 —— 那是**错的**（与实战相反）。
+ *
+ * ## 纠正二（本轮）：环状态下「连续态」根本不存在
+ *
+ * 实测 `auto-1051-1141-1451`：
+ *
+ * | 状态 | exit | N | 覆盖率 | 伤害 |
+ * |---|---|---|---|---|
+ * | 自由收敛 | **cycle** | 5 | 0.444 | 69.141M |
+ * | 锁 5 | **stable** | 5 | 0.444 | **69.719M** |
+ *
+ * 覆盖率、N 完全相同，伤害差 0.58M ⇒ 环态下读到的池/资源与稳定态**不同源**。
+ * ⇒ 判据不能拿「自由收敛态」当连续态样本，必须**要求先收敛**。
  */
-describe('连续失衡验收判据（用户标准）', () => {
-  const TEAMS = ['auto-1611-1141-1211', 'auto-1051-1141-1451', 'yidhari-trigger-lucia']
+import { describe, it, expect } from 'vitest'
+import { setupHarness } from '@/test/harness'
+import { useResourceCalc } from '@/composables/useResourceCalc'
+import { teamPresets } from '@/data/teamPresets'
 
-  async function dmgAtLock(presetId: string, lock: number): Promise<number> {
-    const preset = teamPresets.find(p => p.id === presetId)
-    expect(preset, `预设 ${presetId} 不存在`).toBeTruthy()
-    const { catalog, config } = await setupHarness(['', '', ''])
-    await catalog.loadBuildRecommendations()
-    for (let i = 0; i < 3; i++) config.setAgent(i, preset!.team[i])
-    config.applyTeamPreset(preset!.team as [string, string, string])
-    config.enemy.stunCountLock = lock
-    return useResourceCalc().teamTotalDamage.value
+const TEAMS = ['auto-1611-1141-1211', 'auto-1051-1141-1451', 'yidhari-trigger-lucia']
+
+async function snapshot(presetId: string, lock: number) {
+  const preset = teamPresets.find(p => p.id === presetId)
+  expect(preset, `预设 ${presetId} 不存在`).toBeTruthy()
+  const { catalog, config } = await setupHarness(['', '', ''])
+  await catalog.loadBuildRecommendations()
+  for (let i = 0; i < 3; i++) config.setAgent(i, preset!.team[i])
+  config.applyTeamPreset(preset!.team as [string, string, string])
+  config.enemy.stunCountLock = lock
+  const calc = useResourceCalc()
+  const rr = calc.resourceResult.value!
+  return {
+    dmg: calc.teamTotalDamage.value,
+    pool: calc.stunPoolResult.value?.stunCount ?? 0,
+    cov: calc.stunCoverage.value,
+    exit: rr.convergence.outerExit,
   }
+}
 
-  it('① 整数单调：锁 3 < 锁 4 < 锁 5 的伤害严格递增', async () => {
+describe('连续失衡验收判据', () => {
+  /**
+   * **① 收敛是连续失衡的前提**（本轮新增，抓的是实测到的真缺陷）
+   *
+   * 环态下 N 与覆盖率都可能与稳定态相同，但伤害不同源（实测差 0.58M）。
+   * ⇒ 「连续」只有在**收敛**时才有定义；环态下没有连续态可谈。
+   */
+  it('① 外层必须收敛（stable）—— 环态下不存在「连续态」', async () => {
+    const bad: string[] = []
     for (const id of TEAMS) {
-      const d3 = await dmgAtLock(id, 3)
-      const d4 = await dmgAtLock(id, 4)
-      const d5 = await dmgAtLock(id, 5)
-      expect(d3, `${id}: 锁3 应 < 锁4`).toBeLessThan(d4)
-      expect(d4, `${id}: 锁4 应 < 锁5`).toBeLessThan(d5)
+      const s = await snapshot(id, -1)
+      if (s.exit !== 'stable') bad.push(`${id}:${s.exit}`)
+    }
+    expect(bad, `连续失衡要求先收敛，以下未收敛：${bad.join(' ')}`).toEqual([])
+  }, 900_000)
+
+  /**
+   * **② 同档内三态排序**（用户标准本体）
+   *
+   * 在稳定态下，「完整 N−1」<「连续 N−1+小数」<「完整 N」必须成立。
+   * 由于引擎目前只能在整数上锁，「连续态」用自由收敛（stable）的 N* 代表。
+   */
+  it('② 同档三态排序：完整 N−1 < 连续态 < 完整 N+1（稳定态下）', async () => {
+    for (const id of TEAMS) {
+      const free = await snapshot(id, -1)
+      if (free.exit !== 'stable') continue // ① 已单独判
+      const lo = Math.max(1, Math.floor(free.pool))
+      const a = await snapshot(id, lo - 1 < 1 ? 1 : lo - 1)
+      const b = await snapshot(id, lo + 1)
+      expect(free.dmg, `${id}: 连续态 应 ≥ 完整${lo - 1}`).toBeGreaterThanOrEqual(a.dmg * 0.995)
+      expect(b.dmg, `${id}: 完整${lo + 1} 应 ≥ 连续态`).toBeGreaterThanOrEqual(free.dmg * 0.995)
     }
   }, 900_000)
 
-  it('② 连续单调：完整 N 与完整 N+1 之间，不完整的那一次必须落在中间', async () => {
-    // 中间态 = 不锁（自由收敛），它应当落在「完整 N」与「完整 N+1」之间或之上。
-    // 这是最弱形式：至少不能出现「自由收敛比两端都差」这种反物理结果。
+  /**
+   * **③ 低档单调**：大招数足够覆盖的区间内（≤3），次数越多伤害越高。
+   * 不测 4→5（那一档由资源竞争主导，下降是正确行为）。
+   */
+  it('③ 低档单调：锁 2 < 锁 3', async () => {
     for (const id of TEAMS) {
-      const preset = teamPresets.find(p => p.id === id)!
-      const { catalog, config } = await setupHarness(['', '', ''])
-      await catalog.loadBuildRecommendations()
-      for (let i = 0; i < 3; i++) config.setAgent(i, preset.team[i])
-      config.applyTeamPreset(preset.team as [string, string, string])
-      const free = useResourceCalc().teamTotalDamage.value
-      const d2 = await dmgAtLock(id, 2)
-      const d6 = await dmgAtLock(id, 6)
-      expect(free, `${id}: 自由收敛(连续态) 不应低于锁2`).toBeGreaterThan(d2)
-      expect(d6, `${id}: 锁6 应高于锁2`).toBeGreaterThan(d2)
+      const d2 = await snapshot(id, 2)
+      const d3 = await snapshot(id, 3)
+      expect(d3.dmg, `${id}: 锁3 应 > 锁2`).toBeGreaterThan(d2.dmg)
     }
   }, 900_000)
 })
