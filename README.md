@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（98 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（99 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -167,6 +167,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-basic-pool-carve.md` | **平A池 carve 只留一份实现（r742）**：7 处手写的「从 basic_attack 聚合行挤时间」收成 `moduleExecRow#carveBasicPool`，回能缩不缩由调用方显式传（纯重构，zd 0/0）；核对回能口径发现艾莲循环行按表回填能量、池能量却不缩，按规则 10 修正（3 支 1191 预设 + 单人 c0–c6 的差异表与归因）；§7 的候选 r743 已做：两份派发前行快照改为逐行拷贝（§8）；r744 钩子入参按契约收窄（§9）；r745 结果钩子的两份快照改必填（§10）；r746 卢西娅追加攻击上限的形参收窄（§11）；r747 effectiveTime 时间 helper 的形参收窄（§12）；r748 countFrontActions 与 computeJufufuCycle 的入参收窄（§13）；r749 设置项缺省值只留在声明、删 cfgMechanicSettingRaw（§14）；r750 删机制设置的 cfg 镜像字段（§15）；r751 雨果 / 柚叶两个带第二写入方的设置字段与钩子读取器的默认值（§16）；r752 编排层不再按 id 读模块设置，琉音 60 档上限改由转大钩子自己读（§17）；r753 spec adjustable 比例统一按声明读、模块 reader 去掉 fallback 形参（§18）；r754 影响变量自带读写口径（§19）；r755 影响变量表项自带读写（§20）；r756 抗性表六键入类型（§21）；r757 敌人抗性按元素取值统一口径（§22）；r758 佩洛伊斯模块改回对象字面量（§23）；r759 删 16 个角色模块的额外能力 cfg 镜像字段（§24）；r760 拿得到面板的钩子不再按 spec 重算额外能力，删 3 个 cfg 镜像与 2 个面板镜像（§25）；r761 收掉额外能力判定的最后四处副本（席德 cfg 镜像、莱特手写兜底与死块、仪玄手写判定、琉音透传字段，§26）；r762 同一事实只留一个来源（仪玄极限支援门控改读面板标记、雅删风队面板镜像、琉音好评来源收成 liuyinSourceOf，§27），下一轮候选（失衡内时间线变种积蓄槽口径） |
 | `docs/mcp-liuyin-promote-source.md` | **琉音转大次数唯一来源（W21 阻塞项 lead 设计）**：同轮四读数（floor / 计划值结转 / 池不动点 / 轴声明）的证据表、planned≠pool 的口径根因、单源 = 答案层 `promote` 滞后注入的通道设计、轴模式闸门（待用户）、否决记录与证伪闸门；拆卡 W25/W26 |
 | `docs/mcp-r22d1-batch12-field-census.md` | **R22-D1 批 1-2 裁决不做 + 核心角色字段普查计划（handoff）**：批 1-2（billy/yeshuguang 终局旗标并入通用骨架）判不做理由、核心 `CharacterOperationConfig` 角色字段 census 方案（字段→写入方/读取方） |
+| `docs/STUN_CONTINUOUS_LASTWINDOW.md` | **连续失衡专项（2026-10-20 开工，未完成）**：用户口径（保全前面失衡 / 争取最后一次 / 做不到也能连续算）+ 6 支环队实测分类 + **环的载体确认**（A/B 实验：只把 time.stunPlanProjection 从 physical 改成 off ⇒ 4 支里 3 支立刻 stable ⇒ 载体是 prevPoolStunCount 的滞后自反馈）+ P0″ 护栏（弃轴 4→0）+ 仍未解的 2 类新环。**含 5 次失败尝试的留痕**，接手前必读 |
 | `docs/REQUIREMENTS_BACKLOG.md` | **需求清单与状态（2026-10-20 盘点）**：把用户这一路提的需求切成 A–E 五组（失衡连续化专项 / 命座提升率 / 喧响 / 图表轴态 / 文档漂移），每条带「已做·未做·阻塞点·判据」与提交号；末尾「已裁决不做」列出 R12 引擎自动认领、R13 引擎自抬吸收率、R4 事件时间轴三条**别再派**的活 |
 | `docs/mcp-cinema-uplift-multi-metric.md` | **命座提升率口径与交接** |：失衡栏为什么用 `totalStunBuildUp` 而非被 `stunCountLock` 锁死的 `stunCount`（3 队 × 6 级引擎探针实测表）、显示口径与「显示位四舍五入为 0 即 `—`」的共同判据、七道闸门 + 两次负控 + 实机 DOM 读回证据；**§8 = 命座提升率网格**（2026-10-20：Boss × 环境 buff 的 N×M 网格、锁值取 C0 基线、`free−locked` 量失衡通道；实测锁值本身就能让累计提升率在 34.6%~75.0% 之间漂） |
 | `docs/mcp-core-agent-math-census.md` | **core/** 角色专属数学盘点（CC-70）**：不靠 agentId、但按某角色机制写的 core 逻辑逐项裁定留/迁——维琳娜气旋事件已迁模块（CC-71）、core 的 C2 风蚀默认值已删（CC-72），帷幕/风蚀派发器/真元/加农转子裁定留 core 及理由、复现 grep |
@@ -180,6 +181,6 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-guard-audit-surface-work.md` | **判据「表面功夫」审计（2026-10-17）**：A/B/C 三类坏法的清点与分布、逐条四栏判定（判据位置/类别/想防什么/为什么拦不住/建议改法）、最妨碍开发的 Top 5、以及「看着像表面功夫、实际有牙」的反向清单（防误删）与「不该动」清单 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（98 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（99 份，与节标题一致），新增文档需同步本表。
 > **判据 9 已递归到子目录**（`docs/**/*.md`）：子目录里的文档同样必须登记，路径按 `docs/<相对路径>` 写
 > （2026-10-06 修：`docs/proposals/pull-value-optimization.md` 曾因 glob 只扫顶层而长期不在表内 = agent 找不到）。
