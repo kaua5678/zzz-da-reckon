@@ -382,3 +382,89 @@ svg .curve-hit {
 @media (max-width: 1200px) {
   .resource-cards { grid-template-columns: 1fr; }
 }
+
+/* ========== 命座提升率网格（chartMode === 'uplift'）==========
+   用户 2026-10-20：Boss × 环境 buff 的 N×M 格，每格一格显示累计提升率 + 逐级明细 + 失衡通道。 */
+.uplift-grid-wrap {
+  overflow-x: auto;
+}
+.uplift-grid {
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 100%;
+}
+.uplift-grid th,
+.uplift-grid td {
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  vertical-align: top;
+  text-align: center;
+}
+.uplift-grid thead th {
+  background: var(--app-tablehead-bg);
+  color: var(--fg-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* Boss 名那一列：左对齐、粘住左边（列多时横向滚动仍看得见是哪一行） */
+.uplift-grid .th-corner,
+.uplift-grid .th-row {
+  text-align: left;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.uplift-grid .th-row {
+  background: var(--fill-hover);
+  color: var(--fg-2);
+  font-weight: 600;
+  position: sticky;
+  left: 0;
+}
+.uplift-cell {
+  min-width: 138px;
+}
+.uplift-cell .cell-total {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+}
+.uplift-cell .cell-sub {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--fg-3);
+}
+.uplift-cell .cell-delta {
+  margin-top: 2px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.uplift-cell .cell-steps {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+}
+.uplift-cell .cell-step {
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--fill-hover);
+}
+.uplift-cell .cell-pos {
+  color: var(--c-success);
+}
+.uplift-cell .cell-neg {
+  color: var(--c-danger);
+}
+.grid-note {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+

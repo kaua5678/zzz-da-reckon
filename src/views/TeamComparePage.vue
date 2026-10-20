@@ -9,6 +9,7 @@
             <n-radio-button value="scatter">散点</n-radio-button>
             <n-radio-button value="curve">难度曲线</n-radio-button>
             <n-radio-button value="sweep">选第三人</n-radio-button>
+            <n-radio-button value="uplift">命座提升率</n-radio-button>
           </n-radio-group>
         </div>
         <div class="ctl-field">
@@ -276,13 +277,34 @@
             <n-checkbox v-model:checked="sweepOptimalGold" size="small">最优加金（慢）</n-checkbox>
           </div>
         </template>
+        <template v-if="chartMode === 'uplift'">
+          <div class="ctl-field" title="网格行 = Boss（取所选期数范围里出现过的 Boss，每 Boss 一行的最新期）；行数上限控制成本">
+            <span class="ctl-label">Boss 行</span>
+            <n-input-number v-model:value="upliftBossRows" size="small" :min="1" :max="9" style="width: 70px" />
+          </div>
+          <div class="ctl-field" title="网格列 = 环境 buff 牌（取自所选期数的最新期视图）；列数上限控制成本">
+            <span class="ctl-label">Buff 列</span>
+            <n-input-number v-model:value="upliftBuffCols" size="small" :min="1" :max="4" style="width: 70px" />
+          </div>
+          <div class="ctl-field" title="被评估的槽位（命座提升率按槽位算；缺省主C）">
+            <span class="ctl-label">槽位</span>
+            <n-select v-model:value="upliftSlot" size="small" :options="slotLabels.map((l, i) => ({ value: i, label: l }))" style="width: 110px" />
+          </div>
+          <div class="ctl-field" title="最高命座等级（默认 6；调到 3 可把成本减半）">
+            <span class="ctl-label">最高命座</span>
+            <n-input-number v-model:value="upliftMaxLevel" size="small" :min="1" :max="6" style="width: 70px" />
+          </div>
+          <div class="ctl-field" title="同时跑「不锁失衡次数」口径 ⇒ 多出「失衡通道贡献」一列（每格求值翻倍，慢）">
+            <n-checkbox v-model:checked="upliftIncludeFree" size="small">含失衡通道</n-checkbox>
+          </div>
+        </template>
         <n-button
           type="primary" size="small" :loading="computing"
-          @click="chartMode === 'scatter' ? runCompare() : chartMode === 'curve' ? runCurves() : runSweep()"
+          @click="chartMode === 'scatter' ? runCompare() : chartMode === 'curve' ? runCurves() : chartMode === 'sweep' ? runSweep() : runUpliftGrid()"
         >
-          {{ chartMode === 'scatter' ? '计算' : chartMode === 'curve' ? '计算曲线' : '计算第三人' }}
+          {{ chartMode === 'scatter' ? '计算' : chartMode === 'curve' ? '计算曲线' : chartMode === 'sweep' ? '计算第三人' : '计算提升率网格' }}
         </n-button>
-        <n-button v-if="(chartMode === 'curve' || chartMode === 'sweep') && computing" size="small" @click="chartMode === 'curve' ? cancelCurrentRun() : cancelSweep()">中止</n-button>
+        <n-button v-if="(chartMode === 'curve' || chartMode === 'sweep' || chartMode === 'uplift') && computing" size="small" @click="chartMode === 'curve' ? cancelCurrentRun() : chartMode === 'sweep' ? cancelSweep() : cancelUplift()">中止</n-button>
       </div>
 
       <!-- 进度 -->
@@ -839,6 +861,62 @@
       </ChartTable>
     </n-card>
     <!-- 选第三人排名表：固定 2 队友下，第三人候选按伤害排名（背景条 = 伤害占比） -->
+    <!-- 命座提升率网格（用户 2026-10-20：图表类单独给一个，N×M 格 = Boss × 环境 buff） -->
+    <n-card v-if="chartMode === 'uplift'" size="small" :bordered="true" class="detail-card">
+      <template #header>
+        命座提升率网格
+        <span class="td-muted">
+          · {{ selectedPresets[0]?.name ?? '（未选队伍）' }} · {{ slotLabels[upliftSlot] ?? '' }}
+          · C0→C{{ upliftMaxLevel }} 累计
+        </span>
+      </template>
+      <div v-if="!upliftResult" class="td-muted">
+        选一队 → 点「计算提升率网格」。行 = 所选期数里出现过的 Boss（各取最新期），列 = 该期可选 buff 牌
+        （首列恒「不吃」）。每格跑 <b>{{ upliftMaxLevel + 1 }}</b> 次全量求值（锁口径）；
+        勾「含失衡通道」再翻一倍，用来量「不锁失衡次数时命座多拿的收益」。
+      </div>
+      <div v-else class="uplift-grid-wrap">
+        <table class="uplift-grid">
+          <thead>
+            <tr>
+              <th class="th-corner">Boss ＼ 环境 buff</th>
+              <th v-for="label in upliftResult.colLabels" :key="label">{{ label }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in upliftGrid" :key="row.label">
+              <td class="th-row">{{ row.label }}</td>
+              <td v-for="(cell, ci) in row.cells" :key="ci" class="uplift-cell">
+                <template v-if="cell">
+                  <div class="cell-total">{{ signed1(cell.lockedTotalPct) }}%</div>
+                  <div class="cell-sub">
+                    锁 {{ cell.baseStunCount || '—' }} 窗
+                    <template v-if="cell.freeTotalPct != null">
+                      · 不锁 {{ signed1(cell.freeTotalPct) }}%
+                    </template>
+                  </div>
+                  <div v-if="cell.stunChannelDeltaPct != null" class="cell-delta" :class="upliftCellClass(cell.stunChannelDeltaPct)">
+                    失衡通道 {{ signed1(cell.stunChannelDeltaPct) }}pp
+                  </div>
+                  <div class="cell-steps">
+                    <span v-for="e in cell.lockedEntries" :key="e.to" class="cell-step" :title="`C${e.to - 1}→C${e.to}：${e.gainPct.toFixed(2)}%`">
+                      {{ signed1(e.gainPct) }}
+                    </span>
+                  </div>
+                </template>
+                <span v-else class="td-muted">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="td-muted grid-note">
+          <b>锁 N</b> = 该格 C0 基线自由收敛的失衡次数（整表每格各自算，但同格内 C0→C6 恒用它）——
+          这样「命座让失衡次数变多」这条价值不会被重复计入，跨格可比。
+          <b>失衡通道</b> = 不锁累计 − 锁累计（正 = 不锁时命座从失衡次数/攒条上多拿了收益）。
+        </div>
+      </div>
+    </n-card>
+
     <n-card v-if="chartMode === 'sweep' && sweepResult" size="small" :bordered="true" class="detail-card">
       <template #header>
         第三人对比（固定 {{ agentNameOf(sweepResult.fixed[0]) }} + {{ agentNameOf(sweepResult.fixed[1]) }} ·
@@ -885,6 +963,7 @@ import { DOWNGRADE_MODS } from '@/composables/downgradeWEngine'
 import { persistedRef } from '@/composables/persistedRef'
 import { useBatchOwner } from '@/composables/batchTask'
 import { runDifficultyCurves } from '@/composables/difficultyCurveRunner'
+import { computeCinemaUpliftGrid, type CinemaUpliftGridResult, type GridColSpec, type GridRowSpec } from '@/composables/cinemaUpliftGrid'
 import { useCurvePointPool } from '@/composables/curvePointPool'
 import { deltaKeys } from '@/composables/configDelta'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
@@ -1164,10 +1243,112 @@ const enginePoolOptions = computed(() =>
 const computing = ref(false)
 const progress = ref<{ pct: number; text: string } | null>(null)
 const points = ref<TeamComparePoint[]>([])
-/** 图型：散点（各队各金档一个点）/ 难度曲线（每队自己的贪心提升路径）/ 第三人海选（固定2队友+全角色扫第三槽） */
-const chartMode = ref<'scatter' | 'curve' | 'sweep'>('scatter')
+/**
+ * 图型：散点（各队各金档一个点）/ 难度曲线（每队自己的贪心提升路径）/ 第三人海选（固定2队友+全角色扫第三槽）
+ * / 命座提升率网格（Boss × 环境buff 的 N×M 格，每格逐级提升率 —— 用户 2026-10-20 裁决「在图表类单独给一个」）
+ */
+const chartMode = ref<'scatter' | 'curve' | 'sweep' | 'uplift'>('scatter')
 /** 曲线结果（原始阶梯，画图与摘要都从它派生） */
 const curveRows = ref<DifficultyCurveRow[]>([])
+
+// ========== 命座提升率网格（chartMode === 'uplift'）==========
+/**
+ * 用户 2026-10-20：「命座提升率在不同环境下提升不同，我认为这个不用在资源利用率里面了，
+ * 在图表类单独给一个，伤害贡献多算几次，比如一个方框分成 4 个方框或者 9 个方框，
+ * 2 维属性分别是 boss 选择不同，环境 buff 选择不同」。
+ *
+ * 口径（为什么每格要用**同一个**锁值，见 `cinemaUpliftGrid.ts` 头注释）：
+ * 锁值 = 该格 **C0 基线**自由收敛的失衡次数。用「当前配置的池」当锁值会让全01 与全65 锁在不同窗数上
+ * （实测同队累计提升率因此从 71.0% 漂到 68.8%，差值全部来自锁值而不是命座）。
+ */
+const upliftBossRows = ref(3)
+const upliftBuffCols = ref(3)
+const upliftSlot = ref(0)
+const upliftMaxLevel = ref(6)
+const upliftIncludeFree = ref(false)
+const upliftResult = ref<CinemaUpliftGridResult | null>(null)
+const upliftOwner = useBatchOwner()
+
+/** 网格行：所选期数范围里出现过的 Boss（每 Boss 取最新一期），按 Boss 数上限截断 */
+const upliftRows = computed<GridRowSpec[]>(() => {
+  const out: GridRowSpec[] = []
+  const seen = new Set<string>()
+  for (const b of bossPresets.value) {
+    if (seen.has(b.id)) continue
+    const phase = [...b.phases].sort((x, y) => (y.begin || y.phaseId).localeCompare(x.begin || x.phaseId))[0]
+    if (!phase) continue
+    seen.add(b.id)
+    out.push({ boss: b, phase })
+    if (out.length >= upliftBossRows.value) break
+  }
+  return out
+})
+
+/** 网格列：所选期的最新期视图里的可用牌（非 testOnly），按牌数上限截断；首列恒「不吃」 */
+const upliftCols = computed<GridColSpec[]>(() => {
+  const pv = [...phaseViews.value].sort((x, y) => (y.begin || y.phaseId).localeCompare(x.begin || x.phaseId))[0]
+  const cards = (pv?.buffs ?? []).filter(b => !b.testOnly).slice(0, upliftBuffCols.value)
+  const out: GridColSpec[] = [{ id: 'none', label: '不吃 buff', card: null }]
+  for (const c of cards) out.push({ id: c.title, label: c.title, card: c })
+  return out
+})
+
+/** 带符号一位小数（表格单元格用；页面原先没有这个 helper，散点卡用的是局部模板表达式） */
+function signed1(v: number | null | undefined): string {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return '—'
+  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}`
+}
+/** 提升率单元格着色：正 = 成功色 / 负 = 危险色 / |v| < ε 不着色（与资源利用率页同一阈值语义） */
+function upliftCellClass(v: number | null | undefined): string {
+  const n = Number(v)
+  if (!Number.isFinite(n) || Math.abs(n) < 0.05) return ''
+  return n > 0 ? 'cell-pos' : 'cell-neg'
+}
+
+/** 网格按行优先渲染：每个 Boss 一行，行里按列顺序取格 */
+const upliftGrid = computed(() => {
+  const r = upliftResult.value
+  if (!r) return []
+  const byId = new Map(r.cells.map(c => [c.id, c]))
+  return upliftResult.value!.rowLabels.map((label, ri) => ({
+    label,
+    cells: r.colLabels.map((_, ci) => {
+      const row = upliftRows.value[ri]
+      const col = upliftCols.value[ci]
+      return row && col ? byId.get(`${r.cells[0]?.presetId}|${row.boss.id}|${row.phase.phaseId}|${col.id}`) ?? null : null
+    }),
+  }))
+})
+
+async function runUpliftGrid() {
+  const presets = selectedPresets.value
+  if (presets.length === 0) return
+  const task = upliftOwner.start()
+  computing.value = true
+  progress.value = null
+  try {
+    // 只跑第一支队：一张网格已经是 N×M×(maxLevel+1) 次全量求值，多队会把格子挤得看不清
+    const preset = presets[0]!
+    const result = await withAnalysisScenario(s => computeCinemaUpliftGrid(s, {
+      presets: [preset],
+      rows: upliftRows.value,
+      cols: upliftCols.value,
+      slots: [upliftSlot.value],
+      maxLevel: upliftMaxLevel.value,
+      includeFree: upliftIncludeFree.value,
+      control: { signal: task.signal },
+      onProgress: p => task.commit(() => { progress.value = p }),
+    }))
+    task.commit(() => { upliftResult.value = result })
+  } finally {
+    task.commit(() => { computing.value = false; progress.value = null })
+  }
+}
+
+function cancelUplift() {
+  upliftOwner.cancel()
+}
 /** 难度曲线视图：2D 折线（原图）/ 3D 版本轴（用户 2026-09-19） */
 const curveView = ref<'2d' | '3d'>('2d')
 /**
