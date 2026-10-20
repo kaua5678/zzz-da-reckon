@@ -1434,6 +1434,14 @@ describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
     // ⚠ 2026-10-18 夹具再换：修「冲霄动作时间」（2.667 → 1.167）后，180s 里让出约 30s，
     // **jufufu 不再需要挤压**（trim 0，实测 59.758M）——夹具改取 **norma**（修正后唯一仍 trim=1 的预设，
     // 实测 81.172M / net 181.38）。判据形状不变：轴保住 + 真的削了 + 削到装得下。
+    //
+    // ⚠ **2026-10-20 显式造出临界**（配装推荐主词条订正后，默认档下 6 支般岳预设全部 trim=0）：
+    // 数据口径修正后这 6 支预设的净占用都刚好装得下（norma 实测 net 180.76，只差 0.76s 压线但不触发）
+    // ⇒ 「挤压臂真的削了」这条判据会退化成「本来就装得下」（正是头注释 T166 警告的假判据）。
+    // 处置：不再依赖「某条预设恰好在临界」，而是**显式把有效战斗时长压到临界以内**——
+    // `enemy.invincibleTime = 10` ⇒ 有效时长 170s，实测 norma trim=3、保轴、net 170.00、74.526M。
+    // 判据形状一字未改（轴保住 + 真的削了 + 削到装得下），反空洞断言反而更强。
+    config.enemy.invincibleTime = 10
     const preset = teamPresets.find(p => p.id === 'banyue-norma-lucia')!
     const baseAxis = config.getAxisState()
     applyTeamToStore(config, preset)
@@ -1452,8 +1460,8 @@ describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
     // 般岳的怒相外连段确实被削了（模块侧读数与引擎读数同源）
     const b = rr.characters.find(c => c.agentId === '1471') as unknown as { banyueRageCycle?: { comboOutCount: number } } | undefined
     expect(b?.banyueRageCycle?.comboOutCount, '般岳连段数被削减').toBeDefined()
-    // 2026-10-18 实测：norma trim=1、保轴后 81.172M（net 181.38 → 削到装得下）
-    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害落在实测档位（81.172M）').toBeGreaterThan(75)
+    // 2026-10-20 实测（invincibleTime=10）：trim=3、保轴后 74.526M（net 170 → 削到装得下）
+    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害落在实测档位（74.526M）').toBeGreaterThan(70)
   })
 })
 

@@ -168,102 +168,102 @@
     "1": {
       "max_level": 15,
       "extra": {
-        "30501": {
-          "prop": 30501,
-          "name": "基础能量自动回复",
-          "format": "{0:0.##}",
-          "value": 12
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 0
+        },
+        "30501": {
+          "prop": 30501,
+          "name": "基础能量自动回复",
+          "format": "{0:0.##}",
+          "value": 12
         }
       }
     },
     "2": {
       "max_level": 25,
       "extra": {
-        "30501": {
-          "prop": 30501,
-          "name": "基础能量自动回复",
-          "format": "{0:0.##}",
-          "value": 12
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 25
+        },
+        "30501": {
+          "prop": 30501,
+          "name": "基础能量自动回复",
+          "format": "{0:0.##}",
+          "value": 12
         }
       }
     },
     "3": {
       "max_level": 35,
       "extra": {
-        "30501": {
-          "prop": 30501,
-          "name": "基础能量自动回复",
-          "format": "{0:0.##}",
-          "value": 24
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 25
+        },
+        "30501": {
+          "prop": 30501,
+          "name": "基础能量自动回复",
+          "format": "{0:0.##}",
+          "value": 24
         }
       }
     },
     "4": {
       "max_level": 45,
       "extra": {
-        "30501": {
-          "prop": 30501,
-          "name": "基础能量自动回复",
-          "format": "{0:0.##}",
-          "value": 24
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 50
+        },
+        "30501": {
+          "prop": 30501,
+          "name": "基础能量自动回复",
+          "format": "{0:0.##}",
+          "value": 24
         }
       }
     },
     "5": {
       "max_level": 55,
       "extra": {
-        "30501": {
-          "prop": 30501,
-          "name": "基础能量自动回复",
-          "format": "{0:0.##}",
-          "value": 36
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 50
+        },
+        "30501": {
+          "prop": 30501,
+          "name": "基础能量自动回复",
+          "format": "{0:0.##}",
+          "value": 36
         }
       }
     },
     "6": {
       "max_level": 60,
       "extra": {
-        "30501": {
-          "prop": 30501,
-          "name": "基础能量自动回复",
-          "format": "{0:0.##}",
-          "value": 36
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 75
+        },
+        "30501": {
+          "prop": 30501,
+          "name": "基础能量自动回复",
+          "format": "{0:0.##}",
+          "value": 36
         }
       }
     }
@@ -2214,18 +2214,18 @@
       },
       "4": {
         "10": 60000,
-        "110507": 9,
-        "110004": 2
+        "110004": 2,
+        "110507": 9
       },
       "5": {
         "10": 100000,
-        "110507": 15,
-        "110004": 3
+        "110004": 3,
+        "110507": 15
       },
       "6": {
         "10": 200000,
-        "110507": 30,
-        "110004": 4
+        "110004": 4,
+        "110507": 30
       }
     }
   },
@@ -2269,13 +2269,40 @@
   },
   "fairy_recommend": {
     "slot4": 31800,
-    "slot2": 31300,
-    "slot_sub": 31400,
+    "slot2": 31600,
+    "slot_sub": 31300,
     "part_sub_list": [
       31203,
       12102
     ],
-    "alt_build": [],
+    "alt_build": [
+      {
+        "suit_list": [
+          31800,
+          31300
+        ],
+        "part_sub_list": [
+          31203
+        ]
+      },
+      {
+        "suit_list": [
+          31800,
+          31600
+        ],
+        "part_sub_list": [
+          31603,
+          12102
+        ]
+      },
+      {
+        "suit_list": [],
+        "part_sub_list": [
+          31402,
+          30502
+        ]
+      }
+    ],
     "part4": {
       "prop": 30502,
       "name": "能量自动回复",
@@ -2289,16 +2316,16 @@
       "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconElementMystery.png"
     },
     "part6": {
+      "prop": 31603,
+      "name": "火属性伤害加成",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconGeneralBuff/Packer/IconFire.png"
+    },
+    "part_sub": {
       "prop": 12102,
       "name": "攻击力",
       "format": "{0:0.#%}",
       "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png"
-    },
-    "part_sub": {
-      "prop": 20103,
-      "name": "暴击率",
-      "format": "{0:0.#%}",
-      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCrit.png"
     }
   },
   "strategy": [

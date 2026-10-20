@@ -168,102 +168,102 @@
     "1": {
       "max_level": 15,
       "extra": {
-        "21101": {
-          "prop": 21101,
-          "name": "暴击伤害",
-          "format": "{0:0.#%}",
-          "value": 960
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 0
+        },
+        "21101": {
+          "prop": 21101,
+          "name": "暴击伤害",
+          "format": "{0:0.#%}",
+          "value": 960
         }
       }
     },
     "2": {
       "max_level": 25,
       "extra": {
-        "21101": {
-          "prop": 21101,
-          "name": "暴击伤害",
-          "format": "{0:0.#%}",
-          "value": 960
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 25
+        },
+        "21101": {
+          "prop": 21101,
+          "name": "暴击伤害",
+          "format": "{0:0.#%}",
+          "value": 960
         }
       }
     },
     "3": {
       "max_level": 35,
       "extra": {
-        "21101": {
-          "prop": 21101,
-          "name": "暴击伤害",
-          "format": "{0:0.#%}",
-          "value": 1920
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 25
+        },
+        "21101": {
+          "prop": 21101,
+          "name": "暴击伤害",
+          "format": "{0:0.#%}",
+          "value": 1920
         }
       }
     },
     "4": {
       "max_level": 45,
       "extra": {
-        "21101": {
-          "prop": 21101,
-          "name": "暴击伤害",
-          "format": "{0:0.#%}",
-          "value": 1920
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 50
+        },
+        "21101": {
+          "prop": 21101,
+          "name": "暴击伤害",
+          "format": "{0:0.#%}",
+          "value": 1920
         }
       }
     },
     "5": {
       "max_level": 55,
       "extra": {
-        "21101": {
-          "prop": 21101,
-          "name": "暴击伤害",
-          "format": "{0:0.#%}",
-          "value": 2880
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 50
+        },
+        "21101": {
+          "prop": 21101,
+          "name": "暴击伤害",
+          "format": "{0:0.#%}",
+          "value": 2880
         }
       }
     },
     "6": {
       "max_level": 60,
       "extra": {
-        "21101": {
-          "prop": 21101,
-          "name": "暴击伤害",
-          "format": "{0:0.#%}",
-          "value": 2880
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 75
+        },
+        "21101": {
+          "prop": 21101,
+          "name": "暴击伤害",
+          "format": "{0:0.#%}",
+          "value": 2880
         }
       }
     }
@@ -2048,18 +2048,18 @@
       },
       "4": {
         "10": 60000,
-        "110503": 9,
-        "110002": 2
+        "110002": 2,
+        "110503": 9
       },
       "5": {
         "10": 100000,
-        "110503": 15,
-        "110002": 3
+        "110002": 3,
+        "110503": 15
       },
       "6": {
         "10": 200000,
-        "110503": 30,
-        "110002": 4
+        "110002": 4,
+        "110503": 30
       }
     }
   },
@@ -2102,15 +2102,39 @@
     }
   },
   "fairy_recommend": {
-    "slot4": 32300,
+    "slot4": 34000,
     "slot2": 31000,
-    "slot_sub": 31400,
+    "slot_sub": 32700,
     "part_sub_list": [
       20103,
       21103,
       12102
     ],
-    "alt_build": [],
+    "alt_build": [
+      {
+        "suit_list": [
+          32300,
+          31000
+        ],
+        "part_sub_list": [
+          21103,
+          20103
+        ]
+      },
+      {
+        "suit_list": [],
+        "part_sub_list": [
+          31903,
+          12102
+        ]
+      },
+      {
+        "suit_list": [],
+        "part_sub_list": [
+          12102
+        ]
+      }
+    ],
     "part4": {
       "prop": 20103,
       "name": "暴击率",
@@ -2124,16 +2148,16 @@
       "icon": "UI/Sprite/A1DynamicLoad/IconGeneralBuff/Packer/IconDungeonBuffEther.png"
     },
     "part6": {
-      "prop": 12102,
-      "name": "攻击力",
-      "format": "{0:0.#%}",
-      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png"
-    },
-    "part_sub": {
       "prop": 21103,
       "name": "暴击伤害",
       "format": "{0:0.#%}",
       "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCritDam.png"
+    },
+    "part_sub": {
+      "prop": 12102,
+      "name": "攻击力",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png"
     }
   },
   "strategy": [

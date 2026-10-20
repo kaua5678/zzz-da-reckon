@@ -21,7 +21,11 @@
 | `scripts/fetch-gachabase-agent.mjs <id> <slug> [lang]` | 爬 gachabase beta 倍率 | `data/raw/gachabase/<id>.json`（归一化 skill_data） |
 | `scripts/fetch-nanoka-full-missing.mjs [<id>...] [--force] [--version <v>]` | 爬 nanoka 全量（含 talent/passive）；不带 id = 补「缺失角色」，带 id = 重爬指定角色（`--force` 覆盖存档） | `data/raw/nanoka_missing/full/<id>.json` |
 | `scripts/import-nanoka-wengine.mjs <id>... [--force]` | 音擎 raw + catalog.wEngines（`--force` 按正式服重抓 raw 后重导） | `data/raw/nanoka_wengine_<id>_{zh,en}.json` + catalog |
-| `scripts/sync-build-recommendations.mjs <id>... [--write] [--force] [--verify-rule]` | 邦布精灵配装推荐（4pc/2pc/主词条/副词条/专武） | `data/raw/nanoka_{character,equipment,weapon}.json` + build-recommendations.json |
+| `scripts/sync-build-recommendations.mjs <id>... [--write] [--force] [--verify-rule] [--main-stats-only]` | 邦布精灵配装推荐（4pc/2pc/主词条/副词条/专武）；`--main-stats-only` 只重写 `main_stats`（修单条口径时用，避免顺带翻掉 strategy/substats 的 en→zh 名称） | `data/raw/nanoka_{character,equipment,weapon}.json` + build-recommendations.json |
+
+**主词条口径（2026-10-20 订正，单一事实源 `scripts/lib/build-recommendation-rule.mjs`）**：4/5/6 槽**每槽独立**，按 `part4 → part5 → part6 → part_sub` 取**首个该槽合法**的词条；`alt_build` 是备选配装的副属性，**不参与**主词条选择。这是 nanoka 页面自身的规则（bundle `_app/immutable/nodes/9.*.js` 里 `slot.stats = ml.filter(槽合法)` 再显示首项），实测 62 角色逐位对上。
+
+> 旧口径是「候选全局去重贪心」：前面槽位用掉的词条后面只能顺延 ⇒ 与页面 **24/62** 不一致，且给 1631/1641 写出过**该槽不合法**的主词条（5 槽暴伤、6 槽穿透、4 槽掌控、5 槽精通、6 槽火伤）。护栏测试 `src/data/__tests__/buildRecMainStatRule.test.ts` 三条判据（合法槽 / 规则可复现 / 规则本体）钉住本口径。典型症状：蕾米埃尔（1581）6 号位应显示 **攻击力% > 能量自动回复**（页面上 ATK% 才是首选），旧数据只给了能量回复。
 
 **出网**：脚本走 `scripts/lib/http.mjs` 的 `fetchJson`（node fetch 优先，失败回退 `curl`）——本机存在「node 出网被拦（ETIMEDOUT/ENETUNREACH）、curl 正常」的环境，回退让数据管线照跑。
 

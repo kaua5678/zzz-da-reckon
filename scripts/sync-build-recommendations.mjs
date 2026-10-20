@@ -2,9 +2,11 @@
 /**
  * 从 nanoka 正式服数据同步 build-recommendations.json（邦布精灵配装推荐）。
  *
- * 用法：node scripts/sync-build-recommendations.mjs <id> [<id>...] [--write] [--force]
+ * 用法：node scripts/sync-build-recommendations.mjs <id> [<id>...] [--write] [--force] [--main-stats-only]
  *   --write  写回 public/static/build-recommendations.json（默认 dry-run，逐条打印差异）
  *   --force  索引/角色 raw 已存在也重抓
+ *   --main-stats-only  只重写 `main_stats`（保留其余字段）。用于**修单条口径**（如 2026-10-20 主词条规则订正）
+ *      ——整条重建会把 en→zh 的 strategy/substats 名称一并翻掉，diff 里混进与本次无关的改动（规则 13 归因）。
  *
  * 数据源（全部落在 data/raw/，版本 = manifest.zzz.live）：
  *   data/raw/nanoka_character.json          角色索引（en 名）
@@ -15,10 +17,13 @@
  * 字段映射口径（2026-09-09 定，据 nanoka 正式服 3.2）：
  *   1. drive_disc_sets：fairy_recommend.slot4 → four_piece、slot2 → two_piece、slot_sub → alt_two_piece，
  *      套装名与 desc2/desc4 取 equipment 索引（zh + en）。
- *   2. main_stats 4/5/6：把 fairy 候选（part4、part5、part6、part_sub，再按 alt_build[].part_sub_list 顺序
- *      补候选，去重）按**槽位合法词条**贪心分配——4 槽：暴击率/暴击伤害/攻击/防御/生命/异常精通；
- *      5 槽：属性伤害/穿透率/攻击/防御/生命；6 槽：能量自动回复/冲击力/异常掌控/攻击/防御/生命。
- *      该规则在既有 1431 / 1461 / 1571 三条人工条目上逐字段复现（回归用例，见 --verify-rule）。
+ *   2. main_stats 4/5/6：**每槽独立**按 `part4 → part5 → part6 → part_sub` 取首个"该槽合法"的词条
+ *      （合法池见 `scripts/lib/build-recommendation-rule.mjs`）。这是 nanoka 页面自身的规则
+ *      （bundle：`ml=[part4,part5,part6,part_sub].filter(>0)`、`slot.stats = ml.filter(槽合法)`、显示首项）；
+ *      `alt_build` 是备选配装的副属性，**不参与**主词条选择。
+ *      ⚠ 2026-10-20 订正：旧口径是"候选全局去重贪心"，与页面 24/62 不一致，且给 1631/1641 写出过
+ *      该槽不合法的主词条（5 槽暴伤 / 6 槽穿透 / 4 槽掌控 / 5 槽精通 / 6 槽火伤）——护栏测试
+ *      `src/data/__tests__/buildRecMainStatRule.test.ts`。回归夹具 1431 / 1461 / 1571，见 `--verify-rule`。
  *   3. substats：fairy_recommend.part_sub_list 顺序即优先级；名字/图标取既有条目里出现过的词条表。
  *   4. wengine：按 catalog.wEngines 的 ownerAgentId 找专武（nanoka_wengine_id/catalog_wengine_id/atk/sub_stat
  *      等取 weapon 索引）。
@@ -30,6 +35,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { writeJsonCompact } from './lib/jsonio.mjs'
 import { fetchJson } from './lib/http.mjs'
+import { assignMainStatProps } from './lib/build-recommendation-rule.mjs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -42,14 +48,9 @@ const rawDir = resolve(root, 'data/raw')
 const write = process.argv.includes('--write')
 const force = process.argv.includes('--force')
 const verifyRule = process.argv.includes('--verify-rule')
+const mainStatsOnly = process.argv.includes('--main-stats-only')
 const ids = process.argv.slice(2).filter(a => !a.startsWith('--'))
 
-// 槽位合法主词条（ZZZ 驱动盘右侧 4/5/6 槽词条池）
-const SLOT_POOL = {
-  4: ['20103', '21103', '12102', '13102', '11102', '31203'],
-  5: ['23103', '12102', '13102', '11102', '31503', '31603', '31703', '31803', '31903', '32303'],
-  6: ['30502', '12202', '31402', '12102', '13102', '11102'],
-}
 
 async function ensureRaw(file, url, label) {
   const target = resolve(rawDir, file)
@@ -105,25 +106,15 @@ function statOf(prop) {
 /** nanoka 文本带 <color=...> 标记；既有条目一律是纯文本 → 落盘前剥掉 */
 const plain = s => String(s ?? '').replace(/<color[^>]*>/g, '').replace(/<\/color>/g, '').replace(/\s+/g, ' ').trim()
 
-/** 槽位贪心分配：候选按 fairy 给出顺序（part4→part5→part6→part_sub→alt_build 词条） */
+/**
+ * 主词条分配：规则本体在 `lib/build-recommendation-rule.mjs`（脚本与护栏测试**同源**，
+ * 不在两处各抄一份"每槽取首个合法"——抄一份就一定会漂）。
+ */
 function assignMainStats(fairy) {
-  const candidates = []
-  const push = p => {
-    if (!p?.prop) return
-    const prop = String(p.prop)
-    if (!candidates.some(c => c.prop === prop)) candidates.push({ ...p, prop })
-  }
-  for (const key of ['part4', 'part5', 'part6', 'part_sub']) push(fairy?.[key])
-  for (const alt of fairy?.alt_build ?? []) {
-    for (const prop of alt?.part_sub_list ?? []) push({ prop: String(prop) })
-  }
+  const props = assignMainStatProps(fairy)
   const out = {}
-  const used = new Set()
   for (const slot of [4, 5, 6]) {
-    const hit = candidates.find(c => !used.has(c.prop) && SLOT_POOL[slot].includes(c.prop))
-    if (!hit) continue
-    used.add(hit.prop)
-    out[String(slot)] = statOf(hit.prop)
+    if (props[slot]) out[String(slot)] = statOf(props[slot])
   }
   return out
 }
@@ -140,6 +131,12 @@ function discSetOf(id) {
     desc2_zh: plain(eq.zh?.desc2),
     desc4_zh: plain(eq.zh?.desc4),
   }
+}
+
+/** 只重算主词条：不碰 strategy / substats / 套装 / 专武（`--main-stats-only` 用） */
+function mainStatsPatch(id, full) {
+  const prev = build.characters[id]
+  return prev ? { ...prev, main_stats: assignMainStats(full.fairy_recommend ?? {}) } : buildEntry(id, full)
 }
 
 function buildEntry(id, full) {
@@ -193,23 +190,24 @@ for (const id of ids) {
   if (existsSync(fullPath)) full = JSON.parse(readFileSync(fullPath, 'utf8'))
   else full = await ensureRaw(`nanoka_missing/full/${id}.json`, `${STATIC}/zzz/${version}/zh/character/${id}.json`, `角色 ${id}`)
 
-  const next = buildEntry(id, full)
+  // 只修口径时保留其余字段（strategy/substats 的中英名不在本次改动范围内）
+  const patched = mainStatsOnly ? mainStatsPatch(id, full) : buildEntry(id, full)
   const prev = build.characters[id]
   const before = JSON.stringify(prev)
-  const after = JSON.stringify(next)
+  const after = JSON.stringify(patched)
   if (before === after) {
-    console.log(`SAME ${id} ${next.name.zhCN}`)
+    console.log(`SAME ${id} ${patched.name.zhCN}`)
     continue
   }
   changed++
-  console.log(`\n${prev ? 'UPD ' : 'ADD '}${id} ${next.name.zhCN}`)
+  console.log(`\n${prev ? 'UPD ' : 'ADD '}${id} ${patched.name.zhCN}`)
   if (prev) {
-    for (const key of new Set([...Object.keys(prev), ...Object.keys(next)])) {
-      const a = JSON.stringify(prev[key]), b = JSON.stringify(next[key])
+    for (const key of new Set([...Object.keys(prev), ...Object.keys(patched)])) {
+      const a = JSON.stringify(prev[key]), b = JSON.stringify(patched[key])
       if (a !== b) console.log(`  ${key}:\n    - ${a}\n    + ${b}`)
     }
   }
-  if (write) build.characters[id] = next
+  if (write) build.characters[id] = patched
 }
 
 if (write && changed) {

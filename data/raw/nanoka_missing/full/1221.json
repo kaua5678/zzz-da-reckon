@@ -169,102 +169,102 @@
     "1": {
       "max_level": 15,
       "extra": {
-        "31401": {
-          "prop": 31401,
-          "name": "异常掌控",
-          "format": "{0:0.#}",
-          "value": 12
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 0
+        },
+        "31401": {
+          "prop": 31401,
+          "name": "异常掌控",
+          "format": "{0:0.#}",
+          "value": 12
         }
       }
     },
     "2": {
       "max_level": 25,
       "extra": {
-        "31401": {
-          "prop": 31401,
-          "name": "异常掌控",
-          "format": "{0:0.#}",
-          "value": 12
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 25
+        },
+        "31401": {
+          "prop": 31401,
+          "name": "异常掌控",
+          "format": "{0:0.#}",
+          "value": 12
         }
       }
     },
     "3": {
       "max_level": 35,
       "extra": {
-        "31401": {
-          "prop": 31401,
-          "name": "异常掌控",
-          "format": "{0:0.#}",
-          "value": 24
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 25
+        },
+        "31401": {
+          "prop": 31401,
+          "name": "异常掌控",
+          "format": "{0:0.#}",
+          "value": 24
         }
       }
     },
     "4": {
       "max_level": 45,
       "extra": {
-        "31401": {
-          "prop": 31401,
-          "name": "异常掌控",
-          "format": "{0:0.#}",
-          "value": 24
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 50
+        },
+        "31401": {
+          "prop": 31401,
+          "name": "异常掌控",
+          "format": "{0:0.#}",
+          "value": 24
         }
       }
     },
     "5": {
       "max_level": 55,
       "extra": {
-        "31401": {
-          "prop": 31401,
-          "name": "异常掌控",
-          "format": "{0:0.#}",
-          "value": 36
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 50
+        },
+        "31401": {
+          "prop": 31401,
+          "name": "异常掌控",
+          "format": "{0:0.#}",
+          "value": 36
         }
       }
     },
     "6": {
       "max_level": 60,
       "extra": {
-        "31401": {
-          "prop": 31401,
-          "name": "异常掌控",
-          "format": "{0:0.#}",
-          "value": 36
-        },
         "12101": {
           "prop": 12101,
           "name": "基础攻击力",
           "format": "{0:0.#}",
           "value": 75
+        },
+        "31401": {
+          "prop": 31401,
+          "name": "异常掌控",
+          "format": "{0:0.#}",
+          "value": 36
         }
       }
     }
@@ -2030,18 +2030,18 @@
       },
       "4": {
         "10": 60000,
-        "110505": 9,
-        "110002": 2
+        "110002": 2,
+        "110505": 9
       },
       "5": {
         "10": 100000,
-        "110505": 15,
-        "110002": 3
+        "110002": 3,
+        "110505": 15
       },
       "6": {
         "10": 200000,
-        "110505": 30,
-        "110002": 4
+        "110002": 4,
+        "110505": 30
       }
     }
   },
@@ -2084,14 +2084,37 @@
     }
   },
   "fairy_recommend": {
-    "slot4": 31800,
-    "slot2": 31300,
-    "slot_sub": 32400,
+    "slot4": 31300,
+    "slot2": 32400,
+    "slot_sub": 31800,
     "part_sub_list": [
-      31203,
-      12102
+      12102,
+      31203
     ],
-    "alt_build": [],
+    "alt_build": [
+      {
+        "suit_list": [
+          31800,
+          31300
+        ],
+        "part_sub_list": [
+          31203
+        ]
+      },
+      {
+        "suit_list": [],
+        "part_sub_list": [
+          31803,
+          23103
+        ]
+      },
+      {
+        "suit_list": [],
+        "part_sub_list": [
+          31402
+        ]
+      }
+    ],
     "part4": {
       "prop": 31203,
       "name": "异常精通",
@@ -2105,16 +2128,16 @@
       "icon": "UI/Sprite/A1DynamicLoad/IconGeneralBuff/Packer/IconThunder.png"
     },
     "part6": {
-      "prop": 12102,
-      "name": "攻击力",
-      "format": "{0:0.#%}",
-      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png"
-    },
-    "part_sub": {
       "prop": 31402,
       "name": "异常掌控",
       "format": "{0:0.#%}",
       "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconElementAbnormalPower.png"
+    },
+    "part_sub": {
+      "prop": 12102,
+      "name": "攻击力",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png"
     }
   },
   "strategy": [

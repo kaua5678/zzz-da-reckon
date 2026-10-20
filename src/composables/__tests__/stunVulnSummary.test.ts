@@ -131,9 +131,13 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     // ⚠ **2026-10-18 重冻**：1.6622/0.6622/0.6020 → **1.6645/0.6645/0.6041**。
     // 归因：副词条「百暴」基线改用真实面板（含角色 applyPanel）⇒ 1291 雨果的暴击词条不再溢出
     // （修前 4 步白扔）⇒ 行伤害结构微移。行级易伤（2.100 / 1.000）与轴结构断言全部未变。
-    expect(s.weightedVuln).toBeCloseTo(1.6645, 3)
-    expect(s.weightedCredit).toBeCloseTo(0.6645, 3)
-    expect(s.coverageRate).toBeCloseTo(0.6041, 3)
+    // ⚠ **2026-10-20 重冻**：1.6645/0.6645/0.6041 → **1.6639/0.6639/0.6035**。
+    // 归因：配装推荐主词条改按 nanoka 站点规则（本队 1291/1481/1161 的 4/5/6 号位都有变）⇒
+    // 行伤害结构微移 ⇒ 按伤害加权的易伤均值漂移。行级易伤（2.100 / 1.000）与轴结构断言全部未变
+    // ⇒ 易伤机制本身没动，只是权重。A/B：把 build-recommendations.json 退回 HEAD 即回到旧值。
+    expect(s.weightedVuln).toBeCloseTo(1.6639, 3)
+    expect(s.weightedCredit).toBeCloseTo(0.6639, 3)
+    expect(s.coverageRate).toBeCloseTo(0.6035, 3)
   })
 
   it('案例 D（加闪反块被轴认领一半）：加权快照 1.7198/0.7198/0.6543；闪反切成两行', async () => {

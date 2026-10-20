@@ -2235,7 +2235,34 @@
       21103,
       12102
     ],
-    "alt_build": [],
+    "alt_build": [
+      {
+        "suit_list": [
+          31400,
+          31000
+        ],
+        "part_sub_list": [
+          21103,
+          20103
+        ]
+      },
+      {
+        "suit_list": [
+          31400,
+          32700
+        ],
+        "part_sub_list": [
+          31703,
+          12102
+        ]
+      },
+      {
+        "suit_list": [],
+        "part_sub_list": [
+          12102
+        ]
+      }
+    ],
     "part4": {
       "prop": 20103,
       "name": "暴击率",
@@ -2249,16 +2276,16 @@
       "icon": "UI/Sprite/A1DynamicLoad/IconGeneralBuff/Packer/IconIce.png"
     },
     "part6": {
-      "prop": 12102,
-      "name": "攻击力",
-      "format": "{0:0.#%}",
-      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png"
-    },
-    "part_sub": {
       "prop": 21103,
       "name": "暴击伤害",
       "format": "{0:0.#%}",
       "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCritDam.png"
+    },
+    "part_sub": {
+      "prop": 12102,
+      "name": "攻击力",
+      "format": "{0:0.#%}",
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconAttack.png"
     }
   },
   "strategy": [

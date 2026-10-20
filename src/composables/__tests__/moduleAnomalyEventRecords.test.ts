@@ -115,12 +115,12 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "蕾米虚耀池",
       "source": "其他队友异常触发",
-      "count": 22,
+      "count": 25,
       "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
       "fields": [
         "AnomalyPoolResult.perSlotAnomalyTriggers",
         "蕾米槽位",
-        "1261:10 / 1331:12"
+        "1261:13 / 1331:12"
       ],
       "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
     },
@@ -129,7 +129,7 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "支援技花羽轮舞·耀变",
       "source": "不消耗虚耀（换入时自动发动）",
-      "count": 21,
+      "count": 24,
       "formula": "count = 轮数 × 已储存虚曜数（每轮换入结算一次，最多 3 个）",
       "fields": [
         "voidflareTotal",
@@ -143,7 +143,7 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "终结技缭乱终幕·耀变",
       "source": "不消耗虚耀，每轮一次（有大招才结算）",
-      "count": 21,
+      "count": 24,
       "formula": "count = 轮数 × 已储存虚曜数；伤害行再按本轮实际大招次数封顶（来源由用户选择1号队友0-3、2号队友3-0）",
       "fields": [
         "voidflareTotal",
@@ -156,7 +156,7 @@ const EXPECTED: Record<string, unknown[]> = {
       "type": "luminize",
       "label": "普通攻击惊鸿·耀变",
       "source": "消耗并清空虚耀",
-      "count": 21,
+      "count": 24,
       "formula": "count = 轮数 × 已储存虚曜数 × 1",
       "fields": [
         "voidflareTotal",
@@ -265,8 +265,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "anomaly_trigger",
         "label": "简6命强击暴击附伤",
         "source": "强击暴击次数",
-        // T141：8 → 10（吸收取满容量 ⇒ 主C 平A 时间上升 ⇒ 物理强击次数上升）
-        "count": 10,
+        // 2026-10-20：配装推荐主词条改按 nanoka 站点规则（简 6 号位 攻击力 → 异常掌控）⇒ 同队强击次数上升
+        "count": 13,
         "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
         "fields": [
           "强击次数",
@@ -287,8 +287,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "anomaly_trigger",
         "label": "简6命强击暴击附伤",
         "source": "强击暴击次数",
-        // T141：8 → 10（吸收取满容量 ⇒ 主C 平A 时间上升 ⇒ 物理强击次数上升）
-        "count": 10,
+        // 2026-10-20：配装推荐主词条改按 nanoka 站点规则（简 6 号位 攻击力 → 异常掌控）⇒ 同队强击次数上升
+        "count": 13,
         "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
         "fields": [
           "强击次数",
@@ -309,8 +309,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "anomaly_trigger",
         "label": "简6命强击暴击附伤",
         "source": "强击暴击次数",
-        // T141：13 → 14（吸收取满容量 ⇒ 主C 平A 时间上升 ⇒ 物理强击次数上升）
-        "count": 14,
+        // 2026-10-20：配装推荐主词条订正（同上）⇒ 14 → 19
+        "count": 19,
         "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
         "fields": [
           "强击次数",
@@ -338,8 +338,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "anomaly_trigger",
         "label": "简6命强击暴击附伤",
         "source": "强击暴击次数",
-        // 2026-10-18：蕾米补入「入场/惊鸿」必做动作行后前台重排 ⇒ 12→11
-        "count": 11,
+        // 2026-10-20：配装推荐主词条订正（简 6 号位掌控、蕾米 6 号位攻击）⇒ 11 → 16
+        "count": 16,
         "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
         "fields": [
           "强击次数",
@@ -352,13 +352,13 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "蕾米虚耀池",
         "source": "其他队友异常触发",
-        // 2026-10-18：蕾米补「入场/惊鸿」必做行 ⇒ 前台重排 ⇒ 1261 异常触发 12→11 ⇒ 池 26→23
-        "count": 23,
+        // 2026-10-20：配装推荐主词条订正 ⇒ 1261 异常触发 11→16 ⇒ 池 23→29
+        "count": 29,
         "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
         "fields": [
           "AnomalyPoolResult.perSlotAnomalyTriggers",
           "蕾米槽位",
-          "1261:11 / 1331:12"
+          "1261:16 / 1331:13"
         ],
         "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
       },
@@ -367,8 +367,8 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "支援技花羽轮舞·耀变",
         "source": "不消耗虚耀（换入时自动发动）",
-        // 2026-10-18：每轮换入结算一次「已储存的 3 个」（轮数 ⌊23/3⌋=7 × 3 = 21）
-        "count": 21,
+        // 2026-10-20：每轮换入结算一次「已储存的 3 个」（轮数 ⌊29/3⌋=9 × 3 = 27）
+        "count": 27,
         "formula": "count = 轮数 × 已储存虚曜数（每轮换入结算一次，最多 3 个）",
         "fields": [
           "voidflareTotal",
@@ -382,7 +382,7 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "终结技缭乱终幕·耀变",
         "source": "不消耗虚耀，每轮一次（有大招才结算）",
-        "count": 21,
+        "count": 27,
         "formula": "count = 轮数 × 已储存虚曜数；伤害行再按本轮实际大招次数封顶（来源由用户选择1号队友0-3、2号队友3-0）",
         "fields": [
           "voidflareTotal",
@@ -395,7 +395,7 @@ const EXPECTED29: Record<string, { mod: unknown[]; dmgIds: string[] }> = {
         "type": "luminize",
         "label": "普通攻击惊鸿·耀变",
         "source": "消耗并清空虚耀",
-        "count": 21,
+        "count": 27,
         "formula": "count = 轮数 × 已储存虚曜数 × 1",
         "fields": [
           "voidflareTotal",

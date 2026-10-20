@@ -300,12 +300,15 @@ describe('★ 管线级：timeGolden 盲区（露西 C6 / 艾莲影画4 冻结�
     // ⇒ 它给露西 C6 回旋的基数上台阶 ⇒ `lucyEnergy` 64 → **66**。
     // A/B 实测（`git checkout a161c015 -- src/mechanics/agents/norma.ts` 后跑同一探针）：
     //   旧口径 诺姆 7 次 / lucyEnergy **64**；新口径 诺姆 8 次 / lucyEnergy **66**。
-    // 判据与判别力原样保留——**反向对照仍成立**（摘 `nextRoundFeedback: lucyNextRoundFeedback`
-    // ⇒ 落到 **34** 一档），仍是两档台阶 ⇒ 本行对「钩子没被派发」依旧可红：漏派发会掉回 34 而不是 66。
+    // ⚠ **2026-10-20：66 → 60**（配装推荐主词条改按 nanoka 站点规则）。
+    // 本队 11号/诺姆/露西 的 4/5/6 号位都有变（露西 5 号位 火伤→攻击、6 号位 回能→攻击；
+    // 诺姆 6 号位 回能→攻击）⇒ 露西与诺姆的能量供给/失衡基数重排 ⇒ 回旋回能 66 → **60**。
+    // 判据与判别力原样保留——**反向对照实测**（摘掉 `nextRoundFeedback: lucyNextRoundFeedback`
+    // 后同队同配装 ⇒ 落到 **28** 一档），仍是两档台阶 ⇒ 本行对「钩子没被派发」依旧可红。
     expect(
       (lucy.energySource.crossAgent.bySource.lucyEnergy ?? 0),
       '露西 C6 回旋全队回能没生效 —— nextRoundFeedback 未派发（timeGolden 对这条队是盲的）',
-    ).toBe(66)
+    ).toBe(60)
   })
 
   it('艾莲影画4：冻结次数反馈真的驱动影画4 回能（ellen_cycle.c4EnergyTotal）', async () => {
