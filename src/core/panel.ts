@@ -2,9 +2,9 @@
  * 面板计算 - 局外面板与局内面板
  */
 import type {
-  Agent, WEngine, DriveDiscSet, PanelValues, DriveDiscConfig, TeammateBuff, BuffEffect, StatId,
+  Agent, WEngine, DriveDiscSet, PanelValues, DriveDiscConfig, TeammateBuff, BuffEffect, StatId, BuffEffectOrigin,
 } from '@/types/catalog'
-import { applyBuffs, applyEffect, applyStat, collectAllBuffs, discSelfBuffNeedsOutOfCombatPanel, finalizeCoreStatBonuses, type CollectedBuffs, type SourcePanelsByOwner } from './buff'
+import { applyBuffs, applyEffect, applyStat, collectAllBuffs, discSelfBuffNeedsOutOfCombatPanel, finalizeCoreStatBonuses, markBuffPhase, withPhaseMark, type CollectedBuffs, type SourcePanelsByOwner } from './buff'
 import { agentPanelStatInitials, calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import type { StatRules } from '@/types/catalog'
 import { driveDiscStatMode } from './discStatMode'
@@ -208,11 +208,29 @@ export function applyDriveDiscConfig(
   statRules: StatRules | null,
   extraStats: { stat: StatId; value: number; mode: string }[] = [],
   extraEffects: BuffEffect[] = [],
+  /**
+   * 结构化上报（2026-10-20）：把本层写下的**每条加成输入**（大/小词条）报出去，
+   * 供属性账逐条列出「这 208% 大防御是谁给的」。
+   *
+   * 为什么必须在这里报而不是事后用差值反解：差值只有合成结果，分不清 pct 与 flat
+   * （用户 2026-10-20：「三号位防御不是接近两千啊。你这个没区分开」——
+   *  那是 6 号位 48% + 副词条 96% + 套装 16% 累乘出来的，不是某条固定值）。
+   */
+  report?: (entry: { stat: string; value: number; mode: 'flat' | 'pct'; label: string; slotKey: string }) => void,
 ): PanelValues {
   const result = { ...panel }
+  /**
+   * `slotKey` = **第三维「具体内容」**（用户 2026-10-20）：让每个加成在
+   * 「提供者 × 属性 × 内容」三维里唯一落位，从而不重不漏。
+   */
+  const emit = (stat: string, value: number, mode: 'flat' | 'pct', label: string, slotKey: string) =>
+    report?.({ stat, value, mode, label, slotKey })
 
   for (const stat of extraStats) {
     applyStat(result, stat.stat, stat.value, stat.mode)
+    // 音擎高级词条也是一条独立贡献（如「猩红渴望」defPct 48）——
+    // 不报它，公式行就少算 48%，看起来像「多出来的来源」（实测克拉蕾防御 208 中就有它一份）。
+    emit(stat.stat, stat.value, stat.mode === 'pct' ? 'pct' : 'flat', '音擎高级词条', `音擎高级词条:${stat.stat}`)
   }
 
   if (!statRules) {
@@ -228,7 +246,9 @@ export function applyDriveDiscConfig(
   for (const slot of [4, 5, 6] as const) {
     const stat = config.mainStats[slot]
     if (stat && maxMain[stat] != null) {
-      applyStat(result, stat, maxMain[stat], inferStatMode(stat, statRules))
+      const mode = inferStatMode(stat, statRules)
+      applyStat(result, stat, maxMain[stat], mode)
+      emit(stat, maxMain[stat], mode === 'pct' ? 'pct' : 'flat', `${slot}号位主词条`, `主词条:${slot}`)
     }
   }
 
@@ -237,7 +257,10 @@ export function applyDriveDiscConfig(
   // @fact engine:driveDisc/固定主词条 口径: 1/2/3号位固定主词条对全员无条件建模（S级+15），4/5/6号位走用户配置 | 据 用户@2026-09-05·复核@2026-09-25·锚未变@2026-09-27·复核@2026-10-07 | 验 discSetEffects.test.ts | 锚 src/core/panel.ts#applyDriveDiscConfig | 信 高
   for (const stat of ['hpFlat', 'atkFlat', 'defFlat'] as const) {
     const value = maxMain[stat]
-    if (value) applyStat(result, stat, value, 'flat')
+    if (value) {
+      applyStat(result, stat, value, 'flat')
+      emit(stat, value, 'flat', '1/2/3号位固定主词条', `固定主词条:${stat}`)
+    }
   }
 
   // 副词条
@@ -248,7 +271,9 @@ export function applyDriveDiscConfig(
       const step = subStep[stat] ?? 0
       if (!step) continue
       const value = step * count // count即升级步数，不再乘2.25
-      applyStat(result, stat, value, inferStatMode(stat, statRules))
+      const mode = inferStatMode(stat, statRules)
+      applyStat(result, stat, value, mode)
+      emit(stat, value, mode === 'pct' ? 'pct' : 'flat', `副词条×${count}`, `副词条:${stat}×${count}`)
     }
   }
 
@@ -259,6 +284,17 @@ export function applyDriveDiscConfig(
   return finalizeCoreStatBonuses(result)
 }
 
+/** 驱动盘/音擎词条的一条结构化贡献（属性账用；与 buff 通道的 origin 同形） */
+export interface DiscContribution {
+  stat: string
+  value: number
+  mode: 'flat' | 'pct'
+  /** 与 buff 通道同形的来源标签（复用 `BuffEffectOrigin`，别重写一遍形状——判据 29） */
+  origin: BuffEffectOrigin & { kind: 'driveDisc' }
+  /** 第三维「具体内容」：主词条:6 / 副词条:defPct×20 / 固定主词条:defFlat（唯一落位用） */
+  slotKey: string
+}
+
 /** 完整面板计算 */
 export interface PanelResult {
   base: PanelValues       // 基础面板（角色+音擎）
@@ -266,6 +302,8 @@ export interface PanelResult {
   outOfCombat: PanelValues // 局外面板（+局外buff）
   inCombat: PanelValues    // 局内面板（+局内buff）
   buffs: CollectedBuffs    // 收集的 buff
+  /** 驱动盘词条的结构化贡献（逐条：主词条 / 副词条 / 固定主词条） */
+  discContributions: DiscContribution[]
 }
 
 /** calcPanel 的配置（substatOptimizer 的默认分配输入原样透传） */
@@ -300,8 +338,16 @@ export function calcPanel(
       }]
     : []
 
-  // 2. 应用音擎进阶属性 + 驱动盘词条
-  const withDiscs = applyDriveDiscConfig(base, driveDiscConfig, statRules, wEngineAdvancedStats)
+  /**
+   * 2. 词条层（**纯对账面**）：基础 + 音擎进阶 + 驱动盘主副词条，**不含**局外 buff。
+   *
+   * ⚠ 它只用来给属性账提供「词条层」快照（`withDiscs − base`），**不参与面板合成**。
+   * 合成走下面的 `outOfCombatOf`（那才是唯一写面板的路径）。
+   * 两处都调 `applyDriveDiscConfig` 是必要的（两个不同用途的面板），
+   * 但**上报/记账只能发生在合成路径**，否则同一份主词条会在账本里出现两次
+   * （实测：6号位 defPct 48% 被记两遍 ⇒ 防御 160% 变 208%）。
+   */
+  const withDiscs = applyDriveDiscConfig(withPhaseMark(base, 'outOfCombat'), driveDiscConfig, statRules, wEngineAdvancedStats)
 
   // 3. 收集所有 buff。
   const collect = (outOfCombatStats?: Readonly<Record<string, number>>) => collectAllBuffs(agent, wEngine, driveDiscConfig, setsMap, teammateBuffs, {
@@ -313,13 +359,38 @@ export function calcPanel(
     outOfCombatStats,
   })
 
+  /**
+   * 驱动盘词条的结构化上报（2026-10-20）：逐条记「几号位主词条 / 副词条×N / 固定主词条」，
+   * 供属性账把「这 208% 大防御是谁给的」拆开显示（差值反解分不清 pct 与 flat）。
+   */
+  const discContributions: DiscContribution[] = []
+
   // 4. 局外面板 = 基础白值 + 音擎高级词条 + 驱动盘主副词条 + 局外 buff。
   // 攻击/生命/防御局外段：基础数据 × (1 + Σ局外百分比加成) + Σ局外固定值。
   const outOfCombatOf = (b: CollectedBuffs) => {
+    // ⚠ 相位必须在**进入 `applyDriveDiscConfig` 之前**盖到起点面板上：
+    // 主词条 / 副词条 / 局外 buff 全在那个函数里应用，迟一步就会把局外大/小词条记成局内
+    // （实测：`inCombatDefPct` 出现在局外面板上，而 `outOfCombatDefPct` 恒 0）。
+    // ⚠ 必须从 `base` 重新算**词条 + 局外 buff**，但**只这一次**：
+    // 上面第 2 步的 `withDiscs`（不含局外 buff）只是给返回值/对账用的旁支，**不参与**面板合成。
+    // 曾出过的 bug：两次都从 base 起算却共享累加器记录 ⇒ 主词条被算两遍（防御 160% 变 208%）。
+    const withDiscsAndOutBuffs = applyDriveDiscConfig(
+      withPhaseMark(base, 'outOfCombat'),
+      driveDiscConfig, statRules, wEngineAdvancedStats, b.outOfCombat,
+      (entry) => {
+        discContributions.push({
+          stat: entry.stat, value: entry.value, mode: entry.mode,
+          origin: { kind: 'driveDisc', provider: '驱动盘词条', slot: -1, source: entry.label },
+          slotKey: entry.slotKey,
+        })
+      },
+    )
+    markBuffPhase(withDiscsAndOutBuffs, 'outOfCombat')
     const p = applyBuffs(
-      applyDriveDiscConfig(base, driveDiscConfig, statRules, wEngineAdvancedStats, b.outOfCombat),
+      withDiscsAndOutBuffs,
       [],
       config.effectCoverageMap,
+      'outOfCombat',
     )
     // CC-337：局外总回能在 calcPanel 唯一出口盖章，保证 computePanelPhases / computeEntrySnapshotPanel /
     // teammateBuffSource / substatOptimizer 等所有调用方的 outOfCombat 与 inCombat（applyBuffs 浅拷贝继承）同源一致。
@@ -333,17 +404,21 @@ export function calcPanel(
   // 数据里门槛效果都在局内组；若日后出现局外组门槛效果，门槛仍按第一段面板判定，不会自指。
   if (discSelfBuffNeedsOutOfCombatPanel(driveDiscConfig, setsMap)) {
     buffs = collect(outOfCombat as unknown as Readonly<Record<string, number>>)
+    // 第二段会重跑 applyDriveDiscConfig ⇒ 词条贡献会重复上报一次；清空后重收，
+    // 保证「逐条来源」与最终面板一一对应（否则公式行里每条词条都出现两次）。
+    discContributions.length = 0
     outOfCombat = outOfCombatOf(buffs)
   }
 
   // 5. 局内面板 = 局外总属性 × (1 + Σ局内百分比加成) + Σ局内固定值加成。
   // 音擎被动、驱动4件套、队友战斗 buff 等触发型效果默认属于局内。
-  const inCombat = applyBuffs(outOfCombat, buffs.inCombat, config.effectCoverageMap)
+  markBuffPhase(outOfCombat, 'inCombat')
+  const inCombat = applyBuffs(outOfCombat, buffs.inCombat, config.effectCoverageMap, 'inCombat')
 
   // 潜能等级写入源面板（供 teamBuff formula/derived 通道读 potentialLevel）
   const potentialLevel = potentialLevelOf(config.potentialLevel) // CC-503：与各机制模块同一归一口
   outOfCombat.potentialLevel = potentialLevel
   inCombat.potentialLevel = potentialLevel
 
-  return { base, withDiscs, outOfCombat, inCombat, buffs }
+  return { base, withDiscs, outOfCombat, inCombat, buffs, discContributions }
 }

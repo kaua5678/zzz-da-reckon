@@ -95,6 +95,7 @@ const pageMap: Record<string, Component> = {
   wengineFields: lazyPage(() => import('@/views/WEngineFieldPage.vue')),
   logic: lazyPage(() => import('@/views/LogicEditorPage.vue')),
   multiplierCoeff: lazyPage(() => import('@/views/MultiplierCoeffPage.vue')),
+  attributeLedger: lazyPage(() => import('@/views/AttributeLedgerPage.vue')),
   runArchive: lazyPage(() => import('@/views/RunArchivePage.vue')),
   charIncrement: lazyPage(() => import('@/views/CharIncrementPage.vue')),
   bossHp: lazyPage(() => import('@/views/BossHpInflationPage.vue')),

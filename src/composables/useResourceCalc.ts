@@ -40,8 +40,9 @@ import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/c
 import { buildStunTimeline } from '@/core/stunTimeline'
 import { stackDurationSeconds, stackEnergyEvents, stacksToCoverage } from '@/data/wEngineStackCoverage'
 import { elementLabel, buildCharConfig, computeDamageSourceBreakdown } from './resourceCalc/helpers'
-import { computePanel, computeEntrySnapshotPanel, applyTeamMechanics, collectAxisWindowOverlays } from './resourceCalc/panelPhases'
+import { computePanel, computePanelPhases, computeEntrySnapshotPanel, applyTeamMechanics, collectAxisWindowOverlays } from './resourceCalc/panelPhases'
 import { getTeamAnomalyDurationBonus, getWindInfectionCoverage, findWindSlot, buildAnomalyVirtualPanel } from './resourceCalc/anomalyPanels'
+import { buildAttributeLedger } from '@/core/attributeLedger'
 import type { DamagePoolRow, DamageSourceBreakdown } from './resourceCalc/helpers'
 import type { AnomalyVirtualPanelBuild } from './resourceCalc/anomalyPanels'
 
@@ -802,6 +803,24 @@ const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
   computeDamageSourceBreakdown(damagePoolRows.value),
 )
 
+/**
+ * 属性贡献账（2026-10-20，用户 Excel「属性矩阵」口径的通用化落地）。
+ *
+ * 走 `computePanelPhases` 而不是 `slotPanels`：前者把 `calcPanel` 内部收集的 **buffs 批次
+ * （已带 origin 来源标签）** 一并返回，本账才有「谁贡献了什么」可言——`slotPanels` 只回最终面板值。
+ *
+ * 只对**有角色的槽**建账（`slot` 传 0；展示层按槽切换时再取对应的那份）。
+ */
+const attributeLedger = computed(() => {
+  const slot = 0
+  const phases = computePanelPhases(slot, configStore, catalogStore, effectiveWEngineCoverages.value)
+  if (!phases) return null
+  return buildAttributeLedger(
+    phases.buffs, phases, phases.effectCoverageMap,
+    phases.teamPanelContributions, phases.discContributions,
+  )
+})
+
   return {
     resourceConfig,
     resourceResult,
@@ -812,6 +831,8 @@ const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
     specialActionBonus,
     damagePoolRows,
     damageSourceBreakdown,
+    /** 属性贡献账（提供者 × 属性区矩阵 + 差额对账）：展示透明用，不参与计算 */
+    attributeLedger,
     moduleAnomalyEventRecords,
     anomalyDamageEvents,
     anomalyVirtualPanels,

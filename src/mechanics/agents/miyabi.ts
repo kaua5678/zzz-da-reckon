@@ -378,11 +378,13 @@ export const miyabiMechanic: AgentMechanicModule = {
    * 无风队里 C1 激活时每名队友与雅本人各 +40%（F1 裁决：核心被动与影画一在雅身上叠加为 +40）。
    * 契约见 `AgentTeamPanelEffectInput`（本钩子只允许可交换的加法 `+=`）。
    */
-  teamPanelEffects: ({ slot, team, panel }: AgentTeamPanelEffectInput): void => {
+  teamPanelEffects: ({ slot, team, panel, report }: AgentTeamPanelEffectInput): void => {
     // CC-335：panel 是 targetSlot 的面板，原先读的风队标记只写在雅自己的面板上 ⇒ 有风队时队友误吃 +20%。
     // 改为与 applyMiyabiPanel 同源调 hasWindTeammate(team, slot)。r762 删掉那个面板标记：它只剩这里一个读者，且恒被前一条蕴含。
     if (hasWindTeammate(team, slot)) return
     panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + FROSTBURN_TEAM_BUILDUP_BONUS
+    // 结构化记账（2026-10-20）：写入与上报共用同一份结果
+    report?.({ stat: 'anomalyBuildUpEfficiency', value: FROSTBURN_TEAM_BUILDUP_BONUS, mode: 'flat' })
   },
   buildCharConfig: buildMiyabiCharConfig,
   buildExecutions: buildMiyabiExecutions,

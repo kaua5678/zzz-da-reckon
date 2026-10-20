@@ -277,11 +277,36 @@ export interface EffectRequirement {
   wearerAgentIds?: string[]
 }
 
+/**
+ * 效果来源标签（2026-10-20，属性矩阵）：仅供展示层回溯「这一格是谁贡献的」，引擎数值路径一律不读。
+ *
+ * 用户口径（贴出 Excel 三张矩阵）：横轴 = 拐力提供者，纵轴 = 属性区，逐格记贡献再求和，
+ * 这样每一部分数值都透明可查。引擎原本把四类来源 mergeBuffs 拍平成数组，
+ * 来源信息在收集期就丢了，展示层无法还原矩阵。本字段在收集期盖上，纯附加、零行为影响。
+ */
+export interface BuffEffectOrigin {
+  /**
+   * 来源大类：角色自身 / 音擎 / 驱动盘 / 队友 / 环境（危局牌 / boss 层 / 全队效果）。
+   *
+   * `teamEffect` = **队友经 `teamPanelEffects` 给本槽的面板增益**（不属 buff 通道，由钩子主动上报，
+   * 2026-10-20 结构化）。它与 `team`（环境）不同：提供者是具体角色。
+   */
+  kind: 'agent' | 'wEngine' | 'driveDisc' | 'teammate' | 'team' | 'teamEffect'
+  /** 提供者显示名（角色名 / 音擎名 / 套装名 / 全局 Buff） */
+  provider: string
+  /** 来源槽位；无法归属时为 -1 */
+  slot: number
+  /** 来源细分（核心被动 / 额外能力 / 影画N / 音擎效果 / 套装 4pc …） */
+  source: string
+}
+
 interface BuffEffectBase {
   id: string
   type: EffectType
   stat: StatId
   mode: StatMode
+  /** 展示层来源标签（属性矩阵用，引擎数值路径不读；见 BuffEffectOrigin） */
+  origin?: BuffEffectOrigin
   /** fixed 必有（见 `FixedBuffEffect`）；stacked / formula 个别条目也带，引擎不读 */
   value?: number
   target?: EffectTarget

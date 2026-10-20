@@ -4,9 +4,10 @@
  */
 import { addPanelStat, getPanelStat, setPanelStat } from '@/utils/panelStat'
 import type {
-  Agent, WEngine, DriveDiscSet, BuffEffect, BuffGroup,
+  Agent, WEngine, DriveDiscSet, BuffEffect, BuffGroup, BuffEffectOrigin,
   PanelValues, StatId, TeammateBuff, DriveDiscConfig, SkillDamageTarget, BuffScope, EffectRequirement, StatRules
 } from '@/types/catalog'
+import { localized } from '@/utils/format'
 import { GENERATED_ENEMY_DEBUFF_STAT_IDS, LEGACY_ENEMY_DEBUFF_STAT_IDS, normalizeEnemyDebuffStatAlias } from '@/utils/enemyDebuffStats'
 import { elementStatKey, type ElementStatKind } from '@/utils/elementStatKeys'
 import { wEngineConditionMet, wEngineEffectRequirementMet, type WEngineConditionContext } from '@/core/wengineConditions'
@@ -76,6 +77,24 @@ function effectSkillDamageTargets(effect: BuffEffect): SkillDamageTarget[] {
   }
   const unique = Array.from(new Set(result))
   return unique.length > 0 ? unique : ['all']
+}
+
+/**
+ * 面板字段**别名归一**（单一事实源，2026-10-20）。
+ *
+ * 数据（catalog / teammate-buffs）里同一个面板字段有多种写法，引擎在 `applyStat` 的 switch 里
+ * 用并列 case 收口（如 `anomalyDmgBonus` 与 `anomalyDamageBonus` 都加到 `panel.anomalyDmgBonus`）。
+ * 这带来一个隐蔽风险：**任何按 stat 名建索引的展示层都会把同一个字段拆成两栏**
+ * （用户实测：「风化/风属性异常伤害提升 anomalyDamageBonus 怎么区分成两个栏了」）。
+ *
+ * ⇒ 凡「按 stat 建键」的地方（属性矩阵 / 贡献账）必须先过本函数，与引擎落点同源。
+ * 新增别名时**只改这里**，并把 `applyStat` 的对应 case 指向同一字段（两者由测试钉住一致）。
+ */
+export function normalizePanelStatAlias(stat: string): string {
+  switch (stat) {
+    case 'anomalyDamageBonus': return 'anomalyDmgBonus'
+    default: return stat
+  }
 }
 
 export function applyTargetedStat(
@@ -199,6 +218,44 @@ const PHASE_SCALAR_STAT_BY_BONUS: Partial<Record<StatId, { base: 'impact'; kind:
 type AccumStat = CoreBaseStat | 'impact' | 'anomalyMastery'
 const batchAccum = new WeakMap<PanelValues, Map<AccumStat, StatAccumState>>()
 
+/**
+ * 当前面板所属的 buff 批次相位（`outOfCombat` / `inCombat`）。
+ * 与累加器同款 WeakMap（不进 PanelValues 对象），用于把累加器的输入量记到
+ * 带相位前缀的键上（`inCombatDefPct` / `outOfCombatDefPct`）。
+ */
+const batchPhase = new WeakMap<PanelValues, 'outOfCombat' | 'inCombat'>()
+
+/**
+ * 盖章本面板的 buff 批次相位（供 `recordAccumInputs` 决定把大/小词条记到哪个前缀的键上）。
+ *
+ * 为什么需要显式导出：局外批次的效果由 `applyDriveDiscConfig` 的 `extraEffects` 参数应用，
+ * 那条路径不经过 `applyBuffs` 的 phase 形参 ⇒ 不在这里盖，局外大/小词条会被误记成局内
+ * （实测：`inCombatDefPct` 出现在局外面板上，而 `outOfCombatDefPct` 查不到）。
+ */
+/** 返回一个已盖章相位的新面板（相位随浅拷贝继承，供 `applyDriveDiscConfig` 这类内部会拷贝的入口用） */
+export function withPhaseMark(panel: PanelValues, phase: 'outOfCombat' | 'inCombat'): PanelValues {
+  const next = { ...panel }
+  markBuffPhase(next, phase)
+  return next
+}
+
+export function markBuffPhase(panel: PanelValues, phase: 'outOfCombat' | 'inCombat'): void {
+  batchPhase.set(panel, phase)
+  // 同时写一个**数值键**：`applyDriveDiscConfig` / `applyBuffs` 都做 `{ ...panel }` 浅拷贝，
+  // WeakMap 状态不会跟着走，而 number 会。没有它，局外批次在第一次拷贝后就退化成局内前缀
+  // （实测：`inCombatDefFlat=184` 出现在 withDiscs 上，主词条被误记成局内）。
+  setPanelStat(panel, PHASE_KEY, phase === 'outOfCombat' ? 0 : 1)
+}
+
+/** 面板上承载「当前批次相位」的数值键（0 = 局外，1 = 局内；仅展示/记账用，不参与伤害） */
+const PHASE_KEY = '__buffPhase'
+
+function phaseOfPanel(panel: PanelValues): 'outOfCombat' | 'inCombat' {
+  const fromMap = batchPhase.get(panel)
+  if (fromMap) return fromMap
+  return getPanelStat(panel, PHASE_KEY) === 0 ? 'outOfCombat' : 'inCombat'
+}
+
 function getAccumState(panel: PanelValues, stat: AccumStat): StatAccumState {
   let byStat = batchAccum.get(panel)
   if (!byStat) {
@@ -207,15 +264,67 @@ function getAccumState(panel: PanelValues, stat: AccumStat): StatAccumState {
   }
   const existing = byStat.get(stat)
   if (existing) return existing
+  /**
+   * 新面板对象（`{ ...panel }` 拷贝）拿不到上一批的累加器状态 ⇒ 从**当前面板值**重新起算：
+   * 当前值已是上一批的合成结果，所以本批的 `base` 就是它，`pct`/`flat` 归零。
+   *
+   * ⚠ 曾试过「跨批次继承上一批的 pct/flat」（`readAccumInputs`）——**那是错的**：
+   * `panel[stat]` 已经是 `base×(1+pct)+flat` 的合成值，再用**上一批的 base** 套 `base×(1+pct+新pct)`
+   * 等于把旧 pct 又乘了一遍（实测克拉蕾防御：真实 160% 被算成 208%，多出 48%）。
+   * 跨批次的可读性由「当前批次的记录」提供即可；历史批次的量已沉进面板合成值里，不需要也不该重算。
+   */
+  /**
+   * 起点 = **本批次进入时的面板值**，`pct`/`flat` 归零。
+   *
+   * ⚠ 曾试过「把起点记到面板上、下一批次继承」（`priorBase`）——**那是错的**，实测把
+   * 防御 48%+96% 算成了 192%（翻倍）：同一批次内 `applyStat` 会被调用多次，第一次调用
+   * 就把 `__base` 写进面板，第二次读到自己刚写的值……循环放大。
+   *
+   * 正确语义：**每个面板对象 = 一个独立累加批次**。`finalizeCoreStatBonuses` 在批次边界清状态，
+   * 新对象（含浅拷贝）本就该从当前值重新起算——这既是 `applyBuffs`/多次
+   * `applyDriveDiscConfig` 幂等的前提，也是「大/小词条可读」只需要看**本批次**记录的原因。
+   */
+  /**
+   * 起点 = **本批次进入时的面板值**；`finalizeCoreStatBonuses` 之后以当前值为新基数
+   * （契约见 `batchAccum.test.ts`「finalize 后以当前值为新基数」）。
+   *
+   * ⚠ 曾两次试图「跨批次锁定/继承起点」，都被本判据证伪，且会让同一份主词条被重复计入：
+   * 防御 48%+96%+16%+48%（音擎）本应 208%，锁定基数的写法反而把它算成 192%/其他错值。
+   * 正确模型就是最简单那个：**一个面板对象 = 一个累加批次，finalize 断开批次**。
+   */
   const state: StatAccumState = { base: panel[stat] ?? 0, pct: 0, flat: 0 }
   byStat.set(stat, state)
   return state
 }
 
+/**
+ * 累加器把「大/小词条各多少」**留在面板上**（2026-10-20，用户：「基础、加成和最终…局内局外，
+ * 大词条小词条分别多少」）。
+ *
+ * 修前 `recalcAccumStat` 只写合成结果（`panel.def = base×(1+%)+flat`），把 `pct` / `flat` 两个输入
+ * 直接丢掉 ⇒ 面板上 `defPct`/`inCombatDefPct` 恒为 `undefined`，属性账读不到「大防御给了多少」，
+ * 用户看到的就是「克拉蕾的局内大防御、局外大防御都没算」（实测：def 872→2870 却查不到加成明细）。
+ *
+ * 落点用**带相位前缀的键**（`outOfCombatDefPct` / `inCombatDefPct` …），与 `CORE_STAT_BY_BONUS` 里
+ * 已有的相位键同名同义——它们本来就是「本相位累计的加成量」，此前只做加法输入、没有可读出口。
+ * 这是**纯附加**：合成值算式一字未改，任何读 `panel.def` 的地方行为不变。
+ */
 function recalcAccumStat(panel: PanelValues, stat: AccumStat, state: StatAccumState): void {
   // 同一批次内：先汇总百分比，再统一乘入，最后加固定值。
   // 例如：最终局内攻击 = 局外攻击 × (1 + Σ局内大攻击) + Σ局内小攻击。
   panel[stat] = state.base * (1 + state.pct / 100) + state.flat
+}
+
+
+
+/** 相位前缀的「加成输入量」键（`inCombatAtkPct` 一类）；非核心属性返回 undefined */
+function accumInputKeys(stat: AccumStat, phase: 'outOfCombat' | 'inCombat'): { pct: string; flat: string } | undefined {
+  const prefix = phase === 'outOfCombat' ? 'outOfCombat' : 'inCombat'
+  const cap = stat.charAt(0).toUpperCase() + stat.slice(1)
+  if (stat === 'impact') return { pct: `${prefix}ImpactPct`, flat: `${prefix}ImpactFlat` }
+  // anomalyMastery 走 scalar 通道（无相位键），不入本表
+  if (stat === 'anomalyMastery') return undefined
+  return { pct: `${prefix}${cap}Pct`, flat: `${prefix}${cap}Flat` }
 }
 
 function applyCoreStatBonus(panel: PanelValues, stat: CoreStatBonus, value: number): void {
@@ -225,6 +334,31 @@ function applyCoreStatBonus(panel: PanelValues, stat: CoreStatBonus, value: numb
   if (meta.kind === 'pct') state.pct += value
   else state.flat += value
   recalcAccumStat(panel, meta.base, state)
+  recordAccumInputs(panel, meta.base, state)
+}
+
+/**
+ * 把累加器当前的大/小词条累计量**写成可读的面板字段**（带相位前缀）。
+ *
+ * 相位由键名决定（`inCombat*Pct` / `outOfCombat*Pct`），所以这里按「谁在累加」判断：
+ * `applyBuffs` 的局外批次只会遇到 `outOfCombat*` 与无前缀键，局内批次只会遇到 `inCombat*` 与无前缀键。
+ * 无前缀键（`atkPct` 一类，数据里「由来源 scope 决定相位」）两个相位都可能出现 ⇒ 只记录到
+ * **当前批次的主导相位**（由调用方在 applyBuffs 前盖章），缺省记局内（局内批次是绝大多数）。
+ */
+function recordAccumInputs(panel: PanelValues, stat: AccumStat, state: StatAccumState): void {
+  const phase = phaseOfPanel(panel)
+  void phase
+  const keys = accumInputKeys(stat, phase)
+  if (!keys) return
+  /**
+   * **本批次**的累计量（不是历史累计）——所以直接覆盖写，不做加法。
+   *
+   * ⚠ 曾写成「读取已有值再累加」/「把起点存面板供下一批继承」，实测导致同一份配置
+   * 算出 192%/208% 这种翻倍值（`applyDriveDiscConfig` 在某些路径下会被调用多次）。
+   * 覆盖写保证：**面板上的键 == 当前这一批真正加进去的量**，与 `entry` 逐条上报一一对应。
+   */
+  setPanelStat(panel, keys.pct, state.pct)
+  setPanelStat(panel, keys.flat, state.flat)
 }
 
 function applyPhaseScalarStatBonus(panel: PanelValues, stat: PhaseScalarStatBonus, value: number): void {
@@ -271,29 +405,41 @@ export function applyWEngineModLevel(effect: BuffEffect, modLevel: number): Buff
   return next
 }
 
+/**
+ * 给效果盖来源标签（属性矩阵：让每一格数值都能回溯到提供者）。
+ * 纯附加字段 ⇒ 引擎数值路径零影响；展示层按它把贡献摆进矩阵的行列。
+ */
+function withOrigin(effect: BuffEffect, origin: BuffEffectOrigin): BuffEffect {
+  return { ...effect, origin }
+}
+
 /** 收集角色自身的 buff */
 function collectAgentBuffs(agent: Agent, cinemaLevel: number): CollectedBuffs {
   const out: BuffEffect[] = []
   const inCombat: BuffEffect[] = []
+  const provider = localized(agent.name, agent.id)
 
   const cb = agent.combatBuffs
   if (cb) {
     // 核心被动
     for (const e of extractEffects(cb.corePassive)) {
-      if (cb.corePassive?.scope === 'outOfCombat') out.push(e)
-      else inCombat.push(e)
+      const tagged = withOrigin(e, { kind: 'agent', provider, slot: -1, source: '核心被动' })
+      if (cb.corePassive?.scope === 'outOfCombat') out.push(tagged)
+      else inCombat.push(tagged)
     }
     // 额外能力
     for (const e of extractEffects(cb.additionalAbility)) {
-      if (cb.additionalAbility?.scope === 'outOfCombat') out.push(e)
-      else inCombat.push(e)
+      const tagged = withOrigin(e, { kind: 'agent', provider, slot: -1, source: '额外能力' })
+      if (cb.additionalAbility?.scope === 'outOfCombat') out.push(tagged)
+      else inCombat.push(tagged)
     }
     // 影画
     for (const cinema of cb.cinemaBuffs) {
       if (cinema.cinemaLevel > cinemaLevel) continue
       for (const e of extractEffects(cinema.buff)) {
-        if (cinema.buff?.scope === 'outOfCombat') out.push(e)
-        else inCombat.push(e)
+        const tagged = withOrigin(e, { kind: 'agent', provider, slot: -1, source: `影画${cinema.cinemaLevel}` })
+        if (cinema.buff?.scope === 'outOfCombat') out.push(tagged)
+        else inCombat.push(tagged)
       }
     }
   }
@@ -309,6 +455,7 @@ function collectAgentBuffs(agent: Agent, cinemaLevel: number): CollectedBuffs {
           stat: s.stat,
           mode: s.mode,
           value: s.value,
+          origin: { kind: 'agent', provider, slot: -1, source: '核心技等级' },
         })
       }
     }
@@ -329,13 +476,15 @@ function collectWEngineBuffs(
 
   if (!matchSpecialty) return { outOfCombat: out, inCombat }
 
+  const provider = localized(wEngine.name, String(wEngine.id))
   const addEffects = (group: BuffGroup | null) => {
     if (!wEngineConditionMet(group?.condition, gate)) return
     for (let e of extractEffects(group)) {
       if (!wEngineEffectRequirementMet(e.requirement, gate)) continue
       e = applyWEngineModLevel(e, modLevel)
-      if (group?.scope === 'outOfCombat') out.push(e)
-      else inCombat.push(e)
+      const tagged = withOrigin(e, { kind: 'wEngine', provider, slot: -1, source: '音擎效果' })
+      if (group?.scope === 'outOfCombat') out.push(tagged)
+      else inCombat.push(tagged)
     }
   }
 
@@ -428,11 +577,15 @@ function collectDriveDiscBuffs(
     const set = setsMap.get(setId)
     if (!set) continue
 
+    const setProvider = localized(set.name, String(set.id))
     // 2件套效果（count>=2 时生效）
     if (count >= 2 && set.twoPiece?.effects) {
       for (const e of set.twoPiece.effects) {
         if (!discRequirementMet(e.requirement, ctx.agent, ctx.outOfCombatStats)) continue
-        out.push(resolveDiscStatTemplate(e, ctx.agent.attribute))
+        out.push(withOrigin(
+          resolveDiscStatTemplate(e, ctx.agent.attribute),
+          { kind: 'driveDisc', provider: setProvider, slot: -1, source: '套装 2pc' },
+        ))
       }
     }
 
@@ -442,9 +595,12 @@ function collectDriveDiscBuffs(
       if (!discRequirementMet(group.requirement, ctx.agent, ctx.outOfCombatStats)) continue
       for (let e of group.effects) {
         if (!discRequirementMet(e.requirement, ctx.agent, ctx.outOfCombatStats)) continue
-        e = resolveDiscStatTemplate(e, ctx.agent.attribute)
-        if (group.scope === 'outOfCombat') out.push(e)
-        else inCombat.push(e)
+        const tagged = withOrigin(
+          resolveDiscStatTemplate(e, ctx.agent.attribute),
+          { kind: 'driveDisc', provider: setProvider, slot: -1, source: '套装 4pc' },
+        )
+        if (group.scope === 'outOfCombat') out.push(tagged)
+        else inCombat.push(tagged)
       }
     }
   }
@@ -497,8 +653,23 @@ function collectTeammateBuffs(teammateBuffs: TeammateBuff[], sourcePanels?: Sour
     for (const rawEffect of buff.effects) {
       if (isExcludedForTarget(rawEffect, buff, targetAgent)) continue
       const e = cloneEffectWithSourceValue(rawEffect, buff, sourcePanels)
-      if (buff.scope === 'outOfCombat') out.push(e)
-      else inCombat.push(e)
+      // 提供者归属（2026-10-20 用户纠正：「危局buff 你的归属是队友。这显然是环境。boss 给的 buff 也该归于 boss」）：
+      //   - `sourceKind === 'global'`（危局 buff 牌 / boss 层 / 用户手填的全局行，见 panelPhases 的
+      //     `globalAsTeammateBuffs`）⇒ kind = 'team'，提供者 = 该行自己的名字（「危局buff」「boss」…），
+      //     **不是**任何队友；
+      //   - 角色类（`sourceCategory === 'agent'`）⇒ 队友；
+      //   - 其余（音擎/驱动盘团队段）⇒ 环境类。
+      const kind: BuffEffectOrigin['kind'] = buff.sourceKind === 'global'
+        ? 'team'
+        : (buff.sourceCategory === 'agent' ? 'teammate' : 'team')
+      const tagged = withOrigin(e, {
+        kind,
+        provider: localized(buff.ownerName, buff.ownerId),
+        slot: -1,
+        source: localized(buff.sourceLabel, buff.id),
+      })
+      if (buff.scope === 'outOfCombat') out.push(tagged)
+      else inCombat.push(tagged)
     }
   }
 
@@ -589,35 +760,42 @@ function evalFormulaEffect(effect: BuffEffect, panel?: PanelValues): number {
   )
 }
 
-/** 应用单个 buff 效果到面板 */
-export function applyEffect(panel: PanelValues, effect: BuffEffect, coverage?: number): void {
+/**
+ * 效果**数值**求值（应用与展示共用单一事实源，2026-10-20 属性矩阵抽出）。
+ *
+ * `applyEffect` 原把「算值」与「写面板」写在一起，展示层（属性矩阵）要显示每格贡献却拿不到值，
+ * 只能自己重算一遍 —— 那正是「两处各写一遍」的老毛病。抽出本函数后两者同源：
+ * 面板里加了什么，矩阵格子里就显示什么。
+ *
+ * 返回 null = 该效果不产生数值（覆盖率 0 / 无 stat）；调用方据此跳过。
+ */
+export function resolveEffectValue(effect: BuffEffect, panel: PanelValues, coverage?: number): number | null {
+  if (!effect.stat) return null
   const cov = coverage ?? effect.coverage?.default ?? 1
-  if (cov <= 0) return
-
-  let value = 0
+  if (cov <= 0) return null
 
   switch (effect.type) {
     case 'fixed':
-      value = effect.value * cov
-      break
+      return effect.value * cov
     case 'derived': {
       const sourceValue = getEffectSourceValue(effect)
       const ratio = (effect.ratio ?? 0) / 100
       const base = sourceValue * ratio
-      value = effect.cap ? Math.min(base, effect.cap) : base
-      value *= cov
-      break
+      return (effect.cap ? Math.min(base, effect.cap) : base) * cov
     }
-    case 'stacked': {
-      const stacks = effect.defaultStacks
-      const perStack = effect.valuePerStack
-      value = perStack * stacks * cov
-      break
-    }
+    case 'stacked':
+      return effect.valuePerStack * effect.defaultStacks * cov
     case 'formula':
-      value = evalFormulaEffect(effect, panel) * cov
-      break
+      return evalFormulaEffect(effect, panel) * cov
+    default:
+      return null
   }
+}
+
+/** 应用单个 buff 效果到面板 */
+export function applyEffect(panel: PanelValues, effect: BuffEffect, coverage?: number): void {
+  const value = resolveEffectValue(effect, panel, coverage)
+  if (value === null) return
 
   for (const target of effectSkillDamageTargets(effect)) {
     applyTargetedStat(panel, effect.stat, value, effect.mode, target)
@@ -762,18 +940,39 @@ export function applyStat(panel: PanelValues, stat: StatId, value: number, mode:
   }
 }
 
+/**
+ * @fact core/buff/两批求值 口径: 同一 buff 批次内先落全部 fixed/derived/stacked、再统一求 formula；formula 的 x 因此读该相位**最终**面板值（不再读「效果应用那一刻」的快照） | 据 用户@2026-10-20「肯定按照真实的来啊」+ 1581 异化系数实测（局外 AP 502 → 应局内 648） | 验 src/core/__tests__/remielleSourcePhase.test.ts | 锚 src/core/buff.ts#applyBuffs | 信 确认
+ * ⟳复核: 若新增「formula 读 formula」的数据（一条转模吃另一条转模的结果）⇒ 本函数要显式排序，不能依赖 effects 数组顺序 | 到期 2027-06-30
+ */
 /** 应用一组 buff 效果 */
 export function applyBuffs(
   panel: PanelValues,
   effects: BuffEffect[],
-  coverageMap?: Map<string, number>
+  coverageMap?: Map<string, number>,
+  /** 本批次所属相位（只用于把累加器的「大/小词条输入」记到带相位前缀的键上；不影响任何数值） */
+  phase?: 'outOfCombat' | 'inCombat',
 ): PanelValues {
   const result = { ...panel }
   finalizeCoreStatBonuses(result)
+  if (phase) batchPhase.set(result, phase)
+  // ★ 两批求值（2026-10-20，用户裁决「异化按真实的来」）：**加成批 → 派生批**。
+  //
+  // 根因：`formula` 效果的 x = `getEffectSourceValue` 读**当前**面板值，而字段顺序 = buff 数组拼接顺序
+  // （`mergeBuffs` 依次 agentBuffs → wEngine → disc → teammate）。于是「按自身某个属性转模」的效果
+  // 读到的是**它前面那几条**加成之后的快照，而不是该相位的最终值。
+  // 实测（1581 蕾米埃尔，局内批次）：`remielle_refringe_coefficient_from_ap` 排在 own buffs 首位，
+  // 只读到**局外**异常精通 502（音擎 14158 +96 与驱动盘 34100 +50 都在它之后进面板）
+  // ⇒ 异化系数 10.04%，而最终局内精通 648 应为 12.96%（资源卡展示与伤害管线的另一半偏差来源）。
+  //
+  // 契约：**同一批次内先落全部 fixed/derived/stacked，再求全部 formula**。formula 之间仍按声明顺序
+  // （现无「formula 读 formula」的数据；出现时必须显式排序，不得依赖数组拼接顺序）。
   for (const e of effects) {
-    if (!e.stat) continue
-    const cov = coverageMap?.get(e.id)
-    applyEffect(result, e, cov)
+    if (!e.stat || e.type === 'formula') continue
+    applyEffect(result, e, coverageMap?.get(e.id))
+  }
+  for (const e of effects) {
+    if (!e.stat || e.type !== 'formula') continue
+    applyEffect(result, e, coverageMap?.get(e.id))
   }
   return finalizeCoreStatBonuses(result)
 }

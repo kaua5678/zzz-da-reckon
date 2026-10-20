@@ -95,6 +95,32 @@ describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
     expect(dmg(0)).toBeCloseTo(off, 9)
   })
 
+  /**
+   * 用户 2026-10-20：「资源池里面显示的异化度还是没有算加和异化，只显示了精通加成」。
+   *
+   * 口径 = 用户 Excel 账本的**属性矩阵**：横轴拐力提供者、纵轴属性区，逐格记贡献再**求和**。
+   * 异化度 = 异常伤害区·全队拐那一列的总和 ⇒ 卡片必须显示「本体 + 加算」，且与伤害乘区同源。
+   * 负控：把 `refringeCoefficientBonusPct` 从 buildRemielleResourceResult 的入参里去掉 ⇒ 本用例红。
+   */
+  it('资源卡异化度 = 本体 + 加算（3异常/C2），且与伤害乘区同源', async () => {
+    for (const cinema of [0, 2]) {
+      const { config, catalog } = await setup(cinema)
+      const calc = useResourceCalc()
+      const card = calc.resourceResult.value!.characters.find(c => c.agentId === '1581')!
+      const s = card.remielleMechanicSource!
+      expect(s.refringeCoefficientBonusPct).toBeCloseTo(cinema >= 2 ? 30 : 10, 5)
+      expect(s.refringeTotalPct).toBeCloseTo(s.refringeCoefficient + s.refringeCoefficientBonusPct, 9)
+      // 卡片总值 = 蕾米面板的乘区口径（1 + 总值/100）
+      const ownerPanel = computePanelPhases(0, config, catalog)!.inCombat
+      expect(s.refringeTotalPct).toBeCloseTo(
+        ownerPanel.remielleRefringeCoefficient + ownerPanel.remielleRefringeCoefficientBonusPct, 6,
+      )
+      // 与异常虚拟面板「异化度」列同值（展示侧全队唯一值）
+      const vp = calc.anomalyVirtualPanels.value[0]
+      if (vp) expect(vp.virtual.refringe).toBeCloseTo(s.refringeTotalPct, 6)
+    }
+  }, 120000)
+
   it('完整计算链：资源池带 remielleMechanicSource，虚耀账本随精通缩放', async () => {
     await setup()
     const calc = useResourceCalc()
@@ -432,18 +458,28 @@ describe('CC-35a：异常虚拟面板「异化度」列由模块能力 anomalyRe
     expect(remielleMechanic.globalAnomalyMultiplierFactor!(p)).toBe(1 + 42.5 / 100)
   })
 
-  it('蕾米埃尔在队：每行 refringe = 该行面板的异化系数 + 提升（> 0）', async () => {
+  /**
+   * 2026-10-20 订正（用户裁决「异化度确实是全队固定的，因为这是全队拐」）：异化度是**全队唯一值**，
+   * 每行喂该行自己的面板是错的——异化系数本体（catalog `target.kind: 'self'`）只写在蕾米面板上，
+   * 队友行只拿得到 3异常+10 / C2+20 的 `default` 部分 ⇒ 修前每行/虚拟面板恒显示 10.0（C0），
+   * 而伤害实际乘的是 1 + (异化系数 + 提升)/100。负控：把取值改回「该行自己的面板」⇒ 本用例红。
+   */
+  it('蕾米埃尔在队：每行 refringe = 蕾米面板的异化系数 + 提升（全队固定值，不按行加权）', async () => {
     const { config, catalog } = await setup(0)
     const panels = [0, 1, 2].map(s => computePanelPhases(s, config, catalog)!.inCombat)
     const prog = { element: 'electric', totalBuildUp: 200, contributions: [{ slot: 0, totalBuildUp: 120 }, { slot: 1, totalBuildUp: 80 }] }
     const built = buildAnomalyVirtualPanel(prog as never, panels, config, catalog)!
     expect(built.rows.length).toBe(2)
-    for (const row of built.rows) {
-      const p = panels[row.slot]
-      const want = (p.remielleRefringeCoefficient ?? 0) + (p.remielleRefringeCoefficientBonusPct ?? 0)
-      expect(want).toBeGreaterThan(0)
-      expect(row.refringe).toBe(want)
-    }
+    const owner = panels[0]!
+    const want = (owner.remielleRefringeCoefficient ?? 0) + (owner.remielleRefringeCoefficientBonusPct ?? 0)
+    expect(want).toBeGreaterThan(0)
+    for (const row of built.rows) expect(row.refringe).toBe(want)
+    expect(built.virtual.refringe).toBe(want)
+    // 队友行自己的面板只有 default 加算项（异化系数本体钉在 self）⇒ 修前会显示更小的值
+    const mateOwn = (panels[1]!.remielleRefringeCoefficient ?? 0) + (panels[1]!.remielleRefringeCoefficientBonusPct ?? 0)
+    expect(mateOwn).toBeLessThan(want)
+    // 展示值与伤害乘区同源：1 + pct/100
+    expect(remielleMechanic.globalAnomalyMultiplierFactor!(owner)).toBeCloseTo(1 + want / 100, 12)
   })
 
   it('蕾米埃尔不在队：refringe 为 0', async () => {

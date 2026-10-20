@@ -216,11 +216,24 @@ export function buildAnomalyVirtualPanel(
   const totalBuildUp = [...slotBuildUp.values()].reduce((a, b) => a + b, 0)
   if (totalBuildUp <= 0) return null
 
-  // CC-35a（2026-09-27）：异化度展示列由在队模块能力 `anomalyRefringePct` 按行面板求和
-  // （原内联读蕾米埃尔两个面板字段；这两个字段只由蕾米埃尔的 buff 写，她不在队时恒为 0，逐位等价）
-  const refringeProviders = configStore.team
-    .map(char => (char.agentId ? getAgentMechanic(char.agentId) : undefined))
-    .filter(mod => !!mod?.anomalyRefringePct)
+  // CC-35a（2026-09-27）：异化度展示列由在队模块能力 `anomalyRefringePct` 提供。
+  //
+  // ⚠ 2026-10-20 订正（用户裁决「异化度确实是全队固定的，因为这是全队拐」）：
+  // 异化度是**全队唯一的量**，不是某一行/某个积蓄贡献者的属性 ⇒ 求值用**蕾米本人的面板**
+  // （第一个提供者的槽位），而不是每个积蓄行自己的面板。
+  //
+  // 修前的错误形态（实测 C0 三异常队）：每行喂**该行自己的面板**，而异化系数本体
+  // （catalog `target.kind: 'self'`）只写在蕾米面板上，队友行只拿到 3异常+10 / C2+20 的
+  // `target.kind: 'default'` 部分 ⇒ 每行显示 10.0%、虚拟面板加权后仍是 10.0%，
+  // 而伤害实际吃的是 1 + (12.96+10)/100 = 1.2296。CC-35a 当年写的「按行面板与读蕾米面板逐位等价」
+  // 只对蕾米自己那行成立，前提本身是错的。
+  const refringeProvider = configStore.team
+    .map((char, slot) => ({ slot, mod: char.agentId ? getAgentMechanic(char.agentId) : undefined }))
+    .find(entry => !!entry.mod?.anomalyRefringePct)
+  const refringePanel = refringeProvider ? panelAt(panels, refringeProvider.slot) : undefined
+  const refringeValue = refringeProvider && refringePanel
+    ? refringeProvider.mod!.anomalyRefringePct!(refringePanel)
+    : 0
   const rows: AnomalyVirtualPanelRow[] = [...slotBuildUp.entries()]
     .map(([slot, buildup]) => {
       const panel = panelAt(panels, slot) ?? emptyPanel()
@@ -251,7 +264,7 @@ export function buildAnomalyVirtualPanel(
         elementResReduction: panelElementStat(panel, 'enemyRes', prog.element),
         penRatio: panel.penRatio,
         penFlat: panel.penFlat,
-        refringe: refringeProviders.reduce((sum, mod) => sum + mod!.anomalyRefringePct!(panel), 0),
+        refringe: refringeValue,
       }
     })
     .sort((a, b) => b.buildup - a.buildup)
@@ -307,7 +320,8 @@ export function buildAnomalyVirtualPanel(
     elementResReduction: 0,
     penRatio: panel.penRatio,
     penFlat: panel.penFlat,
-    refringe: weighted('refringe'),
+    // 异化度是全队唯一值 ⇒ 虚拟面板不做积蓄加权（加权对固定量恒等于原值，此处显式直取以防将来有人改权重口径）
+    refringe: refringeValue,
   }
 
   panel.refringe = virtual.refringe

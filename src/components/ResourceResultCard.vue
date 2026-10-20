@@ -521,10 +521,6 @@ const anomalyBonusBreakdown = computed(() => {
 
 // ============ 招式执行计划表格 ============
 
-function fmtCell(value: number | undefined, digits = 1): string {
-  return value && value > 0 ? fmt(value, digits) : '-'
-}
-
 /** 执行计划可按「单次 / 总计」口径展示的数值列键（键名写错编译期即报错） */
 type ExecAmountKey =
   | 'energyRecovery' | 'decibelRecovery' | 'anomalyBuildUp' | 'specialResourceRecovery' | 'healingAmount'
@@ -564,34 +560,27 @@ const executionColumns: DataTableColumns<SkillExecution> = [
       ])
     },
   },
+  /**
+   * 2026-10-20 用户裁决（口径纠正）：
+   * > 「伤害失衡不乘次数，喧响回能乘了次数，这个显示是啥意思呢。如果这里不能拿到计算核心中的数据，
+   * >   那只显示招式次数就行了，后面的数值比如伤害失衡倍率显示也没用，因为还没算乘区。
+   * >   喧响回能也不用显示，因为有喧响池和能量池显示。」
+   *
+   * 修前两种口径混在同一张表里，读者会把「倍率原值」当成「已结算伤害」：
+   * - **伤害倍率 / 失衡倍率** = 单次原值（未乘次数、未进乘区）⇒ 与相邻列「单次 × 次数 = 总计」的语义打架；
+   * - **喧响回复** = 单次 × 次数（这是**资源量**，已乘次数，语义其实正确）——但喧响/能量另有
+   *   「喧响池 / 能量池」卡展示权威口径，这里重复且容易与倍率列混淆。
+   *
+   * ⇒ 本表**只保留「打了几次」这个只有执行计划才知道的事实**，倍率与喧响回能列移除。
+   * 需要倍率去倍率表/伤害池，需要资源去资源池。
+   */
   { title: '次数', key: 'count', width: 62, align: 'center' as const, render: renderCount },
-  {
-    title: '伤害倍率',
-    key: 'damageMultiplier',
-    width: 78,
-    align: 'right' as const,
-    render(row) { return fmtCell(row.damageMultiplier, 1) },
-  },
-  {
-    title: '失衡倍率',
-    key: 'dazeMultiplier',
-    width: 78,
-    align: 'right' as const,
-    render(row) { return fmtCell(row.dazeMultiplier, 1) },
-  },
   {
     title: '能量回复',
     key: 'energyRecovery',
     width: 92,
     align: 'right' as const,
     render(row) { return executionValue(row, 'energyRecovery', 'totalEnergyRecovery') },
-  },
-  {
-    title: '喧响回复',
-    key: 'decibelRecovery',
-    width: 92,
-    align: 'right' as const,
-    render(row) { return executionValue(row, 'decibelRecovery', 'totalDecibelRecovery') },
   },
   {
     title: '异常积蓄',

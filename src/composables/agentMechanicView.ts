@@ -342,3 +342,37 @@ export function interactionFieldTypeOf(agentId: string | null | undefined, field
   const m = agentId ? getAgentMechanic(agentId)?.interactionFieldTypes : undefined
   return m ? (m as Readonly<Record<string, string | undefined>>)[field] : undefined
 }
+
+/**
+ * 属性贡献账（2026-10-20，判据 7「展示层越层 import」）：views/components 不直接 import `@/core`，
+ * 经本门面取用。纯转发——不计算、不缓存，语义与页面里内联 import 逐位一致。
+ *
+ * 为什么要门面而不是让页面直接用：贡献账是**引擎侧数据结构**（提供者 × 属性区矩阵 + 差额对账），
+ * 它随引擎演化；若页面直连，一次引擎重构就要改 N 个页面（这正是本仓反复踩的「展示层散连引擎」）。
+ */
+export {
+  buildAttributeLedger,
+  buildAttributeLedgerTable,
+  zoneOfStat,
+  type AttributeLedger,
+  type AttributeLedgerTable,
+  type AttributePhase,
+} from '@/core/attributeLedger'
+export type {
+  LedgerCell,
+  LedgerRow,
+  LedgerTable,
+  LedgerReconcileRow,
+  ContributionOrigin,
+  FlatContribution,
+  ContributionFilter,
+  ContentKind,
+} from '@/core/contributionLedger'
+// 三维查询（B：下钻筛选 / C：按内容分面）：页面只依赖本门面，不直连引擎
+export {
+  flattenLedger,
+  filterContributions,
+  facetByContent,
+  contentKindOf,
+  CONTENT_KIND_ORDER,
+} from '@/core/contributionLedger'

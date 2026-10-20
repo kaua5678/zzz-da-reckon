@@ -143,6 +143,18 @@ export interface AgentTeamPanelEffectInput {
   targetAgent: Agent
   /** 目标槽位的面板（**可写**；已含队友 buff 与该槽自己 `applyPanel` 的结果） */
   panel: PanelValues
+  /**
+   * 结构化记账（可选，2026-10-20）：钩子把「我改了什么」逐条上报，用于属性贡献账
+   * （`core/contributionLedger.ts`）与展示透明化。
+   *
+   * **为什么需要**：本钩子无返回值，原先只能从「面板差值」反推贡献 —— 那会把
+   * 「钩子写入」与「其他非 buff 通道来源」混成一个差额，用户看到的是
+   * 「差额 18 不知从哪来」（2026-10-20 实测反馈）。上报后差额自然归零，且每一条都能回溯到来源。
+   *
+   * 约定：**上报量必须等于实际写入量**（同一份算式算一次、写入与上报共用结果），
+   * 否则账本与面板再次分叉。不传 = 该钩子未接入记账（账本侧会把它算进差额并如实标注）。
+   */
+  report?(entry: { stat: string; value: number; mode: 'flat' | 'pct' }): void
   /** 已解析的机制滑块值（同 `AgentPanelInput.settings`） */
   settings: Readonly<Record<string, number>>
 }
@@ -1105,10 +1117,15 @@ export interface AgentMechanicModule {
    */
   globalAnomalyMultiplierFactor?(panel: PanelValues): number
   /**
-   * 异化度展示值（%，CC-35a 2026-09-27）：`resourceCalc/anomalyPanels.ts#buildAnomalyVirtualPanel` 对每个积蓄
-   * 贡献行，把**在队**各模块的返回值（以该行的面板为参数）求和，写进 `AnomalyVirtualPanelRow.refringe`
-   * （结果页异常虚拟面板表的「异化度」列），不参与伤害计算。伤害乘区另走 `globalAnomalyMultiplierFactor`，
-   * 两者应出自同一算式。首个实现：蕾米埃尔。
+   * 全队异常乘区的展示值（%，CC-35a 2026-09-27，2026-10-20 订正）：`resourceCalc/anomalyPanels.ts#buildAnomalyVirtualPanel`
+   * 取**在队第一个提供者**（蕾米埃尔所在槽）的面板求值一次，写进每一个 `AnomalyVirtualPanelRow.refringe` 与
+   * `virtual.refringe`（结果页异常虚拟面板表的「异化度」列），不参与伤害计算。伤害乘区另走
+   * `globalAnomalyMultiplierFactor`，两者出自同一算式（`remielle.ts#remielleRefringePct`）。
+   *
+   * ⚠ 2026-10-20 用户裁决：「异化度确实是全队固定的，因为这是全队拐」⇒ 这是**全队唯一值**，
+   * **不要**改回「每个积蓄行喂该行自己的面板」：异化系数本体在 catalog 里是 `target.kind: 'self'`，
+   * 只写在蕾米面板上，队友行只拿得到 3异常+10 / C2+20 的 `default` 部分 ⇒ 修前每行显示 10.0%（虚拟面板同样），
+   * 而伤害实际乘 1.2+（实测 C0 三异常队）。首个实现：蕾米埃尔。
    */
   anomalyRefringePct?(panel: Readonly<PanelValues>): number
   /**

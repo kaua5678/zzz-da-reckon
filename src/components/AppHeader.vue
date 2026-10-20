@@ -31,6 +31,7 @@
           @update:value="onTabChange"
         >
           <n-tab-pane name="result" tab="资源池" />
+          <n-tab-pane name="attributeLedger" tab="属性贡献账" />
           <n-tab-pane name="resourceUtilization" tab="资源利用率" />
           <n-tab-pane name="stunAxis" tab="失衡轴" />
           <n-tab-pane name="timeline" tab="时间图表" />
@@ -165,7 +166,7 @@ function openSettings() {
 const showChangelog = ref(false)
 
 const setupTabs = ['team', 'attribute', 'resource']
-const analyzeTabs = ['result', 'resourceUtilization', 'stunAxis', 'timeline']
+const analyzeTabs = ['result', 'attributeLedger', 'resourceUtilization', 'stunAxis', 'timeline']
 const compareTabs = ['teamCompare', 'interactionSweep', 'breakerCompare', 'freeCompare', 'runArchive']
 const planTabs = ['charIncrement', 'bossHp']
 const developerTabs = ['debug', 'wengineFields', 'logic', 'multiplierCoeff']

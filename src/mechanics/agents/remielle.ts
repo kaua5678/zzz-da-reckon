@@ -39,15 +39,38 @@ const REFRINGE_COEFFICIENT_PER_AP = 0.02
 // @fact agent:1581/耀变倍率提升 口径: 耀变倍率提升=异常精通×0.2%（原文「根据自身异常精通的0.2%提升此伤害倍率」；audit/1581.json 录入快照 + nanoka 3.2.1/3.2.3/3.3.0 + 账本蕾米埃尔.xlsx Q10=1+精通×0.2% + catalog corePassive 公式 x*0.2 四源一致）。旧值 0.1 为录入转写错误：伤害管线一直走 catalog 公式（0.2 正确），本常量只喂资源卡展示，曾致展示口径与引擎相差一半 | 据 原文四源核对@2026-09-07·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/mechanics/agents/remielle.ts#LUMINIZE_MULTIPLIER_PER_AP | 信 确认
 const LUMINIZE_MULTIPLIER_PER_AP = 0.2
 
+/**
+ * 蕾米埃尔机制账源（资源卡/外部制表）。
+ *
+ * ⚠ 2026-10-20 订正（用户：**「资源池里面显示的异化度还是没有算加和异化，只显示了精通加成」**）：
+ * 修前这里只算「异常精通 × 0.02%」的**本体**，而异化度的实际乘区是
+ * `1 + (本体 + 加算)/100`——加算项（3 异常 +10 / C2 +20）住在面板字段
+ * `remielleRefringeCoefficientBonusPct` 上，卡片从未把它加上去。
+ *
+ * 这正是用户 Excel 账本「属性矩阵」的口径：**横轴 = 拐力提供者，纵轴 = 属性区，
+ * 每个拐力事件记到提供者×属性区格子里，最后逐格求和**。异化度就是「异常伤害区 · 全队拐」那一列的总和，
+ * 不是某一个加成的原值。`refringeTotalPct` = 本体 + 加算，是**唯一该展示的值**。
+ *
+ * 加算项来源（两者同区相加，见 `remielleRefringePct`）：
+ * ① `teammate-buffs` `1581.core_passive.refringe_3_anomaly`（3 异常 +10，`target.kind: default` ⇒ 全队含本人）；
+ * ② catalog `cinemaBuffs` C2「异化系数提升 20%」（`target.kind: self` ⇒ 只写蕾米面板；teammate 侧那条
+ *    以 effect 级 `excludeTargetAgentIds` 排除本人，防双计）。
+ */
 export function computeRemielleMechanic(input: {
   anomalyProficiency: number
+  /** 面板上的异化度加算项（3异常 +10 / C2 +20）；缺省 0 */
+  refringeCoefficientBonusPct?: number
   splitRounds?: number
 }): RemielleMechanicSource {
   const ap = Math.max(0, input.anomalyProficiency)
+  const coefficient = ap * REFRINGE_COEFFICIENT_PER_AP
+  const bonusPct = Math.max(0, input.refringeCoefficientBonusPct ?? 0)
   return {
     voidflareStored: VOIDFLARE_INITIAL,
     voidflareMax: VOIDFLARE_MAX,
-    refringeCoefficient: ap * REFRINGE_COEFFICIENT_PER_AP,
+    refringeCoefficient: coefficient,
+    refringeCoefficientBonusPct: bonusPct,
+    refringeTotalPct: coefficient + bonusPct,
     luminizeMultiplierBonus: ap * LUMINIZE_MULTIPLIER_PER_AP,
     splitRounds: Math.max(0, Math.floor(input.splitRounds ?? 0)),
     note: '虚曜：最多储存3个，队友触发异常反应生成；花羽轮舞/缭乱终幕/垂虹/惊鸿命中后触发耀变，按储存异常效果强度结算招式对应倍率；异化系数=异常精通×0.02%，耀变倍率提升=异常精通×0.2%。耀变次数由异常池按队友异常触发自动结算，不由用户直接调整。',
@@ -58,8 +81,9 @@ function buildRemielleResourceResult({ cfg }: AgentResourceResultInput): Partial
   return {
     remielleMechanicSource: computeRemielleMechanic({
       anomalyProficiency: cfg.panel.anomalyProficiency,
+      // 加算项必须一起传：只传精通会让资源卡显示「本体」而伤害吃「本体+加算」（用户 2026-10-20 报的正是这个）
+      refringeCoefficientBonusPct: cfg.panel.remielleRefringeCoefficientBonusPct,
       splitRounds: cfg.panel.remielleSplitRounds ?? 0,
-
     }),
   }
 }
@@ -149,7 +173,16 @@ function buildRemielleResourceSections({ result, anomalyPoolResult, teamSettings
           detail: perSlot.map(x => `${x.slot + 1}号 ${x.dropped}/${x.total}`).join(' · ') + '（丢弃后剩余次数进分配，轮数与归属自动跟着算）',
         },
         { label: '虚曜储存', value: `${source.voidflareStored}/${source.voidflareMax}`, detail: '队友异常反应生成，最多存3个' },
-        { label: '异化系数', value: `${fmt(source.refringeCoefficient)}%`, detail: '异常精通 × 0.02%' },
+        {
+          label: '异化度',
+          // ★ 显示**求和后**的异化度（本体 + 加算），与伤害乘区 1 + 本值/100 同源（用户 2026-10-20：
+          //   「只显示了精通加成」——加算项住在另一字段，卡片必须加进来）
+          value: `${fmt(source.refringeTotalPct)}%`,
+          detail: `精通本体 ${fmt(source.refringeCoefficient)}%`
+            + (source.refringeCoefficientBonusPct > 0
+              ? ` + 加算 ${fmt(source.refringeCoefficientBonusPct)}%（3异常+10 / 二命+20）= ${fmt(source.refringeTotalPct)}%`
+              : '（无加算项）'),
+        },
         { label: '耀变倍率提升', value: `${fmt(source.luminizeMultiplierBonus)}%`, detail: '异常精通 × 0.2%' },
       ],
       footer: source.note,
@@ -457,7 +490,7 @@ function applyRemiellePanel({ slot, agent, team, panel, settings }: AgentPanelIn
  * 留在 `applyRemiellePanel`，**不要**搬到这里，否则双计（`AgentTeamPanelEffectInput` 的
  * 「两个钩子都会跑」纪律）。
  */
-function applyRemielleTeamPanelEffects({ slot, cinemaLevel, team, panel }: AgentTeamPanelEffectInput): void {
+function applyRemielleTeamPanelEffects({ slot, cinemaLevel, team, panel, report }: AgentTeamPanelEffectInput): void {
   // ★ 「相变时流」是**一个光环**，不是「每个蕾米各加一次」：原实现用
   // `configStore.team.findIndex(…)` 找**第一个**蕾米、读**她**的命座、给当前面板加**一次**。
   // 本钩子按**来源槽**逐槽派发 ⇒ 不设守卫时「双蕾米队」会加 N 次。
@@ -473,7 +506,12 @@ function applyRemielleTeamPanelEffects({ slot, cinemaLevel, team, panel }: Agent
   // 原式：`remielleCinema >= 5 ? 4 : remielleCinema >= 3 ? 2 : 0` ⇒ 技能等级 12/14/16
   const cinema = cinemaLevelOf(cinemaLevel)
   const skillLevelBonus = cinema >= 5 ? 4 : cinema >= 3 ? 2 : 0
-  panel.dmgBonus = panel.dmgBonus + (12 + skillLevelBonus) * 1.5
+  // ★ 结构化记账（2026-10-20）：同一份算式算一次，写入与上报共用结果。
+  // 原先是「只写面板、不上报」⇒ 属性贡献账只能从面板差值反推出一个 18 的不明差额
+  // （用户实测：不知道这个 18 从哪来）。
+  const dmgBonus = (12 + skillLevelBonus) * 1.5
+  panel.dmgBonus = panel.dmgBonus + dmgBonus
+  report?.({ stat: 'dmgBonus', value: dmgBonus, mode: 'flat' })
 }
 
 /** 从倍率表提取蕾米「普通攻击：垂虹」信息（CC-34b 2026-09-27 由 `core/resource/moveLookup.ts` 逐字迁入）（特殊虚耀跟随该动作触发） */
@@ -1236,7 +1274,12 @@ declare module '@/types/resource/agentResources' {
 export interface RemielleMechanicSource {
   voidflareStored: number
   voidflareMax: number
+  /** 异化系数**本体**（异常精通 × 0.02%） */
   refringeCoefficient: number
+  /** 异化系数**加算项**（3异常 +10 / 二命 +20；全队同区相加） */
+  refringeCoefficientBonusPct: number
+  /** 异化度合计 = 本体 + 加算项。**这是唯一该展示、也是伤害乘区 1 + 本值/100 用的数**（用户 2026-10-20） */
+  refringeTotalPct: number
   luminizeMultiplierBonus: number
   /** 拆轮数（面板值透传；资源卡按它展示「N 惊鸿 + M 垂虹」） */
   splitRounds: number

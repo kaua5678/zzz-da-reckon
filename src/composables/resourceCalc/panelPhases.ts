@@ -24,6 +24,8 @@ import {
   wEngineEffectCoverageMapOf,
 } from '@/stores/selectionReads'
 import { calcPanel, panelAt } from '@/core/panel'
+import { normalizePanelStatAlias } from '@/core/buff'
+import { localized } from '@/utils/format'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import type { CalcRoundThreads } from './roundThreads'
 import type { ModuleFeedback } from '@/mechanics/types'
@@ -45,7 +47,7 @@ import type {
   CharacterOperationConfig,
   StunAxis,
 } from '@/types/resource'
-import type { PanelValues, TeammateBuff, DriveDiscConfig } from '@/types/catalog'
+import type { PanelValues, TeammateBuff, DriveDiscConfig, BuffEffectOrigin } from '@/types/catalog'
 // 结算口径单一事实源（全局 Buff → TeammateBuff.effect.mode）。**不要**用展示口径 `isPctStat`：
 // 两者对本仓 39 个字段结论相反（其中 34 个 mode 敏感），详见 statMeta.ts#statSettlementMode 头注释。
 import { statSettlementMode } from '@/utils/statMeta'
@@ -54,6 +56,18 @@ import { resolvePhaseBuffValue, teamSpecialtiesOf } from '@/utils/phaseBuff'
 import { getTeamAnomalyDurationBonus, findWindSlot } from './anomalyPanels'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import { SHIELD_BREAK_GIFT } from '@/core/resource/resourceIncome'
+
+/**
+ * 队友经 `teamPanelEffects` 写入本槽面板的一条记录（结构化，2026-10-20）。
+ * 与 buff 通道的 `BuffEffectOrigin` 同形，便于属性贡献账统一归行。
+ */
+export interface TeamPanelContribution {
+  stat: string
+  value: number
+  mode: 'flat' | 'pct'
+  /** 与 buff 通道同形的来源标签（复用 `BuffEffectOrigin`，别重写一遍形状——判据 29） */
+  origin: BuffEffectOrigin & { kind: 'teamEffect' }
+}
 
 export function buildMechanicTeamMembers(
   configStore: ConfigModel,
@@ -505,7 +519,22 @@ export function computePanelPhases(
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   wEngineCoverages?: Record<string, number>,
-): { outOfCombat: PanelValues; inCombat: PanelValues } | null {
+): {
+  outOfCombat: PanelValues
+  inCombat: PanelValues
+  /** 本次收集的 buff 批次（已带 `origin` 来源标签，属性矩阵/贡献账用） */
+  buffs: import('@/core/buff').CollectedBuffs
+  /** 本次效果覆盖率表（与伤害管线同口径；矩阵求值共用） */
+  effectCoverageMap: Map<string, number>
+  /** 队友 `teamPanelEffects` 的结构化写入记录（属性贡献账用；不参与计算） */
+  teamPanelContributions: TeamPanelContribution[]
+  /** 基础层面板（角色白值 + 音擎白值，`calcBasePanel`） */
+  base: PanelValues
+  /** 词条层面板（基础 + 驱动盘主副词条 + 音擎高级词条，`applyDriveDiscConfig`） */
+  withDiscs: PanelValues
+  /** 驱动盘词条的逐条结构化贡献 */
+  discContributions: import('@/core/panel').DiscContribution[]
+} | null {
   const char = configStore.team[slot]
   if (!char?.agentId) return null
 
@@ -538,6 +567,13 @@ export function computePanelPhases(
 
   // 局内面板（全局 buff 已并入 calcPanel，不再后补；energyRegenOutOfCombat 已由 calcPanel 在局外/局内面板统一盖章，CC-337）
   const panel: PanelValues = { ...result.inCombat }
+  /**
+   * 队伍面板效果的结构化记账（2026-10-20，用户：「他不走 buff 通道是因为核心逻辑还没有结构化」）。
+   *
+   * `teamPanelEffects` 原本只能靠「面板差值」反推贡献 ⇒ 差额行把「钩子写入」与「主副词条」等
+   * 非 buff 通道来源混成一个不明数字。现在钩子经 `report` 主动上报，账本把它单列一行。
+   */
+  const teamPanelContributions: TeamPanelContribution[] = []
   // 额外能力触发条件统一判定（声明式 spec.additionalAbility）：满足才写面板标记，模块/伤害池按标记开关。
   const aaSpec = getAgentSpec(agent.id)?.additionalAbility
   if (aaSpec) {
@@ -573,6 +609,7 @@ export function computePanelPhases(
     // 契约承诺 `agent` 非 null（`AgentTeamPanelEffectInput.agent` 声明为 `Agent`）。
     if (!src.agentId || !src.agent) continue
     const srcMechanic = getAgentMechanic(src.agentId)
+    const srcProvider = localized(src.agent.name, src.agentId)
     srcMechanic?.teamPanelEffects?.({
       slot: src.slot,
       agent: src.agent,
@@ -582,6 +619,16 @@ export function computePanelPhases(
       targetAgent: agent,
       panel,
       settings: mechanismSettings,
+      // 结构化记账（2026-10-20）：钩子上报自己写了什么 ⇒ 属性贡献账能把它单独列成一行，
+      // 而不是从面板差值反推（差值会把「钩子写入」与「主副词条」等混成一个不明差额）。
+      report: (entry) => {
+        teamPanelContributions.push({
+          stat: normalizePanelStatAlias(entry.stat),
+          value: entry.value,
+          mode: entry.mode,
+          origin: { kind: 'teamEffect', provider: srcProvider, slot: src.slot, source: '队伍面板效果' },
+        })
+      },
     })
   }
   // 蕾米埃尔「额外能力三档失衡提升」块已迁进 `remielle.ts#applyRemiellePanel`（规则 6，
@@ -634,7 +681,21 @@ export function computePanelPhases(
   // ⟳复核: 跑 `npx vitest run specTeamBuffSingleSource` —— 若全库又有 spec 用 `teamBuffs` 声明 `infectionZoneBonus`（不变量条红），说明有人把误归属的重复声明加回来了；同时确认 1621/1631 在队仍给 10（归属判据） | 到期 2027-03-31
   panel.infectionZoneBonus = findWindSlot(configStore, catalogStore) >= 0 ? 10 : 0
 
-  return { outOfCombat: { ...result.outOfCombat }, inCombat: panel }
+  // buffs / effectCoverageMap 一并返回（2026-10-20，属性矩阵）：二者是 calcPanel 内部产物，
+  // 原先在此丢弃 ⇒ 展示层要还原「谁贡献了什么」只能重算一遍（那正是双实现漂移的来源）。
+  return {
+    /** 基础层：角色白值 + 音擎白值（属性账「基础」表） */
+    base: result.base,
+    /** 词条层：基础 + 驱动盘主副词条 + 音擎高级词条（属性账「加成/词条」行） */
+    withDiscs: result.withDiscs,
+    /** 词条的逐条上报（几号位主词条 / 副词条×N / 固定主词条），供公式行拆解来源 */
+    discContributions: result.discContributions,
+    outOfCombat: { ...result.outOfCombat },
+    inCombat: panel,
+    buffs: result.buffs,
+    effectCoverageMap,
+    teamPanelContributions,
+  }
 }
 
 /**

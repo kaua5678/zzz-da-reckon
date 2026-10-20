@@ -506,11 +506,14 @@ export const lighterMechanic: AgentMechanicModule = {
    * ⚠ 这是**队伍级**效果（加成随目标槽不同而不同）⇒ 只能写在本钩子，不能进自己的 `applyPanel`
    * （那只会加到莱特本人面板上）。契约见 `AgentTeamPanelEffectInput`。
    */
-  teamPanelEffects: ({ cinemaLevel, targetAgent, panel, settings }: AgentTeamPanelEffectInput) => {
+  teamPanelEffects: ({ cinemaLevel, targetAgent, panel, settings, report }: AgentTeamPanelEffectInput) => {
     if (targetAgent.id === LIGHTER_ID) return // 莱特本人不吃
     if (cinemaLevelOf(cinemaLevel) < 4) return
     const ratio = Math.max(0, Math.min(1, settingOf(settings, 'lighter.backstageRatio')))
-    panel.energyGainEfficiency = panel.energyGainEfficiency + LIGHTER_C4_FRONT_EFFICIENCY * ratio
+    const bonus = LIGHTER_C4_FRONT_EFFICIENCY * ratio
+    panel.energyGainEfficiency = panel.energyGainEfficiency + bonus
+    // 结构化记账（2026-10-20）：写入与上报共用同一份结果
+    report?.({ stat: 'energyGainEfficiency', value: bonus, mode: 'flat' })
   },
   buildCharConfig,
   buildExecutions,

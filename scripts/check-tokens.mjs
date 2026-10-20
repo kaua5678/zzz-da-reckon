@@ -719,7 +719,35 @@ export const WA_REF_BASELINE = 407  /* ★ 2026-10-18 MechanicsTablePage 下线�
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 989  /* ★ 2026-10-20 喧响通道拆分条（D 项）：984 → **989**（+5），
+export const VAR_TOTAL_BASELINE = 1024  /* ★ 2026-10-20 三维贡献图 + 下钻/分面视图（+8）：1016 → **1024**，
+                                           `--wa-*` 直引 **407 不变**（全部语义别名）。
+                                           归因：新增 `components/charts/Contribution3DChart.vue`
+                                          （--scene-bg-inner/outer、--scene-ink-rgb（Canvas 取色）、
+                                          --scene-ink-dim、--app-text-dim、--app-border）与页面的
+                                          `.view-mode-bar`/`.drill-bar`/`.facet-card` 块，
+                                          **零 raw --wa-*、零字面量**；3D 场景底/墨成对使用
+                                          （scene-contrast 判据要求）。
+                                          ★ 2026-10-20 属性贡献账页补「第三维」来源拆解（+10）：1006 → **1016**，
+                                           `--wa-*` 直引 **407 不变**（全部语义别名）。
+                                           归因：`.src-row` / `.src-chip` / `.formula-*` 块新增
+                                          （--app-inset / --app-text / --app-text-dim / --app-primary /
+                                          --app-accent-gold / --app-border / --app-tablehead-bg / --app-text-solid），
+                                          **零 raw --wa-*、零字面量**；首轮 `.src-chip` 墨写 `--app-text-dim`
+                                          压在 --app-inset 上被 tinted-contrast 抓出（light 3.25 < 4.5），已改 `--app-text`。
+                                          ★ 2026-10-20 属性贡献账页改三表布局（−4）：1010 → **1006**，
+                                           `--wa-*` 直引 **407 不变**。
+                                           **不是回退到字面量**：页面重写时删掉了旧布局里 4 处 var() 消费
+                                          （.row-panel/.row-gap 两行的 --app-ink/--app-text-solid 等），
+                                          新增的三表层仍全部走语义别名，零 raw --wa-*。
+                                          ★ 2026-10-20 属性贡献账新页（+21）：989 → **1010**，
+                                           `--wa-*` 直引 **407 不变**（全部走语义别名）。
+                                           归因：`views/AttributeLedgerPage.vue` 新增整页
+                                          （--app-text / --app-text-dim / --app-text-solid / --app-primary /
+                                          --app-accent-gold / --app-border / --app-panel / --app-inset /
+                                          --app-tablehead-bg），**零 raw --wa-*、零字面量**；
+                                          首轮表头墨写 `--app-text-dim` 压在 --app-tablehead-bg 上被
+                                          tinted-contrast 判据抓出（light 3.18 < 4.5），已改 `--app-text`。
+                                          ★ 2026-10-20 喧响通道拆分条（D 项）：984 → **989**（+5），
                                           `--wa-*` 直引 **407 不变**。
                                           归因：`components/ResourceResultCard.vue` 新增
                                           `.decibel-channel-split` 块（--fill-hover / --fg-2 / --fg-3 ×3），

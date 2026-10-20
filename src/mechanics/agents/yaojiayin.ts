@@ -229,7 +229,7 @@ function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
  * 契约与顺序纪律见 `AgentTeamPanelEffectInput`。
  */
 function applyYaojiayinTeamPanelEffects({
-  cinemaLevel, targetAgent, panel, settings,
+  cinemaLevel, targetAgent, panel, settings, report,
 }: AgentTeamPanelEffectInput): void {
   const cinema = cinemaLevelOf(cinemaLevel)
   const cov = Math.max(0, Math.min(1, settingOf(settings, 'yaojiayin.ariaCoverage')))
@@ -237,16 +237,24 @@ function applyYaojiayinTeamPanelEffects({
     // ⚠ 复用本模块既有的单一事实源（`yaojiayinSkillLevel` + `computeAriaBonuses`），
     // 不在此重写公式——否则与该模块别处的同类折算会漂移（规则 11）。
     const { dmgBonus, critDmg } = computeAriaBonuses(yaojiayinSkillLevel(cinema))
-    panel.dmgBonus = panel.dmgBonus + dmgBonus * cov
-    panel.critDmg = panel.critDmg + critDmg * cov
+    const dmg = dmgBonus * cov
+    const crit = critDmg * cov
+    panel.dmgBonus = panel.dmgBonus + dmg
+    panel.critDmg = panel.critDmg + crit
+    // 结构化记账（2026-10-20）：写入与上报共用同一份结果
+    report?.({ stat: 'dmgBonus', value: dmg, mode: 'flat' })
+    report?.({ stat: 'critDmg', value: crit, mode: 'flat' })
   }
   if (cinema >= 4 && targetAgent.id !== YAOJIAYIN_ID) {
     const branchCov = cov * 0.5
+    const branch = 50 * branchCov
     if (targetAgent.specialty === 'anomaly') {
-      panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + 50 * branchCov
+      panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + branch
+      report?.({ stat: 'anomalyBuildUpEfficiency', value: branch, mode: 'flat' })
     }
     if (targetAgent.specialty === 'stun') {
-      panel.stunBuildUpBonus = panel.stunBuildUpBonus + 50 * branchCov
+      panel.stunBuildUpBonus = panel.stunBuildUpBonus + branch
+      report?.({ stat: 'stunBuildUpBonus', value: branch, mode: 'flat' })
     }
   }
 }
