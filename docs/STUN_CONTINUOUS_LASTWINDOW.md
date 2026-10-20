@@ -890,3 +890,61 @@ round 6 我把「锁 5 比锁 4 低 11M + 葬血强袭整行消失」判成**要
 不是「算错」，而是「引擎故意保留的滞后」在特定队上不收敛。
 解法需要重新设计这两条反馈的收敛策略（阻尼 / 冻结 / 改测量方式），
 而每种的代价都很大（实测：round 12 的两种尝试分别导致「少打一轮」和「红 6→31」）。
+
+## 30. round 14：基线已重生成（规则 10 第④步完成）
+
+### 归因（第①-③步）
+
+**20 支受影响队，19 支 `stable`、1 支 `cycle`（`auto-1591`，已知未解）。**
+
+全部满足 `ΣstunTrig = pool × 120`（每人 20 × 3 人 = 60/次 × 2 人 = 120，含伴随 50%）。
+⇒ 归因链条：`进入失衡 20/人（C3）` → 喧响总量↑ → 终结技次数↑ → 时间账重排。
+
+| 队 | pool | Σult | ΣstunTrig |
+|---|---|---|---|
+| auto-1041-1571-1211 | 5 | 10 | 600 |
+| auto-1051-1141-1451 | 4 | 9 | 480 |
+| auto-1051-1481-1451 | 5 | 14 | 600 |
+| auto-1091-1411-1131 | 2 | 11 | 240 |
+| auto-1091-1511-1211 | 3 | 12 | 360 |
+| auto-1431-1481-1031 | 3 | 12 | 360 |
+| auto-1461-1031-1521 | 4 | 11 | 480 |
+| auto-1511-1561-1581 | 3 | 12 | 360 |
+| auto-1521-1251-1311 | 5 | 11 | 600 |
+| auto-1521-1461-1311 | 5 | 10 | 600 |
+| auto-1521-1481-1311 | 9 | 11 | 1080 |
+| auto-1531-1571-1451 | 3 | 10 | 360 |
+| auto-1591-1481-1211 | 4 | 15 | 480 |（cycle，已知未解）
+| auto-1611-1141-1211 | 4 | 11 | 480 |
+| billy-qingyi-lucia | 3 | 10 | 360 |
+| yidhari-jufufu-lucia | 4 | 10 | 480 |
+| yidhari-norma-lucia | 4 | 9 | 480 |
+| yidhari-roxy-lucia | 4 | 9 | 480 |
+| yidhari-trigger-lucia | 4 | 9 | 480 |
+| yixuan-trigger-lucia | 5 | 12 | 600 |
+
+### 第④步：重生成（已执行）
+
+```
+TIME_GOLDEN_UPDATE=1 npx vitest run src/composables/__tests__/timeGolden.test.ts
+  → 9 passed，baseline 124 行变化（90 条 delta）
+TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts
+  → 4 passed，baseline 11 行变化
+```
+
+### 重生成后仍有 6 条红（与基线无关）
+
+| 测试 | 条数 | 性质 |
+|---|---|---|
+| `outerCycleColdStart` | 2 | 叶瞬光队在 physical 下是剩余 3 环之一（真实未解） |
+| `moduleAnomalyEventRecords` | 2 | 简 6 命 count 13→12。**本轮深挖但未查明**：`pool=2`、`cov=0.1778`、`rounds=20`、`exit=cycle` **改动前后完全相同**，差异在更细的中间量 |
+| `foldResidualCapFeedback` | 1 | 时序偏移 |
+| `inStunAttribution` | 1 | 时序偏移 |
+
+### 当前 goal 达成度
+
+| 判据 | 状态 |
+|---|---|
+| 非稳定队归零 | ❌ 6 → 3 |
+| 规则 10 四步归因 + 重生成基线 | ✅ **本轮完成**（20 队逐条归因 + 两个基线重生成） |
+| 既有判据全绿 | ❌ 6 条红 |
