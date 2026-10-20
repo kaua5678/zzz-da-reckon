@@ -1287,6 +1287,7 @@ kStar = max{ m.prev.pool : floor(continuousStunCount(m.out.stunPool)) ≥ m.prev
 | `yixuanSmoke` · 合轴自动填充 | 夹具队 HEAD 实测 `cycle/pool=3/pairs=5`——**靠环里某成员恰好没到保底**才凑出「反推在跑」 | kStar 后 `stable/pool=4` ⇒ 缺口 = 0 ⇒ `pairs=0`（**这是正确行为**：池本来就 4 次） | **重扫换队友**（`1251+1271` → `1481+1451`：`pool=3 / pairs=20`），判据「自动 > 0、≤ 60、手动 3 优先」一字未改 |
 | `axisAutoGuarantee` · 秽盾补齐 | 夹具点 `r=0.2 + 金身0/双反0` 在环消失后「盾1 ⇒ 归零」不再成立 | 扫描 6 预设 × 4 ratio × 3 交互 | 换到 `banyue-trigger-lucia @ r=0 + 金身0/双反1`（盾0={0,12}、盾1={0,0}），判据不变 |
 | `archiveDeployStun` | `stunValue=22500` 的态A 档 | 落点整体移动 | 重扫 18000..40000 逐 500 ⇒ 态A **23000**、态B **31000**，判据形态不变 |
+| `moduleAnomalyEventRecords` · j0c6/j2c6 | 简 6 命强击 count **12** | kStar 后 **13** | **不是重扫夹具**：`12` 是**环态读数**（§32）。改动前实测 `exit=cycle`、改动后 `exit=stable / pool=2` ⇒ 13 才是真实值（= C3 之前的 13，C3 那 −1 本来就是环态假象）。期望值随实测更新并写明反证 |
 
 ⚠ 前两条是**真正的「假绿」**：它们测的现象（自动填充触发 / 秽盾补齐）当年是靠**未收敛的环态读数**
 成立的。环归零后暴露出来，处置一律是「重扫换夹具，不改判据」（本仓既有规矩）。
