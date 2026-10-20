@@ -289,6 +289,10 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
       // ⚠ 2026-10-18 重取：档位不变（仍 0.125）、dmg 108.0162 → **93.9895**（用户裁决「快支全角色默认 0 /
       // 支援连携 0」⇒ 每槽少 3 次快支、喧响供给下降 ⇒ 重排后同一档位伤害变化）；截断仍 0s（判据不变）。
       // ⚠ 2026-10-20 重取：**档位不变（仍 0.125）、截断不变（0s）**，dmg 93.9895 → 108.1630。
+      // ⚠ 2026-10-20 二次重取（C3「进入失衡 20/人」落地后）：**档位仍 0.125、截断仍 0s**，dmg 108.1630 → **94.2985**。
+      // 归因：C3 每次失衡每人 +20 喧响 ⇒ 全队喧响总量上升 ⇒ 终结技次数上升 ⇒ 时间账重排 ⇒
+      //      同一降配档位（0.125）下伤害下降（本队非失衡时间被更多大招占用）。
+      // 判据（档位 / 截断 / 残差地板）**全部未变**，只有伤害读数漂移 —— 与本用例历史四次重取同型。
       // 归因：配装推荐主词条改按 nanoka 站点规则 ⇒ 本队 1431/1341/1481 的 4/5/6 号位都有变 ⇒ 重排后同档位伤害上升。
       expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.125, 6)
       expect(
@@ -296,8 +300,8 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
         `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 108.1630),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 108.1630M（2026-10-20 配装推荐主词条订正后重取）`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 94.2985),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 94.2985M（2026-10-20 C3 落地后重取）`,
       ).toBeLessThan(0.01)
       // 残差仍在量化地板（本修法的目的）
       expect(rr!.convergence?.timeBudgetAccumulatedSeconds ?? 0).toBeLessThan(35)
