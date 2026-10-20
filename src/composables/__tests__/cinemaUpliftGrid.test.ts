@@ -13,11 +13,13 @@ import { setupHarness } from '@/test/harness'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import {
   computeCinemaUpliftGrid, cumulativeUpliftPct, dedupeGridRows,
-  type GridColSpec, type CinemaUpliftGridCell,
+  type GridColSpec, type GridRowSpec, type CinemaUpliftGridCell,
 } from '@/composables/cinemaUpliftGrid'
+import { applyBossRoom } from '@/composables/bossRoom'
+import { applyBuffToStore, applyTeamToStore } from '@/composables/teamCompare'
 import { teamPresets } from '@/data/teamPresets'
 import type { CinemaUpliftEntry } from '@/composables/cinemaUplift'
-import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
+import type { BossPreset, BossPresetPhase, PhaseBuffCard, PhaseView } from '@/types/bossPreset'
 
 /** 合成一条提升率记录（只填累计用得上的字段） */
 function entry(to: number, gainPct: number): CinemaUpliftEntry {
@@ -84,6 +86,107 @@ describe('computeCinemaUpliftGrid（真管线）', () => {
       expect(c.lockedEntries.length).toBe(2)
     }
   }, 600_000)
+
+  /**
+   * **锁值必须是行的属性，不是格的属性**（2026-10-20，用户报「提升有时候会跳变」）。
+   *
+   * 病灶：原实现每格各取自己的 C0 基线当锁值 ⇒ 同一行内不同 buff 列的锁值不同
+   * （实测「异构·基塔布鲁」：不吃 4 窗、破御/锋刃 5 窗），C1 的基线本身就不一样
+   * ⇒ C0→C1 增益 7.04% vs 11.83%，看起来像算错，其实是两个不同场景。
+   *
+   * 判据：`lockMode: 'row'` 下，**同一行所有列**的 `baseStunCount` 必须逐位相同；
+   * `lockMode: 'grid'` 下，**整张表所有格**必须相同。
+   */
+  /**
+   * **锁值必须是行的属性，不是格的属性**（2026-10-20，用户报「提升有时候会跳变」）。
+   *
+   * 病灶：原实现每格各取自己的 C0 基线当锁值 ⇒ 同一行内不同 buff 列的锁值不同
+   * （实测「熔狱行赭」：不吃 3 窗、破御/锋刃 4 窗），C1 的基线本身就不一样
+   * ⇒ 逐级增益看起来像跳变，其实是两个不同场景。
+   *
+   * ⚠ **反空洞的关键**：必须用**真的会改失衡次数**的 buff 牌（`stunBuildUpBonus` 类），
+   * 否则「同行锁值相同」这个断言在**每格各取基线**的实现下也照样绿（本条第一版就踩了这个坑，
+   * 反向对照没变红 ⇒ 判据测不出病灶）。故本用例自己挑牌并断言「牌确实改变了 N」。
+   */
+  it('锁值口径：row ⇒ 同行所有列锁值相同；grid ⇒ 整表相同（用真能改失衡次数的牌反证）', async () => {
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const file = await catalog.loadBossPresets()
+    const bosses = (file.bosses ?? []) as BossPreset[]
+    const views = (file.phaseViews ?? []) as PhaseView[]
+    /**
+     * 找一张**真的会改变失衡次数**的牌。
+     *
+     * ⚠ 不能只看「牌上写了 stunBuildUpBonus」就假定它改 N——实测踩过：同样的
+     * `破御` 在「熔狱行赭@690471」把 N 从 3 抬到 4，但换了队伍/配装就恒不动。
+     * 所以这里**直接问引擎**（同一 (Boss, 牌) 组合比自由失衡次数），选中才算样本。
+     */
+    const preset = teamPresets.find(p => Array.isArray(p.team) && p.team.length === 3)!
+    let picked: { boss: BossPreset; phase: BossPresetPhase; stunCard: PhaseBuffCard; plainCard: PhaseBuffCard | null } | null = null
+    for (const v of views) {
+      const usable = (v.buffs ?? []).filter(b => !b.testOnly)
+      const boss = bosses.find(b => b.phases.some(p => p.phaseId === v.phaseId))
+      if (!boss) continue
+      const phase = boss.phases.find(p => p.phaseId === v.phaseId)!
+      /** 该期哪张牌真的改了 N（逐张问引擎，最多试 3 张，够用且不拖慢） */
+      for (const card of usable.slice(0, 3)) {
+        const changed = await withAnalysisScenario(async s => {
+          applyTeamToStore(s.config, preset)
+          applyBossRoom(s.config, boss, phase)
+          applyBuffToStore(s.config, null)
+          const n0 = s.calc.stunPoolResult.value?.stunCount ?? -1
+          applyTeamToStore(s.config, preset)
+          applyBossRoom(s.config, boss, phase)
+          applyBuffToStore(s.config, card)
+          const n1 = s.calc.stunPoolResult.value?.stunCount ?? -1
+          return n0 !== n1
+        })
+        if (changed) {
+          const plainCard = usable.find(c => c !== card) ?? null
+          picked = { boss, phase, stunCard: card, plainCard }
+          break
+        }
+      }
+      if (picked) break
+    }
+    expect(picked, '全库找不到「会让自由失衡次数变化」的正式牌 ⇒ 本判据无样本（数据管道变了？）').not.toBeNull()
+    const { boss, phase, stunCard, plainCard } = picked!
+
+    const rows: GridRowSpec[] = [{ boss, phase }]
+    const cols: GridColSpec[] = [
+      { id: 'none', label: '不吃', card: null },
+      { id: stunCard.title, label: stunCard.title, card: stunCard },
+    ]
+    if (plainCard) cols.push({ id: plainCard.title, label: plainCard.title, card: plainCard })
+
+    const res = await withAnalysisScenario(s => computeCinemaUpliftGrid(s, {
+      presets: [preset], rows, cols, slots: [0], maxLevel: 1, lockMode: 'row',
+    }))
+
+    // ① 反空洞：这张牌**真的**改变了该格自己的自由失衡次数（否则下面的断言无从测出病灶）
+    const noneCell = res.cells.find(c => c.colId === 'none')!
+    const stunCell = res.cells.find(c => c.colId === stunCard.title)!
+    expect(stunCell.ownFreeStunCount, `${stunCard.title} 没改变自由失衡次数（ownFree ${stunCell.ownFreeStunCount} vs ${noneCell.ownFreeStunCount}）⇒ 本条测不出「锁值该按行」的病灶，换牌`)
+      .not.toBe(noneCell.ownFreeStunCount)
+
+    // ② 正题：同一行内所有列的**锁值**必须逐位相同（每格各取基线的实现会在这里红）
+    const locks = res.cells.map(c => c.baseStunCount)
+    expect(new Set(locks).size, `同行不同列的锁值不一致：${res.cells.map(c => `${c.colLabel}=${c.baseStunCount}`).join(' / ')}`).toBe(1)
+    // 锁值取的是「不吃」列的基线（约定 cols[0]）
+    expect(res.cells[0]!.baseStunCount).toBe(noneCell.ownFreeStunCount)
+
+    // ③ grid 模式：整表同一把尺子
+    const gridRes = await withAnalysisScenario(s => computeCinemaUpliftGrid(s, {
+      presets: [preset], rows, cols, slots: [0], maxLevel: 1, lockMode: 'grid',
+    }))
+    expect(new Set(gridRes.cells.map(c => c.baseStunCount)).size).toBe(1)
+
+    // ④ 用户指定数字生效（0 = 不锁）
+    const zeroRes = await withAnalysisScenario(s => computeCinemaUpliftGrid(s, {
+      presets: [preset], rows, cols: cols.slice(0, 1), slots: [0], maxLevel: 1, lockMode: 0,
+    }))
+    expect(zeroRes.cells[0]!.baseStunCount).toBe(0)
+  }, 900_000)
 
   it('includeFree 缺省关闭：free 三件套都是 null（成本翻倍不该是默认）', async () => {
     const { rows, cols } = await fixtures()

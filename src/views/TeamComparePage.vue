@@ -294,6 +294,15 @@
             <span class="ctl-label">最高命座</span>
             <n-input-number v-model:value="upliftMaxLevel" size="small" :min="1" :max="6" style="width: 70px" />
           </div>
+          <div class="ctl-field" title="锁值口径：行 = 每个 Boss 用自己的锁值（各打各的）；表 = 整张表同一个锁值（同一把尺子，跨行可比）。整数台阶型命座（如克拉蕾 C1 残痕效率 +20%）对锁值极敏感，换锁值整档会跳 —— 用「表」更利于横向比">
+            <span class="ctl-label">锁值</span>
+            <n-select
+              v-model:value="upliftLockMode"
+              size="small"
+              style="width: 130px"
+              :options="[{ value: 'grid', label: '整表统一' }, { value: 'row', label: '逐行各自' }]"
+            />
+          </div>
           <div class="ctl-field" title="同时跑「不锁失衡次数」口径 ⇒ 多出「失衡通道贡献」一列（每格求值翻倍，慢）">
             <n-checkbox v-model:checked="upliftIncludeFree" size="small">含失衡通道</n-checkbox>
           </div>
@@ -918,9 +927,14 @@
           </tbody>
         </table>
         <div class="td-muted grid-note">
-          <b>锁 N</b> = 该格 C0 基线自由收敛的失衡次数（整表每格各自算，但同格内 C0→C6 恒用它）——
-          这样「命座让失衡次数变多」这条价值不会被重复计入，跨格可比。
+          <b>锁 N</b> = {{ upliftLockMode === 'grid' ? '整张表统一（取第一行不吃 buff 的 C0 基线）' : '每行各自（取该行不吃 buff 的 C0 基线）' }}
+          —— 单格内 C0→C6 恒用它，这样「命座让失衡次数变多」这条价值不会被重复计入。
           <b>失衡通道</b> = 不锁累计 − 锁累计（正 = 不锁时命座从失衡次数/攒条上多拿了收益）。
+          <br>
+          <b>⚠ 整数台阶型命座会对锁值跳变</b>：如克拉蕾 C1「残痕积蓄效率 +20%」，
+          层数 = floor(积蓄/每层) ⇒ +20% 是否跨过整数边界取决于基线在哪。
+          实测同一队锁 5 窗 C1 增益 42.7%、锁 6 窗只有 7.0%——<b>这是真实的台阶效应，不是算错</b>。
+          要比不同 Boss 时请用「整表统一」锁值。
         </div>
       </div>
     </n-card>
@@ -1274,10 +1288,20 @@ const upliftBuffCols = ref(3)
 const upliftSlot = ref(0)
 const upliftMaxLevel = ref(6)
 const upliftIncludeFree = ref(false)
+/**
+ * 锁值口径（2026-10-20，用户报「提升率跳变」后开放）：
+ * - `row`：每行用自己的锁值（各 Boss 各打各的，最贴近「这一关真能打几次」）
+ * - `grid`：整张表用同一个锁值（取第一行不吃 buff 的 C0 基线）⇒ **同一把尺子**，跨行可比
+ *
+ * 为什么需要后者：整数台阶型命座（克拉蕾 C1 残痕效率 +20%，层数 = floor(积蓄/层)）
+ * 对锁值极敏感——实测锁 5 ⇒ C1 +42.7%、锁 6 ⇒ +7.0%，差 6 倍。那是真实效应不是算错，
+ * 但每行锁值不同时，读者会误读成「同一命座在不同 Boss 下差 6 倍」。
+ */
+const upliftLockMode = ref<'row' | 'grid'>('grid')
 const upliftResult = ref<CinemaUpliftGridResult | null>(null)
 const upliftOwner = useBatchOwner()
 /** 期数/队伍/槽位/命座上限一变，旧结果就作废（行与列都按「当前期数」派生 ⇒ 不清会显示上一期的格子） */
-watch([selectedPeriodId, selectedPresetIds, upliftSlot, upliftMaxLevel, upliftIncludeFree], () => {
+watch([selectedPeriodId, selectedPresetIds, upliftSlot, upliftMaxLevel, upliftIncludeFree, upliftLockMode], () => {
   upliftResult.value = null
 })
 
@@ -1368,6 +1392,7 @@ async function runUpliftGrid() {
       slots: [upliftSlot.value],
       maxLevel: upliftMaxLevel.value,
       includeFree: upliftIncludeFree.value,
+      lockMode: upliftLockMode.value,
       control: { signal: task.signal },
       onProgress: p => task.commit(() => { progress.value = p }),
     }))

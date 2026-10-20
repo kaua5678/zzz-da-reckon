@@ -63,10 +63,20 @@ export interface CinemaUpliftGridCell {
   colId: string
   colLabel: string
   /**
-   * 该格 **C0 基线**自由收敛的失衡次数 = 锁口径用的 N。
-   * 0 = 该格在 C0 下根本打不出失衡（锁口径退化为不锁，见 `lockedByBase`）。
+   * **行级锁值** = 该行第一列（恒「不吃 buff」）在 C0 基线自由收敛的失衡次数。
+   *
+   * ⚠ 2026-10-20 语义变更：原为「该格自己的 C0 基线」⇒ 同一行内不同 buff 列的锁值不同
+   * （实测「异构·基塔布鲁」行：不吃 4 窗、破御/锋刃 5 窗），于是 C1 的基线本身就不一样
+   * ⇒ C0→C1 增益 7.04% vs 11.83%，看起来像跳变/算错。锁的意义是**钉死场景**，
+   * 所以它必须是行的属性。0 = 该行在 C0 下根本打不出失衡（锁口径退化为不锁）。
    */
   baseStunCount: number
+  /**
+   * 该格**自己的**自由收敛失衡次数（不受锁影响）= 「吃这张牌让失衡次数变成几次」。
+   * 与 `baseStunCount`（行级锁值）的差 = 这张牌/这个 Boss 对失衡次数的实际影响，
+   * 是**被观测的效应**，不参与锁。
+   */
+  ownFreeStunCount: number
   /** 锁口径的逐级提升率（跨格可比） */
   lockedEntries: CinemaUpliftEntry[]
   /** 锁口径的累计提升率（C0→C{maxLevel}，复利式拼接，不是逐级相加） */
@@ -104,6 +114,19 @@ export interface ComputeCinemaUpliftGridOptions extends BatchTaskOptions {
    * 打开后每格求值次数翻倍 —— 只有需要「失衡通道贡献」那一列时才开。
    */
   includeFree?: boolean
+  /**
+   * **锁值口径**（2026-10-20 修「提升率跳变」）：
+   * - `'row'`（缺省）：整行统一锁值，取该行「不吃 buff」列的 C0 基线；
+   * - `'grid'`：**整张网格**统一锁值，取第一行「不吃 buff」列的 C0 基线；
+   * - 数字：用户指定。
+   *
+   * 为什么 `'grid'` 值得提供：锁值一变，**整数台阶型**命座（如克拉蕾 C1「残痕积蓄效率 +20%」，
+   * 层数 = floor(积蓄/每层)）的增益会整档跳（实测同队锁 2/3/4/5/6 ⇒ C1 增益
+   * 10.4/20.1/17.1/41.9/8.4%）——那是**真实的整数边界效应**，不是算错。
+   * 但若每行锁值不同，读者会把它误读成「同一命座在不同 Boss 下差 5 倍」。
+   * 用 `'grid'` 至少保证**整张表在同一把尺子下**比较。
+   */
+  lockMode?: 'row' | 'grid' | number
   resolveName?: (agentId: string, slot: number) => string
 }
 
@@ -149,8 +172,31 @@ export async function computeCinemaUpliftGrid(
   const total = Math.max(1, opts.presets.length * rows.length * cols.length)
   let done = 0
 
+  /**
+   * **整张网格统一锁值**（`lockMode: 'grid'` / 数字）：在跑循环**之前**量一次。
+   * 取第一行「不吃 buff」列的 C0 基线（`cols[0]` 约定恒为不吃，见 `GridColSpec`）。
+   * `lockMode: 'row'`（缺省）时为 `null`，每行各自量。
+   */
+  const gridLock = opts.lockMode === 'grid'
+    ? (rows.length > 0 && opts.presets.length > 0
+      ? readRowLock(scenario, opts.presets[0]!, rows[0]!, cols[0])
+      : 0)
+    : (typeof opts.lockMode === 'number' ? Math.max(0, Math.floor(opts.lockMode)) : null)
+
   for (const preset of opts.presets) {
     for (const row of rows) {
+      /**
+       * **整行统一锁值**（2026-10-20 修，用户报「提升有时候会跳变」）。
+       *
+       * 原实现是**每格各取自己的 C0 基线**当锁值 ⇒ 同一行内不同 buff 列的锁值会不同
+       * （实测「异构·基塔布鲁」行：不吃 4 窗、破御/锋刃 5 窗），于是 C1 的**基线本身**就不一样
+       * ——C0→C1 增益从 7.04% 跳到 11.83%，看起来像算错，其实是两个不同的场景。
+       * 锁的全部意义就是「把场景钉死、只让命座变」⇒ 锁值必须是**行的属性**，不是格的属性。
+       *
+       * 取哪一列定锁值 = 第一列（约定恒为「不吃 buff」，见 `GridColSpec`）。
+       * 这样「吃 buff 让失衡次数变多」不会被顺手当成锁值差异掺进来（它是被观测的效应，不是尺子）。
+       */
+      const lock = gridLock ?? readRowLock(scenario, preset, row, cols[0])
       for (const col of cols) {
         if (isBatchAborted(opts.control)) {
           return finish(cells, rows, cols, slots[0] ?? 0, maxLevel, opts.presets[0]?.team[slots[0] ?? 0] ?? '')
@@ -163,9 +209,14 @@ export async function computeCinemaUpliftGrid(
         // ③ 当期可选牌（整表替换；关卡 buff 由 applyBossRoom 保留）
         applyBuffToStore(config, col.card)
 
-        // ④ 锁值 = 该格 C0 基线的自由收敛值（整表只此一个，口径见文件头）
-        const baseStunCount = readFreeStunCount(scenario)
-        const lock = baseStunCount > 0 ? baseStunCount : 0
+        /**
+         * ④ 锁口径的失衡次数 = **整行统一**的 `lock`（见上方注释）。
+         * ⚠ 字段名沿用 `baseStunCount`，语义已改为「行级锁值」；同时记下该格自己的自由收敛值
+         * `ownFreeStunCount`——它与 `lock` 的差正是「吃这张牌让失衡次数变了几次」，
+         * 是**被观测的效应**，不参与锁。
+         */
+        const baseStunCount = lock
+        const ownFreeStunCount = readFreeStunCount(scenario)
 
         const lockedRows = await analyzeCinemaUplift(scenario, {
           targetStunCount: lock,
@@ -207,6 +258,7 @@ export async function computeCinemaUpliftGrid(
           colId: col.id,
           colLabel: col.label,
           baseStunCount,
+          ownFreeStunCount,
           lockedEntries,
           lockedTotalPct,
           freeEntries,
@@ -242,4 +294,24 @@ function finish(
 /** 读该场景当前配置自由收敛的失衡次数（`stunCountLock` 必须已复位；`analyzeCinemaUplift` 内部会复位） */
 function readFreeStunCount(scenario: AnalysisContext): number {
   return scenario.calc.stunPoolResult.value?.stunCount ?? 0
+}
+
+/**
+ * **行级锁值**（2026-10-20）：套好队 + 进房间 + 上「定锁」那一列（约定 = 第一列「不吃 buff」），
+ * 读 C0 基线的自由失衡次数。
+ *
+ * 为什么必须整行统一，见 `CinemaUpliftGridCell.baseStunCount` 的注释：
+ * 每格各取自己的基线会让同行内 C1 的基线不同，用户看到的是「提升率跳变」。
+ */
+function readRowLock(
+  scenario: AnalysisContext,
+  preset: TeamPreset,
+  row: GridRowSpec,
+  lockCol: GridColSpec | undefined,
+): number {
+  const { config } = scenario
+  applyTeamToStore(config, preset)
+  applyBossRoom(config, row.boss, row.phase)
+  applyBuffToStore(config, lockCol?.card ?? null)
+  return readFreeStunCount(scenario)
 }
