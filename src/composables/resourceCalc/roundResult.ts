@@ -18,6 +18,16 @@ export interface CalcRoundResult {
     /** 琉音好评转大 60 档（吃连携窗口）收敛终值（90 档 = promote − promoteHug60）。纯展示载荷，零求值影响。 */
     promoteHug60: number
     stunCoverage: number
+    /**
+     * 本轮**决算截断损失秒**（佩洛伊斯右分支：决算做完即清空窗口剩余失衡时间）。
+     *
+     * 为什么必须暴露（期 3 前置 / C 项，2026-10-20）：`stunCoverage` 的算式是
+     * `clamp((stunCount × W − lost) / effTime)`，而 `stunCount` 在**本轮内**是未钳的池值；
+     * `solveTeam` 的 CC-150 会在 cycle 停点把池钳到读入 K —— 那时若不同步重算覆盖率，
+     * 同一份结果里「池 5 窗 / 覆盖率隐含 7 窗」就是两个物理量（实测 3 支队）。
+     * 钳后重算需要这个损失秒，故提到返回面上。
+     */
+    stunVerdictLostSeconds: number
     resolvedAxes: StunAxis[]
     matchedPlanName: string | null
     /** 下一轮补齐量（= threadsNext.interactionTopUp）。展示请读 `threadsApplied.interactionTopUp`（CC-296/297）。 */

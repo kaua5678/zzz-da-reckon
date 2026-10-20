@@ -90,10 +90,45 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline
 「聚合口径按**计划实数** 2.3909 窗扣损失 vs 轴栈**物理**只填 3 窗」——期 3 要修的那条量纲错配，
 测试里**有意断言「不等」**（不锁固定差值，免得把期 3 的修法锁死）。
 
+### 期 2 前置 · **C 项已落地（2026-10-20）：覆盖率与池次数同源**
+
+**病灶**：`runCalcRound` 内的 `stunCoverage` 用**钳之前**的池次数，而 `solveTeam` 的 CC-150
+在 `cycle + physical` 停点把池钳到读入 K ⇒ 同一份结果里两个物理量。实测 3 支队：
+`auto-1051-1141-1451` / `auto-1611-1141-1211`（**池 5 / 覆盖率隐含 7 窗**）、
+`auto-1501-1561-1411`（**池 2 / 隐含 3 窗**）。
+
+**为什么这不是展示口径**：`stunCoverage` 是**伤害易伤**（`damagePoolDirect` 直接读）与
+「攒条无效时间」的唯一输入——多算的窗口同时推高易伤覆盖与本轮攒条扣除。
+
+**修法**（`solveTeam.ts` 钳位之后）：`CalcRoundResult` 新增 `stunVerdictLostSeconds`
+（决算截断损失秒，原来只在 `runCalcRound` 局部可见），钳位真的发生时用
+`stunWindowFraction(钳后池, W, effTime, lost)` **重算覆盖率**；stable / 未钳成员逐位不变。
+
+**验证**：
+- 新判据 `stunCoveragePoolSync.test.ts`（全库 93 预设，`覆盖率隐含窗数 == 池次数`）；
+  **反证已跑**：撤掉本修复 ⇒ 判据当场红（3 条），恢复即绿。
+- 修复前后对照：`mismatch 3 / 93 → 0 / 93`。
+
+**delta 归因（规则 10 四步，已逐条量）**：
+
+| 队/角色 | 修复前 | 修复后 | 归因 |
+|---|---|---|---|
+| `auto-1051-1141-1451` | 67,699,295 | 66,556,232（−1.688%） | 覆盖率 7 窗 → 5 窗，易伤覆盖少算 ⇒ 伤害降 |
+| `auto-1611-1141-1211` | 87,948,999 | 86,828,522（−1.274%） | 同上 |
+| `auto-1501-1561-1411` | 120,688,203 | 117,174,482（−2.911%） | 同上（3 窗 → 2 窗，差值最大） |
+| `agent:1301:c3` / `:c4` | 1,678,607 | 1,610,092（−4.082%） | 单角色夹具：池 1 窗、覆盖率曾按 2 窗算 |
+
+**全部是「少算了本该有的窗口」被纠正**（方向一致：只会降不会升），时间账零变化
+（覆盖率不进时间账）⇒ 只动 `timeGolden` 的 `dmg` 字段，5 条。
+
 ### 期 2：用时间轴替换 `stunWindowFraction` 的聚合口径
 
 把 `stunWindowFraction(N, W, effTime)` 换成 `Σ timeline[i].effectiveSeconds / effTime`。
 这会改数值（最后一窗不再按整窗算）⇒ 按规则 10 四步逐队归因 + 重生成 `timeGolden`/`timeFillRatchet`。
+
+⚠ **C 项落地后，期 2 的已知影响面从「3 支队」缩小到「0 支」**：全库比对（93 预设）
+`时间轴 windowSeconds/effTime` 与 `calc.stunCoverage` 现在**逐位相同**（此前 3 支 cycle 队因钳位分叉）。
+⇒ 期 2 的 delta 面只剩「末窗被时钟截短」这一类，需重新普查（本期未做）。
 
 **风险点**：`stunWindowFraction` 是全仓唯一实现（CC-217），有源码锁
 `effectiveTimeSingleSource.test.ts`；改它要同步该锁。

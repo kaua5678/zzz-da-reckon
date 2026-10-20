@@ -1407,6 +1407,8 @@ export function createRunCalcRound(deps: {
       promote: sp1.promote,
       promoteHug60: sp1.hug60,
       stunCoverage: cov1,
+      // 同上：覆盖率已扣掉的决算损失秒。CC-150 钳池后由 solveTeam 用它重算覆盖率（同一物理量同源）。
+      stunVerdictLostSeconds: verdictSecondsLost,
       // 轴退化时生效轴 = 无（诚实反映：轴定义仍解析，但没有注入计算）
       resolvedAxes: opts?.forceNoAxis ? [] : resolvedAxes,
       matchedPlanName: opts?.forceNoAxis ? null : planName,

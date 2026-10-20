@@ -162,7 +162,7 @@
         <div class="breakdown-row">
           <span class="bd-label">招式回复</span>
           <span class="bd-value">{{ fmt(result.decibelSource.skillRegen) }}</span>
-          <span class="bd-detail">平A + 强特</span>
+          <span class="bd-detail">= 招式执行计划里的「喧响回复」列求和（含平A / 强特 / 终结 / 连携 / 后台行）</span>
         </div>
         <div v-if="result.decibelSource.bonusRegen > 0" class="breakdown-row">
           <span class="bd-label">奖励回复</span>
@@ -194,6 +194,27 @@
           <span class="bd-label">专属额外</span>
           <span class="bd-value">{{ fmt(result.decibelSource.unshareableBonus) }}</span>
           <span class="bd-detail">{{ (result.decibelSource.selfBurnDecibel ?? 0) > 0 ? `含自身烧血 ${fmt(result.decibelSource.selfBurnDecibel)} · ` : '' }}不分给队友</span>
+        </div>
+      </div>
+      <!--
+        D 项（2026-10-20）：把「行级 Σ / 非行级通道」拆开显式标注。
+        用户长期反馈「喧响只算了一部分」——实测行只承载约 27%，其余 73% 走五个独立的非行级通道
+        （开局赠送 / 队友伴随 / 特殊动作 / 异常触发 / 专属额外）。不拆开时，任何按「招式行」去核对的人
+        都会觉得少算了七成。两条求和必须**逐位闭合**到 total（判据：resourceCardBreakdown.test.ts）。
+      -->
+      <div class="decibel-channel-split">
+        <div class="split-row">
+          <span class="split-label">行级 Σ（招式执行计划可对账）</span>
+          <span class="split-value">{{ fmt(decibelRowLevelTotal) }}</span>
+          <span class="split-pct">{{ decibelSharePct(decibelRowLevelTotal) }}</span>
+        </div>
+        <div class="split-row">
+          <span class="split-label">非行级通道（开局/伴随/特殊动作/异常/专属）</span>
+          <span class="split-value">{{ fmt(decibelNonRowTotal) }}</span>
+          <span class="split-pct">{{ decibelSharePct(decibelNonRowTotal) }}</span>
+        </div>
+        <div class="split-note">
+          行级 Σ = 下方「招式执行计划」的喧响回复列求和；非行级通道按次数/时间一次性结算，不出招式行。两者相加 = 上方总数。
         </div>
       </div>
       <div class="usage-bar">
@@ -362,6 +383,30 @@ const specialtyInfo = computed(() => {
 
 /** 喧响总览 = decibelSource.total（异常/特殊动作奖励已并入，含效率乘数），与终结技次数推导同口径 */
 const decibelGrandTotal = computed(() => props.result.decibelSource?.total ?? 0)
+
+/**
+ * **行级 Σ**（D 项，2026-10-20）：与「招式执行计划」可对账的那部分喧响。
+ *
+ * 口径 = `decibelSource.skillRegen`（引擎记账层就是 Σ 行级收入，`calcRawDecibelParts` 的
+ * `feasibleRows(...).reduce(rowDecibelTotal)`）。⚠ 有截断时账本按实数次数、装配按整数行，
+ * 差 ≤ 半刀/半次量级（已知残差，`truncationCountDeduction` ④ 在册）——这不是新口径。
+ */
+const decibelRowLevelTotal = computed(() => props.result.decibelSource?.skillRegen ?? 0)
+/**
+ * **非行级通道**：开局赠送 + 奖励(时光切片) + 队友伴随 + 特别动作 + 异常触发 + 专属额外。
+ * 它们按次数/时间一次性结算、**不出招式行**，所以按行核对永远对不上（这正是用户长期误以为「只算了一部分」的来源）。
+ */
+const decibelNonRowTotal = computed(() => {
+  const d = props.result.decibelSource
+  if (!d) return 0
+  return (d.initialGift ?? 0) + (d.bonusRegen ?? 0) + (d.teammateShare ?? 0)
+    + (d.specialActionBonus ?? 0) + (d.anomalyBonus ?? 0) + (d.unshareableBonus ?? 0)
+})
+/** 通道占比文案（分母 = 总览；总览为 0 时显示 —） */
+function decibelSharePct(v: number): string {
+  const total = decibelGrandTotal.value
+  return total > 0 ? `${(v / total * 100).toFixed(1)}%` : "—"
+}
 
 const specialResourceSections = computed(() =>
   agentResourceSections(props.result.agentId, {  // CC-47：经编排层门面（判据 7）
@@ -881,6 +926,43 @@ const anomalyEventExecutionsData = computed(() => {
   color: var(--wa-400);
   font-weight: 400;
   font-size: 11px;
+}
+
+/* D 项：喧响「行级 Σ / 非行级通道」拆分条（用户长期以为「只算了一部分」的可见化） */
+.decibel-channel-split {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--fill-hover);
+  font-size: 11px;
+}
+.split-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.split-row + .split-row {
+  margin-top: 2px;
+}
+.split-label {
+  color: var(--fg-3);
+  flex: 1;
+}
+.split-value {
+  color: var(--fg-2);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.split-pct {
+  color: var(--fg-3);
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.split-note {
+  margin-top: 4px;
+  color: var(--fg-3);
+  line-height: 1.4;
 }
 
 /* 执行计划表格 */

@@ -37,4 +37,29 @@ describe('CC-233 结果卡明细 = 总数', () => {
     for (const k of ENERGY_ROWS) expect(tpl, `energySource.${k}`).toMatch(new RegExp(`energySource\\.${k}\\b`))
     for (const k of DECIBEL_ROWS) expect(tpl, `decibelSource.${k}`).toMatch(new RegExp(`decibelSource\\.${k}\\b`))
   })
+
+  /**
+   * **D 项（2026-10-20）：喧响「行级 Σ / 非行级通道」拆分必须闭合到总数**。
+   *
+   * 用户长期反馈「喧响只算了一部分」——实测行级只占 12%~53%（其余走开局/伴随/特殊动作/异常/专属）。
+   * 卡片新增的拆分条若两段之和不等于 total，就是在教用户做错算术（同 `ledgerInflation` 那类病）。
+   * 本用例按**卡片自己的分类口径**逐角色断言闭合，且钉住「行级 Σ 就是 skillRegen」这一来源
+   * （`decibelRowParity.test.ts` 已锁 skillRegen == Σ 行级收入）。
+   */
+  it('D：卡片两段（行级 Σ + 非行级通道）逐角色闭合到 decibelSource.total', async () => {
+    const teams = [...TEAMS, ['1371', '1481', '1451']]
+    let checked = 0
+    for (const team of teams) {
+      await setupHarness(team.map(agentId => ({ agentId })), { recommendedBuild: true })
+      for (const c of useResourceCalc().resourceResult.value!.characters) {
+        const d = c.decibelSource
+        const rowLevel = d.skillRegen
+        const nonRow = d.initialGift + d.bonusRegen + d.teammateShare + d.specialActionBonus + d.anomalyBonus + d.unshareableBonus
+        expect(rowLevel + nonRow, `${c.agentId} 拆分两段之和 ≠ total`).toBeCloseTo(d.total, 6)
+        // 反空洞：确实存在非行级通道（否则拆分条没有信息量）
+        if (nonRow > 1) checked++
+      }
+    }
+    expect(checked, '非行级通道全为 0 ⇒ 拆分条退化成恒等式（判据失去意义）').toBeGreaterThan(0)
+  }, 300_000)
 })

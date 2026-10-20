@@ -301,9 +301,31 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     // 取读入 K（按 K 分配时池撑得住 ≥ K，即最大自洽可行整数），报告池同步钳到 K；K+1 那次没有分配时间，不兑现。
     // 只处理「池 > 读入」的一侧；「池 < 读入」（引擎多分配了窗口）的成员已在 pickOuterCycleMember ⓪″（CC-153）排除出参选。
     // 回退点：删本块与 `core/stunPool.ts#withStunCount`。
+    let clamped = false
     if (outerExit === 'cycle' && resourceConfig.stunPlanProjection === 'physical' && outPrev) {
       const kIn = outPrev.stunPool.stunCount
-      if (out.stunPool.stunCount > kIn) out = { ...out, stunPool: withStunCount(out.stunPool, kIn) }
+      if (out.stunPool.stunCount > kIn) {
+        out = { ...out, stunPool: withStunCount(out.stunPool, kIn) }
+        clamped = true
+      }
+    }
+    /**
+     * **覆盖率与池同源**（C 项，2026-10-20）：池次数被上一步钳到 K 之后，覆盖率必须按**同一个 N** 重算。
+     *
+     * 病灶（实测 3 支队）：`runCalcRound` 内的 `stunCoverage` 用的是**钳之前**的池
+     * （`auto-1051-1141-1451` / `auto-1611-1141-1211` 池报 5、覆盖率隐含 **7** 窗；
+     * `auto-1501-1561-1411` 池报 2、覆盖率隐含 **3** 窗）⇒ 同一份结果里两个物理量。
+     * 覆盖率是**伤害易伤**与「攒条无效时间」的唯一输入（`damagePoolDirect` 直接读它），
+     * 所以这不是展示口径问题——多算的那两窗会同时推高易伤覆盖与本轮攒条扣除。
+     *
+     * ⚠ 只在**真的钳过**时才重算（`clamped`）：stable / 未钳成员逐位不变。
+     * 重算算式与 `computeStunCoverage` 完全同源（`stunWindowFraction` + 同一个 `verdictSecondsLost`）。
+     */
+    if (clamped) {
+      const cov = stunEffTime > 0
+        ? stunWindowFraction(out.stunPool.stunCount, stunWindowDur, stunEffTime, out.stunVerdictLostSeconds)
+        : 0
+      if (cov !== out.stunCoverage) out = { ...out, stunCoverage: cov }
     }
     return { out, outPrev, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier }
   }
