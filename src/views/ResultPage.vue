@@ -865,7 +865,7 @@ const configStore = useConfigStore()
 /** 残疾失衡文案（逻辑在 composables/stunDiscreteDisplay.ts；展示层不 import @/core） */
 const stunDiscreteLabel = useStunDiscreteDisplay(
   () => stunPoolResult.value,
-  () => configStore.enemy.stunCountLock >= 0,
+  () => configStore.enemy,
 ).value?.label ?? null
 const catalogStore = useCatalogStore()
 const calc = useResourceCalc()

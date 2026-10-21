@@ -1035,7 +1035,7 @@ const configStore = useConfigStore()
 /** 残疾失衡文案（逻辑在 composables/stunDiscreteDisplay.ts；展示层不 import @/core） */
 const compareStunDiscreteLabel = useStunDiscreteDisplay(
   () => curvePool.pool.value?.stunPool ?? null,
-  () => configStore.enemy.stunCountLock >= 0,
+  () => configStore.enemy,
 ).value?.label ?? null
 /**
  * R14（T139）无轴易伤估算的开关——**图例必须如实标注非轴参照用哪种口径**
