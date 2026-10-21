@@ -318,6 +318,7 @@
           :agent-name="agentNames[charResult.agentId] || charResult.agentId"
           :specialty="getSpecialty(charResult.agentId)"
           :stun-pool-result="stunPoolResult"
+:stun-locked="stunLocked"
           :anomaly-pool-result="anomalyPoolResult"
           :liuyin-hug="liuyinHugSplit"
           :agent-names="agentNames"
@@ -859,6 +860,9 @@ function unitPriceText(unit: number): string {
 }
 
 const configStore = useConfigStore()
+
+/** 锁定失衡次数时不显示残疾失衡段（多攒的进度不兑现成下次） */
+const stunLocked = computed(() => configStore.enemy.stunCountLock >= 0)
 const catalogStore = useCatalogStore()
 const calc = useResourceCalc()
 const {

@@ -155,6 +155,7 @@
             :agent-name="agentNames[c.agentId] || c.agentName || c.agentId"
             :specialty="getSpecialty(c.agentId)"
             :stun-pool-result="stunPoolResult"
+:stun-locked="archiveStunLocked"
             :anomaly-pool-result="anomalyPoolResult"
             :total-time="resourceResult.totalTime"
           />
@@ -194,6 +195,9 @@ import {
 
 
 const configStore = useConfigStore()
+
+/** 锁定失衡次数时不显示残疾失衡段（多攒的进度不兑现成下次） */
+const archiveStunLocked = computed(() => configStore.enemy.stunCountLock >= 0)
 const catalogStore = useCatalogStore()
 const { teamTotalDamage, resourceResult, stunPoolResult, anomalyPoolResult, agentNames } = useResourceCalc()
 

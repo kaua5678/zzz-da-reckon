@@ -813,6 +813,7 @@
             :agent-name="agentNameOf(c.agentId) || c.agentName || c.agentId"
             :specialty="specialtyOf(c.agentId)"
             :stun-pool-result="curvePool.pool.value.stunPool"
+:stun-locked="compareStunLocked"
             :anomaly-pool-result="curvePool.pool.value.anomalyPool"
             :total-time="curvePool.pool.value.resourceResult.totalTime"
           />
@@ -1029,6 +1030,9 @@ import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
 import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
 
 const configStore = useConfigStore()
+
+/** 锁定失衡次数时不显示残疾失衡段（多攒的进度不兑现成下次） */
+const compareStunLocked = computed(() => configStore.enemy.stunCountLock >= 0)
 /**
  * R14（T139）无轴易伤估算的开关——**图例必须如实标注非轴参照用哪种口径**
  * （R14 硬约束 2「来源可见」在难度曲线页的延伸）。
