@@ -619,15 +619,21 @@
 
 两者**可以来自不同的人**：耀变的基础区取**施加者**，结算区取**蕾米**。
 
-| 异常事件 | 属性取自 | 基础区面板 | 结算区面板 |
+| 异常事件 | 属性取自 | 基础区面板（被结算者） | 结算区面板（结算者） |
 |---|---|---|---|
 | **普通异常**（强击/灼烧/感电/碎冰/侵蚀/风化） | 该异常条的**施加者**（`applierSlot`） | 同施加者 | 同施加者 |
-| **紊乱** | **被覆盖的那个异常**的属性（`elements[i].element`） | 同该异常的施加者（`applierSlot`） | 同该施加者 |
-| **异放** | 触发时刻**活跃异常**的属性（轴模式下按状态链取样；无状态回落触发者自身元素） | 同该异常来源 | 同该异常来源 |
+| **紊乱** | **被覆盖的那个异常**的属性（`elements[i].element`） | **被覆盖者**（`applierPanel`）—— 谁被覆盖，用谁的质量 | **触发覆盖者**（`triggerPanel`）—— 谁打出这次紊乱，用谁的结算区 |
+| **异放** | 触发时刻**活跃异常**的属性（轴模式下按状态链取样；无状态回落触发者自身元素） | 该异常归属槽的面板（`pushRelease({ slot })` 按槽取面板） | 同该槽（异放是「该角色的异放」，两区同一人） |
 | **普通耀变（蕾米）** | **贡献虚曜的队友**的属性（`teamElement(队友槽)`） | **该队友的实时面板**（`panelOf(slot)` → `damagePanels`，**吃拐**） | **蕾米面板**（`remiellePanel`：异化 / 耀变倍率 / C4 / 减防 / 易伤 / 失衡易伤） |
 | **特殊虚耀（蕾米 1/4/6 命）** | **下一位队友**的属性（`nextTeammateElement`） | **蕾米进场快照**（`remielleEntryPanel` → `entrySnapshotPanels`，**不吃拐**） | **同一张进场快照**（`remiellePanel: remielleEntryPanel`） |
-| **乱流** | 风底属性提供者（维琳娜专属资源，见 CC-D3） | 同该提供者 | 同该提供者 |
-| **极性紊乱 / 颤音异放** | 按触发时刻**当前状态元素**（`dominant`） | 同该状态来源 | 同该状态来源 |
+| **乱流** | 非风异常的元素（查该元素抗性）；风底由**风属性触发者**决定 | **风底提供者**（`applierPanel`）—— 例：维琳娜的风底 | **触发乱流的风属性角色**（`windPanel`）—— 例：菲欧尼在维琳娜风底触发燃烧乱流，结算区是菲欧尼 |
+| **极性紊乱 / 颤音异放** | 按触发时刻**当前状态元素**（`dominant`） | 被结算者（该状态来源） | **结算者**（同紊乱：触发覆盖的那一方） |
+| ⚠ 待核 | 上两行的「极性紊乱 / 颤音异放」结算区**尚未逐行核对代码**（`dominant` 归因在 `inStunAnomaly` 与 `anomalyPool` 两处）。在核实前**不要据此改引擎**，以代码为准 | — | — |
+
+**代码出处**（逐条可核）：
+- 紊乱：`calcDisorderSettlement(triggerPanel, …)` ← `triggerPanel` 由 `planDisorderEvents` 的 `triggerSlot` 决定（覆盖当前元素的那个元素的施加者）；质量 `calcAnomalyMass(applierPanel, …)` ← 被覆盖者
+- 乱流：`calcTurbulenceSettlement(windPanel, applierPanel, …)` —— 第 1 参 `windPanel` 是**结算区**（`const p = windPanel`），第 2 参 `applierPanel` 只用于异常暴击的 `sourcePanel`
+- 耀变：`calcVoidflareDamage({ sourcePanel, remiellePanel })` —— `source` 进基础区，`remielle` 进结算区
 
 **耀变的两区字段归属**（`calcVoidflareDamage` 逐行）：
 
@@ -638,6 +644,22 @@
 | 结算区 | `enemyDefReduction` / `enemyAnomalyDefReduction` / 元素减防 / `enemyDefFlatReduction` | `remielle`（蕾米） |
 | 结算区 | `anomalyDmgBonus` / `remielleLuminizeMultiplierBonus` / `remielleCinema4LuminizeMultiplierBonus` / `remielleRefringeCoefficient(+BonusPct)` | `remielle`（蕾米） |
 | 结算区 | `enemyDamageTakenBonus` / 失衡易伤三通道 | `remielle`（蕾米） |
+
+**乱流的两区字段归属**（`calcTurbulenceSettlement` 逐行）：
+
+| 区 | 字段 | 来自 |
+|---|---|---|
+| 基础区（异常质量） | 基底 / 精通 / 增伤 等 | `applierPanel`（**风底提供者**，如维琳娜） |
+| 结算区 | `enemyResReduction` / 元素减抗 / `turbulenceResIgnore` | `windPanel`（**风属性触发者**，如菲欧尼） |
+| 结算区 | `anomalyDmgBonus` + `windAnomalyDmgBonus` + `turbulenceDamageBonus` | `windPanel` |
+| 结算区 | 异常暴击（`calcAnomalyCritExpect(p, …)`，`p = windPanel`；`sourcePanel` 只用于强击暴击加成） | `windPanel` 为主，`applierPanel` 仅作强击暴击来源 |
+
+**紊乱的两区字段归属**（`calcDisorderSettlement`）：
+
+| 区 | 字段 | 来自 |
+|---|---|---|
+| 基础区（异常质量） | 基底 / 精通 / 增伤（**不吃 `anomalyDmgBonus`**，改用 `disorderDamageBonus`） | `applierPanel`（**被覆盖者**） |
+| 结算区 | 抗性 / 易伤 / 失衡易伤 / `disorderDamageBonus` | `triggerPanel`（**触发覆盖者**） |
 
 ### 为什么抗性必须跟着继承
 
