@@ -20,6 +20,7 @@ import {
   allocationCutoff,
   allocationMarker,
   curveAxisRange,
+  axisChangeNote,
   defaultVisibleStats,
   sampleSubstatCurves,
   substatCurveCandidates,
@@ -44,14 +45,30 @@ function sample(h: Awaited<ReturnType<typeof anomalyHarness>>, slot = 0): Promis
 }
 
 /** 合成曲线（只测派生量，不花求值成本） */
-function synthetic(stat: string, gains: number[], allocatedSteps = 0): SubstatCurveSeries {
+const STABLE_AXIS = { stunCount: 5, coverage: 0.5 }
+
+/** 合成曲线（只测派生量，不花求值成本）；`axisFrom` = 从第几步起轴态变化（缺省 = 全程不变） */
+function synthetic(stat: string, gains: number[], allocatedSteps = 0, axisFrom?: number): SubstatCurveSeries {
+  const points = gains.map((gainPct, i) => {
+    const changed = axisFrom !== undefined && i + 1 >= axisFrom
+    return {
+      x: i + 1,
+      gainPct,
+      damage: 100 + i,
+      axis: changed ? { stunCount: 6, coverage: 0.6 } : STABLE_AXIS,
+      axisJump: changed,
+    }
+  })
+  const stable = points.findIndex(p => p.axisJump)
   return {
     stat,
-    points: gains.map((gainPct, i) => ({ x: i + 1, gainPct, damage: 100 + i })),
+    points,
     allocatedSteps,
     originDamage: 100,
-    cumulativePct: gains.slice(0, allocatedSteps).reduce((a, b) => a + b, 0),
+    cumulativePct: points.slice(0, allocatedSteps).reduce((a, p) => a + (p.axisJump ? 0 : p.gainPct), 0),
     cumulativeToCapPct: gains.reduce((a, b) => a + b, 0),
+    axisStableSteps: stable < 0 ? points.length : stable,
+    axisChangedAt: points.filter(p => p.axisJump).map(p => p.x),
     stopped: false,
   }
 }
@@ -168,6 +185,39 @@ describe('副词条收益曲线 · 与自动配比一致', () => {
     expect(res.complete).toBe(false)
     expect(res.baseDamage).toBeGreaterThan(0)
     expect(res.series.every(s => s.points.length === 0)).toBe(true)
+  }, 120000)
+})
+
+describe('副词条收益曲线 · 轴态标注（用户 2026-10-21 报「锯齿 / 负数」）', () => {
+  it('轴态变化的点被标出、且不计入「到该步累计」', () => {
+    // 前 3 步轴态不变，第 4 步起失衡次数跳了（模拟琉音 critRate 转冲击力）
+    const s = synthetic('critRate', [1, 1, 1, -5, 0.2], 4, 4)
+    expect(s.axisChangedAt).toEqual([4, 5])
+    expect(s.axisStableSteps).toBe(3)
+    // 累计只累不变前缀：1+1+1 = 3（第 4 步的 −5 不算词条收益）
+    expect(s.cumulativePct).toBe(3)
+    expect(s.cumulativeToCapPct).toBeCloseTo(1 + 1 + 1 - 5 + 0.2, 10)
+    // 说明文案点出「第 4 步跳变」与具体变化
+    expect(axisChangeNote(s)).toBe('第 4 步跳变（失衡 5 → 6 次，易伤覆盖 50.0% → 60.0%）（共 2 步跳变：第 4、5 步）')
+    // 全程平滑的曲线 ⇒ 空串（不显示警示）
+    expect(axisChangeNote(synthetic('atkPct', [1, 1]))).toBe('')
+  })
+
+  it('真实采样：每个点都带轴态；基线与首点轴态一致；critRate 的轴态变化可被检出', async () => {
+    const h = await anomalyHarness()
+    const res = await sample(h)
+    expect(res.baseAxis.stunCount).toBeGreaterThanOrEqual(0)
+    for (const s of res.series) {
+      for (const p of s.points) {
+        expect(p.axis, `${s.stat} x=${p.x}`).toBeTruthy()
+        expect(typeof p.axis.stunCount, `${s.stat} x=${p.x}`).toBe('number')
+      }
+      // axisChangedAt 与 points 里的标记同源
+      expect(s.axisChangedAt).toEqual(s.points.filter(p => p.axisJump).map(p => p.x))
+      // 不变前缀长度自洽
+      const stable = s.points.findIndex(p => p.axisJump)
+      expect(s.axisStableSteps).toBe(stable < 0 ? s.points.length : stable)
+    }
   }, 120000)
 })
 

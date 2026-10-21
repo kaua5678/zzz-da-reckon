@@ -17,8 +17,20 @@
  *   止损只砍「恒 0 的尾巴」，不改变已采出的点——判据见 `substatCurve.test.ts`（有收益的词条不被截断）。
  * - **筛选传导**：`curveAxisRange` 只按传入的曲线算上限（隐藏曲线必须退出纵轴），由页面/组件把
  *   「可见」子集传进来——这是 `seriesFilter` 的口径 ②（隐藏必须传导到派生量）。
- * - 成本：每点一次完整求值（实测 50–75ms/次，2026-10-21）；10 个词条 × 上限 20 + 止损 ≈ 6–10s，
- *   故放在显式「计算曲线」按钮后面（与 `impactSampling` 同款），不在进入页面时自动跑。
+ * - **轴态标注**（2026-10-21，用户报「锯齿 + 负数」）：词条**可能**改变失衡次数——实测琉音
+ *   `critRate=0` ⇒ stun=6、`critRate=20` ⇒ stun=7（核心被动「初始暴击率超 50% 每 1% 转 2 冲击力」）。
+ *   一次失衡跳变 = 整窗易伤差 ⇒ 曲线上出现 2% 尖刺、累计到上限变负（那是**轴态变了**，不是词条收益为负）。
+ *   故每个点同时记录 `stunCount` / `coverage`，与基线不同即标 `axisChanged`：
+ *   图上是空心警示圈 + tooltip，累计只累**轴态不变的前缀**（`axisStableSteps`）。
+ *   其余词条实测**不影响**轴（`critDmg`/`atkPct`/`penFlat` 改到 0 或上限，stun 与 coverage 逐位相同）。
+ * - **为什么逐点硬算、不做解析近似**（用户 2026-10-21 提议「固定轴 + 边际×占比」）：解析式在乘法乘区上成立
+ *   （`critDmg` 一步：真实 0.2683M / 解析 0.2683M，逐位相同），但 **`penFlat` 差 46 倍**——
+ *   穿透值在防御区 `794/(effDef+794)` 里是非线性项；`critRate`/转模角色也各有 3–4% 偏差。
+ *   更关键：**边际不是词条的固有属性**——它取决于其余词条的取值（`critRate × critDmg` 互补）。
+ *   实测「按已采边际做贪心」的终点比真实配比**差 7.5%**（94.08M vs 101.745M）⇒ 任何「用占比/贪心反推」的
+ *   图都会与配比自相矛盾。所以这张图 = 在**配比现场**逐点真实求值，只标注轴态、不猜。
+ * - 成本：每点一次完整求值（实测 50–75ms/次，2026-10-21）；有用词条 ~20 点 + 恒 0 词条 2 点止损
+ *   ≈ 90 次求值 ≈ 5–8s，故放在显式「计算曲线」按钮后面（与 `impactSampling` 同款），不在进入页面时自动跑。
  *
  * 运行位置：**必须在独立场景上跑**（`withAnalysisScenario`）——本模块只读 `AnalysisContext`
  * （`scenario.config` 上改写分配、读 `scenario.calc.teamTotalDamage`），不碰 UI store，
@@ -39,6 +51,12 @@ export const ZERO_GAIN_RUN = 2
 /** 每采样多少点让出一次主线程（一次求值 50–75ms，逐点让出纯属浪费） */
 const YIELD_EVERY = 4
 
+/** 一个采样点的轴态（失衡次数 + 易伤覆盖率）：两者一起才足以识别「轴变了」 */
+export interface SubstatAxisSignature {
+  stunCount: number
+  coverage: number
+}
+
 /** 一个采样点：x = 该词条的第 x 步 */
 export interface SubstatCurvePoint {
   x: number
@@ -46,6 +64,17 @@ export interface SubstatCurvePoint {
   gainPct: number
   /** 这一步之后的队伍总伤 */
   damage: number
+  /** 该点的轴态（失衡次数 / 易伤覆盖率） */
+  axis: SubstatAxisSignature
+  /**
+   * 该点相对**上一点**轴态发生跳变（失衡次数变了，或易伤覆盖率一步跳 >1 个百分点）。
+   *
+   * 为什么按「相邻点」而不是「相对基线」判定（2026-10-21 第一版就踩了）：轴**连续**随词条漂移
+   * （实测琉音 critRate 每步都抬冲击力 ⇒ 覆盖率 24.1%→29.3% 平滑上升）是**真实收益**，必须计入；
+   * 而**离散跳变**（失衡 6→7 次）会让这一步一次吞下整窗易伤，那不是「这一步值多少」。
+   * 按基线判定会把整条曲线全标红（实测 19/19 点全命中 = 无信息）。
+   */
+  axisJump: boolean
 }
 
 /** 一条曲线 = 一个词条 */
@@ -64,6 +93,13 @@ export interface SubstatCurveSeries {
   cumulativePct: number
   /** **到上限为止**的累计提升（相对基线 %）。只作「再往上堆还值不值」的参考，不与步数列并读 */
   cumulativeToCapPct: number
+  /**
+   * 轴态**不变**的连续前缀步数（0 = 第 1 步就变轴了）。
+   * 「到该步累计」只累这一段：轴变了之后的点混进整窗易伤差，加进去就不再是词条收益。
+   */
+  axisStableSteps: number
+  /** 该曲线是否出现过轴态变化（图上给警示 / 表格给说明用） */
+  axisChangedAt: number[]
   /** 尾部触零提前止损（省掉了恒 0 的采样） */
   stopped: boolean
 }
@@ -83,6 +119,8 @@ export interface SubstatCurveResult {
   series: SubstatCurveSeries[]
   /** 实际求值次数（成本可核对，测试据此断言止损真的省了） */
   evals: number
+  /** 基线（自动配比现场）的轴态；曲线点的 `axisChanged` 就是与它比较 */
+  baseAxis: SubstatAxisSignature
   /** 被取消 ⇒ false（series 只含已采部分） */
   complete: boolean
   /** 采不出来的原因；空串 = 正常 */
@@ -106,6 +144,7 @@ function emptyResult(slot: number, reason: string): SubstatCurveResult {
     totalSteps: 0,
     templateStats: [],
     series: [],
+    baseAxis: { stunCount: -1, coverage: 0 },
     evals: 0,
     complete: false,
     reason,
@@ -153,6 +192,17 @@ export async function sampleSubstatCurves(
   let evals = 0
   let complete = true
   try {
+    const readAxis = (): SubstatAxisSignature => ({
+      stunCount: calc.stunPoolResult.value?.stunCount ?? -1,
+      coverage: calc.stunCoverage.value,
+    })
+    /**
+     * 轴态「跳变」判定：失衡次数变（离散窗口数）+ 覆盖率一步 >1 个百分点（整窗易伤一次性进出）。
+     * 覆盖率的小幅连续漂移是真实的（词条抬冲击力 ⇒ 攒得更快），不算跳变。
+     */
+    const COVERAGE_JUMP = 0.01
+    const axisJumped = (prevAxis: SubstatAxisSignature, next: SubstatAxisSignature) =>
+      prevAxis.stunCount !== next.stunCount || Math.abs(next.coverage - prevAxis.coverage) > COVERAGE_JUMP
     const allocation = computeSubstatAllocationForSlot(
       slot,
       config,
@@ -163,6 +213,7 @@ export async function sampleSubstatCurves(
     if (!allocation) return emptyResult(slot, '优化器没有给出分配（角色 / 音擎数据不全）')
     disc.subStatAllocation = { ...allocation }
     const baseDamage = calc.teamTotalDamage.value
+    const baseAxis = readAxis()
     evals++
     if (!(baseDamage > 0)) {
       return { ...emptyResult(slot, '当前配装的队伍总伤为 0：收益百分比没有分母'), allocation, baseDamage }
@@ -174,6 +225,8 @@ export async function sampleSubstatCurves(
       let prev = calc.teamTotalDamage.value
       evals++
       const origin = prev
+      const originAxis = readAxis()
+      const axisChangedAt: number[] = []
       let zeroRun = 0
       let stopped = false
       for (let x = 1; x <= maxSteps; x++) {
@@ -183,9 +236,13 @@ export async function sampleSubstatCurves(
         }
         disc.subStatAllocation = { ...allocation, [stat]: x }
         const damage = calc.teamTotalDamage.value
+        const axis = readAxis()
         evals++
         const gainPct = ((damage - prev) / baseDamage) * 100
-        points.push({ x, gainPct, damage })
+        const prevAxis = points.length ? points[points.length - 1]!.axis : originAxis
+        const axisJump = axisJumped(prevAxis, axis)
+        if (axisJump) axisChangedAt.push(x)
+        points.push({ x, gainPct, damage, axis, axisJump })
         prev = damage
         zeroRun = Math.abs(gainPct) <= ZERO_GAIN_PCT ? zeroRun + 1 : 0
         done++
@@ -197,7 +254,15 @@ export async function sampleSubstatCurves(
         if (done % YIELD_EVERY === 0) await yieldToMacrotask()
       }
       const steps = allocation[stat] ?? 0
-      const gainAt = (n: number) => points.slice(0, Math.max(0, Math.min(n, points.length))).reduce((a, p) => a + p.gainPct, 0)
+      /** 只累「无跳变」的步（连续漂移照常计入——那是真实收益） */
+      const gainAt = (n: number) => points
+        .slice(0, Math.max(0, Math.min(n, points.length)))
+        .reduce((a, p) => a + (p.axisJump ? 0 : p.gainPct), 0)
+      let stable = 0
+      for (const p of points) {
+        if (p.axisJump) break
+        stable++
+      }
       series.push({
         stat,
         points,
@@ -205,6 +270,8 @@ export async function sampleSubstatCurves(
         originDamage: origin,
         cumulativePct: gainAt(steps),
         cumulativeToCapPct: ((prev - origin) / baseDamage) * 100,
+        axisStableSteps: stable,
+        axisChangedAt,
         stopped,
       })
       if (!complete) break
@@ -217,6 +284,7 @@ export async function sampleSubstatCurves(
       totalSteps: budget.totalSteps,
       templateStats: [...template.stats],
       series,
+      baseAxis,
       evals,
       complete,
       reason: '',
@@ -269,6 +337,25 @@ export function allocationMarker(series: SubstatCurveSeries): SubstatCurvePoint 
   if (series.allocatedSteps <= 0) return null
   return series.points.find(p => p.x === series.allocatedSteps)
     ?? null
+}
+
+/**
+ * 轴态变化的一句话说明（空串 = 该曲线全程轴态不变）。
+ * 用户 2026-10-21 报「锯齿 / 负数」时，答案就在这里：那几步的词条**改了失衡次数**，不是收益为负。
+ */
+export function axisChangeNote(series: SubstatCurveSeries): string {
+  if (!series.axisChangedAt.length) return ''
+  const steps = series.axisChangedAt
+  const first = steps[0]!
+  const at = series.points.find(p => p.x === first)!
+  const before = series.points.find(p => p.x === first - 1)?.axis ?? at.axis
+  const parts: string[] = []
+  if (at.axis.stunCount !== before.stunCount) parts.push(`失衡 ${before.stunCount} → ${at.axis.stunCount} 次`)
+  if (Math.abs(at.axis.coverage - before.coverage) > 0.01) {
+    parts.push(`易伤覆盖 ${(before.coverage * 100).toFixed(1)}% → ${(at.axis.coverage * 100).toFixed(1)}%`)
+  }
+  const more = steps.length > 1 ? `（共 ${steps.length} 步跳变：第 ${steps.join('、')} 步）` : ''
+  return `第 ${first} 步跳变（${parts.join('，')}）${more}`
 }
 
 /** 某词条相对「自动配比门槛」的判定（表格「判定」列的唯一来源） */

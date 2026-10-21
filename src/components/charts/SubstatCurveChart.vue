@@ -33,6 +33,12 @@
     </div>
 
     <div v-if="errorMsg" class="subc-error">{{ errorMsg }}</div>
+    <div v-if="axisNotes.length > 0" class="subc-axis-note">
+      轴态跳变：{{ axisNotes.map(n => `${n.label} ${n.note}`).join('；') }}。
+      跳变那一步一次吞下整窗易伤（失衡次数一变就换一整个窗），不是该词条这一步的收益 ——
+      图上用橙色虚线空心圈标出，「累计(到该步)」不计入它们。曲线其余部分会随词条**连续**漂移轴态，
+      那是真实收益，照常计入。
+    </div>
     <div v-if="stale" class="subc-stale">
       配装 / 角色已变：这张图是上一次采样的现场，点「重算曲线」更新。
     </div>
@@ -72,7 +78,22 @@
           <g v-for="s in drawnSeries" :key="s.stat">
             <polyline :points="s.path" fill="none" :style="{ stroke: s.color, strokeWidth: '1.6' }" stroke-linejoin="round" />
             <template v-for="p in s.points" :key="`${s.stat}p${p.x}`">
+              <!--
+                轴态变化的点：空心警示圈 + 警示色描边。
+                这些点的 y 值混进了「失衡次数跳变」的整窗易伤差，不是该词条这一步的收益
+                （用户 2026-10-21 报的「锯齿 / 累计负数」就是它们），故与普通点视觉上必须分开。
+              -->
               <circle
+                v-if="p.axisJump"
+                :cx="sx(p.x)"
+                :cy="sy(p.gainPct)"
+                r="3.2"
+                :style="{ fill: 'none', stroke: 'var(--c-warning)', strokeWidth: '1.6', strokeDasharray: '2,1.5' }"
+              >
+                <title>{{ s.label }} 第 {{ p.x }} 步：{{ fmt(p.gainPct, 3) }}% —— 此处轴态跳变（失衡 {{ p.x > 1 ? s.points[p.x - 2]?.axis.stunCount : resBaseAxis.stunCount }} → {{ p.axis.stunCount }} 次，易伤覆盖 {{ fmt((p.x > 1 ? s.points[p.x - 2]?.axis.coverage ?? resBaseAxis.coverage : resBaseAxis.coverage) * 100, 1) }}% → {{ fmt(p.axis.coverage * 100, 1) }}%），这一步混入了整窗易伤差，不是词条收益</title>
+              </circle>
+              <circle
+                v-else
                 :cx="sx(p.x)"
                 :cy="sy(p.gainPct)"
                 :r="p.x === s.markerX ? 4 : 2"
@@ -101,6 +122,7 @@
           <td>{{ r.tailText }}</td>
           <td>{{ r.cumulativeText }}</td>
           <td>{{ r.cumulativeToCapText }}</td>
+          <td :style="{ color: r.axisJumped ? 'var(--c-warning-strong)' : 'var(--fg-3)' }">{{ r.axisText }}</td>
           <td :style="{ color: r.verdictColor }">{{ r.verdictText }}</td>
         </tr>
       </ChartTable>
@@ -140,6 +162,7 @@ import { withAnalysisScenario } from '@/composables/analysisScenario'
 import {
   allocationCutoff,
   allocationMarker,
+  axisChangeNote,
   curveAxisRange,
   defaultVisibleStats,
   sampleSubstatCurves,
@@ -224,6 +247,16 @@ const plotH = SVG_H - PAD_T - PAD_B
 
 const axis = computed(() => curveAxisRange(visibleSeries.value))
 const cutoff = computed(() => (result.value ? allocationCutoff(result.value) : null))
+/** 基线轴态（模板里 tooltip 用；缺省给零值防模板取到 undefined） */
+const resBaseAxis = computed(() => result.value?.baseAxis ?? { stunCount: -1, coverage: 0 })
+/** 有任何曲线出现轴态变化 ⇒ 顶部给一条说明（不是每条曲线都值得单独讲） */
+const axisNotes = computed(() => {
+  const r = result.value
+  if (!r) return []
+  return visibleSeries.value
+    .map(s => ({ stat: s.stat, label: statLabel(s.stat), note: axisChangeNote(s) }))
+    .filter(x => !!x.note)
+})
 /** 门槛落在可见纵轴内才画（见模板注释：门槛本身按全部曲线算，不随显隐改变） */
 const cutoffInView = computed(() => {
   const c = cutoff.value
@@ -261,6 +294,7 @@ const tableColumns = [
   { key: 'tail', label: '该步边际', width: '88px' },
   { key: 'cum', label: '累计(到该步)', width: '104px' },
   { key: 'cumCap', label: '累计(到上限)', width: '104px' },
+  { key: 'axis', label: '轴态', width: '92px' },
   { key: 'verdict', label: '判定', width: '104px' },
 ]
 const VERDICT_TEXT: Record<string, string> = {
@@ -291,6 +325,8 @@ const tableRows = computed(() => {
       tailText: tail ? `${fmt(tail.gainPct, 3)}%` : '-',
       cumulativeText: `${fmt(s.cumulativePct, 2)}%`,
       cumulativeToCapText: `${fmt(s.cumulativeToCapPct, 2)}%`,
+      axisJumped: s.axisChangedAt.length > 0,
+      axisText: s.axisChangedAt.length > 0 ? `第 ${s.axisChangedAt.join('、')} 步跳变` : '平滑',
       verdictText: VERDICT_TEXT[verdict],
       verdictColor: VERDICT_COLOR[verdict],
     }
@@ -353,4 +389,5 @@ async function run() {
 .subc-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 .subc-empty { font-size: 12px; color: var(--fg-3); padding: 8px 0; }
 .subc-stale { font-size: 11px; color: var(--c-warning-strong); margin-bottom: 8px; }
+.subc-axis-note { font-size: 11px; color: var(--c-warning-strong); background: var(--c-warning-soft); border-radius: 3px; padding: 6px 8px; margin-bottom: 8px; line-height: 1.6; }
 </style>
