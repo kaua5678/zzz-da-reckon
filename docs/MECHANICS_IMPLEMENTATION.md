@@ -626,7 +626,7 @@
 | **异放** | 触发时刻**活跃异常**的属性（轴模式下按状态链取样；无状态回落触发者自身元素） | 该异常归属槽的面板（`pushRelease({ slot })` 按槽取面板） | 同该槽（异放是「该角色的异放」，两区同一人） |
 | **普通耀变（蕾米）** | **贡献虚曜的队友**的属性（`teamElement(队友槽)`） | **该队友的实时面板**（`panelOf(slot)` → `damagePanels`，**吃拐**） | **蕾米面板**（`remiellePanel`：异化 / 耀变倍率 / C4 / 减防 / 易伤 / 失衡易伤） |
 | **特殊虚耀（蕾米 1/4/6 命）** | **下一位队友**的属性（`nextTeammateElement`） | **蕾米进场快照**（`remielleEntryPanel` → `entrySnapshotPanels`，**不吃拐**） | **同一张进场快照**（`remiellePanel: remielleEntryPanel`） |
-| **乱流** | 非风异常的元素（查该元素抗性）；风底由**风属性触发者**决定 | **风底提供者**（`applierPanel`）—— 例：维琳娜的风底 | **触发乱流的风属性角色**（`windPanel`）—— 例：菲欧尼在维琳娜风底触发燃烧乱流，结算区是菲欧尼 |
+| **乱流** | 非风异常的元素（查该元素抗性） | **被乱流的那个异常的质量**（`applierPanel`：非风异常的施加者） | **风底异常提供者**（`windPanel` = `findWindSlot`） |
 | **极性紊乱 / 颤音异放** | 按触发时刻**当前状态元素**（`dominant`） | 被结算者（该状态来源） | **结算者**（同紊乱：触发覆盖的那一方） |
 | ⚠ 待核 | 上两行的「极性紊乱 / 颤音异放」结算区**尚未逐行核对代码**（`dominant` 归因在 `inStunAnomaly` 与 `anomalyPool` 两处）。在核实前**不要据此改引擎**，以代码为准 | — | — |
 
@@ -693,4 +693,30 @@ elementResReduction= panelElementStat(source, 'enemyRes', element)  // 元素减
 流明**不参与任何继承**：它没有积蓄、不形成异常主人，全游戏没有按流明结算的伤害。
 ⇒ `DamageElement` 不含 `lumiflux`；蕾米自身的招式与特殊虚耀改为跟随**下一位队友**的属性。
 详见 474 行末尾的补记。
+
+
+### 同属性多人时的「虚拟人面板」（异常质量的基础区加权）
+
+用户 2026-10-21：「计算异常质量时，如果有多个同属性角色，基础区会根据造成积蓄进行加权，算出虚拟人面板。」
+
+**这个功能存在且已实现**，此前本文没写。实现 = `composables/resourceCalc/anomalyPanels.ts#buildAnomalyVirtualPanel`
+（经 `buildVirtualPanel` 闭包注入 mechanics，供 `burnice.ts` 等模块取用）。
+
+规则：
+
+1. **只有同属性角色参与加权**：`settlementEligible = agent.damageElement === prog.element`。
+   异属性角色赠送的积蓄**只计入总次数**，不参与面板加权（`eligibleRows`，全空时回落全部行）。
+2. **权重 = 同属性内积蓄占比**：`row.buildup / blendTotal`，同属性行权重和恒为 100%。
+3. **逐字段加权**（不是混合百分比，是**每个字段各自按权重求期望**）：
+   `atk` / `anomalyProficiency` / `dmgBonus` / `penRatio` / `penFlat`。
+4. **招式限定增伤单独按招式积蓄占比加权**进基础区增伤（`moveDmgBonusWeighted`）——
+   一整条异常全由某个 +100% 增伤的招式积攒 ⇒ 基础区含那 100%；混合来源则按占比吃一部分。
+5. **异化度不参与加权**：它是全队唯一的量（2026-10-20 裁决），直接取蕾米面板。
+
+⇒ 「多个火属性积蓄用污染池算综合数据」在 ZZZ 侧对应的就是这套加权虚拟面板；
+仓库里没有名为「污染池」的实现，等价概念是 `AnomalyProgress.contributions`（按招式 × 槽位的积蓄贡献列表）。
+
+⚠ **风底（`findWindSlot`）尚未用这套加权**：它取的是「队伍里**第一个** `damageElement === 'wind'` 的角色」，
+既不按积蓄贡献、也不支持多风角色加权。这是已知缺口（用户 2026-10-21 指出「风底质量也是可以用贡献率算综合数据的」），
+修法应复用 `getMainApplierSlot` 的「按 `totalBuildUp` 取最大贡献槽」或本节的加权思路。
 
