@@ -1771,3 +1771,54 @@ const rawScale = !axisMode && sumAbsorbedNet > budget && sumAbsorbedNet > 0
 
 **本轮代码全部回退**（`git status` 只剩 `helpers.ts` 的一条注释记录这次否决）。
 基线恢复：`timeGolden` 0 delta、`continuousStunMonotonic` 3/3 绿、`stunCoveragePoolSync` 绿。
+
+## 42. ★★★ round 24（2026-10-21）：连续失衡「末窗折算」—— 实现了、**方向错了**、已全部回退
+
+### 用户需求（逐字）
+
+> 「之前显示类似已完成完整 4 失衡的地方，如果遇到连续失衡，可以显示**已完成 3 失衡 + 1 次残疾失衡，
+>  残疾失衡完成率 xx%**」
+> 「我选择让连续层只影响最终伤害展示，不回灌下一轮，这是不是让真实计算和展示错位了？**没必要搞面子工程吧**」
+
+### 我做了什么（已全部回退，`git status` 零改动）
+
+1. `stunWindowFractionContinuous(discrete, continuous, W, effTime, lost)` —— 覆盖率 = 整数窗 + 末窗小数
+2. `buildStunTimeline` 支持末窗 slot（`frac × W` 秒，`clippedByClock=true`）
+3. `computeStunCoverage` 走连续口径（锁定态不折算）
+4. `ResourceResultCard` 显示「已完成 N 失衡 + 1 次残疾失衡（完成率 xx%）」
+
+### 错在哪（决定性实测）
+
+**第一版**：`frac = continuous − floor(continuous)` 直接当末窗长度。
+⇒ 全库 **86/93 队** `cont` 带小数（如 `auto-1041-1571-1031` 的 `cont=5.882`）⇒ 覆盖率从 0.5000 虚高到 0.5882。
+⇒ `teamCompare` / `foldResidualCapFeedback` **8 条红**（基线 43/43 全绿）。
+
+**为什么错**：用户原话「**积攒 100% 失衡值前都没失衡易伤**」——
+`cont = 5.882` 的语义是「**第 6 次还差 11.8% 没攒满**」⇒ **第 6 次根本没开启 ⇒ 没有易伤**。
+把 0.882 当易伤时间 = **把没开启的失衡也算成有易伤**，方向正好反了。
+
+### 更根本的：残疾失衡在本引擎**不可达**
+
+按用户口径，「残疾失衡」= **倒计时已经在跑、但战斗时间在归零前结束**。
+这要求 `K × W > effTime`，即失衡总时长超过战斗时间。
+实测（全库 93 队）：**`pool.stunCount > floor(effTime / W)` 的队 = 0**。
+引擎排窗 = `floor(pool.stunCount)`，从不越过物理上限 ⇒ **不存在「开了但没排完」的窗口**。
+
+⇒ 我曾让时间轴按 `cont` 排第 N+1 窗，那个「末窗」是**我人为造出来的**，不是引擎真实状态。
+⇒ 拿它做显示 = **编造一个不存在的游戏状态**，正是用户说的「面子工程」。
+
+### 回退后基线
+
+7 文件 / 68 条全绿：`timeGolden`、`timeFillRatchet`、`continuousStunMonotonic`、`stunCoveragePoolSync`、
+`stunTimeline`、`teamCompare`、`foldResidualCapFeedback`。
+
+### 要真正实现用户要的显示，前提是引擎能产生那个状态
+
+「残疾失衡」要真实存在，必须让**池能攒出超过 `floor(effTime/W)` 的次数**（时间装不下那么多窗），
+然后由「时间轴排到第 N+1 窗、被 `effectiveTime` 截短」来表达。
+当前引擎在 `solveTeam` 的 kStar 结算里已经把池钳到 `physicalMax`（round 20 加的），
+所以这条路径**被自己的护栏堵死了**。
+
+⇒ 真要做，顺序必须是：① 先放开「池可以超过物理上限」；② 让 `buildStunTimeline` 排出被截短的末窗；
+③ 覆盖率扣掉截断秒；④ 显示层读时间轴。**这是一条完整的链，不能只做 ④**。
+
