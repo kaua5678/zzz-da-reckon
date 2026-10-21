@@ -6,8 +6,10 @@
  * ② **与配比一致**：入选词条的落点 = 配比给的步数，被舍弃词条的首步边际低于「入选词条末步最小值」（门槛）；
  * ③ **可读性派生量**：止损真的省求值、纵轴只按传入（可见）曲线算、默认可见集 = 模板 ∪ 入选。
  *
- * 预算压到 单词条 3 步 / 总 6 步（1261+1221+1171 三异常队）：一次完整求值实测 50–75ms，
- * 30 个采样点 ≈ 2–3s。用生产预算（20×43）跑这个判据要 10s+，而结构判据不依赖预算大小。
+ * 预算压到 单词条 5 步 / 总 6 步（1261+1221+1171 三异常队）：一次完整求值实测 50–75ms，
+ * 十几个采样点 ≈ 2–3s。用生产预算（20×43）跑这个判据要 10s+，而结构判据不依赖预算大小。
+ * ⚠ 单词条上限必须**大于**「总步数 ÷ 模板词条数」：否则入选词条全部顶到上限，
+ * 「累计(到该步)」与「累计(到上限)」恒等，那条口径判据就失去判别力（实测 cap=3/6 步时正是如此）。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -31,7 +33,7 @@ const flush = async () => { await new Promise<void>(resolve => setTimeout(resolv
 /** 三异常队 + 小预算；返回可直接喂 `sampleSubstatCurves` 的场景调用器 */
 async function anomalyHarness() {
   const h = await setupHarness([{ agentId: '1261' }, { agentId: '1221' }, { agentId: '1171' }], { recommendedBuild: true })
-  h.config.setMechanicSetting(SUBSTAT_CAP_SETTING, 3)
+  h.config.setMechanicSetting(SUBSTAT_CAP_SETTING, 5)
   h.config.setMechanicSetting('optimizer.totalSteps2', 6)
   await flush()
   return h
@@ -48,7 +50,8 @@ function synthetic(stat: string, gains: number[], allocatedSteps = 0): SubstatCu
     points: gains.map((gainPct, i) => ({ x: i + 1, gainPct, damage: 100 + i })),
     allocatedSteps,
     originDamage: 100,
-    cumulativePct: gains.reduce((a, b) => a + b, 0),
+    cumulativePct: gains.slice(0, allocatedSteps).reduce((a, b) => a + b, 0),
+    cumulativeToCapPct: gains.reduce((a, b) => a + b, 0),
     stopped: false,
   }
 }
@@ -122,6 +125,24 @@ describe('副词条收益曲线 · 与自动配比一致', () => {
     }
     // 判别力：本样本必须同时存在「入选」与「有收益却未入选」两类，否则上面两条恒真
     expect(res.series.some(s => substatCurveVerdict(s, cutoff) === 'dropped'), '样本里没有『有收益但被舍弃』的词条 ⇒ 判据无判别力').toBe(true)
+  }, 120000)
+
+  it('累计口径：cumulativePct 只累到配比步数（与步数列同一件事），cumulativeToCapPct 才到上限', async () => {
+    const h = await anomalyHarness()
+    const res = await sample(h)
+    const chosen = res.series.filter(s => s.allocatedSteps > 0)
+    expect(chosen.length).toBeGreaterThan(0)
+    for (const s of res.series) {
+      const toCap = s.points.reduce((a, p) => a + p.gainPct, 0)
+      expect(s.cumulativeToCapPct, `${s.stat} 到上限累计`).toBeCloseTo(toCap, 10)
+      const toAlloc = s.points.slice(0, s.allocatedSteps).reduce((a, p) => a + p.gainPct, 0)
+      expect(s.cumulativePct, `${s.stat} 到配比步数累计`).toBeCloseTo(toAlloc, 10)
+      // 未入选词条：累计(到该步) 必须是 0（不是「到上限」的那个数）——这正是旧口径的错
+      if (s.allocatedSteps === 0) expect(s.cumulativePct).toBe(0)
+    }
+    // 判别力：本样本里必须有「到上限 ≫ 到步数」的词条，否则两列永远相等、这条判据看不出区别
+    expect(chosen.some(s => s.cumulativeToCapPct > s.cumulativePct + 0.05),
+      '样本里没有『配比步数 < 上限』的入选词条 ⇒ 两列口径无判别力').toBe(true)
   }, 120000)
 
   it('无收益词条触发止损：点数停在 ZERO_GAIN_RUN，求值次数少于全采', async () => {

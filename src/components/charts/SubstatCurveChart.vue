@@ -22,7 +22,9 @@
       横轴 = 该词条的第 x 步（一步 = 一次副词条强化；其余词条留在自动配比给的值），
       纵轴 = 这一步相对「自动配比后」队伍总伤的边际提升。
       虚线 = 自动配比的门槛（入选词条末步边际的最小值）：曲线在虚线以下 ⇒ 这一步不值，配比没选它；
-      空心圆点 = 自动配比实际给出的步数。采样不动你的配装（跑在独立场景里）。
+      空心圆点 = 自动配比实际给出的步数。表格「累计(到该步)」= 从 0 堆到「配比步数」的累计提升
+      （与「配比步数」列说的是同一件事），「累计(到上限)」= 一路堆到单词条上限的累计（只作参考，
+      不与步数并读）。采样不动你的配装（跑在独立场景里）。
     </div>
 
     <div v-if="computing || progressText" class="subc-progress">
@@ -98,6 +100,7 @@
           <td>{{ r.firstText }}</td>
           <td>{{ r.tailText }}</td>
           <td>{{ r.cumulativeText }}</td>
+          <td>{{ r.cumulativeToCapText }}</td>
           <td :style="{ color: r.verdictColor }">{{ r.verdictText }}</td>
         </tr>
       </ChartTable>
@@ -253,10 +256,11 @@ const drawnSeries = computed(() => visibleSeries.value.map(s => ({
 // ========== 表格 ==========
 const tableColumns = [
   { key: 'stat', label: '词条' },
-  { key: 'allocated', label: '配比步数', width: '80px' },
-  { key: 'first', label: '首步边际', width: '92px' },
-  { key: 'tail', label: '该步/末步边际', width: '110px' },
-  { key: 'cum', label: '累计提升', width: '92px' },
+  { key: 'allocated', label: '配比步数', width: '78px' },
+  { key: 'first', label: '首步边际', width: '88px' },
+  { key: 'tail', label: '该步边际', width: '88px' },
+  { key: 'cum', label: '累计(到该步)', width: '104px' },
+  { key: 'cumCap', label: '累计(到上限)', width: '104px' },
   { key: 'verdict', label: '判定', width: '104px' },
 ]
 const VERDICT_TEXT: Record<string, string> = {
@@ -286,6 +290,7 @@ const tableRows = computed(() => {
       firstText: first ? `${fmt(first.gainPct, 3)}%` : '-',
       tailText: tail ? `${fmt(tail.gainPct, 3)}%` : '-',
       cumulativeText: `${fmt(s.cumulativePct, 2)}%`,
+      cumulativeToCapText: `${fmt(s.cumulativeToCapPct, 2)}%`,
       verdictText: VERDICT_TEXT[verdict],
       verdictColor: VERDICT_COLOR[verdict],
     }

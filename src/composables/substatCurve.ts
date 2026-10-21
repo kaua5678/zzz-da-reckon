@@ -56,8 +56,14 @@ export interface SubstatCurveSeries {
   allocatedSteps: number
   /** 该词条 0 步时的队伍总伤（首点的 Δ 基准；也是「把它全撤掉」的现场） */
   originDamage: number
-  /** 累计提升（末点 − 0 步，相对基线 %） */
+  /**
+   * **到配比步数为止**的累计提升（相对基线 %）。未入选词条（步数 0）= 0。
+   * ⚠ 不是「到上限为止」：那张表的「配比步数 / 首步边际 / 累计提升」三列必须说同一件事
+   * （2026-10-21 用户抓到「爆伤 18 步却累计 2.03%」——旧口径按上限 20 步算，与相邻两列对不上）。
+   */
   cumulativePct: number
+  /** **到上限为止**的累计提升（相对基线 %）。只作「再往上堆还值不值」的参考，不与步数列并读 */
+  cumulativeToCapPct: number
   /** 尾部触零提前止损（省掉了恒 0 的采样） */
   stopped: boolean
 }
@@ -190,12 +196,15 @@ export async function sampleSubstatCurves(
         }
         if (done % YIELD_EVERY === 0) await yieldToMacrotask()
       }
+      const steps = allocation[stat] ?? 0
+      const gainAt = (n: number) => points.slice(0, Math.max(0, Math.min(n, points.length))).reduce((a, p) => a + p.gainPct, 0)
       series.push({
         stat,
         points,
-        allocatedSteps: allocation[stat] ?? 0,
+        allocatedSteps: steps,
         originDamage: origin,
-        cumulativePct: ((prev - origin) / baseDamage) * 100,
+        cumulativePct: gainAt(steps),
+        cumulativeToCapPct: ((prev - origin) / baseDamage) * 100,
         stopped,
       })
       if (!complete) break
