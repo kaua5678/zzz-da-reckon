@@ -814,6 +814,17 @@ function iterateBody(
     for (let round = 0; round < configs.length && pool > 1e-9; round++) {
       const open: Array<{ idx: number; headroom: number; w: number }> = []
       for (let i = 0; i < configs.length; i++) {
+        /**
+         * ⚠ **headroom 用 `totalNecessary`（含 `timeBudgetExcess` 折叠残差），不要改成 `cappedNecessary`**
+         * —— 2026-10-21 round 34 试过并**已回退**。
+         *
+         * 当时的假设：「写进 state 的是 capped，headroom 却用 total ⇒ 分不出去 ⇒ 留白」。
+         * 实测**证伪**：`totalNecessary` 含 `cfg.timeBudgetExcess`（折叠残差，见上方 :562），
+         * 它**比 capped 大** ⇒ 改 capped 会让 headroom 变大、平A 分得更多 ⇒ **超预算**。
+         * 实测 `auto-1091-1031-1311`：改前留白 30.9s，改后 **33.6s（更差）**。
+         *
+         * ⇒ 留白的真因不在本行（另见 `docs/STUN_CONTINUOUS_LASTWINDOW.md` §45 的排查记录）。
+         */
         const headroom = Math.max(0, totalTime - totalNecessary[i]) - basicAlloc[i]
         if (effectiveWeights[i]! > 0 && headroom > 1e-9) open.push({ idx: i, headroom, w: effectiveWeights[i]! })
       }

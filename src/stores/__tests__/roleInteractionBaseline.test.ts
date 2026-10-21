@@ -1,22 +1,41 @@
 /**
- * 交互基准（用户口径 2026-09-04 回调）：非支援/防护默认弹刀6/闪反10，支援/防护 0。
- * 基准可被必要时间挤占（超预算时 interactionScale 缩放），不是硬凑——见 useResourceCalc。
- * 手动队接线（同口径）：setAgent 换人即按 interactionBaselineFor 预填交互次数，
- * 正反馈 refund 模块（伊德海莉 1051）不吃通用基准（玩法口径：蓄力/极寒重碾 carry，弹刀闪反归击破位）。
+ * 交互基准 —— **全职业 0**（2026-10-21 round 32，用户裁决）。
+ *
+ * 用户原话（逐字）：
+ * > 「这个预填次数我让 agent 改了好几次，其中一次把辅助默认改成 0 了，结果还是没变。
+ * >  **干脆直接全改成 0 得了。**」
+ * > 「考虑自动判断的计算成本，负收益角色的寻找成本，**全0是最省事的**」
+ *
+ * ## 为什么不再按职业给 6/10
+ *
+ * 旧口径（2026-09-04）给非支援/防护预填 `parry 6 + dodge 10`（每人 16 次 ≈ 13 秒）。
+ * 那是「帮用户填好」的便利设计，但有**结构性副作用**：引擎先塞 16 次/人、再算时间账
+ * ⇒ 3 人队一次多出 ≈26 秒交互，而溢出本该是「最多一次交互」的量级。
+ * 实测还发现它对部分角色是**负收益**（`auto-1461-1521-1491` 的 1461/席德：
+ * 只给它 6/10 交互 ⇒ 伤害 138.5 → 123.2M，因为交互挤掉普通平A、钢能产出反而少 2 组落华）。
+ *
+ * 改成 0 后：交互不预填，剩余时间回灌平A池（`availableBasicTime`）；
+ * 要打交互的用户自己在交互栏填，或由模块 `computeInteractionTopUp` / `backstageAutoFill` 注入。
+ *
+ * ## 「最优交互次数」由难度曲线给，不由默认值给
+ *
+ * 难度曲线（`climbDifficultyLadder`）从 **① 全 0 交互**出发，逐档 joint 搜索加回来——
+ * 实测单队只要 **7~14ms**（`calcOutput` memo 缓存），成本可忽略。
+ * 默认值保持 0 = 「用户没表态」，最优值 = 「计算器建议」，两者不该混为一谈。
+ *
+ * ## 仍然生效的两条例外
+ *
+ * 1. **角色专属默认**（`interactionDefaults`，如星徽·比利 招架4/格挡5）仍优先——那是角色机制声明；
+ * 2. **正反馈 refund 模块**（伊德海莉 1051）不吃通用基准（玩法口径：蓄力/极寒重碾 carry，弹刀闪反归击破位）。
  */
 import { describe, expect, it } from 'vitest'
 import { interactionBaselineFor } from '@/stores/config'
 import { roleInteractionBaseline } from '@/mechanics/interactionBaseline'
 
 describe('roleInteractionBaseline', () => {
-  it('强攻/异常/击破：弹刀6 + 闪反10（默认会打，不留时间发呆）', () => {
-    for (const s of ['attack', 'anomaly', 'stun', undefined]) {
-      expect(roleInteractionBaseline(s)).toEqual({ parry: 6, dodge: 10, block: 0, dual: 0 })
-    }
-  })
-  it('支援/防护：0 交互（上场挤占主C，后台时间非发呆）', () => {
-    for (const s of ['support', 'defense']) {
-      expect(roleInteractionBaseline(s)).toEqual({ parry: 0, dodge: 0, block: 0, dual: 0 })
+  it('全职业 0 交互（不预填——剩余时间由平A池接走）', () => {
+    for (const s of ['attack', 'anomaly', 'stun', 'support', 'defense', undefined]) {
+      expect(roleInteractionBaseline(s), `${s} 应为全 0`).toEqual({ parry: 0, dodge: 0, block: 0, dual: 0 })
     }
   })
 })
@@ -28,8 +47,8 @@ describe('interactionBaselineFor（手动队接线：专属默认 > 正反馈排
   it('正反馈 refund 模块（伊德海莉 1051）不吃通用交互基准', () => {
     expect(interactionBaselineFor('1051', 'attack')).toEqual({ parry: 0, dodge: 0, block: 0, dual: 0 })
   })
-  it('职业基准兜底：非支援/防护 6/10，支援/防护 0', () => {
-    expect(interactionBaselineFor('1141', 'stun')).toEqual({ parry: 6, dodge: 10, block: 0, dual: 0 })
+  it('职业基准兜底：**全职业 0**（2026-10-21 起不再按职业给 6/10）', () => {
+    expect(interactionBaselineFor('1141', 'stun')).toEqual({ parry: 0, dodge: 0, block: 0, dual: 0 })
     expect(interactionBaselineFor('1451', 'support')).toEqual({ parry: 0, dodge: 0, block: 0, dual: 0 })
   })
 })

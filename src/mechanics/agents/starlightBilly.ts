@@ -118,8 +118,24 @@ const HEAL_ROCKING = 15 // 摇曳步伐回血 %（文本数值，不在数据行
 
 // 摇曳链占付费单位（摇曳+抓地池）的比例：用户确认整局摇曳次数比较低，默认 0.1
 const DEFAULT_ROCKING_RATIO = 0.1
-/** 交互次数默认值单一事实源（用户确认：招架4/闪反0/格挡5）：模块声明 interactionDefaults 与 applyTeamConfig 兜底共用（CC-73） */
-const BILLY_INTERACTION_DEFAULTS = { parry: 4, dodge: 0, block: 5, dual: 0 } as const
+/**
+ * 交互次数默认值 = **全 0**（2026-10-21 round 33，用户裁决）。
+ *
+ * 用户原话（逐字）：
+ * > 「这俩人的单独策略可以取消，只要我们交互自动填充的逻辑正常，就可以包含这个中途值。
+ * >  **交互次数全设 0 吧，没必要给他特殊做。**」
+ *
+ * 旧值「招架4/闪反0/格挡5」（CC-73 用户确认）是早期产物。取消理由：
+ * ① 交互次数是**用户的难度选择**，不该由引擎预填；
+ * ② 「填到多少最优」由难度曲线回答（climbDifficultyLadder 从全 0 出发 joint 搜索）；
+ * ③ 实测「格挡 +5 决意」这条通道**从未实现**（computeAttackDataDetermination 的入参
+ *    只有 dodgeCounterCount / parryCount / quickAssistCount，**没有 blockCount**）
+ *    => 旧注释第 33 行写的「格挡 +5（主页交互 blockCount）」是**死口径**，
+ *    实测格挡 0/5/10/15 四档的星光次数与伤害**逐位相同**。
+ *
+ * ⚠ 交互输入框标签（interactionInputs 的「格挡（动力压制）」）保留——那是字段名，与默认值无关。
+ */
+const BILLY_INTERACTION_DEFAULTS = { parry: 0, dodge: 0, block: 0, dual: 0 } as const
 const DEFAULT_HP_DISCOUNT_RATIO = 0 // 默认没有动力压制经过普攻四段耗血降低
 
 const specBase = specToMechanicModule(getAgentSpec(AGENT_ID)!)
