@@ -23,6 +23,7 @@ import type { AnomalyEventExecution, CharacterResourceResult } from '@/types/res
 import type { DirectRowAxisSplit } from '@/mechanics/types'
 import { findMoveById } from '@/data/moveTableQueries'
 import { buildMechanicTeamMembers } from './panelPhases'
+import { resolveAgentDamageElement } from './anomalyPanels'
 import type { DamagePoolRow } from './helpers'
 // 纯类型：运行时被擦除，与 damagePool.ts 的 `emitCharDirectRows` 值导入不构成运行时环。
 import type { DamagePoolContext } from './damagePool'
@@ -143,7 +144,10 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
       cinemaLevel: configStore.team[slot]?.cinemaLevel ?? 0,
       potentialLevel: configStore.team[slot]?.potentialLevel ?? 6,
     })
-    const element = resolved?.element ?? move?.damageElement ?? agent?.damageElement ?? 'physical'
+    // 元素回落走单一来源：角色无 damageElement（蕾米 1581，流明不是伤害元素）时
+    // 跟随下一位队友的属性，绝不静默按物理算（否则 10 条含蕾米队伍掉 3~5%）
+    const element = resolved?.element ?? move?.damageElement
+      ?? (agent?.damageElement ? agent.damageElement : resolveAgentDamageElement(configStore, catalogStore, slot))
     const execPanel = panelAt(damagePanels, slot)
     const execSkillLevelBonus = execPanel?.skillLevelBonus ?? 0
     const execDamageCoef = execSkillLevelBonus > 0 ? getSkillLevelCoef(execSkillLevelBonus).damageCoef : 1
@@ -338,7 +342,9 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
         id: `direct-${slot}-${mid}-table`,
         slot, agentId: charResult.agentId,
         name: `${move.name.zhCN || mid}（表）`,
-        element: move.damageElement ?? catalogStore.agentsMap.get(charResult.agentId)?.damageElement ?? 'physical',
+        element: move.damageElement
+          ?? (catalogStore.agentsMap.get(charResult.agentId)?.damageElement
+            ?? resolveAgentDamageElement(configStore, catalogStore, slot)),
         source: '轴内·技能表直读',
         count, multiplier: mult,
         note: '该招式未单独建模：按技能表倍率直读，吃失衡易伤；不占时间预算、窗内不产失衡值',

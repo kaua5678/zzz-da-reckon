@@ -284,7 +284,24 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         entryPanel: panelAt(entrySnapshotPanels, slot),
         skills: catalogStore.agentSkillsByAgentMap.get(configStore.team[slot]?.agentId ?? ''),
         panelOf: (s) => panelAt(damagePanels, s),
-        teamElement: (s) => catalogStore.agentsMap.get(configStore.team[s]?.agentId ?? '')?.damageElement ?? 'physical',
+        /**
+         * 某槽角色的伤害元素。
+         *
+         * ⚠ `damageElement` 可能**缺失**（2026-10-21 起蕾米埃尔 1581 就是——流明不是伤害元素）：
+         * 此时不能静默回落 'physical'，否则她的异常会按物理结算。
+         * 实测：删流明后 10 条含蕾米队伍掉 3~5%，根因就是这里。
+         * 正确语义：**跟随下一位队友的属性**（与 nextTeammateElement 同一口径）。
+         */
+        teamElement: (s) => {
+          const own = catalogStore.agentsMap.get(configStore.team[s]?.agentId ?? '')?.damageElement
+          if (own) return own
+          const team = configStore.team
+          for (let i = 1; i <= team.length; i++) {
+            const el = catalogStore.agentsMap.get(team[(s + i) % team.length]?.agentId ?? '')?.damageElement
+            if (el) return el
+          }
+          return 'physical'
+        },
         /**
          * 下一位队友的属性（用户 2026-10-21）：沿槽位顺序环形查找第一个有角色的槽。
          * 全队只有自己 ⇒ 回落到自己的元素。

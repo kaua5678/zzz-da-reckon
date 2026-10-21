@@ -105,6 +105,36 @@ export interface WindInfectionPick {
  * 风化侵染区（`panelPhases` 满额 / `useResourceCalc#damagePanels` 按覆盖率折算）、浸染挑槽（`resolveWindInfectionPick`）。
  * 维琳娜专属产出**不走**这里——按能力持有者认人（`teamMechanicSlots`，r711）。
  */
+
+/**
+ * **解析某槽角色的伤害元素**（单一来源，2026-10-21）。
+ *
+ * `damageElement` 可能**缺失**：蕾米埃尔（1581）就是——流明是「高级属性」，
+ * 没有积蓄、不形成异常主人，全游戏没有按流明结算的伤害。
+ *
+ * 缺失时的正确语义 = **跟随下一位队友的属性**（用户口径：
+ * 「蕾米本身的招式倍率也是走的下一位队友的属性，可以享有其属性弱点」）。
+ *
+ * ⚠ 绝不可回落 `'physical'`：那会让她的招式/异常按物理结算，凭空吃物理弱点与物理增伤
+ * （实测：删流明后 10 条含蕾米队伍掉 3~5%，根因就是各处 `?? 'physical'`）。
+ *
+ * @returns 该槽的元素；自己与队友都没有元素时回落 `'physical'`（兜底，正常不会走到）
+ */
+export function resolveAgentDamageElement(
+  configStore: ConfigModel,
+  catalogStore: ReturnType<typeof useCatalogStore>,
+  slot: number,
+): string {
+  const team = configStore.team
+  const own = catalogStore.agentsMap.get(team[slot]?.agentId ?? '')?.damageElement
+  if (own) return own
+  for (let i = 1; i <= team.length; i++) {
+    const el = catalogStore.agentsMap.get(team[(slot + i) % team.length]?.agentId ?? '')?.damageElement
+    if (el) return el
+  }
+  return 'physical'
+}
+
 export function findWindSlot(
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
