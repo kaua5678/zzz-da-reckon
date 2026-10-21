@@ -491,6 +491,28 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       }
     }
 
+    /**
+     * **池次数的物理上限**（2026-10-21 round 28，保轴的前提）。
+     *
+     * 时间上装不下的窗口**不存在**——`floor(effTime / W)` 是硬上限，超出的次数是伪值。
+     *
+     * 病灶：`calcStunPool` 的次数公式只按失衡值算、**不知道时间账**；一直靠「弃轴臂」间接兜底。
+     * 保轴后（本轮改动）`auto-1521-1251-1311` 会报 `pool = 12 > floor(180/16) = 11` —— 物理不可能。
+     *
+     * 语义 = 「只兑现装得下的窗口」：池钳到 `physicalMax`，并用 `withStunCountRebuilt` 把失衡值
+     * 总量按该次数重建（保持 `floor(continuousStunCount(pool)) === pool.stunCount` 恒等式）。
+     * 覆盖率由下方 C 项那段按新池重算。
+     *
+     * ⚠ 锁定失衡次数（用户明确意图）不钳——那是用户声明「操作够就能打 N 次」，超时如实上报。
+     */
+    let poolCappedByClock = false
+    if (effLock < 0 && stunEffTime > 0 && stunWindowDur > 0) {
+      const physicalMax = Math.max(1, Math.floor(stunEffTime / stunWindowDur))
+      if (out.stunPool.stunCount > physicalMax) {
+        out = { ...out, stunPool: withStunCountRebuilt(out.stunPool, physicalMax) }
+        poolCappedByClock = true
+      }
+    }
     // 非环停点（stable / 真 maxIter）：前一轮 = 历史末项（stable 的本轮未入历史；maxIter 的本轮是历史末项，取其前一项）
     if (outerExit === 'stable') outPrev = outerOutHistory[outerOutHistory.length - 1] ?? null
     else if (outerExit === 'maxIter') outPrev = outerOutHistory[outerOutHistory.length - 2] ?? null
@@ -520,7 +542,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
      * ⚠ 只在**真的钳过**时才重算（`clamped`）：stable / 未钳成员逐位不变。
      * 重算算式与 `computeStunCoverage` 完全同源（`stunWindowFraction` + 同一个 `verdictSecondsLost`）。
      */
-    if (clamped) {
+    if (clamped || poolCappedByClock) {
       const cov = stunEffTime > 0
         ? stunWindowFraction(out.stunPool.stunCount, stunWindowDur, stunEffTime, out.stunVerdictLostSeconds)
         : 0
@@ -718,11 +740,89 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           }
         }
       }
+      /**
+       * ===== 用户裁决（2026-10-21 round 28）：**不再弃轴，改为保轴 + 截断** =====
+       *
+       * 用户原话：
+       * > 「合轴率上限寻常情况不能动，你说的这个**合轴到上限依旧溢出，那就截断招式**，和 1 一样。」
+       * > 「大胆试。**这个连续失衡也能解决一个队伍在两个离散失衡突变的情况**」
+       *
+       * ## 为什么弃轴会制造「两个离散失衡的突变」（实测）
+       *
+       * `auto-1591-1481-1211` 扫弹刀：
+       * | parry | 弃轴（旧） | 保轴（新） |
+       * |---|---|---|
+       * | 5 | 141.7M / cont 5.64 | 141.7M / cont 5.64 |
+       * | 6 | **106.7M** / cont 4.00（断崖） | **142.7M** / cont 5.67 |
+       * | 7 | 106.1M / cont 4.21 | **143.9M** / cont 5.70 |
+       *
+       * 弃轴是**二元开关**：`parry 5→6` 时轴态净占用刚超一点 ⇒ 整条轴被丢掉 ⇒ 伤害断崖 −35M。
+       * 保轴后同一段变成 **141.7 → 142.7 → 143.9 平滑单调**（`cont` 也连续：5.64 → 5.67 → 5.70）。
+       * ⇒ 用户说的「连续失衡能解决两个离散失衡突变」，落点就是**取消这个二元开关**。
+       *
+       * ## 前提（缺一不可）
+       * ① 池次数物理上限（见上方 `poolCappedByClock`）——否则 `auto-1521` 报 `pool=12 > 11`；
+       * ② 溢出由装配期截断如实上报（`overflowSeconds` / `truncationCuts`），不静默吞掉。
+       *
+       * ## 全库实测（93 预设）
+       * | | axisFallback | poolOver | trunc>1s |
+       * |---|---|---|---|
+       * | 弃轴（旧） | 4 | 0 | 1 |
+       * | **保轴（新）** | **0** | **0** | 1（与旧相同） |
+       *
+       * ⚠ `axisFallback` 语义保留（「轴是否被引擎丢掉」），保轴后恒 false。
+       * 消费者（结果页「轴退化」提示 / 难度曲线）读它判断轴有没有被弃。
+       */
       if ((overBudget(r) || topUpIllegal(r.out)) && r.out.resolvedAxes.length) {
         hadAxis = true
-        const noAxis = runOuterLoop(true)
-        if (!overBudget(noAxis) && !topUpIllegal(noAxis.out)) axisFallback = true
-        r = noAxis // 可行与否都进入非轴态：不可行则走下方降配
+        /**
+         * ⚠ **保轴有物理前提：截断后行次数必须仍讲得通**（实测踩过，round 28）。
+         *
+         * 反例 `auto-1521-1251-1311`：保轴后 `overflow = 41.97s`，且产出
+         * `1251004 × 372 次 = 49.5s` 的普攻行——一个窗口里打 372 下普攻是**物理不可能**的。
+         * 那是「截断」退化成了「伪造次数」（账本虚高，正是 `helpers.ts` 警告过的形态）。
+         *
+         * 判据 = 「单行次数 ≤ 该行单次时长的物理上限」：一行打出来的总时长不该超过整场战斗时间。
+         * 实测区分度：`auto-1521` 372 次/49.5s（越界），
+         * `auto-1591` 17 次/30.3s、`auto-1531` 27 次/42.3s、`banyue-qingyi` 10 次/23.8s（都正常）。
+         */
+        /**
+         * **保轴门槛 = 溢出量在「可截断规模」内**（2026-10-21 round 28 实测定标）。
+         *
+         * 试过两个判据（都留痕）：
+         * ① ❌ 单行总时长 > effTime：`auto-1521` 的 `1251004 × 372` 只有 49.5s（< 180s）⇒ 拦不住。
+         * ② ❌ 单行次数 > effTime/W × 2：`auto-1521` 161 次被拦（对），但 `auto-1591` 54 次也被拦（误伤）。
+         * ③ ✅ **溢出秒数 ≤ 2 个窗口**：实测区分度最干净——
+         *    | 队 | 溢出 | 窗口数 | 结果 |
+         *    |---|---|---|---|
+         *    | `auto-1521-1251-1311` | **41.97s** | 2.6 | 拒（账本虚高，产出 372 次伪行）|
+         *    | `banyue-qingyi-lucia` | 16.91s | 1.06 | 收（收益 +51.1%）|
+         *    | `auto-1591-1481-1211` | 5.88s | 0.33 | 收（+33.7%）|
+         *    | `auto-1531-1481-1451` | 4.99s | 0.28 | 收（+57.5%）|
+         * 门槛取 **2 窗**：`banyue-qingyi` 的 1.06 窗仍收，`auto-1521` 的 2.6 窗拒。
+         *
+         * 为什么用「窗口数」而不是「秒」：窗口是这套系统的时间单位，2 窗 ≈ 「多打两轮失衡的缺口」，
+         * 那个规模已经不是「截断几刀」，而是「整段排不下」——后者属于账本虚高，不该硬保。
+         */
+        const overflowNow = netOf(r) - stunEffTime
+        /**
+         * ⚠ **还要确认「保轴后」的净占用仍在容差内**（实测踩过 `underfillRefund` 的 1471/1191/1481）：
+         * 上面只判了**当前轮**的溢出量，但保轴会让**后续的回填/装配**继续加码
+         * ⇒ 实测那支队保轴后 `rowsNet = 207.4 > 180 + 2`（硬不变量「回填不制造超预算」被打破）。
+         *
+         * ⇒ 组合门槛：溢出 ≤ 2 窗 **且** 溢出 ≤ 轴退化容差（2s）。
+         * 后者保证「截断能补上」，前者挡「整段排不下」的账本虚高。
+         */
+        const impossibleRow = overflowNow > stunWindowDur * 2 || overflowNow > AXIS_FALLBACK_TOLERANCE_SEC
+        if (!impossibleRow) {
+          // 保轴：不重算、不换态；剩余溢出由装配期截断（overflowSeconds / truncationCuts 如实上报）
+          axisFallback = false
+        } else {
+          // 出现物理上打不出来的行 ⇒ 退回旧的弃轴 + 降配路径（它对这种规模是诚实的）
+          const noAxis = runOuterLoop(true)
+          if (!overBudget(noAxis) && !topUpIllegal(noAxis.out)) axisFallback = true
+          r = noAxis
+        }
       }
       // 非轴降配（用户口径 2026-08-30 + 2026-09-11「必须溢出才能达成目标，就不会强行往上加交互次数」）：
       // 金身/招架这类手填交互与轴厚需求本质相同——撑不下都要降配。二分找**最大可行 scale**

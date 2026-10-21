@@ -726,7 +726,21 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     ] }] as never
     await new Promise(r => setTimeout(r, 120))
     const thick = calc.resourceResult.value!
-    expect(thick.convergence.axisFallback, '轴太厚（每窗 6 终结技，喧响撑不下）⇒ 退化一般轴').toBe(true)
+    /**
+     * ⚠ **2026-10-21 round 28 口径变更：弃轴 → 保轴 + 截断**（用户裁决）。
+     *
+     * 用户原话：「合轴率上限寻常情况不能动，你说的这个**合轴到上限依旧溢出，那就截断招式**，和 1 一样。」
+     * ⇒ 「轴太厚就弃轴」这条语义**已被推翻**：轴不该丢，装不下的部分由装配期截断并如实上报。
+     *
+     * **判据本意未变**：本用例要锁的是「轴需求真超预算时，引擎不会假装装得下」。
+     * 新口径下这句话的落点从「`axisFallback === true`（弃轴）」变成
+     * 「**净占用仍装得下 + 溢出如实上报**」——见下方两条断言（`netFrontlineOccupation ≤ 182`
+     * 与 `timeTruncatedSeconds` / `overflowSeconds` 如实反映缺口）。
+     *
+     * ⚠ 反证「这条判据没被架空」：如果引擎把厚轴当成装得下而不报任何缺口，下面的
+     * 「必须如实上报溢出」断言会红。
+     */
+    expect(thick.convergence.axisFallback, '保轴口径下不再弃轴（轴不该丢）').toBe(false)
     // 前台行回到预算内（容差 2s = 合轴可覆盖的量化残差）
     //
     // ⚠ **T141 改判据：从「手工 Σ前台行 ≤ 182」改为引擎单一事实源 `netFrontlineOccupation`**
