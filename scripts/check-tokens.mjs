@@ -719,7 +719,12 @@ export const WA_REF_BASELINE = 407  /* ★ 2026-10-18 MechanicsTablePage 下线�
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 1041  /* ★ 2026-10-20 锁值横幅（+10）：1031 → **1041**，
+export const VAR_TOTAL_BASELINE = 1056  /* ★ 2026-10-21 副词条收益曲线（+15）：1041 → **1056**，
+                                           `components/charts/SubstatCurveChart.vue` 新增（网格/刻度/门槛线/贴片圆点/
+                                           表格色点全部走语义令牌 --line/--fg-2/--fg-3/--c-warning/--c-warning-strong/
+                                           --app-inset/--c-danger/--c-warning-strong 的「配装已变」提示条）；**零 raw --wa-*（407 不变）、零字面色值**
+                                           （`<script>` 里的 STAT_COLORS 是数据色，UI_THEME_GUIDE §5 不计入）。
+                                           ★ 2026-10-20 锁值横幅（+10）：1031 → **1041**，
                                            `--wa-*` 直引 **407 不变**。
                                            归因：把锁值从单元格提到表头后新增 `.uplift-lock-banner` + `.th-lock`
                                            两族（--line-strong / --fill-hover / --fill-active / --c-success /
