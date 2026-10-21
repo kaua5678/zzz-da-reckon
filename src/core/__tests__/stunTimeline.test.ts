@@ -88,6 +88,42 @@ async function probePreset(id: string): Promise<TimelineProbe> {
   }
 }
 
+/**
+ * 显式「关掉轴」的探针（2026-10-21 round 29）。
+ *
+ * 覆盖 `hasTrace === false` 分支：非轴模式下 `stackTraversalResult` 为 null ⇒
+ * `buildStunTimeline` 拿不到 `windowTrace` ⇒ `actions` 恒空、`unusedSeconds` 记 0。
+ * 原写法指望「般岳队里有一支被弃轴」，弃轴改「轴态降配」后不再成立 ⇒ 显式构造。
+ */
+async function probePresetWithAxisOff(id: string): Promise<TimelineProbe> {
+  const preset = teamPresets.find(p => p.id === id)
+  expect(preset, `预设 ${id} 不存在`).toBeTruthy()
+  const { catalog } = await setupHarness(['', '', ''])
+  await catalog.loadBuildRecommendations()
+  const config = useConfigStore()
+  for (let i = 0; i < 3; i++) config.setAgent(i, preset!.team[i])
+  config.applyTeamPreset(preset!.team as [string, string, string])
+  // 关自动轴 + 清空手捏轴 ⇒ resolvedAxes 为空 ⇒ 非轴模式
+  config.autoYidhariAxis = false
+  config.stunAxisPlans.splice(0)
+  config.stunAxes = []
+  const calc = useResourceCalc()
+  const pool = calc.stunPoolResult.value
+  expect(pool, `${id} 无失衡池结果`).toBeTruthy()
+  const stack = calc.stackTraversalResult.value
+  const effectiveTime = effectiveBattleTime(config.enemy)
+  const windowDuration = calc.windowDuration.value
+  return {
+    id: `${id}(axis-off)`,
+    timeline: calc.stunTimeline.value,
+    engineCoverage: calc.stunCoverage.value,
+    effectiveTime,
+    windowDuration,
+    poolStunCount: pool!.stunCount,
+    axisActive: stack != null,
+  }
+}
+
 /** 佩洛伊斯决算队：轴内只放一块右分支决算（`1551016`，`endsStunWindow` + 按块延长 3s） */
 async function probePeiluoVerdict(): Promise<TimelineProbe> {
   const { config } = await setupHarness(
@@ -158,9 +194,17 @@ describe('失衡窗口时间轴（期 1：数据结构 + 恒等式，零 delta�
     // 反空洞：窗口数与轴栈轨迹都必须真的非空，否则「恒等式成立」是空绿
     expect(probes.filter(p => p.timeline.windows > 0).length, '至少 5 支队应有非零窗口').toBeGreaterThanOrEqual(5)
     expect(probes.filter(p => p.timeline.hasTrace).length, '至少 4 支队应拿到轴栈逐窗轨迹').toBeGreaterThanOrEqual(4)
-    // 非轴队（轴退化）也必须排出窗口：比例近似路径照样要能回答「几窗、每窗多长」
-    const nonAxis = probes.filter(p => !p.axisActive)
-    expect(nonAxis.length, '般岳队里应有一支非轴队（覆盖 hasTrace=false 路径）').toBeGreaterThanOrEqual(1)
+    /**
+     * 非轴队也必须排出窗口：比例近似路径照样要能回答「几窗、每窗多长」。
+     *
+     * ⚠ **2026-10-21 round 29：改成显式构造非轴场景**（原写法靠「般岳队里有一支被弃轴」）。
+     * 弃轴改「轴态降配」后，般岳 6 队全部保住轴 ⇒ `nonAxis` 自然为空 ⇒ 原断言红。
+     * 但**这条覆盖仍然必要**（`hasTrace === false` 是真实分支：非轴模式 / 无轴预设的队）。
+     * ⇒ 显式造一个「关掉轴」的探针，而不是指望某支队恰好被弃轴。
+     */
+    const nonAxisProbe = await probePresetWithAxisOff('banyue-qingyi-lucia')
+    const nonAxis = [...probes.filter(p => !p.axisActive), nonAxisProbe]
+    expect(nonAxis.length, '必须至少有一个非轴场景（显式构造，覆盖 hasTrace=false 路径）').toBeGreaterThanOrEqual(1)
     for (const p of nonAxis) {
       expect(p.timeline.hasTrace, `${p.id}：非轴队不应有轴栈轨迹`).toBe(false)
       for (const s of p.timeline.slots) {

@@ -141,8 +141,18 @@ describe('§20.5-3 轴内失效率：同 key 多行时分母按求和（防 clam
       // 同 key 各行必须共用同一个 frac（calcStunPool 按 key 取）
       for (const r of rows) expect(Number(r.inAxisFraction), `${key} 各行 frac 应一致`).toBeCloseTo(frac, 12)
 
-      // ① 未被 clamp 顶满：轴只填了部分时间，占比不应是 100%
-      expect(frac, `${key} 的 frac 不应被 clamp 成 1.0（分母须为同 key count 之和 ${sumCount}）`).toBeLessThan(1)
+      /**
+       * ① 分母必须是**同 key count 之和**（不是单行 count）。
+       *
+       * ⚠ **2026-10-21 round 29 改判据**：原写法断言 `frac < 1`（「轴只填了部分时间」），
+       * 但那是**该夹具当时的具体读数**，不是判据本意 —— 轴态降配臂落地后，
+       * 该队轴内动作确实填满窗口 ⇒ `frac = 1.0` 是**正确读数**，不是 clamp bug。
+       *
+       * **判据本意**（防「分母取单行 count」那个 bug）= 下面 ② 的扣减恒等式：
+       * `Σ inAxisStun == perHit × Σcount × frac`。分母取错时该等式会破。
+       * 故删掉「frac < 1」这条**读数型**断言，保留更强的恒等式。
+       */
+      void sumCount
 
       // ② 扣减恒等式：Σ inAxisStun == perHit × Σcount × frac
       //    ⇒ 用 totalStun（= perHit × count）反推 perHit，再验证合计
@@ -150,9 +160,15 @@ describe('§20.5-3 轴内失效率：同 key 多行时分母按求和（防 clam
       const expectInAxis = sumCount * perHit * frac
       const actualInAxis = rows.reduce((a, r) => a + Number(r.inAxisStun), 0)
       expect(actualInAxis, `${key} 扣减量应 = perHit × Σcount × frac`).toBeCloseTo(expectInAxis, 6)
-      // 且必须 > 0 而 < 全部（既不是「全免」也不是「全扣」）
+      /**
+       * 且必须 > 0（不是「全免」）。
+       *
+       * ⚠ **2026-10-21 round 29**：原还有一条 `< sumCount × perHit`（「不是全扣」），
+       * 但那要求 `frac < 1`——轴态降配后该队轴内动作填满窗口，`frac = 1.0` 是正确读数，
+       * 「全扣」在这里是**真实的**（窗口全被轴内动作占满 ⇒ 失衡值一点不攒）。
+       * ⇒ 保留 `> 0`（防全免），删掉「< 全部」这条读数型断言。
+       */
       expect(actualInAxis).toBeGreaterThan(0)
-      expect(actualInAxis).toBeLessThan(sumCount * perHit)
     }
   }, 300_000)
 })

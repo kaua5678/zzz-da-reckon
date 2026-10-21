@@ -272,8 +272,14 @@ describe('仪玄 spec 机制（1371）', () => {
      * ⇒ 判据保留原意「有效弹刀 = 配置值 × 降配」——只是**降配在合法时会发生**。
      * ⟳复核: 若本队有效弹刀再次偏离 4，先查 `interactionScale` 是否变了（引擎行为），再考虑改本期望值 | 到期 2027-03-31
      */
-    expect(chain.perfectBlockCount).toBe(4)
-    expect(chain.ink2).toBe(4)
+    /**
+     * ⚠ **2026-10-21 round 29：4 → 5**（轴态降配臂落地）。
+     *
+     * 本队现在保轴（不再弃轴），轴内交互次数经降配后重排 ⇒ 有效弹刀 +1。
+     * 判据本意（「有效弹刀 = 链内完美格挡次数、且与 ink2 同步」）不变。
+     */
+    expect(chain.perfectBlockCount).toBe(5)
+    expect(chain.ink2).toBe(5)
     // 自动 3 连：income（= 循环当量 × 60）打完轴内消耗后剩余全部打 3 连（60/次）→ 轴外凝云清零
     expect(chain.ink2Count).toBe(0)
     // 时间轴喧响轨（2026-08-31）：队友大招削减 → 玄墨暗涌闪能归零 → income 回落。
@@ -658,7 +664,13 @@ describe('仪玄 spec 机制（1371）', () => {
     // 调整不回传 po」不一致在本配置下消失）。
     // 2026-09-19 R37-J5 v2（动态合轴）：弃轴后非轴态不再降配（溢出由队友前台吸收），外层失衡 2→3 次 ⇒ 术法值/闪能收入
     // 再升一档 → 1371020 物化行 10 次，po 行同步 10（相位分裂差值仍 0）。
-    expect(po!.count).toBe(10)
+    /**
+     * ⚠ **2026-10-21 round 29：10 → 9**（轴态降配臂落地）。
+     *
+     * 注释里「弃轴后非轴态不再降配」那条前提已废——本队现在保轴，走轴态降配 ⇒
+     * 术法值/闪能收入随交互档位重排，1371020 物化行 9 次（相位分裂差值仍 0）。
+     */
+    expect(po!.count).toBe(9)
     expect(totalUlts - po!.count).toBe(0)
     expect(po!.damageMultiplier).toBe(1200)
     expect(po!.dazeMultiplier).toBe(374.055)

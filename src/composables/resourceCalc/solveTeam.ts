@@ -718,11 +718,50 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           }
         }
       }
+      /**
+       * ===== 用户裁决（2026-10-21 round 29）：**弃轴之前先试「轴态降配」** =====
+       *
+       * 用户原话：
+       * > 「合轴率上限寻常情况不能动，你说的这个**合轴到上限依旧溢出，那就截断招式**，和 1 一样。」
+       * > 「大胆试。**这个连续失衡也能解决一个队伍在两个离散失衡突变的情况**」
+       *
+       * ## 为什么不是直接保轴（前一轮失败的原因，留痕）
+       *
+       * 试过「无条件保轴」，但 `1471/1191/1481` 的净占用 207.4s（超 27.4s）撑爆
+       * —— 那个规模**截断救不回来**（截断只能砍动作次数，砍不掉「计划本身排不下」）。
+       * 试过 6 个「保轴门槛」（溢出 ≤2s / ≤2 窗 / 净占用 ≤预算+2s / +2 窗 / +1 窗 / +1窗+2s），
+       * **每个都在别处制造新断崖** —— 因为净占用是连续量、保轴是二元决策，
+       * 用连续量的固定阈值切二元决策，必然在阈值处跳变（只是把断崖搬家）。
+       *
+       * ## 正确顺序：挤压臂 → **轴态降配** → 弃轴
+       *
+       * 轴态超预算时，先像非轴那样**二分缩交互**（`interactionScale`），
+       * 缩到装得下就保轴（轴还在、只是交互次数少了）；缩到 0 仍不行才弃轴。
+       * 这样保轴不再有「阈值跳变」——它是**连续降配**的自然结果。
+       */
       if ((overBudget(r) || topUpIllegal(r.out)) && r.out.resolvedAxes.length) {
         hadAxis = true
-        const noAxis = runOuterLoop(true)
-        if (!overBudget(noAxis) && !topUpIllegal(noAxis.out)) axisFallback = true
-        r = noAxis // 可行与否都进入非轴态：不可行则走下方降配
+        /**
+         * 轴态降配搜索：与非轴降配同一个验收口径（三条相对臂），但**保留轴**。
+         * 候选 = `runOuterLoop(false, scale)`（false = 不弃轴）。
+         */
+        const axisScaleCandidates = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
+        let axisKept = false
+        for (const scale of axisScaleCandidates) {
+          const trial = runOuterLoop(false, scale)
+          if (!overBudget(trial) && !topUpIllegal(trial.out)) {
+            r = trial
+            interactionScale = scale
+            axisFallback = false
+            axisKept = true
+            break
+          }
+        }
+        if (!axisKept) {
+          const noAxis = runOuterLoop(true)
+          if (!overBudget(noAxis) && !topUpIllegal(noAxis.out)) axisFallback = true
+          r = noAxis // 可行与否都进入非轴态：不可行则走下方降配
+        }
       }
       // 非轴降配（用户口径 2026-08-30 + 2026-09-11「必须溢出才能达成目标，就不会强行往上加交互次数」）：
       // 金身/招架这类手填交互与轴厚需求本质相同——撑不下都要降配。二分找**最大可行 scale**

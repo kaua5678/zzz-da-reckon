@@ -40,11 +40,21 @@ async function run(stunValue?: number) {
 }
 describe('CC-475 后台合轴自动填充：缺口按目标次数的扣除口径算', () => {
   it('① 目标不可达 ⇒ 自动对数 == 供给上限（不再是算在当前 N 上的欠估值）', async () => {
-    const r = await run()
-    expect(r.N, '前提：裸装队靠合轴到不了 4（到 4 需 ≈70 对 > 上限）').toBeLessThan(4)
-    expect(r.supplyCap).toBeGreaterThan(0)
-    expect(r.pairs).toBe(r.supplyCap)
-  }, 60000)
+    /**
+     * ⚠ **2026-10-21 round 29：提高 Boss 失衡值来造「目标不可达」**（原写法靠裸装默认值）。
+     *
+     * 轴态降配臂落地后，该队默认配置的 `N` 从 3 升到 **4** ⇒ 「目标不可达」前提消失。
+     * 但这条用例要锁的语义（**目标不可达时自动对数老实给满 supplyCap**）仍然必要。
+     * ⇒ 显式把 `stunValue` 调高（每对能攒的失衡值变少 ⇒ 到 4 次需要更多对 > 供给上限）。
+     *
+     * 实测：默认 `stunValue` 下 N=4（可达）；调到 3× 后 N < 4（不可达）。
+     */
+    // 实测：默认 stunValue 下 N=4（可达）；调到 30000 后 N=2（不可达）
+    const hard = await run(30000)
+    expect(hard.N, '前提：调高 Boss 失衡值后目标 4 次不可达').toBeLessThan(4)
+    expect(hard.supplyCap).toBeGreaterThan(0)
+    expect(hard.pairs, '目标不可达 ⇒ 自动对数老实给满供给上限').toBe(hard.supplyCap)
+  }, 60_000)
   it('② 基线自身 ≥ 4 ⇒ 自动对数 0（保底是地板）', async () => {
     const r = await run(9000)
     expect(r.N).toBeGreaterThanOrEqual(4)

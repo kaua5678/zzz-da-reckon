@@ -331,10 +331,16 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
        * 差额 0.1s 来自「合轴抵扣与轴内节省按 max 取大不叠加」（`helpers.ts` 账本口径），不是回归。
        * ⇒ 这是**有意行为变化**：账本开始如实记录这段耗时（此前它被当成 0 静默消失）。
        */
-      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.125, 6)
+      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.4, 6)
+      /**
+       * ⚠ **2026-10-21 round 29：71.9054M → 79.2347M**（轴态降配臂落地）。
+       *
+       * 本队档位从 0.125 变 0.4（更宽松）⇒ 交互次数变多 ⇒ 时间账重排 ⇒ 伤害上升 10.2%。
+       * 判据本意（「档位可复现 + 伤害与认领值一致」）不变。
+       */
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 76.0176),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 71.9054M（2026-10-19 后台真实耗时入账后重取）`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 79.2347),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 79.2347M（2026-10-21 轴态降配后重取）`,
       ).toBeLessThan(0.01)
     }, 200_000)
 
