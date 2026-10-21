@@ -890,6 +890,12 @@ export const remielleMechanic: AgentMechanicModule = {
           slot,
           count: Math.max(0, Math.floor(perSlotAnomaly[slot] ?? 0)),
           element: teamElement(slot),
+          /**
+           * **普通耀变吃施加者的实时面板**（用户 2026-10-21 纠正）：
+           * > 「普通耀变是吃异常施加者的面板啊，不是进场记录。」
+           * `panelOf` = `damagePanels`（结算时的实时面板，含队友已上的拐）；
+           * 只有特殊虚耀用 `remielleEntryPanel`（进场快照——开局 3 个虚曜在上拐前就已存储）。
+           */
           panel: panelOf(slot),
         }))
         .filter(item => item.count > 0 && item.panel)

@@ -612,15 +612,32 @@
 
 异常事件在结算时**沿用「该异常属于谁」的那个属性**，而不是触发它的人 / 结算它的人的属性：
 
-| 异常事件 | 属性取自 | 面板取自 | 抗性 / 元素增伤按哪个属性 |
+⚠ **面板要分两个区看**（用户 2026-10-21：「你这个面板取自，面板分为基础区和结算区知道吗」）：
+
+- **基础区**（基底与乘区输入）：攻击 / 精通 / 增伤 / 元素增伤 / 穿透 / 敌人减抗 —— 决定「这一下打多疼的底子」
+- **结算区**（蕾米侧修正）：减防 / 异常增伤 / 耀变倍率 / 异化 / 易伤 / 失衡易伤 —— 决定「蕾米把这个异常放大多少」
+
+两者**可以来自不同的人**：耀变的基础区取**施加者**，结算区取**蕾米**。
+
+| 异常事件 | 属性取自 | 基础区面板 | 结算区面板 |
 |---|---|---|---|
-| **普通异常**（强击/灼烧/感电/碎冰/侵蚀/风化） | 该异常条的**施加者**（`applierSlot`）的属性 | 同施加者 | 同施加者属性 |
-| **紊乱** | **被覆盖的那个异常**的属性（`elements[i].element`） | 同该异常的施加者（`applierSlot`） | 同该属性 |
-| **异放** | 触发时刻**活跃异常**的属性（轴模式下按状态链取样；无状态回落触发者自身元素） | 同该异常来源 | 同该属性 |
-| **耀变（蕾米）** | **贡献虚曜的队友**的属性（`teamElement(队友槽)`） | 同该队友面板（进场记录面板） | 同该队友属性 |
-| **特殊虚耀（蕾米 1/4/6 命）** | **下一位队友**的属性（`nextTeammateElement`） | 蕾米进场记录面板 | 同下一位队友属性 |
-| **乱流** | 风底属性提供者（维琳娜专属资源，见 CC-D3） | 同该提供者 | 同该属性 |
-| **极性紊乱 / 颤音异放** | 按触发时刻**当前状态元素**（`dominant`） | 同该状态来源 | 同该属性 |
+| **普通异常**（强击/灼烧/感电/碎冰/侵蚀/风化） | 该异常条的**施加者**（`applierSlot`） | 同施加者 | 同施加者 |
+| **紊乱** | **被覆盖的那个异常**的属性（`elements[i].element`） | 同该异常的施加者（`applierSlot`） | 同该施加者 |
+| **异放** | 触发时刻**活跃异常**的属性（轴模式下按状态链取样；无状态回落触发者自身元素） | 同该异常来源 | 同该异常来源 |
+| **普通耀变（蕾米）** | **贡献虚曜的队友**的属性（`teamElement(队友槽)`） | **该队友的实时面板**（`panelOf(slot)` → `damagePanels`，**吃拐**） | **蕾米面板**（`remiellePanel`：异化 / 耀变倍率 / C4 / 减防 / 易伤 / 失衡易伤） |
+| **特殊虚耀（蕾米 1/4/6 命）** | **下一位队友**的属性（`nextTeammateElement`） | **蕾米进场快照**（`remielleEntryPanel` → `entrySnapshotPanels`，**不吃拐**） | **同一张进场快照**（`remiellePanel: remielleEntryPanel`） |
+| **乱流** | 风底属性提供者（维琳娜专属资源，见 CC-D3） | 同该提供者 | 同该提供者 |
+| **极性紊乱 / 颤音异放** | 按触发时刻**当前状态元素**（`dominant`） | 同该状态来源 | 同该状态来源 |
+
+**耀变的两区字段归属**（`calcVoidflareDamage` 逐行）：
+
+| 区 | 字段 | 来自 |
+|---|---|---|
+| 基础区 | `atk` / `dmgBonus` / 元素增伤 / `anomalyProficiency` | `source`（施加者） |
+| 基础区 | `penRatio` / `penFlat` / `enemyResReduction` / 元素减抗 | `source`（施加者） |
+| 结算区 | `enemyDefReduction` / `enemyAnomalyDefReduction` / 元素减防 / `enemyDefFlatReduction` | `remielle`（蕾米） |
+| 结算区 | `anomalyDmgBonus` / `remielleLuminizeMultiplierBonus` / `remielleCinema4LuminizeMultiplierBonus` / `remielleRefringeCoefficient(+BonusPct)` | `remielle`（蕾米） |
+| 结算区 | `enemyDamageTakenBonus` / 失衡易伤三通道 | `remielle`（蕾米） |
 
 ### 为什么抗性必须跟着继承
 
@@ -634,6 +651,20 @@ elementResReduction= panelElementStat(source, 'enemyRes', element)  // 元素减
 
 ⇒ 火属性角色贡献的虚曜，在**火弱 boss** 处伤害更高；在火抗 boss 处更低。
 这是「继承」的实质，不是文案。
+
+### 两种虚耀的「吃不吃拐」不同（2026-10-21 用户纠正）
+
+> 「进场记录面板啥意思，不吃拐吗。特殊虚耀确实不吃，因为在你上拐之前就已经存储 3 个了。
+>   普通耀变是吃异常施加者的面板啊，不是进场记录。」
+
+**代码事实**（`remielle.ts#extraAnomalyRows`）：
+
+| | 面板来源 | 吃拐？ | 为什么 |
+|---|---|---|---|
+| 普通耀变 | `sourcePanel: item.panel` = `panelOf(队友槽)` → `damagePanels` | **吃** | 虚曜在结算那一刻用**施加者当前的面板**（含队友已上的拐） |
+| 特殊虚耀 | `sourcePanel: remielleEntryPanel` → `entrySnapshotPanels` | **不吃** | 开局 3 个虚曜点在**上拐之前**就已存储，彼时面板尚未被队友 buff 提升 |
+
+⚠ 此前本文把两种都写成「进场记录面板」，是**错的**——普通耀变吃施加者实时面板。
 
 ### 与流明的关系（同日裁决）
 
