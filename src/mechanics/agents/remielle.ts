@@ -863,7 +863,7 @@ export const remielleMechanic: AgentMechanicModule = {
    * 保持块体逐字（派发循环里本模块只被自己那槽调用 ⇒ `remielleSlot >= 0` 恒真，别名等价）。
    */
   extraAnomalyRows: ({
-    slot, panel, entryPanel, skills, panelOf, teamElement,
+    slot, panel, entryPanel, skills, panelOf, teamElement, nextTeammateElement,
     enemy, enemyDamageRes, stunCoverage, anomalyPool, teamAgentId, agentName, elementLabel, charResult,
   }: ExtraAnomalyRowsInput): ExtraAnomalyRowGroup[] => {
     const rows: DamagePoolRow[] = []
@@ -1059,7 +1059,16 @@ export const remielleMechanic: AgentMechanicModule = {
             sourcePanel: remielleEntryPanel,
             remiellePanel: remielleEntryPanel,
             multiplier: specialMultiplier,
-            element: 'lumiflux',
+            /**
+             * 特殊虚耀的**属性跟随下一位队友**（用户 2026-10-21）：
+             * > 「开局的特殊虚耀实现上是跟随属性流变的，即蕾米的属性转变为下一位角色比如火，
+             * >   这个特殊虚耀吃自己的属性也就是火。所以硬编码流明可以删了」
+             *
+             * 修前写死 'lumiflux' ⇒ 引擎里凭空多出一个「流明属性伤害」，
+             * 进而需要并不存在的「流明抗性 / 流明弱点」配套。
+             * 流明没有积蓄、不会形成异常主人，全游戏也没有按流明结算的伤害。
+             */
+            element: nextTeammateElement?.(remielleSlot) ?? teamElement(remielleSlot),
             enemyDefense: enemy.defense,
             enemyResistances: enemyDamageRes,
             stunMultiplier: enemy.stunVuln,
@@ -1073,7 +1082,7 @@ export const remielleMechanic: AgentMechanicModule = {
             agentName: agentName(teamAgentId(remielleSlot), remielleSlot),
             type: '特殊虚耀',
             name: '普通攻击垂虹·特殊虚耀',
-            element: 'lumiflux',
+            element: nextTeammateElement?.(remielleSlot) ?? teamElement(remielleSlot),
             source: '蕾米进场记录面板 × 2.5 特殊独立乘区',
             count: specialCount,
             perDamage: result.damage,

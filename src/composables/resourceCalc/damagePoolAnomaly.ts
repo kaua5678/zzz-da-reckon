@@ -285,6 +285,19 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         skills: catalogStore.agentSkillsByAgentMap.get(configStore.team[slot]?.agentId ?? ''),
         panelOf: (s) => panelAt(damagePanels, s),
         teamElement: (s) => catalogStore.agentsMap.get(configStore.team[s]?.agentId ?? '')?.damageElement ?? 'physical',
+        /**
+         * 下一位队友的属性（用户 2026-10-21）：沿槽位顺序环形查找第一个有角色的槽。
+         * 全队只有自己 ⇒ 回落到自己的元素。
+         */
+        nextTeammateElement: (s) => {
+          const team = configStore.team
+          for (let i = 1; i <= team.length; i++) {
+            const idx = (s + i) % team.length
+            const agentId = team[idx]?.agentId
+            if (agentId) return catalogStore.agentsMap.get(agentId)?.damageElement ?? 'physical'
+          }
+          return catalogStore.agentsMap.get(team[s]?.agentId ?? '')?.damageElement ?? 'physical'
+        },
         getTeamMechanicSetting: (k, d) => configStore.getTeamMechanicSetting(k, d),
         elementLabel,
         directDamage: (row) => calcPoolDirectDamage(poolEnv, row),

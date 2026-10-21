@@ -30,6 +30,7 @@ import {
 } from '@/core/contributionLedger'
 import { STAT_META, type FormulaZone } from '@/utils/statMeta'
 import { getPanelStat } from '@/utils/panelStat'
+import { isDamageFormulaStat } from '@/core/damageFormulaFields'
 
 /**
  * 面板上实际存在的 stat 键（`Object.keys` 是 `panelStat.ts` 头注释点名的合法键来源之一）。
@@ -534,7 +535,9 @@ export function buildAttributeLedger(
     && !k.endsWith('__base')
     && !/^(outOfCombat|inCombat)[A-Z]/.test(k)
     && !NON_STAT_FIELDS.has(k)
-    && KNOWN_STAT_KEYS.has(k),
+    && KNOWN_STAT_KEYS.has(k)
+    // **只展示伤害公式真正用到的值**（用户 2026-10-21：「不要把什么能量上限这种水货放这」）
+    && isDamageFormulaStat(k),
   )
   const knownKeys = new Set(CORE_STAT_FORMULAS.map(f => f.key))
   const extraFormulas = ledgerStatKeys

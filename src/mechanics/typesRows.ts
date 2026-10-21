@@ -187,6 +187,20 @@ export interface ExtraAnomalyRowsInput {
   panelOf: (slot: number) => PanelValues | undefined
   /** = (s) => catalogStore.agentsMap.get(configStore.team[s]?.agentId ?? '')?.damageElement ?? 'physical' */
   teamElement: (slot: number) => string
+  /**
+   * **下一位队友的属性**（用户 2026-10-21 口径）：
+   * > 「蕾米本身的招式倍率也是走的下一位队友的属性，可以享有其属性弱点」
+   * > 「开局的特殊虚耀实现上是跟随属性流变的，即蕾米的属性转变为下一位角色比如火，
+   * >   这个特殊虚耀吃自己的属性也就是火」
+   *
+   * 取值规则 = 队伍**槽位顺序**上从 `slot` 往后找第一个有角色的槽（环形回绕），返回其 `damageElement`。
+   * 全队只有自己时回落到自己的元素。
+   *
+   * 为什么需要它：蕾米埃尔（1581）的 catalog `attribute`/`damageElement` 都是 `lumiflux`，
+   * 但**流明没有积蓄、不会形成异常主人**，游戏里她的伤害实际按「下一位队友的属性」结算
+   * ⇒ 引擎若直接用 `teamElement(自己)` 会得到 `lumiflux`，从而错误地引入「流明抗性/流明伤害」这套并不存在的东西。
+   */
+  nextTeammateElement?: (slot: number) => string
   /** = (k, d) => configStore.getTeamMechanicSetting(k, d) */
   getTeamMechanicSetting: (key: string, dflt: number) => number
   /** = elementLabel（单一来源 utils/agentLabelMaps#damageElementLabel，经 helpers 转出；闭包注入以绕开判据 19） */

@@ -152,7 +152,8 @@ describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
       sourcePanel: entryPanel,
       remiellePanel: entryPanel,
       multiplier: m,
-      element: 'lumiflux',
+      // 与引擎同口径：特殊虚耀跟随下一位队友的属性（夹具 teamElement = 'electric'）
+      element: 'electric',
       enemyDefense: config.enemy.defense,
       enemyResistances: (config.enemy as any).damageResistances ?? (config.enemy as any).resistances ?? {},
       stunMultiplier: config.enemy.stunVuln,
@@ -254,7 +255,7 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
     }))
     expect(groups).toHaveLength(1)
     expect(groups[0].rows.map(r => r.id)).toEqual(['remielle-special-voidflare'])
-    expect(groups[0].rows[0]).toMatchObject({ count: 3, element: 'lumiflux' })
+    expect(groups[0].rows[0]).toMatchObject({ count: 3, element: 'electric' })
     expect(groups[0].rows[0].totalDamage).toBeGreaterThan(0)
     // 展示侧事件记录同口径：虚耀池类记录 count=0 被滤掉，只剩特殊虚耀
     const records = remielleMechanic.anomalyEventRecords!({
@@ -319,7 +320,9 @@ describe('CC-19c-2：蕾米埃尔 extraAnomalyRows（耀变 / 特殊虚耀逐字
     expect(special, 'C1 特殊虚耀行缺失').toBeTruthy()
     expect(special).toMatchObject({
       slot: 0, agentId: '1581', type: '特殊虚耀',
-      name: '普通攻击垂虹·特殊虚耀', element: 'lumiflux',
+      // 2026-10-21 用户口径：特殊虚耀属性跟随下一位队友（流明无积蓄、不会形成异常主人，
+      // 全游戏没有按流明结算的伤害）⇒ 不再是 'lumiflux'，夹具 teamElement 返回 'electric'
+      name: '普通攻击垂虹·特殊虚耀', element: 'electric',
       source: '蕾米进场记录面板 × 2.5 特殊独立乘区', count: 3,
     })
   })
