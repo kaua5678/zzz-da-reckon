@@ -60,6 +60,93 @@ export function stunWindowFraction(stunCount: number, windowDuration: number, ef
   return Math.max(0, Math.min(1, Math.max(0, stunCount * windowDuration - lostSeconds) / effectiveTime))
 }
 
+/**
+ * **失衡窗口的「装不装得下」分解**（2026-10-21 round 27，用户口径）。
+ *
+ * 用户原话（逐字）：
+ * > 「**真正难做的就是最后一次达到失衡量但是不完整怎么算，那个不等式的关系**」
+ *
+ * ## 病灶：`stunWindowFraction` 的 `min(1, ·)` 把「装不下」抹成「刚好装满」
+ *
+ * ```
+ * K=10:  10 × 18s = 180s = effTime  ⇒ 10 × 18 / 180 = 1.000  ⇒ cov = 1.0  ✅ 真装满
+ * K=11:  11 × 18s = 198s > effTime  ⇒ 11 × 18 / 180 = 1.100  ⇒ min(1, ·) = 1.0  ❌
+ * ```
+ * 两者都报 1.0，但 **K=11 的第 11 窗物理上只能分到 0 秒**（180 − 10×18 = 0）。
+ * 这个 `min` 让「多打一次但打不完」和「刚好打满」在数值上无法区分 —— 正是用户说的不等式关系。
+ *
+ * ## 分解口径
+ *
+ * 把 `K` 个窗口按顺序排到 `effTime` 上：
+ * ```
+ * 前 n = floor(min(effTime, K×W) / W) 窗：每窗 W 秒，全额
+ * 第 n+1 窗（若 K > n）：只能分到 room = effTime − n × W 秒
+ *   · 0 < room < W ⇒ 残疾窗，完成率 = room / W
+ *   · room = 0     ⇒ 残疾窗，完成率 0（开了窗但一秒都没有）
+ * ```
+ * ⇒ 有效易伤秒数 = `n × W + room`，**恰好等于 `min(effTime, K × W)`** ——
+ *    所以本分解与 `stunWindowFraction` 的**覆盖率数值完全一致**（都是 `min(1, K×W/effTime)`），
+ *    它多出来的信息只是「那不足的一窗占多少比例」。
+ *
+ * ⚠ 这不是新口径，是**把既有 clamp 抹掉的信息还原出来**：覆盖率不变，只是能回答
+ * 「最后一窗完整吗、完成率多少」。故对 `timeGolden` **零 delta**（有测试锁）。
+ */
+export interface StunWindowDecomposition {
+  /** 完整窗数（每窗全额 W 秒） */
+  fullWindows: number
+  /** 是否有残疾窗（第 fullWindows+1 窗，装不下但已开启） */
+  hasPartial: boolean
+  /** 残疾窗完成率 ∈ [0,1)；hasPartial=false 时为 0 */
+  partialFraction: number
+  /** 残疾窗实际可用秒数 */
+  partialSeconds: number
+  /** 有效易伤秒数 = fullWindows × W + partialSeconds（与 stunWindowFraction 同源） */
+  effectiveSeconds: number
+}
+
+export function decomposeStunWindows(
+  stunCount: number,
+  windowDuration: number,
+  effectiveTime: number,
+  lostSeconds = 0,
+): StunWindowDecomposition {
+  const empty: StunWindowDecomposition = {
+    fullWindows: 0, hasPartial: false, partialFraction: 0, partialSeconds: 0, effectiveSeconds: 0,
+  }
+  if (!(effectiveTime > 0) || !(stunCount > 0) || !(windowDuration > 0)) return empty
+  const K = Math.max(0, stunCount)
+  /**
+   * ⚠ **必须在 `min(effTime, K×W)` 之前用 K 判断**（第一版写错，留痕）：
+   * 先 `min` 再算余数 ⇒ `min(180, 11×18=198) = 180`、`180 − 10×18 = 0` ⇒ 余数恒 0
+   * ⇒ K=11 与 K=10 无法区分（实测 `partial=false`，正是要解决的问题）。
+   * 判据要在**原始需求**上做：K 个窗口需要 `K × W` 秒，而只有 `effTime` 秒。
+   */
+  const demanded = K * windowDuration
+  const usable = Math.max(0, effectiveTime - lostSeconds)
+  /** 完整窗数 = 能全额放下的窗口数（≤ K，且 ≤ 时间容得下的） */
+  const full = Math.max(0, Math.min(Math.floor(K + 1e-9), Math.floor(usable / windowDuration + 1e-9)))
+  /** 第 `full+1` 窗（若 K 要求它）能分到的秒数 */
+  const room = Math.max(0, usable - full * windowDuration)
+  /**
+   * `room = 0` 也算残疾窗（2026-10-21 实测补充）：
+   * `effTime/W` 整除时（如 180/18 = 10）第 11 窗分到 **0 秒** —— 它确实开启了（池攒够了），
+   * 但一秒都打不了。这正是用户说的「时间不够 18s，招式打不完」的极端形态，**完成率 0%**。
+   * 旧写法要求 `room > 1e-9` ⇒ 把它判成「没有残疾段」= 把「打不了」说成「不存在」。
+   */
+  const hasPartial = K > full + 1e-9
+  /** 有效易伤秒数：与 `min(effTime, K×W) − lost` 同源（覆盖率的分子，逐位一致） */
+  const effectiveSeconds = Math.max(0, Math.min(usable, demanded))
+  return {
+    fullWindows: full,
+    hasPartial,
+    partialFraction: hasPartial ? Math.min(1, room / windowDuration) : 0,
+    partialSeconds: hasPartial ? room : 0,
+    effectiveSeconds,
+  }
+}
+
+
+
 /** 有效后台时间（秒）= 后台时间 − boss 无敌时间（下限 0）。后台自动招式按 CD 折算用这个。 */
 export function effectiveBackstageTime(backstageTime: number, cfg: InvincibleBasis): number {
   return minusInvincibleTime(backstageTime, cfg)
