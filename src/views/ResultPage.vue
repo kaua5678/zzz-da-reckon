@@ -318,7 +318,7 @@
           :agent-name="agentNames[charResult.agentId] || charResult.agentId"
           :specialty="getSpecialty(charResult.agentId)"
           :stun-pool-result="stunPoolResult"
-:stun-locked="stunLocked"
+          :stun-discrete-label="stunDiscreteLabel"
           :anomaly-pool-result="anomalyPoolResult"
           :liuyin-hug="liuyinHugSplit"
           :agent-names="agentNames"
@@ -831,6 +831,7 @@ import {
 } from 'naive-ui'
 import { PeopleOutline } from '@vicons/ionicons5'
 import { useConfigStore } from '@/stores/config'
+import { useStunDiscreteDisplay } from '@/composables/stunDiscreteDisplay'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { fmt } from '@/utils/format'
@@ -861,8 +862,11 @@ function unitPriceText(unit: number): string {
 
 const configStore = useConfigStore()
 
-/** 锁定失衡次数时不显示残疾失衡段（多攒的进度不兑现成下次） */
-const stunLocked = computed(() => configStore.enemy.stunCountLock >= 0)
+/** 残疾失衡文案（逻辑在 composables/stunDiscreteDisplay.ts；展示层不 import @/core） */
+const stunDiscreteLabel = useStunDiscreteDisplay(
+  () => stunPoolResult.value,
+  () => configStore.enemy.stunCountLock >= 0,
+).value?.label ?? null
 const catalogStore = useCatalogStore()
 const calc = useResourceCalc()
 const {

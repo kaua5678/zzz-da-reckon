@@ -155,7 +155,7 @@
             :agent-name="agentNames[c.agentId] || c.agentName || c.agentId"
             :specialty="getSpecialty(c.agentId)"
             :stun-pool-result="stunPoolResult"
-:stun-locked="archiveStunLocked"
+          :stun-discrete-label="archiveStunDiscreteLabel"
             :anomaly-pool-result="anomalyPoolResult"
             :total-time="resourceResult.totalTime"
           />
@@ -172,6 +172,7 @@
 import { computed, h, onMounted, ref } from 'vue'
 import { NCard, NSelect, NDataTable, NTag, NButton, NSpace, NDivider, NAlert } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
+import { useStunDiscreteDisplay } from '@/composables/stunDiscreteDisplay'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { submissionToDeploy, type ArchiveRun, type RunArchiveFile } from '@/composables/runArchiveImport'
@@ -196,8 +197,11 @@ import {
 
 const configStore = useConfigStore()
 
-/** 锁定失衡次数时不显示残疾失衡段（多攒的进度不兑现成下次） */
-const archiveStunLocked = computed(() => configStore.enemy.stunCountLock >= 0)
+/** 残疾失衡文案（逻辑在 composables/stunDiscreteDisplay.ts；展示层不 import @/core） */
+const archiveStunDiscreteLabel = useStunDiscreteDisplay(
+  () => stunPoolResult.value,
+  () => configStore.enemy.stunCountLock >= 0,
+).value?.label ?? null
 const catalogStore = useCatalogStore()
 const { teamTotalDamage, resourceResult, stunPoolResult, anomalyPoolResult, agentNames } = useResourceCalc()
 

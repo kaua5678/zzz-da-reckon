@@ -337,7 +337,6 @@ import { computed, h } from 'vue'
 import { NCard, NTag, NDataTable, type TagProps, type DataTableColumns } from 'naive-ui'
 import type { CharacterResourceResult, StunPoolResult, AnomalyPoolResult, SkillExecution, AnomalyEventExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
-import { continuousStunCount } from '@/core/stunPool'
 import { buildActionOperationRows, buildTimeChartRows } from '@/composables/resourceCard/actionOperationRows'
 import { damageElementLabel as elementLabel, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import { agentResourceSections, agentResultCardCorrosion, crossAgentEnergyLabels } from '@/composables/agentMechanicView'
@@ -352,10 +351,11 @@ const props = defineProps<{
   /** 队伍失衡池结果（团队级，用于提取本角色的贡献和团队失衡次数） */
   stunPoolResult?: StunPoolResult | null
   /**
-   * 是否锁定失衡次数（`enemy.stunCountLock >= 0`）。
-   * 锁 K = 用户明确要打 K 次 ⇒ **不显示残疾失衡段**（多攒的进度不兑现成「下次」）。
+   * **残疾失衡文案**（「已完成 N 失衡 + 1 次残疾失衡（完成率 xx%）」；无残疾段 = null）。
+   * 由调用方经 `useStunDiscreteDisplay` 算好传入——展示层不得直接 import `@/core`
+   * （exhibition-layer ratchet）。
    */
-  stunLocked?: boolean
+  stunDiscreteLabel?: string | null
   /** 队伍积蓄池结果（团队级，用于提取本角色的贡献和团队触发次数） */
   anomalyPoolResult?: AnomalyPoolResult | null
   /** 琉音好评转大收敛拆分（结果页注入；归档页缺省 → 60/90 行隐藏。纯展示载荷） */
@@ -470,44 +470,16 @@ const stunTotal = computed(() => props.stunPoolResult?.perSlotStun[props.result.
 const stunCount = computed(() => props.stunPoolResult?.stunCount ?? 0)
 
 /**
- * **连续失衡的「残疾失衡」表达**（2026-10-21 round 25，用户口径）。
+ * **连续失衡的「残疾失衡」文案**（2026-10-21 round 25）。
  *
- * 用户原话：
- * > 「之前显示类似已完成完整 4 失衡的地方，如果遇到连续失衡，可以显示
- * >  **已完成 3 失衡 + 1 次残疾失衡，残疾失衡完成率 xx%**」
+ * 逻辑住编排层（`composables/stunDiscreteDisplay.ts`）——展示层（views/components）
+ * **不得直接 import `@/core`**（exhibition-layer ratchet）。调用方算好 `stunDiscreteLabel`
+ * 传进来，本组件只负责渲染。
  *
- * ## 语义（已实测确认，与伤害无关）
- *
- * 池的连续读数 `cont = continuousStunCount(pool)` 里：
- * - **完整失衡** = `floor(cont)` ——这些窗口真的开启了，**吃易伤**（覆盖率 = floor × W）；
- * - **残疾失衡** = 小数部分 ——第 N+1 次**攒了 xx% 但没攒满**，**没开启 ⇒ 不吃易伤**
- *   （用户口径「积攒 100% 失衡值前都没失衡易伤」）。
- *
- * ⇒ 所以这是**纯读数**：它不参与覆盖率、不参与伤害、不回灌任何迭代。
- * 显示它 = 如实告诉用户「你还差 xx% 就能多打一次失衡」，不是美化。
- *
- * ⚠ **不是**「倒计时被战斗时间截断」——那种状态在本引擎**物理上不可达**
- * （窗口内不攒条 ⇒ 负反馈 ⇒ 平衡点恒满足 `K × W ≪ effTime`；实测全库 0 队
- * `cont > floor(effTime/W)`，见 `docs/STUN_CONTINUOUS_LASTWINDOW.md` §42）。
- *
- * ⚠ 锁定失衡次数（`stunCountLock >= 0`）时不显示：锁 K = 用户明确要打 K 次，
- * 池里多攒的进度不兑现成「下次」，显示它会误导。
+ * 语义速览：完整 = `floor(continuous)`（吃易伤）；残疾 = 小数部分（**没攒满 ⇒ 不吃易伤**，
+ * 纯读数）。详见那个模块的头注释。
  */
-const stunContinuous = computed(() => {
-  const sp = props.stunPoolResult
-  if (!sp || props.stunLocked === true) return null
-  const c = continuousStunCount(sp)
-  const full = Math.floor(c + 1e-9)
-  const frac = Math.max(0, Math.min(1, c - full))
-  return { continuous: c, full, frac }
-})
-
-/** 残疾失衡的完成率文案（无小数 ⇒ null，不显示） */
-const stunFracLabel = computed(() => {
-  const s = stunContinuous.value
-  if (!s || s.frac <= 1e-9) return null
-  return `已完成 ${s.full} 失衡 + 1 次残疾失衡（完成率 ${(s.frac * 100).toFixed(1)}%）`
-})
+const stunFracLabel = computed(() => props.stunDiscreteLabel ?? null)
 
 /** 全队总失衡值 */
 const stunPoolTotal = computed(() => props.stunPoolResult?.totalStunBuildUp ?? 0)
