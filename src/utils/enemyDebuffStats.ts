@@ -2,15 +2,27 @@ import type { DamageElement } from '@/types/catalog'
 
 export type EnemyDebuffKind = 'def' | 'res' | 'stunRes' | 'anomalyRes'
 
-export const DAMAGE_ELEMENTS = ['physical', 'fire', 'ice', 'electric', 'ether', 'wind', 'lumiflux'] as const
-export const STANDARD_ENEMY_DEBUFF_ELEMENTS = ['physical', 'fire', 'ice', 'electric', 'ether', 'wind'] as const
-/** 敌人抗性 / 减抗认的标准 6 元素 */
+/**
+ * 伤害元素全集（**不含 lumiflux**）。
+ *
+ * 2026-10-21 用户裁决全删：
+ * > 「流明本身也没有积蓄，因此不会形成异常主人……全游戏没有流明属性进行攻击计算」
+ * 官方设定流明是高级属性：流明角色（蕾米埃尔）的伤害跟随**下一位队友的属性**，
+ * 耀变沿用**原主人的属性** ⇒ 引擎里不存在按流明结算的伤害，也就不需要流明抗性/弱点/增伤。
+ *
+ * 修前这里有 lumiflux，而 STANDARD_ENEMY_DEBUFF_ELEMENTS 又只有 6 个
+ * ⇒ 同一份「元素清单」写了两遍且不一致（典型的两处实现漂移）。现合并为一份。
+ */
+export const DAMAGE_ELEMENTS = ['physical', 'fire', 'ice', 'electric', 'ether', 'wind'] as const
+/** 敌人抗性 / 减抗认的标准元素（与 DAMAGE_ELEMENTS 同源，保留名字供既有调用点） */
+export const STANDARD_ENEMY_DEBUFF_ELEMENTS = DAMAGE_ELEMENTS
+/** 敌人抗性 / 减抗认的标准元素 */
 export type StandardEnemyDebuffElement = typeof STANDARD_ENEMY_DEBUFF_ELEMENTS[number]
 /**
  * 敌人抗性表（伤害 / 失衡 / 积蓄三张同形）：标准 6 元素各一项，缺键是类型错误（r756 CC-539）。
  * 表只从这几处来：store 默认表、Boss 预设相位（validate:data 的 JSON 契约按本类型校验 boss-presets.json）、
  * 属性页与影响变量的单元素写入——所以按 6 元素读表不写兜底。
- * 引擎读表的入参仍是 `Record<string, number>`、缺键按 0：引擎按执行行 / 异常的元素取键，键可能不在这 6 个里（r756 探针：lumiflux；失衡 / 紊乱 / 乱流三个读点各有没归到基础元素的变种，如 frostfire、ether_ink）。
+ * 引擎读表的入参仍是 `Record<string, number>`、缺键按 0：引擎按执行行 / 异常的元素取键，键可能不在这 6 个里（失衡 / 紊乱 / 乱流三个读点各有没归到基础元素的变种，如 frostfire、ether_ink）。
  */
 export type ResistanceTable = Record<StandardEnemyDebuffElement, number>
 
@@ -21,7 +33,6 @@ export const ELEMENT_FIELD_PREFIX: Record<string, string> = {
   electric: 'Electric',
   ether: 'Ether',
   wind: 'Wind',
-  lumiflux: 'Lumiflux',
 }
 
 export const ELEMENT_LABEL: Record<string, string> = {
@@ -31,7 +42,6 @@ export const ELEMENT_LABEL: Record<string, string> = {
   electric: '电属性',
   ether: '以太',
   wind: '风属性',
-  lumiflux: '辉光/耀变',
 }
 
 export const ENEMY_DEBUFF_KIND_CONFIG: Record<EnemyDebuffKind, {
@@ -101,13 +111,13 @@ export function normalizeEnemyDebuffStatAlias(stat: string): string {
   if (stat === 'enemyStunResIgnore') return 'enemyStunResReduction'
   if (stat === 'enemyAnomalyResIgnore') return 'enemyAnomalyResReduction'
 
-  const oldElementFirst = stat.match(/^(physical|fire|ice|electric|ether|wind|lumiflux)(Def|Res|StunRes|AnomalyRes)Ignore$/)
+  const oldElementFirst = stat.match(/^(physical|fire|ice|electric|ether|wind)(Def|Res|StunRes|AnomalyRes)Ignore$/)
   if (oldElementFirst) {
     const suffix = `${oldElementFirst[2]}Ignore`
     return enemyDebuffStatId(IGNORE_SUFFIX_TO_KIND[suffix], oldElementFirst[1])
   }
 
-  const oldEnemyPrefix = stat.match(/^enemy(Physical|Fire|Ice|Electric|Ether|Wind|Lumiflux)(Def|Res|StunRes|AnomalyRes)Ignore$/)
+  const oldEnemyPrefix = stat.match(/^enemy(Physical|Fire|Ice|Electric|Ether|Wind)(Def|Res|StunRes|AnomalyRes)Ignore$/)
   if (oldEnemyPrefix) {
     const element = PREFIX_TO_ELEMENT[oldEnemyPrefix[1]]
     const suffix = `${oldEnemyPrefix[2]}Ignore`

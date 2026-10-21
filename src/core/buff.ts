@@ -34,7 +34,6 @@ const TARGETABLE_STATS = new Set([
   'electricDmg',
   'etherDmg',
   'windDmg',
-  'lumifluxDmg',
   'penDmgBonus',
   'sheerDmgBonus',
   'physicalSheerDmg',
@@ -43,14 +42,12 @@ const TARGETABLE_STATS = new Set([
   'electricSheerDmg',
   'etherSheerDmg',
   'windSheerDmg',
-  'lumifluxSheerDmg',
   'physicalCritDmg',
   'fireCritDmg',
   'iceCritDmg',
   'electricCritDmg',
   'etherCritDmg',
   'windCritDmg',
-  'lumifluxCritDmg',
   'sharpDmgBonus',
   'physicalSharpDmg',
   'fireSharpDmg',
@@ -58,7 +55,6 @@ const TARGETABLE_STATS = new Set([
   'electricSharpDmg',
   'etherSharpDmg',
   'windSharpDmg',
-  'lumifluxSharpDmg',
   ...GENERATED_ENEMY_DEBUFF_STAT_IDS,
   ...LEGACY_ENEMY_DEBUFF_STAT_IDS,
 ])
@@ -861,7 +857,6 @@ export function applyStat(panel: PanelValues, stat: StatId, value: number, mode:
     case 'electricDmg': panel.electricDmg += value; break
     case 'etherDmg': panel.etherDmg += value; break
     case 'windDmg': panel.windDmg += value; break
-    case 'lumifluxDmg': panel.lumifluxDmg += value; break
     case 'penDmgBonus': panel.penDmgBonus += value; break
     case 'sheerForceFlat': panel.sheerForceFlat += value; break
     case 'sheerDmgBonus': panel.sheerDmgBonus += value; break
@@ -896,7 +891,6 @@ export function applyStat(panel: PanelValues, stat: StatId, value: number, mode:
     case 'enemyDefReduction': panel.enemyDefReduction += value; break
     case 'enemyDefFlatReduction': panel.enemyDefFlatReduction += value; break
     case 'enemyAnomalyDefReduction': panel.enemyAnomalyDefReduction += value; break
-    case 'enemyLumifluxResReduction': panel.enemyLumifluxResReduction += value; break
     case 'enemyPhysicalDefReduction': panel.enemyPhysicalDefReduction += value; break
     case 'enemyFireDefReduction': panel.enemyFireDefReduction += value; break
     case 'enemyIceDefReduction': panel.enemyIceDefReduction += value; break

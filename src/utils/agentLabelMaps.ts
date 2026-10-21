@@ -41,7 +41,8 @@ export const DAMAGE_ELEMENT_LABEL: Record<string, string> = {
   electric: '电',
   ether: '以太',
   wind: '风',
-  lumiflux: '辉光',
+  // 2026-10-21：删除 lumiflux（流明不是伤害元素，全游戏无按流明结算的伤害）。
+  // 注意 ATTRIBUTE_LABEL（角色属性域）**仍保留** lumiflux: '流明' —— 蕾米的面板要显示她的属性。
   physical_polar_assault: '极性强击',  // 爱丽丝物理变种
   ether_ink: '玄墨',                  // 仪玄以太变种（独立积蓄槽）
   frostfire: '烈霜',                  // 雅独立元素

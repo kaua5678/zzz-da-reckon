@@ -31,7 +31,8 @@ describe('enemyDebuffStatId（生成规则）', () => {
 
   it('元素 → enemy{Prefix}{Suffix}', () => {
     expect(enemyDebuffStatId('def', 'fire')).toBe('enemyFireDefReduction')
-    expect(enemyDebuffStatId('stunRes', 'lumiflux')).toBe('enemyLumifluxStunResReduction')
+    // lumiflux 已从元素清单删除（2026-10-21）：它不再是合法元素，会走「未知元素」回落
+    expect(enemyDebuffStatId('stunRes', 'fire')).toBe('enemyFireStunResReduction')
     expect(enemyDebuffStatId('anomalyRes', 'electric')).toBe('enemyElectricAnomalyResReduction')
   })
 
@@ -60,7 +61,8 @@ describe('normalizeEnemyDebuffStatAlias（三形态 legacy → 现名）', () =>
     expect(normalizeEnemyDebuffStatAlias('fireDefIgnore')).toBe('enemyFireDefReduction')
     expect(normalizeEnemyDebuffStatAlias('physicalResIgnore')).toBe('enemyPhysicalResReduction')
     expect(normalizeEnemyDebuffStatAlias('windStunResIgnore')).toBe('enemyWindStunResReduction')
-    expect(normalizeEnemyDebuffStatAlias('lumifluxAnomalyResIgnore')).toBe('enemyLumifluxAnomalyResReduction')
+    // 流明元素已删：legacy 别名不再映射到 enemyLumiflux*，按未知前缀原样穿过
+    expect(normalizeEnemyDebuffStatAlias('lumifluxAnomalyResIgnore')).toBe('lumifluxAnomalyResIgnore')
   })
 
   it('旧形态 B：enemy+元素 Ignore → Reduction', () => {
@@ -83,8 +85,9 @@ describe('normalizeEnemyDebuffStatAlias（三形态 legacy → 现名）', () =>
 })
 
 describe('两套 id 清单的结构性不变量', () => {
-  it('GENERATED = 4 基础 + 7 元素 × 4 类 = 32 条，且每个都能被自身生成函数命中', () => {
-    expect(GENERATED_ENEMY_DEBUFF_STAT_IDS).toHaveLength(4 + 7 * 4)
+  it('GENERATED = 4 基础 + 元素数 × 4 类，且每个都能被自身生成函数命中', () => {
+    // 元素数从 DAMAGE_ELEMENTS 推导（不再写死 7）——2026-10-21 删 lumiflux 后为 6
+    expect(GENERATED_ENEMY_DEBUFF_STAT_IDS).toHaveLength(4 + DAMAGE_ELEMENTS.length * 4)
     for (const kind of KINDS) {
       expect(GENERATED_ENEMY_DEBUFF_STAT_IDS).toContain(ENEMY_DEBUFF_KIND_CONFIG[kind].baseStat)
       for (const el of DAMAGE_ELEMENTS) {
@@ -98,9 +101,16 @@ describe('两套 id 清单的结构性不变量', () => {
     expect(GENERATED_ENEMY_DEBUFF_STAT_IDS.filter(id => legacy.has(id))).toEqual([])
   })
 
-  it('STANDARD 元素表 = DAMAGE 去掉 lumiflux（辉光暂无敌方削弱数据，口径见原注释）', () => {
-    expect(STANDARD_ENEMY_DEBUFF_ELEMENTS).toEqual(
-      DAMAGE_ELEMENTS.filter(e => e !== 'lumiflux'),
-    )
+  /**
+   * 2026-10-21 用户裁决全删 lumiflux 后，两份清单**合并为一份**：
+   * > 「流明本身也没有积蓄，因此不会形成异常主人……全游戏没有流明属性进行攻击计算」
+   *
+   * 修前 DAMAGE_ELEMENTS 有 7 个（含 lumiflux）、STANDARD 只有 6 个，靠这条用例维持
+   * 「STANDARD = DAMAGE 去掉 lumiflux」。现在两者同源，本条改为钉住**同源**这件事，
+   * 防止将来又分叉成两份。
+   */
+  it('STANDARD 与 DAMAGE 同源（同一份元素清单，不得再分叉）', () => {
+    expect(STANDARD_ENEMY_DEBUFF_ELEMENTS).toBe(DAMAGE_ELEMENTS)
+    expect(DAMAGE_ELEMENTS).not.toContain('lumiflux')
   })
 })

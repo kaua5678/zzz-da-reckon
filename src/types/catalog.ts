@@ -12,7 +12,16 @@ export interface LocalizedString {
 export type Rarity = 'S' | 'A' | 'B'
 export type Specialty = 'attack' | 'stun' | 'anomaly' | 'support' | 'defense' | 'rupture' | 'sharpen'
 export type Attribute = string
-export type DamageElement = 'physical' | 'fire' | 'ice' | 'electric' | 'ether' | 'wind' | 'lumiflux'
+/**
+ * 伤害元素。
+ *
+ * ⚠ **没有 `lumiflux`**（2026-10-21 用户裁决，全删）：
+ * > 「流明本身也没有积蓄，因此不会形成异常主人……全游戏没有流明属性进行攻击计算」
+ * 官方设定流明是高级属性，与常规属性不同：流明角色（蕾米埃尔）的伤害实际跟随**下一位队友的属性**
+ * （见 `ExtraAnomalyRowsInput.nextTeammateElement`），其耀变则沿用**原主人的属性**。
+ * ⇒ 引擎里不存在「按流明结算的伤害」，也就不需要流明抗性/弱点/增伤这一整套。
+ */
+export type DamageElement = 'physical' | 'fire' | 'ice' | 'electric' | 'ether' | 'wind'
 export type StatId = string
 export type BuffScope = 'outOfCombat' | 'inCombat'
 export type EffectType = 'fixed' | 'derived' | 'stacked' | 'formula'
@@ -67,7 +76,6 @@ export interface PanelValues {
   electricDmg: number
   etherDmg: number
   windDmg: number
-  lumifluxDmg: number  // 辉光属性伤害
   penDmgBonus: number  // 贯穿增伤（命破角色用），百分比
   sheerForceFlat: number // 贯穿力固定提升
   sheerDmgBonus: number  // 贯穿伤害提升，百分比
@@ -133,14 +141,12 @@ export interface PanelValues {
   enemyDefReduction: number       // 敌方防御降低，百分比（无视防御/减防）
   enemyDefFlatReduction: number   // 敌方防御固定降低
   enemyAnomalyDefReduction: number // 异常伤害专属防御降低/无视防御
-  enemyLumifluxResReduction: number // 辉光/耀变伤害抗性降低/无视抗性
   enemyPhysicalDefReduction: number // 物理属性专属防御降低/无视防御
   enemyFireDefReduction: number     // 火属性专属防御降低/无视防御
   enemyIceDefReduction: number      // 冰属性专属防御降低/无视防御
   enemyElectricDefReduction: number // 电属性专属防御降低/无视防御
   enemyEtherDefReduction: number    // 以太属性专属防御降低/无视防御
   enemyWindDefReduction: number     // 风属性专属防御降低/无视防御
-  enemyLumifluxDefReduction: number // 辉光/耀变专属防御降低/无视防御
   enemyResReduction: number       // 敌方抗性降低，百分比（旧兼容：全元素）
   enemyPhysicalResReduction: number // 物理属性专属抗性降低/无视抗性
   enemyFireResReduction: number     // 火属性专属抗性降低/无视抗性
@@ -155,7 +161,6 @@ export interface PanelValues {
   enemyElectricStunResReduction: number // 电属性专属失衡抗性降低/无视
   enemyEtherStunResReduction: number // 以太属性专属失衡抗性降低/无视
   enemyWindStunResReduction: number // 风属性专属失衡抗性降低/无视
-  enemyLumifluxStunResReduction: number // 辉光/耀变专属失衡抗性降低/无视
   enemyAnomalyResReduction: number // 敌方异常积蓄抗性降低，百分比（旧兼容：全元素）
   enemyPhysicalAnomalyResReduction: number // 物理属性专属积蓄抗性降低/无视
   enemyFireAnomalyResReduction: number // 火属性专属积蓄抗性降低/无视
@@ -163,7 +168,6 @@ export interface PanelValues {
   enemyElectricAnomalyResReduction: number // 电属性专属积蓄抗性降低/无视
   enemyEtherAnomalyResReduction: number // 以太属性专属积蓄抗性降低/无视
   enemyWindAnomalyResReduction: number // 风属性专属积蓄抗性降低/无视
-  enemyLumifluxAnomalyResReduction: number // 辉光/耀变专属积蓄抗性降低/无视
   enemyDamageTakenBonus: number    // 敌方受到伤害提升（易伤），百分比
   enemyCritDmgTakenBonus: number   // 敌方受到暴击伤害提升，百分比（霜寒状态提供）
   enemyStunTakenBonus: number      // 敌方受到失衡值提升，百分比

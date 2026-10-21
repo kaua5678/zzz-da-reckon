@@ -571,3 +571,73 @@
 - **未证明事项**：`rockingRatio` 默认档无端点断言；1531013 禁用无缺席断言；星辉普攻四段 `floor(平A/2)` 近似（spec `[猜测·低]`）；煊赫星辉合并一次执行（spec `[猜测·中]`）。
 - **⚠ spec 文案漂移（待修文案，实现为准）**：① `1531.json` notes 称「默认 rockingRatio=0」，模块 `DEFAULT_ROCKING_RATIO = 0.1`（滑块 default 0.1）；② notes 两处列「闪反 +10% 回血」，另一处又写「通用闪反执行禁用，其 10% 回血不计入 HP 池」，实现与后者一致。
 - **模块**：`src/mechanics/agents/starlightBilly.ts`；数值单一事实源 = 模块常量 + spec `src/specs/agents/1531.json` notes。
+
+
+**⚠ 耀变的「属性继承」是承重性质（2026-10-21 用户确认，此前文档缺记）**
+
+耀变作为异常事件，**保留基础区性质，属性是原本主人的属性**——不是流明属性：
+
+- **普通耀变**：`element = teamElement(队友槽)`（该队友的 `damageElement`）⇒ 火属性角色贡献的虚曜，在**火弱 boss** 处伤害更高，因为 `calcVoidflareDamage` 里抗性按继承来的 `element` 取：
+  ```
+  baseRes = enemyResistanceOf(enemyResistances, element)      // 抗性跟随继承属性
+  sourceResReduction = source.enemyResReduction
+                     + panelElementStat(source, 'enemyRes', element)
+  elementDmg = panelElementStat(source, 'dmg', element)        // 增伤也跟随
+  ```
+  所以「属性继承」不只是展示，**抗性 / 元素增伤 / 元素减抗全部按继承属性结算**（`remielle.test.ts` 的耀变用例锁着这条链路）。
+- **特殊虚耀**（1/4/6 命自带虚曜点，垂虹打出）：属性**跟随下一位队友**（`nextTeammateElement`）。
+  用户口径：「开局的特殊虚耀实现上是跟随属性流变的，即蕾米的属性转变为下一位角色比如火，
+  这个特殊虚耀吃自己的属性也就是火」。
+  修前这里硬编码 `'lumiflux'`（2026-10-21 已删）⇒ 引擎里凭空多出一个「流明属性伤害」，
+  进而需要并不存在的「流明抗性 / 流明弱点」配套。
+
+**流明不存在于伤害域**（同日裁决）：「流明本身也没有积蓄，因此不会形成异常主人……
+全游戏没有流明属性进行攻击计算」。官方设定流明是高级属性，与常规 6 属性不同。
+⇒ `DamageElement` 已删除 `lumiflux`；`PanelValues` 删 `lumifluxDmg` 与 4 个 `enemyLumiflux*`；
+`DAMAGE_ELEMENTS` 与 `STANDARD_ENEMY_DEBUFF_ELEMENTS` 合并为一份（此前写了两遍且不一致）。
+**角色属性域仍保留 `ATTRIBUTE_LABEL.lumiflux = '流明'`**（蕾米的面板要显示她的属性），
+但数据里 `Agent.damageElement` / `SkillMove.damageElement` / `SkillRow.damageElement` 的 `lumiflux` 已全部移除。
+
+
+---
+
+## 异常事件的「属性继承」统一口径（2026-10-21 用户提问后成文）
+
+用户问：「异放，紊乱这些异常事件都有继承规则的，之前没有写么」「耀变的继承性质有记录吗，抗性会继承属性」。
+
+**此前是分散记录的**：紊乱的归因规则写在 §失衡内异常状态机（434 行）、异放的归因写在同段与颤音异放段（431 行）、耀变的玩法口径写在 474 行，
+但**没有一处把「属性继承」当成通用规则写清楚**。本节补齐。
+
+### 通用规则
+
+异常事件在结算时**沿用「该异常属于谁」的那个属性**，而不是触发它的人 / 结算它的人的属性：
+
+| 异常事件 | 属性取自 | 面板取自 | 抗性 / 元素增伤按哪个属性 |
+|---|---|---|---|
+| **普通异常**（强击/灼烧/感电/碎冰/侵蚀/风化） | 该异常条的**施加者**（`applierSlot`）的属性 | 同施加者 | 同施加者属性 |
+| **紊乱** | **被覆盖的那个异常**的属性（`elements[i].element`） | 同该异常的施加者（`applierSlot`） | 同该属性 |
+| **异放** | 触发时刻**活跃异常**的属性（轴模式下按状态链取样；无状态回落触发者自身元素） | 同该异常来源 | 同该属性 |
+| **耀变（蕾米）** | **贡献虚曜的队友**的属性（`teamElement(队友槽)`） | 同该队友面板（进场记录面板） | 同该队友属性 |
+| **特殊虚耀（蕾米 1/4/6 命）** | **下一位队友**的属性（`nextTeammateElement`） | 蕾米进场记录面板 | 同下一位队友属性 |
+| **乱流** | 风底属性提供者（维琳娜专属资源，见 CC-D3） | 同该提供者 | 同该属性 |
+| **极性紊乱 / 颤音异放** | 按触发时刻**当前状态元素**（`dominant`） | 同该状态来源 | 同该属性 |
+
+### 为什么抗性必须跟着继承
+
+「属性继承」不只是显示层的事——`calcVoidflareDamage` / 异常结算里抗性、元素增伤、元素减抗**全部按继承来的 `element` 查**：
+
+```
+baseRes            = enemyResistanceOf(enemyResistances, element)   // 抗性
+elementDmg         = panelElementStat(source, 'dmg', element)       // 元素增伤
+elementResReduction= panelElementStat(source, 'enemyRes', element)  // 元素减抗
+```
+
+⇒ 火属性角色贡献的虚曜，在**火弱 boss** 处伤害更高；在火抗 boss 处更低。
+这是「继承」的实质，不是文案。
+
+### 与流明的关系（同日裁决）
+
+流明**不参与任何继承**：它没有积蓄、不形成异常主人，全游戏没有按流明结算的伤害。
+⇒ `DamageElement` 不含 `lumiflux`；蕾米自身的招式与特殊虚耀改为跟随**下一位队友**的属性。
+详见 474 行末尾的补记。
+

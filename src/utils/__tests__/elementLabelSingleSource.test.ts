@@ -56,7 +56,9 @@ describe('元素中文名映射单一来源（CC-214）', () => {
   })
 
   it('变种元素都有中文名，不会把原始 id 显示给用户', () => {
-    for (const el of ['physical_polar_assault', 'ether_ink', 'frostfire', 'lumiflux']) {
+    // 2026-10-21：lumiflux 已从伤害元素域移除（流明无积蓄、不形成异常主人、无按流明结算的伤害），
+    // 不再是「变种元素」。它作为**角色属性**仍由 ATTRIBUTE_LABEL 提供「流明」文案。
+    for (const el of ['physical_polar_assault', 'ether_ink', 'frostfire']) {
       expect(DAMAGE_ELEMENT_LABEL[el]).toBeTruthy()
       expect(damageElementLabel(el)).not.toBe(el)
     }

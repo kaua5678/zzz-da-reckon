@@ -436,10 +436,6 @@
             <span class="stat-label">{{ row.label }}</span>
             <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
           </div>
-          <div class="stat-row" v-if="panel.enemyLumifluxResReduction !== 0 && (!compactPreview || damageElement === 'lumiflux')">
-            <span class="stat-label">辉光/耀变抗性降低/无视</span>
-            <span class="stat-value debuff">{{ formatPercent(panel.enemyLumifluxResReduction) }}</span>
-          </div>
           <div class="stat-row" v-if="hasElementResReduction">
             <span class="stat-label">元素专属减抗</span>
             <span class="stat-value debuff">{{ elementResReductionSummary }}</span>
@@ -657,7 +653,6 @@ const ELEMENT_NAME_BY_ELEMENT: Record<string, string> = {
   electric: '电属性',
   ether: '以太',
   wind: '风属性',
-  lumiflux: '辉光',
 }
 
 const ELEMENT_DMG_LABELS: Record<string, string> = {
@@ -667,7 +662,6 @@ const ELEMENT_DMG_LABELS: Record<string, string> = {
   electricDmg: '电属性伤害加成',
   etherDmg: '以太属性伤害加成',
   windDmg: '风属性伤害加成',
-  lumifluxDmg: '辉光属性伤害加成',
 }
 
 const ELEMENT_SHEER_DMG_LABELS: Record<string, string> = {
@@ -677,7 +671,6 @@ const ELEMENT_SHEER_DMG_LABELS: Record<string, string> = {
   electricSheerDmg: '电属性贯穿增伤',
   etherSheerDmg: '以太贯穿增伤',
   windSheerDmg: '风属性贯穿增伤',
-  lumifluxSheerDmg: '辉光贯穿增伤',
 }
 
 const elementDmg = computed(() => {
@@ -685,7 +678,7 @@ const elementDmg = computed(() => {
   if (key) return getPanelStat(props.panel, key) ?? 0
   const p = props.panel
   return Math.max(p.physicalDmg, p.fireDmg, p.iceDmg,
-    p.electricDmg, p.etherDmg, p.windDmg, p.lumifluxDmg)
+    p.electricDmg, p.etherDmg, p.windDmg)
 })
 
 const elementDmgRows = computed(() => {
@@ -750,10 +743,10 @@ const energyRegenPerSec = computed(() => {
 })
 
 function isOtherElementSpecificField(key: string): boolean {
-  const sheerMatch = key.match(/^(physical|fire|ice|electric|ether|wind|lumiflux)SheerDmg(?:__\w+)?$/)
+  const sheerMatch = key.match(/^(physical|fire|ice|electric|ether|wind)SheerDmg(?:__\w+)?$/)
   if (sheerMatch) return !props.damageElement || sheerMatch[1] !== props.damageElement
 
-  const match = key.match(/^enemy(Physical|Fire|Ice|Electric|Ether|Wind|Lumiflux)(DefReduction|ResReduction|StunResReduction|AnomalyResReduction)(?:__\w+)?$/)
+  const match = key.match(/^enemy(Physical|Fire|Ice|Electric|Ether|Wind)(DefReduction|ResReduction|StunResReduction|AnomalyResReduction)(?:__\w+)?$/)
   if (!match) {
     if ((key === 'assaultCritRate' || key === 'assaultCritDmg') && !isPhysicalElement.value) return true
     if (key.endsWith('AnomalyBuildUpEfficiency') && key !== `${props.damageElement}AnomalyBuildUpEfficiency`) return true
