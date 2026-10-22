@@ -107,17 +107,7 @@
           "amountPerCount": 1,
           "formula": "招架支援次数 × 1（10 秒冷却近似）",
           "status": "implemented_approximation",
-          "note": "[猜测·中] 支援突击 +1 威势有 10 秒冷却，按招架支援次数近似。",
-          "adjustable": {
-            "id": "1391.jufufu_weishi.jufufu_weishi_assist.rate",
-            "label": "橘福福·威势·支援突击",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          }
+          "note": "[猜测·中] 支援突击 +1 威势有 10 秒冷却，按招架支援次数近似。**次数上限滑块在模块** `jufufu.weishiAssistCap`（用户裁决 2026-10-22：「威势影响自动后台攻击，滑块应该只能设置上限」）——自动值 = 招架次数 × 1，滑块只往下压，0 = 不设上限。"
         },
         {
           "id": "jufufu_team_ult_weishi_gain",
@@ -125,17 +115,7 @@
           "countSource": "ultimateCount",
           "formula": "终结技次数 × cfg.jufufuC2WeishiPerUlt（影画2=3，否则0）",
           "status": "implemented",
-          "note": "[已确认·数据] 影画2：任意角色终结技时橘福福回复 3 点威势（未达2命为 0，由模块注入 cfg 字段门控）。",
-          "adjustable": {
-            "id": "1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate",
-            "label": "橘福福·威势·任意角色发动终结技（2命）",
-            "description": "近似转化量按比例调整，默认 100%；实际回复量 = 原近似值 × 该比例。",
-            "default": 1,
-            "min": 0,
-            "max": 2,
-            "step": 0.05,
-            "suffix": "%"
-          },
+          "note": "[已确认·数据] 影画2：任意角色终结技时橘福福回复 3 点威势（未达2命为 0，由模块注入 cfg 字段门控）。**次数上限滑块在模块** `jufufu.weishiTeamUltCap`（同上裁决）——自动值 = 队伍终结次数 × 3，滑块只往下压，0 = 不设上限。",
           "valueSource": "cfgField",
           "valueField": "jufufuC2WeishiPerUlt"
         }

@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（99 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（101 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -179,8 +179,10 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/REQUIREMENTS.md` | **用户需求唯一入口**：用户经助手写入的 `R<编号>` 需求；每轮开工先读、优先于自选待办，做完标 `[done <commit>]` 不删条目 |
 | `docs/proposals/pull-value-optimization.md` | **抽卡规划价值：思想与口径**（部分落地）：价值如何定义与量纲、期望值口径（用户裁决 2026-09-01，模拟抽卡已删）；本文只谈"怎么想"，实施事实以 `pullValue.ts` / `pullPlannerEngine.ts` / `data/filmEconomy.ts` 为准 |
 | `docs/mcp-guard-audit-surface-work.md` | **判据「表面功夫」审计（2026-10-17）**：A/B/C 三类坏法的清点与分布、逐条四栏判定（判据位置/类别/想防什么/为什么拦不住/建议改法）、最妨碍开发的 Top 5、以及「看着像表面功夫、实际有牙」的反向清单（防误删）与「不该动」清单 |
+| `docs/HANDOFF_DEAD_CHANNEL_AUDIT.md` | **死口径专项排查（交接 + 结论表，2026-10-22 复核版）**：⚠ 原模板案例（星徽·比利「格挡 +5 决意」= 死口径）**已被实测推翻**——通道走 spec `countSource: "blockCount"` 一直活着，只是被 100 决意阈值量化吃掉可见性；本文件给正确判据（四个消费面，含 spec 字符串键读）、21 条交互声明 / 37 条 spec 滑块的普查结论、19 个「spec 有资源但模块不读」的角色清单 |
+| `docs/HANDOFF_BASIC_FILL_SLACK.md` | **平A 填充 / 留白专项（交接 brief）**：交互默认全 0 后 `auto-1091-1031-1311` 留白 21.1s→33.6s 破 `timeFillRatchet` 30s 不变量；现状读数表、已试方案与否决记录、目标 = 全库留白压到 0 |
 
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（99 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（101 份，与节标题一致），新增文档需同步本表。
 > **判据 9 已递归到子目录**（`docs/**/*.md`）：子目录里的文档同样必须登记，路径按 `docs/<相对路径>` 写
 > （2026-10-06 修：`docs/proposals/pull-value-optimization.md` 曾因 glob 只扫顶层而长期不在表内 = agent 找不到）。

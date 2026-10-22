@@ -12,7 +12,7 @@ import { getRegisteredMechanicSettings } from '@/mechanics'
  *
  * | 类 | 条目 | 裁决 | 落点 |
  * |---|---|---|---|
- * | 甲 | `1391.jufufu_weishi.{jufufu_weishi_assist,jufufu_team_ult_weishi_gain}.rate` | **接线** | `specPanelBuffs.ts#computeJufufuCycle` + `buildResourceResult` |
+ * | 甲 | `1391.jufufu_weishi.{jufufu_weishi_assist,jufufu_team_ult_weishi_gain}.rate` → **2026-10-22 改为模块 `jufufu.weishiAssistCap` / `jufufu.weishiTeamUltCap`** | **接线（后改上限语义）** | `specPanelBuffs.ts#computeJufufuCycle` + `buildResourceResult` |
  * | 乙-4 | `1561.velina_corrosion.2 命风化获得.rate` | 接线（**合并**到模块那条） | 删 spec 重复声明，滑块 = `velina.cinema2CorrosionRate` |
  * | 丙 | `jane.frenzyActive` | **接线** | `jane.ts#applyJanePanel`（总闸） |
  * | 附 | `jane.passionCoverage` | **一并注册** | `jane.ts#settings` + 删手写卡片 |
@@ -28,11 +28,11 @@ import { getRegisteredMechanicSettings } from '@/mechanics'
  * ## ★★ 两条踩过的坑（下一任别重踩）
  *
  * 1. **`computeJufufuCycle` 才是威势的权威口径**，`buildResourceResult` 里那份 `weishiGains`
- *    只是**展示**。`spinCount = weishiGain` 驱动威风回填 / 爆米花 / 附伤行 ⇒ **rate 必须同时进两条路径**，
+ *    只是**展示**。`spinCount = weishiGain` 驱动威风回填 / 爆米花 / 附伤行 ⇒ **上限必须同时进两条路径**，
  *    只改展示值 = 滑块「看起来生效但不算数」（本文件用**跨路径恒等式**锁这一点）。
- * 2. **两条 rate 的线性度不同**：`assist` 项三点严格线性（parry×1）；`teamUlt` 项**不严格**——
- *    它进 `weishiGain → spinCount → aweFromSpin → tigerChainCount` 的**正反馈**，实测
- *    84 / 180（不是 2×84=168）⇒ **不许写 `r2 === 2*r1`**，要写**恒等式**（R50 规律③同族）。
+ * 2. **上限 ≠ 倍率（2026-10-22 用户裁决）**：「威势影响自动后台攻击，滑块应该只能设置上限吧」——
+ *    `capOfAuto(自动, cap)`：`0` = 不设上限；`cap` 低于自动值 ⇒ 压到 cap；**高于自动值 ⇒ 逐位等于不限档**
+ *    （绝不放大）。原 `*.rate` 的 0/1/2 线性断言已随语义变更删除。
  * 3. **简的精通转攻要 `anomalyProficiency > 120` 才咬合**，而简基础精通 114 ⇒ 夹具必须给
  *    `driveDisc.mainStats[4] = 'anomalyProficiency'`（否则 `atk` 三点恒等 ⇒ 假 no-delta）。
  * 4. **简的 `applyPanel` 身份守卫容忍直调**（`jane.test.ts` 只传 `{ panel }`）：本文件一律走真管线，
@@ -86,9 +86,10 @@ const REGISTERED = new Set(getRegisteredMechanicSettings().map(s => s.id))
 
 describe('R51 裁决落地·接线类（甲 1391 威势 / 丙 jane.frenzyActive / 附 jane.passionCoverage）', () => {
   it('前提：本批 4 个 id 全在运行时注册表里', () => {
+    // 2026-10-22 用户裁决：1391 两条由 spec `.rate`（倍率）改为模块 `.Cap`（次数上限）
     const ids = [
-      '1391.jufufu_weishi.jufufu_weishi_assist.rate',
-      '1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate',
+      'jufufu.weishiAssistCap',
+      'jufufu.weishiTeamUltCap',
       'jane.frenzyActive',
       'jane.passionCoverage',
     ]
@@ -96,44 +97,48 @@ describe('R51 裁决落地·接线类（甲 1391 威势 / 丙 jane.frenzyActive 
     expect(missing, `未注册: ${missing.join(', ')}`).toEqual([])
   })
 
-  // ── 甲 · 1391 橘福福威势（两条近似项各乘自己的 rate）──────────────────────────────
-  it('甲-1 `jufufu_weishi_assist.rate`：0/1/2 三点线性 + 精确项不受影响', async () => {
+  // ── 甲 · 1391 橘福福威势（两条近似项 = 次数**上限**，2026-10-22 用户裁决改语义）─────────
+  //
+  // 用户裁决（逐字）：「威势影响自动后台攻击，滑块应该只能设置上限吧」
+  // ⇒ 原 `*.rate`（倍率，0/1/2 线性）已删除，改为 `jufufu.weishiAssistCap` / `jufufu.weishiTeamUltCap`：
+  //   自动值由次数源算出，滑块**只往下压**，0 = 不设上限（`capOfAuto` 同款）。
+  it('甲-1 `jufufu.weishiAssistCap`：只压不抬（0=不限 / 3=压到 3 / 99=回到自动值）+ 精确项不受影响', async () => {
     const team: HarnessTeamSlot[] = [{ agentId: '1391', ...RICH }, ...mates(['1371', '1431'])]
-    const at = (v: number) => probe(team, c => { c.enemy.stunCountLock = 3 }, '1391.jufufu_weishi.jufufu_weishi_assist.rate', v, calc => {
+    const at = (v: number) => probe(team, c => { c.enemy.stunCountLock = 3 }, 'jufufu.weishiAssistCap', v, calc => {
       const w = calc.resourceResult.value?.characters?.find(c => c.agentId === '1391')!.specResources!['jufufu_weishi'] as any
       return {
         assist: w.gains.jufufu_weishi_assist,
         ex: w.gains.jufufu_weishi_ex_special,
         ult: w.gains.jufufu_weishi_ultimate,
         total: w.total,
-        // ★ 权威口径（cycle 路径）：total 必须 === spinCount，否则 rate 只改了展示值
+        // ★ 权威口径（cycle 路径）：total 必须 === spinCount，否则滑块只改了展示值
         spin: w.spendCounts.jufufu_spin_spend,
       }
     })
-    const [r0, r1, r2] = [await at(0), await at(1), await at(2)]
+    const [noCap, cap3, cap999] = [await at(0), await at(3), await at(999)]
     const failures: string[] = []
-    // rate=0 ⇒ 该近似项归零
-    if (r0.assist !== 0) failures.push(`rate=0 时 assist 应为 0，实到 ${r0.assist}`)
-    // rate=1 ⇒ 基准 = parryCount(8) × 1
-    if (r1.assist !== 8) failures.push(`rate=1 时 assist 应为 8（parry 8×1），实到 ${r1.assist}`)
-    // rate=2 ⇒ 恰好 2×基准
-    if (r2.assist !== 16) failures.push(`rate=2 时 assist 应为 16（2×8），实到 ${r2.assist}`)
-    // 精确项（强特×3 / 终结×6）**不受 rate 影响**
-    for (const [v, r] of [[0, r0], [1, r1], [2, r2]] as const) {
-      if (r.ex !== 15) failures.push(`rate=${v}: 精确项 强特 应恒为 15，实到 ${r.ex}`)
-      if (r.ult !== 24) failures.push(`rate=${v}: 精确项 终结 应恒为 24，实到 ${r.ult}`)
+    // 0 = 不设上限 ⇒ 自动值 = parryCount(8) × 1
+    if (noCap.assist !== 8) failures.push(`cap=0（不限）时 assist 应为自动值 8（parry 8×1），实到 ${noCap.assist}`)
+    // 3 = 压到 3（**只压不抬**）
+    if (cap3.assist !== 3) failures.push(`cap=3 时 assist 应被压到 3，实到 ${cap3.assist}`)
+    // 99 = 高于自动值 ⇒ 仍回到自动值 8（上限绝不放大）
+    if (cap999.assist !== 8) failures.push(`cap=999 时 assist 应回到自动值 8（上限不许凭空造次数），实到 ${cap999.assist}`)
+    // 精确项（强特×3 / 终结×6）**完全不受本 cap 影响**
+    for (const [v, r] of [[0, noCap], [3, cap3], [99, cap999]] as const) {
+      if (r.ex !== 15) failures.push(`cap=${v}: 精确项 强特 应恒为 15，实到 ${r.ex}`)
+      if (r.ult !== 24) failures.push(`cap=${v}: 精确项 终结 应恒为 24，实到 ${r.ult}`)
     }
     // ★★ 跨路径恒等式：展示 total 必须等于 cycle 的 spinCount
-    for (const [v, r] of [[0, r0], [1, r1], [2, r2]] as const) {
-      if (r.total !== r.spin) failures.push(`rate=${v}: total(${r.total}) 必须 === spinCount(${r.spin})`
-        + ' ⇒ rate 未同时进 computeJufufuCycle（只改展示值 = 滑块假生效）')
+    for (const [v, r] of [[0, noCap], [3, cap3], [99, cap999]] as const) {
+      if (r.total !== r.spin) failures.push(`cap=${v}: total(${r.total}) 必须 === spinCount(${r.spin})`
+        + ' ⇒ cap 未同时进 computeJufufuCycle（只改展示值 = 滑块假生效）')
     }
     expect(failures, failures.join('\n')).toEqual([])
   }, 300000)
 
-  it('甲-2 `jufufu_team_ult_weishi_gain.rate`：0 ⇒ 归零、单调、且与 spinCount 恒等（★ 不写 2×）', async () => {
+  it('甲-2 `jufufu.weishiTeamUltCap`：只压不抬 + 不串另一条 + 与 spinCount 恒等', async () => {
     const team: HarnessTeamSlot[] = [{ agentId: '1391', ...RICH }, ...mates(['1371', '1431'])]
-    const at = (v: number) => probe(team, c => { c.enemy.stunCountLock = 3 }, '1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate', v, calc => {
+    const at = (v: number) => probe(team, c => { c.enemy.stunCountLock = 3 }, 'jufufu.weishiTeamUltCap', v, calc => {
       const w = calc.resourceResult.value?.characters?.find(c => c.agentId === '1391')!.specResources!['jufufu_weishi'] as any
       return {
         teamUlt: w.gains.jufufu_team_ult_weishi_gain,
@@ -142,19 +147,19 @@ describe('R51 裁决落地·接线类（甲 1391 威势 / 丙 jane.frenzyActive 
         spin: w.spendCounts.jufufu_spin_spend,
       }
     })
-    const [r0, r1, r2] = [await at(0), await at(1), await at(2)]
+    const [noCap, cap2, cap999] = [await at(0), await at(2), await at(999)]
     const failures: string[] = []
-    if (r0.teamUlt !== 0) failures.push(`rate=0 时 队伍终结项 应为 0，实到 ${r0.teamUlt}`)
-    if (!(r1.teamUlt > 0)) failures.push(`rate=1 时 队伍终结项 应 >0，实到 ${r1.teamUlt}`)
-    // ⚠ 不写 `r2 === 2*r1`：本项经 spinCount → 威风 → 虎釜 正反馈，实测 84/180（不是 168）
-    if (!(r2.teamUlt > r1.teamUlt)) failures.push(`rate=2 时 队伍终结项 应 > rate=1（单调），实到 ${r2.teamUlt} vs ${r1.teamUlt}`)
-    // 另一条近似项不受本 rate 影响（防两条互相串）
-    for (const [v, r] of [[0, r0], [1, r1], [2, r2]] as const) {
-      if (r.assist !== 8) failures.push(`rate=${v}: assist 应恒为 8（不受本 rate 影响），实到 ${r.assist}`)
+    if (!(noCap.teamUlt > 0)) failures.push(`cap=0（不限）时 队伍终结项 应 >0（自动值），实到 ${noCap.teamUlt}`)
+    if (cap2.teamUlt !== 2) failures.push(`cap=2 时 队伍终结项 应被压到 2，实到 ${cap2.teamUlt}`)
+    // 上限高于自动值 ⇒ 与「不限」逐位相同（**绝不放大**）
+    if (cap999.teamUlt !== noCap.teamUlt) failures.push(`cap=999 应等于不限档 ${noCap.teamUlt}（上限不许放大），实到 ${cap999.teamUlt}`)
+    // 另一条近似项不受本 cap 影响（防两条互相串）
+    for (const [v, r] of [[0, noCap], [2, cap2], [99, cap999]] as const) {
+      if (r.assist !== 8) failures.push(`cap=${v}: assist 应恒为 8（不受本 cap 影响），实到 ${r.assist}`)
     }
     // ★★ 跨路径恒等式
-    for (const [v, r] of [[0, r0], [1, r1], [2, r2]] as const) {
-      if (r.total !== r.spin) failures.push(`rate=${v}: total(${r.total}) 必须 === spinCount(${r.spin})`)
+    for (const [v, r] of [[0, noCap], [2, cap2], [99, cap999]] as const) {
+      if (r.total !== r.spin) failures.push(`cap=${v}: total(${r.total}) 必须 === spinCount(${r.spin})`)
     }
     expect(failures, failures.join('\n')).toEqual([])
   }, 300000)

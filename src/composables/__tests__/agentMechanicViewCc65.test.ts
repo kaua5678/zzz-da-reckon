@@ -34,6 +34,16 @@ const LEGACY: Record<string, Array<{ field: string; label: string; hint?: string
       title: '打断[特殊技：血华誓·葬血强袭]的次数：在 2.317s 的三连横斩打到一半时打断——**时间与伤害/失衡/喧响都减半**（2.317s→1.1585s、626.3%→313.15%、失衡 382.5→191.25、喧响 70.098→35.049），但**3 次毁伤照常全部触发**（毁伤挂在命中判定上，不随后半段走）。入场「斩金断铁·上挑」（153.6%/0.567s）两种结算都完整打。为什么是正收益：葬血强袭 DPS（≈270%/s）明显低于[锻星]平A（531.88%/s），省下的 1.1585s/次还给平A是净赚，且平A时间变多 ⇒ 残痕积累变多（锻星 120%/s > 血锻 100%/s）⇒ 毁伤更多。操作难度按一次闪避反击（1.2）计，不需要 boss 先出手。',
     },
   ],
+  // 2026-10-22 用户裁决：「可以，毕竟他有交互收益。此交互需要 boss 产生攻击，所以要算非失衡占比。
+  // 此外还有 cd 算出的上限」——菲欧妮补声明（原实现读 cfg.perfectBlockCount 但无输入框）。
+  '1641': [
+    {
+      field: 'perfectBlockCount',
+      label: '完美格挡',
+      title: '强化特殊技触发完美格挡的次数：每次回复燔焰 5 点，**10 秒最多一次**——引擎按 floor(有效战斗时间/10s) 钳上限（boss 无敌时间已扣）。'
+        + '这个交互需要 boss 出手，所以在队伍对比/难度曲线里吃「非失衡占比」修正（失衡期怪物不攻击，能凑的次数更少）。',
+    },
+  ],
   '1371': [
     { field: 'yixuanInk2Count', label: '2连墨痕化形' },
     { field: 'yixuanInk3Count', label: '3连墨痕化形', hint: '≤0=自动', title: '≤0/清空 = 自动：总闪能打完失衡内消耗，剩余全部轴外打 3 连墨痕化形（60闪能/次）；填正数覆盖', mode: 'autoIfNonPositive' },
@@ -74,7 +84,7 @@ describe('CC-65 角色专属计数输入框 → characterCountInputs', () => {
       expect(got, id).toEqual(LEGACY[id] ?? [])
       hits += got.length
     }
-    expect(hits).toBe(10) // 旧页面 9 条 + 克拉蕾新增 1 条
+    expect(hits).toBe(11) // 旧页面 9 条 + 克拉蕾新增 1 条 + 菲欧妮完美格挡 1 条（2026-10-22 裁决）
     expect(agentCharacterCountInputs(null)).toEqual([])
     expect(agentCharacterCountInputs(undefined)).toEqual([])
   }, 60000)

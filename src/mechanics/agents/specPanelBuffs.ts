@@ -12,10 +12,10 @@ import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { basicComboCycleSeconds } from '@/data/moveTableQueries'
 import { basicSummarySeconds, type SpecResourceResult } from '@/types/resource'
-import { computeSpecResources, specAdjustableRate } from '@/specs/resources'
+import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
-import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingPanelReader, mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
@@ -481,16 +481,24 @@ export interface JufufuCycleInput {
    */
   teamUltimateCount?: number
   /**
-   * 两条 `adjustable`（spec 近似项）的比例：jufufuCycleOf 经 `specAdjustableRate` 按 spec 声明读入（未注入 = 声明 default 1，钳到声明区间）。
+   * 两条近似项的**次数上限**（用户裁决 2026-10-22：「威势影响自动后台攻击，滑块应该只能设置上限吧」）。
    *
-   * 归属：`1391.jufufu_weishi.jufufu_weishi_assist.rate` ⇒ `assistRate`（支援突击近似项）；
-   * `1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate` ⇒ `teamUltRate`（影画2 队伍终结项）。
+   * ## 为什么从「倍率」改成「上限」
+   *
+   * 威势不是独立产出的资源：它全部投进山君鼎戏·威势的旋转（`spinCount = weishiGain`），
+   * 旋转再回填威风 → 虎釜震煞 → **后台自动攻击**。也就是说倍率滑块能**凭空造出**
+   * 原文明明给了 CD 的威势（支援突击 10s 一次、影画2 每次终结 +3）——那是在替用户
+   * 「多打几次 boss」，与「上限 = 我实战只吃得到这么多」是两种语义。用户裁决取后者。
+   *
+   * 语义 = `capOfAuto(自动, cap)`：自动值由次数源算出（招架次数 / 队伍终结次数 × 3），
+   * 滑块**只往下压**、绝不顶上去；`0 = 不设上限`（与其他 `capOfAuto` 通道同款，见 `phoenix.chargedAttackCount`）。
+   *
    * ⚠ 必须在本函数（而**不是**只在 `buildResourceResult` 里）生效：`weishiGain` 是
    * `spinCount` 的唯一来源，而 `spinCount` 驱动威风回填 / 爆米花次数 / 附伤行 ⇒ 只改
    * `buildResourceResult` 的展示值会让滑块「看起来生效但不算数」（R51 实测的假生效面）。
    */
-  assistRate: number
-  teamUltRate: number
+  assistCap: number
+  teamUltCap: number
 }
 
 export interface JufufuCycleResult {
@@ -528,12 +536,14 @@ export function computeJufufuCycle(input: JufufuCycleInput): JufufuCycleResult {
   const huweiBlock = frontBlockSeconds(input.frontlineTime, input.frontActionCount, input.frontSwitchRatio, JUFUFU_HUWEI_INTERVAL)
   const huweiInterval = phaseDelayedCooldown(JUFUFU_HUWEI_INTERVAL, input.frontlineTime, input.effectiveTotalTime, huweiBlock)
   const huweiHits = Math.floor(backstage / huweiInterval)
-  // ⚠ 两条近似项各乘自己的 rate（R51 用户裁决「接线」）；未注入时取 spec 声明 default 1 ⇒ 与旧口径逐位相同。
+  // 两条近似项各自**只往下压**（用户裁决 2026-10-22：滑块 = 次数上限）。自动值由次数源算出：
+  // 支援突击 = 招架次数（10s CD 已由用户上限压回实战值）；影画2 = 队伍终结次数 × 3。
+  // capOfAuto(auto, cap)：cap=0 ⇒ 不设上限（与其他上限通道同款，如 phoenix.chargedAttackCount）。
   const weishiGains: Record<string, number> = {
     jufufu_weishi_ex_special: ex * 3,
     jufufu_weishi_ultimate: ult * 6,
-    jufufu_weishi_assist: parry * 1 * input.assistRate,
-    jufufu_team_ult_weishi_gain: cinema >= 2 ? teamUlt * c2Per * input.teamUltRate : 0,
+    jufufu_weishi_assist: capOfAuto(parry * 1, input.assistCap),
+    jufufu_team_ult_weishi_gain: cinema >= 2 ? capOfAuto(teamUlt * c2Per, input.teamUltCap) : 0,
   }
   const weishiGain = Object.values(weishiGains).reduce((a, b) => a + b, 0)
   // 威势全部投入高速旋转（后台虎釜震煞后进入旋转；整局总量口径）
@@ -567,9 +577,9 @@ export function computeJufufuCycle(input: JufufuCycleInput): JufufuCycleResult {
   }
 }
 
-/** 两条 `adjustable` 的 id（单一事实源：spec 声明与本模块消费同源引用，规则 11）；比例由 `specAdjustableRate` 按 spec 声明读 */
-const JUFUFU_WEISHI_ASSIST_RATE = '1391.jufufu_weishi.jufufu_weishi_assist.rate'
-const JUFUFU_WEISHI_TEAM_ULT_RATE = '1391.jufufu_weishi.jufufu_team_ult_weishi_gain.rate'
+// 两条近似项的**次数上限**设置 id 在模块 `settings` 声明（`jufufu.weishiAssistCap` / `jufufu.weishiTeamUltCap`）：
+// 用户裁决 2026-10-22 —— 威势只影响后台自动攻击，滑块只能设上限，不能按倍率凭空造次数。
+// 原 spec `adjustable`（`.rate` 两条）已删除，避免「倍率」与「上限」两种语义并存。
 
 function jufufuRowValue(skills: AgentCharConfigInput['skills'], moveId: string, rowId: string): number {
   for (const cat of skills.categories) {
@@ -639,8 +649,8 @@ function jufufuCycleOf(
     aweInitial: cfg.jufufuAweInitial ?? 0,
     c2WeishiPerUlt: cfg.jufufuC2WeishiPerUlt ?? 0,
     teamUltimateCount: cfg.jufufuTeamUltimateCount,
-    assistRate: specAdjustableRate(cfg, JUFUFU_WEISHI_ASSIST_RATE),
-    teamUltRate: specAdjustableRate(cfg, JUFUFU_WEISHI_TEAM_ULT_RATE),
+    assistCap: Math.max(0, Math.floor(jufufuSetting(cfg, 'jufufu.weishiAssistCap'))),
+    teamUltCap: Math.max(0, Math.floor(jufufuSetting(cfg, 'jufufu.weishiTeamUltCap'))),
   })
 }
 
@@ -879,6 +889,28 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
     }]
   },
   settings: [
+    {
+      id: 'jufufu.weishiAssistCap',
+      label: '橘福福·威势·支援突击次数上限',
+      description: '支援突击·彪形焰颌（10 秒一次，每次 +1 威势）的**整局次数上限**。自动值 = 弹刀次数（招架支援）× 1，滑块只往下压；0 = 不设上限。'
+        + '威势全部投进山君鼎戏·威势的旋转、进而驱动后台自动攻击（虎威 → 虎釜震煞），所以这里填的是「我实战最多能吃到多少次」，不是倍率。',
+      default: 0,
+      min: 0,
+      max: 999,
+      step: 1,
+      suffix: '次',
+    },
+    {
+      id: 'jufufu.weishiTeamUltCap',
+      label: '橘福福·威势·队伍终结次数上限',
+      description: '影画2：任意角色发动终结技时 +3 威势。**整局次数上限**（= 吃得到的队伍终结次数），自动值 = 队伍终结总次数，滑块只往下压；0 = 不设上限。'
+        + '同上：威势驱动后台自动攻击，不是倍率。',
+      default: 0,
+      min: 0,
+      max: 999,
+      step: 1,
+      suffix: '次',
+    },
     {
       id: 'jufufu.frontSwitchRatio',
       label: '橘福福·切上前台频率',

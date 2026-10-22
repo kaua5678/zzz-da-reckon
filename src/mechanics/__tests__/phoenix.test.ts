@@ -5,6 +5,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import {
   computePhoenixScorchCrit,
+  phoenixChargedCount,
   phoenixMechanic,
   phoenixSkillLevel,
   PHOENIX_C4_RELEASE_MULT,
@@ -14,6 +15,7 @@ import {
   PHOENIX_SCORCH_MASTERY_CAP,
   PHOENIX_SCORCH_MASTERY_THRESHOLD,
 } from '@/mechanics/agents/phoenix'
+import { BOSS_ATTACK_INTERACTIONS } from '@/composables/teamCompare'
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
@@ -185,6 +187,49 @@ describe('菲欧妮（1641）3.3.12 v12 正式录入', () => {
     expect(ids).toContain('phoenix.scorchCoverage')
     expect(phoenixMechanic.axisMoveFreeOfDecibel!('1641019')).toBe(true)
     expect(phoenixMechanic.axisMoveFreeOfDecibel!('1641013')).toBe(false)
+  })
+
+  /**
+   * 完美格挡 → 燔焰（用户裁决 2026-10-22）：「可以，毕竟他有交互收益。此交互需要 boss 产生攻击，
+   * 所以要算非失衡占比。此外还有 cd 算出的上限。」
+   *
+   * 三件事在这里一次锁死：
+   * ① **入口存在**：模块声明 `characterCountInputs: perfectBlockCount`（原缺失 ⇒ 用户填不到）；
+   * ② **CD 上限**：有效次数 = min(填写次数, floor(有效战斗时间/10))——原式是「每 10 次一次」（读错单位）；
+   * ③ **难度侧非失衡占比**：`perfectBlock` 已在 `BOSS_ATTACK_INTERACTIONS`（只断言登记，不重算公式）。
+   */
+  it('完美格挡：输入框已声明；燔焰按 min(次数, floor(有效时间/10))×5 计入（CD 上限）', async () => {
+    // ① 入口声明
+    const decl = phoenixMechanic.characterCountInputs?.find(i => i.field === 'perfectBlockCount')
+    expect(decl, '菲欧妮必须声明完美格挡输入框').toBeTruthy()
+    expect(decl!.label).toBe('完美格挡')
+    // ③ 难度侧：需怪攻击（吃非失衡占比修正）
+    expect(BOSS_ATTACK_INTERACTIONS).toContain('perfectBlock')
+
+    // ② CD 上限：180s 有效时间 ⇒ 最多 18 次
+    const cap = Math.floor(180 / 10)
+    const cfgBase = {
+      phoenixCinemaLevel: 0,
+      phoenixCombustionMeta: {},
+      phoenixBasicCycle: [],
+      battleTime: 180,
+      invincibleTime: 0,
+      perfectBlockCount: 0,
+    } as any
+    const ember = (perfectBlockCount: number, invincibleTime = 0) => {
+      const cfg = { ...cfgBase, perfectBlockCount, invincibleTime }
+      return phoenixChargedCount(cfg, { basicAttackTime: 0 } as any, [])
+    }
+    // 0 次 ⇒ 0 燔焰 ⇒ 0 次焚罪
+    expect(ember(0)).toBe(0)
+    // 10 次（= CD 上限以内）⇒ 10×5 = 50 燔焰 ⇒ floor(50/90) = 0 次焚罪
+    expect(ember(10)).toBe(0)
+    // 18 次（= 上限）⇒ 90 燔焰 ⇒ 1 次焚罪
+    expect(ember(cap)).toBe(1)
+    // **超上限 999 次 ⇒ 仍只按 18 次算**（CD 是硬约束，不是「次数/10」）
+    expect(ember(999)).toBe(1)
+    // 无敌时间扣减后上限收紧：180-100=80s ⇒ floor(80/10)=8 次 ⇒ 40 燔焰 ⇒ 0 次焚罪
+    expect(ember(999, 100)).toBe(0)
   })
 
   it('[灼蚀] 覆盖率滑块生效：0 → 无周期火伤事件', async () => {

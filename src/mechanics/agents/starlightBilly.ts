@@ -49,8 +49,8 @@ const settingOf = mechanicSettingPanelReader(() => settings)
  * - 银河横行（用户确认：闪避次数关联银河横行）：闪避反击次数 = 动力压制期间漂移触发极限闪避次数，
  *   每次 = 尾焰全旋（1531014）执行 + 自动衔接孤轮特技；次数 = min(闪反数, 动力压制数)（轴外），
  *   轴内由捏轴决定（可自行捏 1531014）；通用闪避反击（决斗之王 1531013）执行禁用。
- * - 交互次数默认值（用户确认，主页「战斗动作次数」预填展示 = 帮用户填好，getInteractionDefaults 同源）：
- *   格挡 5 / 招架 4 / 闪反 0。
+ * - 交互次数默认值（**2026-10-21 用户裁决：全 0**，引擎不替用户预填；唯一事实源 = `BILLY_INTERACTION_DEFAULTS`
+ *   → `getInteractionDefaults`）。旧值「格挡 5 / 招架 4 / 闪反 0」已作废。
  * - 未建模：生命≤25% 受伤-50%（防御向，只关注打 boss 不建模）；伊德海莉无回血联动（用户确认：
  *   其烧血→喧响只接卢西娅星光汇聚之地，Billy 自我回血不接入）。
  */
@@ -127,11 +127,17 @@ const DEFAULT_ROCKING_RATIO = 0.1
  *
  * 旧值「招架4/闪反0/格挡5」（CC-73 用户确认）是早期产物。取消理由：
  * ① 交互次数是**用户的难度选择**，不该由引擎预填；
- * ② 「填到多少最优」由难度曲线回答（climbDifficultyLadder 从全 0 出发 joint 搜索）；
- * ③ 实测「格挡 +5 决意」这条通道**从未实现**（computeAttackDataDetermination 的入参
- *    只有 dodgeCounterCount / parryCount / quickAssistCount，**没有 blockCount**）
- *    => 旧注释第 33 行写的「格挡 +5（主页交互 blockCount）」是**死口径**，
- *    实测格挡 0/5/10/15 四档的星光次数与伤害**逐位相同**。
+ * ② 「填到多少最优」由难度曲线回答（climbDifficultyLadder 从全 0 出发 joint 搜索）。
+ *
+ * ⚠ **纠错留痕（2026-10-22，规则 16③）**：本块曾写「③ 实测『格挡 +5 决意』这条通道**从未实现**……
+ *    格挡 0/5/10/15 四档的星光次数与伤害**逐位相同**」——**这句是错的，已撤销**。
+ *    真相：该通道一直活着，走 **spec `1531.json#billy_parry_determination_gain`**
+ *    （`countSource: "blockCount"` × 5）→ `computeSpecResources` → 决意总量 → floor(/100) 星光次数。
+ *    之所以「看不出变化」是**决意按 100 点阈值量化**：格挡 5/10 只加 25/50 决意、跨不过阈值
+ *    ⇒ 星光次数不变（实测 c0：det 840.84 → 865.87 → 890.89、stars 8/8/8，
+ *    伤害 3,248,662 → 3,248,714 → 3,248,766；格挡 15 跨过阈值 ⇒ stars 9、伤害 3,313,281）。
+ *    判死根因 = 只在模块里 grep `cfg.blockCount`，**漏掉 spec 解释器按字符串键读 cfg 这一整层**。
+ *    回归锁：`src/mechanics/__tests__/interactionInputChannels.test.ts`（资源层线性 + 跨阈值传导）。
  *
  * ⚠ 交互输入框标签（interactionInputs 的「格挡（动力压制）」）保留——那是字段名，与默认值无关。
  */
@@ -319,7 +325,7 @@ function buildBillyCharConfig(input: AgentCharConfigInput): void {
 
   cfg.billyCinemaLevel = cinemaLevel
 
-  // 交互次数默认值（用户确认，主页「战斗动作次数」预填展示，与 getInteractionDefaults 一致）：格挡 5 / 招架 4 / 闪反 0
+  // 交互次数默认值（2026-10-21 用户裁决：全 0 = 不替用户预填）——唯一事实源 = getInteractionDefaults
   if (!cfg.parryCount) cfg.parryCount = BILLY_INTERACTION_DEFAULTS.parry
   if (!cfg.blockCount) cfg.blockCount = BILLY_INTERACTION_DEFAULTS.block
   // 闪避次数 = 银河横行漂移触发（用户确认）：禁用通用闪避反击（决斗之王）执行，
@@ -845,7 +851,7 @@ export const starlightBillyMechanic: AgentMechanicModule = {
   id: 'agent:starlight_billy',
   agentIds: [AGENT_ID],
   name: '星徽·比利',
-  // CC-65b：交互次数默认值（原 stores/config.ts 写死表；用户确认：招架4/闪反0/格挡5）
+  // CC-65b：交互次数默认值（唯一事实源 = BILLY_INTERACTION_DEFAULTS；2026-10-21 起全 0）
   interactionDefaults: { ...BILLY_INTERACTION_DEFAULTS },
   // CC-65b：TeamConfigPage 交互栏格挡输入框标签（原页面写死本角色 id）
   interactionInputs: { block: { label: '格挡（动力压制）' } },

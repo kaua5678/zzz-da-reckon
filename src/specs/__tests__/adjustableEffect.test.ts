@@ -31,6 +31,9 @@ import { SIGRID_CHUQIANG_MOVE_IDS } from '@/mechanics/agents/sigrid'
  *    `/home/kaua/r49-scratch/evidence/R49-J1-dead-adjustables.md`）：
  *    · **甲（模块覆盖，2 条）**：1391 `jufufu_weishi` —— 模块 `buildResourceResult` 自己重建
  *      同名 `specResources` 键且不读滑块 ⇒ 值被 `...mechanicResult` 丢弃 ⇒ 拖它不改任何数。
+ *      **✅ 已裁决（2026-10-22 用户）**：「威势影响自动后台攻击，滑块应该只能设置上限吧」
+ *      ⇒ 两条 `.rate`（倍率）**已删除**，改为模块 `jufufu.weishiAssistCap` / `jufufu.weishiTeamUltCap`
+ *      （`capOfAuto`：自动值算出、只往下压、0=不限）。生效测试见 `adminRulingEffect.test.ts` 甲-1/甲-2。
  *    · **乙（资源不可达，4 条）**：1621×2 / 1611×1 / 1561×1 —— 自定义模块接管 agentId ⇒
  *      `registry.ts:139-141` 不再注册 spec 派生模块 ⇒ `computeSpecResources` 永不被调用，
  *      而模块自己也不调它（`grep -c` = 0）⇒ 该资源零消费者。实测：`resourceResult` 里没有那个键，

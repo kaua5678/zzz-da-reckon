@@ -108,12 +108,15 @@ describe('spec resource interpreter', () => {
   })
 
   it('specAdjustableRate（CC-536）：手写模块按 id 读 spec adjustable——默认值与区间取声明，未声明抛错', () => {
-    const id = '1391.jufufu_weishi.jufufu_weishi_assist.rate'
+    // ⚠ 2026-10-22 换锚：原用 1391「威势」两条 .rate 作样本，该两条已按用户裁决改为
+    // 模块侧「次数上限」滑块（jufufu.weishiAssistCap / jufufu.weishiTeamUltCap）并删除 spec 声明。
+    // 本用例只验**读法**（默认值/区间/抛错），换一条仍在册的 spec adjustable 即可（1021 同区间 0..2）。
+    const id = '1021.nekomata_purr.nekomata_ultimate_gain.rate'
     expect(specAdjustableRate({}, id)).toBe(1)
     expect(specAdjustableRate({ [`setting:${id}`]: 0.5 }, id)).toBe(0.5)
     expect(specAdjustableRate({ [`setting:${id}`]: 5 }, id)).toBe(2)
     expect(specAdjustableRate({ [`setting:${id}`]: -1 }, id)).toBe(0)
-    expect(() => specAdjustableRate({}, '1391.jufufu_weishi.nope.rate')).toThrow(/nope/)
+    expect(() => specAdjustableRate({}, '1021.nekomata_purr.nope.rate')).toThrow(/nope/)
   })
 
   it('猫又呼噜能量分配（2026-08-23 口供）：自动覆盖率 0 → 全 30 档，门控不建模', () => {

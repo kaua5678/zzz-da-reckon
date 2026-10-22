@@ -82,6 +82,9 @@ export const PHOENIX_C6_RES_IGNORE = 15
 export const PHOENIX_C6_RELEASE_DEF_IGNORE = 40
 /** 异放暴击时暴伤额外 +40%（焚罪/烬火追魂共有） */
 export const PHOENIX_RELEASE_CRIT_EXTRA_DMG = 40
+/** 完美格挡：每次 +5 燔焰，10 秒最多一次（原文） */
+export const PHOENIX_PERFECT_BLOCK_EMBER = 5
+export const PHOENIX_PERFECT_BLOCK_CD_SECONDS = 10
 
 /** moveId（param 空间，v12 重排后） */
 export const PHOENIX_CHARGED_MOVE_ID = '1641005' // 普通攻击：焚罪（长按，消耗 90 燔焰）
@@ -196,7 +199,13 @@ export function phoenixBasicCombustionHits(basicTime: number, cycle: { moveId: s
 /**
  * 燔焰收入：按 **moveId × 倍率表 attack_data_0** 直算。
  * ⚠️ buildExecutions 阶段 executions 的 `totalSpecialResourceRecovery` **尚未 enrich 回填**，直接读是 0。
- * 完美格挡 +5（10 秒一次）按 cfg.perfectBlockCount/10 折算并入。
+ *
+ * **完美格挡 +5 燔焰**（用户口径 2026-10-22）：
+ * - 次数源 = 主页交互栏 `perfectBlockCount`（模块 `characterCountInputs` 声明；原缺声明 ⇒ 用户填不到）；
+ * - **CD 上限**：原文「10 秒一次」⇒ 有效次数 ≤ floor(有效战斗时间 / 10)。有效 = 扣 boss 无敌
+ *   （`minusInvincibleTime`，与 `[灼蚀]` 周期火伤同源），不吃「快照满覆盖」——CD 是硬约束；
+ * - 难度侧不需要额外动作：`perfectBlock` 已在 `teamCompare#BOSS_ATTACK_INTERACTIONS` 里
+ *   ⇒ 自动吃非失衡占比修正（用户口径：这个交互要 boss 出手，失衡期怪物不攻击）。
  */
 function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
   const meta = cfg.phoenixCombustionMeta ?? {}
@@ -210,9 +219,13 @@ function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResour
     if (e.moveId === PHOENIX_BRANCH_MOVE_ID) continue // 分支攻击是操作向量
     income += Math.max(0, e.count) * (meta[e.moveId] ?? 0)
   }
-  // 完美格挡 +5 燔焰 / 10 秒一次
-  const blocks = Math.max(0, Math.floor(cfg.perfectBlockCount))
-  income += Math.floor(blocks / 10) * 5
+  // 完美格挡 +5 燔焰 / 10 秒一次（用户口径 2026-10-22）：
+  // 次数按「10s 一次」的 CD 上限钳制 = floor(有效战斗时间 / 10)，再乘 5 点/次。
+  // 有效战斗时间与 `[灼蚀]` 周期火伤同源（扣 boss 无敌）——CD 是硬约束，不吃覆盖率近似。
+  const perfectBlocks = Math.max(0, Math.floor(Number(cfg.perfectBlockCount)))
+  const cdCap = Math.floor(minusInvincibleTime(Number(cfg.battleTime), cfg) / PHOENIX_PERFECT_BLOCK_CD_SECONDS)
+  const blockHits = Math.min(perfectBlocks, Math.max(0, cdCap))
+  income += blockHits * PHOENIX_PERFECT_BLOCK_EMBER
   return income
 }
 
@@ -589,6 +602,24 @@ export const phoenixMechanic: AgentMechanicModule = {
   name: '菲欧妮·涅槃',
   description: 'v12：核心异常精通+85、[灼蚀] 异常暴击（率30+0.7×(初始掌控−155) 封顶255、伤25）+额外能力暴伤+15、[灼蚀]周期火伤（8s/50%攻击力）；异放（焚罪445/烬火追魂597，暴击再+40暴伤）+影画4 额外600%；[燔焰]120→焚罪90、[升变]→燎斩、[枯荣] 眩焰→坠阳→燎斩稳态；影画6 无视15%抗性+异放无视40%防御。',
   applyPanel: applyPhoenixPanel,
+  /**
+   * 主页交互栏「完美格挡」输入框（用户裁决 2026-10-22：「可以，毕竟他有交互收益」）。
+   *
+   * 该机制此前**实现存在但用户填不到**：`phoenixEmberIncome` 读 `cfg.perfectBlockCount`，
+   * 但全仓只有佩洛伊斯（`specPanelBuffs.ts`）声明过这个输入框 ⇒ 菲欧妮页面无入口。
+   *
+   * 难度侧两件事都由既有通道自动成立，**不新增代码**：
+   * - 需 boss 出手 ⇒ `teamCompare#BOSS_ATTACK_INTERACTIONS` 已含 `perfectBlock` ⇒ 吃非失衡占比修正；
+   * - CD 上限 ⇒ 由 `phoenixEmberIncome` 按 `floor(有效战斗时间/10s)` 钳（不在难度侧重复建模）。
+   */
+  characterCountInputs: [
+    {
+      field: 'perfectBlockCount',
+      label: '完美格挡',
+      title: '强化特殊技触发完美格挡的次数：每次回复燔焰 5 点，**10 秒最多一次**——引擎按 floor(有效战斗时间/10s) 钳上限（boss 无敌时间已扣）。'
+        + '这个交互需要 boss 出手，所以在队伍对比/难度曲线里吃「非失衡占比」修正（失衡期怪物不攻击，能凑的次数更少）。',
+    },
+  ],
   buildCharConfig: buildPhoenixCharConfig,
   estimateExSpecialTime: phoenixExSpecialTime,
   buildExecutions: buildPhoenixExecutions,
