@@ -60,7 +60,19 @@ import {
 
 const COST = SEVERIAN_SHADOW_FLOW_COST
 /** 每次影猎的事后返还 = 最后一击 20 +（C6 时）[风起] 25（v12 起两项并存，唯一事实源在模块） */
-const WIND = severianShadowRefundFlow(6)
+const WIND_C6 = severianShadowRefundFlow(6)
+/** 纯函数面（A/B/D）一律按 **C6** 口径（返还 = 20+25 = 45） */
+const WIND = WIND_C6
+/**
+ * 每次影猎的事后返还**按命座取**：C6 = 20（最后一击）+ 25（[风起]）= 45；C0 = 20。
+ *
+ * ⚠ 2026-10-22 查证：旧版把 `WIND = severianShadowRefundFlow(6) = 45` 当**全局常量**，
+ * 而夹具里有 c0 队伍 ⇒ 用 C6 的返还量去判 c0 的可达性，**必然假违约**。
+ * 实测 `sev+1481+1211/c0`：正确 WIND=20 时 flowIncome 1020 = 100×10+20 **完全可达**；
+ * 用 WIND=45 硬套才会算出 820 < 845（差 25 = 恰好一次[风起]）。
+ * ⇒ 这不是引擎缺陷，是**测试夹具的常量选错**。
+ */
+const windOf = (cinemaLevel: number) => severianShadowRefundFlow(cinemaLevel)
 
 /** 读模块**自己**的流息输出（`buildResourceResult` 是 `severianFlowState` 的唯一公开入口） */
 function flowOf(input: { ult: number; chain: number; dodge: number; cinema?: number }): {
@@ -224,18 +236,20 @@ describe('债 1a · 1631 赛维里安流息方程 = (a) 有序级联（不可松
     // 现取 c6 base=900/mod=20 与 c0 base=460/mod=20（均满足 mod < WIND，223 个候选中筛选）。
     for (const [team, tag, cin] of [
       [['1631', '1481', '1141'], 'sev+1481+1141', 6],
-      [['1631', '1481', '1311'], 'sev+1481+1311', 6],
+      // ★ c0 档：返还只有 20（无[风起]），旧版用 C6 的 45 判它 ⇒ 假违约。现按命座取 wind。
+      [['1631', '1481', '1211'], 'sev+1481+1211', 0],
     ] as Array<[string[], string, number]>) {
       for (let i = 0; i < 3; i++) config.setAgent(i, team[i]!)
       config.setCinemaLevel(0, cin)
       const rr = calc.resourceResult.value!
       const ch = rr.characters.find(c => c.slot === 0)!
       const flow = (ch as unknown as { severianFlow?: { flowIncome: number; shadowHuntCount: number } }).severianFlow!
-      const base = flow.flowIncome - WIND * flow.shadowHuntCount
+      const wind = windOf(cin)   // ★ 按命座取返还量（C6=45 / C0=20），不是全局常量
+      const base = flow.flowIncome - wind * flow.shadowHuntCount
       if (relaxedHunt(base) > reachableMaxHunt(base)) discriminatingSeen++
-      rows.push(`${tag}/c${cin}: base=${base} mod=${base % (COST - WIND)} 影猎=${flow.shadowHuntCount} 松弛=${relaxedHunt(base)} nec=${ch.timeAllocation.necessaryTime.toFixed(3)}`)
+      rows.push(`${tag}/c${cin}: base=${base} mod=${base % (COST - wind)} 影猎=${flow.shadowHuntCount} 松弛=${relaxedHunt(base)} nec=${ch.timeAllocation.necessaryTime.toFixed(3)}`)
       if (flow.shadowHuntCount > 0) {
-        const need = COST * flow.shadowHuntCount + WIND
+        const need = COST * flow.shadowHuntCount + wind
         if (flow.flowIncome < need - 1e-9) violations.push(`${tag}/c${cin}: ${flow.flowIncome} < ${need}`)
       }
     }
