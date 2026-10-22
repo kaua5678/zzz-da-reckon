@@ -19,6 +19,7 @@ import { teamPresets } from '@/data/teamPresets'
 import { fusedRowValue, getRowValue, findMoveById } from '@/data/moveTableQueries'
 import { findChainAttack, findUltimate } from '@/core/resource/moveLookup'
 import { moveFusionByMoveId, MOVE_FUSION_GROUPS } from '@/data/moveFusions'
+import { movePerformanceGroupOf } from '@/data/movePerformanceGroups'
 
 describe('倍率融合：fusedRowValue（单一事实源 moveFusions）', () => {
   it('星见雅·斩击 = 飞雪#1 + 飞雪#2 = 788.3%（第一次 E）', async () => {
@@ -332,4 +333,36 @@ describe('探针：融合生效后雅队伤害', () => {
     }
     expect(exs.find(e => e.moveId === '1091009')?.damageMultiplier).toBeCloseTo(788.3, 3)
   }, 120000)
+
+/**
+ * **多段演出组**（用户裁决 2026-10-22）：一次发动、多段演出、每段各出伤害，但**只收一次喧响**。
+ *
+ * 奥菲与玛格莎终结技「与火共舞」= #1 旋转 + #2 激光（原文「向前发动旋转攻击，然后向前方发射激光」）。
+ * 轴里两段都捏时修前收 6000、产出只一份（实测 2.8813M / 6000 vs 3000）。
+ *
+ * ⚠ 与融合组（本文件上面那条护栏）**不是一回事**：融合组是「多段合成一份倍率、兄弟段不得成行」；
+ * 多段演出组是「**每段都成行、各出伤害**，只是同一次发动不重复收喧响」。
+ */
+describe('多段演出组：同一次发动只收一次喧响', () => {
+  it('奥菲 1301015/1301016 属同一组；反向索引覆盖两段', () => {
+    expect(movePerformanceGroupOf('1301015')).toBe('1301015')
+    expect(movePerformanceGroupOf('1301016'), '第二段也要能查到组').toBe('1301015')
+    expect(movePerformanceGroupOf('1301014'), '非本组招式为 undefined').toBeUndefined()
+    expect(movePerformanceGroupOf(undefined)).toBeUndefined()
+  })
+
+  it('执行行：两段**都成行、各出伤害**（不是融合组那种合成一份）', async () => {
+    await setupHarness([{ agentId: '1301' }, { agentId: '1211' }, ''], { recommendedBuild: false })
+    const calc = useResourceCalc()
+    const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1301')!
+    const r1 = ch.executions.find(e => e.moveId === '1301015')
+    const r2 = ch.executions.find(e => e.moveId === '1301016')
+    expect(r1, '#1 必须成行').toBeTruthy()
+    expect(r2, '#2 也必须成行（本组不压行）').toBeTruthy()
+    // 两段在伤害池里各自结算
+    const dm = calc.damagePoolRows.value.filter(r => ['1301015', '1301016'].includes(String(r.moveId)))
+    expect(dm.length, '两段各有一份伤害').toBe(2)
+    expect(dm.every(r => r.totalDamage > 0), '两段伤害都 > 0').toBe(true)
+  })
+})
 })

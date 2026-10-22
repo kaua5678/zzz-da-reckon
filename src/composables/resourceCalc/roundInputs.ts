@@ -29,6 +29,7 @@ import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf, a
 import { findMoveById } from '@/data/moveTableQueries'
 import { findWindSlot } from './anomalyPanels'
 import { chainMoveKind } from '@/data/chainMoveKind'
+import { movePerformanceGroupOf } from '@/data/movePerformanceGroups'
 import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 import { parseMoveEnergyCost } from '@/core/resource/moveLookup'
 import { panelAt } from '@/core/panel'
@@ -268,6 +269,8 @@ export function createConvergenceRoundInputs(deps: {
   function buildStackAxes(axes: StunAxis[]): StackAxisInput[] {
     return axes.map(axis => {
       const axisActions: StackActionCost[] = []
+      /** 已收过喧响的融合组（`slot:主段moveId`）——同一次动作的分段不重复收费（用户裁决 2026-10-22） */
+      const decibelChargedGroups = new Set<string>()
       // 60/90 转大块是琉音（1481）好评赠送终结技的专属机制：队伍无琉音时跳过（不当作普通轴动作执行，
       // 否则无琉音队伍也会打出 promoteVariant 块的终结技——2026-08 修复）
       // CC-43e（2026-09-27）：「转大块归谁」由模块声明 `ownsPromoteVariantAxisBlocks`（琉音），编排层无身份判定。
@@ -351,6 +354,30 @@ export function createConvergenceRoundInputs(deps: {
            * 本够打 4 个大招）。**只免喧响，不免窗口时间**（`actionTime` 不受影响）。
            */
           if (axisMoveFreeOfDecibelOf(configStore.team[act.slot]?.agentId, act.moveId)) decibelCost = 0
+          /**
+           * **同一次动作的分段只收一次喧响**（用户裁决 2026-10-22）。
+           *
+           * 场景：奥菲与玛格莎终结技「与火共舞」= #1 旋转攻击 + #2 激光，原文
+           * 「向前发动旋转攻击，**然后**向前方发射激光」= 一次发动、两段演出。
+           * 轴里两段都捏时修前**收两次 3000、产出只有一份**（实测 2.8813M / 6000，单段 3000）。
+           *
+           * 用户逐字：「奥菲斯的大招应该把动作块合在一起，因为他会自动放完两个倍率，
+           * 只需要 3k 喧响，旋转完了可以自动发射激光」
+           *
+           * 修法 = 按**多段演出组**去重（`movePerformanceGroupOf`，单一事实源 = `MOVE_PERFORMANCE_GROUPS`）：
+           * 同组只收一次，先命中者收全额、其余段 0。
+           * ⚠ 与 **融合组**（`moveFusions`）**不是一回事**：融合组是「多段合成一份倍率」（引擎只物化主段，
+           * 兄弟段不得成行，有 `moveFusion.test.ts` 双计护栏锁死）；本组是「**每段各算各的伤害**、
+           * 但**同一次发动**只花一次喧响」（奥菲 #1 旋转 1398.3% + #2 激光 932.2% 两段都出伤害）。
+           * ⚠ 也与 T133（`axisMoveFreeOfDecibel`「这个大招不由喧响买」）**不是同一件事**：
+           * 本族**确实由喧响买**，只是被数了两遍。
+           */
+          const performanceGroup = movePerformanceGroupOf(act.moveId)
+          if (performanceGroup) {
+            const groupKey = `${act.slot}:${performanceGroup}`
+            if (decibelChargedGroups.has(groupKey)) decibelCost = 0
+            else decibelChargedGroups.add(groupKey)
+          }
         }
         // 合成行（无倍率表条目）的动作时长兜底由本槽模块能力 `axisMoveActionTime` 提供（CC-39b；
         // 现唯一实现 = 雨果强特终结一击），保证窗口截断按「块结束时刻」而非「块起点」算剩余失衡时间。
