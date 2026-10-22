@@ -469,6 +469,14 @@ function luciaOnFinalAssemble({ cfg, isCurtainProvider, curtainTriggers, state, 
 export const luciaElowenMechanic: AgentMechanicModule = {
   id: 'agent:lucia_elowen',
   agentIds: ['1451'],
+  /**
+   * 卢西娅**不打通用平A**：她的平A时间只由本模块的计划内 A5（1451005）兑现
+   * （`buildLuciaCharConfig` 把 `cfg.timeWeight` 写死 0，正是同一口径）。
+   * 声明成模块字段（而不是只靠 `cfg.timeWeight = 0`）：引擎平A池的第二层兜底
+   * （`core/resource/helpers.ts#iterate`，2026-10-21 用户口径「留白正常情况是 0」）按它判断
+   * 「本槽能不能接通用平A池」——写死 cfg 只是默认值，用户/策略层改得动；本字段是机制口径。
+   */
+  defaultBasicAttackTimeWeight: 0,
   // 副词条优化模板（CC-81：原 core/substatOptimizer.ts AGENT_TEMPLATES）
   // 卢西娅（1451）：生命→全队攻击（局外）→ hpPct 优先
   substatTemplate: {

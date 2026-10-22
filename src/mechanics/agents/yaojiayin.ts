@@ -425,6 +425,14 @@ export const yaojiayinMechanic: AgentMechanicModule = {
   applyTeamConfig: applyYaojiayinTeamHook,
   id: 'agent:yaojiayin',
   agentIds: [YAOJIAYIN_ID],
+  /**
+   * 耀嘉音**不能打通用平A**（用户裁决 2026-10-22：「嘉音不能a，妮可可以a」）。
+   * 她的前台时间只用来放歌/和弦（`applyTeamConfig` + 模块行），所以：
+   * ① 新上阵默认权重 = 0（本来就是支援职业缺省 0，此处置为**机制口径**）；
+   * ② 引擎平A池的**第二层兜底**（`core/resource/helpers.ts#iterate`）按本字段排除她
+   *    —— 否则主C 贴顶后剩余池会摊到她身上，凭空给她凭空造出平A回能/喧响。
+   */
+  defaultBasicAttackTimeWeight: 0,
   name: '耀嘉音·咏叹华彩',
   description: '咏叹拐力、核心攻击、震音/音簇循环与影画1/2/4/6。',
   settings: [{

@@ -118,7 +118,7 @@ describe('合轴率抵扣团队时间预算', () => {
     expect(sumDynamic(s1), '吸收总量 == 容量（不咬合支）').toBeCloseTo(cap1, 3)
   })
 
-  it('单角色前台硬顶：平A份额超「总时间−必要」时截断到 180；无队友可接时留在池里', async () => {
+  it('单角色前台硬顶：平A份额超「总时间−必要」时截断到 180；剩余份额落到还有余量的队友（2026-10-21 口径）', async () => {
     const cfg = await capturedConfig(['1061', '1011', '1151'])
     cfg.characters[0].chainCountTotalOverride = 20
     cfg.characters[1].chainCountTotalOverride = 40
@@ -134,9 +134,18 @@ describe('合轴率抵扣团队时间预算', () => {
     expect(s[0].frontlineTime).toBeLessThanOrEqual(cfg.totalTime + 1e-6)
     expect(s[0].frontlineTime).toBeGreaterThanOrEqual(cfg.totalTime - 1e-6)
     expect(s[0].basicAttackTime).toBeCloseTo(cfg.totalTime - s[0].necessaryTime, 6)
-    // 权重 0 的角色不接池（没有有余量的队友 → 截断的份额留在池里）
-    expect(s[1].basicAttackTime).toBe(0)
-    expect(s[2].basicAttackTime).toBe(0)
+    /**
+     * **2026-10-21 口径变更（旧断言：权重 0 的槽一律 basic=0、剩余池留在池里蒸发）**
+     *
+     * 用户裁决：「留白正常情况是 0，你这个平a怎么没有自动填充呢。不止这个队，其他所有空白队都应该自动填充」。
+     * ⇒ `iterate` 平A分配加了**第二层兜底**：正权重槽全部贴顶后，剩余池按「谁还有物理余量」等分给其余槽
+     * （`helpers.ts` 第二层注释）。本夹具正是那一形态：槽0 权重 1 贴 180 硬顶 ⇒ 剩余 15.4005s 不再蒸发。
+     * 边界仍保留：模块**显式声明**「不打通用平A」（`defaultBasicAttackTimeWeight === 0`，蕾米埃尔/薇薇安）
+     * 与单人队不接兜底池——本夹具两名队友都是普通角色（击破/支援，职业缺省 0），故都接。
+     */
+    expect(s[1].basicAttackTime, "贴顶剩余份额等分落到仍有物理余量的队友").toBeCloseTo(15.4005, 3)
+    expect(s[2].basicAttackTime, "两名零权重槽等分（引擎无法判断给谁更划算）").toBe(s[1].basicAttackTime)
+    for (const st of s) expect(st.frontlineTime).toBeLessThanOrEqual(cfg.totalTime + 1e-6)
   })
 
   it('截断份额回流（2026-09-05 改口径）：贴顶槽吃不下的秒数按剩余权重水填给有余量的队友', async () => {

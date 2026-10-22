@@ -589,7 +589,7 @@ function iterateBody(
   // 轴模式下栈引擎节省（axisOverlapByAction）与招式合轴率是同一物理并行的两种模型，
   // 按槽位取 max 不叠加（防同时设置时超扣；缺省合轴率全 0，退化为原口径）。
   // @fact engine:合轴预算抵扣 口径: 必做动作合轴段与其他角色动作并行、抵扣团队时间预算（Σnecessary 允许>战斗时间）；轴模式与栈引擎节省按槽取 max 不叠加；只抵扣含在 necessary 内的部分（GROSS 缺省，NET 模块照/卢西娅不重复抵） | 据 用户@2026-09-04·复核@2026-09-08·复核@2026-09-25·复核@2026-09-30 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/timeOccupation.ts#netFrontlineOccupation | 信 确认
-  // @fact engine:单角色前线上限 口径: 单角色前台（必要+平A）≤ 战斗总时间——合轴抵扣放宽团队预算不放宽单人物理时间轴；贴顶截断的份额按剩余权重水填回流给还有余量的队友，不留池蒸发 | 据 用户@2026-09-05（改 09-04「留池不重分配」）·复核@2026-09-08·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/composables/__tests__/comboAlignBudget.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
+  // @fact engine:单角色前线上限 口径: 单角色前台（必要+平A）≤ 战斗总时间——合轴抵扣放宽团队预算不放宽单人物理时间轴；贴顶截断的份额按剩余权重水填回流给还有余量的队友，不留池蒸发 ；**贴顶后的剩余池按第二层兜底填给「仍有余量的非声明槽」**（等分水填，模块显式声明 `defaultBasicAttackTimeWeight = 0` 的槽与单人队不接——用户口径「留白正常情况是 0」） | 据 用户@2026-09-05（改 09-04「留池不重分配」）·复核@2026-09-08·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·用户@2026-10-21「留白正常情况是 0…其他所有空白队都应该自动填充」 | 验 src/composables/__tests__/comboAlignBudget.test.ts + src/core/__tests__/basicPoolLeftoverFill.test.ts | 锚 src/core/resource/helpers.ts#iterate | 信 确认
   const overlapBySlot = axisOverlapBySlot(globalCfg.axisOverlapByAction)
   // CC-178：原「无按块分摊 → max(Σ抵扣, 团队总量)」兜底已删——无分摊时团队总量恒为 0，两式都退化为 Σ抵扣（逐位等价）
   const reliefSeconds = comboAlignCredits.reduce((sum, credit, i) => sum + Math.max(credit, overlapBySlot[configs[i].slot] ?? 0), 0)
@@ -823,7 +823,8 @@ function iterateBody(
          * 它**比 capped 大** ⇒ 改 capped 会让 headroom 变大、平A 分得更多 ⇒ **超预算**。
          * 实测 `auto-1091-1031-1311`：改前留白 30.9s，改后 **33.6s（更差）**。
          *
-         * ⇒ 留白的真因不在本行（另见 `docs/STUN_CONTINUOUS_LASTWINDOW.md` §45 的排查记录）。
+         * ⇒ 留白的真因不在本行，而在「**池分给谁**」：`effectiveWeights[i] > 0` 的槽贴顶后，
+         * 剩余池没有任何槽能接（下方「第二层」兜底填满，2026-10-21 round 35 实测定位）。
          */
         const headroom = Math.max(0, totalTime - totalNecessary[i]) - basicAlloc[i]
         if (effectiveWeights[i]! > 0 && headroom > 1e-9) open.push({ idx: i, headroom, w: effectiveWeights[i]! })
@@ -833,6 +834,64 @@ function iterateBody(
       let used = 0
       for (const o of open) {
         const give = Math.min(o.headroom, pool * (o.w / wSum))
+        basicAlloc[o.idx] += give
+        used += give
+      }
+      pool -= used
+      if (used <= 1e-9) break
+    }
+    // ===== 第二层：权重槽全部贴顶后的兜底填满（用户口径 2026-10-21）=====
+    /**
+     * 「**留白正常情况是 0**，你这个平a怎么没有自动填充呢。**不止这个队，其他所有空白队都应该自动填充**」（逐字）。
+     *
+     * 病灶：水填法只绕 `effectiveWeights[i] > 0` 转 —— 主C 分到的份额贴到**单人物理上限**
+     * （`totalTime − 必要`）后退出，池里剩下的秒数**没有任何槽能接**，直接蒸发成留白。
+     * 实测 `auto-1091-1031-1311`（雅 + 妮可 + 耀嘉音，权重 1/0/0）：池 122.56s，雅只装得下 92.40s
+     * ⇒ 剩 **30.16s** 无主，`timeBudgetIdleSeconds=33.59`、物化净占用 146.41/180。
+     * 支援/防护的 weight=0 只是**职业缺省**（`stores/config.ts#defaultBasicAttackTimeWeight`），
+     * 不是「这名角色不会普攻」：主C 时间轴满了以后，剩下的池只可能在队友身上兑现
+     * （游戏里就是主C 合轴窗口/后台时队友上场平A）。同理 `auto-1401-1411-1031` 26.89s。
+     *
+     * ## 为什么这也修了「合轴抵扣凭空多出来」
+     *
+     * 用户 2026-10-22 的口径：「**雅和爱丽丝这种自带基础合轴率的，其合轴时间只能给队友分配，
+     * 这部分时间是空余的原因吗。那只能默认设置给队友吃了，没有权重也得战场**」。
+     *
+     * `comboAlignCredit` 的物理含义 = 本槽动作**与队友前台并行**的秒数。队友权重 0 且主C 贴顶 ⇒
+     * 队友前台 ≈ 0 ⇒ **没有并行对象**，这份抵扣是幻觉：它同时把池扩大（`reliefWithDynamic`）又
+     * 把净占用减掉（`slotNetFrontline`）⇒ 两次白拿。实测修前：
+     * `auto-1091-1031-1311` 雅 credit **38.94s** / 队友前台合计 **14.65s** ⇒ 幻觉 **24.30s**；
+     * `auto-1401-1411-1031` ⇒ 幻觉 **13.00s**（全库仅这 2 队，合计 37.30s）。
+     * 第二层兜底让队友**真的上场**（拿到平A 时间）后，全库 `credit_i ≤ Σ_{j≠i} frontline_j` 逐队成立
+     * ⇒ 这份「空余」被队友吃掉而不是蒸发 —— 正是用户说的「没有权重也得战场」。
+     * 判据 = `basicPoolLeftoverFill.test.ts` 的合轴恒等式用例（修前 2 队违反、修后 0 队）。
+     *
+     * 口径细则（**别改成「按权重」或「给主C 加份额」**）：
+     * - 第二层只在**第一层分完还有剩**时启动 ⇒ 正权重槽没贴顶时行为与修前逐位相同；
+     * - 零权重槽之间**等分**（水填，逐个退出）：引擎无法判断「给谁最划算」，等分是诚实的选择
+     *   ——与第三层降级「简单逻辑无法识别压缩谁最有利，只能全部都平等了」同一口径（用户 2026-10-10）；
+     * - 单人物理上限照旧（`headroom = totalTime − 必要 − 已分`），**不写回 store**（界面仍显示 0，
+     *   与「全队皆 0 ⇒ 一号位独享」同一装置）；
+     * - 可行性仍由末轮欠打试探兜底（`underfillProbe#fitsBudget`：物化净占用 ≤ 预算 − 容差），
+     *   即本层只负责「把池分出去」，超不超预算那条硬不变量不变。
+     */
+    // 单人队不适用（同上方「全队皆 0 ⇒ 一号位独享」的豁免）：单人没有第二种时间用途，
+    // 让支援把 180s 全拿来平A 是无意义的读数（实测会让 agent:1451:c0..c6 六条 golden 的平A
+    // 从 0 跳到 151.7s、失衡 0→1）。
+    for (let round = 0; configs.length >= 2 && round < configs.length && pool > 1e-9; round++) {
+      const openZero: Array<{ idx: number; headroom: number }> = []
+      for (let i = 0; i < configs.length; i++) {
+        if (effectiveWeights[i]! > 0) continue
+        // 模块**显式声明**「不打通用平A」（`defaultBasicAttackTimeWeight = 0`，如蕾米埃尔后台飞行 /
+        // 薇薇安合轴快切）的槽不接兜底池——那不是职业缺省，是机制口径。
+        if (getAgentMechanic(configs[i].agentId)?.defaultBasicAttackTimeWeight === 0) continue
+        const headroom = Math.max(0, totalTime - totalNecessary[i]) - basicAlloc[i]
+        if (headroom > 1e-9) openZero.push({ idx: i, headroom })
+      }
+      if (openZero.length === 0) break
+      let used = 0
+      for (const o of openZero) {
+        const give = Math.min(o.headroom, pool / openZero.length)
         basicAlloc[o.idx] += give
         used += give
       }
