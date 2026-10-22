@@ -123,6 +123,38 @@ describe('store 取数：loadChangelog 真的接线', () => {
     expect(url).toContain('/static/changelog.json')
   })
 
+  /**
+   * ★ 刷新必须**真的重新发请求**且**绕过缓存**（2026-10-22 用户实测「点刷新没用」）。
+   *
+   * 两个失效面，缺一条就复现原症状：
+   *   ① 只清 store 里的 `changelogFile` 不够 —— 部署态（GitHub Pages）静态资源带
+   *      `cache-control: max-age=600`，同样的 URL 重取会命中浏览器缓存，拿回同一份字节；
+   *   ② 带 cache-buster 时**路径字面量必须仍完整**（`/static/changelog.json`），否则
+   *      `scripts/lib/json-contract.mjs` 的入口扫描器看不见这个入口（见本文件第 ③ 组用例）。
+   */
+  it('刷新（force）会重新 fetch，且 URL 带 cache-buster 而路径不变', async () => {
+    const catalog = useCatalogStore()
+    await catalog.loadChangelog()
+    const calls = () => (globalThis.fetch as unknown as { mock: { calls: string[][] } }).mock.calls.map(c => String(c[0]))
+    expect(calls()).toHaveLength(1)
+
+    await catalog.loadChangelog(true)
+
+    const urls = calls()
+    expect(urls).toHaveLength(2)
+    expect(urls[1]).toContain('/static/changelog.json')
+    expect(urls[1]).toMatch(/[?&]t=\d+/)
+    // 非 force 的首次请求不带查询串（默认路径逐字不变，304 重验证照常成立）
+    expect(urls[0]).not.toContain('?')
+  })
+
+  it('force 命中在途请求时共享同一次（不并发打两个）', async () => {
+    const catalog = useCatalogStore()
+    const [a, b] = await Promise.all([catalog.loadChangelog(), catalog.loadChangelog(true)])
+    expect(a).toBe(b)
+    expect((globalThis.fetch as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(1)
+  })
+
   it('产物能被视图模型直接吃下（端到端：真实数据 → 行序列）', async () => {
     const catalog = useCatalogStore()
     const data = await catalog.loadChangelog()

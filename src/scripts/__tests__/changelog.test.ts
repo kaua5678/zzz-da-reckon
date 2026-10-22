@@ -21,6 +21,8 @@ import {
   FIELD_SEP,
   RECORD_SEP,
   GIT_LOG_FORMAT,
+  auditChangelog,
+  flattenEntries,
   KNOWN_TYPES,
   TYPE_META,
 } from '../../../scripts/lib/changelog.mjs'
@@ -225,5 +227,52 @@ describe('buildChangelog：分组与统计', () => {
     expect(data).toMatchObject({ generatedFrom: 'git log --no-merges', head: 'abc1234', total: 0 })
     expect(data.days).toEqual([])
     expect(data.kinds).toEqual([])
+  })
+})
+
+/**
+ * `auditChangelog`：`--check` 的实现面（纯函数）。
+ *
+ * 2026-10-22 拆出来的动机（用户实测「网站还是老版本」）：这条校验原来**分不清**
+ * 「产物落后」和「产物被手改」。前者在部署已改成「按全历史重新生成」之后不再致命，
+ * 后者会直接给线上发一份假日志 —— 两者的红/警告等级必须分开。
+ */
+describe('auditChangelog：完整性硬判 + 新鲜度只标记', () => {
+  const mk = (h: string, d = '2026-10-11', s = 'feat: x') => toEntry(`${h}${d}${s}`)
+
+  it('完全一致 ⇒ 无问题、不 stale', () => {
+    const entries = [mk('a1'), mk('a2')]
+    const audit = auditChangelog(buildChangelog(entries), entries)
+    expect(audit).toMatchObject({ problems: [], missing: 0, actualCount: 2, stale: false })
+  })
+
+  it('落后超过容差只标记 stale（不产问题）——部署时会重新生成', () => {
+    const entries = [mk('a1'), mk('a2'), mk('a3'), mk('a4'), mk('a5')]
+    const audit = auditChangelog(buildChangelog([mk('a1')]), entries, { tolerance: 2 })
+    expect(audit.problems).toEqual([])
+    expect(audit.missing).toBe(4)
+    expect(audit.stale).toBe(true)
+  })
+
+  it('产物里的条目不在 git 历史里 ⇒ 问题（手改产物）', () => {
+    const audit = auditChangelog(buildChangelog([mk('zz')]), [mk('a1')])
+    expect(audit.problems.join()).toContain('zz')
+  })
+
+  it('同一条目重复出现 ⇒ 问题', () => {
+    const day = { d: '2026-10-11', entries: [{ h: 'a1', t: '新功能', k: 'feature', s: 'x' }, { h: 'a1', t: '新功能', k: 'feature', s: 'x' }] }
+    const audit = auditChangelog({ days: [day] }, [mk('a1')])
+    expect(audit.problems.join()).toContain('出现多次')
+  })
+
+  it('内容与 git 不符 ⇒ 问题（解析口径改了没重生成）', () => {
+    const entries = [mk('a1', '2026-10-11', 'feat: 新摘要')]
+    const tampered = { days: [{ d: '2026-10-11', entries: [{ h: 'a1', t: '新功能', k: 'feature', s: '旧摘要' }] }] }
+    expect(auditChangelog(tampered, entries).problems.join()).toContain('内容与 git 不符')
+  })
+
+  it('flattenEntries 按日期分组展平（与产物形态同序）', () => {
+    const file = buildChangelog([mk('a1', '2026-10-11'), mk('a2', '2026-10-12')])
+    expect(flattenEntries(file).map(e => e.h)).toEqual(['a2', 'a1'])
   })
 })

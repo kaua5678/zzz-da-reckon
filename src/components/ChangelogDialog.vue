@@ -70,12 +70,20 @@
       </n-virtual-list>
     </div>
 
+    <!--
+      页脚两件事：① 自证「这份数据是什么版本」（产物 head）——日志只随部署更新，
+      用户点刷新拿不到没发布的提交，光写「仅列已提交的改动」会让人误以为刷新能拉到本地新提交；
+      ② 刷新的时间戳 —— 缓存击穿（GitHub Pages 静态资源 max-age=600）后即使内容没变也要有「点过了」的反馈。
+    -->
     <template #footer>
       <div class="cl-footer">
         <span class="cl-footer-note">
-          由 <code>git log</code> 自动生成（<code>npm run gen:changelog</code>）· 仅列已提交的改动
+          由 <code>git log</code> 自动生成 · {{ note }}
         </span>
-        <n-button size="small" :loading="loading" @click="reload">刷新</n-button>
+        <div class="cl-footer-actions">
+          <span v-if="lastLoadedAt" class="cl-footer-stamp">最近取数 {{ lastLoadedAt }}</span>
+          <n-button size="small" :loading="loading" @click="reload">刷新</n-button>
+        </div>
       </div>
     </template>
   </n-modal>
@@ -94,7 +102,7 @@
 import { computed, ref, watch } from 'vue'
 import { NButton, NEmpty, NInput, NModal, NVirtualList } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
-import { buildChangelogRows, countEntries, kindCounts } from '@/composables/changelogView'
+import { buildChangelogRows, countEntries, formatClock, kindCounts, sourceNote } from '@/composables/changelogView'
 
 /** 行高（px）：日期条与日志行**同高**，naive-ui 的虚拟列表才能用固定 item-size。 */
 const ROW_HEIGHT = 30
@@ -106,6 +114,8 @@ const keyword = ref('')
 const kind = ref('')
 const loading = ref(false)
 const loadError = ref<string | null>(null)
+/** 最近一次**取数成功**的本地时钟（刷新有没有生效的可视反馈；空 = 还没取到） */
+const lastLoadedAt = ref('')
 
 const file = computed(() => catalog.changelogFile)
 
@@ -115,11 +125,12 @@ const file = computed(() => catalog.changelogFile)
  * 失败**只落在弹层里**（loadError），不抛给全局：日志是只读的旁路功能，
  * 它挂了不该影响计算器主体（与启动门的口径相反 —— 见 `calculatorStartup`）。
  */
-async function load(): Promise<void> {
+async function load(force = false): Promise<void> {
   loading.value = true
   loadError.value = null
   try {
-    await catalog.loadChangelog()
+    await catalog.loadChangelog(force)
+    lastLoadedAt.value = formatClock(new Date())
   } catch (e: unknown) {
     loadError.value = e instanceof Error ? e.message : '加载失败'
   } finally {
@@ -127,16 +138,24 @@ async function load(): Promise<void> {
   }
 }
 
+/**
+ * 刷新 = **强制重取**（带 cache-buster）。
+ *
+ * 以前这里只把 store 的 `changelogFile` 清空再 load，看起来是「重新拉一次」，但在部署态里
+ * 命中的是浏览器/边缘缓存（GitHub Pages 静态资源 `max-age=600`）⇒ 十分钟内重取还是同一份字节，
+ * 用户看到的就是「点刷新没反应」。缓存击穿的实现与边界在 `stores/catalog.ts#loadChangelog`。
+ */
 function reload(): void {
-  // 刷新 = 重新取一次（store 里已加载的会直接返回缓存；此处清空以强制重取）
-  catalog.changelogFile = null
-  void load()
+  void load(true)
 }
 
 // 打开时才拉数据（含首次）；关闭不重复请求
 watch(show, (open) => {
   if (open && !file.value) void load()
 }, { immediate: true })
+
+/** 页脚的数据来源说明（含产物 head = 这份数据停在哪个提交） */
+const note = computed(() => sourceNote(file.value))
 
 /** 各 kind 在**当前关键词**下的条数（随搜索变化，避免按钮数字与实际结果不符） */
 const counts = computed(() => kindCounts(file.value, keyword.value))
@@ -339,6 +358,21 @@ const emptyText = computed(() => {
 .cl-footer-note {
   color: var(--fg-3);
   font-size: var(--text-md);
+}
+
+/* 刷新时间戳与按钮同一行的右侧组：时间戳是次要信息，墨走 --fg-3（与页脚注同档），
+   等宽数字防止每次刷新把按钮挤动。 */
+.cl-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex: none;
+}
+
+.cl-footer-stamp {
+  color: var(--fg-3);
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
 }
 
 .cl-footer-note code {

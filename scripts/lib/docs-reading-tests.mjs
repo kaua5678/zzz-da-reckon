@@ -91,6 +91,9 @@ export const DOCS_READING_TESTS = [
   'src/composables/__tests__/timeGolden.test.ts',
   'src/core/__tests__/calcPanelCallContract.test.ts',
   'src/core/__tests__/coreMechanicsRegistryOnly.test.ts',
+  // 2026-10-22 补登记（存量漂移：f5a908a6 引入后一直漏登记，判据「清单 == 派生集」在 HEAD 上是红的）：
+  // 规则 ② 入选（import `scripts/lib/build-recommendation-rule.mjs`，读该模块的运行时导出）
+  'src/data/__tests__/buildRecMainStatRule.test.ts',
   'src/data/__tests__/teamPresets.test.ts',
   'src/mechanics/__tests__/specResourceTotalSingleSource.test.ts',
   'src/mechanics/__tests__/specTeamBuffSingleSource.test.ts',
@@ -101,6 +104,9 @@ export const DOCS_READING_TESTS = [
   'src/scripts/__tests__/checkTokens.test.ts',
   'src/scripts/__tests__/compactedSlotIndex.test.ts',
   'src/scripts/__tests__/deadChannelLs.test.ts',
+  // 2026-10-22 更新日志发布链路：规则 ② 入选（自身读仓库现状——对 .github/workflows/deploy-pages.yml
+  // 做源码文本断言：全历史 checkout / 部署时重生成 changelog / head 断言）
+  'src/scripts/__tests__/deployChangelog.test.ts',
   'src/scripts/__tests__/fieldWriterUniqueness.test.ts',
   'src/scripts/__tests__/idLiteralGate.test.ts',
   'src/scripts/__tests__/jsonDupKeys.test.ts',

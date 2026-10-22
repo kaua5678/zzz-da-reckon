@@ -71,5 +71,15 @@ export declare function buildChangelog(
   days: { d: string; entries: ChangelogDayEntry[] }[]
 }
 
+/** 产物里的全部条目（展平；产物按日期倒序分组） */
+export declare function flattenEntries(file: unknown): ChangelogDayEntry[]
+
+/** 产物完整性对账（\`--check\` 的实现面）：① 完整性（硬）② 新鲜度（stale 标记，由调用方决定红/警告） */
+export declare function auditChangelog(
+  prev: unknown,
+  entries: ChangelogEntry[],
+  opts?: { tolerance?: number },
+): { problems: string[]; missing: number; actualCount: number; stale: boolean }
+
 /** 把 git log 整段输出切成单条记录 */
 export declare function splitRecords(stdout: string): string[]

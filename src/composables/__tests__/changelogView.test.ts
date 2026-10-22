@@ -9,7 +9,7 @@
  * 不是假想结构 —— 契约面由 `validate:data` 的 JSON 契约另测。
  */
 import { describe, it, expect } from 'vitest'
-import { buildChangelogRows, countEntries, kindCounts, matchEntry } from '@/composables/changelogView'
+import { buildChangelogRows, countEntries, formatClock, kindCounts, matchEntry, sourceNote } from '@/composables/changelogView'
 import type { ChangelogFile, ChangelogEntry } from '@/types/changelog'
 
 const e = (h: string, t: string, k: string, s: string, bc?: number): ChangelogEntry =>
@@ -147,5 +147,31 @@ describe('countEntries', () => {
   it('只数日志行，不数日期条', () => {
     expect(countEntries(buildChangelogRows(FILE))).toBe(5)
     expect(countEntries([])).toBe(0)
+  })
+})
+
+describe('sourceNote：页脚自证「这份数据停在哪个提交」', () => {
+  /**
+   * ★ 为什么必须有（2026-10-22 用户实测）：日志是**构建产物**，只随部署更新。页脚只写
+   * 「仅列已提交的改动」会让人以为点刷新就能拉到本地新提交 —— 摆出产物 head 才能自证版本，
+   * 也是排障时与 `git log -1` 对照的锚点。
+   */
+  it('带上产物 head', () => {
+    expect(sourceNote(FILE)).toBe('数据版本 e0bb5422 · 仅列已发布（push 后构建部署）的提交')
+  })
+
+  it('未加载时说明未知版本，不抛错', () => {
+    expect(sourceNote(null)).toContain('数据版本未知')
+  })
+
+  it('说明里点明「push 后构建部署」——刷新拿不到未发布的提交', () => {
+    expect(sourceNote(FILE)).toContain('push')
+  })
+})
+
+describe('formatClock：刷新时间戳', () => {
+  it('补零到 HH:MM:SS', () => {
+    expect(formatClock(new Date(2026, 9, 22, 9, 5, 3))).toBe('09:05:03')
+    expect(formatClock(new Date(2026, 9, 22, 23, 59, 59))).toBe('23:59:59')
   })
 })

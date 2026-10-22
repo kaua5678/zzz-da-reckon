@@ -92,3 +92,24 @@ export function kindCounts(file: ChangelogFile | null, keyword: string | undefin
   }
   return out
 }
+
+/**
+ * 弹层底部「数据从哪来」的固定说明（纯函数，便于断言）。
+ *
+ * 为什么要把**数据版本**（产物里的 `head`）摆出来：日志只随**部署**更新（产物由构建生成并随包发布，
+ * 见 `scripts/gen-changelog.mjs` 与 `.github/workflows/deploy-pages.yml`）。用户看到「最新一条是几天前」
+ * 时，唯一能自证的信号就是产物记录的 head —— 它也是排障时与 `git log -1` 对照的锚点；
+ * 只写「仅列已提交的改动」会让人以为刷新能拉到未提交/未推送的内容。
+ */
+export function sourceNote(file: ChangelogFile | null): string {
+  const version = file?.head ? `数据版本 ${file.head}` : '数据版本未知'
+  // 前缀「由 git log 自动生成」由组件的页脚模板给（那里要套 <code>），本函数只管后半句，
+  // 免得两处各写一遍、拼起来读成「自动生成 · 由 git log 自动生成 · …」（实测拼串踩到）。
+  return `${version} · 仅列已发布（push 后构建部署）的提交`
+}
+
+/** 刷新时间的展示形态（`HH:MM:SS`，本地时钟）——「刷新有没有生效」的可视反馈。 */
+export function formatClock(now: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`
+}

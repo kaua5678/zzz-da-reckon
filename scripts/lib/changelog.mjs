@@ -206,6 +206,47 @@ export function buildChangelog(entries, meta = {}) {
 }
 
 /**
+ * 产物完整性对账（`gen-changelog.mjs --check` 的实现面，纯函数 ⇒ 可单测）。
+ *
+ * 两层判据，**失败面不同**（2026-10-22 拆分，理由见 `gen-changelog.mjs` 头注释）：
+ * ① **完整性（硬失败）**：产物的每条 hash 都在 git 历史里、不重复、且 t/k/s/bc 逐字段相同
+ *    —— 防手改产物、防解析口径变了没重生成；
+ * ② **新鲜度（只警告）**：产物比 git 历史落后超过 `tolerance` 条。
+ *    为什么降级成警告：`changelog.json` 已由部署 workflow 用全历史**重新生成**
+ *    （`.github/workflows/deploy-pages.yml`），线上日志不再依赖仓库里那份的新鲜度；
+ *    继续硬失败只会让高频提交的仓库长期 CI 红（实测：2026-10-13 那次就是因落后 177 条而红，
+ *    一红全哑）。真正兜住「线上日志残缺」的是部署里的「产物 head == 部署提交」断言。
+ *
+ * @param {any} prev 仓库里现有的产物
+ * @param {Array<{h:string,t:string,k:string,s:string,bc?:number}>} entries 当前 git 历史
+ * @param {{ tolerance?: number }} [opts]
+ * @returns {{ problems: string[], missing: number, actualCount: number, stale: boolean }}
+ */
+export function auditChangelog(prev, entries, opts = {}) {
+  const tolerance = opts.tolerance ?? 5
+  const problems = []
+  const expected = new Map(entries.map(e => [e.h, e]))
+  const actual = flattenEntries(prev)
+  const seen = new Set()
+  for (const e of actual) {
+    const want = expected.get(e.h)
+    if (!want) { problems.push(`产物里的 ${e.h} 不在 git 历史里（手改过产物？）`); continue }
+    if (seen.has(e.h)) { problems.push(`产物里 ${e.h} 出现多次`); continue }
+    seen.add(e.h)
+    if (e.t !== want.t || e.k !== want.k || e.s !== want.s || e.bc !== want.bc) {
+      problems.push(`${e.h} 内容与 git 不符：产物「${e.s}」vs git「${want.s}」`)
+    }
+  }
+  const missing = entries.filter(e => !seen.has(e.h)).length
+  return { problems, missing, actualCount: actual.length, stale: missing > tolerance }
+}
+
+/** 产物里的全部条目（展平；产物按日期分组，日期倒序 + 组内原序）。 */
+export function flattenEntries(file) {
+  return (file?.days ?? []).flatMap(d => d.entries ?? [])
+}
+
+/**
  * `git log` 的格式串（生成器与测试共用一份，规则 11）。
  *
  * `%h` 短 hash · `%ad` 作者日期（配 `--date=short`）· `%s` 标题 · `%x1f`/`%x1e` 分隔符。

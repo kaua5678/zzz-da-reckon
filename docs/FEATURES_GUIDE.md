@@ -493,7 +493,9 @@ B/C 类（角色数值调低、机制设置、资源利用率等）留待办，�
 - **筛选**：`功能 / 修复 / 重构 / 文档 / 其他` 贴片，可点两次取消（点选中的那个 = 回到全部）。
   贴片上的**数字随搜索词变化**（否则会出现「按钮说 333 条、点进去只有 12 条」）。
 - **分组**：按**作者日期**倒序，每天一条日期条 + 当天提交；被筛空的日期**不显示**（不留「0 条」的空日期）。
-- **刷新**：重新拉一次产物（通常不需要——产物随代码一起发布）。
+- **刷新**：**强制重取**（带 cache-buster，绕开部署态 `max-age=600` 的浏览器/边缘缓存）+ 页脚显示
+  「最近取数 HH:MM:SS」作为「点过了」的反馈。⚠ 刷新**只能拿到已发布的产物**——日志随 `push → 部署`
+  更新，本地新提交没部署之前，刷新多少次内容都不会变。
 
 ### 11.2 数据管道（唯一事实源 = git 历史）
 
@@ -518,15 +520,23 @@ npm run changelog:check   # node scripts/gen-changelog.mjs --check —— CI 完
   `changelog:check` 校验的是**完整性**（产物每条都在 git 里且逐字段相同 + 落后 ≤ `TOLERANCE` 条），
   **不是**逐字等于刚生成的结果。改回逐字比对会让每次提交后 CI 必红（口径与理由见脚本头注释）。
 - ⚠ **CI 必须 `fetch-depth: 0`**：默认浅克隆只有 1 个提交，校验会因「产物引用了不存在的历史」而假红。
+- ★ **发布链路（2026-10-22，用户实测「线上还是老版本」）**：`changelog.json` 此前是**纯人手提交的产物**
+  （忘了跑 `gen:changelog` 就静止），实测落后过 **177 条**；线上站点停在最后一次部署（`86eaa5f0`，
+  10-13）——本地领先 153 个未 push 的提交，所以用户看到的就是「网站还是老版本」。
+  现在 `.github/workflows/deploy-pages.yml` 在**部署时**用全历史重新生成（checkout 加 `fetch-depth: 0`），
+  并断言「产物 head == 本次部署提交 且 条数 ≥ 100」——漏了全历史会红，而不是把残缺站发出去。
+  ⇒ **口径：更新日志只随 push + 部署更新；「刷新」是缓存击穿，不是重新发布**（@fact
+  `ui:changelog/发布时机`，锚 `stores/catalog.ts#loadChangelog`）。
 - ⚠ **标题里的 `NaN` / `Infinity` 在产物侧规范化成「非数 / ∞」**：`ui-check` 的 DOM 体检把页面文本里
   这两个词判为「未格式化数值」并让实机点通失败（r716 闸门）。闸门**不能放松**（它同时防着真的数值外露），
   故换的是文本措辞（`sanitizeSummary`）—— 实测本仓库真有两提交标题在讲这两个词。
 - 入口按钮的无障碍名是 `aria-label="更新日志"`：`ui-check` 的 `performClick` 按**可见文本或
   aria-label/title** 命中，纯图标按钮没有文本节点（该修复先例见 `ui-check-runtime.mjs` 里齿轮「设置」那条注释）。
 
-判据：`src/scripts/__tests__/changelog.test.ts`（解析/分类/规范化，23 条）、
-`src/composables/__tests__/changelogView.test.ts`（筛选/搜索/空日期/计数，16 条）、
-`src/stores/__tests__/changelogLoad.test.ts`（产物契约/store 接线/扫描器，14 条）。
+判据：`src/scripts/__tests__/changelog.test.ts`（解析/分类/规范化/产物对账，29 条）、
+`src/composables/__tests__/changelogView.test.ts`（筛选/搜索/空日期/计数/页脚自证，20 条）、
+`src/stores/__tests__/changelogLoad.test.ts`（产物契约/store 接线/刷新击穿/入口扫描器，16 条）、
+`src/scripts/__tests__/deployChangelog.test.ts`（部署链路：全历史 checkout / 部署时重生成 / head 断言，4 条）。
 
 实机点通（本功能已跑过，PASS）：
 

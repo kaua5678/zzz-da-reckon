@@ -28,7 +28,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { buildChangelog, splitRecords, toEntry, GIT_LOG_FORMAT } from './lib/changelog.mjs'
+import { auditChangelog, buildChangelog, splitRecords, toEntry, GIT_LOG_FORMAT } from './lib/changelog.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = join(root, 'public', 'static', 'changelog.json')
@@ -57,11 +57,6 @@ function headHash() {
   return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 }
 
-/** 产物里的全部条目（展平，按 git 顺序：日期倒序 + 组内原序）。 */
-function flattenEntries(file) {
-  return file.days.flatMap(d => d.entries)
-}
-
 const entries = readGitLog()
 const data = buildChangelog(entries, { generatedFrom: 'git log --no-merges', head: headHash() })
 // 紧凑写（规则 14：public/static/*.json 紧凑产物，validate:data 会校验）
@@ -73,35 +68,20 @@ if (checkOnly) {
     process.exit(1)
   }
   const prev = JSON.parse(readFileSync(OUT, 'utf8'))
-  const expected = new Map(entries.map(e => [e.h, e]))
-  const actual = flattenEntries(prev)
-  const problems = []
-
-  // ① 产物里的每条都必须在 git 历史里且内容逐字段相同 —— 防「手改产物」与「解析口径变了没重生成」
-  const seen = new Set()
-  for (const e of actual) {
-    const want = expected.get(e.h)
-    if (!want) { problems.push(`产物里的 ${e.h} 不在 git 历史里（手改过产物？）`); continue }
-    if (seen.has(e.h)) { problems.push(`产物里 ${e.h} 出现多次`); continue }
-    seen.add(e.h)
-    if (e.t !== want.t || e.k !== want.k || e.s !== want.s || e.bc !== want.bc) {
-      problems.push(`${e.h} 内容与 git 不符：产物「${e.s}」vs git「${want.s}」`)
-    }
-  }
-
-  // ② 落后不超过 TOLERANCE 条 —— 防「很久没重生成」（产物与源码同提交进来 ⇒ 天然落后 1 代）
-  const missing = entries.filter(e => !seen.has(e.h))
-  if (missing.length > TOLERANCE) {
-    problems.push(`产物落后 git ${missing.length} 条（上限 ${TOLERANCE}）→ 跑 node scripts/gen-changelog.mjs 重新生成并提交产物`)
-  }
-
+  const { problems, missing, actualCount, stale } = auditChangelog(prev, entries, { tolerance: TOLERANCE })
   if (problems.length > 0) {
-    console.error(`✗ public/static/changelog.json 校验失败：`)
+    console.error(`✗ public/static/changelog.json 校验失败（完整性）：`)
     for (const p of problems.slice(0, 20)) console.error(`  · ${p}`)
     if (problems.length > 20) console.error(`  … 另有 ${problems.length - 20} 条`)
     process.exit(1)
   }
-  console.log(`ok changelog 完整（产物 ${actual.length} 条 / git ${entries.length} 条，落后 ${missing.length} 条 ≤ ${TOLERANCE}）`)
+  // 新鲜度：**只警告不失败**（口径与理由见 lib/changelog.mjs#auditChangelog）——
+  // 线上日志由部署 workflow 用全历史重新生成，仓库里这份落后不代表线上落后；
+  // 但仓库里那份仍是「改了要记得提交」的对象，所以喊一声。
+  if (stale) {
+    console.warn(`⚠ public/static/changelog.json 落后 git ${missing} 条（> ${TOLERANCE}）→ 建议跑 node scripts/gen-changelog.mjs；不影响部署产物（部署时按全历史重新生成）`)
+  }
+  console.log(`ok changelog 完整（产物 ${actualCount} 条 / git ${entries.length} 条，落后 ${missing} 条` + (stale ? '，已警告' : ` ≤ ${TOLERANCE}`) + ')')
   process.exit(0)
 }
 

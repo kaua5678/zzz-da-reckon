@@ -22,12 +22,42 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # 更新日志由 git 历史生成（scripts/gen-changelog.mjs）⇒ **必须取全历史**：
+      # 默认浅克隆只有 1 个提交，生成出来就是一条日志（线上「更新日志只有一条」的事故形态，
+      # 与 CI docs-drift job 里那条 fetch-depth 注释同源）。
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+
+      # 更新日志**在部署时按当前历史重新生成**（2026-10-22）：
+      # 产物 public/static/changelog.json 是随代码提交的，靠人记得跑 `npm run gen:changelog`
+      # ⇒ 实测落后过 177 条（用户在线上看到「日志停在几天前」）。部署这一步是唯一必须新鲜的场合，
+      # 在这里重生成即与历史逐条一致，不再依赖人记性；仓库里那份仍由 CI 的 changelog:check 守着。
+      - name: Generate changelog from full history
+        run: node scripts/gen-changelog.mjs
+
+      # 防呆：产物里的 head 必须就是本次部署的提交 —— 若 fetch-depth 没生效（只剩 1 个提交），
+      # 生成结果会是一条日志而 CI 依然绿，线上就是这个残缺站。这里让它直接红。
+      - name: Assert changelog covers HEAD
+        run: |
+          set -euo pipefail
+          head_sha="$(git rev-parse --short HEAD)"
+          file_head="$(node -e "process.stdout.write(require('./public/static/changelog.json').head)")"
+          if [ "$file_head" != "$head_sha" ]; then
+            echo "::error::changelog.json 的 head=$file_head 与本次提交 $head_sha 不一致——生成时历史不完整"
+            exit 1
+          fi
+          total="$(node -e "process.stdout.write(String(require('./public/static/changelog.json').total))")"
+          if [ "$total" -lt 100 ]; then
+            echo "::error::changelog.json 只有 $total 条——像是在浅克隆上生成的（缺全历史）"
+            exit 1
+          fi
+          echo "✓ 更新日志覆盖 HEAD $head_sha（$total 条）"
 
       # 子路径部署：GitHub Pages 项目站的地址是 https://<user>.github.io/<repo>/，
       # 所以产物内所有资源引用都要带 /<repo>/ 前缀（见 vite.config.ts#deployBase 与

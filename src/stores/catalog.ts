@@ -272,13 +272,28 @@ export const useCatalogStore = defineStore('catalog', () => {
   const changelogFile = shallowRef<ChangelogFile | null>(null)
   let changelogPromise: Promise<ChangelogFile> | null = null
 
-  /** 加载更新日志；失败抛错、不缓存失败（同 loadBossPresets/loadRunArchive）。返回对象只读。 */
-  async function loadChangelog(): Promise<ChangelogFile> {
-    if (changelogFile.value) return changelogFile.value
+  /**
+   * 加载更新日志；失败抛错、不缓存失败（同 loadBossPresets/loadRunArchive）。返回对象只读。
+   *
+   * @param force 用户点「刷新」= true：带 cache-buster 重取。
+   *   **为什么必须带**：GitHub Pages 对静态资源回 `cache-control: max-age=600`（2026-10-22 实测
+   *   线上响应头），裸重取在 10 分钟内拿到的还是浏览器/边缘缓存里的旧响应 ——
+   *   「点了刷新没变化」的观感正是这个（产物本身没变时更明显）。
+   * ⚠ 但刷新**取不到还没发布的内容**：changelog.json 由构建生成并随包发布
+   *   （`.github/workflows/deploy-pages.yml` 的 push 触发），新提交要先 push + 部署完成。
+   *
+   * @fact ui:changelog/发布时机 口径: 更新日志只随部署更新——push 到 master 触发 deploy-pages（全历史 checkout 后重新生成 changelog.json）；弹层「刷新」只做缓存击穿（GitHub Pages 静态资源实测 cache-control max-age=600），拿不到未 push / 未部署的提交 | 据 用户实测@2026-10-22（线上停在 10-13 部署的版本） | 验 src/stores/__tests__/changelogLoad.test.ts | 锚 src/stores/catalog.ts#loadChangelog | 信 确认
+   * ⟳复核: 若部署触发方式或静态资源缓存策略变化（改成秒级发布 / 客户端直读 CDN），复核刷新语义与页脚文案 | 到期 2027-04-22
+   */
+  async function loadChangelog(force = false): Promise<ChangelogFile> {
+    if (changelogFile.value && !force) return changelogFile.value
     if (changelogPromise) return changelogPromise
     changelogPromise = Promise.resolve().then(async () => {
       try {
-        const res = await fetch(withBase('/static/changelog.json'))
+        // 查询串只做缓存击穿；路径字面量保持完整 —— JSON 入口扫描器（scripts/lib/json-contract.mjs）
+        // 靠「fetch + 包装函数 + /static/<名>.json 字面量」这个形态认入口，别把参数拼进字面量里
+        // （拼进去 = 扫描器看不见这个入口，契约检查静默失效）。
+        const res = await fetch(withBase('/static/changelog.json') + (force ? `?t=${Date.now()}` : ''))
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json() as ChangelogFile
         changelogFile.value = data
