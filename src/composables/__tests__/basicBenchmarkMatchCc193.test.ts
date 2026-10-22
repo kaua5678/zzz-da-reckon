@@ -48,13 +48,16 @@ describe('CC-193 生产路径：汇总平A行命中模块普攻段', () => {
     expect(row?.critDmgBonus ?? 0).toBeGreaterThanOrEqual(50)
   }, 60000)
 
-  it('赛维里安 / 菲欧妮：普攻段名不带 #N 时数据配置仍生效，普攻有倍率（修复前恒无倍率 ⇒ 普攻伤害 0）', async () => {
-    // 1631：倍率仍在汇总平A行上（基准段秒均 × 时间）。
+  it('赛维里安 / 菲欧妮：普攻段名不带 #N 时数据配置仍生效，段行有倍率（两家均已改逐段物化）', async () => {
+    // 1631（用户裁决 2026-10-22）：与 1641 同口径——四段**逐段物化**，汇总行降级为时间/回能载体。
     await setupHarness(['1631', '1181', '1311'].map(agentId => ({ agentId })), { recommendedBuild: true })
     useConfigStore().setActionCount(0, 'basicAttackTimeWeight', 3)
     const row1631 = basicRow(0)
     expect(row1631?.benchmarkMoveId).toBe('1631003')
-    expect(row1631?.damageMultiplier ?? 0).toBeGreaterThan(0)
+    const ch1631 = (useResourceCalc().resourceResult.value?.characters ?? []).find(c => c.slot === 0) as unknown as { executions?: Row[] } | undefined
+    const seg1631 = (ch1631?.executions ?? []).filter(e => ['1631001', '1631002', '1631003', '1631004'].includes(e.moveId))
+    expect(seg1631.length, '1631 必须物化四段行').toBe(4)
+    expect(Math.max(...seg1631.map(r => r.damageMultiplier ?? 0))).toBeGreaterThan(0)
 
     // 1641（用户口径 2026-10-22）：普攻按**段计划物化**（a3/a4 循环 + 掠火起手轮），
     // 汇总行降级为时间/回能载体（倍率归零，见 phoenix.ts#patchExecutions）⇒ 判据改为

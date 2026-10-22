@@ -54,7 +54,8 @@ export interface CharacterConfig {
   assaultOrderCount?: number // 特殊技：强袭训令次数（per-character，佩洛伊斯，主页交互栏填写）
   dualCounterCount?: number  // 双反次数（per-character，般岳专属：完美闪避+金身弹刀组合，+10嗔火/次；缺省 0）
   tauntCancelCount?: number  // 嘲讽取消次数（per-character，般岳专属：失衡外强特连段末尾后摇的嘲讽取消，每次取消一次后摇；缺省 0）
-  claretBurialInterruptCount?: number  // 克拉蕾·葬血强袭打断次数（per-character：在 2.317s 三连横斩打到一半时打断——时间与伤害/失衡/喧响减半，但 3 次毁伤照常全触发；每次省 1.1585s 还给平A）
+  claretBurialInterruptCount?: number  // 克拉蕾·葬血强袭打断次数
+  autoEvadeCount?: number  // 自动闪避触发次数（a4 起手瞬间 / 前三段受击 ⇒ 打断该轮 a4 自动发动烈旋；默认 0）（per-character：在 2.317s 三连横斩打到一半时打断——时间与伤害/失衡/喧响减半，但 3 次毁伤照常全触发；每次省 1.1585s 还给平A）
   yixuanInk2Count?: number  // 仪玄·2连墨痕化形次数（#1+#3，40闪能/次；主页交互栏填写）
   promiaNiyingCount?: number  // 普罗米娅·处刑式·匿影次数（强特变体，耗强特能量；每次+10寒蚀并解锁重霜；交互栏填写，用户自控能量预算）
   yixuanInk3Count?: number  // 仪玄·3连墨痕化形次数（#1+#3+#4，60闪能/次；≤0=自动=剩余闪能全打3连，≥1 手填）
@@ -212,6 +213,7 @@ export const ACTION_COUNT_BOUNDS = {
   promiaNiyingCount: { min: 0, max: 99 },
   tauntCancelCount: { min: 0, max: 99 },
   claretBurialInterruptCount: { min: 0, max: 99 },
+  autoEvadeCount: { min: 0, max: 99 },
 } as const satisfies Record<string, { min: number; max: number }>
 
 export type ActionCountField = keyof typeof ACTION_COUNT_BOUNDS

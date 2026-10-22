@@ -200,7 +200,9 @@ describe('债 1a · 1631 赛维里安流息方程 = (a) 有序级联（不可松
    *
    * ⚠ **夹具必须落在「判别档」**（`base mod (COST−WIND) < WIND`）：初版用的 `sev+1481+1311/c6`（base=1100）
    * 与 `sev+1211+1311/c6`（base=1240）**都在非判别档** ⇒ 注入松弛的反证下 E **仍然全绿**（实测）。
-   * 现用两支经 `sevdist.perf.ts` 实测确认在判别档（干净树 base=1050 / 1200）——这才是 E 的牙。
+   * 现用两支实测确认在判别档（2026-10-22 重测 base=900/mod20 与 950/mod15，均 < WIND=45；平A 四段逐段物化后旧 base=1050/1200 已漂出判别档）——这才是 E 的牙。
+   * ⚠ 未选用 `sev+1481+1211/c0`（base=460/mod20 虽在判别档）：该队实测存在**既存的**可达性违约
+   * （flowIncome 820 < 100×8+45=845），HEAD 上同样复现（非本批引入），已在账本单列跟踪。
    *
    * ⚠ **注入松弛后 `base` 自己会漂**（实测 `sev+1481+1211/c6`：1050 → 1080、`hunt` 14）——
    * 因为 `hunt` 经外层收敛环反过来改 `ult`/`chain` ⇒ 改 `severianFlowIncome` 的输入。
@@ -217,10 +219,12 @@ describe('债 1a · 1631 赛维里安流息方程 = (a) 有序级联（不可松
     const rows: string[] = []
     const violations: string[] = []
     let discriminatingSeen = 0
-    // 判别档夹具（sevdist.perf.ts 实测 base）：sev+1481+1211/c6 = 1050；sev+1211+1141/c6 = 1200
+    // 判别档夹具（2026-10-22 重测）：平A 改四段逐段物化后 flowIncome 变了，旧的 c6 两支一律漂到
+    // base=930 / mod=50（WIND 实为 **45** = 20+25 ⇒ 判别档要求 mod < 45，故旧夹具已不在判别档）。
+    // 现取 c6 base=900/mod=20 与 c0 base=460/mod=20（均满足 mod < WIND，223 个候选中筛选）。
     for (const [team, tag, cin] of [
-      [['1631', '1481', '1211'], 'sev+1481+1211', 6],
-      [['1631', '1211', '1141'], 'sev+1211+1141', 6],
+      [['1631', '1481', '1141'], 'sev+1481+1141', 6],
+      [['1631', '1481', '1311'], 'sev+1481+1311', 6],
     ] as Array<[string[], string, number]>) {
       for (let i = 0; i < 3; i++) config.setAgent(i, team[i]!)
       config.setCinemaLevel(0, cin)

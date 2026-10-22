@@ -211,6 +211,9 @@ export const BOSS_ATTACK_INTERACTIONS: readonly string[] = [
   'perfectBlock',         // 佩洛伊斯·完美格挡
   'banyueGoldenParry',    // 般岳·金身弹刀
   'banyueDualCounter',    // 般岳·双反
+  // 2026-10-22：赛维里安·自动闪避（a4 起手瞬间 / 前三段受击 ⇒ 打断 a4 自动发动烈旋）。
+  // 与闪反/弹刀平行但要 boss 出手 ⇒ 吃非失衡占比修正。
+  'severianAutoEvade',
 ] as const
 
 /** 逐类型默认指数：需怪攻击的类型 = 1（线性），其余 = 0（不修正） */
@@ -241,6 +244,7 @@ export const INTERACTION_LABELS: Record<string, string> = {
   counterAssist: '反制支援（角力）',
   dodge: '闪避',
   quickAssist: '快支',
+  severianAutoEvade: '自动闪避',
   block: '格挡',
   banyueGoldenParry: '般岳·金身弹刀',
   banyueDualCounter: '般岳·双反',

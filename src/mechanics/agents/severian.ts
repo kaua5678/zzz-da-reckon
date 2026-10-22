@@ -35,7 +35,7 @@ import type {
 import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { mechanicSettingPanelReader, mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, carveBasicPool } from '@/mechanics/moduleExecRow'
 import { chargeLockComboAlignRatio } from '@/mechanics/chargeLock'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
@@ -184,6 +184,90 @@ export function severianBasicFinisherHits(basicTime: number, cycle: { moveId: st
   return full + (tail >= beforeFinisher - 1e-9 ? 1 : 0)
 }
 
+/** 强化 a4（闪避判定成功）：1631020 —— 与烈旋 1631005 逐位同值（677% / 201 失衡 / 1.217s / 流息 35） */
+export const SEVERIAN_ENHANCED_A4_MOVE_ID = '1631020'
+
+export interface SeverianBasicPlanInput {
+  /** 本槽平A池秒数（段行可用的全部时间） */
+  basicTime: number
+  /** a1..a4 段元数据（顺序 = 段序） */
+  cycle: ReadonlyArray<{ moveId: string; actionTime: number }>
+  /** 自动闪避触发次数（交互栏填写，默认 0）：每次把一轮的 a4 换成烈旋（= 1631020，逐位同值） */
+  autoEvadeCount: number
+  /** 烈旋/强化a4 的时长（二者同值，取任一） */
+  liexuanActionTime: number
+}
+
+export interface SeverianBasicPlan {
+  /** moveId → 命中次数（整数） */
+  counts: Record<string, number>
+  /** 实际打出的四段轮数（含被替换的轮） */
+  rounds: number
+  /** 其中被替换成烈旋的轮数（≤ rounds） */
+  replacedRounds: number
+  /** 实际占用秒数 */
+  usedTime: number
+  /** a4 命中次数（未被替换的那部分） */
+  a4Hits: number
+}
+
+/**
+ * 赛维里安平A段计划（用户裁决 2026-10-22）——**四段逐段物化，不用基准段秒均**。
+ *
+ * 原文：a1–a4 秒均差异 14%（401.8 / 376.9 / 363.1 / 351.7 %/s），秒均偷懒会抹平
+ * ① 第四段命中 +20 流息的落点、② 闪避判定把 a4 换成烈旋数值（1631020）这两件事。
+ *
+ * **自动闪避 = 独立交互**（用户口径）：「就当它是一种全新的闪反行为」——和闪反/弹刀平行、
+ * 都要 boss 出手，但调用的是不同招式、**不挂钩闪反次数**，默认 0。
+ * 每次触发 = 把该轮 a4 **替换**成烈旋（打断 a4 自动发动烈旋，二者等价）：
+ * a1+a2+a3 照打，a4 不再是 1631004 而是 1631005/1631020 —— **不额外多打一招**（那是双计）。
+ */
+export function planSeverianBasic(input: SeverianBasicPlanInput): SeverianBasicPlan {
+  const counts: Record<string, number> = {}
+  const empty: SeverianBasicPlan = { counts, rounds: 0, replacedRounds: 0, usedTime: 0, a4Hits: 0 }
+  const cycle = input.cycle
+  if (cycle.length < 4) return empty
+  const fullCycleT = cycle.reduce((s, seg) => s + seg.actionTime, 0)
+  const a4T = cycle[3]?.actionTime ?? 0
+  const lxT = Math.max(0, input.liexuanActionTime)
+  if (!(fullCycleT > 0) || !(lxT > 0)) return empty
+  let t = Math.max(0, Number(input.basicTime) || 0)
+  if (t <= 0) return empty
+  const add = (moveId: string, n: number) => { if (n > 0) counts[moveId] = (counts[moveId] ?? 0) + n }
+
+  // 一轮被替换后的时长（a4 → 烈旋）
+  const replacedCycleT = fullCycleT - a4T + lxT
+  // 先按**替换轮**排：自动闪避次数就是替换轮数（用户口径「有几次就替换几次」），
+  // 装不下就按池子截断（离散动作，不折算半轮）
+  const wantReplaced = Math.max(0, Math.floor(Number(input.autoEvadeCount) || 0))
+  const replacedRounds = Math.min(wantReplaced, Math.floor((t + 1e-9) / replacedCycleT))
+  t -= replacedRounds * replacedCycleT
+  let rounds = replacedRounds
+  // 剩余池按**普通轮**继续填
+  const normalRounds = Math.floor((t + 1e-9) / fullCycleT)
+  t -= normalRounds * fullCycleT
+  rounds += normalRounds
+
+  // 段次：a1/a2/a3 每轮各 1（普通轮与替换轮都有）；a4 只在普通轮；替换轮打烈旋
+  for (let i = 0; i < 3; i++) add(cycle[i]!.moveId, rounds)
+  if (normalRounds > 0) add(cycle[3]!.moveId, normalRounds)
+  if (replacedRounds > 0) add(SEVERIAN_ENHANCED_A4_MOVE_ID, replacedRounds)
+
+  // 尾段前缀：a1 → a2 → a3 →（a4 或烈旋）逐段吃（余量不足一段就留白）
+  let tailTime = 0
+  for (const seg of [...cycle.slice(0, 3), { moveId: cycle[3]!.moveId, actionTime: a4T }]) {
+    if (!(seg.actionTime > 0) || t + 1e-9 < seg.actionTime) continue
+    add(seg.moveId, 1)
+    t -= seg.actionTime
+    tailTime += seg.actionTime
+  }
+
+  // usedTime 必须 = **段行实际总时长**（完整轮 + 尾段），否则 carveBasicPool 挤不够 ⇒
+  // 时间双计，且 flowIncome 会与执行行脱钩（实测可达性违约 820 < 845）。
+  const usedTime = replacedRounds * replacedCycleT + normalRounds * fullCycleT + tailTime
+  return { counts, rounds, replacedRounds, usedTime, a4Hits: counts[cycle[3]!.moveId] ?? 0 }
+}
+
 /** 连携技每次累积的流息（影画1 提升至 50） */
 export function severianChainFlow(cinemaLevel: number): number {
   return cinemaLevelOf(cinemaLevel) >= 1 ? SEVERIAN_C1_CHAIN_FLOW : SEVERIAN_FLOW_CHAIN
@@ -201,16 +285,25 @@ export function severianShadowRefundFlow(cinemaLevel: number): number {
 /** 流息基础收入（不含[苍风影猎]事后返还项，返还项在 severianFlowState 定点迭代里加） */
 function severianFlowIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined): number {
   const cinema = cinemaLevelOf(cfg.severianCinemaLevel)
-  const basicCycle = cfg.severianBasicCycle ?? []
-  const basicTime = Math.max(0, state?.basicAttackTime ?? 0)
-  const finisher = severianBasicFinisherHits(basicTime, basicCycle)
-  const liexuan = severianLiexuanCount(cfg)
-  return finisher * SEVERIAN_FLOW_BASIC4
-    + liexuan * SEVERIAN_FLOW_LIEXUAN
+  const plan = severianBasicPlanOf(cfg, state)
+  // ① 普通 a4 命中 ×20（替换轮没有 a4，自然不计）
+  // ② 自动闪避（烈旋/强化a4）每次 +35（原文「发动时累积15点，命中敌人后额外累积20点」）
+  return plan.a4Hits * SEVERIAN_FLOW_BASIC4
+    + plan.replacedRounds * SEVERIAN_FLOW_LIEXUAN
     + Math.max(0, cfg.dodgeCounterCount) * SEVERIAN_FLOW_DODGE
     + Math.max(0, Number(state?.chainCountTotal ?? 0)) * severianChainFlow(cinema)
     + Math.max(0, Number(state?.ultimateCount ?? 0)) * SEVERIAN_FLOW_ULT
     + (cinema >= 2 ? SEVERIAN_C2_ENTRY_FLOW : 0)
+}
+
+/** 本槽平A段计划（单源）：buildExecutions 物化段行 / 流息收入 / 资源区块都调它 */
+function severianBasicPlanOf(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined) {
+  return planSeverianBasic({
+    basicTime: Math.max(0, state?.basicAttackTime ?? 0),
+    cycle: cfg.severianBasicCycle ?? [],
+    autoEvadeCount: Math.max(0, Math.floor(Number(cfg.autoEvadeCount) || 0)),
+    liexuanActionTime: cfg.severianLiexuanMeta?.actionTime ?? 0,
+  })
 }
 
 /**
@@ -242,10 +335,7 @@ function severianShadowHuntCount(cfg: AgentCharConfigInput['cfg'], state: AgentR
   return severianFlowState(cfg, state).shadowHuntCount
 }
 
-function severianLiexuanCount(cfg: AgentCharConfigInput['cfg']): number {
-  // 自动 = 极限闪避/闪反次数（烁影与受击驱动未建模）；滑块 = 上限，0 = 不设上限
-  return capOfAuto(Math.max(0, cfg.dodgeCounterCount), whole(setting(cfg, 'severian.blazingSpinCount')))
-}
+
 
 /** 队伍里是否有**其他**风属性角色（核心被动 +30% 的唯一判定） */
 function hasOtherWindTeammate(team: AgentPanelInput['team'] | undefined, slot: number): boolean {
@@ -345,19 +435,47 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
       skillTableNote: `流息驱动 ×${shadowCount}（100 点/次${cinema >= 6 ? '，影画6 最后一击+350% 同区加算' : ''}）`,
     }))
   }
-  const liexuanCount = severianLiexuanCount(cfg)
-  if (liexuanMeta && liexuanCount > 0) {
+  // ③ 平A四段逐段物化（用户裁决 2026-10-22：不能拿秒均偷懒）+ 自动闪避替换轮
+  //    每轮 a1→a2→a3→(a4 或 烈旋/1631020)。段行时间由 carveBasicPool 从平A池挤出。
+  const basicPlan = severianBasicPlanOf(cfg, state)
+  const SEG_LABEL: Record<string, string> = {
+    '1631001': '普通攻击：疾锋·一段',
+    '1631002': '普通攻击：疾锋·二段',
+    '1631003': '普通攻击：疾锋·三段',
+    '1631004': '普通攻击：疾锋·四段',
+    [SEVERIAN_ENHANCED_A4_MOVE_ID]: '普通攻击：烈旋（自动闪避替换 a4）',
+  }
+  for (const seg of cfg.severianBasicCycle ?? []) {
+    const n = basicPlan.counts[seg.moveId] ?? 0
+    if (n <= 0 || !(seg.actionTime > 0)) continue
     executions.push(moduleExecRow({
-      moveId: liexuanMeta.moveId,
-      moveName: '普通攻击：烈旋',
+      moveId: seg.moveId,
+      moveName: SEG_LABEL[seg.moveId] ?? '普通攻击：疾锋',
       category: 'basic',
       element: 'wind',
-      count: liexuanCount,
-      actionTime: liexuanMeta.actionTime,
-      totalTime: liexuanCount * liexuanMeta.actionTime,
-      skillTableNote: `烁影/受击自动发动 ×${liexuanCount}（按极限闪避次数近似，滑块可覆盖）`,
+      count: n,
+      actionTime: seg.actionTime,
+      totalTime: n * seg.actionTime,
+      timeBucket: 'basic',
+      ...RECOVERY_OFF,
     }))
   }
+  const enhN = basicPlan.counts[SEVERIAN_ENHANCED_A4_MOVE_ID] ?? 0
+  if (enhN > 0 && liexuanMeta && liexuanMeta.actionTime > 0) {
+    executions.push(moduleExecRow({
+      moveId: SEVERIAN_ENHANCED_A4_MOVE_ID,
+      moveName: SEG_LABEL[SEVERIAN_ENHANCED_A4_MOVE_ID]!,
+      category: 'basic',
+      element: 'wind',
+      count: enhN,
+      actionTime: liexuanMeta.actionTime,
+      totalTime: enhN * liexuanMeta.actionTime,
+      timeBucket: 'basic',
+      ...RECOVERY_OFF,
+    }))
+  }
+  // 段行占的就是平A池那份时间 ⇒ 从聚合行挤出（防双计；只缩时间、保留回能）
+  carveBasicPool(executions, basicPlan.usedTime)
   // 长按风刃段（1631009）：每次强特长按持续消耗能量（满充 40 点）发动；
   // 满充比例滑块 severian.windBladeChargeRatio——倍率/耗能/时间均按比例缩放（总量口径）。
   const windBladeMeta = cfg.severianWindBladeMeta
@@ -385,10 +503,9 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
 function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
   const exTime = Math.max(0, exSpecialCount) * cfg.exSpecialActionTime
   const shadowMeta = cfg.severianShadowMeta
-  const liexuanMeta = cfg.severianLiexuanMeta
   const windBladeMeta = cfg.severianWindBladeMeta
   const shadowTime = shadowMeta ? severianShadowHuntCount(cfg, state) * shadowMeta.actionTime : 0
-  const liexuanTime = liexuanMeta ? severianLiexuanCount(cfg) * liexuanMeta.actionTime : 0
+  // 平A段行（含自动闪避替换轮）占的是平A池时间 ⇒ 不进 necessary（与希格莉德/菲欧妮同口径）
   const bladeRatio = clampRatio(setting(cfg, 'severian.windBladeChargeRatio'))
   const bladeTime = windBladeMeta ? Math.max(0, exSpecialCount) * bladeRatio * windBladeMeta.actionTime : 0
   // 苍风影猎 = 蓄力 1 秒锁 + 其余时间合轴给队友（用户裁决 2026-10-22「赛维里安也有这个强化a得做一下」）。
@@ -397,12 +514,32 @@ function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTim
     ? severianShadowHuntCount(cfg, state) * shadowMeta.actionTime * chargeLockComboAlignRatio(shadowMeta.actionTime)
     : 0
   return {
-    necessaryTime: exTime + shadowTime + liexuanTime + bladeTime,
+    necessaryTime: exTime + shadowTime + bladeTime,
     comboAlignTime: exTime * cfg.exSpecialComboAlignRatio + shadowAlign,
   }
 }
 
 function patchSeverianExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  // ① 聚合行降级为时间/回能载体（段行已逐段承载倍率/失衡/积蓄）
+  for (const exec of executions) {
+    if (exec.moveId !== 'basic_attack') continue
+    exec.damageMultiplier = 0
+    exec.damageMultiplierOverride = true
+    exec.dazeMultiplier = 0
+    exec.dazeMultiplierOverride = true
+    exec.anomalyBuildUp = 0
+    exec.anomalyBuildUpOverride = true
+    exec.skillTableNote = '平A按四段逐段物化（含自动闪避替换 a4）：本行只承载时间与回能'
+  }
+  // ② **能量双计修复**：长按风刃段（1631009）是**同一次强特的持续部分**，不是额外一发。
+  //    原文「长按[强化特殊技]可以在炮击前持续消耗能量不断发动风刃…能量消耗达最大时额外获得一层[烁影]」
+  //    ⇒ 40 点是这一次强特的**总消耗**。修前 1631008 按 40×exCount 收一次、1631009 又按 40×exCount 收一次
+  //    （实测 640 能量算出 1200 耗能 = 虚增 87%）。这里把持续段的行级耗能归零。
+  for (const exec of executions) {
+    if (exec.moveId !== SEVERIAN_WIND_BLADE_MOVE_ID) continue
+    exec.energyConsume = 0
+    exec.totalEnergyConsume = 0
+  }
   // 执行行与资源区块共用 computeSeverianCycle（两处都直接读设置）
   const cycle = computeSeverianCycle({
     cinemaLevel: cinemaLevelOf(cfg.severianCinemaLevel),
@@ -497,16 +634,7 @@ const settings: MechanicSetting[] = [
     step: 1,
     suffix: '次',
   },
-  {
-    id: 'severian.blazingSpinCount',
-    label: '赛维里安·烈旋次数上限',
-    description: '[普通攻击：烈旋]整局次数的**上限**。次数自动 = 极限闪避/闪反次数（烁影与受击驱动未建模）；调低 = 你手动吞掉一部分。0 = 不设上限。',
-    default: 0,
-    min: 0,
-    max: 60,
-    step: 1,
-    suffix: '次',
-  },
+
   {
     id: 'severian.windBladeChargeRatio',
     label: '赛维里安·长按风刃满充比例',
@@ -534,6 +662,23 @@ export const severianMechanic: AgentMechanicModule = {
   agentIds: [SEVERIAN_ID],
   name: '赛维里安·风回无终',
   description: 'v12：核心被动暴伤+60、增伤+25（队伍其他风角色再+30）、额外能力每1%暴击率→攻击+8.5（上限100%）；影画1 连携流息50/影猎+1凭风/无视15%风抗、影画2 入场150流息+穿透20%、影画4 攻击+10%/喧响效率+10%、影画6 流息上限180+苍风影猎最后击+350+风起5×5；流息→苍风影猎计数（估时-物化同源）。',
+  /**
+   * 主页交互栏：**自动闪避触发次数**（用户裁决 2026-10-22）。
+   *
+   * 原文两条触发都走「自动闪避」这一套：① a4 发动瞬间具备闪避判定；② 前三段发动瞬间受击/有[烁影]。
+   * 二者结果都是**打断当前平A、自动发动烈旋**（1631005；与强化 a4 的 1631020 逐位同值 677%/201/1.217s）
+   * ——所以共用一个次数，每次把该轮 a4 **替换**成烈旋（不额外多打一招）。
+   *
+   * ⚠ **独立交互、不挂钩闪反**（用户口径：「两者和弹刀都是需要受到攻击，但是功能是平行的，
+   * 调用的交互招式也是不一样」）：闪反 1631011 是极限闪避后点按普攻的独立动作，各算各的次数。默认 0。
+   */
+  characterCountInputs: [
+    {
+      field: 'autoEvadeCount',
+      label: '自动闪避',
+      title: '平A 起手瞬间闪避掉敌人攻击的次数（a4 闪避判定 / 前三段受击，二者同一套机制）：每次把该轮第四段替换为[烈旋]（677% / 1.217s / 流息 35）。需要 boss 出手 ⇒ 在队伍对比/难度曲线里吃非失衡占比修正。与闪避反击次数互不相关。',
+    },
+  ],
   applyPanel: applySeverianPanel,
   buildCharConfig: buildSeverianCharConfig,
   estimateExSpecialTime: severianExSpecialTime,

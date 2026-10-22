@@ -50,6 +50,6 @@ describe('CC-263 难度 x 认引擎降配', () => {
       .split('\n').filter(l => !l.trim().startsWith('//')).join('\n')
     expect(src).toMatch(/for \(const f of DOWNSCALED_INTERACTION_FIELDS\)/)
     expect(src).not.toMatch(/merged\.(parryCount|blockCount|dualCounterCount|dodgeCounterCount) = Math\.round/)
-    expect([...DOWNSCALED_INTERACTION_FIELDS]).toEqual(['parryCount', 'blockCount', 'dualCounterCount', 'dodgeCounterCount'])
+    expect([...DOWNSCALED_INTERACTION_FIELDS]).toEqual(['parryCount', 'blockCount', 'dualCounterCount', 'dodgeCounterCount', 'autoEvadeCount'])
   })
 })

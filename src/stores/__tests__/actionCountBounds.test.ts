@@ -33,6 +33,7 @@ const LEGACY_BOUNDS: Record<ActionCountField, { min: number; max: number }> = {
   promiaNiyingCount: { min: 0, max: 99 },
   tauntCancelCount: { min: 0, max: 99 },
   claretBurialInterruptCount: { min: 0, max: 99 },
+  autoEvadeCount: { min: 0, max: 99 },
 }
 
 describe('ACTION_COUNT_BOUNDS（上下界表 = 数值口径的单一事实源）', () => {
@@ -40,8 +41,8 @@ describe('ACTION_COUNT_BOUNDS（上下界表 = 数值口径的单一事实源）
     expect(ACTION_COUNT_BOUNDS).toEqual(LEGACY_BOUNDS)
   })
 
-  it('字段数 = 16（新增/删除字段必须显式来改这条；T197 删了 yixuanBackstageComboCount）', () => {
-    expect(Object.keys(ACTION_COUNT_BOUNDS)).toHaveLength(16)
+  it('字段数 = 17（新增/删除字段必须显式来改这条；T197 删了 yixuanBackstageComboCount、2026-10-22 加 autoEvadeCount）', () => {
+    expect(Object.keys(ACTION_COUNT_BOUNDS)).toHaveLength(17)
   })
 })
 
@@ -103,6 +104,7 @@ describe('setActionCount 统一写入通道', () => {
       ['yixuanPerfectBlockCount', (s, v) => config.setActionCount(s, 'yixuanPerfectBlockCount', v), 99],
       ['promiaNiyingCount', (s, v) => config.setActionCount(s, 'promiaNiyingCount', v), 99],
       ['tauntCancelCount', (s, v) => config.setActionCount(s, 'tauntCancelCount', v), 99],
+      ['autoEvadeCount', (s, v) => config.setActionCount(s, 'autoEvadeCount', v), 99],
     ]
     for (const [field, call, max] of cases) {
       call(0, 1e6)

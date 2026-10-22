@@ -17,7 +17,7 @@ export const DOWNSCALE_SCALES: readonly number[] = [0.875, 0.75, 0.625, 0.5, 0.3
  * 修前 x 读 store 原值，引擎按 `round(x × scale)` 实打（实测 auto-1371-1481-1451 scale 0.5：主 C 弹刀 store 6 → 实打 3，
  * x 仍按 6 计），违背 CC-259「x = 引擎实打次数」。快支 / 反制支援 / 专属字段不缩（引擎也不缩）。
  */
-export const DOWNSCALED_INTERACTION_FIELDS = ['parryCount', 'blockCount', 'dualCounterCount', 'dodgeCounterCount'] as const
+export const DOWNSCALED_INTERACTION_FIELDS = ['parryCount', 'blockCount', 'dualCounterCount', 'dodgeCounterCount', 'autoEvadeCount'] as const
 
 /** 降配后的实打次数：scale 缺省或 ≥ 1 ⇒ 原值（逐位不变）；否则 `Math.round(raw × scale)`。 */
 export function downscaleInteractionCount(raw: number, scale: number | undefined): number {

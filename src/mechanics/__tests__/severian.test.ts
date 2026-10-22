@@ -189,14 +189,21 @@ describe('赛维里安（1631）3.3.12 v12 正式录入', () => {
     expect(blade.count).toBeGreaterThan(0)
     expect(blade.damageMultiplier).toBeCloseTo(baseBlade, 3)
     expect((blade as any).damageMultiplierOverride).toBe(true)
-    expect(blade.totalEnergyConsume).toBeCloseTo(blade.count * 40, 5)
+    // **能量不双计**（用户裁决 2026-10-22 修）：长按风刃段是同一次强特的持续部分，
+    // 40 点是这次强特的**总消耗**（已由通用强特行 1631008 收），持续段不再重复收费。
+    // 修前实测 640 能量算出 1200 耗能（虚增 87%）。
+    expect(blade.totalEnergyConsume, '持续段不得重复收能量').toBe(0)
+    const exRow = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
+      .executions.find(e => e.moveId === '1631008')!
+    expect(exRow.totalEnergyConsume, '强特本体照收 40/次').toBeCloseTo(exRow.count * 40, 5)
 
     config.setMechanicSetting('severian.windBladeChargeRatio', 0.5)
     calc = useResourceCalc()
     blade = calc.resourceResult.value!.characters.find(c => c.agentId === '1631')!
       .executions.find(e => e.moveId === '1631009')!
     expect(blade.damageMultiplier).toBeCloseTo(baseBlade * 0.5, 3)
-    expect(blade.totalEnergyConsume).toBeCloseTo(blade.count * 20, 5)
+    // 满充比例只缩放**倍率与时间**；耗能仍归强特本体（持续段恒 0，见上）
+    expect(blade.totalEnergyConsume, '缩比例也不给持续段收费').toBe(0)
   })
 
   it('专武 14163「禁罪囚笼」生效差分（v12）：暴击率+20/无视风抗+15/攻击力+10%（精炼1）', async () => {
@@ -235,7 +242,6 @@ describe('赛维里安（1631）3.3.12 v12 正式录入', () => {
       const chain = ch.executions.find(e => e.moveId === '1631012') as { damageMultiplier?: number } | undefined
       return { chain: chain?.damageMultiplier, flow: ch.severianFlow! }
     }
-    config.setMechanicSetting('severian.blazingSpinCount', 0)
     const f0 = readMult('severian.fengfengStacks', 0)
     const f2 = readMult('severian.fengfengStacks', 2)
     expect(f2.flow.fengfengStacks).toBe(2)
@@ -250,10 +256,10 @@ describe('赛维里安（1631）3.3.12 v12 正式录入', () => {
     expect(phoenixLike.severianFlow!.shadowHuntCount).toBe(5)
     expect(phoenixLike.executions.find(e => e.moveId === '1631006')!.count).toBe(5)
 
-    // 烈旋次数覆盖：滑块 >0 直接决定烈旋行次数
-    config.setMechanicSetting('severian.blazingSpinCount', 3)
+    // 自动闪避次数（交互栏）：>0 ⇒ 该轮 a4 换成烈旋行（1631020），**不额外多打一招**
+    config.setActionCount(0, 'autoEvadeCount', 3)
     phoenixLike = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1631')!
-    expect(phoenixLike.executions.find(e => e.moveId === '1631005')!.count).toBe(3)
+    expect(phoenixLike.executions.find(e => e.moveId === '1631020')!.count, '强化a4行 = 自动闪避次数').toBe(3)
     config.setMechanicSetting('severian.shadowHuntCount', 0)
     config.setMechanicSetting('severian.fengfengStacks', 1)
   })

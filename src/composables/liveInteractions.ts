@@ -57,6 +57,8 @@ const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ConfigModel['team'
   { type: 'yixuanPerfectBlock', field: 'yixuanPerfectBlockCount' },
   { type: 'perfectBlock', field: 'perfectBlockCount' },
   { type: 'tauntCancel', field: 'tauntCancelCount' },
+  // 赛维里安·自动闪避（a4 闪避判定 / 前三段受击）：需 boss 出手 ⇒ 默认吃非失衡占比修正
+  { type: 'severianAutoEvade', field: 'autoEvadeCount' },
   // 克拉蕾·葬血强袭打断（用户技巧 2026-10-09）：角色专属交互，权重 = 一次闪反（1.2），
   // 公式 `c*w`（不吃非失衡占比修正——它不需要 boss 先出手，与快支/嘲讽取消同类）。
   { type: 'claretBurialInterrupt', field: 'claretBurialInterruptCount' },
