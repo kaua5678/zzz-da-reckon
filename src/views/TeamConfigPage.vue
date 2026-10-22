@@ -824,7 +824,7 @@ import { effectAtModLevel } from '@/composables/wEngineEffectDisplay'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanel } from '@/composables/resourceCalc/panelPhases'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
-import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from '@/composables/resourceCalc/concEstimate'
+import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from '@/composables/resourceCalc/noAxisVulnShare'
 import CharacterCard from '@/components/CharacterCard.vue'
 import StatPanel from '@/components/StatPanel.vue'
 import { computeOutOfCombatPanel } from '@/composables/outOfCombatPanel'
@@ -996,7 +996,7 @@ function setGuarantee(kind: 'stun' | 'fury' | 'ultimate', v: boolean) {
   configStore.setMechanicSetting(`guarantee.${kind}`, v ? 1 : 0)
 }
 // 非轴·易伤贡献率 φ（用户裁决 2026-10-19：引擎不替用户认领，改成用户自己填）。机制参数键与缺省值
-// 走单一来源（composables/resourceCalc/concEstimate.ts），页面不复制字面量（规则 11）。
+// 走单一来源（composables/resourceCalc/noAxisVulnShare.ts），页面不复制字面量（规则 11）。
 // 措辞按「游戏场景措辞」——**不出现「集中度」这种术语**。
 const noAxisVulnSharePct = computed(() =>
   Math.round(configStore.getMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, DEFAULT_NO_AXIS_VULN_SHARE) * 100))

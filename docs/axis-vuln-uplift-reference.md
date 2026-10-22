@@ -877,7 +877,7 @@ npx vitest run --config .zc/perf/vitest.perf.config.ts .zc/perf/T137autoVuln.per
 
 ### 12.5 落地结果（T139，2026-10-17）
 
-**形态 = 闭式估算式**（`composables/resourceCalc/concEstimate.ts`）：
+**形态 = 闭式估算式**（`src/test/concEstimateReference.ts（原 `resourceCalc/concEstimate.ts`，2026-10-22 改名收敛为 `noAxisVulnShare.ts` 只存 φ 常量）`）：
 
 ```
 conc_est = exp(0.782015 − 1.447331·tc + 1.210691·HHI_plan + 0.351966·mainShare)

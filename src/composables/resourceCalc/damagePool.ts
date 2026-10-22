@@ -35,9 +35,9 @@ import {
 } from './helpers'
 // CC-9a：尾段已外提 `./damagePoolAnomaly`，本文件只剩 `getWindInfectionElement` 一个消费者。
 import { getWindInfectionElement } from './anomalyPanels'
-// R14 / T139：无轴易伤集中度估算（纯核心住 `./concEstimate.ts`）。
+// 非轴易伤：**不再自动估算集中度**——由玩家填的「易伤贡献率」φ 决定（`./noAxisVulnShare.ts`，用户裁决 2026-10-19/2026-10-22）。
 // ⚠ 必须从**本目录**导入：分层锁 CC-245/246 规定 `composables/resourceCalc/` 的运行时依赖闭包
-// 不得进入它以外的 composables ⇒ 纯估算核心就住在本目录的 `./concEstimate.ts`。
+// 历史估算算法已搬去 `src/test/concEstimateReference.ts`（仅测试消费，生产零调用）。
 // CC-9a（2026-09-25）：异常/附加伤害尾段（原 :1142–1725）已原样外提 `./damagePoolAnomaly.ts`。
 import { emitAnomalyRows } from './damagePoolAnomaly'
 // CC-9b（2026-09-25）：逐角色主循环三段（原 :423–671 / :672–927 / :928–1131）已原样外提。

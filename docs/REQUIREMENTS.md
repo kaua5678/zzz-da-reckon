@@ -867,7 +867,7 @@ T137 实测**引擎里没有「自动轴」**（`selectAutoStunAxisPreset` = 命
 
 **前置数据齐备**（§十全表 + §十二缺口量化），**不需要重跑探针**。
 
-**状态**：**✅ 已落地**（2026-10-17 T139）。实现 = `composables/resourceCalc/concEstimate.ts`（纯函数）+
+**状态**：**✅ 已落地**（2026-10-17 T139）。实现 = `src/test/concEstimateReference.ts（原 `resourceCalc/concEstimate.ts`，2026-10-22 改名收敛为 `noAxisVulnShare.ts` 只存 φ 常量）`（纯函数）+
 `resourceCalc/damagePool.ts` 的**建池后处理**（只缩放「按全局覆盖率吃易伤」的行）；
 开关 `stunVuln.noAxisConcEstimate` + 系数 `stunVuln.noAxisConcK`（队伍配置页「战斗动作与保底目标」）。
 
@@ -914,7 +914,7 @@ T137 实测**引擎里没有「自动轴」**（`selectAutoStunAxisPreset` = 命
 | 零漂移判据 | φ = 100% ⇒ 行级 `totalDamage` / `stunCoverage` **逐位等于**旧口径（单测 `toEqual` + `toBe`） |
 | 轴模式 | 覆盖率仍是 1/0 两档（引擎按轴实算）；φ 滑块对轴模式**逐位无影响** |
 | UI 披露 | 结果页「非轴易伤」行（φ < 100% 时显示）；曲线页图例写明「非轴不自动认领」 |
-| 保留 | `concEstimate.ts` 的纯函数与实测误差表**保留**（是有价值的参考算法），但**无生产消费者**；接回引擎即判据红 |
+| 保留 | `concEstimateReference.ts` 的纯函数与实测误差表**保留**（是有价值的参考算法），但**无生产消费者**；接回引擎即判据红 |
 
 **判据**（`src/composables/__tests__/axisConcEstimate.test.ts` B 段 3 条 + `axisConcCaliberDisclosure.test.ts` 1 条）：
 φ=100% 逐位等于旧口径 · φ 线性且单调 · φ=0 ⇒ 覆盖率 0 · 轴模式零影响 · 图例披露口径。

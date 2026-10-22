@@ -26,7 +26,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import {
   DEFAULT_NO_AXIS_VULN_SHARE,
   NO_AXIS_VULN_SHARE_SETTING,
-} from '@/composables/resourceCalc/concEstimate'
+} from '@/composables/resourceCalc/noAxisVulnShare'
 /**
  * ⚠ **2026-10-19：conc_est 参考算法已搬进 `src/test/`**（引擎撤下自动认领后零生产消费者，
  * `deadChannelLs` 判据 ⑫ 会报「只被测试引用 = 生产死代码」）。本文件是它唯一的消费者，

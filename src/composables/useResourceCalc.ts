@@ -14,7 +14,7 @@ import { findInteractionTopUpSlot, getAgentMechanic, teamMechanicSlots } from '@
 import { calcAnomalyPoolDamage } from '@/core/anomalyPool'
 import { buildDamagePoolRows } from './resourceCalc/damagePool'
 // R14 订正（2026-10-19）：非轴不再自动估算易伤，改为用户自填贡献率 φ
-import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from './resourceCalc/concEstimate'
+import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from './resourceCalc/noAxisVulnShare'
 import { freezeCached } from './resourceCalc/freezeCached'
 import { createRunCalcRound } from './resourceCalc/convergence'
 import { createConvergenceRoundInputs } from './resourceCalc/roundInputs'

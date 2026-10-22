@@ -850,7 +850,7 @@ import { axisFallbackNoticeOf } from '@/composables/axisFallbackNotice'
 import {
   DEFAULT_NO_AXIS_VULN_SHARE,
   NO_AXIS_VULN_SHARE_SETTING,
-} from '@/composables/resourceCalc/concEstimate'
+} from '@/composables/resourceCalc/noAxisVulnShare'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { comboAlignEditable, comboAlignFixedHint, comboAlignFixedLabel, comboAlignFixedReason, totalComboAlignTimeOf } from '@/composables/resourceCalc/comboAlignDisplay'
 import type { AnomalyEventRecord } from '@/types/resource'
