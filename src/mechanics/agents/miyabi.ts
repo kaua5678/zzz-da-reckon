@@ -24,6 +24,7 @@ import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import { findMoveById } from '@/data/moveTableQueries'
 import { mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
+import { chargeLockComboAlignRatio } from '@/mechanics/chargeLock'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 
@@ -62,6 +63,7 @@ const FROST_MOON_1_MOVE_ID = '1091027'
 /** 霜月 #2 move id（C6 赠送） */
 const FROST_MOON_2_MOVE_ID = '1091028'
 /** 霜月 #3 合轴锁定时间（秒）：非6命蓄力1秒后即可合轴 */
+/** 霜月 #3 蓄力锁定 1 秒（其余时间合轴给队友——统一口径见 `mechanics/chargeLock.ts`） */
 const FROST_MOON_3_LOCK_SECONDS = 1.0
 
 /** 队伍中是否有风属性角色（影响霜灼状态覆盖率） */
@@ -167,7 +169,7 @@ export function miyabiFrostMoonReserve(cfg: CharacterOperationConfig, state?: Re
   const actionTime = cfgMoveActionTime(cfg, FROST_MOON_MOVE_ID)
   const out: ExtraNecessaryAction[] = [{
     count, moveName: '霜月 #3（账本预留）', actionTime,
-    comboAlignRatio: (actionTime - FROST_MOON_3_LOCK_SECONDS) / actionTime, decibelRecovery: 0,
+    comboAlignRatio: chargeLockComboAlignRatio(actionTime, FROST_MOON_3_LOCK_SECONDS), decibelRecovery: 0,
   }]
   if (hasMiyabiCinema6(cfg)) {
     out.push({ count, moveName: '霜月 #1（C6赠送，账本预留）', actionTime: cfgMoveActionTime(cfg, FROST_MOON_1_MOVE_ID), comboAlignRatio: 0, decibelRecovery: 0 })
@@ -195,7 +197,7 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
     count: frostMoonCount,
     actionTime: actionTime,
     // 用户口径：三段蓄力只有 1s 锁定窗口在前台，其余时间全部合轴
-    comboAlignRatio: (actionTime - FROST_MOON_3_LOCK_SECONDS) / actionTime,
+    comboAlignRatio: chargeLockComboAlignRatio(actionTime, FROST_MOON_3_LOCK_SECONDS),
     totalTime: frostMoonCount * actionTime,
     totalComboAlignTime: frostMoonCount * (actionTime - FROST_MOON_3_LOCK_SECONDS),
     ...(m1DefShred ? { defIgnore: 36 } : {}),

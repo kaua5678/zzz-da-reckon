@@ -274,3 +274,52 @@ describe('赛维里安（1631）3.3.12 v12 正式录入', () => {
     expect(c2.flow.c2PenRatio).toBe(20)
   })
 })
+
+/**
+ * 蓄力 1 秒锁（用户裁决 2026-10-22）：「这种蓄力的角色有很多，其基本逻辑都是只需1秒蓄力，然后剩余时间合轴给队友。
+ * 赛维里安也有这个强化a得做一下」。
+ *
+ * 苍风影猎（1631006，2.833s）= 起手向后闪避蓄势（锁 1s，不能换人）+ 随后穿梭斩击（与队友并行）。
+ * 账本口径 GROSS：`necessaryTime` 仍全额 2.833s，合轴率 (2.833−1)/2.833 = 64.7% 进 `comboAlignCredit` 抵扣预算。
+ * 判据三条：① 行上有 ratio 且与账本同源；② 抵扣 = 次数 × (actionTime − 1)；③ **单人队不记合轴**（没有并行对象）。
+ */
+describe('赛维里安·苍风影猎蓄力 1 秒锁（合轴给队友）', () => {
+  beforeEach(() => {
+    newPinia()
+    mockStaticFetch()
+  })
+
+  it('多人队：合轴抵扣 = 次数 × (actionTime − 1s)，净前台 = 次数 × 1s', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const config = useConfigStore()
+    for (const [slot, agentId] of ['1631', '1031', '1211'].entries()) {
+      config.team[slot] = { slot, agentId, cinemaLevel: 0, ...baseConfig } as any
+    }
+    config.syncTeammateBuffsFromTeam()
+    const ch = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1631')!
+    const row = ch.executions.find(e => e.moveId === '1631006')!
+    const shadowSeconds = row.count * row.actionTime
+    expect(row.comboAlignRatio, '蓄力 1 秒锁 ⇒ ratio = (t−1)/t').toBeCloseTo((row.actionTime - 1) / row.actionTime, 9)
+    expect(row.totalComboAlignTime).toBeCloseTo(row.count * (row.actionTime - 1), 6)
+    expect(ch.timeAllocation.comboAlignCredit!, '账本与行同源（差异只来自其它招式的合轴）').toBeGreaterThanOrEqual(row.totalComboAlignTime! - 1e-6)
+    // GROSS：necessaryTime 仍按全额计（含苍风影猎全部时长），净 = 次数 × 1s
+    expect(ch.timeAllocation.necessaryTime).toBeGreaterThan(shadowSeconds)
+  })
+
+  it('单人队：没有并行对象 ⇒ 不记合轴（否则凭空扩池变留白）', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
+    await catalog.loadTeammateBuffs()
+    const config = useConfigStore()
+    config.team[0] = { slot: 0, agentId: '1631', cinemaLevel: 0, ...baseConfig } as any
+    config.team[1] = { slot: 1, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+    config.team[2] = { slot: 2, agentId: '', cinemaLevel: 0, ...baseConfig } as any
+    config.syncTeammateBuffsFromTeam()
+    const ch = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1631')!
+    const row = ch.executions.find(e => e.moveId === '1631006')
+    if (!row || row.count <= 0) return // 单人档可能没触发影猎：那也谈不上合轴
+    expect(ch.timeAllocation.comboAlignCredit ?? 0, '单人队合轴抵扣必须为 0').toBe(0)
+  })
+})

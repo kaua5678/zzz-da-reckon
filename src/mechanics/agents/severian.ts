@@ -36,6 +36,7 @@ import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting
 import { mechanicSettingPanelReader, mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { chargeLockComboAlignRatio } from '@/mechanics/chargeLock'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
@@ -255,6 +256,8 @@ function hasOtherWindTeammate(team: AgentPanelInput['team'] | undefined, slot: n
 function buildSeverianCharConfig({ cfg, cinemaLevel, skills, team, slot }: AgentCharConfigInput): void {
   cfg.severianCinemaLevel = cinemaLevel
   cfg.severianOtherWindTeammate = hasOtherWindTeammate(team, slot)
+  // 合轴抵扣必须有并行对象（用户口径 2026-10-22「合轴时间只能给队友分配」）：单人队（golden 单角色档）不记
+  cfg.severianHasComboPartner = team.some(m => !!m && m.slot !== slot && !!m.agentId)
   // 强化特殊技（组合技 1631008）走通用强特通道（v12 耗能 40）
   const special = skills.categories.find(c => c.id === 'special')?.moves.find(m => m.id === '1631008')
   if (special) {
@@ -332,7 +335,10 @@ function buildSeverianExecutions({ cfg, state, executions }: AgentResourceInput)
       element: 'wind',
       count: shadowCount,
       actionTime: shadowMeta.actionTime,
+      // 单人队不写 ratio（没有并行对象 ⇒ 账本也不给 credit；行上写了就必须被兑现，CC-455）
+      comboAlignRatio: cfg.severianHasComboPartner ? chargeLockComboAlignRatio(shadowMeta.actionTime) : 0,
       totalTime: shadowCount * shadowMeta.actionTime,
+      totalComboAlignTime: shadowCount * shadowMeta.actionTime * (cfg.severianHasComboPartner ? chargeLockComboAlignRatio(shadowMeta.actionTime) : 0),
       ...(cinema >= 6
         ? { damageMultiplier: shadowMeta.damage + SEVERIAN_C6_SHADOW_MULT, damageMultiplierOverride: true }
         : {}),
@@ -385,9 +391,14 @@ function severianExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTim
   const liexuanTime = liexuanMeta ? severianLiexuanCount(cfg) * liexuanMeta.actionTime : 0
   const bladeRatio = clampRatio(setting(cfg, 'severian.windBladeChargeRatio'))
   const bladeTime = windBladeMeta ? Math.max(0, exSpecialCount) * bladeRatio * windBladeMeta.actionTime : 0
+  // 苍风影猎 = 蓄力 1 秒锁 + 其余时间合轴给队友（用户裁决 2026-10-22「赛维里安也有这个强化a得做一下」）。
+  // GROSS 约定：necessaryTime 仍按全额 actionTime（上面已含 shadowTime），合轴率部分进 comboAlignCredit 抵扣预算。
+  const shadowAlign = shadowMeta && cfg.severianHasComboPartner
+    ? severianShadowHuntCount(cfg, state) * shadowMeta.actionTime * chargeLockComboAlignRatio(shadowMeta.actionTime)
+    : 0
   return {
     necessaryTime: exTime + shadowTime + liexuanTime + bladeTime,
-    comboAlignTime: exTime * cfg.exSpecialComboAlignRatio,
+    comboAlignTime: exTime * cfg.exSpecialComboAlignRatio + shadowAlign,
   }
 }
 
@@ -547,6 +558,8 @@ declare module '@/types/resource/config' {
     severianCinemaLevel?: number
     /** 塞维林：队伍存在其他风属性角色（buildCharConfig 写；核心被动 +30% 的唯一判定） */
     severianOtherWindTeammate?: boolean
+    /** 队里是否有其他角色（合轴抵扣需要并行对象；单人队不记合轴） */
+    severianHasComboPartner?: boolean
     /** 塞维林连携/终结/入场载体招式元数据 */
     severianCarrierMeta?: SeverianMoveMeta[]
     /** 塞维林影招式元数据 */

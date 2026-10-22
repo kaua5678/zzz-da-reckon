@@ -30,6 +30,7 @@ import { buildSpecAnomalyEvents } from '@/specs/mechanics'
 import { computeSpecResources } from '@/specs/resources'
 import { applyAgentAttributeConversions } from '@/specs/runtime'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
+import { chargeLockComboAlignRatio } from '@/mechanics/chargeLock'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { mechanicSettingGetterReader } from '@/utils/mechanicSettingCfg'
 
@@ -146,8 +147,8 @@ function buildAliceCharConfig({
   const exSw = findExSpecialSwordWill(skills)
 
   const actionTime = sw3?.actionTime ?? 0
-  // 合轴率使前台时间 = 1s：actionTime × (1 - comboAlignRatio) = 1 → ratio = 1 - 1/actionTime
-  const comboAlignRatio = actionTime > 0 ? Math.max(0, 1 - (1 / actionTime)) : 0
+  // 合轴率使前台时间 = 1s（蓄力 1 秒锁，其余时间合轴给队友——统一口径见 `mechanics/chargeLock.ts`）
+  const comboAlignRatio = chargeLockComboAlignRatio(actionTime)
 
   cfg.aliceEnabled = true
   cfg.aliceSwordWillPerSec = swPerSec
