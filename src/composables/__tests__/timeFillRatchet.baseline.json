@@ -2,7 +2,7 @@
  "_note": "时间留白棘轮基线（秒）。重生成：TIME_RATCHET_UPDATE=1 npx vitest run src/composables/__tests__/timeFillRatchet.test.ts —— 重生成前必须先 A/B 归因（见测试头注释）",
  "_tolerance": 1,
  "auto-1021-1031-1491": {
-  "slack": 1.6,
+  "slack": 0,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"

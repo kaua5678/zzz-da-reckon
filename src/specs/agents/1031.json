@@ -26,6 +26,7 @@
     "[已确认·数据] 影画4：能量场范围+3m，无乘区，不建模。",
     "[已确认·数据] 影画6：能量场叠暴击1.5%×10层默认满层15%（teammate-buffs）。",
     "[近似] 未模拟3.5s减益逐秒覆盖与子弹强化普攻循环。",
+    "减防接力 [用户裁决 2026-10-22]：强化子弹每发刷新核心减防 3.5s，每发仅需一段最短普攻 0.194s。单次技能覆盖 = 发炮动作 1.484s + 能量场 1.484s（C1 ×1.75）+ 减防尾 3.5s = 6.47s（C0）；缺口发数自动算入 necessaryTime（nicoleBulletReserve → extraNecessaryAction），全库 11 队补 5.6~6.8s。",
     "实现：src/mechanics/agents/nicole.ts + teammate-buffs 1031 组。"
   ],
   "teamBuffs": []
