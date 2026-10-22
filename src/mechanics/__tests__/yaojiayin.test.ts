@@ -57,7 +57,19 @@ describe('耀嘉音纯函数', () => {
     expect(resolveTeammateBuffsOnEmptyPanel(c2, 2000).atk).toBeCloseTo(1080, 9)
   })
 
-  it('震音：付费受能量与入场双限；额外能力与C2追加', () => {
+  /**
+   * **能量自动驱动（用户裁决 2026-10-22）**：
+   * > 「这个耀嘉音的触发次数改成能量自动触发。他的能量自动扣完，他不是靠前台释放强特耗能的，
+   * >   而是他有能量就会提供快支，队友用一次快支切人他就扣能量打出攻击。」
+   *
+   * 原文佐证：「每拥有25点能量，耀嘉音将拥有1点[和弦]」＋「队伍中其他角色通过[快速支援]/[连携技]/
+   * [招架支援]/[回避支援]入场时，**耀嘉音将消耗25点能量**，并追加释放1道[震音]」。
+   *
+   * ⚠ 修前是 `min(⌊能量/25⌋, 队友快支次数)`——把「队友填了几次快支」当成她的天花板；
+   * 而她的和弦自己就能造快速支援（操作中命中 3s/重击 1s），默认队（快支全 0）震音恒 0、能量全废。
+   * 现口径：`付费震音 = ⌊能量/25⌋`，入场次数只是诊断读数。
+   */
+  it('震音：付费 = ⌊能量/25⌋（能量自动扣完，不受队友快支次数限制）；额外能力与C2追加', () => {
     const base = computeYaojiayinTremolos({
       totalEnergy: 200, entryCount: 10, combatTime: 180, cinemaLevel: 0, additionalActive: false,
     })
@@ -76,9 +88,21 @@ describe('耀嘉音纯函数', () => {
     const c2 = computeYaojiayinTremolos({
       totalEnergy: 200, entryCount: 10, combatTime: 30, cinemaLevel: 2, additionalActive: false,
     })
-    expect(c2.c2Extra).toBe(10) // min(10, floor(30/3)=10)
-    expect(c2.freeTremolos).toBe(10)
-    expect(c2.clusters).toBe(30)
+    // C2 追加按**付费震音次数**（= 入场）与 3s CD：min(8, floor(30/3)=10) = 8
+    expect(c2.c2Extra).toBe(8)
+    expect(c2.freeTremolos).toBe(8)
+    expect(c2.clusters).toBe(24)
+
+    // ★ 反锁：entryCount（队友快支次数）**不再是上限**——填 0 也是 8 次付费震音
+    const noEntries = computeYaojiayinTremolos({
+      totalEnergy: 200, entryCount: 0, combatTime: 180, cinemaLevel: 0, additionalActive: false,
+    })
+    expect(noEntries.paidTremolos, '能量自动扣完 ⇒ 队友快支 0 次也有 8 次震音').toBe(8)
+    const fewEntries = computeYaojiayinTremolos({
+      totalEnergy: 200, entryCount: 3, combatTime: 180, cinemaLevel: 0, additionalActive: false,
+    })
+    expect(fewEntries.paidTremolos, '入场 3 次不再是天花板').toBe(8)
+    expect(fewEntries.entries, '入场读数 = 付费震音次数（一次入场合一次扣能）').toBe(8)
 
     const c6 = computeYaojiayinTremolos({
       totalEnergy: 250, entryCount: 20, combatTime: 100, cinemaLevel: 6, additionalActive: true,
@@ -89,7 +113,7 @@ describe('耀嘉音纯函数', () => {
 })
 
 describe('耀嘉音执行行', () => {
-  it('buildExecutions 生成震音/音簇，C6 倍率×2', () => {
+  it('buildExecutions 生成音簇/C6随想曲/C4附加（震音本体走通用强特行，不在本模块产行）', () => {
     const cfg: any = {
       invincibleTime: 0,
       yaojiayinCinemaLevel: 6,
@@ -106,7 +130,7 @@ describe('耀嘉音执行行', () => {
       cfg,
       state: {
         totalEnergy: 200,
-        exSpecialCount: 0,
+        exSpecialCount: 8, // 通用强特通道给的付费震音次数（= floor(200/25)）
         chainCountTotal: 0,
         ultimateCount: 0,
         frontlineTime: 40,
@@ -114,11 +138,10 @@ describe('耀嘉音执行行', () => {
       },
       executions,
     } as any)
-    const tremolo = executions.find(e => e.moveId === MOVE_TREMOLO)
+    // ★ 震音本体 = 通用强特行（buildCharConfig 设 exSpecialMoveId=1311008 + 25 能量/次），
+    // 模块**不再自建**（防双计）——这条反锁住「别把通用通道的事手写回来」。
+    expect(executions.find(e => e.moveId === MOVE_TREMOLO), '震音不得由模块自建').toBeUndefined()
     const cluster = executions.find(e => e.moveId === MOVE_CLUSTER)
-    expect(tremolo.count).toBeGreaterThan(0)
-    expect(tremolo.damageMultiplier).toBeCloseTo(92.2 * 2)
-    expect(tremolo.critRateBonus).toBe(80)
     expect(cluster.count).toBeGreaterThan(0)
     expect(cluster.damageMultiplier).toBeCloseTo(48.2 * 2)
     const cap = executions.find(e => e.moveId === '1311004')

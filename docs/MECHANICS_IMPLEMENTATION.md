@@ -210,7 +210,8 @@
 - **模块**：`src/mechanics/agents/lycaon.ts` + `lycaon.json`。
 
 ### 耀嘉音（yaojiayin / 1311）—— 咏叹华彩支援
-- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/yaojiayin.ts` + spec `1311.json`；测试 `src/mechanics/__tests__/yaojiayin.test.ts` 8 例）。含：咏叹华彩技能等级随 3/5 命提升、核心攻 35%/1200 与 C2 差分 54%/1600、震音能量与入场双限 +额外能力/C2 追加、buildExecutions 生成震音/音簇（C6 倍率×2）、影画1 全抗-18/影画2 核心攻差分/影画4 异常队友积蓄效率。本次补状态行。
+- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/yaojiayin.ts` + spec `1311.json`；测试 `src/mechanics/__tests__/yaojiayin.test.ts` 8 例）。含：咏叹华彩技能等级随 3/5 命提升、核心攻 35%/1200 与 C2 差分 54%/1600、震音 = 通用强特通道（能量自动扣完，⌊能量/25⌋）+额外能力/C2 追加、buildExecutions 生成震音/音簇（C6 倍率×2）、影画1 全抗-18/影画2 核心攻差分/影画4 异常队友积蓄效率。本次补状态行。
+- **和弦震音 = 通用强特通道 [用户裁决 2026-10-22]**（实现：`yaojiayin.ts#buildCharConfig` 设 `exSpecialMoveId = 1311008`（和弦 #1，92.2%，**无 actionTime**）+ `exSpecialEnergyConsume = 25`）：用户原话「这个不就是强特逻辑么，有能量就放完，这个招式只有倍率没有时间」。引擎 `resolveExSpecialCount` 自动给 `exSpecialCount = ⌊总能量/25⌋`、通用强特行自动物化（actionTime 0 ⇒ 不占前台）。**修前**是模块手写 `min(⌊能量/25⌋, 队友快支次数)`——把「队友填了几次快支」当成她的天花板，而原文入场来源是「队伍中其他角色通过[快速支援]/[连携技]/[招架支援]/[回避支援]入场时，耀嘉音将消耗25点能量并追加释放1道[震音]」，**她自己的和弦也能造快速支援**（操作中命中 3s CD / 重击 1s CD）⇒ 默认队（快支全 0）震音恒 0、能量全废。现口径：付费震音 = ⌊能量/25⌋（19 次 / 499 能量），入场次数只作诊断读数、不再当上限。震音本体**不再由模块自建行**（防与通用强特行双计），C6「倍率×2 / 暴击+80%」改由 `patchExecutions` 套在通用强特行上；音簇/C6 随想曲/C4 强攻分支仍由模块产行（额外部分）。回归锁 `yaojiayin.test.ts`「能量自动驱动」+「震音不得由模块自建」。
 - **平A 权重 0 [用户裁决 2026-10-22]**：`defaultBasicAttackTimeWeight: 0`（`yaojiayin.ts` 模块声明）——「嘉音不能a」。职业缺省本就是 0，这次把「不能打平A」升级成**机制口径**：平A 池第二层兜底（`core/resource/helpers.ts#iterate`）按它排除她，避免主C 贴顶后剩余池摊到她身上凭空造出平A 回能/喧响。
 - 口径：本角色无档案独有裁决（除上条）；数值/公式单一事实源 = `src/mechanics/agents/yaojiayin.ts` 头注释 + `src/specs/agents/1311.json` notes。
 - **模块**：`src/mechanics/agents/yaojiayin.ts`。

@@ -70,10 +70,16 @@ export function yaojiayinSkillLevel(cinemaLevel: number): number {
 
 export interface YaojiayinTremoloInput {
   totalEnergy: number
+  /**
+   * @deprecated 不再当上限（用户裁决 2026-10-22：入场次数只作诊断读数）。
+   * 保留字段是为了诊断/回归对照，**不参与次数推导**。
+   */
   entryCount: number
   combatTime: number
   cinemaLevel: number
   additionalActive: boolean
+  /** 引擎通用强特通道给出的付费震音次数（= `state.exSpecialCount`）；缺省时按能量自算（纯函数兜底） */
+  paidCount?: number
 }
 
 export interface YaojiayinTremoloResult {
@@ -88,19 +94,35 @@ export interface YaojiayinTremoloResult {
 }
 
 /**
- * 震音/音簇次数纯函数。
- * 付费震音 = min(⌊能量/25⌋, 入场次数)
+ * 震音/音簇次数纯函数（**只算「额外」部分**：音簇 / C2 / C6）。
+ *
+ * **付费震音次数 = 通用强特通道给的 `state.exSpecialCount`**（用户裁决 2026-10-22：「这个不就是
+ * 强特逻辑么，有能量就放完」）——`buildCharConfig` 设了 `exSpecialMoveId = 1311008`（和弦 #1，
+ * 无 actionTime）+ `exSpecialEnergyConsume = 25`，引擎 `resolveExSpecialCount` 自动算成
+ * `⌊总能量/25⌋` 并**把能量扣完**。本函数不再自己除 25。
+ * 原文（"和弦"）：「每拥有25点能量，耀嘉音将拥有1点[和弦]」＋「队伍中其他角色通过[快速支援]、
+ * [连携技]、[招架支援]或[回避支援]入场时，**耀嘉音将消耗25点能量**，并追加释放1道[震音]」。
+ *
+ * ⚠ 修前实现是 `min(⌊能量/25⌋, 入场次数)`，把「队友快支次数」当成上限 —— 两个错：
+ * ① 她不靠前台放强特耗能（`exSpecialEnergyConsume = 0`），能量唯一出口就是和弦震音 ⇒ 有能量就该扣完；
+ * ② 入场机会是**她自己**造的（和弦：操作中角色攻击命中 3s/重击 1s 即可触发快速支援），
+ *    不依赖队友填快支次数 ⇒ 默认队（没人填快支）修前震音恒 0、499 能量全废。
+ * ⇒ 现在入场次数不再当上限，它只是**诊断读数**（每次付费震音 = 一次入场）。
+ *
  * 额外能力：每次付费震音 +1 震音 +3 音簇
- * C2：入场额外 +1 震音 +3 音簇，3s CD
+ * C2：入场额外 +1 震音 +3 音簇，3s CD（入场 = 付费震音事件，故按付费震音计）
  * C6 随想曲追加次数在外层按精准次数与 10s CD 再算
  */
 export function computeYaojiayinTremolos(input: YaojiayinTremoloInput): YaojiayinTremoloResult {
-  const energy = Math.max(0, Number(input.totalEnergy) || 0)
-  const entries = Math.max(0, Math.floor(input.entryCount || 0))
   const cinema = cinemaLevelOf(input.cinemaLevel)
   const t = Math.max(0, Number(input.combatTime) || 0)
-  const maxPaid = Math.floor(energy / YAOJIAYIN_ENERGY_PER_TREMOLO)
-  const paidTremolos = Math.min(maxPaid, entries)
+  // 付费震音 = 引擎通用强特通道的次数（= ⌊能量/25⌋，能量已扣完）。
+  // 外部直调（纯函数测试）没传 paidCount 时回落自算——**仅作兜底**。
+  const paidTremolos = input.paidCount !== undefined
+    ? Math.max(0, Math.floor(Number(input.paidCount) || 0))
+    : Math.floor(Math.max(0, Number(input.totalEnergy) || 0) / YAOJIAYIN_ENERGY_PER_TREMOLO)
+  // 入场次数 = 付费震音次数（一次和弦入场合一次扣能震音）；保留入参做诊断/回归对照
+  const entries = paidTremolos
   let freeTremolos = 0
   let clusters = 0
   if (input.additionalActive && paidTremolos > 0) {
@@ -108,8 +130,8 @@ export function computeYaojiayinTremolos(input: YaojiayinTremoloInput): Yaojiayi
     clusters += paidTremolos * 3
   }
   let c2Extra = 0
-  if (cinema >= 2 && entries > 0) {
-    c2Extra = Math.min(entries, Math.floor(t / YAOJIAYIN_C2_ENTRY_CD))
+  if (cinema >= 2 && paidTremolos > 0) {
+    c2Extra = Math.min(paidTremolos, Math.floor(t / YAOJIAYIN_C2_ENTRY_CD))
     freeTremolos += c2Extra
     clusters += c2Extra * 3
   }
@@ -144,6 +166,11 @@ function pushExec(
     damageMultiplierOverride?: boolean
     category?: string
     skillDamageTarget?: SkillExecution['skillDamageTarget']
+    /**
+     * 行级能量消耗总量（**整局**，不是单次）：和弦震音只有「付费」部分扣能量（25/次），
+     * 而本行 count 含免费震音 ⇒ 不能用 count × 单次值，必须由调用方直接给总量。
+     */
+    totalEnergyConsume?: number
   },
 ) {
   if (count <= 0 || dmg <= 0) return
@@ -160,12 +187,24 @@ function pushExec(
     skillDamageTarget: opts?.skillDamageTarget ?? 'exSpecial',
     ...(opts?.dmgBonus ? { dmgBonus: opts.dmgBonus } : {}),
     ...(opts?.critRateBonus ? { critRateBonus: opts.critRateBonus } : {}),
+    ...(opts?.totalEnergyConsume ? {
+      energyConsume: 0,
+      totalEnergyConsume: opts.totalEnergyConsume,
+    } : {}),
   }))
 }
 
 /**
  * 入场触发次数：全队快支+招架+回避支援 + 全队连携（编排注入 yaojiayinTeamChainTotal）。
  * 耀嘉音本人连携/终结进华彩不额外计「队友入场」，但队友连携入场会计入。
+ */
+/**
+ * 入场次数诊断读数（用户裁决 2026-10-22：**不再当震音上限**）。
+ *
+ * 原文口径：入场 = 队伍其他角色通过[快速支援]/[连携技]/[招架支援]/[回避支援]入场时触发一次和弦。
+ * 而和弦震音的次数上限**只由能量决定**（每 25 点一次，能量自动扣完）——她自己的和弦也能造快速支援
+ * （操作中角色攻击命中 3s CD / 重击 1s CD），所以「队友填了几次快支」不是她的天花板。
+ * 本函数只留作**诊断/展示**（资源区块「入场」一栏），不参与次数推导。
  */
 function estimateYaojiayinEntries(yj: CharacterOperationConfig, characters: CharacterOperationConfig[]): number {
   let entries = 0
@@ -266,8 +305,20 @@ function buildCharConfig({ skills, cinemaLevel, cfg, team }: AgentCharConfigInpu
   cfg.yaojiayinClusterDmg = rowVal(findMove(skills, MOVE_CLUSTER), 'damage')
   cfg.yaojiayinCapriccioDmg = rowVal(findMove(skills, MOVE_CAPRICCIO_CHARGED), 'damage')
 
-  // 不走通用强特耗能：能量全部供给和弦震音
-  cfg.exSpecialEnergyConsume = 0
+  /**
+   * **和弦震音 = 通用强特通道**（用户裁决 2026-10-22：「这个不就是强特逻辑么，有能量就放完，
+   * 这个招式只有倍率没有时间」）。
+   *
+   * 走 `exSpecialMoveId = 1311008`（和弦 #1，92.2% / 无 actionTime）+ `exSpecialEnergyConsume = 25`：
+   * 引擎的 `resolveExSpecialCount` 自动给出 `exSpecialCount = ⌊总能量/25⌋`，**能量自动扣完**、
+   * 通用强特行自动物化（actionTime = 0 ⇒ 不占前台，正是原文「只有倍率没有时间」）。
+   * 不再手写 `computeYaojiayinTremolos` 的「energy/25」那一段。
+   *
+   * ⚠ 与「她不靠前台放强特耗能」不矛盾：所谓「不走强特」是指**不另外打一次普通强特**；
+   * 和弦震音本身就是「有能量就自动放出」的强特型动作，用它走通用通道才是同一件事的通用表达。
+   */
+  cfg.exSpecialMoveId = MOVE_TREMOLO
+  cfg.exSpecialEnergyConsume = YAOJIAYIN_ENERGY_PER_TREMOLO
 
   // 影画1：开场额外 1000 喧响（默认已有 1000 → 2000）
   if (cinema >= 1) {
@@ -290,6 +341,8 @@ function yaojiayinTremolosOf(
   return computeYaojiayinTremolos({
     totalEnergy: Math.max(0, state.totalEnergy),
     entryCount: Math.max(0, Math.floor(Number(cfg.yaojiayinEntryCount ?? 0))),
+    // 付费震音次数由通用强特通道给（= ⌊能量/25⌋）；exSpecialCount 在模块钩子里已可读
+    paidCount: Math.max(0, Math.floor(Number(state.exSpecialCount) || 0)),
     combatTime: effectiveCombatTime(state, cfg),
     cinemaLevel: cinema,
     additionalActive,
@@ -301,23 +354,13 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const combatTime = effectiveCombatTime(state, cfg)
   const result = yaojiayinTremolosOf(cfg, state)
 
-  const tremoloDmg = Number(cfg.yaojiayinTremoloDmg ?? 0) || 0
   const clusterDmg = Number(cfg.yaojiayinClusterDmg ?? 0) || 0
   const c6Mult = cinema >= 6 ? 2 : 1
   const c6Crit = cinema >= 6 ? 80 : 0
 
-  pushExec(
-    executions,
-    MOVE_TREMOLO,
-    '震音',
-    result.totalTremolos,
-    tremoloDmg * c6Mult,
-    `震音 ×${result.totalTremolos}（付费 ${result.paidTremolos} + 免费 ${result.freeTremolos}`
-      + `；入场 ${result.entries}；耗能 ${result.energyUsed}`
-      + (c6Mult > 1 ? '；C6 倍率×2' : '')
-      + '）',
-    { critRateBonus: c6Crit, skillDamageTarget: 'exSpecial' },
-  )
+  // 震音本体（1311008）= **通用强特行**（buildCharConfig 已设 exSpecialMoveId/exSpecialEnergyConsume=25）
+  // ⇒ 次数 = ⌊能量/25⌋、能量自动扣完、actionTime 0 不占前台。本模块**不再自建震音行**（防双计）。
+  // 下面只补「额外」部分：音簇（额外能力/C2 赠送）、C6 随想曲、C4 强攻分支。
 
   pushExec(
     executions,
@@ -343,9 +386,10 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   }
 
   // C4 强攻分支：快支入场 3s CD，300% 耀嘉音攻击附加
+  // 入场次数 = 付费震音次数（能量驱动，用户裁决 2026-10-22）——不再读「队友快支次数」：
+  // 她的和弦自己就能造快速支援（操作中角色命中即可），队友填不填快支不是她的上限。
   if (cinema >= 4 && Number(cfg.yaojiayinTeamHasAttack ?? 0) > 0) {
-    const qaEntries = Math.max(0, Math.floor(Number(cfg.yaojiayinQuickAssistEntries ?? 0)))
-    const triggers = Math.min(qaEntries > 0 ? qaEntries : result.entries, Math.floor(combatTime / YAOJIAYIN_C4_BRANCH_CD))
+    const triggers = Math.min(result.paidTremolos, Math.floor(combatTime / YAOJIAYIN_C4_BRANCH_CD))
     if (triggers > 0) {
       pushExec(
         executions,
@@ -448,6 +492,22 @@ export const yaojiayinMechanic: AgentMechanicModule = {
   teamPanelEffects: applyYaojiayinTeamPanelEffects,
   buildCharConfig,
   buildExecutions,
+  /**
+   * 震音本体走通用强特行（`exSpecialMoveId = 1311008`）⇒ 它的倍率/暴击由**这里**按命座修正：
+   * 影画6「华彩震音/音簇倍率×2、暴击 +80%」（原文）。
+   * （C6 前：倍率表值原样，不动。）
+   */
+  patchExecutions: ({ cfg, executions }: AgentResourceInput) => {
+    const cinema = cinemaLevelOf(cfg.yaojiayinCinemaLevel)
+    if (cinema < 6) return
+    for (const exec of executions) {
+      if (exec.moveId !== MOVE_TREMOLO) continue
+      exec.damageMultiplier = (exec.damageMultiplier ?? 0) * 2
+      exec.damageMultiplierOverride = true
+      exec.critRateBonus = (exec.critRateBonus ?? 0) + 80
+      exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画6 倍率×2/暴击+80%`
+    }
+  },
   buildResourceResult,
   resourceSections,
 }
