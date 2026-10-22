@@ -13,15 +13,28 @@ export type Rarity = 'S' | 'A' | 'B'
 export type Specialty = 'attack' | 'stun' | 'anomaly' | 'support' | 'defense' | 'rupture' | 'sharpen'
 export type Attribute = string
 /**
- * 伤害元素。
+ * 伤害元素（**数据可标记值**）。
  *
- * ⚠ **没有 `lumiflux`**（2026-10-21 用户裁决，全删）：
+ * ### `lumiflux` 的边界（2026-10-21/22 两次裁决的合并结论，务必分清）
+ *
+ * 官方设定流明是「高级属性」，与常规 6 属性不同：
  * > 「流明本身也没有积蓄，因此不会形成异常主人……全游戏没有流明属性进行攻击计算」
- * 官方设定流明是高级属性，与常规属性不同：流明角色（蕾米埃尔）的伤害实际跟随**下一位队友的属性**
- * （见 `ExtraAnomalyRowsInput.nextTeammateElement`），其耀变则沿用**原主人的属性**。
- * ⇒ 引擎里不存在「按流明结算的伤害」，也就不需要流明抗性/弱点/增伤这一整套。
+ *
+ * 但**原始数据里蕾米埃尔（1581）确实标着 `lumiflux`**
+ * （`data/raw/nanoka_missing/full/1581.json`：`element_type: {"300":"流明"}`，
+ * 其 20 个 move / 40 个 element 行的 `damageElement` 也都是 `lumiflux`）。
+ * 判据 18「招式伤害属性对账」要求 catalog 与原文逐条一致 ⇒ **数据必须保留这个值**。
+ *
+ * ⇒ 分工：
+ * - **数据层**：`lumiflux` 是合法标记，照抄原文，不删（删了对账器就红）。
+ * - **引擎层**：**不存在按流明结算的伤害**——蕾米的招式与特殊虚耀跟随**下一位队友**的属性
+ *   （`anomalyPanels#resolveAgentDamageElement` / `ExtraAnomalyRowsInput.nextTeammateElement`），
+ *   其耀变沿用**原主人的属性**；流明抗性/弱点/增伤这套**面板字段已删**
+ *   （`lumifluxDmg` / `enemyLumiflux*`），因为没有任何计算路径会读它们。
+ *
+ * ⚠ 不要把「数据里有 lumiflux」当成「引擎要按流明算」——两者是不同的域。
  */
-export type DamageElement = 'physical' | 'fire' | 'ice' | 'electric' | 'ether' | 'wind'
+export type DamageElement = 'physical' | 'fire' | 'ice' | 'electric' | 'ether' | 'wind' | 'lumiflux'
 export type StatId = string
 export type BuffScope = 'outOfCombat' | 'inCombat'
 export type EffectType = 'fixed' | 'derived' | 'stacked' | 'formula'

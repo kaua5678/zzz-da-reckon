@@ -844,6 +844,16 @@ export const remielleMechanic: AgentMechanicModule = {
   globalAnomalyMultiplierFactor: (panel: PanelValues) => 1 + remielleRefringePct(panel) / 100,
   // CC-35a：异化度展示值（anomalyPanels 异常虚拟面板 refringe 列），与上面的乘区同一来源
   anomalyRefringePct: remielleRefringePct,
+  /**
+   * 蕾米专属的伤害公式字段（判据 22：core 层不得写死 remielle* 字段名）。
+   * 这些是**异常乘区**的真实输入，属性账需要展示 ⇒ 由本模块注册进 core 的白名单。
+   */
+  damageFormulaFields: () => [
+    { stat: 'remielleRefringeCoefficient', role: '异常乘区', note: '异化度（全队拐，乘所有异常结算）' },
+    { stat: 'remielleRefringeCoefficientBonusPct', role: '异常乘区', note: '异化度提升（3异常+10 / 二命+20）' },
+    { stat: 'remielleLuminizeMultiplierBonus', role: '异常乘区', note: '耀变倍率提升（核心被动）' },
+    { stat: 'remielleCinema4LuminizeMultiplierBonus', role: '异常乘区', note: '耀变倍率提升（4命）' },
+  ] as const,
   name: '蕾米埃尔',
   description: '虚曜/耀变/异化系数：队友异常反应生成虚曜，特定招式命中触发耀变；异化系数与耀变倍率随异常精通提升。',
   applyPanel: applyRemiellePanel,

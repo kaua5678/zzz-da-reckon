@@ -789,3 +789,19 @@ export interface FinalizePassSpec {
   /** 装配后复位（引擎在装配之后调用；不对称语义见上方说明） */
   reset(cfg: CharacterOperationConfig): void
 }
+
+/**
+ * 角色专属的**伤害公式字段**声明（2026-10-22，判据 22「角色知识回模块」）。
+ *
+ * 属性账要展示「这个角色特有的伤害乘区」（如蕾米的异化度 / 耀变倍率），
+ * 但 `core/` 不许写死角色前缀字段 ⇒ 由角色模块自己声明，core 只提供注册表
+ * （`core/damageFormulaFields#registerDamageFormulaFields`，经 `mechanics/index` 统一注册）。
+ *
+ * 注册后的字段会自动并入属性账的公式白名单（`isDamageFormulaStat`）。
+ */
+export interface DamageFormulaFieldDecl {
+  stat: string
+  /** 公式角色（与 core/damageFormulaFields#DamageFormulaRole 同值域） */
+  role: '伤害基底' | '增伤区' | '暴击区' | '防御穿透区' | '抗性易伤区' | '失衡易伤区' | '异常乘区' | '异常时长'
+  note: string
+}

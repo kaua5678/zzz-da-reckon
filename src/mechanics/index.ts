@@ -1,5 +1,6 @@
 import type { AgentMechanicModule } from './types'
 import { getAgentMechanic, registerAgentMechanic } from './registry'
+import { registerDamageFormulaFields } from '@/core/damageFormulaFields'
 import { velinaMechanic } from './agents/velina'
 import { aliceMechanic } from './agents/alice'
 import { roxyMechanic } from './agents/roxy'
@@ -87,6 +88,14 @@ function registerWithSpecSettings(module: AgentMechanicModule): void {
     if (merged.length > 0) module.settings = merged
   }
   registerAgentMechanic(module)
+  /**
+   * 角色专属的**伤害公式字段**并入属性账白名单（2026-10-22）。
+   *
+   * 判据 22 要求 core 不得出现角色前缀字段名 ⇒ 字段名由角色模块自己声明
+   * （`damageFormulaFields` 能力），core 只提供注册表。这里统一注册，模块无需自己调用。
+   */
+  const fields = module.damageFormulaFields?.()
+  if (fields?.length) registerDamageFormulaFields(fields)
 }
 
 registerWithSpecSettings(velinaMechanic)

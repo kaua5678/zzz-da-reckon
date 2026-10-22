@@ -99,20 +99,48 @@ export const DAMAGE_FORMULA_FIELDS: DamageFormulaField[] = [
   { stat: 'anomalyCritRate', role: '异常乘区', note: '异常暴击率' },
   { stat: 'anomalyCritDmg', role: '异常乘区', note: '异常暴击伤害' },
   { stat: 'enemyAnomalyDefReduction', role: '异常乘区', note: '异常伤害无视防御' },
-  { stat: 'remielleRefringeCoefficient', role: '异常乘区', note: '蕾米异化度（全队拐，乘所有异常结算）' },
-  { stat: 'remielleRefringeCoefficientBonusPct', role: '异常乘区', note: '蕾米异化度提升（3异常+10 / 二命+20）' },
-  { stat: 'remielleLuminizeMultiplierBonus', role: '异常乘区', note: '蕾米被动耀变倍率提升' },
-  { stat: 'remielleCinema4LuminizeMultiplierBonus', role: '异常乘区', note: '蕾米4命耀变倍率提升' },
+  // 角色专属字段（remielle* 等）**不在此登记**：core 层不得出现角色前缀字段（判据 22）。
+  // 它们经 registerDamageFormulaFields() 由机制层注册（见文件末尾）。
 
   // ── C. 异常时长（DoT 总量 = 单跳 × 跳数，跳数 ∝ 时长）──
   { stat: 'anomalyDurationBonusSeconds', role: '异常时长', note: '异常持续时间延长：直接增加 DoT 跳数' },
 ]
 
-/** 快速查表：stat → 白名单条目 */
+/**
+ * **角色专属字段的注册表**（机制层写入，core 只读）。
+ *
+ * 为什么要有这一层：`core/` 不许出现角色前缀字段（判据 22「角色知识回模块」）。
+ * 但属性账确实要展示蕾米的异化度/耀变倍率这类**角色专属伤害乘区**——
+ * 于是 core 只提供**注册接口**，具体字段名由角色模块自己声明（`mechanics/agents/*.ts` 里
+ * `damageFormulaFields` 能力），core 不写死任何角色名。
+ *
+ * 键 = 字段名，值 = 展示说明。
+ */
+const ROLE_FIELD_REGISTRY = new Map<string, DamageFormulaField>()
+
+/**
+ * 注册角色专属的伤害公式字段（由机制层调用）。
+ *
+ * @example
+ * // in mechanics/agents/remielle.ts
+ * damageFormulaFields: () => [
+ *   { stat: 'remielleRefringeCoefficient', role: '异常乘区', note: '蕾米异化度（全队拐）' },
+ * ]
+ */
+export function registerDamageFormulaFields(fields: readonly DamageFormulaField[]): void {
+  for (const f of fields) ROLE_FIELD_REGISTRY.set(f.stat, f)
+}
+
+/** 快速查表：stat → 白名单条目（通用字段 + 已注册的角色字段） */
+export function damageFormulaFieldOf(stat: string): DamageFormulaField | undefined {
+  return DAMAGE_FORMULA_BY_STAT.get(stat) ?? ROLE_FIELD_REGISTRY.get(stat)
+}
+
+/** 快速查表：通用字段 stat → 白名单条目 */
 export const DAMAGE_FORMULA_BY_STAT: ReadonlyMap<string, DamageFormulaField> =
   new Map(DAMAGE_FORMULA_FIELDS.map(f => [f.stat, f]))
 
 /** 某字段是否是「伤害公式值」 */
 export function isDamageFormulaStat(stat: string): boolean {
-  return DAMAGE_FORMULA_BY_STAT.has(stat)
+  return damageFormulaFieldOf(stat) !== undefined
 }

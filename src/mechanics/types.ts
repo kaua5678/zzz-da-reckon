@@ -26,7 +26,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { AgentLimitPointDecl, DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, AxisRageCombos, ReleaseShareSpec, TeammateDropSpec, AxisGashResourceSpec, FinalizePassSpec } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, AxisRageCombos, ReleaseShareSpec, TeammateDropSpec, AxisGashResourceSpec, FinalizePassSpec, DamageFormulaFieldDecl } from './typesHooks'
 // CC-451：展示层专用声明类型（CC-444/445/446/448 陆续长在本文件里，把 CC-83 预算顶破）拆出 typesView.ts；本文件原样转出，导入方不用改
 import type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
 
@@ -1122,6 +1122,8 @@ export interface AgentMechanicModule {
    * 而伤害实际乘 1.2+（实测 C0 三异常队）。首个实现：蕾米埃尔。
    */
   anomalyRefringePct?(panel: Readonly<PanelValues>): number
+  /** 本角色专属的伤害公式字段（判据 22）；形状见 `typesHooks#DamageFormulaFieldDecl` */
+  damageFormulaFields?(): readonly DamageFormulaFieldDecl[]
   /**
    * 本角色在队时，全队某属性异常的持续时间延长秒数（CC-35c 2026-09-27，「通用规则臂」）：
    * `resourceCalc/anomalyPanels.ts#getTeamAnomalyDurationBonus(element)` 对在队各模块求值并**加算**
