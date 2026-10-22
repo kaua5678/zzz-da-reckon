@@ -24,7 +24,6 @@ export function outerFeedbackSignature(out: CalcRoundResult): string {
     `${out.interactionTopUp.parry},${out.interactionTopUp.dual}`,
     out.parrySplit ? `${out.parrySplit.breakerParry},${out.parrySplit.mainDpsParry}` : '',
     `${out.threadsNext.decibelParry}`,
-    JSON.stringify(out.threadsNext.backstageAuto ?? {}),
     // 保底填充依赖积蓄分数；只比较 floor 后的失衡次数会提前停止。
     out.stunPool ? (out.stunPool.totalStunBuildUp / out.stunPool.bossStunValue).toFixed(2) : '',
     // 剑仪反馈可能只改变执行行而不改变终结次数，必须独立监测。

@@ -10,7 +10,7 @@ import { buildCharConfig } from '@/composables/resourceCalc/helpers'
 describe('CC-35b：交互栏次数经 char 进模块 cfg', () => {
   it('仪玄：5 项原样进 cfg；极限支援经 yixuanExtremeAssistCountInput 转交', async () => {
     const { config, catalog } = await setupHarness([
-      { agentId: '1371', yixuanInk2Count: 3, yixuanInk3Count: 2, yixuanPerfectBlockCount: 4, yixuanExtremeAssistCount: 5, yixuanBackstageComboCount: 6 },
+      { agentId: '1371', yixuanInk2Count: 3, yixuanInk3Count: 2, yixuanPerfectBlockCount: 4, yixuanExtremeAssistCount: 5 },
       { agentId: '1331' },
     ] as never)
     const cfg = buildCharConfig(0, config, catalog)! as unknown as Record<string, unknown>
@@ -19,7 +19,6 @@ describe('CC-35b：交互栏次数经 char 进模块 cfg', () => {
     expect(cfg.yixuanPerfectBlockCount).toBe(4)
     expect(cfg.yixuanExtremeAssistCount).toBe(5)
     expect(cfg.yixuanExtremeAssistCountInput).toBe(5)
-    expect(cfg.yixuanBackstageComboCount).toBe(6)
     // 非仪玄槽不再带这些字段
     const mate = buildCharConfig(1, config, catalog)! as unknown as Record<string, unknown>
     expect(mate.yixuanInk2Count).toBeUndefined()

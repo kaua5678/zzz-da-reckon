@@ -273,9 +273,8 @@ export function climbFieldsOf(ctx: LadderCtx): ActionCountField[] {
      *
      * ⚠ **形态与 `interactionDefaults` 不同，故单列一条通道**：那张表只能表达「从 0 爬到绝对值 N」，
      * 而这些字段的起点是**本轮收敛出来的已有量**（每轮可能变）⇒ 起点与上限都要按轮从结果里取。
-     * ⚠ **哨兵语义字段依旧排除**：声明里 `field` 是模块显式写的（仪玄只声明了
-     * `yixuanBackstageComboCount`，没声明 `yixuanInk3Count`/`yixuanPerfectBlockCount`）
-     * ⇒ `0 = 自动` 的字段不会被爬（爬它会把「自动吃满」变「一次都不打」）。
+     * ⚠ **哨兵语义字段依旧排除**：声明里 `field` 是模块显式写的 ⇒ `0 = 自动` 的字段不会被爬
+     * （爬它会把「自动吃满」变「一次都不打」）。
      */
     const climb = getAgentMechanic(agentId)?.interactionClimb
     if (climb && !seen.has(climb.field)) { out.push(climb.field); seen.add(climb.field) }
@@ -367,7 +366,7 @@ export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void
    * ## ⚠ 自指陷阱（**逐字改这条前必读**，2026-10-16 实测）
    *
    * 直觉写法是「每步重读 anchor」——**那是自指的，上限会随爬升自己长大**：
-   * 被爬字段是 `yixuanBackstageComboCount`（**手动**字段），而模块的锚读的是**本轮结果行**
+   * 被爬字段是**手动**字段，而模块的锚读的是**本轮结果行**
    * （`max(手动, 自动)`）⇒ 写下 `m` 之后 anchor 就变成 `m`、上限随之变成 `1.5m`
    * ⇒ 每步 +50% 的**几何增长**，上限形同不存在。
    * 实测（`.zc/perf/T134probe8.perf.ts`，`yixuan-trigger-lucia`，anchor=11）：
@@ -400,7 +399,7 @@ export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void
        * ★ **比例型字段的起点 = 已有量（anchor），不是 0**（T173）。
        *
        * 为什么必须显式落地（**实测，不是设计偏好**）：锚读的是**本轮结果行**，而手动字段为 0 时
-       * 结果行由引擎的自动反推提供（`backstageAutoFill`）⇒ 起点**在盘上不是 0、在 store 里是 0**。
+       * 结果行由引擎的自动反推提供 ⇒ 起点**在盘上不是 0、在 store 里是 0**。
        * 只给上限不落地会产生两个错：
        * ① 阶梯第 1 步把 0 写成 1 ⇒ 反推被**手动覆盖**顶掉 ⇒ 对数从 11 掉到 1 ⇒ 伤害**暴跌**
        *    （实测 `yixuan-trigger-lucia`：57.16M → 5.34M）⇒ 接受门第 ① 条当场回滚，阶梯一步都走不动；
@@ -557,7 +556,7 @@ export function resetDifficultyGoals(ctx: LadderCtx, team: [string, string, stri
 export const INTERACTION_COUNT_KEYS = [
   'parryCount', 'dodgeCounterCount', 'blockCount', 'perfectBlockCount', 'assaultOrderCount',
   'dualCounterCount', 'tauntCancelCount', 'claretBurialInterruptCount',
-  'yixuanInk2Count', 'yixuanInk3Count', 'yixuanPerfectBlockCount', 'yixuanBackstageComboCount',
+  'yixuanInk2Count', 'yixuanInk3Count', 'yixuanPerfectBlockCount',
   'promiaNiyingCount', 'quickAssistCount',
 ] as const
 

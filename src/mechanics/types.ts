@@ -26,7 +26,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { AgentLimitPointDecl, DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, BackstageAutoFillSpec, AxisRageCombos, ReleaseShareSpec, TeammateDropSpec, AxisGashResourceSpec, FinalizePassSpec } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, AxisRageCombos, ReleaseShareSpec, TeammateDropSpec, AxisGashResourceSpec, FinalizePassSpec } from './typesHooks'
 // CC-451：展示层专用声明类型（CC-444/445/446/448 陆续长在本文件里，把 CC-83 预算顶破）拆出 typesView.ts；本文件原样转出，导入方不用改
 import type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
 
@@ -644,12 +644,6 @@ export interface AgentMechanicModule {
    * 模块必须按 `input.phase` 决定在哪个阶段动手（阶段语义见 AgentTeamPhase）。
    */
   applyTeamConfig?(input: AgentTeamConfigInput): void
-  /**
-   * 后台合轴自动填充声明（用户口径 2026-09-07：合轴可自动填充、不占前台不计难度，反推至保底 4 次失衡）。
-   * 声明式（编排层通用执行，无 agentId 分支）：编排层按 deficit=保底目标×bossStunValue−非合轴失衡
-   * 反推次数，封顶 floor(可用后台时间/minPeriodSeconds)，写回 cfgField；手动字段 >0 时模块优先用手动。
-   */
-  backstageAutoFill?: BackstageAutoFillSpec
   /** 向招式执行计划追加专属动作 */
   buildExecutions?(input: AgentResourceInput): void
   /**
@@ -681,7 +675,7 @@ export interface AgentMechanicModule {
    * 后台自动释放行（CC-26b）：`rowBuild.ts#buildExecutions` 在闪避反击行**之前**的固定位置派发，
    * 返回的行由构建器 push 进 executions。`input.executions` 是构建到这一步为止的行（模块用它数前台动作），
    * 类型上只读。原为 core 内联的蕾米埃尔「光辉回转」后台行。
-   * ⚠ 与声明式字段 `backstageAutoFill`（后台自动补位）名字相近但语义无关。
+   * ⚠ 与已删除的 `backstageAutoFill`（后台自动补位）名字相近但语义无关（该通道 T197 随仪玄后台墨影凝云一起删除）。
    */
   backstageAutoRows?(input: AgentBackstageRowsInput): SkillExecution[]
   /**
@@ -1152,7 +1146,7 @@ export interface AgentMechanicModule {
   /**
    * CC-43e（2026-09-27）：本角色「拥有」轴预设里的 `promoteVariant`（60/90 转大）块。
    * 编排层 `roundInputs.ts#buildStackAxes`：队里没有任何声明者时跳过 promoteVariant 块（不当普通轴动作执行）。
-   * 声明式（同 `backstageAutoFill` 范式），替代原身份判定 `findSlotByIdentity(['1481'])`。现实现：琉音。
+   * 声明式（与被删的 `backstageAutoFill` 同范式），替代原身份判定 `findSlotByIdentity(['1481'])`。现实现：琉音。
    */
   ownsPromoteVariantAxisBlocks?: boolean
   /**
@@ -1274,7 +1268,7 @@ export interface AgentMechanicModule {
    * 调 `supply()` 拿数量、按 `targetSlot()` 落点，全程不含角色 id。
    *
    * 新角色接入 = 只写自己的模块（引擎与编排层零改动），与 `computeInteractionTopUp` /
-   * `backstageAutoFill` / `axisWindowOverlays` 同族。
+   * `axisWindowOverlays` 同族。
    */
   crossAgentSupply?: CrossAgentSupplySpec
   /**

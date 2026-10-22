@@ -385,7 +385,6 @@ export interface CharacterOperationConfig {
   /** 仪玄极限支援换场次数（主页录入；缺省 = 上限） */
   yixuanExtremeAssistCount?: number
   /** 仪玄·墨影凝云合轴次数（后台墨影凝云+霄云劲#5，不占战场时间但有倍率行调用） */
-  yixuanBackstageComboCount?: number
   /** 失衡轴内总时间（秒）= Σ窗口数 × 窗口时长（useResourceCalc 轴模式注入；CD 自动动作如仪玄C1落雷/卢西娅追击按此折算次数） */
   axisInSeconds?: number
   /** 总战斗时间（秒，默认 180；全战斗时间类来源使用，如星徽·比利决意缓慢回复 2 点/秒） */

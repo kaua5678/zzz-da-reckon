@@ -60,7 +60,6 @@ export interface CharacterConfig {
   yixuanInk3Count?: number  // 仪玄·3连墨痕化形次数（#1+#3+#4，60闪能/次；≤0=自动=剩余闪能全打3连，≥1 手填）
   yixuanPerfectBlockCount?: number  // 仪玄·完美格挡次数（#2 赠送 + 回10闪能/次；≤0=自动=弹刀次数全完美，≥1 手填）
   yixuanExtremeAssistCount?: number  // 仪玄·极限支援换场次数（落雷 225% 贯穿力 + 5闪能/次；缺省 -1 = 自动取队友弹刀和上限）
-  yixuanBackstageComboCount?: number  // 仪玄·墨影凝云合轴次数（后台墨影凝云+霄云劲#5，不占战场时间但有倍率行调用）
   quickAssistCount: number  // 快速支援次数（per-character）
   chainCountPerStun: number  // 每次失衡的连携次数（per-character；setAgent 预填 ASSIST_ACTION_BASELINE.chainPerStun = 1，CC-264）
   basicAttackTimeWeight: number // 平A时间分配权重（0=不分配平A时间）
@@ -176,7 +175,6 @@ function defaultCharacter(slot: number, agentId: string, element: string): Chara
     yixuanInk3Count: 0, // ≤0 = 自动：剩余闪能全部轴外打 3 连墨痕化形（60/次）；≥1 手填
     yixuanPerfectBlockCount: 0, // ≤0 = 自动：全完美格挡 = 弹刀次数（+10 闪能/次）；≥1 手填
     yixuanExtremeAssistCount: -1,
-    yixuanBackstageComboCount: 0,
     quickAssistCount: 0,
     chainCountPerStun: 0,
     basicAttackTimeWeight: 1,
@@ -211,7 +209,6 @@ export const ACTION_COUNT_BOUNDS = {
   yixuanInk3Count: { min: 0, max: 99 },
   yixuanPerfectBlockCount: { min: 0, max: 99 },
   yixuanExtremeAssistCount: { min: -1, max: 99 },
-  yixuanBackstageComboCount: { min: 0, max: 99 },
   promiaNiyingCount: { min: 0, max: 99 },
   tauntCancelCount: { min: 0, max: 99 },
   claretBurialInterruptCount: { min: 0, max: 99 },

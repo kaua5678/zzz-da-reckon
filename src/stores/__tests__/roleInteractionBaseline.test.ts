@@ -15,7 +15,7 @@
  * 只给它 6/10 交互 ⇒ 伤害 138.5 → 123.2M，因为交互挤掉普通平A、钢能产出反而少 2 组落华）。
  *
  * 改成 0 后：交互不预填，剩余时间回灌平A池（`availableBasicTime`）；
- * 要打交互的用户自己在交互栏填，或由模块 `computeInteractionTopUp` / `backstageAutoFill` 注入。
+ * 要打交互的用户自己在交互栏填，或由模块 `computeInteractionTopUp` 注入。
  *
  * ## 「最优交互次数」由难度曲线给，不由默认值给
  *

@@ -36,8 +36,6 @@ export interface CalcRoundThreads {
   interactionTopUp: InteractionTopUp
   /** Boss 预设弹刀反推拆分（失衡次数四舍五入） */
   parrySplit: ParrySplitResult | null
-  /** 后台合轴自动填充（agentId → 自动对数）：由模块 backstageAutoFill 声明驱动，编排层通用反推 */
-  backstageAuto: Record<string, number> | null
   /** 全队终结总次数（橘福福影画2 威势） */
   teamUltimateForJufufu: number
   /**
@@ -77,7 +75,6 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     anomalyDecibelBonus: [],
     interactionTopUp: { parry: 0, dual: 0, requiredSeconds: 0, illegal: false },
     parrySplit: null,
-    backstageAuto: null,
     teamUltimateForJufufu: 0,
     moduleFeedback: {},
     inStunWindowTriggers: 0,

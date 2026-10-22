@@ -137,7 +137,6 @@ describe('CC-83 mechanics/types.ts 拆分', () => {
     const src = readFileSync(TYPES_TS, 'utf-8')
     const hooks = readFileSync(resolve(__dirname, '../typesHooks.ts'), 'utf-8')
     for (const [field, typeName] of [
-      ['backstageAutoFill', 'BackstageAutoFillSpec'],
       ['axisRageCombos', 'AxisRageCombos'],
       ['releaseShare', 'ReleaseShareSpec'],
       // 2026-10-18：teammateSplit（Q 分配）被 teammateDrop（每队友丢弃 N 次）取代，具名类型随之换名

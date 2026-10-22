@@ -12,7 +12,7 @@ beforeEach(() => {
   mockStaticFetch()
 })
 
-function teamChar(slot: number, agentId: string, cinemaLevel = 0, overrides: Partial<{ blockCount: number; dodgeCounterCount: number; yixuanInk2Count: number; yixuanInk3Count: number; yixuanPerfectBlockCount: number; yixuanBackstageComboCount: number }> = {}) {
+function teamChar(slot: number, agentId: string, cinemaLevel = 0, overrides: Partial<{ blockCount: number; dodgeCounterCount: number; yixuanInk2Count: number; yixuanInk3Count: number; yixuanPerfectBlockCount: number }> = {}) {
   return {
     slot,
     agentId,
@@ -90,7 +90,7 @@ describe('仪玄 spec 机制（1371）', () => {
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     // 仪玄(0命) + 青衣(击破) + 赛斯(防护)：额外能力触发；2连×2 + 3连×1 + 完美格挡×3 + 后台合轴×3
-    config.team[0] = teamChar(0, '1371', 0, { yixuanInk2Count: 2, yixuanInk3Count: 1, yixuanPerfectBlockCount: 3, yixuanBackstageComboCount: 3 })
+    config.team[0] = teamChar(0, '1371', 0, { yixuanInk2Count: 2, yixuanInk3Count: 1, yixuanPerfectBlockCount: 3 })
     config.team[1] = teamChar(1, '1251')
     config.team[2] = teamChar(2, '1271')
 
@@ -186,29 +186,16 @@ describe('仪玄 spec 机制（1371）', () => {
     expect(extraUlts[0].count).toBeGreaterThan(0)
     expect(extraUlts[0].damageMultiplier).toBe(2932.5)
     expect(extraUlts[0].actionTime, '符法千重施放时间应计入前台（catalog 1371020 = 2.267s）').toBe(2.267)
-    const xuanmoBasics = yixuan.executions.filter(e => e.moveId === '1371021')
-    expect(xuanmoBasics[0].count).toBe(3)
-    expect(xuanmoBasics[0].damageMultiplier).toBe(611)
-    const xuanmoStrike = yixuan.executions.find(e => e.moveId === '1371021')
-    expect(xuanmoStrike).toBeTruthy()
-    expect(xuanmoStrike!.count).toBe(3)
     /**
-     * ⚠ 2026-10-19 口径变更（用户订正逐字）：
-     * > 「这是设置的问题，设置 0 秒全合轴然后进行数量填写，相当于全不合轴然后进行合轴率填写。
-     * >   它本身耗时还是正常的，你用合轴率并不能掩盖他本身耗时的事实，只是他时间和队友重合而已」
-     *
-     * ⇒ 行上写**真实耗时**（catalog 同值 2.667s），「与队友重合」由 `comboAlignRatio: 1` 表达。
-     * 修前这里断言 `actionTime === 0`，那是把「重合」写成了「不存在耗时」。
+     * ⚠ **T197（用户裁决 2026-10-22）**：后台墨影凝云 + 霄云劲#5 整套删除——
+     * 「交互里面的后台墨影凝云 + 霄云劲#5也删除，因为他们本质是合轴率系统出来之前的代替产物，
+     * 现在该直接用合轴率代表一切」。
+     * ⇒ 玄墨极阵 / 青溟震击 / 墨影凝云 / 霄云劲#5 这四条「合轴」行都不再产出（它们是后台代替品）。
+     * 真实合轴由全局旋钮 `time.comboAlignAbsorbRatio` 表达，不再逐招记账。
      */
-    expect(xuanmoStrike!.actionTime, '真实耗时（catalog 1371021 = 2.667s），不是 0').toBe(2.667)
-    expect(xuanmoStrike!.comboAlignRatio, '合轴率表达「与队友重合」').toBe(1)
-    expect(xuanmoStrike!.totalTime, '行时间 = count × actionTime').toBe(3 * 2.667)
-    expect(xuanmoStrike!.damageMultiplier).toBe(611)
-    const qingmingStrike = yixuan.executions.find(e => e.moveId === '1371007')
-    expect(qingmingStrike!.count).toBe(3)
-    expect(qingmingStrike!.damageMultiplier).toBe(221.7)
-    expect(yixuan.executions.some(e => e.moveId === '1371005')).toBe(false)
-    expect(yixuan.executions.some(e => e.moveId === '1371006')).toBe(false)
+    for (const gone of ['1371021', '1371007', '1371005', '1371006']) {
+      expect(yixuan.executions.some(e => e.moveId === gone), `后台合轴行 ${gone} 已删除`).toBe(false)
+    }
     // 聚墨·符法千重-破是影画2 专属：0 命不生成
     expect(yixuan.executions.some(e => e.moveId === '1371_fufa_po')).toBe(false)
 
@@ -240,7 +227,7 @@ describe('仪玄 spec 机制（1371）', () => {
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
     // 与上一条同队伍，但不填墨痕/格挡（缺省 0 = 自动）；teamChar 弹刀默认 6
-    config.team[0] = teamChar(0, '1371', 0, { yixuanBackstageComboCount: 3 })
+    config.team[0] = teamChar(0, '1371', 0)
     config.team[1] = teamChar(1, '1251')
     config.team[2] = teamChar(2, '1271')
 
@@ -295,7 +282,7 @@ describe('仪玄 spec 机制（1371）', () => {
     await catalog.load()
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
-    config.team[0] = teamChar(0, '1371', 4, { yixuanBackstageComboCount: 3 }) // 影画4
+    config.team[0] = teamChar(0, '1371', 4) // 影画4
     config.team[1] = teamChar(1, '1251')
     config.team[2] = teamChar(2, '1271')
 
@@ -507,80 +494,6 @@ describe('仪玄 spec 机制（1371）', () => {
     expect(lightning!.count).toBeGreaterThan(0)
     expect(lightning!.count).toBeLessThan(30)
     expect(lightning!.damageMultiplier).toBe(50)
-  })
-
-  it('合轴自动填充：手动输入 ≤0 时吃 yixuanBackstageAutoCount（反推线程），手动仍优先（用户口径 2026-09-07）', async () => {
-    /**
-     * ⚠ **round 20 换队友（判据不动，只换夹具）** —— `1251+1271` → `1481+1451`。
-     *
-     * ① 量 delta：原夹具在环退出改「最大自洽可行整数」结算后**收敛到池 4** ⇒ 反推缺口
-     *    `deficit = stunBuildUpForCount(pool, 保底4) − 非合轴失衡 = 0` ⇒ `pairs = 0`，判据假红。
-     * ② 根因：该夹具原先吃的是**环态**读数（HEAD 实测 `exit=cycle / pool=3 / pairs=5`）——
-     *    「反推在跑」这件事当年是靠环里某个成员恰好没到保底才成立的。环消失后它自然不成立。
-     * ③ 确认有意：这是**正确**行为（池本来就 4 次 ⇒ 不需要再补合轴对），不是缺陷。
-     * ④ 处置 = **重扫换队友**（判据仍是「自动 > 0、≤ 60、手动 3 优先」）：
-     *    `1251+1271`(pool 4, pairs 0) / **`1481+1451`(pool 3, pairs 20)** / `1031+1311`(pool 2, 24) /
-     *    `1211+1491`(pool 3, 22) / `1171+1411`(pool 3, 21) —— 取 `1481+1451`（琉音+卢西娅，
-     *    与 1371 同为实战常见配置，pairs 落在中间档、离上下界都远）。
-     */
-    const catalog = useCatalogStore()
-    await catalog.load()
-    await catalog.loadTeammateBuffs()
-    const config = useConfigStore()
-    config.setMechanicSetting('guarantee.stun', 1) // 失衡次数四舍五入开启 → 自动填充反推
-    // 手动 = 0 → 自动接管（反推缺口 = 4×bossStunValue − 非合轴失衡，供给上限钳制）
-    config.team[0] = teamChar(0, '1371')
-    config.team[1] = teamChar(1, '1481')
-    config.team[2] = teamChar(2, '1451')
-    const calc = useResourceCalc()
-    const out = calc.resourceResult.value!
-    const yixuan = out.characters.find(c => c.agentId === '1371')!
-    const pairs = yixuan.executions
-      .filter(e => ['1371021', '1371005'].includes(e.moveId))
-      .reduce((sum, e) => sum + e.count, 0)
-    expect(pairs).toBeGreaterThan(0)
-    // 供给上限：合轴对数 ≤ floor(战斗时间 / 3s 最短节奏) = 60
-    expect(pairs).toBeLessThanOrEqual(60)
-    // 手动优先：填 3 → 恰好 3 对（不走自动）
-    config.team[0] = teamChar(0, '1371', 0, { yixuanBackstageComboCount: 3 })
-    const out2 = calc.resourceResult.value!
-    const yx2 = out2.characters.find(c => c.agentId === '1371')!
-    const pairs2 = yx2.executions
-      .filter(e => ['1371021', '1371005'].includes(e.moveId))
-      .reduce((sum, e) => sum + e.count, 0)
-    expect(pairs2).toBe(3)
-  })
-
-  it('墨影凝云合轴：N > 玄墨值时超出部分打墨影凝云+A5（用户口径）', async () => {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
-    const config = useConfigStore()
-    // 0命：符法千重次数 = 术法值折算（时间轴喧响轨 2026-08-31：队友大招削减 → 玄墨暗涌闪能归零 → 术法值回落 → 3 次）；
-    // 合轴次数 5 → 玄墨值替换 3 + 墨影凝云+A5 ×2
-    config.team[0] = teamChar(0, '1371', 0, { yixuanInk2Count: 2, yixuanInk3Count: 1, yixuanPerfectBlockCount: 3, yixuanBackstageComboCount: 5 })
-    config.team[1] = teamChar(1, '1251')
-    config.team[2] = teamChar(2, '1271')
-
-    const calc = useResourceCalc()
-    const out = calc.resourceResult.value!
-    const yixuan = out.characters.find(c => c.agentId === '1371')!
-    const extraUlts = yixuan.executions.filter(e => e.moveId === '1371020')
-    const m = extraUlts.reduce((sum, e) => sum + e.count, 0)
-    // 2026-09-07 喧响收入修复：仪玄喧响达 12000 级 → 终结 [4,3,3]（用户口径 4 失衡=4 喧响）→
-    // 时间轴喧响轨介入削减 → 符法千重 4→3（术法值口径不变，轨时序变化）
-    // 2026-09-08 喧响账本行级化 + 环规范化停点：轨时序在新停点下不再削减本队物化行 →
-    // 符法千重回到模块术法值口径 4（m 与 totalFuFaUlts 一致，旧「m=3 但替换对按 4 分」的
-    // 已知不一致在本队形下消失；A/B 归因：临时回退旧聚合账本+环规范化可复现 3，已验证）
-    expect(m).toBe(4)
-
-    const xuanmoStrike = yixuan.executions.find(e => e.moveId === '1371021')
-    expect(xuanmoStrike!.count).toBe(4)
-    const ink = yixuan.executions.find(e => e.moveId === '1371005')
-    expect(ink).toBeTruthy()
-    expect(ink!.count).toBe(1) // N−M = 5−4
-    const strike5 = yixuan.executions.find(e => e.moveId === '1371006')
-    expect(strike5!.count).toBe(1)
   })
 
   it('术法值符法千重次数：默认 = 全部（理论可打次数），文本框可覆盖且封顶', async () => {

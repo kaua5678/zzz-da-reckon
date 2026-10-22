@@ -6,7 +6,7 @@
 import type { DeepReadonly } from 'vue'
 import type { ActionCountField } from '@/stores/config'
 import type { AgentSkills, PanelValues } from '@/types/catalog'
-import type { AnomalyContribution, AnomalyPoolResult, CharacterOperationConfig, IterationState, NumericCfgField, StunAxis, TeamResourceResult } from '@/types/resource'
+import type { AnomalyContribution, AnomalyPoolResult, CharacterOperationConfig, IterationState, StunAxis, TeamResourceResult } from '@/types/resource'
 import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 
 /**
@@ -706,22 +706,6 @@ export interface AxisSwaySupplyInput {
 //      ② `AgentMechanicModule` 的成员注释不再被形状体撑开，接口读起来是「能力清单」而不是「形状仓库」。
 //      ⚠ 低于判据 29③ 门槛的两个（`AxisRageCombos` / `ReleaseShareSpec`，各 2 成员）一并起名：
 //      它们与其余四个同族（都是模块往接口上挂的声明），留着内联会让「哪些是形状、哪些是标量」看不出来。
-
-/** `AgentMechanicModule.backstageAutoFill`：后台合轴自动填充声明（用户口径 2026-09-07） */
-export interface BackstageAutoFillSpec {
-  /** 合轴招式行 moveIds（编排层据此实测每对有效失衡） */
-  moveIds: string[]
-  /** 每对基础失衡（catalog 倍率和；首轮探测用，次轮起实测） */
-  perPairBase: number
-  /** 自动次数写回的 cfg 字段名（须为 cfg 上声明的数字字段） */
-  cfgField: NumericCfgField
-  /** 手动输入字段名（>0 优先于自动；须为 cfg 上声明的数字字段） */
-  manualField: NumericCfgField
-  /** 一对合轴的最短节奏（秒）——供给上限分母 */
-  minPeriodSeconds: number
-  /** 跟随招式与主招式的失衡值比（每对 = 主招式实测 × (1+ratio)；主招式须为后台独占行，防基础轮转行污染实测） */
-  followUpDazeRatio?: number
-}
 
 /** `AgentMechanicModule.axisRageCombos`：轴编辑器「怒相连段块」comboId 声明（CC-59；展示层专用） */
 export interface AxisRageCombos {

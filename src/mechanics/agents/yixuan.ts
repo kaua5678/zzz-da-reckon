@@ -1,9 +1,6 @@
 import { clampRatio, finiteOr0, positiveWholeCounts } from '@/utils/finiteClamp'
-import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput, InteractionClimbDecl } from '../types'
-import type { CharacterOperationConfig } from '@/types/resource/config'
-import type { ExtraNecessaryAction } from '../typesHooks'
+import type { AgentMechanicModule, AxisEditorBlockMark, AgentCharConfigInput, AgentNextRoundFeedbackInput, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import type { ModuleFeedback } from '../types'
-import type { TeamResourceResult } from '@/types/resource'
 import { axisOverlayChannel, type AxisLike } from '../types'
 import type { CharacterResourceResult, MechanicSetting} from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
@@ -121,8 +118,6 @@ const C2_RES_IGNORE_MOVE_IDS = new Set<string>([
 ])
 
 // 后台合轴招式（墨影凝云 + 霄云劲#5，不占战场时间但有倍率行调用）
-const BACKSTAGE_INK_MOVE = '1371005' // 普通攻击：墨影凝云
-const BACKSTAGE_STRIKE_MOVE = '1371006' // 普通攻击：霄云劲 #5
 
 // 闪能回复（文本明确数值）
 const PERFECT_BLOCK_FLASH = 10 // 完美格挡（墨痕化形 #2 蓄力/上挑触发）回复闪能，0.5s 最多一次
@@ -186,59 +181,6 @@ const DEFAULT_C6_GIFT_ULT_COUNT = -1 // 调息赠送符法千重次数：-1 = �
  * **手填优先**（见 `resolveYixuanAutoInputs`）；爬升面**不得**写这个字段（`climbFieldsOf` 白名单已排除）。
  */
 export const DEFAULT_INK3_RATIO = 1
-
-/**
- * **后台墨痕化形的账本预留**（2026-10-19，用户订正「它本身耗时还是正常的」）。
- *
- * 走通用 `extraNecessaryAction`（**不带 moveId** ⇒ 引擎只预留时间、不补行；行仍由
- * `buildYixuanExecutions` 产出）。与爱丽丝 CC-454 `aliceSwordWillReserve` 同构。
- *
- * ## 用户口径（逐字）
- *
- * > 「这是设置的问题，设置 0 秒全合轴然后进行数量填写，**相当于全不合轴然后进行合轴率填写**。
- * >   它本身耗时还是正常的，**你用合轴率并不能掩盖他本身耗时的事实，只是他时间和队友重合而已**」
- *
- * ⇒ 「耗时」是 `actionTime`（事实，抄 catalog），「与谁重合」是 `comboAlignRatio: 1`。写 0 等于抹掉事实。
- *
- * ## 为什么必须走这个通道
- *
- * `helpers.ts` 明写「账本不读 `exec.comboAlignRatio`」——模块写在行上的比例只有经本通道
- * 才进 `comboAlignCredits`，否则是**死数据**。走通道后：毛额进 `necessaryTime`、等额进
- * `comboAlignCredit` ⇒ `netNecessary = 0`（时间不白占），同时两组量在账本上都可读。
- *
- * ⚠ 配套修了 `convergence.ts` 的供给上限：原式拿 `necessaryTime` 毛额算剩余时间，
- * 会把这段「本该被抵扣掉」的时间算成占用 ⇒ 上限自锁（实测 pairs 23 → 0）。
- */
-function yixuanBackstageReserve(cfg: CharacterOperationConfig): ExtraNecessaryAction[] | null {
-  const manual = Math.max(0, Math.floor(Number(cfg.yixuanBackstageComboCount ?? 0)))
-  const n = manual > 0 ? manual : Math.max(0, Math.floor(Number(cfg.yixuanBackstageAutoCount ?? 0)))
-  if (n <= 0) return null
-  // 按产行同一条拆分：玄墨值够的部分「玄墨极阵+青溟震击」，超出「墨影凝云+霄云劲#5」
-  const xuanmo = Math.max(0, Math.floor(Number(cfg.yixuanXuanmoGain ?? 0)))
-  const strikeCount = Math.min(n, xuanmo)
-  const inkCount = Math.max(0, n - xuanmo)
-  const strikeSeconds = cfgMoveActionTime(cfg, '1371021') + cfgMoveActionTime(cfg, '1371007')
-  const inkSeconds = cfgMoveActionTime(cfg, BACKSTAGE_INK_MOVE) + cfgMoveActionTime(cfg, BACKSTAGE_STRIKE_MOVE)
-  const out: ExtraNecessaryAction[] = []
-  if (strikeCount > 0) {
-    out.push({ count: strikeCount, moveName: '后台墨痕化形·玄墨极阵（账本预留）', actionTime: strikeSeconds, comboAlignRatio: 1, decibelRecovery: 0 })
-  }
-  if (inkCount > 0) {
-    out.push({ count: inkCount, moveName: '后台墨痕化形·墨影凝云（账本预留）', actionTime: inkSeconds, comboAlignRatio: 1, decibelRecovery: 0 })
-  }
-  return out.length > 0 ? out : null
-}
-/**
- * 后台墨痕化形（墨影凝云合轴）**自动爬升上限比例**（T173，用户口径 2026-10-15）。
- *
- * 用户逐字：
- * > 「**仪玄后台墨痕化形可以爬升，相当于白给的招式**，但注意**自动爬升上限是他已有后台的 50%**，
- * >   不能说他后台全都在合轴。**这个值也可以调整**。」
- *
- * ⇒ 上限 = `已有后台 × 本值`，默认 `0.5`，**用户可调**（机制参数 `yixuan.backstageClimbRatio`）。
- * 「已有后台」= **本轮**实际打出的合轴对数（收敛后的读数，按轮取，见 `interactionClimb.anchorOf`）。
- */
-const DEFAULT_BACKSTAGE_CLIMB_RATIO = 0.5
 
 // 术法值驱动的符法千重实际次数（用户口径，文本框可填）：
 // -1 = 自动 = 全部（术法值理论可打次数 floor(术法值/120)）；手动填则封顶于理论可打次数。
@@ -398,7 +340,6 @@ function buildYixuanCharConfig(input: AgentCharConfigInput): void {
   cfg.yixuanInk3Count = char?.yixuanInk3Count ?? 0
   cfg.yixuanPerfectBlockCount = char?.yixuanPerfectBlockCount ?? 0
   cfg.yixuanExtremeAssistCount = char?.yixuanExtremeAssistCount ?? -1
-  cfg.yixuanBackstageComboCount = char?.yixuanBackstageComboCount ?? 0
 
   cfg.yixuanCinemaLevel = cinemaLevel
 
@@ -838,57 +779,6 @@ function buildYixuanExecutions({ cfg, state, executions }: AgentResourceInput): 
     }))
   }
 
-  // 墨影凝云合轴（用户口径）：合轴次数 N；玄墨值 M 把合轴招式替换为玄墨极阵+青溟震击
-  // （N ≤ M 全打玄墨极阵+青溟震击；N > M 超出部分打墨影凝云+A5）。
-  // 合轴次数：手动输入 >0 优先；否则吃自动填充（useResourceCalc 反推至保底 4 次失衡，
-  // 用户口径 2026-09-07：合轴可自动填充、不占前台不计难度）
-  //
-  // ⚠ **2026-10-19 修正：真实耗时必须写在行上**（用户订正逐字）：
-  // > 「这是设置的问题，设置 0 秒全合轴然后进行数量填写，**相当于全不合轴然后进行合轴率填写**。
-  // >   它本身耗时还是正常的，你用合轴率并不能掩盖他本身耗时的事实，只是他时间和队友重合而已」
-  //
-  // 旧写法 `actionTime: 0`（`@KEEP0@` 保留 0）把「和队友重合」写成了「不存在耗时」——
-  // 那抹掉了事实：玄墨极阵 2.667s / 青溟震击 0.966s / 墨影凝云 2.667s / 霄云劲#5 0.961s
-  // （catalog 同值）。38 对 ≈ 138s 的真实动作时间被当成 0。
-  // 现在：行上带**真实 actionTime** + `comboAlignRatio: 1`（= 这段时间 100% 与队友重合），
-  // 账本经 `extraNecessaryAction`（`yixuanBackstageReserve`）按 `count × actionTime × ratio` 抵扣，
-  // 与爱丽丝 CC-454 / 雅 CC-202 同构——引擎不读行上的 ratio（`helpers.ts:499`），必须走预留通道。
-  const manualBackstage = Math.max(0, Math.floor(Number(cfg.yixuanBackstageComboCount ?? 0)))
-  const backstageCount = manualBackstage > 0
-    ? manualBackstage
-    : Math.max(0, Math.floor(Number(cfg.yixuanBackstageAutoCount ?? 0)))
-  // 后台合轴行的喧响由**行级通道**进账（rowDecibelTotal 按 cfg.decibelRecoveryByMoveId 查表，
-  // 即下面 push 的四行自带收入）。旧的聚合加项 cfg.yixuanBackstageDecibel 已随喧响行级化删除
-  // （@fact engine:喧响收入行级Σ）——阶段1 第二刀 2026-09-09 清掉这段遗留回写（全仓零消费者）。
-  if (backstageCount > 0) {
-    const xuanmoStrike = Math.min(backstageCount, totalFuFaUlts)
-    const inkCombo = Math.max(0, backstageCount - totalFuFaUlts)
-    for (const [mid, mname, cnt] of [
-      ['1371021', '普通攻击：玄墨极阵（合轴·玄墨值替换）', xuanmoStrike],
-      ['1371007', '普通攻击：青溟震击（合轴·玄墨值替换）', xuanmoStrike],
-      [BACKSTAGE_INK_MOVE, '普通攻击：墨影凝云（合轴）', inkCombo],
-      [BACKSTAGE_STRIKE_MOVE, '普通攻击：霄云劲 #5（合轴）', inkCombo],
-    ] as const) {
-      if (cnt <= 0) continue
-      // 真实耗时（catalog 同值）：合轴不改变「耗时」这件事，只改变「与谁重合」
-      const t = cfgMoveActionTime(cfg, mid)
-      executions.push(moduleExecRow({
-        moveId: mid,
-        moveName: mname,
-        category: 'basic',
-        count: cnt,
-        actionTime: t,
-        comboAlignRatio: 1,
-        // ⚠ `moduleExecRow` 的 `totalTime` 缺省 0（「要 actionTime × count 的自己传」，见其头注释）——
-        // 只写 actionTime 的话行时间是 0，时间账看不到（2026-10-19 实测踩到）
-        totalTime: cnt * t,
-        totalComboAlignTime: cnt * t,
-        ...ENERGY_RECOVERY_OFF,
-        skillTableNote: `合轴 ×${cnt}${xuanmoStrike > 0 && mid === '1371021' ? `（玄墨值替换，总 ${totalFuFaUlts}）` : ''}`,
-      }))
-    }
-  }
-
   // 影画1·落雷（队伍任意角色命中，6s 最多一次 → 战斗时间驱动）：50% 贯穿力附加伤害，
   // 假 id 不进失衡/异常池（坑5 约定），伤害池按 damageMultiplierOverride 消费
   const c1Lightnings = Math.max(0, Math.floor(Number(cfg.yixuanC1LightningCount ?? 0)))
@@ -1109,22 +999,6 @@ const settings: MechanicSetting[] = [
     step: 0.05,
     suffix: '%',
   },
-  /**
-   * **后台墨痕化形（墨影凝云合轴）自动爬升上限比例**（T173，用户口径 2026-10-15）。
-   *
-   * ⚠ 爬升**增量** ≤ 已有后台 × 本值（默认 0.5 = 用户点名的那 50%）。
-   * 消费点 = `interactionClimb.capOf`（难度曲线逐槽阶梯），见模块的 `interactionClimb` 声明。
-   */
-  {
-    id: 'yixuan.backstageClimbRatio',
-    label: '仪玄·后台墨痕化形自动爬升上限比例',
-    description: '难度曲线自动爬升「墨影凝云合轴」次数的上限 = 本轮已有合轴对数 + floor(已有 × 本比例)（默认 0.5 = 用户口径「上限是他已有后台的 50%」；0 = 不爬、1 = 上限翻倍）。爬升量按轮重算，已有后台变多时上限跟着变。',
-    default: DEFAULT_BACKSTAGE_CLIMB_RATIO,
-    min: 0,
-    max: 1,
-    step: 0.05,
-    suffix: '%',
-  },
 ]
 
 /**
@@ -1162,56 +1036,6 @@ function yixuanNextRoundFeedback({ teamResult, anomalyPool }: AgentNextRoundFeed
   return auricInkTriggers > 0 ? { teamUltimateExtra, auricInkTriggers } : { teamUltimateExtra }
 }
 
-/**
- * **后台墨影凝云（合轴）自动爬升的锚（分母）**：本轮实际打出的合轴对数。
- *
- * 口径（用户 2026-10-15 逐字「**自动爬升上限是他已有后台的 50%**，不能说他后台全都在合轴」）：
- * - 「已有后台」= **本轮**结果行里合轴主招式行（玄墨极阵 1371021 / 墨影凝云 1371005）的次数和；
- * - ⚠ **必须按轮读结果行、不能读 cfg**：`yixuanBackstageComboCount` 是**输入**，而实际对数由
- *   外层不动点（反推线程 / 手动值）决定，每轮都可能变 ⇒ 构建期算一次会把上限钉死在首轮；
- * - 本函数是 `interactionClimb.anchorOf` 的实现体（契约见 `typesHooks#InteractionClimbDecl`）。
- */
-function backstageAnchorOf(teamResult: TeamResourceResult): number {
-  const self = teamResult.characters.find(c => c.agentId === AGENT_ID)
-  if (!self) return 0
-  let pairs = 0
-  for (const e of self.executions) {
-    if (e.moveId === '1371021' || e.moveId === BACKSTAGE_INK_MOVE) pairs += e.count
-  }
-  return Math.max(0, Math.floor(pairs))
-}
-
-/**
- * **爬升上限 = 已有后台 + floor(已有后台 × 比例)**（默认比例 0.5 ⇒ 上限 = 已有 × 1.5）。
- *
- * 用户逐字「自动爬升上限是他已有后台的 50%」⇒ 爬升**增量** ≤ 已有 × 比例。
- * 比例经 `get` 从**模块声明的 MechanicSetting**（`yixuan.backstageClimbRatio`）读，默认值只写在
- * `settings` 声明里（规则 11 / CC-508 单一来源，本函数不复制常量）。
- *
- * ⚠ 参数 `anchor` 是**本轮**读数 ⇒ 上限也按轮重算（已有后台变多时上限跟着变）。
- */
-function backstageClimbCapOf(anchor: number, get: (settingId: string, fallback: number) => number): number {
-  const a = Math.max(0, Math.floor(anchor))
-  const ratio = clampRatio(get('yixuan.backstageClimbRatio', DEFAULT_BACKSTAGE_CLIMB_RATIO))
-  return a + Math.floor(a * ratio)
-}
-
-/**
- * **仪玄的后台爬升声明**（T173；契约见 `typesHooks#InteractionClimbDecl`）。
- *
- * 为什么走新声明通道而不是 `interactionDefaults`：那张表只能表达「绝对值从 0 爬到某数」，
- * 而用户要的是「**相对已有量按比例放宽**」（上限 = 已有后台 × 1.5，随轮变）⇒ 形态不同，单列一条。
- *
- * ⚠ **爬的是 `yixuanBackstageComboCount`（手动字段），不是 `…AutoCount`（引擎反推写回字段）**：
- * 反推字段每轮由外层不动点覆盖写（`convergence.ts#backstageAutoNext`）⇒ 爬它会被下一轮抹掉；
- * 而手动字段 >0 时模块优先采用（`buildExecutions` 的三元），爬升才留得住。
- * 上升沿即「用户本来没填 → 曲线帮他填上」——正是这条需求要的形态。
- */
-const interactionClimb: InteractionClimbDecl = {
-  field: 'yixuanBackstageComboCount',
-  anchorOf: backstageAnchorOf,
-  capOf: backstageClimbCapOf,
-}
 
 /** 凝神加成值（暴伤 % / 贯穿 %）；C6 臂、非轴折算臂、轴臂桶值同形。 */
 export interface YixuanNingshen { critDmg: number; sheerDmg: number }
@@ -1274,7 +1098,6 @@ export const yixuanMechanic: AgentMechanicModule = {
     { field: 'yixuanInk3Count', label: '3连墨痕化形', hint: '≤0=自动', title: '≤0/清空 = 自动：总闪能打完失衡内消耗，剩余全部轴外打 3 连墨痕化形（60闪能/次）；填正数覆盖', mode: 'autoIfNonPositive' },
     { field: 'yixuanPerfectBlockCount', label: '完美格挡', hint: '≤0=自动', title: '≤0/清空 = 自动：全完美格挡 = 弹刀次数（每次 #2 赠送 +10 闪能）；填正数覆盖', mode: 'autoIfNonPositive' },
     { field: 'yixuanExtremeAssistCount', label: '极限支援', title: '极限支援换场落雷（225%贯穿力+5闪能/次）；缺省 = 队友正常弹刀次数求和（上限）', mode: 'autoNegOne' },
-    { field: 'yixuanBackstageComboCount', label: '墨影凝云合轴', title: '后台使用墨影凝云+霄云劲#5（不消耗战场时间，有倍率行调用/异常积蓄/失衡）' },
   ],
   description: '进场全回闪能(120)、交互式强特链（2连/3连墨痕化形 + 完美格挡 + 剩余全凝云，轴内凝云时长可调）、玄墨异常独立积蓄槽、失衡强特+30%、凝神 buff 轴、核心被动 60% 招式限定增伤、术法值/玄墨值 spec 资源与符法千重/玄墨极阵事件。',
   applyPanel: applyYixuanPanel,
@@ -1312,25 +1135,10 @@ export const yixuanMechanic: AgentMechanicModule = {
   axisMoveFreeOfDecibel: moveId => moveId === MOVE.extraUlt,
   // T173：后台墨影凝云（合轴）可被难度曲线爬升，上限 = 本轮已有后台 + floor(已有 × 比例)
   //（用户口径 2026-10-15「相当于白给的招式，但注意自动爬升上限是他已有后台的 50%」）——
-  // 声明式通道，编排层通用执行（零 agentId 分支）；形态与实现见上方 interactionClimb。
-  interactionClimb,
   // 墨影凝云合轴自动填充（用户口径 2026-09-07）：合轴可自动填充、不占前台不计难度，反推至
   // 保底 4 次失衡。声明式（编排层通用执行，无 agentId 分支）：moveIds=合轴招式行（实测每对失衡），
   // perPairBase=每对基础失衡（玄墨极阵440.8+青溟震击160.2；超出玄墨值的墨影凝云版 600.4 近似同值），
   // cfgField=自动次数写回字段（消费端：buildExecutions 手动输入 ≤0 时取它），manualField=手动输入字段。
-  backstageAutoFill: {
-    // 主招式行（后台独占，基础轮转的青溟震击/霄云劲行不混入实测）
-    moveIds: ['1371021', '1371005'],
-    // 每对基础失衡（玄墨极阵 440.8 + 青溟震击 160.2；墨影凝云版 440.8+159.6 近似同值）
-    perPairBase: 601,
-    cfgField: 'yixuanBackstageAutoCount',
-    manualField: 'yixuanBackstageComboCount',
-    // 一对合轴的最短节奏（秒）——供给上限分母 [猜测·待校准]
-    minPeriodSeconds: 3,
-  },
-  // 后台墨痕化形的时间进账本：真实耗时全额预留 + 全额合轴抵扣 ⇒ 净值 0（不白占前台），
-  // 但「耗时」与「重合」两组量都留在账本上可读。配套修了 convergence.ts 的供给上限按净额算。
-  extraNecessaryAction: yixuanBackstageReserve,
   buildAnomalyEvents: input => specBase.buildAnomalyEvents?.(input),
   /**
    * 凝神轴窗口覆盖（规则 6 迁入，棘轮站点 5/8，2026-09-12 #10 真清偿；
@@ -1428,8 +1236,6 @@ declare module '@/types/resource/config' {
     yixuanMoveDaze?: Record<string, number>
     /** 仪玄术法值初始值（影画1：立即获得 120；spec 术法值 initialValueSource=cfgField 读取） */
     yixuanShufaInitial?: number
-    /** 仪玄·墨影凝云合轴自动填充（反推至保底 4 次失衡，由 useResourceCalc 线程收敛注入；手动输入 >0 时优先） */
-    yixuanBackstageAutoCount?: number
     /** 仪玄额外闪能总账（模块汇总：完美格挡+10/次、极限闪避+5/次、影画1落雷+5/次，calcEnergySource 通用读取） */
     yixuanFlashBonus?: number
     /** 仪玄失衡轴内强特次数（useResourceCalc 注入，moveId → 总次数） */

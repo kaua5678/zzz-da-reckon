@@ -30,7 +30,6 @@ const LEGACY_BOUNDS: Record<ActionCountField, { min: number; max: number }> = {
   yixuanInk3Count: { min: 0, max: 99 },
   yixuanPerfectBlockCount: { min: 0, max: 99 },
   yixuanExtremeAssistCount: { min: -1, max: 99 },
-  yixuanBackstageComboCount: { min: 0, max: 99 },
   promiaNiyingCount: { min: 0, max: 99 },
   tauntCancelCount: { min: 0, max: 99 },
   claretBurialInterruptCount: { min: 0, max: 99 },
@@ -41,8 +40,8 @@ describe('ACTION_COUNT_BOUNDS（上下界表 = 数值口径的单一事实源）
     expect(ACTION_COUNT_BOUNDS).toEqual(LEGACY_BOUNDS)
   })
 
-  it('字段数 = 17（新增/删除字段必须显式来改这条）', () => {
-    expect(Object.keys(ACTION_COUNT_BOUNDS)).toHaveLength(17)
+  it('字段数 = 16（新增/删除字段必须显式来改这条；T197 删了 yixuanBackstageComboCount）', () => {
+    expect(Object.keys(ACTION_COUNT_BOUNDS)).toHaveLength(16)
   })
 })
 
@@ -102,7 +101,6 @@ describe('setActionCount 统一写入通道', () => {
       ['yixuanInk2Count', (s, v) => config.setActionCount(s, 'yixuanInk2Count', v), 99],
       ['yixuanInk3Count', (s, v) => config.setActionCount(s, 'yixuanInk3Count', v), 99],
       ['yixuanPerfectBlockCount', (s, v) => config.setActionCount(s, 'yixuanPerfectBlockCount', v), 99],
-      ['yixuanBackstageComboCount', (s, v) => config.setActionCount(s, 'yixuanBackstageComboCount', v), 99],
       ['promiaNiyingCount', (s, v) => config.setActionCount(s, 'promiaNiyingCount', v), 99],
       ['tauntCancelCount', (s, v) => config.setActionCount(s, 'tauntCancelCount', v), 99],
     ]

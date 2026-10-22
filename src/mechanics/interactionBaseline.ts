@@ -44,7 +44,7 @@ export function getInteractionDefaults(agentId: string): InteractionCounts {
  * 那次的问题**不在 0 本身**，而在当时**平A池回灌不完整**（时间没人接才留白）。
  * 现在 `availableBasicTime` 的平A回灌已修好（`helpers.ts:779`），0 交互的时间会被平A池接走。
  *
- * @fact engine:交互基准 口径: **全职业默认 0 交互**（弹刀/闪反/格挡/双反都不预填）；交互由用户在交互栏填，或模块 `computeInteractionTopUp` / `backstageAutoFill` 按需注入。剩余时间由平A池自动填满（`availableBasicTime`）。**不再**按职业给 6/10 基准——那会让引擎一次塞进 ≈26 秒交互、制造非「一次交互」量级的溢出 | 据 用户@2026-10-21 | 验 src/stores/__tests__/roleInteractionBaseline.test.ts | 锚 src/mechanics/interactionBaseline.ts#roleInteractionBaseline | 信 确认
+ * @fact engine:交互基准 口径: **全职业默认 0 交互**（弹刀/闪反/格挡/双反都不预填）；交互由用户在交互栏填，或模块 `computeInteractionTopUp` 按需注入。剩余时间由平A池自动填满（`availableBasicTime`）。**不再**按职业给 6/10 基准——那会让引擎一次塞进 ≈26 秒交互、制造非「一次交互」量级的溢出 | 据 用户@2026-10-21 | 验 src/stores/__tests__/roleInteractionBaseline.test.ts | 锚 src/mechanics/interactionBaseline.ts#roleInteractionBaseline | 信 确认
  */
 export function roleInteractionBaseline(_specialty: string | undefined): InteractionCounts {
   return { parry: 0, dodge: 0, block: 0, dual: 0 }

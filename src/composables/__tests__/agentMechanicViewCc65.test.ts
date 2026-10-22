@@ -49,14 +49,13 @@ const LEGACY: Record<string, Array<{ field: string; label: string; hint?: string
     { field: 'yixuanInk3Count', label: '3连墨痕化形', hint: '≤0=自动', title: '≤0/清空 = 自动：总闪能打完失衡内消耗，剩余全部轴外打 3 连墨痕化形（60闪能/次）；填正数覆盖', mode: 'autoIfNonPositive' },
     { field: 'yixuanPerfectBlockCount', label: '完美格挡', hint: '≤0=自动', title: '≤0/清空 = 自动：全完美格挡 = 弹刀次数（每次 #2 赠送 +10 闪能）；填正数覆盖', mode: 'autoIfNonPositive' },
     { field: 'yixuanExtremeAssistCount', label: '极限支援', title: '极限支援换场落雷（225%贯穿力+5闪能/次）；缺省 = 队友正常弹刀次数求和（上限）', mode: 'autoNegOne' },
-    { field: 'yixuanBackstageComboCount', label: '墨影凝云合轴', title: '后台使用墨影凝云+霄云劲#5（不消耗战场时间，有倍率行调用/异常积蓄/失衡）' },
   ],
 }
 // 原页面 min/max
 const LEGACY_MINMAX: Record<string, [number, number]> = {
   perfectBlockCount: [0, 999], assaultOrderCount: [0, 999], tauntCancelCount: [0, 99], promiaNiyingCount: [0, 99],
   claretBurialInterruptCount: [0, 99],
-  yixuanInk2Count: [0, 99], yixuanInk3Count: [0, 99], yixuanPerfectBlockCount: [0, 99], yixuanExtremeAssistCount: [-1, 99], yixuanBackstageComboCount: [0, 99],
+  yixuanInk2Count: [0, 99], yixuanInk3Count: [0, 99], yixuanPerfectBlockCount: [0, 99], yixuanExtremeAssistCount: [-1, 99],
 }
 // 原页面 :value 表达式
 const LEGACY_VALUE: Record<string, (x: number | undefined) => number | null> = {
@@ -69,7 +68,6 @@ const LEGACY_VALUE: Record<string, (x: number | undefined) => number | null> = {
   yixuanInk3Count: x => ((x ?? 0) > 0 ? x! : null),
   yixuanPerfectBlockCount: x => ((x ?? 0) > 0 ? x! : null),
   yixuanExtremeAssistCount: x => ((x ?? -1) < 0 ? -1 : x!),
-  yixuanBackstageComboCount: x => x ?? 0,
 }
 const LEGACY_CLEAR: Record<string, number> = { yixuanExtremeAssistCount: -1 }
 
@@ -84,7 +82,8 @@ describe('CC-65 角色专属计数输入框 → characterCountInputs', () => {
       expect(got, id).toEqual(LEGACY[id] ?? [])
       hits += got.length
     }
-    expect(hits).toBe(11) // 旧页面 9 条 + 克拉蕾新增 1 条 + 菲欧妮完美格挡 1 条（2026-10-22 裁决）
+    // T197（2026-10-22）：仪玄「墨影凝云合轴」按用户裁决删除 ⇒ 11 → 10 条。
+    expect(hits).toBe(10) // 旧页面 9 条 + 克拉蕾 1 条 + 菲欧妮完美格挡 1 条 − 仪玄后台合轴 1 条
     expect(agentCharacterCountInputs(null)).toEqual([])
     expect(agentCharacterCountInputs(undefined)).toEqual([])
   }, 60000)

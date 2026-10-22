@@ -7,7 +7,7 @@ import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
 import type { AnomalySkillExecution } from '@/core/anomalyPool/helpers'
 import type { StunSkillExecution } from '@/core/stunPool'
-import { continuousStunCount, relaxAutoFillStep, stunBuildUpForCount } from '@/core/stunPool'
+import { continuousStunCount } from '@/core/stunPool'
 import { probeKey, probePush } from '@/core/probeTrace'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
@@ -601,11 +601,6 @@ export function createRunCalcRound(deps: {
         // CC-263：字段表与取整口径单一来源（难度 x 同读，见 feasibilitySearch#DOWNSCALED_INTERACTION_FIELDS）
         for (const f of DOWNSCALED_INTERACTION_FIELDS) merged[f] = downscaleInteractionCount(merged[f] ?? 0, iscale)
       }
-      // 后台合轴自动填充（模块 backstageAutoFill 声明驱动，上一轮反推值；手动字段 >0 时模块优先用手动）
-      {
-        const decl = getAgentMechanic(cfg.agentId)?.backstageAutoFill
-        if (decl) merged[decl.cfgField] = threads.backstageAuto?.[cfg.agentId] ?? 0
-      }
       // Boss 预设弹刀反推注入（上一轮拆分；首轮 prev 为空 → 击破位注入 ≥1 探针保证轻弹刀行存在，
       // 供本轮失衡池读出每次弹刀失衡值，后续轮按真实拆分注入、不强制）
       if (parrySplitActive) {
@@ -1148,7 +1143,6 @@ export function createRunCalcRound(deps: {
     // 击破位弹刀行（轻弹刀 + 支援突击，count 随弹刀次数缩放）：行贡献剔出非弹刀基数（防 0↔T 振荡），
     // 正常弹刀每次失衡 = 轻弹刀 + 支援突击；不带支援突击弹刀每次失衡 = 仅轻弹刀。无行 = 无招架失衡来源，不反推。
     let parrySplitNext = prevParrySplit ?? { breakerParry: 0, mainDpsParry: 0, breakerNoFollowUp: 0, mainDpsNoFollowUp: 0, topUp: 0, perParryDaze: 0, perNoFollowUpDaze: 0 }
-    let backstageAutoNext: Record<string, number> = threads.backstageAuto ?? {}
     if (parrySplitActive) {
       const breakerCfg = base.characters.find(c => c.slot === effectiveBreakerSlot)
       const breakerDefMoveId = breakerCfg?.defensiveAssistMoveId ?? ''
@@ -1198,60 +1192,6 @@ export function createRunCalcRound(deps: {
       }
     }
 
-    // 后台合轴自动填充反推（模块 backstageAutoFill 声明驱动，通用执行零 agentId 分支；
-    // 用户口径 2026-09-07：合轴可自动填充、不占前台不计难度，反推至保底 4 次失衡）：
-    // 缺口 = stunBuildUpForCount(池@保底次数, 保底次数) −（该池总失衡 − 其中合轴行）（CC-475：池在目标次数的扣除口径下重算）；每对有效失衡优先实测
-    //（声明 moveIds 的池行），首轮回落 perPairBase；供给上限 = floor(非该角色战斗时间 / minPeriodSeconds)。
-    {
-      /** 用户口径 2026-09-07「反推至保底 4 次失衡」的那个 4 */
-      const BACKSTAGE_FLOOR_STUNS = 4
-      const backstageNext: Record<string, number> = {}
-      for (const cfg of base.characters) {
-        const decl = getAgentMechanic(cfg.agentId)?.backstageAutoFill
-        if (!decl) continue
-        const manual = Math.max(0, Math.floor(Number(cfg[decl.manualField] ?? 0)))
-        if (manual > 0) { backstageNext[cfg.agentId] = manual; continue }
-        // CC-475（r656）：缺口在**目标次数**的扣除口径下算。N 3→4 时窗口份额 u 变大、全队所有行的净失衡同时下降，
-        // 在当前 N 的池上算缺口看不到这部分（r655 探针 `arenaF/zzbs.test.ts`：8 支裸装合成队自动注入 11~30 对后 7 队仍 N=3
-        //（外层 2-环被钳到 3），第 8 队欠冲 16 对）。poolAt(4) = 同一组 execs 在 4 次窗口下的池（轴模式含栈遍历）。
-        const pool = sp1.poolAt(BACKSTAGE_FLOOR_STUNS)
-        const ownRows = pool.contributions.filter(r => decl.moveIds.includes(String(r.moveId)) && r.slot === cfg.slot)
-        const ownDaze = ownRows.reduce((sum, r) => sum + r.effectiveStun, 0)
-        const pairRows = ownRows.filter(r => decl.moveIds.slice(0, 2).includes(String(r.moveId)))
-        const pairCount = pairRows.reduce((sum, r) => sum + r.count, 0)
-        // 首轮无合轴行：perPairBase 是毛失衡，按同一 u 折成净值
-        const perPair = pairCount > 0 ? ownDaze / pairCount : decl.perPairBase * (1 - sp1.windowFractionAt(BACKSTAGE_FLOOR_STUNS))
-        // CC-472（r653）：缺口按池自身计数律的反函数算（首次 b、之后每次 b(1−r)、赠送已抵扣），不再写死 4×bossStunValue。
-        const deficit = Math.max(0, stunBuildUpForCount(pool, BACKSTAGE_FLOOR_STUNS) - (pool.totalStunBuildUp - ownDaze))
-        const ownField = rr.characters.find(c => c.slot === cfg.slot)
-        /**
-         * **剩余可用时间必须按「净占用」算**（2026-10-19 修）：
-         * 原式用 `necessaryTime` 毛额，而合轴吸收掉的时间（`comboAlignCredit`）本来就不占前台
-         * ——毛额高估占用 ⇒ 后台墨痕化形一旦把真实耗时写上行（用户口径「它本身耗时还是正常的，
-         * 只是他时间和队友重合而已」），供给上限就会被自己的耗时吃掉 ⇒ `supplyCap = 0` ⇒ 自动填充瘫痪
-         * （实测 pairs 23 → 0，判据 `backstageAutoFillTargetN` 当场变红）。
-         * ⇒ 与 `helpers.ts` 的 `netNecessary = 毛额 − 抵扣` 同一条口径，这里补扣 `comboAlignCredit`。
-         */
-        const ownFieldTime = (ownField?.timeAllocation.necessaryTime ?? 0)
-          - (ownField?.timeAllocation.comboAlignCredit ?? 0)
-          + (ownField?.timeAllocation.basicAttackTime ?? 0)
-        const supplyCap = Math.max(0, Math.floor(Math.max(0, base.totalTime - ownFieldTime) / decl.minPeriodSeconds))
-        // 原 ×1.2 冗余（注释「实测 18 对只涨 3.85×」）就是 u 随 N 增大的效应，已由 poolAt(4) 显式算进 ⇒ 删（CC-475）。
-        // CC-477（r659）：线性估计只对当前分支成立，回削会跨到 N−1 分支再估回来 ⇒ 外层 2-环 + CC-150 钳 ⇒ 同输入两个 N。
-        // 到保底即持住（r660：向上也不动——上限随对数翻转时 +1 再夹回会 24↔25 环），未到保底才阻尼上行；见 core/stunPool.ts#relaxAutoFillStep。
-        const prevAuto = threads.backstageAuto?.[cfg.agentId]
-        const estPairs = Math.ceil(deficit / Math.max(1, perPair))
-        const reached = sp1.pool.stunCount >= BACKSTAGE_FLOOR_STUNS
-        const nextPairs = relaxAutoFillStep(prevAuto, estPairs, supplyCap, reached)
-        // CC-479：反推块逐轮打表（`PROBE_TRACE_BACKSTAGE=1`）。cont4 = poolAt(保底) 口径、curCont = 本轮实际池；二者差见 arch CC-477 行 r661 量化。
-        probePush('PROBE_TRACE_BACKSTAGE', '__backstageSteps', () => ({
-          key: probeKey(), agentId: cfg.agentId, prev: prevAuto ?? null, est: estPairs, next: nextPairs, cap: supplyCap, reached,
-          perPair, pairCount, ownDaze, deficit, cont4: continuousStunCount(pool), curN: sp1.pool.stunCount, curCont: continuousStunCount(sp1.pool),
-        }))
-        backstageNext[cfg.agentId] = nextPairs
-      }
-      backstageAutoNext = backstageNext
-    }
 
     const adj1 = applyUltimatePromote(rr, sp1, catalogStore)
     // 诺姆膛温换连携：帽子把戏触发上一位角色快速支援→替换为连携，连携归属上一位队友；C4 时诺姆+队友各 200 不可分享喧响。
@@ -1464,7 +1404,6 @@ export function createRunCalcRound(deps: {
         anomalyDecibelBonus: [],
         interactionTopUp: interactionTopUpNext,
         parrySplit: parrySplitNext,
-        backstageAuto: backstageAutoNext,
         // ② 符法千重分量（1371 模块产出）：原式是循环内对 1371 那一次 `teamUlt += fufa`；
         // 1371 不在队 ⇒ 该键缺席 ⇒ `?? 0`（原式 `fufa` 恒 0）。
         teamUltimateForJufufu: teamUltimateBaseNext + (feedbackNext.teamUltimateExtra ?? 0),
