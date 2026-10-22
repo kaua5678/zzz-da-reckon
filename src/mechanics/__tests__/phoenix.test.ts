@@ -5,9 +5,13 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import {
   computePhoenixScorchCrit,
+  phoenixBasicGrants,
   phoenixChargedCount,
   phoenixMechanic,
+  phoenixPerfectBlockHits,
   phoenixSkillLevel,
+  planPhoenixBasic,
+  PHOENIX_A34_PER_EX_ROUND,
   PHOENIX_C4_RELEASE_MULT,
   PHOENIX_RELEASE_BASE,
   PHOENIX_SCORCH_CRIT_DMG,
@@ -16,6 +20,7 @@ import {
   PHOENIX_SCORCH_MASTERY_THRESHOLD,
 } from '@/mechanics/agents/phoenix'
 import { BOSS_ATTACK_INTERACTIONS } from '@/composables/teamCompare'
+import { clampActionCount } from '@/stores/config'
 
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
@@ -230,6 +235,158 @@ describe('菲欧妮（1641）3.3.12 v12 正式录入', () => {
     expect(ember(999)).toBe(1)
     // 无敌时间扣减后上限收紧：180-100=80s ⇒ floor(80/10)=8 次 ⇒ 40 燔焰 ⇒ 0 次焚罪
     expect(ember(999, 100)).toBe(0)
+  })
+
+  /**
+   * 平A段计划（用户口径 2026-10-22 定稿）——「战斗循环就是 e→a→a，所有 a 都落在第三/四段」。
+   *
+   * 三件事在这里钉死：
+   * ① **从 0 正向填充**：名额是免费上限，池装不下就少打（不是「有名额必须打」也不是「超出上界截断」）；
+   * ② **掠火起手**：名额用尽后由普通 E（0 能量）起手接 a34 —— a1/a2 起手不存在（用户亲口订正）；
+   * ③ **完美格挡短版**：掠火完美格挡可直入第三段、跳过熔毁（与燔焰 +5 共用同一 10s CD）。
+   */
+  describe('平A段计划（a3/a4 循环 + 掠火起手）', () => {
+    // catalog 实测时长：a3 0.84 / a4 1.943 / 掠火 0.35 / 熔毁 0.875
+    const cycle = [
+      { moveId: '1641001', actionTime: 0.12 },
+      { moveId: '1641002', actionTime: 0.413 },
+      { moveId: '1641003', actionTime: 0.84 },
+      { moveId: '1641004', actionTime: 1.943 },
+    ]
+    const slash = { actionTime: 0.35 }
+    const melt = { actionTime: 0.875 }
+    const PAIR = 0.84 + 1.943 // 2.783
+
+    it('名额是免费上限：池小则少打（从 0 正向填充，不是超满截断）', () => {
+      const p = planPhoenixBasic({ basicTime: PAIR * 3, cycle, grants: 99, slash, melt })
+      expect(p.freePairs).toBe(3) // 只装得下 3 对
+      expect(p.paidRounds).toBe(0) // 没有剩余时间
+      expect(p.counts['1641003']).toBe(3)
+      expect(p.counts['1641004']).toBe(3)
+      expect(p.usedTime).toBeCloseTo(PAIR * 3, 9)
+    })
+
+    it('名额用尽后由掠火起手轮填满（a1/a2 起手不存在）', () => {
+      const p = planPhoenixBasic({ basicTime: PAIR * 2 + (0.35 + 0.875 + PAIR), cycle, grants: 2, slash, melt })
+      expect(p.freePairs).toBe(2)
+      expect(p.paidRounds).toBe(1)
+      expect(p.counts['1641007']).toBe(1) // 掠火
+      expect(p.counts['1641006']).toBe(1) // 熔毁（未触发完美格挡）
+      expect(p.counts['1641001'] ?? 0).toBe(0) // 绝不回落到 a1 起手
+      expect(p.counts['1641002'] ?? 0).toBe(0)
+      expect(p.counts['1641003']).toBe(3) // 2 免费 + 1 起手轮
+      expect(p.counts['1641004']).toBe(3)
+    })
+
+    it('掠火完美格挡 ⇒ 跳过熔毁的短版轮（更省时间，同样给 1 个 a34）', () => {
+      const p = planPhoenixBasic({ basicTime: 0.35 + PAIR, cycle, grants: 0, slash, melt, slashPerfectBlocks: 1 })
+      expect(p.perfectRounds).toBe(1)
+      expect(p.counts['1641007']).toBe(1)
+      expect(p.counts['1641006'] ?? 0).toBe(0) // 完美格挡跳过熔毁
+      expect(p.counts['1641003']).toBe(1)
+      expect(p.usedTime).toBeCloseTo(0.35 + PAIR, 9)
+    })
+
+    it('段是离散动作：余量只按派生链前缀吃，装不满的段留白（不折算半段）', () => {
+      // 剩 0.5s：掠火(0.35) 吃得下，熔毁(0.875)/a3(0.84) 都不够 ⇒ 只打掠火就停
+      const p = planPhoenixBasic({ basicTime: PAIR * 2 + 0.5, cycle, grants: 99, slash, melt })
+      expect(p.freePairs).toBe(2)
+      expect(p.paidRounds).toBe(0) // 没有完整起手轮
+      expect(p.counts['1641007']).toBe(1) // 只有掠火这一段前缀
+      expect(p.counts['1641006'] ?? 0).toBe(0) // 熔毁装不下
+      expect(p.counts['1641003']).toBe(2) // 绝不凭空造第三段
+      expect(p.counts['1641004']).toBe(2)
+      expect(p.usedTime).toBeCloseTo(PAIR * 2 + 0.35, 9)
+    })
+
+    it('名额来源：3×强特轮数 + 连携 + 烬火追魂 + 闪反 + 支援突击（不含快支，见下方反锁）', () => {
+      const grants = phoenixBasicGrants(
+        { dodgeCounterCount: 6, parryCount: 10 } as never,
+        { exSpecialCount: 5, ultimateCount: 4, chainCountTotal: 3 } as never,
+      )
+      // 5 轮 × 3 + 连携 3 + 烬火追魂 4（= 终结次数）+ 闪反 6 + 支援突击 10
+      expect(grants).toBe(5 * PHOENIX_A34_PER_EX_ROUND + 3 + 4 + 6 + 10)
+    })
+
+    it('完美格挡 10s CD 是硬约束，且掠火短版轮与燔焰 +5 共用同一上限（单一事实源）', () => {
+      const cfg = { battleTime: 180, invincibleTime: 0, perfectBlockCount: 999 } as never
+      expect(phoenixPerfectBlockHits(cfg)).toBe(18)
+      expect(phoenixPerfectBlockHits({ battleTime: 180, invincibleTime: 100, perfectBlockCount: 999 } as never)).toBe(8)
+      expect(phoenixPerfectBlockHits({ battleTime: 180, invincibleTime: 0, perfectBlockCount: 3 } as never)).toBe(3)
+    })
+  })
+
+  /**
+   * 交互上限（用户口径 2026-10-22：「这些交互的上限设置了没，格挡不该太多」）。
+   *
+   * 三档约束各就各位：
+   * ① **store 界**（`ACTION_COUNT_BOUNDS`）：parry/dodge/block/quickAssist 全 `0..99`、perfectBlock `0..999`；
+   * ② **原作硬约束**：完美格挡「10 秒内最多触发一次」⇒ 180s 局最多 18 次（`phoenixPerfectBlockHits`）；
+   * ③ **资源约束**：掠火轮/熔毁/快支都是**真实动作行**，占前台时间 ⇒ 填得再多也只是挤平A池。
+   *
+   * ⚠ 本测试锁的是「①+②」，③ 由端到端用例锁（快支行存在 + 时间进账本）。
+   */
+  it('交互上限：perfectBlock 按 10s CD 封顶（180s 局 ≤18），四项交互界 0..99', async () => {
+    // ② 原作 CD：填写 999 = 与填写 18 等价（180s / 10s = 18）
+    expect(phoenixPerfectBlockHits({ battleTime: 180, invincibleTime: 0, perfectBlockCount: 999 } as never)).toBe(18)
+    expect(phoenixPerfectBlockHits({ battleTime: 180, invincibleTime: 0, perfectBlockCount: 18 } as never)).toBe(18)
+    expect(phoenixPerfectBlockHits({ battleTime: 180, invincibleTime: 0, perfectBlockCount: 5 } as never)).toBe(5)
+    // 无敌时间扣减 ⇒ 上限收紧（180−100=80s ⇒ 8 次）
+    expect(phoenixPerfectBlockHits({ battleTime: 180, invincibleTime: 100, perfectBlockCount: 999 } as never)).toBe(8)
+    // ① store 界：这四个是「需要 boss 出手」的交互，界面不许填成三位数
+    for (const f of ['parryCount', 'dodgeCounterCount', 'blockCount', 'quickAssistCount'] as const) {
+      expect(clampActionCount(f, 1000), f).toBe(99)
+    }
+    // 完美格挡原文是「10 秒一次」而非「一次一用」，界放到 999 也不会爆量（被 ② 钳住）
+    expect(clampActionCount('perfectBlockCount', 1000)).toBe(999)
+  })
+
+  /**
+   * **快速支援不进名额**（用户裁决 2026-10-22）：原文确有「点按普攻可衔接第三段」，
+   * 但引擎不物化快支行（无代价）⇒ 收它 = 白送 a34、上限形同虚设。这条反锁「不收」。
+   */
+  it('快速支援：不进 a34 名额（引擎不物化快支行 ⇒ 收了就是零成本白送）', async () => {
+    const grantsNoQa = phoenixBasicGrants(
+      { dodgeCounterCount: 0, parryCount: 0 } as never,
+      { exSpecialCount: 4, ultimateCount: 0, chainCountTotal: 0 } as never,
+    )
+    // 只按 3×强特轮数计，快支不参与（入参已不含 quickAssistCount —— 类型层就收不进来）
+    expect(grantsNoQa).toBe(4 * PHOENIX_A34_PER_EX_ROUND)
+
+    // 实打侧：改快支次数不改变 a34 名额（引擎没给快支行，全队交互 0 也不退化）
+    const { config } = await setup(['1641', '1171', ''], 0)
+    const planOf = () => {
+      const phoenix = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1641')!
+      return phoenix.phoenixCycle!.a34FreePairs + phoenix.phoenixCycle!.a34PaidRounds
+    }
+    const base = planOf()
+    config.setActionCount(0, 'quickAssistCount', 40)
+    expect(planOf(), '快支不该改变 a34 名额').toBe(base)
+    // 也不该物化出快支行（本模块不补行）
+    const phoenix = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1641')!
+    expect(phoenix.executions.find(e => e.moveId === '1641014')).toBeUndefined()
+  })
+
+  it('端到端：段行物化 + 聚合行只留时间/回能 + 时间从平A池 carve（不双计）', async () => {
+    await setup(['1641', '1171', ''], 0)
+    const phoenix = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1641')!
+    const agg = phoenix.executions.find(e => e.moveId === 'basic_attack')!
+    const segRows = phoenix.executions.filter(e => ['1641003', '1641004', '1641007', '1641006'].includes(e.moveId))
+    expect(segRows.length, '段行必须物化').toBeGreaterThan(0)
+    // 聚合行：伤害/失衡/积蓄归零（段行承载），时间 = 池 − 段行时长（carve），回能保留
+    expect(agg.damageMultiplier ?? 0).toBe(0)
+    expect(agg.dazeMultiplier ?? 0).toBe(0)
+    expect(agg.anomalyBuildUp ?? 0).toBe(0)
+    expect(agg.totalEnergyRecovery ?? 0, '平A回能必须留在池上').toBeGreaterThan(0)
+    const segTime = segRows.reduce((s, r) => s + (r.totalTime ?? 0), 0)
+    const bat = phoenix.timeAllocation.basicAttackTime
+    expect(agg.totalTime + segTime, '聚合行 + 段行 ≡ 平A池（时间不双计）').toBeCloseTo(bat, 6)
+    // 段行都是前台 basic 桶（与聚合行同桶）
+    for (const r of segRows) expect(r.timeBucket).toBe('basic')
+    // 段行次数与资源区块展示同源
+    const cycle = phoenix.phoenixCycle!
+    const third = segRows.filter(r => r.moveId === '1641003').reduce((s, r) => s + r.count, 0)
+    expect(third).toBe(cycle.basicThird)
   })
 
   it('[灼蚀] 覆盖率滑块生效：0 → 无周期火伤事件', async () => {

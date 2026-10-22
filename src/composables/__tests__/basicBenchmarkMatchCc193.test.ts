@@ -48,14 +48,24 @@ describe('CC-193 生产路径：汇总平A行命中模块普攻段', () => {
     expect(row?.critDmgBonus ?? 0).toBeGreaterThanOrEqual(50)
   }, 60000)
 
-  it('赛维里安 / 菲欧妮：普攻段名不带 #N 时数据配置仍生效，汇总平A行有倍率（修复前恒无倍率 ⇒ 普攻伤害 0）', async () => {
-    for (const [aid, bench] of [['1631', '1631003'], ['1641', '1641003']] as const) {
-      await setupHarness([aid, '1181', '1311'].map(agentId => ({ agentId })), { recommendedBuild: true })
-      useConfigStore().setActionCount(0, 'basicAttackTimeWeight', 3)
-      const row = basicRow(0)
-      expect(row?.benchmarkMoveId, aid).toBe(bench)
-      expect(row?.damageMultiplier ?? 0, aid).toBeGreaterThan(0)
-    }
+  it('赛维里安 / 菲欧妮：普攻段名不带 #N 时数据配置仍生效，普攻有倍率（修复前恒无倍率 ⇒ 普攻伤害 0）', async () => {
+    // 1631：倍率仍在汇总平A行上（基准段秒均 × 时间）。
+    await setupHarness(['1631', '1181', '1311'].map(agentId => ({ agentId })), { recommendedBuild: true })
+    useConfigStore().setActionCount(0, 'basicAttackTimeWeight', 3)
+    const row1631 = basicRow(0)
+    expect(row1631?.benchmarkMoveId).toBe('1631003')
+    expect(row1631?.damageMultiplier ?? 0).toBeGreaterThan(0)
+
+    // 1641（用户口径 2026-10-22）：普攻按**段计划物化**（a3/a4 循环 + 掠火起手轮），
+    // 汇总行降级为时间/回能载体（倍率归零，见 phoenix.ts#patchExecutions）⇒ 判据改为
+    // 「基准段行有倍率」，仍能咬住本条要防的缺陷（段名无 #N ⇒ 段行连倍率都取不到）。
+    await setupHarness(['1641', '1181', '1311'].map(agentId => ({ agentId })), { recommendedBuild: true })
+    useConfigStore().setActionCount(0, 'basicAttackTimeWeight', 3)
+    expect(basicRow(0)?.benchmarkMoveId).toBe('1641003')
+    const ch = (useResourceCalc().resourceResult.value?.characters ?? []).find(c => c.slot === 0) as unknown as { executions?: Row[] } | undefined
+    const segRows = (ch?.executions ?? []).filter(e => e.moveId === '1641003' || e.moveId === '1641004')
+    expect(segRows.length, '1641 必须物化 a3/a4 段行').toBeGreaterThan(0)
+    expect(Math.max(...segRows.map(r => r.damageMultiplier ?? 0))).toBeGreaterThan(0)
   }, 60000)
 
   it('赛维里安 C1（v12）：普攻暴伤不再加成（旧 +60% 已随影画1 改版删除），改为无视 15% 风抗进面板', async () => {

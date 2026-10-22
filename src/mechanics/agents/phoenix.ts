@@ -47,7 +47,7 @@ import type {
 import type { CharacterResourceResult, MechanicSetting } from '@/types/resource'
 import { mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
-import { moduleExecRow } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, carveBasicPool } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import { minusInvincibleTime } from '@/core/effectiveTime'
@@ -88,7 +88,9 @@ export const PHOENIX_PERFECT_BLOCK_CD_SECONDS = 10
 
 /** moveId（param 空间，v12 重排后） */
 export const PHOENIX_CHARGED_MOVE_ID = '1641005' // 普通攻击：焚罪（长按，消耗 90 燔焰）
-export const PHOENIX_BRANCH_MOVE_ID = '1641006' // 普通攻击：熔毁（分支攻击）
+export const PHOENIX_BRANCH_MOVE_ID = '1641006' // 普通攻击：熔毁（分支攻击；掠火未触发完美格挡时派生）
+/** 特殊技：掠火（1641007，普通 E，0 能量）：不触发完美格挡时派生熔毁，两者都可衔接第三段 */
+export const PHOENIX_SLASH_MOVE_ID = '1641007'
 export const PHOENIX_EX_FIRST_MOVE_ID = '1641008' // 强化特殊技：眩焰（40 能量）
 export const PHOENIX_EX_SECOND_MOVE_ID = '1641009' // 强化特殊技：坠阳（40 能量，+1 升变）
 export const PHOENIX_EX_LIAOZHAN_MOVE_ID = '1641023' // 强化特殊技：燎斩（消耗 1 升变，不耗能）
@@ -105,7 +107,7 @@ export const PHOENIX_EMBER_CAP = 120
  * 标度口径（2026-09-14 用户复核确认）：这批整型列统一 **×10000**——同一行的
  * `energy_gain_base=71040` 在 catalog 里就是 `energy_recovery 7.104`，
  * 故 `attack_data[1641004]=169072` → **16.9072 燔焰/次**（v12 重导后的真实值）。
- * 分支攻击 1641006（熔毁）为操作向量，滑块/人工次数覆盖。
+ * 分支攻击 1641006（熔毁）自 2026-10-22 起由平A段计划给出次数（掠火起手轮），不再当「操作向量」跳过。
  */
 export const PHOENIX_COMBUSTION_MOVE_IDS: ReadonlySet<string> = new Set([
   '1641003', '1641004', // 普攻三/四段
@@ -142,6 +144,20 @@ export interface PhoenixCycle {
   c4ReleaseMult: number
   c6ResIgnore: number
   c6ReleaseDefIgnore: number
+  /** 平A段计划：免费 a34 名额换来的对数（用户口径 2026-10-22） */
+  a34FreePairs: number
+  /** 平A段计划：掠火起手轮数（名额用尽后填满剩余平A池） */
+  a34PaidRounds: number
+  /** 其中「掠火完美格挡 → 直接第三段」短版轮数（跳过熔毁） */
+  a34PerfectRounds: number
+  /** a3 命中次数 */
+  basicThird: number
+  /** a4 命中次数 */
+  basicFourth: number
+  /** 掠火次数（普通 E 起手） */
+  slashCount: number
+  /** 熔毁次数（掠火未完美格挡时派生） */
+  meltCount: number
   note: string
 }
 
@@ -181,19 +197,166 @@ function releaseCritOf(crit: { rate: number; dmg: number }, _mastery: number) {
   }
 }
 
+/** 每轮[枯荣]强特（眩焰 → 坠阳 → 燎斩）各可衔接一次第三段 ⇒ 免费 a34 名额 3 个/轮 */
+export const PHOENIX_A34_PER_EX_ROUND = 3
+/** a3 / a4 的 moveId（三段一循环的两段；所有平A都落在这两段上） */
+export const PHOENIX_A34_SEGMENT_THIRD = '1641003'
+export const PHOENIX_A34_SEGMENT_FOURTH = '1641004'
+
+export interface PhoenixBasicPlanInput {
+  /** 本槽平A池秒数（= 段行可用的全部时间） */
+  basicTime: number
+  /** a1..a4 段元数据（buildCharConfig 预存；顺序 = 段序） */
+  cycle: ReadonlyArray<{ moveId: string; actionTime: number }>
+  /** 免费 a34 名额：由「可衔接第三段」的招式次数合计（见 phoenixBasicGrants） */
+  grants: number
+  /** 掠火元数据（起手轮的前半段；缺则退化为 a1/a2 起手兜底） */
+  slash?: { actionTime: number }
+  /** 熔毁元数据（掠火未触发完美格挡时的派生段；完美格挡轮跳过它） */
+  melt?: { actionTime: number }
+  /** 掠火完美格挡次数（把同数量的掠火轮换成「掠火 → a3a4」短版） */
+  slashPerfectBlocks?: number
+}
+
+export interface PhoenixBasicPlan {
+  /** moveId → 命中次数（整数；a3/a4/掠火/熔毁；a1/a2 只在缺掠火数据时作为起手段） */
+  counts: Record<string, number>
+  /** 免费名额换来的 a34 对数 */
+  freePairs: number
+  /** 掠火起手轮数（每轮 = 掠火 →（熔毁）→ a3 → a4） */
+  paidRounds: number
+  /** 其中走「完美格挡直入 a3」短版（跳过熔毁）的轮数 */
+  perfectRounds: number
+  /** 实际占用的秒数（≤ basicTime；余量留在通用 basic_attack 聚合行上作留白） */
+  usedTime: number
+  /** a3 / a4 命中次数合计 */
+  third: number
+  fourth: number
+}
+
 /**
- * 平A三/四段（燃烧攻击）命中次数：按段循环计数（第三段=打完前两段后到达，第四段=再打完第三段）。
+ * 菲欧妮平A段计划（用户口径 2026-10-22 定稿）——**从 0 正向填充**，不是「有名额就必须打」。
+ *
+ * 战斗循环 `e → a → a → e → a → a`：所有平A都落在第三/四段。名额（=「点按普攻可衔接第三段」的招式次数）
+ * 决定 a34 的**免费上限**；名额没用完时 a34 连续循环，用完后由**掠火起手轮**接着填满剩余平A池
+ * （掠火 0 能量、无 CD ⇒ 永远打得出来，故 a1/a2 起手**不存在**；用户 2026-10-22 亲口订正
+ * 「前面我说打完后只能从a1开始是错的…可以普通e起手接a34」）。
+ *
+ * 两条口径细节：
+ * - 名额是**免费的上限**而非「必须打满」：`freePairs = min(grants, 池能装下的对数)`
+ *   （用户原话「a34 是自动填充…从 0 逼近满时间，不是从超满截断」）；
+ * - 段是**离散动作** ⇒ 次数一律整数：装不满一整对的余量（< a3 时长）留在聚合行当留白，不折算成半段。
  */
-export function phoenixBasicCombustionHits(basicTime: number, cycle: { moveId: string; actionTime: number }[]): { third: number; fourth: number } {
-  if (cycle.length !== 4 || basicTime <= 0) return { third: 0, fourth: 0 }
-  const cycleTime = cycle.reduce((s, seg) => s + seg.actionTime, 0)
-  if (cycleTime <= 0) return { third: 0, fourth: 0 }
-  const full = Math.floor(basicTime / cycleTime)
-  const tail = basicTime - full * cycleTime
-  const beforeThird = cycle[0].actionTime + cycle[1].actionTime
-  const third = full + (tail >= beforeThird - 1e-9 ? 1 : 0)
-  const fourth = full + (tail >= beforeThird + cycle[2].actionTime - 1e-9 ? 1 : 0)
-  return { third, fourth }
+export function planPhoenixBasic(input: PhoenixBasicPlanInput): PhoenixBasicPlan {
+  const counts: Record<string, number> = {}
+  const empty: PhoenixBasicPlan = { counts, freePairs: 0, paidRounds: 0, perfectRounds: 0, usedTime: 0, third: 0, fourth: 0 }
+  const timeOf = (moveId: string) => input.cycle.find(s => s.moveId === moveId)?.actionTime ?? 0
+  const thirdT = timeOf(PHOENIX_A34_SEGMENT_THIRD)
+  const fourthT = timeOf(PHOENIX_A34_SEGMENT_FOURTH)
+  const pairT = thirdT + fourthT
+  let t = Math.max(0, Number(input.basicTime) || 0)
+  if (!(pairT > 0) || t <= 0) return empty
+  const add = (moveId: string, n: number) => { if (n > 0) counts[moveId] = (counts[moveId] ?? 0) + n }
+  const fits = (seconds: number) => seconds > 0 && t + 1e-9 >= seconds
+
+  // ① 免费名额：整数对连续 a34，填到「名额用完」或「池装不下下一对」
+  const freePairs = Math.min(Math.max(0, Math.floor(Number(input.grants) || 0)), Math.floor((t + 1e-9) / pairT))
+  t -= freePairs * pairT
+  let usedTime = freePairs * pairT
+  add(PHOENIX_A34_SEGMENT_THIRD, freePairs)
+  add(PHOENIX_A34_SEGMENT_FOURTH, freePairs)
+
+  // ② 名额用尽仍有剩余：掠火起手轮。**轮是原子的**（掠火 →（熔毁）→ a3 → a4 整轮打得完才记），
+  // 打不完一整轮的余量留白——段与轮都是离散动作，按比例折算会凭空造出半段命中。
+  let paidRounds = 0
+  let perfectRounds = 0
+  const slashT = Math.max(0, input.slash?.actionTime ?? 0)
+  const meltT = Math.max(0, input.melt?.actionTime ?? 0)
+  if (slashT > 0) {
+    const pbCap = Math.max(0, Math.floor(Number(input.slashPerfectBlocks) || 0))
+    const shortUnit = slashT + pairT
+    const fullUnit = slashT + meltT + pairT
+    // 完美格挡轮更省时间（跳过熔毁）⇒ 先吃满；再吃完整轮
+    while (perfectRounds < pbCap && fits(shortUnit)) {
+      perfectRounds += 1
+      t -= shortUnit
+      usedTime += shortUnit
+    }
+    let fullRounds = 0
+    while (fits(fullUnit)) {
+      fullRounds += 1
+      t -= fullUnit
+      usedTime += fullUnit
+    }
+    paidRounds = perfectRounds + fullRounds
+    add(PHOENIX_SLASH_MOVE_ID, paidRounds)
+    add(PHOENIX_BRANCH_MOVE_ID, fullRounds)
+    add(PHOENIX_A34_SEGMENT_THIRD, paidRounds)
+    add(PHOENIX_A34_SEGMENT_FOURTH, paidRounds)
+    // 尾段前缀：掠火 → 熔毁 → a3 → a4 是**一条连续派生链**（原文「点按普攻可衔接第三段」逐段成立），
+    // 所以剩余时间不足一整轮时就按链序吃前缀——玩家不会把够打掠火的时间白白留空。
+    for (const seg of [
+      { id: PHOENIX_SLASH_MOVE_ID, t: slashT },
+      { id: PHOENIX_BRANCH_MOVE_ID, t: meltT },
+      { id: PHOENIX_A34_SEGMENT_THIRD, t: thirdT },
+      { id: PHOENIX_A34_SEGMENT_FOURTH, t: fourthT },
+    ]) {
+      if (!fits(seg.t)) continue
+      add(seg.id, 1)
+      t -= seg.t
+      usedTime += seg.t
+    }
+  } else {
+    // 兜底（catalog 缺掠火时长）：a1 → a2 → a3 → a4 整轮正向填充（同样整轮原子）
+    const a1 = timeOf('1641001')
+    const a2 = timeOf('1641002')
+    const cycleT = a1 + a2 + pairT
+    let rounds = 0
+    while (cycleT > 0 && fits(cycleT)) {
+      rounds += 1
+      t -= cycleT
+      usedTime += cycleT
+    }
+    add('1641001', rounds)
+    add('1641002', rounds)
+    add(PHOENIX_A34_SEGMENT_THIRD, rounds)
+    add(PHOENIX_A34_SEGMENT_FOURTH, rounds)
+  }
+
+  const third = counts[PHOENIX_A34_SEGMENT_THIRD] ?? 0
+  const fourth = counts[PHOENIX_A34_SEGMENT_FOURTH] ?? 0
+  return { counts, freePairs, paidRounds, perfectRounds, usedTime, third, fourth }
+}
+
+/**
+ * 免费 a34 名额（「点按普攻可衔接第三段」的招式次数合计）。
+ *
+ * 来源（原文逐条）：
+ * - **强特三段**：眩焰 / 坠阳 / 燎斩各一次 ⇒ 3 × 强特轮数（用户口径「其3种e都放完」）；
+ * - **连携技：绝处逢生**、**烬火追魂**（终结后换入那一下；**终结技本体原文无衔接句**，故每轮终结只按
+ *   烬火追魂计 1 个名额）；
+ * - **闪避反击：业火两渡**、**支援突击：再生疗法**。
+ *
+ * ⚠ **刻意不收「快速支援：急救」**（用户裁决 2026-10-22）：原文确有「点按普攻可衔接第三段」，
+ * 但**引擎不物化快支行**（全仓唯一近似，见 `claret.ts`「无物化行的交互（快速支援）不计积累」），
+ * 收它就等于「填 99 次 = 99 个免费 a34、一秒前台都不占」——无代价的名额会把 a34 上限变成摆设。
+ * 二选一：给快支补一条真实动作行（会改全仓近似），或干脆不收（用户选后者）。
+ *
+ * ⚠ 掠火的「完美格挡 → 直接第三段」不进本函数：掠火轮本身就是填池手段，完美格挡只把该轮换成
+ * 跳过熔毁的短版（`planPhoenixBasic.slashPerfectBlocks`）——重复计入会与 3×强特轮数双计。
+ */
+export function phoenixBasicGrants(
+  cfg: Pick<AgentResourceInput['cfg'], 'dodgeCounterCount' | 'parryCount'>,
+  state: Pick<AgentResourceInput['state'], 'exSpecialCount' | 'ultimateCount' | 'chainCountTotal'>,
+): number {
+  const exRounds = Math.max(0, Number(state.exSpecialCount) || 0)
+  const ult = Math.max(0, Number(state.ultimateCount) || 0)
+  const chain = Math.max(0, Number(state.chainCountTotal) || 0)
+  return exRounds * PHOENIX_A34_PER_EX_ROUND
+    + chain
+    + ult // 烬火追魂（终结后换入那一下；终结技本体原文无衔接句）
+    + Math.max(0, Number(cfg.dodgeCounterCount) || 0)
+    + Math.max(0, Number(cfg.parryCount) || 0)
 }
 
 /**
@@ -207,25 +370,75 @@ export function phoenixBasicCombustionHits(basicTime: number, cycle: { moveId: s
  * - 难度侧不需要额外动作：`perfectBlock` 已在 `teamCompare#BOSS_ATTACK_INTERACTIONS` 里
  *   ⇒ 自动吃非失衡占比修正（用户口径：这个交互要 boss 出手，失衡期怪物不攻击）。
  */
+/**
+ * 本槽平A段计划（单源）：`buildExecutions` 物化段行、燔焰收入、`buildResourceResult` 展示**都调它**。
+ *
+ * ⚠ 为什么由 cfg+state 现算而不是「buildExecutions 写 cfg 再读」：`materializeRows` 会在钩子返回后
+ * 把 cfg 快照回滚（新增键置 undefined），写进去的派生量活不过一次物化——这是引擎既有的纯度约束
+ * （`AgentResourceResultInput.preModuleExecutions` 头注同理）。
+ */
+export function phoenixBasicPlanOf(
+  cfg: AgentCharConfigInput['cfg'],
+  state: Pick<AgentResourceInput['state'], 'basicAttackTime' | 'exSpecialCount' | 'ultimateCount' | 'chainCountTotal'>,
+): PhoenixBasicPlan {
+  return planPhoenixBasic({
+    basicTime: Math.max(0, Number(state.basicAttackTime) || 0),
+    cycle: cfg.phoenixBasicCycle ?? [],
+    grants: phoenixBasicGrants(cfg, state),
+    slash: cfg.phoenixSlashMeta,
+    melt: cfg.phoenixMeltMeta,
+    // 完美格挡「10 秒一次」是硬约束：掠火短版轮与燔焰 +5 共用同一 CD 上限（单一事实源 phoenixPerfectBlockHits）
+    slashPerfectBlocks: phoenixPerfectBlockHits(cfg),
+  })
+}
+
+/**
+ * 完美格挡有效次数 = min(填写次数, floor(有效战斗时间 / 10s))——掠火短版轮与燔焰 +5 **共用同一上限**。
+ *
+ * ⚠ 只钳「10 秒一次」这一条原文硬约束；**不**再按「有没有掠火轮」二次钳制：
+ * 完美格挡是**响应 boss 攻击**的交互（原文「上挑攻击开始瞬间受到攻击…时，可触发完美格挡」），
+ * 掠火本身是随时能放的普通 E，两者不是同一资源池。用户口径 2026-10-22：「格挡不该太多」——
+ * 真正防它爆量的就是这条 10s CD（180s 局最多 18 次），再加交互次数自身的 0..99 界。
+ */
+export function phoenixPerfectBlockHits(cfg: AgentCharConfigInput['cfg']): number {
+  const perfectBlocks = Math.max(0, Math.floor(Number(cfg.perfectBlockCount)))
+  const cdCap = Math.floor(minusInvincibleTime(Number(cfg.battleTime), cfg) / PHOENIX_PERFECT_BLOCK_CD_SECONDS)
+  return Math.min(perfectBlocks, Math.max(0, cdCap))
+}
+
 function phoenixEmberIncome(cfg: AgentCharConfigInput['cfg'], state: AgentResourceInput['state'] | undefined, executions: AgentResourceInput['executions']): number {
   const meta = cfg.phoenixCombustionMeta ?? {}
-  const basicCycle = cfg.phoenixBasicCycle ?? []
-  const basicTime = Math.max(0, state?.basicAttackTime ?? 0)
-  const { third, fourth } = phoenixBasicCombustionHits(basicTime, basicCycle)
-  let income = third * (meta['1641003'] ?? 0) + fourth * (meta['1641004'] ?? 0)
+  const perHit = (moveId: string) => meta[moveId] ?? 0
+  // 段计划（单源 planPhoenixBasic，与 buildExecutions 物化的段行同参数）：
+  // 平A三/四段 + 熔毁（掠火起手轮）。用户口径 2026-10-22：熔毁不再是「操作向量」。
+  const plan = state ? phoenixBasicPlanOf(cfg, state) : undefined
+  let income = plan
+    ? (plan.counts['1641003'] ?? 0) * perHit('1641003') + (plan.counts['1641004'] ?? 0) * perHit('1641004')
+      + (plan.counts[PHOENIX_BRANCH_MOVE_ID] ?? 0) * perHit(PHOENIX_BRANCH_MOVE_ID)
+    : 0
+  // 强特三段 / 终结 / 连携 / 烬火追魂：直接读 state 次数（同轮，不吃执行行的轮间滞后）——
+  // 燃烧攻击集合里的其余来源要么由本模块 push（坠阳/燎斩，滞后一轮），要么由 core push（眩焰/终结/连携）。
+  const exRounds = Math.max(0, state?.exSpecialCount ?? 0)
+  const ult = Math.max(0, state?.ultimateCount ?? 0)
+  const chain = Math.max(0, state?.chainCountTotal ?? 0)
+  income += exRounds * (perHit(PHOENIX_EX_FIRST_MOVE_ID) + perHit(PHOENIX_EX_SECOND_MOVE_ID) + perHit(PHOENIX_EX_LIAOZHAN_MOVE_ID))
+  income += chain * perHit(PHOENIX_CHAIN_MOVE_ID)
+  income += ult * (perHit(PHOENIX_ULT_MOVE_ID) + perHit(PHOENIX_ENTRY_MOVE_ID))
+  // 兜底：执行行里另有未覆盖的燃烧攻击行（未来新增招式）按行计数累计，已覆盖的跳过防双计
+  const covered = new Set<string>([
+    '1641003', '1641004', PHOENIX_BRANCH_MOVE_ID,
+    PHOENIX_EX_FIRST_MOVE_ID, PHOENIX_EX_SECOND_MOVE_ID, PHOENIX_EX_LIAOZHAN_MOVE_ID,
+    PHOENIX_CHAIN_MOVE_ID, PHOENIX_ULT_MOVE_ID, PHOENIX_ENTRY_MOVE_ID,
+  ])
   for (const e of executions) {
     if (!e.moveId || !PHOENIX_COMBUSTION_MOVE_IDS.has(e.moveId)) continue
-    if (e.moveId === '1641003' || e.moveId === '1641004') continue // 平A段已按段循环计
-    if (e.moveId === PHOENIX_BRANCH_MOVE_ID) continue // 分支攻击是操作向量
-    income += Math.max(0, e.count) * (meta[e.moveId] ?? 0)
+    if (covered.has(e.moveId)) continue
+    income += Math.max(0, e.count) * perHit(e.moveId)
   }
   // 完美格挡 +5 燔焰 / 10 秒一次（用户口径 2026-10-22）：
   // 次数按「10s 一次」的 CD 上限钳制 = floor(有效战斗时间 / 10)，再乘 5 点/次。
   // 有效战斗时间与 `[灼蚀]` 周期火伤同源（扣 boss 无敌）——CD 是硬约束，不吃覆盖率近似。
-  const perfectBlocks = Math.max(0, Math.floor(Number(cfg.perfectBlockCount)))
-  const cdCap = Math.floor(minusInvincibleTime(Number(cfg.battleTime), cfg) / PHOENIX_PERFECT_BLOCK_CD_SECONDS)
-  const blockHits = Math.min(perfectBlocks, Math.max(0, cdCap))
-  income += blockHits * PHOENIX_PERFECT_BLOCK_EMBER
+  income += phoenixPerfectBlockHits(cfg) * PHOENIX_PERFECT_BLOCK_EMBER
   return income
 }
 
@@ -279,6 +492,8 @@ function buildPhoenixCharConfig({ cfg, cinemaLevel, panel, skills, outOfCombatPa
   cfg.phoenixChargedMeta = metaOf(PHOENIX_CHARGED_MOVE_ID)
   cfg.phoenixExSecondMeta = metaOf(PHOENIX_EX_SECOND_MOVE_ID)
   cfg.phoenixLiaozhanMeta = metaOf(PHOENIX_EX_LIAOZHAN_MOVE_ID)
+  cfg.phoenixSlashMeta = metaOf(PHOENIX_SLASH_MOVE_ID)
+  cfg.phoenixMeltMeta = metaOf(PHOENIX_BRANCH_MOVE_ID)
   cfg.phoenixEntryMeta = metaOf(PHOENIX_ENTRY_MOVE_ID)
 }
 
@@ -313,12 +528,49 @@ function phoenixReleaseModifier({ self }: ReleaseModifierInput): ReleaseModifier
  * 坠阳与燎斩各自按 exCount 计次（一轮一次），坠阳耗能 40 由本行显式记账。
  */
 function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  // ① 先算段计划并落 cfg（燔焰收入与焚罪次数都由它派生），再算焚罪次数
+  const basicPlan = phoenixBasicPlanOf(cfg, state)
   const chargedCount = phoenixChargedCount(cfg, state, executions)
   cfg.phoenixChargedCount = chargedCount
   const exCount = Math.max(0, state.exSpecialCount)
   const ultCount = Math.max(0, state.ultimateCount)
   cfg.phoenixExCount = exCount
   cfg.phoenixEntryCount = ultCount
+
+  // ② 平A段行物化（用户口径 2026-10-22）：a3/a4 连续循环 + 掠火起手轮（掠火 →（熔毁）→ a3 → a4）。
+  // 这些段**是从平A池时长解出来的**（名字见 phoenixBasicPlan.usedTime）⇒ 时间必须从通用 basic_attack
+  // 聚合行挤出（carveBasicPool），否则同一段时间记两份（希格莉德 2026-09-05 事故同型）。
+  // 回能/喧响仍留在聚合行（RECOVERY_OFF：平A回能按整段时长记在池上，段行不带，见 carveBasicPool 头注）。
+  const segmentRows: ReadonlyArray<{ moveId: string; label: string }> = [
+    { moveId: PHOENIX_SLASH_MOVE_ID, label: '特殊技：掠火（起手·未触发完美格挡时派生熔毁）' },
+    { moveId: PHOENIX_BRANCH_MOVE_ID, label: '普通攻击：熔毁（掠火派生）' },
+    { moveId: '1641003', label: '普通攻击：裁生·第三段' },
+    { moveId: '1641004', label: '普通攻击：裁生·第四段' },
+  ]
+  for (const seg of segmentRows) {
+    const n = basicPlan.counts[seg.moveId] ?? 0
+    if (n <= 0) continue
+    const meta = seg.moveId === '1641003'
+      ? cfg.phoenixBasicCycle?.find(s => s.moveId === '1641003')
+      : seg.moveId === '1641004'
+        ? cfg.phoenixBasicCycle?.find(s => s.moveId === '1641004')
+        : seg.moveId === PHOENIX_BRANCH_MOVE_ID ? cfg.phoenixMeltMeta : cfg.phoenixSlashMeta
+    if (!meta || meta.actionTime <= 0) continue
+    executions.push(moduleExecRow({
+      moveId: seg.moveId,
+      moveName: seg.label,
+      category: 'basic',
+      element: 'fire',
+      count: n,
+      actionTime: meta.actionTime,
+      totalTime: n * meta.actionTime,
+      // 段行与聚合行同桶（'basic'）：它们本来就是平A池里的时间，前台归属/截断/留白口径必须一致
+      timeBucket: 'basic',
+      ...RECOVERY_OFF,
+    }))
+  }
+  // 掠火是普通特殊技（0 能量）：段行只记时间与伤害，不记账能量消耗
+  carveBasicPool(executions, basicPlan.usedTime)
 
   const chargedMeta = cfg.phoenixChargedMeta
   if (chargedMeta && chargedCount > 0) {
@@ -378,11 +630,20 @@ function buildPhoenixExecutions({ cfg, state, executions }: AgentResourceInput):
   }
 }
 
-/** 必做前台时间：通用强特（眩焰）+ 坠阳 + 燎斩 + 焚罪 */
-function phoenixExSpecialTime({ cfg, exSpecialCount }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
+/**
+ * 必做前台时间：通用强特（眩焰）+ 坠阳 + 燎斩 + 焚罪。
+ *
+ * ⚠ **不含平A段行**（a3/a4/掠火/熔毁）：它们是**从平A池时长解出来**的（`planPhoenixBasic` 按
+ * `state.basicAttackTime` 算次数），占的就是池里那份时间 ⇒ 进 necessary 会与池重复计费。
+ * 先例：希格莉德「出枪式段占平A池时间不进必要时间」（`sigrid.ts#sigridExSpecialTime`）。
+ */
+function phoenixExSpecialTime({ cfg, exSpecialCount, state }: AgentExSpecialTimeInput): { necessaryTime: number; comboAlignTime: number } {
   const exTime = Math.max(0, exSpecialCount) * cfg.exSpecialActionTime
   const chargedMeta = cfg.phoenixChargedMeta
-  const chargedCount = whole(Number(cfg.phoenixChargedCount ?? 0))
+  // 焚罪次数要用段计划（燔焰收入 → 焚罪），而段计划要 basicAttackTime；外部直调没有 state 时退化为 0 次焚罪
+  const chargedCount = state
+    ? whole(phoenixChargedCount(cfg, state, []))
+    : whole(Number(cfg.phoenixChargedCount ?? 0))
   const chargedTime = chargedMeta ? chargedCount * chargedMeta.actionTime : 0
   const exSecond = cfg.phoenixExSecondMeta
   const liaozhan = cfg.phoenixLiaozhanMeta
@@ -507,8 +768,9 @@ function buildPhoenixAnomalyEvents({ cfg, events, totalTime }: AgentEventInput):
   }
 }
 
-function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+function buildPhoenixResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   const cinema = cinemaLevelOf(cfg.phoenixCinemaLevel)
+  const basicPlan = phoenixBasicPlanOf(cfg, state)
   const additionalActive = additionalAbilityActiveOf(cfg.panel)
   const crit = computePhoenixScorchCrit({
     initialMastery: Number(cfg.phoenixInitialMastery ?? 0),
@@ -534,7 +796,14 @@ function buildPhoenixResourceResult({ cfg }: AgentResourceResultInput): Partial<
       c4ReleaseMult: cinema >= 4 ? PHOENIX_C4_RELEASE_MULT : 0,
       c6ResIgnore: cinema >= 6 ? PHOENIX_C6_RES_IGNORE : 0,
       c6ReleaseDefIgnore: cinema >= 6 ? PHOENIX_C6_RELEASE_DEF_IGNORE : 0,
-      note: '[灼蚀] 异常暴击承载 = spec teamBuffs（含队友受益）；[生竭]/[重明] 状态机未建模（回血无乘区）；[枯荣] 按稳态循环（眩焰→坠阳→燎斩）。',
+      a34FreePairs: basicPlan.freePairs,
+      a34PaidRounds: basicPlan.paidRounds,
+      a34PerfectRounds: basicPlan.perfectRounds,
+      basicThird: basicPlan.third,
+      basicFourth: basicPlan.fourth,
+      slashCount: basicPlan.counts[PHOENIX_SLASH_MOVE_ID] ?? 0,
+      meltCount: basicPlan.counts[PHOENIX_BRANCH_MOVE_ID] ?? 0,
+      note: '[灼蚀] 异常暴击承载 = spec teamBuffs（含队友受益）；[生竭]/[重明] 状态机未建模（回血无乘区）；[枯荣] 按稳态循环（眩焰→坠阳→燎斩）；平A按段计划（a3/a4 循环 + 掠火起手，名额=可衔接第三段的招式次数）。',
     },
   }
 }
@@ -555,6 +824,9 @@ function buildPhoenixResourceSections({ result }: AgentResourceSectionsInput) {
       { label: '影画4额外异放', value: `${cycle.c4ReleaseMult}%`, detail: '焚罪/烬火追魂各一次' },
       { label: '影画6无视抗性', value: `+${cycle.c6ResIgnore}%`, detail: '全属性伤害抗性' },
       { label: '影画6异放无视防御', value: `+${cycle.c6ReleaseDefIgnore}%`, detail: '异放限定' },
+      { label: '平A循环', value: `a34×${cycle.a34FreePairs + cycle.a34PaidRounds}`, detail: `免费名额 ${cycle.a34FreePairs} 对（强特/连携/终结/闪反/快支/支援突击）+ 掠火起手 ${cycle.a34PaidRounds} 轮` },
+      { label: '平A段命中', value: `a3 ×${cycle.basicThird} · a4 ×${cycle.basicFourth}`, detail: '三段一循环：所有平A落在第三/四段' },
+      { label: '掠火 / 熔毁', value: `×${cycle.slashCount} / ×${cycle.meltCount}`, detail: `掠火 0 能量起手；完美格挡 ${cycle.a34PerfectRounds} 轮跳过熔毁直入第三段` },
       { label: '焚罪次数', value: `×${cycle.chargedCount}`, detail: '燔焰收入/90' },
       { label: '燎斩次数', value: `×${cycle.liaozhanCount}`, detail: '[升变]驱动（=眩焰次数）' },
       { label: '烬火追魂次数', value: `×${cycle.entryCount}`, detail: '=终结次数' },
@@ -623,6 +895,24 @@ export const phoenixMechanic: AgentMechanicModule = {
   buildCharConfig: buildPhoenixCharConfig,
   estimateExSpecialTime: phoenixExSpecialTime,
   buildExecutions: buildPhoenixExecutions,
+  /**
+   * 平A聚合行降级为**时间 + 回能载体**（用户口径 2026-10-22）：伤害/失衡/异常积蓄已由段行（a3/a4 + 掠火/熔毁）
+   * 逐段承载，聚合行再按「第 3 段秒均 × 时间」结算就是同一段时间记两份。
+   * 时间侧已由 buildExecutions 的 carveBasicPool 挤出段行时长；这里只归零三个倍率通道，
+   * 回能（energy/decibel total）保持原值——平A回能按整段时长记在池上（carveBasicPool 头注同口径）。
+   */
+  patchExecutions: ({ executions }: AgentResourceInput) => {
+    for (const exec of executions) {
+      if (exec.moveId !== 'basic_attack') continue
+      exec.damageMultiplier = 0
+      exec.damageMultiplierOverride = true
+      exec.dazeMultiplier = 0
+      exec.dazeMultiplierOverride = true
+      exec.anomalyBuildUp = 0
+      exec.anomalyBuildUpOverride = true
+      exec.skillTableNote = '平A按段计划物化（a3/a4 循环 + 掠火起手轮）：本行只承载时间与回能，伤害/失衡/积蓄见段行'
+    }
+  },
   buildAnomalyEvents: buildPhoenixAnomalyEvents,
   buildResourceResult: buildPhoenixResourceResult,
   resourceSections: buildPhoenixResourceSections,
@@ -665,6 +955,10 @@ declare module '@/types/resource/config' {
     phoenixInitialMastery?: number
     /** 菲尼克斯燃烧攻击燔焰获取（moveId → 每次命中燔焰，attack_data_0 列） */
     phoenixCombustionMeta?: Record<string, number>
+    /** 菲尼克斯掠火（普通特殊技 1641007）招式元数据 */
+    phoenixSlashMeta?: PhoenixMoveMeta
+    /** 菲尼克斯熔毁（掠火派生分支 1641006）招式元数据 */
+    phoenixMeltMeta?: PhoenixMoveMeta
     /** 菲尼克斯平A各段元数据（buildCharConfig 从 catalog 预存） */
     phoenixBasicCycle?: PhoenixMoveMeta[]
     /** 菲尼克斯焚罪（长按普攻）招式元数据 */
