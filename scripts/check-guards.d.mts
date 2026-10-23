@@ -158,10 +158,14 @@ export interface RatchetBurndownEntry {
   frozen: number
   target: number
   due: string
-  plan: string
+  /** 当前值 / 下一步 / 阻塞点（≤200 字符，判据 33） */
+  current: string
+  /** 一句话 + git log 指针（≤120 字符，判据 33） */
+  history: string
 }
 export interface RatchetBurndownState extends RatchetBurndownEntry {
-  current: number
+  /** 实测当前值（数值）——与登记表里的文字字段 current 刻意不同名 */
+  measured: number
   progress: number
   remaining: number
   overdue: boolean
@@ -170,6 +174,16 @@ export interface RatchetBurndownState extends RatchetBurndownEntry {
   dueSoon: boolean
 }
 export declare const RATCHET_BURNDOWN: RatchetBurndownEntry[]
+
+/**
+ * 判据 33：棘轮登记可读性问题清单（空数组 = 通过）。导出给测试做注入式负控。
+ * @param entries 登记表（或构造的假条目）
+ */
+export declare function ratchetReadabilityProblems(entries: RatchetBurndownEntry[]): string[]
+
+/** 判据 33 的两个长度上限（scripts/check-guards.mjs#RATCHET_CURRENT_MAX / RATCHET_HISTORY_MAX） */
+export declare const RATCHET_CURRENT_MAX: number
+export declare const RATCHET_HISTORY_MAX: number
 export declare function computeBurndown(
   measure: (id: string) => number,
   today?: string,

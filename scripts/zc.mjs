@@ -1238,9 +1238,9 @@ function humanize(res) {
     // 判据 11：棘轮 burn-down（只报不红）——点名「到期零进展」的棘轮，防「冻结 = 永久豁免」
     for (const b of d.burndown ?? []) {
       if (b.done) continue
-      const head = `${b.id} ${b.frozen}→${b.current}（剩 ${b.remaining}，目标 ${b.target}）`
-      if (b.stale) lines.push(`⚠ 棘轮零进展·已到期(${b.due})：${head} → ${b.plan}`)
-      else if (b.overdue) lines.push(`· 棘轮超期未清(${b.due})：${head} → ${b.plan}`)
+      const head = `${b.id} ${b.frozen}→${b.measured}（剩 ${b.remaining}，目标 ${b.target}）`
+      if (b.stale) lines.push(`⚠ 棘轮零进展·已到期(${b.due})：${head} → ${b.current}`)
+      else if (b.overdue) lines.push(`· 棘轮超期未清(${b.due})：${head} → ${b.current}`)
       else if (b.dueSoon) lines.push(`· 棘轮临近到期(${b.due}，剩 ${daysBetween(new Date().toISOString().slice(0, 10), b.due)} 天)：${head}`)
     }
     if (d.deadClaims?.length) lines.push('⚠ 死口径（注释声称口径但全仓含本文件零调用，规则 16）：' + d.deadClaims.map(h => `${h.name}@${h.file}`).join(', '))

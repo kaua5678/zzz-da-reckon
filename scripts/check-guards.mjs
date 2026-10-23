@@ -165,10 +165,21 @@ export function scanFetchStubs(root = ROOT) {
 // RATCHET_BURNDOWN（棘轮 burn-down 登记表） 已移至 scripts/lib/guard-registries.mjs（CC-85 2026-09-27，census §5.91），由本文件顶部 import 并原样转出。
 
 /**
+ * 棘轮登记的两个长度上限（判据 33，2026-10-23）。选这两条数的理由：
+ * - current 200：够写「剩 N 条 + 下一步 + 阻塞点」（实测 11 条登记的写法都在 35~72 字符），
+ *   但装不下一条沿革链（旧 plan 最长 3286，中位数 260+）⇒ 超了就是又把历史塞回来了。
+ * - history 120：一句话 + 一个指针（git log --grep=… / docs/…），细节一律在 git log。
+ * ⚠ 这是**防膨胀的尺**，不是还款面：真要写长说明，写进提交信息/账本/文档，不写进登记表。
+ */
+export const RATCHET_CURRENT_MAX = 200
+export const RATCHET_HISTORY_MAX = 120
+
+/**
  * 计算每条棘轮的 burn-down 状态。
  * `measure(id)` 由调用方注入（避免本文件硬依赖各判据的测量实现）。
- * 返回 [{ ...entry, current, progress, stale, overdue }]
- * - progress = frozen - current（>0 表示已还款）
+ * 返回 [{ ...entry, measured, progress, stale, overdue }]
+ * - measured = 实测当前值（数值；与登记表里的文字字段 `current` 刻意不同名）
+ * - progress = frozen - measured（>0 表示已还款）
  * - stale = 已过 due 且零进展（点名；这是本判据存在的唯一理由）
  * - overdue = 已过 due 但还没做完（有进展或已清零 → 提示剩余/收尾，不算 stale）
  *
@@ -180,15 +191,18 @@ export function scanFetchStubs(root = ROOT) {
  */
 export function computeBurndown(measure, today = new Date().toISOString().slice(0, 10)) {
   return RATCHET_BURNDOWN.map(e => {
-    const current = measure(e.id)
-    const progress = e.frozen - current
+    // ⚠ 数值字段叫 measured 不叫 current（2026-10-23）：登记表里的 current 是**文字**
+    //（当前值/下一步/阻塞点，判据 33），两者同名会被展开覆盖——正是「人工可读状态被
+    // 自动读数静默顶掉」的同一族缺陷。
+    const measured = measure(e.id)
+    const progress = e.frozen - measured
     const overdue = today > e.due
-    const done = current <= e.target
+    const done = measured <= e.target
     return {
       ...e,
-      current,
+      measured,
       progress,
-      remaining: Math.max(0, current - e.target),
+      remaining: Math.max(0, measured - e.target),
       overdue,
       stale: overdue && !done && progress <= 0,
       done,
@@ -886,6 +900,41 @@ export function scanCaliberTriggers(root = ROOT, facts = null) {
  * **async**：判据 14-C 需要 `import()` 各 `.mjs` 拿运行时导出表（与手写 `.d.mts` 对账）——
  * 静态 import 会成环（本文件就是被对账对象之一）。
  */
+/**
+ * 判据 33：棘轮登记表的「可读性」问题清单（空数组 = 通过）。
+ *
+ * 口径（2026-10-23，用户实报「总是读到错误内容」）：
+ * - `current` ≤ `RATCHET_CURRENT_MAX`：只写**现在**（当前值 / 下一步 / 阻塞点）
+ * - `history` ≤ `RATCHET_HISTORY_MAX`：一句话 + **指针**（git log --grep=… 或 docs/…），沿革正文归 git
+ * - `plan` 必须已退役：旧字段一旦复活，沿革会重新长在「人/agent 直接读」的面上
+ *
+ * 为什么单独导出：测试要能用**注入式负控**证明它有牙（构造超长/无指针/缺字段的条目 ⇒ 必须报问题），
+ * 只断言「仓库现状零问题」在判据整体失效时仍为真（假绿）。
+ */
+export function ratchetReadabilityProblems(entries) {
+  const out = []
+  for (const e of entries) {
+    const id = e?.id ?? '(无 id)'
+    if (typeof e?.current !== 'string' || e.current.trim() === '') {
+      out.push(`${id}：缺 current（必须写「现在是多少 / 下一步」）`)
+    } else if (e.current.length > RATCHET_CURRENT_MAX) {
+      out.push(`${id}：current ${e.current.length} 字符 > ${RATCHET_CURRENT_MAX} → 只留当前值/下一步/阻塞点，沿革搬到 history + git log`)
+    }
+    if (typeof e?.history !== 'string' || e.history.trim() === '') {
+      out.push(`${id}：缺 history（沿革一句话 + git log 指针）`)
+    } else {
+      if (e.history.length > RATCHET_HISTORY_MAX) {
+        out.push(`${id}：history ${e.history.length} 字符 > ${RATCHET_HISTORY_MAX} → 只留一句话 + 指针，细节归 git log`)
+      }
+      if (!/git log|docs\/|AGENT_ID_BURNDOWN_LOG/.test(e.history)) {
+        out.push(`${id}：history 必须含指针（git log --grep=… 或 docs/…），否则沿革无处可查`)
+      }
+    }
+    if ('plan' in e) out.push(`${id}：仍有 plan 字段 → 已拆成 current + history（plan 会重新长成编年史）`)
+  }
+  return out
+}
+
 export function runAllChecks(root = ROOT) {
   const results = []
 
@@ -1495,6 +1544,21 @@ export function runAllChecks(root = ROOT) {
       name: '测试三环 (判据 32: core ⊂ fast ⊂ full，默认环 = core，全量有独立出口 check:full / verify) '
         + (core ? 'core 排除 ' + core.length + ' / fast 排除 ' + fast.length + ' / full 排除 0' : '三环不可加载'),
       ok,
+      detail,
+    })
+  }
+
+  // ---- 判据 33：棘轮登记的 current 必须只写「现在」，history 只留指针（2026-10-23） ----
+  //
+  // 为什么（用户 2026-10-23「总是读到错误内容，原因是不是 agent 干活总是记录错误内容然后说这是
+  // 之前的决策？」）：原 `plan` 字段把整条沿革链塞在一起（最长 3286 字符「34 → 32 → … → 18 → 17」），
+  // 读的人（含 agent）看到的是「历史上某刻是对的」，**读不出当前值**——历史沿革冒充当前状态。
+  // 判据逻辑在 ratchetReadabilityProblems（导出给测试做注入式负控）。
+  {
+    const detail = ratchetReadabilityProblems(RATCHET_BURNDOWN).map(d => '  ✗ ' + d)
+    results.push({
+      name: `棘轮登记可读性 (判据 33: current ≤${RATCHET_CURRENT_MAX} / history ≤${RATCHET_HISTORY_MAX} + 指针，plan 字段已退役)`,
+      ok: detail.length === 0,
       detail,
     })
   }

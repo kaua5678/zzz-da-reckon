@@ -29,6 +29,9 @@ import {
   EXHIBITION_LAYER_MIN_FILES,
   MANUAL_DENSITY_CEILINGS,
   RATCHET_BURNDOWN,
+  RATCHET_CURRENT_MAX,
+  RATCHET_HISTORY_MAX,
+  ratchetReadabilityProblems,
   auditDocTable,
   computeBurndown,
   parseDocTable,
@@ -264,7 +267,8 @@ describe('判据 4 扫描面接运行时注册表（2026-09-20 round 49 换尺�
     expect(e.frozen, 'frozen 必须等于 SETTINGS_UNTESTED_BACKLOG.length').toBe(SETTINGS_UNTESTED_BACKLOG.length)
     expect(e.target).toBe(0)
     expect(e.due).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-    expect(e.plan.length).toBeGreaterThan(50)   // 防「冻结 = 永久豁免」：必须有可执行的降法
+    expect(e.current.length).toBeGreaterThan(10)   // 防「冻结 = 永久豁免」：必须有可执行的下一步
+    expect(e.current.length).toBeLessThanOrEqual(RATCHET_CURRENT_MAX)
   })
 
   it('★ 剩余量口径**不得写成 `newGaps.length`**（清零后改成行为断言，不再靠 `frozen > 0` 兜底）', () => {
@@ -470,12 +474,12 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
     expect(deferred).toBeGreaterThan(0)
   })
 
-  it('★ 本轮新增的三条棘轮都登记了 due 与 plan（防「冻结 = 永久豁免」）', () => {
+  it('★ 本轮新增的三条棘轮都登记了 due 与 current（防「冻结 = 永久豁免」）', () => {
     for (const id of ['游戏语义口径复核触发器', '死通道豁免清单', '名词表未处理']) {
       const e = RATCHET_BURNDOWN.find(x => x.id === id)
       expect(e, `${id} 必须进 RATCHET_BURNDOWN`).toBeDefined()
       expect(e!.due).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-      expect(e!.plan.length, `${id} 的 plan 要写清「怎么降」`).toBeGreaterThan(20)
+      expect(e!.current.length, `${id} 的 current 要写清「下一步」`).toBeGreaterThan(10)
       expect(e!.file, `${id} 要写清基线在哪`).toBeTruthy()
     }
   })
@@ -492,7 +496,7 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
     expect(agent.progress).toBe(paid)
     expect(agent.stale).toBe(false)
     expect(agent.overdue).toBe(true)
-    expect(agent.remaining).toBe(agent.current - agent.target)
+    expect(agent.remaining).toBe(agent.measured - agent.target)
     // 其余**未完成**条目仍零进展 → stale（清零条目不算，它已 done）
     expect(rows.filter(r => r.id !== first.id && r.frozen > r.target).every(r => r.stale)).toBe(true)
   })
@@ -530,12 +534,43 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
     }
   })
 
+  // 判据 33（2026-10-23，用户实报「总是读到错误内容」）的**行为判据**：
+  // 长度上限本身只是尺，真正要钉的是「历史不能再冒充当前」——
+  // ① 每条都必须有 current（现在是啥）与 history（沿革指针），缺一个就红；
+  // ② history 必须含指针（否则沿革无处可查 = 只能塞回 current）；
+  // ③ plan 字段必须已退役（旧字段一旦复活，沿革会重新长在可读面上）。
+  // ⚠ 用**注入式负控**证明判据有牙：临时把一条改成超长/无指针，必须能判红。
+  it('★ 判据 33 有牙：current/history 缺失、超长、无指针、plan 复活都必须被拦', () => {
+    const fake = (over: Record<string, unknown>) => ({
+      id: 'x', file: 'f', frozen: 0, target: 0, due: '2026-12-31',
+      current: '正常的一句话', history: '见 git log --grep="x"', ...over,
+    })
+    const bad = [
+      fake({ current: undefined }),                                  // 缺 current
+      fake({ history: undefined }),                                  // 缺 history
+      fake({ current: 'x'.repeat(RATCHET_CURRENT_MAX + 1) }),         // current 超长
+      fake({ history: 'x'.repeat(RATCHET_HISTORY_MAX + 1) }),         // history 超长
+      fake({ history: '当年是怎么改的，细节很多但没给指针' }),          // history 无指针
+      fake({ plan: '旧字段' }),                                       // plan 复活
+    ]
+    for (const e of bad) {
+      const problems = ratchetReadabilityProblems([e as never])
+      expect(problems.length, JSON.stringify(e).slice(0, 80)).toBeGreaterThan(0)
+    }
+    // 正控：只有合法条目才零问题（防「一律判红」的假判据）
+    expect(ratchetReadabilityProblems([fake({}) as never])).toEqual([])
+    // 仓库现状必须零问题
+    expect(ratchetReadabilityProblems(RATCHET_BURNDOWN)).toEqual([])
+  })
+
   it('登记表本身自洽：frozen 与代码里的基线常量一致、due 可解析、target ≤ frozen', () => {
     expect(RATCHET_BURNDOWN.length).toBeGreaterThan(0)
     for (const e of RATCHET_BURNDOWN) {
       expect(Number.isFinite(Date.parse(e.due))).toBe(true)
       expect(e.target).toBeLessThanOrEqual(e.frozen)
-      expect(e.plan.length).toBeGreaterThan(10) // 必须写「怎么降」，不能只留一个数字
+      expect(e.current.length).toBeGreaterThan(10) // 必须写「下一步」，不能只留一个数字
+      expect(e.current.length).toBeLessThanOrEqual(RATCHET_CURRENT_MAX)
+      expect(e.history.length).toBeLessThanOrEqual(RATCHET_HISTORY_MAX)
     }
     // frozen 必须等于真实基线常量（防登记表与护栏脱钩变成死数据）
     const byId = (id: string) => RATCHET_BURNDOWN.find(e => e.id === id)!
@@ -647,14 +682,16 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
 
 describe('仓库级自洽（真实扫描）', () => {
   // 条数是结构断言：新增/删除一条判据必须来这里显式改数字（防「悄悄少了一条护栏」）
-  it('三十二条判据全绿（判据 24 角色模块值依赖 ' + ROLE_MODULE_DEP_BASELINE + ' / fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖** / **无类型记录键死读** / **通用字段唯一声明方 + SVG 呈现属性** / **测试三环****)', () => {
+  it('三十三条判据全绿（判据 24 角色模块值依赖 ' + ROLE_MODULE_DEP_BASELINE + ' / fetch-stub / agentId 棘轮 ' + AGENT_BRANCH_BASELINE + ' / core agentId 棘轮 ' + CORE_AGENT_BRANCH_BASELINE + ' / 工作区状态 / 展示层越层 ' + EXHIBITION_LAYER_IMPORT_BASELINE + ' / **core role-import ' + CORE_ROLE_IMPORT_BASELINE + '** / **core role-field ' + CORE_ROLE_FIELD_BASELINE + '** / 滑块棘轮 / debt 注册表 / docs 表 / @fact 锚点 / catalog-raw 对账 / 手册密度棘轮 / **名词表三态 / 死通道 / 口径复核触发器 / scoped 样式可达性 / 压缩数组槽位索引 / 录入层→编排层值倒置 / 队友 Buff 控件守卫 / **JSON 重复键静默覆盖** / **无类型记录键死读** / **通用字段唯一声明方 + SVG 呈现属性** / **测试三环****)', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(32)
+    expect(results).toHaveLength(33)
     expect(results.some(r => r.name.startsWith('role-module value-dep gate'))).toBe(true)
     // 判据 26：角色 / 招式 id 字面量只许在 data / mechanics/agents / specs（2026-10-04 CC-449 展示层 → CC-450 全 src）——判据 2/24 盯的是身份判定与值导入，裸字面量此前只有逐病灶的单文件锁
     expect(results.some(r => r.name.startsWith('id-literal gate'))).toBe(true)
+    // 判据 33：棘轮登记的 current/history 长度上限（2026-10-23；防「历史沿革冒充当前状态」再犯）
+    expect(results.some(r => r.name.startsWith('棘轮登记可读性'))).toBe(true)
     // 判据 27：对象/数组字面量不许 as 成领域类型、不许 as never/any（r719；r718 月城柳 as 断言漏必填 fields ⇒ vue-tsc 绿、页面崩）
     expect(results.some(r => r.name.startsWith('literal-assertion gate'))).toBe(true)
     // 判据 28：死兜底硬门（r723；类型不含 null/undefined 的 `a ?? b` 右侧永远取不到，r731 起 `a?.b` 同判、r732 起调用结果同判；r725 起外部 JSON 由 validate:data 类型契约校验，不设豁免）
@@ -989,7 +1026,7 @@ describe('auditNounTriage（判据 13：名词表三态）', () => {
     // ⚠ **2026-09-18 round 22 派活方核正 = R21-N3 第 2 条**：原式是
     //   `expect(states.filter(e => e.state === 'deferred').length).toBeGreaterThanOrEqual(40)`
     // ——一条**「禁止还债」的绝对地板**。`deferred` 正是 burn-down 要**减少**的那个量
-    // （`RATCHET_BURNDOWN` 的 `名词表未处理`：plan = 「41 条 deferred 逐条处置——能建模的转 modeled」，
+    // （`RATCHET_BURNDOWN` 的 `名词表未处理`：current = 「剩 59 条 deferred…能建模的转 modeled」，
     // frozen = unhandled + deferred，见本文件「名词表棘轮的剩余量含 deferred 存量」那条），
     // 而地板却要求它 ≥ 40 ⇒ 与 burn-down 的设计目标直接冲突。
     //
@@ -1011,7 +1048,7 @@ describe('auditNounTriage（判据 13：名词表三态）', () => {
     // ⚠ **2026-09-18 round 22 派活方核正 = R21-N3 第 2 条**：原式是
     //   `expect(states.filter(e => e.state === 'deferred').length).toBeGreaterThanOrEqual(40)`
     // ——一条**「禁止还债」的绝对地板**。`deferred` 正是 burn-down 要**减少**的那个量
-    // （`RATCHET_BURNDOWN` 的 `名词表未处理`：plan = 「41 条 deferred 逐条处置——能建模的转 modeled」，
+    // （`RATCHET_BURNDOWN` 的 `名词表未处理`：current = 「剩 59 条 deferred…能建模的转 modeled」，
     // frozen = unhandled + deferred，见本文件「名词表棘轮的剩余量含 deferred 存量」那条），
     // 而地板却要求它 ≥ 40 ⇒ 与 burn-down 的设计目标直接冲突。
     //
@@ -1996,7 +2033,7 @@ describe('scanManualDensity（判据 11：手册数字 id 密度棘轮，任务�
     if (cur < e!.target) {
       expect(e!.frozen,
         `「手册 §4 行数」已超额达标（现 ${cur} 行 < target ${e!.target}）：请结算登记表——`
-        + `frozen/target 同步下调到 ${cur}（棘轮只减不增），并在 plan 里记一句本轮到点。`).toBe(cur)
+        + `frozen/target 同步下调到 ${cur}（棘轮只减不增），并在 current 里记一句本轮到点。`).toBe(cur)
       expect(e!.target).toBe(cur)
     }
     // zc.mjs measured 映射以 id 为键（rule 11：口径实现在 check-guards，zc 只注入）。
@@ -2041,7 +2078,7 @@ describe('scanDocReviewTriggers（手册复核触发器，任务卡第 5 步：�
 })
 
 describe('判据 22：core 角色前缀字段计数棘轮（scripts/lib/core-role-field-ratchet.mjs）', () => {
-  it('基线常量 == RATCHET_BURNDOWN.frozen，且登记了 due/plan（改基线必须两处同步）', () => {
+  it('基线常量 == RATCHET_BURNDOWN.frozen，且登记了 due/current（改基线必须两处同步）', () => {
     const e = RATCHET_BURNDOWN.find(x => x.id === 'core 角色前缀字段')!
     expect(e).toBeDefined()
     expect(e.frozen).toBe(CORE_ROLE_FIELD_BASELINE)
@@ -2049,7 +2086,7 @@ describe('判据 22：core 角色前缀字段计数棘轮（scripts/lib/core-rol
     if (e.frozen > 0) expect(e.target).toBeLessThan(e.frozen)
     else expect(e.target).toBe(0)
     expect(e.due).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-    expect(e.plan.length).toBeGreaterThan(20)
+    expect(e.current.length).toBeGreaterThan(10)
   })
 
   it('检测器只数代码部分，跳过注释与豁免词（正控 + 负控）', () => {
@@ -2080,14 +2117,14 @@ describe('判据 22：core 角色前缀字段计数棘轮（scripts/lib/core-rol
 })
 
 describe('判据 23：角色名中缀 / core 子目录棘轮（CC-43b，scripts/lib/core-role-field-ratchet.mjs）', () => {
-  it('基线常量 == RATCHET_BURNDOWN.frozen，且登记了 due/plan', () => {
+  it('基线常量 == RATCHET_BURNDOWN.frozen，且登记了 due/current', () => {
     const e = RATCHET_BURNDOWN.find(x => x.id === 'core 角色名中缀/子目录')!
     expect(e).toBeDefined()
     expect(e.frozen).toBe(CORE_ROLE_INFIX_BASELINE)
     if (e.frozen > 0) expect(e.target).toBeLessThan(e.frozen)
     else expect(e.target).toBe(0)
     expect(e.due).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-    expect(e.plan.length).toBeGreaterThan(20)
+    expect(e.current.length).toBeGreaterThan(10)
   })
 
   it('驼峰切段', () => {
