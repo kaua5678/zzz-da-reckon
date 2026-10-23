@@ -233,6 +233,16 @@ export interface ContinuousStunProgress {
   missingBuildUp: number
   /** 是否正好踩在整数上（没有「再加点」可言） */
   atStep: boolean
+  /**
+   * **缺口折成「几个失衡窗被吃掉的量」**（用户 2026-10-23 的计量单位）。
+   *
+   * 用户口径：「打完 n 次失衡时，中间 n−1 个失衡窗里被吃掉的那些失衡值，就是这一轮周期的
+   * 自然单位；从『刚进入第 n 次』到『完整 n+1 次』大约只要再补**一个被吃掉量**」。
+   * ⇒ 展示层用这个数说话（「还差 ≈0.4 个失衡窗的量」），比裸失衡值点更好读。
+   *
+   * `null` = 该队没有可用的「被吃掉量」读数（`eatenPerWindow` 未给或 ≤ 0）。
+   */
+  missingInEatenWindows: number | null
 }
 
 export function continuousStunProgress(input: {
@@ -241,6 +251,12 @@ export function continuousStunProgress(input: {
   bossStunValue: number
   /** 雨果决算口径的失衡值返还比例（0~0.25；与池同源） */
   stunRefundRatio?: number
+  /**
+   * **每个失衡窗里被吃掉的失衡值**（= `StunPoolResult.inAxisStunTotal / stunCount`；
+   * 「失衡窗口内招式吃易伤但不攒条」⇒ 那段时间本该攒出来的条被吃掉）。
+   * 给了才能把缺口折成用户口径的「几个失衡窗的量」；缺省 ⇒ `missingInEatenWindows = null`。
+   */
+  eatenPerWindow?: number
 }): ContinuousStunProgress {
   const built = Math.max(0, finiteOr0(input.builtWindows))
   const b = Math.max(0, finiteOr0(input.bossStunValue))
@@ -250,17 +266,20 @@ export function continuousStunProgress(input: {
   const frac = built - complete
   const atStep = frac < EPS
   if (atStep) {
-    return { completeWindows: complete, nextWindowProgress: 0, missingBars: 0, missingBuildUp: 0, atStep: true }
+    return { completeWindows: complete, nextWindowProgress: 0, missingBars: 0, missingBuildUp: 0, atStep: true, missingInEatenWindows: 0 }
   }
   /** 第 ⌈built⌉ 窗还差的比例（1 − frac） */
   const missingBars = Math.min(1, Math.max(0, 1 - frac))
   /** 下一次失衡的边际成本：首次 b、之后 b(1−refund)（与 `stunBuildUpForCount` 同一条计数律） */
   const marginal = complete < 1 ? b : b * (1 - refund)
+  const missingBuildUp = missingBars * marginal
+  const eaten = Math.max(0, finiteOr0(input.eatenPerWindow))
   return {
     completeWindows: complete,
     nextWindowProgress: Math.min(1, Math.max(0, frac)),
     missingBars,
-    missingBuildUp: missingBars * marginal,
+    missingBuildUp,
     atStep: false,
+    missingInEatenWindows: eaten > 0 ? missingBuildUp / eaten : null,
   }
 }

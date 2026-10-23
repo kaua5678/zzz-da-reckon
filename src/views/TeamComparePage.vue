@@ -2422,7 +2422,10 @@ const curveHoverTips = computed(() => {
     // 连续失衡进度（用户 2026-10-23）：「再加点配置或交互就能达到完整失衡，进入下一阶段」
     ...(point.stunProgress && !point.stunProgress.atStep
       ? [`失衡进度 ${fmt(point.stunProgress.nextWindowProgress * 100, 0)}% —— 已完整 ${point.stunProgress.completeWindows} 次，`
-        + `再攒 ${fmt(point.stunProgress.missingBuildUp, 0)} 点失衡值即可达到完整 ${point.stunProgress.completeWindows + 1} 次`]
+        + `再攒 ${fmt(point.stunProgress.missingBuildUp, 0)} 点失衡值即可达到完整 ${point.stunProgress.completeWindows + 1} 次`
+        + (point.stunProgress.missingInEatenWindows != null
+          ? `（≈ 再多打 ${fmt(point.stunProgress.missingInEatenWindows, 2)} 个失衡窗的量）`
+          : '')]
       : []),
     s.flat
       ? '无优化空间（④ 与 ① 同值）'

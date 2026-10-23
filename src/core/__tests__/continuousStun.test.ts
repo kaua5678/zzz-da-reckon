@@ -169,3 +169,25 @@ describe('「离下一次完整失衡还差多少」标注', () => {
     expect(continuousStunProgress({ builtWindows: Number.NaN, bossStunValue: b }).completeWindows).toBe(0)
   })
 })
+
+describe('缺口折成用户口径（「几个失衡窗被吃掉的量」）', () => {
+  const b = 10000
+
+  it('★ 给了 eatenPerWindow ⇒ 缺口折成窗数；没给 ⇒ null（不编数）', () => {
+    const withEaten = continuousStunProgress({ builtWindows: 3.5, bossStunValue: b, eatenPerWindow: 5000 })
+    expect(withEaten.missingBuildUp).toBeCloseTo(0.5 * b, 3)
+    expect(withEaten.missingInEatenWindows, '缺 5000 点 / 每窗被吃 5000 点 = 1 个窗').toBeCloseTo(1, 6)
+
+    const noEaten = continuousStunProgress({ builtWindows: 3.5, bossStunValue: b })
+    expect(noEaten.missingInEatenWindows, '没读数 ⇒ null，UI 退回裸失衡值').toBeNull()
+
+    const zeroEaten = continuousStunProgress({ builtWindows: 3.5, bossStunValue: b, eatenPerWindow: 0 })
+    expect(zeroEaten.missingInEatenWindows).toBeNull()
+  })
+
+  it('★ 已完整（atStep）⇒ 窗数为 0，不是 null', () => {
+    const r = continuousStunProgress({ builtWindows: 4, bossStunValue: b, eatenPerWindow: 5000 })
+    expect(r.atStep).toBe(true)
+    expect(r.missingInEatenWindows).toBe(0)
+  })
+})

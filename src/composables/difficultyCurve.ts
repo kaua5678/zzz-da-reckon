@@ -971,6 +971,12 @@ export function stunProgressOf(calc: Calc): ContinuousStunProgress {
     builtWindows: pool ? continuousStunCount(pool) : 0,
     bossStunValue: pool?.bossStunValue ?? 0,
     stunRefundRatio: pool?.stunRefundRatio ?? 0,
+    /**
+     * 用户口径的计量单位 = 「一个失衡窗里被吃掉的失衡值」
+     * （`inAxisStunTotal / stunCount`；失衡窗口内吃易伤但不攒条 ⇒ 那段时间本该攒的条被吃掉）。
+     * 给不出（无窗 / 读数为 0）⇒ 函数自己回 `null`，UI 退回显示裸失衡值。
+     */
+    eatenPerWindow: pool && pool.stunCount > 0 ? pool.inAxisStunTotal / pool.stunCount : 0,
   })
 }
 
