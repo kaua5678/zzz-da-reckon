@@ -77,6 +77,19 @@ describe('副词条评分 · 真管线', () => {
     // 份额归一
     const share = res.contributions.reduce((a, c) => a + c.sharePct, 0)
     expect(share).toBeCloseTo(100, 6)
+    /**
+     * ★ **同槽多条词条都必须拿到非零贡献**（2026-10-23 实机抓到的那条缺陷的判据）。
+     *
+     * 首版把「整槽」当开关单位 ⇒ 同一槽的第二条词条在所有子集里都拿不到独立边际 ⇒ Shapley 恒 0；
+     * 而 Σ ≡ 评分 依然绿（第一条独吞整槽收益）——**"拆解自洽但错"**，只能靠这一条抓。
+     * 反证：把 `setMask` 改回写 `original[i]` 整组 ⇒ 本断言红（实测 3 槽各 1 条非零、其余 0）。
+     */
+    const bySlot = new Map<number, number>()
+    for (const c of res.contributions) bySlot.set(c.slot, (bySlot.get(c.slot) ?? 0) + 1)
+    for (const [slot, n] of bySlot) {
+      const nonzero = res.contributions.filter(c => c.slot === slot && Math.abs(c.pct) > 1e-9).length
+      expect(nonzero, `槽 ${slot} 有 ${n} 条词条 ⇒ 不得只有 1 条拿到贡献（整槽开关的典型症状）`).toBe(n)
+    }
     // ④ 源 store 一字不动（独立场景）
     expect(JSON.stringify(h.config.team.map(c => c.driveDisc.subStatAllocation))).toBe(before)
   }, 180000)

@@ -200,16 +200,37 @@ export async function scoreSubstats(
           stat: '*',
           steps: players.filter(p => p.slot === slot).reduce((a, p) => a + p.steps, 0),
         }))
+    /**
+     * 把 `mask` 落在**逐词条**粒度上（不是「整槽」）。
+     *
+     * ⚠ 2026-10-23 实机抓到：首版按「槽位整组」写回 `original[i]` ⇒ 任意一条词条的位被打开时，
+     * 该槽**全部**词条一起生效 ⇒ 同一槽的第二条词条在**所有**子集里都拿不到独立边际，
+     * Shapley 恒给 0（实机表现：三条「大攻击」全显示 +0%）。
+     * 而 Σ ≡ 评分 的判据仍然绿（第一个词条独吞整槽收益）——**这正是"拆解看着自洽但其实是错的"**，
+     * 只能靠"同一槽两条词条都必须非零"这类判据抓。
+     *
+     * 退化模式（`coarse`）的玩家本身就是整槽（`stat === '*'`）⇒ 仍写回 `original[i]` 整组。
+     */
     const setMask = (mask: number) => {
       for (let i = 0; i < config.team.length; i++) {
         const c = config.team[i]
         if (!c) continue
+        // 范围外的槽位保持原值（`opts.slots` 只拆一部分时，别把别的槽也清空）
         if (!slots.includes(i)) { c.driveDisc.subStatAllocation = { ...original[i] }; continue }
-        const gi = list.findIndex(player => player.slot === i)
-        const on = gi >= 0 && (mask & (1 << gi)) !== 0
-        c.driveDisc.subStatAllocation = on ? { ...original[i] } : {}
+        const alloc: Record<string, number> = {}
+        list.forEach((player, gi) => {
+          if (player.slot !== i) return
+          if ((mask & (1 << gi)) === 0) return
+          if (player.stat === '*') Object.assign(alloc, original[i])
+          else alloc[player.stat] = player.steps
+        })
+        c.driveDisc.subStatAllocation = alloc
       }
     }
+    // 0 词条基线 = 「范围内三个槽位全部不投词条」（`setMask(0)`）。
+    // ⚠ 必须走同一个 `setMask`（而不是另写一遍"清空分配"）：`liteTeamAssemblySource.test.ts`
+    // 的 CC-256 源锁规定「composables 下出现 `subStatAllocation = {}`」只许在 teamTimelineStore ——
+    // 那条锁防的是**重复实现轻量装配**；本模块不是装配，但仍走同一写入口更安全（单一写点）。
     setMask(0)
     const zeroDamage = readDamage()
     const zeroAxis = readAxis()
