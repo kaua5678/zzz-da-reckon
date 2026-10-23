@@ -177,10 +177,6 @@
                         <span v-if="guaranteeStunHint" class="muted" style="font-size: 12px; margin-right: 8px">{{ guaranteeStunHint }}</span>
                         <!-- 嗔火是般岳专属资源：队里没有般岳不显示（引擎侧 banyueSlot>=0 才消费） -->
                         <n-checkbox v-if="teamHasGuaranteeFury" :checked="guaranteeFury" @update:checked="v => setGuarantee('fury', v)">保底4嗔火</n-checkbox>
-                        <!-- 用户 2026-10-11 裁决：本项语义是「喧响四舍五入」（缺口≤半次大招就补弹刀、超过不硬凑），
-                             不是「保底 4 次终结技」——故标签随之改名（内部键仍是 `guarantee.ultimate`，见下方注释）。 -->
-                        <n-checkbox :checked="guaranteeUltimate" @update:checked="v => setGuarantee('ultimate', v)">喧响四舍五入</n-checkbox>
-                        <span class="muted" style="font-size: 12px; margin-left: 4px">{{ guaranteeUltimateHint }}</span>
                       </div>
                       <!-- 动态合轴吸收上限（全局变量，用户口径 2026-09-19：默认队友的 40% 可以被吸收，超过了就无力合轴） -->
                       <div class="guarantee-row" title="Σ必要前台超预算时，队友前台按溢出量被合轴吸收（与操作角色并行），每名队友最多被吸收其净必要前台的这个比例；超过就无力合轴，剩余溢出照旧封顶/装配截断。难度曲线的「全关」按 0 算，G5 分档推进到此上限。">
@@ -970,29 +966,14 @@ const interactionDefaults = computed(() => getInteractionDefaults(selectedChar.v
 const teamHasGuaranteeFury = computed(() => teamHasGuaranteeFuryOwner(configStore.team))
 const guaranteeStun = computed(() => configStore.getMechanicSetting('guarantee.stun', 0) !== 0)
 const guaranteeFury = computed(() => configStore.getMechanicSetting('guarantee.fury', 0) !== 0)
-const guaranteeUltimate = computed(() => configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0)
 /**
- * 喧响四舍五入·诚实显示（用户 2026-09-03）：四舍五入要露出来——「缺口 X → ⌈X/215⌉=N 次（X/215≈Y 取整）」。
- * CC-229：直读引擎决策（convergence 的 decibelGuarantee）。旧写法用**收敛后**主C喧响重算缺口——那时注入的弹刀喧响已在内，
- * 显示的是补后剩余缺口、N 与引擎实补次数不符；且没看「补齐角色（般岳）在队 ⇒ 通用口径不生效」。
- * 用户 2026-10-11 裁决：本项标签由「保底4喧响」改为「喧响四舍五入」（语义是「缺口≤半次大招就补弹刀、
- * 超过不硬凑」，不是「保底 4 次终结技」）；内部键 `guarantee.ultimate` **不变**（改键 = 用户旧存档丢失，
- * 且 store/预设/难度阶梯三处都按该键读写，属跨层重命名，非本项范围）。
+ * ⚠ 2026-10-23：`guaranteeUltimateHint`（喧响四舍五入·诚实显示）已随「保底4喧响」功能整体删除。
+ * 用户裁决：「保底4喧响我记得已经删了啊，现在的是根据喧响四舍五入吧。保底4喧响太没有实际价值了」
+ * 「改吧，这个保底是余孽，不要再用了」。
+ * 本项原本在页面手写「缺口 X → ⌈X/215⌉ = N 次」提示（CC-229 才改成直读引擎决策），
+ * 功能删除后引擎不再产出该决策，提示一并删除——不再有任何 UI 入口。
  */
-const guaranteeUltimateHint = computed(() => {
-  if (!guaranteeUltimate.value) return '（未启用喧响四舍五入）'
-  const g = decibelGuaranteeResult.value
-  if (!g) return ''
-  if (!g.active) return '（本队由补齐角色负责补弹刀，通用喧响四舍五入不生效）'
-  if (g.parry <= 0) {
-    return g.roundable
-      ? '（喧响四舍五入：主C喧响已够 4 次终结技，无需补弹刀）'
-      : `（喧响缺口 ${Math.round(g.residualShort)} > ${g.roundThreshold}，实战打不出下一次大 → 不硬凑）`
-  }
-  const raw = g.basisShort / g.perParry
-  return `（喧响四舍五入：缺口 ${Math.round(g.basisShort)} 喧响 → 补只给喧响弹刀 ⌈${Math.round(g.basisShort)}÷${g.perParry}⌉ = ${g.parry} 次，${raw.toFixed(2)} 次向上取整）`
-})
-function setGuarantee(kind: 'stun' | 'fury' | 'ultimate', v: boolean) {
+function setGuarantee(kind: 'stun' | 'fury', v: boolean) {
   configStore.setMechanicSetting(`guarantee.${kind}`, v ? 1 : 0)
 }
 // 非轴·易伤贡献率 φ（用户裁决 2026-10-19：引擎不替用户认领，改成用户自己填）。机制参数键与缺省值
@@ -1014,7 +995,7 @@ function setComboAlignAbsorbPct(v: number) {
 }
 // 自动补齐（保底语义，轴模式或保底开关驱动，现唯一产出者般岳；CC-296 起非轴也显示）：弹刀/双反在交互栏输入之上补的量（懒计算，仅产出者槽位选中时非空；
 // 槽位 = 挂出 computeInteractionTopUp 能力的角色（CC-293），故弹刀提示不必再判角色 id —— CC-65b）
-const { interactionTopUp, parrySplitResult, guaranteeStunShortfallResult, decibelGuaranteeResult, resourceResult, effectiveWEngineCoverages } = useResourceCalc()
+const { interactionTopUp, parrySplitResult, guaranteeStunShortfallResult, resourceResult, effectiveWEngineCoverages } = useResourceCalc()
 /**
  * 手动锁定交互·诚实显示（用户口径 2026-10-06「实在做不到就说哪里做不到」）：
  * 勾选后引擎不缩交互 ⇒ 装不下的部分不再被降配吸收，只会表现为**装配期截断**。

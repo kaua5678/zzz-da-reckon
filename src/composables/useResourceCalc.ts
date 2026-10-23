@@ -496,7 +496,7 @@ export function createResourceCalc(
     // 懒守卫：队里没有挂出 computeInteractionTopUp 能力的模块 → 不触发全量计算。
     // 槽位 = 挂出该能力的模块（CC-293，与 convergence 找槽同一函数），本文件不含角色 id。
     // CC-296：原先还要求轴模式，但是否补齐由模块门控决定（CC-295：非轴 + 保底嗔火 / 喧响也补），
-    // 旧守卫让「补齐已生效、交互栏不显示 +N」；且同页 decibelGuaranteeResult 本就无条件读 calcOutput，懒计算无从省起。
+    // 旧守卫让「补齐已生效、交互栏不显示 +N」；而交互栏/资源卡本就要读 calcOutput，懒计算无从省起。
     const slot = findInteractionTopUpSlot(configStore.team)
     if (slot < 0) return null
     // CC-296/297：读「本轮已装入」量（与资源卡同源），不读下一轮量（2-环落点上两者不等）。
@@ -571,7 +571,7 @@ export function createResourceCalc(
   /** Boss 预设弹刀反推（失衡次数四舍五入，最终收敛值）：交互栏显示「击破位弹刀 +N / 主C 剩余」用 */
   const parrySplitResult = computed<{ breakerSlot: number; topUp: number; breakerParry: number; mainDpsParry: number; breakerNoFollowUp: number; mainDpsNoFollowUp: number; breakerDecibelOnly: number; parryTotal: number; parryNoFollowUpTotal: number } | null>(() => {
     // CC-303：门控（弹刀预算 / 失衡次数四舍五入勾选 / 有击破位或队伍非空）与击破位槽位（首个 stun 特性，无则 0）都读引擎
-    // `parrySplitGate`，不再在此复制 convergence 的规则。原「懒守卫」省不了计算：同页 decibelGuaranteeResult 无条件读 calcOutput。
+    // `parrySplitGate`，不再在此复制 convergence 的规则。原「懒守卫」省不了计算：同页多个展示量本就无条件读 calcOutput。
     const gate = calcOutput.value?.parrySplitGate
     if (!gate?.active) return null
     // CC-297：读本轮已装入的分配（与资源卡 / 本轮 stunCount 同源），不读下一轮反推量。null = 首轮缺省对半分，无反推可显示。
@@ -595,8 +595,6 @@ export function createResourceCalc(
   // CC-227：直读引擎本轮实际用于喧响的那份（convergence 的 calcSpecialActionBonus 结果）。
   // 旧写法在此用 store 原值 + topUp + parrySplit 另拼每槽弹刀、连携取结果 chainCountTotal——与引擎（注入后 cfg、规划连携）是两套口径。
   const specialActionBonus = computed<SpecialActionBonusResult | null>(() => calcOutput.value?.specialActionBonus ?? null)
-  /** 通用保底4喧响的引擎决策（CC-229）：TeamConfigPage 提示直读，不再用收敛后喧响重算缺口 */
-  const decibelGuaranteeResult = computed(() => calcOutput.value?.decibelGuarantee ?? null)
 
 
 
@@ -874,7 +872,6 @@ const attributeLedger = computed(() => {
     interactionTopUp,
     parrySplitResult,
     guaranteeStunShortfallResult,
-    decibelGuaranteeResult,
     ultPromoteCount,
     ultPromoteHug60,
   }

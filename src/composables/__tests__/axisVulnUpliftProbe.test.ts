@@ -128,7 +128,7 @@ describe.runIf(ACTIVE)('探针：手动轴 vs 无轴的易伤贡献提升', () =
 
     const ids = (process.env.PROBE_AXIS_VULN_TEAMS ?? '').split(',').map(s => s.trim()).filter(Boolean)
     const targets = ids.length > 0 ? teamPresets.filter(p => ids.includes(p.id)) : teamPresets
-    const G = ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate']
+    const G = ['guarantee.stun', 'guarantee.fury']
     const records: Record<string, unknown>[] = []
     const out: string[] = []
     for (const preset of targets) {

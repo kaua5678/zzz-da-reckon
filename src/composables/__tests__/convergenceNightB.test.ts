@@ -147,7 +147,7 @@ describe('convergence 夜间批 B · 组 3 保留项：cfg-merge 分支仍在（
     const { findInteractionTopUpSlot, getRegisteredAgentMechanics } = await import('@/mechanics')
     expect(findInteractionTopUpSlot([{ agentId: '1011' }, { agentId: '1471' }, null])).toBe(1)
     expect(findInteractionTopUpSlot([{ agentId: '1011' }, { agentId: '' }, undefined])).toBe(-1)
-    // 当前唯一产出者；新增时同步核对 convergence 的通用保底4喧响互斥（decibelParryActive）
+    // 当前唯一产出者；新增时同步核对它与其他交互补齐通道的互斥
     expect(getRegisteredAgentMechanics().filter(m => typeof m.computeInteractionTopUp === 'function').map(m => m.agentIds[0])).toEqual(['1471'])
     // CC-295：门控归模块——关闭（无轴、保底全关，或设置关）⇒ null（编排层保持上一轮值）；打开 ⇒ 与纯函数同值
     const { computeBanyueInteractionTopUp } = await import('@/mechanics/agents/banyue')
@@ -166,7 +166,7 @@ describe('convergence 夜间批 B · 组 3 保留项：cfg-merge 分支仍在（
     const { getRegisteredMechanicSettings } = await import('@/mechanics')
     const ids = getRegisteredMechanicSettings().map(s => s.id)
     // `resolveMechanicSettings` 只遍历注册表 ⇒ 未注册 = 不在 AgentTeamConfigInput.settings 里
-    for (const k of ['guarantee.fury', 'guarantee.ultimate', 'guarantee.stun']) {
+    for (const k of ['guarantee.fury', 'guarantee.stun']) {
       expect(ids.includes(k), `${k} 若被注册 ⇒ 模块可读 ⇒ :840 的迁移前提变了，应复核`).toBe(false)
     }
     // 反证：般岳自己的滑块**是**注册的（对照，证明上面的 false 不是遍历写错）

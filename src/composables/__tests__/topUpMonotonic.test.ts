@@ -34,7 +34,7 @@ import { teamPresets } from '@/data/teamPresets'
 import { applyTeamToStore, applyGoldToStore, applyAxisBinding, baseGoldOf } from '@/composables/teamCompare'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
 
-const GUARANTEES = ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate'] as const
+const GUARANTEES = ['guarantee.stun', 'guarantee.fury'] as const
 
 interface Arm {
   dmg: number

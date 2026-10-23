@@ -317,6 +317,7 @@
 
       <ImpactChart :team-total-damage="teamTotalDamage" :coverage-rate="anomalyPoolResult?.coverage?.perElementCoverageRate" />
       <SubstatCurveChart />
+      <SubstatScoreCard />
       <MarginalUtilityCard />
     </template>
   </div>
@@ -326,6 +327,7 @@
 import { computed, ref } from 'vue'
 import ImpactChart from '@/components/ImpactChart.vue'
 import SubstatCurveChart from '@/components/charts/SubstatCurveChart.vue'
+import SubstatScoreCard from '@/components/charts/SubstatScoreCard.vue'
 import MarginalUtilityCard from '@/components/MarginalUtilityCard.vue'
 import { NButton, NCard, NInputNumber, NSelect } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'

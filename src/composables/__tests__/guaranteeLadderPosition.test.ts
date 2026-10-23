@@ -5,10 +5,11 @@
  * 两条候选路线都被实测反证，见 `/home/kaua/t140b/REPORT.md`）。它把三条**决策相关**的实测事实
  * 钉成机器判据，让「下一个会话动手前先看这里」而不是重跑探针：
  *
- * ① **轴态下 `guarantee.fury` / `guarantee.ultimate` 的边际逐位为 0** —— 这就是
+ * ① **轴态下 `guarantee.fury` 的边际逐位为 0** —— 这就是
  *    `convergence.ts#guaranteeFury` 的「视同勾选」（`axisActive || …`，用户裁决 2026-10-11，
  *    **有意设计，不许删**）在曲线上的可观察形态。负控 = 同树同条件下**非轴队**的
- *    `guarantee.ultimate` 边际 > 0 ⇒ 归零确实是轴态造成的，不是这两键本来就没用。
+ *    `guarantee.fury` 边际 > 0 ⇒ 归零确实是轴态造成的，不是这个键本来就没用。
+ *    （2026-10-23：原第二个键 `guarantee.ultimate`（保底4喧响）已随功能整体删除。）
  *
  * ② **反证路线 (a)「全关档也置 forceNoAxis/清轴」**：难度阶梯的目标集里**没有任何一档会把轴开回来**
  *    （轴来自 `applyAxisBinding(preset)` = 队伍配置，不是优化杠杆）⇒ 清轴基线会让**整条曲线**退化成
@@ -39,7 +40,7 @@ beforeEach(() => {
   mockStaticFetch()
 })
 
-const KEYS = ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate'] as const
+const KEYS = ['guarantee.stun', 'guarantee.fury'] as const
 
 /** 曲线真实「全关」基线：clearDifficultyLevers（guarantee.* 全 0、吸收 0）+ 预设静态权重/交互 + 基础金 */
 function baseline(config: LadderCtx['config'], calc: ReturnType<typeof useResourceCalc>, preset: (typeof teamPresets)[number]) {
@@ -66,24 +67,27 @@ describe('T140b 现状锁：轴队「全关」档的保底键边际', () => {
       return { off, gain: dmgOf(calc) - off, axes: calc.effectiveStunAxes.value.length }
     }
 
-    // —— 轴队：曲线全关档下轴仍生效（前提），fury/ultimate 两键边际逐位为 0
+    // —— 轴队：曲线全关档下轴仍生效（前提），fury 键边际逐位为 0
     const axisTeam = pick('yixuan-roxy-lucia')
-    for (const key of ['guarantee.fury', 'guarantee.ultimate'] as const) {
+    for (const key of ['guarantee.fury'] as const) {
       const r = marginal(axisTeam, key)
       expect(r.axes, `前提：${axisTeam.id} 在曲线全关档仍是轴态`).toBeGreaterThan(0)
       expect(r.gain, `${axisTeam.id}｜轴态 ⇒ ${key} 被视同勾选，边际必须逐位为 0`).toBe(0)
     }
 
-    // —— 负控：非轴队（清轴，曲线全关档轴不生效）的 ultimate 键边际 > 0
-    // ⇒ 上面那个 0 是**轴态**造成的，不是这两个键本来就没用（否则本用例对泄漏零判别力）
-    const nonAxisTeam = pick('banyue-norma-lucia')
+    // —— 负控：非轴队（清轴，曲线全关档轴不生效）的 fury 键边际 > 0
+    // ⇒ 上面那个 0 是**轴态**造成的，不是这个键本来就没用（否则本用例对泄漏零判别力）
+    // 2026-10-23：原负控用 'banyue-norma-lucia' + `guarantee.ultimate`。该键随「保底4喧响」功能删除，
+     // 而 norma 队**没有** fury 缺口（实测 fury 边际 0）⇒ 换一支实测有 fury 边际的非轴队
+     // （banyue-trigger-lucia：实测 +3.97M），判据语义不变。
+    const nonAxisTeam = pick('banyue-trigger-lucia')
     baseline(config, calc, nonAxisTeam)
     config.setAxisState({ stunAxes: [], stunAxisPlans: [], useStunAxis: false })
     config.autoYidhariAxis = false
     expect(calc.effectiveStunAxes.value.length, '负控前提：清轴后非轴态').toBe(0)
     const off = dmgOf(calc)
-    config.setMechanicSetting('guarantee.ultimate', 1)
-    expect(dmgOf(calc) - off, '负控：非轴队的 guarantee.ultimate 必须真有边际').toBeGreaterThan(0)
+    config.setMechanicSetting('guarantee.fury', 1)
+    expect(dmgOf(calc) - off, '负控：非轴队的 guarantee.fury 必须真有边际').toBeGreaterThan(0)
   }, 300_000)
 
   it('② 反证路线 (a)：阶梯只动「交互配置 + 合轴吸收」两个旋钮，没有任何"开轴"旋钮', async () => {
@@ -155,7 +159,7 @@ describe('T140b 现状锁：轴队「全关」档的保底键边际', () => {
     // T140b 原锁：「轴队的 G3 不进录取序列，如实进 `dropped`；负控 = 非轴队的 G3 仍被录取」。
     // **T140c 让这条判据整体失效**，因为 `G3` 这个点**不再存在**：
     //  - `DIFFICULTY_GOALS` / `dropped` / `opened` 三个概念随贪心阶梯一并删除（卡 §3.3 / §3.4）；
-    //  - 保底（`guarantee.fury` / `guarantee.ultimate`）**降级为轴可行性的判定条件**——
+    //  - 保底（`guarantee.fury`；`guarantee.ultimate` 已于 2026-10-23 删除）**降级为轴可行性的判定条件**——
     //    轴要立起来时由引擎自己补资源（`convergence.ts#guaranteeFury` 的「视同勾选」，用户裁决
     //    2026-10-11，实现一字未动），**不再由阶梯打开**。
     //

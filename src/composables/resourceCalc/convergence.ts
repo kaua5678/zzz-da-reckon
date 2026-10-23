@@ -53,7 +53,7 @@ import {
 import { BUILDUP_THRESHOLD_TABLE } from '@/core/anomalyPool/helpers'
 import { getBaseElement } from '@/data/anomalyElement'
 import { calcSpecialActionBonus } from '@/core/anomalyPool'
-import { PARRY_DECIBEL_BONUS, STUN_TRIGGER_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
+import { STUN_TRIGGER_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 import { withCompanionShare } from '@/data/decibelCompanion'
 import { calcTeamResources } from '@/core/resource'
 import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
@@ -63,8 +63,6 @@ import { axisMoveFreeOfDecibelOf } from './helpers'
 import { applyTeamMechanics, collectNextRoundFeedback, resolveMechanicSettings } from './panelPhases'
 import { enrichExecutionPlan, axisMoveEndsStunWindow, axisMoveExtendOnEndOf, axisMoveActionTimeOf, normalizeDisplayTime } from './helpers'
 
-/** 保底 4 喧响的四舍五入阈值（自 useResourceCalc 顶层随迁；那里改为了 import） */
-const DECIBEL_ROUND_THRESHOLD = 1500
 import { computeTeamVeilCountTotal } from '@/mechanics/teamVeil'
 
 import type { CalcRoundResult } from './roundResult'
@@ -140,8 +138,6 @@ export function createRunCalcRound(deps: {
       // （`:1414` 的 `prevInStunWindowTriggers <= 0` 守卫 + 对 `characters` 局部克隆的死写）
       // 已作为死写删除（判死依据见该处注释）；1511 模块经 `threads` 契约自取（round 12 批次 2）。
       teamVeilCountTotal: prevTeamVeilCountTotal,
-      decibelParry: prevDecibelParry,
-      decibelParryBasisShort: prevDecibelParryBasisShort,
       decibelRegenBySlot: prevDecibelRegenBySlot,
       // 2026-09-17 round 21 夜D：`prevPoolStunCount` 也不再在此解构——它唯一的读点
       // （雨果轴内决算块数落地，坑36）已整块迁进 `hugo.ts#applyHugoTeamConfig`，
@@ -230,7 +226,7 @@ export function createRunCalcRound(deps: {
     // 「失衡次数四舍五入」勾选时，击破位（队伍首个 stun 特性槽位）弹刀按四舍五入反推补齐、主C 拿剩余
     // （纯函数 core/parrySplit.ts；本轮注入上一轮拆分，收敛判据含 parrySplitSeq）。
     // 不带支援突击弹刀（parryNoFollowUpTotal）**对半分**（用户口径 2026-09-10：「必须对半分；强制归击破位是错的，
-    // 那是把补失衡误解成只有击破弹刀，删掉」）；只给喧响弹刀（parryDecibelOnlyTotal）走保底4喧响通道。
+    // 那是把补失衡误解成只有击破弹刀，删掉」）；只给喧响弹刀（parryDecibelOnlyTotal）是 **Boss 预设自带**的输入（与「保底4喧响」无关，后者已于 2026-10-23 删除）。
     const { parryTotal, parryNoFollowUpTotal, parryDecibelOnlyTotal } = configStore.bossParryTotals
     const guaranteeStun = configStore.getMechanicSetting('guarantee.stun', 0) !== 0
     const breakerSlot = configStore.team.findIndex(c => c.agentId && catalogStore.agentsMap.get(c.agentId)?.specialty === 'stun')
@@ -287,7 +283,7 @@ export function createRunCalcRound(deps: {
     // 原话：「轴模式确实对资源要求高，也许必须打开开关才能达到。因为轴模式本来就是最顶尖的预设」
     //      「你可以让轴模式自动勾选保底4嗔火和保底4喧响，因为一次轴里面花费了一次嗔火和一次喧响，
     //        所以资源要求本来就是 4 次嗔火和 4 次喧响」。
-    // 语义：`axisActive`（本轮的轴真的注入了计算）时，`guarantee.fury` / `guarantee.ultimate` 视同已勾选。
+    // 语义：`axisActive`（本轮的轴真的注入了计算）时，`guarantee.fury` 视同已勾选。
     // 为什么放在这里而不是写进 store：`guarantee.*` 是**用户意图**（配装页复选框 + 难度阶梯 G3 +
     // 归档部署都会写），写 store 会把「引擎按轴推断的补齐」和「用户勾的保底」混成一份、且污染 G3 的
     // 「全关」基线（`clearDifficultyLevers` 清零后又被引擎写回）。这里只做**本轮读数的视同勾选**，
@@ -296,10 +292,12 @@ export function createRunCalcRound(deps: {
     // 与轴自身的嗔火/喧响需求无关（轴内连携由轴块反推，见 roundInputs）。
     // 判据：`src/composables/__tests__/axisAutoGuarantee.test.ts`（轴态补齐量 > 非轴态；非轴态零差）。
     const guaranteeFury = axisActive || configStore.getMechanicSetting('guarantee.fury', 0) !== 0
-    const guaranteeUltimate = axisActive || configStore.getMechanicSetting('guarantee.ultimate', 0) !== 0
-    // 通用保底4喧响：喧响缺口 → 弹刀（任意队伍；般岳走上面的模块能力 computeInteractionTopUp，此处排除避免双计）。
-    // 弹刀注入槽位 0（主C，弹刀喧响经伴随覆盖全队），轮间经 prevDecibelParry 线程收敛。
-    const decibelParryActive = guaranteeUltimate && interactionTopUpSlot < 0
+    // ⚠ 2026-10-23：`guarantee.ultimate`（保底4喧响 / 喧响四舍五入）**已整体删除**——
+    // 用户裁决「保底4喧响我记得已经删了啊……改吧，这个保底是余孽，不要再用了」。
+    // 连带删除：`decibelParry*` 线程、`decibelGuarantee` 决策载荷、配装页复选框、
+    // 难度阶梯 GUARANTEE_KEYS 第三项、归档部署的自动勾选。
+    // 保留：`guarantee.stun`（失衡次数四舍五入 / Boss 弹刀反推）、`guarantee.fury`（保底4嗔火）、
+    // `parryDecibelOnlyTotal`（Boss 预设自带的「只喧响」弹刀，与本功能无关）。
 
     /**
      * 轴内某槽位**真·喧响大**的块总次数（× 窗口数）——判据走 `chainMoveKind`
@@ -644,12 +642,6 @@ export function createRunCalcRound(deps: {
           merged.parryTimeFreeCount = (merged.parryTimeFreeCount ?? 0) + xParryTotal
         }
       }
-      // 通用保底4喧响：注入槽位 0 的「只给喧响」弹刀补齐量（上一轮收敛值；首轮 0）。
-      // 走 parryDecibelOnlyCount 而非 parryCount：只计 215 喧响、不产轻弹刀/支援突击行、不贡献失衡值——
-      // 「失衡次数四舍五入」补的弹刀（含失衡值）由上方 parrySplit 独立反推，二者职责分离，避免弹刀↔失衡池的反馈环振荡。
-      if (decibelParryActive && cfg.slot === 0) {
-        merged.parryDecibelOnlyCount = merged.parryDecibelOnlyCount + prevDecibelParry
-      }
       // 2026-09-15 arch 棘轮：norva(1571)/qingyi(1251) 的失衡次数注入已迁进各自模块的
       // applyTeamConfig（converge 阶段读同一组 hook 入参 stunCount/combatTime，规则 6）。
       // 雨果 1291 的轴内决算反推（`hugoAxisRemainingStunSeconds` / `hugoAxisExVerdictCount` /
@@ -805,7 +797,7 @@ export function createRunCalcRound(deps: {
       // ⚠ 语义与 `axis`/`interactions`/`countStun` 逐条同款：只有 converge 有值、**缺省即缺省**
       // （不 `?? {}` 兜底）。消费先例：般岳 1471 的 `autoTopUp` 系列（原为本文件
       // `characters.map` 里的 `agentId === '1471'` 分支）。
-      guarantee: { stun: guaranteeStun, fury: guaranteeFury, ultimate: guaranteeUltimate },
+      guarantee: { stun: guaranteeStun, fury: guaranteeFury },
       // Boss 预设弹刀反推的三项**输入侧**声明值（本轮拆分结果另走 `threads.parrySplit`，
       // 不在这里重复递——那是跨轮量、这是本局静态输入）。
       boss: { parryTotal, parryNoFollowUpTotal, parryDecibelOnlyTotal },
@@ -894,14 +886,23 @@ export function createRunCalcRound(deps: {
       // 槽位即按能力查找（CC-293）⇒ 该槽模块必有 computeInteractionTopUp；返回 null = 模块判定本轮不补齐 ⇒ 保持上一轮值（CC-295）
       const computeTopUp = storeChar?.agentId ? getAgentMechanic(storeChar.agentId)?.computeInteractionTopUp : undefined
       const topUpNext = computeTopUp?.({
-        gate: { axisActive, guarantee: { fury: guaranteeFury, ultimate: guaranteeUltimate }, settings: resolveMechanicSettings(configStore) },
+        gate: { axisActive, guarantee: { fury: guaranteeFury }, settings: resolveMechanicSettings(configStore) },
         dodgeCount: storeChar?.dodgeCounterCount ?? 0,
         parryCount: storeChar?.parryCount ?? 0,
         blockCount: storeChar?.blockCount ?? 0,
         dualCounterCount: storeChar?.dualCounterCount ?? 0,
         cinemaLevel: storeChar?.cinemaLevel ?? 0,
         axisEx: axisActionCountsBySlot[interactionTopUpSlot] ?? {},
-        ultimateCountNeeded: Math.max(ultNeed, guaranteeUltimate ? 4 : 0),
+        /**
+         * 轴内还需多少「喧响大」= 轴自己声明的次数（`axisUltimateNeed`）。
+         *
+         * 2026-10-23：原式是 `Math.max(ultNeed, guaranteeUltimate ? 4 : 0)`，其中
+         * `guaranteeUltimate = axisActive || 用户勾选 guarantee.ultimate`。
+         * 「保底4喧响」整体删除后，用户勾选那一支不再存在（复选框 / 键 / 决策载荷一并删除），
+         * 只剩**轴态自动保底**（用户裁决 2026-10-11「轴模式本来就是最顶尖的预设」）⇒
+         * 改为 `Math.max(ultNeed, axisActive ? 4 : 0)`，与「删除前、用户未勾选」逐位相同。
+         */
+        ultimateCountNeeded: Math.max(ultNeed, axisActive ? 4 : 0),
         minRageCount: guaranteeFury ? 4 : 0,
         ultimateCost: base.characters.find(c => c.slot === interactionTopUpSlot)?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
         decibelHave,
@@ -973,35 +974,6 @@ export function createRunCalcRound(deps: {
       // 末轮 gate 翻转的落点上两者不等（下一轮量 9 / 实际装入 0），显示读下一轮量就会「显示 +9、实际 0」。
       // 只用模块自己的 gate 判词，不在此复刻 gate 公式。
       interactionTopUpApplied = topUpNext ? prevInteractionTopUp : { ...prevInteractionTopUp, parry: 0, dual: 0 }
-    }
-
-    // 通用保底4喧响：喧响缺口 → 弹刀（所有非般岳队伍）。目标 = 主C（槽0）保底 4 次终结技（4×3000 喧响），
-    // 弹刀 = ceil(缺口 / 215)；与般岳同一口径，轮间经 prevDecibelParry 收敛。
-    // 主C个人口径（用户 2026-08-31）：喧响只算主C自己的——队友喧响不能转移给主C开大，
-    // 全队总和会把缺口抹平导致漏补（般岳分支同款坑，见上方注释）。
-    // 四舍五入口径（用户 2026-08-31）：缺口 > 半次大招（1500）= 实战打不出下一次大 → 不补；
-    // 缺口 ≤ 1500 → 补少量弹刀够到下一次（拟合司祭 4 喧响大 / 叶释渊 3 喧响大的实战档位）。
-    // 单调不减（max 夹住上一轮）：215 是弹刀个人喧响奖励、实际每刀喧响含伴随/轻弹刀数据行更高，
-    // 直接重算会在「缺口÷215」与「0」之间振荡——单调夹住后收敛到首轮估计，稳定且确定。
-    let decibelParryNext = prevDecibelParry
-    // CC-229：同时记下「使次数取到当前值的缺口」（与 decibelParry 同进退）+ 本轮剩余缺口，随结果交给展示层
-    let decibelParryBasisShortNext = prevDecibelParryBasisShort
-    let decibelResidualShort = 0
-    let decibelRoundable = true
-    if (decibelParryActive) {
-      const mainDpsDecibel = rr.characters.find(c => c.slot === 0)?.decibelSource.total ?? 0
-      const decibelShort = Math.max(0, 4 * ULTIMATE_COST_DEFAULT - mainDpsDecibel)
-      const roundable = decibelShort <= DECIBEL_ROUND_THRESHOLD
-      decibelRoundable = roundable
-      if (roundable) {
-        // 等价于旧写法 max(prev, ⌈short/215⌉)，只是在「增大」分支顺手记下 basis
-        const need = Math.ceil(decibelShort / PARRY_DECIBEL_BONUS)
-        if (need > prevDecibelParry) {
-          decibelParryNext = need
-          decibelParryBasisShortNext = decibelShort
-        }
-      }
-      decibelResidualShort = decibelShort
     }
     // 赠行由引擎物化 → rr 里已有赠行；池侧赠送口径单独结算，故基准提取跳过赠行（防双计）
     const baseStun = extractStunExecsFrom(rr, true)
@@ -1381,31 +1353,6 @@ export function createRunCalcRound(deps: {
       interactionTopUp: interactionTopUpNext,
       parrySplit: parrySplitNext,
       specialActionBonus: specialActionBonusRound,
-      /**
-       * 保底 4 喧响的**决策结果**（三者同属一次决策，语义见下）。
-       *
-       * ⚠ **2026-10-23 复核澄清**（曾误判为「展示矛盾」，实际是自洽的）：
-       * `residualShort = 4 × ULTIMATE_COST_DEFAULT − 主C喧响`。**`ULTIMATE_COST_DEFAULT = 3000`**
-       * ⇒ 目标是 **12000**（4 次大招），不是 4000。
-       * 实测雨果队：主C 8037.5 ⇒ 缺口 3962.5（≈ 少一个大招再多缺 962）—— 数字正确。
-       *
-       * `roundable = residualShort ≤ 1500` 是**「值不值得硬凑」的闸门**：
-       * 缺口在 1500 以内 ⇒ 补 ⌈缺口/215⌉ 次弹刀把第 4 次大打出来；
-       * 缺口 3962 > 1500 ⇒ **放弃硬凑**（要补 19 次弹刀，代价远超收益）⇒ `parry = 0`。
-       * 页面文案同源（TeamConfigPage）：「缺口 3962 > 1500，实战打不出下一次大 → 不硬凑」。
-       *
-       * ⇒ `parry = 0` 且 `residualShort > 0` 不矛盾，是「缺口太大主动放弃」的正常状态；
-       *    只有 `roundable = true` 时才会出现 `parry = ⌈residualShort/215⌉ > 0`。
-       */
-      decibelGuarantee: {
-        active: decibelParryActive,
-        parry: decibelParryActive ? prevDecibelParry : 0,
-        basisShort: decibelParryActive ? prevDecibelParryBasisShort : 0,
-        residualShort: decibelResidualShort,
-        roundable: decibelRoundable,
-        roundThreshold: DECIBEL_ROUND_THRESHOLD,
-        perParry: PARRY_DECIBEL_BONUS,
-      },
       inStunAnomalyState: inStunAnomalyStateNext,
       bossAnomalyState: bossAnomalyStateNext,
       // `threads` = 本轮**读入**的上一轮线程；`interactionTopUp` 例外：交互栏显示的是「本轮已装量」
@@ -1433,8 +1380,6 @@ export function createRunCalcRound(deps: {
         inStunWindowTriggers: inStunWindowTriggersNext,
         teamVeilCountTotal: teamVeilCountTotalNext,
         postRoundInput: postRoundInputNext,
-        decibelParry: decibelParryNext,
-        decibelParryBasisShort: decibelParryBasisShortNext,
         // 轴栈喧响预算 = 本轮各槽喧响产出。CC-317 删掉原先的 max(上一轮, 本轮) 棘轮（防「轨削减大招 → 产出下滑 →
         // 螺旋到 0」）：第 332 轮复测 495 例 golden + specs，棘轮在约 20% 的轮次生效，但只改变 7 次中间轮的喧响跳过，
         // 最终结果、退出类型、总轮数逐位不变；而棘轮让预算依赖迭代路径（历史最大值）。若日后复现螺旋，回退 CC-317。

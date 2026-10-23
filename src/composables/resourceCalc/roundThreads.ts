@@ -9,7 +9,8 @@
  * 同步评估终止判据并补真实管线测试。“字段传到了下一轮”不代表求解器会等到它稳定。
  *
  * 语义约定（与旧位置参数版逐字段等价）：
- * - 持久组：goodReview / energyBySlot / interactionTopUp / parrySplit / decibelParry / decibelParryBasisShort
+ * - 持久组：goodReview / energyBySlot / interactionTopUp / parrySplit
+ *   （2026-10-23 删掉 decibelParry / decibelParryBasisShort：保底4喧响功能整体移除）
  *   —— 它们的下一轮值在 runCalcRound 内部已由 prev 兜底（如 interactionTopUpNext 初值 = prev.interactionTopUp）。
  * - CC-418：runCalcRound 不再返回 null（CC-417 删空失衡池 null 后唯一剩余出口与 calcOutput 守卫同条件、不可达），
  *   原「null 轮重置其余字段」规则 `threadsAfterNullRound` 随之删除；线程只经 `initialCalcRoundThreads` 起始、经 `threadsNext` 推进。
@@ -47,14 +48,6 @@ export interface CalcRoundThreads {
   inStunWindowTriggers: number
   /** 全队以太帷幕开启总次数（照霜寒开帷幕 + 爱芮/叶瞬光终结技 + 千夏强特；叶瞬光溯影惊鸿/爱芮合作舞台/千夏磨爪器消费） */
   teamVeilCountTotal: number
-  /** 通用保底4喧响：弹刀补齐量（非般岳队伍） */
-  decibelParry: number
-  /**
-   * 通用保底4喧响：使 `decibelParry` 取到当前值的那一轮的喧响缺口（恒有 decibelParry = ⌈basis / 215⌉）。
-   * CC-229：只在 decibelParry 增大时随之更新 ⇒ 是 decibelParry 的从属量、不独立变化，
-   * 故不必进 outerCycle#outerFeedbackSignature（decibelParry 已在其中）。供 TeamConfigPage「诚实显示」直读。
-   */
-  decibelParryBasisShort: number
   /** 时间轴喧响轨：各槽上一轮收敛的喧响产出（slot → 点；首轮空对象 = 轨未启动） */
   decibelRegenBySlot: Record<number, number>
   /**
@@ -79,8 +72,6 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     moduleFeedback: {},
     inStunWindowTriggers: 0,
     teamVeilCountTotal: 0,
-    decibelParry: 0,
-    decibelParryBasisShort: 0,
     decibelRegenBySlot: {},
     prevPoolStunCount: undefined,
     postRoundInput: null,

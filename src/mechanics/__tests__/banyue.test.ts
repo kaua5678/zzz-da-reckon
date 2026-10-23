@@ -324,7 +324,7 @@ describe('computeBanyueInteractionTopUp（轴模式自动补齐，保底语义�
      *    `computeBanyueInteractionTopUp` 内该注释）——`applied > truth` 表示计划里**装多了**，
      *    此时 301.35 反推会给一个更小的数、下一轮再算回来 ⇒ 三相环（实测 `banyue-trigger-lucia`
      *    `dec 14804 -> 15156 -> 15411 -> 14804`）。夹子让「够了就不再往回砍」，与
-     *    `convergence.ts` 通用保底 4 喧响的 `decibelParryNext`「单调不减」同一处置。
+     *    与 convergence 侧（历史上那条已删除的「保底 4 喧响」弹刀线程，2026-10-23 移除）同一处置。
      * ③ 确认有意：不变量原句写的是「**自洽总刀数**与已装无关」，而夹子只在**已装超过真需求**
      *    的档位上生效——那正是「不补才对」的档位，函数返回「不再新增」是正确语义。
      * ④ 本条按新口径改为**单侧**不等式，并保留 `applied <= truth` 一侧逐位相等。

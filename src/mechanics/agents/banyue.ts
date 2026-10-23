@@ -696,16 +696,16 @@ export function computeBanyueMingwangBlocks(
  *   唯一编码「契约没接上」，而不是静默按「保底全关 + 无轴」算出一组看似正常的零值）。
  */
 /**
- * 自动补齐门控（CC-295 单一来源）：轴模式或任一保底开关（嗔火 / 喧响）打开，且设置 `banyue.autoTopUpInteractions`
+ * 自动补齐门控（CC-295 单一来源）：轴模式或保底4嗔火打开，且设置 `banyue.autoTopUpInteractions`
  * 未关闭。`applyBanyueTeamConfig`（用不用补齐量）与 `computeInteractionTopUp`（算不算补齐量）共用；
  * 此前编排层 convergence 另抄一份并直读本模块设置键。
  */
 function banyueAutoTopUpEnabled(
   axisActive: boolean,
-  guarantee: Readonly<{ fury: boolean; ultimate: boolean }>,
+  guarantee: Readonly<{ fury: boolean }>,
   settings: Readonly<Record<string, number>> | undefined,
 ): boolean {
-  return (axisActive || guarantee.fury || guarantee.ultimate)
+  return (axisActive || guarantee.fury)
     && settingOf(settings, 'banyue.autoTopUpInteractions') !== 0
 }
 

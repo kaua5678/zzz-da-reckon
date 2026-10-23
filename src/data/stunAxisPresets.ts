@@ -71,10 +71,11 @@ export interface StunAxisPreset {
    * 因为保底在难度爬梯里是独立目标档 G3（`difficultyLadder.ts`，「全关」基线清零、试开失败回滚），
    * 绑轴顺带开保底会把「换轴」与「开保底」两个难度维度捆死、污染全关基线。
    * 现唯一声明者「5火10大」与「般琉通用」同队、后者带 plans 优先 ⇒ 自动命中选不到它，只有手动应用会写。
-   * - stun：保底 N 次失衡；fury：保底 N 次嗔火（般岳怒相）；ultimate：保底 N 次喧响（终结技）。
-   * 如 5火10大 = { stun: 4, fury: 4, ultimate: 4 }（另需琉音好评≥6，见 note）。
+   * - stun：保底 N 次失衡；fury：保底 N 次嗔火（般岳怒相）。
+   *   （2026-10-23：`ultimate`（保底4喧响）已随功能整体删除，预设不再声明该键。）
+   * 如 5火10大 = { stun: 4, fury: 4 }（另需琉音好评≥6，见 note）。
    */
-  guarantee?: { stun?: number; fury?: number; ultimate?: number }
+  guarantee?: { stun?: number; fury?: number }
 }
 
 /** 手写预设（可选；也可全用 JSON 文件） */
@@ -281,7 +282,7 @@ export function autoStunAxisPresetOf(
   return selectAutoStunAxisPreset(config.team.map(c => c.agentId), cinemaBySlot, presets, hints)
 }
 
-export type GuaranteeSettingKey = 'guarantee.stun' | 'guarantee.fury' | 'guarantee.ultimate'
+export type GuaranteeSettingKey = 'guarantee.stun' | 'guarantee.fury'
 
 /**
  * 预设声明的保底目标 → `guarantee.*` 写入表（CC-349）：只列预设**声明了**的键（N>0 → 1、0 → 0）；
@@ -293,7 +294,7 @@ export function presetGuaranteeWrites(
   const g = preset?.guarantee
   if (!g) return []
   const out: Array<readonly [GuaranteeSettingKey, 0 | 1]> = []
-  for (const k of ['stun', 'fury', 'ultimate'] as const) {
+  for (const k of ['stun', 'fury'] as const) {
     const n = g[k]
     if (n !== undefined) out.push([`guarantee.${k}`, n > 0 ? 1 : 0])
   }

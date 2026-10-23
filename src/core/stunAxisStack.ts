@@ -580,9 +580,10 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         // 超出该槽位总量就**去掉**（不执行、不计入），不许凭空创造。喧响实测语义：总回复 9000 →
         // 只够 3 次大招，轴里捏了 4 次 → 第 4 次打不出来（窗口里攒不出 3000），必须扣掉；
         // 轴里本来就只捏 3 次则不受影响。闪能（强特）同口径。
-        // 例外：四舍五入开关（保底4喧响 `guarantee.ultimate`）**已经在总量侧**把缺口补上
-        //（补弹刀 → decibelSource.total 变高，见 useResourceCalc 的 decibelParryNext），
-        // 所以这里不需要「允许超支」——开关打开时总量本身就略微提升了。
+        // （历史备注）曾有一个「保底4喧响」开关在**总量侧**补缺口（补只给喧响的弹刀 →
+        // decibelSource.total 变高），故当时不需要「允许超支」。该功能已于 2026-10-23 整体删除
+        // （用户裁决「这个保底是余孽，不要再用了」）⇒ 现在没有任何开关能让总量超支，
+        // 「不够就跳过」是唯一口径。
         // 本文件头注释一直写的也是「不够就跳过」，此前实现与之不符。
         if (act.decibelCost > 0 && (decibelLeft[act.slot] ?? 0) + 1e-9 < act.decibelCost) {
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'decibel' })

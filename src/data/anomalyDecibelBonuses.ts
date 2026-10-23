@@ -14,7 +14,7 @@ export const TURBULENCE_DECIBEL_BONUS = 85
 
 // ---- 特殊动作喧响单价（CC-232 从 core/anomalyPool.ts 下沉：ResultPage「特殊动作喧响」卡说明文字原为手写 215/10/10/20，
 //      视图层不能值导入 core） ----
-/** 弹刀（招架支援）单次个人喧响；通用保底4喧响反推同引 */
+/** 弹刀（招架支援）单次个人喧响（游戏数据；Boss 预设弹刀预算 / 般岳补齐反推同引） */
 export const PARRY_DECIBEL_BONUS = 215
 /** 连携单次个人喧响 */
 export const CHAIN_DECIBEL_BONUS = 10

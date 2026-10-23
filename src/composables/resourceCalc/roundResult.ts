@@ -36,25 +36,8 @@ export interface CalcRoundResult {
     parrySplit: ParrySplitResult
     /** 本轮实际用于喧响的特殊动作奖励（calcSpecialActionBonus 整份，含每槽次数）。CC-227：展示直读，不再在 useResourceCalc 另拼一份 */
     specialActionBonus: SpecialActionBonusResult
-    /**
-     * 通用保底4喧响的本轮决策（CC-229，TeamConfigPage 提示直读；此前页面用收敛后的主C喧响重算缺口 = 补后剩余缺口，与引擎决策不同）。
-     * active=false ⇒ 未勾选或本队由补齐角色（挂出 computeInteractionTopUp 者，如般岳）负责，通用口径不生效。
-     */
-    decibelGuarantee: {
-      active: boolean
-      /** 本轮结果里实际注入主C 的「只给喧响」弹刀次数 */
-      parry: number
-      /** 决策缺口：使 parry 取到当前值的那一轮的缺口（parry = ⌈basisShort / perParry⌉） */
-      basisShort: number
-      /** 本轮结果（已含注入）上的剩余缺口 */
-      residualShort: number
-      /** 剩余缺口 ≤ roundThreshold（可补档） */
-      roundable: boolean
-      /** 四舍五入阈值（convergence `DECIBEL_ROUND_THRESHOLD`，半次大招；CC-425：页面提示插值，不再手写 1500） */
-      roundThreshold: number
-      /** 单次弹刀个人喧响（PARRY_DECIBEL_BONUS） */
-      perParry: number
-    }
+    // ⚠ 2026-10-23：`decibelGuarantee`（保底4喧响决策载荷）已随功能整体删除
+    // （用户裁决「这个保底是余孽，不要再用了」）；原先在这里的字段注释一并删除。
     inStunAnomalyState: InStunAnomalySummary | null
     bossAnomalyState: BossAnomalyStateResult | null
     threadsNext: CalcRoundThreads
@@ -62,7 +45,7 @@ export interface CalcRoundResult {
      * 本轮**输入**线程（已装入本轮计划的轮间量）。CC-297（取代 CC-296 的单字段 `interactionTopUpApplied`）：
      * 反馈线程的「本轮已装」与「下一轮算出」只在 stable 停点相等；外层落在环成员 / maxIter 时两者不等，
      * 而资源卡、stunCount、伤害都是按**已装**量算的 ⇒ 描述「这份计划」的展示一律读这里，不读 `*Next` 量。
-     * 同 `decibelGuarantee.parry` 读 prev 的口径。纯展示载荷，零求值影响（runCalcRound 不改写 threads）。
+     * 同 `interactionTopUp` / `parrySplit` 读 prev 的口径。纯展示载荷，零求值影响（runCalcRound 不改写 threads）。
      */
     threadsApplied: CalcRoundThreads
     /**

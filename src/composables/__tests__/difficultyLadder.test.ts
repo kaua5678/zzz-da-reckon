@@ -315,7 +315,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     const before = {
       absorb: config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1),
       projection: config.getMechanicSetting('time.stunPlanProjection', -1),
-      guarantee: ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate'].map(k => config.getMechanicSetting(k, -1)),
+      guarantee: ['guarantee.stun', 'guarantee.fury'].map(k => config.getMechanicSetting(k, -1)),
       weights: [0, 1, 2].map(s => config.team[s]!.basicAttackTimeWeight),
       parry: [0, 1, 2].map(s => config.team[s]!.parryCount),
       align: JSON.stringify(config.comboAlignOverrides ?? {}),
@@ -323,7 +323,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     climbDifficultyLadder(ctx, p.team as [string, string, string], { base: c => c.calc.teamTotalDamage.value })
     expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(before.absorb)
     expect(config.getMechanicSetting('time.stunPlanProjection', -1)).toBe(before.projection)
-    expect(['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate'].map(k => config.getMechanicSetting(k, -1)))
+    expect(['guarantee.stun', 'guarantee.fury'].map(k => config.getMechanicSetting(k, -1)))
       .toEqual(before.guarantee)
     expect([0, 1, 2].map(s => config.team[s]!.basicAttackTimeWeight)).toEqual(before.weights)
     expect([0, 1, 2].map(s => config.team[s]!.parryCount)).toEqual(before.parry)
@@ -340,7 +340,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     expect(Number.isFinite(base)).toBe(true)
     expect(base).toBeGreaterThan(0)
     // 全关语义：三个保底键归零、投影 off、吸收 0
-    for (const k of ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate']) {
+    for (const k of ['guarantee.stun', 'guarantee.fury']) {
       expect(config.getMechanicSetting(k, -1)).toBe(0)
     }
     expect(config.getMechanicSetting('time.stunPlanProjection', -1)).toBe(0)

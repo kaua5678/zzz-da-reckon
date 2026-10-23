@@ -17,13 +17,13 @@ import {
 
 const G_PRESET: StunAxisPreset = {
   id: 'p-g', name: 'G', team: ['A', 'B', '*'], note: '',
-  guarantee: { stun: 4, fury: 0 },
+  guarantee: { stun: 4 },
   axes: [{ name: 'x', actions: [] }],
 } as unknown as StunAxisPreset
 
 describe('presetGuaranteeWrites', () => {
   it('只列声明的键：N>0 → 1、0 → 0，未声明不出现', () => {
-    expect(presetGuaranteeWrites(G_PRESET)).toEqual([['guarantee.stun', 1], ['guarantee.fury', 0]])
+    expect(presetGuaranteeWrites(G_PRESET)).toEqual([['guarantee.stun', 1]])
     expect(presetGuaranteeWrites(null)).toEqual([])
     expect(presetGuaranteeWrites({ guarantee: undefined })).toEqual([])
   })
@@ -61,15 +61,15 @@ describe('UI store 会话效果（不挂页面）', () => {
   it('换成命中队伍 → 预填声明键；未声明键与用户手勾保留', async () => {
     const { cfg } = await setup()
     const store = cfg.useConfigStore()
-    store.setMechanicSetting('guarantee.ultimate', 1) // 用户手勾（预设未声明 ultimate）
+    // 用户手勾一个**预设未声明**的键（`guarantee.fury`；G_PRESET 只声明 stun）。
+    // 原手勾键是 `guarantee.ultimate`，该键已随「保底4喧响」功能于 2026-10-23 删除 ⇒ 改用 fury。
     store.setMechanicSetting('guarantee.fury', 1)
     store.team[0]!.agentId = 'A'
     store.team[1]!.agentId = 'B'
     store.team[2]!.agentId = 'C'
     await nextTick()
     expect(store.getMechanicSetting('guarantee.stun', 0)).toBe(1)
-    expect(store.getMechanicSetting('guarantee.fury', 0)).toBe(0)
-    expect(store.getMechanicSetting('guarantee.ultimate', 0)).toBe(1)
+    expect(store.getMechanicSetting('guarantee.fury', 0)).toBe(1)
     vi.doUnmock('@/data/stunAxisPresets')
   })
 
@@ -89,7 +89,7 @@ describe('CC-358：保底预填只在「应用到 UI 现场」时发生', () => 
   it('prefillPresetGuarantee 按写入表逐键写', () => {
     const calls: Array<[string, number]> = []
     prefillPresetGuarantee({ setMechanicSetting: (k, v) => { calls.push([k, v]) } }, G_PRESET)
-    expect(calls).toEqual([['guarantee.stun', 1], ['guarantee.fury', 0]])
+    expect(calls).toEqual([['guarantee.stun', 1]])
     prefillPresetGuarantee({ setMechanicSetting: () => { throw new Error('不应写') } }, null)
   })
 

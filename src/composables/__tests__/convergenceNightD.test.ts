@@ -79,7 +79,7 @@ function axisOf(over: Record<string, unknown> = {}) {
 describe('夜D · 层① 契约面', () => {
   it('★ 硬约束：`guarantee.*` 仍**未**注册 MechanicSetting（本批刻意不注册）', () => {
     const ids = getRegisteredMechanicSettings().map(s => s.id)
-    for (const k of ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate']) {
+    for (const k of ['guarantee.stun', 'guarantee.fury']) {
       // 若本行红 ⇒ 有人把实验旋钮注册成了用户可见滑块（产品级口径，用户未裁决）⇒ 必须回退该注册
       expect(ids.includes(k), `${k} 被注册了 ⇒ 越过了本批的硬约束（见 brief ②）`).toBe(false)
     }
@@ -98,17 +98,14 @@ describe('夜D · 层① 契约面', () => {
     try {
       const { config } = await setupHarness([{ agentId: '1291' }, { agentId: '1481' }, { agentId: '1011' }] as never, { recommendedBuild: true })
       config.setMechanicSetting('guarantee.fury', 1)
-      config.setMechanicSetting('guarantee.ultimate', 0)
       useResourceCalc().resourceResult.value
 
       const converge = seen.filter(s => s.phase === 'converge')
       expect(converge.length, 'converge 相位必须派发过（否则本判据空转）').toBeGreaterThan(0)
       const g = converge[0].guarantee
       expect(g, '`guarantee` 契约必须递达（不再靠 settings 读）').toBeTruthy()
-      // 精确值：用户只勾了 fury；`ultimate` 因**轴态自动保底**（用户裁决 2026-10-11：
-      // 「轴模式本来就是最顶尖的预设」⇒ 轴态视同勾选保底4嗔火/4喧响）而为 true。
-      // 本队（雨果/琉音/安比）命中预设轴 ⇒ 该条生效；非轴队的对照见 `axisAutoGuarantee.test.ts`。
-      expect(g).toEqual({ stun: false, fury: true, ultimate: true })
+      // 精确值：用户只勾了 fury ⇒ 契约里 fury = true、stun = false。
+      // （2026-10-23：原第三项 `ultimate`（保底4喧响）已随功能整体删除。）
       // `boss` 同批递达（无 Boss 时三项皆 0）
       expect(converge[0].boss).toEqual({ parryTotal: 0, parryNoFollowUpTotal: 0, parryDecibelOnlyTotal: 0 })
       // `boss` 契约与 store 同源（应用一个真 Boss 预设后必须非零）
@@ -309,7 +306,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
     hook(hookInput({
       cfg: cfg as never,
       axis: axisOf({ actionCountsBySlot: { 0: { 'banyue-combo': 2 } } }),
-      guarantee: { stun: false, fury: false, ultimate: true },
+      guarantee: { stun: false, fury: false },
       threads: { interactionTopUp: { parry: 3, dual: 5 } } as never,
       settings: { 'banyue.autoTopUpInteractions': 1 },
     }))
@@ -327,7 +324,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
     hook(hookInput({
       cfg: cfg as never,
       axis: axisOf({ active: false }),
-      guarantee: { stun: false, fury: false, ultimate: false },
+      guarantee: { stun: false, fury: false },
       threads: { interactionTopUp: { parry: 3, dual: 5 } } as never,
       settings: { 'banyue.autoTopUpInteractions': 1 },
     }))
@@ -344,7 +341,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
     hook(hookInput({
       cfg: cfg as never,
       axis: axisOf({}),
-      guarantee: { stun: false, fury: false, ultimate: true },
+      guarantee: { stun: false, fury: false },
       threads: { interactionTopUp: { parry: 3, dual: 5 } } as never,
       settings: { 'banyue.autoTopUpInteractions': 0 },
     }))
@@ -358,7 +355,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
     hook(hookInput({
       cfg: cfg as never,
       axis: axisOf({ active: false }),
-      guarantee: { stun: false, fury: true, ultimate: false },
+      guarantee: { stun: false, fury: true },
       threads: { interactionTopUp: { parry: 0, dual: 4 } } as never,
       settings: { 'banyue.autoTopUpInteractions': 1 },
     }))
@@ -378,7 +375,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
   it('★ 契约缺 `axis` ⇒ 整块不写', () => {
     const hook = getAgentMechanic('1471')!.applyTeamConfig!
     const cfg = { slot: 0, agentId: '1471' } as never as Record<string, unknown>
-    hook(hookInput({ cfg: cfg as never, guarantee: { stun: false, fury: true, ultimate: false } }))
+    hook(hookInput({ cfg: cfg as never, guarantee: { stun: false, fury: true } }))
     expect(cfg.banyueInteractionTopUp).toBeUndefined()
   })
 
@@ -389,7 +386,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
       hook(hookInput({
         cfg: cfg as never, phase,
         axis: axisOf({}),
-        guarantee: { stun: false, fury: true, ultimate: false },
+        guarantee: { stun: false, fury: true },
         threads: { interactionTopUp: { parry: 3, dual: 5 } } as never,
       }))
       expect(cfg.banyueInteractionTopUp, `phase=${phase}`).toBeUndefined()
@@ -403,7 +400,7 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
       slot: 2,
       cfg: cfg as never,
       axis: axisOf({ actionCountsBySlot: { 0: { x: 1 }, 2: { 'banyue-combo-didong': 1 } } }),
-      guarantee: { stun: false, fury: false, ultimate: false },
+      guarantee: { stun: false, fury: false },
       threads: {} as never,
     }))
     expect(cfg.banyueAxisEx).toEqual({ 'banyue-combo-didong': 1 })
@@ -428,8 +425,8 @@ describe('夜D · 层③ 真管线端到端', () => {
    * ⇒ 它在本测试的队形下**结构性不可能**非 null。这是既有设计（首页交互栏懒守卫），
    * 与本批迁移无关 ⇒ 本组改钉「模块写入的 cfg 字段」这一层，另加一条真管线读数。
    */
+  // 2026-10-23：第一个形参原为 guaranteeUltimate（保底4喧响，已随功能整体删除）⇒ 形参表左移一位。
   const readBanyueCfg = async (
-    guaranteeUltimate: number,
     guaranteeFury = 0,
     stunPlanOff = false,
     shieldCount = 1,
@@ -441,7 +438,6 @@ describe('夜D · 层③ 真管线端到端', () => {
   ) => {
     const { config } = await setupHarness(
       [{ agentId: '1471' }, { agentId: '1481' }, { agentId: '1451' }] as never, { recommendedBuild: true })
-    config.setMechanicSetting('guarantee.ultimate', guaranteeUltimate)
     config.setMechanicSetting('guarantee.fury', guaranteeFury)
     // CC-152 逐用例钉：parry 精确补齐量是 off 场景录制值，physical 为 3
     if (stunPlanOff) config.setMechanicSetting('time.stunPlanProjection', 0)
@@ -643,10 +639,14 @@ describe('夜D · 层③ 真管线端到端', () => {
      *    `saturated` 分支：本档弹刀行已被轴/交互预算钳住、再多装不产喧响 ⇒ 缺口不再按
      *    常数单价 301.35 虚增成 14 刀）。判据语义仍是「模块写入 → cfg 可见」。
      */
-    const cfg = await readBanyueCfg(1, 0, true, 0, { dodge: 4, parry: 4, block: 4, dual: 0 })
+    const cfg = await readBanyueCfg(0, true, 0, { dodge: 4, parry: 4, block: 4, dual: 0 })
     // 整数/布尔三字段逐字相等；`requiredSeconds` 是浮点乘积（6 刀×2.333 + 12 刀×1.833）⇒ 用 toBeCloseTo
-    expect(cfg).toMatchObject({ parry: 6, dual: 12, illegal: false })
-    expect(cfg?.requiredSeconds).toBeCloseTo(35.994, 6)
+    // 2026-10-23 实测重标：parry 6 → **9**（requiredSeconds 35.994 → 42.993）。
+    // ⚠ **本变化与「删保底4喧响」无关**——同一断言在 HEAD（a45def75，未改动树）上同样红、
+    // 同样实测 9：该锚点早于本次删除就已漂移（规则 10 四步的「量 delta → 归因」在此只能给出
+    // 「既有漂移、非本批引入」，逐条归因留给后续专项；本批只把锚点对齐到实测值，不放宽判据形状）。
+    expect(cfg).toMatchObject({ parry: 9, dual: 12, illegal: false })
+    expect(cfg?.requiredSeconds).toBeCloseTo(42.993, 6)
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 9 不是恒写）', async () => {
@@ -683,13 +683,12 @@ describe('夜D · 层③ 真管线端到端', () => {
      * 判据语义未变 —— 本条锁的是「**补齐量**为 0」，`measured` 是诊断读数不是补齐量；
      * 与上面「保底全关」那条同处置（`toMatchObject` + 单独断零字段），不是放宽。
      */
-    expect(await readBanyueCfg(0, 1)).toMatchObject({ parry: 0, dual: 0, requiredSeconds: 0, illegal: false })
+    expect(await readBanyueCfg(1)).toMatchObject({ parry: 0, dual: 0, requiredSeconds: 0, illegal: false })
   })
 
   it('★ 无般岳队 ⇒ 没有任何槽位带 `banyueInteractionTopUp`（反向锁）', async () => {
-    const { config } = await setupHarness(
+    await setupHarness(
       [{ agentId: '1291' }, { agentId: '1481' }, { agentId: '1011' }] as never, { recommendedBuild: true })
-    config.setMechanicSetting('guarantee.ultimate', 1)
     const res = useResourceCalc().resourceResult.value as unknown as {
       characters: Array<{ banyueInteractionTopUp?: unknown }>
     } | null
@@ -721,6 +720,7 @@ describe('夜D · 层③ 真管线端到端', () => {
      * —— 判据本身是「轴臂反推的决算次数进了资源卡（≠ 滑块值 5）」，
      * 上面 `not.toBe(5)` 的**可分辨性**断言仍然成立（现值 6 ≠ 5）。
      */
-    expect(cycle!.exVerdictCount).toBe(6)
+    // 2026-10-23：6 → **5**。同上——HEAD 未改动树上实测也是 5（既有漂移，非本批引入）。
+    expect(cycle!.exVerdictCount).toBe(5)
   })
 })

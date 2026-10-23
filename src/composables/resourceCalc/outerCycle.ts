@@ -6,7 +6,7 @@
  * 这是既有监测量的显式投影，不是全部 CalcRoundThreads 的序列化；新增独立反馈需补判据。
  * 例外（CC-314）：模块下一轮反馈字典 `moduleFeedback` 整体入签名（键排序），模块新增键不必再改这里。
  * 口径（CC-315）：stable 的含义是「本轮输入 = 下一轮输入」——CalcRoundThreads 的每个字段要么在签名里，
- * 要么是签名已有项的从属量：decibelParryBasisShort（随 decibelParry）、teamUltimateForJufufu（= Σ 终结次数，第一项）、
+ * 要么是签名已有项的从属量：teamUltimateForJufufu（= Σ 终结次数，第一项）、
  * anomalyDecibelBonus（= anomalyPool.perSlotBonus，第二项）。（仪玄玄墨触发 CC-318 起在 moduleFeedback 里。）
  * （CC-315 曾把 `postRoundInput.stunCount` 列为已知例外——它是上一轮 countStun、滞后一拍；CC-316 起 postRound
  *  派发直接读本轮 countStun，该字段已删，例外随之消失。）
@@ -23,7 +23,6 @@ export function outerFeedbackSignature(out: CalcRoundResult): string {
     out.anomalyPool.perSlotBonus.map(v => Math.round(v)).join(','),
     `${out.interactionTopUp.parry},${out.interactionTopUp.dual}`,
     out.parrySplit ? `${out.parrySplit.breakerParry},${out.parrySplit.mainDpsParry}` : '',
-    `${out.threadsNext.decibelParry}`,
     // 保底填充依赖积蓄分数；只比较 floor 后的失衡次数会提前停止。
     out.stunPool ? (out.stunPool.totalStunBuildUp / out.stunPool.bossStunValue).toFixed(2) : '',
     // 剑仪反馈可能只改变执行行而不改变终结次数，必须独立监测。

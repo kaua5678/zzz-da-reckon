@@ -45,7 +45,7 @@
  *
  * ## 保底降级为「轴可行性判定条件」（卡 §3.3）
  *
- * `guarantee.fury` / `guarantee.ultimate` **不再由本模块打开**：轴要立起来时由引擎自己决定补多少资源
+ * `guarantee.fury` **不再由本模块打开**：轴要立起来时由引擎自己决定补多少资源
  * （`convergence.ts#guaranteeFury` 的「轴模式 ⇒ 视同勾选」，用户裁决 2026-10-11，**实现一字不动**）。
  * 本卡改的是它**在曲线口径下的地位**，不是它的实现。
  *
@@ -489,7 +489,7 @@ export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void
  * 保底键（**不再由阶梯打开**，见文件头「保底降级」）。
  * 保留常量是因为 `clearDifficultyLevers` 仍要清它们（用户意图归零 = ① 的语义）。
  */
-const GUARANTEE_KEYS = ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate'] as const
+const GUARANTEE_KEYS = ['guarantee.stun', 'guarantee.fury'] as const
 
 /**
  * 关掉全部"优化目标"旋钮（保底 / 计数投影 / 合轴率），不清队伍。
@@ -911,7 +911,7 @@ function readState(ctx: LadderCtx, knobs: PointState['knobs']): PointState {
  * - **没有 `dropped`**：不再有"丢弃目标"的概念——每个点要么存在要么如实缺失（卡 §3.4）；
  * - **不按性价比竞争**：②③④ 是**沿单一难度轴推进**的定点，不是按 Δ/代价 排序的路径
  *   ⇒ 曲线能如实出现下降段（卡 §4：不回退该点，「下降是引擎的实情，藏起来才是骗人」）；
- * - **保底不再是一点**：`guarantee.fury`/`ultimate` 由引擎按轴需求自行补齐（见文件头）。
+ * - **保底不再是一点**：`guarantee.fury` 由引擎按轴需求自行补齐（见文件头）。
  */
 export function climbDifficultyLadder(
   ctx: LadderCtx,

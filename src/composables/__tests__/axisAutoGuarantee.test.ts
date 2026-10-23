@@ -4,9 +4,11 @@
  * ## 口径（用户原话）
  * > 「轴模式确实对资源要求高，也许必须打开开关才能达到。因为轴模式本来就是最顶尖的预设」
  * > 「你可以让轴模式自动勾选保底4嗔火和保底4喧响，因为一次轴里面花费了一次嗔火和一次喧响，
+ *   （原话如此；其中「保底4喧响」已于 2026-10-23 删除，本条只剩嗔火。）
  * >   所以资源要求本来就是 4 次嗔火和 4 次喧响」
  *
- * ⇒ `axisActive`（本轮轴真的注入了计算）时，`guarantee.fury` / `guarantee.ultimate` **视同已勾选**；
+ * ⇒ `axisActive`（本轮轴真的注入了计算）时，`guarantee.fury` **视同已勾选**；
+ *   （2026-10-23：原并列的 `guarantee.ultimate` 随「保底4喧响」功能整体删除。）
  * store 一字不动（页面复选框、难度阶梯 G3 的「全关」基线、快照/还原都不受影响）。
  * `guarantee.stun`（失衡次数四舍五入）**不在**本条：它是「反推弹刀次数」的用户意图开关，与轴的嗔火/喧响需求无关。
  *
@@ -23,7 +25,7 @@ import { teamPresets } from '@/data/teamPresets'
 import { applyTeamToStore, applyGoldToStore, baseGoldOf } from '@/composables/teamCompare'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
 
-const GUARANTEES = ['guarantee.stun', 'guarantee.fury', 'guarantee.ultimate'] as const
+const GUARANTEES = ['guarantee.stun', 'guarantee.fury'] as const
 
 /** 补齐量读数（轴态补齐经模块写进结果 cfg） */
 function topUpOf(calc: ReturnType<typeof useResourceCalc>): { parry: number; dual: number } {

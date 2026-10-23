@@ -425,7 +425,7 @@ export interface AgentTeamConfigInput {
    * 消费先例：般岳 1471 的 `autoTopUp` 系列字段（原为 `convergence.ts` 的
    * `if (merged.agentId === '1471')` 块，round 21 夜D 迁入 `banyue.ts#applyTeamConfig`）。
    */
-  guarantee?: Readonly<{ stun: boolean; fury: boolean; ultimate: boolean }>
+  guarantee?: Readonly<{ stun: boolean; fury: boolean }>
 
   /**
    * 本局生效 Boss 预设里**参与弹刀反推**的三项只读快照（round 21 夜D 新增；与 `guarantee` 同族）。

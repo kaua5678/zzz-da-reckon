@@ -438,7 +438,7 @@ export interface InteractionTopUpInput {
  */
 export interface InteractionTopUpGate {
   axisActive: boolean
-  guarantee: Readonly<{ fury: boolean; ultimate: boolean }>
+  guarantee: Readonly<{ fury: boolean }>
   settings: Readonly<Record<string, number>>
 }
 

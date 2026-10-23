@@ -137,7 +137,15 @@ describe('仪玄 spec 机制（1371）', () => {
     //   同源链式后果（本用例另两条断言实测同步变化，见下方对应注释）：
     //   队友终结技次数 [3,3] → **[4,4]**、`teamUltimateFlash` 120 → **160**。
     //   归因自证：本队轴态 `axisStateOf` 两态均为 `partial(decibel:2)` 逐位相同 ⇒ 不是轴态迁移。
-    expect(yixuan.exSpecialCount).toBe(15)
+    // ⚠ **2026-10-23 15 → 14**：删除「保底4喧响」通道的**预期后果**（逐条归因见下）。
+    // ② 根因（A/B 实测，不是猜测）：在 HEAD（未改动树）上把 `guaranteeUltimate` 强行改成 `false`
+    //    单独跑本用例 ⇒ 同样 15→14、同样 5→6，**两处逐位复现** ⇒ 就是那条通道造成的。
+    // ③ 机理：修前 `decibelParryActive = guaranteeUltimate && interactionTopUpSlot < 0`。本队没有
+    //    般岳（`interactionTopUpSlot < 0`），而 `guaranteeUltimate = axisActive || 用户勾选` ⇒ 轴态下
+    //    恒真 ⇒ 引擎给主C 注入「只给喧响」弹刀（`parryDecibelOnlyCount`），抬了主C 喧响。
+    //    通道删除后这笔注入消失 ⇒ 仪玄闪能总账回落、当量 15 → **14**。
+    // ④ 确认有意：用户裁决「这个保底是余孽，不要再用了」= 要的就是这笔注入消失。
+    expect(yixuan.exSpecialCount).toBe(14)
     // 上游归因锚点（时间轴喧响轨 2026-08-31 更新）：轨按窗口时序推演——2 失衡窗口间隔 90s，
     // 队友进窗攒不足 3000（青衣 2813/赛斯 2866）→ 大招全削减 [0, 0]（原总量口径 [2, 2]）；
     // 玄墨暗涌队友终结回闪能 80→0 → 总账 800→684、当量 13→11。
@@ -157,7 +165,10 @@ describe('仪玄 spec 机制（1371）', () => {
     //   变的量 = 两名队友的 `ultimateCount`（各 3 → 4）。同源于上一条：吸收常开 ⇒ 全队时间结构
     //   变化 ⇒ 队友各多打 1 次终结。轴态 `axisStateOf` 两态逐位相同 ⇒ 不是轴态迁移，
     //   「轴内计数」这条消费口径一条没动。
-    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([4, 4])
+    // ⚠ **2026-10-23 [4,4] → [3,3]**：同上一条的连锁后果（队友终结技闪能 160 → 120 档回摆）。
+    // HEAD 上把 `guaranteeUltimate` 置 false 的 A/B 同样复现 —— 判据本意（"队友各多打一次终结"
+    // 这条链式关系的存在性）由下面的 `teamUltimateFlash` 同源断言继续承担。
+    expect(out!.characters.filter(c => c.agentId !== '1371').map(c => c.ultimateCount)).toEqual([3, 3])
     // 2026-09-03 用户裁决：能量总账/derived 的数值断言删除——计算器未定型前数值断言会
     // 钉死中间态（展示=内核同源不变式由 energyConsistency.test 承担）；玄墨回能字段断言语义保留。
     // 2026-09-07：队友大招 [2,2]→[3,3] → 队友终结闪能 80→120
@@ -173,7 +184,10 @@ describe('仪玄 spec 机制（1371）', () => {
     //   `teamUltimateFlash`（= 2 名队友 × 4 次 × 20 = 160）。吸收常开 ⇒ 仪玄腾出前台 ⇒
     //   全队时间结构变化 ⇒ 队友各多打 1 次终结。**不是**轴态迁移：`axisStateOf` 两态逐位相同
     //   （均 `partial(decibel:2)`），故 2026-10-05 的「轴内计数」契约原样保留、只是计数本身变大。
-    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(160)
+    // ⚠ **2026-10-23 160 → 120**：同一条删除的连锁后果（队友终结 [4,4] → [3,3] ⇒ 2×3×20 = 120）。
+    // 它与上面那条 `ultimateCount` 断言**同源**（120 = 3+3 次 × 20 闪能/次），因此两处必须一起改，
+    // 单独改一处会留下"账不平"的假锚。HEAD 上置 `guaranteeUltimate = false` 的 A/B 逐位复现。
+    expect(yixuan.energySource.crossAgent.teamUltimateFlash).toBe(120)
     const chain = yixuan.yixuanExChain!
     // 手填口径锁结构（轨 2026-08-31：income 随队友大招削减回落，cloudOut/flashSpent 为收敛值不锁数）
     expect(chain.ink1).toBe(3)
@@ -265,8 +279,12 @@ describe('仪玄 spec 机制（1371）', () => {
      * 本队现在保轴（不再弃轴），轴内交互次数经降配后重排 ⇒ 有效弹刀 +1。
      * 判据本意（「有效弹刀 = 链内完美格挡次数、且与 ink2 同步」）不变。
      */
-    expect(chain.perfectBlockCount).toBe(5)
-    expect(chain.ink2).toBe(5)
+    // ⚠ **2026-10-23 5 → 6**：同一条删除的连锁后果（A/B 见上一条用例的归因：HEAD 上把
+    // `guaranteeUltimate` 置 false 即复现）。机理 = 少了「只给喧响」弹刀占用的前台时间 ⇒
+    // 时间预算宽松一档 ⇒ 本队不再触发降配（`interactionScale` 回到 1）⇒ 有效弹刀 = 配置值 **6**。
+    // 判据本意（「有效弹刀 = 链内完美格挡次数、且与 ink2 同步」）不变。
+    expect(chain.perfectBlockCount).toBe(6)
+    expect(chain.ink2).toBe(6)
     // 自动 3 连：income（= 循环当量 × 60）打完轴内消耗后剩余全部打 3 连（60/次）→ 轴外凝云清零
     expect(chain.ink2Count).toBe(0)
     // 时间轴喧响轨（2026-08-31）：队友大招削减 → 玄墨暗涌闪能归零 → income 回落。
