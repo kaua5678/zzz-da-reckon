@@ -10,7 +10,7 @@
  * ③ **三条不变量**：不越界 / 不回退 / 单调。
  */
 import { describe, expect, it } from 'vitest'
-import { realizeStunWindows } from '@/core/continuousStun'
+import { continuousStunCoverage, realizeStunWindows } from '@/core/continuousStun'
 
 const W = 16
 const EFF = 180
@@ -106,5 +106,33 @@ describe('连续失衡：末窗兑现折算', () => {
       expect(r.lastFraction).toBe(0)
       expect(Number.isFinite(r.realizedWindows)).toBe(true)
     }
+  })
+})
+
+describe('连续失衡覆盖率', () => {
+  const base = { windowDuration: W, effectiveTime: EFF }
+
+  it('★ 有无 band 的两种形态：无 band ⇒ 与二值口径逐位相同；有 band ⇒ 覆盖率抬高', () => {
+    // 无 band：cont 没攒满第 6 窗（K = floor(cont)）
+    const flat = continuousStunCoverage({ ...base, plannedWindows: 5, builtWindows: 5.958 })
+    expect(flat.inBand).toBe(false)
+    expect(flat.coverage, '无 band ⇒ 与 stunWindowFraction 逐位相同').toBeCloseTo(5 * W / EFF, 9)
+
+    // 有 band：池攒出 6.266 窗、轴只排 5 窗 ⇒ 第 6 窗已开启、时间不够
+    const band = continuousStunCoverage({ ...base, plannedWindows: 5, builtWindows: 6.266 })
+    expect(band.inBand, '有 band ⇒ 展示层要标注').toBe(true)
+    expect(band.coverage).toBeGreaterThan(flat.coverage)
+    expect(band.coverage, '覆盖率 = 兑现窗 × W / eff').toBeCloseTo((5 + band.lastFraction) * W / EFF, 9)
+  })
+
+  it('★ 覆盖率**只升不降**：池低于计划（异常读数）不得把覆盖率压到旧口径以下', () => {
+    const below = continuousStunCoverage({ ...base, plannedWindows: 5, builtWindows: 2.0 })
+    expect(below.coverage).toBeCloseTo(5 * W / EFF, 9)
+  })
+
+  it('★ 决算截断损失秒照旧从分子扣（与 stunWindowFraction 同口径）', () => {
+    const lost = 8
+    const r = continuousStunCoverage({ ...base, plannedWindows: 5, builtWindows: 6.266, lostSeconds: lost })
+    expect(r.coverage).toBeCloseTo(Math.max(0, (5 + r.lastFraction) * W - lost) / EFF, 9)
   })
 })

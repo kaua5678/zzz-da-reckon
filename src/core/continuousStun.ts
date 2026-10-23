@@ -163,3 +163,42 @@ export function realizeStunWindows(input: ContinuousStunInput): ContinuousStunRe
     builtWindows: built,
   }
 }
+
+/**
+ * **连续失衡的覆盖率**（易伤覆盖率与「攒条无效时间」两个消费方共用）。
+ *
+ * 口径：`realizedWindows × W / effTime`（与 `stunWindowFraction` 同分母、同量纲），其中
+ * `realizedWindows` 由 `realizeStunWindows` 给出。
+ *
+ * ## ⚠ **严格加法**（本函数最重要的设计约束）
+ *
+ * 只有**真的存在快增段**（`realizedWindows > 计划的完整窗数`）时才会抬高覆盖率；
+ * 否则**逐位等于** `stunWindowFraction(plannedWindows, W, effTime, lost)`。
+ * 这样：① 无 band 的队零 delta（全库绝大多数）；② 不会因为「池低于计划」这类异常读数
+ * 把覆盖率**调低**（那是另一类问题，不该由本模块顺手改）。
+ *
+ * `lostSeconds`（决算截断损失秒）照旧从分子里扣，与 `stunWindowFraction` 同口径。
+ */
+export interface ContinuousStunCoverage extends ContinuousStunResult {
+  /** 易伤覆盖率（0..1） */
+  coverage: number
+  /** 是否真的落在快增段（`true` ⇒ 展示层要标注「再加点就能到完整下一档」） */
+  inBand: boolean
+}
+
+export function continuousStunCoverage(input: ContinuousStunInput & { lostSeconds?: number }): ContinuousStunCoverage {
+  const W = Math.max(0, finiteOr0(input.windowDuration))
+  const effTime = Math.max(0, finiteOr0(input.effectiveTime))
+  const planned = Math.max(0, Math.floor(finiteOr0(input.plannedWindows)))
+  const lost = Math.max(0, finiteOr0(input.lostSeconds))
+  const legacy = effTime > 0 && W > 0
+    ? Math.max(0, Math.min(1, Math.max(0, planned * W - lost) / effTime))
+    : 0
+  const r = realizeStunWindows(input)
+  const inBand = r.lastFraction > 1e-9
+  if (!inBand || effTime <= 0) return { ...r, coverage: legacy, inBand }
+  const realized = r.completeWindows + r.lastFraction
+  const coverage = Math.max(0, Math.min(1, Math.max(0, realized * W - lost) / effTime))
+  /** 兜底：绝不低于旧口径（防浮点/夹取把覆盖率压低） */
+  return { ...r, coverage: Math.max(legacy, coverage), inBand }
+}
