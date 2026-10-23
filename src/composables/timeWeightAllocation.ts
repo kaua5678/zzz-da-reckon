@@ -65,7 +65,7 @@ function carrySlotsOf(configStore: ConfigStore, catalogStore: ReturnType<typeof 
  * 判据走模块能力（`characterCountInputs` 声明了 tauntCancelCount 才算），**不认 agentId**（判据 26）。
  * 用户口径 2026-10-11：默认值 0 是给**非轴模式**的；轴模式对资源与时间有高要求，应由本搜索自动抬。
  */
-function tauntLeverSlots(configStore: ConfigStore): number[] {
+export function tauntLeverSlots(configStore: ConfigStore): number[] {
   return [0, 1, 2].filter(s => {
     const id = String(configStore.team[s]?.agentId ?? '')
     return !!id && (getAgentMechanic(id)?.characterCountInputs ?? []).some(i => i.field === 'tauntCancelCount')

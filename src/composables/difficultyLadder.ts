@@ -60,7 +60,7 @@
  */
 import { type StunAxisState, type ConfigModel, type ComboAlignState, type ActionCountField } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
-import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
+import { applyTimeWeightAllocation, tauntLeverSlots } from '@/composables/timeWeightAllocation'
 import { axisStateOf, axisStands, axisRequirementMet, axisTruncationReason, partialAxisContributes, type AxisState } from '@/composables/difficultyAxis'
 import { getInteractionDefaults } from '@/mechanics/interactionBaseline'
 import { getAgentMechanic } from '@/mechanics/registry'
@@ -184,10 +184,17 @@ export function applyInteractionKnob(ctx: LadderCtx, knob: InteractionKnob): voi
    * `computeBanyueRageCycle` 用 `min(手填, 失衡外连段数)` 硬截断 ⇒ 等价「拉到后摇归零」，不会超发。
    * 这样本模块**不需要知道**后摇有多少——那取决于怒相/连段/轴态，是引擎的活。
    */
-  for (let slot = 0; slot < 3; slot++) {
-    const row = ctx.config.team[slot] as unknown as Record<string, number | undefined> | undefined
-    // 只给**声明了该字段**的槽拉满（般岳专属；别的角色没有这个旋钮）
-    if (row?.tauntCancelCount === undefined) continue
+  /**
+   * ⚠ **判据是「模块声明了该杠杆」，不是「字段存在」**（2026-10-23 修，用户实报「曲线斜率太低」）。
+   *
+   * 修前用 `row?.tauntCancelCount === undefined` 判——但 `defaultCharacter` 给**每个**角色都预置了
+   * `tauntCancelCount: 0` ⇒ 三槽全过判据 ⇒ 无般岳的队也写满 3×99 = **297 次**。
+   * 而 `liveInteractions` 读 store 原值（不读引擎 clamp 后的实际值）⇒ x 轴白吃 297×1.2 = **356 点**
+   * （实测 `auto-1591-1481-1211`：写满前后伤害逐位相同 112.834M，x 从 0 涨到 356.4）——
+   * 「斜率 0.0%/点」的主因就是它（`banyue-liuyin-lucia` 的 297 项占 x 的 92.8%）。
+   * 单一来源 = `timeWeightAllocation#tauntLeverSlots`（同一条 `characterCountInputs` 能力判据，规则 11）。
+   */
+  for (const slot of tauntLeverSlots(ctx.config)) {
     ctx.config.setActionCount(slot, 'tauntCancelCount', TAUNT_CANCEL_FULL)
   }
   applyTimeWeightAllocation({ calc: ctx.calc, configStore: ctx.config }, 'joint-levers')

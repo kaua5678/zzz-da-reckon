@@ -981,15 +981,28 @@ function captureLadderSnapshot(config: ConfigModel, calc: Calc): LadderSnapshot 
     overflow: rr?.overflowSeconds ?? 0,
     // 交互量两读口：`preset` 传 undefined ⇒ 只用**当前配置**（与 x 轴同源；预设声明只补引擎没有的类型，
     // 而 `liveInteractions` 内部已按 `preset.interactions` 补过，见该函数）。rr 缺省 = 不缩 = 手填量。
-    interactionsFilled: sumInteractions(config, undefined),
+    // filled = 缩前量（不吃降配/截断），但仍吃引擎物理 clamp —— 见 sumInteractions 注释
+    interactionsFilled: sumInteractions(config, rr, { shrink: false }),
     interactionsPlayed: sumInteractions(config, rr),
   }
 }
 
-/** 交互总量（Σ 各类型次数）；`rr` 缺省 = 不缩（手填/声明量），给了 = 实打量 */
-function sumInteractions(config: ConfigModel, rr: TeamResourceResult | null | undefined): number {
+/**
+ * 交互总量（Σ 各类型次数）。
+ *
+ * 两个读口必须分清（2026-10-23 修，用户实报「斜率太低」连带发现的截断提醒误报）：
+ * - `played` = 交给引擎的 `rr` ⇒ 降配缩 + 截断存活率缩 + 引擎 clamp（= 真打出来的）；
+ * - `filled`（本函数） = **不缩**，但**引擎物理 clamp 照吃**（`shrink: false`）。
+ *   为什么不能连 clamp 都不吃：般岳嘲讽取消 store 写 99 = 「拉到后摇归零」，实际只有个位数；
+ *   若 filled 取 99，截断提醒会报「被砍 92 次」——那是**把物理上限说成时间截断**。
+ */
+function sumInteractions(
+  config: ConfigModel,
+  rr: TeamResourceResult | null | undefined,
+  opts?: { shrink?: boolean },
+): number {
   let s = 0
-  for (const it of liveInteractions(config, undefined, rr)) s += it.count || 0
+  for (const it of liveInteractions(config, undefined, rr, opts)) s += it.count || 0
   return s
 }
 

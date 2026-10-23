@@ -887,6 +887,16 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     **修法（协议）**：composable 的入参一律是**取值函数**、返回 `ComputedRef`；调用方把 ref 原样交给模板（模板自动解包），**永不**在 setup 顶层 `.value`。展示要用的引擎量从引擎接口取（`useResourceCalc#windowDuration` / `#stunEffectiveTime`；曲线页取 `CurvePointPoolResult` 随档带出的同一次求值快照），不要展示层套第二份公式（旧写法漏传 `teamStunDurationBonus` ⇒ 琉音/仪玄队展示按 16s、引擎按 18s，「第几窗装不下」差一档）。
     **护栏**：`composables/__tests__/stunDiscreteDisplay.test.ts`（SSR 渲染 + 源码锁：三个入参取值函数读到的标识符必须声明在调用点之前；模板必须传载荷 ref）；决策树行 `ARCHITECTURE.md` §4「页签切过去整页空白」。
     **否决记录**：❌「把 `useStunDiscreteDisplay(...)` 挪到 `useResourceCalc()` 之后就行」——那只是把 TDZ 推后，`.value` 冻快照仍在，且下次谁把解构挪走又炸（源码锁现按「声明顺序」通用判，不认单点）；❌「加 `?.` 或 `?? null` 兜底」——TDZ 是模块级绑定在初始化前被访问，可选链不改变求值时机。
+57. **难度 x 轴读「store 里填的值」，而某些字段填的是**意图**——「字段存在 ≠ 角色有这个杠杆」（2026-10-23，用户实报「难度曲线斜率太低」）**：
+   **症状**：难度曲线 y 轴涨 17.9%、x 涨 384 ⇒ 斜率显示 **0.0%/点**；换几支队都是 0.0；明细里 x 的 92% 来自一项「嘲讽取消297×1.2」。
+   **根因（两处，缺一不成）**：① `difficultyLadder#applyInteractionKnob` 拉满嘲讽取消的判据是 `row?.tauntCancelCount === undefined`，而 `defaultCharacter` 给**每个**角色都预置了 `tauntCancelCount: 0` ⇒ 三槽全过判据、无般岳的队也写满 3×99 = 297；② `liveInteractions#engineInteractionItems` 读 store **原值**，而引擎 `banyue.ts` 按 `min(手填, 失衡外连段数)` 截断到个位数 ⇒ 意图值（99）当成操作量。
+   **实测**（`auto-1591-1481-1211`，无般岳）：嘲讽取消 0 → 写满 99 时**伤害逐位不变 112.834M**，x 从 **0 → 356.4**。
+   **判据**：`tauntCancelLever.test.ts` ★②′（无般岳队三槽都不被写）+ ★③′（x 的该项 == 引擎 clamp 后的 `banyueRageCycle.tauntCancelCount`，且 `rr = null` 时退回 store 值）。
+   **修法**：① 槽位判据改用模块能力声明（单一来源 = `timeWeightAllocation#tauntLeverSlots`，规则 11）；② `engineInteractionItems` 加 `actualOf` 覆盖通道，只对「store = 意图、引擎会 clamp」的字段生效（当前唯一 = tauntCancel），且**不再乘降配/存活率**（实打值已是交付量，二次折损会把真账压小）。
+   **连带口径**：`captureLadderSnapshot#interactionsFilled`（「配置了多少」那一读口）改用 `liveInteractions(..., { shrink: false })` —— 不吃降配/截断，但**引擎物理 clamp 照吃**；否则截断提醒会把「物理上限」误报成「被时间砍了 92 次」。
+   **否决记录**：❌「只改槽位判据就够」——般岳自己那条仍吃 99×1.2 = 118.8 点（实测④档 x=414.7 里 356 来自两个假槽、118.8 来自它自己）；❌「把 `tauntCancelCount` 从 `defaultCharacter` 删掉，让字段不存在」——会改变 `clearInteractions` 的「只在字段存在时写」语义，且新角色接 `characterCountInputs` 就又要回来。
+   **同族教训**：凡是「用户填的是**上限/意图**、引擎会按物理量 clamp」的字段（嘲讽取消、金身格挡上限、自动档 `-1` 哨兵），**难度口径必须读引擎交付值**，不能读 store。这条已写成 `@fact engine:操作难度/交互项读实打`（锚 `liveInteractions#liveInteractions`，带 ⟳复核触发器）。
+
 ## 5. 验收命令
 
 验收命令的单一事实源 = `AGENTS.md` §3（`npm run verify` 一条链 + `check-guards` 判据清单 + UI 实机点通 + 新测试一律用 `src/test/harness.ts`）——命令与期望输出以那里为准；本节旧命令块已过期（漏 check-guards / check-tokens / verify:recording，且 typecheck 已并入 build），故不再复述。

@@ -78,6 +78,16 @@ export function engineInteractionItems(
   config: ConfigModel,
   shrink: (slot: number, raw: number) => number,
   interactionScale?: number,
+  /**
+   * **引擎实打值覆盖**（按槽 × 字段）：给了就以它为准，不读 store、也不再乘 `shrink`。
+   *
+   * 用途 = 「store 里填的是**意图**、引擎会按物理上限 clamp」的那类交互。当前唯一消费方 =
+   * 般岳的嘲讽取消（`tauntCancelCount`）：store 写 99 = 「拉到后摇归零」，引擎
+   * `computeBanyueRageCycle` 用 `min(手填, 失衡外连段数)` 截断，实际可能只有十几次。
+   * 难度 x 若读 store 原值，会把「意图」当成「操作量」（实测虚高 5~10 倍，见
+   * `difficultyLadder#applyInteractionKnob` 的注释）。
+   */
+  actualOf?: (slot: number, field: string) => number | undefined,
 ): InteractionItem[] {
   const byType = new Map<string, number>()
   for (const { type } of ENGINE_INTERACTION_FIELDS) byType.set(type, 0)
@@ -90,6 +100,12 @@ export function engineInteractionItems(
       const char = config.team[slot]
       const t = interactionFieldTypeOf(char?.agentId, field) ?? type
       if (!t) continue
+      const actual = actualOf?.(slot, field)
+      if (actual !== undefined) {
+        // 引擎实打值 = 已经交付的次数 ⇒ 不再走降配缩放 / 截断存活率缩（双重折损会把真账压小）
+        byType.set(t, (byType.get(t) ?? 0) + actual)
+        continue
+      }
       const stored = Number((char as Record<string, unknown> | undefined)?.[field] ?? 0)
       const raw = DOWNSCALED.has(field) ? downscaleInteractionCount(stored, interactionScale) : stored
       byType.set(t, (byType.get(t) ?? 0) + shrink(slot, raw))
@@ -112,15 +128,51 @@ export function engineInteractionItems(
  * ⚠️ 这是**止血近似**（A 项「截断回灌资源循环」的前置）：按槽缩而没按交互类型精确缩
  * （如般岳 金身/双反 共用一行「冲霄」），且资源账本仍是未截断的（见 `core/resource.ts` 的 debt 标记）。
  */
+/**
+ * @fact engine:操作难度/交互项读实打 口径: 难度 x 的交互项一律读**引擎实打次数**——降配按 `interactionScale` 缩、截断按槽存活率缩；**store 里填的是意图**的字段（当前唯一 = 般岳 `tauntCancelCount`，引擎按 `min(手填, 失衡外连段数)` clamp）改读 `banyueRageCycle.tauntCancelCount`；无 `rr` = 缩前量 ⇒ 不覆盖（两口径泾渭分明） | 据 用户@2026-10-23「难度曲线斜率太低」→ 实测写满 99×3 槽使 x 虚高 356 点而伤害逐位不变 | 验 src/composables/__tests__/tauntCancelLever.test.ts::★ ③′ | 锚 src/composables/liveInteractions.ts#liveInteractions | 信 确认
+ * ⟳复核: 新增「store 是意图、引擎会 clamp」的交互字段时，确认是否纳入 `actualOf` 覆盖（否则难度 x 会读意图值虚高） | 到期 2027-04-30
+ */
+export interface LiveInteractionOptions {
+  /**
+   * `false` = **不缩**（不给降配 / 截断存活率打折），只吃 `actualOf` 的引擎 clamp。
+   * 用途 = 难度曲线「缩前量」那一读口（`captureLadderSnapshot#interactionsFilled`）：
+   * 它要的是「这一档配了多少」，而不是「时间线交付了多少」——但`store 是意图`的字段
+   * （嘲讽取消 99 = 「拉到后摇归零」）仍必须按引擎 clamp 后的物理上限算，
+   * 否则截断提醒会把「引擎物理上限」误报成「被时间砍掉 92 次」。
+   */
+  shrink?: boolean
+}
+
 export function liveInteractions(
   config: ConfigModel,
   preset?: Pick<TeamPreset, 'interactions'>,
   rr?: TeamResourceResult | null,
+  opts?: LiveInteractionOptions,
 ): InteractionItem[] {
-  const survival = interactionSurvivalBySlot(rr)
+  const shrinkEnabled = opts?.shrink !== false
+  const survival = shrinkEnabled ? interactionSurvivalBySlot(rr) : new Map<number, number>()
   // 缩后保留 2 位小数（roundInteractionCount）：不取整会在难度明细里打出 15 位浮点尾巴（实测撑破散点明细表）
   const shrink = (slot: number, count: number) => roundInteractionCount(count * (survival.get(slot) ?? 1))
-  const out: InteractionItem[] = engineInteractionItems(config, shrink, rr?.convergence.interactionScale)
+  /**
+   * 引擎实打值（只覆盖「store = 意图、引擎会 clamp」的字段）：嘲讽取消。
+   * 读 `CharacterResourceResult.banyueRageCycle.tauntCancelCount`（`banyue.ts` 已按
+   * `min(手填, 失衡外连段数)` 截断）⇒ 难度 x 的该项 = **真取消了几次**，不是填了几个。
+   * 无 `rr`（缩前量 / 纯展示诊断）⇒ 不覆盖，退回 store 值。
+   */
+  const actualOf = (slot: number, field: string): number | undefined => {
+    if (field !== 'tauntCancelCount') return undefined
+    /**
+     * `rr` 可能是**部分 mock**（`difficultyCurve.test` 的纯函数用例只造 `convergence`）⇒
+     * 按诚实类型读（判据 28：类型说必有的字段不写 `?.`，缺值场景在**读点**声明）。
+     */
+    const partial: Partial<TeamResourceResult> | null | undefined = rr
+    const c = partial?.characters?.find(x => x.slot === slot)
+    const v = c?.banyueRageCycle?.tauntCancelCount
+    return typeof v === 'number' && Number.isFinite(v) ? Math.max(0, v) : undefined
+  }
+  const out: InteractionItem[] = engineInteractionItems(
+    config, shrink, shrinkEnabled ? rr?.convergence.interactionScale : 1, actualOf,
+  )
   const engineTypes = new Set(out.map(i => i.type))
   // 反制支援（角力化解一组控制技）：次数不是 store 字段而是**运行时折算**（boss 控制技组 ×
   // 队内有反制支援招式的角色），按承接槽位的截断存活率缩。

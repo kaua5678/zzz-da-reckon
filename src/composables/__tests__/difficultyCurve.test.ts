@@ -892,8 +892,17 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
      * ⚠ **2026-10-15（T170）换队**：原 `auto-1521-1481-1311` 在新口径下曲线被整条截断
      * （轴要求不满足）⇒ 取不到 `points[0]`。新队 `auto-1051-1481-1451` 四点全成立。
      */
-    const preset = teamPresets.find(p => p.id === 'auto-1051-1481-1451')
-    expect(preset, '预设数据里应有 auto-1051-1481-1451（新口径下四点全成立的爬梯样本）').toBeTruthy()
+    /**
+     * ⚠ **2026-10-23 换队**（修「难度曲线斜率太低」连带）：原 `auto-1051-1481-1451` 的 ④ 档
+     * `interactionsPlayed` 实测 **0**——它之所以之前过「反空洞」断言，是**靠 bug 撑着的**：
+     * 修前 `applyInteractionKnob` 给三槽都写满 `tauntCancelCount = 99`（`defaultCharacter` 给
+     * 每个角色都预置了该字段 ⇒ 判据 `!== undefined` 全过），`liveInteractions` 又读 store 原值
+     * ⇒ ④ 报 297 次「交互」。那 297 次既不是它打的、也不进伤害（实测写满前后伤害逐位相同）。
+     * 修好后该队 ④ 只剩合轴拉满的收益、交互确实一次没加 ⇒ 这条队的「反空洞」前提**不成立**。
+     * 换成 `auto-1611-1141-1211`（实测 ④ 真加 12 次交互、四点全成立、② 档轴态从 partial 转 complete）。
+     */
+    const preset = teamPresets.find(p => p.id === 'auto-1611-1141-1211')
+    expect(preset, '预设数据里应有 auto-1611-1141-1211（④ 档真加交互的爬梯样本）').toBeTruthy()
 
     const before = {
       agents: config.team.map(c => c.agentId),

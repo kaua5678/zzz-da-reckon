@@ -31,6 +31,17 @@ describe('CC-263 难度 x 认引擎降配', () => {
     const calc = useResourceCalc()
     const preset = teamPresets.find(p => p.id === 'auto-1431-1341-1481')!
     applyTeamToStore(config, preset)
+    /**
+     * ⚠ **必须显式给交互次数**（2026-10-23 修，判据本意不变）：2026-10-21「交互默认全 0」之后，
+     * 预设不再预填弹刀/闪反 ⇒ 全 0 的队不会触发降配（实测 interactionScale === undefined，
+     * 本用例的「样例须处于降配态」前提失效 ⇒ toBeLessThan 对 undefined 抛 TypeError）。
+     * 本用例量的是「降配后 x 认引擎缩量」，不是「某个预设当前恰好处于降配态」⇒ 显式造出降配态。
+     * 实测该夹具在本值上 scale = 0.625（三槽 parry/dodge 各 6 ⇒ 各缩到 4）。
+     */
+    for (let slot = 0; slot < 3; slot++) {
+      config.setActionCount(slot, 'parryCount', 6)
+      config.setActionCount(slot, 'dodgeCounterCount', 6)
+    }
     const rr = calc.resourceResult.value!
     const scale = rr.convergence?.interactionScale
     expect(scale, '样例须处于降配态').toBeLessThan(1)
