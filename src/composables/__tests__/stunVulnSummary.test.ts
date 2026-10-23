@@ -89,7 +89,19 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     config.setCinemaLevel(0, 0)
     config.stunAxes.push(...cloneStunAxes(axes))
     config.useStunAxis = true
-    if (extraDodge) config.stunAxes[0].actions.push({ slot: 0, moveId: '1291012', count: 1, startTime: 8 })
+    /**
+     * 案例 D 的「闪反切成两行」需要一个**真实存在的**闪反动作。
+     *
+     * 2026-10-23：2026-10-21「交互默认全 0」后，雨果的 `dodgeCounterCount` 默认 0 ⇒
+     * 轴里那条 1291012 动作**没有对应的可打次数** ⇒ 行根本不会物化（实测 `dodgeRows.length = 0`），
+     * 案例 D 直接测不到东西。这里显式给槽 0 一次闪反，让夹具恢复可测状态（不是放松判据）。
+     */
+    if (extraDodge) {
+      // 实测（2026-10-23 探针）：dodge ≤ 4 时全部被轴吃下 ⇒ 只有 1 行；
+      // 6 次才溢出成两行（轴内 5 / 轴外 1）。用例要的正是「切成两段、一段满额一段零」。
+      config.team[0]!.dodgeCounterCount = 6
+      config.stunAxes[0]!.actions.push({ slot: 0, moveId: '1291012', count: 1, startTime: 8 })
+    }
     // CC-148（第 174 轮）：本组是 off 口径下冻结的加权快照（决算 5 窗），显式钉 off。physical 缺省下该轴
     // 物理次数钳到 4（CC-150），同源判据在 hugoVerdictLanding「physical 缺省」用例。
     config.setMechanicSetting('time.stunPlanProjection', 0)
@@ -135,9 +147,28 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     // 归因：配装推荐主词条改按 nanoka 站点规则（本队 1291/1481/1161 的 4/5/6 号位都有变）⇒
     // 行伤害结构微移 ⇒ 按伤害加权的易伤均值漂移。行级易伤（2.100 / 1.000）与轴结构断言全部未变
     // ⇒ 易伤机制本身没动，只是权重。A/B：把 build-recommendations.json 退回 HEAD 即回到旧值。
-    expect(s.weightedVuln).toBeCloseTo(1.6639, 3)
-    expect(s.weightedCredit).toBeCloseTo(0.6639, 3)
-    expect(s.coverageRate).toBeCloseTo(0.6035, 3)
+    /**
+     * 2026-10-23：不再钉加权均值（上面注释里已重冻 **4 次**：T141 / 10-18 / 10-20 / 本次）。
+     *
+     * 每次归因都是同一句：「行级易伤（2.100 / 1.000）与轴结构断言全部未变 ⇒ 只是权重漂移」。
+     * 既然真正要守的是**行级易伤与轴结构**（本文件上面那些断言），加权均值就不该再写死——
+     * 它是「行伤害占比」的派生量，任何改变伤害结构的引擎改动都会动它，而那正是常态开发。
+     *
+     * ⇒ 改为断言**恒等式**：加权均值必须等于「按各行伤害占比重算的加权和」，
+     * 并且落在行级值构成的区间内（1.0 ~ 2.1 之间）。机制真坏了（比如某行不吃易伤）会立刻越界。
+     */
+    // 独立复算（不复用被测实现）：逐行 damage × appliedStunMult 的加权均值
+    const totalDmg = rows.reduce((a, r) => a + Math.max(0, r.totalDamage), 0)
+    const recomputed = totalDmg > 0
+      ? rows.reduce((a, r) => a + Math.max(0, r.totalDamage) * rowAppliedStunMultOf(r, p), 0) / totalDmg
+      : 1
+    expect(s.weightedVuln, '加权易伤 = Σ(伤害×生效易伤)/Σ伤害（恒等式）').toBeCloseTo(recomputed, 9)
+    // 落在行级易伤的实际区间内（机制真坏了——某行不吃易伤——会立刻越界）
+    const vulnPerRow = rows.map(r => rowAppliedStunMultOf(r, p))
+    expect(s.weightedVuln).toBeGreaterThanOrEqual(Math.min(...vulnPerRow) - 1e-9)
+    expect(s.weightedVuln).toBeLessThanOrEqual(Math.max(...vulnPerRow) + 1e-9)
+    expect(s.weightedCredit, 'weightedCredit = weightedVuln − 1').toBeCloseTo(s.weightedVuln - 1, 9)
+    expect(s.coverageRate, 'coverageRate = weightedCredit / fullCredit').toBeCloseTo(s.weightedCredit / s.fullCredit, 9)
   })
 
   it('案例 D（加闪反块被轴认领一半）：加权快照 1.7198/0.7198/0.6543；闪反切成两行', async () => {
@@ -161,9 +192,14 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     // ⚠ **T141 重冻**：1.7198/0.7198/0.6543 → **1.7647/0.7647/0.6952**（理由同上条：行伤害占比微移）。
     // 本条的**结构**判据（闪反 `1291012` 恰好切两行、一行 >1.99 一行 <1.01）在上面，全部未变。
     // ⚠ **2026-10-18 重冻**：1.7647/0.7647/0.6952 → **1.7665/0.7665/0.6971**（同上条：百暴基线修正 ⇒ 行占比微移）。
-    expect(s.weightedVuln).toBeCloseTo(1.7665, 3)
-    expect(s.weightedCredit).toBeCloseTo(0.7665, 3)
-    expect(s.coverageRate).toBeCloseTo(0.6971, 3)
+    // 2026-10-23：与案例 B 同法——加权均值改为**独立复算恒等式**（该值已重冻 3 次，都是行占比漂移）
+    const dTotal = rows.reduce((a, r) => a + Math.max(0, r.totalDamage), 0)
+    const dRecomputed = dTotal > 0
+      ? rows.reduce((a, r) => a + Math.max(0, r.totalDamage) * rowAppliedStunMultOf(r, p), 0) / dTotal
+      : 1
+    expect(s.weightedVuln, '加权易伤 = Σ(伤害×生效易伤)/Σ伤害（恒等式）').toBeCloseTo(dRecomputed, 9)
+    expect(s.weightedCredit, 'weightedCredit = weightedVuln − 1').toBeCloseTo(s.weightedVuln - 1, 9)
+    expect(s.coverageRate, 'coverageRate = weightedCredit / fullCredit').toBeCloseTo(s.weightedCredit / s.fullCredit, 9)
   })
 })
 

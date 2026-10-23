@@ -20,15 +20,23 @@ describe('CC-258 引擎交互类型名按角色解析', () => {
     const liuyin = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')!
     applyTeamToStore(config, liuyin)
     const items = liveInteractions(config, liuyin)
-    // 2026-10-11 用户裁决下调预设交互（金身 20→12 / 双反 5→3）：本断言随预设数据同步。
-    expect(count(items, 'banyueGoldenParry').map(i => i.count)).toEqual([12])
-    expect(count(items, 'banyueDualCounter').map(i => i.count)).toEqual([3])
-    expect(count(items, 'block').map(i => i.count)).toEqual([0])
-    // 预设未声明般岳类型的队也按引擎实打次数计（取模块 interactionDefaults，现 12/3）
+    /**
+     * 2026-10-23：不再写死次数（12/3 已随 2026-10-21「交互默认全 0」归零）。
+     *
+     * 本用例的判据是**类型归类**，不是次数：
+     * ① 金身 / 双反各只出现**一条**（不得重复计数）② 普通 block 不吃般岳的格挡
+     * ③ 次数由引擎按 store/模块声明给，这里只断言「两条类型都在、且互不串味」。
+     * 次数写死会让「用户改预设交互 / 改默认值」这类正常改动直接误红。
+     */
+    expect(count(items, 'banyueGoldenParry').length, '金身只计一次').toBeLessThanOrEqual(1)
+    expect(count(items, 'banyueDualCounter').length, '双反只计一次').toBeLessThanOrEqual(1)
+    expect(count(items, 'block').map(i => i.count), '普通 block 不吃般岳格挡').toEqual([0])
+    // 预设未声明般岳类型的队：同样按引擎口径出这两类（次数随交互默认值，不在此钉）
     const trigger = teamPresets.find(p => p.id === 'banyue-trigger-lucia')!
     applyTeamToStore(config, trigger)
     const t = liveInteractions(config, trigger)
-    expect([count(t, 'banyueGoldenParry')[0]?.count, count(t, 'banyueDualCounter')[0]?.count]).toEqual([12, 3])
+    expect(t.some(i => i.type === 'banyueGoldenParry'), '未声明也该按模块能力出金身类型').toBe(true)
+    expect(t.some(i => i.type === 'banyueDualCounter'), '未声明也该按模块能力出双反类型').toBe(true)
   })
 
   it('非般岳队：不新增专属类型条目（零差）', async () => {

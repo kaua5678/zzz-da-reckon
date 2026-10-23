@@ -12,12 +12,16 @@ import { roleInteractionBaseline } from '@/mechanics/interactionBaseline'
 
 const ZERO = { parry: 0, dodge: 0, block: 0, dual: 0 }
 const LEGACY_DEFAULTS: Record<string, typeof ZERO> = {
-  '1531': { parry: 4, dodge: 0, block: 5, dual: 0 },
-  // 2026-10-11 用户裁决「预设的交互太多了……我之前只是想让般岳有 4 次嗔火而已」：
-  // 金身 20→12、双反 5→3。原值是按嗔火来源拍的死数值，实测把轴挤出时间预算 ⇒ 弃轴
-  // （冲霄 = 金身+双反，单次 2.67s，25 次 = 66.7s）。本表 = 「模块声明 == 原写死表」的对照，
-  // 故随裁决同步；「4 怒相仍成立」由 `.zc/perf/banyueConfirm.perf.ts` 六队实测（4怒相 6/6）。
-  '1471': { parry: 6, dodge: 10, block: 12, dual: 3 },
+  /**
+   * ⚠ **2026-10-21 用户裁决：交互默认全 0**——引擎不再替用户预填交互次数
+   * （`roleInteractionBaseline` 恒 0；`banyue.ts` / `starlightBilly.ts` 的专属默认也归零）。
+   * ⇒ 本表两个条目都归零。条目本身**保留**：它们仍在证明这两个角色声明了 `interactionDefaults`
+   * 能力（只是值恰好等于全 0 兜底）。表随裁决同步是规定动作，不是"改基线凑绿"。
+   *
+   * 历史：1531 曾 4/0/5/0；1471 曾 6/10/12/3（2026-10-11 金身 20→12、双反 5→3）。
+   */
+  '1531': { parry: 0, dodge: 0, block: 0, dual: 0 },
+  '1471': { parry: 0, dodge: 0, block: 0, dual: 0 },
 }
 // 2026-10-18 用户裁决「蕾米和柚叶这种辅助，初始交互次数也该是 0」⇒ 蕾米埃尔
 // 声明 noGenericInteraction（后台飞行型异常辅助，平A 权重本来也是 0）。本表 = 「模块声明 == 原写死表」的对照。
@@ -65,9 +69,12 @@ describe('CC-65b 交互默认值与交互栏特殊输入 → 模块声明', () =
   }, 60000)
 
   it('getInteractionDefaults 返回副本（改返回值不污染模块声明）', () => {
+    // 2026-10-23：值本身已归零（见 LEGACY_DEFAULTS 注释），本条只测「返回的是副本」
+    const before = getInteractionDefaults('1471').parry
     const a = getInteractionDefaults('1471')
     a.parry = 999
-    expect(getInteractionDefaults('1471').parry).toBe(6)
+    expect(getInteractionDefaults('1471').parry).toBe(before)
+    expect(getInteractionDefaults('1471').parry).not.toBe(999)
   })
 
   it('源码锁：TeamConfigPage.vue 与 stores/config.ts 不再写死角色 id', () => {
