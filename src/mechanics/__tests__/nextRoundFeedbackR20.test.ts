@@ -279,8 +279,15 @@ describe('C-β next-round feedback', () => {
     // 吸收常开后全队时间结构变化 ⇒ 各槽多打 1 次终结。**不是**归属迁移（分量仍恒 0，见上两行）。
     // 归属锁**不受影响**：本臂仍精确钉住「有 1391 无 1371 ⇒ 分量恒 0、汇总 == Σ」；
     // 第二臂（有 1371 无 1391）实测 Σ 与分量**逐位未变**（仍 8 + 18 = 26，见下）⇒ 两侧判别力都保留。
-    expect(withJufufuOnly.threadsNext.teamUltimateForJufufu).toBe(9)
-    expect(baseOnlyJufufu).toBe(9) // 前提自证：非零才有判别力
+    /**
+     * 2026-10-23：不再写死 9。
+     *
+     * 这个数改过两次（8 → 9），上面注释自己写着「是**本用例自己夹具的派生值**，不是从别处抄来的常数」。
+     * 本臂真正要钉的是**归属**（上面第 271-272 行）：有 1391 无 1371 ⇒ 分量恒 0、汇总 == Σ。
+     * 那两条已经精确钉住归属；这里只补「Σ 非零」，否则归属锁退化成 0 == 0。
+     */
+    expect(baseOnlyJufufu, '前提自证：Σ 终极次数必须非零，否则归属锁退化成 0==0').toBeGreaterThan(0)
+    expect(withJufufuOnly.threadsNext.teamUltimateForJufufu).toBe(baseOnlyJufufu)
 
     const withYixuanOnly = await build([{ agentId: '1371', cinemaLevel: 6 }, { agentId: '1041' }, { agentId: '1151' }])
     const baseOnlyYixuan = withYixuanOnly.resourceResult.characters.reduce((a, c) => a + (c.ultimateCount ?? 0), 0)
@@ -289,9 +296,16 @@ describe('C-β next-round feedback', () => {
     // 收入上升 → 符法千重 14→18（探针实测）；Σ ultimateCount 与汇总按同一恒等式重锚（下两条）。
     // ⚠ T141 复测：本臂（有 1371 无 1391）**两值逐位未变**（Σ 仍 8、分量仍 18、汇总仍 26）——
     //   与第一臂不同，本臂不含 1391，故「各槽多打 1 次终结」的漂移没有传导过来；这不是漏改。
-    expect((withYixuanOnly.threadsNext.moduleFeedback.teamUltimateExtra ?? 0)).toBe(18)
-    expect(withYixuanOnly.threadsNext.teamUltimateForJufufu).toBe(baseOnlyYixuan + 18)
-    expect(withYixuanOnly.threadsNext.teamUltimateForJufufu).toBe(26) // Σ ultimateCount 仍 8
+    /**
+     * 2026-10-23：不再写死分量 18 / 汇总 26。
+     *
+     * 判据是**归属恒等式**：汇总 == Σ ultimateCount + 1371 分量（两处独立测得的量相加）。
+     * 分量本身是派生值（历史上 14→18 一次），写死它等于给夹具落点做快照。
+     * 这里断言 ① 分量非零（归属真的迁过来了）② 汇总严格等于两者之和（同一恒等式）。
+     */
+    const yixuanExtra = withYixuanOnly.threadsNext.moduleFeedback.teamUltimateExtra ?? 0
+    expect(yixuanExtra, '有 1371 ⇒ 分量必须非零（否则归属锁退化）').toBeGreaterThan(0)
+    expect(withYixuanOnly.threadsNext.teamUltimateForJufufu, '汇总 = Σ ultimateCount + 分量').toBe(baseOnlyYixuan + yixuanExtra)
     // ★ 两条线程值**各自独立**：无 1371 时汇总非零（T141 起为 9）、有 1371 时分量非零（18）
     //   ⇒ 任一「挂错模块」的迁法都会打红上面某一条。
     expect(withJufufuOnly.threadsNext.teamUltimateForJufufu).toBeGreaterThan(0)

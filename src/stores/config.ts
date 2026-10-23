@@ -653,9 +653,18 @@ export function createConfigModel(
       }
 
       // 自动设置驱动盘5号位主词条
+      /**
+       * ⚠ **必须有 else 清空**（2026-10-23 修跨队泄漏，判据 `allAgentsGuards` 历史无关项）：
+       * 修前只在「新角色有伤害元素」时写、无元素时**不动作**，于是上一个角色的 5 号位主词条残留
+       * （实测：上一队佩洛伊斯留 `etherDmg`，换到蕾米埃尔后 5 号位仍是 etherDmg ⇒
+       *  B→A 与全新直达 A 的面板不同）。
+       * 蕾米埃尔最常触发：她 `damageElement = lumiflux`，而流明不是伤害元素
+       * （`ELEMENT_FIELD_PREFIX` 无该键）⇒ `elementStatKey` 返回 undefined ⇒ 旧值永远清不掉。
+       */
       const dmgKey = elementStatKey('dmg', agent.damageElement) // CC-225 单一来源
-      if (dmgKey && char.driveDisc.mainStats) {
-        char.driveDisc.mainStats[5] = dmgKey
+      if (char.driveDisc.mainStats) {
+        if (dmgKey) char.driveDisc.mainStats[5] = dmgKey
+        else delete char.driveDisc.mainStats[5]
       }
 
       // 自动设置平A时间分配权重：蕾米埃尔、支援、防护默认不分配平A时间

@@ -386,18 +386,35 @@ describe('R21 夜A 跳③ 佩洛伊斯 1551 阳炎两臂（:524 整段迁进 spe
     //   ★ 若消费端**漏乘** pairRatio：两态的决算 bonus 都是满额 40 ⇒ 两个比值相等
     //     ⇒ 「比值之比」变成 **1.0** ⇒ 本断言红（这正是该变异的杀手）。
     //
-    // 造 ratio 端点的可达状态：`enemy.stunCountLock`（实测 lock=2 ⇒ 失衡 1、决算 2、上分支 1
-    // ⇒ ratio = min(1,2)/2 = **0.5**；lock=1 ⇒ 决算 1、上分支 1 ⇒ ratio = **1**）。
-    const measure = async (lock: number) => {
+    /**
+     * 造 ratio 端点的可达状态（2026-10-23 订正）。
+     *
+     * 用户口径：「**优先给每个失衡一个决算，多余喧响才给上分支**」
+     * ⇒ `upper = ultCount − 1(下分支) − verdict`，只有大招次数**多于**失衡数时才有上分支。
+     *
+     * 修前用 `stunCountLock` 造端点（假设「一次失衡必带上分支」）。但 2026-10-21
+     * 「交互默认全 0」后喧响收入下降 ⇒ 大招次数恰好等于失衡数 ⇒ **上分支为 0、ratio 恒 0**，
+     * 端点根本不可达（那是夹具前提失效，不是引擎错）。
+     *
+     * 现在显式注入弹刀抬喧响（弹刀 = 200 喧响/次），把"多余喧响"造出来：
+     * 实测 parry=6 ⇒ 上分支 1 / 决算 2 ⇒ ratio 0.5；parry=12 ⇒ 上分支 3 / 决算 2 ⇒ ratio 1。
+     */
+    const measure = async (parry: number) => {
       const { calc, config } = await calcOf([{ agentId: '1551' }, { agentId: '1211' }, { agentId: '1031' }])
       forceNonAxis(config)
-      config.enemy.stunCountLock = lock
+      config.enemy.stunCountLock = 2
+      for (let s = 0; s < 3; s++) config.team[s]!.parryCount = parry
       await settle()
 
       const src = calc.resourceResult.value!.characters.find(c => c.agentId === '1551')!
       const verdictExec = src.executions.find(e => e.moveId === '1551016')!
-      expect(verdictExec.count).toBe(lock) // lock=2 ⇒ 决算 2 次；lock=1 ⇒ 决算 1 次
-      expect((verdictExec as any).peiluoKagerouPairRatio).toBeCloseTo(Math.min(1, lock) / lock, 10)
+      // 决算次数 = 失衡次数（一次失衡只能决算一次）；失衡数由 stunCountLock=2 固定
+      expect(verdictExec.count).toBe(2)
+      // ratio = min(上分支, 决算) / 决算 —— 上分支由注入的弹刀抬出来
+      const upperExec = src.executions.find(e => e.moveId === '1551015')
+      const upperCount = upperExec?.count ?? 0
+      expect((verdictExec as any).peiluoKagerouPairRatio, `上分支 ${upperCount} / 决算 2`)
+        .toBeCloseTo(Math.min(upperCount, 2) / 2, 10)
 
       // 逐行 perDamage 的**计数加权平均**（不用总伤：总伤还含 count 与其它乘区，比值不干净）
       const perDamageOf = (moveId: string) => {
@@ -422,8 +439,8 @@ describe('R21 夜A 跳③ 佩洛伊斯 1551 阳炎两臂（:524 整段迁进 spe
       return { dUpper, dVerdict }
     }
 
-    const half = await measure(2) // pairRatio = 0.5
-    const full = await measure(1) // pairRatio = 1
+    const half = await measure(6)  // 上分支 1 / 决算 2 ⇒ pairRatio = 0.5
+    const full = await measure(12) // 上分支 3 / 决算 2 ⇒ pairRatio = 1
     const rHalf = half.dVerdict / half.dUpper
     const rFull = full.dVerdict / full.dUpper
     // 两态都偏小/相等即说明 ratio 没被消费端乘上（漏乘 ⇒ rHalf === rFull）

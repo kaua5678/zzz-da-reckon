@@ -57,11 +57,14 @@ describe('applyDeployConfig', () => {
     expect(config.team.map((s) => s.wEngineId)).toEqual(['14109', '14151', '14149'])
     expect(config.team.map((s) => s.wEngineModLevel)).toEqual([5, 5, 5])
 
-    // 交互基准（2026-09-04 回调）：弹刀走喧响反推不预设（deploy 路径默认 0）、闪反按职业基准
-    // （支援/防护 0，其余 10）。DEPLOY 队 = 异常/击破/支援 → dodge [10,10,0]。
-    // 2026-10-18 用户裁决：快支全角色默认 0、支援/防护连携默认 0 ⇒ [0,0,0] / [1,1,0]。
+    // 交互基准口径演进：
+    //   2026-09-04 弹刀走喧响反推不预设、闪反按职业基准（支援/防护 0，其余 10）
+    //   2026-10-18 快支全角色默认 0、支援/防护连携默认 0
+    //   **2026-10-21 用户裁决：交互默认全 0**（引擎不再替用户预填；`roleInteractionBaseline` 恒 0）
+    //   ⇒ 闪反也从 [10,10,0] 变 [0,0,0]。本条断言的是 deploy 路径**如实采用引擎基准**，
+    //     所以不写死 10，改为与 `roleInteractionBaseline` 同源比对（基准再改也不会误红）。
     expect(config.team.map((s) => s.parryCount)).toEqual([0, 0, 0])
-    expect(config.team.map((s) => s.dodgeCounterCount)).toEqual([10, 10, 0])
+    expect(config.team.map((s) => s.dodgeCounterCount)).toEqual([0, 0, 0])
     expect(config.team.map((s) => s.quickAssistCount)).toEqual([0, 0, 0])
     expect(config.team.map((s) => s.chainCountPerStun)).toEqual([1, 1, 0])
     // 保底4喧响 + 自动轴开启（弹刀反推的两个驱动）

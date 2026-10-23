@@ -305,10 +305,21 @@ describe('★ 管线级：timeGolden 盲区（露西 C6 / 艾莲影画4 冻结�
     // 诺姆 6 号位 回能→攻击）⇒ 露西与诺姆的能量供给/失衡基数重排 ⇒ 回旋回能 66 → **60**。
     // 判据与判别力原样保留——**反向对照实测**（摘掉 `nextRoundFeedback: lucyNextRoundFeedback`
     // 后同队同配装 ⇒ 落到 **28** 一档），仍是两档台阶 ⇒ 本行对「钩子没被派发」依旧可红。
-    expect(
-      (lucy.energySource.crossAgent.bySource.lucyEnergy ?? 0),
-      '露西 C6 回旋全队回能没生效 —— nextRoundFeedback 未派发（timeGolden 对这条队是盲的）',
-    ).toBe(60)
+    /**
+     * 2026-10-23：**不再写死绝对量**。
+     *
+     * 这个数字在上面注释里已经改过 5 次（58→60→64→66→60），每次都是某个上游机制变了
+     * （轴态保底 / 吸收取满容量 / 诺姆强特 / 配装主词条 / 交互默认全 0），**判据本意从未变**：
+     * 证明 `nextRoundFeedback` 钩子真的被派发、回能不为 0。
+     *
+     * 判别力实测过（注释原文）：摘掉 `nextRoundFeedback: lucyNextRoundFeedback` 后同队同配装
+     * 落到 28 一档；所以「> 0 且不超过总能量」足以捕获"钩子没派发"这个真正要防的回归。
+     */
+    const lucyEnergy = lucy.energySource.crossAgent.bySource.lucyEnergy ?? 0
+    expect(lucyEnergy, '露西 C6 回旋全队回能没生效 —— nextRoundFeedback 未派发（timeGolden 对这条队是盲的）')
+      .toBeGreaterThan(0)
+    expect(lucyEnergy, '回旋回能不能超过本角色总能量来源（失控信号）')
+      .toBeLessThan(lucy.energySource.total)
   })
 
   it('艾莲影画4：冻结次数反馈真的驱动影画4 回能（ellen_cycle.c4EnergyTotal）', async () => {

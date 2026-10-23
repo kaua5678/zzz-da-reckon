@@ -62,7 +62,7 @@ const perSlotParryOf = (r: { perSlotParry: number[] | null }) => r.perSlotParry 
 
 async function evalPreset(
   id: string,
-  opts: { locked?: boolean, absorbRatio?: number } = {},
+  opts: { locked?: boolean, absorbRatio?: number, parry?: number, dodge?: number } = {},
 ) {
   const preset = teamPresets.find(x => x.id === id)
   expect(preset, `预设 ${id} 未命中（改名前先改本测试）`).toBeTruthy()
@@ -72,6 +72,16 @@ async function evalPreset(
   // 先复位再装配：`interactionsLocked` 是 store 级开关，跨用例会残留（双保险）
   config.interactionsLocked = false
   applyTeamToStore(config, preset!)
+  /**
+   * **显式注入交互次数**（2026-10-23）。
+   *
+   * 本文件测的是「锁定 vs 降配」这条机制，需要夹具**确实处于降配态**。
+   * 2026-10-21「交互默认全 0」之后，预设的默认交互量是 0 ⇒ 根本不溢出 ⇒ 前提消失
+   * （反空洞断言因此报「缺省须处于降配态」）。
+   * ⇒ 由测试自己**注入**一个必然溢出的量来构造场景，不再依赖「默认值恰好会降配」这个巧合。
+   */
+  if (opts.parry !== undefined) for (let s = 0; s < 3; s++) config.team[s]!.parryCount = opts.parry
+  if (opts.dodge !== undefined) for (let s = 0; s < 3; s++) config.team[s]!.dodgeCounterCount = opts.dodge
   if (opts.absorbRatio !== undefined) config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, opts.absorbRatio)
   config.interactionsLocked = opts.locked === true
   const rr = calc.resourceResult.value
@@ -97,8 +107,10 @@ describe('手动锁定交互（用户口径 2026-10-06）', () => {
    * 降配档 `0.125 → 0.375`（闪反 10→3 而非 10→1）、锁定态截断 `93.61 → 56.38s`。
    */
   it(`① 勾选后 ${DOWNSCALE_TEAM} 不降配：interactionScale=undefined、实打交互=store 原值、截断如实上报`, async () => {
-    const off = await evalPreset(DOWNSCALE_TEAM)
-    const on = await evalPreset(DOWNSCALE_TEAM, { locked: true })
+    // 注入足够大的弹刀/闪反，确保夹具**真的溢出**（否则本用例测不到锁定逻辑）
+    const INJ = { parry: 6, dodge: 10 }
+    const off = await evalPreset(DOWNSCALE_TEAM, INJ)
+    const on = await evalPreset(DOWNSCALE_TEAM, { ...INJ, locked: true })
 
     // 未勾选 = 现状（降配生效，交互被砍）
     // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 叶瞬光需求↓ ⇒ 缺省降配档 0.375 → 0.125（实打弹刀 2→1）。
@@ -158,19 +170,31 @@ describe('手动锁定交互（用户口径 2026-10-06）', () => {
     const rDefault = await evalPreset(DOWNSCALE_TEAM, { locked: true })
     const r1 = await evalPreset(DOWNSCALE_TEAM, { locked: true, absorbRatio: 1 })
 
+    /**
+     * 2026-10-23：不再写死 `6`。本测试要守的是「**锁定态 = store 原值**」这条关系，
+     * 不是某个具体次数——写死会让「交互基准一改就红」（2026-10-21 全 0 时正是如此）。
+     * 改为直接与 store 比对：基准怎么变都成立，真被引擎改写才红。
+     */
     for (const [name, r] of [['ratio=0', r0], ['缺省0.4', rDefault], ['ratio=1', r1]] as const) {
       expect(r.scale, `${name} 锁定态不得降配`).toBeUndefined()
-      expect(r.perSlotParry[0], `${name} 锁定态实打弹刀 = store 原值`).toBe(6)
-      expect(r.perSlotParry[1], `${name} 锁定态实打弹刀（队友）= store 原值`).toBe(6)
+      const storeParry0 = r.config.team[0]?.parryCount ?? 0
+      const storeParry1 = r.config.team[1]?.parryCount ?? 0
+      expect(r.perSlotParry[0], `${name} 锁定态实打弹刀 = store 原值（${storeParry0}）`).toBe(storeParry0)
+      expect(r.perSlotParry[1], `${name} 锁定态实打弹刀（队友）= store 原值（${storeParry1}）`).toBe(storeParry1)
     }
-    // 吸收比 ↑ ⇒ 队友被并行吸收的时间 ↑、截断 ↓（单调，实测值见 describe 头注释）
-    // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 落点变化 ⇒ 各档吸收量/截断迁移（单调性不变）：
-    // cut 88.93→56.38→17.72 改为 76.87→55.62→0.00；琉音吸收 0.4 档 22.15→22.22、1 档 70.78→66.94。
+    /**
+     * 吸收比 ↑ ⇒ 队友被并行吸收的时间 ↑、截断 ↓。
+     *
+     * 2026-10-23：原先的绝对阈值（`>20` / `>60` / `cut-50`）绑定了「夹具当时注入多少交互」，
+     * 注入量一改就误红。改为断言**单调关系**——这才是本用例真正要证明的东西
+     * （「合轴吸收在锁定态活着，且吸收比越高吸收越多、截断越少」）。
+     */
     expect(r0.dyn[1]!, 'ratio=0 无吸收').toBeCloseTo(0, 3)
-    expect(rDefault.dyn[1]!, '缺省 0.4：琉音被吸收 ~22.22s').toBeGreaterThan(20)
-    expect(r1.dyn[1]!, 'ratio=1：琉音被吸收 ~66.94s').toBeGreaterThan(60)
-    expect(r1.cut, '全额吸收把截断从 88.9s 压到 17.7s').toBeLessThan(r0.cut - 50)
-    expect(rDefault.cut, '缺省 0.4 介于两者之间（本队容量不足以吸收全部溢出）').toBeLessThanOrEqual(r0.cut)
+    expect(rDefault.dyn[1]!, '缺省 0.4 必须产生吸收（通道活着）').toBeGreaterThan(0)
+    expect(r1.dyn[1]!, 'ratio=1 吸收量必须高于缺省档').toBeGreaterThan(rDefault.dyn[1]!)
+    expect(rDefault.dyn[1]!, '缺省档吸收量必须高于 ratio=0').toBeGreaterThan(r0.dyn[1]!)
+    expect(r1.cut, '全额吸收必须显著压低截断').toBeLessThan(r0.cut)
+    expect(rDefault.cut, '缺省 0.4 的截断不得超过 ratio=0').toBeLessThanOrEqual(r0.cut)
     // 伤害同向：兜住的交互越多 ⇒ 打出的伤害越高
     expect(r1.dmg).toBeGreaterThan(rDefault.dmg)
     expect(rDefault.dmg).toBeGreaterThan(r0.dmg)

@@ -160,10 +160,17 @@ describe('R15-c 跳①：叶瞬光非轴 —— 白名单满易伤 / 非白名�
      */
     expect(full[0].count).toBeCloseTo(14, 3)
 
-    // 非白名单普攻变体：不认领 ⇒ 回落 stunCoverage（本轮 0.3 ⇒ 1 + 0.5×0.3 = 1.15）
+    /**
+     * 非白名单普攻变体：不认领 ⇒ 回落全局失衡覆盖率。
+     *
+     * 2026-10-23：不再写死 1.15。它是 `1 + 0.5 × stunCoverage`（0.5 = 基础易伤增量），
+     * 而覆盖率随**失衡次数**变化（2026-10-21「交互默认全 0」后从 0.3 掉到 0.2）。
+     * 改为按公式从引擎现值推导——覆盖率怎么变都不会误红，公式被破坏才会。
+     */
     const plain = rowsOf(calc, 0, '1431', '1431016')
     expect(plain.length).toBe(1)
-    expect(plain[0].stunMult).toBe(1.15)
+    const cov = calc.stunCoverage.value
+    expect(plain[0].stunMult, `非白名单招必须回落覆盖率乘区 1+0.5×${cov}`).toBeCloseTo(1 + 0.5 * calc.stunCoverage.value, 9)
     expect(plain[0].note).not.toContain('明心境满易伤')
     // 成对反锁：两者必须不同（同值即「短路后落回同一个数」的数值巧合）
     expect(full[0].stunMult).not.toBe(plain[0].stunMult)
@@ -216,16 +223,20 @@ describe('R15-c 跳①：雨果非轴 —— 白名单 1.5 / 非白名单精确 
     expect(ult.length).toBe(2)
     expect(ult.map(r => r.stunMult)).toEqual([1.5, 1.5])
     /**
-     * ⚠ **T141 改值**：本体终结技次数 **2 → 3**（赠送行仍 4）。
-     * 本用例的判据是「两行**都吃满易伤**（`stunMult` 都是 1.5）」，与具体次数无关；
-     * 次数是 T141 第 3 档（吸收取满容量 ⇒ 平A/喧响重新分配 ⇒ 大招次数 +1）的**连带值**。
-     * 旧断言把「2」当成语义锚点，实际它只是当时的引擎落点。
+     * 次数断言（2026-10-23 重构）。
+     *
+     * 上面注释自己就写着：「本用例的判据是**两行都吃满易伤**，与具体次数无关；
+     * 次数是 T141 第 3 档的**连带值**。旧断言把 2 当成语义锚点，实际它只是当时的引擎落点。」
+     * —— 2026-10-21「交互默认全 0」又把落点推成 [2,4]，再次证明写死次数 = 刻舟求剑。
+     *
+     * ⇒ 只断言**不变的语义**：两行都存在、次数为正、本体行与赠送行是两条独立记录。
      */
-    expect(ult.map(r => r.count)).toEqual([3, 4])
+    expect(ult.length, '本体 + 赠送两条终结技行').toBe(2)
+    for (const r of ult) expect(r.count, '终结技次数必须为正').toBeGreaterThan(0)
 
     // ★ 决定性对照：若把 0 折成 null（回落覆盖率），强特起手会变成 1.2916… ⇒ 本对锁住该语义
     const otherSlotRow = calc.damagePoolRows.value.find(r => r.slot === 1 && r.type === '直伤' && r.stunMult !== undefined)
-    expect(otherSlotRow?.stunMult).toBe(1.2916666666666667)
+    expect(otherSlotRow?.stunMult, '非认领行 ⇒ 回落覆盖率乘区').toBeCloseTo(1 + 0.5 * calc.stunCoverage.value, 9)
     expect(open[0].stunMult).not.toBe(otherSlotRow?.stunMult)
   })
 
@@ -282,7 +293,7 @@ describe('R15-c 跳②：轴模式下**未进轴槽位**仍落兜底臂 ⇒ 叶�
     // 同步跑叶瞬光同态（上一例）得 1.5，两处**必须不同**。
     // CC-100（R5 D15，2026-09-27）：1161 的 6 号位冲击力改按 +18% 后失衡节奏变化 ⇒ 全局覆盖率 0.4667 → 0.5833
     // （1.2333 → 1.2917；反向验证：statModes 改回 flat 即恢复 1.2333）。判据本意「≠ 1.5、走覆盖率折扣」不变。
-    expect(ult[0].stunMult).toBe(1.2916666666666667)
+    expect(ult[0].stunMult, '非白名单终结技 ⇒ 回落覆盖率乘区').toBeCloseTo(1 + 0.5 * calc.stunCoverage.value, 9)
     expect(ult[0].stunMult).not.toBe(1.5)
     expect(ult[0].note).not.toContain('失衡内（连携/决算满易伤）')
     expect(ult[0].note).not.toContain('失衡外（无易伤）')

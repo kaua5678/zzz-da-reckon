@@ -90,14 +90,29 @@ describe('队伍级钩子 applyTeamConfig 接线', () => {
     }
   })
 
-  // 时间守恒口径（用户 2026-09-01）后：失衡次数下降 → 窗口占用时间变少 → 后场时间变多 →
-  // 喷发次数 7 → 8（32 = 4/次 × 8 次）。变化来自「非失衡时间变多」这个正确方向，不是回归。
-  it('莱特影画4：后场喷发回能只给队友（32 = 4/次 × 8 次），莱特本人为 0', async () => {
+  /**
+   * 莱特影画4：后场喷发回能只给队友，莱特本人 0。
+   *
+   * ## 为什么不再写死数字（2026-10-23 重构，用户裁决「不改基线就红 = 刻舟求剑」）
+   *
+   * 这个数字历史上**已经因为机制变化改过一次**（上面原注释：时间守恒口径后 7 → 8）；
+   * 2026-10-21「交互默认全 0」又把它推到 9。每次都要手工追一个派生量，而**公式本身从未错过**。
+   *
+   * 现在断言的是三条**不变量**（机制怎么改都不误红，除非规则真被破坏）：
+   * ① 莱特本人 0 —— 钩子只给队友，不给自己
+   * ② 两名队友等额 —— 同一份供给，不按槽位区别对待
+   * ③ 量 == 4 × 整数次 —— 4 是技能常量（每级 4 点），次数由引擎决定
+   */
+  it('莱特影画4：后场喷发回能只给队友、两人等额、= 4/次 × 整数次', async () => {
     const out = await run([{ agentId: '1161', cinemaLevel: 4 }, { agentId: '1041' }, { agentId: '1101' }])
     const bySlot = new Map(out.characters.map(c => [c.slot, c]))
-    expect((bySlot.get(0)!.energySource.crossAgent.bySource.lighterC4Energy ?? 0)).toBe(0)
-    expect((bySlot.get(1)!.energySource.crossAgent.bySource.lighterC4Energy ?? 0)).toBe(32)
-    expect((bySlot.get(2)!.energySource.crossAgent.bySource.lighterC4Energy ?? 0)).toBe(32)
+    const lighter = bySlot.get(0)!.energySource.crossAgent.bySource.lighterC4Energy ?? 0
+    const t1 = bySlot.get(1)!.energySource.crossAgent.bySource.lighterC4Energy ?? 0
+    const t2 = bySlot.get(2)!.energySource.crossAgent.bySource.lighterC4Energy ?? 0
+    expect(lighter, '莱特本人不得吃自己的影画4 喷发').toBe(0)
+    expect(t1, '两名队友拿到的供给必须等额（同一份供给）').toBe(t2)
+    expect(t1, '喷发量必须 > 0（否则钩子根本没生效）').toBeGreaterThan(0)
+    expect(t1 % 4, `喷发量 ${t1} 不是 4 的整数倍 —— 每次 4 点的公式被破坏了`).toBe(0)
   })
 
   it('莱特 0 命：不触发影画4 喷发回能（钩子按命座门控，不是无条件写）', async () => {

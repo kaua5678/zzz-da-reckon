@@ -1,0 +1,325 @@
+{
+  "_note": "模块异常事件记录基线（展示层快照）。重生成：MODULE_EVENT_RECORDS_UPDATE=1 npx vitest run src/composables/__tests__/moduleAnomalyEventRecords.test.ts —— 重生成前必须先归因（改了哪个机制、为什么值变）",
+  "r0": {
+    "r0": [
+      {
+        "id": "remielle-voidflare-pool",
+        "type": "luminize",
+        "label": "蕾米虚耀池",
+        "source": "其他队友异常触发",
+        "count": 24,
+        "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
+        "fields": [
+          "AnomalyPoolResult.perSlotAnomalyTriggers",
+          "蕾米槽位",
+          "1501:13 / 1561:11"
+        ],
+        "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
+      },
+      {
+        "id": "remielle-luminize-assist",
+        "type": "luminize",
+        "label": "支援技花羽轮舞·耀变",
+        "source": "不消耗虚耀（换入时自动发动）",
+        "count": 24,
+        "formula": "count = 轮数 × 已储存虚曜数（每轮换入结算一次，最多 3 个）",
+        "fields": [
+          "voidflareTotal",
+          "rounds=floor(voidflareTotal/3)",
+          "storedTotal",
+          "1581015 luminizeMultiplier"
+        ]
+      },
+      {
+        "id": "remielle-luminize-ultimate",
+        "type": "luminize",
+        "label": "终结技缭乱终幕·耀变",
+        "source": "不消耗虚耀，每轮一次（有大招才结算）",
+        "count": 24,
+        "formula": "count = 轮数 × 已储存虚曜数；伤害行再按本轮实际大招次数封顶（来源由用户选择1号队友0-3、2号队友3-0）",
+        "fields": [
+          "voidflareTotal",
+          "storedTotal",
+          "remielle.drop:{slot}"
+        ]
+      },
+      {
+        "id": "remielle-luminize-basic",
+        "type": "luminize",
+        "label": "普通攻击惊鸿·耀变",
+        "source": "消耗并清空虚耀",
+        "count": 24,
+        "formula": "count = 轮数 × 已储存虚曜数 × 1",
+        "fields": [
+          "voidflareTotal",
+          "storedTotal",
+          "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
+          "1581008 luminizeMultiplier"
+        ]
+      }
+    ],
+    "r2": [
+      {
+        "id": "remielle-voidflare-pool",
+        "type": "luminize",
+        "label": "蕾米虚耀池",
+        "source": "其他队友异常触发",
+        "count": 20,
+        "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
+        "fields": [
+          "AnomalyPoolResult.perSlotAnomalyTriggers",
+          "蕾米槽位",
+          "1261:11 / 1331:9"
+        ],
+        "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
+      },
+      {
+        "id": "remielle-luminize-assist",
+        "type": "luminize",
+        "label": "支援技花羽轮舞·耀变",
+        "source": "不消耗虚耀（换入时自动发动）",
+        "count": 18,
+        "formula": "count = 轮数 × 已储存虚曜数（每轮换入结算一次，最多 3 个）",
+        "fields": [
+          "voidflareTotal",
+          "rounds=floor(voidflareTotal/3)",
+          "storedTotal",
+          "1581015 luminizeMultiplier"
+        ]
+      },
+      {
+        "id": "remielle-luminize-ultimate",
+        "type": "luminize",
+        "label": "终结技缭乱终幕·耀变",
+        "source": "不消耗虚耀，每轮一次（有大招才结算）",
+        "count": 18,
+        "formula": "count = 轮数 × 已储存虚曜数；伤害行再按本轮实际大招次数封顶（来源由用户选择1号队友0-3、2号队友3-0）",
+        "fields": [
+          "voidflareTotal",
+          "storedTotal",
+          "remielle.drop:{slot}"
+        ]
+      },
+      {
+        "id": "remielle-luminize-basic",
+        "type": "luminize",
+        "label": "普通攻击惊鸿·耀变",
+        "source": "消耗并清空虚耀",
+        "count": 18,
+        "formula": "count = 轮数 × 已储存虚曜数 × 1",
+        "fields": [
+          "voidflareTotal",
+          "storedTotal",
+          "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
+          "1581008 luminizeMultiplier"
+        ]
+      }
+    ],
+    "lead-empty": [
+      {
+        "id": "remielle-voidflare-pool",
+        "type": "luminize",
+        "label": "蕾米虚耀池",
+        "source": "其他队友异常触发",
+        "count": 14,
+        "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
+        "fields": [
+          "AnomalyPoolResult.perSlotAnomalyTriggers",
+          "蕾米槽位",
+          ":0 / 1501:14"
+        ],
+        "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
+      },
+      {
+        "id": "remielle-luminize-assist",
+        "type": "luminize",
+        "label": "支援技花羽轮舞·耀变",
+        "source": "不消耗虚耀（换入时自动发动）",
+        "count": 12,
+        "formula": "count = 轮数 × 已储存虚曜数（每轮换入结算一次，最多 3 个）",
+        "fields": [
+          "voidflareTotal",
+          "rounds=floor(voidflareTotal/3)",
+          "storedTotal",
+          "1581015 luminizeMultiplier"
+        ]
+      },
+      {
+        "id": "remielle-luminize-ultimate",
+        "type": "luminize",
+        "label": "终结技缭乱终幕·耀变",
+        "source": "不消耗虚耀，每轮一次（有大招才结算）",
+        "count": 12,
+        "formula": "count = 轮数 × 已储存虚曜数；伤害行再按本轮实际大招次数封顶（来源由用户选择1号队友0-3、2号队友3-0）",
+        "fields": [
+          "voidflareTotal",
+          "storedTotal",
+          "remielle.drop:{slot}"
+        ]
+      },
+      {
+        "id": "remielle-luminize-basic",
+        "type": "luminize",
+        "label": "普通攻击惊鸿·耀变",
+        "source": "消耗并清空虚耀",
+        "count": 12,
+        "formula": "count = 轮数 × 已储存虚曜数 × 1",
+        "fields": [
+          "voidflareTotal",
+          "storedTotal",
+          "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
+          "1581008 luminizeMultiplier"
+        ]
+      }
+    ],
+    "none": []
+  },
+  "r29": {
+    "j0c6": {
+      "mod": [
+        {
+          "id": "jane-c6-assault-followup-event",
+          "type": "anomaly_trigger",
+          "label": "简6命强击暴击附伤",
+          "source": "强击暴击次数",
+          "count": 10,
+          "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
+          "fields": [
+            "强击次数",
+            "assaultCritRate",
+            "anomalyProficiency"
+          ]
+        }
+      ],
+      "dmgIds": [
+        "anomaly-damage-event-physical",
+        "anomaly-damage-event-ether"
+      ]
+    },
+    "j2c6": {
+      "mod": [
+        {
+          "id": "jane-c6-assault-followup-event",
+          "type": "anomaly_trigger",
+          "label": "简6命强击暴击附伤",
+          "source": "强击暴击次数",
+          "count": 10,
+          "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
+          "fields": [
+            "强击次数",
+            "assaultCritRate",
+            "anomalyProficiency"
+          ]
+        }
+      ],
+      "dmgIds": [
+        "anomaly-damage-event-ether",
+        "anomaly-damage-event-physical"
+      ]
+    },
+    "jempty": {
+      "mod": [
+        {
+          "id": "jane-c6-assault-followup-event",
+          "type": "anomaly_trigger",
+          "label": "简6命强击暴击附伤",
+          "source": "强击暴击次数",
+          "count": 17,
+          "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
+          "fields": [
+            "强击次数",
+            "assaultCritRate",
+            "anomalyProficiency"
+          ]
+        }
+      ],
+      "dmgIds": [
+        "anomaly-damage-event-ether",
+        "anomaly-damage-event-physical"
+      ]
+    },
+    "j0c5": {
+      "mod": [],
+      "dmgIds": [
+        "anomaly-damage-event-physical",
+        "anomaly-damage-event-ether"
+      ]
+    },
+    "jr": {
+      "mod": [
+        {
+          "id": "jane-c6-assault-followup-event",
+          "type": "anomaly_trigger",
+          "label": "简6命强击暴击附伤",
+          "source": "强击暴击次数",
+          "count": 12,
+          "formula": "count = 物理强击次数 × 强击暴击率；伤害 = 简异常精通 × 1600%",
+          "fields": [
+            "强击次数",
+            "assaultCritRate",
+            "anomalyProficiency"
+          ]
+        },
+        {
+          "id": "remielle-voidflare-pool",
+          "type": "luminize",
+          "label": "蕾米虚耀池",
+          "source": "其他队友异常触发",
+          "count": 21,
+          "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
+          "fields": [
+            "AnomalyPoolResult.perSlotAnomalyTriggers",
+            "蕾米槽位",
+            "1261:12 / 1331:9"
+          ],
+          "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
+        },
+        {
+          "id": "remielle-luminize-assist",
+          "type": "luminize",
+          "label": "支援技花羽轮舞·耀变",
+          "source": "不消耗虚耀（换入时自动发动）",
+          "count": 21,
+          "formula": "count = 轮数 × 已储存虚曜数（每轮换入结算一次，最多 3 个）",
+          "fields": [
+            "voidflareTotal",
+            "rounds=floor(voidflareTotal/3)",
+            "storedTotal",
+            "1581015 luminizeMultiplier"
+          ]
+        },
+        {
+          "id": "remielle-luminize-ultimate",
+          "type": "luminize",
+          "label": "终结技缭乱终幕·耀变",
+          "source": "不消耗虚耀，每轮一次（有大招才结算）",
+          "count": 21,
+          "formula": "count = 轮数 × 已储存虚曜数；伤害行再按本轮实际大招次数封顶（来源由用户选择1号队友0-3、2号队友3-0）",
+          "fields": [
+            "voidflareTotal",
+            "storedTotal",
+            "remielle.drop:{slot}"
+          ]
+        },
+        {
+          "id": "remielle-luminize-basic",
+          "type": "luminize",
+          "label": "普通攻击惊鸿·耀变",
+          "source": "消耗并清空虚耀",
+          "count": 21,
+          "formula": "count = 轮数 × 已储存虚曜数 × 1",
+          "fields": [
+            "voidflareTotal",
+            "storedTotal",
+            "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
+            "1581008 luminizeMultiplier"
+          ]
+        }
+      ],
+      "dmgIds": [
+        "anomaly-damage-event-physical",
+        "anomaly-damage-event-ether"
+      ]
+    }
+  }
+}
