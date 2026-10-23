@@ -41,6 +41,14 @@ export interface CurvePointPoolResult {
   damage: number
   /** 本次重算耗时（ms）——面板上如实显示「这一次点开花了多久」 */
   ms: number
+  /**
+   * 该档的**名义失衡窗长 W**（秒）= `useResourceCalc#windowDuration`（含全队失衡延时）。
+   * 残疾失衡展示要用它，而它**不能事后从 UI store 重算**：本档现场是差分重放出来的，
+   * 队友面板加成来自该档的队伍/命座，页面上的值属于「当前档」而非「用户点开的那一档」。
+   */
+  windowDuration: number
+  /** 该档的**有效战斗时间**（秒）= `useResourceCalc#stunEffectiveTime`（战斗时间 − 无敌时间） */
+  effectiveTime: number
 }
 
 export function useCurvePointPool() {
@@ -78,6 +86,8 @@ export function useCurvePointPool() {
           stunPool: s.calc.stunPoolResult.value,
           anomalyPool: s.calc.anomalyPoolResult.value,
           damage: s.calc.teamTotalDamage.value,
+          windowDuration: s.calc.windowDuration.value,
+          effectiveTime: s.calc.stunEffectiveTime.value,
         }
       })
       if (my !== token) return
@@ -90,6 +100,8 @@ export function useCurvePointPool() {
         stunPool: out.stunPool,
         anomalyPool: out.anomalyPool,
         damage: out.damage,
+        windowDuration: out.windowDuration,
+        effectiveTime: out.effectiveTime,
         ms: performance.now() - t0,
       }
     } catch (e) {

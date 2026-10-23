@@ -318,7 +318,7 @@
           :agent-name="agentNames[charResult.agentId] || charResult.agentId"
           :specialty="getSpecialty(charResult.agentId)"
           :stun-pool-result="stunPoolResult"
-          :stun-discrete-label="stunDiscreteLabel"
+          :stun-discrete-label="stunDiscrete?.label ?? null"
           :anomaly-pool-result="anomalyPoolResult"
           :liuyin-hug="liuyinHugSplit"
           :agent-names="agentNames"
@@ -862,11 +862,6 @@ function unitPriceText(unit: number): string {
 
 const configStore = useConfigStore()
 
-/** 残疾失衡文案（逻辑在 composables/stunDiscreteDisplay.ts；展示层不 import @/core） */
-const stunDiscreteLabel = useStunDiscreteDisplay(
-  () => stunPoolResult.value,
-  () => configStore.enemy,
-).value?.label ?? null
 const catalogStore = useCatalogStore()
 const calc = useResourceCalc()
 const {
@@ -886,7 +881,21 @@ const {
   ultPromoteHug60,
   effectiveWEngineCoverages,
   autoActive,
+  windowDuration,
+  stunEffectiveTime,
 } = calc
+
+/**
+ * 残疾失衡载荷（逻辑在 composables/stunDiscreteDisplay.ts；展示层不 import @/core）。
+ *
+ * ⚠ 传 **ref** 给模板、**不许**在 setup 顶层写 `.value`——旧写法在 `stunPoolResult`（下方解构）之前执行
+ * ⇒ TDZ，页签 setup 直接中断（2026-10-22 实测，与 RunArchivePage 同型）。
+ */
+const stunDiscrete = useStunDiscreteDisplay({
+  pool: () => stunPoolResult.value,
+  windowDuration: () => windowDuration.value,
+  effectiveTime: () => stunEffectiveTime.value,
+})
 
 // 非轴「易伤贡献率」φ 的「来源可见」标注（用户裁决 2026-10-19：非轴不做自动认领、由用户自己填）。
 // 只在非轴 + φ ≠ 100% 时显示：告诉用户当前伤害用的是他填的兑现比例，不是「每招均匀摊」。

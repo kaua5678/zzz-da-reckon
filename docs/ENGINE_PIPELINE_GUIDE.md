@@ -878,6 +878,14 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
 
     **判据**：`difficultyLadder.test.ts` ①（① 交互量 == 0）/ §6.3（按槽位收益形状）/ §6.3b（执行数不下降 + 四信号）；**全库 ④ ≥ ① = `difficultyCurveFullLibrary.test.ts`**（`PROBE_DIFF_FULL=1`，实测 **93/93 队、0 违例**，旧口径 1 违例）。⚠ 全库 Δx < 0 的队 = **0 支**（旧口径锋御 5 队 −16.9~−24.2）——卡 §3.4「难度同向」达成。
 
+
+57. **「页签切过去整页空白」= setup 期 TDZ，不是渲染/数据问题（2026-10-22，用户实报 F12）**：
+    **症状**：点「实战对比」/「资源池」页签页面不加载；F12 只有 `[Violation] Permissions policy violation: unload ...`（无关噪声）+ `[Vue warn] Unhandled error during execution of setup function` ×2 + `Uncaught (in promise) ReferenceError: Cannot access 'stunPoolResult' before initialization`。
+    **根因**：三页都写了 `const label = useStunDiscreteDisplay(() => stunPoolResult.value, () => configStore.enemy).value?.label ?? null`——① `stunPoolResult`（`useResourceCalc()` 的解构）在同一文件**声明在后面**，而 `<script setup>` 自上而下执行 ⇒ 立即求值踩 TDZ，setup 中断、整页不渲染（生产构建变量压成单字母 ⇒ 报成 `Cannot access '_' before initialization`，看着与源码对不上）；② 即便顺序对，`.value` 也把文案冻在首帧（部署新 run 后不更新）。
+    **判据（这次靠什么定位）**：`vue-tsc` 不报（类型没错）、现有四千余条单测全绿（**没有一个渲染 `.vue`**）⇒ 只有两条路能抓：SSR `renderToString` 页面（与浏览器报同一个 `ReferenceError`，实测三页全中）与 `scripts/ui-check.mjs` 实机点通（**基座**构建报 2 条 JS 错误、修复后 0 条）。**A/B 必须先跑基座**：干净 worktree `git worktree add --detach /tmp/zzz-base <HEAD>` + 同一条 ui-check 命令，否则「修好了」与「本来没坏」无法区分。
+    **修法（协议）**：composable 的入参一律是**取值函数**、返回 `ComputedRef`；调用方把 ref 原样交给模板（模板自动解包），**永不**在 setup 顶层 `.value`。展示要用的引擎量从引擎接口取（`useResourceCalc#windowDuration` / `#stunEffectiveTime`；曲线页取 `CurvePointPoolResult` 随档带出的同一次求值快照），不要展示层套第二份公式（旧写法漏传 `teamStunDurationBonus` ⇒ 琉音/仪玄队展示按 16s、引擎按 18s，「第几窗装不下」差一档）。
+    **护栏**：`composables/__tests__/stunDiscreteDisplay.test.ts`（SSR 渲染 + 源码锁：三个入参取值函数读到的标识符必须声明在调用点之前；模板必须传载荷 ref）；决策树行 `ARCHITECTURE.md` §4「页签切过去整页空白」。
+    **否决记录**：❌「把 `useStunDiscreteDisplay(...)` 挪到 `useResourceCalc()` 之后就行」——那只是把 TDZ 推后，`.value` 冻快照仍在，且下次谁把解构挪走又炸（源码锁现按「声明顺序」通用判，不认单点）；❌「加 `?.` 或 `?? null` 兜底」——TDZ 是模块级绑定在初始化前被访问，可选链不改变求值时机。
 ## 5. 验收命令
 
 验收命令的单一事实源 = `AGENTS.md` §3（`npm run verify` 一条链 + `check-guards` 判据清单 + UI 实机点通 + 新测试一律用 `src/test/harness.ts`）——命令与期望输出以那里为准；本节旧命令块已过期（漏 check-guards / check-tokens / verify:recording，且 typecheck 已并入 build），故不再复述。

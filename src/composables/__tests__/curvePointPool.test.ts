@@ -82,6 +82,14 @@ describe('难度曲线某一点的资源池（按需重算）', () => {
       }
       // 资源池本身可用（面板要渲染三张卡）
       expect(got!.resourceResult.characters.length).toBeGreaterThan(0)
+      /**
+       * ③ 残疾失衡展示要的窗长 / 有效时长必须**随这一档带出**（2026-10-22）：
+       * 难度曲线页的卡片文案曾用 UI 现场（`configStore.enemy`）自己算，而"这一档"的队友失衡延时
+       * 可能不同（如含琉音 +2s）⇒ 展示的 W 与这一档引擎用的 W 不是同一个。判据 = 带出的值必须是
+       * **该档现场**的引擎读数（与 UI 现场解耦，且恒 > 0）。
+       */
+      expect(got!.windowDuration, `${p.point} 档窗长必须随结果带出`).toBeGreaterThan(0)
+      expect(got!.effectiveTime).toBeGreaterThan(0)
     }
   }, 900_000)
 

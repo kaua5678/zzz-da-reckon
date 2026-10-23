@@ -155,7 +155,7 @@
             :agent-name="agentNames[c.agentId] || c.agentName || c.agentId"
             :specialty="getSpecialty(c.agentId)"
             :stun-pool-result="stunPoolResult"
-          :stun-discrete-label="archiveStunDiscreteLabel"
+            :stun-discrete-label="archiveStunDiscrete?.label ?? null"
             :anomaly-pool-result="anomalyPoolResult"
             :total-time="resourceResult.totalTime"
           />
@@ -197,13 +197,22 @@ import {
 
 const configStore = useConfigStore()
 
-/** 残疾失衡文案（逻辑在 composables/stunDiscreteDisplay.ts；展示层不 import @/core） */
-const archiveStunDiscreteLabel = useStunDiscreteDisplay(
-  () => stunPoolResult.value,
-  () => configStore.enemy,
-).value?.label ?? null
 const catalogStore = useCatalogStore()
-const { teamTotalDamage, resourceResult, stunPoolResult, anomalyPoolResult, agentNames } = useResourceCalc()
+const { teamTotalDamage, resourceResult, stunPoolResult, anomalyPoolResult, agentNames, windowDuration, stunEffectiveTime } = useResourceCalc()
+
+/**
+ * 残疾失衡载荷（逻辑在 composables/stunDiscreteDisplay.ts；展示层不 import @/core）。
+ *
+ * ⚠ 必须传 **ref** 给模板、**不许**在 setup 顶层写 `.value`：
+ * ① 旧写法 `useStunDiscreteDisplay(() => stunPoolResult.value)…value` 在 `stunPoolResult` 声明之前执行
+ *    ⇒ TDZ「Cannot access 'stunPoolResult' before initialization」，切到这个页签 setup 直接中断、整页不渲染（2026-10-22 实测）；
+ * ② 就算顺序对，`.value` 也把文案冻在首帧，部署新 run 后不再更新。
+ */
+const archiveStunDiscrete = useStunDiscreteDisplay({
+  pool: () => stunPoolResult.value,
+  windowDuration: () => windowDuration.value,
+  effectiveTime: () => stunEffectiveTime.value,
+})
 
 const loading = ref(true)
 const error = ref('')

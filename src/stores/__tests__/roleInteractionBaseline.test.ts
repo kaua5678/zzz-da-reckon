@@ -41,8 +41,15 @@ describe('roleInteractionBaseline', () => {
 })
 
 describe('interactionBaselineFor（手动队接线：专属默认 > 正反馈排除 > 职业基准）', () => {
-  it('角色专属默认优先（星徽·比利 招架4/格挡5）', () => {
-    expect(interactionBaselineFor('1531', 'attack')).toEqual({ parry: 4, dodge: 0, block: 5, dual: 0 })
+  /**
+   * 2026-10-22 订正：星徽·比利的专属默认值已于 **2026-10-21 用户裁决改为全 0**
+   * （「交互默认全 0 —— 引擎不再替用户预填」），唯一事实源 = `starlightBilly.ts#BILLY_INTERACTION_DEFAULTS`。
+   *
+   * 本条原断言 `parry:4, block:5` 是改口径前的旧值，与同文件「全职业 0 交互（不预填）」自相矛盾。
+   * 改为钉住「专属默认仍走 interactionDefaults 通道，只是值为全 0」。
+   */
+  it('角色专属默认走 interactionDefaults 通道，值全 0（2026-10-21 不预填口径）', () => {
+    expect(interactionBaselineFor('1531', 'attack')).toEqual({ parry: 0, dodge: 0, block: 0, dual: 0 })
   })
   it('正反馈 refund 模块（伊德海莉 1051）不吃通用交互基准', () => {
     expect(interactionBaselineFor('1051', 'attack')).toEqual({ parry: 0, dodge: 0, block: 0, dual: 0 })

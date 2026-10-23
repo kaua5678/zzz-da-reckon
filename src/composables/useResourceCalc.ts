@@ -396,6 +396,15 @@ export function createResourceCalc(
   /** 轴编辑器同口径：当前失衡窗口时长（含全队失衡延时） */
   const windowDuration = computed<number>(() => computeWindowDuration())
 
+  /**
+   * **有效战斗时间（秒）= 战斗时间 − Boss 无敌时间**（`core/effectiveTime#effectiveBattleTime`）。
+   *
+   * 为什么在这里暴露：展示层的「残疾失衡」要同一个 effTime 才能与引擎的覆盖率口径对上
+   * （`solveTeam` 用的就是它）。放在展示层自己算会变成第二份公式（且 `@/core` 不许展示层 import）。
+   * 判据 `stunDiscreteDisplay.test.ts`（与 `stunWindowFraction` 的分子分母同源）。
+   */
+  const stunEffectiveTime = computed<number>(() => effectiveBattleTime(configStore.enemy))
+
   function computeStunCoverage(sp: Pick<StunPoolResult, 'stunCount'> | null | undefined, lostSeconds = 0): number {
     // 决算截断：有效失衡时长 = 窗口总时长 − 截断损失秒数（佩洛伊斯右分支做完即清空剩余失衡时间）
     return stunWindowFraction(sp?.stunCount ?? 0, computeWindowDuration(), effectiveBattleTime(configStore.enemy), lostSeconds)
@@ -848,6 +857,7 @@ const attributeLedger = computed(() => {
     autoPreset,
     autoActive,
     windowDuration,
+    stunEffectiveTime,
     stunTimeline,
     /**
      * **失衡窗口占比（0..1）**——含**决算截断损失秒**的权威口径

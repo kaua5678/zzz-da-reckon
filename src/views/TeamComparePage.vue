@@ -813,7 +813,7 @@
             :agent-name="agentNameOf(c.agentId) || c.agentName || c.agentId"
             :specialty="specialtyOf(c.agentId)"
             :stun-pool-result="curvePool.pool.value.stunPool"
-          :stun-discrete-label="compareStunDiscreteLabel"
+            :stun-discrete-label="compareStunDiscrete?.label ?? null"
             :anomaly-pool-result="curvePool.pool.value.anomalyPool"
             :total-time="curvePool.pool.value.resourceResult.totalTime"
           />
@@ -1032,11 +1032,6 @@ import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
 
 const configStore = useConfigStore()
 
-/** 残疾失衡文案（逻辑在 composables/stunDiscreteDisplay.ts；展示层不 import @/core） */
-const compareStunDiscreteLabel = useStunDiscreteDisplay(
-  () => curvePool.pool.value?.stunPool ?? null,
-  () => configStore.enemy,
-).value?.label ?? null
 /**
  * R14（T139）无轴易伤估算的开关——**图例必须如实标注非轴参照用哪种口径**
  * （R14 硬约束 2「来源可见」在难度曲线页的延伸）。
@@ -2283,6 +2278,20 @@ const curveTruncBaseOnly = computed(() =>
  * 判据：`curvePointPool.test.ts`（重算伤害与该点 `dmg` 逐位相等 / 三份结果同源 / 竞态后发者胜）。
  */
 const curvePool = useCurvePointPool()
+/**
+ * 残疾失衡载荷（逻辑在 composables/stunDiscreteDisplay.ts；展示层不 import @/core）。
+ *
+ * ⚠ 必须**声明在 `curvePool` 之后**、且传 **ref** 给模板、不许在 setup 顶层写 `.value`：
+ * 旧写法在 `curvePool`（2285 行）之前执行 ⇒ TDZ「Cannot access 'curvePool' before initialization」，
+ * 切到难度曲线页签 setup 直接中断（2026-10-22 实测）。
+ * 窗长 / 有效时长取**该档资源池重算时的快照**（`curvePool.pool` 一并带出），不用 UI store——
+ * 否则「点开某一档看到的残疾失衡」会用当前现场（而非那一档）的队友加成。
+ */
+const compareStunDiscrete = useStunDiscreteDisplay({
+  pool: () => curvePool.pool.value?.stunPool ?? null,
+  windowDuration: () => curvePool.pool.value?.windowDuration ?? null,
+  effectiveTime: () => curvePool.pool.value?.effectiveTime ?? null,
+})
 /** 当前选中的点（`null` = 面板收起）。键 = 道键 + 点名，跨队不串味 */
 const curvePoolPick = ref<{ laneKey: string; point: KnobPointName; cost: number } | null>(null)
 /** 点是否可查明细：该档采到了现场（`collectScenes` 开着） */
