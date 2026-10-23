@@ -35,6 +35,7 @@ import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/mo
 import { outOfCombatStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { clampRatio } from '@/utils/finiteClamp'
+import { getPanelStat } from '@/utils/panelStat'
 
 const setting = mechanicSettingReader(() => benMechanic.settings)
 export const BEN_ID = '1121'
@@ -71,11 +72,25 @@ function findMoveActionTime(
 }
 
 function applyPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelInput): void {
-  // 「初始」严格取局外面板：局外防御×80% 作为局外小攻击加成计入最终面板。
+  /**
+   * 「初始攻击力随初始防御力提升，提升效果等同自身初始防御力的 80%」⇒ 来源与落点**都是局外**：
+   * 它是一笔**局外小攻击**（`outOfCombatAtkFlat` 同口径），因此必须跟着局内攻击%一起被放大。
+   *
+   * ⚠ 原实现把 `bonus` 直接当**局内小攻击**加进最终面板 ⇒ 少了 `bonus × 局内攻击%` 这一层。
+   * 实测（本 + 凯撒 + 耀嘉音，推荐配装）：局外攻击 1593.09 / 局外防御 3016.43 / 局内攻击% 20%，
+   * bonus = 2413.14，面板攻击 6524.84；正确值 = (1593.09 + 2413.14) × 1.20 + 2200 = 7007.48 ⇒ 少 482.64（−6.9%）。
+   *
+   * 引擎没有「模块写局外面板」的通道（`outOfCombatPanel` 是只读、`calcPanel` 的局外面板只吃
+   * buff 数据批），所以这里按**等值换算**落到局内面板：乘上本批次真实的局内攻击% = `panel.inCombatAtkPct`
+   * （`core/buff.ts#recordAccumInputs` 写的「本批次累计攻击%」，即所有 `atkPct` 效果的合计）。
+   * 缺失该字段（直调本钩子的单测 / 无 in-combat 批次）⇒ 视作 0，退化为原行为。
+   */
   const outOfCombatDef = outOfCombatStat(outOfCombatPanel, 'def')
   const bonus = outOfCombatDef * BEN_DEF_TO_ATK
-  if (bonus > 0) panel.atk = panel.atk + bonus
-  panel.benDefToAtk = bonus
+  const atkPct = getPanelStat(panel, 'inCombatAtkPct') ?? 0
+  const bonusAsInCombat = bonus * (1 + atkPct / 100)
+  if (bonusAsInCombat > 0) panel.atk = panel.atk + bonusAsInCombat
+  panel.benDefToAtk = bonusAsInCombat
 
   const cinema = cinemaLevelOf(cinemaLevel)
   if (cinema >= 6) {

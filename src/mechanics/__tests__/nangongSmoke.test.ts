@@ -50,8 +50,11 @@ describe('南宫羽（1511）核心被动面板区', () => {
    * `teammate-buffs.json` 的 stat 词表没有 `stunDuration` ⇒ 从未生效。
    * 负控：删掉 `applyNangongPanel` 里那行 ⇒ 本用例红。
    */
-  it('踉跄：失衡持续时间 +3s 进面板（此前只在 skillTableNote 提过、从未生效）', async () => {
-    const { config, catalog } = await setupNangong(0)
+  it('踉跄：失衡持续时间 +3s 进面板（额外能力触发时；队友千夏同阵营满足条件）', async () => {
+    // ⚠ 踉跄属额外能力：raw 1511 passive 第 10 行「队伍中存在[异常]角色或与自身阵营相同的角色时触发」。
+    // setupNangong 的空队友队不满足该条件 ⇒ 这里用同阵营队友（1491 千夏，妄想天使）把门打开。
+    const { config, catalog } = await setupHarness([{ agentId: '1511', cinemaLevel: 0 }, { agentId: '1491' }])
+    expect(computePanelPhases(0, config, catalog)!.inCombat.additionalAbilityActive).toBe(1)
     expect(computePanelPhases(0, config, catalog)!.inCombat.stunDurationBonusSeconds).toBeCloseTo(3)
   })
 })
@@ -130,19 +133,36 @@ describe('南宫羽颤音异放（releaseRatio basis=anomalyDamageRatio）', () 
 })
 
 describe('南宫羽 teamBuffs（核心被动全队伤害 / 踉跄）', () => {
-  it('队友面板差分：有南宫羽 → dmgBonus+25 / stunDmgMultiplierBonus+30 / 失衡持续+3s', async () => {
-    const withN = await setupHarness([{ agentId: '1511' }, { agentId: '1371' }])
-    const without = await setupHarness([{ agentId: '1051' }, { agentId: '1371' }])
+  it('队友面板差分：核心被动全队伤害 +25（在任何队都成立）', async () => {
+    const withN = await setupHarness([{ agentId: '1511' }, { agentId: '1371' }, { agentId: '1491' }])
+    const without = await setupHarness([{ agentId: '1051' }, { agentId: '1371' }, { agentId: '1491' }])
     const inC = (h: Awaited<ReturnType<typeof setupHarness>>) =>
-      computePanelPhases(1, h.config, h.catalog)!.inCombat
-    const on = inC(withN)
-    const off = inC(without)
-    expect(on.dmgBonus - off.dmgBonus).toBeCloseTo(25)
-    expect((on as unknown as Record<string, number>).stunDmgMultiplierBonus
-      - (off as unknown as Record<string, number>).stunDmgMultiplierBonus).toBeCloseTo(30)
+      computePanelPhases(1, h.config, h.catalog)!.inCombat as unknown as Record<string, number>
+    // 「南宫羽的普通攻击/强特命中 → 全队造成伤害 +25%」是**核心被动**，不随额外能力开关
+    expect(inC(withN).dmgBonus - inC(without).dmgBonus).toBeCloseTo(25)
+  })
+
+  /**
+   * 踉跄（失衡易伤 +30% / 失衡持续 +3s）属**额外能力**：raw 1511 passive 第 10 行
+   * 「队伍中存在[异常]角色或与自身阵营相同的角色时触发」。
+   *
+   * ⚠ 差分设计：南宫羽固定在槽0、接收槽固定槽1 仪玄，**只切槽2**
+   * （千夏=支援·妄想天使 ⇒ 同阵营，AA 开；伊德海莉=命破 ⇒ AA 关），
+   * 这样槽1 收到的变化只有南宫羽那一份（旧写法「有/无南宫羽」两队会把千夏自己那条 +30 混进来）。
+   */
+  it('踉跄（额外能力）：失衡易伤 +30 / 失衡持续 +3s 只在额外能力触发时上队友面板', async () => {
+    // 槽2 用简（异常）开南宫羽的额外能力；她自己的 buff 里没有 stunDmgMultiplierBonus，
+    // 且两边都在 ⇒ 差分只剩南宫羽那一份（换千夏会混入她自己的 +30）。
+    const aaOn = await setupHarness([{ agentId: '1511' }, { agentId: '1371' }, { agentId: '1261' }])
+    const aaOff = await setupHarness([{ agentId: '1051' }, { agentId: '1371' }, { agentId: '1261' }])
+    const inC = (h: Awaited<ReturnType<typeof setupHarness>>) =>
+      computePanelPhases(1, h.config, h.catalog)!.inCombat as unknown as Record<string, number>
+    const on = inC(aaOn)
+    const off = inC(aaOff)
+    expect((on.stunDmgMultiplierBonus ?? 0) - (off.stunDmgMultiplierBonus ?? 0)).toBeCloseTo(30)
     // 失衡持续+3s：经 computeWindowDuration 生效（初版误判发散已纠正——
     // 实为阻尼振荡收敛慢，MAX_OUTER_ITER 12→20 后 sweep 恢复绿）
-    expect(on.stunDurationBonusSeconds - off.stunDurationBonusSeconds).toBeCloseTo(3)
+    expect((on.stunDurationBonusSeconds ?? 0) - (off.stunDurationBonusSeconds ?? 0)).toBeCloseTo(3)
   })
 })
 
@@ -168,8 +188,9 @@ describe('南宫羽三轮收口（C2 每层+10% / 强特免能 / 失衡内积蓄
   })
 
   it('天使队长·失衡内积蓄：队友面板差分 +30/+30（新通道字段）', async () => {
-    const withN = await setupHarness([{ agentId: '1511' }, { agentId: '1371' }])
-    const without = await setupHarness([{ agentId: '1051' }, { agentId: '1371' }])
+    // 同上口径：固定南宫羽在槽0、接收槽 1371，只切槽2（千夏=同阵营 AA 开 / 伊德海莉=命破 AA 关）
+    const withN = await setupHarness([{ agentId: '1511' }, { agentId: '1371' }, { agentId: '1491' }])
+    const without = await setupHarness([{ agentId: '1511' }, { agentId: '1371' }, { agentId: '1051' }])
     const inC = (h: Awaited<ReturnType<typeof setupHarness>>) =>
       computePanelPhases(1, h.config, h.catalog)!.inCombat as unknown as Record<string, number>
     const on = inC(withN)

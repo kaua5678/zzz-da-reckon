@@ -61,7 +61,6 @@ const PRECISE_DAZE_BONUS = 20
 const CORE_BUILD_UP_BONUS = 20
 const C6_BUILD_UP_BONUS = 50
 const CORE_EFFICIENCY_BONUS = 35
-const C1_ALL_RES_REDUCTION = 18
 /** C4：可爱地雷飞天撞命中 → 属性异常积蓄值 +35%（原文 talent.4，一次性 ×1.35） */
 const C4_MINE_BUILDUP_PCT = 35
 const VIBRATO_MAX = 4
@@ -138,8 +137,9 @@ function applyNangongPanel({ panel, outOfCombatPanel, cinemaLevel, settings }: A
   // 核心被动命中增益（30s 刷新）：自身积蓄效率 / 自身失衡值（C6 追加 +50）
   panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + CORE_EFFICIENCY_BONUS * coverage
   panel.stunBuildUpBonus = panel.stunBuildUpBonus + (CORE_BUILD_UP_BONUS + (cinemaLevel >= 6 ? C6_BUILD_UP_BONUS : 0)) * coverage
-  // C1：强特/地雷撞命中 → 敌全属性伤害抗性 -18%（40s 刷新 ≈ 常驻）
-  if (cinemaLevel >= 1) panel.enemyResReduction = panel.enemyResReduction + C1_ALL_RES_REDUCTION
+  // C1「强特/地雷撞命中 → 敌全属性伤害抗性 -18%（40s 刷新）」**不在此写面板**：
+  // `teammate-buffs.json 1511.buff_a9ab2c0d63`（source=影画一，store 按影画等级自动默认开）是唯一写者。
+  // 此前这里再加一份 ⇒ C1 面板 enemyResReduction = 36（真值 18），减抗乘区翻倍。
 }
 
 function buildNangongCharConfig({ skills, cinemaLevel, cfg, getRowValue, panel, outOfCombatPanel }: AgentCharConfigInput): void {

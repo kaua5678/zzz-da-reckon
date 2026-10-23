@@ -90,8 +90,11 @@ function applyAlicePanel({ cinemaLevel, panel }: AgentPanelInput): void {
     panel.enemyPhysicalResReduction = panel.enemyPhysicalResReduction + C4_PHYSICAL_RES_REDUCTION
   }
 
-  applyAgentAttributeConversions(panel, ALICE_AGENT_ID)
-  // 掌控转精通（>140 每点 +1.6）只由上面 spec `alice_mastery_to_proficiency` 执行（缺省 floor 整步）。
+  // 掌控转精通（>140 每点 +1.6）：原文（raw 1401 passive Lv.7）把「若爱丽丝的异常掌控大于140点…」写在
+  // 「队伍中存在另一名[异常]或[支援]角色时触发：」**之后** ⇒ 属于额外能力，必须随 `aa` 门控。
+  // ⚠ 原实现无条件调用 ⇒ 无异常/支援队友的队白拿 166 点精通（实测 1401+1071+1141：掌控 244.6 → 精通 586.4）。
+  if (aa) applyAgentAttributeConversions(panel, ALICE_AGENT_ID)
+  // 上面这条是 `alice_mastery_to_proficiency` 的唯一执行点（缺省 floor 整步）。
   // R6 C7（第 142 轮）删除了原来零读取的 `panel.aliceMasteryToProficiencyBonus`（连续公式）与 `cfg.aliceMasteryToProficiencyRate`：
   // 它们是同一机制的第二份常数，且口径（连续）与实际执行（取整）不同，只会误导。
 }

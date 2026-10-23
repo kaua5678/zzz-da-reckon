@@ -302,8 +302,8 @@ describe('Claret gash / sharpness resource（v12 口径 2026-09-03）', () => {
 describe('Jane mechanic', () => {
   it('scales assault crit rate with anomaly proficiency', () => {
     const result = computeJaneMechanic({ anomalyProficiency: 100, frenzyActive: true, frontlineSeconds: 60 })
-    expect(result.assaultCritRate).toBe(30)
-    expect(result.assaultCritBaseRate).toBe(20)
+    expect(result.assaultCritRate).toBe(56) // 40 + 100×0.16
+    expect(result.assaultCritBaseRate).toBe(40)
     expect(result.assaultCritDmgBonus).toBe(30)
     expect(result.frenzyBuildUpBonus).toBe(25)
     expect(result.atkFromMastery).toBe(0)

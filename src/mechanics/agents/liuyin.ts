@@ -532,12 +532,21 @@ export const liuyinMechanic: AgentMechanicModule = {
     if (liuyinSrc && additionalAbilityActiveOf(panel) && liuyinSrc.exHeavyCount > 0) {
       const prevSlot = liuyinSrc.previousTeammateSlot
       const { panel: prevPanel, agent: prevAgent } = teammateAt(prevSlot)
-      const isRupture = prevAgent?.specialty === 'rupture'
+      /**
+       * 原文（raw 1481 passive Lv.7）只给**两个**分支：
+       *   上一位队友是[强攻] → 320% 攻击力；上一位队友是[命破] → 400% 贯穿力。
+       * 其它特性（异常/支援/防护/击破/锋御）**没有这一行** ⇒ 不出行。
+       * ⚠ 原实现写成 `isRupture ? 400 : 320`，非命破一律按强攻算 ⇒ 上一位是支援/防护时
+       * 白送 320% 攻击力（实测占比 1.3%~3.6% 队伤，且 `liuyin.previousTeammateSlot` 可手动指向任意槽）。
+       */
+      const prevSpecialty = prevAgent?.specialty
+      const isRupture = prevSpecialty === 'rupture'
+      const isAttack = prevSpecialty === 'attack'
       // 贯穿力走引擎单一事实源 `calcPenetrationPower`（= atk×0.3 + hp×0.1 + sheerForceFlat）。
       // CC-D1 2026-09-25 修：原内联式**漏了 `sheerForceFlat`** ⇒ 潘引壶(1421)[通窍]
       // 等「贯穿力提升」拐对该行完全无效（实测：面板 sheerForceFlat 176→0，本行伤害
       // delta = 0；而同文件般岳 C6 附伤用的 `calcPenetrationPower` 是含的 ⇒ 同量两套写法）。
-      const basisValue = prevPanel ? (isRupture ? calcPenetrationPower(prevPanel) : prevPanel.atk) : 0
+      const basisValue = !prevPanel ? 0 : isRupture ? calcPenetrationPower(prevPanel) : isAttack ? prevPanel.atk : 0
       const ratio = isRupture ? 400 : 320
       const basisLabel = isRupture ? '上一位队友贯穿力' : '上一位队友攻击力'
       if (basisValue > 0) {

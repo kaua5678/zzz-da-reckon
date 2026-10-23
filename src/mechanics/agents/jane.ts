@@ -28,9 +28,17 @@ const settingOf = mechanicSettingPanelReader(() => settings)
 const JANE_AGENT_ID = '1261'
 /** 普通攻击：萨霍夫跳（融合主段，见 src/data/moveFusions.ts JANE_SOMERSAULT） */
 const JANE_SOMERSAULT_MOVE_ID = '1261007'
-const ASSAULT_CRIT_BASE = 20
-const ASSAULT_CRIT_PER_MASTERY = 0.1
+/**
+ * 强击暴击率（raw 1261 passive Lv.7）：「基础暴击率为40%，暴击伤害为50%…每点异常精通使暴击率额外提升0.16%」。
+ * ⚠ 这三个数**不得**再写进面板：面板上的 `assaultCritRate`/`assaultCritDmg` 由
+ * `teammate-buffs.json 1261.core_insight`（formula `clamp(40 + x*0.16, 0, 100)` + fixed 50）单通道供给。
+ * 早期模块另写一份 Lv.1 值（20 / 0.1 / 50）⇒ 与 buff 通道叠加成 170.6% / 130%（真值 100% / 50%）。
+ */
+const ASSAULT_CRIT_BASE = 40
+const ASSAULT_CRIT_PER_MASTERY = 0.16
 const ASSAULT_CRIT_DMG = 50
+/** 强击暴击率上限（raw 1261 核心被动 formula 同款 `clamp(…, 0, 100)`） */
+const ASSAULT_CRIT_RATE_CAP = 100
 const FRENZY_BUILD_UP_BONUS_CORE = 25
 // 狂热「精通 > 120 每点 +2 攻击、上限 600」的常数只在 spec 1261.json `jane_proficiency_to_atk`（R6 C7，第 144 轮）；
 // 面板与展示值都经 spec runtime 执行（面板传 frenzyFactor 作覆盖率，runtime 先封顶再乘覆盖率）。
@@ -68,7 +76,7 @@ export function computeJaneMechanic(input: {
   potentialLevel?: number
 }): JaneMechanicSource {
   const mastery = Math.max(0, input.anomalyProficiency)
-  const assaultCritRate = ASSAULT_CRIT_BASE + mastery * ASSAULT_CRIT_PER_MASTERY
+  const assaultCritRate = Math.min(ASSAULT_CRIT_RATE_CAP, ASSAULT_CRIT_BASE + mastery * ASSAULT_CRIT_PER_MASTERY)
   const potentialLevel = potentialLevelOf(input.potentialLevel)
   return {
     assaultCritBaseRate: ASSAULT_CRIT_BASE,
@@ -79,7 +87,7 @@ export function computeJaneMechanic(input: {
     atkFromMastery: input.frenzyActive ? atkFromProficiencyOf(mastery) : 0,
     frenzyActive: input.frenzyActive,
     biteSeconds: Math.max(0, input.frontlineSeconds),
-    note: `啮咬：攻击命中使敌人进入状态，持续10秒；强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%），潜能觉醒按档位额外+${JANE_POTENTIAL_ASSAULT_CRIT_DMG[potentialLevel]}%强击暴伤（潜能 ${potentialLevel}）；狂热物理积蓄效率与精通转攻、额外能力痛点、影画1/6 面板区见 resourceCalc/helpers 简专属分支（jane.passionCoverage 滑块默认90%）。`,
+    note: `啮咬：攻击命中使敌人进入状态，持续10秒；强击对啮咬目标可暴击（基础${ASSAULT_CRIT_BASE}%+精通${ASSAULT_CRIT_PER_MASTERY}%/点，上限${ASSAULT_CRIT_RATE_CAP}%，暴伤${ASSAULT_CRIT_DMG}%），潜能觉醒按档位额外+${JANE_POTENTIAL_ASSAULT_CRIT_DMG[potentialLevel]}%强击暴伤（潜能 ${potentialLevel}）；狂热物理积蓄效率与精通转攻、额外能力痛点、影画1/6 面板区见 resourceCalc/helpers 简专属分支（jane.passionCoverage 滑块默认90%）。`,
   }
 }
 
@@ -120,8 +128,9 @@ function applyJanePanel({ panel, settings, agent, cinemaLevel, potentialLevel }:
     frontlineSeconds: 0,
     potentialLevel,
   })
-  panel.assaultCritRate = panel.assaultCritRate + source.assaultCritRate
-  panel.assaultCritDmg = panel.assaultCritDmg + ASSAULT_CRIT_DMG
+  // ⚠ 强击暴击率 / 暴伤**不在本函数写面板**：`1261.core_insight`（teammate-buffs）的 formula
+  // `clamp(40 + x*0.16, 0, 100)` 与 fixed 50 是唯一写者。此前这里再加一份 Lv.1 值（20 + 0.1x / 50）
+  // ⇒ 面板 170.6% / 130%（真值 100% / 50%），暴击乘区 2.30 而非 1.80（+27.8% 高估）。
   // 潜能觉醒只给简自身触发的强击吃，乱流不继承；由异常池按 selfAssaultCritDmgBonus 单独结算。
   panel.selfAssaultCritDmgBonus = source.assaultCritDmgBonus
 
@@ -184,8 +193,8 @@ function buildJaneResourceSections({ result }: AgentResourceSectionsInput) {
     summary: `强击暴击率 ${fmt(source.assaultCritRate)}% · 狂热 ${source.frenzyActive ? '生效' : '未生效'}`,
     rows: [
       { label: '啮咬覆盖', value: `${fmt(source.biteSeconds)}s`, detail: '攻击命中使敌人陷入啮咬，持续10秒' },
-      { label: '强击暴击率', value: `${fmt(source.assaultCritRate)}%`, detail: `基础20% + 异常精通×0.1%` },
-      { label: '强击暴击伤害', value: '50%', detail: '强击对啮咬目标可暴击' },
+      { label: '强击暴击率', value: `${fmt(source.assaultCritRate)}%`, detail: `基础${ASSAULT_CRIT_BASE}% + 异常精通×${ASSAULT_CRIT_PER_MASTERY}%（上限${ASSAULT_CRIT_RATE_CAP}%）` },
+      { label: '强击暴击伤害', value: `${ASSAULT_CRIT_DMG}%`, detail: '强击对啮咬目标可暴击' },
       { label: '潜能强击暴伤', value: `+${source.assaultCritDmgBonus}%`, detail: '潜能觉醒：致命舞步' },
       { label: '狂热积蓄提升', value: `+${source.frenzyBuildUpBonus}%`, detail: '物理异常积蓄效率（核心，默认满覆盖）' },
       { label: '精通转攻击', value: `+${fmt(source.atkFromMastery)}`, detail: janeProficiencyToAtkDetail() },
@@ -270,7 +279,7 @@ export const janeMechanic: AgentMechanicModule = {
   id: 'agent:jane',
   agentIds: [JANE_AGENT_ID],
   name: '简',
-  description: '啮咬/狂热/强击暴击：攻击施加啮咬10秒，强击对啮咬目标可暴击（基础20%+精通0.1%/点，暴伤50%）；萨霍夫跳（狂热1次+影画1+1次）；影画1/6 面板区。',
+  description: '啮咬/狂热/强击暴击：攻击施加啮咬10秒，强击对啮咬目标可暴击（基础40%+精通0.16%/点，暴伤50%）；萨霍夫跳（狂热1次+影画1+1次）；影画1/6 面板区。',
   applyPanel: applyJanePanel,
   buildCharConfig: buildJaneCharConfig,
   buildExecutions: buildJaneExecutions,

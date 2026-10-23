@@ -20,6 +20,7 @@ import { pickThirdNamedBasicSegment, fusedRowValue, findMoveById, getRowValue } 
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import type { AgentAxisActionExpandInput } from '@/mechanics/typesHooks'
 import type { StackActionCost } from '@/core/stunAxisStack'
 
@@ -230,6 +231,13 @@ function perSeconds(move: SkillMove | null | undefined, rowId: string): number {
 }
 
 function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelInput): void {
+  /**
+   * 额外能力·残锋的触发条件（raw 1611 passive Lv.7）：「队伍中存在[击破]角色、其他[锋御]或与自身属性相同的角色时触发：」
+   * 下面两条（浸染回喧响 / 残锋锐暴 +25%）都只在该条件下生效。
+   * ⚠ 原实现无条件写 `sharpCritDmg +25`，且 `1611.json` 从未声明 `additionalAbility` ⇒ 永远不会被门控
+   * （实测「克拉蕾+凯撒+本」AA=0 仍得 sharpCritDmg 175 = 基础 150 + 25，锐暴乘区 7.558 vs 6.246 = ×1.21）。
+   */
+  const aa = additionalAbilityActiveOf(panel)
   // 核心被动·初始转化：每 1% 初始暴击伤害 → 初始暴击率 +0.35%。
   // 初始口径 → 只读局外面板（珂蕾妲潜能等局内暴伤拐不参与转化）；基础暴伤 50（锋御同模板，见 `@fact agent:1611/初始暴伤转暴击`），其余来自副/主词条与驱动盘。
   const initialCritDmg = outOfCombatPanel.critDmg
@@ -239,8 +247,8 @@ function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelIn
   }
   // 核心被动 Lv.7：猩红铭刻/连携/终结/无垢熔锋期间 暴击率 +30%（状态高频维持，满覆盖近似）
   panel.critRate = panel.critRate + CORE_CRIT_RATE
-  // 残锋：队友/自身触发[毁伤]后全队锋御 锐暴伤害 +25%（40s 刷新；按自身面板近似）
-  panel.sharpCritDmg = panel.sharpCritDmg + RESIDUAL_EDGE_SHARP_CRIT_DMG
+  // 残锋：队友/自身触发[毁伤]后全队锋御 锐暴伤害 +25%（40s 刷新；按自身面板近似）——额外能力门控内
+  if (aa) panel.sharpCritDmg = panel.sharpCritDmg + RESIDUAL_EDGE_SHARP_CRIT_DMG
   // 影画2（薪火荣冠）：猩红铭刻/连携/终结/反制支援/支援突击期间攻击命中无视 18% 电抗
   //   （状态高频维持，满覆盖近似）——★ R55 订正：旧实现是 `>=1` + 16%，门控与数值双错
   if (cinemaLevelOf(cinemaLevel) >= 2) {

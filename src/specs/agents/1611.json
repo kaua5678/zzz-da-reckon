@@ -126,6 +126,14 @@
   ],
   "verifications": [],
   "stateMachines": [],
+  "additionalAbility": {
+    "teamConditions": [
+      { "type": "specialty", "values": ["stun"] },
+      { "type": "sameSpecialtyAsSelf" },
+      { "type": "sameAttributeAsSelf" }
+    ],
+    "note": "额外能力：血裔传承——raw 1611 passive Lv.7 第 6 行「队伍中存在[击破]角色、其他[锋御]或与自身属性相同的角色时触发：」为触发条件（本次补声明，此前 spec 无 additionalAbility ⇒ 残锋 +25% 锐暴在 claret.ts 里无条件写面板，永不受门控）。[击破]=specialty stun；其他[锋御]=sameSpecialtyAsSelf（自身槽位已被求值器排除）；与自身属性相同=sameAttributeAsSelf。"
+  },
   "notes": [
     "数据源：nanoka 3.2.12+18601660（v12）zh character/1611.json（data/raw/nanoka_missing/full/1611.json）+ 技能倍率表（data/raw/nanoka_1611_skills_lv12.json，2026-09-03 由 nanoka_scraper 重新生成）；catalog 1611 行已按 v12 重建（删 1611015/1611017、增 1611029/1611030，全表数值 v12）。2026-09-09 正式服（nanoka manifest.zzz.live = 3.2）重爬复核（scripts/fetch-nanoka-full-missing.mjs 1611 1621 --force）：倍率/被动/影画数值全一致（仅强化特殊技正式名改为「血华誓·铸锋秘术」、stats.tags 阵营 Camp12→Camp16，camp.faction 仍罗斯凯利法）；专武 14161 猩红渴望按正式服重导——暴击率 25→35 / 电属性伤害 15→25 / 电属性锐化伤害 10→16（旧测试服叠层口径 12%→20% 已废），基础 431 DEF · 防御力 48%。",
     "核心被动·苍白血宴（v12）：伤害均为锐化伤害（def 基底，引擎 SHARPEN_DAMAGE_PROFILE；锐暴伤害 150% 走 level60.sharpCritDmg）；部分锐化伤害命中积累残痕值（= 招式 anomaly_buildup 表值 /100），残痕值满 →[残痕]（最多 3 层）；斩金断铁/葬血强袭命中[残痕]敌人消耗 1 层触发[毁伤]；每 1% 初始暴击伤害 → 初始暴击率 +0.35%（2026-09 接入 applyClaretPanel：读 outOfCombatPanel.critDmg 初始口径，局内暴伤拐不转化；锋御模板基础暴伤=50（旧「=0」为 8 月过期快照的错误值，2026-09-12 已订正 catalog 1611 critDmg 0→50、critRate 19.4→33.8）——旧「未建模，初始暴伤≈0 无影响」判断已修正）。",

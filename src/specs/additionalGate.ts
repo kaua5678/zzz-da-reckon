@@ -17,6 +17,7 @@ import { getAgentSpec } from './registry'
  * - 1461 席德：两条 buff 来源是核心被动 / 影画二，spec 注明「核心被动与影画2 同条件，两条 buff 一并门控」。
  * - 1421 潘引壶：影画一再 +10% 以额外能力触发为前提。
  * - 1351 波可娜：影画六「困迹对追加攻击以外也生效」以困迹（额外能力）为前提（CC-199）。
+ * - 1511 南宫羽：影画二把「额外能力提供的失衡易伤」再 +30，前提同额外能力（2026-10-23）。
  *
  * 专属修正不在这里：凯撒「有任意队友」近似、菲欧妮 tier3「异常数≥3」走模块能力 `adjustAdditionalAbilityGates`（CC-67）。
  */
@@ -24,6 +25,9 @@ export const ADDITIONAL_GATE_CROSS_SOURCE_BUFFS: Readonly<Record<string, readonl
   '1461': ['seed.core_vanguard_bright_attack', 'seed.cinema_2_encirclement_def_ignore'],
   '1421': ['pan_yinhu.cinema_1_stupefaction_dmg'],
   '1351': ['pulchra_cinema_6_trap_all'],
+  // 1511 南宫羽：影画二「[额外能力：天使队长]提供的失衡易伤倍率额外提升30%」——来源标签是「影画二」，
+  // 但它抬的是**额外能力那一份**（buff_ce11acbda2 的 +30），额外能力不触发时基础 30 都不存在，这条也不该生效。
+  '1511': ['buff_2c59dfda5b'],
 }
 
 /**
@@ -44,7 +48,7 @@ const additionalGateTableCache = new WeakMap<readonly TeammateBuffGroup[], Reado
  * 加上 `ADDITIONAL_GATE_CROSS_SOURCE_BUFFS`。
  *
  * 引擎与 store 都读本函数（见文件头）。
- * 拥有者无 `additionalAbility` 声明（现：1511 南宫羽，见 additionalGate.test.ts `AA_OWNER_EXEMPT`）⇒ 不门控，与 store 一致。
+ * 拥有者无 `additionalAbility` 声明（**现存 0 例**；2026-10-23 前为 1511 南宫羽，补声明后归零）⇒ 不门控，与 store 一致。
  * 按 `groups` 数组身份缓存（catalog 载入后不变）。
  */
 export function additionalGateBuffTable(groups: readonly TeammateBuffGroup[]): Readonly<Record<string, readonly string[]>> {

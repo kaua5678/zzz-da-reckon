@@ -21,14 +21,14 @@ async function setup() {
 }
 
 describe('简（1261）啮咬/狂热/强击暴击', () => {
-  it('强击暴击率 = 基础20% + 精通×0.1%', () => {
+  it('强击暴击率 = 基础40% + 精通×0.16%（上限100%）', () => {
     const s = computeJaneMechanic({ anomalyProficiency: 500, frenzyActive: true, frontlineSeconds: 170 })
-    expect(s.assaultCritRate).toBeCloseTo(70, 5)
+    expect(s.assaultCritRate).toBeCloseTo(100, 5) // 40 + 500×0.16 = 120 → 封顶 100
     expect(s.assaultCritDmgBonus).toBe(30)
     expect(s.frenzyBuildUpBonus).toBe(25)
 
     const low = computeJaneMechanic({ anomalyProficiency: 0, frenzyActive: true, frontlineSeconds: 0 })
-    expect(low.assaultCritRate).toBe(20)
+    expect(low.assaultCritRate).toBe(40)
   })
 
   it('精通转攻击：>120 每点+2，上限600', () => {
@@ -39,11 +39,13 @@ describe('简（1261）啮咬/狂热/强击暴击', () => {
     expect(capped.atkFromMastery).toBe(600)
   })
 
-  it('applyPanel 写入强击暴击率/暴伤与潜能强击暴伤（仅自身强击）', () => {
+  it('applyPanel 只写潜能强击暴伤；强击双暴留给 1261.core_insight（buff 通道单源）', () => {
     const panel = { ...emptyPanel(), anomalyProficiency: 300 }
     janeMechanic.applyPanel!({ panel } as any)
-    expect(panel.assaultCritRate).toBeCloseTo(50, 5) // 20 + 300×0.1
-    expect(panel.assaultCritDmg).toBe(50)
+    // 强击暴击率/暴伤的唯一写者是 teammate-buffs.json 1261.core_insight（formula clamp(40+x*0.16,0,100) + fixed 50）；
+    // 模块再写一份即双计（曾实测面板 170.6%/130%，真值 100%/50%）。
+    expect(panel.assaultCritRate).toBe(0)
+    expect(panel.assaultCritDmg).toBe(0)
     expect(panel.selfAssaultCritDmgBonus).toBe(30)
   })
 

@@ -130,9 +130,9 @@ describe('CC-203 额外能力硬门控表：从数据派生、与 store 默认�
  * 求值——拥有者无声明 ⇒ aaActive 为 undefined ⇒ 恒开。故全员断言：拥有「额外能力」buff ⇒ spec 必须声明。
  */
 const AA_OWNER_EXEMPT: Record<string, string> = {
-  // 南宫羽：teammate-buffs 原文没有触发条件（只写效果）；
-  // R5 硬约束「不引入实测、不猜数据」⇒ 不编造条件。补数据时删掉本条即可被本测试接管。
-  '1511': 'catalog 原文无触发条件',
+  // 2026-10-23 销号「1511 南宫羽」：raw 1511 passive Lv.7 第 10 行明写
+  // 「队伍中存在[异常]角色或与自身阵营相同的角色时触发：」，spec 1511.json 已补 additionalAbility
+  // ⇒ 该组「额外能力：天使队长」两条 buff 已进 additionalGateBuffTable，豁免不再需要。
 }
 
 describe('CC-199 全员：「额外能力」buff 的拥有者必须声明触发条件', () => {

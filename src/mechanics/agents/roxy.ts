@@ -15,6 +15,7 @@ import { buildSpecEventExecutions } from '@/specs/mechanics'
 import { specAdjustableRate } from '@/specs/resources'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 /**
  * 洛克茜（1621）v12 重录（2026-09-03，nanoka 3.2.12+18601660）：
@@ -387,6 +388,13 @@ function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput)
 }
 
 function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
+  /**
+   * 额外能力·辉金心脏的触发条件写在原文前一行：「队伍中存在[强攻]角色或[命破]角色或[锋御]角色时触发：」
+   * ⇒ 下面两条（自身伤害 +80%、失衡时长 +2s）都只在 `additionalAbilityActiveOf(panel)` 时生效。
+   * ⚠ 原实现无条件施加，注释写「面板统一施加…略高估」——那不是近似而是可判定的门：
+   * 实测「洛克茜+凯撒+本」（无 attack/rupture/sharpen）AA=0 仍拿到 dmgBonus 含 80、stunDur 2。
+   */
+  const aa = additionalAbilityActiveOf(panel)
   // 核心被动转模（v12）：初始能量回复 >1.2 → 每 0.01：攻击 +5（上限960）、冲击 +0.4（上限76.8）
   // 「初始能量自动回复」= 局外总回能（基础 × 局外加成 + 固定，panelPhases 写入 energyRegenOutOfCombat）。
   // CC-127：原读 `panel.energyRegen`——那是**基础**回能（恒 1.2，catalog.ts PanelValues 注释），转模从未触发。
@@ -397,17 +405,16 @@ function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   const impactBonus = Math.min(ROXY_REGEN_IMPACT_CAP, regenSteps * ROXY_REGEN_IMPACT_PER_0_01)
   if (atkBonus > 0) panel.atk = panel.atk + atkBonus
   if (impactBonus > 0) panel.impact = panel.impact + impactBonus
-  // 额外能力：自身伤害 +80%（Lv60 上限；门控由团队条件，面板统一施加——无强攻/命破/锋御队略高估，note）
-  panel.dmgBonus = panel.dmgBonus + ROXY_AA_DMG_BONUS_LV60
+  // 额外能力：自身伤害 +80%（Lv60 上限；门控 = 队内有强攻/命破/锋御，见函数头 aa）
+  if (aa) panel.dmgBonus = panel.dmgBonus + ROXY_AA_DMG_BONUS_LV60
   /**
    * 额外能力同一句的**另一半**：「攻击命中 → 失衡时长 +2s」（用户 2026-10-20 点出「我记得洛克茜有
    * 延长失衡 2s 的被动」）。此前只在文件头注释里、**从未写进面板** ⇒ 含洛克茜的队窗口恒 16s 而非 18s。
    *
    * 满覆盖近似（同上面那条「攻击命中」）：失衡窗口内洛克茜的攻击必然命中，故按常驻 +2s 计。
-   * 门控与伤害那条**同一句原文**（强攻/命破/锋御队友），故同样统一施加——本仓现有含洛克茜的预设
-   * 都满足该条件（般岳=命破），无该条件的队会略高估，与 `dmgBonus` 那条同款的已知近似。
+   * 门控与伤害那条**同一句原文**（强攻/命破/锋御队友）⇒ 同样只在 `aa` 时施加。
    */
-  panel.stunDurationBonusSeconds = panel.stunDurationBonusSeconds + ROXY_AA_STUN_DURATION
+  if (aa) panel.stunDurationBonusSeconds = panel.stunDurationBonusSeconds + ROXY_AA_STUN_DURATION
   const cinema = cinemaLevelOf(cinemaLevel)
   if (cinema >= 1) {
     panel.critDmg = panel.critDmg + ROXY_C1_CRIT_DMG

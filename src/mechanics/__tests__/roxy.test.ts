@@ -52,7 +52,8 @@ describe('洛克茜（1621）v4 影画', () => {
    * 负控：删掉 `applyRoxyPanel` 里那行 `panel.stunDurationBonusSeconds += ROXY_AA_STUN_DURATION` ⇒ 本用例红。
    */
   it('额外能力·失衡时长 +2s 进面板（此前只在注释里，窗口恒 16s 而非 18s）', () => {
-    const p: any = { stunDurationBonusSeconds: 0 }
+    // 额外能力需队内有[强攻]/[命破]/[锋御]（面板标记 additionalAbilityActive 已由面板阶段求值）
+    const p: any = { stunDurationBonusSeconds: 0, additionalAbilityActive: 1 }
     roxyMechanic.applyPanel!({ cinemaLevel: 0, panel: p, settings: {} } as any)
     expect(p.stunDurationBonusSeconds, '失衡时长 +2s（原文额外能力·辉金心脏）')
       .toBeCloseTo(ROXY_AA_STUN_DURATION)
