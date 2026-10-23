@@ -244,7 +244,15 @@ describe('终局整数化：照影是离散触发，余数剑势留着不打', (
       expect(cycle!.zhaoyingForms, `axis=${axis} 照影 = floor(剑势/6)`).toBe(Math.floor(cycle!.outsideSword / 6))
       // ⚠ T141 改值：`axis=2` 由 10 → **11**（`axis=1` 仍 10）。归因同 C0 的三轴表——
       // 吸收常开 ⇒ 剑势 ↑ ⇒ axis=2 跨到下一档；其照影轮数受 CC-160 超支回夹约束（见 231 行那条）。
-      expect(cycle!.totalForms, `axis=${axis} 现值`).toBe([10, 11][axis - 1])
+      /**
+       * ⚠ **2026-10-23 现值 [10, 11] → [11, 11]**（规则 10 四步）。
+       * ① 量 delta：`axis=1` 10 → **11**（`axis=2` 仍 11）。
+       * ② 根因：**2026-10-21「交互默认全 0」（`13b9f584`）**——本队不再被预填弹刀 6 / 闪反 10
+       *    ⇒ 平A池与剑势结构改变 ⇒ 两轴同落 11（实测 `total=11 zhao=5`）。
+       * ③ 确认有意：用户裁决「交互全 0，最优次数由难度曲线给」，不是回归。
+       * ④ 只改**现值数组**；`stable` / 整数 / 分项闭合 / 照影 = floor(剑势/6) 四条判据一字未改。
+       */
+      expect(cycle!.totalForms, `axis=${axis} 现值`).toBe(11)
     }
   }, 900_000)
 })
@@ -274,13 +282,23 @@ describe('physical 缺省：同场景结构判据 + 现值', () => {
     expect([cycle!.totalForms, cycle!.decibelForms, cycle!.giftForms, cycle!.zhaoyingForms]).toEqual([10, 2, 4, 4])
     expect(cycle!.zhaoyingForms).toBe(Math.floor(cycle!.outsideSword / 6))
     // CC-149（第 183 轮合入）：降配「绝对可行即接受」后，最大可行档不再被相对臂③否决 ⇒ 0.0625 → 0.125（§21.3 锯齿消除后的曲线）。
-    // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 照影轮/总需求下降 ⇒ 真实溢出减轻 ⇒ 最大可行档回升 0.125 → 0.25。
-    expect(rr.convergence?.interactionScale, 'S3 真实溢出降配（§7.1），现值').toBe(0.25)
+    /**
+     * ⚠ **2026-10-23 现值 0.25 → `undefined`（不降配）**（规则 10 四步）。
+     * ① 量 delta：`interactionScale` undefined（= 未触发降配），截断 0s，池 10。
+     * ② 根因：**2026-10-21「交互默认全 0」（`13b9f584`）**——本队不再被预填弹刀 6 / 闪反 10
+     *    ⇒ 交互不再占前台 ⇒ 该队 physical 下已无「真实溢出」可降（实测 `trunc = 0`）。
+     * ③ 确认有意：交互全 0 后「无溢出可降」是正确读数，不是降配机制失效（降配守卫见 `s3ReliefTier`）。
+     * ④ 本条判据本意 = 「structure 自洽 + 现行值如实」，故改成**如实报未降配**，仍钉 stable/收敛/整数。
+     */
+    expect(rr.convergence?.interactionScale, 'S3 真实溢出降配（§7.1）：交互全 0 后本队无溢出 ⇒ 不降配')
+      .toBeUndefined()
   }, 300_000)
 
   it('C0 三轴：整数、分项闭合、照影 = floor(剑势/6)；总轮 10 / 11 / 12', async () => {
     // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 照影轮下降 ⇒ 三轴 10/11/12 → 10/10/11
-    const expected = [10, 10, 11]
+    // ⚠ 2026-10-23（规则 10 四步）：**2026-10-21「交互默认全 0」** ⇒ 三轴 [10, 10, 11] → [10, 10, 10]
+    //   （实测 axis2 也落 10：平A池变小 ⇒ 剑势 24.66 ⇒ 照影 4 恒定）。只改现值数组，其余判据未动。
+    const expected = [10, 10, 10]
     for (const axis of [0, 1, 2]) {
       const { config } = await setupYsgTeam(0)
       config.setMechanicSetting('yeshuguang.formAxis', axis)
@@ -307,7 +325,9 @@ describe('physical 缺省：同场景结构判据 + 现值', () => {
     expect(mie.exit).toBe('stable')
     // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 满轴照影 5→4、总轮 11→10；仅灭短轴省时把剑势抬过第 5 次照影门槛 ⇒ 13→12
     expect(full.cycle!.totalForms).toBe(10)
-    expect(mie.cycle!.totalForms).toBe(12)
+    // ⚠ 2026-10-23（规则 10 四步）：`mie` 12 → **11**——2026-10-21「交互默认全 0」⇒ 剑势结构改变
+    //   （实测 full=10 / mie=11，仍满足下方「短轴省时应多装至少一轮」的结构判据）。
+    expect(mie.cycle!.totalForms).toBe(11)
     expect(mie.cycle!.totalForms, '短轴省时应多装至少一轮').toBeGreaterThan(full.cycle!.totalForms)
   }, 600_000)
 })

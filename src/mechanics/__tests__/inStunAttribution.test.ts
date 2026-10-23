@@ -695,10 +695,19 @@ describe('载体型异放跟随载体动作（2026-08 审计修复）', () => {
     ])
     for (const buff of config.globalBuffs) buff.enabled = false
     config.useStunAxis = true
-    config.enemy.stunCountLock = 1
+    /**
+     * ⚠ **2026-10-23 锁窗数 1 → 2**（规则 10 四步）。
+     * ① 量 delta：锁 1 窗时 `burnice_flowfire_release-fire` 只剩 `-out` 段（`in = 0`）⇒ 本用例红；
+     *    锁 2 窗时恢复 `fire-in:1 / out:4` + `electric-in:1 / out:5`（实测）。
+     * ② 根因：**2026-10-21「交互默认全 0」（`13b9f584`）**——本队不再被预填弹刀/闪反
+     *    ⇒ 单窗内的动作排布变紧，灼热抛接法被挤出第一个窗口。
+     * ③ 确认有意：交互归 0 是用户裁决，窗口内容重排是它的正常后果。
+     * ④ 处置 = 锁两窗（判据「载体在窗内 ⇒ 必须拆出 -in 段」一字未改，只是给足窗口）。
+     */
+    config.enemy.stunCountLock = 2
     config.stunAxes = [{
       name: '抛接轴',
-      count: 1,
+      count: 2,
       actions: [{ slot: 0, moveId: '1171026', count: 1, startTime: 0 }],
       basicFillerSlot: 0,
     }]

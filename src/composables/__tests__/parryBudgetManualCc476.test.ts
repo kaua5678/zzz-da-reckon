@@ -110,8 +110,8 @@ describe('§20.5-3 失衡次数四舍五入：用户调高弹刀即启动反推�
     // 她自己的前台 +55s ⇒ `auto-1261-1561-1581` 的失衡次数由 [2,2,3,3] 变 [2,2,2,2]（反推链不再抬高次数，夹具前提失效）。
     // 全库 93 队 × 四档扫描：仅 5 队「手填抬高了失衡次数」，其中唯一同时满足「6 次档不启动反推链」的是本队：
     // 失衡 [3,3,4,4]、parrySplit [null,null,split,split]、伤害 [57.40, 66.85, 65.77]。
-    const p = teamPresets.find(x => x.id === 'auto-1021-1571-1211')
-    expect(p, '预设 auto-1021-1571-1211 存在').toBeTruthy()
+    const p = teamPresets.find(x => x.id === 'billy-trigger-lucia')
+    expect(p, '预设 billy-trigger-lucia 存在').toBeTruthy()
 
     const run = async (parry: number) => {
       applyTeamToStore(config, p!)
@@ -141,9 +141,19 @@ describe('§20.5-3 失衡次数四舍五入：用户调高弹刀即启动反推�
     expect(r12.split, '手填 12 次 ⇒ Boss 弹刀反推链启动（旧实现恒 null）').toBeTruthy()
     expect(r20.split, '手填 20 次 ⇒ Boss 弹刀反推链启动').toBeTruthy()
 
-    // 未达门槛的档位不受影响（防「一律抬高」的过宽修法）
-    expect(r6.stun, '填 6 次（= 职业基准，未超出）⇒ 与不填档同值，不应被抬高').toBe(r0.stun)
-    expect(r6.split, '填 6 次（未超基准）⇒ 反推链不应启动').toBeFalsy()
+    /**
+     * ⚠ **2026-10-23 判据随「交互默认全 0」调整**（规则 10 四步 + 规则 17②：这是**口径纠正**，不是放宽）。
+     *
+     * 旧前提「填 6 次 = 职业基准、未超出 ⇒ 反推链不启动」建立在 `interactionBaselineFor` 的
+     * 非支援/防护 = 6 上。2026-10-21 `13b9f584` 把职业基准改成**全 0** ⇒ 「超出基准」的门槛
+     * 从 6 降到 1 ⇒ 填 6 次**也会**启动反推链。这不是缺陷，正是「用户填的弹刀都要算」的本意。
+     * ⇒ 判据改为钉**新口径下的相对关系**：0 档不启动；6/12/20 档都启动；次数越多失衡不减；
+     * 伤害不低于 0 档。原来的「6 次不启动」在新口径下是**错的期望**，留着会逼后来人去改引擎。
+     */
+    expect(r6.stun, '填 6 次（> 全 0 基准）⇒ 反推链介入，失衡不低于不填档').toBeGreaterThanOrEqual(r0.stun)
+    expect(r6.split, '填 6 次（> 全 0 基准）⇒ 反推链应当启动').toBeTruthy()
+    expect(r12.stun, '12 次 ≥ 6 次档').toBeGreaterThanOrEqual(r6.stun)
+    expect(r20.stun, '20 次 ≥ 12 次档').toBeGreaterThanOrEqual(r12.stun)
 
     // ★ 单调性：旧实现下 12 次(41.66) < 0 次(42.51)，加弹刀反而降伤
     expect(r0.dmg, '加弹刀不应降低伤害（旧实现 12 次比 0 次低）').toBeLessThanOrEqual(r12.dmg)

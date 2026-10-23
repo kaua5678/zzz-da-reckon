@@ -77,7 +77,15 @@ describe('banyue-roxy-lucia 外层环（源头修复后）', () => {
      * ④ 本条**只改锚值**：`stable`、`outerConverged`、`pool === floor(连续值)` 三条判据逐条保留。
      *    ⚠ 反空洞仍在：`pool === floor(cont)` 若被钳位/硬凑会立刻红（4 ≠ floor(4.7121) 才怪）。
      */
-    expect(pool, '池次数 = 物理 4（窗口 18s 后的自洽值）').toBe(4)
+    /**
+     * ⚠ **2026-10-23 锚值 4 → 3**（规则 10 四步）。
+     * ① 量 delta：`pool` 4 → **3**（`continuousStunCount` 3.768 ⇒ floor 3），`outerExit` 仍 `stable`。
+     * ② 根因：**2026-10-21「交互默认全 0」（`13b9f584`）**——本队不再被预填弹刀 6 / 闪反 10
+     *    ⇒ 失衡蓄积掉一档（窗口仍 18s，`W` 未变）。
+     * ③ 确认有意：用户裁决「交互全 0，最优由难度曲线给」。
+     * ④ 本条**只改锚值**：`stable` / `outerConverged` / `pool === floor(连续值)` 三条判据逐条保留。
+     */
+    expect(pool, '池次数 = 物理 3（窗口 18s + 交互全 0 后的自洽值）').toBe(3)
     // 同源判据：池不得高于「连续值」的 floor —— 高于就说明那份计划没按这么多窗排过
     // （`stunPoolContinuous.test` 的 stable 契约，本队同一口径）。
     const cont = continuousStunCount(calc.stunPoolResult.value!)

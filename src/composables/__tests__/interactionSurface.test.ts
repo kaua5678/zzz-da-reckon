@@ -37,7 +37,18 @@ async function withSurface(
     applyTeamToStore(s.config, preset)
     applyAxisBinding(s.config, s.config.getAxisState(), preset)
     // 采样器自 2026-10-19 起是**异步分片**（每格让出主线程，防页面卡死）⇒ 必须 await
-    const surface = await runInteractionSurface(s, { preset, boss, phase, maxCount: 12, countStep: 2, ratioSteps: 4 })
+    /**
+     * ⚠ **2026-10-23 扫描面上界 12 → 40**（规则 10 四步）。
+     * ① 量 delta：`maxCount = 12 / countStep = 2` 时，**四类交互的干净边界全部顶到 12（上界）**
+     *    ⇒ ③「合轴拉满后边界必须更宽」假红（`hi === lo === 12` 是**截断**，不是没变宽）；
+     *    ⑤「干净格 vs 脏格」也整片消失（`dirty = 0`，因为还没扫到会弃轴/降配的次数）。
+     * ② 根因：**2026-10-21「交互默认全 0」（`13b9f584`）**——本队不再被预填弹刀 6 / 闪反 10，
+     *    同一条曲线的可行域整体右移（实测 parry 干净边界 12 → 20），旧上界落进「全干净」区。
+     * ③ 确认有意：交互归 0 是用户裁决；本页是**诊断视图**，扫描上界本就该覆盖到「开始变脏」为止。
+     * ④ 处置 = 放大上界（40，步长 4：覆盖 12→40 十倍值域，仍只 11 档 × 4 档合轴）——
+     *    **判据一字未改**；实测 parry 边界 [12,16,16,20]、脏格 24。
+     */
+    const surface = await runInteractionSurface(s, { preset, boss, phase, maxCount: 40, countStep: 4, ratioSteps: 4 })
     fn(surface, s)
   })
 }
@@ -88,7 +99,7 @@ describe('交互 × 合轴 二维面 runInteractionSurface', () => {
       // 且最高档必须真的放宽了（否则本条对「合轴给交互腾时间」零判别力）
       const lo = s.cleanLimitByRatio[0]!
       const hi = s.cleanLimitByRatio[s.cleanLimitByRatio.length - 1]!
-      expect(hi, '合轴拉满后干净边界必须更宽（实测 r=0 时 2 次、r=cap 时 12+ 次）')
+      expect(hi, '合轴拉满后干净边界必须更宽（实测 r=0 时 12 次、r=cap 时 20 次）')
         .toBeGreaterThan(lo)
     })
   }, 900_000)
@@ -119,15 +130,34 @@ describe('交互 × 合轴 二维面 runInteractionSurface', () => {
        * 两条参考路径的**终点相同**（都走到底 ⇒ `gain` 必然相等，这不是缺陷：终点就是面的一角）。
        * 真正区分两条路的是**途中最低点**——「先交互」在低合轴档就要穿过不可行区，掉得更深。
        */
-      const a = s.paths.find(p => p.kind === 'interact-first')!
-      const b = s.paths.find(p => p.kind === 'absorb-first')!
-      expect(a, '应有「先交互」路径').toBeDefined()
-      expect(b, '应有「先合轴」路径').toBeDefined()
-      expect(a.cells[0]!.dmg, '两条路径起点必须相同（同一个角）').toBeCloseTo(b.cells[0]!.dmg, 6)
-      expect(a.cells[a.cells.length - 1]!.dmg, '两条路径终点必须相同（都走到底）')
-        .toBeCloseTo(b.cells[b.cells.length - 1]!.dmg, 6)
-      expect(a.worst.dmg, '「先交互」的途中最低点必须严格低于「先合轴」（实测 64.12 vs 88.59）')
-        .toBeLessThan(b.worst.dmg)
+      /**
+       * ⚠ **2026-10-23 判据改为「逐条交互各自比较 + 至少一条严格更低」**（规则 10 四步）。
+       *
+       * ① 量 delta：**弹刀**这一类现在的「途中最低点」两条路**相等**（78.73M，都是 c0/r0 那个角）
+       *    ⇒ 旧写法（只看弹刀、要求严格更低于 88.59M）红。但闪反 / 金身 / 双反三类**仍然**
+       *    「先交互」更低（实测 87.71<105.98、85.54<93.63、84.35<98.02）。
+       * ② 根因：**2026-10-21「交互默认全 0」（`13b9f584`）**——本队不再被预填弹刀 6 / 闪反 10
+       *    ⇒ 弹刀在 r=0 时整段都干净（`dirty=24` 全部落在 r>0 的高交互格）⇒ 两条路的最低点
+       *    都退回到起点角，这一类的判别力消失。
+       * ③ 确认有意：交互归 0 是用户裁决。
+       * ④ 处置 = 判据从「只查弹刀」改成**逐类比较**（起点/终点相同 + 最低点不高于对方），
+       *    并保留一条**反空洞**（至少一类严格更低）——这样「本页对离散分支有判别力」这个主张
+       *    仍被机器钉住，而不是绑在某一类交互的当前落点上。
+       */
+      const strict: string[] = []
+      for (const ser of r.series) {
+        const a = ser.paths.find(p => p.kind === 'interact-first')!
+        const b = ser.paths.find(p => p.kind === 'absorb-first')!
+        expect(a, ser.label + ' 应有「先交互」路径').toBeDefined()
+        expect(b, ser.label + ' 应有「先合轴」路径').toBeDefined()
+        expect(a.cells[0]!.dmg, ser.label + ' 两条路径起点必须相同（同一个角）').toBeCloseTo(b.cells[0]!.dmg, 6)
+        expect(a.cells[a.cells.length - 1]!.dmg, ser.label + ' 两条路径终点必须相同（都走到底）')
+          .toBeCloseTo(b.cells[b.cells.length - 1]!.dmg, 6)
+        expect(a.worst.dmg, ser.label + ' 「先交互」途中最低点不得高于「先合轴」').toBeLessThanOrEqual(b.worst.dmg + 1e-6)
+        if (a.worst.dmg < b.worst.dmg - 1) strict.push(ser.key)
+      }
+      expect(strict.length, '至少一类交互上「先交互」必须真的掉得更深（否则本页对离散分支零判别力）')
+        .toBeGreaterThan(0)
     })
   }, 900_000)
 })

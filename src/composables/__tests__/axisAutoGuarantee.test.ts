@@ -38,8 +38,8 @@ describe('轴模式 ⇒ 自动保底（嗔火 / 喧响）', () => {
     // ⚠ T167 换预设：`banyue-trigger-lucia` 在本档的嗔火缺口已被「轴内连段块免费」补上
     // （见下方 T167 归因 ④）⇒ 换 `banyue-roxy-lucia`，判据逐条保留。
     // 2026-10-18：再换到 `banyue-trigger-lucia`（修冲霄时间后 roxy 档的盾差消失，归因见下方「第二次换夹具」）
-    const preset = teamPresets.find(p => p.id === 'banyue-trigger-lucia')
-    expect(preset, '预设 banyue-trigger-lucia 存在').toBeTruthy()
+    const preset = teamPresets.find(p => p.id === 'banyue-norma-lucia')
+    expect(preset, '预设 banyue-norma-lucia 存在').toBeTruthy()
     const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
@@ -116,6 +116,17 @@ describe('轴模式 ⇒ 自动保底（嗔火 / 喧响）', () => {
      * ④ 处置 = 扫描 6 支般岳预设 × 4 档 ratio × 3 组交互（`.zc/perf` 同法），取仍能分辨两种情况的点：
      *    **`banyue-trigger-lucia` @ `r=0` + 金身0/双反1** —— 实测 **盾0 = {parry:0, dual:12}**、
      *    **盾1 = {parry:0, dual:0}**。断言①②③（含「清轴 ⇒ 归零」）一字未改，只换夹具档位。
+     */
+    /**
+     * ⚠ **第四次换夹具（2026-10-23 规则 10 四步）—— 判据逐条保留**。
+     * ① 量 delta：`banyue-trigger-lucia` @ `r=0 + 金身0/双反1` 下「盾 1 ⇒ 归零」失效
+     *    （实测 **盾0 = {parry:12, dual:24} / 盾1 = {parry:11, dual:12}** ⇒ 和 23 ≠ 0）。
+     * ② 根因：**2026-10-21「交互默认全 0」（`13b9f584`）**——本队不再被预填弹刀 6 / 闪反 10
+     *    ⇒ 闪能/嗔火来源结构改变 ⇒ 秽盾那 60 闪能不再是「补上缺口的唯一那一下」。
+     * ③ 确认有意：交互全 0 是用户裁决（「最优次数由难度曲线给」）。
+     * ④ 处置 = 扫描 4 支般岳预设 × 4 档 ratio × 4 组交互（本文件同款口径）后，取仍能分辨两种情况的点：
+     *    **`banyue-norma-lucia` @ `r=0 + 金身0/双反1`** —— 实测 **盾0 = {parry:3, dual:12}**（补齐 15 > 0）、
+     *    **盾1 = {parry:0, dual:0}**（归零）、轴行 = 1。断言①②③一字未改。
      */
     config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0)
     config.setActionCount(0, 'blockCount', 0)

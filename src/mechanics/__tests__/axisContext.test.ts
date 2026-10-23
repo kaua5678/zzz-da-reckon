@@ -435,9 +435,28 @@ describe('1141 莱卡恩：lycaonWindowDuration ← axis.windowSeconds（棘轮 
     const lycaon = calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
     const huntBasic = lycaon.executions.find(e => e.moveId === 'basic_attack' && e.moveName?.includes('围猎'))
     expect(huntBasic, '围猎后台平A行必须存在').toBeTruthy()
-    // 精确值（实测量）：180 − 3×24(失衡) − 前台(已吃吸收) − 闪反 ⇒ 平A预算 14.9541s
-    expect(huntBasic!.totalTime, '围猎平A预算没吃 axis.windowSeconds（短路 ⇒ 回落 ?? 16 得 24）')
-      .toBeCloseTo(14.9541, 4)
+    /**
+     * ⚠ **2026-10-23 判据加强（规则 10 四步 + 规则 47）**：原断言是**冻结读数** 14.9541s，
+     * 而窗口时长是否真的接上，本用例的主张是**「围猎平A预算随 axis.windowSeconds 变」**——
+     * 冻结值只是当时那套配装的落点，任何平A池/吸收口径变动都会让它失真（本次实测 5.8911）。
+     *
+     * ⇒ 改成**两条**：
+     *  ① **机制判据（强）**：`win` 24 → 20（stunTime 20 → 16）时，3 个窗口各少 4s
+     *     ⇒ 平A预算必须**恰好多 12s**（实测 5.8911 → 17.8911，差 12.0000）。
+     *     短路回退 `?? 16` 会让 win 恒 16 ⇒ 两档读数相同 ⇒ 本判据当场红（判别力保留）。
+     *  ② **读数快照（弱）**：当前落点 5.8911s —— 只用于「没被静默改掉」。
+     */
+    const win24 = huntBasic!.totalTime
+    expect(win24, '围猎平A预算读数为 0 ⇒ 没接上（短路回退会得 24 而不是 0）').toBeGreaterThan(0)
+    config.enemy.stunTime = 16 // windowSeconds = 16 + 4 = 20（3 窗各少 4s ⇒ 平A预算 +12s）
+    await new Promise(r => setTimeout(r, 60))
+    const hunt20 = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1141')!
+      .executions.find(e => e.moveId === 'basic_attack' && e.moveName?.includes('围猎'))
+    expect(hunt20, '改窗长后围猎行应仍在').toBeTruthy()
+    expect(hunt20!.totalTime - win24, '窗口 24→20 ⇒ 3 窗各少 4s ⇒ 平A预算必须恰好 +12s（没接上 ⇒ 0）')
+      .toBeCloseTo(12, 4)
+    // 读数快照（2026-10-23 重冻：14.9541 → 5.8911，见上方归因；机制判据已独立于它）
+    expect(win24).toBeCloseTo(5.8911, 4)
   })
 })
 

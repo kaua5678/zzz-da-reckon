@@ -166,7 +166,13 @@ describe('R61 batchB · 1111 影画载体集未接入（状态表边界反锁）
     const used = (self?.executions ?? []).map(e => String(e.moveId)).filter(m => /^\d+$/.test(m))
 
     // 反空洞：执行计划确实非空（否则「零交集」是废话）
-    expect(used.length, '1111 执行计划为空 ⇒ 断言前提不成立').toBeGreaterThan(3)
+    /**
+     * 反空洞：执行计划确实非空（否则「零交集」是废话）。
+     * ⚠ 2026-10-23：数字 moveId 行 4 → **3**（2026-10-21「交互默认全 0」后安东不再被预填
+     * 弹刀/闪反 ⇒ `1111023` 那行消失）。判据本意是「有执行行可查」，故按**当前实况**钉 `≥ 3`
+     * ——它仍能区分「装配坏了 ⇒ 0 行」（那时本条照样红）。
+     */
+    expect(used.length, '1111 执行计划为空 ⇒ 断言前提不成立').toBeGreaterThanOrEqual(3)
 
     const carriers = new Set([...ANTON_PILE_MOVE_IDS, ...ANTON_DRILL_MOVE_IDS, ...ANTON_C6_MOVE_IDS])
     const hit = used.filter(m => carriers.has(m))

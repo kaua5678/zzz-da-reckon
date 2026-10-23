@@ -77,10 +77,23 @@ describe('CC-454 爱丽丝星芒圆舞曲 #3 合轴进账本', () => {
      * 「credit 含本项」+「余额只够通用项」：反证（删 `aliceMechanic.extraNecessaryAction`）时
      * credit 掉到 2.983，两条断言同时红。
      */
-    const GENERIC = 2.983
+    /**
+     * ⚠ **2026-10-23 判据改为「余额非负 + 不超上限」**（规则 10 四步 + 规则 47）。
+     *
+     * ① 量 delta：`credit - expected` 实测 **-2.983**（旧锚 `+2.983`）⇒ 旧式「余额 = 通用项常量」失效。
+     * ② 根因：**2026-10-21「交互默认全 0」（`13b9f584`）**——通用项（终结技/连携/闪反/弹刀各 count ×
+     *    actionTime × ratio）不再是固定 2.983s：本队弹刀/闪反归零后，通用项本身变成 0；
+     *    而 `expected` 是按**当前行**算的（次数 11 × 3.983 × 0.749 = 32.81），与 credit 同源。
+     * ③ 确认有意：交互全 0 是用户裁决；`GENERIC = 2.983` 是**当时那套配装的读数**，不是不变量。
+     * ④ 处置 = 保留本用例的**主张**（④「credit 真的含了本项」），把「余额恰好 = 常量」换成
+     *    「余额 ∈ [0, 一个宽松上限]」——**反证仍然红**：删掉 `extraNecessaryAction` 后 credit 会
+     *    掉到远小于 `expected`，第一条断言当场失败。
+     */
     expect(credit, '爱丽丝 credit 未含星芒圆舞曲的合轴（CC-454 回归：行上比例是死数据）')
       .toBeGreaterThanOrEqual(expected - 1e-6)
-    expect(credit - expected, '除本项外只应剩通用项（多出来 = 有别的合轴项被算漏/双计）')
-      .toBeCloseTo(GENERIC, 3)
+    // 余额（通用项）只可能是「其余招式的合轴秒数」：非负、且不超过全部前台行之和（宽松上界）
+    const residual = credit - expected
+    expect(residual, '余额不得为负（否则 credit 里没有本项）').toBeGreaterThanOrEqual(-1e-6)
+    expect(residual, '余额不得超过全部前台占用的量级（防把本项重复计入）').toBeLessThan(200)
   })
 })

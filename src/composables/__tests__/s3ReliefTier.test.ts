@@ -46,12 +46,25 @@ describe('physical 模式：1431+1481 结构性溢出队不再保基线', () => 
       config.applyTeamPreset(p!.team as [string, string, string])
       config.setMechanicSetting('time.stunPlanProjection', 4)
       const cv = calc.resourceResult.value?.convergence
-      // 修复前：interactionScale undefined（保基线），截断 94.6 / 82.5s；修复后 0.125 档，截断约 20s。
-      // 2026-10-08 换 run 后 `auto-1431-1481-1491` 实测 0.375 档 / 截断 21.3s；
-      // `auto-1431-1341-1481` 实测 0.625 档 / 截断 8.617s（旧 `auto-1431-1481-1341` 为 82.5s）。
-      expect(cv?.interactionScale).toBeDefined()
+      /**
+       * ⚠ **2026-10-23 前提失效（规则 10 四步）——「降配是否被调用」已无法在这两支队上度量**。
+       *
+       * ① 量 delta：`interactionScale` **undefined**（两支队都不再降配），截断 5.42s / 0.00s。
+       * ② 根因：**2026-10-21「交互默认全 0」（`13b9f584`）**——本用例的前提是「交互占前台 ⇒ 结构性溢出
+       *    ⇒ S3 降配搜档」；交互归 0 后这两支队物理上不再溢出（实测截断 ≤ 5.42s，远低于 40s 门槛），
+       *    降配臂**无需求可降** ⇒ 不调用。
+       * ③ 确认有意：用户裁决「交互全 0」，且降配臂本身的判据在 `feasibilitySearch` 系列单测里覆盖。
+       * ④ 处置 = 把本用例改为钉**现在真正成立的结构不变量**：两支队必须 stable、截断 ≤ 40s、
+       *    且**若**降配被调用则档位必须在 (0,1) 内（不钉「必须调用」）。
+       *    ⚠ 保留本条的理由 = 它仍是 `auto-1431-*` 结构性溢出族的回归网；只是「必须降配」这个
+       *    断言依赖「交互非 0」，那是数据前提不是代码不变量（规则 47：别把用户数据质量写成不变量）。
+       */
       expect(cv?.timeTruncatedSeconds ?? Infinity).toBeLessThan(40)
       expect(cv?.outerExit).toBe('stable')
+      if (cv?.interactionScale !== undefined) {
+        expect(cv.interactionScale, '降配档位必须在 (0,1) 开区间').toBeGreaterThan(0)
+        expect(cv.interactionScale, '降配档位必须在 (0,1) 开区间').toBeLessThan(1)
+      }
     }, 60000)
   }
 })

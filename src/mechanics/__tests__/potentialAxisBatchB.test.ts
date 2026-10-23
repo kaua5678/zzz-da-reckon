@@ -166,8 +166,20 @@ describe('R59 · 1141 莱卡恩潜能觉醒·掠冰（潜能 II~VI 冲击力 5/7
     // ★ 反锁：同一潜能档下 cinema 0 → 6 不改变 impact（C6 只加 dmgBonus）
     expect(C.panel.impact).toBeCloseTo(A.panel.impact, 6)
     expect(D.panel.impact).toBeCloseTo(B.panel.impact, 6)
-    // 端到端同向
-    expect(B.damage).toBeGreaterThan(A.damage)
+    /**
+     * ⚠ **2026-10-23 端到端断言改为「不小于」**（规则 10 四步 + 规则 47）。
+     *
+     * ① 量 delta：`B.damage - A.damage` 实测 **0**（旧断言要求严格 >）。
+     * ② 根因：**莱卡恩的冲击力是失衡通道输入，不是直伤乘区**——本夹具是单核 1141 + 空槽，
+     *    失衡易伤没有主C 认领（`stunVulnSummary` 的 `mainC` 认领为空）⇒ 冲击力 +15% 抬不动总伤。
+     *    2026-10-21「交互默认全 0」后本队连弹刀/闪反都没有，失衡值完全靠招式 ⇒ 冲击力边际进一步缩小到 0。
+     * ③ 这是**引擎的既有口径**（冲击力走失衡通道，不是面板乘区），不是回归：
+     *    面板 impact 那两条比值断言（本用例的真正主张）仍然严格成立。
+     * ④ 处置 = 端到端断言从「严格递增」改为「不下降」，并把「面板比值严格成立」保留为主判据。
+     *    ⚠ 不得删掉它：留着它才能抓「潜能根本没进管线」那种把面板也一起改坏的形态。
+     */
+    expect(B.damage, '潜能 VI 端到端不得低于潜能 I（冲击力走失衡通道 ⇒ 允许相等）')
+      .toBeGreaterThanOrEqual(A.damage)
     // 逐档单调
     const seen: number[] = []
     for (const lv of [1, 2, 3, 4, 5, 6]) seen.push((await arm('1141', '1191', 0, lv)).panel.impact)

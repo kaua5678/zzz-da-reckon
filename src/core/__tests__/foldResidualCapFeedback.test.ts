@@ -95,7 +95,7 @@ const CASES = [
   //   归因：配装推荐主词条改按 nanoka 站点规则 ⇒ 本队 1491 千夏的 6 号位由攻击→攻击（不变）、
   //   1431 叶瞬光/1481 琉音的 4/5 号位有变 ⇒ 行伤害重排。折叠环本身（acc）未被这条数据口径碰到。
   {
-    id: 'auto-1431-1481-1491', accCeiling: 20, before: 62.57, ledger: [140.215, 42.995, 23.312], dmg: 126.8881,
+    id: 'auto-1431-1481-1491', accCeiling: 20, before: 62.57, ledger: [140.611, 42.185, 23.464], dmg: 126.8675,
     desc: '残差塌回地板（修前 62.57s）且落点不变（dmg 2026-10-20 重取：配装推荐主词条订正，账本/acc 零变化）',
   },
   // 旧 auto-1431-1481-1341：新槽序下 scale 0.375（封顶激活）。
@@ -106,7 +106,7 @@ const CASES = [
   //   归因同下条（配装推荐主词条订正 ⇒ 团队预算重排）。acc **仍在 35s 地板以内** ⇒ 本用例的
   //   核心判据（残差塌回地板、不与封顶构成正反馈）依然成立，漂的只是认领落点。
   {
-    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [125.438, 21.001, 67.495], dmg: 108.2593,
+    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [117.521, 21.001, 67.460], dmg: 94.6715,
     desc: '封顶队（scale<1，走 necessaryUncappedTime 路径）；acc 15.50 ⇒ 本条不度量残差塌陷（落点按 2026-10-20 重取）',
   },
   // 旧 auto-1431-1491-1341：槽序互换（照↔千夏）⇒ 账本槽1/槽2 对调。
@@ -117,7 +117,8 @@ const CASES = [
   // ⚠ 2026-10-20 重取：acc 21.70 → 15.500、ledger [151.673,23.534,23.678] → [155.393,17.334,23.678]、dmg 101.5079 → 103.7771。
   //   归因：配装推荐主词条订正（1431/1341/1491 的 4/5/6 号位有变）⇒ 团队预算重排。
   //   acc 仍在 35s 以内 ⇒ 判据有效，漂的是认领落点。
-  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [155.393, 17.334, 23.678], dmg: 103.7771, desc: '残差塌回地板（修前 22.74s）；落点按 2026-10-20 配装推荐订正重取' },
+  // ⚠ 2026-10-23 重取：2026-10-21「交互默认全 0」⇒ 三队账本/伤害落点整体移动（本用例主张 = 残差塌回地板，未变）。
+  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [155.943, 16.417, 23.678], dmg: 104.2963, desc: '残差塌回地板（修前 22.74s）；落点按 2026-10-23 交互全 0 口径重取' },
 ] as const
 
 describe('折叠残差不与团队封顶构成正反馈', () => {
@@ -294,14 +295,17 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
       //      同一降配档位（0.125）下伤害下降（本队非失衡时间被更多大招占用）。
       // 判据（档位 / 截断 / 残差地板）**全部未变**，只有伤害读数漂移 —— 与本用例历史四次重取同型。
       // 归因：配装推荐主词条改按 nanoka 站点规则 ⇒ 本队 1431/1341/1481 的 4/5/6 号位都有变 ⇒ 重排后同档位伤害上升。
-      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.125, 6)
+      // ⚠ 2026-10-23 重取（规则 10 四步）：2026-10-21「交互默认全 0」⇒ 本队 heavy 场景（弹刀+闪反各 +25）
+      //   的交互占前台总量变少 ⇒ 降配搜索落到 **0.375**（旧 0.125）、dmg 94.2985 → **108.4261**；截断仍 0s。
+      //   判据本意（档位可复现、截断 0、残差在地板）不变，只更新认领值。
+      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.375, 6)
       expect(
         Math.abs((rr!.overflowSeconds ?? 0) - 0),
         `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 94.2985),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 94.2985M（2026-10-20 C3 落地后重取）`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 108.4261),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 108.4261M（2026-10-23 交互全 0 口径重取）`,
       ).toBeLessThan(0.01)
       // 残差仍在量化地板（本修法的目的）
       expect(rr!.convergence?.timeBudgetAccumulatedSeconds ?? 0).toBeLessThan(35)
@@ -331,7 +335,9 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
        * 差额 0.1s 来自「合轴抵扣与轴内节省按 max 取大不叠加」（`helpers.ts` 账本口径），不是回归。
        * ⇒ 这是**有意行为变化**：账本开始如实记录这段耗时（此前它被当成 0 静默消失）。
        */
-      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.4, 6)
+      // ⚠ 2026-10-23 重取（规则 10 四步）：0.4 → **0.6**、dmg 79.2347 → **75.1391**（2026-10-21「交互默认全 0」
+      //   后 heavy 场景的交互占前台变少 ⇒ 降配搜索落点更宽松）。acc 仍 13.60（残差判据未变）。
+      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.6, 6)
       /**
        * ⚠ **2026-10-21 round 29：71.9054M → 79.2347M**（轴态降配臂落地）。
        *
@@ -339,8 +345,8 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
        * 判据本意（「档位可复现 + 伤害与认领值一致」）不变。
        */
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 79.2347),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 79.2347M（2026-10-21 轴态降配后重取）`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 75.1391),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 75.1391M（2026-10-23 交互全 0 口径重取）`,
       ).toBeLessThan(0.01)
     }, 200_000)
 
@@ -378,14 +384,29 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
       // ⚠ 2026-10-20 重取：档位 0.25 → **0.375**、dmg 89.3524 → **90.0650**、截断仍 0s。
       // 归因：配装推荐主词条订正（本队三槽号位都有变）⇒ 同一 fixture 的降配搜索落到别的缓解档。
       // 本用例本来就是「钉住现状并标成已知缺陷」的认领值（见上方头注释），随数据口径重取，不是放宽判据。
-      expect(rr!.convergence?.interactionScale, '档位认领值变了 —— 需重新逐队归因').toBeCloseTo(0.375, 6)
+      /**
+       * ⚠ **2026-10-23 重取（规则 10 四步）：档位 0.375 → `undefined`（不降配）、dmg 90.0650 → 89.9138**。
+       *
+       * ① 量 delta：`interactionScale` 不再出现（该 fixture 已无「结构性溢出」可降），截断 0s、伤害 89.9138M。
+       * ② 根因：**2026-10-21「交互默认全 0」（`13b9f584`）**——本用例的 `heavy` 前提（弹刀 +25 / 闪反 +25）
+       *    是**在 0 基准上加**的：以前还叠着预填的 6/10 ⇒ 现在总交互更少 ⇒ `ratio=0`（不吸收）也不再溢出。
+       * ③ 确认有意：交互归 0 是用户裁决；「无溢出 ⇒ 不降配」是 S3 的正确行为。
+       * ④ 处置 = 认领值改成「**不降配**」，并保留其余两条（截断 0s、伤害认领）。
+       *    ⚠ 本条本来就是「钉住现状并标成已知缺陷」的认领（见上方头注释），随数据口径重取不算放宽判据；
+       *    但它现在**不再度量**「缓解档候选集被相对判据缩窄」那个缺陷（该形态在无溢出场景下不可达）——
+       *    已在 `docs/REQUIREMENTS_BACKLOG.md` 之外的口头交接里说明，需要时另开夹具。
+       */
+      expect(
+        rr!.convergence?.interactionScale,
+        '档位认领值变了 —— 需重新逐队归因（2026-10-23：交互全 0 后该场景已无溢出 ⇒ 不降配）',
+      ).toBeUndefined()
       expect(
         Math.abs((rr!.overflowSeconds ?? 0) - 0),
         `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s（剑势修正后截断归零）`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 90.0650),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 90.0650M（2026-10-20 配装推荐主词条订正后重取）`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 89.9138),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 89.9138M（2026-10-23 交互全 0 口径重取）`,
       ).toBeLessThan(0.01)
     }, 200_000)
   })

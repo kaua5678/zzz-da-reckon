@@ -80,6 +80,15 @@ describe('雨果决算轴内块数落地（坑36 回归）', () => {
     const row = calc.resourceResult.value?.characters?.[0]?.executions?.find(e => e.moveId === HUGO_EX_VERDICT_MOVE_ID)?.count ?? -1
     expect({ pool, stack, row }, '池 / 轴栈 / 资源行必须同源').toEqual({ pool: row, stack: row, row })
     // r652 CC-469′：轴态逐招份额与未覆盖窗口份额复合扣除（不再双重扣除）+ N 二分自洽后本队失衡 4→5（同源断言不变，只是现值变）
-    expect(row, 'physical 现值').toBe(5)
+    /**
+     * ⚠ **2026-10-23 现值 5 → 4**（规则 10 四步）。
+     *
+     * ① 量 delta：`pool = stack = row = 4`（**同源断言仍成立**），旧锚值 5 不再成立。
+     * ② 根因：**2026-10-21「交互默认全 0」（`13b9f584`）**——本用例走 `setupHarness` 的推荐配装，
+     *    弹刀/闪反不再被职业基准预填 6/10 ⇒ 失衡蓄积少一档 ⇒ 池 5→4（实测 cont 4.2x ⇒ floor 4 自洽）。
+     * ③ 确认有意：用户裁决「交互次数全设 0，最优次数由难度曲线给，不由默认值给」，不是回归。
+     * ④ 处置 = **只改锚值**；「池 == 轴栈 == 资源行」这条同源判据一字未改。
+     */
+    expect(row, 'physical 现值').toBe(4)
   })
 })

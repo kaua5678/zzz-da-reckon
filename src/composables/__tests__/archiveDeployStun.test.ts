@@ -127,13 +127,27 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
      * ⇒ 态A 取 **23000**、态B 取 **31000**。判据形态**一字未改**（breaker ≥ 1 且 < 5、main ≥ 1、
      * 缺口如实上报；态B = `parry-exhausted`）。
      */
-    configStore.enemy.stunValue = 23000
+    /**
+     * ⚠ **2026-10-23 重探阈值**（本段规矩同前：门槛变了照此重探，不改判据）。
+     * 起因：**2026-10-21「交互默认全 0」（`13b9f584`）**——本队不再被预填弹刀 6 / 闪反 10
+     * ⇒ 各 `stunValue` 下的落点整体下移一档。实测重扫（`presetParryTotal = 5`，18000..40000 逐 500）：
+     * | stunValue | breaker | main | stun | 形态 |
+     * |---|---|---|---|---|
+     * | 18000–19500 | 0 | 5 | 4 | 正常（反推未介入，保底可达） |
+     * | 20000 | 1 | 4 | 4 | 部分介入，但**保底可达**（不是本判据要的形态） |
+     * | **21500–22500** | **1~3** | **4~2** | 2 | **态A：部分给击破位 + 保底不可达**（本判据要的两态同时成立） |
+     * | 23000–31000 | 5 | 0 | 3 | 态A 更深一档（全给击破位仍 3 次） |
+     * | ≥31500 | 5 | 0 | 2 | 阈值超过攒条上限 ⇒ 池再降一档 |
+     * ⇒ 态A 取 **22000**（breaker 2 / main 3 / 保底不可达）、态B 仍取 **31000**（breaker 5 / `parry-exhausted` / 池 3）。
+     * 判据形态**一字未改**（breaker ≥ 1 且 < 5、main ≥ 1、缺口如实上报；态B = `parry-exhausted`）。
+     */
+    configStore.enemy.stunValue = 22000
     const spA = calc.stunPoolResult.value!
     const splitA = calc.parrySplitResult.value
     expect(splitA?.breakerParry, '阈值抬高后反推应把部分弹刀给击破位').toBeGreaterThanOrEqual(1)
     expect(splitA?.breakerParry, '态A 应是「部分」给击破位，不是全给').toBeLessThan(5)
     expect(splitA?.mainDpsParry, '主C 仍保留部分弹刀').toBeGreaterThanOrEqual(1)
-    // 态A（23000）下**保底不可达**（池 3）——与 T141/T155 原判据形态一致，
+    // 态A（22000）下**保底不可达**（池 2）——与 T141/T155 原判据形态一致，
     // 保留 not.toBeNull()（如实上报，不硬凑）。
     expect(guaranteeStunShortfall(spA.stunCount, splitA), '态A 下保底不可达（如实上报）').not.toBeNull()
     configStore.enemy.stunValue = 31000

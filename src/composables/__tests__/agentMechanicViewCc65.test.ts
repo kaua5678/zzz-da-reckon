@@ -5,7 +5,7 @@
  * ⚠ 本表是**当时页面写死块的快照**，用途是防「迁移时字段/标签/顺序被改坏」。
  *   **新增角色专属输入框不在本测试拦截面内**（它不是"迁移"）——新声明直接在表里加一行即可，
  *   判据仍是「声明 == 表」（防止有人顺手改坏已有条目的文案/顺序）。
- *   最近一次新增：克拉蕾 `claretBurialInterruptCount`（葬血强袭打断，用户口径 2026-10-09）。
+ *   最近一次新增：赛维里安 `autoEvadeCount`（自动闪避，2026-10-22 `692e2a3b`）。
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -44,6 +44,14 @@ const LEGACY: Record<string, Array<{ field: string; label: string; hint?: string
         + '这个交互需要 boss 出手，所以在队伍对比/难度曲线里吃「非失衡占比」修正（失衡期怪物不攻击，能凑的次数更少）。',
     },
   ],
+  // 2026-10-22 赛维里安（`692e2a3b`）：自动闪避是**新交互**（不是旧页面迁移项）⇒ 按头注释规矩补一行快照。
+  '1631': [
+    {
+      field: 'autoEvadeCount',
+      label: '自动闪避',
+      title: '平A 起手瞬间闪避掉敌人攻击的次数（a4 闪避判定 / 前三段受击，二者同一套机制）：每次把该轮第四段替换为[烈旋]（677% / 1.217s / 流息 35）。需要 boss 出手 ⇒ 在队伍对比/难度曲线里吃非失衡占比修正。与闪避反击次数互不相关。',
+    },
+  ],
   '1371': [
     { field: 'yixuanInk2Count', label: '2连墨痕化形' },
     { field: 'yixuanInk3Count', label: '3连墨痕化形', hint: '≤0=自动', title: '≤0/清空 = 自动：总闪能打完失衡内消耗，剩余全部轴外打 3 连墨痕化形（60闪能/次）；填正数覆盖', mode: 'autoIfNonPositive' },
@@ -56,6 +64,7 @@ const LEGACY_MINMAX: Record<string, [number, number]> = {
   perfectBlockCount: [0, 999], assaultOrderCount: [0, 999], tauntCancelCount: [0, 99], promiaNiyingCount: [0, 99],
   claretBurialInterruptCount: [0, 99],
   yixuanInk2Count: [0, 99], yixuanInk3Count: [0, 99], yixuanPerfectBlockCount: [0, 99], yixuanExtremeAssistCount: [-1, 99],
+  autoEvadeCount: [0, 99],
 }
 // 原页面 :value 表达式
 const LEGACY_VALUE: Record<string, (x: number | undefined) => number | null> = {
@@ -68,6 +77,7 @@ const LEGACY_VALUE: Record<string, (x: number | undefined) => number | null> = {
   yixuanInk3Count: x => ((x ?? 0) > 0 ? x! : null),
   yixuanPerfectBlockCount: x => ((x ?? 0) > 0 ? x! : null),
   yixuanExtremeAssistCount: x => ((x ?? -1) < 0 ? -1 : x!),
+  autoEvadeCount: x => x ?? 0,
 }
 const LEGACY_CLEAR: Record<string, number> = { yixuanExtremeAssistCount: -1 }
 
@@ -82,8 +92,9 @@ describe('CC-65 角色专属计数输入框 → characterCountInputs', () => {
       expect(got, id).toEqual(LEGACY[id] ?? [])
       hits += got.length
     }
-    // T197（2026-10-22）：仪玄「墨影凝云合轴」按用户裁决删除 ⇒ 11 → 10 条。
-    expect(hits).toBe(10) // 旧页面 9 条 + 克拉蕾 1 条 + 菲欧妮完美格挡 1 条 − 仪玄后台合轴 1 条
+    // T197（2026-10-22）：仪玄「墨影凝云合轴」按用户裁决删除 ⇒ 11 → 10 条；
+    // 2026-10-22 `692e2a3b` 赛维里安自动闪避 +1 ⇒ 11 条。
+    expect(hits).toBe(11) // 旧页面 9 条 + 克拉蕾 1 + 菲欧妮完美格挡 1 + 赛维里安自动闪避 1 − 仪玄后台合轴 1
     expect(agentCharacterCountInputs(null)).toEqual([])
     expect(agentCharacterCountInputs(undefined)).toEqual([])
   }, 60000)
