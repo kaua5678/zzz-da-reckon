@@ -1441,7 +1441,11 @@ describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
     // 处置：不再依赖「某条预设恰好在临界」，而是**显式把有效战斗时长压到临界以内**——
     // `enemy.invincibleTime = 10` ⇒ 有效时长 170s，实测 norma trim=3、保轴、net 170.00、74.526M。
     // 判据形状一字未改（轴保住 + 真的削了 + 削到装得下），反空洞断言反而更强。
-    config.enemy.invincibleTime = 10
+    //
+    // ⚠ **2026-10-23 再收紧**：2026-10-21「交互默认全 0」后时间更宽松，10（有效 170s）已不够
+    // 触发挤压臂（实测 trim=0、net 170.0 刚好吃满）。探针实测：inv=10/20 ⇒ trim=0；
+    // **inv=30 ⇒ trim=3**（轴保住、net 150.0、69.53M）；inv=40 ⇒ trim=5。取 30。
+    config.enemy.invincibleTime = 30
     const preset = teamPresets.find(p => p.id === 'banyue-norma-lucia')!
     const baseAxis = config.getAxisState()
     applyTeamToStore(config, preset)
@@ -1461,7 +1465,9 @@ describe('T165 挤压臂：挤不下就不要多打（autoTrim）', () => {
     const b = rr.characters.find(c => c.agentId === '1471') as unknown as { banyueRageCycle?: { comboOutCount: number } } | undefined
     expect(b?.banyueRageCycle?.comboOutCount, '般岳连段数被削减').toBeDefined()
     // 2026-10-20 实测（invincibleTime=10）：trim=3、保轴后 74.526M（net 170 → 削到装得下）
-    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害落在实测档位（74.526M）').toBeGreaterThan(70)
+    // 2026-10-23（invincibleTime 10→30，有效 150s）：trim=3、net 150.0、**69.53M**。
+    // 判据仍是「保轴后伤害落在合理档位且不塌」，不钉死具体值（战斗时长变了必然同比缩小）。
+    expect((calc.teamTotalDamage.value ?? 0) / 1e6, '保轴后伤害落在实测档位（150s 有效时长 ⇒ 69.53M）').toBeGreaterThan(60)
   })
 })
 
@@ -1521,11 +1527,26 @@ describe('T167 轴内连段块闪能账 + 救援臂入场判据（规则 5 生�
     applyTeamToStore(config, preset)
     applyGoldToStore(config, preset, baseGoldOf(preset))
     applyAxisBinding(config, baseAxis, preset)
-    // 把该预设的连段块加量到远超容量（原预设已含连段块；只改 count 不动形状）
-    config.stunAxes = config.stunAxes.map(a => ({
+    /**
+     * 把该预设的连段块加量到远超容量（原预设已含连段块；只改 count 不动形状）。
+     *
+     * ⚠ 2026-10-23 订正：`applyAxisBinding` 现在把轴写进 **`stunAxisPlans`**（条件轴方案，
+     * 与固定轴 `stunAxes` **互斥写入**，见 config.ts#applyStunAxisPreset）。修前这里改的是
+     * `config.stunAxes`（实测为空数组）⇒ 改了等于没改 ⇒ 本用例退化成「没有连段块可跳过」的假绿/假红。
+     * 现在两处都改，兼容两种承载方式。
+     */
+    const bump = <T extends { actions: { moveId: string; count?: number }[] }>(a: T): T => ({
       ...a,
       actions: a.actions.map(x => x.moveId.includes('banyue-combo') ? { ...x, count: 20 } : x),
-    })) as never
+    })
+    config.stunAxes = config.stunAxes.map(bump) as never
+    config.stunAxisPlans = config.stunAxisPlans.map((p) => {
+      const q = p as unknown as { axes?: { actions: { moveId: string; count?: number }[] }[]; split?: { baseAxis: never; upgradeAxis: never } }
+      if (q.split) {
+        return { ...p, split: { ...q.split, baseAxis: bump(q.split.baseAxis), upgradeAxis: bump(q.split.upgradeAxis) } } as never
+      }
+      return { ...p, axes: (q.axes ?? []).map(bump) } as never
+    }) as never
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 150))
     const st = calc.stackTraversalResult.value
@@ -1564,6 +1585,10 @@ describe('T167 轴内连段块闪能账 + 救援臂入场判据（规则 5 生�
     // ⚠ 2026-10-18：修冲霄时间后，该队**默认交互**下 trim=0（90.745M / net 179.23，本来就装得下）
     // ⇒ 反空洞断言会退化成同义反复。夹具把金身抬到 20（实测 trim=3、保轴 84.448M / net 180.62），
     // 让它重新回到「靠削才保住的临界」——**抬交互而不是改判据**，判据形状不变。
+    // ⚠ 2026-10-23：金身 20 已不足以触发挤压（实测 trim=0、net 176.5、90.62M）。
+    // 探针：block=20 + inv=10 ⇒ trim=1、net 170.0、87.70M（轴保住）；
+    //       inv=20 ⇒ trim=2；inv=30 ⇒ trim=5；block=30 会直接丢轴（fb=true）⇒ 不用。
+    config.enemy.invincibleTime = 10
     const preset = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')!
     const baseAxis = config.getAxisState()
     applyTeamToStore(config, preset)
