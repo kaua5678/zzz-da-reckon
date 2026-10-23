@@ -66,12 +66,28 @@ function catalogRowValues(agentSkills: { categories: { moves: { id: string, rows
 }
 
 /** 跑一队，返回 resourceResult / resourceConfig 两本账（cfg 里含记账层用的 energyRecoveryByMoveId 表） */
-async function runTeam(team: Array<{ agentId: string }>) {
-  const { catalog } = await setupHarness(team, { recommendedBuild: false })
+/**
+ * 组队跑管线。
+ *
+ * `dodge`（2026-10-23 加）：**闪避反击次数**。2026-10-21「交互默认全 0」后
+ * `dodgeCounterCount` 默认 0 ⇒ 闪反招式（真斗 1441017）不会物化到执行计划，
+ * 依赖它的「flash 回能通道」用例会退化成「没有行可断言」。需要时由用例显式给出。
+ */
+async function runTeam(team: Array<{ agentId: string }>, opts: { dodge?: number; parry?: number; quickAssist?: number } = {}) {
+  const { catalog, config } = await setupHarness(team, { recommendedBuild: false })
+  if (opts.dodge !== undefined) {
+    for (let s = 0; s < team.length; s++) config.team[s]!.dodgeCounterCount = opts.dodge
+  }
+  if (opts.parry !== undefined) {
+    for (let s = 0; s < team.length; s++) config.team[s]!.parryCount = opts.parry
+  }
+  if (opts.quickAssist !== undefined) {
+    for (let s = 0; s < team.length; s++) config.team[s]!.quickAssistCount = opts.quickAssist
+  }
   const calc = useResourceCalc()
   const rr = calc.resourceResult.value!
   const rc = calc.resourceConfig.value!
-  return { catalog, rr, rc }
+  return { catalog, rr, rc, config }
 }
 
 describe('命破闪能招式回复通道（flash_energy_recovery）', () => {
@@ -130,9 +146,12 @@ describe('命破闪能招式回复通道（flash_energy_recovery）', () => {
 
   it('② 真斗 1441 臂（防回归靶心）：无预设、手组队，有 flash 行的招式回能 > 0 且等于表值', async () => {
     // 真斗没有队伍预设（src/data/teamPresets/ 里 0 条含 1441）⇒ 手组队
+    // 2026-10-23：显式给闪避反击次数，否则 1441017（闪避反击）不物化、本用例测不到通道
     const { catalog, rr, rc } = await runTeam([
       { agentId: '1441' }, { agentId: LIUYIN }, { agentId: LUCIA },
-    ])
+    // 1441017 = 闪避反击 ⇒ 需 dodge；1441024 = 支援突击 ⇒ 由**招架支援**触发，需 parry
+    // （探针实测：只给 dodge 时 1441024 不物化；给 parry 时反过来 1441017 不物化 ⇒ 两个都要给）
+    ], { dodge: 10, parry: 6 })
     const zhendou = rr.characters.find(c => c.agentId === '1441')!
     const cfg = rc.characters.find(c => c.agentId === '1441') as CharacterOperationConfig
     expect(zhendou).toBeTruthy()
@@ -201,9 +220,10 @@ describe('命破闪能招式回复通道（flash_energy_recovery）', () => {
   }, 120_000)
 
   it('④ 零 delta 臂：非命破角色的回能仍逐位等于 energy_recovery 表值（未被 flash 逻辑污染）', async () => {
+    // 2026-10-23：1481015 由闪避反击触发 ⇒ 显式给 dodge（默认 0 时不物化，本用例测不到）
     const { catalog, rr } = await runTeam([
       { agentId: '1471' }, { agentId: LIUYIN }, { agentId: LUCIA },
-    ])
+    ], { dodge: 10 })
     // 两位非命破：琉音 1481（只有 energy_recovery 行）、卢西娅 1451（同）
     for (const [agentId, moveId, expected] of [['1481', '1481009', 2.881], ['1481', '1481015', 3.959], ['1451', '1451005', 7.35]] as const) {
       const ch = rr.characters.find(c => c.agentId === agentId)!
