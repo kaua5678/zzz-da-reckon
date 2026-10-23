@@ -82,13 +82,17 @@ export declare function matchDebtRegistry(markers: DebtMarker[]): { unregistered
 
 // 判据 9：README §6 文档表 == docs/ 实际文件
 export declare function parseDocTable(readmeText: string): { files: string[]; declaredCount: number | null; declaredCounts: number[] }
-export declare function listDocs(root?: string): string[]
+/** 归档目录（相对 docs/）：一次性交接报告放这里，不进 README §6 的「活文档」表 */
+export declare const DOCS_ARCHIVE_DIR: string
+export declare function listDocs(root?: string, opts?: { includeArchive?: boolean }): string[]
 export declare function auditDocTable(root?: string): {
   missing: string[]
   extra: string[]
   declaredCount: number | null
   declaredCounts: number[]
   actualCount: number
+  /** docs/archive/ 下的文件数（默认不参与对账） */
+  archivedCount: number
   countMismatch: boolean
   /** declaredCounts 里与实测份数不符的那些（标题对、表尾错也算） */
   staleCounts: number[]

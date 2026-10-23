@@ -61,6 +61,29 @@
 
 **明亮模式卡片**：`html.light .n-card { box-shadow: 0 1px 2px + 0 2px 6px rgba(16,24,40,...) }`（纸面层次），夜间保持扁平描边。
 
+### 2.1 外壳令牌（`--shell-*` / `--brand-*` / `--dev-*`）
+
+`--app-*` 是"页面通用表面"语义（bg/panel/border/text）；本层描述**应用外壳自身的视觉语言**。
+**页面组件不该引用 `--shell-*`**，外壳也不该被页面配色牵着走。
+
+| 令牌 | 夜间 | 明亮 |
+| --- | --- | --- |
+| `--shell-grid-line` | `rgba(148,163,184,.07)` | `rgba(51,65,85,.05)` |
+| `--shell-rail` | 电蓝→金渐变（.55/.75） | 压深版（.5/.7，`#d97706` 金） |
+| `--shell-tab-glow` | `0 0 10px` 蓝光晕 | `0 1px 3px` 实投影 |
+| `--shell-chip-bg` / `-line` | `rgba(148,163,184,.10/.18)` | `rgba(51,65,85,.06/.12)` |
+| `--brand-ink` | `#241a03` | 同值（金底黑白通吃） |
+| `--brand-glow` | `0 2px 12px` 金光晕 .38 | `0 2px 8px` .45 |
+| `--brand-sheen` | 白 .55 | 白 .70 |
+| `--dev-accent` (+ `-glow`) | `#a855f7` | `#7c3aed`（白底 3.1:1 不够 ⇒ 压深） |
+
+**亮色档通则：整体收敛。** 白底上的 blur 辉光会糊成脏雾、纹理会变噪点 ⇒ glow 一律换成
+"实体投影 + 更低透明度"，纹理浓度下调一档。
+
+⚠ **必须定义在**已有**的 `:root` / `html.light` 块内**：`check-tokens` 的 `parseGlobalTokens`
+用 `match(/^\s*:root\s*\{/m)` 只取**第一个**块。另起一个 `:root { }` 块 = 令牌对判据**完全不可见**
+⇒ 组件里 `var(--shell-*)` 会被 `tokens-defined` 判为未定义而红。改外壳配色前先读这条。
+
 ## 3. 主题切换机制（改流程先读这段）
 
 1. **持久化**：`src/stores/theme.ts` — `mode: 'dark' | 'light'`，localStorage key `zzz-theme`（缺省 dark）。切换 = toggle `<html>` 的 `light` class + `color-scheme` + PWA `theme-color`。

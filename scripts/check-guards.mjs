@@ -256,27 +256,42 @@ export function parseDocTable(readmeText) {
  * 递归扫 docs/ 下实际 .md 文件（返回相对 docs/ 的路径，POSIX 分隔符，排序）。
  * 用 `withFileTypes` 判定类型：符号链接既非 isDirectory 也非 isFile ⇒ 天然不跟随（不递归进链接）。
  */
-export function listDocs(root = ROOT) {
+/** 归档目录（相对 docs/）：一次性交接报告放这里，不进 README §6 的「活文档」表 */
+export const DOCS_ARCHIVE_DIR = 'archive'
+
+export function listDocs(root = ROOT, opts = { includeArchive: false }) {
   const dir = join(root, 'docs')
   if (!existsSync(dir)) return []
+  const includeArchive = opts.includeArchive
   const out = []
   const walk = (abs, rel) => {
     for (const ent of readdirSync(abs, { withFileTypes: true })) {
       const childRel = rel ? `${rel}/${ent.name}` : ent.name
-      if (ent.isDirectory()) walk(join(abs, ent.name), childRel)
-      else if (ent.isFile() && ent.name.endsWith('.md')) out.push(childRel)
+      if (ent.isDirectory()) {
+        // 归档目录默认不参与「活文档表」对账（它按定义是「读完即失效」的存量）
+        if (!includeArchive && childRel === DOCS_ARCHIVE_DIR) continue
+        walk(join(abs, ent.name), childRel)
+      } else if (ent.isFile() && ent.name.endsWith('.md')) out.push(childRel)
     }
   }
   walk(dir, '')
   return out.sort()
 }
 
-/** 返回 { missing, extra, declaredCount, declaredCounts, actualCount, countMismatch, staleCounts } */
+/**
+ * 返回 { missing, extra, declaredCount, declaredCounts, actualCount, archivedCount, countMismatch, staleCounts }
+ *
+ * 口径（2026-10-23 加 archive/）：README §6 表 == docs 下全部 `.md` **除 `docs/archive/` 之外**。
+ * 归档目录按定义是「某轮交接读完即失效」的存量（73 份 mcp-* / 25404 行，占 docs 体积 68%），
+ * 让它们继续占「活文档表」反而会淹没真正该读的入口。**口径只放宽归档目录这一层**：
+ * 归档里新增/删除文件不影响判据；散落回 docs/ 顶层的一次性报告照样必须登记。
+ */
 export function auditDocTable(root = ROOT) {
   const readmePath = join(root, 'README.md')
   if (!existsSync(readmePath)) return null
   const { files, declaredCount, declaredCounts } = parseDocTable(readFileSync(readmePath, 'utf8'))
   const actual = listDocs(root)
+  const archived = listDocs(root, { includeArchive: true }).length - actual.length
   const declared = new Set(files)
   // 每一处份数自述都必须等于实际值（标题碰巧对、表尾写错 = 2026-09-11 事故形态）
   const staleCounts = (declaredCounts ?? []).filter(n => n !== actual.length)
@@ -287,6 +302,7 @@ export function auditDocTable(root = ROOT) {
     declaredCounts: declaredCounts ?? [],
     staleCounts,
     actualCount: actual.length,
+    archivedCount: archived,
     countMismatch: declaredCount !== null && declaredCount !== actual.length,
   }
 }

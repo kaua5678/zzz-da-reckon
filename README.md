@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（101 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（91 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -92,21 +92,16 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/MECHANICS_IMPLEMENTATION.md` | **逐角色机制档案**（录角色前先 grep 该角色段）：当前实现状态行 + 只有档案知道的用户裁决与未建模项 + 实现指针；§0 特化中英映射表、§3.05 名词缺口挂账。机制细节以 `src/specs/agents/<id>.json` notes 与模块头注释为唯一事实源，档案不复述它们 |
 | `docs/FEATURES_GUIDE.md` | **Boss 选择 + 队伍对比 + 记录小窗/用户记忆功能手册**：操作方式、数据管道命令、修改入口表、口径与验证命令（新功能必更新） |
 | `docs/UI_THEME_GUIDE.md` | **UI 主题系统指南**：明暗双主题三层颜色体系（--app-*/--wa-* 色阶）、切换机制、SVG 填坑、ZZZ 品牌色板、改 UI 前必读 |
-| `docs/mcp-ui-shell-polish.md` | **UI 外壳美术打磨记录**：顶栏纹理/霓虹导轨/品牌高光、分段导航胶囊化、全局焦点环与卡片层次；新增 `--shell-*`/`--brand-*`/`--dev-*` 令牌与三条基线的棘轮归因 |
 | `docs/mcp-ui-number-format-sweep.md` | **界面长浮点普查 + ui-check「未格式化数值」闸门**（r716–r718）：页头页签 + 页内子页签普查方法、源头表与 fmt 口径、闸门阈值（≥7 位小数，依据 src/data 字面量实测）与防线测试、月城柳 `as` 断言漏 fields 的根因、zd 逐叶归因 |
 | `docs/implementation-status.md` | **自动生成**，全角色覆盖矩阵（唯一权威进度，勿手改） |
 | `docs/mechanism-reference.md` | 游戏底层机制理论（啵啵獭 10 期）：**只留尚未建模的理论存量**（秽盾/接战状态/精英怪档/待实测系数）；已进引擎的公式与倍率表以 `src/core/**` 为唯一事实源，本文只给指针 |
 | `docs/DATA_FETCHING.md` | 数据抓取/导入约定（nanoka 等数据源的管道与字段口径） |
 | `docs/multiplier-record.md` | **自动生成**倍率表系数演算记录（`npm run gen:multiplier-record`），供倍率系数页核对 |
 | `docs/AGENT_ID_BURNDOWN_LOG.md` | **agentId 清偿编年史**（从 `scripts/check-guards.mjs` 搬出的 `AGENT_BRANCH_BASELINE` 沿革：逐轮对账/逐队归因/实验过程）；当前读数与判据仍以该脚本为唯一事实源 |
-| `docs/mcp-guard18-and-1031-recording.md` | **架构升级与清债交付备忘**：判据 18（招式伤害属性 ↔ nanoka raw 散文对账）防护落地、1031 妮可契约录入与 legacy 销号 |
-| `docs/mcp-backlog-triage-t1-debt3.md` | **Backlog 积压治理与结案备忘**：T1（trackStunCount 冗余字段核销）与债 3（秽盾机制裁决与登记簿注销）的技术审计、落地方案与护栏对账 |
 | `docs/mcp-agent-development-roadmap.md` | **Agent 全生命周期长远开发体系与演进路线图**：双 Agent 融合架构、角色 6 阶段研发 SOP、契约与 AST 自治、WSL/网络环境实战避坑与四期里程碑 |
 | `docs/mcp-agent-work-plan.md` | **本轮多 Agent 工作安排**：三条并行工作线、独立集成验收、可转交任务书、文件边界与证伪闸门；启动前须复核基线 |
 | `docs/mcp-lead-agent-handoff.md` | **高级总协调模型执行交接**：完整意图、现场与权限、模型路由核验、工人派单模板、证据复核和集成闭环；可直接转交执行 |
 | `docs/mcp-local-subagent-channel.md` | **MCP 本地子代理通道**：Streamable HTTP 客户端、WSL/headless 临时配置、原生 subagent 只读派发契约与实际路由验收 |
-| `docs/mcp-dead-channel-cli.md` | **T2 死通道按需工作台**：既有 LanguageService 判据的 CLI 入口、只读/惰性契约、子代理审查与正反控验收 |
-| `docs/mcp-altaxes-test-budget.md` | **altAxes 慢测试提速**：耗时分解（G2 联合搜索占 2/3）、`baseGoals` 选项、断言收紧与预算回到 300s，不放宽超时 |
 | `docs/mcp-engine-perf.md` | **引擎性能活文档**：现状读数、等价验证手段（全库 dump / profile / 纯度探针）、已落地手段及其前提、否决记录、剩余热点；每轮更新本文不新开 |
 | `docs/axis-vuln-uplift-reference.md` | **手动捏轴 vs 无轴的失衡易伤提升实测参考表**（用户 2026-10-16 立项）：35 支有轴预设的信用提升 1.00×~3.81×（中位 2.37×）、拆成「结构项 × 次数项」、逐队明细、零提升队的实测原因（轴装不进预算被弃）、以及「不要乘全局系数」的替代流程；复现探针 `PROBE_AXIS_VULN=1` |
 | `docs/mcp-calc-core-architecture.md` | **计算核心架构优化**：五个结构问题诊断（阶段闭包共享可变态 / 引擎层角色特判 / 求解器绑 Vue / 公式副本 / 职责混装）、目标形态、零行为搬迁通用验收（dump A/B）与 CC-* 分批任务卡；活文档，卡做完改状态 |
@@ -116,10 +111,6 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/round2-intent-charter.md` | **下一轮委托：意图与验收闸门**（云端作者）：为什么做/何时值得做/什么不能做、六条长期意图、证伪闸门两行、权限与升级条件；不含现场操作参数，配套 field-sheet 由首席现场填写 |
 | `docs/round2-field-sheet.md` | **下一轮现场执行单（已填写）**：本轮现场事实与授权、操作能力（workflow 路由现场核验）、现场选题与每条任务证伪闸门/白名单、首席派发回收检查与最终回报 |
 | `docs/cloud-guidance-model-playbook.md` | **云端指导模型协作指南**：astra 类模型的最大贡献点（意图→闸门）与帮倒忙区（现场操作手册）、两轮实测对照、点修 vs 泛化阈值与基线全盲验收等待补闸门、何时需要云端再来一轮 |
-| `docs/mcp-calc-logic-debt1-retirement.md` | **计算逻辑与技术债清偿备忘**：债 1 批 1-3 全局实数化收敛重构核销、全量 105 组队伍预设与 62 位角色全命座计算测试覆盖与黄金快照零漂移验证 |
-| `docs/mcp-guard18-reconcile-and-open-items.md` | **护栏 18 模块化接线与 Backlog 待办消减备忘**：判据 18 与 move-element-reconcile 闭环（反空洞/行级未定义/orphan 对账）、R25-J2 诊断量残留读法防线与坑 42 固化 |
-| `docs/mcp-3d-visualization-and-interaction.md` | **3D 双变量联合响应面与伤害构成立体交互演进备忘**：基于 Canvas 的 3D 双变量响应曲面（光照/网格/等高线/探针）与 3D 团队伤害构成立体环图落地 |
-| `docs/mcp-layer-inversion-claret.md` | **录入层 → 编排层值倒置修复备忘**（R35-J2）：克拉蕾模块唯一反向值边的取证（SCC / 判据 7·12 盲区）、下沉 `data/moveTableQueries.ts` 的选项裁决、判据 19 `layer-inversion` 成对口径与三组注入反验、`timeGolden`/`allAgentsSweep` 零 delta 实测 |
 | `docs/mcp-debt2-blade1-feasibility-v4.md` | **协作者 WIP 接管备忘**：债 2 刀 1（截断入口容差与折叠环同源，消灭假截断）+ 降配搜索 v4（绝对可行优先）的拆分落地、`timeGolden`/`timeFillRatchet` 逐队 delta 归因表、满套件 4 红收口、未合入的债 2 批 2-1 半成品去向与正解 |
 | `docs/mcp-outer-feedback-regression.md` | **外层反馈回归（R67-J1）**：当前快照/二周期相位修复、机制测试正反对照、12 场景 A/B 与数值影响；逐字段证据 `docs/mcp-outer-feedback-deltas.csv` |
 | `docs/mcp-outer-fixedpoint-continuity.md` | **外层不动点连续性（CC-136 起）**：输入微动导致环内选点跳成员的扫描复现、根因（检出相位 / 两两比较不传递）、逐级筛选 + ③′ 方案、逐条影响；第二种不连续判定为物理失衡次数的整数台阶（护栏 `outerContinuity.test.ts`） |
@@ -129,7 +120,6 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-bridge-prompt-slim.md` | **搭桥提示词精简（REQUIREMENTS R9，第 700 轮）**：autopilot 每轮实发段从 29,512 B 压到 13,655 B（46.3%），内嵌完整客户端换成约 30 行的引导客户端，完整版存档在第二节；52 条规则逐条对照、删除类别与例子、替换与回退方法。产物在桌面 `bridge-prompt-arena.slim.md`，原文件未动 |
 | `docs/mcp-stun-dual-source.md` | **失衡双源测量（第 162 轮；§16 CC-151 / CC-148 收尾；§17 CC-153；§18 CC-154；§19 CC-155；§20 CC-157 结案；§21 CC-149 定位 / CC-158；§22 CC-158 折叠残差）**：规划失衡 vs 物理次数；去掉外层第二次折算的原型不落地；主因 = 必要时间约束（78/104 队、17 队规划 0），合轴抵扣假设已否定；§4 窗口内连携只解释一小部分，真因 = 外层约束与池口径互斥，21/104 队有失衡没连携；§5 CC-140 physical 计数模式（缺省 off，打开后 21→6）；§6 CC-141 赠送供给漏改计数通道已修（physical 超预算 13→3 队）；§7 CC-143 S3 降配第三层「缓解档」（physical 截断 177→41s）；§8 CC-142 轴模式分窗读计数通道（有失衡没连携 6→4，剩 4 队是希希芙轴没写连携），切默认 = CC-144；§12 CC-146 共存吸引子（折叠环 pass0 注入种子一律弃用）；§13 CC-144 已切 physical 缺省；§14 CC-148 迁移进度与 CC-149（physical 下合轴率单调破缺）；§15 CC-150 physical 外层 2-环池同源（更正 §13.1） |
 | `docs/mcp-cc144-team-deltas.md` | **CC-144 逐队归因表（第 172 轮）**：缺省 off→physical 全库 104 队的伤害变化、规划失衡 P / 物理次数 K、连携秒数、截断与次数；U 76（K>P 补上少算的失衡事件）/ X 19（连携占前台挤出高收益动作）/ Z 9 |
-| `docs/mcp-substat-contract.md` | **副词条契约（R28-J2）**：合法池 mode 可观测性、步长/步数/混合结算与白名单反控；不以等价注入冒充缺测 |
 | `docs/mcp-workspace-integrity.md` | **共享工作区完整性**：Git 路径无损读取、收工快照与归属分离、隔离 CLI 回归及兼容策略 |
 | `docs/mcp-cc17-axis-overlay-consume.md` | **CC-17 设计稿**：axis overlay 消费端能力化（按槽归属 + `directRowBonus`），修可琳 `basic_attack` 轴模式泄漏；含接口/逐模块迁移表/零差论证/测试 |
 | `docs/mcp-cc437-axis-overlay-opaque.md` | **CC-437 设计稿**（r466 设计，r467–r473 a→g 全部落地，形状锁 `axisOverlayOpaqueCc437.test.ts`）：轴窗口 overlay 改为模块私有、编排层不透明——`AgentAxisOverlays` / `AxisScalarOverlays` 的 9 个角色前缀字段写读都在各自模块内（逐处核过），改成 `AgentAxisOverlay` brand + `axisOverlayChannel<T>()`；分 7 步（队列 §3 T15）各自 zd 0；含零差论证与不做的边界 |
@@ -182,7 +172,10 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/HANDOFF_DEAD_CHANNEL_AUDIT.md` | **死口径专项排查（交接 + 结论表，2026-10-22 复核版）**：⚠ 原模板案例（星徽·比利「格挡 +5 决意」= 死口径）**已被实测推翻**——通道走 spec `countSource: "blockCount"` 一直活着，只是被 100 决意阈值量化吃掉可见性；本文件给正确判据（四个消费面，含 spec 字符串键读）、21 条交互声明 / 37 条 spec 滑块的普查结论、19 个「spec 有资源但模块不读」的角色清单 |
 | `docs/HANDOFF_BASIC_FILL_SLACK.md` | **平A 填充 / 留白专项（交接 brief）**：交互默认全 0 后 `auto-1091-1031-1311` 留白 21.1s→33.6s 破 `timeFillRatchet` 30s 不变量；现状读数表、已试方案与否决记录、目标 = 全库留白压到 0 |
 
+> **`docs/archive/`（10 个文件 = 一次性交接报告）不在本表**：那是「某轮交接读完即失效」的存量（判据 9 对 `archive/` 不要求登记）。
+> 归档只放**确认已完成、且不含现役口径**的报告；口径还在用的先搬进活手册再归档。找历史结论用 `git log` / 归档目录，别从头重建。
+>
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（101 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（91 份，与节标题一致），新增文档需同步本表。
 > **判据 9 已递归到子目录**（`docs/**/*.md`）：子目录里的文档同样必须登记，路径按 `docs/<相对路径>` 写
 > （2026-10-06 修：`docs/proposals/pull-value-optimization.md` 曾因 glob 只扫顶层而长期不在表内 = agent 找不到）。

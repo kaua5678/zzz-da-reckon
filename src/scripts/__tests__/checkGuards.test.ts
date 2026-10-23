@@ -618,6 +618,28 @@ describe('auditDocTable（README §6 文档表 vs docs/ 实际文件）', () => 
     expect(r.files).toEqual(['proposals/deep.md', 'top.md'])
   })
 
+  // 判据 9 的归档口径（2026-10-23）：`docs/archive/` **不进** README §6 活文档表，
+  // 但文件仍必须能被显式列出（includeArchive）——否则「归档」会变成「对工具链不可见」。
+  // 双向判据：① 默认不返回 archive/（否则判据 9 会逼人把 100 份一次性报告全登记进表）；
+  // ② includeArchive 时必须返回（证明文件真的在那，不是被误删）。
+  it('listDocs：默认跳过 docs/archive/，includeArchive 时列出（判据 9 的归档口径）', () => {
+    const root = mkdtempSync(join(tmpdir(), 'docs-archive-'))
+    mkdirSync(join(root, 'docs', 'archive'), { recursive: true })
+    writeFileSync(join(root, 'docs', 'top.md'), '# live')
+    writeFileSync(join(root, 'docs', 'archive', 'old-report.md'), '# archived')
+    expect(listDocs(root)).toEqual(['top.md'])
+    expect(listDocs(root, { includeArchive: true })).toEqual(['archive/old-report.md', 'top.md'])
+    // 反向：archive 里的文件不得被当成「缺登记」
+    const readme = '## 6. 文档（1 份）\n\n| 文档 |\n| --- |\n| `docs/top.md` |\n'
+    writeFileSync(join(root, 'README.md'), readme)
+    const r = auditDocTable(root)!
+    expect(r.missing).toEqual([])
+    expect(r.extra).toEqual([])
+    expect(r.actualCount).toBe(1)
+    expect(r.archivedCount).toBe(1)
+    expect(r.countMismatch).toBe(false)
+  })
+
   it('listDocs：递归子目录，返回相对 docs/ 的路径', () => {
     const root = mkdtempSync(join(tmpdir(), 'zc-docs-'))
     try {
