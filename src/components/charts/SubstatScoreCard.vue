@@ -22,6 +22,8 @@
       基线 = <b>该角色 0 副词条</b>（队友的词条一个都不动）。
       逐条贡献用 <b>Shapley 分摊</b>：它的和严格等于评分，可以直接相加看账。
       两个口径一起给——<b>该角色自身伤害</b>看词条养成进度，<b>全队伤害</b>看这个角色值不值。
+      有转模的角色（如诺姆的暴击率→暴伤/定向失衡），「转模」列会标出这条词条**顺带转出**了多少——
+      那部分收益**已经算在评分里**，这一列只是解释「为什么暴击率词条比爆伤词条值钱」。
       跑在独立场景里，不动你的配装；一个角色只有 2`4 个词条 ⇒ 几毫秒级。
     </div>
 
@@ -44,6 +46,10 @@
         </div>
       </div>
 
+      <div v-if="result.conversions.length > 0" class="ssc-conv-note">
+        该角色有 {{ result.conversions.length }} 条属性转化（{{ result.conversions.map(c => discStatLabel(c.sourceStat) + '→' + discStatLabel(c.targetStat)).join('、') }}），
+        已计入评分；下表「转模」列说明每条词条各自转出了多少。
+      </div>
       <div v-if="result.axisChanged" class="ssc-axis-note">
         轴态跳变：失衡 {{ result.zeroAxis.stunCount }} → {{ result.currentAxis.stunCount }} 次、
         易伤覆盖 {{ fmt(result.zeroAxis.coverage * 100, 1) }}% → {{ fmt(result.currentAxis.coverage * 100, 1) }}%。
@@ -58,6 +64,7 @@
             {{ row.ownPct >= 0 ? '+' : '' }}{{ fmt(row.ownPct, 2) }}%
           </td>
           <td>{{ fmt(row.pct, 2) }}%</td>
+          <td :title="row.convText">{{ row.convText }}</td>
           <td>{{ fmt(row.sharePct, 1) }}%</td>
         </tr>
       </ChartTable>
@@ -180,10 +187,11 @@ watch(defaultSlot, v => { if (!configStore.team[slot.value]?.agentId) slot.value
 
 const columns = [
   { key: 'stat', label: '词条' },
-  { key: 'steps', label: '步数', width: '64px' },
-  { key: 'own', label: '自身贡献', width: '104px' },
-  { key: 'team', label: '全队贡献', width: '104px' },
-  { key: 'share', label: '占比', width: '76px' },
+  { key: 'steps', label: '步数', width: '56px' },
+  { key: 'own', label: '自身贡献', width: '96px' },
+  { key: 'team', label: '全队贡献', width: '96px' },
+  { key: 'conv', label: '转模', width: '132px' },
+  { key: 'share', label: '占比', width: '68px' },
 ]
 
 const diffColumns = [
@@ -207,6 +215,9 @@ const rows = computed(() => (result.value?.contributions ?? []).map(c => ({
   pct: c.pct,
   ownPct: c.ownPct,
   sharePct: c.sharePct,
+  convText: c.conversions.length
+    ? c.conversions.map(x => discStatLabel(x.targetStat) + ' +' + fmt(x.amount, 2)).join(' / ')
+    : '—',
   color: STAT_COLORS[c.stat] ?? '#8b8b8b',
 })))
 
@@ -272,6 +283,7 @@ async function runCompare() {
 .ssc-score-value-sm { font-size: 16px; font-weight: 600; color: var(--fg-2); line-height: 1.4; }
 .ssc-score-label { font-size: 11px; color: var(--fg-3); }
 .ssc-facts { font-size: 12px; color: var(--fg-2); line-height: 1.7; }
+.ssc-conv-note { font-size: 12px; color: var(--fg-3); line-height: 1.6; margin-bottom: 8px; }
 .ssc-axis-note { font-size: 12px; color: var(--c-warning-strong); line-height: 1.6; margin-bottom: 10px; }
 .ssc-foot { margin-top: 6px; font-size: 11px; color: var(--fg-3); }
 .ssc-empty { font-size: 12px; color: var(--fg-3); padding: 8px 0; }

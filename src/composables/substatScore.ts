@@ -37,6 +37,10 @@ import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import type { SubstatAxisSignature } from '@/composables/substatCurve'
 import { useCatalogStore } from '@/stores/catalog'
 import type { DriveDiscConfig } from '@/types/catalog'
+import { getAgentSpec } from '@/specs/registry'
+import { specConversionAmount } from '@/specs/runtime'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
+import type { AttributeConversionSpec } from '@/specs/types'
 
 /** 精确 Shapley 的玩家数上限（2^n 次求值）；超过则退化为按槽位分组 */
 export const MAX_EXACT_PLAYERS = 12
@@ -48,11 +52,36 @@ export interface SubstatPlayer {
   steps: number
 }
 
+/**
+ * **转模放大的痕迹**：该词条的收益里有多少来自「它顺带触发了角色自己的属性转化」。
+ *
+ * 用户 2026-10-23：「副词条还会影响某些转模记得考虑」。
+ *
+ * 例：诺姆（1571）的 spec 声明 critRate→critDmg（每 1% 超出 50% 的部分 → 1.7% 暴伤，cap 85）
+ * 与 critRate→定向失衡（0.8，cap 40）⇒ 1 步「暴击率」的实际收益是 1 步「爆伤」的 **2.36 倍**
+ * （实测 2026-10-23，本机）。评分读的是引擎总伤，转模已在面板层生效、**已经算进去了**；
+ * 本字段只是把「这不是普通词条」显式标出来，免得用户以为暴击率词条突然变强了。
+ */
+export interface SubstatConversionTrace {
+  /** 转模的 spec id（如 `norma_crit_to_critdmg`） */
+  id: string
+  /** 来源属性 = 该词条的属性 */
+  sourceStat: string
+  /** 落点属性 */
+  targetStat: string
+  /** 该词条为这条转模贡献了多少步（受阈值/上限裁剪后的**实际**步数） */
+  steps: number
+  /** 该转模给落点属性加了多少点（= steps × valuePerStep，已封顶） */
+  amount: number
+}
+
 export interface SubstatScoreContribution {
   slot: number
   /** 词条键；`*` = 该槽位整组（`coarse` 模式下合并） */
   stat: string
   steps: number
+  /** 该词条触发的转模（空 = 这条词条不带转模） */
+  conversions: SubstatConversionTrace[]
   /** 对**全队**伤害的贡献，百分点 */
   pct: number
   /** 对**该角色自身**伤害的贡献，百分点（单人模式的主口径） */
@@ -71,6 +100,8 @@ export type { SubstatAxisSignature } from '@/composables/substatCurve'
 export interface SubstatScoreResult {
   /** 本次评分的槽位；`null` = 全队模式（所有槽位的词条一起算） */
   slot: number | null
+  /** 该角色命中了哪些转模（spec 声明的原样；展示层据此解释"为什么这条词条更值钱"） */
+  conversions: AttributeConversionSpec[]
   /** 分母：0 词条时的全队总伤 */
   zeroTeam: number
   /** 当前配装的全队总伤 */
@@ -104,6 +135,15 @@ export interface SubstatScoreOptions {
   slot?: number
   /** 每多少次求值让出一次主线程（缺省 16） */
   yieldEvery?: number
+}
+
+/**
+ * 副词条单步的原始值（百分点 / 点）——**读 catalog 的步长表**，不手抄（规则 2 / 规则 11）。
+ * 只用于把「转模贡献了几步」摊给某条词条；实际数值结算仍由 `core/panel.ts#applyDriveDiscConfig` 负责。
+ */
+function discStepOf(stat: string): number {
+  const rules = useCatalogStore().statRules
+  return rules?.driveDisc.sRankSubStatBaseStep[stat] ?? 0
 }
 
 const yieldToMacrotask = () => new Promise<void>(resolve => setTimeout(resolve, 0))
@@ -216,7 +256,7 @@ export async function scoreSubstats(
     coverage: calc.stunCoverage.value,
   })
   const fail = (reason: string, zeroAxis?: SubstatAxisSignature, currentAxis?: SubstatAxisSignature): SubstatScoreResult => ({
-    slot, zeroTeam: 0, currentTeam: 0, zeroOwn: 0, currentOwn: 0, gainPct: 0, ownGainPct: 0,
+    slot, conversions: [], zeroTeam: 0, currentTeam: 0, zeroOwn: 0, currentOwn: 0, ownGainPct: 0, gainPct: 0,
     contributions: [], coarse: false, evals: 0,
     zeroAxis: zeroAxis ?? { stunCount: -1, coverage: 0 },
     currentAxis: currentAxis ?? { stunCount: -1, coverage: 0 },
@@ -285,10 +325,54 @@ export async function scoreSubstats(
       },
       { control: opts.control, yieldEvery: opts.yieldEvery },
     )
+    /**
+     * 该角色的转模（spec 声明）——**评分里已经算进去了**（转模在面板层施加，评分读引擎总伤）；
+     * 这里额外标出「这条词条顺带触发了哪些转模、给了多少」，否则读者会奇怪
+     * 「为什么暴击率词条比爆伤词条值钱 2.4 倍」（实测诺姆 1571）。
+     *
+     * ⚠ **算法 = 边际分摊，不是「词条自身原始值过阈值」**（2026-10-23 判据抓到的第一版缺陷）：
+     * 诺姆的转模阈值是「暴击率 > 50%」，而一条词条只贡献 `24 个百分点 ⇒ 按自身原始值算
+     * **永远够不到阈值**、痕迹恒空（实测：暴击率词条 conversions=[]）。
+     * 正确语义 = 这条词条让转模**多了多少**：
+     * `Δ = amount(面板总值) − amount(面板总值 − 该词条原始值)`。
+     * 阈值以下那部分不归任何单条词条（那是角色基础/其他来源给的），正好符合直觉。
+     */
+    const specConversions = slot === null
+      ? []
+      : (getAgentSpec(config.team[slot].agentId)?.attributeConversions ?? [])
+    /** 该槽位面板（按 spec 的 sourcePanelPhase 取局内/局外）——只读，用于算转模总量 */
+    const panelForConversions = (): { inCombat: Record<string, number>; outOfCombat: Record<string, number> } => {
+      if (slot === null) return { inCombat: {}, outOfCombat: {} }
+      const phases = computePanelPhases(slot, config, useCatalogStore(), calc.effectiveWEngineCoverages.value)
+      if (!phases) return { inCombat: {}, outOfCombat: {} }
+      return {
+        inCombat: phases.inCombat as unknown as Record<string, number>,
+        outOfCombat: phases.outOfCombat as unknown as Record<string, number>,
+      }
+    }
+    const conversionTracesFor = (player: SubstatPlayer, panels: { inCombat: Record<string, number>; outOfCombat: Record<string, number> }): SubstatConversionTrace[] => {
+      const out: SubstatConversionTrace[] = []
+      for (const conv of specConversions) {
+        if (conv.sourceStat !== player.stat) continue
+        const panel = conv.sourcePanelPhase === 'outOfCombat' ? panels.outOfCombat : panels.inCombat
+        const total = panel[conv.sourceStat] ?? 0
+        const raw = player.steps * discStepOf(player.stat)
+        const withIt = specConversionAmount(conv, total)
+        const without = specConversionAmount(conv, total - raw)
+        const delta = withIt - without
+        if (Math.abs(delta) <= 1e-9) continue
+        // 折算成"贡献了几步"（供展示；已是边际量）
+        const steps = conv.valuePerStep !== 0 ? delta / conv.valuePerStep : 0
+        out.push({ id: conv.id, sourceStat: conv.sourceStat, targetStat: conv.targetStat, steps, amount: delta })
+      }
+      return out
+    }
+    const convPanels = specConversions.length > 0 ? panelForConversions() : { inCombat: {}, outOfCombat: {} }
     const contributions: SubstatScoreContribution[] = list.map((player, i) => ({
       slot: player.slot,
       stat: player.stat,
       steps: player.steps,
+      conversions: conversionTracesFor(player, convPanels),
       pct: (shap[0]![i]! / zero.team) * 100,
       ownPct: zero.own > 0 ? (shap[1]![i]! / zero.own) * 100 : 0,
       sharePct: 0,
@@ -297,6 +381,7 @@ export async function scoreSubstats(
     for (const c of contributions) c.sharePct = sumPct !== 0 ? (c.pct / sumPct) * 100 : 0
     return {
       slot,
+      conversions: specConversions,
       zeroTeam: zero.team,
       currentTeam: current.team,
       zeroOwn: zero.own,
@@ -390,6 +475,8 @@ const STAT_LABEL: Readonly<Record<string, string>> = {
   penRatio: '穿透率', physicalDmg: '物理增伤', fireDmg: '火增伤', iceDmg: '冰增伤',
   electricDmg: '电增伤', etherDmg: '以太增伤', windDmg: '风增伤', anomalyMastery: '异常掌控',
   energyRegen: '能量回复', impact: '冲击力',
+  dmgBonus: '通用增伤', skillDmgBonus: '招式增伤', anomalyDmgBonus: '异常增伤',
+  stunBuildUpBonus: '失衡值', critDmg__ultimate: '终结技爆伤',
 }
 
 export function discStatLabel(stat: string): string {

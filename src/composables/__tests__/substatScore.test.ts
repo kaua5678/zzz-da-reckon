@@ -135,6 +135,55 @@ describe('副词条评分 · 单人（主用法）', () => {
   }, 180000)
 })
 
+describe('转模（attributeConversions）必须在评分里被识别与计入', () => {
+  /** 诺姆 1571：spec 声明 critRate→critDmg(1.7) 与 critRate→定向失衡(0.8)，阈值 50 / 步长 1 / cap 85 与 40 */
+  it('★ 词条的转模被标出来（诺姆：暴击率 → 暴伤 + 定向失衡）', async () => {
+    const h = await setupHarness([{ agentId: '1571' }, { agentId: '1481' }, { agentId: '1311' }], { recommendedBuild: true })
+    await flush()
+    const res = await withAnalysisScenario(s => scoreSubstats(s, { slot: 0 }), h.config)
+    expect(res.reason).toBe('')
+    // 该角色命中的转模清单来自 spec（单一事实源，不是模块里另抄一份）
+    expect(res.conversions.map(c => c.id).sort()).toEqual(['norma_crit_to_critdmg', 'norma_crit_to_stun', 'norma_pen_to_atk'])
+    const critRateRow = res.contributions.find(c => c.stat === 'critRate')
+    expect(critRateRow, '本队推荐配装给暴击率词条').toBeTruthy()
+    // 暴击率词条必须带上「critRate→critDmg / critRate→定向失衡」两条转模痕迹
+    const ids = critRateRow!.conversions.map(c => c.id).sort()
+    expect(ids).toEqual(['norma_crit_to_critdmg', 'norma_crit_to_stun'])
+    for (const c of critRateRow!.conversions) {
+      expect(c.sourceStat).toBe('critRate')
+      expect(c.steps).toBeGreaterThan(0)
+      expect(c.amount).toBeGreaterThan(0)
+    }
+    // 反空洞：不带转模的词条必须**没有**痕迹（否则「都有」等于没标）
+    const plain = res.contributions.filter(c => c.stat !== 'critRate')
+    for (const c of plain) expect(c.conversions, `${c.stat} 不该有转模`).toEqual([])
+  }, 180000)
+
+  /**
+   * ★ **转模的收益必须真的体现在评分里**——这是「记得考虑转模」的机器判据。
+   *
+   * 诺姆的 critRate 每步在面板上同时给 critDmg(+1.7) 与定向失衡(+0.8)。
+   * 判据 = 同一预算下「给 1 步暴击率」的收益 **明显大于** 「给 1 步爆伤」（实测比 ≈ 2.4），
+   * 差额只能来自转模（1 步 critDmg 面板只给 4.8% 爆伤，而 1 步 critRate 给 2.4% 暴击 + 转出 4.08% 爆伤）。
+   * 若有人把转模从面板层摘掉，本断言立刻红。
+   */
+  it('★ 转模真的抬高了该词条的评分（暴击率词条 ≫ 爆伤词条）', async () => {
+    const measure = async (alloc: Record<string, number>) => {
+      const h = await setupHarness([{ agentId: '1571' }, { agentId: '1481' }, { agentId: '1311' }], { recommendedBuild: true })
+      h.config.team[0].driveDisc.subStatAllocation = { ...alloc }
+      await flush()
+      const res = await withAnalysisScenario(s => scoreSubstats(s, { slot: 0 }), h.config)
+      return res.ownGainPct
+    }
+    const critRate = await measure({ critRate: 10 })
+    const critDmg = await measure({ critDmg: 10 })
+    expect(critRate).toBeGreaterThan(0)
+    expect(critDmg).toBeGreaterThan(0)
+    // 1 步暴击率的收益 ≈ 1 步爆伤的 2.4 倍（纯面板收益只有 2.4% vs 4.8% ⇒ 靠转模反超）
+    const ratio = critRate / critDmg
+    expect(ratio, `暴击率/爆伤 收益比实测 ${ratio.toFixed(2)}`).toBeGreaterThan(1.8)
+  }, 180000)
+})
 describe('驱动盘 A/B 对比', () => {
   it('★ 只换这一槽：A vs B 差值与逐项 diff 同源；A vs A 恒 0（反空洞）', async () => {
     const h = await anomalyHarness()
