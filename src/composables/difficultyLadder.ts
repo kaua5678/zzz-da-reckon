@@ -66,6 +66,7 @@ import { getInteractionDefaults } from '@/mechanics/interactionBaseline'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import type { StateDelta } from '@/composables/configDelta'
+import type { ContinuousStunProgress } from '@/core/continuousStun'
 
 export interface LadderCtx {
   config: ConfigModel
@@ -718,6 +719,12 @@ export interface LadderPoint {
    */
   difficulty?: number
   /**
+   * **连续失衡进度**（2026-10-23）：本档离下一次完整失衡还差多少（`missingBuildUp` 点失衡值）。
+   * 展示层据此标注「再加点配置或交互就能达到完整失衡，进入下一阶段」。**不改任何数值。**
+   * 缺省（没采）= 不标注。
+   */
+  stunProgress?: ContinuousStunProgress
+  /**
    * 这一点的**时间线截断秒数**（引擎 `overflowSeconds`；与 `counts` 同一份快照采）。
    * >0 = 资源允许的动作装不进战斗时间、被装配期砍掉。缺省（没给 `opts.capture`）= 不采。
    */
@@ -780,6 +787,15 @@ export interface LadderSnapshot {
   weightedStunCoverage?: number
   /** 本点时间线截断秒数（引擎 `overflowSeconds`） */
   overflow?: number
+  /**
+   * **连续失衡进度**（2026-10-23，用户口径）：本档离下一次完整失衡还差多少。
+   *
+   * 用途 = 展示层标注「**再加点配置或交互就能达到完整失衡，进入下一阶段**」——
+   * 它**不改任何数值**（引擎里「没攒满 = 没开启 = 没有易伤」是用户 2026-10-21 的裁决），
+   * 只回答「还差多远」。口算源 = `core/continuousStun.ts#continuousStunProgress`。
+   * 缺省（没采）= 不标注。
+   */
+  stunProgress?: ContinuousStunProgress
   /** 本点手填（声明）交互总次数（缩前） */
   interactionsFilled?: number
   /** 本点实打交互总次数（缩后） */
@@ -938,13 +954,14 @@ export function climbDifficultyLadder(
   const capture = opts.capture
   const costOf = opts.costOf
   /** 采一点快照（同一点的全部字段读同一份 `resourceResult`，见 `LadderSnapshot` 注释） */
-  const snap = (): Pick<LadderPoint, 'counts' | 'dmgBySource' | 'overflow' | 'interactionsFilled' | 'interactionsPlayed'> & { weightedStunCoverage?: number } => {
+  const snap = (): Pick<LadderPoint, 'counts' | 'dmgBySource' | 'overflow' | 'interactionsFilled' | 'interactionsPlayed'> & { weightedStunCoverage?: number; stunProgress?: ContinuousStunProgress } => {
     const s = capture?.(ctx)
     return s
       ? {
           counts: s.counts, dmgBySource: s.dmgBySource,
           overflow: s.overflow, interactionsFilled: s.interactionsFilled, interactionsPlayed: s.interactionsPlayed,
           ...(s.weightedStunCoverage !== undefined ? { weightedStunCoverage: s.weightedStunCoverage } : {}),
+          ...(s.stunProgress !== undefined ? { stunProgress: s.stunProgress } : {}),
         }
       : {}
   }

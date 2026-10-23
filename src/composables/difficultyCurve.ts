@@ -58,6 +58,8 @@ import {
 } from '@/composables/teamCompare'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'
+import { continuousStunCount } from '@/core/stunPool'
+import { continuousStunProgress, type ContinuousStunProgress } from '@/core/continuousStun'
 // 量化地板与引擎同源（规则 11）：截断提醒的「整整 1 次交互」阈值 = 引擎自己的量化容差，见 truncationHintAt
 import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
@@ -958,6 +960,20 @@ export function attributeDmgChanges(changes: DmgSourceChange[], topN = 3, squeez
  * 与 `captureDmgBySource` 同源（同一份 `damagePoolRows`），只是按行覆盖率加权——
  * `stunCoverage` 是引擎最终的每行读数（轴内=1 / 轴外=0 / 未进轴槽位=全局覆盖率），**不重算**。
  */
+/** **连续失衡进度**（只读池的四个字段，零求值影响）：本档离下一次完整失衡还差多少。 */
+/**
+ * @fact engine:难度曲线/连续失衡标注 口径: 每个曲线点带 `stunProgress`（= `core/continuousStun.ts#continuousStunProgress` 的读数：已完整 N 次 / 距下一次进度 / 缺口失衡值），UI 据此标注「再加点配置或交互就能达到完整失衡，进入下一阶段」。**它是标注不是折算**：没攒满的那一窗在引擎里不给易伤（用户 2026-10-21 §33 裁决「没攒满 = 没开启」，且 `cont(K)≈K` 使该区间在自由收敛下恒空），所以本条**零求值影响** | 据 用户@2026-10-23（「连不起来的那一段需要标注，让用户知道这个地方再加点配置或者交互可以达到完整失衡，到达下一阶段」+「打了 n 次总失衡 + n−1 次被吃掉的量，再加 1 次的量就能连续变到完整 n 次失衡」） | 验 difficultyCurve.test.ts::连续失衡进度标注 + continuousStun.test.ts::「离下一次完整失衡还差多少」标注 | 锚 src/composables/difficultyCurve.ts#stunProgressOf | 信 确认
+ * ⟳复核: 若引擎改为允许「窗内也攒条」或把 `kStar` 换成小数计划，重核「标注而非折算」这条前提是否仍成立 | 到期 2027-04-30
+ */
+export function stunProgressOf(calc: Calc): ContinuousStunProgress {
+  const pool = calc.stunPoolResult.value
+  return continuousStunProgress({
+    builtWindows: pool ? continuousStunCount(pool) : 0,
+    bossStunValue: pool?.bossStunValue ?? 0,
+    stunRefundRatio: pool?.stunRefundRatio ?? 0,
+  })
+}
+
 export function captureWeightedStunCoverage(calc: Calc): number {
   let num = 0
   let den = 0
@@ -984,6 +1000,12 @@ function captureLadderSnapshot(config: ConfigModel, calc: Calc): LadderSnapshot 
     // filled = 缩前量（不吃降配/截断），但仍吃引擎物理 clamp —— 见 sumInteractions 注释
     interactionsFilled: sumInteractions(config, rr, { shrink: false }),
     interactionsPlayed: sumInteractions(config, rr),
+    /**
+     * **连续失衡进度**（2026-10-23，用户口径）：本档离下一次完整失衡还差多少失衡值。
+     * 只读一个纯函数（`core/continuousStun.ts#continuousStunProgress`），零求值影响——
+     * 它是标注「再加点就能到完整下一档」的唯一数据源。
+     */
+    stunProgress: stunProgressOf(calc),
   }
 }
 
@@ -1199,6 +1221,11 @@ export interface CurveDatum {
    * null = 本点没被砍（交互足量交付、时间线也没截断）。口径见 `truncationHintAt`。
    */
   hint: TruncationHint | null
+  /**
+   * **连续失衡进度**（2026-10-23）：本档离下一次完整失衡还差多少。
+   * UI 据此标注「再加点配置或交互就能达到完整失衡，进入下一阶段」。缺省 = 不采。
+   */
+  stunProgress?: ContinuousStunProgress
   /**
    * 这一点的**现场差分**（仅当 `DifficultyCurveOptions.collectScenes` 开着才在）——
    * 页面「点曲线上的点 → 看那一档资源池」的数据源（重放现场 + 重算，不随点携带 41.5KB 的整份结果）。
@@ -1492,6 +1519,7 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       changes: diffKeyCounts(r.ladder.points[i - 1]?.counts, p.counts),
       dmgChanges: diffDmgBySource(r.ladder.points[i - 1]?.dmgBySource, p.dmgBySource),
       hint: truncationHintAt(r.ladder.points, i),
+      ...(p.stunProgress ? { stunProgress: p.stunProgress } : {}),
       ...(p.scene ? { scene: p.scene } : {}),
       ...(p.noAxis ? { noAxis: p.noAxis } : {}),
     }))

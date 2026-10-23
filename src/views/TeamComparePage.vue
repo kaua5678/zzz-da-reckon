@@ -671,6 +671,11 @@
               <template v-else>100% = 每招按同一比例吃易伤，完全均匀摊</template>）
             </template>
           </span>
+          <span class="legend-hint">
+            <b>失衡进度</b>（tooltip）＝ 离下一次完整失衡还差多少失衡值：
+            没攒满的那一窗<b>不算易伤</b>（易伤只在完整失衡窗里生效），
+            所以它是「再加点配置/交互就能到完整下一档」的提示，不是伤害来源。
+          </span>
         </div>
         <ChartLegend
           :items="curveLegendItems"
@@ -2414,6 +2419,11 @@ const curveHoverTips = computed(() => {
     ...(worse ? [`⚠ 这条轴比不打轴还差 ${compact(worse)}（轴内可能有低收益招式）⇒ 建议复查该预设的轴`] : []),
     // 截断提醒（用户 2026-10-06）：只有被砍的档才有这一行
     ...(point.hint ? [`⚠ ${truncHintText(point.hint)}`] : []),
+    // 连续失衡进度（用户 2026-10-23）：「再加点配置或交互就能达到完整失衡，进入下一阶段」
+    ...(point.stunProgress && !point.stunProgress.atStep
+      ? [`失衡进度 ${fmt(point.stunProgress.nextWindowProgress * 100, 0)}% —— 已完整 ${point.stunProgress.completeWindows} 次，`
+        + `再攒 ${fmt(point.stunProgress.missingBuildUp, 0)} 点失衡值即可达到完整 ${point.stunProgress.completeWindows + 1} 次`]
+      : []),
     s.flat
       ? '无优化空间（④ 与 ① 同值）'
       : `关键点 ${s.steps.map(pointLabel).join(' → ')}${s.axisPointMissing ? '｜② 轴在任何难度下都不成立' : ''}`,

@@ -1397,3 +1397,46 @@ describe('逐点现场差分（collectScenes）', () => {
     for (const p of row!.ladder.points) expect(p.scene).toBeUndefined()
   }, 300_000)
 })
+
+/**
+ * **连续失衡进度标注**（用户 2026-10-23）：
+ * > 「连不起来的那一段需要标注，让用户知道这个地方再加点配置或者交互可以达到完整失衡，到达下一阶段。」
+ * > 「比如你打了 n 次总失衡 + n−1 次失衡期被吃掉失衡值的量，相当于进入了第 n 次失衡 0 秒，还没有享受到易伤；
+ * >   在这基础上，再加 1 次失衡期被吃掉失衡值的量就可以连续变到 n 次完整失衡的伤害。」
+ *
+ * 口径：进度**纯展示**（引擎里没攒满 = 没开启 = 没有易伤），所以判据只钉三件事：
+ * ① 每个曲线点都带 `stunProgress`；② 进度与池的连续次数同源（`completeWindows + frac`）；
+ * ③ `missingBuildUp` 严格递减到 0 —— 难度上升时「还差多少」必须变小（用户心智模型）。
+ */
+describe('连续失衡进度标注', () => {
+  it('★ 每个曲线点都带进度，且自洽（缺口 = 缺口比例 × 下一次的边际成本）', async () => {
+    const { catalog } = await setupHarness(['', '', ''], { productionBasicWeights: true })
+    await catalog.loadBuildRecommendations()
+    const preset = teamPresets.find(p => p.id === 'auto-1611-1141-1211')!
+    const rows = await withAnalysisScenario(s => computeDifficultyCurves(s, {
+      presets: [preset], boss: FAKE_BOSS, phase: FAKE_PHASE,
+    }))
+    const chart = buildCurveChart(rows, FAKE_PHASE.hp)
+    const pts = chart.series[0]!.points
+    expect(pts.length).toBeGreaterThan(1)
+    for (const point of pts) {
+      const sp = point.stunProgress
+      expect(sp, `点 ${point.point} 必须带进度（否则 UI 无法标注）`).toBeDefined()
+      expect(sp!.nextWindowProgress).toBeGreaterThanOrEqual(0)
+      expect(sp!.nextWindowProgress).toBeLessThan(1)
+      expect(sp!.missingBuildUp).toBeGreaterThanOrEqual(0)
+      if (sp!.atStep) {
+        expect(sp!.missingBars, '已完整 ⇒ 缺口为 0').toBe(0)
+        expect(sp!.missingBuildUp).toBe(0)
+      } else {
+        expect(sp!.missingBuildUp, '缺口 > 0 时才要提示「再加点」').toBeGreaterThan(0)
+      }
+    }
+    /**
+     * ⚠ **不要在曲线上断言「缺口单调不增」**：难度曲线的 x 本来就不保证单调
+     * （`difficultyCurve.ts` 头注释：交互重分配 / 轴退化都会让曲线回退），
+     * 跨过整数台阶时缺口也会从头开始（实测 `auto-1091-1511-1411`：2573 → 11729）。
+     * 「交互越多 ⇒ 缺口越小」是**引擎级**不变量，判在 `continuousStunProgress` 的单测里。
+     */
+  }, 900_000)
+})
