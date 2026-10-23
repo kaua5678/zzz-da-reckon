@@ -880,64 +880,6 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
     **判据**：`difficultyLadder.test.ts` ①（① 交互量 == 0）/ §6.3（按槽位收益形状）/ §6.3b（执行数不下降 + 四信号）；**全库 ④ ≥ ① = `difficultyCurveFullLibrary.test.ts`**（`PROBE_DIFF_FULL=1`，实测 **93/93 队、0 违例**，旧口径 1 违例）。⚠ 全库 Δx < 0 的队 = **0 支**（旧口径锋御 5 队 −16.9~−24.2）——卡 §3.4「难度同向」达成。
 
 
-57. **「页签切过去整页空白」= setup 期 TDZ，不是渲染/数据问题（2026-10-22，用户实报 F12）**：
-    **症状**：点「实战对比」/「资源池」页签页面不加载；F12 只有 `[Violation] Permissions policy violation: unload ...`（无关噪声）+ `[Vue warn] Unhandled error during execution of setup function` ×2 + `Uncaught (in promise) ReferenceError: Cannot access 'stunPoolResult' before initialization`。
-    **根因**：三页都写了 `const label = useStunDiscreteDisplay(() => stunPoolResult.value, () => configStore.enemy).value?.label ?? null`——① `stunPoolResult`（`useResourceCalc()` 的解构）在同一文件**声明在后面**，而 `<script setup>` 自上而下执行 ⇒ 立即求值踩 TDZ，setup 中断、整页不渲染（生产构建变量压成单字母 ⇒ 报成 `Cannot access '_' before initialization`，看着与源码对不上）；② 即便顺序对，`.value` 也把文案冻在首帧（部署新 run 后不更新）。
-    **判据（这次靠什么定位）**：`vue-tsc` 不报（类型没错）、现有四千余条单测全绿（**没有一个渲染 `.vue`**）⇒ 只有两条路能抓：SSR `renderToString` 页面（与浏览器报同一个 `ReferenceError`，实测三页全中）与 `scripts/ui-check.mjs` 实机点通（**基座**构建报 2 条 JS 错误、修复后 0 条）。**A/B 必须先跑基座**：干净 worktree `git worktree add --detach /tmp/zzz-base <HEAD>` + 同一条 ui-check 命令，否则「修好了」与「本来没坏」无法区分。
-    **修法（协议）**：composable 的入参一律是**取值函数**、返回 `ComputedRef`；调用方把 ref 原样交给模板（模板自动解包），**永不**在 setup 顶层 `.value`。展示要用的引擎量从引擎接口取（`useResourceCalc#windowDuration` / `#stunEffectiveTime`；曲线页取 `CurvePointPoolResult` 随档带出的同一次求值快照），不要展示层套第二份公式（旧写法漏传 `teamStunDurationBonus` ⇒ 琉音/仪玄队展示按 16s、引擎按 18s，「第几窗装不下」差一档）。
-    **护栏**：`composables/__tests__/stunDiscreteDisplay.test.ts`（SSR 渲染 + 源码锁：三个入参取值函数读到的标识符必须声明在调用点之前；模板必须传载荷 ref）；决策树行 `ARCHITECTURE.md` §4「页签切过去整页空白」。
-    **否决记录**：❌「把 `useStunDiscreteDisplay(...)` 挪到 `useResourceCalc()` 之后就行」——那只是把 TDZ 推后，`.value` 冻快照仍在，且下次谁把解构挪走又炸（源码锁现按「声明顺序」通用判，不认单点）；❌「加 `?.` 或 `?? null` 兜底」——TDZ 是模块级绑定在初始化前被访问，可选链不改变求值时机。
-57. **难度 x 轴读「store 里填的值」，而某些字段填的是**意图**——「字段存在 ≠ 角色有这个杠杆」（2026-10-23，用户实报「难度曲线斜率太低」）**：
-   **症状**：难度曲线 y 轴涨 17.9%、x 涨 384 ⇒ 斜率显示 **0.0%/点**；换几支队都是 0.0；明细里 x 的 92% 来自一项「嘲讽取消297×1.2」。
-   **根因（两处，缺一不成）**：① `difficultyLadder#applyInteractionKnob` 拉满嘲讽取消的判据是 `row?.tauntCancelCount === undefined`，而 `defaultCharacter` 给**每个**角色都预置了 `tauntCancelCount: 0` ⇒ 三槽全过判据、无般岳的队也写满 3×99 = 297；② `liveInteractions#engineInteractionItems` 读 store **原值**，而引擎 `banyue.ts` 按 `min(手填, 失衡外连段数)` 截断到个位数 ⇒ 意图值（99）当成操作量。
-   **实测**（`auto-1591-1481-1211`，无般岳）：嘲讽取消 0 → 写满 99 时**伤害逐位不变 112.834M**，x 从 **0 → 356.4**。
-   **判据**：`tauntCancelLever.test.ts` ★②′（无般岳队三槽都不被写）+ ★③′（x 的该项 == 引擎 clamp 后的 `banyueRageCycle.tauntCancelCount`，且 `rr = null` 时退回 store 值）。
-   **修法**：① 槽位判据改用模块能力声明（单一来源 = `timeWeightAllocation#tauntLeverSlots`，规则 11）；② `engineInteractionItems` 加 `actualOf` 覆盖通道，只对「store = 意图、引擎会 clamp」的字段生效（当前唯一 = tauntCancel），且**不再乘降配/存活率**（实打值已是交付量，二次折损会把真账压小）。
-   **连带口径**：`captureLadderSnapshot#interactionsFilled`（「配置了多少」那一读口）改用 `liveInteractions(..., { shrink: false })` —— 不吃降配/截断，但**引擎物理 clamp 照吃**；否则截断提醒会把「物理上限」误报成「被时间砍了 92 次」。
-   **否决记录**：❌「只改槽位判据就够」——般岳自己那条仍吃 99×1.2 = 118.8 点（实测④档 x=414.7 里 356 来自两个假槽、118.8 来自它自己）；❌「把 `tauntCancelCount` 从 `defaultCharacter` 删掉，让字段不存在」——会改变 `clearInteractions` 的「只在字段存在时写」语义，且新角色接 `characterCountInputs` 就又要回来。
-   **同族教训**：凡是「用户填的是**上限/意图**、引擎会按物理量 clamp」的字段（嘲讽取消、金身格挡上限、自动档 `-1` 哨兵），**难度口径必须读引擎交付值**，不能读 store。这条已写成 `@fact engine:操作难度/交互项读实打`（锚 `liveInteractions#liveInteractions`，带 ⟳复核触发器）。
-
-### 坑 58：连续失衡「快增段」——为什么它算不出伤害，只能标注
-
-**症状**：难度曲线上「完整 n 失衡」到「完整 n+1 失衡」之间是一次**整格跳变**，中间没有任何过渡。
-实测 `auto-1611-1141-1211`（克拉蕾，闪反 18→19）：`+9.268M / 一格`，占全程 70.9%；
-两侧各 18 次、5 次交互的斜率只有 0.168M/次、0.158M/次。
-
-**根因（数学恒等式，不是实现取舍）**：引擎 `kStar = max{K : floor(cont(K)) ≥ K}`，而
-`cont(K) = ρ·(effTime − K·W)` 随 K 线性下降 ⇒ 在 K 处自洽意味着 `cont(K) ≈ K`。
-于是 `cont ∈ (K, K+1)` 这个区间（用户要的「快增段」）**在自由收敛下恒为空**：
-全库 93 队实测 `realizeStunWindows(...).lastFraction === 0` **全部命中**。
-而「没攒满 ⇒ 没开启 ⇒ 没有易伤」是用户 2026-10-21 §33 的明确裁决（`STUN_CONTINUOUS_LASTWINDOW.md`），
-所以那一段的伤害**物理上就是 0**——它不该被算成伤害。
-
-**因此正确做法 = 标注，不是折算**（用户 2026-10-23 口径）：
-`core/continuousStun.ts#continuousStunProgress` 给出「还差几条 / 还差多少失衡值」，
-展示层据此提示「再加点配置或交互就能达到完整失衡，进入下一阶段」。
-全库分布：进度 [0-25%)7 / [25-50%)23 / [50-75%)37 / [75-99%)20 / 正好整数 6。
-
-**已验证的相邻结论（省得重新发明）**：
-- 引擎**本来就支持小数计划窗**：锁 `plan = 5.15/5.3/5.5/5.7/5.85/6` 时 `stunCoverage` 严格等于
-  `plan × W / eff`，伤害单调增（`auto-1611-1141-1211` 实测 70.454→77.945M）。
-  ⇒ 「计划值取 `floor`」确实是跳变的直接来源。
-- 但把计划换成小数 `K*` **不能**直接上：小数计划会重排时间账，实测出现凹陷
-  （`banyue-liuyin-lucia` plan 3.9→5.1 在 4.4~4.7 区间掉 2~4M；`auto-1521-1251-1311` 多排一窗 −10.6M）。
-
-**否决记录**：
-- ❌ **多排一窗重跑**（按 `kStar+1` 锁窗重跑一轮，让末窗内容真的排进来）：`banyue-liuyin-lucia` −18.7M、
-  `auto-1521-1251-1311` −10.6M、`auto-1611-1141-1211` 0 — 多一窗把高价值招式挤出预算。
-- ❌ **闭式自洽解 `K* = ρ·eff/(1+ρ·W)`**：它假定「第 K+1 窗内也在攒条」，与时间守恒
-  （`@fact engine:stun/连续失衡`：窗内不攒条）冲突 ⇒ 会兑现出超过 `built` 的窗数。
-- ❌ **`ρ = built/(effTime − completeWindows·W)`**：`completeWindows` 才是「已占用窗数」，
-  用它当分母会把 surplus 重复计入速率（实测把 band 撑大约 30%）。
-
-**判据**：`src/core/__tests__/continuousStun.test.ts`（13 条：顺序推演形态 / 覆盖率严格加法 / 标注进度）。
-
----
-## 5. 验收命令
-
-验收命令的单一事实源 = `AGENTS.md` §3（`npm run verify` 一条链 + `check-guards` 判据清单 + UI 实机点通 + 新测试一律用 `src/test/harness.ts`）——命令与期望输出以那里为准；本节旧命令块已过期（漏 check-guards / check-tokens / verify:recording，且 typecheck 已并入 build），故不再复述。
-录入完成清单（同步 `public/static/character-mechanics.json` / `character-constellations.json` 状态行与 codePaths、补全管线冒烟测试）= `AGENT_RECORDING_SOP.md` §6.10。
-
 46. **「现成读数」与「用户要的东西」是两件事：需求里的名词可能指向**另一种口径**（2026-10-16，两条实测）**：
    用户说「要展示 X」时，先问**X 是现成读数，还是需要按另一种口径重算**——**跳过这一问就会做错整轮**。
    实测两次踩同一形态：
@@ -1227,3 +1169,62 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
    **口径（用户 2026-10-20）**：「异化度确实是全队固定的，因为这是**全队拐**」——
    展示层是**全队唯一值**，取值用蕾米本人面板；**不要**改回「每个积蓄行喂自己那行面板」，
    异化系数本体是 `target.kind: 'self'`，队友行只拿得到加算项（修前每行恒 10.0%，伤害实际 1.2+）。
+
+57. **「页签切过去整页空白」= setup 期 TDZ，不是渲染/数据问题（2026-10-22，用户实报 F12）**：
+    **症状**：点「实战对比」/「资源池」页签页面不加载；F12 只有 `[Violation] Permissions policy violation: unload ...`（无关噪声）+ `[Vue warn] Unhandled error during execution of setup function` ×2 + `Uncaught (in promise) ReferenceError: Cannot access 'stunPoolResult' before initialization`。
+    **根因**：三页都写了 `const label = useStunDiscreteDisplay(() => stunPoolResult.value, () => configStore.enemy).value?.label ?? null`——① `stunPoolResult`（`useResourceCalc()` 的解构）在同一文件**声明在后面**，而 `<script setup>` 自上而下执行 ⇒ 立即求值踩 TDZ，setup 中断、整页不渲染（生产构建变量压成单字母 ⇒ 报成 `Cannot access '_' before initialization`，看着与源码对不上）；② 即便顺序对，`.value` 也把文案冻在首帧（部署新 run 后不更新）。
+    **判据（这次靠什么定位）**：`vue-tsc` 不报（类型没错）、现有四千余条单测全绿（**没有一个渲染 `.vue`**）⇒ 只有两条路能抓：SSR `renderToString` 页面（与浏览器报同一个 `ReferenceError`，实测三页全中）与 `scripts/ui-check.mjs` 实机点通（**基座**构建报 2 条 JS 错误、修复后 0 条）。**A/B 必须先跑基座**：干净 worktree `git worktree add --detach /tmp/zzz-base <HEAD>` + 同一条 ui-check 命令，否则「修好了」与「本来没坏」无法区分。
+    **修法（协议）**：composable 的入参一律是**取值函数**、返回 `ComputedRef`；调用方把 ref 原样交给模板（模板自动解包），**永不**在 setup 顶层 `.value`。展示要用的引擎量从引擎接口取（`useResourceCalc#windowDuration` / `#stunEffectiveTime`；曲线页取 `CurvePointPoolResult` 随档带出的同一次求值快照），不要展示层套第二份公式（旧写法漏传 `teamStunDurationBonus` ⇒ 琉音/仪玄队展示按 16s、引擎按 18s，「第几窗装不下」差一档）。
+    **护栏**：`composables/__tests__/stunDiscreteDisplay.test.ts`（SSR 渲染 + 源码锁：三个入参取值函数读到的标识符必须声明在调用点之前；模板必须传载荷 ref）；决策树行 `ARCHITECTURE.md` §4「页签切过去整页空白」。
+    **否决记录**：❌「把 `useStunDiscreteDisplay(...)` 挪到 `useResourceCalc()` 之后就行」——那只是把 TDZ 推后，`.value` 冻快照仍在，且下次谁把解构挪走又炸（源码锁现按「声明顺序」通用判，不认单点）；❌「加 `?.` 或 `?? null` 兜底」——TDZ 是模块级绑定在初始化前被访问，可选链不改变求值时机。
+59. **难度 x 轴读「store 里填的值」，而某些字段填的是**意图**——「字段存在 ≠ 角色有这个杠杆」（2026-10-23，用户实报「难度曲线斜率太低」）**：
+   **症状**：难度曲线 y 轴涨 17.9%、x 涨 384 ⇒ 斜率显示 **0.0%/点**；换几支队都是 0.0；明细里 x 的 92% 来自一项「嘲讽取消297×1.2」。
+   **根因（两处，缺一不成）**：① `difficultyLadder#applyInteractionKnob` 拉满嘲讽取消的判据是 `row?.tauntCancelCount === undefined`，而 `defaultCharacter` 给**每个**角色都预置了 `tauntCancelCount: 0` ⇒ 三槽全过判据、无般岳的队也写满 3×99 = 297；② `liveInteractions#engineInteractionItems` 读 store **原值**，而引擎 `banyue.ts` 按 `min(手填, 失衡外连段数)` 截断到个位数 ⇒ 意图值（99）当成操作量。
+   **实测**（`auto-1591-1481-1211`，无般岳）：嘲讽取消 0 → 写满 99 时**伤害逐位不变 112.834M**，x 从 **0 → 356.4**。
+   **判据**：`tauntCancelLever.test.ts` ★②′（无般岳队三槽都不被写）+ ★③′（x 的该项 == 引擎 clamp 后的 `banyueRageCycle.tauntCancelCount`，且 `rr = null` 时退回 store 值）。
+   **修法**：① 槽位判据改用模块能力声明（单一来源 = `timeWeightAllocation#tauntLeverSlots`，规则 11）；② `engineInteractionItems` 加 `actualOf` 覆盖通道，只对「store = 意图、引擎会 clamp」的字段生效（当前唯一 = tauntCancel），且**不再乘降配/存活率**（实打值已是交付量，二次折损会把真账压小）。
+   **连带口径**：`captureLadderSnapshot#interactionsFilled`（「配置了多少」那一读口）改用 `liveInteractions(..., { shrink: false })` —— 不吃降配/截断，但**引擎物理 clamp 照吃**；否则截断提醒会把「物理上限」误报成「被时间砍了 92 次」。
+   **否决记录**：❌「只改槽位判据就够」——般岳自己那条仍吃 99×1.2 = 118.8 点（实测④档 x=414.7 里 356 来自两个假槽、118.8 来自它自己）；❌「把 `tauntCancelCount` 从 `defaultCharacter` 删掉，让字段不存在」——会改变 `clearInteractions` 的「只在字段存在时写」语义，且新角色接 `characterCountInputs` 就又要回来。
+   **同族教训**：凡是「用户填的是**上限/意图**、引擎会按物理量 clamp」的字段（嘲讽取消、金身格挡上限、自动档 `-1` 哨兵），**难度口径必须读引擎交付值**，不能读 store。这条已写成 `@fact engine:操作难度/交互项读实打`（锚 `liveInteractions#liveInteractions`，带 ⟳复核触发器）。
+
+### 坑 58：连续失衡「快增段」——为什么它算不出伤害，只能标注
+
+**症状**：难度曲线上「完整 n 失衡」到「完整 n+1 失衡」之间是一次**整格跳变**，中间没有任何过渡。
+实测 `auto-1611-1141-1211`（克拉蕾，闪反 18→19）：`+9.268M / 一格`，占全程 70.9%；
+两侧各 18 次、5 次交互的斜率只有 0.168M/次、0.158M/次。
+
+**根因（数学恒等式，不是实现取舍）**：引擎 `kStar = max{K : floor(cont(K)) ≥ K}`，而
+`cont(K) = ρ·(effTime − K·W)` 随 K 线性下降 ⇒ 在 K 处自洽意味着 `cont(K) ≈ K`。
+于是 `cont ∈ (K, K+1)` 这个区间（用户要的「快增段」）**在自由收敛下恒为空**：
+全库 93 队实测 `realizeStunWindows(...).lastFraction === 0` **全部命中**。
+而「没攒满 ⇒ 没开启 ⇒ 没有易伤」是用户 2026-10-21 §33 的明确裁决（`STUN_CONTINUOUS_LASTWINDOW.md`），
+所以那一段的伤害**物理上就是 0**——它不该被算成伤害。
+
+**因此正确做法 = 标注，不是折算**（用户 2026-10-23 口径）：
+`core/continuousStun.ts#continuousStunProgress` 给出「还差几条 / 还差多少失衡值」，
+展示层据此提示「再加点配置或交互就能达到完整失衡，进入下一阶段」。
+全库分布：进度 [0-25%)7 / [25-50%)23 / [50-75%)37 / [75-99%)20 / 正好整数 6。
+
+**已验证的相邻结论（省得重新发明）**：
+- 引擎**本来就支持小数计划窗**：锁 `plan = 5.15/5.3/5.5/5.7/5.85/6` 时 `stunCoverage` 严格等于
+  `plan × W / eff`，伤害单调增（`auto-1611-1141-1211` 实测 70.454→77.945M）。
+  ⇒ 「计划值取 `floor`」确实是跳变的直接来源。
+- 但把计划换成小数 `K*` **不能**直接上：小数计划会重排时间账，实测出现凹陷
+  （`banyue-liuyin-lucia` plan 3.9→5.1 在 4.4~4.7 区间掉 2~4M；`auto-1521-1251-1311` 多排一窗 −10.6M）。
+
+**否决记录**：
+- ❌ **多排一窗重跑**（按 `kStar+1` 锁窗重跑一轮，让末窗内容真的排进来）：`banyue-liuyin-lucia` −18.7M、
+  `auto-1521-1251-1311` −10.6M、`auto-1611-1141-1211` 0 — 多一窗把高价值招式挤出预算。
+- ❌ **闭式自洽解 `K* = ρ·eff/(1+ρ·W)`**：它假定「第 K+1 窗内也在攒条」，与时间守恒
+  （`@fact engine:stun/连续失衡`：窗内不攒条）冲突 ⇒ 会兑现出超过 `built` 的窗数。
+- ❌ **`ρ = built/(effTime − completeWindows·W)`**：`completeWindows` 才是「已占用窗数」，
+  用它当分母会把 surplus 重复计入速率（实测把 band 撑大约 30%）。
+
+**判据**：`src/core/__tests__/continuousStun.test.ts`（13 条：顺序推演形态 / 覆盖率严格加法 / 标注进度）。
+
+---
+
+## 5. 验收命令
+
+验收命令的单一事实源 = `AGENTS.md` §3（`npm run verify` 一条链 + `check-guards` 判据清单 + UI 实机点通 + 新测试一律用 `src/test/harness.ts`）——命令与期望输出以那里为准；本节旧命令块已过期（漏 check-guards / check-tokens / verify:recording，且 typecheck 已并入 build），故不再复述。
+录入完成清单（同步 `public/static/character-mechanics.json` / `character-constellations.json` 状态行与 codePaths、补全管线冒烟测试）= `AGENT_RECORDING_SOP.md` §6.10。

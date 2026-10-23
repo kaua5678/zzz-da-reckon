@@ -60,11 +60,11 @@ export const RATCHET_BURNDOWN = [
   {
     id: '手册 §4 行数',
     file: 'docs/ENGINE_PIPELINE_GUIDE.md',
-    frozen: 808,  // 2026-10-23 结算 761 → 808（+47）；delta 逐条归因见 history
-    target: 808,
+    frozen: 1099,  // 同上；2026-10-23 修好「§4 边界」后口径纠正 808 → 1099（不是新增内容）
+    target: 1099,
     due: '2026-10-31',
-    current: '现 808 行。新增坑必须入账证据时上调 frozen；不许为降数字删证据。',
-    history: '761→808：坑 57 TDZ +8 / 难度 x 意图 +10 / 坑 58 +36（规则 16③）；见 git log --grep="§4 行数"',
+    current: '现 1099 行（含此前从未被计数的坑 46~56）。只许加证据句；不许为降数字删证据。',
+    history: '808→1099 是**口径纠正**：46~59 原先排在 "## 5" 之后，度量与 zc brief 都漏看；见 git log --grep="§4 行数"',
   },
   {
     id: '游戏语义口径复核触发器',
