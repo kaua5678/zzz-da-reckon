@@ -301,7 +301,11 @@ function applyYaojiayinTeamPanelEffects({
 function buildCharConfig({ skills, cinemaLevel, cfg, team }: AgentCharConfigInput): void {
   const cinema = cinemaLevelOf(cinemaLevel)
   cfg.yaojiayinCinemaLevel = cinema
-  cfg.yaojiayinTremoloDmg = rowVal(findMove(skills, MOVE_TREMOLO), 'damage')
+  /**
+   * 2026-10-23：删掉 `yaojiayinTremoloDmg`（判据 cfgWriteOnlyKeys 报「只写不读」）。
+   * 和弦震音自 2026-10-22 用户裁决起走**通用强特通道**（`exSpecialMoveId = 1311008`，
+   * 倍率由引擎按招表取），本字段零读者 ⇒ 重构遗留。
+   */
   cfg.yaojiayinClusterDmg = rowVal(findMove(skills, MOVE_CLUSTER), 'damage')
   cfg.yaojiayinCapriccioDmg = rowVal(findMove(skills, MOVE_CAPRICCIO_CHARGED), 'damage')
 
@@ -544,7 +548,5 @@ declare module '@/types/resource/config' {
     yaojiayinQuickAssistEntries?: number
     /** 写入：specs.has('attack') ? 1 : 0 */
     yaojiayinTeamHasAttack?: number
-    /** 写入：rowVal(findMove(skills, MOVE_TREMOLO), 'damage') */
-    yaojiayinTremoloDmg?: number
   }
 }

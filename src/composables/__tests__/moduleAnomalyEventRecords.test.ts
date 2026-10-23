@@ -60,7 +60,7 @@ describe('CC-28 moduleAnomalyEventRecords（结构不变量 + 数值基线）', 
       const { config } = await setupHarness(team as never, { recommendedBuild: true })
       if (key === 'r0') config.setMechanicSetting('time.stunPlanProjection', 0)
       const calc = useResourceCalc()
-      const records = calc.moduleAnomalyEventRecords.value as Record<string, unknown>[]
+      const records = calc.moduleAnomalyEventRecords.value as unknown as Record<string, unknown>[]
 
       // ① 能力门控：无蕾米 = 无记录（这是 CC-28 迁移要守的第一件事）
       if (key === 'none') {
@@ -93,9 +93,9 @@ describe('CC-28 moduleAnomalyEventRecords（结构不变量 + 数值基线）', 
 
   for (const [key, team] of Object.entries(TEAMS29)) {
     it(`${key}：简6命能力门控`, async () => {
-      const { config } = await setupHarness(team as never, { recommendedBuild: true })
+      await setupHarness(team as never, { recommendedBuild: true })
       const calc = useResourceCalc()
-      const records = calc.moduleAnomalyEventRecords.value as Record<string, unknown>[]
+      const records = calc.moduleAnomalyEventRecords.value as unknown as Record<string, unknown>[]
       const jane = records.filter(r => String(r.id).startsWith('jane-c6'))
       // 5 命不出该事件（能力门控）
       if (key === 'j0c5') expect(jane, '简 5 命不得出 6 命附伤事件').toEqual([])
@@ -124,11 +124,10 @@ describe('CC-28/29 数值基线（认领式）', () => {
 
   for (const [key, team] of Object.entries(TEAMS29)) {
     it(`baseline29 ${key}`, async () => {
-      const { setupHarness: sh } = await import('@/test/harness')
-      const { config } = await sh(team as never, { recommendedBuild: true })
+      await setupHarness(team as never, { recommendedBuild: true })
       const calc = useResourceCalc()
-      const mod = calc.moduleAnomalyEventRecords.value
-      const dmgIds = (calc.anomalyDamageEvents.value as { id: string }[]).map(e => e.id)
+      const mod = calc.moduleAnomalyEventRecords.value as unknown as Record<string, unknown>[]
+      const dmgIds = (calc.anomalyDamageEvents.value as unknown as { id: string }[]).map(e => e.id)
       actual[`29_${key}`] = { mod, dmgIds }
     }, 60000)
   }
