@@ -84,7 +84,7 @@ export interface SubstatScoreContribution {
   conversions: SubstatConversionTrace[]
   /** 对**全队**伤害的贡献，百分点 */
   pct: number
-  /** 对**该角色自身**伤害的贡献，百分点（单人模式的主口径） */
+  /** 对**当前配置下个人伤害**的贡献，百分点（参考口径；队友会改变出招次数，故不作主口径） */
   ownPct: number
   /** 占全队口径合计的份额（%）；合计为 0 时为 0 */
   sharePct: number
@@ -140,7 +140,13 @@ export interface SubstatScoreResult {
   currentOwn: number
   /** 评分（全队口径）：当前 / 0 词条 − 1（%） */
   gainPct: number
-  /** 评分（该角色自身口径）：当前 / 0 词条 − 1（%） */
+  /**
+   * **当前配置下的个人伤害**增益（当前 / 0 词条 − 1，%）。
+   *
+   * ⚠ 措辞有意避开「该角色自身伤害」（用户口径 2026-10-23）：这个数是「在这支队里、按这套配装的
+   * 出招次数」算出来的，**换队友会变**（队友决定招式次数），所以它不是「这个角色自己变强了多少」。
+   * ⇒ 展示层一律写「当前配置下的个人伤害」，主口径用 `gainPct`（全队）。
+   */
   ownGainPct: number
   /** 逐词条贡献（Shapley），Σ pct ≡ gainPct、Σ ownPct ≡ ownGainPct */
   contributions: SubstatScoreContribution[]

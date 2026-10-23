@@ -21,7 +21,8 @@
     <div class="ssc-caption">
       基线 = <b>该角色 0 副词条</b>（队友的词条一个都不动）。
       逐条贡献用 <b>Shapley 分摊</b>：它的和严格等于评分，可以直接相加看账。
-      两个口径一起给——<b>该角色自身伤害</b>看词条养成进度，<b>全队伤害</b>看这个角色值不值。
+      主口径是<b>全队伤害</b>；另一个数是<b>当前配置下的个人伤害</b>——它是「在这支队里、按这套配装的出招次数」
+      算出来的，<b>换队友会变</b>（队友决定你的招式能打几次），所以只作参考，不要当成「这个角色自己变强了多少」。
       有转模的角色（如诺姆的暴击率→暴伤/定向失衡），「转模」列会标出这条词条**顺带转出**了多少——
       那部分收益**已经算在评分里**，这一列只是解释「为什么暴击率词条比爆伤词条值钱」。
       跑在独立场景里，不动你的配装；一个角色只有 2~4 个词条 ⇒ 几毫秒级。
@@ -34,16 +35,16 @@
     <template v-if="result && !result.reason">
       <div class="ssc-summary">
         <div class="ssc-score">
-          <span class="ssc-score-value">+{{ fmt(result.ownGainPct, 2) }}%</span>
-          <span class="ssc-score-label">该角色自身伤害</span>
-        </div>
-        <div class="ssc-score ssc-score-secondary">
-          <span class="ssc-score-value-sm">+{{ fmt(result.gainPct, 2) }}%</span>
+          <span class="ssc-score-value">+{{ fmt(result.gainPct, 2) }}%</span>
           <span class="ssc-score-label">全队伤害</span>
         </div>
+        <div class="ssc-score ssc-score-secondary">
+          <span class="ssc-score-value-sm">+{{ fmt(result.ownGainPct, 2) }}%</span>
+          <span class="ssc-score-label">当前配置下的个人伤害</span>
+        </div>
         <div class="ssc-facts">
-          <div>自身 {{ compact(result.zeroOwn) }} → <b>{{ compact(result.currentOwn) }}</b></div>
           <div>全队 {{ compact(result.zeroTeam) }} → <b>{{ compact(result.currentTeam) }}</b></div>
+          <div>个人 {{ compact(result.zeroOwn) }} → <b>{{ compact(result.currentOwn) }}</b></div>
           <div>求值 {{ result.evals }} 次 · {{ result.contributions.length }} 条词条</div>
         </div>
       </div>
@@ -76,12 +77,12 @@
           <div class="ssc-stun-row ssc-stun-highlight">
             <span class="ssc-stun-label">折算伤害</span>
             <span>这部分的贡献</span>
-            <span class="ssc-stun-delta">全队 +{{ fmt(result.stunOutput.jumpGainPct, 2) }}% · 自身 +{{ fmt(result.stunOutput.jumpOwnGainPct, 2) }}%</span>
+            <span class="ssc-stun-delta">全队 +{{ fmt(result.stunOutput.jumpGainPct, 2) }}% · 个人 +{{ fmt(result.stunOutput.jumpOwnGainPct, 2) }}%</span>
           </div>
         </div>
         <div class="ssc-stun-note">
           若不锁失衡次数，这套词条的全队增益会是 +{{ fmt(result.stunOutput.freeformGainPct, 2) }}%
-          （自身 +{{ fmt(result.stunOutput.freeformOwnGainPct, 2) }}%）——差额就是上面这一行。
+          （个人 +{{ fmt(result.stunOutput.freeformOwnGainPct, 2) }}%）——差额就是上面这一行。
           它是「词条恰好越过击破阈值」的离散产物，不是词条的固有价值，所以不并入评分。
         </div>
       </div>
@@ -96,16 +97,16 @@
         <tr v-for="row in rows" :key="row.key">
           <td><span class="ssc-dot" :style="{ background: row.color }"></span>{{ row.label }}</td>
           <td>{{ row.steps }}</td>
-          <td :style="{ color: row.ownPct >= 0 ? 'var(--fg-3)' : 'var(--c-warning-strong)' }">
-            {{ row.ownPct >= 0 ? '+' : '' }}{{ fmt(row.ownPct, 2) }}%
+          <td :style="{ color: row.pct >= 0 ? 'var(--fg-3)' : 'var(--c-warning-strong)' }">
+            {{ row.pct >= 0 ? '+' : '' }}{{ fmt(row.pct, 2) }}%
           </td>
-          <td>{{ fmt(row.pct, 2) }}%</td>
+          <td>{{ fmt(row.ownPct, 2) }}%</td>
           <td :title="row.convText">{{ row.convText }}</td>
           <td>{{ fmt(row.sharePct, 1) }}%</td>
         </tr>
       </ChartTable>
       <div class="ssc-foot">
-        合计 自身 {{ fmt(totalOwnPct, 2) }}% / 全队 {{ fmt(totalPct, 2) }}%（两者都与上面的评分逐位相等）
+        合计 全队 {{ fmt(totalPct, 2) }}% / 个人 {{ fmt(totalOwnPct, 2) }}%（两者都与上面的评分逐位相等）
       </div>
     </template>
     <div v-else-if="result && result.reason" class="ssc-empty">{{ result.reason }}</div>
@@ -140,7 +141,7 @@
         </span>
       </div>
       <div class="ssc-compare-row">
-        <span class="ssc-compare-label">该角色伤害</span>
+        <span class="ssc-compare-label">个人伤害</span>
         <span>{{ compact(compareResult.aOwn) }} → {{ compact(compareResult.bOwn) }}</span>
         <span class="ssc-compare-delta" :style="{ color: compareResult.deltaOwnPct >= 0 ? 'var(--app-accent-gold)' : 'var(--c-warning-strong)' }">
           {{ compareResult.deltaOwnPct >= 0 ? '+' : '' }}{{ fmt(compareResult.deltaOwnPct, 2) }}%
@@ -168,7 +169,7 @@
  * 副词条评分卡（2026-10-23）。
  *
  * 两个入口（用户口径「该算单人的」+「也有人要比较两套盘子」）：
- *  ① 单人评分（选角色 → 算）：自身/全队两个口径的评分 + 逐词条 Shapley 贡献；
+ *  ① 单人评分（选角色 → 算）：**全队**（主口径）/ 当前配置下的个人伤害（参考）+ 逐词条 Shapley 贡献；
  *  ② 两套盘子 A/B：把当前存成 A / 存成 B → 对比（差值 + 逐项差异）。
  *
  * 数据/口径全在 `composables/substatScore.ts`（含为什么用 Shapley、单人为什么是主用法、成本）。
@@ -224,8 +225,8 @@ watch(defaultSlot, v => { if (!configStore.team[slot.value]?.agentId) slot.value
 const columns = [
   { key: 'stat', label: '词条' },
   { key: 'steps', label: '步数', width: '56px' },
-  { key: 'own', label: '自身贡献', width: '96px' },
   { key: 'team', label: '全队贡献', width: '96px' },
+  { key: 'own', label: '个人贡献', width: '96px' },
   { key: 'conv', label: '转模', width: '132px' },
   { key: 'share', label: '占比', width: '68px' },
 ]
