@@ -992,7 +992,6 @@ export function createRunCalcRound(deps: {
       const mainDpsDecibel = rr.characters.find(c => c.slot === 0)?.decibelSource.total ?? 0
       const decibelShort = Math.max(0, 4 * ULTIMATE_COST_DEFAULT - mainDpsDecibel)
       const roundable = decibelShort <= DECIBEL_ROUND_THRESHOLD
-      decibelResidualShort = decibelShort
       decibelRoundable = roundable
       if (roundable) {
         // 等价于旧写法 max(prev, ⌈short/215⌉)，只是在「增大」分支顺手记下 basis
@@ -1002,6 +1001,7 @@ export function createRunCalcRound(deps: {
           decibelParryBasisShortNext = decibelShort
         }
       }
+      decibelResidualShort = decibelShort
     }
     // 赠行由引擎物化 → rr 里已有赠行；池侧赠送口径单独结算，故基准提取跳过赠行（防双计）
     const baseStun = extractStunExecsFrom(rr, true)
@@ -1381,6 +1381,22 @@ export function createRunCalcRound(deps: {
       interactionTopUp: interactionTopUpNext,
       parrySplit: parrySplitNext,
       specialActionBonus: specialActionBonusRound,
+      /**
+       * 保底 4 喧响的**决策结果**（三者同属一次决策，语义见下）。
+       *
+       * ⚠ **2026-10-23 复核澄清**（曾误判为「展示矛盾」，实际是自洽的）：
+       * `residualShort = 4 × ULTIMATE_COST_DEFAULT − 主C喧响`。**`ULTIMATE_COST_DEFAULT = 3000`**
+       * ⇒ 目标是 **12000**（4 次大招），不是 4000。
+       * 实测雨果队：主C 8037.5 ⇒ 缺口 3962.5（≈ 少一个大招再多缺 962）—— 数字正确。
+       *
+       * `roundable = residualShort ≤ 1500` 是**「值不值得硬凑」的闸门**：
+       * 缺口在 1500 以内 ⇒ 补 ⌈缺口/215⌉ 次弹刀把第 4 次大打出来；
+       * 缺口 3962 > 1500 ⇒ **放弃硬凑**（要补 19 次弹刀，代价远超收益）⇒ `parry = 0`。
+       * 页面文案同源（TeamConfigPage）：「缺口 3962 > 1500，实战打不出下一次大 → 不硬凑」。
+       *
+       * ⇒ `parry = 0` 且 `residualShort > 0` 不矛盾，是「缺口太大主动放弃」的正常状态；
+       *    只有 `roundable = true` 时才会出现 `parry = ⌈residualShort/215⌉ > 0`。
+       */
       decibelGuarantee: {
         active: decibelParryActive,
         parry: decibelParryActive ? prevDecibelParry : 0,
