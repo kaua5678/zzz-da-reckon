@@ -128,7 +128,7 @@
             :min="0"
             :max="54"
             size="small"
-            style="width: 96px"
+            style="width: 104px"
             @update:value="v => setSubStat(stat, v ?? 0)"
           />
         </div>
@@ -422,9 +422,12 @@ async function runCompare() {
 .ssc-score-label { font-size: 11px; color: var(--fg-3); }
 .ssc-facts { font-size: 12px; color: var(--fg-2); line-height: 1.7; }
 .ssc-quick { margin-bottom: 10px; }
-.ssc-quick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 12px; }
-.ssc-quick-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.ssc-quick-name { font-size: 12px; color: var(--fg-2); }
+/* 列宽固定 + 从左侧排：minmax(190px, 1fr) 会把每列拉伸到整卡宽度的 1/N，
+   再配 space-between 就变成「名字贴左、输入框贴右」，看着像输入框属于右邻那一列（用户 2026-10-23 报）。 */
+.ssc-quick-grid { display: grid; grid-template-columns: repeat(auto-fill, 200px); gap: 4px 20px; justify-content: start; }
+.ssc-quick-row { display: flex; align-items: center; gap: 8px; }
+/* 标签定宽 ⇒ 所有输入框左边缘对齐，且与自己的标签紧邻 */
+.ssc-quick-name { flex: none; width: 64px; font-size: 12px; color: var(--fg-2); }
 .ssc-quick-foot { margin-top: 8px; font-size: 11px; color: var(--fg-3); line-height: 1.6; }
 .ssc-stun { margin: 10px 0 12px; padding: 8px 10px; border-left: 2px solid var(--app-accent-gold); background: var(--app-inset); border-radius: 2px; }
 .ssc-stun-title { font-size: 12px; color: var(--fg-2); font-weight: 600; margin-bottom: 6px; }
