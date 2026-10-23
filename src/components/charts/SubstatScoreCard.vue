@@ -24,7 +24,9 @@
       两个口径一起给——<b>该角色自身伤害</b>看词条养成进度，<b>全队伤害</b>看这个角色值不值。
       有转模的角色（如诺姆的暴击率→暴伤/定向失衡），「转模」列会标出这条词条**顺带转出**了多少——
       那部分收益**已经算在评分里**，这一列只是解释「为什么暴击率词条比爆伤词条值钱」。
-      跑在独立场景里，不动你的配装；一个角色只有 2`4 个词条 ⇒ 几毫秒级。
+      跑在独立场景里，不动你的配装；一个角色只有 2~4 个词条 ⇒ 几毫秒级。
+      主评分<b>锁定失衡次数</b>（与「命座提升率」同口径）——词条碰巧把失衡从 3 次推到 4 次时，
+      多出来的是「多一次失衡」的整窗易伤，不计入词条本身的价值，而是单列在下面的「击破」区。
     </div>
 
     <div v-if="errorMsg" class="ssc-error">{{ errorMsg }}</div>
@@ -50,6 +52,40 @@
         该角色有 {{ result.conversions.length }} 条属性转化（{{ result.conversions.map(c => discStatLabel(c.sourceStat) + '→' + discStatLabel(c.targetStat)).join('、') }}），
         已计入评分；下表「转模」列说明每条词条各自转出了多少。
       </div>
+      <!-- 击破侧：额外增幅单列（用户口径 2026-10-23「除了说总伤提升外，还可以说失衡总量增加了多少」） -->
+      <div v-if="hasStunOutput" class="ssc-stun">
+        <div class="ssc-stun-title">击破（失衡）侧的额外增幅 —— 不计入上面的评分</div>
+        <div class="ssc-stun-rows">
+          <div class="ssc-stun-row">
+            <span class="ssc-stun-label">失衡次数</span>
+            <span>{{ stunBase.freeStun }} → <b>{{ stunBase.freeStun + result.stunOutput.stunCountDelta }}</b> 次</span>
+            <span class="ssc-stun-delta" :style="{ color: result.stunOutput.stunCountDelta > 0 ? 'var(--app-accent-gold)' : 'var(--fg-3)' }">
+              {{ result.stunOutput.stunCountDelta > 0 ? '+' : '' }}{{ result.stunOutput.stunCountDelta }}
+            </span>
+          </div>
+          <div class="ssc-stun-row">
+            <span class="ssc-stun-label">失衡总量</span>
+            <span>{{ compact(stunBase.zeroBuildUp) }} → <b>{{ compact(result.stunOutput.currentTotalStunBuildUp) }}</b></span>
+            <span class="ssc-stun-delta">+{{ fmt(result.stunOutput.totalStunBuildUpPct, 2) }}%</span>
+          </div>
+          <div class="ssc-stun-row">
+            <span class="ssc-stun-label">易伤覆盖</span>
+            <span>{{ fmt(stunBase.zeroCoverage * 100, 1) }}% → <b>{{ fmt((stunBase.zeroCoverage + result.stunOutput.coverageDeltaPct / 100) * 100, 1) }}%</b></span>
+            <span class="ssc-stun-delta">{{ result.stunOutput.coverageDeltaPct >= 0 ? '+' : '' }}{{ fmt(result.stunOutput.coverageDeltaPct, 1) }}pp</span>
+          </div>
+          <div class="ssc-stun-row ssc-stun-highlight">
+            <span class="ssc-stun-label">折算伤害</span>
+            <span>这部分的贡献</span>
+            <span class="ssc-stun-delta">全队 +{{ fmt(result.stunOutput.jumpGainPct, 2) }}% · 自身 +{{ fmt(result.stunOutput.jumpOwnGainPct, 2) }}%</span>
+          </div>
+        </div>
+        <div class="ssc-stun-note">
+          若不锁失衡次数，这套词条的全队增益会是 +{{ fmt(result.stunOutput.freeformGainPct, 2) }}%
+          （自身 +{{ fmt(result.stunOutput.freeformOwnGainPct, 2) }}%）——差额就是上面这一行。
+          它是「词条恰好越过击破阈值」的离散产物，不是词条的固有价值，所以不并入评分。
+        </div>
+      </div>
+
       <div v-if="result.axisChanged" class="ssc-axis-note">
         轴态跳变：失衡 {{ result.zeroAxis.stunCount }} → {{ result.currentAxis.stunCount }} 次、
         易伤覆盖 {{ fmt(result.zeroAxis.coverage * 100, 1) }}% → {{ fmt(result.currentAxis.coverage * 100, 1) }}%。
@@ -221,6 +257,24 @@ const rows = computed(() => (result.value?.contributions ?? []).map(c => ({
   color: STAT_COLORS[c.stat] ?? '#8b8b8b',
 })))
 
+/** 击破侧是否有内容可展示（失衡次数变了或失衡总量变了） */
+const hasStunOutput = computed(() => {
+  const st = result.value?.stunOutput
+  if (!st) return false
+  return st.stunCountDelta !== 0 || Math.abs(st.totalStunBuildUpDelta) > 1e-9
+})
+
+/** 自由收敛时的失衡次数（= 锁定值 + delta）与基线读数 */
+const stunBase = computed(() => {
+  const st = result.value?.stunOutput
+  const zeroAxis = result.value?.zeroAxis
+  return {
+    freeStun: zeroAxis?.stunCount ?? 0,
+    zeroBuildUp: st?.zeroTotalStunBuildUp ?? 0,
+    zeroCoverage: zeroAxis?.coverage ?? 0,
+  }
+})
+
 const totalPct = computed(() => (result.value?.contributions ?? []).reduce((a, c) => a + c.pct, 0))
 const totalOwnPct = computed(() => (result.value?.contributions ?? []).reduce((a, c) => a + c.ownPct, 0))
 
@@ -283,6 +337,14 @@ async function runCompare() {
 .ssc-score-value-sm { font-size: 16px; font-weight: 600; color: var(--fg-2); line-height: 1.4; }
 .ssc-score-label { font-size: 11px; color: var(--fg-3); }
 .ssc-facts { font-size: 12px; color: var(--fg-2); line-height: 1.7; }
+.ssc-stun { margin: 10px 0 12px; padding: 8px 10px; border-left: 2px solid var(--app-accent-gold); background: var(--app-inset); border-radius: 2px; }
+.ssc-stun-title { font-size: 12px; color: var(--fg-2); font-weight: 600; margin-bottom: 6px; }
+.ssc-stun-rows { display: flex; flex-direction: column; gap: 2px; }
+.ssc-stun-row { display: flex; align-items: baseline; gap: 10px; font-size: 12px; color: var(--fg-2); }
+.ssc-stun-label { width: 72px; color: var(--fg-3); }
+.ssc-stun-delta { font-weight: 600; margin-left: auto; }
+.ssc-stun-highlight .ssc-stun-delta { color: var(--app-accent-gold); }
+.ssc-stun-note { margin-top: 6px; font-size: 11px; color: var(--fg-3); line-height: 1.6; }
 .ssc-conv-note { font-size: 12px; color: var(--fg-3); line-height: 1.6; margin-bottom: 8px; }
 .ssc-axis-note { font-size: 12px; color: var(--c-warning-strong); line-height: 1.6; margin-bottom: 10px; }
 .ssc-foot { margin-top: 6px; font-size: 11px; color: var(--fg-3); }

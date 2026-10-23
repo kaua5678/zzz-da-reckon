@@ -184,6 +184,51 @@ describe('转模（attributeConversions）必须在评分里被识别与计入',
     expect(ratio, `暴击率/爆伤 收益比实测 ${ratio.toFixed(2)}`).toBeGreaterThan(1.8)
   }, 180000)
 })
+describe('击破侧：主评分锁失衡次数，额外增幅单列（用户口径 2026-10-23）', () => {
+  /**
+   * ★ 这是本批的核心判据。实测（琉音 1481 + 简 1021 + 妮可 1031，只投 critRate:9）：
+   *   自由收敛：全队 **+18.37%**、自身 +20.68%（失衡 3→4、覆盖 30%→40%）
+   *   锁失衡  ：全队 **+2.04%** 、自身 +12.74%（失衡锁在 3）
+   * ⇒ 89% 的全队「评分」来自那一次失衡跳变，不是词条本身。
+   */
+  it('★ 主评分不随失衡次数跳变（锁 vs 自由差 ≫ 词条本身收益）', async () => {
+    const h = await setupHarness([{ agentId: '1481' }, { agentId: '1021' }, { agentId: '1031' }], { recommendedBuild: true })
+    h.config.team[0].driveDisc.subStatAllocation = { critRate: 9 }
+    await flush()
+    const r = await withAnalysisScenario(s => scoreSubstats(s, { slot: 0 }), h.config)
+    // 主评分必须锁在 0 词条时的次数（= 3），不随词条跨阈值跳变
+    expect(r.zeroAxis.stunCount).toBe(3)
+    expect(r.currentAxis.stunCount, '锁定生效 ⇒ 当前轴态次数也必须是 3').toBe(3)
+    expect(r.axisChanged, '锁定时不该报「跨轴态」').toBe(false)
+    // 击破侧的额外增幅必须**单列**且显著
+    expect(r.stunOutput.stunCountDelta, '这套词条确实把失衡从 3 抬到 4').toBe(1)
+    expect(r.stunOutput.totalStunBuildUpPct, '失衡总量提升率').toBeGreaterThan(5)
+    expect(r.stunOutput.jumpGainPct, '失衡跳变贡献 = 自由 − 锁定，必须显著 > 0').toBeGreaterThan(10)
+    // 主评分远小于自由口径（这就是「不把偶然跳变算进客观评分」）
+    expect(r.gainPct).toBeLessThan(r.stunOutput.freeformGainPct / 3)
+    // 两个口径都必须能闭合（Σ 逐条 ≡ 各自评分）
+    const sum = r.contributions.reduce((a, c) => a + c.pct, 0)
+    expect(sum).toBeCloseTo(r.gainPct, 8)
+  }, 180000)
+
+  it('★ 没跨阈值的队：stunOutput 全零、两口径相等（反空洞）', async () => {
+    const h = await setupHarness([{ agentId: '1261' }, { agentId: '1221' }, { agentId: '1171' }], { recommendedBuild: true })
+    await flush()
+    const r = await withAnalysisScenario(s => scoreSubstats(s, { slot: 0 }), h.config)
+    expect(r.stunOutput.stunCountDelta).toBe(0)
+    expect(r.stunOutput.jumpGainPct).toBeCloseTo(0, 6)
+    expect(r.gainPct).toBeCloseTo(r.stunOutput.freeformGainPct, 6)
+  }, 180000)
+
+  it('锁定是临时状态：跑完 stunCountLock 必须还原', async () => {
+    const h = await setupHarness([{ agentId: '1481' }, { agentId: '1021' }, { agentId: '1031' }], { recommendedBuild: true })
+    h.config.team[0].driveDisc.subStatAllocation = { critRate: 9 }
+    h.config.enemy.stunCountLock = -1
+    await flush()
+    await withAnalysisScenario(s => scoreSubstats(s, { slot: 0 }), h.config)
+    expect(h.config.enemy.stunCountLock, '场景内锁过，跑完必须还原').toBe(-1)
+  }, 180000)
+})
 describe('驱动盘 A/B 对比', () => {
   it('★ 只换这一槽：A vs B 差值与逐项 diff 同源；A vs A 恒 0（反空洞）', async () => {
     const h = await anomalyHarness()

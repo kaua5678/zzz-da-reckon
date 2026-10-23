@@ -97,6 +97,34 @@ export interface SubstatScoreContribution {
  */
 export type { SubstatAxisSignature } from '@/composables/substatCurve'
 
+/**
+ * 击破侧收益（**单独报，不进主评分**）。
+ *
+ * 主评分锁失衡次数 ⇒ 词条本身的价值；本结构报「这套词条顺带把轴态改了多少」，
+ * 让用户看到「击破的额外增幅」，而不是把它混进「平时增幅」。
+ */
+export interface SubstatStunOutput {
+  /** 词条把失衡次数抬高了几次（0 = 没跨阈值；负值 = 反而少了，理论上不该出现但如实报） */
+  stunCountDelta: number
+  /** 失衡总量（有效总失衡值）增量 */
+  totalStunBuildUpDelta: number
+  /** 失衡总量提升率（%）；0 词条基线为 0 时为 0 */
+  totalStunBuildUpPct: number
+  /** 易伤覆盖率增量（百分点） */
+  coverageDeltaPct: number
+  /** 解锁失衡次数后（自由收敛）的全队伤害增益，%；等于 `gainPct` 时说明本队没跨阈值 */
+  freeformGainPct: number
+  /** 解锁失衡次数后的该角色自身增益，% */
+  freeformOwnGainPct: number
+  /** 相对锁定口径多出来的那部分（= freeform − 主评分），即「失衡跳变贡献」，百分点 */
+  jumpGainPct: number
+  jumpOwnGainPct: number
+  /** 0 词条基线的失衡总量（展示「旧 → 新」用；不是增量） */
+  zeroTotalStunBuildUp: number
+  /** 当前配装的失衡总量 */
+  currentTotalStunBuildUp: number
+}
+
 export interface SubstatScoreResult {
   /** 本次评分的槽位；`null` = 全队模式（所有槽位的词条一起算） */
   slot: number | null
@@ -124,6 +152,19 @@ export interface SubstatScoreResult {
   currentAxis: SubstatAxisSignature
   /** true = 两个基线之间轴态变了（失衡次数不同 / 覆盖率差 > 1 个百分点） */
   axisChanged: boolean
+  /**
+   * **击破侧的收益**（用户口径 2026-10-23：「除了说总伤提升外，还可以说失衡总量增加了多少」）。
+   *
+   * 旧口径的陷阱：`critRate` 越过阈值会让失衡次数 3→4，那一步伤害跳 **5.39M（73 倍）**，
+   * 而那 5.39M 里词条本身只有 ~0.074M、其余全是「多了一次失衡」的整窗易伤——
+   * 这是**离散产物**，不是词条属性，混进评分会把 89% 的分数记给一个偶然跳变
+   * （实测同配装：自由收敛全队 +18.37%，锁失衡 +2.04%）。
+   *
+   * ⇒ 本结果把两件事分开：
+   * - `gainPct` / `ownGainPct` = **锁失衡次数**的版本（`stunCountLock` = 0 词条时的收敛值）⇒ 客观、可加；
+   * - `stunOutput` = 失衡侧的**额外**收益（总伤差 + 失衡总量增量），单独报、不进主分数。
+   */
+  stunOutput: SubstatStunOutput
   /** 被取消 ⇒ false */
   complete: boolean
   reason: string
@@ -144,6 +185,12 @@ export interface SubstatScoreOptions {
 function discStepOf(stat: string): number {
   const rules = useCatalogStore().statRules
   return rules?.driveDisc.sRankSubStatBaseStep[stat] ?? 0
+}
+
+const ZERO_STUN_OUTPUT: SubstatStunOutput = {
+  stunCountDelta: 0, totalStunBuildUpDelta: 0, totalStunBuildUpPct: 0, coverageDeltaPct: 0,
+  freeformGainPct: 0, freeformOwnGainPct: 0, jumpGainPct: 0, jumpOwnGainPct: 0,
+  zeroTotalStunBuildUp: 0, currentTotalStunBuildUp: 0,
 }
 
 const yieldToMacrotask = () => new Promise<void>(resolve => setTimeout(resolve, 0))
@@ -241,6 +288,7 @@ export async function scoreSubstats(
 ): Promise<SubstatScoreResult> {
   const { config, calc } = scenario
   const original = config.team.map(c => ({ ...c.driveDisc.subStatAllocation }))
+  const originalLock = config.enemy.stunCountLock
   const slot = typeof opts.slot === 'number' ? opts.slot : null
   const slots = slot === null ? config.team.map((_, i) => i) : [slot]
   /** 一次求值同时读「全队」与「该槽自身」（同一份 `damagePoolRows`，零额外成本） */
@@ -257,6 +305,7 @@ export async function scoreSubstats(
   })
   const fail = (reason: string, zeroAxis?: SubstatAxisSignature, currentAxis?: SubstatAxisSignature): SubstatScoreResult => ({
     slot, conversions: [], zeroTeam: 0, currentTeam: 0, zeroOwn: 0, currentOwn: 0, ownGainPct: 0, gainPct: 0,
+    stunOutput: ZERO_STUN_OUTPUT,
     contributions: [], coarse: false, evals: 0,
     zeroAxis: zeroAxis ?? { stunCount: -1, coverage: 0 },
     currentAxis: currentAxis ?? { stunCount: -1, coverage: 0 },
@@ -300,8 +349,34 @@ export async function scoreSubstats(
         c.driveDisc.subStatAllocation = alloc
       }
     }
-    // 0 词条基线 = 「本评分范围内的槽位全部不投词条」（走同一 `setMask`，单一写入点：
-    // `liteTeamAssemblySource.test.ts` 的 CC-256 源锁规定 composables 下清空分配只许出现在 teamTimelineStore）。
+    /**
+     * ## 两遍求值：先自由、再锁失衡（用户口径 2026-10-23）
+     *
+     * 主评分必须**锁失衡次数**：词条越过击破阈值会让失衡次数 +1，那一步伤害跳 5.39M（73 倍），
+     * 而词条本身只有 0.074M —— 那是**离散产物**，混进评分会把 89% 分数记给一个偶然跳变。
+     * 与「命座提升率」的处置同源（`cinemaUplift.ts`：用 `stunCountLock` 钉住次数再逐级对比）。
+     *
+     * 锁定值 = **0 词条基线的收敛次数**（先自由跑一遍拿到它）⇒ 整张表衡量的都是
+     * 「在同样的失衡次数下，这些词条值多少」。
+     * 同时把自由收敛那一遍的数据留作 `stunOutput`（击破侧的额外增幅，单独报）。
+     */
+    setMask(0)
+    const zeroFree = read()
+    const zeroFreeAxis = readAxis()
+    const zeroStunBuildUp = calc.stunPoolResult.value?.totalStunBuildUp ?? 0
+    for (let i = 0; i < config.team.length; i++) {
+      const c = config.team[i]
+      if (c) c.driveDisc.subStatAllocation = { ...original[i] }
+    }
+    const currentFree = read()
+    const currentFreeAxis = readAxis()
+    const currentStunBuildUp = calc.stunPoolResult.value?.totalStunBuildUp ?? 0
+    if (!(zeroFree.team > 0)) return fail('0 副词条时队伍总伤为 0：增益百分比没有分母', zeroFreeAxis, currentFreeAxis)
+    // 锁定失衡次数 = 0 词条基线的收敛次数（≥0 才生效；-1 = 基线本身没算出次数，退回自由口径）
+    const lockValue = zeroFreeAxis.stunCount
+    const originalLock = config.enemy.stunCountLock
+    const canLock = lockValue >= 0
+    if (canLock) config.enemy.stunCountLock = lockValue
     setMask(0)
     const zero = read()
     const zeroAxis = readAxis()
@@ -311,9 +386,26 @@ export async function scoreSubstats(
     }
     const current = read()
     const currentAxis = readAxis()
-    if (!(zero.team > 0)) return fail('0 副词条时队伍总伤为 0：增益百分比没有分母', zeroAxis, currentAxis)
+    if (!(zero.team > 0)) {
+      config.enemy.stunCountLock = originalLock
+      return fail('锁定失衡次数后队伍总伤为 0：增益百分比没有分母', zeroAxis, currentAxis)
+    }
     const gainPct = (current.team / zero.team - 1) * 100
     const ownGainPct = zero.own > 0 ? (current.own / zero.own - 1) * 100 : 0
+    const freeformGainPct = (currentFree.team / zeroFree.team - 1) * 100
+    const freeformOwnGainPct = zeroFree.own > 0 ? (currentFree.own / zeroFree.own - 1) * 100 : 0
+    const stunOutput: SubstatStunOutput = {
+      stunCountDelta: currentFreeAxis.stunCount - zeroFreeAxis.stunCount,
+      totalStunBuildUpDelta: currentStunBuildUp - zeroStunBuildUp,
+      totalStunBuildUpPct: zeroStunBuildUp > 0 ? (currentStunBuildUp / zeroStunBuildUp - 1) * 100 : 0,
+      coverageDeltaPct: (currentFreeAxis.coverage - zeroFreeAxis.coverage) * 100,
+      freeformGainPct,
+      freeformOwnGainPct,
+      jumpGainPct: freeformGainPct - gainPct,
+      jumpOwnGainPct: freeformOwnGainPct - ownGainPct,
+      zeroTotalStunBuildUp: zeroStunBuildUp,
+      currentTotalStunBuildUp: currentStunBuildUp,
+    }
     const { shap, complete } = await shapleyValues(
       list.length,
       [zero.team, zero.own],
@@ -382,6 +474,7 @@ export async function scoreSubstats(
     return {
       slot,
       conversions: specConversions,
+      stunOutput,
       zeroTeam: zero.team,
       currentTeam: current.team,
       zeroOwn: zero.own,
@@ -403,6 +496,8 @@ export async function scoreSubstats(
       const c = config.team[i]
       if (c) c.driveDisc.subStatAllocation = { ...original[i] }
     }
+    // 锁定是本次求值的临时状态（与命座提升率同款：只在场景内改，跑完必须还原）
+    config.enemy.stunCountLock = originalLock
   }
 }
 
