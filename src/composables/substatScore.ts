@@ -36,6 +36,7 @@ import type { AnalysisContext } from '@/composables/analysisScenario'
 import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import type { SubstatAxisSignature } from '@/composables/substatCurve'
 import { useCatalogStore } from '@/stores/catalog'
+import { localized } from '@/utils/format'
 import type { DriveDiscConfig } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { specConversionAmount } from '@/specs/runtime'
@@ -512,13 +513,24 @@ export async function scoreSubstats(
 // ============================================================================
 
 /**
- * 一份完整驱动盘配置（套装 + 主词条 + 副词条）——A/B 对比的单位。
- * 直接复用引擎类型 `DriveDiscConfig`（规则 11：同形不改写；判据 29 也禁止结构副本）。
+ * 一份完整**配装**快照 = 驱动盘（套装 + 主词条 + 副词条）+ 音擎（id + 精炼档）。
+ *
+ * 驱动盘部分直接复用引擎类型 `DriveDiscConfig`（规则 11：同形不改写；判据 29 也禁止结构副本）；
+ * 音擎这两个字段与 `CharacterConfig` 同名同义（`wEngineId` / `wEngineModLevel`），
+ * 故 A/B 既能比「换盘子」也能比「换武器 / 换精炼」（用户口径 2026-10-23：
+ * 「比如我某个武器想换精炼数或者换其他武器」）。
+ *
+ * `wEngineId = ''` = 不戴音擎（与 `CharacterConfig` 同口径：空串就是没有）。
  */
-export type DiscPlan = DriveDiscConfig
+export interface DiscPlan extends DriveDiscConfig {
+  /** 音擎 id；`''` = 不戴 */
+  wEngineId: string
+  /** 精炼档（1–5） */
+  wEngineModLevel: number
+}
 
 /** 一处差异：套装 / 主词条 / 副词条 */
-export type DiscPlanDiffKind = '套装4' | '套装2' | '主词条' | '副词条'
+export type DiscPlanDiffKind = '套装4' | '套装2' | '主词条' | '副词条' | '音擎' | '精炼'
 
 export interface DiscPlanDiff {
   kind: DiscPlanDiffKind
@@ -557,14 +569,17 @@ export interface DiscCompareOptions {
 /** 读当前槽位的完整驱动盘配置（"把当前这套存成 A" 的入口） */
 export function readDiscPlan(
   slot: number,
-  team: ReadonlyArray<{ driveDisc: DriveDiscConfig }>,
+  team: ReadonlyArray<{ driveDisc: DriveDiscConfig; wEngineId?: string; wEngineModLevel?: number }>,
 ): DiscPlan {
-  const disc = team[slot].driveDisc
+  const char = team[slot]
+  const disc = char.driveDisc
   return {
     fourPieceSetId: disc.fourPieceSetId,
     twoPieceSetId: disc.twoPieceSetId,
     mainStats: { ...disc.mainStats },
     subStatAllocation: { ...disc.subStatAllocation },
+    wEngineId: char.wEngineId ?? '',
+    wEngineModLevel: char.wEngineModLevel ?? 1,
   }
 }
 
@@ -578,6 +593,13 @@ const STAT_LABEL: Readonly<Record<string, string>> = {
   energyRegen: '能量回复', impact: '冲击力',
   dmgBonus: '通用增伤', skillDmgBonus: '招式增伤', anomalyDmgBonus: '异常增伤',
   stunBuildUpBonus: '失衡值', critDmg__ultimate: '终结技爆伤',
+}
+
+/** 音擎名（catalog 查；空串 = 不戴；查不到回落 id） */
+function engineName(id: string): string {
+  if (!id) return '（不戴）'
+  const w = useCatalogStore().getWEngine(id)
+  return w ? localized(w.name) : id
 }
 
 export function discStatLabel(stat: string): string {
@@ -617,6 +639,14 @@ export function diffDiscPlans(a: DiscPlan, b: DiscPlan): DiscPlanDiff[] {
     const bv = b.subStatAllocation[stat] ?? 0
     if (av !== bv) out.push({ kind: '副词条', label: discStatLabel(stat), a: av + ' 步', b: bv + ' 步' })
   }
+  // 音擎 / 精炼（用户口径 2026-10-23「某个武器想换精炼数或者换其他武器」）：
+  // 分两栏报——换武器与换精炼是两件不同的事，合并成一栏看不出是"换了把"还是"同一把升了精炼"。
+  if (a.wEngineId !== b.wEngineId) {
+    out.push({ kind: '音擎', label: '音擎', a: engineName(a.wEngineId), b: engineName(b.wEngineId) })
+  }
+  if (a.wEngineModLevel !== b.wEngineModLevel) {
+    out.push({ kind: '精炼', label: '精炼档', a: 'R' + a.wEngineModLevel, b: 'R' + b.wEngineModLevel })
+  }
   return out
 }
 
@@ -638,6 +668,9 @@ export async function compareDiscPlans(
     fourPieceSetId: config.team[slot].driveDisc.fourPieceSetId,
     twoPieceSetId: config.team[slot].driveDisc.twoPieceSetId,
     mainStats: { ...config.team[slot].driveDisc.mainStats },
+    // 音擎也是「配装」的一部分：A/B 可以换武器 / 换精炼（用户口径 2026-10-23），必须一起还原
+    wEngineId: config.team[slot].wEngineId,
+    wEngineModLevel: config.team[slot].wEngineModLevel,
   }
   const read = (): DamageReading => {
     const team = calc.teamTotalDamage.value
@@ -646,11 +679,14 @@ export async function compareDiscPlans(
     return { team, own }
   }
   const apply = (plan: DiscPlan) => {
-    const disc = config.team[slot].driveDisc
+    const char = config.team[slot]
+    const disc = char.driveDisc
     disc.fourPieceSetId = plan.fourPieceSetId
     disc.twoPieceSetId = plan.twoPieceSetId
     disc.mainStats = { ...plan.mainStats };
     disc.subStatAllocation = { ...plan.subStatAllocation }
+    char.wEngineId = plan.wEngineId
+    char.wEngineModLevel = plan.wEngineModLevel
   }
   const fail = (reason: string): DiscCompareResult => ({
     slot, aTeam: 0, bTeam: 0, aOwn: 0, bOwn: 0, deltaTeamPct: 0, deltaOwnPct: 0,
@@ -678,10 +714,13 @@ export async function compareDiscPlans(
       reason: '',
     }
   } finally {
-    const disc = config.team[slot].driveDisc
+    const char = config.team[slot]
+    const disc = char.driveDisc
     disc.fourPieceSetId = originalDisc.fourPieceSetId
     disc.twoPieceSetId = originalDisc.twoPieceSetId
     disc.mainStats = { ...originalDisc.mainStats };
+    char.wEngineId = originalDisc.wEngineId
+    char.wEngineModLevel = originalDisc.wEngineModLevel;
     for (let i = 0; i < config.team.length; i++) {
       const c = config.team[i]
       if (c) c.driveDisc.subStatAllocation = { ...original[i] }

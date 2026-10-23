@@ -18,6 +18,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
+import { useCatalogStore } from '@/stores/catalog'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { SUBSTAT_CAP_SETTING } from '@/core/substatOptimizer'
 import {
@@ -227,6 +228,48 @@ describe('击破侧：主评分锁失衡次数，额外增幅单列（用户口�
     await flush()
     await withAnalysisScenario(s => scoreSubstats(s, { slot: 0 }), h.config)
     expect(h.config.enemy.stunCountLock, '场景内锁过，跑完必须还原').toBe(-1)
+  }, 180000)
+})
+describe('配装 A/B：换音擎 / 换精炼（用户口径 2026-10-23）', () => {
+  it('★ 换精炼档：差值为正、diff 精确报「精炼」一栏', async () => {
+    const h = await anomalyHarness()
+    const base = await withAnalysisScenario(async (s) => readDiscPlan(0, s.config.team), h.config)
+    // 该队配装推荐带专武 ⇒ 有音擎可比
+    expect(base.wEngineId, '夹具前提：推荐配装带音擎').toBeTruthy()
+    const low: DiscPlan = { ...base, wEngineModLevel: 1 }
+    const high: DiscPlan = { ...base, wEngineModLevel: 5 }
+    const cmp = await withAnalysisScenario(s => compareDiscPlans(s, { slot: 0, a: low, b: high }), h.config)
+    expect(cmp.reason).toBe('')
+    expect(cmp.deltaTeamPct, '提高精炼 ⇒ 伤害提升').toBeGreaterThan(0)
+    const kinds = cmp.diff.map(d => d.kind)
+    expect(kinds).toEqual(['精炼'])
+    expect(cmp.diff[0]).toMatchObject({ a: 'R1', b: 'R5' })
+  }, 180000)
+
+  it('★ 换音擎：diff 报「音擎」一栏（换武器 ≠ 换精炼）', async () => {
+    const h = await anomalyHarness()
+    const base = await withAnalysisScenario(async (s) => readDiscPlan(0, s.config.team), h.config)
+    const catalog = useCatalogStore()
+    const other = catalog.displayWEngines.find(w => w.id !== base.wEngineId && w.rarity === 'S')!
+    expect(other, '夹具前提：目录里还有别的 S 音擎').toBeTruthy()
+    const otherPlan: DiscPlan = { ...base, wEngineId: other.id, wEngineModLevel: 1 }
+    const cmp = await withAnalysisScenario(s => compareDiscPlans(s, { slot: 0, a: base, b: otherPlan }), h.config)
+    expect(cmp.reason).toBe('')
+    const kinds = cmp.diff.map(d => d.kind).sort()
+    // 换了一把且精炼也动了 ⇒ 两栏都报（这是「换武器」与「换精炼」分开的意义）
+    expect(kinds).toContain('音擎')
+    const engineRow = cmp.diff.find(d => d.kind === '音擎')!
+    expect(engineRow.a).not.toBe(engineRow.b)
+  }, 180000)
+
+  it('★ 音擎是临时状态：跑完必须还原（防污染现场）', async () => {
+    const h = await anomalyHarness()
+    const before = { id: h.config.team[0].wEngineId, mod: h.config.team[0].wEngineModLevel }
+    const base = await withAnalysisScenario(async (s) => readDiscPlan(0, s.config.team), h.config)
+    const mutated: DiscPlan = { ...base, wEngineModLevel: 3 }
+    await withAnalysisScenario(s => compareDiscPlans(s, { slot: 0, a: mutated, b: base }), h.config)
+    expect(h.config.team[0].wEngineId).toBe(before.id)
+    expect(h.config.team[0].wEngineModLevel).toBe(before.mod)
   }, 180000)
 })
 describe('驱动盘 A/B 对比', () => {

@@ -133,8 +133,31 @@
           />
         </div>
       </div>
+      <div class="ssc-quick-engine">
+        <span class="ssc-quick-name">音擎</span>
+        <n-select
+          :value="currentWEngineId || null"
+          :options="wEngineOptions"
+          size="small"
+          filterable
+          clearable
+          placeholder="不戴音擎"
+          style="width: 260px"
+          @update:value="v => setWEngine(v ?? '')"
+        />
+        <span class="ssc-quick-name">精炼</span>
+        <n-input-number
+          :value="currentWEngineModLevel"
+          :min="1"
+          :max="5"
+          size="small"
+          style="width: 104px"
+          @update:value="v => setWEngineMod(v ?? 1)"
+        />
+      </div>
       <div class="ssc-quick-foot">
         改动直接写进当前的 {{ selectedLabel }}（和队伍配置页是同一份数据，无需跳页）。
+      音擎 / 精炼也在这里改——A/B 快照记的是**整套配装**（盘子 + 音擎），所以能直接比「换武器」「换精炼」。
         改完点上面的「重算」即可；「存 A / 存 B」记的就是此刻这套。
       </div>
     </div>
@@ -332,7 +355,10 @@ const totalOwnPct = computed(() => (result.value?.contributions ?? []).reduce((a
 function planSummary(plan: DiscPlan): string {
   const steps = Object.values(plan.subStatAllocation).reduce((a, b) => a + b, 0)
   const sets = [plan.fourPieceSetId, plan.twoPieceSetId].filter(Boolean).length
-  return sets + ' 套 · ' + steps + ' 步'
+  const engine = plan.wEngineId
+    ? (localized(catalogStore.getWEngine(plan.wEngineId)?.name) || plan.wEngineId) + ' R' + plan.wEngineModLevel
+    : '不戴音擎'
+  return sets + ' 套 · ' + steps + ' 步 · ' + engine
 }
 
 async function run() {
@@ -371,16 +397,37 @@ function snap(which: 'a' | 'b') {
 function applyPlan(which: 'a' | 'b') {
   const plan = which === 'a' ? planA.value : planB.value
   if (!plan) return
-  const disc = configStore.team[slot.value].driveDisc
+  const char = configStore.team[slot.value]
+  const disc = char.driveDisc
   disc.fourPieceSetId = plan.fourPieceSetId
   disc.twoPieceSetId = plan.twoPieceSetId
   disc.mainStats = { ...plan.mainStats }
   disc.subStatAllocation = { ...plan.subStatAllocation }
+  char.wEngineId = plan.wEngineId
+  char.wEngineModLevel = plan.wEngineModLevel
   result.value = null
   compareResult.value = null
 }
 
 // ===== 快速改词条（用户 2026-10-23：「这里应该给个快速修改啊，不该翻页」） =====
+/** 音擎下拉：与队伍配置页同一个来源 `displayWEngines`（不另建白名单 / 不自己过滤稀有度） */
+const wEngineOptions = computed(() => catalogStore.displayWEngines.map(w => ({
+  label: localized(w.name, w.id) + ' (' + w.rarity + ')',
+  value: w.id,
+})))
+const currentWEngineId = computed(() => configStore.team[slot.value]?.wEngineId ?? '')
+const currentWEngineModLevel = computed(() => configStore.team[slot.value]?.wEngineModLevel ?? 1)
+function setWEngine(id: string) {
+  configStore.team[slot.value].wEngineId = id
+  result.value = null
+  compareResult.value = null
+}
+function setWEngineMod(n: number) {
+  configStore.setWEngineModLevel(slot.value, n)
+  result.value = null
+  compareResult.value = null
+}
+
 const subStatPool = computed<string[]>(() => catalogStore.statRules?.driveDisc.subStatPool ?? [])
 function subStatCount(stat: string): number {
   return configStore.team[slot.value]?.driveDisc.subStatAllocation?.[stat] ?? 0
@@ -428,6 +475,7 @@ async function runCompare() {
 .ssc-quick-row { display: flex; align-items: center; gap: 8px; }
 /* 标签定宽 ⇒ 所有输入框左边缘对齐，且与自己的标签紧邻 */
 .ssc-quick-name { flex: none; width: 64px; font-size: 12px; color: var(--fg-2); }
+.ssc-quick-engine { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .ssc-quick-foot { margin-top: 8px; font-size: 11px; color: var(--fg-3); line-height: 1.6; }
 .ssc-stun { margin: 10px 0 12px; padding: 8px 10px; border-left: 2px solid var(--app-accent-gold); background: var(--app-inset); border-radius: 2px; }
 .ssc-stun-title { font-size: 12px; color: var(--fg-2); font-weight: 600; margin-bottom: 6px; }
