@@ -272,9 +272,16 @@ export function climbFieldsOf(ctx: LadderCtx): ActionCountField[] {
     const agentId = ctx.config.team[slot]?.agentId
     if (!agentId) continue
     const d = getInteractionDefaults(agentId)
+    /**
+     * ⚠ 2026-10-21「通用交互基准全 0」之后，`interactionDefaults` 恒为 0 ⇒ 只看非零值会让**所有**角色的
+     * 特色字段从爬升面消失（实测般岳金身/双反：面板上明明有输入框，爬升面只剩基础两字段）。
+     * ⇒ 来源改成「非零基准 **或** `interactionFieldTypes` 显式声明」——后者是「本角色有这些交互」的
+     * 单一声明（Tag 白名单仍是 parry/dodge/block/dual 四项，哨兵字段不会因声明某个 type 被爬）。
+     */
+    const decl = getAgentMechanic(agentId)?.interactionFieldTypes ?? {}
     // `block` / `dual` 是该表里唯二映射到「非基础字段」的项（parry/dodge 已在前两行）
-    if (d.block > 0 && !seen.has('blockCount')) { out.push('blockCount'); seen.add('blockCount') }
-    if (d.dual > 0 && !seen.has('dualCounterCount')) { out.push('dualCounterCount'); seen.add('dualCounterCount') }
+    if ((d.block > 0 || decl.blockCount) && !seen.has('blockCount')) { out.push('blockCount'); seen.add('blockCount') }
+    if ((d.dual > 0 || decl.dualCounterCount) && !seen.has('dualCounterCount')) { out.push('dualCounterCount'); seen.add('dualCounterCount') }
     /**
      * ★ **比例型爬升声明**（T173，用户口径 2026-10-15）——「相对已有量按比例放宽」的旋钮
      * （仪玄后台墨影凝云：上限 = 已有后台 × 1.5）。契约见 `typesHooks#InteractionClimbDecl`。
