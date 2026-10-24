@@ -20,7 +20,8 @@
 |---|---|---|
 | `scripts/fetch-gachabase-agent.mjs <id> <slug> [lang]` | 爬 gachabase beta 倍率 | `data/raw/gachabase/<id>.json`（归一化 skill_data） |
 | `scripts/fetch-nanoka-full-missing.mjs [<id>...] [--force] [--version <v>]` | 爬 nanoka 全量（含 talent/passive）；不带 id = 补「缺失角色」，带 id = 重爬指定角色（`--force` 覆盖存档） | `data/raw/nanoka_missing/full/<id>.json` |
-| `scripts/import-nanoka-wengine.mjs <id>... [--force]` | 音擎 raw + catalog.wEngines（`--force` 按正式服重抓 raw 后重导） | `data/raw/nanoka_wengine_<id>_{zh,en}.json` + catalog |
+| `scripts/import-nanoka-wengine.mjs <id>... [--force] [--version <v>] [--tag vN]` | 音擎 raw + catalog.wEngines（`--force` 按正式服重抓 raw 后重导；`--tag v1` 录测试服 v1 占位） | `data/raw/nanoka_wengine_<id>_{zh,en}.json` + catalog |
+| `scripts/import-nanoka-disc-set.mjs <id>... [--version <v>] [--tag vN] [--dry-run]` | 驱动盘套装 raw + catalog.driveDiscSets（nanoka 只给套装文本，2pc/4pc **机读效果在 `MANUAL_SETS` 手工建模**，没建模的只落文本） | `data/raw/nanoka_equipment_<版本>.json` + catalog |
 | `scripts/sync-build-recommendations.mjs <id>... [--write] [--force] [--verify-rule] [--main-stats-only]` | 邦布精灵配装推荐（4pc/2pc/主词条/副词条/专武）；`--main-stats-only` 只重写 `main_stats`（修单条口径时用，避免顺带翻掉 strategy/substats 的 en→zh 名称） | `data/raw/nanoka_{character,equipment,weapon}.json` + build-recommendations.json |
 
 **主词条口径（2026-10-20 订正，单一事实源 `scripts/lib/build-recommendation-rule.mjs`）**：4/5/6 槽**每槽独立**，按 `part4 → part5 → part6 → part_sub` 取**首个该槽合法**的词条；`alt_build` 是备选配装的副属性，**不参与**主词条选择。这是 nanoka 页面自身的规则（bundle `_app/immutable/nodes/9.*.js` 里 `slot.stats = ml.filter(槽合法)` 再显示首项），实测 62 角色逐位对上。
@@ -85,6 +86,22 @@ node scripts/hdiff-agent.mjs 1621 --from 3.2 --save   # 顺带把新版存档进
 ⚠ **误判代价**：把 B 当 A 会去动本不该动的字段；把 A 当 B 只改一个字段会留下**版本混血**
 （1621 曾出现 critRate 按新版订正、defBase 仍含旧版 DEF 突破加成）。
 **区分方法：把线上至少两个版本互相比一遍**——一致 = B，不一致 = A。
+
+## 测试服新条目：录成 `v1` 占位（用户裁决 2026-10-25）
+
+测试服构建（带 hash，如 `3.4.1+19836465`）里新增的音擎 / 驱动盘，允许**先录进目录**再定稿，
+但一律加 `--tag v1`：**id 与名字带 `v1` 后缀**（`14160` → `14160v1`、`34300` → `34300v1`）——
+与 beta 快照的 `<agentId>v<n>` 同一命名纪律。这样 v1 占位与正式服同 id 的条目**同时存在**、
+各自可选用、互不覆盖；正式包落地后照常按正式 id 录入，两者可直接同屏对比。
+
+两条配套事实：
+- **名字允许是占位**：测试服包里新条目常只有 `Item_Weapon_S_1601_Name` / `EquipmentSuit_34300_name`
+  这类占位键，导入脚本会换成「音擎 <id> v1」/「驱动盘套装 <id> v1」这类稳定标签——v1 只要求「能算」，
+  不要求定稿名。音擎的 `verification` 里另钉 `dataVersion: 'v1'` + `sourceVersion`。
+- **音擎数值必须先按测试服录、正式服重抓**（见下节 2026-09-09 结论）：v1 条目的数值会变，
+  正式服上线后按同 id 重录，v1 保留作历史对比，不覆盖。
+
+判据：`src/core/__tests__/v1TestItems.test.ts`（目录契约 + 四个条目的面板/团队效果生效）。
 
 ## 测试服（beta）≠ 正式服：先判断要不要录
 

@@ -2,8 +2,12 @@
 /**
  * 从 nanoka 导入音擎到 catalog.json（幂等：已存在则更新）。
  *
- * 用法：node scripts/import-nanoka-wengine.mjs <id> [<id>...] [--force]   （不带参数 = 补录全部缺失）
+ * 用法：node scripts/import-nanoka-wengine.mjs <id> [<id>...] [--force] [--version <v>] [--tag vN]
+ *   （不带参数 = 补录 catalog 里缺的音擎）
  *   --force：data/raw 存档已存在也重抓（重爬正式服数据用）
+ *   --version <v>：显式指定 nanoka 构建（录测试服数据必须显式给，如 '3.4.1+19836465'）
+ *   --tag vN：测试服版本占位——id/名字加后缀（`14160` → `14160v1`），与 beta 快照同一命名纪律，
+ *             让 v1 与正式服同 id 同时存在；`verification` 里钉 dataVersion + sourceVersion
  *
  * 数据来源（版本取 manifest.zzz.live = 正式服；带 hash 的构建是测试服/预发布）：
  *   https://static.nanoka.cc/zzz/<版本>/zh/weapon/<id>.json（+ en）→ data/raw/nanoka_wengine_<id>_{zh,en}.json
@@ -31,15 +35,28 @@ const force = process.argv.includes('--force')
 /** --version <v>：显式指定 nanoka 构建版本（录测试服角色专武用，如 '3.3.2+18895034'；缺省 = manifest.zzz.live） */
 const verIdx = process.argv.indexOf('--version')
 const explicitVersion = verIdx >= 0 ? process.argv[verIdx + 1] : ''
+/**
+ * --tag <vN>：把这次导入落成**测试服版本占位**——id 与名字加后缀（`14160` → `14160v1`），
+ * 与 beta 快照同一命名纪律（`scripts/snapshot-agent.mjs` 的 `<agentId>v<n>`）：
+ * 让 v1 占位与之后正式服同 id 的音擎**同时存在**、可选可对比，正式包落地时不覆盖、不冲突。
+ * 只在数据来自带 hash 的测试服构建时用（`--version '3.4.1+19836465'`），名字/数值都可能变。
+ */
+const tagIdx = process.argv.indexOf('--tag')
+const explicitTag = tagIdx >= 0 ? process.argv[tagIdx + 1] : ''
+if (explicitTag && !/^v\d+$/.test(explicitTag)) {
+  console.error(`--tag 只接受 v1 / v2 …（收到 ${explicitTag}）`)
+  process.exit(2)
+}
 
 const RARITY_MAP = { 2: 'B', 3: 'A', 4: 'S' }
 const SPECIALTY_MAP = {
   强攻: 'attack', 击破: 'stun', 异常: 'anomaly', 支援: 'support',
   防护: 'defense', 命破: 'rupture', 锋御: 'sharpen',
 }
-/** base_property.value → 60 级主词条数值（×≈14.86 同构；24/28/29 = 锋御基础防御力主词条，baseStat='def'）
- *  29 由正式服 14161 猩红渴望反推（nanoka weapon.json atk=431；29×14.86≈431） */
-const BASE_TO_ATK = { 24: 356, 28: 416, 29: 431, 32: 475, 40: 594, 42: 624, 46: 684, 48: 713, 50: 743 }
+/** base_property.value → 60 级主词条数值（×≈14.86 同构；24/28/29/30 = 锋御基础防御力主词条，baseStat='def'）
+ *  29 由正式服 14161 猩红渴望反推（nanoka weapon.json atk=431；29×14.86≈431）
+ *  30 同理由 14160（挽昼专武，nanoka weapon.json atk=446，30×14.86≈446）反推（2026-10-25 测试服 v1 录入） */
+const BASE_TO_ATK = { 24: 356, 28: 416, 29: 431, 30: 446, 32: 475, 40: 594, 42: 624, 46: 684, 48: 713, 50: 743 }
 /** rand_property 词条名 → catalog advancedStat.stat（词条类型一致） */
 const RAND_STAT = {
   冲击力: 'impact', 攻击力: 'atkPct', 防御力: 'defPct', 生命值: 'hpPct',
@@ -201,6 +218,23 @@ const MANUAL_EFFECTS = {
     ],
     desc: '装备者异常精通提升90/99/108/117/126点；队伍中任意角色对敌人造成的属性异常伤害产生暴击时，装备者造成的火属性伤害提升40%/44%/48%/52%/56%，持续20秒，重复触发刷新（菲欧妮自身即全队异常暴击制造者→默认满覆盖）。',
   },
+  // ---- 3.4.1+19836465 测试服首版（v1 占位：id/名字带 v1 后缀，正式包落地后另录正式 id）----
+  '14160': { // 挽昼（1601·锋御）专武：暴击率 + [强化] 状态下火伤/火锐化
+    effects: [
+      fixed('nanoka_14160_crit', 'critRate', 20, 28, { mode: 'flat' }),
+      fixed('nanoka_14160_fire', 'fireDmg', 22, 35.2),
+      fixed('nanoka_14160_fire_sharp', 'fireSharpDmg', 10, 16),
+    ],
+    desc: '装备者暴击率提升20%/22%/24%/26%/28%；装备者发动[强化特殊技]时获得[强化]效果（进入接战状态直接获得），持续25秒，重复触发刷新；拥有[强化]时装备者造成的火属性伤害提升22%/25.3%/28.6%/31.9%/35.2%，火属性锐化伤害提升10%/11.5%/13%/14.5%/16%（默认满覆盖）。',
+  },
+  '14166': { // 知更鸟（1661·防护）专属音擎：护盾→全队防御；追加攻击→全队增伤
+    effects: [],
+    teamEffects: [
+      fixed('nanoka_14166_team_def', 'inCombatDefPct', 10, 16),
+      stacked('nanoka_14166_team_dmg', 'dmgBonus', 10, 16, 2),
+    ],
+    desc: '装备者施加护盾时，使全队防御力提升10%/11.5%/13%/14.5%/16%，持续10秒，重复触发延长持续时间（最高25秒），该效果全队唯一；装备者发动[追加攻击]时，使全队伤害提升10%/11.5%/13%/14.5%/16%，持续15秒，最多叠加2层，重复触发刷新持续时间，该效果全队唯一（默认满覆盖/满2层）。',
+  },
 }
 
 /** 60 级面板推导 */
@@ -248,26 +282,41 @@ async function fetchRaw(id, lang, retries = 4) {
   throw new Error(`fetch failed ${url}`)
 }
 
+/** 测试服构建里未定稿的名字是占位键（Item_ / Weapon_ / EquipmentSuit_ 前缀）⇒ 换成稳定可读标签 */
+function readableName(raw, id, kind) {
+  const name = String(raw ?? '').trim()
+  return !name || /^(Item_|Weapon_|EquipmentSuit_)/.test(name) ? `${kind} ${id}` : name
+}
+
+/** v1 占位后缀：`--tag` 时统一追加，与 beta 快照的 `<id>v<n>` 命名同一条纪律 */
+function withTag(name, tag) {
+  return tag ? `${name} ${tag}` : name
+}
+
 function buildEntry(id, zh, en) {
   const manual = MANUAL_EFFECTS[id] ?? { effects: [], desc: '' }
   const specialty = SPECIALTY_MAP[Object.values(zh.weapon_type ?? {})[0]] ?? ''
   const ownerId = String(zh.code_name ?? '').match(/Weapon_[SA]_(\d+)/)?.[1] ?? ''
   const talentDesc = Object.values(zh.talents ?? {}).find(t => t?.desc)?.desc ?? zh.desc2 ?? ''
+  const nameZh = withTag(readableName(zh.name, id, '音擎'), explicitTag)
+  const nameEn = withTag(readableName(en.name ?? zh.name, id, 'W-Engine'), explicitTag)
+  const effectName = withTag(readableName(Object.values(zh.talents ?? {})[0]?.name, id, '音擎'), explicitTag)
+  const descText = manual.desc || plain(talentDesc)
   return {
-    id: String(id),
-    name: { zhCN: zh.name, en: en.name ?? zh.name },
+    id: explicitTag ? `${id}${explicitTag}` : String(id),
+    name: { zhCN: nameZh, en: nameEn },
     rarity: RARITY_MAP[zh.rarity] ?? 'S',
     specialty,
     level60: buildLevel60(zh),
     modification: { minLevel: 1, maxLevel: 5, defaultLevel: 1 },
     effect: {
-      name: { zhCN: Object.values(zh.talents ?? {})[0]?.name ?? zh.name },
+      name: { zhCN: effectName },
       ...(manual.requirement ? { requirement: manual.requirement } : {}),
-      description: { zhCN: manual.desc || plain(talentDesc) },
+      description: { zhCN: descText },
       selfBuff: {
         scope: 'inCombat',
-        name: { zhCN: `${zh.name}（自身）` },
-        description: { zhCN: manual.desc || plain(talentDesc) },
+        name: { zhCN: `${nameZh}（自身）` },
+        description: { zhCN: descText },
         effects: manual.effects,
         appliesToOutOfCombatPanel: false,
       },
@@ -280,6 +329,8 @@ function buildEntry(id, zh, en) {
       level60Stats: 'nanoka-base-derived',
       effectText: 'nanoka-source-checked',
       effectBuff: 'user-modeled',
+      // v1 占位：数据版本与来源构建一起钉住（正式包落地后按同 id 另录，v1 保留可对比）
+      ...(explicitTag ? { dataVersion: explicitTag, sourceVersion: resolvedVersion } : {}),
     },
     ...(ownerId ? { ownerAgentId: ownerId } : {}),
   }
@@ -289,7 +340,11 @@ function buildEntry(id, zh, en) {
 // B 级（12011 电磁暴-贰式 / 12015 灰烬-钴蓝）2026-09-09 已从 catalog 移除（用户裁决：B 级没人用）→
 // 不再自动补录；MANUAL_EFFECTS 保留作恢复时的建模依据。
 const ALL_MISSING = ['13005', '13010', '13011', '13016', '13017', '13018', '13020', '13021', '13112', '13127', '13135', '14003', '14154', '14159']
-let ids = process.argv.slice(2).filter(a => !a.startsWith('--') && a !== explicitVersion)
+let ids = process.argv.slice(2).filter(a => !a.startsWith('--') && a !== explicitVersion && a !== explicitTag)
+if (ids.length === 0 && explicitTag) {
+  console.error('--tag 只作用于显式给定的音擎 id（不带参数 = 补录全部缺失，不做 v1 占位）')
+  process.exit(2)
+}
 if (ids.length === 0) {
   // 无参数：对比 catalog 自动补录 nanoka 有但 catalog 缺的（含上述清单）
   const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))
@@ -306,13 +361,13 @@ await latestZzzVersion() // 解析正式服版本（sources 出处用；raw 已�
 for (const id of ids) {
   const [zh, en] = await Promise.all([fetchRaw(id, 'zh'), fetchRaw(id, 'en')])
   const entry = buildEntry(id, zh, en)
-  const idx = catalog.wEngines.findIndex(w => w.id === String(id))
+  const idx = catalog.wEngines.findIndex(w => w.id === entry.id)
   if (idx >= 0) {
     catalog.wEngines[idx] = { ...catalog.wEngines[idx], ...entry }
-    console.log(`UPD  ${id} ${entry.name.zhCN}`)
+    console.log(`UPD  ${entry.id} ${entry.name.zhCN}`)
   } else {
     catalog.wEngines.push(entry)
-    console.log(`ADD  ${id} ${entry.name.zhCN} (${entry.rarity} ${entry.specialty})`)
+    console.log(`ADD  ${entry.id} ${entry.name.zhCN} (${entry.rarity} ${entry.specialty})`)
   }
 }
 writeJsonCompact(catalogPath, catalog)
