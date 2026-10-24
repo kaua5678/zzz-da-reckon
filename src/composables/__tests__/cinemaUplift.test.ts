@@ -97,14 +97,14 @@ describe('analyzeCinemaUplift（命座提升率 + 死数据自检）', () => {
     }
   })
 
-  it('自检语义：面板有字段变化 → ok；无面板变化但伤害移动 |gain| ≥ ε（含微负）→ execLevel；零移动 → unimplemented', async () => {
+  it('自检语义：面板有变化 → ok；无面板变化但伤害移动 |gain| ≥ ε（含微负）或资源指标移动 → execLevel；三者皆零 → unimplemented', async () => {
     const { rows } = await analyze('1371', ['1251', '1271'])
     for (const e of rows[0].entries) {
       if (e.changedFields.length > 0) {
         expect(e.warn, `命座${e.to} 有面板变化却不是 ok`).toBe('ok')
-      } else if (Math.abs(e.gainPct) >= UPLIFT_EPSILON_PCT) {
-        // 与 analyzer 同源：伤害符号变化本身是执行/资源级生效证据（预算极紧时可轻微负增益）
-        expect(e.warn, `命座${e.to} 无面板变化但有移动，应为 execLevel`).toBe('execLevel')
+      } else if (Math.abs(e.gainPct) >= UPLIFT_EPSILON_PCT || e.metrics.some(m => Math.abs(m.delta) > 1e-6)) {
+        // 与 analyzer 同源：伤害符号变化/资源账移动都是「接进了计算」的证据（夹具没跨整数阈值时伤害可为 0）
+        expect(e.warn, `命座${e.to} 无面板变化但伤害或资源有移动，应为 execLevel`).toBe('execLevel')
       } else {
         expect(e.warn).toBe('unimplemented')
       }

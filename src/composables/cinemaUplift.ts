@@ -263,11 +263,16 @@ export async function analyzeCinemaUplift(
       // 三态判定：面板字段变化 → ok；无面板变化但伤害移动（|gain| ≥ ε，含负号）→ execLevel
       // ——伤害发生符号变化本身就是执行/资源级生效的证据（如卢西娅C4帷幕喧响挤占时间预算，
       // 命座定案 2026-08：预算极紧时可为轻微负增益），不是死数据；零移动才是未接入。
+      //
+      // 第三条证据（2026-10-25）：**资源指标移动**也算接入。判的是「接没接进计算」，不是「本夹具赚没赚」——
+      // 加喧响/加能量的命座要推动「大招次数」这个整数阈值才会进伤害，夹具没跨过阈值时伤害恒 0，
+      // 但资源账已经变了（实测 1451 影画四：帷幕喧响每触发 +100/人，伤害零移动被误判成死数据）。
+      const metricMoved = metrics.some(m => Math.abs(m.delta) > 1e-6)
       const warn: CinemaUpliftEntry['warn'] = changedFields.length > 0
         ? 'ok'
-        : Math.abs(gainPct) >= UPLIFT_EPSILON_PCT
-          ? 'execLevel' // 面板无变化但伤害有移动：执行级效果（moveId 增伤/暴伤/附伤/资源侧联动等）
-          : 'unimplemented' // 无字段无伤害：效果可能未接进计算
+        : Math.abs(gainPct) >= UPLIFT_EPSILON_PCT || metricMoved
+          ? 'execLevel' // 面板无变化但伤害 / 资源有移动：执行级或资源侧效果
+          : 'unimplemented' // 无字段无伤害无资源移动：效果可能未接进计算
       entries.push({ to, gainPct, ultBefore: before.ult, ultAfter: after.ult, changedFields, warn, metrics })
       before = after
       panelBefore = panelAfter
