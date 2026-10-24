@@ -245,7 +245,7 @@ export async function shapleyValues(
   v0: number[],
   vAll: number[],
   value: (mask: number) => number[],
-  opts: { control?: BatchControl; yieldEvery?: number; onEval?: () => void } = {},
+  opts: { control?: BatchControl; yieldEvery?: number } = {},
 ): Promise<{ shap: number[][]; complete: boolean; evals: number }> {
   const dims = v0.length
   const total = 1 << n
@@ -257,7 +257,6 @@ export async function shapleyValues(
   for (let m = 1; m < total - 1; m++) {
     if (isBatchAborted(opts.control)) { complete = false; break }
     memo[m] = value(m)
-    opts.onEval?.()
     if (m % yieldEvery === 0) await yieldToMacrotask()
   }
   const shap: number[][] = Array.from({ length: dims }, () => new Array<number>(n).fill(0))
