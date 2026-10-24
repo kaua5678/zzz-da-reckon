@@ -313,6 +313,8 @@ describe('霜月刀数：总量口径（min(⌊落霜总量/6⌋, 19)）', () =>
     expect(src.frostMoonByResource, '刀数 = ⌊落霜总量/6⌋（与资源卡同源）').toBe(Math.floor(src.total / 6))
     expect(src.frostMoonByResource, '慢循环必须高于「紊乱配比轮」——否则多余的 E 又被浪费了').toBeGreaterThan(byDisorderPair)
     expect(src.frostMoonCount, '刀数与执行行同源（规则 11）').toBe(Math.min(src.frostMoonByResource, 19))
+    // 慢循环到不了 19 上限 ⇒ 蒸发只剩攒不满下一刀的零头（total mod 6），同闭式
+    expect(src.evaporatedFrostFall, '慢循环蒸发闭式 = 总回复 − 刀数×6 = total mod 6').toBe(src.total % 6)
   }, 600000)
   it('真管线：雅南柚队 c0 的刀数 = 总量口径值，受 19 上限截断', async () => {
     const { config } = await setupHarness([
@@ -329,6 +331,9 @@ describe('霜月刀数：总量口径（min(⌊落霜总量/6⌋, 19)）', () =>
     void disorder
     expect(src.frostMoonCount, 'cap 默认 19 且总量口径值不超过它 ⇒ 不再二次截断').toBe(expected)
     expect(src.frostMoonByResource, '线性口径必须 ≥ 刀数（总量够打才谈得上配比）').toBeGreaterThanOrEqual(expected)
+    // 蒸发豆（用户口径 2026-10-24：溢出的没有成为豆而是直接蒸发）= 总回复 − 兑现成刀的消耗
+    expect(src.evaporatedFrostFall, '蒸发闭式：总回复 − 刀数×6（与 frostMoonCount 同源）').toBe(src.total - src.frostMoonCount * 6)
+    expect(src.evaporatedFrostFall, '快循环队（2紊乱1拔刀 循环）必有蒸发——终结+3只用2/霜寒+1满桶/刀数上限外整刀').toBeGreaterThan(0)
   }, 600000)
 
   it('上限滑块压在刀数上：cap=5 ⇒ 5，cap=0 ⇒ 回到豆子总量值', async () => {

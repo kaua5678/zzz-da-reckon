@@ -147,20 +147,23 @@ export function miyabiFrostburnBreakCountOf(cfg: CharacterOperationConfig, battl
  * ## 为什么「19 刀上限」本身就是溢出机制
  *
  * 快循环（雅南柚这类双异常队）豆子回复远超 19 刀所需 ⇒ 超出部分**全部浪费**（用户：「19 轮紊乱拔刀
- * 已经做完，剩下能量就算打出 e 也没办法变成 20 次拔刀」）。这类队的溢出量在资源卡上体现为
- * `frostMoonByResource − frostMoonCount`。
+ * 已经做完，剩下能量就算打出 e 也没办法变成 20 次拔刀」）。这类队的蒸发量在资源卡上体现为
+ * `evaporatedFrostFall`（= 总回复 − 刀数×6，按**豆**计，用户口径 2026-10-24「溢出的确实没有
+ * 成为豆，而是直接蒸发」）。
  *
  * 慢循环（雅耀妮这类队友积蓄跟不上、一局上百秒打不出紊乱）到不了上限 ⇒ 平A 时间长 ⇒ 强化特殊技次数多
  * ⇒ **多余的 E 全部用来补豆子**（用户：「如果你不是快循环，有大把时间平a但是没办法紊乱了，这时候
  * 就该把多余的e用来补豆子」）。⇒ 这类队的刀数由**豆子总量**决定，不是由紊乱次数。
  *
- * ## 逐条的溢出说明（快循环语境，由 19 上限统一吸收，不再单独扣）
+ * ## 逐条的溢出说明（快循环语境；蒸发总量由 evaporatedFrostFall 呈现，逐条不分离）
  *
  * - 终结技的 +3 点：每轮只用得到 2 点（1 次 E/Q + 2 次紊乱 = 6 点），+1 溢；
  * - 霜寒（烈霜异常）的 +1 点：落在轮与轮之间的满桶时刻，全部溢；
  * - 影画二风花#5 的持续收入：快循环里基础循环已占满 180s，全部溢。
  *
- * 这三条都是**快循环专属**的浪费；慢循环里同样的收入会兑现成刀。本函数不做区分——上限即判别。
+ * 这三条都是**快循环专属**的浪费；慢循环里同样的收入会兑现成刀。聚合口径下不知道每笔收入落在
+ * 时轴的哪一刻 ⇒ 逐条归因无法分离，蒸发只报**总量**（用户 2026-10-24：「快循环就是 2紊乱1拔刀
+ * 的循环中进行的资源浪费，需要计算」——算的是总量，不逐条拆）。
  *
  * ⚠ 修复前这里读的是「紊乱配比轮」，慢循环队被系统性低估（雅耀妮 C0 只给 4 刀，实际靠 E 补豆能打 13 刀）。
  *
@@ -223,10 +226,15 @@ function getFrostFallResource(
   const frostMoonByResource = Math.max(0, Math.floor(res.total / FROST_MOON_COST))
   const countCap = Math.max(0, Math.floor(setting(cfg, 'miyabi.frostMoonCountCap')))
   const frostMoonCount = miyabiFrostMoonCountOf({ frostFallTotal: res.total, countCap })
+  // 蒸发 = 回复了但没兑现成刀的豆（用户口径 2026-10-24：「溢出的确实没有成为豆，而是直接蒸发」）：
+  // 快循环「2 紊乱 + 1 拔刀」一轮恰好 6 豆，终结技 +3 每轮只用 2（+1 溢）、霜寒 +1 落在满桶时刻、
+  // (C2+) 风花#5 持续收入都打不进循环 ⇒ 桶满即蒸发；19 刀上限之外多出的整刀同样蒸发。
+  const evaporatedFrostFall = Math.max(0, res.total - frostMoonCount * FROST_MOON_COST)
   return {
     total: res.total,
     frostMoonCount,
     frostMoonByResource,
+    evaporatedFrostFall,
   }
 }
 
@@ -558,15 +566,23 @@ function buildMiyabiResourceSections({ result }: AgentResourceSectionsInput): Sp
   const total = src.total
   const moon = src.frostMoonCount
   const byResource = src.frostMoonByResource
-  const overflow = Math.max(0, byResource - moon)
+  const evaporated = src.evaporatedFrostFall
+  const wastedWholeCuts = Math.max(0, byResource - moon) * FROST_MOON_COST
+  const oddBeans = evaporated - wastedWholeCuts
   const rows: Array<{ label: string; value: string; detail: string }> = [
     { label: '落霜总量', value: fmt(total, 1), detail: '入场 3/6 + 强化特殊技×2 + 终结技×3 + 紊乱×2 + 霜灼·破×1 + 影画二风花#5×1（C2 起）' },
     { label: '霜月三段消耗', value: `${moon} 次`, detail: `${FROST_MOON_COST} 落霜/次 → 4282.8% 烈霜直伤（攒满 6 点即一刀；一局上限 19 刀）` },
   ]
-  if (overflow > 0) {
-    rows.push({ label: '落霜溢出', value: `${overflow} 刀`, detail: `回复量够 ${byResource} 刀，实际只打得出 ${moon} 刀 —— 快循环里多出的豆子全部浪费（能量再多也变不成第 20 刀）` })
+  if (evaporated > 0) {
+    // 用户口径 2026-10-24：溢出的豆「确实没有成为豆，而是直接蒸发」——产出侧按豆计（不再是「X 刀」）。
+    // 快循环「2 紊乱 + 1 拔刀」一轮恰好 6 豆：终结 +3 每轮只用 2（+1 溢）、霜寒 +1 落在满桶时刻、
+    // (C2+) 风花#5 持续收入都打不进循环 ⇒ 桶满即蒸发；19 刀之外的整刀收入同样蒸发。
+    const parts = [`回复 ${fmt(total, 1)} 豆，只兑现 ${moon} 刀 × ${FROST_MOON_COST} = ${moon * FROST_MOON_COST} 豆`]
+    if (wastedWholeCuts > 0) parts.push(`被刀数上限压掉 ${wastedWholeCuts} 豆（够 ${byResource} 刀只打得出 ${moon} 刀）`)
+    if (oddBeans > 0) parts.push(`攒不满下一刀的零头 ${oddBeans} 豆`)
+    rows.push({ label: '蒸发（未成为豆）', value: `${fmt(evaporated, 1)} 豆`, detail: `${parts.join('；')} —— 快循环 2紊乱1拔刀 循环中的资源浪费，直接蒸发不回流` })
   }
-  return [{ id: 'miyabi-frost-fall', title: '雅·落霜', summary: `剩余 ${fmt(total, 1)} / 霜月三段 ${moon} 次`, rows }]
+  return [{ id: 'miyabi-frost-fall', title: '雅·落霜', summary: `产出 ${fmt(total, 1)} / 兑现 ${moon} 刀 / 蒸发 ${fmt(evaporated, 1)} 豆`, rows }]
 }
 
 // ============ module export ============
@@ -748,6 +764,15 @@ export interface MiyabiFrostFallSource {
   frostMoonCount: number
   /** 纯按资源算的次数（总量 ÷ 6，不含滑块截断）—— 只作溢出对照展示，**不是刀数** */
   frostMoonByResource: number
+  /**
+   * 蒸发的豆 = 总回复量 − 兑现成刀的消耗（total − frostMoonCount×6）。
+   * 回复了但没成为豆、直接蒸发的量：含被 19 刀上限压掉的整刀浪费与攒不满下一刀的零头。
+   * 聚合口径下逐条归因（终结+1/轮、霜寒+1 满桶、风花溢出）无法按时序分离 ⇒ 只报总量，不回流任何通道。
+   *
+   * @fact agent:1091/落霜·蒸发 口径: 蒸发豆 = 落霜总回复量 − 刀数×6——溢出的没有成为豆而是直接蒸发（快循环 2紊乱1拔刀 循环中的资源浪费），产出侧按豆呈现，不回流 | 据 用户@2026-10-24（「溢出的确实没有成为豆，而是直接蒸发…快循环就是2紊乱1拔刀的循环中，进行的资源浪费，需要计算」） | 验 src/mechanics/__tests__/miyabiFrostFallSources.test.ts | 锚 src/mechanics/agents/miyabi.ts#MiyabiFrostFallSource | 信 确认
+   * ⟳复核: 若官方改版让落霜溢出可留存/转化（不再是直接蒸发），或霜月消耗不再是 6，改 evaporatedFrostFall 算式与资源卡行 | 到期 2027-04-30
+   */
+  evaporatedFrostFall: number
 }
 
 /**
