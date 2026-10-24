@@ -5,18 +5,51 @@
   "agentIds": [
     "1601"
   ],
-  "status": "not_described_not_implemented",
+  "status": "partially_implemented",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
   "events": [],
   "verifications": [],
   "stateMachines": [],
-  "teamBuffs": [],
+  "teamBuffs": [
+    {
+      "id": "sunbringer_unity_sharp_crit",
+      "name": "挽昼｜众愿一心",
+      "source": "额外能力",
+      "description": "队伍中存在[击破]角色、[防护]角色或其他[锋御]角色时触发：挽昼发动任意[强化特殊技]或[冲刺攻击：巡征·影域穿袭]时，全队[锋御]代理人进入[众愿一心]状态：锐暴伤害提升25%，持续45秒，重复进入刷新持续时间。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "sharpCritDmg",
+          "value": 25,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "接收者限锋御——sharpCritDmg 仅锐化伤害消费 ⇒ 全队施加数值等价（克拉蕾残锋同口径，见 claret.ts debt）。触发 = 强化特殊技（轮转高频）⇒ 满覆盖近似。门控 = 额外能力 teamConditions（见 additionalAbility）。"
+    }
+  ],
   "notes": [
-    "占位测试包（Test1）：nanoka 3.4.1+19836465 首版，后续版本会用正式逻辑与数值整体替换——替换前先跑 scripts/snapshot-agent.mjs 冻结本版（1601v1）。",
-    "当前深度＝倍率表直读（generic 路径：平A秒均 + 特殊/强特 + 终结），机制未实录。",
-    "未建模清单（原文已核对，待正式包落地后实录）：双实体（艾尔妲底形/林德薇恩切换，德蕾琪娜为招架位）；[残痕]（重击命中消耗至多 3 层，每层触发 1 次[毁伤]范围伤害）；[愿力]/[锐能]（能量族）；[链齿]/[旗令]（强特资源，曦生·长暗终焉/晦尽·永昼之炬消耗）；[愿核]（终结技「此愿，重塑万象」消耗并清除[烬痕]）；[掠夜]状态（闪避长按高速移动）。",
-    "数据裁决：basicBenchmarkMoveId=1601003（执旌第 3 段，艾尔妲为底形）；specialty 原文空缺，暂空串。"
-  ]
+    "(Test1) 占位包（nanoka 3.4.1+19836465），今日增量 = 众愿一心 spec teamBuff + 额外能力门控声明；核心循环明日实录。",
+    "★ 明日实录施工图（原文已核对）：挽昼 = 克拉蕾同族锋御模板——伤害均为锐化伤害、防御力作招式伤害倍率、锐暴替代暴伤、初始暴伤→暴击 0.35%/1%、残痕(≤3层)→重击消耗→毁伤。镜像 claret.ts 架构（D4 资源循环 + D8 毁伤附伤行 + D2 面板），暂定模块名 sunbringer.ts。逐项：①极昼（暴击+40% + 无视20%防御，15s，强化特殊技/聚锋刷新，后场不减 ⇒ 满覆盖近似）；②锐能池（进战回60；强化特殊技消耗，数值看锐能消耗 param 行）；③愿力循环（全队毁伤每层+40，上限160，≥120 发动聚锋→获得链齿+旗令；队友毁伤触发快速支援聚锋 3s CD）；④链齿/旗令 → 长暗终焉/永昼之炬（高量级强化特殊技）；⑤终结技二段链：此行共赴前路（喧响极，旗令→愿核）→ 此愿重塑万象（愿核，消除烬痕=等量扣血——烬痕=特定招式实际伤害75%积累，Boss 战等效增伤通道）；⑥德蕾琪娜招架后支援突击（残痕积蓄+15% / 伤害+20%，moveId 级）；⑦支援突击·灯塔 直接+1层残痕。",
+    "⚠ 数据缺口（明日先解决）：catalog 招式行缺 gash（残痕积蓄）与 sharpness（锐化值）行——克拉蕾有（1611 row kinds 含 gash/sharpness），1601 raw param 也没有这两类行（仅 14 种参数名），需查明克拉蕾的 gash/sharpness 数据来源（手录/专表）再补；影画 1-6 全部 TestKey_PlaceHolder（无命座数据，不标 implemented）。",
+    "数据裁决：basicBenchmarkMoveId=1601003（执旌第3段，艾尔妲底形）；specialty=sharpen（锋御，weapon_type 码 7）。"
+  ],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "stun",
+          "defense"
+        ]
+      },
+      {
+        "type": "sameSpecialtyAsSelf"
+      }
+    ],
+    "note": "额外能力（raw 1601 passive Lv.7）：「队伍中存在[击破]角色、[防护]角色或其他[锋御]角色时触发」。sameSpecialtyAsSelf 已排除自身槽位 = 「其他锋御」。"
+  }
 }

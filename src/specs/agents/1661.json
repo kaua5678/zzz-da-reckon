@@ -5,18 +5,81 @@
   "agentIds": [
     "1661"
   ],
-  "status": "not_described_not_implemented",
+  "status": "partially_implemented",
   "attributeConversions": [],
   "resources": [],
   "rowFusions": [],
   "events": [],
   "verifications": [],
   "stateMachines": [],
-  "teamBuffs": [],
+  "teamBuffs": [
+    {
+      "id": "robin_guard_shield_team_dmg",
+      "name": "知更鸟｜守卫护盾·全队伤害提升",
+      "source": "核心被动",
+      "description": "全队角色每次获得[守卫护盾]时，造成的伤害提升25%，持续15秒，重复触发刷新持续时间（Lv7 满级核心被动 1661507：12.5%→25% 逐级）。知更鸟轮转（离场技/追加攻击8s CD/登场技）持续供盾 ⇒ 满覆盖近似。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "dmgBonus",
+          "value": 25,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "满覆盖近似（供盾间隔 ≤8s < 15s 持续）；与额外能力无关。护盾量/持续时间/防御提升（离场守护 44+3×Lv/1000HP）为生存面，不入伤害账。"
+    },
+    {
+      "id": "robin_c1_team_sharp_crit",
+      "name": "知更鸟｜影画一·锐暴伤害",
+      "source": "影画一",
+      "description": "知更鸟每次消耗[强化Buff点]时，全队角色锐暴伤害提升20%，持续60秒，重复触发刷新持续时间。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "sharpCritDmg",
+          "value": 20,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "消耗事件 = 登场技获得→下次进离场守护消耗（轮转常驻 ≥1 次/循环）⇒ 满覆盖近似。羽毛防护（短暂无敌）为生存面不录。接收者全队施加：sharpCritDmg 仅锐化伤害消费，非锋御成员为惰性字段，数值等价（与克拉蕾残锋同口径，见 claret.ts 残锋 debt 标记）。"
+    },
+    {
+      "id": "robin_c2_enemy_res",
+      "name": "知更鸟｜影画二·无视抗性",
+      "source": "影画二",
+      "description": "知更鸟发动[追加攻击]时，全队角色造成的伤害无视敌人12%抗性，持续15秒，重复触发刷新持续时间。",
+      "target": "enemy",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "enemyResReduction",
+          "value": 12,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "追加攻击 8s CD < 15s 持续 ⇒ 满覆盖近似。enemyResReduction = 全元素抗性降低（无视抗性）。抗打断等级提升为生存面不录。"
+    }
+  ],
   "notes": [
-    "占位测试包（Test1）：nanoka 3.4.1+19836465 首版，后续版本会用正式逻辑与数值整体替换——替换前先跑 scripts/snapshot-agent.mjs 冻结本版。",
-    "当前深度＝倍率表直读（generic 路径），机制未实录。",
-    "未建模清单（原文已核对，待正式包落地后实录）：[离场守护]（离场技后 60s，期间无法连携/登场）；[守卫护盾]（全队，自身最大初始生命值 2%/3%/4% 三档，15-20s）；追加攻击（离场守护期间队友命中触发，8s CD，+20 登场值）；强化追加（≥40 能量升级，按最大生命值额外提升重击伤害）；[登场值]（100 点发动登场技，视为快速支援）；终结技将全队护盾按 40% 转化为生命值。",
-    "数据裁决：basicBenchmarkMoveId=1661003（普攻第 3 段）。"
-  ]
+    "(Test1) 占位包（nanoka 3.4.1+19836465），今日增量 = spec 级声明式增益（守卫护盾全队伤害 / 影画1 锐暴 / 影画2 无视抗性）+ 额外能力门控声明；正式包落地时按此核对数值。",
+    "明日实录清单（原文已核对，维度 D2/D5/D7）：①追加攻击循环（离场守护期间队友命中触发，8s CD，≥40 能量升强化追加——耗能 40 + 最大生命值 (21.4+2.8×技能等级)% 额外提升重击伤害，Lv12≈55%）→ D5 次数 = floor(t/8) 与能量池联立；②登场值循环（追击+20/次，上限120，≥100 触发登场技=快速支援+盾4%+Buff强化点）→ D4；③强化Buff点（上限1：登场技获得、进离场守护消耗→防御强化+25%〈生存面〉+影画1触发）；④全队每毁伤+15能量（跨角色计数，D7 roundThreads——挽昼/克拉蕾的毁伤次数）；⑤影画3 技能等级+2（引擎通用规则）；影画4-6 = TestKey_PlaceHolder 未公布。",
+    "数据裁决：basicBenchmarkMoveId=1661003；追击/角力系 moveId 已重映射到 1661 块（1611017-19 模板残留）。"
+  ],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "sharpen",
+          "stun"
+        ]
+      }
+    ],
+    "note": "额外能力（raw 1661 passive Lv.7）：「队伍中存在[锋御]或[击破]角色时触发：进入战场时，获得1个[Buff强化点]，堪域模式 180s CD」。效果本体 = Buff强化点 → 离场守护防御提升 +25%——生存面不入伤害账，故本条只声明门控条件留档；若后续防御向通道接入（盾量/承伤），消费点应挂在 additionalAbilityActiveOf。"
+  }
 }
