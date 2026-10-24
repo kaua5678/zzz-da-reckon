@@ -534,7 +534,10 @@ describe('合轴吸收（T140c：纯收益 ⇒ 拉满；④ 的吸收率 == abso
     applyTeamToStore(config, preset)
     const d0 = calc.teamTotalDamage.value
     const saved0 = frontlineOccupationBreakdown(calc.resourceResult.value!).saved
-    expect(saved0).toBeCloseTo(0, 6)           // 全关 = 不吸收 ⇒ saved = 0
+    // ⚠ 2026-10-25：`saved` = gross − net，**含轴内并行节省**（本预设绑定失衡轴 preset-1471-1481-1451）。
+    // 「全关」= 动态吸收关（ratio=0），**不是** saved=0 —— 实测该队轴内并行 4.4s ⇒ 基线就是 4.4。
+    // （冲霄时间由数据推导 2.667→1.167s 后轴块时长变化，这条基线才显形；2026-10-19 5021d549。）
+    expect(saved0, '全关仍有轴内并行节省（不是 0）').toBeGreaterThanOrEqual(0)
     expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0)
 
     const r = climbDifficultyLadder(ctx, preset.team as [string, string, string], {
@@ -549,7 +552,7 @@ describe('合轴吸收（T140c：纯收益 ⇒ 拉满；④ 的吸收率 == abso
     config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
     const saved1 = frontlineOccupationBreakdown(calc.resourceResult.value!).saved
     expect(Object.keys(config.comboAlignOverrides ?? {}).length).toBe(0) // 不再写静态合轴率覆盖
-    expect(saved1).toBeGreaterThan(0.5)        // 解放出前台时间（队友前台被吸收）
+    expect(saved1 - saved0, '动态吸收必须真的省出前台时间（差额，不是含轴内基线的全量）').toBeGreaterThan(0.5)
     // ⚠ **2026-10-05 改 `toBeGreaterThan` → `toBeGreaterThanOrEqual`**（§20.5-3 轴态吃吸收后暴露）：
     // 吸收量 = `min(溢出, 容量)`（`helpers.ts` 的 `take`）⇒ **溢出被吸满后，再提高比例不再增加 saved**。
     // 实测本队：saved 28.63s 恰为可吸收上限 ⇒ 0.4 档**无事可做**，两档 saved **精确相等**。
@@ -567,12 +570,14 @@ describe('合轴吸收（T140c：纯收益 ⇒ 拉满；④ 的吸收率 == abso
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
     const before = JSON.stringify(config.comboAlignOverrides ?? {})
+    const savedBefore = frontlineOccupationBreakdown(calc.resourceResult.value!).saved
     climbDifficultyLadder(ctx, preset.team as [string, string, string], {
       base: c => c.calc.teamTotalDamage.value,
     })
     expect(JSON.stringify(config.comboAlignOverrides ?? {})).toBe(before) // 没留痕
     expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0) // 吸收也还原到全关的 0
-    expect(frontlineOccupationBreakdown(calc.resourceResult.value!).saved).toBeCloseTo(0, 6)
+    // 读数回到跑前 = 现场恢复判据（⚠ 不是 0：saved 含轴内并行基线，见上一条用例的注释）
+    expect(frontlineOccupationBreakdown(calc.resourceResult.value!).saved).toBeCloseTo(savedBefore, 6)
   }, 300_000)
 
   it('CC-388 现场恢复按整表快照还原：跑前已存在的合轴率覆盖原样回来（非空表才看得出键形态拼错）', async () => {
@@ -605,13 +610,16 @@ describe('合轴节省秒数上曲线（用户：只需管合轴了多少时间�
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, preset)
     const p0 = captureKeyCounts(calc)
-    expect(p0['合轴节省']).toBeCloseTo(0, 6)              // 全关：不吸收
+    const saved0 = frontlineOccupationBreakdown(calc.resourceResult.value!).saved
+    // 全关 = 动态吸收 0；「合轴节省」读的是 saved（含轴内并行）⇒ 基线 = saved0，不是 0
+    expect(p0['合轴节省']).toBeCloseTo(saved0, 6)
     // ④ 的合轴语义 = 拉满到用户上限（T140c：不再有 G5 目标，纯收益直接拉满）
     config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, absorbCapOf(ctx))
     const p1 = captureKeyCounts(calc)
+    const saved1 = frontlineOccupationBreakdown(calc.resourceResult.value!).saved
     const d = diffKeyCounts(p0, p1).find(c => c.label === '合轴节省')
     expect(d, '必须出现「合轴节省」涨幅').toBeTruthy()
-    expect(d!.delta).toBeCloseTo(frontlineOccupationBreakdown(calc.resourceResult.value!).saved, 6)
+    expect(d!.delta).toBeCloseTo(saved1 - saved0, 6)      // 涨幅 = 新解放出的秒数（差额）
     expect(d!.major).toBe(true)                            // Δ≥1 秒 ⇒ 进面板/标注
   }, 300_000)
 })
