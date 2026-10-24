@@ -124,9 +124,13 @@ describe('R51 裁决落地·接线类（甲 1391 威势 / 丙 jane.frenzyActive 
     // 99 = 高于自动值 ⇒ 仍回到自动值 8（上限绝不放大）
     if (cap999.assist !== 8) failures.push(`cap=999 时 assist 应回到自动值 8（上限不许凭空造次数），实到 ${cap999.assist}`)
     // 精确项（强特×3 / 终结×6）**完全不受本 cap 影响**
+    // ⚠ 2026-10-25（规则 10 A/B）：终结 24 → **18**（4 次 → 3 次队伍终结）。首坏提交 = f542caf7
+    // 「删除后台墨影凝云合轴（代替产物）」——仪玄那 4 条后台行的喧响不再进账 ⇒ 队伍终结少 1 次。
+    // 该提交是用户裁决「改由综合合轴率表达一切」，属预期口径变化；本判据要的是「cap 不串精确项」，
+    // 数值按实测重取（强特 15 未变）。
     for (const [v, r] of [[0, noCap], [3, cap3], [99, cap999]] as const) {
       if (r.ex !== 15) failures.push(`cap=${v}: 精确项 强特 应恒为 15，实到 ${r.ex}`)
-      if (r.ult !== 24) failures.push(`cap=${v}: 精确项 终结 应恒为 24，实到 ${r.ult}`)
+      if (r.ult !== 18) failures.push(`cap=${v}: 精确项 终结 应恒为 18，实到 ${r.ult}`)
     }
     // ★★ 跨路径恒等式：展示 total 必须等于 cycle 的 spinCount
     for (const [v, r] of [[0, noCap], [3, cap3], [99, cap999]] as const) {
