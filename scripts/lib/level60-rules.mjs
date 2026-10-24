@@ -145,4 +145,30 @@ export const FIELD_RULES = [
     patchable: false, // 只审计不修：atkBase 差属历史噪声或需人工确认，别脚本批量改
     note: '对照组——大面积小差属历史舍入噪声（容差 0.1）；大的差是真漏算，需人工确认',
   },
+  {
+    field: 'sharpCritDmg',
+    label: '锐暴伤害',
+    /**
+     * 锋御（sharpen）专属列，**万分比**：`stats.sharp_critical_damage = 15000 → 150`。
+     *
+     * 事故（2026-10-25）：1601 挽昼入库时这两列没进规则表（旧的 8 条只覆盖通用属性），
+     * catalog 缺字段 ⇒ `core/panel` 的 ?? 50 兜底把锐暴乘区从 ×2.5 掉到 ×1.5，
+     * 而所有通用字段都是对的、审计全绿——静默错一个乘区。同理会漏 sharpnessRegen（锐能/秒）。
+     */
+    expected: (raw) => {
+      const v = num(raw?.stats?.sharp_critical_damage)
+      return v > 0 ? Math.round(v / 100 * 100) / 100 : undefined
+    },
+    note: 'sharp_critical_damage/100（15000→150）；0 的单位数表示非锋御 ⇒ undefined 跳过',
+  },
+  {
+    field: 'sharpnessRegen',
+    label: '锐能自动累积',
+    /** 锋御专属：`stats.ep_recover = 150 → 1.5 点/秒`（引擎 `level60.sharpnessRegen`，锐能池收入项）。 */
+    expected: (raw) => {
+      const v = num(raw?.stats?.ep_recover)
+      return v > 0 ? Math.round(v / 100 * 100) / 100 : undefined
+    },
+    note: 'ep_recover/100（150→1.5 点/秒）；非锋御为 0 ⇒ undefined 跳过',
+  },
 ]
