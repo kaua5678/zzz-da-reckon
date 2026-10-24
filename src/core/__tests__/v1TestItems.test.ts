@@ -87,9 +87,10 @@ describe('v1 占位条目：目录契约', () => {
       expect(d.name.zhCN.endsWith(' v1')).toBe(true)
       expect(d.sources.join(' ')).toContain('3.4.1+19836465')
     }
-    // 归属：专武指向正主角色（1601/1661 是已录入的 Test1 正主，不是 beta 副本）
-    expect(getWEngine('14160v1').ownerAgentId).toBe('1601')
-    expect(getWEngine('14166v1').ownerAgentId).toBe('1661')
+    // v1 占位不声明专武归属（不受「一角色至多一把专武」的锁约束，也不给占位角色发专武推荐/抽卡卡）：
+    // 正式服同 id 落地时才建 ownerAgentId，否则两把武器会抢同一角色。
+    expect(getWEngine('14160v1').ownerAgentId).toBeUndefined()
+    expect(getWEngine('14166v1').ownerAgentId).toBeUndefined()
     // 正式 id 留给正式包：v1 只占自己的槽
     expect(getWEngine('14160')).toBeUndefined()
     expect(getWEngine('14166')).toBeUndefined()

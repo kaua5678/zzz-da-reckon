@@ -332,7 +332,10 @@ function buildEntry(id, zh, en) {
       // v1 占位：数据版本与来源构建一起钉住（正式包落地后按同 id 另录，v1 保留可对比）
       ...(explicitTag ? { dataVersion: explicitTag, sourceVersion: resolvedVersion } : {}),
     },
-    ...(ownerId ? { ownerAgentId: ownerId } : {}),
+    // v1 占位**不声明专武归属**（用户裁决 2026-10-25「不影响正式角色」）：正式服同 id 落地时才建
+    // ownerAgentId，否则正式包与 v1 两把武器会抢同一角色（buildRecWengine 锁「一角色至多一把专武」），
+    // 且会凭空给占位角色发专武推荐块 / 抽卡卡。v1 照常可选可装，只是不自动推荐。
+    ...(ownerId && !explicitTag ? { ownerAgentId: ownerId } : {}),
   }
 }
 
@@ -364,6 +367,8 @@ for (const id of ids) {
   const idx = catalog.wEngines.findIndex(w => w.id === entry.id)
   if (idx >= 0) {
     catalog.wEngines[idx] = { ...catalog.wEngines[idx], ...entry }
+    // 标记导入不声明归属 ⇒ 清掉上一版写进去的 ownerAgentId（幂等重跑要能「撤掉」这个字段）
+    if (!entry.ownerAgentId) delete catalog.wEngines[idx].ownerAgentId
     console.log(`UPD  ${entry.id} ${entry.name.zhCN}`)
   } else {
     catalog.wEngines.push(entry)

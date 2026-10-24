@@ -100,6 +100,9 @@ node scripts/hdiff-agent.mjs 1621 --from 3.2 --save   # 顺带把新版存档进
   不要求定稿名。音擎的 `verification` 里另钉 `dataVersion: 'v1'` + `sourceVersion`。
 - **音擎数值必须先按测试服录、正式服重抓**（见下节 2026-09-09 结论）：v1 条目的数值会变，
   正式服上线后按同 id 重录，v1 保留作历史对比，不覆盖。
+- **v1 音擎不声明 `ownerAgentId`**（专武归属留给正式 id）：否则正式包落地时两把武器抢同一角色
+  （`buildRecWengine.test.ts` 锁「一角色至多一把专武」），并会凭空给占位角色发专武推荐块 / 抽卡卡。
+  v1 照常在音擎列表里可选可装，只是不自动推荐；正式 id 录入后跑 `npm run sync:wengine-recs` 建归属。
 
 判据：`src/core/__tests__/v1TestItems.test.ts`（目录契约 + 四个条目的面板/团队效果生效）。
 
