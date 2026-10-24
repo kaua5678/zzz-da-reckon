@@ -43,9 +43,22 @@
             {{ fmt(row.frontlineTime, 1) }}s - {{ fmt(row.comboAlignTime, 1) }}s 合轴
           </span>
         </div>
+        <!-- 综合合轴（用户口径 2026-10-24：「要展示也是在动作下面列一行：综合合轴。然后说这是 -多少秒」）。
+             它是**槽级统筹量**（comboAlignAbsorbRatio × 本槽净必要，引擎闭式解），不在任何执行行上
+             ⇒ 不摊进上面各行（那是编造归属），也不进时间条 Σ（Σ行前台 = frontlineTime 契约）。
+             ⚠ 读数取引擎实际值 dynamicComboAlignSeconds，不按比例重算（咬合支吸收 < 容量）。 -->
+        <div v-if="dynamicComboAlignSeconds > 0.05" class="action-time-row action-time-combo-align">
+          <span class="action-time-name">综合合轴</span>
+          <span class="action-time-value">−{{ fmt(dynamicComboAlignSeconds, 1) }}s</span>
+          <span class="action-time-count"></span>
+          <span class="action-time-detail">
+            整槽按合轴吸收率被队友并行，不归属到具体招式（故不画进上方时间条）
+          </span>
+        </div>
       </div>
       <div class="time-note">
         上方动作行显示占用操作时间，即该动作前台时间扣除合轴时间后的结果；原始动作前台与合轴扣除仍在招式执行计划中保留。
+        「综合合轴」是整槽统筹量（按合轴吸收率被队友并行让出的秒数），不属于任何单一招式，故单独列一行、不计入时间条。
       </div>
     </div>
 
@@ -337,7 +350,7 @@ import { computed, h } from 'vue'
 import { NCard, NTag, NDataTable, type TagProps, type DataTableColumns } from 'naive-ui'
 import type { CharacterResourceResult, StunPoolResult, AnomalyPoolResult, SkillExecution, AnomalyEventExecution } from '@/types/resource'
 import { fmt } from '@/utils/format'
-import { buildActionOperationRows, buildTimeChartRows } from '@/composables/resourceCard/actionOperationRows'
+import { buildActionOperationRows, buildTimeChartRows, dynamicComboAlignSecondsOf } from '@/composables/resourceCard/actionOperationRows'
 import { damageElementLabel as elementLabel, SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import { agentResourceSections, agentResultCardCorrosion, crossAgentEnergyLabels } from '@/composables/agentMechanicView'
 import { useConfigStore } from '@/stores/config'
@@ -449,6 +462,12 @@ function countText(count: number): string {
 
 const actionOperationRows = computed(() => buildActionOperationRows(props.result))
 const timeChartRows = computed(() => buildTimeChartRows(props.result))
+
+/**
+ * 综合合轴（动态合轴吸收）秒数：动作清单下方那行的读数。
+ * 只读引擎实际值 `dynamicComboAlignSeconds`（不按吸收比重算——咬合支下吸收量 < 容量，页面重算会分叉）。
+ */
+const dynamicComboAlignSeconds = computed(() => dynamicComboAlignSecondsOf(props.result))
 
 const chartTotalTime = computed(() => {
   return timeChartRows.value.reduce((sum, row) => sum + row.time, 0)
@@ -883,6 +902,19 @@ const anomalyEventExecutionsData = computed(() => {
 .action-time-detail {
   color: var(--wa-320);
   font-size: 11px;
+}
+
+/* 「综合合轴」行：与各动作行同表，但性质是统筹量（不属于任何一招）⇒ 上虚线分隔 + 淡底，
+   让读者一眼看出它不是「某一招的合轴」。色值全走 --wa-* 令牌（双主题通用）。 */
+.action-time-combo-align {
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--line);
+  color: var(--fg-3);
+}
+
+.action-time-combo-align .action-time-name {
+  color: var(--fg-2);
 }
 
 .time-note {
