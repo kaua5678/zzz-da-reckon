@@ -35,6 +35,24 @@
           }
         },
         {
+          "id": "miyabi_ex_special_frost_fall_gain",
+          "trigger": "强化特殊技发动时，获得 2 点[落霜]（追击段再 +2）（skill.special.description）",
+          "countSource": "exSpecialCount",
+          "amountPerCount": 2,
+          "formula": "强化特殊技次数 × 2（追击是同一个「再次点按」的独立发动，次数已含在 exSpecialCount 里）",
+          "status": "implemented",
+          "note": "原文（skill.special.description[1]）：「能量足够时，点按 发动：…招式发动时，获得2点[落霜]；…招式发动后，能量足够时，再次点按 发动：…招式发动时，获得2点[落霜]」。引擎的 exSpecialCount 已经是「付费强特次数」（每 40 能量一次），追击段不另计次数 ⇒ 本条按 exSpecialCount × 2 计。修复前本条**整块缺失**（落霜只有紊乱/霜灼·破/C2 三条），实测雅南柚队 20 次强特 = 40 点落霜被丢掉。"
+        },
+        {
+          "id": "miyabi_ultimate_frost_fall_gain",
+          "trigger": "终结技发动时，获得 3 点[落霜]（skill.chain.description[1]）",
+          "countSource": "ultimateCount",
+          "amountPerCount": 3,
+          "formula": "终结技次数 × 3",
+          "status": "implemented",
+          "note": "原文：「喧响等级达到[极]时，点按 发动：…招式发动时，获得3点[落霜]，自身造成的冰属性伤害提升30%，持续12秒」。修复前本条**整块缺失**。"
+        },
+        {
           "id": "miyabi_frostburn_break_frost_fall_gain",
           "trigger": "触发[霜灼·破]时，星见雅获得 1 点[落霜]，10 秒内最多触发一次（passive.level.1091507.desc[1] 末句）",
           "countSource": "frostburnBreakCount",

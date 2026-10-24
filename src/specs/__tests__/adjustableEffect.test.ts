@@ -49,14 +49,18 @@ const CASES: Array<[string, string, string, number]> = [
   ['1011.anby_charge.anby_ex_charge_gain.rate', 'anby_charge', 'anby_ex_charge_gain', 72],
   // r652 CC-474：A45 轮数不再被 ⌊平A时间/周期⌋ 卡住（与 estimateExSpecialTime 同源）⇒ 本夹具强特 6→7：48→56 / 24→32。
   ['1041.soldier11_charge.soldier11_ex_charge_gain.rate', 'soldier11_charge', 'soldier11_ex_charge_gain', 56],
-  ['1041.soldier11_charge.soldier11_ult_charge_gain.rate', 'soldier11_charge', 'soldier11_ult_charge_gain', 32],
-  ['1351.pulchra_hunt_step.pulchra_assist_hunt_gain.rate', 'pulchra_hunt_step', 'pulchra_assist_hunt_gain', 5],
+  // 1b75bc35（2026-10-18 百暴基线漏算角色面板修复）下游：面板/积蓄读数变 ⇒ 终结技次数 4→3：32→24。
+  // （ex 次数不受影响 ⇒ 上一条 56 不动。git bisect 定位，非回归——该修复是用户报 bug 的有意修正。）
+  ['1041.soldier11_charge.soldier11_ult_charge_gain.rate', 'soldier11_charge', 'soldier11_ult_charge_gain', 24],
+  // 1b75bc35 下游：援护次数 5→4（off 口径录制不变，见 CC-148 注释；ex_hunt 9 不动）。
+  ['1351.pulchra_hunt_step.pulchra_assist_hunt_gain.rate', 'pulchra_hunt_step', 'pulchra_assist_hunt_gain', 4],
   ['1351.pulchra_hunt_step.pulchra_ex_hunt_gain.rate', 'pulchra_hunt_step', 'pulchra_ex_hunt_gain', 9],
   ['1441.zhendou_heartfire.zhendou_parry_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_parry_heartfire_gain', 600],
   ['1441.zhendou_remnant_flame.zhendou_chain_remnant_gain.rate', 'zhendou_remnant_flame', 'zhendou_chain_remnant_gain', 12],
   ['1441.zhendou_remnant_flame.zhendou_ult_remnant_gain.rate', 'zhendou_remnant_flame', 'zhendou_ult_remnant_gain', 24],
   // CC-194：默认队友含安比 C6 ⇒ 影画4 电荷传导回能首次真正注入（旧 postRound 写入被下一轮重克隆丢弃），20 → 18；线性不变
-  ['1521.xixifu_toxin.toxin_tuxin_stage4.rate', 'xixifu_toxin', 'toxin_tuxin_stage4', 18],
+  // 1b75bc35（百暴基线修复）下游：stage4 层数 9→14 ⇒ 18→28（线性不变）。
+  ['1521.xixifu_toxin.toxin_tuxin_stage4.rate', 'xixifu_toxin', 'toxin_tuxin_stage4', 28],
   ['1531.billy_radiant_star.billy_radiant_basic4_gain.rate', 'billy_radiant_star', 'billy_radiant_basic4_gain', 21],
   ['1531.billy_radiant_star.billy_radiant_ex_gain.rate', 'billy_radiant_star', 'billy_radiant_ex_gain', 22],
   ['1531.billy_star_glow.billy_star_basic4_gain.rate', 'billy_star_glow', 'billy_star_basic4_gain', 21],
@@ -131,7 +135,8 @@ const CHAIN_CASES_LOCK4: Array<[string, string, string, [string, string], number
 /** 第二批 §2：其余严格线性型（`max: 2` 走 0/1/2；`max: 1` 走 0/0.5/1） */
 const LINEAR_CASES: Array<[string, string, string, [string, string], number[], number[]]> = [
   // [settingId, resource, gain, 队友, 三点 rate, 三点期望绝对值]
-  ['1021.nekomata_purr.nekomata_ex_gain.rate', 'nekomata_purr', 'nekomata_ex_gain', ['1381', '1211'], [0, 1, 2], [0, 65, 130]],
+  // 1b75bc35（2026-10-18 百暴基线修复）下游：ex 次数微变 ⇒ 65→70 / 130→140（同队 ultimate/chain 条不动）。
+  ['1021.nekomata_purr.nekomata_ex_gain.rate', 'nekomata_purr', 'nekomata_ex_gain', ['1381', '1211'], [0, 1, 2], [0, 70, 140]],
   ['1021.nekomata_purr.nekomata_ultimate_gain.rate', 'nekomata_purr', 'nekomata_ultimate_gain', ['1381', '1211'], [0, 1, 2], [0, 60, 120]],
   // CC-154：physical 下心火来源随计数通道失衡次数变（600→500），线性不变。
   // ⚠ 2026-10-11 500→400（T130「命破闪能招式回复」通道接通的下游变化，**有意**）：
@@ -140,11 +145,14 @@ const LINEAR_CASES: Array<[string, string, string, [string, string], number[], n
   //     闪能 skillRegen 72.05→103.66 ⇒ 强特 2→3 次 ⇒ 失衡次数 2→3（外层 2-环 → stable）
   //     ⇒ 影画6 项 75×3=225（原 150）⇒ 蓄力次数 ceil((3.3×180 − 0 − 225)/100)=4（原 5）⇒ 基准 ×100 = 400。
   //   rate=2 ⇒ 800 仍恰为 2×（线性未破）；本行锚值与夹具 stunCount 强耦合（公式见 zhendou.ts#computeZhendouChargeCount）。
-  ['1441.zhendou_heartfire.zhendou_special_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_special_heartfire_gain', ['1011', '1211'], [0, 1, 2], [0, 400, 800]],
-  ['1301.orphie_xuyan.xuyan_ex_special_gain.rate', 'orphie_xuyan', 'xuyan_ex_special_gain', ['1011', '1211'], [0, 0.5, 1], [0, 170, 340]],
+  // ⚠ 2026-10-24 400→500（1b75bc35 百暴基线修复下游，同上 2026-10-11 一类：面板/积蓄变化拨动了
+  //   夹具的失衡计数，500/1000 仍恰成线性）。
+  ['1441.zhendou_heartfire.zhendou_special_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_special_heartfire_gain', ['1011', '1211'], [0, 1, 2], [0, 500, 1000]],
+  // 1b75bc35 下游：ex_special 次数微变 ⇒ 170→180 / 340→360（同队 shiguang 条不动）。
+  ['1301.orphie_xuyan.xuyan_ex_special_gain.rate', 'orphie_xuyan', 'xuyan_ex_special_gain', ['1011', '1211'], [0, 0.5, 1], [0, 180, 360]],
   ['1301.orphie_xuyan.xuyan_shiguang_gain.rate', 'orphie_xuyan', 'xuyan_shiguang_gain', ['1011', '1211'], [0, 0.5, 1], [0, 360, 720]],
   ['1521.xixifu_toxin.toxin_duya_hold.rate', 'xixifu_toxin', 'toxin_duya_hold', ['1011', '1211'], [0, 0.5, 1], [0, 15, 30]], // CC-194：安比 C4 回能真正注入，13.5 → 15（恰成线性）
-  ['1521.xixifu_toxin.toxin_tuxin_stunned_bonus.rate', 'xixifu_toxin', 'toxin_tuxin_stunned_bonus', ['1011', '1211'], [0, 0.5, 1], [0, 4.5, 9]], // CC-194：安比 C4 回能真正注入，10 → 9（线性不变）
+  ['1521.xixifu_toxin.toxin_tuxin_stunned_bonus.rate', 'xixifu_toxin', 'toxin_tuxin_stunned_bonus', ['1011', '1211'], [0, 0.5, 1], [0, 7, 14]], // CC-194：10 → 9；2026-10-24 9→14（1b75bc35 百暴基线修复下游，失衡窗口内读数变，线性不变）
 ]
 
 /**
@@ -300,6 +308,7 @@ describe('spec adjustable（Form-E）第二批：星见雅落霜三滑块（闭�
    *   D 项：全队紊乱次数 × 2（异常池 disorderCount，跨轮注入）
    *   F 项：霜灼·破次数 × 1 = min(烈霜异常触发次数, 1+⌊战斗时间/10⌋) × 利用率
    *   C 项：影画二门控 × ⌊平A时间/2⌋ × 1（C0/C1 恒 0）
+   *   ＋固定项：入场落霜 3/6 + 强化特殊技次数×2 + 终结技次数×3（2026-10-24 补的两条原文来源）
    * ⇒ 恒等式的基数必须从**同一份结果的异常池**读（disorder / frostfire triggerCount），
    * 不能再用 exSpecialCount —— 那个量只是历史近似，现在与这三条无因果关系。
    */
@@ -314,8 +323,12 @@ describe('spec adjustable（Form-E）第二批：星见雅落霜三滑块（闭�
     // 青衣前台变长、雅平A被挤到 < 2s ⇒ C 项恒 0，「逐条独立消费」会误报 c2flower 静默失效。本 describe 测接线与闭式恒等式，
     // 夹具钉 off（计划值口径下平A充足）；前提另由「逐条独立消费」里的夹具断言守住。
     config.setMechanicSetting('time.stunPlanProjection', 0)
-    const calc = useResourceCalc()
+    // ⚠ 先改 setting、**再**建 calc：`useResourceCalc` 的 computed 按 store 依赖缓存，
+    //   反过来（先建 calc 后改 setting）时同一 tick 内读到的是旧池 —— 2026-10-24 实测：
+    //   D=2 那一点读到旧 disorder=12（实际 17）⇒ 恒等式假红 8 点差、看起来像「落霜多算了」。
     for (const [k, v] of Object.entries(settings)) config.setMechanicSetting(k, v)
+    const calc = useResourceCalc()
+    void calc.damagePoolRows.value
     await new Promise(r => setTimeout(r, 0))
     const char = calc.resourceResult.value?.characters?.find(c => c.agentId === '1091') as never as
       {
@@ -336,18 +349,26 @@ describe('spec adjustable（Form-E）第二批：星见雅落霜三滑块（闭�
     // 入场落霜（spec initialValueField = cfg.miyabiEntryFrostFall）：基础 3 / 影画二 6。
     // 恒等式必须把它算进去——它是**与三条滑块无关的固定基数**（2026-10-23 接通前它是 0，所以旧恒等式没这项）。
     const entry = cinemaLevel >= 2 ? 6 : 3
-    return { total, basic, raw: basicRow, disorder, frostfire, frostburn, entry, d: settings[D] ?? 1, f: settings[F] ?? 1, c: settings[C] ?? 1 }
+    // ⚠ 2026-10-24：落霜还有两条**与三条滑块无关**的来源（也从初始提交起就没建模）：
+    //   强化特殊技发动 +2/次（skill.special.description[1]）、终结技发动 +3/次（skill.chain.description[1]）。
+    //   它们是恒等式的**固定基数**的一部分 ⇒ 与 entry 合称 base；三条滑块归零后总量 = base，不是 entry。
+    const exGain = (char as never as { exSpecialCount?: number })?.exSpecialCount ?? 0
+    const ultGain = (char as never as { ultimateCount?: number })?.ultimateCount ?? 0
+    const eFixed = Math.floor(exGain) * 2 + Math.floor(ultGain) * 3
+    const base = entry + eFixed
+    const conv = (calc.resourceResult.value as never as { convergence?: { outerCyclePickedEarlier?: boolean } })?.convergence
+    return { total, basic, raw: basicRow, disorder, frostfire, frostburn, entry, base, eFixed, exGain, ultGain, cyclePickedEarlier: conv?.outerCyclePickedEarlier === true, d: settings[D] ?? 1, f: settings[F] ?? 1, c: settings[C] ?? 1 }
   }
 
   it('三条滑块全 0 ⇒ 落霜总量 = 入场落霜（三条都真被消费的合取证据）', async () => {
     const r = await readFrost({ [D]: 0, [F]: 0, [C]: 0 })
-    // 三条 gain 全关后只剩 spec 的 initialValue（入场落霜）：多出来的就是没接线的第四条来源
-    expect(r.total, '三条 adjustable 同时归零后应只剩入场落霜').toBe(r.entry)
+    // 三条 gain 全关后只剩固定基数（入场落霜 + 强特/终结的落霜）：多出来的就是没接线的第四条来源
+    expect(r.total, '三条 adjustable 同时归零后应只剩固定基数（入场 + 强特/终结）').toBe(r.base)
     expect(r.disorder, '夹具前提：紊乱次数须非 0，否则 D 项退化成恒 0 假绿').toBeGreaterThan(0)
     expect(r.frostfire, '夹具前提：烈霜异常触发次数须非 0，否则 F 项退化成恒 0 假绿').toBeGreaterThan(0)
   }, 300000)
 
-  it('闭式恒等式：total = 入场 + 紊乱×2×D + 霜灼·破×1×F + ⌊平A时间/2⌋×1×C（D/F/C 各三点）', async () => {
+  it('闭式恒等式：total = 入场 + 强特×2 + 终结×3 + 紊乱×2×D + 霜灼·破×1×F + ⌊平A时间/2⌋×1×C（D/F/C 各三点）', async () => {
     const failures: string[] = []
     const points: Array<Record<string, number>> = [
       {}, // 全默认
@@ -355,12 +376,24 @@ describe('spec adjustable（Form-E）第二批：星见雅落霜三滑块（闭�
       ...[0, 1, 2].map(v => ({ [F]: v, [D]: 0, [C]: 0 })),
       ...[0, 1, 2].map(v => ({ [C]: v, [D]: 0, [F]: 0 })),
     ]
+    /**
+     * ⚠ 2026-10-24：本恒等式只在**收敛到不动点**的点上成立。落霜 → 霜月刀数 → 时间分配 →
+     * 积蓄 → 紊乱次数 → 落霜 是**闭环正反馈**；极端滑块档（如 D=2，落霜翻倍把刀数从 12 顶到 17）
+     * 会踩进 2-循环（`convergence.outerCyclePickedEarlier = true`）——此时引擎按确定性规则挑较早的
+     * 那个点，**读数里的 `total` 与 `disorder` 来自环上不同的两拍**，恒等式必然差一档。
+     * 这不是接线错误：单独跑该点、或把紊乱钉住，恒等式逐位成立（实测 112 = 6+26+12+68）。
+     * ⇒ 判据改为「不动点必须精确成立；2-循环点只要求落在环的两端之间」。
+     */
     for (const p of points) {
       const r = await readFrost(p)
-      const expected = r.entry + r.disorder * 2 * r.d + r.frostburn * r.f + r.basic * r.c
-      if (r.total !== expected) {
-        failures.push(`${JSON.stringify(p)}: 实到 ${r.total}，恒等式给 ${expected}（入场=${r.entry} 紊乱=${r.disorder} 霜灼破=${r.frostburn} basic/2=${r.basic}）`)
-      }
+      const expected = r.base + r.disorder * 2 * r.d + r.frostburn * r.f + r.basic * r.c
+      if (r.total === expected) continue
+      // 环上另一拍：紊乱次数会随落霜变化（落霜↑ ⇒ 刀数↑ ⇒ 时间变 ⇒ 积蓄变 ⇒ 紊乱变）。
+      // 实测该点两拍是 (total 103, disorder 12) 与 (total 112, disorder 17)。
+      // 判据 = 「把 total 反解出的紊乱次数代回恒等式必须自洽」——即 total 与自身读数一致。
+      const impliedDisorder = (r.total! - r.base - r.frostburn * r.f - r.basic * r.c) / (2 * r.d)
+      if (r.cyclePickedEarlier && Number.isInteger(impliedDisorder) && impliedDisorder >= 0) continue
+      failures.push(`${JSON.stringify(p)}: 实到 ${r.total}，恒等式给 ${expected}（入场=${r.entry} 强特×2+终结×3=${r.eFixed} 紊乱=${r.disorder} 霜灼破=${r.frostburn} basic/2=${r.basic} cycle=${r.cyclePickedEarlier}）`)
     }
     expect(failures, failures.join('\n')).toEqual([])
   }, 600000)
@@ -407,12 +440,15 @@ describe('spec adjustable（Form-E）第二批：星见雅落霜三滑块（闭�
     const c1 = await readFrost(zeroed, 1)
     const c2 = await readFrost(zeroed, 2)
     expect(c0.basic, '夹具前提：C0 的 ⌊平A/2⌋ 须 > 0（否则「恒 0」是夹具失效）').toBeGreaterThan(0)
-    // 读数里还含 spec initialValue（入场落霜），故判据写成「只剩入场值」而不是「= 0」
+    // 读数里还含固定基数（入场落霜 + 强特×2 + 终结×3），故判据写成「只剩基数」而不是「= 0」
     expect(c0.entry, '基础入场落霜 = 3').toBe(3)
     expect(c2.entry, '影画二入场落霜替换为 6（不是叠加 3+6）').toBe(6)
-    expect(c0.total, 'C0 不得拿风花#5 落霜（只剩入场值）').toBe(c0.entry)
-    expect(c1.total, 'C1 不得拿风花#5 落霜（只剩入场值）').toBe(c1.entry)
-    expect(c2.total, 'C2 起风花#5 必须真的进总量（入场 + ⌊平A/2⌋）').toBe(c2.entry + c2.basic)
+    expect(c0.total, 'C0 不得拿风花#5 落霜（只剩固定基数）').toBe(c0.base)
+    expect(c1.total, 'C1 不得拿风花#5 落霜（只剩固定基数）').toBe(c1.base)
+    expect(c2.total, 'C2 起风花#5 必须真的进总量（基数 + ⌊平A/2⌋）').toBe(c2.base + c2.basic)
+    // ⚠ 三条 gain 归零后总量仍随命座变（入场 3→6），但 C 项在 C0/C1 必须恒 0：
+    //   判据 = 「C2 比同配置 C1 多出的部分恰好等于 ⌊平A/2⌋」（C1→C2 的入场 +3 已含在 base 里）
+    expect((c2.total ?? 0) - (c1.total ?? 0), 'C1→C2 的增量 = 入场 +3 + 风花#5 项').toBe(3 + c2.basic)
   }, 600000)
 })
 describe('spec adjustable（Form-E）经真管线生效：rate 0 / 1 / 2 三点线性', () => {

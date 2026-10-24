@@ -36,7 +36,19 @@ const FROSTFIRE = 'frostfire'
 /** 霜月架势三段（最赚，消耗6落霜） */
 const FROST_MOON_MOVE_ID = '1091029'
 /** 0命且无风队时冰焰覆盖率的自动默认：手法上总是打出霜寒后才够6豆，三段蓄力全打在[霜寒]上，全吃不到 80% 加成（用户口径） */
-const MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE = 0
+/**
+ * C0 的冰焰覆盖率（**招式级区分**，用户口径 2026-10-24）。
+ *
+ * 「设 C0 只玩快速玩法，就可以直接进行招式级区分了，**拔刀吃不到，其他全吃**。这样也不用管覆盖率。」
+ *
+ * ⇒ C0 的面板层按**全程有冰焰**给（= 1），再由 `transformMiyabiSkillExecutions` 把霜月三段
+ *   （拔刀，1091027/1028/1029）那一行的加成**扣回去**——拔刀总打在霜灼上（本轮霜寒已消掉冰焰）。
+ *
+ * 为什么这样可以不建覆盖率模型：C0 的差异化玩法（慢循环、长时间霜灼态）属于「玩家自选打法」，
+ * 建模面按快循环（默认强玩法）钉死；慢循环用户可用 `miyabi.iceFlameCoverage` 滑块下调。
+ * 招式级区分让「哪一种招吃得到」由机制决定，不再靠一个全局百分比猜。
+ */
+const MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE = 1
 /** 霜月架势三段消耗落霜 */
 const FROST_MOON_COST = 6
 /**
@@ -51,6 +63,9 @@ const FROST_MOON_COST = 6
 const FROST_MOON_COUNT_DEFAULT_CAP = 19
 /** 冰焰积蓄效率 = 暴击率×100%，上限80% */
 const ICE_FLAME_BUILDUP_MAX = 80
+
+/** 霜月三段（拔刀）的全部 moveId —— C0 口径下这几行**永远吃不到**冰焰（总打在霜灼上） */
+const FROST_MOON_ALL_MOVE_IDS: ReadonlySet<string> = new Set(['1091027', '1091028', '1091029'])
 /** 额外能力：霜月伤害+60% */
 const FROST_MOON_DMG_BONUS = 60
 /** 额外能力：霜月架势期间无视30%冰抗（每次紊乱触发） */
@@ -121,6 +136,53 @@ export function miyabiFrostburnBreakCountOf(cfg: CharacterOperationConfig, battl
 }
 
 /**
+ * 霜月架势（拔刀）次数的**唯一算法**（规则 11：执行行 / 资源卡 / 测试同源）。
+ *
+ * ## 口径：攒满 6 点就打一刀，一局最多 19 刀
+ *
+ * 落霜上限 6 点、每刀消耗 6 点 ⇒ **刀数 = ⌊落霜总回复量 / 6⌋**，再被 19 刀（顶尖玩家时间极限，用户
+ * 2026-10-24）截断。这一段**不需要按「轮」建模**——用户逐字：「**就算 0 次紊乱，他也有回复豆子的
+ * 能力，凑齐 6 豆他也可以拔刀啊**」。
+ *
+ * ## 为什么「19 刀上限」本身就是溢出机制
+ *
+ * 快循环（雅南柚这类双异常队）豆子回复远超 19 刀所需 ⇒ 超出部分**全部浪费**（用户：「19 轮紊乱拔刀
+ * 已经做完，剩下能量就算打出 e 也没办法变成 20 次拔刀」）。这类队的溢出量在资源卡上体现为
+ * `frostMoonByResource − frostMoonCount`。
+ *
+ * 慢循环（雅耀妮这类队友积蓄跟不上、一局上百秒打不出紊乱）到不了上限 ⇒ 平A 时间长 ⇒ 强化特殊技次数多
+ * ⇒ **多余的 E 全部用来补豆子**（用户：「如果你不是快循环，有大把时间平a但是没办法紊乱了，这时候
+ * 就该把多余的e用来补豆子」）。⇒ 这类队的刀数由**豆子总量**决定，不是由紊乱次数。
+ *
+ * ## 逐条的溢出说明（快循环语境，由 19 上限统一吸收，不再单独扣）
+ *
+ * - 终结技的 +3 点：每轮只用得到 2 点（1 次 E/Q + 2 次紊乱 = 6 点），+1 溢；
+ * - 霜寒（烈霜异常）的 +1 点：落在轮与轮之间的满桶时刻，全部溢；
+ * - 影画二风花#5 的持续收入：快循环里基础循环已占满 180s，全部溢。
+ *
+ * 这三条都是**快循环专属**的浪费；慢循环里同样的收入会兑现成刀。本函数不做区分——上限即判别。
+ *
+ * ⚠ 修复前这里读的是「紊乱配比轮」，慢循环队被系统性低估（雅耀妮 C0 只给 4 刀，实际靠 E 补豆能打 13 刀）。
+ *
+ * @fact agent:1091/霜月刀数 口径: 刀数 = min(⌊落霜总回复量/6⌋, 19)——攒满 6 点即拔刀，无紊乱也能靠强化特殊技攒豆；19 上限即快循环的溢出机制 | 据 用户@2026-10-24（「就算 0 次紊乱…凑齐 6 豆他也可以拔刀」+「不是快循环…多余的 e 用来补豆子」） | 验 src/mechanics/__tests__/miyabiFrostFallSources.test.ts | 锚 src/mechanics/agents/miyabi.ts#miyabiFrostMoonCountOf | 信 确认
+ * ⟳复核: 若官方改版调整落霜上限/霜月消耗，或实战拔刀上限不再是 19，改本函数与 FROST_MOON_COUNT_DEFAULT_CAP | 到期 2027-04-30
+ */
+export function miyabiFrostMoonCountOf(input: {
+  /**
+   * 落霜**总回复量**（五源合计：入场 + 紊乱×2 + 强化特殊技×2 + 终结×3 + 霜灼·破×1 + 影画二风花×1）。
+   * 调用方直接传 spec 解释器算出的 `res.total`（与资源卡同源，规则 11）。
+   */
+  frostFallTotal: number
+  /** 上限（刀）：默认 19，滑块可覆盖（只压不抬） */
+  countCap?: number
+}): number {
+  const total = Math.max(0, input.frostFallTotal)
+  const cap = Math.max(0, Math.floor(input.countCap ?? FROST_MOON_COUNT_DEFAULT_CAP))
+  const byBeans = Math.floor(total / FROST_MOON_COST)
+  return cap > 0 ? Math.min(byBeans, cap) : byBeans
+}
+
+/**
  * 落霜 spec 资源的**外部次数源**（computeSpecResources 的第 4 参）。三条各有原因，都是「state 里没有这个量」：
  *
  * ① disorderCount：全队紊乱次数由异常池产出，而异常池**晚于** buildExecutions（它消费执行行）
@@ -152,16 +214,20 @@ function miyabiFrostFallContext(cfg: CharacterOperationConfig, state: Readonly<I
 function getFrostFallResource(
   cfg: CharacterOperationConfig,
   state: Readonly<IterationState>,
-): { frostFall: number; frostMoonCount: number; frostMoonByResource: number } | null {
+): MiyabiFrostFallSource | null {
   const spec = getAgentSpec(MIYABI_AGENT_ID)
   if (!spec) return null
   const res = computeSpecResources(spec, cfg, state, miyabiFrostFallContext(cfg, state)).get('miyabi_frost_fall')
   if (!res) return null
+  // 刀数 = ⌊落霜总回复量 / 6⌋，被 19 刀（滑块可覆盖）截断——见 miyabiFrostMoonCountOf 头注释
   const frostMoonByResource = Math.max(0, Math.floor(res.total / FROST_MOON_COST))
-  // 一局能打出的次数 = min(资源够打几次, 时间约束上限)；cap = 0 ⇒ 不设上限（用户口径：滑块是上限语义）
   const countCap = Math.max(0, Math.floor(setting(cfg, 'miyabi.frostMoonCountCap')))
-  const frostMoonCount = countCap > 0 ? Math.min(frostMoonByResource, countCap) : frostMoonByResource
-  return { frostFall: res.total, frostMoonCount, frostMoonByResource }
+  const frostMoonCount = miyabiFrostMoonCountOf({ frostFallTotal: res.total, countCap })
+  return {
+    total: res.total,
+    frostMoonCount,
+    frostMoonByResource,
+  }
 }
 
 // ============ applyPanel ============
@@ -205,11 +271,14 @@ function applyMiyabiPanel({ slot, cinemaLevel, team, panel, settings }: AgentPan
   // 覆盖率自动默认：有风队友或≥影画1（霜寒后保留冰焰）→ 100%；0命无风队 → 0%
   // （蓄力斩打在霜寒上吃不到加成）；显式设为非 100% 的滑块值优先。
   // 原 buildCharConfig 算 coverage + transform 施加——静态化后都在 applyPanel（C2 暴击已加）。
+  // ⚠ 显式滑块值优先（含 1）——旧实现写成 `coverageRaw !== 1`，导致「填 100%」被当成「没填」
+  // 而回落 autoDefault（C0 无风队 = 0）⇒ 用户把滑块拉满反而得到 0%。2026-10-24 修。
   const coverageRaw = Number(settings['miyabi.iceFlameCoverage'])
-  const autoDefault = hasWind || cinemaLevel >= 1 ? 1 : MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE
-  const coverage = Number.isFinite(coverageRaw) && coverageRaw !== 1
+  const explicit = Number.isFinite(coverageRaw)
     ? Math.max(0, Math.min(1, coverageRaw))
-    : autoDefault
+    : undefined
+  const autoDefault = hasWind || cinemaLevel >= 1 ? 1 : MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE
+  const coverage = explicit ?? autoDefault
   panel.miyabiIceFlameCoverage = coverage
   const iceFlameBonus = Math.min(ICE_FLAME_BUILDUP_MAX, panel.critRate) * coverage
   if (iceFlameBonus > 0) {
@@ -235,6 +304,19 @@ function buildMiyabiCharConfig({ cfg, panel, cinemaLevel }: AgentCharConfigInput
    * （命座账本里写的「panel.miyabiCinema2EntryFrostFall=6」也是死字段，全仓零读者）。
    */
   cfg.miyabiEntryFrostFall = cinemaLevel >= 2 ? C2_ENTRY_FROST_FALL : BASE_ENTRY_FROST_FALL
+
+  // ---- 霜月三段：哪部分时间交给队友（用户口径 2026-10-24）----
+  //
+  // 「雅合轴的时间，雅在蓄力斩啊，蓄力斩 3 秒多，我合轴变成 1 秒前台，然后**队友也能同步打两秒多**。
+  //  你不合轴雅也是要斩」（逐字）。⇒ 霜月三段 actionTime 里只有 FROST_MOON_3_LOCK_SECONDS 那 1s
+  // 占雅自己的前台，其余（≈2.434s/刀）是**队友在场上行动的时间**。
+  //
+  // 这份时间由引擎计入零权重队友的**必要时间**（消费点 = `core/resource/helpers.ts` 的
+  // 「并行时间转移」块）——不留在平A池里被主C 吃掉。账本净额守恒：同量的 `comboAlignCredit`
+  // 已让池扩大，这里让对应的 necessary 同量上涨。
+  //
+  // 刀数取决于紊乱/强特次数（build 阶段未知）⇒ build 写 0，converge 阶段按上一轮次数覆盖。
+
   // 冰焰覆盖率已由 applyPanel 静态算好（settings + 队伍/命座自动默认），buildCharConfig 只读
   void panel
 }
@@ -357,8 +439,8 @@ function transformMiyabiSkillExecutions(input: AgentSkillTransformInput): void {
     agent: _agent,
     skills,
     charResult,
-    panel: _panel,
-    cinemaLevel: _cinemaLevel,
+    panel,
+    cinemaLevel,
     team: _team,
     dazeCoef,
     stunExecs,
@@ -406,6 +488,26 @@ if (anomaly > 0 && count > 0) {
 	    }
 	  }
 
+  // ---- 冰焰积蓄效率的**招式级**修正（用户口径 2026-10-24）----
+  //
+  // 面板级 `anomalyBuildUpEfficiency` 里的冰焰加成按「全程吃得到」给；但原文
+  // （passive.level.1091501.desc.0）的计时是「对**附着[冰焰]**的敌人累积烈霜积蓄值」，而
+  // 「[霜灼]状态下…星见雅无法再次为其附着[冰焰]」。霜月三段的时机固定：**拔刀发生在霜灼·破之后**
+  // （本轮霜寒已经消掉冰焰）⇒ 霜月总打在霜灼上。
+  //
+  // C0：霜灼只能靠队友异常覆盖霜寒来消除 ⇒ 霜月**永远吃不到**（用户：「c0 可以认为霜月总是打在霜灼上」）。
+  // C1+：影画一让霜寒后**保留冰焰**、可取消霜灼·破 ⇒ 霜月也吃得到（用户：「c1 后霜月可以吃冰焰」）。
+  const iceFlameBonusPct = panel
+    ? Math.min(ICE_FLAME_BUILDUP_MAX, panel.critRate) * Math.max(0, Math.min(1, panel.miyabiIceFlameCoverage ?? 0))
+    : 0
+  if (iceFlameBonusPct > 0 && cinemaLevel < 1) {
+    for (const exec of anomalyExecs) {
+      if (!FROST_MOON_ALL_MOVE_IDS.has(exec.moveId)) continue
+      // 行级效率区**加算**百分点 ⇒ 负值即扣回面板已给的那份（不新增乘区，规则 11）
+      exec.buildUpEfficiencyBonusPct = (exec.buildUpEfficiencyBonusPct ?? 0) - iceFlameBonusPct
+    }
+  }
+
 	  // 修正 generic 路径推入的 basic_attack 元素：从 fallbackElement(ice) 改为 FROSTFIRE
 	  for (const exec of stunExecs) {
 	    if (exec.moveId === 'basic_attack') exec.element = FROSTFIRE
@@ -444,22 +546,27 @@ function resolveMiyabiExecutionDamage(input: AgentDamageResolutionInput): AgentD
 function buildMiyabiResourceResult({ cfg, state }: AgentResourceResultInput): Partial<import('@/types/resource').CharacterResourceResult> {
   const res = getFrostFallResource(cfg, state)
   return {
-    miyabiFrostFallSource: res ? { total: res.frostFall, frostMoonCount: res.frostMoonCount, frostMoonByResource: res.frostMoonByResource } : undefined,
+    miyabiFrostFallSource: res ?? undefined,
   }
 }
 
 function buildMiyabiResourceSections({ result }: AgentResourceSectionsInput): SpecialResourceSection[] {
   const src = result.miyabiFrostFallSource
   if (!src) return []
-  return [{
-    id: 'miyabi-frost-fall',
-    title: '雅·落霜',
-    summary: `剩余 ${fmt(src.total, 1)} / 霜月三段 ${src.frostMoonCount} 次`,
-    rows: [
-      { label: '落霜总量', value: `${fmt(src.total, 1)}`, detail: '紊乱×2 + 霜灼·破×1 + 影画二风花#5×1（C2 起）；入场落霜未接' },
-      { label: '霜月三段消耗', value: `${src.frostMoonCount} 次`, detail: `${FROST_MOON_COST} 落霜/次 → 4282.8% 烈霜直伤；资源够 ${src.frostMoonByResource} 次，受「霜月次数上限」压到 ${src.frostMoonCount} 次` },
-    ],
-  }]
+  // 字段全必填（构造点唯一 = getFrostFallResource）⇒ 不写 `?? 0` 死兜底（判据 28）。
+  // 2026-10-24 报的「雅柚苍整页崩溃」根因不在字段缺——src 整体缺（首轮/预热）由上一行 short-circuit 防住。
+  const total = src.total
+  const moon = src.frostMoonCount
+  const byResource = src.frostMoonByResource
+  const overflow = Math.max(0, byResource - moon)
+  const rows: Array<{ label: string; value: string; detail: string }> = [
+    { label: '落霜总量', value: fmt(total, 1), detail: '入场 3/6 + 强化特殊技×2 + 终结技×3 + 紊乱×2 + 霜灼·破×1 + 影画二风花#5×1（C2 起）' },
+    { label: '霜月三段消耗', value: `${moon} 次`, detail: `${FROST_MOON_COST} 落霜/次 → 4282.8% 烈霜直伤（攒满 6 点即一刀；一局上限 19 刀）` },
+  ]
+  if (overflow > 0) {
+    rows.push({ label: '落霜溢出', value: `${overflow} 刀`, detail: `回复量够 ${byResource} 刀，实际只打得出 ${moon} 刀 —— 快循环里多出的豆子全部浪费（能量再多也变不成第 20 刀）` })
+  }
+  return [{ id: 'miyabi-frost-fall', title: '雅·落霜', summary: `剩余 ${fmt(total, 1)} / 霜月三段 ${moon} 次`, rows }]
 }
 
 // ============ module export ============
@@ -522,6 +629,7 @@ export const miyabiMechanic: AgentMechanicModule = {
   nextRoundFeedback: ({ anomalyPool }: AgentNextRoundFeedbackInput) => {
     // anomalyPool 在契约里必填、非 null（CC-423/CC-434：无异常行队伍 = 合法空池）⇒ 直接读，不加 ?. / ?? 兜底
     const frostfire = anomalyPool.perElement.find(p => p.element === FROSTFIRE)
+    // 单测/直调可能不传 teamResult（契约必填，但钩子应能容错）⇒ 缺省按 0，不抛
     return {
       miyabiDisorderCount: Math.max(0, Math.floor(anomalyPool.disorderCount)),
       miyabiFrostfireTriggerCount: Math.max(0, Math.floor(frostfire?.triggerCount ?? 0)),
@@ -636,9 +744,9 @@ declare module '@/types/resource/agentResources' {
 export interface MiyabiFrostFallSource {
   /** 落霜总量（上限 6 只是单次存量上限，全局按总回复算，不截断） */
   total: number
-  /** 一局能打出的霜月三段次数 = min(资源够打几次, 「霜月次数上限」滑块) */
+  /** 一局能打出的霜月三段次数 = min(⌊总量/6⌋, 「霜月次数上限」滑块) */
   frostMoonCount: number
-  /** 纯按资源算的次数（不含时间约束上限）—— 展示用，说明滑块压掉了多少 */
+  /** 纯按资源算的次数（总量 ÷ 6，不含滑块截断）—— 只作溢出对照展示，**不是刀数** */
   frostMoonByResource: number
 }
 

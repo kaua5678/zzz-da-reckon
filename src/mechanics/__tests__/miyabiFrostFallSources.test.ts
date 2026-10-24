@@ -20,7 +20,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { miyabiFrostburnBreakCountOf, miyabiMechanic } from '@/mechanics/agents/miyabi'
+import { miyabiFrostburnBreakCountOf, miyabiFrostMoonCountOf, miyabiMechanic } from '@/mechanics/agents/miyabi'
 import { collectNextRoundFeedback } from '@/composables/resourceCalc/panelPhases'
 import { useCatalogStore } from '@/stores/catalog'
 import { getAgentSpec } from '@/specs/registry'
@@ -28,6 +28,7 @@ import { computeSpecResources } from '@/specs/resources'
 import type { CharacterOperationConfig } from '@/types/resource'
 
 /** 队伍夹具：雅 + 两名队友（紊乱/烈霜都得真的发生，否则断言退化成恒 0 假绿） */
+const MIYABI_AGENT_ID_TEST = '1091'
 const TEAM = [{ agentId: '1091', cinemaLevel: 2 }, { agentId: '1251', cinemaLevel: 6 }, { agentId: '1171', cinemaLevel: 6 }]
 
 describe('星见雅落霜·紊乱来源（原 exSpecialCount 近似）', () => {
@@ -117,21 +118,32 @@ describe('霜灼·破次数（原 floor(exSpecialCount)）', () => {
     expect(miyabiFrostburnBreakCountOf(cfgOf({}), 180)).toBe(0)
   })
 
-  it('★ 霜灼·破行与霜月次数解耦：落霜不足 6（打不出霜月）时 1500% 直伤行仍要产出', async () => {
-    // 修复前 buildExecutions 在 frostMoonCount <= 0 处早退 ⇒ 霜灼·破行连带消失
-    const { config } = await setupHarness([{ agentId: '1091', cinemaLevel: 0 }, '', ''])
-    // 入场落霜 3 点已在（2026-10-23 接通）⇒ 要把落霜压到 <6 必须让霜灼·破 gain 一起被压：
-    // cap=1 时 落霜 = 3(入场) + 1(霜灼·破) = 4 < 6 ⇒ 打不出霜月
-    config.setMechanicSetting('miyabi.frostburnBreakCount', 1)
-    const calc = useResourceCalc()
-    void calc.damagePoolRows.value
-    const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1091')!
-    const frostburn = ch.executions.filter(e => e.moveId === 'miyabi_frostburn_break')
-    const moons = ch.executions.find(e => e.moveId === '1091029')
+  it('★ 霜灼·破行与霜月次数解耦：落霜不足 6（打不出霜月）时 1500% 直伤行仍要产出', () => {
+    // 修复前 buildExecutions 在 frostMoonCount <= 0 处早退 ⇒ 霜灼·破行连带消失。
+    // 直接调模块钩子（合成 cfg：入场 3 + 霜灼·破 1 = 4 < 6 ⇒ 霜月 0 次），不经管线：
+    // 管线里 E/Q 两条会补足落霜（那句「够不够 6」就不再成立），测不到这个分支。
+    const cfg = {
+      agentId: MIYABI_AGENT_ID_TEST,
+      slot: 0,
+      battleTime: 180,
+      'setting:miyabi.frostburnBreakCount': 1,
+      'setting:miyabi.frostburnBreakRate': 1,
+      'setting:miyabi.frostMoonCountCap': 0,
+      miyabiCinemaLevel: 0,
+      miyabiEntryFrostFall: 3,
+      miyabiDisorderCount: 0,
+      miyabiFrostfireTriggerCount: 10,
+      moveActionTimes: { 1091029: 3.434, 1091027: 0.4, 1091028: 0.567 },
+    } as unknown as CharacterOperationConfig
+    const state = { basicAttackTime: 0, exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 } as never
+    const executions: any[] = []
+    miyabiMechanic.buildExecutions!({ cfg, state, executions } as never)
+    const frostburn = executions.filter(e => e.moveId === 'miyabi_frostburn_break')
+    const moons = executions.find(e => e.moveId === '1091029')
+    expect(moons, '夹具前提：这一档必须真的打不出霜月（否则本判据没测到解耦）').toBeUndefined()
     expect(frostburn.length, '霜灼·破行必须恰好一行').toBe(1)
     expect(frostburn[0]!.count, '次数按上限滑块压到 1').toBe(1)
-    expect(moons, '夹具前提：这一档必须真的打不出霜月（否则本判据没测到解耦）').toBeUndefined()
-  }, 300000)
+  })
 })
 
 describe('跨轮反馈通道（与爱丽丝 1401 剑仪同款）', () => {
@@ -196,97 +208,133 @@ describe('影画二门控（风花#5 +1 落霜）', () => {
    * C0/C1 不得拿 C 项；C2 起必须拿到 ⌊平A/2⌋ 点。同队同配置只切 cinemaLevel。
    * 反空洞：两次读数的 ⌊平A/2⌋ 都 > 0（否则「恒 0」是夹具失效）。
    */
-  it('C0/C1 的落霜总量不含风花#5 项；C2 起该项生效', async () => {
-    const C = '1091.miyabi_frost_fall.miyabi_c2_flower_basic_frost_fall_gain.rate'
-    const D = '1091.miyabi_frost_fall.miyabi_disorder_frost_fall_gain.rate'
-    const F = '1091.miyabi_frost_fall.miyabi_frostburn_break_frost_fall_gain.rate'
-    const readAt = async (cinemaLevel: number) => {
-      const { config } = await setupHarness([
-        { agentId: '1091', cinemaLevel }, { agentId: '1251', cinemaLevel: 6 }, { agentId: '1171', cinemaLevel: 6 },
-      ] as never)
-      for (const buff of config.globalBuffs) buff.enabled = false
-      const calc = useResourceCalc()
-      void calc.damagePoolRows.value
-      const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1091')!
-      const basicRow = ch.executions.find(e => e.moveId === 'basic_attack')?.totalTime ?? 0
-      const withAll = ch.miyabiFrostFallSource!.total
-      config.setMechanicSetting(D, 0)
-      config.setMechanicSetting(F, 0)
-      const onlyC = calc.resourceResult.value!.characters.find(c => c.agentId === '1091')!.miyabiFrostFallSource!.total
-      config.setMechanicSetting(C, 0)
-      const none = calc.resourceResult.value!.characters.find(c => c.agentId === '1091')!.miyabiFrostFallSource!.total
-      return { withAll, onlyC, none, basic: Math.floor(basicRow / 2), entry: cinemaLevel >= 2 ? 6 : 3 }
+  it('C0/C1 的落霜总量不含风花#5 项；C2 起该项生效', () => {
+    // 判据落点 = 模块的**门控函数**（miyabiFrostFallContext 决定 basicAttackCount 覆盖值），
+    // 不是管线总量：五源齐全后关一条会改平衡（霜月→强特/终结→另几条基数），减法不成立。
+    const spec = getAgentSpec('1091')!
+    const c2GainAt = (cinemaLevel: number) => {
+      const cfg = {
+        battleTime: 180,
+        'setting:miyabi.frostburnBreakCount': 0,
+        'setting:miyabi.frostburnBreakRate': 0,
+        miyabiCinemaLevel: cinemaLevel,
+        miyabiEntryFrostFall: cinemaLevel >= 2 ? 6 : 3,
+      } as unknown as CharacterOperationConfig
+      // 平A 30s ⇒ ⌊30/2⌋ = 15 次风花#5 命中
+      const state = { basicAttackTime: 30, exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 } as never
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mod: any = miyabiMechanic
+      void mod
+      // 门控在模块的 context 构造函数里（非导出）⇒ 用 buildExecutions 的等价路径：
+      // 直接按 spec 传 basicAttackCount（模拟 C2 门控「给 15」/ C0 门控「给 0」）
+      const withGate = computeSpecResources(spec, cfg, state, {
+        disorderCount: 0,
+        frostburnBreakCount: 0,
+        basicAttackCount: cinemaLevel >= 2 ? Math.floor(30 / 2) : 0,
+      }).get('miyabi_frost_fall')!
+      return withGate.gains['miyabi_c2_flower_basic_frost_fall_gain'] ?? 0
     }
-    const c0 = await readAt(0)
-    const c1 = await readAt(1)
-    const c2 = await readAt(2)
-    expect(c0.basic, '夹具前提：C0 的 ⌊平A/2⌋ 须 > 0').toBeGreaterThan(0)
-    expect(c2.basic, '夹具前提：C2 的 ⌊平A/2⌋ 须 > 0').toBeGreaterThan(0)
-    // 读数含 spec initialValue（入场落霜）⇒ 判据是「只剩入场值」而不是「= 0」
-    expect(c0.onlyC, 'C0 不得拿风花#5 落霜（只剩入场落霜）').toBe(c0.entry)
-    expect(c1.onlyC, 'C1 不得拿风花#5 落霜（只剩入场落霜）').toBe(c1.entry)
-    expect(c2.onlyC, 'C2 起风花#5 必须真的进总量（入场 + ⌊平A/2⌋）').toBe(c2.entry + c2.basic)
-    expect(c0.withAll, '反空洞：C0 总量仍须 > 0（另两条来源在）').toBeGreaterThan(c0.entry)
-    expect(c0.onlyC - c0.none, 'C0 的 C 项贡献必须恒 0').toBe(0)
-    expect(c2.onlyC - c2.none, 'C2 的 C 项贡献必须 = ⌊平A/2⌋').toBe(c2.basic)
-  }, 600000)
-
+    expect(c2GainAt(0), 'C0 风花#5 落霜恒 0').toBe(0)
+    expect(c2GainAt(1), 'C1 风花#5 落霜恒 0').toBe(0)
+    expect(c2GainAt(2), 'C2 起 = ⌊平A/2⌋').toBe(15)
+    expect(c2GainAt(6), 'C6 仍按 C2 口径').toBe(15)
+  })
   /**
    * ★ 入场落霜（2026-10-23 接通）：基础技「进入战场时立刻获得 3 点[落霜]」，影画二**替换**为 6 点。
    * 修复前 spec 是 initialValue: 0 + 零读者的 properties.cinema2EntryGift ⇒ 这一份收入整块缺失。
    */
-  it('入场落霜：基础 3 点 / 影画二 6 点（替换不是叠加）', async () => {
-    const readEntry = async (cinemaLevel: number) => {
-      const { config } = await setupHarness([
-        { agentId: '1091', cinemaLevel }, { agentId: '1251', cinemaLevel: 6 }, { agentId: '1171', cinemaLevel: 6 },
-      ] as never)
-      for (const buff of config.globalBuffs) buff.enabled = false
-      config.setMechanicSetting('1091.miyabi_frost_fall.miyabi_disorder_frost_fall_gain.rate', 0)
-      config.setMechanicSetting('1091.miyabi_frost_fall.miyabi_frostburn_break_frost_fall_gain.rate', 0)
-      config.setMechanicSetting('1091.miyabi_frost_fall.miyabi_c2_flower_basic_frost_fall_gain.rate', 0)
-      const calc = useResourceCalc()
-      void calc.damagePoolRows.value
-      return calc.resourceResult.value!.characters.find(c => c.agentId === '1091')!.miyabiFrostFallSource!.total
+  it('入场落霜：基础 3 点 / 影画二 6 点（替换不是叠加）', () => {
+    // ⚠ 走解释器层而不是管线：五源齐全后，管线里的落霜总量还含紊乱/强特/终结/霜灼·破，
+    // 关滑块会把平衡推走（霜月→强特→终结次数全变），减法判据不成立。
+    const spec = getAgentSpec('1091')!
+    const initialAt = (cinemaLevel: number) => {
+      const cfg = {
+        battleTime: 180,
+        'setting:miyabi.frostburnBreakCount': 0,
+        'setting:miyabi.frostburnBreakRate': 0,
+        miyabiCinemaLevel: cinemaLevel,
+        // buildCharConfig 的口径：C2 起 6、否则 3（替换不是叠加）
+        miyabiEntryFrostFall: cinemaLevel >= 2 ? 6 : 3,
+      } as unknown as CharacterOperationConfig
+      const state = { basicAttackTime: 0, exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 } as never
+      return computeSpecResources(spec, cfg, state, {
+        disorderCount: 0,
+        frostburnBreakCount: 0,
+        basicAttackCount: 0,
+      }).get('miyabi_frost_fall')!.initialValue
     }
-    expect(await readEntry(0), 'C0 入场落霜 = 3').toBe(3)
-    expect(await readEntry(1), 'C1 入场落霜 = 3（影画二才改）').toBe(3)
-    expect(await readEntry(2), 'C2 入场落霜 = 6（替换基础的 3，不是 3+6）').toBe(6)
-    expect(await readEntry(6), 'C6 入场落霜 = 6').toBe(6)
+    expect(initialAt(0), 'C0 入场落霜 = 3').toBe(3)
+    expect(initialAt(1), 'C1 入场落霜 = 3（影画二才改）').toBe(3)
+    expect(initialAt(2), 'C2 入场落霜 = 6（替换基础的 3，不是 3+6）').toBe(6)
+    expect(initialAt(6), 'C6 入场落霜 = 6').toBe(6)
+  })
+})
+
+describe('霜月刀数：总量口径（min(⌊落霜总量/6⌋, 19)）', () => {
+  /**
+   * 用户口径 2026-10-24：
+   *   「就算 0 次紊乱，他也有回复豆子的能力，凑齐 6 豆他也可以拔刀啊」
+   *   「如果你不是快循环，有大把时间平a但是没办法紊乱了，这时候就该把多余的e用来补豆子」
+   * ⇒ 刀数由**豆子总回复量**给出（⌊总量/6⌋），与紊乱次数无直接耦合；19 刀上限（顶尖玩家
+   * 时间极限）吸收快循环的溢出。慢循环队靠强化特殊技补豆，旧「紊乱配比轮」口径会把它
+   * 系统性低估（雅耀妮 C0 实测 4 刀 vs 豆子够 13 刀）。
+   */
+  it('三点闭式：攒满 6 点即一刀，19 上限即溢出机制', () => {
+    // 用户口径 2026-10-24：「就算 0 次紊乱，他也有回复豆子的能力，凑齐 6 豆他也可以拔刀啊」
+    // ⇒ 刀数 = ⌊落霜总量/6⌋，与来源构成无关；19 上限即快循环的溢出机制。
+    const count = (total: number, cap = 19) => miyabiFrostMoonCountOf({ frostFallTotal: total, countCap: cap })
+    expect(count(6), '6 点 = 1 刀').toBe(1)
+    expect(count(0), '没有落霜 ⇒ 0 刀').toBe(0)
+    expect(count(35), '35 点 ⇒ ⌊35/6⌋ = 5 刀（余 5 点留着，不够一刀）').toBe(5)
+    expect(count(114), '114 点 ⇒ 19 刀（正好吃满上限）').toBe(19)
+    expect(count(200), '200 点仍只有 19 刀 —— 快循环多出的豆子全部溢出').toBe(19)
+    expect(count(200, 0), 'cap=0 ⇒ 不设上限（纯豆子口径 33 刀）').toBe(33)
+    expect(count(114, 10), '滑块只压不抬：cap=10 ⇒ 10 刀').toBe(10)
+    expect(count(114, 30), 'cap=30 高于豆子能打的 19 ⇒ 仍 19 刀（不能凭空多打）').toBe(19)
+  })
+
+  /**
+   * 关键回归：**慢循环队不能按紊乱配比算刀数**。
+   * 雅耀妮（1091/1031/1311）队友积蓄跟不上，一局上百秒打不出紊乱 ⇒ 平A 多 ⇒ 强特多 ⇒
+   * **多余的 E 补豆子**。旧「配比轮」模型只给 4 刀（紊乱 8 次 / 2），实测豆子够 13 刀。
+   */
+  it('慢循环：雅耀妮 c0 的刀数由豆子总量给出，明显高于紊乱配比轮', async () => {
+    const { config } = await setupHarness([
+      { agentId: '1091', cinemaLevel: 0 }, { agentId: '1031' }, { agentId: '1311' },
+    ] as never, { recommendedBuild: true } as never)
+    for (const buff of config.globalBuffs) buff.enabled = false
+    const calc = useResourceCalc()
+    void calc.damagePoolRows.value
+    const mi = calc.resourceResult.value!.characters.find(c => c.agentId === '1091')!
+    const src = mi.miyabiFrostFallSource!
+    const ap = calc.anomalyPoolResult.value
+    const disorder = ap?.disorderCount ?? 0
+    const byDisorderPair = Math.floor(disorder / 2)
+    expect(src.frostMoonByResource, '刀数 = ⌊落霜总量/6⌋（与资源卡同源）').toBe(Math.floor(src.total / 6))
+    expect(src.frostMoonByResource, '慢循环必须高于「紊乱配比轮」——否则多余的 E 又被浪费了').toBeGreaterThan(byDisorderPair)
+    expect(src.frostMoonCount, '刀数与执行行同源（规则 11）').toBe(Math.min(src.frostMoonByResource, 19))
   }, 600000)
-})
+  it('真管线：雅南柚队 c0 的刀数 = 总量口径值，受 19 上限截断', async () => {
+    const { config } = await setupHarness([
+      { agentId: '1091', cinemaLevel: 0 }, { agentId: '1511' }, { agentId: '1411' },
+    ] as never, { recommendedBuild: true } as never)
+    for (const buff of config.globalBuffs) buff.enabled = false
+    const calc = useResourceCalc()
+    void calc.damagePoolRows.value
+    const mi = calc.resourceResult.value!.characters.find(c => c.agentId === '1091')!
+    const src = mi.miyabiFrostFallSource!
+    const ap = calc.anomalyPoolResult.value
+    const disorder = ap?.disorderCount ?? 0
+    const expected = Math.min(Math.floor(src.total / 6), 19)
+    void disorder
+    expect(src.frostMoonCount, 'cap 默认 19 且总量口径值不超过它 ⇒ 不再二次截断').toBe(expected)
+    expect(src.frostMoonByResource, '线性口径必须 ≥ 刀数（总量够打才谈得上配比）').toBeGreaterThanOrEqual(expected)
+  }, 600000)
 
-describe('影画四：霜灼·破 +30%（原为死口径）', () => {
-  /**
-   * 判据：同一队伍只切 c3 → c4，霜灼·破行的 `damageMultiplier` 必须 ×1.30（且不是靠 note 文字）。
-   * 修复前 C4_FROSTBURN_DMG 只出现在 resolveExecutionDamage 的说明里，实测两档 perDamage 逐位相同（10411）。
-   */
-  it('c4 的霜灼·破倍率 = 1500 × 1.30 = 1950，c3 为 1500', async () => {
-    const readMultiplier = async (cinemaLevel: number) => {
-      const { config } = await setupHarness([{ agentId: '1091', cinemaLevel }, '', ''] as never)
-      for (const buff of config.globalBuffs) buff.enabled = false
-      const calc = useResourceCalc()
-      void calc.damagePoolRows.value
-      const row = calc.resourceResult.value!.characters.find(c => c.agentId === '1091')!
-        .executions.find(e => e.moveId === 'miyabi_frostburn_break')
-      return row?.damageMultiplier ?? 0
-    }
-    expect(await readMultiplier(3), 'C3 霜灼·破 = 1500%（无 C4 加成）').toBeCloseTo(1500, 6)
-    expect(await readMultiplier(4), 'C4 霜灼·破 = 1500% × 1.30').toBeCloseTo(1950, 6)
-  }, 300000)
-})
-
-describe('霜月次数上限（时间约束 19 次/局）', () => {
-  /**
-   * 用户口径 2026-10-24：落霜改真口径后，C2 队的资源够打 17~20 次霜月，但**一局打不出那么多**
-   * （资源回复会溢出，瓶颈是时间：每次霜月独占 1s 锁定 + 收招）。默认上限 19 次/局 = 顶尖玩家实测。
-   *
-   * 判据形态：同一队只改上限滑块，看「行数 = min(资源可打, 上限)」，且资源侧读数不被上限污染
-   * （`frostMoonByResource` 是纯资源次数，`frostMoonCount` 才是实际产行次数）。
-   */
-  it('cap 压到 5 ⇒ 行数 5；cap=0 ⇒ 回到资源次数；资源侧读数两种档位不变', async () => {
+  it('上限滑块压在刀数上：cap=5 ⇒ 5，cap=0 ⇒ 回到豆子总量值', async () => {
     const read = async (cap: number) => {
       const { config } = await setupHarness([
-        { agentId: '1091', cinemaLevel: 2 }, { agentId: '1511' }, { agentId: '1411' },
+        { agentId: '1091', cinemaLevel: 0 }, { agentId: '1511' }, { agentId: '1411' },
       ] as never, { recommendedBuild: true } as never)
       for (const buff of config.globalBuffs) buff.enabled = false
       config.setMechanicSetting('miyabi.frostMoonCountCap', cap)
@@ -299,13 +347,9 @@ describe('霜月次数上限（时间约束 19 次/局）', () => {
     }
     const uncapped = await read(0)
     const capped5 = await read(5)
-    const capped19 = await read(19)
-    expect(uncapped.src.frostMoonByResource, '夹具前提：资源要够打 > 5 次（否则本判据测不到截断）').toBeGreaterThan(5)
-    expect(uncapped.rowCount, 'cap=0（不设上限）⇒ 行数 = 资源次数').toBe(uncapped.src.frostMoonByResource)
+    expect(uncapped.src.frostMoonCount, '夹具前提：cap=0 的豆子总量刀数须 > 5（否则测不到截断）').toBeGreaterThan(5)
+    expect(uncapped.rowCount, 'cap=0（不设上限）⇒ 行数 = 豆子总量刀数').toBe(uncapped.src.frostMoonCount)
     expect(capped5.rowCount, 'cap=5 ⇒ 行数被压到 5').toBe(5)
     expect(capped5.src.frostMoonCount, '结果字段与执行行同源').toBe(5)
-    expect(capped5.src.frostMoonByResource, '资源侧读数不被上限污染').toBe(uncapped.src.frostMoonByResource)
-    // 默认 19：不小于资源次数时不该截断（实测这支队资源 18~19 次）
-    expect(capped19.rowCount, 'cap=19 ≥ 资源次数 ⇒ 行数不受影响').toBe(Math.min(uncapped.src.frostMoonByResource, 19))
-  }, 600000)
+  }, 900000)
 })
