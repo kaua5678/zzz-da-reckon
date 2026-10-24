@@ -51,7 +51,13 @@ function expectedRowEnergy(cfg: CharacterOperationConfig, row: SkillExecution): 
  * 两支合计 5.13s，仍在 ① 的「≥ 5s」反空洞门之上（门槛只拦机制失效，不钉具体值）。
  */
 const OVERFLOW_FIXTURE_STUN_LOCK = 3
-const OVERFLOW_FIXTURES = ['auto-1431-1481-1491', 'auto-1431-1341-1481'] as const
+/**
+ * ⚠ 2026-10-25（规则 10，实测重扫 93 预设 × 锁窗 3）：结构性溢出夹具只剩 4 支——
+ * auto-1431-1481-1491（6.45→5.42，passes 2）/ yidhari-roxy-lucia（1.55，账本残差 0）/
+ * auto-1021-1481-1311（1.75，但账本残差 −0.67/−0.40 不适合作 ④ 样本）/ billy-roxy-lucia（1.17，残差更大）。
+ * 旧第二支 `auto-1431-1341-1481` 截断已归零（13b9f584 交互全 0 与合轴/降配吃掉）⇒ 换成 yidhari-roxy-lucia。
+ */
+const OVERFLOW_FIXTURES = ['auto-1431-1481-1491', 'yidhari-roxy-lucia'] as const
 
 async function evalPreset(id: string, stunCountLock?: number) {
   const p = teamPresets.find(x => x.id === id)!
@@ -70,6 +76,7 @@ async function evalPreset(id: string, stunCountLock?: number) {
     bySlot: rr.convergence?.truncationBySlot ?? [],
     passes: rr.convergence?.truncationRefoldPasses,
     rejected: rr.convergence?.truncationRefoldRejected,
+    cuts: rr.convergence?.truncationCuts ?? [],
     leak: cfgs.filter(c => c != null && 'rowTimeLimit' in c).map(c => c.slot),
     damage: calc.teamTotalDamage.value,
     characters: rr.characters,
@@ -122,7 +129,18 @@ describe('债 2 批 2-1 · 截断外环回灌（rowTimeLimit 重折环）', () =
       // 诊断量口径：没进重折环的队不报轮数（undefined），进了的 ≥ 1
       // 诊断量自洽：没进重折环 ⇒ 两个量都不报；进了 ⇒ 重折前初装 > 容差（终态可以 ≤ 容差 = 重折把截断折没了，实测 auto-1431-1491-1341）
       if (r.passes === undefined) expect(r.before, `${p.id} 不该报重折前截断`).toBeUndefined()
-      else expect(r.before, `${p.id} 进了重折环必须报重折前初装截断`).toBeGreaterThan(TIME_BUDGET_TOLERANCE_SECONDS)
+      else {
+        /**
+         * ⚠ T151（2026-10-14）：进环判据在「Σcut > 容差」之外**追加了「有整次动作被砍」**这一支
+         * （用户「超时砍掉任何招式都该让其计数和各项数据扣除」不分秒数大小）。故「进了环」只保证
+         * 「Σcut > 容差 **或** 有整次动作被砍」，不再保证 before > 1s（实测 auto-1051-1481-1451：
+         * before 0.950s、整次强特 11→10 ⇒ passes 1）。诊断量自洽判据按 T151 口径重写。
+         */
+        // ⚠ 进环原因（Σcut > 容差 / 整次动作被砍）在**最终态看不出来**：触发判据读的是重折前的 tail，
+        // 最终态的 truncationCuts 可能已随 kept 变化 ⇒ 只钉「如实上报了一个正值」，不复述原因
+        // （原因口径由 ① 的 before/cut 读数与 refold 实现头注释保）。
+        expect(r.before, `${p.id} 进了重折环必须如实上报重折前初装截断（> 0）`).toBeGreaterThan(0)
+      }
     }
     // 2026-09-20（冷启动环修复）后这里是**空集**：1431 簇两队（OVERFLOW_FIXTURES）的结构性溢出
     // 被合轴 + 降配吃掉，自由口径下全库不再有初装截断队。判据随之从「枚举白名单」改为**不变量**：
@@ -130,7 +148,13 @@ describe('债 2 批 2-1 · 截断外环回灌（rowTimeLimit 重折环）', () =
     //  ② 锁窗夹具（①）仍必须重现结构性截断 —— 那才是重折环的作用面，由 ① 的 `totalGain > 5` 保证；
     //  ③ 任何进重折环的队仍须如实上报初装截断（上面逐队已查）。
     // 白名单一旦写死，落点一动就红，拦的是「数字变了」而不是「机制坏了」——这正是本次改动的教训。
-    expect(truncated.length, `自由口径截断队 ${truncated.join(', ') || '（空）'}`).toBeLessThanOrEqual(3)
+    /**
+     * ⚠ 2026-10-25（规则 10 A/B）：上限 3 → **5**。13b9f584「交互默认全 0」把预填交互的时间填充拿掉后，
+     * 自由口径下出现 5 支小截断队（实测 cut：yidhari-jufufu/roxy/qingyi-lucia 各 1.55s、
+     * billy-roxy-lucia 1.17s、auto-1431-1481-1491 5.42s；A/B 干净树：13b9f584^ 全为 0、13b9f584 起复现）。
+     * 判据仍是「极少数」——拦的是**口径退化**（大面积截断），不是逐队数值；规模变了按实测重取。
+     */
+    expect(truncated.length, `自由口径截断队 ${truncated.join(', ') || '（空）'}`).toBeLessThanOrEqual(5)
   }, 600_000)
 
   /**
@@ -178,7 +202,9 @@ describe('债 2 批 2-1 · 截断外环回灌（rowTimeLimit 重折环）', () =
     // 第 187 轮 CC-160（叶瞬光终局照影冻结 + 终局后重折）：两支 1481 夹具在锁窗下重折环都被拒（冻结值随入口态/rowTimeLimit
     // 变 ⇒ kept 两态振荡，如实上报 rejected），恒等式失去样本 ⇒ 追加同簇 `auto-1431-1341-1491`
     // （旧 `auto-1431-1491-1341` 的槽序改名；锁窗 3：2 轮到不动点、结构性截断 31.6s，全库扫描 k185/zzScan187.test.ts）作样本；恒等式本身不放宽。
-    for (const id of [...OVERFLOW_FIXTURES, 'auto-1431-1341-1491']) {
+    // ⚠ 2026-10-25：原第三支 auto-1431-1341-1491 的截断已归零（不再是重折队、passes undefined）⇒ 移出样本；
+    // 剩余两支都到不动点且账本残差 0（实测），样本数仍 ≥ 1。
+    for (const id of OVERFLOW_FIXTURES) {
       const r = await evalPreset(id, OVERFLOW_FIXTURE_STUN_LOCK)
       expect(r.passes, `${id} 应进重折环`).toBeGreaterThanOrEqual(1)
       if (r.rejected) continue // 振荡队：账本按上一次接受态的 kept 计，与最终 kept 差一截，恒等式不适用（如实上报即可）
