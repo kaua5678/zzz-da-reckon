@@ -16,12 +16,18 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { Agent, AgentSkills } from '@/types/catalog'
 import { LEVEL1_TO_LEVEL12 } from '@/core/skillLevel'
-import { STANDARD_S_AGENT_IDS } from '@/data/standardMultiplierTable'
-import { COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS, COUNTER_ASSIST_REGISTRY } from '@/data/counterAssists'
+import {
+  EQUIVALENT_ENERGY,
+  EX_ENERGY_CONVERSION,
+  STANDARD_MULTIPLIER_TABLE,
+  STANDARD_S_AGENT_IDS,
+} from '@/data/standardMultiplierTable'
+import { COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS, COUNTER_ASSIST_MOVE_IDS, COUNTER_ASSIST_REGISTRY } from '@/data/counterAssists'
 import {
   buildDirectDamageTimeline,
   classifyMove,
   deriveCoefficientReport,
+  isCleanVerticalType,
   parseEnergyCost,
   type AgentVerticalRow,
   type CoefficientReport,
@@ -130,18 +136,19 @@ describe('倍率表系数演算：角色纵向系数', () => {
    * ② 有人「顺手」把过滤扩到所有 n≥2 的角色（1141/1411/1431 的两条支援突击都是**真·两条**，
    * 它们不该被排除 —— 见下方 n=2 的三条断言）。
    */
-  it('★克拉蕾(1611) 直伤锚点排除反制支援专属追击段：只算无垢熔锋 122.7%（不是两条中位数 206.8%）', () => {
+  it('★克拉蕾(1611) 直伤锚点只算无垢熔锋 122.7%（反制系分类上就不是支援突击）', () => {
     const dd = verticalOf('1611').directDamage
     expect(dd, '克拉蕾应有直伤系数').toBeDefined()
-    // 排除 1611030 后只剩 1611027 一条样本
+    // 反制本体/专属追击各自独立类型 ⇒ 锚点只剩无垢熔锋一条样本
     expect(dd!.samples, '样本数应为 1（只剩无垢熔锋）').toBe(1)
     expectNear(dd!.value, 1.227, 0.005, '克拉蕾 直伤锚点 = 1611027 比值')
-    // 反锁：被排除的那条确实是 2.909 的离群值（若它变回 1.0 左右，说明数据/分类变了，需重新裁决）
-    const followUp = report.moves.find((m) => m.moveId === '1611030')
-    expect(followUp, '1611030 应仍在演算表里（只是不进锚点）').toBeDefined()
-    const followUpRatio = followUp!.cells.find((c) => c.rowId === 'damage')?.ratio
-    expect(followUpRatio, '1611030 伤害比值').toBeCloseTo(2.909, 2)
-    // 反锁：COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS 只排除 followUp 段，不误伤同名真·双支援突击角色
+    // 反锁：反制系两条都还在演算表里，只是不再是 assistFollowUp
+    for (const [moveId, type] of [['1611028', 'counterAssist'], ['1611030', 'counterAssistFollowUp']] as const) {
+      const m = report.moves.find((x) => x.moveId === moveId)
+      expect(m, `${moveId} 应仍在演算表里`).toBeDefined()
+      expect(m!.moveType, `${moveId} 应是反制系独立类型`).toBe(type)
+    }
+    // 反锁：只排反制系，不误伤同名真·双支援突击角色
     for (const agentId of ['1141', '1411', '1431'] as const) {
       const v = verticalOf(agentId).directDamage
       expect(v, `${agentId} 应有直伤系数`).toBeDefined()
@@ -152,11 +159,67 @@ describe('倍率表系数演算：角色纵向系数', () => {
   it('反制支援追击段集合只含登记表的 followUpMoveId（防误伤同名的真·双支援突击）', () => {
     const registered = COUNTER_ASSIST_REGISTRY.map((m) => m.followUpMoveId).sort()
     expect([...COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS].sort()).toEqual(registered)
-    // 集合里的每条都必须是 assistFollowUp 分类（否则过滤无效、锚点静默不变）
+    // 集合里的每条都必须是 counterAssistFollowUp 分类（否则会混进支援突击锚点样本）
     for (const id of COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS) {
       const m = report.moves.find((x) => x.moveId === id)
       expect(m, `${id} 应在演算表里`).toBeDefined()
-      expect(m!.moveType, `${id} 应分类为支援突击`).toBe('assistFollowUp')
+      expect(m!.moveType, `${id} 应分类为反制支援专属支援突击`).toBe('counterAssistFollowUp')
+    }
+    // 本体侧同构：COUNTER_ASSIST_MOVE_IDS 的每条都得是 counterAssist
+    for (const id of COUNTER_ASSIST_MOVE_IDS) {
+      const m = report.moves.find((x) => x.moveId === id)
+      expect(m, `${id} 应在演算表里`).toBeDefined()
+      expect(m!.moveType, `${id} 应分类为反制支援`).toBe('counterAssist')
+    }
+  })
+})
+
+describe('反制支援 / 支援突击的「等效能量」口径（2026-10-24 用户裁决）', () => {
+  /**
+   * 口径：支援突击系标准式 = 「等效多少能量 × 强特耗能利用率系数」。
+   * 支援突击 = 20（弹刀后奖励）、反制支援本体 = 40、专属支援突击（琢形）= 80。
+   *
+   * ⚠ 这里**不抄常数**（const = 等效能量 × 系数 那种断言是同义反复：两边都改就绿，等于没测）。
+   * 只钉两件会真出事的事：① 反解能被录入数据复现（口径与 catalog 的桥梁）；
+   * ② 反制系不污染支援突击锚点与纵向聚合（分类错了会静默改一串角色的直伤系数）。
+   */
+  it('★反解复现：用克拉蕾自己的列系数解方程，喧响/积蓄两列独立命中 40 / 80', () => {
+    // 这是唯一能把「等效能量」和「catalog 录入值」连起来的东西：
+    // 若哪天标准表常数被改动、或克拉蕾被重录，等式立刻不成立 —— 那才是需要人看的地方。
+    const K = {
+      daze: coefOf('1611', 'daze'),
+      decibel_recovery: coefOf('1611', 'decibel_recovery'),
+      anomaly_buildup: coefOf('1611', 'anomaly_buildup'),
+    }
+    const LVL: Record<string, number> = { daze: LEVEL1_TO_LEVEL12.daze, decibel_recovery: 1, anomaly_buildup: 1 }
+    const RAR: Record<string, number> = { daze: 1.1, decibel_recovery: 1, anomaly_buildup: 1 }
+    for (const r of [{ moveId: '1611028', t: 3.717, expect: 40 }, { moveId: '1611030', t: 1.117, expect: 80 }]) {
+      const m = report.moves.find((x) => x.moveId === r.moveId)!
+      for (const rowId of ['daze', 'decibel_recovery', 'anomaly_buildup'] as const) {
+        const cell = m.cells.find((c) => c.rowId === rowId)!
+        const f = STANDARD_MULTIPLIER_TABLE.assistFollowUp[rowId]!
+        const solved = ((cell.actual / (K[rowId] * LVL[rowId] * RAR[rowId])) - (f.const ?? 0) - (f.perT ?? 0) * r.t)
+          / EX_ENERGY_CONVERSION[rowId] + EQUIVALENT_ENERGY.assistFollowUp!
+        // 容差 0.6：失衡列因角色系数噪声（1.0022）浮 0.2~0.6；其余列 = 实录常数取整残差（≤0.05）
+        expectNear(solved, r.expect, 0.6, `${r.moveId}/${rowId} 反解等效能量`)
+      }
+    }
+  })
+
+  it('★反制系不参与纵向聚合/偏差清单（否则用反解出的系数再算系数，污染一串角色）', () => {
+    for (const moveId of ['1611028', '1611030']) {
+      const m = report.moves.find((x) => x.moveId === moveId)!
+      expect(isCleanVerticalType(m.moveType), `${moveId} 不该进纵向聚合`).toBe(false)
+      expect(report.deviations.some((d) => d.moveId === moveId), `${moveId} 不该进偏差清单`).toBe(false)
+    }
+    // 支援突击基线本身仍在聚合里（它是锚点）
+    expect(isCleanVerticalType('assistFollowUp')).toBe(true)
+  })
+
+  it('等效能量只能挂在支援突击系（别顺手把强特的真耗能也当奖励）', () => {
+    for (const m of report.moves) {
+      if (m.equivalentEnergy == null) continue
+      expect(['assistFollowUp', 'counterAssist', 'counterAssistFollowUp']).toContain(m.moveType)
     }
   })
 })

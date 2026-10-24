@@ -56,6 +56,8 @@ export type MoveType =
   | 'quickAssist' // 快速支援（标准版）
   | 'quickAssistLegacy' // 快速支援（翻倍版：失衡/喧响/回能/积蓄 ×2，伤害同为 200t）
   | 'assistFollowUp' // 支援突击（纵向系数锚点：通常不随角色变化）
+  | 'counterAssist' // 反制支援（一次化解整组控制技的本体；等效能量口径见 EQUIVALENT_ENERGY）
+  | 'counterAssistFollowUp' // 反制支援后的专属支援突击（克拉蕾 1611030 琢形；与普通支援突击不同行）
   | 'parryLight' // 招架支援 #1（轻招架）
   | 'parryHeavy' // 招架支援 #2（重招架）
   | 'parryChain' // 招架支援 #3（连续招架）
@@ -73,6 +75,8 @@ export const MOVE_TYPE_LABELS: Record<MoveType, string> = {
   quickAssist: '快速支援',
   quickAssistLegacy: '快速支援(翻倍)',
   assistFollowUp: '支援突击',
+  counterAssist: '反制支援',
+  counterAssistFollowUp: '反制支援·专属支援突击',
   parryLight: '轻招架',
   parryHeavy: '重招架',
   parryChain: '连续招架',
@@ -102,6 +106,84 @@ export interface StdFormula {
  *   秽盾恒 100t。分版判据 = 喧响速率 ≥40/s（不受稀有度系数影响）。另有 ~5 条减半/离群记录
  *   （安东、卢西娅等）按标准版评估后由偏差清单呈现。
  */
+/**
+ * 强特耗能利用率系数：每 1 点能量换多少倍率（伤害 / 失衡 / 喧响 / 积蓄）。
+ * 强特标准式 = perT×t + 本系数×e；**支援突击/反制支援系共用这四个系数**（见 EQUIVALENT_ENERGY）。
+ * ⚠ 命破角色的「能」= 闪能，走同样的四个系数再 ×FLASH_ENERGY_QUALITY(1.2)。
+ */
+export const EX_ENERGY_CONVERSION = {
+  damage: 5.55835,
+  daze: 4.175,
+  decibel_recovery: 1.909,
+  anomaly_buildup: 4.86,
+} as const
+
+/**
+ * 支援突击 / 反制支援系的「等效能量」——把晦涩的常数还原成策划的原始口径。
+ *
+ * 口径：支援突击的四个常数 ÷ 强特耗能利用率系数 = `20.03 / 20.00 / 19.96 / 20.00`
+ * （伤害 111.35÷5.55835、失衡 83.5÷4.175、喧响 38.1÷1.909、积蓄 97.2÷4.86）
+ * ⇒ **支援突击公式 ≡ 强特公式在 e=20 处的取值**：弹刀后跟的支援突击是「送 20 点等效能量」的奖励，
+ * 这 20 点不是玩家花的能量，而是策划调倍率时的记账单位。
+ *
+ * 反制支援系同构，数值由克拉蕾(1611) 三行反解得到（用她自己的列系数；喧响/积蓄两列
+ * 各有 19~21 个样本、独立命中同一整数，故可信）：
+ * - 1611028 寸铁不让（本体） = 支援突击基线 + 奖励 **20** ⇒ 等效 **40**
+ * - 1611030 琢形（专属支援突击） = 支援突击基线 + 奖励 **60** ⇒ 等效 **80**
+ * 两行合计 = 120 等效能量（融合成一次动作只体现在动作/时间层，倍率按行各算各的，见 data/moveFusions.ts）。
+ *
+ * @fact data:倍率系数/反制支援等效能量 口径: 反制支援本体 = 支援突击基线 + 20 等效能量（整行 = 强特公式@40），专属支援突击·琢形 = 支援突击基线 + 60（整行 = @80）；支援突击本身 = 强特公式@20 | 据 用户@2026-10-24（「其奖励倍率是相当于等效多少能量×能量转化率算出来的数值」）·反解自 克拉蕾 1611028/1611030 的失衡/喧响/积蓄三列（40.0/80.0，两列独立命中整数） | 验 src/composables/__tests__/multiplierCoefficients.test.ts | 锚 src/data/standardMultiplierTable.ts#EQUIVALENT_ENERGY | 信 确认
+ * ⟳复核: 新增锋御/反制支援角色时，用其本体+专属追击三行重新反解等效能量——若解出 40/80 之外的值，说明反制系不是固定定价、需改为逐角色记录；若官方给反制支援补 energyCost，则等效能量口径让位给真耗能 | 到期 2027-06-30
+ */
+export const EQUIVALENT_ENERGY: Partial<Record<MoveType, number>> = {
+  assistFollowUp: 20,
+  counterAssist: 40,
+  counterAssistFollowUp: 80,
+}
+
+/** 反制系在「支援突击基线」之上额外的奖励等效能量（= EQUIVALENT_ENERGY − 20） */
+export const COUNTER_ASSIST_REWARD_ENERGY = 20
+export const COUNTER_ASSIST_FOLLOW_UP_REWARD_ENERGY = 60
+
+/** 支援突击实录标准式（社区表原值，一字不改；见文件头 EQUIVALENT_ENERGY 的「20」解释） */
+const ASSIST_FOLLOW_UP_FORMULA: Partial<Record<StandardRowId, StdFormula>> = {
+  damage: { const: 111.35, perT: 140 },
+  daze: { const: 83.5, perT: 130 },
+  energy_recovery: { const: 0 },
+  decibel_recovery: { const: 38.1, perT: 41.25 },
+  anomaly_buildup: { const: 97.2, perT: 135 },
+  ether_purify: { const: 0 },
+}
+
+/**
+ * 反制系标准式的生成器：**以支援突击实录常数为基线**，按「奖励等效能量 × 强特耗能利用率系数」加算。
+ *
+ * ⚠ 不写成 `e×系数`：支援突击实录常数（111.35/83.5/38.1/97.2）÷ 系数 = 20.03/20.00/19.96/20.00，
+ * 与整数 20 有 ≤0.16% 的残差（社区表原始值，来历不明但不能改——改了会让全库直伤系数集体漂移，
+ * 例如克拉蕾 122.7%→122.8%）。故**实录值原样保留作基线**，反制系在其上叠加折算量。
+ * 斜率沿用强特 perT；回能/秽盾恒 0（这两列不吃能量奖励，实录也是 0）。
+ */
+function counterAssistFormula(
+  base: Partial<Record<StandardRowId, StdFormula>>,
+  rewardEnergy: number,
+): Partial<Record<StandardRowId, StdFormula>> {
+  const out: Partial<Record<StandardRowId, StdFormula>> = {}
+  for (const rowId of STANDARD_ROW_IDS) {
+    const f = base[rowId]
+    if (!f) continue
+    const perE = EX_ENERGY_CONVERSION[rowId as keyof typeof EX_ENERGY_CONVERSION]
+    out[rowId] = perE == null
+      ? { ...f }
+      : { const: round6((f.const ?? 0) + perE * rewardEnergy), perT: f.perT }
+  }
+  return out
+}
+
+/** 保留 6 位（与 formatStdFormula 的 trimNum 同精度；避免 1.909×20 一类浮点尾巴进表） */
+function round6(n: number): number {
+  return Number(n.toFixed(6))
+}
+
 export const STANDARD_MULTIPLIER_TABLE: Record<MoveType, Partial<Record<StandardRowId, StdFormula>>> = {
   basic: {
     damage: { perT: 130 },
@@ -165,14 +247,12 @@ export const STANDARD_MULTIPLIER_TABLE: Record<MoveType, Partial<Record<Standard
     anomaly_buildup: { perT: 100 },
     ether_purify: { perT: 50 },
   },
-  assistFollowUp: {
-    damage: { const: 111.35, perT: 140 },
-    daze: { const: 83.5, perT: 130 },
-    energy_recovery: { const: 0 },
-    decibel_recovery: { const: 38.1, perT: 41.25 },
-    anomaly_buildup: { const: 97.2, perT: 135 },
-    ether_purify: { const: 0 },
-  },
+  // 支援突击：社区表实录常数（= 强特公式在 20 等效能量处的取整，残差 ≤0.16%，见 EQUIVALENT_ENERGY）
+  assistFollowUp: ASSIST_FOLLOW_UP_FORMULA,
+  // 反制支援系（克拉蕾 1611028 本体 / 1611030 专属追击）= 实录基线 + 奖励等效能量折算。
+  // 本体 = 基线 + 20（整行 ≈ @40）、专属追击 = 基线 + 60（整行 ≈ @80）。
+  counterAssist: counterAssistFormula(ASSIST_FOLLOW_UP_FORMULA, COUNTER_ASSIST_REWARD_ENERGY),
+  counterAssistFollowUp: counterAssistFormula(ASSIST_FOLLOW_UP_FORMULA, COUNTER_ASSIST_FOLLOW_UP_REWARD_ENERGY),
   parryLight: {
     daze: { const: 95.511, perT: 130 },
     ether_purify: { const: 250, perT: 100 },

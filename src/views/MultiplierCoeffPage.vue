@@ -8,7 +8,8 @@
       <div class="notes">
         <p>实际录入值(Lv12) = 标准式(const + b×t [+ c×e]) × 等级系数（伤害×2 / 失衡×1.5）× 稀有度系数（限定S ×1.1 / 常驻S ×1.05，只乘伤害与失衡；命破伤害另×0.8）× <b>角色系数</b>。t = 动作时间，e = 强化特殊技耗能。特殊技不回能。</p>
         <p><b>闪能质量 ×1.2</b>：强特消耗闪能（Flash Energy Cost）时，四个耗能利用率系数（5.55835/4.175/1.909/4.86）先 ×1.2 再乘闪能量——相同闪能比相同能量多转化 20% 数值。锚点真斗已数据验证：强特耗 80 闪能代入后五列比值全部 ≈1.000。</p>
-        <p>角色纵向系数 = 该角色各「干净类型」招式比值的中位数（排除强化特殊技、轻/重招架与未分类）；<b>版本直伤系数</b>取支援突击伤害列比值（支援突击通常不随角色变化，作锚点）。</p>
+        <p>角色纵向系数 = 该角色各「干净类型」招式比值的中位数（排除强化特殊技、轻/重招架、反制支援系与未分类）；<b>版本直伤系数</b>取支援突击伤害列比值（支援突击通常不随角色变化，作锚点）。中位数落在 99.5%~100.5%（±0.5%）噪声带的按 <b>100%</b> 展示（原始数据从小数位截断，那点偏离不是角色系数）。</p>
+        <p><b>等效能量（奖励口径）</b>：支援突击那串常数不是随手定的——四个常数 ÷ 强特耗能利用率系数（伤害 5.55835 / 失衡 4.175 / 喧响 1.909 / 积蓄 4.86）= <b>20.03 / 20.00 / 19.96 / 20.00</b>，即「<b>支援突击 = 强特公式在 20 点等效能量处</b>」。反制支援系同构：本体 = 基线 + 20（整行 @40）、专属支援突击（琢形）= 基线 + 60（整行 @80）。等效能量是策划调倍率时的记账单位，<b>不是玩家花的能量</b>；命破角色的「能」是闪能，同样四个系数再 ×1.2；锋御的锐能与之无关（只是开状态的计时器资源，不产生奖励倍率）。</p>
         <p>已验证样例：爱丽丝失衡 90%、伊德海莉喧响 ~49%（章鱼）、耀嘉音/琉音回能 50%、叶瞬光失衡 50%+喧响 80%。固化描述见 <code>docs/multiplier-record.md</code>（npm run gen:multiplier-record 再生成）。</p>
       </div>
     </n-card>
@@ -101,6 +102,7 @@ import type { DataTableColumns } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import {
+  EQUIVALENT_ENERGY,
   MOVE_TYPE_LABELS,
   STANDARD_MULTIPLIER_TABLE,
   STANDARD_ROW_IDS,
@@ -150,19 +152,32 @@ function ratioStyle(ratio: number | null | undefined): Record<string, string> {
 interface StdRow {
   moveType: MoveType
   label: string
+  /** 等效能量（奖励口径）：支援突击 = 20 / 反制支援 = 40 / 反制专属支援突击 = 80；其余为真耗能/无 */
+  equivalentEnergyText: string
   cells: Record<StandardRowId, string>
 }
 
-const stdRows: StdRow[] = (Object.keys(MOVE_TYPE_LABELS) as MoveType[]).map((moveType) => ({
-  moveType,
-  label: MOVE_TYPE_LABELS[moveType],
-  cells: Object.fromEntries(
-    STANDARD_ROW_IDS.map((rowId) => [rowId, formatStdFormula(STANDARD_MULTIPLIER_TABLE[moveType][rowId] ?? {})]),
-  ),
-})) as StdRow[]
+const stdRows: StdRow[] = (Object.keys(MOVE_TYPE_LABELS) as MoveType[]).map((moveType): StdRow => {
+  const eq = EQUIVALENT_ENERGY[moveType]
+  const row: StdRow = {
+    moveType,
+    label: MOVE_TYPE_LABELS[moveType],
+    equivalentEnergyText: eq == null ? '—' : `${eq}（奖励）`,
+    cells: Object.fromEntries(
+      STANDARD_ROW_IDS.map((rowId) => [rowId, formatStdFormula(STANDARD_MULTIPLIER_TABLE[moveType][rowId] ?? {})]),
+    ) as Record<StandardRowId, string>,
+  }
+  return row
+})
 
 const stdColumns: DataTableColumns<StdRow> = [
   { title: '招式类型', key: 'label', width: 190, render: (r) => r.label },
+  {
+    title: '等效能量',
+    key: 'equivalentEnergy',
+    width: 110,
+    render: (r: StdRow) => r.equivalentEnergyText,
+  },
   ...STANDARD_ROW_IDS.map((rowId) => ({
     title: ROW_LABELS[rowId],
     key: rowId,
@@ -232,6 +247,18 @@ const detailColumns: DataTableColumns<MoveEval> = [
   { title: '类型', key: 'type', width: 150, render: (r) => r.moveTypeLabel },
   { title: 't(s)', key: 't', width: 70, render: (r) => (r.t == null ? '—' : String(Number(r.t.toFixed(3)))) },
   { title: '耗能', key: 'e', width: 76, render: (r) => (r.energy == null ? '—' : `${r.energy.value}${r.energy.kind === 'flashEnergy' ? '(闪)' : ''}`) },
+  {
+    // 等效能量：支援突击系把「奖励倍率」还原成策划的原始记账单位（等效多少能量 × 能量转化率）
+    title: '等效能量',
+    key: 'equivalentEnergy',
+    width: 110,
+    render: (r) =>
+      r.equivalentEnergy == null
+        ? '—'
+        : r.rewardEnergy == null
+          ? String(r.equivalentEnergy)
+          : `${r.equivalentEnergy}（基线20+${r.rewardEnergy}）`,
+  },
   { title: '伤害', key: 'damage', width: 90, render: detailCell('damage') },
   { title: '失衡', key: 'daze', width: 90, render: detailCell('daze') },
   { title: '回能', key: 'energy', width: 90, render: detailCell('energy_recovery') },

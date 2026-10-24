@@ -3,7 +3,10 @@
  * （@/data/standardMultiplierTable）对比，推导三类结果：
  *   1. 角色纵向系数（每列跨招式中位数，如爱丽丝失衡 0.90、伊德海莉喧响 ~0.49）
  *   2. 版本直伤系数（支援突击伤害列比值——支援突击通常不随角色变化，作全队锚点；
- *      **反制支援的专属追击段必须排除**，它同挂「支援突击」名但不是普通弹刀那条，见 buildVertical）
+ *      **反制支援本体与专属追击各自是独立招式类型**（counterAssist / counterAssistFollowUp），
+ *      分类上就不属于支援突击，恒不进锚点，见 classifyMove）
+ *   3. 反制支援系「等效能量」（standardMultiplierTable#EQUIVALENT_ENERGY）：支援突击 = 强特公式@20、
+ *      反制本体 = @40、专属追击 = @80 —— 奖励值是「等效多少能量 × 能量转化率」算出来的
  *   3. 招式特定偏差（单招式比值 vs 本角色该列基准：连携增强/大招削弱一类设计空间）
  *
  * 纯函数：输入 catalog 原始数组、输出类型化报告，页面（MultiplierCoeffPage）与测试共用同一实现。
@@ -12,6 +15,7 @@
  */
 import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
 import {
+  EQUIVALENT_ENERGY,
   FIXED_RECORD_UNITS,
   FLASH_ENERGY_QUALITY,
   MOVE_FUSION_GROUPS,
@@ -27,7 +31,7 @@ import {
   type StandardRowId,
 } from '@/data/standardMultiplierTable'
 import { LEVEL1_TO_LEVEL12 } from '@/core/skillLevel'
-import { COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS } from '@/data/counterAssists'
+import { COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS, COUNTER_ASSIST_MOVE_IDS } from '@/data/counterAssists'
 import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTimeline'
 
 import { localized } from '@/utils/format'
@@ -37,15 +41,51 @@ const MIN_ACTION_TIME = 0.01
 /** 招式特定偏差判定阈值：偏离本角色列基准 ±5% 记一条 */
 const DEVIATION_THRESHOLD = 0.05
 
-/** 参与纵向系数聚合的招式类型白名单（其余为设计空间/待确认口径） */
-function isCleanVerticalType(moveType: MoveType | 'other'): boolean {
-  return moveType !== 'exSpecial' && moveType !== 'parryLight' && moveType !== 'parryHeavy' && moveType !== 'other'
+/**
+ * 中位数「抹平到 1」的半径（用户口径 2026-10-24）。
+ *
+ * 原始数据是从小数点后几位截断来的，实测同源列的中位数会落在 99.9x%~100.5% 这种纯噪声带里
+ * （用户：「我算的异常积蓄秒均基本都是 99.99，这个我都当做是 100」「中位数如果偏差不多，那就算成 1 呗」）。
+ * 这类 **0.5%** 以内的偏离**不是角色系数**，抹成 1 让表格可读；超出半径一律照实显示
+ * （100.6%（星见雅失衡）/ 100.9%（安东）/ 101.5%（妮可失衡）/ 91.5%（凯撒）/ 90%（爱丽丝）都留着）
+ * —— 半径再放大就会把真系数一起抹平，精度换不来可读性。
+ * ⚠ 只影响「系数展示与偏差判定基准」，不改任何倍率录入值——Σ 原值仍然照算。
+ */
+const UNITY_SNAP_RADIUS = 0.005
+
+/** 0.5% 以内抹到 1；否则原样返回 */
+function snapToUnity(v: number): number {
+  return Math.abs(v - 1) <= UNITY_SNAP_RADIUS ? 1 : v
+}
+
+/**
+ * 参与纵向系数聚合的招式类型白名单（其余为设计空间/待确认口径）。
+ *
+ * 排除理由：
+ * - exSpecial：逐角色设计空间大（耗能分摊方式不同）；
+ * - parryLight / parryHeavy：标准常数是数据校准值，与数据存在恒定 ~10% 出入；
+ * - **counterAssist / counterAssistFollowUp（2026-10-24 起）**：反制系由「等效能量」定价
+ *   （支援突击基线 + 奖励，见 standardMultiplierTable#EQUIVALENT_ENERGY），其比值天然 ≈ 角色系数
+ *   —— 把它喂回中位数等于「用反解出来的系数再算系数」（循环论证），故只展示、不聚合；
+ * - other：未分类。
+ */
+export function isCleanVerticalType(moveType: MoveType | 'other'): boolean {
+  return moveType !== 'exSpecial'
+    && moveType !== 'parryLight'
+    && moveType !== 'parryHeavy'
+    && moveType !== 'counterAssist'
+    && moveType !== 'counterAssistFollowUp'
+    && moveType !== 'other'
 }
 
 /** 招式分类：定点覆盖 + 名称前缀 + 类别 + timeType + energyCost + 职业 → 标准表行单位 */
 export function classifyMove(move: SkillMove, categoryId: string, specialty: string): MoveType | 'other' {
   const override = MOVE_TYPE_OVERRIDES[move.id]
   if (override) return override
+  // 反制支援系：按 data/counterAssists.ts 登记表定点分类（**不按名字扫**——克拉蕾的两条
+  // 「支援突击」EN 同为 Assist Follow-Up，按名会挑错行；反制本体名也不含「支援突击」）。
+  if (COUNTER_ASSIST_MOVE_IDS.has(move.id)) return 'counterAssist'
+  if (COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS.has(move.id)) return 'counterAssistFollowUp'
   const name = move.name.zhCN ?? ''
   if (move.timeType === 'ultimate' || name.includes('终结')) {
     if (specialty === 'stun') return 'ultimateStun'
@@ -279,6 +319,14 @@ export interface MoveEval {
   moveTypeLabel: string
   t: number | null
   energy: EnergyCostInfo | null
+  /**
+   * 等效能量（奖励口径）：支援突击 / 反制支援系的标准式是「等效多少能量 × 强特耗能利用率系数」
+   * 堆出来的，不是玩家花掉的真能量。支援突击 = 20，反制支援本体 = 40，反制专属追击 = 80。
+   * 其余招式（含强特）为 null —— 它们的 energy 是真实耗能。
+   */
+  equivalentEnergy: number | null
+  /** 相对「支援突击基线(=20)」多出来的奖励等效能量（反制本体 +20 / 专属追击 +60；其余 null） */
+  rewardEnergy: number | null
   flags: string[]
   cells: MoveCellEval[]
 }
@@ -319,6 +367,12 @@ function evaluateUnit(unit: RawUnit): MoveEval {
     moveTypeLabel: unit.moveType === 'other' ? '未分类' : MOVE_TYPE_LABELS[unit.moveType],
     t: unit.t,
     energy: unit.energy,
+    equivalentEnergy: unit.moveType === 'other' ? null : EQUIVALENT_ENERGY[unit.moveType] ?? null,
+    rewardEnergy: unit.moveType === 'counterAssist'
+      ? (EQUIVALENT_ENERGY.counterAssist! - EQUIVALENT_ENERGY.assistFollowUp!)
+      : unit.moveType === 'counterAssistFollowUp'
+        ? (EQUIVALENT_ENERGY.counterAssistFollowUp! - EQUIVALENT_ENERGY.assistFollowUp!)
+        : null,
     flags: [...unit.flags],
     cells,
   }
@@ -365,14 +419,15 @@ function buildVertical(moves: MoveEval[]): AgentVerticalRow[] {
         .flatMap((m): number[] => m.cells
           .filter((c) => c.rowId === rowId && !c.dataGap && c.ratio != null)
           .map((c) => c.ratio as number))
-      if (ratios.length) coefficients[rowId] = { value: median(ratios), samples: ratios.length }
+      // 中位数落进噪声带（±0.5%）的抹成 1：录入截断的残余，不是角色系数（用户口径 2026-10-24）
+      if (ratios.length) coefficients[rowId] = { value: snapToUnity(median(ratios)), samples: ratios.length }
     }
     // 版本直伤系数（中心系数）= 支援突击伤害列比值。
-    // ⚠ 必须排除**反制支援的专属追击段**（`data/counterAssists.ts#COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS`）：
-    //   它在 catalog 里同样挂在 assist 段的「支援突击」名下（EN 同为 `Assist Follow-Up`），但只在
-    //   化解控制技时出现，不是普通弹刀交互会用到的那条支援突击（引擎取 assist 段第一条 = 无垢熔锋）。
-    //   实测克拉蕾(1611)：两条一起取中位数 = (1.227 无垢熔锋 + 2.909 琢形)/2 = **206.8%**，
-    //   排除后 = **122.7%**（用户 2026-10-09 口径：「中心系数该用支援突击：血华誓·无垢熔锋 (1611027)」）。
+    // 支援突击锚点只看 assistFollowUp 分类：反制系（本体/专属追击）自 2026-10-24 起是独立类型，
+    // 分类层就不会走到这里（历史：它们曾同挂「支援突击」名，两条取中位数得 206.8% 的假象，
+    // 订正后 = 122.7%，用户 2026-10-09 口径「中心系数该用支援突击：血华誓·无垢熔锋 (1611027)」）。
+    // 保留下面的显式过滤作为**二道闸**：万一有人给反制系加 MOVE_TYPE_OVERRIDES 改回 assistFollowUp，
+    // 锚点也不会被拖走。
     const ddRatios = list
       .filter((m) => m.moveType === 'assistFollowUp' && !COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS.has(m.moveId))
       .flatMap((m) => m.cells.filter((c) => c.rowId === 'damage' && !c.dataGap && c.ratio != null).map((c) => c.ratio as number))
@@ -382,7 +437,7 @@ function buildVertical(moves: MoveEval[]): AgentVerticalRow[] {
       rarity: head.rarity,
       specialty: head.specialty,
       coefficients,
-      directDamage: ddRatios.length ? { value: median(ddRatios), samples: ddRatios.length } : null,
+      directDamage: ddRatios.length ? { value: snapToUnity(median(ddRatios)), samples: ddRatios.length } : null,
     })
   }
   return rows.sort((a, b) => a.agentId.localeCompare(b.agentId))
