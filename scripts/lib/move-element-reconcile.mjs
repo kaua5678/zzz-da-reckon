@@ -45,7 +45,7 @@
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { ELEMENT_ROW_KINDS, buildMoveTextIndex, resolveMoveElements } from './move-elements.mjs'
+import { ELEMENT_ROW_KINDS, buildMoveTextIndex, remapTemplateMoveId, resolveMoveElements } from './move-elements.mjs'
 
 /**
  * 全局「反空洞」下限：真实仓库根上必须至少对账这么多招。
@@ -139,7 +139,12 @@ export function reconcileMoveElements({ catalog, fullDir, enforceFloors = true }
     const catalogMoveIds = new Set(moveIds)
     for (const rawMoveId of rawMoveIds) {
       rawParamMoves++
-      if (!catalogMoveIds.has(String(rawMoveId))) orphans.push({ agentId: id, moveId: String(rawMoveId) })
+      // (Test1) 模板残留：导入器会把非本角色块的 param id 重映射到本角色块（1611018→1661018，
+      // 见 move-elements.mjs#remapTemplateMoveId）。orphan 对账用**同一映射**比 membership，
+      // 映射后仍不在 catalog 才是真漂移；报文仍写 raw 原始 id，便于回 raw 定位。
+      if (!catalogMoveIds.has(remapTemplateMoveId(String(rawMoveId), String(id)))) {
+        orphans.push({ agentId: id, moveId: String(rawMoveId) })
+      }
     }
 
     for (const cat of sk.categories ?? []) {

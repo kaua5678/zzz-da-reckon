@@ -173,7 +173,13 @@ let adjustableById: Map<string, MechanicSetting> | undefined
  * 此前两处各手抄一份：橘福福 fallback 1 + 只钳下界，洛克茜 fallback 1 + 私有 `clampRate` 钳 [0, 2]。
  */
 export function specAdjustableRate(cfg: unknown, id: string): number {
-  adjustableById ??= new Map(agentSpecs.flatMap(spec => specAdjustables(spec)).map(adjustable => [adjustable.id, adjustable]))
+  // beta 冻结 spec（`beta: true`，id 形如 `1091v1`）不进全局裸 id 表：其 adjustable id 与正主
+  // 同名，glob 序（`<id>v1.json` 排 `<id>.json` 后）会让冻结定义**覆盖**正主——洛克茜/橘福福这类
+  // 手写模块按 id 解析就会拿到旧版区间。代价（已知边界）：beta 副本模块若也走本函数，解析到的是
+  // 正主当前定义；仅当两版改过该滑块区间/缺省才有差异，且用户值仍来自各自槽位 cfg。
+  adjustableById ??= new Map(
+    agentSpecs.filter(spec => !spec.beta).flatMap(spec => specAdjustables(spec)).map(adjustable => [adjustable.id, adjustable]),
+  )
   const adjustable = adjustableById.get(id)
   if (!adjustable) throw new Error(`[specAdjustableRate] ${id} 未在 spec 声明`)
   return adjustableRate(cfg, adjustable)

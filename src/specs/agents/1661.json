@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:1661",
+  "name": "知更鸟",
+  "agentIds": [
+    "1661"
+  ],
+  "status": "not_described_not_implemented",
+  "attributeConversions": [],
+  "resources": [],
+  "rowFusions": [],
+  "events": [],
+  "verifications": [],
+  "stateMachines": [],
+  "teamBuffs": [],
+  "notes": [
+    "占位测试包（Test1）：nanoka 3.4.1+19836465 首版，后续版本会用正式逻辑与数值整体替换——替换前先跑 scripts/snapshot-agent.mjs 冻结本版。",
+    "当前深度＝倍率表直读（generic 路径），机制未实录。",
+    "未建模清单（原文已核对，待正式包落地后实录）：[离场守护]（离场技后 60s，期间无法连携/登场）；[守卫护盾]（全队，自身最大初始生命值 2%/3%/4% 三档，15-20s）；追加攻击（离场守护期间队友命中触发，8s CD，+20 登场值）；强化追加（≥40 能量升级，按最大生命值额外提升重击伤害）；[登场值]（100 点发动登场技，视为快速支援）；终结技将全队护盾按 40% 转化为生命值。",
+    "数据裁决：basicBenchmarkMoveId=1661003（普攻第 3 段）。"
+  ]
+}

@@ -222,5 +222,12 @@ export interface AgentMechanicSpec {
   teamBuffs?: TeamBuffSpec[]
   /** 额外能力触发条件（声明式，引擎统一判定，满足才生效） */
   additionalAbility?: AdditionalAbilitySpec
+  /**
+   * beta 冻结副本标记（scripts/snapshot-agent.mjs 生成，agentId 形如 `1091v1`）：
+   * 测试服旧版整体冻结，与正主并存供同屏对比。消费方按此跳过——verify-recording / docs:status /
+   * logicEditor defaults 不计入；catalog store 的 teamBuffs 合并在 beta 开关关闭时跳过。
+   * 机制模块副本在 `mechanics/agents/beta/`（glob 注册），滑块同 id 由 registry 命名空间容忍。
+   */
+  beta?: boolean
   notes: string[]
 }

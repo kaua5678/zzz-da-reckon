@@ -19,7 +19,7 @@ import { useConfigStore } from '@/stores/config'
 import { buildCharConfig } from '@/composables/resourceCalc/helpers'
 
 describe('强特有招式却无价（缺耗能 ⇒ 静默 0 次）', () => {
-  it('没有模块接管、也非替代资源的无价强特角色 == [1551]', async () => {
+  it('没有模块接管、也非替代资源的无价强特角色 == [1551,1601,1661]', async () => {
     newPinia(); mockStaticFetch()
     const c0 = useCatalogStore(); await c0.load()
     const ids = [...c0.agentsMap.keys()]
@@ -38,6 +38,7 @@ describe('强特有招式却无价（缺耗能 ⇒ 静默 0 次）', () => {
       if ((cfg.exSpecialEnergyConsume ?? 0) > 0) continue
       unpriced.push(id)
     }
-    expect(unpriced.sort()).toEqual(['1551'])
+    expect(unpriced.sort()).toEqual(['1551', '1601', '1661'])
+    // 1601/1661：(Test1) 占位包（3.4.1+19836465）raw 未带强特能量消耗行；正式包重录时若补上耗能，名单应收短
   }, 120000)
 })

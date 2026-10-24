@@ -209,6 +209,13 @@
     "type": 1,
     "element": 202
   },
+  "1601": {
+    "zh": "挽昼",
+    "en": "Sunbringer",
+    "rank": 4,
+    "type": 7,
+    "element": 201
+  },
   "1631": {
     "zh": "赛维里安",
     "en": "Severian",
@@ -222,5 +229,12 @@
     "rank": 4,
     "type": 3,
     "element": 201
+  },
+  "1661": {
+    "zh": "知更鸟",
+    "en": "Robin",
+    "rank": 4,
+    "type": 5,
+    "element": 205
   }
 }

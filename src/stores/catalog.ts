@@ -3,7 +3,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref, shallowRef, computed } from 'vue'
-import type { Catalog, Agent, WEngine, DriveDiscSet, AgentSkills, StatRules, Boss, TeammateBuffGroup, BuildRecommendations, CharacterBuildRecommendation } from '@/types/catalog'
+import type { Catalog, Agent, WEngine, DriveDiscSet, AgentSkills, StatRules, Boss, TeammateBuffGroup, BuildRecommendations, CharacterBuildRecommendation, BetaAgentsFile } from '@/types/catalog'
 import type { BossPresetFile } from '@/types/bossPreset'
 import type { ChangelogFile } from '@/types/changelog'
 import type { RunArchiveFile } from '@/composables/runArchiveImport'
@@ -58,6 +58,9 @@ export const useCatalogStore = defineStore('catalog', () => {
     }))
     const byId = new Map(out.map(g => [g.id, g]))
     for (const [agentId, spec] of getAgentSpecsByAgentId()) {
+      // beta 冻结 spec 的 teamBuffs 只在开关打开时并入——关闭时 getAgent 查不到 beta 角色，
+      // 组名会退化成裸 id 泄进队友 Buff 列表。
+      if (spec.beta && !betaEnabled.value) continue
       const tbs = spec.teamBuffs ?? []
       if (tbs.length === 0) continue
       const agent = getAgent(agentId) ?? null
@@ -101,19 +104,71 @@ export const useCatalogStore = defineStore('catalog', () => {
   const runArchiveFile = shallowRef<RunArchiveFile | null>(null)
   let runArchivePromise: Promise<RunArchiveFile> | null = null
 
+  // ============ beta 冻结角色（测试服旧版快照，2026-10-24） ============
+  // beta-agents.json（scripts/snapshot-agent.mjs 生成）+ mechanics/agents/beta/*.ts（glob 注册，不受此开关
+  // 控制——registry 里挂着不等于可见）。口径：默认关，整库不放出 beta id（选人列表/索引/技能表全看不见），
+  // 已存队伍里的 beta id 因 catalog 无此角色而走空槽压缩；打开才 fetch 旁挂文件并合并进下列各索引。
+  // 切换 = setBetaEnabled 落 localStorage 后刷新页面（SettingsDialog 提示），不做热切换——catalog/
+  // teammateBuffs 的加载去重槽缓存了合并结果，热切换要动多处缓存，收益只有省一次刷新。
+  const BETA_STORAGE_KEY = 'zzz-beta-agents'
+  const betaAgentsFile = shallowRef<BetaAgentsFile | null>(null)
+  const betaEnabled = ref((() => {
+    try { return localStorage.getItem(BETA_STORAGE_KEY) === '1' } catch { return false }
+  })())
+  let betaAgentsPromise: Promise<BetaAgentsFile | null> | null = null
+
+  function setBetaEnabled(on: boolean): void {
+    betaEnabled.value = on
+    try {
+      if (on) localStorage.setItem(BETA_STORAGE_KEY, '1')
+      else localStorage.removeItem(BETA_STORAGE_KEY)
+    } catch { /* 写不进就只做会话内生效 */ }
+  }
+
+  /** 文件缺失（还没有任何 beta 快照）静默返回 null，不算错误态。 */
+  // @fact engine:beta-agents/旁挂合并 口径: beta-agents.json 仅在 beta 开关打开时随 catalog 一并加载并合并进 agents/skills/wEngines 索引与 displayAgents；开关关闭 = 整库不放出 beta id，已存队伍按空槽压缩处理；切换 = 落 localStorage 后刷新页面（不热切换） | 据 用户裁决@2026-10-24（测试服旧版要可同屏对比） | 验 src/stores/__tests__/catalogBeta.test.ts | 锚 src/stores/catalog.ts#loadBetaAgents | 信 确认
+  // ⟳复核: 首个真实 beta 快照（挽昼 v2 覆盖 1601 时）落地后复核合并面是否够用（如影画文本/配装推荐缺失的影响） | 到期 2027-01-24
+  async function loadBetaAgents(): Promise<BetaAgentsFile | null> {
+    if (betaAgentsFile.value) return betaAgentsFile.value
+    if (betaAgentsPromise) return betaAgentsPromise
+    betaAgentsPromise = Promise.resolve().then(async () => {
+      try {
+        const res = await fetch(withBase('/static/beta-agents.json'))
+        if (!res.ok) return null
+        const data = await res.json() as BetaAgentsFile
+        betaAgentsFile.value = data
+        return data
+      } catch {
+        return null
+      } finally {
+        betaAgentsPromise = null
+      }
+    })
+    return betaAgentsPromise
+  }
+
+  // 合并视图：catalog + beta 旁挂（betaEnabled 且文件加载成功才有增量；beta 条目 id 形如 `1091v1`，
+  // 由生成侧保证与真实四位数字 id 空间不交）。只读 concat，不改 catalog 本体（shallowRef 整体替换口径）。
+  const mergedAgents = computed<Agent[]>(() =>
+    [...(catalog.value?.agents ?? []), ...(betaAgentsFile.value?.agents ?? [])])
+  const mergedAgentSkills = computed<AgentSkills[]>(() =>
+    [...(catalog.value?.agentSkills ?? []), ...(betaAgentsFile.value?.agentSkills ?? [])])
+  const mergedWEngines = computed<WEngine[]>(() =>
+    [...(catalog.value?.wEngines ?? []), ...(betaAgentsFile.value?.wEngines ?? [])])
+
   // 索引 Map
   const agentsMap = computed(() => {
     const m = new Map<string, Agent>()
-    catalog.value?.agents.forEach(a => m.set(a.id, a))
+    mergedAgents.value.forEach(a => m.set(a.id, a))
     return m
   })
 
   const wEnginesMap = computed(() => {
     const m = new Map<string, WEngine>()
-    catalog.value?.wEngines.forEach(w => m.set(w.id, w))
+    mergedWEngines.value.forEach(w => m.set(w.id, w))
     // 旧 id 兼容：音擎 id 已统一为数字（legacyIds 保留旧格式，如 zzz_wiki_XXXX / nanoka_XXXX / 英文 slug），
     // 浏览器 localStorage 里的旧配置仍存旧 id，getWEngine 按 legacyIds 兜底。
-    catalog.value?.wEngines.forEach(w => (w.legacyIds ?? []).forEach(old => m.set(old, w)))
+    mergedWEngines.value.forEach(w => (w.legacyIds ?? []).forEach(old => m.set(old, w)))
     return m
   })
 
@@ -127,22 +182,22 @@ export const useCatalogStore = defineStore('catalog', () => {
 
   const agentSkillsMap = computed(() => {
     const m = new Map<string, AgentSkills>()
-    catalog.value?.agentSkills.forEach(s => m.set(s.id, s))
+    mergedAgentSkills.value.forEach(s => m.set(s.id, s))
     return m
   })
 
   const agentSkillsByAgentMap = computed(() => {
     const m = new Map<string, AgentSkills>()
-    catalog.value?.agentSkills.forEach(s => m.set(s.agentId, s))
+    mergedAgentSkills.value.forEach(s => m.set(s.agentId, s))
     return m
   })
 
   // 显示列表（过滤 hidden）
   const displayAgents = computed(() =>
-    catalog.value?.agents.filter(a => !a.hidden) ?? []
+    mergedAgents.value.filter(a => !a.hidden)
   )
   const displayWEngines = computed(() =>
-    catalog.value?.wEngines ?? []
+    mergedWEngines.value
   )
   const displayDriveDiscSets = computed(() =>
     catalog.value?.driveDiscSets ?? []
@@ -171,6 +226,8 @@ export const useCatalogStore = defineStore('catalog', () => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json() as Catalog
         catalog.value = data
+        // beta 旁挂在开关打开时随 catalog 一并就绪（blocking：文件极小；失败不算 catalog 错误态）
+        if (betaEnabled.value) await loadBetaAgents()
         return data
       } catch (e: unknown) {
         error.value = e instanceof Error ? e.message : 'Failed to load catalog'
@@ -364,6 +421,10 @@ export const useCatalogStore = defineStore('catalog', () => {
     statRules,
     bosses,
     ready,
+    betaAgentsFile,
+    betaEnabled,
+    setBetaEnabled,
+    loadBetaAgents,
     teammateBuffGroups,
     teammateBuffsStatus,
     teammateBuffsError,

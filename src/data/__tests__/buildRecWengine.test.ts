@@ -22,9 +22,10 @@ for (const w of catalog.wEngines ?? []) {
 }
 
 /** catalog 无专武归属的角色（更新前先确认专武确实未录入，而不是漏了 ownerAgentId） */
-const NO_OWNER_ENGINES = ['1551']
+const NO_OWNER_ENGINES = ['1551', '1601', '1661']
 // 1551 佩洛伊斯：专武尚未录入 catalog
 // 1631/1641 赛维里安/菲欧妮：专武 14163 禁罪囚笼 / 14164 涅槃初翎 已按 nanoka 3.3.12+19629936（v12）录入（2026-10-17）
+// 1601/1661 挽昼/知更鸟：(Test1) 占位包（3.4.1+19836465）raw 无专武数据，正式包落地时补录并移出本快照
 
 describe('专武推荐全覆盖（catalog ownerAgentId → build-recommendations）', () => {
   it('catalog 每个角色都有配装推荐条目', () => {

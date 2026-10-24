@@ -24,9 +24,12 @@ function specToLogicObject(spec: AgentMechanicSpec, resource: ResourceSpec): Log
 }
 
 export function createDefaultLogicEditorState(): LogicEditorState {
+  // beta 冻结 spec（`beta: true`）不进默认逻辑编辑器清单：编辑器面向活体逻辑，
+  // 冻结旧版是只读历史；其 resource/conversion id 与正主同名，混入会造成同 id 双对象。
+  const liveSpecs = agentSpecs.filter(spec => !spec.beta)
   return {
     version: 1,
-    attributeConversions: agentSpecs.flatMap(spec =>
+    attributeConversions: liveSpecs.flatMap(spec =>
       spec.attributeConversions.map(conversion => ({
         id: conversion.id,
         specId: spec.id,
@@ -41,10 +44,10 @@ export function createDefaultLogicEditorState(): LogicEditorState {
         note: conversion.note,
       })),
     ),
-    objects: agentSpecs.flatMap(spec =>
+    objects: liveSpecs.flatMap(spec =>
       spec.resources.map(resource => specToLogicObject(spec, resource)),
     ),
-    rowFusions: agentSpecs.flatMap(spec =>
+    rowFusions: liveSpecs.flatMap(spec =>
       spec.rowFusions.map(fusion => ({
         id: fusion.id,
         specId: spec.id,

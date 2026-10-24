@@ -19,11 +19,12 @@ describe('CC-320 isNumberedBasicSegment / 秒均回复基准段兜底', () => {
     expect(isNumberedBasicSegment({ name: { en: 'Basic Attack' }, actionTime: 0.5 })).toBe(false)
   })
 
-  it('只有 1631 / 1641 选不出 #N 段（新增此类角色时本例会提醒检查基准段）', () => {
+  it('只有 1601/1631/1641/1661 选不出 #N 段（新增此类角色时本例会提醒检查基准段）', () => {
     const none = catalog.agentSkills
       .filter(a => !(a.categories.find(c => c.id === 'basic')?.moves ?? []).some(isNumberedBasicSegment))
       .map(a => a.agentId).sort()
-    expect(none).toEqual(['1631', '1641'])
+    // 1601/1661：(Test1) 占位包普攻段名不带 #N，已钉 basicBenchmarkMoveId（1601003/1661003）
+    expect(none).toEqual(['1601', '1631', '1641', '1661'])
   })
 
   it('无 #N 段：给基准段 ⇒ 按基准段秒均；不给 ⇒ 仍 0（旧行为）', () => {

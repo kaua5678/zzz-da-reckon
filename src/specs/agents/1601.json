@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "agent:1601",
+  "name": "挽昼",
+  "agentIds": [
+    "1601"
+  ],
+  "status": "not_described_not_implemented",
+  "attributeConversions": [],
+  "resources": [],
+  "rowFusions": [],
+  "events": [],
+  "verifications": [],
+  "stateMachines": [],
+  "teamBuffs": [],
+  "notes": [
+    "占位测试包（Test1）：nanoka 3.4.1+19836465 首版，后续版本会用正式逻辑与数值整体替换——替换前先跑 scripts/snapshot-agent.mjs 冻结本版（1601v1）。",
+    "当前深度＝倍率表直读（generic 路径：平A秒均 + 特殊/强特 + 终结），机制未实录。",
+    "未建模清单（原文已核对，待正式包落地后实录）：双实体（艾尔妲底形/林德薇恩切换，德蕾琪娜为招架位）；[残痕]（重击命中消耗至多 3 层，每层触发 1 次[毁伤]范围伤害）；[愿力]/[锐能]（能量族）；[链齿]/[旗令]（强特资源，曦生·长暗终焉/晦尽·永昼之炬消耗）；[愿核]（终结技「此愿，重塑万象」消耗并清除[烬痕]）；[掠夜]状态（闪避长按高速移动）。",
+    "数据裁决：basicBenchmarkMoveId=1601003（执旌第 3 段，艾尔妲为底形）；specialty 原文空缺，暂空串。"
+  ]
+}

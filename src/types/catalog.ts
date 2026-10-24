@@ -726,6 +726,36 @@ export interface Catalog {
   statRules: StatRules
 }
 
+// ============ beta 冻结角色（测试服旧版快照） ============
+
+/** 一次 beta 快照的出处元数据（beta-agents.json#snapshots 条目） */
+export interface BetaSnapshotMeta {
+  /** 正主 agentId（四位数字） */
+  agentId: string
+  /** 冻结副本 id（`${agentId}v<n>`，非四位数字——不进真实 id 空间） */
+  betaId: string
+  /** 版本后缀（v1 / v2 …） */
+  tag: string
+  /** nanoka 源版本号（如 3.3.2+18895034） */
+  sourceVersion: string
+  /** 建议的 git tag（agent/<agentId>/<sourceVersion>，冻结时刻的完整实现） */
+  gitTag: string
+  createdAt: string
+}
+
+/**
+ * beta 冻结角色旁挂文件（`public/static/beta-agents.json`，`scripts/snapshot-agent.mjs` 生成；
+ * 不进 catalog.json——那是导入脚本的生成物且顶层键被 validate:data 锁死）。
+ * 只在 beta 开关打开时由 catalog store 合并进各索引；开关关闭 = 整库不放出 beta id。
+ */
+export interface BetaAgentsFile {
+  schemaVersion: 1
+  agents: Agent[]
+  agentSkills: AgentSkills[]
+  wEngines: WEngine[]
+  snapshots: BetaSnapshotMeta[]
+}
+
 // ============ 配装推荐（nanoka.cc 邦布精灵推荐） ============
 
 export interface BuildDriveDiscSet {

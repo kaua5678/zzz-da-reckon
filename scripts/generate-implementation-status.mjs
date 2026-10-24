@@ -42,6 +42,8 @@ const specDir = join(root, 'src', 'specs', 'agents')
 const specs = readdirSync(specDir)
   .filter(file => file.endsWith('.json'))
   .map(file => JSON.parse(readFileSync(join(specDir, file), 'utf8')))
+  // beta 冻结副本（beta: true）是正主的只读历史镜像，不进状态表（防双计 implemented 数）
+  .filter(spec => !spec.beta)
 const specRows = specs.map(spec => {
   const agentNames = spec.agentIds
     .map(id => agents.find(agent => agent.id === id)?.name?.zhCN || id)

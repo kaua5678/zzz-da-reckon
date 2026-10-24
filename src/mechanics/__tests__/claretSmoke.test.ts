@@ -439,9 +439,12 @@ describe('克拉蕾初始暴伤→暴击率转化（核心被动：每 1% 初始
 })
 
 describe('CC-122 绊线：残锋「全队[锋御]」按自身面板实现的前提', () => {
-  it('当前数据面锋御（specialty=sharpen）只有克拉蕾一人；新增锋御角色时本例失败 ⇒ 残锋改为 spec teamBuff + specialty 条件', () => {
-    const catalog = JSON.parse(readFileSync(join(process.cwd(), 'public/static/catalog.json'), 'utf-8'))
+  it('锋御（specialty=sharpen）角色快照；残锋迁 spec teamBuff 前，每多一个锋御角色都挂在这条上（债见 claret.ts 残锋 debt 标记）', () => {
+    const catalog = JSON.parse(readFileSync(join(process.cwd(), 'public/static/catalog.json'), 'utf8'))
     const agents: Array<{ id: string; specialty?: string }> = Array.isArray(catalog.agents) ? catalog.agents : Object.values(catalog.agents)
-    expect(agents.filter(a => a.specialty === 'sharpen').map(a => a.id)).toEqual(['1611'])
+    // 2026-10-24 +1601 挽昼（(Test1) 占位包）。残锋「全队锋御」当前只写克拉蕾自身面板——
+    // 数值影响 = 0（1601 的 generic 路径不消费 sharpCritDmg），口径债已登记；
+    // 迁移 = spec teamBuff + AA 触发条件复刻，第三个锋御角色入库前必须清偿。
+    expect(agents.filter(a => a.specialty === 'sharpen').map(a => a.id).sort()).toEqual(['1601', '1611'])
   })
 })

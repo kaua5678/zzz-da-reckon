@@ -57,6 +57,35 @@
       <n-tab-pane name="memory" tab="用户记忆">
         <MemoryPanel />
       </n-tab-pane>
+
+      <!-- ================= Beta 角色 ================= -->
+      <n-tab-pane name="betaAgents" tab="Beta 角色">
+        <n-space vertical size="large">
+          <div class="sd-row">
+            <n-switch :value="catalog.betaEnabled" @update:value="onToggleBeta" />
+            <div class="sd-row-text">
+              <div class="sd-row-title">显示测试服旧版冻结角色</div>
+              <div class="sd-row-hint">
+                测试服角色被新一版数据覆盖前，可用 <code>node scripts/snapshot-agent.mjs</code> 把旧版整体冻结成
+                旁挂角色（id 形如 1091v1）。开关关闭时全库不放出这些 id；打开后它们作为普通角色进入所有
+                对比/修改模块，可与新版同屏对比强度。切换后需刷新页面生效。
+              </div>
+            </div>
+          </div>
+
+          <n-divider style="margin: 0" />
+
+          <div v-if="betaSnapshots.length === 0" class="sd-row-hint">
+            当前没有已冻结的 beta 角色。
+          </div>
+          <div v-else>
+            <div class="sd-row-title">已冻结快照</div>
+            <div v-for="snap in betaSnapshots" :key="snap.betaId" class="sd-row-hint">
+              {{ nameOf(snap.betaId) }}（{{ snap.betaId }}）· 源版本 {{ snap.sourceVersion }} · 冻结于 {{ snap.createdAt.slice(0, 10) }}
+            </div>
+          </div>
+        </n-space>
+      </n-tab-pane>
     </n-tabs>
   </n-modal>
 </template>
@@ -91,6 +120,14 @@ const nameOf = (agentId: string): string => {
   const agent = catalog.agentsMap.get(agentId)
   return agent?.name.zhCN || agent?.name.en || agentId
 }
+
+/** beta 开关：落 localStorage 后刷新页面（catalog/teammateBuffs 的合并缓存不热切换，见 catalog store 注释）。 */
+function onToggleBeta(on: boolean): void {
+  catalog.setBetaEnabled(on)
+  setTimeout(() => window.location.reload(), 50)
+}
+
+const betaSnapshots = computed(() => catalog.betaAgentsFile?.snapshots ?? [])
 
 /**
  * 勾选清单按指标分组（每指标一组：全队 + 各在队角色）。

@@ -38,6 +38,8 @@ export const JSON_CONTRACTS = [
   { json: 'public/static/boss-presets.json', file: 'src/types/bossPreset.ts', type: 'BossPresetFile' },
   { json: 'public/static/run-archive.json', file: 'src/composables/runArchiveImport.ts', type: 'RunArchiveFile' },
   { json: 'public/static/changelog.json', file: 'src/types/changelog.ts', type: 'ChangelogFile' },
+  // beta 冻结角色旁挂（2026-10-24；snapshot-agent.mjs 生成、catalog store 仅 beta 开关打开时合并）
+  { json: 'public/static/beta-agents.json', file: 'src/types/catalog.ts', type: 'BetaAgentsFile' },
   { dir: 'src/specs/agents', file: 'src/specs/types.ts', type: 'AgentMechanicSpec' },
   { dir: 'src/data/teamPresets', file: 'src/data/teamPresets.ts', type: 'TeamPresetFile' },
   { dir: 'src/data/stunAxisPresets', file: 'src/data/stunAxisPresets.ts', type: 'StunAxisPreset' },

@@ -164,6 +164,26 @@ registerWithSpecSettings(yixuanMechanic)
 registerWithSpecSettings(lycaonMechanic)
 registerWithSpecSettings(soldier11Mechanic)
 
+/**
+ * beta 冻结副本（`scripts/snapshot-agent.mjs` 生成到 `./agents/beta/<id>v<n>.ts`，角色 id 形如
+ * `1091v1`）：测试服旧版整体冻结，与正主并存以便同屏对比强度。目录里有什么注册什么——
+ * 找不到模块导出的文件视为坏快照，启动即抛。
+ * ⚠ 必须在下方 spec 兜底循环**之前**执行：beta spec（`specs/agents/<id>v<n>.json`）先被
+ * 兜底注册成模块的话，这里再注册同一 agentId 就撞车。滑块 id 与正主重复由 registry 的
+ * 跨模块命名空间容忍（见 registry.ts#registerAgentMechanic 注释）。
+ */
+const betaModules = import.meta.glob('./agents/beta/*.ts', { eager: true }) as Record<
+  string,
+  Record<string, unknown>
+>
+for (const [path, mod] of Object.entries(betaModules)) {
+  const candidate = Object.values(mod).find(
+    v => !!v && typeof v === 'object' && Array.isArray((v as AgentMechanicModule).agentIds) && typeof (v as AgentMechanicModule).id === 'string',
+  ) as AgentMechanicModule | undefined
+  if (!candidate) throw new Error(`[mechanics] beta snapshot ${path} exports no AgentMechanicModule`)
+  registerWithSpecSettings(candidate)
+}
+
 for (const spec of agentSpecs) {
   if (spec.agentIds.every(id => !getAgentMechanic(id))) {
     registerWithSpecSettings(specToMechanicModule(spec))

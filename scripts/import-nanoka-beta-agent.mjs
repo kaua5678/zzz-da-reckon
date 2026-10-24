@@ -27,6 +27,7 @@ import { fetchJson } from './lib/http.mjs'
 // 暴击映射口径的单一事实源（规则 11）：与审计/修复脚本共用同一张规则表，
 // 保证「下次重导」不会再漏掉突破加成 —— 改口径只需改 lib/level60-rules.mjs 一处。
 import { FIELD_RULES } from './lib/level60-rules.mjs'
+import { remapTemplateMoveId } from './lib/move-elements.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = process.argv.slice(2)
@@ -56,6 +57,9 @@ const ELEMENT_KEYWORDS = [
 const SPECIALTY_KEYWORDS = [
   ['强攻', 'attack'], ['击破', 'stun'], ['异常', 'anomaly'],
   ['支援', 'support'], ['防护', 'defense'], ['命破', 'rupture'], ['锐化', 'sharpen'],
+  // 锋御 = sharpen 的官方中文名（1611 克拉蕾与 1601 挽昼的 weapon_type 都是 {"7":"锋御"}；
+  // 2026-10-24 随 1601 收词——缺它则 Test1 包 specialty 落空串，validate:data Specialty 枚举红）
+  ['锋御', 'sharpen'],
 ]
 
 function num(v) { return typeof v === 'number' && Number.isFinite(v) ? v : 0 }
@@ -74,7 +78,13 @@ function pick(dict, keywords) {
 }
 
 /** 逐 moveId 收集参数（首次出现为准）+ 中/英文名（import-v12 的 entry/param 命名逻辑） */
-function collectMoves(full) {
+/**
+ * (Test1) 占位包模板残留重映射：实现已迁 `scripts/lib/move-elements.mjs#remapTemplateMoveId`
+ * （单一事实源——导入器与 move-element 对账的 orphan 检查共用，见其注释）。
+ */
+const remapMoveId = remapTemplateMoveId
+
+function collectMoves(full, selfId) {
   const moves = new Map()
   for (const cat of ['basic', 'dodge', 'special', 'chain', 'assist']) {
     for (const entry of full.skill?.[cat]?.description ?? []) {
@@ -82,7 +92,8 @@ function collectMoves(full) {
       const params = Array.isArray(entry?.param) ? entry.param : []
       const idsOfParam = []
       for (const p of params) {
-        for (const [moveId, pv] of Object.entries(p?.param ?? {})) {
+        for (const [rawId, pv] of Object.entries(p?.param ?? {})) {
+          const moveId = remapMoveId(rawId, selfId)
           idsOfParam.push([moveId, stripPrefix(p?.name)])
           if (!moves.has(moveId)) {
             moves.set(moveId, { moveId, cat, entryName, paramName: stripPrefix(p?.name), pv })
@@ -109,14 +120,14 @@ function collectMoves(full) {
  * 无 {Skill:id} 引用 → 归属 = 该 entry 参数序列中**前一个带 id 的 param 行**的 moveId
  * （组合技能量消耗 跟在 组合技伤害/失衡倍率 后 → 归 1631008；风刃最大能量消耗 → 归 1631009）。
  */
-function collectEnergyCosts(full) {
+function collectEnergyCosts(full, selfId) {
   const costs = new Map()
   for (const cat of ['basic', 'dodge', 'special', 'chain', 'assist']) {
     for (const entry of full.skill?.[cat]?.description ?? []) {
       let lastMoveId = ''
       for (const p of Array.isArray(entry?.param) ? entry.param : []) {
         const ids = Object.keys(p?.param ?? {})
-        if (ids.length > 0) lastMoveId = ids[ids.length - 1]
+        if (ids.length > 0) lastMoveId = remapMoveId(ids[ids.length - 1], selfId)
         if (!/能量消耗/.test(String(p?.name ?? ''))) continue
         const amount = Number(String(p?.desc ?? '').replace(/<[^>]*>|\(Test\d+\)|点/g, '').trim())
         if (lastMoveId && Number.isFinite(amount) && amount > 0) costs.set(lastMoveId, amount)
@@ -126,12 +137,13 @@ function collectEnergyCosts(full) {
   return costs
 }
 
-function enNamesOf(fullEn) {  const names = new Map()
+function enNamesOf(fullEn, selfId) {  const names = new Map()
   for (const cat of ['basic', 'dodge', 'special', 'chain', 'assist']) {
     for (const entry of fullEn.skill?.[cat]?.description ?? []) {
       const entryName = stripPrefix(entry?.name)
       for (const p of Array.isArray(entry?.param) ? entry.param : []) {
-        for (const moveId of Object.keys(p?.param ?? {})) {
+        for (const rawId of Object.keys(p?.param ?? {})) {
+          const moveId = remapMoveId(rawId, selfId)
           if (!names.has(moveId)) names.set(moveId, entryName)
         }
       }
@@ -212,9 +224,9 @@ for (const id of ids) {
     penRatio: 0,
   }
 
-  const moves = collectMoves(full)
-  const energyCosts = collectEnergyCosts(full)
-  const enNames = enNamesOf(fullEn)
+  const moves = collectMoves(full, id)
+  const energyCosts = collectEnergyCosts(full, id)
+  const enNames = enNamesOf(fullEn, id)
   const byCat = new Map()
   for (const m of moves.values()) {
     const pv = m.pv

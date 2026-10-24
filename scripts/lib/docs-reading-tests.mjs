@@ -98,6 +98,8 @@ export const DOCS_READING_TESTS = [
   'src/mechanics/__tests__/specResourceTotalSingleSource.test.ts',
   'src/mechanics/__tests__/specTeamBuffSingleSource.test.ts',
   'src/scripts/__tests__/agentIdentity.test.ts',
+  // 2026-10-24 入选（规则 ① 闭包：经 scripts/lib/beta-snapshot.mjs 读仓库现状 public/static/catalog.json）
+  'src/scripts/__tests__/betaSnapshot.test.ts',
   // 2026-10-12 更新日志：规则 ② 入选（写 scripts/lib/changelog.mjs 路径字面量，读该模块的运行时导出）
   'src/scripts/__tests__/changelog.test.ts',
   'src/scripts/__tests__/checkGuards.test.ts',

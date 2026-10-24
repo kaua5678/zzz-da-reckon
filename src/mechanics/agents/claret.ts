@@ -248,6 +248,7 @@ function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelIn
   // 核心被动 Lv.7：猩红铭刻/连携/终结/无垢熔锋期间 暴击率 +30%（状态高频维持，满覆盖近似）
   panel.critRate = panel.critRate + CORE_CRIT_RATE
   // 残锋：队友/自身触发[毁伤]后全队锋御 锐暴伤害 +25%（40s 刷新；按自身面板近似）——额外能力门控内
+  // debt: 第二个锋御角色（1601 挽昼，2026-10-24 入库）出现后「按自身面板」漏给队友的锋御加成, 迁 spec teamBuff（接收者无过滤可省：sharpCritDmg 只有锋御伤害消费，全队施加数值等价）+ AA 触发条件复刻（teamConditions OR 语义见 specs/teamCondition.ts），移除本处面板写；绊线 = claretSmoke.test.ts CC-122
   if (aa) panel.sharpCritDmg = panel.sharpCritDmg + RESIDUAL_EDGE_SHARP_CRIT_DMG
   // 影画2（薪火荣冠）：猩红铭刻/连携/终结/反制支援/支援突击期间攻击命中无视 18% 电抗
   //   （状态高频维持，满覆盖近似）——★ R55 订正：旧实现是 `>=1` + 16%，门控与数值双错

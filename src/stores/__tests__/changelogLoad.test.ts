@@ -184,8 +184,9 @@ describe('JSON 入口扫描器：fetch(withBase(...)) 必须可见（本次实�
     expect(CONTRACT_SRC).toContain('[A-Za-z_$][\\w$]*\\(\\s*)?')
   })
 
-  it('6 个静态入口全部被扫描器看得见（含 changelog.json）', () => {
+  it('7 个静态入口全部被扫描器看得见（含 changelog.json / beta-agents.json）', () => {
     expect([...STORE_SRC.matchAll(FETCH_RE)].map(m => m[1]).sort()).toEqual([
+      'beta-agents.json',
       'boss-presets.json',
       'build-recommendations.json',
       'catalog.json',

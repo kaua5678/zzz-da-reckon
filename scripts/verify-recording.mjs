@@ -66,6 +66,7 @@ const specs = readdirSync(specDir).filter(f => f.endsWith('.json'))
 for (const file of specs) {
   const spec = JSON.parse(readFileSync(join(specDir, file), 'utf8'))
   if (!implementedStatuses.has(spec.status)) continue
+  if (spec.beta) continue // 冻结副本不新录测试/契约（其证据在正主与 git tag）
   const agentId = spec.agentIds[0]
   const label = `${agentId} ${spec.name}`
 
@@ -116,7 +117,7 @@ for (const file of contracts) {
 for (const file of specs) {
   const spec = JSON.parse(readFileSync(join(specDir, file), 'utf8'))
   const id = spec.agentIds?.[0]
-  if (implementedStatuses.has(spec.status) && !legacy.includes(id) && !existsSync(join(recordingDir, `${id}.json`))) {
+  if (implementedStatuses.has(spec.status) && !spec.beta && !legacy.includes(id) && !existsSync(join(recordingDir, `${id}.json`))) {
     failed++; console.log(`  FAIL ${id}: 新录入缺 data/recordings/${id}.json 原文契约`)
   }
 }

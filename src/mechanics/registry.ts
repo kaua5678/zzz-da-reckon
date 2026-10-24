@@ -25,12 +25,20 @@ export function registerAgentMechanic(module: AgentMechanicModule): void {
   // 本文件保持纯叶子——core 按 C1 只认 registry，registry 若值导入 specs 会把 specs 运行时 / data 行查询 /
   // logicEditor 全局快照带进 core 运行时闭包；锁 coreRuntimeDeps.test）。
 
+  // settings 按**模块**归属（跨模块同 id 允许并存）；`settingDefaults` 是全局裸 id 索引，
+  // **首注册优先**：活体模块在 mechanics/index.ts 先注册、beta 冻结副本后注册 ⇒ 活体缺省胜出。
+  // 动机（2026-10-24 beta 快照）：测试服角色旧版冻结成副本模块（`<id>v<n>`）后，其滑块 id 与
+  // 正主相同——若全局抛错，快照直接打死启动。语义口径：同名滑块 = 全局一个取值槽，
+  // 用户设过值则两版共享同一值（对比两版强度时口径一致）；未设值时按首注册（活体）缺省。
+  // 模块内同 id 重复声明仍是录入错误，照抛。
+  const seen = new Set<string>()
   for (const setting of module.settings ?? []) {
     if (!setting.id) throw new Error(`[mechanics] module ${module.id} contains setting without id`)
-    if (settingDefaults.has(setting.id)) {
-      throw new Error(`[mechanics] setting ${setting.id} already registered`)
+    if (seen.has(setting.id)) {
+      throw new Error(`[mechanics] module ${module.id} declares setting ${setting.id} twice`)
     }
-    settingDefaults.set(setting.id, setting)
+    seen.add(setting.id)
+    if (!settingDefaults.has(setting.id)) settingDefaults.set(setting.id, setting)
   }
 }
 

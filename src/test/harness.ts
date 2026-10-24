@@ -53,14 +53,21 @@ export interface HarnessTeamSlot {
   [key: string]: unknown
 }
 
-/** stub fetch 返回静态文件（catalog / teammate-buffs / build-recommendations / boss-presets / run-archive / changelog） */
-export function mockStaticFetch(): void {
+/**
+ * stub fetch 返回静态文件（catalog / teammate-buffs / build-recommendations / boss-presets / run-archive / changelog）。
+ * `betaAgents` 显式传入才服务 `/static/beta-agents.json`（默认 404，对齐「还没有 beta 快照」的部署态，
+ * 保证测试不随工作区是否生成过快照而漂移）；beta 开关本身由测试自行写 localStorage。
+ */
+export function mockStaticFetch(options?: { betaAgents?: unknown }): void {
   vi.stubGlobal('fetch', vi.fn(async (url: unknown) => {
     const u = String(url)
     if (u.includes('/static/catalog.json')) return { ok: true, json: async () => JSON.parse(catalogText) }
     if (u.includes('/static/teammate-buffs.json')) return { ok: true, json: async () => JSON.parse(teammateBuffsText) }
     if (u.includes('/static/build-recommendations.json')) return { ok: true, json: async () => JSON.parse(buildRecsText) }
     if (u.includes('/static/boss-presets.json')) return { ok: true, json: async () => JSON.parse(bossPresetsText) }
+    if (u.includes('/static/beta-agents.json') && options?.betaAgents !== undefined) {
+      return { ok: true, json: async () => options.betaAgents }
+    }
     // 3 MB：按需读（不在模块加载时读，免得每个用 harness 的测试文件都付这笔）
     if (u.includes('/static/run-archive.json')) return { ok: true, json: async () => JSON.parse(readFileSync(new URL('../../public/static/run-archive.json', import.meta.url), 'utf8')) }
     // 400 KB，同上按需读（更新日志只有弹层的测试要）
@@ -154,10 +161,10 @@ export function setTeam(
  */
 export async function setupHarness(
   team: Array<HarnessTeamSlot | ''>,
-  opts: { loadTeammateBuffs?: boolean; recommendedBuild?: boolean } & HarnessTeamOptions = {},
+  opts: { loadTeammateBuffs?: boolean; recommendedBuild?: boolean; betaAgents?: unknown } & HarnessTeamOptions = {},
 ) {
   setActivePinia(createPinia())
-  mockStaticFetch()
+  mockStaticFetch(opts.betaAgents !== undefined ? { betaAgents: opts.betaAgents } : undefined)
   // 与 useCalculatorStartup 同一路径激活行融合规则：测试态 = 生产启动态（r697，原先测试态规则恒空）。
   // 每次调用都新建 store ⇒ 规则重置为默认；用例要自定规则须在 setupHarness 之后 setActiveRowFusionRules。
   useLogicEditorStore()

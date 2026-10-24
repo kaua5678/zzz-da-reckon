@@ -190,7 +190,8 @@ export function extractFacts(text, subject, source) {
 /** 文件路径 → 主体。规则 7：spec 文件名必须 = agentId，所以路径本身就是绑定 */
 export function subjectFromPath(path, moduleAgentIds = {}) {
   const p = path.split(sep).join('/')
-  const spec = p.match(/src\/specs\/agents\/(\d+)\.json$/)
+  // `\d+v\d+` = beta 冻结 spec（1601v1.json，snapshot-agent.mjs 生成）——主体同样绑 agent
+  const spec = p.match(/src\/specs\/agents\/(\d+(?:v\d+)?)\.json$/)
   if (spec) return 'agent:' + spec[1]
   const mod = p.match(/src\/mechanics\/agents\/([A-Za-z0-9_]+)\.ts$/)
   if (mod) return moduleAgentIds[mod[1]] ? 'agent:' + moduleAgentIds[mod[1]] : 'module:' + mod[1]

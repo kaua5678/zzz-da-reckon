@@ -330,6 +330,7 @@ export function buildPlannerCards(
   customHoldings: Record<string, number> = {},
 ): PlannerCard[] {
   void startDate // 窗口日期来自版本节点；起点只影响规划期过滤（runPullPlanner 内做）
+  const catalog = useCatalogStore()
   const out: PlannerCard[] = []
   for (const [agentId, nodeId] of Object.entries(AGENT_RELEASE_NODE)) {
     const idx = nodeIndexOf(nodeId)
@@ -339,6 +340,9 @@ export function buildPlannerCards(
     const windowEnd = VERSION_NODES[idx + 1]?.date ?? null
     if (STANDARD_S_AGENT_IDS.has(agentId)) continue // 常驻 S 非抽卡对象（免费）
     if (FREE_SPECIAL_AGENT_IDS.has(agentId)) continue // 潘引壶/佩洛伊斯永久免费，不受购买窗口限制
+    // 无专武归属的角色不发卡（测试口径「补数据，或让阶梯按卡过滤」）：阶梯的专武档会花钱
+    // 却不改配装。2026-10-24 首例 = 1601/1661 (Test1) 占位包（raw 无专武数据），正式包补录后自动回卡池。
+    if (!catalog.displayWEngines.some(w => w.ownerAgentId === agentId)) continue
     let initialTier = 0
     if (preset === 'custom') initialTier = customHoldings[agentId] ?? 0
     out.push({ agentId, windowStart: date, windowEnd, ...(initialTier ? { initialTier } : {}) })

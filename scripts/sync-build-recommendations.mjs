@@ -82,18 +82,26 @@ for (const entry of Object.values(build.characters)) {
 }
 /** 显示名统一中文（既有条目中英混排；UI 直接渲染 name，见 TeamConfigPage 配装推荐块） */
 const PROP_ZH = {
-  11102: '生命值', 12102: '攻击力', 12202: '冲击力', 13102: '防御力',
+  11102: '生命值', 11103: '生命值', 12102: '攻击力', 12202: '冲击力', 13102: '防御力',
   20103: '暴击率', 21103: '暴击伤害', 23103: '穿透率',
   30502: '能量自动回复', 31203: '异常精通', 31402: '异常掌控',
   31503: '物理伤害加成', 31603: '火属性伤害加成', 31703: '冰属性伤害加成',
   31803: '电属性伤害加成', 31903: '以太伤害加成', 32303: '风属性伤害加成',
+}
+/**
+ * PROP_TABLE 只从既有条目回收，全新档位首见时先落这里（条目落盘后自然进回收面）。
+ * 11103 = 生命值副词条高一档（2026-10-24 随 1661 (Test1) 首见；与 11102 同名同图标，
+ * 形状复用 1051 条目里的 11102）。
+ */
+const PROP_TABLE_FALLBACK = {
+  11103: { name: '生命值', icon: 'UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconHp.png', format: '{0:0.#%}' },
 }
 /** 固定值词条（异常精通）不是百分比 */
 const PROP_FORMAT = { 31203: '{0:0}' }
 
 function statOf(prop) {
   const id = String(prop)
-  const known = PROP_TABLE[id]
+  const known = PROP_TABLE[id] ?? PROP_TABLE_FALLBACK[id]
   if (!known) throw new Error(`词条 ${id} 不在既有词条表里——先确认它属于哪一槽，再补 PROP_ZH/PROP_TABLE 兜底`)
   return {
     prop: id,

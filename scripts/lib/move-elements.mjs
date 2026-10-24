@@ -46,11 +46,28 @@ export const ELEMENT_BY_CODE = {
   300: 'lumiflux',
 }
 
-/** 原文散文里的属性词 → catalog 属性名（烈霜 = 冰的显示名） */
+/**
+ * (Test1) 占位包模板残留重映射（2026-10-24 实证 1661）：占位包的 param id 可能整段抄自模板角色
+ * （1661 的 1611017-19 抄自 1611 克拉蕾的支援突击）——跨角色撞号破坏 moveId 全局唯一性
+ * （actionTime 对账 / docs/multiplier-record / 本模块 orphan 检查全按 moveId 键）。
+ * 处置：前 4 位 ≠ 本角色 id 的 param id ⇒ 前缀重映射为本角色块（1611018 → 1661018）；
+ * 正式包自带本角色块 id，本函数自然恒等。**单一事实源**：import-nanoka-beta-agent（导入）
+ * 与本模块 reconcile（orphan 对账）共用，两侧口径不得分叉。
+ */
+export function remapTemplateMoveId(moveId, selfId) {
+  const s = String(moveId)
+  return s.startsWith(selfId) ? s : selfId + s.replace(/^\d{4}/, '')
+}
+
+/** 原文散文里的属性词 → catalog 属性名（烈霜 = 冰、燎源 = 火的显示名；2026-10-24 随 1601 挽昼 (Test1) 收词） */
 export const ELEMENT_BY_WORD = {
   物理: 'physical',
   电属性: 'electric',
   火属性: 'fire',
+  // 燎源/燎源属性两种形态都收：原文写「造成燎源属性伤害」（ELEM_IN_TEXT 要求词后紧跟「伤害」，
+  // 「属性」夹在中间时只有带属性形态能命中；段规则 SEG_RULE 用同一词表）
+  燎源: 'fire',
+  燎源属性: 'fire',
   冰属性: 'ice',
   烈霜: 'ice',
   以太: 'ether',
@@ -80,6 +97,10 @@ const SEG_RULE = new RegExp(
 /** 去标签 + 去空格（原文里属性词常被 <color> 包住） */
 export function plain(value) {
   return String(value ?? '')
+    // 剥 nanoka 测试服占位标记（2026-10-24 随 1601/1661 (Test1) 包收：raw 名/文带着它，
+    // catalog 名已被 import 的 stripPrefix 剥掉 ⇒ 不剥则 name join 全落空、对账器报「解析器一条都没解析出来」；
+    // 与 phase-buff-parser 的 testOnly 剥法同源，只剥**前导**标记，句中出现的保留）
+    .replace(/^\(Test\d+\)\s*/, '')
     .replace(/<[^>]*>/g, '')
     .replace(/\s+/g, ' ')
     .trim()
