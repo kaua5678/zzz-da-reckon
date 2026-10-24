@@ -167,8 +167,10 @@ describe('R54 真管线：C6 毁伤不进层预算（时序无关真缺陷的回
     expect(src!.maimCount).toBe(Math.floor(src!.gashStackConsumed) + c6)
     // 反锁：若 c6 被混进消耗侧（R54 旧缺陷），consumed 会超出「层数」这个唯一上限
     expect(src!.gashStackConsumed).toBeLessThanOrEqual(src!.gashStacks + 1e-9)
-    // 拆解恒等式：consumed ≡ fromCleave + fromBurial（与 demand / c6 无关）
-    expect(src!.gashStackConsumed).toBeCloseTo(src!.maimFromCleave + src!.maimFromBurial, 9)
+    // 拆解恒等式：consumed ≡ 轴内 + fromCleave + fromBurial（与 demand / c6 无关）
+    // 2026-10-12 轴内先扣后，轴内消耗是拆解的第三个来源（`axisGashConsumed`，非轴 = 0）。
+    expect(src!.gashStackConsumed).toBeCloseTo(
+      src!.axisGashConsumed + src!.maimFromCleave + src!.maimFromBurial, 9)
     // demand 是段数展示量 ⇒ 允许大于消耗层数（葬血强袭每次 3 段，天然比层数粗）
     expect(src!.maimDemand).toBeGreaterThanOrEqual(src!.gashStackConsumed)
   }, 300_000)
@@ -181,6 +183,7 @@ describe('R54 真管线：C6 毁伤不进层预算（时序无关真缺陷的回
     ]
     const failures: string[] = []
     const consumedByV: number[] = []
+    const stacksByV: number[] = []
     for (const v of [0, 1, 20]) {
       // 每点独立 setupHarness（跨点复用会因收敛态污染产出假 no-delta）
       const { config } = await setupHarness(team)
@@ -193,24 +196,31 @@ describe('R54 真管线：C6 毁伤不进层预算（时序无关真缺陷的回
       const c6 = src.maimFromC6
       // ★ 新口径：消耗层数**不再**由滑块层预算封顶——滑块只决定斩金断铁吃掉几层，
       //   剩余层数一律由葬血强袭自动补足 ⇒ `consumed` 与 `v` 无关（见下 totals 断言）。
-      const expected = Math.min(src.gashStacks, src.maimFromCleave + src.maimFromBurial)
+      // 轴内先扣是拆解的第一段（非轴 = 0）；轴外只结算剩下的层
+      const expected = Math.min(src.gashStacks, src.axisGashConsumed + src.maimFromCleave + src.maimFromBurial)
       if (Math.abs(src.gashStackConsumed - expected) > 1e-9) {
-        failures.push(`v=${v}: gashStackConsumed 应为 min(L=${src.gashStacks}, fromCleave+fromBurial)=${expected}，实到 ${src.gashStackConsumed}`)
+        failures.push(`v=${v}: gashStackConsumed 应为 min(L=${src.gashStacks}, 轴内+fromCleave+fromBurial)=${expected}，实到 ${src.gashStackConsumed}`)
       }
       if (src.maimCount !== Math.floor(src.gashStackConsumed) + c6) {
         failures.push(`v=${v}: maimCount 应为 floor(consumed=${src.gashStackConsumed})+c6(${c6})=${Math.floor(src.gashStackConsumed) + c6}，实到 ${src.maimCount}`)
       }
       // 段数口径 demand（含自动补足的葬血强袭次数）
-      const expectedDemand = v + BURIAL_MAIM_PER_CAST * src.burialCastsSettled + c6
+      // 段数口径 = 轴内触发 + 斩金断铁句数 + 3×结算次数 + c6（轴内那部分同样计入需求展示）
+      const expectedDemand = (src.axisMaim ?? 0) + v + BURIAL_MAIM_PER_CAST * src.burialCastsSettled + c6
       if (src.maimDemand !== expectedDemand) {
         failures.push(`v=${v}: maimDemand 应为 v(${v}) + 3×结算次数(${src.burialCastsSettled}) + c6(${c6})=${expectedDemand}，实到 ${src.maimDemand}`)
       }
       consumedByV.push(src.gashStackConsumed)
+      stacksByV.push(src.gashStacks)
     }
-    // ★ 改口径的机器判据：三点总消耗应相同（滑块不是上限）；旧式下这三点分别给
-    //   min(L,3) / min(L,4) / min(L,23)，必然互不相同。
-    if (new Set(consumedByV).size > 1) {
-      failures.push(`总消耗应不随滑块变化（三点实测 ${consumedByV.join(' / ')}）⇒ 滑块仍是结算上限，口径未生效`)
+    // ★ 改口径的机器判据：**每一点的总消耗 = 该点的层数**（滑块不是结算上限）；旧式下这三点
+    //   分别给 min(L,3) / min(L,4) / min(L,23)，必然明显小于层数。
+    //   ⚠ 三点层数本身可以不同（22/22/21）：斩金断铁次数变多 ⇒ 占用平A时间 ⇒ 残痕积累变少。
+    //   「总消耗不看滑块」的正确形式是逐点 consumed == stacks，不是三点互等。
+    for (let i = 0; i < consumedByV.length; i++) {
+      if (Math.abs(consumedByV[i]! - stacksByV[i]!) > 1e-9) {
+        failures.push(`第 ${i} 点：总消耗 ${consumedByV[i]} ≠ 层数 ${stacksByV[i]} ⇒ 滑块仍在当结算上限`)
+      }
     }
     expect(failures, failures.join('\n')).toEqual([])
   }, 300_000)

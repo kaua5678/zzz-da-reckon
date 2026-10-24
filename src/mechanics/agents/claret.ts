@@ -641,7 +641,16 @@ export function computeClaretSharpResource(input: {
   //   轴内触发的那部分吃失衡易伤（走 `attachedEvents` 的轴内占比），轴外自动补足的吃不到。
   // 非轴（`axisGash` 缺省）⇒ 轴内消耗恒 0，逐位回到旧行为。
   const axisConsumed = Math.max(0, Math.min(consumableStacks, Number(input.axisGash?.consumedLayers ?? 0)))
-  const axisMaim = Math.max(0, Number(input.axisGash?.maimCount ?? 0))
+  /**
+   * 轴内毁伤数必须与**轴内实际消耗层数**同口径：覆盖率把可消耗层压到 0/50% 时，轴内推演
+   * （按 100% 命中跑出来的 `maimCount`）不能再全量计入——否则「一层没消耗却触发了 N 次毁伤」，
+   * 覆盖率滑块在轴内失效且反向虚增伤害（实测 gashCoverage=0：consumed 0 层、maimCount 仍 18+c6）。
+   * 轴内每消耗 1 层 = 1 次毁伤 ⇒ 上界 = floor(轴内消耗层数)；覆盖率 100% 时逐位等于原值。
+   */
+  const axisMaim = Math.max(0, Math.min(
+    Math.floor(axisConsumed),
+    Math.floor(Number(input.axisGash?.maimCount ?? 0)),
+  ))
   /** 轴外还能消耗的层数（= 轴内吃完剩下的） */
   const outOfAxisStacks = Math.max(0, consumableStacks - axisConsumed)
   const maimFromCleave = Math.min(outOfAxisStacks, cleaveCount)
@@ -667,7 +676,7 @@ export function computeClaretSharpResource(input: {
    * ⚠ 与 `gashStackConsumed` 的区别：这里按「**招式段数**」算（葬血强袭每次 3 段），
    *   后者按「**层数**」算——自动补足那发部分消耗时两者会差几层（层不够 3 的倍数）。
    */
-  const maimDemand = (cleaveCount + burialCastsSettled * BURIAL_MAIM_PER_CAST) + c6Extra
+  const maimDemand = axisMaim + (cleaveCount + burialCastsSettled * BURIAL_MAIM_PER_CAST) + c6Extra
   // 锐能总量 = 进场 60（开局赠送）+ 终结技 ×10 + 常态平A自动回复（锻星 0）
   const ultimateCount = Math.max(0, Math.floor(Number(input.ultimateCount ?? 0)))
   const sharpnessGain = SHARPNESS_INITIAL + ultimateCount * SHARPNESS_ULTIMATE_GAIN
@@ -722,6 +731,7 @@ export function computeClaretSharpResource(input: {
     axisGashSteps: input.axisGashSteps,
     maimDemand,
     gashStackConsumed,
+    axisGashConsumed: axisConsumed,
     maimCount,
     maimFromCleave,
     maimFromBurial,
@@ -1382,8 +1392,8 @@ function buildClaretResourceSections({ result }: AgentResourceSectionsInput) {
             }]
           : []),
         { label: '毁伤需求', value: `${source.maimDemand} 段`, detail: `斩金断铁×1 + 葬血强袭×3/次（结算 ${source.burialCastsSettled} 次，含自动补足 ${source.autoBurialCasts} 次）+ 影画6(连携+终结)×1；其中影画6 **不消耗残痕**，不占层预算。段数按招式段算，与层数会差几层（葬血强袭每次 3 段）` },
-        { label: '残痕消耗', value: `-${Math.floor(source.gashStackConsumed)} 层`, detail: `命中残痕状态敌人，每层一次毁伤（覆盖率 ${fmt(Math.min(100, Math.max(0, source.gashStackConsumed / Math.max(1e-9, source.gashStacks) * 100)))}% 折算）。**按层数结算**：滑块的斩金断铁/葬血强袭先扣，剩余层数一律由葬血强袭自动打完（不再被滑块封顶）` },
-        { label: '毁伤触发', value: `${source.maimCount} 次`, detail: `斩金断铁 ${source.maimFromCleave} + 葬血强袭 ${source.maimFromBurial} + 影画6 ${source.maimFromC6}` },
+        { label: '残痕消耗', value: `-${Math.floor(source.gashStackConsumed)} 层`, detail: `命中残痕状态敌人，每层一次毁伤（覆盖率 ${fmt(Math.min(100, Math.max(0, source.gashStackConsumed / Math.max(1e-9, source.gashStacks) * 100)))}% 折算）。**按层数结算**：${source.axisGashConsumed > 0 ? `轴内先扣 ${fmt(source.axisGashConsumed)} 层，轴外 ` : ''}滑块的斩金断铁/葬血强袭先扣，剩余层数一律由葬血强袭自动打完（不再被滑块封顶）` },
+        { label: '毁伤触发', value: `${source.maimCount} 次`, detail: `${source.axisGashConsumed > 0 ? `轴内 ${source.axisMaim ?? 0} + ` : ''}斩金断铁 ${source.maimFromCleave} + 葬血强袭 ${source.maimFromBurial} + 影画6 ${source.maimFromC6}` },
         { label: '葬血强袭结算', value: `${source.burialCastsSettled} 次`, detail: `滑块声明 + **自动补足 ${source.autoBurialCasts} 次**（剩余层数 ÷ 3 向上取整）；每次 2.884s 必做前台（入场上挑 0.567s + 三连横斩 2.317s），由折叠环自然挤平A——这是毁伤次数真正的约束（滑块不是上限）` },
       ],
       footer: `v12：残痕值 = 平A（两态秒均×时间）+ 其余招式（实打次数 × gash_buildup 表值），每 600 点 = 1 层（用户口径）；敌人身上同时最多挂 ${GASH_MAX_STACKS} 层，但整局可用层数不钳制。**毁伤按层数结算**（用户 2026-10-09）：滑块的斩金断铁/葬血强袭先扣，**剩余层数一律由葬血强袭自动补足打完**（不设次数上限，真正的约束是时间）；反制支援化解控制技时琢形**额外直接送 1 层/组**（送层不吃积蓄效率，与招式自身的表值积累是两件事）；快速支援等无物化行的交互不计积累。`,
@@ -1691,10 +1701,15 @@ export interface ClaretSharpResourceSource {
    *  按「招式段数」算（葬血强袭每次 3 段）；`gashStackConsumed` 按「层数」算，自动补足那发部分消耗时两者会差几层。
    *  ⚠ 不等于层预算：影画6 原文「不消耗[残痕]」⇒ 层预算只含斩金断铁/葬血强袭（R54 修正）。 */
   maimDemand: number
-  /** 实际消耗的残痕层数 = 斩金断铁消耗 + 葬血强袭（声明+自动补足）消耗，已 × 覆盖率。
+  /** 实际消耗的残痕层数 = 轴内消耗 + 斩金断铁 + 葬血强袭（声明+自动补足），已 × 覆盖率。
    *  ★ 2026-10-09 起**不再被滑块封顶**——滑块声明的那几次先扣，剩余层数一律由葬血强袭打完；
-   *  层预算**不含**影画6（它不消耗残痕，R54）。 */
+   *  层预算**不含**影画6（它不消耗残痕，R54）。
+   *  ★ 2026-10-12 轴内先扣：轴内那部分由轴时序推演给出（`axisGashConsumed`），轴外只结算剩下的层。
+   *  ⇒ 拆解恒等式 = `gashStackConsumed === axisGashConsumed + maimFromCleave + maimFromBurial`。 */
   gashStackConsumed: number
+  /** **轴内**消耗的残痕层数（轴外拆解项的第三个来源；非轴 = 0）。与 `axisMaim` 同段推演，
+   *  正常轴内每层一次毁伤 ⇒ 两者通常相等，但 `axisMaim` 是**触发次数**、本字段是**层数**。 */
+  axisGashConsumed: number
   /** 触发毁伤次数 = 消耗残痕层数 + 影画6 不消耗残痕的单体毁伤 */
   maimCount: number
   /** 斩金断铁触发的毁伤数 */

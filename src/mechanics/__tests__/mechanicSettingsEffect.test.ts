@@ -343,26 +343,27 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：拆分/消耗次�
         failures.push(`v=${v}: 夹具失效 —— gashStacks = ${src.gashStacks}（需 > 0 才有消耗可观测）⇒ 本条退化成恒 0 假绿`)
         continue
       }
-      // 斩金断铁先扣（带上限的 min 形式：层不够时提前触顶）
-      const expectedFromCleave = Math.min(src.gashStackConsumed, v)
+      // 斩金断铁先扣（轴内先扣之后剩下的才是轴外可消耗；带上限的 min 形式：层不够时提前触顶）
+      const axis = src.axisGashConsumed
+      const expectedFromCleave = Math.min(src.gashStackConsumed - axis, v)
       if (src.maimFromCleave !== expectedFromCleave) {
-        failures.push(`v=${v}: maimFromCleave 应为 min(consumed=${src.gashStackConsumed}, ${v})=${expectedFromCleave}，实到 ${src.maimFromCleave}`)
+        failures.push(`v=${v}: maimFromCleave 应为 min(轴外可消耗=${src.gashStackConsumed - axis}, ${v})=${expectedFromCleave}，实到 ${src.maimFromCleave}`)
       }
-      // ★ 新口径：层预算**不封顶**——可消耗层数 = 层数（覆盖率默认 100）
+      // ★ 新口径：层预算**不封顶**——可消耗层数 = 层数（覆盖率默认 100）；拆解 = 轴内 + 斩金断铁 + 葬血强袭
       const consumable = src.gashStacks
-      const expectedConsumed = Math.min(consumable, src.maimFromCleave + src.maimFromBurial)
+      const expectedConsumed = Math.min(consumable, axis + src.maimFromCleave + src.maimFromBurial)
       if (src.gashStackConsumed !== expectedConsumed) {
-        failures.push(`v=${v}: gashStackConsumed 应为 min(层数=${consumable}, fromCleave+fromBurial)=${expectedConsumed}，实到 ${src.gashStackConsumed}`)
+        failures.push(`v=${v}: gashStackConsumed 应为 min(层数=${consumable}, 轴内+${src.maimFromCleave}+${src.maimFromBurial})=${expectedConsumed}，实到 ${src.gashStackConsumed}`)
       }
       // 自动补足次数 = ceil(剩余 / 3)，且必须真的把剩余层数吃完（不白扔）
       const declaredBurial = src.burialCastsSettled - src.autoBurialCasts
-      const remaining = Math.max(0, consumable - src.maimFromCleave - declaredBurial * BURIAL_MAIM_PER_CAST)
+      const remaining = Math.max(0, consumable - axis - src.maimFromCleave - declaredBurial * BURIAL_MAIM_PER_CAST)
       const expectedAuto = Math.ceil(remaining / BURIAL_MAIM_PER_CAST - 1e-9)
       if (src.autoBurialCasts !== expectedAuto) {
         failures.push(`v=${v}: autoBurialCasts 应为 ceil(剩余${remaining}/3)=${expectedAuto}，实到 ${src.autoBurialCasts}`)
       }
       // 段数口径的 demand = 斩金断铁句数 + 结算葬血强袭次数×3 + c6（不含 c6 的层预算另算）
-      const expectedDemand = v + BURIAL_MAIM_PER_CAST * src.burialCastsSettled + (src.maimFromC6 ?? 0)
+      const expectedDemand = (src.axisMaim ?? 0) + v + BURIAL_MAIM_PER_CAST * src.burialCastsSettled + (src.maimFromC6 ?? 0)
       if (src.maimDemand !== expectedDemand) {
         failures.push(`v=${v}: maimDemand 应为 ${v} + 3×${src.burialCastsSettled} + c6(${src.maimFromC6})=${expectedDemand}，实到 ${src.maimDemand}`)
       }
@@ -392,16 +393,16 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：拆分/消耗次�
         failures.push(`v=${v}: 夹具失效 —— gashStacks = ${src.gashStacks} ⇒ 本条退化成恒 0 假绿`)
         continue
       }
-      // 声明部分（本测试不动 cleave，取默认 0）与自动补足部分之和必须吃满可用层数
+      // 声明部分（本测试不动 cleave，取默认 0）与自动补足部分之和必须吃满可用层数（含轴内先扣）
       const consumable = src.gashStacks
-      const expectedConsumed = Math.min(consumable, src.maimFromCleave + src.maimFromBurial)
+      const expectedConsumed = Math.min(consumable, src.axisGashConsumed + src.maimFromCleave + src.maimFromBurial)
       if (src.gashStackConsumed !== expectedConsumed) {
-        failures.push(`v=${v}: gashStackConsumed 应为 min(层数=${consumable}, 拆解和)=${expectedConsumed}，实到 ${src.gashStackConsumed}`)
+        failures.push(`v=${v}: gashStackConsumed 应为 min(层数=${consumable}, 轴内+拆解和)=${expectedConsumed}，实到 ${src.gashStackConsumed}`)
       }
-      // 拆解恒等式（T4 的通用形式）：三段之和 === maimCount − c6
+      // 拆解恒等式（T4 的通用形式）：轴内 + 斩金断铁 + 葬血强袭 === maimCount − c6
       const parts = src.maimFromCleave + src.maimFromBurial
-      if (src.maimCount !== Math.floor(parts) + (src.maimFromC6 ?? 0)) {
-        failures.push(`v=${v}: maimCount 应为 floor(cleave+burial=${parts}) + c6(${src.maimFromC6})=${Math.floor(parts) + (src.maimFromC6 ?? 0)}，实到 ${src.maimCount}`)
+      if (src.maimCount !== (src.axisMaim ?? 0) + Math.floor(parts) + (src.maimFromC6 ?? 0)) {
+        failures.push(`v=${v}: maimCount 应为 轴内${src.axisMaim ?? 0} + floor(cleave+burial=${parts}) + c6(${src.maimFromC6})，实到 ${src.maimCount}`)
       }
       // ★ 新口径的核心断言：**总消耗与滑块无关**（滑块只搬运「谁打」，不改变总量）
       totals.push(src.gashStackConsumed)
