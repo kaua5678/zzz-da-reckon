@@ -473,10 +473,25 @@ export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void
          * 本条决定优化器**别把本来能成立的轴推坏**。
          */
         const skips = skipCount()
-        const ok = dmg > best + 1e-6
-          && trunc <= prevTrunc + 1e-6 && trunc <= baselineTrunc + 1e-6
-          && exec >= prevExec - 1e-6 && rows >= prevRows
-          && skips <= prevSkips
+        /**
+         * ★ **修轴臂**（2026-10-25）：起点轴不成立时（13b9f584 交互全 0 之后这是常态），
+         * 只认「伤害严格增」会让阶梯在**第一次**加交互就被拒（金身/双反那一步的伤害是为轴付钱，
+         * 未跨过资源阈值前纯亏）⇒ 轴永远修不回来（实测 banyue-trigger-lucia 全档截断、
+         * block/dual 恒 0、② 缺失）。
+         *
+         * 用户口径 2026-10-15「我要的是你**达到资源要求然后计算**」⇒ 轴未成立时段，
+         * 「轴内被跳过的招数**变少**」本身就是正收益：接受该步（伤害让位），并把 best 降到新伤害，
+         * 后续步继续按「少跳」爬；一旦轴成立（skips 不再降），立刻回到原四条严格门。
+         * 另三条门（截断/执行数/行数）在修轴臂里**照旧生效**——修轴不能靠截断或挤掉动作换。
+         */
+        const repairsAxis = skips < prevSkips - 1e-6
+        const ok = repairsAxis
+          ? trunc <= prevTrunc + 1e-6 && trunc <= baselineTrunc + 1e-6
+            && exec >= prevExec - 1e-6 && rows >= prevRows
+          : dmg > best + 1e-6
+            && trunc <= prevTrunc + 1e-6 && trunc <= baselineTrunc + 1e-6
+            && exec >= prevExec - 1e-6 && rows >= prevRows
+            && skips <= prevSkips
         if (ok) {
           best = dmg
           prevTrunc = trunc
@@ -1143,10 +1158,42 @@ export function climbDifficultyLadder(
     const jointOnly = readState(ctx, { interactions: 'joint', absorb: 0 })
     const jointCounts = capture?.(ctx)?.counts
     preJoint = { st: jointOnly, counts: jointCounts }
-    if (axisStands(jointOnly.axis)) {
+    /**
+     * ★ 轴修扫（2026-10-25）：13b9f584「交互默认全 0」之后，② 的轴常要靠角色特色交互才能立起来
+     * （般岳：金身 blockCount 产嗔火 → 怒相 → 山威）。逐槽阶梯是坐标上升、只认伤害/跳过数的单调改善，
+     * 过不了「加 6 次才少跳 2、加到 20 次才补满」的山谷（实测 0/6/12/20 次：跳 4/2/2/0，伤害 56.4/60.2/57.1/57.3M）。
+     * 用户口径「我要的是你达到资源要求然后计算」⇒ ② 允许一次有界枚举：按模块声明的 interactionFieldTypes
+     * （blockCount / dualCounterCount）试候选值，命中即用最小可行值。
+     * ⚠ 只扫声明过的字段（哨兵字段不会被误写）；只在轴不成立时触发（成立时零额外求值）。
+     */
+    let jointNow = jointOnly
+    if (!axisStands(jointNow.axis)) {
+      const candidates = [4, 8, 12, 16, 20, 24]
+      const declaredFields: Array<{ slot: number; field: ActionCountField }> = []
+      for (let slot = 0; slot < 3; slot++) {
+        const agentId = ctx.config.team[slot]?.agentId
+        if (!agentId) continue
+        const decl = getAgentMechanic(agentId)?.interactionFieldTypes ?? {}
+        if (decl.blockCount) declaredFields.push({ slot, field: 'blockCount' })
+        if (decl.dualCounterCount) declaredFields.push({ slot, field: 'dualCounterCount' })
+      }
+      for (const { slot, field } of declaredFields) {
+        let hit = false
+        for (const v of candidates) {
+          ctx.config.setActionCount(slot, field, v)
+          const st = readState(ctx, { interactions: 'joint', absorb: 0 })
+          if (axisStands(st.axis)) { jointNow = st; hit = true; break }
+        }
+        if (hit) break
+        ctx.config.setActionCount(slot, field, 0)
+      }
+    }
+    /** 命中即用修扫后的现场继续走 ② / 吸收网格（未命中则 jointNow === jointOnly，逐位同旧） */
+    if (jointNow !== jointOnly) preJoint = { st: jointNow, counts: capture?.(ctx)?.counts }
+    if (axisStands(jointNow.axis)) {
       // 交互最优后轴**本就成立** ⇒ ② = (joint, 0)。
       // 用户 §4：合轴「拉满」与「轴成立」冲突时**优先让轴成立** ⇒ 这里不为好看去抬吸收率（0 已经够）。
-      axisPoint = land('axis', jointOnly)
+      axisPoint = land('axis', jointNow)
     } else if (cap > 0) {
       // 逐步抬吸收率，取**首个**使轴成立的值（线性网格，不能二分 ⇒ 见 `scanAbsorbGrid` 头注释）
       scanAbsorbGrid(ctx, cap, 0, r => {

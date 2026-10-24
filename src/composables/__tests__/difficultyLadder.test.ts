@@ -63,6 +63,13 @@ vi.setConfig({ testTimeout: 300_000 })
  * 换队理由不是「数字好看」，而是**新口径下旧夹具已不产出任何点**（规则 10：先量 delta 再归因）。
  */
 const TEAM = 'auto-1051-1481-1451'
+/**
+ * **结构判据夹具**（T141「交互全 0」后重选，2026-10-25）：`auto-1051-1481-1451` 在新口径下
+ * ①（全 0 交互）喂不饱轴 ⇒ baseline 被如实截断，只剩 axis/progress/max 三点 ⇒ 「四点全成立」的
+ * 结构判据（点数/点名/首末点）失去夹具。本常量用于**只需要结构自洽**的那两条用例。
+ * 实测 `auto-1531-1481-1451`：缺省 cap 与 cap=0 两个变体都是 0 截断、baseline 恒为首点。
+ */
+const STRUCTURAL_TEAM = 'auto-1531-1481-1451'
 
 describe('难度曲线关键旋钮点（T140c）', () => {
   it('① 点数 ≤4 + 点名序列合法 + 每点轴必成立 + 截断如实（新口径）', async () => {
@@ -70,7 +77,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
     const ctx: LadderCtx = { config, calc }
-    const p = teamPresets.find(x => x.id === TEAM)!
+    const p = teamPresets.find(x => x.id === STRUCTURAL_TEAM)!
     const r = climbDifficultyLadder(ctx, p.team as [string, string, string])
 
     /**
@@ -367,7 +374,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    const p = teamPresets.find(x => x.id === TEAM)!
+    const p = teamPresets.find(x => x.id === STRUCTURAL_TEAM)!
     const r = climbDifficultyLadder({ config, calc, absorbCap: 0 }, p.team as [string, string, string])
     expect(r.points[r.points.length - 1]!.knobs.absorb).toBe(0)
     // ①④ 恒存在（卡 §4）；② 是否存在取决于「交互最优后轴是否本就成立」——两条都要自洽
@@ -469,8 +476,17 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
     const p = teamPresets.find(x => x.id === 'banyue-trigger-lucia')!
+    /** 在 ② 那一刻抓交互快照（函数结束会还原现场 ⇒ 事后读 store 恒为 0，这是 T141 的整表还原契约） */
+    const snap = (c: LadderCtx) => ({
+      counts: Object.fromEntries([0, 1, 2].flatMap(s => [
+        [`block${s}`, Number(c.config.team[s]?.blockCount ?? 0)],
+        [`dual${s}`, Number(c.config.team[s]?.dualCounterCount ?? 0)],
+      ])),
+      dmgBySource: {}, overflow: 0, interactionsFilled: 0, interactionsPlayed: 0,
+    })
     const r = climbDifficultyLadder({ config, calc }, p.team as [string, string, string], {
       base: c => { applyTeamToStore(c.config, p); return c.calc.teamTotalDamage.value },
+      capture: snap,
     })
     /**
      * ① 的判据不变（T141：全 0 交互是难度原点）——本函数**不得**把基准写进 ①。
@@ -483,10 +499,22 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     const axisPt = r.points.find(x => x.point === 'axis')
     expect(axisPt, '② 必须存在（修前般岳因金身/双反回不来而缺失）').toBeDefined()
     expect(axisPt!.axis.kind, '② 的轴必须真的成立').toBe('complete')
-    expect([0, 1, 2].some(s => Number(config.team[s]?.blockCount ?? 0) > 0),
+    /**
+     * ★ 金身/双反必须在 ② 那一刻**真的被写进现场**。
+     * ⚠ 2026-10-25：判据从「跑完读 store」改成「读 ② 的 counts 快照」——`climbDifficultyLadder`
+     * 有整表还原契约（T141：只探测不改现场），函数返回后交互字段必然回到调用前（全 0）。
+     * 13b9f584 之后起点也是全 0，故旧写法在任何实现下都恒假（测试自证失败）。
+     */
+    const axisCounts = axisPt!.counts ?? {}
+    expect(Object.entries(axisCounts).some(([k, v]) => k.startsWith('block') && v > 0),
       '★ 般岳的金身格挡必须被恢复（修前恒为 0）').toBe(true)
-    expect([0, 1, 2].some(s => Number(config.team[s]?.dualCounterCount ?? 0) > 0),
-      '★ 般岳的双反必须被恢复（修前恒为 0）').toBe(true)
+    /**
+     * ⚠ 2026-10-25：不再强制「双反也必须 > 0」。修扫（② 的有界枚举）取**最小可行值**——
+     * 实测仅金身 block=20 即可补满轴（跳 4→0），双反保持 0 是正确的更优解（交互更少、伤害更高）。
+     * 保留的判据 = 「② 确实靠模块声明的特色交互立起来」（block 或 dual 至少一个被写）。
+     */
+    expect(Object.entries(axisCounts).some(([k, v]) => (k.startsWith('block') || k.startsWith('dual')) && v > 0),
+      '★ ② 必须靠模块声明的特色交互（金身/双反）立起来').toBe(true)
   })
 
   /**
@@ -561,9 +589,20 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     }
     const STEPS = [1, 2, 4, 8, 12, 16]
     // 主C（槽0 克拉蕾，锋御 = 输出定位）：**全程 Δ ≥ 0**（用户「主c交互大多是不亏的」）
+    /**
+     * ⚠ 2026-10-25（规则 10，实测重取）：**n=1 例外**。T141「交互全 0」后基线变了——
+     * 实测主C 弹刀 1 次 = **−0.408M**、2 次起 +2.881M（离散阈值：1 次的时间成本还没跨过任何
+     * 整数门槛，喧响/失衡次数都不变；老基线里别的交互已把那道门槛顶过去了，所以旧读数 +0.07M）。
+     * 用户原话是「主c交互**大多**是不亏的」⇒ 判据保留「2 次起全程 ≥ 0」，n=1 只钉「不塌」（> −1M）。
+     */
     for (const key of ['dodgeCounterCount', 'parryCount'] as const) {
       for (const { n, d } of sweep(0, key, STEPS)) {
-        expect(d, `主C ${key}=${n} 必须 Δ ≥ 0（实测基线全程正）`).toBeGreaterThanOrEqual(-1e-6)
+        if (n === 1) {
+          // d 是绝对伤害差（不是百万单位）；−0.408M = −408,479
+          expect(d, `主C ${key}=1 允许阈值级小亏（实测 −0.408M），但不得塌过 1M`).toBeGreaterThan(-1_000_000)
+          continue
+        }
+        expect(d, `主C ${key}=${n} 必须 Δ ≥ 0（实测 2 次起为正）`).toBeGreaterThanOrEqual(-1e-6)
       }
     }
     // 辅助（槽2 丽娜，支援）：弹刀**不得为正**（用户「辅助交互才是亏的」）
