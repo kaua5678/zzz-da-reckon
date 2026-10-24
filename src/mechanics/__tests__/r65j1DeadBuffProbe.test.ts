@@ -99,6 +99,9 @@ function pickDamageRelevantMainC(
       // 锐暴伤害只由锋御（sharpen）伤害消费（core/damage.ts sharpCritMultiplier）⇒ 主C 非锋御时
       // 这条 buff 必然拨不动，是仪器选错载体而不是缺口（2026-10-25 1661 影画一实测：换 1611 后咬合）。
       if (e.stat === 'sharpCritDmg' && a.specialty !== 'sharpen') return false
+      // 失衡内积蓄效率类只作用于异常积蓄池 ⇒ 主C 必须能产异常积蓄（1631/1591 等非异常主C 的池恒空，
+      // 拨动必然恒定 —— 实测 1511/nangong_angel_stun_buildup_chain 的假缺口）。
+      if (String(e.stat).startsWith('anomalyBuildUpEfficiencyOnStun') && a.specialty !== 'anomaly') return false
       if (e.stat === 'electricAnomalyDmgBonus' && a.attribute !== 'electric') return false
       if (e.stat === 'skillDmgBonus' && e.targetSkillType === 'additionalAttack' && a.id !== owner && !['attack', 'anomaly'].includes(a.specialty)) return false
     }
@@ -195,6 +198,19 @@ function buildTeamForBuff(
   return { team: [{ agentId: mainC, cinemaLevel: 6 }, { agentId: owner, cinemaLevel: 6 }], satisfied: true }
 }
 
+/**
+ * **连携限定** buff 的载体修正（2026-10-25）：探针队的 `chainCountPerStun` 缺省 0 ⇒ 执行行里没有
+ * 连携技 ⇒ 「失衡内连携积蓄」这类只作用在 `exec.skillType === 'chain'` 的通道（core/anomalyPool.ts:54）
+ * 零样本，拨动必然恒定。给这类 buff 的探针队补上连携次数，与「锐暴 buff 的载体必须锋御」同族。
+ */
+function withChainCarrier(
+  team: Array<{ agentId: string; cinemaLevel: number }>,
+  buff?: TeammateBuff,
+): Array<{ agentId: string; cinemaLevel: number; chainCountPerStun?: number }> {
+  const chainSpecific = buff?.effects?.some(e => String(e.stat).includes('Chain')) ?? false
+  return chainSpecific ? team.map(t => ({ ...t, chainCountPerStun: 2 })) : team
+}
+
 function rowHash(rows: Array<Record<string, unknown>>): string {
   return createHash('sha256')
     .update(rows.map(r => [r.slot, r.agentId, r.moveId, r.type, r.totalDamage, r.note].join('|')).sort().join('\n'))
@@ -205,11 +221,12 @@ async function readingsFor(
   _owner: string,
   buffId: string,
   _cinema: number,
-  team: Array<{ agentId: string; cinemaLevel: number }>,
+  team: Array<{ agentId: string; cinemaLevel: number; chainCountPerStun?: number }>,
 ): Promise<Array<{ mode: string; hash: string; total: number; rows: number }>> {
   const out: Array<{ mode: string; hash: string; total: number; rows: number }> = []
   for (const mode of ['auto', 'off', 'on'] as const) {
-    const { config } = await setupHarness(team.map(t => ({ agentId: t.agentId, cinemaLevel: t.cinemaLevel })))
+    // ⚠ 别在这里只挑 agentId/cinemaLevel：载体修正（连携次数等）会被静默丢掉 ⇒ 又回到零样本。
+    const { config } = await setupHarness(team as never)
     for (const b of config.globalBuffs) b.enabled = false
     config.syncTeammateBuffsFromTeam()
     if (mode !== 'auto') config.toggleTeammateBuff(buffId, mode === 'on')
@@ -244,6 +261,10 @@ async function readingsFor(
       ap?.disorderCount ?? -1,
       ap?.decibelBonus ?? -1,
       ...(ap?.perElement ?? []).map(e => `${e.element}:${e.triggerCount}`),
+      // 2026-10-25：把**积蓄量**也并进签名——只改积蓄效率、没跨过触发阈值的 buff（如南宫羽
+      // 「失衡内连携积蓄 +30」）原来读不出来，被误报成死通道。这是仪器加宽（declared-only 反向
+      // 抽查同样吃它 ⇒ 一并变严），不是放宽。
+      ...(ap?.perElement ?? []).map(e => `b:${e.totalBuildUp.toFixed(4)}`),
     ].join(',')
     out.push({
       mode,
@@ -290,7 +311,7 @@ describe('R65-J1 · 声明了但没接进计算 · 行为层全库普查', () =>
       const ownerAgent = catAgents.find(a => a.id === r.group) ?? null
       const { team, satisfied } = buildTeamForBuff(r.group, r.buff.id, ownerAgent, catAgents, r.buff)
       if (!satisfied) { console.log(`  [跳过] ${r.group}/${r.buff.id}`); continue }
-      const seen = await readingsFor(r.group, r.buff.id, 6, team)
+      const seen = await readingsFor(r.group, r.buff.id, 6, withChainCarrier(team, r.buff))
       scanned++
       if (!seen.every(s => s.rows > 0)) { errors.push({ owner: r.group, id: r.buff.id, seen }); continue }
       if (new Set(seen.map(s => s.hash)).size === 1) {
@@ -314,7 +335,7 @@ describe('R65-J1 · 声明了但没接进计算 · 行为层全库普查', () =>
       if (!owner) continue
       const { team, satisfied } = buildTeamForBuff(owner, b.id, catAgents.find(a => a.id === owner) ?? null, catAgents, b)
       if (!satisfied) continue
-      const seen = await readingsFor(owner, b.id, 6, team)
+      const seen = await readingsFor(owner, b.id, 6, withChainCarrier(team, b))
       if (seen.every(s => s.rows > 0) && new Set(seen.map(s => s.hash)).size > 1) {
         declaredGaps.push({ owner, id: b.id })
         console.log(`  [谓词漏判] ${owner}/${b.id}`)
