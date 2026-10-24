@@ -53,7 +53,7 @@ import type { AnalysisContext } from '@/composables/analysisScenario'
 import { batchReporter, isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
 import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 import { getTemplate, resolveSubstatBudget } from '@/core/substatOptimizer'
-import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
+import { panelAt } from '@/core/panel'
 import { useCatalogStore } from '@/stores/catalog'
 
 /** 相对基线视为「无提升」的阈值（%）。低于它连续两步即提前止损。 */
@@ -271,7 +271,11 @@ export async function sampleSubstatCurves(
         // 乘区里的溢出→爆伤转化是「**换**词条」的收益（模拟配平终态），不属于「**堆**暴击」——
         // 若不截断，转化补偿会让暴击曲线在百暴后仍显示 ≈ 爆伤/步的假收益。
         if (stat === 'critRate') {
-          const inCombatCrit = computePanelPhases(slot, config, catalog)?.inCombat.critRate ?? 0
+          // 「步前」= 该词条 x−1 条的配置（曲线语义）——必须先写进 store 再读结算侧面板
+          // （calc.panels 读 store 的 allocation；不先写的话读到基线满编 ⇒ 从 x=1 就误截断）。
+          // 面板用结算侧（覆盖率口径与伤害管线同源；压缩数组 ⇒ panelAt 按槽取，判据 17）。
+          disc.subStatAllocation = { ...allocation, [stat]: x - 1 }
+          const inCombatCrit = panelAt(calc.panels.value, slot)?.critRate ?? 0
           if (inCombatCrit >= 100) {
             points.push({ x, gainPct: 0, gainStepPct: 0, damage: prev, axis: readAxis(), axisJump: false })
             zeroRun += 1

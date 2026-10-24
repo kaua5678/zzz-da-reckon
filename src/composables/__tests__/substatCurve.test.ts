@@ -374,12 +374,12 @@ describe('暴击词条的百暴截断（用户 2026-10-24：「别让人觉得�
    * 乘区里的溢出→爆伤整条转化是「**换**词条」的收益（配平终态），不属于「**堆**暴击」——
    * 若不截断，转化补偿会让暴击曲线在百暴后仍显示 ≈ 爆伤/步的假收益，诱导玩家继续堆暴击。
    */
-  it('★ 雅 C2 局内溢出面板：暴击曲线每步边际恒 0（含「下一步该堆谁」不再推暴击）', async () => {
+  it('★ 雅 C2 + 全局暴击 buff 局内溢出：暴击曲线过线后边际恒 0（含「下一步该堆谁」不再推暴击）', async () => {
     const h = await setupHarness([
       { agentId: '1091', cinemaLevel: 2 }, { agentId: '1411' }, { agentId: '1131' },
     ] as never, { recommendedBuild: true } as never)
-    // 局内溢出 = 局外百暴（优化器含 C2 +15% 配平）+ 游球局内 +20%（优化器看不见的 buff）⇒ 局内 120%
-    h.config.team[2].wEngineId = '14002'
+    // 局内溢出 = 盘外基础(73) + C2 15 + 全局 buff 牌 +7.2（无条件局内通道，不依赖 Boss 克制）⇒ 0 条暴击词条时 95.2，堆 2 条后过线
+    h.config.globalBuffs.push({ id: 'test-crit-overflow', name: '测试·暴击+20', stat: 'critRate', value: 7.2, enabled: true, targetSkillType: 'all' } as never)
     h.config.setMechanicSetting(SUBSTAT_CAP_SETTING, 30)
     await flush()
     const res = await withAnalysisScenario(s => sampleSubstatCurves(s, { slot: 0, stats: ['critRate', 'critDmg'] }), h.config)
@@ -394,6 +394,14 @@ describe('暴击词条的百暴截断（用户 2026-10-24：「别让人觉得�
     expect(zeros.length, '★ 过线后必须截断为 0（修前转化补偿会让这些步显示 ≈ 爆伤/步的假收益）').toBeGreaterThan(0)
     const firstZero = crit!.points.findIndex(p => p.gainPct === 0)
     expect(crit!.points.slice(firstZero).every(p => p.gainPct === 0), '一旦截断不再恢复收益').toBe(true)
+    // ★ 截断起点含局内 buff：去掉 +7.2（= 3 条词条）重跑，截断应晚恰 3 条
+    const buff = h.config.globalBuffs[h.config.globalBuffs.length - 1] as never as { enabled: boolean }
+    buff.enabled = false
+    const noBuff = await withAnalysisScenario(sc => sampleSubstatCurves(sc, { slot: 0, stats: ['critRate'] }), h.config)
+    const critNoBuff = noBuff.series.find(x => x.stat === 'critRate')
+    const firstZeroNoBuff = critNoBuff!.points.findIndex(pt => pt.gainPct === 0)
+    expect(firstZeroNoBuff, '无 buff 夹具前提：也应有截断点').toBeGreaterThan(0)
+    expect(firstZeroNoBuff - firstZero, '局内 +7.2% 暴击（恰 3 条词条量）让截断提前 3 条（截断读数必须含局内 buff 通道）').toBe(3)
     // 对照组：爆伤曲线不受截断影响（百暴后换爆伤是真实收益，每步 > 0）
     expect(dmg, '夹具前提：爆伤曲线在结果里').toBeTruthy()
     expect(dmg!.points.some(p => p.gainPct > 0), '爆伤曲线应有正边际（对照组）').toBe(true)
