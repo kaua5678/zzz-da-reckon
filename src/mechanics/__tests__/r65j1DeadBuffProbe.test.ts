@@ -96,6 +96,9 @@ function pickDamageRelevantMainC(
       if (e.stat === 'disorderBaseMultiplierBonus' && (a.specialty !== 'anomaly' || a.id === '1561')) return false
       if (e.stat === 'anomalyReleaseDmgBonus' && a.specialty !== 'anomaly') return false
       if ((e.stat === 'sheerForceFlat' || e.stat === 'sheerDmgBonus') && a.specialty !== 'rupture') return false
+      // 锐暴伤害只由锋御（sharpen）伤害消费（core/damage.ts sharpCritMultiplier）⇒ 主C 非锋御时
+      // 这条 buff 必然拨不动，是仪器选错载体而不是缺口（2026-10-25 1661 影画一实测：换 1611 后咬合）。
+      if (e.stat === 'sharpCritDmg' && a.specialty !== 'sharpen') return false
       if (e.stat === 'electricAnomalyDmgBonus' && a.attribute !== 'electric') return false
       if (e.stat === 'skillDmgBonus' && e.targetSkillType === 'additionalAttack' && a.id !== owner && !['attack', 'anomaly'].includes(a.specialty)) return false
     }
