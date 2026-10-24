@@ -406,4 +406,24 @@ describe('暴击词条的百暴截断（用户 2026-10-24：「别让人觉得�
     expect(dmg, '夹具前提：爆伤曲线在结果里').toBeTruthy()
     expect(dmg!.points.some(p => p.gainPct > 0), '爆伤曲线应有正边际（对照组）').toBe(true)
   }, 600000)
+
+  it('★ 锋御锐暴封顶 200：局内 120% 暴击仍有收益，越过 200 才截断（按 100 截断会给全 0）', async () => {
+    const h = await setupHarness([{ agentId: '1601' }, '', ''] as never, { recommendedBuild: true } as never)
+    // 局内 33.8 + 90 = 123.8%：锋御在 100% 以上每 1% 是一次额外锐暴判定（乘算），封顶 200
+    const buff = { id: 'test-sharp-high-crit', name: '测试·暴击+90', stat: 'critRate', value: 90, enabled: true, targetSkillType: 'all' } as never
+    h.config.globalBuffs.push(buff)
+    h.config.setMechanicSetting(SUBSTAT_CAP_SETTING, 5)
+    await flush()
+    const res = await withAnalysisScenario(s => sampleSubstatCurves(s, { slot: 0, stats: ['critRate'] }), h.config)
+    const crit = res.series.find(x => x.stat === 'critRate')!
+    expect(crit.points.length, '夹具前提：有采样点').toBeGreaterThan(0)
+    expect(crit.points.every(p => p.gainPct > 0), '锋御 100–200% 区间仍有锐暴判定收益，不得截断').toBe(true)
+
+    // 反证：越过 200% 锐暴封顶后，边际必须为 0（截断仍活着，只是阈值按角色模板取）
+    ;(buff as never as { value: number }).value = 170
+    await flush()
+    const over = await withAnalysisScenario(s => sampleSubstatCurves(s, { slot: 0, stats: ['critRate'] }), h.config)
+    const critOver = over.series.find(x => x.stat === 'critRate')!
+    expect(critOver.points.every(p => p.gainPct === 0), '越过 200% 封顶后边际为 0').toBe(true)
+  }, 600000)
 })

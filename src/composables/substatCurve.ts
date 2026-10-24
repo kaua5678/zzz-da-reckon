@@ -207,6 +207,8 @@ export async function sampleSubstatCurves(
   if (!agent) return emptyResult(slot, '目录里查不到该角色')
 
   const template = getTemplate(agent)
+  /** 暴击曲线截断点 = 该角色的暴击封顶（锋御 200，其余 100），与分配器同源（CC-186）。 */
+  const critRateCap = template.critRateCap ?? 100
   const budget = resolveSubstatBudget(template, config.getMechanicSetting)
   // x 上限 = 预算的单词条上限：再大也没有意义（现实中单词条不允许超上限），
   // 且「越界多少步值得挪」是另一个问题，不在这张图的范围内。
@@ -276,7 +278,10 @@ export async function sampleSubstatCurves(
           // 面板用结算侧（覆盖率口径与伤害管线同源；压缩数组 ⇒ panelAt 按槽取，判据 17）。
           disc.subStatAllocation = { ...allocation, [stat]: x - 1 }
           const inCombatCrit = panelAt(calc.panels.value, slot)?.critRate ?? 0
-          if (inCombatCrit >= 100) {
+          // ⚠ 封顶按**角色模板**取，不是一律 100：锋御（sharpen）锐暴封顶 200%，100% 以上每 1%
+          // 是一次额外锐暴判定（乘算，见 data/sharpCritMultiplier）。按 100 截断会把 120% 暴击的
+          // 锋御判成「已溢出」⇒ 整条暴击曲线贴 0（2026-10-25 用户报「挽昼暴击率收益没有了」的形态）。
+          if (inCombatCrit >= critRateCap) {
             points.push({ x, gainPct: 0, gainStepPct: 0, damage: prev, axis: readAxis(), axisJump: false })
             zeroRun += 1
             done++
