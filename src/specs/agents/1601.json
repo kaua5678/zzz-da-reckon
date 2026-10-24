@@ -6,7 +6,24 @@
     "1601"
   ],
   "status": "partially_implemented",
-  "attributeConversions": [],
+  "attributeConversions": [
+    {
+      "id": "sunbringer_initial_crit_dmg_to_crit_rate",
+      "name": "挽昼｜初始暴伤转化",
+      "sourceStat": "critDmg",
+      "sourceValue": "panel",
+      "sourcePanelPhase": "outOfCombat",
+      "threshold": 0,
+      "stepSize": 1,
+      "stepRounding": "floor",
+      "targetStat": "critRate",
+      "valuePerStep": 0.35,
+      "cap": null,
+      "coverage": 1,
+      "status": "implemented",
+      "note": "核心被动 Lv.7：「挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%」。实现位置：src/mechanics/agents/sunbringer.ts#applySunbringerPanel（模块手写，读局外面板、整 1% floor；与克拉蕾同口径）。判据 src/mechanics/__tests__/sunbringer.test.ts。"
+    }
+  ],
   "resources": [],
   "rowFusions": [],
   "events": [],
@@ -34,7 +51,8 @@
   "notes": [
     "(Test1) 占位包（nanoka 3.4.1+19836465），今日增量 = 众愿一心 spec teamBuff + 额外能力门控声明；核心循环明日实录。",
     "★ 明日实录施工图（原文已核对）：挽昼 = 克拉蕾同族锋御模板——伤害均为锐化伤害、防御力作招式伤害倍率、锐暴替代暴伤、初始暴伤→暴击 0.35%/1%、残痕(≤3层)→重击消耗→毁伤。镜像 claret.ts 架构（D4 资源循环 + D8 毁伤附伤行 + D2 面板），暂定模块名 sunbringer.ts。逐项：①极昼（暴击+40% + 无视20%防御，15s，强化特殊技/聚锋刷新，后场不减 ⇒ 满覆盖近似）；②锐能池（进战回60；强化特殊技消耗，数值看锐能消耗 param 行）；③愿力循环（全队毁伤每层+40，上限160，≥120 发动聚锋→获得链齿+旗令；队友毁伤触发快速支援聚锋 3s CD）；④链齿/旗令 → 长暗终焉/永昼之炬（高量级强化特殊技）；⑤终结技二段链：此行共赴前路（喧响极，旗令→愿核）→ 此愿重塑万象（愿核，消除烬痕=等量扣血——烬痕=特定招式实际伤害75%积累，Boss 战等效增伤通道）；⑥德蕾琪娜招架后支援突击（残痕积蓄+15% / 伤害+20%，moveId 级）；⑦支援突击·灯塔 直接+1层残痕。",
-    "⚠ 数据缺口（明日先解决）：catalog 招式行缺 gash（残痕积蓄）与 sharpness（锐化值）行——克拉蕾有（1611 row kinds 含 gash/sharpness），1601 raw param 也没有这两类行（仅 14 种参数名），需查明克拉蕾的 gash/sharpness 数据来源（手录/专表）再补；影画 1-6 全部 TestKey_PlaceHolder（无命座数据，不标 implemented）。",
+    "★ 2026-10-25 进展：①数据缺口已补——gash/sharpness 行来自 **gachabase**（fetch-gachabase-agent 1601 → upsert-gachabase-rows，入库残痕 26 行 / 锐能 16 行）；level60 另补 sharpCritDmg 150 / sharpnessRegen 1.5（level60-rules 新增两条规则，见 commit 4428670a）。②面板层已接线（src/mechanics/agents/sunbringer.ts）：初始暴伤→暴击 0.35%/1%（整 1% floor）+ 极昼（暴击 +40、无视 20% 防御，满覆盖近似）。③资源循环口径已与用户逐条裁定（2026-10-25）：残痕 600 点/层沿用克拉蕾；**本期不建模毁伤伤害**（缺毁伤倍率行，毁伤只出次数）；旗令优先给终结技·此行共赴前路；烬痕按实际伤害 75% 累积且计入总伤害。④待接线：锐能池/残痕→毁伤→愿力→聚锋→链齿·旗令→愿核→烬痕的执行行与资源区块（口径全文见模块头注释 §1–§6）。",
+    "⚠ 影画 1-6 全部 TestKey_PlaceHolder（无命座数据，不标 implemented）。",
     "数据裁决：basicBenchmarkMoveId=1601003（执旌第3段，艾尔妲底形）；specialty=sharpen（锋御，weapon_type 码 7）。"
   ],
   "additionalAbility": {

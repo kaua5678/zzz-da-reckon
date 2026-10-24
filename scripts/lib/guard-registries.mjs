@@ -147,6 +147,10 @@ export const DEBT_REGISTRY = {
   // sharpCritDmg），但口径漏给队友锋御加成。清偿 = 迁 spec teamBuff（全队施加与只给锋御数值等价：
   // sharpCritDmg 只有锋御伤害消费）+ AA 触发条件复刻（OR 语义，specs/teamCondition.ts），删面板写。
   'src/mechanics/agents/claret.ts:迁 spec teamBuff': { since: '2026-10-24', due: '第三个锋御角色入库前清偿；或挽昼正式包实装锐暴机制时一并迁（哪个先到）' },
+  // 2026-10-25：挽昼 v1 占位包第一刀只接了面板层（初始暴伤→暴击、极昼）。极昼原文是 15s 状态
+  // （后场不减、强化特殊技/聚锋刷新），当前按满覆盖近似写进 applyPanel——引擎没有逐事件时间通道
+  // 表达「刷新窗口」，改成覆盖率滑块也只能得到近似。清偿 = 引擎有逐事件窗口后落真状态机。
+  'src/mechanics/agents/sunbringer.ts:状态机未建模': { since: '2026-10-25', due: '引擎具备逐事件时间通道后落极昼真窗口（当前满覆盖近似；正式包数值若有变化一并重录）' },
   // 2026-09-07：喧响/能量收入聚合近似 vs 倍率行矩阵（用户裁决：矩阵求和口径，竖向列全行级）。
   // 仪玄实测行级 5628 vs 聚合 1702；约 50 个模块有 decibelRecovery:0 硬编码。
   // 喧响侧已清偿销号（2026-09-08：账本改 Σ buildExecutions 行级收入，口径条目见 helpers.ts
