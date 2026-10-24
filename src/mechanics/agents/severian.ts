@@ -170,19 +170,6 @@ export function resolveSeverianFengfengStacks(input: { cinemaLevel: number; shad
   return slider
 }
 
-/**
- * 疾锋第四段命中次数（平A 段循环，希格莉德 countBasicFinisherHits 同构：
- * 完整循环 1-4 各 1 次 #4；尾部余量推进到 #4 再计 1 次）。
- */
-export function severianBasicFinisherHits(basicTime: number, cycle: { moveId: string; actionTime: number }[]): number {
-  if (cycle.length === 0 || basicTime <= 0) return 0
-  const cycleTime = cycle.reduce((s, seg) => s + seg.actionTime, 0)
-  if (cycleTime <= 0) return 0
-  const full = Math.floor(basicTime / cycleTime)
-  const tail = basicTime - full * cycleTime
-  const beforeFinisher = cycle.slice(0, -1).reduce((s, seg) => s + seg.actionTime, 0)
-  return full + (tail >= beforeFinisher - 1e-9 ? 1 : 0)
-}
 
 /** 强化 a4（闪避判定成功）：1631020 —— 与烈旋 1631005 逐位同值（677% / 201 失衡 / 1.217s / 流息 35） */
 export const SEVERIAN_ENHANCED_A4_MOVE_ID = '1631020'

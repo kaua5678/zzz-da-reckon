@@ -352,20 +352,11 @@ export function interactionFieldTypeOf(agentId: string | null | undefined, field
  */
 export {
   buildAttributeLedger,
-  buildAttributeLedgerTable,
   zoneOfStat,
-  type AttributeLedger,
-  type AttributeLedgerTable,
-  type AttributePhase,
 } from '@/core/attributeLedger'
 export type {
   LedgerCell,
-  LedgerRow,
-  LedgerTable,
-  LedgerReconcileRow,
-  ContributionOrigin,
   FlatContribution,
-  ContributionFilter,
   ContentKind,
 } from '@/core/contributionLedger'
 // 三维查询（B：下钻筛选 / C：按内容分面）：页面只依赖本门面，不直连引擎
@@ -373,14 +364,11 @@ export {
   flattenLedger,
   filterContributions,
   facetByContent,
-  contentKindOf,
   CONTENT_KIND_ORDER,
 } from '@/core/contributionLedger'
 // 倍率账 / 喧响账（通用贡献账的另两个适配器，与属性账同形）
 export {
   buildMultiplierLedger,
-  splitMoveMultiplier,
   MULTIPLIER_ROW_LABELS,
-  type MultiplierRowKind,
 } from '@/composables/resourceCalc/multiplierLedger'
 export { buildDecibelLedger } from '@/core/decibelLedger'

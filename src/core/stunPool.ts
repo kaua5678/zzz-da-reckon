@@ -254,35 +254,6 @@ export function withStunCount(pool: StunPoolResult, stunCount: number): StunPool
   }
 }
 /**
- * 后台合轴自动填充反推的**迟滞步**（CC-477，r659；r660 收口为「到保底即持住」）。
- *
- * 病灶（r659 探针 `arenaF/r659-bs.out`，auto-1371-1481-1451 弹刀/闪反各 +25）：反推 `est = ceil(缺口 / 每对净失衡)` 是对**当前执行行**的线性
- * 估计——13 对时 N=4，其他行在 4 窗口径下 59434、估「11 对够」；可一旦削到 12 对，本轮落到 N=3 分支，其他行只剩 58529
- * （随 N 生成的按窗行少了一窗 ≈ 3.7 对），估又变「要 14」。同一对数区间 [11,13] 里 N=3 / N=4 **两个分支都自洽**，
- * 线性回削必跨分支 ⇒ 外层 2-环（旧 ×1.2 下 15↔10、CC-475 后 13↔12）⇒ `cycle` 退出 + CC-150 钳 ⇒ 同一输入报 N=3 或 4
- * 取决于迭代路径。单纯阻尼压不住（分支阈值就在削幅之内）。
- * r660 补刀（探针 `arenaF/r660-trace2.out`，yixuan-roxy-lucia 裸三人）：r659 版「到保底后不回削」只拦向下，向上仍 +1 再被
- * 供给上限夹——而上限随对数翻转（24 对 cap 25、25 对多出第 5 个大招、自身前台时间↑ ⇒ cap 24）⇒ 24↔25 环、`cycle` 退出。
- * 保底是**地板不是目标**（用户口径 2026-09-07「反推至保底 4」、「不占前台不计难度」）：到了就不该再动，向上多装 = 最大化。
- *
- * 规则（按序）：
- * - 无上一轮量（本 pass 首轮）⇒ 直接取估计，夹上限。
- * - 上一轮量 > 本轮供给上限 ⇒ 取上限（可行性优先于持住）。
- * - 本轮已到保底（`reached`，池次数 ≥ 保底）⇒ **持住**上一轮量；唯一例外 `est = 0`（其他行单独已够、自动对数本就不该有）⇒ 归零（CC-475 锁 ②）。
- * - 未到保底、估计更高 ⇒ 上行 `prev + ceil(Δ/2)`（至少 +1，压过冲），夹上限。
- * - 未到保底、估计不高于上一轮 ⇒ 持住：估计（poolAt(保底) 口径）与实际次数（promoteFixpoint 不动点）互相矛盾 = 多根分支
- *   （见 arch CC-477 行遗留观察点），回削会掉分支、加对是盲目最大化，都不如停在原地让外层 stable 退出、按实际 N 报。
- * 回退：调用处改回 `Math.min(cap, est)`。
- */
-export function relaxAutoFillStep(prev: number | undefined | null, est: number, cap: number, reached: boolean): number {
-  const e = Math.max(0, est)
-  if (prev === undefined || prev === null) return Math.min(cap, e)
-  if (prev > cap) return cap
-  if (reached) return e === 0 ? 0 : prev
-  if (e > prev) return Math.min(cap, prev + Math.ceil((e - prev) / 2))
-  return prev
-}
-/**
  * **按次数重建池，含失衡值总量**（连续失衡 capacity 结算专用，2026-10-20）。
  *
  * 与 `withStunCount` 的区别：后者**刻意**只改次数派生字段、保留失衡值合计

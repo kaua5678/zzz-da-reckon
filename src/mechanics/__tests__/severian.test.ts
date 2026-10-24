@@ -6,7 +6,6 @@ import { useConfigStore } from '@/stores/config'
 import {
   computeSeverianCycle,
   resolveSeverianFengfengStacks,
-  severianBasicFinisherHits,
   severianChainFlow,
   severianMechanic,
   SEVERIAN_ADDITIONAL_ATK_PER_CRIT,
@@ -40,22 +39,6 @@ describe('赛维里安（1631）3.3.12 v12 正式录入', () => {
     const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     return { catalog, config, computePanelPhases }
   }
-
-  it('纯函数：疾锋四段循环 #4 命中计数（完整循环 1 次/轮，尾部推进到 #4 再 +1）', () => {
-    const cycle = [
-      { moveId: '1631001', actionTime: 0.327 },
-      { moveId: '1631002', actionTime: 0.566 },
-      { moveId: '1631003', actionTime: 0.981 },
-      { moveId: '1631004', actionTime: 1.375 },
-    ]
-    const cycleTime = 0.327 + 0.566 + 0.981 + 1.375
-    expect(severianBasicFinisherHits(0, cycle)).toBe(0)
-    expect(severianBasicFinisherHits(cycleTime * 2, cycle)).toBe(2)
-    // 尾部只打了前三段 → 推进到 #4，计 1 次
-    expect(severianBasicFinisherHits(cycleTime * 2 + 0.327 + 0.566 + 0.981, cycle)).toBe(3)
-    // 尾部不足前三段 → 不计
-    expect(severianBasicFinisherHits(cycleTime * 2 + 0.5, cycle)).toBe(2)
-  })
 
   it('纯函数：computeSeverianCycle v12 门控（核心增伤/暴击转攻击/影画2/4/6）', () => {
     const c0 = computeSeverianCycle({

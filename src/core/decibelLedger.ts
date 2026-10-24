@@ -66,8 +66,6 @@ const FIELD_TO_KIND: { field: keyof DecibelSource; kind: DecibelSourceKind }[] =
   { field: 'selfBurnDecibel', kind: '自身烧血' },
 ]
 
-/** 不参与求和的派生字段（`shareableTotal` / `total` 是**结果**，不是来源） */
-export const DECIBEL_DERIVED_FIELDS = new Set<keyof DecibelSource>(['shareableTotal', 'total'])
 
 export interface DecibelLedgerBreakdown {
   table: LedgerTable<string>

@@ -96,7 +96,6 @@ export interface SubstatScoreContribution {
  * 类型与「副词条收益曲线」共用同一份定义（规则 11：跨文件类型只从单一来源引用；
  * 同名两份定义会被 `banyueRageCycleSingleSourceCc460` 的防复发判据抓红）。
  */
-export type { SubstatAxisSignature } from '@/composables/substatCurve'
 
 /**
  * 击破侧收益（**单独报，不进主评分**）。

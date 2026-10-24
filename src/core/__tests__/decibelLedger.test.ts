@@ -6,7 +6,7 @@
  * 这就是「漏源」的机器判据（属性账那次漏了音擎高级词条，正是靠同一类判据抓到的）。
  */
 import { describe, expect, it } from 'vitest'
-import { buildDecibelLedger, DECIBEL_DERIVED_FIELDS } from '@/core/decibelLedger'
+import { buildDecibelLedger } from '@/core/decibelLedger'
 import type { DecibelSource } from '@/types/resource'
 
 function mkSource(overrides: Partial<DecibelSource> = {}): DecibelSource {
@@ -71,9 +71,4 @@ describe('喧响账：来源分解', () => {
     expect(r.uncovered).toBe(150)
   })
 
-  it('派生字段不参与求和（shareableTotal/total 是结果不是来源）', () => {
-    expect(DECIBEL_DERIVED_FIELDS.has('shareableTotal')).toBe(true)
-    expect(DECIBEL_DERIVED_FIELDS.has('total')).toBe(true)
-    expect(DECIBEL_DERIVED_FIELDS.has('skillRegen')).toBe(false)
-  })
 })
