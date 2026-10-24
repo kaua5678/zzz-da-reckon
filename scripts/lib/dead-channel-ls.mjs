@@ -81,6 +81,7 @@ export const REEXPORT_ENTRY_FILES = {
   'src/mechanics/types.ts': '机制契约类型的单一入口：CC-83 / CC-451 按体积预算拆出 typesRows / typesHooks / typesView，分片不是新的域，导入方不该知道某个类型落在哪片（typesSplitCc83.test 锁形状）',
   'src/types/resource/index.ts': '资源域类型桶：类型按域拆在 types/resource/*，导入方统一走 `@/types/resource`（目录 index）',
   'src/stores/config.ts': '展示层合规通道：views / components 不得 import `@/mechanics`（判据 7），interactionBaseline 三个纯函数经 store 转给 .vue',
+  'src/composables/agentMechanicView.ts': '展示层只读门面（判据 7）：views / components 不得 import `@/core` / `@/mechanics`，角色模块声明（settings / combos / 轴块）与贡献账三件套（属性账 / 倍率账 / 喧响账，core 与 resourceCalc 分片）统一经此取用；分片不是新域，页面不该知道符号落在哪片',
 }
 
 /** 走目录收 .ts（跳过 __tests__ 与 .d.ts——测试写入也算写入，故测试文件进 program 但不进候选面） */
