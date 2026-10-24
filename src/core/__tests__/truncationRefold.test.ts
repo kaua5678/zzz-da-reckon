@@ -76,7 +76,6 @@ async function evalPreset(id: string, stunCountLock?: number) {
     bySlot: rr.convergence?.truncationBySlot ?? [],
     passes: rr.convergence?.truncationRefoldPasses,
     rejected: rr.convergence?.truncationRefoldRejected,
-    cuts: rr.convergence?.truncationCuts ?? [],
     leak: cfgs.filter(c => c != null && 'rowTimeLimit' in c).map(c => c.slot),
     damage: calc.teamTotalDamage.value,
     characters: rr.characters,
