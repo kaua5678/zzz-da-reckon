@@ -207,7 +207,7 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
 7. **命破贯穿力基底**：`atk×0.3 + hp×0.1 + sheerForceFlat`（core/damage.ts）。角色被动写
    "每点生命提高0.1贯穿力"只是复述基底，**不要**再在 spec 里声明 hp→sheerForce 转模（会双计；般岳 1471 历史遗留）。
 8. **countSource 枚举有限**（src/specs/resources.ts）：招式命中类计数（如 attack_data_0）没有现成源，
-   已扩展 `countSource: 'cfgField'` + `countField`——模块把合计写进 cfg，解释器读取。
+   已扩展 `countSource: 'cfgField'` + `countField`——模块把合计写进 cfg，解释器读取。**否决记录**：拿相近计数器冒充（`exSpecialCount` 冒充紊乱/霜灼·破次数）方向会错 ⇒ 异常池次数走 `applyTeamConfig(converge)` 跨轮注入，带命座/CD 门控的走 `SpecResourceContext` 覆盖位；缺省 = 0，不兜底。
 9. **失衡轴模式**：轴内动作计数由 useResourceCalc 注入 cfg（`banyueAxisEx` / `billyAxisEx`，
    组合块已展开成 moveId），模块读 cfg 决定轴内次数；轴外剩余资源模块自行分配。
    轴内动作时间/能量由 `calcStunAxisStack` 的 combos（`module.combos`）定义，`buildStackAxes` 消费。

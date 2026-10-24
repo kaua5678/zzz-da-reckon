@@ -290,14 +290,22 @@ describe('spec adjustable（Form-E）第二批：链式/严格线性', () => {
  * 这一条能抓住「读错字段名」（例如把 C 项的 `basicAttackCount` 错接成 `exSpecialCount`）——
  * 后者在三点扫描里**照样单调**，只有恒等式能定位到具体是哪一条错了。
  */
-describe('spec adjustable（Form-E）第二批：米卡以落霜三滑块（闭式恒等式）', () => {
+describe('spec adjustable（Form-E）第二批：星见雅落霜三滑块（闭式恒等式）', () => {
   const D = '1091.miyabi_frost_fall.miyabi_disorder_frost_fall_gain.rate'
   const F = '1091.miyabi_frost_fall.miyabi_frostburn_break_frost_fall_gain.rate'
   const C = '1091.miyabi_frost_fall.miyabi_c2_flower_basic_frost_fall_gain.rate'
 
-  async function readFrost(settings: Record<string, number>) {
+  /**
+   * ⚠ 2026-10-23 口径修正：三条的**基数**已全部换成真实事件次数，不再是强特次数。
+   *   D 项：全队紊乱次数 × 2（异常池 disorderCount，跨轮注入）
+   *   F 项：霜灼·破次数 × 1 = min(烈霜异常触发次数, 1+⌊战斗时间/10⌋) × 利用率
+   *   C 项：影画二门控 × ⌊平A时间/2⌋ × 1（C0/C1 恒 0）
+   * ⇒ 恒等式的基数必须从**同一份结果的异常池**读（disorder / frostfire triggerCount），
+   * 不能再用 exSpecialCount —— 那个量只是历史近似，现在与这三条无因果关系。
+   */
+  async function readFrost(settings: Record<string, number>, cinemaLevel = RICH.cinemaLevel) {
     const { config } = await setupHarness([
-      { agentId: '1091', ...RICH, battleTime: 180 },
+      { agentId: '1091', ...RICH, cinemaLevel, battleTime: 180 },
       { agentId: '1251', cinemaLevel: 6 },
       { agentId: '1171', cinemaLevel: 6 },
     ] as never)
@@ -311,28 +319,35 @@ describe('spec adjustable（Form-E）第二批：米卡以落霜三滑块（闭�
     await new Promise(r => setTimeout(r, 0))
     const char = calc.resourceResult.value?.characters?.find(c => c.agentId === '1091') as never as
       {
-        exSpecialCount?: number
         executions?: Array<{ moveId?: string; totalTime?: number }>
         miyabiFrostFallSource?: { total?: number }
       } | undefined
     const total = char?.miyabiFrostFallSource?.total
-    const ex = Math.floor(char?.exSpecialCount ?? 0)
-    // ⚠ `basicAttackCount` 的分子是**平A聚合执行行的秒数**（`resources.ts:203-204` 的
-    // `floor(state.basicAttackTime / 2)`），而 `basicAttackTime` **不在** `CharacterResourceResult`
-    // 的公开字段里 ⇒ 必须从 `executions` 里取 `moveId === 'basic_attack'` 那条行的 `totalTime`。
-    // 读 result 上不存在的字段会静默得 `undefined ⇒ 0`，让恒等式自己骗自己（本任首版就栽在这）。
+    // ⚠ ⌊平A时间/2⌋ 的分子是**平A聚合执行行的秒数**（resources.ts 的 case basicAttackCount），
+    // 而 basicAttackTime 不在 CharacterResourceResult 的公开字段里 ⇒ 必须从 executions 取行。
+    // 读 result 上不存在的字段会静默得 undefined ⇒ 0，让恒等式自己骗自己（历史事故一次）。
     const basicRow = char?.executions?.find(e => e.moveId === 'basic_attack')?.totalTime ?? 0
     const basic = Math.floor(basicRow / 2)
-    return { total, ex, basic, raw: basicRow, d: settings[D] ?? 1, f: settings[F] ?? 1, c: settings[C] ?? 1 }
+    const ap = calc.anomalyPoolResult.value
+    const disorder = ap?.disorderCount ?? 0
+    const frostfire = (ap?.perElement ?? []).find(p => p.element === 'frostfire')?.triggerCount ?? 0
+    // 与模块 miyabiFrostburnBreakCountOf 同式（10s CD 上界按同一 battleTime）
+    const frostburn = Math.min(frostfire, 1 + Math.floor(180 / 10))
+    // 入场落霜（spec initialValueField = cfg.miyabiEntryFrostFall）：基础 3 / 影画二 6。
+    // 恒等式必须把它算进去——它是**与三条滑块无关的固定基数**（2026-10-23 接通前它是 0，所以旧恒等式没这项）。
+    const entry = cinemaLevel >= 2 ? 6 : 3
+    return { total, basic, raw: basicRow, disorder, frostfire, frostburn, entry, d: settings[D] ?? 1, f: settings[F] ?? 1, c: settings[C] ?? 1 }
   }
 
-  it('三条滑块全 0 ⇒ 落霜总量恒 0（三条都真被消费的合取证据）', async () => {
+  it('三条滑块全 0 ⇒ 落霜总量 = 入场落霜（三条都真被消费的合取证据）', async () => {
     const r = await readFrost({ [D]: 0, [F]: 0, [C]: 0 })
-    expect(r.total, '三条 adjustable 同时归零后仍非 0 ⇒ 至少有一条没接线').toBe(0)
-    expect(r.ex, '夹具前提：强特次数须非 0，否则本条退化成恒 0 假绿').toBeGreaterThan(0)
+    // 三条 gain 全关后只剩 spec 的 initialValue（入场落霜）：多出来的就是没接线的第四条来源
+    expect(r.total, '三条 adjustable 同时归零后应只剩入场落霜').toBe(r.entry)
+    expect(r.disorder, '夹具前提：紊乱次数须非 0，否则 D 项退化成恒 0 假绿').toBeGreaterThan(0)
+    expect(r.frostfire, '夹具前提：烈霜异常触发次数须非 0，否则 F 项退化成恒 0 假绿').toBeGreaterThan(0)
   }, 300000)
 
-  it('闭式恒等式：total = ⌊强特⌋×2×D + ⌊强特⌋×1×F + ⌊平A时间/2⌋×1×C（D/F/C 各三点）', async () => {
+  it('闭式恒等式：total = 入场 + 紊乱×2×D + 霜灼·破×1×F + ⌊平A时间/2⌋×1×C（D/F/C 各三点）', async () => {
     const failures: string[] = []
     const points: Array<Record<string, number>> = [
       {}, // 全默认
@@ -342,9 +357,9 @@ describe('spec adjustable（Form-E）第二批：米卡以落霜三滑块（闭�
     ]
     for (const p of points) {
       const r = await readFrost(p)
-      const expected = r.ex * 2 * r.d + r.ex * 1 * r.f + r.basic * 1 * r.c
+      const expected = r.entry + r.disorder * 2 * r.d + r.frostburn * r.f + r.basic * r.c
       if (r.total !== expected) {
-        failures.push(`${JSON.stringify(p)}: 实到 ${r.total}，恒等式给 ${expected}（ex=${r.ex} basic/2=${r.basic}）`)
+        failures.push(`${JSON.stringify(p)}: 实到 ${r.total}，恒等式给 ${expected}（入场=${r.entry} 紊乱=${r.disorder} 霜灼破=${r.frostburn} basic/2=${r.basic}）`)
       }
     }
     expect(failures, failures.join('\n')).toEqual([])
@@ -352,9 +367,8 @@ describe('spec adjustable（Form-E）第二批：米卡以落霜三滑块（闭�
 
   /**
    * ⚠ **不要**写「某条归零 ⇒ 总量恰好减去该条贡献」的减法断言 —— 本任首版就栽在这：
-   * 三个滑块都进**同一个总量**，而总量又反馈驱动时间分配与强特次数（落霜 → 霜月次数 →
-   * 强特/时间预算），⇒ 改一条会**同时移动另两条的基准**，逐位相减不成立（实测
-   * `disorder` 归零后 `29 → 12` 而不是 `29 − 18 = 11`，因为强特次数同时从 9 变到 6）。
+   * 三个滑块都进**同一个总量**，而总量又反馈驱动时间分配与异常触发次数（落霜 → 霜月次数 →
+   * 强特/时间预算 → 积蓄 → 紊乱次数），⇒ 改一条会**同时移动另两条的基数**，逐位相减不成立。
    * 正解 = 每条**独立**跑三点、每次都用**同一份结果**重解恒等式（上一条已做），
    * 再加一条「单调 + 真的动了」的消费证据（下面这条）。
    */
@@ -364,12 +378,10 @@ describe('spec adjustable（Form-E）第二批：米卡以落霜三滑块（闭�
       const vals: number[] = []
       for (const v of [0, 1, 2]) {
         const r = await readFrost({ [id]: v })
-        // 夹具前提（CC-154 补）：C 项需要 ⌊平A/2⌋ > 0，D/F 项需要强特 > 0；否则「三点恒同」是夹具失效而不是滑块失效
-        // CC-158（第 181 轮）：前提按滑块分——只有 C 项（c2flower）读 ⌊平A/2⌋；D/F 项只读强特次数。
-        // 折叠残差可退回后 disorder=2 档（落霜 50 → 强特 10 次）把雅平A挤到 0.49s，这对 disorder 的消费证据无影响，
-        // 旧写法对三条滑块一律要求平A ≥ 2s，会把「D 项正常」误报成夹具失效。
+        // 夹具前提（按滑块分）：C 项读 ⌊平A/2⌋；D 项读紊乱次数；F 项读霜灼·破次数。
         if (name === 'c2flower') expect(r.basic, `夹具前提：雅 ⌊平A时间/2⌋ 须 > 0（实为平A ${r.raw}s）`).toBeGreaterThan(0)
-        expect(r.ex, '夹具前提：雅强特次数须 > 0').toBeGreaterThan(0)
+        if (name === 'disorder') expect(r.disorder, '夹具前提：紊乱次数须 > 0').toBeGreaterThan(0)
+        if (name === 'frostburn') expect(r.frostburn, '夹具前提：霜灼·破次数须 > 0').toBeGreaterThan(0)
         vals.push(r.total!)
       }
       if (vals.some(v => v === undefined || Number.isNaN(v))) {
@@ -383,8 +395,26 @@ describe('spec adjustable（Form-E）第二批：米卡以落霜三滑块（闭�
     }
     expect(failures, failures.join('\n')).toEqual([])
   }, 600000)
-})
 
+  /**
+   * ★ 影画二门控（2026-10-23 新增）：C 项（风花#5）是**命座**收入，C0/C1 必须恒 0。
+   * 修复前这条 gain 规则没有门控，0 命也在拿 ⌊平A/2⌋ 点落霜（实测 C0「雅白」队 +17 点 ≈ 2.8 次霜月），
+   * 后果是 C0 上限被抬高、C2 的资源收益被低估。
+   */
+  it('影画二门控：C0/C1 的 C 项贡献恒 0，C2+ 才生效（同队同配置只切 cinemaLevel）', async () => {
+    const zeroed = { [D]: 0, [F]: 0 } // 只留 C 项，隔离读数（另两条 gain 关掉）
+    const c0 = await readFrost(zeroed, 0)
+    const c1 = await readFrost(zeroed, 1)
+    const c2 = await readFrost(zeroed, 2)
+    expect(c0.basic, '夹具前提：C0 的 ⌊平A/2⌋ 须 > 0（否则「恒 0」是夹具失效）').toBeGreaterThan(0)
+    // 读数里还含 spec initialValue（入场落霜），故判据写成「只剩入场值」而不是「= 0」
+    expect(c0.entry, '基础入场落霜 = 3').toBe(3)
+    expect(c2.entry, '影画二入场落霜替换为 6（不是叠加 3+6）').toBe(6)
+    expect(c0.total, 'C0 不得拿风花#5 落霜（只剩入场值）').toBe(c0.entry)
+    expect(c1.total, 'C1 不得拿风花#5 落霜（只剩入场值）').toBe(c1.entry)
+    expect(c2.total, 'C2 起风花#5 必须真的进总量（入场 + ⌊平A/2⌋）').toBe(c2.entry + c2.basic)
+  }, 600000)
+})
 describe('spec adjustable（Form-E）经真管线生效：rate 0 / 1 / 2 三点线性', () => {
   it('17 条 adjustable 全部：rate=0 ⇒ 0，rate=1 ⇒ 基准，rate=2 ⇒ 恰好 2×基准', async () => {
     // 前提断言（防「夹具失效导致恒 0 假绿」）：这些 id 必须真的在运行时注册表里

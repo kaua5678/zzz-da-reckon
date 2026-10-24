@@ -12,6 +12,21 @@ import { agentSpecs } from './registry'
 export interface SpecResourceContext {
   broadCycloneCount?: number
   disorderCount?: number
+  /**
+   * 霜灼·破 次数（雅 1091）：**已由模块算好的次数**（= min(烈霜异常触发次数, 1+⌊战斗时间/10⌋) × 利用率，再吃次数上限滑块）。
+   * 为什么由模块算而不是解释器读 state：这条次数带 10s CD 与「对带冰焰的敌人施加霜寒」的触发条件，
+   * 解释器只认 state 标量（原实现 `floor(state.exSpecialCount)` 是把强特次数冒充霜灼·破次数，
+   * 实测方向都会反：紊乱少的队反而多给）。次数由模块 `miyabiFrostburnBreakCountOf` 产出，
+   * 与 1500% 直伤行的次数**同源**（规则 11：一个数只有一份算法）。
+   */
+  frostburnBreakCount?: number
+  /**
+   * 平A命中类计数（`countSource: basicAttackCount`）的模块侧覆盖位：给了就用它，没给才回落
+   * `floor(state.basicAttackTime / 2)`。用途 = 「这条收入的触发条件带**命座**门控」而命座不是状态量
+   * （雅 1091 的影画二「风花#5 命中 +1 落霜」：C0/C1 该收入恒 0，模块按 cinemaLevel 决定给不给）。
+   * 默认不改变任何既有消费方（1241/1521/1531 都不传本字段）。
+   */
+  basicAttackCount?: number
   teamAssaultCount?: number
   chainCountTotal?: number
   dodgeCounterCount?: number
@@ -209,9 +224,12 @@ function resolveGainCount(
     case 'disorderCount':
       return Math.max(0, context.disorderCount ?? 0)
     case 'frostburnBreakCount':
-      return Math.max(0, Math.floor(state.exSpecialCount))
+      // 次数 = 模块注入（雅 1091 的霜灼·破：烈霜异常触发次数 ∩ 10s CD）。
+      // 缺省 0（不再是 exSpecialCount）：缺省必须表达「没给」，不能用别的量顶替。
+      return Math.max(0, Math.floor(context.frostburnBreakCount ?? 0))
     case 'basicAttackCount':
-      return Math.max(0, Math.floor(state.basicAttackTime / 2))
+      // 模块可覆盖（命座门控类收入）：缺省仍是 floor(平A时间/2)，与历史口径逐位一致
+      return Math.max(0, Math.floor(context.basicAttackCount ?? state.basicAttackTime / 2))
     case 'cfgField':
       // 次数由模块写入 cfg 字段（countField），如星徽·比利招式命中决意合计（attack_data_0）
       return Math.max(0, Number(readCfgField(cfg, rule.countField ?? '') ?? 0) || 0)

@@ -74,26 +74,37 @@ describe('星见雅滑块生效差分（防守卫冻结，SOP §3.5：改滑块�
     expect(p2.miyabiIceFlameCoverage).toBeCloseTo(0.8, 5)
   })
 
-  it('miyabi.frostburnBreakCount / frostburnBreakRate → 霜灼·破次数差分（buildExecutions）', async () => {
+  /**
+   * 霜灼·破次数（2026-10-23 口径修正）：次数 = min(烈霜异常触发次数, 1+⌊战斗时间/10⌋) × 利用率，
+   * 再吃「次数上限」滑块——**滑块只压不抬**（用户口径 2026-10-19「是修改上限而不是修改招式次数」）。
+   *
+   * 修复前这里断言的是「滑块 = 精确次数」（cap=12 ⇒ 12 次），那正是把强特次数冒充霜灼·破次数的年代：
+   * `floor(exSpecialCount × rate)` 可被滑块任意抬高；现在 cap 只做上界，抬不上去。
+   */
+  it('miyabi.frostburnBreakCount（上限，只压不抬）/ frostburnBreakRate（利用率）→ 霜灼·破次数差分', async () => {
     const { config } = await setupHarness([{ agentId: '1091', cinemaLevel: 0 }, '', ''])
     const frostbreakCountOf = () => {
       const calc = useResourceCalc()
       const row = calc.resourceResult.value!.characters[0].executions.find(e => e.moveId === 'miyabi_frostburn_break')
       return row?.count ?? 0
     }
-    // 次数滑块显式覆盖：12 次
-    config.setMechanicSetting('miyabi.frostburnBreakCount', 12)
-    expect(frostbreakCountOf()).toBe(12)
-    config.setMechanicSetting('miyabi.frostburnBreakCount', 6)
-    expect(frostbreakCountOf()).toBe(6)
-    // 比率滑块：次数=0（自动）时按强特数×比率
+    const auto = frostbreakCountOf()
+    // 反空洞：自动值必须 >0（烈霜异常在这个夹具里真的会触发），否则下面全是恒 0 的假绿
+    expect(auto, '夹具前提：自动次数须 > 0（烈霜异常触发次数 > 0）').toBeGreaterThan(0)
+    // cap 只压不抬：99 = 回到自动值，不是「99 次」
+    config.setMechanicSetting('miyabi.frostburnBreakCount', 99)
+    expect(frostbreakCountOf(), 'cap=99 不得抬高次数').toBe(auto)
+    // cap 压到 3 ⇒ 恰好 3
+    config.setMechanicSetting('miyabi.frostburnBreakCount', 3)
+    expect(frostbreakCountOf()).toBe(3)
+    // 利用率：cap=0（不设上限）时按自动次数线性缩放
     config.setMechanicSetting('miyabi.frostburnBreakCount', 0)
     config.setMechanicSetting('miyabi.frostburnBreakRate', 2)
     const doubled = frostbreakCountOf()
     config.setMechanicSetting('miyabi.frostburnBreakRate', 1)
     const base = frostbreakCountOf()
     expect(doubled).toBe(base * 2)
-    expect(base).toBeGreaterThan(0)
+    expect(base).toBe(auto)
   })
 })
 

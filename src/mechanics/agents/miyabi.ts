@@ -27,6 +27,7 @@ import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 import { chargeLockComboAlignRatio } from '@/mechanics/chargeLock'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import type { AgentNextRoundFeedbackInput } from '../types'
 
 const setting = mechanicSettingReader(() => miyabiMechanic.settings)
 const MIYABI_AGENT_ID = '1091'
@@ -38,6 +39,16 @@ const FROST_MOON_MOVE_ID = '1091029'
 const MIYABI_C0_ICEFLAME_DEFAULT_COVERAGE = 0
 /** 霜月架势三段消耗落霜 */
 const FROST_MOON_COST = 6
+/**
+ * 一局最多能打出的霜月三段（拔刀）次数 —— **时间约束下的实测上限**，不是资源上限。
+ *
+ * @fact agent:1091/霜月次数上限 口径: 默认 19 次/局（顶尖玩家实测上限，时间约束；资源回复会溢出，落霜总量不是瓶颈） | 据 用户@2026-10-24 | 验 src/mechanics/__tests__/miyabiFrostFallSources.test.ts | 锚 src/mechanics/agents/miyabi.ts#FROST_MOON_COUNT_DEFAULT_CAP | 信 确认
+ * ⟳复核: 若官方改版/新手法使一局拔刀上限变化（或战斗时长档改变），改本常量并同步滑块默认 | 到期 2027-04-30
+ *
+ * 为什么必须有这道闸：落霜改真口径后 C2 队的落霜总量可达 100+ ⇒ floor(/6) 会给出 17~20 次，
+ * 而 180s 里每次霜月独占 1s 锁定 + 收招，实际打不出那么多；不封顶会把「资源溢出」当成「能打出」。
+ */
+const FROST_MOON_COUNT_DEFAULT_CAP = 19
 /** 冰焰积蓄效率 = 暴击率×100%，上限80% */
 const ICE_FLAME_BUILDUP_MAX = 80
 /** 额外能力：霜月伤害+60% */
@@ -46,6 +57,12 @@ const FROST_MOON_DMG_BONUS = 60
 const FROST_MOON_ICE_RES_IGNORE = 30
 /** 霜灼·破倍率（Lv.7 最高，毕业终局战斗） */
 const FROSTBURN_BREAK_MULTIPLIER = 1500
+/** 霜灼·破 10s CD（原文 passive.level.1091507.desc[0] 末句「10秒内最多触发一次」） */
+const FROSTBURN_BREAK_CD_SECONDS = 10
+/** 入场落霜（基础技 skill.basic.description：「进入战场时，星见雅立刻获得3点[落霜]」） */
+const BASE_ENTRY_FROST_FALL = 3
+/** 入场落霜（影画二 talent.2.desc：「进入战场时，星见雅立刻获得6点[落霜]」，替换基础的 3 点） */
+const C2_ENTRY_FROST_FALL = 6
 /** C2：暴击率+15% */
 const C2_CRIT_RATE = 15
 /** C2：风花/闪避反击伤害+30% */
@@ -71,16 +88,80 @@ function hasWindTeammate(team: ReadonlyTeam, slot: number): boolean {
   return team.some(m => m.slot !== slot && m.agent?.damageElement === 'wind')
 }
 
+/**
+ * 霜灼·破次数的**唯一算法**：1500% 直伤行的次数与 spec 落霜 gain（countSource frostburnBreakCount）共用本函数（规则 11）。
+ *
+ * 原文（passive.level.1091507.desc[0]）：「星见雅对附着[冰焰]的敌人施加[霜寒]效果时，将会消除[冰焰]并触发[霜灼·破]……
+ * 触发[霜灼·破]时，星见雅获得1点[落霜]，10秒内最多触发一次」。
+ *
+ * 口径 = 触发上限 ∩ 10s CD：
+ * - 触发上限 = **烈霜(frostfire)异常触发次数**——每次烈霜异常结算都会对目标施加[霜寒]，而霜寒正是霜灼·破的触发条件
+ *   （冰焰在雅造成烈霜伤害时自动附着，被霜灼·破消耗后要等本次霜寒结束才恢复 ⇒ 一次霜寒至多换一次霜灼·破）。
+ *   次数由异常池逐轮收敛产出，经下一轮 applyTeamConfig(converge) 写入 cfg（见本模块 applyTeamConfig）。
+ * - 10s CD 上界 = max(1, floor(战斗时间 / 10))（首个 10s 窗口在 t=0 就能触发一次）。
+ * - 再乘 miyabi.frostburnBreakRate（利用率滑块），最后吃 miyabi.frostburnBreakCount（次数上限滑块，
+ *   用户口径 2026-10-19「是修改上限而不是修改招式次数」，0 = 不设上限）。
+ *
+ * ⚠ 修复前这里（以及 spec 的 countSource: frostburnBreakCount）读的是 state.exSpecialCount——强特次数与霜灼·破次数
+ * 没有因果关系（霜灼·破由霜寒触发，强特只是众多积蓄来源之一），实测方向都会错。
+ *
+ * 上一轮为 0（首轮/预热）时**不兜底成别的量**：0 是合法读数，兜底会把「用强特次数冒充」重新引回来。
+ */
+/**
+ * @fact agent:1091/霜灼·破次数 口径: min(烈霜异常触发次数, max(1, ⌊战斗时间/10⌋)) × 利用率，再吃次数上限滑块（只压不抬）；与 1500% 直伤行同源 | 据 nanoka full/1091.json passive.level.1091507.desc[0]「对带[冰焰]的敌人施加[霜寒]时触发…10秒内最多触发一次」+ 用户@2026-10-23 | 验 src/mechanics/__tests__/miyabiFrostFallSources.test.ts | 锚 src/mechanics/agents/miyabi.ts#miyabiFrostburnBreakCountOf | 信 高
+ * ⟳复核: 若官方改版调整落霜来源/霜灼·破 CD/影画二条目，改本组取值并同步 spec 1091.json | 到期 2027-04-30
+ */
+export function miyabiFrostburnBreakCountOf(cfg: CharacterOperationConfig, battleTime: number): number {
+  const cap = setting(cfg, 'miyabi.frostburnBreakCount')
+  const rate = Math.max(0, Math.min(2, setting(cfg, 'miyabi.frostburnBreakRate')))
+  const triggers = Math.max(0, Math.floor(cfg.miyabiFrostfireTriggerCount ?? 0))
+  // 10s CD 上界 = 战斗时间里能装下的完整 10s 窗口数（首个窗口在 t=0 即可用 ⇒ 至少 1 次）
+  const cdCap = Math.max(1, Math.floor(Math.max(0, battleTime) / FROSTBURN_BREAK_CD_SECONDS))
+  return capOfAuto(Math.floor(Math.min(triggers, cdCap) * rate), cap)
+}
+
+/**
+ * 落霜 spec 资源的**外部次数源**（computeSpecResources 的第 4 参）。三条各有原因，都是「state 里没有这个量」：
+ *
+ * ① disorderCount：全队紊乱次数由异常池产出，而异常池**晚于** buildExecutions（它消费执行行）
+ *    ⇒ 只能读 applyTeamConfig(converge) 写入 cfg 的**上一轮**收敛值（与爱丽丝 1401 剑仪的 aliceDisorderCount
+ *    同一通道、同一理由：见 alice.ts#cfgExternalCountsProbe 注释）。
+ * ② frostburnBreakCount：同上（烈霜触发次数来自异常池），再叠加 10s CD 与两个滑块 ⇒ 由
+ *    miyabiFrostburnBreakCountOf 统一算，与 1500% 直伤行同源。
+ * ③ basicAttackCount：影画二门控在**命座**上（tier 在 cfg），不是状态量 ⇒ 由本模块按 cinemaLevel >= 2
+ *    决定是否把平A时间折算成风花#5命中数（C0/C1 恒 0）。修复前这条规则没有门控，0 命也在拿这份落霜
+ *    （实测 C0「雅白」队白拿 17 点 ≈ 2.8 次霜月）。
+ *
+ * @fact agent:1091/落霜·C2风花 口径: 影画二「风花#5 命中 +1 落霜」按 cinemaLevel ≥ 2 门控（C0/C1 恒 0），命中数 = ⌊平A时间/2⌋ | 据 nanoka full/1091.json talent.2.desc + 用户@2026-10-23 | 验 src/mechanics/__tests__/miyabiFrostFallSources.test.ts | 锚 src/mechanics/agents/miyabi.ts#miyabiFrostFallContext | 信 高
+ * ⟳复核: 若官方改版调整落霜来源/霜灼·破 CD/影画二条目，改本组取值并同步 spec 1091.json | 到期 2027-04-30
+ */
+/**
+ * @fact agent:1091/落霜·紊乱来源 口径: 全队紊乱次数 × 2（异常池 disorderCount 经 applyTeamConfig converge 跨轮注入 cfg.miyabiDisorderCount），不再用强特次数近似 | 据 nanoka full/1091.json passive.level.1091507.desc[1]「队伍中任意角色触发[紊乱]效果时，星见雅获得2点[落霜]」+ 用户@2026-10-23 | 验 src/mechanics/__tests__/miyabiFrostFallSources.test.ts | 锚 src/mechanics/agents/miyabi.ts#miyabiFrostFallContext | 信 高
+ * ⟳复核: 若官方改版调整落霜来源/霜灼·破 CD/影画二条目，改本组取值并同步 spec 1091.json | 到期 2027-04-30
+ */
+function miyabiFrostFallContext(cfg: CharacterOperationConfig, state: Readonly<IterationState>) {
+  const cinemaLevel = cinemaLevelOf(cfg.miyabiCinemaLevel)
+  return {
+    disorderCount: Math.max(0, Math.floor(cfg.miyabiDisorderCount ?? 0)),
+    frostburnBreakCount: miyabiFrostburnBreakCountOf(cfg, cfg.battleTime),
+    // 与解释器 case basicAttackCount 同式（floor(平A时间/2)），只多了命座门控
+    basicAttackCount: cinemaLevel >= 2 ? Math.max(0, Math.floor(state.basicAttackTime / 2)) : 0,
+  }
+}
+
 function getFrostFallResource(
   cfg: CharacterOperationConfig,
-  state: IterationState,
-): { frostFall: number; frostMoonCount: number } | null {
+  state: Readonly<IterationState>,
+): { frostFall: number; frostMoonCount: number; frostMoonByResource: number } | null {
   const spec = getAgentSpec(MIYABI_AGENT_ID)
   if (!spec) return null
-  const res = computeSpecResources(spec, cfg, state).get('miyabi_frost_fall')
+  const res = computeSpecResources(spec, cfg, state, miyabiFrostFallContext(cfg, state)).get('miyabi_frost_fall')
   if (!res) return null
-  const frostMoonCount = Math.max(0, Math.floor(res.total / FROST_MOON_COST))
-  return { frostFall: res.total, frostMoonCount }
+  const frostMoonByResource = Math.max(0, Math.floor(res.total / FROST_MOON_COST))
+  // 一局能打出的次数 = min(资源够打几次, 时间约束上限)；cap = 0 ⇒ 不设上限（用户口径：滑块是上限语义）
+  const countCap = Math.max(0, Math.floor(setting(cfg, 'miyabi.frostMoonCountCap')))
+  const frostMoonCount = countCap > 0 ? Math.min(frostMoonByResource, countCap) : frostMoonByResource
+  return { frostFall: res.total, frostMoonCount, frostMoonByResource }
 }
 
 // ============ applyPanel ============
@@ -143,6 +224,17 @@ function applyMiyabiPanel({ slot, cinemaLevel, team, panel, settings }: AgentPan
 function buildMiyabiCharConfig({ cfg, panel, cinemaLevel }: AgentCharConfigInput): void {
   // 霜月架势三段 actionTime 读 cfg.moveActionTimes（catalog，CC-409）
   cfg.miyabiCinemaLevel = cinemaLevel
+  /**
+   * 入场落霜（spec resources[miyabi_frost_fall].initialValueSource = cfgField）：
+   * 基础 3 点 / 影画二 6 点（talent.2 是**替换**不是叠加）。
+   *
+   * @fact agent:1091/落霜·入场 口径: 进入战场立刻获得 3 点，影画二替换为 6 点（不是叠加）；走 spec initialValueField=miyabiEntryFrostFall | 据 nanoka full/1091.json skill.basic.description「立刻获得3点」+ talent.2.desc「立刻获得6点」+ 用户@2026-10-23 | 验 src/mechanics/__tests__/miyabiFrostFallSources.test.ts | 锚 src/mechanics/agents/miyabi.ts#buildMiyabiCharConfig | 信 高
+   * ⟳复核: 若官方改版调整入场落霜点数或影画二条目，改本组常量并同步 spec 1091.json | 到期 2027-04-30
+   *
+   * 修复前：spec 只有 `initialValue: 0` + 零读者的 `properties.cinema2EntryGift` ⇒ 这一份收入整块缺失
+   * （命座账本里写的「panel.miyabiCinema2EntryFrostFall=6」也是死字段，全仓零读者）。
+   */
+  cfg.miyabiEntryFrostFall = cinemaLevel >= 2 ? C2_ENTRY_FROST_FALL : BASE_ENTRY_FROST_FALL
   // 冰焰覆盖率已由 applyPanel 静态算好（settings + 队伍/命座自动默认），buildCharConfig 只读
   void panel
 }
@@ -179,13 +271,42 @@ export function miyabiFrostMoonReserve(cfg: CharacterOperationConfig, state?: Re
 }
 
 function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  const cinemaLevel = cinemaLevelOf(cfg.miyabiCinemaLevel)
+
+  // ---- 霜灼·破直伤执行（倍率固定 1500% ×（1+C4），毕业终局）----
+  // ⚠ 这一段**必须在霜月次数的早退之前**：霜灼·破由「对带[冰焰]的敌人施加[霜寒]」触发，与雅这局有没有
+  // 攒够 6 点落霜打霜月**没有因果关系**。修复前它排在 `frostMoonCount <= 0` 的早退之后 ⇒ 只要落霜总量
+  // 不足 6（0 命小战斗、或次数上限滑块被调低），霜灼·破行连带整块消失（实测 cap=3/4/5 ⇒ 行数 0）。
+  // 次数与落霜的霜灼·破 gain 同源：miyabiFrostburnBreakCountOf（烈霜异常触发次数 ∩ 10s CD × 利用率，
+  // 吃次数上限滑块；滑块 = 上限，用户口径 2026-10-19「是修改上限而不是修改招式次数」，0 = 不设上限）。
+  const frostbreakCount = miyabiFrostburnBreakCountOf(cfg, cfg.battleTime)
+  if (frostbreakCount > 0) {
+    // C4「[霜灼·破]造成的伤害提升30%」（talent.4.desc）：进**倍率**，不是在 note 里写一句。
+    // 修复前 `C4_FROSTBURN_DMG` 只出现在 resolveExecutionDamage 的说明文字里（死口径），
+    // 实测 C3/C4 的霜灼·破行 perDamage 逐位相同（10411）⇒ C4 只有 +250 喧响那半条在生效。
+    const perDecibel = cinemaLevel >= 4 ? C4_FROSTBURN_DECIBEL : 0
+    const frostburnMultiplier = cinemaLevel >= 4
+      ? FROSTBURN_BREAK_MULTIPLIER * (1 + C4_FROSTBURN_DMG / 100)
+      : FROSTBURN_BREAK_MULTIPLIER
+    executions.push(moduleExecRow({
+      moveId: 'miyabi_frostburn_break',
+      moveName: '霜灼·破',
+      category: 'basic',
+      count: frostbreakCount,
+      decibelRecovery: perDecibel,
+      totalDecibelRecovery: perDecibel * frostbreakCount,
+      ...ENERGY_RECOVERY_OFF,
+      damageMultiplier: frostburnMultiplier,
+    }))
+  }
+
+  // ---- 霜月架势（消耗落霜）----
   const res = getFrostFallResource(cfg, state)
   if (!res || res.frostMoonCount <= 0) return
 
   const frostMoonCount = res.frostMoonCount
   const actionTime = cfgMoveActionTime(cfg, FROST_MOON_MOVE_ID)
   // 影画1（招式限定）：三段蓄力的每一段按已消耗落霜无视防御——#1(2豆)=12%、#2(4豆)=24%、#3(6豆)=36%
-  const cinemaLevel = cinemaLevelOf(cfg.miyabiCinemaLevel)
   const m1DefShred = cinemaLevel >= 1
 
   // 霜月架势三段
@@ -226,26 +347,6 @@ function buildMiyabiExecutions({ cfg, state, executions }: AgentResourceInput): 
     }
   }
 
-  // 霜灼·破直伤执行（倍率固定1500%×（1+C4），毕业终局）
-  // 次数：默认按紊乱次数估算（每次紊乱伴随烈霜异常触发，贴近霜灼·破频率），用户可调上限
-  // 次数自动 = 强特次数 × 比率；滑块 = 上限（用户口径 2026-10-19「是修改上限而不是修改招式次数」），0 = 不设上限
-  const frostburnCountCap = setting(cfg, 'miyabi.frostburnBreakCount')
-  const safeRate = Math.max(0, Math.min(2, setting(cfg, 'miyabi.frostburnBreakRate')))
-  const frostbreakCount = capOfAuto(Math.max(0, Math.floor(state.exSpecialCount * safeRate)), frostburnCountCap)
-  if (frostbreakCount > 0) {
-    const hasC4 = cinemaLevel >= 4
-    const perDecibel = hasC4 ? C4_FROSTBURN_DECIBEL : 0
-    executions.push(moduleExecRow({
-      moveId: 'miyabi_frostburn_break',
-      moveName: '霜灼·破',
-      category: 'basic',
-      count: frostbreakCount,
-      decibelRecovery: perDecibel,
-      totalDecibelRecovery: perDecibel * frostbreakCount,
-      ...ENERGY_RECOVERY_OFF,
-      damageMultiplier: FROSTBURN_BREAK_MULTIPLIER,
-    }))
-  }
 }
 
 // ============ transformSkillExecutions ============
@@ -322,11 +423,12 @@ function resolveMiyabiExecutionDamage(input: AgentDamageResolutionInput): AgentD
 
   // 霜灼·破直伤（从buildExecutions推入的自定义执行）
   if (exec.moveId === 'miyabi_frostburn_break') {
-    const dmgBonus = (cinemaLevel >= 4 ? C4_FROSTBURN_DMG : 0)
+    // C4 的 +30% 已在 buildMiyabiExecutions 里乘进 damageMultiplier（单一来源）；这里只写说明，不再重复算。
+    const hasC4Bonus = cinemaLevel >= 4
     return {
       element: FROSTFIRE,
       source: '霜灼·破',
-      note: `霜灼·破直伤，固定倍率 ${FROSTBURN_BREAK_MULTIPLIER}% ATK（Lv.7 毕业终局）${dmgBonus > 0 ? `，C4 额外+${dmgBonus}%` : ''}；吃双爆不吃精通。`,
+      note: `霜灼·破直伤，${hasC4Bonus ? `${FROSTBURN_BREAK_MULTIPLIER * (1 + C4_FROSTBURN_DMG / 100)}%（Lv.7 × C4 +${C4_FROSTBURN_DMG}%）` : `${FROSTBURN_BREAK_MULTIPLIER}%（Lv.7）`} ATK 倍率；吃双爆不吃精通。`,
     }
   }
 
@@ -342,7 +444,7 @@ function resolveMiyabiExecutionDamage(input: AgentDamageResolutionInput): AgentD
 function buildMiyabiResourceResult({ cfg, state }: AgentResourceResultInput): Partial<import('@/types/resource').CharacterResourceResult> {
   const res = getFrostFallResource(cfg, state)
   return {
-    miyabiFrostFallSource: res ? { total: res.frostFall, frostMoonCount: res.frostMoonCount } : undefined,
+    miyabiFrostFallSource: res ? { total: res.frostFall, frostMoonCount: res.frostMoonCount, frostMoonByResource: res.frostMoonByResource } : undefined,
   }
 }
 
@@ -354,8 +456,8 @@ function buildMiyabiResourceSections({ result }: AgentResourceSectionsInput): Sp
     title: '雅·落霜',
     summary: `剩余 ${fmt(src.total, 1)} / 霜月三段 ${src.frostMoonCount} 次`,
     rows: [
-      { label: '落霜总量', value: `${fmt(src.total, 1)}`, detail: '紊乱×2 + 霜灼·破×1 + C2入场6' },
-      { label: '霜月三段消耗', value: `${src.frostMoonCount} 次`, detail: `${FROST_MOON_COST} 落霜/次 → 4282.8% 烈霜直伤` },
+      { label: '落霜总量', value: `${fmt(src.total, 1)}`, detail: '紊乱×2 + 霜灼·破×1 + 影画二风花#5×1（C2 起）；入场落霜未接' },
+      { label: '霜月三段消耗', value: `${src.frostMoonCount} 次`, detail: `${FROST_MOON_COST} 落霜/次 → 4282.8% 烈霜直伤；资源够 ${src.frostMoonByResource} 次，受「霜月次数上限」压到 ${src.frostMoonCount} 次` },
     ],
   }]
 }
@@ -389,6 +491,42 @@ export const miyabiMechanic: AgentMechanicModule = {
     report?.({ stat: 'anomalyBuildUpEfficiency', value: FROSTBURN_TEAM_BUILDUP_BONUS, mode: 'flat' })
   },
   buildCharConfig: buildMiyabiCharConfig,
+  /**
+   * 落霜的两条**外部次数源**注入（全队紊乱次数 / 烈霜异常触发次数）。
+   *
+   * 为什么必须走跨轮反馈、不能在 buildExecutions 里直接读异常池：`buildExecutions` 跑在异常池**之前**
+   * （异常池消费执行行，执行行又含霜月），读不到本轮次数——这是循环依赖，不是懒。爱丽丝 1401 剑仪
+   * （aliceDisorderCount / aliceTeamAssaultCount）就是同一通道的先例，本模块照抄，不改契约。
+   *
+   * 相位纪律（与爱丽丝同款）：
+   * - build：次数全未知 ⇒ 置 0（首轮不吃这两条收入）；
+   * - converge：带**上一轮**收敛出的异常池次数 ⇒ 写进 cfg，本轮 buildExecutions 消费；
+   * - postRound：不动（这两个次数是异常池的产物，本模块只做消费者）。
+   */
+  applyTeamConfig: ({ cfg, phase, threads }) => {
+    if (phase === 'build') {
+      cfg.miyabiDisorderCount = 0
+      cfg.miyabiFrostfireTriggerCount = 0
+      return
+    }
+    if (phase !== 'converge') return
+    cfg.miyabiDisorderCount = Math.max(0, Math.floor(threads?.moduleFeedback.miyabiDisorderCount ?? 0))
+    cfg.miyabiFrostfireTriggerCount = Math.max(0, Math.floor(threads?.moduleFeedback.miyabiFrostfireTriggerCount ?? 0))
+  },
+  /**
+   * 落霜外部次数源的「下一轮注入」：本轮异常池 → moduleFeedback → 下一轮 applyTeamConfig(converge) 写 cfg。
+   * 紊乱那条取全队 disorderCount（原文主语是「队伍中任意角色」）；烈霜触发次数取 frostfire 的 perElement.triggerCount
+   * （霜灼·破的触发条件「对带[冰焰]的敌人施加[霜寒]」⇒ 每次烈霜异常结算都有一次霜寒，见 miyabiFrostburnBreakCountOf）。
+   * ⚠ 只读入参、只返回结果（nextRoundFeedback 契约：写 cfg 会在钩子被深冻结时抛错）。
+   */
+  nextRoundFeedback: ({ anomalyPool }: AgentNextRoundFeedbackInput) => {
+    // anomalyPool 在契约里必填、非 null（CC-423/CC-434：无异常行队伍 = 合法空池）⇒ 直接读，不加 ?. / ?? 兜底
+    const frostfire = anomalyPool.perElement.find(p => p.element === FROSTFIRE)
+    return {
+      miyabiDisorderCount: Math.max(0, Math.floor(anomalyPool.disorderCount)),
+      miyabiFrostfireTriggerCount: Math.max(0, Math.floor(frostfire?.triggerCount ?? 0)),
+    }
+  },
   buildExecutions: buildMiyabiExecutions,
   // CC-202：霜月时间进账本（只预留、不补行，合轴抵扣随之生效）
   extraNecessaryAction: miyabiFrostMoonReserve,
@@ -410,9 +548,20 @@ export const miyabiMechanic: AgentMechanicModule = {
       suffix: '%',
     },
     {
+      id: 'miyabi.frostMoonCountCap',
+      label: '雅·霜月次数上限',
+      // 默认值 = 单一来源常量（FROST_MOON_COUNT_DEFAULT_CAP，带 @fact 与复核触发器）
+      description: '一局最多打出几次霜月三段（拔刀）。默认 19 = 顶尖玩家实测的时间约束上限（资源回复会溢出，落霜总量不是瓶颈）。填 0 = 不设上限（纯按资源算）。',
+      default: FROST_MOON_COUNT_DEFAULT_CAP,
+      min: 0,
+      max: 30,
+      step: 1,
+      suffix: '次',
+    },
+    {
       id: 'miyabi.frostburnBreakCount',
       label: '雅·霜灼·破次数上限',
-      description: '霜灼·破直伤触发次数的**上限**。次数自动 = 强特次数 × 利用率；调低 = 你手动吞掉一部分。填 0 = 不设上限。',
+      description: '霜灼·破直伤触发次数的**上限**。次数自动 = min(烈霜异常触发次数, ⌊战斗时间/10⌋) × 利用率；调低 = 你手动吞掉一部分。填 0 = 不设上限。',
       default: 0,
       min: 0,
       max: 60,
@@ -422,7 +571,7 @@ export const miyabiMechanic: AgentMechanicModule = {
     {
       id: 'miyabi.frostburnBreakRate',
       label: '雅·霜灼·破利用率',
-      description: '霜灼·破默认次数（强特估算）的利用率，默认 100%。',
+      description: '霜灼·破默认次数（烈霜异常触发 ∩ 10s CD）的利用率，默认 100%。',
       default: 1,
       min: 0,
       max: 2,
@@ -438,8 +587,35 @@ export const miyabiMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
-    /** 星见雅命座等级（影画1 招式限定减防等按此门控） */
+    /** 星见雅命座等级（影画1 招式限定减防、影画2 风花#5 落霜等按此门控） */
     miyabiCinemaLevel?: number
+    /** 入场落霜（buildCharConfig 写入：基础 3 / 影画二 6；spec initialValueField 读取） */
+    miyabiEntryFrostFall?: number
+
+    /**
+     * 上一轮收敛的全队**紊乱次数**（applyTeamConfig converge 写入，build 置 0）。
+     * 落霜 spec 规则 `miyabi_disorder_frost_fall_gain`（countSource disorderCount）的输入。
+     * 走跨轮字段的理由见 `miyabiFrostFallContext` 与 alice.ts 的 `cfgExternalCountsProbe`（同一通道）。
+     */
+    miyabiDisorderCount?: number
+    /**
+     * 上一轮收敛的**烈霜(frostfire)异常触发次数**（applyTeamConfig converge 写入，build 置 0）。
+     * 霜灼·破次数的触发上限（原文：对带[冰焰]的敌人施加[霜寒]时触发）；见 `miyabiFrostburnBreakCountOf`。
+     */
+    miyabiFrostfireTriggerCount?: number
+  }
+}
+
+/**
+ * 落霜外部次数源的跨轮反馈键（自产自读 ⇒ 声明随模块走，见 mechanics/types.ts#ModuleFeedback 的键放置约定）。
+ * 产出：本模块 `nextRoundFeedback`（读本轮异常池）；消费：本模块 `applyTeamConfig(converge)` 写 cfg。
+ */
+declare module '@/mechanics/types' {
+  interface ModuleFeedback {
+    /** 星见雅落霜：全队紊乱次数（原文「队伍中任意角色触发[紊乱]」） */
+    miyabiDisorderCount?: number
+    /** 星见雅落霜/霜灼·破：烈霜(frostfire)异常触发次数 */
+    miyabiFrostfireTriggerCount?: number
   }
 }
 
@@ -458,8 +634,12 @@ declare module '@/types/resource/agentResources' {
 
 /** 雅落霜资源明细 */
 export interface MiyabiFrostFallSource {
+  /** 落霜总量（上限 6 只是单次存量上限，全局按总回复算，不截断） */
   total: number
+  /** 一局能打出的霜月三段次数 = min(资源够打几次, 「霜月次数上限」滑块) */
   frostMoonCount: number
+  /** 纯按资源算的次数（不含时间约束上限）—— 展示用，说明滑块压掉了多少 */
+  frostMoonByResource: number
 }
 
 /**
