@@ -83,7 +83,10 @@ function calcCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCr
     case 'expect':
     default: {
       const mult = expectedCritMultiplier(critRateRaw, critDmg)
-      return { multiplier: mult, label: `期望 (暴击率${fmt(critRateRaw)}% × 暴伤${fmt(critDmg)}%)` }
+      // 溢出提示：局内暴击超 100% 的部分已按词条比 1:2 转成爆伤（critMultiplier.ts 单一来源）
+      const overflow = Math.max(0, critRateRaw - 100)
+      const overflowLabel = overflow > 0 ? ` 溢出${fmt(overflow)}%→爆伤+${fmt(2 * overflow)}%` : ''
+      return { multiplier: mult, label: `期望 (暴击率${fmt(critRateRaw)}% × 暴伤${fmt(critDmg)}%${overflowLabel})` }
     }
   }
 }

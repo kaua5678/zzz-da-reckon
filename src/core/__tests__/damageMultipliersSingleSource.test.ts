@@ -74,12 +74,14 @@ describe('暴击期望单一来源（CC-222）', () => {
       .filter(rel => rel !== CRIT_OWNER && CRIT_RE.test(code(readFileSync(join(SRC, rel), 'utf8'))))
     expect(hits).toEqual([])
   })
-  it('数值口径（与 CC-222 前引擎实现逐位一致）', async () => {
+  it('数值口径（与 CC-222 前引擎实现逐位一致；⚠ 溢出分支 2026-10-24 起改转化口径）', async () => {
     const { expectedCritMultiplier, clampCritRatePct } = await import('@/data/critMultiplier')
-    for (const [r, d] of [[65, 150], [120, 88.8], [-5, 100], [37.3, 211.7]]) {
+    for (const [r, d] of [[65, 150], [-5, 100], [37.3, 211.7]]) {
       const old = 1 + (Math.min(100, Math.max(0, r)) / 100) * (d / 100)
       expect(expectedCritMultiplier(r, d)).toBe(old)
     }
+    // [120, 88.8]：溢出 20 不再钳掉白丢，按词条比 1:2 转爆伤（88.8 + 2×20）⇒ 2.288（旧钳制口径 1.888）
+    expect(expectedCritMultiplier(120, 88.8)).toBeCloseTo(2.288, 10)
     expect(clampCritRatePct(130)).toBe(100)
     expect(clampCritRatePct(-3)).toBe(0)
   })
