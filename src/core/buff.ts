@@ -466,6 +466,8 @@ function collectWEngineBuffs(
   modLevel: number,
   matchSpecialty: boolean,
   gate?: WEngineConditionContext,
+  /** 同名被动已被更早槽位的装备者占用 ⇒ 本装备者只吃自己的 selfBuff（如后场回能），teamBuff 份不再发（同名不叠加） */
+  suppressTeamBuff = false,
 ): CollectedBuffs {
   const out: BuffEffect[] = []
   const inCombat: BuffEffect[] = []
@@ -485,7 +487,7 @@ function collectWEngineBuffs(
   }
 
   addEffects(wEngine.effect.selfBuff)
-  addEffects(wEngine.effect.teamBuff)
+  if (!suppressTeamBuff) addEffects(wEngine.effect.teamBuff)
 
   return { outOfCombat: out, inCombat }
 }
@@ -706,13 +708,19 @@ export function collectAllBuffs(
 ): CollectedBuffs {
   const matchSpecialty = wEngine ? wEngine.specialty === agent.specialty : false
   const agentBuffs = collectAgentBuffs(agent, config.cinemaLevel)
+  // 同名音擎被动不叠加（自身通路侧）：teammateBuffs 已按槽位序先到先得去重 ⇒ 列表里若已有
+  // 同 id 的音擎团队效果而装备者不是它（更早槽位的队友先装了同名），本装备者不再给自己发 teamBuff 份。
+  // selfBuff（如啜泣摇篮的后场回能）各装各的，不受此抑制。
+  const samePassiveTakenByTeammate = wEngine
+    ? teammateBuffs.some(b => b.id === `wengine-team-${wEngine.id}` && b.teammateId !== agent.id)
+    : false
   const wEngineBuffs = wEngine
     ? collectWEngineBuffs(wEngine, config.wEngineModLevel, matchSpecialty, {
         wearerAttribute: agent.attribute,
         wearerSpecialty: agent.specialty,
         wearerAgentId: agent.id,
         enemyWeakness: config.enemyWeakness,
-      })
+      }, samePassiveTakenByTeammate)
     : { outOfCombat: [] as BuffEffect[], inCombat: [] as BuffEffect[] }
 
   // 4 件套 outOfCombatStat 门槛读装备者**精确局外面板**（CC-108，R5 D26）：由 `calcPanel` 两段式求得后

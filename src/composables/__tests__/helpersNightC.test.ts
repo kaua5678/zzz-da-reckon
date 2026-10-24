@@ -312,13 +312,15 @@ describe('组2-D `:798` 相变时流 → remielle.ts#teamPanelEffects', () => {
     expect(single.dmgBonus).toBe(84)
     expect(triple.dmgBonus).toBe(69)   // ⚠ 与单蕾米**不同队**（队友 buff 结构不同）；下面用成对对照
     // 成对对照：同队里把「第二个蕾米」从 C0 提到 C5 ⇒ 端到端**逐位不变**（档位只看首位）
+    // ⚠ 2026-10-24 同名音擎被动去重（inCombatBuffs grantedWEngineTeamIds）：双蕾米 = 同 id 专武两把，
+    //   teamBuff 份从双份修为一份 ⇒ dupe 系列读数各 -30（93→63 / 99→69）；差值断言（6）不受影响。
     const dupeFirstC0 = await panelOf(['1581', '1581', '1181'], 2, { cinema: [0, 0] })
     const dupeSecondC5 = await panelOf(['1581', '1581', '1181'], 2, { cinema: [0, 5] })
-    expect(dupeFirstC0.dmgBonus).toBe(93)
-    expect(dupeSecondC5.dmgBonus, '次位命座不得影响档位（差值为 0）').toBe(93)
+    expect(dupeFirstC0.dmgBonus).toBe(63)
+    expect(dupeSecondC5.dmgBonus, '次位命座不得影响档位（差值为 0）').toBe(63)
     // 反向：把**首位**从 C0 提到 C5 ⇒ 端到端 +3（18→21… 实为 18→24 ⇒ 差 6）
     const dupeFirstC5 = await panelOf(['1581', '1581', '1181'], 2, { cinema: [5, 0] })
-    expect(dupeFirstC5.dmgBonus).toBe(99)
+    expect(dupeFirstC5.dmgBonus).toBe(69)
     expect(dupeFirstC5.dmgBonus - dupeFirstC0.dmgBonus).toBe(6)
   })
 

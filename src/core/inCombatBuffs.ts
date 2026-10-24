@@ -101,6 +101,12 @@ export function collectInCombatTeamBuffs(
   // 取第一个通过门槛的穿戴者）。只对数据显式标了 exclusiveGroup 的组生效，不推断其他套装互斥。
   const grantedExclusiveGroups = new Set<string>()
 
+  // 同名音擎被动只计一份（先到先得：按槽位顺序）：ZZZ 音擎被动通用规则「同名被动效果之间
+  // 不可叠加」（数据 effect.description 逐条明写，无字段标记 ⇒ 规则性全局去重，与
+  // exclusiveGroup 同构）。修前双辅助都装啜泣摇篮(14121)时全队增伤双吃（实测第二份 = +19.13%）。
+  // 装备者自身通路（collectWEngineBuffs）的抑制由 collectAllBuffs 按本列表的 teammateId 判定。
+  const grantedWEngineTeamIds = new Set<string>()
+
   for (const char of team) {
     if (!char.agentId) continue
     const agent = deps.getAgent(char.agentId)
@@ -121,7 +127,9 @@ export function collectInCombatTeamBuffs(
           wearerAttribute: agent.attribute,
           enemyWeakness: deps.enemyWeakness,
         })
+        && !grantedWEngineTeamIds.has(wEngine.id)
       ) {
+        grantedWEngineTeamIds.add(wEngine.id)
         buffs.push({
           id: `wengine-team-${wEngine.id}`,
           source: { zhCN: '音擎' },
