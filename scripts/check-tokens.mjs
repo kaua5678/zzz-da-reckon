@@ -719,7 +719,11 @@ export const WA_REF_BASELINE = 407  /* ★ 2026-10-18 MechanicsTablePage 下线�
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 1095  /* ★ 2026-10-23 评分卡「快速改词条」区（+2）：1093 → **1095**，
+export const VAR_TOTAL_BASELINE = 1110  /* ★ 2026-10-24 副词条收益曲线改「同批点两把尺子」（+15）：1095 → **1110**，
+                                           `SubstatCurveChart.vue` 重写：两张图各自一套轴/刻度/门槛标注 + 现场步数输入区 +
+                                           「下一步该堆谁」决策表，全部走语义别名（--fg-2/--fg-3/--app-* /--c-*）；
+                                           **零 raw --wa-*（407 不变）、零字面色**。
+                                           ★ 2026-10-23 评分卡「快速改词条」区（+2）：1093 → **1095**，
                                            `.ssc-quick-grid` / `.ssc-quick-foot`（--fg-2 / --fg-3）；零 raw --wa-*、零字面色。
                                            ★ 2026-10-23 评分卡「击破侧」区（+9）：1084 → **1093**，
                                            新增 `.ssc-stun*` 7 条规则（左描边 --app-accent-gold / 底 --app-inset /

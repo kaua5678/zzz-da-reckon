@@ -1,5 +1,13 @@
 /**
- * 副词条收益曲线（CC-…，2026-10-21）：横轴 = 该词条的**第 x 步**，纵轴 = 这一步相对当前队伍总伤的**边际提升**。
+ * 副词条收益曲线（CC-…，2026-10-21）：横轴 = 该词条的**第 x 步**，纵轴 = 这一步的**边际提升**。
+ *
+ * **两种纵轴口径（用户 2026-10-24 裁决，缺一不可）**：
+ * - `base`（**相比于基础**）：`(总伤(x) − 总伤(x−1)) / 自动配比后总伤`。分母固定 ⇒ 加算词条（暴伤/大攻击/小攻击）
+ *   是**一条直线**——这不是模型漏了递减，而是「一步的绝对增量」本来就是常数。
+ * - `step`（**相比于上一步**）：`(总伤(x) − 总伤(x−1)) / 总伤(x−1)`。分母随步数长大 ⇒ 曲线单调下弯，
+ *   **这才是玩家直观意义上的边际效用递减**（实测暴伤 0.923% → 0.785%/步，20 步）。
+ * 两把尺子各回答一件事：`base` 是**跨词条可比**的（同分母，配比门槛只在它上面成立），`step` 是**同一条曲线内**
+ * 的递减读数。拿 `step` 跨词条比较是错的（每条线分母不同）——「下一步堆谁」必须用 `base`（`nextStepMarginals`）。
  *
  * 为什么需要它：原有「副词条优化器」（`composables/substatOptimizer`）只吐一个分配结果
  * （如 `{anomalyProficiency:19, atkPct:13}`），用户看不出**为什么**是这个分法、也看不出某个词条
@@ -32,6 +40,9 @@
  * - 成本：每点一次完整求值（实测 50–75ms/次，2026-10-21）；有用词条 ~20 点 + 恒 0 词条 2 点止损
  *   ≈ 90 次求值 ≈ 5–8s，故放在显式「计算曲线」按钮后面（与 `impactSampling` 同款），不在进入页面时自动跑。
  *
+ * @fact ui:副词条收益曲线/两种纵轴 口径: 同一批采样点画两张图——「相比于基础」= Δ总伤/现场总伤（分母固定 ⇒ 加算词条是直线、跨词条可比，配比门槛与「下一步该堆谁」只认它）；「相比于上一步」= Δ总伤/上一步总伤（分母随步数长大 ⇒ 边际效用递减的读数，**不可**跨词条比高低）。现场可由玩家手填（allocation），基线总伤 = 现场总伤 | 据 用户@2026-10-24「词条的显示应该显示当前x对于x-1的进步幅度…分两个图，按照基础的来标题就写相比于基础…体现边际效用递减…玩家可以看到当我在多少词条a还有多少词条b的情况下，该继续堆叠什么词条」·实测@2026-10-24（暴伤 20 步：base 恒 0.785%/步；step 0.923→0.785%/步） | 验 src/composables/__tests__/substatCurve.test.ts | 锚 src/composables/substatCurve.ts#pointGain + src/composables/substatCurve.ts#nextStepMarginals | 信 确认
+ * ⟳复核: 新词条（转模/新乘区）接入后，「相比于基础」是否仍对加算词条成直线、「相比于上一步」是否仍单调下弯（非单调 = 该词条有阈值） | 到期 2026-12-31
+ *
  * 运行位置：**必须在独立场景上跑**（`withAnalysisScenario`）——本模块只读 `AnalysisContext`
  * （`scenario.config` 上改写分配、读 `scenario.calc.teamTotalDamage`），不碰 UI store，
  * 结束时把场景里的分配还原（`finally`）。判据 `composables/__tests__/analysisScenario.test.ts` 的
@@ -60,8 +71,17 @@ export interface SubstatAxisSignature {
 /** 一个采样点：x = 该词条的第 x 步 */
 export interface SubstatCurvePoint {
   x: number
-  /** 这一步相对基线（自动配比后总伤）的提升，% */
+  /**
+   * **相比于基础**：这一步相对基线（自动配比后总伤）的提升，%。分母固定 ⇒ 加算词条成直线；
+   * 它是**跨词条可比**的（同分母），配比门槛与「下一步该堆谁」都只认它。
+   */
   gainPct: number
+  /**
+   * **相比于上一步**：`(总伤(x) − 总伤(x−1)) / 总伤(x−1)`，%。分母随步数长大 ⇒ 单调下弯
+   * （用户 2026-10-24：「按照上一个的来就能体现边际效用递减」）。
+   * ⚠ 每条线的分母不同 ⇒ **不能拿它跨词条比较**，只用于看同一词条「堆到多少开始不值」。
+   */
+  gainStepPct: number
   /** 这一步之后的队伍总伤 */
   damage: number
   /** 该点的轴态（失衡次数 / 易伤覆盖率） */
@@ -131,6 +151,14 @@ export interface SubstatCurveOptions extends BatchTaskOptions {
   slot: number
   /** 只采这些词条（缺省 = 模板词条优先 + 池内其余） */
   stats?: readonly string[]
+  /**
+   * **采样现场**（缺省 = 自动配比 computeSubstatAllocationForSlot 的输出）。
+   *
+   * 用户 2026-10-24：「玩家可以看到当我在多少词条 a 还有多少词条 b 的情况下，该继续堆叠什么词条」
+   * ⇒ 现场可以由玩家给（页面上每个词条一个步数输入）。给了就不再跑优化器：
+   * 基线总伤 = 这份现场的总伤，所有百分比的分母、门槛、nextStepMarginals 都以它为起点。
+   */
+  allocation?: Record<string, number>
 }
 
 const yieldToMacrotask = () => new Promise<void>(resolve => setTimeout(resolve, 0))
@@ -203,13 +231,16 @@ export async function sampleSubstatCurves(
     const COVERAGE_JUMP = 0.01
     const axisJumped = (prevAxis: SubstatAxisSignature, next: SubstatAxisSignature) =>
       prevAxis.stunCount !== next.stunCount || Math.abs(next.coverage - prevAxis.coverage) > COVERAGE_JUMP
-    const allocation = computeSubstatAllocationForSlot(
-      slot,
-      config,
-      catalog,
-      { readDamage: () => calc.teamTotalDamage.value },
-      calc.effectiveWEngineCoverages.value,
-    )
+    // 现场：玩家给了就用玩家的（步数输入框），否则跑自动配比。基线 = 这份现场的总伤。
+    const allocation = opts.allocation
+      ? { ...opts.allocation }
+      : computeSubstatAllocationForSlot(
+        slot,
+        config,
+        catalog,
+        { readDamage: () => calc.teamTotalDamage.value },
+        calc.effectiveWEngineCoverages.value,
+      )
     if (!allocation) return emptyResult(slot, '优化器没有给出分配（角色 / 音擎数据不全）')
     disc.subStatAllocation = { ...allocation }
     const baseDamage = calc.teamTotalDamage.value
@@ -239,10 +270,12 @@ export async function sampleSubstatCurves(
         const axis = readAxis()
         evals++
         const gainPct = ((damage - prev) / baseDamage) * 100
+        // 「相比于上一步」：分母 = 上一步的总伤（不是基线）。prev 在 x=1 时就是 0 步的现场。
+        const gainStepPct = prev > 0 ? ((damage - prev) / prev) * 100 : 0
         const prevAxis = points.length ? points[points.length - 1]!.axis : originAxis
         const axisJump = axisJumped(prevAxis, axis)
         if (axisJump) axisChangedAt.push(x)
-        points.push({ x, gainPct, damage, axis, axisJump })
+        points.push({ x, gainPct, gainStepPct, damage, axis, axisJump })
         prev = damage
         zeroRun = Math.abs(gainPct) <= ZERO_GAIN_PCT ? zeroRun + 1 : 0
         done++
@@ -294,6 +327,14 @@ export async function sampleSubstatCurves(
   }
 }
 
+/** 纵轴口径（用户 2026-10-24 裁决：两种都要，各自成图） */
+export type SubstatCurveReading = 'base' | 'step'
+
+/** 取某点在某口径下的纵坐标（%） */
+export function pointGain(p: SubstatCurvePoint, reading: SubstatCurveReading): number {
+  return reading === 'step' ? p.gainStepPct : p.gainPct
+}
+
 export interface CurveAxisRange {
   xMax: number
   yMin: number
@@ -303,16 +344,18 @@ export interface CurveAxisRange {
 /**
  * 坐标轴范围：**只按传入的曲线算**（页面/组件必须传「可见」子集，否则隐藏曲线仍撑着纵轴——
  * `seriesFilter` 口径 ②）。yMax 留 8% 余量，全 0 时给 1 防除零。
+ * `reading` = 纵轴口径：两张图各自算轴（同一批曲线、不同尺子 ⇒ 轴范围必须分开）。
  */
-export function curveAxisRange(series: readonly SubstatCurveSeries[]): CurveAxisRange {
+export function curveAxisRange(series: readonly SubstatCurveSeries[], reading: SubstatCurveReading = 'base'): CurveAxisRange {
   let xMax = 1
   let yMin = 0
   let yMax = 0
   for (const s of series) {
     for (const p of s.points) {
+      const y = pointGain(p, reading)
       if (p.x > xMax) xMax = p.x
-      if (p.gainPct > yMax) yMax = p.gainPct
-      if (p.gainPct < yMin) yMin = p.gainPct
+      if (y > yMax) yMax = y
+      if (y < yMin) yMin = y
     }
   }
   return { xMax, yMin, yMax: yMax > 0 ? yMax * 1.08 : 1 }
@@ -356,6 +399,33 @@ export function axisChangeNote(series: SubstatCurveSeries): string {
   }
   const more = steps.length > 1 ? `（共 ${steps.length} 步跳变：第 ${steps.join('、')} 步）` : ''
   return `第 ${first} 步跳变（${parts.join('，')}）${more}`
+}
+
+/**
+ * 现场**下一步**各词条的边际（用户 2026-10-24：「玩家可以看到当我在多少词条 a 还有多少词条 b 的情况下，
+ * 该继续堆叠什么词条」）——这张表的每行 = 「如果不是堆这一个词条，下一步值多少」。
+ *
+ * 口径：`points[x = 现场步数 + 1]`，分母仍是**现场总伤**（与 `gainPct` 同尺）⇒ **跨词条可比**，可直接排序。
+ * 用 `gainStepPct` 排序是错的（每条线分母不同，堆得多的天然显得便宜）。
+ * 现场步数已到上限 / 该词条被止损砍掉 / 没有采样点 ⇒ `nextGainPct = null`（不是 0）。
+ */
+export interface SubstatNextStep {
+  stat: string
+  /** 现场给该词条的步数 */
+  steps: number
+  /** 再 +1 步的边际（%，分母 = 现场总伤）；null = 到上限 / 未采样 */
+  nextGainPct: number | null
+  /** 是否已经到单词条上限 */
+  atCap: boolean
+}
+
+export function nextStepMarginals(result: SubstatCurveResult): SubstatNextStep[] {
+  return result.series.map(s => {
+    const steps = s.allocatedSteps
+    const atCap = steps >= result.statCap
+    const next = atCap ? undefined : s.points.find(p => p.x === steps + 1)
+    return { stat: s.stat, steps, nextGainPct: next ? next.gainPct : null, atCap }
+  })
 }
 
 /** 某词条相对「自动配比门槛」的判定（表格「判定」列的唯一来源） */

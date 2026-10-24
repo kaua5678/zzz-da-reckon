@@ -22,6 +22,8 @@ import {
   curveAxisRange,
   axisChangeNote,
   defaultVisibleStats,
+  nextStepMarginals,
+  pointGain,
   sampleSubstatCurves,
   substatCurveCandidates,
   substatCurveVerdict,
@@ -54,6 +56,8 @@ function synthetic(stat: string, gains: number[], allocatedSteps = 0, axisFrom?:
     return {
       x: i + 1,
       gainPct,
+      // 「相比于上一步」：合成曲线只验结构/派生量，等值即可（真实口径见真实采样用例）
+      gainStepPct: gainPct,
       damage: 100 + i,
       axis: changed ? { stunCount: 6, coverage: 0.6 } : STABLE_AXIS,
       axisJump: changed,
@@ -221,8 +225,76 @@ describe('副词条收益曲线 · 轴态标注（用户 2026-10-21 报「锯齿
   }, 120000)
 })
 
+describe('副词条收益曲线 · 两种纵轴口径（用户 2026-10-24 裁决）', () => {
+  it('相比于上一步 = Δ / 上一步总伤；加算词条在「相比于基础」是直线、在「相比于上一步」单调下弯', async () => {
+    const h = await anomalyHarness()
+    const res = await sample(h)
+    for (const s of res.series) {
+      let prev = s.originDamage
+      for (const p of s.points) {
+        // 两条尺子都要与 damage 自洽（分母不同：base 用基线，step 用上一步）
+        expect(p.gainPct, `${s.stat} x=${p.x} base`).toBeCloseTo(((p.damage - prev) / res.baseDamage) * 100, 10)
+        expect(p.gainStepPct, `${s.stat} x=${p.x} step`).toBeCloseTo(((p.damage - prev) / prev) * 100, 10)
+        prev = p.damage
+      }
+    }
+    // 判别力：样本里必须有「base 逐位恒定（直线）」的词条，否则这条口径判据看不出两把尺子的差别
+    const linear = res.series.find(s => s.points.length >= 3 && s.points.every(p => Math.abs(p.gainPct - s.points[0]!.gainPct) < 1e-9))
+    expect(linear, '样本里没有「相比于基础」恒定的加算词条（大攻击/小攻击），判据无判别力').toBeTruthy()
+    // 同一条线：base 平、step 严格递减（分母在长大 ⇒ 边际效用递减的直观读数）
+    const pts = linear!.points
+    for (let i = 1; i < pts.length; i++) {
+      expect(pts[i]!.gainStepPct, `${linear!.stat} x=${i + 1} 相比于上一步必须严格小于上一步`).toBeLessThan(pts[i - 1]!.gainStepPct)
+    }
+  }, 120000)
+
+  it('现场可以由玩家给：基线 = 这份现场的总伤，前缀不出现在曲线上（x 从 1 起）', async () => {
+    const h = await anomalyHarness()
+    const manual = { anomalyProficiency: 3, atkPct: 2 }
+    const res = await withAnalysisScenario(s => sampleSubstatCurves(s, { slot: 0, allocation: manual }), h.config)
+    expect(res.reason).toBe('')
+    // 分配原样回传（没有跑优化器去改写）
+    expect(res.allocation).toEqual(manual)
+    for (const s of res.series) expect(s.allocatedSteps, s.stat).toBe(manual[s.stat as keyof typeof manual] ?? 0)
+    // 基线 = 现场总伤 ⇒ 回到现场那一步的总伤应当等于 baseDamage（cumulative 从 0 堆到现场步数）
+    const atk = res.series.find(s => s.stat === 'atkPct')!
+    expect(atk.points[1]!.damage, '现场 2 步的总伤必须等于 baseDamage').toBeCloseTo(res.baseDamage, 6)
+    // 手动现场与自动配比的现场不同 ⇒ 基线不同（判据有判别力：不能静默忽略 allocation）
+    const auto = await sample(h)
+    expect(auto.baseDamage).not.toBeCloseTo(res.baseDamage, 6)
+  }, 120000)
+
+  it('下一步该堆谁：取现场 +1 步的 base 边际，可跨词条排序；到上限给 null', async () => {
+    const h = await anomalyHarness()
+    // 现场：大攻击 2 步、精通 1 步（其余 0）⇒ 每行都应有下一步读数
+    const res = await withAnalysisScenario(s => sampleSubstatCurves(s, { slot: 0, allocation: { anomalyProficiency: 1, atkPct: 2 } }), h.config)
+    const rows = nextStepMarginals(res)
+    expect(rows.length).toBe(res.series.length)
+    for (const row of rows) {
+      const series = res.series.find(s => s.stat === row.stat)!
+      const next = series.points.find(p => p.x === row.steps + 1)
+      if (row.atCap) {
+        expect(row.nextGainPct, `${row.stat} 到上限必须是 null（不是 0）`).toBeNull()
+      } else {
+        // 分母是现场总伤：拿 base 口径的 gainPct（同尺），否则跨词条排序会把「堆得多的」误判成便宜
+        expect(row.nextGainPct, row.stat).toBeCloseTo(next ? next.gainPct : NaN, 10)
+      }
+    }
+    // 判别力：至少两行有读数，且最大值确实是「下一步最值得堆的」
+    const scored = rows.filter(r => r.nextGainPct !== null)
+    expect(scored.length).toBeGreaterThan(1)
+    const best = scored.reduce((a, b) => (b.nextGainPct! > a.nextGainPct! ? b : a))
+    expect(Math.max(...scored.map(r => r.nextGainPct!))).toBe(best.nextGainPct)
+    // 到上限：现场把某词条拉到单词条上限 ⇒ 该行 null + atCap
+    const capped = await withAnalysisScenario(s => sampleSubstatCurves(s, { slot: 0, allocation: { atkPct: 5 } }), h.config)
+    const capRow = nextStepMarginals(capped).find(r => r.stat === 'atkPct')!
+    expect(capRow.atCap).toBe(true)
+    expect(capRow.nextGainPct).toBeNull()
+  }, 120000)
+})
+
 describe('副词条收益曲线 · 派生量（不花求值成本）', () => {
-  it('纵轴只按传入曲线算（隐藏曲线必须退出纵轴）', () => {
+  it('纵轴只按传入曲线算（隐藏曲线必须退出纵轴）；两张图各自按自己的尺子算轴', () => {
     const big = synthetic('a', [0.1, 5.0])
     const small = synthetic('b', [0.1, 0.2])
     const all = curveAxisRange([big, small])
@@ -232,6 +304,17 @@ describe('副词条收益曲线 · 派生量（不花求值成本）', () => {
     expect(onlySmall.yMax).toBeCloseTo(0.2 * 1.08, 10)
     expect(curveAxisRange([])).toEqual({ xMax: 1, yMin: 0, yMax: 1 })
     expect(all.xMax).toBe(2)
+  })
+
+  it('curveAxisRange 的 reading 参数：step 口径取 gainStepPct（合成曲线里两者等值 ⇒ 用显式构造验差别）', () => {
+    const s = synthetic('c', [1, 1, 1])
+    // 手工改一个点，让两种口径给出不同轴
+    s.points[0]!.gainStepPct = 9
+    expect(curveAxisRange([s], 'base').yMax).toBeCloseTo(1 * 1.08, 10)
+    expect(curveAxisRange([s], 'step').yMax).toBeCloseTo(9 * 1.08, 10)
+    // pointGain 与 reading 同源（图上的 y 不自己再判一次口径）
+    expect(pointGain(s.points[0]!, 'base')).toBe(1)
+    expect(pointGain(s.points[0]!, 'step')).toBe(9)
   })
 
   it('判定三态 + 门槛为空时的兜底', () => {
