@@ -37,21 +37,12 @@ export const INITIAL_CRIT_DMG_TO_CRIT_RATE = 0.35
 export const POLAR_DAY_CRIT_RATE = 40
 /** 极昼：造成伤害无视目标 20% 防御力（满覆盖近似） */
 export const POLAR_DAY_DEF_IGNORE = 20
-/** 锐能：进场 +60（勘域 180s 一次 → 每局一次） */
-export const SHARPNESS_INITIAL = 60
-/** 锐能：强化特殊技单发消耗（raw「锐能消耗 30点」） */
-export const SHARPNESS_COST_PER_EX = 30
-/** 残痕值：每 600 点 = 1 层（用户 2026-10-25 裁决，沿用克拉蕾口径） */
-export const GASH_PER_LAYER = 600
-/** 残痕同时存量上限 3 层 */
-export const GASH_MAX_STACKS = 3
-/** 愿力：每消除 1 层残痕 +40，上限 160 */
-export const WISH_PER_MAIM = 40
-export const WISH_MAX = 160
-/** 愿力：一次聚锋消耗 120 */
-export const JU_FENG_WISH_COST = 120
-/** 烬痕：按实际伤害的 75% 累积（计入总伤害，用户 2026-10-25） */
-export const EMBER_SCAR_RATE = 0.75
+/**
+ * 本文件曾在此导出 8 个「锐能 / 残痕 / 愿力 / 烬痕」常量（60 / 30 / 600 / 3 / 40 / 160 / 120 / 0.75）。
+ * 2026-10-25：它们尚无消费者（机制体未落地 ⇒ deadChannelLs 判死导出）⇒ 数值暂存 spec 施工图
+ * （`src/specs/agents/1601.json` notes 的「明日实录」清单，逐项含出处）——机制落地时从那里取值重建常量，
+ * 不要回到「先导出常量、后写消费者」的顺序（本仓死导出门禁会拦）。
+ */
 
 export function applySunbringerPanel({ panel, outOfCombatPanel }: AgentPanelInput): void {
   // 核心被动·初始转化：只读局外面板，整 1% floor（与克拉蕾同口径）
