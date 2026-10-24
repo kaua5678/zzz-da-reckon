@@ -80,8 +80,9 @@ describe('暴击期望单一来源（CC-222）', () => {
       const old = 1 + (Math.min(100, Math.max(0, r)) / 100) * (d / 100)
       expect(expectedCritMultiplier(r, d)).toBe(old)
     }
-    // [120, 88.8]：溢出 20 不再钳掉白丢，按词条比 1:2 转爆伤（88.8 + 2×20）⇒ 2.288（旧钳制口径 1.888）
-    expect(expectedCritMultiplier(120, 88.8)).toBeCloseTo(2.288, 10)
+    // [120, 88.8]：溢出 20 按整条转化（k=ceil(20/2.4)=9 条 ⇒ 暴击 98.4、爆伤 132）⇒ 2.29888
+    // （旧钳制口径 1.888；连续转化口径 2.288；整条口径 = 玩家整条换词条的真实终态）
+    expect(expectedCritMultiplier(120, 88.8)).toBeCloseTo(2.29888, 10)
     expect(clampCritRatePct(130)).toBe(100)
     expect(clampCritRatePct(-3)).toBe(0)
   })

@@ -83,9 +83,11 @@ function calcCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCr
     case 'expect':
     default: {
       const mult = expectedCritMultiplier(critRateRaw, critDmg)
-      // 溢出提示：局内暴击超 100% 的部分已按词条比 1:2 转成爆伤（critMultiplier.ts 单一来源）
+      // 溢出提示：局内暴击超 100% 的部分已按整条词条转化（critMultiplier.ts 单一来源）——
+      // 换 k=ceil(溢出/2.4) 条暴击词条为爆伤词条，暴击回落到 (97.6, 100]
       const overflow = Math.max(0, critRateRaw - 100)
-      const overflowLabel = overflow > 0 ? ` 溢出${fmt(overflow)}%→爆伤+${fmt(2 * overflow)}%` : ''
+      const swapped = overflow > 0 ? Math.ceil(overflow / CRIT_RATE_STEP) : 0
+      const overflowLabel = swapped > 0 ? ` 溢出${fmt(overflow)}%→换${swapped}条爆伤+${fmt(CRIT_DMG_STEP * swapped)}%` : ''
       return { multiplier: mult, label: `期望 (暴击率${fmt(critRateRaw)}% × 暴伤${fmt(critDmg)}%${overflowLabel})` }
     }
   }
@@ -94,7 +96,7 @@ function calcCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCr
 // 下沉（2026-09-13 展示层越层棘轮）：**定义**在 src/data/sharpCritMultiplier.ts；本文件 calcSharpCritMultiplier、
 // substatOptimizer 与展示层（FinalPanel / StatPanel）都直接 import `@/data/…`。改公式只改 src/data 那一处。
 import { sharpCritMultiplier } from '@/data/sharpCritMultiplier'
-import { expectedCritMultiplier } from '@/data/critMultiplier'
+import { expectedCritMultiplier, CRIT_RATE_STEP, CRIT_DMG_STEP } from '@/data/critMultiplier'
 
 function calcSharpCritMultiplier(panel: PanelValues, mode: 'expect' | 'crit' | 'nonCrit', targetSkillType?: SkillDamageTarget): { multiplier: number; label: string } {
   const sharpCritDmg = getTargetedStat(panel, 'sharpCritDmg', targetSkillType) + panel.enemyCritDmgTakenBonus

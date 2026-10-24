@@ -53,6 +53,7 @@ import type { AnalysisContext } from '@/composables/analysisScenario'
 import { batchReporter, isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
 import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 import { getTemplate, resolveSubstatBudget } from '@/core/substatOptimizer'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { useCatalogStore } from '@/stores/catalog'
 
 /** 相对基线视为「无提升」的阈值（%）。低于它连续两步即提前止损。 */
@@ -264,6 +265,24 @@ export async function sampleSubstatCurves(
         if (isBatchAborted(opts.control)) {
           complete = false
           break
+        }
+        // 暴击词条的百暴截断（用户口径 2026-10-24：「别让人觉得百暴后还能堆高收益暴击」）：
+        // 该步**之前**的局内暴击已 ≥100 ⇒ 堆词条视角的边际记 0（不再跑引擎）。
+        // 乘区里的溢出→爆伤转化是「**换**词条」的收益（模拟配平终态），不属于「**堆**暴击」——
+        // 若不截断，转化补偿会让暴击曲线在百暴后仍显示 ≈ 爆伤/步的假收益。
+        if (stat === 'critRate') {
+          const inCombatCrit = computePanelPhases(slot, config, catalog)?.inCombat.critRate ?? 0
+          if (inCombatCrit >= 100) {
+            points.push({ x, gainPct: 0, gainStepPct: 0, damage: prev, axis: readAxis(), axisJump: false })
+            zeroRun += 1
+            done++
+            report(done / planned, `采样 ${done}/${planned}（${stat} ×${x}，百暴后截断）`)
+            if (zeroRun >= ZERO_GAIN_RUN) {
+              stopped = true
+              break
+            }
+            continue
+          }
         }
         disc.subStatAllocation = { ...allocation, [stat]: x }
         const damage = calc.teamTotalDamage.value

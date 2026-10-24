@@ -21,8 +21,8 @@ import { getAgentMechanic } from '@/mechanics/registry'
 import type { MechanicTeamMember } from '@/mechanics/types'
 import { applyAgentPanelHooks } from './agentPanelPhases'
 
-/** 暴击率副词条步长（S 级 +2.4%/步；原 SUBSTAT_POOL.critRate，只剩「百暴」缺口在用） */
-const CRIT_RATE_STEP = 2.4
+/** 暴击率副词条步长：单一来源在 `data/critMultiplier.ts`（乘区溢出转化与百暴预算共用；core 可 import data） */
+import { CRIT_RATE_STEP } from '@/data/critMultiplier'
 
 // ============ 副词条预算（设置键 + 缺省值的唯一来源） ============
 //
