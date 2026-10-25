@@ -189,7 +189,9 @@ function qingyiGenericRowsTimeOf(executions: readonly SkillExecution[]): number 
  * genericRowsTime：物化钩子派发前的通用行总时间（CC-287 前经 `cfg.qingyiGenericRowsTime` 回写传递）。
  * buildExecutions 传钩子当时的行、buildResourceResult 传 `preModuleExecutions` 算出的同一值；缺省 0 ⇒ 只用公式估算。
  */
-export function computeQingyiSource(cfg: AgentResourceInput['cfg'], state: { exSpecialCount: number; ultimateCount: number; chainCountTotal: number }, genericRowsTime = 0): QingyiMechanicSource {
+// @fact engine:青衣/一煞轮数预算 口径: 一煞#4 连打 + 醉花月云转的轮数只能花**她自己那份平A时间**（水填分配的平A时间份额 `timeAllocation.basicAttackTime`，buildExecutions 从 `basic_attack` 汇总行读入），不是「战斗时间 − 通用招式」——后者把队友时间也算进来，会让一煞次数虚高 → 攒条虚高 → 失衡窗虚高 → 轮数=2×窗数 → 一煞再涨（自激）。实测 auto-1521-1251-1311：份额 23.0s 排成 112.3s（4.9×）、9 窗；封顶后 9→8 窗、伤害 89.97M→121.65M | 据 用户@2026-10-25（「青衣时间少了击破次数低，时间多了抢占队友时间导致伤害打不出」「这里的4失衡并不是强制的」） | 验 src/mechanics/__tests__/qingyi.test.ts | 锚 src/mechanics/agents/qingyi.ts#computeQingyiSource | 信 确认
+// ⟳复核: 若水填分配（helpers.ts#iterate 的 basicAlloc）或青衣轮数公式再改，复核「轮数 ≤ 平A份额」仍成立，并按 timeGolden 逐队归因 | 到期 2027-04-30
+export function computeQingyiSource(cfg: AgentResourceInput['cfg'], state: { exSpecialCount: number; ultimateCount: number; chainCountTotal: number }, genericRowsTime = 0, basicBudgetTime?: number): QingyiMechanicSource {
   const stunCount = Math.max(0, Math.floor(Number(cfg.qingyiStunCount ?? 0)))
   const cinemaLevel = cinemaLevelOf(cfg.qingyiCinemaLevel)
   const loop = cfg.qingyiLoopRates
@@ -227,7 +229,21 @@ export function computeQingyiSource(cfg: AgentResourceInput['cfg'], state: { exS
   const zuiHuaAt = loop?.zuiHuaTimePerRound ?? 0
   const fullRoundAt = (loop?.yisha4TimePerRound ?? 0) + zuiHuaAt
   const budgetRounds = Math.min(roundsTarget, roundsFromGeneric)
-  const extraBudget = Math.max(0, battleTime - effectiveGenericTime - budgetRounds * zuiHuaAt)
+  /**
+   * 轮数预算的**上界**（用户口径 2026-10-25）：一煞#4 / 醉花月云转 是**平A权重换来的时间**产出的，
+   * 不是「战斗时间减掉通用招式，剩下的全归她」。
+   *
+   * 旧口径把队友的时间也算进来 ⇒ 一煞次数虚高 ⇒ 攒条虚高 ⇒ 失衡窗虚高 ⇒ 轮数 = 2×窗数 ⇒ 一煞再涨（自激）。
+   * 实测 `auto-1521-1251-1311`：她分到 **23.0s** 平A，却排出 **112.3s**（4.9×），一煞 381 击贡献
+   * 36,146 攒条、全队 150,324 ⇒ **9 窗**；按份额封顶后约 3 轮 / 90 击 ⇒ 全队 ≈65k ⇒ **4 窗**。
+   *
+   * ⚠ 没有「必须凑到 N 次失衡」的目标（用户 2026-10-25：「这里的 4 失衡并不是强制的」）：
+   * 轮数仍由 `min(2×失衡, 电压可达 + 时间可行)` 给，这里只是把「时间」换成她自己那份。
+   */
+  const budgetBase = basicBudgetTime === undefined
+    ? Math.max(0, battleTime - effectiveGenericTime)
+    : Math.max(0, Math.min(battleTime, basicBudgetTime))
+  const extraBudget = Math.max(0, budgetBase - budgetRounds * zuiHuaAt)
   const extraFeasible = fullRoundAt > 0 ? Math.floor(extraBudget / fullRoundAt) : 0
   const extraWanted = Math.max(0, roundsTarget - roundsFromGeneric)
   const rounds = Math.max(0, budgetRounds + Math.min(extraWanted, extraFeasible))
@@ -258,12 +274,17 @@ export function computeQingyiSource(cfg: AgentResourceInput['cfg'], state: { exS
 }
 
 function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): void {
-  const source = computeQingyiSource(cfg, state, qingyiGenericRowsTimeOf(executions))
   const loop = cfg.qingyiLoopRates
   const cinemaLevel = cinemaLevelOf(cfg.qingyiCinemaLevel)
+  /**
+   * 她的平A份额必须先读出来当**轮数预算**（见 `computeQingyiSource` 的 `basicBudgetTime` 注释）；
+   * 下面把平A汇总行折算成显式招式时会清零，所以取值必须在这里。
+   */
+  const basicExec = executions.find(e => e.moveId === 'basic_attack')
+  const basicBudget = basicExec ? Math.max(0, basicExec.totalTime) : undefined
+  const source = computeQingyiSource(cfg, state, qingyiGenericRowsTimeOf(executions), basicBudget)
 
   // 可分配时间：剩余平A时间按「一煞#4→醉花」循环拆成整轮数 + 余量
-  const basicExec = executions.find(e => e.moveId === 'basic_attack')
   const cycleTime = (loop?.yisha4TimePerRound ?? 0) + (loop?.zuiHuaTimePerRound ?? 0)
   let allocCycles = 0
   let allocYisha4Hits = 0

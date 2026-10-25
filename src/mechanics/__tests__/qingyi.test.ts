@@ -57,6 +57,22 @@ describe('computeQingyiSource · 时间预算截断自激', () => {
     expect(src.yisha4NecessaryTime).toBeLessThan(60)
   })
 
+  /**
+   * 用户口径 2026-10-25：「青衣时间少了击破次数低，时间多了抢占队友时间导致伤害打不出」
+   * ⇒ 一煞#4/醉花 的轮数**只能花她自己那份平A时间**（水填分配结果），
+   * 不能拿「战斗时间 − 通用招式」当预算（那会把队友的时间也算进来）。
+   */
+  it('平A份额是轮数硬上界：预算 25s ⇒ 必要时间 ≤ 25s；不传预算 = 旧口径逐位不变', () => {
+    const cfg = { ...UNIT_CFG, qingyiStunCount: 13 }
+    const state = { exSpecialCount: 5, ultimateCount: 4, chainCountTotal: 13 }
+    const capped = computeQingyiSource(cfg as never, state, 0, 25)
+    // 25s：通用电压覆盖 7 轮 × 醉花 3.42s = 23.94s，剩 1.06s 不够一整轮（7.41s）⇒ 仍是 7 轮
+    expect(capped.rounds).toBe(7)
+    expect(capped.necessaryTime).toBeLessThanOrEqual(25 + 1e-6)
+    // 不传预算 ⇒ 旧口径（20 轮）成立，证明本参数是纯追加
+    expect(computeQingyiSource(cfg as never, state, 0).rounds).toBe(20)
+  })
+
   it('电压充足（锁 4 失衡）：8 轮照打，一煞只补几秒', () => {
     const cfg = { ...UNIT_CFG, qingyiStunCount: 4 }
     const src = computeQingyiSource(cfg as never, { exSpecialCount: 5, ultimateCount: 3, chainCountTotal: 4 })
