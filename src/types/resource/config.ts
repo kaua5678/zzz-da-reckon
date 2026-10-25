@@ -133,12 +133,6 @@ export interface CharacterOperationConfig {
   chainComboAlignRatio: number
   /** 每次失衡的连携次数（用户可调，默认非辅助1次辅助0次） */
   chainCountPerStun: number
-  /**
-   * **失衡值口径的冲击力缩放**（模块写入，缺省 1 = 不缩放；引擎只读，与角色无关）。
-   * 用途：叠层类音擎的冲击力加成按「每轮失衡」折算后**只作用于失衡值**，不冒充面板冲击力
-   * （面板只有一个 impact，而叠层是分批的；失衡值对 impact 线性 ⇒ 用加权等效值等价）。
-   */
-  stunImpactScale?: number
   /** 连携总次数覆盖（失衡轴模式：按各轴分配的窗口数加权求和后的最终次数，缺省走 chainCountPerStun × 失衡次数） */
   chainCountTotalOverride?: number
   /** 强制连携追加次数（队伍级联动写入，如柚叶影画2：重击命中非失衡敌强制触发连携，20s CD） */

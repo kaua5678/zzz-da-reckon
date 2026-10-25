@@ -14,7 +14,7 @@ import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic, interactionBaselineFor } from '@/mechanics'
 import { firstGiftedPolarAssaultSlot, sumGiftedPolarAssault } from './giftedPolarAssault'
 import { findMoveById } from '@/data/moveTableQueries'
-import { teaStunImpactScale } from '@/data/wEngineStackCoverage'
+import { basicHitCountOf, basicHitRateOf, teaStunImpactScale } from '@/data/wEngineStackCoverage'
 
 /**
  * 5 个 `compute*NextRoundFeedback` 纯函数已整体迁出（2026-09-16 arch 棘轮第 6 批）。
@@ -1091,9 +1091,18 @@ export function createRunCalcRound(deps: {
     const stunLockN = base.stunCountLockOverride ?? configStore.enemy.stunCountLock
     const lockForPool = stunLockN >= 0 ? countStun : undefined
     /**
-     * **失衡值口径的冲击力缩放**（`cfg.stunImpactScale`，模块写入，缺省 1）。
-     * 引擎只读这个**与角色无关**的字段（判据 22 不破）：叠层类音擎的冲击力加成按「每轮失衡」
-     * 折算后只作用于失衡值。失衡值对 impact 线性 ⇒ 缩放面板 impact 与逐行叠层等价。
+     * **失衡值口径的冲击力缩放**（叠层类音擎，缺省 1 = 不缩放）。
+     *
+     * 口径（用户 2026-10-25 逐字，详见 `src/data/wEngineStackCoverage.ts#teaStunImpactScale`）：
+     * 「每轮失衡都将上场一次并支付 `总平a / 失衡轮次` 的平a数 x；这 x 次平a 在第一次叠层前按
+     * **平均次数 x/2** 获得拐力，其余强特/大招等都算作 x 次叠层」。⇒ 平A段 x/2 层、技能段 x 层，
+     * 按两段**失衡贡献**（次数 × 基础失衡倍率）加权成等效层数。
+     *
+     * 为什么缩面板 impact 而不是逐行给不同 impact：失衡值对 impact **线性** ⇒ 两者等价，
+     * 而引擎只需要改**一个**与角色无关的量。缩放在**武器层**（谁带 14125 都算），不挂角色模块
+     * （判据 22 不破）；模块侧不留同义通道 —— 曾经在 `qingyi.ts` 里写过一版
+     * `CharacterResourceResult.stunImpactScale`，但**没有任何消费方**（死口径），已随本批删除。
+     *
      * ⚠ 只缩放**喂给失衡池**的那份面板，不动 `panels.value` 本身（伤害侧口径不变）。
      */
     const stunPanels = panels.value.map((panel, index) => {
@@ -1101,15 +1110,22 @@ export function createRunCalcRound(deps: {
       const charSlot = (rr.characters.find(c => c.slot === panel.slot) ?? rr.characters[index])?.slot ?? index
       const teamSlot = configStore.team[charSlot]
       const ch = rr.characters.find(c => c.slot === charSlot) ?? rr.characters[index]
-      // 普攻**个数**（不看秒数）：执行行 count 之和 —— 原文「[普通攻击]命中敌人时获得1层茶劲」按个数算
-      let basicCount = 0
+      // 普攻**个数**（不看秒数）—— 原文「[普通攻击]命中敌人时获得1层茶劲」按个数算。
+      // 与萎靡（14116）共用同一解析：物化行计数 vs 平A时间×倍率表速率（见 basicHitCountOf）。
       let basicWeight = 0
       let skillWeight = 0
-      for (const row of ch?.executions ?? []) {
-        const n = Math.max(0, Number(row.count ?? 0))
+      const basicRows: { count?: number; totalTime?: number }[] = []
+      for (const row of ch.executions) {
+        const n = Math.max(0, Number(row.count))
         const w = n * Math.max(0, Number(row.dazeMultiplier ?? 0))
-        if (row.category === 'basic') { basicCount += n; basicWeight += w } else skillWeight += w
+        if (row.category === 'basic') { basicRows.push(row); basicWeight += w } else skillWeight += w
       }
+      const basicMoves = catalogStore.agentSkillsByAgentMap.get(String(ch.agentId))?.categories.find(c => c.id === 'basic')?.moves ?? []
+      const basicCount = basicHitCountOf({
+        rows: basicRows,
+        basicAttackTime: Number(ch.timeAllocation.basicAttackTime),
+        hitRate: basicHitRateOf(basicMoves),
+      })
       const scale = teaStunImpactScale({
         wEngineId: String(teamSlot?.wEngineId ?? ''),
         basicCount,

@@ -126,9 +126,7 @@ function applyQingyiPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   }
 }
 
-function buildQingyiCharConfig({ cinemaLevel, skills, cfg, wEngineId }: AgentCharConfigInput): void {
-  // 茶劲叠层折算门控（玉壶青冰 14125）：每轮失衡的平A命中数 → 失衡值口径的冲击力缩放
-  cfg.qingyiTeaWearer = String(wEngineId ?? '') === QINGYI_TEA_ENGINE_ID
+function buildQingyiCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInput): void {
   const z1 = findMoveById(skills, ZUIHUA_MOVE_1)
   const z2 = findMoveById(skills, ZUIHUA_MOVE_2)
   const yisha4 = findMoveById(skills, YISHA4_MOVE_ID)
@@ -359,82 +357,10 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
       skillTableNote: `一煞#4 共 ${totalYisha4Hits} 击（补电压 ${source.yisha4Hits} + 可分配循环 ${allocYisha4Hits}）；3.33 电压/击 × 0.133s ≈ 25 电压/秒`,
     }))
   }
-
-  /**
-   * 茶劲两段的**失衡贡献权重**（次数 × 基础失衡倍率）：平A段 = category 'basic' 的行
-   * （本模块把平A时间折成显式一煞/醉花行，汇总行清零 ⇒ 只有在这里、行全了才数得到）；
-   * 其余（强特/大招/连携/闪反…）= 技能段。结果写回 cfg 供 `buildResourceResult` 使用
-   * （同一 cfg 实例；与希希芙同款「buildExecutions 先于 buildResourceResult」写法）。
-   */
-  let basicWeight = 0
-  let skillWeight = 0
-  for (const e of executions) {
-    const w = Math.max(0, Number(e.count ?? 0)) * Math.max(0, Number(e.dazeMultiplier ?? 0))
-    if (!(w > 0)) continue
-    if (e.category === 'basic') basicWeight += w
-    else skillWeight += w
-  }
-  cfg.qingyiTeaPhaseWeights = { basic: basicWeight, skill: skillWeight }
 }
-
-import { teaBasicPhaseStacks, teaSkillPhaseStacks } from '@/data/wEngineStackCoverage'
-import type { CharacterOperationConfig } from '@/types/resource/config'
-import type { IterationState } from '@/types/resource/time'
-
-/** 玉壶青冰(14125)：茶劲叠层音擎（每层冲击力 +0.7%，30 层封顶，持续 8s） */
-const QINGYI_TEA_ENGINE_ID = '14125'
-/** 茶劲满层 */
-const QINGYI_TEA_MAX_STACKS = 30
-/**
- * 每轮平A命中率（次/秒）：一煞 至多四段（原文），1251001..1251004 段时长
- * 0.214 / 0.501 / 0.747 / 0.133 = 1.595s / 4 次命中。
- */
-const QINGYI_TEA_HITS_PER_SECOND = 4 / 1.595
 
 function buildQingyiResourceResult({ cfg, state, preModuleExecutions }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  return {
-    qingyiMechanicSource: computeQingyiSource(cfg, state, qingyiGenericRowsTimeOf(preModuleExecutions)),
-    stunImpactScale: qingyiTeaImpactScale(cfg, state, preModuleExecutions),
-  }
-}
-
-/**
- * **玉壶青冰·茶劲的「每轮失衡」折算 → 只作用于失衡值的冲击力缩放**（用户 2026-10-25 口径，详见
- * `src/data/wEngineStackCoverage.ts#teaEffectiveStacks`）。
- *
- * 为什么写进 `cfg.stunImpactScale` 而不是改面板：叠层是**分批**的（平A段在爬层、技能段才满层），
- * 面板只有一个 impact 值；而失衡值对 impact 线性 ⇒ 用「失衡加权等效层数 / 满层」当缩放系数，
- * 与逐行给不同 impact 等价，且引擎侧只读一个**与角色无关**的字段（判据 22 不破）。
- *
- * 每轮平A命中数 x = 总平A命中 / 失衡轮次；命中率 4 / 1.595s 来自倍率表
- * （一煞 至多四段：1251001..1251004 段时长 0.214/0.501/0.747/0.133）。
- */
-function qingyiTeaImpactScale(
-  cfg: CharacterOperationConfig,
-  state: Readonly<IterationState>,
-  executions: readonly SkillExecution[],
-): number {
-  if (cfg.qingyiTeaWearer !== true) return 1
-  const battleSeconds = Math.max(1e-9, Number(cfg.battleTime ?? 0) || 0)
-  const stunRounds = Math.max(1, Math.floor(Number(cfg.qingyiStunCount ?? 0) || 0))
-  const basicHits = Math.max(0, Number(state.basicAttackTime ?? 0)) * QINGYI_TEA_HITS_PER_SECOND
-  const hitsPerCycle = battleSeconds > 0 ? basicHits / stunRounds : basicHits
-  /**
-   * 两段权重 = **失衡贡献**（次数 × 基础失衡倍率），由 `buildExecutions` 在行全时算好写进 cfg
-   * （`buildResourceResult` 拿到的 `preModuleExecutions` 不含本模块自推的一煞/醉花行 ⇒ 在那数会漏掉整段平A）。
-   * 缺省退回「平A时间 / 必要时间」，保证夹具直调也不炸。
-   */
-  const phaseWeights = cfg.qingyiTeaPhaseWeights
-  const basicWeight = Math.max(0, Number(phaseWeights?.basic ?? state.basicAttackTime ?? 0))
-  const skillWeight = Math.max(0, Number(phaseWeights?.skill ?? state.necessaryTime ?? 0))
-  const basicStacks = teaBasicPhaseStacks(hitsPerCycle, QINGYI_TEA_MAX_STACKS)
-  const skillStacks = teaSkillPhaseStacks(hitsPerCycle, QINGYI_TEA_MAX_STACKS)
-  const wSum = basicWeight + skillWeight
-  const stacks = wSum > 0
-    ? (basicWeight * basicStacks + skillWeight * skillStacks) / wSum
-    : skillStacks
-  void executions
-  return Math.max(0, Math.min(1, stacks / QINGYI_TEA_MAX_STACKS))
+  return { qingyiMechanicSource: computeQingyiSource(cfg, state, qingyiGenericRowsTimeOf(preModuleExecutions)) }
 }
 
 function buildQingyiResourceSections({ result }: AgentResourceSectionsInput) {
@@ -496,15 +422,6 @@ interface QingyiMoveRow { id: string; damage: number; daze: number; anomaly: num
  * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
  * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
  */
-declare module '@/types/resource/config' {
-  interface CharacterOperationConfig {
-    /** 本槽是否装备玉壶青冰(14125)（buildCharConfig 写入，茶劲叠层折算门控） */
-    qingyiTeaWearer?: boolean
-    /** 茶劲两段的失衡贡献权重（buildExecutions 写，buildResourceResult 读） */
-    qingyiTeaPhaseWeights?: { basic: number; skill: number }
-  }
-}
-
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 青衣命座等级 */

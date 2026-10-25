@@ -508,6 +508,24 @@ export function resolveSlotPanelBuffInputs(
 
   const effectCoverageMap = wEngineEffectCoverageMapOf(wEngineCoverages)
   for (const buff of allTeammateBuffs) {
+    /**
+     * **音擎团队段跳过「队友 Buff 勾选」覆盖**（2026-10-26）：音擎效果的覆盖率归**音擎效果覆盖率表**
+     * （`wEngineCoverages` = 手调 ⊕ 资源侧自动折算），与 `mergeTeamDiscEffectCoverages` 对驱动盘的
+     * 处理同口径（「覆盖率属于效果，不属于受益者」）。
+     *
+     * 修前这里用 `teammateBuffCoverageOf` 一律覆盖成 100% ⇒ 两条后果实测：
+     * ① 队伍配置页给音擎**团队段**效果拖的覆盖率滑块是**死控件**（实测焰心桂冠·萎靡 手调 0% 时
+     *    三名角色的 `fireCritDmg` 仍是 30 = 20 层×1.5，伤害逐位不变）；
+     * ② 自动折算（`useResourceCalc#wEngineStackAutoCoverages`）对团队段效果完全失效
+     *    （萎靡自动算出 75.5% 覆盖率，伤害 0 变化）。
+     * 音擎团队 buff 的 id 是 `wengine-team-<音擎id>`，从不进入 `teammateBuffSelections`（队伍页只列
+     * `catalog.teammateBuffGroups` 的队友 Buff）⇒ 跳过后不产生新的死控件。
+     */
+    /**
+     * @fact wengine:teamBuff覆盖率/归属 口径: 音擎团队段效果（含 `wengine-team-*`）的覆盖率取音擎效果覆盖率表（手调 ⊕ 自动折算），不被「队友 Buff 勾选」的默认 100% 覆盖；驱动盘同口径（判据见 mergeTeamDiscEffectCoverages） | 据 用户裁决@2026-10-26（萎靡自动折算被恒 100% 吃掉）+ 修前死控件实测 | 验 src/composables/__tests__/wEngineStackCoverage.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#resolveSlotPanelBuffInputs | 信 高
+     * ⟳复核: 队伍页若开始列 `wengine-team-*` 队友 Buff 滑块，确认这条路不与它双计 | 到期 2027-01-31
+     */
+    if (buff.sourceCategory === 'wEngine') continue
     const coverage = teammateBuffCoverageOf(buffSelections, buff.id) / 100
     for (const effect of buff.effects) effectCoverageMap.set(effect.id, coverage)
   }

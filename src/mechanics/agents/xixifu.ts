@@ -106,7 +106,7 @@ function buildXixifuCharConfig({ cfg, cinemaLevel, team, panel, skills }: AgentC
    *
    * ⚠ 代价：伤害/时间行随之按更少的次数排（这是对的——付不起的能量就不该有那么多毒牙）。
    */
-  const baseExEnergy = Math.max(1, Number(cfg.exSpecialEnergyConsume ?? 0) || 65)
+  const baseExEnergy = Math.max(1, Number(cfg.exSpecialEnergyConsume) || 65)
   const holdRate = specAdjustableRate(cfg, '1521.xixifu_toxin.toxin_duya_hold.rate')
   const extraHits = Math.min(XIXIFU_DUYA_MAX_EXTRA, Math.round(XIXIFU_DUYA_MAX_EXTRA * holdRate))
   cfg.exSpecialEnergyConsume = Math.max(
@@ -148,7 +148,7 @@ function resolveXixifuResources(cfg: AgentResourceInput['cfg'], state: AgentReso
    * 原口径直接读它 ⇒ `toxin_chain` 恒收 0（漏收 14 次连携 = 42 毒素，2026-10-25 实测）。
    * 改为「轴内覆盖值 ?? 每次失衡连携数 × 失衡次数」，与池的连携口径同源。
    */
-  const chainPerStun = Math.max(0, Math.floor(Number(cfg.chainCountPerStun ?? 0) || 0))
+  const chainPerStun = Math.max(0, Math.floor(Number(cfg.chainCountPerStun) || 0))
   const chainFromStun = Math.max(0, Math.floor(stun * chainPerStun))
   /** 覆盖值只在**给出正数**时生效（0/缺省 = 非轴模式没声明，回落 次数×每次失衡连携数） */
   const chainOverride = Number(cfg.chainCountTotalOverride ?? Number.NaN)

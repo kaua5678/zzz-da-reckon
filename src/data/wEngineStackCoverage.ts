@@ -236,7 +236,7 @@ export function teaStunImpactScale(input: {
   basicWeight: number
   skillWeight: number
 }): number {
-  if (String(input.wEngineId ?? '') !== TEA_STACK_ENGINE_ID) return 1
+  if (String(input.wEngineId) !== TEA_STACK_ENGINE_ID) return 1
   const rounds = Math.max(1, Math.floor(input.stunRounds || 0) || 1)
   const hitsPerCycle = Math.max(0, input.basicCount) / rounds
   const basic = teaBasicPhaseStacks(hitsPerCycle, TEA_STACK_MAX)
@@ -248,3 +248,98 @@ export function teaStunImpactScale(input: {
   return Math.max(0, Math.min(1, stacks / TEA_STACK_MAX))
 }
 
+
+/**
+ * **该槽整局的「普攻命中个数」**——「普通攻击命中 → +1 层」类叠层（茶劲 / 萎靡）的触发源（单一事实源）。
+ *
+ * 两条通道各自只覆盖一部分角色，必须**按可验证性**选，不能一律用其中一条：
+ * - **物化行计数**：模块把平A拆成显式行（青衣 一煞/醉花 行 count=163）时可信；
+ * - **平A时间 × 倍率表命中速率**：模块只留「平A池汇总行」（count=0）时行计数是**测量假象**
+ *   （实测莱特 1161：58.28s 平A时间只物化出 10 次终结段命中，按时间×速率应为 90.6 次/局）。
+ *
+ * 判据 = **带计数的行覆盖了多少平A时间**：≥50% ⇒ 计数通道在跑，用行计数；否则用时间×速率。
+ * 实测两端分得很开（青衣 46.94/47.03 = 99.8% vs 莱特 0/58.28 = 0%，莱特的计数行 totalTime=0），
+ * 阈值取中间任意值都等价；50% 只是把「一半以上的平A时间有逐次计数」写成可读的名分。
+ */
+export interface BasicHitSources {
+  /** 该槽平A执行行（category === 'basic'） */
+  rows: readonly { count?: number; totalTime?: number }[]
+  /** 该槽平A时间（秒，timeAllocation.basicAttackTime） */
+  basicAttackTime: number
+  /** 倍率表 basic 分类的命中速率（次/秒，basicHitRateOf）；0 = 拿不到倍率表 */
+  hitRate: number
+}
+
+/**
+ * @fact wengine:basicHits/计入个数 口径: 普攻命中个数 = 物化行 count 之和（带计数的行覆盖 ≥50% 平A时间时），否则 平A时间×倍率表命中速率；两条都是下界，取较大者 | 据 本任务 2026-10-26（莱特 1161 实测：58.28s 平A 只物化出 10 次命中，行计数是测量假象） | 验 src/composables/__tests__/wEngineStackCoverage.test.ts | 锚 src/data/wEngineStackCoverage.ts#basicHitCountOf | 信 高
+ * ⟳复核: 再有「平A只物化终结段」的角色（行 totalTime=0）出现时，确认 50% 阈值仍把两端分开 | 到期 2027-01-31
+ */
+export function basicHitCountOf(input: BasicHitSources): number {
+  let rowHits = 0
+  let countedSeconds = 0
+  for (const row of input.rows) {
+    const n = Math.max(0, Number(row.count ?? 0))
+    if (!(n > 0)) continue
+    rowHits += n
+    countedSeconds += Math.max(0, Number(row.totalTime ?? 0))
+  }
+  const basicTime = Math.max(0, Number(input.basicAttackTime))
+  const timeHits = basicTime * Math.max(0, Number(input.hitRate))
+  if (rowHits > 0 && countedSeconds >= 0.5 * basicTime) return rowHits
+  return Math.max(rowHits, timeHits)
+}
+
+/**
+ * **「普通攻击命中 → 目标 +1 层」类长持续叠层**（焰心桂冠 14116·萎靡）的登记表。
+ *
+ * 原文：「装备者的[普通攻击]命中敌人时，对目标施加一层[萎靡]，最多叠加20层，持续30秒，
+ * 重复触发时刷新持续时间；队伍中任意角色攻击命中敌人时，目标每拥有一层[萎靡]，
+ * 本次攻击中冰属性伤害和火属性伤害的暴击伤害提升1.5%…」。
+ *
+ * ⚠ 与茶劲（8s）的区别 = **跨轮续层**：30s 比一次失衡轮次还长，层数不会每轮从 0 爬
+ * ⇒ 用「近 durationSeconds 秒内的命中次数」的**滑动窗稳态**，不套 x/2 的爬层模型。
+ * 实测莱特（auto-1041-1161-1311，5 窗）两模型给同一个数：滑动窗 15.10 层 vs 爬层+时间加权 15.19 层。
+ */
+/**
+ * @fact wengine:萎靡/稳态层数 口径: 14116 萎靡 = 近 durationSeconds(30s) 内普攻命中次数、封顶 20；覆盖率 = 层数/defaultStacks×100（不是 maxStacks）；不套茶劲 x/2 爬层（30s > 轮长 ⇒ 跨轮续层） | 据 用户裁决@2026-10-26「莱特专武也是类似青衣专武的叠层」+ 原文「持续30秒，重复触发时刷新持续时间」 | 验 src/composables/__tests__/wEngineStackCoverage.test.ts | 锚 src/data/wEngineStackCoverage.ts#BASIC_HIT_STACK_EFFECTS | 信 高
+ * ⟳复核: 莱特平A行物化（lighter.ts 拆出真实普攻段）后层数是否仍在 15 层附近；用户若改口径为轮内爬层则同步改模型 | 到期 2027-01-31
+ */
+export const BASIC_HIT_STACK_EFFECTS: Record<string, { maxStacks: number; durationSeconds: number }> = {
+  effect_wiki_951_team_crit_dmg_iceCritDmg: { maxStacks: 20, durationSeconds: 30 },
+  effect_wiki_951_team_crit_dmg_fireCritDmg: { maxStacks: 20, durationSeconds: 30 },
+}
+
+/**
+ * 滑动窗**稳态层数** = 近 durationSeconds 秒内命中的次数（按整局平均命中率摊平，封顶 maxStacks）。
+ * battleSeconds ≤ 0（未跑资源）或 maxStacks ≤ 0 ⇒ null = 不折算（保持手调/满层）。
+ */
+export function basicHitWindowStacks(input: {
+  basicHits: number
+  battleSeconds: number
+  durationSeconds: number
+  maxStacks: number
+}): number | null {
+  const battle = Number(input.battleSeconds)
+  const maxStacks = Number(input.maxStacks)
+  const duration = Number(input.durationSeconds)
+  if (!(battle > 0) || !(maxStacks > 0) || !(duration > 0)) return null
+  const hits = Math.max(0, Number(input.basicHits))
+  return Math.min(maxStacks, (hits / battle) * duration)
+}
+
+/**
+ * 覆盖率(0–100) = 稳态层数 / 效果的**默认层数**（resolveEffectValue 里 stacked 走
+ * valuePerStack × defaultStacks × coverage ⇒ 覆盖率必须相对 defaultStacks，不是 maxStacks）。
+ */
+export function basicHitStackCoverage(input: {
+  basicHits: number
+  battleSeconds: number
+  durationSeconds: number
+  maxStacks: number
+  defaultStacks: number
+}): number | null {
+  const stacks = basicHitWindowStacks(input)
+  const defaultStacks = Number(input.defaultStacks)
+  if (stacks == null || !(defaultStacks > 0)) return null
+  return Math.max(0, Math.min(100, (stacks / defaultStacks) * 100))
+}

@@ -17,7 +17,13 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
-import { stackEnergyEvents, stacksToCoverage } from '@/data/wEngineStackCoverage'
+import {
+  basicHitCountOf,
+  basicHitStackCoverage,
+  basicHitWindowStacks,
+  stackEnergyEvents,
+  stacksToCoverage,
+} from '@/data/wEngineStackCoverage'
 import type { SkillExecution } from '@/types/resource'
 
 const EFFECT_ID = 'effect_wiki_214_self_ap' // 嵌合编译器 异常精通 25×3层/8s
@@ -99,5 +105,73 @@ describe('音擎叠层覆盖率自动回填（嵌合编译器 14118，能耗事�
     const calc = useResourceCalc()
     void calc.panels.value
     expect(calc.effectiveWEngineCoverages.value[EFFECT_ID] ?? 100).toBe(100)
+  })
+})
+
+/**
+ * 焰心桂冠(14116)·萎靡 = 「**普通攻击命中** → 目标 +1 层，最多 20 层、持续 30 秒」，
+ * 全队冰/火暴击伤害每层 +1.5%（catalog teamBuff，`defaultStacks=20`/`coverage=1` ⇒ 旧口径恒满层 +30%）。
+ *
+ * 为何不走茶劲的 x/2 爬层模型：萎靡持续 **30s** > 一次失衡轮次 ⇒ 层数跨轮续着，不会每轮从 0 爬，
+ * 用「近 30 秒命中次数」的滑动窗稳态。实测莱特两模型给同一个数（15.10 vs 15.19 层），故不是口径分歧点。
+ */
+describe('焰心桂冠 14116·萎靡（普通攻击命中叠层，滑动窗稳态）', () => {
+  const ICE = 'effect_wiki_951_team_crit_dmg_iceCritDmg'
+  const FIRE = 'effect_wiki_951_team_crit_dmg_fireCritDmg'
+
+  it('普攻命中个数：物化行计数可信时用行，计数没物化（只留汇总行）时用 平A时间×倍率表速率', () => {
+    // 青衣：一煞/醉花行 count=163、带计数的行覆盖 46.94s / 平A 47.03s ⇒ 用行计数（实测口径）
+    expect(basicHitCountOf({
+      rows: [{ count: 163, totalTime: 46.94 }], basicAttackTime: 47.03, hitRate: 1.044,
+    })).toBe(163)
+    // 莱特：只物化出终结段 10 次命中（该行 totalTime=0），58.28s 平A时间 ⇒ 58.28 × 1.554 ≈ 90.58
+    expect(basicHitCountOf({
+      rows: [{ count: 10, totalTime: 0 }], basicAttackTime: 58.28, hitRate: 1.554,
+    })).toBeCloseTo(90.57, 2)
+    // 两条都没有 ⇒ 0（不编造）
+    expect(basicHitCountOf({ rows: [], basicAttackTime: 0, hitRate: 1.5 })).toBe(0)
+  })
+
+  it('滑动窗稳态层数：命中率 × 30s，封顶 20；非法输入 ⇒ null 不折算', () => {
+    expect(basicHitWindowStacks({ basicHits: 90.58, battleSeconds: 180, durationSeconds: 30, maxStacks: 20 }))
+      .toBeCloseTo(15.097, 3)
+    // 命中密集 ⇒ 封顶
+    expect(basicHitWindowStacks({ basicHits: 1000, battleSeconds: 180, durationSeconds: 30, maxStacks: 20 })).toBe(20)
+    expect(basicHitWindowStacks({ basicHits: 90, battleSeconds: 0, durationSeconds: 30, maxStacks: 20 })).toBeNull()
+    // 覆盖率相对 defaultStacks（resolveEffectValue: valuePerStack × defaultStacks × coverage）
+    expect(basicHitStackCoverage({
+      basicHits: 90.58, battleSeconds: 180, durationSeconds: 30, maxStacks: 20, defaultStacks: 20,
+    })!).toBeCloseTo(75.48, 2)
+    expect(basicHitStackCoverage({
+      basicHits: 90.58, battleSeconds: 180, durationSeconds: 30, maxStacks: 20, defaultStacks: 0,
+    })).toBeNull()
+  })
+
+  it('通道活着：莱特带焰心桂冠 ⇒ 萎靡覆盖率落自动折算、火暴伤低于旧满层 +30', async () => {
+    const { config } = await setupHarness([{ agentId: '1041' }, { agentId: '1161' }, { agentId: '1311' }])
+    config.team[1].wEngineId = '14116'
+    const calc = useResourceCalc()
+    const panels = calc.panels.value
+    const ice = calc.effectiveWEngineCoverages.value[ICE]
+    const fire = calc.effectiveWEngineCoverages.value[FIRE]
+    // 自动折算已写进有效表，且落 0–100 之间（实测夹具 56.9%）
+    expect(ice).toBeGreaterThan(0)
+    expect(ice).toBeLessThan(100)
+    expect(fire).toBe(ice)
+    // 面板上的火暴伤 = 1.5 × 20 × 覆盖率，必须显著低于旧行为（恒满层 30）
+    const fireCd = panels.map(p => (p as unknown as { fireCritDmg?: number }).fireCritDmg ?? 0)
+    expect(Math.max(...fireCd)).toBeLessThan(30)
+    expect(Math.max(...fireCd)).toBeGreaterThan(0)
+  })
+
+  it('手调滑块优先：把冰/火两条都拖到 0 ⇒ 面板不再吃萎靡（修前是死控件）', async () => {
+    const { config } = await setupHarness([{ agentId: '1041' }, { agentId: '1161' }, { agentId: '1311' }])
+    config.team[1].wEngineId = '14116'
+    const configStore = useConfigStore()
+    configStore.setWEngineEffectCoverage(ICE, 0)
+    configStore.setWEngineEffectCoverage(FIRE, 0)
+    const calc = useResourceCalc()
+    const fireCd = calc.panels.value.map(p => (p as unknown as { fireCritDmg?: number }).fireCritDmg ?? 0)
+    expect(Math.max(...fireCd)).toBe(0)
   })
 })

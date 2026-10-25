@@ -39,7 +39,15 @@ import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_ANOMALY_LABEL, standardDot } from '@/core/anomalyPool/helpers'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import { buildStunTimeline } from '@/core/stunTimeline'
-import { stackDurationSeconds, stackEnergyEvents, stacksToCoverage } from '@/data/wEngineStackCoverage'
+import {
+  BASIC_HIT_STACK_EFFECTS,
+  basicHitCountOf,
+  basicHitRateOf,
+  basicHitStackCoverage,
+  stackDurationSeconds,
+  stackEnergyEvents,
+  stacksToCoverage,
+} from '@/data/wEngineStackCoverage'
 import { elementLabel, buildCharConfig, computeDamageSourceBreakdown } from './resourceCalc/helpers'
 import { computePanel, computePanelPhases, computeEntrySnapshotPanel, applyTeamMechanics, collectAxisWindowOverlays } from './resourceCalc/panelPhases'
 import { getTeamAnomalyDurationBonus, getWindInfectionCoverage, findWindSlot, buildAnomalyVirtualPanel } from './resourceCalc/anomalyPanels'
@@ -553,9 +561,36 @@ export function createResourceCalc(
       const wEngineId = char?.wEngineId
       if (!wEngineId) continue
       const wEngine = catalogStore.wEnginesMap.get(wEngineId)
-      const selfEffects = wEngine?.effect.selfBuff?.effects ?? []
-      for (const e of selfEffects) {
+      // 自身段 + **团队段**：焰心桂冠(14116)·萎靡 的叠层挂在 teamBuff 里（由装备者的普攻命中上条）
+      const wEngineEffects = [
+        ...(wEngine?.effect.selfBuff?.effects ?? []),
+        ...(wEngine?.effect.teamBuff?.effects ?? []),
+      ]
+      for (const e of wEngineEffects) {
         if (e.type !== 'stacked' || !e.id) continue
+        /**
+         * 「**普通攻击命中** → +1 层」类（茶劲 / 萎靡）：触发源不是能量扣除事件，而是本槽的
+         * **普攻命中个数**（原文按个数算，不看秒数）。个数解析见
+         * @/data/wEngineStackCoverage#basicHitCountOf（物化行计数 vs 平A时间×倍率表速率）。
+         */
+        const basicSpec = BASIC_HIT_STACK_EFFECTS[e.id]
+        if (basicSpec) {
+          const basicMoves = catalogStore.getAgentSkills(ch.agentId)?.categories.find(c => c.id === 'basic')?.moves ?? []
+          const hits = basicHitCountOf({
+            rows: ch.executions.filter(row => row.category === 'basic'),
+            basicAttackTime: ch.timeAllocation.basicAttackTime,
+            hitRate: basicHitRateOf(basicMoves),
+          })
+          const basicCov = basicHitStackCoverage({
+            basicHits: hits,
+            battleSeconds,
+            durationSeconds: basicSpec.durationSeconds,
+            maxStacks: basicSpec.maxStacks,
+            defaultStacks: e.defaultStacks,
+          })
+          if (basicCov != null) out[e.id] = basicCov
+          continue
+        }
         const durationSeconds = stackDurationSeconds(e.id)
         if (durationSeconds == null) continue // 未登记折算器 ⇒ 不折算（保持手调/默认满层）
         const stacks = stackEnergyEvents(e.id, {
@@ -563,7 +598,7 @@ export function createResourceCalc(
           exSpecialCount: ch.exSpecialCount,
           executions: ch.executions,
           // 「普通攻击命中」类叠层（如玉壶青冰·茶劲）的触发源：本槽平A时间
-          basicAttackTime: ch.timeAllocation?.basicAttackTime ?? 0,
+          basicAttackTime: ch.timeAllocation.basicAttackTime,
         })
         if (stacks == null) continue
         const cov = stacksToCoverage(stacks, durationSeconds, battleSeconds, e.maxStacks)

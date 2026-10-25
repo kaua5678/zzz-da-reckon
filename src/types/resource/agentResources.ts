@@ -182,13 +182,6 @@ export interface CharacterResourceResult {
   chainCountTotal: number
   /** **实打连携次数**（= `min(chainCountTotal, 物化连携行)`）；口径见 `executedExSpecialCount` */
   executedChainCountTotal: number
-  /**
-   * **失衡值口径的冲击力缩放**（机制模块写入，缺省 1）。引擎只读这一格**与角色无关**的字段
-   * （判据 22 不破）：叠层类音擎的冲击力加成按「每轮失衡」折算后只作用于失衡值。
-   * ⚠ 走**资源结果**而不是 cfg：装配期给模块的是本轮 cfg 副本，写回去引擎那侧读不到（实测 null）。
-   */
-  stunImpactScale?: number
-
   // --- 招式执行计划 ---
   executions: SkillExecution[]
   /** 异常事件执行计划：特殊虚耀/异放/极性紊乱等事件单独展示 */
