@@ -1,61 +1,14 @@
 {
   "id": "banyue-liuyin-lucia",
+  "name": "般岳+琉音+卢西娅",
   "group": "命破队",
   "subgroup": "火",
-  "name": "般岳+琉音+卢西娅",
-  "stunAxisPresetId": "preset-1471-1481-1451",
-  "altAxes": [
-    {
-      "id": "fury5-ult10",
-      "name": "10大轴",
-      "stunAxisPresetId": "preset-1471-1481-*-fury5-ult10",
-      "note": "般岳 4喧响 + 6好评转大（好评≥390，琉音 1命×1.16 攒窗）；难度曲线高难度段，达成条件见轴预设 note"
-    }
-  ],
-  "note": "金数口径：3 限定 S 角色（般岳/琉音/卢西娅）本体+专武 = 6 金基础（全带专武）。\n- 交互已填（闪反10/招架6/金身20/双反5，用户确认）\n- 加金顺序为模板（先 1 命后 2 命再精炼），可按命座提升率自行调整\n- 若琉音/卢西娅换成非限定音擎（如啜泣摇篮 14121），基础金会相应下降\n- 绑定「般琉通用」好评溢出轴（默认常规轴，好评富余时逐窗升级末尾爆发）；altAxes「10大轴」= 难度曲线高难度段（2026-09-13 用户裁决：一般轴一个难度、高难轴一段伤害，不再拆变体预设）\n- 原「普通轴/5嗔火10大」两条难度变体已合并为本条（对比引擎中二者逐位等价）；10大轴结构保留在失衡轴预设「5火10大」",
   "team": [
     "1471",
     "1481",
     "1451"
   ],
-  "wEngines": [
-    "14147",
-    "14148",
-    "14145"
-  ],
-  "goldSteps": [
-    { "label": "般岳 1命", "slot": 0, "kind": "cinema", "value": 1 },
-    { "label": "卢西娅 1命", "slot": 2, "kind": "cinema", "value": 1 },
-    { "label": "琉音 1命", "slot": 1, "kind": "cinema", "value": 1 },
-    { "label": "般岳 2命", "slot": 0, "kind": "cinema", "value": 2 },
-    { "label": "卢西娅 2命", "slot": 2, "kind": "cinema", "value": 2 },
-    { "label": "琉音 2命", "slot": 1, "kind": "cinema", "value": 2 },
-    { "label": "般岳 专武精炼2", "slot": 0, "kind": "wengine", "value": 2 },
-    { "label": "卢西娅 专武精炼2", "slot": 2, "kind": "wengine", "value": 2 },
-    { "label": "琉音 专武精炼2", "slot": 1, "kind": "wengine", "value": 2 },
-    { "label": "般岳 3命", "slot": 0, "kind": "cinema", "value": 3 },
-    { "label": "卢西娅 3命", "slot": 2, "kind": "cinema", "value": 3 },
-    { "label": "琉音 3命", "slot": 1, "kind": "cinema", "value": 3 },
-    { "label": "般岳 4命", "slot": 0, "kind": "cinema", "value": 4 },
-    { "label": "卢西娅 4命", "slot": 2, "kind": "cinema", "value": 4 },
-    { "label": "琉音 4命", "slot": 1, "kind": "cinema", "value": 4 },
-    { "label": "般岳 5命", "slot": 0, "kind": "cinema", "value": 5 },
-    { "label": "卢西娅 5命", "slot": 2, "kind": "cinema", "value": 5 },
-    { "label": "琉音 5命", "slot": 1, "kind": "cinema", "value": 5 },
-    { "label": "般岳 6命", "slot": 0, "kind": "cinema", "value": 6 },
-    { "label": "卢西娅 6命", "slot": 2, "kind": "cinema", "value": 6 },
-    { "label": "琉音 6命", "slot": 1, "kind": "cinema", "value": 6 },
-    { "label": "般岳 专武精炼3", "slot": 0, "kind": "wengine", "value": 3 },
-    { "label": "卢西娅 专武精炼3", "slot": 2, "kind": "wengine", "value": 3 },
-    { "label": "琉音 专武精炼3", "slot": 1, "kind": "wengine", "value": 3 },
-    { "label": "般岳 专武精炼4", "slot": 0, "kind": "wengine", "value": 4 },
-    { "label": "卢西娅 专武精炼4", "slot": 2, "kind": "wengine", "value": 4 },
-    { "label": "琉音 专武精炼4", "slot": 1, "kind": "wengine", "value": 4 },
-    { "label": "般岳 专武精炼5", "slot": 0, "kind": "wengine", "value": 5 },
-    { "label": "卢西娅 专武精炼5", "slot": 2, "kind": "wengine", "value": 5 },
-    { "label": "琉音 专武精炼5", "slot": 1, "kind": "wengine", "value": 5 }
-  ],
-  "standardSteps": [],
+  "stunAxisPresetId": "preset-1471-1481-1451",
   "interactions": [
     {
       "type": "dodge",
@@ -76,6 +29,14 @@
       "type": "banyueDualCounter",
       "count": 3,
       "slot": 0
+    }
+  ],
+  "altAxes": [
+    {
+      "id": "fury5-ult10",
+      "name": "10大轴",
+      "stunAxisPresetId": "preset-1471-1481-*-fury5-ult10",
+      "note": "般岳 4喧响 + 6好评转大（好评≥390，琉音 1命×1.16 攒窗）；难度曲线高难度段，达成条件见轴预设 note"
     }
   ]
 }

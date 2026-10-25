@@ -1,62 +1,11 @@
 {
   "id": "sunbringer-roxy-robin",
+  "name": "挽昼+洛克茜+知更鸟",
   "group": "锋御队",
   "subgroup": "火",
-  "name": "挽昼+洛克茜+知更鸟",
-  "note": "- 用户口述录入 2026-10-25：挽昼(1601·火·锋御) 预设队 = 击破位（诺姆/洛克茜/珂蕾妲 三选一）+ 辅助位知更鸟(1661)。\n- 挽昼/知更鸟 为 3.4.1+19850203 测试服数据；音擎 14160v1/14166v1 是 v1 占位（专武归属未建）。\n- 知更鸟提供守卫护盾全队增伤 25%（spec teamBuff）与离场守护全队防御（待建模）。\n- 击破位：洛克茜(1621)，音擎 14162 绯月银棺。",
   "team": [
     "1601",
     "1621",
     "1661"
-  ],
-  "wEngines": [
-    "14160v1",
-    "14162",
-    "14166v1"
-  ],
-  "goldSteps": [
-    {
-      "label": "挽昼 1命",
-      "slot": 0,
-      "kind": "cinema",
-      "value": 1
-    },
-    {
-      "label": "挽昼 2命",
-      "slot": 0,
-      "kind": "cinema",
-      "value": 2
-    },
-    {
-      "label": "挽昼 专武精炼2",
-      "slot": 0,
-      "kind": "wengine",
-      "value": 2
-    },
-    {
-      "label": "挽昼 3命",
-      "slot": 0,
-      "kind": "cinema",
-      "value": 3
-    },
-    {
-      "label": "挽昼 4命",
-      "slot": 0,
-      "kind": "cinema",
-      "value": 4
-    },
-    {
-      "label": "挽昼 5命",
-      "slot": 0,
-      "kind": "cinema",
-      "value": 5
-    },
-    {
-      "label": "挽昼 6命",
-      "slot": 0,
-      "kind": "cinema",
-      "value": 6
-    }
-  ],
-  "interactions": []
+  ]
 }
