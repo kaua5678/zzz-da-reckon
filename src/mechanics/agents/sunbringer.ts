@@ -5,6 +5,7 @@ import type {
   AgentResourceInput,
 } from '../types'
 import { getRowValue } from '@/data/moveTableQueries'
+import { effectiveCombatTime } from '@/core/effectiveTime'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
@@ -182,7 +183,7 @@ function buildSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
   if (!meta) return
   const loops = solveSunbringerLoops({
     meta,
-    combatTime: Math.max(0, state.frontlineTime + state.backstageTime),
+    combatTime: effectiveCombatTime(state, cfg),
     basicTime: Math.max(0, state.basicAttackTime),
     chainCount: Math.max(0, Math.floor(state.chainCountTotal)),
     totalDecibel: Math.max(0, state.totalDecibel),
@@ -289,7 +290,7 @@ function patchSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
   // 在不同轮次里不一致，实测会读到上一轮的次数）。同一基底 ⇒ 倍率空间等价。
   const loops = solveSunbringerLoops({
     meta,
-    combatTime: Math.max(0, state.frontlineTime + state.backstageTime),
+    combatTime: effectiveCombatTime(state, cfg),
     basicTime: Math.max(0, state.basicAttackTime),
     chainCount: Math.max(0, Math.floor(state.chainCountTotal)),
     totalDecibel: Math.max(0, state.totalDecibel),
