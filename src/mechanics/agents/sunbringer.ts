@@ -6,6 +6,7 @@ import type {
 } from '../types'
 import { getRowValue } from '@/data/moveTableQueries'
 import { effectiveCombatTime } from '@/core/effectiveTime'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 
 /**
@@ -85,10 +86,12 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 挽昼招式元数据（本模块私有） */
     sunbringerMeta?: SunbringerMeta
+    /** 命座等级（buildCharConfig 写；影画1/2 分支用） */
+    sunbringerCinemaLevel?: number
   }
 }
 
-export function applySunbringerPanel({ panel, outOfCombatPanel }: AgentPanelInput): void {
+export function applySunbringerPanel({ panel, outOfCombatPanel, cinemaLevel }: AgentPanelInput): void {
   // 核心被动·初始转化：只读局外面板，整 1% floor（与克拉蕾同口径）
   const initialCritDmg = outOfCombatPanel.critDmg
   if (initialCritDmg > 0) {
@@ -97,9 +100,14 @@ export function applySunbringerPanel({ panel, outOfCombatPanel }: AgentPanelInpu
   // 极昼：满覆盖近似（见文件头）
   panel.critRate = panel.critRate + POLAR_DAY_CRIT_RATE
   panel.enemyDefReduction = panel.enemyDefReduction + POLAR_DAY_DEF_IGNORE
+  // 影画1（隐世的虚狩）：造成伤害无视 15% 火属性抗性（满覆盖）
+  if (cinemaLevel >= 1) panel.enemyFireResReduction = panel.enemyFireResReduction + 15
+  // 影画2（继承者的叛旗）：锐化伤害无视 12% 防御力（满覆盖）
+  if (cinemaLevel >= 2) panel.enemyDefReduction = panel.enemyDefReduction + 12
 }
 
-function buildSunbringerCharConfig({ cfg, skills, agent }: AgentCharConfigInput): void {
+function buildSunbringerCharConfig({ cfg, skills, agent, cinemaLevel }: AgentCharConfigInput): void {
+  cfg.sunbringerCinemaLevel = cinemaLevel
   const all = skills.categories.flatMap(c => c.moves)
   const metaOf = (id: string): SunbringerMoveMeta => {
     const m = all.find(x => x.id === id)
@@ -144,6 +152,8 @@ export function solveSunbringerLoops(input: {
   chainCount: number
   totalDecibel: number
   ultimateCost: number
+  /** 命座等级（影画1：进战 +120 愿力；影画2：其他招式 12% 烬痕） */
+  cinemaLevel?: number
 }) {
   const { meta, combatTime, basicTime, chainCount, totalDecibel, ultimateCost } = input
   const sharpPool = SHARPNESS_INITIAL + meta.sharpnessRegen * combatTime + meta.basic.sharpPerSec * basicTime
@@ -158,7 +168,9 @@ export function solveSunbringerLoops(input: {
   const maimDemand = 3 * (exCount + chainCount)
   const maimCount = Math.max(0, Math.min(gashLayers, maimDemand))
 
-  const wishTotal = maimCount * WISH_PER_MAIM
+  // 影画1：进入战场立即获得 120 愿力（勘域 180s 一次 ⇒ 每局一次）
+  const wishFromEntry = (input.cinemaLevel ?? 0) >= 1 ? 120 : 0
+  const wishTotal = maimCount * WISH_PER_MAIM + wishFromEntry
   const jufengMax = meta.jufeng.actionTime > 0 ? Math.floor(budget / meta.jufeng.actionTime) : 0
   const jufengCount = Math.max(0, Math.min(Math.floor(wishTotal / JU_FENG_WISH_COST), jufengMax))
   budget = Math.max(0, budget - jufengCount * meta.jufeng.actionTime)
@@ -183,6 +195,7 @@ function buildSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
   if (!meta) return
   const loops = solveSunbringerLoops({
     meta,
+    cinemaLevel: cinemaLevelOf(cfg.sunbringerCinemaLevel),
     combatTime: effectiveCombatTime(state, cfg),
     basicTime: Math.max(0, state.basicAttackTime),
     chainCount: Math.max(0, Math.floor(state.chainCountTotal)),
@@ -285,13 +298,24 @@ export function computeEmberScar(input: {
   meta: SunbringerMeta
   loops: { jufengCount: number; changanCount: number; ultACount: number }
   ultBCount: number
+  /** 影画1：首次聚锋的烬痕量 = 原本 150%；影画2：其他招式按实际伤害 12% 也积攒 */
+  cinemaLevel?: number
+  exCount?: number
+  chainCount?: number
 }): number {
   const { meta, loops, ultBCount } = input
-  const totalMultiplier = loops.jufengCount * meta.jufeng.damage
-    + loops.changanCount * meta.changan.damage
-    + loops.ultACount * meta.ultA.damage
-    + ultBCount * meta.ultB.damage
-  return totalMultiplier * EMBER_SCAR_RATE
+  const cinema = input.cinemaLevel ?? 0
+  // 影画1：首次聚锋从 75% 提到 112.5%（其余聚锋不变）
+  const jufengRate = cinema >= 1 && loops.jufengCount > 0
+    ? ((loops.jufengCount - 1) * EMBER_SCAR_RATE + EMBER_SCAR_RATE * 1.5) / loops.jufengCount
+    : EMBER_SCAR_RATE
+  const qualifying = loops.jufengCount * meta.jufeng.damage * jufengRate
+    + (loops.changanCount * meta.changan.damage + loops.ultACount * meta.ultA.damage + ultBCount * meta.ultB.damage) * EMBER_SCAR_RATE
+  // 影画2：其他招式（EX/连携）按实际伤害 12% 也积攒
+  const otherMoves = cinema >= 2
+    ? ((input.exCount ?? 0) * meta.ex.damage + (input.chainCount ?? 0) * meta.chain.damage) * 0.12
+    : 0
+  return qualifying + otherMoves
 }
 
 /**
@@ -316,8 +340,16 @@ function patchSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
     chainCount: Math.max(0, Math.floor(state.chainCountTotal)),
     totalDecibel: Math.max(0, state.totalDecibel),
     ultimateCost: Number(cfg.ultimateCost),
+    cinemaLevel: cinemaLevelOf(cfg.sunbringerCinemaLevel),
   })
-  const ember = computeEmberScar({ meta, loops, ultBCount: ultRow.count })
+  const ember = computeEmberScar({
+    meta,
+    loops,
+    ultBCount: ultRow.count,
+    cinemaLevel: cinemaLevelOf(cfg.sunbringerCinemaLevel),
+    exCount: loops.exCount,
+    chainCount: Math.max(0, Math.floor(state.chainCountTotal)),
+  })
   if (!(ember > 0)) return
   const perCast = ember / Math.max(1, ultRow.count)
   // 绝对写（不是 +=）：patch 每轮都会跑，累加会把烬痕重复计入（幂等口径）
