@@ -6,6 +6,7 @@ import { activeRowFusionRulesSnapshot } from '@/logicEditor/fusion'
 import { INNER_LOOP_MAX_ITERATIONS } from '@/core/resource'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { DEFAULT_STUN_PLAN_PROJECTION_CODE, stunPlanProjectionFromCode } from '@/core/stunPlanProjection'
+import { continuousWindowSplit } from '@/core/continuousStun'
 import { calcStunAxis } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
@@ -307,6 +308,28 @@ export function createResourceCalc(
   // 下游统一从 calcOutput 取（名称保持，伤害池/结果页等无需改动）
   const resourceResult = computed<TeamResourceResult | null>(() => calcOutput.value?.resourceResult ?? null)
   const stunPoolResult = computed<StunPoolResult | null>(() => calcOutput.value?.stunPool ?? null)
+  /**
+   * **连续失衡读数**（用户口径 2026-10-25；施工图 `.claude/TASK-continuous-stun.md` §1/§8）。
+   *
+   * 纯追加、**不参与任何计算**：给出「开窗数 N + 末窗兑现 frac」，口径 =
+   * `continuousWindowSplit({ Σ = 毛失衡值, b = boss 失衡值, e = 每秒失衡值 × 窗长 })`。
+   *
+   * ⚠ `e` 必须用**正面量**（每秒失衡值 × 窗长，即用户模型里的"窗内每秒 100 点"），
+   * 不能用 `inAxisStunTotal / stunCount` 反推——后者按"每窗都完整"算，代回公式会自证 frac=1
+   * （步 2 实测 95/97 队如此，见施工图 §8）。
+   */
+  const continuousStun = computed(() => {
+    const pool = calcOutput.value?.stunPool
+    if (!pool) return null
+    const windowSeconds = computeWindowDuration()
+    const battleSeconds = effectiveBattleTime(configStore.enemy)
+    const rate = battleSeconds > 0 ? pool.grossStunBuildUp / battleSeconds : 0
+    return continuousWindowSplit({
+      totalBuildUp: pool.grossStunBuildUp,
+      bossStunValue: pool.bossStunValue,
+      eatenPerWindow: rate * windowSeconds,
+    })
+  })
   /** 失衡内异常状态（轴模式）：每元素触发次数/窗均覆盖（失衡内异常系统 v2） */
   const inStunAnomalyState = computed<InStunAnomalySummary | null>(() => calcOutput.value?.inStunAnomalyState ?? null)
   /** Boss 异常状态轴（轴模式）：逐窗状态链 + 风化覆盖层，极性紊乱点时归因数据源 */
@@ -832,6 +855,8 @@ const attributeLedger = computed(() => {
     resourceConfig,
     resourceResult,
     stunPoolResult,
+    /** 连续失衡读数（开窗数 + 末窗兑现；纯追加，零求值影响） */
+    continuousStun,
     inStunAnomalyState,
     bossAnomalyState,
     anomalyPoolResult,
