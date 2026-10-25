@@ -1058,8 +1058,16 @@
                   <div v-if="cell.stunChannelDeltaPct != null" class="cell-delta" :class="upliftCellClass(cell.stunChannelDeltaPct)">
                     失衡通道 {{ signed1(cell.stunChannelDeltaPct) }}pp
                   </div>
+                  <!-- **成本轴**（B7 用户 2026-10-20「现在只有收益没有消耗」）：每级命座恒 1 金，
+                       故「每金」= 逐级提升率；累计每金与逐级平均**不等**（复利 vs 算术，见 cinemaUpliftCost 头注释）。 -->
+                  <div class="cell-pergold" :title="`每金收益：累计 ${cellCost(cell).perGoldTotalPct?.toFixed(2) ?? '—'}% / 金（共 ${cellCost(cell).totalGold} 金）；逐级平均 ${cellCost(cell).perGoldMeanPct?.toFixed(2) ?? '—'}% / 金`">
+                    每金 {{ cellCost(cell).perGoldTotalPct == null ? '—' : signed1(cellCost(cell).perGoldTotalPct!) }}
+                    <span v-if="cellCost(cell).best" class="cell-pergold-best">
+                      · 最划算 C{{ cellCost(cell).best!.level }}
+                    </span>
+                  </div>
                   <div class="cell-steps">
-                    <span v-for="e in cell.lockedEntries" :key="e.to" class="cell-step" :title="`C${e.to - 1}→C${e.to}：${e.gainPct.toFixed(2)}%`">
+                    <span v-for="e in cell.lockedEntries" :key="e.to" class="cell-step" :title="`C${e.to - 1}→C${e.to}：${e.gainPct.toFixed(2)}%（${GOLD_PER_CINEMA_LEVEL} 金 ⇒ 每金 ${e.gainPct.toFixed(2)}%）`">
                       {{ signed1(e.gainPct) }}
                     </span>
                   </div>
@@ -1073,6 +1081,8 @@
           <b>锁 N</b> = {{ upliftLockMode === 'grid' ? '整张表统一（取第一行不吃 buff 的 C0 基线）' : '每行各自（取该行不吃 buff 的 C0 基线）' }}
           —— 单格内 C0→C6 恒用它，这样「命座让失衡次数变多」这条价值不会被重复计入。
           <b>失衡通道</b> = 不锁累计 − 锁累计（正 = 不锁时命座从失衡次数/攒条上多拿了收益）。
+          <b>每金</b> = 累计提升率 ÷ 总金数（每级命座恒 1 金，见 <code>goldSteps</code> 口径）；
+          「最划算 C{n}」= 逐级里每金收益最高那一级——因为累计每金是**复利**口径，与逐级算术平均不等，两个都要看。
           <br>
           <b>⚠ 整数台阶型命座会对锁值跳变</b>：如克拉蕾 C1「残痕积蓄效率 +20%」，
           层数 = floor(积蓄/每层) ⇒ +20% 是否跨过整数边界取决于基线在哪。
@@ -1139,6 +1149,8 @@ import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverl
 import { axisKindLabel } from '@/composables/difficultyAxis'
 import { axisCompareOf, axisCutMarkerOf, axisDetailOf, axisMarkerLegend, axisMarkerOf } from '@/composables/axisMarker'
 import { planCurveViewport, X_COMPRESS_DEFAULTS, type LaneXRange } from '@/composables/curveViewport'
+import { cinemaCostOf, GOLD_PER_CINEMA_LEVEL } from '@/composables/cinemaUpliftCost'
+import type { CinemaUpliftEntry as CinemaUpliftEntryType } from '@/composables/cinemaUplift'
 import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from '@/composables/resourceCalc/noAxisVulnShare'
 import type { KnobPointName } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
@@ -1512,6 +1524,13 @@ function upliftCellClass(v: number | null | undefined): string {
 }
 
 /** 网格按行优先渲染：每个 Boss 一行，行里按列顺序取格（`lock` = 该行的锁值，提到行首单列显示） */
+/**
+ * 单元格 → 成本轴（B7）。用 `cinemaUpliftCost`（纯函数、有判据），页面不自己算除法。
+ * 同格只算一次会很啰嗦，模板里多次读也不会重跑重活（纯算术，输入是已算好的 entries）。
+ */
+function cellCost(cell: { lockedEntries: CinemaUpliftEntryType[]; lockedTotalPct: number }) {
+  return cinemaCostOf(cell.lockedEntries, cell.lockedTotalPct)
+}
 const upliftGrid = computed(() => {
   const r = upliftResult.value
   if (!r) return []

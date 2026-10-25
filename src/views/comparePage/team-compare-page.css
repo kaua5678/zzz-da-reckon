@@ -553,7 +553,15 @@ svg .curve-hit {
   font-size: 10px;
   font-variant-numeric: tabular-nums;
 }
-.uplift-cell .cell-steps {
+.uplift-cell .cell-pergold {
+  font-size: 11px;
+  color: var(--fg-2);
+  margin-top: 2px;
+}
+.cell-pergold-best {
+  color: var(--c-success);
+}
+.cell-steps {
   margin-top: 4px;
   display: flex;
   flex-wrap: wrap;
