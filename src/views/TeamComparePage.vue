@@ -388,8 +388,9 @@
           <text v-for="(x, i) in xTickPositions" :key="'xt' + i" :x="x" :y="padT + plotH + 16" text-anchor="middle" class="chart-tick" font-size="10">{{ fmt(xTickLabels[i], 1) }}</text>
 
           <!-- 击杀线 100% + 200% 参考线 -->
-          <line :x1="padL" :y1="yOf(100)" :x2="padL + plotW" :y2="yOf(100)" stroke="#e88080" stroke-dasharray="6,4" opacity="0.8" />
-          <text :x="padL + 4" :y="yOf(100) - 4" fill="#e88080" font-size="10">击杀线 100%</text>
+          <!-- 击杀线走 .curve-kill-line（字面色值统一落在样式表，模板不再写 hex） -->
+          <line :x1="padL" :y1="yOf(100)" :x2="padL + plotW" :y2="yOf(100)" class="curve-kill-line time-exceeded" stroke-dasharray="6,4" opacity="0.8" />
+          <text :x="padL + 4" :y="yOf(100) - 4" class="curve-kill-label time-exceeded" font-size="10">击杀线 100%</text>
           <line v-if="yMax > 200" :x1="padL" :y1="yOf(200)" :x2="padL + plotW" :y2="yOf(200)" class="chart-refline" stroke-dasharray="4,4" />
           <text v-if="yMax > 200" :x="padL + 4" :y="yOf(200) - 4" class="chart-refline-text" font-size="10">200% 两倍血量</text>
 
@@ -555,7 +556,7 @@
           @pick="onCurve3dPick"
           :lanes="chart3dLanes"
           :cost-max="curveData.costMax"
-          :ratio-max="curveData.ratioMax"
+          :ratio-max="curveViewport.y.max"
           :color-of="colorOf"
           :point-label="pointLabel"
           :axis-label="curveEnv ? '危局期数（环境：各期血量+buff）' : `版本（${slotName(versionAxis.defaultSlot)}）`"
@@ -572,11 +573,33 @@
           <line v-for="(t, i) in curveXTicks" :key="'cxg' + i" :x1="t.x" :y1="padT" :x2="t.x" :y2="padT + plotH" class="chart-grid-x" />
           <text v-for="(t, i) in curveXTicks" :key="'cxt' + i" :x="t.x" :y="padT + plotH + 16" text-anchor="middle" class="chart-tick" font-size="10">{{ t.label }}</text>
 
-          <line :x1="padL" :y1="curveYOf(100)" :x2="padL + plotW" :y2="curveYOf(100)" stroke="#e88080" stroke-dasharray="6,4" opacity="0.8" />
-          <text :x="padL + 4" :y="curveYOf(100) - 4" fill="#e88080" font-size="10">击杀线 100%</text>
+          <!-- 击杀线：**域内**就画实线；**域外**（数据只到几十%时为了不浪费纵向空间而抬出画面）
+               就在顶边画一条带 ⤒ 的短标并写真实值——不许让它静默消失，也不许为它把数据压扁。 -->
+          <template v-if="curveViewport.y.max >= 100">
+            <line :x1="padL" :y1="curveYOf(100)" :x2="padL + plotW" :y2="curveYOf(100)" class="curve-kill-line time-exceeded" stroke-dasharray="6,4" opacity="0.8" />
+            <text :x="padL + 4" :y="curveYOf(100) - 4" class="curve-kill-label time-exceeded" font-size="10">击杀线 100%</text>
+          </template>
+          <template v-else>
+            <line :x1="padL" :y1="padT" :x2="padL + plotW" :y2="padT" class="curve-kill-line time-exceeded" stroke-dasharray="6,4" opacity="0.55" />
+            <text :x="padL + 4" :y="padT + 12" class="curve-kill-label time-exceeded" font-size="10">击杀线 100% ⤒ 在画面之上（纵向已按数据缩放）</text>
+          </template>
 
           <text :x="padL + plotW / 2" :y="padT + plotH + 34" text-anchor="middle" class="chart-axis-label" font-size="11">操作难度绝对值（交互加权 + 时间压力，与散点同尺）</text>
           <text :x="14" :y="padT + plotH / 2" text-anchor="middle" class="chart-axis-label" font-size="11" transform="rotate(-90 14 0)">伤害/血量 %</text>
+
+          <!-- **X 轴断口**（用户 2026-10-25「跨度太大，大面积只是横线」）：
+               只有真压过才画。断口画成两条斜线 + 「压掉 N 点」，读者一眼知道这段不是线性的。 -->
+          <g v-if="curveViewport.x.breaks.length > 0" class="curve-x-breaks">
+            <g v-for="(b, bi) in curveViewport.x.breaks" :key="'cxb' + bi">
+              <line
+                :x1="curveXOf(b.to) - 3" :y1="padT" :x2="curveXOf(b.to) + 3" :y2="padT + plotH"
+                class="curve-x-break-line" stroke-width="1.4"
+              />
+              <text :x="curveXOf(b.from) + 4" :y="padT + plotH - 6" class="curve-x-break-label" font-size="9">
+                ⇥ 压掉 {{ fmt(b.to - b.from, 0) }} 点
+              </text>
+            </g>
+          </g>
 
           <g v-for="(s, si) in curveSeriesPx" :key="'cs' + si">
             <line
@@ -1115,6 +1138,7 @@ import { useLogicEditorStore } from '@/stores/logicEditor'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, axisWorseThanNoAxis, type CurveDatum, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
 import { axisCompareOf, axisCutMarkerOf, axisDetailOf, axisMarkerLegend, axisMarkerOf } from '@/composables/axisMarker'
+import { planCurveViewport, type LaneXRange } from '@/composables/curveViewport'
 import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from '@/composables/resourceCalc/noAxisVulnShare'
 import type { KnobPointName } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
@@ -2161,20 +2185,45 @@ const curveLegendItems = computed(() => curveAllSeries.value.map(s => ({
   color: colorOf(s.presetId),
   title: s.label + '：点击' + (curveLegend.isVisible(s.laneKey) ? '隐藏' : '显示') + '（隐藏后不参与坐标轴与明细表）',
 })))
+/**
+ * **曲线取值域**（用户 2026-10-25「xy 轴的标尺合理修改一下」）——唯一事实源 = `curveViewport.ts`。
+ * 两个独立病灶：① Y 上界贴合数据（击杀线改「域外锚点」，不再为了它把数据压扁）；
+ * ② X 轴只在「某条道占了大部分跨度、中间有大片真空」时压掉空白，并如实画断口。
+ */
+const curveViewport = computed(() => {
+  const series = curveData.value?.series ?? []
+  const ratios: number[] = []
+  const costs: number[] = []
+  const laneRanges: LaneXRange[] = []
+  for (const s of series) {
+    let min = Infinity; let max = -Infinity
+    for (const p of s.points) { ratios.push(p.ratio); costs.push(p.cost); min = Math.min(min, p.cost); max = Math.max(max, p.cost) }
+    for (const t of s.axisTruncated) if (t.x !== undefined) { costs.push(t.x); min = Math.min(min, t.x); max = Math.max(max, t.x) }
+    if (Number.isFinite(min) && Number.isFinite(max)) laneRanges.push({ laneKey: s.laneKey, min, max })
+  }
+  return planCurveViewport({ ratios, costs, laneRanges })
+})
+/** 归一化位置 → 像素（x 走可能压缩的分段映射，y 走线性） */
 function curveXOf(v: number): number {
-  return padL + (v / Math.max(1, curveData.value?.costMax ?? 1)) * plotW.value
+  return padL + curveViewport.value.x.project(v) * plotW.value
 }
 function curveYOf(v: number): number {
-  return padT + plotH - (v / Math.max(1, curveData.value?.ratioMax ?? 100)) * plotH
+  const { min, max } = curveViewport.value.y
+  const span = max - min
+  if (!(span > 0)) return padT + plotH
+  return padT + plotH - ((Math.min(max, Math.max(min, v)) - min) / span) * plotH
 }
-const curveYTicks = computed(() => {
-  const max = curveData.value?.ratioMax ?? 100
-  const step = max <= 100 ? 20 : max <= 200 ? 50 : 100
-  const out: number[] = []
-  for (let v = 0; v <= max; v += step) out.push(v)
-  return out
+const curveYTicks = computed(() => curveViewport.value.y.ticks)
+/** X 刻度：按原值取整齐档，但位置走压缩映射（刻度标的是**真实点数**，不是压缩后位置） */
+const curveXTicks = computed(() => {
+  const domain = curveViewport.value.x
+  if (domain.breaks.length === 0) return (curveData.value?.costTicks ?? [0]).map(c => ({ x: curveXOf(c), label: c }))
+  // 压缩时不用等距刻度（等距会切在断口里），改画「每个数据段的两端 + 断口两端」
+  const values = new Set<number>()
+  for (const b of domain.breaks) { values.add(b.from); values.add(b.to) }
+  values.add(domain.min); values.add(domain.max)
+  return [...values].sort((a, b) => a - b).map(c => ({ x: curveXOf(c), label: c }))
 })
-const curveXTicks = computed(() => (curveData.value?.costTicks ?? [0]).map(c => ({ x: curveXOf(c), label: c })))
 /** 次数显示：整数直接写，小数保留 1 位（引擎次数常带小数，见 difficultyCurve.ts） */
 function cntNum(v: number): string {
   return Number.isInteger(v) ? String(v) : fmt(v, 1)
@@ -2499,7 +2548,8 @@ const curveAxisCompare = computed(() => {
 function axisMoveNameOf(slot: number, moveId: string): string {
   const skills = catalogStore.getAgentSkills(configStore.team[slot]?.agentId ?? '')
   const m = findMoveById(skills, moveId)
-  return m?.name?.zhCN ?? moveId
+  // 走单一解析器（CC-456）：手写名称兜底会被 localizedSingleSource 源码锁拦下，别再散写
+  return m ? localized(m.name, moveId) : moveId
 }
 /** 被砍档（R10 打叉）的悬停态：与曲线点 hover（`curveHover`）分开，两者图形不同、文案不同 */
 const cutHover = ref<{ si: number; ci: number } | null>(null)

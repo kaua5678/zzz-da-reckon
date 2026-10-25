@@ -295,6 +295,15 @@
   font-size: 11px;
 }
 
+/* 击杀线（两主题通用的品牌红）。**不在这里再写一个 hex**——数值落在 .time-exceeded 那条规则里，
+   这里只做属性派发：stroke/fill 取 currentColor，颜色由模板上的 .time-exceeded 类提供。 */
+.curve-kill-line {
+  stroke: currentColor;
+}
+.curve-kill-label {
+  fill: currentColor;
+}
+
 .time-warn {
   background: rgba(255, 80, 80, 0.06);
 }
@@ -334,6 +343,16 @@
 
 /* 非轴参照曲线（用户 2026-10-16：「表示模拟均匀战斗而不是集中利用失衡易伤」）：
    灰色空心小圆 + 虚线 —— 与轴曲线（队伍色实心圆 + 实线）形状与线型都不同，一眼可分。 */
+/* ===== 曲线取值域自适应（2026-10-25 用户口径「xy 轴标尺」）===== */
+/* X 轴断口：压掉空白区间的分界（两条斜线）+ 文案。墨色跟随页面，不写死。 */
+.curve-x-break-line {
+  stroke: var(--fg-3);
+  opacity: 0.75;
+}
+.curve-x-break-label {
+  fill: var(--fg-3);
+}
+
 /* ===== 轴态编码（R10，2026-10-16 用户口径）=====
    形状 = 轴态，颜色仍 = 队伍身份。四种图形与既有五种（实心圆/空心菱形/空心方框/圆环/灰点）互斥，
    口径与映射的唯一事实源 = `composables/axisMarker.ts`。 */
