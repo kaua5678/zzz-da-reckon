@@ -24,7 +24,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { STUN_TRIGGER_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
-import { buildDecibelLedger } from '@/core/decibelLedger'
+import { buildDecibelLedger } from '@/test/decibelLedger'
 import { teamPresets } from '@/data/teamPresets'
 
 const TEAM = ['auto-1461-1031-1521', 'auto-1041-1571-1211', 'yixuan-trigger-lucia']

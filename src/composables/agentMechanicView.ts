@@ -366,9 +366,5 @@ export {
   facetByContent,
   CONTENT_KIND_ORDER,
 } from '@/core/contributionLedger'
-// 倍率账 / 喧响账（通用贡献账的另两个适配器，与属性账同形）
-export {
-  buildMultiplierLedger,
-  MULTIPLIER_ROW_LABELS,
-} from '@/composables/resourceCalc/multiplierLedger'
-export { buildDecibelLedger } from '@/core/decibelLedger'
+// 2026-10-25：倍率账 / 喧响账两个适配器**按用户裁决删除**（属性贡献账页不保留这两类页签；
+// 喧响账的「未覆盖字段」校验能力下沉到 `src/test/decibelLedger.ts`，只作测试仪器）。

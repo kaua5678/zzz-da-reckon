@@ -6,7 +6,7 @@
  * 这就是「漏源」的机器判据（属性账那次漏了音擎高级词条，正是靠同一类判据抓到的）。
  */
 import { describe, expect, it } from 'vitest'
-import { buildDecibelLedger } from '@/core/decibelLedger'
+import { buildDecibelLedger } from '@/test/decibelLedger'
 import type { DecibelSource } from '@/types/resource'
 
 function mkSource(overrides: Partial<DecibelSource> = {}): DecibelSource {
