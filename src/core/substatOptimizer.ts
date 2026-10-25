@@ -20,6 +20,7 @@ import { calcPanel, type PanelCalcConfig } from './panel'
 import { getAgentMechanic } from '@/mechanics/registry'
 import type { MechanicTeamMember } from '@/mechanics/types'
 import { applyAgentPanelHooks } from './agentPanelPhases'
+import type { SourcePanelsBySlot } from './sourcePanels'
 
 /** 暴击率副词条步长：单一来源在 `data/critMultiplier.ts`（乘区溢出转化与百暴预算共用；core 可 import data） */
 import { CRIT_RATE_STEP } from '@/data/critMultiplier'
@@ -202,6 +203,12 @@ export interface DefaultSubStatPanelHooks {
   /** 队伍成员快照（`MechanicTeamMember[]`）；缺省 = 只有本槽的空队 */
   team?: readonly MechanicTeamMember[]
   /**
+   * 全队各槽的源面板（槽位键控，`core/sourcePanels#SourcePanelsBySlot`）——原样派发给
+   * `applyPanel` / `teamPanelEffects`。缺省 undefined = 调用方没建源面板（单测直调），
+   * 钩子侧按「读不到就不加」处理，与 `computePanelPhases` 的同一份数据同源。
+   */
+  sourcePanels?: SourcePanelsBySlot
+  /**
    * 是否把**队友给本槽的面板加成**（`teamPanelEffects`）也算进基线。
    * - 编排层优化器（起点要与伤害管线同面板）传 `true`；
    * - store 配装推荐（推荐配装与队友无关的口径）不传 ⇒ 只算角色自身面板。
@@ -244,6 +251,7 @@ function computeNoSubstatPanel(input: DefaultSubStatInput): PanelValues {
       potentialLevel: input.config.potentialLevel ?? 6,
       team: input.panelHooks.team ?? [],
       settings: input.panelHooks.settings ?? {},
+      sourcePanels: input.panelHooks.sourcePanels,
       additionalAbilityActive: input.panelHooks.additionalAbilityActive,
       enemyStunVuln: input.panelHooks.enemyStunVuln,
       withTeamPanelEffects: input.panelHooks.withTeamPanelEffects,

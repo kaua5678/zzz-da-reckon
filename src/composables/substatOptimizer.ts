@@ -35,6 +35,7 @@ import {
   resolveMechanicSettings,
   resolveSlotPanelBuffInputs,
 } from '@/composables/resourceCalc/panelPhases'
+import { buildSourcePanelsBySlot } from '@/core/sourcePanels'
 
 /**
  * CC-183（第 206 轮）：真实伤害精修。
@@ -128,6 +129,9 @@ export function computeSubstatAllocationForSlot(
         settings: resolveMechanicSettings(configStore),
         additionalAbilityActive: additionalAbilityActiveForPanel(slot, configStore, catalogStore),
         team: buildMechanicTeamMembers(configStore, catalogStore),
+        // 源面板槽位视图：与 `computePanelPhases` 同一份表（`setInfo.sourcePanelsByOwner`）折成 slot 键，
+        // 供 `teamPanelEffects` 里「读队友面板做转模」的模块（知更鸟离场守护读自身生命等）复刻伤害管线。
+        sourcePanels: buildSourcePanelsBySlot(setInfo.sourcePanelsByOwner, buildMechanicTeamMembers(configStore, catalogStore)),
         enemyStunVuln: configStore.enemy.stunVuln,
         // 编排层优化器的起点必须复刻伤害管线面板 ⇒ 队友给本槽的面板加成也要算
         withTeamPanelEffects: true,

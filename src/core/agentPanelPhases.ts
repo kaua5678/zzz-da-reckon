@@ -22,6 +22,7 @@
 import type { Agent, PanelValues } from '@/types/catalog'
 import { getAgentMechanic } from '@/mechanics/registry'
 import type { AgentPanelInput, MechanicTeamMember } from '@/mechanics/types'
+import type { SourcePanelsBySlot } from './sourcePanels'
 
 /**
  * 角色 `combatBuffs` 是否已自带 3/5 命技能等级提升（避免通用规则重复叠加）。
@@ -57,6 +58,13 @@ export interface ApplyAgentPanelHooksInput {
   /** 敌方失衡易伤基础值（叶瞬光帷幕算式的外部输入） */
   enemyStunVuln?: number
   /**
+   * 全队各槽的**源面板**（`./sourcePanels#SourcePanelsBySlot`，与 `calcPanel` 的
+   * `sourcePanelsByOwner` 同源同实例）。原样派发给 `applyPanel` 与 `teamPanelEffects`
+   * ⇒ 只走 `calcPanel` 的消费者（百暴基线、优化器起点）也能看到与编排层同一份源面板。
+   * 缺省 undefined = 无源面板（钩子侧必须容忍：单测直调本函数时常不建源面板）。
+   */
+  sourcePanels?: SourcePanelsBySlot
+  /**
    * 是否派发队伍级面板效果（`teamPanelEffects`，队友给本槽的面板加成）。
    * - `true`：复刻伤害管线面板（编排层优化器的起点面板要这个，否则起点与真实面板又差一层）；
    * - 缺省 / `false`：只算**角色自身**面板（store 配装推荐口径：推荐配装与队友无关）。
@@ -84,6 +92,7 @@ export function applyAgentPanelHooks(input: ApplyAgentPanelHooksInput): PanelVal
     panel,
     settings: input.settings,
     enemyStunVuln: input.enemyStunVuln ?? 0,
+    sourcePanels: input.sourcePanels,
   } satisfies AgentPanelInput)
   applyDefaultCinemaSkillLevelBonus(panel, agent, input.cinemaLevel)
   // 队伍级面板效果（`teamPanelEffects`）：与 `computePanelPhases` 的第二个派发点同序（按槽位序、可交换加法）。
@@ -101,6 +110,7 @@ export function applyAgentPanelHooks(input: ApplyAgentPanelHooksInput): PanelVal
         targetAgent: agent,
         panel,
         settings: input.settings,
+        sourcePanels: input.sourcePanels,
       })
     }
   }

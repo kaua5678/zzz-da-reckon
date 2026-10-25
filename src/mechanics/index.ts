@@ -6,6 +6,7 @@ import { aliceMechanic } from './agents/alice'
 import { roxyMechanic } from './agents/roxy'
 import { claretMechanic } from './agents/claret'
 import { sunbringerMechanic } from './agents/sunbringer'
+import { robinMechanic } from './agents/robin'
 import { janeMechanic } from './agents/jane'
 import { burniceMechanic } from './agents/burnice'
 import { yuzuhaMechanic } from './agents/yuzuha'
@@ -104,6 +105,7 @@ registerWithSpecSettings(aliceMechanic)
 registerWithSpecSettings(roxyMechanic)
 registerWithSpecSettings(claretMechanic)
 registerWithSpecSettings(sunbringerMechanic)
+registerWithSpecSettings(robinMechanic)
 registerWithSpecSettings(janeMechanic)
 registerWithSpecSettings(burniceMechanic)
 registerWithSpecSettings(yuzuhaMechanic)

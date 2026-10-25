@@ -11,10 +11,10 @@ import {
   computeEmberScar,
   SHARPNESS_INITIAL,
   SHARPNESS_COST_PER_EX,
-  GASH_PER_LAYER,
   JU_FENG_WISH_COST,
   WISH_PER_MAIM,
 } from '@/mechanics/agents/sunbringer'
+import { GASH_PER_LAYER } from '@/mechanics/gashMaim'
 
 const meta = {
   basic: { damagePerSec: 268.7, gashPerSec: 80.3, sharpPerSec: 2.0 },

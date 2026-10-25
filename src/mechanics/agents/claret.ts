@@ -19,6 +19,7 @@ import { buildSpecEventExecutions } from '@/specs/mechanics'
 import { pickThirdNamedBasicSegment, fusedRowValue, findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { GASH_PER_LAYER, GASH_MAX_STACKS, allocateBossGashPool } from '@/mechanics/gashMaim'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import type { AgentAxisActionExpandInput } from '@/mechanics/typesHooks'
@@ -74,8 +75,6 @@ export const SHARPNESS_COST_PER_EX = 60
  * ⚠️ 该条此前**零引用**（只写在文档/注释里），本次接入 `computeClaretSharpResource`。
  */
 export const SHARPNESS_ULTIMATE_GAIN = 10
-/** 残痕值：每 600 点 = [残痕] 1 层（1 次毁伤）（用户口径 2026-09-03：残痕600点可以造成一次毁伤） */
-export const GASH_PER_LAYER = 600
 /**
  * **同时存量**上限 3 层（敌人身上最多挂 3 层，超出部分溢出浪费）。
  * ⚠️ 这**不是整局毁伤次数上限**（用户口径 2026-09-12：「3层限制这个是单次，我们全局计算器怎么可能一局只有3次毁伤呢」）——
@@ -111,7 +110,6 @@ export const GASH_PER_LAYER = 600
  * @fact agent:1611/残痕时序 近似: 「同时存量≤3层」是时序约束，总量口径下 `consumed = min(L, Ds)` 是**所有自洽读法的共同上界且紧**（10 400 599 个交错穷举零越界；细粒度交错可达该界，而平A项按定义即「秒均×时间」= 连续）；天花板 = 病态「先攒满再消耗」读法取 `min(L,Ds,cap)`，幅度 `max(0, min(L,Ds)−cap)`，cap 咬合充要条件 `L>3 且 Ds>3`（实测默认夹具 ≤1 层、滑块推满 ≤53 层） | 据 nanoka 3.2 raw passive.level.1611501.desc[0]@2026-09-20·外部 6 语言×4 版本复核零差异@2026-09-20·R54 穷举 10400599 交错@2026-09-20·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/claretGashTiming.test.ts | 锚 src/mechanics/agents/claret.ts#computeClaretSharpResource | 信 高
  * ⟳复核: 官方若给出 [残痕] 的时长/衰减子句，或引擎获得逐事件顺序通道（可落真队列）时，替换本上界并复核 cap 咬合域 | 到期 2027-03-31
  */
-export const GASH_MAX_STACKS = 3
 /** 残余积蓄效率：核心被动 +50%（Lv.7）/ 影画1 锐暴 +20% */
 export const GASH_EFF_CORE = 50
 export const GASH_EFF_C1 = 20
@@ -608,7 +606,19 @@ export function computeClaretSharpResource(input: {
   // 10400599 交错零越界且细粒度交错可达，见 GASH_MAX_STACKS 上方 @fact）。病态「先攒满再消耗」读法取
   // `min(L, Ds, cap)` ⇒ 高估幅度 `max(0, min(L,Ds) − cap)`，充要条件 `L>cap 且 Ds>cap`；实测默认夹具 ≤1 层、
   // 滑块推满（Ds=80）≤53 层。升级路径 = 引擎获得逐事件顺序通道后落真队列（**不需要绝对时刻**，只需顺序）。
-  const gashStacks = Math.max(0, Math.floor(gashValuePct / GASH_PER_LAYER))
+  /**
+   * 整局可用层数 —— 走 **锋御通用池**（`mechanics/gashMaim#allocateBossGashPool`）：
+   * 本槽贡献 `gashValuePct` 点、需求 = 层预算（斩金断铁 1/次 + 葬血强袭 3/段），单槽调用时结果
+   * 恒等于 `min(floor(gashValuePct/600), demand)`（构造性恒等，见该函数头「单槽 = 逐位不变」）。
+   *
+   * ⚠ 这里**先**取层数（demand 用 Infinity 占位）——本模块的层预算在覆盖率与轴内扣减之后才成形，
+   * 具体分配仍走下面的显式算式；共用池的分配入口留给「多槽同队」那一档（当前未接线，见 gashMaim debt）。
+   */
+  const gashStacks = allocateBossGashPool({
+    contributions: [{ slot: 0, points: gashValuePct }],
+    demand: [],
+    priority: [0],
+  }).layers
   const cleaveCount = Math.max(0, Math.floor(input.cleaveSpecialCount))
   const burialCount = Math.max(0, Math.floor(input.bloodBurialCount))
   const c6Extra = cinemaLevel >= 6

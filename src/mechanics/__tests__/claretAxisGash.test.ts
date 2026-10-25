@@ -38,8 +38,8 @@ import {
   MAIM_MOVE_ID,
   BURIAL_FULL_SECONDS,
   BURIAL_INTERRUPTED_SECONDS,
-  GASH_PER_LAYER,
 } from '@/mechanics/agents/claret'
+import { GASH_PER_LAYER } from '@/mechanics/gashMaim'
 
 /** 锻星#3（1611007）表值 = 204/次；用户例子里的「1800 点」≈ 该招若干次 */
 const INSCRIPTION_MOVE = '1611007'

@@ -27,6 +27,7 @@ import { calcPanel, panelAt } from '@/core/panel'
 import { normalizePanelStatAlias } from '@/core/buff'
 import { localized } from '@/utils/format'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
+import { buildSourcePanelsBySlot } from '@/core/sourcePanels'
 import type { CalcRoundThreads } from './roundThreads'
 import type { ModuleFeedback } from '@/mechanics/types'
 import {
@@ -544,6 +545,10 @@ export function computePanelPhases(
   const wEngine = char.wEngineId ? catalogStore.wEnginesMap.get(char.wEngineId) : undefined
 
   const { teammateBuffs: allTeammateBuffs, sourcePanelsByOwner, effectCoverageMap, team } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore, wEngineCoverages)
+  // 源面板的**槽位视图**（`core/sourcePanels`）：同一批面板对象折成 slot → { outOfCombat, inCombat }，
+  // 供 `applyPanel` / `teamPanelEffects` 读队友面板做转模（此前只能按 agentId 自建第二份表 ⇒ 60 个模块各抄一遍）。
+  // 值不拷贝 ⇒ 与 `sourcePanelsByOwner` 逐位同源；空槽不产条目（见 `buildSourcePanelsBySlot`）。
+  const sourcePanels = buildSourcePanelsBySlot(sourcePanelsByOwner, configStore.team.map((char, i) => ({ slot: i, agentId: char.agentId })))
 
   // 计算面板
   const result = calcPanel(
@@ -593,6 +598,7 @@ export function computePanelPhases(
     // 原住在 damagePool.ts 的 `row.agentId === '1431'` 分支（2026-09-17 round 18 / R15-d 迁入模块）。
     // 静态敌人配置、非相位量 ⇒ 每次面板重算取当时值，与原先伤害池逐行读同一份。
     enemyStunVuln: configStore.enemy.stunVuln,
+    sourcePanels,
   })
 
   // ── 队伍级面板效果（规则 6，2026-09-17 round 20 R20-h3）────────────────────────────
@@ -619,6 +625,7 @@ export function computePanelPhases(
       targetAgent: agent,
       panel,
       settings: mechanismSettings,
+      sourcePanels,
       // 结构化记账（2026-10-20）：钩子上报自己写了什么 ⇒ 属性贡献账能把它单独列成一行，
       // 而不是从面板差值反推（差值会把「钩子写入」与「主副词条」等混成一个不明差额）。
       report: (entry) => {

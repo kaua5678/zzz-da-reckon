@@ -8,6 +8,7 @@ import { getRowValue } from '@/data/moveTableQueries'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { allocateBossGashPool } from '@/mechanics/gashMaim'
 
 /**
  * 挽昼（1601·锋御/燎源）——v1 测试服占位包（nanoka **3.4.1+19850203** 热更包），2026-10-25 第二刀 = **六条资源循环**。
@@ -48,10 +49,6 @@ export const POLAR_DAY_DEF_IGNORE = 20
 export const SHARPNESS_INITIAL = 60
 /** 锐能：强化特殊技单发消耗（raw「锐能消耗 30点」） */
 export const SHARPNESS_COST_PER_EX = 30
-/** 残痕：每 600 点 = 1 层（用户裁决：沿用克拉蕾口径） */
-export const GASH_PER_LAYER = 600
-/** 残痕：敌人身上同时存量上限 3 层 */
-export const GASH_MAX_STACKS = 3
 /** 愿力：每消除 1 层残痕 +40，上限 160 */
 export const WISH_PER_MAIM = 40
 export const WISH_MAX = 160
@@ -163,16 +160,42 @@ export function solveSunbringerLoops(input: {
   budget = Math.max(0, budget - exCount * meta.ex.actionTime)
 
   const gash = meta.basic.gashPerSec * basicTime + exCount * meta.ex.gash + chainCount * meta.chain.gash
-  const gashLayers = Math.max(0, Math.floor(gash / GASH_PER_LAYER))
   // 消耗层：强化特殊技与连携技都会「重击命中后消耗」，每次最多 3 层
   const maimDemand = 3 * (exCount + chainCount)
-  const maimCount = Math.max(0, Math.min(gashLayers, maimDemand))
+  // 残痕池走**锋御通用池**（`mechanics/gashMaim#allocateBossGashPool`）：单槽调用 = min(层, 需求)，逐位不变；
+  // 多锋御同队时由该函数把各槽贡献合并（当前未接线，见 gashMaim 的 debt 段）。
+  const gashPool = allocateBossGashPool({
+    contributions: [{ slot: 0, points: gash }],
+    demand: [{ slot: 0, layers: maimDemand }],
+    priority: [0],
+  })
+  const gashLayers = gashPool.layers
+  const maimCount = gashPool.bySlot[0] ?? 0
 
   // 影画1：进入战场立即获得 120 愿力（勘域 180s 一次 ⇒ 每局一次）
   const wishFromEntry = cinemaLevelOf(input.cinemaLevel) >= 1 ? 120 : 0
   const wishTotal = maimCount * WISH_PER_MAIM + wishFromEntry
+  /**
+   * 愿力**上限 160**（raw 核心被动 Lv.7「每消除 1 层残痕获得 40 点愿力，最多 160 点」）：
+   * 逐层入账、攒满 120 立刻转化一次聚锋（银行余量永远 < 120，故上限只防「攒过 160」这件不可能的事）。
+   *
+   * ⚠ 与闭式 `floor(wishTotal / 120)` 逐位等价（WISH_MAX = 160 > 120 + 40 ⇒ 钳制永不咬合）：
+   *   这条钳制不是数值近似，而是把「上限」这个原文口径写进代码，避免下一个人再从注释里推断它。
+   */
+  let wishBank = 0
+  let jufengFromWish = 0
+  const depositWish = (amount: number) => {
+    wishBank = Math.min(WISH_MAX, wishBank + Math.max(0, amount))
+    if (wishBank >= JU_FENG_WISH_COST) {
+      wishBank -= JU_FENG_WISH_COST
+      jufengFromWish += 1
+    }
+  }
+  // 顺序与原文一致：先进场（影画1 的 +120），再逐层消除残痕换愿力
+  if (wishFromEntry > 0) depositWish(wishFromEntry)
+  for (let i = 0; i < maimCount; i++) depositWish(WISH_PER_MAIM)
   const jufengMax = meta.jufeng.actionTime > 0 ? Math.floor(budget / meta.jufeng.actionTime) : 0
-  const jufengCount = Math.max(0, Math.min(Math.floor(wishTotal / JU_FENG_WISH_COST), jufengMax))
+  const jufengCount = Math.max(0, Math.min(jufengFromWish, jufengMax))
   budget = Math.max(0, budget - jufengCount * meta.jufeng.actionTime)
 
   const changanMax = meta.changan.actionTime > 0 ? Math.floor(budget / meta.changan.actionTime) : 0

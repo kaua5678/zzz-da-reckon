@@ -803,3 +803,18 @@ elementResReduction= panelElementStat(source, 'enemyRes', element)  // 元素减
 
 **已知缺口**：影画 3–6 仍为 `TestKey_PlaceHolder`（1/2 文本已随热更给出，未实现）；极昼窗口状态机（满覆盖近似）与「队友毁伤触发快速支援聚锋 3s CD」未建模；终结技二段链只发「此行，共赴前路」，二段「此愿，重塑万象」复用引擎既有终结技行并叠加烬痕（避免双计）。
 
+---
+
+### 知更鸟（1661）—— 防护/以太·离场守护（v1 测试服占位包，2026-10-25 第 3 刀）
+
+**当前实现状态 [已实现·离场守护防御 + 登场值循环 2026-10-25]**（实现位置：`src/mechanics/agents/robin.ts` + spec `1661.json`；测试 `src/mechanics/__tests__/robinGuard.test.ts` 9 例）。含：
+① **离场守护·全队固定防御**（原文「特殊技：离场技」条目）：`floor((初始生命 − 16000) / 1000) × (44 + 3×Lv)`，上限 `440 + 30×Lv`（Lv12 = 每档 80 / 上限 800），持 [Buff强化点] 时**效果与上限各 +25%**；落点 = 全队 `inCombatDefFlat`（锋御以 def 作伤害基底 ⇒ 伤害项），读**知更鸟自己**的源面板局外生命（`panelOfSlot(sourcePanels, slot, 'outOfCombat')`）；
+② **登场值循环**：追加攻击 `floor(有效战斗时间 / 8)` 次（**仅在队有队友时**，原文「队伍中其他操作中的角色命中」）→ 每次 +20、同时上限 120 → 每 100 点触发 1 次登场技（moveId 1661011，快速支援语义）→ 获 [Buff强化点] ⇒ 防御 ×1.25。
+③ 滑块 `robin.buffPointActive`（缺省 1；0 = 白板离场守护）。
+
+**未建模（口径已留档）**：护盾量（2%/3%/4%/6% 生命）、抗打断/无敌（生存面）；「每毁伤回 15 能量」缺跨角色毁伤计数通道；「≥40 能量升强化追加（1661006）」需与离线能量池联立。
+
+**共享机制**：残痕/毁伤 = 锋御通用池（`src/mechanics/gashMaim.ts`，用户 2026-10-25 裁决），克拉蕾/挽昼都读它；多锋御整队分配仍挂 debt（双锋御队当前不存在）。
+
+**面板管线**：`SourcePanelsByOwner` 已沿 `computePanelPhases → applyPanel/teamPanelEffects` 与 `applyAgentPanelHooks` 两处派发透传，槽位访问器 `core/sourcePanels#panelOfSlot`；接入本身零 delta（`sourcePanelsDispatch.test.ts` 4 例）。
+

@@ -18,6 +18,7 @@ import type {
 } from '@/types/resource'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { SourcePanelsByOwner } from '@/core/buff'
+import type { SourcePanelsBySlot } from '@/core/sourcePanels'
 import type { StackActionCost } from '@/core/stunAxisStack'
 import type { SubstatTemplate } from '@/core/substatOptimizer'
 import type { AnomalySkillExecution } from '@/core/anomalyPool/helpers'
@@ -90,6 +91,8 @@ export interface AgentPanelInput {
    * `damagePanels` 是两次 `computePanel` 的不同对象实例（`buildCharConfig` 各算一份）。
    */
   enemyStunVuln: number
+  /** 全队各槽的**源面板**（同 `AgentTeamPanelEffectInput.sourcePanels`；键 = 槽位号，取用走 `panelOfSlot`） */
+  sourcePanels?: SourcePanelsBySlot
 }
 
 /**
@@ -143,6 +146,11 @@ export interface AgentTeamPanelEffectInput {
   targetAgent: Agent
   /** 目标槽位的面板（**可写**；已含队友 buff 与该槽自己 `applyPanel` 的结果） */
   panel: PanelValues
+  /**
+   * 全队各槽的**源面板**（键 = 槽位号；`core/sourcePanels#buildSourcePanelsBySlot` 由
+   * `calcPanel` 的 `sourcePanelsByOwner` 折成，同源同实例）。取用一律 `panelOfSlot(sourcePanels, slot, phase)`。
+   */
+  sourcePanels?: SourcePanelsBySlot
   /**
    * 结构化记账（可选，2026-10-20）：钩子把「我改了什么」逐条上报，用于属性贡献账
    * （`core/contributionLedger.ts`）与展示透明化。

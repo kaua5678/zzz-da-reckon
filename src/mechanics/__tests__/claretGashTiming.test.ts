@@ -43,7 +43,8 @@
 import { describe, it, expect } from 'vitest'
 import { setupHarness, type HarnessTeamSlot } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { GASH_MAX_STACKS, BURIAL_MAIM_PER_CAST, GASH_PER_LAYER } from '@/mechanics/agents/claret'
+import { BURIAL_MAIM_PER_CAST } from '@/mechanics/agents/claret'
+import { GASH_MAX_STACKS, GASH_PER_LAYER } from '@/mechanics/gashMaim'
 
 /**
  * 逐事件模拟：`L` 层可造、`Ds` 次可消耗（每次 1 层），`cap` 为同时存量上限。

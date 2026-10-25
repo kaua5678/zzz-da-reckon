@@ -524,7 +524,7 @@
   "outerExit": "stable"
  },
  "sunbringer-roxy-robin": {
-  "slack": 2,
+  "slack": 0.8,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
