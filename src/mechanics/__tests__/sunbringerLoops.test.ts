@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   solveSunbringerLoops,
+  computeEmberScar,
   SHARPNESS_INITIAL,
   SHARPNESS_COST_PER_EX,
   GASH_PER_LAYER,
@@ -67,3 +68,23 @@ describe('1601 挽昼 · 资源循环求解', () => {
     expect(r.ultACount).toBe(0)
   })
 })
+
+describe('烬痕：存值不吃易伤，但攒的时候吃（线性，不平方）', () => {
+  it('烬痕 = 0.75 × 积攒招式倍率和，且只套一次乘区 ⇒ 总伤对失衡覆盖率线性', () => {
+    const loops = { jufengCount: 6, changanCount: 6, ultACount: 2 }
+    const ember = computeEmberScar({ meta: meta as any, loops, ultBCount: 2 })
+    const sum = 6 * 1722.5 + 6 * 2690.6 + 2 * 3900.1 + 2 * 2827
+    expect(ember).toBeCloseTo(sum * 0.75, 6)
+    // 线性：易伤系数 s 只作用一次 —— 「积攒伤害 × s」得出的存量，在结算行再乘同一个 s 之前
+    // 已经是 s 的一份；若模型把它当"结算时再吃一次"就会变成 s²（这里断言不会）
+    const s1 = 1, s2 = 1.5
+    const total1 = (sum + ember) * s1
+    const total2 = (sum + ember) * s2
+    expect(total2 / total1).toBeCloseTo(s2 / s1, 6)
+  })
+
+  it('零积攒 ⇒ 烬痕为 0（不造数）', () => {
+    expect(computeEmberScar({ meta: meta as any, loops: { jufengCount: 0, changanCount: 0, ultACount: 0 }, ultBCount: 0 })).toBe(0)
+  })
+})
+

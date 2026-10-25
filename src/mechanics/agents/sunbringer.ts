@@ -25,7 +25,7 @@ import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/mo
  * | 愿力 | 每层 +40（上限 160）⇒ **每 3 层 = 1 次聚锋**（120） | raw 核心被动 Lv.7 |
  * | 链齿/旗令 | 每次聚锋各 +1；链齿 → 长暗终焉；**旗令优先终结技·此行共赴前路**（永昼之炬按 0 次） | 用户裁决 2026-10-25 |
  * | 愿核 | 终结技 A 消耗 1 旗令 → 1 愿核 → 解除 B（此愿，重塑万象） | raw |
- * | 烬痕 | 聚锋/长暗终焉/两个终结技**实际伤害的 75%**；B 清空时**等量计入总伤害** | raw + 用户裁决 2026-10-25 |
+ * | 烬痕 | 聚锋/长暗终焉/两个终结技**实际伤害的 75%**，存下来就是**固定数值**——不吃失衡易伤、不吃任何属性；B 清空时等量计入总伤害 | raw + 用户裁决 2026-10-25（"存下来的数字已经固定死了"） |
  *
  * ## 建模取舍（都写在行名/注释里，便于复核）
  * - **次数上限靠时间**：模块按 `combatTime` 顺序分配预算（EX → 聚锋 → 长暗终焉），超预算就少打；
@@ -274,6 +274,27 @@ function buildSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
 }
 
 /**
+ * 烬痕存量（纯函数，用户 2026-10-25 口径）：
+ * **0.75 × 积攒招式的实际伤害之和**——存下来的数字是死数：不再吃失衡易伤、也不吃任何属性。
+ * 引擎里以「同乘区倍率」承载（挂到终结技行上），因为积攒行与结算行共用同一套乘区
+ * （同基底 def、同元素/防御/抗性/增伤，失衡易伤由引擎全局 coverage 统一供给）⇒
+ * 「攒的时候吃到易伤、结算时不再追加」在总量上等价：总贡献 = 0.75 × Σ倍率 × 乘区 × 易伤(一次)。
+ * ⚠ 前提：积攒行与结算行同乘区。若将来给某招挂招式级增伤/易伤差异，这里要改成按行加权。
+ */
+export function computeEmberScar(input: {
+  meta: SunbringerMeta
+  loops: { jufengCount: number; changanCount: number; ultACount: number }
+  ultBCount: number
+}): number {
+  const { meta, loops, ultBCount } = input
+  const totalMultiplier = loops.jufengCount * meta.jufeng.damage
+    + loops.changanCount * meta.changan.damage
+    + loops.ultACount * meta.ultA.damage
+    + ultBCount * meta.ultB.damage
+  return totalMultiplier * EMBER_SCAR_RATE
+}
+
+/**
  * 烬痕结算（用户裁决 2026-10-25：计入总伤害）：
  * 聚锋 / 长暗终焉 / 此行共赴前路 / 此愿重塑万象 的**实际伤害 75%** 累积，被二段终结技消除时等量扣血。
  * 引擎对 1601 只发**一条**终结技行（moveId 1601011「此愿，重塑万象」，由既有的终结技通道认出），
@@ -296,11 +317,7 @@ function patchSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
     totalDecibel: Math.max(0, state.totalDecibel),
     ultimateCost: Number(cfg.ultimateCost),
   })
-  const totalMultiplier = loops.jufengCount * meta.jufeng.damage
-    + loops.changanCount * meta.changan.damage
-    + loops.ultACount * meta.ultA.damage
-    + ultRow.count * meta.ultB.damage
-  const ember = totalMultiplier * EMBER_SCAR_RATE
+  const ember = computeEmberScar({ meta, loops, ultBCount: ultRow.count })
   if (!(ember > 0)) return
   const perCast = ember / Math.max(1, ultRow.count)
   // 绝对写（不是 +=）：patch 每轮都会跑，累加会把烬痕重复计入（幂等口径）
