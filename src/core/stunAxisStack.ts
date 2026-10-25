@@ -94,6 +94,18 @@ export interface StackTraversalInput {
    */
   swayBySlot?: Record<number, number>
   /**
+   * 各槽位**本轮可分到的平A时间**（秒）——兜底平A填充的**硬上界**（用户口径 2026-10-25）。
+   *
+   * 病灶（实测 `auto-1521-1251-1311`）：8 窗 × 16s = 128s，轴脚本只提供 29.8s 动作，
+   * 剩余 **93.5s** 全由兜底平A填——而该槽（希希芙）本轮只分到 **64.7s** 平A。
+   * 凭空多打 28.8s 的平A（还被当成 100% 轴内、攒条全额计入）⇒ 窗口数被撑到 8，
+   * 就是用户说的「非法出招」。原意只是「boss 失衡时间长了，角色自动补攻击，别像老轴那样空着」，
+   * **不能凭空造动作**。
+   *
+   * 缺省（未给该槽）⇒ 不设上界，逐位不变（非轴 / 旧调用零影响）。
+   */
+  basicBudgetBySlot?: Record<number, number>
+  /**
    * 好评（摇人值）总量（T157）：`bestEffort` 升级轴的**资源门控**（轴内 60/90 转大块的成本从这里扣）。
    * 缺省 / 负数 ⇒ 视作 0 ⇒ 升级轴一律「放过」（先打兜底轴），与用户口径
    * 「升级轴…**有资源就优先，没有就放过**」一致。
@@ -679,7 +691,14 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
       // 兜底平A：从该槽位最后一个动作的结束时刻填到窗口结束（窗口有富余才填）。
       // 动作之间的空隙（startTime 留白）不算平A——平A只补「最后一个动作之后」的富余。
       const end = slotMaxEnd[window.basicFillerSlot] ?? 0
-      const fillSec = Math.max(0, effectiveWindowDuration - end)
+      /**
+       * ⚠ 兜底填充受该槽**剩余平A预算**封顶（用户口径 2026-10-25）。原实现只看窗口剩多少，
+       * 于是「窗口要 93.5s 平A、该槽只有 64.7s」时凭空多打 28.8s ⇒ 窗数虚高。
+       */
+      const budget = input.basicBudgetBySlot?.[window.basicFillerSlot]
+      const alreadyFilled = basicFillBySlot[window.basicFillerSlot] ?? 0
+      const remain = budget === undefined ? Number.POSITIVE_INFINITY : Math.max(0, budget - alreadyFilled)
+      const fillSec = Math.max(0, Math.min(effectiveWindowDuration - end, remain))
       basicFillSeconds += fillSec
       basicFillBySlot[window.basicFillerSlot] = (basicFillBySlot[window.basicFillerSlot] ?? 0) + fillSec
       windowFillSec = fillSec

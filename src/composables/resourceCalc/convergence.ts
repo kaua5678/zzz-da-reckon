@@ -113,6 +113,8 @@ export function createRunCalcRound(deps: {
     const {
       goodReview: prevGoodReview,
       energyBySlot: prevEnergyBySlot,
+      // 用户口径 2026-10-25：兜底平A预算（上一轮各槽平A时间；首轮空 ⇒ 不设上界）
+      basicBySlot: prevBasicBySlot = {},
       // 2026-09-16 round 14：仪玄 1371 整条分支已迁进 `yixuan.ts#applyYixuanTeamConfig`（规则 6）；
       // CC-318：玄墨触发次数也改由仪玄 `nextRoundFeedback` 产出（`moduleFeedback.auricInkTriggers`），编排层不再有该线程。
       anomalyDecibelBonus: prevAnomalyDecibelBonus,
@@ -490,6 +492,8 @@ export function createRunCalcRound(deps: {
         windowDuration: computeWindowDuration(),
         energyBySlot: prevEnergyBySlot,
         decibelBySlot: prevDecibelRegenBySlot,
+        // 用户口径 2026-10-25：兜底平A预算 = 上一轮各槽收敛到的平A时间（首轮空 ⇒ 不设上界）
+        basicBudgetBySlot: prevBasicBySlot,
         // T169：角色专属资源（般岳山威）——与 inAxisFractionProvider 那次栈遍历同源
         swayBySlot: stackSwaySupplyOf(Math.max(0, opts?.axisAutoTrim ?? 0)),
         // T157：升级轴（bestEffort）的资源门控 —— 与下方 6 处同源
@@ -1010,6 +1014,8 @@ export function createRunCalcRound(deps: {
           windowDuration: windowDur,
           energyBySlot: stackEnergyBySlot,
           decibelBySlot: stackDecibelBySlot,
+          // 用户口径 2026-10-25：兜底平A只能兑现该槽本轮分到的平A时间（不许凭空造动作）
+          basicBudgetBySlot: basicTimeBySlot,
           swayBySlot: stackSwaySupplyOf(Math.max(0, opts?.axisAutoTrim ?? 0)),
           goodReview: Math.max(0, prevGoodReview),
           // 与上方 axisExecutedStack 同源（决算块窗口延长）
@@ -1388,6 +1394,10 @@ export function createRunCalcRound(deps: {
         ),
         // 上一轮失衡池整数次数：轴内块数落地（雨果决算 坑36）与池同源的滞后注入
         prevPoolStunCount: sp1.pool.stunCount,
+        // 兜底平A预算（用户口径 2026-10-25）：上一轮各槽收敛到的平A时间，滞后一轮注入同 decibelRegenBySlot
+        basicBySlot: Object.fromEntries(
+          rr.characters.map(c => [c.slot, c.timeAllocation.basicAttackTime]),
+        ),
       },
     }
   }

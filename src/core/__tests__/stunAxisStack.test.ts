@@ -139,6 +139,26 @@ describe('allocateAxisWindows', () => {
   })
 })
 
+describe('兜底平A受该槽平A预算封顶（用户口径 2026-10-25）', () => {
+  /**
+   * 病灶实测 `auto-1521-1251-1311`：8 窗需要 128s 内容，轴脚本只给 29.8s，兜底平A填到 **93.5s**，
+   * 而该槽只分到 **64.7s** ⇒ 凭空多打 28.8s（还被当成 100% 轴内、攒条全额计入）⇒ 窗数虚高。
+   * 用户口径：兜底平A 的原意是「boss 失衡时间长了自动补攻击」，**不许创造动作**。
+   */
+  it('预算 5s ⇒ 三个窗的填充合计 = 5s（最后一窗填不满就空着）；不传预算 = 旧行为（不限）', () => {
+    const axes = [{
+      actions: [{ slot: 0, moveId: 'x1', count: 1, actionTime: 1, energyCost: 0, decibelCost: 0 }],
+      basicFillerSlot: 0,
+    }]
+    const base = { axes, stunCount: 3, windowDuration: 10, energyBySlot: { 0: 999 }, decibelBySlot: { 0: 9999 } }
+    const free = calcStunAxisStack(base)
+    expect(free.basicFillBySlot[0]).toBeCloseTo(27, 6)          // 3 窗 × (10 − 1)
+    const capped = calcStunAxisStack({ ...base, basicBudgetBySlot: { 0: 5 } })
+    expect(capped.basicFillBySlot[0]).toBeCloseTo(5, 6)
+    expect(capped.basicFillSeconds).toBeCloseTo(5, 6)
+  })
+})
+
 describe('calcStunAxisStack', () => {
   it('full resources = burst axis (whole stack executes per window)', () => {
     const r = calcStunAxisStack({
