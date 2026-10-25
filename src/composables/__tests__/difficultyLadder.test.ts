@@ -57,10 +57,9 @@ vi.setConfig({ testTimeout: 300_000 })
  *
  * ⚠ **2026-10-15（T170）换队**：原 `auto-1521-1481-1311` 在新口径下**轴要求不满足**
  * （④ 档跳过 26~27 招）⇒ 整条曲线的点全被截断 ⇒ 本文件大半判据失去夹具。
- * 新队 `auto-1051-1481-1451` 实测**四点全成立**（`baseline/axis/max` 全 `complete`、
- * `axisTruncated = 0`），且在 `cap=0` / `axisScanSteps=4` 两个变体下同样全成立
- * ⇒ 它是「轴队 + 各档都达标」的干净样本，适合验「点数/点名/旋钮/摘要」这类结构判据。
- * 换队理由不是「数字好看」，而是**新口径下旧夹具已不产出任何点**（规则 10：先量 delta 再归因）。
+ * 2026-10-26 复核：本常量只服务「④ 吸收率 = 用户 cap」那一条用例（`absorbCap: 0.7` ⇒ 末点 absorb 0.7），
+ * 实测 `auto-1051-1481-1451` 在 cap=0.7 下末点正是 0.7 ⇒ 保持不变。
+ * （「四点全成立」的结构夹具另见 `STRUCTURAL_TEAM`。）
  */
 const TEAM = 'auto-1051-1481-1451'
 /**
@@ -168,7 +167,13 @@ describe('难度曲线关键旋钮点（T140c）', () => {
      * 新夹具 `auto-1051-1481-1451` 实测四点全成立（`axisTruncated = []`）。
      * 若把反空洞钉在旧队上，它测的就不是「① = 0」而是「该队恰好四点全成立」——一条假判据。
      */
-    const p2 = teamPresets.find(x => x.id === 'auto-1051-1481-1451')!
+    /**
+     * ⚠ 2026-10-26：原夹具 `auto-1051-1481-1451` 的 ① 已被截断（points = axis/progress/max，
+     * 见上面 STRUCTURAL_TEAM 的注释）⇒ `points.find(p => p.point === 'baseline')` 为 undefined，
+     * 本用例变成 TypeError 而不是判据。换 `auto-1511-1561-1411`：实测
+     * `baseline:0 + max:9`、`axisTruncated = 0` ⇒ 「① 全 0 交互、④ 真的加了 9 次」两个前提都成立。
+     */
+    const p2 = teamPresets.find(x => x.id === 'auto-1511-1561-1411')!
     const withCapture2 = climbDifficultyLadder(ctx, p2.team as [string, string, string], {
       /**
        * ⚠ **走生产路径**（`opts.base` = `applyTeamToStore`）：裸路径（`resetDifficultyGoals`）

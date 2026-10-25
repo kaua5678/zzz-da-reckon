@@ -204,6 +204,16 @@ for (const f of dataJsonFiles) {
         verdict ? `实际 ${data.group}/${data.subgroup ?? '（缺）'}，应为 ${verdict.group}/${verdict.subgroup}（跑 node scripts/sync-preset-categories.mjs）`
                 : `${data.group}/${data.subgroup ?? '（缺）'}——队内无输出位（击破/支援/防护不构成队伍分类）`)
     }
+    // 预设文件只带「身份 + 策划标签」：配装类字段一律派生（用户 2026-10-26「预设队伍只需带 3 个人的信息就行」）。
+    // 拦在数据侧而不是靠代码忽略——否则写了 wEngines 的人会以为生效了，实际被 presetBaseEngines 覆盖。
+    const CONFIG_FIELDS = ['wEngines', 'driveDiscs', 'chainCountPerStun', 'basicAttackTimeWeight', 'autoEngine', 'minGold']
+    const configFieldsInFile = CONFIG_FIELDS.filter(k => data[k] !== undefined)
+    check(`${rel}: 不写配装类字段（基础音擎/驱动盘/权重/下位池/金数门槛一律派生）`,
+      !data.disabled ? configFieldsInFile.length === 0 : true,
+      `出现 ${configFieldsInFile.join(', ')} → 这些字段由 goldStepsFromCatalog#presetBaseEngines / catalogGoldSteps 派生；真要固定请用页面「预设金数 → 保存到预设文件」写 goldSteps/standardSteps，或改用队伍对比页的逐槽锁定（slotCodes）`)
+    check(`${rel}: goldSteps 若声明则必须是「用户显式配置」而非模板克隆`,
+      (data.goldSteps ?? []).length === 0 || (data.goldSteps ?? []).every(s => typeof s.label === 'string' && s.label.length > 0),
+      'goldSteps 每条必须有 label（模板占位标签「主C 1命」这类不算，请用页面保存）')
     // autoEngine 声明校验：poolRef 必须在命名池有定义；池内音擎 id 必须在 catalog 存在（防手滑 typo）
     const ae = data.autoEngine
     if (ae) {

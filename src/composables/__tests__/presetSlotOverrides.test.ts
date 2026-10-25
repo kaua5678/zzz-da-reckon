@@ -17,7 +17,7 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computeTeamComparePoints } from '@/composables/teamCompare'
 import { NO_SLOT_OVERRIDES, applySlotOverrides, isSlotLocked } from '@/composables/presetSlotOverrides'
-import { goldStepsForPreset } from '@/composables/goldStepsFromCatalog'
+import { catalogGoldSteps, goldStepsForPreset } from '@/composables/goldStepsFromCatalog'
 import type { BossPresetFile } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { SetupCode } from '@/utils/setupCode'
@@ -65,34 +65,58 @@ describe('applySlotOverrides（纯函数）', () => {
   })
 })
 
-describe('goldStepsForPreset（空 goldSteps 才有 catalog 阶梯）', () => {
-  it('作者排过顺序 ⇒ 逐位返回作者那份（同一个数组引用）', async () => {
+describe('goldStepsForPreset（只认用户显式配置，默认空）', () => {
+  /**
+   * 用户 2026-10-26 裁决（逐字）：「加金不该有排好的序……只能说全01这一片单薄的预设就行，
+   * 要么给 ui 自己改，要么勾选贪婪，提示下一步。」
+   *
+   * ⇒ 修前「空 goldSteps ⇒ 从 catalog 推一份顺序当前缀阶梯」被明确否掉：
+   * 实测那份顺序 96 队 285 档里 227 档选错配装、均值低 10.32%、最大低 43.40%。
+   */
+  it('用户写了 goldSteps ⇒ 逐位返回那份（同一个数组引用）', async () => {
     const h = await setupHarness([{ agentId: '1511' }, { agentId: '1561' }, { agentId: '1581' }])
     expect(goldStepsForPreset(PRESET, h.catalog)).toBe(PRESET.goldSteps)
   })
 
-  it('空 goldSteps ⇒ 从 catalog 推阶梯（含限定角色影画 + 基础音擎是限定时的精炼步）', async () => {
+  it('★ 空 goldSteps ⇒ **空**（不再编顺序；多金档必须用户显式要）', async () => {
     const h = await setupHarness([{ agentId: '1511' }, { agentId: '1561' }, { agentId: '1581' }])
     const empty: TeamPreset = { ...PRESET, goldSteps: [] }
-    const steps = goldStepsForPreset(empty, h.catalog)
-    expect(steps.length).toBeGreaterThan(0)
-    // 三个都是限定 S ⇒ 每人 6 条影画步
-    expect(steps.filter(s => s.kind === 'cinema').length).toBe(18)
-    // 基础音擎 14151/14156/13008：前两个是限定 ⇒ 各 4 条精炼步；13008 是 A 级 ⇒ 换装步 + 4 条精炼步
-    expect(steps.filter(s => s.kind === 'wengine' && s.wEngineId === '14158').length).toBe(1)
-    expect(steps.filter(s => s.kind === 'wengine' && !s.wEngineId).length).toBe(12)
+    expect(goldStepsForPreset(empty, h.catalog)).toEqual([])
+    // 反空洞：catalog 候选池本身还在（贪婪要用），只是不再被当前缀阶梯
+    const pool = catalogGoldSteps(empty.team, ['14151', '14156', '13008'], h.catalog)
+    expect(pool.length).toBeGreaterThan(0)
+    expect(pool.filter(s => s.kind === 'cinema').length).toBe(18)
   })
 })
 
 describe('computeTeamComparePoints（逐槽锁定接线）', () => {
-  it('⑤ 空 goldSteps 的预设：金数 5~8 各出一档点（改前只有 1 个）', async () => {
+  /**
+   * 用户 2026-10-26：「只能说全 01 这一片单薄的预设就行，要么给 ui 自己改，要么勾选贪婪，提示下一步。」
+   * ⇒ 默认（不勾贪婪、无用户阶梯）= **只出全 01 一个点**，且金数 = 基础金（不再假装能拉档）。
+   */
+  it('⑤ 空 goldSteps + 不勾贪婪 ⇒ 只出「全 01」一个点（不再编顺序）', async () => {
     const h = await setupHarness([{ agentId: '1511' }, { agentId: '1561' }, { agentId: '1581' }])
     await h.catalog.loadBuildRecommendations()
     const empty: TeamPreset = { ...PRESET, goldSteps: [] }
     const pts = computeTeamComparePoints({ config: h.config, calc: useResourceCalc() }, {
       presets: [empty], goldLevels: [5, 6, 7, 8], boss: BOSS, phase: PHASE, autoEngine: false,
     })
-    expect(pts.map(p => p.goldCount)).toEqual([5, 6, 7, 8])
+    expect(pts).toHaveLength(1)
+    // 基础金实测 5 = 三个限定 S 角色本体(3) + 两把限定专武本体(2)：
+    // PRESET.wEngines 第三槽是 13008（A 级，不占金）⇒ presetBaseEngines 保留显式声明，不补成 14158。
+    expect(pts[0]!.goldCount).toBe(5)
+    expect(pts[0]!.cinemas).toEqual([0, 0, 0])
+  })
+
+  it('⑥ 空 goldSteps + 勾贪婪 ⇒ 金数区间各出一点（用户显式要才给）', async () => {
+    const h = await setupHarness([{ agentId: '1511' }, { agentId: '1561' }, { agentId: '1581' }])
+    await h.catalog.loadBuildRecommendations()
+    const empty: TeamPreset = { ...PRESET, goldSteps: [] }
+    const pts = computeTeamComparePoints({ config: h.config, calc: useResourceCalc() }, {
+      presets: [empty], goldLevels: [5, 6, 7, 8], boss: BOSS, phase: PHASE, autoEngine: false,
+      optimalGold: true,
+    })
+    expect(pts.length).toBeGreaterThan(1)
     // 伤害单调不减（多花一金不能变低）
     for (let i = 1; i < pts.length; i++) expect(pts[i]!.damage).toBeGreaterThanOrEqual(pts[i - 1]!.damage)
   })
@@ -106,8 +130,8 @@ describe('computeTeamComparePoints（逐槽锁定接线）', () => {
     })
     expect(pts).toHaveLength(1)
     expect(pts[0]!.cinemas).toEqual([0, 0, 2])
-    // 5 金基础（3 限定本体 + 2 件限定专武）+ 蕾米 2 命 + 蕾米专武本体（码右位 1 = 精1，
-    // 该槽基础音擎原本是 A 级 13008 ⇒ 换成专武 14158，+1 金）= 8 金
+    // 实测 8 = 基础 5（PRESET 显式 wEngines：14151/14156 限定 + 13008 不占金）+ 锁槽 2 命 + 该槽专武本体 14158。
+    // ⚠ presetBaseEngines 只补**未声明**的槽：PRESET 显式给了 wEngines ⇒ 基础档仍是它声明的三件。
     // ⚠ 这是 2026-10-25 的口径：配置码 = 「命座 + 专武精炼」，右位 ≥1 就必须戴专武
     // （与 freeCompare 的 applyCodeToSlot 同一条语义）；右位 0 = 无专武。
     expect(pts[0]!.goldCount).toBe(8)
@@ -116,9 +140,11 @@ describe('computeTeamComparePoints（逐槽锁定接线）', () => {
   it('④ 常驻角色锁命座：伤害真变、金数不变（常驻不计金）', async () => {
     const h = await setupHarness([{ agentId: '1181' }, { agentId: '1561' }, { agentId: '1581' }])
     await h.catalog.loadBuildRecommendations()
+    // 基础档（2026-10-26 起由 catalog 派生，= 主页「一键搭配」）：两个限定角色各带自己专武 = 4 金；
+    // 格莉丝常驻、常驻/A 音擎不计金 ⇒ 锁她的命座只改伤害不改金数。
     const resident: TeamPreset = {
       id: 'resident-lock', name: '常驻锁命', team: ['1181', '1561', '1581'],
-      wEngines: ['', '', ''], goldSteps: [], interactions: [],
+      goldSteps: [], interactions: [],
     }
     const run = (c: number) => computeTeamComparePoints({ config: h.config, calc: useResourceCalc() }, {
       presets: [resident], goldLevels: [2], boss: BOSS, phase: PHASE, autoEngine: false,
@@ -126,8 +152,8 @@ describe('computeTeamComparePoints（逐槽锁定接线）', () => {
     })[0]!
     const c0 = run(0)
     const c6 = run(6)
-    expect(c0.goldCount).toBe(2) // 维琳娜 + 蕾米本体；格莉丝常驻不计金
-    expect(c6.goldCount).toBe(2)
+    expect(c0.goldCount).toBe(4) // 维琳娜/蕾米 本体+专武各 2 金；格莉丝常驻不计金
+    expect(c6.goldCount).toBe(4)
     expect(c6.damage).toBeGreaterThan(c0.damage)
   })
 })

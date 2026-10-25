@@ -20,6 +20,8 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { computeFreeCompare, downgradeCandidates, signatureWEngineId } from '@/composables/freeCompare/engine'
 import { parseSetupCode, type SeriesSpec } from '@/composables/freeCompare/axes'
+import { isLimitedSWengineId } from '@/composables/limitedGold'
+import { DOWNGRADE_MODS } from '@/composables/downgradeWEngine'
 
 /**
  * 用户原话里的三个实体（规则 15：已跑 `node scripts/resolve.mjs 角色 <名>` 查证，非名字联想）：
@@ -68,7 +70,9 @@ describe('逐槽配置码 slotCodes（用户 2026-10-25：队友固定 65丽娜 
 
     // ① 有 slotCodes：**三槽各按自己的码**（诺姆 30 / 丽娜 65 / 克拉蕾 61）
     const a = await run(withSlots)
-    expect(a.cfg.team.map(x => [x.cinemaLevel, x.wEngineModLevel])).toEqual([[3, 5], [6, 5], [6, 1]])
+    // 槽 0 的系列码是 30（无专武）⇒ 走「下位择优」：诺姆(1571·击破) 的下位表第一件是燃狱齿轮(14110，
+    // 常驻 S) ⇒ 精炼档按稀有度取 3（DOWNGRADE_MODS.standard）。2026-10-26 下位表接入后实测从 A 级 R5 变为常驻 S R3。
+    expect(a.cfg.team.map(x => [x.cinemaLevel, x.wEngineModLevel])).toEqual([[3, 3], [6, 5], [6, 1]])
     // ② 无 slotCodes：**队友回到 01 基线**（不再跟着系列码变）——用户 2026-10-26 报障：
     // 旧行为是「比较诺姆 01/11/21」实际比的是「全队 01/11/21」，队友命座跟着 x 档一起动 = 两个变量搅在一起
     const b = await run(base)
@@ -143,13 +147,21 @@ describe('逐槽配置码 slotCodes（用户 2026-10-25：队友固定 65丽娜 
     const noSig = await captureSlot0({ id: 's', kind: 'agent', members: [BURNICE], code: code('20') })
     expect(noSig.wEngineId, 'wengine=0 时不该还穿着专武').not.toBe(sig)
     expect(noSig.wEngineId, '★ 也不该是空音擎——裸奔实测比专武本体低 34~41%，那是「没带武器」不是「没抽专武」').not.toBe('')
-    // 穿上的必须是「同职业、非专属、非限定」的下位件
+    /**
+     * 穿上的必须是「同职业、**不占限定金**」的下位件。
+     *
+     * ⚠ 2026-10-26 口径澄清：旧断言是「不能是别人的专武（ownerAgentId 必须空）」——
+     * 那条对**限定**专武成立（拿别人的限定专武 = 花 1 金，那不是下位）；
+     * 但**常驻 S 的专武不占金**（如格莉丝的嵌合编译器 14118），穿它 0 金，
+     * 正是用户点名要记进下位表的形态（「89 个限定角色带的下位替代」里就有 14118×11）。
+     * ⇒ 判据改为「不占限定金」，而不是「无归属」。
+     */
     const worn = catalog.getWEngine(noSig.wEngineId)
     expect(worn, `穿上的 ${noSig.wEngineId} 应当能在 catalog 里查到`).toBeTruthy()
-    expect(worn!.ownerAgentId, '下位不能是别人的专武').toBeFalsy()
+    expect(isLimitedSWengineId(worn!.id), '下位不能是限定音擎（那就是花金买东西，不是下位）').toBe(false)
     expect(worn!.specialty).toBe(catalog.getAgent(BURNICE)!.specialty)
-    // A 级默认精炼 5（DOWNGRADE_MODS，与队伍对比自动下位同一口径）
-    expect(noSig.modLevel).toBe(5)
+    // 精炼档按稀有度：A 级 5 / 常驻 S 3（DOWNGRADE_MODS，与队伍对比自动下位同一口径）
+    expect(noSig.modLevel).toBe(worn!.rarity === 'A' ? DOWNGRADE_MODS.aRank : DOWNGRADE_MODS.standard)
 
     // 对照：装配 21（有专武本体）应当穿上专武且精炼 1
     const withSig = await captureSlot0({ id: 's', kind: 'agent', members: [BURNICE], code: code('21') })

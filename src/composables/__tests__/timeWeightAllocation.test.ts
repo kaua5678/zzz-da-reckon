@@ -104,7 +104,14 @@ describe('平A池权重·分配策略', () => {
     // （希格莉德 1591 仍在库，但该三人的同槽序预设不再产出）。换成 `auto-1041-1161-1311`
     // （11号+莱特+耀嘉音）——它同样有「均衡解改失衡次数」这条活分支（实测 6→4 次、总伤 +8.07%，
     // 与旧队 4→3 次同型），note 仍如实上报「次数是分配的结果」。旧值 4→3 次 / +10.1%。
-    const p = teamPresets.find(x => x.id === 'auto-1041-1161-1311')!
+    /**
+     * ⚠ 2026-10-26 换队：预设改「只带 team」后 `auto-1041-1161-1311` 的基础档由 catalog 派生
+     * （11号带自己专武 14104、莱特带 14116…）⇒ 它的平A权重本来就是均衡解（`applied=false`、
+     * `note='已是均衡解，权重未变'`），本条「均衡**照常应用**」的前提消失。
+     * 改用实测 `applied=true` 且失衡次数确实变了的 `auto-1461-1521-1491`（实测 4→5 次）。
+     * 判据语义不变：只要该队均衡确实改了次数，note 就必须如实上报、不得静默。
+     */
+    const p = teamPresets.find(x => x.id === 'auto-1461-1521-1491')!
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const stunBefore = calc.stunPoolResult.value!.stunCount

@@ -149,39 +149,36 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 
 ### 3.2 添加预设队伍（高频操作）
 
-**预设级自动下位声明（可选字段 `autoEngine`，声明即覆盖页面装填框/精炼输入）：**
-```jsonc
-"autoEngine": {
-  "byAgent": { "1481": { "poolRef": "琉音槽下位" } },  // 按角色：琉音站哪个槽都生效，写一次处处复用
-  "bySlot":  { "1": { "pool": ["14110", "13005"] } },  // 或按槽位直写
-  "pool": ["14110", "13005"],                          // 或整队默认池
-  "mods": { "aRank": 5, "standard": 3 }                // 可选：精炼档覆盖（A 默认 5 不变）
-}
-```
-每槽取池优先级：`bySlot[slot] > byAgent[该槽角色] > 整队 pool/poolRef > 页面装填框 > 准信五件`；精炼档：`preset.mods > 页面输入 > A5/S3`。命名池在 `src/data/enginePools.json` 一处书写（validate-data 校验 poolRef 与音擎 id 存在）。
-
-1. 复制 `src/data/teamPresets/_template.json` → 同目录改名（如 `miyabi-team.json`）。
-2. 删掉 `"disabled": true` 字段，填：
+**预设文件只带「身份 + 策划标签」（用户 2026-10-26 裁决）：**
+> 「预设队伍只需带 3 个人的信息就行，其他配置交给预设金数或者其他模块就行」
+> 「买金是队伍对比中的内容吗……他也是只需要 team，金数需要自己设置，配置也要自己设置。」
 
 ```json
 {
-  "id": "my-team", "name": "队名",
-  "team": ["1561", "1261", "1411"],
-  "wEngines": ["", "", ""],                    // '' = 对比页由「自动下位」择优；填限定音擎 = 真实持有（计入基础金）
-  "driveDiscs": [ { "fourPieceSetId": "", "twoPieceSetId": "" } ],
-  "goldSteps": [
-    { "label": "主C 1命", "slot": 0, "kind": "cinema", "value": 1 },
-    { "label": "专武精炼1", "slot": 0, "kind": "wengine", "value": 2 }
-  ],
-  "interactions": [
-    { "type": "parry", "count": 8 },
-    { "type": "banyueGoldenParry", "count": 5, "weight": 1.5, "label": "般岳金身弹刀" },
-    { "type": "tauntCancel", "count": 2, "slot": 2 }   // 般岳：每次嘲讽取消一次失衡外连段末尾后摇（weight 0，不计难度）
-  ],
-  "chainCountPerStun": [1, 1, 1]
+  "id": "my-team",
+  "name": "队名",
+  "group": "锋御队",          // 一级分类 = 输出核心职业队名（口径单源 scripts/lib/presetCategories.mjs）
+  "subgroup": "电",           // 二级分类 = 该核心的属性
+  "team": ["1611", "1571", "1211"]
 }
 ```
 
+**配装类字段一律派生，不写进文件**（写了 `validate:data` 会红）：
+
+| 原字段 | 现在从哪来 |
+|---|---|
+| `wEngines`（基础档 = 01 穿什么） | `composables/goldStepsFromCatalog.ts#presetBaseEngines` —— 与主页「配装推荐 · 一键应用」同一条规则：限定角色带自己专武，其余带**不占金**的同职业音擎 |
+| `goldSteps`（加金阶梯） | `goldStepsForPreset`：作者排过（= 「预设金数 → 保存到预设文件」写回的）就用，没排就按 catalog 推确定性阶梯 |
+| `interactions` | 角色模块 `interactionDefaults` / 职业基准（全 0）；只手填过的队（当前两条般岳队）才留在文件里 |
+| `note` | 不再落盘（零消费者）；出处 = `run-archive.json` |
+| `driveDiscs` / `autoEngine` / `chainCountPerStun` / `basicAttackTimeWeight` / `minGold` | 页面设置或 catalog 默认（契约字段保留，当前无数据用） |
+
+**仍然可写的可选字段**：`stunAxisPresetId`（绑定失衡轴，当前唯一 `banyue-liuyin-lucia`）、`altAxes`（曲线外补充点）、`interactions` / `goldSteps` / `standardSteps`（用户的显式配置）、`disabled`。
+
+**下位替代不是基础档**：默认就是干净的 01；想比「没专武」时穿什么，查 `src/data/downgradeWEngines.ts` —— 角色专属表（实战里真穿过的几把，按频次）→ 职业默认表 → 两层都没命中才启动「按伤害逐件试穿」的重算法（`downgradeWEngine.ts#wearBestWEngine`）。
+
+1. 复制 `src/data/teamPresets/_template.json` → 同目录改名（如 `miyabi-team.json`），填 id / name / group / subgroup / team。
+2. 删掉 `"disabled": true`。
 3. 刷新页面自动加载（`import.meta.glob`，照 `stunAxisPresets` 模式）。
 
 **口径**：金数 = **总限定金**（用户定义）= 限定 S 角色本体 1 + 限定音擎本体 1 + 影画/精炼每级 1。**常驻 S 角色（莱卡恩/丽娜/猫又/11号/珂蕾妲/格莉丝）与 A 级角色、常驻音擎不计限定金**；例：伊德海莉+莱卡恩+卢西娅全带专武 = 4 金（莱卡恩与拘缚者不计）。选择的目标限定金**越界自动钳制**到队伍档位范围 [基础金, 基础金+goldSteps 数]（大于最高取最高=全步数，小于最低取最低=0 步）；全队 0命1精带专武 = 6 金，212121 = 12 金；应用前 N 步取最大值；

@@ -58,6 +58,7 @@ import {
   applyAxisBinding, applyBuffToStore, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf,
   computeDifficulty, type DifficultyWeights,
 } from '@/composables/teamCompare'
+import { presetBaseEngines } from '@/composables/goldStepsFromCatalog'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'
 import { continuousStunCount } from '@/core/stunPool'
@@ -366,7 +367,7 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
       // 否则「预设基础档」会漏掉常驻步而出现两个数）。曲线**不提供**金数档覆盖——金数提升属于
       // 「提升率」类图表，不是难度曲线的事（用户 2026-09-10 口径）。
       const applied = applyGoldSteps(
-        lockedPreset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), lockedPreset.standardSteps ?? [], preset.wEngines ?? [],
+        lockedPreset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), lockedPreset.standardSteps ?? [], presetBaseEngines(preset, useCatalogStore()),
       )
       /**
        * `base` 回调每档都会重摆队伍（`applyTeamToStore` + `applyGoldAllocationToStore`），

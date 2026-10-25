@@ -23,6 +23,7 @@ import {
   resolveGoldLevel,
   teamGoldOf,
 } from '@/composables/teamCompare'
+import { catalogGoldSteps, presetBaseEngines, goldStepsForPreset } from '@/composables/goldStepsFromCatalog'
 import { teamPresets } from '@/data/teamPresets'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
 import type { GoldStep, TeamPreset } from '@/types/teamPreset'
@@ -36,6 +37,9 @@ const TEST_PRESET: TeamPreset = {
   id: 'test-team',
   name: '测试队',
   team: ['1561', '1261', '1411'],
+  // 显式声明「三槽都不带专武」⇒ 基础金 = 3（三个限定角色本体）。
+  // ⚠ 2026-10-26 起**整条 wEngines 缺席会派生专武**（= 预设文件的形态）；夹具要测「无专武」就必须写出来。
+  wEngines: ['', '', ''],
   goldSteps: [
     { label: '主C 1命', slot: 0, kind: 'cinema', value: 1 },
     { label: '主C 2命', slot: 0, kind: 'cinema', value: 2 },
@@ -268,17 +272,26 @@ describe('teamCompare 金数/难度口径', () => {
     )
     expect(up.goldSteps.some(s => s.kind === 'wengine' && s.wEngineId === '14116')).toBe(true)
   })
-  it('伊德海莉限定队预设：全带限定专武 = 6 金基础（回归：若音擎漂移成常驻会使基础金变 4，8 金被展开成 4 步而出现 320101/050101 这类按专武口径像 10 金的配置）', () => {
+  it('伊德海莉限定队预设：全带限定专武 = 6 金基础（回归：若音擎漂移成常驻会使基础金变 4，8 金被展开成 4 步而出现 320101/050101 这类按专武口径像 10 金的配置）', async () => {
+    const catalog = useCatalogStore()
+    await catalog.load()
     const norma = teamPresets.find(p => p.id === 'yidhari-norma-lucia')
     expect(norma).toBeDefined()
+    // 预设文件只带 team（2026-10-26）⇒ 基础音擎由 presetBaseEngines 派生：
     // 音擎须为各自限定专武（伊德海莉=海妖摇篮 14105 / 诺姆=首席跟班 14157 / 卢西娅=铸梦炉歌 14145）
-    expect(norma!.wEngines).toEqual(['14105', '14157', '14145'])
-    // 3 限定角色 + 3 限定专武 = 6 金基础（常驻音擎/角色不计金）
+    expect(presetBaseEngines(norma!, useCatalogStore())).toEqual(['14105', '14157', '14145'])
+    // 3 限定角色 + 3 限定专武 = 6 金基础（常驻音擎/角色不计金）——01 基线
     expect(baseGoldOf(norma!)).toBe(6)
-    // 8 金 = 6 基础 + 2 步（伊德海莉 1命 + 卢西娅 1命），影画 1/0/1、精炼全 1
-    const r = applyGoldSteps(norma!.goldSteps, 8, 6, norma!.standardSteps ?? [])
+    // 用户 2026-10-26：「加金不该有排好的序……只能说全01这一片单薄的预设就行」
+    // ⇒ 空 goldSteps 的预设**不再有默认阶梯**（默认只出全 01 一个点）；多金档必须显式要（勾贪婪）。
+    expect(goldStepsForPreset(norma!, useCatalogStore())).toEqual([])
+    // 反空洞：catalog 候选池仍在（贪婪的搜索空间），只是不再被当前缀阶梯
+    const pool = catalogGoldSteps(norma!.team, presetBaseEngines(norma!, useCatalogStore()), useCatalogStore())
+    expect(pool.length).toBeGreaterThan(0)
+    expect(pool[0]!.label).toContain('伊德海莉 1命')
+    const r = applyGoldSteps(pool, 8, 6, norma!.standardSteps ?? [], presetBaseEngines(norma!, useCatalogStore()))
     expect(r.totalGold).toBe(8)
-    expect(r.cinemas).toEqual([1, 0, 1])
+    expect(r.cinemas).toEqual([2, 0, 0])
     expect(r.wengineMods).toEqual([1, 1, 1])
   })
   it('难度 = Σ(count × weight)，条目 weight 覆盖类型权重', () => {
@@ -1063,11 +1076,18 @@ describe('teamCompare 自动下位音擎（装填池择优）', () => {
     expect(run(2, POOL)[0].standardGoldLabel).toContain('R2')
     // 池不含 13019 → 只能在剩余候选里挑（全 0 分），证明「只在池内试算」
     expect(run(5, ['14110'])[0].damage).toBe(100)
-    // 默认装填池 = 用户准信五件（击破：人为刀俎/燃狱齿轮，辅助：好斗的阿炮/逍遥游球/啜泣摇篮）
+    // 兜底池（表两层都没命中时才用）= 用户准信五件（击破：人为刀俎/燃狱齿轮，辅助：好斗的阿炮/逍遥游球/啜泣摇篮）
     expect(DEFAULT_AUTO_ENGINE_POOL).toEqual(['13005', '14110', '13115', '14002', '14121'])
-    // 默认池五件对本打分全是 0 分并列 → 取池内第一件（wearBestWEngine：并列取先出现的）
+    /**
+     * 2026-10-26 起「不填装填框」= **先查下位表**（用户口径「想找下位也有默认下位表，
+     * 找不到再启动更重的算法」）：星徽·比利 1531 是 rupture（命破）⇒ 走职业默认表
+     * [13019, 13144, 13012, 13014]。表里只有 13019 在本用例的打分里非 0（30×精炼）⇒ 它胜出。
+     * 关键判据：**候选池来自表，不是兜底五件**（兜底五件里没有 13019）。
+     */
     const defPick = computeAutoEnginePicks(calc, config, preset, {})[0]
-    expect(defPick!.id).toBe(DEFAULT_AUTO_ENGINE_POOL[0])
+    expect(defPick!.id).toBe('13019')
+    // 对照：显式装填框仍然压过表（用户显式意图优先）
+    expect(computeAutoEnginePicks(calc, config, preset, { autoEnginePool: ['13019'] })[0]!.id).toBe('13019')
   })
 
   it('限定候选可选：按本体 R1 参与择优并标 limited；未知 id 忽略；限定基础音擎的槽位不参与替换', async () => {

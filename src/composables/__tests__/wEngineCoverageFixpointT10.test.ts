@@ -48,7 +48,14 @@ describe('结算侧同步读不依赖任何写回时序（r701）', () => {
     const { catalog, config } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    applyTeamToStore(config, teamPresets.find(p => p.id === 'auto-1221-1511-1211')!)
+    /**
+     * 夹具要的是「月城柳穿嵌合编译器（14118，唯一已登记折算器的叠层效果）」。
+     * ⚠ 2026-10-26 起预设基础档由 catalog 派生（月城柳是限定角色 ⇒ 带自己专武 14122），
+     * 不再穿 14118 ⇒ 逐位不变的是「这条折算通道」，不是「那个预设本来穿什么」：
+     * 这里显式声明 14118，把夹具钉在通道上（与 clean 01 口径不冲突：显式 wEngines 优先）。
+     */
+    const preset = { ...teamPresets.find(p => p.id === 'auto-1221-1511-1211')!, wEngines: ['14118', '', ''] as [string, string, string] }
+    applyTeamToStore(config, preset)
     const syncRead = calc.teamTotalDamage.value
     // 自动折算在同步读里就已生效（否则本例比的是两个满层值，空转）
     expect(calc.effectiveWEngineCoverages.value[EFFECT_ID]).toBeLessThan(100)

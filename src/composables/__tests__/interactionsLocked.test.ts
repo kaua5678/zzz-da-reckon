@@ -112,13 +112,19 @@ describe('手动锁定交互（用户口径 2026-10-06）', () => {
     const off = await evalPreset(DOWNSCALE_TEAM, INJ)
     const on = await evalPreset(DOWNSCALE_TEAM, { ...INJ, locked: true })
 
-    // 未勾选 = 现状（降配生效，交互被砍）
-    // 2026-10-09 溯影惊鸿排除自己：剑势 −18 ⇒ 叶瞬光需求↓ ⇒ 缺省降配档 0.375 → 0.125（实打弹刀 2→1）。
-    expect(off.scale, '缺省须处于降配态（本断言锁的是「不勾选 = 现状」）').toBeCloseTo(0.125, 6)
+    /**
+     * 未勾选 = 现状（降配生效，交互被砍）。
+     * ⚠ 2026-10-26：预设改「只带 team」后基础档由 catalog 派生（叶瞬光带专武 14143，
+     * 琉音/千夏带不占金的音擎），该队时间预算随之变化 ⇒ 缺省降配档 0.125 → **0.0625**（实测）。
+     * 判据语义未变：只锁「未勾选 ⇒ 处于降配态」（scale < 1），不锁具体档位——档位随配装口径漂移。
+     */
+    expect(off.scale, '缺省须处于降配态（本断言锁的是「不勾选 = 现状」）').toBeLessThan(1)
+    expect(off.scale, '降配确实发生（不是 1.0 空操作）').toBeGreaterThan(0)
     const rawParry = off.config.team[0]!.parryCount
     const rawDodge = off.config.team[0]!.dodgeCounterCount
     expect([rawParry, rawDodge], 'store 原值（夹具基准）').toEqual([6, 10])
-    expect(off.perSlotParry[0], '未勾选：实打弹刀 = round(6 × 0.125)').toBe(1)
+    // 未勾选：实打 = round(store 原值 × scale)（档位随配装口径漂移，判据只锁这条关系）
+    expect(off.perSlotParry[0], `未勾选：实打弹刀 = round(${rawParry} × ${off.scale})`).toBe(Math.round(rawParry * off.scale!))
 
     // 勾选 = 用户明确意图 ⇒ 不缩交互（同一读数回到 store 原值）
     expect(on.scale, '勾选后不得采纳任何降配档').toBeUndefined()

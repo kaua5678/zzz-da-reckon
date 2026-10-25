@@ -21,6 +21,7 @@ import type { PhaseBuffCard } from '@/types/bossPreset'
 import type { ConfigModel } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { downgradeCandidateOf, wearBestWEngine, type DowngradeCandidate } from '@/composables/downgradeWEngine'
+import { downgradePoolFor } from '@/data/downgradeWEngines'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
@@ -197,8 +198,17 @@ function applyCodeToSlot(
 export function downgradeCandidates(catalog: ReturnType<typeof useCatalogStore>, agentId: string): DowngradeCandidate[] {
   const agent = catalog.getAgent(agentId)
   if (!agent) return []
-  return catalog.displayWEngines
-    .filter(w => !w.ownerAgentId && w.specialty === agent.specialty)
+  const byId = new Map(catalog.displayWEngines.map(w => [w.id, w]))
+  // 第一层优先：下位表（角色专属表 → 职业默认表）里记过的那几把，按表的顺序；
+  // 表外观测到的同职业非常驻音擎补在后面（保底：表漏了新音擎也不会变成「没得穿」）。
+  const pool = downgradePoolFor(agentId, agent.specialty)
+  const tabled = (pool?.ids ?? []).flatMap(id => {
+    const w = byId.get(id)
+    return w ? [w] : []
+  })
+  const rest = catalog.displayWEngines
+    .filter(w => !w.ownerAgentId && w.specialty === agent.specialty && !tabled.some(t => t.id === w.id))
+  return [...tabled, ...rest]
     .map(w => downgradeCandidateOf(w))
     .filter(c => !c.limited)
 }

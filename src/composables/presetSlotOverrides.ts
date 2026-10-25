@@ -30,6 +30,7 @@
 import type { GoldStep, TeamPreset } from '@/types/teamPreset'
 import type { useCatalogStore } from '@/stores/catalog'
 import { signatureWEngineOf } from '@/composables/signatureWEngine'
+import { presetBaseEngines } from '@/composables/goldStepsFromCatalog'
 import type { SetupCode } from '@/utils/setupCode'
 
 type Catalog = ReturnType<typeof useCatalogStore>
@@ -91,9 +92,9 @@ export function applySlotOverrides(
    * 码右位 ≥1 ⇒ 戴该角色专武（照 `freeCompare/engine.ts#applyCodeToSlot` 同口径）；
    * 右位 0（无专武）⇒ 清空，交给加金/下位择优。
    */
-  const wEngines: [string, string, string] = [
+  const wEngines: [string, string, string] = [...(catalog ? presetBaseEngines(preset, catalog) : [
     preset.wEngines?.[0] ?? '', preset.wEngines?.[1] ?? '', preset.wEngines?.[2] ?? '',
-  ]
+  ])] as [string, string, string]
   if (catalog) {
     for (const s of [0, 1, 2] as const) {
       const lock = locked[s]

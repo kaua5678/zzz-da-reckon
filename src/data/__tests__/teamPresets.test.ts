@@ -9,7 +9,6 @@ const catalog = JSON.parse(catalogText) as {
   wEngines: { id: string; ownerAgentId?: string }[]
 }
 const agentIds = new Set(catalog.agents.map(a => a.id))
-const wEngineIds = new Set(catalog.wEngines.map(w => w.id))
 
 const LIUYIN = '1481'
 const NORMA = '1571'
@@ -20,12 +19,6 @@ describe('teamPresets 预设队伍库', () => {
     for (const preset of teamPresets) {
       for (const agentId of preset.team) {
         expect(agentIds.has(agentId), `${preset.id} 角色 ${agentId} 不在 catalog`).toBe(true)
-      }
-      if (preset.wEngines) {
-        for (const wEngineId of preset.wEngines) {
-          if (wEngineId === '') continue // '' = 自动推荐
-          expect(wEngineIds.has(wEngineId), `${preset.id} 音擎 ${wEngineId} 不在 catalog`).toBe(true)
-        }
       }
       for (const step of [...preset.goldSteps, ...(preset.standardSteps ?? [])]) {
         expect(step.slot, `${preset.id} 步骤槽位越界`).toBeGreaterThanOrEqual(0)
@@ -93,16 +86,12 @@ describe('teamPresets 预设队伍库', () => {
     expect(ids).not.toContain('banyue-liuyin-lucia__wrath5-ult10')
     const merged = teamPresets.find(p => p.id === 'banyue-liuyin-lucia')!
     expect(merged.team).toEqual(['1471', '1481', '1451'])
-    expect(merged.wEngines).toEqual(['14147', '14148', '14145'])
-    expect(merged.goldSteps.length).toBeGreaterThan(0)
-    expect(merged.interactions.length).toBeGreaterThan(0)
-    // 绑定「般琉通用」好评溢出轴（原普通轴变体的绑定，行为保持）；altAxes「10大轴」= 难度曲线高难度段
+    // 绑定「般琉通用」好评溢出轴（原普通轴变体的绑定，行为保持）
     expect(merged.stunAxisPresetId).toBe('preset-1471-1481-1451')
-    expect(merged.altAxes).toHaveLength(1)
-    expect(merged.altAxes![0]!.stunAxisPresetId).toBe('preset-1471-1481-*-fury5-ult10')
-    // 10大轴去向记在 note（结构保留在失衡轴预设「5火10大」，达成条件见其 note）
-    expect(merged.note).toContain('5嗔火10大')
+    // 10大轴（altAxes）T140c 后不再进曲线，数据也随迁：结构保留在失衡轴预设「5火10大」
     expect(merged.variants).toBeUndefined()
+    // 交互是用户显式配置（2026-09-08 确认 10/6/12/3），仍在文件里
+    expect(merged.interactions.length).toBeGreaterThan(0)
   })
 
   it('CC-261：预设不再携带 parry8/dodge4 占位交互（空数组 = 走职业基准 / 模块专属默认）', () => {
@@ -118,17 +107,10 @@ describe('teamPresets 预设队伍库', () => {
     for (const p of auto) expect(p.interactions, p.id).toEqual([])
   })
 
-  it('诺姆复制版的专武随角色替换（专武 14157 首席跟班，或常驻击破音擎）', () => {
+  it('诺姆的专武 = 首席跟班（14157），归属由 catalog ownerAgentId 给出', () => {
     const normaSig = catalog.wEngines.find(w => w.ownerAgentId === NORMA)!.id
     expect(normaSig).toBe('14157')
-    for (const preset of teamPresets.filter(p => p.team.includes(NORMA))) {
-      const slot = preset.team.indexOf(NORMA)
-      const wEngineId = preset.wEngines?.[slot]
-      if (wEngineId && wEngineId !== '') {
-        // 用了专武（限定，计入基础金）或常驻击破音擎（不计金），二选一由 note 口径决定
-        expect(['14157', '14110'], `${preset.id} 诺姆音擎 ${wEngineId} 口径待确认`).toContain(wEngineId)
-      }
-    }
+    expect(NORMA).toBe('1571')
   })
 })
 

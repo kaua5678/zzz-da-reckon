@@ -41,8 +41,9 @@ import {
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { TeamGoldState } from '@/composables/teamTimeline'
 import { takeBestGoldStep } from '@/composables/goldGreedy'
-import { goldStepsForPreset } from '@/composables/goldStepsFromCatalog'
+import { catalogGoldSteps, goldStepsForPreset, presetBaseEngines } from '@/composables/goldStepsFromCatalog'
 import { signatureWEngineOf } from '@/composables/signatureWEngine'
+import { downgradePoolFor } from '@/data/downgradeWEngines'
 import { applySlotOverrides, NO_SLOT_OVERRIDES, type SlotOverrides } from '@/composables/presetSlotOverrides'
 import { DOWNGRADE_MODS, downgradeCandidateOf, wearBestWEngine, type DowngradeCandidate } from '@/composables/downgradeWEngine'
 import ENGINE_POOLS_SRC from '@/data/enginePools.json'
@@ -55,10 +56,9 @@ type Calc = ResourceCalc
 /** 常驻角色/音擎名单在 @/data/standardMultiplierTable，本文件不转出口。焰心桂冠 14116 是限定，不在常驻 6 把里。 */
 
 /**
- * 自动下位默认候选池（用户准信，2026-08）：击破 = 人为刀俎(A)/燃狱齿轮(S常驻)，
- * 辅助 = 好斗的阿炮(A)/逍遥游球(A)/啜泣摇篮(S常驻)。精炼档沿用 A 默认 5、常驻 S 默认 3
- * （与准信 精5/精3 一一对应，页面可调）。只是试算起点，不是口径上限——装填框可增删任意音擎，
- * 限定音擎也可加入：选中即按本体（精炼1）如实计入总限定金（有金就是金）。
+ * 自动下位的**兜底**候选池 —— 2026-10-26 起从 `src/data/downgradeWEngines.ts` 派生（单一事实源），
+ * 不再手抄一份「用户准信五件」。语义：只在**下位表两层都没命中**时才用（正常路径见 `computeAutoEnginePicks`）。
+ * 精炼档沿用 A 默认 5、常驻 S 默认 3（`DOWNGRADE_MODS`，页面可调）。
  */
 export const DEFAULT_AUTO_ENGINE_POOL = ['13005', '14110', '13115', '14002', '14121']
 
@@ -413,14 +413,14 @@ export function computeDifficulty(
 export function baseGoldOf(preset: TeamPreset): number {
   const locked = preset.slotCodes
   if (!locked || locked.every(c => c === null)) {
-    return teamGoldOf(preset.team, preset.wEngines ?? [], [0, 0, 0], [1, 1, 1])
+    return teamGoldOf(preset.team, presetBaseEngines(preset, useCatalogStore()), [0, 0, 0], [1, 1, 1])
   }
   // 固定槽的音擎按「右位 ≥1 ⇒ 该角色专武」解析（wEngines 留空 = 自动推荐，不是"没武器"）；
   // 右位 0（无专武）⇒ 空，不计音擎金。
   const catalog = useCatalogStore()
   const wEngines = [0, 1, 2].map(s => {
     const c = locked[s]
-    if (!c) return preset.wEngines?.[s] ?? ''
+    if (!c) return presetBaseEngines(preset, catalog)[s]
     const agentId = preset.team[s]
     return c.wengine >= 1 && agentId ? (signatureWEngineOf(catalog, agentId)?.id ?? '') : ''
   })
@@ -632,15 +632,27 @@ export function computeAutoEnginePicks(
     ...(layer?.pool ?? []),
     ...(layer?.poolRef ? ENGINE_POOLS[layer.poolRef] ?? [] : []),
   ]
-  /** 每槽取池优先级：bySlot[slot] > byAgent[该槽角色] > 整队 pool/poolRef > 页面装填框 > 默认五件 */
-  const resolveSlotPool = (slot: number): string[] => {
+  /**
+   * 每槽取池优先级：bySlot[slot] > byAgent[该槽角色] > 整队 pool/poolRef > **下位表（角色 → 职业）**
+   * > 页面装填框 > 默认五件。
+   *
+   * 下位表（`data/downgradeWEngines`）插在页面设置之前：用户 2026-10-26 口径「想找下位也有默认下位表，
+   * 找不到再启动更重的算法」——表是**实战用过的**那几把，比页面缺省五件更贴角色；
+   * 用户显式填了装填框 = 明确意图，仍然压过表。
+   */
+  const resolveSlotPool = (slot: number): { ids: string[]; fromTable: boolean } => {
     for (const layer of [cfg?.bySlot?.[String(slot)], preset.team[slot] ? cfg?.byAgent?.[preset.team[slot]] : undefined]) {
       const ids = layerIds(layer)
-      if (ids.length > 0) return ids
+      if (ids.length > 0) return { ids, fromTable: false }
     }
     const top = layerIds(cfg)
-    if (top.length > 0) return top
-    return requested.length > 0 ? requested : DEFAULT_AUTO_ENGINE_POOL
+    if (top.length > 0) return { ids: top, fromTable: false }
+    if (requested.length === 0) {
+      const table = downgradePoolFor(preset.team[slot], catalog.getAgent(preset.team[slot])?.specialty)
+      if (table) return { ids: [...table.ids], fromTable: true }
+      return { ids: DEFAULT_AUTO_ENGINE_POOL, fromTable: false }
+    }
+    return { ids: requested, fromTable: false }
   }
   // 精炼档：preset.mods 覆盖页面输入；缺省 DOWNGRADE_MODS（A 级 5、常驻 S 3）
   const mods = {
@@ -650,11 +662,12 @@ export function computeAutoEnginePicks(
   const picks: AutoEnginePick[] = []
   for (let slot = 0; slot < 3; slot++) {
     if (!preset.team[slot]) continue
-    // 基础音擎只认预设声明（与 baseGoldOf 同源）：setAgent 会给角色自动推荐专属音擎，
-    // 回读 store 会把「预设没声明的限定专武」误当成已持有物而跳过替换
-    if (isLimitedWEngine(preset.wEngines?.[slot] ?? '')) continue
+    // 基础音擎判定与 baseGoldOf 同源（presetBaseEngines）：setAgent 会给角色自动推荐专属音擎，
+    // 回读 store 会把「预设没声明的限定专武」误当成已持有物而跳过替换。
+    // 限定基础音擎 = 占金的真实持有物 ⇒ 不参与下位择优（那一档已经是「有专武」）。
+    if (isLimitedWEngine(presetBaseEngines(preset, catalog)[slot])) continue
     // 赢家留在 store：下一槽的试算场景包含本槽结果
-    const { pick } = wearBestWEngine(calc, configStore, slot, toWengines(resolveSlotPool(slot)).map(w => downgradeCandidateOf(w, mods)))
+    const { pick } = wearBestWEngine(calc, configStore, slot, toWengines(resolveSlotPool(slot).ids).map(w => downgradeCandidateOf(w, mods)))
     if (pick) picks.push({ slot, ...pick })
   }
   return picks
@@ -759,7 +772,7 @@ export function computeOptimalGoldAllocations(
     baseGold,
     baseGold,
     preset.standardSteps ?? [],
-    preset.wEngines ?? [],
+    presetBaseEngines(preset, useCatalogStore()),
   )
   // 自动下位：非限定槽位换成装填池择优结果（覆盖 standardSteps 写入的常驻/A 音擎）；
   // 生效的限定下位按本体如实计入总限定金（有金就是金）
@@ -897,7 +910,11 @@ export function applyTeamToStore(configStore: ConfigModel, preset: TeamPreset) {
 export function applyTeamPresetConfig(configStore: ConfigModel, preset: TeamPreset) {
   for (let slot = 0; slot < 3; slot++) {
     configStore.setAgent(slot, preset.team[slot])
-    if (preset.wEngines?.[slot]) configStore.setWEngine(slot, preset.wEngines[slot])
+    // 基础音擎 = presetBaseEngines（字段缺席 ⇒ catalog 派生 = 主页一键搭配口径）。
+    // 显式空串 = 「这个槽不带专武」⇒ 不覆盖 store（保留 setAgent 的推荐，由下位表/自动下位接手），
+    // 与 baseGoldOf 对空串计 0 金一致。
+    const baseEngine = presetBaseEngines(preset, useCatalogStore())[slot]
+    if (baseEngine) configStore.setWEngine(slot, baseEngine)
     const dd = preset.driveDiscs?.[slot]
     if (dd) {
       if (dd.fourPieceSetId) configStore.setFourPieceSet(slot, dd.fourPieceSetId)
@@ -1055,13 +1072,35 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
     // 难度变体轴绑定（未绑定 = 恢复快照轴状态，走自动匹配/用户轴）
     applyAxisBinding(configStore, baseAxis, preset)
     const baseGold = baseGoldOf(preset)
-    /** 本队实际可用的加金阶梯：作者声明过就逐位用作者的；空 goldSteps 用 catalog 确定性阶梯 */
+    /**
+     * 本队实际可用的加金阶梯。
+     *
+     * ⚠ **用户裁决 2026-10-26**（逐字）：「加金不该有排好的序……我想等我把计算逻辑算好后，
+     * 跑一遍贪婪算出一份提升表，作为快速默认值……但目前引擎还远远不完善，只能说全01这一片单薄的
+     * 预设就行，要么给 ui 自己改，要么勾选贪婪，提示下一步。」
+     *
+     * ⇒ 默认路径**不再造顺序**：只有**用户显式配置**（预设文件里写回的 `goldSteps` / 逐槽锁定）
+     * 才当作阶梯；没有就是**空阶梯** ⇒ `resolveGoldLevel` 钳到 `[基础金, 基础金]` ⇒
+     * 只出「全 01」一个点。要更多金档必须**显式**选：勾「最优加金」（贪婪）或逐槽锁定。
+     * 修前这里会在空 goldSteps 时用 `catalogGoldSteps` 临时排一份（主C 影画 1..6 → 精炼 → 队友…），
+     * 实测那份顺序在 96 队 285 档里 **227 档选错配装、均值低 10.32%、最大低 43.40%**
+     * ——把「我们自己编的顺序」当成默认结果报给用户，正是「自动加金完全不准」的来源。
+     */
     const goldSteps = goldStepsForPreset(preset, useCatalogStore())
+    /**
+     * **贪婪的候选池**（与默认阶梯分开，用户裁决 2026-10-26）：
+     * 默认阶梯 = 用户显式配置（空 ⇒ 只出全 01 一个点）；勾了「最优加金」时，
+     * 搜索空间 = 预设写回的 `goldSteps`（有的话）**或** catalog 推的候选池。
+     * 两者只有在用户真的勾了贪婪/写了配置时才会产生「多金档位」，不会静默替用户做决定。
+     */
+    const goldCandidates = goldSteps.length > 0
+      ? goldSteps
+      : catalogGoldSteps(preset.team, presetBaseEngines(preset, useCatalogStore()), useCatalogStore())
     // CC-339：无论是否开启 optimalGold，均先把队伍置于该预设基础金分配（基础音擎 + 0命1精 + standardSteps），
     // 保证 buff 自动推荐（pickBestBuff）、自动下位音擎择优（computeAutoEnginePicks）与贪婪搜索从同一真实基础档出发
     applyGoldAllocationToStore(
       configStore,
-      applyGoldSteps(goldSteps, baseGold, baseGold, preset.standardSteps ?? [], preset.wEngines ?? []),
+      applyGoldSteps(goldSteps, baseGold, baseGold, preset.standardSteps ?? [], presetBaseEngines(preset, useCatalogStore())),
     )
     // boss 一次应用（与金数档无关）；必须在选 buff 前应用，推荐排序才基于所选期数的敌人配置
     applyBossRoom(configStore, options.boss, options.phase)
@@ -1086,7 +1125,7 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
       const allocs = computeOptimalGoldAllocations(
         calc, configStore, preset, baseGold, autoPicks,
         sink ? { alternatives } : {},
-        goldSteps,
+        goldCandidates,
       )
       for (const a of allocs) {
         optimalMap.set(a.budgetGold, a) // 预算域键：resolveGoldLevel 的钳制口径不含限定下位附加
@@ -1098,11 +1137,19 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
       // 难度门槛：低于该难度要求的最低总限定金不生成点（如 5嗔火10大 需琉音配置足够高）
       if (gold < (preset.minGold ?? 0)) continue
       // 目标限定金越界时钳制到最近档位；同一队伍同一钳制结果只出一个点
-      const { totalGold } = resolveGoldLevel(goldSteps, gold, baseGold)
+      /**
+       * 可达档位：
+       * - **默认**（不勾贪婪）= 用户显式阶梯。空 ⇒ 钳到 `[基础金, 基础金]` ⇒ 只有「全 01」一个点。
+       * - **勾了贪婪** = 候选池（贪婪链能走到哪一档就出哪一档，与候选池的顺序无关）。
+       * 这两条必须分开：若默认也用候选池，`applyGoldToStore` 会按候选池的**排列顺序**取前缀，
+       * 那正是用户 2026-10-26 明确否掉的行为。
+       */
+      const ladderForPoints = options.optimalGold ? goldCandidates : goldSteps
+      const { totalGold } = resolveGoldLevel(ladderForPoints, gold, baseGold)
       if (seen.has(totalGold)) continue
       seen.add(totalGold)
       const opt = optimalMap.get(totalGold)
-      const applied = opt ? null : applyGoldToStore(configStore, preset, gold, autoPicks, goldSteps)
+      const applied = opt ? null : applyGoldToStore(configStore, preset, gold, autoPicks, ladderForPoints)
       if (opt) {
         applyGoldAllocationToStore(configStore, opt)
       }
