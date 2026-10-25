@@ -18,6 +18,14 @@ export function probeOn(flag: string): boolean {
   return typeof process !== 'undefined' && process.env[flag] === '1'
 }
 
+/**
+ * 读取旗标的**取值**（不是布尔）：用于「同一句话试两种口径」的 A/B（如 `PROBE_STUN_CONT_COV=formula|trace`）。
+ * 未设 / 浏览器无 `process` ⇒ 空串（= 关）。
+ */
+export function probeFlag(flag: string): string {
+  return typeof process !== 'undefined' ? String(process.env[flag] ?? '') : ''
+}
+
 export function probePush(flag: string, bucket: string, rec: () => unknown): void {
   if (!probeOn(flag)) return
   const g = globalThis as unknown as Record<string, unknown[] | undefined>

@@ -18,9 +18,10 @@
         {
           "id": "toxin_tuxin_stage4",
           "trigger": "普通攻击：吐信第四段命中+2（失衡敌人额外+1另计）",
-          "countSource": "basicAttackCount",
+          "countSource": "cfgField",
+          "countField": "xixifuA4Count",
           "amountPerCount": 2,
-          "formula": "吐信第四段频率按 basicAttackTime/2 近似",
+          "formula": "模块写 cfg.xixifuA4Count = floor(平A时间 / 吐信四段连段时长) + 已付费毒牙次数 + 连携次数（原文：毒牙/连携「可直接衔接第四段普通攻击：吐信」；连段时长读倍率表 1521001..1521004 的 actionTime 之和，不写死）",
           "status": "implemented_approximation",
           "adjustable": {
             "id": "1521.xixifu_toxin.toxin_tuxin_stage4.rate",
@@ -36,7 +37,8 @@
         {
           "id": "toxin_tuxin_stunned_bonus",
           "trigger": "吐信第四段命中失衡敌人额外+1",
-          "countSource": "basicAttackCount",
+          "countSource": "cfgField",
+          "countField": "xixifuA4Count",
           "amountPerCount": 1,
           "formula": "失衡命中占比默认按50%近似，滑块可调",
           "status": "implemented_approximation",
@@ -54,16 +56,19 @@
         {
           "id": "toxin_duya_base",
           "trigger": "强化特殊技：毒牙发动+3",
-          "countSource": "exSpecialCount",
+          "countSource": "cfgField",
+          "countField": "xixifuDuyaPaidCount",
           "amountPerCount": 3,
+          "formula": "次数 = 能量买得起的次数（毒牙#1 扣 65 能量回 5；每个额外打击 20 能量，至多 3 个 ⇒ 满长按一次 120 能量），不是计划里的强特次数",
           "status": "implemented"
         },
         {
           "id": "toxin_duya_hold",
           "trigger": "毒牙长按每额外消耗20能量+1（至多+3）",
-          "countSource": "exSpecialCount",
-          "amountPerCount": 3,
-          "formula": "默认按满长按（+3/次）近似，滑块可调",
+          "countSource": "cfgField",
+          "countField": "xixifuDuyaExtraHits",
+          "amountPerCount": 1,
+          "formula": "次数 = 已付费毒牙次数 × 每次额外打击数（滑块）；额外打击的 20 能量从同一能量池扣除，装不下就少打 ⇒ 不是白拿",
           "status": "implemented_approximation",
           "adjustable": {
             "id": "1521.xixifu_toxin.toxin_duya_hold.rate",
@@ -79,8 +84,10 @@
         {
           "id": "toxin_chain",
           "trigger": "连携技：团伙作案发动+3",
-          "countSource": "chainCountTotal",
+          "countSource": "cfgField",
+          "countField": "xixifuChainCount",
           "amountPerCount": 3,
+          "formula": "连携次数取 cfg.chainCountTotalOverride ?? chainCountPerStun × 失衡次数（轴模式下 state.chainCountTotal 迭代期为 0，原口径恒收 0 ⇒ 漏收）",
           "status": "implemented"
         },
         {

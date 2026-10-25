@@ -30,6 +30,11 @@ export interface StackEvalInput {
   exSpecialCount: number
   /** 该角色强特链路的执行行（模块自推的行也在这里，按 moveId 匹配） */
   executions: readonly SkillExecution[]
+  /**
+   * 平A时间（秒）——「**普通攻击命中**」类叠层的触发源（如青衣专武 14125 玉壶青冰·茶劲）。
+   * 缺省 = 该效果不按平A折算（只看能量事件的折算器不受影响）。
+   */
+  basicAttackTime?: number
 }
 
 /**
@@ -95,6 +100,7 @@ export const STACK_ENERGY_EVENT_EVALUATORS: Record<string, {
     evaluators: PER_AGENT_EVALUATORS,
     generic: ({ exSpecialCount }) => Math.max(0, exSpecialCount),
   },
+
 }
 
 /** 求某效果在某槽的整局能量扣除事件数（穿戴角色有专属折算器用专属，否则通用）。 */
@@ -125,3 +131,120 @@ export function stacksToCoverage(
   const effective = Math.min(maxStacks, Math.max(0, triggerStacks) * durationSeconds / battleSeconds)
   return (effective / maxStacks) * 100
 }
+
+/**
+ * **「每轮失衡」叠层模型**（用户 2026-10-25 逐字）：
+ *
+ * > 「你折叠成全局不适合击破这种专门在非失衡打伤害的。我们可以这样建模，**每轮失衡都将上场一次**
+ * > 并支付 `总平a / 失衡轮次` 的平a数，设为 x，这 x 次平a在第一次叠层前是按照**平均次数 x/2** 获得拐力；
+ * > 其他的强特、大招等招式的都算作 **x 次叠层**，算作他平a叠层完毕后进行的击破。这样青衣这种平a次数多的
+ * > 每轮能分到30多次平a，前30次只算15层，其他都算满层。像有些击破a的很少甚至不a，x就很低，比如0-10，
+ * > 技能吃的层数也是0-5。」
+ *
+ * ⚠ 不沿用 `stacksToCoverage` 的**整局时间加权**：那个把「不在场的时间」也摊进去，而击破角色的拐力恰恰
+ * 用在**非失衡期打失衡**（在场时层数最高）⇒ 全局折叠系统性低估，也与「每轮失衡打一轮」的节奏不符。
+ */
+/** 平A段平均层数：x 次命中时第 i 次已叠 (i−1) 层 ⇒ 前 min(max,x) 次平均 capped/2；超出封顶的都算满层 */
+export function teaBasicPhaseStacks(basicHits: number, maxStacks: number): number {
+  const hits = Math.max(0, basicHits)
+  if (!(hits > 0) || !(maxStacks > 0)) return 0
+  const capped = Math.min(maxStacks, hits)
+  return (capped * capped / 2 + (hits - capped) * capped) / hits
+}
+
+/** 技能段层数（强特/大招/连携等）：平A叠完才出手 ⇒ min(maxStacks, x) */
+export function teaSkillPhaseStacks(basicHits: number, maxStacks: number): number {
+  if (!(maxStacks > 0)) return 0
+  return Math.min(maxStacks, Math.max(0, basicHits))
+}
+
+/** 一行执行行在「每轮失衡」口径下的权重来源（只需与失衡值成正比、与 impact 无关的量） */
+export interface TeaStackRowWeight {
+  count: number
+  /** 该行基础失衡倍率（impact 之外的部分） */
+  baseDaze: number
+  isBasicAttack: boolean
+}
+
+/**
+ * 等效层数 = 按**失衡贡献**（次数 × 基础失衡倍率）加权平均两段层数。
+ * 失衡值对 impact 线性 ⇒ 用「平均 impact」与逐行叠层等价，不必逐行改面板。
+ */
+export function teaEffectiveStacks(input: {
+  basicHitsPerCycle: number
+  maxStacks: number
+  rows: readonly TeaStackRowWeight[]
+}): number {
+  const maxStacks = Math.max(0, input.maxStacks)
+  const basic = teaBasicPhaseStacks(input.basicHitsPerCycle, maxStacks)
+  const skill = teaSkillPhaseStacks(input.basicHitsPerCycle, maxStacks)
+  let weight = 0
+  let weighted = 0
+  for (const row of input.rows) {
+    const w = Math.max(0, row.count) * Math.max(0, row.baseDaze)
+    if (!(w > 0)) continue
+    weight += w
+    weighted += w * (row.isBasicAttack ? basic : skill)
+  }
+  return weight > 0 ? weighted / weight : skill
+}
+
+
+/** 玉壶青冰(14125) 的自 BUFF 效果 id（catalog `wEngines[14125].effect.selfBuff.effects[0].id`） */
+export const TEA_STACK_EFFECT_ID = 'effect_wiki_678_self_impact_tea_full_stack'
+/** 玉壶青冰音擎 id */
+export const TEA_STACK_ENGINE_ID = '14125'
+/** 茶劲满层（原文「最多叠加30层」） */
+export const TEA_STACK_MAX = 30
+/** 茶劲触发条件（原文「获得[茶劲]时，若层数 ≥15，全队伤害 +20%」） */
+export const TEA_STACK_THRESHOLD = 15
+
+/** 一个 basic 段（倍率表 basic 分类里的一段普攻） */
+export interface BasicStageLike { actionTime?: number }
+
+/**
+ * **普攻命中速率（次/秒）= 段数 / 连段总时长**，从倍率表 basic 分类读（不写死）。
+ * 这是**武器口径**（谁带玉壶青冰都按自己的普攻节奏算），不是某个角色专属。
+ */
+export function basicHitRateOf(stages: readonly BasicStageLike[]): number {
+  let seconds = 0
+  let count = 0
+  for (const s of stages) {
+    const t = Math.max(0, Number(s.actionTime ?? 0))
+    if (!(t > 0)) continue
+    seconds += t
+    count += 1
+  }
+  return seconds > 0 ? count / seconds : 0
+}
+
+/**
+ * **玉壶青冰·茶劲的失衡值口径冲击力缩放**（0–1；1 = 满层不缩放）。
+ *
+ * 用户 2026-10-25 口径：「每轮失衡都将上场一次并支付 `总平a / 失衡轮次` 的平a数，设为 x，
+ * 这 x 次平a在第一次叠层前按**平均次数 x/2** 获得拐力；其他强特/大招等算作 **x 次叠层**
+ * （平a叠完之后进行的击破）」⇒ 平A段 x/2 层、技能段 x 层，按两段失衡贡献加权取等效层数。
+ *
+ * ⚠ 这是**武器口径**：任何角色带 14125 都走这里（不限于青衣）。
+ * 命中速率取自倍率表（`basicHitRateOf`）⇒ 普攻慢的击破每轮分不到几次平A ⇒ 层数低、≥15 的增伤吃不到。
+ */
+export function teaStunImpactScale(input: {
+  wEngineId: string
+  /** 整局**普攻个数**（执行行 count 之和；原文「[普通攻击]命中敌人时获得1层茶劲」按个数算，不看秒数） */
+  basicCount: number
+  stunRounds: number
+  basicWeight: number
+  skillWeight: number
+}): number {
+  if (String(input.wEngineId ?? '') !== TEA_STACK_ENGINE_ID) return 1
+  const rounds = Math.max(1, Math.floor(input.stunRounds || 0) || 1)
+  const hitsPerCycle = Math.max(0, input.basicCount) / rounds
+  const basic = teaBasicPhaseStacks(hitsPerCycle, TEA_STACK_MAX)
+  const skill = teaSkillPhaseStacks(hitsPerCycle, TEA_STACK_MAX)
+  const wBasic = Math.max(0, input.basicWeight)
+  const wSkill = Math.max(0, input.skillWeight)
+  const sum = wBasic + wSkill
+  const stacks = sum > 0 ? (wBasic * basic + wSkill * skill) / sum : skill
+  return Math.max(0, Math.min(1, stacks / TEA_STACK_MAX))
+}
+

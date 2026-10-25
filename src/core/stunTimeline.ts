@@ -221,3 +221,44 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline {
     hasTrace,
   }
 }
+/**
+ * **已兑现的失衡窗口**（用户 2026-10-25：「这里在算最后一失衡，应该有前面失衡期的数据了吧」）。
+ *
+ * ## 为什么它是「连续失衡」的实体读数，而不是失衡值公式的近似
+ * 用户 §1 的故事是**动作经济**：
+ * > 「招式全用来打击破，刚好把窗口打出来后就没有招式可打了（0 秒爆发）」
+ * 也就是「第 N+1 窗只兑现 frac」的物理成因 = **没招可打**，而「招够不够」轴栈**逐窗记着**：
+ * 每窗的 `effectiveSeconds − unusedSeconds` 就是这一窗里真正打出去的动作秒数。
+ * 实测 `auto-1521-1251-1311`（计划 7 窗）填充率 `[1,1,1,0.94,0.94,0.70,0.16]` ⇒ 兑现 **5.75 窗**（池报 7），
+ * 与用户「哪来这么多失衡」同向，且**是量出来的，不是假设出来的**（全库 35 支有轨迹的队：27 队兑现 < 池报，0 队 > 池报）。
+ *
+ * ⚠ 与 §1 的失衡值公式（`core/continuousStun.ts#continuousStunSplitOf`）**并列而非替换**：
+ * 那个把「每秒 100 点失衡值」当均匀速度（用户举例时的简化），本函数用实测填充率（含「窗内换爆发招」这类
+ * 招式构成差异）。实测分歧例：`auto-1041-1571-1211` 公式 3.0 / 实测 4.0（该队 4 窗全满，池报 4 = 实测）。
+ *
+ * ## 边界
+ * - 无轴栈轨迹（非轴队；全库 96 队里 61 队）⇒ `hasTrace === false`，**不编造**，`realizedWindows` 返回整数窗数；
+ * - 轨迹比窗口数短时缺的那几窗按「无轨迹」处理（`unusedSeconds` 记 0），与 `buildStunTimeline` 同口径；
+ * - `realizedWindows ≤ windows` 按构造成立（每窗填充率 ≤ 1）——它只能**减少**兑现，不会凭空多算。
+ */
+export interface StunRealization {
+  /** 已兑现的等效窗数（= Σ 每窗填充率；无轨迹时退化为整数窗数） */
+  realizedWindows: number
+  /** 已兑现的易伤秒数（= Σ 每窗实际占用秒数；无轨迹时为 0） */
+  occupiedSeconds: number
+  /** 是否拿到轴栈逐窗轨迹（false ⇒ `realizedWindows` = 整数窗数，不编造） */
+  hasTrace: boolean
+}
+
+export function realizeStunWindows(timeline: StunTimeline): StunRealization {
+  if (!timeline.hasTrace) return { realizedWindows: timeline.windows, occupiedSeconds: 0, hasTrace: false }
+  let realizedWindows = 0
+  let occupiedSeconds = 0
+  for (const slot of timeline.slots) {
+    const occupied = Math.max(0, slot.effectiveSeconds - slot.unusedSeconds)
+    occupiedSeconds += occupied
+    // 填充率按**本窗**有效时长归一（决算截断 / 时钟截短的窗天生更短，不能按名义窗长摊）
+    realizedWindows += slot.effectiveSeconds > 0 ? Math.min(1, occupied / slot.effectiveSeconds) : 0
+  }
+  return { realizedWindows, occupiedSeconds, hasTrace: true }
+}

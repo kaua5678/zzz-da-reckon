@@ -1,7 +1,7 @@
 import type { DirectRowAxisSplit, DirectRowAxisSplitInput } from '@/mechanics/types'
 import type { AgentCharConfigInput, AgentMechanicModule, AgentPanelInput, AgentResourceInput, AgentResourceResultInput, AgentResourceSectionsInput, AgentTeamConfigInput } from '../types'
 import { getAgentSpec } from '@/specs/registry'
-import { computeSpecResources } from '@/specs/resources'
+import { computeSpecResources, specAdjustableRate } from '@/specs/resources'
 import { whole } from '@/utils/finiteClamp'
 import { specToMechanicModule } from '@/specs/mechanics'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
@@ -61,6 +61,19 @@ const XIXIFU_TOXIN_INITIAL = 3
 const XIXIFU_TOXIN_INITIAL_C1 = 6
 /** 影画6 蚀骨印记 3 秒 ICD 折算：战斗时间内至多消耗 floor(战斗时间/3) 层 */
 const XIXIFU_C6_MARK_ICD_SECONDS = 3
+/**
+ * 吐信四段 moveId（连段总时长 = 四段 actionTime 之和，**从倍率表读**，不写死秒数）。
+ *
+ * 为什么需要：`toxin_tuxin_stage4` 原先用引擎缺省 `floor(平A时间 / 2)`（「每 2 秒一次第四段」），
+ * 而倍率表实测连段 = 0.653 + 1.047 + 0.91 + 1.873 = **4.483 秒** ⇒ 高估 2.24 倍（2026-10-25 实测）。
+ */
+const XIXIFU_TUXIN_STAGE_IDS = ['1521001', '1521002', '1521003', '1521004'] as const
+/** 毒牙#1 招式内能量返还（原文「招式发动时，回复5点能量」） */
+const XIXIFU_DUYA_ENERGY_REFUND = 5
+/** 毒牙长按每个额外打击的能量（原文「每20点发动一次额外的打击，至多额外消耗60点能量」） */
+const XIXIFU_DUYA_EXTRA_ENERGY = 20
+/** 毒牙长按额外打击上限（至多额外消耗 60 能量 = 3 个额外打击） */
+const XIXIFU_DUYA_MAX_EXTRA = 3
 
 function applyXixifuPanel({ panel }: AgentPanelInput): void {
   // 蚀骨自拐暴击率：每次触发 +6%（15秒，至多3层）→ 常驻 +18%
@@ -83,6 +96,27 @@ function buildXixifuCharConfig({ cfg, cinemaLevel, team, panel, skills }: AgentC
     ['1521019']: getRowValue(findMoveById(skills, '1521019'), 'damage'),
     ['1521006']: getRowValue(findMoveById(skills, '1521006'), 'damage'),
   }
+  /**
+   * **毒牙长按的额外能量必须由同一个能量池付账**（用户 2026-10-25：「强特长按会先扣除65能量回复5能量
+   * 打出一个毒牙#1，后面每花费20能量可以打一个毒牙#2，最多打3个。这个需要算啊」）。
+   *
+   * 引擎按 `exSpecialEnergyConsume` 从闪能总量推强特次数；旧口径只用 65（点按价），额外打击的
+   * 20×3 能量一分没收 ⇒ 计划里白拿 18 次满长按（1080 能量）。这里把每次施放的**真实成本**写进去：
+   * (65 − 5) + 20 × 额外打击数，额外打击数由滑块 toxin_duya_hold.rate 决定（100% = 满长按 3 个）。
+   *
+   * ⚠ 代价：伤害/时间行随之按更少的次数排（这是对的——付不起的能量就不该有那么多毒牙）。
+   */
+  const baseExEnergy = Math.max(1, Number(cfg.exSpecialEnergyConsume ?? 0) || 65)
+  const holdRate = specAdjustableRate(cfg, '1521.xixifu_toxin.toxin_duya_hold.rate')
+  const extraHits = Math.min(XIXIFU_DUYA_MAX_EXTRA, Math.round(XIXIFU_DUYA_MAX_EXTRA * holdRate))
+  cfg.exSpecialEnergyConsume = Math.max(
+    1,
+    baseExEnergy - XIXIFU_DUYA_ENERGY_REFUND + XIXIFU_DUYA_EXTRA_ENERGY * extraHits,
+  )
+  // 吐信四段连段总时长（秒）：四段 actionTime 之和，读倍率表 ⇒ 毒素的「第四段频率」与招式表同源
+  cfg.xixifuA4ComboSeconds = XIXIFU_TUXIN_STAGE_IDS.reduce(
+    (sum, id) => sum + (findMoveById(skills, id)?.actionTime ?? 0), 0,
+  )
 }
 
 /** 影画2 失衡下连携/终结额外+3毒素：需要失衡次数门控，converge 阶段写入 cfg；轴模式由 cfg.axisUltimateTotal 精确反推 */
@@ -106,11 +140,43 @@ function resolveXixifuResources(cfg: AgentResourceInput['cfg'], state: AgentReso
   // state.chainCountTotal、终结读 cfg.axisUltimateTotal（编排层按窗口数加权注入），
   // 轴内块全在失衡窗口内，不吃 min(ult, stun) 折扣。
   const axisUlt = Math.max(0, Math.floor(Number(cfg.axisUltimateTotal ?? 0) || 0))
-  const chain = Math.max(0, Math.floor(state.chainCountTotal))
   const ult = axisUlt > 0 ? axisUlt : Math.max(0, Math.floor(state.ultimateCount))
   const stun = Math.max(0, Math.floor(Number(cfg.xixifuStunCount ?? 0)))
   const stunnedUlt = axisUlt > 0 ? ult : Math.min(ult, stun)
-  cfg.xixifuC2Toxin = cinema >= 2 ? (chain + stunnedUlt) * 3 : 0
+  /**
+   * **连携次数**：轴模式下 `state.chainCountTotal` 在资源迭代期恒 0（连携由失衡池二阶段回填），
+   * 原口径直接读它 ⇒ `toxin_chain` 恒收 0（漏收 14 次连携 = 42 毒素，2026-10-25 实测）。
+   * 改为「轴内覆盖值 ?? 每次失衡连携数 × 失衡次数」，与池的连携口径同源。
+   */
+  const chainPerStun = Math.max(0, Math.floor(Number(cfg.chainCountPerStun ?? 0) || 0))
+  const chainFromStun = Math.max(0, Math.floor(stun * chainPerStun))
+  /** 覆盖值只在**给出正数**时生效（0/缺省 = 非轴模式没声明，回落 次数×每次失衡连携数） */
+  const chainOverride = Number(cfg.chainCountTotalOverride ?? Number.NaN)
+  const chainTotal = Math.max(
+    Math.max(0, Math.floor(state.chainCountTotal)),
+    Math.floor(chainOverride > 0 ? chainOverride : chainFromStun),
+  )
+  /**
+   * **毒牙能量账**（用户 2026-10-25 逐字：「强特长按会先扣除65能量回复5能量打出一个毒牙#1，
+   * 后面每花费20能量可以打一个毒牙#2，最多打3个。这个需要算啊」）。
+   *
+   * 旧口径只按计划强特次数 ×（+3 基础 +3 长按）给毒素，**额外打击的 20 能量一分没收**
+   * （实测 18 次 × 60 能量 = 1080 能量白嫖，直接换 54 点毒素）。现在从同一个能量池里买：
+   * 满长按一次 = (65 − 5) + 20 × 3 = 120 能量 ⇒ 买得起的次数 = floor(总能量 / 120)。
+   */
+  const holdRate = specAdjustableRate(cfg, '1521.xixifu_toxin.toxin_duya_hold.rate')
+  const extrasPerEx = Math.min(XIXIFU_DUYA_MAX_EXTRA, Math.round(XIXIFU_DUYA_MAX_EXTRA * holdRate))
+  // 能量成本已在 buildCharConfig 写进 exSpecialEnergyConsume（每次 = 点按价 + 额外打击价）
+  // ⇒ 引擎推出的强特次数本身就是「买得起的次数」，这里不再二次折扣（否则双重收费）
+  const exPaid = Math.max(0, Math.floor(state.exSpecialCount))
+  /** **吐信第四段机会** = 平A连段数 + 每次毒牙后衔接 + 每次连携后衔接（原文「招式发动后，可直接衔接第四段」） */
+  const comboSeconds = Math.max(0.5, Number(cfg.xixifuA4ComboSeconds ?? 0) || 4.483)
+  const a4Count = Math.floor(Math.max(0, state.basicAttackTime) / comboSeconds) + exPaid + chainTotal
+  cfg.xixifuA4Count = a4Count
+  cfg.xixifuDuyaPaidCount = exPaid
+  cfg.xixifuDuyaExtraHits = exPaid * extrasPerEx
+  cfg.xixifuChainCount = chainTotal
+  cfg.xixifuC2Toxin = cinema >= 2 ? (chainTotal + stunnedUlt) * 3 : 0
   return computeSpecResources(spec, cfg, state)
 }
 
@@ -301,5 +367,15 @@ declare module '@/types/resource/config' {
     xixifuStunCount?: number
     /** 希希芙影画2 失衡下连携/终结额外毒素合计（computeXixifuToxinTotal 写入，spec gain rule cfgField 读取） */
     xixifuC2Toxin?: number
+    /** 吐信四段连段总时长（秒；buildCharConfig 读倍率表 1521001..1521004 actionTime 之和写入） */
+    xixifuA4ComboSeconds?: number
+    /** 吐信第四段机会次数（平A连段 + 毒牙后衔接 + 连携后衔接；resolveXixifuResources 写入，spec cfgField 读取） */
+    xixifuA4Count?: number
+    /** 能量买得起的毒牙次数（含长按额外打击的能量成本；resolveXixifuResources 写入） */
+    xixifuDuyaPaidCount?: number
+    /** 毒牙长按的额外打击总次数（= 已付费次数 × 每次额外打击数；resolveXixifuResources 写入） */
+    xixifuDuyaExtraHits?: number
+    /** 连携次数（chainCountTotalOverride ?? chainCountPerStun × 失衡次数；resolveXixifuResources 写入） */
+    xixifuChainCount?: number
   }
 }

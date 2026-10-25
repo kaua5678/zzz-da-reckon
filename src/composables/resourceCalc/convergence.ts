@@ -14,6 +14,7 @@ import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic, interactionBaselineFor } from '@/mechanics'
 import { firstGiftedPolarAssaultSlot, sumGiftedPolarAssault } from './giftedPolarAssault'
 import { findMoveById } from '@/data/moveTableQueries'
+import { teaStunImpactScale } from '@/data/wEngineStackCoverage'
 
 /**
  * 5 个 `compute*NextRoundFeedback` 纯函数已整体迁出（2026-09-16 arch 棘轮第 6 批）。
@@ -1089,8 +1090,39 @@ export function createRunCalcRound(deps: {
      */
     const stunLockN = base.stunCountLockOverride ?? configStore.enemy.stunCountLock
     const lockForPool = stunLockN >= 0 ? countStun : undefined
+    /**
+     * **失衡值口径的冲击力缩放**（`cfg.stunImpactScale`，模块写入，缺省 1）。
+     * 引擎只读这个**与角色无关**的字段（判据 22 不破）：叠层类音擎的冲击力加成按「每轮失衡」
+     * 折算后只作用于失衡值。失衡值对 impact 线性 ⇒ 缩放面板 impact 与逐行叠层等价。
+     * ⚠ 只缩放**喂给失衡池**的那份面板，不动 `panels.value` 本身（伤害侧口径不变）。
+     */
+    const stunPanels = panels.value.map((panel, index) => {
+      // 按盖章身份取（面板按位置压缩，下标 ≠ 槽位号）；未盖章时按同一压缩序回落下标
+      const charSlot = (rr.characters.find(c => c.slot === panel.slot) ?? rr.characters[index])?.slot ?? index
+      const teamSlot = configStore.team[charSlot]
+      const ch = rr.characters.find(c => c.slot === charSlot) ?? rr.characters[index]
+      // 普攻**个数**（不看秒数）：执行行 count 之和 —— 原文「[普通攻击]命中敌人时获得1层茶劲」按个数算
+      let basicCount = 0
+      let basicWeight = 0
+      let skillWeight = 0
+      for (const row of ch?.executions ?? []) {
+        const n = Math.max(0, Number(row.count ?? 0))
+        const w = n * Math.max(0, Number(row.dazeMultiplier ?? 0))
+        if (row.category === 'basic') { basicCount += n; basicWeight += w } else skillWeight += w
+      }
+      const scale = teaStunImpactScale({
+        wEngineId: String(teamSlot?.wEngineId ?? ''),
+        basicCount,
+        stunRounds: countStun,
+        basicWeight,
+        skillWeight,
+      })
+      return scale != null && Number.isFinite(scale) && scale !== 1
+        ? { ...panel, impact: panel.impact * scale }
+        : panel
+    })
     // Round 0：无易伤 → 畏缩覆盖率初算
-    const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio, lockForPool)
+    const sp0 = promoteFixpoint(baseStun, 0, p, axisHug, axisMode, { configStore, panels: stunPanels }, inAxisFractionProvider, stunRefundRatio, lockForPool)
     const adj0 = applyUltimatePromote(rr, sp0, catalogStore)
     // 本轮极性强击赠送次数：读本轮 rr 而非异常池 setup（循环依赖，见 calcAnomalyPoolInput）。
     // CC-38b：模块能力 `giftedPolarAssaultCount` 派发求和；CC-75 收进 giftedPolarAssault.ts（口径裁定 = 求和，见该文件头）。
@@ -1101,7 +1133,7 @@ export function createRunCalcRound(deps: {
 
     // Round 1：含易伤 → 畏缩覆盖率修正 → 最终收敛
     const flinch1 = ap0.coverage.physicalCoverageRate
-    const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, { configStore, panels: panels.value }, inAxisFractionProvider, stunRefundRatio, lockForPool)
+    const sp1 = promoteFixpoint(baseStun, flinch1, p, axisHug, axisMode, { configStore, panels: stunPanels }, inAxisFractionProvider, stunRefundRatio, lockForPool)
     // CC-542：失衡分数逐轮打表（`PROBE_TRACE_AXISFRAC=1`，关着零成本）。r770 起用于定位 banyue-roxy-lucia 的
     // 「读入 K ↔ 池次数」自反环：环载体是不是 `threads.prevPoolStunCount`（K 线程）经轴栈窗数 + countStun 自激。
     probePush('PROBE_TRACE_AXISFRAC', '__axisFracRounds', () => {

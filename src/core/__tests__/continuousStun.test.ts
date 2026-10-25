@@ -38,6 +38,34 @@ describe('连续失衡·末窗兑现（用户 1w/16s/100 例子）', () => {
     expect(r.clamped).toBe(false)
   })
 
+/**
+   * **已兑现等效窗数** = 施工图 §0 的 `完整窗数 + 末窗兑现比例`（接数值路径的唯一读数）。
+   *
+   * 判据专治一个**必踩的坑**：本仓 `fullWindows` 在末窗完整时**已含末窗**，所以
+   * `fullWindows + lastFraction` 会在 frac = 1 时凭空多出一窗（1.16w 报 2 窗）。
+   * 这里逐档钉死，任何"顺手写成 fullWindows + lastFraction"的改法立刻红。
+   */
+  it('已兑现等效窗数：frac=1 不得重复计窗（fullWindows 已含末窗）', () => {
+    const at = (sigma: number) => continuousWindowSplit({ totalBuildUp: sigma, bossStunValue: b, eatenPerWindow: e })
+    // 用户三档：1.00w / 1.08w / 1.16w ⇒ 0 / 0.5 / 1
+    expect(at(10000).realizedWindows).toBe(0)
+    expect(at(10800).realizedWindows).toBeCloseTo(0.5, 9)
+    expect(at(11600).realizedWindows).toBeCloseTo(1, 9)
+    // 两整窗、不足一窗、以及"1.16w 打完 + 0.84w 进度"的反例
+    expect(at(23200).realizedWindows).toBeCloseTo(2, 9)
+    expect(at(9000).realizedWindows).toBe(0)
+    expect(at(20000).realizedWindows).toBeCloseTo(1, 9)
+    // 反空洞：这三档里 fullWindows + lastFraction 会给出 2 / 3 / 2 —— 必须与 realizedWindows 不同
+    expect(at(11600).fullWindows + at(11600).lastFraction).not.toBeCloseTo(at(11600).realizedWindows, 6)
+    // 单调：Σ 越大越不下滑（跨 unit 时窗数 +1，不会回退）
+    let prev = 0
+    for (let sigma = 9000; sigma <= 50000; sigma += 125) {
+      const cur = at(sigma).realizedWindows
+      expect(cur, `Σ=${sigma}`).toBeGreaterThanOrEqual(prev - 1e-9)
+      prev = cur
+    }
+  })
+
   it('Σ = 2.32w ⇒ 两窗完整；Σ 不足一窗 ⇒ 0 窗 0 frac', () => {
     const two = continuousWindowSplit({ totalBuildUp: 23200, bossStunValue: b, eatenPerWindow: e })
     expect(two.openedWindows).toBe(2)

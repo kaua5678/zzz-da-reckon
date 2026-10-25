@@ -131,45 +131,66 @@ describe('希希芙额外能力·毒素发酵（全队暴伤+40%、自身额外+
 })
 
 describe('希希芙毒素资源循环、蚀骨与蛇吻', () => {
+  /**
+   * 夹具状态（2026-10-25 更新：补 `totalEnergy`）。
+   *
+   * 为什么必须补：毒牙长按的**额外打击要花能量**（用户 2026-10-25 逐字「强特长按会先扣除65能量
+   * 回复5能量打出一个毒牙#1，后面每花费20能量可以打一个毒牙#2，最多打3个」），
+   * 模块按「满长按一次 120 能量」从 `state.totalEnergy` 里买次数。缺这格 = 买不起 = 毒素恒 0，
+   * 夹具会静默测不到毒牙分支。240 = 恰好买得起 2 次满长按。
+   */
   const mkState = () => ({
     basicAttackTime: 20, exSpecialCount: 2, chainCountTotal: 1, ultimateCount: 1,
+    totalEnergy: 240,
     frontlineTime: 40, backstageTime: 0,
   }) as any
+  /** 连携次数来源：`chainCountTotalOverride ?? chainCountPerStun × 失衡次数`（state 里那格轴模式恒 0） */
+  const chainCfg = { chainCountPerStun: 1, xixifuStunCount: 1 }
 
-  it('毒素账目：进场3+吐信段4×2+失衡占比0.5+毒牙3×2+长按3×2+连携3+终结3；蚀骨次数=总量', () => {
-    const cfg: any = {}
+  /**
+   * ⚠ **2026-10-25 锚值重算（规则 10 四步）**：
+   * ① 量 delta：吐信第四段 10 次 → **7 次**（20/2=10 变为 floor(20/4.483)=4 个连段 + 毒牙 2 + 连携 1），
+   *    毒素总量 46 → 38；毒牙/连携/终结三条未变。
+   * ② 根因：原文「每获得6点毒素…第四段攻击命中后获得2点」——第四段是**四段连段**的第 4 段，
+   *    引擎缺省按「每 2 秒一次」估；倍率表实测连段 = 0.653+1.047+0.91+1.873 = **4.483 秒**。
+   *    另按原文「招式发动后，可直接衔接第四段普通攻击：吐信」补上**毒牙后 + 连携后**的免费第四段机会。
+   * ③ 确认有意：用户 2026-10-25「e后面可以直接跟a4，连携后面也可以。单c情况下a4的机会比较多」。
+   * ④ 同时把「毒牙长按额外打击的能量」计入（不再是白拿）。
+   */
+  it('毒素账目：进场3+吐信段7×2+失衡占比0.5+毒牙3×2+长按3×2+连携3+终结3；蚀骨次数=总量', () => {
+    const cfg: any = { ...chainCfg }
     const result: any = xixifuMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
     const toxin = result.specResources.xixifu_toxin
     expect(toxin).toBeTruthy()
     expect(toxin.initialValue).toBe(3)
     expect(toxin.maxValue).toBe(125)
-    expect(toxin.gains.toxin_tuxin_stage4).toBeCloseTo(20, 5)      // basicAttackCount 10 × 2
-    expect(toxin.gains.toxin_tuxin_stunned_bonus).toBeCloseTo(5, 5) // 10 × 1 × 0.5
-    expect(toxin.gains.toxin_duya_base).toBeCloseTo(6, 5)
+    expect(toxin.gains.toxin_tuxin_stage4).toBeCloseTo(14, 5)      // a4 7 次 × 2
+    expect(toxin.gains.toxin_tuxin_stunned_bonus).toBeCloseTo(3.5, 5) // 7 × 1 × 0.5
+    expect(toxin.gains.toxin_duya_base).toBeCloseTo(6, 5)          // 能量买得起 2 次
     expect(toxin.gains.toxin_duya_hold).toBeCloseTo(6, 5)
     expect(toxin.gains.toxin_chain).toBeCloseTo(3, 5)
     expect(toxin.gains.toxin_ultimate).toBeCloseTo(3, 5)
-    // 蚀骨次数 = 初始3 + 总获取43 = 46（cost 1）
-    expect(toxin.spendCounts.toxin_shigu_spend).toBe(46)
+    // 蚀骨次数 = 初始3 + 总获取35.5 = 38（cost 1，向下取整）
+    expect(toxin.spendCounts.toxin_shigu_spend).toBe(38)
   })
 
   it('buildExecutions：蚀骨（基础254.4%随等级 + 附加335% flat）+ 蛇吻（1009.1%×7）', () => {
-    const cfg: any = { xixifuElectricCount: 1, xixifuAtk: 3000, mechanicRowValues: { ...ROW_VALUES } }
+    const cfg: any = { xixifuElectricCount: 1, xixifuAtk: 3000, mechanicRowValues: { ...ROW_VALUES }, ...chainCfg }
     const executions: any[] = []
     xixifuMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
-    // 46 毒素 → 蚀骨 46 次 + 蛇吻 floor(46/6)=7 次（无特殊蚀骨）
+    // 38 毒素 → 蚀骨 38 次 + 蛇吻 floor(38/6)=6 次（无特殊蚀骨）
     expect(executions.length).toBe(2)
     const shigu = executions.find((e: any) => e.moveId === '1521019')
     const shekiss = executions.find((e: any) => e.moveId === '1521006')
     expect(shigu).toBeTruthy()
-    expect(shigu.count).toBe(46)
+    expect(shigu.count).toBe(38)
     expect(shigu.damageMultiplier).toBeCloseTo(254.4, 5) // 基础随等级
     expect(shigu.flatDamageBonus).toBeCloseTo(3000 * 3.35, 5) // 附加 335% 不随等级
     expect(shigu.element).toBe('electric')
     expect(shigu.stunBuildUpBonus).toBe(40) // 1 名电属性
     expect(shigu.resIgnore ?? 0).toBe(0) // 影画0 无
     expect(shekiss).toBeTruthy()
-    expect(shekiss.count).toBe(7)
+    expect(shekiss.count).toBe(6)
     expect(shekiss.damageMultiplier).toBeCloseTo(1009.1, 5)
     expect(shekiss.dmgBonus ?? 0).toBe(0)
 
@@ -200,20 +221,20 @@ describe('希希芙毒素资源循环、蚀骨与蛇吻', () => {
   })
 
   it('影画2：失衡下连携/终结额外+3毒素（连携全吃 + min(终结, 失衡)）', () => {
-    const cfg: any = { xixifuCinemaLevel: 2, xixifuStunCount: 1 }
+    const cfg: any = { xixifuCinemaLevel: 2, ...chainCfg }
     const result: any = xixifuMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
     const toxin = result.specResources.xixifu_toxin
     // 连携 1 + min(终结 1, 失衡 1) = 2 次 × 3 = 6
     expect(toxin.gains.toxin_c2_stunned_chain_ultimate).toBeCloseTo(6, 5)
     // 无失衡（stunCount=0）时只剩连携 1×3 = 3
-    const cfg0: any = { xixifuCinemaLevel: 2, xixifuStunCount: 0 }
+    const cfg0: any = { xixifuCinemaLevel: 2, chainCountPerStun: 1, xixifuStunCount: 0 }
     const r0: any = xixifuMechanic.buildResourceResult!({ cfg: cfg0, state: mkState() } as any)
     expect(r0.specResources.xixifu_toxin.gains.toxin_c2_stunned_chain_ultimate).toBeCloseTo(3, 5)
   })
 
   it('影画2 轴模式：axisUltimateTotal 精确反推，不吃 min(终结, 失衡) 折扣', () => {
     // 轴内终结块 3 次（> 失衡 1）：非轴口径 min(3,1)=1，轴口径全额 3
-    const cfg: any = { xixifuCinemaLevel: 2, xixifuStunCount: 1, axisUltimateTotal: 3 }
+    const cfg: any = { xixifuCinemaLevel: 2, ...chainCfg, axisUltimateTotal: 3 }
     const result: any = xixifuMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
     // 连携 1 + 终结 3 = 4 次 × 3 = 12
     expect(result.specResources.xixifu_toxin.gains.toxin_c2_stunned_chain_ultimate).toBeCloseTo(12, 5)
@@ -230,15 +251,19 @@ describe('希希芙毒素资源循环、蚀骨与蛇吻', () => {
     expect(special.flatDamageBonus).toBeCloseTo(3000 * 3.35, 5)
   })
 
-  it('影画6：印记计数器 → 特殊蚀骨 = min(蚀骨56, 180/3=60) = 56（+影画4 4 = 60）', () => {
+  /**
+   * ⚠ **2026-10-25 锚值重算**（同「毒素账目」那条的归因：吐信四段频率按四段连段 4.483s + 毒牙/连携后衔接）。
+   * 影画6 含影画1/2/4：进场 6 + C2 连携 3 + 常规 35.5 = 毒素总量 44.5 → 蚀骨 **44**；
+   * 觉悟 4、印记 min(44+4, 180/3=60)=48 ⇒ 特殊蚀骨 = 4 + 48 = **52**。
+   */
+  it('影画6：印记计数器 → 特殊蚀骨 = 觉悟4 + min(蚀骨44+4, 180/3=60)=48 = 52', () => {
     const executions: any[] = []
     xixifuMechanic.buildExecutions!({ cfg: { xixifuCinemaLevel: 6, xixifuElectricCount: 1, xixifuAtk: 3000, battleTime: 180, mechanicRowValues: { ...ROW_VALUES } }, state: mkState(), executions } as any)
     const special = executions.find((e: any) => e.moveId === 'xixifu_shigu_special')
     expect(special).toBeTruthy()
-    // 影画6 含影画1/2/4：毒素总量 52（含 C2 连携 3）、蚀骨 52+4=56、印记 3 秒 ICD 上限 60 → 特殊蚀骨 = 4(觉悟)+56(印记)=60
-    expect(special.count).toBe(60)
+    expect(special.count).toBe(52)
     const shigu = executions.find((e: any) => e.moveId === '1521019')
-    expect(shigu.count).toBe(52)
+    expect(shigu.count).toBe(44)
   })
 
   it('影画1：蚀骨伤害无视 10% 电抗（resIgnore 招式限定）', () => {
@@ -267,14 +292,16 @@ describe('希希芙毒素资源循环、蚀骨与蛇吻', () => {
     expect(two.find((e: any) => e.moveId === '1521019').stunBuildUpBonus).toBe(60)
   })
 
-  it('resourceSections 输出蛇吻次数卡 = floor(毒素总量/6)', () => {
-    const cfg: any = {}
+  it('resourceSections 输出蛇吻次数卡 = floor(毒素总量/6)（与资源账自洽，不写死绝对数）', () => {
+    const cfg: any = { ...chainCfg }
     const result: any = xixifuMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
     const sections = xixifuMechanic.resourceSections!({ result, cfg } as any)
     expect(sections.some((s: any) => s.title?.includes('毒素'))).toBe(true)
     const shekiss = sections.find((s: any) => s.id === 'xixifu-shekiss')
     expect(shekiss).toBeTruthy()
-    expect(shekiss!.summary).toContain(String(Math.floor(46 / 6)))
+    // 判据「卡片 = floor(毒素总量/6)」本身，而不是某个编号：毒素总量随模型改动时这条不该跟着重钉
+    const toxinTotal = result.specResources.xixifu_toxin.total as number
+    expect(shekiss!.summary).toContain(String(Math.floor(toxinTotal / 6)))
   })
 })
 

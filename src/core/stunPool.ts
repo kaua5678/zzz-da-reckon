@@ -272,6 +272,18 @@ export function withStunCountRebuilt(pool: StunPoolResult, stunCount: number): S
     ...rebuilt,
     // 失衡值总量按 cap 次重建（反函数保证 continuousStunCount(它) ≈ stunCount）
     totalStunBuildUp: stunBuildUpForCount(pool, stunCount),
-    grossStunBuildUp: Math.min(pool.grossStunBuildUp, stunBuildUpForCount(pool, stunCount)),
+    /**
+     * ⚠ **`grossStunBuildUp` 必须原样保留**（2026-10-25，连续失衡步 3 实测）。
+     *
+     * 它描述的是「全队一共**产出**了多少失衡值」，与「这一次兑现了几窗」不是同一个量——
+     * 重建次数只该改「兑现账」（`totalStunBuildUp` = 这 K 窗吃掉的量），不该改「产出账」。
+     * 旧写法把它一起钳到 `min(gross, K×b)` ⇒ 抹掉毛失衡值，而毛值是连续失衡公式的输入 Σ
+     * （`.claude/TASK-continuous-stun.md` §1），实测 6 支队列被洗白：
+     * `auto-1521-1251-1311` 真实毛值 **167101** 被改写成 **108402**（= 7×15486）⇒
+     * 连续窗数从 5.0 塌成 4.0（§8d 实测表）。
+     *
+     * 代价：展示面「毛失衡 = 窗内无效 + 有效」这条恒等式对这 6 支队不再闭口——差额正是
+     * 「攒出来但没能开启下一窗」的残量（与用户 §33「没攒满 = 没开启」同向），如实显示优于伪造。
+     */
   }
 }

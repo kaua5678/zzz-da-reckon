@@ -6,7 +6,7 @@ import { activeRowFusionRulesSnapshot } from '@/logicEditor/fusion'
 import { INNER_LOOP_MAX_ITERATIONS } from '@/core/resource'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { DEFAULT_STUN_PLAN_PROJECTION_CODE, stunPlanProjectionFromCode } from '@/core/stunPlanProjection'
-import { continuousWindowSplit } from '@/core/continuousStun'
+import { continuousStunSplitOf } from '@/core/continuousStun'
 import { calcStunAxis } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
@@ -312,7 +312,8 @@ export function createResourceCalc(
    * **连续失衡读数**（用户口径 2026-10-25；施工图 `.claude/TASK-continuous-stun.md` §1/§8）。
    *
    * 纯追加、**不参与任何计算**：给出「开窗数 N + 末窗兑现 frac」，口径 =
-   * `continuousWindowSplit({ Σ = 毛失衡值, b = boss 失衡值, e = 每秒失衡值 × 窗长 })`。
+   * `continuousStunSplitOf(pool, 窗长, 有效战斗时间)` → `continuousWindowSplit({ Σ = 毛失衡值,
+   * b = boss 失衡值, e = 每秒失衡值 × 窗长 })`（e 的单一事实源在该函数里）。
    *
    * ⚠ `e` 必须用**正面量**（每秒失衡值 × 窗长，即用户模型里的"窗内每秒 100 点"），
    * 不能用 `inAxisStunTotal / stunCount` 反推——后者按"每窗都完整"算，代回公式会自证 frac=1
@@ -321,14 +322,8 @@ export function createResourceCalc(
   const continuousStun = computed(() => {
     const pool = calcOutput.value?.stunPool
     if (!pool) return null
-    const windowSeconds = computeWindowDuration()
-    const battleSeconds = effectiveBattleTime(configStore.enemy)
-    const rate = battleSeconds > 0 ? pool.grossStunBuildUp / battleSeconds : 0
-    return continuousWindowSplit({
-      totalBuildUp: pool.grossStunBuildUp,
-      bossStunValue: pool.bossStunValue,
-      eatenPerWindow: rate * windowSeconds,
-    })
+    // e 的单一事实源 = core/continuousStun#continuousStunSplitOf（与 solveTeam 的覆盖率路径同源）
+    return continuousStunSplitOf(pool, computeWindowDuration(), effectiveBattleTime(configStore.enemy))
   })
   /** 失衡内异常状态（轴模式）：每元素触发次数/窗均覆盖（失衡内异常系统 v2） */
   const inStunAnomalyState = computed<InStunAnomalySummary | null>(() => calcOutput.value?.inStunAnomalyState ?? null)
@@ -567,6 +562,8 @@ export function createResourceCalc(
           agentId: ch.agentId,
           exSpecialCount: ch.exSpecialCount,
           executions: ch.executions,
+          // 「普通攻击命中」类叠层（如玉壶青冰·茶劲）的触发源：本槽平A时间
+          basicAttackTime: ch.timeAllocation?.basicAttackTime ?? 0,
         })
         if (stacks == null) continue
         const cov = stacksToCoverage(stacks, durationSeconds, battleSeconds, e.maxStacks)

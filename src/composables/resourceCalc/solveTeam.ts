@@ -20,10 +20,12 @@ import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { continuousStunCount, withStunCount, withStunCountRebuilt } from '@/core/stunPool'
 import { stunWindowFraction } from '@/core/effectiveTime'
+import { continuousStunSplitOf } from '@/core/continuousStun'
+import { buildStunTimeline, realizeStunWindows } from '@/core/stunTimeline'
 import type { OuterExit, ResourceCalcConfig } from '@/types/resource'
 import { initialCalcRoundThreads } from './roundThreads'
 import { findOuterLongCycleLag, isOuterTwoCycle, outerFeedbackSignature, pickOuterCycleMember } from './outerCycle'
-import { probeKey, probePush } from '@/core/probeTrace'
+import { probeFlag, probeKey, probePush } from '@/core/probeTrace'
 import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted, downscaleTrialFeasible } from './feasibilitySearch'
 // 仅类型：`ReturnType<typeof createRunCalcRound>` 与 `CalcRoundResult` 都用不到运行时值，
 // 故 type-only import（不引入 convergence.ts 的运行时依赖）。
@@ -218,7 +220,29 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       // 原「null 轮 ⇒ threadsAfterNullRound 回退 + 签名清空 + continue」分支随之删除。
       out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim })
       const t = out.threadsNext
-      const rawNext = out.stunPool.stunCount
+      /**
+       * ===== 步 4 实验（`PROBE_STUN_NEXT=trace`）：喂给下一轮计划的窗数改用**轴栈实测兑现窗数** =====
+       *
+       * 用户 2026-10-25 逐字：「你无法打出 7 个窗啊……连携次数看你的离散失衡怎么做的，
+       * 你如果是按照时间截断轴模式，那就可以看**残疾轴在这时间前打了几个失衡**。非轴另算。」
+       *
+       * 一窗算不算数不再是 `floor(净失衡值 / b)` 的整数跳变，而是**这一窗实际打进去多少**
+       * （`core/stunTimeline.ts#realizeStunWindows` = Σ 每窗填充率），**小数原样喂回去**：
+       * 外不动点迭代的是连续量 ⇒ §0 的「按 4 排 ⇄ 按 5 排」双稳态从根上消失。
+       * 非轴队没有轴栈轨迹（`hasTrace=false`）⇒ 退回池的整数次数（用户「非轴另算」）。
+       */
+      const realizedWindowsOf = (r: CalcRoundResult): number => {
+        const realization = realizeStunWindows(buildStunTimeline({
+          stunCount: r.stunPool.stunCount,
+          windowDuration: stunWindowDur,
+          effectiveTime: stunEffTime,
+          windows: r.axisStack?.windowTrace,
+        }))
+        return realization.hasTrace ? realization.realizedWindows : r.stunPool.stunCount
+      }
+      const rawNext = probeFlag('PROBE_STUN_NEXT') === 'trace' && stunWindowDur > 0 && stunEffTime > 0
+        ? realizedWindowsOf(out)
+        : out.stunPool.stunCount
       // 净失衡缩放 + 时间可行性截断：非失衡占比缩放全来源净失衡，超出可容纳窗口数的残失衡按残差时间系数折成小数
       let next = rawNext
       if (!locked && stunWindowDur > 0 && stunEffTime > 0) {
@@ -350,6 +374,27 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
      * ⚠ 深度闸：`overrideLock !== undefined` 时不进本块（否则递归无界，实测栈溢出）。
      * 回退点：删本块（`capacityResolved` 分支随之消失）。
      */
+    /** 按 K 窗锁定的整轮（内层 promote 也走锁定路径，否则池不被钉到 K ⇒ cont 读数不成立） */
+    const evalLocked = (k: number): ReturnType<typeof runOuterLoop> => {
+      const prevOverride = resourceConfig.stunCountLockOverride
+      const prevProjection = resourceConfig.stunPlanProjection
+      resourceConfig.stunCountLockOverride = k
+      /**
+       * ⚠ **投影也要一起回落 off**（实测踩过）：用户锁定失衡次数时 `useResourceCalc` 会把
+       * `stunPlanProjection` 从 physical 改成 off（CC-151），因为 physical 读的是**上一轮池**、
+       * 会把锁定值旁路掉。这里走 override 通道，`useResourceCalc` 那层看不到，必须自己改——
+       * 否则 core/resource 的计数通道仍按 physical 读上一轮池，等于**没按 K 排窗**
+       * （实测 auto-1591：K=4 时内层 20 轮不收敛，而用户锁定同 K 只跑 3 轮即 stable）。
+       */
+      if (resourceConfig.stunPlanProjection === 'physical') resourceConfig.stunPlanProjection = 'off'
+      try {
+        return runOuterLoop(forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim, k)
+      } finally {
+        resourceConfig.stunCountLockOverride = prevOverride
+        resourceConfig.stunPlanProjection = prevProjection
+      }
+    }
+
     let capacityResolved = false
     if (outerExit === 'cycle' && stunWindowDur > 0 && stunEffTime > 0 && overrideLock === undefined) {
       /** 物理上限：窗长不可能装下超过 floor(effTime/W) 次 */
@@ -365,26 +410,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         physicalMax,
         budgetHasRoom ? Math.max(1, Math.ceil((stunEffTime - necUsed) / stunWindowDur)) : physicalMax,
       )
-      /** 按 K 窗锁定的整轮（内层 promote 也走锁定路径，否则池不被钉到 K ⇒ cont 读数不成立） */
-      const evalLocked = (k: number): ReturnType<typeof runOuterLoop> => {
-        const prevOverride = resourceConfig.stunCountLockOverride
-        const prevProjection = resourceConfig.stunPlanProjection
-        resourceConfig.stunCountLockOverride = k
-        /**
-         * ⚠ **投影也要一起回落 off**（实测踩过）：用户锁定失衡次数时 `useResourceCalc` 会把
-         * `stunPlanProjection` 从 physical 改成 off（CC-151），因为 physical 读的是**上一轮池**、
-         * 会把锁定值旁路掉。这里走 override 通道，`useResourceCalc` 那层看不到，必须自己改——
-         * 否则 core/resource 的计数通道仍按 physical 读上一轮池，等于**没按 K 排窗**
-         * （实测 auto-1591：K=4 时内层 20 轮不收敛，而用户锁定同 K 只跑 3 轮即 stable）。
-         */
-        if (resourceConfig.stunPlanProjection === 'physical') resourceConfig.stunPlanProjection = 'off'
-        try {
-          return runOuterLoop(forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim, k)
-        } finally {
-          resourceConfig.stunCountLockOverride = prevOverride
-          resourceConfig.stunPlanProjection = prevProjection
-        }
-      }
+
       /**
        * **先从环成员里找 kStar —— 零额外求值**（2026-10-21 性能实测驱动）。
        *
@@ -525,6 +551,40 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         ? stunWindowFraction(out.stunPool.stunCount, stunWindowDur, stunEffTime, out.stunVerdictLostSeconds)
         : 0
       if (cov !== out.stunCoverage) out = { ...out, stunCoverage: cov }
+    }
+    /**
+     * ===== 步 4 实验（`PROBE_STUN_NEXT=trace`）：按「残疾轴实际打了几个失衡」结算窗数 =====
+     *
+     * 用户 2026-10-25：「你无法打出 7 个窗啊……你如果是按照时间截断轴模式，那就可以看
+     * **残疾轴在这时间前打了几个失衡**。非轴另算。」
+     *
+     * 做法：拿当前这一轮**轴栈实际填充**的等效窗数（`core/stunTimeline.ts#realizeStunWindows`），
+     * floor 成整数后**按这个 K 重排一整轮**（与 `kStar` 同一条 locked 通道），再读一轮实测，
+     * 直到实测与计划对上（最多 3 次）。非轴队没有轴栈轨迹 ⇒ 直接不动（「非轴另算」）。
+     *
+     * ⚠ 与 `kStar`（环退出时的拉合器）是**两件事**：kStar 判的是「池攒不攒得出 K」，
+     * 本块判的是「这一轮排进去的窗，队伍有没有牌打满」。两者可同时命中，本块在后面。
+     */
+    if (probeFlag('PROBE_STUN_NEXT') === 'trace' && overrideLock === undefined && stunEffTime > 0 && stunWindowDur > 0) {
+      for (let settle = 0; settle < 3; settle++) {
+        const realization = realizeStunWindows(buildStunTimeline({
+          stunCount: out.stunPool.stunCount,
+          windowDuration: stunWindowDur,
+          effectiveTime: stunEffTime,
+          windows: out.axisStack?.windowTrace,
+        }))
+        if (!realization.hasTrace) break
+        const target = Math.floor(realization.realizedWindows + 1e-9)
+        if (target === out.stunPool.stunCount || target < 1) break
+        const re = evalLocked(target)
+        if (re.outerExit !== 'stable') break
+        out = {
+          ...re.out,
+          stunPool: withStunCountRebuilt(re.out.stunPool, target),
+          stunCoverage: stunWindowFraction(target, stunWindowDur, stunEffTime, re.out.stunVerdictLostSeconds),
+        }
+        capacityResolved = capacityResolved || true
+      }
     }
     return { out, outPrev, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier, capacityResolved }
   }
@@ -877,5 +937,32 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         },
       }
     : baseOut
-  return { out }
+  /**
+   * ===== 步 3 实验：连续失衡覆盖率**只喂结算侧**（施工图 §8c 第 1 步）=====
+   *
+   * 开关 `PROBE_STUN_CONT_COV`：`formula` = 失衡值公式（§1 口径，e = 每秒失衡值 × 窗长），
+   * `trace` = 轴栈逐窗实测填充率（用户 2026-10-25「应该有前面失衡期的数据」）。
+   * **不设 = 逐位不变**（默认关）。
+   *
+   * 换的是 `out.stunCoverage`（= 伤害池易伤与行级 `stunCoverage` 的唯一输入），
+   * **不换**迭代内部用的那份（`runOuterLoop` 每轮用的是它自己的局部 `stunWindowFraction(stunCount, …)`），
+   * 所以失衡次数 / 时间账 / 轴栈全部保持整数口径 —— 这正是实验目的：
+   * 先量「把末窗兑现折进易伤」对伤害的影响，以及会不会触发 §41 那种「覆盖率↑ ⇒ 攒条↓ ⇒ 池塌陷」。
+   */
+  let finalOut = out
+  const contMode = probeFlag('PROBE_STUN_CONT_COV')
+  if (contMode && stunEffTime > 0 && stunWindowDur > 0) {
+    /** 已兑现的等效窗数：两种口径并列，`formula` 用失衡值账，`trace` 用轴栈逐窗实测 */
+    const realized = contMode === 'trace'
+      ? realizeStunWindows(buildStunTimeline({
+          stunCount: out.stunPool.stunCount,
+          windowDuration: stunWindowDur,
+          effectiveTime: stunEffTime,
+          windows: out.axisStack?.windowTrace,
+        })).realizedWindows
+      : continuousStunSplitOf(out.stunPool, stunWindowDur, stunEffTime).realizedWindows
+    const contCoverage = stunWindowFraction(realized, stunWindowDur, stunEffTime, out.stunVerdictLostSeconds)
+    if (contCoverage !== out.stunCoverage) finalOut = { ...out, stunCoverage: contCoverage }
+  }
+  return { out: finalOut }
 }

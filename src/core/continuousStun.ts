@@ -96,6 +96,14 @@ export interface ContinuousWindowSplit {
   fullWindows: number
   /** **末窗兑现比例** frac ∈ [0,1]：`((Σ − b) mod unit) / e` */
   lastFraction: number
+  /**
+   * **已兑现的等效窗数**（= 施工图 §0 的 `完整窗数 + 末窗兑现比例`，是接数值路径的唯一读数）。
+   *
+   * ⚠ **不能写成 `fullWindows + lastFraction`**：末窗完整（frac = 1）时 `fullWindows` **已含它**
+   * （判据 `continuousStun.test.ts`「Σ = 1.16w ⇒ fullWindows = 1」），再加一次就凭空多一窗。
+   * 三档自检（b=1w / e=0.16w）：Σ=1.00w ⇒ 0；Σ=1.08w ⇒ 0.5；Σ=1.16w ⇒ **1**（不是 2）。
+   */
+  realizedWindows: number
   /** unit = b + e（一窗完整兑现的总成本） */
   unit: number
   /** 余量 Σ − b（未开窗时为 0） */
@@ -138,7 +146,7 @@ export function continuousWindowSplit(input: {
   const e = Math.max(0, finiteOr0(input.eatenPerWindow))
   const sigma = Math.max(0, finiteOr0(input.totalBuildUp))
   const empty: ContinuousWindowSplit = {
-    openedWindows: 0, fullWindows: 0, lastFraction: 0, unit: b + e, remainder: 0, clamped: false,
+    openedWindows: 0, fullWindows: 0, lastFraction: 0, realizedWindows: 0, unit: b + e, remainder: 0, clamped: false,
   }
   // b/e 缺一就退化为"没有连续量可言"（调用方据此走旧的整数口径）
   if (!(b > 0) || !(e > 0) || sigma < b) return empty
@@ -172,12 +180,45 @@ export function continuousWindowSplit(input: {
   const lastFraction = opensNext
     ? Math.min(1, Math.max(0, (rem - b) / e))
     : (openedWindows > 0 ? 1 : 0)
+  /**
+   * 末窗**未**完整 ⇒ `fullWindows = openedWindows − 1`（不含末窗）⇒ 加 frac 折算；
+   * 末窗完整（或根本没开新窗）⇒ `fullWindows = openedWindows` 已经含它 ⇒ 直接取 openedWindows。
+   * 两臂合起来恰好是「每个完整窗 1 + 末窗 frac」。
+   */
+  const lastComplete = !(opensNext && lastFraction < 1 - 1e-9)
   return {
     openedWindows,
-    fullWindows: opensNext && lastFraction < 1 - 1e-9 ? openedWindows - 1 : openedWindows,
+    fullWindows: lastComplete ? openedWindows : openedWindows - 1,
     lastFraction,
+    realizedWindows: lastComplete ? openedWindows : openedWindows - 1 + lastFraction,
     unit,
     remainder: opensNext ? Math.max(0, rem - b) : 0,
     clamped: false,
   }
+}
+
+/**
+ * **`e` 的正面来源（唯一实现）**：一窗内被吞掉的失衡值 = **每秒失衡值 × 窗长**，
+ * 每秒失衡值 = 全队毛失衡值 / 有效战斗时间（用户模型原话「每秒均匀造成 100 点失衡值」，2026-10-25）。
+ *
+ * ⚠ 不能用 `inAxisStunTotal / stunCount` 反推：那个量本身是按「每一窗都完整兑现」算出来的，
+ * 代回公式必然得 frac = 1（步 2 全库普查 95/97 队如此，见施工图 §8）—— 自证循环，不是验证。
+ *
+ * 本函数是 `e` 的单一事实源：展示读数（`useResourceCalc#continuousStun`）与数值路径
+ * （覆盖率）都必须经它取 e，否则两处会各算一份「每秒失衡值」。
+ */
+export function continuousStunSplitOf(
+  pool: { grossStunBuildUp: number; bossStunValue: number },
+  windowSeconds: number,
+  effectiveTime: number,
+): ContinuousWindowSplit {
+  const gross = Math.max(0, finiteOr0(pool.grossStunBuildUp))
+  const windowSecondsSafe = Math.max(0, finiteOr0(windowSeconds))
+  const effectiveTimeSafe = Math.max(0, finiteOr0(effectiveTime))
+  const rate = effectiveTimeSafe > 0 ? gross / effectiveTimeSafe : 0
+  return continuousWindowSplit({
+    totalBuildUp: gross,
+    bossStunValue: pool.bossStunValue,
+    eatenPerWindow: rate * windowSecondsSafe,
+  })
 }
