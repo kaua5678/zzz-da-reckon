@@ -1,1 +1,2839 @@
-{"id":1601,"icon":"IconRole1601","name":"(Test1)挽昼","code_name":"Sunbringer","rarity":4,"weapon_type":{"7":"锋御"},"element_type":{"201":"火属性"},"special_element_type":{"id":201,"name":"燎源","title":"燎源属性","desc":"ElementIconText_GenesisFlare","icon":"UI/Sprite/A1DynamicLoad/IconGeneralBuff/Packer/IconGenesisFlare.png"},"hit_type":{"101":"斩击"},"camp":{"16":"罗斯凯利法"},"gender":2,"partner_info":{},"skin":{"3116010":{"name":"AvatarSkin_Sunbringer_Name_000","desc":"AvatarSkin_Sunbringer_Desc_000","obtain_desc":"","image":"IconRole1601"}},"stats":{"armor":0,"armor_growth":0,"attack":101,"attack_growth":58479,"avatar_piece_id":5601,"break_stun":93,"crit":500,"crit_damage":5000,"crit_dmg_res":0,"crit_res":0,"defence":35,"defence_growth":48155,"element_abnormal_power":78,"element_mystery":77,"endurance":0,"hp_growth":625913,"hp_max":461,"pen_delta":0,"pen_rate":0,"rbl":1,"rbl_correction_factor":10000,"rbl_probability":0,"shield":0,"shield_growth":0,"sp_bar_point":0,"sp_recover":0,"stun":0,"tags":["Sunbringer","Cut","Fire","Female","Camp16","Size3","AidTypeParry","Sunbringer","EtherEyesSize3","Armorer"],"rp_max":0,"rp_recover":0,"ep_max":120,"ep_recover":150,"sharp_critical_damage":15000},"level":{"1":{"hp_max":0,"attack":0,"defence":0,"level_max":10,"level_min":0,"materials":{"10":24000,"100217":4}},"2":{"hp_max":317,"attack":36,"defence":24,"level_max":20,"level_min":10,"materials":{"10":56000,"100227":12}},"3":{"hp_max":633,"attack":72,"defence":49,"level_max":30,"level_min":20,"materials":{"10":120000,"100227":20}},"4":{"hp_max":950,"attack":108,"defence":73,"level_max":40,"level_min":30,"materials":{"10":200000,"100237":10}},"5":{"hp_max":1266,"attack":144,"defence":97,"level_max":50,"level_min":40,"materials":{"10":400000,"100237":20}},"6":{"hp_max":1583,"attack":180,"defence":122,"level_max":60,"level_min":50,"materials":{}}},"extra_level":{"1":{"max_level":15,"extra":{"20101":{"prop":20101,"name":"暴击率","format":"{0:0.#%}","value":480}}},"2":{"max_level":25,"extra":{"20101":{"prop":20101,"name":"暴击率","format":"{0:0.#%}","value":960}}},"3":{"max_level":35,"extra":{"20101":{"prop":20101,"name":"暴击率","format":"{0:0.#%}","value":1440}}},"4":{"max_level":45,"extra":{"20101":{"prop":20101,"name":"暴击率","format":"{0:0.#%}","value":1920}}},"5":{"max_level":55,"extra":{"20101":{"prop":20101,"name":"暴击率","format":"{0:0.#%}","value":2400}}},"6":{"max_level":60,"extra":{"20101":{"prop":20101,"name":"暴击率","format":"{0:0.#%}","value":2880}}}},"level_exp":[50,150,250,400,600,800,1000,1250,1500,1800,1935,2065,2200,2335,2465,2600,2735,2865,3000,4680,4975,5265,5560,5855,6145,6440,6735,7025,7320,10800,11400,12000,12600,13200,13800,14400,15000,15600,16200,17100,18300,19500,20700,21900,23100,24300,25500,26700,27900,34200,36600,39000,41400,43800,46200,48600,51000,53400,55800,0],"skill":{"basic":{"description":[{"name":"(Test1)普通攻击：斩棘","desc":"(Test1)点按 <IconMap:Icon_Normal> 发动：\n林德薇恩向前方进行至多四段的攻击，造成<color=#FF5521>燎源属性伤害</color>；\n第四段攻击期间连点或长按时，可以持续斩击敌人；\n第四段攻击重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n第四段攻击期间拥有无敌效果；\n第三、四段攻击期间抗打断等级提升，受到的伤害降低40%。","potential":[]},{"name":"(Test1)普通攻击：执旌","desc":"(Test1)点按 <IconMap:Icon_Normal> 发动：\n艾尔妲向前方进行至多四段的攻击，造成<color=#FF5521>燎源属性伤害</color>；\n第四段攻击重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n第三、四段攻击期间抗打断等级提升，受到的伤害降低40%。","potential":[]},{"name":"(Test1)普通攻击：执旌·聚锋","desc":"(Test1)<color=#FFFFFF>[愿力]</color>足够时，长按 <IconMap:Icon_Normal> 发动：\n切换艾尔妲上场并发动攻击，造成<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果；\n招式发动后获得<color=#FFFFFF>[链齿]</color>和<color=#FFFFFF>[旗令]</color>。","potential":[]},{"name":"(Test1)普通攻击：斩棘","param":[{"name":"一段伤害倍率","desc":"{Skill:1601101, Prop:1001}","param":{"1601101":{"main":8410,"growth":770,"format":"%","damage_percentage":8410,"damage_percentage_growth":770,"stun_ratio":5400,"stun_ratio_growth":250,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":163900,"fever_recovery_growth":0,"attribute_infliction":4900,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":4901}},"potential":[]},{"name":"二段伤害倍率","desc":"{Skill:1601102, Prop:1001}","param":{"1601102":{"main":11400,"growth":1040,"format":"%","damage_percentage":11400,"damage_percentage_growth":1040,"stun_ratio":7810,"stun_ratio_growth":360,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":207625,"fever_recovery_growth":0,"attribute_infliction":7099,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":7100}},"potential":[]},{"name":"三段伤害倍率","desc":"{Skill:1601103, Prop:1001}","param":{"1601103":{"main":22450,"growth":2050,"format":"%","damage_percentage":22450,"damage_percentage_growth":2050,"stun_ratio":15850,"stun_ratio_growth":730,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":395175,"fever_recovery_growth":0,"attribute_infliction":14403,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":14404}},"potential":[]},{"name":"四段伤害倍率","desc":"{Skill:1601104, Prop:1001}","param":{"1601104":{"main":41750,"growth":3800,"format":"%","damage_percentage":41750,"damage_percentage_growth":3800,"stun_ratio":30190,"stun_ratio_growth":1380,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":714450,"fever_recovery_growth":0,"attribute_infliction":27437,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":27438}},"potential":[]},{"name":"一段失衡倍率","desc":"{Skill:1601101, Prop:1002}","param":{"1601101":{"main":5400,"growth":250,"format":"%","damage_percentage":8410,"damage_percentage_growth":770,"stun_ratio":5400,"stun_ratio_growth":250,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":163900,"fever_recovery_growth":0,"attribute_infliction":4900,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":4901}},"potential":[]},{"name":"二段失衡倍率","desc":"{Skill:1601102, Prop:1002}","param":{"1601102":{"main":7810,"growth":360,"format":"%","damage_percentage":11400,"damage_percentage_growth":1040,"stun_ratio":7810,"stun_ratio_growth":360,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":207625,"fever_recovery_growth":0,"attribute_infliction":7099,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":7100}},"potential":[]},{"name":"三段失衡倍率","desc":"{Skill:1601103, Prop:1002}","param":{"1601103":{"main":15850,"growth":730,"format":"%","damage_percentage":22450,"damage_percentage_growth":2050,"stun_ratio":15850,"stun_ratio_growth":730,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":395175,"fever_recovery_growth":0,"attribute_infliction":14403,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":14404}},"potential":[]},{"name":"四段失衡倍率","desc":"{Skill:1601104, Prop:1002}","param":{"1601104":{"main":30190,"growth":1380,"format":"%","damage_percentage":41750,"damage_percentage_growth":3800,"stun_ratio":30190,"stun_ratio_growth":1380,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":714450,"fever_recovery_growth":0,"attribute_infliction":27437,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":27438}},"potential":[]}],"potential":[]},{"name":"(Test1)普通攻击：执旌","param":[{"name":"一段伤害倍率","desc":"{Skill:1601001, Prop:1001}","param":{"1601001":{"main":5410,"growth":500,"format":"%","damage_percentage":5410,"damage_percentage_growth":500,"stun_ratio":3470,"stun_ratio_growth":160,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":105325,"fever_recovery_growth":0,"attribute_infliction":3152,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":3153}},"potential":[]},{"name":"二段伤害倍率","desc":"{Skill:1601002, Prop:1001}","param":{"1601002":{"main":11330,"growth":1030,"format":"%","damage_percentage":11330,"damage_percentage_growth":1030,"stun_ratio":7690,"stun_ratio_growth":350,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":208450,"fever_recovery_growth":0,"attribute_infliction":6986,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":6987}},"potential":[]},{"name":"三段伤害倍率","desc":"{Skill:1601003, Prop:1001}","param":{"1601003":{"main":16650,"growth":1520,"format":"%","damage_percentage":16650,"damage_percentage_growth":1520,"stun_ratio":11790,"stun_ratio_growth":540,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":291775,"fever_recovery_growth":0,"attribute_infliction":10717,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":10718}},"potential":[]},{"name":"四段伤害倍率","desc":"{Skill:1601004, Prop:1001}","param":{"1601004":{"main":24110,"growth":2200,"format":"%","damage_percentage":24110,"damage_percentage_growth":2200,"stun_ratio":17590,"stun_ratio_growth":800,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":407825,"fever_recovery_growth":0,"attribute_infliction":15984,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":15985}},"potential":[]},{"name":"一段失衡倍率","desc":"{Skill:1601001, Prop:1002}","param":{"1601001":{"main":3470,"growth":160,"format":"%","damage_percentage":5410,"damage_percentage_growth":500,"stun_ratio":3470,"stun_ratio_growth":160,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":105325,"fever_recovery_growth":0,"attribute_infliction":3152,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":3153}},"potential":[]},{"name":"二段失衡倍率","desc":"{Skill:1601002, Prop:1002}","param":{"1601002":{"main":7690,"growth":350,"format":"%","damage_percentage":11330,"damage_percentage_growth":1030,"stun_ratio":7690,"stun_ratio_growth":350,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":208450,"fever_recovery_growth":0,"attribute_infliction":6986,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":6987}},"potential":[]},{"name":"三段失衡倍率","desc":"{Skill:1601003, Prop:1002}","param":{"1601003":{"main":11790,"growth":540,"format":"%","damage_percentage":16650,"damage_percentage_growth":1520,"stun_ratio":11790,"stun_ratio_growth":540,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":291775,"fever_recovery_growth":0,"attribute_infliction":10717,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":10718}},"potential":[]},{"name":"四段失衡倍率","desc":"{Skill:1601004, Prop:1002}","param":{"1601004":{"main":17590,"growth":800,"format":"%","damage_percentage":24110,"damage_percentage_growth":2200,"stun_ratio":17590,"stun_ratio_growth":800,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":407825,"fever_recovery_growth":0,"attribute_infliction":15984,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":15985}},"potential":[]}],"potential":[]},{"name":"(Test1)普通攻击：执旌·聚锋","param":[{"name":"四段伤害倍率","desc":"{Skill:1601015, Prop:1001}","param":{"1601015":{"main":78920,"growth":7180,"format":"%","damage_percentage":78920,"damage_percentage_growth":7180,"stun_ratio":15040,"stun_ratio_growth":690,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":375925,"fever_recovery_growth":0,"attribute_infliction":13666,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":13667}},"potential":[]},{"name":"四段失衡倍率","desc":"{Skill:1601015, Prop:1002}","param":{"1601015":{"main":15040,"growth":690,"format":"%","damage_percentage":78920,"damage_percentage_growth":7180,"stun_ratio":15040,"stun_ratio_growth":690,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":375925,"fever_recovery_growth":0,"attribute_infliction":13666,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":13667}},"potential":[]}],"potential":[]}],"material":{"1":{"10":2000,"100111":2},"2":{"10":3000,"100111":3},"3":{"10":6000,"100121":2},"4":{"10":9000,"100121":3},"5":{"10":12000,"100121":4},"6":{"10":18000,"100121":6},"7":{"10":45000,"100131":5},"8":{"10":67500,"100131":8},"9":{"10":90000,"100131":10},"10":{"10":112500,"100131":12},"11":{"10":135000,"100131":15,"100941":1},"12":{}}},"dodge":{"description":[{"name":"(Test1)闪避：相位折叠","desc":"(Test1)点按 <IconMap:Icon_Evade> 发动：\n林德薇恩快速的冲刺闪避；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)冲刺攻击：虚空斩进","desc":"(Test1)闪避时，点按 <IconMap:Icon_Normal> 发动：\n林德薇恩向前方进行斩击，造成<color=#FF5521>燎源属性伤害</color>。","potential":[]},{"name":"(Test1)闪避反击：潜火重燃","desc":"(Test1)触发<color=#FFFFFF>[极限闪避]</color>时，点按 <IconMap:Icon_Normal> 发动：\n林德薇恩向前方发动连续攻击，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可快速衔接<color=#FFFFFF>[普通攻击]</color>第三段；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)闪避：空间重构","desc":"(Test1)点按 <IconMap:Icon_Evade> 发动：\n艾尔妲发动快速的冲刺闪避；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)冲刺攻击：虚实逆转","desc":"(Test1)闪避时，点按 <IconMap:Icon_Normal> 发动：\n艾尔妲向前方进行突刺，造成<color=#FF5521>燎源属性伤害</color>。","potential":[]},{"name":"(Test1)闪避：巡征","desc":"(Test1)拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}时长按 <IconMap:Icon_Evade> 发动：\n艾尔妲进入可高速移动的<color=#FFFFFF>[掠夜]</color>状态；\n在<color=#FFFFFF>[掠夜]</color>状态下使用{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}控制方向，松开{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}则会停下；\n发动招式瞬间拥有无敌效果。","potential":[]},{"name":"(Test1)冲刺攻击：巡征·影域穿袭","desc":"(Test1)<color=#FFFFFF>[掠夜]</color>状态下点按 <IconMap:Icon_Normal> 发动：\n艾尔妲发动快速的横扫攻击，造成<color=#FF5521>燎源属性伤害</color>。","potential":[]},{"name":"(Test1)闪避反击：冷焰回锋","desc":"(Test1)触发<color=#FFFFFF>[极限闪避]</color>时，点按 <IconMap:Icon_Normal> 发动：\n艾尔妲向前方发动连续攻击，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)冲刺攻击：虚空斩进","param":[{"name":"伤害倍率","desc":"{Skill:1601108, Prop:1001}","param":{"1601108":{"main":3600,"growth":330,"format":"%","damage_percentage":3600,"damage_percentage_growth":330,"stun_ratio":3300,"stun_ratio_growth":150,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":82500,"fever_recovery_growth":0,"attribute_infliction":2998,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":2999}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601108, Prop:1002}","param":{"1601108":{"main":3300,"growth":150,"format":"%","damage_percentage":3600,"damage_percentage_growth":330,"stun_ratio":3300,"stun_ratio_growth":150,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":82500,"fever_recovery_growth":0,"attribute_infliction":2998,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":2999}},"potential":[]}],"potential":[]},{"name":"(Test1)闪避反击：潜火重燃","param":[{"name":"伤害倍率","desc":"{Skill:1601109, Prop:1001}","param":{"1601109":{"main":38790,"growth":3530,"format":"%","damage_percentage":38790,"damage_percentage_growth":3530,"stun_ratio":29890,"stun_ratio_growth":1360,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":472450,"fever_recovery_growth":0,"attribute_infliction":17170,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":32171}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601109, Prop:1002}","param":{"1601109":{"main":29890,"growth":1360,"format":"%","damage_percentage":38790,"damage_percentage_growth":3530,"stun_ratio":29890,"stun_ratio_growth":1360,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":472450,"fever_recovery_growth":0,"attribute_infliction":17170,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":32171}},"potential":[]}],"potential":[]},{"name":"(Test1)冲刺攻击：虚实逆转","param":[{"name":"伤害倍率","desc":"{Skill:1601008, Prop:1001}","param":{"1601008":{"main":3610,"growth":330,"format":"%","damage_percentage":3610,"damage_percentage_growth":330,"stun_ratio":3310,"stun_ratio_growth":160,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":82775,"fever_recovery_growth":0,"attribute_infliction":3001,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":3002}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601008, Prop:1002}","param":{"1601008":{"main":3310,"growth":160,"format":"%","damage_percentage":3610,"damage_percentage_growth":330,"stun_ratio":3310,"stun_ratio_growth":160,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":82775,"fever_recovery_growth":0,"attribute_infliction":3001,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":3002}},"potential":[]}],"potential":[]},{"name":"(Test1)闪避反击：冷焰回锋","param":[{"name":"伤害倍率","desc":"{Skill:1601009, Prop:1001}","param":{"1601009":{"main":35400,"growth":3220,"format":"%","damage_percentage":35400,"damage_percentage_growth":3220,"stun_ratio":27500,"stun_ratio_growth":1250,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":412500,"fever_recovery_growth":0,"attribute_infliction":15000,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":30000}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601009, Prop:1002}","param":{"1601009":{"main":27500,"growth":1250,"format":"%","damage_percentage":35400,"damage_percentage_growth":3220,"stun_ratio":27500,"stun_ratio_growth":1250,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":412500,"fever_recovery_growth":0,"attribute_infliction":15000,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":30000}},"potential":[]}],"potential":[]},{"name":"(Test1)冲刺攻击：巡征·影域穿袭","param":[{"name":"伤害倍率","desc":"{Skill:1601014, Prop:1001}","param":{"1601014":{"main":11400,"growth":1040,"format":"%","damage_percentage":11400,"damage_percentage_growth":1040,"stun_ratio":10450,"stun_ratio_growth":480,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":261250,"fever_recovery_growth":0,"attribute_infliction":9496,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":9497}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601014, Prop:1002}","param":{"1601014":{"main":10450,"growth":480,"format":"%","damage_percentage":11400,"damage_percentage_growth":1040,"stun_ratio":10450,"stun_ratio_growth":480,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":261250,"fever_recovery_growth":0,"attribute_infliction":9496,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":9497}},"potential":[]}],"potential":[]}],"material":{"1":{"10":2000,"100111":2},"2":{"10":3000,"100111":3},"3":{"10":6000,"100121":2},"4":{"10":9000,"100121":3},"5":{"10":12000,"100121":4},"6":{"10":18000,"100121":6},"7":{"10":45000,"100131":5},"8":{"10":67500,"100131":8},"9":{"10":90000,"100131":10},"10":{"10":112500,"100131":12},"11":{"10":135000,"100131":15,"100941":1},"12":{}}},"special":{"description":[{"name":"(Test1)特殊技：焚夜","desc":"(Test1)点按 <IconMap:Icon_Special> 或长按 <IconMap:Icon_Evade> 发动：\n切换林德薇恩上场并发动攻击，造成<color=#FF5521>燎源属性伤害</color>。","potential":[]},{"name":"(Test1)强化特殊技：焚夜·曦生","desc":"(Test1)锐能足够时，点按 <IconMap:Icon_SpecialReady_Ep> 发动：\n林德薇恩与艾尔妲协同发动攻击，并保留林德薇恩在场，造成<color=#FF5521>燎源属性伤害</color>；\n重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)强化特殊技：焚夜·曦生（改）","desc":"(Test1)锐能足够时，在<color=#FFFFFF>[普通攻击：斩棘]</color>的最后一段攻击、<color=#FFFFFF>[闪避反击：潜火重燃]</color>、<color=#FFFFFF>[支援突击：不灭热忱]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>、<color=#FFFFFF>[强化特殊技：燃灯·晦尽（改）]</color>发动后点按 <IconMap:Icon_SpecialReady_Ep> 发动：\n林德薇恩与艾尔妲协同发动攻击，并保留林德薇恩在场，造成<color=#FF5521>燎源属性伤害</color>；\n重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)强化特殊技：焚夜·长暗终焉","desc":"(Test1)拥有<color=#FFFFFF>[链齿]</color>时，点按 <IconMap:Icon_Special> 发动：\n消耗<color=#FFFFFF>[链齿]</color>，林德薇恩与艾尔妲协同发动高量级攻击，并保留林德薇恩在场，造成大量<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可快速衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)特殊技：燃灯","desc":"(Test1)点按 <IconMap:Icon_Special> 或长按 <IconMap:Icon_Evade> 发动：\n切换艾尔妲上场并发动攻击，造成<color=#FF5521>燎源属性伤害</color>。","potential":[]},{"name":"(Test1)强化特殊技：燃灯·晦尽","desc":"(Test1)锐能足够时，点按 <IconMap:Icon_SpecialReady_Ep> 发动：\n艾尔妲与林德薇恩协同发动攻击，并保留艾尔妲在场，造成<color=#FF5521>燎源属性伤害</color>；\n重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)强化特殊技：燃灯·晦尽（改）","desc":"(Test1)锐能足够时，在<color=#FFFFFF>[普通攻击：执旌]</color>的最后一段攻击、<color=#FFFFFF>[闪避反击：冷焰回锋]</color>、<color=#FFFFFF>[支援突击：虔志如初]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[强化特殊技：焚夜·曦生（改）]</color>发动后点按 <IconMap:Icon_SpecialReady_Ep> 发动：\n艾尔妲与林德薇恩、德蕾琪娜协同发动攻击，并保留艾尔妲在场，造成<color=#FF5521>燎源属性伤害</color>；\n重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)强化特殊技：燃灯·永昼之炬","desc":"(Test1)拥有<color=#FFFFFF>[旗令]</color>时，点按 <IconMap:Icon_Special> 发动：\n消耗<color=#FFFFFF>[旗令]</color>，艾尔妲与林德薇恩协同发动高量级攻击，并保留艾尔妲在场，造成大量<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)特殊技：焚夜","param":[{"name":"伤害倍率","desc":"{Skill:1601105, Prop:1001}","param":{"1601105":{"main":5110,"growth":470,"format":"%","damage_percentage":5110,"damage_percentage_growth":470,"stun_ratio":4680,"stun_ratio_growth":220,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":117150,"fever_recovery_growth":0,"attribute_infliction":4250,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":4251}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601105, Prop:1002}","param":{"1601105":{"main":4680,"growth":220,"format":"%","damage_percentage":5110,"damage_percentage_growth":470,"stun_ratio":4680,"stun_ratio_growth":220,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":117150,"fever_recovery_growth":0,"attribute_infliction":4250,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":4251}},"potential":[]}],"potential":[]},{"name":"(Test1)强化特殊技：焚夜·曦生","param":[{"name":"伤害倍率","desc":"{Skill:1601106, Prop:1001}","param":{"1601106":{"main":67150,"growth":6110,"format":"%","damage_percentage":67150,"damage_percentage_growth":6110,"stun_ratio":49510,"stun_ratio_growth":2260,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1604350,"fever_recovery_growth":0,"attribute_infliction":48337,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":25004}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601106, Prop:1002}","param":{"1601106":{"main":49510,"growth":2260,"format":"%","damage_percentage":67150,"damage_percentage_growth":6110,"stun_ratio":49510,"stun_ratio_growth":2260,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1604350,"fever_recovery_growth":0,"attribute_infliction":48337,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":25004}},"potential":[]},{"name":"锐能消耗","desc":"(Test1)30点","potential":[]}],"potential":[]},{"name":"(Test1)强化特殊技：焚夜·曦生（改）","param":[{"name":"锐能消耗","desc":"(Test1)30点","potential":[]}],"potential":[]},{"name":"(Test1)强化特殊技：焚夜·长暗终焉","param":[{"name":"伤害倍率","desc":"{Skill:1601107, Prop:1001}","param":{"1601107":{"main":108130,"growth":9830,"format":"%","damage_percentage":108130,"damage_percentage_growth":9830,"stun_ratio":40710,"stun_ratio_growth":1860,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1017775,"fever_recovery_growth":0,"attribute_infliction":37003,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":37004}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601107, Prop:1002}","param":{"1601107":{"main":40710,"growth":1860,"format":"%","damage_percentage":108130,"damage_percentage_growth":9830,"stun_ratio":40710,"stun_ratio_growth":1860,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1017775,"fever_recovery_growth":0,"attribute_infliction":37003,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":37004}},"potential":[]}],"potential":[]},{"name":"(Test1)特殊技：燃灯","param":[{"name":"伤害倍率","desc":"{Skill:1601005, Prop:1001}","param":{"1601005":{"main":5000,"growth":460,"format":"%","damage_percentage":5000,"damage_percentage_growth":460,"stun_ratio":4590,"stun_ratio_growth":210,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":114675,"fever_recovery_growth":0,"attribute_infliction":4165,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":4166}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601005, Prop:1002}","param":{"1601005":{"main":4590,"growth":210,"format":"%","damage_percentage":5000,"damage_percentage_growth":460,"stun_ratio":4590,"stun_ratio_growth":210,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":114675,"fever_recovery_growth":0,"attribute_infliction":4165,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":4166}},"potential":[]}],"potential":[]},{"name":"(Test1)强化特殊技：燃灯·晦尽","param":[{"name":"伤害倍率","desc":"{Skill:1601006, Prop:1001}","param":{"1601006":{"main":66030,"growth":6010,"format":"%","damage_percentage":66030,"damage_percentage_growth":6010,"stun_ratio":48550,"stun_ratio_growth":2210,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1576850,"fever_recovery_growth":0,"attribute_infliction":47433,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":24334}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601006, Prop:1002}","param":{"1601006":{"main":48550,"growth":2210,"format":"%","damage_percentage":66030,"damage_percentage_growth":6010,"stun_ratio":48550,"stun_ratio_growth":2210,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1576850,"fever_recovery_growth":0,"attribute_infliction":47433,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":24334}},"potential":[]},{"name":"锐能消耗","desc":"(Test1)30点","potential":[]}],"potential":[]},{"name":"(Test1)强化特殊技：燃灯·晦尽（改）","param":[{"name":"伤害倍率","desc":"{Skill:1601115, Prop:1001}","param":{"1601115":{"main":69550,"growth":6330,"format":"%","damage_percentage":69550,"damage_percentage_growth":6330,"stun_ratio":50780,"stun_ratio_growth":2310,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1508100,"fever_recovery_growth":0,"attribute_infliction":45183,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":22667}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601115, Prop:1002}","param":{"1601115":{"main":50780,"growth":2310,"format":"%","damage_percentage":69550,"damage_percentage_growth":6330,"stun_ratio":50780,"stun_ratio_growth":2310,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1508100,"fever_recovery_growth":0,"attribute_infliction":45183,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":22667}},"potential":[]},{"name":"锐能消耗","desc":"(Test1)30点","potential":[]}],"potential":[]},{"name":"(Test1)强化特殊技：燃灯·永昼之炬","param":[{"name":"伤害倍率","desc":"{Skill:1601007, Prop:1001}","param":{"1601007":{"main":95610,"growth":8700,"format":"%","damage_percentage":95610,"damage_percentage_growth":8700,"stun_ratio":40340,"stun_ratio_growth":1840,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1008700,"fever_recovery_growth":0,"attribute_infliction":36670,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":36671}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601007, Prop:1002}","param":{"1601007":{"main":40340,"growth":1840,"format":"%","damage_percentage":95610,"damage_percentage_growth":8700,"stun_ratio":40340,"stun_ratio_growth":1840,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1008700,"fever_recovery_growth":0,"attribute_infliction":36670,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":36671}},"potential":[]}],"potential":[]}],"material":{"1":{"10":2000,"100111":2},"2":{"10":3000,"100111":3},"3":{"10":6000,"100121":2},"4":{"10":9000,"100121":3},"5":{"10":12000,"100121":4},"6":{"10":18000,"100121":6},"7":{"10":45000,"100131":5},"8":{"10":67500,"100131":8},"9":{"10":90000,"100131":10},"10":{"10":112500,"100131":12},"11":{"10":135000,"100131":15,"100941":1},"12":{}}},"chain":{"description":[{"name":"(Test1)连携技：「筑万众之梦」","desc":"(Test1)触发<color=#FFFFFF>[连携技]</color>时，选择对应角色发动：\n林德薇恩与艾尔妲协同发动高量级攻击，并保留林德薇恩在场，造成<color=#FF5521>燎源属性伤害</color>；\n重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果；\n林德薇恩触发失衡连携窗口时，可直接选择林德薇恩并发动该招式。","potential":[]},{"name":"(Test1)终结技：「此行，共赴前路」","desc":"(Test1)喧响等级达到<color=#FFFFFF>[极]</color>时，点按 <IconMap:Icon_UltimateReady> 发动：\n林德薇恩与艾尔妲、德蕾琪娜协同攻击，并保留林德薇恩在场，造成大量<color=#FF5521>燎源属性伤害</color>；\n拥有<color=#FFFFFF>[旗令]</color>时，消耗<color=#FFFFFF>[旗令]</color>转化为<color=#FFFFFF>[愿核]</color>；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)连携技：「以挽昼之名」","desc":"(Test1)触发<color=#FFFFFF>[连携技]</color>时，选择对应角色发动：\n艾尔妲与林德薇恩协同发动高量级攻击，并保留艾尔妲在场，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果；\n艾尔妲触发失衡连携窗口时，可直接选择艾尔妲并发动该招式。","potential":[]},{"name":"(Test1)终结技：「此愿，重塑万象」","desc":"(Test1)拥有<color=#FFFFFF>[愿核]</color>时，点按 <IconMap:Icon_UltimateReady> 发动：\n艾尔妲在空中利用空间扭曲发动攻击，造成<color=#FF5521>燎源属性伤害</color>，并消除敌人所有<color=#FFFFFF>[烬痕]</color>；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)连携技：「筑万众之梦」","param":[{"name":"伤害倍率","desc":"{Skill:1601110, Prop:1001}","param":{"1601110":{"main":77480,"growth":7050,"format":"%","damage_percentage":77480,"damage_percentage_growth":7050,"stun_ratio":27130,"stun_ratio_growth":1240,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":2507175,"fever_recovery_growth":0,"attribute_infliction":44613,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":24664}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601110, Prop:1002}","param":{"1601110":{"main":27130,"growth":1240,"format":"%","damage_percentage":77480,"damage_percentage_growth":7050,"stun_ratio":27130,"stun_ratio_growth":1240,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":2507175,"fever_recovery_growth":0,"attribute_infliction":44613,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":24664}},"potential":[]}],"potential":[]},{"name":"(Test1)终结技：「此行，共赴前路」","param":[{"name":"伤害倍率","desc":"{Skill:1601111, Prop:1001}","param":{"1601111":{"main":194980,"growth":17730,"format":"%","damage_percentage":194980,"damage_percentage_growth":17730,"stun_ratio":31720,"stun_ratio_growth":1450,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":0,"fever_recovery_growth":0,"attribute_infliction":28833,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":78834}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601111, Prop:1002}","param":{"1601111":{"main":31720,"growth":1450,"format":"%","damage_percentage":194980,"damage_percentage_growth":17730,"stun_ratio":31720,"stun_ratio_growth":1450,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":0,"fever_recovery_growth":0,"attribute_infliction":28833,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":78834}},"potential":[]}],"potential":[]},{"name":"(Test1)连携技：「以挽昼之名」","param":[{"name":"伤害倍率","desc":"{Skill:1601010, Prop:1001}","param":{"1601010":{"main":77480,"growth":7050,"format":"%","damage_percentage":77480,"damage_percentage_growth":7050,"stun_ratio":27130,"stun_ratio_growth":1240,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":2507175,"fever_recovery_growth":0,"attribute_infliction":44613,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":24664}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601010, Prop:1002}","param":{"1601010":{"main":27130,"growth":1240,"format":"%","damage_percentage":77480,"damage_percentage_growth":7050,"stun_ratio":27130,"stun_ratio_growth":1240,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":2507175,"fever_recovery_growth":0,"attribute_infliction":44613,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":24664}},"potential":[]}],"potential":[]},{"name":"(Test1)终结技：「此愿，重塑万象」","param":[{"name":"伤害倍率","desc":"{Skill:1601011, Prop:1001}","param":{"1601011":{"main":112310,"growth":10210,"format":"%","damage_percentage":112310,"damage_percentage_growth":10210,"stun_ratio":44920,"stun_ratio_growth":2050,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":0,"fever_recovery_growth":0,"attribute_infliction":40830,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":40831}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601011, Prop:1002}","param":{"1601011":{"main":44920,"growth":2050,"format":"%","damage_percentage":112310,"damage_percentage_growth":10210,"stun_ratio":44920,"stun_ratio_growth":2050,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":0,"fever_recovery_growth":0,"attribute_infliction":40830,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":40831}},"potential":[]}],"potential":[]}],"material":{"1":{"10":2000,"100111":2},"2":{"10":3000,"100111":3},"3":{"10":6000,"100121":2},"4":{"10":9000,"100121":3},"5":{"10":12000,"100121":4},"6":{"10":18000,"100121":6},"7":{"10":45000,"100131":5},"8":{"10":67500,"100131":8},"9":{"10":90000,"100131":10},"10":{"10":112500,"100131":12},"11":{"10":135000,"100131":15,"100941":1},"12":{}}},"assist":{"description":[{"name":"(Test1)快速支援：无畏驰援","desc":"(Test1)当前操作中的角色被击飞时，点按 <IconMap:Icon_Switch> 发动：\n林德薇恩向前方发动连续攻击，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可快速衔接<color=#FFFFFF>[普通攻击]</color>第三段；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)快速支援：锋芒所向","desc":"(Test1)当前操作中的角色被击飞时，点按 <IconMap:Icon_Switch> 发动：\n艾尔妲向前方发动连续攻击，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)招架支援：坚守之誓","desc":"(Test1)前场角色即将被攻击时，点按 <IconMap:Icon_Switch> 发动：\n德蕾琪娜招架敌人的攻击，累积大量失衡值；\n林德薇恩与艾尔妲在前场时，也可通过换入下一人发动该招式；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)反制支援：希望堡垒","desc":"(Test1)自身或前场角色即将被部分敌人的控制技攻击时，点按 <IconMap:Icon_Switch> 发动：\n德蕾琪娜与怪物进行角力，角力成功后，化解敌人的控制技并造成<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)支援突击：灯塔，立于苍穹","desc":"(Test1)发动<color=#FFFFFF>[反制支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n德蕾琪娜造成大量<color=#FF5521>燎源属性伤害</color>，重击命中敌人时，直接为目标添加1层<color=#FFFFFF>[残痕]</color>；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)支援突击：不灭热忱","desc":"(Test1)德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n林德薇恩向前方快速斩击，随后引发爆炸，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可快速衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n招式发动期间连点或长按时，可以持续斩击敌人；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)支援突击：虔志如初","desc":"(Test1)德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n艾尔妲向前方快速斩击，随后引发爆炸，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n招式发动期间拥有无敌效果。","potential":[]},{"name":"(Test1)快速支援：无畏驰援","param":[{"name":"伤害倍率","desc":"{Skill:1601112, Prop:1001}","param":{"1601112":{"main":10310,"growth":940,"format":"%","damage_percentage":10310,"damage_percentage_growth":940,"stun_ratio":9450,"stun_ratio_growth":430,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":236225,"fever_recovery_growth":0,"attribute_infliction":8585,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":8586}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601112, Prop:1002}","param":{"1601112":{"main":9450,"growth":430,"format":"%","damage_percentage":10310,"damage_percentage_growth":940,"stun_ratio":9450,"stun_ratio_growth":430,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":236225,"fever_recovery_growth":0,"attribute_infliction":8585,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":8586}},"potential":[]}],"potential":[]},{"name":"(Test1)快速支援：锋芒所向","param":[{"name":"伤害倍率","desc":"{Skill:1601012, Prop:1001}","param":{"1601012":{"main":9000,"growth":820,"format":"%","damage_percentage":9000,"damage_percentage_growth":820,"stun_ratio":8250,"stun_ratio_growth":380,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":206250,"fever_recovery_growth":0,"attribute_infliction":7500,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":7500}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601012, Prop:1002}","param":{"1601012":{"main":8250,"growth":380,"format":"%","damage_percentage":9000,"damage_percentage_growth":820,"stun_ratio":8250,"stun_ratio_growth":380,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":206250,"fever_recovery_growth":0,"attribute_infliction":7500,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":7500}},"potential":[]}],"potential":[]},{"name":"(Test1)招架支援：坚守之誓","param":[{"name":"轻招架失衡倍率","desc":"{Skill:1601201, Prop:1002}","param":{"1601201":{"main":27130,"growth":1240,"format":"%","damage_percentage":0,"damage_percentage_growth":0,"stun_ratio":27130,"stun_ratio_growth":1240,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":0,"fever_recovery_growth":0,"attribute_infliction":0,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":36664}},"potential":[]},{"name":"重招架失衡倍率","desc":"{Skill:1601202, Prop:1002}","param":{"1601202":{"main":34280,"growth":1560,"format":"%","damage_percentage":0,"damage_percentage_growth":0,"stun_ratio":34280,"stun_ratio_growth":1560,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":0,"fever_recovery_growth":0,"attribute_infliction":0,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":41664}},"potential":[]},{"name":"连续招架失衡倍率","desc":"{Skill:1601203, Prop:1002}","param":{"1601203":{"main":16680,"growth":760,"format":"%","damage_percentage":0,"damage_percentage_growth":0,"stun_ratio":16680,"stun_ratio_growth":760,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":0,"fever_recovery_growth":0,"attribute_infliction":0,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":11664}},"potential":[]}],"potential":[]},{"name":"(Test1)反制支援：希望堡垒","param":[{"name":"伤害倍率","desc":"{Skill:1601204, Prop:1001}","param":{"1601204":{"main":87870,"growth":7990,"format":"%","damage_percentage":87870,"damage_percentage_growth":7990,"stun_ratio":61240,"stun_ratio_growth":2790,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":2001450,"fever_recovery_growth":0,"attribute_infliction":59944,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":60000}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601204, Prop:1002}","param":{"1601204":{"main":61240,"growth":2790,"format":"%","damage_percentage":87870,"damage_percentage_growth":7990,"stun_ratio":61240,"stun_ratio_growth":2790,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":2001450,"fever_recovery_growth":0,"attribute_infliction":59944,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":60000}},"potential":[]}],"potential":[]},{"name":"(Test1)支援突击：灯塔，立于苍穹","param":[{"name":"伤害倍率","desc":"{Skill:1601205, Prop:1001}","param":{"1601205":{"main":46940,"growth":4270,"format":"%","damage_percentage":46940,"damage_percentage_growth":4270,"stun_ratio":37770,"stun_ratio_growth":1720,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1206975,"fever_recovery_growth":0,"attribute_infliction":36722,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":20000}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601205, Prop:1002}","param":{"1601205":{"main":37770,"growth":1720,"format":"%","damage_percentage":46940,"damage_percentage_growth":4270,"stun_ratio":37770,"stun_ratio_growth":1720,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1206975,"fever_recovery_growth":0,"attribute_infliction":36722,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":20000}},"potential":[]}],"potential":[]},{"name":"(Test1)支援突击：不灭热忱","param":[{"name":"伤害倍率","desc":"{Skill:1601113, Prop:1001}","param":{"1601113":{"main":55050,"growth":5010,"format":"%","damage_percentage":55050,"damage_percentage_growth":5010,"stun_ratio":44680,"stun_ratio_growth":2040,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1406350,"fever_recovery_growth":0,"attribute_infliction":43242,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":24830}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601113, Prop:1002}","param":{"1601113":{"main":44680,"growth":2040,"format":"%","damage_percentage":55050,"damage_percentage_growth":5010,"stun_ratio":44680,"stun_ratio_growth":2040,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1406350,"fever_recovery_growth":0,"attribute_infliction":43242,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":24830}},"potential":[]}],"potential":[]},{"name":"(Test1)支援突击：虔志如初","param":[{"name":"伤害倍率","desc":"{Skill:1601013, Prop:1001}","param":{"1601013":{"main":50290,"growth":4580,"format":"%","damage_percentage":50290,"damage_percentage_growth":4580,"stun_ratio":40630,"stun_ratio_growth":1850,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1289475,"fever_recovery_growth":0,"attribute_infliction":39417,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":21997}},"potential":[]},{"name":"失衡倍率","desc":"{Skill:1601013, Prop:1002}","param":{"1601013":{"main":40630,"growth":1850,"format":"%","damage_percentage":50290,"damage_percentage_growth":4580,"stun_ratio":40630,"stun_ratio_growth":1850,"sp_recovery":0,"sp_recovery_growth":0,"fever_recovery":1289475,"fever_recovery_growth":0,"attribute_infliction":39417,"sp_consume":0,"attack_data":[],"rp_recovery":0,"rp_recovery_growth":0,"ether_purify":21997}},"potential":[]}],"potential":[]}],"material":{"1":{"10":2000,"100111":2},"2":{"10":3000,"100111":3},"3":{"10":6000,"100121":2},"4":{"10":9000,"100121":3},"5":{"10":12000,"100121":4},"6":{"10":18000,"100121":6},"7":{"10":45000,"100131":5},"8":{"10":67500,"100131":8},"9":{"10":90000,"100131":10},"10":{"10":112500,"100131":12},"11":{"10":135000,"100131":15,"100941":1},"12":{}}}},"skill_priority":[],"skill_list":{},"passive":{"level":{"1601501":{"level":1,"id":1601501,"name":["(Test1)核心被动：梦现=源质重构","(Test1)额外能力："],"desc":["(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。","(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"],"extra_property":{},"potential":[]},"1601502":{"level":2,"id":1601502,"name":["(Test1)核心被动：梦现=源质重构","(Test1)额外能力："],"desc":["(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。","(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"],"extra_property":{},"potential":[]},"1601503":{"level":3,"id":1601503,"name":["(Test1)核心被动：梦现=源质重构","(Test1)额外能力："],"desc":["(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。","(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"],"extra_property":{},"potential":[]},"1601504":{"level":4,"id":1601504,"name":["(Test1)核心被动：梦现=源质重构","(Test1)额外能力："],"desc":["(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。","(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"],"extra_property":{},"potential":[]},"1601505":{"level":5,"id":1601505,"name":["(Test1)核心被动：梦现=源质重构","(Test1)额外能力："],"desc":["(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。","(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"],"extra_property":{},"potential":[]},"1601506":{"level":6,"id":1601506,"name":["(Test1)核心被动：梦现=源质重构","(Test1)额外能力："],"desc":["(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。","(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"],"extra_property":{},"potential":[]},"1601507":{"level":7,"id":1601507,"name":["(Test1)核心被动：梦现=源质重构","(Test1)额外能力："],"desc":["(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。","(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"],"extra_property":{},"potential":[]}},"materials":{"1":{"10":5000},"2":{"10":12000,"110517":2},"3":{"10":28000,"110517":4},"4":{"10":60000,"110012":2,"110517":9},"5":{"10":100000,"110012":3,"110517":15},"6":{"10":200000,"110012":4,"110517":30}}},"talent":{"1":{"level":1,"name":"TestKey_PlaceHolder","desc":"TestKey_PlaceHolder","desc2":"TestKey_PlaceHolder"},"2":{"level":2,"name":"TestKey_PlaceHolder","desc":"TestKey_PlaceHolder","desc2":"TestKey_PlaceHolder"},"3":{"level":3,"name":"TestKey_PlaceHolder","desc":"TestKey_PlaceHolder","desc2":"TestKey_PlaceHolder"},"4":{"level":4,"name":"TestKey_PlaceHolder","desc":"TestKey_PlaceHolder","desc2":"TestKey_PlaceHolder"},"5":{"level":5,"name":"TestKey_PlaceHolder","desc":"TestKey_PlaceHolder","desc2":"TestKey_PlaceHolder"},"6":{"level":6,"name":"TestKey_PlaceHolder","desc":"TestKey_PlaceHolder","desc2":"TestKey_PlaceHolder"}},"fairy_recommend":{},"strategy":{},"potential":[],"potential_detail":{}}
+{
+  "id": 1601,
+  "icon": "IconRole1601",
+  "name": "(Test1)挽昼",
+  "code_name": "Sunbringer",
+  "rarity": 4,
+  "weapon_type": {
+    "7": "锋御"
+  },
+  "element_type": {
+    "201": "火属性"
+  },
+  "special_element_type": {
+    "id": 201,
+    "name": "燎源",
+    "title": "燎源属性",
+    "desc": "ElementIconText_GenesisFlare",
+    "icon": "UI/Sprite/A1DynamicLoad/IconGeneralBuff/Packer/IconGenesisFlare.png"
+  },
+  "hit_type": {
+    "101": "斩击"
+  },
+  "camp": {
+    "16": "罗斯凯利法"
+  },
+  "gender": 2,
+  "partner_info": {},
+  "skin": {
+    "3116010": {
+      "name": "AvatarSkin_Sunbringer_Name_000",
+      "desc": "AvatarSkin_Sunbringer_Desc_000",
+      "obtain_desc": "",
+      "image": "IconRole1601"
+    }
+  },
+  "stats": {
+    "armor": 0,
+    "armor_growth": 0,
+    "attack": 101,
+    "attack_growth": 58479,
+    "avatar_piece_id": 5601,
+    "break_stun": 93,
+    "crit": 500,
+    "crit_damage": 5000,
+    "crit_dmg_res": 0,
+    "crit_res": 0,
+    "defence": 35,
+    "defence_growth": 48155,
+    "element_abnormal_power": 78,
+    "element_mystery": 77,
+    "endurance": 0,
+    "hp_growth": 625913,
+    "hp_max": 461,
+    "pen_delta": 0,
+    "pen_rate": 0,
+    "rbl": 1,
+    "rbl_correction_factor": 10000,
+    "rbl_probability": 0,
+    "shield": 0,
+    "shield_growth": 0,
+    "sp_bar_point": 0,
+    "sp_recover": 0,
+    "stun": 0,
+    "tags": [
+      "Sunbringer",
+      "Cut",
+      "Fire",
+      "Female",
+      "Camp16",
+      "Size3",
+      "AidTypeParry",
+      "Sunbringer",
+      "EtherEyesSize3",
+      "Armorer"
+    ],
+    "rp_max": 0,
+    "rp_recover": 0,
+    "ep_max": 120,
+    "ep_recover": 150,
+    "sharp_critical_damage": 15000
+  },
+  "level": {
+    "1": {
+      "hp_max": 0,
+      "attack": 0,
+      "defence": 0,
+      "level_max": 10,
+      "level_min": 0,
+      "materials": {
+        "10": 24000,
+        "100217": 4
+      }
+    },
+    "2": {
+      "hp_max": 317,
+      "attack": 36,
+      "defence": 24,
+      "level_max": 20,
+      "level_min": 10,
+      "materials": {
+        "10": 56000,
+        "100227": 12
+      }
+    },
+    "3": {
+      "hp_max": 633,
+      "attack": 72,
+      "defence": 49,
+      "level_max": 30,
+      "level_min": 20,
+      "materials": {
+        "10": 120000,
+        "100227": 20
+      }
+    },
+    "4": {
+      "hp_max": 950,
+      "attack": 108,
+      "defence": 73,
+      "level_max": 40,
+      "level_min": 30,
+      "materials": {
+        "10": 200000,
+        "100237": 10
+      }
+    },
+    "5": {
+      "hp_max": 1266,
+      "attack": 144,
+      "defence": 97,
+      "level_max": 50,
+      "level_min": 40,
+      "materials": {
+        "10": 400000,
+        "100237": 20
+      }
+    },
+    "6": {
+      "hp_max": 1583,
+      "attack": 180,
+      "defence": 122,
+      "level_max": 60,
+      "level_min": 50,
+      "materials": {}
+    }
+  },
+  "extra_level": {
+    "1": {
+      "max_level": 15,
+      "extra": {
+        "20101": {
+          "prop": 20101,
+          "name": "暴击率",
+          "format": "{0:0.#%}",
+          "value": 480
+        }
+      }
+    },
+    "2": {
+      "max_level": 25,
+      "extra": {
+        "20101": {
+          "prop": 20101,
+          "name": "暴击率",
+          "format": "{0:0.#%}",
+          "value": 960
+        }
+      }
+    },
+    "3": {
+      "max_level": 35,
+      "extra": {
+        "20101": {
+          "prop": 20101,
+          "name": "暴击率",
+          "format": "{0:0.#%}",
+          "value": 1440
+        }
+      }
+    },
+    "4": {
+      "max_level": 45,
+      "extra": {
+        "20101": {
+          "prop": 20101,
+          "name": "暴击率",
+          "format": "{0:0.#%}",
+          "value": 1920
+        }
+      }
+    },
+    "5": {
+      "max_level": 55,
+      "extra": {
+        "20101": {
+          "prop": 20101,
+          "name": "暴击率",
+          "format": "{0:0.#%}",
+          "value": 2400
+        }
+      }
+    },
+    "6": {
+      "max_level": 60,
+      "extra": {
+        "20101": {
+          "prop": 20101,
+          "name": "暴击率",
+          "format": "{0:0.#%}",
+          "value": 2880
+        }
+      }
+    }
+  },
+  "level_exp": [
+    50,
+    150,
+    250,
+    400,
+    600,
+    800,
+    1000,
+    1250,
+    1500,
+    1800,
+    1935,
+    2065,
+    2200,
+    2335,
+    2465,
+    2600,
+    2735,
+    2865,
+    3000,
+    4680,
+    4975,
+    5265,
+    5560,
+    5855,
+    6145,
+    6440,
+    6735,
+    7025,
+    7320,
+    10800,
+    11400,
+    12000,
+    12600,
+    13200,
+    13800,
+    14400,
+    15000,
+    15600,
+    16200,
+    17100,
+    18300,
+    19500,
+    20700,
+    21900,
+    23100,
+    24300,
+    25500,
+    26700,
+    27900,
+    34200,
+    36600,
+    39000,
+    41400,
+    43800,
+    46200,
+    48600,
+    51000,
+    53400,
+    55800,
+    0
+  ],
+  "skill": {
+    "basic": {
+      "description": [
+        {
+          "name": "(Test1)普通攻击：斩棘",
+          "desc": "(Test1)点按 <IconMap:Icon_Normal> 发动：\n林德薇恩向前方进行至多四段的攻击，造成<color=#FF5521>燎源属性伤害</color>；\n第四段攻击期间连点或长按时，可以持续斩击敌人；\n第四段攻击重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n第四段攻击期间拥有无敌效果；\n第三、四段攻击期间抗打断等级提升，受到的伤害降低40%。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)普通攻击：执旌",
+          "desc": "(Test1)点按 <IconMap:Icon_Normal> 发动：\n艾尔妲向前方进行至多四段的攻击，造成<color=#FF5521>燎源属性伤害</color>；\n第四段攻击重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n第三、四段攻击期间抗打断等级提升，受到的伤害降低40%。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)普通攻击：执旌·聚锋",
+          "desc": "(Test1)<color=#FFFFFF>[愿力]</color>足够时，长按 <IconMap:Icon_Normal> 发动：\n切换艾尔妲上场并发动攻击，造成<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果；\n招式发动后获得<color=#FFFFFF>[链齿]</color>和<color=#FFFFFF>[旗令]</color>。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)普通攻击：斩棘",
+          "param": [
+            {
+              "name": "一段伤害倍率",
+              "desc": "{Skill:1601101, Prop:1001}",
+              "param": {
+                "1601101": {
+                  "main": 6910,
+                  "growth": 630,
+                  "format": "%",
+                  "damage_percentage": 6910,
+                  "damage_percentage_growth": 630,
+                  "stun_ratio": 5400,
+                  "stun_ratio_growth": 250,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 163900,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 4900,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 4901
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "二段伤害倍率",
+              "desc": "{Skill:1601102, Prop:1001}",
+              "param": {
+                "1601102": {
+                  "main": 9690,
+                  "growth": 890,
+                  "format": "%",
+                  "damage_percentage": 9690,
+                  "damage_percentage_growth": 890,
+                  "stun_ratio": 7810,
+                  "stun_ratio_growth": 360,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 207625,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 7099,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 7100
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "三段伤害倍率",
+              "desc": "{Skill:1601103, Prop:1001}",
+              "param": {
+                "1601103": {
+                  "main": 19380,
+                  "growth": 1770,
+                  "format": "%",
+                  "damage_percentage": 19380,
+                  "damage_percentage_growth": 1770,
+                  "stun_ratio": 15850,
+                  "stun_ratio_growth": 730,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 395175,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 14403,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 14404
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "四段伤害倍率",
+              "desc": "{Skill:1601104, Prop:1001}",
+              "param": {
+                "1601104": {
+                  "main": 36500,
+                  "growth": 3320,
+                  "format": "%",
+                  "damage_percentage": 36500,
+                  "damage_percentage_growth": 3320,
+                  "stun_ratio": 30190,
+                  "stun_ratio_growth": 1380,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 714450,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 27437,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 27438
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "一段失衡倍率",
+              "desc": "{Skill:1601101, Prop:1002}",
+              "param": {
+                "1601101": {
+                  "main": 5400,
+                  "growth": 250,
+                  "format": "%",
+                  "damage_percentage": 6910,
+                  "damage_percentage_growth": 630,
+                  "stun_ratio": 5400,
+                  "stun_ratio_growth": 250,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 163900,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 4900,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 4901
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "二段失衡倍率",
+              "desc": "{Skill:1601102, Prop:1002}",
+              "param": {
+                "1601102": {
+                  "main": 7810,
+                  "growth": 360,
+                  "format": "%",
+                  "damage_percentage": 9690,
+                  "damage_percentage_growth": 890,
+                  "stun_ratio": 7810,
+                  "stun_ratio_growth": 360,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 207625,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 7099,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 7100
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "三段失衡倍率",
+              "desc": "{Skill:1601103, Prop:1002}",
+              "param": {
+                "1601103": {
+                  "main": 15850,
+                  "growth": 730,
+                  "format": "%",
+                  "damage_percentage": 19380,
+                  "damage_percentage_growth": 1770,
+                  "stun_ratio": 15850,
+                  "stun_ratio_growth": 730,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 395175,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 14403,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 14404
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "四段失衡倍率",
+              "desc": "{Skill:1601104, Prop:1002}",
+              "param": {
+                "1601104": {
+                  "main": 30190,
+                  "growth": 1380,
+                  "format": "%",
+                  "damage_percentage": 36500,
+                  "damage_percentage_growth": 3320,
+                  "stun_ratio": 30190,
+                  "stun_ratio_growth": 1380,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 714450,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 27437,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 27438
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "毁伤伤害倍率",
+              "desc": "{Skill:1601114, Prop:1001}",
+              "param": {
+                "1601114": {
+                  "main": 16800,
+                  "growth": 1530,
+                  "format": "%",
+                  "damage_percentage": 16800,
+                  "damage_percentage_growth": 1530,
+                  "stun_ratio": 0,
+                  "stun_ratio_growth": 0,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 0,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 0,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 0
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)普通攻击：执旌",
+          "param": [
+            {
+              "name": "一段伤害倍率",
+              "desc": "{Skill:1601001, Prop:1001}",
+              "param": {
+                "1601001": {
+                  "main": 4440,
+                  "growth": 410,
+                  "format": "%",
+                  "damage_percentage": 4440,
+                  "damage_percentage_growth": 410,
+                  "stun_ratio": 3470,
+                  "stun_ratio_growth": 160,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 105325,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 3152,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 3153
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "二段伤害倍率",
+              "desc": "{Skill:1601002, Prop:1001}",
+              "param": {
+                "1601002": {
+                  "main": 9580,
+                  "growth": 880,
+                  "format": "%",
+                  "damage_percentage": 9580,
+                  "damage_percentage_growth": 880,
+                  "stun_ratio": 7690,
+                  "stun_ratio_growth": 350,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 208450,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 6986,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 6987
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "三段伤害倍率",
+              "desc": "{Skill:1601003, Prop:1001}",
+              "param": {
+                "1601003": {
+                  "main": 14400,
+                  "growth": 1310,
+                  "format": "%",
+                  "damage_percentage": 14400,
+                  "damage_percentage_growth": 1310,
+                  "stun_ratio": 11790,
+                  "stun_ratio_growth": 540,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 291775,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 10717,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 10718
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "四段伤害倍率",
+              "desc": "{Skill:1601004, Prop:1001}",
+              "param": {
+                "1601004": {
+                  "main": 21180,
+                  "growth": 1930,
+                  "format": "%",
+                  "damage_percentage": 21180,
+                  "damage_percentage_growth": 1930,
+                  "stun_ratio": 17590,
+                  "stun_ratio_growth": 800,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 407825,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 15984,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 15985
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "一段失衡倍率",
+              "desc": "{Skill:1601001, Prop:1002}",
+              "param": {
+                "1601001": {
+                  "main": 3470,
+                  "growth": 160,
+                  "format": "%",
+                  "damage_percentage": 4440,
+                  "damage_percentage_growth": 410,
+                  "stun_ratio": 3470,
+                  "stun_ratio_growth": 160,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 105325,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 3152,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 3153
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "二段失衡倍率",
+              "desc": "{Skill:1601002, Prop:1002}",
+              "param": {
+                "1601002": {
+                  "main": 7690,
+                  "growth": 350,
+                  "format": "%",
+                  "damage_percentage": 9580,
+                  "damage_percentage_growth": 880,
+                  "stun_ratio": 7690,
+                  "stun_ratio_growth": 350,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 208450,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 6986,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 6987
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "三段失衡倍率",
+              "desc": "{Skill:1601003, Prop:1002}",
+              "param": {
+                "1601003": {
+                  "main": 11790,
+                  "growth": 540,
+                  "format": "%",
+                  "damage_percentage": 14400,
+                  "damage_percentage_growth": 1310,
+                  "stun_ratio": 11790,
+                  "stun_ratio_growth": 540,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 291775,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 10717,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 10718
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "四段失衡倍率",
+              "desc": "{Skill:1601004, Prop:1002}",
+              "param": {
+                "1601004": {
+                  "main": 17590,
+                  "growth": 800,
+                  "format": "%",
+                  "damage_percentage": 21180,
+                  "damage_percentage_growth": 1930,
+                  "stun_ratio": 17590,
+                  "stun_ratio_growth": 800,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 407825,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 15984,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 15985
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "毁伤伤害倍率",
+              "desc": "{Skill:1601114, Prop:1001}",
+              "param": {
+                "1601114": {
+                  "main": 16800,
+                  "growth": 1530,
+                  "format": "%",
+                  "damage_percentage": 16800,
+                  "damage_percentage_growth": 1530,
+                  "stun_ratio": 0,
+                  "stun_ratio_growth": 0,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 0,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 0,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 0
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)普通攻击：执旌·聚锋",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601015, Prop:1001}",
+              "param": {
+                "1601015": {
+                  "main": 86120,
+                  "growth": 7830,
+                  "format": "%",
+                  "damage_percentage": 86120,
+                  "damage_percentage_growth": 7830,
+                  "stun_ratio": 15040,
+                  "stun_ratio_growth": 690,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 375925,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 13666,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 13667
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601015, Prop:1002}",
+              "param": {
+                "1601015": {
+                  "main": 15040,
+                  "growth": 690,
+                  "format": "%",
+                  "damage_percentage": 86120,
+                  "damage_percentage_growth": 7830,
+                  "stun_ratio": 15040,
+                  "stun_ratio_growth": 690,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 375925,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 13666,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 13667
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        }
+      ],
+      "material": {
+        "1": {
+          "10": 2000,
+          "100111": 2
+        },
+        "2": {
+          "10": 3000,
+          "100111": 3
+        },
+        "3": {
+          "10": 6000,
+          "100121": 2
+        },
+        "4": {
+          "10": 9000,
+          "100121": 3
+        },
+        "5": {
+          "10": 12000,
+          "100121": 4
+        },
+        "6": {
+          "10": 18000,
+          "100121": 6
+        },
+        "7": {
+          "10": 45000,
+          "100131": 5
+        },
+        "8": {
+          "10": 67500,
+          "100131": 8
+        },
+        "9": {
+          "10": 90000,
+          "100131": 10
+        },
+        "10": {
+          "10": 112500,
+          "100131": 12
+        },
+        "11": {
+          "10": 135000,
+          "100131": 15,
+          "100941": 1
+        },
+        "12": {}
+      }
+    },
+    "dodge": {
+      "description": [
+        {
+          "name": "(Test1)闪避：相位折叠",
+          "desc": "(Test1)点按 <IconMap:Icon_Evade> 发动：\n林德薇恩快速的冲刺闪避；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)冲刺攻击：虚空斩进",
+          "desc": "(Test1)闪避时，点按 <IconMap:Icon_Normal> 发动：\n林德薇恩向前方进行斩击，造成<color=#FF5521>燎源属性伤害</color>。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)闪避反击：潜火重燃",
+          "desc": "(Test1)触发<color=#FFFFFF>[极限闪避]</color>时，点按 <IconMap:Icon_Normal> 发动：\n林德薇恩向前方发动连续攻击，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可快速衔接<color=#FFFFFF>[普通攻击]</color>第三段；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)闪避：空间重构",
+          "desc": "(Test1)点按 <IconMap:Icon_Evade> 发动：\n艾尔妲发动快速的冲刺闪避；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)冲刺攻击：虚实逆转",
+          "desc": "(Test1)闪避时，点按 <IconMap:Icon_Normal> 发动：\n艾尔妲向前方进行突刺，造成<color=#FF5521>燎源属性伤害</color>。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)闪避：巡征",
+          "desc": "(Test1)拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}时长按 <IconMap:Icon_Evade> 发动：\n艾尔妲进入可高速移动的<color=#FFFFFF>[掠夜]</color>状态；\n在<color=#FFFFFF>[掠夜]</color>状态下使用{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}控制方向，松开{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}则会停下；\n发动招式瞬间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)冲刺攻击：巡征·影域穿袭",
+          "desc": "(Test1)<color=#FFFFFF>[掠夜]</color>状态下点按 <IconMap:Icon_Normal> 发动：\n艾尔妲发动快速的横扫攻击，造成<color=#FF5521>燎源属性伤害</color>。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)闪避反击：冷焰回锋",
+          "desc": "(Test1)触发<color=#FFFFFF>[极限闪避]</color>时，点按 <IconMap:Icon_Normal> 发动：\n艾尔妲向前方发动连续攻击，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)冲刺攻击：虚空斩进",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601108, Prop:1001}",
+              "param": {
+                "1601108": {
+                  "main": 3600,
+                  "growth": 330,
+                  "format": "%",
+                  "damage_percentage": 3600,
+                  "damage_percentage_growth": 330,
+                  "stun_ratio": 3300,
+                  "stun_ratio_growth": 150,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 82500,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 2998,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 2999
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601108, Prop:1002}",
+              "param": {
+                "1601108": {
+                  "main": 3300,
+                  "growth": 150,
+                  "format": "%",
+                  "damage_percentage": 3600,
+                  "damage_percentage_growth": 330,
+                  "stun_ratio": 3300,
+                  "stun_ratio_growth": 150,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 82500,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 2998,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 2999
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)闪避反击：潜火重燃",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601109, Prop:1001}",
+              "param": {
+                "1601109": {
+                  "main": 38790,
+                  "growth": 3530,
+                  "format": "%",
+                  "damage_percentage": 38790,
+                  "damage_percentage_growth": 3530,
+                  "stun_ratio": 29890,
+                  "stun_ratio_growth": 1360,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 472450,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 17170,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 32171
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601109, Prop:1002}",
+              "param": {
+                "1601109": {
+                  "main": 29890,
+                  "growth": 1360,
+                  "format": "%",
+                  "damage_percentage": 38790,
+                  "damage_percentage_growth": 3530,
+                  "stun_ratio": 29890,
+                  "stun_ratio_growth": 1360,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 472450,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 17170,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 32171
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)冲刺攻击：虚实逆转",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601008, Prop:1001}",
+              "param": {
+                "1601008": {
+                  "main": 3610,
+                  "growth": 330,
+                  "format": "%",
+                  "damage_percentage": 3610,
+                  "damage_percentage_growth": 330,
+                  "stun_ratio": 3310,
+                  "stun_ratio_growth": 160,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 82775,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 3001,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 3002
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601008, Prop:1002}",
+              "param": {
+                "1601008": {
+                  "main": 3310,
+                  "growth": 160,
+                  "format": "%",
+                  "damage_percentage": 3610,
+                  "damage_percentage_growth": 330,
+                  "stun_ratio": 3310,
+                  "stun_ratio_growth": 160,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 82775,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 3001,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 3002
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)闪避反击：冷焰回锋",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601009, Prop:1001}",
+              "param": {
+                "1601009": {
+                  "main": 35400,
+                  "growth": 3220,
+                  "format": "%",
+                  "damage_percentage": 35400,
+                  "damage_percentage_growth": 3220,
+                  "stun_ratio": 27500,
+                  "stun_ratio_growth": 1250,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 412500,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 15000,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 30000
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601009, Prop:1002}",
+              "param": {
+                "1601009": {
+                  "main": 27500,
+                  "growth": 1250,
+                  "format": "%",
+                  "damage_percentage": 35400,
+                  "damage_percentage_growth": 3220,
+                  "stun_ratio": 27500,
+                  "stun_ratio_growth": 1250,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 412500,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 15000,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 30000
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)冲刺攻击：巡征·影域穿袭",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601014, Prop:1001}",
+              "param": {
+                "1601014": {
+                  "main": 11400,
+                  "growth": 1040,
+                  "format": "%",
+                  "damage_percentage": 11400,
+                  "damage_percentage_growth": 1040,
+                  "stun_ratio": 10450,
+                  "stun_ratio_growth": 480,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 261250,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 9496,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 9497
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601014, Prop:1002}",
+              "param": {
+                "1601014": {
+                  "main": 10450,
+                  "growth": 480,
+                  "format": "%",
+                  "damage_percentage": 11400,
+                  "damage_percentage_growth": 1040,
+                  "stun_ratio": 10450,
+                  "stun_ratio_growth": 480,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 261250,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 9496,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 9497
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        }
+      ],
+      "material": {
+        "1": {
+          "10": 2000,
+          "100111": 2
+        },
+        "2": {
+          "10": 3000,
+          "100111": 3
+        },
+        "3": {
+          "10": 6000,
+          "100121": 2
+        },
+        "4": {
+          "10": 9000,
+          "100121": 3
+        },
+        "5": {
+          "10": 12000,
+          "100121": 4
+        },
+        "6": {
+          "10": 18000,
+          "100121": 6
+        },
+        "7": {
+          "10": 45000,
+          "100131": 5
+        },
+        "8": {
+          "10": 67500,
+          "100131": 8
+        },
+        "9": {
+          "10": 90000,
+          "100131": 10
+        },
+        "10": {
+          "10": 112500,
+          "100131": 12
+        },
+        "11": {
+          "10": 135000,
+          "100131": 15,
+          "100941": 1
+        },
+        "12": {}
+      }
+    },
+    "special": {
+      "description": [
+        {
+          "name": "(Test1)特殊技：焚夜",
+          "desc": "(Test1)点按 <IconMap:Icon_Special> 或长按 <IconMap:Icon_Evade> 发动：\n切换林德薇恩上场并发动攻击，造成<color=#FF5521>燎源属性伤害</color>。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)强化特殊技：焚夜·曦生",
+          "desc": "(Test1)锐能足够时，点按 <IconMap:Icon_SpecialReady_Ep> 发动：\n林德薇恩与艾尔妲协同发动攻击，并保留林德薇恩在场，造成<color=#FF5521>燎源属性伤害</color>；\n重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)强化特殊技：焚夜·曦生（改）",
+          "desc": "(Test1)锐能足够时，在<color=#FFFFFF>[普通攻击：斩棘]</color>的最后一段攻击、<color=#FFFFFF>[闪避反击：潜火重燃]</color>、<color=#FFFFFF>[支援突击：不灭热忱]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>、<color=#FFFFFF>[强化特殊技：燃灯·晦尽（改）]</color>发动后点按 <IconMap:Icon_SpecialReady_Ep> 发动：\n林德薇恩与艾尔妲协同发动攻击，并保留林德薇恩在场，造成<color=#FF5521>燎源属性伤害</color>；\n重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)强化特殊技：焚夜·长暗终焉",
+          "desc": "(Test1)拥有<color=#FFFFFF>[链齿]</color>时，点按 <IconMap:Icon_Special> 发动：\n消耗<color=#FFFFFF>[链齿]</color>，林德薇恩与艾尔妲协同发动高量级攻击，并保留林德薇恩在场，造成大量<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可快速衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)特殊技：燃灯",
+          "desc": "(Test1)点按 <IconMap:Icon_Special> 或长按 <IconMap:Icon_Evade> 发动：\n切换艾尔妲上场并发动攻击，造成<color=#FF5521>燎源属性伤害</color>。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)强化特殊技：燃灯·晦尽",
+          "desc": "(Test1)锐能足够时，点按 <IconMap:Icon_SpecialReady_Ep> 发动：\n艾尔妲与林德薇恩协同发动攻击，并保留艾尔妲在场，造成<color=#FF5521>燎源属性伤害</color>；\n重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)强化特殊技：燃灯·晦尽（改）",
+          "desc": "(Test1)锐能足够时，在<color=#FFFFFF>[普通攻击：执旌]</color>的最后一段攻击、<color=#FFFFFF>[闪避反击：冷焰回锋]</color>、<color=#FFFFFF>[支援突击：虔志如初]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[强化特殊技：焚夜·曦生（改）]</color>发动后点按 <IconMap:Icon_SpecialReady_Ep> 发动：\n艾尔妲与林德薇恩、德蕾琪娜协同发动攻击，并保留艾尔妲在场，造成<color=#FF5521>燎源属性伤害</color>；\n重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)强化特殊技：燃灯·永昼之炬",
+          "desc": "(Test1)拥有<color=#FFFFFF>[旗令]</color>时，点按 <IconMap:Icon_Special> 发动：\n消耗<color=#FFFFFF>[旗令]</color>，艾尔妲与林德薇恩协同发动高量级攻击，并保留艾尔妲在场，造成大量<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)特殊技：焚夜",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601105, Prop:1001}",
+              "param": {
+                "1601105": {
+                  "main": 5110,
+                  "growth": 470,
+                  "format": "%",
+                  "damage_percentage": 5110,
+                  "damage_percentage_growth": 470,
+                  "stun_ratio": 4680,
+                  "stun_ratio_growth": 220,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 117150,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 4250,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 4251
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601105, Prop:1002}",
+              "param": {
+                "1601105": {
+                  "main": 4680,
+                  "growth": 220,
+                  "format": "%",
+                  "damage_percentage": 5110,
+                  "damage_percentage_growth": 470,
+                  "stun_ratio": 4680,
+                  "stun_ratio_growth": 220,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 117150,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 4250,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 4251
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)强化特殊技：焚夜·曦生",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601106, Prop:1001}",
+              "param": {
+                "1601106": {
+                  "main": 62010,
+                  "growth": 5640,
+                  "format": "%",
+                  "damage_percentage": 62010,
+                  "damage_percentage_growth": 5640,
+                  "stun_ratio": 49510,
+                  "stun_ratio_growth": 2260,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1604350,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 48337,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 25004
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601106, Prop:1002}",
+              "param": {
+                "1601106": {
+                  "main": 49510,
+                  "growth": 2260,
+                  "format": "%",
+                  "damage_percentage": 62010,
+                  "damage_percentage_growth": 5640,
+                  "stun_ratio": 49510,
+                  "stun_ratio_growth": 2260,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1604350,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 48337,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 25004
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "锐能消耗",
+              "desc": "(Test1)30点",
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)强化特殊技：焚夜·曦生（改）",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601016, Prop:1001}",
+              "param": {
+                "1601016": {
+                  "main": 62350,
+                  "growth": 5670,
+                  "format": "%",
+                  "damage_percentage": 62350,
+                  "damage_percentage_growth": 5670,
+                  "stun_ratio": 49470,
+                  "stun_ratio_growth": 2250,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1473725,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 44058,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 21834
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601016, Prop:1002}",
+              "param": {
+                "1601016": {
+                  "main": 49470,
+                  "growth": 2250,
+                  "format": "%",
+                  "damage_percentage": 62350,
+                  "damage_percentage_growth": 5670,
+                  "stun_ratio": 49470,
+                  "stun_ratio_growth": 2250,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1473725,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 44058,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 21834
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "锐能消耗",
+              "desc": "(Test1)30点",
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)强化特殊技：焚夜·长暗终焉",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601107, Prop:1001}",
+              "param": {
+                "1601107": {
+                  "main": 134530,
+                  "growth": 12230,
+                  "format": "%",
+                  "damage_percentage": 134530,
+                  "damage_percentage_growth": 12230,
+                  "stun_ratio": 40710,
+                  "stun_ratio_growth": 1860,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1017775,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 37003,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 37004
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601107, Prop:1002}",
+              "param": {
+                "1601107": {
+                  "main": 40710,
+                  "growth": 1860,
+                  "format": "%",
+                  "damage_percentage": 134530,
+                  "damage_percentage_growth": 12230,
+                  "stun_ratio": 40710,
+                  "stun_ratio_growth": 1860,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1017775,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 37003,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 37004
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)特殊技：燃灯",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601005, Prop:1001}",
+              "param": {
+                "1601005": {
+                  "main": 5000,
+                  "growth": 460,
+                  "format": "%",
+                  "damage_percentage": 5000,
+                  "damage_percentage_growth": 460,
+                  "stun_ratio": 4590,
+                  "stun_ratio_growth": 210,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 114675,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 4165,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 4166
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601005, Prop:1002}",
+              "param": {
+                "1601005": {
+                  "main": 4590,
+                  "growth": 210,
+                  "format": "%",
+                  "damage_percentage": 5000,
+                  "damage_percentage_growth": 460,
+                  "stun_ratio": 4590,
+                  "stun_ratio_growth": 210,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 114675,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 4165,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 4166
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)强化特殊技：燃灯·晦尽",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601006, Prop:1001}",
+              "param": {
+                "1601006": {
+                  "main": 60880,
+                  "growth": 5540,
+                  "format": "%",
+                  "damage_percentage": 60880,
+                  "damage_percentage_growth": 5540,
+                  "stun_ratio": 48550,
+                  "stun_ratio_growth": 2210,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1576850,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 47433,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 24334
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601006, Prop:1002}",
+              "param": {
+                "1601006": {
+                  "main": 48550,
+                  "growth": 2210,
+                  "format": "%",
+                  "damage_percentage": 60880,
+                  "damage_percentage_growth": 5540,
+                  "stun_ratio": 48550,
+                  "stun_ratio_growth": 2210,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1576850,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 47433,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 24334
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "锐能消耗",
+              "desc": "(Test1)30点",
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)强化特殊技：燃灯·晦尽（改）",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601115, Prop:1001}",
+              "param": {
+                "1601115": {
+                  "main": 63890,
+                  "growth": 5810,
+                  "format": "%",
+                  "damage_percentage": 63890,
+                  "damage_percentage_growth": 5810,
+                  "stun_ratio": 50780,
+                  "stun_ratio_growth": 2310,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1508100,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 45183,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 22667
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601115, Prop:1002}",
+              "param": {
+                "1601115": {
+                  "main": 50780,
+                  "growth": 2310,
+                  "format": "%",
+                  "damage_percentage": 63890,
+                  "damage_percentage_growth": 5810,
+                  "stun_ratio": 50780,
+                  "stun_ratio_growth": 2310,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1508100,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 45183,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 22667
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "锐能消耗",
+              "desc": "(Test1)30点",
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)强化特殊技：燃灯·永昼之炬",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601007, Prop:1001}",
+              "param": {
+                "1601007": {
+                  "main": 122010,
+                  "growth": 11100,
+                  "format": "%",
+                  "damage_percentage": 122010,
+                  "damage_percentage_growth": 11100,
+                  "stun_ratio": 40340,
+                  "stun_ratio_growth": 1840,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1008700,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 36670,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 36671
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601007, Prop:1002}",
+              "param": {
+                "1601007": {
+                  "main": 40340,
+                  "growth": 1840,
+                  "format": "%",
+                  "damage_percentage": 122010,
+                  "damage_percentage_growth": 11100,
+                  "stun_ratio": 40340,
+                  "stun_ratio_growth": 1840,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1008700,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 36670,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 36671
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        }
+      ],
+      "material": {
+        "1": {
+          "10": 2000,
+          "100111": 2
+        },
+        "2": {
+          "10": 3000,
+          "100111": 3
+        },
+        "3": {
+          "10": 6000,
+          "100121": 2
+        },
+        "4": {
+          "10": 9000,
+          "100121": 3
+        },
+        "5": {
+          "10": 12000,
+          "100121": 4
+        },
+        "6": {
+          "10": 18000,
+          "100121": 6
+        },
+        "7": {
+          "10": 45000,
+          "100131": 5
+        },
+        "8": {
+          "10": 67500,
+          "100131": 8
+        },
+        "9": {
+          "10": 90000,
+          "100131": 10
+        },
+        "10": {
+          "10": 112500,
+          "100131": 12
+        },
+        "11": {
+          "10": 135000,
+          "100131": 15,
+          "100941": 1
+        },
+        "12": {}
+      }
+    },
+    "chain": {
+      "description": [
+        {
+          "name": "(Test1)连携技：「筑万众之梦」",
+          "desc": "(Test1)触发<color=#FFFFFF>[连携技]</color>时，选择对应角色发动：\n林德薇恩与艾尔妲协同发动高量级攻击，并保留林德薇恩在场，造成<color=#FF5521>燎源属性伤害</color>；\n重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果；\n林德薇恩触发失衡连携窗口时，可直接选择林德薇恩并发动该招式。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)终结技：「此行，共赴前路」",
+          "desc": "(Test1)喧响等级达到<color=#FFFFFF>[极]</color>时，点按 <IconMap:Icon_UltimateReady> 发动：\n林德薇恩与艾尔妲、德蕾琪娜协同攻击，并保留林德薇恩在场，造成大量<color=#FF5521>燎源属性伤害</color>；\n拥有<color=#FFFFFF>[旗令]</color>时，消耗<color=#FFFFFF>[旗令]</color>转化为<color=#FFFFFF>[愿核]</color>；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)连携技：「以挽昼之名」",
+          "desc": "(Test1)触发<color=#FFFFFF>[连携技]</color>时，选择对应角色发动：\n艾尔妲与林德薇恩协同发动高量级攻击，并保留艾尔妲在场，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n重击命中持有<color=#FFFFFF>[残痕]</color>的敌人时，消耗目标持有的所有<color=#FFFFFF>[残痕]</color>，最多消耗3层；每消耗1层<color=#FFFFFF>[残痕]</color>，对目标触发1次<color=#FFFFFF>[毁伤]</color>，额外造成范围<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果；\n艾尔妲触发失衡连携窗口时，可直接选择艾尔妲并发动该招式。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)终结技：「此愿，重塑万象」",
+          "desc": "(Test1)拥有<color=#FFFFFF>[愿核]</color>时，点按 <IconMap:Icon_UltimateReady> 发动：\n艾尔妲在空中利用空间扭曲发动攻击，造成<color=#FF5521>燎源属性伤害</color>，并消除敌人所有<color=#FFFFFF>[烬痕]</color>；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)连携技：「筑万众之梦」",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601110, Prop:1001}",
+              "param": {
+                "1601110": {
+                  "main": 77480,
+                  "growth": 7050,
+                  "format": "%",
+                  "damage_percentage": 77480,
+                  "damage_percentage_growth": 7050,
+                  "stun_ratio": 27130,
+                  "stun_ratio_growth": 1240,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 2507175,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 44613,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 24664
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601110, Prop:1002}",
+              "param": {
+                "1601110": {
+                  "main": 27130,
+                  "growth": 1240,
+                  "format": "%",
+                  "damage_percentage": 77480,
+                  "damage_percentage_growth": 7050,
+                  "stun_ratio": 27130,
+                  "stun_ratio_growth": 1240,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 2507175,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 44613,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 24664
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)终结技：「此行，共赴前路」",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601111, Prop:1001}",
+              "param": {
+                "1601111": {
+                  "main": 194980,
+                  "growth": 17730,
+                  "format": "%",
+                  "damage_percentage": 194980,
+                  "damage_percentage_growth": 17730,
+                  "stun_ratio": 31720,
+                  "stun_ratio_growth": 1450,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 0,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 28833,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 78834
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601111, Prop:1002}",
+              "param": {
+                "1601111": {
+                  "main": 31720,
+                  "growth": 1450,
+                  "format": "%",
+                  "damage_percentage": 194980,
+                  "damage_percentage_growth": 17730,
+                  "stun_ratio": 31720,
+                  "stun_ratio_growth": 1450,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 0,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 28833,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 78834
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)连携技：「以挽昼之名」",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601010, Prop:1001}",
+              "param": {
+                "1601010": {
+                  "main": 77480,
+                  "growth": 7050,
+                  "format": "%",
+                  "damage_percentage": 77480,
+                  "damage_percentage_growth": 7050,
+                  "stun_ratio": 27130,
+                  "stun_ratio_growth": 1240,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 2507175,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 44613,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 24664
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601010, Prop:1002}",
+              "param": {
+                "1601010": {
+                  "main": 27130,
+                  "growth": 1240,
+                  "format": "%",
+                  "damage_percentage": 77480,
+                  "damage_percentage_growth": 7050,
+                  "stun_ratio": 27130,
+                  "stun_ratio_growth": 1240,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 2507175,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 44613,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 24664
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)终结技：「此愿，重塑万象」",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601011, Prop:1001}",
+              "param": {
+                "1601011": {
+                  "main": 141350,
+                  "growth": 12850,
+                  "format": "%",
+                  "damage_percentage": 141350,
+                  "damage_percentage_growth": 12850,
+                  "stun_ratio": 44920,
+                  "stun_ratio_growth": 2050,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 0,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 40830,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 40831
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601011, Prop:1002}",
+              "param": {
+                "1601011": {
+                  "main": 44920,
+                  "growth": 2050,
+                  "format": "%",
+                  "damage_percentage": 141350,
+                  "damage_percentage_growth": 12850,
+                  "stun_ratio": 44920,
+                  "stun_ratio_growth": 2050,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 0,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 40830,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 40831
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        }
+      ],
+      "material": {
+        "1": {
+          "10": 2000,
+          "100111": 2
+        },
+        "2": {
+          "10": 3000,
+          "100111": 3
+        },
+        "3": {
+          "10": 6000,
+          "100121": 2
+        },
+        "4": {
+          "10": 9000,
+          "100121": 3
+        },
+        "5": {
+          "10": 12000,
+          "100121": 4
+        },
+        "6": {
+          "10": 18000,
+          "100121": 6
+        },
+        "7": {
+          "10": 45000,
+          "100131": 5
+        },
+        "8": {
+          "10": 67500,
+          "100131": 8
+        },
+        "9": {
+          "10": 90000,
+          "100131": 10
+        },
+        "10": {
+          "10": 112500,
+          "100131": 12
+        },
+        "11": {
+          "10": 135000,
+          "100131": 15,
+          "100941": 1
+        },
+        "12": {}
+      }
+    },
+    "assist": {
+      "description": [
+        {
+          "name": "(Test1)快速支援：无畏驰援",
+          "desc": "(Test1)当前操作中的角色被击飞时，点按 <IconMap:Icon_Switch> 发动：\n林德薇恩向前方发动连续攻击，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可快速衔接<color=#FFFFFF>[普通攻击]</color>第三段；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)快速支援：锋芒所向",
+          "desc": "(Test1)当前操作中的角色被击飞时，点按 <IconMap:Icon_Switch> 发动：\n艾尔妲向前方发动连续攻击，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)招架支援：坚守之誓",
+          "desc": "(Test1)前场角色即将被攻击时，点按 <IconMap:Icon_Switch> 发动：\n德蕾琪娜招架敌人的攻击，累积大量失衡值；\n林德薇恩与艾尔妲在前场时，也可通过换入下一人发动该招式；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)反制支援：希望堡垒",
+          "desc": "(Test1)自身或前场角色即将被部分敌人的控制技攻击时，点按 <IconMap:Icon_Switch> 发动：\n德蕾琪娜与怪物进行角力，角力成功后，化解敌人的控制技并造成<color=#FF5521>燎源属性伤害</color>；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)支援突击：灯塔，立于苍穹",
+          "desc": "(Test1)发动<color=#FFFFFF>[反制支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n德蕾琪娜造成大量<color=#FF5521>燎源属性伤害</color>，重击命中敌人时，直接为目标添加1层<color=#FFFFFF>[残痕]</color>；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)支援突击：不灭热忱",
+          "desc": "(Test1)德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n林德薇恩向前方快速斩击，随后引发爆炸，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可快速衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n招式发动期间连点或长按时，可以持续斩击敌人；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)支援突击：虔志如初",
+          "desc": "(Test1)德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n艾尔妲向前方快速斩击，随后引发爆炸，造成<color=#FF5521>燎源属性伤害</color>；\n发动该招式后，点按 <IconMap:Icon_Normal> 可衔接<color=#FFFFFF>[普通攻击]</color>第四段；\n招式发动期间拥有无敌效果。",
+          "potential": []
+        },
+        {
+          "name": "(Test1)快速支援：无畏驰援",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601112, Prop:1001}",
+              "param": {
+                "1601112": {
+                  "main": 10310,
+                  "growth": 940,
+                  "format": "%",
+                  "damage_percentage": 10310,
+                  "damage_percentage_growth": 940,
+                  "stun_ratio": 9450,
+                  "stun_ratio_growth": 430,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 236225,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 8585,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 8586
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601112, Prop:1002}",
+              "param": {
+                "1601112": {
+                  "main": 9450,
+                  "growth": 430,
+                  "format": "%",
+                  "damage_percentage": 10310,
+                  "damage_percentage_growth": 940,
+                  "stun_ratio": 9450,
+                  "stun_ratio_growth": 430,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 236225,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 8585,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 8586
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)快速支援：锋芒所向",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601012, Prop:1001}",
+              "param": {
+                "1601012": {
+                  "main": 9000,
+                  "growth": 820,
+                  "format": "%",
+                  "damage_percentage": 9000,
+                  "damage_percentage_growth": 820,
+                  "stun_ratio": 8250,
+                  "stun_ratio_growth": 380,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 206250,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 7500,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 7500
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601012, Prop:1002}",
+              "param": {
+                "1601012": {
+                  "main": 8250,
+                  "growth": 380,
+                  "format": "%",
+                  "damage_percentage": 9000,
+                  "damage_percentage_growth": 820,
+                  "stun_ratio": 8250,
+                  "stun_ratio_growth": 380,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 206250,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 7500,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 7500
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)招架支援：坚守之誓",
+          "param": [
+            {
+              "name": "轻招架失衡倍率",
+              "desc": "{Skill:1601201, Prop:1002}",
+              "param": {
+                "1601201": {
+                  "main": 27130,
+                  "growth": 1240,
+                  "format": "%",
+                  "damage_percentage": 0,
+                  "damage_percentage_growth": 0,
+                  "stun_ratio": 27130,
+                  "stun_ratio_growth": 1240,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 0,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 0,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 36664
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "重招架失衡倍率",
+              "desc": "{Skill:1601202, Prop:1002}",
+              "param": {
+                "1601202": {
+                  "main": 34280,
+                  "growth": 1560,
+                  "format": "%",
+                  "damage_percentage": 0,
+                  "damage_percentage_growth": 0,
+                  "stun_ratio": 34280,
+                  "stun_ratio_growth": 1560,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 0,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 0,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 41664
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "连续招架失衡倍率",
+              "desc": "{Skill:1601203, Prop:1002}",
+              "param": {
+                "1601203": {
+                  "main": 16680,
+                  "growth": 760,
+                  "format": "%",
+                  "damage_percentage": 0,
+                  "damage_percentage_growth": 0,
+                  "stun_ratio": 16680,
+                  "stun_ratio_growth": 760,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 0,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 0,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 11664
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)反制支援：希望堡垒",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601204, Prop:1001}",
+              "param": {
+                "1601204": {
+                  "main": 87870,
+                  "growth": 7990,
+                  "format": "%",
+                  "damage_percentage": 87870,
+                  "damage_percentage_growth": 7990,
+                  "stun_ratio": 61240,
+                  "stun_ratio_growth": 2790,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 2001450,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 59944,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 60000
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601204, Prop:1002}",
+              "param": {
+                "1601204": {
+                  "main": 61240,
+                  "growth": 2790,
+                  "format": "%",
+                  "damage_percentage": 87870,
+                  "damage_percentage_growth": 7990,
+                  "stun_ratio": 61240,
+                  "stun_ratio_growth": 2790,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 2001450,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 59944,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 60000
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)支援突击：灯塔，立于苍穹",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601205, Prop:1001}",
+              "param": {
+                "1601205": {
+                  "main": 46940,
+                  "growth": 4270,
+                  "format": "%",
+                  "damage_percentage": 46940,
+                  "damage_percentage_growth": 4270,
+                  "stun_ratio": 37770,
+                  "stun_ratio_growth": 1720,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1206975,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 36722,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 20000
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601205, Prop:1002}",
+              "param": {
+                "1601205": {
+                  "main": 37770,
+                  "growth": 1720,
+                  "format": "%",
+                  "damage_percentage": 46940,
+                  "damage_percentage_growth": 4270,
+                  "stun_ratio": 37770,
+                  "stun_ratio_growth": 1720,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1206975,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 36722,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 20000
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)支援突击：不灭热忱",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601113, Prop:1001}",
+              "param": {
+                "1601113": {
+                  "main": 55050,
+                  "growth": 5010,
+                  "format": "%",
+                  "damage_percentage": 55050,
+                  "damage_percentage_growth": 5010,
+                  "stun_ratio": 44680,
+                  "stun_ratio_growth": 2040,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1406350,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 43242,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 24830
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601113, Prop:1002}",
+              "param": {
+                "1601113": {
+                  "main": 44680,
+                  "growth": 2040,
+                  "format": "%",
+                  "damage_percentage": 55050,
+                  "damage_percentage_growth": 5010,
+                  "stun_ratio": 44680,
+                  "stun_ratio_growth": 2040,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1406350,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 43242,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 24830
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        },
+        {
+          "name": "(Test1)支援突击：虔志如初",
+          "param": [
+            {
+              "name": "伤害倍率",
+              "desc": "{Skill:1601013, Prop:1001}",
+              "param": {
+                "1601013": {
+                  "main": 50290,
+                  "growth": 4580,
+                  "format": "%",
+                  "damage_percentage": 50290,
+                  "damage_percentage_growth": 4580,
+                  "stun_ratio": 40630,
+                  "stun_ratio_growth": 1850,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1289475,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 39417,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 21997
+                }
+              },
+              "potential": []
+            },
+            {
+              "name": "失衡倍率",
+              "desc": "{Skill:1601013, Prop:1002}",
+              "param": {
+                "1601013": {
+                  "main": 40630,
+                  "growth": 1850,
+                  "format": "%",
+                  "damage_percentage": 50290,
+                  "damage_percentage_growth": 4580,
+                  "stun_ratio": 40630,
+                  "stun_ratio_growth": 1850,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 1289475,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 39417,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 21997
+                }
+              },
+              "potential": []
+            }
+          ],
+          "potential": []
+        }
+      ],
+      "material": {
+        "1": {
+          "10": 2000,
+          "100111": 2
+        },
+        "2": {
+          "10": 3000,
+          "100111": 3
+        },
+        "3": {
+          "10": 6000,
+          "100121": 2
+        },
+        "4": {
+          "10": 9000,
+          "100121": 3
+        },
+        "5": {
+          "10": 12000,
+          "100121": 4
+        },
+        "6": {
+          "10": 18000,
+          "100121": 6
+        },
+        "7": {
+          "10": 45000,
+          "100131": 5
+        },
+        "8": {
+          "10": 67500,
+          "100131": 8
+        },
+        "9": {
+          "10": 90000,
+          "100131": 10
+        },
+        "10": {
+          "10": 112500,
+          "100131": 12
+        },
+        "11": {
+          "10": 135000,
+          "100131": 15,
+          "100941": 1
+        },
+        "12": {}
+      }
+    }
+  },
+  "skill_priority": [],
+  "skill_list": {},
+  "passive": {
+    "level": {
+      "1601501": {
+        "level": 1,
+        "id": 1601501,
+        "name": [
+          "(Test1)核心被动：梦现=源质重构",
+          "(Test1)额外能力："
+        ],
+        "desc": [
+          "(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>的终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。",
+          "(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"
+        ],
+        "extra_property": {},
+        "potential": []
+      },
+      "1601502": {
+        "level": 2,
+        "id": 1601502,
+        "name": [
+          "(Test1)核心被动：梦现=源质重构",
+          "(Test1)额外能力："
+        ],
+        "desc": [
+          "(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>的终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。",
+          "(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"
+        ],
+        "extra_property": {},
+        "potential": []
+      },
+      "1601503": {
+        "level": 3,
+        "id": 1601503,
+        "name": [
+          "(Test1)核心被动：梦现=源质重构",
+          "(Test1)额外能力："
+        ],
+        "desc": [
+          "(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>的终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。",
+          "(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"
+        ],
+        "extra_property": {},
+        "potential": []
+      },
+      "1601504": {
+        "level": 4,
+        "id": 1601504,
+        "name": [
+          "(Test1)核心被动：梦现=源质重构",
+          "(Test1)额外能力："
+        ],
+        "desc": [
+          "(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>的终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。",
+          "(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"
+        ],
+        "extra_property": {},
+        "potential": []
+      },
+      "1601505": {
+        "level": 5,
+        "id": 1601505,
+        "name": [
+          "(Test1)核心被动：梦现=源质重构",
+          "(Test1)额外能力："
+        ],
+        "desc": [
+          "(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>的终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。",
+          "(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"
+        ],
+        "extra_property": {},
+        "potential": []
+      },
+      "1601506": {
+        "level": 6,
+        "id": 1601506,
+        "name": [
+          "(Test1)核心被动：梦现=源质重构",
+          "(Test1)额外能力："
+        ],
+        "desc": [
+          "(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>的终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。",
+          "(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"
+        ],
+        "extra_property": {},
+        "potential": []
+      },
+      "1601507": {
+        "level": 7,
+        "id": 1601507,
+        "name": [
+          "(Test1)核心被动：梦现=源质重构",
+          "(Test1)额外能力："
+        ],
+        "desc": [
+          "(Test1)挽昼发动招式造成的伤害均为锐化伤害，使用防御力作为招式伤害倍率，部分锐化伤害会积累残痕值，残痕值满时，敌人会进入<color=#FFFFFF>[残痕]</color>，<color=#FFFFFF>[残痕]</color>最多叠加3层，挽昼发动部分招式重击命中处于<color=#FFFFFF>[残痕]</color>状态下的敌人时，会消耗一层<color=#FFFFFF>[残痕]</color>，造成一次范围伤害；\n触发暴击时，锐化伤害不受暴击伤害加成，转而计算锐暴伤害加成；若暴击率超过100%且已经触发暴击，还将基于超过部分的暴击率再进行一次锐暴判定，触发锐暴则额外计算一次锐暴伤害加成；挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%；\n挽昼进入战场时即可回复60点锐能，在勘域模式中此效果180秒内最多触发一次；\n进入接战状态时，挽昼获得<color=#FFFFFF>[极昼]</color>效果，暴击率提升<color=#2BAD00>40%</color>，造成伤害无视目标<color=#2BAD00>20%</color>的防御力，<color=#FFFFFF>[极昼]</color>状态持续15秒，艾尔妲与林德薇恩处于后场时，持续时间不再减少，挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>时重新获得<color=#FFFFFF>[极昼]</color>效果；\n德蕾琪娜发动<color=#FFFFFF>[招架支援]</color>后，艾尔妲与林德薇恩发动的<color=#FFFFFF>[支援突击]</color>残痕积蓄效率提升<color=#2BAD00>15%</color>，造成的伤害提升<color=#2BAD00>20%</color>；\n全队代理人触发<color=#FFFFFF>[毁伤]</color>时，每消除一层<color=#FFFFFF>[残痕]</color>，挽昼获得40点<color=#FFFFFF>[愿力]</color>，<color=#FFFFFF>[愿力]</color>最多获得160点；<color=#FFFFFF>[愿力]</color>不少于120点时，可消耗120点<color=#FFFFFF>[愿力]</color>发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>；\n队友触发<color=#FFFFFF>[毁伤]</color>时，若挽昼的<color=#FFFFFF>[愿力]</color>足够，将触发<color=#FFFFFF>[快速支援]</color>，挽昼通过<color=#FFFFFF>[快速支援]</color>换入前场时，将消耗120点<color=#FFFFFF>[愿力]</color>直接发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>，此效果3秒内最多触发一次；\n挽昼发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>、<color=#FFFFFF>[强化特殊技：焚夜·长暗终焉]</color>、<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此行，共赴前路」]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>命中敌人造成伤害时，均可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成的实际伤害的<color=#2BAD00>75%</color>，艾尔妲发动<color=#FFFFFF>[强化特殊技：燃灯·永昼之炬]</color>、<color=#FFFFFF>[终结技：「此愿，重塑万象」]</color>的终结一击命中敌人时可消除所有<color=#FFFFFF>[烬痕]</color>，直接扣除等量血量。\n攻击命中普通敌人时，若该敌人持有的<color=#FFFFFF>[烬痕]</color>不少于其当前生命值，将直接消除其所有<color=#FFFFFF>[烬痕]</color>并将其击败。",
+          "(Test1)队伍中存在<color=#FFFFFF>[击破]</color>角色、<color=#FFFFFF>[防护]</color>角色或其他<color=#FFFFFF>[锋御]</color>角色时触发：\n挽昼发动任意<color=#FFFFFF>[强化特殊技]</color>、<color=#FFFFFF>[冲刺攻击：巡征·影域穿袭]</color>时，全队<color=#FFFFFF>[锋御]</color>代理人进入<color=#FFFFFF>[众愿一心]</color>状态，<color=#FFFFFF>[众愿一心]</color>状态下，锐暴伤害提升<color=#FFFFFF>25%</color>，持续45秒；重复进入<color=#FFFFFF>[众愿一心]</color>状态时刷新持续时间。"
+        ],
+        "extra_property": {},
+        "potential": []
+      }
+    },
+    "materials": {
+      "1": {
+        "10": 5000
+      },
+      "2": {
+        "10": 12000,
+        "110517": 2
+      },
+      "3": {
+        "10": 28000,
+        "110517": 4
+      },
+      "4": {
+        "10": 60000,
+        "110517": 9,
+        "110012": 2
+      },
+      "5": {
+        "10": 100000,
+        "110517": 15,
+        "110012": 3
+      },
+      "6": {
+        "10": 200000,
+        "110517": 30,
+        "110012": 4
+      }
+    }
+  },
+  "talent": {
+    "1": {
+      "level": 1,
+      "name": "(Test1)隐世的虚狩",
+      "desc": "(Test1)挽昼进入战场时立即获得120点<color=#FFFFFF>[愿力]</color>，在勘域模式中此效果180秒内最多触发一次；首次发动<color=#FFFFFF>[普通攻击：执旌·聚锋]</color>使敌人积攒的<color=#FFFFFF>[烬痕]</color>量提升为原本的150%；挽昼发动招式造成的伤害无视敌人15%火属性伤害抗性。",
+      "desc2": "(Test1)即使飞向高处，依然无法真正抵达天空。\n可总要有人站得更高一些，哪怕只比世人多望见一寸天光，或许就能为这漫漫长夜，寻得一线转机。\n于是，在那座隐于云海的孤城中，她们将一个又一个日夜交付给守望。"
+    },
+    "2": {
+      "level": 2,
+      "name": "(Test1)继承者的叛旗",
+      "desc": "(Test1)挽昼发动其他招式命中敌人造成伤害时，也可使目标积攒<color=#FFFFFF>[烬痕]</color>，<color=#FFFFFF>[烬痕]</color>量等同于招式造成实际伤害的12%；挽昼造成的锐化伤害无视敌人12%防御力。",
+      "desc2": "(Test1)这是弱肉强食的世界，厮杀与吞噬是它的铁律，弱者沦为养料，为王者铺下登基的阶梯。\n最先诞生的不是恐惧，而是对命运的疑惑与厌恶。\n而后，在无数个模糊的梦中，孤独与恐惧如影随形…手中能够紧握的，唯有对空洞的叛旗。"
+    },
+    "3": {
+      "level": 3,
+      "name": "TestKey_PlaceHolder",
+      "desc": "TestKey_PlaceHolder",
+      "desc2": "TestKey_PlaceHolder"
+    },
+    "4": {
+      "level": 4,
+      "name": "TestKey_PlaceHolder",
+      "desc": "TestKey_PlaceHolder",
+      "desc2": "TestKey_PlaceHolder"
+    },
+    "5": {
+      "level": 5,
+      "name": "TestKey_PlaceHolder",
+      "desc": "TestKey_PlaceHolder",
+      "desc2": "TestKey_PlaceHolder"
+    },
+    "6": {
+      "level": 6,
+      "name": "TestKey_PlaceHolder",
+      "desc": "TestKey_PlaceHolder",
+      "desc2": "TestKey_PlaceHolder"
+    }
+  },
+  "fairy_recommend": {},
+  "strategy": {},
+  "potential": [],
+  "potential_detail": {}
+}
