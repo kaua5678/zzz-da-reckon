@@ -1138,7 +1138,7 @@ import { useLogicEditorStore } from '@/stores/logicEditor'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, axisWorseThanNoAxis, type CurveDatum, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
 import { axisCompareOf, axisCutMarkerOf, axisDetailOf, axisMarkerLegend, axisMarkerOf } from '@/composables/axisMarker'
-import { planCurveViewport, type LaneXRange } from '@/composables/curveViewport'
+import { planCurveViewport, X_COMPRESS_DEFAULTS, type LaneXRange } from '@/composables/curveViewport'
 import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from '@/composables/resourceCalc/noAxisVulnShare'
 import type { KnobPointName } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
@@ -2201,7 +2201,8 @@ const curveViewport = computed(() => {
     for (const t of s.axisTruncated) if (t.x !== undefined) { costs.push(t.x); min = Math.min(min, t.x); max = Math.max(max, t.x) }
     if (Number.isFinite(min) && Number.isFinite(max)) laneRanges.push({ laneKey: s.laneKey, min, max })
   }
-  return planCurveViewport({ ratios, costs, laneRanges })
+  // 阈值走导出常量（单一来源）；将来若要给用户旋钮，改这里一处即可
+  return planCurveViewport({ ratios, costs, laneRanges, xThresholds: X_COMPRESS_DEFAULTS })
 })
 /** 归一化位置 → 像素（x 走可能压缩的分段映射，y 走线性） */
 function curveXOf(v: number): number {

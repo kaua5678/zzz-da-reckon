@@ -110,13 +110,24 @@ describe('planXDomain（X 轴压缩空白）', () => {
   })
 
   it('④ 跨度大但没有道占大头 ⇒ 不压（laneSpanShare 闸门）', () => {
-    const values = [0, 40, 80]
+    /**
+     * ⚠ 夹具必须让「中位数判据」**放行**、只由 laneSpanShare 拦住，否则本用例测不到闸门。
+     * 实测（2026-10-25，首版夹具 [0,40,80]）：三段间隔全是 40 ⇒ 被「≥ 中位数×4」拦掉，
+     * 于是把 laneSpanShare 整行删掉用例**照样绿**（负控无效）。改成「小间隔簇 + 一个大空档」，
+     * 空档是真 outlier，只有闸门能拦。
+     */
+    const values = [0, 2, 4, 6, 100]
     const lanes: LaneXRange[] = [
-      { laneKey: 'a', min: 0, max: 20 },
-      { laneKey: 'b', min: 60, max: 80 },
+      { laneKey: 'a', min: 0, max: 6 },
+      { laneKey: 'b', min: 96, max: 100 },
     ]
-    const x = planXDomain(values, { laneRanges: lanes })
-    expect(x.breaks).toEqual([])
+    // 先确认夹具本身**满足**压缩条件（否则这条用例是假绿）
+    const widened: LaneXRange[] = [{ laneKey: 'wide', min: 0, max: 100 }]
+    expect(planXDomain(values, { laneRanges: widened }).breaks.length, '夹具应能触发压缩').toBeGreaterThan(0)
+    // 没有道占大头 ⇒ 闸门拦住
+    expect(planXDomain(values, { laneRanges: lanes }).breaks).toEqual([])
+    // 反空洞：完全不传 laneRanges 时闸门放行（没有信息就不拦）
+    expect(planXDomain(values).breaks.length).toBeGreaterThan(0)
   })
 
   it('⑤ 投影严格单增（x 大 ⇒ 位置不小）且值域封闭', () => {

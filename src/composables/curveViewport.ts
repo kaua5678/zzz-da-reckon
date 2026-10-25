@@ -36,6 +36,47 @@
  * - 单调：压缩后 x 映射仍**严格单增**（同一条道上 x 大 ⇒ 画出来的 cx 不小）。
  */
 
+/**
+ * **X 轴压缩的默认阈值**（页面用它构造，也方便用户调）。
+ *
+ * ⚠ 这三个常数原先是 `planXDomain` 的**可选参数缺省值**——只被函数内部读一次、外部零调用
+ * ⇒ 死通道扫描判为「B 只读不写」（2026-10-25 实测抓到）。收成导出常量后页面显式传入，
+ * 消费点可见，且「阈值改了会怎样」不再藏在函数签名里。
+ */
+export type XCompressThresholds = {
+  minSpanForCompress: number
+  laneSpanShare: number
+  gapShare: number
+  compressTo: number
+}
+
+export const X_COMPRESS_DEFAULTS: XCompressThresholds = {
+  /** 跨度小于它就别压（短跨度压缩没有收益，只制造断口噪音） */
+  minSpanForCompress: 40,
+  /** 某条道至少要占全体跨度的这个比例，才值得压（否则是均匀铺开，压了也没用） */
+  laneSpanShare: 0.6,
+  /** 空白段至少占跨度的这个比例（并且要显著大于相邻间隔的中位数） */
+  gapShare: 0.08,
+  /** 空白段压到原宽度的这个比例 */
+  compressTo: 0.15,
+}
+
+/**
+ * Y 轴口径开关。
+ *
+ * ⚠ 只留**一个**真实存在的选择：击杀线要不要占据画面（`killLineInDomain`）。
+ * 另两个（keepKillLine / includeZero）曾作为可选参数存在，但生产侧从未传入
+ * ⇒ 死通道扫描判「只读不写」，按规则 12 最小阶梯直接删掉，不留没用的开关。
+ */
+export interface YDomainOptions {
+  /**
+   * 击杀线是否必须落在域内。
+   * - `false`（缺省，2026-10-25 用户点名「上下浪费」后改）：上界贴合数据，击杀线记进 `anchorsAbove`；
+   * - `true`（旧口径）：上界硬抬到 100 ⇒ 数据低时大片空白。保留它只为可视化对照。
+   */
+  killLineInDomain?: boolean
+}
+
 /** 一条道在 x 上的取值范围（来自它自己的点） */
 export interface LaneXRange {
   laneKey: string
@@ -108,35 +149,20 @@ function norm(v: number, min: number, max: number): number {
  */
 export function planYDomain(
   values: readonly number[],
-  opts: { keepKillLine?: boolean; killLineInDomain?: boolean; includeZero?: boolean } = {},
+  opts: YDomainOptions = {},
 ): YDomainPlan {
-  const keepKillLine = opts.keepKillLine ?? true
-  /**
-   * 击杀线是否**必须落在域内**。
-   * - `true`（旧口径）：上界硬抬到 100 ⇒ 数据低时大片空白；
-   * - `false`（新口径，2026-10-25 用户点名「上下浪费」后改）：上界贴合数据，
-   *   击杀线改记进 `anchorsAbove`，页面在顶边如实标注。
-   */
   const killLineInDomain = opts.killLineInDomain ?? false
-  const includeZero = opts.includeZero ?? true
   const finite = values.filter(v => Number.isFinite(v))
   const dataMax = finite.length > 0 ? Math.max(...finite) : 0
-  const dataMin = finite.length > 0 ? Math.min(...finite) : 0
-  /**
-   * 下界：默认仍从 0 起（「伤害/血量%」从 0 读比例最诚实）。
-   * 但**数据整体远离 0**（最低点 > 域宽的 35%）时，留一段 0 基线就是纯浪费——
-   * 此时把下界压到「最低点」并向下取整到整齐档，**并把 0 留给击杀线语义**。
-   * 实测（2 队样本 25~53%）：从 0 起 ⇒ 数据只占 28%；下界 25 ⇒ 占 38%。
-   */
-  const floor = keepKillLine && killLineInDomain ? 100 : 0
+  /** 下界恒 0：`伤害/血量%` 从 0 读比例最诚实（抬下界会让「伤害翻倍」看起来像「涨了一点」）。 */
+  const floor = killLineInDomain ? 100 : 0
   // ⚠ 上界**不加最小余量**：`ceil` 到整齐档本身就会给出余量（数据 53 ⇒ 75）。
   const rawMax = Math.max(dataMax, floor)
   const anchorsAbove: number[] = []
   // 只有「击杀线真的落在域外」才登记；上界已经把 100 包进去时它就在域内，不许再报一次
-  if (keepKillLine && !killLineInDomain && dataMax < 100) anchorsAbove.push(100)
+  if (!killLineInDomain && dataMax < 100) anchorsAbove.push(100)
   const step = rawMax <= 100 ? 25 : rawMax <= 300 ? 50 : 100
-  let min = 0
-  if (!includeZero && dataMin > 0) min = Math.max(0, Math.floor(dataMin / step) * step)
+  const min = 0
   const max = Math.max(step, Math.ceil(rawMax / step) * step)
   if (anchorsAbove.length > 0 && max >= 100) anchorsAbove.length = 0
   const ticks: number[] = []
@@ -172,10 +198,10 @@ export function planXDomain(
   const max = finite.length > 0 ? Math.max(...finite) : 1
   const span = max - min
   const identity: XDomainPlan = { min, max, project: v => norm(v, min, max), breaks: [] }
-  const minSpan = opts.minSpanForCompress ?? 40
+  const minSpan = opts.minSpanForCompress ?? X_COMPRESS_DEFAULTS.minSpanForCompress
   if (finite.length < 2 || span < minSpan) return identity
 
-  const laneSpanShare = opts.laneSpanShare ?? 0.6
+  const laneSpanShare = opts.laneSpanShare ?? X_COMPRESS_DEFAULTS.laneSpanShare
   const widestLane = (opts.laneRanges ?? [])
     .map(l => ({ span: l.max - l.min, laneKey: l.laneKey }))
     .sort((a, b) => b.span - a.span)[0]
@@ -190,8 +216,8 @@ export function planXDomain(
    * ⇒ 只压「两侧邻居都很远」的那种大空档：取间隔分布的中位数，间隔 ≥ 中位数 × `gapSpread`
    * 且 ≥ span × gapShare 才算空白。
    */
-  const gapShare = opts.gapShare ?? 0.08
-  const compressTo = opts.compressTo ?? 0.15
+  const gapShare = opts.gapShare ?? X_COMPRESS_DEFAULTS.gapShare
+  const compressTo = opts.compressTo ?? X_COMPRESS_DEFAULTS.compressTo
   const sorted = [...new Set(finite)].sort((a, b) => a - b)
   const widths = sorted.slice(1).map((v, i) => v - sorted[i]!)
   const median = widths.length > 0 ? [...widths].sort((a, b) => a - b)[Math.floor(widths.length / 2)]! : 0
@@ -243,9 +269,11 @@ export function planCurveViewport(input: {
   ratios: readonly number[]
   costs: readonly number[]
   laneRanges?: readonly LaneXRange[]
+  /** 覆盖 X 压缩阈值（缺省 = `X_COMPRESS_DEFAULTS`；页面/测试都从这里调，不各自写数） */
+  xThresholds?: XCompressThresholds
 }): CurveViewportPlan {
   const y = planYDomain(input.ratios)
-  const x = planXDomain(input.costs, { laneRanges: input.laneRanges })
+  const x = planXDomain(input.costs, { ...X_COMPRESS_DEFAULTS, ...input.xThresholds, laneRanges: input.laneRanges })
   const outOfDomain: number[] = []
   for (const r of input.ratios) if (Number.isFinite(r) && (r < y.min || r > y.max)) outOfDomain.push(r)
   for (const c of input.costs) if (Number.isFinite(c) && (c < x.min - 1e-9 || c > x.max + 1e-9)) outOfDomain.push(c)
