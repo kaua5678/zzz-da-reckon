@@ -24,7 +24,230 @@
       "note": "核心被动 Lv.7：「挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%」。实现位置：src/mechanics/agents/sunbringer.ts#applySunbringerPanel（模块手写，读局外面板、整 1% floor；与克拉蕾同口径）。判据 src/mechanics/__tests__/sunbringer.test.ts。"
     }
   ],
-  "resources": [],
+  "resources": [
+    {
+      "id": "sunbringer_sharpness",
+      "name": "锐能",
+      "nature": "resource",
+      "initialValue": 60,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "sharpness_entry",
+          "trigger": "进入战场",
+          "countSource": "none",
+          "amountPerCount": 60,
+          "coverage": 1,
+          "status": "implemented_approximation",
+          "note": "勘域 180s 一次 ⇒ 每局一次。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        },
+        {
+          "id": "sharpness_auto",
+          "trigger": "自动累积",
+          "countSource": "battleTime",
+          "amountPerCount": 1.5,
+          "coverage": 1,
+          "status": "implemented_approximation",
+          "note": "catalog level60.sharpnessRegen = 1.5/s（raw stats.ep_recover=150）。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "sharpness_ex",
+          "trigger": "强化特殊技：焚夜·曦生 / 燃灯·晦尽（含改）",
+          "cost": 30,
+          "result": "每发消耗 30 锐能",
+          "status": "implemented",
+          "note": "raw「锐能消耗 30点」×3 行 + 1 行无 id（属曦生（改））。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "properties": {
+        "costPerUse": 30
+      }
+    },
+    {
+      "id": "sunbringer_gash",
+      "name": "残痕",
+      "nature": "state_machine",
+      "initialValue": 0,
+      "maxValue": 3,
+      "gainRules": [
+        {
+          "id": "gash_buildup",
+          "trigger": "部分锐化伤害命中",
+          "countSource": "none",
+          "coverage": 1,
+          "status": "implemented",
+          "note": "招式级 gash_buildup 行（gachabase 补入 26 行），每 600 点 = 1 层（用户 2026-10-25 裁决沿用克拉蕾口径）。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "gash_maim",
+          "trigger": "重击命中持有[残痕]的敌人",
+          "cost": 1,
+          "result": "每层触发 1 次[毁伤]（每次最多消耗 3 层）",
+          "status": "implemented",
+          "note": "消耗招式：平A四段/强化特殊技/连携/支援突击。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "properties": {
+        "perLayer": 600,
+        "maxStacks": 3
+      }
+    },
+    {
+      "id": "sunbringer_maim",
+      "name": "毁伤（伤害行）",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "maim_count",
+          "trigger": "每消耗 1 层残痕",
+          "countSource": "none",
+          "coverage": 1,
+          "status": "implemented",
+          "note": "毁伤次数 = min(层数, 3×消耗招式次数)。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [],
+      "properties": {
+        "damageMoveId": "1601114",
+        "damageMultiplierLv12": 336.3
+      }
+    },
+    {
+      "id": "sunbringer_wish",
+      "name": "愿力",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 160,
+      "gainRules": [
+        {
+          "id": "wish_from_maim",
+          "trigger": "全队触发[毁伤]（每消除 1 层残痕）",
+          "countSource": "none",
+          "amountPerCount": 40,
+          "coverage": 1,
+          "status": "implemented",
+          "note": "每层 +40，上限 160。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "wish_jufeng",
+          "trigger": "普通攻击：执旌·聚锋",
+          "cost": 120,
+          "result": "消耗 120 愿力发动聚锋，并获得[链齿]与[旗令]",
+          "status": "implemented",
+          "note": "实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "properties": {
+        "perMaim": 40,
+        "max": 160,
+        "costPerUse": 120
+      }
+    },
+    {
+      "id": "sunbringer_tokens",
+      "name": "链齿 / 旗令",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "tokens_from_jufeng",
+          "trigger": "聚锋发动后",
+          "countSource": "none",
+          "coverage": 1,
+          "status": "implemented",
+          "note": "每次聚锋各 +1（两个 token 同一节奏）。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "link_gears_changan",
+          "trigger": "强化特殊技：焚夜·长暗终焉",
+          "cost": 1,
+          "result": "消耗[链齿]发动高量级强化特殊技",
+          "status": "implemented",
+          "note": "实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        },
+        {
+          "id": "flag_ult_a",
+          "trigger": "终结技：此行，共赴前路",
+          "cost": 1,
+          "result": "消耗[旗令] → 获得[愿核]",
+          "status": "implemented",
+          "note": "用户裁决 2026-10-25：旗令**优先给终结技**，永昼之炬本版按 0 次。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "properties": {
+        "perJufeng": 1
+      }
+    },
+    {
+      "id": "sunbringer_wish_core",
+      "name": "愿核",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "core_from_ult_a",
+          "trigger": "终结技：此行，共赴前路 消耗旗令",
+          "countSource": "none",
+          "coverage": 1,
+          "status": "implemented",
+          "note": "实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "core_ult_b",
+          "trigger": "终结技：此愿，重塑万象",
+          "cost": 1,
+          "result": "解除二段终结技（不耗喧响）",
+          "status": "implemented",
+          "note": "二段行由引擎既有终结技行承担（moveId 1601011），模块只在 patch 里加烬痕。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "properties": {}
+    },
+    {
+      "id": "sunbringer_ember",
+      "name": "烬痕",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "ember_accumulate",
+          "trigger": "聚锋 / 长暗终焉 / 两个终结技命中",
+          "countSource": "none",
+          "coverage": 1,
+          "status": "implemented",
+          "note": "按招式**实际伤害的 75%** 累积（用户 2026-10-25：计入总伤害）。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "ember_clear",
+          "trigger": "终结技：此愿，重塑万象 终结一击",
+          "cost": "all",
+          "result": "消除全部[烬痕]，直接扣除等量血量（= 等量伤害）",
+          "status": "implemented",
+          "note": "实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "properties": {
+        "rate": 0.75
+      }
+    }
+  ],
   "rowFusions": [],
   "events": [],
   "verifications": [],
