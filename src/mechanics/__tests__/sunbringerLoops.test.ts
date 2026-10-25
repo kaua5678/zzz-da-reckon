@@ -88,3 +88,24 @@ describe('烬痕：存值不吃易伤，但攒的时候吃（线性，不平方�
   })
 })
 
+
+describe('影画 1/2（2026-10-25 接线）', () => {
+  it('一命：进战 +120 愿力 ⇒ 多一次聚锋；首次聚锋烬痕按 150%', () => {
+    const c0 = solveSunbringerLoops({ ...base, cinemaLevel: 0 } as any)
+    const c1 = solveSunbringerLoops({ ...base, cinemaLevel: 1 } as any)
+    expect(c1.wishTotal - c0.wishTotal).toBe(120)
+    expect(c1.jufengCount).toBeGreaterThanOrEqual(c0.jufengCount)
+    const e0 = computeEmberScar({ meta: meta as any, loops: c0, ultBCount: 1, cinemaLevel: 0 })
+    const e1 = computeEmberScar({ meta: meta as any, loops: c1, ultBCount: 1, cinemaLevel: 1 })
+    expect(e1).toBeGreaterThan(e0)
+  })
+
+  it('二命：其他招式（EX/连携）按实际伤害 12% 也积攒烬痕', () => {
+    const loops = { jufengCount: 6, changanCount: 6, ultACount: 2 }
+    const c1 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2, cinemaLevel: 1 })
+    const c2 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2, cinemaLevel: 2, exCount: 17, chainCount: 1 })
+    const extra = (17 * 1240.5 + 1 * 1550.3) * 0.12
+    expect(c2 - c1).toBeCloseTo(extra, 6)
+  })
+})
+
