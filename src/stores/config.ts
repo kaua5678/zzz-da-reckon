@@ -728,6 +728,24 @@ export function createConfigModel(
     char.driveDisc.mainStats[slotNum] = statId
   }
 
+  /**
+   * 整份替换某槽的副词条分配（「最优分配」这类**由计算得出**的一次性写入）。
+   *
+   * 与 `setSubStatCount` 的区别只在「一次写整表」（不必逐键写 54 次）；语义相同：写进去的分配此后
+   * **不再跟随预算设置重算**（置 `subStatAllocationManual`）——否则用户改一次「单属性上限」，
+   * 算出来的最优解就会被廉价默认档静默换掉（ENGINE_PIPELINE_GUIDE §4 坑 53 的 B 档纪律）。
+   * 清除手动标记仍走 `applyBuildRecommendationForSlot`（显式「恢复自动分配」）。
+   *
+   * @fact ui:副词条分配/最优写入 口径: 由计算得出的整表分配（主页「最优分配」）与手改同档——写入即标记 manual，预算设置变化不得覆盖；恢复自动分配的唯一动作是「配装推荐·一键应用」 | 据 用户@2026-10-25「可以给一个最优计算的按钮」 | 验 src/stores/__tests__/substatBudgetManual.test.ts | 锚 src/stores/config.ts#setSubStatAllocation | 信 确认
+   * ⟳复核: 若预算档语义（单属性上限 / 总步数档）或「一键应用」的清除语义改动，重核本标记的置位/清除点 | 到期 2027-04-30
+   */
+  function setSubStatAllocation(slot: number, alloc: Record<string, number>) {
+    const char = team.value[slot]
+    if (!char?.driveDisc) return
+    char.driveDisc.subStatAllocation = normalizeSubstatAllocation(alloc)
+    subStatAllocationManual.value[slot] = true
+  }
+
   function setSubStatCount(slot: number, statId: string, count: number) {
     const char = team.value[slot]
     if (!char?.driveDisc.subStatAllocation) return
@@ -1435,6 +1453,7 @@ export function createConfigModel(
     setTwoPieceSet,
     setMainStat,
     setSubStatCount,
+    setSubStatAllocation,
     // 动作次数统一入口（新角色走这个，不必再加命名 setter）
     setActionCount,
     getDefaultBasicAttackTimeWeight,

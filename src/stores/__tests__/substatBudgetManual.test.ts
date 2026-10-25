@@ -35,6 +35,30 @@ describe('副词条预算设置不覆盖用户手改的分配', () => {
     expect(JSON.stringify(cfg.team[1]!.driveDisc.subStatAllocation), '自动槽位应跟随新预算重算').not.toBe(autoBefore)
   }, 120000)
 
+  /**
+   * 主页「最优分配」按钮（2026-10-25 用户裁决）写的是**计算得出的整表**，同样属「用户选定的一份配比」：
+   * 若不算 manual，改一次预算设置就会被廉价默认档静默换掉——那正是坑 53 记的 B 档缺陷。
+   */
+  it('「最优分配」整表写入后同样标记手动：改预算设置不覆盖；显式一键应用才回到自动', async () => {
+    const { catalog } = await setupHarness([{ agentId: '1591' }, { agentId: '1571' }, { agentId: '1211' }])
+    const cfg = useConfigStore()
+    await catalog.loadBuildRecommendations()
+    cfg.applyBuildRecommendationForSlot(0)
+
+    cfg.setSubStatAllocation(0, { critRate: 6, critDmg: 19, atkPct: 18 })
+    expect(cfg.subStatAllocationManual[0], '最优分配写入后应为手动档').toBe(true)
+    expect(JSON.stringify(cfg.team[0]!.driveDisc.subStatAllocation)).toBe(JSON.stringify({ critRate: 6, critDmg: 19, atkPct: 18 }))
+    const optimal = JSON.stringify(cfg.team[0]!.driveDisc.subStatAllocation)
+
+    cfg.setMechanicSetting('optimizer.substatCap', 15)
+    await nextTick()
+    await nextTick()
+    expect(JSON.stringify(cfg.team[0]!.driveDisc.subStatAllocation), '最优分配被预算变更覆盖了').toBe(optimal)
+
+    cfg.applyBuildRecommendationForSlot(0) // 用户显式「恢复自动分配」
+    expect(cfg.subStatAllocationManual[0]).toBe(false)
+  }, 120000)
+
   it('显式「一键应用推荐」后回到自动档：再改预算会跟随', async () => {
     const { catalog } = await setupHarness([{ agentId: '1591' }, { agentId: '1571' }, { agentId: '1211' }])
     const cfg = useConfigStore()

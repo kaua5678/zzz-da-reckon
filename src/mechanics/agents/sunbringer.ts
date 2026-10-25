@@ -169,7 +169,7 @@ export function solveSunbringerLoops(input: {
   const maimCount = Math.max(0, Math.min(gashLayers, maimDemand))
 
   // 影画1：进入战场立即获得 120 愿力（勘域 180s 一次 ⇒ 每局一次）
-  const wishFromEntry = (input.cinemaLevel ?? 0) >= 1 ? 120 : 0
+  const wishFromEntry = cinemaLevelOf(input.cinemaLevel) >= 1 ? 120 : 0
   const wishTotal = maimCount * WISH_PER_MAIM + wishFromEntry
   const jufengMax = meta.jufeng.actionTime > 0 ? Math.floor(budget / meta.jufeng.actionTime) : 0
   const jufengCount = Math.max(0, Math.min(Math.floor(wishTotal / JU_FENG_WISH_COST), jufengMax))
@@ -304,7 +304,7 @@ export function computeEmberScar(input: {
   chainCount?: number
 }): number {
   const { meta, loops, ultBCount } = input
-  const cinema = input.cinemaLevel ?? 0
+  const cinema = cinemaLevelOf(input.cinemaLevel)
   // 影画1：首次聚锋从 75% 提到 112.5%（其余聚锋不变）
   const jufengRate = cinema >= 1 && loops.jufengCount > 0
     ? ((loops.jufengCount - 1) * EMBER_SCAR_RATE + EMBER_SCAR_RATE * 1.5) / loops.jufengCount

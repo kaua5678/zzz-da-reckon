@@ -192,6 +192,21 @@ describe('源码锁', () => {
     walk(root)
     expect(hits).toEqual([])
   })
+  /**
+   * ④d 主页「最优分配」按钮（2026-10-25）：精修必须在独立场景上跑，UI store 只收最终结果。
+   * 形态锁而不是行为锁——行为已由 substatBudgetManual.test.ts「最优分配整表写入后同样标记手动」与
+   * substatOptimizer.test.ts「refine 严格改进」覆盖；这里只防「图省事把 computeSubstatAllocationForSlot 直接
+   * 接到 UI store 上」（它会逐次试写 driveDisc.subStatAllocation，UI 会为每个候选重算并闪）。
+   */
+  it('④d 主页「最优分配」走独立场景（withAnalysisScenario），不得直接拿 UI store 试算', () => {
+    const src = readFileSync(new URL('../../views/TeamConfigPage.vue', import.meta.url), 'utf8')
+    const at = src.indexOf('async function runOptimalSubStats')
+    expect(at, 'TeamConfigPage 缺少 runOptimalSubStats（按钮接线被删？）').toBeGreaterThan(0)
+    const body = src.slice(at)
+    expect(body, '最优分配必须在 withAnalysisScenario 里跑').toMatch(/withAnalysisScenario\s*\(/)
+    expect(body, '最优分配把 UI configStore 当成了试算草稿纸').not.toMatch(/computeSubstatAllocationForSlot\(\s*[\w.]*,\s*configStore/)
+    expect(body, '结果必须经 store 的唯一写入通道 setSubStatAllocation').toMatch(/configStore\.setSubStatAllocation\(/)
+  })
   it('④c CC-353：views / components 里不许在 UI store 上做试算循环（循环体内既写 store 又读计算结果）', () => {
     // ④ 只扫 MIGRATED_ANALYZERS（composables），view 层漏过一次：RunArchivePage「当期牌自动选择」逐张写牌 → 读伤害（CC-352 修）。
     // 判据只抓「写 + 读」同在一个循环体：只写不读（预设金数一次写三槽、联动覆盖）是正常用户动作，不报（r383 普查 3 处，全是这类）。

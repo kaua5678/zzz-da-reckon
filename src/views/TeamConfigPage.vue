@@ -525,6 +525,25 @@
                       <n-space align="center" justify="space-between" style="width: 100%">
                         <span>副词条分配</span>
                         <n-space align="center" size="small">
+                          <!-- 最优分配（2026-10-25 用户裁决「可以给一个最优计算的按钮」）：B 档显式开关——
+                               缺省不自动跑，按钮文案自带成本；写入后本槽转「手动」（见 stores/config.ts#setSubStatAllocation） -->
+                          <n-tooltip trigger="hover">
+                            <template #trigger>
+                              <n-button
+                                size="tiny"
+                                type="primary"
+                                secondary
+                                :loading="optimalComputing"
+                                :disabled="!selectedChar?.agentId"
+                                @click="runOptimalSubStats"
+                              >
+                                最优分配
+                              </n-button>
+                            </template>
+                            按真实伤害精修本槽副词条配比（含队友 buff / 全局 Buff，与伤害管线同一面板）。
+                            起点 = 上面的「配装推荐」默认档；每次尝试都是真实求值（实测 4–44 次 / 0.1–1.4 秒，上限 80 次）。
+                            写入后本槽标记「手动」，改预算设置不会再覆盖它（恢复自动分配点「配装推荐 · 一键应用」）。
+                          </n-tooltip>
                           <!-- 自动/手改状态：预算设置只重算「自动」的槽位（见 stores/config.ts 的 watcher），
                                手改后要恢复自动分配，点「配装推荐 · 一键应用」 -->
                           <n-tag size="tiny" :bordered="false" :type="subStatManual ? 'warning' : 'default'">
@@ -807,7 +826,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import {
   NCard, NSpace, NGrid, NGi, NSelect, NSlider, NInputNumber, NText, NAlert,
   NRadioGroup, NRadioButton, NTag, NButton, NModal, NCollapse, NCollapseItem, NCheckbox, NTooltip, useMessage,
@@ -819,6 +838,8 @@ import { useStatLabel } from '@/composables/useStatLabel'
 import { effectAtModLevel } from '@/composables/wEngineEffectDisplay'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanel } from '@/composables/resourceCalc/panelPhases'
+import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from '@/composables/resourceCalc/noAxisVulnShare'
 import CharacterCard from '@/components/CharacterCard.vue'
@@ -829,7 +850,7 @@ import { getImageUrl } from '@/utils/image'
 // CC-51 起局外面板的全局 Buff 结算已搬到 composables/outOfCombatPanel.ts（那里用 statSettlementMode，
 // 用展示口径会让同一份 Buff 在预览与引擎算出两个面板，实测 anomalyMastery 178 vs 192.4）。
 import { isPctStat, phaseStatLabel } from '@/utils/statMeta'
-import { fmt, localized } from '@/utils/format'
+import { compact, fmt, localized } from '@/utils/format'
 import { discSetGapLabel } from '@/utils/modelingGaps'
 import { SPECIALTY_LABEL, ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
 import { buildDiscEffectRows } from '@/utils/discEffectRows'
@@ -1292,6 +1313,52 @@ function getSubStatValue(stat: string): string {
 
 /** 当前槽位的副词条是「手改」还是「自动分配」（决定改预算设置时会不会被重算，见 stores/config.ts） */
 const subStatManual = computed(() => !!configStore.subStatAllocationManual[uiStore.selectedSlot])
+
+/**
+ * 「最优分配」：在**独立场景**上跑真实伤害精修（composables/substatOptimizer.ts#computeSubstatAllocationForSlot），
+ * 只把最终结果一次写回 UI store（CC-343 口径：不在 UI store 上试算）。
+ *
+ * 为什么是显式按钮而不是默认行为（ENGINE_PIPELINE_GUIDE §4 坑 53 的 B 档）：
+ * 精修一次 4–44 次全量求值（上限 maxEvals=80；实测 0.1–1.4s），且结果是「近似最优」不是不变量；
+ * 默认静默跑会让每次换人/改预算都卡一下，并替用户决定配比。
+ */
+const optimalComputing = ref(false)
+async function runOptimalSubStats() {
+  const slot = uiStore.selectedSlot
+  if (!selectedChar.value?.agentId || optimalComputing.value) return
+  optimalComputing.value = true
+  try {
+    const res = await withAnalysisScenario(async (s) => {
+      const char = s.config.team[slot]
+      if (!char?.agentId) return null
+      const before = s.calc.teamTotalDamage.value ?? 0
+      let evals = 0
+      const alloc = computeSubstatAllocationForSlot(
+        slot,
+        s.config,
+        catalogStore,
+        { readDamage: () => { evals++; return s.calc.teamTotalDamage.value ?? 0 } },
+        s.calc.effectiveWEngineCoverages.value,
+      )
+      if (!alloc) return null
+      char.driveDisc.subStatAllocation = alloc
+      await nextTick()
+      return { alloc, before, after: s.calc.teamTotalDamage.value ?? 0, evals }
+    })
+    if (!res) { message.warning('当前槽位没有可优化的副词条分配（角色/配装推荐未就绪）'); return }
+    configStore.setSubStatAllocation(slot, res.alloc)
+    const delta = res.before > 0 ? (res.after / res.before - 1) * 100 : 0
+    const steps = Object.values(res.alloc).reduce((a, b) => a + b, 0)
+    message.success(
+      `已写入最优分配：${steps} 步 · 全队伤害 ${compact(res.before)} → ${compact(res.after)}`
+      + `（${delta >= 0 ? '+' : ''}${delta.toFixed(2)}%，${res.evals} 次求值）`,
+    )
+  } catch (e) {
+    message.error(e instanceof Error ? `最优分配失败：${e.message}` : '最优分配失败')
+  } finally {
+    optimalComputing.value = false
+  }
+}
 
 const totalSubStats = computed(() => {
   const alloc = selectedChar.value?.driveDisc?.subStatAllocation
