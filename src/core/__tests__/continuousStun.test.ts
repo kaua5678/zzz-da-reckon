@@ -6,7 +6,78 @@
  * 「离下一次完整失衡还差多少」的标注口径。
  */
 import { describe, expect, it } from 'vitest'
-import { continuousStunProgress } from '@/core/continuousStun'
+import { continuousStunProgress, continuousWindowSplit } from '@/core/continuousStun'
+
+/**
+ * 用户公式（2026-10-25，逐字见 `.claude/TASK-continuous-stun.md` §1）：
+ *   unit = b + e；N = 1 + floor((Σ−b)/unit)；frac = ((Σ−b) mod unit)/e
+ * 用户例子：b=1w、窗口 16s、窗内每秒 100 点 ⇒ e=0.16w。
+ */
+describe('连续失衡·末窗兑现（用户 1w/16s/100 例子）', () => {
+  const b = 10000
+  const e = 1600
+
+  it('Σ = 1.00w ⇒ 窗开了但一秒爆发都没有（frac 0）', () => {
+    const r = continuousWindowSplit({ totalBuildUp: 10000, bossStunValue: b, eatenPerWindow: e })
+    expect(r.openedWindows).toBe(1)
+    expect(r.lastFraction).toBe(0)
+    expect(r.unit).toBe(11600)
+  })
+
+  it('Σ = 1.08w ⇒ 8 秒爆发（frac 0.5）', () => {
+    const r = continuousWindowSplit({ totalBuildUp: 10800, bossStunValue: b, eatenPerWindow: e })
+    expect(r.openedWindows).toBe(1)
+    expect(r.lastFraction).toBeCloseTo(0.5, 9)
+  })
+
+  it('Σ = 1.16w ⇒ 完整 16 秒（frac 1，且记为一窗完整兑现）', () => {
+    const r = continuousWindowSplit({ totalBuildUp: 11600, bossStunValue: b, eatenPerWindow: e })
+    expect(r.openedWindows).toBe(1)
+    expect(r.lastFraction).toBeCloseTo(1, 9)
+    expect(r.fullWindows).toBe(1)
+    expect(r.clamped).toBe(false)
+  })
+
+  it('Σ = 2.32w ⇒ 两窗完整；Σ 不足一窗 ⇒ 0 窗 0 frac', () => {
+    const two = continuousWindowSplit({ totalBuildUp: 23200, bossStunValue: b, eatenPerWindow: e })
+    expect(two.openedWindows).toBe(2)
+    expect(two.lastFraction).toBeCloseTo(1, 9)
+    const none = continuousWindowSplit({ totalBuildUp: 9000, bossStunValue: b, eatenPerWindow: e })
+    expect(none.openedWindows).toBe(0)
+    expect(none.lastFraction).toBe(0)
+  })
+
+  it('本仓量级（b=15486 / e=7795）：frac 恒落在 [0,1]，不靠钳位（施工图 §1 的等价改写）', () => {
+    // 用户式在这里会给出 (Σ−b) mod unit / e > 1 的值；等价改写换算成「第 full+1 窗的兑现」
+    const r = continuousWindowSplit({ totalBuildUp: 15486 + 7795 * 1.5, bossStunValue: 15486, eatenPerWindow: 7795 })
+    expect(r.clamped).toBe(false)
+    expect(r.lastFraction).toBeGreaterThanOrEqual(0)
+    expect(r.lastFraction).toBeLessThanOrEqual(1)
+    // 逐档扫：frac 连续、跨 unit 时归零且开窗数 +1
+    const unit = 15486 + 7795
+    const prev = continuousWindowSplit({ totalBuildUp: unit - 1, bossStunValue: 15486, eatenPerWindow: 7795 })
+    const next = continuousWindowSplit({ totalBuildUp: unit, bossStunValue: 15486, eatenPerWindow: 7795 })
+    expect(prev.openedWindows).toBe(1)
+    expect(prev.lastFraction).toBeCloseTo(7794 / 7795, 6)
+    // 跨过 unit：这一窗从 0.99987 变成完整 1（不归零、不跳窗；下一窗的进度由 continuousStunProgress 表达）
+    expect(next.openedWindows).toBe(1)
+    expect(next.lastFraction).toBe(1)
+    expect(next.fullWindows).toBe(1)
+  })
+
+  it('用户反例：Σ = 2.00w（1.16w 打完 + 0.84w 进度）⇒ 只有 1 个完整窗，不是"1 窗 + 6.25"', () => {
+    const r = continuousWindowSplit({ totalBuildUp: 20000, bossStunValue: 10000, eatenPerWindow: 1600 })
+    expect(r.openedWindows).toBe(1)
+    expect(r.fullWindows).toBe(1)
+    expect(r.lastFraction).toBe(1)   // 末窗（唯一那个）是完整的；0.84w 是攒向下一窗的进度，不在这里
+    expect(r.clamped).toBe(false)
+  })
+
+  it('b / e 缺一 ⇒ 退化为 0（调用方走旧整数口径）', () => {
+    expect(continuousWindowSplit({ totalBuildUp: 50000, bossStunValue: 0, eatenPerWindow: 100 }).openedWindows).toBe(0)
+    expect(continuousWindowSplit({ totalBuildUp: 50000, bossStunValue: 10000, eatenPerWindow: 0 }).openedWindows).toBe(0)
+  })
+})
 
 describe('「离下一次完整失衡还差多少」标注', () => {
   const b = 10000

@@ -88,3 +88,96 @@ export function continuousStunProgress(input: {
     missingInEatenWindows: eaten > 0 ? missingBuildUp / eaten : null,
   }
 }
+/** 连续失衡：末窗兑现比例（用户口径 2026-10-25；施工图 `.claude/TASK-continuous-stun.md`）。 */
+export interface ContinuousWindowSplit {
+  /** **开窗数** N（含末窗）：`1 + floor((Σ − b) / unit)`；Σ < b ⇒ 0（一窗都没开） */
+  openedWindows: number
+  /** 完整兑现的窗数（末窗 frac < 1 时 = N − 1） */
+  fullWindows: number
+  /** **末窗兑现比例** frac ∈ [0,1]：`((Σ − b) mod unit) / e` */
+  lastFraction: number
+  /** unit = b + e（一窗完整兑现的总成本） */
+  unit: number
+  /** 余量 Σ − b（未开窗时为 0） */
+  remainder: number
+  /**
+   * 是否发生过钳位。**恒为 false**（实现改成恒落在 [0,1] 的等价写法后不再需要钳位）；
+   * 保留字段是为了让新的消费方显式断言「没有钳位」，见施工图 §1。
+   */
+  clamped: boolean
+}
+
+/**
+ * **连续失衡的核心切分**（用户公式，2026-10-25 逐字记录于 `.claude/TASK-continuous-stun.md` §1）：
+ *
+ * ```
+ * unit = b + e                                  // b = 开一窗的失衡值；e = 一窗内被吞掉的量
+ * 开窗数 N      = 1 + floor((Σ − b) / unit)
+ * 末窗兑现 frac = ((Σ − b) mod unit) / e
+ * ```
+ *
+ * 用户原话（1w / 16s / 每秒 100 点失衡值）：
+ * 「想打最后一次完整失衡，其实造成了 1.16w 的失衡」「只造成 1w ⇒ 招式全用来打击破，窗口开了但一秒爆发都没有」
+ * 「造成 1.08w ⇒ 打出 1w 开窗后还打出 800 点被吞的失衡值，相当于 8 秒的爆发」。
+ *
+ * ⚠ 与 `continuousStunProgress` 的分工：那个是**标注**（还差多少），这个是**兑现口径**（够多少）；
+ * 两者同源（都吃 Σ/b/e），但本函数**会成为数值路径**，所以单独一个纯函数 + 判据锁。
+ *
+ * ⚠ 与 `effectiveTime.ts#decomposeStunWindows`（时间口径 room/W）**不是同一把尺**：
+ * 那个按"还剩多少战斗时间"，这个按"还剩多少失衡值"。别混用。
+ */
+export function continuousWindowSplit(input: {
+  /** Σ：全队**毛**失衡值（含窗内被吞掉的那部分；= `grossStunBuildUp`） */
+  totalBuildUp: number
+  /** b：开一窗需要的失衡值（boss 失衡值） */
+  bossStunValue: number
+  /** e：一窗内被吞掉的失衡值（= `inAxisStunTotal / stunCount`） */
+  eatenPerWindow: number
+}): ContinuousWindowSplit {
+  const b = Math.max(0, finiteOr0(input.bossStunValue))
+  const e = Math.max(0, finiteOr0(input.eatenPerWindow))
+  const sigma = Math.max(0, finiteOr0(input.totalBuildUp))
+  const empty: ContinuousWindowSplit = {
+    openedWindows: 0, fullWindows: 0, lastFraction: 0, unit: b + e, remainder: 0, clamped: false,
+  }
+  // b/e 缺一就退化为"没有连续量可言"（调用方据此走旧的整数口径）
+  if (!(b > 0) || !(e > 0) || sigma < b) return empty
+  const unit = b + e
+  /**
+   * ⚠ **实现用的是与用户公式等价、但恒落在 [0,1] 的写法**（判据见单测 + 施工图 §1）：
+   *
+   * ```
+   * full = floor((Σ − b)/unit) + 1        // 已开窗数（用户式）
+   * rem  = (Σ − b) − full0·unit           // 余量 ∈ [0, unit)
+   * ```
+   *
+   * 用户式 `frac = rem / e` 在 **rem > e** 时会 >1（本仓 b/e≈2~4，例子 6.25），
+   * 全库普查 95/97 支队落在这一支 ⇒ 直接钳位等于把连续量抹平。
+   *
+   * 等价改写（同样的 b/e/Σ，同样的 N）：先按 `Σ` 而不是 `Σ − b` 切 unit——
+   * `full = floor(Σ/unit)`、`rem = Σ − full·unit`；只有 `rem ≥ b` 时第 `full+1` 窗才会打开，
+   * 其兑现 = `(rem − b)/e`，恒 ∈ [0,1]（因为 `rem < unit = b + e`）。`rem < b` ⇒ 没开窗，
+   * 那段是「攒向下一窗的进度」，不是"末窗的一部分"（用户的 2.0w 反例：1.16w 打完 + 0.84w 进度，
+   * 不是"1 窗 + 6.25 个窗的兑现"）。
+   */
+  const full = Math.floor(sigma / unit + 1e-9)
+  const rem = Math.max(0, sigma - full * unit)
+  const opensNext = rem >= b - 1e-9
+  const openedWindows = full + (opensNext ? 1 : 0)
+  /**
+   * 末窗 = **最后一个已开的窗**（不是"下一个窗"）：`rem < b` 时没开新窗 ⇒ 末窗就是第 `full` 个、
+   * 且它是完整的（frac 1）；一窗都没开（full=0 且不开新窗）⇒ frac 0。
+   * 「攒向下一窗的进度」不在这里表达（那是 `continuousStunProgress.nextWindowProgress` 的活）。
+   */
+  const lastFraction = opensNext
+    ? Math.min(1, Math.max(0, (rem - b) / e))
+    : (openedWindows > 0 ? 1 : 0)
+  return {
+    openedWindows,
+    fullWindows: opensNext && lastFraction < 1 - 1e-9 ? openedWindows - 1 : openedWindows,
+    lastFraction,
+    unit,
+    remainder: opensNext ? Math.max(0, rem - b) : 0,
+    clamped: false,
+  }
+}
