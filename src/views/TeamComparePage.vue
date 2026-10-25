@@ -141,8 +141,24 @@
           <span class="ctl-sep">~</span>
           <n-input-number v-model:value="goldMax" size="small" :min="0" :max="20" style="width: 70px" />
         </div>
-        <div class="ctl-field" title="≤12金：自动逐金挑选伤害提升最大的加金组合（含专武本体购买，贪婪搜索，每队多算几轮全量伤害，较慢）；12金以上仍按预设 goldSteps 顺序">
-          <n-checkbox v-model:checked="optimalGold" size="small">最优加金（≤12金）</n-checkbox>
+        <div class="ctl-field" title="≤12金：自动逐金挑选伤害提升最大的加金组合（含专武本体购买，贪婪搜索，每队多算几轮全量伤害，较慢）；12金以上仍按预设 goldSteps 顺序。⚠ 勾了之后「金数区间」几乎不额外花时间：贪婪链是一次算到 12 金、各档只是链上的前缀点">
+          <n-checkbox v-model:checked="optimalGold" size="small">最优加金（≤12金，慢）</n-checkbox>
+        </div>
+        <div class="ctl-field slot-lock" :title="slotLockTitle">
+          <span class="ctl-label">逐槽锁定</span>
+          <n-input
+            v-for="(name, i) in SLOT_NAMES"
+            :key="name"
+            size="small"
+            style="width: 66px"
+            :status="slotLock.invalid.value[i] ? 'error' : undefined"
+            :value="slotLock.text.value[i]"
+            :placeholder="name"
+            :title="slotLock.hintOf(i)"
+            @update:value="v => slotLock.setText(i, v)"
+          />
+          <n-button size="tiny" quaternary :disabled="slotLock.activeCount.value === 0" @click="slotLock.reset()">清</n-button>
+          <span class="ctl-hint">{{ slotLockSummary }}</span>
         </div>
         <div class="ctl-field" title="未穿限定音擎的槽位自动从下方装填池按伤害择优穿戴；选中的限定音擎按本体（精炼1）如实计入总限定金——有金就是金。预设 wEngines 仅限定音擎保留。关闭则回退预设基础音擎">
           <n-checkbox v-model:checked="autoEngine" size="small">自动下位</n-checkbox>
@@ -1125,7 +1141,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NPopover, NRadioGroup, NRadioButton } from 'naive-ui'
+import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NInput, NPopover, NRadioGroup, NRadioButton } from 'naive-ui'
 import DifficultyCurve3DChart from '@/components/charts/DifficultyCurve3DChart.vue'
 import { buildBossHpCurve, buildEnvLanes, deriveVersionAxis, type VersionLane } from '@/composables/difficultyCurve3d'
 import { useConfigStore } from '@/stores/config'
@@ -1163,6 +1179,7 @@ import ChartTable from '@/components/charts/ChartTable.vue'
 import { fmt, compact, localized } from '@/utils/format'
 import { useScatterGeometry } from '@/composables/teamCompareScatter'
 import { useSlotSweep } from '@/composables/teamCompareSweep'
+import { useSlotOverrideControls, SLOT_NAMES } from '@/composables/slotOverrideControls'
 import { encodePointTimes, timeLegendRows } from '@/composables/pointTimeAxis'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard, PhaseView } from '@/types/bossPreset'
 import { releaseDateOf, releaseNodeOf, nodeIndexOf, VERSION_NODES } from '@/data/versionTimeline'
@@ -1303,8 +1320,16 @@ const selectedPresets = computed<TeamPreset[]>(() =>
 // ========== 金数 ==========
 const goldMin = ref(0)
 const goldMax = ref(6)
-/** 最优加金（≤12金）：不用预设排列顺序，逐金挑提升最大的组合；12金以上回退预设顺序 */
-const optimalGold = ref(true)
+/**
+ * 最优加金（≤12金）：不用预设排列顺序，逐金挑伤害提升最大的组合；12金以上回退预设顺序。
+ *
+ * **缺省 OFF**（用户裁决 2026-10-25 逐字：「C，默认肯定要快速，你有精确需求可以自己打开开关呀」）。
+ * 分档依据 = `ENGINE_PIPELINE_GUIDE.md` §4 坑 53 **B 档**（估算/近似级：关掉只是少一个近似，
+ * 结果仍自洽）⇒ 缺省 OFF + UI 文案标「慢」。实测成本（同队 8 档）：OFF 18ms/档、ON ~213ms/档。
+ * ⚠ 这里不再「静默默认开」——上一版 `ref(true)` 让每次点「计算」都默默跑贪婪，
+ * 而 96 个预设里 73 个 `goldSteps` 为空 ⇒ 即便开着也选不出步（白付成本）。
+ */
+const optimalGold = persistedRef<boolean>('zzz-compare-optimal-gold:v1', v => (typeof v === 'boolean' ? v : undefined), () => false)
 /** 同金分配对比表（勾选后收集贪婪搜索的落选候选） */
 const showGoldAlternatives = ref(false)
 const goldAlternatives = ref<PresetGoldAlternative[]>([])
@@ -1320,6 +1345,20 @@ const goldAltRows = computed(() => {
 })
 /** 自动下位音擎（缺省开）：非限定槽位从装填池按伤害择优穿戴；选中限定音擎按本体如实计金 */
 const autoEngine = ref(true)
+/**
+ * 逐槽锁定（用户 2026-10-25「修改自由度大一点」）：三格配置码 `21` = 2命1精、`20` = 2命无专武，留空 = 不锁。
+ * 口径 / 判据见 `composables/presetSlotOverrides.ts` 与 `__tests__/presetSlotOverrides.test.ts`。
+ */
+const slotLock = useSlotOverrideControls()
+const slotLockTitle = '逐槽锁定：填「配置码」把该槽钉死在该配装（左位=影画 0-6、右位=精炼 0-5，右位 0 = 无专武）。'
+  + '锁定的槽不再参与「最优加金」的预算分配（它的金是预支的，如实计入总金）。留空 = 不锁，完全走预设/加金。'
+  + '常驻角色（格莉丝一类）同样可填：命座生效但不占限定金。'
+/** 锁定摘要（页头一句话说清"锁了几个槽、锁了谁"） */
+const slotLockSummary = computed(() => {
+  const n = slotLock.activeCount.value
+  if (n === 0) return '留空 = 不锁'
+  return `已锁 ${n} 槽${slotLock.invalid.value.some(Boolean) ? '（有格式错误）' : ''}`
+})
 /** 自动下位默认精炼档：A 级 / 常驻 S（缺省 DOWNGRADE_MODS，与自由对比「无专武」档同一口径） */
 const autoModA = ref(DOWNGRADE_MODS.aRank)
 const autoModStd = ref(DOWNGRADE_MODS.standard)
@@ -1947,6 +1986,7 @@ async function runCompare() {
       goldLevels: levels,
       boss,
       optimalGold: optimalGold.value,
+      slotOverrides: slotLock.overrides.value,
       goldAlternatives: showGoldAlternatives.value ? alts : undefined,
       phase,
       autoEngine: autoEngine.value,
@@ -2714,4 +2754,12 @@ function killSeconds(hpRatio: number): number {
 
 </script>
 
-<style scoped src="./comparePage/team-compare-page.css"></style>
+<style scoped src="./comparePage/team-compare-page.css">
+.slot-lock {
+  gap: 4px;
+}
+.slot-lock .ctl-hint {
+  color: var(--fg-3);
+  font-size: 11px;
+}
+</style>

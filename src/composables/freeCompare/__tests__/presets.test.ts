@@ -37,7 +37,9 @@ const valid = (): WorkbenchPreset => ({
   bossId: '',
   buffChoice: 'none',
   mateA: '1561',
+  mateACode: '',
   mateB: '',
+  mateBCode: '',
   autoBuild: false,
   conditions: [],
 })

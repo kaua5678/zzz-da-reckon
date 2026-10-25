@@ -13,6 +13,8 @@ import {
   deltaPanelsOf,
   fallbackView,
   formatDeltaPercent,
+  levelDeltaRowsOf,
+  levelOptionsOf,
   selectedSliceOf,
   seriesItemsOf,
 } from '@/composables/freeCompare/views'
@@ -53,16 +55,22 @@ const result = (): FreeCompareResult => ({
 
 describe('视图可用性（无切片时不重复展示折线）', () => {
   it('单切片隐藏 切片/3D，保留 表格/折线/差值', () => {
-    expect(availableViews(1)).toEqual(['table', 'long', 'line', 'delta'])
-    expect(availableViews(2)).toEqual(['table', 'long', 'line', 'grid', '3d', 'delta'])
+    expect(availableViews(1, 2)).toEqual(['table', 'long', 'line', 'delta', 'step'])
+    expect(availableViews(2, 2)).toEqual(['table', 'long', 'line', 'grid', '3d', 'delta', 'step'])
+    // 档位不足 2 时「两档对比」结构性无意义（画出来必然与折线重复）
+    expect(availableViews(1, 1)).toEqual(['table', 'long', 'line', 'delta'])
+    expect(availableViews(2, 1)).toEqual(['table', 'long', 'line', 'grid', '3d', 'delta'])
   })
 
   it('当前视角失效时回落折线；仍可用则不动', () => {
-    expect(fallbackView('grid', 1)).toBe('line')
-    expect(fallbackView('3d', 1)).toBe('line')
-    expect(fallbackView('delta', 1)).toBe('delta')
-    expect(fallbackView('grid', 2)).toBe('grid')
-    expect(fallbackView('long', 1)).toBe('long')
+    expect(fallbackView('grid', 1, 2)).toBe('line')
+    expect(fallbackView('3d', 1, 2)).toBe('line')
+    expect(fallbackView('delta', 1, 2)).toBe('delta')
+    expect(fallbackView('grid', 2, 2)).toBe('grid')
+    expect(fallbackView('long', 1, 2)).toBe('long')
+    // 只有 1 档时「两档对比」不可用 ⇒ 回落折线（而不是留一个空表）
+    expect(fallbackView('step', 1, 1)).toBe('line')
+    expect(fallbackView('step', 1, 2)).toBe('step')
   })
 })
 
@@ -78,6 +86,39 @@ describe('当前切片', () => {
     expect(baselineOptionsOf(result()).map(s => s.value)).toEqual(['a', 'b'])
     expect(defaultBaselineId(result())).toBe('a')
     expect(defaultBaselineId(null)).toBe('')
+  })
+})
+
+describe('两档对比（同一系列内 x=起点 vs x=终点）', () => {
+  it('★ 一行一个系列：起点/终点/差值/提升% 全部给齐（用户不用再抄数字做除法）', () => {
+    const rows = levelDeltaRowsOf(result(), 0, 1)
+    expect(rows.map(r => r.seriesId)).toEqual(['a', 'b'])
+    // A：100 → 200，差 +100，提升 +100%
+    expect(rows[0]).toMatchObject({ fromValue: 100, toValue: 200, delta: 100, pct: 100 })
+    // B：120 → null ⇒ 差值与百分比都 null（不是 0、不是 Infinity）
+    expect(rows[1]).toMatchObject({ fromValue: 120, toValue: null, delta: null, pct: null })
+  })
+
+  it('★ 分母取 |起点|：起点为负也不能把方向拧反', () => {
+    const r: FreeCompareResult = { ...result(), series: [series('neg', '负值', [-100, -50])] }
+    const [row] = levelDeltaRowsOf(r, 0, 1)
+    // (−50 − (−100)) / |−100| = +50%（变大了就是正的，与实际方向一致）
+    expect(row!.delta).toBe(50)
+    expect(row!.pct).toBe(50)
+  })
+
+  it('★ 起点 0 / 越界 / 起点=终点 ⇒ 该行 null（不落成 Infinity，也不回落到相邻档）', () => {
+    const zero: FreeCompareResult = { ...result(), series: [series('z', 'Z', [0, 100])] }
+    expect(levelDeltaRowsOf(zero, 0, 1)[0]).toMatchObject({ delta: 100, pct: null }) // 绝对差仍可读
+    const oob = levelDeltaRowsOf(result(), 0, 9)
+    expect(oob.every(r => r.fromValue === null && r.toValue === null && r.delta === null && r.pct === null)).toBe(true)
+    const same = levelDeltaRowsOf(result(), 1, 1)
+    expect(same.every(r => r.delta === null)).toBe(true)
+  })
+
+  it('档位候选 = 轴档位名（30 / 11 / 精3 这类），下标即选择值', () => {
+    expect(levelOptionsOf(result())).toEqual([{ value: 0, label: '01' }, { value: 1, label: '21' }])
+    expect(levelOptionsOf(null)).toEqual([])
   })
 })
 

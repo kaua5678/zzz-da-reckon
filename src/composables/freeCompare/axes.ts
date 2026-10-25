@@ -12,46 +12,10 @@
  */
 
 // ========== 配置码 ==========
-
-/**
- * 配置码 = 两位数字：左位 = 影画/命座（0–6），右位 = 专武精炼（1–5，精炼 1 = 只有本体）。
- *
- * 用户裁决 2026-09-14（逐字）：「两个数字通常指配置，比如 21 第一个是代表 2命，1 代表专武精炼1」。
- * ⇒ `21` = 2 命 + 精炼 1；`01` = 0 命 + 本体。
- *
- * **右位 = 0 的边界（如 `20`）按「无专武」解释** —— 见 `SetupCode.wengine` 的 0 分支。
- * 这是本会话提案里必须点明给用户的一条：游戏里没有「精炼 0」，所以 0 只能读作「没这把专武」。
- */
-export interface SetupCode {
-  /** 影画/命座 0–6 */
-  cinema: number
-  /**
-   * 专武精炼 1–5；**0 = 无专武**（穿下位/常驻音擎）。
-   * 承载现成：`GoldStep.kind='wengine'`（value 1-5），无专武 = **不写该槽的 wEngine 获取步**。
-   */
-  wengine: number
-}
-
-/** 配置码字符串（如 "21" / "01" / "20"）→ 结构化。非法返回 null（不抛，UI 直接标红） */
-export function parseSetupCode(text: string): SetupCode | null {
-  const s = text.trim()
-  if (!/^\d{2}$/.test(s)) return null
-  const cinema = Number(s[0])
-  const wengine = Number(s[1])
-  if (cinema > 6) return null
-  if (wengine > 5) return null
-  return { cinema, wengine }
-}
-
-/** 结构化 → 配置码字符串（UI 回显/去重键） */
-export function formatSetupCode(c: SetupCode): string {
-  return `${c.cinema}${c.wengine}`
-}
-
-/** 人类可读标签（图例/悬浮卡）：`21` → 「2命 精1」；`20` → 「2命 无专武」 */
-export function setupCodeLabel(c: SetupCode): string {
-  return c.wengine === 0 ? `${c.cinema}命 无专武` : `${c.cinema}命 精${c.wengine}`
-}
+// 实现已外提 `utils/setupCode.ts`（2026-10-25：队伍对比「逐槽锁定」要用同一套解析，复制一份会在
+// 「右位 0 = 无专武」这条边界上分叉）。此处只转出，保持自由对比既有 import 面不变。
+import { formatSetupCode, parseSetupCode, setupCodeLabel, type SetupCode } from '@/utils/setupCode'
+export { formatSetupCode, parseSetupCode, setupCodeLabel, type SetupCode }
 
 // ========== 系列规格 ==========
 
@@ -72,8 +36,20 @@ export interface SeriesSpec {
   kind: SubjectKind
   /** kind='team' 时是三人 id；kind='agent' 时是单人 id（队友在约束里给） */
   members: string[]
-  /** 该系列的配置码（影画 + 精炼） */
+  /** 该系列的**缺省**配置码（影画 + 精炼）：`slotCodes` 没填的槽位用它 */
   code: SetupCode
+  /**
+   * 逐槽配置覆盖（2026-10-25，用户：「队友是固定65丽娜61克拉蕾，怎么选」）。
+   *
+   * **为什么必须有**：`code` 一个码会套到**全部三个槽位**（`engine.ts` 的 `condSlots.get(slot) ?? code`），
+   * 于是「诺姆 30 + 丽娜 65 + 克拉蕾 61」这种最常见的实战配置根本表达不出来——
+   * 只能靠「锁定条件」逐个人填，而条件的用途是**场景约束**（用户原话「维琳娜0/1/2命是条件」），
+   * 混用会让人分不清「这是被比的还是被锁的」。
+   *
+   * 语义：数组下标 = 槽位号；`null`/缺省 = 该槽用 `code`。
+   * 与 `code` 的优先级：**条件 > slotCodes > code**（条件永远胜，见 engine 装配段）。
+   */
+  slotCodes?: ReadonlyArray<SetupCode | null>
 }
 
 /**

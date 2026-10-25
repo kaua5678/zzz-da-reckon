@@ -129,6 +129,12 @@ export interface FreeCompareOptions extends BatchTaskOptions {
 
 // ========== 装配 ==========
 
+/**
+ * 队友（单人系列的基底成员）没有单独配置时的缺省配置码 = **01**（0 命 1 精 = 专武本体）。
+ * 与「对比基线惯例：主C 0命1精、队友 0 命无专武」同源（见 `FEATURES_GUIDE.md` §3.1）；
+ * 之所以不用系列的 `code`：那会让 x 轴每一档都把队友的配置一起改掉（2026-10-26 修）。
+ */
+const TEAMMATE_BASELINE_CODE: SetupCode = { cinema: 0, wengine: 1 }
 /** 专武 id（判定走 `signatureWEngineOf`，CC-498）；无专武 null。 */
 export function signatureWEngineId(catalog: ReturnType<typeof useCatalogStore>, agentId: string): string | null {
   return signatureWEngineOf(catalog, agentId)?.id ?? null
@@ -375,7 +381,18 @@ export async function computeFreeCompare(
             configStore.setWEngineModLevel(slot, 1)
             continue
           }
-          const slotCode = condSlots.get(slot) ?? code
+          /**
+           * 优先级：条件（场景约束）> 本槽配置码 > 系列码 / 队友缺省。
+           *
+           * ⚠ **单人系列的 code 只作用于它自己那一槽**（2026-10-26 修）：旧实现把 `code` 套到全部三槽，
+           * 于是「比较诺姆 01 / 11 / 21」实际比的是「全队 01 / 11 / 21」——队友的命座/精炼跟着 x 档一起变，
+           * 用户看到的曲线是两个变量搅在一起的（实测：系列码 61 ⇒ 丽娜、克拉蕾也变 6 命 1 精）。
+           * 现在单人系列 = 本人 + 「固定队友」（队友只认 slotCodes / 01 基线）；整队系列才把 code 套全队。
+           */
+          const isOwnSlot = spec.kind === 'agent' && slot === 0
+          const slotCode = condSlots.get(slot)
+            ?? spec.slotCodes?.[slot]
+            ?? (isOwnSlot || spec.kind === 'team' ? code : TEAMMATE_BASELINE_CODE)
           applyCodeToSlot(configStore, catalog, slot, agentId, slotCode, '', 1)
           if (slotCode.wengine === 0) needPick.push({ slot, agentId, cinema: slotCode.cinema })
         }
@@ -454,9 +471,22 @@ function teamOf(spec: SeriesSpec, cs: ConstraintSpec): [string, string, string] 
   return [spec.members[0] ?? '', a, b]
 }
 
+/**
+ * 系列标签：`角色 码`；配了逐槽码时把**与缺省码不同**的槽也标出来
+ * （否则「诺姆 30 + 丽娜 65 + 克拉蕾 61」与「诺姆 30 全员 30」在图例里同名，读图直接读错）。
+ */
 function seriesLabelOf(spec: SeriesSpec, nameOf: (id: string) => string): string {
   const who = spec.members.map(nameOf).join('+')
-  return `${who} ${spec.code.cinema}${spec.code.wengine}`
+  const base = `${who} ${spec.code.cinema}${spec.code.wengine}`
+  const extra = (spec.slotCodes ?? [])
+    .map((c, slot) => {
+      const agentId = spec.members[slot]
+      if (!c || !agentId) return null
+      if (c.cinema === spec.code.cinema && c.wengine === spec.code.wengine) return null
+      return `${nameOf(agentId)} ${c.cinema}${c.wengine}`
+    })
+    .filter((s): s is string => s !== null)
+  return extra.length > 0 ? `${base}（${extra.join(' / ')}）` : base
 }
 
 /**

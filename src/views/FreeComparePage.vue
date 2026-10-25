@@ -58,9 +58,11 @@
             size="small"
             style="width: 74px"
             placeholder="21"
+            :disabled="axisId === 'setupCode'"
             :status="parseSetupCode(s.code) ? undefined : 'error'"
+            :title="axisId === 'setupCode' ? 'x = 配置码时，本列的配置码被 x 档位覆盖（用下面的「配置码序列」控制）；这一格只在其它 x 维度下生效' : '该角色自己的配置码（单人系列只作用于本人，队友走各自的配置码/01 基线）'"
           />
-          <span class="code-read">{{ codeReadable(s.code) }}</span>
+          <span class="code-read">{{ axisId === 'setupCode' ? '被 x 档位覆盖' : codeReadable(s.code) }}</span>
           <n-button size="small" quaternary :disabled="series.length <= 1" @click="removeSeries(i)">移除</n-button>
         </div>
         <n-button size="small" dashed style="margin-top: 6px" @click="addSeries">+ 加一个系列</n-button>
@@ -84,7 +86,16 @@
           </div>
           <div class="ctl-field">
             <span class="ctl-label">影画上限</span>
-            <n-input-number v-model:value="cinemaMax" :min="0" :max="6" size="small" style="width: 84px" />
+            <n-input-number
+              v-model:value="cinemaMax"
+              :min="0"
+              :max="6"
+              size="small"
+              style="width: 84px"
+              :disabled="!cinemaMaxLive"
+              :title="cinemaMaxLive ? 'x = 影画 时枚举到几命；充当「切片 = 某角色影画」时也用它当上限' : '当前 x 维度与切片都不用这个上限（只在「x = 影画」或「切片 = 某角色影画」时生效）'"
+            />
+            <span v-if="!cinemaMaxLive" class="ctl-hint">当前不用</span>
           </div>
           <div v-if="axisId === 'setupCode'" class="ctl-field">
             <span class="ctl-label">配置码序列</span>
@@ -136,7 +147,24 @@
           <div class="ctl-field">
             <span class="ctl-label">队友（单人系列用）</span>
             <n-select v-model:value="mateA" :options="agentOptions" size="small" filterable clearable style="width: 150px" placeholder="队友1" />
+            <n-input
+              v-model:value="mateACode"
+              size="small"
+              style="width: 62px"
+              placeholder="配置码"
+              :status="mateACode.trim() && !parseSetupCode(mateACode) ? 'error' : undefined"
+              :title="'队友1 的配置码：左=影画 0-6，右=精炼 1-5（20 = 2命无专武）。留空 = 跟随系列配置码'"
+            />
             <n-select v-model:value="mateB" :options="agentOptions" size="small" filterable clearable style="width: 150px" placeholder="队友2" />
+            <n-input
+              v-model:value="mateBCode"
+              size="small"
+              style="width: 62px"
+              placeholder="配置码"
+              :status="mateBCode.trim() && !parseSetupCode(mateBCode) ? 'error' : undefined"
+              :title="'队友2 的配置码：左=影画 0-6，右=精炼 1-5（20 = 2命无专武）。留空 = 跟随系列配置码'"
+            />
+            <span class="ctl-hint">{{ mateCodeHint }}</span>
           </div>
           <div class="ctl-field">
             <n-checkbox v-model:checked="autoBuild" size="small">推荐配装（慢很多，数值更接近实战）</n-checkbox>
@@ -328,6 +356,13 @@
           :selected-slice-id="selectedSliceId"
           @select-slice="selectedSliceId = $event"
         />
+        <FreeCompareLevelDelta
+          v-else-if="viewMode === 'step' && selectedSlice"
+          :result="result"
+          :series="visibleSeries"
+          :def="resultDef"
+          :color-of="colorOf"
+        />
         <SliceGridChart
           v-else-if="viewMode === 'delta'"
           :levels="result.levels"
@@ -396,6 +431,7 @@ import SliceGridChart from '@/components/charts/SliceGridChart.vue'
 import FreeCompare3DChart from '@/components/charts/FreeCompare3DChart.vue'
 import ChartLegend from '@/components/charts/ChartLegend.vue'
 import FreeCompareTable from '@/components/FreeCompareTable.vue'
+import FreeCompareLevelDelta from '@/components/FreeCompareLevelDelta.vue'
 import { BUILTIN_ANALYSIS_PRESETS } from '@/data/analysisPresets'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
@@ -412,6 +448,7 @@ import {
   type AxisId,
   type AxisOptions,
   type SeriesSpec,
+  type SetupCode,
   type SliceSpec,
   axisOptions as buildAxisOptions,
   formatSetupCode,
@@ -456,9 +493,11 @@ const bossPresets = ref<BossPreset[]>([])
 const phaseViews = ref<PhaseView[]>([])
 const error = ref('')
 
-/** 用户原话的三个实体，id 见 data/viewAgentDefaults（CC-431） */
-const BURNICE = FREE_COMPARE_AGENTS.burnice
-const PHOENIX = FREE_COMPARE_AGENTS.phoenix
+/**
+ * 用户原话里的实体，id 见 data/viewAgentDefaults（CC-431）。
+ * `burnice` / `phoenix` 只在内置模板（data/analysisPresets.ts）里出现，本页不再直接引用
+ * （2026-10-26：默认系列改成单角色 01 后，页面不再预填这两位）。
+ */
 const VELINA = FREE_COMPARE_AGENTS.velina
 
 interface SeriesRow {
@@ -466,11 +505,34 @@ interface SeriesRow {
   agentId: string
   code: string
 }
+
+/**
+ * 队友配置码（2026-10-25，用户：「队友是固定65丽娜61克拉蕾」）。
+ *
+ * 为什么不塞进「锁定条件」：条件 = **场景约束**（用户原话「维琳娜 0/1/2 命是条件，柏妮思 vs 菲欧妮才是系列」），
+ * 而队友的命座/精炼是**这套配置的一部分**——同一条曲线里队友一直是 65/61，它就是环境常数，
+ * 写在「队友」旁边才读得懂。引擎侧两者都落成 `slotCodes`（条件优先级更高）。
+ *
+ * 留空 = 跟随系列配置码（`code` 会套到全部三槽，见 `engine.ts` 装配段）。
+ */
+const mateACode = ref('')
+const mateBCode = ref('')
+/** 队友码提示：非法时直接标出来（跑批前 `runCompare` 也会拦） */
+const mateCodeHint = computed(() => {
+  const bad = [mateACode.value, mateBCode.value].filter(t => t.trim() && !parseSetupCode(t))
+  return bad.length > 0 ? '队友配置码非法：要两位数字（左=影画 0-6，右=精炼 0-5）' : ''
+})
 let keySeq = 0
-const series = ref<SeriesRow[]>([
-  { key: keySeq++, agentId: BURNICE, code: '21' },
-  { key: keySeq++, agentId: PHOENIX, code: '21' },
-])
+/**
+ * 初始系列 = **一个**空角色 + 01 基线。
+ *
+ * 旧值是「柏妮思 21 + 菲欧妮 21」+ x = 配置码序列 01/11/21/20 ⇒ 用户看到的是
+ * 「先是两个 21，然后让我比 01/11/21」——那两个 21 是**系列码**，在 x = 配置码下被档位覆盖、
+ * 一个数都不影响（用户 2026-10-26 报障：「固定一个角色21，然后让我比较01，11，21，那一开始的21有啥用」）。
+ * 现在默认单系列 + 01：这格只在「x = 影画/精炼」时才是"对比的基准"，其余情况下它要么被 x 覆盖
+ * （已置灰并写明原因），要么就是这台角色的固定配置。
+ */
+const series = ref<SeriesRow[]>([{ key: keySeq++, agentId: '', code: '01' }])
 function addSeries() {
   series.value.push({ key: keySeq++, agentId: '', code: '01' })
 }
@@ -481,6 +543,13 @@ function removeSeries(i: number) {
 const axisId = ref<AxisId>(DEFAULT_AXIS_ID)
 const metricId = ref('teamTotalDamage')
 const cinemaMax = ref(6)
+/**
+ * 「影画上限」是否有消费者（2026-10-26）：只喂 `AXES.cinema.levels` 与条件切片的档数。
+ * 其它 x 维度 / 无切片时它是个**完全无作用的旋钮**——旧版照样可编辑，用户改完发现数字没变
+ * （报障「有些功能感觉是失效的」）。现在直接置灰 + 写「当前不用」。
+ */
+const cinemaMaxLive = computed(() =>
+  axisId.value === 'cinema' || (sliceSpec.value?.kind === 'condition'))
 /** 配置码维度的档位序列（用户原话「21/11/20/01」）—— 逗号分隔，非法码在跑批前被拦下 */
 const setupCodesText = ref('01,11,21,20')
 const autoBuild = ref(false)
@@ -605,6 +674,8 @@ function applyPresetById(id: string) {
   if (p.bossId) bossId.value = p.bossId
   buffChoice.value = p.buffChoice
   mateA.value = p.mateA
+  mateACode.value = p.mateACode
+  mateBCode.value = p.mateBCode
   mateB.value = p.mateB
   autoBuild.value = p.autoBuild
   conditions.value = p.conditions.map(c => ({ ...c }))
@@ -656,6 +727,8 @@ function saveCurrentPreset() {
     bossId: bossId.value,
     buffChoice: buffChoice.value,
     mateA: mateA.value,
+    mateACode: mateACode.value,
+    mateBCode: mateBCode.value,
     mateB: mateB.value,
     autoBuild: autoBuild.value,
     conditions: conditions.value.map(c => ({ ...c })),
@@ -751,9 +824,26 @@ async function runCompare() {
     if (!s.agentId) continue
     const code = parseSetupCode(s.code)
     if (!code) { error.value = `配置码「${s.code}」不合法：要两位数字（左=影画 0-6，右=精炼 1-5）`; return }
-    specs.push({ id: `${s.agentId}-${formatSetupCode(code)}`, kind: 'agent', members: [s.agentId], code })
+    // 逐槽码：槽 0 = 系列角色，槽 1/2 = 两个队友（留空 = 跟随系列码 ⇒ 不写这一格）
+    const m1 = mateACode.value.trim() ? parseSetupCode(mateACode.value) : null
+    const m2 = mateBCode.value.trim() ? parseSetupCode(mateBCode.value) : null
+    const slotCodes: Array<SetupCode | null> = [null, m1, m2]
+    specs.push({
+      id: `${s.agentId}-${formatSetupCode(code)}${m1 ? '-m1' + formatSetupCode(m1) : ''}${m2 ? '-m2' + formatSetupCode(m2) : ''}`,
+      kind: 'agent',
+      members: [s.agentId],
+      code,
+      ...(m1 || m2 ? { slotCodes } : {}),
+    })
   }
   if (specs.length === 0) { error.value = '至少选一个系列（选角色 + 填配置码）'; return }
+  // 队友配置码：非空但解析不出来 ⇒ 响亮拒绝（静默按"跟随系列码"处理会让用户以为生效了）
+  for (const [label, text] of [['队友1', mateACode.value], ['队友2', mateBCode.value]] as const) {
+    if (text.trim() && !parseSetupCode(text)) {
+      error.value = `${label}配置码「${text}」不合法：要两位数字（左=影画 0-6，右=精炼 0-5）`
+      return
+    }
+  }
   // x = 配置码时档位来自用户输入，非法就在这里拦下（别让非法码静默变成空轴）
   if (axisId.value === 'setupCode') {
     if (setupCodes.value === null) { error.value = '配置码序列里有非法码：每位都要两位数字（左=影画 0-6，右=精炼 1-5）'; return }
@@ -831,7 +921,7 @@ const visibleIds = computed(() => new Set(visibleSeries.value.map(s => s.id)))
 const sliceSelectOptions = computed(() => (result.value?.slices ?? []).map(s => ({ value: s.id, label: s.label || '全部' })))
 /** 可用视角：无切片时隐藏「切片/3D」（与折线重复） */
 const viewDefs = computed(() => {
-  const allowed = new Set(availableViews(result.value?.slices.length ?? 1))
+  const allowed = new Set(availableViews(result.value?.slices.length ?? 1, result.value?.levels.length ?? 0))
   return ANALYSIS_VIEWS.filter(v => allowed.has(v.id))
 })
 const viewHint = computed(() => {
@@ -974,7 +1064,7 @@ watch(result, r => {
   if (!r) return
   selectedSliceId.value = r.slices[0]?.id ?? ''
   baselineEntityId.value = defaultBaselineId(r)
-  viewMode.value = fallbackView(viewMode.value, r.slices.length)
+  viewMode.value = fallbackView(viewMode.value, r.slices.length, r.levels.length)
 })
 
 onMounted(async () => {

@@ -31,6 +31,9 @@ export interface WorkbenchPreset {
   buffChoice: string
   mateA: string
   mateB: string
+  /** 队友 1/2 的配置码（空 = 跟随系列码）；用户 2026-10-25「队友是固定65丽娜61克拉蕾」 */
+  mateACode: string
+  mateBCode: string
   autoBuild: boolean
   conditions: Array<{ agentId: string; cinema: number }>
   /** 应用预设时默认打开的视角（缺省 = 折线） */
@@ -125,6 +128,9 @@ export function sanitizePreset(raw: unknown): WorkbenchPreset | null {
     buffChoice: str(raw.buffChoice) ?? 'none',
     mateA: str(raw.mateA) ?? '',
     mateB: str(raw.mateB) ?? '',
+    // 旧存档没有这两个字段 ⇒ 空串 = 跟随系列码（与加入该字段前逐位一致）
+    mateACode: str(raw.mateACode) ?? '',
+    mateBCode: str(raw.mateBCode) ?? '',
     autoBuild: raw.autoBuild === true,
     conditions,
     view,

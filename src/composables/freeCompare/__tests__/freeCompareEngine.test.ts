@@ -41,6 +41,45 @@ describe('自由对比求值器（真引擎）', () => {
     await catalog.loadBuildRecommendations()
   })
 
+describe('逐槽配置码 slotCodes（用户 2026-10-25：队友固定 65丽娜 / 61克拉蕾）', () => {
+  it('★ 槽 1/2 用各自的码，槽 0 用系列码；**队友不再继承系列码**（2026-10-26 修）', async () => {
+    const res = await fetch('/static/boss-presets.json')
+    const boss = (await res.json()).bosses[0]
+    // 诺姆(1571) + 丽娜(1211) + 克拉蕾(1611)
+    const base: SeriesSpec = { id: 'nomu', kind: 'agent', members: ['1571'], code: code('30') }
+    const withSlots: SeriesSpec = {
+      ...base,
+      slotCodes: [null, code('65'), code('61')],
+    }
+    // 装配态只能在**求值过程中**读（r372：跑完场景已 dispose）；用 onProgress 抓一次快照
+    const run = async (spec: SeriesSpec) => {
+      let seen: ConfigModel | null = null
+      const res = await withAnalysisScenario(scenario => computeFreeCompare(scenario, {
+        series: [spec],
+        axisId: 'setupCode',
+        axisOptions: { setupCodes: ['30'] },
+        metricId: 'teamTotalDamage',
+        constraints: { boss, baseTeammates: ['1211', '1611'] },
+        onProgress: () => { seen ??= scenario.config },
+      }))
+      if (!seen) throw new Error('[测试] 求值没发生，抓不到槽位状态')
+      return { res, cfg: seen as ConfigModel }
+    }
+
+    // ① 有 slotCodes：**三槽各按自己的码**（诺姆 30 / 丽娜 65 / 克拉蕾 61）
+    const a = await run(withSlots)
+    expect(a.cfg.team.map(x => [x.cinemaLevel, x.wEngineModLevel])).toEqual([[3, 5], [6, 5], [6, 1]])
+    // ② 无 slotCodes：**队友回到 01 基线**（不再跟着系列码变）——用户 2026-10-26 报障：
+    // 旧行为是「比较诺姆 01/11/21」实际比的是「全队 01/11/21」，队友命座跟着 x 档一起动 = 两个变量搅在一起
+    const b = await run(base)
+    expect(b.cfg.team.map(x => [x.cinemaLevel, x.wEngineModLevel])).toEqual([[3, 5], [0, 1], [0, 1]])
+    // ③ 伤害必须不同（否则前面那条只是没生效的自证）
+    expect(a.res.series[0].values[0]).not.toBeNull()
+    expect(b.res.series[0].values[0]).not.toBeNull()
+    expect(a.res.series[0].values[0]).not.toBe(b.res.series[0].values[0])
+  })
+})
+
   it('★ 期数轴真的换期，且血量比按「该期」血量算（CC-189：此前期数覆盖从不被读、env.hp 在装配前就读死）', async () => {
     const res = await fetch('/static/boss-presets.json')
     const boss = (await res.json()).bosses.find((b: { id: string }) => b.id === '30007') // 恶名·死路屠夫：各期血量不同

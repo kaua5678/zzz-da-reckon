@@ -156,6 +156,20 @@ export interface TeamPreset {
   minGold?: number
   /** 预设级自动下位声明（可选）：按角色/按槽位的下位池与精炼档，声明即覆盖页面设置 */
   autoEngine?: AutoEngineConfig
+  /**
+   * **逐槽固定配置**（2026-10-25，用户：「队友是固定65丽娜61克拉蕾」+「我想比较同样克拉蕾和丽娜配置的
+   * 不同配置诺姆的难度曲线」）。
+   *
+   * 为什么必须在 preset 里、而不是页面上的一个开关：一支队 = **3 个人 + 3 套配置**。
+   * 「诺姆30 队」与「诺姆11 队」是**两支队**（队友相同、诺姆不同），要各出一条曲线 ⇒
+   * 配置必须跟着**队伍**走，才能同时进散点 / 难度曲线 / 自由对比 / 归档对拍。
+   * 页面级的全局开关做不到这件事（它只能给当次运行套同一个覆盖）。
+   *
+   * 语义：数组下标 = 槽位；`null`/缺省 = 该槽不固定（走 goldSteps 加金）。
+   * 固定槽的 `goldSteps` / `standardSteps` 会被剔除（该槽的金是"预支"的），
+   * 金数由 `baseGoldOf` 按最终配置如实计入。实现见 `composables/presetSlotOverrides.ts`。
+   */
+  slotCodes?: ReadonlyArray<{ cinema: number; wengine: number } | null>
   /** 展开标记：本条目由哪个源预设展开而来（仅加载器写入；保存回写 goldSteps 时重定向到源文件） */
   variantOf?: string
 }

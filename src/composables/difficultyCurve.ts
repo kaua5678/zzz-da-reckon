@@ -44,6 +44,8 @@
  * ⟳复核: 若新增「按某维度截取/聚合曲线」的图型或改用对数轴，重核「轴上限覆盖所有点」是否仍成立（尤其筛选后只剩 1 队时——那是越界最严重的场景） | 到期 2027-04-30
  */
 import { applyBossRoom } from '@/composables/bossRoom'
+import { applySlotOverrides } from '@/composables/presetSlotOverrides'
+import { useCatalogStore } from '@/stores/catalog'
 import { captureState, stateDeltaOf } from '@/composables/configDelta'
 import { type ConfigModel } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
@@ -325,7 +327,11 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
       ? env.lanesOf(preset.id).map(l => ({ preset, key: l.key, phase: l.phase, buffs: l.buffs }))
       : [{ preset, key: null, phase: options.phase, buffs: [] }]
     for (const lane of lanes) {
-      applyAxisBinding(configStore, baseAxis, preset)
+      // 逐槽固定配置（2026-10-25）：把「队友 65 丽娜 / 61 克拉蕾」这种**属于这支队**的配置
+      // 收敛进 preset —— 剔除固定槽的加金步，好让下面 applyGoldSteps 只动没固定的槽。
+      // 无 slotCodes 时原对象引用原样返回（零改动）。
+      const lockedPreset = applySlotOverrides(preset, undefined, useCatalogStore()).preset
+      applyAxisBinding(configStore, baseAxis, lockedPreset)
       // 每道**先摆房间**：Boss 数值按期取（无环境 = 当期，与改动前同一句、同一顺序）
       applyBossRoom(configStore, options.boss, lane.phase)
       /**
@@ -360,8 +366,20 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
       // 否则「预设基础档」会漏掉常驻步而出现两个数）。曲线**不提供**金数档覆盖——金数提升属于
       // 「提升率」类图表，不是难度曲线的事（用户 2026-09-10 口径）。
       const applied = applyGoldSteps(
-        preset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), preset.standardSteps ?? [], preset.wEngines ?? [],
+        lockedPreset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), lockedPreset.standardSteps ?? [], preset.wEngines ?? [],
       )
+      /**
+       * `base` 回调每档都会重摆队伍（`applyTeamToStore` + `applyGoldAllocationToStore`），
+       * 固定槽必须在那之后再盖上，否则第一档就被加金分配覆盖掉了（实测会静默回落到 0 命 1 精）。
+       */
+      const lockSlots = (config: ConfigModel): void => {
+        for (let s = 0; s < 3; s++) {
+          const c = preset.slotCodes?.[s]
+          if (!c) continue
+          config.setCinemaLevel(s, c.cinema)
+          config.setWEngineModLevel(s, c.wengine)
+        }
+      }
       const ladder = climbDifficultyLadder({ config: configStore, calc, absorbCap: userAbsorbCap }, preset.team, {
         minGainRatio: options.minGainRatio,
         axisScanSteps: options.axisScanSteps,
@@ -384,9 +402,10 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
         costOf: ctx => measureOperationalDifficulty(ctx, preset, options.difficultyWeights),
         base: (ctx, team) => {
           clearDifficultyLevers(ctx)
-          applyTeamToStore(ctx.config, preset)
+          applyTeamToStore(ctx.config, lockedPreset)
           // 金步叠加：影画/精炼/音擎（驱动盘与权重/交互已由 applyTeamToStore 套好，金步不碰）
           applyGoldAllocationToStore(ctx.config, applied)
+          lockSlots(ctx.config)
           void team
           return ctx.calc.teamTotalDamage.value
         },

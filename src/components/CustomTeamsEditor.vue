@@ -21,18 +21,27 @@
         :placeholder="store.displayName(def)"
         @update:value="v => store.setName(def.id, v)"
       />
-      <n-select
-        v-for="slot in SLOTS"
-        :key="slot"
-        class="ct-slot"
-        size="tiny"
-        clearable
-        filterable
-        :value="def.team[slot] || null"
-        :options="agentOptions"
-        :placeholder="SLOT_LABELS[slot]"
-        @update:value="v => store.setSlot(def.id, slot, v)"
-      />
+      <template v-for="slot in SLOTS" :key="slot">
+        <n-select
+          class="ct-slot"
+          size="tiny"
+          clearable
+          filterable
+          :value="def.team[slot] || null"
+          :options="agentOptions"
+          :placeholder="SLOT_LABELS[slot]"
+          @update:value="v => store.setSlot(def.id, slot, v)"
+        />
+        <n-input
+          class="ct-code"
+          size="tiny"
+          :value="codeText(def, slot)"
+          :placeholder="'配置码'"
+          :status="codeInvalid(def, slot) ? 'error' : undefined"
+          :title="'该槽固定配装：左=影画 0-6、右=精炼 1-5（20 = 2命无专武）。留空 = 不固定（走 01 基线/加金）'"
+          @update:value="v => onCode(def.id, slot, v)"
+        />
+      </template>
       <n-button size="tiny" quaternary type="error" @click="store.remove(def.id)">删</n-button>
     </div>
   </div>
@@ -49,11 +58,55 @@
  * 模型与物化口径在 `composables/customTeams.ts`（自定义队 → TeamPreset）；本组件只管交互。
  * 空槽是有意的：引擎按位压缩（AGENTS §2），少于 3 人也能算，故不强制选满。
  */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { NButton, NCheckbox, NInput, NSelect } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
-import { useCustomTeamsStore } from '@/composables/customTeams'
+import { useCustomTeamsStore, type CustomTeamDef } from '@/composables/customTeams'
+import { formatSetupCode, parseSetupCode } from '@/utils/setupCode'
 import { localized } from '@/utils/format'
+
+/**
+ * 逐槽配置码的**编辑态**（用户 2026-10-25：「队友是固定65丽娜61克拉蕾」「比较同样克拉蕾和丽娜配置的
+ * 不同配置诺姆的难度曲线」）。
+ *
+ * 为什么不把输入框直接绑到 store 的 `slotCodes`：配置码是**两位文本**，而 store 里存的是
+ * `{cinema, wengine}`。输入过程中必然经过「只打了 1 位」的非法中间态——若直接写 store，
+ * 那个中间态会被 parse 成 `null`（= 不固定），用户打第二个字符时锁已经悄悄解除了。
+ * 所以文本留在组件本地，只有**解析成功**才写 store；留空 = 显式清空。
+ */
+const codeDrafts = ref<Record<string, [string, string, string]>>({})
+
+function draftOf(def: CustomTeamDef): [string, string, string] {
+  const existing = codeDrafts.value[def.id]
+  if (existing) return existing
+  const fromStore = [0, 1, 2].map(i => {
+    const c = def.slotCodes?.[i]
+    return c ? formatSetupCode(c) : ''
+  }) as [string, string, string]
+  codeDrafts.value = { ...codeDrafts.value, [def.id]: fromStore }
+  return fromStore
+}
+
+function codeText(def: CustomTeamDef, slot: number): string {
+  return draftOf(def)[slot]
+}
+
+function codeInvalid(def: CustomTeamDef, slot: number): boolean {
+  const t = draftOf(def)[slot].trim()
+  return t !== '' && parseSetupCode(t) === null
+}
+
+function onCode(id: string, slot: 0 | 1 | 2, text: string) {
+  const def = store.byId(id)
+  if (!def) return
+  const cur = [...draftOf(def)] as [string, string, string]
+  cur[slot] = text
+  codeDrafts.value = { ...codeDrafts.value, [id]: cur }
+  const code = text.trim() === '' ? null : parseSetupCode(text)
+  // 非法中间态**不写 store**（保持上一次的有效值），只在 UI 标红
+  if (text.trim() !== '' && code === null) return
+  store.setSlotCode(id, slot, code)
+}
 
 const props = defineProps<{
   /** 已选队伍 id（与预设队共用一个数组；本组件只增删属于自定义队的那些） */
@@ -97,4 +150,5 @@ function onAdd() {
 .ct-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .ct-name { width: 150px; }
 .ct-slot { width: 118px; }
+.ct-code { width: 68px; }
 </style>

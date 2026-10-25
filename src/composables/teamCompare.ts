@@ -41,6 +41,9 @@ import {
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { TeamGoldState } from '@/composables/teamTimeline'
 import { takeBestGoldStep } from '@/composables/goldGreedy'
+import { goldStepsForPreset } from '@/composables/goldStepsFromCatalog'
+import { signatureWEngineOf } from '@/composables/signatureWEngine'
+import { applySlotOverrides, NO_SLOT_OVERRIDES, type SlotOverrides } from '@/composables/presetSlotOverrides'
 import { DOWNGRADE_MODS, downgradeCandidateOf, wearBestWEngine, type DowngradeCandidate } from '@/composables/downgradeWEngine'
 import ENGINE_POOLS_SRC from '@/data/enginePools.json'
 const ENGINE_POOLS = ENGINE_POOLS_SRC as Record<string, string[]>
@@ -121,6 +124,11 @@ export interface TeamCompareOptions {
    * timePressure = 「时间压力」（难度点/秒，默认 1），见 `computeDifficulty`。
    */
   difficultyWeights?: DifficultyWeights
+  /**
+   * 逐槽锁定（用户 2026-10-25「修改自由度大一点」）：配置码形式的最终配装，锁了的槽不参与加金。
+   * 缺口省 = `NO_SLOT_OVERRIDES`（逐位不变）。口径见 `presetSlotOverrides.ts`。
+   */
+  slotOverrides?: SlotOverrides
 }
 
 /** 难度权重覆盖（见 TeamCompareOptions.difficultyWeights） */
@@ -395,8 +403,33 @@ export function computeDifficulty(
  * 常驻 S 角色（莱卡恩等）本体/专武、A/B 级角色、常驻音擎都不计。
  * 例：伊德海莉+莱卡恩+卢西娅（全带专武）= 2 + 2 = 4 金（莱卡恩与拘缚者不计）。
  */
+/**
+ * 预设基础金（0 步加金时的总限定金）。
+ *
+ * `slotCodes` 固定槽的金必须算进来（2026-10-25）：「诺姆 30 + 丽娜 65 + 克拉蕾 61」这支队的基础金
+ * 是 3 角色本体 + 丽娜专武 + 丽娜 5 精炼 + 克拉蕾专武 …… 而不是三件 0 命 1 精——不算就会把
+ * 「预支的金」当成 0，散点/曲线的金数标签全错。
+ */
 export function baseGoldOf(preset: TeamPreset): number {
-  return teamGoldOf(preset.team, preset.wEngines ?? [], [0, 0, 0], [1, 1, 1])
+  const locked = preset.slotCodes
+  if (!locked || locked.every(c => c === null)) {
+    return teamGoldOf(preset.team, preset.wEngines ?? [], [0, 0, 0], [1, 1, 1])
+  }
+  // 固定槽的音擎按「右位 ≥1 ⇒ 该角色专武」解析（wEngines 留空 = 自动推荐，不是"没武器"）；
+  // 右位 0（无专武）⇒ 空，不计音擎金。
+  const catalog = useCatalogStore()
+  const wEngines = [0, 1, 2].map(s => {
+    const c = locked[s]
+    if (!c) return preset.wEngines?.[s] ?? ''
+    const agentId = preset.team[s]
+    return c.wengine >= 1 && agentId ? (signatureWEngineOf(catalog, agentId)?.id ?? '') : ''
+  })
+  return teamGoldOf(
+    preset.team,
+    wEngines,
+    locked.map(c => c?.cinema ?? 0),
+    locked.map(c => c?.wengine ?? 1),
+  )
 }
 
 /**
@@ -700,13 +733,15 @@ export function computeOptimalGoldAllocations(
   autoPicks: AutoEnginePick[] = [],
   /** 收集每档的全部候选（同队同金不同分配对比用）：传入数组即逐档追加；缺省不收集 = 零额外开销 */
   opts: { alternatives?: GoldAllocationAlternative[] } = {},
+  /** 加金阶梯覆盖（缺省 = 预设自己的 goldSteps）：空 goldSteps 的预设由调用方传 catalog 阶梯 */
+  steps: GoldStep[] = preset.goldSteps,
 ): OptimalGoldAllocation[] {
   const sink = opts.alternatives
   // 音擎获取候选：每个槽位第一条带 wEngineId 的 wengine 步（作者声明的升级音擎，通常 = 专武本体）
   const acquireBySlot = new Map<number, GoldStep>()
-  // 影画 / 精炼候选：goldSteps 按 (slot, kind) 分线，每条线按级别升序（获取步除外）
+  // 影画 / 精炼候选：steps 按 (slot, kind) 分线，每条线按级别升序（获取步除外）
   const ladders = new Map<string, GoldStep[]>()
-  for (const s of preset.goldSteps) {
+  for (const s of steps) {
     if (s.kind === 'wengine' && s.wEngineId) {
       if (!acquireBySlot.has(s.slot)) acquireBySlot.set(s.slot, s)
       continue
@@ -720,7 +755,7 @@ export function computeOptimalGoldAllocations(
 
   // CC-339：基础档（0 步限定金 + 全量常驻配置 + 预设基础音擎）统一复用 applyGoldSteps，消除三处手写初始化重复
   const { cinemas, wengineMods, wEngines } = applyGoldSteps(
-    preset.goldSteps,
+    steps,
     baseGold,
     baseGold,
     preset.standardSteps ?? [],
@@ -925,9 +960,11 @@ export function applyGoldToStore(
   preset: TeamPreset,
   targetTotalGold: number,
   autoPicks: AutoEnginePick[] = [],
+  /** 加金阶梯覆盖（缺省 = 预设自己的 goldSteps）：`computeTeamComparePoints` 传「作者没排就按 catalog 推」的那份 */
+  goldSteps: GoldStep[] = preset.goldSteps,
 ) {
   const applied = applyGoldSteps(
-    preset.goldSteps,
+    goldSteps,
     targetTotalGold,
     baseGoldOf(preset),
     preset.standardSteps ?? [],
@@ -936,7 +973,7 @@ export function applyGoldToStore(
   const { cinemas, wengineMods, wEngines } = applied
   // 被预算步购买过音擎的槽位（其金已在预算内，避免下位限定双算）
   const acquiredSlots = new Set(
-    preset.goldSteps.slice(0, applied.stepsApplied)
+    goldSteps.slice(0, applied.stepsApplied)
       .filter(s => s.kind === 'wengine' && s.wEngineId)
       .map(s => s.slot),
   )
@@ -1007,16 +1044,24 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
   const { config: configStore, calc } = scenario
   const baseAxis = configStore.getAxisState()
   const points: TeamComparePoint[] = []
-  for (const preset of options.presets) {
+  const overrides = options.slotOverrides ?? NO_SLOT_OVERRIDES
+  for (const rawPreset of options.presets) {
+    // 逐槽锁定：剔除锁定槽的加金/常驻步（无锁定 ⇒ 原对象引用原样返回）
+    const { preset, locked, pageLocked } = applySlotOverrides(rawPreset, overrides, useCatalogStore())
+    // 只有**页面**覆盖才算「预支的金要补进显示」；预设自带 slotCodes 的金已由 baseGoldOf 计入
+    const hasPageLock = pageLocked.some(Boolean)
+    const hasLock = locked.some(l => l !== null)
     applyTeamToStore(configStore, preset)
     // 难度变体轴绑定（未绑定 = 恢复快照轴状态，走自动匹配/用户轴）
     applyAxisBinding(configStore, baseAxis, preset)
     const baseGold = baseGoldOf(preset)
+    /** 本队实际可用的加金阶梯：作者声明过就逐位用作者的；空 goldSteps 用 catalog 确定性阶梯 */
+    const goldSteps = goldStepsForPreset(preset, useCatalogStore())
     // CC-339：无论是否开启 optimalGold，均先把队伍置于该预设基础金分配（基础音擎 + 0命1精 + standardSteps），
     // 保证 buff 自动推荐（pickBestBuff）、自动下位音擎择优（computeAutoEnginePicks）与贪婪搜索从同一真实基础档出发
     applyGoldAllocationToStore(
       configStore,
-      applyGoldSteps(preset.goldSteps, baseGold, baseGold, preset.standardSteps ?? [], preset.wEngines ?? []),
+      applyGoldSteps(goldSteps, baseGold, baseGold, preset.standardSteps ?? [], preset.wEngines ?? []),
     )
     // boss 一次应用（与金数档无关）；必须在选 buff 前应用，推荐排序才基于所选期数的敌人配置
     applyBossRoom(configStore, options.boss, options.phase)
@@ -1041,6 +1086,7 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
       const allocs = computeOptimalGoldAllocations(
         calc, configStore, preset, baseGold, autoPicks,
         sink ? { alternatives } : {},
+        goldSteps,
       )
       for (const a of allocs) {
         optimalMap.set(a.budgetGold, a) // 预算域键：resolveGoldLevel 的钳制口径不含限定下位附加
@@ -1052,15 +1098,26 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
       // 难度门槛：低于该难度要求的最低总限定金不生成点（如 5嗔火10大 需琉音配置足够高）
       if (gold < (preset.minGold ?? 0)) continue
       // 目标限定金越界时钳制到最近档位；同一队伍同一钳制结果只出一个点
-      const { totalGold } = resolveGoldLevel(preset.goldSteps, gold, baseGold)
+      const { totalGold } = resolveGoldLevel(goldSteps, gold, baseGold)
       if (seen.has(totalGold)) continue
       seen.add(totalGold)
       const opt = optimalMap.get(totalGold)
-      const applied = opt ? null : applyGoldToStore(configStore, preset, gold, autoPicks)
+      const applied = opt ? null : applyGoldToStore(configStore, preset, gold, autoPicks, goldSteps)
       if (opt) {
         applyGoldAllocationToStore(configStore, opt)
       }
-      const damage = opt ? opt.damage : calc.teamTotalDamage.value
+      // 逐槽锁定：加金分配之后再盖上（锁定槽"预支"自己的配装，不参与上面的预算分配）。
+      // 必须在读伤害之前写，否则读到的还是算法分配的配装。
+      if (hasLock) {
+        for (let s = 0; s < 3; s++) {
+          const lock = locked[s]
+          if (!lock) continue
+          configStore.setCinemaLevel(s, lock.cinema)
+          configStore.setWEngineModLevel(s, lock.wengine)
+        }
+      }
+      // 有任意锁（页面或预设自带）都不能用贪心预算里的读数：那份读数是没盖锁的配置算出来的
+      const damage = opt && !hasLock ? opt.damage : calc.teamTotalDamage.value
       // 时间可行性校验：从引擎资源结果取精确动作总时间
       const invTime = configStore.enemy.invincibleTime
       const battleTime = configStore.enemy.battleTime
@@ -1083,8 +1140,9 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
         stunWindowRatioOf(calc, configStore.enemy),
       )
       const std = preset.standardSteps ?? []
-      const cinemas = opt ? opt.cinemas : applied!.cinemas
-      const wengineMods = opt ? opt.wengineMods : applied!.wengineMods
+      // 逐槽锁定：展示用的影画/精炼以锁定值为准（上面已写进 store，这里只是把它带进结果行）
+      const cinemas: [number, number, number] = [0, 1, 2].map(s => locked[s as 0 | 1 | 2]?.cinema ?? (opt ? opt.cinemas[s]! : applied!.cinemas[s]!)) as [number, number, number]
+      const wengineMods: [number, number, number] = [0, 1, 2].map(s => locked[s as 0 | 1 | 2]?.wengine ?? (opt ? opt.wengineMods[s]! : applied!.wengineMods[s]!)) as [number, number, number]
       const label = opt ? opt.label : applied!.label
       // 自动下位中「仍穿在身上」的限定件数：有金就是金，按本体各计 1 金入总限定金
       const autoLimitedGold = opt ? Math.max(0, opt.totalGold - totalGold) : applied!.autoLimitedGold
@@ -1098,11 +1156,27 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
       const autoLabel = autoParts.join('｜')
       const withAuto = (base: string) => [base, autoLabel].filter(Boolean).join('｜')
       standardLabel = withAuto(standardLabel)
+      // 有锁定时"预支"的金不在 totalGold 里 ⇒ 补上锁定槽的增量（teamGoldOf 是唯一金数口径）。
+      // ⚠ 不能整队读 store 重算：store 里 setAgent 自动上的**专武**不是预设声明的基础音擎
+      // （freeCompare/engine.ts 同款坑），整队重算会多算那几件。这里只算**锁定槽相对基础档的增量**。
+      // 无锁定走原表达式（逐位不变，既有 100+ 用例的金数断言不受影响）。
+      let lockedGold = totalGold + autoLimitedGold
+      if (hasPageLock) {
+        for (let s = 0; s < 3; s++) {
+          const lock = locked[s]
+          if (!lock || !pageLocked[s]) continue
+          const agentId = configStore.team[s]?.agentId ?? ''
+          const wId = configStore.team[s]?.wEngineId ?? ''
+          const goldOf = (cinema: number, mod: number) => teamGoldOf([agentId], [wId], [cinema], [mod])
+          lockedGold += goldOf(lock.cinema, lock.wengine) - goldOf(0, 1)
+        }
+      }
       points.push({
         presetId: preset.id,
         presetName: preset.name,
-        // 显示用金数 = 总限定金（限定角色本体+限定音擎本体+影画/精炼步+仍穿的限定下位本体）
-        goldCount: totalGold + autoLimitedGold,
+        // 显示用金数 = 总限定金（限定角色本体+限定音擎本体+影画/精炼步+仍穿的限定下位本体；
+        // 有逐槽锁定时按最终配置重算，见上）
+        goldCount: lockedGold,
         goldLabel: label,
         standardGoldLabel: standardLabel || undefined,
         cinemas,

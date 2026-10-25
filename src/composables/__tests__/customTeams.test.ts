@@ -165,6 +165,32 @@ describe('自定义队伍（2026-10-11）', () => {
     }
   })
 
+  it('★ 逐槽配置码：进 TeamPreset（散点/曲线同源）、换人自动清该槽的码、全清后字段消失', async () => {
+    await loadCatalog()
+    const store = useCustomTeamsStore()
+    const def = store.add()
+    store.setSlot(def.id, 0, '1571')
+    store.setSlot(def.id, 1, '1211')
+    store.setSlot(def.id, 2, '1611')
+    // 诺姆 30 / 丽娜 65 / 克拉蕾 61
+    store.setSlotCode(def.id, 0, { cinema: 3, wengine: 1 })
+    store.setSlotCode(def.id, 1, { cinema: 6, wengine: 5 })
+    store.setSlotCode(def.id, 2, { cinema: 6, wengine: 1 })
+    const preset = store.byId(def.id)!
+    expect(preset.slotCodes).toEqual([{ cinema: 3, wengine: 1 }, { cinema: 6, wengine: 5 }, { cinema: 6, wengine: 1 }])
+    // 物化进 TeamPreset：难度曲线/散点直接吃（不是页面级开关）
+    expect(store.toCustomPreset(preset).slotCodes).toEqual(preset.slotCodes)
+    // ★ 换人 ⇒ 该槽的码作废（码是「这个角色的 2 命 1 精」，换人还留着 = 给新角色套别人的档位）
+    store.setSlot(def.id, 1, '1311')
+    expect(store.byId(def.id)!.slotCodes?.[1]).toBeNull()
+    expect(store.byId(def.id)!.slotCodes?.[0]).toEqual({ cinema: 3, wengine: 1 })
+    // 全清 ⇒ 字段整体消失（不留一串 null）
+    store.setSlotCode(def.id, 0, null)
+    store.setSlotCode(def.id, 2, null)
+    expect(store.byId(def.id)!.slotCodes).toBeUndefined()
+    expect(store.toCustomPreset(store.byId(def.id)!).slotCodes).toBeUndefined()
+  })
+
   it('自定义队声明了 @fact 锚点（锚符号存在）', () => {
     const s = readFileSync(join(process.cwd(), 'src/composables/customTeams.ts'), 'utf8')
     expect(s).toContain('@fact preset:自定义队伍')

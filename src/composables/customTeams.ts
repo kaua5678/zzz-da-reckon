@@ -33,6 +33,12 @@ export const CUSTOM_TEAMS_KEY = 'zzz-custom-teams:v1'
 /** 自定义队 id 前缀：与预设库（`auto-*` / 手编）在同一个 `selectedPresetIds` 命名空间里共存 */
 export const CUSTOM_TEAM_PREFIX = 'custom-'
 
+/** 一个槽位的固定配置码（`null` = 不固定）；形状与 `TeamPreset.slotCodes` 一致 */
+export interface SlotCode {
+  cinema: number
+  wengine: number
+}
+
 /** 自定义队定义：只有成员是用户输入的，其余全是派生 */
 export interface CustomTeamDef {
   /** id（`custom-` + 稳定序号；重命名不改 id，避免已选清单失配） */
@@ -41,6 +47,17 @@ export interface CustomTeamDef {
   name: string
   /** 槽位成员（长度 3，空串 = 空槽）；引擎按位压缩，故允许少于 3 人 */
   team: [string, string, string]
+  /**
+   * 逐槽固定配置码（2026-10-25，用户：「队友是固定65丽娜61克拉蕾」「比较同样克拉蕾和丽娜配置的
+   * 不同配置诺姆的难度曲线」）。
+   *
+   * 为什么在**队伍**上而不是在页面上：一支队 = 3 人 + 3 套配置。「诺姆30 队」与「诺姆11 队」
+   * 是两支队（队友相同、诺姆不同），要各出一条曲线 ⇒ 配置必须跟着队伍走，才能同时进
+   * 散点 / 难度曲线 / 归档对拍。页面级全局开关只能给当次运行套同一个覆盖。
+   *
+   * 长度 3，`null` = 该槽不固定（走 01 基线/加金）。
+   */
+  slotCodes?: Array<SlotCode | null>
 }
 
 /**
@@ -63,7 +80,22 @@ function parseCustomTeams(stored: unknown): CustomTeamDef[] | undefined {
     const slots = team.map(v => (typeof v === 'string' ? v : '')) as [string, string, string]
     if (!slots.some(Boolean)) continue // 全空的条目没有意义，静默丢弃
     seen.add(id)
-    out.push({ id, name: typeof name === 'string' ? name : '', team: slots })
+    // slotCodes：只收形状合法的（三位、每位 null 或 {cinema 0-6, wengine 1-5}）；坏条目整体丢弃
+    // 而不是部分保留——半份配置比没有更危险（用户会以为锁上了）
+    const rawCodes: unknown = 'slotCodes' in raw ? (raw as Record<string, unknown>).slotCodes : undefined
+    let slotCodes: CustomTeamDef['slotCodes']
+    if (Array.isArray(rawCodes) && rawCodes.length === 3) {
+      const ok = rawCodes.every(code => {
+        if (code === null) return true
+        if (!code || typeof code !== 'object') return false
+        const cinema: unknown = 'cinema' in code ? (code as Record<string, unknown>).cinema : undefined
+        const wengine: unknown = 'wengine' in code ? (code as Record<string, unknown>).wengine : undefined
+        return typeof cinema === 'number' && Number.isFinite(cinema) && cinema >= 0 && cinema <= 6
+          && typeof wengine === 'number' && Number.isFinite(wengine) && wengine >= 1 && wengine <= 5
+      })
+      if (ok) slotCodes = rawCodes as CustomTeamDef['slotCodes']
+    }
+    out.push({ id, name: typeof name === 'string' ? name : '', team: slots, ...(slotCodes ? { slotCodes } : {}) })
   }
   return out.length > 0 ? out : undefined
 }
@@ -113,8 +145,25 @@ export const useCustomTeamsStore = defineStore('customTeams', () => {
     defs.value = defs.value.map(d => {
       if (d.id !== id) return d
       const team = [...d.team] as [string, string, string]
+      if (team[slot] === next) return d
       team[slot] = next
-      return { ...d, team }
+      // 换人 ⇒ 该槽的固定码作废（见 setSlotCode 注释）
+      const codes: Array<SlotCode | null> | null = d.slotCodes ? [...d.slotCodes] : null
+      if (codes) codes[slot] = null
+      return { ...d, team, ...(codes && codes.some(c => c !== null) ? { slotCodes: codes } : { slotCodes: undefined }) }
+    })
+  }
+
+  /**
+   * 设某槽的固定配置码（`null` = 不固定）。成员换人时**自动清掉该槽的码**——
+   * 配置码是「这个角色的 2 命 1 精」，换了角色还留着就是给新角色套别人的档位（静默错数）。
+   */
+  function setSlotCode(id: string, slot: 0 | 1 | 2, code: SlotCode | null) {
+    defs.value = defs.value.map(d => {
+      if (d.id !== id) return d
+      const next: Array<SlotCode | null> = d.slotCodes ? [...d.slotCodes] : [null, null, null]
+      next[slot] = code
+      return { ...d, slotCodes: next.every(c => c === null) ? undefined : next }
     })
   }
 
@@ -132,6 +181,8 @@ export const useCustomTeamsStore = defineStore('customTeams', () => {
       team: def.team,
       goldSteps: [],
       interactions: [],
+      // 逐槽固定配置（2026-10-25）：有码 ⇒ 这支队带固定配装，散点/曲线/对拍全走同一条路
+      ...(def.slotCodes && def.slotCodes.some(c => c !== null) ? { slotCodes: def.slotCodes } : {}),
     }
   }
 
@@ -166,7 +217,7 @@ export const useCustomTeamsStore = defineStore('customTeams', () => {
     return defs.value.find(d => d.id === id)
   }
 
-  return { defs, presets, knownAgentIds, add, remove, setName, setSlot, displayName, toCustomPreset, byId, hasUnknownMembers }
+  return { defs, presets, knownAgentIds, add, remove, setName, setSlot, setSlotCode, displayName, toCustomPreset, byId, hasUnknownMembers }
 })
 
 /**
