@@ -1215,6 +1215,12 @@ export interface CurveDatum {
    * UI「轴态」列直接读它，**不**各自读 `axisFallback` 拼语义。
    */
   axis: AxisState
+  /**
+   * 这一点的**交互量**（R10 第 3 条「并排显示交互次数」的数据源）。
+   * `filled` = 手填（缩前）、`played` = 实打（缩后），都来自 `LadderPoint` 同一次求值。
+   * 缺失 = 该档没采交互量快照（`capture` 未给）——**不写 0**（0 是测到 0）。
+   */
+  interactions?: { filled: number; played: number }
   /** 相对上一点**变多**的关键次数（空 = 这一点没有次数跃迁） */
   changes: KeyCountChange[]
   /**
@@ -1522,6 +1528,9 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
       point: p.point,
       knobs: p.knobs,
       axis: p.axis,
+      ...(p.interactionsFilled !== undefined && p.interactionsPlayed !== undefined
+        ? { interactions: { filled: p.interactionsFilled, played: p.interactionsPlayed } }
+        : {}),
       changes: diffKeyCounts(r.ladder.points[i - 1]?.counts, p.counts),
       dmgChanges: diffDmgBySource(r.ladder.points[i - 1]?.dmgBySource, p.dmgBySource),
       hint: truncationHintAt(r.ladder.points, i),

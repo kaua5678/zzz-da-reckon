@@ -334,6 +334,99 @@
 
 /* 非轴参照曲线（用户 2026-10-16：「表示模拟均匀战斗而不是集中利用失衡易伤」）：
    灰色空心小圆 + 虚线 —— 与轴曲线（队伍色实心圆 + 实线）形状与线型都不同，一眼可分。 */
+/* ===== 轴态编码（R10，2026-10-16 用户口径）=====
+   形状 = 轴态，颜色仍 = 队伍身份。四种图形与既有五种（实心圆/空心菱形/空心方框/圆环/灰点）互斥，
+   口径与映射的唯一事实源 = `composables/axisMarker.ts`。 */
+
+/* 半实心：右半圆填充 + 整圆描边（"轴打了一半"的字面表达）。stroke 由组件按队伍色给。 */
+.scatter-axis-half {
+  stroke-width: 1.2;
+  opacity: 0.9;
+}
+/* 空心：无轴（没绑轴，不是没打完）。 */
+.scatter-axis-hollow {
+  opacity: 0.85;
+}
+/* 被轴砍掉的档（曲线下方打叉，不连线）——鼠标可点开该档资源池。 */
+.curve-axis-cut {
+  cursor: pointer;
+}
+
+/* 轴态图例（形状演示用内联 svg；墨色跟随页面，不跟随队伍色——图例讲的是**形状**不是某支队） */
+.curve-axis-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 10px;
+  white-space: nowrap;
+}
+.curve-axis-legend-icon {
+  flex: 0 0 auto;
+  vertical-align: middle;
+}
+.curve-axis-legend-shape {
+  fill: var(--fg-2);
+}
+.curve-axis-legend-ring {
+  stroke: var(--fg-2);
+  stroke-width: 1.6;
+}
+
+/* 「这一档的轴」面板（点开曲线点 ⇒ 资源池 ⇒ 轴视图） */
+.curve-axis-detail {
+  margin: 8px 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  background: var(--app-inset);
+}
+.curve-axis-title {
+  font-size: 12px;
+  line-height: 1.7;
+  margin-bottom: 4px;
+}
+.curve-axis-compare {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 12px;
+  margin: 4px 0 6px;
+}
+.curve-axis-skips {
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.curve-axis-skip-tag {
+  color: var(--c-warning);
+  margin-right: 2px;
+}
+.curve-axis-list {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.curve-axis-row {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 1px 0;
+}
+.curve-axis-row-skip {
+  color: var(--c-warning);
+}
+.curve-axis-slot {
+  color: var(--fg-3);
+}
+.curve-axis-move {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.curve-axis-reason,
+.curve-axis-count {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 .curve-noaxis-dot {
   stroke: var(--fg-3);
 }

@@ -589,9 +589,23 @@
             <!-- 曲线点：**可点** ⇒ 下方展开该档资源池（用户 2026-10-16）。命中区比可见圆大
                  （r=3.5 太小点不中）：外包一层 r=9 的透明圆接指针事件。 -->
             <g v-for="(p, pi) in s.pts" :key="'cp' + si + '-' + pi">
-              <circle
-                :cx="p.cx" :cy="p.cy" :r="3.5" :fill="s.color" opacity="0.9"
-                class="scatter-dot" stroke-width="0.5"
+              <!-- **轴态形状**（R10，用户 2026-10-16）：编码唯一事实源 = `axisMarker.ts#axisMarkerOf`。
+                   ⚠ 用 `path` 而不是 `circle` + 派生 `fill`：SVG 呈现属性（`fill`/`stroke` 属性）
+                   会被任何类选择器压掉（见 UI_THEME_GUIDE §4），而**双色**（半实心）必须跨两个形状。
+                   故这里把「实心/半实心/空心」都写成显式 path：颜色仍由队伍色 s.color 表达。 -->
+              <path
+                v-if="p.axisShape === 'solid'"
+                :d="dotPath(p.cx, p.cy, 3.5)" :fill="s.color" opacity="0.9" class="scatter-dot"
+              />
+              <path
+                v-else-if="p.axisShape === 'half'"
+                :d="halfPath(p.cx, p.cy, 4)" :fill="s.color" opacity="0.9"
+                class="scatter-dot scatter-axis-half" :style="{ stroke: s.color }"
+              />
+              <path
+                v-else
+                :d="dotPath(p.cx, p.cy, 3.5)" fill="none" :style="{ stroke: s.color }"
+                class="scatter-dot scatter-axis-hollow" stroke-width="1.4"
               />
               <circle
                 :cx="p.cx" :cy="p.cy" :r="9" fill="transparent"
@@ -599,7 +613,7 @@
                 @mouseenter="curveHover = { si, pi }" @mouseleave="curveHover = null"
                 @click="inspectCurvePoint(s.laneKey, p, 'point')"
               >
-                <title>{{ `${s.label} · ${pointLabel(p.point)}：点击查看该档资源池` }}</title>
+                <title>{{ `${s.label} · ${pointLabel(p.point)} · ${p.axisLegend}：点击查看该档资源池` }}</title>
               </circle>
             </g>
             <!-- **曲线外的补充点**（用户口径 2026-10-14「同 x 难度的不同 y，是难度曲线外面的
@@ -640,6 +654,20 @@
                 text-anchor="middle" class="curve-jump-label" font-size="9"
               >{{ j.text }}</text>
             </g>
+            <!-- **被轴砍掉的档**（R10，用户 2026-10-16「4 失衡但某些招式没打出来」）：
+                 画在曲线**下方**、不连线、**打叉**。与上面的截断方框（交互被时间线砍）是两回事：
+                 那个是「打了但砍短」，这个是「整档不成立」（`axisRequirementMet` 为假）。
+                 可点 ⇒ 展开该档资源池（与被砍档同一条 `inspectCurvePoint` 链）。 -->
+            <g v-for="(c, ci) in s.cutPts" :key="'cc' + si + '-' + ci">
+              <path
+                :d="crossPath(c.cx, c.cy, 3.2)" fill="none" :style="{ stroke: s.color }"
+                class="scatter-dot curve-axis-cut" stroke-width="1.3" opacity="0.75"
+                @mouseenter="cutHover = { si, ci }" @mouseleave="cutHover = null"
+                @click="inspectCurvePoint(s.laneKey, c as unknown as CurveDatum, 'axisTruncated', c.reason)"
+              >
+                <title>{{ `${s.label} · ${pointLabel(c.point)} · 轴态：${c.legend}：点击查看该档资源池` }}</title>
+              </path>
+            </g>
             <!-- 截断提醒（用户 2026-10-06）：这一档交互被砍 ⇒ 空心方框 + 「还差 N 次」小字。
                  与跃迁标注（圆环 + 文字）用**不同形状**区分，且文字走同一套分道/碰撞剔除防重叠。 -->
             <g v-for="(t, ti) in s.truncPts" :key="'ct' + si + '-' + ti">
@@ -670,6 +698,23 @@
               <template v-if="noAxisVulnShare < 1">低于 100% = 你认为只兑现了这么多失衡易伤</template>
               <template v-else>100% = 每招按同一比例吃易伤，完全均匀摊</template>）
             </template>
+          </span>
+          <!-- **轴态图例**（R10，用户 2026-10-16「不知道是无轴 / 完整 4 失衡 / 还是某些招式没打出来」）：
+               编码 = 填充形状（不是颜色——颜色已被队伍身份色占用，且同队四点同色）⟹ 双主题 + 色盲都可分。 -->
+          <span class="legend-hint curve-axis-legend">
+            <b>轴态</b>（形状 = 轴态，颜色仍 = 队伍）：
+            <span v-for="(lg, li) in axisLegend" :key="'ax' + li" class="curve-axis-legend-item">
+              <svg class="curve-axis-legend-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <path v-if="lg.shape === 'solid'" :d="dotPath(8, 8, 4)" class="curve-axis-legend-shape" />
+                <template v-else-if="lg.shape === 'half'">
+                  <path :d="halfPath(8, 8, 4.5)" class="curve-axis-legend-shape" />
+                  <path :d="dotPath(8, 8, 4.5)" fill="none" class="curve-axis-legend-ring" />
+                </template>
+                <path v-else-if="lg.shape === 'hollow'" :d="dotPath(8, 8, 4)" fill="none" class="curve-axis-legend-ring" />
+                <path v-else :d="crossPath(8, 8, 4)" fill="none" class="curve-axis-legend-ring" />
+              </svg>
+              {{ lg.legend }}<template v-if="lg.onCurve === 'below'">（画在曲线<b>下方</b>、不连线）</template>
+            </span>
           </span>
           <span class="legend-hint">
             <b>失衡进度</b>（tooltip）＝ 离下一次完整失衡还差多少失衡值：
@@ -803,6 +848,58 @@
       <div v-if="curvePool.loading.value" class="empty-hint">重算该档资源池中…</div>
       <div v-else-if="curvePool.error.value" class="empty-hint curve-neg">重算失败：{{ curvePool.error.value }}</div>
       <template v-else-if="curvePool.pool.value">
+        <template v-if="curvePool.pool.value">
+        <!-- **这一档的轴**（R10 第 2 条）：逐条列出轴内动作 / 被跳过的招 + 原因 + 打出来的次数。
+             数据全部来自引擎读数（`axisDetailOf` 只做分组，不重算判定）。 -->
+        <div class="curve-axis-detail">
+          <div class="curve-axis-title">
+            这一档的轴 · <b>{{ curveAxisDetail.title }}</b>
+            <span class="td-muted">（{{ curveAxisDetail.note }}）</span>
+          </div>
+          <!-- **交互 / 合轴并排**（R10 第 3 条：用户要「对照交互和合轴率看能不能优化」）。
+               缺省写「—」并带原因，**不写 0**（0 是测到 0，null 是没测）。 -->
+          <div class="curve-axis-compare">
+            <span>
+              交互 手填 <b>{{ curveAxisCompare.interactionsFilled ?? '—' }}</b>
+              / 实打 <b>{{ curveAxisCompare.interactionsPlayed ?? '—' }}</b>
+              <span v-if="curveAxisCompare.nullReason.interactionsFilled" class="td-muted">（{{ curveAxisCompare.nullReason.interactionsFilled }}）</span>
+            </span>
+            <span>
+              合轴吸收 <b>{{ curveAxisCompare.absorb === null ? '—' : fmt(curveAxisCompare.absorb * 100, 0) + '%' }}</b>
+              <span v-if="curveAxisCompare.nullReason.absorb" class="td-muted">（{{ curveAxisCompare.nullReason.absorb }}）</span>
+            </span>
+            <span>
+              合轴节省 <b>{{ curveAxisCompare.overlapSeconds === null ? '—' : fmt(curveAxisCompare.overlapSeconds, 2) + 's' }}</b>
+              <span v-if="curveAxisCompare.nullReason.overlapSeconds" class="td-muted">（{{ curveAxisCompare.nullReason.overlapSeconds }}）</span>
+            </span>
+          </div>
+          <div v-if="curveAxisDetail.skipTotals.length > 0" class="curve-axis-skips">
+            跳过原因：
+            <span v-for="(t, ti) in curveAxisDetail.skipTotals" :key="t.reason" class="curve-axis-skip-tag">
+              {{ t.text }} <b>{{ t.count }}</b> 招<template v-if="ti < curveAxisDetail.skipTotals.length - 1">、</template>
+            </span>
+          </div>
+          <div v-if="curveAxisDetail.skipped.length > 0" class="curve-axis-list">
+            <div class="td-muted">被跳过的动作（{{ curveAxisDetail.skipped.length }} 条）</div>
+            <div v-for="(k, ki) in curveAxisDetail.skipped" :key="'sk' + ki" class="curve-axis-row curve-axis-row-skip">
+              <span class="curve-axis-slot">{{ slotLabels[k.slot] ?? (k.slot + 1) + ' 号位' }}</span>
+              <span class="curve-axis-move">{{ k.name }}</span>
+              <span class="curve-axis-reason">{{ k.reasonText }}</span>
+            </div>
+          </div>
+          <div v-if="curveAxisDetail.executed.length > 0" class="curve-axis-list">
+            <div class="td-muted">轴内实际执行（{{ curveAxisDetail.executed.length }} 条）</div>
+            <div v-for="(e, ei) in curveAxisDetail.executed" :key="'ex' + ei" class="curve-axis-row">
+              <span class="curve-axis-slot">{{ slotLabels[e.slot] ?? (e.slot + 1) + ' 号位' }}</span>
+              <span class="curve-axis-move">{{ e.name }}</span>
+              <span class="curve-axis-count">{{ fmt(e.count, 2) }} 次<template v-if="Math.abs(e.inAxisCount - e.count) > 1e-9">（窗内 {{ fmt(e.inAxisCount, 2) }}）</template></span>
+            </div>
+          </div>
+          <div v-else-if="curveAxisDetail.kind !== 'none'" class="empty-hint">
+            引擎这一档没有执行任何轴内动作（轴被弃或全被门控掉）——如实为空，不补造。
+          </div>
+        </div>
+        </template>
         <div class="compare-note curve-note">
           总伤害 {{ compact(curvePool.pool.value.damage) }} · 迭代 {{ curvePool.pool.value.resourceResult.iterations }} 次
           {{ curvePool.pool.value.resourceResult.converged ? '·已收敛' : '·未收敛' }}
@@ -1013,9 +1110,11 @@ import { computeCinemaUpliftGrid, type CinemaUpliftGridResult, type GridColSpec,
 import { useCurvePointPool } from '@/composables/curvePointPool'
 import { deltaKeys } from '@/composables/configDelta'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
+import { findMoveById } from '@/data/moveTableQueries'
 import { useLogicEditorStore } from '@/stores/logicEditor'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, axisWorseThanNoAxis, type CurveDatum, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
+import { axisCompareOf, axisCutMarkerOf, axisDetailOf, axisMarkerLegend, axisMarkerOf } from '@/composables/axisMarker'
 import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from '@/composables/resourceCalc/noAxisVulnShare'
 import type { KnobPointName } from '@/composables/difficultyLadder'
 import { useSeriesFilter } from '@/composables/seriesFilter'
@@ -2105,11 +2204,32 @@ function cntRangeWithDmg(c: KeyCountChange, dmgChanges: { label: string; delta: 
 function signedDmg(v: number): string {
   return `${v >= 0 ? '+' : '−'}${compact(Math.abs(v))}`
 }
+/**
+ * 轴态形状用的小 path 生成器（R10）。**只做几何**，语义映射住 `axisMarker.ts`。
+ *
+ * ⚠ 为什么不用 `<circle :fill="...">`：① 半实心要跨两个形状（一个圆 + 半个扇形）才能表达；
+ * ② SVG 呈现属性会被类选择器压掉（UI_THEME_GUIDE §4）。故统一走 `path d` + `:fill`/`:style`。
+ */
+function dotPath(cx: number, cy: number, r: number): string {
+  return `M ${cx - r} ${cy} a ${r} ${r} 0 1 0 ${2 * r} 0 a ${r} ${r} 0 1 0 ${-2 * r} 0`
+}
+/** 半实心：右半圆填充 + 整圆描边（"轴打了一半"的字面表达，且与空心圆/实心圆都能区分） */
+function halfPath(cx: number, cy: number, r: number): string {
+  return `M ${cx} ${cy - r} a ${r} ${r} 0 0 1 0 ${2 * r} Z`
+}
+/** 被砍档的打叉（曲线下方，不连线）——与曲线点形状互斥，见 `axisMarker.ts` 文件头表 */
+function crossPath(cx: number, cy: number, r: number): string {
+  return `M ${cx - r} ${cy - r} L ${cx + r} ${cy + r} M ${cx + r} ${cy - r} L ${cx - r} ${cy + r}`
+}
+
 const curveSeriesPx = computed(() => {
   const series = (curveData.value?.series ?? []).map(s => ({
     ...s,
     color: colorOf(s.presetId),
-    pts: s.points.map(p => ({ ...p, cx: curveXOf(p.cost), cy: curveYOf(p.ratio) })),
+    pts: s.points.map(p => {
+      const m = axisMarkerOf(p.axis)
+      return { ...p, cx: curveXOf(p.cost), cy: curveYOf(p.ratio), axisShape: m.shape, axisLegend: m.legend }
+    }),
     /**
      * **非轴参照点**（用户口径 2026-10-16 二次澄清）：
      * > 「原来是砍掉了，**砍掉是正确的**，因为**残缺的数值不适合展示**。我本意是想展示**非轴模式**的数据的，
@@ -2153,6 +2273,19 @@ const curveSeriesPx = computed(() => {
     })),
     // 截断档（用户 2026-10-06）：图上只标「被砍得最狠的前 2 档」（同跃迁标注的取舍口径——
     // 一条曲线能有 5 档被砍，全标必叠；完整清单在「截断提醒」面板与 tooltip 里）。
+    /**
+     * **被轴砍掉的档**（R10）：画在曲线**下方**、不连线、打叉。
+     * 与 `truncPts`（交互被时间线砍，空心方框）是**两个容器**，图形与文案都不许混。
+     * 只有该档量到 x（`costOf` 给了）且能在图上定位时才画——没有 x 就是没有可画的坐标，不编一个。
+     */
+    cutPts: s.axisTruncated
+      .filter(t => t.x !== undefined && Number.isFinite(t.x) && t.x >= 0)
+      .map(t => ({
+        ...t,
+        cx: curveXOf(t.x!),
+        cy: curveYOf(t.ratio),
+        legend: axisCutMarkerOf(t.axis).detail,
+      })),
     truncPts: s.truncated.map(t => ({
       ...t,
       cx: curveXOf(t.cost),
@@ -2322,6 +2455,54 @@ async function inspectCurvePoint(laneKey: string, p: CurveDatum, source: 'point'
   await curvePool.load(p.scene)
 }
 const curvePoolPickReason = ref('')
+/** 轴态图例（唯一来源 = `axisMarkerLegend()`；页面不手写第二套形状↔含义映射） */
+const axisLegend = axisMarkerLegend()
+/**
+ * 「这一档的轴」视图（R10）——**只从本档重算结果读**（`curvePool.pool.value`），不在页面重算判定。
+ * `axisDetailOf` 的分组口径住 `composables/axisMarker.ts`（纯函数，有判据）。
+ */
+const curveAxisDetail = computed(() => {
+  const picked = curvePoolPick.value
+  const pool = curvePool.pool.value
+  // 没选中点 / 本档还没重算完 ⇒ 空态（**不编**一个「无轴」出来）
+  const empty = axisDetailOf(
+    { kind: 'none', skipped: { time: 0, decibel: 0, energy: 0, sway: 0 }, skippedTotal: 0, fallback: false },
+    null,
+    (slot, moveId) => axisMoveNameOf(slot, moveId),
+  )
+  if (!picked || !pool) return empty
+  const series = curveData.value?.series.find(x => x.laneKey === picked.laneKey)
+  // 曲线上的点优先；不在曲线上 = 被轴砍掉的档（`axisTruncated`）
+  const pt = series?.points.find(x => x.point === picked.point && Math.abs(x.cost - picked.cost) < 1e-9)
+  const axis = pt?.axis
+    ?? series?.axisTruncated.find(t => t.point === picked.point && t.x !== undefined && Math.abs(t.x - picked.cost) < 1e-9)?.axis
+  if (!axis) return empty
+  return axisDetailOf(axis, pool.axisStack, (slot, moveId) => axisMoveNameOf(slot, moveId))
+})
+/** 交互 / 合轴吸收 / 合轴节省的三项并排（缺省 null + 原因，不写 0——见 `axisCompareOf`） */
+const curveAxisCompare = computed(() => {
+  const picked = curvePoolPick.value
+  if (!picked) return axisCompareOf({})
+  const series = curveData.value?.series.find(x => x.laneKey === picked.laneKey)
+  const pt = series?.points.find(x => x.point === picked.point && Math.abs(x.cost - picked.cost) < 1e-9)
+  const pool = curvePool.pool.value
+  return axisCompareOf({
+    interactions: pt?.interactions ?? null,
+    absorb: pt?.knobs.absorb ?? null,
+    stack: pool?.axisStack ?? null,
+  })
+})
+/**
+ * 招式名解析（轴视图用）：槽位 → 该槽角色 → 目录招式表。
+ * 解析不到就回落 `moveId`（**不编名字**：编一个像真的中文比显示 id 更危险）。
+ */
+function axisMoveNameOf(slot: number, moveId: string): string {
+  const skills = catalogStore.getAgentSkills(configStore.team[slot]?.agentId ?? '')
+  const m = findMoveById(skills, moveId)
+  return m?.name?.zhCN ?? moveId
+}
+/** 被砍档（R10 打叉）的悬停态：与曲线点 hover（`curveHover`）分开，两者图形不同、文案不同 */
+const cutHover = ref<{ si: number; ci: number } | null>(null)
 /** 选中点相对运行起点的**输入变动键**（诊断用：一眼看出这一档改了队伍还是机制设置） */
 const curvePoolChangedKeys = computed<string[]>(() => {
   const pick = curvePoolPick.value

@@ -29,6 +29,7 @@ import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { restoreStateDelta } from '@/composables/configDelta'
 import type { LadderPointScene } from '@/composables/difficultyLadder'
 import type { AnomalyPoolResult, StunPoolResult, TeamResourceResult } from '@/types/resource'
+import type { StackTraversalResult } from '@/core/stunAxisStack'
 
 export interface CurvePointPoolResult {
   resourceResult: TeamResourceResult
@@ -49,6 +50,14 @@ export interface CurvePointPoolResult {
   windowDuration: number
   /** 该档的**有效战斗时间**（秒）= `useResourceCalc#stunEffectiveTime`（战斗时间 − 无敌时间） */
   effectiveTime: number
+  /**
+   * 该档的**轴栈**（R10「这一档的轴」视图的数据源；`useResourceCalc#stackTraversalResult`）。
+   *
+   * 为什么必须在这里带出来而不是页面现读：本档现场是**差分重放**出来的，页面上的
+   * `stackTraversalResult` 属于「当前档」而非「用户点开的那一档」——现读会显示另一个档的轴。
+   * `null` = 非轴队 / 弃轴（**如实**为空，不补一行「平A」凑数）。
+   */
+  axisStack: StackTraversalResult | null
 }
 
 export function useCurvePointPool() {
@@ -88,6 +97,7 @@ export function useCurvePointPool() {
           damage: s.calc.teamTotalDamage.value,
           windowDuration: s.calc.windowDuration.value,
           effectiveTime: s.calc.stunEffectiveTime.value,
+          axisStack: s.calc.stackTraversalResult.value,
         }
       })
       if (my !== token) return
@@ -102,6 +112,7 @@ export function useCurvePointPool() {
         damage: out.damage,
         windowDuration: out.windowDuration,
         effectiveTime: out.effectiveTime,
+        axisStack: out.axisStack,
         ms: performance.now() - t0,
       }
     } catch (e) {

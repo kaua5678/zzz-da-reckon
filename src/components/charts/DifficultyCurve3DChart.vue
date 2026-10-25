@@ -29,6 +29,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { project3d, versionGridOf, zGridOf, type BossHpPoint, type Camera3D, type VersionLane } from '@/composables/difficultyCurve3d'
 import { seriesForLane, type CurveDatum, type CurveSeries } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
+import { axisMarkerOf } from '@/composables/axisMarker'
 import { fmt } from '@/utils/format'
 import { readThemeVar, withAlpha } from '@/utils/canvasTheme'
 import { useCanvasScene } from '@/composables/charts/useCanvasScene'
@@ -42,6 +43,16 @@ const sceneDim = () => readThemeVar('--scene-ink-dim')
 const sceneDanger = () => readThemeVar('--c-danger')
 
 /**
+ * ## 轴态可视化（R10，2026-10-16 用户口径）
+ *
+ * 2D 图「轴态 = 填充形状」的编码在 3D **同样生效**（不是 3D 另立一套）：点的几何直接读
+ * `composables/axisMarker.ts#axisMarkerOf` —— 实心圆 = 完整轴 / 半实心（右半圆填充 + 整圆描边）=
+ * 轴带残缺照跑 / 空心圆 = 无轴 / 打叉 = 该档不成立。颜色仍表达队伍身份。
+ *
+ * ⚠ 3D **不画**「被轴砍掉的档」（2D 里画在曲线下方的打叉）：那些档按口径就**不进曲线**
+ *   （`axisRequirementMet` 为假 ⇒ `axisTruncated`），而 3D 的 z 轴是「伤害」——把不成立的档画进
+ *   同一张 3D 曲线里，会让「难度↑伤害↑」的读法直接失真。它们只在 2D 下方作对照 + 点开看资源池。
+ *
  * 难度曲线 3D（版本轴）：x = 操作难度绝对值（与 2D 同尺）、y（深度）= 版本道（`deriveVersionAxis`）、z = 伤害。
  * 每队一条道：折线 + 落到地板的「幕布」+ 关键次数跃迁标记；画家算法按道位由近到远画。
  * 纯 canvas 2D 自绘（与 TeamDamage3DChart 同款做法，不引 WebGL），渲染只读 props，不碰 store。
@@ -333,8 +344,29 @@ function drawFrame(ctx: CanvasRenderingContext2D) {
     ctx.setLineDash([]); ctx.lineWidth = 1
     // 点 + 关键次数跃迁圈
     pts.forEach((p, pi) => {
+      const shape = axisMarkerOf(s.points[pi]!.axis).shape
       ctx.fillStyle = color
-      ctx.beginPath(); ctx.arc(p.sx, p.sy, 3.2, 0, Math.PI * 2); ctx.fill()
+      ctx.strokeStyle = color
+      if (shape === 'solid') {
+        ctx.beginPath(); ctx.arc(p.sx, p.sy, 3.2, 0, Math.PI * 2); ctx.fill()
+      } else if (shape === 'half') {
+        // 半实心：右半圆填充 + 整圆描边（与 2D 同语义，见 composables/axisMarker.ts）
+        ctx.beginPath(); ctx.arc(p.sx, p.sy, 3.6, -Math.PI / 2, Math.PI / 2); ctx.closePath(); ctx.fill()
+        ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.sx, p.sy, 3.6, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1
+      } else {
+        // 空心（无轴）/ 打叉（轴不可行）：都不填，只描边/画叉
+        ctx.lineWidth = 1.4
+        if (shape === 'cross') {
+          const r = 3.4
+          ctx.beginPath()
+          ctx.moveTo(p.sx - r, p.sy - r); ctx.lineTo(p.sx + r, p.sy + r)
+          ctx.moveTo(p.sx + r, p.sy - r); ctx.lineTo(p.sx - r, p.sy + r)
+          ctx.stroke()
+        } else {
+          ctx.beginPath(); ctx.arc(p.sx, p.sy, 3.4, 0, Math.PI * 2); ctx.stroke()
+        }
+        ctx.lineWidth = 1
+      }
       if (s.points[pi]!.changes.some(c => c.major)) {
         ctx.strokeStyle = color; ctx.beginPath(); ctx.arc(p.sx, p.sy, 6.5, 0, Math.PI * 2); ctx.stroke()
       }
