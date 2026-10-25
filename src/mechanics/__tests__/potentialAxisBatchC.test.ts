@@ -67,24 +67,32 @@ async function arm(team: Array<Record<string, unknown> | ''>) {
 }
 
 describe('R60 · 1101 珂蕾妲潜能觉醒·爆破作业（潜能 II~VI 锐暴 4/6/8/10/12 与 暴伤 11/17/23/29/35，与影画无关）', () => {
-  it('① 常量层：spec 闭式逐位复现定稿档位表 + 本仓 raw 仍是滞后占位（出处已换 live nanoka）', async () => {
+  it('① 常量层：spec 闭式逐位复现**原文**档位表（raw 已是 live 正式包，不再靠外部记录当出处）', async () => {
     const { map, raw } = potentialByLevel('1101')
     const sharpTier = [4, 6, 8, 10, 12]
     const critTier = [11, 17, 23, 29, 35]
 
-    // ⚠⚠ **本条的证据链特殊性（R60 实测，必须写在判据里）**：
-    // 本仓 `data/raw/nanoka_missing/full/1101.json` 的 `potential_detail` 是**旧 (Test1) 占位**
-    // （「锋御暴击率 8~16% / 非锋御暴伤 16~32%」），**不是**定稿 —— 定稿值来自 **nanoka live 3.2**
-    // （R60 复取 `static.nanoka.cc/zzz/3.2/{zh,en}/character/1101.json` 双语逐档核对一致；
-    // 中文「锐暴伤害 / 暴击伤害」口径与数值 II~VI 均吻合）。
-    // ⇒ 本用例**不能**拿本仓 raw 当定稿出处（那会把定稿误判成错的）。改为两条：
-    //   (a) 钉住「本仓 raw 是占位」这个**事实**——若将来 raw 被刷新，本断言会红 ⇒ 提示重新核对定稿；
-    //   (b) 断言 **spec 实现闭式 == 定稿档位表**（定稿出处 = spec note 里的 live 抓取记录）。
-    for (const lv of [2, 3, 4, 5, 6]) {
+    // ## 证据链（2026-10-25 换尺，**这是口径纠正不是放松判据**）
+    //
+    // R60 当时本仓 `data/raw/nanoka_missing/full/1101.json` 的 `potential_detail` 还是**测试服
+    // (Test1) 占位**（「锋御暴击率 8~16% / 非锋御暴伤 16~32%」），定稿只能靠 spec note 里记的
+    // live 3.2 抓取记录 ⇒ 上一版判据刻意**钉住「raw 是占位」**，raw 一刷新就红并提示重核。
+    //
+    // 2026-10-25 用户点名「珂蕾妲觉醒官方做好了」⇒ 重爬 `node scripts/fetch-nanoka-full-missing.mjs 1101 --force`
+    // （nanoka 正式服 **3.3**）后 raw 已是正式包，原文逐档：
+    //   Lv II..VI 锋御「锐暴伤害提升 **4/6/8/10/12%**」、非锋御「暴击伤害提升 **11/17/23/29/35%**」
+    // ⇒ 与 R60 定稿表**逐位相同**，且措辞从「暴击率」变成「锐暴伤害」（这正是当初判占位的依据）。
+    // ⇒ 判据升级为**更强的双向对账**：
+    //   (a) raw 原文逐档解析出的两个数字 == 定稿表（raw 现在就是出处本身，不再需要外部记录）；
+    //   (b) spec 实现闭式跑出来 == 同一张表（防「raw 对、实现错」）。
+    // 谁改了任何一边都会红；若将来官方改数值，两边一起红才是正确的提示。
+    // (a) raw 原文 ⇔ 定稿表（逐档两个数字都要对上；不只看含没含某个词）
+    for (const [i, lv] of [2, 3, 4, 5, 6].entries()) {
       const desc = map.get(lv)
       expect(desc, `potential Lv${lv} 本仓 raw 缺失`).toBeTruthy()
-      expect(desc!, '本仓 raw 应为滞后占位（刷新后请重新核对定稿并更新本断言）').toContain('(Test1)')
-      expect(desc!, '占位文本是「暴击率」而非定稿的「锐暴伤害」').toContain('暴击率提升')
+      expect(desc!, `Lv${lv} 原文应写「锐暴伤害」（占位版写的是「暴击率」）`).toContain('锐暴伤害提升')
+      expect(desc!, `Lv${lv} 锋御锐暴档位`).toContain(`锐暴伤害提升${sharpTier[i]}%`)
+      expect(desc!, `Lv${lv} 非锋御暴伤档位`).toContain(`暴击伤害提升${critTier[i]}%`)
     }
 
     // (b) 实现闭式**从 spec 读出来跑**（不是在本文件里重写一遍 —— 重写会变成「同义反复」：

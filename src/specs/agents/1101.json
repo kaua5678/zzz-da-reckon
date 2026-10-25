@@ -65,7 +65,7 @@
         }
       ],
       "status": "implemented",
-      "note": "定稿 2026-09（nanoka live 3.2 == 测试服 3.3.2+18895034 一致；R60 复取 static.nanoka.cc/zzz/3.2/{zh,en}/character/1101.json **双语逐档**复核，II..VI 数值与中文「锐暴伤害 / 暴击伤害」口径均一致 ⇒ 定稿来源已闭合。⚠ 本仓 raw `data/raw/nanoka_missing/full/1101.json` 仍是旧 `(Test1)潜能觉醒：占位`（锋御暴击率 8~16% / 非锋御暴伤 16~32%）、**滞后于 live，不得作为本条出处**）。锋御/非锋御分流由伤害 profile 天然实现：sharpCritDmg 只作用于锋御锐化伤害（core/damage.ts sharpCritMultiplier），critDmg 对锋御锐化伤害无效——两字段平铺全队等价于分流。⚠ 本效果**不受额外能力门控**（原文无条件「队伍中…」，与 1041 燎原不同；R60 四臂实测空槽队伍与带门控队友读数逐位相同）。"
+      "note": "定稿 2026-09（nanoka live 3.2 == 测试服 3.3.2+18895034 一致；R60 复取 static.nanoka.cc/zzz/3.2/{zh,en}/character/1101.json **双语逐档**复核，II..VI 数值与中文「锐暴伤害 / 暴击伤害」口径均一致 ⇒ 定稿来源已闭合。⚠ 2026-10-25 更新：本仓 raw `data/raw/nanoka_missing/full/1101.json` 已重爬为 **nanoka 正式服 3.3**，原文逐档为「锋御锐暴伤害 4/6/8/10/12% / 非锋御暴伤 11/17/23/29/35%」⇒ **raw 现在就是本条出处本身**，与下面两条闭式逐位相同；此前「raw 是占位、不得作为出处」的限制已解除（判据已升级为 raw 原文 ⇔ 闭式双向对账，见 `potentialAxisBatchC.test.ts` ①）。锋御/非锋御分流由伤害 profile 天然实现：sharpCritDmg 只作用于锋御锐化伤害（core/damage.ts sharpCritMultiplier），critDmg 对锋御锐化伤害无效——两字段平铺全队等价于分流。⚠ 本效果**不受额外能力门控**（原文无条件「队伍中…」，与 1041 燎原不同；R60 四臂实测空槽队伍与带门控队友读数逐位相同）。"
     }
   ],
   "additionalAbility": {
