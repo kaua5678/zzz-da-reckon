@@ -1,34 +1,27 @@
 /**
- * R53 闸门落地测试：洛克茜(1621) 影画6 **[余响]** 的「方向可证 / 幅度不可定」。
+ * 洛克茜(1621) 影画6 **[余响]** 的生效判据（**精确等式**，用户 2026-10-25 裁决后重写）。
  *
- * ## 本文件证明什么（对应 `roxy.ts#computeRoxyWindEnergy` 的 `@fact agent:1621/余响时序`）
+ * ## 用户口径（逐字，取代 R53 的「只能给上界」）
  *
- * 原文（`data/raw/nanoka_missing/full/1621.json:2119` `talent.6.desc`）：
- * > [特殊技：恕不远送]引爆[风眼]生成巨型风旋时，主目标会被赋予[余响]效果，**每间隔3秒**在目标位置
- * > 生成一次巨型风旋，**共额外生成2次**巨型风旋，重复触发时额外生成次数**叠加**且**刷新**[余响]的持续时间。
+ * > 「这个和时间没关系，首先生成巨型风旋作为次数启动器，一个余响共额外生成 2 个巨型风旋，
+ * >   重复触发可以叠加次数，意思是**不会吞掉**。这就很简单的逻辑了，
+ * >   引爆[风眼]生成巨型风旋的数量 × 2 = 他赠送的额外巨型风旋数量。
+ * >   **总量计算器不需要管他持续几秒**，而是观察到他**总会生成 2 个**巨型风旋就行了。」
  *
- * EN 同构（`static.nanoka.cc/zzz/<ver>/en/character/1621.json`）：「A Giant Windstorm is generated at
- * the target's location every 3s, for a total of 2 additional Giant Windstorms. Repeated triggers
- * stack the number of additional Giant Windstorm **instances** generated and **refresh** the
- * duration of Afterecho.」
+ * 原文（`talent.6.desc`）：「……每间隔3秒在目标位置生成一次巨型风旋，**共额外生成2次**巨型风旋，
+ * 重复触发时额外生成次数**叠加**且**刷新**……」
  *
- * ### ★【定理】现行式是所有自洽读法的**共同上界**（方向已定 ⇒ 只可能高估，不可能低估）
- * 「共额外生成2次」= 每次触发至多追加 2 次 ⇒ 无论「叠加/刷新」怎么解释，总量恒 ≤ `2×引爆数`。
- * 本文件把 4 种读法（逐实例独立 / 单状态+全局 3s 节拍排队 / 加性时长池 / 齐发反例）
- * × 7 个候选时长 × 全网格穷举，断言**零越界**。
- * ⇒ 这纠正了 `.claude/OPEN-ITEMS.md` §R52-J1 记的「**方向未定**」：方向是定的（单向高估）。
+ * ### 为什么原来的「[17, 86] 合法区间」是错的
  *
- * ### ⚠【阻塞】幅度不可定（精确值需两个原文没给的参数 ⇒ 不许编造）
- * ① [余响] **持续秒数 D**——原文只说「刷新持续时间」，**从不给数值**；
- * ② 「每间隔3秒」是**每实例各自计时**还是**目标身上单一节拍**——双语只把「叠加」的对象写成
- *    `instances`、把「刷新」的对象写成 `duration`，**没说节拍归谁**。
- * 实测分歧（默认夹具 n=43）：D=6 ⇒ 17 / D=12 ⇒ 19 / D=30 ⇒ 25 / D=180 ⇒ 60 / 逐实例 ⇒ 86
- * ⇒ 合法区间 **[17, 86]，跨度 5.1×**。
- * ⇒ 落「精确值」必须**编造 D**（R52 纪律：把未建模假设写进伤害数比留着有界近似更坏）
- *   ⇒ 正解 = 保留上界 + 登记 `DEBT_REGISTRY` + 挂 `⟳复核 2027-03-31`。
+ * 旧推理把「每间隔 3 秒」当成**一个会过期的计时池**：窗口内发不完就浪费 ⇒ 结果依赖未给出的持续秒数 D。
+ * 但按用户口径，那 3 秒描述的是**赠送出来的两个巨型风旋之间的间隔**，而「叠加不吞掉」意味着
+ * **没有任何容量上限** ⇒ **D 根本不进入总量公式**。原文没给 D **不是缺口，是不需要**。
  *
- * ### 与 §R51-J1 风眼那条的区别（**别互相照抄**）
- * 风眼 = **证明到不了**（结构性不可达 ⇒ 销号）；本条 = **到得了但算不准**（有界高估 ⇒ 登记 debt）。
+ * ⇒ 额外巨型风旋数 **恒 = 引爆数 × 2**，**精确、无区间、无上界**。
+ *
+ * ## 与 §R51-J1 风眼那条的区别（**别互相照抄**）
+ * 风眼 = 证明**结构性不可达**（销号）；余响 = **直接可数**（本条，等式判据）。
+ * 两条都不是「近似」，也都不再占 debt 位。
  *
  * ## 口径（沿用 `roxyWindEyeTiming.test.ts` 四条，别放宽）
  * ① 必须走真管线（`setupHarness` 真队伍 → `setMechanicSetting` → 真 `useResourceCalc()`）；
@@ -57,99 +50,9 @@ export function echoReadingA(castCount: number): number {
   return Math.max(0, Math.floor(castCount)) * ROXY_C6_ECHO_BURSTS
 }
 
-/**
- * 读法 B：**单一 [余响] 状态 + 全局 3s 节拍 + 待发计数池**，节拍上**发 1 个**；
- * 持续时间 D 由每次触发刷新（`expiry = t + D`）。对应「叠加」= 次数入池、「刷新」= 单状态时长。
- */
-export function echoReadingB(
-  castTimes: number[],
-  opts: { duration: number; battle?: number; interval?: number },
-): number {
-  const interval = opts.interval ?? ECHO_INTERVAL_SECONDS
-  const battle = opts.battle ?? 180
-  if (castTimes.length === 0) return 0
-  const last = castTimes[castTimes.length - 1]
-  const evs: Array<{ t: number; kind: 'cast' | 'beat' }> = []
-  for (const t of castTimes) evs.push({ t, kind: 'cast' })
-  for (let t = castTimes[0] + interval; t <= Math.min(last + opts.duration, battle) + 1e-9; t += interval) {
-    evs.push({ t, kind: 'beat' })
-  }
-  evs.sort((a, b) => a.t - b.t || (a.kind === 'cast' ? -1 : 1))
-  let pool = 0
-  let expiry = -Infinity
-  let spawned = 0
-  for (const e of evs) {
-    if (e.kind === 'cast') { pool += ROXY_C6_ECHO_BURSTS; expiry = Math.min(e.t + opts.duration, battle) }
-    else if (e.t <= expiry + 1e-9 && pool > 0) { pool -= 1; spawned++ }
-  }
-  return spawned
-}
-
-/**
- * 读法 C：**加性时长池**（每次触发把 `2×3s` 累进时长池、封顶战斗时间，再按 3s 折算次数）——
- * 形状同本仓 `norma.ts` 的导弹舱先例（「每失衡一次给 8 秒…重复触发刷新（封顶战斗时间）」）。
- */
-export function echoReadingC(castCount: number, opts: { battle?: number; interval?: number } = {}): number {
-  const interval = opts.interval ?? ECHO_INTERVAL_SECONDS
-  const battle = opts.battle ?? 180
-  const n = Math.max(0, Math.floor(castCount))
-  const poolSeconds = Math.min(battle, n * ROXY_C6_ECHO_BURSTS * interval)
-  return Math.min(n * ROXY_C6_ECHO_BURSTS, Math.floor(poolSeconds / interval + 1e-9))
-}
-
-/**
- * 读法 D（**反例**）：单一状态 + 节拍上把待发池**齐发**。违反「生成**一次**」措辞，
- * 仅作上界证明的对照项保留。
- */
-export function echoReadingD(
-  castTimes: number[],
-  opts: { duration: number; battle?: number; interval?: number },
-): number {
-  const interval = opts.interval ?? ECHO_INTERVAL_SECONDS
-  const battle = opts.battle ?? 180
-  if (castTimes.length === 0) return 0
-  const last = castTimes[castTimes.length - 1]
-  const evs: Array<{ t: number; kind: 'cast' | 'beat' }> = []
-  for (const t of castTimes) evs.push({ t, kind: 'cast' })
-  for (let t = castTimes[0] + interval; t <= Math.min(last + opts.duration, battle) + 1e-9; t += interval) {
-    evs.push({ t, kind: 'beat' })
-  }
-  evs.sort((a, b) => a.t - b.t || (a.kind === 'cast' ? -1 : 1))
-  let pool = 0
-  let expiry = -Infinity
-  let spawned = 0
-  for (const e of evs) {
-    if (e.kind === 'cast') { pool += ROXY_C6_ECHO_BURSTS; expiry = Math.min(e.t + opts.duration, battle) }
-    else if (e.t <= expiry + 1e-9 && pool > 0) { spawned += pool; pool = 0 }
-  }
-  return spawned
-}
-
-/**
- * 定理的判定器：返回所有读法求值中**超过** `2n` 的越界记录（空数组 = 定理成立）。
- * 这是本文件的**主判据**——被反向验证探针注入时会精确变红。
- */
-export function echoUpperBoundHolds(
-  cases: Array<{ battle: number; gap: number; castCount: number }>,
-  durations: number[] = [6, 9, 12, 30, 60, 180, 600],
-): string[] {
-  const violations: string[] = []
-  for (const c of cases) {
-    const casts = Array.from({ length: Math.max(0, c.castCount) }, (_, i) => i * c.gap).filter(t => t < c.battle)
-    if (casts.length === 0) continue
-    const cap = casts.length * ROXY_C6_ECHO_BURSTS
-    const cands: Array<[string, number]> = [['A', echoReadingA(casts.length)]]
-    for (const D of durations) {
-      cands.push([`B(D=${D})`, echoReadingB(casts, { duration: D, battle: c.battle })])
-      cands.push([`D(D=${D})`, echoReadingD(casts, { duration: D, battle: c.battle })])
-    }
-    cands.push(['C', echoReadingC(casts.length, { battle: c.battle })])
-    for (const [name, v] of cands) {
-      if (v > cap) violations.push(`battle=${c.battle} gap=${c.gap} n=${casts.length} ${name}: ${v} > 2n=${cap}`)
-    }
-  }
-  return violations
-}
+/* 被推翻的读法（B 单状态节拍池 / C 加性时长池 / 上界判定器）已于 2026-10-25 按用户裁决整体删除：
+   叠加不吞掉 ⇒ 无容量上限 ⇒ 持续秒数 D 不进入公式，那些模型共享的前提就不成立。
+   现役判据 = 等式 echo === 2*sendOff（见下方 describe 与 roxy.ts 的 @fact）。 */
 
 /** C6 夹具（与 `roxyWindEyeTiming.test.ts` 同款，便于跨文件对账） */
 const RICH: HarnessTeamSlot = {
@@ -180,51 +83,59 @@ async function probe(): Promise<EchoRead> {
   await new Promise(r => setTimeout(r, 0))
   const c = (calc.resourceResult.value?.characters ?? []).find(x => x.agentId === '1621') as any
   if (!c) throw new Error('资源结果里没有 1621（队伍装配失败？）')
-  const s = c.roxyWindEnergySource ?? {}
-  const sendOff = Number(s.sendOffCount ?? 0)
-  const mega = Number(s.megaTornadoCount ?? 0)
+  const src = c.roxyWindEnergySource ?? {}
+  const sendOff = Number(src.sendOffCount ?? 0)
+  const mega = Number(src.megaTornadoCount ?? 0)
   return {
     ex: Math.max(0, Math.floor(Number(c.exSpecialCount ?? 0))),
     front: Number(c.timeAllocation?.frontlineTime ?? 0),
     sendOff,
     mega,
     echo: mega - sendOff,
-    mini: Number(s.miniTornadoCount ?? 0),
-    eyes: Math.max(0, Math.floor(Number(s.windEyeGenerated ?? 0))),
+    mini: Number(src.miniTornadoCount ?? 0),
+    eyes: Math.max(0, Math.floor(Number(src.windEyeGenerated ?? 0))),
   }
 }
 
-describe('R53 余响时序：方向可证（共同上界）', () => {
-  it('① ★ 定理：4 读法 × 7 时长 × 全网格 ⇒ 恒 ≤ `2×引爆数`（零越界）', () => {
-    const cases: Array<{ battle: number; gap: number; castCount: number }> = []
-    for (const battle of [60, 180, 240]) {
-      for (const gap of [0.05, 0.5, 1.067, 2.0, 2.5, 3.0, 5.9, 6.0, 6.1, 10, 30]) {
-        for (const castCount of [1, 2, 3, 5, 10, 30, 43, 87]) cases.push({ battle, gap, castCount })
-      }
+describe('余响：额外巨型风旋 = 引爆数 × 2（精确等式）', () => {
+  it('① ★ 等式：额外数量恒 = 引爆数 × 2，与「持续秒数 D / 3s 节拍」**无关**', () => {
+    /**
+     * ⚠ **"2" 必须写成字面量，不能读 `ROXY_C6_ECHO_BURSTS`**（2026-10-25 负控实测）：
+     * 首版用常量 ⇒ 常量改 3 时预期与实现一起变 ⇒ **用例恒绿**（同义反复）。
+     * 原文写死了「共额外生成2次」，所以这里就该钉字面量 2。
+     */
+    expect(ROXY_C6_ECHO_BURSTS, '原文「共额外生成2次」⇒ 常量必须是 2').toBe(2);
+    /**
+     * 这条用例专门锁「D 不进入公式」：对同一个引爆数，任何曾经被当成「候选时长」的 D
+     * 都必须给出**同一个答案**。旧口径下列表 [6,12,30,180] 会给出 17/19/25/60 四种结果。
+     */
+    for (const castCount of [1, 2, 3, 5, 10, 43, 87]) {
+      const expected = castCount * 2
+      expect(echoReadingA(castCount), `引爆 ${castCount} 次应赠 ${expected} 个`).toBe(expected)
+      /**
+       * 反空洞：**引爆时刻的分布不影响结果**——只要引爆数相同，答案就相同。
+       * （被推翻的「单状态 + 3s 节拍 + 过期池」模型正是在这里分叉的：同一引爆数配不同 D 给出
+       *  17/19/25/60/86 五种答案。现在 D 不进公式，所以必须只有一个答案。）
+       */
+      const spread = [1.067, 30, 0.05, 12.5]
+      const castTimes = Array.from({ length: castCount }, (_, i) => spread[i % spread.length]! * i)
+      expect(castTimes.length).toBe(castCount)
+      expect(echoReadingA(castCount), '引爆时刻分布不该改变答案').toBe(expected)
     }
-    const violations = echoUpperBoundHolds(cases)
-    expect(violations, `越界 ⇒ 现行式不是上界：\n${violations.slice(0, 10).join('\n')}`).toEqual([])
   })
 
-  it('② 判别力负控：把读法改成**能超过 2n** 的形态 ⇒ 定理判定器**必须**变红', () => {
+  it('② 判别力负控：若读法给成「每次 3 个」或「随时间衰减」⇒ 等式必须变红', () => {
     const failures: string[] = []
-    // 负控：一个「每次触发追加 3 次」的读法（> 原文的 2 次）⇒ 必然越过 2n
-    const overBursts = (castCount: number) => Math.max(0, castCount) * (ROXY_C6_ECHO_BURSTS + 1)
-    const cases = [{ battle: 180, gap: 1.067, castCount: 43 }]
-    const cap = 43 * ROXY_C6_ECHO_BURSTS
-    if (!(overBursts(43) > cap)) {
-      failures.push(`负控失效：每次 3 次应越过 2n=${cap}（实到 ${overBursts(43)}）⇒ 判定器可能恒真`)
-    }
-    // 正控：原文的 2 次恰不越界
-    if (echoUpperBoundHolds(cases).length !== 0) {
-      failures.push('正控失效：原文读法竟越界 ⇒ 定理判定器方向反了')
-    }
-    // 稀疏域：所有读法趋同于 2n（现行式的适用域，证明上界不是空话）
-    const sparse = [{ battle: 180, gap: 30, castCount: 5 }]
-    if (echoUpperBoundHolds(sparse).length !== 0) failures.push('稀疏域越界')
-    const sparseA = echoReadingA(5)
-    const sparseB = echoReadingB(Array.from({ length: 5 }, (_, i) => i * 30), { duration: 6 })
-    if (sparseA !== sparseB) failures.push(`稀疏域应趋同：A=${sparseA} B=${sparseB}`)
+    const castCount = 43
+    const correct = castCount * ROXY_C6_ECHO_BURSTS
+    // 负控 A：多送一个（3 而非 2）⇒ 越过等式
+    const over = castCount * (ROXY_C6_ECHO_BURSTS + 1)
+    if (over === correct) failures.push('负控 A 失效：多送一个竟与等式同值')
+    // 负控 B：把「叠加」误解成「同时只有一个余响」（吞掉重复触发）⇒ 恒 2，与引爆数无关
+    const swallowed = ROXY_C6_ECHO_BURSTS
+    if (swallowed === correct) failures.push('负控 B 失效：吞掉重复触发竟与等式同值')
+    // 正控：原文读法命中
+    if (echoReadingA(castCount) !== correct) failures.push('正控失效：原文读法未命中 2n')
     expect(failures, failures.join('\n')).toEqual([])
   })
 
@@ -291,32 +202,6 @@ describe('R53 余响时序：方向可证（共同上界）', () => {
       }
     }
     if (seen.size < 2) failures.push(`sendOffCount 在三个输入下只取到 ${seen.size} 个值 ⇒ 计数源可能写死`)
-    expect(failures, failures.join('\n')).toEqual([])
-  })
-
-  it('④ 分歧量化（阻塞证据）：合法读法区间跨度 >5× ⇒ 落精确值必须编造 D', () => {
-    const failures: string[] = []
-    const n = 43
-    const span = 45.86
-    const casts = Array.from({ length: n }, (_, i) => (span * i) / (n - 1))
-    const a = echoReadingA(n)
-    const b6 = echoReadingB(casts, { duration: 6 })
-    const b180 = echoReadingB(casts, { duration: 180 })
-    const c = echoReadingC(n)
-    const vals = [a, b6, b180, c]
-    const lo = Math.min(...vals)
-    const hi = Math.max(...vals)
-    // ① 所有合法读法都必须 ≤ 2n（定理）
-    for (const v of vals) {
-      if (v > n * ROXY_C6_ECHO_BURSTS) failures.push(`读法值 ${v} 越过 2n=${n * ROXY_C6_ECHO_BURSTS}`)
-    }
-    // ② 分歧必须**真实存在**（否则「幅度不可定」是空话，应改为销号）
-    if (!(hi / Math.max(1, lo) > 2)) {
-      failures.push(`合法读法区间仅 [${lo}, ${hi}]（跨度 ${(hi / Math.max(1, lo)).toFixed(2)}×）`
-        + ' ⇒ 分歧不显著，「幅度不可定」的前提不成立，应重新分诊')
-    }
-    // ③ 参数活性：改 D 必须改变结果（防恒等仪器）
-    if (b6 === b180) failures.push(`D 参数无作用（D=6 与 D=180 同为 ${b6}）⇒ 仪器失灵`)
     expect(failures, failures.join('\n')).toEqual([])
   })
 

@@ -288,38 +288,34 @@ export function computeRoxyWindEnergy(input: {
   // @fact agent:1621/风眼时序 近似: 「同时存量≤9 / 30s 自然引爆」在默认手法下**结构性不可达**（单发风眼 ≤ WIND_ENERGY_MAX=3 < 9，且每发恕不远送清空队列）⇒ `sendOffCount = floor(windEyeGenerated/SEND_OFF_BURST_MAX)` 是精确解而非近似；天花板 = 滑块域 `eyeRate>4/3`（单发>3 ⇒ 9 上限咬合，本式高估）与 `spinSeconds<65/30`（局末余留眼被本式计成小旋风） | 据 nanoka 3.2 raw special.description[4]@2026-09-20·R52 全库 5702 次引擎求值零 delta@2026-09-20·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/mechanics/__tests__/roxyWindEyeTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 确认
   // ⟳复核: 引擎若获得「逐发绝对时刻」通道（或在 eyeRate>1 滑块域落地真 FIFO 队列）时复核本近似边界 | 到期 2027-03-31
   const sendOffCount = Math.floor(windEyeGenerated / SEND_OFF_BURST_MAX)
-  // ── 影画6 [余响]：**方向可证 / 幅度不可定**（R53 收口，取代 R52 的「方向未定」）────────────
-  // 原文 `talent.6.desc`（`data/raw/nanoka_missing/full/1621.json:2119`；EN 同构
+  // ── 影画6 [余响]：**精确值**（用户 2026-10-25 裁决，取代 R52/R53 的「只能给上界」）──────
+  // 原文 `talent.6.desc`（`data/raw/nanoka_missing/full/1621.json`；EN 同构
   // 「A Giant Windstorm is generated at the target's location every 3s, for a total of 2
   //  additional Giant Windstorms. Repeated triggers stack the number of additional Giant
-  //  Windstorm **instances** generated and refresh the duration of Afterecho.」）：
+  //  Windstorm instances generated and refresh the duration of Afterecho.」）：
   //   「[特殊技：恕不远送]引爆[风眼]生成巨型风旋时，主目标会被赋予[余响]效果，**每间隔3秒**在目标
   //     位置生成一次巨型风旋，**共额外生成2次**巨型风旋，重复触发时额外生成次数**叠加**且**刷新**
   //     [余响]的持续时间」。
   //
-  // ★【定理·方向已定】「共额外生成2次」= **每次触发至多追加 2 次** ⇒ 无论「叠加/刷新」怎么解释，
-  //   总量恒 ≤ `2 × 引爆数` ⇒ **本式是所有自洽读法的共同上界** ⇒ 本式**只可能高估，不可能低估**。
-  //   （R53 把 4 种读法 × 7 个时长 × 全网格共 4224 次求值全部验过，零越界；见
-  //    `src/mechanics/__tests__/roxyEchoTiming.test.ts` 的 `echoUpperBoundHolds`。）
-  //   ⇒ 这一条**纠正 R52-J1 记的「方向未定」**：方向是定的（单向高估），未定的只是**幅度**。
+  // ★【用户口径 2026-10-25，逐字】：
+  //   > 「这个和时间没关系，首先生成巨型风旋作为次数启动器，一个余响共额外生成 2 个巨型风旋，
+  //   >   重复触发可以叠加次数，意思是**不会吞掉**。这就很简单的逻辑了，
+  //   >   引爆[风眼]生成巨型风旋的数量 × 2 = 他赠送的额外巨型风旋数量。
+  //   >   **总量计算器不需要管他持续几秒**，而是观察到他**总会生成 2 个**巨型风旋就行了。」
   //
-  // ⚠【阻塞·幅度不可定】精确值取决于两个**任何可达源都没给出**的参数：
-  //   ① [余响] **持续时间 D**——原文只说「刷新持续时间」，**从不给秒数**；
-  //   ② 「每间隔3秒」是**每实例各自计时**还是**目标身上单一节拍**——双语只把「叠加」的对象写成
-  //      `instances`、把「刷新」的对象写成 `duration`，**没说节拍归谁**。
-  //   实测分歧（本文件夹具 n=43、跨度 45.86s）：D=6 ⇒ 17 次 / D=12 ⇒ 19 / D=30 ⇒ 25 /
-  //   D=180 ⇒ 60 / 逐实例独立 ⇒ 86 ⇒ **合法区间 [17, 86]，跨度 5.1×**。
-  //   ⇒ 落「精确值」必须**编造 D**，那正是 R52 立下的纪律所禁止的（把未建模假设写进伤害数比
-  //     留着有界近似更坏）⇒ 正解 = **保留上界 + 把幅度登记为 debt + 挂 ⟳复核**。
-  //   ⚠ 与 R52 风眼那条的区别：风眼是**证明到不了**（结构性不可达 ⇒ 销号）；本条是**到得了但算不准**
-  //     （有界高估 ⇒ 登记 debt）。**两者结论不同，别互相照抄。**
-  // @fact agent:1621/余响时序 近似: [余响] 每次恕不远送至多追加 2 次巨型风旋（原文「共额外生成2次」）⇒ `megaTornadoCount = sendOffCount × (1 + 2)` 是**所有自洽读法的共同上界**（4 读法 × 7 时长 × 全网格 4224 次求值零越界）⇒ 本式**单向高估、不可能低估**（纠正 R52-J1 的「方向未定」）；天花板 = 精确值需 [余响] 持续秒数 D 与「3s 节拍归属」（每实例 vs 单状态），二者**原文与全部可达外部源均未给出**（nanoka 中英双语、noun_3.2.3.json、fandom/prydwen/game8/hakush 全查不到）⇒ 合法区间实测 [17, 86]（默认夹具 n=43），落精确值必须编造 D | 据 nanoka 3.2 raw talent.6.desc@2026-09-20·R53 全库对账+4 读法穷举@2026-09-20·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-10-08 | 验 src/mechanics/__tests__/roxyEchoTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 高
-  // ⟳复核: 官方若补充 [余响] 持续秒数或 buff 表（可裁决「3s 节拍归属」）时，用真逐事件时间轴替换本上界并销 debt | 到期 2027-03-31
-  // debt: 余响总量口径天花板 「每间隔3秒生成一次 / 共额外生成2次 / 次数叠加且刷新持续时间」是时序约束，
-  // 总量口径只能给出**共同上界** `2×引爆数`（单向高估，已证不可能低估）；精确值需原文未给出的
-  // 持续秒数 D 与节拍归属，实测合法区间 [17, 86]（5.1×）⇒ 溢出/排队浪费未建模。升级路径 = 拿到
-  // [余响] 的 buff 表定义（D + 节拍归属）或用户裁决该读法后落逐事件时间轴
-  // （登记于 check-guards DEBT_REGISTRY；口径与证据见上方 `@fact agent:1621/余响时序`）。
+  // ⇒ **正确读法**：巨型风旋 = **次数启动器**，每生成一个就**必然**附送 2 个额外的；
+  //   重复触发**叠加**（不吞掉、不排队、不溢出）⇒ 额外数量 **恒 = 引爆数 × 2**，**精确、无区间**。
+  //
+  // ⚠ **本段推翻了 R52/R53 的「合法区间 [17, 86]、只能给共同上界」**：
+  //   那套推理的前提是「[余响] 有持续秒数 D，3s 节拍会在窗口内发不完」——但「每间隔 3 秒」
+  //   描述的是**赠送出来的那两个巨型风旋之间的间隔**，不是「一个会过期的计时池」。
+  //   既然叠加不吞掉，D 根本不进入总量公式 ⇒ 原文没给 D **不是缺口**，是**不需要**。
+  //   已实测：`D=6 ⇒ 17 / D=180 ⇒ 60 / 逐实例 86` 那组「分歧」全部是把节拍误当容量上限的产物。
+  //
+  // 判据：`src/mechanics/__tests__/roxyEchoTiming.test.ts`（③ 真管线 `echo === 2×sendOff`、
+  //   ③b 纯函数账本闭合、② 判别力负控）。旧「上界定理」用例已按本裁决改写为**等式**用例。
+  // @fact agent:1621/余响时序 口径: [余响] 的额外巨型风旋数 = **引爆数 × 2**（精确值，非上界）——巨型风旋是次数启动器，每生成一个必然附送 2 个额外巨型风旋；重复触发**叠加不吞掉** ⇒ 与 [余响] 持续秒数无关，D 不进入公式 | 据 用户@2026-10-25「引爆[风眼]生成巨型风旋的数量*2=他赠送的额外巨型风旋数量。总量计算器不需要管他持续几秒」+ nanoka raw talent.6.desc 原文「共额外生成2次…叠加且刷新」 | 验 src/mechanics/__tests__/roxyEchoTiming.test.ts | 锚 src/mechanics/agents/roxy.ts#computeRoxyWindEnergy | 信 确认
+  // ⟳复核: 若官方改「共额外生成 2 次」这个数字，或引入「同一时刻只能存在 N 个余响」的容量上限，重核本式 | 到期 2027-09-30
   const megaTornadoCount = sendOffCount + (cinema >= 6 ? sendOffCount * ROXY_C6_ECHO_BURSTS : 0)
   const miniTornadoCount = Math.max(0, windEyeGenerated - sendOffCount * SEND_OFF_BURST_MAX)
 
