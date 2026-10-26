@@ -954,7 +954,30 @@ export const DEFAULT_CHAIN_IN_WINDOW_COVERAGE = 1
  *
  * 本函数只做「账本 → 时间」，不改变锐能/残痕结算（那部分在 `computeClaretSharpResource`）。
  */
-function deriveClaretTwoStateTime(input: {
+/**
+ * ## 猩红铭刻 = 锐能的循环（用户口径 2026-10-26：「猩红状态本质是锐能的循环」）
+ *
+ * 这不是一个独立的时间轴，而是**锐能收支的稳态**：
+ *   锐能产出 = 自动累积(`sharpnessRegen` 1.5/s，**按接战时间**前后台都回)
+ *            + 常态血锻四式招式增益(`sharpness_gain` 3.0/s；锻星/伏钺/E/连携全 0)
+ *   锐能消耗 = 60/次进场（每次进场 → 一个铭刻窗口）
+ *   ⇒ 铭刻总时间 = 进场数 × 单窗(16s；影画2 18s) + 连携 2s/次 + 停表白送
+ *   ⇒ 常态时间   = 平A总时间 − 铭刻总时间
+ * `deriveClaretTwoStateTime` 从 1 往上逐轮试，取「窗口塞得进平A时间 ∧ 锐能够下一发」的最大解。
+ *
+ * **为什么「逐秒时序」不需要单独建模**（本条取代了档案段里那句「猩红铭刻逐秒时序未建模」）：
+ * 引擎对平A段只有**总量口径**（伤害/失衡/残痕都按 `share` 线性加权两套基准）。
+ * 而「逐窗交替」与「按占比加权」在总量口径下**数学等价**：
+ *   ① 伤害/失衡是秒均 × 时间，两态都是线性 ⇒ Σ 相同；
+ *   ② 残痕是 `floor(总点数 / 600)` 一层——**只看总点数**，不看点数怎么分段产生 ⇒ 同总点数同层数；
+ *   ③ 毁伤次数 = min(层数, 需求)，层数与需求都是总量量 ⇒ 无逐秒信息可影响结果。
+ * 只有当引擎获得**逐事件时间轴**（记录每层残痕在哪个时刻攒够、那时刻是否在失衡窗内）时，
+ * 逐秒建模才会有额外信息。当前没有这种消费者，做出来只会是「更贵的等价实现」（规则 12）。
+ *
+ * @fact agent:1611/猩红铭刻=锐能循环 口径: 猩红铭刻由锐能收支决定（60锐能/次进场 × 单窗16s/影画2 18s + 连携2s/次 + 停表白送），常态时间 = 平A总时间 − 铭刻总时间；引擎用 share 线性加权两态基准，与逐窗交替**总量等价**（伤害/失衡线性相加；残痕只看 floor(总点数/600)；毁伤 = min(层数,需求) 皆总量量） ⇒ 不需要逐秒时序模型 | 据 用户@2026-10-26「猩红状态本质是锐能的循环」+ 用户@2026-09-11「连携大招不分强化态，这些招式不掉时间，是因为它没有消耗强化时间进行招式强化」 | 验 src/mechanics/__tests__/claretSmoke.test.ts | 锚 src/mechanics/agents/claret.ts#deriveClaretTwoStateTime + src/mechanics/agents/claret.ts#computeClaretBasicPerSec + src/mechanics/gashMaim.ts#gashLayersOf | 信 确认
+ * ⟳复核: 若引擎引入「逐事件时间轴」并让残痕层在**失衡窗内/外**分账（当前不分），或毁伤改为逐层逐事件结算，则逐秒建模具备额外信息，重核本条 | 到期 2027-09-30
+ */
+export function deriveClaretTwoStateTime(input: {
   basicAttackTime: number
   ultimateCount: number
   /** 常态锐能速率（/s）= 基础自动累积 + 血锻招式增益 */

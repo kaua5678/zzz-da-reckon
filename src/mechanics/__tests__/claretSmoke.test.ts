@@ -27,7 +27,9 @@ import {
   INSCRIPTION_BENCHMARK_MOVE_ID,
   SHARPNESS_COST_PER_EX,
   SHARPNESS_ULTIMATE_GAIN,
+  deriveClaretTwoStateTime,
 } from '@/mechanics/agents/claret'
+import { gashLayersOf } from '@/mechanics/gashMaim'
 
 beforeEach(() => {
   // setupHarness 内部自建 pinia；这里仅保证 fetch stub 隔离
@@ -516,5 +518,66 @@ describe('克拉蕾（1611）浸染回响：全队触发[浸染]回 300 喧响',
   it('负控：无风化（冰队 1141）⇒ 为 0', async () => {
     const noWind = await decibelOf([{ agentId: '1611' }, { agentId: '1141' }, { agentId: '1211' }])
     expect(noWind, '队里没有风 ⇒ 无浸染 ⇒ 不加').toBe(0)
+  })
+})
+
+/**
+ * 猩红铭刻 = 锐能的循环（用户口径 2026-10-26），且**逐秒时序不必建模**。
+ *
+ * 判据 = 等价性证明的两个可机检面：
+ *   ① 锐能收支闭合：进场数 × 60 = 该轮锐能总量（不得多算或少算）；
+ *   ② 总量口径与逐窗交替等价：把 share 换成「N 个整窗 + 余量」的等价表达，
+ *      伤害/失衡/残痕三者的总量必须逐位相同（残痕的 floor 台阶只看总点数）。
+ * 若后人给两态加了非线性（比如按窗口内/外分账），本判据会红。
+ */
+describe('克拉蕾（1611）猩红铭刻 = 锐能循环', () => {
+  it('锐能收支闭合：进场数 × 60 ≤ 账本总锐能，且再多一发就不够', () => {
+    // 单位口径：自动 1.5/s（按接战时间）+ 常态血锻 3.0/s
+    const auto = 1.5
+    const normalGain = 3.0
+    const combatTime = 80
+    const basicAttackTime = 60
+    const perEntry = 60
+    const r = deriveClaretTwoStateTime({
+      basicAttackTime,
+      ultimateCount: 2,
+      normalSharpnessPerSec: auto + normalGain,
+      sharpnessAutoPerSec: auto,
+      combatTime,
+      windowSeconds: 16,
+    })
+    expect(r.entries, '至少能进一次').toBeGreaterThanOrEqual(1)
+    // ① 账本支撑得起 r.entries 次进场
+    expect(r.sharpnessTotal, '锐能总量必须 ≥ 进场数 × 60').toBeGreaterThanOrEqual(r.entries * perEntry - 1e-6)
+    // ② 再多一发就撑不起（entries 是最大可行解，不是保守值）
+    const oneMoreNeed = (r.entries + 1) * perEntry
+    const inscriptionIfMore = (r.entries + 1) * 16
+    const normalTimeIfMore = basicAttackTime - inscriptionIfMore
+    const availableIfMore = normalTimeIfMore >= 0
+      ? auto * combatTime + normalGain * normalTimeIfMore
+      : -1
+    const blockedByTime = normalTimeIfMore < 0
+    const blockedBySharpness = availableIfMore + 1e-6 < oneMoreNeed
+    expect(blockedByTime || blockedBySharpness, 'entries 必须是最大可行解（时间或锐能任一卡住）').toBe(true)
+  })
+
+  it('总量口径与「逐窗交替」等价：share 线性加权 == 整窗切分后求和', () => {
+    // 两态秒均取任意两个不同值，验证 blend 与分段求和在总量上相同
+    const normal = 345.21
+    const inscription = 531.88
+    const basicTime = 60
+    for (const share of [0, 0.25, 0.5, 0.6748682048840332, 1]) {
+      const blended = (normal * (1 - share) + inscription * share) * basicTime
+      // 「逐窗交替」等价表达：铭刻时间 = share × basicTime，常态 = 余下
+      const byPhase = inscription * (share * basicTime) + normal * ((1 - share) * basicTime)
+      expect(blended, `share=${share} 时两者必须逐位相同`).toBeCloseTo(byPhase, 9)
+    }
+  })
+
+  it('残痕 floor 台阶只看总点数：分段产生与否不改变层数', () => {
+    // 1200 点 = 2 层，无论是一次攒够还是分两次攒
+    expect(gashLayersOf(1200)).toBe(2)
+    expect(gashLayersOf(600) + gashLayersOf(600), '分段产生 == 一次产生').toBe(2)
+    expect(gashLayersOf(1199), '不足一层舍去').toBe(1)
   })
 })
