@@ -76,11 +76,12 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（89 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（90 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
 | `docs/ARCHITECTURE.md` | **代码架构地图（AI 导航）**：五层心智模型、一次计算生命周期、核心类型地图、任务→文件决策树、数据流速查（动手前必读） |
+| `docs/DEFAULT_ENEMY_TRAINING_DUMMY.md` | **默认敌人 = 自由训练模式木桩 + 默认全局 Buff 清空的归因表**：逐字段映射（截图列 → 本仓字段）、因子隔离实测（五因子逐开关）、timeGolden 418 条 + timeFillRatchet 75 条的逐队归因与处置；改 `defaultEnemy`/`defaultGlobalBuffs` 前必读 |
 | `docs/ARCHITECTURE-OVERVIEW.md` | **架构全景（实测版，R6 第 1 步）**：脚本测得的各层规模与依赖边、与 ARCHITECTURE.md §0 的差异 A1–A5（core 经 `@/mechanics` index 形成模块环、stores 直接调引擎、data 层读全局可变状态等）、效果管线函数级图、R6 候选 C1–C4；ARCHITECTURE.md 是规划，本文件是现状 |
 | `docs/ENTITY_CARDS.md` | **实体卡（AI 陈述性知识层）**：音擎/角色/驱动盘等实体的完整结构与权威指针表 + 事故登记；配套查证工具 `node scripts/resolve.mjs` 与引擎探针 `npm run probe:panel`（跨实体断言/派生数值必用） |
 | `docs/ENGINE_PIPELINE_GUIDE.md` | **引擎管线导读**：一轮计算的数据流、模块钩子调用顺序、常见坑（AI 录入排查用） |
@@ -174,6 +175,6 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 > 归档只放**确认已完成、且不含现役口径**的报告；口径还在用的先搬进活手册再归档。找历史结论用 `git log` / 归档目录，别从头重建。
 >
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（89 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（90 份，与节标题一致），新增文档需同步本表。
 > **判据 9 已递归到子目录**（`docs/**/*.md`）：子目录里的文档同样必须登记，路径按 `docs/<相对路径>` 写
 > （2026-10-06 修：`docs/proposals/pull-value-optimization.md` 曾因 glob 只扫顶层而长期不在表内 = agent 找不到）。
