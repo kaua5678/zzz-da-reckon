@@ -6,6 +6,11 @@
         <n-space vertical :size="16">
           <BossSelectCard />
           <n-card title="敌人配置" size="small" :bordered="true">
+            <div class="formula-note" style="margin-bottom: 8px">
+              默认值 = <b>自由训练模式木桩</b>（Dead End Butcher 改版）：血量 33.47 亿 / 失衡 17582.7 / 防御 952.8 /
+              异常条系数 1.25 / <b>无抗性、无弱点、无关卡与 Boss buff</b> —— 中性测试场，不携带任何一期危局环境。
+              要打具体 Boss 请用上方「Boss 选择」的「应用此 Boss」。
+            </div>
             <n-space vertical :size="10">
               <n-grid cols="2" :x-gap="8" :y-gap="8">
                 <n-gi v-for="f in ENEMY_FIELDS_HEAD" :key="f.key">
@@ -125,7 +130,9 @@
               暂无队友 Buff 数据
             </div>
 
-            <div v-else class="teammate-buff-list">
+            <n-collapse v-else :default-expanded-names="[]">
+              <n-collapse-item :title="teammateBuffSummary" name="teammate-buffs">
+                <div class="teammate-buff-list">
               <n-collapse v-for="group in filteredGroups" :key="group.id">
                 <n-collapse-item :title="groupName(group)" :name="group.id">
                   <div class="buff-item-list">
@@ -189,17 +196,113 @@
                   </div>
                 </n-collapse-item>
               </n-collapse>
-            </div>
+                </div>
+              </n-collapse-item>
+            </n-collapse>
           </n-card>
         </n-space>
       </n-gi>
 
-      <!-- 右侧：全局 Buff 表 -->
+      <!-- 右侧：危局环境 Buff（按期数）→ 全局 Buff 表 -->
       <n-gi>
-        <n-card size="small" :bordered="true">
+        <!-- 危局期数的环境 buff（用户 2026-10-26：「右边是自创buff，没看到危局期数的环境buff」）：
+             期数 → 当期可选牌（selectable_buff，3 选 1）+ 已应用 Boss 的关卡固有 buff（layer_buff，只读状态）。
+             牌 → 行的唯一映射 = utils/phaseBuff#phaseBuffRows，写入唯一入口 = runArchiveDeploy#applyPeriodBuff
+             （与实战对比部署页同一条通道 ⇒ 两个页面写出来的行逐位相同，cond 随行由管线按当前队伍解析）。 -->
+        <n-card size="small" :bordered="true" class="env-card">
           <template #header>
             <n-space align="center" justify="space-between" style="width: 100%">
-              <span>全局 Buff</span>
+              <span>危局环境 Buff</span>
+              <n-select
+                :value="envPhaseId"
+                :options="envPhaseOptions"
+                size="tiny"
+                filterable
+                style="width: 210px"
+                placeholder="选期数"
+                @update:value="v => (envPhaseId = v)"
+              />
+            </n-space>
+          </template>
+
+          <div v-if="environment === null" class="env-empty">
+            该期没有环境 buff 数据（期视图缺失）—— 换一期，或先跑 <code>npm run import</code> 补期视图。
+          </div>
+
+          <template v-else>
+            <!-- 当期可选牌（3 选 1） -->
+            <div class="env-section">
+              <div class="env-section-head">
+                <span class="env-section-title">当期可选牌（{{ environment.selectable.length }} 选 1）</span>
+                <n-button
+                  size="tiny"
+                  :type="selectedPeriodTitle === NONE_CARD ? 'primary' : 'default'"
+                  @click="pickEnvironmentCard(null)"
+                >
+                  不用
+                </n-button>
+                <span v-if="periodRowCount > 0 && selectedPeriodTitle === null" class="env-warn">
+                  表里有 {{ periodRowCount }} 行当期牌，但不对应下面任何一张（可能来自别的页面的旧口径）
+                </span>
+              </div>
+              <div v-if="environment.selectable.length === 0" class="env-empty">
+                该期没有可选牌（未解析 / 测试服占位）
+              </div>
+              <div v-else class="env-grid">
+                <button
+                  v-for="card in environment.selectable"
+                  :key="card.title"
+                  type="button"
+                  class="env-card-btn"
+                  :class="{ active: selectedPeriodTitle === card.title, disabled: card.testOnly }"
+                  :disabled="card.testOnly"
+                  :title="card.effects.map(phaseEffectLabel).join('；') || card.unparsed.join('；')"
+                  @click="pickEnvironmentCard(card)"
+                >
+                  <span class="env-card-title">{{ card.title || '(未命名)' }}<span v-if="card.testOnly" class="env-tag">测试服</span></span>
+                  <span class="env-card-effects">
+                    <span v-for="e in card.effects" :key="e.stat + ':' + e.value" class="effect-tag">{{ phaseEffectLabel(e) }}</span>
+                    <span v-for="(u, i) in card.unparsed" :key="'u' + i" class="effect-tag unparsed" :title="u">未解析：{{ u.slice(0, 20) }}…</span>
+                  </span>
+                </button>
+              </div>
+              <div class="env-hint">
+                选牌 = 写入全局 Buff 表（前缀 <code>period-buff:</code>，先清旧再写）；条件效果按**当前队伍**判定，
+                换人自动换档（与「队伍对比 / 实战对比」同一条通道）。
+              </div>
+            </div>
+
+            <!-- 已应用 Boss 的关卡固有 buff（只读：由「应用 Boss」写入，不在这里重复写） -->
+            <div class="env-section">
+              <div class="env-section-head">
+                <span class="env-section-title">关卡固有 Buff（layer_buff）</span>
+                <n-tag v-if="environment.layer" size="tiny" :bordered="false" :type="layerApplied ? 'success' : 'default'">
+                  {{ environment.layer.bossName }} · {{ layerApplied ? '已写入全局 Buff 表' : '尚未写入（点上方 Boss 卡的「应用此 Boss」）' }}
+                </n-tag>
+              </div>
+              <div v-if="!environment.layer" class="env-empty">
+                本期还没有应用 Boss —— 在左上「Boss 选择」里点「应用此 Boss」，关卡固有 buff 会自动进全局 Buff 表。
+              </div>
+              <div v-else-if="environment.layer.cards.length === 0" class="env-empty">
+                该 Boss 本期没有关卡固有 buff。
+              </div>
+              <div v-else class="env-grid">
+                <div v-for="(card, i) in environment.layer.cards" :key="i" class="env-card-btn static">
+                  <span class="env-card-title">{{ card.title || '(未命名)' }}</span>
+                  <span class="env-card-effects">
+                    <span v-for="e in card.effects" :key="e.stat + ':' + e.value" class="effect-tag">{{ phaseEffectLabel(e) }}</span>
+                    <span v-for="(u, j) in card.unparsed" :key="'lu' + j" class="effect-tag unparsed" :title="u">未解析：{{ u.slice(0, 20) }}…</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </n-card>
+
+        <n-card size="small" :bordered="true" style="margin-top: 16px" class="global-card">
+          <template #header>
+            <n-space align="center" justify="space-between" style="width: 100%">
+              <span>全局 Buff（自创）</span>
               <n-button size="tiny" type="primary" @click="configStore.addGlobalBuff()">
                 添加 Buff
               </n-button>
@@ -289,7 +392,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import {
   NCard, NSpace, NGrid, NGi, NInputNumber, NText, NDivider,
   NButton, NSwitch, NInput, NSelect, NCheckbox, NCollapse, NCollapseItem,
@@ -304,9 +407,15 @@ import { damageElementLabel } from '@/utils/agentLabelMaps'
 import { STANDARD_ENEMY_DEBUFF_ELEMENTS, type StandardEnemyDebuffElement } from '@/utils/enemyDebuffStats'
 import { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
 import { isTeammateBuffInteractive, declaredOnlyReason } from '@/utils/teammateBuffRows'
-import { phaseBuffCondLabel } from '@/utils/phaseBuff'
+import {
+  phaseBuffCondLabel, latestPhaseIdOf, resolvePhaseEnvironment, sortedPhaseViews,
+  selectedPeriodBuffCard, periodBuffRowsOf, layerBuffRowsOf,
+} from '@/utils/phaseBuff'
+import { applyPeriodBuff } from '@/composables/runArchiveDeploy'
+import { bossBuffEffectLabel } from '@/utils/bossEffectLabel'
 import BossSelectCard from '@/components/BossSelectCard.vue'
 import type { TeammateBuffGroup, TeammateBuff, BuffEffect } from '@/types/catalog'
+import type { BossPresetFile, PhaseBuffCard } from '@/types/bossPreset'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -316,6 +425,9 @@ const teammateBuffSearch = ref('')
 
 onMounted(() => {
   if (catalogStore.teammateBuffsStatus === 'idle') void catalogStore.loadTeammateBuffs()
+  // 环境 buff 卡的数据源（期视图 = boss-presets.json 的 phaseViews）。
+  // 与 BossSelectCard 共用 catalogStore#loadBossPresets（同一份缓存，不各 fetch 一份）。
+  void catalogStore.loadBossPresets().catch(() => { /* 失败由卡片显示空态，不阻断本页其余输入 */ })
 })
 
 /**
@@ -368,6 +480,63 @@ const skillDmgTargetOptions = SKILL_DMG_TARGETS.map(value => ({
   value,
   label: SKILL_DMG_TARGET_LABELS[value],
 }))
+
+// ========== 危局环境 Buff（按期数） ==========
+/**
+ * 期数选择：缺省 = 最新一期；用户换期后保持。
+ * "不用" 选项的哨兵 = NONE_CARD（naive 的 Select 不收 null，统一用字符串值）。
+ */
+const NONE_CARD = '__none__'
+const envPhaseId = ref<string>(latestPhaseIdOf(catalogStore.bossPresetFile as BossPresetFile | null) ?? '')
+const envPhaseOptions = computed(() => sortedPhaseViews(catalogStore.bossPresetFile as BossPresetFile | null)
+  .map(v => ({ value: v.phaseId, label: `${v.label}（${v.phaseId}）` })))
+/** 数据晚到（首帧 bossPresetFile 还是 null）时补缺省期；只在没选过时补，不覆盖用户选择 */
+watch(() => catalogStore.bossPresetFile, file => {
+  if (!envPhaseId.value) envPhaseId.value = latestPhaseIdOf(file as BossPresetFile | null) ?? ''
+})
+const environment = computed(() => resolvePhaseEnvironment(
+  catalogStore.bossPresetFile as BossPresetFile | null,
+  configStore.appliedBoss,
+  envPhaseId.value,
+))
+/** 表里某期当期牌的行（「当前选中」由全局 Buff 表派生，不另存一份状态） */
+const periodRowCount = computed(() => periodBuffRowsOf(configStore.globalBuffs, envPhaseId.value).length)
+const selectedPeriodTitle = computed<string | null>(() => {
+  const cards = environment.value?.selectable ?? []
+  const hit = selectedPeriodBuffCard(configStore.globalBuffs, envPhaseId.value, cards)
+  if (hit) return hit.title
+  return periodRowCount.value > 0 ? null : NONE_CARD
+})
+/** 关卡固有 buff 是否真的写进了表（判据 = 该 Boss 该期前缀的行存在；不猜「应用过就算」） */
+const layerApplied = computed(() => {
+  const layer = environment.value?.layer
+  if (!layer) return false
+  return layerBuffRowsOf(configStore.globalBuffs, layer.presetId, layer.phaseId).length > 0
+})
+
+/**
+ * 选牌 / 不用：**唯一写入入口** = runArchiveDeploy#applyPeriodBuff（与实战对比部署页同一条通道）。
+ * 传 null 或 `testOnly` 牌 = 清掉本期当期牌行（回到「不用」口径）。
+ * ⚠ 这里**不做试算**（不读伤害）——「自动选最优」是 C 档用户口径（坑 53），页面只给明确写入动作。
+ */
+function pickEnvironmentCard(card: PhaseBuffCard | null) {
+  applyPeriodBuff(configStore, envPhaseId.value, card)
+}
+
+/** 环境卡的效果标签：与 Boss 卡 / 期视图同一份（CC-214 单一来源；与队友 buff 的 effectLabel 不同域） */
+function phaseEffectLabel(e: PhaseBuffCard['effects'][number]): string {
+  return bossBuffEffectLabel(e)
+}
+
+/** 队友 Buff 卡折叠标题里的摘要（收起状态也要说清「有哪些、哪几条开着」） */
+const teammateBuffSummary = computed(() => {
+  const groups = filteredGroups.value
+  const total = groups.reduce((n, g) => n + g.buffs.length, 0)
+  const on = groups.reduce((n, g) => n + g.buffs.filter(b => isInteractive(b) && configStore.isTeammateBuffEnabled(b.id)).length, 0)
+  const who = groups.map(g => groupName(g)).join('、')
+  if (teammateBuffSearch.value.trim()) return `队友 Buff（搜索「${teammateBuffSearch.value}」：${total} 条 / 启用 ${on}）`
+  return `队友 Buff（按队伍自动派生，通常不用看：${groups.length} 名角色 / ${total} 条，启用 ${on}）${who ? ' —— ' + who : ''}`
+})
 
 // ========== 队友 Buff ==========
 
@@ -530,6 +699,120 @@ function isInteractive(buff: TeammateBuff): boolean {
 .resistance-title {
   font-size: 12px;
   font-weight: 600;
+}
+
+.env-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.env-section + .env-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.env-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.env-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.env-warn {
+  font-size: 11px;
+  color: var(--c-warning);
+}
+
+.env-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+/* 可选牌 = 按钮（可点）；关卡固有 buff = 静态块（只读，不给控件） */
+.env-card-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--fill-active);
+  color: var(--app-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.env-card-btn:hover:not(.static):not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--fill-hover);
+}
+
+.env-card-btn.active {
+  border-color: var(--app-primary);
+  background: var(--c-success-soft);
+}
+
+.env-card-btn.static {
+  cursor: default;
+}
+
+.env-card-btn.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.env-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.env-tag {
+  font-size: 10px;
+  color: var(--c-warning);
+}
+
+.env-card-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.env-card-effects .effect-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  line-height: 1.4;
+}
+
+/* 语义底用 --c-*-strong（UI_THEME_GUIDE §5 口诀）：贴片墨按贴片底选，不借页面底口径的 --fg-3 */
+.env-card-effects .effect-tag.unparsed {
+  background: var(--c-warning-soft);
+  color: var(--c-warning-strong);
+}
+
+.env-hint,
+.env-empty {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-3);
+}
+
+.env-empty {
+  padding: 8px 0;
 }
 
 .target-muted {

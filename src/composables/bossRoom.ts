@@ -14,9 +14,7 @@
  */
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { ConfigModel } from '@/stores/config'
-import { phaseBuffRows } from '@/utils/phaseBuff'
-
-export const LAYER_BUFF_PREFIX = 'layer-buff:'
+import { phaseBuffRows, LAYER_BUFF_PREFIX } from '@/utils/phaseBuff'
 
 /** 未录入体型的 Boss 按中型（用户口径 2026-09-05；体型表 = scripts/import-nanoka-bosses.mjs `BOSS_BODY_SIZES`） */
 export const DEFAULT_BOSS_BODY_SIZE = 'medium' as const

@@ -12,7 +12,7 @@ import type { BossPreset, BossPresetMonster, BossPresetDefaults, BossPresetPhase
 import { hasCustomInteractionDefaults, interactionBaselineFor, type ConfigModel } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossMatch, DeployConfig } from '@/composables/runArchiveImport'
-import { phaseBuffRows } from '@/utils/phaseBuff'
+import { phaseBuffRows, PERIOD_BUFF_PREFIX } from '@/utils/phaseBuff'
 import { applyBossRoom } from '@/composables/bossRoom'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
 import type { AnalysisContext } from '@/composables/analysisScenario'
@@ -47,11 +47,11 @@ export function applyPeriodBuff(
   card: PhaseBuffCard | null,
 ): boolean {
   for (let i = configStore.globalBuffs.length - 1; i >= 0; i--) {
-    if (String(configStore.globalBuffs[i].id).startsWith('period-buff:')) configStore.globalBuffs.splice(i, 1)
+    if (String(configStore.globalBuffs[i].id).startsWith(PERIOD_BUFF_PREFIX)) configStore.globalBuffs.splice(i, 1)
   }
   if (!card || card.testOnly) return false
   // CC-341：同 bossRoom#applyBossLayerBuffs，`cond` 随行写入（修前丢 cond ⇒ 「异常 2/3 名」按满编档、特性限定对任何队都生效）
-  const rows = phaseBuffRows(card, e => `period-buff:${phaseId}:${e.stat}:${e.value}`, `当期·${card.title || '(未命名)'}`)
+  const rows = phaseBuffRows(card, e => `${PERIOD_BUFF_PREFIX}${phaseId}:${e.stat}:${e.value}`, `当期·${card.title || '(未命名)'}`)
   configStore.globalBuffs.push(...rows)
   return rows.length > 0
 }
