@@ -38,7 +38,7 @@ import type { PanelValues } from '@/types/catalog'
 import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_ANOMALY_LABEL, standardDot } from '@/core/anomalyPool/helpers'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
-import { buildStunTimeline } from '@/core/stunTimeline'
+import { buildStunTimeline, realizeStunWindows } from '@/core/stunTimeline'
 import {
   BASIC_HIT_STACK_EFFECTS,
   basicHitCountOf,
@@ -335,6 +335,25 @@ export function createResourceCalc(
     if (!pool) return null
     // e 的单一事实源 = core/continuousStun#continuousStunSplitOf（与 solveTeam 的覆盖率路径同源）
     return continuousStunSplitOf(pool, computeWindowDuration(), effectiveBattleTime(configStore.enemy))
+  })
+  /**
+   * **已兑现的失衡窗口读数**（`core/stunTimeline.ts#realizeStunWindows`）：等效窗数 / 占用秒 / **窗内发呆秒**。
+   *
+   * 用户口径 2026-10-26：「再没有就空着，**写明发呆时间**」——窗口开着却没动作也没人兜底平A的秒数
+   * 必须能从一个地方读出来（`idleSeconds`），不许被「K×W 秒」的聚合读数吞掉。
+   * 非轴队没有逐窗轨迹 ⇒ `hasTrace=false`，不编造（读 0 不代表打满）。
+   */
+  const stunRealization = computed(() => {
+    const pool = calcOutput.value?.stunPool
+    const windowDur = computeWindowDuration()
+    const effTime = effectiveBattleTime(configStore.enemy)
+    if (!pool || !(effTime > 0) || !(windowDur > 0)) return null
+    return realizeStunWindows(buildStunTimeline({
+      stunCount: pool.stunCount,
+      windowDuration: windowDur,
+      effectiveTime: effTime,
+      windows: calcOutput.value?.axisStack?.windowTrace,
+    }))
   })
   /** 失衡内异常状态（轴模式）：每元素触发次数/窗均覆盖（失衡内异常系统 v2） */
   const inStunAnomalyState = computed<InStunAnomalySummary | null>(() => calcOutput.value?.inStunAnomalyState ?? null)
@@ -927,6 +946,7 @@ const attributeLedger = computed(() => {
     stunPoolResult,
     /** 连续失衡读数（开窗数 + 末窗兑现；纯追加，零求值影响） */
     continuousStun,
+    stunRealization,
     inStunAnomalyState,
     bossAnomalyState,
     anomalyPoolResult,

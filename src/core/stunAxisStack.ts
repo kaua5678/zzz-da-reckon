@@ -690,18 +690,42 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     if (windowTruncEnd < 0 && window.basicFillerSlot !== undefined && windowDidSomething) {
       // 兜底平A：从该槽位最后一个动作的结束时刻填到窗口结束（窗口有富余才填）。
       // 动作之间的空隙（startTime 留白）不算平A——平A只补「最后一个动作之后」的富余。
-      const end = slotMaxEnd[window.basicFillerSlot] ?? 0
       /**
-       * ⚠ 兜底填充受该槽**剩余平A预算**封顶（用户口径 2026-10-25）。原实现只看窗口剩多少，
-       * 于是「窗口要 93.5s 平A、该槽只有 64.7s」时凭空多打 28.8s ⇒ 窗数虚高。
+       * ## 兜底**换人接**（用户口径 2026-10-26，逐字）
+       * > 「平a兜底也得从全局预算里面拿，而不是你想生产就生产。目前全局时间都算的180s，
+       * >  看来应该是没考虑到兜底这一块，可以把平a兜底改为你说的换个角色打平a，再没有就空着，写明发呆时间。」
+       *
+       * 修前 = **单槽**兜底（只认轴声明的 `basicFillerSlot`）：该槽平A预算用尽后窗口就空着，
+       * 实测 `auto-1521-1481-1491` 第 5 窗只剩 2.61s 动作、**14.80s 空转**（该槽填充序列
+       * 12.41+12.41+14.46+14.46+0.59 = 54.33 顶到它 54.3s 的池上限），而同队别的槽还有余量。
+       *
+       * 现在 = **多槽接续**：先轴声明的槽，用尽后按槽序让**还有剩余平A预算**的槽接上，
+       * 每一秒都只能从各槽**本轮分到的平A池**（= 全局预算切出来的份额）里拿 —— 仍然「不许凭空造动作」，
+       * 只是不再因为一个槽的分额用完就让整段窗口空着。三槽都见底 ⇒ 窗口留空，
+       * 空转秒数由 `core/stunTimeline.ts#realizeStunWindows#idleSeconds` 如实上报（「写明发呆时间」）。
        */
-      const budget = input.basicBudgetBySlot?.[window.basicFillerSlot]
-      const alreadyFilled = basicFillBySlot[window.basicFillerSlot] ?? 0
-      const remain = budget === undefined ? Number.POSITIVE_INFINITY : Math.max(0, budget - alreadyFilled)
-      const fillSec = Math.max(0, Math.min(effectiveWindowDuration - end, remain))
-      basicFillSeconds += fillSec
-      basicFillBySlot[window.basicFillerSlot] = (basicFillBySlot[window.basicFillerSlot] ?? 0) + fillSec
-      windowFillSec = fillSec
+      const budgetBySlot = input.basicBudgetBySlot
+      const declared = window.basicFillerSlot
+      /** 填充候选取序：先声明的槽，再按槽序取**还有剩余预算**的其他槽 */
+      const candidates: number[] = [declared]
+      if (budgetBySlot !== undefined) {
+        for (const slot of Object.keys(budgetBySlot).map(Number).sort((a, b) => a - b)) {
+          if (slot !== declared) candidates.push(slot)
+        }
+      }
+      let room = Math.max(0, effectiveWindowDuration - (slotMaxEnd[declared] ?? 0))
+      for (const slot of candidates) {
+        if (!(room > 1e-9)) break
+        const budget = budgetBySlot?.[slot]
+        const alreadyFilled = basicFillBySlot[slot] ?? 0
+        const remain = budget === undefined ? Number.POSITIVE_INFINITY : Math.max(0, budget - alreadyFilled)
+        if (!(remain > 1e-9)) continue
+        const give = Math.min(room, remain)
+        basicFillBySlot[slot] = alreadyFilled + give
+        basicFillSeconds += give
+        windowFillSec += give
+        room -= give
+      }
     }
     // 逐窗轨迹（期 1，纯追加）：本窗的延长 / 截断 / 动作 / 占用 / 合轴 / 填充。
     // ⚠ 空窗（一个动作都没执行）也记一条——聚合口径里它照样占一个名义窗长。

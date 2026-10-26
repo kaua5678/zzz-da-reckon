@@ -246,19 +246,30 @@ export interface StunRealization {
   realizedWindows: number
   /** 已兑现的易伤秒数（= Σ 每窗实际占用秒数；无轨迹时为 0） */
   occupiedSeconds: number
+  /**
+   * **窗内发呆秒数** = Σ 每窗 unusedSeconds（窗口开着、却没有任何动作也没人兜底平A的那几秒）。
+   *
+   * 用户口径 2026-10-26：「再没有就空着，**写明发呆时间**」——窗口空转必须如实记账，
+   * 不许被「窗口占 N×W 秒」的聚合读数吞掉。无轨迹（非轴队）⇒ 0（不可推演，不代表打满）。
+   */
+  idleSeconds: number
   /** 是否拿到轴栈逐窗轨迹（false ⇒ `realizedWindows` = 整数窗数，不编造） */
   hasTrace: boolean
 }
 
 export function realizeStunWindows(timeline: StunTimeline): StunRealization {
-  if (!timeline.hasTrace) return { realizedWindows: timeline.windows, occupiedSeconds: 0, hasTrace: false }
+  if (!timeline.hasTrace) {
+    return { realizedWindows: timeline.windows, occupiedSeconds: 0, idleSeconds: 0, hasTrace: false }
+  }
   let realizedWindows = 0
   let occupiedSeconds = 0
+  let idleSeconds = 0
   for (const slot of timeline.slots) {
     const occupied = Math.max(0, slot.effectiveSeconds - slot.unusedSeconds)
     occupiedSeconds += occupied
+    idleSeconds += Math.max(0, slot.unusedSeconds)
     // 填充率按**本窗**有效时长归一（决算截断 / 时钟截短的窗天生更短，不能按名义窗长摊）
     realizedWindows += slot.effectiveSeconds > 0 ? Math.min(1, occupied / slot.effectiveSeconds) : 0
   }
-  return { realizedWindows, occupiedSeconds, hasTrace: true }
+  return { realizedWindows, occupiedSeconds, idleSeconds, hasTrace: true }
 }
