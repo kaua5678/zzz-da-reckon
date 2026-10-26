@@ -95,6 +95,8 @@ function buildXixifuCharConfig({ cfg, cinemaLevel, team, panel, skills }: AgentC
   cfg.mechanicRowValues = {
     ['1521019']: getRowValue(findMoveById(skills, '1521019'), 'damage'),
     ['1521006']: getRowValue(findMoveById(skills, '1521006'), 'damage'),
+    // 毒牙 #2 单段倍率：长按「额外打击」要按它补一行（用户口径 2026-10-26，见 buildExecutions）
+    ['1521009']: getRowValue(findMoveById(skills, '1521009'), 'damage'),
   }
   /**
    * **毒牙长按的额外能量必须由同一个能量池付账**（用户 2026-10-25：「强特长按会先扣除65能量回复5能量
@@ -255,6 +257,44 @@ function buildXixifuExecutions({ cfg, state, executions }: AgentResourceInput): 
       stunBuildUpBonus: stunBonus,
       resIgnore: c1ResIgnore,
       skillTableNote: `蚀骨 ×${baseShigu}：基础 ${shiguBase}%（随技能等级）+ 核心附加 ${Math.round(XIXIFU_SHIGU_ADDITION_RATIO * 100)}%（flat）；队伍 ${electric} 名电属性 → 失衡值 +${stunBonus}%${cinema >= 1 ? '；影画1 无视 10% 电抗' : ''}`,
+    }))
+  }
+
+  /**
+   * ## 毒牙长按「额外打击」（用户口径 2026-10-26）
+   *
+   * 用户（逐字）：
+   * > 「后面的 #2 可以融合 0 次到 3 次一共 4 个块，你既然不给单独的块，就把 4 个块给完整」
+   *
+   * 原文（`data/raw/nanoka_missing/full/1521.json`，强化特殊技：毒牙）：
+   * > 「长按发动时，会额外消耗能量，**每20点发动一次额外的打击**……**至多额外消耗60点能量**」
+   * ⇒ 额外打击数 = **0~3**（滑块 `toxin_duya_hold.rate`，100% = 满长按 3 个）。
+   *
+   * 修前：`data/moveFusions.ts#XIXIFU_VENOM_FANG` 写死 `#1×3 + #2×1`（= 额外打击 **恒 0**），
+   * 而 `extrasPerEx` 只拿去算**能量与毒素**（`toxin_duya_hold`），**从没进过伤害倍率**
+   * ⇒ 长按打的那些 #2 **伤害整段丢失**（失衡值也没算）。
+   *
+   * 修法 = **补一行 `1521009`**（额外打击），次数 = 施放次数 × 每次额外打击数：
+   * 融合组保持「一次动作 = #1×3 + #2×1」不动（那是**点按**的基线），额外打的是**追加**的 #2。
+   * ⚠ 不把额外打击塞进融合组：融合组的 `terms.count` 是**每动作固定段数**，
+   * 而额外打击是**按施放次数×滑块**的变量 ⇒ 塞进去会让「点按」与「长按」共用一个常数，两种档位都对不了。
+   */
+  const holdRate = specAdjustableRate(cfg, '1521.xixifu_toxin.toxin_duya_hold.rate')
+  const extrasPerEx = Math.min(XIXIFU_DUYA_MAX_EXTRA, Math.round(XIXIFU_DUYA_MAX_EXTRA * holdRate))
+  const duyaCasts = Math.max(0, Math.floor(state.exSpecialCount))
+  const extraDuyaHits = duyaCasts * extrasPerEx
+  const duya2Damage = row['1521009'] ?? 0
+  if (extraDuyaHits > 0 && duya2Damage > 0) {
+    executions.push(moduleExecRow({
+      moveId: '1521009',
+      moveName: '强化特殊技：毒牙 #2（长按额外打击）',
+      category: 'special',
+      count: extraDuyaHits,
+      ...RECOVERY_OFF,
+      damageMultiplier: duya2Damage,
+      damageMultiplierOverride: true,
+      element: 'electric',
+      skillTableNote: `毒牙长按额外打击 ×${extraDuyaHits}（${duyaCasts} 次施放 × 每次 ${extrasPerEx} 个额外打击；原文「每20点能量发动一次额外的打击，至多额外消耗60点能量」）`,
     }))
   }
 
