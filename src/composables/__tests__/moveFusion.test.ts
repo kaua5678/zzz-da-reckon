@@ -57,6 +57,34 @@ describe('倍率融合：fusedRowValue（单一事实源 moveFusions）', () => 
     expect(fusedRowValue(skills, '1521008', 'damage')).toBeCloseTo(expected, 6)
   })
 
+  /**
+   * **融合行必须在伤害池 note 里写明「含哪几段」**（2026-10-26，用户报「毒牙 #2 模块怎么不见了」）。
+   *
+   * 实测该报障 = 误读：`1521009` 没丢，它的倍率被融合进主段 `1521008`（伤害池只有一行
+   * `multiplier = 401.7×3 + 133.9 = 1339%`）。但行名叫「毒牙 #1」、note 没提 #2 ⇒ 看着像丢了。
+   * 本判据钉住「note 里必须出现融合说明」，防以后有人删掉它又让用户重新问一遍。
+   *
+   * ⚠ 纯展示：同时断言 `teamTotalDamage` 与融合说明无关地保持原值（`auto-1521-1481-1491` = 87798240）。
+   */
+  it('★ 融合行在伤害池 note 里写明「含哪几段」（用户报「毒牙 #2 不见了」的展示修复）', async () => {
+    const p = teamPresets.find(x => x.id === 'auto-1521-1481-1491')!
+    const { catalog, config } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
+    config.applyTeamPreset(p.team as [string, string, string])
+    const calc = useResourceCalc()
+    const rows = (calc.damagePoolRows.value as unknown as Array<{ moveId?: string; name?: string; multiplier?: number; note?: string }>)
+    const duya = rows.filter(r => String(r.moveId) === '1521008')
+    expect(duya.length, '毒牙应至少一行（融合后）').toBeGreaterThan(0)
+    for (const r of duya) {
+      expect(r.note ?? '', `毒牙行 note 必须写出融合段：${r.note}`).toContain('多段融合为一行')
+      expect(r.note ?? '', 'note 里要列出被融合的 #2').toContain('1521009')
+    }
+    // 融合说明是纯展示 ⇒ 倍率与总伤不变
+    expect(duya[0].multiplier).toBeCloseTo(1339, 6)
+    expect(Math.round(calc.teamTotalDamage.value)).toBe(87798240)
+  }, 180_000)
+
   it('珂蕾妲·沸腾熔炉 = 打击(#1) + 引爆(#2)', async () => {
     const { catalog } = await setupHarness([{ agentId: '1101' }])
     const skills = catalog.getAgentSkills('1101')

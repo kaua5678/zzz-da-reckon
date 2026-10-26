@@ -28,6 +28,7 @@ import type { DamagePoolRow } from './helpers'
 // 纯类型：运行时被擦除，与 damagePool.ts 的 `emitCharDirectRows` 值导入不构成运行时环。
 import type { DamagePoolContext } from './damagePool'
 import { axisTableDirectMove, type AxisTableDirectMove } from './axisTableDirect'
+import { moveFusionByMoveId } from '@/data/moveFusions'
 
 /** 循环头（`damagePool.ts` :416–421）定义的 4 个本槽局部量 + charResult。 */
 export interface CharLocals {
@@ -158,7 +159,22 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
     const rowId = dup > 0 ? `${baseId}-${dup}` : baseId
     const unitMultiplier = (exec.damageMultiplier ?? 0) * execDamageCoef
     const totalUnits = isPerSecondRow ? exec.totalTime : exec.count
-    const baseNote = `${resolved?.note ?? exec.skillTableNote ?? ''}${isPerSecondRow ? '（平A：秒均倍率 × 时间）' : ''}${execSkillLevelBonus > 0 ? ` · 技能等级系数×${execDamageCoef.toFixed(4)}` : ''}`
+    /**
+     * **融合说明**（2026-10-26）：多段招式合成一行时，把「本行含哪几段」写进 note。
+     *
+     * 用户报「希希芙的失衡轴的毒牙 #2 模块怎么不见了？」——实测**没丢**：`1521009` 的倍率
+     * 被融合进主段 `1521008`（原文「伤害倍率」= `{#1}*3 + {#2}`），所以伤害池只有一行
+     * `multiplier = 401.7×3 + 133.9 = 1339%`。但行名写的是「毒牙 #1」、note 里没提 #2
+     * ⇒ 用户合理地以为 #2 消失了。这里按注册表 `moveFusionByMoveId` 自动补一句，
+     * **所有融合招**（雅飞雪、珂蕾妲沸腾熔炉、简·杜、珂蕾妲协同引爆、伊芙琳…）一并受益。
+     *
+     * ⚠ 纯展示：不改 `multiplier` / `count` / 任何数值。
+     */
+    const fusion = exec.moveId ? moveFusionByMoveId.get(String(exec.moveId)) : undefined
+    const fusionNote = fusion && fusion.terms.length > 1
+      ? ` · 含 ${fusion.terms.map(t => `${t.moveId}×${t.count}`).join(' + ')}（多段融合为一行，倍率已合计）`
+      : ''
+    const baseNote = `${resolved?.note ?? exec.skillTableNote ?? ''}${fusionNote}${isPerSecondRow ? '（平A：秒均倍率 × 时间）' : ''}${execSkillLevelBonus > 0 ? ` · 技能等级系数×${execDamageCoef.toFixed(4)}` : ''}`
     const emitExecDirect = (units: number, stunOverride: number, idSuffix: string, extraNote: string, sourceTag?: 'gift' | 'stun' | 'self') => {
       if (units <= 0 || unitMultiplier <= 0) return
       // 本槽模块的轴窗口 overlay（不透明，CC-437）。**按槽位取**——CC-17 起不再跨模块合并成全局表：
