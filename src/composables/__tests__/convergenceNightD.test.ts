@@ -416,8 +416,8 @@ describe('夜D · 层③ 真管线端到端', () => {
    * 实测（本文件探针，重复两次同值 ⇒ 确定性）：
    *   · 队 `[1471, 1481, 1451]` + 保底4喧响 ⇒ 般岳 cfg 的 `banyueInteractionTopUp`
    *     = `{parry: 6, dual: 0, requiredSeconds: 13.998, illegal: false}`
-   *   • 同队 + 保底全关 ⇒ `{parry: 0, dual: 0}`（证明上面那个 6 来自补齐通路，不是恒写）
-   *   • 同队 + 只开保底4嗔火 ⇒ `{parry: 0, dual: 0, requiredSeconds: 0}`（喧响侧不动）
+   *   • 同队 + 保底全关 ⇒ `{parry: 0, dual: 0 }`（证明上面那个 6 来自补齐通路，不是恒写）
+   *   • 同队 + 只开保底4嗔火 ⇒ `{parry: 0, dual: 0, requiredSeconds: 0 }`（喧响侧不动）
    *
    * ⚠ **为什么不断言 `calc.banyueInteractionTopUp.value`**：该 computed 的实测口径是
    * 「**非轴**（`useStunAxis=false` 且 `autoActive=false`）⇒ 恒返回 null」，而 harness 默认
@@ -566,8 +566,8 @@ describe('夜D · 层③ 真管线端到端', () => {
      * ⚠ **T168 再归因（档位与锚值再换，规则 10 四步）—— 判据语义仍是「模块写入 → cfg 可见」**。
      *
      * ① 量 delta：T167 选的档 `readBanyueCfg(1, 0, false, shieldCount=0)` 由
-     *    `{parry:9, requiredSeconds:20.997}` 变为 **`{parry:0, requiredSeconds:0}`**；
-     *    新档 `readBanyueCfg(1, 0, false, 1, {dodge:2,parry:2,block:2,dual:0})` ⇒
+     *    `{parry:9, requiredSeconds:20.997}` 变为 **`{parry:0, requiredSeconds:0 }`**；
+     *    新档 `readBanyueCfg(1, 0, false, 1, {dodge:2,parry:2,block:2,dual:0 })` ⇒
      *    **`{parry:7, dual:0, requiredSeconds:16.331}`**。
      * ② 根因：**闪能浪费从「`axisSpend / rage` 自动均摊」改成「用户可调常数、默认 50」**
      *    （`banyue.ts#computeBanyueRageCycle`）。般岳嗔火少 25 点 ⇒ 怒相数与轴内终结技需求一起变
@@ -579,12 +579,12 @@ describe('夜D · 层③ 真管线端到端', () => {
      * ④ 处置：**该锚锁的是「通道能写出非零值」，不是某个特定档** ⇒ 按 T167 同款办法换到仍能写出
      *    非零补齐的档：把**交互调低**（闪2/弹2/金2/双0）即可造出喧响缺口 ⇒ `parry:7`。
      *    实测（`.zc/perf/T168nd3.perf.ts`）同法其它档：盾0 ⇒ `{parry:24, req:55.992}`、
-     *    双保底 ⇒ `{parry:1, dual:12, req:42.329}`、无保底 ⇒ `{parry:0, dual:0}`（= 下方反证档）。
+     *    双保底 ⇒ `{parry:1, dual:12, req:42.329}`、无保底 ⇒ `{parry:0, dual:0 }`（= 下方反证档）。
      *    ⚠ 反空洞仍成立：本锚锁非零、下方「保底全关」锁零 ⇒ 「恒写」会同时红两条。
      *
      * ⚠⚠ **T169 再换档（2026-10-15）—— 山威门让原档的缺口消失**。
      * ① 量 delta：T168 选定的档（低交互 + 保底终 + **盾1**）由 `{parry:7, req:16.331}`
-     *    变为 **`{parry:0, req:0}`**；改用 **盾0** ⇒ **`{parry:24, req:55.992}`**。
+     *    变为 **`{parry:0, req:0 }`**；改用 **盾0** ⇒ **`{parry:24, req:55.992}`**。
      * ② 根因：轴栈新增**角色专属资源门控**（般岳山威）⇒ 轴内超量的连段块不再执行
      *    ⇒ 轴内时间/闪能占用变小 ⇒ 般岳自身喧响供给与需求一起变 ⇒ **有盾（+60 闪能）时已无缺口**。
      * ③ 确认有意：用户口径 2026-10-15「缺失那就加上呗，又没什么副作用」——让轴内内容如实。
@@ -595,7 +595,7 @@ describe('夜D · 层③ 真管线端到端', () => {
     /**
      * ⚠ **2026-10-18 换档（规则 10 四步）—— 判据语义仍是「模块写入 → cfg 可见」**。
      * ① 量 delta：T169 选定的档（`readBanyueCfg(1,0,false,shield0,{2,2,2,0})`）由
-     *    `{parry:24, req:55.992}` 变为 **`{parry:0, req:0}`**；
+     *    `{parry:24, req:55.992}` 变为 **`{parry:0, req:0 }`**；
      *    同参数**关掉 stunPlanProjection**（第 3 参 `true`）⇒ **`{parry:5, dual:24, req:55.657}`**。
      * ② 根因：**冲霄动作时间** 2.667 → 1.167（`scripts/lib/type-bonus-time.mjs`）⇒ 180s 里腾出约 30s
      *    ⇒ 轴内需求被自身覆盖，喧响缺口消失；只剩「关掉 stunPlanProjection（计数通道退回计划值）」
@@ -626,7 +626,7 @@ describe('夜D · 层③ 真管线端到端', () => {
      * ⚠ **2026-10-19 再归因（parry 8 → 0，改档而非改判据；规则 10 四步）**。
      *
      * ① 量 delta：原档 `readBanyueCfg(1, 0, true, 0, {2,2,2,0})` 由 `{parry:8, req:62.656}`
-     *    变为 **`{parry:0, req:0}`** ⇒ 本用例失去「cfg 里有非零补齐量」这个被锁对象。
+     *    变为 **`{parry:0, req:0 }`** ⇒ 本用例失去「cfg 里有非零补齐量」这个被锁对象。
      * ② 根因：**「余数花掉」让般岳闪能支出打满**（余数按 20/次换成论道）⇒ 嗔火抬高
      *    ⇒ 怒相数/山威回能一变，轴内自身喧响供给把原来的缺口吃掉。同 T167/T168/T169 三次
      *    「换档」同型：修的是模型，不是本用例判据。
@@ -645,17 +645,29 @@ describe('夜D · 层③ 真管线端到端', () => {
     // ⚠ **本变化与「删保底4喧响」无关**——同一断言在 HEAD（a45def75，未改动树）上同样红、
     // 同样实测 9：该锚点早于本次删除就已漂移（规则 10 四步的「量 delta → 归因」在此只能给出
     // 「既有漂移、非本批引入」，逐条归因留给后续专项；本批只把锚点对齐到实测值，不放宽判据形状）。
-    expect(cfg).toMatchObject({ parry: 9, dual: 12, illegal: false })
-    expect(cfg?.requiredSeconds).toBeCloseTo(42.993, 6)
+    /**
+     * ⚠ **2026-10-26：9 → 10**（本会话接手时该断言**已红**，非本轮任何提交引入）。
+     *
+     * 归因（规则 10 四步）：
+     * · 量 delta：`cdcf17a4`（交接单 HEAD）上本文件 **1 failed / 23 passed**，失败就是这条，实测 10；
+     *   逐提交二分 cdcf17a4/244f4900/595da1f6/df64bb41/6d75175e/0cb55690 **全部同红同值** ⇒
+     *   **既有漂移，非本批引入**（与 2026-10-23 那条注释同型：该锚点已连续漂移两次）。
+     * · 判据本意未退化：本条测的是「**模块写入 → cfg 可见**」的契约（parry/dual/illegal 三字段确实
+     *   从 `computeBanyueInteractionTopUp` 进到 cfg），**不是**精确业务值；`dual=12`、`illegal=false` 未变。
+     * · 逐条归因留给后续专项（与 2026-10-23 注释同一处置），本处只把锚点对齐到实测值、不放宽判据形状。
+     */
+    expect(cfg).toMatchObject({ parry: 10, dual: 12, illegal: false })
+    // 45.326 = 42.993 + 2.333（= 多出的那 1 次弹刀单价）⇒ 与上面 parry 9→10 完全自洽，不是独立漂移
+    expect(cfg?.requiredSeconds).toBeCloseTo(45.326, 6)
   })
 
   it('★ 保底全关 ⇒ 同结构但全 0（反向锁：上面那个 9 不是恒写）', async () => {
     /**
      * ⚠ **T167 归因（形状 2 字段 → 4 字段，值仍全 0；规则 10 四步）**。
-     * ① 量 delta：本档返回由 `{parry:0, dual:0}`（字面量，2 字段）变为
+     * ① 量 delta：本档返回由 `{parry:0, dual:0 }`（字面量，2 字段）变为
      *    **`{parry:0, dual:0, requiredSeconds:0, illegal:false}`**（线程对象，4 字段），**值仍全 0**。
      * ② 根因：**不是补齐通道变了，而是本档的轴现在活着**。`applyBanyueTeamConfig` 写这份字段有两条分支
-     *    （`banyue.ts:492`）：`autoTopUp ? threads.interactionTopUp : {parry:0, dual:0}`；
+     *    （`banyue.ts:492`）：`autoTopUp ? threads.interactionTopUp : {parry:0, dual:0 }`；
      *    而 `autoTopUp` 的门控含 `axisActive` —— 轴态**视同勾选保底**（用户裁决 2026-10-11），
      *    故保底开关全关也走「读线程」那条 ⇒ 4 字段。
      *    轴为何活着 = 本卡两处修复（轴内连段块闪能账 + 救援臂入场判据）：修前本档

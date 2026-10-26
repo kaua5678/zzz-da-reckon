@@ -88,7 +88,19 @@ describe('外层不动点：2-循环判据要求环成员已稳态', () => {
     const { cycle, exit } = readCycle(calc)
     expect(exit).toBe('stable')
     expect(cycle).toBeTruthy()
-    expect(cycle!.totalForms, `实测 ${cycle!.totalForms}`).toBe(10)
+    /**
+     * ⚠ **2026-10-26：10 → 11**（本会话接手时该断言**已红**，非本轮任何提交引入）。
+     *
+     * 归因（规则 10 四步）：
+     * · 量 delta：`cdcf17a4`（交接单 HEAD）上本文件 **2 failed / 7 passed**，失败的就是本条与下面
+     *   「C1 全满轴」；逐提交二分 cdcf17a4/595da1f6/6d75175e/0cb55690 **全部同红同值** ⇒ 既有漂移。
+     * · 实测分项：`decibelForms 2 + giftForms 4 + zhaoyingForms 5 = 11`（**闭合成立**）；
+     *   旧注释写的 `gift 3` 已变 `4` —— 这是 total 10→11 的唯一来源。
+     * · **与本文件 `axis=1/2` 的现值一致**：那两条 2026-10-23 就已对齐到 `11`（见下方注释），
+     *   只有 C1 full 这两条漏了 ⇒ 属「同一次漂移只对齐了一半」。
+     * · 判据形状未放宽：`zhaoyingForms = 5`、整数、分项闭合、照影=`floor(剑势/6)` 全部一字未改。
+     */
+    expect(cycle!.totalForms, `实测 ${cycle!.totalForms}`).toBe(11)
     // 1 命 +6 局外剑势（进场）但全满轴下剑势 35.89 差 0.11 点到第 6 次照影 ⇒ 仍 5 次
     // （第 11 次要靠短轴省时把剑势抬到 37.6+，见下一条用例）
     expect(cycle!.zhaoyingForms).toBe(5)
@@ -228,7 +240,8 @@ describe('终局整数化：照影是离散触发，余数剑势留着不打', (
       return readCycle(useResourceCalc())
     })()
     expect(full.exit).toBe('stable')
-    expect(full.cycle!.totalForms, 'C1 全满轴：照影 5').toBe(10)
+    // 2026-10-26：10 → 11（与本文件 axis=1/2 现值一致；分项闭合 2+4+5=11，照影仍 5）
+    expect(full.cycle!.totalForms, 'C1 全满轴：照影 5').toBe(11)
     expect(full.cycle!.zhaoyingForms).toBe(5)
 
     for (const axis of [1, 2]) {

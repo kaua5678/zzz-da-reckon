@@ -436,7 +436,6 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     // 占的秒数从平A池等量挤出；池上回能按剩余比例缩（行回填 + 池原额 = 双计）
     carveBasicPool(executions, burstPlan.usedTime, ['totalDecibelRecovery', 'totalEnergyRecovery'])
     cfg.lighterBurstRounds = burstPlan.quickAssist
-    cfg.lighterBurstJabCount = burstPlan.jab
   }
   // C6 火焰冲击
   if (cinema >= 6) {
@@ -743,7 +742,5 @@ declare module '@/types/resource/config' {
     lighterPowerFinisherActionTime?: number
     /** 本轮实际兑现的喷发轮数（buildExecutions 写入，buildResourceResult 读） */
     lighterBurstRounds?: number
-    /** 本轮刺拳连击段数（同上） */
-    lighterBurstJabCount?: number
   }
 }
