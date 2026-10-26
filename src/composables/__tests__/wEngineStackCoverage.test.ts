@@ -23,6 +23,7 @@ import {
   basicHitWindowStacks,
   stackEnergyEvents,
   stacksToCoverage,
+  teaTeamBuffCoverage,
 } from '@/data/wEngineStackCoverage'
 import type { SkillExecution } from '@/types/resource'
 
@@ -147,21 +148,57 @@ describe('焰心桂冠 14116·萎靡（普通攻击命中叠层，滑动窗稳�
     })).toBeNull()
   })
 
-  it('通道活着：莱特带焰心桂冠 ⇒ 萎靡覆盖率落自动折算、火暴伤低于旧满层 +30', async () => {
+  it('通道活着：莱特带焰心桂冠 ⇒ 萎靡按压缩倍率块命中数折算、饱和到满层', async () => {
     const { config } = await setupHarness([{ agentId: '1041' }, { agentId: '1161' }, { agentId: '1311' }])
     config.team[1].wEngineId = '14116'
     const calc = useResourceCalc()
     const panels = calc.panels.value
     const ice = calc.effectiveWEngineCoverages.value[ICE]
     const fire = calc.effectiveWEngineCoverages.value[FIRE]
-    // 自动折算已写进有效表，且落 0–100 之间（实测夹具 56.9%）
-    expect(ice).toBeGreaterThan(0)
-    expect(ice).toBeLessThan(100)
+    // 命中数里 1161027 是**压缩倍率块**（一行 = 12.5 次命中），不是 1 次 ⇒ 28 段打底就 225 次命中，
+    // 30s 滑动窗封顶 20 层 ⇒ 覆盖率饱和 100%（用户口径 2026-10-26：「这叠莱特专武够用了」）。
+    expect(ice).toBe(100)
     expect(fire).toBe(ice)
-    // 面板上的火暴伤 = 1.5 × 20 × 覆盖率，必须显著低于旧行为（恒满层 30）
+    // 面板上的火暴伤 = 1.5 × 20 × 100% = 30（满层）
     const fireCd = panels.map(p => (p as unknown as { fireCritDmg?: number }).fireCritDmg ?? 0)
-    expect(Math.max(...fireCd)).toBeLessThan(30)
-    expect(Math.max(...fireCd)).toBeGreaterThan(0)
+    expect(Math.max(...fireCd)).toBeCloseTo(30, 5)
+  })
+
+  it('压缩倍率块：1161027 的 count 是倍率块数、命中数要 ×12.5（用户视频 2 段 = 25 次刺拳）', () => {
+    // 2 段 ≈ 1.554s，攻略「80 士气 25 次刺拳」⇒ 12.5 次/段
+    const hits = basicHitCountOf({
+      rows: [
+        { moveId: '1161027', count: 2, totalTime: 1.554 },
+        { moveId: '1161025', count: 1, totalTime: 1.002 },
+      ],
+      basicAttackTime: 2.556,
+      hitRate: 0,
+    })
+    expect(hits).toBe(2 * 12.5 + 1)
+    // 对照：非压缩行的 count 就是命中数
+    const plain = basicHitCountOf({
+      rows: [{ moveId: '1161025', count: 3, totalTime: 3.006 }],
+      basicAttackTime: 3.006,
+      hitRate: 0,
+    })
+    expect(plain).toBe(3)
+  })
+
+  it('茶劲 teamBuff：命中速率 ≥1.875/s（8s 可叠 15 层）⇒ 持续刷新全覆盖；否则永远吃不到', () => {
+    const base = { wEngineId: '14125' }
+    // 达标：莱特 5.33/s、青衣 3.76/s、扳机 6.83/s ⇒ 层数稳定 ≥15、每次命中刷新 10s ⇒ 100%
+    expect(teaTeamBuffCoverage({ ...base, basicHits: 234, basicAttackTime: 43.9 })).toBe(1)
+    expect(teaTeamBuffCoverage({ ...base, basicHits: 167, basicAttackTime: 44.4 })).toBe(1)
+    expect(teaTeamBuffCoverage({ ...base, basicHits: 296, basicAttackTime: 43.3 })).toBe(1)
+    // 不达标：莱卡恩 1.25/s、安比 1.08/s、南宫羽 0.98/s ⇒ 8s 内爬不到 15 层 ⇒ 0
+    expect(teaTeamBuffCoverage({ ...base, basicHits: 54, basicAttackTime: 43.2 })).toBe(0)
+    expect(teaTeamBuffCoverage({ ...base, basicHits: 49, basicAttackTime: 45.4 })).toBe(0)
+    expect(teaTeamBuffCoverage({ ...base, basicHits: 44, basicAttackTime: 45.1 })).toBe(0)
+    // 门槛边界：正好 1.875/s（15/8）⇒ 达标
+    expect(teaTeamBuffCoverage({ ...base, basicHits: 15, basicAttackTime: 8 })).toBe(1)
+    expect(teaTeamBuffCoverage({ ...base, basicHits: 14.9, basicAttackTime: 8 })).toBe(0)
+    // 非 14125 ⇒ 0
+    expect(teaTeamBuffCoverage({ ...base, wEngineId: '14116', basicHits: 234, basicAttackTime: 43.9 })).toBe(0)
   })
 
   it('手调滑块优先：把冰/火两条都拖到 0 ⇒ 面板不再吃萎靡（修前是死控件）', async () => {

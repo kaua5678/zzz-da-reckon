@@ -44,6 +44,8 @@ import {
   basicHitCountOf,
   basicHitRateOf,
   basicHitStackCoverage,
+  teaTeamBuffCoverage,
+  TEA_TEAM_BUFF_EFFECT_ID,
   stackDurationSeconds,
   stackEnergyEvents,
   stacksToCoverage,
@@ -567,6 +569,26 @@ export function createResourceCalc(
         ...(wEngine?.effect.teamBuff?.effects ?? []),
       ]
       for (const e of wEngineEffects) {
+        /**
+         * **玉壶青冰(14125) teamBuff「≥15 层 → 全队增伤」**：原文触发点是「**获得[茶劲]时**，
+         * 若层数 ≥15」⇒ 每次命中都判定并刷新 10s，命中不断就持续覆盖。
+         * 判据 = 命中速率 ≥ 15/8（8s 内能叠到 15 层）⇒ 100%；否则永远吃不到 ⇒ 0%。
+         * 见 data/wEngineStackCoverage#teaTeamBuffCoverage（用户口径 2026-10-26）。
+         */
+        if (e.id === TEA_TEAM_BUFF_EFFECT_ID) {
+          const basicMoves = catalogStore.getAgentSkills(ch.agentId)?.categories.find(c => c.id === 'basic')?.moves ?? []
+          const hits = basicHitCountOf({
+            rows: ch.executions.filter(row => row.category === 'basic'),
+            basicAttackTime: ch.timeAllocation.basicAttackTime,
+            hitRate: basicHitRateOf(basicMoves),
+          })
+          out[e.id] = teaTeamBuffCoverage({
+            wEngineId,
+            basicHits: hits,
+            basicAttackTime: ch.timeAllocation.basicAttackTime,
+          }) * 100
+          continue
+        }
         if (e.type !== 'stacked' || !e.id) continue
         /**
          * 「**普通攻击命中** → +1 层」类（茶劲 / 萎靡）：触发源不是能量扣除事件，而是本槽的

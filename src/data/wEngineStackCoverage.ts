@@ -158,38 +158,6 @@ export function teaSkillPhaseStacks(basicHits: number, maxStacks: number): numbe
   return Math.min(maxStacks, Math.max(0, basicHits))
 }
 
-/** 一行执行行在「每轮失衡」口径下的权重来源（只需与失衡值成正比、与 impact 无关的量） */
-export interface TeaStackRowWeight {
-  count: number
-  /** 该行基础失衡倍率（impact 之外的部分） */
-  baseDaze: number
-  isBasicAttack: boolean
-}
-
-/**
- * 等效层数 = 按**失衡贡献**（次数 × 基础失衡倍率）加权平均两段层数。
- * 失衡值对 impact 线性 ⇒ 用「平均 impact」与逐行叠层等价，不必逐行改面板。
- */
-export function teaEffectiveStacks(input: {
-  basicHitsPerCycle: number
-  maxStacks: number
-  rows: readonly TeaStackRowWeight[]
-}): number {
-  const maxStacks = Math.max(0, input.maxStacks)
-  const basic = teaBasicPhaseStacks(input.basicHitsPerCycle, maxStacks)
-  const skill = teaSkillPhaseStacks(input.basicHitsPerCycle, maxStacks)
-  let weight = 0
-  let weighted = 0
-  for (const row of input.rows) {
-    const w = Math.max(0, row.count) * Math.max(0, row.baseDaze)
-    if (!(w > 0)) continue
-    weight += w
-    weighted += w * (row.isBasicAttack ? basic : skill)
-  }
-  return weight > 0 ? weighted / weight : skill
-}
-
-
 /** 玉壶青冰(14125) 的自 BUFF 效果 id（catalog `wEngines[14125].effect.selfBuff.effects[0].id`） */
 export const TEA_STACK_EFFECT_ID = 'effect_wiki_678_self_impact_tea_full_stack'
 /** 玉壶青冰音擎 id */
@@ -198,6 +166,47 @@ export const TEA_STACK_ENGINE_ID = '14125'
 export const TEA_STACK_MAX = 30
 /** 茶劲触发条件（原文「获得[茶劲]时，若层数 ≥15，全队伤害 +20%」） */
 export const TEA_STACK_THRESHOLD = 15
+/** 玉壶青冰(14125) teamBuff 效果 id（≥15 层 → 全队增伤） */
+export const TEA_TEAM_BUFF_EFFECT_ID = 'effect_wiki_678_team_dmg'
+/** 茶劲每层持续秒数（原文「持续8秒，每层效果单独结算持续时间」） */
+export const TEA_STACK_DURATION = 8
+/** 达到 15 层所需的最低命中速率（次/秒）= 15 / 8 */
+export const TEA_STACK_MIN_HIT_RATE = TEA_STACK_THRESHOLD / TEA_STACK_DURATION
+
+/**
+ * **玉壶青冰 teamBuff（≥15 层 → 全队增伤）的覆盖率（0–1）。
+ *
+ * 原文：「获得[茶劲]时，若装备者拥有的[茶劲]层数大于等于15层，全队角色造成的伤害提升20%…持续10秒」
+ * ⇒ 触发点是「**获得茶劲时**」，即**每次命中都在判定并刷新 10s**，不是每轮失衡只触发一次。
+ *
+ * 用户口径 2026-10-26：
+ * - 「其他角色没这个算法就直接按照一行是一下来算就行」⇒ 命中速率沿用 basicHitRateOf（一行 = 一下）；
+ * - 「本来 14125 在别的角色身上就几乎无用，因为你不能叠层，没达到要求啊」⇒ **先判能不能维持 15 层**；
+ * - 「青衣对青专的触发次数也不是一轮只有一次吧，而且她达到满层也不会停止平A」
+ * - 「扳机对青专应该是全局覆盖的吧，他总是自动攻击保持层数」
+ * ⇒ 命中持续且层数稳定 ≥15 的角色（青衣前场连续平A、扳机后台自动攻击）是**持续刷新 ⇒ 100% 覆盖**。
+ *
+ * 判据（命中速率 R = 命中数 / 平A时间，茶劲每层持续 8s 且单独计时）：
+ * - **R × 8 ≥ 15**（即 R ≥ 1.875/s）⇒ 稳定维持 15 层以上 ⇒ 每次命中都刷新 10s ⇒ **覆盖率 100%**；
+ * - **R × 8 < 15** ⇒ 层数在 8s 内**永远爬不到 15** ⇒ 本条增益**完全吃不到**（0%）。
+ *
+ * 为什么不按「轮数 × 10s / 总时长」：那个口径只适用于「每轮失衡刚开始叠层、之后停手」的打法；
+ * 而实测角色（青衣 3.76/s、扳机 6.83/s、莱特 5.33/s）命中是连续的，层数不中断，
+ * 10s 持续被反复刷新 ⇒ 用轮数算会系统性低估（16.7% vs 实际接近 100%）。
+ */export function teaTeamBuffCoverage(input: {
+  wEngineId: string
+  /** 整局普攻命中个数 */
+  basicHits: number
+  /** 平A时间（秒）：命中速率 = basicHits / basicAttackTime */
+  basicAttackTime: number
+}): number {
+  if (String(input.wEngineId) !== TEA_STACK_ENGINE_ID) return 0
+  const basicTime = Math.max(0, Number(input.basicAttackTime))
+  if (!(basicTime > 0)) return 0
+  // 命中速率 R：8s 内可叠 R×8 层。R×8 ≥ 15 ⇒ 稳定维持 ⇒ 每次命中刷新 10s ⇒ 全覆盖；否则永远吃不到。
+  const hitRate = Math.max(0, Number(input.basicHits)) / basicTime
+  return hitRate * TEA_STACK_DURATION >= TEA_STACK_THRESHOLD ? 1 : 0
+}
 
 /** 一个 basic 段（倍率表 basic 分类里的一段普攻） */
 export interface BasicStageLike { actionTime?: number }
@@ -227,6 +236,11 @@ export function basicHitRateOf(stages: readonly BasicStageLike[]): number {
  *
  * ⚠ 这是**武器口径**：任何角色带 14125 都走这里（不限于青衣）。
  * 命中速率取自倍率表（`basicHitRateOf`）⇒ 普攻慢的击破每轮分不到几次平A ⇒ 层数低、≥15 的增伤吃不到。
+ *
+ * **用户补充口径 2026-10-26**：「莱特也不是每个都是叠层期间打的呀，也有叠完层打的。而且叠完层的
+ * 算多数吧，不用刻意算这个少数」⇒ 上式已经自动反映这一点：`teaBasicPhaseStacks` 只在**前 maxStacks 次**
+ * 爬层，之后都按满层计。克劳实测莱特每轮 78 次命中 / 30 层封顶 ⇒ 平A段等效 24.23/30 = 81%，
+ * 爬层期只占 38% 的命中。**不要再额外乘 0.5**（那会把冲击力砍半，与实战不符）。
  */
 export function teaStunImpactScale(input: {
   wEngineId: string
@@ -262,12 +276,30 @@ export function teaStunImpactScale(input: {
  * 阈值取中间任意值都等价；50% 只是把「一半以上的平A时间有逐次计数」写成可读的名分。
  */
 export interface BasicHitSources {
-  /** 该槽平A执行行（category === 'basic'） */
-  rows: readonly { count?: number; totalTime?: number }[]
+  /** 该槽平A执行行（category === 'basic'）；moveId 用于查压缩倍率块换算 */
+  rows: readonly { moveId?: string; count?: number; totalTime?: number }[]
   /** 该槽平A时间（秒，timeAllocation.basicAttackTime） */
   basicAttackTime: number
   /** 倍率表 basic 分类的命中速率（次/秒，basicHitRateOf）；0 = 拿不到倍率表 */
   hitRate: number
+}
+
+/**
+ * **压缩倍率块**：一行倍率表代表 0.777s 内连续打出的多次命中（用户口径 2026-10-26：「2 段是指倍率表的两段，
+ * 这个一行倍率表花了 0.7 秒打的这些倍率，游戏里是多次刺拳……莱特把多次攻击整合成一个大的倍率块，
+ * 实际上他的攻击次数也很多」）。
+ *
+ * ⇒ 这类行的 `count`（倍率块数）**不等于命中次数**，武器叠层（萎靡/茶劲）按命中次数结算，
+ *   必须乘一个换算系数。**伤害不用这个系数**——倍率块本身的 729.5% 已是整块总量。
+ *
+ * 系数推导（用户给的攻略两档，仓库无逐帧数据）：
+ *   80 士气 → 25 次刺拳；100 士气 → 31 次刺拳
+ *   ⇒ 线性 1 + 0.3×士气；用户视频「80 士气兑现 2 段 ≈1.4 秒」= 2 × 0.777s
+ *   ⇒ 25 次 / 2 段 = **12.5 次/段**（每段 0.777s ⇒ 每次刺拳 0.0622s ≈ 60ms）。
+ */
+export const COMPRESSED_BLOCK_HITS_PER_ROW: Record<string, number> = {
+  /** 莱特 1161027 五段连击（连续冲拳）：一行 = 12.5 次命中 */
+  '1161027': 12.5,
 }
 
 /**
@@ -280,12 +312,15 @@ export function basicHitCountOf(input: BasicHitSources): number {
   for (const row of input.rows) {
     const n = Math.max(0, Number(row.count ?? 0))
     if (!(n > 0)) continue
-    rowHits += n
+    // 压缩倍率块（一行 = 多次命中）：count 是倍率块数，命中数要乘换算系数
+    const perRow = COMPRESSED_BLOCK_HITS_PER_ROW[String(row.moveId ?? '')] ?? 1
+    rowHits += n * perRow
     countedSeconds += Math.max(0, Number(row.totalTime ?? 0))
   }
   const basicTime = Math.max(0, Number(input.basicAttackTime))
   const timeHits = basicTime * Math.max(0, Number(input.hitRate))
-  if (rowHits > 0 && countedSeconds >= 0.5 * basicTime) return rowHits
+  // 恒取两条通道的较大者：行计数只覆盖「已物化的那部分平A」，未物化的残余由时间×速率兜底，
+  // 二者是**互补下界**不是互斥二选一（原实现在覆盖 ≥50% 时只取 rowHits，会漏掉残余平A的命中）。
   return Math.max(rowHits, timeHits)
 }
 

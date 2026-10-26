@@ -294,21 +294,6 @@
                         </div>
                         <div>
                           <div class="field">
-                            <span class="field-label">快速支援</span>
-                            <!-- 用户裁决 2026-10-26：「手动快支全都删了，这机制过时了」⇒ 不再手填。
-                                 仍显示只读值（= 机制自带快支的计数，如莱特士气循环每轮 1 次），供核对。 -->
-                            <n-input-number
-                              :value="selectedChar.quickAssistCount ?? 0"
-                              :min="0"
-                              :max="99"
-                              :readonly="true"
-                              size="small"
-                              style="width: 100%"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <div class="field">
                             <span class="field-label">连携次数/失衡</span>
                             <n-input-number
                               :value="selectedChar.chainCountPerStun ?? 1"

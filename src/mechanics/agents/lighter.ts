@@ -27,7 +27,7 @@
  *
  * 未建模：士气喷发逐帧进出、垫步/组合拳段数、逐敌火焰冲击独立 CD（按整场单目标 8s CD 近似）。
  */
-import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { carveBasicPool, moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -77,7 +77,48 @@ export const LIGHTER_C4_FRONT_EFFICIENCY = 10
 
 /** 假 id：火焰冲击附加火伤（不进失衡/异常池） */
 export const MOVE_FLAME_SHOCK = '1161c6_flame_shock'
-/** 强力终结一击（耗尽士气自动衔接；用 #16 高倍率段近似） */
+
+/**
+ * 每轮喷发里「连续冲拳」的段数（用户视频实测 2026-10-26）。
+ *
+ * 用户原话：「我看了下视频，80 士气打连续冲拳只兑现了 2 次，也就是 1.4 秒左右，
+ * 然后就是终结一击耗时 1 秒。」
+ *
+ * ⚠ **只用 moveId 认招**（用户 2026-10-26：「这个编号每个网站都不一样，只是一种描述。
+ * moveid 才是唯一的」）。B 站/nanoka 的显示编号与 catalog 的「#N」是两套编号，本文件一律不引用：
+ *   1161020 快速支援（0.317s）—— 本轮起手（原文见下）
+ *   1161027 连续冲拳（五段连击，0.777s / 729.5%）—— 每轮 2 段
+ *   1161025 强化一击（五段强力终结，1.002s / 871.0%）—— 耗尽士气自动衔接
+ *   1161028 未强化的最终一击（0.837s）—— 未耗尽士气就收招才打出，本模型不产行
+ *   1161026 五段起攻（1.239s）—— **实战不走这一支**（见下），不产行
+ *
+ * **每轮 = 1161020 快支 + 1161027 连续冲拳 ×2 + 1161025 强化一击**
+ * （用户口径 2026-10-26：「实战都是快支直接加冲拳，打完再来强化一击」。原文佐证：
+ *  skill.assist.description[0]「快速支援：烈闪-守…招式发动后，点按或长按可以直接衔接发动第五段
+ *  [普通攻击]」⇒ 士气攒到 80 后换入自动发快支，快支直接接第五段，不必从 a1 起手、也不经过起攻段）。
+ */
+export const LIGHTER_BURST_JAB_COUNT = 2
+
+/** 进入士气喷发的士气门槛（原文：「[士气]大于等于 80 点后，莱特发动第五段[普通攻击]时，将进入[士气喷发]状态」） */
+export const LIGHTER_BURST_ENTRY = 80
+
+// ============ 五段四招（士气喷发态）============
+// 原文 data/raw/nanoka_missing/full/1161.json · skill.basic.description[1].param（**认招一律用 moveId**）：
+//   快速支援            → 1161020｜0.317s（每轮起手；原文「招式发动后可直接衔接发动第五段」）
+//   五段起攻（喷发态）   → 1161026｜1.239s（实战不经过）
+//   五段连击（喷发态）   → 1161027｜0.777s（连续冲拳）
+//   五段终结（喷发态）   → 1161028｜0.837s（未强化的最终一击）
+//   五段强力终结（喷发态）→ 1161025｜1.002s（耗尽士气的强化一击）
+// 用户口径 2026-10-26：「士气这个是强化a，肯定比普通a3厉害」⇒ 喷发态必须物化，不能拿通用 a3 秒均顶替。
+/** 五段起攻（喷发态，1161026，1.239s）：实战不走这一支（快支直接接第五段）——不产行，仅保留作 fireShock/诊断口径 */
+export const MOVE_BURST_OPENER = '1161026'
+/** 快速支援（1161020，0.317s）：士气攒到 80 换入自动发动，并直接衔接第五段——每轮真正的起手 */
+export const MOVE_QUICK_ASSIST = '1161020'
+/** 连续冲拳（五段连击，1161027，0.777s）：每轮 2 段（用户视频实测） */
+export const MOVE_BURST_JAB = '1161027'
+/** 未强化的最终一击（五段终结，1161028，0.837s）：未耗尽士气就收招时打出——本模型每轮打满至耗尽，故不产行 */
+export const MOVE_BURST_FINISHER = '1161028'
+/** 强力终结一击（喷发态，1161025，1.002s / 871.0%）：连续冲拳期间耗尽士气自动衔接 */
 export const MOVE_POWER_FINISHER = '1161025'
 
 export interface LighterMoraleInput {
@@ -85,6 +126,8 @@ export interface LighterMoraleInput {
   /** 全队普通能量消耗（不含闪能/命破） */
   teamEnergyConsumed: number
   cinemaLevel: number
+  /** 每轮喷发占用秒数（原文「喷发状态下不再随时间自动获得士气」⇒ 这段时间不回时间气） */
+  burstSecondsPerCycle?: number
 }
 
 export interface LighterMoraleResult {
@@ -109,26 +152,130 @@ export function computeLighterRoutStunBonus(cinemaLevel = 0): number {
 /**
  * 士气总量与喷发/强力终结次数。
  * C6：回复效率 ×2（时间+能量来源均 ×2）。
+ *
+ * **每轮成本 = 入场门槛 80 + 喷发期消耗（用户口径 2026-10-26）**：
+ * 「连击会消耗士气啊，一轮失衡莱特基本就连击几秒钟打完士气接个终结一击就没了，要重新攒了」
+ * ⇒ 喷发一轮的真实士气开销 = 进场那 80 点 + 喷发中连击消耗掉的那部分（≈ 整条）。
+ * 而原文「[士气喷发]状态下，莱特**不再随时间自动获得**[士气]」⇒ 喷发那几秒也不产时间回能。
+ * 故每轮净成本 ≈ 100（上限，用户「多了也溢出」），喷发占用时间还要从可回气时间里扣掉。
+ * 修前按 /100 直接除且**不扣喷发时间**，等于白送喷发期的回气——这才是「爆发这么少」的真实原因之一。
  */
 export function computeLighterMorale(input: LighterMoraleInput): LighterMoraleResult {
   const t = Math.max(0, Number(input.combatTime) || 0)
   const energy = Math.max(0, Number(input.teamEnergyConsumed) || 0)
   const mult = cinemaLevelOf(input.cinemaLevel) >= 6 ? 2 : 1
-  const moraleGainTime = LIGHTER_MORALE_PER_SEC * t * mult
-  const moraleGainEnergy = energy * LIGHTER_MORALE_PER_ENERGY * mult
-  const moraleGain = moraleGainTime + moraleGainEnergy
-  // 每次喷发至少消耗接近满条士气（阈值 80，实战通常打光至 0）→ 按 100 点一轮近似
-  const burstEntries = Math.floor(moraleGain / LIGHTER_MORALE_CAP)
-  const powerFinisherCount = burstEntries
+  const perSec = LIGHTER_MORALE_PER_SEC * mult
+  const energyGainTotal = energy * LIGHTER_MORALE_PER_ENERGY * mult
+  const burstBusy = Math.max(0, Number(input.burstSecondsPerCycle) || 0)
+
+  // 逐轮推进：每轮先攒够 80，再花掉喷发时间（期间不回气），循环到时间或士气用尽
+  let timeLeft = t
+  let energyLeft = energyGainTotal
+  let timeGainUsed = 0
+  let entries = 0
+  // 单轮最多能兑现 100 点（上限，多了一轮内溢出）；入场只需 80 ⇒ 每轮可预支能量回能
+  const guard = 10000
+  for (let i = 0; i < guard; i++) {
+    if (timeLeft <= 0) break
+    // 本轮可用：剩余时间回能 + 剩余能量回能（两者相加够 80 才进得去）
+    const timeGainThis = perSec * timeLeft
+    if (timeGainThis + energyLeft < LIGHTER_BURST_ENTRY) break
+    // 先把能量回能算进来（够 80 的部分），不足的用时间补
+    const takeEnergy = Math.min(energyLeft, LIGHTER_MORALE_CAP)
+    const needTime = Math.max(0, LIGHTER_BURST_ENTRY - takeEnergy)
+    const secondsNeeded = perSec > 0 ? needTime / perSec : Infinity
+    if (secondsNeeded > timeLeft) break
+    entries += 1
+    timeGainUsed += needTime
+    energyLeft -= takeEnergy
+    // 喷发占用：不回时间气（原文），只能烧掉已攒的士气
+    timeLeft = Math.max(0, timeLeft - secondsNeeded - burstBusy)
+  }
+  // 尾段：剩余时间继续攒气但不构成一轮
+  const moraleGainTime = timeGainUsed + perSec * timeLeft
+  const moraleGain = moraleGainTime + energyGainTotal
   return {
     moraleGain,
     moraleGainTime,
-    moraleGainEnergy,
-    burstEntries,
-    powerFinisherCount,
+    moraleGainEnergy: energyGainTotal,
+    burstEntries: entries,
+    powerFinisherCount: entries,
   }
 }
+/** 五段四招的秒数表（buildCharConfig 从倍率表预存） */
+export interface LighterBurstTimes {
+  /** 快速支援 1161020（每轮起手） */
+  quickAssist: number
+  /** 连续冲拳 1161027 */
+  jab: number
+  /** 强化一击 1161025 */
+  finisher: number
+}
 
+export interface LighterBurstPlan {
+  /** 快速支援（1161020）次数 = 实际兑现的喷发轮数 */
+  quickAssist: number
+  /** 刺拳连击（1161027）次数：填满本轮平A池的余量 */
+  jab: number
+  /** 强力终结（1161025）次数 = 喷发轮数 */
+  finisher: number
+  /** 这些行合计占用的秒数（从平A池挤出） */
+  usedTime: number
+}
+
+/**
+ * 士气喷发循环排布：每轮 = 五段起攻 → 刺拳连击循环（耗尽士气）→ 强力终结。
+ *
+ * 口径来源（原文 data/raw/nanoka_missing/full/1161.json · skill.basic.description[0]）：
+ * - 「第五段轻拳起攻期间…可以循环发动轻拳起攻和第四段[普通攻击]」⇒ 起手是**轻拳起攻**（1161026），
+ *   之后是刺拳连击（1161027）循环；
+ * - 「保持连点或长按时可以延长刺拳连击的持续时间」「刺拳连击至持续时间上限后…发动终结一击」
+ *   ⇒ 刺拳次数由**时间**决定，不是固定段数；
+ * - 「轻拳起攻或刺拳连击期间耗尽[士气]时，会自动衔接发动更加强力的终结一击」⇒ 收招固定是 1161025。
+ *
+ * **已建模**：每轮的原子骨架 = 五段起攻（1161026, 1.239s）+ 强力终结（1161025, 1.002s），
+ * 次数 = 士气轮次，再被平A池钳制（每轮 2.241s，池装不下就少打——与凤凰 1431 planPhoenixBasic 同款
+ * 「段是离散动作、不按比例折半段」）。
+ * **连续冲拳（1161027）**：每轮固定 LIGHTER_BURST_JAB_COUNT = 2 段——用户视频实测 2026-10-26
+ * 「80 士气打连续冲拳只兑现了 2 次，也就是 1.4 秒左右，然后就是终结一击耗时 1 秒」。
+undefined
+ * 轮数上限 = 士气轮次（computeLighterMorale.burstEntries），再被平A池时间钳制。
+ */
+/**
+ * 士气喷发循环排布：每轮 = 快速支援(1161020) → 连续冲拳(1161027) ×N → 强化一击(1161025)。
+ *
+ * 依据：用户口径 2026-10-26「实战都是快支直接加冲拳，打完再来强化一击」；原文佐证
+ * skill.assist.description[0] / [2]：快速支援与支援突击发动后都「可以直接衔接发动第五段[普通攻击]」，
+ * 故起手是快支而不是五段起攻(1161026)——起攻那一支实战不走，不产行。
+ *
+ * 每轮是**原子组合**（缺任一段就不成一轮，不按比例折半段）：
+ *   1161020 + 1161027 ×N + 1161025
+ * 轮数上限 = 士气轮次（computeLighterMorale.burstEntries），再被平A池时间钳制。
+ */
+export function planLighterBurst(input: {
+  basicTime: number
+  entries: number
+  times: LighterBurstTimes
+  /** 每轮连续冲拳段数（用户实测：80 士气 2 次） */
+  jabPerRound?: number
+}): LighterBurstPlan {
+  const times = input.times
+  const t = Math.max(0, Number(input.basicTime) || 0)
+  const maxEntries = Math.max(0, Math.floor(Number(input.entries) || 0))
+  const jabTime = Math.max(0, times.jab)
+  const jabPerRound = Math.max(0, Math.floor(Number(input.jabPerRound) || 0))
+  const empty: LighterBurstPlan = { quickAssist: 0, jab: 0, finisher: 0, usedTime: 0 }
+  const unitPerRound = Math.max(0, times.quickAssist) + jabPerRound * jabTime + Math.max(0, times.finisher)
+  if (unitPerRound <= 0 || t <= 0 || maxEntries <= 0) return empty
+  const rounds = Math.min(maxEntries, Math.floor((t + 1e-9) / unitPerRound))
+  if (rounds <= 0) return empty
+  return {
+    quickAssist: rounds,
+    jab: rounds * jabPerRound,
+    finisher: rounds,
+    usedTime: rounds * unitPerRound,
+  }
+}
 /** C6 火焰冲击倍率%（含冲击力超额） */
 export function computeLighterFlameShockMultiplier(impact: number): number {
   const over = Math.max(0, Math.floor(Number(impact) || 0) - LIGHTER_IMPACT_SOFT_CAP)
@@ -207,10 +354,19 @@ function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
     panel.stunDurationBonusSeconds + computeLighterRoutStunBonus(cinema)
 }
 
-function buildCharConfig({ cinemaLevel, cfg, panel }: AgentCharConfigInput): void {
+function buildCharConfig({ cinemaLevel, cfg, panel, skills }: AgentCharConfigInput): void {
   const cinema = cinemaLevelOf(cinemaLevel)
   cfg.lighterCinemaLevel = cinema
   cfg.lighterImpact = panel.impact
+  // 士气喷发循环三段的 actionTime 在 cfg 构建期预存：buildExecutions 入参没有 skills，
+  // 单一事实源仍是倍率表（与琉音 liuyinFarewellActionTime / 希格莉德 sigridLanceSegments 同法）。
+  const basicMoves = skills.categories.find(c => c.id === 'basic')?.moves ?? []
+  const atOf = (moveId: string) => basicMoves.find(m => m.id === moveId)?.actionTime ?? 0
+  cfg.lighterBurstJabActionTime = atOf(MOVE_BURST_JAB)
+  cfg.lighterPowerFinisherActionTime = atOf(MOVE_POWER_FINISHER)
+  // 快支在 assist 分类，不在 basic —— 单独找
+  const assistMoves = skills.categories.find(c => c.id === 'assist')?.moves ?? []
+  cfg.lighterQuickAssistActionTime = assistMoves.find(m => m.id === MOVE_QUICK_ASSIST)?.actionTime ?? 0
   if (cinema >= 6) {
     cfg.lighterFlameShockMult = computeLighterFlameShockMultiplier(panel.impact)
   }
@@ -222,6 +378,10 @@ function lighterMoraleOf(cfg: AgentResourceInput['cfg'], state: AgentResourceInp
     combatTime: effectiveCombatTime(state, cfg),
     teamEnergyConsumed: Math.max(0, Number(cfg.lighterTeamEnergyConsumed ?? 0)),
     cinemaLevel: cinema,
+    // 每轮喷发占用 = 起攻 + 刺拳 ×2 + 强力终结（用户实测：80 士气打 2 次连续冲拳 ≈1.4s，再接 1s 终结）
+    burstSecondsPerCycle: Math.max(0, Number(cfg.lighterQuickAssistActionTime ?? 0))
+      + LIGHTER_BURST_JAB_COUNT * Math.max(0, Number(cfg.lighterBurstJabActionTime ?? 0))
+      + Math.max(0, Number(cfg.lighterPowerFinisherActionTime ?? 0)),
   })
 }
 
@@ -230,42 +390,61 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const combatTime = effectiveCombatTime(state, cfg)
   const morale = lighterMoraleOf(cfg, state)
 
-  // 强力终结：耗尽士气自动衔接；次数 = 喷发轮次；后台/前台混合，整局不另占必做时间（合入普攻循环）
-  if (morale.powerFinisherCount > 0) {
-    // 不强制覆盖倍率表——若通用普攻计划已含该 move，则 patch；否则追加近似行
-    const existing = executions.find(e => e.moveId === MOVE_POWER_FINISHER)
+  // ===== 士气喷发循环（用户口径 2026-10-26：「士气爆发肯定必须建模，这是莱特核心」）=====
+  // 物化五段四招：起攻 1161026 / 刺拳连击 1161027 / 强力终结 1161025，占的**就是平A池那段时间**
+  // （与朱鸢 1241 霰弹、艾莲 1191 循环行、凤凰 1431 a34 同款：carveBasicPool 等量挤出，时间守恒）。
+  // 池上两种回能按剩余比例缩——模块行是真实 moveId，enrich 会按表回填 energy/decibel，不缩即双计。
+  // 「不花时间打伤害 = 白嫖」（用户 2026-10-25）同样约束这里：行有真实 actionTime 才进折叠环。
+  const burstTimes: LighterBurstTimes = {
+    quickAssist: Math.max(0, Number(cfg.lighterQuickAssistActionTime ?? 0)),
+    jab: Math.max(0, Number(cfg.lighterBurstJabActionTime ?? 0)),
+    finisher: Math.max(0, Number(cfg.lighterPowerFinisherActionTime ?? 0)),
+  }
+  const basicPool = executions.find(e => e.moveId === 'basic_attack')
+  const burstPlan = planLighterBurst({
+    basicTime: basicPool?.totalTime ?? 0,
+    entries: morale.powerFinisherCount,
+    times: burstTimes,
+    jabPerRound: LIGHTER_BURST_JAB_COUNT,
+  })
+  if (burstPlan.usedTime > 0) {
     const c1Bonus = cinema >= 1 ? LIGHTER_C1_FINISHER_DMG : 0
-    if (existing) {
-      existing.count = existing.count + morale.powerFinisherCount
-      if (c1Bonus > 0) {
-        existing.dmgBonus = (existing.dmgBonus ?? 0) + c1Bonus
-      }
-      existing.skillTableNote =
-        `${existing.skillTableNote ?? ''}；士气喷发强力终结 +${morale.powerFinisherCount}`
-          + (c1Bonus ? `（C1 伤害+${c1Bonus}%）` : '')
-    } else {
-      // 倍率交 enrich 回填；先占位 0 并关 override，若 enrich 后仍 0 则无伤
+    const pushSeg = (moveId: string, moveName: string, count: number, actionTime: number, dmgBonus = 0, category = 'basic') => {
+      if (count <= 0 || actionTime <= 0) return
       executions.push(moduleExecRow({
-        moveId: MOVE_POWER_FINISHER,
-        moveName: '普通攻击：强力终结一击（士气喷发）',
-        category: 'basic',
-        count: morale.powerFinisherCount,
+        moveId,
+        moveName,
+        category,
+        count,
+        actionTime,
+        totalTime: count * actionTime,
         damageMultiplier: 0,
         damageMultiplierOverride: false,
         element: 'fire',
-        skillTableNote:
-          `士气喷发强力终结 ×${morale.powerFinisherCount}`
-          + (c1Bonus ? `（C1 伤害+${c1Bonus}%）` : ''),
-        ...(c1Bonus ? { dmgBonus: c1Bonus } : {}),
+        skillTableNote: `士气喷发循环 ×${count}（${actionTime}s/次）` + (dmgBonus ? `（C1 伤害+${dmgBonus}%）` : ''),
+        ...(dmgBonus ? { dmgBonus } : {}),
       }))
     }
+    // 回能/喧响按表回填（与弹刀行同口径：行内表值 + `calcSpecialActionBonus` 的特殊动作奖励是两笔）。
+    // ⚠ 已知缺口：那笔 20 喧响/次 由 `cfg.quickAssistCount`（用户手填的**主动**快支）驱动，模块自建的
+    // 机制快支拿不到——两者都走 quickAssistCount，引擎无法区分。默认配置下 quickAssistCount=0，
+    // 故这 9 次只结算行内表值（17.435 喧响 + 2.28 能量/次），少算 9×20 喧响；等拆出独立通道再补。
+    pushSeg(MOVE_QUICK_ASSIST, '快速支援：烈闪-守（喷发循环起手）', burstPlan.quickAssist, burstTimes.quickAssist, 0, 'assist')
+    // 刺拳连击吃 C1 的强力终结加伤？不吃——C1 只加「强力终结一击」本体，见下
+    pushSeg(MOVE_BURST_JAB, '普通攻击：刺拳连击（士气喷发）', burstPlan.jab, burstTimes.jab)
+    pushSeg(MOVE_POWER_FINISHER, '普通攻击：强力终结一击（士气喷发）', burstPlan.finisher, burstTimes.finisher, c1Bonus)
+    // 占的秒数从平A池等量挤出；池上回能按剩余比例缩（行回填 + 池原额 = 双计）
+    carveBasicPool(executions, burstPlan.usedTime, ['totalDecibelRecovery', 'totalEnergyRecovery'])
+    cfg.lighterBurstRounds = burstPlan.quickAssist
+    cfg.lighterBurstJabCount = burstPlan.jab
   }
-
   // C6 火焰冲击
   if (cinema >= 6) {
     const mult = Number(cfg.lighterFlameShockMult ?? 0)
       || computeLighterFlameShockMultiplier(Number(cfg.lighterImpact ?? 0))
-    const count = computeLighterFlameShockCount(combatTime, morale.powerFinisherCount)
+    // ⚠ 用实际兑现的轮数（burstPlan.finisher）：士气够但平A池装不下时，轮数被时间钳制，
+    // 火焰冲击的「耗尽士气终结额外 +1」也只能按真打出来的次数算（否则凭空多发）。
+    const count = computeLighterFlameShockCount(combatTime, burstPlan.finisher)
     pushExec(
       executions,
       MOVE_FLAME_SHOCK,
@@ -281,6 +460,9 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
 
 function patchExecutions({ cfg, executions }: AgentResourceInput): void {
   const cinema = cinemaLevelOf(cfgNum(cfg, 'lighterCinemaLevel', 0))
+  // ⚠ 平A聚合行**不归零**：喷发循环只吃掉池的一部分（每轮 2.241s），剩余时间仍是普通平A，
+  // 按秒均 × 剩余时长结算才对。归零会凭空删掉这部分输出（实测误差 −7%，见提交说明）。
+  // 与凤凰 1431「所有平A都落在 a3/a4」不同——莱特喷发外照常打普通平A。
   if (cinema < 1) return
   const bonus = LIGHTER_C1_FINISHER_DMG
   for (const exec of executions) {
@@ -296,8 +478,10 @@ function buildResourceResult({ cfg, state }: AgentResourceResultInput): Partial<
   const cinema = cinemaLevelOf(cfg.lighterCinemaLevel)
   const combatTime = effectiveCombatTime(state, cfg)
   const morale = lighterMoraleOf(cfg, state)
+  // 火焰冲击额外次数按**实际打出**的喷发轮数（buildExecutions 写进 cfg），不是理论士气轮次
+  const actualRounds = Math.max(0, Number(cfg.lighterBurstRounds ?? 0))
   const flameCount = cinema >= 6
-    ? computeLighterFlameShockCount(combatTime, morale.powerFinisherCount)
+    ? computeLighterFlameShockCount(combatTime, actualRounds)
     : 0
   return {
     lighterMorale: morale,
@@ -551,5 +735,15 @@ declare module '@/types/resource/config' {
     lighterTeamEnergyConsumed?: number
     /** 莱特影画等级（模块缓存） */
     lighterCinemaLevel?: number
+    /** 快速支援（1161020）actionTime（buildCharConfig 从倍率表预存；快支在 assist 分类） */
+    lighterQuickAssistActionTime?: number
+    /** 刺拳连击（1161027）actionTime（同上） */
+    lighterBurstJabActionTime?: number
+    /** 强力终结（1161025）actionTime（同上） */
+    lighterPowerFinisherActionTime?: number
+    /** 本轮实际兑现的喷发轮数（buildExecutions 写入，buildResourceResult 读） */
+    lighterBurstRounds?: number
+    /** 本轮刺拳连击段数（同上） */
+    lighterBurstJabCount?: number
   }
 }

@@ -202,7 +202,7 @@
 - **模块**：`src/mechanics/agents/lucy.ts` + `lucy.json`。
 
 ### 莱特（lighter / 1161）—— 击破拐力 + 士气喷发
-- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/lighter.ts` + `public/static/teammate-buffs.json` 1161 组拐力 + spec `1161.json`；测试 `src/mechanics/__tests__/lighter.test.ts` 10 例）。含：核心减抗（冰火抗 -15 满覆盖）、溃败失衡时长 +3s/C1→+5s、冲击力 ×1.2 与昂扬公式 source 同步、昂扬满层公式与 C2 系数、士气循环（2.9/s + 全队普通能量消耗 ×0.26 不含闪能，C6×2）、影画4 后台能量效率滑块 backstageRatio 与喷发后场回能 CD、影画6 火焰冲击 8s CD。此前档案段缺状态行，2026-08-27 对账补齐。
+- **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/lighter.ts` + `public/static/teammate-buffs.json` 1161 组拐力 + spec `1161.json`；测试 `src/mechanics/__tests__/lighter.test.ts` 10 例）。含：核心减抗（冰火抗 -15 满覆盖）、溃败失衡时长 +3s/C1→+5s、冲击力 ×1.2 与昂扬公式 source 同步、昂扬满层公式与 C2 系数、士气循环（2.9/s + 全队普通能量消耗 ×0.26 不含闪能，C6×2）、影画4 后台能量效率滑块 backstageRatio 与喷发后场回能 CD、影画6 火焰冲击 8s CD、**士气喷发循环物化**（1161020 快速支援 0.317s 起手 + 1161027 连续冲拳 0.777s×2段 + 1161025 强化一击 1.002s，真实时长并从平A池等量挤出、池回能按比例缩；轮数 = min(士气轮次, 平A池容量)；1161028 未强化最终一击与 1161026 五段起攻实战不走，故不产行）。专武叠层：14116 焰心桂冠 +25% 冲击力常驻、萎靡满覆盖；14125 玉壶青冰茶劲按命中速率 ≥1.875/s 判能否叠到 15 层（达则持续刷新 10s 全覆盖，否则为 0）。此前档案段缺状态行，2026-08-27 对账补齐。
 - **昂扬**（额外能力：强攻或同阵营）：满层 `min(75, 25+floor((impact-170)/10)*5)`；C2×1.2；用户口径首次刺拳后永续。
 - **模块**：`src/mechanics/agents/lighter.ts` + `lighter.json`。
 

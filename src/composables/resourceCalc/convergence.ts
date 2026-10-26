@@ -817,11 +817,18 @@ export function createRunCalcRound(deps: {
     const parryForBonus = [0, 0, 0]
     for (const cfg of characters) parryForBonus[cfg.slot] = cfg.parryCount + cfg.parryNoFollowUpCount + cfg.parryDecibelOnlyCount
     // CC-227：整份保留并随本轮结果返回（展示层直读——此前 useResourceCalc 用 store 原值另拼一份，Boss 弹刀反推 / 连携口径会漂）
+    /**
+     * 快支次数（特殊动作喧响 20/次）= **0**：手动快支已下线（用户裁决 2026-10-26
+     * 「不是只读，直接删了就行，没人去填这个无关紧要招式的次数」）。
+     * 机制快支（莱特士气循环）不在这里结算——它作为**普通招式**走行内表值回能/喧响，
+     * 与弹刀那种「特殊动作奖励」是两笔不同口径。
+     */
+    const quickAssistForBonus = characters.map(() => 0)
     const specialActionBonusRound = calcSpecialActionBonus(
       parryForBonus,
       perSlotChainForBonus,
-      configStore.team.map(c => c.dodgeCounterCount),
-      configStore.team.map(c => c.quickAssistCount),
+      characters.map(cfg => cfg.dodgeCounterCount),
+      quickAssistForBonus,
     )
     const specialBonusPerSlot = specialActionBonusRound.perSlotBonus
     /**
@@ -1114,11 +1121,13 @@ export function createRunCalcRound(deps: {
       // 与萎靡（14116）共用同一解析：物化行计数 vs 平A时间×倍率表速率（见 basicHitCountOf）。
       let basicWeight = 0
       let skillWeight = 0
-      const basicRows: { count?: number; totalTime?: number }[] = []
+      // ⚠ 必须带 moveId：压缩倍率块（如莱特 1161027 一行 = 12.5 次命中）靠它查换算系数，
+      // 丢了 moveId 就会把一处倍率块当成 1 次命中 ⇒ 茶劲层数系统性偏低。
+      const basicRows: { moveId?: string; count?: number; totalTime?: number }[] = []
       for (const row of ch.executions) {
         const n = Math.max(0, Number(row.count))
         const w = n * Math.max(0, Number(row.dazeMultiplier ?? 0))
-        if (row.category === 'basic') { basicRows.push(row); basicWeight += w } else skillWeight += w
+        if (row.category === 'basic') { basicRows.push({ moveId: row.moveId, count: n, totalTime: row.totalTime }); basicWeight += w } else skillWeight += w
       }
       const basicMoves = catalogStore.agentSkillsByAgentMap.get(String(ch.agentId))?.categories.find(c => c.id === 'basic')?.moves ?? []
       const basicCount = basicHitCountOf({
