@@ -1,10 +1,13 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentNextRoundFeedbackInput,
   AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamConfigInput,
+  ModuleFeedback,
 } from '../types'
 import type { MechanicSetting } from '@/types/resource'
 import type { AgentSkills, SkillMove } from '@/types/catalog'
@@ -112,6 +115,15 @@ export const SHARPNESS_ULTIMATE_GAIN = 10
  */
 /** 残余积蓄效率：核心被动 +50%（Lv.7）/ 影画1 锐暴 +20% */
 export const GASH_EFF_CORE = 50
+/**
+ * 额外能力·血裔传承：「全队代理人触发[浸染]时，克拉蕾回复 300 点喧响值，18 秒内最多触发 1 次」。
+ *
+ * **用户口径 2026-10-26**：「克拉蕾这个浸染有事件了吧？洛克茜还能净化，让你多次浸染，
+ * 一次风化获得多次喧响」⇒ 触发次数 = **风化触发次数**（每次风化可多次浸染/净化；净化后能再浸染），
+ * 按 18s CD 钳制。事件通道 = `nextRoundFeedback` 的 `anomalyPool.perElement`（上一轮收敛值）。
+ */
+export const CLARET_INFECTION_DECIBEL = 300
+export const CLARET_INFECTION_DECIBEL_CD_SECONDS = 18
 export const GASH_EFF_C1 = 20
 /** 核心被动（Lv.7）：猩红铭刻/连携/终结/无垢熔锋期间暴击率 +30% */
 export const CORE_CRIT_RATE = 30
@@ -1497,6 +1509,30 @@ const settings: MechanicSetting[] = [
   },
 ]
 
+/**
+ * 额外能力·血裔传承的浸染回响：「全队代理人触发[浸染]时，克拉蕾回复 300 点喧响值，18 秒内最多触发 1 次」。
+ *
+ * **用户口径 2026-10-26**：「克拉蕾这个浸染有事件了吧？洛克茜还能净化，让你多次浸染，
+ * 一次风化获得多次喧响」⇒ 触发次数 = **风化触发次数**（一次风化窗口内可多次浸染；洛克茜的
+ * 恕不远送会把[浸染]还原成[风化]（= 净化），从而能再浸染 ⇒ 多次），按 18s CD 钳制。
+ *
+ * 为什么不按「每元素浸染次数」精确建模：引擎的异常池是**总量口径**，`perElement[].triggerCount`
+ * 记的是「该元素异常触发次数」而不是「浸染事件数」。浸染的触发源 = 风化窗口内经其他属性伤害，
+ * 在总量口径下每个风化窗口至少 1 次浸染、上限受该窗口内其他元素触发次数约束 ⇒
+ * 取 `min(其他元素触发次数, 风化触发次数 × 单窗可浸染上限)` 无法在不引入逐事件时间轴的前提下确定。
+ * 故按**风化触发次数**（= 每次风化必然产生至少一次浸染/净化循环）作为下界计数，再按 18s CD 钳制——
+ * 这是所有自洽读法的共同下界（不会高估），且与用户「一次风化获得多次喧响」的方向一致（CD 才是真闸）。
+ */
+function claretNextRoundFeedback({ anomalyPool, combatTime }: AgentNextRoundFeedbackInput): ModuleFeedback {
+  const windTriggers = anomalyPool.perElement.find(p => p.element === 'wind')?.triggerCount ?? 0
+  if (!(windTriggers > 0)) return {}
+  // 18s CD ⇒ 整局至多 floor(战斗时间 / 18) 次（不足一次也给 1 次：首触发不受 CD 限制）
+  const maxByCd = Math.max(1, Math.floor(combatTime / CLARET_INFECTION_DECIBEL_CD_SECONDS))
+  const triggers = Math.min(Math.floor(windTriggers), maxByCd)
+  if (triggers <= 0) return {}
+  return { claretInfectionDecibel: triggers * CLARET_INFECTION_DECIBEL }
+}
+
 export const claretMechanic: AgentMechanicModule = {
   id: 'agent:claret',
   agentIds: [CLARET_AGENT_ID],
@@ -1601,6 +1637,17 @@ export const claretMechanic: AgentMechanicModule = {
   buildExecutions: buildClaretExecutions,
   patchExecutions: patchClaretExecutions,
   buildResourceResult: buildClaretResourceResult,
+  nextRoundFeedback: claretNextRoundFeedback,
+  /**
+   * converge 阶段把上一轮算出的浸染喧响写进本槽 `extraSelfDecibelReward`（模式同普罗米娅）。
+   * 必须走这条收敛回填而不是直接在 `buildResourceResult` 里加减：喧响总量决定能放几次终结技，
+   * 而终结技次数又反过来影响异常触发 —— 首轮与收敛轮必须同口径（否则迭代不收敛）。
+   */
+  applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
+    if (phase !== 'converge' || !threads) return
+    const add = Math.max(0, Math.floor(threads.moduleFeedback.claretInfectionDecibel ?? 0))
+    if (add > 0) cfg.extraSelfDecibelReward = Math.max(0, cfg.extraSelfDecibelReward) + add
+  },
   resourceSections: buildClaretResourceSections,
   settings,
 }

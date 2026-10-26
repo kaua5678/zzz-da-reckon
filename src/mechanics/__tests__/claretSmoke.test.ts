@@ -483,3 +483,38 @@ describe('克拉蕾（1611）残锋归属：全队而非自身', () => {
     expect(withAa.sharpCritDmg - noAa.sharpCritDmg, '残锋应给 +25 锐暴（AA 门控）').toBeCloseTo(25, 1)
   })
 })
+
+/**
+ * 额外能力·血裔传承：「全队代理人触发[浸染]时，克拉蕾回复 300 点喧响值，18 秒内最多触发 1 次」。
+ *
+ * **用户口径 2026-10-26**：「克拉蕾这个浸染有事件了吧？洛克茜还能净化，让你多次浸染，
+ * 一次风化获得多次喧响」——浸染事件通道存在（`nextRoundFeedback.anomalyPool`）。
+ *
+ * 判据两面：① 有风化触发 ⇒ 喧响确实涨了 300×次数；② 无风化（冰队 1141）⇒ 一分不多。
+ * 只断言 `CLARET_INFECTION_DECIBEL === 300` 是空的（常量对但可能没有消费者）。
+ */
+describe('克拉蕾（1611）浸染回响：全队触发[浸染]回 300 喧响', () => {
+  const decibelOf = async (team: Parameters<typeof setupHarness>[0]) => {
+    await setupHarness(team)
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 900))
+    const rr: any = calc.resourceResult.value
+    const ch = rr?.characters.find((c: any) => c.agentId === '1611')
+    return Number(ch?.decibelSource?.unshareableBonus ?? -1)
+  }
+
+  it('有风化触发（洛克茜队在队）⇒ unshareableBonus 含 300×触发次数', async () => {
+    const raw = readFileSync(new URL('../../../data/raw/nanoka_missing/full/1611.json', import.meta.url), 'utf8')
+      .replace(/<[^>]+>/g, '')
+    expect(raw, 'raw 应声明浸染回 300 喧响、18 秒一次').toMatch(/触发\[浸染\]时，克拉蕾回复300点喧响值，18秒内最多触发1次/)
+
+    const withWind = await decibelOf([{ agentId: '1611' }, { agentId: '1621' }, { agentId: '1211' }])
+    expect(withWind, '有风化 ⇒ 至少 1 次 × 300').toBeGreaterThanOrEqual(300)
+    expect(withWind % 300, '必须是 300 的整数倍（每次固定 300）').toBe(0)
+  })
+
+  it('负控：无风化（冰队 1141）⇒ 为 0', async () => {
+    const noWind = await decibelOf([{ agentId: '1611' }, { agentId: '1141' }, { agentId: '1211' }])
+    expect(noWind, '队里没有风 ⇒ 无浸染 ⇒ 不加').toBe(0)
+  })
+})

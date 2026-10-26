@@ -19,7 +19,7 @@
  * 设 minGold 门槛（低于该总限定金不生成点，表达「配置要求」）。
  * 纵轴：伤害 / Boss 血量 × 100%（100 = 击杀，200 = 两倍血量）。
  */
-import { applyBossRoom, LAYER_BUFF_PREFIX } from '@/composables/bossRoom'
+import { applyBossRoom } from '@/composables/bossRoom'
 import { isLimitedSAgentId, isLimitedSWengineId, runLimitedGold } from '@/composables/limitedGold'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { liveInteractions } from '@/composables/liveInteractions'
@@ -28,7 +28,7 @@ import { type StunAxisState, type ConfigModel } from '@/stores/config'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { useCatalogStore } from '@/stores/catalog'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
-import { phaseBuffRows } from '@/utils/phaseBuff'
+import { phaseBuffRows, LAYER_BUFF_PREFIX } from '@/utils/phaseBuff'
 import { stunAxisPresets } from '@/data/stunAxisPresets'
 import { fmt, localized } from '@/utils/format'
 import {
@@ -956,6 +956,23 @@ export function applyPresetInteractions(
       case 'block': configStore.setActionCount(slot, 'blockCount', it.count); break
       case 'tauntCancel': configStore.setActionCount(slot, 'tauntCancelCount', it.count); break // 般岳：嘲讽取消失衡外连段后摇
       case 'claretBurialInterrupt': configStore.setActionCount(slot, 'claretBurialInterruptCount', it.count); break // 克拉蕾：打断葬血强袭（数值减半、毁伤照常）
+      /**
+       * 仪玄·e 弹（完美格挡）→ 本槽 (`yixuanPerfectBlockCount`)。
+       * ⚠ 2026-10-26 补：该类型早就在 `INTERACTION_WEIGHTS` / `INTERACTION_LABELS` /
+       * `BOSS_ATTACK_INTERACTIONS` 三处登记，**却漏了本 switch 的 case** ⇒ 用户填的次数不落 cfg，
+       * 仪玄的闪能/日珥收入与「#2 赠送」全按 0 算（引擎侧字段与消费者全都现成，只差这一行转发）。
+       * 注意**不是** `perfectBlockCount`——那是佩洛伊斯（phoenix）的字段，两者语义不同不可共用。
+       */
+      case 'yixuanPerfectBlock': configStore.setActionCount(slot, 'yixuanPerfectBlockCount', it.count); break
+      /** 佩洛伊斯·完美格挡 → `perfectBlockCount`（phoenix.ts#phoenixEmberIncome 消费） */
+      case 'perfectBlock': configStore.setActionCount(slot, 'perfectBlockCount', it.count); break
+      /**
+       * `counterAssist`（反制支援/角力）**刻意不在此处**：它的次数不是用户交互项，而是由 **boss 预设**
+       * 的控制技组数推出（`configStore.counterAssistSlot` + `appliedBoss.counterAssistGroups`，
+       * 见 `resourceCalc/helpers.ts#counterAssistCount`）。在交互栏再填一遍会与 boss 推导**双计**。
+       * 它出现在 `INTERACTION_WEIGHTS` / `BOSS_ATTACK_INTERACTIONS` 里是为了**难度权重**（每组算一次弹刀），
+       * 不是为了让用户填次数。
+       */
     }
   }
 }

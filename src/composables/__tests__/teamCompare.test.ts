@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { computed } from 'vue'
-import { mockStaticFetch, newPinia } from '@/test/harness'
+import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -8,6 +8,7 @@ import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { interactionSurvivalBySlot, roundInteractionCount } from '@/composables/liveInteractions'
 import {
   applyAxisBinding,
+  applyPresetInteractions,
   applyGoldSteps,
   baseGoldOf,
   buildGoldStepsFromConfig,
@@ -1234,5 +1235,45 @@ describe('teamCompare 自动下位音擎（装填池择优）', () => {
     expect(batchPoints[0]!.damage).toBeCloseTo(soloPoints[0]!.damage, 5)
     expect(batchPoints[0]!.cinemas).toEqual(soloPoints[0]!.cinemas)
     expect(batchPoints[0]!.wengineMods).toEqual(soloPoints[0]!.wengineMods)
+  })
+})
+
+/**
+ * 交互 → cfg 的转发完整性（2026-10-26）。
+ *
+ * 根因：`INTERACTION_WEIGHTS` / `INTERACTION_LABELS` / `BOSS_ATTACK_INTERACTIONS` 三处登记了某类型，
+ * **不代表** `applyPresetInteractions` 的 switch 里有对应 case——仪玄·e 弹与佩洛伊斯·完美格挡就漏了，
+ * 表现为「用户在交互栏填了次数，引擎完全不知道」（不报错、不红，静默 0）。
+ *
+ * 判据：对每个「有 cfg 字段 + 已登记权重」的类型，走真入口 `applyPresetInteractions` 后该字段必须等于填入值。
+ * 负控：`counterAssist` **不得**落 cfg（它由 boss 预设推，用户再填会双计）。
+ */
+describe('applyPresetInteractions：登记了权重的类型必须有转发（否则静默 0）', () => {
+  it('yixuanPerfectBlock / perfectBlock / claretBurialInterrupt 落到各自 cfg 字段', async () => {
+    await setupHarness([{ agentId: '1371' }, { agentId: '1641' }, { agentId: '1611' }])
+    const cfg = useConfigStore()
+    applyPresetInteractions(cfg, [
+      { type: 'yixuanPerfectBlock', count: 5, slot: 0 },
+      { type: 'perfectBlock', count: 3, slot: 1 },
+      { type: 'claretBurialInterrupt', count: 2, slot: 2 },
+    ] as any)
+    expect(cfg.team[0]?.yixuanPerfectBlockCount, '仪玄·e 弹 → yixuanPerfectBlockCount（不是 perfectBlockCount）').toBe(5)
+    expect(cfg.team[1]?.perfectBlockCount, '佩洛伊斯·完美格挡 → perfectBlockCount').toBe(3)
+    expect(cfg.team[2]?.claretBurialInterruptCount, '克拉蕾·葬血强袭打断').toBe(2)
+    // 不得串字段：两个 perfectBlock 语义不同，共用会互相覆盖
+    expect(cfg.team[0]?.perfectBlockCount ?? 0, '仪玄不得写 phoenix 的字段').toBe(0)
+  })
+
+  it('负控：counterAssist 不落 cfg（次数由 boss 预设的控制技组数推导，用户再填即双计）', async () => {
+    await setupHarness([{ agentId: '1611' }, { agentId: '1621' }, ''])
+    const cfg = useConfigStore()
+    // team 元素上没有 counterAssistCount 字段（它是 cfg 上的运行时量，由 boss 推导注入）
+    // ⇒ 负控写成「交互类型不被识别 ⇒ 任何动作计数字段都不变」
+    const before = { ...cfg.team[0] }
+    applyPresetInteractions(cfg, [{ type: 'counterAssist', count: 4, slot: 0 }] as any)
+    const after = cfg.team[0]!
+    for (const k of ['parryCount', 'dodgeCounterCount', 'blockCount', 'perfectBlockCount', 'yixuanPerfectBlockCount', 'claretBurialInterruptCount'] as const) {
+      expect((after as any)[k], `counterAssist 不得写 ${k}`).toBe((before as any)[k])
+    }
   })
 })

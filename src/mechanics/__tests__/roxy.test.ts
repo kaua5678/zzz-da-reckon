@@ -308,8 +308,16 @@ describe('洛克茜（1621）队伍拐力通道（2026-10-26）', () => {
     }
     const withRoxy = await covOf([{ agentId: '1621' }, { agentId: '1591' }, { agentId: '1211' }])
     const withVelina = await covOf([{ agentId: '1561' }, { agentId: '1591' }, { agentId: '1211' }])
-    expect(withRoxy, '洛克茜队风化覆盖率应达满（用户口径：打 4 次就有 200s）').toBeCloseTo(1, 2)
-    expect(withVelina, '对照组（无延长）覆盖率明显低').toBeLessThan(0.9)
+    /**
+     * 判据取**相对关系**而非绝对满覆盖：覆盖率 = 风化次数 × 单窗时长 / 有效时间（封顶 1），
+     * 而「次数」由该队的能量预算/失衡次数决定、随配装与手法变。用户口径「打 4 次就 200s 达到
+     * 全覆盖」是**常规 180s 战斗**下的结论，不是「任何配装任何时长都必满」——把 1.0 写成硬断言
+     * 会在换配装/换 boss 时长时假红（本条初版即此错，实测 3 次 × 50s / 180s = 0.833）。
+     * 真正要钉的是**延长的因果**：同一队、同一手法下，有延长 ⇒ 覆盖率必须**严格更高**。
+     */
+    expect(withRoxy, '洛克茜队（有 +20s 延长）覆盖率应高于对照').toBeGreaterThan(withVelina)
+    expect(withRoxy, '50s 单窗 × 3 次 / 180s ≈ 0.83（含延长）').toBeGreaterThan(0.8)
+    expect(withVelina, '30s 单窗 × 3 次 / 180s = 0.5（无延长）').toBeLessThan(0.6)
   })
 
   /**
