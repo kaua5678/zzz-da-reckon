@@ -45,6 +45,7 @@ import {
   basicHitRateOf,
   basicHitStackCoverage,
   teaTeamBuffCoverage,
+  COMPRESSED_BLOCK_HITS_PER_ROW,
   TEA_TEAM_BUFF_EFFECT_ID,
   stackDurationSeconds,
   stackEnergyEvents,
@@ -576,16 +577,31 @@ export function createResourceCalc(
          * 见 data/wEngineStackCoverage#teaTeamBuffCoverage（用户口径 2026-10-26）。
          */
         if (e.id === TEA_TEAM_BUFF_EFFECT_ID) {
-          const basicMoves = catalogStore.getAgentSkills(ch.agentId)?.categories.find(c => c.id === 'basic')?.moves ?? []
-          const hits = basicHitCountOf({
-            rows: ch.executions.filter(row => row.category === 'basic'),
-            basicAttackTime: ch.timeAllocation.basicAttackTime,
-            hitRate: basicHitRateOf(basicMoves),
-          })
+          // 前台/后台分开数**真实命中段数**（含压缩块换算）；无计数行 ⇒ 0（拿不到真实段数，判吃不到）
+          // ⚠ 只数**物化行**：无计数行（= 只有 basic_attack 汇总行）的角色判 0。
+          // 用户口径 2026-10-26「柯雷妲他不会打前面 a1-a4，更不会连续打 15 下，她主要靠强特和交互打失衡」
+          // ⇒ 用「平A池时间 × 段数速率」反推会让这类角色凭空拿到叠层（实测珂蕾妲 1.91/s 假过线）。
+          let frontHits = 0
+          let frontSeconds = 0
+          let backHits = 0
+          for (const row of ch.executions) {
+            if (row.category !== 'basic') continue
+            const n = Math.max(0, Number(row.count ?? 0))
+            if (!(n > 0)) continue
+            const per = COMPRESSED_BLOCK_HITS_PER_ROW[String(row.moveId)] ?? 1
+            if (row.timeBucket === 'backstage') {
+              backHits += n * per
+            } else {
+              frontHits += n * per
+              frontSeconds += Math.max(0, Number(row.totalTime ?? 0))
+            }
+          }
           out[e.id] = teaTeamBuffCoverage({
             wEngineId,
-            basicHits: hits,
-            basicAttackTime: ch.timeAllocation.basicAttackTime,
+            frontHits,
+            frontSeconds,
+            backHits,
+            battleSeconds,
           }) * 100
           continue
         }

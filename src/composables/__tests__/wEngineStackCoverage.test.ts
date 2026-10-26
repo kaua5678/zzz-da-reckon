@@ -184,21 +184,23 @@ describe('焰心桂冠 14116·萎靡（普通攻击命中叠层，滑动窗稳�
     expect(plain).toBe(3)
   })
 
-  it('茶劲 teamBuff：命中速率 ≥1.875/s（8s 可叠 15 层）⇒ 持续刷新全覆盖；否则永远吃不到', () => {
-    const base = { wEngineId: '14125' }
-    // 达标：莱特 5.33/s、青衣 3.76/s、扳机 6.83/s ⇒ 层数稳定 ≥15、每次命中刷新 10s ⇒ 100%
-    expect(teaTeamBuffCoverage({ ...base, basicHits: 234, basicAttackTime: 43.9 })).toBe(1)
-    expect(teaTeamBuffCoverage({ ...base, basicHits: 167, basicAttackTime: 44.4 })).toBe(1)
-    expect(teaTeamBuffCoverage({ ...base, basicHits: 296, basicAttackTime: 43.3 })).toBe(1)
-    // 不达标：莱卡恩 1.25/s、安比 1.08/s、南宫羽 0.98/s ⇒ 8s 内爬不到 15 层 ⇒ 0
-    expect(teaTeamBuffCoverage({ ...base, basicHits: 54, basicAttackTime: 43.2 })).toBe(0)
-    expect(teaTeamBuffCoverage({ ...base, basicHits: 49, basicAttackTime: 45.4 })).toBe(0)
-    expect(teaTeamBuffCoverage({ ...base, basicHits: 44, basicAttackTime: 45.1 })).toBe(0)
-    // 门槛边界：正好 1.875/s（15/8）⇒ 达标
-    expect(teaTeamBuffCoverage({ ...base, basicHits: 15, basicAttackTime: 8 })).toBe(1)
-    expect(teaTeamBuffCoverage({ ...base, basicHits: 14.9, basicAttackTime: 8 })).toBe(0)
+  it('茶劲 teamBuff：真实段数 × 前后台分算（前台受平A时间占比限制，后台贯穿全程）', () => {
+    const base = { wEngineId: '14125', battleSeconds: 180, frontSeconds: 0, frontHits: 0, backHits: 0 }
+    // 莱特：前台 234 次命中 / 23.0s 段内 ⇒ 10.2/s ≥1.875 ✓，但前台只占 23/180 ⇒ 覆盖率 12.8%
+    expect(teaTeamBuffCoverage({ ...base, frontHits: 234, frontSeconds: 23.0 })).toBeCloseTo(23 / 180, 6)
+    // 青衣：167 次 / 44.31s ⇒ 3.77/s ✓，前台占比 44.31/180
+    expect(teaTeamBuffCoverage({ ...base, frontHits: 167, frontSeconds: 44.31 })).toBeCloseTo(44.31 / 180, 6)
+    // 珂蕾妲/莱卡恩：无物化命中行 ⇒ 传 0 ⇒ 0（用户「柯雷妲平a都没打咋叠层」）
+    expect(teaTeamBuffCoverage(base)).toBe(0)
+    // 扳机：后台 296 次 / 180s = 1.64/s ⇒ 8s 窗 13.2 层 < 15 ⇒ 判 0
+    //（用户裁决 2026-10-26「既然扳机不够，那就判0吧」：命中贯穿全程 ≠ 叠得够快）
+    expect(teaTeamBuffCoverage({ ...base, backHits: 296 })).toBe(0)
+    // 后台速率过线（如 450 次/180s = 2.5/s）⇒ 全覆盖
+    expect(teaTeamBuffCoverage({ ...base, backHits: 450 })).toBe(1)
+    // 前台速率不够（8s 窗 <15 层）⇒ 0
+    expect(teaTeamBuffCoverage({ ...base, frontHits: 15, frontSeconds: 10 })).toBe(0)
     // 非 14125 ⇒ 0
-    expect(teaTeamBuffCoverage({ ...base, wEngineId: '14116', basicHits: 234, basicAttackTime: 43.9 })).toBe(0)
+    expect(teaTeamBuffCoverage({ ...base, wEngineId: '14116', frontHits: 234, frontSeconds: 23 })).toBe(0)
   })
 
   it('手调滑块优先：把冰/火两条都拖到 0 ⇒ 面板不再吃萎靡（修前是死控件）', async () => {

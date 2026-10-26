@@ -173,40 +173,6 @@ export const TEA_STACK_DURATION = 8
 /** 达到 15 层所需的最低命中速率（次/秒）= 15 / 8 */
 export const TEA_STACK_MIN_HIT_RATE = TEA_STACK_THRESHOLD / TEA_STACK_DURATION
 
-/**
- * **玉壶青冰 teamBuff（≥15 层 → 全队增伤）的覆盖率（0–1）。
- *
- * 原文：「获得[茶劲]时，若装备者拥有的[茶劲]层数大于等于15层，全队角色造成的伤害提升20%…持续10秒」
- * ⇒ 触发点是「**获得茶劲时**」，即**每次命中都在判定并刷新 10s**，不是每轮失衡只触发一次。
- *
- * 用户口径 2026-10-26：
- * - 「其他角色没这个算法就直接按照一行是一下来算就行」⇒ 命中速率沿用 basicHitRateOf（一行 = 一下）；
- * - 「本来 14125 在别的角色身上就几乎无用，因为你不能叠层，没达到要求啊」⇒ **先判能不能维持 15 层**；
- * - 「青衣对青专的触发次数也不是一轮只有一次吧，而且她达到满层也不会停止平A」
- * - 「扳机对青专应该是全局覆盖的吧，他总是自动攻击保持层数」
- * ⇒ 命中持续且层数稳定 ≥15 的角色（青衣前场连续平A、扳机后台自动攻击）是**持续刷新 ⇒ 100% 覆盖**。
- *
- * 判据（命中速率 R = 命中数 / 平A时间，茶劲每层持续 8s 且单独计时）：
- * - **R × 8 ≥ 15**（即 R ≥ 1.875/s）⇒ 稳定维持 15 层以上 ⇒ 每次命中都刷新 10s ⇒ **覆盖率 100%**；
- * - **R × 8 < 15** ⇒ 层数在 8s 内**永远爬不到 15** ⇒ 本条增益**完全吃不到**（0%）。
- *
- * 为什么不按「轮数 × 10s / 总时长」：那个口径只适用于「每轮失衡刚开始叠层、之后停手」的打法；
- * 而实测角色（青衣 3.76/s、扳机 6.83/s、莱特 5.33/s）命中是连续的，层数不中断，
- * 10s 持续被反复刷新 ⇒ 用轮数算会系统性低估（16.7% vs 实际接近 100%）。
- */export function teaTeamBuffCoverage(input: {
-  wEngineId: string
-  /** 整局普攻命中个数 */
-  basicHits: number
-  /** 平A时间（秒）：命中速率 = basicHits / basicAttackTime */
-  basicAttackTime: number
-}): number {
-  if (String(input.wEngineId) !== TEA_STACK_ENGINE_ID) return 0
-  const basicTime = Math.max(0, Number(input.basicAttackTime))
-  if (!(basicTime > 0)) return 0
-  // 命中速率 R：8s 内可叠 R×8 层。R×8 ≥ 15 ⇒ 稳定维持 ⇒ 每次命中刷新 10s ⇒ 全覆盖；否则永远吃不到。
-  const hitRate = Math.max(0, Number(input.basicHits)) / basicTime
-  return hitRate * TEA_STACK_DURATION >= TEA_STACK_THRESHOLD ? 1 : 0
-}
 
 /** 一个 basic 段（倍率表 basic 分类里的一段普攻） */
 export interface BasicStageLike { actionTime?: number }
@@ -227,6 +193,63 @@ export function basicHitRateOf(stages: readonly BasicStageLike[]): number {
   return seconds > 0 ? count / seconds : 0
 }
 
+
+/**
+ * **玉壶青冰 teamBuff（≥15 层 → 全队增伤）的覆盖率（0–1）。
+ *
+ * 原文：「获得[茶劲]时，若装备者拥有的[茶劲]层数大于等于15层，全队角色造成的伤害提升20%…持续10秒」
+ * ⇒ 触发点是「**获得茶劲时**」= 每次命中判定并刷新 10s。
+ * 茶劲每层**持续 8s 且单独结算** ⇒ 8s 内没有新命中就掉光。
+ *
+ * 用户口径 2026-10-26（逐条落地）：
+ * ① 「只有青衣和莱特有快速攻击，其他角色你可以认为一行就是一下」
+ *    ⇒ 命中数优先用**物化行真实段数**（containing 压缩块换算）；无物化行的角色按「一行 = 一下」；
+ * ② 「柯雷妲他不会打前面 a1-a4，更不会连续打 15 下。她主要靠强特和交互打失衡」
+ *    ⇒ 击破角色的平A池不等于「连续平A时长」：靠强特/交互打失衡的角色根本不会连续刷 15 下 ⇒ 判 0；
+ * ③ 「扳机对青专应该是全局覆盖的吧，他总是自动攻击保持层数」
+ *    ⇒ **后台自动攻击**（`timeBucket='backstage'`）贯穿全程，与前台平A分开算。
+ *
+ * 覆盖率 = 「命中持续存在」的时间占比：
+ * - **前台平A**：只在平A时段发生（上限 = 平A时间/总时长），段内速率须 ≥ 15/8；
+ * - **后台自动攻击**：贯穿整局，速率 = 命中数/总时长，须 ≥ 15/8；
+ * - 两者取较好者（同一把武器只结算一次）。
+ */
+export function teaTeamBuffCoverage(input: {
+  wEngineId: string
+  /** 前台平A命中数（真实段数，已含压缩块换算） */
+  frontHits: number
+  /** 前台平A总时长（秒） */
+  frontSeconds: number
+  /** 后台自动攻击命中数 */
+  backHits: number
+  /** 战斗总时长（秒） */
+  battleSeconds: number
+}): number {
+  if (String(input.wEngineId) !== TEA_STACK_ENGINE_ID) return 0
+  const battle = Math.max(0, Number(input.battleSeconds))
+  if (!(battle > 0)) return 0
+  const frontHits = Math.max(0, Number(input.frontHits))
+  const frontSeconds = Math.max(0, Number(input.frontSeconds))
+  const backHits = Math.max(0, Number(input.backHits))
+
+  // ① 前台：段内速率 ≥15/8 才维持得住；覆盖上限 = 平A时间占整局比例
+  let frontCoverage = 0
+  if (frontHits > 0 && frontSeconds > 0) {
+    const rate = frontHits / frontSeconds
+    if (rate * TEA_STACK_DURATION >= TEA_STACK_THRESHOLD) {
+      frontCoverage = Math.min(1, frontSeconds / battle)
+    }
+  }
+
+  // ② 后台自动攻击：贯穿整局，速率按战斗总时长
+  let backCoverage = 0
+  if (backHits > 0) {
+    const rate = backHits / battle
+    if (rate * TEA_STACK_DURATION >= TEA_STACK_THRESHOLD) backCoverage = 1
+  }
+
+  return Math.max(frontCoverage, backCoverage)
+}
 /**
  * **玉壶青冰·茶劲的失衡值口径冲击力缩放**（0–1；1 = 满层不缩放）。
  *
