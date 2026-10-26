@@ -44,8 +44,8 @@
  * - **取消语义保持优雅式**（`batchTask.ts` 的唯一口径）：中止 = 停止计算 + **保留已算部分**。
  *   worker 模式下 `terminate()` 是即时硬停（比原先「等这一队爬完」更灵敏），
  *   已回传的行照常由调用方发布。
- * - **worker 内必须自带行融合规则**：`logicEditor/storage.ts` 在 `typeof window === 'undefined'`
- *   时返回 spec 默认规则，worker 里读不到用户改过的规则 ⇒ 规则随请求一起传（`fusionRules`）。
+ * - **worker 内必须自带行融合规则**：worker 里没有页面 store / 启动入口，主线程激活的规则
+ *   （spec 默认或测试自定义）读不到 ⇒ 规则随请求一起传（`fusionRules`，来源 `currentRowFusionRules()`）。
  *   漏传的实测症状 = 数值静默不同（本次实验先踩到过一次同类：漏传 build-recommendations 让
  *   base 从 85.86M 变 37.43M）。
  *
@@ -77,8 +77,8 @@ export interface CurveRunRequest {
   /** UI config store 的现场快照（`cloneConfigState(configStore.$state)`） */
   configState: Record<string, unknown>
   /**
-   * 生效的行融合规则（logicEditor store 的 `state.rowFusions` 深拷贝）。
-   * worker 内 `typeof window === 'undefined'` ⇒ 读盘回落 spec 默认 ⇒ **必须显式传**，否则用户改过的规则静默丢失。
+   * 生效的行融合规则（`currentRowFusionRules()` 的拷贝；启动时由 spec 默认规则激活）。
+   * worker 内没有页面 store / 启动入口 ⇒ **必须显式传**，否则主线程规则静默丢失。
    */
   fusionRules: RowFusionRule[]
   presets: TeamPreset[]

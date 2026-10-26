@@ -19,7 +19,7 @@
  *   要「只对某个角色 / 某个招式这样做」时，正解是：
  *   · 模块声明（`AgentMechanicModule.axisWindowLane` / `axisDurationInputs` / `characterCountInputs` / `axisNonDecibelUltimates` …
  *     范式 CC-65 / CC-446 / CC-448）+ `composables/agentMechanicView.ts` 门面（展示层）或 `getAgentMechanic(id)?.<能力>`（引擎 / 编排层）；
- *   · 页面默认选中的角色 / 招式（时间图默认主 C、逻辑编辑器默认融合招…）归 `src/data/viewAgentDefaults.ts`；
+ *   · 页面默认选中的角色 / 招式（如时间图默认主 C）归 `src/data/viewAgentDefaults.ts`；
  *   · 招式级数据表（融合 / 变体 / 持续强特 / 标准倍率表…）归 `src/data/*.ts`。
  *
  * 计量口径（纯句法）：

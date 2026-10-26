@@ -102,11 +102,11 @@ describe('calculator default initialization', () => {
 })
 
 describe('calculator startup flow', () => {
-  it('建立启动入口即激活行融合规则——不依赖用户打开过逻辑编辑器页（r697）', async () => {
+  it('建立启动入口即激活 spec 行融合规则——不依赖打开任何页面（r697）', async () => {
     const { activeRowFusionRulesSnapshot, setActiveRowFusionRules } = await import('@/logicEditor/fusion')
-    const { createDefaultLogicEditorState } = await import('@/logicEditor/defaults')
+    const { defaultRowFusionRules } = await import('@/logicEditor/defaults')
     const { useCalculatorStartup } = await import('@/composables/calculatorStartup')
-    const enabled = createDefaultLogicEditorState().rowFusions.filter(r => r.enabled).map(r => `${r.moveId}/${r.rowId}×${r.multiplier}`)
+    const enabled = defaultRowFusionRules().filter(r => r.enabled).map(r => `${r.moveId}/${r.rowId}×${r.multiplier}`)
     expect(enabled.length).toBeGreaterThan(0)
     setActiveRowFusionRules([])
     useCalculatorStartup()

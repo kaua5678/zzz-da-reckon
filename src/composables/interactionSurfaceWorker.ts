@@ -29,8 +29,8 @@
  * ⚠ `teammateBuffsReady` 是引擎的就绪门：三个静态文件**必须全部 await 完**再算，
  * 否则 `resourceConfig` 为 null、伤害静默走空值（实测症状：85.86M 变 37.43M，不报错）。
  *
- * ⚠ 行融合规则必须显式传：`logicEditor/storage.ts` 在 `typeof window === 'undefined'` 时
- * 直接返回 spec 默认规则 ⇒ worker 里读不到用户改过的规则 ⇒ 数值静默漂移。
+ * ⚠ 行融合规则必须显式传：worker 里没有页面 store / 启动入口，主线程激活的规则（spec 默认或测试自定义）
+ * 读不到 ⇒ 规则随请求传（`currentRowFusionRules()`）；漏传则数值静默漂移。
  */
 import { createPinia, setActivePinia } from 'pinia'
 import { reactive } from 'vue'

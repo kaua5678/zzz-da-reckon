@@ -562,19 +562,11 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 
 验收命令见 `AGENTS.md` §3（`npm run verify` 一条链，本手册不复述其组成）；改动数据后重跑 `scripts/import-nanoka-bosses.mjs` 并 `npm run build`（preview 服务读 dist/）。
 
-## 9. 逻辑编辑：可逆试改
-
-- 「逻辑编辑」页可用 **撤销 / 重做** 回退规则修改、增删、JSON 导入和恢复默认。仅当前会话保留最近 50 步有效配置，刷新清空历史；导出的 JSON 仍只含当前配置。
-- 数值输入暂时不完整时，不保存也不切换有效倍率。点击撤销只恢复最近有效配置，不额外后退；新的有效编辑会结束旧的重做分支。自动保存或手动保存同一配置不会重复记步。
-- 在逻辑页**输入框外**使用 `Ctrl/Cmd+Z` 撤销、`Ctrl/Cmd+Shift+Z` 或 `Ctrl+Y` 重做。输入框/JSON 文本区保留浏览器原生文字撤销；未提交的 JSON 文本不计为规则历史。
-- 浏览器拒绝存储时，撤销和重做仍在内存生效，但警告不会伪装成保存成功。可导出 JSON 备份；存储恢复后点保存重试。
-- 实现与边界测试见 `stores/logicEditor.ts`、`stores/__tests__/logicEditorHistory.test.ts`；构建后执行 `node scripts/ui-logic-editor-check.mjs` 复核按钮、属性文本、快捷键和存储失败场景。
-
-## 10. 记录小窗 + 用户记忆（设置弹层，2026-10-09 新功能）
+## 9. 记录小窗 + 用户记忆（设置弹层，2026-10-09 新功能）
 
 入口：**顶栏右侧齿轮「设置」**（原仓没有设置入口，本功能新建）。两个页签。
 
-### 10.1 记录小窗（「记录小窗」页签）
+### 9.1 记录小窗（「记录小窗」页签）
 
 - **开关**：打开后**跨页签常驻**的悬浮窗（`CalculatorView` 的 `pageMap` 之外渲染，切页不重挂）。
 - **用途**：在队伍/属性页改配置，小窗实时看伤害与其它指标变化（用户口径「换个配置看伤害变化」）。
@@ -588,7 +580,7 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
   小窗内**不得**自建实例（r705 事故：`ImpactChart` 自建第二个实例 ⇒ 整页管线跑两遍，重队每遍 430–506ms）。
   判据 `recordWindowPerf.test.ts`（下游面板阶段构建次数 A/B，**带负例**——判据必须能区分自建实例那种写法）。
 
-### 10.2 用户记忆（「用户记忆」页签）
+### 9.2 用户记忆（「用户记忆」页签）
 
 用户口径（2026-10-09）：「每个用户有自己的记忆文件，比如他觉得他的某个角色玩的不好，就把这个角色某些数值
 调低，这个应该持久记忆。当然，有些不适合持久记忆，比如某些队伍才有的特殊效果，换个队伍就不适用了。
@@ -614,12 +606,12 @@ B/C 类（角色数值调低、机制设置、资源利用率等）留待办，�
 ⚠ 改「手关 buff 是否被队伍变化覆盖」这条语义时，必须**同步改写**
 `stores/__tests__/teammateBuffSelection.characterization.test.ts` 的 ★ 断言并注明口径变更（该文件头明令）。
 
-## 11. 更新日志（顶栏图标按钮 → 弹层，2026-10-12 新功能）
+## 10. 更新日志（顶栏图标按钮 → 弹层，2026-10-12 新功能）
 
 入口：**顶栏右侧「报纸」图标**（与「设置」「主题切换」并列）。用户口径（2026-10-12）：
 「写个更新日志展示」+ 选定形态「页头图标按钮 → 弹层」、来源「git 提交自动生成」。
 
-### 11.1 用户操作
+### 10.1 用户操作
 
 - **搜索**：按**摘要 / 类型名 / commit hash** 过滤（hash 大小写不敏感）——常有人拿着一个 commit 号来问「这条是什么」。
 - **筛选**：`功能 / 修复 / 重构 / 文档 / 其他` 贴片，可点两次取消（点选中的那个 = 回到全部）。
@@ -629,7 +621,7 @@ B/C 类（角色数值调低、机制设置、资源利用率等）留待办，�
   「最近取数 HH:MM:SS」作为「点过了」的反馈。⚠ 刷新**只能拿到已发布的产物**——日志随 `push → 部署`
   更新，本地新提交没部署之前，刷新多少次内容都不会变。
 
-### 11.2 数据管道（唯一事实源 = git 历史）
+### 10.2 数据管道（唯一事实源 = git 历史）
 
 ```bash
 npm run gen:changelog     # node scripts/gen-changelog.mjs —— 重新生成 public/static/changelog.json
@@ -644,7 +636,7 @@ npm run changelog:check   # node scripts/gen-changelog.mjs --check —— CI 完
 | 日期口径 | `%ad --date=short`（**作者**日期）——用 committer 日期会让 rebase/cherry-pick 把一批老提交堆到最新一天（实测 100 条 at≠ct） |
 | UI 文案 / 行高 / 配色 | `src/components/ChangelogDialog.vue`（逻辑在 `src/composables/changelogView.ts`，纯函数有单测） |
 
-### 11.3 口径与坑
+### 10.3 口径与坑
 
 - **按需加载**：400 KB / 2460 条的历史数据**不进启动门**（`calculatorStartup` 只加载计算必需依赖），
   打开弹层才 fetch（`stores/catalog.ts#loadChangelog`）。加载失败**只落在弹层里**，不阻断计算。

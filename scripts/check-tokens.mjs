@@ -536,7 +536,6 @@ export const HARDCODED_BASELINE = {
   'src/views/CalculatorView.vue': 1,
   'src/views/CharIncrementPage.vue': 3,
   'src/views/DebugPage.vue': 1,
-  'src/views/LogicEditorPage.vue': 1,
   'src/views/PositionComparePage.vue': 3,
   'src/views/ResourceUtilizationPage.vue': 2,
   'src/views/ResultPage.vue': 3,
@@ -666,7 +665,10 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--fg-2/--fg-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 407  /* ★ 2026-10-18 MechanicsTablePage 下线：418 → **407**（−11）。
+export const WA_REF_BASELINE = 403  /* ★ 2026-10-26 逻辑编辑页下线（用户裁决：页面只编辑计算不消费的 spec 展示数据 +
+   一条被模块自算绕开的行规则）：407 → **403**（−4 处 --wa-* 直引，随整页删除；不是改回字面量）。
+   VAR_TOTAL_BASELINE 同步 1132 → 1126（同页 6 处 var() = 4 处 --wa-* + 2 处语义别名 --app-text-solid / --fg-2）。
+   ★ 2026-10-18 MechanicsTablePage 下线：418 → **407**（−11）。
   纯删除——整页删除（用户裁决：该页只镜像 spec 字段、17/62 角色四张表全空），其 11 处 --wa-* 直引随之消失；
   没有任何变量改回字面量（hardcoded-color 合计不变）。
   VAR_TOTAL_BASELINE 同步 961 → 946（同一批删除：页面 15 处 var() = 11 处 --wa-* + 4 处语义别名）。
@@ -719,7 +721,9 @@ export const WA_REF_BASELINE = 407  /* ★ 2026-10-18 MechanicsTablePage 下线�
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 1132  /* ★ 2026-10-26 「每队配置码」操作区（+4）：1128 → **1132**，
+export const VAR_TOTAL_BASELINE = 1126  /* ★ 2026-10-26 逻辑编辑页下线（纯删除）：1132 → **1126**（−6 = 4 处 --wa-* +
+   2 处语义别名，随整页删除；WA_REF_BASELINE 同步 407 → 403。不是把变量改回字面量）。
+                                           ★ 2026-10-26 「每队配置码」操作区（+4）：1128 → **1132**，
                                            新增 TeamSlotCodeEditor.vue 的 --fg-2 / --fg-3 / --line（全语义别名，
                                            零 raw --wa-*：407 不变、零字面色）。
                                            ★ 2026-10-25 自由对比「两档对比」视角（+3）：1125 → **1128**，
@@ -1007,7 +1011,7 @@ export const VAR_TOTAL_BASELINE = 1132  /* ★ 2026-10-26 「每队配置码」�
                                         * var(--wa-700)（搬进 class）⇒ 净 +7。全部语义别名，无新增字面色；--wa-* 直引数保持
                                         * 447 = WA_REF_BASELINE（新分隔线用 --line，不用裸 --wa-60——那是 --fill-hover 的语义）。
                                         * 上调 var() 下限是收紧（本键语义「只增不减」⇒ 守卫自身指示：总数增加即进步登记）。
-                                        * ★ 2026-09-22 逻辑编辑器历史提示：800 → **801**（+1）。
+                                        * ★ 2026-09-22 逻辑编辑器历史提示：800 → **801**（+1；该页已于 2026-10-26 下线，见上方基线）。
                                         * 唯一新增引用：LogicEditorPage.vue 的 .history-status 使用 --fg-2。
                                         * 上调 var() 下限是收紧；wa 直引/字面色/字号基线不变。
                                         * ★ 2026-09-21 UI 外壳打磨：778 → **800**（+22）。

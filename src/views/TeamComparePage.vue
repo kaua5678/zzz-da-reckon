@@ -1155,7 +1155,7 @@ import { useCurvePointPool } from '@/composables/curvePointPool'
 import { deltaKeys } from '@/composables/configDelta'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import { findMoveById } from '@/data/moveTableQueries'
-import { useLogicEditorStore } from '@/stores/logicEditor'
+import { currentRowFusionRules } from '@/logicEditor/fusion'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, axisWorseThanNoAxis, type CurveDatum, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
 import { axisCompareOf, axisCutMarkerOf, axisDetailOf, axisMarkerLegend, axisMarkerOf } from '@/composables/axisMarker'
@@ -1200,8 +1200,7 @@ const configStore = useConfigStore()
 const noAxisVulnShare = computed(() =>
   configStore.getMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, DEFAULT_NO_AXIS_VULN_SHARE))
 const catalogStore = useCatalogStore()
-/** 行融合规则是计算输入（`logicEditor/fusion` 的模块级快照）：worker 里读不到用户改过的规则 ⇒ 随请求显式传 */
-const logicStore = useLogicEditorStore()
+
 
 // ========== Boss 预设 ==========
 const bossPresets = ref<BossPreset[]>([])
@@ -2108,8 +2107,9 @@ async function runCurves() {
   // 一次曲线运行的全部输入：纯数据（见 `CurveRunRequest` 契约）—— worker 靠它自建现场
   const outcome = await runDifficultyCurves({
     configState: cloneConfigState(configStore.$state) as unknown as Record<string, unknown>,
-    // 行融合规则必须显式传：worker 里没有 window，读盘会回落 spec 默认（数值会静默漂移）
-    fusionRules: cloneConfigState(logicStore.state.rowFusions),
+    // 行融合规则必须显式传：worker 里没有页面 store，缺省会重新激活 spec 默认规则
+    // （显式传保证测试 / 自定义规则也带过去）
+    fusionRules: currentRowFusionRules(),
     presets,
     boss,
     phase,

@@ -193,8 +193,8 @@ function layersSvg() {
   arrowV(BX + 500, b3 + 2, y - 6, 'panel/damage 读 data', '#94a3b8');
 
   const b4 = band('④', '状态层', `src/stores · ${filesIn(['stores'])} 文件 · ${n(LOC('stores'))} 行`, '#f59e0b', [
-    { w: 380, title: 'stores/', detail: 'config（队伍 / 敌人 / 设置 / 滑块）· catalog（只读数据快照，运行时 fetch public/static）· logicEditor · theme / ui · selectionReads（纯函数）' },
-    { w: 300, title: '⑤ 逻辑编辑', detail: `logicEditor/ ${LOC('logicEditor')} 行 · 用户自定义规则：类型 / 校验 / 本地存储 / 转 spec；fusion 行融合规则全局快照` },
+    { w: 380, title: 'stores/', detail: 'config（队伍 / 敌人 / 设置 / 滑块）· catalog（只读数据快照，运行时 fetch public/static）· theme / ui · selectionReads（纯函数）' },
+    { w: 300, title: '⑤ 行融合规则', detail: `logicEditor/ ${LOC('logicEditor')} 行 · spec rowFusions → 默认规则 + 生效快照（原逻辑编辑页 2026-10-26 下线）` },
     { w: BW - 380 - 300 - GAP * 2, title: 'store → 引擎', detail: `config 仍直调 core/substatOptimizer 等 ${V('stores', 'core')} 处（A2 已知欠账）` },
   ]);
 

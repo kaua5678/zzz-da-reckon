@@ -36,7 +36,7 @@
 | specs | 8 | 977 | 录入层 |
 | composables/charts | 4 | 509 | 编排层 |
 | core/stunAxis | 1 | 383 | 引擎层 |
-| logicEditor | 6 | 383 | —（规划未提） |
+| logicEditor | 3 | 99 | ⑤ 行融合规则（spec 声明；原逻辑编辑页已下线） |
 
 **读法**：
 - 录入层（mechanics）是最大的一层，接近全部引擎代码（core 合计约 11 400 行）的 2.6 倍。角色知识的主体在这里，这符合「角色逻辑回模块」的方向。
@@ -59,9 +59,9 @@
 |---|---|---|---|---|
 | A1 ✅ 已修（第 139 轮，=C1） | 「录入层被编排 / 引擎经 **registry** 消费」 | core 直接按值 import **`@/mechanics`（index.ts）**，而 index.ts 一次性 import 全部 62 个角色模块并逐个注册。形成模块环：core → mechanics/index → agents/*.ts → core | `core/resource/` 下 11 个文件加 `core/substatOptimizer.ts` 都写 `import { getAgentMechanic } from '@/mechanics'`；全仓 core、composables、mechanics、stores 共 31 处；`src/mechanics/index.ts` 开头是 62 行 import | 精神上符合（按能力查询，不写 id），但实现上是「靠副作用注册 + 环」。后果：core 的任何单测都会加载全部角色模块；ESM 环依赖对初始化顺序敏感。**是 R6 候选**（见 §5） |
 | A2 | 状态层 = 「队伍 / 敌人 / 设置 / 滑块（可变）、只读数据快照」 | `stores/config.ts` 直接调用引擎：`calcPanel`、`computeOptimalSubStats`（`core/substatOptimizer`）、`buildTeammateBuffSourceContext`，还查询 mechanics 注册表（**CC-186 第 209 轮**：随不可达的整队贪心分支删除，store 不再调 `calcPanel` / `buildTeammateBuffSourceContext`，优化器入口只剩 `computeDefaultSubStatAllocation` + `getTemplate`） | `stores/config.ts:9–14` | 状态层掺了计算。**是 R6 候选**：计算应该上移到编排层，或者明确承认 store 可以调用引擎，并写进规划 |
-| A3 | `src/data/` 是「各层都可依赖的公共底」 | data 并不全是常量。`data/moveTableQueries.ts` 依赖 `logicEditor/fusion.ts` 的全局 `shallowRef`，这个状态由 `stores/logicEditor.ts` 写入（`setActiveRowFusionRules`）。「公共底」读的是运行时可变的全局状态 | `data/moveTableQueries.ts:26`、`logicEditor/fusion.ts:1`、`stores/logicEditor.ts:4` | 隐式全局状态。已核实**不成环**：`logicEditor/fusion.ts` 只依赖 vue；specs → core 只出现在校验工具 `specs/verify.ts`。影响面待 R6 第 2 步评估 |
+| A3 | `src/data/` 是「各层都可依赖的公共底」 | data 并不全是常量。`data/moveTableQueries.ts` 依赖 `logicEditor/fusion.ts` 的全局 `shallowRef`，这个状态由启动入口写入（`useCalculatorStartup` / `setupHarness` 调 `setActiveRowFusionRules`；原「逻辑编辑」页 2026-10-26 下线后不再有别的写入方）。「公共底」读的是运行时可变的全局状态 | `data/moveTableQueries.ts:26`、`logicEditor/fusion.ts:1`、`composables/calculatorStartup.ts` | 隐式全局状态，写入面已收窄为启动一次。已核实**不成环**：`logicEditor/fusion.ts` 只依赖 vue；specs → core 只出现在校验工具 `specs/verify.ts` |
 | A4 | 编排层 = 「页面与引擎之间的胶水」 | composables 合计约 20 900 行，大于引擎层的约 11 400 行；resourceCalc/ 下有 damagePool 等计算模块 | §1 | **待查**：哪些是计算、哪些是胶水。这是 R6「可归一」最可能出现的地方 |
-| A5 | 规划没有提到 `logicEditor/` | 6 个文件 383 行，被 stores、views、data、composables 依赖 | §2 | 补进规划的层次图 |
+| A5 | 规划没有提到 `logicEditor/` | 3 个文件 99 行（原「逻辑编辑」页 2026-10-26 下线：校验 / 本地存档 / 转 spec / store 已删），被 data 与启动入口依赖 | §2 | 层次图已收为「⑤ 行融合规则（spec 声明）」 |
 
 ## 4. 效果管线（catalog 效果 → 面板 → 伤害），函数级
 
@@ -158,7 +158,7 @@ useResourceCalc()                         composables/useResourceCalc.ts:87
 
 实测（探针：对 62 份 spec 逐个 `getAgentMechanic(agentIds[0])`，按模块 id 找到源文件，查它是否调用 `getAgentSpec` / `specToMechanicModule` / `computeSpecResources` / `buildSpecEventExecutions` / `buildSpecAnomalyEvents`）：
 - 注册规则（`mechanics/index.ts:138–142`）：**有手写模块时，spec 不会自动执行**；只有 `settings` 会合并进模块（`mechanics/registry.ts:25–33`），`teamBuffs` 由 `stores/catalog.ts#mergeSpecTeamBuffs` 并入队友 buff（与模块无关，始终生效），`additionalAbility` 由 `panelPhases.ts:448/567` 与 `stores/config.ts:408` 直接读。
-- 62 份 spec 中，**26 个对应模块完全不调用 spec 解释器**。这 26 个里，spec 仍写着 resources 的有 10 个（1121、1171、1261、1281、1291、1411、1471、1511、1571、1581），写着 events 的有 3 个（1081、1331、1471），写着 attributeConversions 的有 1571（3 条）。这些 spec 条目**不被执行**，只供逻辑编辑器展示（原 `MechanicsTablePage` 已于 2026-10-18 下线）；真实行为在模块里手写。
+- 62 份 spec 中，**26 个对应模块完全不调用 spec 解释器**。这 26 个里，spec 仍写着 resources 的有 10 个（1121、1171、1261、1281、1291、1411、1471、1511、1571、1581），写着 events 的有 3 个（1081、1331、1471），写着 attributeConversions 的有 1571（3 条）。这些 spec 条目**不被执行**，且两处展示入口先后下线（`MechanicsTablePage` 2026-10-18、逻辑编辑页 2026-10-26）后已无消费点；真实行为在模块里手写。
 - 典型：1481 琉音、1571 诺玛的 attributeConversions 在 spec 里写了 threshold / stepSize / valuePerStep / cap，note 自己写「实现位置：mechanics/agents/*.ts applyPanel，非 spec runtime 执行」。同一组常数存在两份，改一处另一处不会跟着变（CC-109 洛克茜就是 spec 注记与模块数值分叉的先例）。
 - 反例（已归一）：`alice.ts:115`、`luciaElowen.ts:135` 直接调 `applySpecAttributeConversions(getAgentSpec(...).attributeConversions)`，常数只在 spec 一处。
 - 转为候选 **C7**（§5）。

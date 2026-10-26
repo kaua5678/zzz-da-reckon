@@ -6,7 +6,7 @@
  * 这里只收「读写策略」（损坏 / 不可用 / 配额满一律静默回落、深监听写回），**校验与迁移留在调用方的 `parse`**
  * （返回 `undefined` = 存档无效 → 用 `fallback()`）。
  *
- * 不收：`stores/theme.ts`（存裸字符串、切换时还要改 <html>）、`logicEditor/storage.ts`（schema 解析 + 错误要上报 UI）。
+ * 不收：`stores/theme.ts`（存裸字符串、切换时还要改 <html>）、`composables/memoryFile.ts` 那一类（schema 解析 + 错误要上报 UI）。
  */
 import { ref, watch, type Ref } from 'vue'
 

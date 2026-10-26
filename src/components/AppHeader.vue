@@ -77,7 +77,6 @@
         >
           <n-tab-pane name="debug" tab="公式/字段" />
           <n-tab-pane name="wengineFields" tab="音擎字段" />
-          <n-tab-pane name="logic" tab="逻辑编辑" />
           <n-tab-pane name="multiplierCoeff" tab="倍率系数记录" />
         </n-tabs>
       </div>
@@ -169,7 +168,7 @@ const setupTabs = ['team', 'attribute', 'resource']
 const analyzeTabs = ['result', 'attributeLedger', 'resourceUtilization', 'stunAxis', 'timeline']
 const compareTabs = ['teamCompare', 'interactionSweep', 'breakerCompare', 'freeCompare', 'runArchive']
 const planTabs = ['charIncrement', 'bossHp']
-const developerTabs = ['debug', 'wengineFields', 'logic', 'multiplierCoeff']
+const developerTabs = ['debug', 'wengineFields', 'multiplierCoeff']
 const sectionValue = (tabs: string[]) =>
   computed(() => (tabs.includes(uiStore.activeTab) ? uiStore.activeTab : ''))
 const setupTabValue = sectionValue(setupTabs)

@@ -1,7 +1,8 @@
 import { readonly, ref } from 'vue'
 import { useCatalogStore, type CatalogLoadStatus } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
-import { useLogicEditorStore } from '@/stores/logicEditor'
+import { defaultRowFusionRules } from '@/logicEditor/defaults'
+import { setActiveRowFusionRules } from '@/logicEditor/fusion'
 
 /**
  * 计算器启动入口：完整加载后才开放编辑；错误可见，start() 同时也是显式重试。
@@ -11,9 +12,10 @@ import { useLogicEditorStore } from '@/stores/logicEditor'
 export function useCalculatorStartup() {
   const catalog = useCatalogStore()
   const config = useConfigStore()
-  // 行融合规则（逻辑编辑器的持久化状态，缺省 = spec 默认规则）是计算输入：store 一建立就 setActiveRowFusionRules。
-  // 原先只有 LogicEditorPage 会建立它 ⇒ 没打开过那一页时规则全空，同一配置的结果取决于用户点没点过那一页（r697）。
-  useLogicEditorStore()
+  // 行融合规则（spec 声明的默认规则）是计算输入：启动入口激活一次，倍率表取值处按 moveId + rowId 相乘。
+  // 原「逻辑编辑」页（用户改规则 + 本地存档）已于 2026-10-26 下线 ⇒ 这里是唯一激活路径；
+  // r697 的口径不变：不打开任何页面也生效，测试与生产同态。
+  setActiveRowFusionRules(defaultRowFusionRules())
   const status = ref<CatalogLoadStatus>('idle')
   const error = ref<string | null>(null)
   let inFlight: Promise<boolean> | null = null

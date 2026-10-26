@@ -147,25 +147,6 @@ describe('二维面 worker 通道', () => {
     expect(out.surface.series.length).toBe(direct.series.length)
   }, 900_000)
 
-  it('★ ⑤ logicEditor 的 $state 是 { state: { rowFusions } } 形状（按 rowFusions 取会拿到 undefined）', async () => {
-    /**
-     * 2026-10-19 实机踩到：`logicEditor` 是 **setup store**，`$state` 形如
-     * `{ state: { rowFusions: [...] } }` 而**不是** `{ rowFusions }`。
-     * 按后者取值 ⇒ `undefined` ⇒ worker 里 `setActiveRowFusionRules(undefined)` 抛
-     * `rules.filter is not a function` ⇒ **worker 崩掉并静默回落主线程**（控制台无错，
-     * 只是进度文案变回主线程版「二维面 65/112 格」）。
-     *
-     * 这条锁的是「形状」本身，与 store 内部实现解耦：将来若改成 `$state.rowFusions`，
-     * 判据会红，逼着改 `readFusionRules`（而不是让 worker 静默降级）。
-     */
-    const { useLogicEditorStore } = await import('@/stores/logicEditor')
-    const store = useLogicEditorStore()
-    const state = store.$state as unknown as Record<string, unknown>
-    expect(state.rowFusions, '顶层不得直接有 rowFusions（否则 readFusionRules 取不到）').toBeUndefined()
-    const inner = state.state as { rowFusions?: unknown } | undefined
-    expect(Array.isArray(inner?.rowFusions), '规则必须住在 $state.state.rowFusions').toBe(true)
-  })
-
   it('④ 中止：信号一响即停，aborted = true', async () => {
     const { preset, boss, phase, configState } = await fixture()
     const controller = new AbortController()

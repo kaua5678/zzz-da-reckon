@@ -10,7 +10,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import * as VIEW_DEFAULTS from '@/data/viewAgentDefaults'
 import {
-  TIMELINE_DEFAULT_MAIN_AGENT_ID, TIMELINE_DEFAULT_CANDIDATE_POOL, LOGIC_EDITOR_DEFAULT_FUSION,
+  TIMELINE_DEFAULT_MAIN_AGENT_ID, TIMELINE_DEFAULT_CANDIDATE_POOL,
 } from '@/data/viewAgentDefaults'
 import { AGENT_RELEASE_NODE } from '@/data/versionTimeline'
 
@@ -28,7 +28,6 @@ describe('CC-431 展示层默认角色 id 单源', () => {
     const missing = ALL_VIEW_DEFAULT_AGENT_IDS.filter(id => !catalogIds.has(id))
     expect(missing).toEqual([])
     expect(ALL_VIEW_DEFAULT_AGENT_IDS.length).toBeGreaterThanOrEqual(12)
-    expect(LOGIC_EDITOR_DEFAULT_FUSION.moveId.startsWith(LOGIC_EDITOR_DEFAULT_FUSION.agentId)).toBe(true)
     for (const id of catalogIds) expect(id, 'catalog 角色 id 形态变了 ⇒ 同步改 ③ 的正则').toMatch(/^1[0-9]{2}1$/)
   })
   it('② 时间线默认主 C 与候选池都在 AGENT_RELEASE_NODE 里，且候选池不含主 C', () => {

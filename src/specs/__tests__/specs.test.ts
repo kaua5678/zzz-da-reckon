@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDefaultLogicEditorState } from '@/logicEditor/defaults'
+import { defaultRowFusionRules } from '@/logicEditor/defaults'
 import { emptyPanel } from '@/core/panel'
 import { agentSpecs, getAgentSpec } from '@/specs/registry'
 import { applySpecAttributeConversions } from '@/specs/runtime'
@@ -16,15 +16,12 @@ describe('agent mechanic specs', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('drives logic editor defaults from spec data', () => {
-    const state = createDefaultLogicEditorState()
-    const velinaFusion = state.rowFusions.find(rule => rule.id === 'velina_broad_damage')
+  it('exposes spec row fusions as runtime default rules', () => {
+    const velinaFusion = defaultRowFusionRules().find(rule => rule.id === 'velina_broad_damage')
 
     expect(velinaFusion?.moveId).toBe('1561007')
     expect(velinaFusion?.multiplier).toBe(10)
     expect(velinaFusion?.enabled).toBe(false)
-    expect(state.objects.some(object => object.id === 'velina_corrosion')).toBe(true)
-    expect(state.attributeConversions.some(rule => rule.id === 'alice_mastery_to_proficiency')).toBe(true)
   })
 
   it('executes Velina regen conversion from spec data', () => {

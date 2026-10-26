@@ -28,9 +28,8 @@
  *
  * ## 行融合规则必须显式传
  *
- * `logicEditor/storage.ts#loadLogicEditorState` 在 `typeof window === 'undefined'` 时**直接返回 spec 默认规则**。
- * worker 里没有 `window` ⇒ 用户改过的融合规则读不到 ⇒ 数值静默漂移。故 `setActiveRowFusionRules(req.fusionRules)`
- * 是**必须**的一步，不是优化。
+ * worker 里没有页面 store / 启动入口，主线程激活的规则（spec 默认或测试自定义）读不到 ⇒ 数值静默漂移。
+ * 故 `setActiveRowFusionRules(req.fusionRules)` 是**必须**的一步，不是优化。
  *
  * ## 每个 preset 一个新场景
  *

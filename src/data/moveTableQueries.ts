@@ -29,13 +29,12 @@ import type { AgentSkills, SkillMove } from '@/types/catalog'
 import type { SegmentResolver } from '@/data/moveVariants'
 
 /**
- * 从 SkillMove 的 rows 中提取指定 row 的值——**含逻辑编辑器行规则乘数**（`logicEditor/fusion`）。
+ * 从 SkillMove 的 rows 中提取指定 row 的值——**含行融合规则乘数**（`logicEditor/fusion`）。
  *
- * ⚠ 行规则不只是用户覆盖：**spec 可声明默认启用的规则**（`specs/agents/*.json#rowFusions` →
- * `logicEditor/defaults.ts`）。生效时机 = 逻辑编辑器 store 建立：生产由 `useCalculatorStartup` 建立，测试由
- * `setupHarness` 建立（node 下无 localStorage ⇒ spec 默认规则），两边同态（r697；此前只有 LogicEditorPage 建立 store，
- * 生产里没打开过那一页时规则全空，测试态恒空）。
- * 取值默认用本函数；模块**自己按分段原始倍率算融合**、而默认规则已为编辑器展示表达了同一融合时，用 `rawRowValue`。
+ * ⚠ 行规则由 **spec 声明**（`specs/agents/*.json#rowFusions` → `logicEditor/defaults.ts`），生效时机 =
+ * 启动入口激活一次：生产 `useCalculatorStartup`、测试 `setupHarness`（两边同态）。原「逻辑编辑」页
+ * （用户改规则）已于 2026-10-26 下线，规则不再有运行时编辑来源。
+ * 取值默认用本函数；模块**自己按分段原始倍率算融合**、而 spec 行规则已表达了同一融合时，用 `rawRowValue`。
  */
 export function getRowValue(move: SkillMove | null | undefined, rowId: string): number {
   if (!move) return 0

@@ -298,8 +298,8 @@ function doubleSpraySecondsOf(cfg: unknown, cinemaLevel: number): number {
 
 function buildBurniceCharConfig({ skills, cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.burniceCinemaLevel = cinemaLevel
-  // 原始分段倍率（rawRowValue）：默认启用的 spec 行规则 burnice_stirring_fusion（1171007/damage ×1.2689）已在编辑器里
-  // 表达同一融合，这里若读带规则值会重复计入（CC-238；CC-237 误并入 getRowValue 的回归）。
+  // 原始分段倍率（rawRowValue）：默认启用的 spec 行规则 burnice_stirring_fusion（1171007/damage ×1.2689）已表达
+  // 同一融合，这里若读带规则值会重复计入（CC-238；CC-237 误并入 getRowValue 的回归）。
   const blend1Damage = rawRowValue(findMoveById(skills, MIXED_FLAME_BLEND_1_MOVE), 'damage') || 250.8
   const blend2Damage = rawRowValue(findMoveById(skills, MIXED_FLAME_BLEND_2_MOVE), 'damage') || 466
   cfg.burniceStirringDamageRatio = blend1Damage * 0.5 + blend2Damage

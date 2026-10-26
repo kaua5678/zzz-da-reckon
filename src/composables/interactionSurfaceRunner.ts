@@ -41,7 +41,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { runInteractionSurface, type SweepSurface } from '@/composables/interactionSurface'
 import type { SurfaceRunRequest, SurfaceWorkerMessage, SurfaceWorkerRequest } from '@/composables/interactionSurfaceWorker'
 import { useConfigStore } from '@/stores/config'
-import { useLogicEditorStore } from '@/stores/logicEditor'
+import { currentRowFusionRules } from '@/logicEditor/fusion'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { SweepInteractionKey } from '@/composables/interactionSweep'
@@ -94,7 +94,7 @@ export interface SurfaceRunInput {
    * 「一维扫描用的现场」不一致，两条扫描会看到不同的队伍。
    */
   configState?: Record<string, unknown>
-  /** 行融合规则；缺省读 logicEditor store（worker 无 window，必须显式带上） */
+  /** 行融合规则；缺省读当前激活的规则快照（worker 无页面 store，必须显式带上） */
   fusionRules?: SurfaceRunRequest['fusionRules']
 }
 
@@ -130,22 +130,6 @@ export function createSurfaceWorker(): SurfaceWorkerLike | null {
 }
 
 /**
- * 读当前生效的行融合规则。
- *
- * ⚠ `logicEditor` 的 store 是 **setup store**，`$state` 形如 `{ state: { rowFusions: [...] }, … }`
- * ——**不是** `{ rowFusions }`。按后者取会拿到 `undefined`，一路传到 worker 的
- * `setActiveRowFusionRules(undefined)` ⇒ `rules.filter is not a function` ⇒ 整个 worker 崩掉
- * （实测症状：worker 构造成功、控制台无错、但静默回落主线程）。
- * 这里显式兜底成 `[]`（= 不融合），与「用户没改过规则」同义。
- */
-function readFusionRules(store: ReturnType<typeof useLogicEditorStore>): SurfaceRunRequest['fusionRules'] {
-  const inner = (store.$state as unknown as {
-    state?: { rowFusions?: SurfaceRunRequest['fusionRules'] }
-  }).state
-  return Array.isArray(inner?.rowFusions) ? inner.rowFusions : []
-}
-
-/**
  * **本次运行的快照**：从 UI store 读一次，喂给 worker 或主线程回落。
  *
  * ⚠ 必须在这里读（不要在 worker 里读）：worker 没有页面的 store。
@@ -153,12 +137,11 @@ function readFusionRules(store: ReturnType<typeof useLogicEditorStore>): Surface
  */
 function captureRequest(input: SurfaceRunInput): SurfaceRunRequest {
   const configStore = useConfigStore()
-  const logicStore = useLogicEditorStore()
   return surfaceToCloneable({
     // $state 的具体类型对 worker 无意义（那边只按 key 逐条写回 config model），窄化成纯数据表
     configState: input.configState
       ?? (cloneConfigState(configStore.$state) as unknown as Record<string, unknown>),
-    fusionRules: input.fusionRules ?? readFusionRules(logicStore),
+    fusionRules: input.fusionRules ?? currentRowFusionRules(),
     preset: input.preset,
     boss: input.boss,
     phase: input.phase,
