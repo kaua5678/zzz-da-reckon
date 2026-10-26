@@ -295,13 +295,15 @@
                         <div>
                           <div class="field">
                             <span class="field-label">快速支援</span>
+                            <!-- 用户裁决 2026-10-26：「手动快支全都删了，这机制过时了」⇒ 不再手填。
+                                 仍显示只读值（= 机制自带快支的计数，如莱特士气循环每轮 1 次），供核对。 -->
                             <n-input-number
                               :value="selectedChar.quickAssistCount ?? 0"
                               :min="0"
                               :max="99"
+                              :readonly="true"
                               size="small"
                               style="width: 100%"
-                              @update:value="v => configStore.setActionCount(uiStore.selectedSlot, 'quickAssistCount', v ?? 0)"
                             />
                           </div>
                         </div>
@@ -851,6 +853,7 @@ import { getImageUrl } from '@/utils/image'
 // 用展示口径会让同一份 Buff 在预览与引擎算出两个面板，实测 anomalyMastery 178 vs 192.4）。
 import { isPctStat, phaseStatLabel } from '@/utils/statMeta'
 import { compact, fmt, localized } from '@/utils/format'
+import { groupEnginesForAgent } from '@/composables/enginePicker'
 import { discSetGapLabel } from '@/utils/modelingGaps'
 import { SPECIALTY_LABEL, ATTRIBUTE_LABEL } from '@/utils/agentLabelMaps'
 import { buildDiscEffectRows } from '@/utils/discEffectRows'
@@ -1171,11 +1174,20 @@ const availableAgentOptions = computed(() => {
     })
 })
 
+/**
+ * 音擎下拉：**同职业排前面**（用户 2026-10-26：「这下拉菜单点进去太多了，能不能把同职业的放在前面，
+ * 因为同职业才能触发武器效果」）。
+ *
+ * 85 件平铺的下拉里，跨职业的 60 多件穿了只有白值、被动全废（`wEngineEffectRequirementMet` 直接 false）。
+ * 现在分两组：「✓ 同职业（被动可触发）」+「× 其它职业（被动不触发）」，组内保持原顺序
+ * （该角色实战常用件排最前）。口径在 `composables/enginePicker.ts`（有判据）。
+ */
 const wengineOptions = computed(() =>
-  catalogStore.displayWEngines.map(w => ({
-    label: `${localized(w.name, w.id)} (${w.rarity})`,
-    value: w.id,
-  })),
+  groupEnginesForAgent(
+    catalogStore.displayWEngines,
+    selectedChar.value?.agentId ? catalogStore.getAgent(selectedChar.value.agentId)?.specialty : undefined,
+    selectedChar.value?.agentId,
+  ),
 )
 
 const setOptions = computed(() =>

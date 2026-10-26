@@ -154,6 +154,24 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 那是「没带武器」而不是「没抽专武」。旧实现把右位 0 直接规整成「精炼 1 且仍穿专武」，
 所以「填 00」和「填 01」算出来完全一样（2026-10-26 修）。
 
+**下位下拉按职业分组**（2026-10-26 追加，用户：「这下拉菜单点进去太多了，能不能把同职业的放在前面，
+因为同职业才能触发武器效果」）：
+
+音擎的 `effect.requirement.specialty` 是**硬门槛**（`wEngineEffectRequirementMet` 在不匹配时直接 false）
+⇒ 跨职业的音擎穿上去只有白值、被动全废。所以凡「选音擎」的下拉都分两组：
+
+| 组 | 内容 | 依据 |
+|---|---|---|
+| **✓ 同职业（被动可触发）** | 该角色实战常用件（`DOWNGRADE_WENGINES`，按频次）→ 该职业其余不占金件（catalog 顺序=白值高的在前） | 组内**不重排**其余件的相对顺序 |
+| **× 其它职业（被动不触发）** | 剩下全部（**不删**，留着用来量「少一条被动差多少」） | 折在第二组 |
+
+接入位置：`components/TeamSlotCodeEditor.vue`（下位选择）、`views/TeamComparePage.vue`（下位装填池，
+按**队内出现过的职业并集**分组）、`views/TeamConfigPage.vue` + `components/charts/SubstatScoreCard.vue`
+（音擎选择）。排序口径只有一份：`composables/enginePicker.ts`（判据 `__tests__/enginePicker.test.ts`：
+一件不丢 / 第一组全同职业 / 角色常用件排最前 / 无职业信息时不瞎分组）。
+
+实测（stun 职业）：同职业 15 件 vs 跨职业 70 件 ⇒ 主用组一眼可及。
+
 **优先级**：页面这行码 > 预设自带 `slotCodes` > 加金。空 = 不覆盖（引擎侧逐位不变，`toBe` 判据钉住）。
 
 判据：`__tests__/teamSlotCodes.test.ts`（7 例：按队分开 / 空=不覆盖 / 右位 0 进下位清单 /

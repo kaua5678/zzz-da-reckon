@@ -257,6 +257,7 @@ import {
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { compact, fmt, localized } from '@/utils/format'
+import { groupEnginesForAgent } from '@/composables/enginePicker'
 import { persistedRef } from '@/composables/persistedRef'
 
 const configStore = useConfigStore()
@@ -418,11 +419,16 @@ function applyPlan(which: 'a' | 'b') {
 }
 
 // ===== 快速改词条（用户 2026-10-23：「这里应该给个快速修改啊，不该翻页」） =====
-/** 音擎下拉：与队伍配置页同一个来源 `displayWEngines`（不另建白名单 / 不自己过滤稀有度） */
-const wEngineOptions = computed(() => catalogStore.displayWEngines.map(w => ({
-  label: localized(w.name, w.id) + ' (' + w.rarity + ')',
-  value: w.id,
-})))
+/**
+ * 音擎下拉：与队伍配置页同一个来源 `displayWEngines`（不另建白名单 / 不自己过滤稀有度），
+ * 并且**同职业排前面**（用户 2026-10-26：「同职业才能触发武器效果」）——
+ * 排序口径只有一份，在 `composables/enginePicker.ts`。
+ */
+const wEngineOptions = computed(() => groupEnginesForAgent(
+  catalogStore.displayWEngines,
+  catalogStore.getAgent(selectedAgentId.value)?.specialty,
+  selectedAgentId.value,
+))
 const currentWEngineId = computed(() => configStore.team[slot.value]?.wEngineId ?? '')
 const currentWEngineModLevel = computed(() => configStore.team[slot.value]?.wEngineModLevel ?? 1)
 function setWEngine(id: string) {

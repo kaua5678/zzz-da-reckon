@@ -70,6 +70,9 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useTeamSlotCodes } from '@/composables/teamSlotCodes'
 import { downgradeNameOf } from '@/composables/downgradeNaming'
 import { downgradePoolFor } from '@/data/downgradeWEngines'
+import {
+  engineLabelOf, groupEnginesForAgent, partitionEngineIds, specialtyPoolOf, type EngineOption,
+} from '@/composables/enginePicker'
 import { setupCodeLabel } from '@/utils/setupCode'
 import { localized } from '@/utils/format'
 import type { TeamPreset } from '@/types/teamPreset'
@@ -118,15 +121,35 @@ function slotPlaceholder(p: TeamPreset, slot: number): string {
   return agentName(p, slot)
 }
 
-/** 该槽下位候选：角色表 → 职业表；两层都空 ⇒ 只剩「自动」（并说明会自动不到） */
-function downgradeOptions(p: TeamPreset, slot: number): Array<{ value: string; label: string }> {
+/**
+ * 该槽下位候选（2026-10-26 用户：「这个下拉菜单点进去太多了，能不能把同职业的放在前面，
+ * 因为同职业才能触发武器效果」）。
+ *
+ * 排序口径 = 「能不能触发被动」优先（`enginePicker#engineTierOf`）：
+ * · **✓ 同职业**：角色表里实战用过的那几件 + 该职业全部不占金件（顺序 = 表的频次序，不重排）；
+ * · **× 其它职业**：折进第二组并标注「被动不触发」——留着是为了能比较"少一条被动差多少"。
+ *
+ * 第二组只收下位候选池里的件（不把全目录 85 件都塞进来：用户抱怨的就是"太多了"）。
+ */
+function downgradeOptions(p: TeamPreset, slot: number): EngineOption[] {
   const agentId = agentOf(p, slot)
-  const pool = downgradePoolFor(agentId, catalog.getAgent(agentId)?.specialty)
+  const specialty = catalog.getAgent(agentId)?.specialty
+  const pool = downgradePoolFor(agentId, specialty)
   const auto = pool?.ids[0]
+  // 候选 = 角色表 ∪ 该职业表（同职业兜底），去重保序
+  const ids = [...new Set([...(pool?.ids ?? []), ...specialtyPoolOf(specialty)])]
+  const { own, other } = partitionEngineIds(ids, id => catalog.getWEngine(id), specialty, agentId)
   return [
-    { value: '', label: auto ? `自动（${downgradeNameOf(catalog, auto)}）` : '自动（无候选）' },
-    ...(pool?.ids ?? []).map(id => ({ value: id, label: downgradeNameOf(catalog, id) })),
-  ]
+    ...groupEnginesForAgent([], specialty, agentId, {
+      emptyLabel: auto ? `自动（${downgradeNameOf(catalog, auto)}）` : '自动（无候选）',
+    }),
+    { type: 'group', label: '✓ 同职业（被动可触发）', children: own.map(w => ({ value: w.id, label: engineLabelOf(w) })) },
+    { type: 'group', label: '× 其它职业（被动不触发）', children: other.map(w => ({ value: w.id, label: engineLabelOf(w) })) },
+  ].filter(o => {
+    if (!('type' in o) || o.type !== 'group') return true
+    const kids = o.children
+    return Array.isArray(kids) && kids.length > 0
+  }) as EngineOption[]
 }
 
 function cellTitle(p: TeamPreset, slot: number): string {

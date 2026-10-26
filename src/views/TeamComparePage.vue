@@ -1142,7 +1142,7 @@ import { buildBossHpCurve, buildEnvLanes, deriveVersionAxis, type VersionLane } 
 import { useConfigStore } from '@/stores/config'
 import { useStunDiscreteDisplay } from '@/composables/stunDiscreteDisplay'
 import { useCatalogStore } from '@/stores/catalog'
-import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, isLimitedWEngine, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, type PresetGoldAlternative } from '@/composables/teamCompare'
+import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, type PresetGoldAlternative } from '@/composables/teamCompare'
 import { datasetFromTeamGold } from '@/composables/analysis/dataset'
 import { publishAnalysis } from '@/composables/analysis/transfer'
 import { cloneConfigState, withAnalysisScenario } from '@/composables/analysisScenario'
@@ -1170,6 +1170,7 @@ import { usePresetTeamPicker } from '@/composables/usePresetTeamPicker'
 import { useCustomTeamsStore, resolveSelectedPresets } from '@/composables/customTeams'
 import CustomTeamsEditor from '@/components/CustomTeamsEditor.vue'
 import TeamSlotCodeEditor from '@/components/TeamSlotCodeEditor.vue'
+import { engineLabelOf } from '@/composables/enginePicker'
 import ChartLegend from '@/components/charts/ChartLegend.vue'
 import ChartTable from '@/components/charts/ChartTable.vue'
 import { fmt, compact, localized } from '@/utils/format'
@@ -1445,13 +1446,29 @@ function resetDiffWeights() {
     interactionExponent: {},
   }
 }
-const enginePoolOptions = computed(() =>
-  catalogStore.displayWEngines
-    .map(w => ({
-      value: w.id,
-      label: `${localized(w.name, w.id)}（${w.rarity}${isLimitedWEngine(w.id) ? '·限定' : ''}）`,
-    })),
-)
+/**
+ * 「下位装填池」的可选音擎（2026-10-26 用户：「这下拉菜单点进去太多了，能不能把同职业的放在前面，
+ * 因为同职业才能触发武器效果」）。
+ *
+ * 装填池是**逐槽**活动的（同一个池喂给三个槽），所以职业排序取「已选队伍里出现过的职业」并集：
+ * 该职业的件进「✓ 可触发」组，其余折进第二组。空选择时退回平铺（不假装知道职业）。
+ */
+const enginePoolOptions = computed(() => {
+  const specialties = new Set(
+    selectedPresets.value.flatMap(p => p.team)
+      .map(id => (id ? catalogStore.getAgent(id)?.specialty : undefined))
+      .filter((s): s is NonNullable<typeof s> => !!s),
+  )
+  if (specialties.size === 0) {
+    return catalogStore.displayWEngines.map(w => ({ value: w.id, label: engineLabelOf(w) }))
+  }
+  const own = catalogStore.displayWEngines.filter(w => specialties.has((w.effect?.requirement?.specialty ?? w.specialty)))
+  const other = catalogStore.displayWEngines.filter(w => !specialties.has((w.effect?.requirement?.specialty ?? w.specialty)))
+  return [
+    ...(own.length > 0 ? [{ type: 'group' as const, label: '✓ 队内职业（被动可触发）', children: own.map(w => ({ value: w.id, label: engineLabelOf(w) })) }] : []),
+    ...(other.length > 0 ? [{ type: 'group' as const, label: '× 其它职业（被动不触发）', children: other.map(w => ({ value: w.id, label: engineLabelOf(w) })) }] : []),
+  ]
+})
 
 // ========== 计算 ==========
 const computing = ref(false)
