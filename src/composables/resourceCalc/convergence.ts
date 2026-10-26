@@ -14,7 +14,7 @@ import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic, interactionBaselineFor } from '@/mechanics'
 import { firstGiftedPolarAssaultSlot, sumGiftedPolarAssault } from './giftedPolarAssault'
 import { findMoveById } from '@/data/moveTableQueries'
-import { basicHitCountOf, basicHitRateOf, teaStunImpactScale } from '@/data/wEngineStackCoverage'
+import { basicHitCountOf, basicHitRateOf, teaStunImpactScale, type BasicHitRow } from '@/data/wEngineStackCoverage'
 
 /**
  * 5 个 `compute*NextRoundFeedback` 纯函数已整体迁出（2026-09-16 arch 棘轮第 6 批）。
@@ -1140,7 +1140,7 @@ export function createRunCalcRound(deps: {
       let skillWeight = 0
       // ⚠ 必须带 moveId：压缩倍率块（如莱特 1161027 一行 = 12.5 次命中）靠它查换算系数，
       // 丢了 moveId 就会把一处倍率块当成 1 次命中 ⇒ 茶劲层数系统性偏低。
-      const basicRows: { moveId?: string; count?: number; totalTime?: number }[] = []
+      const basicRows: BasicHitRow[] = []
       for (const row of ch.executions) {
         const n = Math.max(0, Number(row.count))
         const w = n * Math.max(0, Number(row.dazeMultiplier ?? 0))

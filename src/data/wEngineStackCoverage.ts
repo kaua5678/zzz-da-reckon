@@ -298,9 +298,23 @@ export function teaStunImpactScale(input: {
  * 实测两端分得很开（青衣 46.94/47.03 = 99.8% vs 莱特 0/58.28 = 0%，莱特的计数行 totalTime=0），
  * 阈值取中间任意值都等价；50% 只是把「一半以上的平A时间有逐次计数」写成可读的名分。
  */
+/**
+ * 一条平A执行行的**计数投影**（`category === 'basic'`）：只取命中数换算需要的三个字段。
+ *
+ * 为什么单列具名类型：同一形状在 `convergence.ts`（茶劲/萎靡层数取数）也出现 ⇒
+ * 两处各写一遍字面量会漂移（判据 29 type-restatement）。
+ * 字段全可选 = **调用方按需给**（`convergence` 只填它算得出的那几个），
+ * 不是「值可能缺」——消费端 `basicHitCountOf` 对缺省按 0 处理。
+ */
+export interface BasicHitRow {
+  moveId?: string
+  count?: number
+  totalTime?: number
+}
+
 export interface BasicHitSources {
   /** 该槽平A执行行（category === 'basic'）；moveId 用于查压缩倍率块换算 */
-  rows: readonly { moveId?: string; count?: number; totalTime?: number }[]
+  rows: readonly BasicHitRow[]
   /** 该槽平A时间（秒，timeAllocation.basicAttackTime） */
   basicAttackTime: number
   /** 倍率表 basic 分类的命中速率（次/秒，basicHitRateOf）；0 = 拿不到倍率表 */

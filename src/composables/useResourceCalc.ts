@@ -344,15 +344,17 @@ export function createResourceCalc(
    * 非轴队没有逐窗轨迹 ⇒ `hasTrace=false`，不编造（读 0 不代表打满）。
    */
   const stunRealization = computed(() => {
-    const pool = calcOutput.value?.stunPool
+    const out = calcOutput.value
+    const pool = out?.stunPool
     const windowDur = computeWindowDuration()
     const effTime = effectiveBattleTime(configStore.enemy)
-    if (!pool || !(effTime > 0) || !(windowDur > 0)) return null
+    if (!out || !pool || !(effTime > 0) || !(windowDur > 0)) return null
     return realizeStunWindows(buildStunTimeline({
       stunCount: pool.stunCount,
       windowDuration: windowDur,
       effectiveTime: effTime,
-      windows: calcOutput.value?.axisStack?.windowTrace,
+      // `axisStack` 类型是 `StackTraversalResult | null`（非 undefined）⇒ 不能写 `?.`（判据 28 死兜底）
+      windows: out.axisStack ? out.axisStack.windowTrace : undefined,
     }))
   })
   /** 失衡内异常状态（轴模式）：每元素触发次数/窗均覆盖（失衡内异常系统 v2） */
@@ -424,13 +426,14 @@ export function createResourceCalc(
     const windAutoRate = anomalyPoolResult.value?.coverage.windCoverageRate ?? 0
     const infectionCoverage = getWindInfectionCoverage(configStore, windAutoRate)
     const hasWindChar = findWindSlot(configStore, catalogStore) >= 0
-    const infectionBonus = hasWindChar ? 10 * infectionCoverage : 0
     // windInfectionRate：风化侵染覆盖率原值盖章（队伍无风角色时 0）——角色模块按自身口径消费（如希格莉德浸染增伤 15%×覆盖率）
     // 注：`panels` 已在自己那份 producer 里盖过槽位章，`.map` 保序展开 ⇒ 印章自然带到 damagePanels。
     return panels.value.map(p => ({
       ...p,
       enemyCritDmgTakenBonus: p.enemyCritDmgTakenBonus + frostBonus,
-      infectionZoneBonus: Math.max(0, infectionBonus),
+      // 侵染区 = 面板值（通用基础 10% + 角色额外，如洛克茜额外能力 +8% ⇒ 18%）× 风化侵染覆盖率。
+      // ⚠ 不能写死 10：那会把模块/采集侧写进面板的角色额外加成静默丢掉（2026-10-26 用户报「洛克茜 18% 没算」）。
+      infectionZoneBonus: hasWindChar ? Math.max(0, p.infectionZoneBonus) * infectionCoverage : 0,
       windInfectionRate: hasWindChar ? infectionCoverage : 0,
     }))
   })
@@ -605,14 +608,16 @@ export function createResourceCalc(
           let backHits = 0
           for (const row of ch.executions) {
             if (row.category !== 'basic') continue
-            const n = Math.max(0, Number(row.count ?? 0))
+            // `count` / `totalTime` 在 `SkillExecution` 里是必填 `number`（生产方保证 ≥0，见该类型注释）
+            // ⇒ 不写 `?? 0`（判据 28）：死兜底会让读者以为值会缺
+            const n = Math.max(0, Number(row.count))
             if (!(n > 0)) continue
             const per = COMPRESSED_BLOCK_HITS_PER_ROW[String(row.moveId)] ?? 1
             if (row.timeBucket === 'backstage') {
               backHits += n * per
             } else {
               frontHits += n * per
-              frontSeconds += Math.max(0, Number(row.totalTime ?? 0))
+              frontSeconds += Math.max(0, Number(row.totalTime))
             }
           }
           out[e.id] = teaTeamBuffCoverage({
