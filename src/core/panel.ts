@@ -112,6 +112,7 @@ export function emptyPanel(): PanelValues {
     fireAnomalyDurationBonusSeconds: 0,
     electricAnomalyDurationBonusSeconds: 0,
     etherAnomalyDurationBonusSeconds: 0,
+    windAnomalyDurationBonusSeconds: 0,
     infectionZoneBonus: 0,
     additionalAbilityActive: 0,
     stunDurationBonusSeconds: 0,

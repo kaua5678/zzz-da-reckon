@@ -700,6 +700,8 @@ export function computePanelPhases(
     + getTeamAnomalyDurationBonus(configStore, catalogStore, 'electric')
   panel.etherAnomalyDurationBonusSeconds = panel.etherAnomalyDurationBonusSeconds
     + getTeamAnomalyDurationBonus(configStore, catalogStore, 'ether')
+  panel.windAnomalyDurationBonusSeconds = panel.windAnomalyDurationBonusSeconds
+    + getTeamAnomalyDurationBonus(configStore, catalogStore, 'wind')
 
   // 风化侵染区：**基础** 10% 独立乘区（+ 角色额外，见下），仅风属性与染色属性直伤生效
   // @fact panelPhases:侵染区归属 口径: `infectionZoneBonus` 的**基础 10%** 是风队通用机制（判据 = 队伍里有 `damageElement === 'wind'` 的角色，任何风角色都触发，**与是不是维琳娜无关**），来源 = `WIND_INFECTION_BASE_BONUS`；**角色额外加成由该角色的 spec `teamBuffs` 经采集通道写进本槽面板**（现唯一：洛克茜额外能力 +8% ⇒ 该队 18%，用户裁决 2026-10-26），故本行**必须是加法不能是赋值**（赋值会把采集写入静默清零 = 少算 8%，R64 的死控件形态）；由此 spec 声明**可以**用，但每一条都必须真的进面板（判据 `specTeamBuffSingleSource` 的行为面不变量） | 据 R64 实测：队内换成 1621/1631 同样给 10，故非维琳娜拐力；docs/mechanism-reference.md §8.6 按风属性定义@2026-09-20·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07·用户裁决「洛克茜额外 8% ⇒ 侵染区 18%」@2026-10-26 | 验 src/mechanics/__tests__/specTeamBuffSingleSource.test.ts + src/mechanics/__tests__/roxy.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#computePanelPhases | 信 确认

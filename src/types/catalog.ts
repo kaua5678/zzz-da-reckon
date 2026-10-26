@@ -192,6 +192,8 @@ export interface PanelValues {
   fireAnomalyDurationBonusSeconds: number
   electricAnomalyDurationBonusSeconds: number
   etherAnomalyDurationBonusSeconds: number
+  /** 风化（wind）异常持续时间加成（洛克茜额外能力「全队施加的[风化]效果延长 20 秒」）。 */
+  windAnomalyDurationBonusSeconds: number
   /** 风化侵染区加成（独立乘区，%）：仅风属性与其染色属性直伤生效 */
   infectionZoneBonus: number
   /** 额外能力是否触发（0/1）：由 spec.additionalAbility 声明式条件统一判定写入，模块/伤害池按标记开关 */

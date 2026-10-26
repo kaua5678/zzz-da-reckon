@@ -14,6 +14,7 @@ import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { readFileSync } from 'node:fs'
 import { emptyPanel } from '@/core/panel'
 import { calcDirectDamage } from '@/core/damage'
+import { getAnomalyDuration } from '@/core/anomalyPool/helpers'
 import {
   ROXY_C1_CRIT_DMG,
   ROXY_C4_PARRY_ENERGY,
@@ -32,6 +33,9 @@ import {
 } from '@/mechanics/agents/roxy'
 
 /** 洛克茜的**队向** buff id（spec 1621.teamBuffs 里非 singleSourced 的条目；位置对比按整组开关）。 */
+/** 自旋（每秒）的 moveId（模块内私有，测试侧同步一份用于筛行） */
+const SPIN_SECOND_MOVE_ID_FOR_TEST = '1621008'
+
 const ROXY_TEAM_BUFF_IDS = [
   'roxy.additional_ability_team_stun_vuln',
   'roxy.additional_ability_infection_zone',
@@ -268,6 +272,89 @@ describe('洛克茜（1621）队伍拐力通道（2026-10-26）', () => {
     expect(computePanelPhases(0, c2, k2)!.inCombat.anomalyBuildUpEfficiency, 'AA 不满足 ⇒ 0').toBe(0)
   })
 
+  /**
+   * 额外能力：「全队角色施加的[风化]效果延长 20 秒」。
+   *
+   * 用户口径 2026-10-26：「延长异常状态很常见，本来就该建模。延长燃烧可以加伤害，延长风化
+   * 虽然她没有 dot 不能加伤害，但是可以加**风化覆盖率**啊，侵染的直伤独立乘区也是依靠这个」
+   * +「他有延长效果，通常打 4 次就有 200s 了，达到全覆盖了」。
+   *
+   * 判据是**传导链**：duration 30→50 ⇒ calcCoverage 的 windCoverageRate 抬高 ⇒ 侵染区覆盖满。
+   * 只断言面板字段等于 20 是不够的（那条通道可能根本没进覆盖率的输入）。
+   */
+  it('额外能力：风化持续 +20s（30→50）⇒ 风化覆盖率抬满 ⇒ 侵染区满覆盖', async () => {
+    const raw = readFileSync(new URL('../../../data/raw/nanoka_missing/full/1621.json', import.meta.url), 'utf8')
+      .replace(/<[^>]+>/g, '')
+    expect(raw, 'raw 应声明全队风化延长 20 秒').toMatch(/全队角色施加的\[风化\]效果延长20秒/)
+
+    // 臂 1：面板字段与 getAnomalyDuration 的合成值
+    await setupHarness([{ agentId: '1621' }, { agentId: '1591' }, ''])
+    const c1 = useConfigStore(); const k1 = useCatalogStore()
+    const p1 = computePanelPhases(0, c1, k1)!.inCombat
+    expect(p1.windAnomalyDurationBonusSeconds, 'AA 满足 ⇒ +20').toBe(20)
+    expect(getAnomalyDuration(p1, 'wind'), '风化基础 30 + 20 = 50').toBe(50)
+
+    // 负控：1071 凯撒（防护，不满足 AA）⇒ 不加
+    await setupHarness([{ agentId: '1621' }, { agentId: '1071' }, ''])
+    const c2 = useConfigStore(); const k2 = useCatalogStore()
+    expect(computePanelPhases(0, c2, k2)!.inCombat.windAnomalyDurationBonusSeconds, 'AA 不满足 ⇒ 0').toBe(0)
+
+    // 臂 2（关键）：覆盖率真的被抬满 —— 这条才是「延长有意义」的证据
+    const covOf = async (team: Parameters<typeof setupHarness>[0]) => {
+      await setupHarness(team)
+      const calc = useResourceCalc()
+      await new Promise(r => setTimeout(r, 600))
+      return calc.anomalyPoolResult.value?.coverage.windCoverageRate ?? -1
+    }
+    const withRoxy = await covOf([{ agentId: '1621' }, { agentId: '1591' }, { agentId: '1211' }])
+    const withVelina = await covOf([{ agentId: '1561' }, { agentId: '1591' }, { agentId: '1211' }])
+    expect(withRoxy, '洛克茜队风化覆盖率应达满（用户口径：打 4 次就有 200s）').toBeCloseTo(1, 2)
+    expect(withVelina, '对照组（无延长）覆盖率明显低').toBeLessThan(0.9)
+  })
+
+  /**
+   * 影画2·流势（免费自旋）：原文「每引爆 1 个[风眼]获得一层[流势]，至多 3 层；[小心风寒]期间进入
+   * [自旋]状态下换人时，洛克茜将消耗所有[流势]，每消耗 1 层可以维持[自旋]状态 0.2 秒，
+   * **期间不消耗能量**，至多维持 0.6 秒」。
+   *
+   * 用户口径 2026-10-26：「免费自旋你假设全吃满就行，有多少流势都可以吃完。因为换人不能作为条件，
+   * 很容易达成。本来他转完就要换人。」⇒ 按满层 3×0.2 = 0.6s 建模。
+   *
+   * 判据必须钉 **energyConsume = 0**：这是「免费」的全部意义。若后人把它并进耗能自旋行，
+   * 秒数白得但能量照扣（实测少算 18 点能量），收益方向会反过来。
+   */
+  it('影画2·流势：满层免费自旋 0.6s——伤害/喧响照给但不扣能量；C0/C1 无此行', () => {
+    const raw = readFileSync(new URL('../../../data/raw/nanoka_missing/full/1621.json', import.meta.url), 'utf8')
+      .replace(/<[^>]+>/g, '')
+    expect(raw, 'raw 应声明每层 0.2 秒、至多 0.6 秒、期间不消耗能量').toMatch(/每消耗1层可以维持\[自旋\]状态0\.2秒，期间不消耗能量，至多维持0\.6秒/)
+
+    const spinRowsOf = (cinema: number) => {
+      const execs: any[] = []
+      roxyMechanic.buildExecutions!({
+        cfg: {
+          roxyCinemaLevel: cinema, roxyExStartEnergy: 10, roxySpinEnergyPerSecond: 30,
+          roxySpinSecondDamage: 2608.6, roxySpinSecondDecibel: 84.343, exSpecialEnergyConsume: 85,
+        },
+        state: { exSpecialCount: 6, ultimateCount: 2, totalEnergy: 900 } as any,
+        executions: execs,
+      } as any)
+      return execs.filter((e: any) => String(e.moveId) === SPIN_SECOND_MOVE_ID_FOR_TEST)
+    }
+    const freeRow = (cinema: number) => spinRowsOf(cinema).find((e: any) => String(e.moveName).includes('流势'))
+
+    expect(freeRow(0), 'C0 无流势').toBeUndefined()
+    expect(freeRow(1), 'C1 无流势（影画2 起）').toBeUndefined()
+
+    for (const c of [2, 6]) {
+      const row = freeRow(c)
+      expect(row, 'C' + c + ' 应有流势免费自旋行').toBeDefined()
+      expect(row.totalEnergyConsume, '★ 免费：耗能必须 0').toBe(0)
+      expect(row.energyConsume, '单发耗能 0').toBe(0)
+      expect(row.count, '每局一次（换人消费全部流势）').toBe(1)
+      expect(row.damageMultiplier, '伤害 = 2608.6 × 0.6').toBeCloseTo(2608.6 * 0.6, 3)
+      expect(row.totalDecibelRecovery, '喧响 = 84.343 × 0.6').toBeCloseTo(84.343 * 0.6, 3)
+    }
+  })
   it('拐力通道非空：洛克茜的队向 buff 已进采集（位置对比差分不再恒 0）', async () => {
     const { config } = await setupHarness([{ agentId: '1621', cinemaLevel: 2 }, { agentId: '1591' }, { agentId: '1211' }])
     for (const b of config.globalBuffs) b.enabled = false

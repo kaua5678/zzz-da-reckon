@@ -537,7 +537,9 @@ export function getAnomalyDuration(panel: PanelValues, element: string): number 
         ? panel.electricAnomalyDurationBonusSeconds
         : baseElement === 'ether'
           ? panel.etherAnomalyDurationBonusSeconds
-          : 0
+          : baseElement === 'wind'
+            ? panel.windAnomalyDurationBonusSeconds
+            : 0
   return defaultAnomalyDuration(baseElement)
     + panel.anomalyDurationBonusSeconds
     + elementBonus

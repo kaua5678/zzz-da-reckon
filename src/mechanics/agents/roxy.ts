@@ -17,6 +17,7 @@ import { specAdjustableRate } from '@/specs/resources'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
+import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { panelOfSlot } from '@/core/sourcePanels'
 
 /**
@@ -35,7 +36,8 @@ import { panelOfSlot } from '@/core/sourcePanels'
  * - 影画：C1 敬请安息命中 → 全抗-15%（50s）+ 自身暴伤+40%；C2 小心风寒失衡易伤 +30%（v12：旧 25% → 30%）
  *   + 流势/自旋维持（机动向不建模）；C4 招架+1/闪反+2 能量 + 终结 +20% 伤（失衡+10% 未单接）；
  *   C6 无视 15% 风抗（v12：旧 20% → 15%）+ 巨旋风 ×250%（失衡+20% 未单接）+ [余响]每次引爆额外 2 次
- *   巨旋风——该式是**共同上界**（单向高估、不可能低估；精确值受原文未给的时长/节拍参数阻塞，已登记 debt）。
+ *   巨旋风——**精确值**：巨型风旋是次数启动器，每生成一个必然附送 2 个额外巨型风旋，重复触发叠加
+ *   不吞掉 ⇒ 与[余响]持续秒数无关（用户口径 2026-10-25「总量计算器不需要管他持续几秒」）。
  */
 const ROXY_AGENT_ID = '1621'
 /** 风能：每 25 能量 +1 点（核心被动 Lv.7），存量上限 3；终结技额外 +1 点 */
@@ -96,6 +98,20 @@ export const ROXY_AA_ENTER_ENERGY = 40
 export const ROXY_AA_STUN_DURATION = 2
 /** 额外能力：「释放[强化特殊技]时，自身异常积蓄效率提升 30%，持续 50 秒」（自身，非全队） */
 export const ROXY_AA_BUILDUP_EFFICIENCY = 30
+/** 额外能力：「全队角色施加的[风化]效果延长 20 秒」⇒ 风化持续时间 30 → 50s（覆盖率通道） */
+export const ROXY_AA_WIND_DURATION_EXTENSION = 20
+/**
+ * 影画2·流势（免费自旋）：「每引爆 1 个[风眼]获得一层[流势]，至多 3 层；[小心风寒]期间进入[自旋]状态下
+ * 换人时，洛克茜将消耗所有[流势]，每消耗 1 层可以维持[自旋]状态 0.2 秒，**期间不消耗能量**，至多维持 0.6 秒」。
+ *
+ * **用户口径 2026-10-26**：「免费自旋你假设全吃满就行，有多少流势都可以吃完。因为换人不能作为条件，
+ * 很容易达成。本来他转完就要换人。」⇒ 按**满层（3 层 = 0.6s）**建模，不作覆盖率滑块。
+ *
+ * 收益面：0.6s **不花能量**的自旋 ⇒ 白得 `0.6 × 自旋每秒倍率` 的伤害 + `0.6 × 84.343` 的喧响，
+ * 且不占能量预算（不减少可打强特次数，是纯增量）。
+ */
+export const ROXY_C2_FLOW_MOMENTUM_SECONDS_PER_STACK = 0.2
+export const ROXY_C2_FLOW_MOMENTUM_MAX_STACKS = 3
 /**
  * 核心被动·热夜初拥（Lv.7）：「队伍中任意队友触发[浸染]或[净化]时，洛克茜按自身每 1% 暴击率
  * 为全队提供：非[锋御]角色对应属性与风属性伤害暴击伤害 +0.4%（上限 40%）；[锋御]角色锐暴伤害
@@ -552,6 +568,30 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
       const fullCasts = source.lastIsPartial ? Math.max(0, exCount - 1) : exCount
       pushSpinRow(fullCasts, source.spinSeconds)
       if (source.lastIsPartial) pushSpinRow(1, source.partialSpinSeconds)
+      /**
+       * 影画2·流势：自旋结束换人 ⇒ 消耗满层[流势]续 0.6s **免费自旋**（不耗能量）。
+       * 用户口径 2026-10-26：「免费自旋你假设全吃满就行，有多少流势都可以吃完」⇒ 每局一次，
+       * 固定 0.6s；不乘 exCount（流势按「引爆风眼」层叠，单次换人消费全部，是**每局一次**的机动收益）。
+       * ⚠ 单独成行（不并进 pushSpinRow）：它的 energyConsume 必须为 0，与耗能自旋行混在一起
+       * 会让能量账把免费秒数也扣成 30/s（实测会少算 18 点能量）。
+       */
+      const cinemaNow = cinemaLevelOf(cfg.roxyCinemaLevel)
+      if (cinemaNow >= 2) {
+        const freeSeconds = ROXY_C2_FLOW_MOMENTUM_SECONDS_PER_STACK * ROXY_C2_FLOW_MOMENTUM_MAX_STACKS
+        executions.push({
+          moveId: SPIN_SECOND_MOVE_ID, moveName: '自旋（流势免费，不耗能）', category: 'special',
+          count: 1, actionTime: 0, comboAlignRatio: 0,
+          totalTime: 0, totalComboAlignTime: 0,
+          energyConsume: 0, totalEnergyConsume: 0,
+          decibelRecovery: spinDecibelPerSec * freeSeconds,
+          totalDecibelRecovery: spinDecibelPerSec * freeSeconds,
+          decibelRecoveryOverride: true,
+          energyRecovery: 0, totalEnergyRecovery: 0,
+          timeBucket: 'backstage',
+          damageMultiplier: spinMoveMult * freeSeconds,
+          damageMultiplierOverride: true,
+        })
+      }
     }
     executions.push({
       moveId: REST_PEACE_MOVE_ID, moveName: '强化特殊技：敬请安息（风炮）', category: 'special',
@@ -636,7 +676,7 @@ function buildRoxyResourceSections({ result }: AgentResourceSectionsInput) {
         { label: '巨型风旋', value: `${source.megaTornadoCount} 次`, detail: '3 个风眼同时命中 → 巨旋风（1621020）持续 1 秒；影画6 ×250%' },
         { label: '微型风旋', value: `${fmt(source.miniTornadoSeconds)}s`, detail: '不足 3 个的余数 → 小旋风（1621019）1s/个' },
       ],
-      footer: 'v12 口径；余响（影画6 每 3s 额外 2 次巨旋风）按「2×引爆数」计——该式是共同上界（单向高估），精确值受原文未给的时长/节拍参数阻塞，见模块 @fact agent:1621/余响时序。',
+      footer: 'v12 口径；余响（影画6）按「引爆数 × 2」计——巨型风旋是次数启动器，每生成一个必然附送 2 个额外巨型风旋，重复触发叠加不吞掉 ⇒ 与持续秒数无关（用户口径 2026-10-25）。',
     },
   ]
 }
@@ -680,6 +720,23 @@ export const roxyMechanic: AgentMechanicModule = {
   description: 'v12：风能（25能量/点+终结+1）→ 敬请安息（消耗全部，每点额外段+1风眼）→ 风眼爆鸣/恕不远送（引爆至多3 → 巨旋风或小旋风）+ 自旋每秒伤害；核心转模（能量回复>1.2→攻击/冲击）；C1 全抗-15%/暴伤+40%、C2 易伤+30%、C4 回能+终结+20%、C6 风抗15%+巨旋风×250%。',
   applyPanel: applyRoxyPanel,
   teamPanelEffects: applyRoxyTeamPanelEffects,
+  /**
+   * 额外能力·同一段：「全队角色施加的[风化]效果延长 20 秒」。
+   *
+   * 用户口径 2026-10-26：「延长异常状态很常见，本来就该建模…延长风化虽然她没有 dot 不能加伤害，
+   * 但是可以加**风化覆盖率**啊，侵染的直伤独立乘区也是依靠这个」。
+   *
+   * 落点 = `windAnomalyDurationBonusSeconds`（`core/anomalyPool/helpers#getAnomalyDuration` 读，
+   * `calcCoverage` 用 `次数 × 时长 / 有效战斗时间` 算 `windCoverageRate`，封顶 1）⇒
+   * 直接抬高风化覆盖率 ⇒ 抬高侵染区覆盖率与乱流窗口。**不是**面板上的伤害量。
+   *
+   * ⚠ 用户同口径：「他有延长效果，通常打 4 次就有 200s 了，达到全覆盖了」——20s 加成后
+   * 单次风化 30→50s，4 次即 200s ≥ 任意常规战斗时长 ⇒ 覆盖率自然收到 1，无需另设封顶逻辑。
+   */
+  teamAnomalyDurationBonus: ({ element, slot, agent, team }) =>
+    (element === 'wind' && evalAdditionalAbility(team, slot, agent, getAgentSpec(ROXY_AGENT_ID)?.additionalAbility)
+      ? ROXY_AA_WIND_DURATION_EXTENSION
+      : 0),
   buildCharConfig: buildRoxyCharConfig,
   /**
    * 引擎期强特次数求解（规则 6 引擎落点）：洛克茜的自旋秒数是**自动放完能量**的
