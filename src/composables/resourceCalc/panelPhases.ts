@@ -54,7 +54,7 @@ import type { PanelValues, TeammateBuff, DriveDiscConfig, BuffEffectOrigin } fro
 import { statSettlementMode } from '@/utils/statMeta'
 // CC-341：危局 buff 牌条件（特性限定 / 人数分档）的唯一解析（全局 Buff 行带 cond，在这里按当前队伍解析）
 import { resolvePhaseBuffValue, teamSpecialtiesOf } from '@/utils/phaseBuff'
-import { getTeamAnomalyDurationBonus, findWindSlot } from './anomalyPanels'
+import { getTeamAnomalyDurationBonus, findWindSlot, WIND_INFECTION_BASE_BONUS } from './anomalyPanels'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import { SHIELD_BREAK_GIFT } from '@/core/resource/resourceIncome'
 
@@ -701,10 +701,12 @@ export function computePanelPhases(
   panel.etherAnomalyDurationBonusSeconds = panel.etherAnomalyDurationBonusSeconds
     + getTeamAnomalyDurationBonus(configStore, catalogStore, 'ether')
 
-  // 风化侵染区：10% 独立乘区，仅风属性与染色属性直伤生效
-  // @fact panelPhases:侵染区归属 口径: `infectionZoneBonus` 是**风队通用机制**（判据 = 队伍里有 `damageElement === 'wind'` 的角色，任何风角色都触发，**与是不是维琳娜无关**）；系数 10% 的唯一来源 = 本行赋值 + 编排层 `useResourceCalc` 的覆盖率折算，**禁止**再用 spec `teamBuffs` 声明该 stat —— spec 声明会被本行赋值覆写，属性配置页会出现拨不动的**死控件**（R64 实测三档恒 10） | 据 R64 实测：队内换成 1621/1631 同样给 10，故非维琳娜拐力；docs/mechanism-reference.md §8.6 按风属性定义@2026-09-20·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/specTeamBuffSingleSource.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#computePanelPhases | 信 确认
-  // ⟳复核: 跑 `npx vitest run specTeamBuffSingleSource` —— 若全库又有 spec 用 `teamBuffs` 声明 `infectionZoneBonus`（不变量条红），说明有人把误归属的重复声明加回来了；同时确认 1621/1631 在队仍给 10（归属判据） | 到期 2027-03-31
-  panel.infectionZoneBonus = findWindSlot(configStore, catalogStore) >= 0 ? 10 : 0
+  // 风化侵染区：**基础** 10% 独立乘区（+ 角色额外，见下），仅风属性与染色属性直伤生效
+  // @fact panelPhases:侵染区归属 口径: `infectionZoneBonus` 的**基础 10%** 是风队通用机制（判据 = 队伍里有 `damageElement === 'wind'` 的角色，任何风角色都触发，**与是不是维琳娜无关**），来源 = `WIND_INFECTION_BASE_BONUS`；**角色额外加成由该角色的 spec `teamBuffs` 经采集通道写进本槽面板**（现唯一：洛克茜额外能力 +8% ⇒ 该队 18%，用户裁决 2026-10-26），故本行**必须是加法不能是赋值**（赋值会把采集写入静默清零 = 少算 8%，R64 的死控件形态）；由此 spec 声明**可以**用，但每一条都必须真的进面板（判据 `specTeamBuffSingleSource` 的行为面不变量） | 据 R64 实测：队内换成 1621/1631 同样给 10，故非维琳娜拐力；docs/mechanism-reference.md §8.6 按风属性定义@2026-09-20·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30·复核@2026-10-07·用户裁决「洛克茜额外 8% ⇒ 侵染区 18%」@2026-10-26 | 验 src/mechanics/__tests__/specTeamBuffSingleSource.test.ts + src/mechanics/__tests__/roxy.test.ts | 锚 src/composables/resourceCalc/panelPhases.ts#computePanelPhases | 信 确认
+  // ⟳复核: 跑 `npx vitest run specTeamBuffSingleSource` —— 若「每条声明都真的进面板」那条红（读到 10 而非 10+声明值），说明基础写回赋值了；同时确认维琳娜/赛维里安在队仍只有基础 10（归属判据：+8 是洛克茜的） | 到期 2027-03-31
+  // ⚠ 必须是 `+=`：模块（洛克茜额外能力 +8%）在此行**之前**的 applyPanel 里已经写过这里
+  panel.infectionZoneBonus = panel.infectionZoneBonus
+    + (findWindSlot(configStore, catalogStore) >= 0 ? WIND_INFECTION_BASE_BONUS : 0)
 
   // buffs / effectCoverageMap 一并返回（2026-10-20，属性矩阵）：二者是 calcPanel 内部产物，
   // 原先在此丢弃 ⇒ 展示层要还原「谁贡献了什么」只能重算一遍（那正是双实现漂移的来源）。

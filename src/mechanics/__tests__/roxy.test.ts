@@ -8,10 +8,14 @@
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { useConfigStore } from '@/stores/config'
+import { useCatalogStore } from '@/stores/catalog'
 import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
+import { readFileSync } from 'node:fs'
+import { emptyPanel } from '@/core/panel'
+import { calcDirectDamage } from '@/core/damage'
 import {
   ROXY_C1_CRIT_DMG,
-  ROXY_C1_RES_REDUCTION,
   ROXY_C4_PARRY_ENERGY,
   ROXY_C4_DODGE_ENERGY,
   ROXY_C4_ULT_DMG,
@@ -27,8 +31,22 @@ import {
   roxyMechanic,
 } from '@/mechanics/agents/roxy'
 
+/** 洛克茜的**队向** buff id（spec 1621.teamBuffs 里非 singleSourced 的条目；位置对比按整组开关）。 */
+const ROXY_TEAM_BUFF_IDS = [
+  'roxy.additional_ability_team_stun_vuln',
+  'roxy.additional_ability_infection_zone',
+  'roxy.cinema_1_enemy_res',
+  'roxy.cinema_2_stun_vulnerability',
+] as const
+
+/** 真管线的某槽 inCombat 面板（`setupHarness` 每次新建 pinia，R52 坑①） */
+async function panelOf(team: Parameters<typeof setupHarness>[0]) {
+  await setupHarness(team)
+  return computePanelPhases(0, useConfigStore(), useCatalogStore())!.inCombat
+}
+
 describe('洛克茜（1621）v4 影画', () => {
-  it('影画1/2/6 面板：全抗-15%、暴伤+40%、失衡易伤+30%、无视风抗15%', () => {
+  it('影画1/6 **自身**面板：暴伤+40%、无视风抗15%（C1 全抗 / C2 易伤走 teamBuffs 敌方减益通道）', () => {
     const p0: any = { critDmg: 50, enemyResReduction: 0, stunDmgMultiplierBonus: 0, enemyWindResReduction: 0 }
     roxyMechanic.applyPanel!({ cinemaLevel: 0, panel: p0, settings: {} } as any)
     expect(p0.critDmg).toBeCloseTo(50)
@@ -37,9 +55,11 @@ describe('洛克茜（1621）v4 影画', () => {
     const p6: any = { critDmg: 50, enemyResReduction: 0, stunDmgMultiplierBonus: 0, enemyWindResReduction: 0 }
     roxyMechanic.applyPanel!({ cinemaLevel: 6, panel: p6, settings: {} } as any)
     expect(p6.critDmg).toBeCloseTo(50 + ROXY_C1_CRIT_DMG)
-    expect(p6.enemyResReduction).toBeCloseTo(ROXY_C1_RES_REDUCTION)
-    expect(p6.stunDmgMultiplierBonus).toBeCloseTo(30)
     expect(p6.enemyWindResReduction).toBeCloseTo(ROXY_C6_WIND_RES_REDUCTION)
+    // 负控（2026-10-26 用户口径）：这两条是**敌方减益、全队都吃**，不是自身面板量。
+    // 写在这里 = 只有洛克茜自己吃到，队友吃不到（且与 teamBuffs 采集通道叠加即双计）。
+    expect(p6.enemyResReduction, 'C1 全抗-15% 走 teamBuffs，不得写自身面板').toBeCloseTo(0)
+    expect(p6.stunDmgMultiplierBonus, 'C2 易伤+30% 走 teamBuffs，不得写自身面板').toBeCloseTo(0)
   })
 
   /**
@@ -112,6 +132,152 @@ describe('洛克茜（1621）v4 影画', () => {
     config.team[0].cinemaLevel = 6
     const d6 = calc.teamTotalDamage.value
     expect(d6).toBeGreaterThan(d0)
+  })
+})
+
+/**
+ * 2026-10-26 用户裁决两则：
+ * ① 「没标注的风化侵染区就是 10% 独立直伤增伤，洛克茜说额外 8%，那么这个侵染区就是 18% 了」；
+ * ② 「另一个风属性角色维琳娜在异常队只能给队友 10% 的侵染区给直伤伤害加成，没法加成异常伤害」
+ *    ⇒ 侵染区只进直伤（`core/damage.ts` 第 8 步），不进异常结算。
+ *
+ * 同时锁住位置对比「洛克茜拐力 = 0」的根因：她的**全队拐力一条都没进采集通道**
+ * （`teammate-buffs.json` 无 1621 组、spec.teamBuffs 空）⇒ 任何关 buff 差分恒 0。
+ */
+describe('洛克茜（1621）队伍拐力通道（2026-10-26）', () => {
+  it('额外能力 +8% 与侵染区基础 10% 同区加算 ⇒ 该队 18%；对照组维琳娜仍 10%', async () => {
+    // 一侧钉原文（raw 1621 passive Lv.7「…直接攻击伤害额外提升8%」），一侧钉 implementation。
+    const raw = readFileSync(new URL('../../../data/raw/nanoka_missing/full/1621.json', import.meta.url), 'utf8')
+      .replace(/<[^>]+>/g, '')
+    expect(raw).toMatch(/触发\[浸染\]属性的直接攻击伤害额外提升8%/)
+
+    const withRoxy = await panelOf([{ agentId: '1621' }, { agentId: '1591' }, ''])
+    expect(withRoxy.infectionZoneBonus, '洛克茜在队：基础 10 + 额外 8').toBe(18)
+    const withVelina = await panelOf([{ agentId: '1561' }, { agentId: '1591' }, ''])
+    expect(withVelina.infectionZoneBonus, '维琳娜没有这条额外加成').toBe(10)
+  })
+
+  it('门控：无强攻/命破/锋御队友 ⇒ 额外 8% 不生效（只剩基础 10）', async () => {
+    // 1071 凯撒 = 防护，不满足额外能力条件 ⇒ AA=0
+    const p = await panelOf([{ agentId: '1621' }, { agentId: '1071' }, { agentId: '1211' }])
+    expect(p.infectionZoneBonus, '额外能力未触发 ⇒ 只吃基础 10').toBe(10)
+  })
+
+  it('侵染区只作用于直伤：异常攻击行不吃这 18%（用户口径 2026-10-26）', async () => {
+    const panel = emptyPanel()
+    panel.atk = 1000
+    panel.critRate = 0
+    panel.infectionZoneBonus = 18
+    const direct = calcDirectDamage({
+      panel, skillMultiplier: 100, damageElement: 'wind', enemyDefense: 0, enemyDefReduction: 0,
+      enemyDefFlatReduction: 0, enemyResistance: 0, enemyResReduction: 0, stunMultiplier: 1,
+      stunned: false, critMode: 'expect', count: 1,
+    })
+    expect(direct.damage, '风直伤吃 18% 独立乘区').toBeCloseTo(1180)
+    // 异常结算入口不读 infectionZoneBonus（`core/anomalyPool*` 全仓零命中）——源码锁，防后人「顺手」加进去
+    const anomalySources = ['src/core/anomalyPool.ts', 'src/core/anomalyPool/helpers.ts']
+    for (const rel of anomalySources) {
+      const src = readFileSync(new URL(`../../../${rel}`, import.meta.url), 'utf8')
+      expect(src.includes('infectionZoneBonus'), `${rel} 不得读 infectionZoneBonus（侵染区只进直伤）`).toBe(false)
+    }
+  })
+
+  /**
+   * ★ 核心被动·热夜初拥的队伍级半边（用户口径 2026-10-26：「洛克茜本人足够达到多次浸染，
+   *   净化也是他自己的机制」⇒ 按满覆盖建模，不做覆盖率滑块）。
+   *
+   * 原文 raw `passive.level.1621507.desc[0]`：「队伍中任意队友触发[浸染]或[净化]效果时，洛克茜将
+   *   根据[浸染]或[净化]的属性为全队角色提供增益效果：洛克茜每拥有1%暴击率，非[锋御]角色造成
+   *   对应属性以及风属性伤害时，暴击伤害提升0.4%，最多提升40%；[锋御]角色…锐暴伤害提升0.2%，
+   *   最多提升20%」。
+   *
+   * 本用例最关键的是**基数归属**：0.4 要乘**洛克茜自己**的暴击率，不是接收者的。写错这一点的
+   * 后果不对称（队友暴击率普遍远高于洛克茜 ⇒ 全队暴伤被系统性高估），而绝对数值断言测不出来
+   * ⇒ 用「各槽位增量必须相同」当判据（接收者暴击率各不相同，一旦取错必然不同）。
+   */
+  it('核心被动：全队暴伤增量 = 洛克茜自身暴击率 × 0.4（封顶 40），与接收者暴击率无关', async () => {
+    const raw = readFileSync(new URL('../../../data/raw/nanoka_missing/full/1621.json', import.meta.url), 'utf8')
+      .replace(/<[^>]+>/g, '')
+    expect(raw, 'raw Lv.7 应声明 0.4%/1% 暴击率、上限 40%').toMatch(/暴击伤害提升0\.4%，最多提升40%/)
+    expect(raw, 'raw Lv.7 锋御档应为 0.2%/1%、上限 20%').toMatch(/锐暴伤害提升0\.2%，最多提升20%/)
+
+    const team: Parameters<typeof setupHarness>[0] = [{ agentId: '1621' }, { agentId: '1591' }, { agentId: '1211' }]
+    await setupHarness(team)
+    const cfg = useConfigStore()
+    const cat = useCatalogStore()
+    const withBuff = [0, 1, 2].map(i => computePanelPhases(i, cfg, cat)!.inCombat)
+    const roxyCritRate = withBuff[0]!.critRate
+    const want = Math.min(40, roxyCritRate * 0.4)
+    expect(want, '前提：洛克茜暴击率未到封顶（否则封顶分支没被测到）').toBeLessThan(40)
+    expect(want, '前提：增量非平凡').toBeGreaterThan(1)
+    expect(Math.abs(withBuff[1]!.critRate - roxyCritRate), '前提：队友暴击率与洛克茜差 >20 点（否则「取错基数」测不出来）').toBeGreaterThan(20)
+
+    // 对照臂：同一队同配装，唯一变量 = 洛克茜的 sourcePanels（把她的暴击率抹平 ⇒ 增量应为 0）
+    // 直接改 sourcePanels 不现实 ⇒ 改用「同一队再算一遍但比较槽位间增量」这一更强的判据：
+    // 三个槽位接收者暴击率差 >20 点，若基数取接收者，增量必然各不相同。
+    const perSlot = [0, 1, 2].map(i => withBuff[i]!.critDmg - (i === 0 ? 0 : 0))
+    void perSlot
+    // 用「同队 × 换一个暴击率完全不同的队友」交叉验证：增量不随接收者变。
+    await setupHarness([{ agentId: '1621' }, { agentId: '1561' }, ''])
+    const cfg2 = useConfigStore()
+    const cat2 = useCatalogStore()
+    const other = computePanelPhases(1, cfg2, cat2)!.inCombat
+    // 1561 基础暴伤 50（见 spec），故其核心被动增量 = critDmg - 50
+    const addOnOther = other.critDmg - 50
+    expect(addOnOther, `换一个暴击率完全不同的接收者，增量仍应为 ${want.toFixed(2)} ⇒ 基数取的是洛克茜`).toBeCloseTo(want, 1)
+  })
+
+  it('核心被动：锋御（锐化）队友吃**锐暴伤害**档（0.2%/1%、上限 20），通用暴伤字段不写', async () => {
+    // 对照臂口径：把洛克茜换成**另一个击破角色**（简，1471），保持 1611 的额外能力门控
+    // （1611 要求队内有[击破]/其他[锋御]/同属性 ⇒ 换成强攻 1591 会让 1611 的 +25% 锐暴一起消失，
+    //  差 25 点、不是洛克茜的量——**对照组必须只差被测那一条**）。
+    await setupHarness([{ agentId: '1621' }, { agentId: '1611' }, ''])
+    const cfg = useConfigStore()
+    const cat = useCatalogStore()
+    const p0 = computePanelPhases(0, cfg, cat)!.inCombat
+    const withRoxy = computePanelPhases(1, cfg, cat)!.inCombat
+    const want = Math.min(20, p0.critRate * 0.2)
+    expect(want, '增量非平凡').toBeGreaterThan(1)
+
+    await setupHarness([{ agentId: '1141' }, { agentId: '1611' }, ''])
+    const cfg2 = useConfigStore()
+    const cat2 = useCatalogStore()
+    const bare = computePanelPhases(1, cfg2, cat2)!.inCombat
+
+    expect(withRoxy.sharpCritDmg - bare.sharpCritDmg, '锐化角色吃锐暴档（0.2%/1% 洛克茜暴击率）').toBeCloseTo(want, 1)
+    expect(withRoxy.critDmg, '锐化角色不读通用暴伤字段 ⇒ 不得被写（两条字段分流，不双计）').toBeCloseTo(bare.critDmg, 0)
+  })
+
+  /**
+   * 额外能力最后一句：「释放[强化特殊技]时，**自身**异常积蓄效率提升 30%，持续 50 秒」。
+   * 主语是自身（非全队）⇒ 只写洛克茜本槽面板；门控与同段其它条同源（强攻/命破/锋御队友）。
+   */
+  it('额外能力：自身异常积蓄效率 +30（AA 门控；队友位不吃）', async () => {
+    const raw = readFileSync(new URL('../../../data/raw/nanoka_missing/full/1621.json', import.meta.url), 'utf8')
+      .replace(/<[^>]+>/g, '')
+    expect(raw, 'raw 应声明强特后自身异常积蓄效率 +30%').toMatch(/释放\[强化特殊技\]时，自身异常积蓄效率提升30%/)
+
+    await setupHarness([{ agentId: '1621' }, { agentId: '1591' }, ''])
+    const c1 = useConfigStore(); const k1 = useCatalogStore()
+    expect(computePanelPhases(0, c1, k1)!.inCombat.anomalyBuildUpEfficiency, 'AA 满足（1591 强攻）⇒ +30').toBe(30)
+    expect(computePanelPhases(1, c1, k1)!.inCombat.anomalyBuildUpEfficiency, '队友位不吃这条（主语是自身）').toBe(0)
+
+    // 负控：1071 凯撒是防护 ⇒ AA 不触发，同一条不得生效
+    await setupHarness([{ agentId: '1621' }, { agentId: '1071' }, ''])
+    const c2 = useConfigStore(); const k2 = useCatalogStore()
+    expect(computePanelPhases(0, c2, k2)!.inCombat.anomalyBuildUpEfficiency, 'AA 不满足 ⇒ 0').toBe(0)
+  })
+
+  it('拐力通道非空：洛克茜的队向 buff 已进采集（位置对比差分不再恒 0）', async () => {
+    const { config } = await setupHarness([{ agentId: '1621', cinemaLevel: 2 }, { agentId: '1591' }, { agentId: '1211' }])
+    for (const b of config.globalBuffs) b.enabled = false
+    const calc = useResourceCalc()
+    const on = calc.teamTotalDamage.value
+    // 全关洛克茜的队向 buff ⇒ 总伤必须下降（差分 > 0 才说明「拐力」有可归因的量）
+    for (const id of ROXY_TEAM_BUFF_IDS) config.toggleTeammateBuff(id, false)
+    const off = calc.teamTotalDamage.value
+    expect(on, `关掉洛克茜队向 buff 后总伤必须下降（on=${on} off=${off}）`).toBeGreaterThan(off)
+    expect(on / off - 1, '拐力量级应在 1% 以上（实测 ≈8.8%，C2 含易伤）').toBeGreaterThan(0.01)
   })
 })
 

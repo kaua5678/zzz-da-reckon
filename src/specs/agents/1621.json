@@ -191,5 +191,92 @@
     "实现位置：src/mechanics/agents/roxy.ts（v12：风能账本/风眼/恕不远送/巨·小旋风/自旋/转模/命座面板）。",
     "未建模项：风化相关（浸染还原/队友增益/风化直伤+8%）、影画4 终结失衡+10%、影画6 巨旋风失衡+20%、流势自旋维持（机动向）。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [
+    {
+      "id": "roxy.additional_ability_team_stun_vuln",
+      "name": "洛克茜｜额外能力·失衡易伤",
+      "source": "额外能力",
+      "description": "队伍中角色攻击命中敌人时，使其失衡易伤倍率提升 30%，至目标从失衡状态恢复（同类不可叠加）。",
+      "target": "enemy",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "stunDmgMultiplierBonus",
+          "mode": "flat",
+          "value": 30
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "门控 = 队内[强攻]/[命破]/[锋御]（spec additionalAbility.teamConditions）。来源标签「额外能力」⇒ additionalGateBuffTable 自动门控。敌方减益 ⇒ 全队每个攻击者都吃；不得再在 roxy.ts#applyRoxyPanel 写 panel.stunDmgMultiplierBonus（那只有洛克茜自己吃，且与本次采集通道叠加即双计）。"
+    },
+    {
+      "id": "roxy.additional_ability_infection_zone",
+      "name": "洛克茜｜额外能力·风化目标直伤提升",
+      "source": "额外能力",
+      "description": "敌人处于队伍中角色造成的[风化]状态下时，敌人受到的[风属性直接攻击伤害]和触发[浸染]属性的直接攻击伤害额外提升 8%。",
+      "target": "enemy",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "infectionZoneBonus",
+          "mode": "flat",
+          "value": 8
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "⚠ 与风化侵染区**同区加算**：通用基础 10%（panelPhases#WIND_INFECTION_BASE_BONUS）+ 本条 8% = 该队 18%（用户裁决 2026-10-26）。只作用于直伤（infectionZoneBonus 不进异常伤害结算）。panelPhases 的基础值必须是 `+=` 才不会被本条覆写。"
+    },
+    {
+      "id": "roxy.additional_ability_team_stun_duration",
+      "name": "洛克茜｜额外能力·失衡时长",
+      "source": "额外能力",
+      "description": "敌人进入失衡状态时，使其失衡时间延长 2 秒（同类效果不可叠加）。",
+      "target": "enemy",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "enemyStunDurationBonusSeconds",
+          "mode": "flat",
+          "value": 2
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "与 roxy.ts#applyRoxyPanel 的 `stunDurationBonusSeconds += 2` 是**同一效果**；窗口时长 = enemy.stunTime + 4 + Σ resourcePanels.stunDurationBonusSeconds ⇒ 走采集通道会与模块叠加双计 4s。故本条 singleSourced（数值单通道 = 模块 applyPanel），此处只作可见性与来源标注。",
+      "singleSourced": true
+    },
+    {
+      "id": "roxy.cinema_1_enemy_res",
+      "name": "洛克茜｜影画一·全属性抗性降低",
+      "source": "影画一",
+      "description": "[强化特殊技：敬请安息]命中时，使敌方全属性伤害抗性降低 15%，持续 50 秒，重复触发刷新。",
+      "target": "enemy",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "enemyResReduction",
+          "mode": "flat",
+          "value": 15
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "敌方减益 ⇒ 全队攻击者都吃；从 roxy.ts#applyRoxyPanel 迁来（原先只写洛克茜自己的面板 = 只有她自己吃）。50s 按全程近似。"
+    },
+    {
+      "id": "roxy.cinema_2_stun_vulnerability",
+      "name": "洛克茜｜影画二·失衡易伤",
+      "source": "影画二",
+      "description": "[强化特殊技：小心风寒]命中敌人时，使其失衡易伤倍率提升 30%，持续到目标从失衡状态恢复。",
+      "target": "enemy",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "stunDmgMultiplierBonus",
+          "mode": "flat",
+          "value": 30
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "影画二自身段（与额外能力那条 30% 是不同来源、可叠加）。来源标签含「影画」⇒ parseCinemaRequirement 要求 ≥2 命。敌方减益 ⇒ 全队吃。"
+    }
+  ]
 }

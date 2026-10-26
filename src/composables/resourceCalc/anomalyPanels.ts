@@ -190,6 +190,20 @@ export function getWindInfectionElement(
   return agent?.damageElement || 'wind'
 }
 
+/**
+ * 风化侵染区**基础系数**（%，独立乘区，只作用于风属性/浸染染色属性的**直伤**，不进异常伤害）。
+ *
+ * 单一事实源（用户口径 2026-10-26：「没标注的风化侵染区就是 10% 独立直伤增伤」）：
+ * - 判据 = 队伍里有 `damageElement === 'wind'` 的角色（任何风角色都触发，与是不是维琳娜无关）；
+ * - 角色**额外**加成（现唯一：洛克茜额外能力 +8% ⇒ 该队侵染区 18%）由模块 `teamPanelEffects` 写进面板
+ *   `infectionZoneBonus`（见 `roxy.ts`），因此本常量只是**基础值**，不是最终值；
+ * - 生效值 = 面板值 × 风化侵染覆盖率（`getWindInfectionCoverage`），见 `useResourceCalc#damagePanels`。
+ *
+ * ⚠ 禁止在 spec `teamBuffs` 里声明 `infectionZoneBonus`：那会在属性配置页造出拨不动的死控件，
+ * 且把通用机制误挂到某个角色名下（R64 实测；判据 `specTeamBuffSingleSource.test.ts`）。
+ */
+export const WIND_INFECTION_BASE_BONUS = 10
+
 /** 风化浸染覆盖率：默认风化覆盖时间/全局时间，用户可手动覆盖 */
 export function getWindInfectionCoverage(
   configStore: ConfigModel,

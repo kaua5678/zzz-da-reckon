@@ -85,15 +85,37 @@ describe('R64 batchA · 侵染区单源化（「同一效果的第二个声明�
    * ★★ 归属判据（**修法选择的决定性证据**）：三个**不同**的风角色给同一个系数。
    * 若侵染是「维琳娜的拐力」，换成 1621/1631 必须为 0 —— 实测不是。
    */
-  it('归属：任意风角色(1561/1621/1631)在队都给系数 10，与「是不是维琳娜」无关', async () => {
+  it('归属：任意风角色(1561/1621/1631)在队**至少**给基础系数 10，与「是不是维琳娜」无关', async () => {
     const want = rawWindInfectionCoefficient()
     expect(want, `mechanism-reference §8.6 声明风化系数 ${want}%`).toBe(10)
     for (const id of WIND_AGENTS) {
       const p = await panelOf([{ agentId: '1591' }, { agentId: id }, ''])
+      // 基础值来自通用规则（WIND_INFECTION_BASE_BONUS）；角色**额外**加成叠在上面（见下条）。
       expect(p?.infectionZoneBonus,
-        `${id} 在队时侵染区应为 ${want}（该机制按风属性定义，不按维琳娜定义）`
-      ).toBe(want)
+        `${id} 在队时侵染区至少为 ${want}（该机制按风属性定义，不按维琳娜定义）`
+      ).toBeGreaterThanOrEqual(want)
     }
+  })
+
+  /**
+   * ★★ 2026-10-26 用户裁决：「没标注的风化侵染区就是 10% 独立直伤增伤，洛克茜说额外 8%，
+   *    那么这个侵染区就是 18% 了」。
+   *
+   * 判据两侧都钉外部事实：10 = mechanism-reference §8.6（原文层），8 = 洛克茜 raw
+   * `passive.level.1621507.desc`「敌人处于…[风化]状态下时，敌人受到的[风属性直接攻击伤害]和
+   * 触发[浸染]属性的直接攻击伤害额外提升 8%」（原文层）。⇒ 期望 18 不是「读被测对象常量」。
+   */
+  it('洛克茜额外能力 +8% 与基础 10% **同区加算** ⇒ 该队侵染区 18%（其他风角色仍 10）', async () => {
+    const base = rawWindInfectionCoefficient()
+    const roxyRaw = readFileSync(new URL('../../../data/raw/nanoka_missing/full/1621.json', import.meta.url), 'utf8')
+    const roxy8 = roxyRaw.replace(/<[^>]+>/g, '').match(/触发\[浸染\]属性的直接攻击伤害额外提升(\d+)%/)
+    expect(roxy8?.[1], 'raw 1621 应声明浸染直伤 +8%').toBe('8')
+
+    const withRoxy = await panelOf([{ agentId: '1621' }, { agentId: '1591' }, ''])
+    expect(withRoxy?.infectionZoneBonus, '洛克茜在队 = 基础 10 + 额外 8 = 18').toBe(base + 8)
+    // 对照臂：同一队型换成维琳娜 ⇒ 只有基础 10（证明 +8 是洛克茜的、不是「有风就给 18」）
+    const withVelina = await panelOf([{ agentId: '1561' }, { agentId: '1591' }, ''])
+    expect(withVelina?.infectionZoneBonus, '维琳娜没有这条额外加成').toBe(base)
   })
 
   /**
@@ -110,19 +132,35 @@ describe('R64 batchA · 侵染区单源化（「同一效果的第二个声明�
    * 理由：该字段的唯一合法写者是通用规则（W1，按风属性）+ 编排层（W3，按覆盖率）；
    * 任何 spec 声明都会变成「拨不动的死控件」（数值被覆写），且把通用机制**误挂**到某个角色名下。
    */
-  it('不变量：全库不得有任何 spec 用 teamBuffs 声明 infectionZoneBonus', async () => {
-    const offenders: string[] = []
+  /**
+   * ★★ 不变量（2026-10-26 换尺）：spec **可以**声明 `infectionZoneBonus`（洛克茜额外能力 +8% 就是这么进的），
+   * 但每一条声明都必须**真的进面板**（`panelPhases` 的基础 10% 已是 `+=`，不再是赋值覆写）。
+   *
+   * 判据取行为面而非静态名单：对每个声明者跑真管线，断言「该角色在队的面板值 = 基础 10 + Σ声明值」。
+   * 若有人把基础写回赋值，这里会读到 10 而不是 18 ⇒ 红（这正是 R64 的原始缺陷形态：拨不动的死控件）。
+   */
+  it('不变量：每条 spec 声明的 infectionZoneBonus 都真的进面板（基础 10 + 声明值，不被覆写）', async () => {
+    const declaredBy: string[] = []
+    const declaredSum: Record<string, number> = {}
     for (const [owner, spec] of getAgentSpecsByAgentId()) {
       for (const tb of spec.teamBuffs ?? []) {
         for (const e of tb.effects ?? []) {
-          if (e.stat === 'infectionZoneBonus') offenders.push(`${owner}/${tb.id}`)
+          if (e.stat !== 'infectionZoneBonus') continue
+          declaredBy.push(owner)
+          declaredSum[owner] = (declaredSum[owner] ?? 0) + Number(e.value ?? 0)
         }
       }
     }
-    expect(offenders,
-      '侵染区是风队通用机制（panelPhases.ts 按 damageElement===\'wind\' 判），'
-      + '不是某个角色的拐力；spec 声明会被赋值覆写 ⇒ 属性配置页出现拨不动的死控件',
-    ).toEqual([])
+    expect(declaredBy.length, '扫描面非空（洛克茜额外能力 +8% 在册）').toBeGreaterThan(0)
+    const base = rawWindInfectionCoefficient()
+    for (const owner of new Set(declaredBy)) {
+      // 声明方的额外能力门控需要「强攻/命破/锋御」队友（洛克茜原文如此）⇒ 配 1591（强攻）满足，
+      // 否则读到的是基础 10 而不是 18，会把这个「门控没触发」误判成「声明被覆写」。
+      const p = await panelOf([{ agentId: owner }, { agentId: '1591' }, ''])
+      expect(p?.infectionZoneBonus,
+        `${owner} 声明了 infectionZoneBonus，必须真的进面板（基础 ${base} + 声明 ${declaredSum[owner]}）`
+      ).toBe(base + declaredSum[owner]!)
+    }
   })
 
   /**

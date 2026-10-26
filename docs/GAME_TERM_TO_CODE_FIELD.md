@@ -188,7 +188,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 |---|---|
 | 风化 | 打满风异常积蓄触发：**一次性**风化伤害（基础倍率 1250%）+ 施加 30s 风化状态（期间风属性直接攻击伤害提升）；**无逐跳 DoT** |
 | 乱流 | 风化 + 其他属性异常叠加触发：范围伤害，继承非风属性异常质量；风化状态下**不触发常规紊乱**（3s CD）；风化窗口内 **DoT / 冻结不生效**（被乱流吸收），按风化覆盖率拆窗、非风窗口照常 |
-| 浸染 | 风化状态下首次受其他属性伤害触发的染色直伤（+10% 独立乘区） |
+| 浸染 | 风化状态下首次受其他属性伤害触发的染色直伤。**侵染区独立乘区** = 通用基础 10%（`WIND_INFECTION_BASE_BONUS`，任何风角色在队即触发）+ 角色额外加成（洛克茜额外能力 +8% ⇒ 18%，用户裁决 2026-10-26）；**只作用直伤**（`core/damage.ts` 第 8 步），不进异常伤害 |
 | 风蚀（维琳娜专属资源） | spec `velina_corrosion`（0–2 层状态机）；2 命「从风化获得」按近似比例滑块接入（默认 1.0） |
 
 - @fact 风化状态 口径: 风化 = 一次性伤害 1250% + 30s 状态（无逐跳 DoT）；风化窗口内 DoT / 冻结不生效、非风触发走乱流，按风化覆盖率 windCoverageRate 拆窗（非风窗口照常；r713 订正旧口径「有风属性时 DoT 归零」）；持续时间唯一事实源 ANOMALY_DURATION（风化 30s） | 据 mechanism-reference 异常章@2026-09-15·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/core/__tests__/anomalyPool.test.ts::splits non-wind anomalies into disorder window and turbulence window | 锚 src/core/anomalyPool/helpers.ts#ANOMALY_DURATION + src/core/anomalyPool/helpers.ts#windEffectiveTriggerCount + src/core/anomalyPool/helpers.ts#calcCoverage | 信 高

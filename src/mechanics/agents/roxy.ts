@@ -5,6 +5,7 @@ import type {
   AgentResourceInput,
   AgentResourceResultInput,
   AgentResourceSectionsInput,
+  AgentTeamPanelEffectInput,
 } from '../types'
 import type { MechanicSetting } from '@/types/resource'
 import type { SkillMove } from '@/types/catalog'
@@ -16,6 +17,7 @@ import { specAdjustableRate } from '@/specs/resources'
 import { findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
+import { panelOfSlot } from '@/core/sourcePanels'
 
 /**
  * 洛克茜（1621）v12 重录（2026-09-03，nanoka 3.2.12+18601660）：
@@ -25,7 +27,7 @@ import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
  * - 额外能力·辉金心脏（强攻/命破/锋御队友）：自身伤害 +8%+1.2%/**角色等级**（Lv60 命中上限 80%）；
  *   攻击命中 → 失衡易伤倍率 +30%（至失衡结束，满覆盖近似）+ 失衡时长 +2s；
  *   敌方[风化]时风/浸染直伤 +8%（按风化覆盖率近似全伤通道）；进场回 40 能量（勘域 180s）；
- *   风化延长 20s（无数值）；强特后异常积蓄效率 +30%（50s，满覆盖近似，未接）。
+ *   风化延长 20s（无数值）；强特后异常积蓄效率 +30%（50s ⇒ 满覆盖近似，已接）。
  * - 资源循环（v12）：小心风寒（1621007，10 能量启动 +30/s 自旋）→ 结束自动 敬请安息（1621023）
  *   消耗全部[风能]（每 1 点 = 额外 1621021 一段 + 生成 1 个[风眼]，上限 9 同时存在、30s 自爆/超限最早引爆）；
  *   风眼爆鸣 1621022；敬请安息后场上+自身≥3 → 自动 恕不远送（1621005，引爆至多 3 个风眼：
@@ -62,9 +64,7 @@ const SEND_OFF_MOVE_ID = '1621005'
 const ROXY_ULT_MOVE_ID = '1621012'
 /** 影画1：敬请安息命中 → 全抗-15%（50s）+ 自身暴伤+40% */
 export const ROXY_C1_CRIT_DMG = 40
-export const ROXY_C1_RES_REDUCTION = 15
 /** 影画2：小心风寒命中 → 失衡易伤+30%（v12：旧 25% → 30%）+ 小心风寒失衡值+5% */
-export const ROXY_C2_STUN_VULN = 30
 export const ROXY_C2_EX_CHILL_DAZE_BONUS = 5
 /** 影画4：招架回1/闪反回2 能量 + 终结技伤害+20%（失衡值+10%） */
 export const ROXY_C4_PARRY_ENERGY = 1
@@ -94,6 +94,26 @@ export const ROXY_AA_ENTER_ENERGY = 40
  * 同一处门控；原文把两条写在同一句里）。
  */
 export const ROXY_AA_STUN_DURATION = 2
+/** 额外能力：「释放[强化特殊技]时，自身异常积蓄效率提升 30%，持续 50 秒」（自身，非全队） */
+export const ROXY_AA_BUILDUP_EFFICIENCY = 30
+/**
+ * 核心被动·热夜初拥（Lv.7）：「队伍中任意队友触发[浸染]或[净化]时，洛克茜按自身每 1% 暴击率
+ * 为全队提供：非[锋御]角色对应属性与风属性伤害暴击伤害 +0.4%（上限 40%）；[锋御]角色锐暴伤害
+ * +0.2%（上限 20%）；每个属性增益持续 50 秒」。
+ *
+ * **用户口径 2026-10-26**：「洛克茜本人足够达到多次浸染，净化也是他自己的机制」⇒ 按**满覆盖**建模
+ * （不做覆盖率滑块——这正是它与维琳娜 6 命风化增伤那条的区别）。
+ *
+ * 落点 = `teamPanelEffects`（全队每个槽位各写一次）：x 必须取**洛克茜自己**的局内暴击率，
+ * 面板阶段只有该钩子能拿到 `sourcePanels`（`applyPanel` 手上只有自己的、收不到队友的；
+ * spec `teamBuffs` 的 `formula.sourceStat` 读的是**接收者**面板 ⇒ 用它会把队友暴击率当基数，错）。
+ * 两条按目标职业分流：锐化角色只读 `sharpCritDmg`、其余只读 `critDmg`，各写一条，天然不双计。
+ */
+export const ROXY_CORE_CRIT_DMG_PER_CRIT = 0.4
+export const ROXY_CORE_CRIT_DMG_CAP = 40
+export const ROXY_CORE_SHARP_CRIT_DMG_PER_CRIT = 0.2
+export const ROXY_CORE_SHARP_CRIT_DMG_CAP = 20
+
 /** 转模：初始能量回复 >1.2 → 每 0.01：攻击 +5（上限 960）、冲击 +0.4（上限 76.8） */
 export const ROXY_REGEN_ATK_PER_0_01 = 5
 export const ROXY_REGEN_ATK_CAP = 960
@@ -341,6 +361,40 @@ export function computeRoxyWindEnergy(input: {
   }
 }
 
+/**
+ * 核心被动·热夜初拥的**队伍级**那一半（用户口径 2026-10-26）。
+ *
+ * 「队伍中任意队友触发[浸染]或[净化]效果时，洛克茜将根据[浸染]或[净化]的属性为全队角色提供增益：
+ *   洛克茜每拥有 1% 暴击率，非[锋御]角色造成对应属性以及风属性伤害时，暴击伤害提升 0.4%，最多 22%…
+ *   [锋御]角色造成对应属性以及风属性伤害时，锐暴伤害提升 0.2%，最多 10%」
+ * （上限随核心被动等级 Lv.1→7 递增 22→40 / 10→20，取 Lv.7 = 40 / 20）。
+ *
+ * ⚠ 基数 = **洛克茜自己**的局内暴击率（不是接收者的）⇒ 必须读 `sourcePanels[自己槽位][inCombat]`。
+ * `panel` 是**目标槽位**的面板，读它会拿到队友的暴击率（spec formula 的 `sourceStat` 就是这个坑）。
+ */
+function applyRoxyTeamPanelEffects({
+  slot, panel, targetAgent, sourcePanels, report,
+}: AgentTeamPanelEffectInput): void {
+  const ownPanel = panelOfSlot(sourcePanels, slot, 'inCombat')
+  if (!ownPanel) return
+  const critRate = Math.max(0, ownPanel.critRate)
+  // 目标职业分流：锐化（锋御）吃锐暴伤害，其余吃通用暴伤。两条字段互斥读取（见 core/damage.ts 的
+  // critModel 分支：sharp profile 只读 sharpCritDmg，其余只读 critDmg）⇒ 不会双计。
+  if (targetAgent.specialty === 'sharpen') {
+    const add = Math.min(ROXY_CORE_SHARP_CRIT_DMG_CAP, critRate * ROXY_CORE_SHARP_CRIT_DMG_PER_CRIT)
+    if (add > 0) {
+      panel.sharpCritDmg = panel.sharpCritDmg + add
+      report?.({ stat: 'sharpCritDmg', value: add, mode: 'flat' })
+    }
+    return
+  }
+  const add = Math.min(ROXY_CORE_CRIT_DMG_CAP, critRate * ROXY_CORE_CRIT_DMG_PER_CRIT)
+  if (add > 0) {
+    panel.critDmg = panel.critDmg + add
+    report?.({ stat: 'critDmg', value: add, mode: 'flat' })
+  }
+}
+
 function buildRoxyCharConfig({ skills, cfg, cinemaLevel }: AgentCharConfigInput): void {
   cfg.skipGenericExSpecial = true
   cfg.roxyCinemaLevel = cinemaLevelOf(cinemaLevel)
@@ -411,14 +465,20 @@ function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
    * 门控与伤害那条**同一句原文**（强攻/命破/锋御队友）⇒ 同样只在 `aa` 时施加。
    */
   if (aa) panel.stunDurationBonusSeconds = panel.stunDurationBonusSeconds + ROXY_AA_STUN_DURATION
+  /**
+   * 额外能力同一段最后一句：「释放[强化特殊技]时，自身异常积蓄效率提升 30%，持续 50 秒，重复触发刷新」。
+   * 主语是**自身**（不是全队）⇒ 写本槽面板；50s 相对失衡窗口是全程覆盖，按常驻近似。
+   * 落点 `anomalyBuildUpEfficiency`（`core/anomalyPool.ts` 的积蓄乘区 `1 + eff/100`，决定异常触发次数）。
+   */
+  if (aa && panel.anomalyBuildUpEfficiency !== undefined) {
+    panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + ROXY_AA_BUILDUP_EFFICIENCY
+  }
   const cinema = cinemaLevelOf(cinemaLevel)
-  if (cinema >= 1) {
-    panel.critDmg = panel.critDmg + ROXY_C1_CRIT_DMG
-    panel.enemyResReduction = panel.enemyResReduction + ROXY_C1_RES_REDUCTION
-  }
-  if (cinema >= 2) {
-    panel.stunDmgMultiplierBonus = panel.stunDmgMultiplierBonus + ROXY_C2_STUN_VULN
-  }
+  // 影画1 自身段只有暴伤 +40%；「使敌方全属性抗性 -15%」是**敌方减益（全队每个攻击者都吃）** ⇒
+  // 走 spec `teamBuffs` 的 `roxy.cinema_1_enemy_res` 采集通道，此处写自己的面板只有洛克茜吃得到。
+  if (cinema >= 1) panel.critDmg = panel.critDmg + ROXY_C1_CRIT_DMG
+  // 影画2「失衡易伤 +30%」同理走采集通道 `roxy.cinema_2_stun_vulnerability`（敌方减益）；
+  // 写 `panel.stunDmgMultiplierBonus` 只会让洛克茜自己吃、且与采集通道叠加即双计。
   if (cinema >= 6) {
     panel.enemyWindResReduction = panel.enemyWindResReduction + ROXY_C6_WIND_RES_REDUCTION
   }
@@ -604,14 +664,22 @@ export const roxyMechanic: AgentMechanicModule = {
   attachedEvents: { [EX_CHILL_MOVE_ID]: [SPIN_SECOND_MOVE_ID] },
   /** CC-402：恕不远送两分支互斥（引爆满 3 风眼 → 巨旋风 1621020；不足 → 小旋风 1621019）；两段都列。 */
   moveBranchGroups: [[MINI_TORNADO_MOVE_ID, MEGA_TORNADO_MOVE_ID]],
-  // 副词条优化模板（CC-81：原 core/substatOptimizer.ts AGENT_TEMPLATES）
-  // 洛克茜（1621）：防御→攻击/冲击力（局内）→ defPct 优先
-  substatTemplate: {
-    stats: ['defPct', 'atkPct', 'critRate'],
-  },
+  /**
+   * 副词条优化模板（CC-81：原 core/substatOptimizer.ts AGENT_TEMPLATES）。
+   *
+   * ⚠ **2026-10-26 订正**：原写 `['defPct','atkPct','critRate']` = **v12 之前**的旧转模口径
+   * （旧 kit「初始防御 >1500 → 防御转攻击/冲击」）。v12 已改为**初始能量自动回复 >1.2 → 攻击/冲击**
+   * （见 `applyRoxyPanel` 的 `energyRegenOutOfCombat` 转模），防御对伤害**零贡献** ⇒
+   * 旧模板会让「最优副词条」把 20 步预算全砸进防御（用户 2026-10-26 抓到「配装默认带防御」）。
+   *
+   * v12 口径：洛克茜是**击破**（stun）职业、自身直伤占比较小、拐力来自暴击率（核心被动按洛克茜
+   * 每 1% 暴击率给全队暴伤，未接）⇒ 与职业兜底 `_default_stun` 同序即可（暴击率→暴伤→攻击→穿透）。
+   * 与兜底相同就不该声明（CC-186 已删过 6 条同型声明）⇒ 本字段删除，回落 `_default_stun`。
+   */
   name: '洛克茜',
   description: 'v12：风能（25能量/点+终结+1）→ 敬请安息（消耗全部，每点额外段+1风眼）→ 风眼爆鸣/恕不远送（引爆至多3 → 巨旋风或小旋风）+ 自旋每秒伤害；核心转模（能量回复>1.2→攻击/冲击）；C1 全抗-15%/暴伤+40%、C2 易伤+30%、C4 回能+终结+20%、C6 风抗15%+巨旋风×250%。',
   applyPanel: applyRoxyPanel,
+  teamPanelEffects: applyRoxyTeamPanelEffects,
   buildCharConfig: buildRoxyCharConfig,
   /**
    * 引擎期强特次数求解（规则 6 引擎落点）：洛克茜的自旋秒数是**自动放完能量**的

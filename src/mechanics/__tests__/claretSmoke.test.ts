@@ -10,6 +10,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { setupHarness } from '@/test/harness'
+import { useConfigStore } from '@/stores/config'
+import { useCatalogStore } from '@/stores/catalog'
+import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { setActiveRowFusionRules } from '@/logicEditor/fusion'
 import type { RowFusionRule } from '@/logicEditor/types'
@@ -446,5 +449,37 @@ describe('CC-122 绊线：残锋「全队[锋御]」按自身面板实现的前�
     // 数值影响 = 0（1601 的 generic 路径不消费 sharpCritDmg），口径债已登记；
     // 迁移 = spec teamBuff + AA 触发条件复刻，第三个锋御角色入库前必须清偿。
     expect(agents.filter(a => a.specialty === 'sharpen').map(a => a.id).sort()).toEqual(['1601', '1611'])
+  })
+})
+
+/**
+ * 残锋归属（2026-10-26 清偿 debt）：
+ * 原文 raw 1611 `passive.level.1611507.desc[1]`「克拉蕾或队友触发[毁伤]时，**全队[锋御]代理人**进入[残锋]，
+ * [残锋]状态下，锐暴伤害提升25%，持续40秒」。
+ *
+ * 原实现写克拉蕾**自身**面板 ⇒ 第二个锋御角色（1601 挽昼 2026-10-24 入库）拿不到这条拐力。
+ * 现走 spec `1611.teamBuffs` 采集通道（全队每槽各写一次）。
+ */
+describe('克拉蕾（1611）残锋归属：全队而非自身', () => {
+  it('AA 满足 ⇒ 每个锋御槽位都 +25；AA 不满足 ⇒ 都不加', async () => {
+    const raw = readFileSync(new URL('../../../data/raw/nanoka_missing/full/1611.json', import.meta.url), 'utf8')
+      .replace(/<[^>]+>/g, '')
+    expect(raw, 'raw 应声明「全队[锋御]代理人」').toMatch(/全队\[锋御\]代理人进入\[残锋\]/)
+    expect(raw, 'raw 残锋应为锐暴 +25%').toMatch(/锐暴伤害提升25%/)
+
+    // ⚠ 对照组只能差「残锋」这一条：洛克茜(1621) 自己也会给锋御 +0.2%/1% 暴击率的锐暴档
+    // （`roxy.core_passive`），拿她当 AA 触发者会把两条混在一起（实测差 28.88 = 25 + 3.88）。
+    // 改用**同属性电**的击破角色满足 AA（1611 是电属性）：1491 千夏 = anomaly ⇒ 不行；
+    // 用 1141 莱卡恩（击破，冰）会同时满足「击破」这一支 ⇒ AA 成立且不引入其它锐暴加成。
+    await setupHarness([{ agentId: '1611' }, { agentId: '1141' }, ''])
+    const c1 = useConfigStore(); const k1 = useCatalogStore()
+    const withAa = computePanelPhases(0, c1, k1)!.inCombat
+
+    // AA 不满足：1071 凯撒是防护、非同属性、非击破
+    await setupHarness([{ agentId: '1611' }, { agentId: '1071' }, ''])
+    const c2 = useConfigStore(); const k2 = useCatalogStore()
+    const noAa = computePanelPhases(0, c2, k2)!.inCombat
+
+    expect(withAa.sharpCritDmg - noAa.sharpCritDmg, '残锋应给 +25 锐暴（AA 门控）').toBeCloseTo(25, 1)
   })
 })

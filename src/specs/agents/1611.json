@@ -156,5 +156,23 @@
     "锐暴口径（用户 2026-09-09）：暴击率封顶 200%（不是 100%）——100% 以上每 1% 是一次「额外锐暴判定」的概率，每次锐暴乘算（锐暴伤害 150% → 爆一次 ×2.5、爆两次 ×6.25）。引擎单一事实源 core/damage.ts sharpCritMultiplier；substatOptimizer 的 _default_sharpen 用 critRateCap=200，UI 展示（FinalPanel/StatPanel）同源。",
     "实现位置：src/mechanics/agents/claret.ts（v12 模块：锐能账本/残痕值聚合/毁伤计数/面板与命座）；catalog 1611 行 damageBasis=def（锐化伤害）。"
   ],
-  "teamBuffs": []
+  "teamBuffs": [
+    {
+      "id": "claret.additional_ability_residual_edge",
+      "name": "克拉蕾｜额外能力·残锋（全队锋御锐暴提升）",
+      "source": "额外能力",
+      "description": "克拉蕾或队友触发[毁伤]时，全队[锋御]代理人进入[残锋]：[残锋]状态下，锐暴伤害提升 25%，持续 40 秒，重复进入时刷新持续时间。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "sharpCritDmg",
+          "mode": "flat",
+          "value": 25
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "★ 2026-10-26 清偿 debt（原 `claret.ts#applyClaretPanel` 写自身面板，口子只给克拉蕾自己）：原文主语是「**全队[锋御]代理人**进入[残锋]」⇒ 走采集通道给每个槽位。`sharpCritDmg` 只被锋御（锐化）伤害消费，非锋御角色吃了也没有乘区 ⇒ 全队施加与「只给锋御」数值等价，不必按职业过滤。来源标签「额外能力」⇒ `additionalGateBuffTable` 自动门控（条件 = 击破/其他锋御/同属性，OR 语义，见 spec `additionalAbility`）。40s 刷新按全程近似。"
+    }
+  ]
 }

@@ -3001,7 +3001,7 @@
   ]
  },
  "agent:1621:c0": {
-  "dmg": "1286702",
+  "dmg": "1303423",
   "stun": 2,
   "windowDur": "16.000",
   "slack": "0.000",
@@ -3011,7 +3011,7 @@
   ]
  },
  "agent:1621:c3": {
-  "dmg": "1799235",
+  "dmg": "1821240",
   "stun": 2,
   "windowDur": "16.000",
   "slack": "0.000",
@@ -3021,7 +3021,7 @@
   ]
  },
  "agent:1621:c4": {
-  "dmg": "1827277",
+  "dmg": "1849633",
   "stun": 2,
   "windowDur": "16.000",
   "slack": "0.000",
@@ -3031,7 +3031,7 @@
   ]
  },
  "agent:1621:c5": {
-  "dmg": "1972630",
+  "dmg": "1996848",
   "stun": 2,
   "windowDur": "16.000",
   "slack": "0.000",
@@ -3041,7 +3041,7 @@
   ]
  },
  "agent:1621:c6": {
-  "dmg": "2719457",
+  "dmg": "2753108",
   "stun": 2,
   "windowDur": "16.000",
   "slack": "0.000",
@@ -4077,7 +4077,7 @@
   ]
  },
  "preset:auto-1591-1621-1211": {
-  "dmg": "76402631",
+  "dmg": "107950735",
   "stun": 3,
   "windowDur": "18.000",
   "slack": "0.373",
@@ -4197,7 +4197,7 @@
   ]
  },
  "preset:banyue-roxy-lucia": {
-  "dmg": "55937787",
+  "dmg": "81388281",
   "stun": 3,
   "windowDur": "18.000",
   "slack": "0.000",
@@ -4245,7 +4245,7 @@
   ]
  },
  "preset:billy-roxy-lucia": {
-  "dmg": "64330274",
+  "dmg": "90683969",
   "stun": 3,
   "windowDur": "18.000",
   "slack": "0.397",
@@ -4281,7 +4281,7 @@
   ]
  },
  "preset:claret-roxy-rina": {
-  "dmg": "77019225",
+  "dmg": "119670505",
   "stun": 3,
   "windowDur": "18.000",
   "slack": "1.260",
@@ -4317,7 +4317,7 @@
   ]
  },
  "preset:sunbringer-roxy-robin": {
-  "dmg": "27762902",
+  "dmg": "31371476",
   "stun": 3,
   "windowDur": "18.000",
   "slack": "8.722",
@@ -4365,7 +4365,7 @@
   ]
  },
  "preset:yidhari-roxy-lucia": {
-  "dmg": "62221737",
+  "dmg": "91967019",
   "stun": 3,
   "windowDur": "18.000",
   "slack": "1.311",
@@ -4401,7 +4401,7 @@
   ]
  },
  "preset:yixuan-roxy-lucia": {
-  "dmg": "57598836",
+  "dmg": "87990660",
   "stun": 3,
   "windowDur": "18.000",
   "slack": "0.000",

@@ -142,11 +142,10 @@ export const DEBT_REGISTRY = {
   // ⚠ 本项覆盖 helpers.ts 的 1a 标记（**当前行号见该文件 `debt:` 处**，此处不写死行号以免再漂）。
   // 2026-09-26 CC-13：批 1-1 通用连续通道已落地，债本体仍在。
   'src/core/resource/helpers.ts:全局实数化收敛重构': { since: '2026-09-04', due: '专项立项：正反馈模块统一连续通道 + 逐模块重校准。**2026-10-10 用户已授权开工，边界自定**；判据 = 逐条可归因 delta（每条绑定「队+量+机理+改动前预测值 vs 实测值」）+ 结构性不变量（落点唯一 / 锁定队逐位相同）全绿 + 逐批 delta 表由用户签字。⚠ 不得以「基线会变」为由拒绝口径修正（规则 10 / 17③）' },
-  // 2026-10-24：第二个锋御角色（1601 挽昼）入库触发 CC-122 绊线。残锋「全队[锋御] 锐暴+25%」
-  // 仍是克拉蕾自身面板写（claret.ts applyClaretPanel）——当前数值影响 0（1601 generic 路径不消费
-  // sharpCritDmg），但口径漏给队友锋御加成。清偿 = 迁 spec teamBuff（全队施加与只给锋御数值等价：
-  // sharpCritDmg 只有锋御伤害消费）+ AA 触发条件复刻（OR 语义，specs/teamCondition.ts），删面板写。
-  'src/mechanics/agents/claret.ts:迁 spec teamBuff': { since: '2026-10-24', due: '第三个锋御角色入库前清偿；或挽昼正式包实装锐暴机制时一并迁（哪个先到）' },
+  // ✅ 2026-10-26 已清偿：残锋「全队[锋御] 锐暴 +25%」迁到 spec `1611.teamBuffs`
+  // （`claret.additional_ability_residual_edge`，source=「额外能力」⇒ additionalGateBuffTable 自动门控
+  // OR 语义）；claret.ts#applyClaretPanel 的自身面板写已删（防双计）。
+  // 判据：claretSmoke.test.ts「残锋归属：全队而非自身」（对照组只差残锋这一条）。
   // 2026-10-25：挽昼 v1 占位包第一刀只接了面板层（初始暴伤→暴击、极昼）。极昼原文是 15s 状态
   // （后场不减、强化特殊技/聚锋刷新），当前按满覆盖近似写进 applyPanel——引擎没有逐事件时间通道
   // 表达「刷新窗口」，改成覆盖率滑块也只能得到近似。清偿 = 引擎有逐事件窗口后落真状态机。

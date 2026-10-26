@@ -12,15 +12,19 @@ import type { Agent } from '@/types/catalog'
 
 const DECLARED: Record<string, SubstatTemplate> = {
   '1451': { stats: ['hpPct', 'atkPct', 'defPct'] }, // 卢西娅：生命→全队攻击（局外）→ hpPct 优先
-  '1621': { stats: ['defPct', 'atkPct', 'critRate'] }, // 洛克茜：防御→攻击/冲击力（局内）→ defPct 优先
 }
+/**
+ * ⚠ 1621 洛克茜的声明于 2026-10-26 删除（用户抓到「配装默认带防御」）：
+ * 原 `['defPct','atkPct','critRate']` 是 **v12 之前**的「防御→攻击/冲击」旧转模口径；
+ * v12 转模已改为「初始能量自动回复 >1.2 → 攻击/冲击」，防御对伤害零贡献。
+ * 删后回落 `_default_stun`（暴击率→暴伤→攻击→穿透），与击破职业兜底一致（CC-186 同型）。
 /** CC-186 删掉声明的 6 个异常角色：真实职业 anomaly 下必须仍得到原声明的 stats */
 const FORMER_ANOMALY_IDS = ['1261', '1581', '1171', '1561', '1401', '1221']
 const SPECS = ['attack', 'anomaly', 'support', 'stun', 'defense', 'rupture', 'sharpen', undefined]
 const mock = (id: string, specialty?: string) => ({ id, specialty }) as unknown as Agent
 
 describe('CC-81 副词条模板 → 模块 substatTemplate', () => {
-  it('声明者 = 卢西娅 / 洛克茜（与职业兜底不同的两个）', () => {
+  it('声明者 = 卢西娅（洛克茜的 defPct 声明已随 v12 转模口径删除）', () => {
     const ids = getRegisteredAgentMechanics().filter(m => !!m.substatTemplate).flatMap(m => m.agentIds).sort()
     expect(ids).toEqual(Object.keys(DECLARED).sort())
   })
