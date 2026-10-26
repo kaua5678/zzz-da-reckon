@@ -44,17 +44,26 @@ describe('倍率融合：fusedRowValue（单一事实源 moveFusions）', () => 
     expect(fusedRowValue(skills, '1091015', 'damage')).toBeCloseTo(377.6 + 377.6 + 503.1, 6)
   })
 
-  it('加权融合：希希芙·毒牙 = #1×3 + #2', async () => {
+  /**
+   * **2026-10-26 口径纠正（用户裁决）**：原文 `{{Skill:1521008}*3+{Skill:1521009}}` 的 `*3`
+   * 是「#1 **内部**三段命中」（倍率表 `401.7%` 已含），**不是「打 3 次 #1」**。
+   *
+   * 两条反证：
+   * ① 时间：`#1 0.565s + #2×3 0.188s = 1.129s`（引擎实测排布），而 `#1×3+#2×1 = 1.883s` 不符；
+   * ② 能量：用户 2026-10-25「扣 65 能量打出一个毒牙#1，后面每 20 能量打一个毒牙#2，最多 3 个」。
+   *
+   * ⇒ 融合组只保留点按基线 `#1×1`；长按的 #2（0~3 个）由模块单独成行（见 xixifu.test）。
+   */
+  it('希希芙·毒牙：点按基线 = #1 单次（❌ 旧口径 #1×3+#2 已否决）', async () => {
     const { catalog } = await setupHarness([{ agentId: '1521' }])
     const skills = catalog.getAgentSkills('1521')
     const g = moveFusionByMoveId.get('1521008')!
-    expect(g.terms).toEqual([
-      { moveId: '1521008', count: 3 },
-      { moveId: '1521009', count: 1 },
-    ])
-    const expected = getRowValue(findMoveById(skills, '1521008'), 'damage') * 3
-      + getRowValue(findMoveById(skills, '1521009'), 'damage')
-    expect(fusedRowValue(skills, '1521008', 'damage')).toBeCloseTo(expected, 6)
+    expect(g.terms, '`*3` 是 #1 内部三段，不是打 3 次 #1').toEqual([{ moveId: '1521008', count: 1 }])
+    const single = getRowValue(findMoveById(skills, '1521008'), 'damage')
+    expect(single, '#1 倍率表值（已含内部 3 段）').toBeCloseTo(401.7, 6)
+    expect(fusedRowValue(skills, '1521008', 'damage'), '融合后应等于单次 #1，不再 ×3').toBeCloseTo(single, 6)
+    // 反锁：若有人把 ×3 加回来，下面会红
+    expect(fusedRowValue(skills, '1521008', 'damage')).toBeLessThan(500)
   })
 
   /**
@@ -66,23 +75,29 @@ describe('倍率融合：fusedRowValue（单一事实源 moveFusions）', () => 
    *
    * ⚠ 纯展示：同时断言 `teamTotalDamage` 与融合说明无关地保持原值（`auto-1521-1481-1491` = 87798240）。
    */
-  it('★ 融合行在伤害池 note 里写明「含哪几段」（用户报「毒牙 #2 不见了」的展示修复）', async () => {
+  /**
+   * **真管线：毒牙的两段各自成行**（用户口径 2026-10-26：「#1 后面可以不跟 #2 就是 0 个 #2，
+   * 也可以跟 1-3 个 #2，额外耗能 20-60」）。
+   *
+   * 修前 `#1×3 + #2×1 = 1339%` 是误读（`*3` 是 #1 内部三段）⇒ 虚高约 3.3 倍。
+   * 现在：#1 行 `multiplier = 401.7`、#2 行（长按额外打击）`multiplier = 133.9`。
+   */
+  it('★ 真管线：毒牙 #1/#2 各自成行，倍率不再 ×3', async () => {
     const p = teamPresets.find(x => x.id === 'auto-1521-1481-1491')!
     const { catalog, config } = await setupHarness(['', '', ''])
     await catalog.loadBuildRecommendations()
     for (let i = 0; i < 3; i++) config.setAgent(i, p.team[i])
     config.applyTeamPreset(p.team as [string, string, string])
     const calc = useResourceCalc()
-    const rows = (calc.damagePoolRows.value as unknown as Array<{ moveId?: string; name?: string; multiplier?: number; note?: string }>)
-    const duya = rows.filter(r => String(r.moveId) === '1521008')
-    expect(duya.length, '毒牙应至少一行（融合后）').toBeGreaterThan(0)
-    for (const r of duya) {
-      expect(r.note ?? '', `毒牙行 note 必须写出融合段：${r.note}`).toContain('多段融合为一行')
-      expect(r.note ?? '', 'note 里要列出被融合的 #2').toContain('1521009')
-    }
-    // 融合说明是纯展示 ⇒ 倍率与总伤不变
-    expect(duya[0].multiplier).toBeCloseTo(1339, 6)
-    expect(Math.round(calc.teamTotalDamage.value)).toBe(87798240)
+    const rows = (calc.damagePoolRows.value as unknown as Array<{ moveId?: string; multiplier?: number }>)
+    const d1 = rows.filter(r => String(r.moveId) === '1521008')
+    const d2 = rows.filter(r => String(r.moveId) === '1521009')
+    expect(d1.length, '毒牙 #1 应有行').toBeGreaterThan(0)
+    for (const r of d1) expect(r.multiplier, '#1 倍率 = 表值 401.7%（内部已含 3 段）').toBeCloseTo(401.7, 6)
+    expect(d2.length, '长按额外打击应单独成行（#2）').toBeGreaterThan(0)
+    for (const r of d2) expect(r.multiplier, '#2 倍率 = 表值 133.9%').toBeCloseTo(133.9, 6)
+    // 反锁旧口径：任何一行都不许是 1339（= 旧 #1×3+#2×1）
+    for (const r of [...d1, ...d2]) expect(r.multiplier).toBeLessThan(500)
   }, 180_000)
 
   it('珂蕾妲·沸腾熔炉 = 打击(#1) + 引爆(#2)', async () => {
