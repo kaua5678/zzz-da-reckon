@@ -402,7 +402,7 @@ export const harumasaMechanic: AgentMechanicModule = {
  */
 declare module '@/types/catalog' {
   interface PanelValues {
-    /** 潜能攻击加成的留痕：与 `panel.atk` 增量同块写入，便于 DebugPage / 命座自检看到来源 */
+    /** 潜能攻击加成的留痕：与 `panel.atk` 增量同块写入，便于属性贡献账 / 命座自检看到来源 */
     harumasaPotentialAtk?: number
   }
 }

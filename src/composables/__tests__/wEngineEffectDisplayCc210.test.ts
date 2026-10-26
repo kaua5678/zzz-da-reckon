@@ -34,7 +34,7 @@ describe('CC-210 音擎精炼取值与引擎同源', () => {
   })
 
   it('源码锁：展示点不再自己索引 modificationValues', () => {
-    for (const rel of ['views/DebugPage.vue', 'views/TeamConfigPage.vue', 'composables/hpSourceBreakdown.ts']) {
+    for (const rel of ['views/TeamConfigPage.vue', 'composables/hpSourceBreakdown.ts']) {
       const src = readFileSync(new URL('../../' + rel, import.meta.url), 'utf8')
       expect({ rel, indexes: /modificationValues\?\.(value|valuePerStack)/.test(src) }).toEqual({ rel, indexes: false })
       expect({ rel, usesShared: /effectAtModLevel\(/.test(src) }).toEqual({ rel, usesShared: true })

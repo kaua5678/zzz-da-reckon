@@ -2,7 +2,7 @@
  * 贯穿力（命破 / 贯穿伤害的基础值）= 攻击力 × 0.3 + 生命值 × 0.1 + 固定贯穿力（sheerForceFlat）。
  *
  * 单一来源（CC-228）：引擎（命破 calcBasisValue、琉音 / 般岳 / 诺姆模块）
- * 与展示层（FinalPanel / StatPanel / DebugPage——展示层禁止值 import core，此前各自手写一份）共用。
+ * 与展示层（FinalPanel / StatPanel——展示层禁止值 import core，此前各自手写一份）共用。
  * 与 `critMultiplier.ts` / `sharpCritMultiplier.ts` / `anomalyElement.ts` 同属「引擎与展示共用的纯规则」。
  * 源码锁：`src/data/__tests__/penetrationPower.test.ts`。
  */
@@ -22,7 +22,7 @@ export function calcPenetrationPower(panel: PenetrationPowerInput): number {
 
 /**
  * 公式骨架文案：`atk × 0.3 + hp × 0.1 + sheerForceFlat`（标签可换，如「局内 atk」「贯穿力提升」）。
- * CC-430：此前 FinalPanel / DebugPage ×3 / core/damage.ts basisFormula 各自手写系数，改系数会让解释文案与数值分叉。
+ * CC-430：此前 FinalPanel / DebugPage ×3（该页 2026-10-26 下线）/ core/damage.ts basisFormula 各自手写系数，改系数会让解释文案与数值分叉。
  */
 export function penetrationPowerFormulaLabel(atkLabel = 'atk', hpLabel = 'hp', flatLabel = 'sheerForceFlat'): string {
   return `${atkLabel} × ${PENETRATION_POWER_ATK_COEF} + ${hpLabel} × ${PENETRATION_POWER_HP_COEF} + ${flatLabel}`

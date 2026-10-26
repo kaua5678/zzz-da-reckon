@@ -57,7 +57,7 @@ src/
   mechanics/       agents/*.ts 每角色机制模块（钩子注入）；types.ts 钩子接口；registry.ts 注册表
   specs/           声明式 spec（agents/*.json + 解释器 mechanics.ts / resources.ts / runtime.ts / verify.ts）
   stores/          config.ts（队伍/敌人/失衡轴/设置，含 autoYidhariAxis）+ catalog.ts（只读数据）
-  views/           页面（队伍/属性/倍率表/资源池/资源利用率/失衡轴 + 开发：公式字段/音擎字段）
+  views/           页面（队伍/属性/倍率表/资源池/资源利用率/失衡轴 + 开发：音擎字段）
   components/      FinalPanel.vue（最终面板与乘区，局外→局内同源）、StatPanel.vue 等
   data/            stunAxisPresets/（失衡轴预设 JSON，含 chapter 字段）+ 预设匹配逻辑
 public/static/     catalog.json（编译期数据快照，倍率表唯一事实来源）、teammate-buffs.json（全队拐力）、character-*.json（状态表）

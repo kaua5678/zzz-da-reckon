@@ -46,7 +46,7 @@ describe('CC-211 音擎发放判定与引擎同源', () => {
   })
 
   it('源码锁：展示点不再只按职业判定音擎生效', () => {
-    for (const rel of ['views/DebugPage.vue', 'composables/hpSourceBreakdown.ts']) {
+    for (const rel of ['composables/hpSourceBreakdown.ts']) {
       const src = readFileSync(new URL('../../' + rel, import.meta.url), 'utf8')
       expect({ rel, usesShared: /wEngineEffectBlockReason\(/.test(src) }).toEqual({ rel, usesShared: true })
       expect({ rel, specialtyOnly: /\bw(?:Engine)?\.specialty === agent\.specialty/.test(src) }).toEqual({ rel, specialtyOnly: false })

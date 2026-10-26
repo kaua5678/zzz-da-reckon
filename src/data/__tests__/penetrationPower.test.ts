@@ -1,5 +1,5 @@
 /**
- * CC-228：贯穿力单一来源 src/data/penetrationPower.ts（引擎与展示层 FinalPanel / StatPanel / DebugPage 都直接 import）。
+ * CC-228：贯穿力单一来源 src/data/penetrationPower.ts（引擎与展示层 FinalPanel / StatPanel 都直接 import）。
  */
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
