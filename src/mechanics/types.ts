@@ -963,6 +963,15 @@ export interface AgentMechanicModule {
    */
   directRowAxisSplit?(input: DirectRowAxisSplitInput): DirectRowAxisSplit | null
   /**
+   * **不进轴块的行**声明（2026-10-26）：这些行的作废比例有明确物理来源、但从不进 `allocMap`
+   * ⇒ 逐招 `axisInUnits` 口径永远得 0。现唯一实现 = 希希芙蚀骨（毒素按产出来源分失衡内/外）。
+   *
+   * 消费端两处、必须同源（都调同一个 `directRowAxisSplit`）：
+   * · 伤害侧 `damagePoolDirect#emitCharDirectRows`（本来就问模块）；
+   * · 失衡侧 `convergence#inAxisFractionProvider` 写入 `fraction[key]`。
+   */
+  uniformStunRows?(input: { slot: number }): readonly string[]
+  /**
    * **角色专属附加直伤行**（规则 6 迁移落点，CC-18a 2026-09-26，设计稿
    * `docs/mcp-cc18-extra-direct-rows.md` §2-1/§2-3）：
    * 由行所属角色的模块生成自己的附加直伤行，返回数组，消费端（`damagePoolCharExtras.ts#emitCharExtraRows`）

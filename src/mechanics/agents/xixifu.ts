@@ -320,21 +320,47 @@ function buildXixifuResourceSections(input: AgentResourceSectionsInput) {
   return sections
 }
 
-/** 希希芙蚀骨轴内占比（CC-33b 2026-09-27 由 `damagePool.ts` 逐字搬入）：失衡内回复的毒素占总毒素比例（蛇吻手动消耗 → 失衡内爆发，用户口径 2026-08）。
- *  毒牙/终结/连携按轴内单位数折算；C2（连携/终结失衡命中）视为全轴内；平A吐信按非平A轴内占比近似。 */
+/**
+ * 希希芙蚀骨「轴内占比」——**用户口径 2026-10-26（逐字）**：
+ *
+ * > 「毒素有自动触发和手动触发，**失衡期可以手动加速触发**，所以我写了一个逻辑，
+ * >  **失衡期回复多少就打出多少毒素**，这样就做到了无论回复多少毒都全打出去。
+ * >  此外的毒就只能自动触发了，而且**失衡易伤也没认领**，就去非失衡打击破。」
+ *
+ * ## 模型（三句话）
+ * 1. **失衡内回复的毒素，在失衡内手动加速全部打出** ⇒ 这部分蚀骨**吃满易伤**；
+ * 2. 失衡外回复的毒素只能**自动触发** ⇒ 这部分蚀骨**不吃易伤**（`stunned = 0`，去非失衡打击破）；
+ * 3. ⇒ 轴内占比 = **失衡内回复的毒素 ÷ 全部毒素**。
+ *
+ * ## 修前算法的量纲 bug（2026-10-26 实测）
+ * 分子 `axisInUnits(1521008) + axisInUnits(1521009)`：`1521009` 是毒牙**额外打击段**
+ * （`data/moveFusions.ts#XIXIFU_VENOM_FANG`：一次施放 = #1×3 + #2×1），不是独立一次施放；
+ * 分母却是 `exSpecialCount`（**施放次数**）⇒ 分子被系统性放大。
+ * 实测分子 16 / 分母 8 ⇒ `ratioEx = 2.0` ⇒ `finalFraction` 1.44 / 1.50 / 1.31 **全部 clamp 到 1**
+ * （三个队同时饱和 = 算式已失效的铁证）。
+ *
+ * ## ⚠ 本条与「均衡行按时间占比」的区别（别再合并）
+ * 用户口径是「**回复多少就打多少**」——按**产出端**（谁在失衡内回的毒）算，不是按时间摊。
+ * 时间占比 `K·W/effTime` 是另一条口径（用于没有消耗时点概念的匀速行），本角色不适用：
+ * 实测两者对 `auto-1521-1481-1311` 相差 0.114 vs 0.5，量级差 4 倍。
+ */
 function xixifuToxinInAxisFraction(input: DirectRowAxisSplitInput): number {
   const cr = input.charResult
   const { axisInUnits } = input
-  const toxin = cr.specResources?.['xixifu_toxin']
+  const toxin = cr.specResources?.[XIXIFU_TOXIN_RESOURCE_ID]
   const total = Math.max(0, (toxin?.initialValue ?? 0) + (toxin?.totalGain ?? 0))
   if (total <= 0) return 0
   const g = (toxin?.gains ?? {}) as Record<string, number>
+  /**
+   * 毒牙按「**施放次数**」折算轴内份额 —— 修前把 #2 的打击数也加进分子（量纲错配）。
+   * 只取 #1（`1521008` = 每次施放一行）；#2 属于同一次施放，不额外算一次。
+   */
   const totalEx = Math.max(1, cr.exSpecialCount)
   const totalUlt = Math.max(1, cr.ultimateCount)
   const totalChain = Math.max(1, cr.chainCountTotal)
-  const inEx = axisInUnits('1521008') + axisInUnits('1521009')
-  const inUlt = axisInUnits('1521013')
-  const inChain = axisInUnits('1521012')
+  const inEx = Math.min(totalEx, axisInUnits('1521008'))
+  const inUlt = Math.min(totalUlt, axisInUnits('1521013'))
+  const inChain = Math.min(totalChain, axisInUnits('1521012'))
   const duya = (g.toxin_duya_base ?? 0) + (g.toxin_duya_hold ?? 0)
   const ult = g.toxin_ultimate ?? 0
   const chain = g.toxin_chain ?? 0
@@ -342,6 +368,7 @@ function xixifuToxinInAxisFraction(input: DirectRowAxisSplitInput): number {
   const basic = (g.toxin_tuxin_stage4 ?? 0) + (g.toxin_tuxin_stunned_bonus ?? 0)
   const nonBasicTotal = duya + ult + chain + c2
   const nonBasicIn = duya * (inEx / totalEx) + ult * (inUlt / totalUlt) + chain * (inChain / totalChain) + c2
+  // 平A吐信没有放置语义 ⇒ 按非平A 的失衡内比例近似（原口径保留，它没有量纲问题）
   const basicIn = basic * (nonBasicTotal > 0 ? nonBasicIn / nonBasicTotal : 0)
   return Math.max(0, Math.min(1, (nonBasicIn + basicIn) / total))
 }
@@ -367,6 +394,11 @@ export const xixifuMechanic: AgentMechanicModule = {
   buildResourceResult: buildXixifuResourceResult,
   resourceSections: buildXixifuResourceSections,
   directRowAxisSplit: xixifuDirectRowAxisSplit,
+  /**
+   * 蚀骨（`1521019`）**从不进轴块**（轴预设里没有任何一条捏它）⇒ 逐招 `axisInUnits` 永远得 0。
+   * 它的作废比例由毒素产出来源决定（见 `xixifuToxinInAxisFraction`），需本声明让失衡侧读到同一算式。
+   */
+  uniformStunRows: () => [XIXIFU_SHIGU_MOVE_ID],
 }
 
 /**

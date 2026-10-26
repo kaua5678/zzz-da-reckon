@@ -290,9 +290,9 @@
   "outerExit": "stable"
  },
  "auto-1461-1521-1491": {
-  "slack": 3.5,
+  "slack": 0,
   "over": 0,
-  "stun": 4,
+  "stun": 3,
   "outerExit": "stable"
  },
  "auto-1501-1141-1491": {
@@ -346,25 +346,25 @@
  "auto-1521-1251-1311": {
   "slack": 0,
   "over": 0,
-  "stun": 5,
+  "stun": 4,
   "outerExit": "stable"
  },
  "auto-1521-1461-1311": {
   "slack": 3.5,
   "over": 0,
-  "stun": 4,
+  "stun": 2,
   "outerExit": "stable"
  },
  "auto-1521-1481-1311": {
   "slack": 0.8,
   "over": 0,
-  "stun": 4,
+  "stun": 3,
   "outerExit": "stable"
  },
  "auto-1521-1481-1491": {
-  "slack": 0,
+  "slack": 0.8,
   "over": 0,
-  "stun": 5,
+  "stun": 3,
   "outerExit": "stable"
  },
  "auto-1531-1481-1451": {

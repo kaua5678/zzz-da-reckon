@@ -1063,6 +1063,29 @@ export function createRunCalcRound(deps: {
             fraction[key] = denom > 0 ? Math.max(0, Math.min(1, inUnits / denom)) : 0
           }
         }
+        /**
+         * **不进轴块的行**（模块声明 `uniformStunRows`）：按上面的逐招口径永远得 0
+         * （它们从不出现在 `allocMap` 里）⇒ 只能吃下面「未被轴块填满的窗口」那条兜底比例。
+         *
+         * 但它们的作废比例有明确的物理来源（用户口径 2026-10-26：失衡期回复多少毒就打出多少毒
+         * ⇒ 失衡内回的那部分不攒条、失衡外回的正常攒条），与伤害侧 `directRowAxisSplit` 是同一件事
+         * ⇒ 这里调**同一个模块算式**写进 `fraction[key]`，两本账同一个尺。
+         * 实测修前同队：伤害侧 0.5082 / 失衡侧 0.0582（两把尺）。
+         */
+        for (const ch of rr.characters) {
+          const mech = ch.agentId ? getAgentMechanic(ch.agentId) : undefined
+          const uniformRows = mech?.uniformStunRows?.({ slot: ch.slot }) ?? []
+          for (const moveId of uniformRows) {
+            const split = mech!.directRowAxisSplit?.({
+              exec: { moveId } as never,
+              slot: ch.slot,
+              charResult: ch,
+              axisInUnits: m => inAxisCounts[`${ch.slot}:${m}`]?.inAxisCount ?? 0,
+            })
+            if (split) fraction[`${ch.slot}:${moveId}`] = Math.max(0, Math.min(1, split.inFraction))
+          }
+        }
+
         // CC-469′（r651）：窗口里被轴块（含兜底平A填充）占掉的**前台**秒数。池对非轴块行的时间份额兜底只按
         // 「未被覆盖的窗口时间」折算（`stunWindowFraction(N, W, eff, covered)`），不再对已被轴块填满的窗口时间
         // 再按 N·W/eff 扣一次：实测 jufufu N=4.46 时逐招行只扣 11.5k、兜底却再扣 39k（0.396×窗外行）⇒ 双重扣除。
