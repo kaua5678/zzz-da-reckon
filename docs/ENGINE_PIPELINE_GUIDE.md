@@ -211,6 +211,12 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
 9. **失衡轴模式**：轴内动作计数由 useResourceCalc 注入 cfg（`banyueAxisEx` / `billyAxisEx`，
    组合块已展开成 moveId），模块读 cfg 决定轴内次数；轴外剩余资源模块自行分配。
    轴内动作时间/能量由 `calcStunAxisStack` 的 combos（`module.combos`）定义，`buildStackAxes` 消费。
+   **排布口径（2026-10-26）**：轴栈里 `count > 1` 的块按段**顺序平铺**（逐段起点 `t0 = max(该槽游标, startTime)`），
+   `slotMaxEnd` / `windowTrace.startTime` / 合轴区间同源用 `t0`；**fits 门仍按数组顺序累计**（不动）。
+   **否决记录**：把 fits 门也改成吃 `startTime` ⇒ `billySmoke`「默认轴态 = complete」当场红
+   （双连携窗末位跨界变成「起点越界⇒整段跳过」⇒ 轴态 partial、难度曲线整档不出数）；该口径出处 = 轴预设
+   `比琉通用.json` note「时间门按数组顺序累计，`startTime` 只决定合轴区间起点」。
+
 10. **进场闪能**：`cfg.initialEnergyGift` 默认 40（composables 构建），命破角色需模块设为 60（伊德海莉/星徽·比利）。
 11. **星辉类"指定招式增伤"**：不要加全局 panel.dmgBonus，在 patchExecutions 按 moveId 集合加 exec.dmgBonus
     （星徽·比利 6 个目标招式 / 般岳 C4 / 诺姆弹头行 override 同款）。
