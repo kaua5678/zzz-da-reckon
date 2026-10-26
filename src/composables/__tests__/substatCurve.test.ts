@@ -408,8 +408,11 @@ describe('暴击词条的百暴截断（用户 2026-10-24：「别让人觉得�
   }, 600000)
 
   it('★ 锋御锐暴封顶 200：局内 120% 暴击仍有收益，越过 200 才截断（按 100 截断会给全 0）', async () => {
-    const h = await setupHarness([{ agentId: '1601' }, '', ''] as never, { recommendedBuild: true } as never)
-    // 局内 33.8 + 90 = 123.8%：锋御在 100% 以上每 1% 是一次额外锐暴判定（乘算），封顶 200
+    // ⚠ 2026-10-26：本用例**不再应用推荐配装**（`recommendedBuild` 去掉）。
+    // 原因 = 夹具前提被数据改掉了，不是判据放宽：1601 现在有真实推荐配装（4pc 34300v1 + 火伤 +
+    // 副词条贴顶），一键应用后局内暴击已是 199.6%，「100–200% 中间区间」在推荐配装下不再存在。
+    // 无推荐配装时起点 = 33.8(白值+突破) + 90(buff) + 核心被动转模 ≈ 181.3%，正是本用例要的区间。
+    const h = await setupHarness([{ agentId: '1601' }, '', ''] as never)
     const buff = { id: 'test-sharp-high-crit', name: '测试·暴击+90', stat: 'critRate', value: 90, enabled: true, targetSkillType: 'all' } as never
     h.config.globalBuffs.push(buff)
     h.config.setMechanicSetting(SUBSTAT_CAP_SETTING, 5)

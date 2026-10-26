@@ -11,6 +11,11 @@
  *      失败模式 = 数据里出现「4 槽暴伤以外 / 6 槽穿透」这种游戏内不可能存在的盘。
  *   ② **规则可复现**：用存档 raw（`data/raw/nanoka_missing/full/<id>.json`）按站点规则重算，
  *      必须与 `build-recommendations.json` 逐槽一致。失败模式 = 有人手改 JSON / 忘了重跑同步脚本。
+ *      **豁免 = `metadata.curated` 里的人工条目**（用户裁决 2026-10-26：「nanoka 优先级肯定低于我，
+ *      他是爬取的官方推荐给新手的默认配置而已」）：站点没有这条数据（1601 的 fairy_recommend 就是
+ *      `{}`）或用户明确覆盖（1661 的 5/6 号位）时根本无可比，硬比等于让爬虫数据管住用户。
+ *      豁免不是免检 —— 人工条目照样过 ①「该槽合法词条」，且下面新增 ④「人工条目登记表」锁住
+ *      id 集合，防止「随便改一条再偷偷加进 curated」变成静默绕过。
  *   ③ **规则本体**：`assignMainStatProps` 对三个既有夹具（1431/1461/1571，规则推广当年的
  *      人工条目）与 1581（用户 2026-10-20 指出的案例：6 号位 ATK% 优先于能量回复）给出预期值。
  *      失败模式 = 规则被改成「按槽位顺序转发候选」，会把 6 槽答案错抽成下一个候选。
@@ -21,7 +26,21 @@ import { assignMainStatProps, isLegalMainStatProp, SLOT_POOL_IDS } from '../../.
 
 const build = JSON.parse(
   readFileSync(new URL('../../../public/static/build-recommendations.json', import.meta.url), 'utf8'),
-) as { characters: Record<string, { name: { zhCN: string }; main_stats?: Record<string, { prop: string; name: string }> }> }
+) as {
+  metadata?: { curated?: string[] }
+  characters: Record<string, { name: { zhCN: string }; main_stats?: Record<string, { prop: string; name: string }> }>
+}
+
+/**
+ * 人工条目登记表（用户裁决 2026-10-26 起）。
+ *
+ * 加一条要同时写清「为什么站点不能用」——否则下一个人会以为是漏跑同步脚本。
+ * 数值口径来源见 `scripts/patch-1601-1661-loadout.mjs` 头注释。
+ */
+const CURATED: Record<string, string> = {
+  1601: '挽昼：站点 fairy_recommend 为空（测试服占位包 raw = {}），配装由用户裁决——4pc 34300v1 锋御套 / 5 号位火伤 / 副词条贴 200% 锐暴封顶',
+  1661: '知更鸟：站点给「生命×3 + 云岿」但没配专武、副词条只写生命；用户裁决 4pc 雪兔 + 2pc 云岿（生命降词条压力）+ 14166v1 专武',
+}
 
 const RAW_DIR = new URL('../../../data/raw/nanoka_missing/full/', import.meta.url)
 
@@ -46,12 +65,14 @@ describe('配装推荐主词条（nanoka 站点规则）', () => {
     expect(offenders, offenders.join('\n')).toEqual([])
   })
 
-  it('用存档 raw 按站点规则重算，与 JSON 逐槽一致（防手改/漏重跑）', () => {
+  it('用存档 raw 按站点规则重算，与 JSON 逐槽一致（防手改/漏重跑；人工条目豁免）', () => {
     const rawIds = new Set(readdirSync(RAW_DIR).filter(f => /^\d+\.json$/.test(f)).map(f => f.replace('.json', '')))
     const drift: string[] = []
     for (const [id, rec] of Object.entries(build.characters)) {
       // 无 raw 存档的角色（老角色）只能靠 ① 的合法槽判据兜底
       if (!rawIds.has(id)) continue
+      // 人工条目（用户裁决覆盖站点数据）不比 —— 见头注释 ② 与下方 ④
+      if (build.metadata?.curated?.includes(id)) continue
       const want = assignMainStatProps(readRaw(id).fairy_recommend)
       for (const slot of [4, 5, 6] as const) {
         const got = rec.main_stats?.[String(slot)]?.prop ?? null
@@ -60,6 +81,15 @@ describe('配装推荐主词条（nanoka 站点规则）', () => {
       }
     }
     expect(drift, drift.join('\n')).toEqual([])
+  })
+
+  it('④ 人工条目登记表 = 数据里的 curated 集合（加一条要写理由，防止静默绕过 ②）', () => {
+    const declared = [...(build.metadata?.curated ?? [])].sort()
+    expect(declared, 'curated 与登记表不一致：新增人工条目请同时写进 CURATED 并说明站点为什么不能用').toEqual(Object.keys(CURATED).sort())
+    for (const [id, why] of Object.entries(CURATED)) {
+      expect(why.length, `人工条目 ${id} 缺理由`).toBeGreaterThan(10)
+      expect(build.characters[id], `人工条目 ${id} 在数据里不存在`).toBeTruthy()
+    }
   })
 
   it('规则本体：夹具 + 用户指出的 1581（6 号位 ATK% 优先于能量回复）', () => {

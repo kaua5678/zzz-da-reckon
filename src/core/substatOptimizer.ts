@@ -37,6 +37,23 @@ import { CRIT_RATE_STEP } from '@/data/critMultiplier'
 export const SUBSTAT_CAP_SETTING = 'optimizer.substatCap'
 const SUBSTAT_CAP_DEFAULT = 20
 
+/**
+ * 副词条「现实性」约束：**最高的两项词条数之和 ≤ 35**（用户 2026-10-26 裁决）。
+ *
+ * > 「你的词条不能太极端了，最高的两个加起来最好不超过 35，最高词条之前写过不超过 20 比较合理」
+ *
+ * 为什么必须有（不是洁癖）：一块驱动盘 4 条副词条、每次强化随机落在其中一条上 ⇒ 真实盘不可能
+ * 「暴击 20 条 + 暴伤 19 条 + 第三条 0 条」。旧默认分配是「按优先序贪心填满」，39 步的 3 词条模板
+ * 恒落成 20 / 19 / 0——这正是用户点名的「20+19 就很超标」。约束落在这里 = 所有走默认分配的
+ * 路径（配装推荐「一键应用」/ 编排层优化器起点）同一口径，而不是各局各填一份好看数。
+ *
+ * 与 `statCap`（单项上限 20，用户 2026-08 口径）的关系：单项上限管「一条能堆多高」，
+ * 本条管「两条最高的合计」——两条都顶 20 就是 40，仍然超标。
+ */
+// @fact substat:现实性约束 口径: 副词条「最高的两项步数之和 ≤ 35」，单项仍受 statCap(20) 约束；默认分配与真实伤害精修都必须满足（精修只能在合法空间里挪步） | 据 用户@2026-10-26「你的词条不能太极端了，最高的两个加起来最好不超过35，最高词条之前写过不超过20比较合理。这个新机制你可以记录一下」 | 验 src/core/__tests__/substatOptimizer.test.ts + src/data/__tests__/buildRecCuratedLoadout.test.ts | 锚 src/core/substatOptimizer.ts#SUBSTAT_TOP2_STEP_CAP | 信 确认
+// ⟳复核: 若用户给出更细的词条桶规则（例如「单盘 4 条副词条、每条强化步数」的真实分布）或 TOP2 阈值改口，复核 35 这个数并把默认分配/精修两处一起改 | 到期 2027-04-30
+export const SUBSTAT_TOP2_STEP_CAP = 35
+
 /** 写回 `driveDisc.subStatAllocation` 前的硬上限（原 store / 编排层两处各写一个 54，原样保留）。 */
 const SUBSTAT_ALLOC_HARD_MAX = 54
 
@@ -132,9 +149,13 @@ export function getTemplate(agent: Agent): SubstatTemplate {
 
 /**
  * 快速默认副词条分配（用户口径 2026-08：最优队伍词条选择固定）。
- * 规则：按模板 stats 优先序依次填到上限（statCap），直到总预算耗尽。
- * 暴击特例——「百暴」：填到面板暴击 ≤100% 的最多步数（floor 防溢出，基础暴击越高暴击词条越少），
- * 受 statCap 封顶；不是「够了就不堆」，而是「溢出浪费、不该堆过 100%」。
+ * 规则：按模板 stats 优先序依次填，受三重上限约束，直到总预算耗尽：
+ *   ① `statCap` —— 单项上限（缺省 20 步）；
+ *   ② 暴击特例「百暴」—— 填到面板暴击封顶（100%，锋御 `critRateCap`=200）的最多步数，
+ *      不是「够了就不堆」，而是「溢出浪费、不该堆过」；
+ *   ③ `SUBSTAT_TOP2_STEP_CAP`(35) —— **前两项合计**上限（用户 2026-10-26：词条不能太极端）。
+ *      第 3 条必须与 ① 一起看：两条都顶 20 = 40 仍然超标，所以第二个词条只能再吃 15 步。
+ * 余下的步数顺延给后面的词条（模板第 3/4 位），不浪费。
  * 转模角色的转模源（如卢西娅 hpPct、洛克茜 defPct）在模板 stats 首位，天然吃满。
  * @param baseCritRate 无副词条面板暴击率（用于「百暴」缺口）。
  */
@@ -156,11 +177,55 @@ export function computeDefaultSubStats(
       const stepsToCap = Math.floor(Math.max(0, cap - baseCritRate) / CRIT_RATE_STEP)
       target = Math.min(statCap, stepsToCap)
     }
-    const steps = Math.min(remaining, target)
+    // TOP2：本词条最多吃到「加完之后前两项合计仍 ≤ 35」——不是「剩下的额度」，
+    // 第三/第四条只要不超过前两名就不影响合计（旧写法会把它误挡成 0）。
+    target = Math.min(target, maxStepsUnderTop2(allocation, stat))
+    const steps = Math.min(remaining, Math.max(0, target))
     allocation[stat] = steps
     remaining -= steps
   }
   return allocation
+}
+
+/**
+ * 把 `stat` 设成 v 之后，前两项最大值之和。
+ *
+ * 关键：新加的这条只有**进到前二**时才影响合计；比第二名还小就完全不影响
+ * （所以第三/第四条能继续吃满，不会被 20+15 的头部锁死）。
+ */
+function topTwoWith(allocation: Readonly<Record<string, number>>, stat: string, v: number): number {
+  const rest = Object.entries(allocation)
+    .filter(([k]) => k !== stat)
+    .map(([, n]) => n)
+    .sort((a, b) => b - a)
+  const a1 = rest[0] ?? 0
+  const a2 = rest[1] ?? 0
+  if (v >= a1) return v + a1
+  if (v >= a2) return a1 + v
+  return a1 + a2
+}
+
+/** `stat` 最多能吃多少步而不破坏 TOP2（不依赖步长，逐 1 步试探；量级 ≤ 20，成本可忽略） */
+function maxStepsUnderTop2(allocation: Readonly<Record<string, number>>, stat: string): number {
+  let v = 0
+  while (topTwoWith(allocation, stat, v + 1) <= SUBSTAT_TOP2_STEP_CAP) v++
+  return v
+}
+
+/** 已分配两项最大值之和（TOP2 约束的读数；未分配的词条按 0 计） */
+export function topTwoOf(allocation: Readonly<Record<string, number>>): number {
+  let first = 0
+  let second = 0
+  for (const v of Object.values(allocation)) {
+    if (v > first) { second = first; first = v }
+    else if (v > second) second = v
+  }
+  return first + second
+}
+
+/** 分配是否满足 TOP2 约束（refine / 手填校验共用，与 computeDefaultSubStats 同一常量） */
+export function fitsTopTwoCap(allocation: Readonly<Record<string, number>>, cap = SUBSTAT_TOP2_STEP_CAP): boolean {
+  return topTwoOf(allocation) <= cap
 }
 
 /** 默认分配输入 */
@@ -216,16 +281,24 @@ export interface DefaultSubStatPanelHooks {
   withTeamPanelEffects?: boolean
 }
 
-/** 不含副词条的局内面板（只用于「百暴」缺口：暴击率） */
-function computeNoSubstatPanel(input: DefaultSubStatInput): PanelValues {
-  const emptySubConfig: DriveDiscConfig = {
+/**
+ * 按给定副词条分配算局内面板（含角色面板钩子）。
+ *
+ * 2026-10-26 起带分配参数（原来是「一律空分配」）：**「百暴/贴顶」缺口必须按最终分配读**，
+ * 否则漏掉「副词条 → 面板 → 转模 → 暴击」这一环。实测挽昼（1601，核心被动「初始暴伤 ×0.35 =
+ * 初始暴击」）：4 条暴伤副词条会经转模再涨 6.7% 暴击，空洞缺口的算法看不到 ⇒ 按 20 步填暴击，
+ * 最终 202.0%（越过 200% 锐暴封顶的那 2% 白给），而少填 1 步给防御 = 199.6% 且防御 +48 点、
+ * 队伤高 0.8%（46.3948M → 46.7599M，实测见 substatOptimizer.test.ts 的锋御判据）。
+ */
+function computePanelForAllocation(input: DefaultSubStatInput, alloc: Record<string, number>): PanelValues {
+  const subConfig: DriveDiscConfig = {
     ...input.driveDiscConfig,
-    subStatAllocation: {},
+    subStatAllocation: alloc,
   }
   const result = calcPanel(
     input.agent,
     input.wEngine,
-    emptySubConfig,
+    subConfig,
     input.setsMap,
     input.teammateBuffs,
     input.statRules,
@@ -266,10 +339,22 @@ function computeNoSubstatPanel(input: DefaultSubStatInput): PanelValues {
  */
 export function computeDefaultSubStatAllocation(input: DefaultSubStatInput): Record<string, number> {
   const template = getTemplate(input.agent)
-  const basePanel = computeNoSubstatPanel(input)
   const statCap = input.statCap ?? SUBSTAT_CAP_DEFAULT
   const totalSteps = input.totalSteps && input.totalSteps > 0
     ? input.totalSteps
     : totalStepTier(template.stats.length).defaultSteps
-  return computeDefaultSubStats(template, basePanel.critRate, totalSteps, statCap)
+  // 第一遍：按「无副词条」面板算封顶缺口（绝大多数角色一次就收敛）。
+  let alloc = computeDefaultSubStats(template, computePanelForAllocation(input, {}).critRate, totalSteps, statCap)
+  if (!template.stats.includes('critRate')) return alloc
+  // 定点迭代：把**上一轮分配的最终面板**作为读暴击的输入，扣掉暴击副词条自己那部分
+  // （computeDefaultSubStats 的 stepsToCap 是按「每步 +CRIT_RATE_STEP」推步数的，不扣就会双计）。
+  // 只在「暴击缺口受其他词条影响的角色」（转模/面板加成）上有区别 ⇒ 3 轮足够，不收敛就停在上一步。
+  for (let i = 0; i < 3; i++) {
+    const finalCrit = computePanelForAllocation(input, alloc).critRate
+    const baseCrit = finalCrit - (alloc.critRate ?? 0) * CRIT_RATE_STEP
+    const next = computeDefaultSubStats(template, baseCrit, totalSteps, statCap)
+    if (JSON.stringify(next) === JSON.stringify(alloc)) break
+    alloc = next
+  }
+  return alloc
 }

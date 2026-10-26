@@ -25,7 +25,10 @@
  * core 只剩默认分配 `computeDefaultSubStatAllocation`（§24.33）。
  * 详见 docs/mcp-stun-dual-source.md §24.32。
  */
-import { computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocation, resolveSubstatBudget } from '@/core/substatOptimizer'
+import {
+  computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocation, resolveSubstatBudget,
+  SUBSTAT_TOP2_STEP_CAP, topTwoOf,
+} from '@/core/substatOptimizer'
 import type { DriveDiscConfig } from '@/types/catalog'
 import type { ConfigModel } from '@/stores/config'
 import type { useCatalogStore } from '@/stores/catalog'
@@ -49,6 +52,11 @@ import { buildSourcePanelsBySlot } from '@/core/sourcePanels'
 export interface SubstatRefineOptions {
   readDamage: () => number
   maxEvals?: number
+}
+
+/** 单次挪步后的 TOP2 合法性（与默认分配同一常量，不另造阈值） */
+function fitsTopTwo(a: Readonly<Record<string, number>>): boolean {
+  return topTwoOf(a) <= SUBSTAT_TOP2_STEP_CAP
 }
 
 function refineWithRealDamage(
@@ -82,6 +90,9 @@ function refineWithRealDamage(
             if (to === from || (best[to] ?? 0) + k > statCap) continue
             if (evals >= maxEvals) break
             const cand = { ...best, [from]: best[from] - k, [to]: (best[to] ?? 0) + k }
+            // TOP2（用户 2026-10-26）：精修只能在「最高两项合计 ≤ 35」的分配空间里挪步，
+            // 否则爬山会把默认分配又推回 20/19 这种现实里刷不出来的盘子。
+            if (!fitsTopTwo(cand)) continue
             const d = evalAlloc(cand)
             if (d > bestDmg * (1 + 1e-9)) { best = cand; bestDmg = d; improved = true; break }
           }
