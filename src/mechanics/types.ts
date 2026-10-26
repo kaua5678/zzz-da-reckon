@@ -27,7 +27,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { AgentLimitPointDecl, DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, AxisRageCombos, ReleaseShareSpec, TeammateDropSpec, AxisGashResourceSpec, FinalizePassSpec, DamageFormulaFieldDecl } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, AxisRageCombos, ReleaseShareSpec, TeammateDropSpec, AxisGashResourceSpec, FinalizePassSpec, DamageFormulaFieldDecl, UniformStunRowInput } from './typesHooks'
 // CC-451：展示层专用声明类型（CC-444/445/446/448 陆续长在本文件里，把 CC-83 预算顶破）拆出 typesView.ts；本文件原样转出，导入方不用改
 import type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
 
@@ -962,15 +962,8 @@ export interface AgentMechanicModule {
    * 当前实现方 = 希希芙蚀骨（`xixifu.ts`）。
    */
   directRowAxisSplit?(input: DirectRowAxisSplitInput): DirectRowAxisSplit | null
-  /**
-   * **不进轴块的行**声明（2026-10-26）：这些行的作废比例有明确物理来源、但从不进 `allocMap`
-   * ⇒ 逐招 `axisInUnits` 口径永远得 0。现唯一实现 = 希希芙蚀骨（毒素按产出来源分失衡内/外）。
-   *
-   * 消费端两处、必须同源（都调同一个 `directRowAxisSplit`）：
-   * · 伤害侧 `damagePoolDirect#emitCharDirectRows`（本来就问模块）；
-   * · 失衡侧 `convergence#inAxisFractionProvider` 写入 `fraction[key]`。
-   */
-  uniformStunRows?(input: { slot: number }): readonly string[]
+  /** 不进轴块的行（形状见 `typesHooks#UniformStunRowInput`）：作废比例走模块自己的算式 */
+  uniformStunRows?(input: UniformStunRowInput): readonly string[]
   /**
    * **角色专属附加直伤行**（规则 6 迁移落点，CC-18a 2026-09-26，设计稿
    * `docs/mcp-cc18-extra-direct-rows.md` §2-1/§2-3）：
@@ -1402,5 +1395,5 @@ export interface AgentMechanicModule {
 export type { DirectRowAxisSplitInput, DirectRowAxisSplit, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
 export { EXTRA_ANOMALY_ROW_ORDER } from './typesRows'
 export { axisOverlayChannel } from './typesHooks'
-export type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentAxisOverlay, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput } from './typesHooks'
+export type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentAxisOverlay, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, UniformStunRowInput } from './typesHooks'
 export type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'

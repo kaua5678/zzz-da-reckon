@@ -803,3 +803,21 @@ export interface DamageFormulaFieldDecl {
   role: '伤害基底' | '增伤区' | '暴击区' | '防御穿透区' | '抗性易伤区' | '失衡易伤区' | '异常乘区' | '异常时长'
   note: string
 }
+
+/**
+ * **不进轴块的行**的模块声明入参（`AgentMechanicModule.uniformStunRows`，2026-10-26）。
+ *
+ * 背景：某些失衡值行的作废比例有明确物理来源，但它们**从不进 `allocMap`**（没有放置语义），
+ * 按逐招 `axisInUnits` 口径永远得 0 ⇒ 必须由模块单独声明，让两本账读到同一算式。
+ * 现唯一实现 = 希希芙蚀骨（`1521019`：毒素「失衡期回复多少就打出多少」，其余自动触发不吃易伤）。
+ *
+ * 消费端两处、必须同源（都调同一个 `directRowAxisSplit`）：
+ * · 伤害侧 `damagePoolDirect#emitCharDirectRows`（本来就问模块）；
+ * · 失衡侧 `convergence#inAxisFractionProvider` 写入 `fraction[key]`。
+ * 修前同队实测两把尺：伤害侧 0.5082 / 失衡侧 0.0582。
+ */
+export interface UniformStunRowInput {
+  /** 槽位 0/1/2 */
+  slot: number
+}
+
