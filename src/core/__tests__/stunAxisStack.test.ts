@@ -159,6 +159,50 @@ describe('兜底平A受该槽平A预算封顶（用户口径 2026-10-25）', () 
   })
 })
 
+/**
+ * **`count > 1` 的块按段平铺（单一排布时钟）**——用户 2026-10-26 报告（逐字）：
+ * > 「希希芙有一个轴我之前图方便没有对动作进行排序，导致全挤在0秒，这似乎影响了剩余时间，
+ * >   导致兜底平a过多，数据过多。」
+ *
+ * 病灶：`slotMaxEnd`（兜底平A 的「剩余时间」）与 `windowTrace.startTime` 用**原始** `startTime`，
+ * 而 fits 门与合轴区间按段顺序推进 ⇒ `count: 3` 的块三段都记成「0 秒起手」，末端只算一段
+ * ⇒ 窗口富余被高估、兜底平A 多填。实测 `auto-1461-1521-1491`（席希轴 `xide-bengzhui ×3`
+ * 没写起点）：末窗兜底 **12.53s**（应 5.6s）、全队兜底 13.08s（应 6.15s）。
+ */
+describe('count>1 的块按段平铺（单一排布时钟）', () => {
+  const combo = { slot: 0, moveId: 'combo3', count: 3, actionTime: 3.467, energyCost: 0, decibelCost: 0 }
+  const ult = { slot: 0, moveId: 'ult', count: 1, actionTime: 5.417, energyCost: 0, decibelCost: 3000, startTime: 10.401 }
+
+  it('轨迹逐段起点 = 0 / 3.467 / 6.934（修前三条都写 0）', () => {
+    const r = calcStunAxisStack({
+      axes: [{ actions: [combo], basicFillerSlot: 0 }],
+      stunCount: 1, windowDuration: 16, energyBySlot: { 0: 999 }, decibelBySlot: { 0: 9999 },
+    })
+    const starts = r.windowTrace[0]!.actions.map(a => +a.startTime.toFixed(3))
+    expect(starts).toEqual([0, 3.467, 6.934])
+    // 兜底 = 窗口 − 末段结束（3 × 3.467 = 10.401）
+    expect(r.basicFillBySlot[0]).toBeCloseTo(16 - 10.401, 3)
+  })
+
+  it('后续终结技被喧响门去掉时，兜底仍按三段末端算（修前只算一段 ⇒ 多填 6.93s）', () => {
+    const r = calcStunAxisStack({
+      axes: [{ actions: [combo, ult], basicFillerSlot: 0 }],
+      stunCount: 1, windowDuration: 16, energyBySlot: { 0: 999 }, decibelBySlot: { 0: 0 },
+    })
+    expect(r.executed['0:ult']).toBeUndefined()
+    expect(r.basicFillBySlot[0]).toBeCloseTo(16 - 10.401, 3)
+  })
+
+  it('显式 startTime 更晚时按它顺延（起点 = max(前一段结束, startTime)）', () => {
+    const r = calcStunAxisStack({
+      axes: [{ actions: [{ ...combo, startTime: 1 }], basicFillerSlot: 0 }],
+      stunCount: 1, windowDuration: 16, energyBySlot: { 0: 999 }, decibelBySlot: { 0: 9999 },
+    })
+    const starts = r.windowTrace[0]!.actions.map(a => +a.startTime.toFixed(3))
+    expect(starts).toEqual([1, 4.467, 7.934])
+  })
+})
+
 describe('calcStunAxisStack', () => {
   it('full resources = burst axis (whole stack executes per window)', () => {
     const r = calcStunAxisStack({

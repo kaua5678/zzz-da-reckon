@@ -524,6 +524,16 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   for (const window of schedule) {
     windowNo++
     // 合轴：时间按槽位独立门控（各角色并行填窗口，互不挤占先后时间）
+    /**
+     * **fits 门的时间累计器（按数组顺序）**——⚠ 这是**有意**与下面 `slotCursor` 分开的两个量：
+     *
+     * `startTime` 只决定**排布/合轴区间**的起点；**谁跨界由数组顺序决定**，不由 startTime 决定。
+     * 口径出处 = 轴预设 `比琉通用.json` 的 note（用户轴）：`比琉通用` 双连携窗单槽累计 19.249s > 18s，
+     * 「末位动作跨界」，且「引擎的时间门按**数组顺序**累计该槽占用秒数（startTime 只决定合轴区间起点）
+     * ⇒ 数组顺序决定谁跨界，不影响轴态」。实测反向证据：把 fits 门也改成吃 startTime
+     * ⇒ `billySmoke`「默认配置下轴态 = complete」当场红（轴态变 partial ⇒ 难度曲线整档不出数）。
+     * 故本累计器保持数组顺序语义，只有 `slotMaxEnd`（兜底平A 的剩余时间）/轨迹起点用顺序游标。
+     */
     const slotTime: Record<number, number> = {}
     // 各槽位时间线最晚结束时刻（max(startTime+actionTime)，仅执行成功的动作）——平A填充从这往后
     const slotMaxEnd: Record<number, number> = {}
@@ -559,7 +569,34 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
 
     for (const act of window.actions) {
       for (let i = 0; i < act.count; i++) {
+        /**
+         * ## 单一排布时钟（2026-10-26 修）：`count > 1` 的块按段**顺序平铺**
+         *
+         * 用户报告（逐字）：「希希芙有一个轴我之前图方便没有对动作进行排序，导致全挤在0秒，
+         * 这似乎影响了剩余时间，导致兜底平a过多，数据过多。」
+         *
+         * 病灶 = 排布时钟不统一：`slotTime`（fits 门）与 `slotCursor`（合轴区间）都按段顺序推进，
+         * 而 `slotMaxEnd`（兜底平A 的「剩余时间」）与 `windowTrace.startTime` 用**原始**
+         * `act.startTime` ⇒ `count > 1` 时后几段被当成与第一段同时起手：
+         * 末端少算 `(count−1) × actionTime`，窗口富余被高估 ⇒ 兜底平A 多填。
+         *
+         * 实测 `auto-1461-1521-1491`（席希轴 `xide-bengzhui ×3` 没写起点）：轨迹三条
+         * `0:xide-bengzhui@0.000`（应 0 / 3.467 / 6.934），`slotMaxEnd` 只算 3.467s（应 10.401s）
+         * ⇒ 末窗兜底平A **12.53s**（应 5.6s）、全队兜底 13.08s（应 6.15s）。
+         *
+         * 口径对齐依据：`core/stunAxis.ts#computeInAxisRatio` 早就把 `count > 1` 当**连续整块**
+         * （`blockDuration = count × 单段时长`，起点 = `startTime`）算易伤占比；UI 的
+         * `actDuration = 单段 × count` 也是同一读法 ⇒ 排布侧按段平铺才是同口径。
+         *
+         * ⚠ **只改排布，不动 fits 门**（`used` 仍是数组顺序累计）：把 fits 门也改成吃 startTime
+         * 会让「双连携窗末位跨界」变成「起点越界 ⇒ 整段跳过」⇒ `billySmoke`「默认配置下轴态 =
+         * complete（跨肆不算 partial ⇒ 难度曲线能出点）」当场红——那条口径是轴预设
+         * `比琉通用.json` 的 note 写死的（「时间门按数组顺序累计，startTime 只决定合轴区间起点」）。
+         */
+        /** fits 门用的数组顺序累计时刻（口径见上方 `slotTime` 注释） */
         const used = slotTime[act.slot] ?? 0
+        /** 排布用的实际起点：该槽位顺序游标，显式 startTime 更晚则顺延到它（`count > 1` 时逐段推进） */
+        const t0 = Math.max(slotCursor[act.slot] ?? 0, Math.max(0, act.startTime ?? 0))
         /**
          * ## 时间门（2026-10-18 改「跨界小数」，用户口径「小数这一块要做要做完」）
          *
@@ -625,26 +662,25 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
           swayLeft[act.slot] = (swayLeft[act.slot] ?? 0) - (act.swayCost ?? 0)
         }
         // 执行：整次计入 count（资源/时间按整次），只有 inAxisCount 按 fits 打折
-        bump(act.slot, act.moveId, 1, act.startTime ?? 0, windowNo, fits)
+        bump(act.slot, act.moveId, 1, t0, windowNo, fits)
         // 逐窗轨迹（期 1，纯追加）：同一 moveId 在本窗的多次施放各记一条，顺序 = 实际执行顺序
         windowActions.push({
           slot: act.slot,
           moveId: act.moveId,
           count: 1,
           inAxisCount: fits,
-          startTime: Math.max(0, act.startTime ?? 0),
+          startTime: t0,
           actionTime: act.actionTime,
         })
         // ⚠ 槽位占用时间**按整段**推进（不是 fits×actionTime）：动作真的占满 4.083s 前台，
         // 窗内 2.1s 只是「吃易伤的那一段」。按 fits 推进会让后续动作凭空多出时间。
         slotTime[act.slot] = used + act.actionTime
-        // 时间线末尾：该槽位最晚结束时刻（startTime 负值=窗口外提前起手，按 0 起算）
-        const end = Math.max(0, act.startTime ?? 0) + act.actionTime
+        // 时间线末尾：该槽位最晚结束时刻（= 本段**实际**起点 + 时长；同一时钟见上方 t0 注释）。
+        // 起点为负（窗口外提前起手）时 t0 已按 0 起算（`Math.max(0, …)` 在 t0 里）。
+        const end = t0 + act.actionTime
         slotMaxEnd[act.slot] = Math.max(slotMaxEnd[act.slot] ?? 0, end)
-        // 合轴区间：该槽位顺序排块（cursor = 已排到的时刻），显式 startTime 更晚则顺延到它
+        // 合轴区间：同一个 t0（该槽位顺序排块，显式 startTime 更晚则顺延到它）
         if (act.actionTime > 0) {
-          const cursor = slotCursor[act.slot] ?? 0
-          const t0 = Math.max(cursor, Math.max(0, act.startTime ?? 0))
           windowIntervals.push({ key: `${act.slot}:${act.moveId}`, t0, t1: t0 + act.actionTime })
           slotCursor[act.slot] = t0 + act.actionTime
         }

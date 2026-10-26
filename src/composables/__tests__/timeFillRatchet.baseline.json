@@ -208,7 +208,7 @@
  "auto-1371-1481-1451": {
   "slack": 0,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "stable"
  },
  "auto-1401-1411-1031": {
@@ -346,7 +346,7 @@
  "auto-1521-1251-1311": {
   "slack": 0,
   "over": 0,
-  "stun": 6,
+  "stun": 5,
   "outerExit": "stable"
  },
  "auto-1521-1461-1311": {
@@ -358,7 +358,7 @@
  "auto-1521-1481-1311": {
   "slack": 0.8,
   "over": 0,
-  "stun": 5,
+  "stun": 4,
   "outerExit": "stable"
  },
  "auto-1521-1481-1491": {
