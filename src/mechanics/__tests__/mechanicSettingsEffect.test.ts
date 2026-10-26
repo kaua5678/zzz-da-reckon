@@ -158,9 +158,16 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：规范值型（�
       executions: Array<{ moveId: string; decibelRecovery?: number; totalDecibelRecovery?: number; totalEnergyConsume?: number }>
       exSpecialCount: number; derivedEnergy: number; roxyWindEnergySource?: { effectiveSpinSecondsTotal: number }
     }
-    // 自旋可能拆成「满发行 + 零散发行」两行（用户口径 2026-10-19）⇒ 按 Σ 判
-    const spinRows = c.executions.filter(e => e.moveId === '1621008')
-    expect(spinRows.length, '自旋行必须存在（能量预算 > 0 时恒有一次以上自旋）').toBeGreaterThan(0)
+    /**
+     * 自旋可能拆成「满发行 + 零散发行」两行（用户口径 2026-10-19）⇒ 按 Σ 判。
+     * ⚠ 还必须**排除影画2 的流势免费自旋行**（用户口径 2026-10-26「免费自旋你假设全吃满就行」）：
+     * 它的 `energyConsume = 0`，秒数不从能量预算里出 ⇒ 混进 Σ 会让「能量闭合」与
+     * 「喧响 = 每秒 × 实际耗能自旋秒数」两条判据同时偏大（实测差 84.343 × 0.6 = 50.606）。
+     */
+    const allSpinRows = c.executions.filter(e => e.moveId === '1621008')
+    const spinRows = allSpinRows.filter(e => Number(e.totalEnergyConsume ?? 0) > 0)
+    const freeSpinRows = allSpinRows.filter(e => Number(e.totalEnergyConsume ?? 0) === 0)
+    expect(spinRows.length, '耗能自旋行必须存在（能量预算 > 0 时恒有一次以上自旋）').toBeGreaterThan(0)
     const src = c.roxyWindEnergySource!
     expect(src.effectiveSpinSecondsTotal, '实际自旋总秒数应 > 0').toBeGreaterThan(0)
     // ② 喧响 = 每秒值 × 实际自旋总秒数（行级 override 口径）
@@ -170,6 +177,37 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：规范值型（�
     const startTotal = 10 * Math.floor(c.exSpecialCount)
     expect(startTotal + 30 * src.effectiveSpinSecondsTotal, '自旋+启动应恰好用光能量预算'
     ).toBeCloseTo(c.derivedEnergy, 4)
+    /**
+     * ③ 流势免费自旋（影画2 起）：**零耗能但仍必须给喧响**（用户口径 2026-10-26「免费送的也有喧响啊，
+     * 如果没数据那你这个免费送的就跟没送一样了」）。
+     *
+     * 判据两面，缺一不可：
+     *   a. 行内 `totalDecibelRecovery` = 每秒值 × 0.6（单元层面有值）；
+     *   b. 该值**真的进了 decibelSource.total**（账本层面没被 `rowDecibelTotal` 的表值覆盖吞掉）。
+     *      b 是关键：免费行若漏 `decibelRecoveryOverride: true`，`rowDecibelTotal` 会拿
+     *      `decibelRecoveryByMoveId` 的表值（单条 = 84.343）乘 count=1，得到 84.343 而不是 50.61
+     *      —— 数值"看起来有"，但与「0.6 秒」不符，是最隐蔽的一种错。
+     */
+    for (const row of freeSpinRows) {
+      expect(Number(row.totalEnergyConsume), '流势自旋必须零耗能（免费）').toBe(0)
+      expect(Number(row.totalDecibelRecovery), '免费也要给喧响：每秒值 × 0.6s').toBeCloseTo(DECIBEL_PER_SEC * 0.6, 4)
+      expect(Number(row.decibelRecovery), '行级每秒口径同样设值').toBeCloseTo(DECIBEL_PER_SEC * 0.6, 4)
+    }
+    // b：把「免费行的喧响」与「账本 total」对起来 —— 差一个免费行就必须正好差它的量
+    if (freeSpinRows.length > 0) {
+      const freeTotal = freeSpinRows.reduce((a, r) => a + Number(r.totalDecibelRecovery ?? 0), 0)
+      const decibelTotalFromRows = c.executions.reduce((a, r) => {
+        const n = Number(r.totalDecibelRecovery ?? 0)
+        return a + (Number.isFinite(n) ? n : 0)
+      }, 0)
+      const src: any = c
+      expect(freeTotal, '免费行喧响必须 > 0（否则等于没送）').toBeGreaterThan(0)
+      expect(
+        src.decibelSource.total,
+        '账本 total 必须 ≥ 免费行自身（证明它没在 rowDecibelTotal 里被丢弃）',
+      ).toBeGreaterThanOrEqual(freeTotal)
+      void decibelTotalFromRows
+    }
   }, 300000)
 
   /**

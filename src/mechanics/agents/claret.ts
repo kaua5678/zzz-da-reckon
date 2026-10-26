@@ -228,7 +228,14 @@ export const INSCRIPTION_CHAIN_EXTENSION_SECONDS = 2
 /** 连携/终结技表 id（窗口停表口径要它们的动作时长） */
 export const CHAIN_MOVE_ID = '1611020'
 export const ULTIMATE_MOVE_ID = '1611021'
-/** 击杀延长（3s/ICD）**不建模**：计算器算单挑 Boss、不算小怪（用户口径 2026-09-11） */
+/**
+ * 击杀延长（3s/ICD）**已裁决不建模**（用户口径 2026-09-11 + 2026-10-26 复核）：
+ * 原文「克拉蕾攻击命中敌人时，若敌人在 0.5 秒内被击败且自身[猩红铭刻]持续时间不为 0，
+ * 则延长 3 秒[猩红铭刻]持续时间，3 秒内最多触发 1 次」。
+ * 计算器算**单挑 Boss**、不算小怪 ⇒ 该触发器在本模型的作用域内不存在事件源（Boss 不会 0.5s 内被击败）。
+ * ⚠ 这不是「欠账」而是**已裁决的模型边界**：不要为了"补全"给它造一个人工次数滑块——
+ * 用户 2026-10-26 明确「击杀延长这个目前没有小怪，所以不能算」。
+ */
 /** 常态打满一发秘血铸锋所需锐能 */
 const SHARPNESS_PER_ENTRY = SHARPNESS_COST_PER_EX
 /** 循环轮数上限（防病态输入下 while 不收敛；180s/16s 窗口 实测只需 ~8） */
@@ -1459,7 +1466,7 @@ function buildClaretResourceSections({ result }: AgentResourceSectionsInput) {
         { label: '铭刻平A时间', value: `${fmt(source.inscriptionBasicTime)}s`, detail: `= 轮数 × 单窗 ${fmt(source.inscriptionWindowSecondsPerEntry)}s + 总延长 ${fmt(source.inscriptionWindowSeconds)}s` },
         { label: '平A秒均', value: `${fmt(source.basicDamagePerSec)}%/s`, detail: `常态 345.21（血锻#3）×${fmt((1 - source.inscriptionBasicTimeShare) * 100)}% + 铭刻 531.88（锻星#3）×${fmt(source.inscriptionBasicTimeShare * 100)}%` },
       ],
-      footer: `常态只能打血锻四式、锻星是猩红铭刻专属（用户口径 2026-09-11）；两态平A秒均与残痕积累都不同，按时间占比加权。锐能自动回复按公告列 sharpness_gain（血锻 3.0/s、锻星 0）计入总账。单窗基础 ${fmt(DEFAULT_INSCRIPTION_WINDOW_SECONDS)}s（raw）${cinemaLevelOf(source.cinemaLevel) >= 2 ? ` + 影画2 ${fmt(C2_INSCRIPTION_WINDOW_BONUS_SECONDS)}s` : ''}，另有连携 +2s/次；击杀延长 3s/ICD 未逐秒建模。状态符（核心 +30% 暴击/+50% 积蓄/影画2 18% 电抗）仍按满覆盖计。`,
+      footer: `常态只能打血锻四式、锻星是猩红铭刻专属（用户口径 2026-09-11）；两态平A秒均与残痕积累都不同，按时间占比加权。锐能自动回复按公告列 sharpness_gain（血锻 3.0/s、锻星 0）计入总账。单窗基础 ${fmt(DEFAULT_INSCRIPTION_WINDOW_SECONDS)}s（raw）${cinemaLevelOf(source.cinemaLevel) >= 2 ? ` + 影画2 ${fmt(C2_INSCRIPTION_WINDOW_BONUS_SECONDS)}s` : ''}，另有连携 +2s/次；击杀延长 3s/ICD **已裁决不建模**（单挑 Boss 无小怪事件源，用户 2026-10-26）。状态符（核心 +30% 暴击/+50% 积蓄/影画2 18% 电抗）仍按满覆盖计。`,
     },
     {
       id: 'claret-sharpness',
@@ -1523,7 +1530,7 @@ const settings: MechanicSetting[] = [
   {
     id: 'claret.chainInWindowCoverage',
     label: '克拉蕾·铭刻窗口内连携占比',
-    description: '总额口径（用户 2026-09-11 裁决：不算每窗摊多少连携）：铭刻总时间 = 轮数×16s + 总延长秒，总延长秒 = 连携×2s/次 + (连携+终结)动作时长×本系数。默认 100% = 停表完全不消耗窗口（raw「发动期间，[猩红铭刻]持续时间不再减少」）；若实测停表不满，调低该值即可按比例缩减这部分白送时长。击杀延长（3s/ICD）不建模（单挑 Boss、不算小怪）。',
+    description: '总额口径（用户 2026-09-11 裁决：不算每窗摊多少连携）：铭刻总时间 = 轮数×16s + 总延长秒，总延长秒 = 连携×2s/次 + (连携+终结)动作时长×本系数。默认 100% = 停表完全不消耗窗口（raw「发动期间，[猩红铭刻]持续时间不再减少」）；若实测停表不满，调低该值即可按比例缩减这部分白送时长。击杀延长（3s/ICD）**已裁决不建模**（单挑 Boss、不算小怪，用户 2026-10-26）。',
     default: DEFAULT_CHAIN_IN_WINDOW_COVERAGE * 100,
     min: 0,
     max: 100,
