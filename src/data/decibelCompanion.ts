@@ -2,7 +2,7 @@
  * 喧响「队友伴随」规则（纯规则，CC-230 单一来源）：某角色获得的奖励喧响，其余队友各按 50% 同时获得。
  *
  * 此前写了 3 份：`core/anomalyPool/helpers.ts#calcPerSlotAnomalyDecibelBonus`（异常/紊乱/乱流；CC-230 删除，改为 core/anomalyPool.ts 内 own → withCompanionShare）、
- * `core/anomalyPool.ts#calcSpecialActionBonus`（弹刀/连携/闪反/快支），以及 `components/ResourceResultCard.vue`
+ * `core/anomalyPool.ts#calcSpecialActionBonus`（弹刀/连携/闪反），以及 `components/ResourceResultCard.vue`
  * 的「自己 + 队友伴随」拆解（slotCount 取法还与引擎不同）。放 data 层是为了展示层也能合法引用（视图禁止值导入 core）。
  */
 /** 队友伴随比例 */

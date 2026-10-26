@@ -75,7 +75,7 @@ export function applyTeamToStore(
     }
   }
   // 交互 / 快支 / 连携基准不在这里写（CC-266）：上面两条分支都经 setAgent（applyTeamPreset 内部亦然），
-  // setAgent 已按 interactionBaselineFor + ASSIST_ACTION_BASELINE 预填。
+  // setAgent 已按 interactionBaselineFor + chainBaselineFor 预填。
 }
 
 // ========== 让出事件循环 ==========
