@@ -130,6 +130,14 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline
 `时间轴 windowSeconds/effTime` 与 `calc.stunCoverage` 现在**逐位相同**（此前 3 支 cycle 队因钳位分叉）。
 ⇒ 期 2 的 delta 面只剩「末窗被时钟截短」这一类，需重新普查（本期未做）。
 
+**⛔ 2026-10-26 已普查完毕，结论 = 差异面不可达，期 2 暂不落地**（探针 `.zc/perf/phase2Parity.probe.perf.ts`
++ `.zc/perf/clipReach.probe.perf.ts`，全库 102 队）：
+- `Σ slots[].effectiveSeconds/effTime` 与 `calc.stunCoverage` **逐位相同（mismatch 0）**，恒等式残差 0；
+- 换 180/120/90/60s 四种战斗时间，`clippedByClock` 与 `truncated` **恒 0 队**
+  ——池窗数随 `effTime` 一起收敛，末窗永远装得下 ⇒ 「末窗残疾」在当前引擎里**构造不出来**。
+- ⇒ 期 2 现在做是**纯换尺、零收益**；应等「窗内没牌」前向约束（`TASK-continuous-stun.md` §8g 可行方向 2）
+  能真产生末窗残疾之后再一起做，否则只是把两把永远相等的尺合成一把。
+
 **风险点**：`stunWindowFraction` 是全仓唯一实现（CC-217），有源码锁
 `effectiveTimeSingleSource.test.ts`；改它要同步该锁。
 
