@@ -75,6 +75,12 @@
           />
         </div>
         <CustomTeamsEditor v-model:selected-ids="selectedPresetIds" />
+        <!--
+          每队配置码（用户 2026-10-26：「我想这里写成操作区，比如我从上面勾选的队伍也能写配置码」）：
+          放在**队伍选择旁边**、所有图型共用（散点 / 难度曲线 / 第三人 / 提升率都吃同一份覆盖）——
+          它改的是「这支队是什么」，不是「这个图型怎么画」。
+        -->
+        <TeamSlotCodeEditor :presets="selectedPresets" />
         <div class="ctl-field" title="操作难度是主观量（两图共用同一口径）：难度 = Σ(交互次数×权重) + 时间压力秒×权重；散点图横轴同口径。按你的手感改，浏览器本地持久化；预设条目自带 weight 仍最优先">
           <n-popover trigger="click" placement="bottom-end" :style="{ width: '300px' }">
             <template #trigger>
@@ -143,22 +149,6 @@
         </div>
         <div class="ctl-field" title="≤12金：自动逐金挑选伤害提升最大的加金组合（含专武本体购买，贪婪搜索，每队多算几轮全量伤害，较慢）；12金以上仍按预设 goldSteps 顺序。⚠ 勾了之后「金数区间」几乎不额外花时间：贪婪链是一次算到 12 金、各档只是链上的前缀点">
           <n-checkbox v-model:checked="optimalGold" size="small">最优加金（≤12金，慢）</n-checkbox>
-        </div>
-        <div class="ctl-field slot-lock" :title="slotLockTitle">
-          <span class="ctl-label">逐槽锁定</span>
-          <n-input
-            v-for="(name, i) in SLOT_NAMES"
-            :key="name"
-            size="small"
-            style="width: 66px"
-            :status="slotLock.invalid.value[i] ? 'error' : undefined"
-            :value="slotLock.text.value[i]"
-            :placeholder="name"
-            :title="slotLock.hintOf(i)"
-            @update:value="v => slotLock.setText(i, v)"
-          />
-          <n-button size="tiny" quaternary :disabled="slotLock.activeCount.value === 0" @click="slotLock.reset()">清</n-button>
-          <span class="ctl-hint">{{ slotLockSummary }}</span>
         </div>
         <div class="ctl-field" title="未穿限定音擎的槽位自动从下方装填池按伤害择优穿戴；选中的限定音擎按本体（精炼1）如实计入总限定金——有金就是金。预设 wEngines 仅限定音擎保留。关闭则回退预设基础音擎">
           <n-checkbox v-model:checked="autoEngine" size="small">自动下位</n-checkbox>
@@ -1179,12 +1169,14 @@ import { teamPresets } from '@/data/teamPresets'
 import { usePresetTeamPicker } from '@/composables/usePresetTeamPicker'
 import { useCustomTeamsStore, resolveSelectedPresets } from '@/composables/customTeams'
 import CustomTeamsEditor from '@/components/CustomTeamsEditor.vue'
+import TeamSlotCodeEditor from '@/components/TeamSlotCodeEditor.vue'
 import ChartLegend from '@/components/charts/ChartLegend.vue'
 import ChartTable from '@/components/charts/ChartTable.vue'
 import { fmt, compact, localized } from '@/utils/format'
 import { useScatterGeometry } from '@/composables/teamCompareScatter'
 import { useSlotSweep } from '@/composables/teamCompareSweep'
-import { useSlotOverrideControls, SLOT_NAMES } from '@/composables/slotOverrideControls'
+import { useTeamSlotCodes } from '@/composables/teamSlotCodes'
+import type { SlotOverrides } from '@/composables/presetSlotOverrides'
 import { encodePointTimes, timeLegendRows } from '@/composables/pointTimeAxis'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard, PhaseView } from '@/types/bossPreset'
 import { releaseDateOf, releaseNodeOf, nodeIndexOf, VERSION_NODES } from '@/data/versionTimeline'
@@ -1351,19 +1343,15 @@ const goldAltRows = computed(() => {
 /** 自动下位音擎（缺省开）：非限定槽位从装填池按伤害择优穿戴；选中限定音擎按本体如实计金 */
 const autoEngine = ref(true)
 /**
- * 逐槽锁定（用户 2026-10-25「修改自由度大一点」）：三格配置码 `21` = 2命1精、`20` = 2命无专武，留空 = 不锁。
+ * **每队配置码**（用户 2026-10-26：「我想这里写成操作区，比如我从上面勾选的队伍也能写配置码」）。
+ *
+ * 取代旧的页面级「逐槽锁定」三格：那张控件对**一张图上的所有队**套同一份覆盖，
+ * 于是「诺姆30 队 vs 诺姆11 队」写不出来（两队会被写成同一套）——而那正是用户要做的对比。
+ * 现在按 `presetId` 存（`composables/teamSlotCodes`），UI 是 `components/TeamSlotCodeEditor.vue`。
+ *
  * 口径 / 判据见 `composables/presetSlotOverrides.ts` 与 `__tests__/presetSlotOverrides.test.ts`。
  */
-const slotLock = useSlotOverrideControls()
-const slotLockTitle = '逐槽锁定：填「配置码」把该槽钉死在该配装（左位=影画 0-6、右位=精炼 0-5，右位 0 = 无专武）。'
-  + '锁定的槽不再参与「最优加金」的预算分配（它的金是预支的，如实计入总金）。留空 = 不锁，完全走预设/加金。'
-  + '常驻角色（格莉丝一类）同样可填：命座生效但不占限定金。'
-/** 锁定摘要（页头一句话说清"锁了几个槽、锁了谁"） */
-const slotLockSummary = computed(() => {
-  const n = slotLock.activeCount.value
-  if (n === 0) return '留空 = 不锁'
-  return `已锁 ${n} 槽${slotLock.invalid.value.some(Boolean) ? '（有格式错误）' : ''}`
-})
+const teamSlotCodes = useTeamSlotCodes()
 /** 自动下位默认精炼档：A 级 / 常驻 S（缺省 DOWNGRADE_MODS，与自由对比「无专武」档同一口径） */
 const autoModA = ref(DOWNGRADE_MODS.aRank)
 const autoModStd = ref(DOWNGRADE_MODS.standard)
@@ -2008,7 +1996,8 @@ async function runCompare() {
       goldLevels: levels,
       boss,
       optimalGold: optimalGold.value,
-      slotOverrides: slotLock.overrides.value,
+      // 按队覆盖（`TeamSlotCodeEditor` 写的那份；空 = 不覆盖，逐位不变）
+      slotOverrides: teamSlotCodes.overridesFor(p.id),
       goldAlternatives: showGoldAlternatives.value ? alts : undefined,
       phase,
       autoEngine: autoEngine.value,
@@ -2068,6 +2057,15 @@ async function runCurves() {
       ...(curveBuffMode.value === 'manual' && curveManualBuff.value ? { manualBuffTitle: curveManualBuff.value } : {}),
     }
     : undefined
+  /**
+   * 每队配置码（用户 2026-10-26）：只把**真的写了码**的队放进表里（空表 = 逐位不变）。
+   * worker 侧读不到页面 store ⇒ 必须在这里算成纯数据再发（同 `fusionRules` 的硬约束）。
+   */
+  const slotOverridesByPreset: Record<string, SlotOverrides> = {}
+  for (const p of presets) {
+    const ov = teamSlotCodes.overridesFor(p.id)
+    if (ov.some(o => o !== null)) slotOverridesByPreset[p.id] = ov
+  }
   const cacheKey = JSON.stringify({
     boss: boss.id,
     phase,
@@ -2075,6 +2073,8 @@ async function runCurves() {
     weights: diffWeights.value,
     presets,
     env: envTable,
+    // 覆盖必须进 key：否则改了码仍命中旧缓存，看起来像「写了没用」
+    overrides: slotOverridesByPreset,
   })
   const hit = curveRunCache.get(cacheKey)
   if (hit) {
@@ -2088,7 +2088,7 @@ async function runCurves() {
   const run = runOwner.start()
   computing.value = true
   progress.value = { pct: 0, text: '' }
-  // 一次曲线运行的全部输入：纯数据（见 `CurveRunRequest` 契约）——worker 靠它自建现场
+  // 一次曲线运行的全部输入：纯数据（见 `CurveRunRequest` 契约）—— worker 靠它自建现场
   const outcome = await runDifficultyCurves({
     configState: cloneConfigState(configStore.$state) as unknown as Record<string, unknown>,
     // 行融合规则必须显式传：worker 里没有 window，读盘会回落 spec 默认（数值会静默漂移）
@@ -2104,6 +2104,9 @@ async function runCurves() {
     },
     // 环境模式的道表（纯数据；worker 读不到页面 store）。缺省 = undefined ⇒ 自身实力口径逐位不变
     environment: envTable,
+    // 每队配置码覆盖（用户 2026-10-26）：页面操作区写的码压过预设自带 slotCodes；
+    // 右位 0（无专武）由 applySlotOverrides 解析成下位表第一件 / 用户点名的下位件
+    ...(slotOverridesByPreset ? { slotOverridesByPreset } : {}),
     // 逐点现场差分（用户 2026-10-16「能显示其资源池吗」）：每点 ~2.1KB，点开时才重算资源池
     collectScenes: true,
     // 非轴参照曲线（用户 2026-10-16：「我本意是想展示非轴模式的数据的，表示模拟均匀战斗
@@ -2777,11 +2780,4 @@ function killSeconds(hpRatio: number): number {
 </script>
 
 <style scoped src="./comparePage/team-compare-page.css">
-.slot-lock {
-  gap: 4px;
-}
-.slot-lock .ctl-hint {
-  color: var(--fg-3);
-  font-size: 11px;
-}
 </style>

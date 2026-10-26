@@ -44,7 +44,7 @@
  * ⟳复核: 若新增「按某维度截取/聚合曲线」的图型或改用对数轴，重核「轴上限覆盖所有点」是否仍成立（尤其筛选后只剩 1 队时——那是越界最严重的场景） | 到期 2027-04-30
  */
 import { applyBossRoom } from '@/composables/bossRoom'
-import { applySlotOverrides } from '@/composables/presetSlotOverrides'
+import { applySlotOverrides, NO_SLOT_OVERRIDES, type SlotOverrides } from '@/composables/presetSlotOverrides'
 import { useCatalogStore } from '@/stores/catalog'
 import { captureState, stateDeltaOf } from '@/composables/configDelta'
 import { type ConfigModel } from '@/stores/config'
@@ -127,6 +127,16 @@ export interface DifficultyCurveOptions {
    * 直接决定 x 轴：`computeDifficulty` 的 Σ(交互×权重) + 时间压力秒×权重（时间压力 = 硬溢出 + 合轴抵扣）。
    */
   difficultyWeights?: DifficultyWeights
+  /**
+   * **逐队页面覆盖**（用户 2026-10-26：「我想这里写成操作区，比如我从上面勾选的队伍也能写配置码」）。
+   *
+   * `presetId → SlotOverrides`：页面写的码压过该预设自带的 `slotCodes`。
+   * 缺省不传 ⇒ 逐位不变（只有预设自带 `slotCodes` 生效）。
+   *
+   * ⚠ 走 `applySlotOverrides(preset, overrides, catalog)`：右位 0（无专武）会解析成
+   * **下位表第一件**或用户点名的 `downgradeWEngineId`，所以曲线上「00」不是一个空音擎。
+   */
+  slotOverridesByPreset?: Record<string, SlotOverrides>
   /**
    * **算「非轴参照曲线」**（用户口径 2026-10-16，逐字）：
    *
@@ -331,7 +341,11 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
       // 逐槽固定配置（2026-10-25）：把「队友 65 丽娜 / 61 克拉蕾」这种**属于这支队**的配置
       // 收敛进 preset —— 剔除固定槽的加金步，好让下面 applyGoldSteps 只动没固定的槽。
       // 无 slotCodes 时原对象引用原样返回（零改动）。
-      const lockedPreset = applySlotOverrides(preset, undefined, useCatalogStore()).preset
+      const { preset: lockedPreset, locked: lockedSlots } = applySlotOverrides(
+        preset,
+        options.slotOverridesByPreset?.[preset.id] ?? NO_SLOT_OVERRIDES,
+        useCatalogStore(),
+      )
       applyAxisBinding(configStore, baseAxis, lockedPreset)
       // 每道**先摆房间**：Boss 数值按期取（无环境 = 当期，与改动前同一句、同一顺序）
       applyBossRoom(configStore, options.boss, lane.phase)
@@ -366,8 +380,17 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
       // 配装口径：套该队**预设基础金**的 `applyGoldSteps`（含 standardSteps 常驻步；缺省路径也走它，
       // 否则「预设基础档」会漏掉常驻步而出现两个数）。曲线**不提供**金数档覆盖——金数提升属于
       // 「提升率」类图表，不是难度曲线的事（用户 2026-09-10 口径）。
+      /**
+       * 基础金与基础音擎都取**合并后**的 `lockedPreset`：
+       * 页面写的配置码（如 `00` = 无专武 + 下位件）会改变这支队的基础金，
+       * 拿原始 `preset` 算会把「页面写进去的配置」当成不存在（金数标签与实穿不符）。
+       */
       const applied = applyGoldSteps(
-        lockedPreset.goldSteps, baseGoldOf(preset), baseGoldOf(preset), lockedPreset.standardSteps ?? [], presetBaseEngines(preset, useCatalogStore()),
+        lockedPreset.goldSteps,
+        baseGoldOf(lockedPreset),
+        baseGoldOf(lockedPreset),
+        lockedPreset.standardSteps ?? [],
+        lockedPreset.wEngines ?? presetBaseEngines(lockedPreset, useCatalogStore()),
       )
       /**
        * `base` 回调每档都会重摆队伍（`applyTeamToStore` + `applyGoldAllocationToStore`），
@@ -375,10 +398,12 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
        */
       const lockSlots = (config: ConfigModel): void => {
         for (let s = 0; s < 3; s++) {
-          const c = preset.slotCodes?.[s]
+          const c = lockedSlots[s]
           if (!c) continue
           config.setCinemaLevel(s, c.cinema)
-          config.setWEngineModLevel(s, c.wengine)
+          // 右位 0（无专武）⇒ 精炼取 1：游戏里没有精炼 0，且音擎已在 `lockedPreset.wEngines`
+          // 里换成下位件（指定件 / 下位表第一件），不是"没带武器"。
+          config.setWEngineModLevel(s, Math.max(1, c.wengine))
         }
       }
       const ladder = climbDifficultyLadder({ config: configStore, calc, absorbCap: userAbsorbCap }, preset.team, {

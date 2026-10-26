@@ -21,6 +21,7 @@ import { catalogGoldSteps, goldStepsForPreset } from '@/composables/goldStepsFro
 import type { BossPresetFile } from '@/types/bossPreset'
 import type { TeamPreset } from '@/types/teamPreset'
 import type { SetupCode } from '@/utils/setupCode'
+import { defaultDowngradeFor } from '@/data/downgradeWEngines'
 
 const bossData = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as BossPresetFile
 const BOSS = bossData.bosses[0]!
@@ -54,8 +55,9 @@ describe('applySlotOverrides（纯函数）', () => {
     expect(r.preset.goldSteps.map(s => s.slot)).toEqual([1])
     expect(r.locked[0]).toEqual({ cinema: 2, wengine: 1 })
     expect(r.locked[1]).toBeNull()
-    // 右位 0 = 无专武 ⇒ 精炼规整成 1（游戏里没有精炼 0）
-    expect(r.locked[2]).toEqual({ cinema: 0, wengine: 1 })
+    // 右位 0 = 无专武 ⇒ **保留 wengine: 0**（下游 lockSlots 把精炼设 1，音擎另由 wEngines 决定；
+    // 抹成 1 会让「无专武」这条信息丢失 ⇒ 用户填 00 也照样穿专武，2026-10-26 修）
+    expect(r.locked[2]).toEqual({ cinema: 0, wengine: 0 })
   })
 
   it('② 锁了标准步（standardSteps）也要剔除', () => {
@@ -119,6 +121,25 @@ describe('computeTeamComparePoints（逐槽锁定接线）', () => {
     expect(pts.length).toBeGreaterThan(1)
     // 伤害单调不减（多花一金不能变低）
     for (let i = 1; i < pts.length; i++) expect(pts[i]!.damage).toBeGreaterThanOrEqual(pts[i - 1]!.damage)
+  })
+
+  it('★ 右位 0（无专武）⇒ 穿下位件，不留空音擎；点名则用点名那件', async () => {
+    const h = await setupHarness([{ agentId: '1511' }, { agentId: '1561' }, { agentId: '1581' }])
+    await h.catalog.loadBuildRecommendations()
+    const preset = { ...PRESET, wEngines: undefined }
+    const catalog = h.catalog
+    // ① 不点名 ⇒ 走 data/downgradeWEngines 的角色表 → 职业表第一件
+    const auto = applySlotOverrides(preset, [code(0, 0), null, null], catalog)
+    const autoEngine = auto.preset.wEngines?.[0]
+    expect(autoEngine, '00 不许留空音擎（空 = 没带武器，实测比下位低 34~41%）').toBeTruthy()
+    expect(autoEngine).toBe(defaultDowngradeFor('1571', catalog.getAgent('1571')?.specialty))
+    expect(auto.locked[0]).toEqual({ cinema: 0, wengine: 0 }) // 保留 wengine 0（= 无专武），供 UI 判「需要选下位」
+    // ② 点名 ⇒ 用点名那件
+    const named = applySlotOverrides(preset, [{ cinema: 0, wengine: 0, downgradeWEngineId: '13020' }, null, null], catalog)
+    expect(named.preset.wEngines?.[0]).toBe('13020')
+    // ③ 右位 ≥1 ⇒ 仍是专武（下位件不生效）
+    const sig = applySlotOverrides(preset, [{ cinema: 2, wengine: 1, downgradeWEngineId: '13020' }, null, null], catalog)
+    expect(sig.preset.wEngines?.[0]).not.toBe('13020')
   })
 
   it('②③ 锁一个槽 ⇒ 该槽最终配置 = 配置码，且金数按最终配置算', async () => {

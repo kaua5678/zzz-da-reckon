@@ -24,6 +24,8 @@ import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/res
 import { teamPresets } from '@/data/teamPresets'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
+import type { SlotOverrides } from '@/composables/presetSlotOverrides'
+import type { TeamPreset } from '@/types/teamPreset'
 
 beforeEach(() => {
   newPinia()
@@ -399,6 +401,42 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
         .toBeGreaterThanOrEqual(pts[i - 1]!.x - 1e-9)
     }
   }, 300_000)
+})
+
+describe('每队配置码覆盖（用户 2026-10-26：「我从上面勾选的队伍也能写配置码」）', () => {
+  it('★ slotOverridesByPreset：写了码的队按码算，没写的队逐位不变', async () => {
+    const h = await setupHarness([{ agentId: '1571' }, { agentId: '1211' }, { agentId: '1611' }])
+    await h.catalog.loadBuildRecommendations()
+    const boss = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')).bosses[0] as BossPreset
+    const base: TeamPreset = { id: 'p1', name: 'p1', team: ['1571', '1211', '1611'], goldSteps: [], interactions: [] }
+    const untouched: TeamPreset = { ...base, id: 'p2', name: 'p2' }
+    const run = (opts: Partial<DifficultyCurveOptions>) => withAnalysisScenario(s => computeDifficultyCurves(s, {
+      presets: [base, untouched], boss, phase: boss.phases[0]!, ...opts,
+    }))
+    // ① 不传覆盖 ⇒ 两队同配置，起点伤害相同
+    const plain = await run({})
+    expect(plain[0]!.ladder.points[0]!.dmg).toBeCloseTo(plain[1]!.ladder.points[0]!.dmg, -3)
+    // ② 给 p1 写 11（1命+专武本体），p2 不写 ⇒ p1 变高、p2 不变
+    const withOverride = await run({ slotOverridesByPreset: { p1: [{ cinema: 1, wengine: 1 }, null, null] } })
+    expect(withOverride[0]!.ladder.points[0]!.dmg).toBeGreaterThan(plain[0]!.ladder.points[0]!.dmg)
+    expect(withOverride[1]!.ladder.points[0]!.dmg).toBeCloseTo(plain[1]!.ladder.points[0]!.dmg, -3)
+  }, 600_000)
+
+  it('★ 填 00（无专武）也真的换了音擎：自动下位 ≠ 点名某件，且都低于专武本体', async () => {
+    const h = await setupHarness([{ agentId: '1571' }, { agentId: '1211' }, { agentId: '1611' }])
+    await h.catalog.loadBuildRecommendations()
+    const boss = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')).bosses[0] as BossPreset
+    const base: TeamPreset = { id: 'p', name: 'p', team: ['1571', '1211', '1611'], goldSteps: [], interactions: [] }
+    const dmgWith = (override: Record<string, SlotOverrides>) => withAnalysisScenario(s => computeDifficultyCurves(s, {
+      presets: [base], boss, phase: boss.phases[0]!, slotOverridesByPreset: override,
+    }))
+    const sig = (await dmgWith({ p: [{ cinema: 1, wengine: 1 }, null, null] }))[0]!.ladder.points[0]!.dmg
+    const auto = (await dmgWith({ p: [{ cinema: 0, wengine: 0 }, null, null] }))[0]!.ladder.points[0]!.dmg
+    const named = (await dmgWith({ p: [{ cinema: 0, wengine: 0, downgradeWEngineId: '13020' }, null, null] }))[0]!.ladder.points[0]!.dmg
+    // 专武本体 > 下位；自动下位与点名件是两把不同的武器 ⇒ 数值不同（证明「在哪选下位」真的有效）
+    expect(sig).toBeGreaterThan(auto)
+    expect(named).not.toBe(auto)
+  }, 900_000)
 })
 
 describe('时间压力 = 硬溢出 + 合轴抵扣（用户 2026-09-11：合轴让溢出降低，这俩其实是一个东西）', () => {

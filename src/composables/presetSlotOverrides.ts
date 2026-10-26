@@ -27,11 +27,11 @@
  * 96 个预设里 `standardSteps` 使用数为 **0**。本模块对常驻/限定一视同仁（金数按
  * `teamGoldOf` 如实算，常驻天然不占金），所以配置码对它们同样直接可用。
  */
-import type { GoldStep, TeamPreset } from '@/types/teamPreset'
+import type { GoldStep, SlotCodeSpec, TeamPreset } from '@/types/teamPreset'
 import type { useCatalogStore } from '@/stores/catalog'
 import { signatureWEngineOf } from '@/composables/signatureWEngine'
 import { presetBaseEngines } from '@/composables/goldStepsFromCatalog'
-import type { SetupCode } from '@/utils/setupCode'
+import { defaultDowngradeFor } from '@/data/downgradeWEngines'
 
 type Catalog = ReturnType<typeof useCatalogStore>
 
@@ -43,8 +43,17 @@ export interface SlotLockState {
   wengine: number
 }
 
-/** 三个槽位的锁定（`null` = 该槽不锁，走预设/加金） */
-export type SlotOverrides = readonly [SetupCode | null, SetupCode | null, SetupCode | null]
+/**
+ * 三个槽位的锁定（`null` = 该槽不锁，走预设/加金）。
+ *
+ * 2026-10-26 起支持**第三位**：`{ cinema, wengine, downgradeWEngineId? }` ——
+ * 右位 0（无专武）时必须能指定「穿哪件下位」，否则用户填了 00 就只能猜引擎挑了什么
+ * （用户原话：「填00或者其他不带专武的配置时，我在哪里勾选下位武器呢？」）。
+ */
+export type SlotOverrides = readonly [SlotLockSpec | null, SlotLockSpec | null, SlotLockSpec | null]
+
+/** 一个槽的锁定：配置码 + （右位 0 时）指定的下位音擎 id。形状与 `TeamPreset.slotCodes` 同一份声明。 */
+export type SlotLockSpec = SlotCodeSpec
 
 /** 无锁定（页面缺省；同一份常量给测试与页面共用，避免各写一份 [null,null,null]） */
 export const NO_SLOT_OVERRIDES: SlotOverrides = [null, null, null]
@@ -82,7 +91,12 @@ export function applySlotOverrides(
   const pageLocked = ([0, 1, 2] as const).map(s => pageOverrides[s] !== null)
   const lockedSlot = (slot: number): boolean => overrides[slot] !== null
   const drop = (s: GoldStep): boolean => !lockedSlot(s.slot)
-  const locked = overrides.map(o => (o ? { cinema: o.cinema, wengine: Math.max(1, o.wengine) } : null)) as
+  /**
+   * 保留 `wengine: 0`（无专武）——下游 `lockSlots` 用它把精炼设为 1（游戏里没有精炼 0），
+   * 音擎则由上面的 `wEngines` 决定（指定下位 / 留空给自动下位）。
+   * ⚠ 旧实现把它规整成 1 并丢掉「无专武」这条信息 ⇒ 用户填 00 也照样穿专武（2026-10-26 修）。
+   */
+  const locked = overrides.map(o => (o ? { cinema: o.cinema, wengine: o.wengine } : null)) as
     unknown as readonly [SlotLockState | null, SlotLockState | null, SlotLockState | null]
   /**
    * 锁定槽的音擎也要跟着码落定 —— 否则金数算不到它：
@@ -100,7 +114,22 @@ export function applySlotOverrides(
       const lock = locked[s]
       const agentId = preset.team[s]
       if (!lock || !agentId) continue
-      wEngines[s] = lock.wengine >= 1 ? (signatureWEngineOf(catalog, agentId)?.id ?? '') : ''
+      /**
+       * 右位 ≥1 ⇒ 戴该角色专武（精炼 = 右位）。
+       * 右位 **0（无专武）** ⇒ 必须穿**某件下位**，**绝不留空**：
+       *  · 用户点名了 `downgradeWEngineId` ⇒ 用他选的那件；
+       *  · 没点名 ⇒ 走 `data/downgradeWEngines` 的角色表 → 职业表第一件
+       *    （用户 2026-10-26：「想找下位也有默认下位表，找不到再启动更重的算法」）。
+       * ⚠ 空音擎实测比下位低 34~41%（那是「没带武器」而不是「没抽专武」）⇒ 留空是错数，不是"更保守"。
+       */
+      if (lock.wengine >= 1) {
+        wEngines[s] = signatureWEngineOf(catalog, agentId)?.id ?? ''
+      } else {
+        const picked = overrides[s]?.downgradeWEngineId
+        wEngines[s] = picked
+          || defaultDowngradeFor(agentId, catalog.getAgent(agentId)?.specialty)
+          || ''
+      }
     }
   }
   return {

@@ -113,6 +113,22 @@ export interface TeamAltAxis {
 }
 
 /** 预设队伍 */
+/**
+ * 一个槽位的固定配置（配置码 + 可选的下位音擎）。
+ *
+ * `wengine` 右位语义（与 `utils/setupCode` 逐字同源）：**≥1 = 该角色专武精炼 N**；**0 = 无专武**，
+ * 此时可选 `downgradeWEngineId` 指定穿哪件下位——不指定就走 `data/downgradeWEngines` 的
+ * 角色表 → 职业表第一件（用户 2026-10-26：「填 00 或者其他不带专武的配置时，我在哪里勾选下位武器呢？」）。
+ */
+export interface SlotCodeSpec {
+  /** 影画 0-6 */
+  cinema: number
+  /** 精炼 0-5（0 = 无专武；1-5 = 专武精炼档） */
+  wengine: number
+  /** 下位音擎 id（仅 `wengine === 0` 生效；缺省 = 走默认下位表） */
+  downgradeWEngineId?: string
+}
+
 export interface TeamPreset {
   /** 唯一 id（英文 kebab） */
   id: string

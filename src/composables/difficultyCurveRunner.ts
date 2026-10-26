@@ -111,6 +111,12 @@ export interface CurveRunRequest {
    * 缺省 false ⇒ 载荷与行为与改动前逐字节相同；开启后每点多一次完整求值（点 1~4）。
    */
   collectNoAxis?: boolean
+  /**
+   * **每队配置码覆盖**（用户 2026-10-26：「我从上面勾选的队伍也能写配置码」）。
+   * `presetId → SlotOverrides`；纯数据（worker 边界可 clone）。
+   * 缺省不传 ⇒ 逐位不变（只有预设自带 `slotCodes` 生效）。
+   */
+  slotOverridesByPreset?: Record<string, import('@/composables/presetSlotOverrides').SlotOverrides>
 }
 
 /** 请求里的环境表 → `DifficultyCurveOptions.environment`（主线程回落 / worker 两条路径共用，防止口径漂移） */
@@ -381,6 +387,7 @@ async function runOnMainThread(req: CurveRunRequest, hooks: CurveRunHooks): Prom
       environment: environmentOptions(req),
       collectScenes: req.collectScenes,
       collectNoAxis: req.collectNoAxis,
+      ...(req.slotOverridesByPreset ? { slotOverridesByPreset: req.slotOverridesByPreset } : {}),
     })))
   }
   return { rows, aborted: false, usedWorker: false }
