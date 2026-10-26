@@ -14,8 +14,8 @@ import {
 
 async function setup(chainEntryCount?: number) {
   const result = await setupHarness([
-    { agentId: '1411', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: '1171', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: '1411', parryCount: 0, dodgeCounterCount: 0 },
+    { agentId: '1171', parryCount: 0, dodgeCounterCount: 0 },
     '',
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false
@@ -127,7 +127,7 @@ describe('柚叶（1411）甜度点与狸之愿', () => {
 
   it('buildExecutions 推硬糖/彩糖/·极后台行；十人十色转积蓄走行级 element', async () => {
     await setupHarness([
-      { agentId: '1411', cinemaLevel: 6, parryCount: 3, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1411', cinemaLevel: 6, parryCount: 3, dodgeCounterCount: 0 },
       '', '',
     ])
     const executions: any[] = []

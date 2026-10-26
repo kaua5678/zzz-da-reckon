@@ -89,19 +89,6 @@
               />
             </div>
           </n-gi>
-          <n-gi>
-            <div class="param-item">
-              <div class="param-label">快速支援（全队）</div>
-              <n-input-number
-                :value="totalQuickAssistCount"
-                size="small"
-                :min="0"
-                :max="99"
-                disabled
-                :placeholder="String(totalQuickAssistCount)"
-              />
-            </div>
-          </n-gi>
         </n-grid>
       </n-card>
 
@@ -553,11 +540,6 @@
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.dodgeCounter) }}</span>
               <span class="pool-stat-detail">{{ unitPriceText(DODGE_COUNTER_DECIBEL_BONUS) }}</span>
             </div>
-            <div class="pool-stat">
-              <span class="pool-stat-label">快速支援 ({{ fmt(sumOf(specialActionBonus.perSlotQuickAssist), 1) }}次)</span>
-              <span class="pool-stat-value">+{{ fmt(specialActionBonus.quickAssist) }}</span>
-              <span class="pool-stat-detail">{{ unitPriceText(QUICK_ASSIST_DECIBEL_BONUS) }}</span>
-            </div>
             <div class="pool-stat bonus">
               <span class="pool-stat-label">总计</span>
               <span class="pool-stat-value">+{{ fmt(specialActionBonus.total) }}</span>
@@ -836,7 +818,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { fmt } from '@/utils/format'
 import { teamPoolSummaries } from '@/composables/agentMechanicView'
-import { PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS, QUICK_ASSIST_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
+import { PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 import { DECIBEL_COMPANION_RATIO } from '@/data/decibelCompanion'
 import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
@@ -961,9 +943,6 @@ const totalParryCount = computed(() =>
 )
 const totalDodgeCount = computed(() =>
   configStore.team.reduce((sum, c) => sum + (c.dodgeCounterCount ?? 0), 0),
-)
-const totalQuickAssistCount = computed(() =>
-  configStore.team.reduce((sum, c) => sum + (c.quickAssistCount ?? 0), 0),
 )
 
 // 全队时间分配汇总：账本口径（引擎收费）与物化口径（真打出去的动作行）并列 + 留白归因。

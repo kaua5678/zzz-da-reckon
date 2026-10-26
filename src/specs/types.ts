@@ -39,7 +39,7 @@ export interface ResourceRuleSpec {
   amount?: string | number
   amountPerCount?: number
   count?: number
-  countSource?: 'exSpecialCount' | 'energySpent' | 'ultimateCount' | 'basicTime' | 'frontlineTime' | 'backstageTime' | 'battleTime' | 'chainCountTotal' | 'dodgeCounterCount' | 'parryCount' | 'blockCount' | 'perfectBlockCount' | 'quickAssistCount' | 'teamFrontlineSeconds' | 'fixed' | 'teamAssaultCount' | 'disorderCount' | 'frostburnBreakCount' | 'basicAttackCount' | 'baseSparkCount' | 'totalSparkCount' | 'cfgField'
+  countSource?: 'exSpecialCount' | 'energySpent' | 'ultimateCount' | 'basicTime' | 'frontlineTime' | 'backstageTime' | 'battleTime' | 'chainCountTotal' | 'dodgeCounterCount' | 'parryCount' | 'blockCount' | 'perfectBlockCount' | 'teamFrontlineSeconds' | 'fixed' | 'teamAssaultCount' | 'disorderCount' | 'frostburnBreakCount' | 'basicAttackCount' | 'baseSparkCount' | 'totalSparkCount' | 'cfgField'
     /** 说明性取值：spec 资源通道不解析（resolveGainCount 落 default 计 0），数值由手写模块算——'holdSeconds' 1571 诺姆（设置项 norma.holdSeconds）、'none' 1611 克拉蕾（招式级积攒 / 入场一次）、'windEnergyConsumed' 1621 洛克茜（roxy.ts 风能消耗） */
     | 'holdSeconds' | 'none' | 'windEnergyConsumed'
   /** countSource='cfgField' 时读取的 cfg 字段名（模块写入，如星徽·比利招式命中决意合计） */

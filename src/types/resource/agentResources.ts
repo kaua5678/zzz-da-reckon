@@ -199,8 +199,6 @@ export interface SpecialActionBonusResult {
   chain: number
   /** 闪避反击喧响 = dodgeCounterCount × 10 */
   dodgeCounter: number
-  /** 快速支援喧响 = quickAssistCount × 20 */
-  quickAssist: number
   /** 总计（仅完整奖励，不含伴随重复获得） */
   total: number
   /** 各角色弹刀次数 */
@@ -209,8 +207,6 @@ export interface SpecialActionBonusResult {
   perSlotChain: number[]
   /** 各角色闪避反击次数 */
   perSlotDodgeCounter: number[]
-  /** 各角色快速支援次数 */
-  perSlotQuickAssist: number[]
   /** 各角色获得的特殊动作喧响（含伴随） */
   perSlotBonus: number[]
 }

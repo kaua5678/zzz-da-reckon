@@ -61,7 +61,6 @@ export interface CharacterConfig {
   yixuanInk3Count?: number  // 仪玄·3连墨痕化形次数（#1+#3+#4，60闪能/次；≤0=自动=剩余闪能全打3连，≥1 手填）
   yixuanPerfectBlockCount?: number  // 仪玄·完美格挡次数（#2 赠送 + 回10闪能/次；≤0=自动=弹刀次数全完美，≥1 手填）
   yixuanExtremeAssistCount?: number  // 仪玄·极限支援换场次数（落雷 225% 贯穿力 + 5闪能/次；缺省 -1 = 自动取队友弹刀和上限）
-  quickAssistCount: number  // 快速支援次数（per-character）
   chainCountPerStun: number  // 每次失衡的连携次数（per-character；setAgent 预填 ASSIST_ACTION_BASELINE.chainPerStun = 1，CC-264）
   basicAttackTimeWeight: number // 平A时间分配权重（0=不分配平A时间）
 }
@@ -176,7 +175,6 @@ function defaultCharacter(slot: number, agentId: string, element: string): Chara
     yixuanInk3Count: 0, // ≤0 = 自动：剩余闪能全部轴外打 3 连墨痕化形（60/次）；≥1 手填
     yixuanPerfectBlockCount: 0, // ≤0 = 自动：全完美格挡 = 弹刀次数（+10 闪能/次）；≥1 手填
     yixuanExtremeAssistCount: -1,
-    quickAssistCount: 0,
     chainCountPerStun: 0,
     basicAttackTimeWeight: 1,
   }
@@ -201,7 +199,6 @@ export const ACTION_COUNT_BOUNDS = {
   dodgeCounterCount: { min: 0, max: 99 },
   blockCount: { min: 0, max: 99 },
   dualCounterCount: { min: 0, max: 99 },
-  quickAssistCount: { min: 0, max: 99 },
   chainCountPerStun: { min: 0, max: 3 },
   basicAttackTimeWeight: { min: 0, max: 99 },
   assaultOrderCount: { min: 0, max: 999 },
@@ -233,16 +230,19 @@ export function clampActionCount(field: ActionCountField, count: number): number
 
 
 /**
- * **快支 / 连携基准**（CC-264 单一来源；setAgent 预填、轻量装配 teamTimelineStore、部署 runArchiveDeploy 共用）。
+ * **连携基准**（CC-264 单一来源；setAgent 预填、轻量装配 teamTimelineStore、部署 runArchiveDeploy 共用）。
  *
- * @fact engine:快支/连携基准 口径: 快速支援默认 0（全角色无例外）、连携次数默认 1 但支援/防护为 0——「快支本身和平A差不多，不需要加快支」+「辅助的连携次数也该是 0」（辅助上场的连携位应让给主C/击破）；修前 3/1 是 2026-08-30 的部署口径「快支固定 3 作为喧响基础供给」，已作废 | 据 用户@2026-10-18「快支全角色都默认0，改一下。辅助的连携次数也该是0」·复核@2026-10-18 | 验 src/composables/__tests__/presetLoopActionCounts.test.ts | 锚 src/stores/config.ts#ASSIST_ACTION_BASELINE | 信 确认
- * ⟳复核: 官方若给快支/连携新的基础供给口径（如新角色自带连携位）→ 重核本基准与 `chainBaselineFor` 的职业轴 | 到期 2027-03-31
+ * @fact engine:连携基准 口径: 连携次数默认 1 但支援/防护为 0——「辅助的连携次数也该是 0」（辅助上场的连携位应让给主C/击破）；修前 1 是 2026-08-30 的部署口径，支援/防护归零是 2026-10-18 起 | 据 用户@2026-10-18「快支全角色都默认0，改一下。辅助的连携次数也该是0」·复核@2026-10-18·复核@2026-10-26（快支字段连同本常量那一臂已整体删除） | 验 src/composables/__tests__/presetLoopActionCounts.test.ts | 锚 src/stores/config.ts#ASSIST_ACTION_BASELINE | 信 确认
+ * ⟳复核: 官方若给连携新的基础供给口径（如新角色自带连携位）→ 重核本基准与 `chainBaselineFor` 的职业轴 | 到期 2027-03-31
  *
  * 为什么仍要「setAgent 预填」而不是「继承用户值」：散点 / 难度曲线 / 定位对比对 auto 预设若继承用户
  * store 里的隐藏值（新用户 = defaultCharacter 0/0），同一支队在不同页面口径不同（CC-264 的原始动机）。
- * 回退：setAgent 删两行赋值即回到「继承用户值」。
+ * 回退：setAgent 删那行赋值即回到「继承用户值」。
+ *
+ * ⚠ 2026-10-26：本常量原有的 `quickAssist: 0` 一臂随 `CharacterOperationConfig.quickAssistCount` 整体删除
+ * （用户裁决「手动快支全都删了，这机制过时了」）——快支不再是可填的交互次数，没有「默认几次」可言。
  */
-export const ASSIST_ACTION_BASELINE = { quickAssist: 0, chainPerStun: 1 } as const
+export const ASSIST_ACTION_BASELINE = { chainPerStun: 1 } as const
 
 /**
  * 连携基准按职业取（ASSIST_ACTION_BASELINE.chainPerStun 的「支援 / 防护 = 0」臂）：
@@ -632,9 +632,8 @@ export function createConfigModel(
       char.dodgeCounterCount = base.dodge
       char.blockCount = base.block
       char.dualCounterCount = base.dual
-      // CC-264：快支 / 连携按单一来源预填（预设显式声明仍在其后覆盖）。
-      // 用户 2026-10-18：快支全角色默认 0、支援/防护连携默认 0（见 ASSIST_ACTION_BASELINE 的 @fact）。
-      char.quickAssistCount = ASSIST_ACTION_BASELINE.quickAssist
+      // CC-264：连携按单一来源预填（预设显式声明仍在其后覆盖）。
+      // 用户 2026-10-18：支援/防护连携默认 0（见 ASSIST_ACTION_BASELINE 的 @fact）。
       char.chainCountPerStun = chainBaselineFor(agent.specialty)
 
       // 自动推荐音擎：优先该角色的专属音擎（ownerAgentId），其次同职业第一个 S 级，最后任意 S 级

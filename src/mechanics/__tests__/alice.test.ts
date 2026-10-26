@@ -12,8 +12,8 @@ import { aliceMechanic } from '@/mechanics/agents/alice'
 /** 爱丽丝（物理）+ 格莉丝（电异常，触发额外能力） */
 async function setup(cinemaLevel = 0) {
   const result = await setupHarness([
-    { agentId: '1401', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: '1401', cinemaLevel, parryCount: 0, dodgeCounterCount: 0 },
+    { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false
   return result
@@ -92,9 +92,9 @@ describe('CC-19b：爱丽丝异常附加行进伤害池（extraAnomalyRows 派�
   it('极性强击行 polar-assault-damage 与畏缩行 alice-cowering-dot 进伤害池', async () => {
     // 爱丽丝(物理) + 格莉丝(电异常) + 11号(火强攻)：多属性 ⇒ 剑意攒满触发星芒圆舞曲#3 赠送极性强击
     await setupHarness([
-      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1041', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1041', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ], { recommendedBuild: true })
     const calc = useResourceCalc()
     const polar = calc.damagePoolRows.value.find(r => r.id === 'polar-assault-damage')
@@ -144,9 +144,9 @@ describe('爱丽丝剑仪外部次数源（全队强击 / 紊乱）', () => {
   /** 爱丽丝(物理) + 格莉丝(电异常) + 11号(火强攻)：多属性 ⇒ 会紊乱；有物理 ⇒ 会强击 */
   async function setupMulti() {
     const r = await setupHarness([
-      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1041', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1041', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ], { recommendedBuild: true })
     for (const buff of r.config.globalBuffs) buff.enabled = false
     return r
@@ -181,8 +181,8 @@ describe('爱丽丝剑仪外部次数源（全队强击 / 紊乱）', () => {
     // ⚠ 必须**双向**断言：只断「未过=0」的话，整条通道死掉（永远 0）时该用例也是绿的 ——
     //   那正是本次要修的那个 bug 的形态，不能再用它当判据。
     const { config } = await setupHarness([
-      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1041', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1041', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ], { recommendedBuild: true })
     for (const buff of config.globalBuffs) buff.enabled = false
     // 该队型不满足额外能力（无第二名单异常/支援）⇒ 紊乱收入 0
@@ -207,9 +207,9 @@ describe('爱丽丝剑仪外部次数源（全队强击 / 紊乱）', () => {
   it('★ 强击只算爱丽丝自己触发的（原文主语「爱丽丝」，队友触发的不给）', async () => {
     // 柚叶(1411 支援·物理) 会自己打出物理强击 ⇒ team 口径与 self 口径必然不同
     const { config } = await setupHarness([
-      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1411', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1031', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1411', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1031', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ], { recommendedBuild: true })
     for (const buff of config.globalBuffs) buff.enabled = false
     const { calc, src } = srcOf()

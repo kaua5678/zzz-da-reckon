@@ -20,7 +20,8 @@ export interface GoldStep {
 
 /**
  * 交互条目：一种操作类型及其次数（决定横轴难度，预设队伍手填固定值）。
- * 内置类型：parry(弹刀) / dodge(闪避反击) / quickAssist(快速支援)。
+ * 内置类型：parry(弹刀) / dodge(闪避反击)。
+ * （quickAssist(快速支援) 已于 2026-10-26 整体删除：手动快支下线，它对应的 `quickAssistCount` 字段不存在了。）
  * 角色专属交互用自定义 type（如 banyueGoldenParry 般岳金身弹刀），
  * 难度权重查 INTERACTION_WEIGHTS，条目可 weight 覆盖。
  */
@@ -230,13 +231,8 @@ export const INTERACTION_WEIGHTS: Record<string, number> = {
   // 反制支援（角力整组化解一组控制技）：用户口径 2026-09-12「角力的操作就是一次弹刀而已，计同等权重就行，确实不难」
   counterAssist: 1.0,
   dodge: 1.2, // 闪避反击
-  // 快速支援（用户口径 2026-10-12，T141）：「**快支完全不算交互**，快支的 dps 低于普攻，**不该算成交互**，
-  // 一开始我设置快支只是为了吃一些 buff」⇒ 难度权重归 **0**。
-  // ⚠ **只改难度口径，引擎通道一字未动**：快支仍照常参与资源/伤害计算（它吃的 buff 是真的），
-  // 只是不再给 x 轴贡献难度点。`computeDifficulty` 对 `weight <= 0` 的项：值算作 `c*0 = 0`（不进总分），
-  // 明细里也不列（见该函数 `if (weight <= 0) continue`）⇒ 判据「伤害/资源与改前逐位相同」由
-  // `timeGolden` 零 delta 证明（权重表在引擎侧零消费者）。
-  quickAssist: 0, // 快速支援（不计难度；引擎通道不动）
+  // 快速支援（原 `quickAssist: 0`）整条删除（2026-10-26）：字段 `quickAssistCount` 已删，
+  // 交互条目 / 引擎映射 / 难度权重三处同步下线（此前权重已是 0，删条目不改任何难度读数）。
   block: 1.0, // 格挡（星徽·比利动力压制期间格挡等）
   banyueGoldenParry: 1.5, // 般岳金身弹刀（角色专属交互示例）
   banyueDualCounter: 2.0, // 般岳双反（完美闪避+金身弹刀组合，一次攻击吃两下交互）

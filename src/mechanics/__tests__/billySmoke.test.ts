@@ -53,7 +53,6 @@ describe('星徽·比利链数实数化（1051/1431 targeted 骨架，2026-09-06
       billyAttackData0: {},
       dodgeCounterCount: 0,
       parryCount: 0,
-      quickAssistCount: 0,
       battleTime: 180,
       blockCount: 0,
     } as unknown as CharacterOperationConfig

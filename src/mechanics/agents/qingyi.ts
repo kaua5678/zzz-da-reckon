@@ -174,7 +174,6 @@ function buildQingyiCharConfig({ cinemaLevel, skills, cfg }: AgentCharConfigInpu
   const dodge = skills.categories.find(c => c.id === 'dodge')
   cfg.qingyiDodgeCounterVoltage = sumVoltage((dodge?.moves ?? []).filter(m => (m.name.en ?? '').toLowerCase().includes('dodge counter')))
   const assist = skills.categories.find(c => c.id === 'assist')
-  cfg.qingyiQuickAssistVoltage = sumVoltage((assist?.moves ?? []).filter(m => (m.name.en ?? '').toLowerCase().includes('quick assist')))
   cfg.qingyiAssistFollowUpVoltage = sumVoltage((assist?.moves ?? []).filter(m => (m.name.en ?? '').toLowerCase().includes('assist follow-up')))
 }
 
@@ -208,7 +207,6 @@ export function computeQingyiSource(cfg: AgentResourceInput['cfg'], state: { exS
     + Math.max(0, Math.floor(state.ultimateCount)) * Number(cfg.qingyiUltimateVoltage ?? 0)
     + Math.max(0, Math.floor(state.chainCountTotal)) * Number(cfg.qingyiChainVoltage ?? 0)
     + Math.max(0, cfg.dodgeCounterCount) * Number(cfg.qingyiDodgeCounterVoltage ?? 0)
-    + Math.max(0, cfg.quickAssistCount) * Number(cfg.qingyiQuickAssistVoltage ?? 0)
     + Math.max(0, cfg.parryCount) * Number(cfg.qingyiAssistFollowUpVoltage ?? 0)) * efficiency
 
   // 时间预算（用户口径 2026-08：4 失衡 8 轮醉花，一煞#4 补电压不能无限打）：
@@ -440,7 +438,6 @@ declare module '@/types/resource/config' {
     qingyiUltimateVoltage?: number
     qingyiChainVoltage?: number
     qingyiDodgeCounterVoltage?: number
-    qingyiQuickAssistVoltage?: number
     qingyiAssistFollowUpVoltage?: number
     /** 青衣影画4·稳态电弧屏障：回能冷却间隔（10秒） */
     qingyiC4TriggerInterval?: number

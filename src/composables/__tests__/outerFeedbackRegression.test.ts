@@ -36,7 +36,7 @@ vi.mock('@/composables/resourceCalc/outerCycle', async (importOriginal) => {
 describe('外层反馈的相位接线', () => {
   it('判环收到的是本轮输出快照，不是尚未更新的上轮签名', async () => {
     const { config } = await setupHarness([
-      { agentId: '1591', cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12, quickAssistCount: 4,
+      { agentId: '1591', cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12,
         chainCountPerStun: 2, blockCount: 4, perfectBlockCount: 5 },
       { agentId: '1011', cinemaLevel: 6 }, { agentId: '1211', cinemaLevel: 6 },
     ])

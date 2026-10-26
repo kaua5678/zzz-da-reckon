@@ -14,8 +14,7 @@ import {
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
-  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
-  quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
+  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
 }
 
 // CC-409：六段 actionTime 来自 cfg.moveActionTimes（引擎由 catalog 预填）；测试从 catalog 取真值构造

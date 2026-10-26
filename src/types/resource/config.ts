@@ -149,8 +149,6 @@ export interface CharacterOperationConfig {
   parryDecibelOnlyCount: number
   /** 闪避反击次数（per-character） */
   dodgeCounterCount: number
-  /** 快速支援次数（per-character） */
-  quickAssistCount: number
   /** 自动闪避触发次数（per-character；a4 起手瞬间 / 前三段受击 ⇒ 打断该轮 a4 自动发动烈旋） */
   autoEvadeCount: number
   /** 强特完美格挡次数（主页交互栏填写；佩洛伊斯日珥回复来源） */

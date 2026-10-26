@@ -31,7 +31,6 @@ export interface SpecResourceContext {
   chainCountTotal?: number
   dodgeCounterCount?: number
   parryCount?: number
-  quickAssistCount?: number
   teamFrontlineSeconds?: number
 }
 
@@ -219,8 +218,6 @@ function resolveGainCount(
     case 'perfectBlockCount':
       // 强特完美格挡次数（主页交互栏填写；佩洛伊斯日珥回复来源）
       return Math.max(0, cfg.perfectBlockCount)
-    case 'quickAssistCount':
-      return Math.max(0, cfg.quickAssistCount)
     case 'teamFrontlineSeconds':
       return Math.max(0, context.teamFrontlineSeconds ?? 0)
     case 'fixed':

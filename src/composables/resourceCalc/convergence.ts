@@ -782,7 +782,6 @@ export function createRunCalcRound(deps: {
           blockCount: c.blockCount,
           dodgeCounterCount: c.dodgeCounterCount,
           dualCounterCount: c.dualCounterCount ?? 0,
-          quickAssistCount: c.quickAssistCount,
           chainCountPerStun: c.chainCountPerStun,
         }])),
       },
@@ -817,18 +816,13 @@ export function createRunCalcRound(deps: {
     const parryForBonus = [0, 0, 0]
     for (const cfg of characters) parryForBonus[cfg.slot] = cfg.parryCount + cfg.parryNoFollowUpCount + cfg.parryDecibelOnlyCount
     // CC-227：整份保留并随本轮结果返回（展示层直读——此前 useResourceCalc 用 store 原值另拼一份，Boss 弹刀反推 / 连携口径会漂）
-    /**
-     * 快支次数（特殊动作喧响 20/次）= **0**：手动快支已下线（用户裁决 2026-10-26
-     * 「不是只读，直接删了就行，没人去填这个无关紧要招式的次数」）。
-     * 机制快支（莱特士气循环）不在这里结算——它作为**普通招式**走行内表值回能/喧响，
-     * 与弹刀那种「特殊动作奖励」是两笔不同口径。
-     */
-    const quickAssistForBonus = characters.map(() => 0)
+    // 快支通道（原 20 喧响/次）已随 `quickAssistCount` 字段删除（用户裁决 2026-10-26「手动快支全都删了」）：
+    // 机制快支（莱特士气循环）不在这里结算——它作为**普通招式**走行内表值回能/喧响，与弹刀那种
+    // 「特殊动作奖励」是两笔不同口径。
     const specialActionBonusRound = calcSpecialActionBonus(
       parryForBonus,
       perSlotChainForBonus,
       characters.map(cfg => cfg.dodgeCounterCount),
-      quickAssistForBonus,
     )
     const specialBonusPerSlot = specialActionBonusRound.perSlotBonus
     /**

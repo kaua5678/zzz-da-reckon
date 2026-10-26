@@ -574,20 +574,19 @@ export function resetDifficultyGoals(ctx: LadderCtx, team: [string, string, stri
  *
  * ## 清零范围 = 全部交互类型（单一事实源 = `ACTION_COUNT_BOUNDS` 的交互键）
  *
- * 包含弹刀/闪反/格挡/双反/快支/嘲讽取消/葬血打断/强特完美格挡/强袭训令/仪玄三件套（墨痕化形、
+ * 包含弹刀/闪反/格挡/双反/嘲讽取消/葬血打断/强特完美格挡/强袭训令/仪玄三件套（墨痕化形、
  * 完美格挡、极限支援、墨影凝云）与普罗米娅匿影——凡「用户操作换资源/伤害」的旋钮都归零。
  * **不碰** `chainCountPerStun` / `basicAttackTimeWeight`：前者是连携配置、后者是平A 分配，
  * 都不是「交互次数」（用户口径 4 的语境是「弹刀填 12 次」这类操作量）。
  *
- * ⚠ **快支也清零**（用户口径 3「快支完全不算交互」只针对**难度权重**）——① 是「全 0 交互」的
- * 难度下限，快支虽然不吃难度权重，但它仍是「用户主动按出来的操作」⇒ 一并归零才自洽；
- * 快支在 ②③④ 由自动分配重新引入（吃 buff 的价值在那里体现）。
+ * ⚠ 2026-10-26：名单里的**快速支援（`quickAssistCount`）已删**——手动快支整体下线后它不是「可填的
+ * 操作量」而是不存在的字段，不再有「① 清不清零」的问题（②③④ 也从未加回过它）。
  */
 export const INTERACTION_COUNT_KEYS = [
   'parryCount', 'dodgeCounterCount', 'blockCount', 'perfectBlockCount', 'assaultOrderCount',
   'dualCounterCount', 'tauntCancelCount', 'claretBurialInterruptCount',
   'yixuanInk2Count', 'yixuanInk3Count', 'yixuanPerfectBlockCount',
-  'promiaNiyingCount', 'quickAssistCount',
+  'promiaNiyingCount',
 ] as const
 
 /**

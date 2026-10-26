@@ -9,8 +9,7 @@ import { mechanicSettingCfgKey } from '@/utils/mechanicSettingCfg'
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: { 4: 'atkPct' as any, 5: 'fireDmg' as any, 6: 'critRate' as any }, subStatAllocation: {} },
-  parryCount: 10, dodgeCounterCount: 6, blockCount: 20,
-  quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
+  parryCount: 10, dodgeCounterCount: 6, blockCount: 20, chainCountPerStun: 0, basicAttackTimeWeight: 1,
 }
 
 describe('诺姆（1571）全管线冒烟：膛温/弹幕/炮塔/火力实验/命座（用户确认口径）', () => {

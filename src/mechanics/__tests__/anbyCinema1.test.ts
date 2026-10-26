@@ -6,8 +6,7 @@ import { useConfigStore } from '@/stores/config'
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: { 4: 'atkPct' as any, 5: 'physicalDmg' as any, 6: 'critRate' as any }, subStatAllocation: {} },
-  parryCount: 10, dodgeCounterCount: 6, blockCount: 20,
-  quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
+  parryCount: 10, dodgeCounterCount: 6, blockCount: 20, chainCountPerStun: 0, basicAttackTimeWeight: 1,
 }
 
 describe('安比（1011）影画1 快充模式：能量获得效率 +12% × 覆盖率', () => {

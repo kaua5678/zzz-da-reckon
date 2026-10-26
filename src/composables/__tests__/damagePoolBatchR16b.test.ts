@@ -215,8 +215,8 @@ describe('R15-b 跳①：可琳非轴折算进伤害池（精确 note + 滑块�
   it('非轴：滑块 1 → 「失衡增伤+35.0%（覆盖率近似）」；0.5 → 17.5；0 → 标记消失', async () => {
     // 队 [1061, 1021]：1021 同阵营 ⇒ 可琳额外能力触发；二槽无轴 ⇒ 非轴
     const { calc, config } = await calcOf([
-      { agentId: '1061', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1021', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1061', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1021', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     const note = () => noteOf(calc, 0, '1061', 'basic_attack')
 
@@ -235,8 +235,8 @@ describe('R15-b 跳①：可琳非轴折算进伤害池（精确 note + 滑块�
 
   it('★ 跨槽泄漏反锁：可琳队里队友行不得出现「失衡增伤+…（覆盖率近似）」', async () => {
     const { calc, config } = await calcOf([
-      { agentId: '1061', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1021', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1061', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1021', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     config.setMechanicSetting('corin.additionalStunCoverage', 1)
     await new Promise(r => setTimeout(r, 60))

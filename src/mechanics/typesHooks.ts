@@ -517,8 +517,6 @@ export interface AgentInteractionSnapshot {
   dodgeCounterCount: number
   /** 双反次数（同上：store 原值） */
   dualCounterCount: number
-  /** 快速支援次数（同上：store 原值） */
-  quickAssistCount: number
   /**
    * 每次失衡的连携次数（store 原值，`?? 0`；与 `ACTION_COUNT_BOUNDS` 同族，`0..3`）。
    *

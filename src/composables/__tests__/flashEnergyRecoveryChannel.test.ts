@@ -73,16 +73,13 @@ function catalogRowValues(agentSkills: { categories: { moves: { id: string, rows
  * `dodgeCounterCount` 默认 0 ⇒ 闪反招式（真斗 1441017）不会物化到执行计划，
  * 依赖它的「flash 回能通道」用例会退化成「没有行可断言」。需要时由用例显式给出。
  */
-async function runTeam(team: Array<{ agentId: string }>, opts: { dodge?: number; parry?: number; quickAssist?: number } = {}) {
+async function runTeam(team: Array<{ agentId: string }>, opts: { dodge?: number; parry?: number } = {}) {
   const { catalog, config } = await setupHarness(team, { recommendedBuild: false })
   if (opts.dodge !== undefined) {
     for (let s = 0; s < team.length; s++) config.team[s]!.dodgeCounterCount = opts.dodge
   }
   if (opts.parry !== undefined) {
     for (let s = 0; s < team.length; s++) config.team[s]!.parryCount = opts.parry
-  }
-  if (opts.quickAssist !== undefined) {
-    for (let s = 0; s < team.length; s++) config.team[s]!.quickAssistCount = opts.quickAssist
   }
   const calc = useResourceCalc()
   const rr = calc.resourceResult.value!

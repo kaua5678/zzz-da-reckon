@@ -516,8 +516,8 @@ describe('极性强击（爱丽丝 1401）失衡轴：首算存在 + 易伤跟�
   /** 爱丽丝+格莉丝：axisActions 为 SW3(1401012) 的轴放置（其余槽位用格莉丝强特保持轴激活） */
   async function setupAlice(sw3Placement: number, graceInAxis = true) {
     const { config } = await setupHarness([
-      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     for (const buff of config.globalBuffs) buff.enabled = false
     config.useStunAxis = true
@@ -542,8 +542,8 @@ describe('极性强击（爱丽丝 1401）失衡轴：首算存在 + 易伤跟�
     // 非轴首算（不触发二次求值）：行必须存在——曾因 aliceInfo 读 resourceResult 与 calcOutput
     // 成环，首算 giftedTriggerCounts 不注入 → 整行缺失、紊乱序列漏计
     const { config } = await setupHarness([
-      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1401', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     for (const buff of config.globalBuffs) buff.enabled = false
     const calc = useResourceCalc()
@@ -591,8 +591,8 @@ describe('极性强击（爱丽丝 1401）失衡轴：首算存在 + 易伤跟�
   it('影画2：终结技额外极性强击按终结技轴内占比加权（SW3 与终结技触发源分开计）', async () => {
     const mk = async (ultInAxis: boolean) => {
       const { config } = await setupHarness([
-        { agentId: '1401', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-        { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+        { agentId: '1401', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0 },
+        { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
       ])
       for (const buff of config.globalBuffs) buff.enabled = false
       config.useStunAxis = true
@@ -690,8 +690,8 @@ describe('载体型异放跟随载体动作（2026-08 审计修复）', () => {
 
   it('柏妮思灼热抛接法轴内放置：异放拆出 -in 段（全额失衡易伤），总次数守恒', async () => {
     const { config } = await setupHarness([
-      { agentId: '1171', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1171', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     for (const buff of config.globalBuffs) buff.enabled = false
     config.useStunAxis = true

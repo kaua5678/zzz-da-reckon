@@ -36,7 +36,7 @@ function teamChar(slot: number, agentId: string, overrides: Record<string, numbe
   return {
     slot, agentId, cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1,
     driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
-    parryCount: 6, blockCount: 0, dodgeCounterCount: 10, quickAssistCount: 3, chainCountPerStun: 1,
+    parryCount: 6, blockCount: 0, dodgeCounterCount: 10, chainCountPerStun: 1,
     basicAttackTimeWeight: 1, ...overrides,
   }
 }

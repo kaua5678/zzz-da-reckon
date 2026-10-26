@@ -60,7 +60,7 @@ describe('R61 batchA · 影画轴「档位表类实现」判据', () => {
     // ② 行为层：真管线读通道量（parryCount>0 才有支援突击行）
     const readAssistRows = async (cinemaLevel: number) => {
       await setupHarness([
-        { agentId: '1411', cinemaLevel, parryCount: 6, dodgeCounterCount: 0, quickAssistCount: 0 },
+        { agentId: '1411', cinemaLevel, parryCount: 6, dodgeCounterCount: 0 },
         '',
         '',
       ])
@@ -98,7 +98,7 @@ describe('R61 batchA · 影画轴「档位表类实现」判据', () => {
     //   时 exec 侧毫无变化、该断言照样绿（面板泄漏只在 panel 上留痕）。
     const panelDmgBonusAt = async (cinemaLevel: number) => {
       const { config } = await setupHarness([
-        { agentId: '1411', cinemaLevel, parryCount: 6, dodgeCounterCount: 0, quickAssistCount: 0 }, '', '',
+        { agentId: '1411', cinemaLevel, parryCount: 6, dodgeCounterCount: 0 }, '', '',
       ])
       await new Promise(r => setTimeout(r, 0))
       const panel = computePanelPhases(0, config, useCatalogStore())?.inCombat as unknown as Record<string, number> | null
@@ -117,7 +117,7 @@ describe('R61 batchA · 影画轴「档位表类实现」判据', () => {
   it('1411 影画4 门控：C3 及以下一律不吃增伤（防「0 命白拿」）', async () => {
     for (const cinemaLevel of [0, 1, 2, 3]) {
       await setupHarness([
-        { agentId: '1411', cinemaLevel, parryCount: 6, dodgeCounterCount: 0, quickAssistCount: 0 }, '', '',
+        { agentId: '1411', cinemaLevel, parryCount: 6, dodgeCounterCount: 0 }, '', '',
       ])
       const calc = useResourceCalc()
       await new Promise(r => setTimeout(r, 0))

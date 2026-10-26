@@ -176,7 +176,6 @@ describe('喧响账本行级 Σ parity（记账层 == 展示层）', () => {
       chainCountPerStun: 0,
       parryCount: 0,
       dodgeCounterCount: 0,
-      quickAssistCount: 0,
       initialEnergyGift: 40,
       initialDecibelGift: 1000,
       extraSelfDecibelReward: 0,

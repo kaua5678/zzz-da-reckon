@@ -252,7 +252,7 @@ undefined
  *   1161020 + 1161027 ×N + 1161025
  * 轮数上限 = 士气轮次（computeLighterMorale.burstEntries），再被平A池时间钳制。
  */
-export function planLighterBurst(input: {
+function planLighterBurst(input: {
   basicTime: number
   entries: number
   times: LighterBurstTimes
@@ -426,9 +426,9 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
       }))
     }
     // 回能/喧响按表回填（与弹刀行同口径：行内表值 + `calcSpecialActionBonus` 的特殊动作奖励是两笔）。
-    // ⚠ 已知缺口：那笔 20 喧响/次 由 `cfg.quickAssistCount`（用户手填的**主动**快支）驱动，模块自建的
-    // 机制快支拿不到——两者都走 quickAssistCount，引擎无法区分。默认配置下 quickAssistCount=0，
-    // 故这 9 次只结算行内表值（17.435 喧响 + 2.28 能量/次），少算 9×20 喧响；等拆出独立通道再补。
+    // ⚠ 原「已知缺口」已收口（2026-10-26）：特殊动作喧响里的快支 20/次通道随 `quickAssistCount` 字段
+    // 整体删除（手动快支下线），机制快支不再是「走错了通道」——它就是普通招式，只结算行内表值
+    // （17.435 喧响 + 2.28 能量/次），不存在「少算 9×20」这回事。
     pushSeg(MOVE_QUICK_ASSIST, '快速支援：烈闪-守（喷发循环起手）', burstPlan.quickAssist, burstTimes.quickAssist, 0, 'assist')
     // 刺拳连击吃 C1 的强力终结加伤？不吃——C1 只加「强力终结一击」本体，见下
     pushSeg(MOVE_BURST_JAB, '普通攻击：刺拳连击（士气喷发）', burstPlan.jab, burstTimes.jab)

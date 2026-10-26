@@ -67,7 +67,6 @@ function interactionsOf(
       blockCount: 0,
       dodgeCounterCount: r.dodge ?? 0,
       dualCounterCount: 0,
-      quickAssistCount: 0,
       chainCountPerStun: r.chain ?? 0,
     }])),
   }
@@ -395,8 +394,8 @@ describe('★ 真管线：难度阶梯 G4（计数投影 round）打开时的 C2
   it('同一队伍：投影 off vs round 给出**不同**的 lycaonC2Energy（G4 真的咬合）', async () => {
     const read = async (projectionCode: number) => {
       const { config } = await setupHarness([
-        { agentId: '1141', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-        { agentId: '1011', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 1 },
+        { agentId: '1141', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0 },
+        { agentId: '1011', parryCount: 0, dodgeCounterCount: 0, chainCountPerStun: 1 },
         '',
       ])
       config.enemy.stunCountLock = 3
@@ -416,8 +415,8 @@ describe('★ 真管线：难度阶梯 G4（计数投影 round）打开时的 C2
   it('★ 真管线 + 非整数失衡（lock 3.6）：投影 off 用实数、round 用投影值 ⇒ 精确可分辨', async () => {
     const read = async (projectionCode: number) => {
       const { config } = await setupHarness([
-        { agentId: '1141', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-        { agentId: '1011', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 2 },
+        { agentId: '1141', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0 },
+        { agentId: '1011', parryCount: 0, dodgeCounterCount: 0, chainCountPerStun: 2 },
         '',
       ])
       // ⚠ `stunCountLock` 是 number（不是整数）⇒ 锁 3.6 可造出**非整数**计划值：

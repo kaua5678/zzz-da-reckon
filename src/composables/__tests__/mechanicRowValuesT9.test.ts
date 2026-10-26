@@ -27,7 +27,7 @@ describe('T9 雨果强特终结 1291010 倍率来自 catalog（cfg.mechanicRowVa
   it('真引擎：C0/C6 决算与非决算行倍率 === catalog 1291010 damage 行值（行真实出现）', async () => {
     for (const c of CASES) {
       const { catalog, config } = await setupHarness([
-        { agentId: '1291', cinemaLevel: c.cinema, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+        { agentId: '1291', cinemaLevel: c.cinema, parryCount: 0, dodgeCounterCount: 0 },
         { agentId: '1141', cinemaLevel: 0 },
         '',
       ])

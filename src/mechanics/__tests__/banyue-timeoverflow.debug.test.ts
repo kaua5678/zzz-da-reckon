@@ -6,8 +6,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: { 4: 'atkPct' as any, 5: 'fireDmg' as any, 6: 'critRate' as any }, subStatAllocation: {} },
-  parryCount: 10, dodgeCounterCount: 6, blockCount: 20, dualCounterCount: 5,
-  quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
+  parryCount: 10, dodgeCounterCount: 6, blockCount: 20, dualCounterCount: 5, chainCountPerStun: 0, basicAttackTimeWeight: 1,
 }
 describe('般岳时间预算（回归）：金身弹刀/双反计入必做前台，总计不超 180s', () => {
   beforeEach(() => {

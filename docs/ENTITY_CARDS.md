@@ -112,7 +112,7 @@ Boss 的事实分裂在两个文件里，**用途不同，别混**：
 「一个角色上场」= 以下字段的**组合实体**，缺任何一项都算不完整（探针默认口径=前五项取推荐值）：
 
 - 身份/配装：`agentId` + `cinemaLevel`（命座 0-6）+ `potentialLevel`（潜能 1-6，缺省 6，影响部分模块档位取值，注释见 config.ts:24）+ `wEngineId`/`wEngineModLevel`（精炼效果阶梯见 §1 ④）+ `driveDisc`（见 §3）
-- 交互次数：`parryCount`/`dodgeCounterCount`/`blockCount`/`quickAssistCount`/`chainCountPerStun` + 角色专属交互字段（完整清单与字段注释以 `CharacterConfig` 定义处为准）——它们是资源循环的输入（如般岳 `blockCount` 是嗔火来源），改它们=改资源池，不只是改面板
+- 交互次数：`parryCount`/`dodgeCounterCount`/`blockCount`/`chainCountPerStun` + 角色专属交互字段（`quickAssistCount` 2026-10-26 已删：手动快支下线）（完整清单与字段注释以 `CharacterConfig` 定义处为准）——它们是资源循环的输入（如般岳 `blockCount` 是嗔火来源），改它们=改资源池，不只是改面板
 - 派生：面板/暴击预算由引擎算（`probe:panel`，PROBE_SUBSTATS/ENGINE/MOD/CINEMA/FOUR/TWO 覆盖）。
 
 ## 6. 倍率表（agentSkills，moveId 的唯一权威）

@@ -12,8 +12,7 @@ import { buildTeamTimeSummary } from '@/composables/teamTimeSummary'
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
-  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
-  quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
+  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
 }
 
 async function setup(mateId = '1031', cinemaLevel = 0) {
@@ -106,12 +105,12 @@ describe('朱鸢核心被动与影画（自身面板）', () => {
 describe('朱鸢强化霰弹资源循环', () => {
   const mkState = () => ({
     basicAttackTime: 20, dodgeCounterCount: 1, exSpecialCount: 2,
-    chainCountTotal: 2, ultimateCount: 1, quickAssistCount: 1,
+    chainCountTotal: 2, ultimateCount: 1,
     frontlineTime: 40, backstageTime: 0,
   }) as any
 
-  it('霰弹账目：初始6+突击10+闪反1+强特6+连携6+终结3+快支1+支援突击3；消耗=总量', () => {
-    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+  it('霰弹账目：初始6+突击10+闪反1+强特6+连携6+终结3+支援突击3；消耗=总量', () => {
+    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1 }
     const result: any = zhuYuanMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
     const shells = result.specResources.zhuyuan_shells
     expect(shells).toBeTruthy()
@@ -121,11 +120,12 @@ describe('朱鸢强化霰弹资源循环', () => {
     expect(shells.gains.shells_ex_special).toBeCloseTo(6, 5)
     expect(shells.gains.shells_chain).toBeCloseTo(6, 5)
     expect(shells.gains.shells_ultimate).toBeCloseTo(3, 5)
-    expect(shells.gains.shells_quick_assist).toBeCloseTo(1, 5)
+    // ⚠ 「掩护射击（快速支援）+1」那条 spec 规则 2026-10-26 删除（手动快支下线、次数源不存在）
+    expect(shells.gains.shells_quick_assist ?? 0).toBe(0)
     expect(shells.gains.shells_def_assist).toBeCloseTo(3, 5)
     expect(shells.gains.shells_c1_reload_chain ?? 0).toBeCloseTo(0, 5)
-    // 压制模式消耗次数 = 初始6 + 总获取30 = 36
-    expect(shells.spendCounts.shells_suppression_spend).toBe(36)
+    // 压制模式消耗次数 = 初始6 + 总获取29 = 35
+    expect(shells.spendCounts.shells_suppression_spend).toBe(35)
   })
 
   it('自卫还击霰弹接黄光交互次数（次数源由 buildCharConfig 写入 ⇒ 可红自证）', () => {
@@ -134,7 +134,7 @@ describe('朱鸢强化霰弹资源循环', () => {
     // `defAssistCount` 在全仓**生产代码里零写入** ⇒ 解释器 `?? 0` 兜底 ⇒ 自卫还击的霰弹收益恒为 0。
     // 上面那条「霰弹账目」测试一直绿，是因为它**手填** cfg.defAssistCount —— 测试自证、生产恒 0。
     // 本测试走真实装配路径：只给 parryCount，由模块自己写次数源。
-    const cfg: any = { parryCount: 8, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const cfg: any = { parryCount: 8, dodgeCounterCount: 1 }
     zhuYuanMechanic.buildCharConfig!({ cfg, cinemaLevel: 0 } as any)
     expect(cfg.defAssistCount).toBe(8)
     const result: any = zhuYuanMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
@@ -142,22 +142,22 @@ describe('朱鸢强化霰弹资源循环', () => {
     // 支援突击 1241025 发动 8 次 × 3 枚（原文「招式发动时，获得3枚[强化霰弹]」）
     expect(shells.gains.shells_def_assist).toBeCloseTo(24, 5)
     // 不带支援突击的弹刀不产支援突击行 ⇒ 不计入（core 支援突击块 count = parryCount，非两者之和）
-    const cfg2: any = { parryCount: 8, parryNoFollowUpCount: 5, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const cfg2: any = { parryCount: 8, parryNoFollowUpCount: 5, dodgeCounterCount: 1 }
     zhuYuanMechanic.buildCharConfig!({ cfg: cfg2, cinemaLevel: 0 } as any)
     expect(cfg2.defAssistCount).toBe(8)
   })
 
   it('影画1 快速装填（用户口径：连携6枚/终结9枚）', () => {
-    const cfg: any = { zhuyuanCinemaLevel: 1, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const cfg: any = { zhuyuanCinemaLevel: 1, defAssistCount: 1, dodgeCounterCount: 1 }
     const result: any = zhuYuanMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
     const shells = result.specResources.zhuyuan_shells
     expect(shells.gains.shells_c1_reload_chain).toBeCloseTo(12, 5)  // 连携2次×6
     expect(shells.gains.shells_c1_reload_ultimate).toBeCloseTo(9, 5) // 终结1次×9
-    expect(shells.spendCounts.shells_suppression_spend).toBe(36 + 21)
+    expect(shells.spendCounts.shells_suppression_spend).toBe(35 + 21)
   })
 
   it('压制模式以太强化霰弹：1枚=1段，三段轮转，时间有界', () => {
-    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1 }
     const executions: any[] = []
     zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
     // mkState basicAttackTime=20 → 时间有界 maxByTime = floor(20/0.903)=22；霰弹总量36 → 打22枚
@@ -175,7 +175,7 @@ describe('朱鸢强化霰弹资源循环', () => {
   })
 
   it('核心被动失衡增伤+40%：per-row 挂在压制以太行（失衡覆盖率由失衡次数反推）', () => {
-    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1, zhuYuanStunCoverage: 0.5 }
+    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, zhuYuanStunCoverage: 0.5 }
     const executions: any[] = []
     zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
     const etherRows = executions.filter(r => ['1241010', '1241011', '1241012'].includes(r.moveId))
@@ -183,7 +183,7 @@ describe('朱鸢强化霰弹资源循环', () => {
     expect(etherRows.length).toBe(3)
     expect(etherRows.every(r => r.dmgBonus === 20)).toBe(true)
     // 覆盖率 0 → 无 dmgBonus
-    const cfg0: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1, zhuYuanStunCoverage: 0 }
+    const cfg0: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, zhuYuanStunCoverage: 0 }
     const empty: any[] = []
     zhuYuanMechanic.buildExecutions!({ cfg: cfg0, state: mkState(), executions: empty } as any)
     expect(empty.filter(r => ['1241010', '1241011', '1241012'].includes(r.moveId)).every(r => (r.dmgBonus ?? 0) === 0)).toBe(true)
@@ -197,7 +197,7 @@ describe('朱鸢强化霰弹资源循环', () => {
   })
 
   it('轴模式（捏轴）：失衡增伤按轴内压制以太占比', () => {
-    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1, zhuYuanStunCoverage: 0.5, zhuYuanAxisActive: true, zhuYuanAxisEther: 0 }
+    const cfg: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, zhuYuanStunCoverage: 0.5, zhuYuanAxisActive: true, zhuYuanAxisEther: 0 }
     const executions: any[] = []
     zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
     const etherRows = executions.filter(r => ['1241010', '1241011', '1241012'].includes(r.moveId))
@@ -206,7 +206,7 @@ describe('朱鸢强化霰弹资源循环', () => {
   })
 
   it('影画6 以太余温：floor(霰弹总量/12)次 ×4枚鹿弹执行行（附在压制以太之后）', () => {
-    const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1 }
     const executions: any[] = []
     zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions } as any)
     const afterglow = executions.find(r => r.moveId === 'zhuyuan_c6_afterglow_bullets')
@@ -220,7 +220,7 @@ describe('朱鸢强化霰弹资源循环', () => {
   })
 
   it('resourceSections 输出以太余温卡', () => {
-    const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1 }
     const result: any = zhuYuanMechanic.buildResourceResult!({ cfg, state: mkState() } as any)
     const sections = zhuYuanMechanic.resourceSections!({ result, cfg } as any)
     expect(sections.some((s: any) => s.title?.includes('强化霰弹'))).toBe(true)
@@ -232,7 +232,7 @@ describe('朱鸢强化霰弹资源循环', () => {
   it('影画6 余温回能：floor(霰弹总量/12)次 ×30 能量并入 initialEnergyGift（用户口径 2026-08）', () => {
     // cinema6 含影画1 快速装填：总量 36+21=57 → floor(57/12)=4 次 ×30 = 120 能量
     // CC-289：写入点在 buildExecutions（能量账之前），幂等——重复调用不叠加
-    const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1, initialEnergyGift: 40 }
+    const cfg: any = { zhuyuanCinemaLevel: 6, defAssistCount: 1, dodgeCounterCount: 1, initialEnergyGift: 40 }
     zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions: [] } as any)
     expect(cfg.initialEnergyGift).toBe(40 + 4 * 30)
     zhuYuanMechanic.buildExecutions!({ cfg, state: mkState(), executions: [] } as any)
@@ -242,7 +242,7 @@ describe('朱鸢强化霰弹资源循环', () => {
     expect(cfg.initialEnergyGift).toBe(40 + 4 * 30)
 
     // 非6命不注入
-    const cfg0: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1, quickAssistCount: 1 }
+    const cfg0: any = { zhuyuanCinemaLevel: 0, defAssistCount: 1, dodgeCounterCount: 1 }
     zhuYuanMechanic.buildExecutions!({ cfg: cfg0, state: mkState(), executions: [] } as any)
     expect(cfg0.initialEnergyGift ?? 0).toBe(0)
   })

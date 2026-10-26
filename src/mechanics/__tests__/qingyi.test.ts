@@ -30,11 +30,9 @@ const UNIT_CFG = {
   qingyiUltimateVoltage: 0,
   qingyiChainVoltage: 0,
   qingyiDodgeCounterVoltage: 0,
-  qingyiQuickAssistVoltage: 0,
   qingyiAssistFollowUpVoltage: 78,
   parryCount: 10, // 通用电压 10×78 = 780
   dodgeCounterCount: 0,
-  quickAssistCount: 0,
   exSpecialActionTime: 2.15,
   ultimateActionTime: 2,
   chainActionTime: 2,

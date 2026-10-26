@@ -209,7 +209,7 @@ export interface SeverianBasicPlan {
  * 每次触发 = 把该轮 a4 **替换**成烈旋（打断 a4 自动发动烈旋，二者等价）：
  * a1+a2+a3 照打，a4 不再是 1631004 而是 1631005/1631020 —— **不额外多打一招**（那是双计）。
  */
-export function planSeverianBasic(input: SeverianBasicPlanInput): SeverianBasicPlan {
+function planSeverianBasic(input: SeverianBasicPlanInput): SeverianBasicPlan {
   const counts: Record<string, number> = {}
   const empty: SeverianBasicPlan = { counts, rounds: 0, replacedRounds: 0, usedTime: 0, a4Hits: 0 }
   const cycle = input.cycle

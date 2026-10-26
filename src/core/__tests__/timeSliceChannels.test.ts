@@ -58,7 +58,8 @@ describe('时光切片（13002）奖励通道', () => {
   it('③ 端到端闭式：装了 13002 的槽位 bonusRegen > 0，且 === 面板值 × 触发次数', () => {
     /**
      * ⚠ 夹具必须给全 `timeSliceTriggerCounts` 读的**全部**计数字段
-     * （首版只给 state.dodgeCounterCount、缺 `cfg.quickAssistCount`/`cfg.parryCount` ⇒ NaN）。
+     * （首版只给 state.dodgeCounterCount、缺 `cfg.parryCount` ⇒ NaN）。
+     * 支援通道的次数源 2026-10-26 起只剩弹刀（快支次数随字段删除）。
      */
     const panel = emptyPanel()
     panel.timeSliceDodgeCounterDecibel = 20
@@ -69,7 +70,6 @@ describe('时光切片（13002）奖励通道', () => {
     const cfg = {
       panel,
       dodgeCounterCount: 8,
-      quickAssistCount: 3,
       parryCount: 2,
       rowTimeLimit: 0,
     } as unknown as CharacterOperationConfig
@@ -79,7 +79,7 @@ describe('时光切片（13002）奖励通道', () => {
     expect(out.timeSliceDecibel, '时光切片没进 bonusRegen').toBeGreaterThan(0)
     expect(out.bonusRegen).toBe(out.timeSliceDecibel)
     // 12 秒冷却 ⇒ 触发次数 = min(动作次数, floor(180/12)+1 = 16)；本例各类次数都 < 16，不被封顶
-    expect(out.timeSliceDecibel).toBe(20 * 8 + 25 * 6 + 30 * (3 + 2) + 35 * 4)
+    expect(out.timeSliceDecibel).toBe(20 * 8 + 25 * 6 + 30 * 2 + 35 * 4)
   })
 
   it('④ 反空洞（C2 的关键事实）：预设库里**没有**队伍装 13002 ⇒ 93 队普查恒 0 是取样问题', () => {

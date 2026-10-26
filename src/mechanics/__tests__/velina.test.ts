@@ -6,8 +6,8 @@ import { setupHarness } from '@/test/harness'
 /** 维琳娜（风）+ 格莉丝（电异常，触发额外能力 + 提供非风异常触发 → 乱流） */
 async function setup(cinemaLevel = 0) {
   const result = await setupHarness([
-    { agentId: '1561', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: '1561', cinemaLevel, parryCount: 0, dodgeCounterCount: 0 },
+    { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false
   return result

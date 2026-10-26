@@ -71,7 +71,6 @@ const MOVE = {
   afterfireSpin: '1531014', // 闪避反击：尾焰全旋 397.8% / 决意 2.8（银河横行漂移触发）
   defensiveAssist: '1531018', // 招架支援：英雄登台 #1（轻弹刀） / 决意 2.6654
   assistFollowUp: '1531021', // 支援突击：反派退场 459.5% / 决意 3.1321
-  quickAssist: '1531017', // 快速支援：星徽-羁绊之力 184.4% / 决意 1.7674
 } as const
 
 // 星辉增伤目标（[连携技]/[终结技]/[强化特殊技]/[普通攻击：最高马力星光]）
@@ -462,7 +461,6 @@ function billyFullThrottleFromState(
     },
     cfg,
     cfg.parryCount,
-    cfg.quickAssistCount,
   )
   const detCfg: CharacterOperationConfig = {
     ...cfg,
@@ -521,7 +519,6 @@ function computeAttackDataDetermination(
   state: { chainCountTotal: number; ultimateCount: number; dodgeCounterCount: number; basicAttackTime: number },
   cfg: AgentCharConfigInput['cfg'],
   parryCount: number,
-  quickAssistCount: number,
 ): number {
   const atk0: Record<string, number> = cfg.billyAttackData0 ?? {}
   const atk = (id: string) => atk0[id] ?? 0
@@ -536,7 +533,6 @@ function computeAttackDataDetermination(
     + Math.max(0, state.dodgeCounterCount) * atk(MOVE.dodgeCounter)
     + parryCount * atk(MOVE.defensiveAssist)
     + parryCount * atk(MOVE.assistFollowUp)
-    + quickAssistCount * atk(MOVE.quickAssist)
     + Math.max(0, state.basicAttackTime) * Number(cfg.billyBasicDeterminationPerSec ?? 0),
   )
 }
@@ -595,7 +591,6 @@ function buildBillyExecutions({ cfg, state, executions }: AgentResourceInput): v
     { chainCountTotal: state.chainCountTotal, ultimateCount: state.ultimateCount, dodgeCounterCount: cfg.dodgeCounterCount, basicAttackTime: state.basicAttackTime },
     cfg,
     cfg.parryCount,
-    cfg.quickAssistCount,
   )
   cfg.billyExExtraDetermination = chain.chain * EX_EXTRA_DETERMINATION
   cfg.billyCoolWheelieCount = chain.chain // 星辉/煊赫星辉的孤轮来源（含免费衔接的孤轮）

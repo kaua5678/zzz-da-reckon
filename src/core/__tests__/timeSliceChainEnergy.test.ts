@@ -41,7 +41,6 @@ function minimalTimeSliceConfig(): { configs: CharacterOperationConfig[]; states
     dodgeCounterDecibelRecovery: 0,
     parryCount: 0,
     parryNoFollowUpCount: 0,
-    quickAssistCount: 0,
     assistFollowUpActionTime: 0,
     assistFollowUpComboAlignRatio: 0,
     assistFollowUpDecibelRecovery: 0,

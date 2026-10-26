@@ -83,8 +83,7 @@ function spreadEyes(casts: number, eyesTotal: number, span: number): Array<{ t: 
 
 /** C6 夹具：默认手法下 `megaTornadoCount = sendOff × (1 + 余响 2)` 需要 C6 才是倍率 */
 const RICH: HarnessTeamSlot = {
-  agentId: '1621', cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12,
-  quickAssistCount: 4, chainCountPerStun: 2, blockCount: 4, perfectBlockCount: 5,
+  agentId: '1621', cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12, chainCountPerStun: 2, blockCount: 4, perfectBlockCount: 5,
 } as HarnessTeamSlot
 
 function mates(ids: string[]): HarnessTeamSlot[] {

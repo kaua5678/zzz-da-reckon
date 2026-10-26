@@ -18,7 +18,7 @@ describe('CC-257 预设交互映射单一来源', () => {
         if (statSync(p).isDirectory()) { if (name !== '__tests__') walk(p); continue }
         if (!/\.(ts|vue)$/.test(name) || name.endsWith('.test.ts')) continue
         for (const l of readFileSync(p, 'utf-8').split('\n')) {
-          if (/it\.type\s*===\s*'(parry|dodge|quickAssist|block|banyueGoldenParry)'\)\s*configStore\.set/.test(l)) hits.push(relative(root, p).replace(/\\/g, '/'))
+          if (/it\.type\s*===\s*'(parry|dodge|block|banyueGoldenParry)'\)\s*configStore\.set/.test(l)) hits.push(relative(root, p).replace(/\\/g, '/'))
         }
       }
     }

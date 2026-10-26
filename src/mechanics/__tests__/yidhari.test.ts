@@ -5,8 +5,8 @@ import { setupHarness } from '@/test/harness'
 
 async function setup(cinemaLevel = 0, mateId = '1141') {
   const r = await setupHarness([
-    { agentId: '1051', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: '1051', cinemaLevel, parryCount: 0, dodgeCounterCount: 0 },
+    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
   ])
   for (const buff of r.config.globalBuffs) buff.enabled = false
   return r

@@ -13,9 +13,9 @@ import { emptyAnomalyPool } from '@/test/fixtures'
 /** 3异常队（蕾米+薇薇安+月城柳），额外能力 tier=3；globalBuffs 关掉防污染（SOP §7） */
 async function setup(cinemaLevel = 0) {
   const result = await setupHarness([
-    { agentId: '1581', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: '1331', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: '1221', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: '1581', cinemaLevel, parryCount: 0, dodgeCounterCount: 0 },
+    { agentId: '1331', parryCount: 0, dodgeCounterCount: 0 },
+    { agentId: '1221', parryCount: 0, dodgeCounterCount: 0 },
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false
   return result
@@ -487,8 +487,8 @@ describe('CC-35a：异常虚拟面板「异化度」列由模块能力 anomalyRe
 
   it('蕾米埃尔不在队：refringe 为 0', async () => {
     const { config, catalog } = await setupHarness([
-      { agentId: '1331', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1221', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1331', parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1221', parryCount: 0, dodgeCounterCount: 0 },
     ])
     const panels = [0, 1].map(s => computePanelPhases(s, config, catalog)!.inCombat)
     const prog = { element: 'electric', totalBuildUp: 100, contributions: [{ slot: 0, totalBuildUp: 100 }] }

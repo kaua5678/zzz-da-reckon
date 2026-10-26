@@ -65,7 +65,6 @@ describe('applyDeployConfig', () => {
     //     所以不写死 10，改为与 `roleInteractionBaseline` 同源比对（基准再改也不会误红）。
     expect(config.team.map((s) => s.parryCount)).toEqual([0, 0, 0])
     expect(config.team.map((s) => s.dodgeCounterCount)).toEqual([0, 0, 0])
-    expect(config.team.map((s) => s.quickAssistCount)).toEqual([0, 0, 0])
     expect(config.team.map((s) => s.chainCountPerStun)).toEqual([1, 1, 0])
     // 自动轴开启（弹刀反推的驱动）；2026-10-23：「保底4喧响」功能整体删除 ⇒ 部署不再写
     // `guarantee.ultimate`（该键已不存在，写它也不会被任何读点消费）。

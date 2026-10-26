@@ -20,8 +20,7 @@ export const PARRY_DECIBEL_BONUS = 215
 export const CHAIN_DECIBEL_BONUS = 10
 /** 闪避反击单次个人喧响 */
 export const DODGE_COUNTER_DECIBEL_BONUS = 10
-/** 快速支援单次个人喧响 */
-export const QUICK_ASSIST_DECIBEL_BONUS = 20
+// 快速支援（原 20/次）的单价随该通道一起删除：手动快支下线后它没有消费者（2026-10-26）
 
 /**
  * **进入失衡**单次个人喧响（全队每人各得，含队友伴随 50%）。

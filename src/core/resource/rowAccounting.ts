@@ -120,7 +120,8 @@ export function timeSliceTriggerCounts(
   const cooldown = 12
   const dodgeCounter = cappedCooldownTriggers(cfg.dodgeCounterCount, totalTime, cooldown)
   const exSpecial = cappedCooldownTriggers(exSpecialCount, totalTime, cooldown)
-  const assist = cappedCooldownTriggers(cfg.quickAssistCount + cfg.parryCount, totalTime, cooldown)
+  // 支援通道只认弹刀：快速支援次数（quickAssistCount）2026-10-26 整条删除，引擎里没有任何入口能写非 0
+  const assist = cappedCooldownTriggers(cfg.parryCount, totalTime, cooldown)
   const chain = cappedCooldownTriggers(chainCountTotal, totalTime, cooldown)
   return { dodgeCounter, exSpecial, assist, chain, total: dodgeCounter + exSpecial + assist + chain }
 }

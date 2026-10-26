@@ -7,8 +7,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: { 4: 'atkPct' as any, 5: 'iceDmg' as any, 6: 'critRate' as any }, subStatAllocation: {} },
-  parryCount: 10, dodgeCounterCount: 6, blockCount: 20,
-  quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
+  parryCount: 10, dodgeCounterCount: 6, blockCount: 20, chainCountPerStun: 0, basicAttackTimeWeight: 1,
 }
 
 describe('莱卡恩（1141）拐力生效（teammate-buffs.json 承载，spec 不重复录入）', () => {

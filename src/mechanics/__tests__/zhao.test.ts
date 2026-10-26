@@ -14,8 +14,8 @@ import {
 
 async function setup(mateId = '1081', cinemaLevel = 0) {
   const result = await setupHarness([
-    { agentId: '1341', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: '1341', cinemaLevel, parryCount: 0, dodgeCounterCount: 0 },
+    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     '',
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false

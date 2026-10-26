@@ -10,7 +10,7 @@ import { setupHarness } from '@/test/harness'
 import { teamPresets } from '@/data/teamPresets'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
 import { baseStateFor } from '@/composables/teamTimelineStore'
-import { ASSIST_ACTION_BASELINE, chainBaselineFor, interactionBaselineFor } from '@/stores/config'
+import { chainBaselineFor, interactionBaselineFor } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 
 describe('CC-266 装配入口不重复写基准', () => {
@@ -21,18 +21,15 @@ describe('CC-266 装配入口不重复写基准', () => {
     const teams = [...new Map(teamPresets.map(p => [p.team.join('-'), p.team as [string, string, string]])).values()]
     for (const autoBuild of [false, true]) {
       for (const team of teams) {
-        for (const c of config.team) { c.parryCount = 77; c.dodgeCounterCount = 77; c.blockCount = 77; c.dualCounterCount = 77; c.quickAssistCount = 77; c.chainCountPerStun = 3 }
+        for (const c of config.team) { c.parryCount = 77; c.dodgeCounterCount = 77; c.blockCount = 77; c.dualCounterCount = 77; c.chainCountPerStun = 3 }
         applyTeamToStore(config, team, baseStateFor(team, catalog), autoBuild)
         team.forEach((id, s) => {
           const b = interactionBaselineFor(id, catalog.getAgent(id)?.specialty)
           const c = config.team[s]!
           const tag = `${team.join('-')} slot${s} autoBuild=${autoBuild}`
           expect([c.parryCount, c.dodgeCounterCount, c.blockCount, c.dualCounterCount], tag).toEqual([b.parry, b.dodge, b.block, b.dual])
-          // 连携基准按职业（支援/防护 0），快支全角色 0（用户 2026-10-18）
-          expect([c.quickAssistCount, c.chainCountPerStun], tag).toEqual([
-            ASSIST_ACTION_BASELINE.quickAssist,
-            chainBaselineFor(catalog.getAgent(id)?.specialty),
-          ])
+          // 连携基准按职业（支援/防护 0；用户 2026-10-18）
+          expect(c.chainCountPerStun, tag).toBe(chainBaselineFor(catalog.getAgent(id)?.specialty))
         })
       }
     }
@@ -41,9 +38,9 @@ describe('CC-266 装配入口不重复写基准', () => {
   it('源码锁：teamTimelineStore 不写动作次数；runArchiveDeploy 只写弹刀 / 格挡 / 双反偏差', () => {
     const root = resolve(__dirname, '..')
     const strip = (f: string) => readFileSync(resolve(root, f), 'utf-8').split('\n').filter(l => !l.trim().startsWith('//')).join('\n')
-    expect(strip('teamTimelineStore.ts')).not.toMatch(/\.setActionCount\([^,]+, '(parryCount|dodgeCounterCount|blockCount|dualCounterCount|quickAssistCount|chainCountPerStun)'/)
+    expect(strip('teamTimelineStore.ts')).not.toMatch(/\.setActionCount\([^,]+, '(parryCount|dodgeCounterCount|blockCount|dualCounterCount|chainCountPerStun)'/)
     const deploy = strip('runArchiveDeploy.ts')
-    expect(deploy).not.toMatch(/\.setActionCount\([^,]+, '(dodgeCounterCount|quickAssistCount|chainCountPerStun)'/)
+    expect(deploy).not.toMatch(/\.setActionCount\([^,]+, '(dodgeCounterCount|chainCountPerStun)'/)
     expect(deploy).toMatch(/setActionCount\(s, 'parryCount', custom \? base\.parry : 0\)/)
   })
 })

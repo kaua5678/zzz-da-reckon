@@ -38,18 +38,6 @@
                     />
                   </div>
                 </n-gi>
-                <n-gi>
-                  <div class="field">
-                    <span class="field-label">快速支援（队伍页配置）</span>
-                    <n-input-number
-                      :value="configStore.team.reduce((sum, c) => sum + (c.quickAssistCount ?? 0), 0)"
-                      :min="0"
-                      size="small"
-                      style="width: 100%"
-                      disabled
-                    />
-                  </div>
-                </n-gi>
                 <n-gi v-for="f in ENEMY_FIELDS_TAIL" :key="f.key">
                   <div class="field">
                     <span class="field-label">{{ f.label }}</span>
@@ -331,7 +319,7 @@ onMounted(() => {
 })
 
 /**
- * 敌人配置的数值输入框：按显示顺序列出（体型下拉 / 快速支援只读框夹在 HEAD 与 TAIL 之间）。
+ * 敌人配置的数值输入框：按显示顺序列出（体型下拉在 HEAD 与 TAIL 之间）。
  * fallback = 清空输入框时写回的值（系数类为 1，其余为 0）；step 缺省 1；maxKey = 上限取另一个敌人字段的当前值，缺省不限。
  * 新增一个敌人数值字段 = 在这里加一行（CC-282 前每个字段是一段 11 行的手写模板）。
  */

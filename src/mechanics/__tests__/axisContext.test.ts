@@ -59,7 +59,7 @@ function axisOf(o: {
  */
 function interactionsOf(
   rows: Array<{
-    agentId: string; parry?: number; block?: number; dodge?: number; dual?: number; quick?: number
+    agentId: string; parry?: number; block?: number; dodge?: number; dual?: number
     /** 每次失衡的连携次数（store 原值；供 1141 `lycaonC2Energy` 非轴臂，round 20 C-γ） */
     chain?: number
   }>,
@@ -71,7 +71,6 @@ function interactionsOf(
       blockCount: r.block ?? 0,
       dodgeCounterCount: r.dodge ?? 0,
       dualCounterCount: r.dual ?? 0,
-      quickAssistCount: r.quick ?? 0,
       chainCountPerStun: r.chain ?? 0,
     }])),
   }
@@ -424,7 +423,7 @@ describe('1141 莱卡恩：lycaonWindowDuration ← axis.windowSeconds（棘轮 
    */
   it('★ 端到端：窗口时长经真管线落到围猎平A预算（短路 ⇒ 回落 ?? 16 得 24，不是 0）', async () => {
     await setupHarness([
-      { agentId: '1141', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1141', parryCount: 0, dodgeCounterCount: 0 },
       { agentId: '1011', dodgeCounterCount: 6 },
       '',
     ])
@@ -1009,8 +1008,8 @@ describe('真管线：converge 有值、build/postRound 为 undefined（跳①�
   /** 用钩子探针跑一次真管线，记录每个相位实际收到的 `axis` */
   async function probePhases(): Promise<Array<{ phase: string; axis: unknown }>> {
     const { config } = await setupHarness([
-      { agentId: '1201', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1141', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1201', parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1141', parryCount: 0, dodgeCounterCount: 0 },
     ])
     config.enemy.stunCountLock = 2
     config.useStunAxis = true
@@ -1063,8 +1062,8 @@ describe('真管线：converge 有值、build/postRound 为 undefined（跳①�
 
   it('★ 轴模式端到端生效：悠真 cycle.axisActive = true 且逐雷按轴内飞弦·斩计', async () => {
     await setupHarness([
-      { agentId: '1201', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1141', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1201', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1141', parryCount: 0, dodgeCounterCount: 0 },
     ])
     const config = useConfigStore()
     config.enemy.stunCountLock = 2
@@ -1102,7 +1101,7 @@ describe('真管线：converge 有值、build/postRound 为 undefined（跳①�
    */
   it('★ 端到端：未缩放队友弹刀 → 仪玄极限支援落雷次数（短路 ⇒ 恒 0，不是别的值）', async () => {
     await setupHarness([
-      { agentId: '1371', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1371', parryCount: 0, dodgeCounterCount: 0 },
       { agentId: '1481', parryCount: 4 },
       { agentId: '1451', parryCount: 3 },
     ])
@@ -1119,8 +1118,8 @@ describe('真管线：converge 有值、build/postRound 为 undefined（跳①�
 
   it('★ 朱鸢：轴内以太占比喂进核心被动增伤（端到端可观测的唯一口）', async () => {
     await setupHarness([
-      { agentId: '1241', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1031', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1241', parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1031', parryCount: 0, dodgeCounterCount: 0 },
     ])
     const config = useConfigStore()
     config.enemy.stunCountLock = 2

@@ -86,7 +86,7 @@ const ALLY: Record<string, string[]> = {
 }
 
 /** 让 countSource 类的量表非 0（`parryCount` / `chainCountTotal` / `perfectBlockCount` 等） */
-const RICH = { cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12, quickAssistCount: 4, chainCountPerStun: 2, blockCount: 4, perfectBlockCount: 5 }
+const RICH = { cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12, chainCountPerStun: 2, blockCount: 4, perfectBlockCount: 5 }
 
 /* ==========================================================================================
  * 第二批（2026-09-20 round 50 管理员 AC）：再补 15 条 Form-E

@@ -25,8 +25,7 @@ import {
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
-  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
-  quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
+  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
 }
 
 /** mateId: 强攻队友用于额外能力；1081 安比为电·击破不触发 specialty=attack，改用火强攻 11号 1041 或同阵营露西 1151 */

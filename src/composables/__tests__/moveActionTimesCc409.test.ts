@@ -51,7 +51,7 @@ describe('CC-409 招式 actionTime 来自 catalog（cfg.moveActionTimes）', () 
     const seenAgents = new Set<string>()
     for (const c of CASES) {
       const { catalog } = await setupHarness([
-        { agentId: c.agentId, cinemaLevel: c.cinema ?? 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+        { agentId: c.agentId, cinemaLevel: c.cinema ?? 0, parryCount: 0, dodgeCounterCount: 0 },
         '',
         '',
       ])

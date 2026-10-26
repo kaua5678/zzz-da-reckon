@@ -12,9 +12,9 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 
 async function setup() {
   const result = await setupHarness([
-    { agentId: '1211', cinemaLevel: 6, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: '1181', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: '1031', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: '1211', cinemaLevel: 6, parryCount: 0, dodgeCounterCount: 0 },
+    { agentId: '1181', parryCount: 0, dodgeCounterCount: 0 },
+    { agentId: '1031', parryCount: 0, dodgeCounterCount: 0 },
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false
   return result

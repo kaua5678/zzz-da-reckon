@@ -56,8 +56,7 @@ export function echoReadingA(castCount: number): number {
 
 /** C6 夹具（与 `roxyWindEyeTiming.test.ts` 同款，便于跨文件对账） */
 const RICH: HarnessTeamSlot = {
-  agentId: '1621', cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12,
-  quickAssistCount: 4, chainCountPerStun: 2, blockCount: 4, perfectBlockCount: 5,
+  agentId: '1621', cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12, chainCountPerStun: 2, blockCount: 4, perfectBlockCount: 5,
 } as HarnessTeamSlot
 
 function mates(ids: string[]): HarnessTeamSlot[] {

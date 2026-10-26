@@ -8,8 +8,7 @@ import { NICOLE_BULLETS_PER_APPLY, NICOLE_C1_EX_BONUS, NICOLE_C2_ENERGY, NICOLE_
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
-  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
-  quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
+  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
 }
 
 async function setup(cinemaLevel = 0, mateId = '1241') {

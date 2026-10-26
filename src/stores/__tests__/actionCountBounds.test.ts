@@ -21,7 +21,6 @@ const LEGACY_BOUNDS: Record<ActionCountField, { min: number; max: number }> = {
   dodgeCounterCount: { min: 0, max: 99 },
   blockCount: { min: 0, max: 99 },
   dualCounterCount: { min: 0, max: 99 },
-  quickAssistCount: { min: 0, max: 99 },
   chainCountPerStun: { min: 0, max: 3 },
   basicAttackTimeWeight: { min: 0, max: 99 },
   assaultOrderCount: { min: 0, max: 999 },
@@ -41,8 +40,8 @@ describe('ACTION_COUNT_BOUNDS（上下界表 = 数值口径的单一事实源）
     expect(ACTION_COUNT_BOUNDS).toEqual(LEGACY_BOUNDS)
   })
 
-  it('字段数 = 17（新增/删除字段必须显式来改这条；T197 删了 yixuanBackstageComboCount、2026-10-22 加 autoEvadeCount）', () => {
-    expect(Object.keys(ACTION_COUNT_BOUNDS)).toHaveLength(17)
+  it('字段数 = 16（新增/删除字段必须显式来改这条；T197 删了 yixuanBackstageComboCount、2026-10-22 加 autoEvadeCount、2026-10-26 删 quickAssistCount）', () => {
+    expect(Object.keys(ACTION_COUNT_BOUNDS)).toHaveLength(16)
   })
 })
 
@@ -94,7 +93,6 @@ describe('setActionCount 统一写入通道', () => {
       ['dodgeCounterCount', (s, v) => config.setActionCount(s, 'dodgeCounterCount', v), 99],
       ['blockCount', (s, v) => config.setActionCount(s, 'blockCount', v), 99],
       ['dualCounterCount', (s, v) => config.setActionCount(s, 'dualCounterCount', v), 99],
-      ['quickAssistCount', (s, v) => config.setActionCount(s, 'quickAssistCount', v), 99],
       ['chainCountPerStun', (s, v) => config.setActionCount(s, 'chainCountPerStun', v), 3],
       ['basicAttackTimeWeight', (s, v) => config.setActionCount(s, 'basicAttackTimeWeight', v), 99],
       ['assaultOrderCount', (s, v) => config.setActionCount(s, 'assaultOrderCount', v), 999],

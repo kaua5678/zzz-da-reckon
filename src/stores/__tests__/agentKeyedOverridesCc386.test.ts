@@ -11,9 +11,9 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 
 const TEAM = [
-  { agentId: '1211', cinemaLevel: 6, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-  { agentId: '1181', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-  { agentId: '1031', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+  { agentId: '1211', cinemaLevel: 6, parryCount: 0, dodgeCounterCount: 0 },
+  { agentId: '1181', parryCount: 0, dodgeCounterCount: 0 },
+  { agentId: '1031', parryCount: 0, dodgeCounterCount: 0 },
 ]
 
 async function setup(team = TEAM) {

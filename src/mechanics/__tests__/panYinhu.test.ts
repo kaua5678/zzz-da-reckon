@@ -9,8 +9,7 @@ import { panYinhuMechanic } from '@/mechanics/agents/panYinhu'
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
-  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
-  quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
+  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
 }
 
 async function setup(mateId = '1441', cinemaLevel = 0) {
@@ -128,8 +127,8 @@ describe('潘引壶 EX 自动连段：断脉破穴手×3', () => {
 describe('潘引壶 全链集成：断脉破穴手进入执行计划', () => {
   it('resourceResult 含 3 段连段行，倍率表回填 195.2% 且不占前台', async () => {
     const { config } = await setupHarness([
-      { agentId: '1421', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1441', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1421', parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1441', parryCount: 0, dodgeCounterCount: 0 },
       '',
     ])
     for (const buff of config.globalBuffs) buff.enabled = false

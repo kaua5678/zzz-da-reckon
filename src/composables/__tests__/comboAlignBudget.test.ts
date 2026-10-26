@@ -29,7 +29,7 @@ function deepCopy<T>(x: T): T {
 async function capturedConfig(team: string[]): Promise<ResourceCalcConfig> {
   // 交互归零（弹刀/闪反/快支的 base 必要时间会淹没受控变量）；合轴机制与交互无关
   await setupHarness(team.map(agentId => ({
-    agentId, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0,
+    agentId, parryCount: 0, dodgeCounterCount: 0,
   })))
   const calc = useResourceCalc()
   const cfg = calc.resourceConfig.value!

@@ -8,8 +8,7 @@ import { yanagiMechanic } from '@/mechanics/agents/yanagi'
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
-  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
-  quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
+  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
 }
 
 async function setup(mateId = '1331', cinemaLevel = 0) {
@@ -119,8 +118,8 @@ describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
     const { setupHarness } = await import('@/test/harness')
     const { useResourceCalc } = await import('@/composables/useResourceCalc')
     await setupHarness([
-      { agentId: '1221', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1221', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     const calc = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
@@ -129,8 +128,8 @@ describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
     expect(y0.executions.filter(e => e.moveId === '1221022').length).toBe(1)
 
     await setupHarness([
-      { agentId: '1221', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1221', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     const calc2 = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
@@ -148,8 +147,8 @@ describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
     const { useResourceCalc } = await import('@/composables/useResourceCalc')
 
     const r = await setupHarness([
-      { agentId: '1221', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1221', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     const calc = useResourceCalc()
     const extraRow = () => calc.resourceResult.value!.characters.find(c => c.agentId === '1221')!
@@ -170,8 +169,8 @@ describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
 
     // 2 命：滑块 4 → 钳到 2（额外突刺行 = 强特次数 × 2）
     const r2 = await setupHarness([
-      { agentId: '1221', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1221', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     const calc2 = useResourceCalc()
     r2.config.setMechanicSetting('yanagi.extraThrustCount', 4)
@@ -183,8 +182,8 @@ describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
 
     // 6 命：滑块 4 → 4 次（额外突刺行 = 强特次数 × 4）
     const r6 = await setupHarness([
-      { agentId: '1221', cinemaLevel: 6, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1221', cinemaLevel: 6, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     const calc6 = useResourceCalc()
     r6.config.setMechanicSetting('yanagi.extraThrustCount', 4)
@@ -200,8 +199,8 @@ describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
     const { useResourceCalc } = await import('@/composables/useResourceCalc')
 
     await setupHarness([
-      { agentId: '1221', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1221', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     const calc0 = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
@@ -211,8 +210,8 @@ describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
     expect(ev0!.polarDisorderRatio).toBeCloseTo(0.15, 6)
 
     await setupHarness([
-      { agentId: '1221', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1221', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     const calc2 = useResourceCalc()
     await new Promise(r => setTimeout(r, 50))
@@ -228,8 +227,8 @@ describe('月城柳核心被动电伤 + 影画1/2/6 面板区', () => {
 
     const exEnergy = async (cinemaLevel: number) => {
       const r = await setupHarness([
-        { agentId: '1221', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-        { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+        { agentId: '1221', cinemaLevel, parryCount: 0, dodgeCounterCount: 0 },
+        { agentId: '1331', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
       ])
       const calc = useResourceCalc()
       r.config.setMechanicSetting('yanagi.extraThrustCount', 3)

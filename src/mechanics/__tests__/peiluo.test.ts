@@ -7,8 +7,7 @@ import { peiluoProminenceMechanic, peiluoOverlay } from '@/mechanics/agents/spec
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: { 4: 'atkPct' as any, 5: 'physicalDmg' as any, 6: 'critRate' as any }, subStatAllocation: {} },
-  parryCount: 10, dodgeCounterCount: 6, blockCount: 20,
-  quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
+  parryCount: 10, dodgeCounterCount: 6, blockCount: 20, chainCountPerStun: 0, basicAttackTimeWeight: 1,
 }
 
 describe('佩洛伊斯（1551）影画1 黄昏旧章', () => {
@@ -173,7 +172,7 @@ describe('佩洛伊斯日珥账本（命中回复/天光消耗）', () => {
   it('buildResourceResult：命中回复并入日珥总账、天光消耗计入剩余', () => {
     const cfg: any = {
       peiluoProminenceLedger: { hitGain: 20, spend: 30, lowSpend: 5, a3: 1, a4: 1 },
-      battleTime: 180, exSpecialEnergyConsume: 0, dodgeCounterCount: 0, parryCount: 0, blockCount: 0, perfectBlockCount: 0, quickAssistCount: 0,
+      battleTime: 180, exSpecialEnergyConsume: 0, dodgeCounterCount: 0, parryCount: 0, blockCount: 0, perfectBlockCount: 0,
     }
     const state = { frontlineTime: 0, backstageTime: 0, basicAttackTime: 0, exSpecialCount: 0, ultimateCount: 0, chainCountTotal: 0 }
     const out: any = peiluoProminenceMechanic.buildResourceResult!({ cfg, state } as any)

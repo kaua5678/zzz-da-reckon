@@ -21,7 +21,6 @@ function teamChar(slot: number, agentId: string, cinemaLevel = 0, overrides: Rec
     parryCount: 6,
     blockCount: 0,
     dodgeCounterCount: 10,
-    quickAssistCount: 3,
     chainCountPerStun: 1,
     basicAttackTimeWeight: 1,
     ...overrides,
@@ -57,27 +56,8 @@ describe('终结技次数口径：异常/特殊动作奖励计入喧响推导', 
     expect(billy.ultimateCount).toBeGreaterThanOrEqual(3)
   })
 
-  it('快支 20/次 奖励只在 specialActionBonus 计一次（bonusRegen 不再重复）', async () => {
-    const catalog = useCatalogStore()
-    await catalog.load()
-    await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
-    const config = useConfigStore()
-    config.team[0] = teamChar(0, '1531', 0, { quickAssistCount: 3 })
-    config.team[1] = teamChar(1, '1251', 0, { quickAssistCount: 0 })
-    config.team[2] = teamChar(2, '1271', 0, { quickAssistCount: 0 })
-
-    const calc = useResourceCalc()
-    const out = calc.resourceResult.value!
-    const main = out.characters.find(c => c.slot === 0)!
-    // 无时光切片音擎 → bonusRegen 为 0（快支 20 不再在池内重复）；奖励全部在 specialActionBonus
-    expect(main.decibelSource.bonusRegen).toBe(0)
-    // specialActionBonus 含自己 3 次快支（3×20=60 下界；另含弹刀/闪反/连携与队友伴随）
-    expect(main.decibelSource.specialActionBonus).toBeGreaterThanOrEqual(3 * 20)
-    // 次数推导包含该奖励：total ≥ 基础部分 + 快支奖励
-    expect(main.decibelSource.total).toBeGreaterThanOrEqual(
-      main.decibelSource.initialGift + main.decibelSource.skillRegen + main.decibelSource.teammateShare + 3 * 20 - 1e-6,
-    )
-  })
+  // ⚠ 2026-10-26：原「快支 20/次 奖励只在 specialActionBonus 计一次」用例已随快支通道整体删除
+  // （手动快支下线 ⇒ `quickAssistCount` 字段与特殊动作喧响里的快支 20/次 一并消失，没有可断言的通道）。
 
   it('异常/紊乱/乱流奖励通过外层不动点回填（异常池产出 > 0 时 anomalyBonus > 0 且参与次数）', async () => {
     const catalog = useCatalogStore()

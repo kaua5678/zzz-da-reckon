@@ -40,7 +40,6 @@ function teamCfg(agentId: string, extra: Record<string, unknown> = {}): Characte
     ultimateComboAlignRatio: 0,
     parryCount: 0,
     dodgeCounterCount: 0,
-    quickAssistCount: 0,
     dodgeCounterMoveId: 'dodge1',
     dodgeCounterActionTime: 1,
     dodgeCounterDecibelRecovery: 0,

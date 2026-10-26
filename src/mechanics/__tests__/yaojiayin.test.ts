@@ -15,8 +15,7 @@ import {
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
-  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0,
-  quickAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
+  parryCount: 0, dodgeCounterCount: 0, defAssistCount: 0, chainCountPerStun: 1, basicAttackTimeWeight: 1,
 }
 
 /** 强攻队友触发额外能力 */
@@ -123,7 +122,6 @@ describe('耀嘉音执行行', () => {
       yaojiayinClusterDmg: 48.2,
       yaojiayinCapriccioDmg: 542.4,
       yaojiayinTeamHasAttack: 1,
-      yaojiayinQuickAssistEntries: 6,
     }
     const executions: any[] = []
     yaojiayinMechanic.buildExecutions!({

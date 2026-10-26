@@ -25,8 +25,7 @@ import { clampActionCount } from '@/stores/config'
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: { 4: 'anomalyProficiency' as any, 5: 'fireDmg' as any, 6: 'anomalyMastery' as any }, subStatAllocation: {} },
-  parryCount: 10, dodgeCounterCount: 6, blockCount: 20,
-  quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
+  parryCount: 10, dodgeCounterCount: 6, blockCount: 20, chainCountPerStun: 0, basicAttackTimeWeight: 1,
 }
 
 describe('菲欧妮（1641）3.3.12 v12 正式录入', () => {
@@ -320,7 +319,7 @@ describe('菲欧妮（1641）3.3.12 v12 正式录入', () => {
    * 交互上限（用户口径 2026-10-22：「这些交互的上限设置了没，格挡不该太多」）。
    *
    * 三档约束各就各位：
-   * ① **store 界**（`ACTION_COUNT_BOUNDS`）：parry/dodge/block/quickAssist 全 `0..99`、perfectBlock `0..999`；
+   * ① **store 界**（`ACTION_COUNT_BOUNDS`）：parry/dodge/block 全 `0..99`、perfectBlock `0..999`；
    * ② **原作硬约束**：完美格挡「10 秒内最多触发一次」⇒ 180s 局最多 18 次（`phoenixPerfectBlockHits`）；
    * ③ **资源约束**：掠火轮/熔毁/快支都是**真实动作行**，占前台时间 ⇒ 填得再多也只是挤平A池。
    *
@@ -333,8 +332,9 @@ describe('菲欧妮（1641）3.3.12 v12 正式录入', () => {
     expect(phoenixPerfectBlockHits({ battleTime: 180, invincibleTime: 0, perfectBlockCount: 5 } as never)).toBe(5)
     // 无敌时间扣减 ⇒ 上限收紧（180−100=80s ⇒ 8 次）
     expect(phoenixPerfectBlockHits({ battleTime: 180, invincibleTime: 100, perfectBlockCount: 999 } as never)).toBe(8)
-    // ① store 界：这四个是「需要 boss 出手」的交互，界面不许填成三位数
-    for (const f of ['parryCount', 'dodgeCounterCount', 'blockCount', 'quickAssistCount'] as const) {
+    // ① store 界：这三个是「需要 boss 出手」的交互，界面不许填成三位数
+    // （quickAssistCount 2026-10-26 删除，不再是可填字段）
+    for (const f of ['parryCount', 'dodgeCounterCount', 'blockCount'] as const) {
       expect(clampActionCount(f, 1000), f).toBe(99)
     }
     // 完美格挡原文是「10 秒一次」而非「一次一用」，界放到 999 也不会爆量（被 ② 钳住）
@@ -344,26 +344,22 @@ describe('菲欧妮（1641）3.3.12 v12 正式录入', () => {
   /**
    * **快速支援不进名额**（用户裁决 2026-10-22）：原文确有「点按普攻可衔接第三段」，
    * 但引擎不物化快支行（无代价）⇒ 收它 = 白送 a34、上限形同虚设。这条反锁「不收」。
+   *
+   * ⚠ 2026-10-26：`quickAssistCount` 字段整体删除（手动快支下线）⇒ 原「实打侧：改快支次数不改变
+   * a34 名额」那半条已无从构造（没有字段可改），保留纯函数侧（入参类型层就收不进来）+ 快支行不物化。
    */
   it('快速支援：不进 a34 名额（引擎不物化快支行 ⇒ 收了就是零成本白送）', async () => {
     const grantsNoQa = phoenixBasicGrants(
       { dodgeCounterCount: 0, parryCount: 0 } as never,
       { exSpecialCount: 4, ultimateCount: 0, chainCountTotal: 0 } as never,
     )
-    // 只按 3×强特轮数计，快支不参与（入参已不含 quickAssistCount —— 类型层就收不进来）
+    // 只按 3×强特轮数计，快支不参与（入参里没有快支项 —— 类型层就收不进来）
     expect(grantsNoQa).toBe(4 * PHOENIX_A34_PER_EX_ROUND)
 
-    // 实打侧：改快支次数不改变 a34 名额（引擎没给快支行，全队交互 0 也不退化）
-    const { config } = await setup(['1641', '1171', ''], 0)
-    const planOf = () => {
-      const phoenix = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1641')!
-      return phoenix.phoenixCycle!.a34FreePairs + phoenix.phoenixCycle!.a34PaidRounds
-    }
-    const base = planOf()
-    config.setActionCount(0, 'quickAssistCount', 40)
-    expect(planOf(), '快支不该改变 a34 名额').toBe(base)
-    // 也不该物化出快支行（本模块不补行）
+    // 也不该物化出快支行（本模块不补行；全队交互 0 也不退化 ⇒ 名额仍 > 0）
+    await setup(['1641', '1171', ''], 0)
     const phoenix = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1641')!
+    expect(phoenix.phoenixCycle!.a34FreePairs + phoenix.phoenixCycle!.a34PaidRounds).toBeGreaterThan(0)
     expect(phoenix.executions.find(e => e.moveId === '1641014')).toBeUndefined()
   })
 

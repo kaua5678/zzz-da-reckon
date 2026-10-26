@@ -17,7 +17,7 @@ import { TURBULENCE_CD_SECONDS, ANOMALY_DURATION, distributeIntegerByWeight, cal
 import { enemyResistanceOf } from '@/utils/elementStatKeys'
 import type { AnomalyPoolInput } from './anomalyPool/helpers'
 import { withCompanionShare } from '@/data/decibelCompanion'
-import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS, QUICK_ASSIST_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
+import { ANOMALY_DECIBEL_BONUS, DISORDER_DECIBEL_BONUS, TURBULENCE_DECIBEL_BONUS, PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   const {
     executions,
@@ -431,40 +431,41 @@ export function calcAnomalyPoolDamage(
 // ============ 特殊动作喧响奖励计算（原有，保持不变） ============
 
 
-/** 特殊动作喧响奖励计算
+/**
+ * 特殊动作喧响奖励计算
  *
  * 个人获得完整奖励，队友伴随获得50%：
  * - 弹刀：215/次，队友各得107.5/次
+ * - 连携：10/次，队友各得5/次
  * - 闪避反击：10/次，队友各得5/次
- * - 快速支援：20/次，队友各得10/次
+ *
+ * ⚠ 2026-10-26：原本还有第四条「快速支援 20/次」——它由 `cfg.quickAssistCount`（用户手填的主动快支）
+ * 驱动，该字段已随手动快支整体删除（用户裁决「手动快支全都删了，这机制过时了」）。**只删这一条通道**：
+ * 机制快支（如莱特士气喷发的 1161020）一直是**普通招式**，走行内表值回能/喧响，与本函数无关
+ * （见 `lighter.ts` 与 `convergence.ts` 的口径注释）。
  */
 export function calcSpecialActionBonus(
   perSlotParry: number[],
   perSlotChain: number[],
   perSlotDodgeCounter: number[],
-  perSlotQuickAssist: number[],
 ): SpecialActionBonusResult {
   const slotCount = Math.max(
     perSlotParry.length,
     perSlotChain.length,
     perSlotDodgeCounter.length,
-    perSlotQuickAssist.length,
   )
   const totalParry = perSlotParry.reduce((a, b) => a + b, 0)
   const totalChain = perSlotChain.reduce((a, b) => a + b, 0)
   const totalDodgeCounter = perSlotDodgeCounter.reduce((a, b) => a + b, 0)
-  const totalQuickAssist = perSlotQuickAssist.reduce((a, b) => a + b, 0)
 
   const parry = totalParry * PARRY_DECIBEL_BONUS
   const chain = totalChain * CHAIN_DECIBEL_BONUS
   const dodgeCounter = totalDodgeCounter * DODGE_COUNTER_DECIBEL_BONUS
-  const quickAssist = totalQuickAssist * QUICK_ASSIST_DECIBEL_BONUS
 
   const ownReward = (slot: number) =>
     (perSlotParry[slot] ?? 0) * PARRY_DECIBEL_BONUS
     + (perSlotChain[slot] ?? 0) * CHAIN_DECIBEL_BONUS
     + (perSlotDodgeCounter[slot] ?? 0) * DODGE_COUNTER_DECIBEL_BONUS
-    + (perSlotQuickAssist[slot] ?? 0) * QUICK_ASSIST_DECIBEL_BONUS
 
   const perSlotBonus = withCompanionShare(Array.from({ length: slotCount }, (_, i) => ownReward(i)))
 
@@ -472,12 +473,10 @@ export function calcSpecialActionBonus(
     parry,
     chain,
     dodgeCounter,
-    quickAssist,
-    total: parry + chain + dodgeCounter + quickAssist,
+    total: parry + chain + dodgeCounter,
     perSlotParry,
     perSlotChain,
     perSlotDodgeCounter,
-    perSlotQuickAssist,
     perSlotBonus,
   }
 }

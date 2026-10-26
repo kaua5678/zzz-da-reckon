@@ -218,7 +218,7 @@ describe('spec resource panel buffs', () => {
   it('builds Billy radiant star (C6) and Anby zero vortex executions', () => {
     // 煊赫星辉：层数 = 普攻四段(≈平A/2) + 孤轮 + 连携，6 层封顶；
     // 消耗 = min(层数, 2 × (终结技 + 最高马力星光))，每层 100% 贯穿力附伤
-    const billyCfg = { billyCinemaLevel: 6, battleTime: 180, dodgeCounterCount: 0, parryCount: 0, quickAssistCount: 0, blockCount: 0, perfectBlockCount: 0 } as any
+    const billyCfg = { billyCinemaLevel: 6, battleTime: 180, dodgeCounterCount: 0, parryCount: 0, blockCount: 0, perfectBlockCount: 0 } as any
     const billyState = {
       frontlineTime: 12,
       backstageTime: 0,
@@ -565,8 +565,8 @@ describe('Remielle voidflare / luminize', () => {
 describe('加农转子（音擎 14001）直伤事件', () => {
   it('direct_damage 事件进入伤害池（type=直伤）', async () => {
     await setupHarness([
-      { agentId: '1041', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, wEngineId: '14001', wEngineModLevel: 5 },
-      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1041', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, wEngineId: '14001', wEngineModLevel: 5 },
+      { agentId: '1181', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
     ])
     const calc = useResourceCalc()
     // 事件确实被构建并带倍率

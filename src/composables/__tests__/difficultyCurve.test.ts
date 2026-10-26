@@ -299,16 +299,16 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
   it('liveInteractions：读**当前配置**的交互次数（不是预设声明），角色专属类型沿用预设', async () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
-    // 先清零（harness 的 TEST_BASE_CHAR 给每槽 quickAssistCount=3，不清零会串味）
+    // 先清零（交互默认全 0，不清零会串味）
     for (const c of config.team) {
-      c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0; c.blockCount = 0
+      c.parryCount = 0; c.dodgeCounterCount = 0; c.blockCount = 0
     }
     config.team[0]!.parryCount = 3
     config.team[1]!.parryCount = 2
-    config.team[0]!.quickAssistCount = 4
     const items = liveInteractions(config, preset)
     expect(items.find(i => i.type === 'parry')!.count).toBe(5)      // 跨槽位求和 = 这一档实打次数
-    expect(items.find(i => i.type === 'quickAssist')!.count).toBe(4)
+    // 快支 2026-10-26 随 quickAssistCount 字段整体删除 ⇒ 明细里不再有这一类
+    expect(items.some(i => i.type === 'quickAssist')).toBe(false)
     expect(items.some(i => i.type === 'dodge')).toBe(true)          // 0 值也保留（明细要能照抄字段）
   })
 
@@ -318,7 +318,7 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
     // 降配判据修正后交互型溢出被收进可行域，只剩 1431 簇等结构队）。
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
-    for (const c of config.team) { c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0; c.blockCount = 0 }
+    for (const c of config.team) { c.parryCount = 0; c.dodgeCounterCount = 0; c.blockCount = 0 }
     config.team[0]!.parryCount = 8
     config.team[1]!.parryCount = 4
     const parry = (rr?: unknown) => liveInteractions(config, preset, rr as never).find(i => i.type === 'parry')!.count
@@ -339,7 +339,7 @@ describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，�
   it('measureOperationalDifficulty = Σ(交互×权重) + 溢出秒×溢出权重（权重可改）', async () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     const preset = teamPresets.find(p => p.id === 'auto-1521-1481-1311')!
-    for (const c of config.team) { c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0; c.blockCount = 0; c.tauntCancelCount = 0 }
+    for (const c of config.team) { c.parryCount = 0; c.dodgeCounterCount = 0; c.blockCount = 0; c.tauntCancelCount = 0 }
     config.team[0]!.parryCount = 3
     const calc = { resourceResult: { value: null } } as never
     // 把弹刀权重设成 2 ⇒ 3 次弹刀 = 6 点难度

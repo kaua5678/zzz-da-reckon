@@ -271,7 +271,7 @@ export const CLARET_INTERRUPT_BURIAL_BLOCK_ID = 'claret-burial-interrupted'
  * 完整版 = 2.884s（既有 `combos['claret-burial']` 走 moves 求和，无需展开）。
  * 数值口径由 `buildClaretExecutions` 的打断行负责（伤害/失衡/喧响减半）——本函数只管**时间门控**。
  */
-export function expandClaretAxisAction(input: AgentAxisActionExpandInput): StackActionCost[] | undefined {
+function expandClaretAxisAction(input: AgentAxisActionExpandInput): StackActionCost[] | undefined {
   if (input.moveId !== CLARET_INTERRUPT_BURIAL_BLOCK_ID) return undefined
   const entryTime = input.actionTimeOf(CLEAVE_ENTRY_MOVE_ID) || CLEAVE_ENTRY_SECONDS
   const bodyTime = input.actionTimeOf(BLOOD_BURIAL_MOVE_ID) || BURIAL_SECONDS

@@ -12,7 +12,6 @@ function wave1Slot(agentId: string, cinemaLevel = 0): HarnessTeamSlot {
     parryCount: 10,
     dodgeCounterCount: 6,
     blockCount: 20,
-    quickAssistCount: 0,
     chainCountPerStun: 0,
     basicAttackTimeWeight: 1,
   }

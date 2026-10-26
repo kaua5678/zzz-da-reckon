@@ -23,7 +23,6 @@ describe('无敌时间 × 后台/CD 伤害通道', () => {
     // 支援位 0 交互（roleInteractionBaseline 页面口径）
     config.setActionCount(0, 'parryCount', 0)
     config.setActionCount(0, 'dodgeCounterCount', 0)
-    config.setActionCount(0, 'quickAssistCount', 3)
 
     config.setEnemy({ invincibleTime: 0 })
     const calc0 = useResourceCalc()

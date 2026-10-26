@@ -15,8 +15,7 @@ import {
 const baseConfig = {
   wEngineId: '', wEngineModLevel: 5,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: { 4: 'atkPct' as any, 5: 'fireDmg' as any, 6: 'critRate' as any }, subStatAllocation: {} },
-  parryCount: 10, dodgeCounterCount: 6, defAssistCount: 20,
-  quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
+  parryCount: 10, dodgeCounterCount: 6, defAssistCount: 20, chainCountPerStun: 0, basicAttackTimeWeight: 1,
 }
 
 async function setup(team: Array<{ agentId: string; cinemaLevel: number }>) {

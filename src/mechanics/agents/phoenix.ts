@@ -377,7 +377,7 @@ export function phoenixBasicGrants(
  * 把 cfg 快照回滚（新增键置 undefined），写进去的派生量活不过一次物化——这是引擎既有的纯度约束
  * （`AgentResourceResultInput.preModuleExecutions` 头注同理）。
  */
-export function phoenixBasicPlanOf(
+function phoenixBasicPlanOf(
   cfg: AgentCharConfigInput['cfg'],
   state: Pick<AgentResourceInput['state'], 'basicAttackTime' | 'exSpecialCount' | 'ultimateCount' | 'chainCountTotal'>,
 ): PhoenixBasicPlan {

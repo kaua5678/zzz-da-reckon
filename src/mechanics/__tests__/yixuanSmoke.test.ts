@@ -23,7 +23,6 @@ function teamChar(slot: number, agentId: string, cinemaLevel = 0, overrides: Par
     parryCount: 6,
     blockCount: 0,
     dodgeCounterCount: 10,
-    quickAssistCount: 3,
     chainCountPerStun: 1,
     basicAttackTimeWeight: 1,
     ...overrides,

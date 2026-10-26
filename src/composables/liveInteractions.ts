@@ -49,7 +49,6 @@ export function roundInteractionCount(v: number): number {
 const ENGINE_INTERACTION_FIELDS: { type: string; field: keyof ConfigModel['team'][number] }[] = [
   { type: 'parry', field: 'parryCount' },
   { type: 'dodge', field: 'dodgeCounterCount' },
-  { type: 'quickAssist', field: 'quickAssistCount' },
   { type: 'block', field: 'blockCount' },
   // 2026-09-20：需怪攻击的两类（用户口径点名）——它们此前只在角色模块内部消费，没进难度轴，
   // 于是「仪玄 e 弹 5 次」对操作难度零贡献。补进来后默认吃非失衡占比修正

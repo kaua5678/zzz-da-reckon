@@ -13,7 +13,7 @@ function teamChar(slot: number, agentId: string, cinemaLevel = 0, overrides: Rec
   return {
     slot, agentId, cinemaLevel, wEngineId: '', wEngineModLevel: 5,
     driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} },
-    parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0,
+    parryCount: 0, blockCount: 0, dodgeCounterCount: 0,
     chainCountPerStun: 1, basicAttackTimeWeight: 1, ...overrides,
   } as any
 }

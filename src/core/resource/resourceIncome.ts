@@ -67,7 +67,8 @@ export function calcEnergySource(
   const comboAlignBonus = state.comboAlignTime * nonOperatingFlatRate
 
   const preEfficiencyAuto = autoRegen + pctRegenBonus + flatRegenBonus + backstageBonus + comboAlignBonus
-  const demaraTriggerCount = cfg.dodgeCounterCount + cfg.quickAssistCount + cfg.parryCount
+  // 触发次数 = 闪反 + 弹刀（快支 2026-10-26 随字段删除：它已是不可填的 0，留着只是给恒 0 项做加法）
+  const demaraTriggerCount = cfg.dodgeCounterCount + cfg.parryCount
   const demaraCoverageSeconds = Math.min(totalTime, Math.max(0, demaraTriggerCount * 8))
   const demaraCoverageRate = totalTime > 0 ? demaraCoverageSeconds / totalTime : 0
   const demaraEfficiency = finiteOr0(p.demaraEnergyGainEfficiency) / 100

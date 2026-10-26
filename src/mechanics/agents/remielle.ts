@@ -97,7 +97,7 @@ function buildRemielleResourceResult({ cfg }: AgentResourceResultInput): Partial
  *
  * 与伤害行同源（`extraAnomalyRows` 用 `cycles` 算载体次数），这里只是把它暴露给资源卡与外部制表。
  */
-export function remielleFlightRounds(
+function remielleFlightRounds(
   ownSlot: number,
   perSlotAnomalyTriggers: ReadonlyArray<number> | undefined,
 ): number {

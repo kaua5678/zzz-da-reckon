@@ -457,7 +457,6 @@ export function buildCharConfig(
     blockCount: char.blockCount,
     dualCounterCount: char.dualCounterCount ?? 0,
     tauntCancelCount: char.tauntCancelCount ?? 0,
-    quickAssistCount: char.quickAssistCount,
     autoEvadeCount: char.autoEvadeCount ?? 0,
     // 仪玄 5 项 / 普罗米娅 1 项交互栏次数：CC-35b（2026-09-27）改由各自模块 buildCharConfig 从 `char` 读入
     dodgeCounterMoveId: dodgeCounter?.moveId ?? '',

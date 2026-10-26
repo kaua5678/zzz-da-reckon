@@ -231,7 +231,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 **明细表「时间」列口径**（2026-08）：动作总时间只累计**前台**执行行（`timeBucket='backstage'` 的后台行不计——如莱卡恩围猎蓄力属后台活动，不占三人共享时间轴）；引擎折叠循环已把前台行对账本收敛（Σ前台行 ≡ 必要+平A 账本 ≤ 战斗−无敌），仍超出才是真超时。
 **加金档位（用户口径，见 `_template.json` note）**：两位 = 一个角色的「影画+精炼」（21 = 2命1精）；下限 4~5 金 → 12 金（212121 = 全队 2命1精）→ 612121（主C 6命1精）→ 616161（全队 6命1精）→ 656565（全队 6命5精，最高档）；
 难度 = Σ(count × weight)，权重查 `INTERACTION_WEIGHTS`（`src/types/teamPreset.ts`），条目可覆盖；
-内置交互类型 parry/dodge/quickAssist 会映射到对应角色的 `parryCount/dodgeCounterCount/quickAssistCount`（槽位 = `it.slot`，缺省 0），角色专属类型只进难度轴。
+内置交互类型 parry/dodge 会映射到对应角色的 `parryCount/dodgeCounterCount`（槽位 = `it.slot`，缺省 0），角色专属类型只进难度轴。（`quickAssist`（快速支援）2026-10-26 整体删除：手动快支下线，次数字段不存在，明细里也不再列这一类。）
 **配置类交互 `tauntCancel`（weight 0，不计难度）**：般岳专属——映射到 `tauntCancelCount`（每次嘲讽取消一次失衡外连段末尾后摇）；其余交互照常按难度计入。
 **般岳轴模式自动补齐（保底语义，仅轴模式 + 设置 `banyue.autoTopUpInteractions` 开时）**：轴内怒相/终结技对嗔火/喧响有硬性需求，不足时自动抬**双反**（补嗔火 +10/次）与**弹刀**（普通弹刀补喧响 +215/次）；有效次数 = 交互栏输入 + 补齐量（**不覆盖输入**，交互栏显示「弹刀 +N（轴自动）」、资源卡片显示补齐行）。
 

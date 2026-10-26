@@ -195,8 +195,12 @@ function pushExec(
 }
 
 /**
- * 入场触发次数：全队快支+招架+回避支援 + 全队连携（编排注入 yaojiayinTeamChainTotal）。
+ * 入场触发次数：全队招架/回避支援 + 全队连携（编排注入 yaojiayinTeamChainTotal）。
  * 耀嘉音本人连携/终结进华彩不额外计「队友入场」，但队友连携入场会计入。
+ *
+ * ⚠ 2026-10-26：原式还有一项「全队快速支援次数」，来自 `quickAssistCount`——该字段随手动快支
+ * 整体删除（用户裁决「手动快支全都删了」）⇒ 快支不再是一个可填的入场来源。她自己的和弦造的
+ * 快速支援本来也从来没进过这一项（见下面「次数上限只由能量决定」），故读数无变化。
  */
 /**
  * 入场次数诊断读数（用户裁决 2026-10-22：**不再当震音上限**）。
@@ -209,7 +213,6 @@ function pushExec(
 function estimateYaojiayinEntries(yj: CharacterOperationConfig, characters: CharacterOperationConfig[]): number {
   let entries = 0
   for (const ch of characters) {
-    entries += Math.max(0, Math.floor(ch.quickAssistCount))
     entries += Math.max(0, Math.floor(ch.parryCount))
   }
   // 连携入场：编排写入 yaojiayinTeamChainTotal（全队 chainCountPerStun × 失衡次数）
@@ -225,9 +228,9 @@ function applyYaojiayinTeamFlags(yj: CharacterOperationConfig, characters: Chara
 
 /**
  * 队伍级机制（原先由 useResourceCalc 手工调用 + 在编排层内联写 cfg 字段）：
- * 入场次数 = 全队快支 + 招架（build 阶段即可算）+ 全队连携（需要失衡次数 → converge 阶段）。
- * 连携总数与快支入场数原本由 useResourceCalc 直接写进 cfg（`yaojiayinTeamChainTotal` /
- * `yaojiayinQuickAssistEntries`），现在在模块内自算，编排层不再有 1311 特判分支。
+ * 入场次数 = 招架（build 阶段即可算）+ 全队连携（需要失衡次数 → converge 阶段）。
+ * 连携总数原本由 useResourceCalc 直接写进 cfg（`yaojiayinTeamChainTotal`），现在在模块内自算，
+ * 编排层不再有 1311 特判分支。（快支入场数那一臂随 `quickAssistCount` 一起删除，2026-10-26。）
  */
 function applyYaojiayinTeamHook(input: AgentTeamConfigInput): void {
   // （CC-383：本人 = 派发器给的 `cfg`；派发器只对在队模块、按 cfg.agentId 取模块调用，不再在 characters 里自找）
@@ -235,13 +238,10 @@ function applyYaojiayinTeamHook(input: AgentTeamConfigInput): void {
   if (phase !== 'build' && phase !== 'converge') return
   if (phase === 'converge') {
     let teamChains = 0
-    let quickAssists = 0
     for (const c of characters) {
       teamChains += Math.max(0, c.chainCountPerStun * stunCount)
-      quickAssists += Math.max(0, c.quickAssistCount)
     }
     yj.yaojiayinTeamChainTotal = teamChains
-    yj.yaojiayinQuickAssistEntries = quickAssists
   }
   applyYaojiayinTeamFlags(yj, characters)
 }
@@ -442,7 +442,7 @@ function resourceSections({ result }: AgentResourceSectionsInput) {
     title: '耀嘉音·震音/音簇',
     summary: `震音 ${tr.totalTremolos} · 音簇 ${tr.clusters} · 入场 ${tr.entries}`,
     rows: [
-      { label: '入场触发', value: String(tr.entries), detail: '全队快支+招架+回避支援+连携' },
+      { label: '入场触发', value: String(tr.entries), detail: '全队招架+回避支援+连携' },
       { label: '付费震音', value: String(tr.paidTremolos), detail: `每段 ${YAOJIAYIN_ENERGY_PER_TREMOLO} 能量` },
       { label: '免费震音', value: String(tr.freeTremolos), detail: '额外能力精准 + C2 入场追加' },
       { label: '音簇', value: String(tr.clusters), detail: '每组精准/C2 追加 3 枚' },
@@ -544,8 +544,6 @@ declare module '@/types/resource/config' {
     yaojiayinEntryCount?: number
     /** 写入：teamChains（编排期全队 chainCountPerStun × 失衡次数）；estimateYaojiayinEntries 读作连携入场 */
     yaojiayinTeamChainTotal?: number
-    /** 写入：quickAssists */
-    yaojiayinQuickAssistEntries?: number
     /** 写入：specs.has('attack') ? 1 : 0 */
     yaojiayinTeamHasAttack?: number
   }

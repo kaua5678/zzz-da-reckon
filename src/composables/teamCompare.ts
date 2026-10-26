@@ -198,11 +198,13 @@ export interface DifficultyWeights {
  *  · `counterAssist`（角力/反制支援）= 化解 boss 控制技（一组连段攻击）。
  * 四者**都要求 boss 先出手** ⇒ 与角色专属那四类同源，一并吃修正。
  *
- * **不吃的两类**（语义上不依赖 boss 出手）：
- *  · `quickAssist`（快速支援）= 队友被击飞时的**救场替换**动作（救的是队友不是躲 boss 攻击）；
+ * **不吃的几类**（语义上不依赖 boss 出手）：
  *  · `tauntCancel`（嘲讽取消）= 般岳自然后摇取消（**操作收益型**，权重 1.2；它不要求 boss 出手，
  *    只取决于玩家取消得准不准 ⇒ 不吃本修正）；
  *  · `claretBurialInterrupt`（克拉蕾·葬血强袭打断）= 同类操作收益型技巧（权重 1.2，同上不吃）。
+ *
+ * ⚠ 2026-10-26：`quickAssist`（快速支援）类型已**整体删除**（用户裁决「手动快支全都删了，这机制过时了」）
+ * —— 它随 `quickAssistCount` 字段一起消失，权重 / 标签 / 引擎字段映射三处同时下线。
  *  ⚠ 2026-10-09 修正：`tauntCancel` 此前写成「配置类交互（weight 0）」——那是**错**的，它是操作收益型
  *    （取消得越准越省后摇、平A 时间越多、总伤越高），用户裁决权重 = 一次闪反（1.2）。
  *
@@ -251,7 +253,6 @@ export const INTERACTION_LABELS: Record<string, string> = {
   parry: '弹刀',
   counterAssist: '反制支援（角力）',
   dodge: '闪避',
-  quickAssist: '快支',
   severianAutoEvade: '自动闪避',
   block: '格挡',
   banyueGoldenParry: '般岳·金身弹刀',
@@ -268,7 +269,7 @@ export const INTERACTION_LABELS: Record<string, string> = {
 function completeInteractionList(interactions: InteractionItem[], team: (string | null | undefined)[]): InteractionItem[] {
   const present = new Set(interactions.map(i => i.type))
   const out = [...interactions]
-  for (const t of ['parry', 'dodge', 'quickAssist'] as const) {
+  for (const t of ['parry', 'dodge'] as const) {
     if (!present.has(t)) out.push({ type: t, count: 0 })
   }
   // CC-68 / CC-258：角色专属交互类型 = 模块声明 interactionFieldTypes 的值（原写死般岳 id）
@@ -952,7 +953,6 @@ export function applyPresetInteractions(
     switch (it.type) {
       case 'parry': configStore.setActionCount(slot, 'parryCount', it.count); break
       case 'dodge': configStore.setActionCount(slot, 'dodgeCounterCount', it.count); break
-      case 'quickAssist': configStore.setActionCount(slot, 'quickAssistCount', it.count); break
       case 'block': configStore.setActionCount(slot, 'blockCount', it.count); break
       case 'tauntCancel': configStore.setActionCount(slot, 'tauntCancelCount', it.count); break // 般岳：嘲讽取消失衡外连段后摇
       case 'claretBurialInterrupt': configStore.setActionCount(slot, 'claretBurialInterruptCount', it.count); break // 克拉蕾：打断葬血强袭（数值减半、毁伤照常）

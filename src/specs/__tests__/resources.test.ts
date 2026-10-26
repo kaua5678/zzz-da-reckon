@@ -149,7 +149,6 @@ describe('spec resource interpreter', () => {
       defensiveAssistDecibelRecovery: 0,
       assistFollowUpDecibelRecovery: 0,
       remielleRainbowEndDecibelRecovery: 0,
-      quickAssistCount: 0,
       dodgeCounterCount: 0,
       parryCount: 0,
     } as unknown as CharacterOperationConfig
@@ -200,7 +199,6 @@ describe('spec resource interpreter', () => {
       defensiveAssistDecibelRecovery: 0,
       assistFollowUpDecibelRecovery: 0,
       remielleRainbowEndDecibelRecovery: 0,
-      quickAssistCount: 0,
       dodgeCounterCount: 0,
       parryCount: 0,
     } as unknown as CharacterOperationConfig
@@ -230,7 +228,6 @@ describe('spec resource interpreter', () => {
       defensiveAssistDecibelRecovery: 0,
       assistFollowUpDecibelRecovery: 0,
       remielleRainbowEndDecibelRecovery: 0,
-      quickAssistCount: 0,
       dodgeCounterCount: 0,
       parryCount: 0,
     } as unknown as CharacterOperationConfig

@@ -95,18 +95,18 @@ export function computeCorinCycle(input: {
 }
 
 /**
- * 影画4 触发次数（用户口径）：快支 + 招架支援 + 连携总数，16s CD 做上限。
+ * 影画4 触发次数（用户口径）：招架支援 + 连携总数，16s CD 做上限。
+ * ⚠ 2026-10-26：「快速支援」那一项随 `quickAssistCount` 字段删除（手动快支下线）——它恒为 0，
+ * 留着只是给恒 0 项做加法。引擎不物化快支行，故本次数不受任何快支来源影响。
  * 纯函数，buildCharConfig 调用；连携总数 = chainCountTotalOverride ?? chainCountPerStun × stunCount。
  */
 export function computeCorinC4Triggers(input: {
   battleTime: number
-  quickAssistCount: number
   parryCount: number
   chainTotal: number
 }): number {
   const cdCap = Math.max(0, Math.floor(input.battleTime / CORIN_C4_CD))
-  const raw = Math.max(0, Math.floor(input.quickAssistCount))
-    + Math.max(0, Math.floor(input.parryCount))
+  const raw = Math.max(0, Math.floor(input.parryCount))
     + Math.max(0, Math.floor(input.chainTotal))
   return Math.min(cdCap, raw)
 }
@@ -155,7 +155,6 @@ function applyCorinTeamConfig({ cfg, cinemaLevel, phase, combatTime, stunCount }
   const chainTotal = chainCountTotalOf(cfg, stunCount)
   const triggers = computeCorinC4Triggers({
     battleTime: combatTime,
-    quickAssistCount: cfg.quickAssistCount,
     parryCount: cfg.parryCount,
     chainTotal,
   })

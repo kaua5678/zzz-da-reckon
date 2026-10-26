@@ -28,9 +28,9 @@ const DERIVED_CHANNELS = new Set([
 ])
 
 const TEAM = [
-  { agentId: '1581', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-  { agentId: '1331', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-  { agentId: '1221', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+  { agentId: '1581', parryCount: 0, dodgeCounterCount: 0 },
+  { agentId: '1331', parryCount: 0, dodgeCounterCount: 0 },
+  { agentId: '1221', parryCount: 0, dodgeCounterCount: 0 },
 ]
 
 async function buildFor(slot = 0) {
@@ -303,9 +303,9 @@ describe('属性矩阵：列和必须等于引擎真实面板（不重不漏）'
    */
   it('公式来源逐条拆解：大/小词条分别来自哪（不能混成一个数）', async () => {
     const { config, catalog } = await setupHarness([
-      { agentId: '1611', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1581', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1331', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1611', parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1581', parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1331', parryCount: 0, dodgeCounterCount: 0 },
     ], { recommendedBuild: true })
     for (const buff of config.globalBuffs) buff.enabled = false
     const phases = computePanelPhases(0, config, catalog)!
@@ -337,9 +337,9 @@ describe('属性矩阵：列和必须等于引擎真实面板（不重不漏）'
 
   it('大/小词条输入量可读（克拉蕾局外大防御必须查得到）', async () => {
     const { config, catalog } = await setupHarness([
-      { agentId: '1611', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1581', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1331', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1611', parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1581', parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1331', parryCount: 0, dodgeCounterCount: 0 },
     ], { recommendedBuild: true })
     for (const buff of config.globalBuffs) buff.enabled = false
     const phases = computePanelPhases(0, config, catalog)!
@@ -399,9 +399,9 @@ describe('属性矩阵：列和必须等于引擎真实面板（不重不漏）'
    */
   it('全属性覆盖：角色专属属性（异化度提升）必须出现在公式表且有来源', async () => {
     const { config, catalog } = await setupHarness([
-      { agentId: '1581', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1331', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-      { agentId: '1221', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+      { agentId: '1581', cinemaLevel: 2, parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1331', parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1221', parryCount: 0, dodgeCounterCount: 0 },
     ], { recommendedBuild: true })
     for (const buff of config.globalBuffs) buff.enabled = false
     const phases = computePanelPhases(0, config, catalog)!

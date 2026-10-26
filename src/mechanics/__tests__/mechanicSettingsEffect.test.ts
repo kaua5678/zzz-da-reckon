@@ -55,7 +55,6 @@ const RICH = {
   cinemaLevel: 6,
   parryCount: 8,
   dodgeCounterCount: 12,
-  quickAssistCount: 4,
   chainCountPerStun: 2,
   blockCount: 4,
   perfectBlockCount: 5,

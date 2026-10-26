@@ -15,8 +15,8 @@ import { setupHarness } from '@/test/harness'
 
 async function setup(mateId = '1121', cinemaLevel = 0) {
   const result = await setupHarness([
-    { agentId: '1101', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: '1101', cinemaLevel, parryCount: 0, dodgeCounterCount: 0 },
+    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false
   return result
@@ -191,12 +191,12 @@ describe('珂蕾妲潜能觉醒：爆破作业（定稿 2026-09，spec teamBuffs
     const result = await setupHarness(
       withKoleda
         ? [
-            { agentId: '1101', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-            { agentId: '1011', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+            { agentId: '1101', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+            { agentId: '1011', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
           ]
         : [
-            { agentId: '1121', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-            { agentId: '1011', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+            { agentId: '1121', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+            { agentId: '1011', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
           ],
     )
     for (const buff of result.config.globalBuffs) buff.enabled = false

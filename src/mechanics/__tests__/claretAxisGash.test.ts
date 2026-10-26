@@ -51,7 +51,7 @@ const consumeTable = { [CLEAVE_SLASH_MOVE_ID]: 1, [BLOOD_BURIAL_MOVE_ID]: BURIAL
  * 使断言变成恒真；实测「maimCount > 0」在轴内贡献为 0 时也照样通过）。
  */
 async function runAxisDetailed(actions: Array<{ moveId: string; count: number, window: 1 }>, windows: number) {
-  await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 }, '', ''])
+  await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 }, '', ''])
   const config = useConfigStore()
   config.enemy.stunCountLock = windows
   config.useStunAxis = true
@@ -176,7 +176,7 @@ describe('T2 顺序敏感（「时序」的机器判据）', () => {
 
 describe('T3 真管线：轴内毁伤计入总数，轴外补足相应减少（同一池守恒）', () => {
   async function runAxis(actions: Array<{ moveId: string; count: number, window: 1 }>, windows = 3) {
-    await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 }, '', ''])
+    await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 }, '', ''])
     const config = useConfigStore()
     config.enemy.stunCountLock = windows
     config.useStunAxis = true
@@ -265,7 +265,7 @@ describe('T3 真管线：轴内毁伤计入总数，轴外补足相应减少（�
 describe('T5 进轴残痕值（`StunAxis.entryGash`，用户 2026-10-12「我想设置1800残痕进入也没显示」）', () => {
   it('★ 进轴 1800 点（=3 层）⇒ 池里多 3 层、伤害随之上升', async () => {
     const run = async (entryGash: number) => {
-      await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 }, '', ''])
+      await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 }, '', ''])
       const config = useConfigStore()
       config.enemy.stunCountLock = 1
       config.useStunAxis = true
@@ -289,7 +289,7 @@ describe('T5 进轴残痕值（`StunAxis.entryGash`，用户 2026-10-12「我想
 
   it('★ 进轴值决定轴内那几次毁伤**触不触发**（够则触发、不够则不触发）', async () => {
     const runSim = async (entryGash: number) => {
-      await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 }, '', ''])
+      await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 }, '', ''])
       const config = useConfigStore()
       config.enemy.stunCountLock = 1
       config.useStunAxis = true
@@ -334,7 +334,7 @@ describe('T6 轴内 `basic` 块的积累（单位是**秒**不是次）', () => 
     // ⇒ 8s ≈ 960 点 ≥ 1 层 ⇒ 斩金触发。
     // ⚠ 断言打在**模块自己回传的 `axisMaim`**（生产口径）上，不在测试里另跑一遍推演——
     //   另跑会自己喂参数（负控实测：那样删掉生产传参照样全绿，等于没测）。
-    await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 }, '', ''])
+    await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 }, '', ''])
     const config = useConfigStore()
     config.enemy.stunCountLock = 1
     config.useStunAxis = true
@@ -367,7 +367,7 @@ describe('T7 用户的标准轴（`preset-1611-any` 标准6毁伤（通用））
   async function runStd(cinema: number, entryGash: number) {
     const preset = stunAxisPresets.find(p => p.id === 'preset-1611-any')
     expect(preset, '标准轴预设必须随仓库发布（用户口述录入）').toBeTruthy()
-    await setupHarness([{ agentId: '1611', cinemaLevel: cinema, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 }, { agentId: '1361' }, { agentId: '1211' }])
+    await setupHarness([{ agentId: '1611', cinemaLevel: cinema, parryCount: 0, dodgeCounterCount: 0 }, { agentId: '1361' }, { agentId: '1211' }])
     const config = useConfigStore()
     config.enemy.stunCountLock = 1
     config.useStunAxis = true
@@ -402,7 +402,7 @@ describe('T7 用户的标准轴（`preset-1611-any` 标准6毁伤（通用））
     // 标准轴两次打断葬血强袭分别在 t=0 与 t=10.9（轴里显式 startTime）。
     // ⚠ 时刻必须取自**序列条目**而非「moveId → 时刻」映射：同一 moveId 出现多次时映射会互相覆盖
     //   （实测两次都显示 10.9s）。
-    await setupHarness([{ agentId: '1611', cinemaLevel: 1, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 }, { agentId: '1361' }, { agentId: '1211' }])
+    await setupHarness([{ agentId: '1611', cinemaLevel: 1, parryCount: 0, dodgeCounterCount: 0 }, { agentId: '1361' }, { agentId: '1211' }])
     const config = useConfigStore()
     config.enemy.stunCountLock = 1
     config.useStunAxis = true
@@ -413,7 +413,10 @@ describe('T7 用户的标准轴（`preset-1611-any` 标准6毁伤（通用））
     const fires = (src.axisGashSteps ?? []).filter(st => st.kind === 'consume')
     // 逐**段**结算 ⇒ 两次葬血强袭各 3 段 = 6 条（每段 1 层）
     expect(fires.length, '两次葬血强袭 × 3 段 = 6 条消耗步骤').toBe(6)
-    expect([...new Set(fires.map(f => f.at))], '触发时刻 = 轴里两个块的 startTime').toEqual([0, 10.9])
+    // ⚠ 第二个块 = **顺序游标**落点（2026-10-26 排布时钟修正）：轴里写的是 10.9，但那 0.033s 是手算四舍五入
+    //   ——前一段 `basic count=2` 的两段时长加起来正好把游标推到 10.933（4.2 + 2 × 单段 + 1611020 +
+    //   1611021 的真实 actionTime）。引擎取「前一段结束」与「显式 startTime」的较大者 ⇒ 10.933 才是物理落点。
+    expect([...new Set(fires.map(f => f.at))], '触发时刻 = 轴里两个块的实际落点（起点取 max(前段结束, startTime)）').toEqual([0, 10.933])
     expect(fires.every(f => f.fired), '六段都应触发（C1 起中间攒够）').toBe(true)
     expect(fires.reduce((n, f) => n + f.layers, 0)).toBe(6)
   }, 180_000)
@@ -437,7 +440,7 @@ describe('T7 用户的标准轴（`preset-1611-any` 标准6毁伤（通用））
     const preset = stunAxisPresets.find(p => p.id === 'preset-1611-any')!
     const ax = cloneStunAxes(preset.axes!)
     for (const a of ax[0]!.actions) if (a.moveId === 'basic') a.count = 1
-    await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 }, { agentId: '1361' }, { agentId: '1211' }])
+    await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 }, { agentId: '1361' }, { agentId: '1211' }])
     const config = useConfigStore()
     config.enemy.stunCountLock = 1
     config.useStunAxis = true
@@ -469,7 +472,7 @@ describe('T4 三块与附带事件登记（防漂移）', () => {
   it('★ 毁伤行按**父动作的轴内占比**拆两段（失衡内吃易伤 / 轴外不吃）', async () => {
     // `attachedEvents` 的消费点：`damagePoolDirect` 把子行按父动作轴内占比 emit 两段。
     // 若未登记 ⇒ 毁伤整段按全局覆盖率（轴内部分拿不到全额易伤）。
-    await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 6, dodgeCounterCount: 0, quickAssistCount: 0 }, '', ''])
+    await setupHarness([{ agentId: '1611', cinemaLevel: 0, parryCount: 6, dodgeCounterCount: 0 }, '', ''])
     const config = useConfigStore()
     config.enemy.stunCountLock = 2
     config.useStunAxis = true

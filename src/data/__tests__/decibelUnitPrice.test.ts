@@ -12,11 +12,10 @@ const code = (rel: string) => readFileSync(resolve(__dirname, '../..', rel), 'ut
 
 describe('CC-232 喧响单价', () => {
   it('calcSpecialActionBonus 用 data 单价', () => {
-    const r = calcSpecialActionBonus([1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0])
+    const r = calcSpecialActionBonus([1, 0, 0], [0, 1, 0], [0, 0, 1])
     expect(r.parry).toBe(D.PARRY_DECIBEL_BONUS)
     expect(r.chain).toBe(D.CHAIN_DECIBEL_BONUS)
     expect(r.dodgeCounter).toBe(D.DODGE_COUNTER_DECIBEL_BONUS)
-    expect(r.quickAssist).toBe(D.QUICK_ASSIST_DECIBEL_BONUS)
   })
   it('源码锁：core/anomalyPool 不再以字面量乘单价；ResultPage 不再手写「N/次 · 伴随」', () => {
     const core = code('core/anomalyPool.ts')

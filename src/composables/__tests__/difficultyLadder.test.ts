@@ -195,15 +195,13 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     const lastPt = withCapture2.points[withCapture2.points.length - 1]!
     expect(lastPt.interactionsPlayed, '反空洞：④ 的实打交互总量应 > 0（逐槽阶梯加了交互）').toBeGreaterThan(0)
     /**
-     * ## ★ 快支**整条曲线恒为 0**（用户裁决 2026-10-13，逐字）
+     * ## ★ 交互旋钮**只动弹刀/闪反**（用户裁决 2026-10-13 的「快支归零」条款已被更彻底的裁决取代）
      *
-     * > 「**快支可以归零，并且高难度也不需要加快支**，因为这个招式本身就和平 a 差不多，
-     * >   你也说了 Δ 很小。」
+     * 2026-10-13 的口径是「快支可以归零，高难度也不需要加快支」——当时靠 `clearInteractions` 把它清零、
+     * 靠「两个旋钮都不爬它」保证 ②③④ 不加回来。2026-10-26 用户裁决「手动快支全都删了，这机制过时了」
+     * ⇒ `quickAssistCount` 字段**整体删除**，「快支恒 0」从**行为约束**变成**类型约束**（没有字段可写），
+     * 本条于是只剩可测的那半：**两个交互旋钮必须真的动手，且只动弹刀/闪反**。
      *
-     * ⇒ ① 归零快支（`clearInteractions` 含 `quickAssistCount`），且 ②③④ **都不得把它加回来**。
-     * 机制上由两处保证，本条**直接钉这两个旋钮本体**（而不是钉整条阶梯——那个要 spy
-     * `setActionCount`，而 `climbDifficultyLadder` 退出前的 `restore` 会把预设的
-     * `quickAssistCount = 3` **原样写回**，全程 spy 会把「还原」误判成「加回快支」）：
      *  · `optimizeInteractionsPerSlot`（`slotLadder`）只爬 `parryCount` / `dodgeCounterCount`；
      *  · `applyInteractionKnob(ctx,'joint')` 的 `joint-levers` 三个杠杆 = 平A权重 / 弹刀 / 嘲讽取消。
      */
@@ -211,32 +209,31 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, p3)
     clearInteractions(ctx)
-    expect([0, 1, 2].some(s2 => Number(config.team[s2]?.quickAssistCount ?? 0) > 0), '前提：① 已把快支清零').toBe(false)
+    // ② 的交互旋钮：joint-levers（多杠杆联合搜索）——只许写平A权重 / 弹刀 / 嘲讽取消
     const spyOn = () => {
-      const writes: number[] = []
+      const keys = new Set<string>()
       const orig = config.setActionCount.bind(config)
       const sp = vi.spyOn(config, 'setActionCount').mockImplementation((slot, key, v) => {
-        if (key === 'quickAssistCount' && Number(v) > 0) writes.push(Number(v))
+        keys.add(key)
         return orig(slot, key, v)
       })
-      return { writes, stop: () => sp.mockRestore() }
+      return { keys, stop: () => sp.mockRestore() }
     }
-    // ② 的交互旋钮：joint-levers（多杠杆联合搜索）
     const j = spyOn()
     applyInteractionKnob(ctx, 'joint')
     j.stop()
-    expect(j.writes, `joint-levers 不得写非零快支（实测 ${JSON.stringify(j.writes)}）`).toEqual([])
-    // ④ 的交互旋钮：slotLadder（逐槽阶梯）
+    expect([...j.keys].sort(), `joint-levers 只许碰平A权重/弹刀/嘲讽取消（实测 ${JSON.stringify([...j.keys])}）`)
+      .toEqual(['basicAttackTimeWeight', 'parryCount', 'tauntCancelCount'].filter(k => j.keys.has(k)).sort())
+    // ④ 的交互旋钮：slotLadder（逐槽阶梯）——只许写弹刀 / 闪反
     clearInteractions(ctx)
     const sl = spyOn()
     applyInteractionKnob(ctx, 'slotLadder')
     sl.stop()
-    expect(sl.writes, `slotLadder 不得写非零快支（实测 ${JSON.stringify(sl.writes)}）`).toEqual([])
-    // 反空洞：slotLadder 必须真的加了**别的**交互（否则上一条可能只是「什么都没做」）
+    expect([...sl.keys].filter(k => k !== 'parryCount' && k !== 'dodgeCounterCount'),
+      `slotLadder 只许爬弹刀/闪反（实测 ${JSON.stringify([...sl.keys])}）`).toEqual([])
+    // 反空洞：slotLadder 必须真的加了交互（否则上一条可能只是「什么都没做」）
     expect([0, 1, 2].reduce((a, s2) => a + Number(config.team[s2]?.parryCount ?? 0) + Number(config.team[s2]?.dodgeCounterCount ?? 0), 0),
-      '反空洞：slotLadder 应真的加了弹刀/闪反（证明它动过手，只是不碰快支）').toBeGreaterThan(0)
-    expect([0, 1, 2].reduce((a, s2) => a + Number(config.team[s2]?.quickAssistCount ?? 0), 0),
-      '跑完两个旋钮后快支仍是 0').toBe(0)
+      '反空洞：slotLadder 应真的加了弹刀/闪反').toBeGreaterThan(0)
   })
 
   it('③ ④ = 纯收益拉满（吸收率 == absorbCap，卡 §6.4）', async () => {
@@ -577,7 +574,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
       clearDifficultyLevers({ config, calc })
       applyTeamToStore(config, p)
       for (const c of config.team) {
-        c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0
+        c.parryCount = 0; c.dodgeCounterCount = 0
       }
     }
     zeroAll()
@@ -647,7 +644,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
       clearDifficultyLevers({ config, calc })
       applyTeamToStore(config, p)
       for (const c of config.team) {
-        c.parryCount = 0; c.dodgeCounterCount = 0; c.quickAssistCount = 0
+        c.parryCount = 0; c.dodgeCounterCount = 0
       }
     }
     /** 四项健康读数 + 执行数（卡 §6.3b 要求逐档同时报） */

@@ -19,8 +19,8 @@ import { setupHarness } from '@/test/harness'
 
 async function setup(mateId = '1021', cinemaLevel = 0, slotOverrides: Record<string, unknown> = {}) {
   const result = await setupHarness([
-    { agentId: '1061', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, ...slotOverrides },
-    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: '1061', cinemaLevel, parryCount: 0, dodgeCounterCount: 0, ...slotOverrides },
+    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false
   return result
@@ -67,20 +67,20 @@ describe('可琳（1061）总量', () => {
   })
 })
 
-describe('computeCorinC4Triggers（影画4触发次数：快支+招架支援+连携，CD上限）', () => {
+describe('computeCorinC4Triggers（影画4触发次数：招架支援+连携，CD上限）', () => {
   it('次数之和低于 CD 上限 → 按次数', () => {
-    expect(computeCorinC4Triggers({ battleTime: 180, quickAssistCount: 2, parryCount: 1, chainTotal: 3 })).toBe(6)
+    expect(computeCorinC4Triggers({ battleTime: 180, parryCount: 1, chainTotal: 3 })).toBe(4)
   })
 
   it('次数之和超过 CD 上限 → 截到 floor(battleTime/16)', () => {
-    // floor(100/16)=6；快支3+招架4+连携8=15 > 6 → 6
-    expect(computeCorinC4Triggers({ battleTime: 100, quickAssistCount: 3, parryCount: 4, chainTotal: 8 })).toBe(6)
-    expect(computeCorinC4Triggers({ battleTime: 180, quickAssistCount: 20, parryCount: 20, chainTotal: 20 })).toBe(11)
+    // floor(100/16)=6；招架4+连携8=12 > 6 → 6
+    expect(computeCorinC4Triggers({ battleTime: 100, parryCount: 4, chainTotal: 8 })).toBe(6)
+    expect(computeCorinC4Triggers({ battleTime: 180, parryCount: 20, chainTotal: 20 })).toBe(11)
   })
 
   it('负数钳 0', () => {
-    expect(computeCorinC4Triggers({ battleTime: 180, quickAssistCount: -2, parryCount: -1, chainTotal: 5 })).toBe(5)
-    expect(computeCorinC4Triggers({ battleTime: 180, quickAssistCount: 0, parryCount: 0, chainTotal: 0 })).toBe(0)
+    expect(computeCorinC4Triggers({ battleTime: 180, parryCount: -1, chainTotal: 5 })).toBe(5)
+    expect(computeCorinC4Triggers({ battleTime: 180, parryCount: 0, chainTotal: 0 })).toBe(0)
   })
 })
 
@@ -172,11 +172,12 @@ describe('可琳完整计算链', () => {
   })
 
   // 生效测试（AGENT_RECORDING_SOP 铁律：命座差分，防"效果没接进计算"）：
-  // 影画4 按已有次数计触发（用户口径）：快支2+招架支援1+连携(1×失衡3)=6，CD 上限 floor(180/16)=11 不截断。
+  // 影画4 按已有次数计触发（用户口径）：招架支援1+连携(1×失衡3)=4，CD 上限 floor(180/16)=11 不截断。
+  // （快支那一项 2026-10-26 随 quickAssistCount 字段删除，夹具不再设它。）
   // 断言面用 energySource.initialGift（赠送量不随循环重分配变化，可精确相等）。
-  it('影画4差分：C4 开局能量赠送 = (快支+招架支援+连携总数)×7.2，cycle 记录回能总量', async () => {
-    const slot = { quickAssistCount: 2, parryCount: 1, chainCountPerStun: 1 }
-    // 锁失衡次数=3 → 连携总数 = 1×3 = 3；触发 = 2+1+3 = 6（stunCountLock 在 enemy 配置上，
+  it('影画4差分：C4 开局能量赠送 = (招架支援+连携总数)×7.2，cycle 记录回能总量', async () => {
+    const slot = { parryCount: 1, chainCountPerStun: 1 }
+    // 锁失衡次数=3 → 连携总数 = 1×3 = 3；触发 = 1+3 = 4（stunCountLock 在 enemy 配置上，
     // setupHarness 每次新建 pinia → 每次都要设）
     const withLock = async (cinemaLevel: number) => {
       const { config } = await setup('1021', cinemaLevel, slot)
@@ -190,7 +191,7 @@ describe('可琳完整计算链', () => {
 
     const calc4 = await withLock(4)
     const corin4 = calc4.resourceResult.value!.characters.find(row => row.agentId === '1061')!
-    const expected = 6 * CORIN_C4_ENERGY
+    const expected = 4 * CORIN_C4_ENERGY
     expect(corin4.corinCycle?.c4EnergyTotal).toBeCloseTo(expected, 6)
     expect(corin4.energySource.initialGift - gift0).toBeCloseTo(expected, 6)
   })

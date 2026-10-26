@@ -12,8 +12,8 @@ import { computeJaneMechanic, janeMechanic } from '@/mechanics/agents/jane'
 
 async function setup() {
   const result = await setupHarness([
-    { agentId: '1261', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
-    { agentId: '1171', parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0 },
+    { agentId: '1261', parryCount: 0, dodgeCounterCount: 0 },
+    { agentId: '1171', parryCount: 0, dodgeCounterCount: 0 },
     '',
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false

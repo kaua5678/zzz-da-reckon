@@ -48,7 +48,6 @@ const TEST_PRESET: TeamPreset = {
   interactions: [
     { type: 'parry', count: 8 },
     { type: 'dodge', count: 4 },
-    { type: 'quickAssist', count: 3 },
     { type: 'banyueGoldenParry', count: 5, weight: 1.5, label: '般岳金身弹刀' },
   ],
 }
@@ -297,10 +296,9 @@ describe('teamCompare 金数/难度口径', () => {
   it('难度 = Σ(count × weight)，条目 weight 覆盖类型权重', () => {
     const { difficulty, detail } = computeDifficulty(TEST_PRESET.interactions)
     /**
-     * ⚠ **T141 起 `quickAssist` 权重 = 0**（用户口径 2026-10-12：「**快支完全不算交互**，
-     * 快支的 dps 低于普攻，**不该算成交互**」）⇒ 快支那一项不再进难度。
-     * 旧口径 = 8×1.0 + 4×1.2 + **3×0.6** + 5×1.5 = 22.1；新口径 = 8 + 4.8 + **0** + 7.5 = **20.3**。
-     * ⚠ 只改**难度口径**：快支仍照常参与引擎的资源/伤害计算（见 `types/teamPreset.ts` 的注释）。
+     * T141（2026-10-12）起 `quickAssist` 权重 = 0；2026-10-26 该交互类型**整体删除**（手动快支下线）。
+     * 两种口径下同一份夹具的读数**逐位相同**：8 + 4.8 + 0 + 7.5 = **20.3**（删条目不改难度，
+     * 因为那一项本来就是 ×0）。
      */
     expect(difficulty).toBeCloseTo(20.3, 2)
     expect(detail).toContain('弹刀8×1')
@@ -418,8 +416,9 @@ describe('teamCompare 金数/难度口径', () => {
     ]) {
       expect(defaultInteractionExponent(t), `${t} 应默认吃修正（需怪出手）`).toBe(1)
     }
-    // 不依赖 boss 出手的两类不吃：快支 = 队友被击飞的救场替换；嘲讽取消 = 自然后摇取消
-    for (const t of ['quickAssist', 'tauntCancel']) {
+    // 不依赖 boss 出手的类型不吃：嘲讽取消 = 自然后摇取消
+    // （快支 quickAssist 2026-10-26 已整体删除，不再是可测类型）
+    for (const t of ['tauntCancel']) {
       expect(defaultInteractionExponent(t), `${t} 不应默认吃修正`).toBe(0)
     }
   })
@@ -468,7 +467,7 @@ describe('teamCompare 金数/难度口径', () => {
     await catalog.load()
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
-    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
+    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
     config.team[2] = { ...config.team[0], slot: 2 }
     const calc = useResourceCalc()
@@ -506,7 +505,7 @@ describe('teamCompare 金数/难度口径', () => {
     await catalog.load()
     await catalog.loadTeammateBuffs()
     const config = useConfigStore()
-    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
+    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
     config.team[2] = { ...config.team[0], slot: 2 }
     const calc = useResourceCalc()
@@ -795,7 +794,7 @@ describe('teamCompare 批量计算', () => {
     await catalog.load()
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
-    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
+    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
     config.team[2] = { ...config.team[0], slot: 2 }
 
@@ -876,7 +875,7 @@ describe('teamCompare 批量计算', () => {
     await catalog.load()
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
-    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
+    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
     config.team[2] = { ...config.team[0], slot: 2 }
     const calc = useResourceCalc()
@@ -910,7 +909,7 @@ describe('teamCompare 批量计算', () => {
     await catalog.load()
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
-    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
+    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
     config.team[2] = { ...config.team[0], slot: 2 }
     const calc = useResourceCalc()
@@ -969,7 +968,7 @@ describe('teamCompare 批量计算', () => {
     await catalog.load()
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
-    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
+    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
     config.team[2] = { ...config.team[0], slot: 2 }
     const globalBefore = JSON.stringify(config.globalBuffs)
@@ -1003,7 +1002,7 @@ describe('teamCompare 批量计算', () => {
     await catalog.load()
     await catalog.loadTeammateBuffs() // 就绪门：teammate-buffs 未加载时 resourceConfig 为 null
     const config = useConfigStore()
-    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
+    config.team[0] = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
     config.team[1] = { ...config.team[0], slot: 1 }
     config.team[2] = { ...config.team[0], slot: 2 }
     // 假伤害：Boss 已应用 → 「后期牌」最优；未应用 → 「前期牌」最优。
@@ -1044,7 +1043,7 @@ function engineScoreCalc(config: ReturnType<typeof useConfigStore>, score: (wId:
 }
 
 describe('teamCompare 自动下位音擎（装填池择优）', () => {
-  const emptySlot = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
+  const emptySlot = { slot: 0, agentId: '', cinemaLevel: 0, wEngineId: '', wEngineModLevel: 1, driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {} as any, subStatAllocation: {} }, parryCount: 0, blockCount: 0, dodgeCounterCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1 }
 
   function setupTeam(rows: { slot: number; agentId: string; wEngineId?: string }[]) {
     const config = useConfigStore()
