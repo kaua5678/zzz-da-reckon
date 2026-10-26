@@ -242,6 +242,14 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline {
  * - `realizedWindows ≤ windows` 按构造成立（每窗填充率 ≤ 1）——它只能**减少**兑现，不会凭空多算。
  */
 export interface StunRealization {
+  /**
+   * **计划窗数 K**（= 池的整数次数 = 排出来的窗口个数）。
+   *
+   * 与 `realizedWindows` 配对才有意义：用户要看的是「**计划 K 窗 / 兑现 X 窗**」——
+   * 只报兑现数会被读成「队伍只打了 X 窗」，而实际是「排了 K 窗、其中 X 窗的等效内容真打出来了」。
+   * 非轴队也有这个数（池次数与轨迹无关），故它不受 `hasTrace` 影响。
+   */
+  plannedWindows: number
   /** 已兑现的等效窗数（= Σ 每窗填充率；无轨迹时退化为整数窗数） */
   realizedWindows: number
   /** 已兑现的易伤秒数（= Σ 每窗实际占用秒数；无轨迹时为 0） */
@@ -259,7 +267,7 @@ export interface StunRealization {
 
 export function realizeStunWindows(timeline: StunTimeline): StunRealization {
   if (!timeline.hasTrace) {
-    return { realizedWindows: timeline.windows, occupiedSeconds: 0, idleSeconds: 0, hasTrace: false }
+    return { plannedWindows: timeline.windows, realizedWindows: timeline.windows, occupiedSeconds: 0, idleSeconds: 0, hasTrace: false }
   }
   let realizedWindows = 0
   let occupiedSeconds = 0
@@ -271,5 +279,5 @@ export function realizeStunWindows(timeline: StunTimeline): StunRealization {
     // 填充率按**本窗**有效时长归一（决算截断 / 时钟截短的窗天生更短，不能按名义窗长摊）
     realizedWindows += slot.effectiveSeconds > 0 ? Math.min(1, occupied / slot.effectiveSeconds) : 0
   }
-  return { realizedWindows, occupiedSeconds, idleSeconds, hasTrace: true }
+  return { plannedWindows: timeline.windows, realizedWindows, occupiedSeconds, idleSeconds, hasTrace: true }
 }

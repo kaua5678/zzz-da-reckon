@@ -287,6 +287,32 @@
               <span class="pool-stat-label">连携次数</span>
               <span class="pool-stat-value">{{ stunPoolResult.chainCountTotal }} 次</span>
             </div>
+            <!--
+              **计划 K 窗 / 兑现 X 窗 / 窗内发呆 Y 秒**（docs/STUN_TIMELINE_PROJECT.md 期 2 展示面）。
+
+              用户口径 2026-10-26（逐字）：「再没有就空着，**写明发呆时间**」——
+              窗口开着却没动作也没人兜底平A 的秒数必须能看见，不许被「K × W 秒」的聚合读数吞掉。
+
+              ⚠ 非轴队没有逐窗轨迹（hasTrace=false）：此时只显示计划窗数，
+              兑现/发呆**不编造**（不写 0——0 会被读成「打满了」，而实际是「不可推演」）。
+            -->
+            <div class="pool-stat" v-if="stunRealization">
+              <span class="pool-stat-label">计划窗口</span>
+              <span class="pool-stat-value">{{ stunRealization.plannedWindows }} 窗</span>
+            </div>
+            <div class="pool-stat" v-if="stunRealization && stunRealization.hasTrace">
+              <span class="pool-stat-label">兑现窗口</span>
+              <span class="pool-stat-value" title="按轴栈逐窗填充率累加（末窗按实际只打出的比例计）">
+                {{ stunRealization.realizedWindows.toFixed(2) }} 窗
+              </span>
+            </div>
+            <div class="pool-stat" v-if="stunRealization && stunRealization.hasTrace"
+              :class="{ highlight: stunRealization.idleSeconds > 0.05 }">
+              <span class="pool-stat-label">窗内发呆</span>
+              <span class="pool-stat-value" title="窗口开着、轴动作打完了、三个槽的平A预算也都见底 ⇒ 这段秒数没人打（不是打满）">
+                {{ stunRealization.idleSeconds.toFixed(2) }} 秒
+              </span>
+            </div>
             <div class="pool-per-slot">
               <span v-for="(val, i) in stunPoolResult.perSlotStun" :key="i" class="slot-chip">
                 {{ agentNames[configStore.team[i]?.agentId ?? ''] || `槽${i}` }}: {{ fmt(val, 1) }}
@@ -865,6 +891,8 @@ const {
   autoActive,
   windowDuration,
   stunEffectiveTime,
+  /** 已兑现窗口读数（计划 K / 兑现 X / 窗内发呆 Y）——docs/STUN_TIMELINE_PROJECT.md 期 2 展示面 */
+  stunRealization,
 } = calc
 
 /**

@@ -30,7 +30,7 @@ import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { effectiveBattleTime } from '@/core/effectiveTime'
-import { buildStunTimeline, type StunTimeline, type StunWindowTrace } from '@/core/stunTimeline'
+import { buildStunTimeline, realizeStunWindows, type StunTimeline, type StunWindowTrace } from '@/core/stunTimeline'
 import { teamPresets } from '@/data/teamPresets'
 
 /** 项目文档点名的 6 支般岳队（预设 id 漂移时本表随之更新，别静默跳过） */
@@ -326,5 +326,68 @@ describe('buildStunTimeline 纯函数（边界与残疾口径）', () => {
       }
       expect(tl.windowSeconds + tl.outsideSeconds).toBe(Math.max(0, Number.isFinite(bad.effectiveTime) ? bad.effectiveTime : 0))
     }
+  })
+})
+
+/**
+ * **已兑现窗口读数**（`realizeStunWindows`）——用户口径 2026-10-26（逐字）：
+ * > 「平a兜底也得从全局预算里面拿……可以把平a兜底改为你说的换个角色打平a，
+ * >  再没有就空着，**写明发呆时间**。」
+ *
+ * 本条钉三件事：
+ * ① **计划 K 窗与兑现 X 窗必须同时可读**（只报兑现数会被读成「队伍只打了 X 窗」）；
+ * ② 非轴队 `hasTrace=false` 时**不编造**（兑现退化为整数窗、发呆记 0，而不是假装打满）；
+ * ③ 填充率按**本窗有效时长**归一（决算截断/时钟截短的窗天生更短，按名义窗长摊会低估兑现）。
+ */
+describe('realizeStunWindows（计划 K 窗 / 兑现 X 窗 / 窗内发呆 Y 秒）', () => {
+  const trace = (i: number, over: Partial<StunWindowTrace> = {}): StunWindowTrace => ({
+    index: i, nominalSeconds: 16, extendSeconds: 0, endSeconds: 16,
+    truncated: false, actions: [], actionSeconds: 0, overlapSeconds: 0, fillSeconds: 0, ...over,
+  })
+
+  it('★ 计划窗数与兑现窗数并列上报（不是只报兑现）', () => {
+    const tl = buildStunTimeline({
+      stunCount: 5, windowDuration: 16, effectiveTime: 180,
+      windows: [trace(0, { actionSeconds: 16 }), trace(1, { actionSeconds: 16 }), trace(2, { actionSeconds: 8, fillSeconds: 0 })],
+    })
+    const r = realizeStunWindows(tl)
+    expect(r.plannedWindows, '计划 K 窗 = 池的整数次数').toBe(5)
+    // 窗0/窗1 打满 = 2；窗2 只打了 8/16 = 0.5；窗3/窗4 轨迹缺失 ⇒ `unusedSeconds` 记 0
+    // ⇒ 按既有口径（「无轨迹不编造」= 不当成空转）计为已填 ⇒ 合计 4.5。
+    // ⚠ 这条口径意味着「轨迹比窗口数短」时兑现会被**高估**——真发生要靠上层保证轨迹条数 = 窗口数
+    //   （`buildStunTimeline` 只对 `hasTrace=false` 整体降级，不做逐窗补齐）。本断言把它钉成已知行为，
+    //   不是背书：若将来改成逐窗标记不可推演，这条会红并提醒同步下游展示。
+    expect(r.realizedWindows).toBeCloseTo(4.5, 10)
+    expect(r.plannedWindows).toBe(5)
+  })
+
+  it('★ 发呆秒数如实上报（窗口开着、没人打）', () => {
+    const tl = buildStunTimeline({
+      stunCount: 2, windowDuration: 16, effectiveTime: 180,
+      windows: [trace(0, { actionSeconds: 10 }), trace(1, { actionSeconds: 4 })],
+    })
+    const r = realizeStunWindows(tl)
+    expect(r.idleSeconds, '窗0 空 6s + 窗1 空 12s').toBeCloseTo(18, 6)
+    expect(r.occupiedSeconds).toBeCloseTo(14, 6)
+  })
+
+  it('非轴队（hasTrace=false）不编造：兑现退化为整数窗、发呆记 0、计划数照报', () => {
+    const tl = buildStunTimeline({ stunCount: 3, windowDuration: 16, effectiveTime: 180 })
+    const r = realizeStunWindows(tl)
+    expect(r.hasTrace).toBe(false)
+    expect(r.plannedWindows).toBe(3)
+    expect(r.realizedWindows).toBe(3)
+    expect(r.idleSeconds).toBe(0)
+  })
+
+  it('决算截断窗按**有效时长**归一（不按名义窗长摊 ⇒ 不低估兑现）', () => {
+    // 窗 0 被决算截断成 8s 且打满 8s ⇒ 填充率 1.0（按名义 16s 摊会得 0.5）
+    const tl = buildStunTimeline({
+      stunCount: 1, windowDuration: 16, effectiveTime: 180,
+      windows: [trace(0, { truncated: true, endSeconds: 8, actionSeconds: 8 })],
+    })
+    const r = realizeStunWindows(tl)
+    expect(r.realizedWindows).toBeCloseTo(1, 10)
+    expect(r.idleSeconds).toBeCloseTo(0, 10)
   })
 })
