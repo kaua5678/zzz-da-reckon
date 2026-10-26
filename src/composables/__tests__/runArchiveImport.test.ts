@@ -23,6 +23,13 @@ const BOSS_PRESETS: BossPresetEntry[] = [
   },
   { id: '30033', name: '秽息司祭', nameEn: 'Miasma Priest', aliases: [] },
   {
+    id: '30009',
+    name: '未知复合侵蚀体',
+    nameEn: 'Unknown Corruption Complex',
+    aliases: ['复合侵蚀体'],
+    phases: [{ phaseId: '690481', begin: '2026-10-23 04:00:00' }],
+  },
+  {
     id: '30038',
     name: '「亵渎者」',
     nameEn: 'The Defiler',
@@ -32,8 +39,30 @@ const BOSS_PRESETS: BossPresetEntry[] = [
       { phaseId: '69038', begin: '2026-06-05 04:00:00' },
     ],
   },
-  { id: '40001', name: '叛律孤歌·薇斯珀', nameEn: 'Discordant Solo - Vesper', aliases: ['薇斯珀'] },
+  {
+    id: '40001',
+    name: '叛律孤歌·薇斯珀',
+    nameEn: 'Discordant Solo - Vesper',
+    aliases: ['薇斯珀'],
+    phases: [{ phaseId: '690481', begin: '2026-10-23 04:00:00' }],
+  },
   { id: '300121', name: '恶名·冥宁芙', nameEn: 'Notorious - Marionette', aliases: ['冥宁芙'] },
+  // 40012：3.3 改名的 Boss（测试服「(Test1)僭越者 / The Blasphemer」→ 正式「以太异体·特里薇亚」），
+  // 别名由导入脚本 BOSS_EXTRA_ALIASES 补，归档 690481-1 房间仍用旧名。
+  {
+    id: '40012',
+    name: '以太异体·特里薇亚',
+    nameEn: 'Etheric Other - Truvia',
+    aliases: ['僭越者', 'The Blasphemer', '(Test1)僭越者'],
+    phases: [{ phaseId: '690481', begin: '2026-10-23 04:00:00' }],
+  },
+  {
+    id: '40014',
+    name: '异构·滞变畸兽',
+    nameEn: 'Integrated - Stagnant Aberrant',
+    aliases: [],
+    phases: [{ phaseId: '690481', begin: '2026-10-23 04:00:00' }],
+  },
 ]
 
 const ROOM_GIRTA: ArchiveRoom = {
@@ -202,6 +231,32 @@ describe('matchBossPreset Boss 匹配', () => {
     expect(matchBossPreset({ bossNameZh: '「亵渎者」' }, BOSS_PRESETS)?.presetId).toBe('30038')
     expect(matchBossPreset({ bossNameZh: '叛律孤歌·薇斯珀' }, BOSS_PRESETS)?.presetId).toBe('40001')
     expect(matchBossPreset({ bossNameZh: '恶名·冥宁芙' }, BOSS_PRESETS)?.presetId).toBe('300121')
+  })
+
+  /**
+   * 改名 Boss 的旧名兜底（2026-10-26）：40012 在 3.3 测试服叫「(Test1)僭越者 / The Blasphemer」，
+   * 正式服定名「以太异体·特里薇亚」，而实战归档 690481-1 房间仍用旧名 ⇒ 不补别名时该房部署不到 Boss。
+   * 判据：中文旧名与英文旧名都落到 40012（且不是「未收录 → null」）。
+   */
+  it('改名 Boss 的旧名仍能匹配：僭越者 / The Blasphemer → 40012', () => {
+    expect(matchBossPreset({ bossNameZh: '僭越者' }, BOSS_PRESETS)?.presetId).toBe('40012')
+    expect(matchBossPreset({ bossName: 'The Blasphemer' }, BOSS_PRESETS)?.presetId).toBe('40012')
+    expect(matchBossPreset({ bossNameZh: '以太异体·特里薇亚' }, BOSS_PRESETS)?.presetId).toBe('40012')
+  })
+
+  it('690481 期三层房间全部可部署（普通 3 + 困难 1，含 3.3 新怪 40014）', () => {
+    const season = '2026-10-22T20:00:00.000Z'
+    const cases: Array<[string, string]> = [
+      ['僭越者', '40012'],
+      ['未知复合侵蚀体', '30009'],
+      ['叛律孤歌·薇斯珀', '40001'],
+      ['异构·滞变畸兽', '40014'],
+    ]
+    for (const [name, presetId] of cases) {
+      const m = matchBossPreset({ bossNameZh: name }, BOSS_PRESETS, season)
+      expect(m?.presetId, name).toBe(presetId)
+      expect(m?.phaseId, name).toBe('690481')
+    }
   })
 
   it('未收录 Boss（尚未收录的）→ null + warning', () => {

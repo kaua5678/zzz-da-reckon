@@ -778,156 +778,6 @@
       "atk": 0,
       "points": 100000
     },
-    "900101": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900102": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900103": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900104": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900105": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900106": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900107": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900108": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900109": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900110": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900111": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900112": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900113": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900114": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900115": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900116": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900117": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900118": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900119": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900120": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900121": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900122": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900123": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900124": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900125": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900126": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900127": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900128": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900129": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
-    "900130": {
-      "hp": 3000,
-      "atk": 0,
-      "points": 3000
-    },
     "900201": {
       "hp": 3300,
       "atk": 0,
@@ -959,13 +809,13 @@
               "title": "",
               "desc": "· Each time you successfully parry an attack from Girtablullu's summoned minions and trigger <color=#FFAF2C>Active Conversion</color>, you gain <color=#FFAF2C>500 Performance Points</color>; successfully triggering <Term:2000004></Term> against Girtablullu's attacks grants <color=#FFAF2C>1000 Performance Points</color>, up to 3 times; if you successfully <color=#FFAF2C>break the Corruptive Barrier within 25s</color> of Girtablullu <color=#FFAF2C>first activating</color> <Term:2000001></Term>, you gain <color=#FFAF2C>1500 Performance Points</color>. A maximum of 5,000 Performance Points can be obtained."
             },
-            "69014711": {
+            "69015005": {
               "title": "",
-              "desc": "· When an Agent's attack hits a Boss, the Boss gains 1 point of Dissonance. The same Agent can apply at most 1 point of Dissonance every 1s.\n· When a Boss accumulates 10 points of Dissonance, all Dissonance points are immediately removed and the Boss enters the Dissonant state. While in the Dissonant state, enemies take <color=#2BAD00>40% bonus Attribute Anomaly DMG</color> and <color=#2BAD00>75% bonus Sharp DMG</color> for 10s. Re-entering the Dissonant state resets the duration.\n· When an Agent successfully inflicts an Attribute Anomaly on a Boss, all Agents on the squad gain the Transmutation effect: <color=#2BAD00>DMG dealt increases by 15%</color> and Anomaly Proficiency <color=#2BAD00>increases by 20 points</color>. The Transmutation effect lasts 10s, and repeated triggers reset the duration."
+              "desc": ""
             },
-            "69015004": {
-              "title": "TBD",
-              "desc": "·The Boss's Stun DMG Multiplier is reduced by <color=#2BAD00>25%</color>. When it switches from the <Term:2000002></Term> state back to its normal state, or from its normal state to the <color=#FFAF2C>[Miasmic Shield]</color> state, CRIT DMG dealt to it by Agents is <color=#2BAD00>increased by 20%</color>. This effect can stack up to 3 times and resets when the Boss recovers from Stunned. Each Defensive Assist by an Agent <color=#2BAD00>additionally depletes 5%</color> of its Miasmic Shield."
+            "69015006": {
+              "title": "",
+              "desc": "· When an Agent's attack hits a Boss, the Boss gains 1 point of Dissonance. The same Agent can apply 1 point of Dissonance at most once every 1s.\n· When a Boss accumulates 10 points of Dissonance, all Dissonance points are immediately removed and the Boss enters the Dissonant state. While in the Dissonant state, <color=#2BAD00>Attribute Anomaly DMG dealt to the Boss increases by 20%</color>, <color=#2BAD00>CRIT DMG increases by 120%</color>, <color=#2BAD00>Sharp DMG dealt to the Boss increases by 65%</color>, and <color=#2BAD00>Laceration DMG increases by 25%</color> for 10s. Re-entering the Dissonant state resets the duration.\n· When an Agent successfully inflicts an Attribute Anomaly on a Boss, the whole squad's Anomaly Proficiency <color=#2BAD00>increases by 20 points</color> for 10s, and repeated triggers reset the duration."
             }
           },
           "layer_room": {
@@ -1007,16 +857,16 @@
           "b_rank_goal": 10000,
           "selectable_buff": {
             "69015001": {
-              "title": "TBD",
-              "desc": "· <color=#98EFF0>Ice DMG</color> and <color=#A6C5FD>Wind DMG</color> dealt by Agents <color=#2BAD00>increases by 20%</color>. When attacks hit enemies, ignore <color=#2BAD00>20%</color> of their <color=#98EFF0>Ice RES</color> and <color=#A6C5FD>Wind RES</color>.\n· Agents with the <color=#FFFFFF>[Attack]</color> specialty gain <color=#2BAD00>40%</color> increased CRIT DMG, and DMG dealt by <color=#FFFFFF>[Basic Attack]</color> <color=#2BAD00>increases by 30%</color>."
+              "title": "Sweeping Frost",
+              "desc": "· Agents' <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increases by 30%</color>. When attacks hit enemies, ignore <color=#2BAD00>30%</color> of their <color=#A6C5FD>Wind RES</color>.\n· <color=#FFFFFF>Attack</color> specialty Agents' CRIT DMG <color=#2BAD00>increases by 40%</color> and <color=#FFFFFF>Basic Attack</color> DMG <color=#2BAD00>increases by 50%</color>."
             },
             "69015002": {
-              "title": "TBD",
-              "desc": "· The Agent's DEF <color=#2BAD00>increases by 10%</color>, and Sharp DMG <color=#2BAD00>increases by 15%</color>.\n· After the Agent uses an <color=#FFFFFF>[EX Special Attack]</color>, <color=#FFFFFF>[Special Attack]</color>, or <color=#FFFFFF>[Ultimate]</color>, <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increase by 20%</color> for 15s; repeated triggers reset the duration."
+              "title": "Surging Thunder",
+              "desc": "· Agents' DEF <color=#2BAD00>increases by 10%</color>, and their Sharp DMG <color=#2BAD00>increases by 15%</color>.\n· After an Agent uses an <color=#FFFFFF>EX Special Attack</color>, <color=#FFFFFF>Special Attack</color>, or <color=#FFFFFF>Ultimate</color>, <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increases by 20%</color> for 15s; repeated triggers reset the duration."
             },
             "69015003": {
-              "title": "TBD",
-              "desc": "· <color=#FFFFFF>[Anomaly]</color> specialty Agents' ATK <color=#2BAD00>increases by 20%</color>, and <color=#FF5521>Fire</color> and <color=#A6C5FD>Wind</color> Anomaly Buildup Rate <color=#2BAD00>increases by 15%</color>.\n· When an Agent inflicts an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the whole squad gains 300 Decibels. This effect can trigger once every 20s."
+              "title": "Spirit Zenith",
+              "desc": "· <color=#FFFFFF>Anomaly</color> specialty Agents' ATK <color=#2BAD00>increases by 10%</color>, and <color=#FF5521>Fire</color> and <color=#A6C5FD>Wind</color> Anomaly Buildup Rate <color=#2BAD00>increases by 10%</color>.\n· When an Agent deals <color=#FFFFFF>Attribute Anomaly</color> DMG and triggers a critical hit, the whole squad <color=#2BAD00>gains 20</color> Energy, and Attribute Anomaly DMG <color=#2BAD00>increases by 20%</color> for 20s. This effect can trigger once every 20s."
             }
           }
         }
@@ -1031,13 +881,13 @@
           "stage_num": 1,
           "monster_level": 70,
           "layer_buff": {
-            "69014410": {
-              "title": "",
-              "desc": "· After Infernal Revenant enters the Infernal state, the Attribute Anomaly DMG it takes is reduced by 30%; every time <Term:2000004></Term> is triggered, the Boss gains 1 stack of <color=#FFFFFF>Overheat</color>; triggering <color=#FFAF2C>Defensive Assist</color> or <color=#FFAF2C>Perfect Dodge</color> 2 times in total applies 1 stack of <color=#FFFFFF>Overheat</color> on the Boss, and each stack of <color=#FFFFFF>Overheat</color> increases CRIT DMG of the whole squad by <color=#FFAF2C>25%</color>, stacking up to 3 times and lasting 20s. Triggering <color=#FFAF2C>Defensive Assist</color> or retriggering <color=#FFFFFF>Overheat</color> resets the duration."
-            },
             "69014411": {
               "title": "",
               "desc": "· Successfully triggering <color=#FFAF2C>Shutdown</color> grants <color=#FFAF2C>2000 Performance Points</color>; <color=#FFAF2C>each flint shattered</color> grants <color=#FFAF2C>1000 Performance Points, up to a maximum of 5000 Performance Points</color>."
+            },
+            "69014412": {
+              "title": "",
+              "desc": "· After Infernal Revenant enters the Infernal state, the Attribute Anomaly DMG it takes is reduced by 30%. Every <color=#2BAD00>flintstone</color> shattered gives <color=#FFFFFF>20</color> Energy to the whole team. Every time <Term:2000004></Term> is triggered, the Boss gains 1 stack of <color=#FFFFFF>Overheat</color>; triggering <color=#FFAF2C>Defensive Assist</color> or <color=#FFAF2C>Perfect Dodge</color> 2 times in total applies 1 stack of <color=#FFFFFF>Overheat</color> on the Boss, and each stack of <color=#FFFFFF>Overheat</color> increases CRIT DMG of the whole squad by <color=#FFAF2C>25%</color>, stacking up to 3 times and lasting 20s. Triggering <color=#FFAF2C>Defensive Assist</color> or retriggering <color=#FFFFFF>Overheat</color> resets the duration."
             }
           },
           "layer_room": {
@@ -1057,7 +907,7 @@
                     "wind": 1
                   },
                   "stats": {
-                    "hp": 23562465.344999995,
+                    "hp": 22538010.330000002,
                     "attack": 3286.6909090909094,
                     "defence": 952.8000000000001,
                     "stun": 20430.9,
@@ -1081,16 +931,16 @@
           "b_rank_goal": 6000,
           "selectable_buff": {
             "69015001": {
-              "title": "TBD",
-              "desc": "· <color=#98EFF0>Ice DMG</color> and <color=#A6C5FD>Wind DMG</color> dealt by Agents <color=#2BAD00>increases by 20%</color>. When attacks hit enemies, ignore <color=#2BAD00>20%</color> of their <color=#98EFF0>Ice RES</color> and <color=#A6C5FD>Wind RES</color>.\n· Agents with the <color=#FFFFFF>[Attack]</color> specialty gain <color=#2BAD00>40%</color> increased CRIT DMG, and DMG dealt by <color=#FFFFFF>[Basic Attack]</color> <color=#2BAD00>increases by 30%</color>."
+              "title": "Sweeping Frost",
+              "desc": "· Agents' <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increases by 30%</color>. When attacks hit enemies, ignore <color=#2BAD00>30%</color> of their <color=#A6C5FD>Wind RES</color>.\n· <color=#FFFFFF>Attack</color> specialty Agents' CRIT DMG <color=#2BAD00>increases by 40%</color> and <color=#FFFFFF>Basic Attack</color> DMG <color=#2BAD00>increases by 50%</color>."
             },
             "69015002": {
-              "title": "TBD",
-              "desc": "· The Agent's DEF <color=#2BAD00>increases by 10%</color>, and Sharp DMG <color=#2BAD00>increases by 15%</color>.\n· After the Agent uses an <color=#FFFFFF>[EX Special Attack]</color>, <color=#FFFFFF>[Special Attack]</color>, or <color=#FFFFFF>[Ultimate]</color>, <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increase by 20%</color> for 15s; repeated triggers reset the duration."
+              "title": "Surging Thunder",
+              "desc": "· Agents' DEF <color=#2BAD00>increases by 10%</color>, and their Sharp DMG <color=#2BAD00>increases by 15%</color>.\n· After an Agent uses an <color=#FFFFFF>EX Special Attack</color>, <color=#FFFFFF>Special Attack</color>, or <color=#FFFFFF>Ultimate</color>, <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increases by 20%</color> for 15s; repeated triggers reset the duration."
             },
             "69015003": {
-              "title": "TBD",
-              "desc": "· <color=#FFFFFF>[Anomaly]</color> specialty Agents' ATK <color=#2BAD00>increases by 20%</color>, and <color=#FF5521>Fire</color> and <color=#A6C5FD>Wind</color> Anomaly Buildup Rate <color=#2BAD00>increases by 15%</color>.\n· When an Agent inflicts an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the whole squad gains 300 Decibels. This effect can trigger once every 20s."
+              "title": "Spirit Zenith",
+              "desc": "· <color=#FFFFFF>Anomaly</color> specialty Agents' ATK <color=#2BAD00>increases by 10%</color>, and <color=#FF5521>Fire</color> and <color=#A6C5FD>Wind</color> Anomaly Buildup Rate <color=#2BAD00>increases by 10%</color>.\n· When an Agent deals <color=#FFFFFF>Attribute Anomaly</color> DMG and triggers a critical hit, the whole squad <color=#2BAD00>gains 20</color> Energy, and Attribute Anomaly DMG <color=#2BAD00>increases by 20%</color> for 20s. This effect can trigger once every 20s."
             }
           }
         },
@@ -1153,16 +1003,16 @@
           "b_rank_goal": 6000,
           "selectable_buff": {
             "69015001": {
-              "title": "TBD",
-              "desc": "· <color=#98EFF0>Ice DMG</color> and <color=#A6C5FD>Wind DMG</color> dealt by Agents <color=#2BAD00>increases by 20%</color>. When attacks hit enemies, ignore <color=#2BAD00>20%</color> of their <color=#98EFF0>Ice RES</color> and <color=#A6C5FD>Wind RES</color>.\n· Agents with the <color=#FFFFFF>[Attack]</color> specialty gain <color=#2BAD00>40%</color> increased CRIT DMG, and DMG dealt by <color=#FFFFFF>[Basic Attack]</color> <color=#2BAD00>increases by 30%</color>."
+              "title": "Sweeping Frost",
+              "desc": "· Agents' <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increases by 30%</color>. When attacks hit enemies, ignore <color=#2BAD00>30%</color> of their <color=#A6C5FD>Wind RES</color>.\n· <color=#FFFFFF>Attack</color> specialty Agents' CRIT DMG <color=#2BAD00>increases by 40%</color> and <color=#FFFFFF>Basic Attack</color> DMG <color=#2BAD00>increases by 50%</color>."
             },
             "69015002": {
-              "title": "TBD",
-              "desc": "· The Agent's DEF <color=#2BAD00>increases by 10%</color>, and Sharp DMG <color=#2BAD00>increases by 15%</color>.\n· After the Agent uses an <color=#FFFFFF>[EX Special Attack]</color>, <color=#FFFFFF>[Special Attack]</color>, or <color=#FFFFFF>[Ultimate]</color>, <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increase by 20%</color> for 15s; repeated triggers reset the duration."
+              "title": "Surging Thunder",
+              "desc": "· Agents' DEF <color=#2BAD00>increases by 10%</color>, and their Sharp DMG <color=#2BAD00>increases by 15%</color>.\n· After an Agent uses an <color=#FFFFFF>EX Special Attack</color>, <color=#FFFFFF>Special Attack</color>, or <color=#FFFFFF>Ultimate</color>, <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increases by 20%</color> for 15s; repeated triggers reset the duration."
             },
             "69015003": {
-              "title": "TBD",
-              "desc": "· <color=#FFFFFF>[Anomaly]</color> specialty Agents' ATK <color=#2BAD00>increases by 20%</color>, and <color=#FF5521>Fire</color> and <color=#A6C5FD>Wind</color> Anomaly Buildup Rate <color=#2BAD00>increases by 15%</color>.\n· When an Agent inflicts an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the whole squad gains 300 Decibels. This effect can trigger once every 20s."
+              "title": "Spirit Zenith",
+              "desc": "· <color=#FFFFFF>Anomaly</color> specialty Agents' ATK <color=#2BAD00>increases by 10%</color>, and <color=#FF5521>Fire</color> and <color=#A6C5FD>Wind</color> Anomaly Buildup Rate <color=#2BAD00>increases by 10%</color>.\n· When an Agent deals <color=#FFFFFF>Attribute Anomaly</color> DMG and triggers a critical hit, the whole squad <color=#2BAD00>gains 20</color> Energy, and Attribute Anomaly DMG <color=#2BAD00>increases by 20%</color> for 20s. This effect can trigger once every 20s."
             }
           }
         },
@@ -1201,7 +1051,7 @@
                     "wind": 1
                   },
                   "stats": {
-                    "hp": 26301903.7275,
+                    "hp": 23723285.715,
                     "attack": 2967.1515151515155,
                     "defence": 952.8000000000001,
                     "stun": 19540.25,
@@ -1225,22 +1075,22 @@
           "b_rank_goal": 6000,
           "selectable_buff": {
             "69015001": {
-              "title": "TBD",
-              "desc": "· <color=#98EFF0>Ice DMG</color> and <color=#A6C5FD>Wind DMG</color> dealt by Agents <color=#2BAD00>increases by 20%</color>. When attacks hit enemies, ignore <color=#2BAD00>20%</color> of their <color=#98EFF0>Ice RES</color> and <color=#A6C5FD>Wind RES</color>.\n· Agents with the <color=#FFFFFF>[Attack]</color> specialty gain <color=#2BAD00>40%</color> increased CRIT DMG, and DMG dealt by <color=#FFFFFF>[Basic Attack]</color> <color=#2BAD00>increases by 30%</color>."
+              "title": "Sweeping Frost",
+              "desc": "· Agents' <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increases by 30%</color>. When attacks hit enemies, ignore <color=#2BAD00>30%</color> of their <color=#A6C5FD>Wind RES</color>.\n· <color=#FFFFFF>Attack</color> specialty Agents' CRIT DMG <color=#2BAD00>increases by 40%</color> and <color=#FFFFFF>Basic Attack</color> DMG <color=#2BAD00>increases by 50%</color>."
             },
             "69015002": {
-              "title": "TBD",
-              "desc": "· The Agent's DEF <color=#2BAD00>increases by 10%</color>, and Sharp DMG <color=#2BAD00>increases by 15%</color>.\n· After the Agent uses an <color=#FFFFFF>[EX Special Attack]</color>, <color=#FFFFFF>[Special Attack]</color>, or <color=#FFFFFF>[Ultimate]</color>, <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increase by 20%</color> for 15s; repeated triggers reset the duration."
+              "title": "Surging Thunder",
+              "desc": "· Agents' DEF <color=#2BAD00>increases by 10%</color>, and their Sharp DMG <color=#2BAD00>increases by 15%</color>.\n· After an Agent uses an <color=#FFFFFF>EX Special Attack</color>, <color=#FFFFFF>Special Attack</color>, or <color=#FFFFFF>Ultimate</color>, <color=#2EB6FF>Electric DMG</color> and <color=#A6C5FD>Wind DMG</color> <color=#2BAD00>increases by 20%</color> for 15s; repeated triggers reset the duration."
             },
             "69015003": {
-              "title": "TBD",
-              "desc": "· <color=#FFFFFF>[Anomaly]</color> specialty Agents' ATK <color=#2BAD00>increases by 20%</color>, and <color=#FF5521>Fire</color> and <color=#A6C5FD>Wind</color> Anomaly Buildup Rate <color=#2BAD00>increases by 15%</color>.\n· When an Agent inflicts an <color=#FFFFFF>Attribute Anomaly</color> on an enemy, the whole squad gains 300 Decibels. This effect can trigger once every 20s."
+              "title": "Spirit Zenith",
+              "desc": "· <color=#FFFFFF>Anomaly</color> specialty Agents' ATK <color=#2BAD00>increases by 10%</color>, and <color=#FF5521>Fire</color> and <color=#A6C5FD>Wind</color> Anomaly Buildup Rate <color=#2BAD00>increases by 10%</color>.\n· When an Agent deals <color=#FFFFFF>Attribute Anomaly</color> DMG and triggers a critical hit, the whole squad <color=#2BAD00>gains 20</color> Energy, and Attribute Anomaly DMG <color=#2BAD00>increases by 20%</color> for 20s. This effect can trigger once every 20s."
             }
           }
         }
       }
     }
   ],
-  "begin_time": "2026-09-03 04:00:00",
-  "end_time": "2026-11-11 03:59:59"
+  "begin_time": "2026-11-20 04:00:00",
+  "end_time": "2026-12-02 03:59:59"
 }

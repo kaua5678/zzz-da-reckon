@@ -4,7 +4,7 @@
       <n-space align="center" justify="space-between" style="width: 100%">
         <span>Boss 选择</span>
         <n-space size="small">
-          <!-- 大版本 + 小版本 + 危局期数三级选择（1.4–3.3 全部 Boss 数据支撑；3.3 = 测试服试炼占位期） -->
+          <!-- 大版本 + 小版本 + 危局期数三级选择（1.4–3.3 全部 Boss 数据支撑；3.3 三期已于 2026-10-23 起正式上线） -->
           <n-select
             v-model:value="selectedMajor"
             :options="majorVersionOptions"

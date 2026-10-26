@@ -5,14 +5,12 @@
     "31731": {
       "id": 31731,
       "code_name": "Monster_HollowVenger",
-      "icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/IconBossGeneral/UnPacker/IconMonster_IsoldetheDefiler.png",
+      "icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/IconBossGeneral/UnPacker/IconMonster_HollowVenger.png",
       "tag": [
         "Ether",
         "Middle",
         "Boss",
-        "MainStoryBoss",
-        "EtherBarrierBoss",
-        "Miasma"
+        "MainStoryBoss"
       ],
       "type": "Monster",
       "element": {
@@ -506,10 +504,8 @@
         "Ether",
         "Middle",
         "Boss",
-        "Miasma",
         "DisableAI",
         "NotCounting",
-        "Summon",
         "Summoned"
       ],
       "type": "Monster",
@@ -999,14 +995,11 @@
     "31734": {
       "id": 31734,
       "code_name": "Monster_HollowVenger",
-      "icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/IconBossGeneral/UnPacker/IconMonster_IsoldetheDefiler.png",
+      "icon": "Assets/NapResources/UI/Sprite/A1DynamicLoad/IconBossGeneral/UnPacker/IconMonster_HollowVenger.png",
       "tag": [
         "Ether",
         "Middle",
-        "Boss",
-        "MainStoryBoss",
-        "EtherBarrierBoss",
-        "Miasma"
+        "Boss"
       ],
       "type": "Monster",
       "element": {
@@ -1494,14 +1487,14 @@
     }
   },
   "image_path": "UI/Sprite/A1DynamicLoad/BossCard/UnPacker/BossCardLv04/Monster_HollowVenger.png",
-  "name": "(Test1)僭越者",
-  "desc": "(Test1)...",
+  "name": "以太异体·特里薇亚",
+  "desc": "一具被仇恨与偏执填满的空壳，一个被扭曲的过去压垮了灵魂的罪者，一个失去了神明的狂信徒。她以源自错误的野心灼烧着所遇到的一切，而她自己早在那之前就已经被燃烧殆尽。\n凭借源自赫利俄斯机关的以太异体，僭越者得以掌握强大的力量，并制造泄露奇点，参与了有关罗斯凯利法的种种阴谋。困守于过往执念的她，将空域总控塔的顶层作为舞台，等待着「旧友」，等待着一场最终的对决。\n\n以追逐太阳为名，自身却早已被阴影吞噬，当双翼牵坠了太多的罪孽与痴妄，唯一抵达的地方不会是天空，只会是无望的狱火。\n\n「最令人不喜欢的一类敌人，满心想着什么夙愿、理想，为了自己那点自欺欺人的执迷，犯下的全是不可饶恕的罪行。」",
   "rarity": 4,
   "group_id": 201,
   "group_desc": "以太异形",
   "card_obtain": "【未探明】击败1次以获得数据",
-  "card_quote": "(Test1)...",
-  "card_skill_desc": "(Test1)...",
+  "card_quote": "——一份封存于空巡局的机密记录",
+  "card_skill_desc": "僭越者初始以人形姿态作战，擅长使用长剑发动迅捷的近距离攻击，注意部分高强度的招式需要「连携招架」；特定时机会转换为人鱼形态，反持长剑化为法杖，并将代理人一同拉入泄露奇点，期间会开启「侵蚀壁垒」并借助空间能力与分身发动协同攻势。",
   "element_abnormal": {
     "10001": 600,
     "10002": 600,

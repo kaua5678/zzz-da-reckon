@@ -94,13 +94,20 @@ describe('bossRoom', () => {
   it('CC-350：进房间写敌方体型 = Boss 体型，未录入按中型', async () => {
     const { config } = await setupHarness([{ agentId: '1091' }, { agentId: '1511' }, { agentId: '1411' }])
     const sized = presets.find(p => p.bodySize && p.bodySize !== 'medium')
-    const unsized = presets.find(p => !p.bodySize)
     expect(sized, '数据里应有录了非中型体型的 Boss').toBeTruthy()
-    expect(unsized, '数据里应有未录体型的 Boss').toBeTruthy()
     config.setEnemy({ bodySize: 'small' })
     applyBossRoom(config, sized!, sized!.phases[0]!)
     expect(config.enemy.bodySize).toBe(sized!.bodySize)
-    applyBossRoom(config, unsized!, unsized!.phases[0]!)
+    /**
+     * 「未录入体型 ⇒ 中型」的兜底**不能靠真实数据取样**：2026-10-26 更新危局时把最后一个未录
+     * 体型的 Boss（40012）补成 medium，真实数据里已无此样本 ⇒ 原断言「数据里应有未录体型的
+     * Boss」变成对**数据覆盖度**的断言，（正确地）红了。兜底是**代码行为**，样本自造：
+     * 拷一份真实 preset 去掉 bodySize，就能验「缺字段走默认」而不夹带数据现状。
+     */
+    const unsized = { ...sized!, id: 'test-unsized-body', phases: sized!.phases }
+    delete (unsized as { bodySize?: string }).bodySize
+    expect(presets.some(p => !p.bodySize), '真实数据已全部录体型（兜底改由合成样本覆盖）').toBe(false)
+    applyBossRoom(config, unsized, unsized.phases[0]!)
     expect(config.enemy.bodySize).toBe('medium')
   }, 60000)
 

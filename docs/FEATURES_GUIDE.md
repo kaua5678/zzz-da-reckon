@@ -10,7 +10,7 @@
 1. 打开「属性配置」页 → 顶部「Boss 选择」卡片。**版本 + 危局期数两级下拉**（一期 = 1 困难 + 3 普通，**都是危局强袭战**；防卫战期默认不收，例外见下）。
 2. 每期分三区：
    - **困难 · 危局强袭战**：1 个 Boss，可应用
-   - **普通 · 危局强袭战**：当期 3 个 Boss，**同样可应用**（预设覆盖全部危局 Boss 共 22 个 + 老防卫战 Boss 彷徨猎手 1 个 = 23 个；其中 3.3 测试服「(Test1)僭越者」为**临时预设**——只录弱点/失衡/血量等自动信息，手录默认值（体型/弹刀/无敌）待正式服，2026-09 用户口径）
+   - **普通 · 危局强袭战**：当期 3 个 Boss，**同样可应用**（预设覆盖全部危局 Boss 共 23 个 + 老防卫战 Boss 彷徨猎手 1 个 = 24 个；3.3 新增的 40012「以太异体·特里薇亚」（测试服期曾叫「(Test1)僭越者」）与 40014「异构·滞变畸兽」均已正式定名，手录项（体型/弹刀/无敌）里 40012 的体型按 nanoka tag 录、弹刀/无敌待用户核对）
    - **当期 Buff**：3 张可选牌 + 各 Boss 卡上的**关卡固有 buff**（layer_buff 解析）
 3. 应用 Boss 时（唯一入口 `composables/bossRoom.ts#applyBossRoom`，CC-342；所有分析器与抽卡规划 / 角色兑现曲线逐房同样走它；数据 = `boss-presets.json` 预设 phase 的 `layerBuffs`）除填充敌人配置外，**自动把该 Boss 当期关卡固有 buff（layer_buff 数值效果）写入全局 Buff 表**（id 前缀 `layer-buff:`，切 Boss 时先清旧）；效果上的特性限定 / 人数分档（`cond`）随行写入，计算时按**当前队伍**判定、换人自动换档（`src/utils/phaseBuff.ts`，CC-341）
 3. 一键填充字段：血量 / 失衡值 / 防御 / 等级 / 危局异常系数（`bossAnomalyCoeff`）/ 失衡易伤（`stunVuln`）/ 失衡时间（`stunTime`）/ 三张抗性表 / 战斗时间 180s / 秽盾触发次数 / 能量盾次数 / 无敌时间（预设声明时，如 叶释渊 24s）/ 失衡赠礼（`bossStunGift`，预设 `stunGiftRatio` × 失衡上限，如 亵渎者 30%）。
@@ -29,21 +29,21 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 ```
 
 - **版本口径（2026-10-10 修正）**：缺省取 `manifest.zzz.live`（**正式服**）。此前本脚本是**全仓唯一**取 `zzz.latest` 的抓取脚本，会把预发布构建的 `layer_buff.desc` 抓进来——实测 3.3.x 把库萨里库[识破]写成 20%/层、正式服 3.2 是 10%/层，解析出的 `sharpCritDmg` 差一倍（80 vs 40）。预发布的排期字段名也不同（`live_begin`/`live_end`，正式服用 `begin`/`end`）。要抓测试期须显式传版本号（如 `3.3.12+19476086`），且**只用于占位期**，不要覆盖已上线的正式期。
-- 重抓正式期时**不要整份覆盖 `summary.json`**：正式服不含 3.3 测试服试炼期（690481/690491/690501），且字段名是 `begin`/`end` 而导入脚本只读 `live_begin`——直接覆盖会静默丢掉三期、并让整条时间轴排期变空。正确做法 = 正式期按正式服重抓 + 归一化字段名 + 保留既有试炼期条目。
+- **排期字段名归一（2026-10-26 已内置）**：正式服构建（版本号不带 `+`，如 `3.3`）的 `begin`/`end` 就是正式排期，`fetch-nanoka-bosses.mjs` 会自动归一成导入脚本认的 `live_begin`/`live_end`；预发布构建（带 hash）的 `begin`/`end` 是测试服占位日，保持原样（导入侧当作无排期的占位期）。历史坑：不归一 ⇒ 正式期被静默当成「试炼期」，label 只剩版本号、时间轴与归档期相位都排不上。若正式服真出现「未排期」期，它的 `begin` 会是占位值而不是缺失——发现 label 缺日期就先查这一层。
 - 原始数据 → `data/raw/bosses/{summary.json, version.json, zh|en/<期数id>.json, monster/<怪物id>.json}`
 - 端点与结构见 `scripts/fetch-nanoka-bosses.mjs` 头注释（boss.json / zh|en/boss/<id>.json / zh/monster/<id>.json）
-- **期视图**（`phaseViews`，Boss 选择 UI 的数据源）：覆盖全部 50 期（1.4–3.2 正式 + 3.3 测试服试炼占位）；每期含 普通 3 Boss（`defense`，可应用）/ 当期 buff（`buffs`）；3.1–3.3 另含 困难 Boss（`criticalAssault`，可应用），1.4–3.0 无困难模式
+- **期视图**（`phaseViews`，Boss 选择 UI 的数据源）：覆盖全部 50 期（1.4–3.3，**全部为正式排期**；3.3 三期 690481/690491/690501 于 2026-10-23 / 11-06 / 11-20 上线）；每期含 普通 3 Boss（`defense`，可应用）/ 当期 buff（`buffs`）；3.1 起另含 困难 Boss（`criticalAssault`，可应用），1.4–3.0 无困难模式
 
 ### 1.3 修改入口（都在 `scripts/import-nanoka-bosses.mjs`）
 
 | 要改什么 | 改哪里 |
 | --- | --- |
-| 预设收录哪些 Boss | `CATALOG_MONSTER_MAP`（**危局 Boss**：困难异构 + 普通常规，共 22 个（含 3.3 测试服临时预设 40012）+ 用户确认收录的老防卫战 Boss 彷徨猎手 `30041`；`null` = 无 catalog 条目） |
+| 预设收录哪些 Boss | `CATALOG_MONSTER_MAP`（**危局 Boss**：困难异构 + 普通常规，共 23 个 + 用户确认收录的老防卫战 Boss 彷徨猎手 `30041` = 24 个；`null` = 无 catalog 条目）；无 catalog 条目的 Boss 改名/旧名补 `BOSS_EXTRA_ALIASES` |
 | 秽盾/能量盾/战斗时间/无敌时间/弹刀总数/喧响赠礼默认值 | `BOSS_DEFAULTS`（**秽盾是触发次数不是血量**：破盾奖励 60 能量 × 次数，名可名/叶释渊 = 1；不要填 3000 那种血量值。`invincibleTime` 无敌时间（秒）、`parryTotal` 正常弹刀下限、`parryNoFollowUpTotal` 不带支援突击弹刀下限、`parryDecibelOnlyTotal` 只给喧响弹刀下限（全归击破位）、`stunGiftRatio` 失衡赠礼比例（× 失衡上限）、`decibelGift` 喧响赠礼（叠加到指定槽位进场喧响）；口径见 §1.1） |
 | 失衡倍率/失衡时间公式 | `loadMonster()`：`(100+stun_damage_taken_ratio/100)/100`、`10000/destroy_recover_rate` |
 | 抗性映射 | `toCalcRes()`：怪物 `*_res` 万分比直接 /100（**游戏绝对值**：弱点 **-20** / 中性 0 / 抗性 +20~+40；引擎公式 `1 - res/100`） |
-| 关卡弱点并集/交集 | 危局期数取**跨期交集**（`caWeaknessIntersection`，**只让已正式上线（有 live_begin）的期数投票**——测试服期数会带错弱点，如 690471 异构·焚昼余火多贴了"风"、690491 复写体 弱火/风会把真弱点"冰"抵消成空）；防卫战期数用当期标签 |
-| 新增期数版本标签兜底 | `VERSION_FALLBACK`（version.json 未收录的期数前缀 → 版本，当前 3.2 正式三期 + 3.3 试炼三期） |
+| 关卡弱点口径 | **逐期用当期标签**（`monster_weakness`），普通/困难同一条规则（2026-10-26 纠正：原先危局取「跨期交集」，前提是「测试期标签会带错数据」，而 3.3 三期已在正式服带 live_begin ⇒ 前提证伪；保留交集的实际后果是把 690431/690441 复写体的真弱点「冰」一起抹掉） |
+| 新增期数版本标签兜底 | `VERSION_FALLBACK`（version.json 只到 3.1，之后按 id 前缀兜底：3.2 三期 + 3.3 三期） |
 
 ### 1.4 当期 Buff 解析器（`scripts/phase-buff-parser.mjs`，类型声明 `phase-buff-parser.d.mts`）
 
@@ -431,7 +431,7 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 
 - 前端 `RunArchivePage.vue` 懒加载 fetch `/static/run-archive.json`（不进首屏 bundle）。
 - 归档新 Boss / 期数 → 补 `scripts/import-nanoka-bosses.mjs` 的 `CATALOG_MONSTER_MAP` 后重跑（见 §1.2），再重跑 import-zzz-run-archive。
-- **刷新节奏**：新一期危局上线当天投稿量最大（2026-10-10 刷新：13444 → 13831 条 approved，`+387`；新增房间 `69047-1/2/3` 与困难房 `690471-1`，产出 1404 → 1490 条）。fetch 脚本**整份覆盖重写** `runs.json`/`bootstrap.json`，不做增量——重抓前先确认服务端 `submissionCounts.approved` 已增长（脚本会打印 `服务端 totalApproved=`），跑完核对 manifest 的 `targetCount` 与 `errors` 为空。
+- **刷新节奏**：新一期危局上线当天投稿量最大（2026-10-26 刷新：13831 → 15779 条 approved，`+1948`；新增房间 `690481-1/2/3` 与困难房 `690481A-1`，产出 1490 → 1667 条 / 房间 44 → 52 / 赛季 18 → 22）。fetch 脚本**整份覆盖重写** `runs.json`/`bootstrap.json`，不做增量——重抓前先确认服务端 `submissionCounts.approved` 已增长（脚本会打印 `服务端 totalApproved=`），跑完核对 manifest 的 `targetCount` 与 `errors` 为空。
 
 ### 7.2 用户操作
 

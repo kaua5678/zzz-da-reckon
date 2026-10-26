@@ -6,15 +6,19 @@ const presets = JSON.parse(readFileSync(new URL('../../../public/static/boss-pre
   bosses: Array<{ id: string; phases: Array<Record<string, any>>; [k: string]: any }>
 }
 
+/** 有困难（危局异构）模式的版本：3.1 起新增，1.4–3.0 只有普通。 */
+const CA_VERSIONS = new Set(['3.1', '3.2', '3.3'])
+
 describe('boss-presets 期视图数据不变量', () => {
-  /** 测试服占位期（无 live_begin，如 3.3 试炼 690481/690491/690501）：
-   *  数据会变、Boss 名可能是占位（如 (Test1)僭越者 未收录预设），严格不变量只约束正式期。 */
+  /** 测试服占位期（无 live_begin）：数据会变、Boss 名可能是占位，严格不变量只约束正式期。
+   *  2026-10-26：3.3 三期（690481/690491/690501）已在正式服带 live_begin（10-23/11-06/11-20）⇒ 全部转正，
+   *  当前没有占位期；分支保留，将来抓预发布构建又出现占位期时继续生效。 */
   const isTrial = (v: Record<string, any>) => !v.begin
 
-  it('正式期 = 3 普通 + 3 buff；3.1/3.2 有 1 困难，1.4–3.0 无困难（全有预设可应用）', () => {
+  it('正式期 = 3 普通 + 3 buff；3.1 起有 1 困难，1.4–3.0 无困难（全有预设可应用）', () => {
     for (const v of presets.phaseViews) {
       if (isTrial(v)) continue
-      const hasCa = v.version === '3.1' || v.version === '3.2'
+      const hasCa = CA_VERSIONS.has(v.version)
       if (hasCa) expect(v.criticalAssault, `${v.phaseId} 困难`).toBeTruthy()
       else expect(v.criticalAssault, `${v.phaseId} 困难`).toBeNull()
       expect(v.defense.length, `${v.phaseId} 普通数量`).toBe(3)
@@ -50,7 +54,7 @@ describe('boss-presets 期视图数据不变量', () => {
     }
   })
 
-  it('期视图覆盖全部 50 期（1.4–3.2 正式 + 3.3 试炼占位）；困难模式仅 3.1/3.2/3.3', () => {
+  it('期视图覆盖全部 50 期（1.4–3.3 全为正式排期）；困难模式仅 3.1 起', () => {
     expect(presets.phaseViews.length).toBe(50)
     const versions = [...new Set(presets.phaseViews.map(v => v.version))]
     expect(versions).toContain('1.4')
@@ -58,22 +62,35 @@ describe('boss-presets 期视图数据不变量', () => {
     expect(versions).toContain('3.3')
     const caVersions = [...new Set(presets.phaseViews.filter(v => v.criticalAssault).map(v => v.version))]
     expect(caVersions.sort()).toEqual(['3.1', '3.2', '3.3'])
-    // 测试服试炼期恰好 3 期且都无 live_begin（有朝一日上线时本断言变红，逼回来转正）
-    const trials = presets.phaseViews.filter(isTrial)
-    expect(trials.map(v => v.phaseId).sort()).toEqual(['690481', '690491', '690501'])
+    // 3.3 三期已于 2026-10-23 / 11-06 / 11-20 正式上线（nanoka 正式服 live_begin）⇒ 无占位期。
+    // 抓预发布构建又带出占位期时本断言变红，逼回来确认「是占位还是真排期」。
+    expect(presets.phaseViews.filter(isTrial).map(v => v.phaseId)).toEqual([])
+    // 每期都必须有 begin（无 begin = 时间轴排不上、归档期相位匹配不上）
+    for (const v of presets.phaseViews) expect(v.begin, `${v.phaseId} 缺 begin`).toMatch(/^\d{4}-\d{2}-\d{2}/)
+  })
+
+  it('3.3 新期弱点 = 当期标签（不跨期求交集）：40003 逐期换弱点、690481 困难 = 40014 而非 40008', () => {
+    const phaseOf = (bossId: string, phaseId: string) =>
+      presets.bosses.find(b => b.id === bossId)?.phases.find(p => p.phaseId === phaseId)
+    // 690431/690441 复写体弱冰；690491 换成火/风（3.3 新角色 1641 火 / 1631 风）——交集口径会把这三期全抹成空
+    expect(phaseOf('40003', '690431')?.weakness).toEqual(['冰'])
+    expect(phaseOf('40003', '690441')?.weakness).toEqual(['冰'])
+    expect(phaseOf('40003', '690491')?.weakness).toEqual(['火', '风'])
+    // 690481 困难 Boss 是三期新怪 40014「异构·滞变畸兽」（不是 40008 基塔布鲁·滞变畸兽）
+    const view481 = presets.phaseViews.find(v => v.phaseId === '690481')!
+    expect(view481.criticalAssault?.presetId).toBe('40014')
+    expect(presets.bosses.find(b => b.id === '40014')?.monster).toMatchObject({ stunVuln: 1.25 })
   })
 })
 
 describe('boss 敌方体型（BOSS_BODY_SIZES 手录 2026-09-05，TeamCompare 选中时写入敌方配置）', () => {
   const LEGAL = ['small', 'medium', 'large'] as const
 
-  it('除测试服临时预设外全部 22 个预设都有合法 bodySize（新增 boss 未录体型即红，逼显式认领）', () => {
+  it('全部 24 个预设都有合法 bodySize（新增 boss 未录体型即红，逼显式认领）', () => {
     for (const b of presets.bosses) {
-      // 40012 (Test1)僭越者：3.3 测试服临时预设，手录项（体型/弹刀/无敌）待正式服，2026-09 用户口径
-      if (b.id === '40012') continue
       expect(LEGAL, `${b.id} ${b.name} bodySize 合法`).toContain(b.bodySize)
     }
-    expect(presets.bosses.length).toBe(23)
+    expect(presets.bosses.length).toBe(24)
   })
 
   it('抽检用户手录值（小型：名可名/叶释渊/始主/薇斯珀；中型：亵渎者/彷徨猎手/血清道夫/冥宁芙）', () => {
@@ -89,5 +106,7 @@ describe('boss 敌方体型（BOSS_BODY_SIZES 手录 2026-09-05，TeamCompare �
     expect(sizeOf('30007')).toBe('large') // 恶名·死路屠夫
     expect(sizeOf('40006')).toBe('large') // 基塔布鲁
     expect(sizeOf('300082')).toBe('large') // 提丰·破坏者型
+    expect(sizeOf('40014')).toBe('large') // 异构·滞变畸兽（3.3 新增，40008 的异构版）
+    expect(sizeOf('40012')).toBe('medium') // 以太异体·特里薇亚（3.3 新增，nanoka tag Middle，待用户核对）
   })
 })

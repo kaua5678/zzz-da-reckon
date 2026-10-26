@@ -77,8 +77,16 @@ function loadMonster(monsterId) {
   } catch {
     return null
   }
-  // 按 monster_id 精确取本体变体（勿用首 key：multi-variant 怪物如 秽息司祭 首 key 是 MusicActivity 变体，血量/stun 全错）
-  const mi = j.monster_info?.[String(j.monster_id)] ?? j.monster_info?.[Object.keys(j.monster_info ?? {})[0]]
+  // 按 monster_id 精确取本体变体（勿用首 key：multi-variant 怪物如 秽息司祭 首 key 是 MusicActivity 变体，血量/stun 全错）。
+  // ⚠ 精确命中也可能落在「不可失衡的 P1 形态」上：40014 异构·滞变畸兽 的 monster_id=31677 是 P1
+  //   （is_stun=false / hp 14192 / stun_damage_taken_ratio=0），关卡实际用的是 P2 31678
+  //   （is_stun=true / hp 45499 / ratio 2500）。用 P1 会把失衡倍率算成 1.0（真值 1.25）、
+  //   失衡时间算成 12s 且 hpVersionCoeff 反推出 1058%（真值 330%）⇒ 精确命中必须再过一道 is_stun 闸。
+  //   口径：① 精确命中且可失衡 → 用它；② 否则取第一个可失衡变体；③ 都没有才退回精确/首个。
+  const infos = Object.entries(j.monster_info ?? {})
+  const exact = infos.find(([k]) => k === String(j.monster_id))?.[1]
+  const stunnable = infos.find(([, v]) => v?.stats?.is_stun)?.[1]
+  const mi = (exact?.stats?.is_stun ? exact : stunnable) ?? exact ?? infos[0]?.[1]
   if (!mi?.stats) return null
   const s = mi.stats
   const resOf = suffix => Object.fromEntries(ELEMENT_KEYS.map(el => [el, toCalcRes(s[`${el}${suffix}`] ?? 0)]))
@@ -189,8 +197,20 @@ const CATALOG_MONSTER_MAP = {
   '40009': 'boss.integrated_girtablullu',
   '40010': null,                              // 库萨里库（普通）
   '40011': null,                              // 异构·焚昼余火（危局异构·困难）
-  '40012': null,                              // (Test1)僭越者（3.3 测试服占位名；临时预设：只录自动信息，手录默认值待正式服，2026-09 用户口径）
+  '40012': null,                              // 以太异体·特里薇亚（3.3 正式名；测试服期曾叫 (Test1)僭越者）
+  '40014': null,                              // 异构·滞变畸兽（3.3 危局困难异构；40008 的异构版）
   '30041': null,                              // 彷徨猎手（2.x 防卫战 Boss，用户确认收录）
+}
+/**
+ * 无 catalog 条目的 Boss 的额外别名（归档房间名 → 预设的匹配兜底，见 `runArchiveImport#matchPresetByName`）。
+ * 只有「同一个 Boss 在不同来源/不同版本用了不同名字」时才需要补：
+ * 40012 在 3.3 测试服期叫「(Test1)僭越者 / The Blasphemer」，正式服定名「以太异体·特里薇亚」，
+ * 而实战归档 690481-1 房间仍用旧名 ⇒ 不补别名时该房部署不到 Boss（实测 miss 1/52）。
+ * @fact data:bossAlias 口径: 无 catalog 条目的 Boss 别名表 BOSS_EXTRA_ALIASES 只补「同一 Boss 的旧名/测试服名」，不改变预设主名 | 据 用户@2026-10-26（更新危局：690481-1 归档房间名「僭越者」= 40012 旧名） | 验 src/composables/__tests__/runArchiveImport.test.ts | 锚 scripts/import-nanoka-bosses.mjs#BOSS_EXTRA_ALIASES | 信 高
+ * ⟳复核: 下期危局或 Boss 再改名时，跑一遍归档房间匹配探针（archive.rooms × matchBossPreset 应 0 miss），新旧名补进本表 | 到期 2027-01-31
+ */
+const BOSS_EXTRA_ALIASES = {
+  '40012': ['僭越者', 'The Blasphemer', '(Test1)僭越者'],
 }
 const catalogById = new Map(catalog.bosses.map(b => [b.id, b]))
 
@@ -262,12 +282,14 @@ const BOSS_BODY_SIZES = {
   '40011': 'large',  // 异构·焚昼余火
   '300082': 'large', // 自律强袭单位·「提丰·破坏者型」
   '300121': 'medium', // 恶名·冥宁芙
+  '40012': 'medium', // 以太异体·特里薇亚（3.3 新增；无用户手录 ⇒ 按 nanoka monster tag「Middle」录，待用户核对）
+  '40014': 'large',  // 异构·滞变畸兽（3.3 新增；40008 基塔布鲁·滞变畸兽的异构版 ⇒ 同 large）
 }
 
-// @fact data:bossBodySize 口径: 22个TeamCompare可选boss的敌方体型为用户手录(2026-09-05)，覆盖表 BOSS_BODY_SIZES 随导入产物落 boss-presets.json 的 bodySize 字段；TeamCompare 选中 boss 自动写入敌方体型(未录 boss 默认中型)，艾莲霜锋剑气/苍角风团经 cfg.bodySize 消费 | 据 用户@2026-09-05·复核@2026-09-25 | 验 src/composables/__tests__/bossPresetsData.test.ts | 锚 scripts/import-nanoka-bosses.mjs#BOSS_BODY_SIZES | 信 确认
+// @fact data:bossBodySize 口径: 22个TeamCompare可选boss的敌方体型为用户手录(2026-09-05)，覆盖表 BOSS_BODY_SIZES 随导入产物落 boss-presets.json 的 bodySize 字段；TeamCompare 选中 boss 自动写入敌方体型(未录 boss 默认中型)，艾莲霜锋剑气/苍角风团经 cfg.bodySize 消费。2026-10-26 新增 40012/40014 两条：40014 同 40008(异构版)取 large；40012 无手录，按 nanoka monster tag「Middle」取 medium，待用户核对 | 据 用户@2026-09-05·复核@2026-10-26 | 验 src/composables/__tests__/bossPresetsData.test.ts | 锚 scripts/import-nanoka-bosses.mjs#BOSS_BODY_SIZES | 信 确认
 
-/** version.json 未收录的测试服期数兜底：3.2 正式三期（690451/690461/690471，2026-09 上线）
- *  + 3.3 测试服试炼三期（690481/690491/690501，无 live_begin） */
+/** version.json 未收录的期数兜底（nanoka 的 version.json 只到 3.1，之后各期靠 id 前缀兜底）：
+ *  3.2 三期（690451/690461/690471）+ 3.3 三期（690481/690491/690501，2026-10-23 起已正式排期） */
 const VERSION_FALLBACK = [
   { re: /^6904[567]/, version: '3.2' },
   { re: /^690(48|49|50)/, version: '3.3' },
@@ -298,7 +320,6 @@ function hpVersionCoeffOf(monsterId, zoneHp) {
 
 /** 汇总所有期数详情里的怪物出现记录 */
 const monsterPhases = new Map() // monsterId -> { en, zh, phases[] }
-const caWeaknessSets = new Map() // monsterId -> 危局期数 weakness 标签列表（用于交集）
 for (const zoneId of Object.keys(summary)) {
   let zh, en
   try { zh = load('zh', zoneId) } catch { continue }
@@ -321,16 +342,6 @@ for (const zoneId of Object.keys(summary)) {
         // 非正式上线日，混入会打乱时间轴（3.2 被排到 3.1 之前）。下游按 begin||phaseId 排序、空 begin 跳过匹配，均安全。
         const begin = info.live_begin ?? ''
         const modeType = mode.zone_type === 1002 ? 'critical_assault' : 'defense'
-        // 困难期弱点交集只让「已正式上线」（有 live_begin）的期数投票：
-        // 测试服期数会带错弱点（如 690491 复写体 弱火/风），混入会把真弱点（冰）抵消成空。
-        if (modeType === 'critical_assault' && begin) {
-          const labels = Object.values(room.monster_weakness ?? {})
-          if (labels.length) {
-            const list = caWeaknessSets.get(String(mo.id)) ?? []
-            list.push(new Set(labels))
-            caWeaknessSets.set(String(mo.id), list)
-          }
-        }
         entry.phases.push({
           phaseId: zoneId,
           zoneKey,
@@ -362,31 +373,24 @@ for (const zoneId of Object.keys(summary)) {
 }
 
 /**
- * 危局弱点固定规则：同一怪物在危局强袭战所有期数里「都出现」的弱点才是真弱点。
- * 测试服期数（无 live_begin）不参与投票——其标签常带错数据（如 690471 异构·焚昼余火
- * 多贴了"风"、690491 复写体 弱火/风），混入会把真弱点抵消成空。与 690451/690461 弱电
- * 取交集后 40011 只剩电。防卫战期数保持当期标签（随期数变是正常的）。
+ * 弱点口径（2026-10-26 口径纠正）：**逐期用当期标签**，普通/困难同一条规则。
+ *
+ * 历史：3.3 三期为测试服占位时用过「危局取跨期交集」——当时的依据是「测试期标签会带错数据，
+ * 混入会把真弱点抵消成空」（690491 复写体 弱火/风 vs 3.1/3.2 的冰）。**该前提已被证伪**：
+ * 690481/690491/690501 在 nanoka 正式服 3.3 里都已带 live_begin（10-23 / 11-06 / 11-20），
+ * 标签是官方排期数据，且与 3.3 新角色（火 1641 / 风 1631）的设计一致。
+ *
+ * 保留交集的实际后果 = **把真弱点抵消成空**：40003 三期标签 {冰}{冰}{火风} 交集为空 ⇒
+ * 690431/690441 这两期已经算对的「冰弱」会被一起抹掉（-20% 抗性 ≈ ×1.2 的伤害凭空消失）。
+ * 危局本来就逐期换弱点/抗性（74118b2f 的 690471 库萨里库 冰/风→火/电 就是逐期变化），
+ * 交集只是把「逐期数据」压成「恒定数据」，与游戏语义相反。
+ *
+ * @fact data:bossWeakness 口径: Boss 预设的弱点/抗性一律取该期关卡的当期标签（monster_weakness），普通与困难同口径；不跨期求交集 | 据 用户@2026-10-26（更新危局时发现交集把 690431/690441 的真弱点抹掉） | 验 src/composables/__tests__/bossPresetsData.test.ts | 锚 scripts/import-nanoka-bosses.mjs#fillPhaseResistances | 信 高
+ * ⟳复核: 下期危局重抓后，检查同一怪物在新期是否仍按当期标签、且旧期标签未被改动（交集口径若被重新引入，690431/690441 的「冰」会再次消失） | 到期 2027-01-31
  */
-const caWeaknessIntersection = new Map() // monsterId -> Set<label>
-for (const [monsterId, lists] of caWeaknessSets) {
-  if (lists.length === 0) continue
-  const inter = new Set(lists[0])
-  for (const list of lists.slice(1)) {
-    for (const label of inter) {
-      if (!list.has(label)) inter.delete(label)
-    }
-  }
-  caWeaknessIntersection.set(monsterId, inter)
-}
-
-/** 构建 phase 抗性：危局期数用交集弱点，其余用当期标签 */
 function fillPhaseResistances(entry, phase) {
   const monster = getMonster(entry.id)
-  let weaknessSource = phase.rawWeakness
-  if (phase.modeType === 'critical_assault' && caWeaknessIntersection.has(entry.id)) {
-    weaknessSource = Object.fromEntries([...caWeaknessIntersection.get(entry.id)].map(l => [l, l]))
-  }
-  const res = buildResistances(monster, weaknessSource)
+  const res = buildResistances(monster, phase.rawWeakness)
   phase.damageResistances = res.damage
   phase.stunResistances = res.stun
   phase.anomalyResistances = res.anomaly
@@ -423,7 +427,7 @@ for (const [monsterId, catalogId] of Object.entries(CATALOG_MONSTER_MAP)) {
       catalogId,
       name: cat?.name?.zhCN ?? entry.name,
       nameEn: entry.nameEn,
-      aliases: cat?.aliases ?? [],
+      aliases: [...(cat?.aliases ?? []), ...(BOSS_EXTRA_ALIASES[monsterId] ?? [])],
       icon: cat?.images?.icon ?? null,
       iconSource: cat?.images?.source ?? null,
       isCriticalAssault: entry.phases.some(p => p.modeType === 'critical_assault'),

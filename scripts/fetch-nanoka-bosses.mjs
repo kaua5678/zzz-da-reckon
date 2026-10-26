@@ -25,6 +25,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { fetchJson as fetchJsonWithCurlFallback } from './lib/http.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const outDir = resolve(root, 'data/raw/bosses')
@@ -46,29 +47,22 @@ const STATIC = 'https://static.nanoka.cc'
  * ⟳复核: 下期危局上线后重抓时，确认 manifest.zzz.live 仍是正式服版本号（若 nanoka 改为 latest=正式服/live 弃用，本条与五个抓取脚本的取版逻辑一起改） | 到期 2027-01-31
  */
 async function latestZzzVersion() {
-  const res = await fetch(`${STATIC}/manifest.json`)
-  if (!res.ok) throw new Error(`manifest HTTP ${res.status}`)
-  const manifest = await res.json()
+  const manifest = await fetchJson(`${STATIC}/manifest.json`, 'manifest.json')
   return manifest.zzz?.live ?? manifest.zzz?.latest
 }
 
-async function fetchJson(url, label, retries = 2) {
-  let lastErr
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(20000) })
-      if (!res.ok) throw new Error(`${label} HTTP ${res.status}: ${url}`)
-      return await res.json()
-    } catch (e) {
-      lastErr = e
-      if (attempt < retries) {
-        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)))
-        continue
-      }
-      throw lastErr
-    }
+/**
+ * 出网口径 = `scripts/lib/http.mjs#fetchJson`（node fetch 优先，失败回退 curl）——单一事实源。
+ * 本脚本原先自己 fork 了一份裸 fetch：本机「node 出网被拦、curl 正常」时整条 Boss 管线直接
+ * ETIMEDOUT 跑不动（2026-10-26 实测），而其它五个 nanoka 抓取脚本都有回退。
+ * label 只用于错误信息定位（哪个端点失败），重试口径仍由 helper 统一。
+ */
+async function fetchJson(url, label) {
+  try {
+    return await fetchJsonWithCurlFallback(url, { timeoutMs: 20000, retries: 2 })
+  } catch (e) {
+    throw new Error(`${label}: ${e.message}`)
   }
-  throw lastErr
 }
 
 function save(rel, data) {
@@ -86,8 +80,21 @@ mkdirSync(resolve(outDir, 'zh'), { recursive: true })
 mkdirSync(resolve(outDir, 'en'), { recursive: true })
 
 // 1. 期数汇总 + 版本映射
-const summary = await fetchJson(`${base}/boss.json`, 'boss.json')
+const rawSummary = await fetchJson(`${base}/boss.json`, 'boss.json')
+/**
+ * 排期字段归一：**正式服构建（版本号不带 '+'）= 已排期落地**，其 `begin`/`end` 就是正式排期，
+ * 归一到 `live_begin`/`live_end`；预发布构建（带 hash，如 `3.4.1+19851435`）的 `begin`/`end`
+ * 是测试服占位日（一期三期共用一个日期），必须留空，否则时间轴被打乱（3.2 曾被排到 3.1 之前）。
+ * 导入脚本只认 `live_begin`——不归一的话正式期会被静默当成「试炼期」丢掉排期（label 只剩版本号）。
+ */
 const versionMap = await fetchJson(`${base}/en/boss/version.json`, 'version.json').catch(() => ({}))
+const isFormalBuild = !version.includes('+')
+const summary = Object.fromEntries(
+  Object.entries(rawSummary).map(([id, info]) => [
+    id,
+    isFormalBuild ? { ...info, live_begin: info.live_begin ?? info.begin, live_end: info.live_end ?? info.end } : info,
+  ])
+)
 save('summary.json', summary)
 save('version.json', versionMap)
 

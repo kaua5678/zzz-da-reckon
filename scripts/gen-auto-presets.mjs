@@ -100,6 +100,7 @@ for (const r of frontier) {
  * ⚠ 本脚本**不删手编**（那是数据改动，且手编可能带策划字段）——这里只保证**不再新增**孪生；
  * 存量由人工按同一条口径清理。这样重跑本脚本不会把删掉的孪生又生成回来。
  */
+const outDir = join(root, 'src/data/teamPresets')
 const outDirForDedup = outDir
 const existingSignatures = new Set()
 for (const f of readdirSync(outDirForDedup)) {
@@ -132,7 +133,6 @@ const presets = [...byTeam.values()].sort((a, b) => String(a.team[0].agentId).lo
   }
 })
 
-const outDir = join(root, 'src/data/teamPresets')
 // 每文件 1 条预设（validate-data 校验器按单条对象读取；loader glob ./teamPresets/*.json 兼容）
 for (const p of presets) {
   writeFileSync(join(outDir, `${p.id}.json`), JSON.stringify(p, null, 2) + '\n')
