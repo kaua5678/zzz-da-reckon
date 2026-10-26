@@ -6,20 +6,68 @@
     "1481",
     "1521"
   ],
-  "note": "席德主体（槽0）：每失衡 3 崩坠（xide-bengzhui=重戮+一式+二式三连）+ 1 终结技 + 1 琉音60转大；喧响不够时终结换连携（1461014）。希希芙（槽2）：1 长按毒牙(125) + 1 大招 + 1 蛇吻。",
+  "note": "席德主体（槽0）：每失衡 3 崩坠（xide-bengzhui=重戮+一式+二式三连）+ 1 终结技 + 1 琉音60转大；喧响不够时终结换连携（1461014）。希希芙（槽2）：1 长按毒牙(125) + 1 大招 + 1 蛇吻。 ｜2026-10-26 用户口径：「那份轴你摊开，所有动作不可能同时做的」⇒ 崩坠三连按 3.467s/段**逐段显式起点**（0/3.467/6.934）摊开，不再是一块 count=3 挤在同一时刻。",
   "axes": [
     {
       "name": "席德爆发+希希芙循环",
       "kind": "fallback",
       "basicFillerSlot": 0,
       "actions": [
-        { "slot": 0, "moveId": "xide-bengzhui", "count": 3 },
-        { "slot": 0, "moveId": "1461015", "count": 1, "startTime": 10.401 },
-        { "slot": 0, "moveId": "1461015", "count": 1, "startTime": 15.818, "promoteVariant": "60" },
-        { "slot": 2, "moveId": "1521008", "count": 1, "startTime": 0 },
-        { "slot": 2, "moveId": "1521009", "count": 3, "startTime": 0.565 },
-        { "slot": 2, "moveId": "1521013", "count": 1, "startTime": 1.129 },
-        { "slot": 2, "moveId": "1521006", "count": 1, "startTime": 2.229 }
+        {
+          "slot": 0,
+          "moveId": "xide-bengzhui",
+          "count": 1,
+          "startTime": 0
+        },
+        {
+          "slot": 0,
+          "moveId": "xide-bengzhui",
+          "count": 1,
+          "startTime": 3.467
+        },
+        {
+          "slot": 0,
+          "moveId": "xide-bengzhui",
+          "count": 1,
+          "startTime": 6.934
+        },
+        {
+          "slot": 0,
+          "moveId": "1461015",
+          "count": 1,
+          "startTime": 10.401
+        },
+        {
+          "slot": 0,
+          "moveId": "1461015",
+          "count": 1,
+          "startTime": 15.818,
+          "promoteVariant": "60"
+        },
+        {
+          "slot": 2,
+          "moveId": "1521008",
+          "count": 1,
+          "startTime": 0
+        },
+        {
+          "slot": 2,
+          "moveId": "1521009",
+          "count": 3,
+          "startTime": 0.565
+        },
+        {
+          "slot": 2,
+          "moveId": "1521013",
+          "count": 1,
+          "startTime": 1.129
+        },
+        {
+          "slot": 2,
+          "moveId": "1521006",
+          "count": 1,
+          "startTime": 2.229
+        }
       ]
     }
   ]

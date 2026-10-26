@@ -6,16 +6,44 @@
     "1481",
     "1301"
   ],
-  "note": "席德主体（槽0）：每失衡 3 崩坠（xide-bengzhui=重戮+一式+二式三连）+ 1 终结技 + 1 琉音60转大；喧响不够时终结换连携（1461014）。奥菲斯（槽2）失衡内动作待补。",
+  "note": "席德主体（槽0）：每失衡 3 崩坠（xide-bengzhui=重戮+一式+二式三连）+ 1 终结技 + 1 琉音60转大；喧响不够时终结换连携（1461014）。奥菲斯（槽2）失衡内动作待补。 ｜2026-10-26 用户口径：「那份轴你摊开，所有动作不可能同时做的」⇒ 崩坠三连按 3.467s/段**逐段显式起点**（0/3.467/6.934）摊开，不再是一块 count=3 挤在同一时刻。",
   "axes": [
     {
       "name": "席德爆发",
       "kind": "fallback",
       "basicFillerSlot": 0,
       "actions": [
-        { "slot": 0, "moveId": "xide-bengzhui", "count": 3 },
-        { "slot": 0, "moveId": "1461015", "count": 1, "startTime": 10.401 },
-        { "slot": 0, "moveId": "1461015", "count": 1, "startTime": 15.818, "promoteVariant": "60" }
+        {
+          "slot": 0,
+          "moveId": "xide-bengzhui",
+          "count": 1,
+          "startTime": 0
+        },
+        {
+          "slot": 0,
+          "moveId": "xide-bengzhui",
+          "count": 1,
+          "startTime": 3.467
+        },
+        {
+          "slot": 0,
+          "moveId": "xide-bengzhui",
+          "count": 1,
+          "startTime": 6.934
+        },
+        {
+          "slot": 0,
+          "moveId": "1461015",
+          "count": 1,
+          "startTime": 10.401
+        },
+        {
+          "slot": 0,
+          "moveId": "1461015",
+          "count": 1,
+          "startTime": 15.818,
+          "promoteVariant": "60"
+        }
       ]
     }
   ]
