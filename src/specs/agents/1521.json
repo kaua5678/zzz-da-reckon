@@ -21,7 +21,7 @@
           "countSource": "cfgField",
           "countField": "xixifuA4Count",
           "amountPerCount": 2,
-          "formula": "模块写 cfg.xixifuA4Count = floor(平A时间 / 吐信四段连段时长) + 已付费毒牙次数 + 连携次数（原文：毒牙/连携「可直接衔接第四段普通攻击：吐信」；连段时长读倍率表 1521001..1521004 的 actionTime 之和，不写死）",
+          "formula": "模块写 cfg.xixifuA4Count = 免费衔接次数 + floor(剩余平A时间 / 吐信四段连段时长)；免费衔接 = min(毒牙次数 + 连携次数, 平A时间/吐信#4时长)，且先扣掉这些 #4 自己的 actionTime（用户 2026-10-26：「机会用完，你只能从 #1 开始 a」；连段时长读倍率表 1521001..1521004 之和，不写死）",
           "status": "implemented_approximation",
           "adjustable": {
             "id": "1521.xixifu_toxin.toxin_tuxin_stage4.rate",

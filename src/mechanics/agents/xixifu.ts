@@ -117,6 +117,8 @@ function buildXixifuCharConfig({ cfg, cinemaLevel, team, panel, skills }: AgentC
   cfg.xixifuA4ComboSeconds = XIXIFU_TUXIN_STAGE_IDS.reduce(
     (sum, id) => sum + (findMoveById(skills, id)?.actionTime ?? 0), 0,
   )
+  // 吐信 #4 自身 actionTime（秒）：免费衔接的 #4 也要占时间，见 resolveXixifuResources
+  cfg.xixifuA4StageSeconds = findMoveById(skills, XIXIFU_TUXIN_STAGE_IDS[XIXIFU_TUXIN_STAGE_IDS.length - 1])?.actionTime ?? 0
 }
 
 /** 影画2 失衡下连携/终结额外+3毒素：需要失衡次数门控，converge 阶段写入 cfg；轴模式由 cfg.axisUltimateTotal 精确反推 */
@@ -169,9 +171,27 @@ function resolveXixifuResources(cfg: AgentResourceInput['cfg'], state: AgentReso
   // 能量成本已在 buildCharConfig 写进 exSpecialEnergyConsume（每次 = 点按价 + 额外打击价）
   // ⇒ 引擎推出的强特次数本身就是「买得起的次数」，这里不再二次折扣（否则双重收费）
   const exPaid = Math.max(0, Math.floor(state.exSpecialCount))
-  /** **吐信第四段机会** = 平A连段数 + 每次毒牙后衔接 + 每次连携后衔接（原文「招式发动后，可直接衔接第四段」） */
+  /**
+   * **吐信第四段（#4）次数**——用户口径 2026-10-26（逐字）：
+   * > 「吐信#4 可以跟在某些招式后面，这些招式数量决定他直接打第四段的机会次数。
+   * >  如果机会用完，你只能从 #1 开始 a」
+   *
+   * ⇒ 两种到达 #4 的路径，**都占时间**：
+   * - **直接接**：毒牙/连携之后可白接一次 #4（机会数 = 毒牙次数 + 连携次数，且受平A时间够不够接限制）；
+   * - **重打四段**：机会用完后只能从 #1 起打，每 `xixifuA4ComboSeconds`(=四段 actionTime 之和) 才出一个 #4。
+   *
+   * ⚠ 旧写法 `floor(T / 连段) + 机会数` 把免费 #4 当成**不花时间**的白送，于是机会越多虚增越多
+   * （实测该队 `toxin_tuxin_stage4` 报到 46，其中十几只是凭空多出来的）。
+   */
+  const basicSec = Math.max(0, state.basicAttackTime)
   const comboSeconds = Math.max(0.5, Number(cfg.xixifuA4ComboSeconds ?? 0) || 4.483)
-  const a4Count = Math.floor(Math.max(0, state.basicAttackTime) / comboSeconds) + exPaid + chainTotal
+  const a4StageSeconds = Math.max(0, Number(cfg.xixifuA4StageSeconds ?? 0))
+  const freeA4Chances = Math.max(0, exPaid + chainTotal)
+  const freeA4Paid = a4StageSeconds > 0
+    ? Math.min(freeA4Chances, Math.floor(basicSec / a4StageSeconds))
+    : freeA4Chances
+  const comboRemainingSec = Math.max(0, basicSec - freeA4Paid * a4StageSeconds)
+  const a4Count = freeA4Paid + Math.floor(comboRemainingSec / comboSeconds)
   cfg.xixifuA4Count = a4Count
   cfg.xixifuDuyaPaidCount = exPaid
   cfg.xixifuDuyaExtraHits = exPaid * extrasPerEx
@@ -369,6 +389,8 @@ declare module '@/types/resource/config' {
     xixifuC2Toxin?: number
     /** 吐信四段连段总时长（秒；buildCharConfig 读倍率表 1521001..1521004 actionTime 之和写入） */
     xixifuA4ComboSeconds?: number
+    /** 吐信 #4 自身 actionTime（秒；buildCharConfig 读倍率表写入，免费衔接的 #4 占时间用） */
+    xixifuA4StageSeconds?: number
     /** 吐信第四段机会次数（平A连段 + 毒牙后衔接 + 连携后衔接；resolveXixifuResources 写入，spec cfgField 读取） */
     xixifuA4Count?: number
     /** 能量买得起的毒牙次数（含长按额外打击的能量成本；resolveXixifuResources 写入） */
