@@ -262,6 +262,56 @@ describe('配装 A/B：换音擎 / 换精炼（用户口径 2026-10-23）', () =
     expect(engineRow.a).not.toBe(engineRow.b)
   }, 180000)
 
+  /**
+   * 用户 2026-10-26 报障：「诺姆带精5人为刀俎 vs 精1专武，全队 +20% / 个人 +60%，
+   * 12.5% 火抗和 25% 增伤怎么提升 60% 的？」
+   *
+   * 根因：换音擎会改**冲击力 → 失衡次数**，而 A/B 对比原先是**自由收敛**（不锁次数）
+   * ⇒ 多打的那一次失衡把百分比抬高了一个量级。与 scoreSubstats 的处置同源，改为锁 A 的次数。
+   *
+   * 判据（负控）：换成会改冲击力的武器时，必须
+   *   ① 报出 stunCountDelta ≠ 0；② 锁口径 < 自由口径；③ 锁口径 = 两边同次数下的比值。
+   */
+  it('★ 锁失衡次数：换冲击力武器时，自由口径的离散跳变要被拆出来（用户 2026-10-26 报障）', async () => {
+    const h = await setupHarness([{ agentId: '1611' }, { agentId: '1571' }, { agentId: '1211' }], { recommendedBuild: true })
+    h.config.enemy.stunCountLock = -1
+    await flush()
+    // 诺姆（槽位 1）：A = 精5 人为刀俎(13005，A 级击破)，B = 精1 首席跟班(14157，专武)
+    const base = await withAnalysisScenario(async (s) => readDiscPlan(1, s.config.team), h.config)
+    const a: DiscPlan = { ...base, wEngineId: '13005', wEngineModLevel: 5 }
+    const b: DiscPlan = { ...base, wEngineId: '14157', wEngineModLevel: 1 }
+    const cmp = await withAnalysisScenario(s => compareDiscPlans(s, { slot: 1, a, b }), h.config)
+    expect(cmp.reason).toBe('')
+    expect(cmp.complete).toBe(true)
+    // ① 这把武器确实改了冲击力 ⇒ 自由收敛多打一次失衡（夹具前提，不是断言结果方向）
+    expect(cmp.stunCountDelta, '夹具前提：13005→14157 会改变失衡次数').toBeGreaterThan(0)
+    expect(cmp.stunLock).toBeGreaterThanOrEqual(0)
+    // ② 锁口径 = 两边**同次数**（这才是「只比配装」）；自由口径混入了次数变化
+    expect(cmp.aStunCount, '锁口径下 A 的次数 = 锁定值').toBe(cmp.stunLock)
+    expect(cmp.bStunCount, '锁口径下 B 的次数 = 锁定值（不是它自己收敛的次数）').toBe(cmp.stunLock)
+    // ③ 次数变了 ⇒ 两个口径必然不同（反空洞：若相同就说明锁没生效）
+    expect(cmp.deltaTeamPct, '次数不同 ⇒ 锁/自由口径必须不同').not.toBeCloseTo(cmp.freeformDeltaTeamPct, 6)
+    // ④ 锁口径就是两边伤害之比（口径自洽）
+    expect(cmp.deltaTeamPct).toBeCloseTo((cmp.bTeam / cmp.aTeam - 1) * 100, 10)
+    expect(cmp.deltaOwnPct).toBeCloseTo((cmp.bOwn / cmp.aOwn - 1) * 100, 10)
+    // ⑤ 跑完不许留锁
+    expect(h.config.enemy.stunCountLock, '场景内锁过，跑完必须还原').toBe(-1)
+  }, 180000)
+
+  it('★ A vs A 在锁口径下恒 0（反空洞：锁定本身不能制造差值）', async () => {
+    const h = await setupHarness([{ agentId: '1611' }, { agentId: '1571' }, { agentId: '1211' }], { recommendedBuild: true })
+    h.config.enemy.stunCountLock = -1
+    await flush()
+    const plan = await withAnalysisScenario(async (s) => readDiscPlan(1, s.config.team), h.config)
+    const cmp = await withAnalysisScenario(s => compareDiscPlans(s, { slot: 1, a: plan, b: plan }), h.config)
+    expect(cmp.deltaTeamPct).toBe(0)
+    expect(cmp.deltaOwnPct).toBe(0)
+    expect(cmp.freeformDeltaTeamPct).toBe(0)
+    expect(cmp.freeformDeltaOwnPct).toBe(0)
+    expect(cmp.stunCountDelta).toBe(0)
+    expect(h.config.enemy.stunCountLock).toBe(-1)
+  }, 180000)
+
   it('★ 音擎是临时状态：跑完必须还原（防污染现场）', async () => {
     const h = await anomalyHarness()
     const before = { id: h.config.team[0].wEngineId, mod: h.config.team[0].wEngineModLevel }

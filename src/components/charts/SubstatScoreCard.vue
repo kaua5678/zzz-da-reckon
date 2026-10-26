@@ -200,6 +200,14 @@
           {{ compareResult.deltaOwnPct >= 0 ? '+' : '' }}{{ fmt(compareResult.deltaOwnPct, 2) }}%
         </span>
       </div>
+      <div v-if="compareResult.stunCountDelta !== 0 || compareResult.freeformDeltaTeamPct !== compareResult.deltaTeamPct" class="ssc-caption">
+        口径：两套配装装在<b>同一失衡次数</b>上比（A 的收敛次数 {{ compareResult.stunLock }} 次）
+        <template v-if="compareResult.stunCountDelta !== 0">
+          ；B 自由收敛会多打 <b>{{ compareResult.stunCountDelta }}</b> 次失衡
+          ⇒ 自由口径是 全队 {{ fmt(compareResult.freeformDeltaTeamPct, 2) }}% / 个人 {{ fmt(compareResult.freeformDeltaOwnPct, 2) }}%，
+          那部分差额是「多打一次失衡」的离散跳变，不属于这套配装本身
+        </template>
+      </div>
       <div class="ssc-compare-row">
         <span class="ssc-compare-label">副词条步数</span>
         <span>{{ compareResult.stepsA }} → {{ compareResult.stepsB }}</span>

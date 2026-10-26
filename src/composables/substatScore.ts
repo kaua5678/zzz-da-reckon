@@ -544,10 +544,35 @@ export interface DiscCompareResult {
   bTeam: number
   aOwn: number
   bOwn: number
-  /** (B − A) / A × 100，全队口径 */
+  /**
+   * (B − A) / A × 100，全队口径 —— **锁失衡次数**的版本（主口径）。
+   *
+   * 与单人评分（`scoreSubstats`）同一把尺：A/B 两套配装装在**同一个失衡量**上比，
+   * 差值才只反映配装本身。口径依据见下方 `freeformDeltaTeamPct`。
+   */
   deltaTeamPct: number
-  /** (B − A) / A × 100，该角色自身口径 */
+  /** (B − A) / A × 100，该角色自身口径（同样锁失衡） */
   deltaOwnPct: number
+  /**
+   * **自由收敛**口径（不锁失衡）：B/A 各自跑到收敛。
+   *
+   * 为什么主口径不能是这个（用户 2026-10-26 报障「诺姆精5人为刀俎 → 精1专武 个人 +60%，
+   * 12.5% 火抗和 25% 增伤怎么提升 60%」）：换音擎会改**冲击力 → 失衡次数**，
+   * 多出来的那一次失衡是**离散跳变**，不是这把武器的属性。
+   * 实测诺姆那组（本机，Boss 熔狱行赭）：自由口径 个人 +85.44%，锁 2 次失衡 +71.21%
+   * ⇒ 「多打一次失衡」自己就占 +8.31 个人 / +9.61 全队，而且会把百分比推到看起来不可能的量级。
+   * 与 `scoreSubstats`（`stunCountLock` = 0 词条基线的次数）和 `cinemaUplift.ts`（逐级锁次数）同源处置。
+   */
+  freeformDeltaTeamPct: number
+  /** 自由收敛口径的个人差值 */
+  freeformDeltaOwnPct: number
+  /** A 的收敛失衡次数（= 锁定值；< 0 = 没算出次数，此时退回自由口径） */
+  stunLock: number
+  /** 锁口径下 A / B 各自的失衡次数（= stunLock；< 0 = 未锁） */
+  aStunCount: number
+  bStunCount: number
+  /** B 比 A 多打的失衡次数（> 0 ⇒ 自由口径里含离散跳变） */
+  stunCountDelta: number
   /** 逐项差异（套装 / 主词条 / 副词条；相等项不列） */
   diff: DiscPlanDiff[]
   /** 总副词条步数（A / B） */
@@ -688,14 +713,32 @@ export async function compareDiscPlans(
   }
   const fail = (reason: string): DiscCompareResult => ({
     slot, aTeam: 0, bTeam: 0, aOwn: 0, bOwn: 0, deltaTeamPct: 0, deltaOwnPct: 0,
+    freeformDeltaTeamPct: 0, freeformDeltaOwnPct: 0, stunLock: -1, aStunCount: -1, bStunCount: -1, stunCountDelta: 0,
     diff: [], stepsA: 0, stepsB: 0, complete: false, reason,
   })
+  const originalLock = config.enemy.stunCountLock
+  const readAxis = (): { stunCount: number } => ({ stunCount: calc.stunPoolResult.value?.stunCount ?? -1 })
   try {
+    // ① 自由收敛：两套配装各跑各的次数（这是"换上去实际会打多少"，保留为对照）
+    config.enemy.stunCountLock = -1
     apply(a)
-    const ra = read()
+    const raFree = read()
+    const aAxis = readAxis()
     apply(b)
-    const rb = read()
-    if (!(ra.team > 0) || !(rb.team > 0)) return fail('至少一套配装的全队总伤为 0：百分比没有分母')
+    const rbFree = read()
+    const bAxis = readAxis()
+    if (!(raFree.team > 0) || !(rbFree.team > 0)) return fail('至少一套配装的全队总伤为 0：百分比没有分母')
+    // ② 锁失衡次数：以 A 的收敛次数为锚，两套配装在同一失衡量上比（与 scoreSubstats 同一把尺）
+    const stunLock = aAxis.stunCount
+    const canLock = stunLock >= 0
+    if (canLock) config.enemy.stunCountLock = stunLock
+    apply(a)
+    const ra = canLock ? read() : raFree
+    const aAxisLocked = canLock ? readAxis() : aAxis
+    apply(b)
+    const rb = canLock ? read() : rbFree
+    const bAxisLocked = canLock ? readAxis() : bAxis
+    if (!(ra.team > 0) || !(rb.team > 0)) return fail('锁定失衡次数后至少一套配装的全队总伤为 0：百分比没有分母')
     const sum = (m: Record<string, number>) => Object.values(m).reduce((x, y) => x + y, 0)
     return {
       slot,
@@ -705,6 +748,12 @@ export async function compareDiscPlans(
       bOwn: rb.own,
       deltaTeamPct: (rb.team / ra.team - 1) * 100,
       deltaOwnPct: ra.own > 0 ? (rb.own / ra.own - 1) * 100 : 0,
+      freeformDeltaTeamPct: (rbFree.team / raFree.team - 1) * 100,
+      freeformDeltaOwnPct: raFree.own > 0 ? (rbFree.own / raFree.own - 1) * 100 : 0,
+      stunLock: canLock ? stunLock : -1,
+      aStunCount: aAxisLocked.stunCount,
+      bStunCount: bAxisLocked.stunCount,
+      stunCountDelta: aAxis.stunCount >= 0 && bAxis.stunCount >= 0 ? bAxis.stunCount - aAxis.stunCount : 0,
       diff: diffDiscPlans(a, b),
       stepsA: sum(a.subStatAllocation),
       stepsB: sum(b.subStatAllocation),
@@ -712,6 +761,8 @@ export async function compareDiscPlans(
       reason: '',
     }
   } finally {
+    // 锁定是本次求值的临时状态（与 scoreSubstats 同款：只在场景内改，跑完必须还原）
+    config.enemy.stunCountLock = originalLock
     const char = config.team[slot]
     const disc = char.driveDisc
     disc.fourPieceSetId = originalDisc.fourPieceSetId

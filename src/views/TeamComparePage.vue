@@ -343,6 +343,11 @@
         · 纵轴 = 伤害/血量%（100% 击杀线）· 横轴 = 操作难度（交互加权和 + 时间压力秒，权重可在「难度权重」调）· 点半径 = 限定金
       </div>
 
+      <!-- 用户 2026-10-26：「加金不该有排好的序……只能说全01这一片单薄的预设就行，要么给 ui 自己改，要么勾选贪婪，提示下一步」 -->
+      <div v-if="!computing && chartMode === 'scatter' && singlePointNotice" class="compare-note">
+        {{ singlePointNotice }}
+      </div>
+
       <div v-if="!computing && chartMode === 'curve'" class="compare-note">
         已选 {{ selectedPresets.length }} 队 · 每队用自己的预设配装（0命1精 + 预设音擎/驱动盘/权重/交互）
         · x = 操作难度（Σ交互次数×权重 + <b>时间压力秒</b>×权重，<b>自动算</b>；时间压力 = 合轴抵扣掉的秒 + 硬溢出剩下的秒 = 同一笔秒数，只挂一个权重；交互/时间压力权重都在「难度权重」弹层调）
@@ -1897,6 +1902,23 @@ const scatterLegend = useSeriesFilter(() =>
 )
 /** 可见的散点（图 + 轴 + 明细表同源） */
 const visiblePoints = computed(() => points.value.filter(p => scatterLegend.isVisible(p.presetId)))
+/**
+ * 「只有一个点」时的下一步提示（用户 2026-10-26：「只能说全01这一片单薄的预设就行，
+ * 要么给 ui 自己改，要么勾选贪婪，提示下一步」）。
+ *
+ * 触发条件 = 结果里每支队都只有 1 个金档（= 没勾贪婪，且预设没写回 goldSteps）。
+ * 文案只陈述事实 + 给两条**显式**路径，不做「自动帮你选」的动作。
+ */
+const singlePointNotice = computed(() => {
+  if (points.value.length === 0) return ''
+  const perTeam = new Map<string, number>()
+  for (const p of points.value) perTeam.set(p.presetId, (perTeam.get(p.presetId) ?? 0) + 1)
+  const allSingle = [...perTeam.values()].every(n => n === 1)
+  if (!allSingle) return ''
+  return '当前每队只有「全 01」一个金档：加金顺序不由我们编排（catalog 推的顺序实测 227/285 档选错配装）。'
+    + '要更多金档有两条路 —— ① 勾「最优加金」逐金贪婪搜索（慢，但对得上穷举最优，误差 0.38%/档）；'
+    + '② 用「逐槽锁定」直接写死每槽的配置码（21 = 2 命 1 精）。'
+})
 /** 图例计数（顶层 ref 绑定 ⇒ 模板里自动解包，写 `scatterCounts.visible`） */
 const scatterCounts = scatterLegend.counts
 
