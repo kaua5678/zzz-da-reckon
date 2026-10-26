@@ -1077,7 +1077,7 @@ export function createRunCalcRound(deps: {
           const uniformRows = mech?.uniformStunRows?.({ slot: ch.slot }) ?? []
           for (const moveId of uniformRows) {
             const split = mech!.directRowAxisSplit?.({
-              exec: { moveId } as never,
+              exec: { moveId },
               slot: ch.slot,
               charResult: ch,
               axisInUnits: m => inAxisCounts[`${ch.slot}:${m}`]?.inAxisCount ?? 0,

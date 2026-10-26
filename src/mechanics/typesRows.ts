@@ -26,8 +26,15 @@ import type { AgentAxisOverlay } from './typesHooks'
  * 赠链 / CD 自动行分支之后、伴随事件分支之前（与原希希芙专属分支同位）。
  */
 export interface DirectRowAxisSplitInput {
-  /** 当前行（模块按 `moveId` 认领；不认领返回 null） */
-  exec: SkillExecution
+  /**
+   * 当前行（模块按 `moveId` 认领；不认领返回 null）。
+   *
+   * ⚠ 只有 `moveId` 是**必有**的：失衡侧（`convergence#inAxisFractionProvider`）要在拿到
+   * `CharacterResourceResult.executions` **之前**就问本钩子（那是「这一行作废多少」的入参），
+   * 那里没有完整 `SkillExecution` ⇒ 用 `Pick<SkillExecution, 'moveId'>` 而不是伪造整条执行行
+   * （判据 27 硬门：不许 `as never` / `as any` 把缺必填字段的对象塞进去）。
+   */
+  exec: Pick<SkillExecution, 'moveId'>
   /** 行所属槽位 */
   slot: number
   /** 本槽资源结果（希希芙读 `specResources.xixifu_toxin` 与各类次数） */
