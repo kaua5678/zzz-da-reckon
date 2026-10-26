@@ -306,19 +306,47 @@ function defaultResistanceTable(value: number): ResistanceTable {
   }
 }
 
+/**
+ * 默认敌人 = 「自由训练模式（Free Training Mode）」木桩。
+ *
+ * 用户口径（2026-10-26，附图「Free Training Mode」数值表）：「没事，只是说目前的默认填写…你用这个默认值」。
+ * 木桩 = 情报商数据里 Dead End Butcher 的改版：**血量极高、点数曲线线性、无抗性无弱点、无关卡 buff、无 Boss buff**
+ * ⇒ 它是**中性测试场**（算力/手法对比的干净基线），所以默认配置的敌人也应该是它，而不是某个具体危局 Boss
+ * （旧默认 205970837 血 / 15486 失衡 / 危局系数 1.1 是某期危局 Boss 的残留）。
+ *
+ * 逐项来源（截图列名 → 本仓字段）：
+ * - Total HP 3,347,325,000 → `hp`（= 111,577,500 × 30 管，与截图 HP per Bar 自洽）
+ * - Daze 17,582.7 → `stunValue`（失衡阈值）
+ * - Stun Duration 12s → `stunTime`；Stun DMG Multiplier 150% → `stunVuln = 1.5`
+ * - DEF 952.8 → `defense`
+ * - Resistances / Weaknesses = None → 三张抗性表全 0、`weakness: []`
+ * - Base Buildup 3,750 → `anomalyCoeff = 1.25`（= 3750 / 3000，3000 是 `core/anomalyPool/helpers#BUILDUP_CAP_TABLE`
+ *   的冰火电以太起始值；引擎口径 = 基础 × anomalyCoeff × bossAnomalyCoeff）
+ * - `bossAnomalyCoeff = 1`（木桩不属于危局，没有 +10% 那条；旧默认的 1.1 是危局 Boss 的 `attribute_infliction`）
+ * - 无关卡/Boss buff ⇒ `bossStunGift = 0`、`shieldCount = 0`（旧默认 1 是秽盾 Boss 的）、`energyShield = 0`
+ *
+ * **交叉验证**（截图三条独立数字对上同一套表 ⇒ 说明本仓的收支两条特殊规则是对的，不是巧合）：
+ * Base Physical Buildup 4,500 = 3,750 × 1.2（物理恒定 +20%）、Base Wind Buildup 1,875 = 3,750 × 0.5（风首管 50%）。
+ *
+ * **未入默认值的截图项**：Chain Attack Count = 3 —— 引擎没有敌人侧的连携次数字段（连携按角色侧
+ * `chainCountPerStun` 计，见 `ASSIST_ACTION_BASELINE`）；三人全攻队默认正好 3 次/失衡，与截图一致。
+ *
+ * @fact engine:默认敌人 口径: 默认 EnemyConfig = 「自由训练模式」木桩（Dead End Butcher 改版）：hp 3347325000 / stunValue 17582.7 / stunTime 12 / stunVuln 1.5 / defense 952.8 / anomalyCoeff 1.25 / bossAnomalyCoeff 1 / 三张抗性全 0 / 无弱点 / 无秽盾能量盾；它是中性测试场，不携带任何时刻的危局环境（危局 buff 也默认清空） | 据 用户@2026-10-26 附图「Free Training Mode」数值表（Total HP 3347325000 / Daze 17582.7 / DEF 952.8 / Base Buildup 3750 / 无抗性无弱点） | 验 src/stores/__tests__/trainingDummyDefault.test.ts | 锚 src/stores/config.ts#defaultEnemy + src/stores/config.ts#defaultGlobalBuffs | 信 确认
+ * ⟳复核: 游戏出新木桩/训练场或用户给出新数值表时，逐项重核木桩九项与被清空的默认 Buff | 到期 2027-04-30
+ */
 function defaultEnemy(): EnemyConfig {
   return {
-    hp: 205970837,
-    stunValue: 15486,
+    hp: 3347325000,
+    stunValue: 17582.7,
     stunTime: 12,
     stunCountLock: -1,
     stunVuln: 1.5,
-    defense: 953,
+    defense: 952.8,
     level: 70,
-    anomalyCoeff: 1,
-    bossAnomalyCoeff: 1.1,
+    anomalyCoeff: 1.25,
+    bossAnomalyCoeff: 1,
     bossStunGift: 0,
-    shieldCount: 1,
+    shieldCount: 0,
     energyShield: 0,
     invincibleTime: 0,
     battleTime: 180,
@@ -330,12 +358,18 @@ function defaultEnemy(): EnemyConfig {
   }
 }
 
+/**
+ * 默认全局 Buff = **空**（用户 2026-10-26：「还有这个buff该清空」）。
+ *
+ * 旧默认是两条「危局buff」（攻击% 20 + 增伤 15）+ 一条禁用行的「boss增伤」——那是**某期危局的环境**，
+ * 与木桩默认敌人组合起来 = 「中性木桩 + 凭空 20%/15% 增伤」，任何一次「不选 Boss 直接算」都多算了一期环境。
+ * 危局环境现在有明确入口（属性配置页「危局环境 Buff」卡，选牌即写入 `period-buff:` 行），
+ * 所以默认不该预置任何环境行。
+ *
+ * 改回默认不再需要手删：属性配置页该卡点「不用」会清掉 `period-buff:` 行；手填行仍可自由增删。
+ */
 function defaultGlobalBuffs(): GlobalBuffRow[] {
-  return [
-    { id: 'b1', name: '危局buff', stat: 'atkPct', value: 20, enabled: true, targetSkillType: 'all' },
-    { id: 'b2', name: '危局buff', stat: 'dmgBonus', value: 15, enabled: true, targetSkillType: 'all' },
-    { id: 'b3', name: 'boss增伤', stat: 'enemyDamageTakenBonus', value: 0, enabled: false, targetSkillType: 'all' },
-  ]
+  return []
 }
 
 // ========== Store ==========

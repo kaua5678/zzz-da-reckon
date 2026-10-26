@@ -346,7 +346,7 @@ describe('computeBanyueInteractionTopUp（轴模式自动补齐，保底语义�
 })
 
 // ===== 集成：轴内捏地动/山摇·怒 → 反馈执行计划（先扣闪能，剩余自动补连段）=====
-import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
+import { mockStaticFetch, newPiniaWithFixtures, setupHarness } from '@/test/harness'
 import { teamPresets } from '@/data/teamPresets'
 import { applyTeamToStore, applyGoldToStore, applyAxisBinding, baseGoldOf } from '@/composables/teamCompare'
 import { useCatalogStore } from '@/stores/catalog'
@@ -365,13 +365,13 @@ const baseConfig = {
 // 泄漏的 pinia 运行 —— 任何用例调 setMechanicSetting 都会污染后续断言（覆盖率滑块修活后立刻暴露：
 // 一个用例把 rageGainCoverage 调成 0.5，后面「怒相增益 300」用例就读到 150）。
 beforeEach(() => {
-  newPinia()
+  newPiniaWithFixtures()
   mockStaticFetch()
 })
 
 describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () => {
   beforeEach(() => {
-    newPinia()
+    newPiniaWithFixtures()
     mockStaticFetch()
   })
 

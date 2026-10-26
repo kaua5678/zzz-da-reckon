@@ -46,6 +46,69 @@ export const TEST_BASE_CHAR = {
   basicAttackTimeWeight: 1,
 } as const
 
+/**
+ * 判据基线敌人 = **测试专用**，与产品默认（`stores/config.ts#defaultEnemy` 的木桩）**解耦**。
+ *
+ * ## 为什么要有它（2026-10-27）
+ * 用户把产品默认改成「自由训练模式木桩」后，**67 条既有判据同时变红**——它们全都从未 `setEnemy`，
+ * 一直吃 store 默认。A/B 实测：HEAD 版 config.ts 只红 10 条，换默认后 77 条 ⇒ 那 67 条不是「算错了」，
+ * 是「判据的隐含前提被产品默认偷偷改写了」。用户原话：「这测试也是够麻烦的，每次开发都畏手畏脚。」
+ *
+ * 根因不是默认值改了，而是**判据曾经依赖产品默认**。所以修法是让夹具自带一把**固定的尺子**：
+ * 所有走 `setupHarness` 的判据看到的敌人 = 这里的常量，永不随产品默认漂移。
+ * ⇒ 以后再改默认，这 67 条一条都不会红，只红真正被默认值影响的那几条（本轮 = 12 条）。
+ *
+ * ## 取值口径
+ * 逐字 = 2026-10-27 之前的产品默认（某期危局 Boss：205,970,837 血 / 15,486 失衡 / 防御 953 / 危局系数 1.1 / 秽盾 1）。
+ * **冻结**，不跟随任何产品默认变化；要测木桩请用 `TRAINING_DUMMY_ENEMY`。
+ */
+export const BASELINE_ENEMY = {
+  hp: 205970837,
+  stunValue: 15486,
+  stunTime: 12,
+  stunCountLock: -1,
+  stunVuln: 1.5,
+  defense: 953,
+  level: 70,
+  anomalyCoeff: 1,
+  bossAnomalyCoeff: 1.1,
+  bossStunGift: 0,
+  shieldCount: 1,
+  energyShield: 0,
+  invincibleTime: 0,
+  battleTime: 180,
+  bodySize: 'large',
+} as const
+
+/**
+ * 判据基线全局 Buff = 2026-10-27 之前的产品默认（两条危局buff + 一条禁用 boss增伤）。
+ * 同上：**冻结**，让判据与「产品默认带不带环境」解耦。
+ */
+export const BASELINE_GLOBAL_BUFFS = [
+  { id: 'b1', name: '危局buff', stat: 'atkPct', value: 20, enabled: true, targetSkillType: 'all' },
+  { id: 'b2', name: '危局buff', stat: 'dmgBonus', value: 15, enabled: true, targetSkillType: 'all' },
+  { id: 'b3', name: 'boss增伤', stat: 'enemyDamageTakenBonus', value: 0, enabled: false, targetSkillType: 'all' },
+] as const
+
+/** 产品默认（木桩）的判据侧镜像：只给「就是要测默认值」的判据用（训练木桩口径） */
+export const TRAINING_DUMMY_ENEMY = {
+  hp: 3347325000,
+  stunValue: 17582.7,
+  stunTime: 12,
+  stunCountLock: -1,
+  stunVuln: 1.5,
+  defense: 952.8,
+  level: 70,
+  anomalyCoeff: 1.25,
+  bossAnomalyCoeff: 1,
+  bossStunGift: 0,
+  shieldCount: 0,
+  energyShield: 0,
+  invincibleTime: 0,
+  battleTime: 180,
+  bodySize: 'large',
+} as const
+
 /** 队伍槽位输入：agentId 必填，其余字段覆盖 TEST_BASE_CHAR */
 export interface HarnessTeamSlot {
   agentId: string
@@ -76,9 +139,25 @@ export function mockStaticFetch(options?: { betaAgents?: unknown }): void {
   }))
 }
 
-/** 新建并激活一个 pinia（beforeEach 隔离用） */
+/** 新建并激活一个 pinia（beforeEach 隔离用）；**不套用任何敌人夹具**（保留产品默认） */
 export function newPinia(): void {
   setActivePinia(createPinia())
+}
+
+/**
+ * 新建 pinia **并套用判据基线敌人 / 全局 Buff**（2026-10-27）。
+ *
+ * 为什么需要它：大量老判据在 `beforeEach` 里只写 `newPinia() + mockStaticFetch()` 就自己塞 `config.team`，
+ * 从不 `setEnemy` ⇒ 一直吃产品默认。产品默认一改（换成训练木桩）它们就集体变红，
+ * 而这批判据测的是**机制**（般岳轴内捏块 / 仪玄术法值……），与「默认敌人是谁」无关。
+ *
+ * 用法 = `newPinia()` 的直接替代；要测产品默认的判据继续用 `newPinia()`。
+ */
+export function newPiniaWithFixtures(
+  fixtures: 'baseline' | 'product' | { enemy?: Record<string, unknown>; globalBuffs?: readonly unknown[] } = 'baseline',
+): void {
+  setActivePinia(createPinia())
+  applyFixtureDefaults(useConfigStore(), fixtures)
 }
 
 /** 加载 catalog（+ 可选 teammate-buffs），返回 catalog store */
@@ -147,6 +226,27 @@ export function setTeam(
 }
 
 /**
+ * 把夹具口径写进 config（`setupHarness` 的 `fixtures` 选项实现；也可直接调用）。
+ *
+ * `'baseline'` = **判据基线**（`BASELINE_ENEMY` + `BASELINE_GLOBAL_BUFFS`）：让判据与产品默认解耦。
+ * `'product'` = 不动（保留 store 的产品默认；「测默认值本身」的判据用）。
+ * 对象 = 在基线上覆写 `enemy` 字段 / 整体替换 `globalBuffs`（`globalBuffs` 只在这个口径下会被换掉）。
+ */
+export function applyFixtureDefaults(
+  config: ReturnType<typeof useConfigStore>,
+  fixtures: 'baseline' | 'product' | { enemy?: Record<string, unknown>; globalBuffs?: readonly unknown[] },
+): void {
+  if (fixtures === 'product') return
+  const base = fixtures === 'baseline' ? {} : fixtures
+  config.setEnemy({ ...BASELINE_ENEMY, ...(base.enemy ?? {}) } as never)
+  if (fixtures === 'baseline') {
+    config.globalBuffs.splice(0, config.globalBuffs.length, ...(BASELINE_GLOBAL_BUFFS.map(r => ({ ...r })) as never[]))
+  } else if (fixtures.globalBuffs) {
+    config.globalBuffs.splice(0, config.globalBuffs.length, ...(fixtures.globalBuffs as never[]))
+  }
+}
+
+/**
  * 一站式装配：新建 pinia → stub fetch → 加载 catalog/teammate-buffs → 填充队伍。
  * 返回 { catalog, config } 供测试直接使用。
  * ⚠️ 新建 pinia ⇒ **调用之前**取的 store / `useResourceCalc()` 引用全部作废（指向上一个 pinia）：用返回值，或在调用之后再取。
@@ -161,7 +261,21 @@ export function setTeam(
  */
 export async function setupHarness(
   team: Array<HarnessTeamSlot | ''>,
-  opts: { loadTeammateBuffs?: boolean; recommendedBuild?: boolean; betaAgents?: unknown } & HarnessTeamOptions = {},
+  opts: {
+    loadTeammateBuffs?: boolean
+    recommendedBuild?: boolean
+    betaAgents?: unknown
+    /**
+     * 敌人 / 全局 Buff 的夹具口径：
+     * - `'baseline'`（**缺省**）= 套用 `BASELINE_ENEMY` + `BASELINE_GLOBAL_BUFFS`（与产品默认解耦的固定尺子）
+     * - `'product'` = **保留产品默认**（只给「就是要断言产品默认值」的判据用，如 trainingDummyDefault）
+     * - `{ enemy, globalBuffs }` = 精确指定（判据自己声明要测哪个敌人）
+     *
+     * ⚠ 2026-10-27：缺省从「吃产品默认」改成「吃判据基线」。理由见 `BASELINE_ENEMY` 头注释——
+     * 产品默认一改就让 67 条无关判据变红 = 判据曾经依赖产品默认，那是判据的缺陷不是默认值的错。
+     */
+    fixtures?: 'baseline' | 'product' | { enemy?: Partial<typeof BASELINE_ENEMY>; globalBuffs?: readonly unknown[] }
+  } & HarnessTeamOptions = {},
 ) {
   setActivePinia(createPinia())
   mockStaticFetch(opts.betaAgents !== undefined ? { betaAgents: opts.betaAgents } : undefined)
@@ -170,6 +284,7 @@ export async function setupHarness(
   setActiveRowFusionRules(defaultRowFusionRules())
   const catalog = await loadCatalogStore(opts.loadTeammateBuffs ?? true)
   const config = useConfigStore()
+  applyFixtureDefaults(config, opts.fixtures ?? 'baseline')
   setTeam(config, team, { productionBasicWeights: opts.productionBasicWeights })
   if (opts.recommendedBuild) {
     await catalog.loadBuildRecommendations()

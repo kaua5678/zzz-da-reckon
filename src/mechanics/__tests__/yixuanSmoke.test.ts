@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { mockStaticFetch, newPinia, setupHarness } from '@/test/harness'
+import { mockStaticFetch, newPiniaWithFixtures, setupHarness } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
@@ -8,7 +8,7 @@ import { DEFAULT_INK3_RATIO, computeYixuanExChain, computeYixuanNingshenBonus, s
 import { getAgentMechanic } from '@/mechanics/registry'
 
 beforeEach(() => {
-  newPinia()
+  newPiniaWithFixtures()
   mockStaticFetch()
 })
 
