@@ -492,8 +492,6 @@ export interface ModuleFeedback {
   teamUltimateExtra?: number
   /** 莱特后场：全队常态能量消耗（converge 相位经通用输入 `teamEnergyConsumed` 递给模块） */
   consumedTeamEnergy?: number
-  /** 克拉蕾额外能力「全队触发[浸染]回 300 喧响（18s CD）」的整局总量（converge 相位写 `extraSelfDecibelReward`） */
-  claretInfectionDecibel?: number
 }
 
 export interface AgentExSpecialTimeInput {

@@ -2491,10 +2491,10 @@
         {
           "kind": "boundary",
           "input": "C6 风起自指",
-          "expected": "flowIncome ≥ 100×影猎 + 25（可达性不变量）",
+          "expected": "flowIncome ≥ 100×影猎 + 30（可达性不变量；30 = 影画6 风起 5×5×… 的退款额，见 severianFlowCascade 头注释 A 段）",
           "test": {
-            "file": "src/mechanics/__tests__/severian.test.ts",
-            "title": "纯函数：疾锋四段循环 #4 命中计数（完整循环 1 次/轮，尾部推进到 #4 再 +1）"
+            "file": "src/mechanics/__tests__/severianFlowCascade.test.ts",
+            "title": "A 物理可达性：C6 下 flowIncome ≥ 100×影猎 + 30（松弛解在此违约）"
           }
         }
       ]

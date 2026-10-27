@@ -30,6 +30,19 @@
  * 由 `iterate` 在 `feasibleScale < 1` 时写入）⇒ `excess = rowTime − rowTime×scale`，
  * 一轮即到不动点，`acc` 塌回量化地板。
  *
+ * ## 2026-10-27 认领值重取（规则 10 四步，五条一起）
+ *
+ * ① 量 delta：五条的唯一变化量是**总伤**（93.0436→93.2506 / 104.2963→104.3651 /
+ *    106.8585→107.0654 / 75.1391→74.9538 / 88.3462→88.5525，最大偏离 0.19%）。
+ *    `acc`（残差）、`converged`、`interactionScale`、截断**全部未变** ⇒ 本文件的判据本意
+ *    （折叠残差 < 地板、不与封顶构成正反馈）一点没动，漂的只是「落点认领值」。
+ * ② 根因（git bisect 逐提交二分）：首个红 = `bca2becd`「挽昼/知更鸟人工配装 + 副词条现实性约束
+ *    （单项≤20 / 最高两项≤35）」——推荐配装的副词条分配被 TOP2 约束改写 ⇒ 三队行伤害重排。
+ *    在父提交 `f2c14483` 上 7 例全绿，在 `bca2becd` 及之后恒 5 红 ⇒ 与折叠环/搜索语义无关。
+ * ③ 确认有意：TOP2≤35 是用户口径 2026-10-26（「词条不能太极端」），配装随之变化是预期结果；
+ *    本文件历史上已因「配装推荐主词条订正」重取过三次（见各条上方注释），同型。
+ * ④ 处置 = 只改认领值，**判据形状（精确值 + 残差上限）与阈值 0.01 一字未动**。
+ *
  * ## 判据取「残差量级」而不是「落点」（为什么）
  *
  * 封顶下 `capped_i = net_i × budget/Σnet` 只由**比值**决定 ⇒ 修法对落点/伤害/截断/iscale
@@ -109,7 +122,7 @@ const CASES = [
     // ⚠ 2026-10-23 重取：dmg 94.6715 → **93.0436**（−1.720%）。归因 = 琉音（1481，槽2）额外能力直伤行
     //   按**上一位队友特性**出行的修正：本队上一位 = 1341 照（防护），旧实现 `isRupture ? 400 : 320`
     //   给防护队友白送 320% 攻击力，现在不出行。账本/acc 零变化（与 timeGolden 同名 preset 的 −1.720% 同源）。
-    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [117.521, 21.001, 67.460], dmg: 93.0436,
+    id: 'auto-1431-1341-1481', accCeiling: 35, before: 21.70, ledger: [117.521, 21.001, 67.460], dmg: 93.2506,
     desc: '封顶队（scale<1，走 necessaryUncappedTime 路径）；acc 15.50 ⇒ 本条不度量残差塌陷（落点按 2026-10-20 重取）',
   },
   // 旧 auto-1431-1491-1341：槽序互换（照↔千夏）⇒ 账本槽1/槽2 对调。
@@ -121,7 +134,7 @@ const CASES = [
   //   归因：配装推荐主词条订正（1431/1341/1491 的 4/5/6 号位有变）⇒ 团队预算重排。
   //   acc 仍在 35s 以内 ⇒ 判据有效，漂的是认领落点。
   // ⚠ 2026-10-23 重取：2026-10-21「交互默认全 0」⇒ 三队账本/伤害落点整体移动（本用例主张 = 残差塌回地板，未变）。
-  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [155.943, 16.417, 23.678], dmg: 104.2963, desc: '残差塌回地板（修前 22.74s）；落点按 2026-10-23 交互全 0 口径重取' },
+  { id: 'auto-1431-1341-1491', accCeiling: 35, before: 22.74, ledger: [155.943, 16.417, 23.678], dmg: 104.3651, desc: '残差塌回地板（修前 22.74s）；落点按 2026-10-23 交互全 0 口径重取' },
 ] as const
 
 describe('折叠残差不与团队封顶构成正反馈', () => {
@@ -310,8 +323,8 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
         `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 106.8585),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 106.8585M（2026-10-23 琉音特性门控重取）`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 107.0654),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 107.0654M（2026-10-27 副词条现实性约束重取）`,
       ).toBeLessThan(0.01)
       // 残差仍在量化地板（本修法的目的）
       expect(rr!.convergence?.timeBudgetAccumulatedSeconds ?? 0).toBeLessThan(35)
@@ -351,8 +364,8 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
        * 判据本意（「档位可复现 + 伤害与认领值一致」）不变。
        */
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 75.1391),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 75.1391M（2026-10-23 交互全 0 口径重取）`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 74.9538),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 74.9538M（2026-10-27 副词条现实性约束重取）`,
       ).toBeLessThan(0.01)
     }, 200_000)
 
@@ -412,8 +425,8 @@ describe('折叠残差不与团队封顶构成正反馈', () => {
         `截断 ${(rr!.overflowSeconds ?? 0).toFixed(2)}s 偏离认领值 0s（剑势修正后截断归零）`,
       ).toBeLessThan(0.05)
       expect(
-        Math.abs(calc.teamTotalDamage.value / 1e6 - 88.3462),
-        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 88.3462M（2026-10-23 琉音特性门控重取）`,
+        Math.abs(calc.teamTotalDamage.value / 1e6 - 88.5525),
+        `总伤 ${(calc.teamTotalDamage.value / 1e6).toFixed(4)}M 偏离认领值 88.5525M（2026-10-27 副词条现实性约束重取）`,
       ).toBeLessThan(0.01)
     }, 200_000)
   })

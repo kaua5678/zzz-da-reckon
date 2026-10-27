@@ -1683,6 +1683,18 @@ export const claretMechanic: AgentMechanicModule = {
 }
 
 /**
+ * D2（CC-359）：本模块私有的 ModuleFeedback 成员——只有本文件读写（claretNextRoundFeedback 写、
+ * claretConverge 读），声明随模块走，不堆在 `mechanics/types.ts`。仍是 `ModuleFeedback` 的成员
+ * （模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/mechanics/types' {
+  interface ModuleFeedback {
+    /** 克拉蕾额外能力「全队触发[浸染]回 300 喧响（18s CD）」的整局总量（converge 相位写 `extraSelfDecibelReward`） */
+    claretInfectionDecibel?: number
+  }
+}
+
+/**
  * D2（CC-359）：本模块私有的 cfg 字段——只有本文件读写，声明随模块走，不再堆在 `types/resource/config.ts`。
  * 仍是 `CharacterOperationConfig` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
  */

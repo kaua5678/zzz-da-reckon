@@ -20,6 +20,7 @@ import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { panelOfSlot } from '@/core/sourcePanels'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
+import { moduleExecRow } from '@/mechanics/moduleExecRow'
 
 /**
  * 洛克茜（1621）v12 重录（2026-09-03，nanoka 3.2.12+18601660）：
@@ -541,14 +542,14 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
      * `roxy.test.ts` 的「动作清单里有强化特殊技行」用例。
      */
     const openerTime = cfgMoveActionTime(cfg, EX_CHILL_MOVE_ID)
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: EX_CHILL_MOVE_ID, moveName: '强化特殊技：小心风寒', category: 'special',
-      count: exCount, actionTime: openerTime, comboAlignRatio: 0,
-      totalTime: exCount * openerTime, totalComboAlignTime: 0,
+      count: exCount, actionTime: openerTime,
+      totalTime: exCount * openerTime,
       energyConsume: Number(cfg.roxyExStartEnergy ?? 10), totalEnergyConsume: exCount * Number(cfg.roxyExStartEnergy ?? 10),
       energyRecovery: 0, totalEnergyRecovery: 0,
       timeBucket: 'necessary',
-    })
+    }))
     const spinMoveMult = Number(cfg.roxySpinSecondDamage ?? 0)
     const spinDecibelPerSec = Number(cfg.roxySpinSecondDecibel ?? 0)
     if (source.spinSeconds > 0) {
@@ -570,10 +571,10 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
        */
       const pushSpinRow = (count: number, secondsEach: number) => {
         if (count <= 0 || secondsEach <= 0) return
-        executions.push({
+        executions.push(moduleExecRow({
           moveId: SPIN_SECOND_MOVE_ID, moveName: '自旋（耗能 30/s，占前台）', category: 'special',
-          count, actionTime: secondsEach, comboAlignRatio: 0,
-          totalTime: count * secondsEach, totalComboAlignTime: 0,
+          count, actionTime: secondsEach,
+          totalTime: count * secondsEach,
           energyConsume: perSecondEnergy * secondsEach,
           totalEnergyConsume: perSecondEnergy * secondsEach * count,
           decibelRecovery: spinDecibelPerSec * secondsEach,
@@ -583,7 +584,7 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
           timeBucket: 'necessary',
           damageMultiplier: spinMoveMult * secondsEach,
           damageMultiplierOverride: true,
-        })
+        }))
       }
       const fullCasts = source.lastIsPartial ? Math.max(0, exCount - 1) : exCount
       pushSpinRow(fullCasts, source.spinSeconds)
@@ -598,10 +599,10 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
       const cinemaNow = cinemaLevelOf(cfg.roxyCinemaLevel)
       if (cinemaNow >= 2) {
         const freeSeconds = roxyFreeSpinSeconds()
-        executions.push({
+        executions.push(moduleExecRow({
           moveId: SPIN_SECOND_MOVE_ID, moveName: '自旋（流势免费，不耗能）', category: 'special',
-          count: 1, actionTime: freeSeconds, comboAlignRatio: 0,
-          totalTime: freeSeconds, totalComboAlignTime: 0,
+          count: 1, actionTime: freeSeconds,
+          totalTime: freeSeconds,
           energyConsume: 0, totalEnergyConsume: 0,
           decibelRecovery: spinDecibelPerSec * freeSeconds,
           totalDecibelRecovery: spinDecibelPerSec * freeSeconds,
@@ -610,19 +611,19 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
           timeBucket: 'necessary',
           damageMultiplier: spinMoveMult * freeSeconds,
           damageMultiplierOverride: true,
-        })
+        }))
       }
     }
     /** 敬请安息（1621023）catalog `actionTime = 0.245`，同样占前台（原作自动衔接招式，不是后台行） */
     const restPeaceTime = cfgMoveActionTime(cfg, REST_PEACE_MOVE_ID)
-    executions.push({
+    executions.push(moduleExecRow({
       moveId: REST_PEACE_MOVE_ID, moveName: '强化特殊技：敬请安息（风炮）', category: 'special',
-      count: exCount, actionTime: restPeaceTime, comboAlignRatio: 0,
-      totalTime: exCount * restPeaceTime, totalComboAlignTime: 0,
+      count: exCount, actionTime: restPeaceTime,
+      totalTime: exCount * restPeaceTime,
       energyConsume: 0, totalEnergyConsume: 0,
       energyRecovery: 0, totalEnergyRecovery: 0,
       timeBucket: 'necessary',
-    })
+    }))
   }
   const spec = getAgentSpec(ROXY_AGENT_ID)
   if (!spec) return

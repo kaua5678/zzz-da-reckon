@@ -52,9 +52,18 @@ describe('computeDefaultSubStats · 快速默认词条分配', () => {
     expect(alloc).toEqual({ critRate: 20, critDmg: 5, atkPct: 0, penFlat: 0 })
   })
 
-  it('转模角色模板：卢西娅 hpPct 首位 / 洛克茜 defPct 首位', () => {
+  it('转模角色模板：卢西娅 hpPct 首位；洛克茜 v12 已无 defPct（回落到击破兜底）', () => {
     expect(getTemplate(mockAgent('1451', 'support')).stats[0]).toBe('hpPct')
-    expect(getTemplate(mockAgent('1621', 'stun')).stats[0]).toBe('defPct')
+    /**
+     * ⚠ **2026-10-26 订正（规则 10 四步）**：洛克茜(1621) 的 `substatTemplate` 原写
+     * `['defPct','atkPct','critRate']` = **v12 之前**的旧转模口径（旧 kit「初始防御 >1500 → 防御转攻击/冲击」）。
+     * v12 已改为「初始能量自动回复 >1.2 → 攻击/冲击」⇒ **防御对伤害零贡献**，旧模板会让
+     * 「最优副词条」把 20 步预算全砸进防御（用户 2026-10-26 抓到「配装默认带防御」）。
+     * 处置 = 模块删掉该声明（commit 633f2f70），回落职业兜底 `_default_stun`（暴击率→爆伤→攻击）。
+     * 判据本意（「转模源在模板首位」）不变，只是该角色**不再是**转模源。
+     */
+    expect(getTemplate(mockAgent('1621', 'stun')).stats[0]).toBe('critRate')
+    expect(getTemplate(mockAgent('1621', 'stun')).stats).toEqual(['critRate', 'critDmg', 'atkPct', 'penFlat'])
   })
 
   it('命破默认模板：暴击→爆伤→生命（贯穿吃暴击、生命是基底加法项）', () => {

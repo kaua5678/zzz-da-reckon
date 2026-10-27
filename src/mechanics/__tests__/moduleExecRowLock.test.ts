@@ -54,7 +54,8 @@ describe('CC-463 moduleExecRow 单一来源', () => {
     expect(hits).toEqual([])
   })
   it('agents/ 手写账本零行残留清单（新增手写行 ⇒ 用 moduleExecRow）', () => {
-    const RESIDUAL: Record<string, number> = { 'orphie.ts': 1, 'roxy.ts': 3, 'sigrid.ts': 1, 'soldier11.ts': 3, 'starlightBilly.ts': 1 }
+    // 2026-10-27：roxy.ts 3 → 0（自旋占前台那次把四行改写成显式账本键，顺手迁进 moduleExecRow）
+    const RESIDUAL: Record<string, number> = { 'orphie.ts': 1, 'sigrid.ts': 1, 'soldier11.ts': 3, 'starlightBilly.ts': 1 }
     const actual: Record<string, number> = {}
     for (const f of readdirSync(AGENTS_DIR).filter(f => f.endsWith('.ts'))) {
       const n = (readFileSync(join(AGENTS_DIR, f), 'utf-8').match(/\btotalComboAlignTime:\s*0\b/g) ?? []).length

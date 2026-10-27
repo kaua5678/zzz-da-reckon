@@ -82,19 +82,23 @@ describe('希希芙额外能力·毒素发酵（全队暴伤+40%、自身额外+
   })
 
   it('门控：[击破]或同属性（电）队友激活 → 队友暴伤+40%、希希芙自己+50%；命破/强攻不生效', async () => {
-    // 正例1：1621 洛克茜（风·击破=stun，非电属性 → 纯专精命中）
-    const pos1 = await setup('1621', 0)
+    /**
+     * 正例1：1141 莱卡恩（冰·击破=stun，非电属性 → 纯专精命中）。
+     *
+     * ⚠ **2026-10-27 换队友（规则 10 四步）**：原用 1621 洛克茜，靠 toggleTeammateBuff 关掉
+     * `roxy_core_team_crit_dmg` / `roxy_extra_stun_vulnerability` 两条来做隔离。但洛克茜的核心被动
+     * （每 1% 自身暴击率 → 全队暴伤，上限 40）**r761 起走 panel 通道**（`applyRoxyTeamPanelEffects`），
+     * 根本不在 teammate-buffs 表里 ⇒ 那两个 id 从来不存在，toggle 是**空操作**（实测面板暴伤仍 +22.76），
+     * 「隔离」是假的。换成 1141（击破、无全队暴伤输出）⇒ 隔离由「该队友本来就没这项」保证。
+     */
+    const pos1 = await setup('1141', 0)
     const phases1 = computePanelPhases(0, pos1.config, pos1.catalog)!
     expect((phases1.inCombat as any).additionalAbilityActive).toBe(1)
-    // 关闭洛克茜的队友 buff（核心被动+32%暴伤、额外能力失衡易伤），避免干扰希希芙自身暴伤测算
-    const roxyBuffs = ['roxy_core_team_crit_dmg', 'roxy_extra_stun_vulnerability']
-    for (const id of roxyBuffs) pos1.config.toggleTeammateBuff(id, false)
     const critBase = (phases1.outOfCombat as any).critDmg as number
     const selfCd = (computePanelPhases(0, pos1.config, pos1.catalog)!.inCombat as any).critDmg as number
     pos1.config.toggleTeammateBuff('xixifu.additional_toxin_crit_dmg', false)
     const selfCdOff = (computePanelPhases(0, pos1.config, pos1.catalog)!.inCombat as any).critDmg as number
     pos1.config.toggleTeammateBuff('xixifu.additional_toxin_crit_dmg', true)
-    for (const id of roxyBuffs) pos1.config.toggleTeammateBuff(id, true)
     expect(selfCd - selfCdOff).toBeCloseTo(40, 5) // 全队 buff 部分
     expect(selfCdOff - critBase).toBeCloseTo(15, 5) // 模块自身+10% + 终结技帷幕+5%
     expect(selfCd - critBase).toBeCloseTo(55, 5) // 合计
