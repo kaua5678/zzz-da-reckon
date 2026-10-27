@@ -56,6 +56,12 @@ export const WISH_MAX = 160
 export const JU_FENG_WISH_COST = 120
 /** 烬痕：按实际伤害的 75% 累积并计入总伤害 */
 export const EMBER_SCAR_RATE = 0.75
+/**
+ * 耗能 30 的强化特殊技代表行 = 焚夜·曦生（1601106）。
+ * 燃灯·晦尽（1601006，at 2.433）与它是**多形态对称数据**（收益公式相同，用户 2026-10-27
+ * 「两段耗能 30 的 e 只需考虑一个」）⇒ 只走这一条线，不再另开。
+ */
+export const SUNBRINGER_EX_MOVE_ID = '1601106'
 
 /** 招式元数据缓存（buildCharConfig 写，buildExecutions 读；单一来源 = 倍率表） */
 interface SunbringerMoveMeta {
@@ -72,6 +78,8 @@ interface SunbringerMeta {
   ex: SunbringerMoveMeta
   jufeng: SunbringerMoveMeta
   changan: SunbringerMoveMeta
+  /** 强化特殊技：燃灯·永昼之炬（消耗[旗令]；2026-10-27 补录，见 solveSunbringerLoops 的旗令分配） */
+  torch: SunbringerMoveMeta
   ultA: SunbringerMoveMeta
   ultB: SunbringerMoveMeta
   maim: SunbringerMoveMeta
@@ -130,6 +138,7 @@ function buildSunbringerCharConfig({ cfg, skills, agent, cinemaLevel }: AgentCha
     ex: metaOf('1601106'),
     jufeng: metaOf('1601015'),
     changan: metaOf('1601107'),
+    torch: metaOf('1601007'),
     ultA: metaOf('1601111'),
     ultB: metaOf('1601011'),
     maim: metaOf('1601114'),
@@ -205,11 +214,31 @@ export function solveSunbringerLoops(input: {
   const ultFeasible = ultimateCost > 0 ? Math.floor(Math.max(0, totalDecibel) / ultimateCost) : 0
   // 旗令优先给「此行，共赴前路」（产愿核）；二段「此愿，重塑万象」由引擎既有的终结技行承担
   const ultACount = Math.max(0, Math.min(jufengCount, ultFeasible))
+  /**
+   * **强化特殊技·永昼之炬（1601007，消耗[旗令]）必须建模**（用户口径 2026-10-27，逐字）：
+   * > 「而**强化 e 两个都要建模**，消耗特殊资源的那个是挽昼自己独特的资源循环。」
+   *
+   * 「强化 E」= 不耗锐能、改耗**专属资源**的两发：长暗终焉（1601107，耗[链齿]）与
+   * 永昼之炬（1601007，耗[旗令]）。raw 原文：「拥有[旗令]时，点按特殊技发动：消耗[旗令]，
+   * ……造成大量燎源属性伤害」；长暗终焉同构（「拥有[链齿]时…消耗[链齿]」）。
+   * 两种资源都由聚锋各发 1 个 ⇒ 互不挤占槽位，可以各打各的。
+   *
+   * 分配：旗令**先给**「此行，共赴前路」（产愿核；2026-10-25 裁决不变），**剩余旗令**才由
+   * 永昼之炬消化——相对旧「永昼之炬按 0 次」，差别只在「旗令打不完时多打一发」，
+   * 终结技次数一位不动。
+   *
+   * ⚠ 与「耗能 30 的 E」区分（同句）：「两段耗能 30 的 e **只需考虑一个**」——燃灯·晦尽
+   * （1601006，at 2.433）与焚夜·曦生（1601106，at 2.5）是**多形态对称数据**（同收益公式）
+   * ⇒ 只取已在轮换里的焚夜·曦生，不另开一条线。
+   */
+  const torchMax = meta.torch.actionTime > 0 ? Math.floor(budget / meta.torch.actionTime) : 0
+  const torchCount = Math.max(0, Math.min(jufengCount - ultACount, torchMax))
+  budget = Math.max(0, budget - torchCount * meta.torch.actionTime)
   return {
     sharpPool, sharpUsed: exCount * SHARPNESS_COST_PER_EX, exCount,
     gash, gashLayers, maimDemand, maimCount,
     wishTotal, wishSpent: jufengCount * JU_FENG_WISH_COST, jufengCount,
-    changanCount, ultFeasible, ultACount,
+    changanCount, ultFeasible, ultACount, torchCount,
   }
 }
 
@@ -289,6 +318,23 @@ function buildSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
       totalTime: 0,
       damageMultiplier: meta.maim.damage,
       ...RECOVERY_OFF,
+      timeBucket: 'necessary',
+    })
+  }
+  if (loops.torchCount > 0) {
+    const t = meta.torch.actionTime
+    push({
+      moveId: meta.torch.moveId,
+      moveName: '强化特殊技：燃灯·永昼之炬（消耗旗令）',
+      category: 'special',
+      count: loops.torchCount,
+      actionTime: t,
+      totalTime: loops.torchCount * t,
+      damageMultiplier: meta.torch.damage,
+      dazeMultiplier: meta.torch.daze,
+      decibelRecovery: meta.torch.decibel,
+      totalDecibelRecovery: loops.torchCount * meta.torch.decibel,
+      ...ENERGY_RECOVERY_OFF,
       timeBucket: 'necessary',
     })
   }
@@ -381,6 +427,29 @@ function patchSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
   ultRow.moveName = `终结技：此愿，重塑万象（愿核；烬痕消除 +${Math.round(ember)}%）`
 }
 
+/**
+ * 兜底池（用户口径 2026-10-27）：「每失衡兜底可以放多个 e」。
+ *
+ * 窗尾秒数优先塞**耗能 30 的强化特殊技**（焚夜·曦生 1601106；与燃灯·晦尽 1601006 是多形态
+ * 对称数据，只取一条线），塞不下的余量仍记 basic。这里**不自己算上限**：引擎
+ * `roundInputs#expandExecutedToCounts` 会把认领量**逐招夹紧到本轮真物化的次数**
+ * （`FillResourceBudget.executed`），夹掉的秒数退回平A ⇒ 角色一发强特都没打出来时，
+ * 下面这个贪心不会抢走平A的轴内占比。
+ */
+export function expandSunbringerBasicFill(input: {
+  fillSec: number
+  actionTimeOf: (moveId: string) => number | undefined
+}): ReadonlyArray<{ readonly moveId: string; readonly count: number }> {
+  const fillSec = Math.max(0, Number(input.fillSec) || 0)
+  if (!(fillSec > 0)) return []
+  const exT = Math.max(0, input.actionTimeOf(SUNBRINGER_EX_MOVE_ID) ?? 0)
+  const n = exT > 0 ? Math.floor(fillSec / exT) : 0
+  return [
+    { moveId: SUNBRINGER_EX_MOVE_ID, count: n },
+    { moveId: 'basic', count: Math.max(0, fillSec - n * exT) },
+  ]
+}
+
 export const sunbringerMechanic: AgentMechanicModule = {
   id: 'agent:sunbringer',
   agentIds: [SUNBRINGER_AGENT_ID],
@@ -388,6 +457,8 @@ export const sunbringerMechanic: AgentMechanicModule = {
   description: 'v1 占位包（3.4.1+19850203）：面板层（初始暴伤→暴击 0.35%/1%、极昼 +40% 暴击 / 无视 20% 防御）'
     + '+ 六条资源循环执行行（锐能→残痕→毁伤→愿力→聚锋→链齿/旗令→愿核→烬痕）；影画 1/2 未实现、C3–C6 占位。',
   applyPanel: applySunbringerPanel,
+  // 兜底池：窗尾秒数优先塞耗能 30 的强化特殊技（见 expandSunbringerBasicFill 注释）
+  expandBasicFill: expandSunbringerBasicFill,
   buildCharConfig: buildSunbringerCharConfig,
   buildExecutions: buildSunbringerExecutions,
   patchExecutions: patchSunbringerExecutions,

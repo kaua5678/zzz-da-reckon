@@ -49,8 +49,17 @@ export interface FillResourceBudget {
   energy?: number
   /** `CharacterResourceResult.decibelSource.total`（喧响总量） */
   decibel?: number
-  /** `CharacterResourceResult.executedExSpecialCount`（本轮真打出来的强特次数 = 认领上限） */
+  /** `CharacterResourceResult.executedExSpecialCount`（本轮真打出来的强特次数） */
   exSpecial?: number
+  /**
+   * **本槽本轮真物化出来的招式次数**（moveId → Σcount，含连段展开前的行）——兜底池的**硬上界**。
+   *
+   * 为什么放在引擎侧而不是让模块自己猜：钩子能返回任何 moveId，但**只有真的出行才产生伤害**。
+   * 认领一个没有行的招式不会加伤，却会让引擎把这部分秒数记成「已认领」⇒ 该归平A的窗尾秒数蒸发。
+   * 故引擎按本表**逐招夹紧**，并把夹掉的秒数**退回平A**（退化口径），模块不必自己算上限。
+   * `basic` 是秒数伪键，不查本表。
+   */
+  executed?: Readonly<Record<string, number>>
 }
 
 /** 该角色能否把这个轴动作解析成自己的东西：连段 / 招式表 / 模块轴块展开（与 buildStackAxes 的解析链同序） */
@@ -440,8 +449,8 @@ export function createConvergenceRoundInputs(deps: {
    * `fillResources` = 兜底池的资源读数（可选，见 `FillResourceBudget`）。缺省 ⇒ 钩子拿不到资源，
    * 只能按时间切分（旧调用点逐位不变）。
    *
-   * @fact engine:兜底池 口径: 兜底填充能认领的招式量**只能是本轮轮换里真打出来的量**——钩子入参 `exSpecialAvailable` 取 `executedExSpecialCount` 为认领上限，超额会在失衡分数处被 `min(1,·)` 钳掉并**静默抢走平A的轴内秒数** | 据 用户@2026-10-27「他本身作为一个产出招式的地方，而不从余量池拿取」·钉「不能凭空多算」 | 验 src/composables/__tests__/expandBasicFillPool.test.ts | 锚 src/composables/resourceCalc/roundInputs.ts#expandExecutedToCounts | 信 确认
-   * ⟳复核: 出现第二个声明兜底池的角色、或「本轮真打出来次数」通道（executedExSpecialCount）改口径时，重核认领上限是否仍等于全局次数 | 到期 2027-06-30
+   * @fact engine:兜底池 口径: 兜底填充能认领的招式量**只能是本轮真物化出来的量**——引擎按 `FillResourceBudget.executed`（本轮各行 Σcount）**逐招夹紧**，夹掉的秒数退回 `basic`；只靠失衡分数的 `min(1,·)` 挡不住「认领不存在的招式」，那会**静默抢走平A的轴内秒数** | 据 用户@2026-10-27「他本身作为一个产出招式的地方，而不从余量池拿取」·钉「不能凭空多算」+「把 e 物化」 | 验 src/composables/__tests__/expandBasicFillPool.test.ts | 锚 src/composables/resourceCalc/roundInputs.ts#expandExecutedToCounts | 信 确认
+   * ⟳复核: 出现第二个声明兜底池的角色、或 executed 计数通道（CharacterResourceResult.executions）改口径时，重核「认领上限 = 本轮行数」是否仍成立 | 到期 2027-06-30
    */
   function expandExecutedToCounts(
     executed: Record<string, ExecutedMoveCount>,
@@ -476,19 +485,43 @@ export function createConvergenceRoundInputs(deps: {
       // 原为此处 `fillerAgentId` 写死两个角色的 if/else 分支。未声明 ⇒ 通用 basic 秒数。
       const fillSkills = catalogStore.agentSkillsByAgentMap.get(fillerAgentId)
       const budget = fillResources?.[slot]
+      const actionTimeOf = (id: string) => findMoveById(fillSkills, id)?.actionTime
       const fillExpanded = getAgentMechanic(fillerAgentId)?.expandBasicFill?.({
         fillSec,
-        actionTimeOf: id => findMoveById(fillSkills, id)?.actionTime,
+        actionTimeOf,
         // 兜底池资源读数：缺省不传（不是 0）——「没有读数」与「读数为 0」对模块是两件事
         ...(budget?.energy !== undefined ? { energyAvailable: budget.energy } : {}),
         ...(budget?.decibel !== undefined ? { decibelAvailable: budget.decibel } : {}),
         ...(budget?.exSpecial !== undefined ? { exSpecialAvailable: budget.exSpecial } : {}),
       })
-      if (fillExpanded) {
-        for (const e of fillExpanded) add(slot, e.moveId, e.count)
-      } else {
-        add(slot, 'basic', fillSec)
+      if (!fillExpanded) { add(slot, 'basic', fillSec); continue }
+      // 没有 executed 读数（旧调用点 / 非轴路径）⇒ 不做任何夹紧，逐位保持钩子输出
+      if (!budget?.executed) { for (const e of fillExpanded) add(slot, e.moveId, e.count); continue }
+      /**
+       * **逐招夹紧到「真物化出来的次数」**（兜底池，2026-10-27 用户口径「把 e 物化」）：
+       * 钩子返回的 moveId 可能根本没有行（角色没打出来 / 模块没发）⇒ 认领它不会加伤，
+       * 却会让窗尾秒数「已用掉」。故按 `budget.executed` 夹紧。
+       *
+       * 退回口径 = **只退夹掉的那部分秒数**（`claimed − taken`），不是「fillSec − 已用」：
+       * 后一种会把历史上就不计秒的余量（如伊德海莉每循环的 1s 蓄力）也倒进平A，
+       * 改变既有角色的读数——夹紧要修的只是「认领了不存在的招式」这一类。
+       */
+      let basicSec = 0
+      let claimedSec = 0
+      let takenSec = 0
+      for (const e of fillExpanded) {
+        if (e.moveId === 'basic') { basicSec += Math.max(0, e.count); continue }
+        const cap = budget.executed[e.moveId]
+        const want = Math.max(0, e.count)
+        const take = cap === undefined ? 0 : Math.min(want, Math.max(0, cap))
+        const at = Math.max(0, actionTimeOf(e.moveId) ?? 0)
+        claimedSec += want * at
+        if (!(take > 0)) continue
+        add(slot, e.moveId, take)
+        takenSec += take * at
       }
+      basicSec += Math.max(0, claimedSec - takenSec)
+      if (basicSec > 0) add(slot, 'basic', basicSec)
     }
     return out
   }

@@ -71,6 +71,28 @@ describe('兜底池 ①：资源读数进钩子（缺省 ≠ 0）', () => {
   })
 })
 
+describe('兜底池 ②：认领量按「真物化的次数」夹紧（物化）', () => {
+  it('超额认领被夹到实际行数，夹掉的秒数退回平A', async () => {
+    const { config, catalog } = await setupHarness([{ agentId: '1041' }, { agentId: '1211' }, { agentId: '1091' }])
+    const inputs = roundInputsOf(config, catalog)
+    const at = findMoveById(catalog.agentSkillsByAgentMap.get('1041'), '1041008')?.actionTime
+    expect(at).toBeGreaterThan(0)
+    // 11号 兜底：fillSec 5s ⇒ 钩子要 5/at ≈ 2.735 次火力镇压 #4，但本轮只物化了 2 行
+    const out = inputs.expandExecutedToCounts({}, { 0: 5 }, { 0: { executed: { '1041008': 2 } } })
+    expect(out['0:1041008'].count).toBe(2)
+    // 夹掉的 (2.735−2)·at 秒退回 basic（窗尾秒数不蒸发）
+    expect(out['0:basic'].count).toBeCloseTo(5 - 2 * at!, 6)
+    // 没有该行（角色本轮没打出来）⇒ 一次都不认领，整段退回平A
+    const none = inputs.expandExecutedToCounts({}, { 0: 5 }, { 0: { executed: {} } })
+    expect(none['0:1041008']).toBeUndefined()
+    expect(none['0:basic'].count).toBeCloseTo(5, 6)
+    // 无 executed 读数（旧调用点）⇒ 不夹紧，逐位保持钩子输出
+    const legacy = inputs.expandExecutedToCounts({}, { 0: 5 })
+    expect(legacy['0:1041008'].count).toBeCloseTo(5 / at!, 6)
+    expect(legacy['0:basic']).toBeUndefined()
+  })
+})
+
 describe('兜底池 ③：格莉丝窗尾 = A + 特殊技循环链（时间守恒）', () => {
   const secondsOf = (rows: ReadonlyArray<{ moveId: string; count: number }>, t: (id: string) => number | undefined) =>
     rows.reduce((sum, r) => sum + (r.moveId === 'basic' ? r.count : r.count * (t(r.moveId) ?? 0)), 0)

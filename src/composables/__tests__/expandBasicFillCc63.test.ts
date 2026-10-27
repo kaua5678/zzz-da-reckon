@@ -75,7 +75,7 @@ describe('CC-63 平A兜底 → 模块钩子 expandBasicFill', () => {
      * 等价的迁移」⇒ 不参与本条的等价对照。它的时间守恒与强特认领上限由
      * `expandBasicFillPool.test.ts` 锁。新增声明者时请同样登记在这里并补专场判据。
      */
-    const POOL_DECLARED = new Set(['1181'])
+    const POOL_DECLARED = new Set(['1181', '1601'])
     for (const id of ids) {
       if (POOL_DECLARED.has(id)) continue
       config.team[0].agentId = id

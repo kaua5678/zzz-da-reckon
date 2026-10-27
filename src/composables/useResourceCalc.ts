@@ -756,10 +756,17 @@ export function createResourceCalc(
     // 否则两处对「窗尾该归谁」会给出不同答案（失衡分数与伤害归属漂移）。
     const fillResources: Record<number, FillResourceBudget> = {}
     for (const c of adjustedResourceResult.value?.characters ?? []) {
+      // 本槽**真物化**的招式次数（兜底池硬上界）：同一 moveId 可有多行，按 key 求和
+      const executed: Record<string, number> = {}
+      for (const row of c.executions) {
+        if (!row.moveId || !(row.count > 0)) continue
+        executed[row.moveId] = (executed[row.moveId] ?? 0) + row.count
+      }
       fillResources[c.slot] = {
         energy: c.energySource.total,
         decibel: c.decibelSource.total,
         exSpecial: Math.max(0, Number(c.executedExSpecialCount) || 0),
+        executed,
       }
     }
     const counts = expandExecutedToCounts(exec, stackTraversalResult.value.basicFillBySlot, fillResources)
