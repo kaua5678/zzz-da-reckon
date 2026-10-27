@@ -9,7 +9,7 @@ import { setupHarness } from '@/test/harness'
 import { IMPACT_VARIABLES, type ImpactVariable } from '@/core/impactVars'
 import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
-import { buildImpactVariables } from '@/composables/impactVariables'
+import { buildImpactVariables, impactVarOptions, DYNAMIC_VAR_GROUP } from '@/composables/impactVariables'
 
 type H = Awaited<ReturnType<typeof setupHarness>>
 
@@ -21,7 +21,7 @@ function inlineAllVars(h: H, settingMap: Map<string, MechanicSetting>, coverage:
     const range = setting.suffix === '%'
       ? [(setting.min ?? 0) * 100, (setting.max ?? 100) * 100]
       : [setting.min ?? 0, setting.max ?? 100]
-    vars.push({ id: `setting.${id}`, label: setting.label, defaultRange: range as [number, number], suffix: setting.suffix })
+    vars.push({ id: `setting.${id}`, label: setting.label, defaultRange: range as [number, number], suffix: setting.suffix, group: DYNAMIC_VAR_GROUP })
   }
   const burniceSlot = configStore.team.findIndex(char => {
     const agent = char.agentId ? catalogStore.getAgent(char.agentId) : null
@@ -31,7 +31,7 @@ function inlineAllVars(h: H, settingMap: Map<string, MechanicSetting>, coverage:
     const elementLabels: Record<string, string> = { physical: '物理', fire: '火', ice: '冰', electric: '电', ether: '以太', wind: '风', lumiflux: '辉光' }
     for (const [element, rate] of Object.entries(coverage ?? {})) {
       if (rate <= 0) continue
-      vars.push({ id: `setting.burnice.releaseShare:${element}`, label: `柏妮思异放·${elementLabels[element] ?? element}占比`, defaultRange: [0, 100], suffix: '%' })
+      vars.push({ id: `setting.burnice.releaseShare:${element}`, label: `柏妮思异放·${elementLabels[element] ?? element}占比`, defaultRange: [0, 100], suffix: '%', group: DYNAMIC_VAR_GROUP })
     }
   }
   return [...IMPACT_VARIABLES, ...vars]
@@ -108,6 +108,23 @@ describe('impactVariables（CC-53）', () => {
     }
     pctSetting!.write(h.config, 50)
     expect(h.config.getMechanicSetting(pctSetting!.id.slice('setting.'.length), -1)).toBeCloseTo(0.5)
+  }, 60000)
+
+  it('动态变量一律归「角色机制设置」组，且分组选项按表内首次出现顺序聚合', async () => {
+    const h = await setupHarness([{ agentId: '1171' }, { agentId: '1311' }, { agentId: '1211' }], { recommendedBuild: true })
+    const settingMap = mapOf(h)
+    const shares = teamReleaseShares(h.config.team, id => h.catalog.getAgent(id))
+    const vars = buildImpactVariables(settingMap, shares, { fire: 0.6 })
+    const groups = impactVarOptions(vars)
+    // 静态表在前（分组序 = 表内首次出现顺序），动态变量聚在最后一段
+    expect(groups[0].label).toBe('Boss 数值')
+    expect(groups.at(-1)!.label).toBe(DYNAMIC_VAR_GROUP)
+    expect(groups.at(-1)!.children.every(c => c.value.startsWith('setting.'))).toBe(true)
+    // 组内顺序 = 变量表顺序；每条的读写对象仍在（选项只搬展示字段）
+    const flat = groups.flatMap(g => g.children.map(c => c.value))
+    expect(flat).toEqual(vars.map(v => v.id))
+    const byId = new Map(vars.map(v => [v.id, v]))
+    for (const g of groups) for (const c of g.children) expect(byId.get(c.value)!.read).toBeTypeOf('function')
   }, 60000)
 
   it('队伍无柏妮思 ⇒ 不出占比变量', async () => {

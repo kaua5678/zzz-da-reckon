@@ -23,6 +23,9 @@
  * CC-538（2026-10-09 arena-G r755）：变量对象直接带 `read` / `write`，与 core 静态表项同一形状。机制设置变量的闭包捕获声明，
  *   异放占比变量的闭包捕获设置键和建表时的覆盖率（变量表本来就随覆盖率重建，与原先读取时再传覆盖率等价）。CC-537 的
  *   `setting` / `releaseShare` 字段和 readImpactVariable / writeImpactVariable 两个分派函数删除，调用方写 `v.read(store)` / `v.write(store, x)`。
+ *
+ * 2026-10-25：动态变量一律归 `DYNAMIC_VAR_GROUP`（core 静态表项自带 `group`）。分组只是下拉呈现口径——
+ *   采样仍按各自的 `defaultRange` 等距取点，分组不改变任何读写语义。
  */
 import { IMPACT_VARIABLES, type ImpactVariable } from '@/core/impactVars'
 import type { MechanicSetting } from '@/types/resource'
@@ -35,6 +38,54 @@ export type ElementCoverageRate = Readonly<Record<string, number>> | undefined
 
 /** 队伍的影响变量：读写收整个 store（机制设置变量要 mechanicSettings），静态表项只用到其中的 ImpactVarConfig 部分 */
 export type TeamImpactVariable = ImpactVariable<ConfigModel>
+
+/** 动态变量（机制设置 / 异放占比）在下拉里的分组名——它们不属于任何 Boss / 环境分组 */
+export const DYNAMIC_VAR_GROUP = '角色机制设置'
+
+/**
+ * 下拉的分组选项（naive-ui `SelectGroupOption` 的结构子集，不 import naive 进编排层）。
+ *
+ * 分组顺序 = 变量表里**首次出现**的顺序（表按分组连续排列即可，不另立组名表）；
+ * 组内保持表内顺序。分组只影响呈现，采样口径不变。
+ *
+ * 用 type 别名而不是 interface：naive 的 `SelectMixedOption` 带 `[k: string]: unknown`，
+ * interface 没有隐式索引签名 ⇒ 赋给 `n-select :options` 不过（与 `freeCompare/axes.ts#SliceOption` 同款理由）。
+ */
+export type ImpactVarGroup = {
+  type: 'group'
+  key: string
+  label: string
+  children: Array<{ label: string; value: string }>
+}
+
+/**
+ * 3D 响应面的「快捷对比对」：成对变量 id。放在编排层而不是组件里，是为了让「预设里的 id 必须真在变量表里」
+ * 有机器判据（`impactVariableEffects.test.ts` ④）——id 打错在组件里只会静默变成空选择。
+ */
+export const IMPACT_PRESET_PAIRS: ReadonlyArray<{ label: string; x: string; y: string }> = [
+  { label: '双暴配比 (Boss失衡 × 无敌)', x: 'bossStunValue', y: 'bossInvincible' },
+  { label: '环境压迫 (总时间 × Boss失衡)', x: 'totalTime', y: 'bossStunValue' },
+  { label: '易伤与异常 (失衡易伤 × 异常系数)', x: 'stunVulnerability', y: 'anomalyCoeff' },
+  { label: '双抗压制 (物理抗性 × 火抗性)', x: 'physicalResistance', y: 'fireResistance' },
+  { label: '防御与失衡 (怪物防御 × Boss失衡)', x: 'defense', y: 'bossStunValue' },
+  { label: '失衡窗口 (失衡时间 × 失衡易伤)', x: 'stunTime', y: 'stunVulnerability' },
+  { label: '异常节奏 (异常条系数 × 危局异常系数)', x: 'anomalyCoeff', y: 'bossAnomalyCoeff' },
+]
+
+/** 把变量表折成下拉分组选项（只搬运展示字段，读写闭包不进去） */
+export function impactVarOptions(vars: ReadonlyArray<TeamImpactVariable>): ImpactVarGroup[] {
+  const out: ImpactVarGroup[] = []
+  for (const v of vars) {
+    const key = v.group
+    let group = out.find(g => g.key === key)
+    if (!group) {
+      group = { type: 'group', key, label: key, children: [] }
+      out.push(group)
+    }
+    group.children.push({ label: v.label, value: v.id })
+  }
+  return out
+}
 
 /** 下拉可选的全部影响变量（静态 + 动态），顺序与原组件 `allVars` 一致 */
 export function buildImpactVariables(
@@ -53,6 +104,7 @@ export function buildImpactVariables(
       label: setting.label,
       defaultRange: range as [number, number],
       suffix: setting.suffix,
+      group: DYNAMIC_VAR_GROUP,
       read: config => {
         const raw = config.getMechanicSetting(setting.id, setting.default)
         return pct ? raw * 100 : raw
@@ -69,6 +121,7 @@ export function buildImpactVariables(
         label: `${decl.label}·${damageElementLabel(element)}占比`,
         defaultRange: [0, 100],
         suffix: '%',
+        group: DYNAMIC_VAR_GROUP,
         read: config => {
           const stored = config.mechanicSettings[key]
           return stored !== undefined ? stored * 100 : rate * 100

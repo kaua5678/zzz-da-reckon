@@ -124,7 +124,7 @@ import { sampleImpactCurve, type ImpactPoint } from '@/composables/impactSamplin
 import { useConfigStore, type CharacterConfig } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { fmt } from '@/utils/format'
-import { buildImpactVariables, type ElementCoverageRate, type TeamImpactVariable } from '@/composables/impactVariables'
+import { buildImpactVariables, impactVarOptions, type ElementCoverageRate, type ImpactVarGroup, type TeamImpactVariable } from '@/composables/impactVariables'
 import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
 import type { MechanicSetting } from '@/types/resource'
 
@@ -162,8 +162,13 @@ const settingMap = computed<Map<string, MechanicSetting>>(() => {
 const coverageRate = computed(() => props.coverageRate)
 const releaseShares = computed(() => teamReleaseShares(configStore.team, id => catalogStore.getAgent(id)))  // CC-55：模块声明（原写死 1171）
 const allVars = computed(() => buildImpactVariables(settingMap.value, releaseShares.value, coverageRate.value))
-const varOptions = computed(() => allVars.value.map(v => ({ label: v.label, value: v.id })))
-function renderVarLabel(option: { label: string; value: string }) {
+/** 下拉按类分组（Boss 数值 / 战斗环境 / 抗性 / 队伍时间分配 / 角色机制设置）：变量多了以后平铺一列找不到人 */
+const varOptions = computed(() => impactVarOptions(allVars.value))
+/** 组头同样走 renderLabel（naive 对 group 节点也调它）：组头加粗即可，叶子沿用单行省略 */
+function renderVarLabel(option: ImpactVarGroup | { label: string; value: string }) {
+  if ('type' in option) {
+    return h('span', { style: 'display:inline-block;font-weight:600;vertical-align:middle' }, option.label)
+  }
   return h('span', { title: option.label, style: 'display:inline-block;white-space:nowrap;vertical-align:middle' }, option.label)
 }
 

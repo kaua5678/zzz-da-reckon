@@ -8,9 +8,14 @@ function makeStore() {
     { slot: 1, agentId: '1481', basicAttackTimeWeight: 2 },
     { slot: 2, agentId: '1451', basicAttackTimeWeight: 1 },
   ]
+  const res = () => ({ physical: 0, fire: 0, ice: 0, electric: 0, ether: 0, wind: 0 })
   return {
     team,
-    enemy: { stunValue: 0, invincibleTime: 0, battleTime: 180, stunVuln: 1.5, anomalyCoeff: 1, damageResistances: { physical: 0, fire: 0, ice: 0, electric: 0, ether: 0, wind: 0 } },
+    enemy: {
+      stunValue: 0, stunTime: 12, invincibleTime: 0, battleTime: 180, stunVuln: 1.5,
+      anomalyCoeff: 1, bossAnomalyCoeff: 1.1, bossStunGift: 0, defense: 953, shieldCount: 1, energyShield: 0,
+      damageResistances: res(), stunResistances: res(), anomalyResistances: res(),
+    },
     setEnemy(patch: any) { Object.assign(this.enemy, patch) },
     setActionCount(slot: number, field: string, count: number) {
       if (field === 'basicAttackTimeWeight' && team[slot]) team[slot].basicAttackTimeWeight = Math.max(0, Math.min(99, count))

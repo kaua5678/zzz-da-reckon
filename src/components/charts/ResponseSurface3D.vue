@@ -200,7 +200,7 @@ import { fmt } from '@/utils/format'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
 import { sampleImpactSurface } from '@/composables/impactSampling'
-import type { TeamImpactVariable } from '@/composables/impactVariables'
+import { IMPACT_PRESET_PAIRS, type ImpactVarGroup, type TeamImpactVariable } from '@/composables/impactVariables'
 import { isLightTheme, SCENE_ROOT_FALLBACK, themeReader, withAlpha, type SceneVar } from '@/utils/canvasTheme'
 import { useCanvasScene } from '@/composables/charts/useCanvasScene'
 
@@ -209,17 +209,12 @@ const props = defineProps<{
   readVar: (v: TeamImpactVariable) => number
   teamTotalDamage: number
   hasTeam: boolean
-  varOptions: Array<{ label: string; value: string }>
-  renderVarLabel: (opt: { label: string; value: string }) => VNodeChild
+  varOptions: ImpactVarGroup[]
+  renderVarLabel: (opt: ImpactVarGroup | { label: string; value: string }) => VNodeChild
 }>()
 
-// 预设双变量对
-const PRESET_PAIRS = [
-  { label: '双暴配比 (Boss失衡 × 无敌)', x: 'bossStunValue', y: 'bossInvincible' },
-  { label: '环境压迫 (总时间 × Boss失衡)', x: 'totalTime', y: 'bossStunValue' },
-  { label: '易伤与异常 (失衡易伤 × 异常系数)', x: 'stunVulnerability', y: 'anomalyCoeff' },
-  { label: '双抗压制 (物理抗性 × 火抗性)', x: 'physicalResistance', y: 'fireResistance' },
-]
+// 预设双变量对：id 表在编排层（`impactVarOptions` 同文件），组件只渲染
+const PRESET_PAIRS = IMPACT_PRESET_PAIRS
 
 // 变量选择
 const varXId = ref<string>('bossStunValue')
