@@ -67,6 +67,22 @@ export interface StunWindowAction {
 }
 
 /**
+ * 窗尾填充的**一段**（2026-10-27，用户口径「末尾自动填了平a/强特…要能看出来」）。
+ *
+ * 为什么要分段而不是只给总量：多槽接续（`auto-1521-1481-1491` 的 5 窗实例）下同一条窗尾可能
+ * 由两个以上槽位**接力**填满——「谁在哪一秒填到哪」是逐窗可视化的直接输入，
+ * 由总量反推不出来（各槽起点不同）。纯记录，不参与判定。
+ */
+export interface StunWindowFillSegment {
+  /** 填充角色槽位 */
+  slot: number
+  /** 窗内相对起点（秒） */
+  startSeconds: number
+  /** 该段填充秒数（> 0） */
+  seconds: number
+}
+
+/**
  * 轴栈的**逐窗轨迹**一条（`StackTraversalResult.windowTrace` 的元素）。
  *
  * 纯追加：不改变栈的任何既有判定（时间门 / 资源门 / 合轴 / 平A填充），只是把每窗**已经算出来的**
@@ -75,6 +91,20 @@ export interface StunWindowAction {
  */
 export interface StunWindowTrace {
   index: number
+  /**
+   * 本窗来自**哪条轴**（`StackTraversalInput.axes` 的下标）。
+   *
+   * 多轴时窗口按轴顺序排（`schedule`：先第一条轴的 `winAlloc[0]` 窗，再第二条…），
+   * 页面据此标出「第 3 窗属于收尾轴」；不从窗内动作反推——同样的块可能出现在两条轴里。
+   */
+  axisIndex: number
+  /**
+   * 本窗的兜底填充是否**缺省补位**（轴没声明 `basicFillerSlot` ⇒ 引擎回落轴内主C）。
+   *
+   * 两种语义不同（见 `calcStunAxisStack` 的兜底段注释）：声明槽受**窗外平A池**封顶，
+   * 缺省补位是**产出端**（上限 = 窗口剩余秒数本身）。展示层据此如实标注「为什么这槽在填」。
+   */
+  fillerDefaulted: boolean
   /** 名义窗长（= `StackTraversalInput.windowDuration`） */
   nominalSeconds: number
   /** 决算块按块延长（0 = 本窗无延长；佩洛伊斯 3s） */
@@ -91,6 +121,12 @@ export interface StunWindowTrace {
   overlapSeconds: number
   /** 兜底平A填充（秒；决算截断窗恒 0） */
   fillSeconds: number
+  /**
+   * 窗尾填充**逐段**（谁 / 从第几秒 / 填多久；决算截断窗为空数组）。
+   *
+   * Σ `seconds` 恒等于 `fillSeconds`（同一处产出，不另算一遍）。
+   */
+  fillSegments: StunWindowFillSegment[]
 }
 
 /** 时间轴上的一个失衡窗口 */
@@ -154,7 +190,7 @@ export interface StunTimeline {
   hasTrace: boolean
 }
 
-// @fact engine:stun/时间轴 口径: 逐窗口时间轴 = 「N 个窗口按有效时长连续排在战斗时钟上」，恒等式 Σ effectiveSeconds + outsideSeconds === effectiveTime（零容差）；窗口数取 floor(计划值) 与轴栈 `for (i < wins)` 同口径，末窗允许被时钟截短（`clippedByClock`，用户口径 2026-10-20「最后一窗口时间残疾如实上报」），决算块按块延长/提前结束走轴栈 `windowTrace` 不另算第二套账；期 1 零 delta（唯一生产出口 = `useResourceCalc#stunTimeline` 的惰性 computed，不参与任何计算），期 2 才替换 `stunWindowFraction` | 据 用户@2026-10-20（「失衡是需要计入 180s 的……4 次就是 180s」「最后一窗口要么失衡不够导致时间慢了，最后失衡窗口时间残疾」）·复核@2026-10-20 | 验 src/core/__tests__/stunTimeline.test.ts | 锚 src/core/stunTimeline.ts#buildStunTimeline | 信 确认
+// @fact engine:stun/时间轴 口径: 逐窗口时间轴 = 「N 个窗口按有效时长连续排在战斗时钟上」，恒等式 Σ effectiveSeconds + outsideSeconds === effectiveTime（零容差）；窗口数取 floor(计划值) 与轴栈 `for (i < wins)` 同口径，末窗允许被时钟截短（`clippedByClock`，用户口径 2026-10-20「最后一窗口时间残疾如实上报」），决算块按块延长/提前结束走轴栈 `windowTrace` 不另算第二套账；期 1 零 delta（唯一生产出口 = `useResourceCalc#stunTimeline` 的惰性 computed）——**注意 `realizeStunWindows` 已经是生产通道**（`solveTeam` 的兑现窗数 → 覆盖率），末窗按**时钟截短份额**折算窗数（用户口径 2026-10-27「最后一窗的连续失衡做成时间截断」，与图表那根短窗条同口径） | 据 用户@2026-10-20（「失衡是需要计入 180s 的……4 次就是 180s」「最后一窗口要么失衡不够导致时间慢了，最后失衡窗口时间残疾」）·复核@2026-10-20 | 验 src/core/__tests__/stunTimeline.test.ts | 锚 src/core/stunTimeline.ts#buildStunTimeline | 信 确认
 // ⟳复核: 期 2 把 `stunWindowFraction` 换成 `Σ slots[].effectiveSeconds / effTime` 时，确认本恒等式与「末窗残疾」口径未被聚合钳位（clamp 1）抹平，且 `plannedWindows` 的小数残差（期 3）有明确归属 | 到期 2027-04-30
 /**
  * 把 N 个失衡窗口摊到战斗时钟上（纯函数，无副作用、无 store、无 I/O）。
@@ -250,7 +286,14 @@ export interface StunRealization {
    * 非轴队也有这个数（池次数与轨迹无关），故它不受 `hasTrace` 影响。
    */
   plannedWindows: number
-  /** 已兑现的等效窗数（= Σ 每窗填充率；无轨迹时退化为整数窗数） */
+  /**
+   * 已兑现的等效窗数 = Σ（每窗填充率 × **时钟截短份额**）。
+   *
+   * 截短份额只对 `clippedByClock` 生效（战斗时钟装不下这一窗 ⇒ 只剩几秒就只值几秒/窗长，
+   * 用户口径 2026-10-27「最后一窗的连续失衡……做成**时间截断**的方式，配合我们可视化展示」）；
+   * 决算截断（`truncated`）不折算——那是设计内的窗结束方式。
+   * 无轨迹时填充率按 1（不编造），但时钟截短照样折算。
+   */
   realizedWindows: number
   /** 已兑现的易伤秒数（= Σ 每窗实际占用秒数；无轨迹时为 0） */
   occupiedSeconds: number
@@ -267,7 +310,11 @@ export interface StunRealization {
 
 export function realizeStunWindows(timeline: StunTimeline): StunRealization {
   if (!timeline.hasTrace) {
-    return { plannedWindows: timeline.windows, realizedWindows: timeline.windows, occupiedSeconds: 0, idleSeconds: 0, hasTrace: false }
+    // 无轨迹 ⇒ 不编造填充（每窗按 1 计），但**时钟截短照样折算**：末窗只剩 4s 就只值 0.25 窗，
+    // 与可视化那根短窗条一致（用户口径 2026-10-27「最后一窗……时间截断」）。
+    const realized = timeline.slots.reduce((sum, s) => sum
+      + (s.clippedByClock && s.nominalSeconds > 0 ? Math.max(0, Math.min(1, s.effectiveSeconds / s.nominalSeconds)) : 1), 0)
+    return { plannedWindows: timeline.windows, realizedWindows: realized, occupiedSeconds: 0, idleSeconds: 0, hasTrace: false }
   }
   let realizedWindows = 0
   let occupiedSeconds = 0
@@ -276,8 +323,26 @@ export function realizeStunWindows(timeline: StunTimeline): StunRealization {
     const occupied = Math.max(0, slot.effectiveSeconds - slot.unusedSeconds)
     occupiedSeconds += occupied
     idleSeconds += Math.max(0, slot.unusedSeconds)
-    // 填充率按**本窗**有效时长归一（决算截断 / 时钟截短的窗天生更短，不能按名义窗长摊）
-    realizedWindows += slot.effectiveSeconds > 0 ? Math.min(1, occupied / slot.effectiveSeconds) : 0
+    /**
+     * 填充率按**本窗**有效时长归一（决算截断 / 时钟截短的窗天生更短，不能按名义窗长摊）。
+     *
+     * ## 末窗按**时间截断**折算窗数（用户口径 2026-10-27，逐字）
+     * > 「现在资源页有可视化失衡了，最后一窗的连续失衡我认为可以做成**时间截断**的方式，
+     * >  配合我们可视化展示。」
+     *
+     * 修前：被**时钟**截短的末窗只要「填满了自己那几秒」就算**整窗**（填充率 1）——
+     * 于是「计划 11 窗 / 兑现 11 窗」和画面上最后那根**短了一截**的窗条自相矛盾。
+     * 现在乘上**时长份额** effectiveSeconds / nominalSeconds：只剩 4s 的窗就只值 0.25 窗。
+     *
+     * ⚠ **只对 clippedByClock**（时钟没时间了）。**决算截断**（truncated，佩洛伊斯/雨果做完即清空
+     * 剩余失衡时间）不折算：那是**设计内**的窗结束方式、不是「时间不够」，判据见
+     * stunTimeline.test.ts::决算截断窗按有效时长归一。
+     */
+    const fillRate = slot.effectiveSeconds > 0 ? Math.min(1, occupied / slot.effectiveSeconds) : 0
+    const durationShare = slot.clippedByClock && slot.nominalSeconds > 0
+      ? Math.max(0, Math.min(1, slot.effectiveSeconds / slot.nominalSeconds))
+      : 1
+    realizedWindows += fillRate * durationShare
   }
   return { plannedWindows: timeline.windows, realizedWindows, occupiedSeconds, idleSeconds, hasTrace: true }
 }

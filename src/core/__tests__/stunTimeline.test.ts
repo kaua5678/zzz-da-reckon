@@ -240,6 +240,9 @@ describe('buildStunTimeline 纯函数（边界与残疾口径）', () => {
   /** 构造一条逐窗轨迹（只填时间轴关心的字段） */
   const trace = (i: number, over: Partial<StunWindowTrace> = {}): StunWindowTrace => ({
     index: i,
+    axisIndex: 0,
+    fillerDefaulted: false,
+    fillSegments: [],
     nominalSeconds: 16,
     extendSeconds: 0,
     endSeconds: 16,
@@ -341,7 +344,8 @@ describe('buildStunTimeline 纯函数（边界与残疾口径）', () => {
  */
 describe('realizeStunWindows（计划 K 窗 / 兑现 X 窗 / 窗内发呆 Y 秒）', () => {
   const trace = (i: number, over: Partial<StunWindowTrace> = {}): StunWindowTrace => ({
-    index: i, nominalSeconds: 16, extendSeconds: 0, endSeconds: 16,
+    index: i, axisIndex: 0, fillerDefaulted: false, fillSegments: [],
+    nominalSeconds: 16, extendSeconds: 0, endSeconds: 16,
     truncated: false, actions: [], actionSeconds: 0, overlapSeconds: 0, fillSeconds: 0, ...over,
   })
 
@@ -378,6 +382,19 @@ describe('realizeStunWindows（计划 K 窗 / 兑现 X 窗 / 窗内发呆 Y 秒�
     expect(r.plannedWindows).toBe(3)
     expect(r.realizedWindows).toBe(3)
     expect(r.idleSeconds).toBe(0)
+  })
+
+  it('★ 末窗按**时间截断**折算窗数（配可视化：画面短一截 ⇒ 数值也只值那几秒）', () => {
+    // 12 × 16s = 192s > 180s ⇒ 末窗只剩 4s（画面上面那根短条就是这个）
+    const windows = Array.from({ length: 12 }, (_, i) => trace(i, { actionSeconds: 16 }))
+    const tl = buildStunTimeline({ stunCount: 12, windowDuration: 16, effectiveTime: 180, windows })
+    expect(tl.slots[11].clippedByClock).toBe(true)
+    expect(tl.slots[11].effectiveSeconds).toBeCloseTo(4, 6)
+    // 有轨迹：11 窗打满 + 末窗 4/16
+    expect(realizeStunWindows(tl).realizedWindows).toBeCloseTo(11 + 4 / 16, 6)
+    // 无轨迹：不编造填充（每窗按 1），但时钟截短照样折算
+    const noTrace = buildStunTimeline({ stunCount: 12, windowDuration: 16, effectiveTime: 180 })
+    expect(realizeStunWindows(noTrace).realizedWindows).toBeCloseTo(11 + 4 / 16, 6)
   })
 
   it('决算截断窗按**有效时长**归一（不按名义窗长摊 ⇒ 不低估兑现）', () => {
