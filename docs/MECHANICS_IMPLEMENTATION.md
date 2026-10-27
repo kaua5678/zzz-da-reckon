@@ -124,6 +124,7 @@
 ### 格莉丝（1181）
 - **当前实现状态 [已实现·近似 2026-08-27；★R58 订正 2026-09-20]**（实现位置：`src/mechanics/agents/grace.ts` + `src/core/anomalyPool.ts` 行级 buildUpEfficiencyBonusPct + `src/composables/useResourceCalc.ts` 编排层 C1 轮换数线程化 + spec `1181.json`；测试 `src/mechanics/__tests__/grace.test.ts` 11 例 + `graceCinemaTier.test.ts` 3 例）。含：常规循环落位（planGraceRotation）、电能满层积蓄 +130% 引擎级招式限定、强特附涡流集束手雷、脉冲兑换→脉冲手雷附异放事件、额外能力感电伤层数滑杆、潜能电伤逐**潜能**档位永续、影画1 全队回能（postRound 线程化 graceC1Cycles → converge 写 initialEnergyGift，全队每人 +2/轮换）、影画2 电减抗、影画4 回能效率、影画6 手雷 +1/+2 与伤害 ×2。近似点：电能层数按平A秒均近似（每秒 1 层）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。★**R58 订正**：潜能觉醒·超频工程引擎（raw `potential_detail` 钢械交响曲 II~VI = 电伤 10/15/20/25/30%）此前写成 `[10,15,20,25,30][min(cinemaLevel,6)-2]` 且门控 `cinemaLevel>=2` ⇒ **潜能等级完全不影响电伤**（正交四臂实测 A/B、C/D 恒等），0 命满潜能白丢 30%、6 命 0 潜能白拿 30%；已改为按 `potentialLevel` 取档（`GRACE_POTENTIAL_ELECTRIC_DMG`），判据 `graceCinemaTier.test.ts`（常量层钉 raw `potential_detail` + 反锁 `talent.1..6` 不含该子句 + 行为层正交四臂）。
 - 常规循环（用户口供 2026-08-23）：[A1+A2+A3 连段 1.183s] → 特殊技 → [A4 1.134s] → 特殊技，循环往复
+- **兜底池·形态三（2026-10-27，用户口径）**：失衡窗尾不再整段记成 `basic` 秒数，而是按本角色**同一条轮换链**切分——A 段秒数 + 强特/普特次数，复用 `planGraceRotation` 的**同一闭式解**（窗内窗共用一份算法），Σ 秒数 = `fillSec`（时间守恒）。强特认领上限 = **本轮真打出来的次数**（引擎 `executedExSpecialCount`，经 `expandBasicFill` 的 `exSpecialAvailable` 入参；缺省不认领、**不是**无限）。实现 `expandGraceBasicFill`；判据 `src/composables/__tests__/expandBasicFillPool.test.ts`（时间守恒 × 认领上限 × 端到端归属，关掉钩子即回到全轴外）。
 - 实现：`src/mechanics/agents/grace.ts`（口径见其头注释）+ spec `src/specs/agents/1181.json` notes。
 
 ### 丽娜（1211）
@@ -825,7 +826,7 @@ elementResReduction= panelElementStat(source, 'enemyRes', element)  // 元素减
 ④ level60 锋御两列在库：锐暴 150（`sharpCritDmg`）、锐能 1.5/s（`sharpnessRegen`）——`level60-rules` 新增两条规则兜住，缺了会静默掉乘区。
 
 **已接线（2026-10-25 第二刀，资源循环 6 条）**：唯一求解入口 `sunbringer.ts#solveSunbringerLoops`（纯函数，判据 `sunbringerLoops.test.ts` 4 例）；口径逐条来自用户 2026-10-25 裁决：
-锐能（进场 60 / 强特 30 每发 / 自动 1.5 每秒）→ 残痕（gachabase `gash_buildup` 26 行，600 点 = 1 层，存量 ≤3）→ 毁伤（本期只出次数，不建伤害：数据缺倍率行）→ 愿力（每层 +40、上限 160，每 3 层换 1 次聚锋）→ 链齿/旗令（每聚锋各 1；旗令**优先给终结技·此行共赴前路**，永昼之炬本版 0 次）→ 愿核 → 终结技·此愿重塑万象清烬痕（聚锋/长暗终焉/永昼之炬/两个终结技实际伤害的 75%，**计入总伤害**）。
+锐能（进场 60 / 强特 30 每发 / 自动 1.5 每秒）→ 残痕（gachabase `gash_buildup` 26 行，600 点 = 1 层，存量 ≤3）→ 毁伤（本期只出次数，不建伤害：数据缺倍率行）→ 愿力（每层 +40、上限 160，每 3 层换 1 次聚锋）→ 链齿/旗令（每聚锋各 1；旗令**优先给终结技·此行共赴前路**，剩余才给永昼之炬——2026-10-27 起建模，见下方「强化 E 两发」条）→ 愿核 → 终结技·此愿重塑万象清烬痕（聚锋/长暗终焉/永昼之炬/两个终结技实际伤害的 75%，**计入总伤害**）。
 
 **锐能按能量计价（2026-10-26 用户裁决「挽昼加进去」）**：四个强化特殊技行（1601106 / 1601006 / 1601016 / 1601115）各耗 **30 锐能**（raw「锐能消耗 30点」），代入强特标准式的 `e` 后——
 - **失衡 / 喧响 / 积蓄 / 秽盾 四列全部 1.000~1.001**（四行 12 个格子反解出的 e 都是 30.0~30.1，正文数值也是 30）；
@@ -834,6 +835,12 @@ elementResReduction= panelElementStat(source, 'enemyRes', element)  // 元素减
 - 不接锐能（e=0）时这四行会显示成 伤害 1.39~1.61 / 失衡 1.39 / 喧响 1.56 / 积蓄 1.43 的假偏差。
 ⇒ 锐能 **1 点 = 1 点能量**，登记在 `standardMultiplierTable#EX_SHARPNESS_ENERGY`（倍率演算页耗能列标「锐」），判据 `multiplierCoefficients.test.ts::锋御锐能：挽昼`。
 ⚠ 反例：克拉蕾的 60 锐能**不进公式**（见克拉蕾段的锐能账本条目）——所以这条口径是**逐角色**登记，不按锋御职业泛化。
+
+**强化 E 两发都建模 + 兜底池（2026-10-27 用户口径）**：「**强化 e 两个都要建模**，消耗特殊资源的那个是挽昼自己独特的资源循环」「**两段耗能 30 的 e 只需考虑一个**」（多形态对称数据、收益公式相同）。落法：
+- 「强化 E」= 不耗锐能、各耗一份**聚锋资源**的两发：**永昼之炬 1601007**（耗[旗令]，at 3.667，2441.1%）与**长暗终焉 1601107**（耗[链齿]，at 3.7，2690.6%）。两种资源由聚锋**各发 1 个** ⇒ 互不挤占槽位；旗令**先给终结技·此行共赴前路**，剩余才转永昼之炬（终结技次数一位不动）。
+- 耗能 30 的 E **只取一条线**：焚夜·曦生 1601106（燃灯·晦尽 1601006 与之对称，同收益公式）⇒ 不另开行。
+- **兜底池**：`expandBasicFill` 把失衡窗尾秒数优先塞强特（`expandSunbringerBasicFill`），余量记 basic；引擎侧 `expandExecutedToCounts` 把认领量**逐招夹紧到本轮真物化的次数**（`FillResourceBudget.executed`），夹掉的秒数退回平A ⇒ 一发强特都没打出来时不会抢走平A的轴内占比。
+- **实测 delta（规则 10 逐条归因后重生成基线）**：`agent:1601` c0 **−3.2%**（1.169M→1.132M）、c3–c6 **+1.3%**（1.639M→1.660M / 1.771M→1.794M）；3 支 `sunbringer-*` 预设槽0 necessary +3.667s、basic −1.83~−1.99s，`sunbringer-roxy-robin` 队伤 91.78M→93.17M（**+1.51%**，其中永昼之炬单行 1.99M）。⚠ **c0 掉 3.2% 是模型答案不是 bug**：她 11s 的永昼之炬挤掉平A ⇒ 平A锐能↓ ⇒ EX 17→16、聚锋 6→5、长暗终焉 6→5——这条链的 DPS 高于永昼之炬；c3+ 因影画抬面板才转为正收益。该别名 ≤3.7s 的留白上升同步重生成棘轮基线（`sunbringer-roxy-robin` slack 0.1→0.8）。
 
 **已知缺口**：影画 3–6 仍为 `TestKey_PlaceHolder`（1/2 文本已随热更给出，未实现）；极昼窗口状态机（满覆盖近似）与「队友毁伤触发快速支援聚锋 3s CD」未建模；终结技二段链只发「此行，共赴前路」，二段「此愿，重塑万象」复用引擎既有终结技行并叠加烬痕（避免双计）。
 

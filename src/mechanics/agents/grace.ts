@@ -151,6 +151,44 @@ export function graceRotationSeconds(cycles: number, exUsed: number, times: Grac
   return exUsed * times.ex + normalUsed * times.sp
 }
 
+/**
+ * 兜底池·形态三（用户口径 2026-10-27，逐字）：
+ * > 「三是格里斯这种e在平a链中的，就只能把这段时间给平a和e的循环链了。」
+ *
+ * 格莉丝的窗尾不是裸平A：她的轮换本身就是「A1+A2+A3 连段 → 特殊技 → A4 → 特殊技」的**循环链**，
+ * 能量够的槽位发强特（`1181006`）、不够发普特（`1181005`）。所以失衡窗尾那段秒数要按**同一条循环链**
+ * 切分，不能整段记成 `basic` 秒数——否则窗尾永远只有 A 段进易伤、特殊技一发都进不去。
+ *
+ * 切分直接复用轮换本身的**精确闭式解** `planGraceRotation`（同一函数 ⇒ 不会出现「窗内一套算法、
+ * 全局另一套」）：把 `fillSec` 当平A池，强特认领上限 = `exSpecialAvailable`（本轮**真打出来**的次数，
+ * 编排层从 `executedExSpecialCount` 注入；缺省 ⇒ 不认领强特，**不是**「无限」）。
+ * 余下的零头秒数仍记 `basic`，保证时间守恒（Σ 填充秒数 = fillSec，不多不少）。
+ */
+export function expandGraceBasicFill(input: {
+  fillSec: number
+  actionTimeOf: (moveId: string) => number | undefined
+  exSpecialAvailable?: number
+}): ReadonlyArray<{ readonly moveId: string; readonly count: number }> {
+  const fillSec = Math.max(0, Number(input.fillSec) || 0)
+  if (!(fillSec > 0)) return []
+  const t = (id: string) => Math.max(0, input.actionTimeOf(id) ?? 0)
+  const times: GraceRotationTimes & GraceSpecialTimes = {
+    a1: t(A1_MOVE_ID), a2: t(A2_MOVE_ID), a3: t(A3_MOVE_ID), a4: t(A4_MOVE_ID),
+    sp: t(SP_MOVE_ID), ex: t(EX_MOVE_ID),
+  }
+  const aSum = times.a1 + times.a2 + times.a3 + times.a4
+  const exCap = Math.max(0, Math.floor(Number(input.exSpecialAvailable ?? 0) || 0))
+  const plan = planGraceRotation(fillSec, exCap, times)
+  const aSeconds = plan.cycles * aSum
+  const specialSeconds = plan.exUsed * times.ex + plan.normalUsed * times.sp
+  const leftover = Math.max(0, fillSec - aSeconds - specialSeconds)
+  return [
+    { moveId: 'basic', count: aSeconds + leftover },
+    { moveId: EX_MOVE_ID, count: plan.exUsed },
+    { moveId: SP_MOVE_ID, count: plan.normalUsed },
+  ]
+}
+
 /** 从 cfg 读循环各段 actionTime（catalog，CC-409）；结构同时满足 GraceRotationTimes / GraceSpecialTimes。 */
 function graceTimesOf(cfg: AgentResourceInput['cfg']): GraceRotationTimes & GraceSpecialTimes {
   return {
@@ -366,6 +404,8 @@ export const graceMechanic: AgentMechanicModule = {
   agentIds: [GRACE_AGENT_ID],
   name: '格莉丝',
   applyPanel: applyGracePanel,
+  // 兜底池·形态三：窗尾按 A+特殊技循环链切分（见 expandGraceBasicFill 注释）
+  expandBasicFill: expandGraceBasicFill,
   buildCharConfig: buildGraceCharConfig,
   applyTeamConfig: applyGraceTeamConfig,
   buildExecutions: buildGraceExecutions,

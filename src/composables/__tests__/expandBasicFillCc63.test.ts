@@ -69,7 +69,15 @@ describe('CC-63 平A兜底 → 模块钩子 expandBasicFill', () => {
     // 全 catalog 角色轮流放 0 槽（查别名误报）
     const ids = [...catalog.agentsMap.keys()]
     expect(ids.length).toBeGreaterThan(30)
+    /**
+     * ⚠ 兜底池（2026-10-27）：格莉丝声明了 `expandBasicFill`，但那是**新行为**（窗尾按 A+特殊技
+     * 循环链切分，用户口径「e 在平 a 链中就只能把这段时间给循环链」），**不是**「与旧 if/else 逐值
+     * 等价的迁移」⇒ 不参与本条的等价对照。它的时间守恒与强特认领上限由
+     * `expandBasicFillPool.test.ts` 锁。新增声明者时请同样登记在这里并补专场判据。
+     */
+    const POOL_DECLARED = new Set(['1181', '1601'])
     for (const id of ids) {
+      if (POOL_DECLARED.has(id)) continue
       config.team[0].agentId = id
       expect(inputs.expandExecutedToCounts({}, { 0: 6.5 }), id).toEqual(legacy(agentIdOf, skillsOf, { 0: 6.5 }))
     }

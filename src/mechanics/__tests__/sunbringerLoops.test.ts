@@ -21,6 +21,8 @@ const meta = {
   ex: { moveId: '1601106', actionTime: 2.5, damage: 1240.5, daze: 743.7, decibel: 0, gash: 200, sharpness: 0 },
   jufeng: { moveId: '1601015', actionTime: 1.367, damage: 1722.5, daze: 226.3, decibel: 0, gash: 0, sharpness: 0 },
   changan: { moveId: '1601107', actionTime: 3.7, damage: 2690.6, daze: 611.7, decibel: 0, gash: 0, sharpness: 0 },
+  // 强化特殊技：燃灯·永昼之炬（消耗[旗令]）——2026-10-27 补录，表值取 mode:'gan' catalog（2441.1% / 605.8）
+  torch: { moveId: '1601007', actionTime: 3.667, damage: 2441.1, daze: 605.8, decibel: 0, gash: 0, sharpness: 0 },
   ultA: { moveId: '1601111', actionTime: 2.883, damage: 3900.1, daze: 476.7, decibel: 0, gash: 0, sharpness: 0 },
   ultB: { moveId: '1601011', actionTime: 4.083, damage: 2827, daze: 674.7, decibel: 0, gash: 0, sharpness: 0 },
   maim: { moveId: '1601114', actionTime: 0, damage: 336.3, daze: 0, decibel: 0, gash: 0, sharpness: 0 },
@@ -57,6 +59,27 @@ describe('1601 挽昼 · 资源循环求解', () => {
     expect(r.changanCount).toBeLessThanOrEqual(r.jufengCount)
     expect(r.ultFeasible).toBe(2) // 6000 喧响 / 3000
     expect(r.ultACount).toBe(Math.min(r.jufengCount, 2))
+  })
+
+  /**
+   * 强化 E 两个都要建模（用户 2026-10-27）：
+   * 长暗终焉耗[链齿]、永昼之炬耗[旗令]，两种资源都由聚锋各发 1 个 ⇒ 互不挤占；
+   * 旗令**先给**「此行，共赴前路」（产愿核），**剩余**才由永昼之炬消化。
+   */
+  it('强化 E：旗令先给终结技 A，剩余旗令由永昼之炬消化（两发互不挤占）', () => {
+    // 喧响够 ⇒ 终结技 A 最多吃 2 枚旗令，剩 4 枚转永昼之炬
+    const rich = solveSunbringerLoops(base)
+    expect(rich.jufengCount).toBe(6)
+    expect(rich.ultACount).toBe(2)
+    expect(rich.torchCount).toBe(4)
+    expect(rich.torchCount + rich.ultACount).toBe(rich.jufengCount)
+    // 链齿那条线是**另一份资源**（聚锋同时发链齿+旗令）⇒ 不受旗令分配影响
+    expect(rich.changanCount).toBe(6)
+    // 喧响不够 ⇒ 终结技 A 打不出 ⇒ 旗令全部转永昼之炬
+    const poor = solveSunbringerLoops({ ...base, totalDecibel: 0 })
+    expect(poor.ultACount).toBe(0)
+    expect(poor.torchCount).toBe(poor.jufengCount)
+    expect(poor.changanCount).toBe(rich.changanCount)
   })
 
   it('负向：时间为 0 ⇒ 一条都不发（无资源、无行）', () => {
