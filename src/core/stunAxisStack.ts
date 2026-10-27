@@ -508,7 +508,30 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
 
   // 窗口调度：按轴顺序分配；count 有值 → 精确次数，缺省 → 兜底吃剩余。
   // 每个窗口携带其来源轴的 filler slot（每轴可不同）。
-  const schedule: { actions: StackActionCost[]; basicFillerSlot?: number }[] = []
+  /**
+   * **缺省兜底槽 = 轴内主C**（用户口径 2026-10-27，逐字）：
+   * > 「任何轴都默认该有主c（轴里耗时最长的这人）平a的兜底填充。然后，在最后一个动作的最末尾
+   * >  到失衡轴最末尾这一段空白用他的平a填充，达成吃易伤的平a时间，这个是必要时间不可被克扣。」
+   *
+   * 修前：`basicFillerSlot` 缺省 ⇒ 整段窗尾**既不填、也不报发呆**（全库 35 条带轴队伍里 14 条没声明，
+   * 窗尾 1.34~14.33s 直接蒸发）。现在按该轴内**动作耗时合计最长**的槽位补位。
+   * 只看轴自己声明的动作块（不看执行结果——资源门控可能去掉几块）。
+   */
+  const mainCSlotOf = (axis: StackAxisInput): number | undefined => {
+    const perSlot: Record<number, number> = {}
+    for (const a of axis.actions) {
+      const t = Math.max(0, Number(a.actionTime) || 0) * Math.max(0, Number(a.count) || 0)
+      if (t > 0) perSlot[a.slot] = (perSlot[a.slot] ?? 0) + t
+    }
+    let best: number | undefined
+    let bestT = 0
+    for (const k of Object.keys(perSlot).map(Number).sort((x, y) => x - y)) {
+      const t = perSlot[k]!
+      if (t > bestT + 1e-9) { bestT = t; best = k }
+    }
+    return best
+  }
+  const schedule: { actions: StackActionCost[]; basicFillerSlot?: number; fillerDefaulted?: boolean }[] = []
   // ⚠ 与编排层 `convergence` 的 6 处调用**同源同参**：否则升级轴（bestEffort）在两处拿到的窗数
   // 不一致 ⇒ 栈执行的窗数与账本/转大计数对不上（T156 修的「残留 count 二次分配」是同族问题）。
   const winAlloc = allocateAxisWindows(axes, stunCount, {
@@ -517,7 +540,13 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     decibelBySlot,
   })
   axes.forEach((axis, ai) => {
-    for (let i = 0; i < winAlloc[ai]; i++) schedule.push({ actions: axis.actions, basicFillerSlot: axis.basicFillerSlot })
+    // 轴声明了 filler ⇒ 原样（仍受窗外平A池封顶，2026-10-25 口径）；
+    // 未声明 ⇒ 回落轴内主C，并标记 fillerDefaulted（该槽的窗尾填充是**产出端**，不吃余量池上限）
+    const declared = axis.basicFillerSlot
+    const filler = declared ?? mainCSlotOf(axis)
+    for (let i = 0; i < winAlloc[ai]; i++) {
+      schedule.push({ actions: axis.actions, basicFillerSlot: filler, fillerDefaulted: declared === undefined })
+    }
   })
 
   let windowNo = 0
@@ -740,8 +769,22 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
        * 只是不再因为一个槽的分额用完就让整段窗口空着。三槽都见底 ⇒ 窗口留空，
        * 空转秒数由 `core/stunTimeline.ts#realizeStunWindows#idleSeconds` 如实上报（「写明发呆时间」）。
        */
+      /**
+       * ## 兜底填充是**产出端**，不从余量池拿取（用户口径 2026-10-27，逐字）
+       * > 「这里兜底部分和前面预设失衡部分不一样，**他本身作为一个产出招式的地方，而不从余量池拿取**。」
+       * > 「你必须打平a并且带成本，这是兜底的更差选择。」
+       *
+       * 与 2026-10-25「平a兜底也得从全局预算里面拿」**不冲突**（用户 2026-10-27 亲口澄清）：
+       * 那条说的是「平A不能**无成本**产生」，本条说的是「必须打、成本 = 它占的**窗口内**那段时间」。
+       * 修前把窗尾填充秒从**窗外**那份平A池里扣 ⇒ 等于把窗内时间记成窗外资源，
+       * 实测（干净树 A/B，14 条未声明 filler 的队）强制补位后失衡 4→3、伤害 −1.6%~−39.6%
+       * ——窗外平A被"搬"进窗内，攒条量塌。⇒ 只有**轴显式声明**的 filler 保留该池上限；
+       * **缺省补位**（fillerDefaulted）上限 = 窗口剩余秒数本身。
+       */
       const budgetBySlot = input.basicBudgetBySlot
       const declared = window.basicFillerSlot
+      /** 缺省补位槽 = 产出端：不受窗外平A池封顶 */
+      const uncappedDeclared = window.fillerDefaulted === true
       /** 填充候选取序：先声明的槽，再按槽序取**还有剩余预算**的其他槽 */
       const candidates: number[] = [declared]
       if (budgetBySlot !== undefined) {
@@ -754,7 +797,8 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         if (!(room > 1e-9)) break
         const budget = budgetBySlot?.[slot]
         const alreadyFilled = basicFillBySlot[slot] ?? 0
-        const remain = budget === undefined ? Number.POSITIVE_INFINITY : Math.max(0, budget - alreadyFilled)
+        const uncapped = budget === undefined || (uncappedDeclared && slot === declared)
+        const remain = uncapped ? Number.POSITIVE_INFINITY : Math.max(0, budget - alreadyFilled)
         if (!(remain > 1e-9)) continue
         const give = Math.min(room, remain)
         basicFillBySlot[slot] = alreadyFilled + give

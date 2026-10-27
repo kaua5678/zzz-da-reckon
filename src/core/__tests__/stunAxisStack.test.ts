@@ -380,3 +380,50 @@ describe('窗口终结动作（佩洛伊斯决算）截断', () => {
     expect(r.basicFillSeconds).toBe(0)
   })
 })
+
+/**
+ * **缺省兜底槽 = 轴内主C，且补位不吃窗外平A池**——用户口径 2026-10-27（逐字，两段）：
+ * > 「任何轴都默认该有主c（轴里耗时最长的这人）平a的兜底填充。然后，在最后一个动作的最末尾
+ * >  到失衡轴最末尾这一段空白用他的平a填充，达成吃易伤的平a时间，**这个是必要时间不可被克扣**。」
+ * > 「之前说平a兜底从预算拿，**这俩不矛盾**。之前的意思是，你的平a不能**无成本**打出来。
+ * >  现在的意思是，你必须打平a并且**带成本**，这是兜底的更差选择。……这里兜底部分和前面预设失衡
+ * >  部分不一样，**他本身作为一个产出招式的地方，而不从余量池拿取**。」
+ *
+ * 病灶实测（干净树 @266b8f7d）：35 条带轴队伍里 **14 条没声明 basicFillerSlot** ⇒
+ * 整段窗尾既不填平A、也不报发呆（窗尾 1.34~14.33s 账面蒸发）。
+ * 而**显式声明**的 filler 仍受 2026-10-25 的窗外池封顶（那条口径没被推翻）。
+ */
+describe('缺省兜底槽 = 轴内主C（用户口径 2026-10-27）', () => {
+  /** 槽 1 的动作耗时合计最长 ⇒ 主C 是槽 1 */
+  const axes = [
+    {
+      actions: [
+        { slot: 0, moveId: 'a0', count: 1, actionTime: 2, energyCost: 0, decibelCost: 0 },
+        { slot: 1, moveId: 'a1', count: 2, actionTime: 3, energyCost: 0, decibelCost: 0 },
+      ],
+    },
+  ]
+  const base = { axes, stunCount: 1, windowDuration: 16, energyBySlot: { 0: 999, 1: 999 }, decibelBySlot: { 0: 9999, 1: 9999 } }
+
+  it('① 未声明 filler ⇒ 按轴内耗时最长的槽补位（修前 fill = 0，窗尾蒸发）', () => {
+    const r = calcStunAxisStack(base)
+    // 槽1 排两块共 6s ⇒ 窗尾 16 − 6 = 10s 由槽1（主C）填
+    expect(r.basicFillBySlot[1]).toBeCloseTo(10, 6)
+    expect(r.basicFillBySlot[0]).toBeUndefined()
+    expect(r.basicFillSeconds).toBeCloseTo(10, 6)
+  })
+
+  it('② 缺省补位是**产出端**：窗外平A池为 0 也照填（与显式声明分流）', () => {
+    const r = calcStunAxisStack({ ...base, basicBudgetBySlot: { 1: 0 } })
+    expect(r.basicFillBySlot[1], '缺省补位不吃窗外池 ⇒ 仍填满窗尾').toBeCloseTo(10, 6)
+  })
+
+  it('③ 显式声明 filler 仍受窗外平A池封顶（2026-10-25 口径未被推翻）', () => {
+    const declared = [{
+      actions: [{ slot: 1, moveId: 'a1', count: 2, actionTime: 3, energyCost: 0, decibelCost: 0 }],
+      basicFillerSlot: 1,
+    }]
+    const r = calcStunAxisStack({ ...base, axes: declared, basicBudgetBySlot: { 1: 4 } })
+    expect(r.basicFillBySlot[1], '声明槽受池封顶').toBeCloseTo(4, 6)
+  })
+})
