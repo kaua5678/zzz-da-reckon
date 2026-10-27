@@ -56,8 +56,16 @@ const OVERFLOW_FIXTURE_STUN_LOCK = 3
  * auto-1431-1481-1491（6.45→5.42，passes 2）/ yidhari-roxy-lucia（1.55，账本残差 0）/
  * auto-1021-1481-1311（1.75，但账本残差 −0.67/−0.40 不适合作 ④ 样本）/ billy-roxy-lucia（1.17，残差更大）。
  * 旧第二支 `auto-1431-1341-1481` 截断已归零（13b9f584 交互全 0 与合轴/降配吃掉）⇒ 换成 yidhari-roxy-lucia。
+ *
+ * ⚠ **2026-10-27 再扫（规则 10，全库 104 预设 × 锁窗 3，脚本探针逐队 measure）**：
+ * 洛K茜自旋占前台（3e597217）后 `yidhari-roxy-lucia` / `billy-roxy-lucia` 的锁窗截断
+ * **双双归零**（自旋那 20~28s 现在真的记进必要时间 ⇒ 原本超订的前台被它自己吃掉）。
+ * 现存结构性溢出只剩 3 支：auto-1431-1481-1491（6.45→5.42 / passes 2）、
+ * **auto-1591-1161-1211（1.30，passes 1，账本残差 E/D 全 0）**、auto-1021-1481-1311（1.75，但残差 −0.67/−0.40）。
+ * ⇒ 第二支换成 auto-1591-1161-1211：它是**唯一同时满足**「截断 > 容差 1s」「真的进环」「④ 的账本恒等式无残差」的队。
+ * 判据形状（passes ≥ 1 / Σcut 不增 / 残留如实上报 / 账本恒等式）一字未动。
  */
-const OVERFLOW_FIXTURES = ['auto-1431-1481-1491', 'yidhari-roxy-lucia'] as const
+const OVERFLOW_FIXTURES = ['auto-1431-1481-1491', 'auto-1591-1161-1211'] as const
 
 async function evalPreset(id: string, stunCountLock?: number) {
   const p = teamPresets.find(x => x.id === id)!

@@ -128,7 +128,17 @@ describe('T140b 现状锁：轴队「全关」档的保底键边际', () => {
     await catalog.loadBuildRecommendations()
     const file = await catalog.loadBossPresets() as unknown as { bosses: BossPreset[] }
     const calc = useResourceCalc()
-    const preset = teamPresets.find(p => p.id === 'yixuan-roxy-lucia')!
+    /**
+     * ⚠ **2026-10-27 换夹具（规则 10 四步）**：原用 `yixuan-roxy-lucia`，其边际在洛K茜自旋占前台
+     * （3e597217）后由 **+14.47M 翻成 −2.25M**——自旋那 20~28 秒记进必要时间后，
+     * 该队「失衡次数四舍五入 3→4」这一档**够不到了**（同一 `guarantee.stun`、同一 Boss，
+     * 池次数 on/off 都是 3）⇒ 弹刀只剩占前台的成本、没有抬失衡的收益。
+     * 这**不是机制坏了**（`parrySplit` 照常产出 breakerNoFollowUp 8 / mainDpsNoFollowUp 7），
+     * 是「该队已不再具备拉正边际的前提」——判据要的「活杠杆」样本换到仍满足前提的轴队。
+     * 实测同题面（Boss 30033 / 同轮全关档 / 仍是轴队 axes=1）：**`yixuan-trigger-lucia` +2.93M**。
+     * 判据形状（轴态前提 + 边际严格 > 0）一字未动。
+     */
+    const preset = teamPresets.find(p => p.id === 'yixuan-trigger-lucia')!
 
     // 秽息司祭：defaults 里声明 parryNoFollowUpTotal=15（弹刀反推链的输入来源）
     const boss = file.bosses.find(b => b.id === '30033')!

@@ -173,10 +173,31 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：规范值型（�
     // ② 喧响 = 每秒值 × 实际自旋总秒数（行级 override 口径）
     const spinDecibel = spinRows.reduce((a, r) => a + Number(r.totalDecibelRecovery ?? 0), 0)
     expect(spinDecibel).toBeCloseTo(DECIBEL_PER_SEC * src.effectiveSpinSecondsTotal, 6)
-    // ① 能量闭合：启动 10×次数 + 自旋 30/s×实际秒数 = 预算（零散发已把余量用掉）
+    /**
+     * ① 能量闭合：启动 10×次数 + 自旋 30/s×实际秒数 = **实际花掉的能量**。
+     *
+     * ⚠ **2026-10-27 订正（规则 10 四步）**：原版拿它跟 `derivedEnergy`（能量预算）比，注释写
+     * 「零散发已把余量用掉」——那只在**零散发真的存在**时成立。
+     * 实测两态（同队同配装，只是满发/零散发落点不同）：
+     *   · 有零散发（partial=1.51s）：start+spin = 480.251 = derivedEnergy ✓
+     *   · 无零散发（本夹具 partial=0，exCount 5 全满发）：start+spin = **425.000**，
+     *     derivedEnergy = 428.853 ⇒ 差 3.853 = **不足一次自旋的余量**（< 10 点启动线 ⇒ 不产零散发）
+     *   这是 `computeRoxyExCount` 的**有意台阶**（「差 1 点就能多打一发」是用户明确关心的口径，见该函数头注释
+     *   「不为此加平滑」）⇒ 余量本就允许留在池里。把「预算」当恒等式右边是**断言写错了**。
+     *
+     * 正确的不变量 = **行耗能 Σ 与账本口径一致**（这才是本用例要钉的「放完能量」语义）：
+     *   Σ 耗能自旋行 totalEnergyConsume + 启动合计 === `roxyWindEnergySource.energySpentTotal`，
+     * 且 行耗能 = 10×满发数 + 30×秒数（逐项展开等于同一式）。
+     */
     const startTotal = 10 * Math.floor(c.exSpecialCount)
-    expect(startTotal + 30 * src.effectiveSpinSecondsTotal, '自旋+启动应恰好用光能量预算'
-    ).toBeCloseTo(c.derivedEnergy, 4)
+    const spinEnergySpent = spinRows.reduce((a, r) => a + Number(r.totalEnergyConsume ?? 0), 0)
+    expect(startTotal + spinEnergySpent, '自旋行耗能 + 启动合计 === 账本 energySpentTotal（放完语义）'
+    ).toBeCloseTo(src.energySpentTotal, 4)
+    expect(startTotal + 30 * src.effectiveSpinSecondsTotal, '展开式：启动 + 30/s × 实际自旋秒数'
+    ).toBeCloseTo(src.energySpentTotal, 4)
+    // 预算只应被「用掉的部分」消耗：余量必须 < 一次自旋启动门（否则就该多一拍零散发）
+    expect(c.derivedEnergy - src.energySpentTotal, '未用掉的余量必须 < 一次自旋的最低门槛'
+    ).toBeLessThan(10)
     /**
      * ③ 流势免费自旋（影画2 起）：**零耗能但仍必须给喧响**（用户口径 2026-10-26「免费送的也有喧响啊，
      * 如果没数据那你这个免费送的就跟没送一样了」）。
