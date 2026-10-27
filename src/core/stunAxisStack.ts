@@ -849,60 +849,15 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         .filter(iv => iv.t1 > iv.t0 + 1e-9)
         .sort((a, b) => a.t0 - b.t0)
       /**
-       * 缺失块落点 = 它**本该占的区间**扣掉已执行动作的区间（`ivs`）。
-       *
-       * 为什么必须扣：轴里下一个动作**没有**显式 `startTime` 时，它会**前移**占到被跳过块的位置
-       * （`slotCursor` 不为跳过块推进）⇒ 此时「缺失块」与已执行区间重叠，直接补就是双计。
-       * 只有下一个动作**有**显式 `startTime`（不前移）时，缺失块才真的留下一段真空、需要补。
-       */
-      const subtractIntervals = (block: { startSeconds: number; seconds: number }) => {
-        let pieces = [{ a: block.startSeconds, b: block.startSeconds + block.seconds }]
-        for (const iv of ivs) {
-          const next: { a: number; b: number }[] = []
-          for (const pc of pieces) {
-            if (iv.t1 <= pc.a || iv.t0 >= pc.b) { next.push(pc); continue }
-            if (iv.t0 > pc.a) next.push({ a: pc.a, b: iv.t0 })
-            if (iv.t1 < pc.b) next.push({ a: iv.t1, b: pc.b })
-          }
-          pieces = next
-        }
-        return pieces
-          .map(pc => ({ startSeconds: pc.a, seconds: pc.b - pc.a }))
-          .filter(pc => pc.seconds > 1e-9)
-      }
-      const lastEnd0 = ivs.length > 0 ? ivs[ivs.length - 1]!.t1 : 0
-      const myBlocks = missingBlocks
-        .filter(b => b.window === windowNo && b.slot === filler)
-        .filter(b => b.seconds > 1e-9)
-        .flatMap(b => subtractIntervals({
-          startSeconds: Math.max(0, Math.min(effectiveWindowDuration, b.startSeconds)),
-          seconds: b.seconds,
-        }))
-        /**
-         * 落在窗尾区间内的缺失块**不单独补**：窗尾 [最后动作结束, 窗口结束] 已经把那段覆盖了
-         * （被跳过的块本就在最后动作之后 ⇒ 它的时间是窗尾的一部分），再补就是双计
-         * （实测 `combo×3 + 跳过 ult`：缺失块 5.417 与窗尾 5.599 同起点，补两遍会填到 11s > 窗长）。
-         */
-        .map(b => ({ startSeconds: b.startSeconds, seconds: Math.min(b.seconds, Math.max(0, lastEnd0 - b.startSeconds)) }))
-        .filter(b => b.seconds > 1e-9)
-      /**
        * 窗尾 = 窗口有效结束 − 该槽**最后一个动作**结束。
        * ⚠ 该槽本窗一个动作都没有（纯兜底槽，如 11号/格莉丝被当填充位）⇒ `lastEnd = 0`，
        *   窗尾就是**整窗**——那不是「缝隙」，是整段都由他打（HEAD 行为，e2e 判据锁着）。
        */
-      const lastEnd = lastEnd0
+      const lastEnd = ivs.length > 0 ? ivs[ivs.length - 1]!.t1 : 0
       const tail = Math.max(0, effectiveWindowDuration - lastEnd)
-      // 先铺缺失块，再铺窗尾（窗尾从最后动作结束起算，天然在缺失块之后）
-      const segs: { startSeconds: number; seconds: number }[] = [...myBlocks]
-      if (tail > 1e-9) segs.push({ startSeconds: lastEnd, seconds: tail })
-      /** 段级去重：同一段（起点相同）只留一条 */
-      const seenSeg = new Set<string>()
-      for (const g of segs) {
-        const key = g.startSeconds.toFixed(6)
-        if (seenSeg.has(key)) continue
-        seenSeg.add(key)
-        windowFillSegments.push({ slot: filler, startSeconds: g.startSeconds, seconds: g.seconds })
-        windowFillSec += g.seconds
+      if (tail > 1e-9) {
+        windowFillSegments.push({ slot: filler, startSeconds: lastEnd, seconds: tail })
+        windowFillSec += tail
       }
       if (windowFillSec > 0) {
         basicFillBySlot[filler] = (basicFillBySlot[filler] ?? 0) + windowFillSec
