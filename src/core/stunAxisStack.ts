@@ -116,11 +116,6 @@ export interface StackTraversalInput {
    */
   swayBySlot?: Record<number, number>
   /**
-   * **各槽位的具名资源池供给**（pool 名 → 槽位 → 总量；与 `StackActionCost.pools` 配对）。
-   * 缺省 / 无该 pool ⇒ 视为 0 ⇒ 耗该 pool 的动作一律跳过（与 `swayBySlot` 同口径）。
-   */
-  poolsBySlot?: Readonly<Record<string, Readonly<Record<number, number>>>>
-  /**
    * 各槽位**本轮可分到的平A时间**（秒）——兜底平A填充的**硬上界**（用户口径 2026-10-25）。
    *
    * 病灶（实测 `auto-1521-1251-1311`）：8 窗 × 16s = 128s，轴脚本只提供 29.8s 动作，
@@ -600,8 +595,10 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     /** 本窗各「族」已执行次数（同族每窗上限门用；见 `StackActionCost#fillFamily`） */
     const familyUsed: Record<string, number> = {}
     const slotTime: Record<number, number> = {}
-    // 各槽位时间线最晚结束时刻（max(startTime+actionTime)，仅执行成功的动作）——平A填充从这往后
+    // 各槽位时间线最晚结束时刻（max(startTime+actionTime)，仅执行成功的动作）
     const slotMaxEnd: Record<number, number> = {}
+    /** 各槽位本窗已占用的区间（兜底填充要补「该槽没在打」的空档，见下方填充段） */
+    const slotIntervals: Record<number, { t0: number; t1: number }[]> = {}
     // 合轴检测（2026-08-30）：窗口内各角色的块在时间轴上并行（如般岳强特时琉音抱拳），
     // 前台净占用 = 各槽位块区间的【并集】而非块时长之和。每槽位顺序排块（cursor 累计，
     // 显式 startTime 更晚则顺延到它），跨槽位区间重叠部分只计一次前台。
@@ -763,6 +760,8 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         // 合轴区间：同一个 t0（该槽位顺序排块，显式 startTime 更晚则顺延到它）
         if (act.actionTime > 0) {
           windowIntervals.push({ key: `${act.slot}:${act.moveId}`, t0, t1: t0 + act.actionTime })
+          const own = slotIntervals[act.slot] ?? (slotIntervals[act.slot] = [])
+          own.push({ t0, t1: t0 + act.actionTime })
           slotCursor[act.slot] = t0 + act.actionTime
         }
         windowTimeSum += act.actionTime
