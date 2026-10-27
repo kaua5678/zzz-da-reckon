@@ -139,23 +139,24 @@ describe('allocateAxisWindows', () => {
   })
 })
 
-describe('兜底平A受该槽平A预算封顶（用户口径 2026-10-25）', () => {
-  /**
-   * 病灶实测 `auto-1521-1251-1311`：8 窗需要 128s 内容，轴脚本只给 29.8s，兜底平A填到 **93.5s**，
-   * 而该槽只分到 **64.7s** ⇒ 凭空多打 28.8s（还被当成 100% 轴内、攒条全额计入）⇒ 窗数虚高。
-   * 用户口径：兜底平A 的原意是「boss 失衡时间长了自动补攻击」，**不许创造动作**。
-   */
-  it('预算 5s ⇒ 三个窗的填充合计 = 5s（最后一窗填不满就空着）；不传预算 = 旧行为（不限）', () => {
+/**
+ * **窗内填充 = 产出端，不受窗外平A池封顶**（用户口径 2026-10-27，逐字）：
+ * > 「这里兜底部分和前面预设失衡部分不一样，**他本身作为一个产出招式的地方，而不从余量池拿取**。」
+ *
+ * ⚠ 本条取代旧判据「显式声明 filler 仍受 `basicBudgetBySlot` 封顶」——那个字段已被删除
+ * （2026-10-27 并行会话重构），且口径本身也被上条裁决推翻：窗内填充的成本 = 它占的**窗内**时间本身，
+ * 再按窗外平A池扣一遍等于双计。
+ */
+describe('窗内填充 = 产出端（不受窗外平A池约束）', () => {
+  it('三个窗各填满窗尾（10 − 1 = 9s × 3 = 27s），与任何窗外预算无关', () => {
     const axes = [{
       actions: [{ slot: 0, moveId: 'x1', count: 1, actionTime: 1, energyCost: 0, decibelCost: 0 }],
       basicFillerSlot: 0,
     }]
     const base = { axes, stunCount: 3, windowDuration: 10, energyBySlot: { 0: 999 }, decibelBySlot: { 0: 9999 } }
     const free = calcStunAxisStack(base)
-    expect(free.basicFillBySlot[0]).toBeCloseTo(27, 6)          // 3 窗 × (10 − 1)
-    const capped = calcStunAxisStack({ ...base, basicBudgetBySlot: { 0: 5 } })
-    expect(capped.basicFillBySlot[0]).toBeCloseTo(5, 6)
-    expect(capped.basicFillSeconds).toBeCloseTo(5, 6)
+    expect(free.basicFillBySlot[0]).toBeCloseTo(27, 6)
+    expect(free.basicFillSeconds).toBeCloseTo(27, 6)
   })
 })
 
@@ -413,17 +414,165 @@ describe('缺省兜底槽 = 轴内主C（用户口径 2026-10-27）', () => {
     expect(r.basicFillSeconds).toBeCloseTo(10, 6)
   })
 
-  it('② 缺省补位是**产出端**：窗外平A池为 0 也照填（与显式声明分流）', () => {
-    const r = calcStunAxisStack({ ...base, basicBudgetBySlot: { 1: 0 } })
-    expect(r.basicFillBySlot[1], '缺省补位不吃窗外池 ⇒ 仍填满窗尾').toBeCloseTo(10, 6)
-  })
-
-  it('③ 显式声明 filler 仍受窗外平A池封顶（2026-10-25 口径未被推翻）', () => {
+  it('② 声明槽与缺省槽同口径：都是产出端，一律填满窗尾', () => {
+    // 用户口径 2026-10-27：「产出端，不从余量池拿取」——声明与缺省只决定**谁来填**，不决定填多少
     const declared = [{
       actions: [{ slot: 1, moveId: 'a1', count: 2, actionTime: 3, energyCost: 0, decibelCost: 0 }],
       basicFillerSlot: 1,
     }]
-    const r = calcStunAxisStack({ ...base, axes: declared, basicBudgetBySlot: { 1: 4 } })
-    expect(r.basicFillBySlot[1], '声明槽受池封顶').toBeCloseTo(4, 6)
+    const r = calcStunAxisStack({ ...base, axes: declared })
+    expect(r.basicFillBySlot[1], '声明槽同样填满窗尾 16 − 6 = 10').toBeCloseTo(10, 6)
   })
 })
+/**
+ * **逐窗轨迹的「丢失 / 填充」归属**（2026-10-27，资源池页逐窗兑现图的数据基础）。
+ *
+ * 用户口径（逐字）：「资源池页面如果开了轴模式，能显示 **n 次轴的动作块的丢失填充可视化**吗。
+ * 丢失比如某些情况**跳招**了，填充比如我在末尾**自动填了平a或者强特**…」
+ *
+ * 修前：`skipped` 只有 {slot, moveId, reason}（**哪一窗丢的不可知**）、`windowTrace` 只有
+ * `fillSeconds` 总量（**谁在哪一秒填的不可知**）、窗口没有 `axisIndex`（多轴队看不出第 5 窗属于收尾轴）。
+ * 三条都是**纯追加**：判定/数值一位不动，只是把已经算出来的归属如实记下来。
+ */
+describe('逐窗归属：skipped.window / windowTrace.fillSegments / axisIndex（纯追加）', () => {
+  it('① skipped 带窗口号（1-based，与 sequence.window 同口径）', () => {
+    // 3 窗 × 每窗 2 次强特（60 闪能/次），总闪能 180 ⇒ 只够 3 次：窗1 打满、窗2 打 1 丢 1、窗3 丢 2
+    const r = calcStunAxisStack({
+      axes: [{ actions: stack }],
+      stunCount: 3,
+      windowDuration: 16,
+      energyBySlot: { 0: 180 },
+      decibelBySlot: { 0: 18000 },
+    })
+    const energySkips = r.skipped.filter(s => s.moveId === '1051012' && s.reason === 'energy')
+    expect(energySkips.map(s => s.window)).toEqual([2, 3, 3])
+    // 反空洞：每条跳过的窗口号都必须是已排出的窗口（1..trace.length）
+    expect(r.skipped.every(s => s.window >= 1 && s.window <= r.windowTrace.length)).toBe(true)
+  })
+
+  it('② fillSegments 与 fillSeconds 同源：Σ 秒数相等 + 只给声明槽（换人接已废止）', () => {
+    /**
+     * 2026-10-28 口径更新：**多槽接续已废止**（用户 2026-10-27「失衡内主打伤害的窗口不如让主c来打」），
+     * 旧断言「槽0 池用尽 ⇒ 槽1 接上」钉的正是被否决的行为，本条改为钉新口径：
+     * 填充**只**发生在 `basicFillerSlot` 上，Σ 段 = `fillSeconds`，且起点 = 最后一个动作结束。
+     */
+    const r = calcStunAxisStack({
+      axes: [{
+        actions: [{ slot: 0, moveId: 'x1', count: 1, actionTime: 4, energyCost: 0, decibelCost: 0 }],
+        basicFillerSlot: 0,
+      }],
+      stunCount: 1,
+      windowDuration: 10,
+      energyBySlot: { 0: 999 },
+      decibelBySlot: { 0: 9999 },
+    })
+    const segs = r.windowTrace[0]!.fillSegments
+    expect(segs.map(s => s.slot), '只给声明槽，不再换人接').toEqual([0])
+    expect(segs.reduce((a, s) => a + s.seconds, 0)).toBeCloseTo(r.windowTrace[0]!.fillSeconds, 9)
+    expect(segs[0]!.startSeconds, '从槽0 最后一个动作结束处（4s）起').toBeCloseTo(4, 6)
+    expect(segs[0]!.seconds, '窗尾 10−4 = 6s').toBeCloseTo(6, 6)
+  })
+
+  /**
+   * ★ 2026-10-28 用户口径（逐字）：「缝隙只是因为失衡捏轴做的不精细导致的必然结果，我本意是说
+   * 动作肯定是连续一个接一个的，中间插不了平a的。这不对，**应该只填缺失动作块时间的平a和末尾兜底**。」
+   *
+   * 反证形态：一条**故意留 3s 空隙**的轴（x1 @0 起 2s，x2 显式 startTime=5 起 2s，窗长 10）。
+   * - 旧实现（填区间补集）⇒ 填充 2~5 这 3s **缝隙** + 7~10 这 3s 窗尾 = 6s；
+   * - 新实现 ⇒ 只填窗尾 7~10 = 3s，缝隙 2~5 **一秒都不填**。
+   */
+  it('⑥ 缝隙不填（捏轴不精细的留白不是「待分配」）——只填末尾兜底', () => {
+    const r = calcStunAxisStack({
+      axes: [{
+        actions: [
+          { slot: 0, moveId: 'x1', count: 1, actionTime: 2, energyCost: 0, decibelCost: 0, startTime: 0 },
+          { slot: 0, moveId: 'x2', count: 1, actionTime: 2, energyCost: 0, decibelCost: 0, startTime: 5 },
+        ],
+        basicFillerSlot: 0,
+      }],
+      stunCount: 1,
+      windowDuration: 10,
+      energyBySlot: { 0: 999 },
+      decibelBySlot: { 0: 9999 },
+    })
+    const segs = r.windowTrace[0]!.fillSegments
+    expect(r.windowTrace[0]!.fillSeconds, '只有窗尾 3s，不含中间 3s 缝').toBeCloseTo(3, 6)
+    expect(segs).toHaveLength(1)
+    expect(segs[0]!.startSeconds, '从最后一个动作结束（5+2=7s）起').toBeCloseTo(7, 6)
+    // 反空洞：若把缝隙也填了，这里会是 6 且段数 > 1
+    expect(r.windowTrace[0]!.fillSeconds).toBeLessThan(6)
+  })
+
+  /**
+   * ★ 2026-10-28：**缺失动作块的时长**要填（用户「缺失资源的时间内可以填充平a」）。
+   *
+   * 关键点是「填多少」：动作连续接上 ⇒ 被跳过的 b **让位**给后面的 c，空出来的秒数**落在窗尾**。
+   * 构造：窗 10s，a(2s) + b(2s，闪能不足被跳过) + c(2s) ⇒ 实际执行 a、c 共 4s，窗尾 6s = 10−4。
+   * 这 6s 里已经包含「b 本来要占的 2s」——**不许再加一遍**（那就是双计，7s 会撑爆窗口）。
+   * 反证：若按 `skippedActionSeconds` 再加 2s ⇒ 会得到 8s 且窗口被撑爆，本条即红。
+   */
+  it('⑦ 被资源门控跳过 ⇒ 空出的时间落到窗尾（不双计）', () => {
+    const r = calcStunAxisStack({
+      axes: [{
+        actions: [
+          { slot: 0, moveId: 'a', count: 1, actionTime: 2, energyCost: 0, decibelCost: 0 },
+          { slot: 0, moveId: 'b', count: 1, actionTime: 2, energyCost: 60, decibelCost: 0 },
+          { slot: 0, moveId: 'c', count: 1, actionTime: 2, energyCost: 0, decibelCost: 0 },
+        ],
+        basicFillerSlot: 0,
+      }],
+      stunCount: 1,
+      windowDuration: 10,
+      energyBySlot: { 0: 0 },
+      decibelBySlot: { 0: 9999 },
+    })
+    expect(r.skipped.filter(k => k.reason === 'energy'), '前提：b 被闪能门控跳过').toHaveLength(1)
+    // 动作 a + c 用 4s ⇒ 窗尾 6s（b 的 2s 已含在内，不另加）
+    expect(r.windowTrace[0]!.fillSeconds, '窗尾 10 − (a 2 + c 2) = 6s').toBeCloseTo(6, 6)
+    // 反空洞：填充 + 动作不许超过窗口（双计就会 > 10）
+    const actionSec = r.windowTrace[0]!.actionSeconds
+    expect(actionSec + r.windowTrace[0]!.fillSeconds).toBeLessThanOrEqual(10 + 1e-9)
+  })
+
+  it('③ 决算截断窗不填 ⇒ fillSegments 为空（与 fillSeconds=0 同源）', () => {
+    const r = calcStunAxisStack({
+      axes: [{
+        actions: [{ slot: 0, moveId: 'verdict', count: 1, actionTime: 2, energyCost: 0, decibelCost: 0, endsStunWindow: true }],
+        basicFillerSlot: 0,
+      }],
+      stunCount: 1,
+      windowDuration: 16,
+      energyBySlot: { 0: 999 },
+      decibelBySlot: { 0: 9999 },
+    })
+    expect(r.windowTrace[0]!.truncated).toBe(true)
+    expect(r.windowTrace[0]!.fillSeconds).toBe(0)
+    expect(r.windowTrace[0]!.fillSegments).toEqual([])
+  })
+
+  it('④ axisIndex：多轴按顺序排窗（末条 tail 收尾轴 ⇒ 最后 1 窗属于它）', () => {
+    const common = { actions: [{ slot: 0, moveId: 'c', count: 1, actionTime: 1, energyCost: 0, decibelCost: 0 }] }
+    const tail = { kind: 'tail' as const, actions: [{ slot: 0, moveId: 't', count: 1, actionTime: 1, energyCost: 0, decibelCost: 0 }] }
+    const r = calcStunAxisStack({
+      axes: [common, tail],
+      stunCount: 3,
+      windowDuration: 10,
+      energyBySlot: { 0: 999 },
+      decibelBySlot: { 0: 9999 },
+    })
+    expect(r.windowTrace.map(t => t.axisIndex)).toEqual([0, 0, 1])
+    // 反空洞：收尾轴的块只出现在最后一窗
+    expect(r.windowTrace[2]!.actions.map(a => a.moveId)).toEqual(['t'])
+    expect(r.windowTrace[0]!.actions.map(a => a.moveId)).toEqual(['c'])
+  })
+
+  it('⑤ 缺省补位会在轨迹上标 fillerDefaulted（声明了则 false）', () => {
+    const actions = [{ slot: 0, moveId: 'a', count: 1, actionTime: 1, energyCost: 0, decibelCost: 0 }]
+    const base = { stunCount: 1, windowDuration: 10, energyBySlot: { 0: 999 }, decibelBySlot: { 0: 9999 } }
+    const defaulted = calcStunAxisStack({ ...base, axes: [{ actions }] })
+    expect(defaulted.windowTrace[0]!.fillerDefaulted).toBe(true)
+    const declared = calcStunAxisStack({ ...base, axes: [{ actions, basicFillerSlot: 0 }] })
+    expect(declared.windowTrace[0]!.fillerDefaulted).toBe(false)
+  })
+})
+

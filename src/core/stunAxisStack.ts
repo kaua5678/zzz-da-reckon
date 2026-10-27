@@ -46,15 +46,6 @@ export interface StackActionCost {
    * 本引擎只做「够不够」的通用门控 —— 不认任何角色 id（判据 26）。
    */
   swayCost?: number
-  /**
-   * **第二种具名资源**成本（pool 名 → 点数；2026-10-27 用户报「倾山/摧岳也是怒相里的连带资源」）。
-   *
-   * 为什么需要第二个通道：一个怒相同时受**两个**约束——山威 4 点（怒内强特各 1 点，连段 2 点/组）
-   * 与**怒相次数**（倾山/摧岳 各一次，次数恒等于怒相数）。把两者压进同一个点数池做不到
-   * （2 组连段 = 4 山威已用满，再加倾山/摧岳就超 4；而单独加大池又会让「每怒相最多 2 组」失效）
-   * ⇒ 引擎给一条**通用的具名池**，成本/供给都由角色模块声明（引擎仍不认任何资源名，判据 26）。
-   */
-  pools?: Readonly<Record<string, number>>
   /** 动作开始时间（秒，相对失衡窗口起点；缺省 0，可为负=窗口外提前起手）。
    *  平A填充用：从该槽位最后一个动作的结束时刻填到窗口结束（富余才填），不是「窗口 − Σ动作时长」。 */
   startTime?: number
@@ -86,8 +77,14 @@ export interface StackAxisInput {
   kind?: StunAxisKind
   /** 该轴打几次失衡窗口。**只在 `kind === 'fixed'` 时有语义**（其余类型的窗数由分配算法决定）。 */
   count?: number
-  /** 该轴的兜底平A角色槽位：资源不足时剩余窗口时间由该角色打平A填充；缺省不填充 */
+  /**
+   * 该轴的兜底平A角色槽位：窗口内「没人打」的秒数（窗尾 + 动作之间的空档）由该角色打平A填充。
+   * 缺省 ⇒ 引擎回落「轴内动作耗时最长的槽」（`mainCSlotOf`）；编排层会先用
+   * `roundInputs#mainCAttackSlotOf`（平A 权重 + 职业次序）算一个主C填进来。
+   */
   basicFillerSlot?: number
+  /** `basicFillerSlot` 是**编排层按主C推的**（不是轴显式声明）——只影响展示标注与「产出端」语义 */
+  fillerDefaulted?: boolean
   /**
    * 进轴时敌人身上已有的**残痕值**（点数，600 = 1 层；用户口径 2026-10-12）。
    * 栈引擎只做**透传**（本字段不参与时间/资源门控），由消费它的角色模块做轴内时序推演。
@@ -115,18 +112,6 @@ export interface StackTraversalInput {
    * ⚠ 与闪能/喧响同款**滞后一轮**注入（首轮空表 ⇒ 耗该资源的块首轮被跳过，下一轮起正常）。
    */
   swayBySlot?: Record<number, number>
-  /**
-   * 各槽位**本轮可分到的平A时间**（秒）——兜底平A填充的**硬上界**（用户口径 2026-10-25）。
-   *
-   * 病灶（实测 `auto-1521-1251-1311`）：8 窗 × 16s = 128s，轴脚本只提供 29.8s 动作，
-   * 剩余 **93.5s** 全由兜底平A填——而该槽（希希芙）本轮只分到 **64.7s** 平A。
-   * 凭空多打 28.8s 的平A（还被当成 100% 轴内、攒条全额计入）⇒ 窗口数被撑到 8，
-   * 就是用户说的「非法出招」。原意只是「boss 失衡时间长了，角色自动补攻击，别像老轴那样空着」，
-   * **不能凭空造动作**。
-   *
-   * 缺省（未给该槽）⇒ 不设上界，逐位不变（非轴 / 旧调用零影响）。
-   */
-  basicBudgetBySlot?: Record<number, number>
   /**
    * 好评（摇人值）总量（T157）：`bestEffort` 升级轴的**资源门控**（轴内 60/90 转大块的成本从这里扣）。
    * 缺省 / 负数 ⇒ 视作 0 ⇒ 升级轴一律「放过」（先打兜底轴），与用户口径
@@ -573,11 +558,29 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     // 未声明 ⇒ 回落轴内主C，并标记 fillerDefaulted（该槽的窗尾填充是**产出端**，不吃余量池上限）
     const declared = axis.basicFillerSlot
     const filler = declared ?? mainCSlotOf(axis)
+    // 编排层推的主C也会填 basicFillerSlot ⇒ 「是否缺省」以 `fillerDefaulted` 为准（显式声明时恒 false）
+    const defaulted = axis.fillerDefaulted ?? (declared === undefined)
     for (let i = 0; i < winAlloc[ai]; i++) {
-      schedule.push({ actions: axis.actions, basicFillerSlot: filler, fillerDefaulted: declared === undefined, axisIndex: ai })
+      schedule.push({ actions: axis.actions, basicFillerSlot: filler, fillerDefaulted: defaulted, axisIndex: ai })
     }
   })
 
+  /**
+   * 被跳过动作的**时长**（key = `${window}:${slot}`）——兜底填充要按「缺失动作块」补时，
+   * 不能按「区间空隙」补（用户口径 2026-10-28，见下方填充段注释）。
+   *
+   * 为什么单独记：`skipped` 只记 {slot, moveId, reason, window}，时长挂在**轴动作**上
+   * （`StackActionCost.actionTime`），而跳到填充段时那份列表已经遍历过去了。
+   */
+  /**
+   * **被资源门控跳过的动作块**（此时该动作本该占的窗内区间）：
+   * 用户口径 2026-10-28「应该只填**缺失动作块时间**的平a和末尾兜底」。
+   *
+   * 为什么必须记位置而不是只记时长：轴脚本里下一个动作常带显式 `startTime`，不会因为前块被跳过而
+   * 前移 ⇒ 凭空出现一段真空。填充要**精确补在这段真空上**，而不是去填「任意两动作之间的空隙」
+   * （那是捏轴不精细，动作本来连续、插不进平A）。
+   */
+  const missingBlocks: { slot: number; startSeconds: number; seconds: number; window: number }[] = []
   let windowNo = 0
   for (const window of schedule) {
     windowNo++
@@ -595,9 +598,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     /** 本窗各「族」已执行次数（同族每窗上限门用；见 `StackActionCost#fillFamily`） */
     const familyUsed: Record<string, number> = {}
     const slotTime: Record<number, number> = {}
-    // 各槽位时间线最晚结束时刻（max(startTime+actionTime)，仅执行成功的动作）
-    const slotMaxEnd: Record<number, number> = {}
-    /** 各槽位本窗已占用的区间（兜底填充要补「该槽没在打」的空档，见下方填充段） */
+    /** 各槽位本窗已占用的区间（兜底填充要补「该槽没在打」的空档 + 窗尾，见下方填充段） */
     const slotIntervals: Record<number, { t0: number; t1: number }[]> = {}
     // 合轴检测（2026-08-30）：窗口内各角色的块在时间轴上并行（如般岳强特时琉音抱拳），
     // 前台净占用 = 各槽位块区间的【并集】而非块时长之和。每槽位顺序排块（cursor 累计，
@@ -667,6 +668,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
           const usedInFamily = familyUsed[act.fillFamily] ?? 0
           if (usedInFamily >= cap) {
             skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'family', window: windowNo })
+            missingBlocks.push({ slot: act.slot, startSeconds: Math.max(slotCursor[act.slot] ?? 0, Math.max(0, act.startTime ?? 0)), seconds: Math.max(0, act.actionTime), window: windowNo })
             continue
           }
           familyUsed[act.fillFamily] = usedInFamily + 1
@@ -714,10 +716,12 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         // 本文件头注释一直写的也是「不够就跳过」，此前实现与之不符。
         if (act.decibelCost > 0 && (decibelLeft[act.slot] ?? 0) + 1e-9 < act.decibelCost) {
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'decibel', window: windowNo })
+          missingBlocks.push({ slot: act.slot, startSeconds: t0, seconds: Math.max(0, act.actionTime), window: windowNo })
           continue
         }
         if (act.energyCost > 0 && (energyLeft[act.slot] ?? 0) + 1e-9 < act.energyCost) {
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'energy', window: windowNo })
+          missingBlocks.push({ slot: act.slot, startSeconds: t0, seconds: Math.max(0, act.actionTime), window: windowNo })
           continue
         }
         // 角色专属资源门控（T169）：与上面两条**同口径**（超出本槽位总量就去掉，不许凭空创造）。
@@ -726,6 +730,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         // 连段块在此被去掉（修前它们既无伤害对应物又照占轴内时间）。
         if ((act.swayCost ?? 0) > 0 && (swayLeft[act.slot] ?? 0) + 1e-9 < (act.swayCost ?? 0)) {
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'sway', window: windowNo })
+          missingBlocks.push({ slot: act.slot, startSeconds: t0, seconds: Math.max(0, act.actionTime), window: windowNo })
           continue
         }
         if (act.energyCost > 0) {
@@ -755,8 +760,6 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         slotTime[act.slot] = used + act.actionTime
         // 时间线末尾：该槽位最晚结束时刻（= 本段**实际**起点 + 时长；同一时钟见上方 t0 注释）。
         // 起点为负（窗口外提前起手）时 t0 已按 0 起算（`Math.max(0, …)` 在 t0 里）。
-        const end = t0 + act.actionTime
-        slotMaxEnd[act.slot] = Math.max(slotMaxEnd[act.slot] ?? 0, end)
         // 合轴区间：同一个 t0（该槽位顺序排块，显式 startTime 更晚则顺延到它）
         if (act.actionTime > 0) {
           windowIntervals.push({ key: `${act.slot}:${act.moveId}`, t0, t1: t0 + act.actionTime })
@@ -766,7 +769,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         }
         windowTimeSum += act.actionTime
         windowDidSomething = true
-        if (act.endsStunWindow) windowTruncEnd = Math.max(windowTruncEnd, end)
+        if (act.endsStunWindow) windowTruncEnd = Math.max(windowTruncEnd, t0 + act.actionTime)
       }
     }
 
@@ -806,60 +809,104 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     /** 本窗窗尾填充逐段（谁 / 从第几秒 / 填多久）——逐窗可视化的直接输入，见 `StunWindowTrace.fillSegments` */
     const windowFillSegments: StunWindowTrace['fillSegments'] = []
     if (windowTruncEnd < 0 && window.basicFillerSlot !== undefined && windowDidSomething) {
-      // 兜底平A：从该槽位最后一个动作的结束时刻填到窗口结束（窗口有富余才填）。
-      // 动作之间的空隙（startTime 留白）不算平A——平A只补「最后一个动作之后」的富余。
       /**
-       * ## 兜底**换人接**（用户口径 2026-10-26，逐字）
-       * > 「平a兜底也得从全局预算里面拿，而不是你想生产就生产。目前全局时间都算的180s，
-       * >  看来应该是没考虑到兜底这一块，可以把平a兜底改为你说的换个角色打平a，再没有就空着，写明发呆时间。」
+       * ## 新·窗内平A分配（用户口径 2026-10-27，逐字）
+       * > 「在低命情况下琉音会填充一些平a，但作为击破手，**失衡内主打伤害的窗口不如让主c来打**……
+       * >  如果有大招资源不足或者这种**专属资源不足**的情况，**最好能用平a填充**，比较合理。
+       * >  **这部分时间也可以看成待分配的空闲的兜底时间**。」
        *
-       * 修前 = **单槽**兜底（只认轴声明的 `basicFillerSlot`）：该槽平A预算用尽后窗口就空着，
-       * 实测 `auto-1521-1481-1491` 第 5 窗只剩 2.61s 动作、**14.80s 空转**（该槽填充序列
-       * 12.41+12.41+14.46+14.46+0.59 = 54.33 顶到它 54.3s 的池上限），而同队别的槽还有余量。
+       * 三条一起改（旧实现 = 只补「该槽最后一段之后」的窗尾 + 预算用尽就换别的槽接）：
+       * 1. **换人接废止**：窗内空转秒数只给 `basicFillerSlot`（轴声明 or 编排层按平A权重定的主C），
+       *    不再按槽序让击破/支援位接手 —— 那等于把失衡爆发窗的伤害让给非主C
+       *    （实测用户现场：般琉卢在般岳池子用尽后出现「琉音 21.67s 平A 填充」）；
+       * 2. **空档也填**：不只看窗尾，**该槽两条动作之间的空档**（大招喧响不足 / 专属资源不足
+       *    被跳过后留下的那几秒）同样是「待分配的空闲」，一并填平；
+       * 3. **不受窗外平A池封顶**：用户 2026-10-27「兜底是产出端，不从余量池拿取」⇒
+       *    窗内填充的成本就是它占的**窗内**时间本身；再按窗外那份平A池扣一遍等于双计
+       *    （`StackTraversalInput.basicBudgetBySlot` 因此只服务窗外平A分配，不再参与窗内填充）。
        *
-       * 现在 = **多槽接续**：先轴声明的槽，用尽后按槽序让**还有剩余平A预算**的槽接上，
-       * 每一秒都只能从各槽**本轮分到的平A池**（= 全局预算切出来的份额）里拿 —— 仍然「不许凭空造动作」，
-       * 只是不再因为一个槽的分额用完就让整段窗口空着。三槽都见底 ⇒ 窗口留空，
-       * 空转秒数由 `core/stunTimeline.ts#realizeStunWindows#idleSeconds` 如实上报（「写明发呆时间」）。
+       * ⚠ 起点口径：只从该槽**第一次动作之后**开始填（开局站位/起手保持原样），
+       * 且不越过窗口有效结束时刻（决算截断窗上面已排除）。
+       * ⚠ 空窗（该槽本窗一个动作都没执行）不填：没有「动作之间的空档」可言。
        */
+      const filler = window.basicFillerSlot
       /**
-       * ## 兜底填充是**产出端**，不从余量池拿取（用户口径 2026-10-27，逐字）
-       * > 「这里兜底部分和前面预设失衡部分不一样，**他本身作为一个产出招式的地方，而不从余量池拿取**。」
-       * > 「你必须打平a并且带成本，这是兜底的更差选择。」
+       * ## 窗内填充只补两类（用户口径 2026-10-28，逐字）
+       * > 「之前说缺失资源的时间内可以填充平a，但你把我缝隙也填满了。**缝隙只是因为失衡捏轴做的不精细
+       * >  导致的必然结果**，我本意是说动作肯定是连续一个接一个的，中间插不了平a的。这不对，
+       * >  **应该只填缺失动作块时间的平a和末尾兜底**。」
        *
-       * 与 2026-10-25「平a兜底也得从全局预算里面拿」**不冲突**（用户 2026-10-27 亲口澄清）：
-       * 那条说的是「平A不能**无成本**产生」，本条说的是「必须打、成本 = 它占的**窗口内**那段时间」。
-       * 修前把窗尾填充秒从**窗外**那份平A池里扣 ⇒ 等于把窗内时间记成窗外资源，
-       * 实测（干净树 A/B，14 条未声明 filler 的队）强制补位后失衡 4→3、伤害 −1.6%~−39.6%
-       * ——窗外平A被"搬"进窗内，攒条量塌。⇒ 只有**轴显式声明**的 filler 保留该池上限；
-       * **缺省补位**（fillerDefaulted）上限 = 窗口剩余秒数本身。
+       * ① **缺失动作块**：该槽位本窗被资源门控跳过的动作，按它**本该占的位置**补
+       *    （`missingBlocks` 记了起点与时长）；
+       * ② **末尾兜底**：该槽位最后一个动作结束 → 窗口有效结束。
+       *
+       * ⛔ **不填任意两动作之间的空隙**：那是捏轴没排紧的产物（动作本来连续接上、插不进平A），
+       *    旧实现取「区间补集」会把捏坏的轴凭空变成伤害 —— 这正是用户报的 bug。
+       * ⛔ 不填时间门跳过（`reason: 'time'`）：那是窗口装不下才被去掉，补平A 等于凭空延长窗口。
        */
-      const budgetBySlot = input.basicBudgetBySlot
-      const declared = window.basicFillerSlot
-      /** 缺省补位槽 = 产出端：不受窗外平A池封顶 */
-      const uncappedDeclared = window.fillerDefaulted === true
-      /** 填充候选取序：先声明的槽，再按槽序取**还有剩余预算**的其他槽 */
-      const candidates: number[] = [declared]
-      if (budgetBySlot !== undefined) {
-        for (const slot of Object.keys(budgetBySlot).map(Number).sort((a, b) => a - b)) {
-          if (slot !== declared) candidates.push(slot)
+      const ivs = (slotIntervals[filler] ?? [])
+        .map(iv => ({ t0: Math.max(0, iv.t0), t1: Math.min(effectiveWindowDuration, iv.t1) }))
+        .filter(iv => iv.t1 > iv.t0 + 1e-9)
+        .sort((a, b) => a.t0 - b.t0)
+      /**
+       * 缺失块落点 = 它**本该占的区间**扣掉已执行动作的区间（`ivs`）。
+       *
+       * 为什么必须扣：轴里下一个动作**没有**显式 `startTime` 时，它会**前移**占到被跳过块的位置
+       * （`slotCursor` 不为跳过块推进）⇒ 此时「缺失块」与已执行区间重叠，直接补就是双计。
+       * 只有下一个动作**有**显式 `startTime`（不前移）时，缺失块才真的留下一段真空、需要补。
+       */
+      const subtractIntervals = (block: { startSeconds: number; seconds: number }) => {
+        let pieces = [{ a: block.startSeconds, b: block.startSeconds + block.seconds }]
+        for (const iv of ivs) {
+          const next: { a: number; b: number }[] = []
+          for (const pc of pieces) {
+            if (iv.t1 <= pc.a || iv.t0 >= pc.b) { next.push(pc); continue }
+            if (iv.t0 > pc.a) next.push({ a: pc.a, b: iv.t0 })
+            if (iv.t1 < pc.b) next.push({ a: iv.t1, b: pc.b })
+          }
+          pieces = next
         }
+        return pieces
+          .map(pc => ({ startSeconds: pc.a, seconds: pc.b - pc.a }))
+          .filter(pc => pc.seconds > 1e-9)
       }
-      let room = Math.max(0, effectiveWindowDuration - (slotMaxEnd[declared] ?? 0))
-      for (const slot of candidates) {
-        if (!(room > 1e-9)) break
-        const budget = budgetBySlot?.[slot]
-        const alreadyFilled = basicFillBySlot[slot] ?? 0
-        const uncapped = budget === undefined || (uncappedDeclared && slot === declared)
-        const remain = uncapped ? Number.POSITIVE_INFINITY : Math.max(0, budget - alreadyFilled)
-        if (!(remain > 1e-9)) continue
-        const give = Math.min(room, remain)
-        basicFillBySlot[slot] = alreadyFilled + give
-        basicFillSeconds += give
-        windowFillSec += give
-        // 本段起点 = 窗口内「还空着的那段尾巴」的起点（多槽接续时第二段紧接第一段）
-        windowFillSegments.push({ slot, startSeconds: Math.max(0, effectiveWindowDuration - room), seconds: give })
-        room -= give
+      const lastEnd0 = ivs.length > 0 ? ivs[ivs.length - 1]!.t1 : 0
+      const myBlocks = missingBlocks
+        .filter(b => b.window === windowNo && b.slot === filler)
+        .filter(b => b.seconds > 1e-9)
+        .flatMap(b => subtractIntervals({
+          startSeconds: Math.max(0, Math.min(effectiveWindowDuration, b.startSeconds)),
+          seconds: b.seconds,
+        }))
+        /**
+         * 落在窗尾区间内的缺失块**不单独补**：窗尾 [最后动作结束, 窗口结束] 已经把那段覆盖了
+         * （被跳过的块本就在最后动作之后 ⇒ 它的时间是窗尾的一部分），再补就是双计
+         * （实测 `combo×3 + 跳过 ult`：缺失块 5.417 与窗尾 5.599 同起点，补两遍会填到 11s > 窗长）。
+         */
+        .map(b => ({ startSeconds: b.startSeconds, seconds: Math.min(b.seconds, Math.max(0, lastEnd0 - b.startSeconds)) }))
+        .filter(b => b.seconds > 1e-9)
+      /**
+       * 窗尾 = 窗口有效结束 − 该槽**最后一个动作**结束。
+       * ⚠ 该槽本窗一个动作都没有（纯兜底槽，如 11号/格莉丝被当填充位）⇒ `lastEnd = 0`，
+       *   窗尾就是**整窗**——那不是「缝隙」，是整段都由他打（HEAD 行为，e2e 判据锁着）。
+       */
+      const lastEnd = lastEnd0
+      const tail = Math.max(0, effectiveWindowDuration - lastEnd)
+      // 先铺缺失块，再铺窗尾（窗尾从最后动作结束起算，天然在缺失块之后）
+      const segs: { startSeconds: number; seconds: number }[] = [...myBlocks]
+      if (tail > 1e-9) segs.push({ startSeconds: lastEnd, seconds: tail })
+      /** 段级去重：同一段（起点相同）只留一条 */
+      const seenSeg = new Set<string>()
+      for (const g of segs) {
+        const key = g.startSeconds.toFixed(6)
+        if (seenSeg.has(key)) continue
+        seenSeg.add(key)
+        windowFillSegments.push({ slot: filler, startSeconds: g.startSeconds, seconds: g.seconds })
+        windowFillSec += g.seconds
+      }
+      if (windowFillSec > 0) {
+        basicFillBySlot[filler] = (basicFillBySlot[filler] ?? 0) + windowFillSec
+        basicFillSeconds += windowFillSec
       }
     }
     // 逐窗轨迹（期 1，纯追加）：本窗的延长 / 截断 / 动作 / 占用 / 合轴 / 填充。
