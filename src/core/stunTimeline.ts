@@ -304,6 +304,11 @@ export interface StunRealization {
    * 不许被「窗口占 N×W 秒」的聚合读数吞掉。无轨迹（非轴队）⇒ 0（不可推演，不代表打满）。
    */
   idleSeconds: number
+  /**
+   * **末窗归零秒数**：战斗结束 ⇒ 这一窗最后那段直接归零（与决算同机制「把剩余时间归零」），
+   * 不算发呆、画面按归零后的长度画（用户口径 2026-10-27）。只影响读数与画面，不改 `realizedWindows`。
+   */
+  zeroedSeconds: number
   /** 是否拿到轴栈逐窗轨迹（false ⇒ `realizedWindows` = 整数窗数，不编造） */
   hasTrace: boolean
 }
@@ -314,15 +319,25 @@ export function realizeStunWindows(timeline: StunTimeline): StunRealization {
     // 与可视化那根短窗条一致（用户口径 2026-10-27「最后一窗……时间截断」）。
     const realized = timeline.slots.reduce((sum, s) => sum
       + (s.clippedByClock && s.nominalSeconds > 0 ? Math.max(0, Math.min(1, s.effectiveSeconds / s.nominalSeconds)) : 1), 0)
-    return { plannedWindows: timeline.windows, realizedWindows: realized, occupiedSeconds: 0, idleSeconds: 0, hasTrace: false }
+    return { plannedWindows: timeline.windows, realizedWindows: realized, occupiedSeconds: 0, idleSeconds: 0, zeroedSeconds: 0, hasTrace: false }
   }
   let realizedWindows = 0
   let occupiedSeconds = 0
   let idleSeconds = 0
-  for (const slot of timeline.slots) {
+  /**
+   * **末窗零化秒数**（用户口径 2026-10-27）：「游戏结束相当于你后面都无意义了，计算量只有前半部分」——
+   * 末窗没填上的那段不算发呆（那是「之后无事发生」，与决算把剩余时间归零同机制），单独上报。
+   * ⚠ 只影响**读数与画面**；`realizedWindows` 的算法不变（仍是 填充率 × 时钟截短份额）。
+   */
+  let zeroedSeconds = 0
+  const lastIdx = timeline.slots.length - 1
+  for (const [idx, slot] of timeline.slots.entries()) {
     const occupied = Math.max(0, slot.effectiveSeconds - slot.unusedSeconds)
     occupiedSeconds += occupied
-    idleSeconds += Math.max(0, slot.unusedSeconds)
+    // 末窗没填上的那段 = 归零（不算发呆）；中间窗打不满仍是真发呆
+    const unused = Math.max(0, slot.unusedSeconds)
+    if (idx === lastIdx) zeroedSeconds += unused
+    else idleSeconds += unused
     /**
      * 填充率按**本窗**有效时长归一（决算截断 / 时钟截短的窗天生更短，不能按名义窗长摊）。
      *
@@ -344,5 +359,5 @@ export function realizeStunWindows(timeline: StunTimeline): StunRealization {
       : 1
     realizedWindows += fillRate * durationShare
   }
-  return { plannedWindows: timeline.windows, realizedWindows, occupiedSeconds, idleSeconds, hasTrace: true }
+  return { plannedWindows: timeline.windows, realizedWindows, occupiedSeconds, idleSeconds, zeroedSeconds, hasTrace: true }
 }

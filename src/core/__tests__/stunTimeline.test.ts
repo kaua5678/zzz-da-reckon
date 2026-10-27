@@ -365,14 +365,22 @@ describe('realizeStunWindows（计划 K 窗 / 兑现 X 窗 / 窗内发呆 Y 秒�
     expect(r.plannedWindows).toBe(5)
   })
 
-  it('★ 发呆秒数如实上报（窗口开着、没人打）', () => {
+  it('★ 发呆秒数如实上报（窗口开着、没人打）——末窗的余量改记「归零」', () => {
     const tl = buildStunTimeline({
       stunCount: 2, windowDuration: 16, effectiveTime: 180,
       windows: [trace(0, { actionSeconds: 10 }), trace(1, { actionSeconds: 4 })],
     })
     const r = realizeStunWindows(tl)
-    expect(r.idleSeconds, '窗0 空 6s + 窗1 空 12s').toBeCloseTo(18, 6)
+    /**
+     * 用户口径 2026-10-27：「决算本来就是直接把剩余时间归零的机制，连续失衡类似，
+     * 因为游戏结束相当于你后面都无意义了，计算量只有前半部分。」
+     * ⇒ 窗0（中间窗）空 6s 仍是**发呆**；窗1（末窗）空 12s 是**归零**（之后无事发生），单独报。
+     */
+    expect(r.idleSeconds, '只有中间窗算发呆').toBeCloseTo(6, 6)
+    expect(r.zeroedSeconds, '末窗 16−4 = 12s 归零').toBeCloseTo(12, 6)
     expect(r.occupiedSeconds).toBeCloseTo(14, 6)
+    // 兑现窗数不受归零影响（仍是按填充率算的等效窗数）
+    expect(r.realizedWindows).toBeCloseTo(10 / 16 + 4 / 16, 6)
   })
 
   it('非轴队（hasTrace=false）不编造：兑现退化为整数窗、发呆记 0、计划数照报', () => {
