@@ -4,6 +4,7 @@ import { resolve } from 'path'
 import { readdirSync } from 'fs'
 import { availableParallelism, totalmem } from 'os'
 import { workerCap } from './scripts/lib/worker-cap.mjs'
+import { stripSpecDocFields } from './scripts/lib/spec-doc-fields.mjs'
 
 /**
  * vitest worker 上限（自适应；CC-424 的固定 4 → 按 CPU/内存取最优）。
@@ -59,9 +60,27 @@ function deployBase(): string {
   return withLeading.endsWith('/') ? withLeading : `${withLeading}/`
 }
 
+/**
+ * spec 的「只作文档」字段不进浏览器（口径与实测见 `scripts/lib/spec-doc-fields.mjs` 头注释）。
+ *
+ * **只在 build 生效**：vitest 跑 Vite 的 serve 变换，`apply: 'build'` ⇒ 测试仍看到完整 JSON，
+ * `specs.test.ts` 的「每角色 notes ≥ 10 条」等完整性判据不会被这次瘦身削弱。
+ */
+function stripSpecDocFieldsPlugin() {
+  return {
+    name: 'zzz-strip-spec-doc-fields',
+    apply: 'build' as const,
+    enforce: 'pre' as const,
+    transform(code: string, id: string) {
+      if (!/\/src\/specs\/agents\/[^/]+\.json$/.test(id)) return null
+      return { code: stripSpecDocFields(code), map: null }
+    },
+  }
+}
+
 export default defineConfig({
   base: deployBase(),
-  plugins: [vue()],
+  plugins: [vue(), stripSpecDocFieldsPlugin()],
   define: {
     __LOCAL_ASSET_URLS__: JSON.stringify(localAssetUrls()),
   },
@@ -79,9 +98,21 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
+        /**
+         * ⚠ 不要给 naive-ui 加 manualChunks（2026-10-27 首屏体积专项实测）：
+         * 强制分块会把整个 naive-ui 拉进首屏静态 import 图，14 个懒加载页面里那些只有页面
+         * 才用的组件（数据表/虚拟列表/弹层…）就永远不会被延后。
+         *
+         * 实测（同一棵树，只差这一行；口径 = entry 静态 import 图 + CSS，gzip）：
+         *   有 naive-ui 分块 ⇒ 首屏 626.6 KB（index 406.7 + naive-ui 176.4 + vue 34.0 + icons 1.8）
+         *   无 naive-ui 分块 ⇒ 首屏 593.7 KB（index 550.2 + vue 34.0 + icons 1.8）⇒ −32.9 KB / −5.2%
+         *
+         * 反直觉点：入口 chunk 自己反而变大（406.7 → 550.2，用到的组件内联进来了），
+         * 但总数变小，因为页面独占的组件回到了各自的懒加载 chunk。
+         * 复测：node scripts/bundle-audit.mjs（打印首屏总量）。
+         */
         manualChunks: {
           'vue-vendor': ['vue', 'pinia'],
-          'naive-ui': ['naive-ui'],
           'icons': ['@vicons/ionicons5'],
         },
       },

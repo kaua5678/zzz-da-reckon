@@ -129,7 +129,6 @@ export function specToMechanicModule(spec: AgentMechanicSpec): AgentMechanicModu
     id: spec.id,
     agentIds: spec.agentIds,
     name: spec.name,
-    description: spec.notes.join('；'),
     settings,
     applyPanel: ({ panel }) => {
       applySpecAttributeConversions(panel, spec.attributeConversions)

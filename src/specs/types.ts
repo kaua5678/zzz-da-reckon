@@ -229,5 +229,16 @@ export interface AgentMechanicSpec {
    * 机制模块副本在 `mechanics/agents/beta/`（glob 注册），滑块同 id 由 registry 命名空间容忍。
    */
   beta?: boolean
+  /**
+   * 录入证据（原文口径、未建模项、复核记录）——**只存在于磁盘文件，不进浏览器**。
+   *
+   * 构建期由 `vite.config.ts` 的 `zzz-strip-spec-doc-fields` 插件剥离（口径与实测见
+   * `scripts/lib/spec-doc-fields.mjs` 头注释）：2026-10-27 实测 195 KB raw / 110 KB gz，
+   * 占首屏入口 JS gzip 的 21%，而生产运行时**零读取**。
+   *
+   * ⚠ 生产代码（src 非测试、非 scripts）禁读本字段——运行时是 undefined。
+   * 需要读它的只有读盘工具（`scripts/`）与测试（`specs.test.ts` 的完整性判据）；
+   * 机器判据 = `src/scripts/__tests__/specDocFields.test.ts`。
+   */
   notes: string[]
 }
