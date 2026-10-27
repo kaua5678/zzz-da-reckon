@@ -31,6 +31,7 @@ import type {
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
+import { findMoveById as findMoveRow, getRowValue as rowValueOf } from '@/data/moveTableQueries'
 import { moduleExecRow } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
 import { forEachSlotAxisAction, stunWindowCoverage } from '@/mechanics/stunWindows'
@@ -191,12 +192,37 @@ function applyPanel({ potentialLevel, outOfCombatPanel, panel }: AgentPanelInput
   }
 }
 
-function buildHarumasaCharConfig({ cinemaLevel, potentialLevel, cfg }: AgentCharConfigInput): void {
+/**
+ * 强特主招 = **地网·巡弋**（1201023），不是地网（1201010）。
+ *
+ * 原文 `skill.special.description[2]`：「[强化特殊技：地网·巡弋] / 能量足够时，在第四/五段[普通攻击：穿云]、
+ * [冲刺攻击：飞弦·斩]、[终结技]、[闪避反击：藏锋]、[快速支援：穿弦]发动后点按发动」——她/他的强特
+ * 由这些**必打的**前置动作自动衔接，是「每次强特都打巡弋」的口径（本模块头注释第 10 行早已这么写、
+ * 电壶 gain 也按「强特地网·巡弋 +6」算），但 `findExSpecial` 取 special 类别里**第一个**带 energyCost 的
+ * 招式 ⇒ 拿到的是 1201010 地网（899.2% / 1.216s），巡弋（1026.8% / 1.333s）整段从未发放
+ * （实测默认队：强特 8 发全记成地网，巡弋 0 行）。用户口径 2026-10-27：「悠真强特是自动强化的，一定会打」。
+ *
+ * 口径：主招切到 1201023，动作时间/喧响随之取它的表值（`exSpecialMoveId` 只影响行与展示，
+ * 倍率/失衡仍由 `enrichExecutionPlan` 按 moveId 回填 ⇒ 切 moveId 即整行对齐）。
+ */
+export const HARUMASA_EX_MOVE_ID = '1201023'
+/** 强特耗能（catalog 1201023 Energy Cost = 60，与 1201010 同价） */
+export const HARUMASA_EX_ENERGY_COST = 60
+
+function buildHarumasaCharConfig({ cinemaLevel, potentialLevel, cfg, skills }: AgentCharConfigInput): void {
   cfg.harumasaCinemaLevel = cinemaLevel
   cfg.harumasaPotentialLevel = potentialLevelOf(potentialLevel)
   cfg.harumasaStunCoverage = 0.5 // 由 applyTeamConfig converge 从失衡次数反推，此处仅兜底
   cfg.harumasaEdgeAverageStacks = Math.min(HARUMASA_EDGE_MAX,
     Math.max(0, setting(cfg, 'harumasa.edgeAverageStacks')))
+  // 强特主招切「地网·巡弋」（见上方 HARUMASA_EX_MOVE_ID 的原文与实测依据）；
+  // 动作时间/喧响取该招表值——切 moveId 不同步这两项会让账本与行按两个招式算。
+  cfg.exSpecialMoveId = HARUMASA_EX_MOVE_ID
+  cfg.exSpecialActionTime = cfgMoveActionTime(cfg, HARUMASA_EX_MOVE_ID)
+  cfg.exSpecialEnergyConsume = HARUMASA_EX_ENERGY_COST
+  // 喧响同源：`exSpecialDecibelRecovery` 由通用强特行按次记（rowBuild 的 `totalDecibelRecovery = count × decibelRecovery`），
+  // 不跟着切 moveId 会让巡弋按地网的 164.78 记喧响（差 4.8/次）。
+  cfg.exSpecialDecibelRecovery = rowValueOf(findMoveRow(skills, HARUMASA_EX_MOVE_ID), 'decibel_recovery')
 }
 
 /**

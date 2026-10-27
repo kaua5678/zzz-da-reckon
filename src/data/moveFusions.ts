@@ -140,6 +140,28 @@ const XIXIFU_VENOM_FANG: MoveFusionGroup = {
   note: 'full/1521.json「伤害倍率」={{Skill:1521008}*3+{Skill:1521009}} —— `*3` 是 #1 内部三段命中（倍率表 401.7% 已含），不是打 3 次 #1；#2 由长按额度单独成行（0~3 个）。',
 }
 
+/**
+ * 伊芙琳·强化特殊技·束裂式·终型 ＝ 缠绕 #1（1321011）+ 引爆 #2（1321012）。
+ *
+ * 原文 `skill.special.description` 的「强化特殊技：束裂式·终型」两个 param——「缠绕伤害倍率」=
+ * {Skill:1321011}、「引爆伤害倍率」= {Skill:1321012}，说明明写「以被[牵缠禁制]的目标为中心，
+ * 牵引周围敌人并**引爆**」⇒ #2 是**同一次发动**的第二段，不是独立动作。
+ * 修前引擎只取 #1（1082.4% / 1.133s），#2（120.1% / 0.416s、喧响 17.19、积蓄 56.2）整段丢失
+ * （实测默认队：强特 8 发只出行 1321011，1321012 零行）。用户口径 2026-10-27：「伊芙琳强 a 转化资源也需要打」。
+ *
+ * ⚠ 耗能只在前缀项（1321011 的 Energy Cost=60）——融合**不动耗能**（坑 31 同款）。
+ */
+const EVELYN_EX_SEVERING: MoveFusionGroup = {
+  moveId: '1321011',
+  agentId: '1321',
+  label: '伊芙琳·强化特殊技·束裂式·终型（缠绕 + 引爆）',
+  terms: [
+    { moveId: '1321011', count: 1 },
+    { moveId: '1321012', count: 1 },
+  ],
+  note: 'full/1321.json special「缠绕伤害倍率」={Skill:1321011}、「引爆伤害倍率」={Skill:1321012}；招式说明「牵引周围敌人并引爆」。',
+}
+
 /** 珂蕾妲·强化特殊技·沸腾熔炉＝ 打击(#1) + 引爆(#2)（有班协同时引爆换协同引爆 #3，另待模块） */
 const KOLEDA_BOILING_FURNACE: MoveFusionGroup = {
   moveId: '1101104',
@@ -356,6 +378,7 @@ export const MOVE_FUSION_GROUPS: MoveFusionGroup[] = [
   NICOLE_QUICK_ASSIST,
   XIXIFU_VENOM_FANG,
   KOLEDA_BOILING_FURNACE,
+  EVELYN_EX_SEVERING,
   KOLEDA_ENHANCED_BASIC,
   YANAGI_MOONLIGHT_FLOW,
   JANE_SOMERSAULT,

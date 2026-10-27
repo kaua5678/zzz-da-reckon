@@ -396,8 +396,14 @@ describe('R21 夜A 跳③ 佩洛伊斯 1551 阳炎两臂（:524 整段迁进 spe
      * 「交互默认全 0」后喧响收入下降 ⇒ 大招次数恰好等于失衡数 ⇒ **上分支为 0、ratio 恒 0**，
      * 端点根本不可达（那是夹具前提失效，不是引擎错）。
      *
-     * 现在显式注入弹刀抬喧响（弹刀 = 200 喧响/次），把"多余喧响"造出来：
-     * 实测 parry=6 ⇒ 上分支 1 / 决算 2 ⇒ ratio 0.5；parry=12 ⇒ 上分支 3 / 决算 2 ⇒ ratio 1。
+     * 现在显式注入弹刀抬喧响（弹刀 = 200 喧响/次），把"多余喧响"造出来。
+     *
+     * ⚠ **2026-10-27 再标定（规则 10 四步）**：佩洛伊斯强特耗能补成 40（`PEILUO_EX_ENERGY_COST`，
+     * 三列反解）后，强特真正发招 ⇒ 喧响/能量循环改变 ⇒ 同 parry 下上分支次数整体上移。
+     * 观测：parry=1/2 ⇒ 上分支 1（ratio 0.5）；parry=4 ⇒ 上分支 2（ratio 1）；
+     * 旧夹具 parry=6/12 现在**两端都是 ratio 1** ⇒ 比值之比恒 1，「漏乘 pairRatio」的杀手失效。
+     * 处置 = 重取端点（parry 2 / 4），并把两端的 ratio **显式断言**出来——端点不可达时立刻红，
+     * 而不是退化成一条恒真断言。判据本身（比值之比 == 2）未变。
      */
     const measure = async (parry: number) => {
       const { calc, config } = await calcOf([{ agentId: '1551' }, { agentId: '1211' }, { agentId: '1031' }])
@@ -436,11 +442,14 @@ describe('R21 夜A 跳③ 佩洛伊斯 1551 阳炎两臂（:524 整段迁进 spe
       // 两者都真变大了（阳炎真接在直伤上）
       expect(dUpper).toBeGreaterThan(0)
       expect(dVerdict).toBeGreaterThan(0)
-      return { dUpper, dVerdict }
+      return { dUpper, dVerdict, pairRatio: (verdictExec as { peiluoKagerouPairRatio: number }).peiluoKagerouPairRatio }
     }
 
-    const half = await measure(6)  // 上分支 1 / 决算 2 ⇒ pairRatio = 0.5
-    const full = await measure(12) // 上分支 3 / 决算 2 ⇒ pairRatio = 1
+    const half = await measure(2) // 上分支 1 / 决算 2 ⇒ pairRatio = 0.5（2026-10-27 再标定：原 6）
+    const full = await measure(4) // 上分支 2 / 决算 2 ⇒ pairRatio = 1（2026-10-27 再标定：原 12）
+    // 端点自证（2026-10-27 补）：夹具必须真的造出 0.5 / 1 两态，否则比值判据恒真、失去牙齿
+    expect(half.pairRatio, '半臂：上分支 1 / 决算 2 ⇒ 0.5').toBeCloseTo(0.5, 10)
+    expect(full.pairRatio, '满臂：上分支 2 / 决算 2 ⇒ 1').toBeCloseTo(1, 10)
     const rHalf = half.dVerdict / half.dUpper
     const rFull = full.dVerdict / full.dUpper
     // 两态都偏小/相等即说明 ratio 没被消费端乘上（漏乘 ⇒ rHalf === rFull）

@@ -52,6 +52,11 @@ export const PEILUO_VERDICT_WINDOW_EXTEND = 3
 const PEILUO_FLARE_ENERGY = 15 // 耀斑：能量获得效率 +15%
 const PEILUO_FLARE_DMG = 40 // 耀斑：造成的伤害 +40%
 export const PEILUO_KAGEROU_CRIT = 40 // 阳炎：终结技对失衡敌人暴伤 +40%
+/**
+ * 强化特殊技：日华（1551009）耗能 = 40（三列速率反解，详见 peiluo buildCharConfig 前的注释）。
+ * 导出供判据引用，避免测试里再抄一份字面量（规则 11）。
+ */
+export const PEILUO_EX_ENERGY_COST = 40
 
 /**
  * CC-437（T15-c）：佩洛伊斯阳炎的私有轴窗口 overlay（编排层不透明；两臂互斥，只填其一）。
@@ -286,9 +291,27 @@ export const peiluoProminenceMechanic: AgentMechanicModule = {
     // 门控 ⇒ 轴模式行为静默改变（timeGolden 未覆盖该路径、不红）——已改回逐位等价。
     cfg.peiluoVerdictCount = stunCount
   },
+  /**
+   * 强化特殊技：日华（1551009）耗能 = **40**（数据缺口 + 反解，2026-10-27）。
+   *
+   * catalog / nanoka `energy_cost` / gachabase `sp_consume` **三个数据源都没有这个数**（0/空），
+   * `findExSpecial` 因此记 `costType='free'`、耗能 0 ⇒ `resolveExSpecialCount` 见到 ≤0 直接返回
+   * 0 次 ⇒ 强特整招不发、能量收入全部闲置（CC-323 名单锁）。用户口径 2026-10-27：「佩洛伊斯能量要放
+   * 强特啊，还有个交互叫做完美格挡，就是强特格挡后会回复特殊资源」。
+   *
+   * **40 是反解出来的**：1551009 三列速率量（t=1.75s、限定 S 强攻、等级系数失衡×1.5 / 其余×1）代入
+   * 标准强特式 `(perT·t + perE·e) × 等级 × 稀有度`，令 e 为未知数逐列解：
+   * 失衡 651.4 ⇒ 40.07 · 喧响 148.5825 ⇒ 40.02 · 积蓄 430.64 ⇒ 40.00（三列独立命中同一整数，偏差 ≤0.07%）；
+   * 伤害列以角色系数 1.435 自洽（@e=40 期望 1028.1×1.435 = 1475.3 vs 实录 1475.5）；
+   * 秽盾列不吃 e（@e=0 期望 175.00 vs 实录 174.97）。
+   * ⇒ 写进**模块**而不是 catalog（同 1461/1571/1531 先例）：catalog 是导入产物，手改会被重导入冲掉。
+   * ⟳复核: catalog/gachabase 补上 1551009 energy_cost 时，删本写入改由数据驱动并同步收短名单锁 | 到期 2027-04-30
+   */
   buildCharConfig: ({ cfg, cinemaLevel, skills }) => {
     // CC-195：日珥账本折算普攻用——余晖 #1–#3 一整套时长（引擎普攻基准段 = 余晖 #3）
     cfg.peiluoBasicCycleSeconds = basicComboCycleSeconds(skills, '1551003')
+    // 强化特殊技：日华耗能 40（见本钩子前的注释：三列反解 + 三数据源缺值）
+    cfg.exSpecialEnergyConsume = PEILUO_EX_ENERGY_COST
     // 影画1 黄昏旧章：进场获得 1000 点喧响值（勘域模式 180s 一次，整局口径按一次计）
     if (cinemaLevelOf(cinemaLevel) >= 1) {
       cfg.initialDecibelGift = cfg.initialDecibelGift + 1000

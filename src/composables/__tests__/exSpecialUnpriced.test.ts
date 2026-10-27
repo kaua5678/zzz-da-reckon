@@ -7,8 +7,9 @@
  * 同类角色的耗能都来自用户口径并由模块写入（1461 铁萼雨幕 60 / 1571 嗯呢弹幕 40+20×hold /
  * 1531 闪能），或由模块整体接管（skipGenericExSpecial）/ 走替代资源（costType='resource'）。
  *
- * 本测试锁住「剩下没人接」的名单。当前 = [1551]（佩洛伊斯·日华：原文「能量足够时发动」，
- * 但 catalog / nanoka energy_cost / gachabase sp_consume 均无数值；R5 不许自编 ⇒ 数据缺口，强特恒 0）。
+ * 本测试锁住「剩下没人接」的名单。当前 = [1601, 1661]（(Test1) 占位包）。
+ * 历史：1551 佩洛伊斯·日华曾在此名单（原文「能量足够时发动」，catalog/nanoka/gachabase 三源无耗能）
+ * —— 2026-10-27 由三列速率反解出 40 并写进模块 cfg，见 `specPanelBuffs.ts` peiluo buildCharConfig。
  * - 新角色进来名单变长：先查耗能来源（catalog 补 energyCost 或用户口径进模块），再更新名单。
  * - 1551 拿到耗能（catalog 补上即自动生效，零代码）后名单变短：删掉它，并按数值卡解释 golden。
  */
@@ -19,7 +20,7 @@ import { useConfigStore } from '@/stores/config'
 import { buildCharConfig } from '@/composables/resourceCalc/helpers'
 
 describe('强特有招式却无价（缺耗能 ⇒ 静默 0 次）', () => {
-  it('没有模块接管、也非替代资源的无价强特角色 == [1551,1601,1661]', async () => {
+  it('没有模块接管、也非替代资源的无价强特角色 == [1601,1661]', async () => {
     newPinia(); mockStaticFetch()
     const c0 = useCatalogStore(); await c0.load()
     const ids = [...c0.agentsMap.keys()]
@@ -38,7 +39,12 @@ describe('强特有招式却无价（缺耗能 ⇒ 静默 0 次）', () => {
       if ((cfg.exSpecialEnergyConsume ?? 0) > 0) continue
       unpriced.push(id)
     }
-    expect(unpriced.sort()).toEqual(['1551', '1601', '1661'])
+    /**
+     * 1551 佩洛伊斯已出名单（2026-10-27）：强化特殊技·日华耗能 **40**，由 `specPanelBuffs.ts` 的
+     * peiluo `buildCharConfig` 写入 cfg（catalog/nanoka/gachabase 三源均无此值，40 由三列速率反解，
+     * 偏差 ≤0.07%，见该钩子前的注释）。⇒ 无价强特只剩两个 (Test1) 占位包。
+     */
+    expect(unpriced.sort()).toEqual(['1601', '1661'])
     // 1601/1661：(Test1) 占位包（3.4.1+19836465）raw 未带强特能量消耗行；正式包重录时若补上耗能，名单应收短
   }, 120000)
 })
