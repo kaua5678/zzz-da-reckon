@@ -14,19 +14,43 @@
           <n-alert v-else-if="error" type="error" title="加载失败">{{ error }}</n-alert>
 
           <template v-else>
-            <n-space :size="8" style="margin-bottom: 10px" :wrap="true">
-              <n-select v-model:value="seasonId" :options="seasonOptions" size="small" style="width: 210px" placeholder="期数" />
-              <n-select v-model:value="bossKey" :options="bossOptions" size="small" style="width: 200px" placeholder="Boss（全部）" clearable />
-              <span class="muted">金数窗口</span>
-              <n-select v-model:value="goldWindow" :options="goldWindowOptions" size="small" style="width: 130px" />
-              <span class="muted">每队最低金满分投稿（角色上限）</span>
-            </n-space>
+            <div class="filter-rows">
+              <div class="filter-row">
+                <n-select v-model:value="seasonId" :options="seasonOptions" size="small" style="width: 190px" placeholder="期数" />
+                <n-select v-model:value="bossKey" :options="bossOptions" size="small" style="width: 190px" placeholder="Boss（全部）" clearable />
+                <span class="switch-label muted">
+                  <n-switch v-model:value="frontierOnly" size="small" />
+                  <span>只看顶分战斗</span>
+                </span>
+                <span class="muted">顶分窗口</span>
+                <n-select v-model:value="goldWindow" :options="goldWindowOptions" size="small" style="width: 116px" :disabled="!scoreWindowActive" />
+              </div>
+              <div class="filter-row">
+                <n-select v-model:value="playerName" :options="playerOptions" size="small" style="width: 250px" placeholder="玩家（全部）" clearable filterable />
+                <span class="switch-label muted">
+                  <n-switch v-model:value="topPlayersOnly" size="small" />
+                  <span>只看顶级玩家</span>
+                </span>
+                <n-select v-model:value="agentFilter" :options="agentOptions" size="small" style="width: 230px" placeholder="角色（全部）" clearable filterable />
+                <n-button size="tiny" quaternary @click="resetFilters">清空筛选</n-button>
+              </div>
+              <div class="archive-summary muted" v-if="file">
+                命中 {{ filteredRuns.length }} 条 · 本范围顶分 {{ archiveQuery.frontierCount }} 条 / {{ archiveQuery.roomCount }} 房
+                · 玩家 {{ archiveQuery.players.length }} · 角色 {{ archiveQuery.agents.length }}
+                ｜ 全库 {{ file.totalRuns }} 条 · {{ coverage.rooms }} 房 · {{ coverage.players }} 位投稿人 · {{ coverage.agents }} 个角色 · {{ file.generatedAt.slice(0, 10) }} 快照
+              </div>
+              <div v-if="selectionNote" class="archive-note muted">{{ selectionNote }}</div>
+              <div class="archive-empty muted" v-if="!filteredRuns.length">
+                当前筛选无结果：该玩家 / 角色可能只出现在其它期数或 Boss；切「全部期数」或点「清空筛选」。
+              </div>
+            </div>
 
             <n-data-table
               :columns="columns"
               :data="filteredRuns"
               :pagination="{ pageSize: 20 }"
               :row-key="r => r.id"
+              :scroll-x="816"
               size="small"
               :bordered="false"
             />
@@ -47,7 +71,10 @@
             <div class="section">
               <div class="section-title">玩家实战<span v-if="isAdversity" class="muted"> · 困难</span></div>
               <div class="kv-grid">
-                <div class="kv"><span class="k">分数</span><span class="v big">{{ selected.score }}</span></div>
+                <div class="kv">
+                  <span class="k">分数</span><span class="v big">{{ selected.score }}</span>
+                  <n-tag v-if="selectedIsFrontier" type="warning" size="tiny" :bordered="false">该房顶分</n-tag>
+                </div>
                 <div class="kv"><span class="k">用时</span><span class="v">{{ selected.timeSeconds }}s</span></div>
                 <div class="kv">
                   <span class="k">结果</span>
@@ -55,7 +82,12 @@
                     {{ selected.bossKilled ? '击杀' : '未击杀' }}
                   </n-tag>
                 </div>
-                <div class="kv"><span class="k">投稿</span><span class="v">{{ selected.authorName }}</span></div>
+                <div class="kv"><span class="k">投稿</span><span class="v">{{ selected.authorName || '未署名' }}</span></div>
+                <div class="kv">
+                  <span class="k">期数</span>
+                  <span class="v">{{ selected.seasonId }} · {{ file?.seasons[selected.seasonId]?.start?.slice(0, 10) ?? '—' }}</span>
+                </div>
+                <div class="kv"><span class="k">投稿时间</span><span class="v">{{ selected.submittedAt?.slice(0, 10) ?? '—' }}</span></div>
               </div>
               <div class="team-line">{{ teamLine(selected) }}</div>
               <a v-if="selected.videoUrl" :href="selected.videoUrl" target="_blank" rel="noreferrer" class="video-link">查看原视频 ↗</a>
@@ -128,6 +160,10 @@
           <b>收录口径</b>（用户裁决 2026-10-08）：只收危局强袭里<b>每个队伍限定金数最低的满分（65000）投稿</b>——每（房间 × 队伍构成）取金数最低那一批，
           同（房间 × 构成 × 金数 × 精确配置）去重。它们 = 该队在该 Boss「实际能打到的上界」，与计算器理论理想值直接对照最合适；重复投稿与低水平投稿（未打满）不收录。
           <br />
+          <b>筛选口径</b>（用户 2026-10-26）：「顶分战斗」= 该房（赛季 × 关卡）内限定金数 ≤「该房最低金 + 顶分窗口」的满分 run（lowGoldFrontier 单一实现）；
+          「顶级玩家」= 至少有一条顶分战斗的投稿人——<b>窗口 +N 金就是「稍微宽松」的唯一旋钮</b>（不按分数百分比放宽：本数据集全员 65000，按分数放等于全放行）。
+          选中玩家 = 看他的<b>全部</b>投稿，再配「只看顶分战斗」即他的顶分场次；角色筛选按<b>队伍任一槽位</b>命中，与「只看顶分战斗」叠加 = 该角色的所有顶分战斗。
+          <br />
           口径：配装 = 计算器默认理想（推荐驱动盘 + 最优副词条 + 技能全满）；交互 = 轴模式自动推导（连携从轴读、弹刀按「失衡次数四舍五入 + 喧响四舍五入：缺口÷215」反推，闪反按职业基准（支援/防护 0，其余 10）/ 快支3 为固定基准）。
           当期可选牌（3 选 1）不自动应用（归档未记录玩家选择）。伤害分 = 分段线性伤害分（普通/困难两套曲线，操作分已剔除）；归档 65000 = 60000 伤害分 + 5000 操作分，击杀即伤害分 60000。差异 = 配装差 + 建模误差，需用理想配装作上界夹逼。
         </div>
@@ -170,7 +206,7 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue'
-import { NCard, NSelect, NDataTable, NTag, NButton, NSpace, NDivider, NAlert } from 'naive-ui'
+import { NCard, NSelect, NDataTable, NTag, NButton, NSwitch, NDivider, NAlert, type DataTableColumn } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useStunDiscreteDisplay } from '@/composables/stunDiscreteDisplay'
 import { useCatalogStore } from '@/stores/catalog'
@@ -179,7 +215,8 @@ import { submissionToDeploy, type ArchiveRun, type RunArchiveFile } from '@/comp
 import { applyDeployConfig, applyPeriodBuff, pickBestPeriodBuff } from '@/composables/runArchiveDeploy'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import type { DeployConfig } from '@/composables/runArchiveImport'
-import { runLimitedGold, lowGoldFrontier } from '@/composables/limitedGold'
+import { runLimitedGold } from '@/composables/limitedGold'
+import { authorOf, queryArchiveRuns, type AgentFacet, type PlayerFacet } from '@/composables/runArchiveFilter'
 import { scoreForDamageRatio } from '@/data/deadlyAssaultScore'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import { localized } from '@/utils/format'
@@ -222,8 +259,16 @@ const phaseViews = ref<PhaseView[]>([])
 
 const seasonId = ref('')
 const bossKey = ref<string | null>(null)
-/** 金数窗口：数据集本身 = 每（房间 × 队伍构成）最低金满分；-1 = 不限（看全部） */
-const goldWindow = ref(-1)
+/** 顶分窗口：0 = 只认该房最低金（最严），+N = 放宽 N 金（「稍微宽松」的唯一旋钮） */
+const goldWindow = ref(0)
+/** 只看顶分战斗（该房最低金 + 窗口内的满分 run） */
+const frontierOnly = ref(false)
+/** 只看顶级玩家（窗口内出过顶分的投稿人） */
+const topPlayersOnly = ref(false)
+/** 玩家筛选（null = 全部；选中后列出他的**全部**投稿，顶分筛选另由 frontierOnly 控制） */
+const playerName = ref<string | null>(null)
+/** 角色筛选（null = 全部；按队伍任一槽位命中） */
+const agentFilter = ref<string | null>(null)
 const selected = ref<ArchiveRun | null>(null)
 const lastWarnings = ref<string[]>([])
 
@@ -267,14 +312,16 @@ const modelingGapHints = computed<ModelingGapHint[]>(() => {
   ]
 })
 
-/** 金数窗口（数据集 = 每队最低金满分；窗口 = 再按**房间内**最低金放宽几金，看该房最省金的几支队） */
+/**
+ * 顶分窗口（数据集 = 每队最低金满分；窗口 = 再按**房间内**最低金放宽几金）：
+ * 「顶分战斗」与「顶级玩家」都读它，只在「只看顶分 / 只看顶级玩家」开启时影响列表。
+ */
 const goldWindowOptions = [
-  { label: '不限（每队最低金）', value: -1 },
   { label: '该房最低金', value: 0 },
-  { label: '该房最低金 +1', value: 1 },
-  { label: '该房最低金 +2', value: 2 },
-  { label: '该房最低金 +3', value: 3 },
-  { label: '该房最低金 +4', value: 4 },
+  { label: '+1 金', value: 1 },
+  { label: '+2 金', value: 2 },
+  { label: '+3 金', value: 3 },
+  { label: '+4 金', value: 4 },
 ]
 
 onMounted(async () => {
@@ -301,39 +348,118 @@ const seasonOptions = computed(() => {
   const f = file.value
   if (!f) return []
   const ids = [...new Set(f.runs.map((r) => r.seasonId))].sort((a, b) => (f.seasons[b]?.start ?? '').localeCompare(f.seasons[a]?.start ?? ''))
-  return ids.map((id) => ({ value: id, label: `${id} ${(f.seasons[id]?.start ?? '').slice(0, 10)}` }))
+  // '' = 全部期数（看某个玩家的全部投稿 / 某角色跨期表现时用）
+  return [{ value: '', label: '全部期数' }, ...ids.map((id) => ({ value: id, label: `${id} ${(f.seasons[id]?.start ?? '').slice(0, 10)}` }))]
 })
 
 const bossOptions = computed(() => {
   const f = file.value
-  if (!f || !seasonId.value) return []
+  if (!f) return []
   const names = new Map<string, string>()
   for (const r of f.runs) {
-    if (r.seasonId !== seasonId.value) continue
+    if (seasonId.value && r.seasonId !== seasonId.value) continue
     const room = f.rooms[r.targetId]
     if (room?.bossNameZh) names.set(room.bossNameZh, room.bossNameZh)
   }
   return [...names.keys()].map((n) => ({ value: n, label: n })).sort((a, b) => a.label.localeCompare(b.label))
 })
 
-const filteredRuns = computed(() => {
+/** 候选范围 = 期数 × Boss（玩家 / 角色筛选**不能**在这一层收窄，否则顶分判定会退化成本地最低金） */
+const scopeRuns = computed(() => {
   const f = file.value
   if (!f) return []
-  const base = f.runs
+  return f.runs
     .filter((r) => (seasonId.value ? r.seasonId === seasonId.value : true))
-    .filter((r) => {
-      if (!bossKey.value) return true
-      return f.rooms[r.targetId]?.bossNameZh === bossKey.value
-    })
-  // 数据集本身 = 每（房间 × 队伍构成）最低金满分（`scripts/import-zzz-run-archive.mjs`）。
-  // 金数窗口 -1 = 不限（看全部）；≥0 = 再按**房间内**最低金放宽 N 金（lowGoldFrontier 单一实现；
-  // 本数据集全员满分且全击杀，故 killedOnly 恒真、顶分恒 65000）。
-  const gw = goldWindow.value
-  const windowed = gw >= 0 ? lowGoldFrontier(base, { killedOnly: true, goldWindow: gw }) : base
-  return windowed
-    .slice()
-    .sort((a, b) => runLimitedGold(a.team) - runLimitedGold(b.team) || b.score - a.score)
+    .filter((r) => (bossKey.value ? f.rooms[r.targetId]?.bossNameZh === bossKey.value : true))
 })
+
+/**
+ * 筛选 + 分面（单一实现 = `composables/runArchiveFilter.ts`）：
+ * 顶分集合在玩家 / 角色筛选**之前**于候选范围上算，顶分窗口只决定「多宽松」，不改变候选范围。
+ * 本数据集全员满分且全击杀，故 killedOnly 恒真、顶分恒 65000。
+ */
+const archiveQuery = computed(() =>
+  queryArchiveRuns(scopeRuns.value, {
+    goldWindow: goldWindow.value,
+    player: playerName.value,
+    agentId: agentFilter.value,
+    topPlayersOnly: topPlayersOnly.value,
+    frontierOnly: frontierOnly.value,
+  }),
+)
+
+const filteredRuns = computed(() =>
+  archiveQuery.value.rows
+    .slice()
+    .sort((a, b) => runLimitedGold(a.team) - runLimitedGold(b.team) || b.score - a.score),
+)
+
+/** 顶分窗口只在「只看顶分 / 只看顶级玩家」开启时参与行筛选，否则下拉是无意义的旋钮 */
+const scoreWindowActive = computed(() => frontierOnly.value || topPlayersOnly.value)
+
+/** 全库覆盖（快照信息，不随筛选变化；走同一套分面，避免页面另写一份去重口径） */
+const coverage = computed(() => {
+  const q = queryArchiveRuns(file.value?.runs ?? [], { goldWindow: goldWindow.value })
+  return { rooms: q.roomCount, players: q.players.length, agents: q.agents.length }
+})
+
+/** 玩家下拉文案（工数 / 顶分数让「谁是顶级玩家」一眼可见，不用逐个点开） */
+function playerLabel(p: PlayerFacet): string {
+  return `${p.name} · ${p.runs} 场${p.frontierRuns ? ` · 顶 ${p.frontierRuns}` : ''}`
+}
+
+function agentLabel(a: AgentFacet): string {
+  return `${agentName(a.agentId)} · ${a.runs} 场${a.frontierRuns ? ` · 顶 ${a.frontierRuns}` : ''}`
+}
+
+const playerOptions = computed(() => {
+  const list = topPlayersOnly.value
+    ? archiveQuery.value.players.filter((p) => p.frontierRuns > 0)
+    : archiveQuery.value.players
+  return list.map((p) => ({ value: p.name, label: playerLabel(p) }))
+})
+
+const agentOptions = computed(() => archiveQuery.value.agents.map((a) => ({ value: a.agentId, label: agentLabel(a) })))
+
+/** 选中玩家 / 角色后的摘要：本范围几场、其中顶分几场、最低几金（另标出范围外的投稿数） */
+const selectionNote = computed(() => {
+  const parts: string[] = []
+  if (playerName.value) {
+    const p = archiveQuery.value.players.find((x) => x.name === playerName.value)
+    const total = (file.value?.runs ?? []).filter((r) => authorOf(r) === playerName.value).length
+    if (p) {
+      const extra = total - p.runs
+      parts.push(
+        `玩家 ${p.name}：本范围 ${p.runs} 场 · 顶分 ${p.frontierRuns} 场 · 最低 ${p.minGold} 金` +
+          (extra > 0 ? `（另有 ${extra} 场在其它期数 / Boss，期数切「全部期数」可看）` : ''),
+      )
+    } else {
+      parts.push(`玩家「${playerName.value}」：本范围无投稿` + (total ? `（共 ${total} 场在其它期数 / Boss）` : ''))
+    }
+  }
+  if (agentFilter.value) {
+    const a = archiveQuery.value.agents.find((x) => x.agentId === agentFilter.value)
+    parts.push(
+      a
+        ? `${agentName(a.agentId)}：本范围 ${a.runs} 场 · 顶分 ${a.frontierRuns} 场 · 最低 ${a.minGold} 金`
+        : `${agentName(agentFilter.value)}：本范围无投稿`,
+    )
+  }
+  return parts.join('　｜　')
+})
+
+/** 当前部署的 run 是否本范围顶层（右侧「该房顶分」标；换筛选后可能不再在范围内，属预期） */
+const selectedIsFrontier = computed(() =>
+  selected.value ? archiveQuery.value.frontierIds.has(selected.value.id) : false,
+)
+
+function resetFilters() {
+  playerName.value = null
+  agentFilter.value = null
+  topPlayersOnly.value = false
+  frontierOnly.value = false
+  goldWindow.value = 0
+}
 
 function agentName(id: string): string {
   const a = catalogStore.getAgent(id)
@@ -401,36 +527,72 @@ async function autoPickPeriodBuff() {
   }
 }
 
-const columns = computed(() => [
-  {
-    title: 'Boss',
-    key: 'boss',
-    width: 150,
-    render: (r: ArchiveRun) => file.value?.rooms[r.targetId]?.bossNameZh ?? r.targetId,
-  },
-  {
-    title: '队伍',
-    key: 'team',
-    minWidth: 200,
-    render: (r: ArchiveRun) => r.team.map((m) => `${agentName(m.agentId)}M${m.mindscape}`).join(' / '),
-  },
-  { title: '金', key: 'gold', width: 50, render: (r: ArchiveRun) => String(runLimitedGold(r.team)) },
-  { title: '分数', key: 'score', width: 70, render: (r: ArchiveRun) => String(r.score) },
-  {
-    title: '结果',
-    key: 'killed',
-    width: 70,
-    render: (r: ArchiveRun) => h(NTag, { type: r.bossKilled ? 'success' : 'warning', size: 'small', bordered: false }, { default: () => (r.bossKilled ? '击杀' : '未击杀') }),
-  },
-  { title: '用时', key: 'time', width: 60, render: (r: ArchiveRun) => `${r.timeSeconds}s` },
-  { title: '投稿', key: 'author', width: 110, render: (r: ArchiveRun) => r.authorName ?? '' },
-  {
-    title: '',
-    key: 'deploy',
-    width: 70,
-    render: (r: ArchiveRun) => h(NButton, { size: 'tiny', type: 'primary', secondary: true, onClick: () => onDeploy(r) }, { default: () => '部署' }),
-  },
-])
+const columns = computed<DataTableColumn<ArchiveRun>[]>(() => {
+  // 「顶」标与「只看顶分」同源：同一份 frontierIds（窗口 = 顶分窗口），不另算一份前沿。
+  const frontierIds = archiveQuery.value.frontierIds
+  const cols: DataTableColumn<ArchiveRun>[] = []
+  // 期数列只在看「全部期数」时出现（单选某期时整列恒等，纯占宽）
+  if (!seasonId.value) {
+    cols.push({ title: '期数', key: 'season', width: 72, ellipsis: { tooltip: true }, render: (r) => r.seasonId })
+  }
+  cols.push(
+    {
+      title: 'Boss',
+      key: 'boss',
+      width: 132,
+      render: (r) => file.value?.rooms[r.targetId]?.bossNameZh ?? r.targetId,
+    },
+    {
+      title: '队伍',
+      key: 'team',
+      minWidth: 204,
+      render: (r) => r.team.map((m) => `${agentName(m.agentId)}M${m.mindscape}`).join(' / '),
+    },
+    {
+      title: '金',
+      key: 'gold',
+      width: 70,
+      render: (r) =>
+        h('span', [
+          String(runLimitedGold(r.team)),
+          frontierIds.has(r.id)
+            ? h(NTag, { type: 'warning', size: 'tiny', bordered: false, style: 'margin-left:3px' }, { default: () => '顶' })
+            : null,
+        ]),
+    },
+    {
+      // 分数与击杀合并一格：本数据集分数恒 65000（满分才收录），单独占列纯占宽
+      title: '分数',
+      key: 'score',
+      width: 104,
+      render: (r) =>
+        h('span', [
+          String(r.score),
+          h(
+            NTag,
+            { type: r.bossKilled ? 'success' : 'warning', size: 'tiny', bordered: false, style: 'margin-left:3px' },
+            { default: () => (r.bossKilled ? '击杀' : '未击杀') },
+          ),
+        ]),
+    },
+    { title: '用时', key: 'time', width: 58, ellipsis: { tooltip: true }, render: (r) => `${r.timeSeconds}s` },
+    {
+      // 投稿人 + 投稿日叠两行：省一列宽（横向滚动会把「部署」挤出视口）
+      title: '投稿',
+      key: 'author',
+      width: 116,
+      render: (r) => h('div', [h('div', (r.authorName ?? '') || '未署名'), h('small', r.submittedAt?.slice(0, 10) ?? '')]),
+    },
+    {
+      title: '',
+      key: 'deploy',
+      width: 60,
+      render: (r) =>
+        h(NButton, { size: 'tiny', type: 'primary', secondary: true, onClick: () => onDeploy(r) }, { default: () => '部署' }),
+    },
+  )
+  return cols
+})
 
 const totalDamage = computed(() => teamTotalDamage.value ?? 0)
 const enemyHp = computed(() => configStore.enemy.hp)
@@ -460,10 +622,38 @@ function fmt(n: number): string {
 <style scoped>
 .run-archive-page {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr);
+  grid-template-columns: minmax(0, 1.75fr) minmax(340px, 1fr);
   gap: 14px;
   align-items: start;
 }
+.filter-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.filter-row .switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.archive-summary {
+  line-height: 1.7;
+}
+.archive-note {
+  line-height: 1.7;
+  padding-left: 8px;
+}
+.archive-empty {
+  line-height: 1.7;
+}
+
 .period-buff-row {
   display: flex;
   flex-wrap: wrap;
