@@ -84,7 +84,9 @@ export function calcStunAxis(input: CalcStunAxisInput): StunAxisResult {
 
     for (const action of axis.actions) {
       // 赠送连携块（sourceTag='gift'）：真实连携块，占窗口时长（借普通连携 perDur 参与时间折算），
-      // 但不产失衡、不占全局池配额（独立 ':gift' key 计数）；norma-hat-chain 为纯标记块（0 时长）。
+      // 但不产失衡、不占全局池配额（独立 ':gift' key 计数）。
+      // norma-hat-chain（诺姆转连携，旧表达式）：2026-10-27 起也**按主C 连携收时间**（roundInputs 已用
+      // 受赠队友连携技的 actionTime 建块），故与 ':gift' 同形态；两者都不产失衡、不占全局池配额。
       const isGiftBlock = action.sourceTag === 'gift'
       const isHatMarker = action.moveId === 'norma-hat-chain'
       const key = isGiftBlock

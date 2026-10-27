@@ -812,7 +812,7 @@ export interface AgentMechanicModule {
   /**
    * 轴编辑器「角色专属块」（CC-61；展示层专用，不参与计算）：在候选池里追加的伪块（moveId 由编排层 / core 各自识别）。
    * `actionTimeOf(moveId)` 由展示层注入（查本槽技能表；mechanics 不能按值导入 stores）。quota = 候选块「可放」提示上限。
-   * 现实现：诺姆（norma-hat-chain「诺姆转连携」标记块，0 时长）、希格莉德（sigrid-pozhen「破阵连段」，三段行动时间和，C6 ×0.75）。
+   * 现实现：希格莉德（sigrid-pozhen「破阵连段」，三段行动时间和，C6 ×0.75）；诺姆的「转连携」块已撤（2026-10-27：它就是主C 的连携块，直接放那条）。
    */
   axisExtraBlocks?(input: { cinemaLevel: number; actionTimeOf: (moveId: string) => number }): ReadonlyArray<{ readonly moveId: string; readonly label: string; readonly actionTime: number; readonly quota: number }>
   /**

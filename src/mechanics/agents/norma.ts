@@ -540,9 +540,10 @@ export function computeNormaHatToChainCount(
 export const normaMechanic: AgentMechanicModule = {
   id: 'agent:norma',
   agentIds: [NORMA_AGENT_ID],
-  // CC-61：轴编辑器「诺姆转连携」标记块（展示层；膛温换连携自动全打 floor(膛温/80)，块只是轴内标记/占位）。
-  // 'norma-hat-chain' 同时被编排层 roundInputs#buildStackAxes 与 core/stunAxis 识别为 0 时长标记块。
-  axisExtraBlocks: () => [{ moveId: 'norma-hat-chain', label: '诺姆转连携', actionTime: 0, quota: 9 }],
+  // ⚠ **CC-61 的「诺姆转连携」候选块已撤**（用户口径 2026-10-27：「其本体是主c的连携块，
+  // 不应该和普通连携有差别」）：它曾以 0 时长标记块出现，只把赠送连携标成吃易伤、自己不占窗口时间。
+  // 现在编辑器请直接放**受赠队友（主C）自己的连携块**（候选池里带「·赠」标记那条，时长/归属都是他本人的）。
+  // 旧轴里残留的 'norma-hat-chain' 块仍被 roundInputs#buildStackAxes 认，并按主C 连携的真实时长收时间。
   name: '诺姆',
   description: '预热膛温资源、嗯呢弹幕（6段+炮塔+全队增伤）、膛温帽子把戏→连携替换、火力实验导弹、技术鸿沟失衡易伤。',
   /**

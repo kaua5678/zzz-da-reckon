@@ -26,7 +26,9 @@ import { axisKindOf, allocateAxisWindows } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf, axisMoveFreeOfDecibelOf } from './helpers'
-import { findMoveById } from '@/data/moveTableQueries'
+import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
+import { findChainAttack } from '@/core/resource/moveLookup'
+import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
 import { findWindSlot } from './anomalyPanels'
 import { chainMoveKind } from '@/data/chainMoveKind'
 import { movePerformanceGroupOf } from '@/data/movePerformanceGroups'
@@ -314,8 +316,34 @@ export function createConvergenceRoundInputs(deps: {
             const gMove = findMoveById(gSkills, act.moveId)
             axisActions.push({ slot: act.slot, moveId: `${act.moveId}:gift`, count: act.count, actionTime: gMove?.actionTime ?? 0, energyCost: 0, decibelCost: 0, startTime: act.startTime ?? 0 })
           } else {
-            // norma-hat-chain：纯标记块（0 时长，旧预设表达，无条件标记吃易伤次数）
-            axisActions.push({ slot: act.slot, moveId: 'norma-hat-chain', count: act.count, actionTime: 0, energyCost: 0, decibelCost: 0, startTime: act.startTime ?? 0 })
+            /**
+             * **诺姆转连携的本体 = 受赠队友（主C）自己的连携块**（用户口径 2026-10-27，逐字）：
+             * > 「诺姆转连携其本体是主c的连携块，**不应该和普通连携有差别**。」
+             *
+             * 修前 = **0 时长纯标记块**：只让赠送连携行（`chainGift`）拿到轴内次数，自己不占窗口时间
+             * ⇒ 普通连携块占时间、它不占，同一件事两种读法。
+             * 现在按普通连携收：时长取**受赠队友**连携技的 `actionTime`（与 `chainGift` 的
+             * `secondsPerUnit → targetCfg.chainActionTime` 同源），落点取 `supplyTargetTeamSlot`
+             * （与赠送行的归属**同一个函数**）⇒ 它占的是主C 的时间线、排在他自己动作之后。
+             */
+            const cfgs = resourceConfig.value?.characters ?? []
+            const providerIdx = cfgs.findIndex(c => !!c.agentId && !!getAgentMechanic(c.agentId)?.chainGift)
+            const recipientSlot = providerIdx >= 0
+              ? supplyTargetTeamSlot(cfgs[providerIdx]!, cfgs.map(c => c.slot))
+              : -1
+            const recipientSkills = recipientSlot >= 0
+              ? catalogStore.agentSkillsByAgentMap.get(configStore.team[recipientSlot]?.agentId ?? '')
+              : undefined
+            const recipientChain = recipientSkills ? findChainAttack(recipientSkills, fusedRowReader) : null
+            axisActions.push({
+              slot: recipientSlot >= 0 ? recipientSlot : act.slot,
+              moveId: 'norma-hat-chain',
+              count: act.count,
+              actionTime: recipientChain?.actionTime ?? 0,
+              energyCost: 0,
+              decibelCost: 0,
+              startTime: act.startTime ?? 0,
+            })
           }
           continue
         }

@@ -217,6 +217,7 @@
 - **转模顺序（2026-10-23 修）**：核心被动「贯穿力→攻击 1.25/点（cap 1200）」的基数 `calcPenetrationPower(panel) = atk×0.3 + hp×0.1 + sheerForceFlat`，而额外能力「嗯呢弹幕期间攻击 +44~870（Lv7 = 870）」也抬攻击 ⇒ 会经 ×0.3 = +261 抬贯穿力。旧实现把 +870 放在转模**之后** ⇒ 基数少算 261。现按真实顺序先加 870 再转模（与「转模读当前面板」通用口径一致）。**注**：满配下 1.25×贯穿力早已触顶（cap 1200，实测 pen 1748~2212 ⇒ 转模恒 1200）⇒ 本条在既有预设里 delta = 0，属潜在口径修正（低配/无贯穿力拐时才会体现）。
 - 口径：「嗯呢弹幕期间」生效的攻击 +44~870 与全队 +20% 按**弹幕覆盖率**折算；技术鸿沟失衡易伤/失衡时长 +2s 为命中即叠、全程生效（曾错按 applyPanel 直接加满 cap，已修）；进场「+60%」是**预热膛温**（非攻击/喧响，spec 已注明）。
 - 实现：`src/mechanics/agents/norma.ts`（`EX_SPECIAL_ENERGY_COST=40`、`HOLD_ENERGY_PER_SEC=20`、`HEAT_PER_EX=16`、`TOWER_AUTO_SHOT_INTERVAL`；礼帽代积膛温语义并入 heatTotal）。
+- **转连携 = 主C 的连携块（2026-10-27 用户口径）**：「诺姆转连携其本体是主c的连携块，**不应该和普通连携有差别**」。它原先是轴编辑器里的 `norma-hat-chain` **0 时长标记块**（只把赠送连携标成吃易伤、自己不占窗口时间）⇒ 同一件事两套读法。现：① 编辑器**撤掉该候选块**，改放**受赠队友本人的连携块**（候选池里带「·赠」那条，时长/归属都是他本人的）；② 旧轴残留的 `norma-hat-chain` 仍被 `roundInputs#buildStackAxes` 认，但按**受赠队友连携技的真实 `actionTime`** 建块、落点也是该队友（与 `chainGift.secondsPerUnit → targetCfg.chainActionTime` 同源）。判据 `src/composables/__tests__/hatChainAsNormalChain.test.ts`（时长 = 队友连携时长、落点 ≠ 诺姆自己）；`agentMechanicViewCc61.test.ts` 的候选块计数 14 → 7。⚠ 预设零使用 ⇒ timeGolden/timeFillRatchet 零 delta。
 - 长按秒数口径（CC-438，r476 `ea18ed8d`）：`norma.holdSeconds` 滑块只经 `resolveNormaHoldSeconds(cfg)`（clamp[0,2]）读；能量 40+20×hold、膛温 8/s×次数、伤害延长行 = 次数 × hold（不再 floor）同一个值。**已知分叉**：`estimateExSpecialTime` 的长按仍整局一次（改按次会扰动外层折叠环，r6 §8.0 #14；最终必要时间不受影响）。
 
 ### 露西（lucy / 1151）—— 辅助拐力 + 小猪
