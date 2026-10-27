@@ -494,12 +494,13 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 | --- | --- |
 | 归档 → DeployConfig（命座/音擎/精炼/Boss 期相位） | `src/composables/runArchiveImport.ts`（`submissionToDeploy`/`matchBossPreset`/`matchBossPhase`） |
 | DeployConfig → store（队伍/交互基准/Boss/layer_buff） | `src/composables/runArchiveDeploy.ts`（`applyDeployConfig`/`resolveBossApply`/`applyBossLayerBuffs`） |
+| 配装最优（4/5/6 主词条单换扫描 + 副词条精修，显式按钮） | `src/composables/loadoutOptimizer.ts`（`optimizeLoadout` / `writeLoadoutToStore`）；页面入口 `RunArchivePage.vue#runLoadoutOptimize`；判据 `composables/__tests__/loadoutOptimizer.test.ts` |
 | 页面 / 注册 | `src/views/RunArchivePage.vue` + `CalculatorView.vue` pageMap + `AppHeader.vue`（runArchive） |
 | 测试 | `src/composables/__tests__/runArchiveImport.test.ts` / `runArchiveDeploy.test.ts` |
 
 ### 7.4 口径
 
-- 配装 = 计算器默认理想（推荐驱动盘 + 最优副词条 + 技能全满，作为理论**上界**）；不从视频提取真实配装。
+- 配装 = 计算器默认理想（推荐驱动盘 + 推荐主词条 + **模板默认副词条** + 技能全满，作为理论**上界**）；卡片「配装最优」按钮 = 显式按本队重算 4/5/6 主词条与副词条（逐槽爬山 = 近似最优，**缺省不跑**，见 `composables/loadoutOptimizer.ts`）；不从视频提取真实配装。
 - 交互基准 = 不预设弹刀——弹刀由「失衡次数四舍五入（Boss 预设反推）」运行时反推（2026-10-23 删掉了并行的「保底4喧响」通道）；闪反按职业基准（roleInteractionBaseline：支援/防护 0 交互，其余 10）；**快支 0（全角色）/ 连携 1（支援·防护 0）**（用户 2026-10-18）；轴模式由轴内连携块反推覆盖。
 - Boss = 期相位血量（**危局总血量 = nanoka 单管血量 `mo.stats.hp` × 管数：普通 8.74 / 困难 15.8**；`mo.stats.hp` 已含 4 号血量成长曲线 70 级 × 版本系数）+ 关卡固有 layer_buff 自动应用；当期可选牌（3 选 1）**不自动应用**（归档未记录玩家选择）。
 - 仅危局强袭（Deadly Assault*，含 Adversity），防卫战/歼灭排除。
@@ -578,6 +579,26 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 - 给「全队 / 该角色自身」两个差值，并**逐项列出差异**（套装 / 主词条 / 副词条），
   以及两套的副词条总步数；
 - 成本固定 2 次求值（瞬时）。A vs A 恒 0、差异表为空（判据里有反空洞断言）。
+
+**③ 分数换算（A 打了 x 分，换成 B 的伤害会打多少，2026-10-27）**
+
+用户原话：「根据伤害之比，填写普通还是绝境（血量曲线不同），再填写其中一个伤害 A 或者 B 的分数，可以算出另一个配置的分数。
+让用户知道，如果你是 A 配置打了 x 分，换成 b 配置的伤害，其他都不变，你会打多少分。」
+
+- **输入**：难度（普通 / 绝境）、伤害口径（全队 / 该角色自身）、已知哪一套（A / B）、那一套的**总分**、其中操作分；
+- **只填总分**（用户 2026-10-28：「用户看到的分数就是总分，他来填总分，我们默认操作分 5000（也能改），
+  然后 −5000 自动算出伤害分」）：玩家在游戏里看到的 65000 是**总分**，所以主输入框是总分，
+  操作分缺省 **5000**（可改，改过的值沿用）；`splitTotalScore` 扣出伤害分后才进曲线，
+  输入框下实时显示「总分 − 操作分 = 伤害分」；
+- **输出**：另一套的分数 + 差值 + 两边的「伤害/血量%」，并给出「伤害分 + 操作分」的拆分；
+- **为什么不能拿分数直接乘伤害比**：伤害分曲线 **分段线性且非线性**（大攻击 +10% 落在不同血段换到的分不同）。
+  必须 **反解 A 的血量比例 → × 伤害之比 → 正算回分数**（`data/deadlyAssaultScore.ts#damageRatioForScore` /
+  `#scoreForDamageRatioOfRatio`）。实测：36000 分 + 10% 伤害 = 38205 分，**不是** 39600（判据里钉了这条反例）；
+- **伤害之比取「锁失衡」那一份读数**（与上面两行同源）：不含「多打一次失衡」的离散跳变，否则结论会被一次失衡带偏；
+- **操作分**（0~5000）原样加回、**不进曲线**（打得快会改变操作分，这里不臆测，故只做加减）；
+- **钳制如实报**：打死（伤害分封顶 60000）或血量 0 时显示警示，不假装比例还线性；
+- 判据：`composables/__tests__/substatScoreConvert.test.ts`（非线性 / A↔B 对称 / 比值 1 恒等 / 操作分不进曲线 /
+  两曲线不同 / 缺输入给 null）+ `core/__tests__/deadlyAssaultScore.test.ts`（正反解互逆 / 段边界 / 钳制）。
 
 跑在独立场景上（不动你的配装）；显式按钮触发（B 档估算级，见坑 53 分档）。
 

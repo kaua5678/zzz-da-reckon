@@ -212,6 +212,7 @@
         <span class="ssc-compare-label">副词条步数</span>
         <span>{{ compareResult.stepsA }} → {{ compareResult.stepsB }}</span>
       </div>
+
       <ChartTable :columns="diffColumns" align="left" dense max-height="240px" empty="两套配装完全一致">
         <tr v-for="d in compareResult.diff" :key="d.kind + d.label">
           <td>{{ d.kind }}</td>
@@ -220,6 +221,84 @@
           <td>{{ d.b }}</td>
         </tr>
       </ChartTable>
+
+      <!-- ===== 分数换算（用户 2026-10-27：A 打了 x 分，换成 B 的伤害会打多少） ===== -->
+      <div class="ssc-conv">
+        <div class="ssc-conv-title">
+          换成另一套配装会打多少分
+          <span class="ssc-conv-hint">同一 Boss、同一套操作 ⇒ 伤害/血量随伤害同比缩放</span>
+        </div>
+        <div class="ssc-conv-row">
+          <span class="ssc-conv-label">难度</span>
+          <n-radio-group v-model:value="scoreMode" size="small">
+            <n-radio-button v-for="opt in SCORE_MODE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</n-radio-button>
+          </n-radio-group>
+          <span class="ssc-conv-label">伤害口径</span>
+          <n-select v-model:value="scoreReadout" :options="readoutOptions" size="small" style="width: 140px" />
+          <span class="ssc-conv-label">已知</span>
+          <n-select v-model:value="scoreKnownSide" :options="scoreSideOptions" size="small" style="width: 190px" />
+          <span class="ssc-conv-label">总分</span>
+          <n-input-number
+            v-model:value="scoreInput"
+            :min="0"
+            :max="SCORE_TOTAL_CAP"
+            :step="500"
+            size="small"
+            style="width: 130px"
+            placeholder="例如 65000"
+          />
+          <span class="ssc-conv-label">其中操作分</span>
+          <n-input-number
+            v-model:value="operationScore"
+            :min="0"
+            :max="OPERATION_SCORE_CAP"
+            :step="500"
+            size="small"
+            style="width: 110px"
+          />
+        </div>
+        <div class="ssc-conv-split">
+          <template v-if="scoreInput != null && Number.isFinite(scoreInput)">
+            总分 {{ fmt(scoreInput, 0) }} − 操作分 {{ fmt(clampOperationScore(operationScore), 0) }}
+            = <b>伤害分 {{ fmt(knownDamageScore, 0) }}</b>
+            <span v-if="totalBelowOperation" class="ssc-conv-warn-inline">（总分低于操作分，已按 0 伤害分算）</span>
+          </template>
+          <template v-else>
+            填<b>总分</b>就行：默认操作分 5000（可改），系统自动扣掉它得到伤害分，再按伤害比换算。
+          </template>
+        </div>
+        <template v-if="scoreConversion">
+          <div class="ssc-conv-result">
+            <div class="ssc-score">
+              <span class="ssc-score-value">{{ fmt(scoreConversion.scoreTo, 0) }}</span>
+              <span class="ssc-score-label">{{ scoreConversion.toLabel }} 配置（{{ SCORE_MODE_LABEL[scoreMode] }}）</span>
+            </div>
+            <div class="ssc-score ssc-score-secondary">
+              <span
+                class="ssc-score-value-sm"
+                :style="{ color: scoreConversion.delta >= 0 ? 'var(--app-accent-gold)' : 'var(--c-warning-strong)' }"
+              >{{ scoreConversion.delta >= 0 ? '+' : '' }}{{ fmt(scoreConversion.delta, 0) }}</span>
+              <span class="ssc-score-label">相对 {{ scoreConversion.fromLabel }}</span>
+            </div>
+            <div class="ssc-facts">
+              <div>{{ scoreConversion.fromLabel }} {{ fmt(scoreConversion.scoreFrom, 0) }} 分 ≈ 伤害/血量 {{ fmt(scoreConversion.ratioFrom * 100, 2) }}%</div>
+              <div>伤害 ×{{ fmt(scoreConversion.damageRatio, 4) }} ⇒ {{ fmt(scoreConversion.ratioTo * 100, 2) }}%</div>
+              <div>伤害分 {{ fmt(scoreConversion.damageScoreTo, 0) }} + 操作分 {{ fmt(scoreConversion.operationScore, 0) }} = 总分 {{ fmt(scoreConversion.scoreTo, 0) }}</div>
+            </div>
+          </div>
+          <div v-if="scoreConversion.clamped" class="ssc-conv-warn">
+            ⚠ 结果被曲线端点钳住（{{ scoreConversion.ratioTo >= 1 ? '已击杀，伤害分封顶 60000' : '伤害占比 0' }}），实际比例不再线性可信。
+          </div>
+          <div v-else class="ssc-conv-note">
+            分数曲线<b>分段线性</b>（同样 +1% 血在不同段换的分不同）⇒ 先由已知分数反解血量、再乘伤害之比、正算回分数，
+            <b>不是</b>拿分数直接乘百分比。
+          </div>
+        </template>
+        <div v-else class="ssc-conv-note">
+          先点上方「对比 A / B」拿到两个配置的伤害，再在这里填分数。
+          <span class="ssc-conv-dim">分数口径 = 危局单房总分（伤害分 ≤ 60000 + 操作分 ≤ 5000）。</span>
+        </div>
+      </div>
     </div>
     <div v-else-if="compareResult && compareResult.reason" class="ssc-empty">{{ compareResult.reason }}</div>
   </n-card>
@@ -241,7 +320,7 @@
  * 用户口径是「算单人的」，全队口径只是 derive 时的副产品（`gainPct` 仍在结果里）。
  */
 import { computed, ref, watch } from 'vue'
-import { NButton, NCard, NDivider, NInputNumber, NSelect } from 'naive-ui'
+import { NButton, NCard, NDivider, NInputNumber, NRadioButton, NRadioGroup, NSelect } from 'naive-ui'
 import ChartTable from '@/components/charts/ChartTable.vue'
 import { useBatchOwner } from '@/composables/batchTask'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
@@ -259,6 +338,21 @@ import { useCatalogStore } from '@/stores/catalog'
 import { compact, fmt, localized } from '@/utils/format'
 import { groupEnginesForAgent } from '@/composables/enginePicker'
 import { persistedRef } from '@/composables/persistedRef'
+import {
+  DEADLY_ASSAULT_SCORE_CAP,
+  SCORE_MODE_LABEL,
+  SCORE_MODE_OPTIONS,
+  type DeadlyAssaultMode,
+} from '@/data/deadlyAssaultScore'
+import {
+  OPERATION_SCORE_CAP,
+  SCORE_READOUT_LABEL,
+  buildScoreConversion,
+  clampOperationScore,
+  splitTotalScore,
+  type ScoreReadout,
+  type ScoreSide,
+} from '@/composables/substatScoreConvert'
 
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
@@ -388,7 +482,7 @@ async function run() {
 }
 
 /** 换角色 ⇒ 清结果（旧结果属于别的角色，留着会误读） */
-watch(slot, () => { result.value = null; errorMsg.value = '' })
+watch(slot, () => { result.value = null; errorMsg.value = ''; scoreInput.value = null })
 /** 配装变了（快速改词条 / 用 A / 用 B / 主页改）⇒ 结果与对比都过期 */
 watch(() => JSON.stringify(configStore.team.map(c => c.driveDisc)), () => {
   result.value = null
@@ -452,6 +546,93 @@ function setSubStat(stat: string, n: number) {
   compareResult.value = null
 }
 
+// ===== 分数换算（用户 2026-10-27：「A 配置打了 x 分，换成 B 配置的伤害，其他都不变，会打多少分」） =====
+/**
+ * 难度（普通 / 绝境）与「已知哪一套的分数」是用户输入，**按卡持久化**——
+ * 同一支队反复调配装时不用每次重选；分数本身不存（避免下次打开看到过期数字）。
+ */
+type ScoreConvertPrefs = { mode: DeadlyAssaultMode; knownSide: ScoreSide; readout: ScoreReadout; operationScore: number }
+const scorePrefs = persistedRef<ScoreConvertPrefs>('zzz-substat-score-conv', v => {
+  if (!v || typeof v !== 'object') return undefined
+  const o = v as Partial<ScoreConvertPrefs>
+  const mode = o.mode === 'critical_assault' ? 'critical_assault' : 'defense'
+  const knownSide = o.knownSide === 'b' ? 'b' : 'a'
+  const readout = o.readout === 'own' ? 'own' : 'team'
+  // 操作分：用户 2026-10-28「操作分默认 5000，让用户少填一次」；改过的值下次沿用
+  const operationScore = o.operationScore == null ? OPERATION_SCORE_CAP : clampOperationScore(o.operationScore)
+  return { mode, knownSide, readout, operationScore }
+}, () => ({ mode: 'defense', knownSide: 'a', readout: 'team', operationScore: OPERATION_SCORE_CAP }))
+const scoreMode = computed({
+  get: () => scorePrefs.value.mode,
+  set: v => { scorePrefs.value = { ...scorePrefs.value, mode: v } },
+})
+const scoreKnownSide = computed({
+  get: () => scorePrefs.value.knownSide,
+  set: v => { scorePrefs.value = { ...scorePrefs.value, knownSide: v } },
+})
+const scoreReadout = computed({
+  get: () => scorePrefs.value.readout,
+  set: v => { scorePrefs.value = { ...scorePrefs.value, readout: v } },
+})
+/**
+ * **已知配置的总分**（用户 2026-10-28：「用户看到的分数就是总分，他来填总分」）——
+ * 危局单房 65000 = 伤害分 60000 + 操作分 5000，玩家在游戏里见到的就是总分，所以只填这一个。
+ * 不持久化——过期数字比空着更误导。
+ */
+const scoreInput = ref<number | null>(null)
+/** 操作分（默认 5000 = 满分档；可改，随偏好在 localStorage 里沿用） */
+const operationScore = computed({
+  get: () => scorePrefs.value.operationScore,
+  set: v => { scorePrefs.value = { ...scorePrefs.value, operationScore: clampOperationScore(v) } },
+})
+/** 总分上限 = 伤害分 60000 + 操作分 5000（危局单房） */
+const SCORE_TOTAL_CAP = DEADLY_ASSAULT_SCORE_CAP + OPERATION_SCORE_CAP
+/** 用户填的总分 − 操作分 = 真正进曲线的那部分（伤害分）；钳制口径与换算模块同一份实现 */
+const knownDamageScore = computed(() =>
+  splitTotalScore(scoreInput.value, operationScore.value).damageScore)
+/** 总分比操作分还低 ⇒ 伤害分被钳成 0（如实提示，不静默） */
+const totalBelowOperation = computed(() =>
+  scoreInput.value != null && scoreInput.value < clampOperationScore(operationScore.value))
+
+const readoutOptions = [
+  { value: 'team' as ScoreReadout, label: SCORE_READOUT_LABEL.team },
+  { value: 'own' as ScoreReadout, label: SCORE_READOUT_LABEL.own },
+]
+
+/** 「已知」下拉：A / B 各带自己的伤害读数，避免选错边 */
+const scoreSideOptions = computed(() => {
+  const rd = SCORE_READOUT_LABEL[scoreReadout.value]
+  const of = (side: 'a' | 'b') => {
+    const v = side === 'a' ? compareResult.value?.aTeam : compareResult.value?.bTeam
+    const own = side === 'a' ? compareResult.value?.aOwn : compareResult.value?.bOwn
+    const dmg = scoreReadout.value === 'own' ? own : v
+    return {
+      value: side,
+      label: side.toUpperCase() + '（' + rd + ' ' + (dmg == null ? '—' : compact(dmg)) + '）',
+    }
+  }
+  return [of('a'), of('b')]
+})
+
+/**
+ * 换算结果：伤害之比取 **锁失衡** 的那一份读数（与上面「全队伤害 / 个人伤害」两行同源），
+ * 不含「多打一次失衡」的离散跳变——否则「换个配置能打多少分」会被一次失衡跳变带偏。
+ */
+const scoreConversion = computed(() => {
+  const cmp = compareResult.value
+  if (!cmp || cmp.reason) return null
+  return buildScoreConversion({
+    mode: scoreMode.value,
+    knownSide: scoreKnownSide.value,
+    score: scoreInput.value,
+    operationScore: clampOperationScore(operationScore.value),
+    aDamage: scoreReadout.value === 'own' ? cmp.aOwn : cmp.aTeam,
+    bDamage: scoreReadout.value === 'own' ? cmp.bOwn : cmp.bTeam,
+  })
+})
+
+/** 对比结果换了 ⇒ 分数输入保留（同一支队换配装重算时通常想沿用同一个分） */
+
 async function runCompare() {
   if (!planA.value || !planB.value) return
   const task = owner.start()
@@ -510,4 +691,15 @@ async function runCompare() {
 .ssc-compare-row { display: flex; align-items: baseline; gap: 12px; font-size: 12px; color: var(--fg-2); line-height: 1.9; }
 .ssc-compare-label { width: 84px; color: var(--fg-3); }
 .ssc-compare-delta { font-weight: 600; }
+.ssc-conv { margin-top: 10px; padding: 8px 10px; border-left: 2px solid var(--app-primary); background: var(--app-inset); border-radius: 2px; }
+.ssc-conv-title { display: flex; align-items: baseline; gap: 10px; font-size: 13px; color: var(--fg-2); font-weight: 600; margin-bottom: 6px; }
+.ssc-conv-hint { font-size: 11px; font-weight: 400; color: var(--fg-3); }
+.ssc-conv-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--fg-2); }
+.ssc-conv-label { color: var(--fg-3); }
+.ssc-conv-result { display: flex; align-items: center; gap: 22px; margin: 8px 0 4px; }
+.ssc-conv-split { margin-top: 6px; font-size: 11px; color: var(--fg-3); line-height: 1.6; }
+.ssc-conv-note { font-size: 11px; color: var(--fg-3); line-height: 1.6; }
+.ssc-conv-warn-inline { color: var(--c-warning-strong); }
+.ssc-conv-dim { color: var(--fg-3); }
+.ssc-conv-warn { font-size: 11px; color: var(--c-warning-strong); line-height: 1.6; }
 </style>
