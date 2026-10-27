@@ -145,6 +145,36 @@ export const EQUIVALENT_ENERGY: Partial<Record<MoveType, number>> = {
 export const COUNTER_ASSIST_REWARD_ENERGY = 20
 export const COUNTER_ASSIST_FOLLOW_UP_REWARD_ENERGY = 60
 
+/**
+ * 锋御「锐能」按能量计价（e 通道）——**逐角色登记，不按职业泛化**。
+ *
+ * 锋御的锐能有两种用法，在倍率表上长得完全不一样，只能逐角色判：
+ * - **挽昼(1601)：锐能 = 能量**。四个强化特殊技行各耗 30 点（raw「锐能消耗 30点」），把 30 代入强特标准式的
+ *   `e` 后，失衡/喧响/积蓄三列全部落在 1.000~1.001 带内（四行 12 个格子反解出的 e 都是 30.0~30.1），
+ *   伤害列 = 1.09（她的直伤系数，支援突击锚点独立算出 1.091）⇒ 与普通能量同价，登记 30。
+ *   ⚠「（改）」两行**伤害与失衡整列另 ×1.1**（喧响/积蓄/秽盾不变），登记值仍是 30。
+ * - **克拉蕾(1611)：锐能 = 入场门禁**，不进公式。她的 60 锐能买的是 16s [猩红铭刻]；三列速率量实测是
+ *   **特殊技基线**（失衡 1.0014 / 喧响 1.1000 = 她自己的喧响系数 / 积蓄 0.9998），
+ *   按强特式 e=60 评估会得 0.34~0.42 的假象、e=0 得 0.73~0.77，都是把她的设计读错 ⇒ 不登记。
+ *
+ * @fact data:倍率系数/锋御锐能 口径: 挽昼(1601) 四个强特行的锐能 30 点按能量等价计入强特标准式（e 通道）；克拉蕾(1611) 不登记——60 锐能是 [猩红铭刻] 的入场门禁，速率列实测为特殊技基线（e=0） | 据 用户@2026-10-26（「挽昼加进去，克拉蕾不进公式，太特殊了」）·四行 12 格反解 e=30.0~30.1·伤害列 1.09=她的直伤系数 | 验 src/composables/__tests__/multiplierCoefficients.test.ts | 锚 src/data/standardMultiplierTable.ts#EX_SHARPNESS_ENERGY | 信 确认
+ * ⟳复核: 新增锋御角色/锐能强特时先拿它的四列反解 e——若速率列落到特殊技基线或解出非整数，说明它走「门禁」而不是「能量」，不要登记 | 到期 2027-06-30
+ */
+export const EX_SHARPNESS_ENERGY: Partial<Record<string, number>> = {
+  // 挽昼（1601）强化特殊技：焚夜·曦生 / 燃灯·晦尽 及其（改）
+  '1601106': 30,
+  '1601006': 30,
+  '1601016': 30,
+  '1601115': 30,
+}
+
+/**
+ * 走「锐能门禁」的强特行（**不产生奖励倍率**，e 项恒 0）——与 `EX_SHARPNESS_ENERGY` 互斥。
+ * 目前只有克拉蕾 1611010：60 锐能买 16s [猩红铭刻]，速率列实测是特殊技基线；
+ * 登记在这里只用于在倍率演算页标注「为什么这行不接 e」，不参与任何数值计算。
+ */
+export const SHARPNESS_GATED_MOVES: ReadonlySet<string> = new Set(['1611010'])
+
 /** 支援突击实录标准式（社区表原值，一字不改；见文件头 EQUIVALENT_ENERGY 的「20」解释） */
 const ASSIST_FOLLOW_UP_FORMULA: Partial<Record<StandardRowId, StdFormula>> = {
   damage: { const: 111.35, perT: 140 },

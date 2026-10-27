@@ -499,6 +499,42 @@ describe('倍率表系数演算：强化特殊技（逐段评估，不参与纵�
     }
   })
 
+  it('锋御锐能：挽昼(1601) 四个强特行按 30 点锐能=能量计价（四列贴合、伤害=直伤系数）', () => {
+    // 口径：raw「锐能消耗 30点」+ 用户 2026-10-26 裁决「挽昼加进去」；登记在 standardMultiplierTable#EX_SHARPNESS_ENERGY。
+    // 手算（限定 S：伤害×2×1.1、失衡×1.5×1.1；伤害再乘她的直伤系数 1.09）：
+    //   1601106 失衡 (130×2.5 + 4.175×30)×1.65 = 742.91 → 743.7/742.91 ≈ 1.0011
+    //   1601106 伤害 (140×2.5 + 5.55835×30)×2.2×1.09 = 1239.17 → 1240.5/1239.17 ≈ 1.0011
+    // 不接锐能（e=0）时这四行会显示成 伤害 1.39~1.61 / 失衡 1.39 / 喧响 1.56 / 积蓄 1.43 的假偏差。
+    for (const id of ['1601106', '1601006', '1601016', '1601115']) {
+      const move = report.moves.find((m) => m.moveId === id)
+      expect(move, `挽昼 ${id} 应在演算结果中`).toBeDefined()
+      expect(move!.energy, `${id} 耗能=锐能 30`).toEqual({ value: 30, kind: 'sharpness' })
+      expect(move!.flags).toContain('锐能按能量计价(30/发)')
+      expect(move!.flags).not.toContain('缺耗能标注')
+      // 「（改）」两行是把伤害与失衡整列 ×1.1（喧响/积蓄/秽盾不动），故先除掉这一档再对强特式
+      const variant = id === '1601016' || id === '1601115' ? 1.1 : 1
+      const ratioOf = (rowId: string) => move!.cells.find((c) => c.rowId === rowId)?.ratio ?? NaN
+      expectNear(ratioOf('daze') / variant, 1.0, 0.005, `${id} 失衡`)
+      expectNear(ratioOf('decibel_recovery'), 1.0, 0.005, `${id} 喧响`)
+      expectNear(ratioOf('anomaly_buildup'), 1.0, 0.005, `${id} 积蓄`)
+      expectNear(ratioOf('ether_purify'), 1.0, 0.005, `${id} 秽盾`)
+      expectNear(ratioOf('damage') / variant, 1.09, 0.005, `${id} 伤害=她的直伤系数`)
+    }
+  })
+
+  it('锋御锐能：克拉蕾(1611) 不登记——60 锐能是[猩红铭刻]的门禁，e 项恒 0', () => {
+    // 她的三列速率量实测是特殊技基线（失衡 1.0014 / 喧响 1.1000=她自己系数 / 积蓄 0.9998）；
+    // 按强特式评估（本页口径）就是 0.77/0.73/0.74——不是 bug，是「锐能不产生奖励倍率」。
+    const move = report.moves.find((m) => m.moveId === '1611010')
+    expect(move, '克拉蕾强特应在演算结果中').toBeDefined()
+    expect(move!.energy).toBeNull()
+    expect(move!.flags).toContain('锐能=门禁(不进公式)')
+    const ratioOf = (rowId: string) => move!.cells.find((c) => c.rowId === rowId)?.ratio ?? NaN
+    expectNear(ratioOf('daze'), 0.77, 0.015, '克拉蕾 失衡（强特式 e=0）')
+    expectNear(ratioOf('decibel_recovery'), 0.733, 0.015, '克拉蕾 喧响（强特式 e=0）')
+    expectNear(ratioOf('anomaly_buildup'), 0.741, 0.015, '克拉蕾 积蓄（强特式 e=0）')
+  })
+
   it('普罗米娅「处刑式·重霜/坠霜」= 40 能量奖励：按强特公式带 40 能量评估（用户口径）', () => {
     // 重霜/坠霜实为消耗 40 能量（封喉霜径 1541009 / 匿影）后接的免费招——本质上算作 40 能量
     // 换来的奖励，记录为强特公式 + 40 能量；否则按特殊技公式（无 perE、e=0）得 2.2~3.1 倍

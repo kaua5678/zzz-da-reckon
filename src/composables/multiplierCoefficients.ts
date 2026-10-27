@@ -16,6 +16,7 @@
 import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
 import {
   EQUIVALENT_ENERGY,
+  EX_SHARPNESS_ENERGY,
   FIXED_RECORD_UNITS,
   FLASH_ENERGY_QUALITY,
   MOVE_FUSION_GROUPS,
@@ -23,6 +24,7 @@ import {
   MOVE_TYPE_LABELS,
   MOVE_TYPE_OVERRIDES,
   MOVE_TYPE_TIME_SCALE,
+  SHARPNESS_GATED_MOVES,
   STANDARD_MULTIPLIER_TABLE,
   STANDARD_ROW_IDS,
   STANDARD_S_AGENT_IDS,
@@ -126,19 +128,31 @@ export function classifyMove(move: SkillMove, categoryId: string, specialty: str
   }
 }
 
-/** 耗能信息：kind 区分普通能量与闪能（闪能质量 ×1.2，见 standardMultiplierTable.FLASH_ENERGY_QUALITY） */
+/**
+ * 耗能信息：kind 区分普通能量 / 闪能（质量 ×1.2，见 standardMultiplierTable.FLASH_ENERGY_QUALITY）/ 锋御锐能。
+ *
+ * 锐能走同一条 e 通道（1 点锐能 = 1 点能量），但只有实测验证过的角色才登记（`EX_SHARPNESS_ENERGY`）——
+ * 克拉蕾的 60 锐能是[猩红铭刻]的入场门禁、不产生奖励倍率，故不在此列。
+ */
 export interface EnergyCostInfo {
   value: number
-  kind: 'energy' | 'flashEnergy'
+  kind: 'energy' | 'flashEnergy' | 'sharpness'
 }
 
-/** 解析 energyCost：取首个非持续（无 /s、/sec 后缀）项的数值前缀；解析失败返回 null */
+/**
+ * 解析耗能：取首个非持续（无 /s、/sec 后缀）项的数值前缀。
+ *
+ * catalog 没有锋御的能量键（锐能不是能量），实测同价的角色由 `EX_SHARPNESS_ENERGY` 定点补登；
+ * 没有登记 → 返回 null（= e 项为 0，例如克拉蕾 1611010 的锐能强特，她走特殊技基线）。
+ */
 export function parseEnergyCost(move: SkillMove): EnergyCostInfo | null {
   for (const [key, value] of Object.entries(move.energyCost ?? {})) {
     if (/\/s|\/sec/.test(value)) continue
     const m = value.match(/^\d+(\.\d+)?/)
     if (m) return { value: Number(m[0]), kind: key.includes('Flash') ? 'flashEnergy' : 'energy' }
   }
+  const sharpness = EX_SHARPNESS_ENERGY[move.id]
+  if (sharpness != null) return { value: sharpness, kind: 'sharpness' }
   return null
 }
 
@@ -183,6 +197,11 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
       const flags: string[] = []
       if (moveType === 'exSpecial' && energy == null) flags.push('缺耗能标注')
       if (moveType === 'exSpecial' && energy?.kind === 'flashEnergy') flags.push('闪能消耗(质量×1.2)')
+      if (moveType === 'exSpecial' && energy?.kind === 'sharpness') flags.push(`锐能按能量计价(${energy.value}/发)`)
+      if (moveType === 'exSpecial' && energy == null && SHARPNESS_GATED_MOVES.has(move.id)) {
+        // 克拉蕾：60 锐能只是[猩红铭刻]的入场门禁，不产生奖励倍率（实测三列落在特殊技基线）
+        flags.push('锐能=门禁(不进公式)')
+      }
       // 普攻的回能恒应存在：显式录入 0 属数据缺口（全库 13 条，如爱丽丝「星芒圆舞曲」；
       // 席德「霜蕊轮舞 #1/#2」等 2 条已由 scripts/patch-misplaced-attack-data.mjs 回填——
       // 其真实回能/喧响错位在 attack_data 1/2 位），合成 0 比值单元格并打标，避免静默隐藏
