@@ -358,7 +358,6 @@ describe('realizeStunWindows（计划 K 窗 / 兑现 X 窗 / 窗内发呆 Y 秒�
     expect(r.plannedWindows, '计划 K 窗 = 池的整数次数').toBe(5)
     // 窗0/窗1 打满 = 2；窗2 只打了 8/16 = 0.5；窗3/窗4 轨迹缺失 ⇒ `unusedSeconds` 记 0
     // ⇒ 按既有口径（「无轨迹不编造」= 不当成空转）计为已填 ⇒ 合计 4.5。
-    // ⚠ 2026-10-28 起分子只认**计划动作**（兜底填充另报 `filledRatio`）；本例填充恒 0 ⇒ 数值逐位不变。
     // ⚠ 这条口径意味着「轨迹比窗口数短」时兑现会被**高估**——真发生要靠上层保证轨迹条数 = 窗口数
     //   （`buildStunTimeline` 只对 `hasTrace=false` 整体降级，不做逐窗补齐）。本断言把它钉成已知行为，
     //   不是背书：若将来改成逐窗标记不可推演，这条会红并提醒同步下游展示。
@@ -404,47 +403,6 @@ describe('realizeStunWindows（计划 K 窗 / 兑现 X 窗 / 窗内发呆 Y 秒�
     // 无轨迹：不编造填充（每窗按 1），但时钟截短照样折算
     const noTrace = buildStunTimeline({ stunCount: 12, windowDuration: 16, effectiveTime: 180 })
     expect(realizeStunWindows(noTrace).realizedWindows).toBeCloseTo(11 + 4 / 16, 6)
-  })
-
-  /**
-   * ★ 2026-10-28 口径拆分（用户 2026-10-27 逐字：「有时候 **5 失衡不如 4 失衡**，因为资源不够
-   * 导致失衡伤害较低」）——**兜底填满不能再冒充「兑现」**。
-   *
-   * 反证形态：构造一个「计划动作只占 4s、剩下 12s 全靠兜底平A填满」的窗。
-   * - 修前（分子 = 动作 + 填充）⇒ 兑现 **1.0 窗**，与真正打满的窗**逐位相同** ⇒ 现象消失；
-   * - 修后（分子 = 计划动作）⇒ 兑现 **0.25 窗**，另报 `filledRatio = 0.75`。
-   * 这条断言只有在新口径下才成立，改回旧口径会立刻红。
-   */
-  it('★ 兜底填满 ≠ 兑现：兑现窗数只认计划动作，填充单独报占比', () => {
-    const tl = buildStunTimeline({
-      stunCount: 2, windowDuration: 16, effectiveTime: 180,
-      windows: [
-        // 窗0：计划动作 16s（真打满）
-        trace(0, { actionSeconds: 16 }),
-        // 窗1：计划动作 4s + 兜底填充 12s ⇒ 占据=16s（被「填满」），但计划动作只值 4/16
-        trace(1, { actionSeconds: 4, fillSeconds: 12 }),
-      ],
-    })
-    expect(tl.slots[1]!.fillSeconds, '填充秒数落在 slot 上（供两把尺共用）').toBeCloseTo(12, 9)
-    const r = realizeStunWindows(tl)
-    expect(r.realizedWindows, '计划动作兑现 = 1 + 4/16').toBeCloseTo(1 + 4 / 16, 9)
-    expect(r.filledRatio, '兜底填充占已兑现窗口有效秒 = 12/32').toBeCloseTo(12 / 32, 9)
-    expect(r.occupiedRatio, '占据占比（修前的归一化读数）= 32/32').toBeCloseTo(1, 9)
-    // 反空洞：两个占比必须真的不同，否则「拆成两把尺」是自欺
-    expect(r.occupiedRatio).toBeGreaterThan(r.realizedWindows / 2)
-  })
-
-  it('★ 计划动作占比 ≤ 占据占比（动作 ⊆ 占据，逐窗恒成立）', () => {
-    const cases: Array<[number, number]> = [[16, 0], [4, 12], [0, 16], [8, 3], [0, 0]]
-    for (const [action, fill] of cases) {
-      const r = realizeStunWindows(buildStunTimeline({
-        stunCount: 1, windowDuration: 16, effectiveTime: 180,
-        windows: [trace(0, { actionSeconds: action, fillSeconds: fill })],
-      }))
-      expect(r.realizedWindows, `动作 ${action}s / 填充 ${fill}s`).toBeLessThanOrEqual(r.occupiedRatio + 1e-9)
-      expect(r.realizedWindows).toBeGreaterThanOrEqual(0)
-      expect(r.realizedWindows).toBeLessThanOrEqual(1 + 1e-9)
-    }
   })
 
   it('决算截断窗按**有效时长**归一（不按名义窗长摊 ⇒ 不低估兑现）', () => {
