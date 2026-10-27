@@ -18,7 +18,7 @@ import { buildDamagePoolRows } from './resourceCalc/damagePool'
 import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from './resourceCalc/noAxisVulnShare'
 import { freezeCached } from './resourceCalc/freezeCached'
 import { createRunCalcRound } from './resourceCalc/convergence'
-import { createConvergenceRoundInputs } from './resourceCalc/roundInputs'
+import { createConvergenceRoundInputs, type FillResourceBudget } from './resourceCalc/roundInputs'
 // CC-10（2026-09-25）：外层不动点 + S3 可行化决策已原样外提 `./resourceCalc/solveTeam`，
 // 本文件不再 import `roundThreads` / `outerCycle` / `feasibilitySearch` / `netFrontlineOccupation`
 // （全部随搬移成为新文件的依赖）。
@@ -752,7 +752,17 @@ export function createResourceCalc(
   const axisAllocation = computed(() => {
     const exec = stackTraversalResult.value?.executed
     if (!exec) return {}
-    const counts = expandExecutedToCounts(exec, stackTraversalResult.value.basicFillBySlot)
+    // 兜底池资源读数（2026-10-27）：与 convergence 那次调用**同一口径**（同一轮 rr 切片），
+    // 否则两处对「窗尾该归谁」会给出不同答案（失衡分数与伤害归属漂移）。
+    const fillResources: Record<number, FillResourceBudget> = {}
+    for (const c of adjustedResourceResult.value?.characters ?? []) {
+      fillResources[c.slot] = {
+        energy: c.energySource.total,
+        decibel: c.decibelSource.total,
+        exSpecial: Math.max(0, Number(c.executedExSpecialCount) || 0),
+      }
+    }
+    const counts = expandExecutedToCounts(exec, stackTraversalResult.value.basicFillBySlot, fillResources)
     const out: Record<string, StunAxisAllocation> = {}
     for (const v of Object.values(counts)) {
       out[`${v.slot}:${v.moveId}`] = { slot: v.slot, moveId: v.moveId, inAxisUnits: v.inAxisCount, outAxisUnits: 0 }

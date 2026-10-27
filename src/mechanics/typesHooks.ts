@@ -682,6 +682,38 @@ export interface AxisSwaySupplyAction {
   readonly count: number
 }
 
+/**
+ * 兜底池（2026-10-27 用户口径）——`expandBasicFill` 的入参。
+ *
+ * > 「我预计在这基础上做一个**兜底池**，可以把某些招式放进去，这些招式会自动填充进兜底时间……
+ * >  这里兜底部分和前面预设失衡部分不一样，**他本身作为一个产出招式的地方，而不从余量池拿取**。」
+ *
+ * 填充里放的招式**不是免费的**：能认领的只有**本轮轮换里真打出来的量**。把 5s 窗尾整段标成强特，
+ * 在角色一发强特都没打出来时不会凭空加伤（失衡分数的 `frac` 有 `min(1,·)` 钳制），
+ * 但会把这 5s 从**平A**的轴内占比里抢走 ⇒ 静默少算。故钩子必须拿到本槽本轮的资源读数。
+ *
+ * 三个资源入参都由编排层从**本轮引擎结果**（`CharacterResourceResult`）注入；
+ * **缺省 = 调用方没有该读数，模块不得把缺省当成「资源充足」**（旧调用点 / 非轴路径没有这些量）：
+ *
+ * | 入参 | 注入来源 | 用途 |
+ * |---|---|---|
+ * | `energyAvailable` | `energySource.total` | 闪能总量（强特类兜底的预算） |
+ * | `decibelAvailable` | `decibelSource.total` | 喧响总量（终结技类兜底） |
+ * | `exSpecialAvailable` | `executedExSpecialCount` | **本轮真打出来的强特次数** = 认领上限（已扣截断） |
+ */
+export interface BasicFillInput {
+  /** 本槽本窗尾的填充秒数（栈遍历算出的窗口剩余时间） */
+  fillSec: number
+  /** 查本槽技能表；**返回 undefined = 技能表查不到**（各角色兜底口径不同，须区分） */
+  actionTimeOf: (moveId: string) => number | undefined
+  /** 闪能总量（点）；缺省 = 没有读数 */
+  energyAvailable?: number
+  /** 喧响总量（点）；缺省 = 没有读数 */
+  decibelAvailable?: number
+  /** 本轮真打出来的强特次数 = 认领上限；缺省 = 不认领（**不是**无限） */
+  exSpecialAvailable?: number
+}
+
 export interface AxisSwaySupplyInput {
   slot: number
   cfg: CharacterOperationConfig

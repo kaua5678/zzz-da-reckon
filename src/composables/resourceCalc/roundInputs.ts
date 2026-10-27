@@ -37,6 +37,22 @@ import { panelAt } from '@/core/panel'
 type StunAxisAction = StunAxis['actions'][number]
 type AxisOwnerCatalog = Pick<ReturnType<typeof useCatalogStore>, 'agentSkillsByAgentMap'>
 
+/**
+ * 兜底池（2026-10-27）的资源读数：`expandBasicFill` 钩子的可选入参来源。
+ *
+ * 三个量都取自**本轮引擎结果**的同一角色切片（`CharacterResourceResult`），字段语义见
+ * `mechanics/typesHooks.ts#BasicFillInput`。全字段可选 ⇒ 调用方没有该读数时不传，
+ * 钩子据此区分「没有读数」与「读数为 0」。
+ */
+export interface FillResourceBudget {
+  /** `CharacterResourceResult.energySource.total`（闪能总量） */
+  energy?: number
+  /** `CharacterResourceResult.decibelSource.total`（喧响总量） */
+  decibel?: number
+  /** `CharacterResourceResult.executedExSpecialCount`（本轮真打出来的强特次数 = 认领上限） */
+  exSpecial?: number
+}
+
 /** 该角色能否把这个轴动作解析成自己的东西：连段 / 招式表 / 模块轴块展开（与 buildStackAxes 的解析链同序） */
 function axisActionResolvableBy(agentId: string, act: StunAxisAction, catalog: AxisOwnerCatalog): boolean {
   if (!agentId) return false
@@ -420,10 +436,17 @@ export function createConvergenceRoundInputs(deps: {
    * 把栈遍历 executed（轴动作块）展开成具体招式轴内单位数：
    * - 连段展开成内部招式（如 连段·双次 → 2×极寒重碾 + …）；
    * - 兜底平A填充按槽位映射（模块钩子 expandBasicFill，如伊德海莉映射到蓄力循环的下砸+平A；未声明映射到 basic 秒数）。
+   *
+   * `fillResources` = 兜底池的资源读数（可选，见 `FillResourceBudget`）。缺省 ⇒ 钩子拿不到资源，
+   * 只能按时间切分（旧调用点逐位不变）。
+   *
+   * @fact engine:兜底池 口径: 兜底填充能认领的招式量**只能是本轮轮换里真打出来的量**——钩子入参 `exSpecialAvailable` 取 `executedExSpecialCount` 为认领上限，超额会在失衡分数处被 `min(1,·)` 钳掉并**静默抢走平A的轴内秒数** | 据 用户@2026-10-27「他本身作为一个产出招式的地方，而不从余量池拿取」·钉「不能凭空多算」 | 验 src/composables/__tests__/expandBasicFillPool.test.ts | 锚 src/composables/resourceCalc/roundInputs.ts#expandExecutedToCounts | 信 确认
+   * ⟳复核: 出现第二个声明兜底池的角色、或「本轮真打出来次数」通道（executedExSpecialCount）改口径时，重核认领上限是否仍等于全局次数 | 到期 2027-06-30
    */
   function expandExecutedToCounts(
     executed: Record<string, ExecutedMoveCount>,
     basicFillBySlot: Record<number, number>,
+    fillResources?: Readonly<Record<number, FillResourceBudget>>,
   ): Record<string, ExecutedMoveCount> {
     const out: Record<string, ExecutedMoveCount> = {}
     /**
@@ -452,9 +475,14 @@ export function createConvergenceRoundInputs(deps: {
       // CC-63：角色专属平A兜底由模块钩子 expandBasicFill 展开（现：伊德海莉蓄力循环 / 「11号」火力镇压）；
       // 原为此处 `fillerAgentId` 写死两个角色的 if/else 分支。未声明 ⇒ 通用 basic 秒数。
       const fillSkills = catalogStore.agentSkillsByAgentMap.get(fillerAgentId)
+      const budget = fillResources?.[slot]
       const fillExpanded = getAgentMechanic(fillerAgentId)?.expandBasicFill?.({
         fillSec,
         actionTimeOf: id => findMoveById(fillSkills, id)?.actionTime,
+        // 兜底池资源读数：缺省不传（不是 0）——「没有读数」与「读数为 0」对模块是两件事
+        ...(budget?.energy !== undefined ? { energyAvailable: budget.energy } : {}),
+        ...(budget?.decibel !== undefined ? { decibelAvailable: budget.decibel } : {}),
+        ...(budget?.exSpecial !== undefined ? { exSpecialAvailable: budget.exSpecial } : {}),
       })
       if (fillExpanded) {
         for (const e of fillExpanded) add(slot, e.moveId, e.count)
@@ -494,6 +522,10 @@ export function createConvergenceRoundInputs(deps: {
       }
     }
     // 兜底平A填充：追加在末尾（count = 秒数，消费方按自己的秒均积累率折算）。
+    // ⚠ **本函数不吃模块钩子**（与 `expandExecutedToCounts` 的兜底池展开不同）：它是保序事件流，
+    //   喂的是模块的**轴内时序推演**（现唯一消费者 = 克拉蕾残痕链）。声明了 `expandBasicFill` 的角色
+    //   （伊德海莉 / 11号 / 格莉丝）若将来也要读本序列，必须先把填充展开成真实招式，
+    //   否则会看到「次数账里有特殊技、时序里只有 basic」的两把尺。
     // ⚠ 无显式 startTime（填充发生在轴内块都放完之后，由栈内部决定起止）⇒ 记 0 表示「窗内末段」，
     //   消费方展示时按「填充」标注即可，不要当成 t=0 的真实动作。
     for (const [slotStr, fillSec] of Object.entries(basicFillBySlot)) {

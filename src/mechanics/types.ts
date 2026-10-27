@@ -825,9 +825,9 @@ export interface AgentMechanicModule {
    * CC-63（2026-09-27）：兜底平A填充秒数 → 本角色的具体招式次数（**计算路径**，非展示层）。
    * 编排层 `roundInputs.ts#expandExecutedToCounts` 按填充槽的 agentId 派发；未声明 ⇒ 通用 `basic` 秒数。
    * `actionTimeOf(moveId)` 由编排层注入（查本槽技能表）；**返回 undefined = 技能表查不到**（各角色兜底口径不同，须区分）。
-   * 现实现：伊德海莉（蓄力循环 下砸 1051007 + 平A 1051003）、「11号」（火力镇压 #4 1041008，查不到按 1.828s）。
+   * 现实现：伊德海莉（蓄力循环 下砸 1051007 + 平A 1051003）、「11号」（火力镇压 #4 1041008，查不到按 1.828s）、格莉丝（A+特殊技循环链）；入参形状 = `typesHooks.ts#BasicFillInput`（含兜底池资源读数，2026-10-27）。
    */
-  expandBasicFill?(input: { fillSec: number; actionTimeOf: (moveId: string) => number | undefined }): ReadonlyArray<{ readonly moveId: string; readonly count: number }>
+  expandBasicFill?(input: import('./typesHooks').BasicFillInput): ReadonlyArray<{ readonly moveId: string; readonly count: number }>
   /**
    * CC-64（2026-09-27）：新上阵时的默认「平A时间分配权重」（configStore#defaultBasicAttackTimeWeight 读）。
    * 未声明 ⇒ 走通用口径（支援/防护 0，其余 1）。store 按 `agent.id` 与 `agent.teammateBuffId` 各查一次模块。

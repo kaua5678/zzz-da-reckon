@@ -14,6 +14,7 @@ import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic, interactionBaselineFor } from '@/mechanics'
 import { firstGiftedPolarAssaultSlot, sumGiftedPolarAssault } from './giftedPolarAssault'
 import { findMoveById } from '@/data/moveTableQueries'
+import type { FillResourceBudget } from './roundInputs'
 import { basicHitCountOf, basicHitRateOf, teaStunImpactScale, type BasicHitRow } from '@/data/wEngineStackCoverage'
 
 /**
@@ -95,7 +96,7 @@ export function createRunCalcRound(deps: {
   buildStackAxes: (axes: StunAxis[]) => StackAxisInput[]
   /** T169：角色专属资源（般岳山威）按槽位的供给量——两处栈遍历共用（见 `roundInputs#buildStackSwaySupply`） */
   buildStackSwaySupply: (axes: StunAxis[], stunCount: number, goodReview: number, axisAutoTrim: number) => Record<number, number>
-  expandExecutedToCounts: (executed: Record<string, ExecutedMoveCount>, basicFillBySlot: Record<number, number>) => Record<string, ExecutedMoveCount>
+  expandExecutedToCounts: (executed: Record<string, ExecutedMoveCount>, basicFillBySlot: Record<number, number>, fillResources?: Readonly<Record<number, FillResourceBudget>>) => Record<string, ExecutedMoveCount>
   /** 保序版展开（连段块 → 真实 moveId，不聚合）：克拉蕾轴内残痕时序消费，见 roundInputs 里的实现注释 */
   expandSequenceToMoveIds: (sequence: readonly StackSequenceEntry[], basicFillBySlot: Record<number, number>) => StackSequenceEntry[]
   resolveAxes: (stunCount: number, goodReview: number, energyBySlot: Record<number, number>) => { axes: StunAxis[]; planName: string | null }
@@ -1003,10 +1004,21 @@ export function createRunCalcRound(deps: {
       const stackEnergyBySlot: Record<number, number> = {}
       const stackDecibelBySlot: Record<number, number> = {}
       const basicTimeBySlot: Record<number, number> = {}
+      /**
+       * 兜底池资源读数（2026-10-27）：与上面三个量**同一轮**的引擎结果切片。
+       * 认领上限用 `executedExSpecialCount`（已扣截断）而不是 `exSpecialCount`（资源允许量）——
+       * 兜底填充只能把**真打出来的**那几次标成轴内。
+       */
+      const fillResources: Record<number, FillResourceBudget> = {}
       for (const c of rr.characters) {
         stackEnergyBySlot[c.slot] = c.energySource.total
         stackDecibelBySlot[c.slot] = c.decibelSource.total
         basicTimeBySlot[c.slot] = c.timeAllocation.basicAttackTime
+        fillResources[c.slot] = {
+          energy: c.energySource.total,
+          decibel: c.decibelSource.total,
+          exSpecial: Math.max(0, Number(c.executedExSpecialCount) || 0),
+        }
       }
       const windowDur = computeWindowDuration()
       inAxisFractionProvider = (stunCountN, execs) => {
@@ -1023,7 +1035,7 @@ export function createRunCalcRound(deps: {
           // 与上方 axisExecutedStack 同源（决算块窗口延长）
         extendOnEndOf: (slot, moveId) => axisMoveExtendOnEndOf(configStore.team[slot]?.agentId, moveId, configStore.team[slot]?.cinemaLevel ?? 0),
         })
-        const inAxisCounts = expandExecutedToCounts(stack.executed, stack.basicFillBySlot)
+        const inAxisCounts = expandExecutedToCounts(stack.executed, stack.basicFillBySlot, fillResources)
         const fraction: Record<string, number> = {}
         /**
          * ⚠ **分母必须按 key 求和，不能逐行取 `e.count`**（2026-10-05 §20.5-3 旁路修复）。

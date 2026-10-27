@@ -124,6 +124,7 @@
 ### 格莉丝（1181）
 - **当前实现状态 [已实现·近似 2026-08-27；★R58 订正 2026-09-20]**（实现位置：`src/mechanics/agents/grace.ts` + `src/core/anomalyPool.ts` 行级 buildUpEfficiencyBonusPct + `src/composables/useResourceCalc.ts` 编排层 C1 轮换数线程化 + spec `1181.json`；测试 `src/mechanics/__tests__/grace.test.ts` 11 例 + `graceCinemaTier.test.ts` 3 例）。含：常规循环落位（planGraceRotation）、电能满层积蓄 +130% 引擎级招式限定、强特附涡流集束手雷、脉冲兑换→脉冲手雷附异放事件、额外能力感电伤层数滑杆、潜能电伤逐**潜能**档位永续、影画1 全队回能（postRound 线程化 graceC1Cycles → converge 写 initialEnergyGift，全队每人 +2/轮换）、影画2 电减抗、影画4 回能效率、影画6 手雷 +1/+2 与伤害 ×2。近似点：电能层数按平A秒均近似（每秒 1 层）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。★**R58 订正**：潜能觉醒·超频工程引擎（raw `potential_detail` 钢械交响曲 II~VI = 电伤 10/15/20/25/30%）此前写成 `[10,15,20,25,30][min(cinemaLevel,6)-2]` 且门控 `cinemaLevel>=2` ⇒ **潜能等级完全不影响电伤**（正交四臂实测 A/B、C/D 恒等），0 命满潜能白丢 30%、6 命 0 潜能白拿 30%；已改为按 `potentialLevel` 取档（`GRACE_POTENTIAL_ELECTRIC_DMG`），判据 `graceCinemaTier.test.ts`（常量层钉 raw `potential_detail` + 反锁 `talent.1..6` 不含该子句 + 行为层正交四臂）。
 - 常规循环（用户口供 2026-08-23）：[A1+A2+A3 连段 1.183s] → 特殊技 → [A4 1.134s] → 特殊技，循环往复
+- **兜底池·形态三（2026-10-27，用户口径）**：失衡窗尾不再整段记成 `basic` 秒数，而是按本角色**同一条轮换链**切分——A 段秒数 + 强特/普特次数，复用 `planGraceRotation` 的**同一闭式解**（窗内窗共用一份算法），Σ 秒数 = `fillSec`（时间守恒）。强特认领上限 = **本轮真打出来的次数**（引擎 `executedExSpecialCount`，经 `expandBasicFill` 的 `exSpecialAvailable` 入参；缺省不认领、**不是**无限）。实现 `expandGraceBasicFill`；判据 `src/composables/__tests__/expandBasicFillPool.test.ts`（时间守恒 × 认领上限 × 端到端归属，关掉钩子即回到全轴外）。
 - 实现：`src/mechanics/agents/grace.ts`（口径见其头注释）+ spec `src/specs/agents/1181.json` notes。
 
 ### 丽娜（1211）
