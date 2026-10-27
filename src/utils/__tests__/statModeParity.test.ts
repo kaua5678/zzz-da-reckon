@@ -40,7 +40,7 @@ import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 const BASE_CHAR = {
   wEngineId: '', wEngineModLevel: 1,
   driveDisc: { fourPieceSetId: '', twoPieceSetId: '', mainStats: {}, subStatAllocation: {} },
-  parryCount: 0, dodgeCounterCount: 0, quickAssistCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
+  parryCount: 0, dodgeCounterCount: 0, chainCountPerStun: 0, basicAttackTimeWeight: 1,
 }
 
 /** 面板字段快照比较（r401 起批次累加器不再挂在面板上，故不再跳过 `__xxxAccum` 键——泄漏会直接判不等） */

@@ -345,12 +345,12 @@
  },
  "auto-1521-1251-1311": {
   "slack": 0,
-  "over": 0,
+  "over": 0.1,
   "stun": 4,
   "outerExit": "stable"
  },
  "auto-1521-1461-1311": {
-  "slack": 3.5,
+  "slack": 0,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -428,9 +428,9 @@
   "outerExit": "stable"
  },
  "auto-1591-1481-1211": {
-  "slack": 0.8,
+  "slack": 1,
   "over": 0,
-  "stun": 2,
+  "stun": 3,
   "outerExit": "stable"
  },
  "auto-1591-1571-1211": {
@@ -440,7 +440,7 @@
   "outerExit": "stable"
  },
  "auto-1591-1621-1211": {
-  "slack": 0.1,
+  "slack": 1.1,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -500,7 +500,7 @@
   "outerExit": "stable"
  },
  "banyue-roxy-lucia": {
-  "slack": 0,
+  "slack": 0.1,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -524,7 +524,7 @@
   "outerExit": "stable"
  },
  "billy-roxy-lucia": {
-  "slack": 0.5,
+  "slack": 0.2,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -542,7 +542,7 @@
   "outerExit": "stable"
  },
  "claret-roxy-rina": {
-  "slack": 0.9,
+  "slack": 0,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -560,7 +560,7 @@
   "outerExit": "stable"
  },
  "sunbringer-roxy-robin": {
-  "slack": 0.8,
+  "slack": 0.1,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -584,7 +584,7 @@
   "outerExit": "stable"
  },
  "yidhari-roxy-lucia": {
-  "slack": 3.4,
+  "slack": 0.6,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
@@ -602,7 +602,7 @@
   "outerExit": "stable"
  },
  "yixuan-roxy-lucia": {
-  "slack": 0,
+  "slack": 0.9,
   "over": 0,
   "stun": 2,
   "outerExit": "stable"
