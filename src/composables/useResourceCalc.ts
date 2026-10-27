@@ -39,6 +39,7 @@ import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_ANOMALY_LABEL, standardDot } from '@/core/anomalyPool/helpers'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import { buildStunTimeline, realizeStunWindows } from '@/core/stunTimeline'
+import type { ExecutedMoveCount } from '@/core/stunAxisStack'
 import {
   BASIC_HIT_STACK_EFFECTS,
   basicHitCountOf,
@@ -739,6 +740,23 @@ export function createResourceCalc(
     windowDuration: windowDuration.value,
     effectiveTime: effectiveBattleTime(configStore.enemy),
     windows: stackTraversalResult.value?.windowTrace,
+    /**
+     * **末窗按「失衡值不够」截断**（用户口径 2026-10-28）：
+     * > 「其失衡值不够时，最后一失衡只能截断，这时候怎么表现和计算」
+     *
+     * frac 的单一事实源 = `core/continuousStun.ts#continuousWindowSplit`（`continuousStun` 这个
+     * computed 已经是它的生产出口），这里只做**接线**，不另算一遍。
+     *
+     * ⚠ **只在两把尺同源时才接**（`openedWindows === 池次数`）：`continuousWindowSplit` 按
+     * 「毛失衡值 ÷ (b + 每秒 × 窗长)」开窗，池按「有效失衡值 ÷ b」计次——两者在 102 队里
+     * 有 38 队不一致（那是 **池次数 vs 连续开窗数** 的同源化问题，属另一专项，见
+     * `.claude/TASK-continuous-stun.md` §8 / `.claude/OPEN-ITEMS.md` [R70]）。
+     * 不一致时缺省 1（不截断）——**宁可不少算，也不拿错的 frac 去砍窗**。
+     */
+    lastWindowFraction: continuousStun.value && stunPoolResult.value
+      && continuousStun.value.openedWindows === stunPoolResult.value.stunCount
+      ? continuousStun.value.lastFraction
+      : undefined,
   }))
 
   /**
@@ -749,12 +767,14 @@ export function createResourceCalc(
    * 读 `count` 会把跨界那一次当成全额吃易伤（「显示一半骗一半」）。
    * 与 `convergence#inAxisFractionProvider`（失衡分数）同一口径、同一个字段。
    */
-  const axisAllocation = computed(() => {
-    const exec = stackTraversalResult.value?.executed
-    if (!exec) return {}
-    // 兜底池资源读数（2026-10-27）：与 convergence 那次调用**同一口径**（同一轮 rr 切片），
-    // 否则两处对「窗尾该归谁」会给出不同答案（失衡分数与伤害归属漂移）。
-    const fillResources: Record<number, FillResourceBudget> = {}
+  /**
+   * **兜底池资源读数**（按槽；2026-10-27）——本轮真物化的招式次数 + 闪能 / 喧响 / 强特次数。
+   *
+   * 单一来源的理由：伤害归属（`axisAllocation`）与展示（`axisFillExpansion`）必须吃**同一份**读数，
+   * 否则「页面显示的窗尾填充」与「真正计伤的那部分」会悄悄漂移（本仓反复踩的同族缺陷）。
+   */
+  const fillResourcesBySlot = computed<Record<number, FillResourceBudget>>(() => {
+    const out: Record<number, FillResourceBudget> = {}
     for (const c of adjustedResourceResult.value?.characters ?? []) {
       // 本槽**真物化**的招式次数（兜底池硬上界）：同一 moveId 可有多行，按 key 求和
       const executed: Record<string, number> = {}
@@ -762,19 +782,47 @@ export function createResourceCalc(
         if (!row.moveId || !(row.count > 0)) continue
         executed[row.moveId] = (executed[row.moveId] ?? 0) + row.count
       }
-      fillResources[c.slot] = {
+      out[c.slot] = {
         energy: c.energySource.total,
         decibel: c.decibelSource.total,
         exSpecial: Math.max(0, Number(c.executedExSpecialCount) || 0),
         executed,
       }
     }
-    const counts = expandExecutedToCounts(exec, stackTraversalResult.value.basicFillBySlot, fillResources)
+    return out
+  })
+
+  const axisAllocation = computed(() => {
+    const exec = stackTraversalResult.value?.executed
+    if (!exec) return {}
+    // 兜底池资源读数（2026-10-27）：与 convergence 那次调用**同一口径**（同一轮 rr 切片），
+    // 否则两处对「窗尾该归谁」会给出不同答案（失衡分数与伤害归属漂移）。
+    const counts = expandExecutedToCounts(exec, stackTraversalResult.value.basicFillBySlot, fillResourcesBySlot.value)
     const out: Record<string, StunAxisAllocation> = {}
     for (const v of Object.values(counts)) {
       out[`${v.slot}:${v.moveId}`] = { slot: v.slot, moveId: v.moveId, inAxisUnits: v.inAxisCount, outAxisUnits: 0 }
     }
     return out
+  })
+
+  /**
+   * **窗尾填充被兜底池展开成的真实招式**（逐槽；2026-10-27 逐窗可视化用）。
+   *
+   * 语义：`basicFillBySlot` 只有**秒数**，而用户要看的「末尾填了平a还是强特」是秒数经角色模块
+   * `expandBasicFill` 展开后的招式（挽昼 `1601007 永昼之炬` / 11号 火力镇压 / 伊德海莉 蓄力循环 /
+   * 格莉丝 e；未声明 ⇒ 一律平A秒数）。
+   *
+   * 实现 = **同一个** `expandExecutedToCounts`、**同一份** `fillResourcesBySlot`，只是 `executed` 传空
+   * ⇒ 结果里只剩「填充这一路的展开」。这样页面上的填充拆分与伤害侧逐位同源，不会长出第二把尺
+   * （「页面写强特、实际按平A计」正是本仓最怕的静默漂移）。
+   */
+  const axisFillExpansion = computed<Record<string, ExecutedMoveCount>>(() => {
+    const stack = stackTraversalResult.value
+    if (!stack) return {}
+    const fills = stack.basicFillBySlot
+    if (!Object.values(fills).some(v => v > 0)) return {}
+    // 传空 executed ⇒ 返回的只剩「填充这一路」展开的招式（`inAxisCount` 对填充恒等于 count）
+    return expandExecutedToCounts({}, fills, fillResourcesBySlot.value)
   })
 
   /**
@@ -987,6 +1035,8 @@ const attributeLedger = computed(() => {
     teamTotalDamage,
     stunAxisResult,
     stackTraversalResult,
+    /** 窗尾填充展开成真实招式（逐槽；展示用，与伤害侧同一函数同一份资源读数） */
+    axisFillExpansion,
     effectiveStunAxes,
     matchedPlanName,
     autoPreset,
