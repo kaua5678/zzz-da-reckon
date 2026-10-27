@@ -1,12 +1,12 @@
 {
   "id": "xixifu-solo",
-  "name": "希希芙单C（无琉音）",
+  "name": "希希芙循环（无琉音·任意队友）",
   "team": [
     "1521",
     "*",
     "*"
   ],
-  "note": "希希芙主体（槽0）：每失衡 1 长按毒牙(125=毒牙#1+3×#2) + 1 大招 + 2 蛇吻 + 1 长按毒牙(85=毒牙#1+1×#2)。",
+  "note": "希希芙（槽0）每失衡窗：2×长按毒牙(125 = 毒牙#1 一次 + 3×毒牙#2) + 3 蛇吻 + 1 连携(团伙作案 1521012) + 1 大招(爬行恐惧 1521013)，逐动作显式起点摊开（最末动作落 8.9s）。槽1/槽2 通配 ⇒ 任意队友（不含琉音的队通用；含琉音的队也命中——轴内只列 1521 主体，无转大块）。兜底平A填充沿用旧文件（basicFillerSlot=0，用户导出未带该字段）。｜2026-10-27 按用户导出轴整体替换旧内容（旧版每窗 1 长按毒牙(125) + 1 大招 + 2 蛇吻 + 1 长按毒牙(85)，无连携块）。",
   "axes": [
     {
       "name": "希希芙循环",
@@ -14,11 +14,18 @@
       "basicFillerSlot": 0,
       "actions": [
         { "slot": 0, "moveId": "1521008", "count": 1 },
-        { "slot": 0, "moveId": "1521009", "count": 3, "startTime": 0.565 },
-        { "slot": 0, "moveId": "1521013", "count": 1, "startTime": 1.129 },
-        { "slot": 0, "moveId": "1521006", "count": 2, "startTime": 2.229 },
-        { "slot": 0, "moveId": "1521008", "count": 1, "startTime": 4.841 },
-        { "slot": 0, "moveId": "1521009", "count": 1, "startTime": 5.406 }
+        { "slot": 0, "moveId": "1521009", "count": 1, "startTime": 0.6 },
+        { "slot": 0, "moveId": "1521009", "count": 1, "startTime": 0.8 },
+        { "slot": 0, "moveId": "1521009", "count": 1, "startTime": 1 },
+        { "slot": 0, "moveId": "1521006", "count": 1, "startTime": 1.3 },
+        { "slot": 0, "moveId": "1521008", "count": 1, "startTime": 2.6 },
+        { "slot": 0, "moveId": "1521009", "count": 1, "startTime": 3.2 },
+        { "slot": 0, "moveId": "1521009", "count": 1, "startTime": 3.5 },
+        { "slot": 0, "moveId": "1521009", "count": 1, "startTime": 3.8 },
+        { "slot": 0, "moveId": "1521006", "count": 1, "startTime": 4.1 },
+        { "slot": 0, "moveId": "1521012", "count": 1, "startTime": 5.4 },
+        { "slot": 0, "moveId": "1521013", "count": 1, "startTime": 7.8 },
+        { "slot": 0, "moveId": "1521006", "count": 1, "startTime": 8.9 }
       ]
     }
   ]

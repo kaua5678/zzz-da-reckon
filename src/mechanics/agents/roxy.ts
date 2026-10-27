@@ -19,6 +19,7 @@ import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { panelOfSlot } from '@/core/sourcePanels'
+import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
 
 /**
  * 洛克茜（1621）v12 重录（2026-09-03，nanoka 3.2.12+18601660）：
@@ -517,6 +518,11 @@ function roxyWindEnergySourceOf(
   })
 }
 
+/** 影画2·流势免费自旋秒数（满层 3 × 0.2s）——执行行与资源卡文案同源 */
+function roxyFreeSpinSeconds(): number {
+  return ROXY_C2_FLOW_MOMENTUM_SECONDS_PER_STACK * ROXY_C2_FLOW_MOMENTUM_MAX_STACKS
+}
+
 function buildRoxyResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
   return {
     roxyWindEnergySource: roxyWindEnergySourceOf(cfg, state),
@@ -528,10 +534,17 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
   const exCount = Math.max(0, Math.floor(state.exSpecialCount))
   if (exCount > 0) {
     // 小心风寒（1621007）+ 自旋（1621008 每秒）+ 敬请安息（1621023）
+    /**
+     * 起手「小心风寒」**占前台**：catalog 1621007 `actionTime = 0.105`（滑行那一下）。
+     * 2026-10-27 前这里写死 `actionTime: 0` ⇒ 起手时间一秒不记（通用公式读的是 cfg.exSpecialActionTime，
+     * 但本模块 `skipGenericExSpecial` + 自产行，故通用公式与行两侧都没记）。判据见
+     * `roxy.test.ts` 的「动作清单里有强化特殊技行」用例。
+     */
+    const openerTime = cfgMoveActionTime(cfg, EX_CHILL_MOVE_ID)
     executions.push({
       moveId: EX_CHILL_MOVE_ID, moveName: '强化特殊技：小心风寒', category: 'special',
-      count: exCount, actionTime: 0, comboAlignRatio: 0,
-      totalTime: 0, totalComboAlignTime: 0,
+      count: exCount, actionTime: openerTime, comboAlignRatio: 0,
+      totalTime: exCount * openerTime, totalComboAlignTime: 0,
       energyConsume: Number(cfg.roxyExStartEnergy ?? 10), totalEnergyConsume: exCount * Number(cfg.roxyExStartEnergy ?? 10),
       energyRecovery: 0, totalEnergyRecovery: 0,
       timeBucket: 'necessary',
@@ -548,19 +561,26 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
        * `decibelRecovery`（单发值）变成一个谁都不认识的加权平均（实测 159.31 vs 应有 210.86）。
        */
       const perSecondEnergy = Number(cfg.roxySpinEnergyPerSecond ?? 30)
+      /**
+       * ⚠ **自旋占前台、秒数记进行**（2026-10-27 修「洛克茜主打强特却全是平A」）：
+       * 此前 `actionTime: 0` + `timeBucket: 'backstage'` ⇒ 每局 20~28 秒自旋在时间账上不存在，
+       * 这 20~28s 全被平A池二次使用。现在 `actionTime = 该行每发秒数`、`totalTime = count × 秒数`、
+       * 桶 = `necessary`（她在场上转，不是后台自动攻击）——柏妮思持续喷射同款（行 actionTime = 喷射秒数）。
+       * 总秒数与 `computeRoxyWindEnergy` 的 `effectiveSpinSecondsTotal` 逐位相等（同一份账本）。
+       */
       const pushSpinRow = (count: number, secondsEach: number) => {
         if (count <= 0 || secondsEach <= 0) return
         executions.push({
-          moveId: SPIN_SECOND_MOVE_ID, moveName: '自旋（每秒，耗能 30/s）', category: 'special',
-          count, actionTime: 0, comboAlignRatio: 0,
-          totalTime: 0, totalComboAlignTime: 0,
+          moveId: SPIN_SECOND_MOVE_ID, moveName: '自旋（耗能 30/s，占前台）', category: 'special',
+          count, actionTime: secondsEach, comboAlignRatio: 0,
+          totalTime: count * secondsEach, totalComboAlignTime: 0,
           energyConsume: perSecondEnergy * secondsEach,
           totalEnergyConsume: perSecondEnergy * secondsEach * count,
           decibelRecovery: spinDecibelPerSec * secondsEach,
           totalDecibelRecovery: spinDecibelPerSec * secondsEach * count,
           decibelRecoveryOverride: true,
           energyRecovery: 0, totalEnergyRecovery: 0,
-          timeBucket: 'backstage',
+          timeBucket: 'necessary',
           damageMultiplier: spinMoveMult * secondsEach,
           damageMultiplierOverride: true,
         })
@@ -577,26 +597,28 @@ function buildRoxyExecutions({ cfg, state, executions }: AgentResourceInput): vo
        */
       const cinemaNow = cinemaLevelOf(cfg.roxyCinemaLevel)
       if (cinemaNow >= 2) {
-        const freeSeconds = ROXY_C2_FLOW_MOMENTUM_SECONDS_PER_STACK * ROXY_C2_FLOW_MOMENTUM_MAX_STACKS
+        const freeSeconds = roxyFreeSpinSeconds()
         executions.push({
           moveId: SPIN_SECOND_MOVE_ID, moveName: '自旋（流势免费，不耗能）', category: 'special',
-          count: 1, actionTime: 0, comboAlignRatio: 0,
-          totalTime: 0, totalComboAlignTime: 0,
+          count: 1, actionTime: freeSeconds, comboAlignRatio: 0,
+          totalTime: freeSeconds, totalComboAlignTime: 0,
           energyConsume: 0, totalEnergyConsume: 0,
           decibelRecovery: spinDecibelPerSec * freeSeconds,
           totalDecibelRecovery: spinDecibelPerSec * freeSeconds,
           decibelRecoveryOverride: true,
           energyRecovery: 0, totalEnergyRecovery: 0,
-          timeBucket: 'backstage',
+          timeBucket: 'necessary',
           damageMultiplier: spinMoveMult * freeSeconds,
           damageMultiplierOverride: true,
         })
       }
     }
+    /** 敬请安息（1621023）catalog `actionTime = 0.245`，同样占前台（原作自动衔接招式，不是后台行） */
+    const restPeaceTime = cfgMoveActionTime(cfg, REST_PEACE_MOVE_ID)
     executions.push({
       moveId: REST_PEACE_MOVE_ID, moveName: '强化特殊技：敬请安息（风炮）', category: 'special',
-      count: exCount, actionTime: 0, comboAlignRatio: 0,
-      totalTime: 0, totalComboAlignTime: 0,
+      count: exCount, actionTime: restPeaceTime, comboAlignRatio: 0,
+      totalTime: exCount * restPeaceTime, totalComboAlignTime: 0,
       energyConsume: 0, totalEnergyConsume: 0,
       energyRecovery: 0, totalEnergyRecovery: 0,
       timeBucket: 'necessary',

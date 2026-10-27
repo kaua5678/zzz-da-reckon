@@ -11,6 +11,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
+import { buildActionOperationRows } from '@/composables/resourceCard/actionOperationRows'
 import { readFileSync } from 'node:fs'
 import { emptyPanel } from '@/core/panel'
 import { calcDirectDamage } from '@/core/damage'
@@ -424,6 +425,52 @@ describe('洛克茜风能模型（v12 + 手法）', () => {
     roxyMechanic.buildCharConfig!({ cinemaLevel: 0, cfg, skills: { categories: [] } as any, getRowValue: () => 0 } as any)
     expect(cfg.exSpecialEnergyConsume).toBe(10 + 2.5 * 30)
   })
+})
+
+/**
+ * 2026-10-27 用户报：「我洛克茜作为主打强特的角色为什么全变成平a了」。
+ *
+ * 病灶 = **自旋一秒都不占前台**：1621007/1621008/1621023 三行 `actionTime: 0`、自旋行
+ * `timeBucket: 'backstage'` ⇒ 行 `totalTime` 全 0（结果页动作清单只剩平A行），账本侧也没有
+ * `estimateExSpecialTime`（走通用 `exSpecialCount × 1621007 的 0.105s`）⇒ 每局 20~28 秒自旋
+ * 既不在必要时间、也不在物化行 = 这段时间被平A池二次使用（`banyue-roxy-lucia` 修前：
+ * 自旋 23.48s、她 necessary 10.40s、平A 28.57s）。
+ *
+ * 两条判据互相独立、单独删任一处都会红：
+ *  ① 自旋行 `actionTime > 0` 且桶是 necessary（不是 backstage）；② 动作清单（结果卡数据源）里确有强化特殊技行。
+ */
+describe('洛克茜强特时间账（2026-10-27：自旋占前台）', () => {
+  const EX_MOVE_IDS = ['1621007', '1621008', '1621023'] as const
+
+  it('① 自旋行 actionTime > 0 且 timeBucket = necessary（不再当后台行）', async () => {
+    await setupHarness([{ agentId: '1621' }, { agentId: '1251' }, { agentId: '1031' }])
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 0))
+    const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1621')!
+    const exRows = ch.executions.filter(e => (EX_MOVE_IDS as readonly string[]).includes(String(e.moveId)))
+    expect(exRows.length, '反空洞：确有强特行').toBeGreaterThanOrEqual(3)
+    for (const row of exRows) {
+      expect(Number(row.actionTime), row.moveName + ' 单次时长').toBeGreaterThan(0)
+      expect(row.timeBucket, row.moveName + ' 前台桶').toBe('necessary')
+      expect(Number(row.totalTime), row.moveName + ' 总时长').toBeGreaterThan(0)
+    }
+  }, 120000)
+
+  it('② 动作清单里有强化特殊技行（用户报的「全是平A」不再复现）', async () => {
+    await setupHarness([{ agentId: '1621' }, { agentId: '1251' }, { agentId: '1031' }])
+    const calc = useResourceCalc()
+    await new Promise(r => setTimeout(r, 0))
+    const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1621')!
+    const rows = buildActionOperationRows(ch)
+    const ex = rows.filter(r => (EX_MOVE_IDS as readonly string[]).includes(r.key))
+    const basic = rows.filter(r => r.key === 'basic_attack')
+    expect(ex.length, '动作清单应含强特行').toBeGreaterThan(0)
+    const exTime = ex.reduce((s, r) => s + r.frontlineTime, 0)
+    const basicTime = basic.reduce((s, r) => s + r.frontlineTime, 0)
+    expect(exTime, '强特前台时间应显著（>10s）').toBeGreaterThan(10)
+    // 用户看到的症状是「强特时间 ≈ 0、平A 吃掉全部」⇒ 强特时间必须与平A同量级（不是 1%）
+    expect(exTime / (exTime + basicTime), '强特时间占比不应是噪声量级').toBeGreaterThan(0.15)
+  }, 120000)
 })
 
 describe('局外总回能 energyRegenOutOfCombat 两相一致（第 194 轮）', () => {
