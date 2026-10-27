@@ -91,7 +91,6 @@ const pageMap: Record<string, Component> = {
   breakerCompare: lazyPage(() => import('@/views/PositionComparePage.vue')),
   freeCompare: lazyPage(() => import('@/views/FreeComparePage.vue')),
   timeline: lazyPage(() => import('@/views/TimeChartsPage.vue')),
-  wengineFields: lazyPage(() => import('@/views/WEngineFieldPage.vue')),
   multiplierCoeff: lazyPage(() => import('@/views/MultiplierCoeffPage.vue')),
   attributeLedger: lazyPage(() => import('@/views/AttributeLedgerPage.vue')),
   runArchive: lazyPage(() => import('@/views/RunArchivePage.vue')),

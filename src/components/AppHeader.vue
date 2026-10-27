@@ -8,9 +8,9 @@
     </div>
     <div class="header-center">
       <div class="tab-section">
-        <div class="tab-section-label">配置</div>
+        <div class="tab-section-label">局外</div>
         <n-tabs
-          :value="setupTabValue"
+          :value="outTabValue"
           type="line"
           size="large"
           class="header-tabs"
@@ -18,13 +18,26 @@
         >
           <n-tab-pane name="team" tab="队伍配置" />
           <n-tab-pane name="attribute" tab="属性配置" />
-          <n-tab-pane name="resource" tab="倍率表" />
         </n-tabs>
       </div>
       <div class="tab-section">
-        <div class="tab-section-label">分析</div>
+        <div class="tab-section-label">局内</div>
         <n-tabs
-          :value="analyzeTabValue"
+          :value="inTabValue"
+          type="line"
+          size="large"
+          class="header-tabs"
+          @update:value="onTabChange"
+        >
+          <n-tab-pane name="stunAxis" tab="失衡轴" />
+          <n-tab-pane name="resourceUtilization" tab="资源利用率" />
+          <n-tab-pane name="interactionSweep" tab="交互扫描" />
+        </n-tabs>
+      </div>
+      <div class="tab-section">
+        <div class="tab-section-label">结果</div>
+        <n-tabs
+          :value="resultTabValue"
           type="line"
           size="large"
           class="header-tabs"
@@ -32,9 +45,6 @@
         >
           <n-tab-pane name="result" tab="资源池" />
           <n-tab-pane name="attributeLedger" tab="属性贡献账" />
-          <n-tab-pane name="resourceUtilization" tab="资源利用率" />
-          <n-tab-pane name="stunAxis" tab="失衡轴" />
-          <n-tab-pane name="timeline" tab="时间图表" />
         </n-tabs>
       </div>
       <div class="tab-section">
@@ -47,7 +57,6 @@
           @update:value="onTabChange"
         >
           <n-tab-pane name="teamCompare" tab="队伍对比" />
-          <n-tab-pane name="interactionSweep" tab="交互扫描" />
           <n-tab-pane name="breakerCompare" tab="位置对比" />
           <n-tab-pane name="freeCompare" tab="自由对比" />
           <n-tab-pane name="runArchive" tab="实战对比" />
@@ -63,19 +72,20 @@
           @update:value="onTabChange"
         >
           <n-tab-pane name="charIncrement" tab="角色兑现" />
+          <n-tab-pane name="timeline" tab="时间图表" />
           <n-tab-pane name="bossHp" tab="血量膨胀" />
         </n-tabs>
       </div>
-      <div class="tab-section dev-section">
-        <div class="tab-section-label">开发</div>
+      <div class="tab-section data-section">
+        <div class="tab-section-label">资料</div>
         <n-tabs
-          :value="developerTabValue"
+          :value="dataTabValue"
           type="line"
           size="large"
-          class="header-tabs dev-tabs"
+          class="header-tabs data-tabs"
           @update:value="onTabChange"
         >
-          <n-tab-pane name="wengineFields" tab="音擎字段" />
+          <n-tab-pane name="resource" tab="倍率表" />
           <n-tab-pane name="multiplierCoeff" tab="倍率系数记录" />
         </n-tabs>
       </div>
@@ -163,18 +173,30 @@ function openSettings() {
 /** 更新日志弹层开关（数据按需加载，见 ChangelogDialog 头注释） */
 const showChangelog = ref(false)
 
-const setupTabs = ['team', 'attribute', 'resource']
-const analyzeTabs = ['result', 'attributeLedger', 'resourceUtilization', 'stunAxis', 'timeline']
-const compareTabs = ['teamCompare', 'interactionSweep', 'breakerCompare', 'freeCompare', 'runArchive']
-const planTabs = ['charIncrement', 'bossHp']
-const developerTabs = ['wengineFields', 'multiplierCoeff']
+/**
+ * 页签分组（2026-10-28 用户口径再排）：段 = 数据性质，不是工作流阶段。
+ *  ⚠ 改动纪律：tab 文字不改（scripts/ui-check.mjs 与 docs 大量按「tab:文字」定位），
+ *  键值与 CalculatorView.pageMap 一一对应，新页同时登记这里与 pageMap。
+ *  局外 = 战斗前定死的输入（队伍 / 敌人+Buff）；局内 = 战斗过程可调的杠杆
+ *  （失衡轴启用与编辑 / 资源利用率覆盖 / 交互次数扫描）；结果 = 只读账
+ *  （资源池 / 属性贡献账，不往回写输入）；对比 = 跨队跨方案对照；规划 = 版本轴
+ *  （兑现曲线 / 演变+抽卡规划 / 血量膨胀）；资料 = 数据查阅（倍率 / 系数演算），
+ *  紫色 = --dev-accent「工具区」标识。音擎字段页 2026-10-28 下线（字段核对已齐全）。
+ */
+const outTabs = ['team', 'attribute']
+const inTabs = ['stunAxis', 'resourceUtilization', 'interactionSweep']
+const resultTabs = ['result', 'attributeLedger']
+const compareTabs = ['teamCompare', 'breakerCompare', 'freeCompare', 'runArchive']
+const planTabs = ['charIncrement', 'timeline', 'bossHp']
+const dataTabs = ['resource', 'multiplierCoeff']
 const sectionValue = (tabs: string[]) =>
   computed(() => (tabs.includes(uiStore.activeTab) ? uiStore.activeTab : ''))
-const setupTabValue = sectionValue(setupTabs)
-const analyzeTabValue = sectionValue(analyzeTabs)
+const outTabValue = sectionValue(outTabs)
+const inTabValue = sectionValue(inTabs)
+const resultTabValue = sectionValue(resultTabs)
 const compareTabValue = sectionValue(compareTabs)
 const planTabValue = sectionValue(planTabs)
-const developerTabValue = sectionValue(developerTabs)
+const dataTabValue = sectionValue(dataTabs)
 
 function onTabChange(tab: string) {
   uiStore.activeTab = tab
@@ -416,11 +438,12 @@ function onTabChange(tab: string) {
   filter: drop-shadow(var(--shell-tab-glow));
 }
 
-.dev-tabs {
+/* 「资料」段沿用 --dev-accent 紫色导轨：它不是页面配色，是外壳上「数据/工具区」的标识 */
+.data-tabs {
   --n-tab-bar-color: var(--dev-accent);
 }
 
-.dev-tabs :deep(.n-tabs-bar) {
+.data-tabs :deep(.n-tabs-bar) {
   filter: drop-shadow(var(--dev-accent-glow));
 }
 
