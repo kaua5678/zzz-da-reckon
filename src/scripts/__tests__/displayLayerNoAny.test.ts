@@ -96,6 +96,7 @@ describe('CC-395 / CC-396 / CC-397：展示层与组装层没有 as any，也没
     for (const must of [
       'views/TeamConfigPage.vue',
       'views/ResourceUtilizationPage.vue',
+      'views/UpliftAnalysisPage.vue',
       'components/ResourceResultCard.vue',
       'components/charts/ResponseSurface3D.vue',
       'composables/hpSourceBreakdown.ts',

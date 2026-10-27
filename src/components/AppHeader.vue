@@ -44,6 +44,7 @@
           @update:value="onTabChange"
         >
           <n-tab-pane name="result" tab="资源池" />
+          <n-tab-pane name="upliftAnalysis" tab="收益分析" />
           <n-tab-pane name="attributeLedger" tab="属性贡献账" />
         </n-tabs>
       </div>
@@ -178,14 +179,14 @@ const showChangelog = ref(false)
  *  ⚠ 改动纪律：tab 文字不改（scripts/ui-check.mjs 与 docs 大量按「tab:文字」定位），
  *  键值与 CalculatorView.pageMap 一一对应，新页同时登记这里与 pageMap。
  *  局外 = 战斗前定死的输入（队伍 / 敌人+Buff）；局内 = 战斗过程可调的杠杆
- *  （失衡轴启用与编辑 / 资源利用率覆盖 / 交互次数扫描）；结果 = 只读账
- *  （资源池 / 属性贡献账，不往回写输入）；对比 = 跨队跨方案对照；规划 = 版本轴
+ *  （失衡轴启用与编辑 / 资源利用率覆盖 / 交互次数扫描）；结果 = 读数与分析
+ *  （资源池 / 收益分析[按需计算] / 属性贡献账）；对比 = 跨队跨方案对照；规划 = 版本轴
  *  （兑现曲线 / 演变+抽卡规划 / 血量膨胀）；资料 = 数据查阅（倍率 / 系数演算），
  *  紫色 = --dev-accent「工具区」标识。音擎字段页 2026-10-28 下线（字段核对已齐全）。
  */
 const outTabs = ['team', 'attribute']
 const inTabs = ['stunAxis', 'resourceUtilization', 'interactionSweep']
-const resultTabs = ['result', 'attributeLedger']
+const resultTabs = ['result', 'upliftAnalysis', 'attributeLedger']
 const compareTabs = ['teamCompare', 'breakerCompare', 'freeCompare', 'runArchive']
 const planTabs = ['charIncrement', 'timeline', 'bossHp']
 const dataTabs = ['resource', 'multiplierCoeff']

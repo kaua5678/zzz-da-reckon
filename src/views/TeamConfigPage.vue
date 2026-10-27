@@ -48,6 +48,27 @@
       </n-button>
     </n-alert>
 
+    <!-- 副词条自动分配预算（局外配装参数，2026-10-28 自资源利用率页迁入：
+         它喂「配装推荐 · 一键应用 / 最优分配」，不是局内资源利用率） -->
+    <n-card size="small" class="substat-budget-card" :bordered="true">
+      <template #header>副词条自动分配预算</template>
+      <div class="substat-budget-row">
+        <span class="substat-budget-item">单属性上限
+          <n-input-number :value="configStore.getMechanicSetting('optimizer.substatCap', 20)" size="tiny" :min="5" :max="39" :step="1" suffix="步" style="width:110px;margin-left:6px" @update:value="v => configStore.setMechanicSetting('optimizer.substatCap', Math.round(v ?? 20))" />
+        </span>
+        <span class="substat-budget-item">总步数 2词条
+          <n-input-number :value="configStore.getMechanicSetting('optimizer.totalSteps2', 0)" size="tiny" :min="0" :max="60" :step="1" suffix="步" style="width:110px;margin-left:6px" @update:value="v => configStore.setMechanicSetting('optimizer.totalSteps2', Math.round(v ?? 0))" />
+        </span>
+        <span class="substat-budget-item">3词条
+          <n-input-number :value="configStore.getMechanicSetting('optimizer.totalSteps3', 0)" size="tiny" :min="0" :max="60" :step="1" suffix="步" style="width:110px;margin-left:6px" @update:value="v => configStore.setMechanicSetting('optimizer.totalSteps3', Math.round(v ?? 0))" />
+        </span>
+        <span class="substat-budget-item">4词条
+          <n-input-number :value="configStore.getMechanicSetting('optimizer.totalSteps4', 0)" size="tiny" :min="0" :max="60" :step="1" suffix="步" style="width:110px;margin-left:6px" @update:value="v => configStore.setMechanicSetting('optimizer.totalSteps4', Math.round(v ?? 0))" />
+        </span>
+        <span class="substat-budget-note">0 = 档位默认（2词→32 / 3词→39 / 4词→43）；修改后自动重算配装推荐</span>
+      </div>
+    </n-card>
+
     <!-- 上排：3个角色卡片 -->
     <div class="card-row">
       <CharacterCard

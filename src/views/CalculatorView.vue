@@ -93,6 +93,7 @@ const pageMap: Record<string, Component> = {
   timeline: lazyPage(() => import('@/views/TimeChartsPage.vue')),
   multiplierCoeff: lazyPage(() => import('@/views/MultiplierCoeffPage.vue')),
   attributeLedger: lazyPage(() => import('@/views/AttributeLedgerPage.vue')),
+  upliftAnalysis: lazyPage(() => import('@/views/UpliftAnalysisPage.vue')),
   runArchive: lazyPage(() => import('@/views/RunArchivePage.vue')),
   charIncrement: lazyPage(() => import('@/views/CharIncrementPage.vue')),
   bossHp: lazyPage(() => import('@/views/BossHpInflationPage.vue')),

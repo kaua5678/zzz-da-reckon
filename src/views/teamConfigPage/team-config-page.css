@@ -472,3 +472,30 @@
   padding-top: 8px;
   border-top: 1px solid var(--wa-60);
 }
+
+/* 副词条自动分配预算卡（2026-10-28 自资源利用率页迁入；语义别名，不进 --wa-* 直引） */
+.substat-budget-card {
+  /* 嵌在页面底的参数卡：与资源利用率页 .mechanic-card 同款「略浮起」的面
+     ——但棘轮要求新代码走语义别名，--app-panel 即这一档。 */
+  background: var(--app-panel);
+}
+
+.substat-budget-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--fg-2);
+}
+
+.substat-budget-item {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.substat-budget-note {
+  color: var(--fg-3);
+  font-size: 11px;
+}
