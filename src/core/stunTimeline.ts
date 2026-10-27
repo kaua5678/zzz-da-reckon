@@ -152,6 +152,17 @@ export interface StunWindowSlot {
    * ⚠ 无轴轨迹（`hasTrace === false`）时记 0：**不代表打满**，只表示本模式不可逐窗推演。
    */
   unusedSeconds: number
+  /**
+   * 本窗**兜底填充**秒数（来自轨迹 `fillSeconds`；无轨迹 / 决算截断窗 = 0）。
+   *
+   * 为什么要在 slot 上再存一份：`realizeStunWindows` 要把「计划动作」与「兜底填充」拆成两把尺
+   * （用户口径 2026-10-27「5 失衡不如 4 失衡」——窗填满了但填的是低价值平A），
+   * 而 `unusedSeconds` 只给出「占据总量」，反推不出其中有多少是填充。
+   *
+   * ⚠ 可选：手写 `StunWindowSlot` 的测试夹具（逐窗视图）不必知道填充，
+   * 缺省按 0 读（= 「这窗没有兜底填充」）。`buildStunTimeline` 产出的**总是**带上它。
+   */
+  fillSeconds?: number
 }
 
 /** 时间轴输入 */
@@ -242,6 +253,8 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline {
       clippedByClock,
       actions: t?.actions ? [...t.actions] : [],
       unusedSeconds: t ? Math.max(0, effectiveSeconds - occupied) : 0,
+      // 兜底填充按**有效窗**截断：决算截断窗栈内恒 0，时钟截短时超出的部分不算这一窗的填充
+      fillSeconds: t ? Math.min(Math.max(0, finiteOr0(t.fillSeconds)), effectiveSeconds) : 0,
     })
     cursor = startSeconds + effectiveSeconds
   }
@@ -287,14 +300,33 @@ export interface StunRealization {
    */
   plannedWindows: number
   /**
-   * 已兑现的等效窗数 = Σ（每窗填充率 × **时钟截短份额**）。
+   * **计划动作兑现的等效窗数** = Σ（每窗**计划动作**占比 × **时钟截短份额**）。
+   *
+   * ⚠ 2026-10-28 口径拆分（用户 2026-10-27「5 失衡不如 4 失衡……资源不够导致失衡伤害较低」）：
+   * 修前分子 = 动作 + **兜底填充**，一旦窗内被平A填满它就恒等于 `windows` ⇒「填满了但填的是
+   * 低价值平A」这个现象**从度量里消失**。现在分子只认**计划动作**（`actionSeconds − overlapSeconds`），
+   * 兜底填充单独报 `filledRatio`——两者都进读数，**合起来才等于「窗内被占了多少」**。
    *
    * 截短份额只对 `clippedByClock` 生效（战斗时钟装不下这一窗 ⇒ 只剩几秒就只值几秒/窗长，
    * 用户口径 2026-10-27「最后一窗的连续失衡……做成**时间截断**的方式，配合我们可视化展示」）；
    * 决算截断（`truncated`）不折算——那是设计内的窗结束方式。
-   * 无轨迹时填充率按 1（不编造），但时钟截短照样折算。
+   * 无轨迹时分子按「打满」1（不编造），但时钟截短照样折算。
    */
   realizedWindows: number
+  /**
+   * **兜底填充占比** ∈ [0,1]：这些已兑现的窗口里，有多少**窗内秒数**是靠兜底（平A / 模块兜底池）
+   * 填出来的，而不是计划动作打出来的。
+   *
+   * 为什么不并进 `realizedWindows`：那正是「5 失衡不如 4 失衡」被抹平的地方——窗数一样多，
+   * 但 5 窗那次的秒数是平A垫的。展示层并排报「兑现 X 窗（其中兜底占 Y%）」。
+   * 无轨迹（`hasTrace=false`）⇒ 0（不可推演，不代表没有填充）。
+   */
+  filledRatio: number
+  /**
+   * **窗内占据占比** ∈ [0,1]：动作 + 填充占了这些窗有效时长的比例（= 修前的 `realizedWindows`
+   * 归一化形态）。保留它是为了让「窗开满了没」和「窗里打的是什么」两个问题各有自己的尺。
+   */
+  occupiedRatio: number
   /** 已兑现的易伤秒数（= Σ 每窗实际占用秒数；无轨迹时为 0） */
   occupiedSeconds: number
   /**
@@ -313,21 +345,36 @@ export interface StunRealization {
   hasTrace: boolean
 }
 
+// @fact engine:stun/兑现窗数 口径: 兑现窗数只认**计划动作**（Σ min(1, 动作/有效) × 时钟截短份额），兜底填充另报 `filledRatio`、占据合计报 `occupiedRatio`——窗内被平A填满**不等于**兑现（否则「5 失衡不如 4 失衡」从读数里消失）；无轨迹时按打满计、不编造 | 据 用户@2026-10-27（「真实游戏中这段时间不打招式只能有什么打什么…真实花费时间。这也是为什么有时候 5 失衡不如 4 失衡」）·复核@2026-10-28 | 验 src/core/__tests__/stunTimeline.test.ts | 锚 src/core/stunTimeline.ts#realizeStunWindows + src/core/stunTimeline.ts#StunRealization | 信 确认
+// ⟳复核: 窗内填充改为「引擎侧按资源真出招」（而非兜底平A）时，重核 filledRatio 是否该并入 realizedWindows | 到期 2027-06-30
 export function realizeStunWindows(timeline: StunTimeline): StunRealization {
   if (!timeline.hasTrace) {
     // 无轨迹 ⇒ 不编造填充（每窗按 1 计），但**时钟截短照样折算**：末窗只剩 4s 就只值 0.25 窗，
     // 与可视化那根短窗条一致（用户口径 2026-10-27「最后一窗……时间截断」）。
     const realized = timeline.slots.reduce((sum, s) => sum
       + (s.clippedByClock && s.nominalSeconds > 0 ? Math.max(0, Math.min(1, s.effectiveSeconds / s.nominalSeconds)) : 1), 0)
-    return { plannedWindows: timeline.windows, realizedWindows: realized, occupiedSeconds: 0, idleSeconds: 0, zeroedSeconds: 0, hasTrace: false }
+    return {
+      plannedWindows: timeline.windows,
+      realizedWindows: realized,
+      filledRatio: 0,
+      occupiedRatio: realized,
+      occupiedSeconds: 0,
+      idleSeconds: 0,
+      zeroedSeconds: 0,
+      hasTrace: false,
+    }
   }
   let realizedWindows = 0
   let occupiedSeconds = 0
   let idleSeconds = 0
+  /** 已兑现窗口的**有效时长合计**（填充占比 / 占据占比的分母） */
+  let realizedWindowSeconds = 0
+  /** 已兑现窗口里**兜底填充**的秒数合计（分子之一） */
+  let fillSeconds = 0
   /**
    * **末窗零化秒数**（用户口径 2026-10-27）：「游戏结束相当于你后面都无意义了，计算量只有前半部分」——
    * 末窗没填上的那段不算发呆（那是「之后无事发生」，与决算把剩余时间归零同机制），单独上报。
-   * ⚠ 只影响**读数与画面**；`realizedWindows` 的算法不变（仍是 填充率 × 时钟截短份额）。
+   * ⚠ 只影响**读数与画面**；`realizedWindows` 的算法不变（仍是 计划动作占比 × 时钟截短份额）。
    */
   let zeroedSeconds = 0
   const lastIdx = timeline.slots.length - 1
@@ -339,7 +386,30 @@ export function realizeStunWindows(timeline: StunTimeline): StunRealization {
     if (idx === lastIdx) zeroedSeconds += unused
     else idleSeconds += unused
     /**
-     * 填充率按**本窗**有效时长归一（决算截断 / 时钟截短的窗天生更短，不能按名义窗长摊）。
+     * ## 分子只认**计划动作**（2026-10-28 口径拆分，用户 2026-10-27 逐字）
+     * > 「真实游戏中，这段时间你不打招式只能有什么打什么（比如填充的强e或者平a），而且**真实花费时间**。
+     * >  这也是为什么有时候 **5 失衡不如 4 失衡**，因为资源不够导致失衡伤害较低。」
+     *
+     * 修前分子 = 动作 + 兜底填充 ⇒ 窗内一旦被填满就恒等于 1 窗，「填满了但填的是低价值平A」
+     * 这件事在读数上**完全不可见**（正是用户点名的现象）。现在：
+     * - `realizedWindows` 分子 = **计划动作**（毛占用 − 合轴节省）；
+     * - `filledRatio` = 兜底填充秒 / 已兑现窗口有效秒（单独报，与窗口数并排）；
+     * - `occupiedRatio` = (动作 + 填充) / 已兑现窗口有效秒（= 修前的归一化读数，保留作对照）。
+     *
+     * ⚠ `fillSeconds` **不扣合轴**：兜底填充是单槽独占时间（`stunAxisStack` 逐段产出），
+     * 与动作的并集口径不同源，故这里只用它算占比，不参与 `realizedWindows` 的分子。
+     */
+    /**
+     * ⚠ 分子必须沿用**既有** `occupied = effectiveSeconds − unusedSeconds` 这条口径，不能另读轨迹：
+     * 轨迹比窗口数短时那几窗 `unusedSeconds` 记 0 ⇒ 既有口径把它们按「打满」计（`hasTrace` 的
+     * 已知边界，见 stunTimeline.test.ts「轨迹比窗口数短」那条）。计划动作 = occupied − 兜底填充。
+     */
+    const fill = Math.max(0, finiteOr0(slot.fillSeconds))
+    const plannedActionSeconds = Math.max(0, occupied - fill)
+    realizedWindowSeconds += slot.effectiveSeconds
+    fillSeconds += fill
+    /**
+     * 占比按**本窗**有效时长归一（决算截断 / 时钟截短的窗天生更短，不能按名义窗长摊）。
      *
      * ## 末窗按**时间截断**折算窗数（用户口径 2026-10-27，逐字）
      * > 「现在资源页有可视化失衡了，最后一窗的连续失衡我认为可以做成**时间截断**的方式，
@@ -353,11 +423,20 @@ export function realizeStunWindows(timeline: StunTimeline): StunRealization {
      * 剩余失衡时间）不折算：那是**设计内**的窗结束方式、不是「时间不够」，判据见
      * stunTimeline.test.ts::决算截断窗按有效时长归一。
      */
-    const fillRate = slot.effectiveSeconds > 0 ? Math.min(1, occupied / slot.effectiveSeconds) : 0
+    const actionRate = slot.effectiveSeconds > 0 ? Math.min(1, plannedActionSeconds / slot.effectiveSeconds) : 0
     const durationShare = slot.clippedByClock && slot.nominalSeconds > 0
       ? Math.max(0, Math.min(1, slot.effectiveSeconds / slot.nominalSeconds))
       : 1
-    realizedWindows += fillRate * durationShare
+    realizedWindows += actionRate * durationShare
   }
-  return { plannedWindows: timeline.windows, realizedWindows, occupiedSeconds, idleSeconds, zeroedSeconds, hasTrace: true }
+  return {
+    plannedWindows: timeline.windows,
+    realizedWindows,
+    filledRatio: realizedWindowSeconds > 0 ? Math.min(1, fillSeconds / realizedWindowSeconds) : 0,
+    occupiedRatio: realizedWindowSeconds > 0 ? Math.min(1, occupiedSeconds / realizedWindowSeconds) : 0,
+    occupiedSeconds,
+    idleSeconds,
+    zeroedSeconds,
+    hasTrace: true,
+  }
 }
