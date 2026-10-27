@@ -32,6 +32,17 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 
 局外字段前缀 `outOfCombat`，局内字段前缀 `inCombat`。无前缀的兼容字段（`atkPct`、`hpFlat` 等）由来源 scope 决定实际阶段。
 
+### 0.3 副词条（驱动盘 sub-stat）的「条数」口径
+
+| 游戏概念 | 代码 | 说明 |
+|---|---|---|
+| 一条副词条 / 一次强化步 | `subStatAllocation[stat] = n` 里的 **n（步）** | 1 步 = 一次数值档（暴击率一步 2.4%）；**不是**「一条盘子上的一个词条名」 |
+| 单条最多能堆多高 | `optimizer.substatCap`（默认 **20 步**） | 用户 2026-08 口径 |
+| **最高的两项合计** | `core/substatOptimizer.ts#SUBSTAT_TOP2_STEP_CAP` = **35 步** | 用户 2026-10-26：「词条不能太极端了…最高的两个加起来最好不超过 35」。真实盘一块只有 4 条副词条、强化随机落，20+19 这种分配刷不出来 |
+| 总步数预算 | 2 词条→32 / 3 词条→39 / ≥4 词条→43 | `optimizer.totalSteps{2,3,4}` 可覆盖 |
+
+⚠ 两条约束是**与**的关系：单项 ≤20 只管「一条能堆多高」，TOP2 ≤35 管「两条最高的合计」——两条都顶 20 就是 40，照样超标。默认分配与「最优分配」真实伤害精修都在这个合法空间里走（精修不得把分配挪出 TOP2）。
+
 ---
 
 ## 1. 基本属性（攻击/防御/生命）
@@ -365,7 +376,6 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | `cfg.dodgeCounterCount` | 极限闪避/闪避反击 | 1631 烈旋（受击/烁影驱动的近似源） |
 | `cfg.parryCount` / `cfg.blockCount` | 格挡/招架/弹刀 | 1591 支援突击：冰饕 |
 | `cfg.parryCount`（**双重语义**）+ 合成行 `evade_assist` | 「弹刀/回避次数」——对**黄光**的一次交互 | 招架型角色产「轻弹刀＋支援突击」两行；**无招架支援**的角色（回避型）产「回避支援」行（1.166s 必要前台、零伤害零失衡＝时停纯亏）＋支援突击。一个角色只能其一，判据 = `!defensiveAssistMoveId`（数据驱动，不列角色名单）。口径单源 `@fact engine:time/回避支援`（`core/resource/helpers.ts#buildExecutions`）；时间常量与 moveId 在 `data/resourceDefaults.ts` |
-| `cfg.quickAssistCount` | 快速支援 | — |
 | `cfg.stunCount`（失衡池收敛回填） | 失衡时/命中失衡敌人/每次失衡 | 1591 破阵=每次失衡一套 |
 | 异常池触发次数（`ap1.perElement`/totalTriggerCount，经收敛注入） | 触发属性异常时/命中异常状态敌人 | 1541 寒蚀收入、1331 异放 |
 | `floor(cfg.battleTime / CD)` | 每X秒一次/X秒CD | 1501 影画4 异放回能 10s CD |

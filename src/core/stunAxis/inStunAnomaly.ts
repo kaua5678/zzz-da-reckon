@@ -222,6 +222,21 @@ export function bossEntryAnomalyElement(settingValue: number): string {
   return BOSS_ENTRY_ANOMALY_OPTIONS.find(o => o.value === settingValue)?.element ?? ''
 }
 
+/**
+ * 替换型紊乱点一条（不同属性异常在已有状态下触发 ⇒ 紊乱并替换）。
+ *
+ * 2026-10-26 从 `BossAnomalyStateResult.disorders` 的内联字面量提升为具名类型：
+ * 失衡轴页的事件道（`composables/stunAxisEventLanes.ts`）要按「触发时刻与紊乱点同刻」判定紊乱，
+ * 必须引用**同一个**形状（判据 29「同一形状只写一次」）。
+ */
+export interface BossDisorderPoint {
+  windowIndex: number
+  /** 相对该窗口起点的秒 */
+  time: number
+  /** **被替换的原状态**元素（「当前时点的状态」口径；如需改成新状态一行，翻这里） */
+  element: string
+}
+
 /** 状态时段（相对该窗口起点的秒；end 截断到窗口时长，状态本身可跨窗延续） */
 export interface BossStateSegment {
   start: number
@@ -234,8 +249,8 @@ export interface BossAnomalyStateResult {
   stateChainsPerWindow: BossStateSegment[][]
   /** 风化覆盖层逐窗时段（独立计时，持续 ANOMALY_DURATION.wind） */
   windOverlayPerWindow: BossStateSegment[][]
-  /** 替换型紊乱点：time=相对该窗口起点的秒；element = **被替换的原状态**元素（「当前时点的状态」口径，如需改新状态一行可翻） */
-  disorders: Array<{ windowIndex: number; time: number; element: string }>
+  /** 替换型紊乱点（见 {@link BossDisorderPoint}） */
+  disorders: BossDisorderPoint[]
   /** 接线层注入（纯函数不填）：构建状态链用的窗口时长；消费端取样必须用同一值，禁止重算 */
   windowDuration?: number
   /** 接线层注入（纯函数不填）：每个代表窗属于哪条轴条目（索引对齐窗口序）——事件次数按条目失衡数加权取样用 */

@@ -110,8 +110,9 @@
             <span class="sap-stat">实际 ×{{ fmt(axisResult?.axisDetails?.[ai]?.times, 1) }} 次 · 单轮 {{ (axisResult?.axisDetails?.[ai]?.axisDuration ?? 0).toFixed(1) }}s · 窗口 {{ fmt(maxDur, 1) }}s</span>
           </div>
 
-          <!-- 三槽平行时间轴（合轴：各角色独立道，可拖拽 startTime） -->
-          <div class="sap-timeline"
+          <!-- 三槽平行时间轴（合轴：各角色独立道，可拖拽 startTime）
+               ⚠ 高度随「角色道 + 专属窗口道 + 事件道」条数走（内联 height）：写死高度会让新增的事件道溢出到下一个轴。 -->
+          <div class="sap-timeline" :style="{ height: timelineHeight(ai) }"
             @pointermove="onTimelineMove($event, ai)" @pointerup="endDrag" @pointerleave="endDrag">
             <div class="sap-ticks">
               <div v-for="t in ticks" :key="t" class="sap-tick" :style="{ left: pct(t) }">
@@ -138,15 +139,29 @@
             <div v-for="(act, aii) in axis.actions" :key="aii"
               class="sap-block"
               :class="{ stale: isStaleAct(act) }"
-              :title="isStaleAct(act) ? STALE_TITLE : undefined"
+              :title="blockTitle(act)"
               :style="blockStyle(act, aii === dragging?.aii)"
               @pointerdown.prevent="startDrag($event, ai, aii)">
-              <span class="sap-block-text">{{ act.label || moveLabel(act.moveId) }}×{{ act.count }}{{ act.promoteVariant ? '·' + act.promoteVariant : '' }}{{ act.sourceTag === 'gift' ? '·赠' : '' }}<span v-if="actDuration(act) > 0" style="opacity:0.7"> {{ actDuration(act).toFixed(1) }}s</span></span>
+              <!-- 块内**只留招式身份**（名字 + 次数 + 时长）与招式级短徽标。
+                   用户报「失衡轴的块有时候看不到招式名字了」：旧实现把异常触发/积蓄槽/入窗/毁伤四个不收缩的
+                   小标签也塞在块里，块宽 = 招式时长（0.5s 块约 2% 宽）⇒ 名字（flex:1 min-width:0）被压成 0 宽。
+                   现在：① 事件类内容全部移到下方事件道；② 名字有**保底宽度**（见 .sap-block-text min-width）；
+                   ③ 剩余徽标先收缩（.sap-mw flex-shrink:1）——永远先牺牲徽标、不牺牲招式名。 -->
+              <span class="sap-block-text">{{ act.label || moveLabel(act.moveId) }}×{{ act.count }}{{ act.promoteVariant ? '·' + act.promoteVariant : '' }}{{ act.sourceTag === 'gift' ? '·赠' : '' }}<span v-if="actDuration(act) > 0" class="sap-block-dur"> {{ actDuration(act).toFixed(1) }}s</span></span>
               <template v-for="lane in windowLanes" :key="'tag-' + lane.decl.kind">
                 <span v-if="laneBlockTag(lane, ai, aii)" class="sap-mw" :class="laneBlockTag(lane, ai, aii)!.cls">{{ laneBlockTag(lane, ai, aii)!.text }}</span>
               </template>
               <span v-if="moveBadgeFor(act)" class="sap-mw mw-trigger">{{ moveBadgeFor(act) }}</span>
-              <span v-for="(tg, ti) in anomalyTagsFor(ai, aii)" :key="'at'+ti" class="sap-mw" :class="tg.cls">{{ tg.text }}</span>
+            </div>
+            <!-- 事件道（用户口径 2026-10-26：「毁伤或者异常事件也夹在块里面，这些内容该新开一个展示轴啊」）：
+                 一条道一类事件，按时刻定位；道定义来自 axisEventLaneDefs（无摘要 / 无残痕 ⇒ 不画）。 -->
+            <div v-for="lane in eventLanes(ai)" :key="'el-' + lane.key" class="sap-lane sap-ev-lane" :style="{ top: lane.top, height: lane.height }">
+              <span class="sap-lane-name">{{ lane.name }}</span>
+              <div v-for="mk in lane.markers" :key="mk.key" class="sap-ev" :class="['ev-' + mk.kind, { dim: mk.dim }]"
+                :style="{ left: evLeftPct(mk.at), top: (2 + mk.row * 16) + 'px' }" :title="mk.title">
+                <span class="sap-ev-dot"></span>
+                <span class="sap-ev-label">{{ mk.label }}</span>
+              </div>
             </div>
           </div>
 
@@ -302,6 +317,7 @@ import type { AxisEditorBlockMark } from '@/mechanics/types'
 import type { TeamAxisWindowLane } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport, prefillPresetGuarantee } from '@/data/stunAxisPresets'
 import { axisWindowCounts } from '@/composables/stunAxisView'
+import { axisEventLaneDefs, buildAnomalyEventMarkers, buildMaimEventMarkers, layoutEventMarkers, type AxisEventMarker } from '@/composables/stunAxisEventLanes'
 import { isStaleAxisActionFor } from '@/composables/resourceCalc/roundInputs'
 import { axisTableDirectCandidates } from '@/composables/resourceCalc/axisTableDirect'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
@@ -700,36 +716,76 @@ function entryEventLine(ai: number): string {
   }
   return parts.length > 0 ? parts.join('；') : ''
 }
-/** 块级标注：该招式在本段代表窗触发的异常；紊乱替换加粗标 */
-function anomalyTagsFor(ai: number, aii: number): Array<{ text: string; cls: string }> {
-  const st = inStunAnomalyState.value
-  const boss = bossAnomalyState.value
+// ===== 事件道（用户口径 2026-10-26：「毁伤或者异常事件也夹在块里面，这些内容该新开一个展示轴啊」）=====
+// 病灶：异常触发 / 积蓄槽快照 / 边界注入 / 毁伤原先全部以 `.sap-mw` 标签画在**动作块内部**，
+// 而块宽 = 招式时长（0.5s 的块约 2% 宽）⇒ 标签不收缩、招式名（`.sap-block-text`）被动压成 0 宽 =「看不到招式名字」。
+// 分工：块只留**招式级**元数据（明王/凝神窗口标签、+30% 失衡徽标）；事件按时刻单独成道。
+// 事件时刻/元素/紊乱判定**照抄引擎产物**（不在此重推），纯派生见 `composables/stunAxisEventLanes.ts`。
+
+/** 事件道从专属窗口道之后开始排（0/1/2 = 三角色道，3.. = 窗口道） */
+const eventLaneFirst = computed(() => 3 + windowLanes.value.length)
+
+/** 毁伤道标记（代表窗 = 第 1 窗；跨窗明细仍在下方「毁伤触发时间轴」表里逐个列） */
+function maimEventMarkers(): AxisEventMarker[] {
+  const d = axisGashDecl.value
+  if (!d) return []
+  const ch = resourceResult.value?.characters.find(c => c.slot === d.slot)
+  return buildMaimEventMarkers({
+    steps: ch?.claretSharpResourceSource?.axisGashSteps ?? [],
+    window: 1,
+    perLayer: d.perLayer,
+    labelOf: mid => `${moveNameOf(mid)}·毁伤`,
+  })
+}
+/** 异常道标记（代表窗 = 该条目的首个窗口，与「失衡内异常状态」面板同口径） */
+function anomalyEventMarkers(ai: number): AxisEventMarker[] {
   const axis = axes.value[ai]
+  const st = inStunAnomalyState.value
   const wi = entryFirstWindow(ai)
-  if (!st || wi < 0 || !axis) return []
-  const mid = axis.actions[aii]?.moveId
-  if (!mid) return []
-  const out: Array<{ text: string; cls: string }> = []
-  if ((axis.entryAnomaly ?? 0) > 0 && aii === 0) {
-    const el = BOSS_ENTRY_ANOMALY_OPTIONS.find(o => o.value === axis.entryAnomaly)?.element
-    if (el) out.push({ text: `入窗·${entryBarLabel(el)}`, cls: 'mw-l3' })
-  }
-  const suppressed = new Set(axis.suppressedTriggers ?? [])
-  for (const t of st.triggerSources ?? []) {
-    // 按动作实例精确匹配：同一招式放多块时，触发标只落在真正触发的那一块上
-    if (t.windowIndex !== wi || !t.id || suppressed.has(t.id)) continue
-    if ((t.srcIndex ?? -1) !== aii) continue
-    const replaced = (boss?.disorders ?? []).some(d => d.windowIndex === wi && Math.abs(d.time - t.offsetSeconds) < 1e-6)
-    out.push({ text: `触${entryBarLabel(t.element)}${replaced ? '·紊' : ''}`, cls: replaced ? 'mw-l3' : 'mw-trigger' })
-  }
-  // 动作块末尾积蓄槽状态（用户口径：每个动作块都有对应积蓄值与槽状态）
-  const snap = st.gaugeSnapshots?.find(g => g.windowIndex === wi && g.srcIndex === aii)
-  if (snap) {
-    const txt = Object.entries(snap.pct).filter(([, v]) => v > 0)
-      .map(([el, v]) => `${entryBarLabel(el)}${Math.round(v)}%`).join('·')
-    if (txt) out.push({ text: `条${txt}`, cls: 'mw-l2' })
+  if (!axis || !st || wi < 0) return []
+  const entryEl = (axis.entryAnomaly ?? 0) > 0
+    ? BOSS_ENTRY_ANOMALY_OPTIONS.find(o => o.value === axis.entryAnomaly)?.element
+    : undefined
+  return buildAnomalyEventMarkers({
+    windowIndex: wi,
+    triggers: st.triggerSources,
+    gaugeSnapshots: st.gaugeSnapshots,
+    disorders: bossAnomalyState.value?.disorders,
+    entry: entryEl ? { element: entryEl, pct: axis.entryBars?.[entryEl] } : undefined,
+    suppressed: axis.suppressedTriggers,
+    labelOf: entryBarLabel,
+    moveNameOf,
+    // 积蓄槽快照挂在动作块**末尾**：动作块坐标是 (startTime, startTime + 时长×次数)
+    blockAtOf: srcIndex => {
+      const act = typeof srcIndex === 'number' ? axis.actions[srcIndex] : undefined
+      return act ? (act.startTime ?? 0) + actDuration(act) : 0
+    },
+  })
+}
+interface EventLaneView { key: 'anomaly' | 'maim'; name: string; rows: number; top: string; height: string; markers: Array<AxisEventMarker & { row: number }> }
+/** 本轴的可见事件道（无摘要 / 无残痕 ⇒ 道不出现；道内无标记也保留道，让用户看到"这条道是空的"） */
+function eventLanes(ai: number): EventLaneView[] {
+  const hasAnomaly = !!inStunAnomalyState.value && entryFirstWindow(ai) >= 0
+  const defs = axisEventLaneDefs({ hasAnomaly, hasMaim: !!axisGashDecl.value })
+  const out: EventLaneView[] = []
+  // 上一道的下沿：从「角色道 + 专属窗口道」之后算起；道高随内部行数变化 ⇒ 不能用固定 20px 递增
+  let topS = 24 + eventLaneFirst.value * 20
+  for (const d of defs) {
+    const raw = d.key === 'anomaly' ? anomalyEventMarkers(ai) : maimEventMarkers()
+    // 同一刻可能同时有「触发」与「块末积蓄槽」⇒ 会叠成一颗；分行后道高 = 行数 × 16 + 5
+    const { rows, placed } = layoutEventMarkers(raw, maxDur.value)
+    const heightPx = rows * 16 + 5
+    out.push({ ...d, rows, top: topS + 'px', height: heightPx + 'px', markers: placed })
+    topS += heightPx + 2
   }
   return out
+}
+/** 事件道的横向定位：与动作块同一坐标系（窗口起点为 0）；标记本体宽 ~46px，按 1.5% 左让避免压右边 */
+function evLeftPct(at: number): string { return (Math.max(0, at) / maxDur.value * 100) + '%' }
+/** 时间轴高度随「角色道 + 窗口道 + 事件道」条数/行数走（写死高度会把新增的道压出容器） */
+function timelineHeight(ai: number): string {
+  const lanesHeight = eventLanes(ai).reduce((sum, l) => sum + l.rows * 16 + 7, 0)
+  return (24 + eventLaneFirst.value * 20 + lanesHeight + 6) + 'px'
 }
 
 // 栈遍历警告：资源不足（energy/decibel）= 固定轴只提示；超时（time）= 超窗截断
@@ -986,6 +1042,20 @@ function onTimelineMove(e: PointerEvent, ai: number) {
   act.startTime = Math.max(-dur, Math.round((dragging.value.origStart + dx) * 10) / 10)
 }
 function endDrag() { dragging.value = null }
+/**
+ * 块悬停全文（用户报「失衡轴的块有时候看不到招式名字了」）。
+ *
+ * 块宽 = 招式时长：0.5s 的块在 20s 窗口里只有 ~2% 宽，塞不下完整招式名 ⇒ 块内必然截断。
+ * 截断可以接受（**看得见**≥2 个字），但必须能读到全文：名字 / 次数 / 时长 / 失效原因都在这里。
+ */
+function blockTitle(act: StunAxisAction): string {
+  if (isStaleAct(act)) return STALE_TITLE
+  const name = act.label || moveLabel(act.moveId)
+  const dur = actDuration(act)
+  return `${name} ×${act.count}${act.promoteVariant ? '（转大·' + act.promoteVariant + '）' : ''}`
+    + `${act.sourceTag === 'gift' ? '·赠' : ''}${dur > 0 ? ` · ${dur.toFixed(1)}s` : ''}`
+    + ` · 起点 ${(act.startTime ?? 0).toFixed(1)}s（可拖拽改起点）`
+}
 function blockStyle(act: StunAxisAction, selected: boolean) {
   const dur = actDuration(act); const start = act.startTime ?? 0
   const leftPct = (start / maxDur.value * 100)
@@ -1056,7 +1126,8 @@ function agentName(s: number) {
 .sap-label { font-size: 10px; color: var(--wa-350); }
 .sap-stat { font-size: 11px; color: var(--wa-450); margin-left: auto; }
 /* 时间轴 */
-.sap-timeline { position: relative; height: 106px; margin: 8px 0 12px; background: var(--wa-15); border-radius: 4px; user-select: none; touch-action: none; }
+/* 高度由 timelineHeight(ai) 内联给出（角色道 + 窗口道 + 事件道逐轴不同；写死会让新增的道溢出到下一个轴） */
+.sap-timeline { position: relative; min-height: 60px; margin: 8px 0 12px; background: var(--wa-15); border-radius: 4px; user-select: none; touch-action: none; }
 .sap-ticks { position: absolute; top: 0; left: 0; right: 0; height: 14px; }
 .sap-tick { position: absolute; top: 0; height: 100%; border-left: 1px solid var(--wa-80); }
 .sap-tick-label { position: absolute; top: 0; left: 2px; font-size: 8px; color: var(--wa-250); }
@@ -1064,12 +1135,13 @@ function agentName(s: number) {
 .sap-win-label { font-size: 8px; color: rgba(240,160,32,0.5); padding-left: 4px; }
 .sap-lane { position: absolute; left: 0; right: 0; height: 19px; background: var(--wa-20); border-radius: 2px; }
 .sap-lane-name { font-size: 8px; color: var(--wa-300); padding-left: 3px; }
-.sap-block { position: absolute; height: 15px; border-radius: 2px; display: flex; align-items: center; padding: 0 3px; cursor: grab; overflow: hidden; border: 1px solid transparent; }
-.sap-block-text { font-size: 8px; color: var(--wa-750); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-/* 明王时间轴标注：flex 排在块名后（不重叠），块名省略号收缩 */
-.sap-block { display: flex; align-items: center; gap: 2px; }
-.sap-block-text { flex: 1; min-width: 0; }
-.sap-mw { flex-shrink: 0; font-size: 7px; line-height: 1; padding: 1px 2px; border-radius: 2px; pointer-events: none; white-space: nowrap; }
+.sap-block { position: absolute; height: 15px; border-radius: 2px; display: flex; align-items: center; gap: 2px; padding: 0 3px; cursor: grab; overflow: hidden; border: 1px solid transparent; }
+/* 招式名有**保底宽度**（用户报「有时候看不到招式名字了」）：块窄时先压徽标、不压名字。
+   min-width 是 2 个汉字 + 次数（约 3.6em）；块再窄也不会小于块本身（块 overflow:hidden 兜底）。 */
+.sap-block-text { flex: 0 1 auto; min-width: 3.6em; font-size: 8px; color: var(--wa-850); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.sap-block-dur { color: var(--fg-3); }
+/* 招式级短徽标（明王窗口 / +30%失衡）：**先收缩的那一方**——空间不足时它让位给招式名 */
+.sap-mw { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 7px; line-height: 1; padding: 1px 2px; border-radius: 2px; pointer-events: none; white-space: nowrap; }
 .sap-mw.mw-trigger { color: var(--c-warning-strong); background: rgba(240,160,32,0.15); }
 .sap-mw.mw-live { color: var(--c-success); background: rgba(99,226,183,0.15); }
 /* 明王平行道：触发块处 8s 窗口条（2层黄 / 3层绿），6命满覆盖 */
@@ -1098,4 +1170,18 @@ function agentName(s: number) {
 .sap-stat-row { display: flex; gap: 14px; font-size: 12px; color: var(--wa-550); }
 .sap-warn { font-size: 10px; color: #f0a020; }
 .sap-block.stale { opacity: .35; border: 1px dashed var(--app-accent-gold); }
+/* 事件道（2026-10-26）：异常 / 毁伤各自成道，按时刻定位——块内只留招式级元数据，招式名不再被标签挤成 0 宽。
+   颜色：触发/入窗=警示金、紊乱=成功绿（与原 mw-trigger/mw-l3 同语义）、积蓄槽=第三级墨、毁伤=危险红、未触发=斜纹红。 */
+.sap-ev-lane { border-top: 1px dashed var(--line); }
+.sap-ev { position: absolute; top: 2px; height: 15px; display: flex; align-items: center; gap: 2px; padding: 0 3px; border-radius: 2px; font-size: 8px; white-space: nowrap; pointer-events: auto; transform: translateX(-1px); }
+.sap-ev-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.sap-ev-label { line-height: 1; }
+.sap-ev.ev-entry { color: var(--c-warning-strong); background: var(--c-warning-soft); }
+.sap-ev.ev-trigger { color: var(--c-warning-strong); background: var(--c-warning-soft); }
+.sap-ev.ev-disorder { color: var(--c-success-strong); background: var(--c-success-soft); }
+.sap-ev.ev-gauge { color: var(--fg-3); background: var(--fill-hover); }
+.sap-ev.ev-maim { color: var(--c-danger-strong); background: var(--c-danger-soft); }
+.sap-ev.ev-maimMiss { color: var(--c-danger-strong); background: transparent; border: 1px dashed var(--c-danger); }
+/* 被抑制的异常触发：仍画在道上（用户要看到「这里本该触发」），但划掉以示不生效 */
+.sap-ev.dim { opacity: .45; text-decoration: line-through; }
 </style>

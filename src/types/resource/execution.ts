@@ -303,13 +303,30 @@ export interface InStunGaugeSnapshot {
   pct: Record<string, number>
 }
 
+/**
+ * 引擎触发来源一条（`computeInStunAnomalyTimeline` 的 `triggers` 元素）。
+ *
+ * 2026-10-26 从 `InStunAnomalySummary.triggerSources` 的内联字面量提升为具名类型：
+ * 失衡轴页的事件道（`composables/stunAxisEventLanes.ts`）要按窗口挑触发，必须引用**同一个**形状
+ * （判据 29「同一形状只写一次」）——否则两处各自演化时 tsc 一句话都不会说。
+ */
+export interface InStunTriggerSource {
+  windowIndex: number
+  moveId: string
+  element: string
+  offsetSeconds: number
+  id: string
+  /** 原始动作索引（同 moveId 多块时区分是哪一块） */
+  srcIndex?: number
+}
+
 export interface InStunAnomalySummary {
   windows: number
   elements: InStunAnomalyElementState[]
   /** 展开后的每个窗口属于哪条轴条目（索引对齐窗口序）——捏轴页按条目标注触发事件用 */
   windowEntryIdx?: number[]
   /** 触发来源明细（动作带 moveId 时回填，id=抑制引用键）：捏轴页块级「这个招式触发了什么」可视化用 */
-  triggerSources?: Array<{ windowIndex: number; moveId: string; element: string; offsetSeconds: number; id: string; srcIndex?: number }>
+  triggerSources?: InStunTriggerSource[]
   /**
    * 每个动作块末尾的积蓄槽快照（捏轴页块级「条XX%」标注用）。
    * CC-398：2026-08-24 起 core 已产出、页面已读取，但编排层从未透传——页面用 `as unknown as` 读，tsc 看不见，
