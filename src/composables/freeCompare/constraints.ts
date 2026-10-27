@@ -62,6 +62,14 @@ export interface ConstraintSpec {
    *   「全状态」静默退成「不使用」零报错（实测踩中）⇒ 用字符串 `'all'`。
    */
   buffChoice?: 'none' | 'all' | PhaseBuffCard
+  /**
+   * 锁失衡次数（用户 2026-10-27：三条命座线要和「命座提升率」页同口径）。
+   * 引擎对每个 (切片, 系列) 先自由收敛读**首档** `stunCount`，再把它钉死重算全部档位——
+   * 理由同 `cinemaUplift.ts`：C3/C5 升技能等级会抬失衡值 → 失衡次数变多 → 伤害额外上涨，
+   * 不锁就会把「多打几个失衡窗」的价值算进「这一命本身」。
+   * 缺省 false：普通对比保持既有数字，只有命座边际/模板显式打开。
+   */
+  stunLock?: boolean
 }
 
 /** 条件展示名：「维琳娜 2命」 */
@@ -108,7 +116,7 @@ export function constraintSummary(
   if (appliedBuffLabel) parts.push(`当期 buff：${appliedBuffLabel}`)
   else parts.push('当期 buff：不使用')
   // 交互量与失衡轴不在本页控制内——显式声明，防静默沿用被误读为「无交互口径」（用户裁决：环境必须随图露出）
-  parts.push('交互量/失衡轴：沿用当前页面配置')
+  parts.push(cs.stunLock ? '失衡次数：锁首档自由收敛值' : '交互量/失衡轴：沿用当前页面配置')
   return parts.join(' · ')
 }
 

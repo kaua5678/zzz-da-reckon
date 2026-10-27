@@ -20,6 +20,7 @@ const base = {
   mateB: '',
   mateBCode: '',
   autoBuild: false,
+  stunLock: false,
 } satisfies Partial<WorkbenchPreset>
 
 export const BUILTIN_ANALYSIS_PRESETS: WorkbenchPreset[] = [
@@ -50,6 +51,25 @@ export const BUILTIN_ANALYSIS_PRESETS: WorkbenchPreset[] = [
     mateACode: '',
     conditions: [],
     view: 'line',
+  },
+  {
+    ...base,
+    id: 'builtin:marginal-cinema',
+    name: '三人命座边际',
+    note: '同一支队三条线：每条只变一人的影画（另两人固定 01），看每档给谁加金最赚；锁失衡次数与「命座提升率」页同口径（C3/C5 的技能等级不再额外送失衡窗）',
+    series: [
+      { members: [BURNICE, PHOENIX, VELINA], variedSlot: 0, code: '01' },
+      { members: [BURNICE, PHOENIX, VELINA], variedSlot: 1, code: '01' },
+      { members: [BURNICE, PHOENIX, VELINA], variedSlot: 2, code: '01' },
+    ],
+    axisId: 'cinema',
+    sliceKey: '',
+    metricId: 'teamTotalDamage',
+    mateA: '',
+    mateACode: '',
+    conditions: [],
+    view: 'line',
+    stunLock: true,
   },
   {
     ...base,

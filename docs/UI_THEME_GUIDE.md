@@ -209,6 +209,8 @@ SVG presentation attribute（`fill="var(...)"` / `stroke="var(...)"`）**不可�
 | 新 SVG 图表颜色 | §4 三种写法，禁止 presentation attribute 写 var() |
 | **SVG 元素要按数据/状态动态改色（stroke/width/opacity）** | 一律 `:style="{ stroke: c }"`，**不要** `:stroke="c"`（呈现属性被同名类覆盖 ⇒ 死绑定）。判据 31 会验 |
 | **SVG 标签有描边光晕（`paint-order: stroke`）** | fill 跟随主题 ⇒ 光晕走 `--chart-halo`（成对）；fill 是数据色 ⇒ 写死 + 登记 `HALO_LITERAL_ALLOW_SET`。判据 14/15 会验 |
+| **折线逐档提升标注（同一 x 多条线）** | `composables/charts/stepLabelLayout.ts#layoutStepLabels`：按点的 y 从上到下排、最小间距 13px、靠顶翻到点下方；纯函数有单测。标签光晕走 `--chart-halo`（§4），**不要**各图手写避让 |
+| **图下逐档提升矩阵（行 = 系列、列 = 档位、绿 = 该档最优）** | `components/charts/StepGainMatrix.vue`（纯展示：列/行/单元由调用方算好）+ 数据口径 `freeCompare/views.ts#stepGainsOf` / `bestStepIndexByLevel`；令牌 `--app-border` / `--fg-2` / `--fg-3` / `--c-success`，**不要**另写一套矩阵样式 |
 | **新 Canvas（自绘）图表颜色** | 走 `--scene-*`（§2 表末）；**禁止** `ctx.fillStyle = 'var(--x)'`（静默忽略）⇒ 经 `src/utils/canvasTheme.ts` 读回真实值（`readThemeVar` / 一帧多读用 `themeReader()`，加 α 用 `withAlpha`；CC-348 起唯一入口，组件里不许自己 `getPropertyValue`）。需要新令牌时把它加进 `SCENE_ROOT_FALLBACK`（值须与 `:root` 逐字同，测试锁定）。机器兜底：`check-tokens` 判据 10 + `canvasTheme.test.ts` |
 | 检查明亮模式漏色 | grep 新改动文件里的 `rgba(255` / `#fff` / `#0f0f` 等字面值 |
 

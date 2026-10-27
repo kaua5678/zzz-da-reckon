@@ -44,28 +44,61 @@
           <span class="ctl-hint">配置码 = 两位数字：<b>左 = 影画 0-6，右 = 专武精炼 1-5</b>（21 = 2命+精1，01 = 0命+本体，<b>右位 0 = 无专武</b>）</span>
         </div>
         <div v-for="(s, i) in series" :key="s.key" class="series-row">
-          <n-select
-            v-model:value="s.agentId"
-            :options="agentOptions"
-            size="small"
-            filterable
-            style="width: 190px"
-            placeholder="选角色"
-          />
-          <span class="code-label">配置码</span>
-          <n-input
-            v-model:value="s.code"
-            size="small"
-            style="width: 74px"
-            placeholder="21"
-            :disabled="axisId === 'setupCode'"
-            :status="parseSetupCode(s.code) ? undefined : 'error'"
-            :title="axisId === 'setupCode' ? 'x = 配置码时，本列的配置码被 x 档位覆盖（用下面的「配置码序列」控制）；这一格只在其它 x 维度下生效' : '该角色自己的配置码（单人系列只作用于本人，队友走各自的配置码/01 基线）'"
-          />
-          <span class="code-read">{{ axisId === 'setupCode' ? '被 x 档位覆盖' : codeReadable(s.code) }}</span>
-          <n-button size="small" quaternary :disabled="series.length <= 1" @click="removeSeries(i)">移除</n-button>
+          <template v-if="s.kind === 'agent'">
+            <n-select
+              v-model:value="s.agentId"
+              :options="agentOptions"
+              size="small"
+              filterable
+              style="width: 190px"
+              placeholder="选角色"
+            />
+            <span class="code-label">配置码</span>
+            <n-input
+              v-model:value="s.code"
+              size="small"
+              style="width: 74px"
+              placeholder="21"
+              :disabled="axisId === 'setupCode'"
+              :status="parseSetupCode(s.code) ? undefined : 'error'"
+              :title="axisId === 'setupCode' ? 'x = 配置码时，本列的配置码被 x 档位覆盖（用下面的「配置码序列」控制）；这一格只在其它 x 维度下生效' : '该角色自己的配置码（单人系列只作用于本人，队友走各自的配置码/01 基线）'"
+            />
+            <span class="code-read">{{ axisId === 'setupCode' ? '被 x 档位覆盖' : codeReadable(s.code) }}</span>
+            <n-button size="small" quaternary :disabled="series.length <= 1" @click="removeSeries(i)">移除</n-button>
+          </template>
+          <template v-else>
+            <span class="series-team">{{ s.members.map(m => agentName(m)).join(' + ') }}</span>
+            <span class="code-label">只变</span>
+            <n-select
+              v-model:value="s.variedSlot"
+              :options="s.members.map((m, si) => ({ value: si, label: agentName(m) }))"
+              size="small"
+              style="width: 130px"
+            />
+            <span class="code-label">基线码</span>
+            <n-input
+              v-model:value="s.code"
+              size="small"
+              style="width: 74px"
+              placeholder="01"
+              :status="parseSetupCode(s.code) ? undefined : 'error'"
+              :title="'整队系列的基线码：只变的那一槽随 x 档位，另两槽固定用这个码（01 = 0命1精）'"
+            />
+            <span class="code-read">{{ codeReadable(s.code) }}</span>
+            <n-button size="small" quaternary @click="removeSeries(i)">移除</n-button>
+          </template>
         </div>
-        <n-button size="small" dashed style="margin-top: 6px" @click="addSeries">+ 加一个系列</n-button>
+        <div class="series-actions">
+          <n-button size="small" dashed @click="addSeries">+ 加一个系列</n-button>
+        </div>
+        <div class="ctl-row marginal-row">
+          <span class="ctl-label">三人命座边际</span>
+          <n-select v-model:value="marginalA" :options="agentOptions" size="small" filterable style="width: 150px" placeholder="队员1" />
+          <n-select v-model:value="marginalB" :options="agentOptions" size="small" filterable style="width: 150px" placeholder="队员2" />
+          <n-select v-model:value="marginalC" :options="agentOptions" size="small" filterable style="width: 150px" placeholder="队员3" />
+          <n-button size="small" :disabled="!canBuildMarginal" @click="buildMarginalLines">生成三条线</n-button>
+          <span class="ctl-hint">同一支队，三条线各只变一人的影画（另两人固定 01）；会替换当前系列</span>
+        </div>
       </div>
 
       <!-- ===== x / y ===== -->
@@ -169,6 +202,10 @@
           <div class="ctl-field">
             <n-checkbox v-model:checked="autoBuild" size="small">推荐配装（慢很多，数值更接近实战）</n-checkbox>
           </div>
+          <div class="ctl-field">
+            <n-checkbox v-model:checked="stunLock" size="small">锁失衡次数（命座口径）</n-checkbox>
+            <span class="ctl-hint">首档自由收敛值逐档钉死（与资源利用率页同口径）；不开 = 含失衡通道</span>
+          </div>
         </div>
         <div class="ctl-row">
           <div class="ctl-field">
@@ -255,6 +292,10 @@
         <span class="fc-note-label">环境：</span>
         <span>{{ result.environmentSummary }}</span>
       </div>
+      <div v-if="stunLockNote" class="fc-note">
+        <span class="fc-note-label">失衡：</span>
+        <span>{{ stunLockNote }}</span>
+      </div>
 
       <div class="fc-toolbar">
         <div class="fc-view-switch">
@@ -276,6 +317,10 @@
           <span class="ctl-label">基准</span>
           <n-select v-model:value="baselineEntityId" :options="baselineOptions" size="small" style="width: 210px" />
         </div>
+        <div v-if="result.levels.length > 2" class="ctl-field">
+          <n-checkbox v-model:checked="showStepGain" size="small">标注逐档提升</n-checkbox>
+          <n-checkbox v-if="showStepGain" v-model:checked="stepLabelAll" size="small">三线都标</n-checkbox>
+        </div>
         <button
           class="fc-view-btn fc-export"
           title="导出完整长表（x × 切片 × 系列；不受图例筛选）"
@@ -291,6 +336,7 @@
           :levels="result.levels"
           :series="visibleSeries"
           :def="resultDef"
+          :show-step-gain="showStepGain"
         />
         <ChartTable
           v-else-if="viewMode === 'long'"
@@ -332,6 +378,15 @@
                 <title>{{ s.label }} · {{ result.levels[i]?.label }}：{{ p.text }}</title>
               </circle>
             </template>
+            <text
+              v-for="lab in stepLabels"
+              :key="lab.key"
+              :x="lab.x"
+              :y="lab.y"
+              text-anchor="middle"
+              class="fc-step-label"
+              :style="{ fill: lab.color }"
+            >{{ lab.text }}</text>
           </svg>
         </div>
         <SliceGridChart
@@ -373,6 +428,14 @@
           @select="selectedSliceId = $event"
         />
       </div>
+
+      <!-- 图下数据块（2026-10-27 用户：一个 x 只显示一个提升幅度看不全）——美术单源 = StepGainMatrix -->
+      <StepGainMatrix
+        v-if="viewMode === 'line' && stepMatrix.rows.length > 0"
+        :columns="stepMatrix.levels"
+        :rows="stepMatrix.rows"
+        :hint="stepMatrixHint"
+      />
 
       <!-- 无专武档实际穿的下位件：按伤害择优挑的（实测同职业三把 A 级差 3~8pp），不显示就没法核对 -->
       <div v-if="downgradeNotes.length > 0" class="fc-note">
@@ -432,6 +495,7 @@ import FreeCompare3DChart from '@/components/charts/FreeCompare3DChart.vue'
 import ChartLegend from '@/components/charts/ChartLegend.vue'
 import FreeCompareTable from '@/components/FreeCompareTable.vue'
 import FreeCompareLevelDelta from '@/components/FreeCompareLevelDelta.vue'
+import StepGainMatrix from '@/components/charts/StepGainMatrix.vue'
 import { BUILTIN_ANALYSIS_PRESETS } from '@/data/analysisPresets'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
@@ -474,15 +538,19 @@ import {
   ANALYSIS_VIEWS,
   availableViews,
   baselineOptionsOf,
+  bestStepIndexByLevel,
   defaultBaselineId,
   deltaPanelsOf,
   fallbackView,
   formatDeltaPercent,
+  formatSignedDeltaPercent,
   selectedSliceOf,
   seriesItemsOf,
+  stepGainsOf,
   type AnalysisView,
 } from '@/composables/freeCompare/views'
 import { scGridStartOf, scYGridOf, scYOf, scYRangeOf, scYStepOf } from '@/composables/versionChartGeometry'
+import { layoutStepLabels } from '@/composables/charts/stepLabelLayout'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
 
 import { localized } from '@/utils/format'
@@ -502,7 +570,15 @@ const VELINA = FREE_COMPARE_AGENTS.velina
 
 interface SeriesRow {
   key: number
+  /**
+   * 单人 = 本人 + 一对全局基底队友（字段 `agentId`）；
+   * 整队 = `members` 三人同队形（2026-10-27 用户：「三条线共图，看前期/后期给谁加金」）——
+   * `variedSlot` 只让那一槽跟随 x 档位，另两槽固定用 `code`。
+   */
+  kind: 'agent' | 'team'
   agentId: string
+  members: string[]
+  variedSlot: number
   code: string
 }
 
@@ -532,9 +608,47 @@ let keySeq = 0
  * 现在默认单系列 + 01：这格只在「x = 影画/精炼」时才是"对比的基准"，其余情况下它要么被 x 覆盖
  * （已置灰并写明原因），要么就是这台角色的固定配置。
  */
-const series = ref<SeriesRow[]>([{ key: keySeq++, agentId: '', code: '01' }])
+const series = ref<SeriesRow[]>([{
+  key: keySeq++, kind: 'agent', agentId: '', members: ['', '', ''], variedSlot: 0, code: '01',
+}])
 function addSeries() {
-  series.value.push({ key: keySeq++, agentId: '', code: '01' })
+  series.value.push({ key: keySeq++, kind: 'agent', agentId: '', members: ['', '', ''], variedSlot: 0, code: '01' })
+}
+
+/**
+ * 「三人命座边际」快捷构建（2026-10-27 用户）：
+ * 同一支队三条线，每条只变一人的影画（另两人固定 01），看每档给谁加金最赚。
+ * 三人只在**这里**选（整队系列行只显示成员 + 可改「只变谁」），避免 3 行 × 3 个下拉的重复输入。
+ */
+const marginalA = ref('')
+const marginalB = ref('')
+const marginalC = ref('')
+const canBuildMarginal = computed(() => {
+  const m = [marginalA.value, marginalB.value, marginalC.value]
+  return m.every(Boolean) && new Set(m).size === 3
+})
+function buildMarginalLines() {
+  if (!canBuildMarginal.value) {
+    error.value = '三人命座边际：三名队员都要选，且不能重复'
+    return
+  }
+  const members = [marginalA.value, marginalB.value, marginalC.value]
+  series.value = [0, 1, 2].map(variedSlot => ({
+    key: keySeq++, kind: 'team' as const, agentId: '', members: [...members], variedSlot, code: '01',
+  }))
+  // 一次配好「看命座边际」的轴/指标（其余条件（Boss/buff/配装）保持用户当前设置）
+  axisId.value = 'cinema'
+  metricId.value = 'teamTotalDamage'
+  cinemaMax.value = 6
+  viewMode.value = 'line'
+  showStepGain.value = true
+  stunLock.value = true
+  presetId.value = ''
+  result.value = null
+  imported.value = null
+  selectedSliceId.value = ''
+  baselineEntityId.value = ''
+  error.value = ''
 }
 function removeSeries(i: number) {
   series.value.splice(i, 1)
@@ -562,6 +676,12 @@ const sliceSpec = computed<SliceSpec | null>({
 })
 /** 当前视角：同一份结果的不同投影（切换不重算） */
 const viewMode = ref<AnalysisView>('line')
+/** 图上标注「逐档提升%」（默认三条线全标；关掉 = 只标每档最优） */
+const showStepGain = ref(true)
+/** 图上三条线都标（2026-10-27 用户：一个 x 只显示一个提升幅度看不全）；关掉 = 只标每档最优 */
+const stepLabelAll = ref(true)
+/** 锁失衡次数（命座口径，2026-10-27）：命座边际模板默认开；普通对比默认关（保持既有数字） */
+const stunLock = ref(false)
 /** 当前片（表格/折线/3D 选中态共用；空 = 结果到达后取第一片） */
 const selectedSliceId = ref('')
 /** 差值视角的基准系列 */
@@ -665,7 +785,17 @@ function applyPresetById(id: string) {
   if (!id) return
   const p = allPresets.value.find(x => x.id === id)
   if (!p) return
-  series.value = p.series.map(s => ({ key: keySeq++, agentId: s.agentId, code: s.code }))
+  series.value = p.series.map(s => s.members && s.members.length > 0
+    ? { key: keySeq++, kind: 'team' as const, agentId: '', members: [...s.members], variedSlot: s.variedSlot ?? 0, code: s.code }
+    : { key: keySeq++, kind: 'agent' as const, agentId: s.agentId ?? '', members: ['', '', ''], variedSlot: 0, code: s.code })
+  // 整队系列把三人回填到快捷构建区，改完点「生成三条线」即可重出
+  const teamRow = series.value.find(s => s.kind === 'team')
+  if (teamRow) {
+    marginalA.value = teamRow.members[0] ?? ''
+    marginalB.value = teamRow.members[1] ?? ''
+    marginalC.value = teamRow.members[2] ?? ''
+  }
+  stunLock.value = p.stunLock
   axisId.value = p.axisId
   sliceKey.value = p.sliceKey
   metricId.value = p.metricId
@@ -712,13 +842,18 @@ function applyImport(): void {
 function saveCurrentPreset() {
   const name = presetName.value.trim()
   if (!name) { error.value = '先给预设起个名字'; return }
-  const rows = series.value.filter(s => s.agentId)
+  const rows = series.value.filter(s => s.kind === 'team' ? s.members.every(Boolean) : !!s.agentId)
   if (rows.length === 0) { error.value = '至少选一个系列再保存预设'; return }
   if (rows.some(s => !parseSetupCode(s.code))) { error.value = '配置码不合法，先修正再保存预设'; return }
+  if (rows.some(s => s.kind === 'team' && new Set(s.members).size !== s.members.length)) {
+    error.value = '整队系列的队员不能重复'; return
+  }
   const preset: WorkbenchPreset = {
     id: newUserPresetId(),
     name,
-    series: rows.map(s => ({ agentId: s.agentId, code: s.code })),
+    series: rows.map(s => s.kind === 'team'
+      ? { members: [...s.members], variedSlot: s.variedSlot, code: s.code }
+      : { agentId: s.agentId, code: s.code }),
     axisId: axisId.value,
     sliceKey: sliceKey.value,
     metricId: metricId.value,
@@ -731,6 +866,7 @@ function saveCurrentPreset() {
     mateBCode: mateBCode.value,
     mateB: mateB.value,
     autoBuild: autoBuild.value,
+    stunLock: stunLock.value,
     conditions: conditions.value.map(c => ({ ...c })),
     view: viewMode.value,
   }
@@ -789,7 +925,8 @@ const sliceCount = computed(() => {
 const sliceConditionInScene = computed(() => {
   const s = sliceSpec.value
   if (!s || s.kind !== 'condition') return true
-  return mateA.value === s.agentId || mateB.value === s.agentId || series.value.some(row => row.agentId === s.agentId)
+  return mateA.value === s.agentId || mateB.value === s.agentId
+    || series.value.some(row => row.kind === 'team' ? row.members.includes(s.agentId) : row.agentId === s.agentId)
 })
 
 const sliceHint = computed(() => {
@@ -803,7 +940,7 @@ const sliceHint = computed(() => {
 /** 代价预告：单次全量求值 ~0.3-0.4s（由 TeamComparePage 注释「每队 ~10 次 ≈ 3~4 秒」推算） */
 const costHint = computed(() => {
   const levels = AXIS_BY_ID.get(axisId.value)?.levels(EMPTY_SERIES_SPEC, axisOpts.value).length ?? 0
-  const nSeries = series.value.filter(s => s.agentId).length
+  const nSeries = series.value.filter(s => s.kind === 'team' ? s.members.every(Boolean) : !!s.agentId).length
   // 全状态对比：每个主系列拆 本体+每张可用牌 条输出系列（求值量 ×(牌数+1)）；切片再 × 片数
   const buffMult = buffChoice.value === 'all' ? currentBuffs.value.filter(b => !b.testOnly).length + 1 : 1
   const slices = sliceCount.value
@@ -821,6 +958,20 @@ async function runCompare() {
   error.value = ''
   const specs: SeriesSpec[] = []
   for (const s of series.value) {
+    if (s.kind === 'team') {
+      if (!s.members.every(Boolean)) { error.value = '整队系列：三个位置都要选角色（或删除该系列）'; return }
+      if (new Set(s.members).size !== s.members.length) { error.value = '整队系列：队员不能重复'; return }
+      const teamCode = parseSetupCode(s.code)
+      if (!teamCode) { error.value = `配置码「${s.code}」不合法：要两位数字（左=影画 0-6，右=精炼 0-5）`; return }
+      specs.push({
+        id: `team-${s.members.join('-')}-v${s.variedSlot}-${formatSetupCode(teamCode)}`,
+        kind: 'team',
+        members: [...s.members],
+        variedSlot: s.variedSlot,
+        code: teamCode,
+      })
+      continue
+    }
     if (!s.agentId) continue
     const code = parseSetupCode(s.code)
     if (!code) { error.value = `配置码「${s.code}」不合法：要两位数字（左=影画 0-6，右=精炼 1-5）`; return }
@@ -876,6 +1027,7 @@ async function runCompare() {
         baseTeammates: [mateA.value, mateB.value],
         conditions: conditions.value,
         autoBuild: autoBuild.value,
+        stunLock: stunLock.value,
         buffs: currentBuffs.value,
         buffChoice: buffChoice.value === 'all'
           ? 'all'
@@ -1042,12 +1194,109 @@ const visibleLines = computed(() => visibleSeries.value.map(s => {
   return { id: s.id, label: s.label, buffTitle: s.buffTitle, pts, points: pts.map(p => `${p.x},${p.y}`).join(' ') }
 }))
 
+/**
+ * 逐档提升标注（2026-10-27）：默认**三条线都标**（用户：「一个 x 轴只显示了一个提升幅度，
+ * 把三个人全显示」）；关掉「三线都标」则退化为每档最优一条。
+ *
+ * 同一 x 上三条线的标签按点 y 从上到下排，相邻至少隔 13px（10px 字 + 3px 间隙）——
+ * 只做**垂直避让**：同一 x 的标签共用圆心 x，水平必然重叠，垂直错开即可读；
+ * 标签贴线时用 `--chart-halo` 描边（UI_THEME_GUIDE §4）。
+ */
+const stepLabels = computed(() => {
+  const r = result.value
+  if (!r || !showStepGain.value || r.levels.length < 2) return []
+  const gains = stepGainsOf(visibleSeries.value, r.levels.length)
+  const best = bestStepIndexByLevel(gains, resultDef.value.higherBetter)
+  const out: Array<{ key: string; x: number; y: number; text: string; color: string }> = []
+  for (let i = 1; i < r.levels.length; i++) {
+    // 垂直避让算法单源在 composables/charts/stepLabelLayout（纯函数 + 单测，别的折线图可复用）
+    const opts = { level: i, topBound: padT + 30, format: formatSignedDeltaPercent }
+    if (stepLabelAll.value) {
+      const points: Array<{ id: string; x: number; y: number; gain: number; color: string }> = []
+      visibleSeries.value.forEach((s, si) => {
+        const p = visibleLines.value[si]?.pts[i]
+        const g = gains[si]?.[i]
+        if (!p || g == null) return
+        points.push({ id: s.id, x: p.x, y: p.y, gain: g, color: colorOf(s.id) })
+      })
+      out.push(...layoutStepLabels(points, opts))
+      continue
+    }
+    const si = best[i]
+    if (si < 0) continue
+    const s = visibleSeries.value[si]
+    const p = visibleLines.value[si]?.pts[i]
+    const g = gains[si]?.[i]
+    if (!s || !p || g == null) continue
+    out.push(...layoutStepLabels([{ id: s.id, x: p.x, y: p.y, gain: g, color: colorOf(s.id) }], opts))
+  }
+  return out
+})
+
+/** 图下逐档矩阵的一格 / 一行（具名类型；判据 27 禁止用类型字面量断言造空数组） */
+interface StepMatrixCell { text: string; best: boolean; empty: boolean }
+interface StepMatrixRow { id: string; label: string; color: string; cells: StepMatrixCell[] }
+
+/**
+ * 图下「逐档提升」矩阵（2026-10-27 用户：怕图上叠字就在下面多一块 UI 显示数据）。
+ * 行 = 系列（短标签 = 被变的那个人），列 = C1..Cn，格 = 相对上一档的提升%；
+ * 每列绿字 = 该档提升最大。与折线共用 `stepGainsOf` / `bestStepIndexByLevel`（同一把尺）。
+ */
+const stepMatrix = computed<{ levels: string[]; rows: StepMatrixRow[] }>(() => {
+  const r = result.value
+  if (!r || r.levels.length < 2) return { levels: [], rows: [] }
+  const gains = stepGainsOf(visibleSeries.value, r.levels.length)
+  const best = bestStepIndexByLevel(gains, resultDef.value.higherBetter)
+  const levels = r.levels.slice(1).map(lv => lv.label)
+  return {
+    levels,
+    rows: visibleSeries.value.map((s, si) => ({
+      id: s.id,
+      label: s.shortLabel ?? s.label,
+      color: colorOf(s.id),
+      cells: levels.map((_, j) => {
+        const i = j + 1
+        const g = gains[si]?.[i]
+        return {
+          text: g == null ? '—' : formatSignedDeltaPercent(g),
+          best: g != null && best[i] === si,
+          empty: g == null,
+        }
+      }),
+    })),
+  }
+})
+/** 矩阵右侧提示：当前片 + 绿字含义（与组件解耦，组件只管排版） */
+const stepMatrixHint = computed(() => `绿 = 该档最赚 · 当前片：${selectedSlice.value?.label || '全部'}`)
+
 /** 本次结果是否含 buff 拆分（全状态对比 ⇒ 图例提示线型口径） */
 const hasBuffSplit = computed(() => (result.value?.series ?? []).some(s => s.buffTitle !== null))
 const legendHint = computed(() =>
   '点系列名显隐（表格/折线/切片/3D/差值共用）'
   + (hasBuffSplit.value ? ' · 折线：实线 = 本体，虚线 = 吃当期牌' : ''),
 )
+
+/** 本次结果实际锁的失衡次数（开锁时逐系列/逐片可能不同；0 窗 = 没锁成） */
+const stunLockNote = computed(() => {
+  if (!result.value || imported.value) return ''
+  const vals: number[] = []
+  let zeroWindow = 0
+  for (const sl of result.value.slices) {
+    for (const s of sl.series) {
+      if (typeof s.stunLock === 'number') vals.push(s.stunLock)
+      else if (s.stunLock === null) zeroWindow++
+    }
+  }
+  // 用**结果自带字段**判断，不读当前复选框（改完复选框还没重跑时，旧结果不能被说成新口径）
+  if (vals.length === 0) {
+    return zeroWindow > 0
+      ? '首档自由收敛为 0 窗（无法锁，等于不锁）'
+      : '不锁（含失衡通道：C3/C5 多打的失衡窗也算进提升）'
+  }
+  const uniq = [...new Set(vals)]
+  const suffix = zeroWindow > 0 ? `；${zeroWindow} 条首档 0 窗未锁` : ''
+  return (uniq.length === 1 ? `锁 ${uniq[0]} 窗（取首档自由收敛值）` : `锁值不一（${uniq.join(' / ')} 窗）`) + suffix
+})
 
 /** 无专武档实际穿的下位件（去重；空 = 本次没跑无专武档；切片时逐片收集） */
 const downgradeNotes = computed(() => {
@@ -1139,6 +1388,24 @@ onMounted(async () => {
   gap: 8px;
   margin-bottom: 6px;
 }
+/* 整队系列：成员只读（在「三人命座边际」区统一选），行内只改「只变谁」与基线码 */
+.series-team {
+  font-size: 12px;
+  color: var(--fg-2);
+  min-width: 240px;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.series-actions {
+  margin-top: 6px;
+}
+.marginal-row {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--app-border);
+}
 .code-label {
   font-size: 12px;
   color: var(--fg-2);
@@ -1220,6 +1487,16 @@ onMounted(async () => {
 .trend-point {
   stroke: var(--line-strong);
   stroke-width: 1;
+}
+/* 逐档提升标注：压在折线上，用主题光晕保证双主题都可读（UI_THEME_GUIDE §4） */
+.fc-step-label {
+  font-size: 10px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--chart-halo);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
 }
 .fc-toolbar {
   display: flex;

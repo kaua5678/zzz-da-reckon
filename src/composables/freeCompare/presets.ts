@@ -15,12 +15,27 @@ import { AXES, type AxisId, parseSetupCode, parseSliceKey } from './axes'
 import { METRIC_BY_ID } from './metrics'
 import { ANALYSIS_VIEWS, type AnalysisView } from './views'
 
+/**
+ * 预设里的一个系列：只存输入。
+ * - 单人系列：`agentId`（队友在预设的 mateA/mateB）
+ * - 整队系列（2026-10-27「同队三人三条命座线」）：`members` 三人 + `variedSlot` 只让该槽跟随 x 轴
+ */
+export interface PresetSeriesSpec {
+  /** 单人系列：被比的角色 */
+  agentId?: string
+  /** 整队系列：三人成员（顺序 = 槽位号） */
+  members?: string[]
+  /** 整队系列：只让这一槽跟随 x 档位（缺省 0） */
+  variedSlot?: number
+  code: string
+}
+
 export interface WorkbenchPreset {
   id: string
   name: string
   /** 一句话说明（内置模板用；用户预设可空） */
   note?: string
-  series: Array<{ agentId: string; code: string }>
+  series: PresetSeriesSpec[]
   axisId: AxisId
   /** 空 = 单张二维图；编码见 axes.ts#sliceKeyOf */
   sliceKey: string
@@ -35,6 +50,8 @@ export interface WorkbenchPreset {
   mateACode: string
   mateBCode: string
   autoBuild: boolean
+  /** 锁失衡次数（命座口径；旧预设没有该字段 ⇒ 缺省 false） */
+  stunLock: boolean
   conditions: Array<{ agentId: string; cinema: number }>
   /** 应用预设时默认打开的视角（缺省 = 折线） */
   view?: AnalysisView
@@ -81,14 +98,23 @@ export function sanitizePreset(raw: unknown): WorkbenchPreset | null {
   const name = str(raw.name)?.trim()
   if (!id || !name) return null
 
-  const series: WorkbenchPreset['series'] = []
+  const series: PresetSeriesSpec[] = []
   if (Array.isArray(raw.series)) {
     for (const item of raw.series) {
       if (!isRecord(item)) continue
-      const agentId = str(item.agentId)?.trim()
       const code = str(item.code)?.trim()
-      if (!agentId || !code || !parseSetupCode(code)) continue
-      series.push({ agentId, code })
+      if (!code || !parseSetupCode(code)) continue
+      const agentId = str(item.agentId)?.trim()
+      if (agentId) {
+        series.push({ agentId, code })
+        continue
+      }
+      // 整队系列：2~3 名不重复成员；缺 variedSlot 按 0 处理
+      if (!Array.isArray(item.members)) continue
+      const members = item.members.map(m => str(m)?.trim() ?? '').filter(Boolean)
+      if (members.length < 2 || members.length > 3) continue
+      if (new Set(members).size !== members.length) continue
+      series.push({ members, variedSlot: clampInt(item.variedSlot, 0, members.length - 1, 0), code })
     }
   }
   if (series.length === 0) return null
@@ -132,6 +158,7 @@ export function sanitizePreset(raw: unknown): WorkbenchPreset | null {
     mateACode: str(raw.mateACode) ?? '',
     mateBCode: str(raw.mateBCode) ?? '',
     autoBuild: raw.autoBuild === true,
+    stunLock: raw.stunLock === true,
     conditions,
     view,
   }

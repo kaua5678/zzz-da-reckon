@@ -179,6 +179,64 @@ export function levelDeltaRowsOf(
   })
 }
 
+/**
+ * 逐档提升%（**相邻**两档，不是任选两档）——图上的「+x.x%」标注与汇总表小字共用这一份口径。
+ *
+ * 与 `levelDeltaRowsOf` 的区别：那个比较用户选的起点/终点（比配置），这里固定比「上一档」；
+ * 数学完全相同（分母取 |上一档|，除零/缺失 ⇒ null），只是把 6 次两两比较一次摊开。
+ * 返回与 `series` 同序；下标 0 恒 null（第一档没有「前面」）。
+ */
+export function stepGainsOf(
+  series: ReadonlyArray<{ values: ReadonlyArray<number | null> }>,
+  levelCount: number,
+): Array<Array<number | null>> {
+  return series.map(s => {
+    const out: Array<number | null> = Array.from({ length: levelCount }, () => null)
+    for (let i = 1; i < levelCount; i++) {
+      const a = s.values[i - 1]
+      const b = s.values[i]
+      if (a === null || a === undefined || b === null || b === undefined) continue
+      if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a) < 1e-9) continue
+      out[i] = ((b - a) / Math.abs(a)) * 100
+    }
+    return out
+  })
+}
+
+/**
+ * 每一档「提升最大」的系列下标（图上只标这一条，避免 3 条线 × 6 档 = 18 个标签糊成一片）。
+ * - 无读数的档 ⇒ -1（调用方跳过）；
+ * - 升/降方向按指标的 `higherBetter` 判（越小越好的指标，下降才是改进）；
+ * - 并列取**先出现的那个**（图例顺序稳定 ⇒ 标注不会闪烁）。
+ */
+export function bestStepIndexByLevel(
+  gains: ReadonlyArray<ReadonlyArray<number | null>>,
+  higherBetter = true,
+): number[] {
+  const levelCount = Math.max(0, ...gains.map(g => g.length))
+  const out: number[] = []
+  for (let i = 0; i < levelCount; i++) {
+    let best = -1
+    let bestScore = Number.NEGATIVE_INFINITY
+    gains.forEach((g, si) => {
+      const v = g[i]
+      if (v === null || v === undefined || !Number.isFinite(v)) return
+      const score = higherBetter ? v : -v
+      if (score > bestScore + 1e-12) {
+        bestScore = score
+        best = si
+      }
+    })
+    out.push(best)
+  }
+  return out
+}
+
+/** 带符号的提升%文本（+3.4% / -1.2%）；与 `formatDeltaPercent` 同一位数口径 */
+export function formatSignedDeltaPercent(v: number): string {
+  return (v >= 0 ? '+' : '') + formatDeltaPercent(v)
+}
+
 /** 两档对比的档位下拉选项（label 直接用轴档位名，如 30 / 11 / 精3） */
 export function levelOptionsOf(result: Pick<FreeCompareResult, 'levels'> | null): Array<{ value: number; label: string }> {
   return (result?.levels ?? []).map((lv, i) => ({ value: i, label: lv.label }))

@@ -36,6 +36,15 @@ import {
 } from '@/composables/freeCompare/metrics'
 import { constraintSummary, withConditionCinema } from '@/composables/freeCompare/constraints'
 
+describe('约束摘要（环境必须随图露出）', () => {
+  it('★ 锁失衡次数时写锁口径，不能仍写「沿用当前页面配置」（否则读图以为没锁）', () => {
+    const s = constraintSummary({ stunLock: true }, id => id)
+    expect(s).toContain('失衡次数：锁首档自由收敛值')
+    expect(s).not.toContain('沿用当前页面配置')
+    expect(constraintSummary({}, id => id)).toContain('交互量/失衡轴：沿用当前页面配置')
+  })
+})
+
 const spec = (members: string[], code: string): SeriesSpec => ({
   id: `${members.join('-')}-${code}`,
   kind: members.length === 1 ? 'agent' : 'team',

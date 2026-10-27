@@ -67,11 +67,21 @@ export interface FreeCompareSeries {
   /** 未取到值的档位数（如未收敛/跳过） */
   skipped: number
   /**
+   * 短标签（图下逐档矩阵的行头用）：整队只变一槽时取「被变的那个人」，单人取角色名，
+   * 整队同步取 A+B+C。图例仍用 `label`（含配置码/「只变 X 影画」），两者不混用。
+   */
+  shortLabel?: string
+  /**
    * 「无专武」档实际穿上的下位音擎（label，去重后按首次出现序）。
    * 为什么要露出来：下位是**按伤害择优**挑的（同职业三把 A 级实测差 3–8pp），
    * 不显示的话用户看到「20」的数字却不知道底下穿的是哪把 —— 无法核对也无法复现。
    */
   downgrades?: string[]
+  /**
+   * 本次系列实际钉死的失衡次数（`ConstraintSpec.stunLock`）。`undefined` = 没开锁；
+   * `null` = 开了锁但首档自由收敛为 0（无法锁），页面据此在环境行写明。
+   */
+  stunLock?: number | null
 }
 
 /**
@@ -256,6 +266,11 @@ function makeDowngradeResolver(calc: Calc, configStore: ConfigModel, catalog: Re
  *
  * 复杂度：档位数 × 系列数 次全量引擎求值（单次 ~0.3-0.4s，见 `TeamComparePage.vue` 注释
  * 「每队 ~10 次 ≈ 3~4 秒」推算）⇒ **默认要给出代价预告**，别让用户点下去才知道要等一分钟。
+ *
+ * @fact engine:freeCompare/整队系列 口径: `kind:'team'` + `variedSlot` 只让该槽跟随 x 档位，另两槽固定用系列码（同队三人三条边际线） | 据 用户@2026-10-27 | 验 freeCompareEngine.test.ts | 锚 src/composables/freeCompare/engine.ts#computeFreeCompare | 信 高
+ * ⟳复核: 整队系列再加槽位/切片语义时，复核 followLevel 与 slotCodes 优先级仍只让 variedSlot 跟 x | 到期 2027-04-27
+ * @fact engine:freeCompare/锁失衡 口径: `stunLock` 取每个系列首档自由收敛的 stunCount，逐档钉死（与 cinemaUplift 同口径） | 据 用户@2026-10-27 | 验 freeCompareEngine.test.ts | 锚 src/composables/freeCompare/engine.ts#computeFreeCompare | 信 高
+ * ⟳复核: cinemaUplift 的锁口径或锁值来源变更时，复核本处探针与还原 | 到期 2027-04-27
  */
 export async function computeFreeCompare(
   scenario: AnalysisContext,
@@ -339,7 +354,12 @@ export async function computeFreeCompare(
   const downgrade = makeDowngradeResolver(calc, configStore, catalog)
   let evaluations = 0
   let skipped = 0
-  const totalEvaluations = levels.length * runRows.length * slices.length
+  /** 每个 (切片, 系列) 的锁失衡探针也是一次全量求值，计入进度分母 */
+  const lockProbes = cs.stunLock ? runRows.length * slices.length : 0
+  const totalEvaluations = levels.length * runRows.length * slices.length + lockProbes
+  /** 场景进入前的锁值（跑完 / 中止时还原；通常 -1） */
+  const originalStunLock = configStore.enemy.stunCountLock
+  let probesDone = 0
 
   for (let pi = 0; pi < slices.length; pi++) {
     const slice = sliceLevels[pi]
@@ -351,9 +371,15 @@ export async function computeFreeCompare(
     for (let si = 0; si < runRows.length; si++) {
       const { spec, buff } = runRows[si]
       const outs = slices[pi].series[si]
+      // 每个 (切片, 系列) 都从「未锁」起步：锁值取本系列首档自由收敛的失衡次数
+      configStore.enemy.stunCountLock = originalStunLock
+      let lockValue: number | null = null
       const baseLabel = seriesLabelOf(spec, nameOf)
       // 全状态模式下牌名进系列标签（「柏妮思 21 · 本体」/「柏妮思 21 · 异象」）；单牌/无牌模式保持原标签
       outs.label = (cs.buffChoice ?? 'none') === 'all' && buff ? `${baseLabel} · ${buff.title}` : baseLabel
+      // 矩阵行头用短标签（整队系列只显示「被变的那个人」，不含 A+B+C/配置码）
+      const shortBase = shortLabelOf(spec, nameOf)
+      outs.shortLabel = (cs.buffChoice ?? 'none') === 'all' && buff ? `${shortBase} · ${buff.title}` : shortBase
 
       for (let li = 0; li < levels.length; li++) {
         if (isBatchAborted(options.control)) return finalize()
@@ -399,10 +425,16 @@ export async function computeFreeCompare(
            * 用户看到的曲线是两个变量搅在一起的（实测：系列码 61 ⇒ 丽娜、克拉蕾也变 6 命 1 精）。
            * 现在单人系列 = 本人 + 「固定队友」（队友只认 slotCodes / 01 基线）；整队系列才把 code 套全队。
            */
-          const isOwnSlot = spec.kind === 'agent' && slot === 0
+          // 谁跟随 x 档位（2026-10-27）：单人系列 = 槽 0；整队系列缺省 = 全部三槽；
+          // 整队系列带 `variedSlot` = 只有那一槽跟（另两槽用系列自己的 code/slotCodes）——
+          // 「同一支队，分别只给一个人升命」的三条边际线就靠它。
+          const followLevel = spec.kind === 'team'
+            ? spec.variedSlot == null || spec.variedSlot === slot
+            : slot === 0
+          const fallback = spec.kind === 'team' ? spec.code : TEAMMATE_BASELINE_CODE
           const slotCode = condSlots.get(slot)
             ?? spec.slotCodes?.[slot]
-            ?? (isOwnSlot || spec.kind === 'team' ? code : TEAMMATE_BASELINE_CODE)
+            ?? (followLevel ? code : fallback)
           applyCodeToSlot(configStore, catalog, slot, agentId, slotCode, '', 1)
           if (slotCode.wengine === 0) needPick.push({ slot, agentId, cinema: slotCode.cinema })
         }
@@ -416,6 +448,21 @@ export async function computeFreeCompare(
           }
         }
 
+        // ---- 锁失衡次数（用户 2026-10-27：与资源利用率页「命座提升率」同口径）----
+        // C3/C5 升技能等级会抬失衡值 → 失衡次数变多 → 伤害额外上涨；不锁会把「多打几个失衡窗」
+        // 的价值算进「这一命本身」。做法同 `cinemaUplift.ts`：首档先自由收敛读 stunCount，
+        // 再把它钉死重算首档与其余所有档（探针本身是一次全量求值，计入 evaluations）。
+        if (cs.stunLock && li === 0) {
+          const probe = Number(calc.stunPoolResult.value?.stunCount ?? 0)
+          if (Number.isFinite(probe) && probe > 0) {
+            lockValue = probe
+            configStore.enemy.stunCountLock = probe
+          }
+          outs.stunLock = lockValue
+          evaluations++
+          probesDone++
+        }
+
         // ---- 求值 ----
         // env 必须在装配之后读：Boss / 期数由装配段写入，提前读会拿到用户页面原来那个 Boss 的血量（CC-189 修）
         const env: MetricEnv = { hp: configStore.enemy.hp }
@@ -424,18 +471,22 @@ export async function computeFreeCompare(
         if (value === null) { skipped++; outs.skipped++; outs.values[li] = null }
         else outs.values[li] = value
 
-        const done = (pi * runRows.length + si) * levels.length + li + 1
+        const done = (pi * runRows.length + si) * levels.length + li + 1 + probesDone
         const slicePrefix = slice.label ? `${slice.label} · ` : ''
         options.onProgress?.({
           pct: totalEvaluations > 0 ? done / totalEvaluations : 1,
           text: `${slicePrefix}${outs.label} · ${level.label}`,
         })
       }
+      // 本系列跑完还原：下一系列的探针必须从「未锁」测起
+      configStore.enemy.stunCountLock = originalStunLock
     }
   }
   return finalize()
 
   function finalize(): FreeCompareResult {
+    // 中止 / 正常结束都还原锁，避免把「命座对比的锁」漏给下一次普通对比
+    configStore.enemy.stunCountLock = originalStunLock
     const sliceTitle = sliceSpec ? sliceTitleOf(sliceSpec, nameOf) : null
     // 条件切片：摘要里的基线条件把**被切的那个角色**去掉（否则会写「维琳娜 2命」，而图上 0~6 命全有）
     const conditionSlice = sliceSpec && sliceSpec.kind === 'condition' ? sliceSpec : null
@@ -482,6 +533,18 @@ function teamOf(spec: SeriesSpec, cs: ConstraintSpec): [string, string, string] 
 }
 
 /**
+ * 短标签：只描述「这是谁的一条线」，不塞配置码。
+ * - 整队 + `variedSlot`：被变的那个人（图下矩阵行头「柏妮思 / 菲欧妮 / 维琳娜」）
+ * - 单人：本人
+ * - 整队同步：A+B+C
+ */
+function shortLabelOf(spec: SeriesSpec, nameOf: (id: string) => string): string {
+  if (spec.kind === 'team' && spec.variedSlot != null) return nameOf(spec.members[spec.variedSlot] ?? '')
+  if (spec.kind === 'agent') return nameOf(spec.members[0] ?? '')
+  return spec.members.filter(Boolean).map(nameOf).join('+')
+}
+
+/**
  * 系列标签：`角色 码`；配了逐槽码时把**与缺省码不同**的槽也标出来
  * （否则「诺姆 30 + 丽娜 65 + 克拉蕾 61」与「诺姆 30 全员 30」在图例里同名，读图直接读错）。
  */
@@ -496,7 +559,13 @@ function seriesLabelOf(spec: SeriesSpec, nameOf: (id: string) => string): string
       return `${nameOf(agentId)} ${c.cinema}${c.wengine}`
     })
     .filter((s): s is string => s !== null)
-  return extra.length > 0 ? `${base}（${extra.join(' / ')}）` : base
+  const label = extra.length > 0 ? `${base}（${extra.join(' / ')}）` : base
+  // 整队系列只变一槽时，三条线标签必须能区分（否则图例全是「A+B+C 01」）
+  if (spec.kind === 'team' && spec.variedSlot != null) {
+    const who = nameOf(spec.members[spec.variedSlot] ?? '')
+    return `${label} · 只变 ${who} 影画`
+  }
+  return label
 }
 
 /**

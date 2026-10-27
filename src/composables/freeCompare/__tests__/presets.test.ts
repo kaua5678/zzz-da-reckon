@@ -41,6 +41,7 @@ const valid = (): WorkbenchPreset => ({
   mateB: '',
   mateBCode: '',
   autoBuild: false,
+  stunLock: false,
   conditions: [],
 })
 
@@ -72,6 +73,34 @@ describe('预设净化（外部输入不炸页面）', () => {
     expect(clean.conditions).toEqual([{ agentId: '1561', cinema: 6 }])
     expect(clean.view).toBeUndefined()
     expect(sanitizePreset({ ...valid(), view: 'delta' })?.view).toBe('delta')
+  })
+})
+
+describe('整队系列（同队三人三条命座线，2026-10-27）', () => {
+  const team = (): WorkbenchPreset => ({
+    ...valid(),
+    id: 'user:team',
+    series: [{ members: ['1171', '1641', '1561'], variedSlot: 1, code: '01' }],
+    stunLock: true,
+  })
+
+  it('members + variedSlot 往返；stunLock 保留', () => {
+    const clean = sanitizePreset(team())!
+    expect(clean.series).toEqual([{ members: ['1171', '1641', '1561'], variedSlot: 1, code: '01' }])
+    expect(clean.stunLock).toBe(true)
+  })
+
+  it('★ 重复成员 / 缺 code ⇒ 丢弃该系列（系列全坏 ⇒ 整条预设 null）；variedSlot 越界夹紧', () => {
+    expect(sanitizePreset({ ...team(), series: [{ members: ['1171', '1171', '1561'], code: '01' }] })).toBeNull()
+    expect(sanitizePreset({ ...team(), series: [{ members: ['1171', '1641', '1561'] }] })).toBeNull()
+    expect(sanitizePreset({ ...team(), series: [{ members: ['1171', '1641'], variedSlot: 9, code: '01' }] })?.series[0])
+      .toEqual({ members: ['1171', '1641'], variedSlot: 1, code: '01' })
+  })
+
+  it('★ 旧单人预设没有 stunLock ⇒ false（不改变既有对比数字）', () => {
+    const raw = { ...valid() } as Record<string, unknown>
+    delete raw.stunLock
+    expect(sanitizePreset(raw)?.stunLock).toBe(false)
   })
 })
 

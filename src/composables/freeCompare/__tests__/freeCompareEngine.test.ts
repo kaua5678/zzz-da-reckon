@@ -84,6 +84,77 @@ describe('逐槽配置码 slotCodes（用户 2026-10-25：队友固定 65丽娜 
   })
 })
 
+describe('整队系列 · 只变一槽（2026-10-27：同队三人三条命座线）', () => {
+  it('★ 三条线保持同一队形；x=影画只作用于 variedSlot，另两槽固定 01；C0 三条重合', async () => {
+    const res0 = await fetch('/static/boss-presets.json')
+    const boss = (await res0.json()).bosses[0]
+    const members = [BURNICE, PHOENIX, VELINA]
+    /** 每次档位求值后的装配态**快照**（`scenario.config` 是同一个响应式对象，不能只存引用） */
+    const snaps: Array<Array<[string, number]>> = []
+    const res = await withAnalysisScenario(scenario => computeFreeCompare(scenario, {
+      series: [0, 1, 2].map(variedSlot => ({
+        id: `v${variedSlot}`, kind: 'team' as const, members, variedSlot, code: code('01'),
+      })),
+      axisId: 'cinema',
+      axisOptions: { cinemaMax: 1 },
+      metricId: 'teamTotalDamage',
+      constraints: { boss },
+      // 每次档位求值后抓一份装配态（r372：跑完场景 dispose，只能在过程中读）
+      onProgress: () => {
+        snaps.push(scenario.config.team.map(c => [c.agentId, c.cinemaLevel] as [string, number]))
+      },
+    }))
+
+    expect(snaps).toHaveLength(6)
+    // ① 槽位顺序与成员恒定；只有 variedSlot 那一槽跟着影画走
+    expect(snaps[1]).toEqual([[BURNICE, 1], [PHOENIX, 0], [VELINA, 0]])
+    expect(snaps[3]).toEqual([[BURNICE, 0], [PHOENIX, 1], [VELINA, 0]])
+    expect(snaps[5]).toEqual([[BURNICE, 0], [PHOENIX, 0], [VELINA, 1]])
+    // ② 0 命三条线是**同一支队** ⇒ 数值逐位相同；1 命各自不同（否则只测了装配没测数值）
+    expect(res.series[0]!.values[0]).not.toBeNull()
+    expect(res.series[0]!.values[0]).toBe(res.series[1]!.values[0])
+    expect(res.series[0]!.values[0]).toBe(res.series[2]!.values[0])
+    expect(res.series[0]!.values[1]).not.toBeNull()
+    expect(res.series[0]!.values[1]).not.toBe(res.series[1]!.values[1])
+    expect(res.series[1]!.values[1]).not.toBe(res.series[2]!.values[1])
+    // ③ 三条线标签必须能区分「只变谁」（否则图例全是 A+B+C 01）
+    expect(new Set(res.series.map(s => s.label)).size).toBe(3)
+    // ④ 图下矩阵行头用短标签 = 被变的那个人（不带 A+B+C/配置码）
+    const nameOf = useCatalogStore().agentName
+    expect(res.series.map(s => s.shortLabel)).toEqual([nameOf(BURNICE), nameOf(PHOENIX), nameOf(VELINA)])
+  })
+
+  it('★ stunLock：逐档钉死首档自由收敛值、结果暴露锁值、跑完还原', async () => {
+    const res0 = await fetch('/static/boss-presets.json')
+    const boss = (await res0.json()).bosses[0]
+    let cfgRef: ConfigModel | null = null
+    let lockAtFirst: number | null = null
+    const res = await withAnalysisScenario(scenario => computeFreeCompare(scenario, {
+      series: [{
+        id: 'a', kind: 'team', members: [BURNICE, PHOENIX, VELINA], variedSlot: 0, code: code('01'),
+      }],
+      axisId: 'cinema',
+      axisOptions: { cinemaMax: 1 },
+      metricId: 'teamTotalDamage',
+      constraints: { boss, stunLock: true },
+      onProgress: () => {
+        cfgRef ??= scenario.config
+        lockAtFirst ??= scenario.config.enemy.stunCountLock
+      },
+    }))
+
+    expect(res.series[0]!.values[0]).not.toBeNull()
+    expect(res.series[0]!.stunLock).not.toBeNull()
+    expect(res.series[0]!.stunLock).toBeGreaterThan(0)
+    expect(Number.isInteger(res.series[0]!.stunLock)).toBe(true)
+    // 首档进度回调时锁已生效（= 探针读到的自由收敛次数）
+    expect(lockAtFirst).toBe(res.series[0]!.stunLock)
+    // 中止/结束时还原，避免把锁漏给下一次普通对比
+    expect(cfgRef!.enemy.stunCountLock).toBe(-1)
+    expect(res.environmentSummary).toContain('失衡次数：锁首档自由收敛值')
+  })
+})
+
   it('★ 期数轴真的换期，且血量比按「该期」血量算（CC-189：此前期数覆盖从不被读、env.hp 在装配前就读死）', async () => {
     const res = await fetch('/static/boss-presets.json')
     const boss = (await res.json()).bosses.find((b: { id: string }) => b.id === '30007') // 恶名·死路屠夫：各期血量不同

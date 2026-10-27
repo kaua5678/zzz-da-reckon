@@ -9,14 +9,17 @@ import type { FreeCompareResult, FreeCompareSeries, FreeCompareSlice } from '@/c
 import {
   availableViews,
   baselineOptionsOf,
+  bestStepIndexByLevel,
   defaultBaselineId,
   deltaPanelsOf,
   fallbackView,
   formatDeltaPercent,
+  formatSignedDeltaPercent,
   levelDeltaRowsOf,
   levelOptionsOf,
   selectedSliceOf,
   seriesItemsOf,
+  stepGainsOf,
 } from '@/composables/freeCompare/views'
 
 const series = (id: string, label: string, values: Array<number | null>): FreeCompareSeries => ({
@@ -119,6 +122,31 @@ describe('两档对比（同一系列内 x=起点 vs x=终点）', () => {
   it('档位候选 = 轴档位名（30 / 11 / 精3 这类），下标即选择值', () => {
     expect(levelOptionsOf(result())).toEqual([{ value: 0, label: '01' }, { value: 1, label: '21' }])
     expect(levelOptionsOf(null)).toEqual([])
+  })
+})
+
+describe('逐档提升（相邻两档，2026-10-27 三条命座线）', () => {
+  it('★ 每档只跟上一档比；首档 / 缺值 / 零基数 ⇒ null（不落成 Infinity 或 0）', () => {
+    const g = stepGainsOf([{ values: [100, 110, null, 120] }, { values: [0, 50, 75, 75] }], 4)
+    expect(g[0]).toEqual([null, 10, null, null])
+    expect(g[1]).toEqual([null, null, 50, 0])
+  })
+
+  it('★ 分母取 |上一档|：负值序列方向不被拧反', () => {
+    expect(stepGainsOf([{ values: [-100, -50] }], 2)[0]).toEqual([null, 50])
+  })
+
+  it('★ 每档最优 = 提升最大；越小越好的指标取「下降最大」；并列取先出现', () => {
+    const g = [[null, 10, 10], [null, 12, 8]]
+    expect(bestStepIndexByLevel(g, true)).toEqual([-1, 1, 0])
+    expect(bestStepIndexByLevel([[null, -5], [null, 3]], false)).toEqual([-1, 0])
+    expect(bestStepIndexByLevel([[null, null]], true)).toEqual([-1, -1])
+  })
+
+  it('带符号一位小数：正向补 +，负向保留 -', () => {
+    expect(formatSignedDeltaPercent(3.44)).toBe('+3.4%')
+    expect(formatSignedDeltaPercent(0)).toBe('+0.0%')
+    expect(formatSignedDeltaPercent(-3.21)).toBe('-3.2%')
   })
 })
 

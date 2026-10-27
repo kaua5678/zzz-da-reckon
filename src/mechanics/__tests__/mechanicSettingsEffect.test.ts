@@ -156,7 +156,7 @@ describe('模块自读 MechanicSetting（Form-B/C/D）生效：规范值型（�
     const calc = useResourceCalc()
     const c = charOf(calc, '1621') as unknown as {
       executions: Array<{ moveId: string; decibelRecovery?: number; totalDecibelRecovery?: number; totalEnergyConsume?: number }>
-      exSpecialCount: number; derivedEnergy: number; roxyWindEnergySource?: { effectiveSpinSecondsTotal: number }
+      exSpecialCount: number; derivedEnergy: number; roxyWindEnergySource?: { effectiveSpinSecondsTotal: number; energySpentTotal: number }
     }
     /**
      * 自旋可能拆成「满发行 + 零散发行」两行（用户口径 2026-10-19）⇒ 按 Σ 判。
