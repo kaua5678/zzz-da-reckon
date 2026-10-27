@@ -49,7 +49,7 @@ describe('axisStateOf（轴态唯一事实源）', () => {
     const a = axisStateOf(mkInput({ fallback: false, stack: true, skips: [] }))
     expect(a.kind).toBe('complete')
     expect(a.skippedTotal).toBe(0)
-    expect(a.skipped).toEqual({ time: 0, decibel: 0, energy: 0, sway: 0 })
+    expect(a.skipped).toEqual({ time: 0, decibel: 0, energy: 0, sway: 0, family: 0 })
     expect(a.fallback).toBe(false)
     expect(axisStands(a)).toBe(true)
   })
@@ -60,7 +60,7 @@ describe('axisStateOf（轴态唯一事实源）', () => {
       skips: [{ reason: 'time' }, { reason: 'energy' }, { reason: 'energy' }],
     }))
     expect(a.kind).toBe('partial')
-    expect(a.skipped).toEqual({ time: 1, decibel: 0, energy: 2, sway: 0 })
+    expect(a.skipped).toEqual({ time: 1, decibel: 0, energy: 2, sway: 0, family: 0 })
     expect(a.skippedTotal).toBe(3)
     /**
      * ⚠ **2026-10-15 口径收紧**：`partial` **不算**轴成立（旧断言 `toBe(true)` 是旧口径）。

@@ -28,7 +28,7 @@ import type { AxisKind, AxisState } from '@/composables/difficultyAxis'
 import type { StackTraversalResult } from '@/core/stunAxisStack'
 
 function st(kind: AxisKind, skipped: Partial<AxisState['skipped']> = {}): AxisState {
-  const s = { time: 0, decibel: 0, energy: 0, sway: 0, ...skipped }
+  const s = { time: 0, decibel: 0, energy: 0, sway: 0, family: 0, ...skipped }
   const total = s.time + s.decibel + s.energy + s.sway
   return { kind, skipped: s, skippedTotal: total, fallback: kind === 'infeasible' }
 }

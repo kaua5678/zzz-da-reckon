@@ -35,6 +35,10 @@
  *
  * @fact engine:难度曲线/轴态 口径: 轴态四态**唯一事实源** = `axisStateOf`——`infeasible` = `convergence.axisFallback`（时间路：轴计划净占用超预算 ⇒ 弃轴）、`partial` = 轴已注入但 `stackTraversalResult.skipped` 非空（资源路：跳过 N 招）、`complete` = 轴已注入且零跳过、`none` = 两者皆无（非轴队）；判据顺序**先 fallback 后 stack**（弃轴时 `axisStack` 也被清空，只看它会误判成非轴队） | 据 用户@2026-10-12「达不到资源要求而弃轴或者跳过部分招式了，标注没正常打完就行」+ T140c 正式卡 §3.2 | 验 src/composables/__tests__/difficultyAxis.test.ts | 锚 src/composables/difficultyAxis.ts#axisStateOf | 信 确认
  * ⟳复核: 若 `StackTraversalResult.skipped` 增删 `reason` 取值、或轴退化新增第三条通道（现为「时间路 axisFallback + 资源路 skipped」两条），重核四态判据表与 `AxisSkipCounts` 的字段是否仍覆盖全部形态 | 到期 2027-04-30
+ * ⚠ **本触发器已于 2026-10-27 再次触发并复核（R68）**：`skipped.reason` 新增第五值 `'family'`
+ *   （同族每窗上限，现唯一族 = 赠品连携：一次失衡 0~1 个，前面放过了后面就不放）。`AxisSkipCounts` 加
+ *   `family`、`skippedTotal` 计入它、`NO_SKIPS` 补零；四态判据表**未变**（它也是「资源路」⇒ `partial`）。
+ *
  * ⚠ **本触发器已于 2026-10-15 触发并复核过一次（T169）**：`skipped.reason` 新增第四值 `'sway'`
  *   （角色专属资源不足，如般岳山威），`AxisSkipCounts` 同步加 `sway` 字段、`skippedTotal` 计入它、
  *   `NO_SKIPS` 补零；四态判据表**未变**（`sway` 仍属「资源路」⇒ 归 `partial`，不是新通道）。
@@ -58,6 +62,12 @@ export interface AxisSkipCounts {
   energy: number
   /** 角色专属资源不足（T169，2026-10-15）：如般岳山威用完 ⇒ 超出「怒相数 × 2 组」的连段块打不出 */
   sway: number
+  /**
+   * 同族每窗已达上限（2026-10-27）：现唯一族 = 赠品连携（诺姆膛温换连携）——
+   * 「一次失衡 0~1 个，前面放过了后面就不放，一个轴内总量不大于 1」。
+   * 归「资源路」不是新通道：它挡的是同一窗口里重复的赠品，与时间/闪能/喧响同性质。
+   */
+  family: number
 }
 
 export interface AxisState {
@@ -83,7 +93,7 @@ export interface AxisStateInput {
 }
 
 /** 空计数（避免各处重复写 `{ time: 0, decibel: 0, energy: 0 }`） */
-const NO_SKIPS: AxisSkipCounts = { time: 0, decibel: 0, energy: 0, sway: 0 }
+const NO_SKIPS: AxisSkipCounts = { time: 0, decibel: 0, energy: 0, sway: 0, family: 0 }
 
 /** 读一队当前档的轴态（纯函数，不碰 store、不触发求值——只读已算好的 computed） */
 export function axisStateOf(calc: AxisStateInput): AxisState {
@@ -95,7 +105,7 @@ export function axisStateOf(calc: AxisStateInput): AxisState {
   if (!stack) return { kind: 'none', skipped: { ...NO_SKIPS }, skippedTotal: 0, fallback: false }
   const skipped: AxisSkipCounts = { ...NO_SKIPS }
   for (const s of stack.skipped) skipped[s.reason] += 1
-  const skippedTotal = skipped.time + skipped.decibel + skipped.energy + skipped.sway
+  const skippedTotal = skipped.time + skipped.decibel + skipped.energy + skipped.sway + skipped.family
   return { kind: skippedTotal > 0 ? 'partial' : 'complete', skipped, skippedTotal, fallback: false }
 }
 

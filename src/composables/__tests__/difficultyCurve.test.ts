@@ -54,7 +54,7 @@ function mkLadder(
 ): LadderResult {
   const names: LadderPoint['point'][] = pointNames.length > 0 ? pointNames : ['baseline', 'max']
   const mkAxis = (kind: LadderPoint['axis']['kind']): LadderPoint['axis'] => ({
-    kind, skipped: { time: 0, decibel: 0, energy: 0, sway: 0 }, skippedTotal: 0, fallback: kind === 'infeasible',
+    kind, skipped: { time: 0, decibel: 0, energy: 0, sway: 0, family: 0 }, skippedTotal: 0, fallback: kind === 'infeasible',
   })
   const pts: LadderPoint[] = points.map(([x, dmg], i) => {
     const name = names[Math.min(i, names.length - 1)]!

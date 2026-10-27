@@ -2617,7 +2617,7 @@ const curveAxisDetail = computed(() => {
   const pool = curvePool.pool.value
   // 没选中点 / 本档还没重算完 ⇒ 空态（**不编**一个「无轴」出来）
   const empty = axisDetailOf(
-    { kind: 'none', skipped: { time: 0, decibel: 0, energy: 0, sway: 0 }, skippedTotal: 0, fallback: false },
+    { kind: 'none', skipped: { time: 0, decibel: 0, energy: 0, sway: 0, family: 0 }, skippedTotal: 0, fallback: false },
     null,
     (slot, moveId) => axisMoveNameOf(slot, moveId),
   )

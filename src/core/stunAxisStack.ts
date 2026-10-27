@@ -46,9 +46,31 @@ export interface StackActionCost {
    * 本引擎只做「够不够」的通用门控 —— 不认任何角色 id（判据 26）。
    */
   swayCost?: number
+  /**
+   * **第二种具名资源**成本（pool 名 → 点数；2026-10-27 用户报「倾山/摧岳也是怒相里的连带资源」）。
+   *
+   * 为什么需要第二个通道：一个怒相同时受**两个**约束——山威 4 点（怒内强特各 1 点，连段 2 点/组）
+   * 与**怒相次数**（倾山/摧岳 各一次，次数恒等于怒相数）。把两者压进同一个点数池做不到
+   * （2 组连段 = 4 山威已用满，再加倾山/摧岳就超 4；而单独加大池又会让「每怒相最多 2 组」失效）
+   * ⇒ 引擎给一条**通用的具名池**，成本/供给都由角色模块声明（引擎仍不认任何资源名，判据 26）。
+   */
+  pools?: Readonly<Record<string, number>>
   /** 动作开始时间（秒，相对失衡窗口起点；缺省 0，可为负=窗口外提前起手）。
    *  平A填充用：从该槽位最后一个动作的结束时刻填到窗口结束（富余才填），不是「窗口 − Σ动作时长」。 */
   startTime?: number
+  /**
+   * **同族每窗上限**（2026-10-27 用户口径）：同一 `fillFamily` 的动作**每窗**最多执行
+   * `maxPerWindow` 次，超出的**整条跳过**（不占时间、不扣资源）。
+   *
+   * > 「赠品是诺姆的资源转化而来，和失衡独立……诺姆的资源短时间内不可能回复那么多，所以不专门去设置
+   * >  的情况下，**一次失衡只有 0~1 个赠送连携是合理的**。如果前面有赠品连携了，这次失衡的后面兜底
+   * >  部分就不让放赠品连携，因为**一个轴内总量不大于 1**。」
+   *
+   * 引擎只认「族 + 每窗上限」，不认任何角色 id（判据 26）；族的成员与上限由编排层按模块声明填。
+   */
+  fillFamily?: string
+  /** 同族每窗上限（缺省 1）；只在声明了 `fillFamily` 时生效 */
+  maxPerWindow?: number
   /** 窗口终结动作（如佩洛伊斯右分支决算）：该动作做完时清空窗口剩余失衡时间——
    *  所在窗口平A填充恒为 0（剩余时间已被清空，没有可填充的富余），窗口有效失衡时长按其结束时刻截断。 */
   endsStunWindow?: boolean
@@ -93,6 +115,11 @@ export interface StackTraversalInput {
    * ⚠ 与闪能/喧响同款**滞后一轮**注入（首轮空表 ⇒ 耗该资源的块首轮被跳过，下一轮起正常）。
    */
   swayBySlot?: Record<number, number>
+  /**
+   * **各槽位的具名资源池供给**（pool 名 → 槽位 → 总量；与 `StackActionCost.pools` 配对）。
+   * 缺省 / 无该 pool ⇒ 视为 0 ⇒ 耗该 pool 的动作一律跳过（与 `swayBySlot` 同口径）。
+   */
+  poolsBySlot?: Readonly<Record<string, Readonly<Record<number, number>>>>
   /**
    * 各槽位**本轮可分到的平A时间**（秒）——兜底平A填充的**硬上界**（用户口径 2026-10-25）。
    *
@@ -229,8 +256,15 @@ export interface StackTraversalResult {
   entryGash: number
   /** 实际用到的窗口数（≤ stunCount） */
   windowsUsed: number
-  /** 被跳过的动作（资源不足） */
-  skipped: { slot: number; moveId: string; reason: 'energy' | 'decibel' | 'time' | 'sway' }[]
+  /**
+   * 被跳过的动作（资源不足 / 超窗装不下）。
+   *
+   * `window` = **窗口序号（从 1 起，与 `StackSequenceEntry.window` 同口径）**。
+   * 用户口径 2026-10-27：「资源池页面要能看出**第几窗丢了哪一招**」——聚合的
+   * `skipped` 只能回答「总共丢了几招」，逐窗归因需要知道它发生在哪一窗。
+   * 一次施放被跳过就记一条（`count > 1` 的块会记多条），故本数组长度 = 丢弃**次数**。
+   */
+  skipped: { slot: number; moveId: string; reason: 'energy' | 'decibel' | 'time' | 'sway' | 'family'; window: number }[]
   /** 兜底平A填充总秒数（资源不足的剩余窗口时间，所有轴合计） */
   basicFillSeconds: number
   /** 各槽位兜底平A填充秒数（每轴可指定不同 filler slot） */
@@ -531,7 +565,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     }
     return best
   }
-  const schedule: { actions: StackActionCost[]; basicFillerSlot?: number; fillerDefaulted?: boolean }[] = []
+  const schedule: { actions: StackActionCost[]; basicFillerSlot?: number; fillerDefaulted?: boolean; axisIndex: number }[] = []
   // ⚠ 与编排层 `convergence` 的 6 处调用**同源同参**：否则升级轴（bestEffort）在两处拿到的窗数
   // 不一致 ⇒ 栈执行的窗数与账本/转大计数对不上（T156 修的「残留 count 二次分配」是同族问题）。
   const winAlloc = allocateAxisWindows(axes, stunCount, {
@@ -545,7 +579,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     const declared = axis.basicFillerSlot
     const filler = declared ?? mainCSlotOf(axis)
     for (let i = 0; i < winAlloc[ai]; i++) {
-      schedule.push({ actions: axis.actions, basicFillerSlot: filler, fillerDefaulted: declared === undefined })
+      schedule.push({ actions: axis.actions, basicFillerSlot: filler, fillerDefaulted: declared === undefined, axisIndex: ai })
     }
   })
 
@@ -563,6 +597,8 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
      * ⇒ `billySmoke`「默认配置下轴态 = complete」当场红（轴态变 partial ⇒ 难度曲线整档不出数）。
      * 故本累计器保持数组顺序语义，只有 `slotMaxEnd`（兜底平A 的剩余时间）/轨迹起点用顺序游标。
      */
+    /** 本窗各「族」已执行次数（同族每窗上限门用；见 `StackActionCost#fillFamily`） */
+    const familyUsed: Record<string, number> = {}
     const slotTime: Record<number, number> = {}
     // 各槽位时间线最晚结束时刻（max(startTime+actionTime)，仅执行成功的动作）——平A填充从这往后
     const slotMaxEnd: Record<number, number> = {}
@@ -622,6 +658,22 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
          * complete（跨肆不算 partial ⇒ 难度曲线能出点）」当场红——那条口径是轴预设
          * `比琉通用.json` 的 note 写死的（「时间门按数组顺序累计，startTime 只决定合轴区间起点」）。
          */
+        /**
+         * **同族每窗上限门**（2026-10-27，见 `StackActionCost#fillFamily`）：族内已执行满额 ⇒
+         * 后续同族动作**整条跳过**——不占时间、不扣资源，并记 `skipped.family` 供逐窗归因。
+         *
+         * 语义就是用户那句「如果前面有赠品连携了，这次失衡的后面兜底部分就不让放赠品连携，
+         * 一个轴内总量不大于 1」：**谁先来谁得**，不按优先级重排。
+         */
+        if (act.fillFamily) {
+          const cap = Math.max(1, Math.floor(act.maxPerWindow ?? 1))
+          const usedInFamily = familyUsed[act.fillFamily] ?? 0
+          if (usedInFamily >= cap) {
+            skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'family', window: windowNo })
+            continue
+          }
+          familyUsed[act.fillFamily] = usedInFamily + 1
+        }
         /** fits 门用的数组顺序累计时刻（口径见上方 `slotTime` 注释） */
         const used = slotTime[act.slot] ?? 0
         /** 排布用的实际起点：该槽位顺序游标，显式 startTime 更晚则顺延到它（`count > 1` 时逐段推进） */
@@ -651,7 +703,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
           : Math.max(0, Math.min(1, (effectiveWindowDuration - used) / act.actionTime))
         // 窗口剩余为负（前序动作把该槽位撑爆）⇒ 一点都进不了窗口：按整段跳过（与旧口径同形态）
         if (fits <= 0 && !act.endsStunWindow && act.actionTime > 0) {
-          skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'time' })
+          skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'time', window: windowNo })
           continue
         }
         // 资源门控（**通用口径**，用户 2026-09-08）：轴从**总量**里挑招式——任何耗资源的动作，
@@ -664,11 +716,11 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         // 「不够就跳过」是唯一口径。
         // 本文件头注释一直写的也是「不够就跳过」，此前实现与之不符。
         if (act.decibelCost > 0 && (decibelLeft[act.slot] ?? 0) + 1e-9 < act.decibelCost) {
-          skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'decibel' })
+          skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'decibel', window: windowNo })
           continue
         }
         if (act.energyCost > 0 && (energyLeft[act.slot] ?? 0) + 1e-9 < act.energyCost) {
-          skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'energy' })
+          skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'energy', window: windowNo })
           continue
         }
         // 角色专属资源门控（T169）：与上面两条**同口径**（超出本槽位总量就去掉，不许凭空创造）。
@@ -676,7 +728,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         // 本引擎只判「够不够」。般岳山威：每怒相 4 点、一组免费连段 2 点 ⇒ 超出 `rage × 2` 组的
         // 连段块在此被去掉（修前它们既无伤害对应物又照占轴内时间）。
         if ((act.swayCost ?? 0) > 0 && (swayLeft[act.slot] ?? 0) + 1e-9 < (act.swayCost ?? 0)) {
-          skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'sway' })
+          skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'sway', window: windowNo })
           continue
         }
         if (act.energyCost > 0) {
@@ -752,6 +804,8 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     // 决算截断窗（windowTruncEnd ≥ 0）不填平A：剩余失衡时间在决算做完时已被清空，没有可填充的富余。
     // 覆盖率要扣的截断损失秒不在这里算——那是时间账，由 convergence 决算截断段按实数窗口算（verdictSecondsLost）。
     let windowFillSec = 0
+    /** 本窗窗尾填充逐段（谁 / 从第几秒 / 填多久）——逐窗可视化的直接输入，见 `StunWindowTrace.fillSegments` */
+    const windowFillSegments: StunWindowTrace['fillSegments'] = []
     if (windowTruncEnd < 0 && window.basicFillerSlot !== undefined && windowDidSomething) {
       // 兜底平A：从该槽位最后一个动作的结束时刻填到窗口结束（窗口有富余才填）。
       // 动作之间的空隙（startTime 留白）不算平A——平A只补「最后一个动作之后」的富余。
@@ -804,6 +858,8 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         basicFillBySlot[slot] = alreadyFilled + give
         basicFillSeconds += give
         windowFillSec += give
+        // 本段起点 = 窗口内「还空着的那段尾巴」的起点（多槽接续时第二段紧接第一段）
+        windowFillSegments.push({ slot, startSeconds: Math.max(0, effectiveWindowDuration - room), seconds: give })
         room -= give
       }
     }
@@ -811,6 +867,8 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     // ⚠ 空窗（一个动作都没执行）也记一条——聚合口径里它照样占一个名义窗长。
     windowTrace.push({
       index: windowNo - 1,
+      axisIndex: window.axisIndex,
+      fillerDefaulted: window.fillerDefaulted === true,
       nominalSeconds: windowDuration,
       extendSeconds: Math.max(0, effectiveWindowDuration - windowDuration),
       endSeconds: windowTruncEnd >= 0 ? windowTruncEnd : effectiveWindowDuration,
@@ -819,6 +877,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
       actionSeconds: windowTimeSum,
       overlapSeconds: windowTraceOverlap,
       fillSeconds: windowFillSec,
+      fillSegments: windowFillSegments,
     })
   }
 

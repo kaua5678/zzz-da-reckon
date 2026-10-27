@@ -54,11 +54,12 @@ export const AXIS_SKIP_REASON_TEXT: Record<AxisSkipReason, string> = {
   decibel: '喧响不足',
   energy: '闪能不足',
   sway: '专属资源不足',
+  family: '赠品连携已达上限（每窗 1 次）',
 }
 
 /** 原因在 `AxisSkipCounts` 里的键（引擎 reason 与 UI 计数字段的映射，**唯一一处**） */
 const SKIP_KEY_OF: Record<AxisSkipReason, keyof AxisSkipCounts> = {
-  time: 'time', decibel: 'decibel', energy: 'energy', sway: 'sway',
+  time: 'time', decibel: 'decibel', energy: 'energy', sway: 'sway', family: 'family',
 }
 
 export interface AxisMarker {
@@ -131,7 +132,7 @@ export interface AxisLegendEntry extends AxisMarker {
 export function axisMarkerLegend(): AxisLegendEntry[] {
   const probe = (k: AxisKind): AxisState => ({
     kind: k,
-    skipped: { time: 0, decibel: 0, energy: 0, sway: 0 },
+    skipped: { time: 0, decibel: 0, energy: 0, sway: 0, family: 0 },
     skippedTotal: 0,
     fallback: k === 'infeasible',
   })

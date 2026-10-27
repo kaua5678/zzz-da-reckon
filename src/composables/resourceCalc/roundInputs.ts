@@ -36,6 +36,15 @@ import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 import { parseMoveEnergyCost } from '@/core/resource/moveLookup'
 import { panelAt } from '@/core/panel'
 
+/**
+ * 赠品连携族（诺姆膛温换连携）：**一次失衡 0~1 个**（用户口径 2026-10-27）——
+ * 「诺姆的资源短时间内不可能回复那么多……如果前面有赠品连携了，这次失衡的后面兜底部分就不让放，
+ * 因为一个轴内总量不大于 1」。族的判定在引擎（`stunAxisStack#StackActionCost.fillFamily`），
+ * 这里只给两种轴块形态（`:gift` 与旧 `norma-hat-chain`）打上同一个族名。
+ */
+const GIFT_CHAIN_FAMILY = 'gift-chain'
+const GIFT_CHAIN_PER_WINDOW = 1
+
 type StunAxisAction = StunAxis['actions'][number]
 type AxisOwnerCatalog = Pick<ReturnType<typeof useCatalogStore>, 'agentSkillsByAgentMap'>
 
@@ -314,7 +323,8 @@ export function createConvergenceRoundInputs(deps: {
             // 但不耗闪能/喧响；moveId 加 ':gift' 后缀独立计数，避免与普通连携块合并。
             const gSkills = catalogStore.agentSkillsByAgentMap.get(configStore.team[act.slot]?.agentId ?? '')
             const gMove = findMoveById(gSkills, act.moveId)
-            axisActions.push({ slot: act.slot, moveId: `${act.moveId}:gift`, count: act.count, actionTime: gMove?.actionTime ?? 0, energyCost: 0, decibelCost: 0, startTime: act.startTime ?? 0 })
+            // 赠品连携同族每窗 ≤1（`GIFT_CHAIN_FAMILY`；用户口径见 stunAxisStack#StackActionCost.fillFamily）
+            axisActions.push({ slot: act.slot, moveId: `${act.moveId}:gift`, count: act.count, actionTime: gMove?.actionTime ?? 0, energyCost: 0, decibelCost: 0, startTime: act.startTime ?? 0, fillFamily: GIFT_CHAIN_FAMILY, maxPerWindow: GIFT_CHAIN_PER_WINDOW })
           } else {
             /**
              * **诺姆转连携的本体 = 受赠队友（主C）自己的连携块**（用户口径 2026-10-27，逐字）：
@@ -343,6 +353,9 @@ export function createConvergenceRoundInputs(deps: {
               energyCost: 0,
               decibelCost: 0,
               startTime: act.startTime ?? 0,
+              // 与 ':gift' 块**同一族**：一次失衡 0~1 个赠品连携，前面放过了后面就不再放
+              fillFamily: GIFT_CHAIN_FAMILY,
+              maxPerWindow: GIFT_CHAIN_PER_WINDOW,
             })
           }
           continue
