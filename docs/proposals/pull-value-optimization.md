@@ -1,8 +1,10 @@
 # 抽卡规划价值计算：思想与口径优化
 
 > **状态：部分落地**。本文只谈"怎么想、怎么定义、量纲是什么"，不含实施步骤与测试清单。
-> 现有实现的事实以代码为准（`src/composables/pullValue.ts`、`pullPlanner.ts`、`pullPlannerEngine.ts`、
-> `src/data/filmEconomy.ts`、`src/composables/teamTimelineFilm.ts`）；本文与代码冲突时以代码为准。
+> 现有实现的事实以代码为准（`pullPlanner.ts`、`pullPlannerEngine.ts`、`src/data/filmEconomy.ts`、
+> `src/composables/teamTimelineFilm.ts`）；本文与代码冲突时以代码为准。
+> ⚠ `src/composables/pullValue.ts`（Chart 5 · 按归档统计的兑现）**已于 2026-10-08 整体删除**（用户裁决：
+> 价值用计算器算「带卡 vs 不带卡」，不用统计估计）——本文提到它的地方是**历史口径记录**，别再按路径去找。
 > 已裁决前提：**只用期望值口径，不引入抽卡随机模拟**（用户裁决 2026-09-01，见 `AGENTS.md` §2）。
 >
 > **落地进度**（2026-09-29 第一刀，只做最小且可证明的两条）：
@@ -44,7 +46,7 @@
 
 | 读数 | 实现 | 它是什么 | 它不是什么 |
 |---|---|---|---|
-| **历史兑现** | `pullValue.ts` `computePullValue`（Chart 5） | 归档里"同作者同房间带卡 vs 不带卡最佳分差"的中位数，沿时间累计 | 不是因果收益，不是引擎强度，不是未来预期 |
+| **历史兑现**（⛔ 已下线，仅存档） | `pullValue.ts` `computePullValue`（Chart 5，**2026-10-08 已删除**） | 归档里"同作者同房间带卡 vs 不带卡最佳分差"的中位数，沿时间累计 | 不是因果收益，不是引擎强度，不是未来预期；且**不要再实现**（用户裁决：价值用计算器算两队对比） |
 | **引擎强度** | `pullPlannerEngine.ts` oracle（Chart 6 内层） | 固定持有集下，引擎算出的每期 3 房不重叠最优组队分数 | 不是实战可达值（收敛过滤已排除一部分队） |
 | **预算约束重规划** | `pullPlanner.ts` `computeCardValuesVcg` | V(全卡可购) − V(禁购该卡重规划)，条件于起点持有集 | 不是 VCG 支付，不是可加总的价值 |
 

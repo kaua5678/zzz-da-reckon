@@ -740,23 +740,9 @@ export function createResourceCalc(
     windowDuration: windowDuration.value,
     effectiveTime: effectiveBattleTime(configStore.enemy),
     windows: stackTraversalResult.value?.windowTrace,
-    /**
-     * **末窗按「失衡值不够」截断**（用户口径 2026-10-28）：
-     * > 「其失衡值不够时，最后一失衡只能截断，这时候怎么表现和计算」
-     *
-     * frac 的单一事实源 = `core/continuousStun.ts#continuousWindowSplit`（`continuousStun` 这个
-     * computed 已经是它的生产出口），这里只做**接线**，不另算一遍。
-     *
-     * ⚠ **只在两把尺同源时才接**（`openedWindows === 池次数`）：`continuousWindowSplit` 按
-     * 「毛失衡值 ÷ (b + 每秒 × 窗长)」开窗，池按「有效失衡值 ÷ b」计次——两者在 102 队里
-     * 有 38 队不一致（那是 **池次数 vs 连续开窗数** 的同源化问题，属另一专项，见
-     * `.claude/TASK-continuous-stun.md` §8 / `.claude/OPEN-ITEMS.md` [R70]）。
-     * 不一致时缺省 1（不截断）——**宁可不少算，也不拿错的 frac 去砍窗**。
-     */
-    lastWindowFraction: continuousStun.value && stunPoolResult.value
-      && continuousStun.value.openedWindows === stunPoolResult.value.stunCount
-      ? continuousStun.value.lastFraction
-      : undefined,
+    // 末窗不传 frac：`StunTimelineInput.lastWindowFraction` 已按 2026-10-28 口径删除
+    // （失衡值不够 = 下一窗开不出来；窗开了但短 = 时间不够）。理由的单源在
+    // `core/stunTimeline.ts#StunTimelineInput` 的【已删除】段，此处不复制，也别把入参加回来。
   }))
 
   /**

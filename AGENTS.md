@@ -100,7 +100,7 @@
 
 | 任务 | 改哪 |
 |---|---|
-| **改抽卡价值 / 抽卡成本** | 只用**期望值口径**（用户裁决 2026-09-01：宏观研究期望足够，模拟抽卡运气已删）：`src/composables/pullValue.ts`（每万菲林兑现 ROI，单一事实源 = `data/filmEconomy.ts`）+ `src/composables/pullPlannerEngine.ts`（规划器，TIER_COSTS 常量价）；gachaCost / acquisitionValue 引擎已整体删除，**不要再引入抽卡随机模拟** |
+| **改抽卡价值 / 抽卡成本** | 只用**期望值口径**（用户裁决 2026-09-01：宏观研究期望足够，模拟抽卡运气已删）。四处分工固定：① 成本单一事实源 = `src/data/filmEconomy.ts`（`CINEMA_GOLD_FILM` / `WEAPON_GOLD_FILM` = **期望抽数 × 160 推导**，已挂 `@fact` + `⟳复核`；页面不得另抄 15000 / 10000）；② 购买阶梯与增量成本 = `src/composables/pullPlanner.ts#PURCHASE_LADDER` / `tierCost`（**按档位差分派生**，不是常量价）；③ 价值与 ROI = `pullPlanner.ts#computeCardValuesVcg` / `cardValuePer10kFilm`（分子 = 引擎**队伍级** `calc.teamTotalDamage` 经 `scoreForDamageRatio`，走完整 `applyTeamConfig` 管线；分母 = 最优轨迹里的**实际增量投入**）；④ 引擎桥 = `src/composables/pullPlannerEngine.ts`。⚠ `pullValue.ts`（Chart 5 · 按归档统计的兑现）已于 2026-10-08 下线、`TIER_COSTS` 常量价与 gachaCost / acquisitionValue 引擎一并删除——**不要再引入抽卡随机模拟，也不要重建归档统计口径的价值图** |
 | **队伍有空槽（先填槽2 一类）时数值静默偏小 / 报 TypeError** | `characters`/`panels`/`damagePanels`/`entrySnapshotPanels` **按位置压缩**（producer 跳过空槽）⇒ **槽位号 ≠ 下标**，一律禁 `arr[slot]`：自己那份 cfg 用派发器直给的 `AgentTeamConfigInput.cfg` / `AgentNextRoundFeedbackInput.cfg`，队友那份用 `.find(c => c.slot === slot)`，面板用 `panelAt(panels, slot)`（`core/panel.ts`）。扫描器 = `scripts/lib/compacted-slot-index.mjs`（判据 17）。⚠ 本类缺陷 `timeGolden` **全盲**（105 预设全满槽）⇒ 只能手组队测（`compactedSlotIndex.test.ts`） |
 
 ## 3. 验收命令
