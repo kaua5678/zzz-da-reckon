@@ -213,8 +213,8 @@ export interface StunTimeline {
  *   （`start + effective ≤ effectiveTime`，截短时 `clippedByClock = true`）；
  * - `outsideSeconds` 由排布得出，**不另算**。
  */
-// @fact engine:stun/末窗三成因 口径: 末窗短一截有三种互不替代的成因，各自扣各自的秒数、不许互相代扣——① 时钟不够 `clippedByClock`（时间账）② 决算截断 `truncated`（机制设计）③ **失衡值不够** `partialByBuildUp`（失衡值账，末窗只值 frac×窗长）；frac 的单一事实源 = `continuousWindowSplit#lastFraction`，缺省 1 表示完整，非有限值按「没给」处理（不按 0 —— 那是最坏方向默认值） | 据 用户@2026-10-28（「其失衡值不够时，最后一失衡只能截断，这时候怎么表现和计算」）·复核@2026-10-28 | 验 src/core/__tests__/stunTimeline.test.ts | 锚 src/core/stunTimeline.ts#buildStunTimeline + src/core/stunTimeline.ts#StunWindowSlot | 信 确认
-// ⟳复核: 覆盖率（stunCoverage）接不接同一个 frac —— 接了这 11 队伤害会降 0.25%~7.9%，属口径选择待裁决；不接则时间轴与覆盖率在该类队上刻意不等 | 到期 2027-06-30
+// @fact engine:stun/末窗成因 口径: 末窗短一截有**两种**成因，各自扣各自的秒数、不许互相代扣——① 时钟不够 `clippedByClock`（时间账：战斗 180s 到点）② 决算截断 `truncated`（机制设计：佩洛伊斯/雨果做完即清空剩余失衡时间）。**「失衡值不够」不在此列**：失衡值不足只会让**下一窗开不出来**（走 `plannedWindows` 的小数进度 / `continuousWindowSplit#nextWindowProgress`），不会让已开的窗变短（用户 2026-10-28：「打完了 3 失衡，还积累了 56%」vs「进入第四失衡了，但是只打了 6s 就结束了」是两件事）。⚠ 曾把两者混成 `lastWindowFraction`/`partialByBuildUp`，已删除 | 据 用户@2026-10-28·复核@2026-10-28 | 验 src/core/__tests__/stunTimeline.test.ts | 锚 src/core/stunTimeline.ts#buildStunTimeline + src/core/stunTimeline.ts#StunWindowSlot | 信 确认
+// ⟳复核: 若引擎支持「窗内也攒条」或把 `continuousWindowSplit` 的 `nextWindowProgress` 换口径，重核「失衡值不足 = 下一窗没开」这条前提 | 到期 2027-06-30
 export function buildStunTimeline(input: StunTimelineInput): StunTimeline {
   const effectiveTime = Math.max(0, finiteOr0(input.effectiveTime))
   const nominal = Math.max(0, finiteOr0(input.windowDuration))
