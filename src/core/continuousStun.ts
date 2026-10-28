@@ -106,8 +106,19 @@ export interface ContinuousWindowSplit {
   realizedWindows: number
   /** unit = b + e（一窗完整兑现的总成本） */
   unit: number
-  /** 余量 Σ − b（未开窗时为 0） */
+  /**
+   * 余量（失衡值，未开窗时为 0）。
+   *
+   * ⚠ 2026-10-28 起语义 = **净失衡值的余量**（毛 − 窗内无效），与 `pool.stunCount` 同源。
+   */
   remainder: number
+  /**
+   * **下一窗进度** ∈ [0,1)：玩家口中的「**打完 3 失衡，还积累了 56%**」。
+   *
+   * = 余量 / boss 失衡值。**这一窗还没开** ⇒ 不占 `StunWindowSlot`、不画窗条；
+   * 与「进入第 4 窗但只打了 6s」（时间不够，走 `stunTimeline` 的截断标记）是两件事。
+   */
+  nextWindowProgress: number
   /**
    * 是否发生过钳位。**恒为 false**（实现改成恒落在 [0,1] 的等价写法后不再需要钳位）；
    * 保留字段是为了让新的消费方显式断言「没有钳位」，见施工图 §1。
@@ -146,7 +157,7 @@ export function continuousWindowSplit(input: {
   const e = Math.max(0, finiteOr0(input.eatenPerWindow))
   const sigma = Math.max(0, finiteOr0(input.totalBuildUp))
   const empty: ContinuousWindowSplit = {
-    openedWindows: 0, fullWindows: 0, lastFraction: 0, realizedWindows: 0, unit: b + e, remainder: 0, clamped: false,
+    openedWindows: 0, fullWindows: 0, lastFraction: 0, realizedWindows: 0, unit: b + e, remainder: 0, nextWindowProgress: 0, clamped: false,
   }
   // b/e 缺一就退化为"没有连续量可言"（调用方据此走旧的整数口径）
   if (!(b > 0) || !(e > 0) || sigma < b) return empty
@@ -193,32 +204,70 @@ export function continuousWindowSplit(input: {
     realizedWindows: lastComplete ? openedWindows : openedWindows - 1 + lastFraction,
     unit,
     remainder: opensNext ? Math.max(0, rem - b) : 0,
+    nextWindowProgress: 0,
     clamped: false,
   }
 }
 
 /**
- * **`e` 的正面来源（唯一实现）**：一窗内被吞掉的失衡值 = **每秒失衡值 × 窗长**，
- * 每秒失衡值 = 全队毛失衡值 / 有效战斗时间（用户模型原话「每秒均匀造成 100 点失衡值」，2026-10-25）。
+ * **`e` 的来源：窗内实际打出的无效失衡**（用户口径 2026-10-28，定案）。
  *
- * ⚠ 不能用 `inAxisStunTotal / stunCount` 反推：那个量本身是按「每一窗都完整兑现」算出来的，
- * 代回公式必然得 frac = 1（步 2 全库普查 95/97 队如此，见施工图 §8）—— 自证循环，不是验证。
+ * ## 用户裁决（逐字）
+ * > 「招式虽然自己有失衡数据，但是**打在失衡里是无效的**。失衡内 total 应该只是一个统计数据，
+ * >  他表示有多少**无效的失衡值**，所有招式失衡减去这个无效失衡得到净失衡，净失衡有效的作用于失衡积累。」
  *
- * 本函数是 `e` 的单一事实源：展示读数（`useResourceCalc#continuousStun`）与数值路径
- * （覆盖率）都必须经它取 e，否则两处会各算一份「每秒失衡值」。
+ * ## 修前为什么错
+ * 旧实现写 `e = (全队毛失衡值 / 有效战斗时间) × 窗长`，即假设「**窗内每秒都在产条**」。
+ * 这与「打在失衡里无效」直接冲突：窗内打的是爆发招（失衡倍率低），实际每秒只产全队均值的 ~1/4。
+ * 实测 `auto-1611-1141-1211`：旧式 `e = 620.386 × 16 = 9926`，真实 `e = 13830 / 6 = 2305`，
+ * ⇒ 旧式把该队算成「只够 4 窗」，而池按净失衡报 **6 窗**（`97840 / 15486 = 6.318`）。**池是对的。**
+ *
+ * ## 现在的口径（与池同源，不再各算一份）
+ * `e = inAxisStunTotal / stunCount` —— 即 `stunPool` 已经逐招算出来的「窗内无效失衡」总额除以窗数。
+ * 这不是「用无效求有效」的绕路：净失衡（`totalStunBuildUp`）本来就是逐招 `total − inAxisStun` 直接算的，
+ * 这里只是读那个**已有的统计量**来回答「一个窗平均吞掉多少」，两者同源、不会互相打架。
+ *
+ * ⚠ `grossStunBuildUp` 保持纯统计（展示「毛 = 净 + 无效」），**不再参与 `e` 的推导**。
  */
 export function continuousStunSplitOf(
-  pool: { grossStunBuildUp: number; bossStunValue: number },
-  windowSeconds: number,
-  effectiveTime: number,
+  pool: {
+    grossStunBuildUp: number
+    inAxisStunTotal: number
+    stunCount: number
+    bossStunValue: number
+  },
 ): ContinuousWindowSplit {
+  const boss = Math.max(0, finiteOr0(pool.bossStunValue))
+  const windows = Math.max(0, finiteOr0(pool.stunCount))
+  const inAxis = Math.max(0, finiteOr0(pool.inAxisStunTotal))
   const gross = Math.max(0, finiteOr0(pool.grossStunBuildUp))
-  const windowSecondsSafe = Math.max(0, finiteOr0(windowSeconds))
-  const effectiveTimeSafe = Math.max(0, finiteOr0(effectiveTime))
-  const rate = effectiveTimeSafe > 0 ? gross / effectiveTimeSafe : 0
-  return continuousWindowSplit({
-    totalBuildUp: gross,
-    bossStunValue: pool.bossStunValue,
-    eatenPerWindow: rate * windowSecondsSafe,
-  })
+  /** 每窗平均被吞掉的**无效**失衡（池已逐招算好，这里只做除法） */
+  const eatenPerWindow = windows > 0 ? Math.min(inAxis / windows, boss) : 0
+  /** **净**失衡值（= 毛 − 无效）——池的 `stunCount` 就是按它算出来的 */
+  const net = Math.max(0, gross - inAxis)
+  /**
+   * ## 两个量分开表达（用户口径 2026-10-28，逐字）
+   * > 「描述进度玩家通常说：**打完了 3 失衡，还积累了 56% 的失衡**。
+   * >  或者说：**进入第四失衡了，但是只打了 6s 就结束了。**」
+   *
+   * 1. **开窗数** = `pool.stunCount`（= `floor(净失衡 / b)` 那一族）⇒ 「打完了 3 失衡」；
+   * 2. **下一窗进度** = 余量 / b ⇒ 「积累了 56%」；**没开的窗不占 StunWindowSlot**；
+   * 3. 「进入第 4 窗但只打了 6s」= **时间**不够 ⇒ 由 `stunTimeline` 的 `clippedByClock` / `truncated` 表达，
+   *    与失衡值无关（这里不重复扣）。
+   *
+   * ⇒ 本函数的 `lastFraction` = **1**（每个开出来的窗在失衡值意义上都是完整的），
+   *    「残窗」只可能来自时间轴。进度走 `remainder / boss`。
+   */
+  const full = boss > 0 ? windows : 0
+  const remain = boss > 0 ? Math.max(0, net - full * boss) : 0
+  return {
+    openedWindows: full,
+    fullWindows: full,
+    lastFraction: full > 0 ? 1 : 0,
+    realizedWindows: full,
+    unit: boss + eatenPerWindow,
+    remainder: remain,
+    nextWindowProgress: boss > 0 ? Math.max(0, Math.min(1, remain / boss)) : 0,
+    clamped: false,
+  }
 }

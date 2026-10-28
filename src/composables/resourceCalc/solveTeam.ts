@@ -960,7 +960,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           effectiveTime: stunEffTime,
           windows: out.axisStack?.windowTrace,
         })).realizedWindows
-      : continuousStunSplitOf(out.stunPool, stunWindowDur, stunEffTime).realizedWindows
+      : continuousStunSplitOf(out.stunPool).realizedWindows
     const contCoverage = stunWindowFraction(realized, stunWindowDur, stunEffTime, out.stunVerdictLostSeconds)
     if (contCoverage !== out.stunCoverage) finalOut = { ...out, stunCoverage: contCoverage }
   }

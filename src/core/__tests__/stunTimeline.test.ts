@@ -70,21 +70,12 @@ async function probePreset(id: string): Promise<TimelineProbe> {
   const stack = calc.stackTraversalResult.value
   const effectiveTime = effectiveBattleTime(config.enemy)
   const windowDuration = calc.windowDuration.value
-  /**
-   * 生产出口（`useResourceCalc#stunTimeline`）= 直接调模块 ⇒ 逐位相同（接线没走偏）。
-   *
-   * 2026-10-28 起生产出口多喂一个 `lastWindowFraction`（末窗按「失衡值不够」截断），
-   * 故对照臂必须用**同一个** frac —— 从 `calc.continuousStun` 读，与生产出口同源，
-   * 不另算一遍（否则这条判据会变成「两份实现互相印证」）。
-   */
-  const cont = calc.continuousStun.value
-  const expectedFrac = cont && cont.openedWindows === pool!.stunCount ? cont.lastFraction : undefined
+  // 生产出口（`useResourceCalc#stunTimeline`）= 直接调模块 ⇒ 逐位相同（接线没走偏）
   expect(calc.stunTimeline.value, `${id}：composable 出口与模块直调不一致（接线走偏）`).toEqual(buildStunTimeline({
     stunCount: pool!.stunCount,
     windowDuration,
     effectiveTime,
     windows: stack?.windowTrace,
-    ...(expectedFrac === undefined ? {} : { lastWindowFraction: expectedFrac }),
   }))
   return {
     id,
@@ -192,16 +183,7 @@ describe('失衡窗口时间轴（期 1：数据结构 + 恒等式，零 delta�
       expectIdentity(p)
       // 无决算截断的队：时间轴与引擎覆盖率**逐位相同**（同一个量、同一个窗长、同一个预算）
       const truncatedAny = p.timeline.slots.some(s => s.truncated)
-      /**
-       * ⚠ **已知差异（2026-10-28，末窗按失衡值截断后刻意留白，别在这里改成相等）**：
-       * 本队末窗若因「失衡值不够」被截断（`partialByBuildUp`），时间轴会比 `stunCoverage` 少
-       * 那一段——因为**覆盖率尚未接 frac**（是否接 = 会让这 11 队伤害下降的口径选择，
-       * 待用户裁决，见 `.claude/OPEN-ITEMS.md` [R70]）。此处要求两者相等的判据只对
-       * 「末窗没被失衡值截断」的队成立，正是为了把这个缺口**暴露成 red-able 的已知差异**，
-       * 而不是把时间轴改回去假装一致。
-       */
-      const partialLast = p.timeline.slots.some(s => s.partialByBuildUp === true)
-      if (!truncatedAny && !partialLast) {
+      if (!truncatedAny) {
         expect(p.timeline.windowSeconds / p.effectiveTime, `${p.id}：时间轴占比 ≠ 引擎 stunCoverage（第三本账）`)
           .toBeCloseTo(p.engineCoverage, 12)
       }
@@ -421,62 +403,6 @@ describe('realizeStunWindows（计划 K 窗 / 兑现 X 窗 / 窗内发呆 Y 秒�
     // 无轨迹：不编造填充（每窗按 1），但时钟截短照样折算
     const noTrace = buildStunTimeline({ stunCount: 12, windowDuration: 16, effectiveTime: 180 })
     expect(realizeStunWindows(noTrace).realizedWindows).toBeCloseTo(11 + 4 / 16, 6)
-  })
-
-  /**
-   * ★ 2026-10-28 用户口径：「其**失衡值不够**时，最后一失衡只能截断」——
-   * 这是末窗短一截的**第三种**成因，与时钟截短 / 决算截断并列、互不代扣。
-   *
-   * 反证：同样 4 窗，frac=0.5 时末窗只值 8s。若没接 frac（缺省 1），下面第一条断言立刻红。
-   */
-  it('★ 失衡值不够 ⇒ 末窗按 frac 截断（只缩末窗，前面逐位不变）', () => {
-    const windows = Array.from({ length: 4 }, (_, i) => trace(i, { actionSeconds: 8 }))
-    const full = buildStunTimeline({ stunCount: 4, windowDuration: 16, effectiveTime: 180, windows })
-    const cut = buildStunTimeline({ stunCount: 4, windowDuration: 16, effectiveTime: 180, windows, lastWindowFraction: 0.5 })
-    // 末窗 16 → 8s
-    expect(cut.slots[3]!.effectiveSeconds).toBeCloseTo(8, 9)
-    expect(cut.slots[3]!.partialByBuildUp, '标记成因（与 clippedByClock / truncated 并列）').toBe(true)
-    // 前 3 窗**逐位不变**（用户口径 2026-10-20「保全前面失衡」）
-    for (const i of [0, 1, 2]) {
-      expect(cut.slots[i]!.effectiveSeconds).toBe(full.slots[i]!.effectiveSeconds)
-      expect(cut.slots[i]!.partialByBuildUp).toBe(false)
-      expect(cut.slots[i]!.startSeconds).toBe(full.slots[i]!.startSeconds)
-    }
-    // 恒等式零容差：窗口总秒数减少 ⇒ 窗外时间增加同样的量
-    expect(cut.windowSeconds).toBeCloseTo(full.windowSeconds - 8, 9)
-    expect(cut.windowSeconds + cut.outsideSeconds).toBeCloseTo(180, 9)
-  })
-
-  it('★ 缺省 lastWindowFraction = 1 ⇒ 逐位不变（非轴 / 旧调用点零影响）', () => {
-    const windows = Array.from({ length: 3 }, (_, i) => trace(i, { actionSeconds: 6 }))
-    const base = buildStunTimeline({ stunCount: 3, windowDuration: 16, effectiveTime: 180, windows })
-    for (const v of [1, 1.5, Number.NaN, undefined]) {
-      const t = buildStunTimeline({ stunCount: 3, windowDuration: 16, effectiveTime: 180, windows, ...(v === undefined ? {} : { lastWindowFraction: v }) })
-      expect(t.slots.map(s => s.effectiveSeconds), `frac=${String(v)} ⇒ 钳到 1，逐位不变`).toEqual(base.slots.map(s => s.effectiveSeconds))
-    }
-    expect(base.slots[2]!.partialByBuildUp).toBe(false)
-  })
-
-  it('★ 三种末窗截断可叠加且互不代扣（frac × 决算 × 时钟）', () => {
-    // 决算把窗截到 12s，失衡值又只够 0.5 ⇒ 有效 6s；时钟再紧也只取更小者
-    const tl = buildStunTimeline({
-      stunCount: 2, windowDuration: 16, effectiveTime: 180,
-      windows: [trace(0, { actionSeconds: 16 }), trace(1, { truncated: true, endSeconds: 12, actionSeconds: 6 })],
-      lastWindowFraction: 0.5,
-    })
-    expect(tl.slots[1]!.truncated, '决算截断标记仍在').toBe(true)
-    expect(tl.slots[1]!.partialByBuildUp, '失衡值不足标记也在').toBe(true)
-    expect(tl.slots[1]!.effectiveSeconds, '16 → 决算 12 → frac 6').toBeCloseTo(6, 9)
-    // 时钟装不下时再钳（不改两个成因标记）
-    const clock = buildStunTimeline({
-      stunCount: 2, windowDuration: 16, effectiveTime: 20,
-      windows: [trace(0, { actionSeconds: 16 }), trace(1, { actionSeconds: 1 })],
-      lastWindowFraction: 0.5,
-    })
-    expect(clock.slots[1]!.clippedByClock).toBe(true)
-    expect(clock.slots[1]!.partialByBuildUp).toBe(true)
-    expect(clock.slots[1]!.effectiveSeconds).toBeCloseTo(4, 9)
-    expect(clock.windowSeconds + clock.outsideSeconds).toBeCloseTo(20, 9)
   })
 
   it('决算截断窗按**有效时长**归一（不按名义窗长摊 ⇒ 不低估兑现）', () => {

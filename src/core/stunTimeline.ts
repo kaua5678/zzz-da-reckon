@@ -145,14 +145,6 @@ export interface StunWindowSlot {
   truncated: boolean
   /** 是否被战斗时钟截短（「最后一窗时间残疾」；与 `truncated` 是两回事） */
   clippedByClock: boolean
-  /**
-   * 是否因**失衡值不够**而只兑现了一部分（= 本窗是那个「残窗」，见 `StunTimelineInput.lastWindowFraction`）。
-   * 与 `truncated` / `clippedByClock` 并列，三者可同时为真。
-   *
-   * ⚠ 可选：手写 `StunWindowSlot` 的夹具不必知道它，缺省按 false 读
-   * （= 「没有失衡值不足这回事」）。`buildStunTimeline` 产出的**总是**带上它。
-   */
-  partialByBuildUp?: boolean
   /** 窗内动作（来自轴栈；非轴模式为空 = 走比例近似） */
   actions: StunWindowAction[]
   /**
@@ -180,22 +172,15 @@ export interface StunTimelineInput {
    */
   windows?: readonly StunWindowTrace[]
   /**
-   * **末窗因「失衡值不够」而只能兑现的比例** frac ∈ [0,1]（缺省 1 = 完整）。
+   * **【已删除】曾用于「末窗按失衡值不足缩短」。**
    *
-   * ## 为什么它和 `clippedByClock` / `truncated` 是三件事
-   * 末窗短一截有三种**互不替代**的成因，各自扣各自的秒数，不许互相代扣：
-   * 1. **时钟不够**（`clippedByClock`）：战斗 180s 到点，窗口被时钟钳短——时间账的问题；
-   * 2. **决算截断**（`truncated`）：佩洛伊斯/雨果做完即清空剩余失衡时间——机制设计内的窗结束方式；
-   * 3. **失衡值不够**（本字段）：**窗根本没攒满**，只开了一个残窗——失衡值账的问题
-   *    （用户口径 2026-10-28「其失衡值不够时，最后一失衡只能截断」）。
+   * 2026-10-28 用户口径定案（逐字）：「一个轮回是非失衡+失衡期……**打完了 3 失衡，还积累了 56% 的失衡**」
+   * 「**进入第四失衡了，但是只打了 6s 就结束了**」。
    *
-   * 三者可以叠加（残窗又撞上时钟），故各自分别折算：本字段只缩**末窗自身**的有效时长，
-   * 与另外两条互不影响，恒等式 `Σ effective + outside === effTime` 依旧零容差。
-   *
-   * 来源 = `core/continuousStun.ts#continuousWindowSplit` 的 `lastFraction`
-   * （`useResourceCalc#continuousStun` 已是它的生产出口）。缺省 1 ⇒ 逐位不变。
+   * ⇒ 失衡值不足 = **下一窗开不出来**（走 `plannedWindows` 的小数进度，不产生 `StunWindowSlot`）；
+   *   窗开了但短 = **时间**不够（`clippedByClock` / `truncated`）。
+   *   两者是不同成因，**不存在「失衡值不足导致已开窗变短」**这回事，故本入参已移除。
    */
-  lastWindowFraction?: number
 }
 
 /** 时间轴产物 */
@@ -249,23 +234,6 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline {
     // 决算截断（佩洛伊斯：决算做完即清空窗口剩余失衡时间）——截断时刻是**窗内相对秒**
     if (truncated) effectiveSeconds = Math.min(effectiveSeconds, Math.max(0, finiteOr0(t?.endSeconds)))
     // 时钟钳：窗口放不进剩余战斗时间 ⇒ 如实截短（用户口径「最后一窗口时间残疾」）
-    /**
-     * **失衡值不够 ⇒ 末窗只开了一截**（用户口径 2026-10-28：「其失衡值不够时，最后一失衡只能截断」）：
-     * 第 N 窗的失衡值没攒满，物理上它只值 `frac × 窗长` 秒的易伤——按 `nominal + extended` 排整窗
-     * 会凭空多给 (1−frac) 窗的易伤。故在**时钟钳之前**先按 frac 缩短本窗。
-     *
-     * ⚠ 只作用于**末窗**（保全前面失衡：用户 2026-10-20「前 N−1 次不可动」）。
-     * ⚠ 与 `truncated`（决算）取小：两者都是「这一窗在哪儿结束」，谁更早谁是结束点。
-     */
-    const isLastWindow = i === windows - 1
-    // ⚠ 非有限值（NaN / undefined）按「没给」处理 ⇒ 1（完整），不能按 `finiteOr0` 变 0 ——
-    // 那会把「读数缺失」误读成「一分都没兑现」，是最坏方向的默认值。
-    const fracRaw = input.lastWindowFraction
-    const lastFrac = isLastWindow && typeof fracRaw === 'number' && Number.isFinite(fracRaw)
-      ? Math.max(0, Math.min(1, fracRaw))
-      : 1
-    const partialByBuildUp = isLastWindow && lastFrac < 1 - 1e-9
-    if (partialByBuildUp) effectiveSeconds *= lastFrac
     const startSeconds = Math.min(cursor, effectiveTime)
     let clippedByClock = false
     if (startSeconds + effectiveSeconds > effectiveTime) {
@@ -284,7 +252,6 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline {
       effectiveSeconds,
       truncated,
       clippedByClock,
-      partialByBuildUp,
       actions: t?.actions ? [...t.actions] : [],
       unusedSeconds: t ? Math.max(0, effectiveSeconds - occupied) : 0,
     })

@@ -52,7 +52,7 @@ import {
   stackEnergyEvents,
   stacksToCoverage,
 } from '@/data/wEngineStackCoverage'
-import { elementLabel, buildCharConfig, computeDamageSourceBreakdown } from './resourceCalc/helpers'
+import { elementLabel, buildCharConfig, computeDamageSourceBreakdown, computeDamageSourceTotals } from './resourceCalc/helpers'
 import { computePanel, computePanelPhases, computeEntrySnapshotPanel, applyTeamMechanics, collectAxisWindowOverlays } from './resourceCalc/panelPhases'
 import { getTeamAnomalyDurationBonus, getWindInfectionCoverage, findWindSlot, buildAnomalyVirtualPanel } from './resourceCalc/anomalyPanels'
 import { buildAttributeLedger } from '@/core/attributeLedger'
@@ -335,7 +335,7 @@ export function createResourceCalc(
     const pool = calcOutput.value?.stunPool
     if (!pool) return null
     // e 的单一事实源 = core/continuousStun#continuousStunSplitOf（与 solveTeam 的覆盖率路径同源）
-    return continuousStunSplitOf(pool, computeWindowDuration(), effectiveBattleTime(configStore.enemy))
+    return continuousStunSplitOf(pool)
   })
   /**
    * **已兑现的失衡窗口读数**（`core/stunTimeline.ts#realizeStunWindows`）：等效窗数 / 占用秒 / **窗内发呆秒**。
@@ -993,6 +993,17 @@ const damageSourceBreakdown = computed<DamageSourceBreakdown[]>(() =>
 )
 
 /**
+ * 伤害来源分解·队伍合计（用户口径 2026-10-28）：
+ * 「显示属性区总和和倍率区总和的地方，属性区要区分两个 —— 无失衡期易伤 / 有失衡期易伤，
+ *  这俩差一个失衡期贡献率；但像扳机这种非失衡也给易伤区的不能抹除其易伤贡献。」
+ *
+ * 口径：倍率与属性区按**伤害族**（直伤/异常）合并后再算，不做「两个属性区相加」；
+ * 无失衡属性区 = 每行按 Always/实生效 反算（见 `core/stunVulnRow` 头注释：只抹 Boss 失衡窗）。
+ * 纯展示派生，零求值影响。
+ */
+const damageSourceTotals = computed(() => computeDamageSourceTotals(damageSourceBreakdown.value))
+
+/**
  * 属性贡献账（2026-10-20，用户 Excel「属性矩阵」口径的通用化落地）。
  *
  * 走 `computePanelPhases` 而不是 `slotPanels`：前者把 `calcPanel` 内部收集的 **buffs 批次
@@ -1023,6 +1034,8 @@ const attributeLedger = computed(() => {
     specialActionBonus,
     damagePoolRows,
     damageSourceBreakdown,
+    /** 伤害来源分解·队伍合计（含/无失衡两个属性区 + 失衡期贡献率 + 失衡爆发效率）：展示用，不参与计算 */
+    damageSourceTotals,
     /** 属性贡献账（提供者 × 属性区矩阵 + 差额对账）：展示透明用，不参与计算 */
     attributeLedger,
     moduleAnomalyEventRecords,
