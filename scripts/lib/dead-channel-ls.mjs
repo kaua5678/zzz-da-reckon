@@ -65,6 +65,7 @@ export const DEAD_EXPORT_TEST_SEAMS = {
   'src/core/resource/rowBuild.ts setRowFastPathsEnabled': { since: '2026-10-07', why: '行构造快路径开关，写模块私有 let；allAgentsGuards / feasibleRowsMemo 关快路径对拍慢路径' },
   'src/composables/useResourceCalc.ts getCalcOutputMemoStats': { since: '2026-10-07', why: 'calcOutput 记忆化命中 / 未命中 / 旁路计数，读模块私有状态；calcOutputMemo / wEngineCoverageFixpointT10 断言' },
   'src/composables/useResourceCalc.ts setCalcOutputMemoEnabled': { since: '2026-10-07', why: 'calcOutput 记忆化开关，写模块私有 let；calcOutputMemo / outerContinuity / allAgentsGuards 关记忆化对拍' },
+  'src/core/continuousStun.ts continuousWindowSplit': { since: '2026-10-28', why: '用户 2026-10-25 逐字公式（unit=b+e 的「开窗数+末窗兑现」）的唯一实现；生产读数已换代成 pool 同源（splitOf），但公式口径与判据 13 例仍要守住防回读；删除 = 丢用户公式编码' },
 }
 
 /**

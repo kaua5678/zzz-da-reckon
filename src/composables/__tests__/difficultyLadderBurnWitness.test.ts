@@ -13,16 +13,17 @@
  * ⇒ 单列本文件：只跑**实测确实烧吸收**的 3 支队（跨 r=0.4/0.55/0.85 三档），
  * 断言「确实有队要烧」+「烧是必需的」。成本 ≈ 15s，换掉原来 592s 里的那句闸门。
  *
- * ## 见证队（基准 = `.zc/perf/T185ms.perf.ts` 的 93 队逐队实测）
+ * ## 见证队（2026-10-28 重扫：`.zc/perf/r74witness.probe.perf.ts`，全库 102 预设逐队实测）
  *
  * | 队 | ② 的吸收率 |
  * |---|---|
- * | `auto-1371-1481-1451` | 0.40 |
- * | `claret-koleda-rina` | 0.55 |
- * | `auto-1611-1571-1211` | 0.85 |
+ * | `yixuan-roxy-lucia` | 0.30 |
+ * | `auto-1591-1481-1211` | 0.80 |
+ * | `auto-1591-1571-1211` | 0.05 |
  *
- * ⚠ **这三支队若某天不再烧吸收**（引擎口径收紧/放宽使轴更容易/更难成立），本文件会红。
- * 那是**该复核**的信号，不是「改断言」的信号：先跑 `.zc/perf/T185ms.perf.ts` 重新量全库分布，
+ * ⚠ **见证队若某天不再烧吸收**（引擎口径收紧/放宽使轴更容易/更难成立），本文件会红。
+ * 那是**该复核**的信号，不是「改断言」的信号：先重跑全库扫描（`.zc/perf/r74witness.probe.perf.ts`，
+ * 原 `T185ms.perf.ts` 已不在盘上）重新量分布，
  * 确认「还有没有别的队在烧」，再把见证集换成新实测出来的队（并在提交说明里写 delta）。
  * **不许**直接把断言删掉——那就把非空性闸门整个拆了。
  */
@@ -32,8 +33,16 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
 import { climbDifficultyLadder } from '@/composables/difficultyLadder'
 
-/** 实测确实烧吸收的见证队（跨三档吸收率；新增/替换前先重跑 `.zc/perf/T185ms.perf.ts`） */
-const WITNESSES = ['auto-1371-1481-1451', 'claret-koleda-rina', 'auto-1611-1571-1211'] as const
+/**
+ * 实测确实烧吸收的见证队（跨三档吸收率）。
+ *
+ * ⚠ **2026-10-28 重选**（本文件头「该复核的信号」）：轴模式失衡改逐招口径后，原 3 支
+ * （`auto-1371-1481-1451` / `claret-koleda-rina` / `auto-1611-1571-1211`）② 全落 `r=0`。
+ * 重扫全库 102 预设（`.zc/perf/r74witness.probe.perf.ts`，原 `T185ms.perf.ts` 已不在盘上）：
+ * 仍烧吸收的恰 3 支 = 下表（`yixuan-roxy-lucia@0.3` / `auto-1591-1481-1211@0.8` / `auto-1591-1571-1211@0.05`）。
+ * 谓词（`② 的吸收率 > 0`）与断言主体（非空 + 必需性）一字未改，只换样本队。
+ */
+const WITNESSES = ['yixuan-roxy-lucia', 'auto-1591-1481-1211', 'auto-1591-1571-1211'] as const
 
 describe('难度曲线关键旋钮点（T140c）· ② 烧吸收的非平凡性见证', () => {
   it('这些队 ② 真的烧吸收，且 r=0 时轴立不起来（吸收确实必需）', async () => {
