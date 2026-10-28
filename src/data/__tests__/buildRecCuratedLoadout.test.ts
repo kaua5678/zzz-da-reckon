@@ -2,7 +2,7 @@
  * 挽昼(1601) / 知更鸟(1661) 人工配装的**生效判据**（用户裁决 2026-10-26）。
  *
  * 背景：这两条推荐不是 nanoka 爬取数据，是用户按实战定的（见
- * `scripts/patch-1601-1661-loadout.mjs` 头注释）。数据那条由 `buildRecMainStatRule.test.ts` ④
+ * `scripts/patch-curated-loadout.mjs` 头注释）。数据那条由 `buildRecMainStatRule.test.ts` ④
  * 的登记表锁住，但「登记得对」≠「配装真的生效」——所以这里**走生产通道**（harness 的
  * `recommendedBuild` = 主页「配装推荐 · 一键应用」同一条路），再从引擎读回面板。
  *
@@ -114,4 +114,68 @@ describe('1661 知更鸟 · 人工配装生效（转模到位 / 不打伤害 / �
     expect(mainProps.filter(p => dmgStats.includes(p)), '知更鸟主词条混进了输出词条').toEqual([])
     expect((rec.substats ?? []).map(s => s.prop).filter(p => dmgStats.includes(p)), '知更鸟副词条混进了输出词条').toEqual([])
   }, 120000)
+})
+
+/**
+ * 1571 诺姆 / 1621 洛克茜（两人都是[击破]）· 3.4 新盘 34400v1（用户 2026-10-28）。
+ *
+ * 用户原话：「洛克茜带 3 个 2 件套都是回能的，你改一下，现在的 4 件套摇摆是错的。诺姆带山大王没问题。
+ * 新的驱动盘四件套给击破带，可以加锐化伤害。诺姆和洛克茜和锋御角色组队时就带这个 4 件套。」
+ * +「这俩人都是击破……带谁都得配置最新能拐锐化的盘子四件套」。
+ *
+ * 判据三条（各拦一种真实失败模式）：
+ *   ① 一键应用装上的 4pc 真是 34400v1（失败模式 = 推荐 JSON 被 sync 脚本按站点 raw 重建成山大王/摇摆爵士，
+ *      静默回退；或 2pc/专武被顺手改掉）。
+ *   ② 4pc 的「装备者为[击破] ⇒ 全队锐化伤害 +8%」真的进**锋御队友**面板（失败模式 = 这条只在装备者自己
+ *      面板上生效 ⇒ 拐力 0，用户要的就是这条）。
+ *   ③ 锋御队里换新盘队伤更高（实测 1601+1571+1661 72.163M → 76.512M；1601+1621+1661 78.764M → 80.436M）
+ *      —— 失败模式 = 口径写反（把「换盘是亏的」当默认）。
+ */
+const SHARP_TEAM = (stunId: string) => [{ agentId: '1601' }, { agentId: stunId }, { agentId: '1661' }] as never
+
+describe('1571 诺姆 / 1621 洛克茜 · 击破位换 3.4 新盘 34400v1', () => {
+  it('① 一键应用：两人 4pc 都是 34400v1；2pc / 专武沿用站点条目；原 4pc 降到备选', async () => {
+    const norma = await setupHarness(SHARP_TEAM('1571'), { recommendedBuild: true } as never)
+    const n = norma.config.team[1]
+    expect(n.driveDisc.fourPieceSetId, '诺姆 4pc 被回退成山大王了（跑过 sync-build-recommendations 1571 ？）').toBe('34400v1')
+    expect(n.driveDisc.twoPieceSetId).toBe('31000') // 啄木鸟电音（站点原样）
+    expect(n.wEngineId).toBe('14157')
+    expect(norma.catalog.getBuildRecommendation('1571')!.drive_disc_sets.alt_two_piece?.id).toBe('33200') // 山大王降级保留
+
+    const roxy = await setupHarness(SHARP_TEAM('1621'), { recommendedBuild: true } as never)
+    const r = roxy.config.team[1]
+    expect(r.driveDisc.fourPieceSetId, '洛克茜 4pc 被回退成摇摆爵士了').toBe('34400v1')
+    expect(r.driveDisc.twoPieceSetId).toBe('33400') // 月光骑士颂（回能）
+    expect(r.wEngineId).toBe('14162')
+    expect(roxy.catalog.getBuildRecommendation('1621')!.drive_disc_sets.alt_two_piece?.id).toBe('31600') // 摇摆爵士降级保留
+  }, 180000)
+
+  it('② 4pc 的全队锐化 +8 真的进锋御队友（1601）的面板，不是只停在击破位自己身上', async () => {
+    for (const stun of ['1571', '1621']) {
+      const h = await setupHarness(SHARP_TEAM(stun), { recommendedBuild: true } as never)
+      const withNew = computePanelPhases(0, h.config, h.catalog)!.inCombat.sharpDmgBonus ?? 0
+      h.config.setFourPieceSet(1, stun === '1571' ? '33200' : '31600') // 换回原 4pc
+      const withOld = computePanelPhases(0, h.config, h.catalog)!.inCombat.sharpDmgBonus ?? 0
+      expect(withNew - withOld, `${stun} 的 4pc 没有把 +8 锐化增伤送到 1601 面板`).toBeCloseTo(8, 6)
+    }
+  }, 180000)
+
+  it('③ 锋御队里换新盘，队伤更高（引擎实测：+6.0% / +2.1%）', async () => {
+    const read = async (stun: string, fourPiece: string) => {
+      const h = await setupHarness(SHARP_TEAM(stun), { recommendedBuild: true } as never)
+      h.config.setFourPieceSet(1, fourPiece)
+      const calc = useResourceCalc()
+      await flush()
+      return calc.teamTotalDamage.value
+    }
+    const normaNew = await read('1571', '34400v1')
+    const normaOld = await read('1571', '33200')
+    expect(normaNew, `诺姆换 34400v1 后队伤 ${(normaNew / 1e6).toFixed(3)}M 应高于山大王 ${(normaOld / 1e6).toFixed(3)}M`)
+      .toBeGreaterThan(normaOld)
+
+    const roxyNew = await read('1621', '34400v1')
+    const roxyOld = await read('1621', '31600')
+    expect(roxyNew, `洛克茜换 34400v1 后队伤 ${(roxyNew / 1e6).toFixed(3)}M 应高于摇摆爵士 ${(roxyOld / 1e6).toFixed(3)}M`)
+      .toBeGreaterThan(roxyOld)
+  }, 300000)
 })
