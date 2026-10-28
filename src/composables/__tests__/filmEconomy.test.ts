@@ -17,8 +17,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   CINEMA_GOLD_FILM,
+  FIRST_DOUBLE_BONUS_FILM,
+  FIRST_DOUBLE_YUAN_CAP,
   PERIODS_PER_VERSION,
   PLANNER_FILM_PER_VERSION,
+  TOP_UP_PACKS,
   TOP_UP_TIERS,
   WEAPON_GOLD_FILM,
   allocateTopUpFilm,
@@ -86,40 +89,43 @@ describe('收入与充值：是输入，不是隐藏常量', () => {
     expect(PLANNER_FILM_PER_VERSION).not.toBe(CINEMA_GOLD_FILM)
   })
 
-  it('⑦ 充值**档位化**：先买固定档（小月卡 30→3300 ×2、大月卡 68→2600 ×1），零头不折', () => {
+  it('⑦ 档位化：先买限量礼包（月卡 30→3000 ×2、城募 68→800 ×1），余量按直充 10/元', () => {
     expect(allocateTopUpFilm(0)).toBe(0)
-    expect(allocateTopUpFilm(30)).toBe(3300) // 1 小月卡 = 110 菲林/元（全档最高）
-    expect(allocateTopUpFilm(60)).toBe(6600) // 2 小月卡（每版本上限）
-    // 68 元 = 2 小月卡(60) + 余 8 元：大月卡要 68 元，买不起 ⇒ 8 元**不折菲林**（只给档位）
-    expect(allocateTopUpFilm(68)).toBe(6600)
-    expect(allocateTopUpFilm(98)).toBe(6600) // 同上，余 38 元也不折
+    expect(allocateTopUpFilm(30)).toBe(3000) // 1 张绳网会员 = 立即 300 + 30 天 × 90（100 菲林/元，全档最高）
+    expect(allocateTopUpFilm(60)).toBe(6000) // 2 张（每版本上限：30 天 × 2 ≈ 42 天版本）
+    expect(allocateTopUpFilm(68)).toBe(6000 + 8 * 10) // 余 8 元，不够城募 68
+    expect(allocateTopUpFilm(98)).toBe(6000 + 38 * 10) // 余 38 元，仍不够城募
+    expect(allocateTopUpFilm(128)).toBe(6000 + 800) // 2 月卡 + 城募成长计划（11.76/元 > 直充 10/元）
+    expect(allocateTopUpFilm(160)).toBe(6000 + 800 + 32 * 10) // 余 32 元走直充
+
     let prev = -1
-    for (let yuan = 0; yuan <= 400; yuan++) {
+    for (let yuan = 0; yuan <= 600; yuan++) {
       const film = allocateTopUpFilm(yuan)
-      expect(film, 'yuan=' + yuan).toBeGreaterThanOrEqual(prev) // 单调不减
+      expect(film, 'yuan=' + yuan).toBeGreaterThanOrEqual(prev) // 单调不减（否决记录里的非单调已消除）
       prev = film
     }
-    // 128 元 = 2 小月卡 + 大月卡（固定档全部买满）⇒ 之后才启用自由额度
-    expect(allocateTopUpFilm(128)).toBe(2 * 3300 + 2600)
-    // 160 元 = 128 + 余 32 元 × 10（买满后才换算）
-    expect(allocateTopUpFilm(160)).toBe(2 * 3300 + 2600 + 32 * 10)
   })
 
-  it('⑧ 明细可读：买满前后 leftoverYuan / freeFilm 的分界（页面据此提示「还差多少」）', () => {
-    const before = topUpPlanOf(98)
-    expect(before.allTiersMaxed).toBe(false)
-    expect(before.purchases.map(p => [p.tier.id, p.count])).toEqual([['monthly', 2]])
-    expect(before.freeYuan).toBe(0) // 没买满 ⇒ 不启用自由额度
-    expect(before.freeFilm).toBe(0)
-    expect(before.leftoverYuan).toBe(38) // 零头原样留着，不折
-    expect(before.totalFilm).toBe(6600)
+  it('⑧ 明细可读 + 首充双倍只作一次性参考值（不进每版本预算）', () => {
+    const p1 = topUpPlanOf(98)
+    expect(p1.purchases.map(p => [p.tier.id, p.count])).toEqual([['monthly', 2]])
+    expect(p1.freeYuan).toBe(38)
+    expect(p1.freeFilm).toBe(380)
+    expect(p1.leftoverYuan).toBe(0)
+    expect(p1.nextTierGapYuan).toBe(30) // 已花 60，再充 30 元就够城募 68
 
-    const after = topUpPlanOf(160)
-    expect(after.allTiersMaxed).toBe(true)
-    expect(after.purchases.map(p => [p.tier.id, p.count])).toEqual([['monthly', 2], ['battlePass', 1]])
-    expect(after.freeYuan).toBe(32)
-    expect(after.freeFilm).toBe(320)
-    expect(after.leftoverYuan).toBe(0)
+    // 首充双倍 = 六档各首次购买一次（6+30+98+198+328+648 = ¥1308），+13080 菲林 —— 一次性、单独导出
+    expect(FIRST_DOUBLE_YUAN_CAP).toBe(1308)
+    expect(FIRST_DOUBLE_BONUS_FILM).toBe(13080) // 额外加成 = 1308 元 × (20 − 10)
+    expect(TOP_UP_PACKS.map(p => p.film / p.yuan)).toEqual(TOP_UP_PACKS.map(() => 10))
+    // 它**不**参与分配：2000 元预算 = 月卡 + 城募 + (2000−128)×10，没有双倍加成
+    const big = topUpPlanOf(2000)
+    expect(big.totalFilm).toBe(6000 + 800 + (2000 - 128) * 10)
+
+    // 零头：不足最小直充档 ¥6 的部分不折算（「只给档位」）
+    const tiny = topUpPlanOf(5)
+    expect(tiny.totalFilm).toBe(0)
+    expect(tiny.leftoverYuan).toBe(5)
 
     // 档位表本身：顺序 = 性价比降序（买之前不需要再排序）
     const ratios = TOP_UP_TIERS.map(t => t.film / t.yuan)

@@ -575,19 +575,19 @@ describe('Chart 4：菲林经济模拟（computeFilmSimulation / 预算性价比
   }, 240000)
 
   /**
-   * 2026-10-28 用户裁决：预算→菲林**档位化**——先买固定档（小月卡 ×2、大月卡 ×1），
-   * **固定档全部买满之后**剩余额度才按直充 10 菲林/元 折算；未买满的零头不折（「只给档位」）。
-   * 修前是「任意余额都×10」⇒ 68 元会多出 80 菲林、98 元多出 380 菲林（口径已更正，见 filmEconomy）。
+   * 2026-10-28 用户裁决：预算→菲林**档位化**——先买限量礼包（绳网会员 ×2 / 丽都城募成长计划 ×1），
+   * 余额先走**首充双倍**（一次性，前 ¥1308 按 20 菲林/元）再走直充 10 菲林/元；不足 ¥6 的零头不折算。
+   * 同日联网核对的两处数据更正：月卡 3300→3000（每日 90 不是 100）、大月卡 2600→800（城募成长计划只发 800 菲林），
+   * 明细与出处见 filmEconomy 头注释与 filmEconomy.test.ts。
    */
-  it('充值预算按档位分配（allocateTopUpFilm）：小月卡 110/元 → 大月卡 → 买满后才有自由额度', () => {
+  it('充值预算按档位分配（allocateTopUpFilm）：月卡 100/元 → 城募 11.76/元 → 直充 10/元', () => {
     expect(allocateTopUpFilm(0)).toBe(0)
-    expect(allocateTopUpFilm(30)).toBe(3300)              // 1 小月卡
-    expect(allocateTopUpFilm(60)).toBe(6600)              // 2 小月卡（每版本上限）
-    expect(allocateTopUpFilm(68)).toBe(6600)              // 余 8 元不折（未买满固定档）
-    expect(allocateTopUpFilm(98)).toBe(6600)              // 余 38 元同样不折；2 小月卡 ＞ 1 小月卡+大月卡
-    expect(allocateTopUpFilm(100)).toBe(6600)             // 同上
-    expect(allocateTopUpFilm(128)).toBe(6600 + 2600)      // 2 小月卡 + 大月卡 = 固定档买满
-    expect(allocateTopUpFilm(160)).toBe(6600 + 2600 + 32 * 10) // 买满后余 32 元才按 10/元
+    expect(allocateTopUpFilm(30)).toBe(3000)              // 1 张绳网会员（立即 300 + 30 天 × 90）
+    expect(allocateTopUpFilm(60)).toBe(6000)              // 2 张（每版本上限）
+    expect(allocateTopUpFilm(68)).toBe(6000 + 8 * 10)     // 余 8 元，不够城募 68
+    expect(allocateTopUpFilm(98)).toBe(6000 + 38 * 10)    // 余 38 元，仍不够城募
+    expect(allocateTopUpFilm(128)).toBe(6000 + 800)       // 2 月卡 + 城募成长计划（只发 800 菲林）
+    expect(allocateTopUpFilm(160)).toBe(6000 + 800 + 32 * 10) // 余 32 元走直充
   })
 
   it('经济：占比 0 全存金数不变；占比 1 全花金数单调增长；现场恢复', async () => {
