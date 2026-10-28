@@ -19,8 +19,10 @@ import {
   CINEMA_GOLD_FILM,
   PERIODS_PER_VERSION,
   PLANNER_FILM_PER_VERSION,
+  TOP_UP_TIERS,
   WEAPON_GOLD_FILM,
   allocateTopUpFilm,
+  topUpPlanOf,
 } from '@/data/filmEconomy'
 import { PURCHASE_LADDER, tierCost } from '@/composables/pullPlanner'
 
@@ -84,21 +86,43 @@ describe('收入与充值：是输入，不是隐藏常量', () => {
     expect(PLANNER_FILM_PER_VERSION).not.toBe(CINEMA_GOLD_FILM)
   })
 
-  it('⑦ 充值按性价比顺序：月卡 30 元 → 3300，先于大月卡与直充', () => {
+  it('⑦ 充值**档位化**：先买固定档（小月卡 30→3300 ×2、大月卡 68→2600 ×1），零头不折', () => {
     expect(allocateTopUpFilm(0)).toBe(0)
-    expect(allocateTopUpFilm(30)).toBe(3300) // 一张月卡 = 110 菲林/元（全档最高）
-    expect(allocateTopUpFilm(30)).toBeGreaterThan(30 * 10) // 比全走直充高得多
+    expect(allocateTopUpFilm(30)).toBe(3300) // 1 小月卡 = 110 菲林/元（全档最高）
+    expect(allocateTopUpFilm(60)).toBe(6600) // 2 小月卡（每版本上限）
+    // 68 元 = 2 小月卡(60) + 余 8 元：大月卡要 68 元，买不起 ⇒ 8 元**不折菲林**（只给档位）
+    expect(allocateTopUpFilm(68)).toBe(6600)
+    expect(allocateTopUpFilm(98)).toBe(6600) // 同上，余 38 元也不折
     let prev = -1
     for (let yuan = 0; yuan <= 400; yuan++) {
       const film = allocateTopUpFilm(yuan)
-      expect(film, 'yuan=' + yuan).toBeGreaterThanOrEqual(prev)
+      expect(film, 'yuan=' + yuan).toBeGreaterThanOrEqual(prev) // 单调不减
       prev = film
     }
-    // 68 元 = 2 张月卡(60) + 余 8 直充（**大月卡买不到**：月卡之后要剩 ≥68 元才够，即预算 ≥128 元）
-    expect(allocateTopUpFilm(68)).toBe(2 * 3300 + 8 * 10)
-    // 128 元 = 2 张月卡(60) + 大月卡(68)，无直充余额
+    // 128 元 = 2 小月卡 + 大月卡（固定档全部买满）⇒ 之后才启用自由额度
     expect(allocateTopUpFilm(128)).toBe(2 * 3300 + 2600)
-    // 160 元 = 2 张月卡 + 大月卡 + 余 32 元直充
+    // 160 元 = 128 + 余 32 元 × 10（买满后才换算）
     expect(allocateTopUpFilm(160)).toBe(2 * 3300 + 2600 + 32 * 10)
+  })
+
+  it('⑧ 明细可读：买满前后 leftoverYuan / freeFilm 的分界（页面据此提示「还差多少」）', () => {
+    const before = topUpPlanOf(98)
+    expect(before.allTiersMaxed).toBe(false)
+    expect(before.purchases.map(p => [p.tier.id, p.count])).toEqual([['monthly', 2]])
+    expect(before.freeYuan).toBe(0) // 没买满 ⇒ 不启用自由额度
+    expect(before.freeFilm).toBe(0)
+    expect(before.leftoverYuan).toBe(38) // 零头原样留着，不折
+    expect(before.totalFilm).toBe(6600)
+
+    const after = topUpPlanOf(160)
+    expect(after.allTiersMaxed).toBe(true)
+    expect(after.purchases.map(p => [p.tier.id, p.count])).toEqual([['monthly', 2], ['battlePass', 1]])
+    expect(after.freeYuan).toBe(32)
+    expect(after.freeFilm).toBe(320)
+    expect(after.leftoverYuan).toBe(0)
+
+    // 档位表本身：顺序 = 性价比降序（买之前不需要再排序）
+    const ratios = TOP_UP_TIERS.map(t => t.film / t.yuan)
+    expect(ratios).toEqual([...ratios].sort((a, b) => b - a))
   })
 })

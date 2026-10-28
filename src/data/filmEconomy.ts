@@ -25,16 +25,8 @@ const PULL_FILM = 160
 export const CINEMA_GOLD_FILM = Math.ceil(93.75 * PULL_FILM) // 15000
 /** 一金武器（音擎池 1 个限定音擎/精炼）的期望菲林 = 62.5 抽 × 160 */
 export const WEAPON_GOLD_FILM = Math.ceil(62.5 * PULL_FILM) // 10000
-/** 直充汇率（菲林/元）——固定不可改（用户口径；首充双倍 = 20 为一次性，模拟不计） */
-const TOPUP_FILM_PER_YUAN = 10
-/** 月卡（绳网会员）：30 元 → 3000 + 300 = 3300 菲林（约 110 菲林/元，性价比最高） */
-const MONTHLY_CARD_COST = 30
-const MONTHLY_CARD_FILM = 3300
-/** 每版本最多买几张月卡（月卡覆盖 30 天，版本 ≈ 42 天 → 2 张覆盖全版本） */
-const MONTHLY_CARD_MAX_PER_VERSION = 2
-/** 大月卡（丽都城募/成长计划）：68 元 → ~1320 菲林 + 抽卡道具（价值约 8 抽 = 1280）≈ 2600 菲林/版本（约 38 菲林/元） */
-const BATTLE_PASS_COST = 68
-const BATTLE_PASS_FILM = 2600
+/** 自由额度汇率（菲林/元 = 直充）——固定不可改 */
+export const TOP_UP_FREE_FILM_PER_YUAN = 10
 /** 一期危局 ≈ 版本时长 / 3（一版约 3 期、每期 ~14 天） */
 export const PERIODS_PER_VERSION = 3
 // @fact engine:抽卡收入/每版本菲林 口径: 收入是**输入不是常量**，两个消费方各有默认值——抽卡规划器 25000（PLANNER_FILM_PER_VERSION）、菲林经济模拟 15000 ≈ 1 金（页面可编辑）；发放粒度 = **版本日历**（每个版本开始日一份，pullPlanner#versionFilmGrants），不得按「期」发放 | 据 用户@2026-08-28（每版本 25000）·实测@2026-09-29（arena-B：44 期 44 个日期 ⇒ 按期发一份，收入约为每版本口径的 3 倍）·复核@2026-10-28（默认值未变，新增判据锁定「收入是输入」） | 验 src/composables/__tests__/filmEconomy.test.ts | 锚 src/data/filmEconomy.ts#PLANNER_FILM_PER_VERSION + src/composables/pullPlanner.ts#versionFilmGrants + src/data/filmEconomy.ts#PERIODS_PER_VERSION | 信 确认
@@ -43,22 +35,100 @@ export const PERIODS_PER_VERSION = 3
 export const PLANNER_FILM_PER_VERSION = 25000
 
 /**
- * 充值预算按性价比分配（用户口径「都是先充月卡」；汇率固定不可改）。
- * 每版本预算（元）→ 菲林：
- * 1. 月卡（110 菲林/元，每版本最多 2 张覆盖全版本）；
- * 2. 剩余够 68 元 → 大月卡（≈38 菲林/元）；
- * 3. 再剩余按直充 10 菲林/元。
+ * **充值档位**（用户裁决 2026-10-28）：小额/长期规划**只给档位，不拆零换算**。
+ *
+ * > 「太小的数据就只给档位，比如最低就是小月卡*1。等你买完小大月卡和首充双倍后，
+ * >  自由额度才容易换算。」
+ *
+ * ⇒ 模型分两层，别把任意元数直接乘汇率：
+ * 1. **固定档**（离散、限量、按性价比降序买）：小月卡 30 元 → 3300（每版本 ≤2 张，
+ *    月卡覆盖 30 天、版本 ≈42 天）、大月卡 68 元 → 2600（每版本 1 张）；
+ * 2. **自由额度**：**只有固定档全部买满之后**，剩余元数才按 `TOP_UP_FREE_FILM_PER_YUAN` 折算；
+ *    没买满时的零头原样留在 `leftoverYuan`（不折菲林）——「不纠结这些」。
+ *
+ * 首充双倍（20 菲林/元、一次性）**暂不进档位表**：缺官方档位金额与双倍额度，不猜
+ * （见下面 `@fact … 未建模`）。补齐后它只是往 `TOP_UP_TIERS` 加一行。
  */
-export function allocateTopUpFilm(yuanPerVersion: number): number {
+export interface TopUpTier {
+  id: 'monthly' | 'battlePass'
+  label: string
+  /** 单档价格（元） */
+  yuan: number
+  /** 单档菲林 */
+  film: number
+  /** 每版本可买张数 */
+  perVersion: number
+}
+
+/**
+ * 固定档表（**唯一事实源**）：顺序 = 购买顺序 = 性价比降序（菲林/元 110 > 38.2）。
+ * 加一档 = 加一行；改单价/限量 = 改这里，页面与模拟都读它。
+ */
+export const TOP_UP_TIERS: readonly TopUpTier[] = [
+  { id: 'monthly', label: '小月卡', yuan: 30, film: 3300, perVersion: 2 },
+  { id: 'battlePass', label: '大月卡', yuan: 68, film: 2600, perVersion: 1 },
+]
+
+// @fact engine:抽卡收入/充值档位 口径: 预算→菲林分两层——固定档（TOP_UP_TIERS：小月卡 30→3300 每版本 ≤2、大月卡 68→2600 每版本 1）按性价比降序买；**固定档全部买满后**剩余额度才按自由汇率 10 菲林/元 折算，未买满的零头留在 leftoverYuan 不折（用户裁决「太小的数据就只给档位…等你买完小大月卡和首充双倍后，自由额度才容易换算」） | 据 用户@2026-10-28 | 验 src/composables/__tests__/filmEconomy.test.ts | 锚 src/data/filmEconomy.ts#TOP_UP_TIERS + src/data/filmEconomy.ts#topUpPlanOf | 信 确认
+// ⟳复核: 官方充值档位（月卡/大月卡单价、每档菲林、每版本可买张数）或直充汇率变动时，改 TOP_UP_TIERS 并复核本条 | 到期 2027-03-31
+// @fact engine:抽卡收入/首充双倍 未建模: 首充双倍（20 菲林/元、一次性）不进档位表——缺官方「档位金额 × 双倍额度」数据，不猜数值；补齐后往 TOP_UP_TIERS 加一行并给 perVersion（每账号一次即可表达） | 据 用户@2026-10-28（档位顺序里点名「首充双倍」）·首充双倍汇率见本文件头注释 | 验 src/composables/__tests__/filmEconomy.test.ts | 锚 src/data/filmEconomy.ts#TOP_UP_TIERS | 信 中
+// ⟳复核: 拿到官方首充双倍档位表（哪些档位双倍、双倍后各多少菲林、是否每账号一次）后建模并销条 | 到期 2027-03-31
+
+/** 一次分配的明细（页面可读「买了哪几档 / 还差多少才够下一档」） */
+export interface TopUpPurchase {
+  tier: TopUpTier
+  count: number
+  /** 该档总花费（元） */
+  yuan: number
+  /** 该档总菲林 */
+  film: number
+}
+
+export interface TopUpPlan {
+  /** 买到的固定档（按购买顺序） */
+  purchases: TopUpPurchase[]
+  /** 固定档是否全部买满（= 只有这时才启用自由额度换算） */
+  allTiersMaxed: boolean
+  /** 自由额度折算掉的元数（未买满恒 0） */
+  freeYuan: number
+  /** 自由额度换来的菲林（未买满恒 0） */
+  freeFilm: number
+  /** 没花掉也没折算的零头（元）——「只给档位」的那部分 */
+  leftoverYuan: number
+  /** 本次预算合计换到的菲林（= 固定档 + 自由额度） */
+  totalFilm: number
+}
+
+/**
+ * 预算 → 档位明细。纯函数、不读外部状态。
+ *
+ * 算法（为什么贪心够用）：两档性价比相差近 3 倍（110 vs 38.2），且高档限量 ≤2 张、
+ * 单档价格是 30 的倍数关系——在「每版本」这个量级里，任何换一档的组合都比贪心差
+ * （实测 98 元：2 小月卡 6600 > 1 小月卡+大月卡 5900）。真要加第三档时重新验证。
+ */
+export function topUpPlanOf(yuanPerVersion: number): TopUpPlan {
   let yuan = Math.max(0, Math.floor(yuanPerVersion))
-  let film = 0
-  const monthly = Math.min(MONTHLY_CARD_MAX_PER_VERSION, Math.floor(yuan / MONTHLY_CARD_COST))
-  film += monthly * MONTHLY_CARD_FILM
-  yuan -= monthly * MONTHLY_CARD_COST
-  if (yuan >= BATTLE_PASS_COST) {
-    film += BATTLE_PASS_FILM
-    yuan -= BATTLE_PASS_COST
+  const purchases: TopUpPurchase[] = []
+  for (const tier of TOP_UP_TIERS) {
+    const count = Math.min(tier.perVersion, Math.floor(yuan / tier.yuan))
+    if (count <= 0) continue
+    purchases.push({ tier, count, yuan: count * tier.yuan, film: count * tier.film })
+    yuan -= count * tier.yuan
   }
-  film += yuan * TOPUP_FILM_PER_YUAN
-  return film
+  const allTiersMaxed = TOP_UP_TIERS.every(t => (purchases.find(p => p.tier.id === t.id)?.count ?? 0) >= t.perVersion)
+  const freeYuan = allTiersMaxed ? yuan : 0
+  const freeFilm = freeYuan * TOP_UP_FREE_FILM_PER_YUAN
+  return {
+    purchases,
+    allTiersMaxed,
+    freeYuan,
+    freeFilm,
+    leftoverYuan: yuan - freeYuan,
+    totalFilm: purchases.reduce((s, p) => s + p.film, 0) + freeFilm,
+  }
+}
+
+/** 每版本预算（元）→ 菲林（= `topUpPlanOf` 的 totalFilm；明细用 topUpPlanOf） */
+export function allocateTopUpFilm(yuanPerVersion: number): number {
+  return topUpPlanOf(yuanPerVersion).totalFilm
 }

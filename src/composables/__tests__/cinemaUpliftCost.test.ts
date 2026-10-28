@@ -16,7 +16,7 @@
  * - 把 `perGoldTotalPct` 改成 `perGoldMeanPct`（或反之）⇒ 用例 ② / ④ 红。
  */
 import { describe, expect, it } from 'vitest'
-import { cinemaCostOf, GOLD_PER_CINEMA_LEVEL } from '@/composables/cinemaUpliftCost'
+import { cinemaCostOf, cinemaFilmCostOf, FILM_PER_CINEMA_LEVEL, GOLD_PER_CINEMA_LEVEL } from '@/composables/cinemaUpliftCost'
 import type { CinemaUpliftEntry } from '@/composables/cinemaUplift'
 
 /** 只造 `cinemaCostOf` 真正读的字段（结构类型，不需要整条 entry） */
@@ -80,3 +80,57 @@ describe('cinemaCostOf（命座成本轴）', () => {
     expect(Number.isFinite(s.perGoldMeanPct!)).toBe(true)
   })
 })
+
+describe('cinemaFilmCostOf（命座成本轴 · 菲林尺：价值计算口径）', () => {
+  /**
+   * 用户 2026-10-28：「金数…是为了直观表达一个队伍强度……做价值计算的时候可能只用万菲林均强度，准确一些。
+   * 事实上 1 金本来就代表不同价格，只是社区俗语。」⇒ 价值一律用「每万菲林」，金只是展示俗语。
+   */
+  it('① 一级 = 一个限定命座的期望菲林（单一来源 filmEconomy），每万菲林 = 提升率 ÷ (菲林/10000)', () => {
+    expect(FILM_PER_CINEMA_LEVEL).toBe(15000)
+    const s = cinemaFilmCostOf(mk([10, 5, 20]), 40)
+    expect(s.rows.map(r => r.film)).toEqual([15000, 15000, 15000])
+    // 10% / (15000/10000) = 6.666…%每万菲林
+    expect(s.rows[0]!.per10kFilmPct).toBeCloseTo(10 / 1.5, 9)
+    expect(s.totalFilm).toBe(45000)
+  })
+
+  it('② 与金尺**不同分母**：同一提升率下 per10kFilm ≠ perGold（金是俗语，菲林才同尺可比）', () => {
+    const gold = cinemaCostOf(mk([14.3]), 14.3)
+    const film = cinemaFilmCostOf(mk([14.3]), 14.3)
+    expect(gold.rows[0]!.perGoldPct).toBeCloseTo(14.3, 9)
+    expect(film.rows[0]!.per10kFilmPct).toBeCloseTo(14.3 / 1.5, 9)
+    expect(film.rows[0]!.per10kFilmPct).not.toBeCloseTo(gold.rows[0]!.perGoldPct, 3)
+  })
+
+  it('③ 累计每万菲林 ≠ 逐级算术平均（复利 vs 算术，与金尺同一条纪律）', () => {
+    const s = cinemaFilmCostOf(mk([10, 10]), 21)
+    expect(s.per10kFilmMeanPct).toBeCloseTo(10 / 1.5, 9)
+    expect(s.per10kFilmTotalPct).toBeCloseTo(21 / 3, 9) // 2 级 = 30000 菲林 = 3 个万
+    expect(s.per10kFilmTotalPct).not.toBeCloseTo(s.per10kFilmMeanPct!, 6)
+  })
+
+  it('④ 负值如实保留；best/worst 并列规则与金尺一致', () => {
+    const s = cinemaFilmCostOf(mk([12, -8, 30]), 34)
+    expect(s.rows[1]!.per10kFilmPct).toBeCloseTo(-8 / 1.5, 9)
+    expect(s.worst!.level).toBe(2)
+    const flat = cinemaFilmCostOf(mk([5, 5, 5]), 15)
+    expect(flat.best!.level).toBe(1)
+    expect(flat.worst!.level).toBe(3)
+  })
+
+  it('⑤ 空态与 NaN 输入确定性（不除零、不 NaN）', () => {
+    const empty = cinemaFilmCostOf([], 0)
+    expect(empty.rows).toEqual([])
+    expect(empty.totalFilm).toBe(0)
+    expect(empty.per10kFilmTotalPct).toBeNull()
+    expect(empty.per10kFilmMeanPct).toBeNull()
+    expect(empty.best).toBeNull()
+    expect(empty.worst).toBeNull()
+
+    const s = cinemaFilmCostOf(mk([10, Number.NaN, 5]), 15)
+    expect(s.rows[1]!.gainPct).toBe(0)
+    expect(Number.isFinite(s.per10kFilmMeanPct!)).toBe(true)
+  })
+})
+

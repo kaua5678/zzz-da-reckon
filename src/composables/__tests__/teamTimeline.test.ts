@@ -574,13 +574,20 @@ describe('Chart 4：菲林经济模拟（computeFilmSimulation / 预算性价比
     }
   }, 240000)
 
-  it('充值预算按性价比分配（allocateTopUpFilm）：月卡优先（110/元）→ 大月卡 → 直充', () => {
+  /**
+   * 2026-10-28 用户裁决：预算→菲林**档位化**——先买固定档（小月卡 ×2、大月卡 ×1），
+   * **固定档全部买满之后**剩余额度才按直充 10 菲林/元 折算；未买满的零头不折（「只给档位」）。
+   * 修前是「任意余额都×10」⇒ 68 元会多出 80 菲林、98 元多出 380 菲林（口径已更正，见 filmEconomy）。
+   */
+  it('充值预算按档位分配（allocateTopUpFilm）：小月卡 110/元 → 大月卡 → 买满后才有自由额度', () => {
     expect(allocateTopUpFilm(0)).toBe(0)
-    expect(allocateTopUpFilm(30)).toBe(3300)              // 1 月卡
-    expect(allocateTopUpFilm(60)).toBe(6600)              // 2 月卡（封顶，覆盖全版本）
-    expect(allocateTopUpFilm(98)).toBe(6600 + (98 - 60) * 10) // 2 月卡 ＞ 1 月卡+大月卡（贪心正确）
-    expect(allocateTopUpFilm(128)).toBe(6600 + 2600)      // 2 月卡 + 大月卡（60+68）
-    expect(allocateTopUpFilm(100)).toBe(6600 + (100 - 60) * 10) // 2 月卡 + 40 元直充
+    expect(allocateTopUpFilm(30)).toBe(3300)              // 1 小月卡
+    expect(allocateTopUpFilm(60)).toBe(6600)              // 2 小月卡（每版本上限）
+    expect(allocateTopUpFilm(68)).toBe(6600)              // 余 8 元不折（未买满固定档）
+    expect(allocateTopUpFilm(98)).toBe(6600)              // 余 38 元同样不折；2 小月卡 ＞ 1 小月卡+大月卡
+    expect(allocateTopUpFilm(100)).toBe(6600)             // 同上
+    expect(allocateTopUpFilm(128)).toBe(6600 + 2600)      // 2 小月卡 + 大月卡 = 固定档买满
+    expect(allocateTopUpFilm(160)).toBe(6600 + 2600 + 32 * 10) // 买满后余 32 元才按 10/元
   })
 
   it('经济：占比 0 全存金数不变；占比 1 全花金数单调增长；现场恢复', async () => {
