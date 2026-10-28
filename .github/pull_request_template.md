@@ -17,7 +17,7 @@
 
 - [ ] 每个机制 = spec 字段 + 生效测试（防死数据铁律，SOP §0）
 - [ ] 自定义模块角色的 spec 字段死数据已处理（validate:specs 强制检查）
-- [ ] 命座效果录完跑过「资源利用率页·命座提升率」，无「⚠无变化」警示
+- [ ] 命座效果录完跑过「收益分析页·命座提升率」，无「⚠无变化」警示
 - [ ] 行匹配一律用 `moveId`，不按 name/note
 - [ ] `character-mechanics.json` / `character-constellations.json` 已同步（validate:data 护栏）
 - [ ] 新测试用 `src/test/harness.ts`（`setupHarness`/`mockStaticFetch`），未复制三文件 fetch stub

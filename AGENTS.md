@@ -56,7 +56,7 @@
 2. **数值唯一事实源 = `public/static/catalog.json`**：改数值走 `scripts/` 导入/爬取脚本重跑，不要手改 JSON 本体。
 3. **执行行匹配一律用 `moveId`**，不按 name/note（`enrichExecutionPlan` 会从倍率表回填覆盖它们）。
 4. **自定义 TS 模块角色**（`src/mechanics/agents/*.ts` 注册过）的 spec 字段是死数据：adjustable 滑块/attributeConversions 必须在模块里实现，spec 只作记录（`validate:specs` 强制：attributeConversions 必须可证明被消费——模块显式调用 `applySpecAttributeConversions` 或条目 note 标注「实现位置：」）。
-5. **每个录入的机制 = spec 字段 + 生效测试**；命座效果录完跑一次「资源利用率页·命座提升率」确认无橙色「⚠无变化」警示。自动化护栏：`allAgentsSweep` 断言「声明已实现命座的角色 C6 伤害 > C0 伤害」，逐级三态判据在 `composables/cinemaUplift.ts`（页面与测试同源）——页面自检仍要跑，它能定位到具体哪一级。
+5. **每个录入的机制 = spec 字段 + 生效测试**；命座效果录完跑一次「收益分析页·命座提升率」确认无橙色「⚠无变化」警示。自动化护栏：`allAgentsSweep` 断言「声明已实现命座的角色 C6 伤害 > C0 伤害」，逐级三态判据在 `composables/cinemaUplift.ts`（页面与测试同源）——页面自检仍要跑，它能定位到具体哪一级。
 6. **跨角色/队伍级机制走 `applyTeamConfig` 钩子**（三阶段 build/converge/postRound，见 `docs/ENGINE_PIPELINE_GUIDE.md` §2），禁止往 `useResourceCalc` 新增**角色判定**分支（判据 2/3/6，新增即红）。
    - 度量口径 = AST 三形态（`agentId` / `.id` 四位数字 / `teammateBuffId`），**按行去重**；单源 `scripts/lib/agent-identity-lines.mjs`，分类报告 `node scripts/report-agent-identity.mjs --md`。
    - 面板阶段的覆盖率滑块直接读 `AgentPanelInput.settings`，不要经 panel 字段走私。

@@ -139,7 +139,7 @@
 - 起因：T10 的根源是「watch 异步回写 store，计算又读这张表」。这次把 `src/composables` 和 `src/stores` 里的全部 watch 过了一遍（r381 只查过 composables）：
   - 与计算相关、已是 `flush:'sync'`：`config.ts` 的 Boss 交互方案同步（parryTotal），以及队友 buff 随队伍同步（2026-09-23 修过同类 bug：批量路径在同一 tick 读到旧的 buff 选择）；
   - 只在启动或数据加载时触发：`teammateBuffsLoaded`、`teammateBuffGroups.length`；
-  - 只由界面输入触发：副词条预算设置（`optimizer.substatCap` / `totalSteps2–4` 只有资源利用率页会写）；
+  - 只由界面输入触发：副词条预算设置（`optimizer.substatCap` / `totalSteps2–4` 只有队伍配置页·副词条自动分配预算卡会写）；
   - 幂等兼容：`ensureResistanceTables`（场景克隆前已补齐，读取处有回退）；r724 已整层删除——store 从未持久化，旧版单表抗性没有数据源（docs/mcp-dead-nullish-census.md §4.1）；
   - 有意只在 UI 生效：保底目标预填（CC-358 / CC-349：批量求值只换轴，保底是难度爬梯的独立档 G3）、时间权重自动分配（用户裁决 2026-09-10：引擎与基线保持静态权重，策略只在 UI 触发点跑；难度爬梯把 B、C 当作档位显式调用）；
   - 与计算无关：`persistedRef`、`logicEditor`、`theme`、`usePresetTeamPicker`。
