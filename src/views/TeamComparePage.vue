@@ -312,6 +312,9 @@
           <div class="ctl-field" title="同时跑「不锁失衡次数」口径 ⇒ 多出「失衡通道贡献」一列（每格求值翻倍，慢）">
             <n-checkbox v-model:checked="upliftIncludeFree" size="small">含失衡通道</n-checkbox>
           </div>
+          <div class="ctl-field" title="把同一格的锁值挪几档各算一遍，并排显示（用户 2026-10-28：精密计算要在不同条件下多算几个然后全都展示）。整数台阶型命座在不同锁值下会差好几倍，单点数字会被误读成「这个命座是负的」。成本 ×样本数">
+            <n-checkbox v-model:checked="upliftLockSweep" size="small">多锁值采样</n-checkbox>
+          </div>
         </template>
         <n-button
           type="primary" size="small" :loading="computing"
@@ -1082,6 +1085,15 @@
                       {{ signed1(e.gainPct) }}
                     </span>
                   </div>
+                  <!-- **多锁值样本**（用户 2026-10-28「多次偶然全部展示」）：每档一个「锁N → 累计%」，
+                       跨度大 = 这条结论对锁值敏感（整数台阶），别只读基准那一档。
+                       ⚠ 样本之间**锁值不同**，所以每个数都必须带锁值前缀，不能只印百分比。 -->
+                  <div v-if="cell.samples.length > 1" class="cell-samples" :title="`同一格换几把锁值的尺子各算一遍（累计提升率）：${cell.samples.map(x => '锁' + x.lock + ' ' + signed1(x.totalPct) + '%').join(' / ')}；跨度 ${cell.sampleSpreadPct ? cell.sampleSpreadPct.spread.toFixed(1) : '—'}pp`">
+                    <span v-for="sample in cell.samples" :key="sample.lock" class="cell-sample" :class="{ 'cell-sample-base': sample.lock === cell.baseStunCount }">
+                      {{ sample.lock }}窗:{{ signed1(sample.totalPct) }}
+                    </span>
+                    <span v-if="cell.sampleSpreadPct" class="cell-sample-spread">跨{{ cell.sampleSpreadPct.spread.toFixed(1) }}pp</span>
+                  </div>
                 </template>
                 <span v-else class="td-muted">—</span>
               </td>
@@ -1094,6 +1106,9 @@
           <b>失衡通道</b> = 不锁累计 − 锁累计（正 = 不锁时命座从失衡次数/攒条上多拿了收益）。
           <b>每金</b> = 累计提升率 ÷ 总金数（每级命座恒 1 金，见 <code>goldSteps</code> 口径）；
           「最划算 C{n}」= 逐级里每金收益最高那一级——因为累计每金是**复利**口径，与逐级算术平均不等，两个都要看。
+          <br>
+          勾「多锁值采样」后每格还会并排印出 `锁值:累计%` 的多档读数（含跨度）——那是同一个格子在几把尺子下的样子，
+          用来分辨「台阶抖动」与「真的没收益」；跨档数值**不可**互相替代，只作敏感性参考。
           <br>
           <b>⚠ 整数台阶型命座会对锁值跳变</b>：如克拉蕾 C1「残痕积蓄效率 +20%」，
           层数 = floor(积蓄/每层) ⇒ +20% 是否跨过整数边界取决于基线在哪。
@@ -1497,6 +1512,14 @@ const upliftSlot = ref(0)
 const upliftMaxLevel = ref(6)
 const upliftIncludeFree = ref(false)
 /**
+ * **多锁值采样**（用户 2026-10-28：「精密计算可能需要在不同条件下多算几个然后全都展示了」
+ * +「这个台阶我认了，我决定把他当作偶然，然后多次偶然全部展示」）。
+ *
+ * 打开后每格除了基准锁值那一档，再算 `锁−1 / 锁+1 / 锁+2` 三档（`lockSweep: 'spread'`），
+ * 单元格里并排印出各档累计提升率 + 跨度（max−min）。成本 ×样本数（每档 = 1+maxLevel 次全量求值）。
+ */
+const upliftLockSweep = ref(false)
+/**
  * 锁值口径（2026-10-20，用户报「提升率跳变」后开放）：
  * - `row`：每行用自己的锁值（各 Boss 各打各的，最贴近「这一关真能打几次」）
  * - `grid`：整张表用同一个锁值（取第一行不吃 buff 的 C0 基线）⇒ **同一把尺子**，跨行可比
@@ -1511,7 +1534,7 @@ const upliftResult = ref<CinemaUpliftGridResult | null>(null)
 const upliftHint = ref('')
 const upliftOwner = useBatchOwner()
 /** 期数/队伍/槽位/命座上限一变，旧结果就作废（行与列都按「当前期数」派生 ⇒ 不清会显示上一期的格子） */
-watch([selectedPeriodId, selectedPresetIds, upliftSlot, upliftMaxLevel, upliftIncludeFree, upliftLockMode], () => {
+watch([selectedPeriodId, selectedPresetIds, upliftSlot, upliftMaxLevel, upliftIncludeFree, upliftLockMode, upliftLockSweep], () => {
   upliftResult.value = null
 })
 
@@ -1631,6 +1654,7 @@ async function runUpliftGrid() {
       maxLevel: upliftMaxLevel.value,
       includeFree: upliftIncludeFree.value,
       lockMode: upliftLockMode.value,
+      lockSweep: upliftLockSweep.value ? 'spread' : undefined,
       control: { signal: task.signal },
       onProgress: p => task.commit(() => { progress.value = p }),
     }))

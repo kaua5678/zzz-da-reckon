@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import {
-  computeCinemaUpliftGrid, cumulativeUpliftPct, dedupeGridRows,
+  computeCinemaUpliftGrid, cumulativeUpliftPct, dedupeGridRows, lockSweepOf,
   type GridColSpec, type GridRowSpec, type CinemaUpliftGridCell,
 } from '@/composables/cinemaUpliftGrid'
 import { applyBossRoom } from '@/composables/bossRoom'
@@ -213,4 +213,71 @@ describe('computeCinemaUpliftGrid（真管线）', () => {
     expect(res.rowLabels).toHaveLength(0)
     expect(res.colLabels).toHaveLength(0)
   }, 300_000)
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 多锁值采样（用户 2026-10-28「精密计算可能需要在不同条件下多算几个然后全都展示了」
+//                          「这个台阶我认了…然后多次偶然全部展示」）
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('lockSweepOf（采样清单）', () => {
+  it("'spread' = 基准 ±邻域，负数截 0、去重、升序", () => {
+    expect(lockSweepOf(3, 'spread')).toEqual([2, 3, 4, 5])
+    // 基准 0：base−1 截到 0 后与 base 重复 ⇒ 去重
+    expect(lockSweepOf(0, 'spread')).toEqual([0, 1, 2])
+    expect(lockSweepOf(1, 'spread')).toEqual([0, 1, 2, 3])
+  })
+
+  it('显式数组同样归一（取整、截 0、去重、升序）；缺省 undefined ⇒ 空清单', () => {
+    expect(lockSweepOf(3, [5, 3.7, 3, -2, 5])).toEqual([0, 3, 5])
+    expect(lockSweepOf(3, undefined)).toEqual([])
+    expect(lockSweepOf(Number.NaN, 'spread')).toEqual([0, 1, 2])
+  })
+})
+
+describe('computeCinemaUpliftGrid · 多锁值采样', () => {
+  it('缺省不采样：samples 为空、spread 为 null（零成本承诺，既有调用方逐位不变）', async () => {
+    const preset = teamPresets.find(p => Array.isArray(p.team) && p.team.length === 3)!
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const file = await catalog.loadBossPresets()
+    const boss = (file.bosses ?? []).find((b: BossPreset) => (b.phases ?? []).length > 0)!
+    const rows: GridRowSpec[] = [{ boss, phase: boss.phases[boss.phases.length - 1]! }]
+    const cols: GridColSpec[] = [{ id: 'none', label: '不吃', card: null }]
+    const res = await withAnalysisScenario(s => computeCinemaUpliftGrid(s, {
+      presets: [preset], rows, cols, slots: [0], maxLevel: 1,
+    }))
+    expect(res.cells[0]!.samples).toEqual([])
+    expect(res.cells[0]!.sampleSpreadPct).toBeNull()
+  }, 600_000)
+
+  it('lockSweep="spread"：样本含基准锁值、按锁值升序、每个样本自洽且有跨度读数', async () => {
+    const preset = teamPresets.find(p => Array.isArray(p.team) && p.team.length === 3)!
+    const { catalog } = await setupHarness(['', '', ''])
+    await catalog.loadBuildRecommendations()
+    const file = await catalog.loadBossPresets()
+    const boss = (file.bosses ?? []).find((b: BossPreset) => (b.phases ?? []).length > 0)!
+    const rows: GridRowSpec[] = [{ boss, phase: boss.phases[boss.phases.length - 1]! }]
+    const cols: GridColSpec[] = [{ id: 'none', label: '不吃', card: null }]
+    const res = await withAnalysisScenario(s => computeCinemaUpliftGrid(s, {
+      presets: [preset], rows, cols, slots: [0], maxLevel: 1, lockSweep: 'spread',
+    }))
+    const cell = res.cells[0]!
+    const expected = lockSweepOf(cell.baseStunCount, 'spread')
+    expect(cell.samples.map(x => x.lock), '样本锁值 = 基准 ±邻域').toEqual(expected)
+    expect(cell.samples.some(x => x.lock === cell.baseStunCount), '必须含基准锁值那一档').toBe(true)
+    for (const sample of cell.samples) {
+      expect(sample.entries).toHaveLength(1)
+      expect(sample.totalPct, `锁${sample.lock} 的累计应等于复利拼接`).toBeCloseTo(cumulativeUpliftPct(sample.entries), 9)
+    }
+    // 基准档必须与 lockedEntries 逐位同源（不是重算出来的另一份）
+    const baseSample = cell.samples.find(x => x.lock === cell.baseStunCount)!
+    expect(baseSample.entries).toEqual(cell.lockedEntries)
+    expect(baseSample.totalPct).toBeCloseTo(cell.lockedTotalPct, 9)
+    // 跨度 = max − min
+    const totals = cell.samples.map(x => x.totalPct)
+    expect(cell.sampleSpreadPct!.min).toBeCloseTo(Math.min(...totals), 9)
+    expect(cell.sampleSpreadPct!.max).toBeCloseTo(Math.max(...totals), 9)
+    expect(cell.sampleSpreadPct!.spread).toBeCloseTo(Math.max(...totals) - Math.min(...totals), 9)
+  }, 900_000)
 })

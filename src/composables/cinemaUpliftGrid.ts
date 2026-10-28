@@ -50,6 +50,26 @@ export interface GridColSpec {
   card: PhaseBuffCard | null
 }
 
+/**
+ * 一个**锁值样本**（用户 2026-10-28：「精密计算可能需要在不同条件下多算几个然后全都展示了」
+ * 「多次偶然全部展示」）。
+ *
+ * 为什么要有它：命座提升率在**整数台阶**附近不是连续函数——实测同一条线在不同锁值下
+ * 可以是 −1.4% / +0.4% / +2.1%，单点数字读起来像「这个命座是负的」。把同一格的多个锁值全算出来
+ * 并排展示，读者自己就能看出「这是台阶抖动还是真的没收益」。
+ *
+ * ⚠ 每个样本内部仍是**同一把尺子**（同锁值下逐级对比），样本之间才允许不同锁值——
+ * 跨样本比较必须披露锁值（单元格里逐个印锁值），否则就是本文件头注释批过的「锁值不同还横着比」。
+ */
+export interface CinemaUpliftSample {
+  /** 该样本用的失衡锁值（0 = 不锁） */
+  lock: number
+  /** 该锁值下的逐级提升率 */
+  entries: CinemaUpliftEntry[]
+  /** 该锁值下的累计提升率（复利式拼接） */
+  totalPct: number
+}
+
 /** 一个格：某队在某 (Boss × buff) 下的命座提升率。 */
 export interface CinemaUpliftGridCell {
   /** `${presetId}|${bossId}|${phaseId}|${colId}` */
@@ -81,6 +101,16 @@ export interface CinemaUpliftGridCell {
   lockedEntries: CinemaUpliftEntry[]
   /** 锁口径的累计提升率（C0→C{maxLevel}，复利式拼接，不是逐级相加） */
   lockedTotalPct: number
+  /**
+   * **多锁值样本**（`lockSweep` 开启时非空；缺省为空数组 = 只算了 base 一把尺，与既有调用零差）。
+   * 数组内按锁值升序；其中必有一条 `lock === baseStunCount`（= `lockedEntries`/`lockedTotalPct` 的来源）。
+   */
+  samples: CinemaUpliftSample[]
+  /**
+   * 样本累计提升率的跨度（`max − min`，pp）。`samples.length < 2` 时为 null。
+   * 用途 = 给读者一句「这条结论稳不稳」：跨度小 ⇒ 台阶噪声小；跨度大 ⇒ 换个锁值结论就翻。
+   */
+  sampleSpreadPct: { min: number; max: number; spread: number } | null
   /** 不锁口径（`includeFree` 关时为 null） */
   freeEntries: CinemaUpliftEntry[] | null
   freeTotalPct: number | null
@@ -127,6 +157,16 @@ export interface ComputeCinemaUpliftGridOptions extends BatchTaskOptions {
    * 用 `'grid'` 至少保证**整张表在同一把尺子下**比较。
    */
   lockMode?: 'row' | 'grid' | number
+  /**
+   * **多锁值采样**（用户 2026-10-28：「精密计算可能需要在不同条件下多算几个然后全都展示了」）。
+   *
+   * - `'spread'`：以该行锁值为中心取 `lock−1 / lock / lock+1 / lock+2`（负数截到 0、去重）四档；
+   * - 数字数组：显式指定锁值清单（同样截到 ≥0 的整数、去重、升序）；
+   * - 缺省 `undefined` = 不采样（只算 base 一次，成本与既有逐位一致）。
+   *
+   * 成本：每格求值次数 × 样本数（`samples.length × (1 + maxLevel)`）。UI 必须把这条代价说出来。
+   */
+  lockSweep?: 'spread' | readonly number[]
   resolveName?: (agentId: string, slot: number) => string
 }
 
@@ -135,6 +175,29 @@ export function cumulativeUpliftPct(entries: readonly CinemaUpliftEntry[]): numb
   let acc = 1
   for (const e of entries) acc *= 1 + e.gainPct / 100
   return (acc - 1) * 100
+}
+
+// @fact engine:命座提升率/多锁值采样 口径: 命座提升率**不是单点数**——整数台阶型命座对锁值极敏感（实测 1431 队 C4：锁3 −1.0% / 锁4 +0.4% / 锁5 +2.1%），故提供 `lockSweep` 把同一格在基准 ±邻域（`lock−1/锁/锁+1/锁+2`，负数截 0、去重、升序）各算一遍并**全部展示**；每个样本内部仍是同一把尺子，样本之间锁值不同 ⇒ 必须逐个印锁值、不可互相替代 | 据 用户@2026-10-28「精密计算可能需要在不同条件下多算几个然后全都展示了」「这个台阶我认了…然后多次偶然全部展示」 | 验 src/composables/__tests__/cinemaUpliftGrid.test.ts | 锚 src/composables/cinemaUpliftGrid.ts#lockSweepOf | 信 确认
+// ⟳复核: 若台阶抖动实测超出 ±2 窗、或 `sampleSpreadPct` 被用于跨格排序（它是敏感性读数不是结论），复核采样清单与门控 | 到期 2027-04-30
+/**
+ * **锁值采样清单**（用户 2026-10-28 口径）。
+ *
+ * `'spread'` = 以基准锁值取 ±邻域（`lock−1 / lock / lock+1 / lock+2`）：往下 1 档用于暴露
+ * 「上一档更容易跨台阶」，往上 2 档用于看「多加一次失衡是否吃满」。负数截 0、去重、升序。
+ *
+ * ⚠ 为什么不是「更宽的 ±3」：每多一档就是每格 +1×(1+maxLevel) 次全量求值，
+ * 而实测台阶抖动主要发生在 ±2 窗以内（`auto-1431-1391-1491` 锁 3/4/5 的 C4 是 −1.0/+0.4/+2.1）。
+ */
+export function lockSweepOf(baseLock: number, spec: 'spread' | readonly number[] | undefined): number[] {
+  if (spec === undefined) return []
+  const base = Math.max(0, Math.floor(Number.isFinite(baseLock) ? baseLock : 0))
+  const raw = spec === 'spread' ? [base - 1, base, base + 1, base + 2] : spec
+  const out: number[] = []
+  for (const v of raw) {
+    const n = Math.max(0, Math.floor(Number.isFinite(v) ? v : 0))
+    if (!out.includes(n)) out.push(n)
+  }
+  return out.sort((a, b) => a - b)
 }
 
 /** 一组「Boss × 期」→ 去重后的行（同一 Boss 同期的多个 phase 只留第一条：网格行是「某 Boss 某期」） */
@@ -166,6 +229,8 @@ export async function computeCinemaUpliftGrid(
   const slots = opts.slots ?? [0]
   const maxLevel = opts.maxLevel ?? 6
   const includeFree = opts.includeFree === true
+  /** 多锁值采样清单（缺省空 = 不采样）。基准锁值逐行不同 ⇒ 清单在每行里按该行锁值现算。 */
+  const sweepSpec = opts.lockSweep
   const report = batchReporter(opts)
 
   const cells: CinemaUpliftGridCell[] = []
@@ -197,6 +262,7 @@ export async function computeCinemaUpliftGrid(
        * 这样「吃 buff 让失衡次数变多」不会被顺手当成锁值差异掺进来（它是被观测的效应，不是尺子）。
        */
       const lock = gridLock ?? readRowLock(scenario, preset, row, cols[0])
+      const sampleLocks = lockSweepOf(lock, sweepSpec)
       for (const col of cols) {
         if (isBatchAborted(opts.control)) {
           return finish(cells, rows, cols, slots[0] ?? 0, maxLevel, opts.presets[0]?.team[slots[0] ?? 0] ?? '')
@@ -248,6 +314,44 @@ export async function computeCinemaUpliftGrid(
 
         const lockedTotalPct = cumulativeUpliftPct(lockedEntries)
         const freeTotalPct = freeEntries ? cumulativeUpliftPct(freeEntries) : null
+
+        /**
+         * **多锁值样本**（用户 2026-10-28）——同一个「队 × Boss × buff」格，换几把锁值的尺子各算一遍。
+         *
+         * 只在 `opts.lockSweep` 给定时跑；缺省 undefined ⇒ `samples` 为空数组、成本与既有逐位一致
+         * （`cinemaUpliftGrid.test.ts` 有一条「缺省不采样」的判据钉住这条零成本承诺）。
+         * 每次采样都要把队伍/房间/buff 重新装一遍：`analyzeCinemaUplift` 只改命座与锁值，
+         * 而上一轮采样结束时它已把命座恢复，但**房间与 buff 仍在**——重装是幂等的，代价可忽略，
+         * 换来的是「无论采样顺序如何，每个样本都从同一个基线出发」。
+         */
+        const samples: CinemaUpliftSample[] = []
+        for (const sampleLock of sampleLocks) {
+          if (sampleLock === baseStunCount) {
+            samples.push({ lock: sampleLock, entries: lockedEntries, totalPct: lockedTotalPct })
+            continue
+          }
+          applyTeamToStore(config, preset)
+          applyBossRoom(config, row.boss, row.phase)
+          applyBuffToStore(config, col.card)
+          const sampleRows = await analyzeCinemaUplift(scenario, {
+            targetStunCount: sampleLock,
+            slots,
+            maxLevel,
+            resolveName: opts.resolveName,
+            control: opts.control,
+          })
+          const entries = sampleRows[0]?.entries ?? []
+          samples.push({ lock: sampleLock, entries, totalPct: cumulativeUpliftPct(entries) })
+        }
+        samples.sort((a, b) => a.lock - b.lock)
+        const sampleSpreadPct = samples.length < 2
+          ? null
+          : (() => {
+              const totals = samples.map(x => x.totalPct)
+              const min = Math.min(...totals)
+              const max = Math.max(...totals)
+              return { min, max, spread: max - min }
+            })()
         cells.push({
           id: `${preset.id}|${row.boss.id}|${row.phase.phaseId}|${col.id}`,
           presetId: preset.id,
@@ -261,6 +365,8 @@ export async function computeCinemaUpliftGrid(
           ownFreeStunCount,
           lockedEntries,
           lockedTotalPct,
+          samples,
+          sampleSpreadPct,
           freeEntries,
           freeTotalPct,
           stunChannelDeltaPct: freeTotalPct == null ? null : freeTotalPct - lockedTotalPct,
