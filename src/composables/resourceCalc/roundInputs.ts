@@ -21,6 +21,7 @@ import type { AnomalyPoolResult } from '@/types/resource/pools'
 import type { StunSkillExecution } from '@/core/stunPool'
 import type { StunAxis, ResourceCalcConfig, TeamResourceResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
+import { AXIS_BASIC_UNIT_SECONDS } from '@/core/stunAxis'
 import type { ExecutedMoveCount, StackActionCost, StackAxisInput, StackSequenceEntry } from '@/core/stunAxisStack'
 import { axisKindOf, allocateAxisWindows } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
@@ -429,8 +430,29 @@ export function createConvergenceRoundInputs(deps: {
         } else {
           const move = findMoveById(skills, act.moveId)
           energyCost = parseMoveEnergyCost(move?.energyCost).energyConsume
+          /**
+           * ## 轴内 `basic` 块必须按「单位 = 1 秒」定价（2026-10-29 修）
+           *
+           * 用户报告：「克拉蕾预设失衡轴中间的平a显示为0秒……新的指标提示我每窗都发呆1秒，
+           * 可视化也显示中间是0秒的basic块。」
+           *
+           * 根因：`basic` 是轴**位置性标记块**（不是 catalog 行）⇒ `findMoveById(skills, 'basic')`
+           * 恒 `undefined` ⇒ `actionTime = 0`。于是该槽的排布游标不前进：
+           * 实测 `preset-1611-any` 4.2s 起手的 `count=2` 平A块两条轨迹
+           * （4.2425 / actionTime 0 / 4.2425）⇒ 与下一块（显式 5.2s）之间留下
+           * **0.9575s 缝隙**，被记进 `idleSegments`（= 用户看到的「每窗发呆 1 秒」），
+           * 平A 块本身在可视化里宽度为 0。
+           *
+           * 口径来源（**不是新口径，是与既有单一事实源对齐**）：
+           *   · `core/stunAxis.ts#AXIS_BASIC_UNIT_SECONDS`（=1，`basic` 的 `count` 单位就是秒）；
+           *   · 旧轴引擎同值：`useResourceCalc` 的 `perActionDuration[slot:basic]`
+           *     （判据 `core/__tests__/stunAxis.test.ts`「basic 10s 从 11s 起手」按 1s/单位折算）；
+           *   · 编辑器候选同为 1 秒/块（`StunAxisPage#moveOptions: actionTime: 1`）。
+           * ⚠ 栈侧漏定价 = 两条引擎对同一份轴给出不同时间账（本函数修的就是这个分叉）。
+           */
+          const isBasicBlock = act.moveId === 'basic'
           // 轴块 duration 覆盖倍率表 actionTime（新机制：仪玄轴内凝云术可延长/缩短蓄力 0-2s）
-          actionTime = act.duration ?? move?.actionTime ?? 0
+          actionTime = act.duration ?? (isBasicBlock ? AXIS_BASIC_UNIT_SECONDS : move?.actionTime ?? 0)
           // 终结技喧响消耗：读**本槽 cfg 的 ultimateCost**（角色口径，模块在 buildCharConfig
           // 里写自己那份，如佩洛伊斯 1551 = 2000），缺省回落全局默认 3000。
           // 2026-09-15 arch 棘轮：原为 `agentId === '1551' ? 2000 : 3000` 硬编码特判——

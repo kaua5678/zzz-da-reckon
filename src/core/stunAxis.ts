@@ -28,7 +28,18 @@ export interface GlobalActionPool {
 /** 每动作单位失衡值：`${slot}:${moveId}` → 单次/每秒失衡值 */
 export type PerActionStun = Record<string, number>
 
-/** 每动作单位时长：`${slot}:${moveId}` → 单次动作前台秒数（basic=1s） */
+/**
+ * 轴内 `basic` 块的**单位时长 = 1 秒**（`basic` 块的 `count` 单位就是**秒**：编辑器候选、
+ * 全局平A池 `globalPool[slot:basic]`、易伤跨界折算三处同口径）。
+ *
+ * ⚠ **单一事实源**：`useResourceCalc` 的 `perActionDuration[slot:basic]` 与
+ * `resourceCalc/roundInputs#buildStackAxes` 的栈块定价都引用本常量——两侧各写一个 `1`
+ * 曾造成真缺陷：栈侧漏定价 ⇒ 轴内平A块 0 秒（实测 `preset-1611-any` 4.2s 起的 count=2 块
+ * `actionTime=0` ⇒ 后一段留下 0.96s 缝隙、被记成「发呆」）。
+ */
+export const AXIS_BASIC_UNIT_SECONDS = 1
+
+/** 每动作单位时长：`${slot}:${moveId}` → 单次动作前台秒数（basic=1s，见 `AXIS_BASIC_UNIT_SECONDS`） */
 export type PerActionDuration = Record<string, number>
 
 export interface CalcStunAxisInput {

@@ -7,7 +7,7 @@ import { INNER_LOOP_MAX_ITERATIONS } from '@/core/resource'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { DEFAULT_STUN_PLAN_PROJECTION_CODE, stunPlanProjectionFromCode } from '@/core/stunPlanProjection'
 import { continuousStunSplitOf } from '@/core/continuousStun'
-import { calcStunAxis } from '@/core/stunAxis'
+import { calcStunAxis, AXIS_BASIC_UNIT_SECONDS } from '@/core/stunAxis'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
 import { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
@@ -503,7 +503,7 @@ export function createResourceCalc(
       const basicTime = char.timeAllocation.basicAttackTime
       if (basicTime > 0) {
         globalPool[`${slot}:basic`] = basicTime
-        perActionDuration[`${slot}:basic`] = 1
+        perActionDuration[`${slot}:basic`] = AXIS_BASIC_UNIT_SECONDS
       }
       for (const exec of char.executions) {
         const mid = exec.moveId === 'basic_attack' ? 'basic' : exec.moveId

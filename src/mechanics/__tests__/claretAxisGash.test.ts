@@ -413,10 +413,13 @@ describe('T7 用户的标准轴（`preset-1611-any` 标准6毁伤（通用））
     const fires = (src.axisGashSteps ?? []).filter(st => st.kind === 'consume')
     // 逐**段**结算 ⇒ 两次葬血强袭各 3 段 = 6 条（每段 1 层）
     expect(fires.length, '两次葬血强袭 × 3 段 = 6 条消耗步骤').toBe(6)
-    // ⚠ 第二个块 = **顺序游标**落点（2026-10-26 排布时钟修正）：轴里写的是 10.9，但那 0.033s 是手算四舍五入
-    //   ——前一段 `basic count=2` 的两段时长加起来正好把游标推到 10.933（4.2 + 2 × 单段 + 1611020 +
-    //   1611021 的真实 actionTime）。引擎取「前一段结束」与「显式 startTime」的较大者 ⇒ 10.933 才是物理落点。
-    expect([...new Set(fires.map(f => f.at))], '触发时刻 = 轴里两个块的实际落点（起点取 max(前段结束, startTime)）').toEqual([0, 10.933])
+    // ⚠ 第二个块 = **顺序游标**落点（2026-10-26 排布时钟修正）：轴里写的是 10.9，物理落点由
+    //   「前一段结束」与「显式 startTime」的较大者决定（引擎取 max）。
+    //   ★ 2026-10-29 修轴内平A块时长后重算：中间那块 `basic count=2` 现在按 **1 秒/单位** 占时间
+    //   （此前栈侧漏定价 ⇒ actionTime=0：块不占时间，还留下 0.9575s 缝隙被记成「发呆」）⇒
+    //   游标 = 4.2425 + 2×1 + 2.517 + 3.216 = 11.9755（旧的 10.933 是「平A 不占时间」的读数）。
+    //   判据 `src/composables/__tests__/axisBasicBlockDuration.test.ts`。
+    expect([...new Set(fires.map(f => f.at))], '触发时刻 = 轴里两个块的实际落点（起点取 max(前段结束, startTime)）').toEqual([0, 11.9755])
     expect(fires.every(f => f.fired), '六段都应触发（C1 起中间攒够）').toBe(true)
     expect(fires.reduce((n, f) => n + f.layers, 0)).toBe(6)
   }, 180_000)
