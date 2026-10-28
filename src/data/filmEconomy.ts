@@ -21,7 +21,7 @@
  * 收入 = 输入（不是常量），且两条都挂了 `⟳复核` 到期日——版本更新 / 卡池规则变动时由 `zc drift` 点名。
  */
 const PULL_FILM = 160
-// @fact engine:抽卡成本/期望菲林 口径: 一金 = 期望抽数 × 160 菲林（不是单抽价、不是保底上限）：限定角色/命座 93.75 抽 = 15000、限定音擎/精炼 62.5 抽 = 10000；两个值只在本文件定义，购买阶梯的增量成本一律经 pullPlanner#tierCost 按档位差分派生（本体 / 专武 / 满配都是派生值），页面与规划器不得另抄数字 | 据 用户@2026-09-01（只用期望值口径，模拟抽卡运气已删）·复核@2026-10-28（filmEconomy 与 tierCost 逐值对照，新增判据锁定差分派生）·萌娘百科·绝区零/调频（游戏内「调频详情」公示，2026-08 核对：角色池综合 1.6% × 50/50 歪后必 UP、音擎池 2% × 75/25） | 验 src/composables/__tests__/filmEconomy.test.ts | 锚 src/data/filmEconomy.ts#CINEMA_GOLD_FILM + src/data/filmEconomy.ts#WEAPON_GOLD_FILM + src/composables/pullPlanner.ts#tierCost | 信 确认
+// @fact engine:抽卡成本/期望菲林 口径: 一金 = 期望抽数 × 160 菲林（不是单抽价、不是保底上限）：限定角色/命座 93.75 抽 = 15000、限定音擎/精炼 62.5 抽 = 10000；两个值只在本文件定义，购买阶梯的增量成本一律经 pullPlanner#tierCost 按档位差分派生（本体 / 专武 / 满配都是派生值），页面与规划器不得另抄数字 | 据 用户@2026-09-01（只用期望值口径，模拟抽卡运气已删）·复核@2026-10-28（filmEconomy 与 tierCost 逐值对照，新增判据锁定差分派生；音擎价 = 角色价 2/3 为用户口径，见 filmEconomy.test ⑨）·用户@2026-10-28（「武器池…价格是人物的 2/3」，已裁决不复核）·萌娘百科·绝区零/调频（游戏内「调频详情」公示，2026-08 核对：角色池综合 1.6% × 50/50 歪后必 UP、音擎池 2% × 75/25） | 验 src/composables/__tests__/filmEconomy.test.ts | 锚 src/data/filmEconomy.ts#CINEMA_GOLD_FILM + src/data/filmEconomy.ts#WEAPON_GOLD_FILM + src/composables/pullPlanner.ts#tierCost | 信 确认
 // ⟳复核: 官方调频详情或卡池规则（综合出率 / 保底 / 歪率 / 单抽价）变动时，重算这两条期望抽数；若把单链阶梯拆成角色/音擎两条独立阶梯，tierCost 与购买阶梯一并复核 | 到期 2027-03-31
 /** 一金命座（角色池 1 个限定命座/本体）的期望菲林 = 93.75 抽 × 160 */
 export const CINEMA_GOLD_FILM = Math.ceil(93.75 * PULL_FILM) // 15000

@@ -132,3 +132,18 @@ describe('收入与充值：是输入，不是隐藏常量', () => {
     expect(ratios).toEqual([...ratios].sort((a, b) => b - a))
   })
 })
+
+describe('两池比价：音擎价恒为角色价的 2/3', () => {
+  /**
+   * 用户口径 2026-10-28：「武器池之前就确定过了…价格是人物的 2/3」。
+   * 推导同源：两池单抽都是 160 菲林，期望抽数 62.5 : 93.75 = 2 : 3 ⇒ 价格比必然是 2/3。
+   * 锁这条是因为它是**跨两个池子的不变量**：任何一边改数（含重算保底/歪率）都会先在这里红，
+   * 提醒「改一个池子等于改另一个池子的比价」。
+   */
+  it('⑨ 10000 : 15000 = 2 : 3（整数关系，不留浮点尾巴）', () => {
+    expect(WEAPON_GOLD_FILM * 3).toBe(CINEMA_GOLD_FILM * 2)
+    expect(WEAPON_GOLD_FILM / CINEMA_GOLD_FILM).toBeCloseTo(2 / 3, 12)
+    // 与期望抽数比同源：62.5 / 93.75 = 2/3
+    expect(WENGINE_PULLS / CINEMA_PULLS).toBeCloseTo(2 / 3, 12)
+  })
+})
