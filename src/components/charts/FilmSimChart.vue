@@ -37,7 +37,7 @@
     <div class="ctl-field">
       <span class="ctl-label">每版本充值预算（元）</span>
       <n-input-number v-model:value="simBudgetYuan" :min="0" :max="100000" :step="30" size="small" style="width: 110px" />
-      <span class="ctl-note">按档位分配：小月卡(30元→3300)×2 → 大月卡(68元→≈2600)×1；**固定档买满后**剩余额度才按直充 10 菲林/元 折算（零头不折）</span>
+      <span class="ctl-note">按档位分配：小月卡(30元→3300)×2 → 大月卡(68元→≈2600)×1；固定档买满后，剩余额度才按直充 10 菲林/元 折算（零头不折）</span>
     </div>
     <div class="ctl-field">
       <span class="ctl-label">目标卡池（清空银行投入）</span>
