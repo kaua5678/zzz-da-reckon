@@ -127,6 +127,15 @@ export interface StunWindowTrace {
    * Σ `seconds` 恒等于 `fillSeconds`（同一处产出，不另算一遍）。
    */
   fillSegments: StunWindowFillSegment[]
+  /**
+   * 窗内**空闲段**逐段（发呆 / 捏轴缝隙）：`[0, endSeconds]` 对「动作区间并集 ∪ 填充段」的补集。
+   *
+   * 用户口径 2026-10-28：「只是给缝隙时间一个容器，便于计算失衡时间的分配……
+   * 你可以算他是后台，发呆等效于后台，啥都没做。」——纯归属容器：
+   * **不进覆盖率、不进利用率、不产任何资源**，只回答「这窗哪几秒没人干活」。
+   * Σ seconds = `StunWindowSlot.unusedSeconds`（同源，不另算）。
+   */
+  idleSegments: { startSeconds: number; seconds: number }[]
 }
 
 /** 时间轴上的一个失衡窗口 */

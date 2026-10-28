@@ -96,7 +96,7 @@ export function createRunCalcRound(deps: {
   buildStackAxes: (axes: StunAxis[]) => StackAxisInput[]
   /** T169：角色专属资源（般岳山威）按槽位的供给量——两处栈遍历共用（见 `roundInputs#buildStackSwaySupply`） */
   buildStackSwaySupply: (axes: StunAxis[], stunCount: number, goodReview: number, axisAutoTrim: number) => Record<number, number>
-  expandExecutedToCounts: (executed: Record<string, ExecutedMoveCount>, basicFillBySlot: Record<number, number>, fillResources?: Readonly<Record<number, FillResourceBudget>>) => Record<string, ExecutedMoveCount>
+  expandExecutedToCounts: (executed: Record<string, ExecutedMoveCount>, basicFillBySlot: Record<number, number>, fillResources?: Readonly<Record<number, FillResourceBudget>>, generatedBasicSecOut?: Record<number, number>) => Record<string, ExecutedMoveCount>
   /** 保序版展开（连段块 → 真实 moveId，不聚合）：克拉蕾轴内残痕时序消费，见 roundInputs 里的实现注释 */
   expandSequenceToMoveIds: (sequence: readonly StackSequenceEntry[], basicFillBySlot: Record<number, number>) => StackSequenceEntry[]
   resolveAxes: (stunCount: number, goodReview: number, energyBySlot: Record<number, number>) => { axes: StunAxis[]; planName: string | null }
@@ -115,8 +115,6 @@ export function createRunCalcRound(deps: {
     const {
       goodReview: prevGoodReview,
       energyBySlot: prevEnergyBySlot,
-      // 用户口径 2026-10-25：兜底平A预算（上一轮各槽平A时间；首轮空 ⇒ 不设上界）
-      basicBySlot: prevBasicBySlot = {},
       // 2026-09-16 round 14：仪玄 1371 整条分支已迁进 `yixuan.ts#applyYixuanTeamConfig`（规则 6）；
       // CC-318：玄墨触发次数也改由仪玄 `nextRoundFeedback` 产出（`moduleFeedback.auricInkTriggers`），编排层不再有该线程。
       anomalyDecibelBonus: prevAnomalyDecibelBonus,
@@ -494,8 +492,6 @@ export function createRunCalcRound(deps: {
         windowDuration: computeWindowDuration(),
         energyBySlot: prevEnergyBySlot,
         decibelBySlot: prevDecibelRegenBySlot,
-        // 用户口径 2026-10-25：兜底平A预算 = 上一轮各槽收敛到的平A时间（首轮空 ⇒ 不设上界）
-        basicBudgetBySlot: prevBasicBySlot,
         // T169：角色专属资源（般岳山威）——与 inAxisFractionProvider 那次栈遍历同源
         swayBySlot: stackSwaySupplyOf(Math.max(0, opts?.axisAutoTrim ?? 0)),
         // T157：升级轴（bestEffort）的资源门控 —— 与下方 6 处同源
@@ -1035,14 +1031,13 @@ export function createRunCalcRound(deps: {
           windowDuration: windowDur,
           energyBySlot: stackEnergyBySlot,
           decibelBySlot: stackDecibelBySlot,
-          // 用户口径 2026-10-25：兜底平A只能兑现该槽本轮分到的平A时间（不许凭空造动作）
-          basicBudgetBySlot: basicTimeBySlot,
           swayBySlot: stackSwaySupplyOf(Math.max(0, opts?.axisAutoTrim ?? 0)),
           goodReview: Math.max(0, prevGoodReview),
           // 与上方 axisExecutedStack 同源（决算块窗口延长）
         extendOnEndOf: (slot, moveId) => axisMoveExtendOnEndOf(configStore.team[slot]?.agentId, moveId, configStore.team[slot]?.cinemaLevel ?? 0),
         })
-        const inAxisCounts = expandExecutedToCounts(stack.executed, stack.basicFillBySlot, fillResources)
+        const generatedBasicSec: Record<number, number> = {}
+        const inAxisCounts = expandExecutedToCounts(stack.executed, stack.basicFillBySlot, fillResources, generatedBasicSec)
         const fraction: Record<string, number> = {}
         /**
          * ⚠ **分母必须按 key 求和，不能逐行取 `e.count`**（2026-10-05 §20.5-3 旁路修复）。
@@ -1075,8 +1070,15 @@ export function createRunCalcRound(deps: {
           const inUnits = inAxisCounts[lookKey]?.inAxisCount ?? 0
           const key = `${e.slot}:${e.moveId}`
           if (e.moveId === 'basic_attack') {
+            /**
+             * 产出端生成的 basic 秒不计入分子（用户口径 2026-10-28：填充是产出端、不抽窗外
+             * 平A池）——它不在 `basicTimeBySlot` 的分母里，计入会让窗外平A被多扣。
+             * 轴内平A块（从窗外平A池挪进来的）与被认领的真实招式照常计入。
+             */
+            const genSec = generatedBasicSec[e.slot] ?? 0
+            const poolUnits = Math.max(0, inUnits - genSec)
             const totalSec = basicTimeBySlot[e.slot] ?? 0
-            fraction[key] = totalSec > 0 ? Math.max(0, Math.min(1, inUnits / totalSec)) : 0
+            fraction[key] = totalSec > 0 ? Math.max(0, Math.min(1, poolUnits / totalSec)) : 0
           } else {
             const denom = countByKey.get(key) ?? 0
             fraction[key] = denom > 0 ? Math.max(0, Math.min(1, inUnits / denom)) : 0
@@ -1105,12 +1107,11 @@ export function createRunCalcRound(deps: {
           }
         }
 
-        // CC-469′（r651）：窗口里被轴块（含兜底平A填充）占掉的**前台**秒数。池对非轴块行的时间份额兜底只按
-        // 「未被覆盖的窗口时间」折算（`stunWindowFraction(N, W, eff, covered)`），不再对已被轴块填满的窗口时间
-        // 再按 N·W/eff 扣一次：实测 jufufu N=4.46 时逐招行只扣 11.5k、兜底却再扣 39k（0.396×窗外行）⇒ 双重扣除。
-        // 2026-09-10 裁决（栈填不满 N 窗时必须按时间约束负反馈）仍成立：未覆盖部分照扣。
-        const coveredWindowSeconds = Math.max(0, stack.timeUsed - stack.overlapSeconds + stack.basicFillSeconds)
-        return { fraction, coveredWindowSeconds }
+        // 轴模式失衡作废**只按逐招实测**（用户口径 2026-10-28：「轴模式下没有排进失衡内的
+        // 招式都在非失衡」⇒ 未排进窗的份额不该再被窗口时间分摊扣）。`coveredWindowSeconds`
+        // 残差通道已删——它把缝隙发呆秒当成「非轴招式在窗内攒条的时间」，方向与物理相反
+        // （实测填充计入 covered ⇒ 失衡不降反升 6 队 +1）。非轴模式才按 N·W/eff 均摊。
+        return { fraction }
       }
     }
 
@@ -1487,10 +1488,6 @@ export function createRunCalcRound(deps: {
         ),
         // 上一轮失衡池整数次数：轴内块数落地（雨果决算 坑36）与池同源的滞后注入
         prevPoolStunCount: sp1.pool.stunCount,
-        // 兜底平A预算（用户口径 2026-10-25）：上一轮各槽收敛到的平A时间，滞后一轮注入同 decibelRegenBySlot
-        basicBySlot: Object.fromEntries(
-          rr.characters.map(c => [c.slot, c.timeAllocation.basicAttackTime]),
-        ),
       },
     }
   }

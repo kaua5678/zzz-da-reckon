@@ -99,7 +99,9 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     if (extraDodge) {
       // 实测（2026-10-23 探针）：dodge ≤ 4 时全部被轴吃下 ⇒ 只有 1 行；
       // 6 次才溢出成两行（轴内 5 / 轴外 1）。用例要的正是「切成两段、一段满额一段零」。
-      config.team[0]!.dodgeCounterCount = 6
+      // ⚠ 2026-10-28 夹具重定 6→12：残差分摊删除 ⇒ 本队池 5→10 窗，轴能认领的闪反块涨到 10
+      // （实测 dodge=6/8 时全部入轴仍只有 1 行；dodge=12 ⇒ 轴内 10 / 轴外 2，恢复两行形态）。
+      config.team[0]!.dodgeCounterCount = 12
       config.stunAxes[0]!.actions.push({ slot: 0, moveId: '1291012', count: 1, startTime: 8 })
     }
     // CC-148（第 174 轮）：本组是 off 口径下冻结的加权快照（决算 5 窗），显式钉 off。physical 缺省下该轴
@@ -126,7 +128,8 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     const rows = (calc.damagePoolRows.value ?? []) as DamagePoolRow[]
     const verdict = rows.find(r => r.moveId === '1291_ex_verdict_final')
     const normal = rows.find(r => r.moveId === '1291_ex_normal_final')
-    expect(verdict?.count).toBe(5) // 坑36 修复：轴栈同源
+    // ⚠ 2026-10-28 锚值 5→11：轴模式残差分摊删除 ⇒ 池如实升到 11 窗（同 hugoVerdictLanding）。
+    expect(verdict?.count).toBe(11) // 坑36 修复：轴栈同源
     expect(rowAppliedStunMultOf(verdict ?? {}, p)).toBeCloseTo(2.1, 3)
     expect(rowAppliedStunMultOf(normal ?? {}, p)).toBeCloseTo(1.0, 3)
     const s = computeStunVulnSummary(
@@ -255,7 +258,9 @@ describe('CC-226：行级覆盖率 / 基数取引擎实值（不再由 stunMult 
     expect(rowAppliedStunMultOf({}, p)).toBe(1)
     expect(rowStunCoverage({}, p.vuln)).toBeUndefined()
   })
-  it('源码锁：由 stunMult 反推覆盖率的式子全仓只有 stunVulnSummary.ts 一处', () => {
+  // 2026-10-28：反推式随行级失衡易伤派生一起迁 `core/stunVulnRow.ts`（建池盖章与展示汇总共用一份，
+  // 规则 11）。断言从「只有 stunVulnSummary.ts 一处」改为指向新位置，**口径不变**：全仓只许有一份反推式。
+  it('源码锁：由 stunMult 反推覆盖率的式子全仓只有 core/stunVulnRow.ts 一处', () => {
     const SRC = joinSrc(__dirname, '..', '..')
     const RE = /\(\s*[\w.]*stunMult\s*-\s*1\s*\)\s*\/\s*\(\s*[\w.]+\s*-\s*1\s*\)/
     const hits: string[] = []
@@ -270,6 +275,6 @@ describe('CC-226：行级覆盖率 / 基数取引擎实值（不再由 stunMult 
       }
     }
     walk(SRC)
-    expect(hits.map(h => h.split(':')[0])).toEqual(['composables/stunVulnSummary.ts'])
+    expect(hits.map(h => h.split(':')[0])).toEqual(['core/stunVulnRow.ts'])
   })
 })

@@ -72,6 +72,14 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline
 **窗内内容从哪来（单一事实源）**：轴栈 `core/stunAxisStack.ts#calcStunAxisStack` **纯追加**了
 `StackTraversalResult.windowTrace: StunWindowTrace[]`（逐窗：决算延长 / 截断时刻 / 执行了哪些动作
 （含跨界 `inAxisCount`）/ 毛占用 / 合轴节省 / 平A填充）。时间轴只做**排布与聚合**，不重新推演窗口内容。
+
+**2026-10-27 追加三个归属字段**（资源池页「逐窗兑现」卡的数据基础；用户口径「能显示 n 次轴的
+动作块的**丢失填充可视化**吗」——纯追加，判定与数值一位不动）：
+- `windowTrace[].axisIndex`：本窗来自哪条轴（多轴队才分得清「第 5 窗属于收尾轴」）；
+- `windowTrace[].fillerDefaulted`：窗尾填充是**轴声明**还是**缺省补位**（两者语义不同，见栈引擎兜底段）；
+- `windowTrace[].fillSegments[]`：窗尾填充**逐段**（谁 / 从第几秒 / 多久）——多槽接续时由总量反推不出来；
+- `StackTraversalResult.skipped[].window`：被跳过的招**发生在第几窗**（1-based，与 `sequence.window` 同口径）。
+消费方 = `composables/axisWindowView.ts`（纯函数 + 单测 `axisWindowView.test.ts`）→ 结果页「逐窗兑现」卡。
 排布规则：窗口数 = `floor(池次数)`（与轴栈 `for (i < wins)` 同口径），逐窗**连续**排在战斗时钟上，
 末窗放不下就被时钟钳短（`clippedByClock`）——**如实上报，不抹平**。
 
@@ -140,6 +148,15 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline
 
 **风险点**：`stunWindowFraction` 是全仓唯一实现（CC-217），有源码锁
 `effectiveTimeSingleSource.test.ts`；改它要同步该锁。
+
+### 期 2 补记（2026-10-28，逐招作废口径落地后）
+
+- 轴模式残差分摊通道（coveredWindowSeconds / 未覆盖窗秒）已删：非轴招式失衡不再被窗占比扣
+  ⇒ 池次数普遍 +1（实测 ~8 队），「末窗被时钟截短」从构造不出来变为真实可达 ⇒ 期 2 重新变得有意义。
+- 逐窗读数层已换代：开窗数 = 池次数（整数）；末窗只有两种成因（时钟截短 clippedByClock / 决算截断 truncated）；
+  进度读数 = `continuousStun.nextWindowProgress`（攒向下一窗的百分比），**不再有 frac 折算**。
+- 新容器：`StunWindowTrace.idleSegments`（窗内空闲段 = 缝隙发呆归属，不进覆盖率/利用率）。
+- 期 4「队友招式进兜底池」已在用户 2026-10-28 口径里记为**可选项暂不做**（填充=产出端已落地）。
 
 ### 期 3：修「`totalNecessary` vs 窗外时间」的量纲错配
 

@@ -7,6 +7,7 @@
  * 已删除。完整推导、否决过程与实测表保留在 docs/STUN_CONTINUOUS_LASTWINDOW.md 与 git 历史。
  */
 import { finiteOr0 } from '@/utils/finiteClamp'
+import { continuousStunCount } from '@/core/stunPool'
 
 /**
  * **「离下一次完整失衡还差多少」进度**（展示标注用；**不改任何数值**）。
@@ -235,6 +236,11 @@ export function continuousStunSplitOf(
     inAxisStunTotal: number
     stunCount: number
     bossStunValue: number
+    /** 缺省兼容旧调用：没给就当 0（无赠送/无返还，等价于旧的 remain/boss） */
+    stunGift?: number
+    stunRefundRatio?: number
+    /** 净失衡值（= 池的 `totalStunBuildUp`）；缺省回退 `gross − inAxis`（与池不同源时的旧近似） */
+    totalStunBuildUp?: number
   },
 ): ContinuousWindowSplit {
   const boss = Math.max(0, finiteOr0(pool.bossStunValue))
@@ -243,8 +249,8 @@ export function continuousStunSplitOf(
   const gross = Math.max(0, finiteOr0(pool.grossStunBuildUp))
   /** 每窗平均被吞掉的**无效**失衡（池已逐招算好，这里只做除法） */
   const eatenPerWindow = windows > 0 ? Math.min(inAxis / windows, boss) : 0
-  /** **净**失衡值（= 毛 − 无效）——池的 `stunCount` 就是按它算出来的 */
-  const net = Math.max(0, gross - inAxis)
+  /** **净**失衡值——首选池的 `totalStunBuildUp`（与 `stunCount` 完全同源）；缺省回退「毛 − 无效」 */
+  const net = Math.max(0, finiteOr0(pool.totalStunBuildUp ?? (gross - inAxis)))
   /**
    * ## 两个量分开表达（用户口径 2026-10-28，逐字）
    * > 「描述进度玩家通常说：**打完了 3 失衡，还积累了 56% 的失衡**。
@@ -256,10 +262,22 @@ export function continuousStunSplitOf(
    *    与失衡值无关（这里不重复扣）。
    *
    * ⇒ 本函数的 `lastFraction` = **1**（每个开出来的窗在失衡值意义上都是完整的），
-   *    「残窗」只可能来自时间轴。进度走 `remainder / boss`。
+   *    「残窗」只可能来自时间轴。
+   *
+   * ## 下一窗进度的单一尺（2026-10-28 统一到池的计数律）
+   * `nextWindowProgress` = `continuousStunCount(pool)` 的小数部分——池的计数律
+   * （首次成本 b、之后每窗 b·(1−refund)、含 `stunGift` 抵扣）的小数项，与
+   * `continuousStunProgress`（难度曲线/队伍对比页的标注）**同一把尺**；
+   * 旧写法 `remain/boss` 在 refund>0（雨果决算返还）时会与标注尺分叉，已废弃。
    */
   const full = boss > 0 ? windows : 0
   const remain = boss > 0 ? Math.max(0, net - full * boss) : 0
+  const cont = continuousStunCount({
+    totalStunBuildUp: net,
+    stunGift: Math.max(0, finiteOr0(pool.stunGift)),
+    bossStunValue: boss,
+    stunRefundRatio: Math.max(0, Math.min(0.99, finiteOr0(pool.stunRefundRatio))),
+  })
   return {
     openedWindows: full,
     fullWindows: full,
@@ -267,7 +285,7 @@ export function continuousStunSplitOf(
     realizedWindows: full,
     unit: boss + eatenPerWindow,
     remainder: remain,
-    nextWindowProgress: boss > 0 ? Math.max(0, Math.min(1, remain / boss)) : 0,
+    nextWindowProgress: boss > 0 ? Math.max(0, Math.min(1, cont - Math.floor(cont))) : 0,
     clamped: false,
   }
 }

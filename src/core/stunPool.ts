@@ -153,11 +153,13 @@ export function calcStunPool(input: StunPoolInput): StunPoolResult {
     const baseStunRes = enemyResistanceOf(enemyStunResistances, element)
     const perHit = calcPerHitStun(exec.baseDaze, panel, baseStunRes, physicalFlinchCoverageRate, element, exec.skillType, exec.stunBuildUpBonus)
     const total = perHit * exec.count
-    // CC-469′（r651）：复合而非取大。逐招 fraction = 该招被轴块排进窗口的份额（轴模式才有，非轴恒 0）；
-    // 其余 (1 − fraction) 份额均匀落在「非轴块时间」里，其中 `windowFraction` 比例处于**未被轴块填满的窗口**
-    // （调用方在轴模式传 未覆盖窗口秒/(有效时间 − 覆盖秒)，非轴模式传 N·W/有效时间）⇒ 两段都不攒条。
-    // 旧 `max(fraction, N·W/eff)`：栈填满时对窗外招式再按全窗时间扣一次（双重扣除，jufufu 多扣 39k/50k）；
-    // 栈填不满时对轴块招式的窗外次数又一点不扣（1521 队 4→7 过冲）。复合式两头都对，非轴模式逐位同旧。
+    // 失衡作废口径（用户裁决 2026-10-28）：**轴模式只扣逐招实测份额**——
+    // 「轴模式下没有排进失衡内的招式都在非失衡」⇒ 未排进窗的份额不攒条作废不成立，
+    // 调用方轴模式传 windowFraction=0，此时 inAxisFraction = keyFraction。
+    // **非轴模式**沿用 N·W/有效时间均摊（无轴可归因的近似，2026-09-01 口径）：调用方
+    // 传 windowFraction = N·W/eff，与逐招 fraction 复合 `keyFraction + (1−keyFraction)·windowFraction`。
+    // 否决记录：CC-469′（r651）的「未覆盖窗秒/非轴块时间」残差通道已删——它假设未归属窗秒
+    // 里全是攒条招式，实际那是缝隙发呆秒（用户：「发呆等效于后台，啥都没做」）。
     const keyFraction = Math.max(0, Math.min(1, inAxisFractions[`${exec.slot}:${exec.moveId}`] ?? 0))
     const inAxisFraction = keyFraction + (1 - keyFraction) * windowFraction
     const inAxisStun = total * inAxisFraction

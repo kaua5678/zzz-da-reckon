@@ -276,15 +276,17 @@ describe('配装 A/B：换音擎 / 换精炼（用户口径 2026-10-23）', () =
     const h = await setupHarness([{ agentId: '1611' }, { agentId: '1571' }, { agentId: '1211' }], { recommendedBuild: true })
     h.config.enemy.stunCountLock = -1
     await flush()
-    // 诺姆（槽位 1）：A = 精5 人为刀俎(13005，A 级击破)，B = 精1 首席跟班(14157，专武)
+    // 诺姆（槽位 1）：⚠ 2026-10-28 夹具武器对重选（残差分摊删除 ⇒ 失衡次数整体上移，
+    // 旧对 13005x5→14157x1 的 stunCountDelta 变 0）。新对 = A 精1 首席跟班(13002，低冲击)
+    // vs B 精5 人为刀俎(13005，A 级击破)：实测 delta +1、锁定 4、freePct 9.24 vs lockPct 2.77。
     const base = await withAnalysisScenario(async (s) => readDiscPlan(1, s.config.team), h.config)
-    const a: DiscPlan = { ...base, wEngineId: '13005', wEngineModLevel: 5 }
-    const b: DiscPlan = { ...base, wEngineId: '14157', wEngineModLevel: 1 }
+    const a: DiscPlan = { ...base, wEngineId: '13002', wEngineModLevel: 1 }
+    const b: DiscPlan = { ...base, wEngineId: '13005', wEngineModLevel: 5 }
     const cmp = await withAnalysisScenario(s => compareDiscPlans(s, { slot: 1, a, b }), h.config)
     expect(cmp.reason).toBe('')
     expect(cmp.complete).toBe(true)
     // ① 这把武器确实改了冲击力 ⇒ 自由收敛多打一次失衡（夹具前提，不是断言结果方向）
-    expect(cmp.stunCountDelta, '夹具前提：13005→14157 会改变失衡次数').toBeGreaterThan(0)
+    expect(cmp.stunCountDelta, '夹具前提：13002x1→13005x5 会改变失衡次数').toBeGreaterThan(0)
     expect(cmp.stunLock).toBeGreaterThanOrEqual(0)
     // ② 锁口径 = 两边**同次数**（这才是「只比配装」）；自由口径混入了次数变化
     expect(cmp.aStunCount, '锁口径下 A 的次数 = 锁定值').toBe(cmp.stunLock)

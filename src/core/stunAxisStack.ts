@@ -849,22 +849,104 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         .filter(iv => iv.t1 > iv.t0 + 1e-9)
         .sort((a, b) => a.t0 - b.t0)
       /**
+       * 缺失块落点 = 它**本该占的区间**扣掉已执行动作的区间（`ivs`）。
+       *
+       * 为什么必须扣：轴里下一个动作**没有**显式 `startTime` 时，它会**前移**占到被跳过块的位置
+       * （`slotCursor` 不为跳过块推进）⇒ 此时「缺失块」与已执行区间重叠，直接补就是双计。
+       * 只有下一个动作**有**显式 `startTime`（不前移）时，缺失块才真的留下一段真空、需要补。
+       */
+      const subtractIntervals = (block: { startSeconds: number; seconds: number }) => {
+        let pieces = [{ a: block.startSeconds, b: block.startSeconds + block.seconds }]
+        for (const iv of ivs) {
+          const next: { a: number; b: number }[] = []
+          for (const pc of pieces) {
+            if (iv.t1 <= pc.a || iv.t0 >= pc.b) { next.push(pc); continue }
+            if (iv.t0 > pc.a) next.push({ a: pc.a, b: iv.t0 })
+            if (iv.t1 < pc.b) next.push({ a: iv.t1, b: pc.b })
+          }
+          pieces = next
+        }
+        return pieces
+          .map(pc => ({ startSeconds: pc.a, seconds: pc.b - pc.a }))
+          .filter(pc => pc.seconds > 1e-9)
+      }
+      const lastEnd0 = ivs.length > 0 ? ivs[ivs.length - 1]!.t1 : 0
+      /**
+       * ## 缺失动作块 + 窗尾（用户口径 2026-10-28，逐字）
+       * > 「之前说缺失资源的时间内可以填充平a，但你把我缝隙也填满了。**缝隙只是因为失衡捏轴做的不精细
+       * >  导致的必然结果**……**应该只填缺失动作块时间的平a和末尾兜底**。」
+       *
+       * ① **缺失动作块**：该槽位本窗被资源门控跳过的动作，按它**本该占的位置**补
+       *    （`missingBlocks` 记了起点与时长）；
+       * ② **末尾兜底**：该槽位最后一个动作结束 → 窗口有效结束。
+       *
+       * ⛔ **不填任意两动作之间的空隙**：那是捏轴没排紧的产物（动作本来连续接上、插不进平A），
+       *    旧实现取「区间补集」会把捏坏的轴凭空变成伤害 —— 这正是用户报的 bug。
+       * ⛔ 不填时间门跳过（`reason: 'time'`）：那是窗口装不下才被去掉，补平A 等于凭空延长窗口。
+       *
+       * ## ⚠ 填充是**产出端**（用户口径 2026-10-28：「需要认为他是产出端，因为如果不认他产出，
+       *    他就不能兜底」）——不从窗外平A池拿取，成本就是它占的窗内时间本身；
+       *    它自己的失衡在窗内作废（轴内逐招作废），不给它加「富裕才填」的闸门
+       *    （用户 2026-10-28 明确「判断链多余了」）。
+       */
+      const myBlocksRaw = missingBlocks
+        .filter(b => b.window === windowNo && b.slot === filler)
+        .filter(b => b.seconds > 1e-9)
+        .flatMap(b => subtractIntervals({
+          startSeconds: Math.max(0, Math.min(effectiveWindowDuration, b.startSeconds)),
+          seconds: b.seconds,
+        }))
+        /**
+         * 落在窗尾区间内的缺失块**不单独补**：窗尾 [最后动作结束, 窗口结束] 已经把那段覆盖了
+         * （被跳过的块本就在最后动作之后 ⇒ 它的时间是窗尾的一部分），再补就是双计
+         * （实测 `combo×3 + 跳过 ult`：缺失块 5.417 与窗尾 5.599 同起点，补两遍会填到 11s > 窗长）。
+         */
+        .map(b => ({ startSeconds: b.startSeconds, seconds: Math.min(b.seconds, Math.max(0, lastEnd0 - b.startSeconds)) }))
+        .filter(b => b.seconds > 1e-9)
+      /**
        * 窗尾 = 窗口有效结束 − 该槽**最后一个动作**结束。
        * ⚠ 该槽本窗一个动作都没有（纯兜底槽，如 11号/格莉丝被当填充位）⇒ `lastEnd = 0`，
        *   窗尾就是**整窗**——那不是「缝隙」，是整段都由他打（HEAD 行为，e2e 判据锁着）。
        */
-      const lastEnd = ivs.length > 0 ? ivs[ivs.length - 1]!.t1 : 0
+      const lastEnd = lastEnd0
       const tail = Math.max(0, effectiveWindowDuration - lastEnd)
-      if (tail > 1e-9) {
-        windowFillSegments.push({ slot: filler, startSeconds: lastEnd, seconds: tail })
-        windowFillSec += tail
+      // 先铺缺失块，再铺窗尾（窗尾从最后动作结束起算，天然在缺失块之后）
+      const segs: { startSeconds: number; seconds: number }[] = [...myBlocksRaw]
+      if (tail > 1e-9) segs.push({ startSeconds: lastEnd, seconds: tail })
+      /** 段级去重：同一段（起点相同）只留一条 */
+      const seenSeg = new Set<string>()
+      for (const g of segs) {
+        const key = g.startSeconds.toFixed(6)
+        if (seenSeg.has(key)) continue
+        seenSeg.add(key)
+        windowFillSegments.push({ slot: filler, startSeconds: g.startSeconds, seconds: g.seconds })
+        windowFillSec += g.seconds
       }
       if (windowFillSec > 0) {
         basicFillBySlot[filler] = (basicFillBySlot[filler] ?? 0) + windowFillSec
         basicFillSeconds += windowFillSec
       }
     }
-    // 逐窗轨迹（期 1，纯追加）：本窗的延长 / 截断 / 动作 / 占用 / 合轴 / 填充。
+    /**
+     * 窗内空闲段 = [0, endSeconds] 对「动作区间并集 ∪ 填充段」的补集（发呆/捏轴缝隙的归属容器，
+     * 用户口径 2026-10-28：「只是给缝隙时间一个容器……发呆等效于后台，啥都没做」）。
+     * 纯度量：不进覆盖率、不进利用率、不产资源；Σ = timeline 的 unusedSeconds。
+     */
+    const traceEnd = windowTruncEnd >= 0 ? windowTruncEnd : effectiveWindowDuration
+    const occupiedIvs = [
+      ...windowIntervals.map(iv => ({ t0: Math.max(0, Math.min(traceEnd, iv.t0)), t1: Math.max(0, Math.min(traceEnd, iv.t1)) })),
+      ...windowFillSegments.map(g => ({ t0: g.startSeconds, t1: g.startSeconds + g.seconds })),
+    ].filter(iv => iv.t1 > iv.t0 + 1e-9).sort((a, b) => a.t0 - b.t0)
+    const idleSegments: { startSeconds: number; seconds: number }[] = []
+    {
+      let cursor = 0
+      for (const iv of occupiedIvs) {
+        if (iv.t0 > cursor + 1e-9) idleSegments.push({ startSeconds: cursor, seconds: iv.t0 - cursor })
+        cursor = Math.max(cursor, iv.t1)
+      }
+      if (traceEnd > cursor + 1e-9) idleSegments.push({ startSeconds: cursor, seconds: traceEnd - cursor })
+    }
+    // 逐窗轨迹（期 1，纯追加）：本窗的延长 / 截断 / 动作 / 占用 / 合轴 / 填充 / 空闲。
     // ⚠ 空窗（一个动作都没执行）也记一条——聚合口径里它照样占一个名义窗长。
     windowTrace.push({
       index: windowNo - 1,
@@ -872,13 +954,14 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
       fillerDefaulted: window.fillerDefaulted === true,
       nominalSeconds: windowDuration,
       extendSeconds: Math.max(0, effectiveWindowDuration - windowDuration),
-      endSeconds: windowTruncEnd >= 0 ? windowTruncEnd : effectiveWindowDuration,
+      endSeconds: traceEnd,
       truncated: windowTruncEnd >= 0,
       actions: windowActions,
       actionSeconds: windowTimeSum,
       overlapSeconds: windowTraceOverlap,
       fillSeconds: windowFillSec,
       fillSegments: windowFillSegments,
+      idleSegments,
     })
   }
 

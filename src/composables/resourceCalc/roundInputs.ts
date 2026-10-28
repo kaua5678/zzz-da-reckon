@@ -302,6 +302,37 @@ export function createConvergenceRoundInputs(deps: {
     return out
   }
 
+  /**
+   * **缺省兜底槽 = 主C**（用户口径 2026-10-27，逐字）：
+   * > 「在低命情况下琉音会填充一些平a，但作为击破手，**失衡内主打伤害的窗口不如让主c来打**。」
+   *
+   * 旧口径 = 引擎的「轴内动作耗时最长的槽」（`stunAxisStack#mainCSlotOf`）——击破手在轴里捏的招多时，
+   * 窗内平A就落到击破位上。新口径按三把尺依次判（都是**已有输入**，不新增用户旋钮）：
+   * ① **平A 权重**最高（`basicAttackTimeWeight`，用户可调；支援/防护缺省 0、后台类角色另有模块声明 0）；
+   * ② 职业更适合吃失衡窗（强攻 / 异常 / 命破 > 尖兵 > 击破 > 支援 / 防护）；
+   * ③ 槽位靠前者（并列时给稳定答案，不做没有依据的取舍）。
+   * 全部 0 分（权重全 0 且职业都不在表里）⇒ 返回 undefined，交回引擎旧口径。
+   */
+  function mainCAttackSlotOf(axis: StunAxis): number | undefined {
+    /** 职业「吃失衡窗」的先验次序（不是伤害计算，只决定**兜底平A归谁**） */
+    const SPECIALTY_RANK: Record<string, number> = {
+      attack: 3, anomaly: 3, rupture: 3, sharpen: 2, stun: 1, support: 0, defense: 0,
+    }
+    const slots = [...new Set(axis.actions.map(a => a.slot))].sort((a, b) => a - b)
+    if (slots.length === 0) return undefined
+    let best: number | undefined
+    let bestScore = 0
+    for (const slot of slots) {
+      const cfg = configStore.team[slot]
+      const weight = Math.max(0, Number(cfg?.basicAttackTimeWeight) || 0)
+      const rank = SPECIALTY_RANK[catalogStore.getAgent(cfg?.agentId ?? '')?.specialty ?? ''] ?? 0
+      // 权重优先（×10 让任何一档权重压过职业次序），同分再看职业
+      const score = weight * 10 + rank
+      if (score > bestScore) { bestScore = score; best = slot }
+    }
+    return bestScore > 0 ? best : undefined
+  }
+
   function buildStackAxes(axes: StunAxis[]): StackAxisInput[] {
     return axes.map(axis => {
       const axisActions: StackActionCost[] = []
@@ -466,6 +497,8 @@ export function createConvergenceRoundInputs(deps: {
           ...(endsWindow ? { endsStunWindow: true } : {}),
         })
       }
+      // 缺省兜底槽 = 主C（用户口径 2026-10-27；轴显式声明时原样用）
+      const defaultFiller = axis.basicFillerSlot === undefined ? mainCAttackSlotOf(axis) : undefined
       return {
         actions: axisActions,
         // ⚠ `count` **只在 `fixed` 轴上有语义**（T155 四阶段分配：tail 恒 1 窗 / bestEffort 0-1 窗 /
@@ -475,7 +508,11 @@ export function createConvergenceRoundInputs(deps: {
         // 故这里按 kind 过滤：只有 fixed 传递次数，其余传 undefined（= 让栈按同一套规则自行分配）。
         count: axisKindOf(axis) === 'fixed' ? axis.count : undefined,
         kind: axisKindOf(axis),
-        basicFillerSlot: axis.basicFillerSlot,
+        ...(axis.basicFillerSlot !== undefined
+          ? { basicFillerSlot: axis.basicFillerSlot }
+          : defaultFiller !== undefined
+            ? { basicFillerSlot: defaultFiller, fillerDefaulted: true }
+            : {}),
         // 进轴残痕值（点数）：栈引擎只透传，消费方 = 克拉蕾模块的轴内时序推演
         entryGash: Math.max(0, Number(axis.entryGash ?? 0)),
       }
@@ -497,6 +534,13 @@ export function createConvergenceRoundInputs(deps: {
     executed: Record<string, ExecutedMoveCount>,
     basicFillBySlot: Record<number, number>,
     fillResources?: Readonly<Record<number, FillResourceBudget>>,
+    /**
+     * 可选出参：产出端**生成的 basic 秒数**（按槽位）。填充是产出端、不抽窗外平A池
+     * （用户口径 2026-10-28）⇒ 失衡逐招作废的分子要把这部分剔掉——它不在任何
+     * 招式行的分母里，计入会让窗外的 basic 行被多扣。被认领的真实招式
+     * （expandBasicFill 夹紧部分）照旧计入（它们有自己的行）。
+     */
+    generatedBasicSecOut?: Record<number, number>,
   ): Record<string, ExecutedMoveCount> {
     const out: Record<string, ExecutedMoveCount> = {}
     /**
@@ -535,7 +579,7 @@ export function createConvergenceRoundInputs(deps: {
         ...(budget?.decibel !== undefined ? { decibelAvailable: budget.decibel } : {}),
         ...(budget?.exSpecial !== undefined ? { exSpecialAvailable: budget.exSpecial } : {}),
       })
-      if (!fillExpanded) { add(slot, 'basic', fillSec); continue }
+      if (!fillExpanded) { add(slot, 'basic', fillSec); if (generatedBasicSecOut) generatedBasicSecOut[slot] = (generatedBasicSecOut[slot] ?? 0) + fillSec; continue }
       // 没有 executed 读数（旧调用点 / 非轴路径）⇒ 不做任何夹紧，逐位保持钩子输出
       if (!budget?.executed) { for (const e of fillExpanded) add(slot, e.moveId, e.count); continue }
       /**
@@ -562,7 +606,10 @@ export function createConvergenceRoundInputs(deps: {
         takenSec += take * at
       }
       basicSec += Math.max(0, claimedSec - takenSec)
-      if (basicSec > 0) add(slot, 'basic', basicSec)
+      if (basicSec > 0) {
+        add(slot, 'basic', basicSec)
+        if (generatedBasicSecOut) generatedBasicSecOut[slot] = (generatedBasicSecOut[slot] ?? 0) + basicSec
+      }
     }
     return out
   }

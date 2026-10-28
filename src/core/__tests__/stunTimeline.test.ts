@@ -219,7 +219,8 @@ describe('失衡窗口时间轴（期 1：数据结构 + 恒等式，零 delta�
     const tl = p.timeline
     expectIdentity(p)
 
-    expect(tl.windows, '决算队应有 3 个失衡窗口（池次数）').toBe(3)
+    // 2026-10-28 逐招口径：残差分摊通道删除 ⇒ 非轴行失衡不再被窗占比扣 ⇒ 池 3→4（与新物理同源）。
+    expect(tl.windows, '决算队应有 4 个失衡窗口（池次数）').toBe(4)
     expect(tl.hasTrace, '决算队必须有轴栈逐窗轨迹').toBe(true)
     for (const s of tl.slots) {
       expect(s.truncated, `第 ${s.index} 窗必须被决算结束（endsStunWindow）`).toBe(true)
@@ -243,6 +244,7 @@ describe('buildStunTimeline 纯函数（边界与残疾口径）', () => {
     axisIndex: 0,
     fillerDefaulted: false,
     fillSegments: [],
+    idleSegments: [],
     nominalSeconds: 16,
     extendSeconds: 0,
     endSeconds: 16,
@@ -345,6 +347,7 @@ describe('buildStunTimeline 纯函数（边界与残疾口径）', () => {
 describe('realizeStunWindows（计划 K 窗 / 兑现 X 窗 / 窗内发呆 Y 秒）', () => {
   const trace = (i: number, over: Partial<StunWindowTrace> = {}): StunWindowTrace => ({
     index: i, axisIndex: 0, fillerDefaulted: false, fillSegments: [],
+    idleSegments: [],
     nominalSeconds: 16, extendSeconds: 0, endSeconds: 16,
     truncated: false, actions: [], actionSeconds: 0, overlapSeconds: 0, fillSeconds: 0, ...over,
   })

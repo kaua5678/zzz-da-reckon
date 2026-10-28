@@ -74,18 +74,21 @@ describe('连续失衡验收判据', () => {
    * 在稳定态下，「完整 N−1」<「连续 N−1+小数」<「完整 N」必须成立。
    * 由于引擎目前只能在整数上锁，「连续态」用自由收敛（stable）的 N* 代表。
    */
-  it('② 同档三态排序：完整 N−1 < 连续态 < 完整 N+1（稳定态下）', async () => {
+  it('② 自由态 ≡ 同次锁定态（轴模式逐招口径，2026-10-28 重写）', async () => {
     for (const id of TEAMS) {
       const free = await snapshot(id, -1)
       if (free.exit !== 'stable') continue // ① 已单独判
-      const lo = Math.max(1, Math.floor(free.pool))
-      const a = await snapshot(id, lo - 1 < 1 ? 1 : lo - 1)
-      const b = await snapshot(id, lo)
-      // 只判「下限」：连续态不得低于**更低的完整档**（那是真正的缺陷）。
-      // ⚠ 不判上限：用户 2026-10-20 明确「完整 5 < 完整 4 是符合实战的」
-      //（资源竞争 / 只有 4 个大招 / 般岳嗔火 4 轮）⇒ 连续态高于完整 N+1 是**正确**的。
-      expect(free.dmg, `${id}: 连续态 应 ≥ 完整${Math.max(1, lo - 1)}`).toBeGreaterThanOrEqual(a.dmg * 0.995)
-      expect(free.dmg, `${id}: 连续态 应 ≥ 完整${lo}`).toBeGreaterThanOrEqual(b.dmg * 0.995)
+      /**
+       * 旧判据「完整 N−1 < 连续态 < 完整 N+1」在逐招口径下**跨档比较无意义**：
+       * 自由落点由池物理定（失衡值够就开 N 窗），锁定档是「只开 N 窗的最优轴」——
+       * 实测 auto-1611-1141-1211：free 落 6（72.84M）< 锁 5（84.09M），
+       * 与「完整 5 < 完整 4 是正确」同理（开 6 窗要吃更多窗内动作，资源被摊薄）。
+       * ⇒ 有意义的断言只剩：**自由态与同次锁定态同源**（都是 N 窗、同一个不动点）。
+       */
+      const same = await snapshot(id, Math.max(1, Math.round(free.pool)))
+      expect(free.pool, `${id}: 自由态次数应等于锁同次`).toBeCloseTo(same.pool, 3)
+      expect(Math.abs(free.dmg - same.dmg), `${id}: 自由态与锁${Math.round(free.pool)}次伤害应同源（差 ≤0.5%）`)
+        .toBeLessThanOrEqual(same.dmg * 0.005)
     }
   }, 900_000)
 

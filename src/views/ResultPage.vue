@@ -288,22 +288,18 @@
               <span class="pool-stat-value">{{ stunPoolResult.chainCountTotal }} 次</span>
             </div>
             <!--
-              **计划 K 窗 / 兑现 X 窗 / 窗内发呆 Y 秒**（docs/STUN_TIMELINE_PROJECT.md 期 2 展示面）。
+              **已完整 N 次失衡 + 下一窗进度 X%**（用户口径 2026-10-28 §2.2，逐字）：
+              > 「打完了 3 失衡，还积累了 56% 的失衡」/「进入第四失衡了，但是只打了 6s 就结束了」
+              ——两个量分开读：**失衡值不够 = 下一窗没开**（进度 <100%）；**窗开了但短 = 时间不够**
+              （时钟截短在逐窗时间轴里标）。
 
-              用户口径 2026-10-26（逐字）：「再没有就空着，**写明发呆时间**」——
-              窗口开着却没动作也没人兜底平A 的秒数必须能看见，不许被「K × W 秒」的聚合读数吞掉。
-
-              ⚠ 非轴队没有逐窗轨迹（hasTrace=false）：此时只显示计划窗数，
-              兑现/发呆**不编造**（不写 0——0 会被读成「打满了」，而实际是「不可推演」）。
+              窗内发呆 = 空闲归属容器（发呆等效于后台、啥都没做）；窗开了没人打的秒数必须可见。
+              ⚠ 非轴队没有逐窗轨迹（hasTrace=false）：发呆**不编造**（不写 0）。
             -->
-            <div class="pool-stat" v-if="stunRealization">
-              <span class="pool-stat-label">计划窗口</span>
-              <span class="pool-stat-value">{{ stunRealization.plannedWindows }} 窗</span>
-            </div>
-            <div class="pool-stat" v-if="stunRealization && stunRealization.hasTrace">
-              <span class="pool-stat-label">兑现窗口</span>
-              <span class="pool-stat-value" title="按轴栈逐窗填充率累加（末窗按实际只打出的比例计）">
-                {{ stunRealization.realizedWindows.toFixed(2) }} 窗
+            <div class="pool-stat" v-if="continuousStun">
+              <span class="pool-stat-label">下一窗进度</span>
+              <span class="pool-stat-value" title="净失衡值攒向下一窗的进度：<100% = 失衡值不够，下一窗开不出来">
+                还积累了 {{ (continuousStun.nextWindowProgress * 100).toFixed(1) }}%
               </span>
             </div>
             <div class="pool-stat" v-if="stunRealization && stunRealization.hasTrace"
@@ -322,6 +318,32 @@
         </n-card>
 
       </div>
+
+      <!-- 逐窗兑现（用户口径 2026-10-27：「资源池页面如果开了轴模式，能显示 n 次轴的动作块的
+           丢失填充可视化吗」）。三份输入全是既有单一来源；非轴队 / 弃轴 hasTrace=false ⇒ 不渲染
+           （那种模式根本没有轴块，画一张空图等于骗人）。 -->
+      <n-card v-if="axisWindows.hasTrace" size="small" class="axis-window-card" :bordered="true">
+        <template #header>
+          <div class="axis-window-header">
+            <span class="pool-title">逐窗兑现（轴模式）</span>
+            <span class="axis-window-summary">
+              轴 {{ axisWindows.windows.length }} 窗 · 动作 {{ fmt(axisWindows.totals.actionSeconds, 1) }}s
+              · 填充 {{ fmt(axisWindows.totals.fillSeconds, 1) }}s
+              <template v-if="axisWindows.totals.idleSeconds !== null"> · 发呆 {{ fmt(axisWindows.totals.idleSeconds, 1) }}s</template>
+              <template v-if="axisWindows.totals.skippedTimes > 0"> · 跳过 {{ axisWindows.totals.skippedTimes }} 次</template>
+            </span>
+            <!-- 池排出的窗数 vs 轴实际排的窗数：fixed / tail / bestEffort 类型的轴不吃完剩余窗口，
+                 差额窗口**没有轴块**（不是「轴打空了」）——不点明会被读成逐窗图少画了几窗 -->
+            <span
+              v-if="stunPoolResult && stunPoolResult.stunCount !== axisWindows.windows.length"
+              class="axis-window-summary"
+              title="池按资源排出 K 窗；轴的窗数由预设/类型决定（fixed / tail / bestEffort 不吃剩余窗口）⇒ 差额那几窗没有轴块"
+            >池报 {{ stunPoolResult.stunCount }} 窗（差额无轴块）</span>
+          </div>
+        </template>
+        <AxisWindowChart :windows="axisWindows.windows" :fill-moves="axisFillMoveGroups" />
+      </n-card>
+
       <!-- 三角色资源池卡片 -->
       <div v-if="resourceResult.characters.length > 0" class="card-row">
         <ResourceResultCard
@@ -660,34 +682,60 @@
           </div>
         </template>
         <div class="damage-source-table">
-          <div class="damage-pool-row damage-pool-head damage-source-row">
+          <div class="damage-pool-row damage-pool-head damage-source-row damage-source-row-stun">
             <span>角色</span>
             <span>族</span>
             <span>总伤害</span>
             <span>总倍率(%)</span>
-            <span>属性区</span>
+            <span>属性区（有失衡）</span>
+            <span>属性区（无失衡）</span>
+            <span title="有失衡 − 无失衡 占「有失衡」的比例，即 Boss 失衡窗把这一族伤害放大了多少">失衡期贡献率</span>
+            <span title="该族伤害里落在失衡窗内的占比（伤害加权）——捏轴越集中、越贴窗，数越大">失衡爆发效率</span>
             <span>无倍率行伤害</span>
           </div>
           <template v-for="b in damageSourceBreakdown" :key="b.slot">
-            <div v-if="b.direct.damage > 0 || b.direct.flatDamage > 0" class="damage-pool-row damage-source-row">
+            <div v-if="b.direct.damage > 0 || b.direct.flatDamage > 0" class="damage-pool-row damage-source-row damage-source-row-stun">
               <span>{{ b.agentName }}</span>
               <span class="damage-type">直伤</span>
               <span class="damage-total">{{ fmt(b.direct.damage, 0) }}</span>
               <span>{{ fmt(b.direct.multiplier, 0) }}</span>
               <span>{{ fmt(b.direct.attrRegion, 0) }}</span>
+              <span class="damage-source-nostun" title="只抹掉 Boss 失衡窗，常驻易伤（扳机 35%/55% 等）保留">{{ fmt(b.direct.attrRegionNoStun, 0) }}</span>
+              <span class="damage-source-rate">{{ pctText(b.direct.stunContributionRate) }}</span>
+              <span class="damage-source-rate">{{ pctText(b.direct.burstEfficiency) }}</span>
               <span>{{ fmt(b.direct.flatDamage, 0) }}</span>
             </div>
-            <div v-if="b.anomaly.damage > 0 || b.anomaly.flatDamage > 0" class="damage-pool-row damage-source-row">
+            <div v-if="b.anomaly.damage > 0 || b.anomaly.flatDamage > 0" class="damage-pool-row damage-source-row damage-source-row-stun">
               <span>{{ b.agentName }}</span>
               <span class="damage-type">异常</span>
               <span class="damage-total">{{ fmt(b.anomaly.damage, 0) }}</span>
               <span>{{ fmt(b.anomaly.multiplier, 0) }}</span>
               <span>{{ fmt(b.anomaly.attrRegion, 0) }}</span>
+              <span class="damage-source-nostun" title="只抹掉 Boss 失衡窗，常驻易伤（扳机 35%/55% 等）保留">{{ fmt(b.anomaly.attrRegionNoStun, 0) }}</span>
+              <span class="damage-source-rate">{{ pctText(b.anomaly.stunContributionRate) }}</span>
+              <span class="damage-source-rate">{{ pctText(b.anomaly.burstEfficiency) }}</span>
               <span>{{ fmt(b.anomaly.flatDamage, 0) }}</span>
             </div>
           </template>
+          <div class="damage-pool-row damage-source-row damage-source-row-stun damage-source-total-row">
+            <span>全队</span>
+            <span class="damage-type">合计</span>
+            <span class="damage-total">{{ fmt(damageSourceTotals.damage, 0) }}</span>
+            <span>{{ fmt(damageSourceTotals.multiplier, 0) }}</span>
+            <span>{{ fmt(damageSourceTotals.attrRegion, 0) }}</span>
+            <span class="damage-source-nostun" title="只抹掉 Boss 失衡窗，常驻易伤（扳机 35%/55% 等）保留">{{ fmt(damageSourceTotals.attrRegionNoStun, 0) }}</span>
+            <span class="damage-source-rate">{{ pctText(damageSourceTotals.stunContributionRate) }}</span>
+            <span class="damage-source-rate">{{ pctText(damageSourceTotals.burstEfficiency) }}</span>
+            <span>{{ fmt(damageSourceTotals.flatDamage, 0) }}</span>
+          </div>
         </div>
-        <div class="share-note">属性区 = 有倍率行的伤害 ÷ (总倍率/100)，即每 100% 倍率对应的面板×乘区伤害；无倍率行（固定/附伤公式）单列。检查总伤害时：总伤害 ≈ 总倍率/100 × 属性区 + 无倍率伤害。</div>
+        <div class="share-note">
+          属性区 = 有倍率行的伤害 ÷ (总倍率/100)，即每 100% 倍率对应的面板×乘区伤害；无倍率行（固定/附伤公式）单列。
+          <b>属性区（无失衡）</b>只抹掉 Boss 失衡窗，非失衡期也生效的常驻易伤（如扳机 35%/55% 的 Always 通道）仍保留 ——
+          「失衡期贡献率」= 1 − 无失衡/有失衡，就是本队 Boss 失衡系统对该族伤害的放大比例；
+          <b>失衡爆发效率</b> = 该族伤害落在失衡窗内的占比（伤害加权），直接读该角色把伤害打进场的能力。
+          合计行的倍率/属性区按伤害族合并后计算（两族倍率不同，属性区不能直接相加）。
+        </div>
       </n-card>
 
       <!-- 伤害池 -->
@@ -846,8 +894,8 @@ import { useConfigStore } from '@/stores/config'
 import { useStunDiscreteDisplay } from '@/composables/stunDiscreteDisplay'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { fmt } from '@/utils/format'
-import { teamPoolSummaries } from '@/composables/agentMechanicView'
+import { fmt, localized } from '@/utils/format'
+import { teamPoolSummaries, agentCombos } from '@/composables/agentMechanicView'
 import { PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 import { DECIBEL_COMPANION_RATIO } from '@/data/decibelCompanion'
 import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
@@ -856,6 +904,9 @@ import FinalPanel from '@/components/FinalPanel.vue'
 import TeamDamage3DChart from '@/components/charts/TeamDamage3DChart.vue'
 import DeadlyAssaultScoreCard from '@/components/charts/DeadlyAssaultScoreCard.vue'
 import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf, truncationHint as truncationHintOf } from '@/composables/teamTimeSummary'
+import { axisWindowView } from '@/composables/axisWindowView'
+import AxisWindowChart, { type AxisFillMoveGroup } from '@/components/AxisWindowChart.vue'
+import { findMoveById } from '@/data/moveTableQueries'
 import { computePerSlotBuildUp } from '@/composables/positionCompare'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'
 import { axisFallbackNoticeOf } from '@/composables/axisFallbackNotice'
@@ -885,6 +936,7 @@ const {
   damagePoolRows,
   teamTotalDamage,
   damageSourceBreakdown,
+  damageSourceTotals,
   moduleAnomalyEventRecords,
   anomalyDamageEvents,
   anomalyVirtualPanels,
@@ -896,8 +948,16 @@ const {
   autoActive,
   windowDuration,
   stunEffectiveTime,
-  /** 已兑现窗口读数（计划 K / 兑现 X / 窗内发呆 Y）——docs/STUN_TIMELINE_PROJECT.md 期 2 展示面 */
+  /** 连续失衡读数（完整 N 次 + 下一窗进度 X%；core/continuousStun#continuousStunSplitOf） */
+  continuousStun,
+  /** 已兑现窗口读数（窗内发呆/空闲容器）——docs/STUN_TIMELINE_PROJECT.md 期 2 展示面 */
   stunRealization,
+  /** 轴栈逐窗轨迹 + 生效轴 + 逐窗时间轴：逐窗兑现图的三份输入（全是既有单一来源） */
+  stackTraversalResult,
+  effectiveStunAxes,
+  stunTimeline,
+  /** 窗尾填充展开成真实招式（与伤害侧同一个兜底池函数） */
+  axisFillExpansion,
 } = calc
 
 /**
@@ -911,6 +971,15 @@ const stunDiscrete = useStunDiscreteDisplay({
   windowDuration: () => windowDuration.value,
   effectiveTime: () => stunEffectiveTime.value,
 })
+
+/**
+ * 百分比展示（伤害来源分解的「失衡期贡献率 / 失衡爆发效率」两列）。
+ * 单独一个函数而不是复用下方 `noAxisVulnShareNotice` 里的局部 `pct`：那个是闭包内局部量，
+ * 模板里要用必须提到 setup 顶层。口径 = 一位小数，与页面其它百分比一致。
+ */
+function pctText(v: number): string {
+  return `${(v * 100).toFixed(1)}%`
+}
 
 // 非轴「易伤贡献率」φ 的「来源可见」标注（用户裁决 2026-10-19：非轴不做自动认领、由用户自己填）。
 // 只在非轴 + φ ≠ 100% 时显示：告诉用户当前伤害用的是他填的兑现比例，不是「每招均匀摊」。
@@ -991,6 +1060,68 @@ const poolFillText = computed(() => poolFillTextOf(teamTimeSummary.value))
 const slackHint = computed(() => slackHintOf(teamTimeSummary.value, fmt))
 // 「被砍招式」清单（时间截断那一行的 detail）：让 66.8s 这类真溢出可见（用户 2026-09-11 口径）
 const truncationHintText = computed(() => truncationHintOf(teamTimeSummary.value, fmt))
+
+/**
+ * 招式名解析（逐窗图用）：槽位 → 该槽角色 → 目录招式表；解析不到回落 moveId（**不编名字**）。
+ * 与难度曲线「这一档的轴」同一解析器（`localized`，CC-456 单一来源），不手写名称兜底。
+ */
+function axisMoveName(slot: number, moveId: string): string {
+  const agentId = configStore.team[slot]?.agentId ?? ''
+  // 连段块（banyue-combo / sigrid-pozhen 等）不在倍率表里，名字由模块的 combos 声明给——
+  // 不先查它就会在逐窗图里露出内部 id（轴编辑器同一口径，见 StunAxisPage#allMoves）。
+  const combo = agentCombos(agentId)?.[moveId]
+  if (combo?.label) return combo.label
+  const m = findMoveById(catalogStore.getAgentSkills(agentId), moveId)
+  return m ? localized(m.name, moveId) : moveId
+}
+
+/** 槽位 → 角色名（取不到时「槽 N」） */
+function slotNameOf(slot: number): string {
+  return agentNames.value[configStore.team[slot]?.agentId ?? ''] || `槽${slot + 1}`
+}
+
+/**
+ * **逐窗兑现图**（用户口径 2026-10-27，逐字）：
+ * > 「资源池页面如果开了轴模式，能显示 **n 次轴的动作块的丢失填充可视化**吗。
+ * >  丢失比如某些情况**跳招**了，填充比如我在末尾**自动填了平a或者强特**…之类的奖励招式。」
+ *
+ * 三份输入全是既有单一来源（轴栈 `windowTrace` / 引擎 `skipped` / 时间轴 `slots`），这里只做注入与取名；
+ * 归因与合并逻辑住 `composables/axisWindowView.ts`（纯函数 + 单测）。
+ * 非轴队 / 弃轴 ⇒ `hasTrace === false` ⇒ **整卡不渲染**（用户问的前提就是「开了轴模式」）。
+ */
+const axisWindows = computed(() => axisWindowView({
+  trace: stackTraversalResult.value?.windowTrace,
+  skipped: stackTraversalResult.value?.skipped,
+  slots: stunTimeline.value.slots,
+  axes: effectiveStunAxes.value,
+  nameOf: axisMoveName,
+  nameOfSlot: slotNameOf,
+}))
+
+/**
+ * 窗尾填充 → 真实招式（平A / 强特…），按槽分组给图底部那行。
+ * 数据 = `useResourceCalc#axisFillExpansion`（与伤害侧**同一个**兜底池函数与同一份资源读数），
+ * 本处只排序、取名、分量纲（`basic` 的 count 是秒数，其余是次数）。
+ */
+const axisFillMoveGroups = computed<AxisFillMoveGroup[]>(() => {
+  const secs = stackTraversalResult.value?.basicFillBySlot ?? {}
+  const groups: AxisFillMoveGroup[] = []
+  for (const slot of Object.keys(secs).map(Number).sort((a, b) => a - b)) {
+    const seconds = secs[slot] ?? 0
+    if (!(seconds > 0)) continue
+    const moves = Object.values(axisFillExpansion.value)
+      .filter(v => v.slot === slot)
+      .map(v => ({
+        moveId: v.moveId,
+        name: v.moveId === 'basic' ? '平A' : axisMoveName(slot, v.moveId),
+        count: v.count,
+        unit: (v.moveId === 'basic' ? 'seconds' : 'times') as 'seconds' | 'times',
+      }))
+      .sort((a, b) => b.count - a.count)
+    groups.push({ slot, name: slotNameOf(slot), seconds, moves })
+  }
+  return groups
+})
 
 // 获取角色特性
 function getSpecialty(agentId: string): string {

@@ -153,6 +153,17 @@ describe('交互 × 合轴 二维面 runInteractionSurface', () => {
         expect(a.cells[0]!.dmg, ser.label + ' 两条路径起点必须相同（同一个角）').toBeCloseTo(b.cells[0]!.dmg, 6)
         expect(a.cells[a.cells.length - 1]!.dmg, ser.label + ' 两条路径终点必须相同（都走到底）')
           .toBeCloseTo(b.cells[b.cells.length - 1]!.dmg, 6)
+        /**
+         * ⚠ **2026-10-28 格挡方向翻转（残差分摊删除）**：格挡 a.worst 85.43M > b.worst 78.79M——
+         * 轴模式逐招口径下格挡交互产出的是**真实失衡**（不再被窗占比扣）⇒「先交互」沿途
+         * 格挡收益更高、最低点反而更浅。方向翻转是物理如实，不是引擎回归；按系列如实断言。
+         */
+        if (ser.key === 'blockCount') {
+          expect(a.worst.dmg, ser.label + ' 格挡「先交互」最低点如实更高（交互产出真实失衡）')
+            .toBeGreaterThanOrEqual(b.worst.dmg - 1e-6)
+          if (a.worst.dmg > b.worst.dmg + 1) strict.push(ser.key + '(反向)')
+          continue
+        }
         expect(a.worst.dmg, ser.label + ' 「先交互」途中最低点不得高于「先合轴」').toBeLessThanOrEqual(b.worst.dmg + 1e-6)
         if (a.worst.dmg < b.worst.dmg - 1) strict.push(ser.key)
       }

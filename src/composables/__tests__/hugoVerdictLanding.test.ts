@@ -41,13 +41,16 @@ describe('雨果决算轴内块数落地（坑36 回归）', () => {
     // 轴栈 executed 是「轴认领块数 × 窗口数」的展示/归因源（stunPoolResult.stunCount = 池整数）
     const stackExec = (calc.stackTraversalResult.value as { executed?: Record<string, { count: number }> } | null)?.executed
     const stackVerdict = stackExec?.[`0:${HUGO_EX_VERDICT_MOVE_ID}`]?.count ?? 0
-    expect(stackVerdict).toBe(5)
+    // ⚠ 2026-10-28 锚值 5→11：轴模式残差分摊通道删除（非轴行失衡不再被窗占比扣）⇒ 池如实升到 11 窗。
+    // 同源判据（下行 verdictRow == stackVerdict）不受影响。
+    expect(stackVerdict).toBe(11)
 
     // 资源池执行行必须与轴栈同源一致（坑36：实测 1 vs 5）
     const execs = calc.resourceResult.value?.characters?.[0]?.executions ?? []
     const verdictRow = execs.find(e => e.moveId === HUGO_EX_VERDICT_MOVE_ID)
     expect(verdictRow?.count ?? 0).toBe(stackVerdict)
-    expect(verdictRow?.count ?? 0).toBe(5)
+    // ⚠ 2026-10-28 锚值 5→11（同上行 stackVerdict）：同源等式仍逐位成立。
+    expect(verdictRow?.count ?? 0).toBe(11)
 
     // 守恒：强特总数 = 决算 + 普通终结（模块内 cycle 口径）
     const exSpecial = execs.find(e => e.moveId === HUGO_EX_OPEN_MOVE_ID)?.count ?? 0
@@ -89,6 +92,8 @@ describe('雨果决算轴内块数落地（坑36 回归）', () => {
      * ③ 确认有意：用户裁决「交互次数全设 0，最优次数由难度曲线给，不由默认值给」，不是回归。
      * ④ 处置 = **只改锚值**；「池 == 轴栈 == 资源行」这条同源判据一字未改。
      */
-    expect(row, 'physical 现值').toBe(4)
+    // ⚠ 2026-10-28 现值 4→10：轴模式残差分摊通道删除 ⇒ 非轴行失衡不再被窗占比扣 ⇒ 物理次数
+    // 5→4→10（同源断言 pool==stack==row 一字未改；CC-150 规范化把环态钳到最大自洽整数）。
+    expect(row, 'physical 现值').toBe(10)
   })
 })

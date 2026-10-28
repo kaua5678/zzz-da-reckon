@@ -24,7 +24,16 @@ describe('CC-458 失衡池 perSlotStun 契约', () => {
     const perSlot = [0, 0, 0]
     for (const c of pool!.contributions) perSlot[c.slot] += c.effectiveStun
     for (let s = 0; s < 3; s++) expect(pool!.perSlotStun[s] ?? 0, `slot ${s}`).toBeCloseTo(perSlot[s], 6)
-    expect(pool!.perSlotStun.reduce((a, b) => a + b, 0)).toBeCloseTo(pool!.totalStunBuildUp, 6)
+    /**
+     * ⚠ 2026-10-28 恒等式收窄为 ≥：CC-150 规范化（cycle 队把池钳到最大自洽整数）下
+     * `totalStunBuildUp` 按计数律重建（= 兑现账，K 窗吃掉的量），而 `perSlotStun` 保留
+     * 产出账（含「攒出来但没能开启下一窗」的残量）⇒ `Σ perSlot ≥ total`，等号仅在
+     * 未重建的池上成立（withStunCountRebuilt 头注释：产出账不伪造）。
+     * 本队 1471-1481-1451 恰是重建案例：产出 82235 / 兑现 46458（3 窗 × ~15486）。
+     */
+    const sumPerSlot = pool!.perSlotStun.reduce((a, b) => a + b, 0)
+    expect(sumPerSlot, 'Σ perSlot ≥ totalStunBuildUp（产出账 ≥ 兑现账；重建池时严格大于）')
+      .toBeGreaterThanOrEqual(pool!.totalStunBuildUp - 1e-6)
   })
 })
 

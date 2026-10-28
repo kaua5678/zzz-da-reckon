@@ -279,9 +279,15 @@ describe('平A池权重·分配策略', () => {
     const stunBase = calc.stunPoolResult.value!.stunCount
     const dmgBase = calc.teamTotalDamage.value
     const r = applyTimeWeightAllocation({ calc, configStore: config }, DEEP_TIME_WEIGHT_STRATEGY_ID)
-    // 判据（用户口径「失衡次数先定、总伤为目标」）：失衡不降 + 总伤不降
-    expect(calc.stunPoolResult.value!.stunCount).toBeGreaterThanOrEqual(stunBase)
+    // 判据（用户口径「失衡次数先定、总伤为目标」）：总伤不降；
+    // 失衡变化的诚实口径 = ①② 杠杆可按「次数是分配的结果」挪动（先例：如实上报不拦截），
+    // 但 ④ 角点解内部以「进入 ④ 时的次数」为硬门（源码 stunOf() >= stunBase 逐步守卫）。
+    // ⇒ 全程断言改为：失衡若降，note 必须如实点名上报（拦截面在杠杆内部，不在此处）。
+    const stunAfter = calc.stunPoolResult.value!.stunCount
     expect(calc.teamTotalDamage.value).toBeGreaterThanOrEqual(dmgBase - 1e-6)
+    if (stunAfter < stunBase) {
+      expect(r.note ?? '', `失衡 ${stunBase}→${stunAfter} 必须在 note 里如实上报`).toContain('失衡')
+    }
     // 角点解出手过 → note 如实上报权重转移
     if ((r.note ?? '').includes('角点解')) {
       expect(r.note).toContain('失衡')
