@@ -10,11 +10,11 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-  OPERATION_SCORE_CAP,
   buildScoreConversion,
   clampOperationScore,
   splitTotalScore,
 } from '@/composables/substatScoreConvert'
+import { OPERATION_SCORE_CAP } from '@/data/deadlyAssaultScore'
 
 const base = {
   mode: 'defense' as const,
@@ -102,7 +102,7 @@ describe('substatScoreConvert · 分数换算', () => {
     expect(buildScoreConversion({ ...base, knownSide: 'b', bDamage: 0 })).toBeNull()
   })
 
-  it('操作分钳在 0~5000', () => {
+  it('操作分钳在 0~5000（危局；木桩上限 0）', () => {
     expect(OPERATION_SCORE_CAP).toBe(5000)
     expect(clampOperationScore(-1)).toBe(0)
     expect(clampOperationScore(9999)).toBe(5000)
@@ -138,5 +138,49 @@ describe('substatScoreConvert · 总分拆成伤害分 + 操作分（用户 2026
     const r = buildScoreConversion({ ...base, score: 65000 })!
     expect(r.damageScoreFrom).toBe(60000)
     expect(r.ratioFrom).toBeCloseTo(1, 9) // 60000 伤害分 = 100% 血 = 击杀
+  })
+})
+
+/**
+ * 木桩（用户 2026-10-28）：「默认33亿血的其实是一个木桩本，他的曲线和绝境普通都不一样，
+ * 是和分数成正比的，没有操作分」。
+ */
+describe('substatScoreConvert · 木桩模式（线性、无操作分）', () => {
+  it('★ 木桩没有操作分：传进来的操作分一律钳成 0，总分 = 伤害分', () => {
+    const r = buildScoreConversion({ ...base, mode: 'training_dummy', score: 30000 })!
+    expect(r.operationCap).toBe(0)
+    expect(r.operationScore).toBe(0)
+    expect(r.damageScoreFrom).toBe(30000) // 不再扣 5000
+    expect(r.scoreFrom).toBe(30000)
+    expect(splitTotalScore(30000, 5000, 'training_dummy')).toEqual({ damageScore: 30000, operationScore: 0 })
+    expect(clampOperationScore(5000, 'training_dummy')).toBe(0)
+  })
+
+  it('★ 木桩换算 = 分数 × 伤害比（正比曲线的等价形式；与危局分段曲线不同）', () => {
+    const r = buildScoreConversion({ ...base, mode: 'training_dummy', score: 30000 })!
+    expect(r.scoreTo).toBeCloseTo(33000, 6) // 30000 × 1.1（危局普通同输入是 33074.67）
+    const normal = buildScoreConversion({ ...base, mode: 'defense', operationScore: 0 })!
+    expect(normal.scoreTo).toBeCloseTo(33074.67, 1)
+    expect(r.scoreTo).not.toBeCloseTo(normal.scoreTo, 0)
+  })
+
+  it('木桩与两条危局曲线给出三个不同总分（同分数、同伤害比）', () => {
+    const [n, c, d] = (['defense', 'critical_assault', 'training_dummy'] as const).map(m =>
+      buildScoreConversion({ ...base, mode: m, operationScore: 0, score: 25000 })!.scoreTo)
+    expect(new Set([n, c, d]).size).toBe(3)
+  })
+
+  it('木桩打死了（ratio ≥ 1）如实报钳制，总分仍不叠操作分', () => {
+    const r = buildScoreConversion({ ...base, mode: 'training_dummy', score: 60000, aDamage: 1, bDamage: 3 })!
+    expect(r.clamped).toBe(true)
+    expect(r.damageScoreTo).toBe(60000)
+    expect(r.scoreTo).toBe(60000)
+  })
+
+  it('切换模式不会把上一模式的操作分带进来（clamp 按模式）', () => {
+    expect(clampOperationScore(5000, 'defense')).toBe(5000)
+    expect(clampOperationScore(5000, 'training_dummy')).toBe(0)
+    expect(splitTotalScore(65000, 5000, 'defense')).toEqual({ damageScore: 60000, operationScore: 5000 })
+    expect(splitTotalScore(65000, 5000, 'training_dummy')).toEqual({ damageScore: 60000, operationScore: 0 })
   })
 })

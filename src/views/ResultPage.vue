@@ -582,6 +582,10 @@
 
         <!-- Tab 3: 伤害池 -->
         <n-tab-pane name="damage" tab="伤害池">
+      <!-- 算出伤害后换算分数（用户 2026-10-28）：三条曲线（普通 / 绝境 / 木桩）各不相同，
+           纯展示、不重新求值。曲线单一来源 data/deadlyAssaultScore.ts。 -->
+      <DeadlyAssaultScoreCard :team-damage="teamTotalDamage" />
+
       <n-card v-if="teamOverview.length > 0" size="small" class="team-overview-card" :bordered="true">
         <template #header>
           <span class="pool-title">团队总览</span>
@@ -850,6 +854,7 @@ import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import FinalPanel from '@/components/FinalPanel.vue'
 import TeamDamage3DChart from '@/components/charts/TeamDamage3DChart.vue'
+import DeadlyAssaultScoreCard from '@/components/charts/DeadlyAssaultScoreCard.vue'
 import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf, truncationHint as truncationHintOf } from '@/composables/teamTimeSummary'
 import { computePerSlotBuildUp } from '@/composables/positionCompare'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'

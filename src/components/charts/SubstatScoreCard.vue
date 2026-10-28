@@ -226,45 +226,54 @@
       <div class="ssc-conv">
         <div class="ssc-conv-title">
           换成另一套配装会打多少分
-          <span class="ssc-conv-hint">同一 Boss、同一套操作 ⇒ 伤害/血量随伤害同比缩放</span>
+          <span class="ssc-conv-hint">同一场景、同一套操作 ⇒ 伤害/血量随伤害同比缩放</span>
         </div>
         <div class="ssc-conv-row">
-          <span class="ssc-conv-label">难度</span>
+          <span class="ssc-conv-label">曲线</span>
           <n-radio-group v-model:value="scoreMode" size="small">
             <n-radio-button v-for="opt in SCORE_MODE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</n-radio-button>
           </n-radio-group>
+          <span class="ssc-conv-mode-hint">{{ SCORE_MODE_HINT[scoreMode] }}</span>
+        </div>
+        <div class="ssc-conv-row">
           <span class="ssc-conv-label">伤害口径</span>
           <n-select v-model:value="scoreReadout" :options="readoutOptions" size="small" style="width: 140px" />
           <span class="ssc-conv-label">已知</span>
           <n-select v-model:value="scoreKnownSide" :options="scoreSideOptions" size="small" style="width: 190px" />
-          <span class="ssc-conv-label">总分</span>
+          <span class="ssc-conv-label">{{ operationCap > 0 ? '总分' : '分数' }}</span>
           <n-input-number
             v-model:value="scoreInput"
             :min="0"
-            :max="SCORE_TOTAL_CAP"
+            :max="scoreTotalCap"
             :step="500"
             size="small"
             style="width: 130px"
-            placeholder="例如 65000"
+            :placeholder="operationCap > 0 ? '例如 65000' : '例如 30000'"
           />
-          <span class="ssc-conv-label">其中操作分</span>
-          <n-input-number
-            v-model:value="operationScore"
-            :min="0"
-            :max="OPERATION_SCORE_CAP"
-            :step="500"
-            size="small"
-            style="width: 110px"
-          />
+          <template v-if="operationCap > 0">
+            <span class="ssc-conv-label">其中操作分</span>
+            <n-input-number
+              v-model:value="operationScore"
+              :min="0"
+              :max="operationCap"
+              :step="500"
+              size="small"
+              style="width: 110px"
+            />
+          </template>
         </div>
         <div class="ssc-conv-split">
-          <template v-if="scoreInput != null && Number.isFinite(scoreInput)">
-            总分 {{ fmt(scoreInput, 0) }} − 操作分 {{ fmt(clampOperationScore(operationScore), 0) }}
+          <!-- 木桩没有操作分（用户 2026-10-28）：不摆一个恒 0 的输入框，直说「总分 = 伤害分」 -->
+          <template v-if="operationCap === 0">
+            木桩没有操作分 ⇒ 填的分数就是伤害分，直接按伤害比换算。
+          </template>
+          <template v-else-if="scoreInput != null && Number.isFinite(scoreInput)">
+            总分 {{ fmt(scoreInput, 0) }} − 操作分 {{ fmt(operationScore, 0) }}
             = <b>伤害分 {{ fmt(knownDamageScore, 0) }}</b>
             <span v-if="totalBelowOperation" class="ssc-conv-warn-inline">（总分低于操作分，已按 0 伤害分算）</span>
           </template>
           <template v-else>
-            填<b>总分</b>就行：默认操作分 5000（可改），系统自动扣掉它得到伤害分，再按伤害比换算。
+            填<b>总分</b>就行：默认操作分 {{ fmt(operationScore, 0) }}（可改），系统自动扣掉它得到伤害分，再按伤害比换算。
           </template>
         </div>
         <template v-if="scoreConversion">
@@ -283,11 +292,17 @@
             <div class="ssc-facts">
               <div>{{ scoreConversion.fromLabel }} {{ fmt(scoreConversion.scoreFrom, 0) }} 分 ≈ 伤害/血量 {{ fmt(scoreConversion.ratioFrom * 100, 2) }}%</div>
               <div>伤害 ×{{ fmt(scoreConversion.damageRatio, 4) }} ⇒ {{ fmt(scoreConversion.ratioTo * 100, 2) }}%</div>
-              <div>伤害分 {{ fmt(scoreConversion.damageScoreTo, 0) }} + 操作分 {{ fmt(scoreConversion.operationScore, 0) }} = 总分 {{ fmt(scoreConversion.scoreTo, 0) }}</div>
+              <div v-if="scoreConversion.operationCap > 0">伤害分 {{ fmt(scoreConversion.damageScoreTo, 0) }} + 操作分 {{ fmt(scoreConversion.operationScore, 0) }} = 总分 {{ fmt(scoreConversion.scoreTo, 0) }}</div>
+              <div v-else>伤害分 {{ fmt(scoreConversion.damageScoreTo, 0) }}（木桩无操作分）= 分数 {{ fmt(scoreConversion.scoreTo, 0) }}</div>
             </div>
           </div>
           <div v-if="scoreConversion.clamped" class="ssc-conv-warn">
             ⚠ 结果被曲线端点钳住（{{ scoreConversion.ratioTo >= 1 ? '已击杀，伤害分封顶 60000' : '伤害占比 0' }}），实际比例不再线性可信。
+          </div>
+          <!-- 曲线性质不同，换算路径的解释也必须不同：木桩是正比，别再对它说「分段线性」 -->
+          <div v-else-if="scoreMode === 'training_dummy'" class="ssc-conv-note">
+            木桩曲线<b>正比</b>（每 1% 血量 = 600 分）⇒ 这里的换算与「分数 × 伤害比」等价；
+            危局（普通 / 绝境）是分段线性，必须走反解 → 缩放 → 正算。
           </div>
           <div v-else class="ssc-conv-note">
             分数曲线<b>分段线性</b>（同样 +1% 血在不同段换的分不同）⇒ 先由已知分数反解血量、再乘伤害之比、正算回分数，
@@ -296,7 +311,7 @@
         </template>
         <div v-else class="ssc-conv-note">
           先点上方「对比 A / B」拿到两个配置的伤害，再在这里填分数。
-          <span class="ssc-conv-dim">分数口径 = 危局单房总分（伤害分 ≤ 60000 + 操作分 ≤ 5000）。</span>
+          <span class="ssc-conv-dim">分数口径 = {{ SCORE_MODE_HINT[scoreMode] }}（{{ operationCap > 0 ? '总分 = 伤害分 ≤ 60000 + 操作分 ≤ 5000' : '没有操作分，上限 60000' }}）。</span>
         </div>
       </div>
     </div>
@@ -340,12 +355,13 @@ import { groupEnginesForAgent } from '@/composables/enginePicker'
 import { persistedRef } from '@/composables/persistedRef'
 import {
   DEADLY_ASSAULT_SCORE_CAP,
+  SCORE_MODE_HINT,
   SCORE_MODE_LABEL,
   SCORE_MODE_OPTIONS,
-  type DeadlyAssaultMode,
+  operationScoreCapOf,
+  type ScoreCurveMode,
 } from '@/data/deadlyAssaultScore'
 import {
-  OPERATION_SCORE_CAP,
   SCORE_READOUT_LABEL,
   buildScoreConversion,
   clampOperationScore,
@@ -551,17 +567,18 @@ function setSubStat(stat: string, n: number) {
  * 难度（普通 / 绝境）与「已知哪一套的分数」是用户输入，**按卡持久化**——
  * 同一支队反复调配装时不用每次重选；分数本身不存（避免下次打开看到过期数字）。
  */
-type ScoreConvertPrefs = { mode: DeadlyAssaultMode; knownSide: ScoreSide; readout: ScoreReadout; operationScore: number }
+type ScoreConvertPrefs = { mode: ScoreCurveMode; knownSide: ScoreSide; readout: ScoreReadout; operationScore: number }
 const scorePrefs = persistedRef<ScoreConvertPrefs>('zzz-substat-score-conv', v => {
   if (!v || typeof v !== 'object') return undefined
   const o = v as Partial<ScoreConvertPrefs>
-  const mode = o.mode === 'critical_assault' ? 'critical_assault' : 'defense'
+  const mode = o.mode === 'critical_assault' || o.mode === 'training_dummy' ? o.mode : 'defense'
   const knownSide = o.knownSide === 'b' ? 'b' : 'a'
   const readout = o.readout === 'own' ? 'own' : 'team'
   // 操作分：用户 2026-10-28「操作分默认 5000，让用户少填一次」；改过的值下次沿用
-  const operationScore = o.operationScore == null ? OPERATION_SCORE_CAP : clampOperationScore(o.operationScore)
+  // （按模式钳：木桩没有操作分 ⇒ 存着 5000 也只解析成 0，切回危局仍是 5000）
+  const operationScore = o.operationScore == null ? operationScoreCapOf(mode) : clampOperationScore(o.operationScore, mode)
   return { mode, knownSide, readout, operationScore }
-}, () => ({ mode: 'defense', knownSide: 'a', readout: 'team', operationScore: OPERATION_SCORE_CAP }))
+}, () => ({ mode: 'defense', knownSide: 'a', readout: 'team', operationScore: operationScoreCapOf('defense') }))
 const scoreMode = computed({
   get: () => scorePrefs.value.mode,
   set: v => { scorePrefs.value = { ...scorePrefs.value, mode: v } },
@@ -580,19 +597,21 @@ const scoreReadout = computed({
  * 不持久化——过期数字比空着更误导。
  */
 const scoreInput = ref<number | null>(null)
-/** 操作分（默认 5000 = 满分档；可改，随偏好在 localStorage 里沿用） */
+/** 当前模式的操作分上限（危局 5000 / 木桩 0）——单一来源 `operationScoreCapOf`，页面不写 5000 */
+const operationCap = computed(() => operationScoreCapOf(scoreMode.value))
+/** 操作分（危局默认 5000 = 满分档，木桩恒 0；可改，随偏好在 localStorage 里沿用） */
 const operationScore = computed({
-  get: () => scorePrefs.value.operationScore,
-  set: v => { scorePrefs.value = { ...scorePrefs.value, operationScore: clampOperationScore(v) } },
+  get: () => clampOperationScore(scorePrefs.value.operationScore, scoreMode.value),
+  set: v => { scorePrefs.value = { ...scorePrefs.value, operationScore: clampOperationScore(v, scoreMode.value) } },
 })
-/** 总分上限 = 伤害分 60000 + 操作分 5000（危局单房） */
-const SCORE_TOTAL_CAP = DEADLY_ASSAULT_SCORE_CAP + OPERATION_SCORE_CAP
+/** 分数输入上限 = 伤害分 60000 + 该模式操作分上限（木桩 = 60000） */
+const scoreTotalCap = computed(() => DEADLY_ASSAULT_SCORE_CAP + operationCap.value)
 /** 用户填的总分 − 操作分 = 真正进曲线的那部分（伤害分）；钳制口径与换算模块同一份实现 */
 const knownDamageScore = computed(() =>
-  splitTotalScore(scoreInput.value, operationScore.value).damageScore)
-/** 总分比操作分还低 ⇒ 伤害分被钳成 0（如实提示，不静默） */
+  splitTotalScore(scoreInput.value, operationScore.value, scoreMode.value).damageScore)
+/** 总分比操作分还低 ⇒ 伤害分被钳成 0（如实提示，不静默；木桩没有操作分，这提示不该出现） */
 const totalBelowOperation = computed(() =>
-  scoreInput.value != null && scoreInput.value < clampOperationScore(operationScore.value))
+  operationCap.value > 0 && scoreInput.value != null && scoreInput.value < operationScore.value)
 
 const readoutOptions = [
   { value: 'team' as ScoreReadout, label: SCORE_READOUT_LABEL.team },
@@ -625,7 +644,7 @@ const scoreConversion = computed(() => {
     mode: scoreMode.value,
     knownSide: scoreKnownSide.value,
     score: scoreInput.value,
-    operationScore: clampOperationScore(operationScore.value),
+    operationScore: operationScore.value,
     aDamage: scoreReadout.value === 'own' ? cmp.aOwn : cmp.aTeam,
     bDamage: scoreReadout.value === 'own' ? cmp.bOwn : cmp.bTeam,
   })
