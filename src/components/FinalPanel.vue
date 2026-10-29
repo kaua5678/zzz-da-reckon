@@ -115,7 +115,11 @@ import { SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
 const configStore = useConfigStore()
 const catalogStore = useCatalogStore()
 /** 音擎效果覆盖率有效表（手调 ⊕ 自动折算，与伤害同口径）：由所在页面的 calc 实例传入（r706 起 store 无展示缓存） */
-const props = defineProps<{ effectCoverages: Record<string, number> }>()
+const props = defineProps<{
+  effectCoverages: Record<string, number>
+  /** 驱动盘效果覆盖率（手调 ⊕ 自动折算）：与音擎表同款，缺省时引擎回落 store 手调表 */
+  discCoverages?: Record<string, number>
+}>()
 const activeSlot = ref(0)
 
 onMounted(async () => {
@@ -175,7 +179,7 @@ const panels = computed(() => {
   return [0, 1, 2].map(slot => {
     const char = configStore.team[slot]
     if (!char?.agentId) return null
-    const phases = computePanelPhases(slot, configStore, catalogStore, props.effectCoverages)
+    const phases = computePanelPhases(slot, configStore, catalogStore, props.effectCoverages, props.discCoverages)
     if (!phases) return null
     const pOut = phases.outOfCombat
     const pIn = phases.inCombat

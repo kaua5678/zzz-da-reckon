@@ -8,6 +8,8 @@ import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } fr
 import { DEFAULT_STUN_PLAN_PROJECTION_CODE, stunPlanProjectionFromCode } from '@/core/stunPlanProjection'
 import { continuousStunSplitOf } from '@/core/continuousStun'
 import { calcStunAxis, AXIS_BASIC_UNIT_SECONDS } from '@/core/stunAxis'
+import { DISC_TRIGGER_COVERAGE, discTriggerCoverage, wearsFourPieceOf } from '@/data/discSetCoverage'
+import { chainMoveKind } from '@/data/chainMoveKind'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
 import { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
@@ -188,10 +190,13 @@ export function createResourceCalc(
   })
 
   /** 各角色面板（音擎覆盖率表缺省 = store 手调表） */
-  function slotPanels(wEngineCoverages?: Record<string, number>): PanelValues[] {
+  function slotPanels(
+    wEngineCoverages?: Record<string, number>,
+    discCoverages?: Record<string, number>,
+  ): PanelValues[] {
     const result: PanelValues[] = []
     for (let i = 0; i < 3; i++) {
-      const p = computePanel(i, configStore, catalogStore, wEngineCoverages)
+      const p = computePanel(i, configStore, catalogStore, wEngineCoverages, discCoverages)
       // 盖章槽位号：本数组**按位置压缩**（空槽不 push）⇒ 下标 ≠ 槽位号，
       // 下游一律经 `panelAt(panels, slot)` 按身份取（见 core/panel.ts 头注释）。
       if (p) result.push({ ...p, slot: i })
@@ -211,15 +216,19 @@ export function createResourceCalc(
    * 手调表 ⊕ 本次资源结果的自动折算），同步求值；没有可补的自动值时就是资源侧那份。
    */
   const panels = computed<PanelValues[]>(() => {
-    const coverages = autoMergedWEngineCoverages.value
-    return coverages ? slotPanels(coverages) : resourcePanels.value
+    // 两张自动表各自可能是 null（没有可补的自动值）⇒ 有任一张就重算结算侧面板
+    const engineCoverages = autoMergedWEngineCoverages.value
+    const discCoverages = autoMergedDiscEffectCoverages.value
+    return engineCoverages || discCoverages
+      ? slotPanels(engineCoverages ?? undefined, discCoverages ?? undefined)
+      : resourcePanels.value
   })
 
   /** 各角色“进场记录面板”（特殊虚耀使用；结算侧，覆盖率口径同 panels） */
   const entrySnapshotPanels = computed<PanelValues[]>(() => {
     const result: PanelValues[] = []
     for (let i = 0; i < 3; i++) {
-      const p = computeEntrySnapshotPanel(i, configStore, catalogStore, effectiveWEngineCoverages.value)
+      const p = computeEntrySnapshotPanel(i, configStore, catalogStore, effectiveWEngineCoverages.value, effectiveDiscEffectCoverages.value)
       if (p) result.push({ ...p, slot: i })
     }
     return result
@@ -682,6 +691,47 @@ export function createResourceCalc(
   const effectiveWEngineCoverages = computed(() =>
     autoMergedWEngineCoverages.value ?? configStore.wEngineEffectCoverages)
 
+  /**
+   * 驱动盘**触发型效果**覆盖率的自动折算（数据源 `src/data/discSetCoverage.ts`，口径见其 @fact）。
+   *
+   * 与音擎折算同款：依赖已收敛的 `adjustedResourceResult` ⇒ 资源迭代之后求值；资源侧（`resourcePanels` /
+   * 构建期面板）只读 store 手调表、不读自动值 ⇒ 无环。用户 2026-10-29 裁决「可以折算」（回应实测：
+   * 摇摆爵士 4pc 按 100% 算时在引擎里排最高，拨到 25% 以下才是「非常弱的四摇摆」的手感）。
+   */
+  const discEffectAutoCoverages = computed<Record<string, number>>(() => {
+    const res = adjustedResourceResult.value
+    if (!res) return {}
+    const battleSeconds = effectiveBattleTime(configStore.enemy)
+    const out: Record<string, number> = {}
+    for (const [effectId, spec] of Object.entries(DISC_TRIGGER_COVERAGE)) {
+      // 装备者 = 该套**真到 4 件**的槽（2+2+2 下只有 2 件 ⇒ 4pc 段本就不收集，自然无折算）
+      const slot = configStore.team.findIndex(c => wearsFourPieceOf(c.driveDisc, spec.setId))
+      if (slot < 0) continue
+      const ch = res.characters.find(c => c.slot === slot)
+      if (!ch) continue
+      const skills = catalogStore.agentSkillsByAgentMap.get(ch.agentId)
+      let chain = 0
+      let ultimate = 0
+      for (const row of ch.executions) {
+        const count = Math.max(0, Number(row.count))
+        if (!(count > 0)) continue
+        // `chainMoveKind` 的返回值是 'ultimate' | 'chainAttack' | null（本仓口径，见 data/chainMoveKind）
+        const kind = chainMoveKind(skills, row.moveId)
+        if (kind === 'chainAttack') chain += count
+        else if (kind === 'ultimate') ultimate += count
+      }
+      const cov = discTriggerCoverage(effectId, { chain, ultimate, battleSeconds })
+      if (cov != null) out[effectId] = cov
+    }
+    return out
+  })
+  /** 手调表 ⊕ 自动折算（口径见 `configStore.mergeDiscEffectCoverageAuto`：手调优先） */
+  const autoMergedDiscEffectCoverages = computed(() =>
+    configStore.mergeDiscEffectCoverageAuto(discEffectAutoCoverages.value))
+  /** 非 null 版：结算侧面板与界面共用（与 `effectiveWEngineCoverages` 同款，伤害不取决于写回时序） */
+  const effectiveDiscEffectCoverages = computed(() =>
+    autoMergedDiscEffectCoverages.value ?? configStore.discEffectCoverages)
+
   // r706：此处原有 immediate watch 把自动值写进 store 的展示缓存——它让每个实例创建即算、此后每次状态变化都算
   // （不论有没有人读；r706 探针：多一个只建不读的实例，每次输入就多一遍整条管线）。已删 ⇒ 实例纯惰性，只在被读时求值。
 
@@ -999,7 +1049,7 @@ const damageSourceTotals = computed(() => computeDamageSourceTotals(damageSource
  */
 const attributeLedger = computed(() => {
   const slot = 0
-  const phases = computePanelPhases(slot, configStore, catalogStore, effectiveWEngineCoverages.value)
+  const phases = computePanelPhases(slot, configStore, catalogStore, effectiveWEngineCoverages.value, effectiveDiscEffectCoverages.value)
   if (!phases) return null
   return buildAttributeLedger(
     phases.buffs, phases, phases.effectCoverageMap,
@@ -1031,6 +1081,8 @@ const attributeLedger = computed(() => {
     panels,
     /** 结算侧音擎覆盖率表（手调 ⊕ 自动折算，同步）：手里有 calc 的分析代码按它算面板，与伤害同口径（r702） */
     effectiveWEngineCoverages,
+    /** 结算侧驱动盘效果覆盖率表（手调 ⊕ 自动折算）：与音擎表同款，分析代码按它算面板才与伤害同口径 */
+    effectiveDiscEffectCoverages,
     teamTotalDamage,
     stunAxisResult,
     stackTraversalResult,

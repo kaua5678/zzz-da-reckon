@@ -440,7 +440,7 @@ export async function scoreSubstats(
     /** 该槽位面板（按 spec 的 sourcePanelPhase 取局内/局外）——只读，用于算转模总量 */
     const panelForConversions = (): { inCombat: Record<string, number>; outOfCombat: Record<string, number> } => {
       if (slot === null) return { inCombat: {}, outOfCombat: {} }
-      const phases = computePanelPhases(slot, config, useCatalogStore(), calc.effectiveWEngineCoverages.value)
+      const phases = computePanelPhases(slot, config, useCatalogStore(), calc.effectiveWEngineCoverages.value, calc.effectiveDiscEffectCoverages.value)
       if (!phases) return { inCombat: {}, outOfCombat: {} }
       return {
         inCombat: phases.inCombat as unknown as Record<string, number>,

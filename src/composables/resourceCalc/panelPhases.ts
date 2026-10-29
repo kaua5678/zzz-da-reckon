@@ -126,8 +126,10 @@ import { applyDefaultCinemaSkillLevelBonus } from '@/core/agentPanelPhases'
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   wEngineCoverages?: Record<string, number>,
+  /** 驱动盘效果覆盖率（手调 ⊕ 自动折算）；缺省 = 只读 store 手调表（构建期兜底，与音擎同款） */
+  discCoverages?: Record<string, number>,
 ): PanelValues | null {
-  return computePanelPhases(slot, configStore, catalogStore, wEngineCoverages)?.inCombat ?? null
+  return computePanelPhases(slot, configStore, catalogStore, wEngineCoverages, discCoverages)?.inCombat ?? null
 }
 
 /**
@@ -432,11 +434,13 @@ export function resolveSlotPanelBuffInputs(
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   wEngineCoverages: Record<string, number> = configStore.wEngineEffectCoverages,
+  /** 驱动盘效果覆盖率（手调 ⊕ 自动折算，与音擎同款）；缺省 = store 手调表 */
+  discCoverages?: Record<string, number>,
 ): { teammateBuffs: TeammateBuff[]; sourcePanelsByOwner: ReturnType<typeof buildTeammateBuffSourceContext>['sourcePanelsByOwner']; effectCoverageMap: Map<string, number>; team: ReadonlyTeam } {
   const buffSelections = configStore.teammateBuffSelections
   const { enabledTeammateBuffs, sourcePanelsByOwner } = buildTeammateBuffSourceContext(configStore.team, {
     // CC-172（第 197 轮）：来源面板 = 角色自身配置（不带队友 buff），覆盖率口径与进场快照面板相同
-    effectCoverageMap: selfEffectCoverageMap(configStore, catalogStore, wEngineCoverages),
+    effectCoverageMap: selfEffectCoverageMap(configStore, catalogStore, wEngineCoverages, discCoverages),
     teammateBuffGroups: catalogStore.teammateBuffGroups,
     driveDiscSetsMap: catalogStore.driveDiscSetsMap,
     statRules: catalogStore.statRules,
@@ -529,7 +533,7 @@ export function resolveSlotPanelBuffInputs(
     const coverage = teammateBuffCoverageOf(buffSelections, buff.id) / 100
     for (const effect of buff.effects) effectCoverageMap.set(effect.id, coverage)
   }
-  mergeTeamDiscEffectCoverages(effectCoverageMap, configStore, catalogStore, teamDiscs(configStore))
+  mergeTeamDiscEffectCoverages(effectCoverageMap, configStore, catalogStore, teamDiscs(configStore), discCoverages)
   return { teammateBuffs: allTeammateBuffs, sourcePanelsByOwner, effectCoverageMap, team }
 }
 
@@ -538,6 +542,8 @@ export function computePanelPhases(
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   wEngineCoverages?: Record<string, number>,
+  /** 驱动盘效果覆盖率（手调 ⊕ 自动折算）；缺省 = 只读 store 手调表（构建期兜底，与音擎同款） */
+  discCoverages?: Record<string, number>,
 ): {
   outOfCombat: PanelValues
   inCombat: PanelValues
@@ -562,7 +568,7 @@ export function computePanelPhases(
 
   const wEngine = char.wEngineId ? catalogStore.wEnginesMap.get(char.wEngineId) : undefined
 
-  const { teammateBuffs: allTeammateBuffs, sourcePanelsByOwner, effectCoverageMap, team } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore, wEngineCoverages)
+  const { teammateBuffs: allTeammateBuffs, sourcePanelsByOwner, effectCoverageMap, team } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore, wEngineCoverages, discCoverages)
   // 源面板的**槽位视图**（`core/sourcePanels`）：同一批面板对象折成 slot → { outOfCombat, inCombat }，
   // 供 `applyPanel` / `teamPanelEffects` 读队友面板做转模（此前只能按 agentId 自建第二份表 ⇒ 60 个模块各抄一遍）。
   // 值不拷贝 ⇒ 与 `sourcePanelsByOwner` 逐位同源；空槽不产条目（见 `buildSourcePanelsBySlot`）。
@@ -736,6 +742,8 @@ export function computeEntrySnapshotPanel(
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   wEngineCoverages?: Record<string, number>,
+  /** 驱动盘效果覆盖率（手调 ⊕ 自动折算）；缺省 = 只读 store 手调表 */
+  discCoverages?: Record<string, number>,
 ): PanelValues | null {
   const char = configStore.team[slot]
   if (!char?.agentId) return null
@@ -757,7 +765,7 @@ export function computeEntrySnapshotPanel(
       wEngineModLevel: char.wEngineModLevel,
       potentialLevel: char.potentialLevel, // CC-171：与 computePanelPhases 同口径
       enemyWeakness: configStore.enemy.weakness,
-      effectCoverageMap: selfEffectCoverageMap(configStore, catalogStore, wEngineCoverages),
+      effectCoverageMap: selfEffectCoverageMap(configStore, catalogStore, wEngineCoverages, discCoverages),
     },
   )
   const panel = { ...result.inCombat }
@@ -773,9 +781,10 @@ function selfEffectCoverageMap(
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   wEngineCoverages: Record<string, number> = configStore.wEngineEffectCoverages,
+  discCoverages?: Record<string, number>,
 ): Map<string, number> {
   const map = wEngineEffectCoverageMapOf(wEngineCoverages)
-  mergeTeamDiscEffectCoverages(map, configStore, catalogStore, teamDiscs(configStore))
+  mergeTeamDiscEffectCoverages(map, configStore, catalogStore, teamDiscs(configStore), discCoverages)
   return map
 }
 
@@ -798,20 +807,23 @@ function mergeTeamDiscEffectCoverages(
   configStore: ConfigModel,
   catalogStore: ReturnType<typeof useCatalogStore>,
   slotDiscs: readonly DriveDiscConfig[],
+  /** 手调 ⊕ 自动折算的覆盖率表；缺省 = store 手调表（表里没有的效果 id 按 discEffectCoverageOf 缺省 100） */
+  discCoverages?: Record<string, number>,
 ): void {
   const setIds = new Set<string>()
   for (const disc of slotDiscs) {
-    for (const id of [disc.fourPieceSetId, disc.twoPieceSetId]) if (id) setIds.add(id)
+    // thirdTwoPieceSetId（2+2+2 的第三套）同样要并进来——它的 2 件段也可能带条件/时长
+    for (const id of [disc.fourPieceSetId, disc.twoPieceSetId, disc.thirdTwoPieceSetId]) if (id) setIds.add(id)
   }
   for (const setId of setIds) {
-    const discCoverages = configStore.discEffectCoverages
+    const table = discCoverages ?? configStore.discEffectCoverages
     const set = catalogStore.driveDiscSetsMap.get(setId)
     if (!set) continue
     const groups = [set.fourPiece.selfBuff, set.fourPiece.teamBuff, set.twoPiece]
     for (const g of groups) {
       for (const e of g?.effects ?? []) {
         if (!e.id) continue
-        map.set(e.id, discEffectCoverageOf(discCoverages, e.id) / 100)
+        map.set(e.id, discEffectCoverageOf(table, e.id) / 100)
       }
     }
   }

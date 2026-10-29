@@ -1064,6 +1064,22 @@ export function createConfigModel(
     return merged
   }
 
+  /**
+   * 手调表 ⊕ 驱动盘效果自动折算值（数据源 = `src/data/discSetCoverage.ts`，按执行行次数 × 持续 / 战斗时长折算）：
+   * 表里已有的键（= 手调过）优先，自动值夹到 0–100；没有可补的自动值时返回 null（调用方直接用手调表）。
+   * 与 `mergeWEngineEffectCoverageAuto` 同款，唯一调用方 = `useResourceCalc` 合成 `effectiveDiscEffectCoverages`。
+   */
+  function mergeDiscEffectCoverageAuto(auto: Record<string, number>): Record<string, number> | null {
+    const manual = discEffectCoverages.value
+    let merged: Record<string, number> | null = null
+    for (const [effectId, coverage] of Object.entries(auto)) {
+      if (effectId in manual) continue
+      if (!merged) merged = { ...manual }
+      merged[effectId] = Math.max(0, Math.min(100, coverage))
+    }
+    return merged
+  }
+
   // CC-386：随角色的用户覆盖（资源利用率 / 异常积蓄利用率 / 异常结算份额）的**唯一键构造点**。
   // 键 = 槽上当前 agentId，不是槽位：换人（setAgent / 预设 / 独立场景直写 team）后旧角色的覆盖天然读不到，
   // 换回或挪槽时设置跟着角色走。修前按槽位存、引擎按槽位直读，换人不清 ⇒ 上一个角色的 0.3 利用率原样作用到新角色
@@ -1523,6 +1539,7 @@ export function createConfigModel(
     setTeammateBuffCoverage,
     setWEngineEffectCoverage,
     mergeWEngineEffectCoverageAuto,
+    mergeDiscEffectCoverageAuto,
     setDiscEffectCoverage,
     getDiscEffectCoverage,
     getResourceUtilization,

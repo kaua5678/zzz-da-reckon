@@ -25,6 +25,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 音擎高级词条（白值） | 局外 | 数据中明确 scope |
 | 音擎被动效果 | 局内 | 战斗中触发 |
 | 驱动盘套装效果 | 局内 | 战斗中触发 |
+| 驱动盘/音擎的「效果覆盖率」 | 面板 | 触发型效果的 uptime = 手调滑块 ⊕ **资源侧自动折算**（驱动盘 `data/discSetCoverage.ts#discTriggerCoverage`：min(1, Σ触发次数 × 时长 / 战斗有效时长)；音擎 `data/wEngineStackCoverage.ts`）。手调优先，未登记效果保持 100%。实测摇摆 4pc 在柚叶/露西队只到 **13%~47%** |
 | 驱动盘形态「4+2 / 2+2+2」 | 配置（不参与面板口径） | `DriveDiscConfig#thirdTwoPieceSetId` **置位 = 2+2+2**（三套各 2 件、无 4 件段）；每套几件的唯一解析 = `core/buff.ts#resolveDiscSetPieces`，4 件段判定 = `#discFourPieceSetIdOf`（引擎收集 / 团队段 / 效果清单三处同源）。用户 2026-10-29：「洛克茜该带摇摆2+月光2+34400×2」 |
 | 核心被动 | 局外/局内 | 看文本：条件触发/战斗中 → 局内；无条件面板 → 局外 |
 | 额外能力 | 局内 | 需要队伍条件触发 |
@@ -180,6 +181,8 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 异放伤害提升 X% | `anomalyReleaseDmgBonus` | 异放专用独立增伤区，只在 settlementType=release 时进入公式 |
 | 灼烧/感电/侵蚀 DOT | `damagePoolAnomaly.ts` DoT 行（虚拟面板·按积蓄占比分摊） | 每跳倍率 / 跳间隔取 `ANOMALY_TICK`，跳数 = 默认持续时间 / 跳间隔 + 延长秒数按跳四舍五入（`core/anomalyPool/helpers.ts#standardDot`，伤害池行与结果页事件共用；r730 前的 `STANDARD_DOT_CONFIG` 已并入）；core `calcStandardDotDamage` 已于 CC-D2 删除 |
 | 风化/畏缩/霜寒 | 无逐跳 DOT | 只有持续状态（buff）：风化 = **一次性伤害 1250%** + 30s 状态（见 8.2），畏缩/霜寒纯状态；风化有浸染(infection)直伤+10%独立乘区 |
+| 霜寒「敌人受到暴击伤害提升 X%」 | `enemyCritDmgTakenBonus` | **直伤族专属**：只进 `calcCritMultiplier` / `calcSharpCritMultiplier`（含霜寒覆盖折算 `10×frostCoverageRate`）。**不进异常暴击区**（异常暴击是 `anomalyCritRate/anomalyCritDmg`，另一条乘区）——用户裁决 2026-10-29 |
+| 浸染（风化）独立乘区 | `infectionZoneBonus` | **直伤族专属**：「仅风属性与其染色属性直伤生效」（`core/damage.ts#calcDirectDamage` 第 8 区），**不作用于任何异常事件**（用户裁决 2026-10-29） |
 | X 属性异常伤害提升 X% | `windAnomalyDmgBonus` 等 | 元素专属异常增伤 |
 | 紊乱基础倍率提升 X 点 | `disorderBaseMultiplierBonus` | 加到紊乱基础倍率（如 450→700） |
 | 异常持续时间延长 X 秒 | `{element}AnomalyDurationBonusSeconds` | 元素专属，如 `physicalAnomalyDurationBonusSeconds` |
