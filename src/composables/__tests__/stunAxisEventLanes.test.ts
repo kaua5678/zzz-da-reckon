@@ -130,23 +130,39 @@ describe('页面形状锁（看不到招式名字的两个根因）', () => {
     expect(block).toContain('sap-block-text')
   })
 
-  it('招式名有保底宽度；徽标先收缩（顺序错了名字又会被压成 0 宽）', () => {
+  /**
+   * ⚠ 2026-10-29 口径迁移（本条锁的**意图不变**，判据换了）：
+   * 旧判据 = 「名字有 min-width:3.6em 保底宽度 ⇒ 名字永远占着 3.6em，徽标先收缩」。
+   * 但 3.6em 保的是**占位**不是**可读**：块只有 2% 宽时，名字照样被 overflow 切成半个字
+   * （用户报「动作块也短小，写字也不清不楚」）。现在保证改由**布局**给：
+   * 放得下才写块里、放不下排到标签行（stunAxisView#layoutBlockLabels，有单测）；
+   * CSS 侧只留「名字不收缩、徽标与时长先收缩」这条优先级。
+   */
+  it('招式名优先：名字不收缩、徽标/时长先收缩；放不下的名字改走标签行（不再切字）', () => {
     const nameRule = page.match(/\.sap-block-text \{([^}]*)\}/)?.[1] ?? ''
     const badgeRule = page.match(/\.sap-mw \{([^}]*)\}/)?.[1] ?? ''
-    expect(nameRule, '.sap-block-text 必须有 min-width').toMatch(/min-width:\s*[\d.]+em/)
+    const durRule = page.match(/\.sap-block-dur \{([^}]*)\}/)?.[1] ?? ''
+    expect(nameRule, '名字不许参与收缩（放不放得下由布局判）').toMatch(/flex:\s*0\s+0/)
     expect(nameRule, '名字不许 flex:1 被压到 0').not.toMatch(/flex:\s*1/)
     expect(badgeRule, '徽标必须可收缩').toMatch(/flex-shrink:\s*1/)
+    expect(durRule, '时长是可收缩的尾巴（先挤掉它，不是挤名字）').toMatch(/flex:\s*0\s+1/)
+    expect(page, '外置标签行仍在').toContain('class="sap-blab"')
+    expect(page, '块内文字必须由布局判定，不许无条件输出').toContain('v-if="blockTextOf(ai, aii)"')
   })
 
-  it('事件道渲染存在，道高/道位/标记行全部来自派生函数（不写死道高）', () => {
-    // 道：一条道一类事件，top/height 由 eventLanes 逐道算（行数不同 ⇒ 不能用固定 20px 递增）
-    expect(page).toContain('v-for="lane in eventLanes(ai)"')
+  it('事件道/标签行渲染存在，道高·道位·标记行全部来自派生布局（不写死道高与道距）', () => {
+    // 道：一条道一类事件，top/height 由 eventLanes 逐道算，起点由 buildTimelineLayout 逐轴给
+    expect(page).toContain('v-for="lane in layoutOf(ai).evLanes"')
     expect(page).toContain(':style="{ top: lane.top, height: lane.height }"')
-    // 标记：同刻多颗要分行（mk.row），否则「触发」与「块末积蓄槽」会叠成一颗
-    expect(page).toContain('top: (2 + mk.row * 16) + \'px\'')
-    // 时间轴容器高度也必须随内容走（写死会把新增的事件道压出容器）
-    expect(page).toContain(':style="{ height: timelineHeight(ai) }"')
+    // 标记：同刻多颗要分行（mk.row），行高走 TL 常量（写死 16 会在改块高/道高时错位）
+    expect(page).toContain('top: (3 + mk.row * TL.evRowH)')
+    // 时间轴容器高度也必须随内容走（写死会把新增的事件道/标签行压出容器）
+    expect(page).toContain(":style=\"{ height: layoutOf(ai).height + 'px' }\"")
     expect(page).not.toMatch(/\.sap-timeline \{[^}]*height:\s*106px/)
+    // 累积式布局：窗口道/事件道的顶坐标必须是**算出来的**（旧实现写死 24 + 序号×20 ⇒ 多一行就互相压住）
+    expect(page).toContain('winTop')
+    expect(page, '不许回退成固定道距').not.toContain('eventLaneFirst.value * 20')
+    expect(page, '像素口径必须走 TL 常量').toContain('const TL = {')
   })
 })
 
