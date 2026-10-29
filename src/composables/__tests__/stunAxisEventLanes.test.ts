@@ -154,15 +154,20 @@ describe('页面形状锁（看不到招式名字的两个根因）', () => {
     // 道：一条道一类事件，top/height 由 eventLanes 逐道算，起点由 buildTimelineLayout 逐轴给
     expect(page).toContain('v-for="lane in layoutOf(ai).evLanes"')
     expect(page).toContain(':style="{ top: lane.top, height: lane.height }"')
-    // 标记：同刻多颗要分行（mk.row），行高走 TL 常量（写死 16 会在改块高/道高时错位）
-    expect(page).toContain('top: (3 + mk.row * TL.evRowH)')
+    // 标记：同刻多颗要分行（mk.row），行高走共享几何常量（写死 16 会在改块高/道高时错位）。
+    // ⚠ 2026-10-30 口径迁移（本条锁的**意图不变**，判据换了）：像素表从本页的 `TL` 搬到
+    //   `composables/axisTimeline.ts#AXIS_TIME_PX`，与资源池·逐窗兑现图**共用一份** ⇒
+    //   锁的目标从「本页有一个 TL 常量」升级成「本页**不再自持**像素表、必须引用共享原语」。
+    expect(page).toContain('AXIS_TIME_PX.evMarkTop + mk.row * AXIS_TIME_PX.evRowH')
     // 时间轴容器高度也必须随内容走（写死会把新增的事件道/标签行压出容器）
     expect(page).toContain(":style=\"{ height: layoutOf(ai).height + 'px' }\"")
     expect(page).not.toMatch(/\.sap-timeline \{[^}]*height:\s*106px/)
     // 累积式布局：窗口道/事件道的顶坐标必须是**算出来的**（旧实现写死 24 + 序号×20 ⇒ 多一行就互相压住）
     expect(page).toContain('winTop')
     expect(page, '不许回退成固定道距').not.toContain('eventLaneFirst.value * 20')
-    expect(page, '像素口径必须走 TL 常量').toContain('const TL = {')
+    // 像素口径只许有一份：本页必须引共享原语，且**不许**再自建一份 TL/写字面几何常量
+    expect(page, '像素口径必须走共享几何常量').toContain("from '@/composables/axisTimeline'")
+    expect(page, '不许再自持一份像素表（两份几何正是漂移的根因）').not.toContain('const TL = {')
   })
 })
 

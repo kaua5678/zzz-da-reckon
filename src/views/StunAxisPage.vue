@@ -114,12 +114,13 @@
                ⚠ 高度随「角色道 + 专属窗口道 + 事件道」条数走（内联 height）：写死高度会让新增的事件道溢出到下一个轴。 -->
           <div class="sap-timeline" :style="{ height: layoutOf(ai).height + 'px' }"
             @pointermove="onTimelineMove($event, ai)" @pointerup="endDrag" @pointerleave="endDrag">
-            <div class="sap-ticks">
-              <div v-for="t in ticks" :key="t" class="sap-tick" :style="{ left: pct(t) }">
+            <!-- 刻度行 / 窗口条的高与顶也走共享常量（原先把 18/12 写在 CSS、把 34 写在 JS 的 TL.head 里 = 改一处要改两处） -->
+            <div class="sap-ticks" :style="{ height: AXIS_TIME_PX.tickH + 'px' }">
+              <div v-for="t in ticks" :key="t" class="sap-tick" :style="{ left: axisPct(t, maxDur) + '%' }">
                 <span class="sap-tick-label">{{ t }}s</span>
               </div>
             </div>
-            <div class="sap-window-bar">
+            <div class="sap-window-bar" :style="{ top: AXIS_TIME_PX.tickH + 'px', height: AXIS_TIME_PX.windowBarH + 'px' }">
               <span class="sap-win-label">失衡窗口 {{ fmt(maxDur, 1) }}s</span>
             </div>
             <div v-for="s in [0,1,2]" :key="s" class="sap-lane"
@@ -128,12 +129,13 @@
             </div>
             <!-- CC-448：专属窗口平行道（限时 buff 可视化）：模块声明 axisWindowLane 驱动的泛型渲染；触发块处画 windowSeconds 窗口条，满覆盖铺满 -->
             <div v-for="(lane, li) in windowLanes" :key="'lane-' + lane.decl.kind" class="sap-lane sap-mw-lane"
-              :style="{ top: (layoutOf(ai).winTop + li * TL.laneH) + 'px', height: TL.laneH + 'px' }">
+              :style="{ top: (layoutOf(ai).winTop + li * AXIS_TIME_PX.laneH) + 'px', height: AXIS_TIME_PX.laneH + 'px' }">
               <span class="sap-lane-name">{{ lane.decl.name }}</span>
-              <div v-if="lane.full" class="sap-mw-window mw-full" style="left:0;width:100%">{{ lane.full }}</div>
+              <div v-if="lane.full" class="sap-mw-window mw-full"
+                :style="{ left: 0, width: '100%', top: AXIS_TIME_PX.winBarTop + 'px', height: AXIS_TIME_PX.winBarH + 'px' }">{{ lane.full }}</div>
               <template v-else>
                 <div v-for="w in laneWindowsFor(lane, ai)" :key="w.key" class="sap-mw-window" :class="w.cls"
-                  :style="{ left: w.leftPct + '%', width: w.widthPct + '%' }">
+                  :style="{ left: w.leftPct + '%', width: w.widthPct + '%', top: AXIS_TIME_PX.winBarTop + 'px', height: AXIS_TIME_PX.winBarH + 'px' }">
                   <span v-if="w.widthPct > 7">{{ w.label }}</span>
                 </div>
               </template>
@@ -159,7 +161,7 @@
             <!-- 标签行（用户口径 2026-10-29：「动作块也短小，写字也不清不楚」）：
                  块里放不下的名字排到所在角色道下方，按时刻定位、同排不重叠（行号由
                  stunAxisView#layoutBlockLabels 纯几何给出）；左侧那道 2px 竖线就是指向块起点的引线。 -->
-            <div v-for="lb in labelRowsOf(ai)" :key="'lb-' + lb.aii" class="sap-blab"
+            <div v-for="lb in labelRowsOf(ai)" :key="'lb-' + lb.index" class="sap-blab"
               :style="{ left: lb.leftPct + '%', top: lb.top + 'px' }" :title="lb.title">
               {{ lb.label }}<span v-if="lb.durText" class="sap-block-dur">{{ lb.durText }}</span>
             </div>
@@ -168,7 +170,7 @@
             <div v-for="lane in layoutOf(ai).evLanes" :key="'el-' + lane.key" class="sap-lane sap-ev-lane" :style="{ top: lane.top, height: lane.height }">
               <span class="sap-lane-name">{{ lane.name }}</span>
               <div v-for="mk in lane.markers" :key="mk.key" class="sap-ev" :class="['ev-' + mk.kind, { dim: mk.dim }]"
-                :style="{ left: evLeftPct(mk.at), top: (3 + mk.row * TL.evRowH) + 'px' }" :title="mk.title">
+                :style="{ left: axisPctFromZero(mk.at, maxDur) + '%', top: (AXIS_TIME_PX.evMarkTop + mk.row * AXIS_TIME_PX.evRowH) + 'px', height: AXIS_TIME_PX.evMarkH + 'px' }" :title="mk.title">
                 <span class="sap-ev-dot"></span>
                 <span class="sap-ev-label">{{ mk.label }}</span>
               </div>
@@ -326,8 +328,13 @@ import { agentCombos, agentAxisBlockActionTime, teamOwnsAxisGash, agentAxisBlock
 import type { AxisEditorBlockMark } from '@/mechanics/types'
 import type { TeamAxisWindowLane } from '@/composables/agentMechanicView'
 import { matchStunAxisPresets, cloneStunAxes, normalizeAxesForExport, prefillPresetGuarantee } from '@/data/stunAxisPresets'
-import { axisWindowCounts, layoutBlockLabels } from '@/composables/stunAxisView'
+import { axisWindowCounts } from '@/composables/stunAxisView'
 import { axisEventLaneDefs, buildAnomalyEventMarkers, buildMaimEventMarkers, layoutEventMarkers, type AxisEventMarker } from '@/composables/stunAxisEventLanes'
+// 时间轴共享原语（与资源池·逐窗兑现图同一份几何/换算；见 axisTimeline.ts 头注释）
+import {
+  AXIS_TIME_PX, axisPct, axisPctFromZero, axisBarGeometry, buildAxisTimeline, emptyAxisTimeline,
+  type AxisTimelineInput, type AxisTimelineLabelRow, type AxisTimelineLayout,
+} from '@/composables/axisTimeline'
 import { isStaleAxisActionFor } from '@/composables/resourceCalc/roundInputs'
 import { axisTableDirectCandidates } from '@/composables/resourceCalc/axisTableDirect'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
@@ -390,32 +397,8 @@ const matchedPresets = computed(() => matchStunAxisPresets(configStore.team.map(
 // 失衡窗口时长 = stunTime + 连携窗口(4) + 全队失衡延时（琉音+2、般岳C1+2 等），与引擎同口径
 const maxDur = computed(() => windowDuration.value)
 const ticks = computed(() => { const t: number[] = []; for (let i = 0; i <= maxDur.value; i += 2) t.push(i); return t })
-/**
- * 时间轴几何常量（**单一来源**，2026-10-29）：
- * 像素口径只在这里出现，CSS 只放字号 / 颜色 / 内边距（对应规则在名字里点名，改一处要改两处）。
- * 此前这些数在 CSS 与 JS 各写一份（`.sap-lane` 19px / `laneTop` 的 20px 间距 / 事件道 16px 行高…），
- * 实测后果就是「道高写死 ⇒ 新增一条道直接溢出到下一个轴」。
- *
- * 尺寸口径（用户 2026-10-29：「动作块也短小，写字也不清不楚」）：
- * 块高 15→22px、块内字号 8→11px、道高 19→26px，名字在块里站得住（放不下的见标签行）。
- */
-const TL = {
-  /** 顶端 → 第一条角色道（刻度行 18 + 失衡窗口条 12 + 4） */
-  head: 34,
-  /** 角色道高 */
-  laneH: 26,
-  /** 道间距 */
-  laneGap: 4,
-  /** 动作块高（道内垂直居中） */
-  blockH: 22,
-  /** 外置标签行高 */
-  labelH: 16,
-  /** 事件道每行高 / 上下留白 */
-  evRowH: 18,
-  evPad: 6,
-  /** 底边留白 */
-  tail: 6,
-} as const
+// 时间轴几何常量 = `AXIS_TIME_PX`（`composables/axisTimeline.ts`，与逐窗兑现图**共用一份**；
+// 2026-10-30 起本页不再自持 TL —— 两份几何正是「编辑器里不溢出、逐窗图里溢出」的根因）。
 const slotOptions = computed(() => [0, 1, 2].map(s => ({ label: agentName(s), value: s })))
 // 专属窗口平行道（般岳明王 8s / 仪玄凝神 15s 等限时 buff 可视化）
 // CC-62：lane 拥有者经模块声明 axisWindowLane（原写死 findIndex agentId === 1471 / 1371）
@@ -450,12 +433,10 @@ function laneWindowsFor(lane: WindowLaneView, ai: number): { key: string; label:
   for (const [aii, act] of axis.actions.entries()) {
     if (act.slot !== lane.slot || !lane.decl.isTriggerBlock(act, lane.ctx)) continue
     const key = `${ai}:${aii}`
-    win.push({
-      key,
-      ...lane.decl.window(lane.marks.get(key)),
-      leftPct: ((act.startTime ?? 0) / maxDur.value * 100),
-      widthPct: Math.max(2, (lane.decl.windowSeconds / maxDur.value * 100)),
-    })
+    // 窗口条与动作块共用 `axisBarGeometry`（同一份「起点 + 时长 → left/width」换算；
+    // 最小宽度 2%：窗口条也要在窄轴上看得见）
+    const bar = axisBarGeometry({ start: act.startTime ?? 0, duration: lane.decl.windowSeconds, span: maxDur.value, minPct: 2 })
+    win.push({ key, ...lane.decl.window(lane.marks.get(key)), leftPct: bar.leftPct, widthPct: bar.widthPct })
   }
   return win
 }
@@ -796,26 +777,22 @@ function anomalyEventMarkers(ai: number): AxisEventMarker[] {
     },
   })
 }
-interface EventLaneView { key: 'anomaly' | 'maim'; name: string; rows: number; top: string; height: string; markers: Array<AxisEventMarker & { row: number }> }
-/** 本轴的可见事件道（无摘要 / 无残痕 ⇒ 道不出现；道内无标记也保留道，让用户看到"这条道是空的"） */
-function eventLanes(ai: number, evTop: number): EventLaneView[] {
+/**
+ * 本轴的可见事件道（无摘要 / 无残痕 ⇒ 道不出现；道内无标记也保留道，让用户看到"这条道是空的"）。
+ *
+ * ⚠ 这里只**派生行数与标记**（引擎产物口径）；`top/height` 由 `buildAxisTimeline` 自上而下给
+ *   —— 道距一旦在页面写死，多一行就会压住下一条道。
+ */
+function eventLaneInputs(ai: number): AxisTimelineInput['eventLanes'] {
   const hasAnomaly = !!inStunAnomalyState.value && entryFirstWindow(ai) >= 0
   const defs = axisEventLaneDefs({ hasAnomaly, hasMaim: !!axisGashDecl.value })
-  const out: EventLaneView[] = []
-  // 起点由布局给出（角色道 + 专属窗口道之后）；道高随内部行数变化 ⇒ 逐条累加，不用固定间距
-  let topS = evTop
-  for (const d of defs) {
+  return defs.map(d => {
     const raw = d.key === 'anomaly' ? anomalyEventMarkers(ai) : maimEventMarkers()
     // 同一刻可能同时有「触发」与「块末积蓄槽」⇒ 会叠成一颗；分行后道高 = 行数 × 行高 + 留白
     const { rows, placed } = layoutEventMarkers(raw, maxDur.value)
-    const heightPx = rows * TL.evRowH + TL.evPad
-    out.push({ ...d, rows, top: topS + 'px', height: heightPx + 'px', markers: placed })
-    topS += heightPx + 2
-  }
-  return out
+    return { ...d, rows, markers: placed }
+  })
 }
-/** 事件道的横向定位：与动作块同一坐标系（窗口起点为 0）；标记本体宽 ~46px，按 1.5% 左让避免压右边 */
-function evLeftPct(at: number): string { return (Math.max(0, at) / maxDur.value * 100) + '%' }
 
 // ===== 时间轴布局（每条轴一次算完，模板只读结果）=====
 /**
@@ -833,81 +810,27 @@ function blockDurText(act: StunAxisAction): string {
   // 前导空格写在字符串里（模板里的前导空白会被 Vue 的 condense 吃掉，实测「聚锋1.4s」粘在一起）
   return d > 0 ? ` ${d.toFixed(1)}s` : ''
 }
-interface AxisLabelRow { aii: number; top: number; leftPct: number; label: string; durText: string; title: string }
-interface AxisTimelineLayout {
-  /** 三槽角色道的顶 / 高（高含各自的外置标签行） */
-  slotTop: number[]
-  slotH: number[]
-  /** 三槽动作块的顶（道内垂直居中） */
-  blockTop: number[]
-  winTop: number
-  evTop: number
-  /** 外置标签（与 `axis.actions` 同序；`null` = 该块名字写在块内） */
-  labels: Array<Omit<AxisLabelRow, 'aii'> | null>
-  evLanes: EventLaneView[]
-  height: number
-}
-const EMPTY_LAYOUT: AxisTimelineLayout = {
-  slotTop: [TL.head, TL.head, TL.head],
-  slotH: [TL.laneH, TL.laneH, TL.laneH],
-  blockTop: [TL.head, TL.head, TL.head],
-  winTop: TL.head, evTop: TL.head, labels: [], evLanes: [],
-  height: TL.head + TL.laneH * 3 + TL.tail,
-}
 /**
- * 一条轴的时间轴布局：**自上而下累积**角色道（含各自的标签行）→ 专属窗口道 → 事件道。
- *
- * ⚠ 必须逐轴算：外置标签行数逐轴不同 ⇒ 窗口道/事件道的顶坐标不再是常量（旧实现把 24 + 序号×20
- *   写死在 JS 与 CSS 两处，多一行就会互相压住）。
+ * 一条轴的时间轴布局 = **共享原语** `axisTimeline#buildAxisTimeline`（本页只注入口径：
+ * 时长住动作池 `actDuration`、名字住 `blockLabel`、悬停全文住 `blockTitle`、事件道口径住
+ * `eventLaneInputs`）。自上而下累积角色道（含各自的标签行）→ 专属窗口道 → 事件道，
+ * **必须逐轴算**：外置标签行数逐轴不同 ⇒ 窗口道/事件道的顶坐标不是常量（旧实现把 24 + 序号×20
+ * 写死在 JS 与 CSS 两处，多一行就会互相压住）。
  */
 function buildTimelineLayout(ai: number): AxisTimelineLayout {
-  const axis = axes.value[ai]
-  const acts: ReadonlyArray<DeepReadonly<StunAxisAction>> = axis?.actions ?? []
-  const win = maxDur.value
-  // ① 每槽的块标签分行（纯几何在 stunAxisView#layoutBlockLabels：放得下写块里，放不下排标签行）
-  const perSlot = [0, 1, 2].map(s => {
-    const idx = acts.map((_, i) => i)
-      .filter(i => acts[i]!.slot === s)
-      .sort((a, b) => (acts[a]!.startTime ?? 0) - (acts[b]!.startTime ?? 0))
-    const lay = layoutBlockLabels(
-      // ⚠ text 只给**名字**：时长（" 2.5s"）是尾巴，块里放不下时由 CSS 先挤掉（.sap-block-dur 可收缩），
-      //   不能因为尾巴塞不下就把整个名字赶到标签行去（实测会把 2.5s 的强特块也误判成放不下）。
-      idx.map(i => ({ start: acts[i]!.startTime ?? 0, dur: actDuration(acts[i]!), text: blockLabel(acts[i]!) })),
-      win,
-      timelinePx.value || 1000,
-    )
-    return { idx, lay }
+  const acts: ReadonlyArray<DeepReadonly<StunAxisAction>> = axes.value[ai]?.actions ?? []
+  return buildAxisTimeline({
+    actions: acts,
+    durationOf: i => actDuration(acts[i]!),
+    labelOf: i => blockLabel(acts[i]!),
+    durTextOf: i => blockDurText(acts[i]!),
+    titleOf: i => blockTitle(acts[i]!),
+    windowSeconds: maxDur.value,
+    // 实测轴宽：标签「放不放得下」必须按真实轴宽算（写死常量会在窄窗口上把名字判成放得下、然后照旧切掉）
+    trackPx: timelinePx.value,
+    windowLaneCount: windowLanes.value.length,
+    eventLanes: eventLaneInputs(ai),
   })
-  // ② 道面自上而下累积
-  const slotTop: number[] = [0, 0, 0]
-  const slotH: number[] = [TL.laneH, TL.laneH, TL.laneH]
-  const blockTop: number[] = [TL.head, TL.head, TL.head]
-  const labels: AxisTimelineLayout['labels'] = acts.map(() => null)
-  let y = TL.head
-  perSlot.forEach(({ idx, lay }, s) => {
-    const extra = lay.rows > 0 ? 2 + lay.rows * TL.labelH : 0
-    slotTop[s] = y
-    slotH[s] = TL.laneH + extra
-    blockTop[s] = y + (TL.laneH - TL.blockH) / 2
-    idx.forEach((i, k) => {
-      if (lay.inside[k]) return
-      const act = acts[i]!
-      labels[i] = {
-        top: y + TL.laneH + 2 + lay.row[k]! * TL.labelH,
-        leftPct: Math.max(0, Math.min(100, (lay.at[k] ?? 0) / win * 100)),
-        label: blockLabel(act),
-        durText: blockDurText(act),
-        title: blockTitle(act),
-      }
-    })
-    y += slotH[s]! + TL.laneGap
-  })
-  const winTop = y
-  y += windowLanes.value.length * TL.laneH
-  const evTop = y
-  const evLanes = eventLanes(ai, evTop)
-  const evH = evLanes.reduce((sum, l) => sum + l.rows * TL.evRowH + TL.evPad + 2, 0)
-  return { slotTop, slotH, blockTop, winTop, evTop, labels, evLanes, height: evTop + evH + TL.tail }
 }
 /**
  * 时间轴的**实测像素宽**：标签「放不放得下」必须按真实轴宽算——写死一个常量会在窄窗口上
@@ -925,7 +848,7 @@ onBeforeUnmount(() => { window.removeEventListener('resize', measureTimelineWidt
 
 /** 布局缓存：模板一次渲染会问很多次（道顶 / 块顶 / 标签 / 事件道 / 总高） */
 const timelineLayouts = computed(() => axes.value.map((_, ai) => buildTimelineLayout(ai)))
-function layoutOf(ai: number): AxisTimelineLayout { return timelineLayouts.value[ai] ?? EMPTY_LAYOUT }
+function layoutOf(ai: number): AxisTimelineLayout { return timelineLayouts.value[ai] ?? emptyAxisTimeline() }
 /** 块内文本（外置标签的块不写文字——写了也是被切掉的那半个字） */
 function blockTextOf(ai: number, aii: number): string {
   if (layoutOf(ai).labels[aii]) return ''
@@ -940,10 +863,8 @@ function blockDurTextOf(ai: number, aii: number): string {
   const act = axes.value[ai]?.actions[aii]
   return act ? blockDurText(act) : ''
 }
-function labelRowsOf(ai: number): AxisLabelRow[] {
-  const out: AxisLabelRow[] = []
-  layoutOf(ai).labels.forEach((l, aii) => { if (l) out.push({ ...l, aii }) })
-  return out
+function labelRowsOf(ai: number): AxisTimelineLabelRow[] {
+  return layoutOf(ai).labels.filter((l): l is AxisTimelineLabelRow => !!l)
 }
 
 // 栈遍历警告：资源不足（energy/decibel）= 固定轴只提示；超时（time）= 超窗截断
@@ -959,7 +880,6 @@ const stackWarnings = computed(() => {
   })
 })
 
-function pct(t: number): string { return (t / maxDur.value * 100) + '%' }
 
 function applyPreset(p: StunAxisPreset) {
   // 方案 / 固定轴互斥写入的唯一实现（arena-D 第 368 轮，原在本页与 teamCompare 各写一份）；
@@ -1221,17 +1141,25 @@ function blockTitle(act: StunAxisAction): string {
     + `${act.sourceTag === 'gift' ? '·赠' : ''}${dur > 0 ? ` · ${dur.toFixed(1)}s` : ''}`
     + ` · 起点 ${(act.startTime ?? 0).toFixed(1)}s（可拖拽改起点）`
 }
+/**
+ * 动作块的几何 + **三态**着色。
+ *
+ * 几何走共享原语 `axisBarGeometry`（与逐窗兑现图同一份换算；**这里不夹进轨道**——块被拖到
+ * 窗口外时就该露出真位置，夹了用户看不见自己拖出去了）；三态：
+ * ① 越界超窗 `ovr`（起点为负 或 起点+时长 > 窗长）⇒ 警示底 + 警示描边；
+ * ② 拖拽中 `selected` ⇒ 激活底 + 成功绿描边 + 抬层；
+ * ③ 普通 ⇒ 成功绿底、无描边。
+ */
 function blockStyle(ai: number, act: StunAxisAction, selected: boolean) {
   const dur = actDuration(act); const start = act.startTime ?? 0
-  const leftPct = (start / maxDur.value * 100)
-  const wPct = Math.max(2, (dur / maxDur.value * 100))
+  const bar = axisBarGeometry({ start, duration: dur, span: maxDur.value, minPct: 2 })
   const ovr = start < 0 || start + dur > maxDur.value
   return {
-    left: leftPct + '%',
-    // 顶与高都来自布局常量（CSS 不再写死，见 TL 注释）
-    top: (layoutOf(ai).blockTop[act.slot] ?? TL.head) + 'px',
-    height: TL.blockH + 'px',
-    width: wPct + '%',
+    left: bar.leftPct + '%',
+    // 顶与高都来自共享几何常量（CSS 不再写死 px）
+    top: (layoutOf(ai).blockTop[act.slot] ?? AXIS_TIME_PX.head) + 'px',
+    height: AXIS_TIME_PX.blockH + 'px',
+    width: bar.widthPct + '%',
     // 块底/描边走语义别名（2026-10-30）：字面值抄的是深色档，亮色主题下会糊（UI_THEME_GUIDE §5）
     background: ovr ? 'var(--c-warning-soft)' : selected ? 'var(--fill-active)' : 'var(--c-success-soft)',
     borderColor: ovr ? 'var(--c-warning)' : selected ? 'var(--c-success)' : 'transparent',
@@ -1297,15 +1225,17 @@ function agentName(s: number) {
 .sap-label { font-size: 11px; color: var(--wa-350); }
 .sap-stat { font-size: 11px; color: var(--wa-450); margin-left: auto; }
 /* 时间轴 */
-/* 高度由 timelineHeight(ai) 内联给出（角色道 + 窗口道 + 事件道逐轴不同；写死会让新增的道溢出到下一个轴） */
-/* ⚠ 时间轴几何（顶/高/行高）全部由脚本的 TL 常量内联给出（单一来源）：这里只留字号/颜色/内边距。
+/* 高度由 layoutOf(ai).height 内联给出（角色道 + 窗口道 + 事件道逐轴不同；写死会让新增的道溢出到下一个轴） */
+/* ⚠ 时间轴几何（顶/高/行高）全部由 `composables/axisTimeline.ts#AXIS_TIME_PX` 内联给出
+   ——与资源池·逐窗兑现图**共用一份**（2026-10-30 收敛）：这里只留字号/颜色/内边距。
    尺寸口径 2026-10-29（用户报「动作块也短小，写字也不清不楚」）：刻度 8→10px、块 15→22px、
    块内字 8→11px、道 19→26px、事件道 8→10px。 */
 .sap-timeline { position: relative; min-height: 60px; margin: 8px 0 12px; background: var(--wa-15); border-radius: 4px; user-select: none; touch-action: none; }
-.sap-ticks { position: absolute; top: 0; left: 0; right: 0; height: 18px; }
+/* 刻度行高 / 窗口条顶与高由 AXIS_TIME_PX 内联给出（共享几何常量，见 axisTimeline.ts） */
+.sap-ticks { position: absolute; top: 0; left: 0; right: 0; }
 .sap-tick { position: absolute; top: 0; height: 100%; border-left: 1px solid var(--wa-80); }
 .sap-tick-label { position: absolute; top: 2px; left: 3px; font-size: 10px; color: var(--wa-250); }
-.sap-window-bar { position: absolute; top: 18px; left: 0; right: 0; height: 12px; background: var(--c-warning-soft); border-radius: 3px; }
+.sap-window-bar { position: absolute; left: 0; right: 0; background: var(--c-warning-soft); border-radius: 3px; }
 .sap-win-label { font-size: 10px; line-height: 12px; color: var(--c-warning-strong); padding-left: 4px; }
 .sap-lane { position: absolute; left: 0; right: 0; background: var(--wa-20); border-radius: 3px; }
 .sap-lane-name { font-size: 10px; line-height: 1.5; color: var(--wa-300); padding-left: 4px; }
@@ -1325,7 +1255,7 @@ function agentName(s: number) {
 .sap-mw.mw-live { color: var(--c-success-strong); background: var(--c-success-soft); }
 /* 明王平行道：触发块处 8s 窗口条（2层黄 / 3层绿），6命满覆盖 */
 .sap-mw-lane { background: var(--c-warning-soft); }
-.sap-mw-window { position: absolute; top: 3px; height: 20px; border-radius: 3px; display: flex; align-items: center; padding: 0 4px; font-size: 10px; white-space: nowrap; overflow: hidden; pointer-events: none; }
+.sap-mw-window { position: absolute; border-radius: 3px; display: flex; align-items: center; padding: 0 4px; font-size: 10px; white-space: nowrap; overflow: hidden; pointer-events: none; }
 .sap-mw-window.mw-l2 { background: var(--c-warning-soft); border: 1px solid var(--c-warning); color: var(--fg-2); }
 .sap-mw-window.mw-l3 { background: var(--c-success-soft); border: 1px solid var(--c-success); color: var(--fg-2); }
 .sap-mw-window.mw-full { background: var(--c-success-soft); border: 1px dashed var(--c-success); color: var(--c-success-strong); }
@@ -1352,7 +1282,7 @@ function agentName(s: number) {
 /* 事件道（2026-10-26）：异常 / 毁伤各自成道，按时刻定位——块内只留招式级元数据，招式名不再被标签挤成 0 宽。
    颜色：触发/入窗=警示金、紊乱=成功绿（与原 mw-trigger/mw-l3 同语义）、积蓄槽=第三级墨、毁伤=危险红、未触发=斜纹红。 */
 .sap-ev-lane { border-top: 1px dashed var(--line); }
-.sap-ev { position: absolute; height: 18px; display: flex; align-items: center; gap: 3px; padding: 0 4px; border-radius: 3px; font-size: 10px; white-space: nowrap; pointer-events: auto; transform: translateX(-1px); }
+.sap-ev { position: absolute; display: flex; align-items: center; gap: 3px; padding: 0 4px; border-radius: 3px; font-size: 10px; white-space: nowrap; pointer-events: auto; transform: translateX(-1px); }
 .sap-ev-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .sap-ev-label { line-height: 1; }
 .sap-ev.ev-entry { color: var(--c-warning-strong); background: var(--c-warning-soft); }

@@ -894,8 +894,9 @@ import { useConfigStore } from '@/stores/config'
 import { useStunDiscreteDisplay } from '@/composables/stunDiscreteDisplay'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { fmt, localized } from '@/utils/format'
-import { teamPoolSummaries, agentCombos } from '@/composables/agentMechanicView'
+import { fmt } from '@/utils/format'
+import { teamPoolSummaries } from '@/composables/agentMechanicView'
+import { axisMoveNameResolver } from '@/composables/axisMoveName'
 import { PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 import { DECIBEL_COMPANION_RATIO } from '@/data/decibelCompanion'
 import { damageElementLabel as elementLabel } from '@/utils/agentLabelMaps'
@@ -906,7 +907,6 @@ import DeadlyAssaultScoreCard from '@/components/charts/DeadlyAssaultScoreCard.v
 import { buildTeamTimeSummary, poolFillText as poolFillTextOf, slackHint as slackHintOf, truncationHint as truncationHintOf } from '@/composables/teamTimeSummary'
 import { axisWindowView } from '@/composables/axisWindowView'
 import AxisWindowChart, { type AxisFillMoveGroup } from '@/components/AxisWindowChart.vue'
-import { findMoveById } from '@/data/moveTableQueries'
 import { computePerSlotBuildUp } from '@/composables/positionCompare'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'
 import { axisFallbackNoticeOf } from '@/composables/axisFallbackNotice'
@@ -1064,21 +1064,14 @@ const slackHint = computed(() => slackHintOf(teamTimeSummary.value, fmt))
 const truncationHintText = computed(() => truncationHintOf(teamTimeSummary.value, fmt))
 
 /**
- * 招式名解析（逐窗图用）：槽位 → 该槽角色 → 目录招式表；解析不到回落 moveId（**不编名字**）。
- * 与难度曲线「这一档的轴」同一解析器（`localized`，CC-456 单一来源），不手写名称兜底。
+ * 招式名解析（逐窗图用）：**共享解析器**（`composables/axisMoveName.ts`，2026-10-30 收敛）
+ * —— 与队伍对比「这一档的轴」同一份口径：平A 标识 → 模块连段名 → 目录倍率表 → 回落 moveId
+ * （**不编名字**）。两份实现曾漂移：逐窗图写「平A」、曲线明细裸写内部 id `basic`。
  */
-function axisMoveName(slot: number, moveId: string): string {
-  const agentId = configStore.team[slot]?.agentId ?? ''
-  // 轴内的平A块 moveId = 'basic'（引擎兜底池的标识，不是 catalog 招式）——不特判就会把内部 id
-  // 原样画在逐窗图上（实测块里裸写「basic」，2026-10-30），而轴编辑器同一个块写的是「平A」。
-  if (moveId === 'basic') return '平A'
-  // 连段块（banyue-combo / sigrid-pozhen 等）不在倍率表里，名字由模块的 combos 声明给——
-  // 不先查它就会在逐窗图里露出内部 id（轴编辑器同一口径，见 StunAxisPage#allMoves）。
-  const combo = agentCombos(agentId)?.[moveId]
-  if (combo?.label) return combo.label
-  const m = findMoveById(catalogStore.getAgentSkills(agentId), moveId)
-  return m ? localized(m.name, moveId) : moveId
-}
+const axisMoveName = axisMoveNameResolver({
+  agentIdOf: slot => configStore.team[slot]?.agentId ?? '',
+  skillsOf: agentId => catalogStore.getAgentSkills(agentId),
+})
 
 /** 槽位 → 角色名（取不到时「槽 N」） */
 function slotNameOf(slot: number): string {

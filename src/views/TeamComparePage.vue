@@ -1169,7 +1169,7 @@ import { computeCinemaUpliftGrid, type CinemaUpliftGridResult, type GridColSpec,
 import { useCurvePointPool } from '@/composables/curvePointPool'
 import { deltaKeys } from '@/composables/configDelta'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
-import { findMoveById } from '@/data/moveTableQueries'
+import { axisMoveNameResolver } from '@/composables/axisMoveName'
 import { currentRowFusionRules } from '@/logicEditor/fusion'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, axisWorseThanNoAxis, type CurveDatum, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
@@ -1188,7 +1188,7 @@ import TeamSlotCodeEditor from '@/components/TeamSlotCodeEditor.vue'
 import { engineLabelOf } from '@/composables/enginePicker'
 import ChartLegend from '@/components/charts/ChartLegend.vue'
 import ChartTable from '@/components/charts/ChartTable.vue'
-import { fmt, compact, localized } from '@/utils/format'
+import { fmt, compact } from '@/utils/format'
 import { useScatterGeometry } from '@/composables/teamCompareScatter'
 import { useSlotSweep } from '@/composables/teamCompareSweep'
 import { useTeamSlotCodes } from '@/composables/teamSlotCodes'
@@ -2677,15 +2677,14 @@ const curveAxisCompare = computed(() => {
   })
 })
 /**
- * 招式名解析（轴视图用）：槽位 → 该槽角色 → 目录招式表。
+ * 招式名解析（轴视图用）= **共享解析器** `composables/axisMoveName.ts`（2026-10-30 收敛）。
+ * 与资源池·逐窗兑现图同一份口径：平A 标识 → 模块连段名 → 目录倍率表 → 回落 `moveId`。
  * 解析不到就回落 `moveId`（**不编名字**：编一个像真的中文比显示 id 更危险）。
  */
-function axisMoveNameOf(slot: number, moveId: string): string {
-  const skills = catalogStore.getAgentSkills(configStore.team[slot]?.agentId ?? '')
-  const m = findMoveById(skills, moveId)
-  // 走单一解析器（CC-456）：手写名称兜底会被 localizedSingleSource 源码锁拦下，别再散写
-  return m ? localized(m.name, moveId) : moveId
-}
+const axisMoveNameOf = axisMoveNameResolver({
+  agentIdOf: slot => configStore.team[slot]?.agentId ?? '',
+  skillsOf: agentId => catalogStore.getAgentSkills(agentId),
+})
 /** 被砍档（R10 打叉）的悬停态：与曲线点 hover（`curveHover`）分开，两者图形不同、文案不同 */
 const cutHover = ref<{ si: number; ci: number } | null>(null)
 /** 选中点相对运行起点的**输入变动键**（诊断用：一眼看出这一档改了队伍还是机制设置） */
