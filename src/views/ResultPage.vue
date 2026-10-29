@@ -1069,6 +1069,9 @@ const truncationHintText = computed(() => truncationHintOf(teamTimeSummary.value
  */
 function axisMoveName(slot: number, moveId: string): string {
   const agentId = configStore.team[slot]?.agentId ?? ''
+  // 轴内的平A块 moveId = 'basic'（引擎兜底池的标识，不是 catalog 招式）——不特判就会把内部 id
+  // 原样画在逐窗图上（实测块里裸写「basic」，2026-10-30），而轴编辑器同一个块写的是「平A」。
+  if (moveId === 'basic') return '平A'
   // 连段块（banyue-combo / sigrid-pozhen 等）不在倍率表里，名字由模块的 combos 声明给——
   // 不先查它就会在逐窗图里露出内部 id（轴编辑器同一口径，见 StunAxisPage#allMoves）。
   const combo = agentCombos(agentId)?.[moveId]
