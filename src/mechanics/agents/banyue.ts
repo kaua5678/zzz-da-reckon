@@ -613,12 +613,26 @@ export function computeBanyueRageCycle(
 }
 
 /**
+ * 轴内连段块 → 它展开出的招式（**单一事实源**：`combos` 契约与明王扫描共用）。
+ * 明王扫描按它给触发块自己记账（触发块吃「本次获得的层数」，见 computeBanyueMingwangStacks 头注释）。
+ */
+const RAGE_COMBO_MOVES: Record<string, { moveId: string; count: number }[]> = {
+  'banyue-combo': [{ moveId: MOVE.lunDao, count: 1 }, { moveId: MOVE.shiZiHouNu, count: 1 }],
+  'banyue-combo-didong': [{ moveId: MOVE.diDong, count: 1 }, { moveId: MOVE.shanYaoNu, count: 1 }],
+}
+/** 触发明王的连段块 id（= RAGE_COMBO_MOVES 的键；扫描与块级标注共用，不再各抄一份） */
+const RAGE_COMBO_IDS = Object.keys(RAGE_COMBO_MOVES)
+
+/**
  * 明王时间轴覆盖（非6命，失衡轴内；用户口径）：
  * - 轴内般岳槽位动作按 startTime 排序扫描（每条轴独立）；
  * - 只有怒相技能——怒相连段块 'banyue-combo'（论道→狮子吼·怒）/ 'banyue-combo-didong'（地动→山摇·怒）——触发明王窗口 8s：
  *   第一次 → 2 层；窗口内再次触发 → 3 层并刷新窗口。
  *   单招论道/狮子吼·怒 等是普通强特（付费），不触发但可享受窗口。
- * - 触发块自身不享受（明王"释放后"生效）；落在窗口内的后续招式按当前层数享受。
+ * - **触发块自身也享受**它这一次给到的层数（用户口径 2026-10-29，逐字：「触发瞬间，明王buff已经生效，
+ *   开始倒计时。而且招式还有后置伤害，不是瞬间出伤，所以触发块自己可以享受对应层数的。只是说第一次的
+ *   触发块只有 2 层，因为你不可能在你动作结束前打出第二个触发块叠到 3 层」）；
+ *   落在窗口内的后续招式按**当前**层数享受。
  * - 返回每个 moveId 的实例加权平均层数（同一招式多个块按 count 加权）。
  * - 6命：明王 30s + 任意强特常态刷新 → 满覆盖，不扫描（调用方直接走全局 buff）。
  */
@@ -628,7 +642,6 @@ export function computeBanyueMingwangStacks(
   cinemaLevel: number,
 ): Map<string, number> {
   if (cinemaLevel >= 6) return new Map<string, number>()
-  const triggerIds = new Set<string>(['banyue-combo', 'banyue-combo-didong'])
   const actions = axes
     .flatMap(axis => axis.actions)
     .filter(a => a.slot === slot)
@@ -641,10 +654,18 @@ export function computeBanyueMingwangStacks(
   for (const act of actions) {
     const start = act.startTime ?? 0
     const count = Math.max(0, Math.floor(act.count) || 1)
-    if (triggerIds.has(act.moveId)) {
+    if (RAGE_COMBO_IDS.includes(act.moveId)) {
       curStacks = curStacks >= 2 ? 3 : 2
       windowEnd = start + duration
-      // 触发块自身不享受（明王释放后生效）
+      // 触发块**自己也记账**（用户口径 2026-10-29，见函数头）：它吃的是「本次获得的层数」——
+      // 按连段块展开出的招式逐条记（首次 2 层、窗内再触发 3 层）。修前这一支是 `continue`，
+      // 触发块的招式只能靠「同 moveId 的其它落窗实例」顺带吃到层数 ⇒ 轴上没有这类实例时，
+      // 怒相连段的伤害一点明王都拿不到（静默漏算）。
+      for (const mv of RAGE_COMBO_MOVES[act.moveId]) {
+        const units = count * Math.max(1, Math.floor(mv.count) || 1)
+        const prev = weighted.get(mv.moveId) ?? { total: 0, count: 0 }
+        weighted.set(mv.moveId, { total: prev.total + curStacks * units, count: prev.count + units })
+      }
       continue
     }
     const stacks = start <= windowEnd ? curStacks : 0
@@ -661,7 +682,7 @@ export function computeBanyueMingwangStacks(
 
 /**
  * 明王窗口逐块标注（轴编辑器可视化用）：返回 `${axisIndex}:${actionIndex}` → { layers, trigger }。
- * 触发块标 trigger=true（层数为触发后的层数，自身不享受）；落窗块标当前层数；窗外块 0 层。
+ * 触发块标 trigger=true（层数 = 触发后的层数，**也就是它自己吃到的层数**）；落窗块标当前层数；窗外块 0 层。
  * 6命不扫描（满覆盖，UI 单独提示）。
  */
 export function computeBanyueMingwangBlocks(
@@ -671,7 +692,6 @@ export function computeBanyueMingwangBlocks(
 ): Map<string, { layers: number; trigger: boolean }> {
   const out = new Map<string, { layers: number; trigger: boolean }>()
   if (cinemaLevel >= 6) return out
-  const triggerIds = new Set<string>(['banyue-combo', 'banyue-combo-didong'])
   axes.forEach((axis, ai) => {
     let curStacks = 0
     let windowEnd = Number.NEGATIVE_INFINITY
@@ -682,7 +702,7 @@ export function computeBanyueMingwangBlocks(
     for (const { a, aii } of indexed) {
       const start = a.startTime ?? 0
       const key = `${ai}:${aii}`
-      if (triggerIds.has(a.moveId)) {
+      if (RAGE_COMBO_IDS.includes(a.moveId)) {
         curStacks = curStacks >= 2 ? 3 : 2
         windowEnd = start + 8
         out.set(key, { layers: curStacks, trigger: true })
@@ -1525,18 +1545,19 @@ export const banyueMechanic: AgentMechanicModule = {
   //
   // @fact agent:1471/轴内连段块能耗 口径: 两个连段块（`banyue-combo` / `banyue-combo-didong`）的 `energyCost` 恒为 **0**——它们是怒相内**山威免费强特**的轴内表达（耗山威不耗闪能），轴栈 `buildStackAxes` 按它做闪能门控；此前的 `COMBO_COST`(60) 是初始提交起的笔误，与本模块头注释 / `AXIS_EX_COST` 表注释 / `BANYUE_AXIS_MOVE_META`(cost 0) / `estimateExSpecialTime`(显式 continue) / `sideDetail` 文案五处声明矛盾（规则 11 同量多处实现）。付费连段走普通论道块 + 狮子吼·怒块（20+40） | 据 用户@2026-08「[怒] 怒相连段耗山威（每怒相 4 山威 = 2 组免费连段），不耗闪能、不回复嗔火」·修@2026-10-15 | 验 src/mechanics/__tests__/banyue.test.ts | 锚 src/mechanics/agents/banyue.ts#banyueMechanic + src/composables/resourceCalc/roundInputs.ts#buildStackAxes | 信 确认
   // ⟳复核: 若「轴内连段块的闪能归属」再被动过——`combos[].energyCost`、`AXIS_EX_COST`、`BANYUE_AXIS_MOVE_META.cost` 三处出现不一致，或 `buildStackAxes` 连段分支改读别的字段（含新增 `energyCostAtCinema` 覆盖）——重跑 `npx vitest run src/mechanics/__tests__/banyue.test.ts -t 轴内连段块不扣闪能` 与 `.zc/perf/T166sweep.perf.ts`（93 预设应只有 4 支般岳队与现状不同） | 到期 2027-04-30
+  // `moves` = RAGE_COMBO_MOVES（单一事实源：明王扫描按同一份表给触发块自己记账）
   combos: {
     'banyue-combo': {
       label: '怒相连段·论道',
       energyCost: 0,
       swayCost: COMBO_SWAY_COST,
-      moves: [{ moveId: MOVE.lunDao, count: 1 }, { moveId: MOVE.shiZiHouNu, count: 1 }],
+      moves: RAGE_COMBO_MOVES['banyue-combo'],
     },
     'banyue-combo-didong': {
       label: '怒相连段·地动',
       energyCost: 0,
       swayCost: COMBO_SWAY_COST,
-      moves: [{ moveId: MOVE.diDong, count: 1 }, { moveId: MOVE.shanYaoNu, count: 1 }],
+      moves: RAGE_COMBO_MOVES['banyue-combo-didong'],
     },
   },
   settings,

@@ -913,6 +913,24 @@ describe('computeBanyueMingwangStacks（明王时间轴覆盖，非6命，用户
     expect(m.size).toBe(0)
   })
 
+  it('触发块自己吃「本次获得的层数」：轴上只有连段块时也照样记账（用户口径 2026-10-29）', () => {
+    // 首次触发 = 2 层（原文档写的「触发块自身不享受」是错的：明王在发动瞬间就生效并开始倒计时，
+    // 招式伤害也不是瞬间出完）；窗内再触发 = 3 层。
+    const first = computeBanyueMingwangStacks(0, axis([{ moveId: 'banyue-combo', count: 1, startTime: 0 }]), 0)
+    expect(first.get('1471015')).toBe(2) // 论道（连段块展开）
+    expect(first.get('1471016')).toBe(2) // 狮子吼·怒（连段块展开）
+    const retrigger = computeBanyueMingwangStacks(0, axis([
+      { moveId: 'banyue-combo', count: 1, startTime: 0 },
+      { moveId: 'banyue-combo', count: 1, startTime: 4 },
+    ]), 0)
+    expect(retrigger.get('1471015')).toBe(2.5) // (2 + 3) / 2
+    expect(retrigger.get('1471016')).toBe(2.5)
+    // 地动连段块展开的是另一对招式
+    const didong = computeBanyueMingwangStacks(0, axis([{ moveId: 'banyue-combo-didong', count: 1, startTime: 0 }]), 0)
+    expect(didong.get('1471013')).toBe(2)
+    expect(didong.get('1471017')).toBe(2)
+  })
+
   it('非般岳槽位动作不参与', () => {
     const axes = [
       { name: '轴1', actions: [
@@ -973,9 +991,11 @@ describe('般琉通用预设轴（用户录入）：怒/普分化后的明王触
     expect(m.get('1471021')).toBe(3) // 转大块（4.1/7.8/8.3 落窗，加权）
     expect(m.get('1471009')).toBe(3) // 倾山@10.3
     expect(m.get('1471010')).toBe(3) // 摧岳@12.2
-    // 单招狮子吼·怒@13.7、论道@14.2 是普通强特：不触发，但 13.7/14.2 < 14.6 → 落窗享受 3 层
-    expect(m.get('1471016')).toBe(3)
-    expect(m.get('1471015')).toBe(3)
+    // 单招狮子吼·怒@13.7、论道@14.2 是普通强特：不触发，但 13.7/14.2 < 14.6 → 落窗享受 3 层；
+    // ⚠ 连段块**自己也记账**（用户口径 2026-10-29）：首次触发 2 层、窗内再触发 3 层
+    //    ⇒ 该招式 5 个单位 = 1×2 + 4×3 = 14 ⇒ 2.8（修前只数非触发的落窗块，恒为 3）
+    expect(m.get('1471016')).toBeCloseTo(2.8, 6)
+    expect(m.get('1471015')).toBeCloseTo(2.8, 6)
     // 单招狮子吼@14.8 窗外（> 14.6）→ 不享受
     expect(m.get('1471014')).toBeUndefined()
   })
