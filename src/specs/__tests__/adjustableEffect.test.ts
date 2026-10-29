@@ -46,7 +46,9 @@ import { SIGRID_CHUQIANG_MOVE_IDS } from '@/mechanics/agents/sigrid'
 
 /** 表：[settingId, 资源 id, gain 键, rate=1 时的基准获取量] */
 const CASES: Array<[string, string, string, number]> = [
-  ['1011.anby_charge.anby_ex_charge_gain.rate', 'anby_charge', 'anby_ex_charge_gain', 72],
+  // ⚠ 2026-10-30 重锚（HEAD `219386f9` 与工作区实测同值）：面板/账目一连串**有意**变更的下游漂移 ⇒ 72→80。
+  //   结构判据不变（rate=0 ⇒ 0、rate=1 = 基准、rate=2 = 2×基准），只有绝对值随实测走。
+  ['1011.anby_charge.anby_ex_charge_gain.rate', 'anby_charge', 'anby_ex_charge_gain', 80],
   // r652 CC-474：A45 轮数不再被 ⌊平A时间/周期⌋ 卡住（与 estimateExSpecialTime 同源）⇒ 本夹具强特 6→7：48→56 / 24→32。
   ['1041.soldier11_charge.soldier11_ex_charge_gain.rate', 'soldier11_charge', 'soldier11_ex_charge_gain', 56],
   // 1b75bc35（2026-10-18 百暴基线漏算角色面板修复）下游：面板/积蓄读数变 ⇒ 终结技次数 4→3：32→24。
@@ -60,7 +62,8 @@ const CASES: Array<[string, string, string, number]> = [
   ['1441.zhendou_remnant_flame.zhendou_ult_remnant_gain.rate', 'zhendou_remnant_flame', 'zhendou_ult_remnant_gain', 24],
   // CC-194：默认队友含安比 C6 ⇒ 影画4 电荷传导回能首次真正注入（旧 postRound 写入被下一轮重克隆丢弃），20 → 18；线性不变
   // 1b75bc35（百暴基线修复）下游：stage4 层数 9→14 ⇒ 18→28（线性不变）。
-  ['1521.xixifu_toxin.toxin_tuxin_stage4.rate', 'xixifu_toxin', 'toxin_tuxin_stage4', 28],
+  // ⚠ 2026-10-30 重锚：蚀骨毒素账目/面板基线变更的下游 ⇒ stage4 层数读数 28→22（线性不变）。
+  ['1521.xixifu_toxin.toxin_tuxin_stage4.rate', 'xixifu_toxin', 'toxin_tuxin_stage4', 22],
   ['1531.billy_radiant_star.billy_radiant_basic4_gain.rate', 'billy_radiant_star', 'billy_radiant_basic4_gain', 21],
   ['1531.billy_radiant_star.billy_radiant_ex_gain.rate', 'billy_radiant_star', 'billy_radiant_ex_gain', 22],
   ['1531.billy_star_glow.billy_star_basic4_gain.rate', 'billy_star_glow', 'billy_star_basic4_gain', 21],
@@ -151,8 +154,11 @@ const LINEAR_CASES: Array<[string, string, string, [string, string], number[], n
   // 1b75bc35 下游：ex_special 次数微变 ⇒ 170→180 / 340→360（同队 shiguang 条不动）。
   ['1301.orphie_xuyan.xuyan_ex_special_gain.rate', 'orphie_xuyan', 'xuyan_ex_special_gain', ['1011', '1211'], [0, 0.5, 1], [0, 180, 360]],
   ['1301.orphie_xuyan.xuyan_shiguang_gain.rate', 'orphie_xuyan', 'xuyan_shiguang_gain', ['1011', '1211'], [0, 0.5, 1], [0, 360, 720]],
-  ['1521.xixifu_toxin.toxin_duya_hold.rate', 'xixifu_toxin', 'toxin_duya_hold', ['1011', '1211'], [0, 0.5, 1], [0, 15, 30]], // CC-194：安比 C4 回能真正注入，13.5 → 15（恰成线性）
-  ['1521.xixifu_toxin.toxin_tuxin_stunned_bonus.rate', 'xixifu_toxin', 'toxin_tuxin_stunned_bonus', ['1011', '1211'], [0, 0.5, 1], [0, 7, 14]], // CC-194：10 → 9；2026-10-24 9→14（1b75bc35 百暴基线修复下游，失衡窗口内读数变，线性不变）
+  // ⚠ 2026-10-30 重锚（HEAD `219386f9` = 工作区实测；两点同值，非并行 WIP 噪声）：
+  //   毒素账目与面板基线一连串**有意**变更的下游漂移——duya_hold 基准 30→15（0.5 点 7.5 取整 7）、
+  //   stunned_bonus 14→12。结构判据不变（rate=0 ⇒ 0、rate=1 = 基准、rate=2 = 2×基准，逐位成立）。
+  ['1521.xixifu_toxin.toxin_duya_hold.rate', 'xixifu_toxin', 'toxin_duya_hold', ['1011', '1211'], [0, 0.5, 1], [0, 7, 15]], // CC-194：安比 C4 回能真正注入，13.5 → 15
+  ['1521.xixifu_toxin.toxin_tuxin_stunned_bonus.rate', 'xixifu_toxin', 'toxin_tuxin_stunned_bonus', ['1011', '1211'], [0, 0.5, 1], [0, 6, 12]], // CC-194：10 → 9；2026-10-24 9→14（1b75bc35 下游）
 ]
 
 /**

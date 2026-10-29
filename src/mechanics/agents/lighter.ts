@@ -110,14 +110,12 @@ export const LIGHTER_BURST_ENTRY = 80
 //   五段终结（喷发态）   → 1161028｜0.837s（未强化的最终一击）
 //   五段强力终结（喷发态）→ 1161025｜1.002s（耗尽士气的强化一击）
 // 用户口径 2026-10-26：「士气这个是强化a，肯定比普通a3厉害」⇒ 喷发态必须物化，不能拿通用 a3 秒均顶替。
-/** 五段起攻（喷发态，1161026，1.239s）：实战不走这一支（快支直接接第五段）——不产行，仅保留作 fireShock/诊断口径 */
-export const MOVE_BURST_OPENER = '1161026'
+// 五段起攻 1161026（1.239s）与未强化的最终一击 1161028（0.837s）**本模型不产行**（实战不走起攻支、
+// 每轮打满至士气耗尽 ⇒ 收招即强力终结）⇒ 不设常量，只在上方注释里留 id 与时长备查。
 /** 快速支援（1161020，0.317s）：士气攒到 80 换入自动发动，并直接衔接第五段——每轮真正的起手 */
 export const MOVE_QUICK_ASSIST = '1161020'
 /** 连续冲拳（五段连击，1161027，0.777s）：每轮 2 段（用户视频实测） */
 export const MOVE_BURST_JAB = '1161027'
-/** 未强化的最终一击（五段终结，1161028，0.837s）：未耗尽士气就收招时打出——本模型每轮打满至耗尽，故不产行 */
-export const MOVE_BURST_FINISHER = '1161028'
 /** 强力终结一击（喷发态，1161025，1.002s / 871.0%）：连续冲拳期间耗尽士气自动衔接 */
 export const MOVE_POWER_FINISHER = '1161025'
 
@@ -435,8 +433,10 @@ function buildExecutions({ cfg, state, executions }: AgentResourceInput): void {
     pushSeg(MOVE_POWER_FINISHER, '普通攻击：强力终结一击（士气喷发）', burstPlan.finisher, burstTimes.finisher, c1Bonus)
     // 占的秒数从平A池等量挤出；池上回能按剩余比例缩（行回填 + 池原额 = 双计）
     carveBasicPool(executions, burstPlan.usedTime, ['totalDecibelRecovery', 'totalEnergyRecovery'])
-    cfg.lighterBurstRounds = burstPlan.quickAssist
   }
+  // ⚠ 轮数**无条件写**（CC-292 重放一致）：原先只在 `usedTime > 0` 的分支里写 ⇒ 空输入/无喷发那一路
+  // 不写、上一轮的值残留，patchExecutions 会拿旧轮数复用（实测 hookReplay 报 lighterBurstRounds ×24 陈旧值）。
+  cfg.lighterBurstRounds = burstPlan.usedTime > 0 ? burstPlan.quickAssist : 0
   // C6 火焰冲击
   if (cinema >= 6) {
     const mult = Number(cfg.lighterFlameShockMult ?? 0)

@@ -19,7 +19,7 @@
     </div>
     <div class="das-row">
       <span class="das-label">伤害</span>
-      <n-input-number v-model:value="damageInput" :min="0" :step="1000000" size="small" style="width: 170px" :placeholder="fmt(teamDamage, 0)" />
+      <n-input-number v-model:value="damageInput" :min="0" :step="SCORE_STEP" size="small" style="width: 170px" :placeholder="fmt(teamDamage, 0)" />
       <n-button size="tiny" secondary @click="damageInput = teamDamage">用当前全队总伤</n-button>
       <span class="das-hint">全队总伤 {{ fmt(teamDamage, 0) }}（结果页「伤害池」那一份）</span>
     </div>
@@ -89,6 +89,13 @@ import {
 } from '@/data/deadlyAssaultScore'
 import { clampOperationScore } from '@/composables/substatScoreConvert'
 import { fmt } from '@/utils/format'
+
+/**
+ * 分数输入框的步进（100 万分一档）。
+ * ⚠ 提到脚本里而不是写成模板属性字面量：属性值里被引号包着的 7 位数字会被
+ * data/__tests__/moveIdLiteralsExist.test.ts 的 moveId 扫描器当成悬空 id 字面量（误报）。
+ */
+const SCORE_STEP = 1000000
 
 const props = defineProps<{
   /** 当前全队总伤害（引擎读数，父组件传入；本卡不自己求值） */

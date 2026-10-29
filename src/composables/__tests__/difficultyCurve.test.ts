@@ -1320,6 +1320,15 @@ describe('逐点现场差分（collectScenes）', () => {
      * ⚠ 用**真实 Boss 期**（熔狱行赭 3.3）而不是 `FAKE_BOSS`：实测本队在合成 Boss 下四点全成立、
      * `axisTruncated` 为空 ⇒ 断言会因「夹具不产生该形态」而假红（踩过）。
      * ⚠ `collectScenes` 不开（本用例只关心 x/ratio 两个展示量，不需要现场差分）。
+     *
+     * ⚠ **2026-10-30 再换队（规则 10 四步）**：T172 选的 `auto-1461-1521-1491` 现在三点全 `complete`
+     *   （partial=0、trunc=0）⇒ 反空洞断言又红。
+     *   ① 量 delta：全库 102 支三人队扫描（临时用例，`computeDifficultyCurves` 单期单 Boss）——
+     *      **20 支仍有 `partial` 档，但 `axisTruncated` 全库为 0**；1461-1521-1491 = partial 0。
+     *   ② 根因：该队的交互补齐/轴装配在 2026-10-29~30 的轴系列改动（`53e18fb7` 轴块标签、
+     *      `05470098`/`219386f9` 明王按实例结算等）之后装得下整轴 ⇒ 残疾轴消失，紧接着「被砍档」
+     *      也随之消失（全库零）。③ 确认有意：这些改动都是用户裁决的轴口径，不是回退。
+     *   ④ 处置：换成扫描里仍稳定的 `auto-1041-1161-1311`（3 点全 `partial`），判据保持条件式。
      */
     const bossFile = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as { bosses: BossPreset[] }
     const realBoss = bossFile.bosses.find(b => b.id === '30052')!
@@ -1338,7 +1347,7 @@ describe('逐点现场差分（collectScenes）', () => {
      *    （`.zc/perf/findTruncatedTeam.perf.ts` 扫描：`auto-1461-1521-1491` 三点全 `partial`），
      *    判据改条件式（有被砍档就逐档验 x/ratio；无则验 partial 档满足易伤判据）。
      */
-    const scanPreset = teamPresets.find(p => p.id === 'auto-1461-1521-1491')!
+    const scanPreset = teamPresets.find(p => p.id === 'auto-1041-1161-1311')!
     const [row] = await withAnalysisScenario(s => computeDifficultyCurves(s, { presets: [scanPreset], boss: realBoss, phase: realPhase }))
     const ladder = row!.ladder
     // 反空洞：本队要么有被砍档、要么有放行的残疾轴档（否则本判据对两种形态都零判别力）

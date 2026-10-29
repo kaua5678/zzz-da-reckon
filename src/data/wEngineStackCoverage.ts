@@ -158,8 +158,8 @@ export function teaSkillPhaseStacks(basicHits: number, maxStacks: number): numbe
   return Math.min(maxStacks, Math.max(0, basicHits))
 }
 
-/** 玉壶青冰(14125) 的自 BUFF 效果 id（catalog `wEngines[14125].effect.selfBuff.effects[0].id`） */
-export const TEA_STACK_EFFECT_ID = 'effect_wiki_678_self_impact_tea_full_stack'
+// 玉壶青冰(14125) 的自 BUFF 效果 id（catalog wEngines[14125].effect.selfBuff.effects[0].id）
+// = effect_wiki_678_self_impact_tea_full_stack——零引用的常量已删，口径留在本注释（2026-10-29）。
 /** 玉壶青冰音擎 id */
 export const TEA_STACK_ENGINE_ID = '14125'
 /** 茶劲满层（原文「最多叠加30层」） */
@@ -168,10 +168,9 @@ export const TEA_STACK_MAX = 30
 export const TEA_STACK_THRESHOLD = 15
 /** 玉壶青冰(14125) teamBuff 效果 id（≥15 层 → 全队增伤） */
 export const TEA_TEAM_BUFF_EFFECT_ID = 'effect_wiki_678_team_dmg'
-/** 茶劲每层持续秒数（原文「持续8秒，每层效果单独结算持续时间」） */
+/** 茶劲每层持续秒数（原文「持续8秒，每层效果单独结算持续时间」）；15 层 / 8 秒 = 最低命中速率 1.875 次/秒，
+ *  该派生值曾以常量导出但零引用，2026-10-29 删（用时现算） */
 export const TEA_STACK_DURATION = 8
-/** 达到 15 层所需的最低命中速率（次/秒）= 15 / 8 */
-export const TEA_STACK_MIN_HIT_RATE = TEA_STACK_THRESHOLD / TEA_STACK_DURATION
 
 
 /** 一个 basic 段（倍率表 basic 分类里的一段普攻） */

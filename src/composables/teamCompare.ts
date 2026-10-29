@@ -916,15 +916,9 @@ export function applyTeamPresetConfig(configStore: ConfigModel, preset: TeamPres
     // 与 baseGoldOf 对空串计 0 金一致。
     const baseEngine = presetBaseEngines(preset, useCatalogStore())[slot]
     if (baseEngine) configStore.setWEngine(slot, baseEngine)
-    const dd = preset.driveDiscs?.[slot]
-    if (dd) {
-      if (dd.fourPieceSetId) configStore.setFourPieceSet(slot, dd.fourPieceSetId)
-      if (dd.twoPieceSetId) configStore.setTwoPieceSet(slot, dd.twoPieceSetId)
-      configStore.setThirdTwoPieceSet(slot, dd.thirdTwoPieceSetId ?? '')
-      for (const [pos, stat] of Object.entries(dd.mainStats ?? {})) {
-        configStore.setMainStat(slot, Number(pos) as 4 | 5 | 6, stat)
-      }
-    }
+    // 驱动盘不来自预设：预设文件只带 team（用户 2026-10-26「预设队伍只需带 3 个人的信息就行」），
+    // 且 validate:data 与 teamPresetPayload.test 把 driveDiscs 列为**禁止出现**的配装字段
+    // ⇒ 原 preset.driveDiscs?.[slot] 分支按其构造永远进不去（死通道），2026-10-29 删除。
     if (preset.chainCountPerStun) configStore.setActionCount(slot, 'chainCountPerStun', preset.chainCountPerStun[slot])
     if (preset.basicAttackTimeWeight) configStore.setActionCount(slot, 'basicAttackTimeWeight', preset.basicAttackTimeWeight[slot])
   }

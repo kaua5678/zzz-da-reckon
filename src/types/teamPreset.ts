@@ -37,18 +37,6 @@ export interface InteractionItem {
   label?: string
 }
 
-/** 预设队伍驱动盘模板（缺省整块用空，走角色默认推荐） */
-export interface TeamPresetDriveDisc {
-  fourPieceSetId: string
-  twoPieceSetId: string
-  /** 第三套 2 件套（2+2+2 开关，见 `DriveDiscConfig#thirdTwoPieceSetId`）；缺省 = 4+2 */
-  thirdTwoPieceSetId?: string
-  /** 主词条（槽位 → statId），缺省按角色推荐 */
-  mainStats?: Record<number, string>
-  /** 副词条分配（词条数），缺省默认 */
-  subStatAllocation?: Record<string, number>
-}
-
 /**
  * 预设队伍的难度/玩法变体（队伍分类）：同一队伍不同操作难度档（如「5嗔火10大」vs「普通轴」），
  * 加载时展开成独立预设条目（id = `${队伍id}__${变体id}`，名 = `${队伍名}·${变体名}`），
@@ -149,8 +137,6 @@ export interface TeamPreset {
   /** 各槽位基础音擎 id（缺省 '' = 自动推荐）。基础音擎 = 0 金档的配装：常驻/A 音擎不计限定金；
    *  限定专武作为「音擎本体」加金步（见 GoldStep.wEngineId），从基础音擎往上买。 */
   wEngines?: [string, string, string]
-  /** 各槽位驱动盘模板（缺省 = 自动推荐） */
-  driveDiscs?: [TeamPresetDriveDisc, TeamPresetDriveDisc, TeamPresetDriveDisc]
   /** 加金顺序：从基础金（限定角色 0 命 + 精炼1）开始，按序应用前 N 步；每步 = 1 限定金 */
   goldSteps: GoldStep[]
   /**

@@ -148,8 +148,8 @@ export const C2_RES_IGNORE = 18
 /** 影画4：锻星第三段/血契共鸣/千锤百炼 伤害 +20% */
 export const M4_DMG_BONUS = 20
 export const M4_MOVE_IDS = new Set(['1611007', '1611029', '1611020', '1611021'])
-/** 残锋：全队锋御 锐暴伤害 +25%（40s 刷新，满覆盖近似） */
-export const RESIDUAL_EDGE_SHARP_CRIT_DMG = 25
+// 残锋（全队锋御 锐暴伤害 +25%，40s 刷新）自 2026-10-26 起走 spec 采集通道：数值落在
+// src/specs/agents/1611.json 的 additionalGateBuffTable，模块不再持常量（曾整列零引用）。
 /**
  * 核心被动·初始转化：每 1% **初始**暴击伤害 → 初始暴击率 +0.35%。
  *

@@ -8,8 +8,7 @@
  */
 import type { useCatalogStore } from '@/stores/catalog'
 import { localized } from '@/utils/format'
-import { defaultDowngradeFor } from '@/data/downgradeWEngines'
-import type { Specialty } from '@/types/catalog'
+
 
 type Catalog = ReturnType<typeof useCatalogStore>
 
@@ -20,15 +19,5 @@ export function downgradeNameOf(catalog: Catalog, wEngineId: string | null | und
   return w ? localized(w.name, wEngineId) : wEngineId
 }
 
-/**
- * 该槽「不选时」会自动穿哪件（= 下位表解析结果），返回 `{ id, name }`；两层表都空 ⇒ `null`。
- * 页面用它渲染「自动（炎炙沸釜）」这种说明，判据用它断言"填 00 不会留空"。
- */
-export function autoDowngradeOf(
-  catalog: Catalog,
-  agentId: string | undefined,
-  specialty: Specialty | undefined,
-): { id: string; name: string } | null {
-  const id = defaultDowngradeFor(agentId, specialty)
-  return id ? { id, name: downgradeNameOf(catalog, id) } : null
-}
+// 原 autoDowngradeOf（包一层 defaultDowngradeFor + 命名）零引用，2026-10-29 删：
+// 页面（TeamSlotCodeEditor）直接下调 downgradeNameOf / data/downgradeWEngines#defaultDowngradeFor。

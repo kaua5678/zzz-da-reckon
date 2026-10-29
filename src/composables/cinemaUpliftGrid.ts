@@ -33,6 +33,7 @@ import { applyBuffToStore, applyTeamToStore } from '@/composables/teamCompare'
 import { analyzeCinemaUplift, type CinemaUpliftEntry } from '@/composables/cinemaUplift'
 import { isBatchAborted, batchReporter, type BatchTaskOptions } from '@/composables/batchTask'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'
+import { whole } from '@/utils/finiteClamp'
 import type { TeamPreset } from '@/types/teamPreset'
 
 /** 网格的一行：一个「Boss × 期」。 */
@@ -190,11 +191,11 @@ export function cumulativeUpliftPct(entries: readonly CinemaUpliftEntry[]): numb
  */
 export function lockSweepOf(baseLock: number, spec: 'spread' | readonly number[] | undefined): number[] {
   if (spec === undefined) return []
-  const base = Math.max(0, Math.floor(Number.isFinite(baseLock) ? baseLock : 0))
+  const base = whole(baseLock)
   const raw = spec === 'spread' ? [base - 1, base, base + 1, base + 2] : spec
   const out: number[] = []
   for (const v of raw) {
-    const n = Math.max(0, Math.floor(Number.isFinite(v) ? v : 0))
+    const n = whole(v)
     if (!out.includes(n)) out.push(n)
   }
   return out.sort((a, b) => a - b)

@@ -88,9 +88,8 @@ export function applySlotOverrides(
   if (overrides.every(o => o === null)) {
     return { preset, locked: [null, null, null], pageLocked: [false, false, false] }
   }
-  const pageLocked = ([0, 1, 2] as const).map(s => pageOverrides[s] !== null)
-  const lockedSlot = (slot: number): boolean => overrides[slot] !== null
-  const drop = (s: GoldStep): boolean => !lockedSlot(s.slot)
+  const pageLocked = ([0, 1, 2] as const).map(s => isSlotLocked(pageOverrides, s))
+  const drop = (s: GoldStep): boolean => !isSlotLocked(overrides, s.slot)
   /**
    * 保留 `wengine: 0`（无专武）——下游 `lockSlots` 用它把精炼设为 1（游戏里没有精炼 0），
    * 音擎则由上面的 `wEngines` 决定（指定下位 / 留空给自动下位）。

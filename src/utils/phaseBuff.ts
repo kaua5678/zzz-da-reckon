@@ -133,10 +133,6 @@ export function sortedPhaseViews(file: BossPresetFile | null | undefined): Phase
   return views.sort((a, b) => (b.begin || b.phaseId).localeCompare(a.begin || a.phaseId))
 }
 
-/** 最新一期的 phaseId（没有期视图 ⇒ null；页面拿它当缺省期数） */
-export function latestPhaseIdOf(file: BossPresetFile | null | undefined): string | null {
-  return sortedPhaseViews(file)[0]?.phaseId ?? null
-}
 
 /**
  * 解析某一期的环境 buff。

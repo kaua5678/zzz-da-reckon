@@ -6,13 +6,14 @@
 import type { ConfigModel } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { teamGoldOf, applyGoldSteps, applyGoldAllocationToStore } from '@/composables/teamCompare'
-import { baseStateFor, baseWEngineFor, bestLimitedWEngineFor, buildBudgetAwareGoldSteps } from './goldStepsFromCatalog'
+import { baseStateFor, bestLimitedWEngineFor, buildBudgetAwareGoldSteps } from './goldStepsFromCatalog'
 import type { TeamGoldState } from './teamTimeline'
 // ========== 配装工具（基础金 / 预算感知加金 / 装配到 store） ==========
 // 基础音擎 / 预算感知加金步 / 基础档 已外提 `goldStepsFromCatalog.ts`（2026-10-25）：队伍对比页的
 // 「未声明 goldSteps 的预设」也要用同一份 catalog 阶梯，复制一份会在两页分叉。
 // 本文件只转出，历史 import 面（`from './teamTimelineStore'`）逐字不变。
-export { baseWEngineFor, bestLimitedWEngineFor, baseStateFor, buildBudgetAwareGoldSteps }
+// baseWEngineFor 不再转出（零导入方；声明在 goldStepsFromCatalog.ts，用它的地方直连那里）
+export { bestLimitedWEngineFor, baseStateFor, buildBudgetAwareGoldSteps }
 
 /** 队伍基础总限定金 = 基础档（baseStateFor）的总限定金（teamGoldOf）：限定 S 角色本体 + 基础档限定音擎（各 1 金） */
 export function baseGoldOfTeam(team: [string, string, string], catalog: ReturnType<typeof useCatalogStore>): number {

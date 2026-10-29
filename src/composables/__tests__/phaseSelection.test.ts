@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ref } from 'vue'
 import { defaultPhaseIdOf, usePhaseSelection } from '@/composables/phaseSelection'
-import { latestPhaseIdOf, sortedPhaseViews } from '@/utils/phaseBuff'
+import { sortedPhaseViews } from '@/utils/phaseBuff'
 import type { BossPresetFile } from '@/types/bossPreset'
 import type { RunArchiveFile } from '@/composables/runArchiveImport'
 import { submissionToDeploy } from '@/composables/runArchiveImport'
@@ -78,9 +78,10 @@ describe('真数据：这条口径必须有判别力（否则判据本身是摆�
     const appliedPhaseId = deploy.boss?.phaseId ?? null
 
     expect(appliedPhaseId, '归档最新一季必须能解析出相位').toBeTruthy()
-    expect(latestPhaseIdOf(bp), '前提：期视图最新一期确实在归档里没有 run').not.toBe(appliedPhaseId)
+    const newestViewPhaseId = sortedPhaseViews(bp)[0]!.phaseId
+    expect(newestViewPhaseId, '前提：期视图最新一期确实在归档里没有 run').not.toBe(appliedPhaseId)
     expect(defaultPhaseIdOf(viewIds, appliedPhaseId), '默认期 = 部署的那一期').toBe(appliedPhaseId)
     // 反证：修前的「一律最新期」会停在另一期上（这条判据能区分新旧两种实现）
-    expect(defaultPhaseIdOf(viewIds, null)).toBe(latestPhaseIdOf(bp))
+    expect(defaultPhaseIdOf(viewIds, null)).toBe(newestViewPhaseId)
   })
 })

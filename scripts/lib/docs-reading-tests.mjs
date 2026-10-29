@@ -117,6 +117,9 @@ export const DOCS_READING_TESTS = [
   'src/scripts/__tests__/recordKeyDeadReads.test.ts',
   'src/scripts/__tests__/recording.test.ts',
   'src/scripts/__tests__/scopedStyleReach.test.ts',
+  // 2026-10-29 追加（规则 ①）：经 scripts/lib/spec-doc-fields.mjs 闭包命中 docs/ 信号
+  // （首屏瘦身专项的判据，2026-10-27 立项，当时漏登记 ⇒ checkGuards 棘轮红）。
+  'src/scripts/__tests__/specDocFields.test.ts',
   // 判据 31：读仓库现状（扫 src/**/*.vue 模板 + 样式表），属规则 ①（闭包命中 docs/ 信号）
   'src/scripts/__tests__/svgPresentationAttr.test.ts',
   'src/scripts/__tests__/teammateBuffControls.test.ts',

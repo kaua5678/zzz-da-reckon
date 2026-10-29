@@ -22,7 +22,7 @@ import { setup as setupCssrSsr } from '@css-render/vue3-ssr'
 import { setupHarness } from '@/test/harness'
 import { useUiStore } from '@/stores/ui'
 import { submissionToDeploy, type RunArchiveFile } from '@/composables/runArchiveImport'
-import { latestPhaseIdOf } from '@/utils/phaseBuff'
+import { sortedPhaseViews } from '@/utils/phaseBuff'
 import type { BossPreset, BossPresetFile } from '@/types/bossPreset'
 
 const bp = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as BossPresetFile
@@ -130,7 +130,7 @@ describe('★ 部署后属性配置页：Boss 卡与环境卡都停在部署的�
     expect(text, '★ 修前就是这句（停在别的一期上，layer 段查不出来）').not.toContain('本期还没有应用 Boss')
     // 反证：两个期号不同的日子里，卡片不得停在期视图最新一期（判别力前提见 phaseSelection.test.ts 同款断言；
     // 哪天归档快照追平到最新一期，这条自动失效，上面那条正证仍然有效）
-    const latest = latestPhaseIdOf(bp)
+    const latest = sortedPhaseViews(bp)[0]?.phaseId ?? null
     if (latest && latest !== phaseId) {
       expect(text, `★ 修前这里是期视图最新一期 ${latest}`).not.toContain(`（${latest}）`)
     }

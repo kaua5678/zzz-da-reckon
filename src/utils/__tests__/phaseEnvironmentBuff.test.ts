@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
-  latestPhaseIdOf, sortedPhaseViews, resolvePhaseEnvironment,
+  sortedPhaseViews, resolvePhaseEnvironment,
   phaseBuffCardSignature, periodBuffRowsOf, layerBuffRowsOf, periodBuffRowSignature, selectedPeriodBuffCard,
 } from '@/utils/phaseBuff'
 import type { BossPresetFile, PhaseBuffCard, PhaseView } from '@/types/bossPreset'
@@ -33,12 +33,13 @@ describe('期视图排序 / 缺省期', () => {
     for (let i = 1; i < sorted.length; i++) {
       expect(sorted[i - 1].begin >= sorted[i].begin, `第 ${i} 期不该比前一期更新`).toBe(true)
     }
-    expect(latestPhaseIdOf(bp)).toBe(sorted[0].phaseId)
+    // 数据本身已是新→旧 ⇒ 兜底排序不许改变口径（首项仍是数据里的最新一期）
+    expect(sorted[0].phaseId).toBe(views[0]!.phaseId)
   })
 
-  it('没有期视图 ⇒ null（不编一期出来）', () => {
-    expect(latestPhaseIdOf(null)).toBeNull()
-    expect(latestPhaseIdOf({ ...bp, phaseViews: [] })).toBeNull()
+  it('没有期视图 ⇒ 不编一期出来（空表；「缺省期」由 composables/phaseSelection#defaultPhaseIdOf 给空串）', () => {
+    expect(sortedPhaseViews(null)).toEqual([])
+    expect(sortedPhaseViews({ ...bp, phaseViews: [] })).toEqual([])
   })
 })
 
