@@ -38,7 +38,7 @@ describe('驱动盘触发型效果覆盖率折算', () => {
   })
 
   it('③④ 真管线：露西带 4pc 摇摆 ⇒ 自动值与手调同值时伤害逐位相等，手调优先', async () => {
-    const h = await setupHarness([{ agentId: '1151' }, { agentId: '1011' }, { agentId: '1211' }] as never, { recommendedBuild: true } as never)
+    await setupHarness([{ agentId: '1151' }, { agentId: '1011' }, { agentId: '1211' }] as never, { recommendedBuild: true } as never)
     const config = useConfigStore()
     expect(config.team[0]!.driveDisc.fourPieceSetId, '露西的推荐盘 = 4pc 摇摆爵士').toBe('31600')
     const calc = useResourceCalc()
