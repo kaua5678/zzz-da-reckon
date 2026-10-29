@@ -1232,8 +1232,9 @@ function blockStyle(ai: number, act: StunAxisAction, selected: boolean) {
     top: (layoutOf(ai).blockTop[act.slot] ?? TL.head) + 'px',
     height: TL.blockH + 'px',
     width: wPct + '%',
-    background: ovr ? 'rgba(240,160,32,0.28)' : selected ? 'rgba(99,226,183,0.35)' : 'rgba(99,226,183,0.16)',
-    borderColor: ovr ? 'rgba(240,160,32,0.5)' : 'transparent',
+    // 块底/描边走语义别名（2026-10-30）：字面值抄的是深色档，亮色主题下会糊（UI_THEME_GUIDE §5）
+    background: ovr ? 'var(--c-warning-soft)' : selected ? 'var(--fill-active)' : 'var(--c-success-soft)',
+    borderColor: ovr ? 'var(--c-warning)' : selected ? 'var(--c-success)' : 'transparent',
     zIndex: selected ? 5 : 2,
   }
 }
@@ -1273,13 +1274,13 @@ function agentName(s: number) {
 .placeholder { text-align: center; color: var(--wa-300); padding: 60px 0; }
 .sap-topbar { display: flex; align-items: center; margin-bottom: 14px; }
 .sap-top-label { font-size: 12px; color: var(--wa-550); margin-left: 6px; }
-.sap-plan-banner { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 6px 10px; background: rgba(99,226,183,0.07); border: 1px solid rgba(99,226,183,0.2); border-radius: 6px; }
+.sap-plan-banner { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 6px 10px; background: var(--c-success-soft); border: 1px solid var(--c-success); border-radius: 6px; }
 .sap-plan-label { font-size: 11px; color: var(--c-success); }
 .sap-plan-name { font-size: 12px; color: var(--c-success); font-weight: 600; }
 .sap-plan-note { font-size: 11px; color: var(--wa-450); }
 .sap-pool { margin-bottom: 16px; }
 .sap-section-title { font-size: 12px; color: var(--wa-400); margin-bottom: 4px; }
-.sap-presets { margin-bottom: 16px; padding: 10px; background: rgba(99,226,183,0.04); border: 1px solid var(--c-success-soft); border-radius: 6px; }
+.sap-presets { margin-bottom: 16px; padding: 10px; background: var(--c-success-soft); border: 1px solid var(--c-success-soft); border-radius: 6px; }
 .sap-preset-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
 .sap-preset-name { font-size: 12px; color: var(--c-success); }
 .sap-preset-note { font-size: 11px; color: var(--wa-500); }
@@ -1288,7 +1289,7 @@ function agentName(s: number) {
 /* 短标签后名字变长（前缀压短、本体保留）：宽度由**视口**收缴——max-width + 省略号，
    全文仍可读（chip 的 title 里带完整「名字 + 剩余次数」）。**不在数据层砍字**：
    2026-10-29 的「全是一个名字」正是数据层砍字砍出来的。 */
-.sap-chip { font-size: 11px; padding: 2px 7px; border-radius: 3px; background: rgba(99,226,183,0.08); color: var(--c-success); cursor: pointer; max-width: 22em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sap-chip { font-size: 11px; padding: 2px 7px; border-radius: 3px; background: var(--c-success-soft); color: var(--c-success-strong); cursor: pointer; max-width: 22em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sap-chip.dim { background: var(--wa-30); color: var(--fg-2); }
 .sap-axes { display: flex; flex-direction: column; gap: 14px; }
 .sap-axis { background: var(--wa-20); border-radius: 8px; padding: 10px; border: 1px solid var(--wa-50); }
@@ -1304,8 +1305,8 @@ function agentName(s: number) {
 .sap-ticks { position: absolute; top: 0; left: 0; right: 0; height: 18px; }
 .sap-tick { position: absolute; top: 0; height: 100%; border-left: 1px solid var(--wa-80); }
 .sap-tick-label { position: absolute; top: 2px; left: 3px; font-size: 10px; color: var(--wa-250); }
-.sap-window-bar { position: absolute; top: 18px; left: 0; right: 0; height: 12px; background: rgba(240,160,32,0.08); border-radius: 3px; }
-.sap-win-label { font-size: 10px; line-height: 12px; color: rgba(240,160,32,0.5); padding-left: 4px; }
+.sap-window-bar { position: absolute; top: 18px; left: 0; right: 0; height: 12px; background: var(--c-warning-soft); border-radius: 3px; }
+.sap-win-label { font-size: 10px; line-height: 12px; color: var(--c-warning-strong); padding-left: 4px; }
 .sap-lane { position: absolute; left: 0; right: 0; background: var(--wa-20); border-radius: 3px; }
 .sap-lane-name { font-size: 10px; line-height: 1.5; color: var(--wa-300); padding-left: 4px; }
 .sap-block { position: absolute; border-radius: 3px; display: flex; align-items: center; gap: 3px; padding: 0 4px; cursor: grab; overflow: hidden; border: 1px solid transparent; box-sizing: border-box; }
@@ -1320,15 +1321,15 @@ function agentName(s: number) {
 .sap-blab { position: absolute; font-size: 11px; line-height: 15px; white-space: nowrap; padding-left: 5px; border-left: 2px solid; pointer-events: none; }
 /* 招式级短徽标（明王窗口 / +30%失衡）：**先收缩的那一方**——空间不足时它让位给招式名 */
 .sap-mw { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 10px; line-height: 1.2; padding: 1px 4px; border-radius: 3px; pointer-events: none; white-space: nowrap; }
-.sap-mw.mw-trigger { color: var(--c-warning-strong); background: rgba(240,160,32,0.15); }
-.sap-mw.mw-live { color: var(--c-success); background: rgba(99,226,183,0.15); }
+.sap-mw.mw-trigger { color: var(--c-warning-strong); background: var(--c-warning-soft); }
+.sap-mw.mw-live { color: var(--c-success-strong); background: var(--c-success-soft); }
 /* 明王平行道：触发块处 8s 窗口条（2层黄 / 3层绿），6命满覆盖 */
-.sap-mw-lane { background: rgba(240,160,32,0.03); }
+.sap-mw-lane { background: var(--c-warning-soft); }
 .sap-mw-window { position: absolute; top: 3px; height: 20px; border-radius: 3px; display: flex; align-items: center; padding: 0 4px; font-size: 10px; white-space: nowrap; overflow: hidden; pointer-events: none; }
-.sap-mw-window.mw-l2 { background: rgba(240,160,32,0.35); border: 1px solid rgba(240,160,32,0.6); color: var(--fg-2); }
-.sap-mw-window.mw-l3 { background: rgba(99,226,183,0.35); border: 1px solid rgba(99,226,183,0.6); color: var(--fg-2); }
-.sap-mw-window.mw-full { background: var(--c-success-soft); border: 1px dashed rgba(99,226,183,0.4); color: var(--c-success); }
-.sap-mw-banner { margin: 6px 0 8px; padding: 5px 8px; font-size: 10px; color: var(--wa-600); background: rgba(99,226,183,0.05); border: 1px solid rgba(99,226,183,0.15); border-radius: 4px; }
+.sap-mw-window.mw-l2 { background: var(--c-warning-soft); border: 1px solid var(--c-warning); color: var(--fg-2); }
+.sap-mw-window.mw-l3 { background: var(--c-success-soft); border: 1px solid var(--c-success); color: var(--fg-2); }
+.sap-mw-window.mw-full { background: var(--c-success-soft); border: 1px dashed var(--c-success); color: var(--c-success-strong); }
+.sap-mw-banner { margin: 6px 0 8px; padding: 5px 8px; font-size: 11px; color: var(--fg-2); background: var(--c-success-soft); border: 1px solid var(--c-success); border-radius: 4px; }
 /* 优先级栈 */
 .sap-stack { display: flex; flex-direction: column; gap: 3px; }
 .sap-stack-row { display: flex; align-items: center; gap: 6px; padding: 2px 4px; background: var(--wa-20); border-radius: 3px; flex-wrap: wrap; }
@@ -1346,7 +1347,7 @@ function agentName(s: number) {
 .sap-gash-row .m { width: 116px; }
 .sap-gash-row.miss { color: var(--c-danger); }
 .sap-stat-row { display: flex; gap: 14px; font-size: 12px; color: var(--wa-550); }
-.sap-warn { font-size: 11px; color: #f0a020; }
+.sap-warn { font-size: 11px; color: var(--c-warning-strong); }
 .sap-block.stale { opacity: .35; border: 1px dashed var(--app-accent-gold); }
 /* 事件道（2026-10-26）：异常 / 毁伤各自成道，按时刻定位——块内只留招式级元数据，招式名不再被标签挤成 0 宽。
    颜色：触发/入窗=警示金、紊乱=成功绿（与原 mw-trigger/mw-l3 同语义）、积蓄槽=第三级墨、毁伤=危险红、未触发=斜纹红。 */
