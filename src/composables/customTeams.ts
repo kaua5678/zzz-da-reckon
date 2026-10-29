@@ -19,6 +19,9 @@
  *
  * @fact preset:自定义队伍 口径: 自定义队伍 = 用户自填槽位成员（可少于 3 人，空槽走引擎既有的按位压缩路径），物化成 TeamPreset 后与预设队同路进对比；配装/交互/金数一律取缺省（wEngines 空=自动推荐、goldSteps:[]=01 基线、interactions:[]=角色职业基准）；id 前缀固定 `custom-`，不进预设库、不落 group/subgroup | 据 用户 2026-10-11「两个都要」（跨筛选自由勾选 + 手动组队） | 验 src/composables/__tests__/customTeams.test.ts | 锚 src/composables/customTeams.ts#toCustomPreset | 信 确认
  * ⟳复核: 若自定义队开始需要自带配装/交互/金数（不再一律取缺省），或预设库改为可写（自定义队能落盘成预设文件），复核「物化成 TeamPreset 且不进预设库」这条归属 | 到期 2027-01-31
+ *
+ * @fact preset:创建组与批量配置码 口径: 创建组 = 固定成员（只认非变化槽）+ 变化槽位候选多选 ⇒ 每候选一支队，去重键 `identityKey` = 成员集合（顺序无关）+ 配置码（码不同 ⇒ 是另一支队）；批量配置码 = 同一码一次写多队 × 多槽（空文本 = 清那几个槽），两处入口（自定义队伍区 / 每队配置码操作区）共用 `components/SlotCodeBatchBar.vue`，写哪、写多少队由父组件的 apply 决定 | 据 用户@2026-10-29「自定义队伍需要一个创建组的功能，固定两人，剩下一个位置从某个位置里面多选，批量设置多个队伍」+「而且配置码也支持批量修改，比如全填01」 | 验 src/composables/__tests__/customTeams.test.ts | 锚 src/composables/customTeams.ts#createGroup | 信 确认
+ * ⟳复核: 若「组」开始需要落成一层结构（组名/整组开关/组内共享配置），复核「组只是建队动作、不落存档」这条 | 到期 2027-04-30
  */
 import { computed } from 'vue'
 import { defineStore } from 'pinia'
@@ -100,6 +103,45 @@ function parseCustomTeams(stored: unknown): CustomTeamDef[] | undefined {
   return out.length > 0 ? out : undefined
 }
 
+/** 创建组的输入（用户 2026-10-29：「固定两人，剩下一个位置从某个位置里面多选，批量设置多个队伍」） */
+export interface CreateGroupInput {
+  /** 变化槽位：每个候选各建一支队，候选填这一槽 */
+  varyingSlot: 0 | 1 | 2
+  /** 固定成员（槽位 → 角色 id）：只读**非变化槽**的那两条；含变化槽的条目被忽略（调用方槽位算错） */
+  fixed: ReadonlyArray<{ slot: 0 | 1 | 2, agentId: string }>
+  /** 候选角色 id（多选）：每个候选建一支队；不在目录里的跳过 */
+  candidates: readonly string[]
+  /** 可选批量配置码：写进新队的**三个槽**（与「批量配置码」同语义，缺省/null = 不写） */
+  code?: SlotCode | null
+}
+
+export interface CreateGroupResult {
+  /** 新队 id，顺序 = 候选顺序（调用方据此自动勾选） */
+  created: string[]
+  /** 被跳过的候选数（目录里没有 / 空候选 / 已有同队）——要如实回报，见 `createGroup` */
+  skipped: number
+}
+
+/** `identityKey` 的入参形状（只要这两样，便于测试直接喂字面量） */
+export interface TeamIdentityShape {
+  team: readonly string[]
+  slotCodes?: ReadonlyArray<SlotCode | null>
+}
+
+/**
+ * 队伍身份键：**成员集合（顺序无关）+ 配置码**。用于「已有同队不重复建」。
+ *
+ * 为什么带上配置码：`teamPresets` 那边「同名队只留一条」的口径是纯成员集合去重，但**自定义队
+ * 是配置跟着队伍走**的（`slotCodes`）——「挽昼+诺姆+X 的 30 档」与「…的 11 档」必须能同时存在，
+ * 拿成员集合当键会把用户真正想比的那两支折成一支（静默少一条曲线）。成员集合部分仍按
+ * 「顺序无关」算（同一队换槽位还是同一支队，与预设库口径一致）。
+ */
+export function identityKey(def: TeamIdentityShape): string {
+  const members = [...def.team].filter(Boolean).sort().join('|')
+  const codes = (def.slotCodes ?? []).map(c => (c ? c.cinema + '-' + c.wengine : '-')).join(',')
+  return members + '#' + codes
+}
+
 /** 自动队名：按槽位成员名拼（与预设命名的「A+B+C」观感一致；无名可拼时退回占位） */
 function autoName(team: readonly string[], nameOf: (id: string) => string): string {
   const names = team.filter(Boolean).map(nameOf)
@@ -117,9 +159,12 @@ export const useCustomTeamsStore = defineStore('customTeams', () => {
     () => [],
   )
 
-  /** 下一个可用的 id：取现存最大序号 +1（不重用已删 id，避免已选清单指向新队伍） */
-  function nextId(): string {
-    const used = defs.value.map(d => Number(d.id.slice(CUSTOM_TEAM_PREFIX.length))).filter(Number.isFinite)
+  /**
+   * 下一个可用的 id：取现存最大序号 +1（不重用已删 id，避免已选清单指向新队伍）。
+   * `list` 可显式传入 = 批量建队时按**正在拼的**那份清单算号（见 `createGroup` 的一次写盘纪律）。
+   */
+  function nextId(list: readonly CustomTeamDef[] = defs.value): string {
+    const used = list.map(d => Number(d.id.slice(CUSTOM_TEAM_PREFIX.length))).filter(Number.isFinite)
     const max = used.length > 0 ? Math.max(...used) : 0
     return `${CUSTOM_TEAM_PREFIX}${max + 1}`
   }
@@ -133,6 +178,78 @@ export const useCustomTeamsStore = defineStore('customTeams', () => {
 
   function remove(id: string) {
     defs.value = defs.value.filter(d => d.id !== id)
+  }
+
+  /**
+   * **创建组**（批量建队，用户 2026-10-29：「固定两人，剩下一个位置从某个位置里面多选，
+   * 批量设置多个队伍」）。
+   *
+   * 「挽昼 + 诺姆 + X」这类对比一次要建十几支队（X 逐个换），逐支手填三个下拉是纯体力活。
+   * 语义 = 固定两人 + 变化槽位多选候选 ⇒ **每个候选一支队**。
+   *
+   * 三条纪律：
+   * ① **成员必须在目录里**（与 `setSlot` 同判据）：候选为空/目录里没有的 ⇒ 跳过**并计入
+   *    `skipped`**，而不是写出幽灵 id 或静默少建一支；
+   * ② **已有同队不重复建**（去重键 = 成员集合 + 配置码，见 `identityKey`）：成员集合相同
+   *    且码也一样 ⇒ 跳过；**码不同则照建**——「挽昼+诺姆+X 的 30 档」与「…的 11 档」是两支队，
+   *    这正是 `slotCodes` 存在的理由，不能拿成员集合把它们折成一支；
+   * ③ **一次写盘**（循环里改 `next` 数组，最后赋值一次）：逐支 `add()` 会触发 N 次
+   *    localStorage 写入 + N 次响应式重算，把「一次建 20 支」变成 20 次级联（而且是同步的）。
+   *
+   * `created` = 新队 id（顺序 = 候选顺序，调用方据此自动勾选）；`skipped` = 跳过的候选数。
+   */
+  function createGroup(input: CreateGroupInput): CreateGroupResult {
+    const known = knownAgentIds.value
+    // 目录未就绪（size = 0）时不把「还没加载」当成「角色不存在」（与 `resolveGhosts` 同口径）
+    const knownOrUnloaded = (id: string) => known.size === 0 || known.has(id)
+    // 固定成员只认「非变化槽」的那两条：某条若指向变化槽，说明调用方把槽位算错了——忽略它，
+    // 而不是让它覆盖候选（那会静默写出「固定角色被候选顶掉」的队，用户看不出哪里错了）
+    const fixed = input.fixed.filter(f => f.slot !== input.varyingSlot && !!f.agentId)
+    const codes: Array<SlotCode | null> | undefined = input.code ? [input.code, input.code, input.code] : undefined
+    const seen = new Set(defs.value.map(d => identityKey(d)))
+    const next = [...defs.value]
+    const created: string[] = []
+    let skipped = 0
+    for (const cand of input.candidates) {
+      // 空候选 / 目录里没有的角色：**计入 skipped**（不写幽灵 id，也不静默少建一支——
+      // 调用方要能如实说出「3 个候选建了 1 支」，否则用户只会看到「怎么少了几支队」）
+      if (!cand || !knownOrUnloaded(cand)) { skipped++; continue }
+      const team: [string, string, string] = ['', '', '']
+      for (const f of fixed) team[f.slot] = f.agentId
+      team[input.varyingSlot] = cand
+      const key = identityKey({ team, slotCodes: codes })
+      if (!team.some(Boolean) || seen.has(key)) { skipped++; continue }
+      seen.add(key)
+      const def: CustomTeamDef = { id: nextId(next), name: '', team, ...(codes ? { slotCodes: codes } : {}) }
+      next.push(def)
+      created.push(def.id)
+    }
+    defs.value = next
+    return { created, skipped }
+  }
+
+  /**
+   * **批量配置码**（用户 2026-10-29：「配置码也支持批量修改，比如全填 01」）。
+   *
+   * `code = null` = 把这几个槽的码**清掉**（回「不固定」），不是清掉整条队。
+   * 未命中的 id 静默跳过（队伍可能刚被删）——批量操作不该因为一个过时 id 整批失败。
+   *
+   * 返回实际改动的队数（调用方据此给反馈：0 就是「没有队被改」，而不是「成功」）。
+   */
+  function setCodesMany(ids: readonly string[], slots: readonly number[], code: SlotCode | null): number {
+    if (ids.length === 0 || slots.length === 0) return 0
+    const wanted = new Set(ids)
+    const picked = slots.filter(s => s >= 0 && s <= 2)
+    if (picked.length === 0) return 0
+    let changed = 0
+    defs.value = defs.value.map(d => {
+      if (!wanted.has(d.id)) return d
+      const next: Array<SlotCode | null> = d.slotCodes ? [...d.slotCodes] : [null, null, null]
+      for (const s of picked) next[s] = code
+      changed++
+      return { ...d, slotCodes: next.every(c => c === null) ? undefined : next }
+    })
+    return changed
   }
 
   function setName(id: string, name: string) {
@@ -217,7 +334,11 @@ export const useCustomTeamsStore = defineStore('customTeams', () => {
     return defs.value.find(d => d.id === id)
   }
 
-  return { defs, presets, knownAgentIds, add, remove, setName, setSlot, setSlotCode, displayName, toCustomPreset, byId, hasUnknownMembers }
+  return {
+    defs, presets, knownAgentIds,
+    add, createGroup, remove, setName, setSlot, setSlotCode, setCodesMany,
+    displayName, toCustomPreset, byId, hasUnknownMembers,
+  }
 })
 
 /**

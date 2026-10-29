@@ -12,7 +12,7 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { useCustomTeamsStore, resolveSelectedPresets, CUSTOM_TEAM_PREFIX } from '@/composables/customTeams'
+import { useCustomTeamsStore, resolveSelectedPresets, identityKey, CUSTOM_TEAM_PREFIX } from '@/composables/customTeams'
 import { teamPresets } from '@/data/teamPresets'
 import { useCatalogStore } from '@/stores/catalog'
 import { mockStaticFetch } from '@/test/harness'
@@ -195,5 +195,103 @@ describe('自定义队伍（2026-10-11）', () => {
     const s = readFileSync(join(process.cwd(), 'src/composables/customTeams.ts'), 'utf8')
     expect(s).toContain('@fact preset:自定义队伍')
     expect(s).toMatch(/export function toCustomPreset|function toCustomPreset/)
+  })
+
+  // ============ 创建组 + 批量配置码（用户 2026-10-29）============
+
+  it('★ 创建组：固定两人 + 候选多选 ⇒ 每候选一支队，顺序 = 候选顺序，一次写盘', async () => {
+    await loadCatalog()
+    const store = useCustomTeamsStore()
+    const res = store.createGroup({
+      varyingSlot: 2,
+      fixed: [{ slot: 0, agentId: '1571' }, { slot: 1, agentId: '1211' }],
+      candidates: ['1611', '1601', '1661'],
+    })
+    expect(res.created).toHaveLength(3)
+    expect(res.skipped).toBe(0)
+    expect(store.defs.map(d => d.id)).toEqual(res.created)
+    expect(store.defs.map(d => d.team)).toEqual([
+      ['1571', '1211', '1611'],
+      ['1571', '1211', '1601'],
+      ['1571', '1211', '1661'],
+    ])
+    // id 不重用、递增（已选清单不会指向新队伍）
+    expect(res.created).toEqual(['custom-1', 'custom-2', 'custom-3'])
+  })
+
+  it('★ 创建组去重：同成员同码跳过，**同成员不同码照建**（那是两支要同时看的队）', async () => {
+    await loadCatalog()
+    const store = useCustomTeamsStore()
+    const group = {
+      varyingSlot: 2 as const,
+      fixed: [{ slot: 0 as const, agentId: '1571' }, { slot: 1 as const, agentId: '1211' }],
+      candidates: ['1611'],
+    }
+    const one = store.createGroup({ ...group, code: { cinema: 3, wengine: 0 } })
+    expect(one.created).toHaveLength(1)
+    // 同成员 + 同码 ⇒ 跳过（不重复建）
+    const again = store.createGroup({ ...group, code: { cinema: 3, wengine: 0 } })
+    expect(again.created).toEqual([])
+    expect(again.skipped).toBe(1)
+    // 同成员 + 不同码 ⇒ **照建**（「诺姆30 队」与「诺姆11 队」必须并存，否则静默少一条曲线）
+    const other = store.createGroup({ ...group, code: { cinema: 1, wengine: 1 } })
+    expect(other.created).toHaveLength(1)
+    expect(store.defs).toHaveLength(2)
+    expect(store.defs[1]!.slotCodes).toEqual([
+      { cinema: 1, wengine: 1 }, { cinema: 1, wengine: 1 }, { cinema: 1, wengine: 1 },
+    ])
+  })
+
+  it('创建组：目录外的候选跳过；指向「变化槽」的固定项被忽略（不静默顶掉候选）', async () => {
+    await loadCatalog()
+    const store = useCustomTeamsStore()
+    const res = store.createGroup({
+      varyingSlot: 1,
+      // 第 2 条指向变化槽（1）⇒ 忽略它，而不是让「诺姆」把候选顶掉
+      fixed: [{ slot: 0, agentId: '1571' }, { slot: 1, agentId: '1211' }],
+      candidates: ['1611', 'not-a-real-agent', ''],
+    })
+    expect(res.created).toHaveLength(1)
+    expect(res.skipped).toBe(2)
+    expect(store.defs[0]!.team).toEqual(['1571', '1611', ''])
+  })
+
+  it('★ 批量配置码：多队 × 多槽一次写；null = 清那几个槽；未命中 id 跳过并如实回报改动数', async () => {
+    await loadCatalog()
+    const store = useCustomTeamsStore()
+    const res = store.createGroup({
+      varyingSlot: 2,
+      fixed: [{ slot: 0, agentId: '1571' }, { slot: 1, agentId: '1211' }],
+      candidates: ['1611', '1601'],
+    })
+    // 全填 01（用户原话的例子）
+    expect(store.setCodesMany(res.created, [0, 1, 2], { cinema: 0, wengine: 1 })).toBe(2)
+    for (const d of store.defs) {
+      expect(d.slotCodes).toEqual([{ cinema: 0, wengine: 1 }, { cinema: 0, wengine: 1 }, { cinema: 0, wengine: 1 }])
+    }
+    // 只清第 0 槽：另两槽不受影响
+    expect(store.setCodesMany(res.created, [0], null)).toBe(2)
+    expect(store.defs[0]!.slotCodes).toEqual([null, { cinema: 0, wengine: 1 }, { cinema: 0, wengine: 1 }])
+    // 全清 ⇒ 字段整体消失（不留一串 null）
+    expect(store.setCodesMany(res.created, [1, 2], null)).toBe(2)
+    expect(store.defs[0]!.slotCodes).toBeUndefined()
+    // 未命中 / 空清单 ⇒ 0（调用方据此说「没有队被改」，而不是假装成功）
+    expect(store.setCodesMany(['custom-999'], [0], { cinema: 0, wengine: 1 })).toBe(0)
+    expect(store.setCodesMany([], [0], null)).toBe(0)
+    expect(store.setCodesMany(res.created, [], null)).toBe(0)
+  })
+
+  it('identityKey：成员顺序无关 + 配置码进键（同一队换槽位仍是同一支队）', async () => {
+    expect(identityKey({ team: ['a', 'b', 'c'] })).toBe(identityKey({ team: ['c', 'a', 'b'] }))
+    expect(identityKey({ team: ['a', 'b', ''] })).not.toBe(identityKey({ team: ['a', 'b', 'c'] }))
+    const withCode = identityKey({ team: ['a', 'b', 'c'], slotCodes: [{ cinema: 3, wengine: 0 }, null, null] })
+    expect(withCode).not.toBe(identityKey({ team: ['a', 'b', 'c'] }))
+  })
+
+  it('源码锁：两处配置码编辑区都挂批量条（自定义队伍 / 每队配置码操作区）', () => {
+    for (const f of ['CustomTeamsEditor.vue', 'TeamSlotCodeEditor.vue']) {
+      const s = readFileSync(join(process.cwd(), 'src/components', f), 'utf8')
+      expect(s, `${f} 应挂 SlotCodeBatchBar`).toContain('SlotCodeBatchBar')
+    }
   })
 })

@@ -1328,6 +1328,15 @@ const customTeams = useCustomTeamsStore()
 const selectedPresets = computed<TeamPreset[]>(() =>
   resolveSelectedPresets(selectedPresetIds.value, customTeams.defs, customTeams.toCustomPreset),
 )
+/**
+ * 勾选队伍按 id 查（**含自定义队**）——凡是「拿队伍 id 反查队伍」的地方都走它。
+ *
+ * ⚠ 不许再用**预设库**（`teamPresets`）反查队伍：预设库只装预设队，**自定义队一律查空**，
+ * 于是主C/成员被当成「没收录」、队名回落成裸 id（`custom-3`）、版本轴道拿不到成员。
+ * 用户 2026-10-29 报的「挽昼的几个队看着像坏了」就是这一族缺陷的外显（配色只是其中一处）。
+ * 解析口与曲线同源 = `resolveSelectedPresets`（`selectedPresets`）。
+ */
+const selectedPresetById = computed(() => new Map(selectedPresets.value.map(p => [p.id, p])))
 
 // ========== 金数 ==========
 const goldMin = ref(0)
@@ -1712,7 +1721,7 @@ const presetInputs = computed(() => selectedPresets.value.map(p => ({
 /** 结果侧版本轴（展示用）：只覆盖**可见**队，隐藏队退出轴范围（图例筛选传导） */
 const versionAxis = computed(() => deriveVersionAxis(
   visibleCurveRows.value.map(r => {
-    const p = teamPresets.find(t => t.id === r.presetId)
+    const p = selectedPresetById.value.get(r.presetId)
     return { presetId: r.presetId, name: r.name, team: (p?.team ?? ['', '', '']) as readonly string[] }
   }),
   versionOverrides.value,
@@ -1850,7 +1859,7 @@ const curvePeriodAxis = computed(() => {
 
 /** 预设 id → 队名（环境道标签用；查不到就退回 id，不显示空串） */
 function presetNameOf(presetId: string): string {
-  return teamPresets.find(t => t.id === presetId)?.name ?? presetId
+  return selectedPresetById.value.get(presetId)?.name ?? presetId
 }
 
 /** 3D 图实际用的道（环境模式 = 期数道；否则 = 版本道） */
@@ -1867,7 +1876,7 @@ function slotName(slot: number): string {
   return ['主 C 位（槽 1）', '第二位（槽 2）', '第三位（槽 3）'][slot] ?? `槽 ${slot + 1}`
 }
 function versionSlotOptions(presetId: string) {
-  const p = teamPresets.find(t => t.id === presetId)
+  const p = selectedPresetById.value.get(presetId)
   return [0, 1, 2].map(slot => ({ value: slot, label: `${slotName(slot)} ${agentNameOf(p?.team[slot])}` }))
 }
 /** 批任务归属（S4，CC-343）：散点 / 曲线 / 海选三者共用——新一次计算吊销前任，离开页面也吊销。
@@ -1925,7 +1934,7 @@ const curveZAbsMax = computed(() => {
 const scatterLegend = useSeriesFilter(() =>
   [...new Set(points.value.map(p => p.presetId))].map(id => ({
     id,
-    name: teamPresets.find(t => t.id === id)?.name ?? id,
+    name: selectedPresetById.value.get(id)?.name ?? id,
   })),
 )
 /** 可见的散点（图 + 轴 + 明细表同源） */
@@ -2204,7 +2213,7 @@ function goldDetail(label: string): string {
 const {
   svgW, padL, padT, plotW, plotH, viewBox,
   yMax, yOf, xOf, yTicks, yLabel, xTickPositions, xTickLabels, colorOf,
-} = useScatterGeometry({ visiblePoints })
+} = useScatterGeometry({ visiblePoints, selectedPresetIds })
 
 // ========== 第三轴：主C首池时间（用户 2026-09-14：「还可以找第三个轴，就是时间」） ==========
 // 不做真 3D（可读性 + 零依赖 + 可单测，依据见 composables/pointTimeAxis.ts 文件头）：
@@ -2214,7 +2223,7 @@ const colorByRelease = ref(false)
 
 /** 每队主C（槽位 0）的实装时间编码；未收录主C → 中性色（不猜时间） */
 const timeEncoding = computed(() => {
-  const mains = visiblePoints.value.map(p => teamPresets.find(t => t.id === p.presetId)?.team[0] ?? '')
+  const mains = visiblePoints.value.map(p => selectedPresetById.value.get(p.presetId)?.team[0] ?? '')
   return encodePointTimes(mains)
 })
 
@@ -2251,7 +2260,7 @@ const legendPresets = computed(() => {
   const ids = [...new Set(points.value.map(p => p.presetId))]
   return ids.map(id => {
     const ps = points.value.filter(p => p.presetId === id)
-    const t = teamPresets.find(x => x.id === id)
+    const t = selectedPresetById.value.get(id)
     return {
       id,
       name: t?.name ?? id,

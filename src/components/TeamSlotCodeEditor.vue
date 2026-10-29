@@ -8,6 +8,14 @@
       </span>
     </div>
     <div v-if="presets.length === 0" class="tsc-none">先在「预设队伍」里勾几支队</div>
+    <!-- 批量配置码（用户 2026-10-29：「配置码也支持批量修改，比如全填 01」）——写的是**页面级**
+         覆盖（`teamSlotCodes`，压过预设/自定义队自带的码），作用对象 = 本区列出的这些队 -->
+    <SlotCodeBatchBar
+      v-else
+      label="批量配置码"
+      :scopes="batchScopes"
+      :apply="applyBatchCells"
+    />
     <div v-for="p in presets" :key="p.id" class="tsc-row">
       <span class="tsc-name" :title="p.name">{{ p.name }}</span>
       <div v-for="slot in SLOTS" :key="slot" class="tsc-slot">
@@ -67,7 +75,8 @@
 import { computed } from 'vue'
 import { NButton, NInput, NSelect } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
-import { useTeamSlotCodes } from '@/composables/teamSlotCodes'
+import { invalidCells, slotsNeedingDowngrade, useTeamSlotCodes } from '@/composables/teamSlotCodes'
+import SlotCodeBatchBar from '@/components/SlotCodeBatchBar.vue'
 import { downgradeNameOf } from '@/composables/downgradeNaming'
 import { downgradePoolFor } from '@/data/downgradeWEngines'
 import {
@@ -77,7 +86,7 @@ import { setupCodeLabel } from '@/utils/setupCode'
 import { localized } from '@/utils/format'
 import type { TeamPreset } from '@/types/teamPreset'
 
-defineProps<{
+const props = defineProps<{
   /** 页面上已勾选的队伍（预设库 + 自定义队合并解析后的结果） */
   presets: TeamPreset[]
 }>()
@@ -86,23 +95,27 @@ const SLOTS = [0, 1, 2] as const
 const store = useTeamSlotCodes()
 const catalog = useCatalogStore()
 
-const invalidAt = computed(() => (id: string) => store.map.value[id] ? cellsInvalid(id) : [false, false, false])
-
-function cellsInvalid(id: string): boolean[] {
-  const cells = store.entryOf(id).cells
-  return cells.map((t, i) => t.trim() !== '' && store.overridesFor(id)[i] === null)
-}
+/** 非法格标记：判定住 composables/teamSlotCodes#invalidCells（vitest 对 .vue 全盲，只能靠纯函数测） */
+const invalidAt = computed(() => (id: string) => invalidCells(store.map.value[id]))
 
 function onCell(id: string, slot: number, v: string) {
   store.setCell(id, slot, v)
 }
 
-/** 右位 0 的槽（需要选下位） */
+/**
+ * 批量写格（用户 2026-10-29：「配置码也支持批量修改，比如全填 01」）。
+ *
+ * 作用对象 = 本区已经列出的队伍（`presets`，即勾选清单，含预设库与自定义队）。只给一组，
+ * 故组件不显示范围下拉——这一区本来就是「你勾了哪几支队就写哪几支」。
+ */
+const batchScopes = computed(() => [{ label: '已勾选队伍', ids: props.presets.map(p => p.id) }])
+function applyBatchCells(text: string, slots: readonly number[], ids: readonly string[]): number {
+  return store.setCellsMany(ids, slots, text)
+}
+
+/** 右位 0 的槽（需要选下位）：同一判定另有纯函数版（composables/teamSlotCodes#slotsNeedingDowngrade）供判据直测 */
 function needsDowngrade(id: string): number[] {
-  const ov = store.overridesFor(id)
-  const out: number[] = []
-  for (let s = 0; s < 3; s++) if (ov[s] && ov[s]!.wengine === 0) out.push(s)
-  return out
+  return slotsNeedingDowngrade(store.map.value[id])
 }
 
 function agentOf(p: TeamPreset, slot: number): string {

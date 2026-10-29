@@ -1,17 +1,24 @@
-import { computed, type ComputedRef } from 'vue'
-import { teamPresets } from '@/data/teamPresets'
+import { computed, type Ref } from 'vue'
 import type { TeamComparePoint } from '@/types/teamPreset'
+import { assignTeamColors, teamColorOf } from '@/composables/teamColors'
 
 /**
  * 散点图几何（x = 难度，y = 血量%）：画布尺寸、轴上限、刻度与队伍配色。
  * 从 `views/TeamComparePage.vue` 原样搬出（纯派生量、无副作用；2026-09-20 round 44 结构熵切面）。
  *
  * ⚠ 依赖以**同名参数**注入（`visiblePoints`）而不是改名成 `points`：这样搬出的正文与原地
- * **逐字节相同**，保真可机器证明。同时 `PALETTE` 常量**整体**随搬（留原地会让两个文件各持
- * 一份色板 = 规则 11 的单一事实源被破）。
+ * **逐字节相同**，保真可机器证明。
+ *
+ * ⚠ **配色已外移**到 `composables/teamColors.ts`（用户 2026-10-29 报「挽昼的几个队都是灰色曲线
+ * 看不清」）：色号必须按**勾选清单**编，而不是按预设库下标取模、未命中兜底灰——自定义队不在
+ * 预设库里，旧实现让它们全部同色。本文件只把清单转成 `colorOf` 给图表用。
  */
-export function useScatterGeometry(opts: { visiblePoints: ComputedRef<TeamComparePoint[]> }) {
-  const { visiblePoints } = opts
+export function useScatterGeometry(opts: {
+  visiblePoints: Ref<TeamComparePoint[]>
+  /** 当前勾选的队伍 id（顺序 = 勾选顺序）——色号基准，见 `teamColors.ts` 口径 */
+  selectedPresetIds: Ref<readonly string[]>
+}) {
+  const { visiblePoints, selectedPresetIds } = opts
 
   const svgW = computed(() => Math.max(420, Math.min(1100, typeof window !== 'undefined' ? window.innerWidth - 120 : 960)))
   const padL = 46, padR = 16, padT = 24, padB = 44
@@ -57,14 +64,11 @@ export function useScatterGeometry(opts: { visiblePoints: ComputedRef<TeamCompar
     return out
   })
 
-  const PALETTE = ['#63e2b7', '#63b3ed', '#f6ad55', '#f687b3', '#b794f4', '#f6e05e', '#4fd1c5', '#fc8181']
-  const presetColors = computed<Record<string, string>>(() => {
-    const map: Record<string, string> = {}
-    teamPresets.forEach((t, i) => { map[t.id] = PALETTE[i % PALETTE.length] })
-    return map
-  })
+  /** 勾选清单 → 色表（顺序即色号；重复 id 不占两个色号） */
+  const presetColors = computed<Record<string, string>>(() => assignTeamColors(selectedPresetIds.value))
+  /** 取色：清单内直取，清单外走稳定哈希兜底（**永不返回灰**，见 `teamColors.ts`） */
   function colorOf(presetId: string): string {
-    return presetColors.value[presetId] ?? '#888'
+    return teamColorOf(presetId, presetColors.value)
   }
 
   return {

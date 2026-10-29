@@ -9,9 +9,10 @@
  * ④ 右位 ≥1 时点过的下位件**不生效**（有专武就不可能同时穿下位，否则存档与结果不一致）；
  * ⑤ 存档坏条目整体丢弃、全空不留空壳。
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeEach, afterEach } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import {
-  overridesOf, invalidCells, slotsNeedingDowngrade, parseTeamSlotCodes,
+  overridesOf, invalidCells, slotsNeedingDowngrade, parseTeamSlotCodes, useTeamSlotCodes,
   type TeamSlotCodeEntry,
 } from '@/composables/teamSlotCodes'
 
@@ -68,5 +69,65 @@ describe('每队配置码（teamSlotCodes）', () => {
 
   it('存档整体损坏 ⇒ undefined（回落空表，不抛）', () => {
     for (const bad of [null, 42, 'x', []]) expect(parseTeamSlotCodes(bad)).toBeUndefined()
+  })
+})
+
+/**
+ * 批量写格（用户 2026-10-29：「配置码也支持批量修改，比如全填 01」）。
+ *
+ * 走真 store（`useTeamSlotCodes`）而不是纯函数：这条的语义全在「写盘形态」上——
+ * 全填、逐槽清、全空 ⇒ 删键，以及**未命中的 id 不该让整批失败**。
+ * vitest 跑 node 环境（无 localStorage）⇒ 自己装一个 fakeStorage（仓库惯例，见 customTeams.test.ts）。
+ */
+describe('每队配置码 · 批量写格（2026-10-29）', () => {
+  function fakeStorage() {
+    const map = new Map<string, string>()
+    return {
+      getItem: (k: string) => (map.has(k) ? map.get(k)! : null),
+      setItem: (k: string, v: string) => { map.set(k, v) },
+      removeItem: (k: string) => { map.delete(k) },
+    }
+  }
+  const savedStorage = (globalThis as { localStorage?: unknown }).localStorage
+  beforeEach(() => { setActivePinia(createPinia()); (globalThis as { localStorage?: unknown }).localStorage = fakeStorage() })
+  afterEach(() => { (globalThis as { localStorage?: unknown }).localStorage = savedStorage })
+
+  it('★ 全填 01：多队 × 三槽一次写完（与逐格 setCell 同一条 commit 路径）', () => {
+    const store = useTeamSlotCodes()
+    expect(store.setCellsMany(['auto-1', 'auto-2'], [0, 1, 2], '01')).toBe(2)
+    for (const id of ['auto-1', 'auto-2']) {
+      expect(store.entryOf(id).cells).toEqual(['01', '01', '01'])
+      expect(store.overridesFor(id)).toEqual([
+        { cinema: 0, wengine: 1 }, { cinema: 0, wengine: 1 }, { cinema: 0, wengine: 1 },
+      ])
+    }
+    // 值没变 ⇒ 改动数为 0（调用方据此说「无需改动」，而不是假装写了一次）
+    expect(store.setCellsMany(['auto-1'], [0, 1, 2], '01')).toBe(0)
+  })
+
+  it('★ 只清指定槽：别的槽不受影响；全清 ⇒ 键整体消失（存档不留空壳）', () => {
+    const store = useTeamSlotCodes()
+    store.setCellsMany(['auto-1'], [0, 1, 2], '65')
+    expect(store.setCellsMany(['auto-1'], [1], '')).toBe(1)
+    expect(store.entryOf('auto-1').cells).toEqual(['65', '', '65'])
+    expect(store.setCellsMany(['auto-1'], [0, 2], '')).toBe(1)
+    expect('auto-1' in store.map.value).toBe(false)
+    expect(store.activeIds.value).toEqual([])
+  })
+
+  it('批量不动该槽已选的下位件（清码 ≠ 清下位）；只写调用方给的 id，值没变的队不计入', () => {
+    const store = useTeamSlotCodes()
+    store.setCell('auto-1', 0, '00')
+    store.setDowngrade('auto-1', 0, '13020')
+    expect(store.overridesFor('auto-1')[0]).toEqual({ cinema: 0, wengine: 0, downgradeWEngineId: '13020' })
+    // 覆盖成有专武的码 ⇒ 下位件仍在存档里（只是不生效，见 overridesOf 的口径）
+    expect(store.setCellsMany(['auto-1'], [0], '21')).toBe(1)
+    expect(store.entryOf('auto-1').downgrades?.[0]).toBe('13020')
+    // id 清单归调用方（页面传解析后的勾选队伍）⇒ 这里只按清单写；空清单/空槽位 = 什么都不做
+    expect(store.setCellsMany(['auto-2'], [2], '01')).toBe(1)
+    expect(store.entryOf('auto-1').cells).toEqual(['21', '', ''])
+    expect(store.setCellsMany([], [0], '01')).toBe(0)
+    expect(store.setCellsMany(['auto-1'], [], '01')).toBe(0)
+    expect(store.setCellsMany(['auto-1'], [7, -1], '01')).toBe(0) // 越界槽位不写（也不崩）
   })
 })

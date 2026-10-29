@@ -138,6 +138,43 @@ export function useTeamSlotCodes() {
     const anyPick = downgrades.some(d => d !== null)
     commit(presetId, { cells: cur.cells, ...(anyPick ? { downgrades } : {}) })
   }
+  /**
+   * **批量写格**（用户 2026-10-29：「配置码也支持批量修改，比如全填 01」）。
+   *
+   * 场景：创建组一次建了十几支队，逐行点三格写同一个码是纯体力活；或者想给「已勾选的这几支队」
+   * 统一按 01 基线看一遍。语义与逐格 `setCell` **完全相同**（走同一个 `commit`，所以
+   * 「全空 ⇒ 删键」与存档形态不会分叉），只是把「哪些队 × 哪些槽」一次做完。
+   *
+   * `text = ''` = 把这几个槽清掉（回「不覆盖」）；**不动**该槽已选的下位件（那是另一件事，
+   * 想连下位一起清就用 `clear`）。
+   *
+   * ⚠ **id 清单归调用方保证有效**（页面传的是 `resolveSelectedPresets` 之后的队伍 id）：这里对
+   * 传入的每个 id 都写——「这支队还没有码」与「这个 id 不存在」在存档里长得一模一样，
+   * 函数没法区分，硬判「不存在就跳过」会把正常的「给没写过码的队写码」也一起跳过。
+   *
+   * 返回**实际发生改动的队数**（值本来就一样的队不计；0 = 一个都没改，不是「成功」）。
+   */
+  function setCellsMany(presetIds: readonly string[], slots: readonly number[], text: string): number {
+    const picked = slots.filter(s => s >= 0 && s <= 2)
+    if (presetIds.length === 0 || picked.length === 0) return 0
+    let changed = 0
+    for (const id of presetIds) {
+      if (!id) continue
+      const cur = entryOf(id)
+      const cells = [...cur.cells] as SlotCodeText
+      let touched = false
+      for (const s of picked) {
+        if (cells[s] === text) continue
+        cells[s] = text
+        touched = true
+      }
+      if (!touched) continue
+      commit(id, { cells, ...(cur.downgrades ? { downgrades: cur.downgrades } : {}) })
+      changed++
+    }
+    return changed
+  }
+
   /** 清掉某队（回「不覆盖」） */
   function clear(presetId: string): void {
     if (!(presetId in map.value)) return
@@ -158,17 +195,8 @@ export function useTeamSlotCodes() {
     map.value = next
   }
 
-  return { map, entryOf, activeOf, overridesFor, setCell, setDowngrade, clear, activeIds }
+  return { map, entryOf, activeOf, overridesFor, setCell, setCellsMany, setDowngrade, clear, activeIds }
 }
 
-/** 页面上「某队某槽会自动穿哪件下位」（显式选择 > 角色表 > 职业表；都没有 = 空） */
-export function autoDowngradeLabel(
-  agentId: string | undefined,
-  specialty: Parameters<typeof import('@/data/downgradeWEngines').downgradePoolFor>[1],
-  nameOf: (id: string) => string,
-): string | null {
-  void agentId
-  void specialty
-  void nameOf
-  return null
-}
+// 原 autoDowngradeLabel（2026-10-26 的占位桩：void 掉全部入参、恒返回 null、零引用）已删——实际展示走
+// downgradeNaming#downgradeNameOf（TeamSlotCodeEditor 的「自动（炎炙沸釜）」文案），解析走 data/downgradeWEngines。
