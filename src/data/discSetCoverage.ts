@@ -20,8 +20,6 @@
  * @fact disc:coverage/折算口径 口径: 驱动盘触发型效果的自动覆盖率 = min(1, Σ(登记的触发通道次数) × 效果时长 / 战斗有效时长)，整局固定加成、舍弃相位；手调滑块优先（mergeDiscEffectCoverageAuto：表里已有键不用自动值），未登记效果不折算（保持 100%） | 据 用户@2026-10-29「可以折算」（回应实测：摇摆爵士 4pc 按 100% 算时读数最高、拨到 25% 以下时 2+2+2 反超）·复核@2026-10-29 | 验 src/core/__tests__/discEffectCoverageFold.test.ts | 锚 src/data/discSetCoverage.ts#discTriggerCoverage | 信 确认
  * ⟳复核: 新登记效果时确认其触发通道能从执行行数出来（连携/终结之外要扩通道就改本表与消费点）| 到期 2027-04-30
  */
-import type { DriveDiscConfig } from '@/types/catalog'
-import { resolveDiscSetPieces } from '@/core/buff'
 
 /** 可数的触发通道（按该槽收敛后的执行行计数） */
 export type DiscTriggerChannel = 'chain' | 'ultimate'
@@ -54,7 +52,6 @@ export function discTriggerCoverage(effectId: string, counters: DiscTriggerCount
   return Math.max(0, Math.min(100, Math.min(1, uptime) * 100))
 }
 
-/** 该套装在这份配置里是否**真的到了 4 件**（2+2+2 下只有 2 件 ⇒ 4pc 段不收集）；判定复用 core/buff 的形态解析 */
-export function wearsFourPieceOf(disc: DriveDiscConfig, setId: string): boolean {
-  return (resolveDiscSetPieces(disc).get(setId) ?? 0) >= 4
-}
+// ⚠ 这里**不放**「这套是不是 4 件」的判定：`data/` 是分层锁（CC-248）里的最底层，
+//   不得 import `core/*`（判据 `data/__tests__/dataRuntimeDeps.test.ts`）。形态判定由调用方
+//   用 `core/buff#discFourPieceSetIdOf` 做（那是 2+2+2/4+2 的唯一事实源）。

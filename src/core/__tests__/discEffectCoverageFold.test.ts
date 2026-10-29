@@ -17,7 +17,8 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
-import { discTriggerCoverage, wearsFourPieceOf, DISC_TRIGGER_COVERAGE } from '@/data/discSetCoverage'
+import { discTriggerCoverage, DISC_TRIGGER_COVERAGE } from '@/data/discSetCoverage'
+import { discFourPieceSetIdOf } from '@/core/buff'
 
 const SWING = 'effect_swing_jazz_4pc_team_dmg'
 const flush = async () => { await new Promise<void>(r => setTimeout(r, 0)) }
@@ -32,9 +33,11 @@ describe('驱动盘触发型效果覆盖率折算', () => {
     expect(DISC_TRIGGER_COVERAGE[SWING]?.durationSeconds, '登记值 = 官网 12 秒').toBe(12)
   })
 
-  it('② 2+2+2 下该套只有 2 件 ⇒ 不算 4pc 装备者', () => {
-    expect(wearsFourPieceOf({ fourPieceSetId: '31600', twoPieceSetId: '33400', mainStats: {}, subStatAllocation: {} } as never, '31600')).toBe(true)
-    expect(wearsFourPieceOf({ fourPieceSetId: '31600', twoPieceSetId: '33400', thirdTwoPieceSetId: '34400v1', mainStats: {}, subStatAllocation: {} } as never, '31600')).toBe(false)
+  it('② 2+2+2 下该套只有 2 件 ⇒ 不算 4pc 装备者（形态判定复用 core/buff，data 层不认形态）', () => {
+    const fourPlusTwo = { fourPieceSetId: '31600', twoPieceSetId: '33400', mainStats: {}, subStatAllocation: {} } as never
+    expect(discFourPieceSetIdOf(fourPlusTwo)).toBe('31600')
+    const threeInline = { fourPieceSetId: '31600', twoPieceSetId: '33400', thirdTwoPieceSetId: '34400v1', mainStats: {}, subStatAllocation: {} } as never
+    expect(discFourPieceSetIdOf(threeInline), '2+2+2 ⇒ 没有 4 件套 ⇒ 折算器找不到装备者').toBeUndefined()
   })
 
   it('③④ 真管线：露西带 4pc 摇摆 ⇒ 自动值与手调同值时伤害逐位相等，手调优先', async () => {

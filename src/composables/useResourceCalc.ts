@@ -8,7 +8,8 @@ import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } fr
 import { DEFAULT_STUN_PLAN_PROJECTION_CODE, stunPlanProjectionFromCode } from '@/core/stunPlanProjection'
 import { continuousStunSplitOf } from '@/core/continuousStun'
 import { calcStunAxis, AXIS_BASIC_UNIT_SECONDS } from '@/core/stunAxis'
-import { DISC_TRIGGER_COVERAGE, discTriggerCoverage, wearsFourPieceOf } from '@/data/discSetCoverage'
+import { DISC_TRIGGER_COVERAGE, discTriggerCoverage } from '@/data/discSetCoverage'
+import { discFourPieceSetIdOf } from '@/core/buff'
 import { chainMoveKind } from '@/data/chainMoveKind'
 import type { InStunAnomalySummary } from '@/types/resource'
 import type { StunAxis } from '@/types/resource'
@@ -705,7 +706,7 @@ export function createResourceCalc(
     const out: Record<string, number> = {}
     for (const [effectId, spec] of Object.entries(DISC_TRIGGER_COVERAGE)) {
       // 装备者 = 该套**真到 4 件**的槽（2+2+2 下只有 2 件 ⇒ 4pc 段本就不收集，自然无折算）
-      const slot = configStore.team.findIndex(c => wearsFourPieceOf(c.driveDisc, spec.setId))
+      const slot = configStore.team.findIndex(c => discFourPieceSetIdOf(c.driveDisc) === spec.setId)
       if (slot < 0) continue
       const ch = res.characters.find(c => c.slot === slot)
       if (!ch) continue
