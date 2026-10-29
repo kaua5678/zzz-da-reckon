@@ -640,42 +640,63 @@ export function computeBanyueMingwangStacks(
   slot: number,
   axes: ReadonlyArray<AxisLike>,
   cinemaLevel: number,
+  /**
+   * 每条轴分到的失衡窗口数（与 `AgentAxisContext.windows` 同源）。缺省全 1 = 不按窗口数加权
+   * （只有单测会走缺省；生产从 `AgentAxisOverlayInput.axisWindows` 递进来）。
+   */
+  axisWindows?: readonly number[],
 ): Map<string, number> {
   if (cinemaLevel >= 6) return new Map<string, number>()
-  const actions = axes
-    .flatMap(axis => axis.actions)
-    .filter(a => a.slot === slot)
-    .sort((a, b) => (a.startTime ?? 0) - (b.startTime ?? 0))
   const duration = 8
-
-  let curStacks = 0
-  let windowEnd = Number.NEGATIVE_INFINITY
   const weighted: Map<string, { total: number; count: number }> = new Map()
-  for (const act of actions) {
-    const start = act.startTime ?? 0
-    const count = Math.max(0, Math.floor(act.count) || 1)
-    if (RAGE_COMBO_IDS.includes(act.moveId)) {
-      curStacks = curStacks >= 2 ? 3 : 2
-      windowEnd = start + duration
-      // 触发块**自己也记账**（用户口径 2026-10-29，见函数头）：它吃的是「本次获得的层数」——
-      // 按连段块展开出的招式逐条记（首次 2 层、窗内再触发 3 层）。修前这一支是 `continue`，
-      // 触发块的招式只能靠「同 moveId 的其它落窗实例」顺带吃到层数 ⇒ 轴上没有这类实例时，
-      // 怒相连段的伤害一点明王都拿不到（静默漏算）。
-      for (const mv of RAGE_COMBO_MOVES[act.moveId]) {
-        const units = count * Math.max(1, Math.floor(mv.count) || 1)
-        const prev = weighted.get(mv.moveId) ?? { total: 0, count: 0 }
-        weighted.set(mv.moveId, { total: prev.total + curStacks * units, count: prev.count + units })
-      }
-      continue
-    }
-    const stacks = start <= windowEnd ? curStacks : 0
-    if (stacks <= 0) continue
-    const prev = weighted.get(act.moveId) ?? { total: 0, count: 0 }
-    weighted.set(act.moveId, { total: prev.total + stacks * count, count: prev.count + count })
+  const record = (moveId: string, stacks: number, units: number) => {
+    if (!(units > 0)) return
+    const prev = weighted.get(moveId) ?? { total: 0, count: 0 }
+    weighted.set(moveId, { total: prev.total + stacks * units, count: prev.count + units })
   }
+  /**
+   * ## 三条口径（用户 2026-10-29/30 逐条裁决，别简化掉任何一条）
+   *
+   * ① **每条轴独立扫描**：一条轴 = 「一轮失衡窗口内的动作表」，不同轴**不是**同一条时间线。
+   *    修前 `axes.flatMap(…).sort(by startTime)` 把多条轴首尾相接 ⇒ 前一条轴的明王窗口会罩到
+   *    后一条轴的块上（跨轴污染），且「轴 × 窗口数」的加权也无从谈起。
+   * ② **窗外块也必须计入分母**（当日实测的缺陷）：池子把同一个 moveId 的**全部轴内单位**按同一个
+   *    层数结算，而分母只有落窗块 ⇒ 窗外那一次凭空消失、剩下的单位被抬高。诺姆队实测：模板里
+   *    2 个连携块只吃 1 个，却按「2 层」发给整行 8 次（正确值 = (0×1 + 2×1)/2 = 1 层）。
+   * ③ **按该轴分到的窗口数加权**：用户 2026-10-30「轴 × 窗口数要考虑有几个不同的轴，比如某些轴
+   *    打了2次连携，某些轴打了1次甚至0次」——块的计划次数 = `count × wins`。
+   */
+  axes.forEach((axis, ai) => {
+    const wins = Math.max(0, Math.floor(axisWindows?.[ai] ?? 1))
+    if (wins <= 0) return
+    let curStacks = 0
+    let windowEnd = Number.NEGATIVE_INFINITY
+    const actions = axis.actions
+      .filter(a => a.slot === slot)
+      .slice()
+      .sort((a, b) => (a.startTime ?? 0) - (b.startTime ?? 0))
+    for (const act of actions) {
+      const start = act.startTime ?? 0
+      const count = Math.max(0, Math.floor(act.count) || 1)
+      if (RAGE_COMBO_IDS.includes(act.moveId)) {
+        curStacks = curStacks >= 2 ? 3 : 2
+        windowEnd = start + duration
+        // 触发块**自己也记账**（用户口径 2026-10-29）：它吃的是「本次获得的层数」（首次 2 层、
+        // 窗内再触发 3 层）。修前这一支是 `continue`，触发块的招式只能靠「同 moveId 的其它落窗实例」
+        // 顺带吃到层数 ⇒ 轴上没有这类实例时，怒相连段的伤害一点明王都拿不到（静默漏算）。
+        for (const mv of RAGE_COMBO_MOVES[act.moveId]) {
+          record(mv.moveId, curStacks, count * Math.max(1, Math.floor(mv.count) || 1) * wins)
+        }
+        continue
+      }
+      record(act.moveId, start <= windowEnd ? curStacks : 0, count * wins)
+    }
+  })
+  // ⚠ 分母含窗外块（见上 ②），但**输出只保留真有覆盖的招式**（`total > 0`）：条目存在即蕴含
+  // 「这个招式在轴内确实吃到明王」，「没条目」与「0 层」在消费端同义（`?? 0`），不必区分。
   const result = new Map<string, number>()
   for (const [moveId, w] of weighted) {
-    result.set(moveId, w.count > 0 ? w.total / w.count : 0)
+    if (w.count > 0 && w.total > 0) result.set(moveId, w.total / w.count)
   }
   return result
 }
@@ -1370,11 +1391,11 @@ export const banyueMechanic: AgentMechanicModule = {
    * - 滑块缺省回落 **0.5**（与 `settings` 表里 `banyue.mingwangCoverage` 的 default 同值，
    *   也与伤害池原式的 `getMechanicSetting(…, 0.5)` 同值）。
    */
-  axisWindowOverlays: ({ slot, axes, cinemaLevel, isAxis, additionalAbilityActive, settings }) => {
+  axisWindowOverlays: ({ slot, axes, axisWindows, cinemaLevel, isAxis, additionalAbilityActive, settings }) => {
     if (!additionalAbilityActive) return null
     if (cinemaLevel >= 6) return null
     if (isAxis) {
-      const map = computeBanyueMingwangStacks(slot, axes, cinemaLevel)
+      const map = computeBanyueMingwangStacks(slot, axes, cinemaLevel, axisWindows)
       // ⚠ 即使 map 为空也**必须 wrap**：本 overlay 现在同时是「本模块本帧参不参与明王」的门
       // （额外能力触发 且 非 6 命），directRowBonus 的**轴外兜底**分支靠 `o !== undefined` 判门。
       // 修前 `map.size > 0 ? … : null` 会让「轴内一次都没落窗」的队把轴外兜底也一起静默关掉。

@@ -1460,6 +1460,8 @@ export function createRunCalcRound(deps: {
       threadsApplied: { ...threads, interactionTopUp: interactionTopUpApplied },
       axisStack: axisExecutedStack,
       axisActive, // CC-302：forceNoAxis 已含在局部 axisActive 内
+      // 与派发给模块的 `axis.windows` **同式同参**：轴窗口 overlay 要按「轴 × 窗口数」加权各轴
+      axisWindows: opts?.forceNoAxis ? [] : allocateAxisWindows(resolvedAxes, countStun, axisWindowResources),
       parrySplitGate: { active: parrySplitActive, breakerSlot: effectiveBreakerSlot }, // CC-303
       threadsNext: {
         goodReview,

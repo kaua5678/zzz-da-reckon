@@ -29,6 +29,14 @@ export interface CalcRoundResult {
      */
     stunVerdictLostSeconds: number
     resolvedAxes: StunAxis[]
+    /**
+     * 每条生效轴分到的**失衡窗口数**（= `allocateAxisWindows(resolvedAxes, stunCount, …)`，与派发给
+     * 模块的 `AgentAxisContext.windows` 同源同式）。
+     *
+     * 为什么提到返回面：轴窗口 overlay（明王等）要按「轴 × 窗口数」加权，才谈得上「某些轴打了 2 次、
+     * 某些轴 1 次、某些轴 0 次」（用户口径 2026-10-30）。轴退化（`forceNoAxis`）时与 `resolvedAxes` 一起清空。
+     */
+    axisWindows: number[]
     matchedPlanName: string | null
     /** 下一轮补齐量（= threadsNext.interactionTopUp）。展示请读 `threadsApplied.interactionTopUp`（CC-296/297）。 */
     interactionTopUp: InteractionTopUp

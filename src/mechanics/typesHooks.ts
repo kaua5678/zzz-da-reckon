@@ -172,6 +172,16 @@ export interface AgentAxisOverlayInput {
   slot: number
   /** 生效失衡轴（**判模式不要用它**——见 `isAxis`；本钩子只管轴内覆盖与同角色的非轴折算） */
   axes: DeepReadonly<StunAxis[]>
+  /**
+   * 每条轴分到的失衡窗口数（下标与 `axes` 对齐；= `CalcRoundResult.axisWindows`，与派发给
+   * `applyTeamConfig` 的 `AgentAxisContext.windows` 同源同式）。
+   *
+   * 存在的理由（用户口径 2026-10-30）：「轴 × 窗口数要考虑**有几个不同的轴**，比如某些轴打了2次连携，
+   * 某些轴打了1次甚至0次」——轴模式下一个动作块的计划次数 = `count × wins`，按招式算覆盖率 / 加权
+   * 平均层数时必须带上它，否则等于假设每条轴都打满全部窗口。
+   * 缺省（非轴模式 / 轴退化 / 未接线）为空数组 = 各轴不按窗口数加权。
+   */
+  axisWindows: readonly number[]
   cinemaLevel: number
   /** 倍率表访问（可琳等需要把普攻段归并到 'basic_attack' 聚合行键时查 basic 段 moveId） */
   getAgentSkills: (agentId: string) => { categories: { id: string; moves: { id: string }[] }[] } | undefined

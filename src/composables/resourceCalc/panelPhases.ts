@@ -340,6 +340,8 @@ export function collectAxisWindowOverlays(
   catalogStore: ReturnType<typeof useCatalogStore>,
   isAxis: boolean,
   damagePanels: readonly PanelValues[],
+  /** 每条轴分到的窗口数（与 `CalcRoundResult.axisWindows` 同源）；缺省 [] = 各轴不加权 */
+  axisWindows: readonly number[] = [],
 ): Map<number, AgentAxisOverlay> {
   const out = new Map<number, AgentAxisOverlay>()
   const getAgentSkills = (agentId: string) => catalogStore.agentSkillsByAgentMap.get(agentId)
@@ -355,6 +357,7 @@ export function collectAxisWindowOverlays(
     const res = hook({
       slot: member.slot,
       axes,
+      axisWindows,
       cinemaLevel: member.cinemaLevel,
       getAgentSkills,
       isAxis,

@@ -905,6 +905,41 @@ describe('computeBanyueMingwangStacks（明王时间轴覆盖，非6命，用户
     expect(m.get('1471009')).toBeCloseTo(8 / 3, 6)
   })
 
+  it('窗外块计入分母：同招式一半落窗一半窗外 ⇒ 层数取一半（用户口径 2026-10-30）', () => {
+    // 修前窗外那一次不记账 ⇒ 分母只剩落窗块 ⇒ 报成 2 层（= 窗口只覆盖 1 个动作块，却按 2 个都吃到算）
+    const m = computeBanyueMingwangStacks(0, axis([
+      { moveId: 'banyue-combo', count: 1, startTime: 0 }, // 触发 2 层，窗到 8
+      { moveId: '1471020', count: 1, startTime: 3 },      // 落窗 → 2 层
+      { moveId: '1471020', count: 1, startTime: 9 },      // 窗外 → 0 层（但必须计入分母）
+    ]), 0)
+    expect(m.get('1471020')).toBe(1) // (2 + 0) / 2
+  })
+
+  it('每条轴独立扫描：前一条轴的明王窗口不罩到后一条轴（不同轴不是一条时间线）', () => {
+    const withTrigger = { name: 'A', actions: [
+      { slot: 0, moveId: 'banyue-combo', count: 1, startTime: 0 },
+      { slot: 0, moveId: '1471009', count: 1, startTime: 3 },
+    ] }
+    const withoutTrigger = { name: 'B', actions: [
+      { slot: 0, moveId: '1471009', count: 1, startTime: 3 }, // 本轴没有触发块 ⇒ 0 层
+    ] }
+    // A 轴 2 层 + B 轴 0 层 ⇒ (2 + 0) / 2 = 1；修前 flatMap + 按 startTime 排序 ⇒ B 轴的块被 A 轴的窗口罩住（恒 2）
+    expect(computeBanyueMingwangStacks(0, [withTrigger, withoutTrigger], 0).get('1471009')).toBe(1)
+  })
+
+  it('按各轴分到的窗口数加权（用户口径 2026-10-30：某些轴 2 次、某些 1 次、某些 0 次）', () => {
+    const hot = { name: '热', actions: [
+      { slot: 0, moveId: 'banyue-combo', count: 1, startTime: 0 },
+      { slot: 0, moveId: '1471009', count: 1, startTime: 3 },
+    ] }
+    const cold = { name: '冷', actions: [
+      { slot: 0, moveId: '1471009', count: 1, startTime: 3 },
+    ] }
+    // 热轴 2 窗（各 2 层）/ 冷轴 1 窗（0 层）⇒ (2×2 + 0×1) / 3
+    expect(computeBanyueMingwangStacks(0, [hot, cold], 0, [2, 1]).get('1471009')).toBeCloseTo(4 / 3, 6)
+    // 窗口数 0 的轴整条不参与
+    expect(computeBanyueMingwangStacks(0, [hot, cold], 0, [2, 0]).get('1471009')).toBe(2)
+  })
   it('6命满覆盖：不扫描（返回空，伤害走全局 buff）', () => {
     const m = computeBanyueMingwangStacks(0, axis([
       { moveId: 'banyue-combo', count: 1, startTime: 0 },
@@ -988,14 +1023,16 @@ describe('般琉通用预设轴（用户录入）：怒/普分化后的明王触
     const axes = [split.baseAxis, split.upgradeAxis]
     // 常规轴：连段@2.4 触发 2 层；连段@6.6 窗口内再触发 → 3 层并刷新到 14.6
     const m = computeBanyueMingwangStacks(0, axes, 0)
-    expect(m.get('1471021')).toBe(3) // 转大块（4.1/7.8/8.3 落窗，加权）
-    expect(m.get('1471009')).toBe(3) // 倾山@10.3
-    expect(m.get('1471010')).toBe(3) // 摧岳@12.2
-    // 单招狮子吼·怒@13.7、论道@14.2 是普通强特：不触发，但 13.7/14.2 < 14.6 → 落窗享受 3 层；
-    // ⚠ 连段块**自己也记账**（用户口径 2026-10-29）：首次触发 2 层、窗内再触发 3 层
-    //    ⇒ 该招式 5 个单位 = 1×2 + 4×3 = 14 ⇒ 2.8（修前只数非触发的落窗块，恒为 3）
-    expect(m.get('1471016')).toBeCloseTo(2.8, 6)
-    expect(m.get('1471015')).toBeCloseTo(2.8, 6)
+    // 分母 = 该招式在轴内的**全部单位**（窗外块记 0 层，用户口径 2026-10-30「动作块和实例没有联系起来」）。
+    // 转大块：基础轴 @4.1(2层) + @7.8(3层)；升级轴 @0(窗外) + @8.3(3层) + @12.2(窗外)
+    //   ⇒ (2+3+0+3+0) / 5 = 1.6（修前只数落窗块 ⇒ 恒 3）
+    expect(m.get('1471021')).toBeCloseTo(1.6, 6)
+    expect(m.get('1471009')).toBe(3) // 倾山@10.3（基础轴）/ @4.9（升级轴）都在窗内
+    expect(m.get('1471010')).toBe(3) // 摧岳@12.2（基础轴）/ @6.8（升级轴）都在窗内
+    // 连段块**自己也记账**（用户口径 2026-10-29：首次 2 层、窗内再触发 3 层）+ 单招普通强特落窗 3 层
+    // + 窗外那一次计入分母：基础轴 (1×2 + 1×3 + 1×3)/3、升级轴 (1×2 + 1×3 + 1×0)/3 ⇒ 13/6 ≈ 2.1667
+    expect(m.get('1471016')).toBeCloseTo(13 / 6, 6)
+    expect(m.get('1471015')).toBeCloseTo(13 / 6, 6)
     // 单招狮子吼@14.8 窗外（> 14.6）→ 不享受
     expect(m.get('1471014')).toBeUndefined()
   })

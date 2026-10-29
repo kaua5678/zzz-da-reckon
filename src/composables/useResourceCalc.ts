@@ -430,6 +430,8 @@ export function createResourceCalc(
     catalogStore,
     axisMode.value,
     damagePanels.value,
+    // 每轴窗口数：与 `axis.windows`（applyTeamConfig 侧）同源，供 overlay 按「轴 × 窗口数」加权
+    calcOutput.value?.axisWindows ?? [],
   ))
 
   /** 当前命中的轴方案名（条件轴模式用于 UI 展示；无方案 = null） */
