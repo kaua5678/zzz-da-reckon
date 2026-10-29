@@ -25,7 +25,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 音擎高级词条（白值） | 局外 | 数据中明确 scope |
 | 音擎被动效果 | 局内 | 战斗中触发 |
 | 驱动盘套装效果 | 局内 | 战斗中触发 |
-| 驱动盘/音擎/队友 Buff 的「效果覆盖率」 | 面板 | 触发型效果的 uptime = 手调滑块 ⊕ **资源侧自动折算**（三处同一公式 min(1, Σ触发次数 × 时长 / 战斗有效时长)：驱动盘 `data/discSetCoverage.ts#discTriggerCoverage`、音擎 `data/wEngineStackCoverage.ts`、队友 buff `data/teammateBuffTriggerCoverage.ts#teammateBuffTriggerCoverage`）。手调优先，未登记效果保持 100%。实测：摇摆 4pc 在柚叶/露西队 **13%~47%**；青衣影画一/六的 15 秒减益按醉花轮数折算，**50%~100%**（轴/非轴同路径，行数即数据） |
+| 驱动盘/音擎/队友 Buff 的「效果覆盖率」 | 面板 | 触发型效果的 uptime = 手调滑块 ⊕ **资源侧自动折算**（三处同一公式 min(1, Σ触发次数 × 时长 / 战斗有效时长)：驱动盘 `data/discSetCoverage.ts#discTriggerCoverage`、音擎 `data/wEngineStackCoverage.ts`、队友 buff `data/teammateBuffTriggerCoverage.ts#teammateBuffTriggerCoverage`）。手调优先，未登记效果保持 100%。实测：摇摆 4pc 在柚叶/露西队 **13%~47%**；青衣影画一/六的 15 秒减益按醉花轮数折算，**50%~100%**（轴/非轴同路径，行数即数据；高手把一次失衡的 2 轮醉花摆成不重叠的两段窗口，重叠由 min(1) 上限吃掉） |
 | 驱动盘形态「4+2 / 2+2+2」 | 配置（不参与面板口径） | `DriveDiscConfig#thirdTwoPieceSetId` **置位 = 2+2+2**（三套各 2 件、无 4 件段）；每套几件的唯一解析 = `core/buff.ts#resolveDiscSetPieces`，4 件段判定 = `#discFourPieceSetIdOf`（引擎收集 / 团队段 / 效果清单三处同源）。用户 2026-10-29：「洛克茜该带摇摆2+月光2+34400×2」 |
 | 核心被动 | 局外/局内 | 看文本：条件触发/战斗中 → 局内；无条件面板 → 局外 |
 | 额外能力 | 局内 | 需要队伍条件触发 |
