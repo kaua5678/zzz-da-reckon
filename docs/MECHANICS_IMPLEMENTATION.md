@@ -189,7 +189,7 @@
 - **风化延长 20s（2026-10-26 补录）**：原文 `passive.level.1621507.desc[1]`「全队角色施加的[风化]效果延长 20 秒」。用户口径：「延长异常状态很常见，本来就该建模。延长燃烧可以加伤害，延长风化虽然她没有 dot 不能加伤害，但是可以加**风化覆盖率**啊，侵染的直伤独立乘区也是依靠这个」+「他有延长效果，通常打 4 次就有 200s 了，达到全覆盖了」。落点 = **新增面板字段 `windAnomalyDurationBonusSeconds`**（原先只有 physical/fire/electric/ether 四个元素有该字段，wind 缺 ⇒ 这条无处可写）→ `core/anomalyPool/helpers#getAnomalyDuration` 读 → `calcCoverage` 按 `次数 × 时长 / 有效战斗时间`（封顶 1）算 `windCoverageRate`。走 `teamAnomalyDurationBonus` 通用臂（与柏妮思火 +3 / 丽娜电 +3 / 简物理 +5 / 菲欧妮火 +2 同一条，**加算**），AA 门控。实测：洛克茜队 30→50s，`windCoverageRate` **1.000**（全覆盖）；对照维琳娜队 0.667。判据 `roxy.test` 的「风化持续 +20s ⇒ 覆盖率抬满」。
 - **影画2·流势免费自旋（2026-10-26 补录）**：原文「每引爆 1 个[风眼]获得一层[流势]，至多 3 层；[小心风寒]期间进入[自旋]状态下换人时，洛克茜消耗所有[流势]，每消耗 1 层维持[自旋] 0.2 秒，**期间不消耗能量**，至多 0.6 秒」。**用户口径 2026-10-26**：「免费自旋你假设全吃满就行，有多少流势都可以吃完。因为换人不能作为条件，很容易达成。本来他转完就要换人」⇒ 按满层 3×0.2 = **0.6s** 建模，不做覆盖率滑块。实现 = `buildRoxyExecutions` 单发一条独立执行行（`energyConsume = 0`）⇒ 白得 `0.6 × 自旋每秒倍率` 伤害 + `0.6 × 84.343` 喧响，且**不占能量预算**（不减少可打强特次数，纯增量）。⚠ 必须单独成行、不得并进耗能自旋行：并进去会让免费秒数照扣 30/s（实测少算 18 点能量），收益方向反转。判据 `roxy.test`「影画2·流势：满层免费自旋 0.6s」。
 - **未建模**：风化目标直伤 +8% 的覆盖率与 `wind.infectionCoverage` 同源（现即按风化窗口算，延长后自然满覆盖）。**已全部结清的旧条目**：[余响]已按精确式建模（引爆数 × 2，与持续秒数无关）、流势自旋已建模（见上）、9 眼超限/30s 自爆（R52 结构性不可达）。
-- **配装（人工条目，用户 2026-10-28 裁决）**：4pc **34400v1**（3.4 新盘：2pc 回能 +20%；4pc 装备者暴击率≥50% ⇒ 自身暴伤 +30%、攻击失衡值 +5%，**装备者为[击破]时全队锐化伤害 +8%**、25s、全队唯一）+ 2pc **33400 月光骑士颂**（回能 +20%，站点原推荐，不动）；原 4pc **31600 摇摆爵士**降级到「备选」行（2pc 回能 +20%，与 33400 同值）；主词条 4 暴击率 / 5 穿透率 / 6 回能、副词条、专武 14162 绯月银棺全部沿用站点条目。实测（引擎，1601+1621+1661）：换新盘 **78.764M → 80.436M（+2.1%）**；不带锋御的队略降（般岳+洛克茜+露西亚 68.606M → 67.427M）。口径与实测表见 `scripts/patch-curated-loadout.mjs` 头注释；判据 `src/data/__tests__/buildRecCuratedLoadout.test.ts`。
+- **配装（人工条目，用户 2026-10-29 裁决）= 2+2+2**：**31600 摇摆爵士×2 + 33400 月光骑士颂×2 + 34400v1×2**——三套的二件效果都是「能量自动回复 +20%」⇒ **回能 +60%**（用户原话：「洛克茜原本不该带摇摆爵士，该带摇摆2+月光2+34400×2，这三个二件套给他加回能」）。形态表达 = `driveDisc.thirdTwoPieceSetId` 置位（引擎判定单源 `core/buff.ts#resolveDiscSetPieces`）：**三套各 2 件、没有任何套装到 4 件 ⇒ 4 件段（自身 + 团队）一律不生效**。主词条 4 暴击率 / 5 穿透率 / 6 回能、副词条、专武 14162 绯月银棺沿用站点条目；备选 2 件套 = 31000 啄木鸟电音。⚠ 实测代价（引擎，队伤口径）：她的锋御队失去 34400 的 4pc「全队锐化 +8%」⇒ `sunbringer-roxy-robin` 95.10M → 88.90M（−6.5%）、`claret-roxy-rina` 122.79M → 114.88M（−6.4%）；其余队 −1.3%~−2.0%（回能 +20pp ⇒ 强特次数 +1，但补不回 4pc 段）。这是**实机出装**与**引擎最优**不一致的已知取舍（用户 2026-10-29：「推荐配装优先级在我手捏之下，他只是官方推荐」）。口径见 `scripts/patch-curated-loadout.mjs` 头注释；判据 `src/data/__tests__/buildRecCuratedLoadout.test.ts`（2+2+2 例：三套各 2 件 / 回能 +60 / 4 件段不生效）+ `src/core/__tests__/discSetEffects.test.ts`（形态与 4pc 门槛）。
 - **模块**：`src/mechanics/agents/roxy.ts`；catalog 1621 已按 v12 重建（`scripts/import-nanoka-v12.mjs`，id 全重排：旧 1621005=旋风锤 546.9% 现为恕不远送 500.8% 等）。
 
 ### 伊德海莉（yidhari / 1051）—— 蓄力循环 + 极寒重碾 + 低血增伤
@@ -221,7 +221,7 @@
 - 实现：`src/mechanics/agents/norma.ts`（`EX_SPECIAL_ENERGY_COST=40`、`HOLD_ENERGY_PER_SEC=20`、`HEAT_PER_EX=16`、`TOWER_AUTO_SHOT_INTERVAL`；礼帽代积膛温语义并入 heatTotal）。
 - **转连携 = 主C 的连携块（2026-10-27 用户口径）**：「诺姆转连携其本体是主c的连携块，**不应该和普通连携有差别**」。它原先是轴编辑器里的 `norma-hat-chain` **0 时长标记块**（只把赠送连携标成吃易伤、自己不占窗口时间）⇒ 同一件事两套读法。现：① 编辑器**撤掉该候选块**，改放**受赠队友本人的连携块**（候选池里带「·赠」那条，时长/归属都是他本人的）；② 旧轴残留的 `norma-hat-chain` 仍被 `roundInputs#buildStackAxes` 认，但按**受赠队友连携技的真实 `actionTime`** 建块、落点也是该队友（与 `chainGift.secondsPerUnit → targetCfg.chainActionTime` 同源）。**同族每窗 ≤1**：赠品来自诺姆资源转化、与失衡独立，但短时间内回不了那么多 ⇒ 一次失衡 0~1 个、前面放过了后面（含兜底）就不再放（引擎门 =`StackActionCost#fillFamily`/`maxPerWindow`，`:gift` 与旧 `norma-hat-chain` **同一族**；超额记 `skipped.family`，归难度曲线的「资源路」）。判据 `src/composables/__tests__/hatChainAsNormalChain.test.ts`（时长 = 队友连携时长、落点 ≠ 诺姆自己、同窗两条只执行 1 条）；`agentMechanicViewCc61.test.ts` 的候选块计数 14 → 7。⚠ 预设零使用 ⇒ timeGolden/timeFillRatchet 零 delta。
 - 长按秒数口径（CC-438，r476 `ea18ed8d`）：`norma.holdSeconds` 滑块只经 `resolveNormaHoldSeconds(cfg)`（clamp[0,2]）读；能量 40+20×hold、膛温 8/s×次数、伤害延长行 = 次数 × hold（不再 floor）同一个值。**已知分叉**：`estimateExSpecialTime` 的长按仍整局一次（改按次会扰动外层折叠环，r6 §8.0 #14；最终必要时间不受影响）。
-- **配装（人工条目，用户 2026-10-28 裁决）**：4pc **34400v1**（3.4 新盘：2pc 回能 +20%；4pc 装备者暴击率≥50% ⇒ 自身暴伤 +30%、攻击失衡值 +5%，**装备者为[击破]时全队锐化伤害 +8%**、25s、全队唯一）+ 2pc **31000 啄木鸟电音**（站点原推荐，不动）；原 4pc **33200 山大王**降级到「备选」行（2pc 失衡值 +6%——用户「诺姆带山大王没问题」，备选只做展示、不下发引擎）；主词条 4 暴击率 / 5 火属性伤害 / 6 回能、副词条、专武 14157 首席跟班全部沿用站点条目。实测（引擎，1601+1571+1661）：换新盘 **72.163M → 76.512M（+6.0%）**；不带锋御的队略降（11号+诺姆+丽娜 54.202M → 51.658M）——推荐配装按角色存（预设禁写配装字段），这是用户明知的取舍。口径与实测表见 `scripts/patch-curated-loadout.mjs` 头注释；判据 `src/data/__tests__/buildRecCuratedLoadout.test.ts`。
+- **配装（人工条目，用户 2026-10-28/29 裁决）= 常规默认 4pc 33200 山大王**（用户「诺姆带山大王没问题」）+ 2pc 31000 啄木鸟电音 + 主词条 4 暴击率 / 5 火属性伤害 / 6 回能 + 专武 14157 首席跟班（全部站点条目）；**备选行 = 34400v1（锋御队替换项）**。★ **锋御队（队里有挽昼/克拉蕾）手选 4pc 34400v1**：装备者为[击破] ⇒ 全队锐化伤害 +8%。实测（引擎）：锋御队 1601+1571+1661 山大王 72.163M → 34400v1 **76.512M（+6.0%）**；无锋御队反过来（11号+诺姆+丽娜 54.202M → 51.658M，−4.7%）。**推荐配装按角色只存单份**（预设禁写配装字段）⇒ 默认给常规盘，锋御那侧手选。用户 2026-10-29 口径：「2+2+2 是给常规队用的，代替的是非常弱的四摇摆。锋御队该用新套装加锐化拐」。口径与实测表见 `scripts/patch-curated-loadout.mjs` 头注释；判据 `src/data/__tests__/buildRecCuratedLoadout.test.ts`（①默认盘 ③锋御手选路径 +8 ④锋御队队伤更高）。
 
 ### 露西（lucy / 1151）—— 辅助拐力 + 小猪
 - **当前实现状态 [已实现·近似 2026-08-27]**（实现位置：`src/mechanics/agents/lucy.ts` + spec `1151.json`；测试 `src/mechanics/__tests__/lucy.test.ts` 10 例）。含：加油全队攻击拐（min(600, 初始攻×25.8%+104)，spec teamBuffs）、终结邻位回能、回旋挥击、抄家伙后台自动（floor(前台时间/冷却)）、影画 1/2/4/6（影画6 队友强特 300% 攻火伤落地炸）。近似点见下（抄家伙按冷却周期整局折算）。此前 spec status 滞后为 partially_implemented，2026-08-27 对账收口。
@@ -533,6 +533,7 @@
 - **当前实现状态 [已实现·近似 2026-09-07 账本校对]**（实现位置：`src/composables/resourceCalc/damagePool.ts` 耀变/特殊虚耀伤害行 + `src/composables/resourceCalc/anomalyPanels.ts`（calcVoidflareDamage）+ `src/composables/resourceCalc/panelPhases.ts`（computeEntrySnapshotPanel/resolveRemielleDazeBonus 已迁）+ `src/core/anomalyPool/helpers.ts`（globalAnomalyMultiplier 异化区）+ `src/composables/useResourceCalc.ts`（remielleAnomalyMultiplier/entrySnapshotPanels/虚耀事件账本）+ catalog combatBuffs（核心被动公式 精通×0.02/×0.2 与命座字段）+ teammate-buffs 组 1581（转攻/积蓄/C1/C2 七条）+ `src/mechanics/agents/remielle.ts`（资源卡展示层）；测试 `src/mechanics/__tests__/remielle.test.ts`）。含：虚曜池/耀变结算、异化全局乘子、额外能力三档转攻/飞行失衡/幻色积蓄、影画 1-6。
 - **异化系数（2026-09-07 账本「蕾米埃尔.xlsx」+ audit/1581.json 原文 + nanoka 3.2.1/3.3.0 四源校对）**：= 异常精通×0.02% + C2 加算 20 + 3异常加算 10（同区加算，账本 P10 公式一致）。**⚠ 2026-10-20 口径订正（用户裁决「肯定按照真实的来啊」）：异常精通取「局内最终值」**，不是「效果应用那一刻」的局外快照——修前 `core/buff.ts#applyBuffs` 按数组顺序求值，而 1581 的 formula 排在自身 buff 首位 ⇒ 只读到局外 AP（实测 502 vs 局内 648，异化系数 10.04% 应为 12.96%、耀变倍率提升 100.4% 应为 129.6%）。修法 = `applyBuffs` 两批求值（先 fixed/derived/stacked 后 formula），根因与两条否决方案见 `ENGINE_PIPELINE_GUIDE.md` 坑 56。**异化度是全队拐 ⇒ 展示层是全队唯一值**（虚拟面板每行 + 虚拟面板行同值，取蕾米本人面板；修前每行喂自己那行面板 ⇒ 队友行恒只显示加算项 10.0）。引擎口径 `remielleAnomalyMultiplier = 1 + (refringeCoefficient + BonusPct)/100` → `globalAnomalyMultiplier` 乘入**全部**异常结算路径（紊乱/乱流/标准DoT/畏缩——用户 2026-08-26 口径②「异化是基础区之一，乘到所有异常事件」）。**C2+20 单写者** = catalog 影画2自身buff；teammate-buffs 条 `remielle_c2_team_refringe_coefficient_bonus_pct` 以 effect 级 excludeTargetAgentIds 排除她本人（修复前双通道双计：3异常队 C2 面板 BonusPct=50，正确 30；差分测试固化 10→30）。
 - **耀变结算（模块 `extraAnomalyRows`）**：虚曜池 = Σ floor(非蕾米槽位异常触发次数)；**一轮 = 3 个豆 = 入场(花羽轮舞) / 大招(缭乱终幕) / 长按A(惊鸿) 各结算「已储存的全部虚曜」**（用户 2026-10-18 玩法口径：「0 命这一套打了 9 次耀变，如果没大招就打 2 个动作 6 次耀变」）⇒ 轮数 = min(⌊池/3⌋, ⌊后台时长/15s⌋) 且**默认封顶 7 轮**（可飞 9 轮 ≠ 默认飞 9 轮，提速垂虹要极严格效率；`remielle.splitRounds` 每 +1 ⇒ 少 1 轮惊鸿、多 2 轮垂虹）；每轮每载体结算 min(池,3) 次、**大招载体再按本轮实际终结技次数封顶**；**子弹归属按各队友可用次数占比细致分摊**（`distributeIntegerByWeight(总子弹, 各槽次数)`，修前「入场按比例、大招按 Q 滑块」两套口径会让 3 次异常的队友在 7 次大招里拿 7 个名额）；**每队友可丢弃 N 次**（`remielle.drop:<slot>`，丢弃后剩余次数才进分配 ⇒ 轮数/归属/浪费量全自动跟着算，不做单独开关分支）。**修前**是「每个虚曜打一次 × 三个载体全吃整池」——与蕾米实际打了几下完全脱钩。每虚耀伤害 = **触发队友面板**（攻/精通/增伤/穿透/抗性）× 蕾米修正（异化/异常增伤/减防/耀变倍率/C4/C1 无视 50% 抗性）；子弹倍率 垂虹160/惊鸿320/花羽轮舞320/缭乱终幕336（Lv12；C3/C5 阶梯 170/340/357 等；与账本 G23-G26×Q10×H21 一致）。特殊虚耀 = 开局 3（C1）+3（C4 补），C6 垂虹与惊鸿耀变触发次数 ×2（`remielleCinema6FleetingGraceVoidflareTriggerMultiplier`，2026-09-30 用户裁决 CC-166：①垂虹耀变2次与③惊鸿关联虚耀翻倍为同一效果；1/4/6 命特殊虚耀 = 1/2/2 次垂虹载体必做动作 × 3 豆 × (1+6命加成) = 3/6/12 次耀变，CC-332 `84016cd3` 将 `extraNecessaryAction` 垂虹施放次数 1/2/2 与耀变事件次数 3/6/12 分离；`LuminizeTriggerMultiplier` 与 `SpecialVoidflareTriggerMultiplier` 为记录错误已删），垂虹倍率 ×2.5 独立乘区（用户 2026-08-26 口径①），全吃进场记录面板（computeEntrySnapshotPanel，不吃队友战内拐）。
+- **耀变异常暴击区（2026-10-29，用户裁决）**：耀变/特殊虚耀吃**通用**异常暴击——结算区取 `remielle` 面板的 `anomalyCritRate/anomalyCritDmg`（单一来源 `calcAnomalyCritExpect`，与乱流同函数），**不并入**强击暴击（`assaultCritRate/assaultCritDmg/selfAssaultCritDmgBonus`）——即使耀变继承来的属性是物理（物理异常队友供豆时）。**修前该区整块缺失**（连乘里没有暴击项、`formula` 文案也不提）⇒ 菲欧妮 `[灼蚀]` 的 30%/40% 对耀变逐位无效；实测队 [1641,1581,1171] 六条耀变行 ×1.12 逐位相等、队总伤 +1.61%。分区归属与两条加算规则见下文「异常暴击区的归属」表。
 - **耀变失衡易伤区（CC-220，dc096e98）**：与其余伤害同走 `calcStunMultiplier(Boss 失衡易伤, 蕾米面板加成, 全局失衡覆盖率)` 加权。此前手写 `stunned ? 满额 : 1`，把覆盖率当布尔，覆盖率 > 0 即吃满额（蕾米队总伤高估约 11～16%）。详见 `docs/mcp-stun-dual-source.md` §24.68。
 - **特殊虚耀 ×2.5 独立乘区复核（2026-09-15，推翻 2026-09-14「引擎零实现」审计误判）**：乘区**自初始提交（1a1f8c6）即已实现且在线**——`src/composables/resourceCalc/damagePool.ts#buildDamagePoolRows` 特殊虚耀块 `specialMultiplier = rainbowMultiplier * 2.5`，行 totalDamage 经 `useResourceCalc` 的 `damagePoolRows` 汇入 `teamTotalDamage`。实测（C6 3异常队）：垂虹耀变倍率 180% → 基础区 450%，行 perDamage 44024.31 = 独立重算（进场面板 × 垂虹倍率 ×2.5）逐位相等；普通虚耀三载体行基础区 = 各自招式耀变倍率（360/378%），无 ×2.5（隔离证据）。生效测试：`src/mechanics/__tests__/remielle.test.ts`「特殊虚耀 ×2.5 独立乘区生效」。⚠ **不许再建第二处 ×2.5**（会 ×6.25 双计）；2026-09-14 误判根因 = 审计只看到 `useResourceCalc.ts` 的 formula 文案字符串，漏掉 `damagePool.ts` 的算术，spec 口径行已就地纠正。
 - **未建模**：6 命普攻第 4 段命中获得 3 个特殊虚耀（伤害为开局特殊虚耀 25%，`remielleCinema6SpecialVoidflareCount / DamageRatio`，CC-166(b)）、Prismatic 8 秒延长期时间轴（静态覆盖率近似）、Luminous Reflection 逐时序（C1 队友异常增伤 +10% 按全程覆盖）；damage.ts 直伤管线另含逐招耀变行（自身面板、无异化区）——**不进** damagePoolRows/队伍总伤害（teamTotalDamage=Σ damagePoolRows，2026-09-07 探针验证），仅作单人招式分解视图行，口径差异如实记录；游戏内实测伤害校对待做（账本为 Excel 模型值，非实测）。
@@ -565,7 +566,7 @@
 ### 菲欧妮（phoenix / 1641）—— 火异常·坎卜斯黑枝（nanoka 3.3.12+19629936 v12 正式录入）
 - **当前实现状态 [已实现·近似 2026-10-17 v12 重录]**（实现位置：`src/mechanics/agents/phoenix.ts` + spec `1641.json` + catalog（同上脚本）；原文证据契约 `data/recordings/1641.json`；测试 `src/mechanics/__tests__/phoenix.test.ts` 18 例 + allAgentsSweep 不变量）。**数据已从 3.3.2 beta（文本带 (Test1) 前缀）换为 v12 正式数值**。**专武 14164「涅槃初翎」已录**（ownerAgentId=1641，效果取 talents.1..5：异常精通 +90…/+126、队伍异常暴击触发火伤 40%…56%；装 vs 不装差分测试在案）；配装推荐 = nanoka fairy_recommend 真实数据（4pc 自由蓝调+2pc 法厄同之歌，主词条 异常掌控/异常精通/火伤）。
 - **v12 相对 3.3.2 beta 的实质变化**：① 核心被动异常精通 +40→**+85**，[脆弱]→**[灼蚀]**、暴伤 15/25/40 分档→**固定 25**、掌控阈值 145→**155** 且**达 255 封顶**；② **新增 [灼蚀] 每 8 秒 50% 攻击力火伤（视为强化特殊技伤害）**；③ 额外能力改为固定 **+15**（不再按异常角色数分档）；④ 影画 1/2/4/6 全部重写；⑤ 招式表整表重导（长按普攻→焚罪 1095.1%、新增燎斩 1641023、眩焰/坠阳各 40 能量、烬火追魂 1641019 变 191.2%）；⑥ 旧「蓄能附加攻击 1641021」随机制移除而删除。
-- **口径（v12）**：核心异常精通 +85（applyPanel）；**[灼蚀] 异常伤害暴击 = spec teamBuffs 通用承载**（2026-09-12 用户裁决「异常暴击是通用机制」，v12 换 id 为 `phoenix.scorch_anomaly_crit_*`）——rate 公式 `min(100, 30+max(0,min(掌控,255)−155)×0.7)` 读**局外**面板掌控，伤 = **25（基础）+ 15（额外能力，`additionalAbilityActive` 门控）+ 25（影画一）**，**自体与队友同吃**，引擎异常结算区 EV 乘区 `calcAnomalyCritExpect` 通用消费。**v12 已废弃 tier2/tier3 分档**（旧 25/40 与 `adjustAdditionalAbilityGates` 的按异常数门控一并删除）。异放：焚罪 445%（225+20×(s-1)）/烬火追魂 597%（300+27×(s-1)，s=12+2(C3)+2(C5)）固定 releaseMultiplier + **影画4 各额外一次固定 600%** + 影画6 异放无视 40% 防御（releaseModifier 异放限定）。**[灼蚀] 周期火伤**（每 8 秒 50% 攻击力，视为强化特殊技伤害）= `direct_damage` 事件，次数 = floor(有效时长×覆盖率/8)。
+- **口径（v12）**：核心异常精通 +85（applyPanel）；**[灼蚀] 异常伤害暴击 = spec teamBuffs 通用承载**（2026-09-12 用户裁决「异常暴击是通用机制」，v12 换 id 为 `phoenix.scorch_anomaly_crit_*`）——rate 公式 `min(100, 30+max(0,min(掌控,255)−155)×0.7)` 读**局外**面板掌控，伤 = **25（基础）+ 15（额外能力，`additionalAbilityActive` 门控）+ 25（影画一）**，**自体与队友同吃**，引擎异常结算区 EV 乘区 `calcAnomalyCritExpect` 通用消费。**v12 已废弃 tier2/tier3 分档**（旧 25/40 与 `adjustAdditionalAbilityGates` 的按异常数门控一并删除）。异放：焚罪 445%（225+20×(s-1)）/烬火追魂 597%（300+27×(s-1)，s=12+2(C3)+2(C5)）固定 releaseMultiplier + **影画4 各额外一次固定 600%** + 影画6 异放无视 40% 防御（releaseModifier 异放限定）。**[灼蚀] 周期火伤**（每 8 秒 50% 攻击力，视为强化特殊技伤害）= `direct_damage` 事件，次数 = floor(有效时长×覆盖率/8)；**「视为[强化特殊技]伤害」= 事件级 `skillDamageTarget: 'exSpecial'`**（2026-10-29 接线；此前这句话只活在 note 文案里、直伤事件分支不传该字段 ⇒ 行拿不到任何 `__exSpecial` 定向 buff。当前全库无**全队向**强特定向 buff——琉音的 `critDmg__exSpecial` 只写自身面板 ⇒ 数值上暂时零差，接上后随数据自动生效）。
 - **能量消耗 [已确认 v12 重取]**：眩焰 1641008 = 40、坠阳 1641009 = 40、**燎斩 1641023 不耗能量**（消耗 [升变]）。「能量消耗」param 行 desc 文本提取，找法见 `docs/DATA_FETCHING.md`「耗能位置」。
 - **[燔焰]→焚罪（2026-09-12 探针修正，v12 沿用）**：收入按 **moveId×倍率表 attack_data_0 直算**（/10000 口径，双源一致）+ 平A段循环计数 + 完美格挡 5 点/10 秒（**2026-10-22 用户裁决**：交互栏「完美格挡」输入框已补声明 `characterCountInputs`；有效次数 = min(填写次数, floor(有效战斗时间/10s))——原式误把「10 秒」读成「10 次」；难度侧 `perfectBlock` 已在 `BOSS_ATTACK_INTERACTIONS` ⇒ 自动吃非失衡占比；回归锁 `phoenix.test.ts`）；**不能读 buildExecutions 阶段的 totalSpecialResourceRecovery（enrich 前为 0）**；分支攻击（熔毁）不计自动收入；次数=floor(收入×影画1效率1.15/90)（滑块 `phoenix.chargedAttackCount` 是**上限**，0=不设上限；用户口径 2026-10-19「是修改上限而不是修改招式次数，次数应该自动计算」）。
 - **强特循环 [枯荣] 稳态（v12）**：眩焰（通用 exSpecialCount 通道，40 能量）→ 坠阳（40 能量，+1 [升变]）→ 燎斩（消耗 [升变]，0 耗能），后两者各按 exCount 计次并显式记账坠阳耗能。
@@ -650,8 +651,8 @@ c0 1493272→1543102（+3.34%）、c3 2190653→2303648（+5.16%）、c4 2658186
 
 ### 般岳（banyue / 1471）—— 嗔火/怒相循环 + 山威免费强特 + 明王/影画
 - **当前实现状态 [已实现·近似 2026-09-25 档案核对]**（实现位置：`src/mechanics/agents/banyue.ts`（注册于 `src/mechanics/index.ts:132`）+ spec `1471.json`（`status: implemented_approximation`）；测试 `src/mechanics/__tests__/banyue.test.ts` 54 例 + `banyue-preset-int.test.ts` + `banyue-timeoverflow.debug.test.ts`，另有 `mechanicSettingsEffect` / `teamHookMigration` / `damagePoolBatchR15a` / `damagePoolBatchR16b` / `convergenceNightD` 引用）。模块钩子面：`applyPanel` / `applyTeamConfig`(converge) / `buildCharConfig` / `exSpecialCount` / `estimateExSpecialTime` / `buildExecutions` / `patchExecutions` / `buildResourceResult` / `resourceSections` / `attachedEvents` / `axisWindowOverlays` / `producesInteractionTopUp` / `combos` + **5 个滑块**（T168 新增 `banyue.wastedFlash`）。**本轮是档案核对，不是完整录入验收**：`data/recordings/1471.json` 不存在、仍在 `legacy.json` 豁免内 ⇒ 原文覆盖**未核对**。
-- **建模范围**：① 嗔火→怒相固定点（初始 115、120 阈值、闪反4/招架4/金身6/双反10、怒相外闪能×0.5、怒相中不产嗔火、**最后一怒相窗口的闪能浪费 = 用户可调常数 `banyue.wastedFlash` 默认 50 点**）；② 怒相循环（焚身→2 组山威免费连段→倾山→摧岳）；③ [怒]连段山威免费且**行级回 10 闪能**（C2 +5）——T169 起连段块的**山威成本**（2 点/组）已由轴栈门控把守（`combos[].swayCost` + 模块能力 `axisSwaySupply`），超出「怒相数 × 2 组」的块判 `skipped.reason='sway'`；④ 强特总次数由 `exSpecialCount` 钩子自算（CC-6a 迁入，引擎读点 `core/resource/helpers.ts`）；⑤ 怒相增益 贯穿+300/火伤+36%/暴伤+36%（C2 各+15）× `banyue.rageGainCoverage`；⑥ 明王：非6命 8s 窗口轴内扫描 2→3 层、非轴 `banyue.mingwangCoverage`、6命全局 +39%；⑦ 影画 C1（贯穿伤+10%/火抗-10%/摧岳失衡+2s）、C4（四招 +30%）、C6（倾山行标记 `banyueC6CrushAttach=600`，`damagePool.ts` 按 `calcPenetrationPower` 出附伤）；⑧ 轴模式自动补齐交互（>200s 判非法清零）；⑨ 金身弹刀+双反 → 不动如山+冲霄；⑩ 强特连段后摇、嘲讽取消抵扣；⑪ 般琉通用预设。
-- **已验证范围**：`banyue.test.ts` 69 例（嗔火固定点、补齐合法性、明王时间轴、命座逐项、资源池口径、交互映射、轴退化、**T168 闪能浪费滑块生效 + 常数性负控**）；C6 标记（`damagePoolBatchR15a.test.ts`）；明王池（`damagePoolBatchR16b.test.ts`）。主代理 2026-09-25 重放通过。
+- **建模范围**：① 嗔火→怒相固定点（初始 115、120 阈值、闪反4/招架4/金身6/双反10、怒相外闪能×0.5、怒相中不产嗔火、**最后一怒相窗口的闪能浪费 = 用户可调常数 `banyue.wastedFlash` 默认 50 点**）；② 怒相循环（焚身→2 组山威免费连段→倾山→摧岳）；③ [怒]连段山威免费且**行级回 10 闪能**（C2 +5）——T169 起连段块的**山威成本**（2 点/组）已由轴栈门控把守（`combos[].swayCost` + 模块能力 `axisSwaySupply`），超出「怒相数 × 2 组」的块判 `skipped.reason='sway'`；④ 强特总次数由 `exSpecialCount` 钩子自算（CC-6a 迁入，引擎读点 `core/resource/helpers.ts`）；⑤ 怒相增益 贯穿+300/火伤+36%/暴伤+36%（C2 各+15）× `banyue.rageGainCoverage`；⑥ 明王：非6命 8s 窗口轴内扫描 2→3 层、非轴 `banyue.mingwangCoverage`、6命全局 +39%；**实例级（用户口径 2026-10-29，`MINGWANG_UNCOVERED_RAGE_STACKS`）**：轴内段与轴外段分开取值、轴外段不再继承 moveId 平均层数（修前轴外的连携/大招/闪反白拿明王），而轴**表达不了**的那次怒相（4失衡5嗔火 多出来的一次）按其「两个连段 + 倾山/摧岳」记 3 层兜底（行标记 `banyueMingwangOutStacks`）；⑦ 影画 C1（贯穿伤+10%/火抗-10%/摧岳失衡+2s）、C4（四招 +30%）、C6（倾山行标记 `banyueC6CrushAttach=600`，`damagePool.ts` 按 `calcPenetrationPower` 出附伤）；⑧ 轴模式自动补齐交互（>200s 判非法清零）；⑨ 金身弹刀+双反 → 不动如山+冲霄；⑩ 强特连段后摇、嘲讽取消抵扣；⑪ 般琉通用预设。
+- **已验证范围**：`banyue.test.ts` 79 例（嗔火固定点、补齐合法性、明王时间轴、命座逐项、资源池口径、交互映射、轴退化、**T168 闪能浪费滑块生效 + 常数性负控**、**实例级明王（轴内/轴外两段取值 + 未入轴怒相兜底行标记 + 6命不写兜底）**）；C6 标记（`damagePoolBatchR15a.test.ts`）；明王池（`damagePoolBatchR16b.test.ts`）。主代理 2026-09-25 重放通过。
 - **未证明事项**：① ~~`banyueSwayExCount` 死写~~ 已删（W18，2026-09-25）；② 轴编辑器明王块可视化无断言；③ 不建模「长按自动释放强特」；怒相增益精确覆盖按滑块近似。
 - **⚠ 口径漂移（待核对，未修）**：① spec `1471.json` 事件 `banyue_c6_crush_peaks_attach` 仍标 `not_described_not_implemented` / `count: 0` / 载体摧岳(1471010)，与模块（倾山行标记）及 spec 自身 notes「已接入」相悖（两招次数同为 `rageCount`，数值等价，声明滞后）；② `character-mechanics.json` 1471 C1 `pending` 仍列已实现的贯穿伤+10% / 失衡+2s。
 - **模块**：`src/mechanics/agents/banyue.ts`；数值单一事实源 = 模块常量 + spec `src/specs/agents/1471.json` notes。
@@ -745,6 +746,7 @@ c0 1493272→1543102（+3.34%）、c3 2190653→2303648（+5.16%）、c4 2658186
 | 基础区 | `penRatio` / `penFlat` / `enemyResReduction` / 元素减抗 | `source`（施加者） |
 | 结算区 | `enemyDefReduction` / `enemyAnomalyDefReduction` / 元素减防 / `enemyDefFlatReduction` | `remielle`（蕾米） |
 | 结算区 | `anomalyDmgBonus` / `remielleLuminizeMultiplierBonus` / `remielleCinema4LuminizeMultiplierBonus` / `remielleRefringeCoefficient(+BonusPct)` | `remielle`（蕾米） |
+| 结算区 | 异常暴击（`calcAnomalyCritExpect(remielle)`，**2026-10-29 起**；只取通用 `anomalyCritRate`/`anomalyCritDmg`，**不并入**强击暴击） | `remielle`（蕾米） |
 | 结算区 | `enemyDamageTakenBonus` / 失衡易伤三通道 | `remielle`（蕾米） |
 
 **乱流的两区字段归属**（`calcTurbulenceSettlement` 逐行）：
@@ -789,6 +791,52 @@ elementResReduction= panelElementStat(source, 'enemyRes', element)  // 元素减
 | 特殊虚耀 | `sourcePanel: remielleEntryPanel` → `entrySnapshotPanels` | **不吃** | 开局 3 个虚曜点在**上拐之前**就已存储，彼时面板尚未被队友 buff 提升 |
 
 ⚠ 此前本文把两种都写成「进场记录面板」，是**错的**——普通耀变吃施加者实时面板。
+
+### 异常暴击区的归属（用户裁决 2026-10-29）
+
+> 「菲欧妮的异常暴击区…这个应该在结算区，除了紊乱不能吃，其他的什么异放耀变乱流都能吃，
+>   和简的强击暴击是加算的，但是简的强击暴击耀变不能吃。」
+
+逐异常通道的**实际落点**（全部可核，2026-10-29 复核）：
+
+| 异常通道 | 吃异常暴击？ | 落点 |
+|---|---|---|
+| 标准异常（强击/灼烧/感电/侵蚀/碎冰/风化 DoT） | 吃 | `core/damage.ts#calcAnomalyDamage` 第 10 区，读 `settlementPanel` |
+| 异放 | 吃（事件级 `releaseCrit` 存在时**整体覆盖**，不叠加） | 同上，`damageKind='release'` |
+| 乱流 | 吃 | `calcTurbulenceSettlement` → `calcAnomalyCritExpect(windPanel)` |
+| **耀变 / 特殊虚耀** | 吃（**2026-10-29 补**） | `calcVoidflareDamage` 第 6 区 → `calcAnomalyCritExpect(remielle)` |
+| 紊乱 | **不吃** | `isDisorder ⇒ rate/dmg = 0`（有意，与紊乱不吃异常增伤同源） |
+
+两条加算/继承规则（同一裁决）：
+
+1. **通用异常暴击与强击暴击同区加算**：`getAnomalyCritStats` 在 `baseElement === 'physical'` 时
+   `rate = anomalyCritRate + assaultCritRate`、`dmg = anomalyCritDmg + assaultCritDmg + selfAssaultCritDmgBonus`。
+   ⇒ 菲欧妮 `[灼蚀]` 给的 `anomalyCrit` 与简的强击暴击落在**同一个** EV 乘区里相加。
+2. **强击暴击不继承到耀变**：耀变继承的属性**可能是物理**（队友是物理异常角色时
+   `teamElement(slot) === 'physical'`），即便如此也**不得**并入 `assaultCritRate/assaultCritDmg`。
+   实现方式是 `calcAnomalyCritExpect(remielle)` **不传 element / sourcePanel**——传了 `'physical'` 就会并入。
+   （乱流是**另一条**口径：物理强击乱流**要**继承强击暴击，`includeSelfAssaultBonus: false` 只关「自身潜能加成」。）
+
+⚠ 修前 `calcVoidflareDamage` 的连乘里**整块没有暴击项**（连 `formula` 文案也不提）⇒ 30%/40% 的 `[灼蚀]` 暴击
+对耀变逐位无效。实测队 [1641,1581,1171]：六条耀变行 perDamage 24831.0 → 27810.7（×1.12 逐位相等），
+队总伤 4,616,896 → 4,691,026（+1.61%）。生效测试 = `remielle.test.ts`「耀变吃通用异常暴击…但不继承强击暴击」。
+
+### 直伤族专属的两个乘区，不进异常（同一裁决的后半句）
+
+> 同日用户原话：「霜寒的 buff 完全是直伤的『暴击伤害』，菲欧妮这个是异常的『异常暴击』，两者不同乘区，
+> 作用范围也不同，互不影响。**侵染的独立直伤区也是不做用于你这几个异常事件的**。」
+
+| 字段 | 语义 | 直伤族读点 | 异常侧 |
+|---|---|---|---|
+| `enemyCritDmgTakenBonus` | 霜寒「敌人受到暴击伤害提升」（+ 危局类 phase buff） | `calcCritMultiplier` / `calcSharpCritMultiplier`（锋御锐暴同属直伤族） | **不读**（`calcAnomalyDamage` 修前多读了这半句 ⇒ 带霜寒的队里标准异常/异放暴伤被虚抬，最多 +10 点） |
+| `infectionZoneBonus` | 风化浸染独立直伤区 | `calcDirectDamage` 第 8 区（仅风/染色直伤） | **不读**（本来就只在直伤路径，无需改） |
+
+⚠ 两处的**可观察性**：异常暴击乘区只在 `anomalyCritRate > 0 || anomalyCritDmg > 0` 时出行，而全库唯一的
+`anomalyCritRate` 提供者是菲欧妮 `[灼蚀]` ⇒ 修前那条错误只会在「菲欧妮 + 冰异常（霜寒）」的队里显形；
+`timeGolden` 105 预设 + 60 单人队**零漂移**（没有任何预设同时满足两个条件），属**潜在**错误。
+另：`core/anomalyPool.ts` 曾把 `10×frostCoverageRate` 叠进紊乱/乱流/畏缩的结算面板，而这三条路径
+**全都不读** `enemyCritDmgTakenBonus` ⇒ 那是死注入，已连同 `AnomalyPoolDamageInputs.frostCritBonus` 一并删除
+（零数值影响，纯去死通道 + 去错口径）。
 
 ### 与流明的关系（同日裁决）
 

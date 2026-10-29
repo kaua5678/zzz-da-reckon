@@ -55,6 +55,9 @@ const settingOf = mechanicSettingPanelReader(() => settings)
  *   单招论道/狮子吼·怒 等是普通强特（付费 20/40 闪能），不触发明王但可享受窗口；
  *   轴模式按失衡轴时间轴扫描（computeBanyueMingwangStacks），落窗招式按层数火伤 +5%/层；非轴模式用
  *   banyue.mingwangCoverage 覆盖率滑块近似（满层3×5%×覆盖率）。
+ *   ⚠ **实例级**（用户口径 2026-10-29）：轴内段与轴外段分开取值——轴外段不再继承 moveId 平均值，
+ *   只有「轴表达不了的那次怒相」（4失衡5嗔火 多出来的那一次）按「两个连段 + 倾山 + 摧岳 吃满 3 层」
+ *   兜底（见 MINGWANG_UNCOVERED_RAGE_STACKS）。
  *   6命：明王 30s 且任意强特常态刷新 → 实际满覆盖 → 全局 buff：火伤 +39%（3层×13%），
  *   applyPanel 按 panel.additionalAbilityActive 施加（轴/非轴一致，含 C6 附伤）。
  * - 影画：C1 战栗（teammate-buffs 已录 enemy 火抗-10%，贯穿+10% 与失衡+2s 全覆盖）；
@@ -118,6 +121,22 @@ export const C6_ATTACH_RATIO = 600 // 影画6 摧岳附伤 600% 贯穿力
 export const C6_MINGWANG_EXTRA = 8 // 影画6 明王每层额外 +8%（13%/层）
 export const MINGWANG_BASE_PER_STACK = 5 // 明王基础每层火伤 +5%
 export const MINGWANG_MAX_STACKS = 3 // 明王满层（简化：全覆盖，不再按窗口数层）
+/**
+ * **未入轴那一次怒相的明王层数兜底**（用户口径 2026-10-29，逐字）：
+ *
+ * > 「4失衡4次嗔火**可以用轴计算**；如果是 **4失衡5次嗔火**，非6命**可能会忘记非失衡的那一次嗔火的明王buff**。
+ * >  假设他的3层明王就覆盖自己的两个连段和倾山摧岳好了，**不细究他在整个时间中的位置和动作的前后关系，
+ * >  不考虑buff额外能覆盖哪些招式**，这是对**少数情况**的简化近似。」
+ *
+ * 读法（本实现）：轴**能**表达的那几次怒相（轴内捏了连段块）仍走 computeBanyueMingwangStacks 的时间轴扫描；
+ * 轴**表达不了**的那一次（rageCount > 轴内连段块数 ÷ 2，多出来的那次怒相整段在非失衡）不做时间轴建模，
+ * 直接按「它的两个连段（论道→狮子吼·怒 或 地动→山摇·怒）+ 倾山 + 摧岳 吃满 3 层」记成一行兜底。
+ *
+ * 为什么必须有它：修前这条通道**靠 moveId 平均层数顺带覆盖**（轴外实例继承了轴内平均值），于是
+ * ①「多出来的那次怒相」吃不吃得到，取决于它用的招式是否恰好在轴里出现过（用 地动→山摇·怒 就会静默漏掉）；
+ * ② 轴外的非怒相招式（连携/大招/闪反…）也白拿了明王。现在两者都由**实例级**判定分开。
+ */
+export const MINGWANG_UNCOVERED_RAGE_STACKS = MINGWANG_MAX_STACKS
 const C1_SHEER_DMG_BONUS = 10 // 影画1：对战栗敌人贯穿伤害+10%
 const C1_STUN_DURATION = 2 // 影画1：摧岳命中失衡敌人失衡时长+2s
 // 终结技喧响消耗缺省：直接 import 数据层单一来源（CC-501；此前手抄 3000 一份）
@@ -818,6 +837,16 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
   // `energySource` 加平行字段（否则展示层「招式回复 0」而总账里却含这笔，2026-09-11 修）。
   const swayRefund = SWAY_REFUND + (cinemaLevel >= 2 ? C2_SWAY_REFUND_BONUS : 0)
   push(MOVE.fenShen, '普通攻击：焚身（入怒相）', rage, 'basic', `焚身 ×${rage}：221.7%，120嗔火入怒相`)
+  /**
+   * **未入轴的那一次怒相**（用户口径 2026-10-29）：轴内连段块数 ÷ 2 = 轴能表达的怒相数，
+   * 多出来的那次怒相整段落在非失衡 —— 不给它做时间轴建模，直接按「它的两个连段 + 倾山 + 摧岳
+   * 吃满 3 层」记成轴外兜底（口径长注释见 MINGWANG_UNCOVERED_RAGE_STACKS）。
+   */
+  const axisCoveredRage = Math.ceil(Math.max(0, cycle.axisInComboCount) / COMBO_GROUPS_PER_RAGE)
+  const uncoveredRage = Math.max(0, rage - axisCoveredRage)
+  const uncoveredStacks = cinemaLevel < 6 && uncoveredRage > 0 ? MINGWANG_UNCOVERED_RAGE_STACKS : 0
+  /** 怒相**自身招式行**的区间起点（论道山威行 … 摧岳行）；怒相外连段行同 moveId 但不在区间内 */
+  const rageCycleRowFrom = executions.length
   push(MOVE.lunDao, '强化特殊技：论道（山威·论道连段）', cycle.lunDaoRageCount, 'special', `山威免费 ×${cycle.lunDaoRageCount}：325.2%，回${swayRefund}闪能/次`, 0, false, swayRefund)
   push(MOVE.shiZiHouNu, '强化特殊技：狮子吼·怒（山威·论道连段）', cycle.shiZiHouNuCount, 'special', `山威免费 ×${cycle.shiZiHouNuCount}：600.4%（论道派生连段），回${swayRefund}闪能/次`, 0, false, swayRefund)
   push(MOVE.diDong, '强化特殊技：地动（山威·地动山摇连段）', cycle.diDongRageCount, 'special', `山威免费 ×${cycle.diDongRageCount}：510%（地动山摇连段），回${swayRefund}闪能/次`, 0, false, swayRefund)
@@ -825,6 +854,14 @@ function buildBanyueExecutions({ cfg, state: _state, executions }: AgentResource
   push(MOVE.shanYao, '强化特殊技：山摇（山威）', cycle.shanYaoRageCount, 'special', `剩余山威 ×${cycle.shanYaoRageCount}：342.9%，回${swayRefund}闪能/次`, 0, false, swayRefund)
   push(MOVE.qingShan, '普通攻击：倾山（退出怒相）', rage, 'basic', `倾山 ×${rage}：1739.9%，退出怒相`)
   push(MOVE.cuiYue, '普通攻击：摧岳', rage, 'basic', `摧岳 ×${rage}：756.7%`)
+  // 怒相自身招式行打「轴外兜底层数」（两个连段 + 倾山 + 摧岳 = 本区间）：只有轴表达不了那次怒相时写，
+  // 读它的只有 directRowBonus 的**轴外段**分支（轴内段仍走轴时间轴扫描）——这就是「实例级」的分界。
+  if (uncoveredStacks > 0) {
+    for (let i = rageCycleRowFrom; i < executions.length; i++) {
+      const cycleRow = executions[i]
+      if (cycleRow) cycleRow.banyueMingwangOutStacks = uncoveredStacks
+    }
+  }
   // 怒相外连段（自动 = floor(剩余闪能/60)，滑块拆分论道连段/地动山摇连段）
   push(MOVE.lunDao, '强化特殊技：论道（怒相外·论道连段）', cycle.lunDaoOutCount, 'special', `怒相外论道连段 ×${cycle.lunDaoOutCount}：325.2%`, EX_COST)
   // 余数单发论道（用户口径 2026-10-19）：连段打满后的 [0,60) 余数按 20/次花掉，最多 2 次。
@@ -990,7 +1027,7 @@ function buildBanyueResourceSections({ result }: AgentResourceSectionsInput) {
         ? [{ label: '轴模式自动补齐', value: `弹刀 +${result.banyueInteractionTopUp.parry} · 双反 +${result.banyueInteractionTopUp.dual}`, detail: `保底语义：轴内怒相/终结技对嗔火/喧响的硬性需求不足时自动补齐（有效次数 = 交互栏输入 + 补齐，不覆盖输入）；弹刀补喧响（按一次弹刀完整链 ${fmt(PARRY_TOPUP_DECIBEL_UNIT, 2)}/次反推）、双反补嗔火（+10/次）；设置 banyue.autoTopUpInteractions 可关闭` }]
         : []),
     ],
-    footer: '怒相增益按覆盖率滑块近似；明王非6命按轴内时间轴扫描（非轴模式按覆盖率滑块），6命全局 +39%；后摇时长 = 末尾强特（狮子吼·怒/山摇·怒）自身动作时间。',
+    footer: '怒相增益按覆盖率滑块近似；明王非6命按轴内时间轴扫描、轴外段只认「未入轴那次怒相」的行兜底（非轴模式按覆盖率滑块），6命全局 +39%；后摇时长 = 末尾强特（狮子吼·怒/山摇·怒）自身动作时间。',
   }]
 }
 
@@ -1202,7 +1239,7 @@ export const banyueMechanic: AgentMechanicModule = {
     windowSeconds: 8,
     banner: ({ cinemaLevel }) => cinemaLevel >= 6
       ? '般岳影画6：明王满覆盖（30s 任意强特常态刷新）→ 全队火伤 +39%，无需轴内标注。'
-      : '般岳明王（非6命）：只有怒相技能「[怒]怒相连段·论道」（山威免费，4山威/怒相=2组）触发 8s 窗口（首次 2 层、窗口内再触发 3 层并刷新）；单招强特（[普]，20/40 闪能，回复嗔火）不触发但可享受窗口。触发块标「触发·明王8s」，底部明王道显示窗口时间条。',
+      : '般岳明王（非6命）：只有怒相技能「[怒]怒相连段·论道」（山威免费，4山威/怒相=2组）触发 8s 窗口（首次 2 层、窗口内再触发 3 层并刷新）；单招强特（[普]，20/40 闪能，回复嗔火）不触发但可享受窗口。触发块标「触发·明王8s」，底部明王道显示窗口时间条。⚠ 明王加成按**实例**结算：轴内段走本时间轴扫描，轴外段只认「轴表达不了的那次怒相」的兜底层数（4失衡5嗔火），其余轴外行不给。',
     fullCoverage: ({ cinemaLevel }) => (cinemaLevel >= 6 ? '满覆盖 +39%' : null),
     isTriggerBlock: act => act.moveId === BANYUE_AXIS_RAGE_COMBOS.primary || act.moveId === BANYUE_AXIS_RAGE_COMBOS.didong,
     window: mark => {
@@ -1318,7 +1355,10 @@ export const banyueMechanic: AgentMechanicModule = {
     if (cinemaLevel >= 6) return null
     if (isAxis) {
       const map = computeBanyueMingwangStacks(slot, axes, cinemaLevel)
-      return map.size > 0 ? banyueOverlay.wrap({ stacksByMove: map }) : null
+      // ⚠ 即使 map 为空也**必须 wrap**：本 overlay 现在同时是「本模块本帧参不参与明王」的门
+      // （额外能力触发 且 非 6 命），directRowBonus 的**轴外兜底**分支靠 `o !== undefined` 判门。
+      // 修前 `map.size > 0 ? … : null` 会让「轴内一次都没落窗」的队把轴外兜底也一起静默关掉。
+      return banyueOverlay.wrap({ stacksByMove: map })
     }
     const cov = Math.max(0, Math.min(1, settingOf(settings, 'banyue.mingwangCoverage')))
     return banyueOverlay.wrap({ flatPct: MINGWANG_BASE_PER_STACK * MINGWANG_MAX_STACKS * cov })
@@ -1328,20 +1368,31 @@ export const banyueMechanic: AgentMechanicModule = {
    * 由伤害池消费端按**本行所属槽**的 overlay 调用——轴模式用桶层数 × `MINGWANG_BASE_PER_STACK`，
    * 非轴模式用折算标量。算式与 note 模板逐字照原 `damagePoolDirect.ts#emitExecDirect`。
    */
-  directRowBonus: ({ exec, isAxis, overlay }) => {
+  directRowBonus: ({ exec, isAxis, stunOverride, overlay }) => {
     const o = banyueOverlay.read(overlay)
     const moveId = exec.moveId
     let dmg = 0
+    let label = ''
     if (isAxis) {
-      const stacks = o?.stacksByMove?.get(moveId) ?? 0
-      if (stacks > 0) dmg = stacks * MINGWANG_BASE_PER_STACK
+      // 实例级（用户口径 2026-10-29）：同一 moveId 的**轴内段 / 轴外段分开取值**——
+      // 轴内 = 轴时间轴扫描出的层数；轴外 = 行上的兜底层数（只有「轴表达不了的那次怒相」写了它，
+      // 见 MINGWANG_UNCOVERED_RAGE_STACKS）。修前两段共用 moveId 平均值 ⇒ 轴外的连携/大招/闪反
+      // 也白拿明王，而真正没入轴的那次怒相反而要看它的招式是否恰好在轴里出现过。
+      if (stunOverride > 0) {
+        dmg = Math.max(0, o?.stacksByMove?.get(moveId) ?? 0) * MINGWANG_BASE_PER_STACK
+        label = '（轴内覆盖）'
+      } else if (o) {
+        dmg = Math.max(0, Number(exec.banyueMingwangOutStacks ?? 0)) * MINGWANG_BASE_PER_STACK
+        label = '（轴外·未入轴怒相）'
+      }
     } else {
       dmg = o?.flatPct ?? 0
+      label = '（覆盖率近似）'
     }
     if (dmg <= 0) return null
     return {
       dmgBonus: dmg,
-      note: ` · 明王+${dmg.toFixed(1)}%${isAxis ? '（轴内覆盖）' : '（覆盖率近似）'}`,
+      note: ' · 明王+' + dmg.toFixed(1) + '%' + label,
     }
   },
   /**
@@ -1534,5 +1585,13 @@ declare module '@/types/resource/execution' {
   interface SkillExecution {
     /** 影画6 倾山附伤比（patchExecutions 写在倾山行上；extraDirectRows 读） */
     banyueC6CrushAttach?: number
+    /**
+     * **轴外段的明王层数兜底**（buildBanyueExecutions 写在怒相自身招式行上；directRowBonus 读）。
+     *
+     * 语义 = 「这一次怒相整段落在轴外（非失衡）时，它的两个连段 + 倾山/摧岳 吃满 3 层明王」——
+     * 只对**轴外段**（stunOverride === 0）生效，轴内段仍由轴时间轴扫描（stacksByMove）决定。
+     * 唯一写入方 = 本模块，故字段存在即蕴含「是般岳、非 6 命、且存在未入轴怒相」（判据同 banyueC6CrushAttach）。
+     */
+    banyueMingwangOutStacks?: number
   }
 }

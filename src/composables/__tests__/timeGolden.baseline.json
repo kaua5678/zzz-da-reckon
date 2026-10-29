@@ -4149,7 +4149,7 @@
   ]
  },
  "preset:banyue-jufufu-lucia": {
-  "dmg": "60129244",
+  "dmg": "60012067",
   "stun": 4,
   "windowDur": "16.000",
   "slack": "0.000",
@@ -4161,7 +4161,7 @@
   ]
  },
  "preset:banyue-liuyin-lucia": {
-  "dmg": "78416606",
+  "dmg": "78277566",
   "stun": 3,
   "windowDur": "18.000",
   "slack": "0.250",
@@ -4173,7 +4173,7 @@
   ]
  },
  "preset:banyue-norma-lucia": {
-  "dmg": "79485284",
+  "dmg": "79238285",
   "stun": 4,
   "windowDur": "18.000",
   "slack": "0.000",
@@ -4185,7 +4185,7 @@
   ]
  },
  "preset:banyue-qingyi-lucia": {
-  "dmg": "50612599",
+  "dmg": "50398772",
   "stun": 3,
   "windowDur": "16.000",
   "slack": "0.000",
@@ -4197,7 +4197,7 @@
   ]
  },
  "preset:banyue-roxy-lucia": {
-  "dmg": "82758160",
+  "dmg": "82474178",
   "stun": 3,
   "windowDur": "18.000",
   "slack": "0.526",
@@ -4209,7 +4209,7 @@
   ]
  },
  "preset:banyue-trigger-lucia": {
-  "dmg": "56489655",
+  "dmg": "56363566",
   "stun": 4,
   "windowDur": "16.000",
   "slack": "0.000",

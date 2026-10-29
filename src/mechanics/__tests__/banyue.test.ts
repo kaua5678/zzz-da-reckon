@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { AUTO_TOPUP_TIME_LIMIT_SEC, computeBanyueRageCycle, computeBanyueMingwangStacks, computeBanyueMingwangBlocks, computeBanyueInteractionTopUp, banyueMechanic, banyueOverlay, MINGWANG_BASE_PER_STACK, PARRY_TOPUP_DECIBEL_UNIT } from '@/mechanics/agents/banyue'
+import { AUTO_TOPUP_TIME_LIMIT_SEC, computeBanyueRageCycle, computeBanyueCycleFromCfg, computeBanyueMingwangStacks, computeBanyueMingwangBlocks, computeBanyueInteractionTopUp, banyueMechanic, banyueOverlay, MINGWANG_BASE_PER_STACK, PARRY_TOPUP_DECIBEL_UNIT } from '@/mechanics/agents/banyue'
 import { isFrontlineExecution } from '@/types/resource'
 import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 
@@ -1264,6 +1264,78 @@ describe('CC-17：般岳 directRowBonus（明王行级加成，轴/非轴两臂 
     expect(banyueMechanic.directRowBonus!({
       exec: exec('1471010'), isAxis: false, stunOverride: 0, overlay: flat(0),
     })).toBeNull()
+  })
+
+  // ── 实例级（用户口径 2026-10-29）：同一 moveId 的轴内段 / 轴外段分开取值 ──
+  const execOut = (moveId: string, outStacks?: number) => ({ moveId, banyueMingwangOutStacks: outStacks } as never)
+
+  it('轴臂·轴外段：读行上的兜底层数，note「（轴外·未入轴怒相）」', () => {
+    const rb = banyueMechanic.directRowBonus!({
+      exec: execOut('1471009', 3), isAxis: true, stunOverride: 0, overlay: stacks(2),
+    })!
+    expect(rb.dmgBonus).toBe(3 * MINGWANG_BASE_PER_STACK)
+    expect(rb.note).toBe(' · 明王+15.0%（轴外·未入轴怒相）')
+  })
+
+  it('轴臂·轴外段：行上没有兜底标记 → null（不再继承轴内平均层数）', () => {
+    expect(banyueMechanic.directRowBonus!({
+      exec: execOut('1471009'), isAxis: true, stunOverride: 0, overlay: stacks(3),
+    })).toBeNull()
+  })
+
+  it('轴臂·轴内段不受行上兜底标记影响（仍走时间轴扫描）', () => {
+    const rb = banyueMechanic.directRowBonus!({
+      exec: execOut('1471010', 3), isAxis: true, stunOverride: 1, overlay: stacks(2),
+    })!
+    expect(rb.dmgBonus).toBe(2 * MINGWANG_BASE_PER_STACK)
+    expect(rb.note).toBe(' · 明王+10.0%（轴内覆盖）')
+  })
+
+  it('轴臂·轴外段：本模块本帧不参与（overlay undefined）→ null（额外能力 / 非 6 命的门不可绕过）', () => {
+    expect(banyueMechanic.directRowBonus!({
+      exec: execOut('1471009', 3), isAxis: true, stunOverride: 0, overlay: undefined,
+    })).toBeNull()
+  })
+})
+
+// 实例级明王（用户口径 2026-10-29）：未入轴的那一次怒相 = 轴表达不了的怒相（rageCount > 轴内连段块数 ÷ 2），
+// 它的自身招式行打上轴外兜底层数；怒相外连段行同 moveId 但**不在区间内**，不得白拿。
+describe('实例级明王：未入轴怒相的轴外兜底行标记', () => {
+  const buildRows = (dual: number, cinemaLevel = 0) => {
+    const cfg: any = {
+      banyueCinemaLevel: cinemaLevel,
+      dodgeCounterCount: 10, parryCount: 6, blockCount: 12, dualCounterCount: dual,
+      battleTime: 180, banyueAxisActive: true, banyueAxisEx: { 'banyue-combo': 8 },
+      banyueMoveTimes: {}, banyueMoveDmg: {},
+    }
+    const rows: any[] = []
+    banyueMechanic.buildExecutions!({ cfg, state: {} as never, executions: rows })
+    return { cfg, rows }
+  }
+  const stamps = (rows: any[], moveId: string) => rows.filter(r => r.moveId === moveId).map(r => r.banyueMingwangOutStacks ?? 0)
+
+  it('4失衡5嗔火（怒相 5 > 轴内块 8÷2=4）：怒相自身招式行打 3 层，怒相外连段行不打', () => {
+    const { cfg, rows } = buildRows(10)
+    const cycle = computeBanyueCycleFromCfg(cfg)
+    expect(cycle.rageCount).toBe(5)
+    expect(cycle.axisInComboCount).toBe(8)
+    expect(stamps(rows, '1471015')).toEqual([3, 0, 0]) // 山威·论道连段 / 怒相外连段 / 余数单发
+    expect(stamps(rows, '1471016')).toEqual([3, 0])    // 山威·狮子吼·怒 / 怒相外
+    expect(stamps(rows, '1471009')).toEqual([3])       // 倾山
+    expect(stamps(rows, '1471010')).toEqual([3])       // 摧岳
+    expect(stamps(rows, '1471027')).toEqual([0])       // 焚身不在「两个连段 + 倾山摧岳」之内
+  })
+
+  it('4失衡4嗔火（怒相数 = 轴内块÷2）：一行都不打，全走轴时间轴扫描', () => {
+    const { cfg, rows } = buildRows(0)
+    const cycle = computeBanyueCycleFromCfg(cfg)
+    expect(cycle.rageCount).toBe(4)
+    expect(rows.every(r => r.banyueMingwangOutStacks === undefined)).toBe(true)
+  })
+
+  it('6命：不写兜底（6命明王走面板全局 +39%）', () => {
+    const { rows } = buildRows(10, 6)
+    expect(rows.every(r => r.banyueMingwangOutStacks === undefined)).toBe(true)
   })
 })
 
