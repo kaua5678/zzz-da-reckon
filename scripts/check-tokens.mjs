@@ -539,7 +539,13 @@ export const HARDCODED_BASELINE = {
   'src/views/ResourceUtilizationPage.vue': 2,
   'src/views/ResultPage.vue': 3,
   'src/views/RunArchivePage.vue': 4,
-  'src/views/StunAxisPage.vue': 17,
+  // 2026-10-30：17 → **0**（本页清零）。轴编辑器那 17 处抄的是**深色档**令牌值
+  // （rgba(99,226,183,·)=--c-success、rgba(240,160,32,·)=--c-warning、#f0a020），
+  // UI_THEME_GUIDE §5 实测这类值在亮色档只有 1.03~1.82:1；全部改走语义别名
+  // （--c-success(-soft/-strong) / --c-warning(-soft/-strong) / --fg-2 / --fill-active）。
+  // 同轮判据 11 抓出一处真缺陷：.sap-mw-banner 的墨按页面底调的 --wa-600 坐上新贴片后
+  // 亮色档 4.37 < 4.5 ⇒ 一并改 --fg-2。方向 = 棘轮要求的方向。
+  'src/views/StunAxisPage.vue': 0,
   'src/views/TeamComparePage.vue': 4,
   'src/views/TeamConfigPage.vue': 0,
   // 2026-09-12 评审 #14 第十刀：悬浮卡样式整体搬进 components/ChartHoverCard.vue
@@ -668,7 +674,10 @@ export const FONT_SIZE_BASELINE = {
  * 解法是加语义别名层（--line/--line-strong/--fill-hover/--fill-active/--fg-2/--fg-3），
  * 新代码用别名、老代码不动，本棘轮保证直接引用数只减不增。
  */
-export const WA_REF_BASELINE = 376  /* ★ 2026-10-29 改按**提交态实测**取 376：这条棘轮由 CI 跑提交态（`.github/workflows/ci.yml` 的 verify），
+export const WA_REF_BASELINE = 375  /* ★ 2026-10-30 失衡轴页配色令牌化：376 → **375**（提交态实测）。
+   该页把 17 处字面色值换成语义别名，顺带把 .sap-mw-banner 的墨从 var(--wa-600) 改成 var(--fg-2)
+   （贴片墨口径，判据 11 要求）⇒ --wa-* 直引 −1。方向 = 棘轮要求的方向（只减不增）。
+   ★ 2026-10-29 改按**提交态实测**取 376：这条棘轮由 CI 跑提交态（`.github/workflows/ci.yml` 的 verify），
    而并行车道**未提交**的文件里另有 1 处 --wa-*（共享工作区实测 377 ⇒ 提交态恒红，尺子对不上尺子的对象）。
    本行只钉提交态；该车道落盘时按其实测再调。上一档：2026-10-28 结果页「伤害 → 分数」卡：本卡 --wa-* 直引净 0（全走语义别名），但**共享工作区实测 377**
    ★ 2026-10-28 资源利用率页拆出「收益分析」页（UpliftAnalysisPage.vue）
@@ -735,7 +744,12 @@ export const WA_REF_BASELINE = 376  /* ★ 2026-10-29 改按**提交态实测**�
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 1163  /* ★ 2026-10-29 自定义队伍「创建组 + 批量配置码」（+7）：`CustomTeamsEditor` 组面板与新的 `SlotCodeBatchBar` 的样式全走语义别名（--fg-2 / --fg-3 / --line），--wa-* 直引净 0（377 不变）⇒ 新增内容的正常增长（不是口径纠正、也不是把变量改回字面量）。⚠ 落盘时改按**提交态实测 1163**：
+export const VAR_TOTAL_BASELINE = 1185  /* ★ 2026-10-30 失衡轴页配色令牌化：1163 → **1185**（提交态实测，+22）。
+   明细 = 17 处字面色值换 var()（CSS：计划条 2 / 预设块 1 / chip 1 / 窗口条 1 / 窗口标签 1 /
+   招式徽标 2 / 专属窗口道 1 / 窗口块 3 / banner 2 / 警告文字 1）+ 5 处运行期块底/描边
+   （内联样式同样吃 var()：普通块底 / 选中块底+描边 / 越界块底+描边）；
+   同轮 hardcoded-color 合计 −17（本页清零）⇒ 是「字面色值 → 别名」的正向迁移，不是新增内容。
+   ★ 2026-10-29 自定义队伍「创建组 + 批量配置码」（+7）：`CustomTeamsEditor` 组面板与新的 `SlotCodeBatchBar` 的样式全走语义别名（--fg-2 / --fg-3 / --line），--wa-* 直引净 0（377 不变）⇒ 新增内容的正常增长（不是口径纠正、也不是把变量改回字面量）。⚠ 落盘时改按**提交态实测 1163**：
    并行车道未提交的文件里另有 54 处 var()（工作区实测 1217）——基线高于提交态实测 ⇒ 这条棘轮对那 54 处完全瞎，
    且 CI（跑提交态）恒红。本行只钉提交态，该车道落盘时按其实测再上调。上一档
    ★ 2026-10-28 结果页「伤害 → 分数」卡（+12）后**共享工作区实测 1210**（另 +4 来自并行车道未提交
