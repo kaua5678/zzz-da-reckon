@@ -1,5 +1,5 @@
 /**
- * 界面态 Store（CC-356，2026-10-02 arena-E r386）：当前页签、队伍配置页选中的槽位。
+ * 界面态 Store（CC-356，2026-10-02 arena-E r386）：当前页签、队伍配置页选中的槽位、实战对比页最近一次部署、记录小窗。
  *
  * 从 config store 搬出来的原因：它们**不是计算输入**。住在 config 里时，calcOutput 记忆化键要特判排除
  * （原 `CALC_MEMO_KEY_EXCLUDE`）、独立分析场景的出生态要白白复制、`$state` 快照（难度曲线会话缓存键）
@@ -20,6 +20,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { persistedRef } from '@/composables/persistedRef'
 import { DEFAULT_PICKS, normalizePicks, type MetricPick } from '@/composables/recordWindow'
+import type { ArchiveRun, DeployConfig } from '@/composables/runArchiveImport'
 
 /** localStorage 键（改键名 = 用户旧设置丢失，故集中在这里、带版本后缀） */
 export const RECORD_WINDOW_OPEN_KEY = 'zzz-record-window:open:v1'
@@ -47,6 +48,30 @@ export const useUiStore = defineStore('ui', () => {
 
   function selectSlot(slot: number) {
     selectedSlot.value = slot
+  }
+
+  // ========== 实战对比页的部署态（2026-10-29） ==========
+
+  /**
+   * 最近一次「部署」的归档 run + 它的部署配置。
+   *
+   * 为什么住这里：页面由 `CalculatorView` 的 `<component :is="currentPage" />` 渲染，**切页签 = 卸载重挂**
+   * ⇒ 原来的页面局部 ref（selected / lastWarnings / lastDeploy）一切页就被清空，切回来只剩空态
+   * （用户 2026-10-29 实报「点了部署，切页再回来他就消失了」）。而 configStore 里部署写下的东西
+   * （队伍 / Boss 房间 / layer-buff 行）**都还在** ⇒ 两边各说各话。
+   *
+   * 为什么**不**进 config store：它不是计算输入（`$state` = 计算输入 = calcOutput 记忆化键，进键就白重算一次全网）。
+   * 为什么存 run + deploy 而不是只存 run id：页面的期视图 / Boss 预设是异步加载的，只存 id 就得等数据到齐再重算
+   * `submissionToDeploy`，重挂首帧会闪一次空态；存下来的 deploy 与部署那一刻逐位相同，回放不会漂。
+   *
+   * @fact ui:实战对比页/部署态归属 口径: 最近一次部署（run + DeployConfig）住 stores/ui.ts，不进 config store（它不是计算输入）、也不留在页面局部 ref（页面切页签即卸载重挂，局部 ref 会被清空） | 据 用户实报@2026-10-29 | 验 src/views/__tests__/archiveDeployUiState.test.ts | 锚 src/stores/ui.ts#useUiStore | 信 确认
+   * ⟳复核: 若 CalculatorView 改成 keep-alive（页面不再重挂）或部署态改为可持久化（刷新后还在），复核「部署态住 ui store 且不持久化」这条归属 | 到期 2027-01-31
+   */
+  const archiveDeploy = ref<{ run: ArchiveRun; deploy: DeployConfig } | null>(null)
+
+  /** 记下一次部署（实战对比页「部署」按钮唯一写入口） */
+  function setArchiveDeploy(run: ArchiveRun, deploy: DeployConfig) {
+    archiveDeploy.value = { run, deploy }
   }
 
   // ========== 记录小窗（界面态，见文件头注释） ==========
@@ -98,6 +123,7 @@ export const useUiStore = defineStore('ui', () => {
 
   return {
     activeTab, selectedSlot, selectSlot,
+    archiveDeploy, setArchiveDeploy,
     recordWindowOpen, recordWindowPos, recordWindowPicks, recordWindowCollapsed,
     recordWindowPickCount, toggleRecordPick, hasRecordPick, resetRecordPicks,
   }

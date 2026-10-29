@@ -220,7 +220,7 @@
                 filterable
                 style="width: 210px"
                 placeholder="选期数"
-                @update:value="v => (envPhaseId = v)"
+                @update:value="envPhase.pick"
               />
             </n-space>
           </template>
@@ -392,7 +392,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import {
   NCard, NSpace, NGrid, NGi, NInputNumber, NText, NDivider,
   NButton, NSwitch, NInput, NSelect, NCheckbox, NCollapse, NCollapseItem,
@@ -408,10 +408,11 @@ import { STANDARD_ENEMY_DEBUFF_ELEMENTS, type StandardEnemyDebuffElement } from 
 import { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
 import { isTeammateBuffInteractive, declaredOnlyReason } from '@/utils/teammateBuffRows'
 import {
-  phaseBuffCondLabel, latestPhaseIdOf, resolvePhaseEnvironment, sortedPhaseViews,
+  phaseBuffCondLabel, resolvePhaseEnvironment, sortedPhaseViews,
   selectedPeriodBuffCard, periodBuffRowsOf, layerBuffRowsOf,
 } from '@/utils/phaseBuff'
 import { applyPeriodBuff } from '@/composables/runArchiveDeploy'
+import { usePhaseSelection } from '@/composables/phaseSelection'
 import { bossBuffEffectLabel } from '@/utils/bossEffectLabel'
 import BossSelectCard from '@/components/BossSelectCard.vue'
 import type { TeammateBuffGroup, TeammateBuff, BuffEffect } from '@/types/catalog'
@@ -487,13 +488,21 @@ const skillDmgTargetOptions = SKILL_DMG_TARGETS.map(value => ({
  * "不用" 选项的哨兵 = NONE_CARD（naive 的 Select 不收 null，统一用字符串值）。
  */
 const NONE_CARD = '__none__'
-const envPhaseId = ref<string>(latestPhaseIdOf(catalogStore.bossPresetFile as BossPresetFile | null) ?? '')
+/**
+ * 环境卡的期数：用户手选 ＞ **已应用 Boss 的房间相位** ＞ 最新一期（唯一实现 = composables/phaseSelection.ts）。
+ *
+ * 修前恒为「最新一期」⇒ 实战对比页部署哪一季都看不见：归档快照最新一季 = 690481，期视图最新一期 = 690501
+ * （归档里一条 run 都没有）⇒ 本卡停在 690501，明明 store 里已写好 Boss 房间与 layer-buff 行，卡片却报
+ * 「本期还没有应用 Boss」（用户 2026-10-29 实报「切到属性配置，部署的 Boss 和 buff 没有自动勾选」）。
+ * 用响应式派生而非 onMounted 赋值：期视图与 appliedBoss 都是异步/随时可变的，派生自动跟上。
+ */
+const envPhase = usePhaseSelection(
+  () => sortedPhaseViews(catalogStore.bossPresetFile as BossPresetFile | null).map(v => v.phaseId),
+  () => configStore.appliedBoss?.phaseId,
+)
+const envPhaseId = envPhase.selected
 const envPhaseOptions = computed(() => sortedPhaseViews(catalogStore.bossPresetFile as BossPresetFile | null)
   .map(v => ({ value: v.phaseId, label: `${v.label}（${v.phaseId}）` })))
-/** 数据晚到（首帧 bossPresetFile 还是 null）时补缺省期；只在没选过时补，不覆盖用户选择 */
-watch(() => catalogStore.bossPresetFile, file => {
-  if (!envPhaseId.value) envPhaseId.value = latestPhaseIdOf(file as BossPresetFile | null) ?? ''
-})
 const environment = computed(() => resolvePhaseEnvironment(
   catalogStore.bossPresetFile as BossPresetFile | null,
   configStore.appliedBoss,

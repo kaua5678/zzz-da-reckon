@@ -25,6 +25,12 @@ export const PERIOD_BUFF_PREFIX = 'period-buff:'
 /** 关卡固有 buff 的全局 Buff 行前缀（= `bossRoom#LAYER_BUFF_PREFIX`；本文件只读判定，不写入） */
 export const LAYER_BUFF_PREFIX = 'layer-buff:'
 
+/**
+ * 「不用当期牌」的哨兵值（单一来源）：UI 上「不用 / 某张牌」是按钮组，没有 null 态，
+ * 两个入口（实战对比页「当期 Buff」行、属性配置页「危局环境 Buff」卡的当期可选牌）都用它表示「不用」。
+ */
+export const NONE_PERIOD_CARD = '__none__'
+
 /** 解析器产出的特性中文名 → 引擎 specialty code：由 `SPECIALTY_LABEL` 反查（单一来源，CC-341 删 teamCompare 的手写反表）。 */
 const SPECIALTY_CODE_OF_LABEL: Readonly<Record<string, string>> = Object.fromEntries(
   Object.entries(SPECIALTY_LABEL).map(([code, label]) => [label, code]),

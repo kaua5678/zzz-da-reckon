@@ -138,7 +138,7 @@
               <div v-if="deployPhaseView && deployPhaseView.buffs.length > 0" class="period-buff-row">
                 <span class="pb-label">当期 Buff</span>
                 <n-button size="tiny" :loading="buffPicking" @click="autoPickPeriodBuff">自动（最高伤）</n-button>
-                <n-button size="tiny" :type="selectedBuffTitle === 'none' ? 'primary' : 'default'" @click="pickPeriodBuff(null)">不用</n-button>
+                <n-button size="tiny" :type="selectedBuffTitle === NONE_CARD ? 'primary' : 'default'" @click="pickPeriodBuff(null)">不用</n-button>
                 <n-button
                   v-for="b in deployPhaseView.buffs"
                   :key="b.title"
@@ -208,15 +208,16 @@
 import { computed, h, onMounted, ref } from 'vue'
 import { NCard, NSelect, NDataTable, NTag, NButton, NSwitch, NDivider, NAlert, type DataTableColumn } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
+import { useUiStore } from '@/stores/ui'
 import { useStunDiscreteDisplay } from '@/composables/stunDiscreteDisplay'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { submissionToDeploy, type ArchiveRun, type RunArchiveFile } from '@/composables/runArchiveImport'
 import { applyDeployConfig, applyPeriodBuff, pickBestPeriodBuff } from '@/composables/runArchiveDeploy'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
-import type { DeployConfig } from '@/composables/runArchiveImport'
 import { runLimitedGold } from '@/composables/limitedGold'
 import { authorOf, queryArchiveRuns, type AgentFacet, type PlayerFacet } from '@/composables/runArchiveFilter'
+import { selectedPeriodBuffCard, NONE_PERIOD_CARD } from '@/utils/phaseBuff'
 import { scoreForDamageRatio } from '@/data/deadlyAssaultScore'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import { localized } from '@/utils/format'
@@ -269,8 +270,19 @@ const topPlayersOnly = ref(false)
 const playerName = ref<string | null>(null)
 /** 角色筛选（null = 全部；按队伍任一槽位命中） */
 const agentFilter = ref<string | null>(null)
-const selected = ref<ArchiveRun | null>(null)
-const lastWarnings = ref<string[]>([])
+/**
+ * 部署态（选中的 run + 部署配置）**住 ui store，不是页面局部 ref**：
+ * 页面由 CalculatorView 的 `<component :is="currentPage" />` 渲染，切页签 = 卸载重挂 ⇒ 局部 ref 一切页就没了，
+ * 切回来只剩空态（用户 2026-10-29 实报「点了部署，切页再回来他就消失了」），而 config store 里部署写下的
+ * 队伍 / Boss 房间 / layer-buff 行**都还在**。归属与理由见 stores/ui.ts#archiveDeploy。
+ */
+const uiStore = useUiStore()
+const deployed = computed(() => uiStore.archiveDeploy)
+const selected = computed(() => deployed.value?.run ?? null)
+const lastDeploy = computed(() => deployed.value?.deploy ?? null)
+/** 部署告警 = 部署配置自带的那一份（不再另存页面态，免得两边不同步） */
+const lastWarnings = computed(() => lastDeploy.value?.warnings ?? [])
+
 
 // ========== 建模缺口提示（信息展示，不做拦截——归档不作误差判据的用户裁决不变） ==========
 const modelingLedgers = ref<{
@@ -483,23 +495,32 @@ function onDeploy(run: ArchiveRun) {
   const room = f.rooms[run.targetId]
   const deploy = submissionToDeploy(run, room, presets.value, room?.seasonStart)
   applyDeployConfig(configStore, deploy, presets.value)
-  selected.value = run
-  lastWarnings.value = deploy.warnings
-  lastDeploy.value = deploy
-  // 换部署时清掉上一期的当期 buff 选择（过期选择不跨 Boss 生效）
-  if (selectedBuffTitle.value !== 'none' && deployPhaseView.value?.buffs.some(b => b.title === selectedBuffTitle.value) !== true) {
-    pickPeriodBuff(null)
-  }
+  // 先记部署（下面 deployPhaseView / selectedPeriodCard 都读它），再判过期牌
+  uiStore.setArchiveDeploy(run, deploy)
+  // 换部署 = 换房间：表里那批当期牌行若**不是本次相位上的某张牌**（上一期选的 / 别处按旧口径写的）一律清掉
+  // （口径：过期选择不跨 Boss 生效）。判定与展示同源 = selectedPeriodCard（由全局 Buff 表派生，不看页面态）。
+  if (selectedPeriodCard.value === null) pickPeriodBuff(null)
 }
 
-// ========== 当期 Buff 快捷选择 ==========
-/** 最近一次部署（用于取部署 Boss 的期相位 → 当期 buff 牌） */
-const lastDeploy = ref<DeployConfig | null>(null)
+/**
+ * 部署 Boss 的期相位 → 当期 buff 牌视图（数据源 = 期视图；部署态本身见 stores/ui.ts#archiveDeploy）。
+ */
 const deployPhaseView = computed(() =>
   lastDeploy.value?.boss ? phaseViews.value.find(v => v.phaseId === lastDeploy.value!.boss!.phaseId) ?? null : null,
 )
-/** 当前选中牌标题：'none' = 不用；牌名 = 手动选中的那张 */
-const selectedBuffTitle = ref<string>('none')
+/** 「不用」的哨兵（单一来源 = utils/phaseBuff#NONE_PERIOD_CARD；属性配置页同一常量） */
+const NONE_CARD = NONE_PERIOD_CARD
+/**
+ * 当前选中的牌**由全局 Buff 表派生**（单一事实源 = utils/phaseBuff#selectedPeriodBuffCard，与属性配置页同一函数）：
+ * 修前它是页面局部 ref（初值 'none'）⇒ ① 切页签重挂后明明表里有行、按钮却全不高亮；② 属性配置页选了牌再回本页，
+ * 两页各说各话。派生之后「谁选中」只有一个答案：表里的行。
+ */
+const selectedPeriodCard = computed(() => {
+  const view = deployPhaseView.value
+  return view ? selectedPeriodBuffCard(configStore.globalBuffs, view.phaseId, view.buffs) : null
+})
+/** 按钮态用的标题：NONE_CARD = 不用；牌名 = 选中的那张 */
+const selectedBuffTitle = computed(() => selectedPeriodCard.value?.title ?? NONE_CARD)
 /** 击杀时间（秒）：伤害/血量 > 100% 时 = 战斗时长 × 100/hpRatio（2 倍伤害 → 90s 击杀，按 180s 基准） */
 const killTimeText = computed(() => {
   const ratio = hpRatio.value
@@ -507,10 +528,9 @@ const killTimeText = computed(() => {
   const battle = configStore.enemy.battleTime
   return Math.round(battle * 100 / ratio)
 })
+/** 唯一的选牌写入口 = applyPeriodBuff（本页不存选中态，写完由 selectedPeriodCard 从表里读回来） */
 function pickPeriodBuff(card: PhaseBuffCard | null) {
-  const phaseId = deployPhaseView.value?.phaseId ?? ''
-  const applied = applyPeriodBuff(configStore, phaseId, card)
-  selectedBuffTitle.value = card && applied ? card.title : 'none'
+  applyPeriodBuff(configStore, deployPhaseView.value?.phaseId ?? '', card)
 }
 
 /** 自动选择：评估「不用」+ 每张可用牌的总伤害，应用最高者（CC-352：在独立场景里试，UI store 只写最终结果一次） */

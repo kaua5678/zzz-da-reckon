@@ -58,10 +58,11 @@
 **口径（都在代码里，本节只作索引）**：
 
 - 数据面纯函数 = `src/utils/phaseBuff.ts`：`resolvePhaseEnvironment`（期数 → 环境；layer 段只在「已应用 Boss 且正是本期」出现）/ `selectedPeriodBuffCard`（**「当前选中哪张牌」由全局 Buff 表本身派生**，别页写入或手删行都如实反映）/ `periodBuffRowsOf` / `layerBuffRowsOf`。
+- **默认显示哪一期**（2026-10-29）= `src/composables/phaseSelection.ts`：**用户手选 ＞ 已应用 Boss 的房间相位 ＞ 最新一期**（Boss 选择卡同源）。写死「最新一期」会让实战对比页部署的那期整段看不见（归档快照比期视图落后一季时尤其明显：Boss 卡不标「已应用」、本卡报「本期还没有应用 Boss」，而 store 里其实都写好了）。
 - 选牌的**唯一写入入口** = `composables/runArchiveDeploy.ts#applyPeriodBuff`（与实战对比部署页同一条通道 ⇒ 两个页面写出的行逐位相同；`cond` 随行带上，由管线按**当前队伍**解析）。
 - 关卡固有 buff 的**唯一写入入口** = `composables/bossRoom.ts#applyBossRoom`（点 Boss 卡的「应用此 Boss」时自动写入；本卡只显示「已写入 / 尚未写入」，**不重复写**，否则双计）。
 - 页面**不试算**：选牌就写入，不做「自动选最优」（那是 C 档用户口径，`ENGINE_PIPELINE_GUIDE.md` §4 坑 53）。
-- 判据：`src/utils/__tests__/phaseEnvironmentBuff.test.ts`（解析口径 + 页面源码锁）+ `src/composables/__tests__/phaseEnvironmentApply.test.ts`（真管线：选中牌进引擎、条件牌按队伍换档、**选牌后队总伤真的变**）。
+- 判据：`src/utils/__tests__/phaseEnvironmentBuff.test.ts`（解析口径 + 页面源码锁）+ `src/composables/__tests__/phaseEnvironmentApply.test.ts`（真管线：选中牌进引擎、条件牌按队伍换档、**选牌后队总伤真的变**）+ `src/composables/__tests__/phaseSelection.test.ts`（默认期优先序）+ `src/views/__tests__/archiveDeployUiState.test.ts`（部署后本页停在部署那期，整页 SSR 渲染）。
 - 实机：`node scripts/ui-check.mjs --step "tab:属性配置" --step "wait:危局环境 Buff"` ⇒ 点牌后全局 Buff 表出现 `当期·<牌名>` 行、再点「不用」清空；点「应用此 Boss」后关卡段显示「已写入全局 Buff 表」。
 
 ### 1.2 数据管道（加新期数/Boss 时）

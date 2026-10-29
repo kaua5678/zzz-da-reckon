@@ -6,25 +6,28 @@
         <n-space size="small">
           <!-- 大版本 + 小版本 + 危局期数三级选择（1.4–3.3 全部 Boss 数据支撑；3.3 三期已于 2026-10-23 起正式上线） -->
           <n-select
-            v-model:value="selectedMajor"
+            :value="selectedMajor"
             :options="majorVersionOptions"
             size="small"
             style="width: 72px"
             placeholder="大版本"
+            @update:value="selectMajor"
           />
           <n-select
-            v-model:value="selectedMinor"
+            :value="selectedMinor"
             :options="minorVersionOptions"
             size="small"
             style="width: 62px"
             placeholder="小版本"
+            @update:value="selectMinor"
           />
           <n-select
-            v-model:value="selectedPhaseId"
+            :value="selectedPhaseId"
             :options="periodOptions"
             size="small"
             style="width: 210px"
             placeholder="期数"
+            @update:value="phase.pick"
           />
           <n-button
             v-if="configStore.appliedBoss"
@@ -131,39 +134,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useCatalogStore } from '@/stores/catalog'
 import { NCard, NSpace, NSelect, NButton, NTag, NCollapse, NCollapseItem } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { applyBossRoom } from '@/composables/bossRoom'
 import BossCard from './BossCard.vue'
 import { bossBuffEffectLabel as effectLabel } from '@/utils/bossEffectLabel'
+import { usePhaseSelection } from '@/composables/phaseSelection'
 import type { BossPreset, BossPresetPhase, PhaseBossBrief, PhaseView } from '@/types/bossPreset'
 
 const configStore = useConfigStore()
 
+const catalogStore = useCatalogStore()
 const loading = ref(true)
 const error = ref('')
 const presets = ref<BossPreset[]>([])
 const phaseViews = ref<PhaseView[]>([])
-const selectedMajor = ref('')
-const selectedMinor = ref('')
-const selectedPhaseId = ref('')
 
 onMounted(async () => {
   try {
-    const data = await useCatalogStore().loadBossPresets()
+    const data = await catalogStore.loadBossPresets()
     presets.value = data.bosses ?? []
     phaseViews.value = data.phaseViews ?? []
-    // 默认选最新期（从所有 Boss phases 数据中取最新；覆盖 1.4–3.2）
-    const sorted = allPhases.value
-    if (sorted.length > 0) {
-      const latest = sorted[0]
-      const parts = latest.version.split('.')
-      selectedMajor.value = parts[0]
-      selectedMinor.value = parts[1]
-      selectedPhaseId.value = latest.phaseId
-    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -186,6 +179,26 @@ const allPhases = computed(() => {
   }
   return phases.sort((a, b) => b.begin.localeCompare(a.begin))
 })
+
+/**
+ * 当前显示的期（唯一实现 = composables/phaseSelection.ts）：用户手选 ＞ **已应用 Boss 的房间相位** ＞ 最新一期。
+ * 大版本 / 小版本下拉都是它的派生 —— 修前是三个互相 watch 的 ref，于是「按已应用 Boss 的房间选期」会被
+ * 那些 watcher 又改回最新期。
+ *
+ * 修前恒为「最新一期」：实战对比页部署的是归档快照里的季（2026-10-29 快照最新 = 690481），而期视图最新一期
+ * 是 690501（归档里一条 run 都没有）⇒ 部署完切到本页，「已应用」标与那期的关卡 buff 一件都看不到
+ * （用户 2026-10-29 实报「部署的 boss 和 buff 没有自动勾选」），而 configStore 里其实都写好了。
+ */
+const phase = usePhaseSelection(
+  () => allPhases.value.map(p => p.phaseId),
+  () => configStore.appliedBoss?.phaseId,
+)
+const selectedPhaseId = phase.selected
+
+/** 选中期的版本号（"3.3"）；没选中 / 查不到 = 空串 */
+const selectedVersion = computed(() => allPhases.value.find(p => p.phaseId === selectedPhaseId.value)?.version ?? '')
+const selectedMajor = computed(() => selectedVersion.value.split('.')[0] ?? '')
+const selectedMinor = computed(() => selectedVersion.value.split('.')[1] ?? '')
 
 const majorVersionOptions = computed(() => {
   const majors = [...new Set(allPhases.value.map(p => p.version.split('.')[0]))]
@@ -223,30 +236,20 @@ const periodOptions = computed(() => {
     .sort((a, b) => b.value.localeCompare(a.value))
 })
 
-watch(selectedMajor, (major) => {
-  if (!major) { selectedMinor.value = ''; selectedPhaseId.value = ''; return }
-  // 大版本切换 → 重置小版本和期数，自动选该大版本下最新小版本
-  selectedMinor.value = ''
-  selectedPhaseId.value = ''
-  const versions = [...new Set(
-    allPhases.value.filter(p => p.version.startsWith(major + '.')).map(p => p.version)
-  )].sort().reverse()
-  if (versions.length > 0) {
-    const parts = versions[0].split('.')
-    selectedMinor.value = parts[1]
-  }
-})
+/** 大版本切换 → 该大版本下最新小版本的最新一期 */
+function selectMajor(major: string) {
+  const latest = allPhases.value
+    .filter(p => p.version.startsWith(major + '.'))
+    .sort((a, b) => b.version.localeCompare(a.version) || b.begin.localeCompare(a.begin))[0]
+  if (latest) phase.pick(latest.phaseId)
+}
 
-watch(selectedMinor, (minor) => {
-  if (!minor || !selectedMajor.value) { selectedPhaseId.value = ''; return }
-  // 小版本切换 → 重置期数，自动选该版本下最新期
-  selectedPhaseId.value = ''
+/** 小版本切换 → 该版本下最新一期 */
+function selectMinor(minor: string) {
   const ver = `${selectedMajor.value}.${minor}`
-  const phases = allPhases.value.filter(p => p.version === ver).sort((a, b) => b.begin.localeCompare(a.begin))
-  if (phases.length > 0) {
-    selectedPhaseId.value = phases[0].phaseId
-  }
-})
+  const latest = allPhases.value.filter(p => p.version === ver).sort((a, b) => b.begin.localeCompare(a.begin))[0]
+  if (latest) phase.pick(latest.phaseId)
+}
 
 const view = computed(() => phaseViews.value.find(v => v.phaseId === selectedPhaseId.value) ?? null)
 const viewTestOnly = computed(() => view.value?.buffs.some(b => b.testOnly) ?? false)
@@ -292,12 +295,7 @@ function jumpToBoss(boss: BossPreset) {
   const target = boss.phases.find(p => p.modeType === 'critical_assault' && viewIds.has(p.phaseId))
     ?? boss.phases.find(p => viewIds.has(p.phaseId))
     ?? [...boss.phases].sort((a, b) => b.begin.localeCompare(a.begin))[0] // 拷贝再排：预设数据各页共享（catalog#loadBossPresets）
-  if (target) {
-    const parts = target.version.split('.')
-    selectedMajor.value = parts[0]
-    selectedMinor.value = parts[1]
-    selectedPhaseId.value = target.phaseId
-  }
+  if (target) phase.pick(target.phaseId)
 }
 
 /** 该 Boss 是否在期视图里有可显示期数（chip 标注用） */
