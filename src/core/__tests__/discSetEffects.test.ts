@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { calcPanel, emptyPanel } from '@/core/panel'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
-import { getStunBuildUpBonus, getTargetedStat } from '@/core/buff'
+import { getStunBuildUpBonus, getTargetedStat, resolveDiscSetPieces } from '@/core/buff'
 import { getElementEnemyAnomalyResReduction } from '@/core/anomalyPool/helpers'
 import { resolveStatElement } from '@/data/anomalyElement'
 import { elementStatKey } from '@/utils/elementStatKeys'
@@ -552,5 +552,41 @@ describe('teamBuff 装备者门槛', () => {
     expect(defense.target.inCombat.dmgBonus - defense.baseline.target.inCombat.dmgBonus).toBe(18)
     const attack = teammatePanels('1521', disc({ fourPieceSetId: '33700' }))
     expect(attack.target.inCombat.dmgBonus - attack.baseline.target.inCombat.dmgBonus).toBe(0)
+  })
+})
+
+describe('2+2+2 形态（三套各 2 件；用户 2026-10-29 裁决）', () => {
+  /** 洛克茜的实际配装：摇摆爵士×2 + 月光骑士颂×2 + 34400×2（三个二件套都加回能） */
+  const ROXY_222 = { fourPieceSetId: '31600', twoPieceSetId: '33400', thirdTwoPieceSetId: '34400v1' }
+
+  it('单一事实源 resolveDiscSetPieces：4+2 / 2+2+2 / 同套填两次', () => {
+    expect([...resolveDiscSetPieces(disc({ fourPieceSetId: '31600', twoPieceSetId: '33400' }))])
+      .toEqual([['31600', 4], ['33400', 2]])
+    expect([...resolveDiscSetPieces(disc(ROXY_222))])
+      .toEqual([['31600', 2], ['33400', 2], ['34400v1', 2]])
+    // 两个字段填同一套 ⇒ 该套凑够 4 件（与实机 6 件同套只吃 2pc+4pc 一致）
+    expect([...resolveDiscSetPieces(disc({ fourPieceSetId: '34300v1', twoPieceSetId: '34300v1', thirdTwoPieceSetId: '34400v1' }))])
+      .toEqual([['34300v1', 4], ['34400v1', 2]])
+  })
+
+  it('三个二件套的 2pc 全部生效：回能 +20%×3 = +60%', () => {
+    const base = panelFor('1621', disc()).outOfCombat
+    const three = panelFor('1621', disc(ROXY_222)).outOfCombat
+    expect(three.energyRegenBonusPct - base.energyRegenBonusPct, '摇摆2+月光2+34400×2 的回能要叠满 60').toBeCloseTo(60, 6)
+  })
+
+  it('没有任何套装到 4 件 ⇒ 4 件自身段不生效（34300v1 的暴击 +12 拿不到）', () => {
+    const base = panelFor('1601', disc()).inCombat
+    const fourPlusTwo = panelFor('1601', disc({ fourPieceSetId: '34300v1', twoPieceSetId: '34200' })).inCombat
+    expect(fourPlusTwo.critRate - base.critRate, '正对照：4+2 下 4pc 的暴击 +12 照常给').toBeCloseTo(12, 6)
+    const three = panelFor('1601', disc({ ...ROXY_222, fourPieceSetId: '34300v1' })).inCombat
+    expect(three.critRate - base.critRate, '2+2+2 下同一套只有 2 件 ⇒ 4pc 不生效').toBeCloseTo(0, 6)
+  })
+
+  it('4 件团队段同样不收集（山大王全队暴伤 / 34400 全队锐化 +8 在 2+2+2 下都不传播）', () => {
+    const four = teammatePanels('1481', disc({ fourPieceSetId: '33200', mainStats: { 4: 'critRate' } }))
+    expect(four.target.inCombat.critDmg - four.baseline.target.inCombat.critDmg, '正对照：4+2 下山大王 4pc 传播').toBe(15)
+    const three = teammatePanels('1481', disc({ fourPieceSetId: '33200', twoPieceSetId: '31000', thirdTwoPieceSetId: '34400v1', mainStats: { 4: 'critRate' } }))
+    expect(three.target.inCombat.critDmg - three.baseline.target.inCombat.critDmg, '2+2+2 下山大王只有 2 件 ⇒ 全队段不传播').toBe(0)
   })
 })

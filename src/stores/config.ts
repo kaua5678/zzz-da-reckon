@@ -134,6 +134,7 @@ function defaultDriveDisc(element: string): DriveDiscConfig {
   return {
     fourPieceSetId: '',
     twoPieceSetId: '',
+    thirdTwoPieceSetId: '',   // 2+2+2 开关（用户 2026-10-29）；空 = 4+2
     mainStats: {
       4: 'atkPct',
       5: elementStatKey('dmg', element) ?? 'atkPct', // CC-225：旧 `${element}Dmg` || 'atkPct' 的回落是死代码（模板串恒真）
@@ -709,6 +710,8 @@ export function createConfigModel(
         char.driveDisc.fourPieceSetId = sets[0].id
         char.driveDisc.twoPieceSetId = sets[0].id
       }
+      // 换人 ⇒ 清掉上一个角色的 2+2+2 开关（否则残留的「第三套」会把新角色的兜底套也降成 2 件）
+      char.driveDisc.thirdTwoPieceSetId = ''
 
       if (!opts?.defer) {
         syncTeammateBuffsFromTeam()
@@ -753,6 +756,16 @@ export function createConfigModel(
   function setTwoPieceSet(slot: number, setId: string) {
     const char = team.value[slot]
     if (char) char.driveDisc.twoPieceSetId = setId
+  }
+
+  /**
+   * 第三套（2 件套）—— **2+2+2 形态的开关**（用户 2026-10-29：「该带摇摆2+月光2+34400×2」）。
+   * 置位后 `fourPieceSetId` / `twoPieceSetId` 也只按 2 件计（4 件段不生效）；传空 = 回到 4+2。
+   * 形态解析的唯一事实源在 `core/buff.ts#resolveDiscSetPieces`，store 只存不判。
+   */
+  function setThirdTwoPieceSet(slot: number, setId: string) {
+    const char = team.value[slot]
+    if (char) char.driveDisc.thirdTwoPieceSetId = setId || undefined
   }
 
   function setMainStat(slot: number, slotNum: 4 | 5 | 6, statId: string) {
@@ -840,6 +853,11 @@ export function createConfigModel(
 
     const twoPieceSet = findDriveDiscSetForRecommendation(rec.drive_disc_sets.two_piece)
     if (twoPieceSet) char.driveDisc.twoPieceSetId = twoPieceSet.id
+
+    // 第三套 2 件套（推荐条目给了就进 2+2+2 形态；没给要**清空**——一键应用 = 显式定义整套配装，
+    // 不能把上一套手捏的第三套留在槽上）
+    const thirdPieceSet = findDriveDiscSetForRecommendation(rec.drive_disc_sets.third_two_piece)
+    char.driveDisc.thirdTwoPieceSetId = thirdPieceSet?.id
 
     for (const slotNum of [4, 5, 6] as const) {
       const recStat = rec.main_stats[String(slotNum) as '4' | '5' | '6']
@@ -1484,6 +1502,7 @@ export function createConfigModel(
     setWEngineModLevel,
     setFourPieceSet,
     setTwoPieceSet,
+    setThirdTwoPieceSet,
     setMainStat,
     setSubStatCount,
     setSubStatAllocation,

@@ -656,8 +656,19 @@ export interface DriveDiscSet {
 // ============ 驱动盘配置（非实例） ============
 
 export interface DriveDiscConfig {
-  fourPieceSetId: string       // 4件套套装
+  fourPieceSetId: string       // 4件套套装（2+2+2 形态下 = 第一套，只按 2 件计）
   twoPieceSetId: string        // 2件套套装（可选，空表示纯4件套）
+  /**
+   * **第三套（2 件套）= 2+2+2 形态的唯一开关**（用户 2026-10-29 裁决，逐字：
+   * 「洛克茜原本不该带摇摆爵士，该带摇摆2+月光2+34400×2，这三个二件套给他加回能」）。
+   *
+   * 置位 ⇒ 形态 = 三套各 2 件：`fourPieceSetId` / `twoPieceSetId` **也只按 2 件计**，
+   * 没有任何套装到 4 件 ⇒ 4 件套的自身段与团队段都不生效。
+   * 空 = 传统 4+2 形态（既有行为逐位不变）。
+   * 每套几件的**唯一解析** = `core/buff.ts#resolveDiscSetPieces`（引擎收集、4 件套团队段、
+   * 面板效果清单三处同源；禁止各写一份判定）。
+   */
+  thirdTwoPieceSetId?: string
   // 4、5、6号位主词条选择。缺键 = 未选：时间线轻量速算（composables/teamTimelineStore.ts#applyTeamToStore）
   // 会清掉上一队残留的 4/6 号位只留 5 号位；读端（core/panel.ts 等）缺键即跳过。
   mainStats: {
@@ -816,8 +827,12 @@ export interface CharacterBuildRecommendation {
   source_url: string
   strategy: string[]
   drive_disc_sets: {
+    /** 第一套：4+2 形态下 = 4 件套；`third_two_piece` 置位（2+2+2）时 = 第一套 2 件 */
     four_piece?: BuildDriveDiscSet
     two_piece?: BuildDriveDiscSet
+    /** 第三套 2 件套 —— 置位 ⇒ 2+2+2（与 `DriveDiscConfig#thirdTwoPieceSetId` 同一口径） */
+    third_two_piece?: BuildDriveDiscSet
+    /** 备选 2 件套（只做展示，不下发引擎） */
     alt_two_piece?: BuildDriveDiscSet
   }
   main_stats: Record<number, BuildMainStat>

@@ -437,43 +437,65 @@
                   <!-- 套装选择 -->
                   <div class="section">
                     <div class="section-title">套装选择</div>
-                    <n-grid cols="2" :x-gap="8">
+                    <n-grid cols="3" :x-gap="8">
                       <n-gi>
                         <div class="field">
-                          <span class="field-label">4件套</span>
+                          <span class="field-label">{{ threeInline ? '2件套 A' : '4件套' }}</span>
                           <n-select
                             :value="selectedChar.driveDisc.fourPieceSetId || null"
                             :options="setOptions"
                             filterable
                             size="small"
-                            placeholder="选择4件套"
+                            :placeholder="threeInline ? '选择第一套 2 件套' : '选择4件套'"
                             @update:value="v => configStore.setFourPieceSet(uiStore.selectedSlot, v || '')"
                           />
                         </div>
                       </n-gi>
                       <n-gi>
                         <div class="field">
-                          <span class="field-label">2件套</span>
+                          <span class="field-label">{{ threeInline ? '2件套 B' : '2件套' }}</span>
                           <n-select
                             :value="selectedChar.driveDisc.twoPieceSetId || null"
                             :options="setOptions"
                             filterable
                             size="small"
-                            placeholder="选择2件套"
+                            :placeholder="threeInline ? '选择第二套 2 件套' : '选择2件套'"
                             @update:value="v => configStore.setTwoPieceSet(uiStore.selectedSlot, v || '')"
                           />
                         </div>
                       </n-gi>
+                      <n-gi>
+                        <!-- 第三套（2 件套）= 2+2+2 开关（用户 2026-10-29：洛克茜「摇摆2+月光2+34400×2」） -->
+                        <div class="field">
+                          <span class="field-label">第三套（2 件套）</span>
+                          <n-select
+                            :value="selectedChar.driveDisc.thirdTwoPieceSetId || null"
+                            :options="setOptions"
+                            filterable
+                            clearable
+                            size="small"
+                            placeholder="留空 = 4+2"
+                            @update:value="v => configStore.setThirdTwoPieceSet(uiStore.selectedSlot, v || '')"
+                          />
+                        </div>
+                      </n-gi>
                     </n-grid>
+                    <n-text v-if="threeInline" depth="3" style="font-size: 11px; display: block; margin-top: 4px">
+                      已选第三套 ⇒ 形态 <b>2+2+2</b>：三套各 2 件，上面两套也**只按 2 件计**（4 件套效果不生效）。清空第三套即回到 4+2。
+                    </n-text>
                     <!-- 套装图标预览 -->
-                    <div v-if="fourPieceSetIcon || twoPieceSetIcon" class="set-icons-row">
+                    <div v-if="fourPieceSetIcon || twoPieceSetIcon || thirdPieceSetIcon" class="set-icons-row">
                       <div v-if="fourPieceSetIcon" class="set-icon-item">
                         <img :src="fourPieceSetIcon" class="set-icon" @error="fourPieceImgError = true" />
-                        <span class="set-icon-label">4件套</span>
+                        <span class="set-icon-label">{{ threeInline ? '2件套 A' : '4件套' }}</span>
                       </div>
                       <div v-if="twoPieceSetIcon" class="set-icon-item">
                         <img :src="twoPieceSetIcon" class="set-icon" @error="twoPieceImgError = true" />
-                        <span class="set-icon-label">2件套</span>
+                        <span class="set-icon-label">{{ threeInline ? '2件套 B' : '2件套' }}</span>
+                      </div>
+                      <div v-if="thirdPieceSetIcon" class="set-icon-item">
+                        <img :src="thirdPieceSetIcon" class="set-icon" @error="thirdPieceImgError = true" />
+                        <span class="set-icon-label">第三套</span>
                       </div>
                     </div>
 
@@ -785,12 +807,16 @@
             <div class="rec-block">
               <div class="rec-block-title">驱动盘套装</div>
               <div v-if="buildRec.drive_disc_sets.four_piece" class="rec-set-row">
-                <n-tag size="tiny" type="success">4件</n-tag>
+                <n-tag size="tiny" type="success">{{ recThreeInline ? '2件·A' : '4件' }}</n-tag>
                 <span class="rec-set-name">{{ buildRec.drive_disc_sets.four_piece.name_zh || buildRec.drive_disc_sets.four_piece.name_en }}</span>
               </div>
               <div v-if="buildRec.drive_disc_sets.two_piece" class="rec-set-row">
-                <n-tag size="tiny" type="info">2件</n-tag>
+                <n-tag size="tiny" type="info">{{ recThreeInline ? '2件·B' : '2件' }}</n-tag>
                 <span class="rec-set-name">{{ buildRec.drive_disc_sets.two_piece.name_zh || buildRec.drive_disc_sets.two_piece.name_en }}</span>
+              </div>
+              <div v-if="buildRec.drive_disc_sets.third_two_piece" class="rec-set-row">
+                <n-tag size="tiny" type="info">第三套</n-tag>
+                <span class="rec-set-name">{{ buildRec.drive_disc_sets.third_two_piece.name_zh || buildRec.drive_disc_sets.third_two_piece.name_en }}</span>
               </div>
               <div v-if="buildRec.drive_disc_sets.alt_two_piece" class="rec-set-row">
                 <n-tag size="tiny" type="warning" secondary>备选</n-tag>
@@ -1113,6 +1139,7 @@ const selectedAgentDefaultTimeWeight = computed(() => configStore.getDefaultBasi
 const wengineImgError = ref(false)
 const fourPieceImgError = ref(false)
 const twoPieceImgError = ref(false)
+const thirdPieceImgError = ref(false)
 watch(() => selectedChar.value?.wEngineId, () => { wengineImgError.value = false })
 watch(() => selectedChar.value?.driveDisc?.fourPieceSetId, () => { fourPieceImgError.value = false })
 watch(() => selectedChar.value?.driveDisc?.twoPieceSetId, () => { twoPieceImgError.value = false })
@@ -1133,6 +1160,21 @@ const wengineImageUrl = computed(() => {
 const fourPieceSetIcon = computed(() => {
   const setId = selectedChar.value?.driveDisc?.fourPieceSetId
   if (!setId || fourPieceImgError.value) return null
+  const set = catalogStore.getDriveDiscSet(setId)
+  if (!set?.images) return null
+  return getImageUrl(set.images)
+})
+
+/** 推荐条目是否 2+2+2（给了第三套就是；标签跟着变，避免把「第一套 2 件」读成 4 件套） */
+const recThreeInline = computed(() => !!buildRec.value?.drive_disc_sets.third_two_piece)
+
+/** 是否 2+2+2 形态（第三套已选）——判定单源 = driveDisc.thirdTwoPieceSetId 本身（引擎同口径） */
+const threeInline = computed(() => !!selectedChar.value?.driveDisc?.thirdTwoPieceSetId)
+
+/** 第三套图标URL */
+const thirdPieceSetIcon = computed(() => {
+  const setId = threeInline.value ? selectedChar.value?.driveDisc?.thirdTwoPieceSetId : undefined
+  if (!setId || thirdPieceImgError.value) return null
   const set = catalogStore.getDriveDiscSet(setId)
   if (!set?.images) return null
   return getImageUrl(set.images)
@@ -1210,11 +1252,13 @@ const discEffectRows = computed(() => {
   if (!dd) return []
   const four = dd.fourPieceSetId ? catalogStore.driveDiscSetsMap.get(dd.fourPieceSetId) : undefined
   const two = dd.twoPieceSetId ? catalogStore.driveDiscSetsMap.get(dd.twoPieceSetId) : undefined
+  // 2+2+2：第三套进清单 ⇒ 三套各 2 件、无 4 件段（与 core/buff.ts#resolveDiscSetPieces 同口径）
+  const third = dd.thirdTwoPieceSetId ? catalogStore.driveDiscSetsMap.get(dd.thirdTwoPieceSetId) : undefined
   return buildDiscEffectRows(four, two, {
     specialty: code => SPECIALTY_LABEL[code] ?? code,
     attribute: code => ATTRIBUTE_LABEL[code] ?? code,
     stat: code => statLabel(code),
-  })
+  }, third)
 })
 
 function onSelectAgent(id: string | null) {

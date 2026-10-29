@@ -920,6 +920,7 @@ export function applyTeamPresetConfig(configStore: ConfigModel, preset: TeamPres
     if (dd) {
       if (dd.fourPieceSetId) configStore.setFourPieceSet(slot, dd.fourPieceSetId)
       if (dd.twoPieceSetId) configStore.setTwoPieceSet(slot, dd.twoPieceSetId)
+      configStore.setThirdTwoPieceSet(slot, dd.thirdTwoPieceSetId ?? '')
       for (const [pos, stat] of Object.entries(dd.mainStats ?? {})) {
         configStore.setMainStat(slot, Number(pos) as 4 | 5 | 6, stat)
       }

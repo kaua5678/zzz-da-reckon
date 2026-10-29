@@ -528,7 +528,7 @@ export interface DiscPlan extends DriveDiscConfig {
 }
 
 /** 一处差异：套装 / 主词条 / 副词条 */
-export type DiscPlanDiffKind = '套装4' | '套装2' | '主词条' | '副词条' | '音擎' | '精炼'
+export type DiscPlanDiffKind = '套装4' | '套装2' | '套装2b' | '主词条' | '副词条' | '音擎' | '精炼'
 
 export interface DiscPlanDiff {
   kind: DiscPlanDiffKind
@@ -599,6 +599,8 @@ export function readDiscPlan(
   return {
     fourPieceSetId: disc.fourPieceSetId,
     twoPieceSetId: disc.twoPieceSetId,
+    // 2+2+2 开关：A/B 对比必须一起带走，否则「存成 A」会静默丢掉第三套（形态在对比里漂移）
+    ...(disc.thirdTwoPieceSetId ? { thirdTwoPieceSetId: disc.thirdTwoPieceSetId } : {}),
     mainStats: { ...disc.mainStats },
     subStatAllocation: { ...disc.subStatAllocation },
     wEngineId: char.wEngineId ?? '',
@@ -643,6 +645,9 @@ export function diffDiscPlans(a: DiscPlan, b: DiscPlan): DiscPlanDiff[] {
   }
   if (a.twoPieceSetId !== b.twoPieceSetId) {
     out.push({ kind: '套装2', label: '二件套', a: setName(a.twoPieceSetId), b: setName(b.twoPieceSetId) })
+  }
+  if ((a.thirdTwoPieceSetId ?? '') !== (b.thirdTwoPieceSetId ?? '')) {
+    out.push({ kind: '套装2b', label: '第三套（2 件套 = 2+2+2）', a: setName(a.thirdTwoPieceSetId ?? ''), b: setName(b.thirdTwoPieceSetId ?? '') })
   }
   for (const pos of [4, 5, 6] as const) {
     const av = a.mainStats[pos] ?? ''
@@ -690,6 +695,7 @@ export async function compareDiscPlans(
   const originalDisc = {
     fourPieceSetId: config.team[slot].driveDisc.fourPieceSetId,
     twoPieceSetId: config.team[slot].driveDisc.twoPieceSetId,
+    thirdTwoPieceSetId: config.team[slot].driveDisc.thirdTwoPieceSetId,
     mainStats: { ...config.team[slot].driveDisc.mainStats },
     // 音擎也是「配装」的一部分：A/B 可以换武器 / 换精炼（用户口径 2026-10-23），必须一起还原
     wEngineId: config.team[slot].wEngineId,
@@ -706,6 +712,7 @@ export async function compareDiscPlans(
     const disc = char.driveDisc
     disc.fourPieceSetId = plan.fourPieceSetId
     disc.twoPieceSetId = plan.twoPieceSetId
+    disc.thirdTwoPieceSetId = plan.thirdTwoPieceSetId
     disc.mainStats = { ...plan.mainStats };
     disc.subStatAllocation = { ...plan.subStatAllocation }
     char.wEngineId = plan.wEngineId
@@ -767,6 +774,7 @@ export async function compareDiscPlans(
     const disc = char.driveDisc
     disc.fourPieceSetId = originalDisc.fourPieceSetId
     disc.twoPieceSetId = originalDisc.twoPieceSetId
+    disc.thirdTwoPieceSetId = originalDisc.thirdTwoPieceSetId
     disc.mainStats = { ...originalDisc.mainStats };
     char.wEngineId = originalDisc.wEngineId
     char.wEngineModLevel = originalDisc.wEngineModLevel;

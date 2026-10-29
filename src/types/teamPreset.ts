@@ -41,6 +41,8 @@ export interface InteractionItem {
 export interface TeamPresetDriveDisc {
   fourPieceSetId: string
   twoPieceSetId: string
+  /** 第三套 2 件套（2+2+2 开关，见 `DriveDiscConfig#thirdTwoPieceSetId`）；缺省 = 4+2 */
+  thirdTwoPieceSetId?: string
   /** 主词条（槽位 → statId），缺省按角色推荐 */
   mainStats?: Record<number, string>
   /** 副词条分配（词条数），缺省默认 */

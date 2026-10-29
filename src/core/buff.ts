@@ -557,6 +557,39 @@ export function resolveAttributeTemplateStat(stat: string, attribute: string): s
   return stat.replace('{attribute}', capitalized)
 }
 
+/**
+ * **每套驱动盘穿了几件**的唯一解析（单一事实源）。
+ *
+ * 形态只有两种（用户 2026-10-29：2+2+2 是真实存在的配装，不是「4 件套 + 2 件套」的变体）：
+ *   · `thirdTwoPieceSetId` 空 ⇒ **4+2**：fourPieceSetId = 4 件、twoPieceSetId = 2 件
+ *     （两套同 id ⇒ 仍按 4 件计，与实机「6 件同套只吃 2pc+4pc」一致）；
+ *   · `thirdTwoPieceSetId` 置位 ⇒ **2+2+2**：三套各 2 件，**没有任何套装到 4 件**
+ *     ⇒ 4 件段（自身 + 团队）一律不生效；若两个字段填了同一套，那套就是 4 件（等同实机）。
+ *
+ * 消费者：`collectDriveDiscBuffs`（本文件）、`inCombatBuffs#collectTeamBuffs`（4 件套团队段）、
+ * `discFourPieceSetIdOf`（面板/UI 判定）、`utils/discEffectRows`（效果清单展示）。
+ * ⚠ 禁止在别处再写一份「有没有 4 件套」的判定——两处各判一次正是本仓踩过的坑型。
+ */
+export function resolveDiscSetPieces(config: DriveDiscConfig): Map<string, number> {
+  const counts = new Map<string, number>()
+  const add = (id: string | undefined, n: number) => { if (id) counts.set(id, (counts.get(id) ?? 0) + n) }
+  if (config.thirdTwoPieceSetId) {
+    add(config.fourPieceSetId, 2)
+    add(config.twoPieceSetId, 2)
+    add(config.thirdTwoPieceSetId, 2)
+  } else {
+    add(config.fourPieceSetId, 4)
+    if (config.twoPieceSetId && config.twoPieceSetId !== config.fourPieceSetId) add(config.twoPieceSetId, 2)
+  }
+  return counts
+}
+
+/** 真正凑够 4 件的那套 id（2+2+2 形态恒 undefined ⇒ 4 件段不收集）；4 件套团队段与展示同读此判定 */
+export function discFourPieceSetIdOf(config: DriveDiscConfig): string | undefined {
+  if (!config.fourPieceSetId) return undefined
+  return (resolveDiscSetPieces(config).get(config.fourPieceSetId) ?? 0) >= 4 ? config.fourPieceSetId : undefined
+}
+
 function collectDriveDiscBuffs(
   config: DriveDiscConfig,
   setsMap: Map<string, DriveDiscSet>,
@@ -565,13 +598,7 @@ function collectDriveDiscBuffs(
   const out: BuffEffect[] = []
   const inCombat: BuffEffect[] = []
 
-  const setCounts = new Map<string, number>()
-  if (config.fourPieceSetId) setCounts.set(config.fourPieceSetId, 4)
-  if (config.twoPieceSetId && config.twoPieceSetId !== config.fourPieceSetId) {
-    setCounts.set(config.twoPieceSetId, 2)
-  }
-
-  for (const [setId, count] of setCounts) {
+  for (const [setId, count] of resolveDiscSetPieces(config)) {
     const set = setsMap.get(setId)
     if (!set) continue
 
@@ -683,7 +710,9 @@ function collectTeammateBuffs(teammateBuffs: TeammateBuff[], sourcePanels?: Sour
  * `calcPanel` 据此决定是否做第二段收集；没有门槛时一段即可，结果与两段相同。
  */
 export function discSelfBuffNeedsOutOfCombatPanel(config: DriveDiscConfig, setsMap: Map<string, DriveDiscSet>): boolean {
-  const group = config.fourPieceSetId ? setsMap.get(config.fourPieceSetId)?.fourPiece.selfBuff : undefined
+  // 2+2+2（第三套置位）⇒ 没有 4 件套自身段可收，无需第二段扫（`discFourPieceSetIdOf` 即此判定）
+  const fourId = discFourPieceSetIdOf(config)
+  const group = fourId ? setsMap.get(fourId)?.fourPiece.selfBuff : undefined
   if (!group) return false
   if (parseOutOfCombatStatRequirement(group.requirement?.outOfCombatStat)) return true
   return group.effects.some(e => parseOutOfCombatStatRequirement(e.requirement?.outOfCombatStat) != null)

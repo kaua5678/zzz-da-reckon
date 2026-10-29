@@ -12,6 +12,7 @@
  * （原 `includeOwner` 布尔标签从无读取方，是上述行为的冗余描述，第 213 轮 CC-190 删除——
  *   只改标签而不设 excludeTargetAgentIds 不会有任何效果，留着会误导。）
  */
+import { discFourPieceSetIdOf } from '@/core/buff'
 import type {
   Agent, WEngine, DriveDiscSet, DriveDiscConfig, TeammateBuff, TeammateBuffGroup,
 } from '@/types/catalog'
@@ -154,8 +155,10 @@ export function collectInCombatTeamBuffs(
 
     // 驱动盘 4 件套团队效果：装备者自身收集不含 teamBuff，需要包含装备者。
     // 装备者不满足门槛（特化/属性/局外面板）时整组不传播。
-    if (char.driveDisc.fourPieceSetId) {
-      const set = deps.driveDiscSetsMap.get(char.driveDisc.fourPieceSetId)
+    // 2+2+2（第三套置位）⇒ 没有任何套装到 4 件 ⇒ 4 件套团队段整段不收集（判定单源 = core/buff.ts）
+    const fourPieceSetId = discFourPieceSetIdOf(char.driveDisc)
+    if (fourPieceSetId) {
+      const set = deps.driveDiscSetsMap.get(fourPieceSetId)
       const group = set?.fourPiece.teamBuff
       const wearerPanel = aliases.map(a => deps.wearerPanels?.[a]?.outOfCombat).find(p => p != null)
       if (set && group?.effects.length && discRequirementMet(group.requirement, agent, wearerPanel)) {

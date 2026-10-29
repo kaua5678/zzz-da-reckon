@@ -180,6 +180,8 @@ export function buildDiscEffectRows(
   four: DiscSetLike | undefined,
   two: DiscSetLike | undefined,
   labels: DiscRowLabels = {},
+  /** 第三套 2 件套：置位 ⇒ 2+2+2（三套各 2 件、无 4 件段），与 `core/buff.ts#resolveDiscSetPieces` 同口径 */
+  third?: DiscSetLike | undefined,
 ): DiscEffectRow[] {
   const rows: DiscEffectRow[] = []
   const seen = new Set<string>()
@@ -211,6 +213,23 @@ export function buildDiscEffectRows(
     }
   }
 
+  /**
+   * 2+2+2（第三套置位）：三套各 2 件 ⇒ **一律按 2 件段列**，没有任何 4 件段
+   * （4 件套的自身段/团队段在这形态下引擎也不收集，清单必须与引擎同口径，否则又是「看着有、其实没接」）。
+   * 两个字段填同一套时那套凑够 4 件 ⇒ 仍列它的 4 件段（引擎同判，见 `discSetPieces`）。
+   */
+  if (third) {
+    const groups: { set: DiscSetLike; pieces: number }[] = []
+    for (const set of [four, two, third]) {
+      if (!set) continue
+      const id = String(set.id ?? '')
+      const hit = groups.find(g => String(g.set.id ?? '') === id)
+      if (hit) hit.pieces += 2
+      else groups.push({ set, pieces: 2 })
+    }
+    for (const g of groups) piecesOfEquippedSet(g.set, g.pieces >= 4)
+    return rows
+  }
   if (four) piecesOfEquippedSet(four, true)
   if (two && String(two.id ?? '') !== String(four?.id ?? '')) piecesOfEquippedSet(two, false)
   return rows

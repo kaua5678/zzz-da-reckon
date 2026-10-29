@@ -17,10 +17,14 @@ describe('CC-269 推荐套装按 id 解析', () => {
       config.team[0]!.agentId = agent.id
       config.team[0]!.driveDisc.fourPieceSetId = ''
       config.team[0]!.driveDisc.twoPieceSetId = ''
+      config.team[0]!.driveDisc.thirdTwoPieceSetId = undefined
       config.applyBuildRecommendationForSlot(0)
       const d = config.team[0]!.driveDisc
       if (rec.drive_disc_sets.four_piece && d.fourPieceSetId !== rec.drive_disc_sets.four_piece.id) bad.push(`${agent.id} 4pc ${d.fourPieceSetId}≠${rec.drive_disc_sets.four_piece.id}`)
       if (rec.drive_disc_sets.two_piece && d.twoPieceSetId !== rec.drive_disc_sets.two_piece.id) bad.push(`${agent.id} 2pc ${d.twoPieceSetId}≠${rec.drive_disc_sets.two_piece.id}`)
+      // 第三套（2+2+2 开关）：条目给了就必须装上，没给必须清空（否则上一槽的形态残留）
+      const wantThird = rec.drive_disc_sets.third_two_piece?.id ?? undefined
+      if ((d.thirdTwoPieceSetId ?? undefined) !== wantThird) bad.push(`${agent.id} 第三套 ${d.thirdTwoPieceSetId ?? '（空）'}≠${wantThird ?? '（空）'}`)
     }
     expect(bad).toEqual([])
   }, 60_000)

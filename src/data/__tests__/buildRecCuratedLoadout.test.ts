@@ -28,6 +28,7 @@ import { setupHarness } from '@/test/harness'
 import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { robinGuardDefBonus } from '@/mechanics/agents/robin'
+import { resolveDiscSetPieces, discFourPieceSetIdOf } from '@/core/buff'
 import { topTwoOf, SUBSTAT_TOP2_STEP_CAP } from '@/core/substatOptimizer'
 
 const flush = async () => { await new Promise<void>(r => setTimeout(r, 0)) }
@@ -134,7 +135,7 @@ describe('1661 知更鸟 · 人工配装生效（转模到位 / 不打伤害 / �
 const SHARP_TEAM = (stunId: string) => [{ agentId: '1601' }, { agentId: stunId }, { agentId: '1661' }] as never
 
 describe('1571 诺姆 / 1621 洛克茜 · 击破位换 3.4 新盘 34400v1', () => {
-  it('① 一键应用：两人 4pc 都是 34400v1；2pc / 专武沿用站点条目；原 4pc 降到备选', async () => {
+  it('① 一键应用：诺姆 4pc = 34400v1；2pc / 专武沿用站点条目；原 4pc 降到备选（洛克茜 = 2+2+2，见下条）', async () => {
     const norma = await setupHarness(SHARP_TEAM('1571'), { recommendedBuild: true } as never)
     const n = norma.config.team[1]
     expect(n.driveDisc.fourPieceSetId, '诺姆 4pc 被回退成山大王了（跑过 sync-build-recommendations 1571 ？）').toBe('34400v1')
@@ -144,17 +145,35 @@ describe('1571 诺姆 / 1621 洛克茜 · 击破位换 3.4 新盘 34400v1', () =
 
     const roxy = await setupHarness(SHARP_TEAM('1621'), { recommendedBuild: true } as never)
     const r = roxy.config.team[1]
-    expect(r.driveDisc.fourPieceSetId, '洛克茜 4pc 被回退成摇摆爵士了').toBe('34400v1')
-    expect(r.driveDisc.twoPieceSetId).toBe('33400') // 月光骑士颂（回能）
     expect(r.wEngineId).toBe('14162')
-    expect(roxy.catalog.getBuildRecommendation('1621')!.drive_disc_sets.alt_two_piece?.id).toBe('31600') // 摇摆爵士降级保留
+    expect(roxy.catalog.getBuildRecommendation('1621')!.drive_disc_sets.alt_two_piece?.id).toBe('31000')
+  }, 180000)
+
+  it('★ 洛克茜 = 2+2+2（摇摆2+月光2+34400×2，用户 2026-10-29）：三套各 2 件、回能 +60%、4 件段不生效', async () => {
+    const h = await setupHarness(SHARP_TEAM('1621'), { recommendedBuild: true } as never)
+    const d = h.config.team[1].driveDisc
+    expect(d.fourPieceSetId).toBe('31600')          // 摇摆爵士 ×2（2+2+2 的第一套）
+    expect(d.twoPieceSetId).toBe('33400')           // 月光骑士颂 ×2
+    expect(d.thirdTwoPieceSetId, '第三套没装上 ⇒ 形态退回 4+2，回能只剩 20%').toBe('34400v1')
+    expect(h.catalog.getBuildRecommendation('1621')!.drive_disc_sets.alt_two_piece?.id).toBe('31000')
+    // 形态判定（引擎同源）：三套各 2 件、没有 4 件套
+    expect([...resolveDiscSetPieces(d)]).toEqual([['31600', 2], ['33400', 2], ['34400v1', 2]])
+    expect(discFourPieceSetIdOf(d)).toBeUndefined()
+    // 引擎读数：三个二件套的回能都进面板（+60%），且 34400 的 4pc「全队锐化 +8」不生效
+    const roxy = computePanelPhases(1, h.config, h.catalog)!
+    expect(roxy.outOfCombat.energyRegenBonusPct).toBeGreaterThanOrEqual(60)
+    const sunbringer = computePanelPhases(0, h.config, h.catalog)!.inCombat.sharpDmgBonus ?? 0
+    h.config.setThirdTwoPieceSet(1, '')   // 退回 4+2（此时第一套 = 4 件套）
+    const sunbringerAfter = computePanelPhases(0, h.config, h.catalog)!.inCombat.sharpDmgBonus ?? 0
+    expect(sunbringerAfter - sunbringer, '2+2+2 下 34400 只有 2 件 ⇒ 全队锐化不发放').toBeCloseTo(0, 6)
   }, 180000)
 
   it('② 4pc 的全队锐化 +8 真的进锋御队友（1601）的面板，不是只停在击破位自己身上', async () => {
-    for (const stun of ['1571', '1621']) {
+    // 只覆盖诺姆（1621 的真实配装是 2+2+2，无 4pc ⇒ 那条在她自己的用例里反向钉住「2 件不发放」）
+    for (const stun of ['1571']) {
       const h = await setupHarness(SHARP_TEAM(stun), { recommendedBuild: true } as never)
       const withNew = computePanelPhases(0, h.config, h.catalog)!.inCombat.sharpDmgBonus ?? 0
-      h.config.setFourPieceSet(1, stun === '1571' ? '33200' : '31600') // 换回原 4pc
+      h.config.setFourPieceSet(1, '33200') // 换回原 4pc（山大王）
       const withOld = computePanelPhases(0, h.config, h.catalog)!.inCombat.sharpDmgBonus ?? 0
       expect(withNew - withOld, `${stun} 的 4pc 没有把 +8 锐化增伤送到 1601 面板`).toBeCloseTo(8, 6)
     }
