@@ -1319,7 +1319,7 @@ function agentName(s: number) {
    一个字面色值/令牌引用都不加，棘轮零漂移）。 */
 .sap-blab { position: absolute; font-size: 11px; line-height: 15px; white-space: nowrap; padding-left: 5px; border-left: 2px solid; pointer-events: none; }
 /* 招式级短徽标（明王窗口 / +30%失衡）：**先收缩的那一方**——空间不足时它让位给招式名 */
-.sap-mw { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 7px; line-height: 1; padding: 1px 2px; border-radius: 2px; pointer-events: none; white-space: nowrap; }
+.sap-mw { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 10px; line-height: 1.2; padding: 1px 4px; border-radius: 3px; pointer-events: none; white-space: nowrap; }
 .sap-mw.mw-trigger { color: var(--c-warning-strong); background: rgba(240,160,32,0.15); }
 .sap-mw.mw-live { color: var(--c-success); background: rgba(99,226,183,0.15); }
 /* 明王平行道：触发块处 8s 窗口条（2层黄 / 3层绿），6命满覆盖 */

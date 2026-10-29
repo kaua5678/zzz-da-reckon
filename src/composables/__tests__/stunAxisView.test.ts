@@ -20,18 +20,18 @@ describe('axisWindowCounts', () => {
  * 块内放不下的名字**外置到标签行**，而不是被 overflow 切掉。
  */
 describe('layoutBlockLabels（块标签分行）', () => {
-  const DUR = 20 // 窗口 20s ⇒ 每字 20×11/1000 = 0.22s
+  // 窗口 20s + 假定轴宽 1000px ⇒ 50px/秒；每字 12px、固定开销 10px ⇒ 文字秒数 = (字数×12+10)/50
+  const DUR = 20
 
   it('放得下 ⇒ 写在块内（不占标签行）', () => {
-    // 2.5s 的强特块，文字「强特：焚夜·曦生×1 2.5s」= 15 字 ⇒ 需要 3.3s > 2.5 ⇒ 外置；
-    // 换短文本「强特×1 2.5s」= 9 字 ⇒ 1.98s ≤ 2.5 ⇒ 块内
+    // 「强特×1 2.5s」9 字 ⇒ (9×12+10)/50 = 2.36s ≤ 2.5 ⇒ 块内
     const r = layoutBlockLabels([{ start: 0, dur: 2.5, text: '强特×1 2.5s' }], DUR)
     expect(r.inside).toEqual([true])
     expect(r.rows).toBe(0)
   })
 
   it('★ 放不下 ⇒ 外置，且同排不重叠（0.3s 的平A 与 0.75s 的快支挤在一排会重叠）', () => {
-    // 每字 20×11/1000 = 0.22s；「平A×3 0.3s」9 字 = 1.98s、「快支：锋芒所向×1」8 字 = 1.76s
+    // 「平A×3 0.3s」9 字 = 2.36s；「快支：锋芒所向×1」8 字 = 2.12s —— 两颗只差 0.315s
     const r = layoutBlockLabels([
       { start: 0, dur: 0.315, text: '平A×3 0.3s' },
       { start: 0.315, dur: 0.75, text: '快支：锋芒所向×1' },
@@ -52,18 +52,19 @@ describe('layoutBlockLabels（块标签分行）', () => {
 
   it('跨过文字末端的下一颗仍可回到第一排（分行是区间装箱，不是轮流坐庄）', () => {
     const r = layoutBlockLabels([
-      { start: 0, dur: 0.3, text: '平A×3 0.3s' },   // 第 1 排：0 → 1.98
-      { start: 0.4, dur: 0.3, text: '平A×3 0.3s' }, // 与第 1 颗重叠 ⇒ 第 2 排：0.4 → 2.38
+      { start: 0, dur: 0.3, text: '平A×3 0.3s' },   // 第 1 排：0 → 2.36
+      { start: 0.4, dur: 0.3, text: '平A×3 0.3s' }, // 与第 1 颗重叠 ⇒ 第 2 排：0.4 → 2.76
       { start: 3.0, dur: 0.3, text: '平A×3 0.3s' }, // 两排都空出来了 ⇒ 回第 1 排
     ], DUR)
     expect(r.row).toEqual([0, 1, 0])
   })
 
   it('贴着窗口右端的块：标签左移到「还放得下」处，不捅出轴外', () => {
-    // 19.5s 起、文字需 1.98s ⇒ 放不下到 20s ⇒ 落点左移到 20 − 1.98 = 18.02
+    // 19.5s 起、文字需 2.36s ⇒ 放不到 20s ⇒ 落点左移到「刚好放得下」处（at + need = 窗口右端）
     const r = layoutBlockLabels([{ start: 19.5, dur: 0.3, text: '平A×3 0.3s' }], DUR)
     expect(r.inside).toEqual([false])
-    expect(r.at[0]!).toBeCloseTo(DUR - 9 * 0.22, 6)
+    expect(r.at[0]! + r.need[0]!).toBeCloseTo(DUR, 6)
+    expect(r.at[0]!).toBeLessThan(19.5)
     // 块内文字不占标签行 ⇒ 落点原样保留（它本来就在块里）
     const inside = layoutBlockLabels([{ start: 19.5, dur: 3, text: '强特×1' }], DUR)
     expect(inside.inside).toEqual([true])

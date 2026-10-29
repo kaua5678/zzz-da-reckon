@@ -640,7 +640,10 @@ export const FONT_SIZE_BASELINE = {
   'src/components/FinalPanel.vue': 4,
   'src/views/CharIncrementPage.vue': 2,
   'src/views/ResourcePage.vue': 2,
-  'src/views/StunAxisPage.vue': 1,
+  // 2026-10-29：1 → **0**。最后一处离群字号是动作块内的招式级徽标（`.sap-mw` 的 7px）——
+  // 块放到 22px / 名字 11px 之后它成了整页唯一的 7px 字，直接归到档位 10（"10 次要"）。
+  // 是**清洗**不是放松：本文件现在一个离群字号都没有（与 TimeChartsPage 同款 0 行）。
+  'src/views/StunAxisPage.vue': 0,
   // 同上：11.5px 随样式搬入 ChartHoverCard（原就在页面的离群基线里，本次仅文件归属变化）
   'src/components/ChartHoverCard.vue': 1,
   'src/views/TimeChartsPage.vue': 0,   // 3 → 0：最后三处（11.5/11.5/8.5px）归到档位 11/11/8（目标里「清零两页离群字号」达成）

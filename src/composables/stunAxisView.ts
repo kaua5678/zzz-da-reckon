@@ -41,21 +41,27 @@ export function axisKindOfView(axis: { readonly kind?: StunAxisKind; readonly co
  * 口径：**名字不许被切**。放得下就写在块里（`inside[i] = true`），放不下就排到道下方的
  * **标签行**（同一排不重叠，行号从 0 起）。
  *
- * ⚠ 判定与分行都用**秒**，不测像素——与 `stunAxisEventLanes#layoutEventMarkers` 同一口径
- *   （页面上不引 ResizeObserver）。每字占秒数 = `字符宽 × 窗口时长 ÷ 假定轴宽`，
- *   假定轴宽缺省 **1000px**（本仓数据密集页面的保守下限）：宁可多排一行，也不重叠。
- *   一个汉字 ≈ 1em ⇒ 字宽取 11px（= 块内字号），拉丁字符更窄 ⇒ 偏保守。
+ * ⚠ 判定与分行都用**秒**（横轴本来就是时间），像素只经 `假定轴宽` 折算一次——页面传的是
+ *   **实测**轴宽（首帧用保守缺省 1000px）。文字需要的秒数 = `(字数 × 字宽 + 固定开销) ÷ 每秒像素`，
+ *   字宽取块内字号 + 一点余量、固定开销含内边距与引线：**估算必须偏宽**，宁可按放不下处理
+ *   （多排一行），也不能按放得下处理（真放不下就又被切字 —— 上一版就栽在少算 7px 内边距上，
+ *   实测两颗标签只差 0.11s 就叠在一起）。
  */
 export function layoutBlockLabels(
   blocks: ReadonlyArray<{ start: number; dur: number; text: string }>,
   maxDur: number,
   assumedPx = 1000,
-  charPx = 11,
+  charPx = 12,
+  /** 标签本体之外的固定开销（左右内边距 + 引线 + 字体度量余量），单位 px */
+  chromePx = 10,
+  /** 同排相邻两颗之间额外要求的间距（秒）——估算宽度总会有几 % 误差，留一条安全带 */
+  gapSeconds = 0.15,
 ): { rows: number; inside: boolean[]; row: number[]; need: number[]; at: number[] } {
   const win = Math.max(0, Number(maxDur) || 0)
-  const charSec = win * charPx / Math.max(1, assumedPx)
-  const need = blocks.map(b => b.text.length * charSec)
-  // 放得下 = 块时长 ≥ 文字需要的时长（含 ×次数 与时长后缀，由调用方一起算进 text）
+  const pxPerSec = Math.max(1, assumedPx) / Math.max(1e-9, win)
+  const secOf = (text: string) => (text.length * charPx + chromePx) / pxPerSec
+  const need = blocks.map(b => secOf(b.text))
+  // 放得下 = 块时长 ≥ 文字需要的时长（传进来的 text 就是块里要写的那串，由调用方决定含哪些字段）
   const inside = blocks.map((b, i) => (Number(b.dur) || 0) >= need[i]!)
   const row: number[] = blocks.map(() => 0)
   /** 标签实际落点（秒）：贴着窗口右端的块左移到「还放得下」处，避免整条名字捅出轴外 */
@@ -66,7 +72,7 @@ export function layoutBlockLabels(
     const start = Math.min(Math.max(0, Number(b.start) || 0), Math.max(0, win - need[i]!))
     at[i] = start
     let r = 0
-    while (r < rowEnds.length && start < rowEnds[r]! + 0.05) r += 1
+    while (r < rowEnds.length && start < rowEnds[r]! + gapSeconds) r += 1
     rowEnds[r] = start + need[i]!
     row[i] = r
   })
