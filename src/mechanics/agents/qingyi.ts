@@ -109,6 +109,15 @@ function applyQingyiPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if (!panel) return
   // 核心被动·千秋岁 + 连携技·太平令：目标每层羁服使连携技伤害 +3%（羁服满层 20 层 = +60%）
   panel.skillDmgBonus__chain = (panel.skillDmgBonus__chain ?? 0) + 60
+  /**
+   * 影画一·介电击穿：闪络电压满时发动醉花月云转 ⇒ 自身对该目标暴击率 +20%，持续 15 秒。
+   *
+   * 口径（用户 2026-10-29：「不能近似就按自身 100% 覆盖率」）：这条 15 秒**自拐**在引擎里没有窗口通道
+   * （面板阶段拿不到招式时间轴），按「自身满覆盖」结算——她自己的伤害占比低（实测 7%~28%），
+   * 且窗口里的醉花与一煞本来就在那 15 秒内，满覆盖误差不大。修前只把 +20 挂在**醉花两行**上
+   * （= 只认触发招、不认窗口），实测偏低 0.6%~2.8% 队伤（探针 2026-10-29，三支队）。
+   */
+  if (cinemaLevelOf(cinemaLevel) >= 1) panel.critRate = panel.critRate + 20
   // 额外能力·阳关三叠（声明式 spec.additionalAbility 判定写入 panel.additionalAbilityActive）
   if (additionalAbilityActiveOf(panel)) {
     // 普通攻击失衡值 +20%（只作用于 basic，含一煞与醉花月云转，两者 skillType 均为 basic）
@@ -302,9 +311,8 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
   const totalYisha4Hits = source.yisha4Hits + allocYisha4Hits
 
   // 醉花月云转：单独结算（不跟一煞平均），固定 +25% 伤害 / +12.5% 失衡；
-  // 1命满电压→自身暴击率+20%；6命→醉花暴伤+100%
+  // 1命满电压→自身暴击率+20%（面板级，见 applyQingyiPanel）；6命→醉花暴伤+100%（只作用于醉花行）
   if (totalRounds > 0) {
-    const critRateBonus = cinemaLevel >= 1 ? 20 : 0
     const critDmgBonus = cinemaLevel >= 6 ? 100 : 0
     for (const z of [cfg.qingyiZuiHuaMove1, cfg.qingyiZuiHuaMove2]) {
       if (!z || z.actionTime <= 0) continue
@@ -325,9 +333,8 @@ function buildQingyiExecutions({ cfg, state, executions }: AgentResourceInput): 
         dazeMultiplierOverride: true,
         anomalyBuildUp: z.anomaly,
         totalAnomalyBuildUp: z.anomaly * totalRounds,
-        critRateBonus,
         critDmgBonus,
-        skillTableNote: `醉花月云转：100% 电压释放（伤害+25%/失衡+12.5%）${cinemaLevel >= 1 ? '·1命暴击率+20%' : ''}${cinemaLevel >= 6 ? '·6命暴伤+100%' : ''}`,
+        skillTableNote: `醉花月云转：100% 电压释放（伤害+25%/失衡+12.5%）${cinemaLevel >= 6 ? '·6命暴伤+100%' : ''}`,
       }))
     }
   }

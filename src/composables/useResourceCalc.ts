@@ -9,6 +9,7 @@ import { DEFAULT_STUN_PLAN_PROJECTION_CODE, stunPlanProjectionFromCode } from '@
 import { continuousStunSplitOf } from '@/core/continuousStun'
 import { calcStunAxis, AXIS_BASIC_UNIT_SECONDS } from '@/core/stunAxis'
 import { DISC_TRIGGER_COVERAGE, discTriggerCoverage } from '@/data/discSetCoverage'
+import { TEAMMATE_BUFF_TRIGGER_COVERAGE, teammateBuffTriggerCountForOwner, teammateBuffTriggerCoverage } from '@/data/teammateBuffTriggerCoverage'
 import { discFourPieceSetIdOf } from '@/core/buff'
 import { chainMoveKind } from '@/data/chainMoveKind'
 import type { InStunAnomalySummary } from '@/types/resource'
@@ -194,10 +195,11 @@ export function createResourceCalc(
   function slotPanels(
     wEngineCoverages?: Record<string, number>,
     discCoverages?: Record<string, number>,
+    teammateCoverages?: Record<string, number>,
   ): PanelValues[] {
     const result: PanelValues[] = []
     for (let i = 0; i < 3; i++) {
-      const p = computePanel(i, configStore, catalogStore, wEngineCoverages, discCoverages)
+      const p = computePanel(i, configStore, catalogStore, wEngineCoverages, discCoverages, teammateCoverages)
       // 盖章槽位号：本数组**按位置压缩**（空槽不 push）⇒ 下标 ≠ 槽位号，
       // 下游一律经 `panelAt(panels, slot)` 按身份取（见 core/panel.ts 头注释）。
       if (p) result.push({ ...p, slot: i })
@@ -217,11 +219,13 @@ export function createResourceCalc(
    * 手调表 ⊕ 本次资源结果的自动折算），同步求值；没有可补的自动值时就是资源侧那份。
    */
   const panels = computed<PanelValues[]>(() => {
-    // 两张自动表各自可能是 null（没有可补的自动值）⇒ 有任一张就重算结算侧面板
+    // 三张自动表各自可能是 null / 空（没有可补的自动值）⇒ 有任一张就重算结算侧面板
     const engineCoverages = autoMergedWEngineCoverages.value
     const discCoverages = autoMergedDiscEffectCoverages.value
-    return engineCoverages || discCoverages
-      ? slotPanels(engineCoverages ?? undefined, discCoverages ?? undefined)
+    const teammateCoverages = teammateBuffAutoCoverages.value
+    const hasTeammate = Object.keys(teammateCoverages).length > 0
+    return engineCoverages || discCoverages || hasTeammate
+      ? slotPanels(engineCoverages ?? undefined, discCoverages ?? undefined, hasTeammate ? teammateCoverages : undefined)
       : resourcePanels.value
   })
 
@@ -733,6 +737,38 @@ export function createResourceCalc(
   const effectiveDiscEffectCoverages = computed(() =>
     autoMergedDiscEffectCoverages.value ?? configStore.discEffectCoverages)
 
+  /**
+   * 队友 buff **触发型效果**覆盖率的自动折算（数据源 `src/data/teammateBuffTriggerCoverage.ts`，口径见其 @fact）。
+   *
+   * 与前两张表同款：依赖已收敛的 `adjustedResourceResult` ⇒ 资源迭代之后求值；资源侧（`resourcePanels` /
+   * 构建期面板）只读 store 手调表、不读折算值 ⇒ 无环。触发次数按**触发者该槽的执行行**数（醉花 #1/#2 同 count、
+   * 取最大值 ⇒ 一轮只算一次触发）；**轴 / 非轴同一路径**（行数即数据）。
+   *
+   * 「手调优先」在面板阶段判定（`panelPhases#resolveSlotPanelBuffInputs` 读 `teammateBuffManualCoverages`），
+   * 所以这张表本身不并手调值——名字带 Auto 以免与「生效值」混淆。
+   */
+  const teammateBuffAutoCoverages = computed<Record<string, number>>(() => {
+    const res = adjustedResourceResult.value
+    if (!res) return {}
+    const battleSeconds = effectiveBattleTime(configStore.enemy)
+    const out: Record<string, number> = {}
+    for (const [effectId, spec] of Object.entries(TEAMMATE_BUFF_TRIGGER_COVERAGE)) {
+      const cov = teammateBuffTriggerCoverage(
+        effectId,
+        teammateBuffTriggerCountForOwner(spec, res.characters),
+        battleSeconds,
+      )
+      if (cov != null) out[effectId] = cov
+    }
+    return out
+  })
+  /**
+   * 非空版：结算侧面板 / 进场快照 / 属性账共用一份（缺省 = 空表 ⇒ 引擎回落勾选值 100%）。
+   * ⚠ 与另两张表不同：这里**不并手调值**（手调优先在面板阶段判定），名字带 Auto 就是为了不让人误当生效表。
+   */
+  const effectiveTeammateBuffCoverages = computed(() =>
+    teammateBuffAutoCoverages.value)
+
   // r706：此处原有 immediate watch 把自动值写进 store 的展示缓存——它让每个实例创建即算、此后每次状态变化都算
   // （不论有没有人读；r706 探针：多一个只建不读的实例，每次输入就多一遍整条管线）。已删 ⇒ 实例纯惰性，只在被读时求值。
 
@@ -1050,7 +1086,7 @@ const damageSourceTotals = computed(() => computeDamageSourceTotals(damageSource
  */
 const attributeLedger = computed(() => {
   const slot = 0
-  const phases = computePanelPhases(slot, configStore, catalogStore, effectiveWEngineCoverages.value, effectiveDiscEffectCoverages.value)
+  const phases = computePanelPhases(slot, configStore, catalogStore, effectiveWEngineCoverages.value, effectiveDiscEffectCoverages.value, effectiveTeammateBuffCoverages.value)
   if (!phases) return null
   return buildAttributeLedger(
     phases.buffs, phases, phases.effectCoverageMap,
@@ -1084,6 +1120,11 @@ const attributeLedger = computed(() => {
     effectiveWEngineCoverages,
     /** 结算侧驱动盘效果覆盖率表（手调 ⊕ 自动折算）：与音擎表同款，分析代码按它算面板才与伤害同口径 */
     effectiveDiscEffectCoverages,
+    /**
+     * 队友 buff 触发型效果的自动折算表（effectId -> 0-100）：分析代码按它算面板才与伤害同口径。
+     * ⚠ 不含手调值——手调优先由面板阶段（`panelPhases#resolveSlotPanelBuffInputs`）判定。
+     */
+    effectiveTeammateBuffCoverages,
     teamTotalDamage,
     stunAxisResult,
     stackTraversalResult,

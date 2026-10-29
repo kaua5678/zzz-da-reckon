@@ -143,7 +143,7 @@
       </n-alert>
 
       <!-- 最终面板与乘区（局外→局内，调命座/装备后用于核对最终属性是否生效） -->
-      <FinalPanel v-if="hasTeam" :effect-coverages="effectiveWEngineCoverages" :disc-coverages="effectiveDiscEffectCoverages" />
+      <FinalPanel v-if="hasTeam" :effect-coverages="effectiveWEngineCoverages" :disc-coverages="effectiveDiscEffectCoverages" :teammate-coverages="effectiveTeammateBuffCoverages" />
 
       <!-- ====== 子 tabs ====== -->
       <n-tabs v-if="resourceResult" v-model:value="activeResultTab" type="line" size="small" class="result-tabs">
@@ -946,6 +946,7 @@ const {
   ultPromoteHug60,
   effectiveWEngineCoverages,
   effectiveDiscEffectCoverages,
+  effectiveTeammateBuffCoverages,
   autoActive,
   windowDuration,
   stunEffectiveTime,

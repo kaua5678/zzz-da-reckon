@@ -522,6 +522,16 @@ export function createConfigModel(
   const discEffectCoverages = ref<Record<string, number>>({})
 
   /**
+   * 队友 Buff 覆盖率的**手调**记录（buffId -> 0-100）：只有用户拖过滑块（或从记忆恢复）才有键。
+   *
+   * 与 `discEffectCoverages` 同款语义（「表里已有的键 = 手调过」）。为什么需要单独一张表：
+   * `teammateBuffSelections` 的条目**在 sync 时就带 coverage: 100**（派生启用），因此「用户把滑块拖到 100」
+   * 与「从没碰过」在那张表里长得一模一样；而队友 buff 的自动折算（`data/teammateBuffTriggerCoverage.ts`）
+   * 必须**手调优先**，否则用户显式拨到 100 也会被折算值盖掉（音擎/驱动盘两张表正是靠「只存手调值」做到这点）。
+   */
+  const teammateBuffManualCoverages = ref<Record<string, number>>({})
+
+  /**
    * 按槽位记录「副词条分配被用户手改过」（2026-10-18，用户裁决「不是什么时候都开，改了就用」）。
    * 置位 = `setSubStatCount`；清除 = `applyBuildRecommendationForSlot`（那是显式「恢复自动分配」的动作）。
    * 用途只有一个：副词条预算设置变化时**不覆盖**手改过的槽位（见下方 watcher 的注释）。
@@ -1004,6 +1014,8 @@ export function createConfigModel(
 
   function setTeammateBuffCoverage(buffId: string, coverage: number) {
     const clamped = Math.max(0, Math.min(100, coverage))
+    // 手调标记（与 discEffectCoverages 同款：只有手调过的条才有键）⇒ 自动折算不再覆盖它
+    teammateBuffManualCoverages.value[buffId] = clamped
     if (!teammateBuffSelections.value[buffId]) {
       teammateBuffSelections.value[buffId] = { enabled: false, coverage: clamped }
     } else {
@@ -1029,6 +1041,8 @@ export function createConfigModel(
    */
   function applyMemoryReset() {
     teammateBuffSelections.value = {}
+    // 手调标记同批清空（恢复出厂 = 清记忆）：否则旧的手调值会继续压住自动折算
+    teammateBuffManualCoverages.value = {}
     syncTeammateBuffsFromTeam()
     const port = memoryPort?.()
     if (!port) return
@@ -1039,6 +1053,8 @@ export function createConfigModel(
         if (coverage === undefined) continue
         const entry = teammateBuffSelections.value[buff.id]
         if (entry) entry.coverage = coverage
+        // 记忆里的覆盖率 = 用户手调过的值 ⇒ 同样进手调表（自动折算不得覆盖）
+        teammateBuffManualCoverages.value[buff.id] = coverage
       }
     }
   }
@@ -1306,7 +1322,7 @@ export function createConfigModel(
   // 判据：analysisScenario.test.ts「出生态 = 源现场」及其反例。新增 state ref 必须登记进下表，未登记的键直接抛错。
   if (initialState) {
     const stateRefs: Record<string, { value: unknown }> = {
-      team, globalBuffs, teammateBuffSelections, wEngineEffectCoverages, discEffectCoverages,
+      team, globalBuffs, teammateBuffSelections, teammateBuffManualCoverages, wEngineEffectCoverages, discEffectCoverages,
       // 2026-10-18：新增 state ref 必须同步登记（分析场景按 `$state` 键整体克隆，缺一项就抛
       // 「initialState 含未登记的 state 键」）。这是「新增 state 忘了登记」的响亮失败点，别改成静默跳过。
       subStatAllocationManual,
@@ -1495,6 +1511,8 @@ export function createConfigModel(
     team,
     globalBuffs,
     teammateBuffSelections,
+    /** 队友 buff 覆盖率手调记录（buffId -> 0-100）：自动折算的「手调优先」判据，见其声明处注释 */
+    teammateBuffManualCoverages,
     wEngineEffectCoverages,
     discEffectCoverages,
     /** 按槽位的「副词条被手改过」标记（true ⇒ 改预算设置不覆盖；见 setSubStatCount / watcher） */

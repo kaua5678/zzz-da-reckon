@@ -128,8 +128,10 @@ import { applyDefaultCinemaSkillLevelBonus } from '@/core/agentPanelPhases'
   wEngineCoverages?: Record<string, number>,
   /** 驱动盘效果覆盖率（手调 ⊕ 自动折算）；缺省 = 只读 store 手调表（构建期兜底，与音擎同款） */
   discCoverages?: Record<string, number>,
+  /** 队友 buff 触发型效果的自动折算表（effectId -> 0-100，手调优先）；缺省 = 不折算（全按勾选/100%） */
+  teammateCoverages?: Record<string, number>,
 ): PanelValues | null {
-  return computePanelPhases(slot, configStore, catalogStore, wEngineCoverages, discCoverages)?.inCombat ?? null
+  return computePanelPhases(slot, configStore, catalogStore, wEngineCoverages, discCoverages, teammateCoverages)?.inCombat ?? null
 }
 
 /**
@@ -436,6 +438,8 @@ export function resolveSlotPanelBuffInputs(
   wEngineCoverages: Record<string, number> = configStore.wEngineEffectCoverages,
   /** 驱动盘效果覆盖率（手调 ⊕ 自动折算，与音擎同款）；缺省 = store 手调表 */
   discCoverages?: Record<string, number>,
+  /** 队友 buff 触发型效果的自动折算表（effectId -> 0-100）；手调过的条按手调值，见下方折算段注释 */
+  teammateCoverages?: Record<string, number>,
 ): { teammateBuffs: TeammateBuff[]; sourcePanelsByOwner: ReturnType<typeof buildTeammateBuffSourceContext>['sourcePanelsByOwner']; effectCoverageMap: Map<string, number>; team: ReadonlyTeam } {
   const buffSelections = configStore.teammateBuffSelections
   const { enabledTeammateBuffs, sourcePanelsByOwner } = buildTeammateBuffSourceContext(configStore.team, {
@@ -530,8 +534,18 @@ export function resolveSlotPanelBuffInputs(
      * ⟳复核: 队伍页若开始列 `wengine-team-*` 队友 Buff 滑块，确认这条路不与它双计 | 到期 2027-01-31
      */
     if (buff.sourceCategory === 'wEngine') continue
-    const coverage = teammateBuffCoverageOf(buffSelections, buff.id) / 100
-    for (const effect of buff.effects) effectCoverageMap.set(effect.id, coverage)
+    const buffFallback = teammateBuffCoverageOf(buffSelections, buff.id) / 100
+    /**
+     * 队友 buff 触发型效果的**自动折算**（数据源 `data/teammateBuffTriggerCoverage.ts`，口径见其 @fact）：
+     * 没手调过的条按折算值、手调过（含从记忆恢复）的条按手调值、未登记的效果回落到勾选值（100%）。
+     * 手调判据 = `teammateBuffManualCoverages`（只有拖过滑块才有键）——不能拿 `teammateBuffSelections`
+     * 的 coverage 当判据：sync 建条目时恒写 100，「拖到 100」与「没碰过」不可分。
+     */
+    const manual = configStore.teammateBuffManualCoverages[buff.id]
+    for (const effect of buff.effects) {
+      const auto = teammateCoverages?.[effect.id]
+      effectCoverageMap.set(effect.id, manual !== undefined ? manual / 100 : auto !== undefined ? auto / 100 : buffFallback)
+    }
   }
   mergeTeamDiscEffectCoverages(effectCoverageMap, configStore, catalogStore, teamDiscs(configStore), discCoverages)
   return { teammateBuffs: allTeammateBuffs, sourcePanelsByOwner, effectCoverageMap, team }
@@ -544,6 +558,8 @@ export function computePanelPhases(
   wEngineCoverages?: Record<string, number>,
   /** 驱动盘效果覆盖率（手调 ⊕ 自动折算）；缺省 = 只读 store 手调表（构建期兜底，与音擎同款） */
   discCoverages?: Record<string, number>,
+  /** 队友 buff 触发型效果的自动折算表（effectId -> 0-100，手调优先）；缺省 = 不折算 */
+  teammateCoverages?: Record<string, number>,
 ): {
   outOfCombat: PanelValues
   inCombat: PanelValues
@@ -568,7 +584,7 @@ export function computePanelPhases(
 
   const wEngine = char.wEngineId ? catalogStore.wEnginesMap.get(char.wEngineId) : undefined
 
-  const { teammateBuffs: allTeammateBuffs, sourcePanelsByOwner, effectCoverageMap, team } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore, wEngineCoverages, discCoverages)
+  const { teammateBuffs: allTeammateBuffs, sourcePanelsByOwner, effectCoverageMap, team } = resolveSlotPanelBuffInputs(slot, configStore, catalogStore, wEngineCoverages, discCoverages, teammateCoverages)
   // 源面板的**槽位视图**（`core/sourcePanels`）：同一批面板对象折成 slot → { outOfCombat, inCombat }，
   // 供 `applyPanel` / `teamPanelEffects` 读队友面板做转模（此前只能按 agentId 自建第二份表 ⇒ 60 个模块各抄一遍）。
   // 值不拷贝 ⇒ 与 `sourcePanelsByOwner` 逐位同源；空槽不产条目（见 `buildSourcePanelsBySlot`）。

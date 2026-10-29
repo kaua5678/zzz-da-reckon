@@ -119,6 +119,8 @@ const props = defineProps<{
   effectCoverages: Record<string, number>
   /** 驱动盘效果覆盖率（手调 ⊕ 自动折算）：与音擎表同款，缺省时引擎回落 store 手调表 */
   discCoverages?: Record<string, number>
+  /** 队友 buff 触发型效果的自动折算表（effectId -> 0-100，手调优先）：缺省 = 不折算（全按勾选/100%） */
+  teammateCoverages?: Record<string, number>
 }>()
 const activeSlot = ref(0)
 
@@ -179,7 +181,7 @@ const panels = computed(() => {
   return [0, 1, 2].map(slot => {
     const char = configStore.team[slot]
     if (!char?.agentId) return null
-    const phases = computePanelPhases(slot, configStore, catalogStore, props.effectCoverages, props.discCoverages)
+    const phases = computePanelPhases(slot, configStore, catalogStore, props.effectCoverages, props.discCoverages, props.teammateCoverages)
     if (!phases) return null
     const pOut = phases.outOfCombat
     const pIn = phases.inCombat
