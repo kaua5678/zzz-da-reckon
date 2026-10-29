@@ -106,9 +106,10 @@ const ROW_CONSUMERS = {
   energy_recovery: ['src/composables/resourceCalc/helpers.ts', 'src/core/resource/moveLookup.ts'],
   // 命破闪能：本次修复新接入（平A回能通道 + 记账层）
   flash_energy_recovery: ['src/composables/resourceCalc/helpers.ts', 'src/core/resource/moveLookup.ts'],
-  // 角色模块专属行
-  gash_buildup: ['src/mechanics/agents/claret.ts'],
-  sharpness_gain: ['src/mechanics/agents/claret.ts'],
+  // 角色模块专属行（记账端 claret.ts）+ 倍率表登记端（standardMultiplierTable#RESOURCE_ROW_IDS）：
+  // 后者是 2026-10-29 补的契约 —— 用户报告「锋御的残痕积累没写」（倍率表整列缺失）
+  gash_buildup: ['src/mechanics/agents/claret.ts', 'src/data/standardMultiplierTable.ts'],
+  sharpness_gain: ['src/mechanics/agents/claret.ts', 'src/data/standardMultiplierTable.ts'],
   luminize_multiplier: ['src/mechanics/agents/remielle.ts'],
   // 非资源行：actionTime 来源（= ether_purify/100），登记「必须在标准倍率系数表注册」
   ether_purify: ['src/data/standardMultiplierTable.ts'],

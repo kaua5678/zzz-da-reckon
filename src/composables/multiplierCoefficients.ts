@@ -15,9 +15,11 @@
  */
 import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
 import {
+  COEFFICIENT_ROW_IDS,
   EQUIVALENT_ENERGY,
   EX_SHARPNESS_ENERGY,
   FIXED_RECORD_UNITS,
+  RESOURCE_ROW_IDS,
   FLASH_ENERGY_QUALITY,
   MOVE_FUSION_GROUPS,
   MOVE_TIME_ADJUSTMENTS,
@@ -29,6 +31,7 @@ import {
   STANDARD_ROW_IDS,
   STANDARD_S_AGENT_IDS,
   getRarityMultiplier,
+  type CoefficientRowId,
   type MoveType,
   type StandardRowId,
 } from '@/data/standardMultiplierTable'
@@ -39,6 +42,12 @@ import { AGENT_RELEASE_NODE, VERSION_NODES, nodeIndexOf } from '@/data/versionTi
 import { localized } from '@/utils/format'
 /** actionTime 低于此值视为录入噪声（0 / 0.001 的子段行），不参与期望值计算 */
 const MIN_ACTION_TIME = 0.01
+
+/**
+ * 单元格遍历全集 = 标准行 + 资源行（RESOURCE_ROW_IDS：专属资源 / 残痕积累 / 锐能回复）。
+ * 资源行没有标准式 ⇒ 单元格只有 actual 与秒均两栏，ratio 恒 null（不进纵向聚合与偏差清单）。
+ */
+const RESOURCE_ROW_ID_SET: ReadonlySet<string> = new Set<string>(RESOURCE_ROW_IDS)
 
 /** 招式特定偏差判定阈值：偏离本角色列基准 ±5% 记一条 */
 const DEVIATION_THRESHOLD = 0.05
@@ -167,7 +176,8 @@ interface RawUnit {
   moveType: MoveType | 'other'
   t: number | null
   energy: EnergyCostInfo | null
-  values: Partial<Record<StandardRowId, number>>
+  /** 标准行 + 资源行（attack_data_0 / gash_buildup / sharpness_gain）的实际录入值 */
+  values: Partial<Record<CoefficientRowId, number>>
   flags: string[]
   /** 普攻回能显式录 0（数据缺口）：合成 0 比值单元格展示 */
   zeroEnergyRow?: boolean
@@ -178,9 +188,9 @@ function stripPartSuffix(name: string): string {
   return name.replace(/\s*#\d+$/, '')
 }
 
-function rowValuesById(move: SkillMove): Partial<Record<StandardRowId, number>> {
-  const out: Partial<Record<StandardRowId, number>> = {}
-  for (const rowId of STANDARD_ROW_IDS) {
+function rowValuesById(move: SkillMove): Partial<Record<CoefficientRowId, number>> {
+  const out: Partial<Record<CoefficientRowId, number>> = {}
+  for (const rowId of COEFFICIENT_ROW_IDS) {
     const v = move.rows.find((r) => r.id === rowId)?.values[0]
     if (typeof v === 'number') out[rowId] = v
   }
@@ -239,10 +249,10 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
     if (members.length !== rec.members.length) continue // 缺 catalog 行则跳过（保留原评估）
     for (const m of members) replacedByFixed.add(m.moveId)
     const t = members.reduce((s, u) => s + (u.t ?? 0), 0)
-    const values: Partial<Record<StandardRowId, number>> = {}
+    const values: Partial<Record<CoefficientRowId, number>> = {}
     for (const u of members) {
       for (const [rowId, v] of Object.entries(u.values)) {
-        values[rowId as StandardRowId] = (values[rowId as StandardRowId] ?? 0) + v
+        values[rowId as CoefficientRowId] = (values[rowId as CoefficientRowId] ?? 0) + v
       }
     }
     fixedUnits.push({
@@ -272,7 +282,7 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
     for (const extra of members.slice(1)) {
       head.t = (head.t ?? 0) + (extra.t ?? 0)
       for (const [rowId, v] of Object.entries(extra.values)) {
-        head.values[rowId as StandardRowId] = (head.values[rowId as StandardRowId] ?? 0) + v
+        head.values[rowId as CoefficientRowId] = (head.values[rowId as CoefficientRowId] ?? 0) + v
       }
       fusedIds.add(extra.moveId)
     }
@@ -300,7 +310,7 @@ function collectUnits(agent: Agent, skills: AgentSkills): RawUnit[] {
     }
     head.t = (head.t ?? 0) + (unit.t ?? 0)
     for (const [rowId, v] of Object.entries(unit.values)) {
-      head.values[rowId as StandardRowId] = (head.values[rowId as StandardRowId] ?? 0) + v
+      head.values[rowId as CoefficientRowId] = (head.values[rowId as CoefficientRowId] ?? 0) + v
     }
     head.moveName = stripPartSuffix(head.moveName)
     head.flags.push('支援突击分段已合并')
@@ -316,13 +326,19 @@ function levelMultiplier(rowId: StandardRowId): number {
 }
 
 export interface MoveCellEval {
-  rowId: StandardRowId
-  /** catalog 实际录入值（Lv12） */
+  rowId: CoefficientRowId
+  /** catalog 实际录入值（Lv12，**整招合计**） */
   actual: number
-  /** 标准表期望值（含等级/稀有度/命破系数）；无标准式的行（attack_data_0 专属资源）为 null */
+  /** 标准表期望值（含等级/稀有度/命破系数）；无标准式的行（资源行）为 null */
   expected: number | null
   /** 实际/期望，即该格的角色系数表现；无标准式为 null（不参与纵向聚合与偏差判定） */
   ratio: number | null
+  /**
+   * 秒均 = actual / t（t 取与展示列同一个动作时间，含类型级时间缩放）。
+   * 资源行（专属资源/残痕/锐能）靠它跨招式比较——总数值随招式长短变化，读不出效率；
+   * 标准行也一并算出（诊断用），t 缺失/过小时为 null。
+   */
+  perSecond: number | null
   /** 数据缺口格（显式录 0）：仅展示，不参与纵向聚合与偏差判定 */
   dataGap?: boolean
 }
@@ -355,14 +371,26 @@ function evaluateUnit(unit: RawUnit): MoveEval {
   const table = unit.moveType === 'other' ? undefined : STANDARD_MULTIPLIER_TABLE[unit.moveType]
   const timeScale = unit.moveType === 'other' ? 1 : MOVE_TYPE_TIME_SCALE[unit.moveType] ?? 1
   const t = unit.t != null && unit.t > MIN_ACTION_TIME ? unit.t * timeScale : null
-  for (const rowId of STANDARD_ROW_IDS) {
-    const formula = table?.[rowId]
+  for (const rowId of COEFFICIENT_ROW_IDS) {
     const actual = unit.values[rowId]
     if (actual == null) continue
-    // 无标准式的行（attack_data_0 专属资源）：仅输出实际值（ratio=null，不进纵向聚合/偏差判定）——
-    // 含普攻聚合行，平A的电压/专属资源由此在倍率表可见
+    // 资源行（attack_data_0 专属资源 / gash_buildup 残痕 / sharpness_gain 锐能）：没有标准式
+    // ⇒ 只出实际值与**秒均**（ratio=null，不进纵向聚合/偏差判定）。含普攻聚合行，
+    // 平A的电压/残痕/锐能由此在倍率表可见；0 值（这一招不发该资源）跳过，表更干净。
+    if (RESOURCE_ROW_ID_SET.has(rowId)) {
+      if (actual > 0) {
+        cells.push({ rowId, actual, expected: null, ratio: null, perSecond: t == null ? null : actual / t })
+      }
+      continue
+    }
+    // ratio 有值的只可能是标准行（资源行恒 ratio=null）—— 此处把联合类型收窄回 StandardRowId
+    const stdRowId = rowId as StandardRowId
+    const formula = table?.[stdRowId]
+    // 该招式类型没有这一列的标准式（如强攻终结技没有喧响标准）：只出实际值，ratio 留空
     if (!formula) {
-      if (actual > 0) cells.push({ rowId, actual, expected: null, ratio: null })
+      if (actual > 0) {
+        cells.push({ rowId, actual, expected: null, ratio: null, perSecond: t == null ? null : actual / t })
+      }
       continue
     }
     // 普攻回能显式录 0 属数据缺口：合成 0 比值单元格展示（其余 0 值多为后台禁用置 0，仍跳过）
@@ -370,10 +398,17 @@ function evaluateUnit(unit: RawUnit): MoveEval {
     if (t == null) continue
     const eFactor = unit.energy?.kind === 'flashEnergy' ? FLASH_ENERGY_QUALITY : 1
     const std = (formula.const ?? 0) + (formula.perT ?? 0) * t + (formula.perE ?? 0) * (unit.energy?.value ?? 0) * eFactor
-    const expected = std * levelMultiplier(rowId) * getRarityMultiplier(unit.rarity, unit.agentId, unit.specialty, rowId)
+    const expected = std * levelMultiplier(stdRowId) * getRarityMultiplier(unit.rarity, unit.agentId, unit.specialty, stdRowId)
     if (expected <= 0) continue
     const dataGap = actual === 0
-    cells.push({ rowId, actual, expected, ratio: actual / expected, ...(dataGap ? { dataGap: true } : {}) })
+    cells.push({
+      rowId,
+      actual,
+      expected,
+      ratio: actual / expected,
+      perSecond: actual / t,
+      ...(dataGap ? { dataGap: true } : {}),
+    })
   }
   return {
     agentId: unit.agentId,
@@ -486,7 +521,8 @@ function buildDeviations(moves: MoveEval[], vertical: AgentVerticalRow[]): MoveD
     if (!base) continue
     for (const cell of m.cells) {
       if (cell.rowId === 'damage' || cell.dataGap || cell.ratio == null) continue
-      const baseline = base.coefficients[cell.rowId]?.value
+      const rowId = cell.rowId as StandardRowId // ratio 非空 ⇒ 必是标准行（资源行恒 ratio=null）
+      const baseline = base.coefficients[rowId]?.value
       if (baseline == null || baseline <= 0) continue
       const deviation = cell.ratio / baseline
       if (Math.abs(deviation - 1) > DEVIATION_THRESHOLD) {
@@ -496,7 +532,7 @@ function buildDeviations(moves: MoveEval[], vertical: AgentVerticalRow[]): MoveD
           moveId: m.moveId,
           moveName: m.moveName,
           moveTypeLabel: m.moveTypeLabel,
-          rowId: cell.rowId,
+          rowId,
           ratio: cell.ratio,
           baseline,
           deviation,

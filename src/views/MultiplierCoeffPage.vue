@@ -49,6 +49,11 @@
         placeholder="选择角色"
         :options="agentOptions"
       />
+      <p class="notes detail-hint">
+        比值列 = 实际录入值 ÷ 标准表期望值；<b>资源列（专属资源 / 残痕积累 / 锐能回复）为秒均</b>（整招合计 ÷ t；残痕 600 点 = 1 层）。
+        锋御的「能」是锐能（catalog 没有 energy_recovery 行）⇒ 锐能回复并进「回能」列显示（标「锐」）；
+        耗能与等效能量互斥（真耗能 vs 奖励记账单位），已合并为一列。
+      </p>
       <n-data-table
         v-if="selectedAgentId"
         size="small"
@@ -95,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
+import { computed, h, ref, type VNode } from 'vue'
 import { MULTIPLIER_COEFF_DEFAULT_AGENT_ID } from '@/data/viewAgentDefaults'
 import { NCard, NDataTable, NSelect, NTag } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
@@ -104,15 +109,19 @@ import { SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import {
   EQUIVALENT_ENERGY,
   MOVE_TYPE_LABELS,
+  RESOURCE_ROW_LABELS,
   STANDARD_MULTIPLIER_TABLE,
   STANDARD_ROW_IDS,
   formatStdFormula,
+  type CoefficientRowId,
   type MoveType,
+  type ResourceRowId,
   type StandardRowId,
 } from '@/data/standardMultiplierTable'
 import {
   deriveCoefficientReport,
   type AgentVerticalRow,
+  type MoveCellEval,
   type MoveDeviation,
   type MoveEval,
 } from '@/composables/multiplierCoefficients'
@@ -242,46 +251,74 @@ function detailCell(rowId: StandardRowId) {
   }
 }
 
+/**
+ * 明细表里的资源列（无标准式的专属资源行）：**秒均**（整招合计 ÷ t）才是跨招式可比的量——
+ * 总数值随招式长短变化（同一招式的长段/短段差一个 t），用户 2026-10-29 口径「专属资源该用秒均数据」。
+ * 锐能回复不单列：它是锋御的「回能」位（锋御没有 energy_recovery 行），并进回能列一起看。
+ */
+const RESOURCE_COLUMN_IDS: ResourceRowId[] = ['attack_data_0', 'gash_buildup']
+
+function findCell(r: MoveEval, rowId: CoefficientRowId): MoveCellEval | undefined {
+  return r.cells.find((c) => c.rowId === rowId)
+}
+
+/** 资源值展示：有 t 就显示秒均（定两位小数，如 100.03/s），没有 t（分段噪声行）退回整招合计 */
+function rateText(cell: MoveCellEval): string {
+  const v = (cell.perSecond ?? cell.actual).toFixed(2)
+  return cell.perSecond == null ? v : `${v}/s`
+}
+
+function resourceCell(rowId: ResourceRowId) {
+  return (r: MoveEval) => {
+    const cell = findCell(r, rowId)
+    return cell ? rateText(cell) : '—'
+  }
+}
+
+/**
+ * 耗能 / 等效能量（合并列）：两者**互斥**——真耗能（普通能量 / 闪能 / 锐能）与「奖励口径的等效能量」
+ * 不会同时挂在一招上（见 MoveEval 的 energy / equivalentEnergy 注释），分两列时必有一半恒为「—」。
+ * 等效能量是策划调倍率时的记账单位，不是玩家花的能量（口径见 standardMultiplierTable#EQUIVALENT_ENERGY）。
+ */
+function energyCostText(r: MoveEval): string {
+  if (r.energy) {
+    const suffix = r.energy.kind === 'flashEnergy' ? '(闪)' : r.energy.kind === 'sharpness' ? '(锐)' : ''
+    return `${r.energy.value}${suffix}`
+  }
+  if (r.equivalentEnergy != null) {
+    return r.rewardEnergy == null ? `${r.equivalentEnergy}（等效）` : `${r.equivalentEnergy}（20+${r.rewardEnergy}）`
+  }
+  return '—'
+}
+
+/** 回能格：普通能量比值 + 锋御的锐能回复（锋御的「能」是锐能，没有 energy_recovery 行） */
+function energyRecoveryCell(r: MoveEval): VNode | string {
+  const parts: VNode[] = []
+  const energy = findCell(r, 'energy_recovery')
+  if (energy) parts.push(h('span', { style: ratioStyle(energy.ratio) }, pct(energy.ratio)))
+  const sharpness = findCell(r, 'sharpness_gain')
+  if (sharpness) parts.push(h('span', { class: 'sub-value' }, `锐 ${rateText(sharpness)}`))
+  if (!parts.length) return '—'
+  return parts.length === 1 ? parts[0] : h('div', parts)
+}
+
 const detailColumns: DataTableColumns<MoveEval> = [
   { title: '招式', key: 'moveName', minWidth: 220, render: (r) => `${r.moveName} (${r.moveId})` },
   { title: '类型', key: 'type', width: 150, render: (r) => r.moveTypeLabel },
   { title: 't(s)', key: 't', width: 70, render: (r) => (r.t == null ? '—' : String(Number(r.t.toFixed(3)))) },
-  {
-    title: '耗能',
-    key: 'e',
-    width: 86,
-    render: (r) => (r.energy == null
-      ? '—'
-      : `${r.energy.value}${r.energy.kind === 'flashEnergy' ? '(闪)' : r.energy.kind === 'sharpness' ? '(锐)' : ''}`),
-  },
-  {
-    // 等效能量：支援突击系把「奖励倍率」还原成策划的原始记账单位（等效多少能量 × 能量转化率）
-    title: '等效能量',
-    key: 'equivalentEnergy',
-    width: 110,
-    render: (r) =>
-      r.equivalentEnergy == null
-        ? '—'
-        : r.rewardEnergy == null
-          ? String(r.equivalentEnergy)
-          : `${r.equivalentEnergy}（基线20+${r.rewardEnergy}）`,
-  },
+  { title: '耗能/等效能量', key: 'energy', width: 130, render: energyCostText },
   { title: '伤害', key: 'damage', width: 90, render: detailCell('damage') },
   { title: '失衡', key: 'daze', width: 90, render: detailCell('daze') },
-  { title: '回能', key: 'energy', width: 90, render: detailCell('energy_recovery') },
+  { title: '回能', key: 'energyRecovery', width: 110, render: energyRecoveryCell },
   { title: '喧响', key: 'decibel', width: 90, render: detailCell('decibel_recovery') },
   { title: '积蓄', key: 'anomaly', width: 90, render: detailCell('anomaly_buildup') },
   { title: '秽盾', key: 'purify', width: 90, render: detailCell('ether_purify') },
-  {
-    // attack_data_0 专属资源（青衣闪络电压/星徽·比利决意等）：无标准式，只展示实际值
-    title: '专属资源',
-    key: 'attackData',
-    width: 90,
-    render: (r) => {
-      const cell = r.cells.find((c) => c.rowId === 'attack_data_0')
-      return cell ? String(Number(cell.actual.toFixed(1))) : '—'
-    },
-  },
+  ...RESOURCE_COLUMN_IDS.map((rowId) => ({
+    title: RESOURCE_ROW_LABELS[rowId],
+    key: rowId,
+    width: 96,
+    render: resourceCell(rowId),
+  })),
   {
     title: '标记',
     key: 'flags',
@@ -348,5 +385,19 @@ const deviationColumns: DataTableColumns<MoveDeviation> = [
 
 .detail-table {
   margin-top: 4px;
+}
+
+/* 复用 .notes 的墨色（不再新引 token：这条提示与口径说明同色即可） */
+.detail-hint {
+  margin: 0 0 10px;
+  padding-left: 0;
+  font-size: 12px;
+}
+
+/** 回能列里的锐能回复副行（锋御）：与比值同格但层级更低（压暗靠 opacity，不新引 token） */
+.detail-table :deep(.sub-value) {
+  display: block;
+  font-size: 12px;
+  opacity: 0.75;
 }
 </style>

@@ -43,8 +43,39 @@ export const STANDARD_ROW_IDS: StandardRowId[] = [
   'attack_data_0',
 ]
 
-// attack_data_0 = 角色专属资源回复（青衣闪络电压/星徽·比利决意等）：无标准式、不推导系数，
-// 仅展示实际值（含普攻聚合行）——曾整列不显示（用户 2026-08 报告"倍率表没显示平A的电压值"）。
+/**
+ * 角色专属资源行（**非标准行**）：没有标准公式 ⇒ 算不出「实际/期望」比值，只展示实际值。
+ *
+ * 为什么与上面的标准行分开登记：它们不进纵向系数聚合、不进偏差清单（`ratio = null`），
+ * 但都是「这一招发多少资源」的量，跨招式比较的正确单位是**秒均**（`actual / t`）——
+ * 总数值随招式长短变化（同一招式的长段/短段差一个 t），读不出效率；一批人肉对账都卡在这里。
+ *
+ * - `attack_data_0` 专属资源：青衣闪络电压 / 星徽·比利决意 / 猫又呼噜 / 席德钢能…（gachabase kind=special 第 0 通道，含普攻聚合行）
+ * - `gash_buildup` 残痕积累：锋御专属（挽昼 1601 / 克拉蕾 1611），600 点 = 1 层
+ * - `sharpness_gain` 锐能回复：锋御的专属能量回复（= 其他职业的「回能」位；1 点锐能 ≈ 1 点能量，
+ *   逐角色判，见 EX_SHARPNESS_ENERGY）——展示时并入明细表的「回能」列，不单列
+ *
+ * 历史：attack_data_0 曾整列不显示（用户 2026-08 报告「倍率表没显示平A的电压值」）；
+ * 残痕/锐能两列曾整列缺失（用户 2026-10-29 报告「锋御的残痕积累没写」）。
+ */
+export type ResourceRowId = 'attack_data_0' | 'gash_buildup' | 'sharpness_gain'
+
+/**
+ * @fact ui:倍率系数记录/资源列单位 口径: 无标准式的资源行（专属资源 attack_data_0 / 残痕积累 gash_buildup / 锐能回复 sharpness_gain）一律按**秒均**（整招合计 ÷ t）展示，不展示整招合计；锋御无 energy_recovery 行 ⇒ 锐能回复并进「回能」列 | 据 用户@2026-10-29（「专属资源该用秒均数据而不是总数据」「锋御的残痕积累没写呢」「回能也可以把锋御角色的回复锐能加进去」） | 验 src/composables/__tests__/multiplierCoefficients.test.ts | 锚 src/data/standardMultiplierTable.ts#RESOURCE_ROW_IDS | 信 确认
+ * ⟳复核: 新增锋御角色或新增资源行时，看它是否仍是「按命中时长线性发放」——若出现一次性/被动型资源（值不随 t 增长），秒均会把量摊薄成误导，那时该行要改回整招合计展示 | 到期 2027-06-30
+ */
+export const RESOURCE_ROW_IDS: ResourceRowId[] = ['attack_data_0', 'gash_buildup', 'sharpness_gain']
+
+export const RESOURCE_ROW_LABELS: Record<ResourceRowId, string> = {
+  attack_data_0: '专属资源',
+  gash_buildup: '残痕积累',
+  sharpness_gain: '锐能回复',
+}
+
+/** 标准行 + 资源行的全集（倍率表单元格遍历用） */
+export type CoefficientRowId = StandardRowId | ResourceRowId
+
+export const COEFFICIENT_ROW_IDS: CoefficientRowId[] = [...STANDARD_ROW_IDS, ...RESOURCE_ROW_IDS]
 
 /** 招式类型（标准表的行单位）。分类规则见 composables/multiplierCoefficients.classifyMove */
 export type MoveType =

@@ -19,8 +19,12 @@ import { LEVEL1_TO_LEVEL12 } from '@/core/skillLevel'
 import {
   EQUIVALENT_ENERGY,
   EX_ENERGY_CONVERSION,
+  MOVE_TYPE_TIME_SCALE,
+  RESOURCE_ROW_IDS,
   STANDARD_MULTIPLIER_TABLE,
   STANDARD_S_AGENT_IDS,
+  type CoefficientRowId,
+  type MoveType,
 } from '@/data/standardMultiplierTable'
 import { COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS, COUNTER_ASSIST_MOVE_IDS, COUNTER_ASSIST_REGISTRY } from '@/data/counterAssists'
 import {
@@ -224,6 +228,81 @@ describe('反制支援 / 支援突击的「等效能量」口径（2026-10-24 �
   })
 })
 
+describe('角色专属资源行：残痕积累 / 锐能回复（锋御）与秒均口径（用户 2026-10-29）', () => {
+  const moveOf = (moveId: string) => {
+    const m = report.moves.find((x) => x.moveId === moveId)
+    expect(m, `${moveId} 应在演算结果中`).toBeDefined()
+    return m!
+  }
+  const cellOf = (moveId: string, rowId: CoefficientRowId) => {
+    const cell = moveOf(moveId).cells.find((c) => c.rowId === rowId)
+    expect(cell, `${moveId} 应有 ${rowId} 格`).toBeDefined()
+    return cell!
+  }
+  /** 与比值列同源的有效时间（quickAssistLegacy 的录制 actionTime 是真实时间的一半） */
+  const effT = (moveId: string) => {
+    const m = moveOf(moveId)
+    return (m.t ?? 0) * (MOVE_TYPE_TIME_SCALE[m.moveType as MoveType] ?? 1)
+  }
+
+  it('★克拉蕾(1611)：残痕/锐能随招式产出（此前整列缺失），秒均 = 表值 ÷ t', () => {
+    const gash = cellOf('1611001', 'gash_buildup')
+    expect(gash.actual).toBeCloseTo(31.51, 4)
+    expect(gash.ratio, '无标准式 → 不进纵向聚合/偏差判定').toBeNull()
+    expect(gash.expected, '无标准式 → 无期望值').toBeNull()
+    expect(gash.perSecond).toBeCloseTo(31.51 / effT('1611001'), 6)
+    expect(gash.perSecond).toBeCloseTo(100.03, 0.05) // 常态血锻四式 100/s（claret.ts 单一事实源）
+    const sharp = cellOf('1611001', 'sharpness_gain')
+    expect(sharp.actual).toBeCloseTo(0.946, 4)
+    expect(sharp.perSecond).toBeCloseTo(3.0, 0.01) // 锐能 3.0/s 只长在血锻四式
+    // 铭刻态（锻星/强特）残痕 120/s；这些行没有锐能回复列 ⇒ 不合成 0 值格（表里不留「0/s」噪音）
+    expect(cellOf('1611010', 'gash_buildup').perSecond).toBeCloseTo(119.99, 0.05)
+    expect(moveOf('1611005').cells.some((c) => c.rowId === 'sharpness_gain')).toBe(false)
+  })
+
+  it('★挽昼(1601)：强特/连携段残痕可见、普攻两列齐备', () => {
+    expect(cellOf('1601106', 'gash_buildup').perSecond).toBeCloseTo(80.01, 0.05)
+    expect(cellOf('1601010', 'gash_buildup').perSecond).toBeCloseTo(80.0, 0.05)
+    expect(cellOf('1601001', 'sharpness_gain').perSecond).toBeCloseTo(2.0, 0.01)
+  })
+
+  it('★资源行一律 ratio=null（不进纵向聚合与偏差清单），且 t 有效时都带秒均', () => {
+    let checked = 0
+    for (const m of report.moves) {
+      for (const c of m.cells) {
+        if (!(RESOURCE_ROW_IDS as readonly string[]).includes(c.rowId)) continue
+        checked++
+        expect(c.expected, `${m.moveId}/${c.rowId} 不该有期望值`).toBeNull()
+        expect(c.ratio, `${m.moveId}/${c.rowId} 不该有比值`).toBeNull()
+        if (m.t != null && m.t > 0.01) expect(c.perSecond, `${m.moveId}/${c.rowId} 应带秒均`).not.toBeNull()
+      }
+    }
+    expect(checked, '资源行样本数（专属资源 + 锋御残痕/锐能）').toBeGreaterThan(50)
+    expect(report.deviations.some((d) => (RESOURCE_ROW_IDS as readonly string[]).includes(d.rowId))).toBe(false)
+    for (const v of report.vertical) {
+      for (const rowId of RESOURCE_ROW_IDS) {
+        expect((v.coefficients as Record<string, unknown>)[rowId], `${v.agentId} 的 ${rowId} 不该有纵向系数`).toBeUndefined()
+      }
+    }
+  })
+
+  it('★锋御没有 energy_recovery 行 ⇒ 回能位由锐能承担（页面把「锐 X/s」并进回能列的依据）', () => {
+    for (const agentId of ['1601', '1611']) {
+      const v = verticalOf(agentId)
+      expect(v.coefficients.energy_recovery, `${agentId} 的「回能」列应无样本（锋御的能是锐能）`).toBeUndefined()
+    }
+    expect(moveOf('1611001').cells.some((c) => c.rowId === 'sharpness_gain')).toBe(true)
+  })
+
+  it('非锋御角色不凭空长出残痕/锐能列（数据驱动，不按职业硬编码）', () => {
+    const kelin = report.moves.filter((m) => m.agentId === '1061')
+    expect(kelin.length, '可琳应有演算行').toBeGreaterThan(0)
+    for (const m of kelin) {
+      expect(m.cells.some((c) => c.rowId === 'gash_buildup' || c.rowId === 'sharpness_gain')).toBe(false)
+    }
+  })
+})
+
 describe('倍率表系数演算：招式分类', () => {
   const mkMove = (overrides: Record<string, unknown>) => ({ rows: [], ...overrides }) as unknown as Parameters<typeof classifyMove>[0]
 
@@ -263,6 +342,16 @@ describe('倍率表系数演算：招式分类', () => {
     // 终结技电压 80 同样可见
     const ult = report.moves.find((m) => m.moveId === '1251015')
     expect(ult!.cells.find((c) => c.rowId === 'attack_data_0')?.actual).toBeCloseTo(80, 1)
+    // 秒均（用户 2026-10-29 口径「专属资源该用秒均数据而不是总数据」）：整招合计 ÷ t。
+    // 星徽·比利是最好的例子：动力压制 0.2s / 4 点（20/s）vs 抓地轮毂 2.1s / 8.4 点（4/s）——
+    // 整招合计只差 2 倍，秒均差 5 倍，前者才是「这一招发资源快不快」的可比量。
+    const powerPress = report.moves.find((m) => m.moveId === '1531006')!
+    const pressCell = powerPress.cells.find((c) => c.rowId === 'attack_data_0')!
+    expect(pressCell.actual).toBeCloseTo(4, 4)
+    expect(pressCell.perSecond).toBeCloseTo(20, 0.01)
+    const grab = report.moves.find((m) => m.moveId === '1531009')!.cells.find((c) => c.rowId === 'attack_data_0')!
+    expect(grab.actual).toBeCloseTo(8.4014, 3)
+    expect(grab.perSecond).toBeCloseTo(4.0, 0.01)
   })
 
   it('定点分类覆盖：般岳「支援突击：冲霄」实为闪避反击公式（金身格挡后招式）', () => {
