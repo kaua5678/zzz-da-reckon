@@ -25,6 +25,33 @@ export const SKILL_DMG_TARGET_LABELS: Record<SkillDamageTarget, string> = {
   additionalAttack: '追加攻击',
 }
 
+/**
+ * 招式族**短标签**（窄容器专用：失衡轴页 8~10px 的动作池 chip / 时间轴块）。
+ *
+ * 为什么单列一档（2026-10-29，用户报「挽昼的失衡轴全是一个名字」）：轴编辑器原先把目录招式名
+ * 硬砍 8 个字，而 8 个字里前 6 个被「强化特殊技：」这类前缀吃掉 ⇒ 只剩 2 个字给招式本体。
+ * 实测代价：全 catalog 1379 个招式名在 8 字口径下有 **233 组重名**；挽昼(1601) 四个强化特殊技
+ * （1601106 焚夜·曦生 / 1601016 焚夜·曦生（改） / 1601006 燃灯·晦尽 / 1601115 燃灯·晦尽（改））
+ * 直接塌成 **2 个**名字。短标签把前缀压到 2 个字，区分度全留给招式本体。
+ *
+ * 用户裁决口径（逐字）：「前面的招式名简写一下，**强特就是强特**」。
+ *
+ * ⚠ 与 `SKILL_DMG_TARGET_LABELS` **同表语义**（改全名必须同时改短名）；引擎不消费本表，
+ *   消费方只有 `utils/moveShortLabel`（展示层单一事实源）。
+ */
+export const SKILL_DMG_TARGET_SHORT_LABELS: Record<SkillDamageTarget, string> = {
+  all: '全',
+  basic: '普攻',
+  special: '特技',
+  exSpecial: '强特',
+  ultimate: '终结',
+  chain: '连携',
+  assist: '支援',
+  dodgeCounter: '闪反',
+  dashAttack: '冲刺',
+  additionalAttack: '追加',
+}
+
 export function normalizeSkillDamageTarget(target?: string): SkillDamageTarget {
   if (target && (SKILL_DMG_TARGETS as string[]).includes(target)) return target as SkillDamageTarget
   return 'all'

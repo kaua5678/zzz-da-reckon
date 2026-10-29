@@ -322,6 +322,7 @@ import { isStaleAxisActionFor } from '@/composables/resourceCalc/roundInputs'
 import { axisTableDirectCandidates } from '@/composables/resourceCalc/axisTableDirect'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
+import { shortMoveLabel } from '@/utils/moveShortLabel'
 import { damageElementLabel } from '@/utils/agentLabelMaps'
 import type { StunAxisAction, StunAxis, StunAxisKind } from '@/types/resource'
 import { axisKindOfView } from '@/composables/stunAxisView'
@@ -877,14 +878,20 @@ const allMoves = computed(() => {
       const consumed = consumedOnAxes(c.slot, a => a.moveId === mid && !a.promoteVariant && (a.sourceTag === 'gift') === (exec.source === 'gift'))
       const skills = catalogStore.getAgentSkills(configStore.team[c.slot]?.agentId ?? '')
       const move = findMove(skills, mid)
-      const rawName = exec.moveName?.replace(/（.*/g, '').trim() || mid
+      // ⚠ 不再剥掉「（改）」这类括号后缀（2026-10-29）：它是**变体唯一的区分点**
+      // （挽昼 1601016「焚夜·曦生（改）」与 1601106「焚夜·曦生」只差它），剥了必然重名。
+      // 名字长度由短标签 + CSS 省略号管，不靠丢信息管。
+      const rawName = exec.moveName?.trim() || mid
       const srcTag = exec.source === 'stun' ? '·失衡' : exec.source === 'gift' ? '·赠' : ''
       // 仪玄影画1落雷：按 CD（6s）自动算次数（轴模式按轴内时间，非轴按战斗时间）
       const cdTag = mid === '1371_c1_lightning' ? '·CD6s自动' : ''
       // 失衡强特增伤（额外能力）：凝云术/墨烬影消命中失衡敌人 +30%（轴内行 dmgBonus = 60核心被动 + 30失衡）
       // CC-57：块名后缀经模块声明 axisMoveSuffix（现唯一 = 仪玄 1371022/1371026「·+30%失衡」）
       const stunExTag = agentAxisMoveSuffix(c.agentId, mid)
-      let name = ((move?.name?.zhCN || rawName).slice(0, 8)) + srcTag + cdTag + stunExTag
+      // 短标签（`utils/moveShortLabel` 单一事实源）：压前缀、留本体。
+      // 原实现是 `.slice(0, 8)`——8 个字里前 6 个被「强化特殊技：」吃掉，只剩 2 个字给招式本体
+      // ⇒ 挽昼四个强特塌成两个名字、全 catalog 233 组重名（用户 2026-10-29 报「全是一个名字」）。
+      let name = shortMoveLabel(move?.name?.zhCN || rawName, mid) + srcTag + cdTag + stunExTag
       // 般岳怒/普分化：只写招式名（倍率随等级变不写；名字带「·怒」即 40 耗能，其余 20；连段块山威免费）
       // CC-48：招式元数据经模块声明 axisMoveMeta（现唯一 = 般岳；原为按般岳 agentId 1471 查 BANYUE_AXIS_MOVE_META）
       const axisMoveMeta = agentAxisMoveMeta(c.agentId)?.[mid]
@@ -985,7 +992,7 @@ const allMoves = computed(() => {
     const tblAgentId = configStore.team[c.slot]?.agentId ?? ''
     for (const { move: m } of axisTableDirectCandidates(tblAgentId, catalogStore.getAgentSkills(tblAgentId), new Set(c.executions.map(e => e.moveId)))) {
       if (shownIds.has(m.id)) continue
-      out.push({ slot: c.slot, moveId: m.id, label: `[表]${(m.name?.zhCN || m.id).slice(0, 8)}`, actionTime: m.actionTime ?? 0, remaining: 99, key: `${c.slot}:${m.id}:table` })
+      out.push({ slot: c.slot, moveId: m.id, label: `[表]${shortMoveLabel(m.name?.zhCN, m.id)}`, actionTime: m.actionTime ?? 0, remaining: 99, key: `${c.slot}:${m.id}:table` })
     }
   }
   return out
@@ -1118,7 +1125,10 @@ function agentName(s: number) {
 .sap-preset-note { font-size: 11px; color: var(--wa-500); }
 .sap-slot-row { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; flex-wrap: wrap; }
 .sap-slot-name { font-size: 10px; color: var(--wa-450); min-width: 44px; }
-.sap-chip { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: rgba(99,226,183,0.08); color: var(--c-success); cursor: pointer; }
+/* 短标签后名字变长（前缀压短、本体保留）：宽度由**视口**收缴——max-width + 省略号，
+   全文仍可读（chip 的 title 里带完整「名字 + 剩余次数」）。**不在数据层砍字**：
+   2026-10-29 的「全是一个名字」正是数据层砍字砍出来的。 */
+.sap-chip { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: rgba(99,226,183,0.08); color: var(--c-success); cursor: pointer; max-width: 22em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sap-chip.dim { background: var(--wa-30); color: var(--fg-2); }
 .sap-axes { display: flex; flex-direction: column; gap: 14px; }
 .sap-axis { background: var(--wa-20); border-radius: 8px; padding: 10px; border: 1px solid var(--wa-50); }
