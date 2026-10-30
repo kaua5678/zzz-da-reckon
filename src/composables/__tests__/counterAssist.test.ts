@@ -21,7 +21,7 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import type { BossPresetFile, BossPresetDefaults } from '@/types/bossPreset'
-import { CLARET_COUNTER_ASSIST, counterAssistOf } from '@/data/counterAssists'
+import { CLARET_COUNTER_ASSIST, COUNTER_ASSIST_REGISTRY, ROBIN_COUNTER_ASSIST, SUNBRINGER_COUNTER_ASSIST, counterAssistOf } from '@/data/counterAssists'
 import { COUNTER_ASSIST_ETHER_BASE } from '../../../scripts/lib/type-bonus-time.mjs'
 import { CLARET_COUNTER_ASSIST as CLARET_FUSION } from '@/data/moveFusions'
 import { fusedGroupMetrics } from '@/core/resource/moveLookup'
@@ -135,11 +135,71 @@ describe('反制支援登记表与倍率表一致性', () => {
       .toBeCloseTo(446 + 134, 3)
   })
 
+  it('登记表覆盖三家（克拉蕾 / 挽昼 / 知更鸟）——反制支援不再是锋御专属', () => {
+    // 用户 2026-10-30：「接吧，有反制支援的角色越来越多了，不再是克拉蕾专属」
+    expect(COUNTER_ASSIST_REGISTRY.map(m => m.agentId).sort()).toEqual(['1601', '1611', '1661'])
+    for (const decl of COUNTER_ASSIST_REGISTRY) {
+      expect(moveOf(decl.agentId, decl.moveId)?.name?.zhCN, `${decl.agentId} 本体应是反制支援`).toContain('反制支援')
+      expect(moveOf(decl.agentId, decl.followUpMoveId)?.name?.zhCN, `${decl.agentId} 追击应是支援突击`).toContain('支援突击')
+    }
+  })
+
+  it('挽昼 1601：反制支援融合（本体 + 灯塔），知更鸟 1661：只登记不融合', () => {
+    // 挽昼：原文「发动[反制支援]后，点按 攻击 发动」⇒ 同一动作两段，时间/喧响/伤害都取整段
+    const body = moveOf('1601', SUNBRINGER_COUNTER_ASSIST.moveId)
+    const follow = moveOf('1601', SUNBRINGER_COUNTER_ASSIST.followUpMoveId)
+    expect(body!.actionTime).toBeCloseTo(3, 3)
+    expect(follow!.actionTime).toBeCloseTo(2, 3)
+    const fused = fusedGroupMetrics(skillsOf('1601'), SUNBRINGER_COUNTER_ASSIST.moveId)
+    expect(fused!.actionTime).toBeCloseTo(5, 4) // 3 + 2
+    expect(fused!.decibelRecovery).toBeCloseTo(rowOf(body, 'decibel_recovery') + rowOf(follow, 'decibel_recovery'), 2)
+    // 知更鸟：1661019 是「其他角色发动反制支援后」自动触发 ⇒ **不得**并入她那次动作
+    expect(fusedGroupMetrics(skillsOf('1661'), ROBIN_COUNTER_ASSIST.moveId)).toBeNull()
+    expect(fusedGroupMetrics(skillsOf('1661'), ROBIN_COUNTER_ASSIST.followUpMoveId)).toBeNull()
+  })
+
   it('融合组登记与招式登记表同源（同一对 moveId，防两处漂移）', () => {
     expect(CLARET_FUSION.terms.map(t => t.moveId)).toEqual([
       CLARET_COUNTER_ASSIST.moveId, CLARET_COUNTER_ASSIST.followUpMoveId,
     ])
     expect(getAgentMechanic('1611')).toBeTruthy()
+  })
+})
+
+describe('挽昼 / 知更鸟 接入后的整链（引擎真跑一次）', () => {
+  it('挽昼：一组控制技 → 一行反制支援，时间/喧响取「希望堡垒+灯塔」整段，且灯塔送 1 层残痕', async () => {
+    const { config } = await setupHarness([{ agentId: '1601' }, { agentId: '1101' }, { agentId: '1661' }])
+    applyBoss(config, [3]) // 1 组控制技；槽 0 = 挽昼（有反制支援）⇒ 自动承接
+    expect(config.counterAssistSlot).toBe(0)
+    const calc = useResourceCalc()
+    const sun = calc.resourceResult.value?.characters.find(c => c.agentId === '1601')
+    const row = (sun?.executions ?? []).find(e => e.moveId === SUNBRINGER_COUNTER_ASSIST.moveId)
+    expect(row, '挽昼应产出反制支援行').toBeTruthy()
+    expect(row!.count).toBe(1)
+    // 融合：一次动作 = 本体 3.0s + 灯塔 2.0s；伤害 = 1757.6 + 939.1
+    const body = moveOf('1601', SUNBRINGER_COUNTER_ASSIST.moveId)
+    const follow = moveOf('1601', SUNBRINGER_COUNTER_ASSIST.followUpMoveId)
+    expect(row!.actionTime).toBeCloseTo(5, 3)
+    expect(row!.damageMultiplier).toBeCloseTo(rowOf(body, 'damage') + rowOf(follow, 'damage'), 1)
+    // 灯塔送层：整组化解比「不化解」多 1 层残痕 ⇒ 毁伤次数真的涨（不是只多一行展示）
+    const maimOf = () => (calc.resourceResult.value?.characters.find(c => c.agentId === '1601')?.executions ?? [])
+      .filter(e => e.moveId === '1601114').reduce((s, e) => s + e.count, 0)
+    const withGift = maimOf()
+    config.setMechanicSetting('boss.counterAssistReplace', 0) // 关掉替换 → 不产反制支援、不送层
+    const withoutGift = maimOf()
+    expect(withGift, '灯塔送层应抬毁伤次数').toBeGreaterThan(withoutGift)
+  })
+
+  it('知更鸟：同样能承接（不再是锋御专属），产出一行且时间只算本体 3.784s（1661019 不并入）', async () => {
+    const { config } = await setupHarness([{ agentId: '1661' }, { agentId: '1101' }, { agentId: '1201' }])
+    applyBoss(config, [3])
+    expect(config.counterAssistSlot).toBe(0)
+    const calc = useResourceCalc()
+    const robin = calc.resourceResult.value?.characters.find(c => c.agentId === '1661')
+    const row = (robin?.executions ?? []).find(e => e.moveId === ROBIN_COUNTER_ASSIST.moveId)
+    expect(row, '知更鸟应产出反制支援行').toBeTruthy()
+    expect(row!.actionTime).toBeCloseTo(3.784, 3)
+    expect(row!.damageMultiplier).toBeCloseTo(rowOf(moveOf('1661', ROBIN_COUNTER_ASSIST.moveId), 'damage'), 1)
   })
 })
 

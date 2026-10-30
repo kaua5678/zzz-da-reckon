@@ -8,14 +8,16 @@
  *   `counterAssistGroups`）。
  * - **[反制支援]**：「自身或前场角色即将被部分敌人的**控制技**攻击时」点按切人发动，
  *   **与怪物角力，一次动作整组化解控制技** → 一组 = 一次反制支援（用户口径 2026-09-12）。
- *   锋御角色（specialty=sharpen）自带该招式，当前全库唯一 = 克拉蕾(1611)。
+ *   **不是锋御专属**（用户 2026-10-30：「接吧，有反制支援的角色越来越多了，不再是克拉蕾专属」）：
+ *   目前三家 —— 克拉蕾(1611 锋御) / 挽昼(1601 锋御) / 知更鸟(1661 防护)。
  *
  * 为什么不靠倍率表名字扫：克拉蕾的「支援突击」有两条——「血华誓·无垢熔锋」跟[招架支援]、
  * 「血华誓·琢形」跟[反制支援]，两者 EN 同为 `Assist Follow-Up`，按名匹配会挑错行
  * （`findAssistFollowUp` 取第一条 = 无垢熔锋）。反制支援与其专属支援突击的配对是**角色数据**，
  * 显式登记在此；新锋御角色录入时加一行即可（引擎与 Boss 卡都只读本表，无 agentId 分支）。
  *
- * @fact data:反制支援/招式配对 口径: 克拉蕾(1611)反制支援 = 1611028 寸铁不让 + 专属支援突击 1611030 血华誓·琢形，一次化解一组控制技（整组弹刀不再发生）；两行按「一次动作」融合（见 data/moveFusions.ts#CLARET_COUNTER_ASSIST） | 据 用户@2026-09-12（「有反制支援的角色在场时，可以使用反制支援替换这些弹刀交互」「两个都算」）·复核@2026-09-25 | 验 src/composables/__tests__/counterAssist.test.ts | 锚 src/data/counterAssists.ts#CLARET_COUNTER_ASSIST | 信 确认
+ * @fact data:反制支援/招式配对 口径: 反制支援按角色登记「本体 + 专属支援突击」两行——克拉蕾(1611)=1611028 寸铁不让+1611030 琢形（融合成一次动作，见 data/moveFusions.ts#CLARET_COUNTER_ASSIST）、挽昼(1601)=1601204 希望堡垒+1601205 灯塔（融合，SUNBRINGER_COUNTER_ASSIST）、知更鸟(1661)=1661017 反制支援：角力+1661019 角力协同突击（**不融合**：1661019 由「其他角色发动反制支援后」自动触发，不属她自己那次动作）；一次反制支援化解一组控制技，整组弹刀不再发生 | 据 用户@2026-09-12（「有反制支援的角色在场时，可以使用反制支援替换这些弹刀交互」「两个都算」）·用户@2026-10-30（「接吧，有反制支援的角色越来越多了，不再是克拉蕾专属」）·复核@2026-09-25 | 验 src/composables/__tests__/counterAssist.test.ts | 锚 src/data/counterAssists.ts#COUNTER_ASSIST_MOVES | 信 确认
+ * ⟳复核: 新增反制支援角色时按同一形状登记（本体 + 专属追击），并判「追击段是否属于本体那一次动作」——属则进 moveFusions，不属（他触发的自动段）只登记不算时间/倍率 | 到期 2027-06-30
  */
 
 export interface CounterAssistMoves {
@@ -37,9 +39,38 @@ export const CLARET_COUNTER_ASSIST: CounterAssistMoves = {
   label: '反制支援：寸铁不让',
 }
 
-/** agentId → 反制支援招式配对（当前全库唯一锋御 = 克拉蕾；新锋御录入时加行） */
+/**
+ * 挽昼（1601，锋御）：反制支援：希望堡垒 + 支援突击：灯塔，立于苍穹。
+ * 原文「发动[反制支援]后，点按 攻击 发动」⇒ 同一动作的两段（与克拉蕾同形），且灯塔
+ * 「重击命中敌人时，直接为目标添加1层[残痕]」——该赠送层在 `sunbringer.ts#solveSunbringerLoops` 建模。
+ */
+export const SUNBRINGER_COUNTER_ASSIST: CounterAssistMoves = {
+  agentId: '1601',
+  moveId: '1601204',
+  followUpMoveId: '1601205',
+  label: '反制支援：希望堡垒',
+}
+
+/**
+ * 知更鸟（1661，防护）：反制支援：角力 + 支援突击：角力协同突击。
+ *
+ * ⚠ 与另两家不同形：1661019 原文是「**队伍中其他角色**发动[反制支援]后，若触发[完美反制]自动发动」
+ * ——它不是她自己那次动作的后续段（新包把旧 1661018「角力突击」并掉了，用户裁决「可能只是对应id变了」），
+ * 所以这里只登记 followUpMoveId 供**分类排除**（不进支援突击直伤锚点），**不进 moveFusions**
+ * （并入就会把 318.5% 加到她每次反制支援上 = 虚增）。它作为「他触发的自动段」暂未建模，见 spec notes。
+ */
+export const ROBIN_COUNTER_ASSIST: CounterAssistMoves = {
+  agentId: '1661',
+  moveId: '1661017',
+  followUpMoveId: '1661019',
+  label: '反制支援：角力',
+}
+
+/** agentId → 反制支援招式配对（新角色录入时加行；一张表驱动引擎 / Boss 卡 / 倍率分类） */
 const COUNTER_ASSIST_MOVES: Record<string, CounterAssistMoves> = {
   [CLARET_COUNTER_ASSIST.agentId]: CLARET_COUNTER_ASSIST,
+  [SUNBRINGER_COUNTER_ASSIST.agentId]: SUNBRINGER_COUNTER_ASSIST,
+  [ROBIN_COUNTER_ASSIST.agentId]: ROBIN_COUNTER_ASSIST,
 }
 
 /** 全部已登记的反制支援配对（登记表的数组视图，供自检/判据遍历用；单一来源仍是上面的表） */

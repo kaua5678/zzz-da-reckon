@@ -364,6 +364,21 @@ export const CLARET_COUNTER_ASSIST: MoveFusionGroup = {
   note: 'full/1611.json assist「支援突击：血华誓·琢形」desc =「发动[反制支援]后，点按 攻击 发动」→ 与 1611028 同属一次动作（用户 2026-09-12「两个都算」）。',
 }
 
+/** 挽昼·反制支援：希望堡垒＝本体 + 紧随的支援突击：灯塔（两段都占前台时间）。
+ *  原文「发动[反制支援]后，点按 攻击 发动」⇒ 一次化解控制技的连招，与克拉蕾同形（前台动作数 +1）。
+ *  ⚠ 知更鸟**不登记**——她的 1661019「角力协同突击」是「队伍中其他角色发动[反制支援]后」自动触发，
+ *  不在本体那次动作里，并入会把 318.5% 虚增到她每次反制支援上。 */
+export const SUNBRINGER_COUNTER_ASSIST: MoveFusionGroup = {
+  moveId: '1601204',
+  agentId: '1601',
+  label: '挽昼·反制支援：希望堡垒（含支援突击·灯塔）',
+  terms: [
+    { moveId: '1601204', count: 1 },
+    { moveId: '1601205', count: 1 },
+  ],
+  note: 'full/1601.json assist「支援突击：灯塔，立于苍穹」desc =「发动[反制支援]后，点按 攻击 发动」→ 与 1601204 同属一次动作。',
+}
+
 // @fact engine:autoField/能量场不占前台时间 口径: 自动攻击/能力场段（妮可 1031303 连携能量场、1031305 终结能量场、1031106 强特能量场）倍率·失衡·积蓄·喧响照算，时间通道按 0 计——一次招式「打是全打，站场不算」 | 据 用户@2026-09-11「只有炮击算时间，能力场是自动攻击，不算时间」+ nanoka full/1031.json 炮击/能量场分行·复核@2026-09-25·复核@2026-10-07 | 验 src/composables/__tests__/moveFusion.test.ts#倍率融合：时间通道（连携技「单次时长」） | 锚 src/data/moveFusions.ts#NICOLE_CHAIN + src/data/moveFusions.ts#NICOLE_ULTIMATE + src/data/sustainedEx.ts#1031 + src/core/resource/moveLookup.ts#fusedGroupMetrics | 信 确认
 
 export const MOVE_FUSION_GROUPS: MoveFusionGroup[] = [
@@ -389,6 +404,7 @@ export const MOVE_FUSION_GROUPS: MoveFusionGroup[] = [
   QINGYI_EX_MOONLIT,
   LUCIA_ULTIMATE,
   CLARET_COUNTER_ASSIST,
+  SUNBRINGER_COUNTER_ASSIST,
 ]
 
 /** 主段 moveId → 融合组（查表键） */

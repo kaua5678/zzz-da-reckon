@@ -271,7 +271,6 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "src/core/resource.ts engine:收敛环停点规范化",
   "src/core/resource.ts engine:fusedGroupMetrics/一次动作整段量",
   "src/core/resource.ts engine:findChainAttack/多段连携",
-  "src/data/counterAssists.ts data:反制支援/招式配对",
   "src/data/exSpecialPlans.ts engine:exSpecialPlan/千夏拍照",
   "src/data/exSpecialPlans.ts engine:exSpecialPlan/成本类型化",
   "src/data/moveFusions.ts engine:moveFusion/飞雪斩击",

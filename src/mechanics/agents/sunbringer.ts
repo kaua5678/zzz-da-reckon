@@ -8,7 +8,7 @@ import { getRowValue } from '@/data/moveTableQueries'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
-import { allocateBossGashPool } from '@/mechanics/gashMaim'
+import { allocateBossGashPool, GASH_PER_LAYER } from '@/mechanics/gashMaim'
 
 /**
  * 挽昼（1601·锋御/燎源）——v1 测试服占位包（nanoka **3.4.1+19850203** 热更包），2026-10-25 第二刀 = **六条资源循环**。
@@ -181,6 +181,13 @@ export function solveSunbringerLoops(input: {
   ultimateCost: number
   /** 命座等级（影画1：进战 +120 愿力；影画2：其他招式 12% 烬痕） */
   cinemaLevel?: number
+  /**
+   * 本局反制支援次数（Boss 控制技组数，store 折算注入 `cfg.counterAssistCount`）。
+   * 一次反制支援 = 1601204 希望堡垒 + 1601205 灯塔（融合成一次动作）；灯塔原文「重击命中敌人时，
+   * **直接为目标添加 1 层[残痕]**」⇒ 每组**白送 1 层**（600 点），不吃积蓄效率倍率、受同时存量 3 层上限。
+   * 与克拉蕾 1611028+1611030 的「琢形送层」同口径（`claret.ts#computeClaretSharpResource`）。
+   */
+  counterAssistCount?: number
 }) {
   const { meta, combatTime, basicTime, chainCount, totalDecibel, ultimateCost } = input
   const sharpPool = SHARPNESS_INITIAL + meta.sharpnessRegen * combatTime + meta.basic.sharpPerSec * basicTime
@@ -189,7 +196,10 @@ export function solveSunbringerLoops(input: {
   const exCount = Math.max(0, Math.min(Math.floor(sharpPool / SHARPNESS_COST_PER_EX), exMax))
   budget = Math.max(0, budget - exCount * meta.ex.actionTime)
 
+  // 残痕来源：平A 秒均 + 强特/连携表值 + **反制支援灯塔送的层**（每组 +600 点，不吃积蓄效率）
+  const counterGiftStacks = Math.max(0, Math.floor(input.counterAssistCount ?? 0))
   const gash = meta.basic.gashPerSec * basicTime + exCount * meta.ex.gash + chainCount * meta.chain.gash
+    + counterGiftStacks * GASH_PER_LAYER
   // 消耗层：强化特殊技与连携技都会「重击命中后消耗」，每次最多 3 层
   const maimDemand = 3 * (exCount + chainCount)
   // 残痕池走**锋御通用池**（`mechanics/gashMaim#allocateBossGashPool`）：单槽调用 = min(层, 需求)，逐位不变；
@@ -257,7 +267,7 @@ export function solveSunbringerLoops(input: {
   budget = Math.max(0, budget - torchCount * meta.torch.actionTime)
   return {
     sharpPool, sharpUsed: exCount * SHARPNESS_COST_PER_EX, exCount,
-    gash, gashLayers, maimDemand, maimCount,
+    gash, gashLayers, maimDemand, maimCount, counterGiftStacks,
     wishTotal, wishSpent: jufengCount * JU_FENG_WISH_COST, jufengCount,
     changanCount, ultFeasible, ultACount, torchCount,
   }
@@ -274,6 +284,7 @@ function buildSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
     chainCount: Math.max(0, Math.floor(state.chainCountTotal)),
     totalDecibel: Math.max(0, state.totalDecibel),
     ultimateCost: Number(cfg.ultimateCost),
+    counterAssistCount: cfg.counterAssistCount,
   })
   const push = (row: Parameters<typeof moduleExecRow>[0]) => executions.push(moduleExecRow(row))
 
@@ -432,6 +443,8 @@ export function patchSunbringerExecutions({ cfg, state, executions }: AgentResou
     totalDecibel: Math.max(0, state.totalDecibel),
     ultimateCost: Number(cfg.ultimateCost),
     cinemaLevel: cinemaLevelOf(cfg.sunbringerCinemaLevel),
+    // 反制支援送的残痕层会改毁伤次数 ⇒ 烬痕的同源解必须吃同一个输入（否则两处解法分叉）
+    counterAssistCount: cfg.counterAssistCount,
   })
   const ember = computeEmberScar({
     meta,
@@ -489,6 +502,21 @@ export function expandSunbringerBasicFill(input: {
   ]
 }
 
+/**
+ * **第二段大招（此愿·重塑万象 1601011）的伤害段 = 1 秒**（用户口径 2026-10-30，逐字）：
+ * > 「v1挽昼**第二段大招在第一秒就会把所有伤害打出来，后面3秒都是后摇**，所以这里大招后摇
+ * >  放在失衡后面也应当算他所有伤害都吃到失衡易伤了……这个16s的失衡轴最后大招超出去了，
+ * >  但你要算都吃到易伤」
+ *
+ * 落地 = 模块钩子 `axisMoveDamageSeconds`（引擎不认角色 id，判据 26）：轴栈把这一招的易伤折算
+ * 分母从「动作全长 4.083s」换成「伤害段 1s」，而后摇照旧占满前台时间（`count`/时间/资源按整段）。
+ *
+ * ⚠ **只对 1601011 声明**：第一段 1601111（此行，共赴前路 2.883s）没有这句原文，按整段折算。
+ * ⚠ 不声明成「窗口延长」：窗口一秒都不变长（那是佩洛伊斯决算 1551016 的口径，见 `stunWindowExtendOnEnd`）。
+ */
+export const SUNBRINGER_ULT_B_DAMAGE_SECONDS = 1
+/** 第二段终结技·此愿，重塑万象（`meta.ultB` 的 moveId；轴内伤害段声明的键） */
+export const SUNBRINGER_ULT_B_MOVE_ID = '1601011'
 export const sunbringerMechanic: AgentMechanicModule = {
   id: 'agent:sunbringer',
   agentIds: [SUNBRINGER_AGENT_ID],
@@ -501,4 +529,7 @@ export const sunbringerMechanic: AgentMechanicModule = {
   buildCharConfig: buildSunbringerCharConfig,
   buildExecutions: buildSunbringerExecutions,
   patchExecutions: patchSunbringerExecutions,
+  // 轴内易伤折算：第二段大招伤害前置 1s、其余为后摇（用户口径 2026-10-30）
+  axisMoveDamageSeconds: (moveId: string) =>
+    (moveId === SUNBRINGER_ULT_B_MOVE_ID ? SUNBRINGER_ULT_B_DAMAGE_SECONDS : undefined),
 }

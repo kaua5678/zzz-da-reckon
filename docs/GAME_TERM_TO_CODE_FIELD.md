@@ -266,7 +266,7 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 | 喧响值上限提升 X 点 | 不建模 | 计算器按整局总量口径，不设单条喧响上限（如橘福福额外能力「喧响上限+1000」明确不做） |
 | 物理异常[畏缩] | 覆盖率折入 `enemyStunTakenBonus` | 畏缩使敌人受到失衡值+7.5%，按覆盖率折算 |
 | [控制技]（用户口语「紫光技」） | boss 预设 `defaults.counterAssistGroups: number[]` | 术语 2000003：无闪光提示、无视无敌的**连续数段**攻击，须逐段[招架支援]/[回避支援]应对，全部成功 → [完美反制]。逐组记段数；无替换时按「每组 1 次正常弹刀 + 段数−1 次无突击弹刀」并入生效弹刀总数 `configStore.bossParryTotals`（`stores/config.ts#bossParryTotals`，派生 getter） |
-| [反制支援]（角力整组化解控制技） | `cfg.counterAssist{MoveId,ActionTime,DecibelRecovery,ComboAlignRatio,Count}` + `src/data/counterAssists.ts` | 一次动作化解一组：本体行与其**专属**支援突击行按 `data/moveFusions.ts` 融合成一行（克拉蕾 1611028 + 1611030 琢形）。**不拿弹刀 215 特殊动作奖励**、不产轻弹刀/支援突击行、不参与每次弹刀失衡反推（用户 2026-09-12） |
+| [反制支援]（角力整组化解控制技） | `cfg.counterAssist{MoveId,ActionTime,DecibelRecovery,ComboAlignRatio,Count}` + `src/data/counterAssists.ts` | 一次动作化解一组：本体行与其**专属**支援突击行按 `data/moveFusions.ts` 融合成一行（克拉蕾 1611028 + 1611030 琢形、挽昼 1601204 + 1601205 灯塔）；**知更鸟 1661017 不融合**（1661019 是「其他角色发动反制支援后」自动触发，不在本体那次动作里）。**不拿弹刀 215 特殊动作奖励**、不产轻弹刀/支援突击行、不参与每次弹刀失衡反推（用户 2026-09-12）。登记表三家 = `counterAssists.ts#COUNTER_ASSIST_MOVES` |
 | 异常精通 | `anomalyProficiency` | ⚠ raw 字段 = `stats.element_mystery`（**反直觉**，见 11.2） |
 | 异常掌控 | `anomalyMastery` | ⚠ raw 字段 = `stats.element_abnormal_power`（**反直觉**，见 11.2） |
 | [完美反制] | （由上面的反制支援行/弹刀+支援突击承载） | 游戏侧是"全部招架成功"的结算奖励；计算器把它落在**行内倍率/失衡**上，不额外加 215 通道 |
