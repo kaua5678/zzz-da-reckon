@@ -308,7 +308,7 @@ STATUS: done
 |---|---|---|---|
 | **P0** | C-2：给 `core 角色名中缀/子目录` 补 measure + `computeBurndown` 对 NaN 报错 | `scripts/zc.mjs`（+1 行映射）、`scripts/check-guards.mjs`（computeBurndown）、`checkGuards.test.ts`（全量 id 断言） | `zc status` 应能点名该条；`npx vitest run checkGuards` 绿 |
 | **P0** | B-3：`VAR_TOTAL_BASELINE` → per-file 单向棘轮 | `check-tokens.mjs`、`checkTokens.test.ts` | 注入「某文件 var() 减少」⇒ 红 |
-| **P1** | B-2：`手册 §4 行数` 从判据降为读数 | `checkGuards.test.ts:1984`、`guard-registries.mjs` | 加 1 行否决记录 ⇒ **不红**；加编年史行 ⇒ 结构断言红 |
+| **P1** | B-2：`手册 §4 行数` 从判据降为读数 | ✅ 2026-10-30 已落地：判据 34 `scripts/lib/guide-entry-budget.mjs` + `guard-registries.mjs` + `checkGuards.test.ts` | 加 1 行否决记录 ⇒ **不红**（已按此验收）；加编年史行 / 新增超标条目 ⇒ 红 |
 | **P1** | A-1/A-2：格式锁改结构锁（按花括号配对 + 允许修饰符） | `battleTimeDisplaySingleSource.test.ts`、`noNullRoundCc418.test.ts` | 加 `readonly` / 改缩进 ⇒ 绿；跨接口搬字段 ⇒ **红** |
 | **P2** | B-1：`typesSplitCc83` 加结构白名单 + 注释行数下限 | 该测试文件 | 写回新类型 ⇒ 红；删注释腾地方 ⇒ 红 |
 | **P2** | C-1：contrast 加 `CONTRAST_PAIRS_MIN` | `check-tokens.mjs`、`checkTokens.test.ts` | 删一个 chart 令牌 ⇒ 红 |

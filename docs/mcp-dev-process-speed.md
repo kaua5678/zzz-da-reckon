@@ -298,8 +298,11 @@ grep 面（`useResourceCalc` 字面引用）**242**，其中 `--changed` 漏 **2
 
 **为什么 `check-guards` 单独跑不够**（选项②原文的"只跑 check-guards"）：同一 docs 改动下
 `node scripts/check-guards.mjs` = **EXIT 0 / 29 项全绿 / 17.4 秒**，而 vitest 里那条 **红**。
-根因：§4 行数 burn-down 判据**只在 `checkGuards.test.ts` 里断言**（`scripts/check-guards.mjs` 只导出
-`countGuideSection4Lines`，`runAllChecks` 不含它，`zc status` 只报不红）⇒ 这就是「只跑 check-guards」会漏的那类错误。
+根因：当时 §4 行数 burn-down 判据**只在 `checkGuards.test.ts` 里断言**（`runAllChecks` 不含它，
+`zc status` 只报不红）⇒ 这就是「只跑 check-guards」会漏的那类错误。
+**2026-10-30 后续（两处已堵）**：① 那条断言按审计 P1/B-2 换成**判据 34**（§4 条目预算）——判定与读数都在
+`runAllChecks` 里，`node scripts/check-guards.mjs` 直接能红；② 手册类判据的自测仍在 `checkGuards.test.ts`（core 环排除）
+⇒ `test-ring.mjs` 的 `RING_ADVICE` 补了「四份方法文档 → fast」规则：改手册必须跑到那条自测。
 
 ### 9.3 ③ dump/rowsnap 差异（用已归档产物读，不重复跑）
 

@@ -134,6 +134,13 @@ export const RING_ADVICE = [
     match: /^src[\/](views|components|composables[\/](charts|analysis))/,
     why: '展示层：check-tokens + UI 判据在 core，重型图表搜索在 fast',
   },
+  {
+    ring: 'fast',
+    match: /^docs[\/](ENGINE_PIPELINE_GUIDE|AGENT_RECORDING_SOP|MECHANIC_PATTERNS|GAME_TERM_TO_CODE_FIELD)\.md$/,
+    why: '四份方法文档：手册密度（判据 11）与 §4 条目预算（判据 34）的回归自测在 checkGuards.test.ts'
+      + '（58s，core 排除）——只改手册也必须跑到它，否则「改手册却触发不到手册判据」'
+      + '（2026-10-26~30 实测：§4 条目预算红 4 天无人见）',
+  },
 ]
 
 /**

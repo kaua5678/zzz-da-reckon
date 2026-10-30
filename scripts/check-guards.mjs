@@ -84,6 +84,16 @@ import { scanTypeRestatements, formatTypeRestatements, TYPE_RESTATEMENT_BASELINE
 // ⚠ 与判据 26–29 同款：**不**从本文件转出（`check-guards.d.mts` 是手写影子 API，多转出即 C 段漂移红；
 //    测试直接 `import … from '../../../scripts/lib/field-writer-uniqueness.mjs'`，先例 idLiteralGate.test.ts）
 import { scanFieldWriters, formatFieldWriters, SINGLE_WRITER_FIELDS } from './lib/field-writer-uniqueness.mjs'
+// 判据 34：手册 §4 条目预算（2026-10-30 换尺，落地 docs/mcp-guard-audit-surface-work.md 的 P1/B-2；
+// 见 scripts/lib/guide-entry-budget.mjs 头注释。⚠ 与判据 26–31 同款：**不**从本文件转出，
+// zc.mjs / 测试直接 import 该模块——本文件的 d.mts 是手写影子 API，多转出即 C 段漂移红）
+import {
+  scanGuideEntries,
+  guideEntryBudgetProblems,
+  GUIDE_ENTRY_MAX_LINES,
+  GUIDE_CHRONICLE_LINE_CAP,
+  GUIDE_ENTRY_OVERBUDGET_ALLOWLIST,
+} from './lib/guide-entry-budget.mjs'
 export { RATCHET_BURNDOWN, DEBT_REGISTRY, CALIBER_TRIGGER_ALLOWLIST, RECORD_KEY_DEAD_READ_ALLOWLIST }
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -494,7 +504,8 @@ export function authoredFactsVerdict(audited) {
  * ⚠ **天花板是防变差的红灯面，不是还款面**（批量拆薄后的反效果实测，2026-09-12）：
  * 四栏拆薄删的是散文（分母）而判据/否决记录按规则 16③ 必须保测量数字（分子），
  * 于是密度**反升** 0.196→0.237——拿密度当还款目标会奖励灌水。还款量化在
- * burn-down 条目「手册 §4 行数」（frozen 1340 → 804（−40%）→ 719（−46%，二轮结算），还款面 = 任务卡主口径「§4 行数 −40%」）。
+ * ⚠ 2026-10-30 换尺：burn-down 条目「手册 §4 行数」已退役（总量会因规则 16③ 要求的否决记录而合法增长，
+ * 见 judged 34 与 lib/guide-entry-budget.mjs 头注释）；本函数降级为**读数**（判据 34 的 detail 里打印）。
  *
  * @fact engine:guards/手册密度 口径: 密度 = /\b1\d{3}\b/ 次数 ÷ 行数，四份方法文档按 2026-09-12 实测冻结天花板；编年叙事只进 git/账本，手册只收协议/口径/证据；还款面 = §4 行数（密度只拦变差，拆薄后反升属口径性质） | 据 任务卡@2026-09-12（用户确认方向）·反效果实测@2026-09-12·复核@2026-09-25·复核@2026-09-27 | 验 src/scripts/__tests__/checkGuards.test.ts | 锚 scripts/check-guards.mjs#MANUAL_DENSITY_CEILINGS + scripts/check-guards.mjs#scanManualDensity | 信 确认
  */
@@ -519,7 +530,7 @@ export function scanManualDensity(root = ROOT) {
   return out
 }
 
-/** ENGINE_PIPELINE_GUIDE §4「常见坑」区（## 4. 至 ## 5.）行数——burn-down「手册 §4 行数」的还款面度量 */
+/** ENGINE_PIPELINE_GUIDE §4「常见坑」区（## 4. 至 ## 5.）行数——**读数**（不再是还款面；条目级预算见判据 34） */
 export function countGuideSection4Lines(root = ROOT) {
   const p = join(root, 'docs/ENGINE_PIPELINE_GUIDE.md')
   if (!existsSync(p)) return NaN
@@ -1574,6 +1585,29 @@ export function runAllChecks(root = ROOT) {
     const detail = ratchetReadabilityProblems(RATCHET_BURNDOWN).map(d => '  ✗ ' + d)
     results.push({
       name: `棘轮登记可读性 (判据 33: current ≤${RATCHET_CURRENT_MAX} / history ≤${RATCHET_HISTORY_MAX} + 指针，plan 字段已退役)`,
+      ok: detail.length === 0,
+      detail,
+    })
+  }
+
+  // ---- 判据 34：手册 §4 条目预算（2026-10-30 换尺，审计 P1/B-2） ----
+  //
+  // 旧尺（burn-down「手册 §4 行数」+ checkGuards.test.ts 的 `cur <= frozen` 硬断言）量的是**§4 总行数**，
+  // 而规则 16③ **要求**「试过又放弃的方案必须写进对应坑条目的否决记录」⇒ 它在惩罚被规则要求的行为：
+  // 实测 1099 → 1205 全是坑 57~61 与实修二例（证据句 + 否决记录，0 条逐日对账）却被判红，且
+  // core 环不含 checkGuards.test.ts（test-ring CORE_EXCLUDES）⇒ 红了 4 天没人看见（2026-10-26~30）。
+  // 新尺量的是**单条膨胀**：每条 ≤ GUIDE_ENTRY_MAX_LINES；存量超标条目登记在册且只许变短；
+  // §4 内「行首日期」行 ≤ 上限（编年叙事进 git log）；条目数与 §4 行数有反空洞下限（扫描面塌陷必须红）。
+  {
+    const report = scanGuideEntries(root)
+    const detail = guideEntryBudgetProblems(report)
+    results.push({
+      name: '手册 §4 条目预算 (判据 34: 每条 ≤' + GUIDE_ENTRY_MAX_LINES + ' 行 / 编年史形态 ≤'
+        + GUIDE_CHRONICLE_LINE_CAP + ' / 反空洞下限) '
+        + (report.found
+          ? report.entryCount + ' 条 · §4 ' + report.sectionLines + ' 行 · 超标 ' + report.overBudget.length
+            + ' 条（登记 ' + GUIDE_ENTRY_OVERBUDGET_ALLOWLIST.length + '）'
+          : '§4 扫不到'),
       ok: detail.length === 0,
       detail,
     })

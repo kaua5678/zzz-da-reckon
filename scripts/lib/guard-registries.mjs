@@ -58,13 +58,13 @@ export const RATCHET_BURNDOWN = [
     history: 'CC-47~CC-54 逐条清单见 git log --grep="越层"',
   },
   {
-    id: '手册 §4 行数',
-    file: 'docs/ENGINE_PIPELINE_GUIDE.md',
-    frozen: 1099,  // 同上；2026-10-23 修好「§4 边界」后口径纠正 808 → 1099（不是新增内容）
-    target: 1099,
-    due: '2026-10-31',
-    current: '现 1099 行（含此前从未被计数的坑 46~56）。只许加证据句；不许为降数字删证据。',
-    history: '808→1099 是**口径纠正**：46~59 原先排在 "## 5" 之后，度量与 zc brief 都漏看；见 git log --grep="§4 行数"',
+    id: '手册 §4 超标条目',
+    file: 'docs/ENGINE_PIPELINE_GUIDE.md §4（度量 = 单条 > GUIDE_ENTRY_MAX_LINES(40) 的条数）',
+    frozen: 7,  // == GUIDE_ENTRY_OVERBUDGET_ALLOWLIST.length（checkGuards.test.ts 双向锁）
+    target: 0,
+    due: '2026-12-31',
+    current: '现 7 条超标（最长 #33 = 86 行）：拆薄或外链一条销一条。新增条目超标即红（判据 34）。',
+    history: '2026-10-30 换尺：总量 1099→1205 是证据句/否决记录不是编年史，见 git log --grep="§4 条目预算"',
   },
   {
     id: '游戏语义口径复核触发器',

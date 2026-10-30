@@ -97,6 +97,15 @@ import {
   scanDocsReadingTests,
   isDocsOnlyChange,
 } from '../../../scripts/lib/docs-reading-tests.mjs'
+// 判据 34：手册 §4 条目预算（2026-10-30 换尺，审计 P1/B-2；实现面 scripts/lib/guide-entry-budget.mjs）
+import {
+  scanGuideEntries,
+  guideEntryBudgetProblems,
+  GUIDE_ENTRY_MAX_LINES,
+  GUIDE_ENTRY_MIN_COUNT,
+  GUIDE_SECTION_MIN_LINES,
+  GUIDE_ENTRY_OVERBUDGET_ALLOWLIST,
+} from '../../../scripts/lib/guide-entry-budget.mjs'
 
 describe('detectFetchStub（直接操纵全局 fetch 的写法）', () => {
   it('抓全部四种 stub 形态', () => {
@@ -708,7 +717,7 @@ describe('仓库级自洽（真实扫描）', () => {
     const { results, ok } = runAllChecks()
     if (!ok) console.log(results.flatMap(r => r.detail).join('\n'))
     expect(ok).toBe(true)
-    expect(results).toHaveLength(33)
+    expect(results).toHaveLength(34)   // 2026-10-30 判据 34（手册 §4 条目预算）落地：33 → 34
     expect(results.some(r => r.name.startsWith('role-module value-dep gate'))).toBe(true)
     // 判据 26：角色 / 招式 id 字面量只许在 data / mechanics/agents / specs（2026-10-04 CC-449 展示层 → CC-450 全 src）——判据 2/24 盯的是身份判定与值导入，裸字面量此前只有逐病灶的单文件锁
     expect(results.some(r => r.name.startsWith('id-literal gate'))).toBe(true)
@@ -2037,32 +2046,133 @@ describe('scanManualDensity（判据 11：手册数字 id 密度棘轮，任务�
     expect(scanManualDensity(root)['docs/AGENT_RECORDING_SOP.md'].density).toBeNull()
   })
 
-  it('burn-down：「手册 §4 行数」条目存在且度量 id 已接进 zc（漏接 measure 会静默 NaN → 点名失效）', () => {
-    // 口径纠正 2026-09-12：还款面 = §4 行数（任务卡主口径 −40%）；密度只当判据 11 防变差天花板
-    //（批量拆薄实测反效果：散文删得快于证据数字，密度 0.196→0.237 不降反升）
-    const e = RATCHET_BURNDOWN.find(x => x.id === '手册 §4 行数')
+  it('burn-down：「手册 §4 超标条目」度量 id 已接进 zc（漏接 measure 会静默 NaN → 点名失效）', () => {
+    // 2026-10-30 换尺（审计 P1/B-2）：旧条目「手册 §4 行数」（frozen === target）+ 硬断言 `cur <= frozen`
+    // 在**惩罚规则 16③ 要求的行为**——实测 1099 → 1205（坑 57~61 + 实修二例，全是证据句/否决记录、
+    // 0 条逐日对账）却判红；且 checkGuards.test.ts 被 test-ring 排除在 core 之外（58s）⇒ 红了 4 天
+    // 没人看见。新尺量**单条超预算的条数**（判据 34）：§4 总行数降级为读数（只要求可测）。
+    const e = RATCHET_BURNDOWN.find(x => x.id === '手册 §4 超标条目')
     expect(e).toBeDefined()
-    expect(e!.file).toBe('docs/ENGINE_PIPELINE_GUIDE.md')
+    expect(e!.file).toContain('docs/ENGINE_PIPELINE_GUIDE.md')
     expect(e!.target).toBeLessThanOrEqual(e!.frozen)
     const cur = countGuideSection4Lines()
-    expect(Number.isFinite(cur)).toBe(true)
-    expect(cur).toBeLessThanOrEqual(e!.frozen)   // 棘轮语义：不许涨过冻结值
-    // 原断言是 `cur >= target`（「未到期误报清零」），2026-09-13 实测发现它**惩罚超额还款**：
-    // 工人把 §4 拆到 719 行（< target 804）、check-guards 本体 11/11 全绿，却因这条单测红，
-    // 被迫回退到刚好 804。达标（≤target）即条目 done，继续降是纯收益，判据不该拦。
-    // 真正的「误报清零」防护改为**结算要求**：低于 target 就必须把登记表结算掉（frozen/target
-    // 同步下调到当前值），否则条目会一直挂着旧目标显示「已完成」。
-    if (cur < e!.target) {
-      expect(e!.frozen,
-        `「手册 §4 行数」已超额达标（现 ${cur} 行 < target ${e!.target}）：请结算登记表——`
-        + `frozen/target 同步下调到 ${cur}（棘轮只减不增），并在 current 里记一句本轮到点。`).toBe(cur)
-      expect(e!.target).toBe(cur)
-    }
-    // zc.mjs measured 映射以 id 为键（rule 11：口径实现在 check-guards，zc 只注入）。
+    expect(Number.isFinite(cur)).toBe(true)   // 读数：不再是红线（旧尺的红线就是这一行）
+    const report = scanGuideEntries(process.cwd())
+    expect(report.found).toBe(true)
+    expect(guideEntryBudgetProblems(report)).toEqual([])
+    // 双向锁：登记清单 ⇔ 实测超标条目（漏销号 / 漏登记都红，与其它基线常量同款）
+    expect(report.overBudget.length).toBe(e!.frozen)
+    expect(GUIDE_ENTRY_OVERBUDGET_ALLOWLIST.length).toBe(e!.frozen)
+    // 达标时必须结算登记表（frozen 同步下调到实测），否则条目会挂着旧 frozen 显示「已完成」。
+    // ⚠ 旧尺的验收标准是「加 1 行否决记录 ⇒ 必红」；新尺是「加 1 行否决记录 ⇒ **不红**」
+    //   （见下面 scanGuideEntries 那组用例），这是换尺的全部意义。
+    if (report.overBudget.length <= e!.target) expect(e!.frozen).toBe(report.overBudget.length)
+    // zc.mjs measured 映射以 id 为键（rule 11：口径实现在 lib/guide-entry-budget.mjs，zc 只注入）。
     // 只查「该 id 出现在 measure 映射里」（存在性），不断言 measure 的具体表达式——
     // 后者是共模面（T15 审计 #12）：实现换个等价写法就假红，实现真错了也照样假绿。
     const src = readFileSync(join(process.cwd(), 'scripts/zc.mjs'), 'utf8')
     expect(src).toContain(`'${e!.id}'`)
+  })
+})
+
+describe('scanGuideEntries / guideEntryBudgetProblems（判据 34：手册 §4 条目预算，2026-10-30 换尺）', () => {
+  /** 造一份 ENGINE_PIPELINE_GUIDE 夹具（只有 §4 的内容可变） */
+  const writeFixture = (section4: string[], allowlist: { key: string; max: number; why: string }[] = []) => {
+    const root = mkdtempSync(join(tmpdir(), 'guide34-'))
+    mkdirSync(join(root, 'docs'))
+    writeFileSync(join(root, 'docs/ENGINE_PIPELINE_GUIDE.md'), [
+      '# GUIDE', '## 3. 地图', 'x', '## 4. 常见坑（实测踩过）', ...section4, '## 5. 验收命令', 'y', '',
+    ].join('\n'))
+    return scanGuideEntries(root, allowlist)
+  }
+  /** 合规夹具：51 条 × 16 行 = 816 行 ⇒ 过反空洞下限，且每条都 ≤ 40 行 */
+  const compliant = () => {
+    const out: string[] = []
+    for (let i = 1; i <= 51; i++) {
+      out.push(`${i}. **坑 ${i}**：`)
+      out.push('   **症状**：x', '   **根因**：y', '   **判据**：z')
+      for (let k = 0; k < 12; k++) out.push('   证据句 ' + k)
+    }
+    return out
+  }
+
+  it('正控：合规夹具 ⇒ 零问题、条目数与 §4 行数过下限（判据不是恒红）', () => {
+    const r = writeFixture(compliant())
+    expect(r.found).toBe(true)
+    expect(r.entryCount).toBe(51)
+    expect(r.entryCount).toBeGreaterThanOrEqual(GUIDE_ENTRY_MIN_COUNT)
+    // 窗口含 `## 4.` 表头行（与 countGuideSection4Lines 同一口径）⇒ 51×16 + 1 = 817
+    expect(r.sectionLines).toBe(817)
+    expect(r.sectionLines).toBeGreaterThanOrEqual(GUIDE_SECTION_MIN_LINES)
+    expect(r.overBudget).toEqual([])
+    expect(guideEntryBudgetProblems(r)).toEqual([])
+  })
+
+  it('★验收（审计卡 B-2）：给某条补 2 行否决记录 ⇒ **不红**（旧尺下同一动作必红）', () => {
+    const s4 = compliant()
+    s4.splice(3, 0, '   **否决记录**：❌「只堵套利不做配平」⇒ 实测掉回 12,526,917（−5.9%）',
+      '   **否决记录**：❌「自由口径 + 封顶」⇒ 掩盖跳变，不同队伍的真实收益被同一上限压平')
+    const r = writeFixture(s4)
+    expect(r.entryCount).toBe(51)
+    expect(r.sectionLines).toBe(819)
+    expect(guideEntryBudgetProblems(r)).toEqual([])
+  })
+
+  it('新增超标条目 ⇒ 红并点名；登记在册且在 max 内 ⇒ 绿；涨过登记 max ⇒ 又红', () => {
+    const s4 = compliant()
+    s4.push(`52. **新坑**：`)
+    for (let k = 0; k < 44; k++) s4.push('   证据句 ' + k)         // 共 45 行 > 40
+    const over = writeFixture(s4)
+    expect(over.newOverBudget.map(e => e.key)).toEqual(['#52'])
+    const problems = guideEntryBudgetProblems(over)
+    expect(problems.length).toBe(1)
+    expect(problems[0]).toContain('#52')
+    expect(problems[0]).toContain(String(GUIDE_ENTRY_MAX_LINES))
+    // 登记后（max = 45 = 实测）⇒ 不红；再涨 3 行 ⇒ 「挂账条目也只许变短」
+    const allow = [{ key: '#52', max: 45, why: '测试夹具' }]
+    expect(guideEntryBudgetProblems(writeFixture(s4, allow))).toEqual([])
+    const grown = [...s4, '   证据句 x', '   证据句 y', '   证据句 z']
+    const g = writeFixture(grown, allow)
+    expect(g.overMaxRegistered.map(e => e.key)).toEqual(['#52'])
+    expect(guideEntryBudgetProblems(g)[0]).toContain('只许变短')
+  })
+
+  it('登记表腐烂三态：条目已合规（要销号）/ key 不存在（要订正）/ 覆盖了合规条目', () => {
+    const stale = writeFixture(compliant(), [{ key: '#1', max: 20, why: '早已拆薄' }])
+    expect(stale.staleAllowlist.map(a => a.key)).toEqual(['#1'])
+    expect(guideEntryBudgetProblems(stale)[0]).toContain('销号')
+    const missing = writeFixture(compliant(), [{ key: '#999', max: 60, why: '条目改名了' }])
+    expect(missing.missingAllowlist.map(a => a.key)).toEqual(['#999'])
+    expect(guideEntryBudgetProblems(missing)[0]).toContain('订正 key')
+  })
+
+  it('编年史形态：§4 内「行首日期」行超过上限即红（上限 1 = 实测存量那 1 条是列表续行）', () => {
+    const one = compliant()
+    one.splice(5, 0, '2026-10-30 今天又踩了一个坑，逐日对账如下')
+    expect(guideEntryBudgetProblems(writeFixture(one))).toEqual([])
+    const two = compliant()
+    two.splice(5, 0, '2026-10-30 今天又踩了一个坑', '2026-10-31 明天再对一次账')
+    const problems = guideEntryBudgetProblems(writeFixture(two))
+    expect(problems.length).toBe(1)
+    expect(problems[0]).toContain('编年叙事')
+  })
+
+  it('反空洞下限：扫描面塌陷 / 找不到 §4 都红（扫描器失明不许伪装成干净）', () => {
+    const tiny = writeFixture(['1. **坑 1**：', '   x'])
+    const problems = guideEntryBudgetProblems(tiny)
+    expect(problems.some(p => p.includes('行 < 下限'))).toBe(true)
+    expect(problems.some(p => p.includes('条 < 下限'))).toBe(true)
+    const empty = scanGuideEntries(mkdtempSync(join(tmpdir(), 'guide34-none-')))
+    expect(empty.found).toBe(false)
+    expect(guideEntryBudgetProblems(empty)[0]).toContain('扫不到')
+  })
+
+  it('编号回退的行算子项，不另起条目（坑 61 的 1./2./3. 先例：否则 58 行会被切成 4 条）', () => {
+    const s4 = compliant()
+    s4.splice(1, 0, '   修法三条：', '   1. 默认只出全 01', '   2. 勾贪婪才多档', '   3. 逐槽锁定')
+    const r = writeFixture(s4)
+    expect(r.entryCount).toBe(51)
+    expect(r.entries.map(e => e.key)).toContain('#1')
   })
 })
 

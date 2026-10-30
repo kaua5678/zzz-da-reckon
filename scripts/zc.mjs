@@ -41,6 +41,10 @@ import { createRequire } from 'node:module'
 // 日期工具（status 的「棘轮临近到期还剩几天」用它；check-guards.mjs 也从这里取，
 // 见 scripts/lib/date-utils.mjs 头注释——不能再从 check-guards import，那会成环）
 import { daysBetween } from './lib/date-utils.mjs'
+// 判据 34 的度量（手册 §4 条目预算）：度量实现在 lib，zc 只注入（规则 11）。
+// 2026-10-30 换尺：还款面从「§4 总行数」改成「单条超预算的条数」——总量尺在惩罚规则 16③
+// 要求的否决记录（实测 1099→1205 全是证据句却判红，且 core 环看不到那条断言，红了 4 天）。
+import { scanGuideEntries } from './lib/guide-entry-budget.mjs'
 
 export const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 export const STATE_DIR = join(ROOT, '.zc')
@@ -961,7 +965,10 @@ async function verbStatus(root = ROOT) {
       'core agentId 分支': () => g.countAgentIdBranchLinesInFiles(g.CORE_AGENT_BRANCH_FILES, root),
       'core 角色模块引用': () => g.scanCoreRoleImports(root).count,
       '展示层越层 import': () => g.scanExhibitionLayerImports(root).count,
-      '手册 §4 行数': () => g.countGuideSection4Lines(root),
+      // 2026-10-30 换尺（审计 P1/B-2）：旧键 '手册 §4 行数' 已退役——它量总量，
+      // 而规则 16③ 要求每次开发都可能 +N 行否决记录 ⇒ 读数涨不是退步。
+      // 新键量「单条超预算的条数」：加合规新条目不变，拆薄一条降一条。
+      '手册 §4 超标条目': () => scanGuideEntries(root).overBudget.length,
       // ⚠ 度量「**剩余工作量**」= 豁免清单长度，不是 missing.length——
       // missing 一登记就归零，用它当 current 会让棘轮当场显示「已完成」（实测踩过：
       // 首版写 missing.length，8 条棘轮里这条 current=0/done=true 直接消失）。

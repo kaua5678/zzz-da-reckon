@@ -10,7 +10,7 @@ function withZcFixture(run: (fixture: GitFixture) => void) {
     f.write('scripts/zc.mjs', readFileSync(new URL('../../../scripts/zc.mjs', import.meta.url), 'utf8'))
     // zc.mjs 的 import 闭包必须一起复制：只拷 zc.mjs 会让它 import 到不存在的
     // scripts/lib/*.mjs（ERR_MODULE_NOT_FOUND）。新增 zc 的 lib 依赖时同步加这里。
-    for (const lib of ['date-utils.mjs']) {
+    for (const lib of ['date-utils.mjs', 'guide-entry-budget.mjs']) {
       f.write(`scripts/lib/${lib}`, readFileSync(new URL(`../../../scripts/lib/${lib}`, import.meta.url), 'utf8'))
     }
     f.write('README.md', 'committed\n')
