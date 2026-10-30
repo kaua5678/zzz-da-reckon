@@ -2,6 +2,7 @@ import type {
   AgentCharConfigInput,
   AgentMechanicModule,
   AgentResourceInput,
+  AgentTeamConfigInput,
   AgentTeamPanelEffectInput,
   AgentResourceSectionsInput,
 } from '../types'
@@ -145,6 +146,9 @@ function buildRobinCharConfig({ cfg, skills }: AgentCharConfigInput): void {
   cfg.robinEntryActionTime = timeOf('1661011')
   cfg.robinAftershockDamage = getRowValue(all.find(m => m.id === '1661005'), 'damage')
   cfg.robinEntryDamage = getRowValue(all.find(m => m.id === '1661011'), 'damage')
+  // 1661019 表值（不带 override ⇒ 由引擎按 fusedOf 回填也行，但显式预存让「表值变了」可见）
+  cfg.robinCornerAssistDamage = getRowValue(all.find(m => m.id === '1661019'), 'damage')
+  cfg.robinCornerAssistDaze = getRowValue(all.find(m => m.id === '1661019'), 'daze')
 }
 
 /** 资源结算读数（展示用）：登场技次数 + Buff 强化点稳态。与 buildExecutions 同源调 solveRobinEntry。 */
@@ -157,6 +161,8 @@ function buildRobinResourceResult({ cfg, state, teamFrontlineSeconds }: Pick<Age
       entrySkillCount: entry.entrySkillCount,
       // Buff 强化点：登场技每次 +1、进离场守护必消耗 1（上限 1）⇒ 循环稳态恒有
       buffPointActive: entry.entrySkillCount > 0,
+      // 队友反制支援次数（converge 相位 applyTeamConfig 写入）→ 1661019 触发次数
+      teammateCounterAssists: Math.max(0, Math.floor(Number(cfg.robinTeammateCounterAssists ?? 0))),
     },
   }
 }
@@ -178,11 +184,34 @@ function buildRobinResourceSections({ result }: AgentResourceSectionsInput) {
         { label: '登场值上限', value: `${fmt(ROBIN_ENTRY_MAX)}`, detail: '同时持有上限；每 100 点触发一次登场技，余量继续累积' },
         { label: '登场技（≥100 点）', value: `${fmt(source.entrySkillCount)} 次`, detail: '每次消耗 100 点 + 获得 1 个 Buff 强化点（快速支援语义，占前台）' },
         { label: 'Buff 强化点', value: source.buffPointActive ? '常驻' : '无', detail: '离场守护防御提升 ×1.25（上限同步 ×1.25）' },
+        {
+          label: '角力协同突击（1661019）',
+          value: `${fmt(source.teammateCounterAssists)} 次`,
+          detail: '触发 = 队伍中**其他**角色发动[反制支援]且[完美反制]（1:1）；自动发动 ⇒ 不占前台时间、不产喧响与秽盾',
+        },
       ],
       footer: '离场守护·全队固定防御：每满 1000 点初始生命 +80（上限 800），门槛 16000，Buff 强化点 ×1.25；'
         + '护盾量 / 抗打断 / 每毁伤回 15 能量未建模（生存面 + 缺跨角色毁伤计数通道）。',
     },
   ]
+}
+
+/**
+ * 队友反制支援次数 → 自己的 1661019 触发次数（converge 相位写入，供 buildExecutions 读）。
+ *
+ * 为什么读得到：`buildCharConfig` 已把每槽的 `counterAssistCount` 写进**各自**的 cfg
+ * （`helpers.ts#buildCharConfig`），而 converge 派发递的是**同一批 cfg 对象**（实测三槽可见）。
+ * 口径（原文）：「队伍中**其他**角色发动[反制支援]后，若触发[完美反制]自动发动」
+ * ⇒ 只数别槽、不数自己；一次反制支援 = 整组化解 = 一次完美反制 ⇒ 1:1。
+ */
+function applyRobinTeamConfig({ slot, cfg, characters, phase }: AgentTeamConfigInput): void {
+  if (phase !== 'converge') return
+  let teammateCount = 0
+  for (const other of characters) {
+    if (other.slot === slot) continue
+    teammateCount += Math.max(0, Math.floor(Number(other.counterAssistCount) || 0))
+  }
+  cfg.robinTeammateCounterAssists = teammateCount
 }
 
 function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: AgentResourceInput): void {
@@ -200,6 +229,25 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
       // CC-391 D1：CD 驱动的后台自动行（10s CD，不靠玩家放置）⇒ 轴模式按失衡时间占比吃易伤
       autoSplitByStun: true,
       skillTableNote: `满覆盖近似：floor(有效战斗时间/${ROBIN_AFTERSHOCK_CD_SECONDS})，每次 +20 登场值（同时上限 120）`,
+    }))
+  }
+  // 支援突击·角力协同突击（1661019）：**队友**发动反制支援且完美反制时自动发动。
+  // 3.4.1+19997538 起该行 decibel/ether 均为 0、actionTime = 0（自动触发段，不占前台、不产喧响与秽盾，
+  // 与新包同批归零的 1661005/1661006 同性质）⇒ 只出伤害 + 失衡。
+  const teammateCounter = Math.max(0, Math.floor(Number(cfg.robinTeammateCounterAssists ?? 0)))
+  if (teammateCounter > 0) {
+    executions.push(moduleExecRow({
+      moveId: '1661019',
+      moveName: '支援突击：角力协同突击（队友反制支援·完美反制后自动发动）',
+      category: 'assist',
+      count: teammateCounter,
+      actionTime: 0,
+      totalTime: 0,
+      damageMultiplier: Number(cfg.robinCornerAssistDamage ?? 0),
+      dazeMultiplier: Number(cfg.robinCornerAssistDaze ?? 0),
+      ...RECOVERY_OFF,
+      timeBucket: 'necessary',
+      skillTableNote: '触发 = 队伍中**其他**角色发动[反制支援]且触发[完美反制]（1:1）；自动发动，不占前台时间、不产喧响与秽盾',
     }))
   }
   // 登场技：≥100 登场值时被换入发动（快速支援语义），占前台
@@ -250,6 +298,9 @@ export const robinMechanic: AgentMechanicModule = {
   description: 'v1 占位包（3.4.1+19997538 热更）：离场守护·全队固定防御（每 1000 初始生命 +80 / 上限 800 / Buff 点 ×1.25）'
     + ' + 登场值循环（追加攻击 10s CD +20 / 上限 120 / ≥100 触发登场技）；护盾量与「每毁伤回 15 能量」未建模。',
   teamPanelEffects: applyRobinTeamPanelEffects,
+  applyTeamConfig: applyRobinTeamConfig,
+  // 1661019 已有模块行（队友反制支援触发）⇒ 轴编辑器不得再把它当 [表] 直读候选（会双计）
+  axisHiddenMoves: ['1661019'],
   buildCharConfig: buildRobinCharConfig,
   buildExecutions: buildRobinExecutions,
   buildResourceResult: buildRobinResourceResult,
@@ -273,12 +324,21 @@ export const robinMechanic: AgentMechanicModule = {
  */
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
+    /**
+     * 本局**队友**发动[反制支援]的次数（converge 相位由 applyTeamConfig 写入）。
+     * 用途 = 1661019「支援突击：角力协同突击」的触发次数：原文
+     * 「队伍中**其他**角色发动[反制支援]后，若触发[完美反制]自动发动」——**不含她自己**发动的那几次。
+     */
+    robinTeammateCounterAssists?: number
     /** 登场技 1661011 动作时长（buildCharConfig 预存） */
     robinEntryActionTime?: number
     /** 追加攻击表值倍率（1661005 damage） */
     robinAftershockDamage?: number
     /** 登场技表值倍率（1661011 damage） */
     robinEntryDamage?: number
+    /** 支援突击·角力协同突击表值（1661019 damage / daze） */
+    robinCornerAssistDamage?: number
+    robinCornerAssistDaze?: number
   }
 }
 
@@ -290,6 +350,8 @@ declare module '@/types/resource/agentResources' {
       entryValue: number
       entrySkillCount: number
       buffPointActive: boolean
+      /** 队友反制支援次数 = 角力协同突击 1661019 的触发次数（只数别槽，不含自己） */
+      teammateCounterAssists: number
     }
   }
 }

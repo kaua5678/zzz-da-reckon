@@ -190,6 +190,52 @@ describe('挽昼 / 知更鸟 接入后的整链（引擎真跑一次）', () => 
     expect(withGift, '灯塔送层应抬毁伤次数').toBeGreaterThan(withoutGift)
   })
 
+  it('知更鸟 1661019：队友发动反制支援 ⇒ 自动段按 1:1 触发（不占前台、不产喧响）', async () => {
+    // 克拉蕾（有反制支援，承接槽 0） + 知更鸟（槽 2，自己不承接）
+    const { config } = await setupHarness([{ agentId: '1611' }, { agentId: '1201' }, { agentId: '1661' }])
+    applyBoss(config, [4, 3]) // 2 组控制技
+    expect(config.counterAssistSlot, '承接槽 = 克拉蕾').toBe(0)
+    const calc = useResourceCalc()
+    const robin = () => calc.resourceResult.value?.characters.find(c => c.agentId === '1661')
+    const rows = () => (robin()?.executions ?? []).filter(e => String(e.moveId) === ROBIN_COUNTER_ASSIST.followUpMoveId)
+    const row = rows()[0]
+    expect(row, '应产出角力协同突击行').toBeTruthy()
+    expect(row!.count, '触发次数 = 队友反制支援次数（2 组）').toBe(2)
+    expect(row!.actionTime, '自动段不占前台时间').toBe(0)
+    expect(row!.decibelRecovery, '不产喧响').toBe(0)
+    expect(row!.damageMultiplier).toBeCloseTo(rowOf(moveOf('1661', ROBIN_COUNTER_ASSIST.followUpMoveId), 'damage'), 1)
+
+    // 负控 A：没有队友有反制支援 ⇒ 一行都不产
+    const solo = await setupHarness([{ agentId: '1661' }, { agentId: '1201' }])
+    solo.config.setAgent(2, '1101')
+    expect(solo.config.counterAssistSlot).toBe(-1)
+    const soloCalc = useResourceCalc()
+    solo.config.applyBossPreset(
+      { id: '40000' } as never,
+      (JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8'))
+        .bosses.find((b: { id: string }) => b.id === '40000')).phases[0],
+      (JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8'))
+        .bosses.find((b: { id: string }) => b.id === '40000')).monster,
+      { ...(JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8'))
+        .bosses.find((b: { id: string }) => b.id === '40000')).defaults, counterAssistGroups: [4] },
+    )
+    const soloRows = (soloCalc.resourceResult.value?.characters.find(c => c.agentId === '1661')?.executions ?? [])
+      .filter(e => String(e.moveId) === ROBIN_COUNTER_ASSIST.followUpMoveId)
+    expect(soloRows.length, '队友无反制支援 ⇒ 不触发').toBe(0)
+  })
+
+  it('知更鸟 1661019：只数「队友」的反制支援——她自己承接时不算触发（原文「队伍中其他角色」）', async () => {
+    // 只有知更鸟有反制支援 ⇒ 她自己承接、自己打反制支援；1661019 需要**别人**发动 ⇒ 0 次
+    const { config } = await setupHarness([{ agentId: '1661' }, { agentId: '1201' }, { agentId: '1101' }])
+    applyBoss(config, [4])
+    expect(config.counterAssistSlot, '承接槽 = 知更鸟自己').toBe(0)
+    const calc = useResourceCalc()
+    const robin = calc.resourceResult.value?.characters.find(c => c.agentId === '1661')
+    expect((robin?.executions ?? []).some(e => String(e.moveId) === ROBIN_COUNTER_ASSIST.moveId), '她自己的反制支援照打').toBe(true)
+    const autoRows = (robin?.executions ?? []).filter(e => String(e.moveId) === ROBIN_COUNTER_ASSIST.followUpMoveId)
+    expect(autoRows.length, '自己的反制支援不触发自己的角力协同突击').toBe(0)
+  })
+
   it('知更鸟：同样能承接（不再是锋御专属），产出一行且时间只算本体 3.784s（1661019 不并入）', async () => {
     const { config } = await setupHarness([{ agentId: '1661' }, { agentId: '1101' }, { agentId: '1201' }])
     applyBoss(config, [3])
