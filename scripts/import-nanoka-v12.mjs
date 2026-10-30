@@ -19,6 +19,7 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { writeJsonCompact } from './lib/jsonio.mjs'
 import { resolveMoveElements } from './lib/move-elements.mjs'
+import { counterAssistEtherBase } from './lib/type-bonus-time.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const agentId = process.argv[2]
@@ -83,13 +84,18 @@ function num(v) { return Number.isFinite(v) ? v : 0 }
  * 「无垢熔锋」（招架支援后续段）基数 0，故不能按「支援突击」名称通配。
  * Counter Assist 走名称规则（未来新锋御角色的反制支援自动同口径）。
  *
- * @fact data:1611/反制支援两行秽盾基数 口径: 克拉蕾 1611028 反制支援：寸铁不让 与 1611030 支援突击：血华誓·琢形 的 ether_purify = 300 + 100t → actionTime = 3.717s / 1.117s（catalog 曾按 ether/100 直录成 6.717 / 4.117，各多算 3s）；同族 1611027 无垢熔锋（招架支援的后续段）基数 0，不按「支援突击」名称通配 | 据 用户@2026-09-12·复核@2026-09-25·复核@2026-09-30 | 验 src/composables/__tests__/counterAssist.test.ts::秽盾 300+100t | 锚 scripts/import-nanoka-v12.mjs#MOVE_ETHER_BASE | 信 确认
+ * @fact data:反制支援/秽盾定点基数 口径: 反制支援系（克拉蕾 1611028 寸铁不让 / 1611030 琢形、挽昼 1601204 希望堡垒、知更鸟 1661017 反制支援：角力）的 ether_purify = 300 + 100t；普通支援突击（如 1611027 无垢熔锋、1601013 虔志如初）基数 0，不按名称通配 | 据 用户@2026-09-12（克拉蕾两行）·用户@2026-10-30（挽昼提问「反制支援的时间直接用秽盾/100 在算得 6 秒，是不是漏了」——补全为按招族识别并收成单一事实源）·复核@2026-09-25·复核@2026-09-30·复核@2026-10-30 | 验 src/composables/__tests__/counterAssist.test.ts::反制支援秽盾定点基数 300 | 锚 scripts/lib/type-bonus-time.mjs#counterAssistEtherBase | 信 确认
+ * ⟳复核: 反制支援若新增角色/新招族（如换武器形态的「角力」段），先用其本体行反解 (秽盾−300)/100 是否命中反制支援标准式；若官方给它补 energyCost 或改秽盾录制口径，本定点基数让位 | 到期 2027-06-30
+ *
+ * 实现 = **单一事实源** `lib/type-bonus-time.mjs#counterAssistEtherBase`
+ * （按名「反制支援 / Counter Assist」+ 定点 id 1611030 琢形识别；1601204 挽昼同口径自动命中）。
+ * 本脚本原先在这里抄了一份 `MOVE_ETHER_BASE = { '1611028': 300, '1611030': 300 }`——
+ * 抄本与别处口径分叉过（2026-10-30：其他导入路径完全不知道 300 基数，把 1601204 算成 6.0s）。
  */
-const MOVE_ETHER_BASE = { '1611028': 300, '1611030': 300 }
 function actionTime(skill) {
   const ether = num(skill.ether_purify)
   const name = skill.name || ''
-  const base = MOVE_ETHER_BASE[String(skill.id)] ?? (/Counter Assist/.test(name) ? 300 : 0)
+  const base = counterAssistEtherBase({ id: String(skill.id), name: { en: name } })
   let t = ether > 0 ? ether / 100 : 0
   if (base > 0) t -= base / 100
   else if (/Dodge Counter/.test(name)) t -= 1.5

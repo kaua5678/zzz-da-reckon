@@ -339,7 +339,7 @@ check('character-mechanics has no cinemaImplementation(s) mirror (single source 
 // @fact engine:招式时间/类型加成 口径: 秽盾 − 积蓄 ∈ {150,250,500}±2 ⇒ 真实动作时间 = (秽盾−加成)/100（数据优先、名字佐证）；全库 94 条命中，修前仅 1471029 不一致 | 据 用户@2026-10-18 | 验 npm run validate:data | 锚 scripts/lib/type-bonus-time.mjs#inferTypeBonusFromRows | 信 确认
 // ⟳复核: nanoka 若改秽盾录制口径（不再带类型加成）或新增第 4 种加成值，须重跑 scripts/patch-move-action-time.mjs 并复核本判据命中数（当前 94 条） | 到期 2027-04-30
 {
-  const { inferTypeBonusFromRows } = await import('./lib/type-bonus-time.mjs')
+  const { inferTypeBonusFromRows, counterAssistEtherBase } = await import('./lib/type-bonus-time.mjs')
   const badTime = []
   let checked = 0
   for (const skills of catalog.agentSkills ?? []) {
@@ -348,6 +348,18 @@ check('character-mechanics has no cinemaImplementation(s) mirror (single source 
         const row = id => (move.rows ?? []).find(r => r.id === id)?.values?.[0] ?? 0
         const ether = row('ether_purify')
         const buildup = row('anomaly_buildup')
+        // 反制支援系：定点基数 300（数据反推不出来，按招族认）——与类型加成走同一条护栏，
+        // 漏掉它就会把 1601204 算成 6.0s / 1661017 算成 6.784s（2026-10-30 实际发生过）。
+        const counterBase = counterAssistEtherBase(move)
+        if (counterBase > 0 && ether > counterBase) {
+          checked++
+          const expectCounter = Math.round((ether - counterBase) / 100 * 10000) / 10000
+          const actualCounter = typeof move.actionTime === 'number' ? move.actionTime : NaN
+          if (!(Math.abs(actualCounter - expectCounter) <= 0.01)) {
+            badTime.push(`${move.id} ${move.name?.zhCN ?? ''}: actionTime=${actualCounter} 应为 ${expectCounter}（反制支援基数 ${counterBase}，秽盾${ether}）`)
+          }
+          continue
+        }
         const bonus = inferTypeBonusFromRows({ etherPurify: ether, anomalyBuildup: buildup })
         if (bonus <= 0) continue
         checked++

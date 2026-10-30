@@ -22,6 +22,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
 import type { BossPresetFile, BossPresetDefaults } from '@/types/bossPreset'
 import { CLARET_COUNTER_ASSIST, counterAssistOf } from '@/data/counterAssists'
+import { COUNTER_ASSIST_ETHER_BASE } from '../../../scripts/lib/type-bonus-time.mjs'
 import { CLARET_COUNTER_ASSIST as CLARET_FUSION } from '@/data/moveFusions'
 import { fusedGroupMetrics } from '@/core/resource/moveLookup'
 import { getAgentMechanic } from '@/mechanics'
@@ -70,6 +71,34 @@ function applyBoss(config: ReturnType<typeof useConfigStore>, groups?: number[])
   const { preset, phase, monster, defaults } = presetWith(groups)
   config.applyBossPreset({ id: preset.id }, phase as never, monster as never, defaults as never)
 }
+
+describe('反制支援秽盾定点基数 300（全库一行不漏）', () => {
+  it('每个「反制支援」行的 actionTime 都等于 (秽盾−300)/100', () => {
+    const hits: { agentId: string, id: string, zh: string, at: number, ether: number }[] = []
+    for (const skills of catalog.agentSkills as { agentId: string, categories: { moves: { id: string, name?: { zhCN?: string }, actionTime?: number, rows: { id: string, values: number[] }[] }[] }[] }[]) {
+      for (const cat of skills.categories) {
+        for (const m of cat.moves) {
+          if (!/^反制支援/.test(m.name?.zhCN ?? '')) continue
+          hits.push({ agentId: skills.agentId, id: m.id, zh: m.name?.zhCN ?? '', at: m.actionTime ?? 0, ether: m.rows.find(r => r.id === 'ether_purify')?.values[0] ?? 0 })
+        }
+      }
+    }
+    // 克拉蕾 1611028 / 挽昼 1601204 / 知更鸟 1661017 —— 三个独立样本反解同一个 300
+    expect(hits.length, '全库应有反制支援行').toBeGreaterThanOrEqual(3)
+    for (const h of hits) {
+      expect(h.ether - COUNTER_ASSIST_ETHER_BASE, `${h.agentId} ${h.id} 的秽盾 ${h.ether} 必须大于基数 300`).toBeGreaterThan(0)
+      expect(h.at, `${h.agentId} ${h.id}「${h.zh}」的 actionTime 没扣反制支援基数 300（秽盾 ${h.ether}）`)
+        .toBeCloseTo((h.ether - COUNTER_ASSIST_ETHER_BASE) / 100, 3)
+    }
+  })
+
+  it('基数只认反制支援系（负控）：普通支援突击不扣 300', () => {
+    const followUp = moveOf('1601', '1601013') // 支援突击：虔志如初（跟招架支援，不是反制支援）
+    expect(followUp).toBeTruthy()
+    expect(rowOf(followUp, 'ether_purify') - COUNTER_ASSIST_ETHER_BASE).toBeLessThan(0)
+    expect(followUp!.actionTime).toBeGreaterThan(1) // 扣 300 会折成负数/0 —— 这行必须保持原值
+  })
+})
 
 describe('反制支援登记表与倍率表一致性', () => {
   it('登记的 moveId 在 catalog 存在，且确为「反制支援 / 支援突击」两行（防 id 漂移）', () => {

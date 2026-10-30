@@ -16,7 +16,9 @@
  *
  * 明确不做（每条都是破坏性动作，交给人或走导入路径）：
  * - 不新增 catalog 没有的招式 id（结构/名字/分类要人判断）——报告里点名；
- * - 不删除 catalog 有、raw 没有的招式行——报告里点名；
+ * - **默认不删** catalog 有、raw 没有的招式行——报告里点名；`--drop-missing` 才删（逐条打印）。
+ *   2026-10-30 唯一用例：1661018「支援突击：角力突击」在新包被并进 1661017（用户裁决
+ *   「可能只是对应id变了」）——留着会对不上游戏，故显式删；
  * - 不改招式名 / level60 / faction / 非 6 类数值行（gash、sharpness、attack_data…）。
  */
 import { readFileSync } from 'node:fs'
@@ -39,18 +41,20 @@ if (ids.length === 0) {
  * **量级/语义不自洽**的增量——先不落 catalog，等下一版构建到手逐条判「真改还是占位」。
  * 每条点名到「招式 id + 行 id」，理由写在同一条里；确认是可发布口径后从表里删行即可放行。
  * （"两源一致"只证明两个抓取面读到了同一份客户端数据，**不证明那份客户端数据是成品**。）
- * ⟳复核: 下一版 nanoka 构建到手时逐条判「真改还是占位」——1661017 若仍是 1087.4% 失衡且
- *   ether 仍 67837（⇒ 动作时间 6.784s）则按真改录入；1661005/1661006/1661019 的 decibel/ether
- *   归零若仍在，则确认「追加攻击不再产喧响/秽盾」并同步改 spec 口径 | 到期 2026-11-30
+ *
+ * **2026-10-30 当天立、当天撤**——暂缓的两类后来都判为真值：
+ * - **1661017 反制支援**：不是量级异常，是**反制支援的秽盾定点基数 300 漏了**。按
+ *   (678.37−300)/100 = 3.7837s 代入反制支援标准式（支援突击基线 + 20 等效能量）后，
+ *   失衡/喧响/积蓄三列比值 1.0002 / 1.0005 / 1.0000、伤害列 1.2729 = 她自己的直伤系数
+ *   （1661016 支援突击同值 1.2723）。基数 300 已进 `lib/type-bonus-time.mjs#counterAssistEtherBase`。
+ * - **1661005 / 1661006 / 1661019 的 decibel·ether 归零**：用户 2026-10-30 裁决「按新的来吧，
+ *   估计也是一些后台招式」——它们是自动触发的招式，不占前台时间、不产喧响与秽盾。
  */
-const HOLD_DELTAS = {
-  1661017: { rows: ['damage', 'daze', 'decibel_recovery', 'anomaly_buildup', 'ether_purify', 'actionTime'], reason: '量级异常：失衡 71→1087.4%、ether 42.49→678.37 ⇒ 动作时间 0.425→6.784s（一次反制支援不合理）' },
-  1661005: { rows: ['decibel_recovery', 'ether_purify', 'actionTime'], reason: 'decibel/ether 归零 ⇒ 动作时间 0.55→0：等于「追加攻击不再产喧响与秽盾」，与同队 1661011 同类行不自洽' },
-  1661006: { rows: ['decibel_recovery', 'ether_purify', 'actionTime'], reason: '同 1661005（强化追加攻击）' },
-  1661019: { rows: ['decibel_recovery', 'anomaly_buildup', 'ether_purify', 'actionTime'], reason: '同 1661005（伤害 660→318.5 / 失衡 286.4→94.4 仍照录，只暂缓归零那三项）' },
-}
+const HOLD_DELTAS = {}
 const holdOn = !args.includes('--no-hold')
 const heldRows = (moveId) => (holdOn ? HOLD_DELTAS[moveId]?.rows ?? [] : [])
+/** `--drop-missing`：新包已无的 id 真的从 catalog 删掉（默认只报告） */
+const dropMissing = args.includes('--drop-missing')
 
 const catalogPath = resolve(root, 'public/static/catalog.json')
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))
@@ -109,7 +113,8 @@ for (const id of ids) {
         diffs.push(`${moveId} ${spec.rowId}: ${prev} → 删除（新包归零）`)
       }
     }
-    const nextTime = held.includes('actionTime') ? m.actionTime : actionTime(d.ether, m.name?.zhCN ?? '')
+    // 反制支援系先扣定点基数 300；传 moveId 供专属追击段（1611030 琢形）定点识别
+    const nextTime = held.includes('actionTime') ? m.actionTime : actionTime(d.ether, m.name?.zhCN ?? '', m.id)
     if (m.actionTime !== nextTime) {
       diffs.push(`${moveId} actionTime: ${m.actionTime} → ${nextTime}`)
       m.actionTime = nextTime
@@ -126,7 +131,21 @@ for (const id of ids) {
   console.log(`\n=== ${id}：${diffs.length} 处数值变化（raw ${rawPath.replace(root + '/', '')}） ===`)
   for (const line of diffs) console.log('  ' + line)
   if (newInRaw.length) console.log(`  ⚠ 新包有、catalog 无的招式 id（不自动新增，走 import 路径或人工录入）: ${newInRaw.join(', ')}`)
-  if (missingInCatalog.length) console.log(`  ⚠ 新包已无、catalog 仍保留的招式 id（未删除，请人判断）: ${missingInCatalog.join(', ')}`)
+  if (missingInCatalog.length && !dropMissing) {
+    console.log(`  ⚠ 新包已无、catalog 仍保留的招式 id（未删除，请人判断；--drop-missing 才删）: ${missingInCatalog.join(', ')}`)
+  }
+  if (missingInCatalog.length && dropMissing) {
+    for (const moveId of missingInCatalog) {
+      for (const cat of slice.categories) {
+        const i = cat.moves.findIndex(x => x.id === moveId)
+        if (i >= 0) {
+          console.log(`  删除 ${moveId} ${cat.moves[i].name?.zhCN ?? ''}（新包已无此 id，--drop-missing）`)
+          cat.moves.splice(i, 1)
+          changedFiles = true
+        }
+      }
+    }
+  }
   for (const moveId of new Set(heldHit.map(h => h.split(' ')[0]))) {
     console.log(`  ⏸ 暂缓（未落盘）：${moveId} —— ${HOLD_DELTAS[moveId].reason}`)
   }

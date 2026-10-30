@@ -41,6 +41,39 @@ export const TYPE_BONUS = Object.freeze({ dodgeCounter: 150, defensiveAssist: 25
 export const TYPE_BONUS_TOLERANCE = 2
 
 /**
+ * **反制支援（Counter Assist）系的定点秽盾基数 = 300**：这族招式的 `ether_purify = 300 + 100t`。
+ *
+ * 为什么不能并进 TYPE_BONUS：那三项靠「秽盾 − 积蓄」反推，而反制支援的积蓄**不参与**这个恒等式
+ * （1601204：秽盾 600 / 积蓄 599.44，差 0.56；1611028：差 −24.52）——**数据推不出来，只能按招族认**。
+ *
+ * 三个独立样本反解同一个 300（各 3 列独立命中，见 counterAssist.test.ts）：
+ * 克拉蕾 1611028 3.717s / 1661 反制支援 t=(678.37−300)/100=3.784s / 挽昼 1601204 3.0s。
+ * ⚠ 与**招架支援 250** 的区别（用户 2026-10-30 追问「不是 −250 吗」）：250 是弹刀（Defensive Assist）
+ * 的类型加成，走 TYPE_BONUS.defensiveAssist；反制支援是另一个招族。实测 1601204 按 250 折得 3.5s，
+ * 三列比值 0.896 / 0.907 / 0.899（明显偏低），按 300 折得 3.0s，三列 1.0003 / 1.0006 / 1.0001。
+ *
+ * 认行口径 = **招式名**（中文「反制支援」开头 / 英文 Counter Assist）+ 显式 id 表
+ * （`1611030` 琢形：名字是「支援突击」但那一段的基数随反制支援，唯一需要钉 id 的样本）。
+ */
+export const COUNTER_ASSIST_ETHER_BASE = 300
+/** 名字判不出、只能钉 id 的反制支援专属追击段（目前仅克拉蕾 1611030 琢形） */
+const COUNTER_ASSIST_BASE_MOVE_IDS = new Set(['1611030'])
+
+/**
+ * 该招式是否属于反制支援系（按名 + 定点 id；**不按名字前缀泛化到普通支援突击**——
+ * 1511x/1601x 那种跟招架支援的「支援突击：虔志如初」基数就是 0）。
+ * @param {{ id?: string, name?: { zhCN?: string, en?: string } }} move
+ * @returns {number} 0 或 300
+ */
+export function counterAssistEtherBase(move = {}) {
+  if (COUNTER_ASSIST_BASE_MOVE_IDS.has(String(move.id ?? ''))) return COUNTER_ASSIST_ETHER_BASE
+  const zh = move.name?.zhCN ?? ''
+  if (zh.startsWith('反制支援')) return COUNTER_ASSIST_ETHER_BASE
+  if (/Counter Assist/i.test(move.name?.en ?? '')) return COUNTER_ASSIST_ETHER_BASE
+  return 0
+}
+
+/**
  * 按数据（秽盾/积蓄）推断该招式的类型加成；无加成或数据不足返回 0。
  * @param {{ etherPurify?: number, anomalyBuildup?: number }} rows
  * @returns {number} 0 / 150 / 250 / 500

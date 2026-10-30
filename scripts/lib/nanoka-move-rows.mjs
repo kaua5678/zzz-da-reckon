@@ -16,6 +16,7 @@
  *   归属 = 该行之前最近的带 id param 行的 moveId（历史坑：每 moveId 只取首次会把耗能行整个漏掉）。
  */
 import { remapTemplateMoveId } from './move-elements.mjs'
+import { counterAssistEtherBase } from './type-bonus-time.mjs'
 
 /** 招式分类的抓取顺序（与 catalog 的 skillType 同口径） */
 export const MOVE_CATS = ['basic', 'dodge', 'special', 'chain', 'assist']
@@ -35,11 +36,21 @@ export const remapMoveId = remapTemplateMoveId
 /**
  * 秽盾口径 = `import-nanoka-missing.actionTime`（输入为爬虫刻度 ether = raw/100）：
  * 秽盾 = 动作时间 × 100 + 类型加成（闪反 +1.5 / 弹刀 +2.5 / 终结 +5）→ 按中文名识别类型折减。
+ *
+ * ⚠ **反制支援系（Counter Assist）先扣定点基数 300**（`type-bonus-time.mjs#counterAssistEtherBase`）：
+ * 它不属于 {150,250,500} 那套类型加成，数据也反推不出来（积蓄不参与那个恒等式），
+ * 漏了它就会把 1601204「希望堡垒」算成 6.0s（真值 3.0s）、1661017 算成 6.784s（真值 3.784s）
+ * ——倍率表上会看到反制支援的时间「直接用秽盾/100 在算」。
+ * @param {number} etherRaw 秽盾原始值（爬虫刻度 ×100）
+ * @param {string} zhName 招式中文名（判类型用）
+ * @param {string} [moveId] 招式 id（反制支援专属追击段的定点识别用）
  */
-export function actionTime(etherRaw, zhName) {
+export function actionTime(etherRaw, zhName, moveId = '') {
   const ether = etherRaw / 100
   let t = ether > 0 ? ether / 100 : 0
-  if (/闪避反击/.test(zhName)) t -= 1.5
+  const counterBase = counterAssistEtherBase({ id: moveId, name: { zhCN: zhName } })
+  if (counterBase > 0) t -= counterBase / 100
+  else if (/闪避反击/.test(zhName)) t -= 1.5
   else if (/招架支援/.test(zhName)) t -= 2.5
   // 「终结技：入场」是入场动作不是喧响终结，不吃 -5 加成折减
   else if (/(终极技|终结技)/.test(zhName) && !/入场/.test(zhName)) t -= 5

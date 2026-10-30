@@ -317,7 +317,7 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "src/types/resource/team.ts engine:收敛读数归属",
   "src/composables/teamCompareSweep.ts sweepPage:第三人候选圈定",
   "scripts/import-nanoka-bosses.mjs data:bossBodySize",
-  "scripts/import-nanoka-v12.mjs data:1611/反制支援两行秽盾基数",
+  // 2026-10-30：data:1611/反制支援两行秽盾基数 → 收成单一事实源 data:反制支援/秽盾定点基数 并补了 ⟳复核 触发器，本豁免销号（棘轮只减不增）
 ]
 
 /**

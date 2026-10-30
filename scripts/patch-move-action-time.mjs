@@ -23,7 +23,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { writeJsonCompact } from './lib/jsonio.mjs'
-import { inferTypeBonusFromRows, inferTypeBonusFromName, TYPE_BONUS_TOLERANCE } from './lib/type-bonus-time.mjs'
+import { counterAssistEtherBase, inferTypeBonusFromRows, inferTypeBonusFromName, TYPE_BONUS_TOLERANCE } from './lib/type-bonus-time.mjs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -95,7 +95,13 @@ for (const skills of catalog.agentSkills ?? []) {
         const bonus = typeBonus(move)
         const ether = rowValue(move, 'ether_purify')
         const buildup = rowValue(move, 'anomaly_buildup')
-        if (bonus > 0 && ether > 0 && buildup > 0 && Math.abs(ether - buildup) <= 2) {
+        // 反制支援系（Counter Assist）：秽盾 = 300 + 100t。**数据反推不出来**（积蓄不参与那个恒等式），
+        // 只能按招族认 —— 单源 `lib/type-bonus-time.mjs#counterAssistEtherBase`。
+        const counterBase = counterAssistEtherBase(move)
+        if (counterBase > 0 && ether > counterBase) {
+          target = Math.round((ether - counterBase) / 100 * 10000) / 10000
+          reason = `反制支援基数 ${counterBase}（秽盾${ether}）→ (秽盾−基数)/100`
+        } else if (bonus > 0 && ether > 0 && buildup > 0 && Math.abs(ether - buildup) <= 2) {
           // 秽盾 ≈ 积蓄：秽盾里**没有**类型加成（数据缺口），真实时间 = 积蓄/100
           target = Math.round(buildup / 100 * 10000) / 10000
           reason = `加成缺失（秽盾${ether}≈积蓄${buildup}）→ 积蓄/100`
