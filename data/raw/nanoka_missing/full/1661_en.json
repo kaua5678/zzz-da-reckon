@@ -1,8 +1,8 @@
 {
   "id": 1661,
   "icon": "IconRole1661",
-  "name": "Robin",
-  "code_name": "Robin",
+  "name": "Avatar_Female_Size02_Robin",
+  "code_name": "Avatar_Female_Size02_Robin_En",
   "rarity": 4,
   "weapon_type": {
     "5": "Defense"
@@ -15,7 +15,7 @@
     "102": "Strike"
   },
   "camp": {
-    "18": "Unknown Realm"
+    "18": "CampUnknownRealm"
   },
   "gender": 2,
   "partner_info": {},
@@ -60,7 +60,7 @@
       "Punch",
       "Ether",
       "Female",
-      "Camp10",
+      "Camp18",
       "Size2",
       "AidTypeParry",
       "Robin",
@@ -307,12 +307,12 @@
     "basic": {
       "description": [
         {
-          "name": "Basic Attack: Robin Attack",
-          "desc": "Press <IconMap:Icon_Normal> to activate:\nUnleashes up to 3 attacks forward, dealing <color=#FE437E>Ether DMG</color>;",
+          "name": "Robin_Skill_Normal_Title",
+          "desc": "Robin_Skill_Normal_Desc",
           "potential": []
         },
         {
-          "name": "Basic Attack: Robin Attack",
+          "name": "Robin_Skill_Normal_Title",
           "param": [
             {
               "name": "1st-Hit DMG Multiplier",
@@ -324,13 +324,13 @@
                   "format": "%",
                   "damage_percentage": 3750,
                   "damage_percentage_growth": 350,
-                  "stun_ratio": 2290,
-                  "stun_ratio_growth": 110,
+                  "stun_ratio": 1480,
+                  "stun_ratio_growth": 70,
                   "sp_recovery": 7500,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 57475,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 2081,
+                  "attribute_infliction": 1338,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -350,13 +350,13 @@
                   "format": "%",
                   "damage_percentage": 4400,
                   "damage_percentage_growth": 400,
-                  "stun_ratio": 4170,
-                  "stun_ratio_growth": 190,
+                  "stun_ratio": 3450,
+                  "stun_ratio_growth": 160,
                   "sp_recovery": 13640,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 104225,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 3788,
+                  "attribute_infliction": 3134,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -376,13 +376,13 @@
                   "format": "%",
                   "damage_percentage": 11520,
                   "damage_percentage_growth": 1050,
-                  "stun_ratio": 11870,
-                  "stun_ratio_growth": 540,
+                  "stun_ratio": 10140,
+                  "stun_ratio_growth": 470,
                   "sp_recovery": 38850,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 296725,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 10789,
+                  "attribute_infliction": 9212,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -397,18 +397,18 @@
               "desc": "{Skill:1661001, Prop:1002}",
               "param": {
                 "1661001": {
-                  "main": 2290,
-                  "growth": 110,
+                  "main": 1480,
+                  "growth": 70,
                   "format": "%",
                   "damage_percentage": 3750,
                   "damage_percentage_growth": 350,
-                  "stun_ratio": 2290,
-                  "stun_ratio_growth": 110,
+                  "stun_ratio": 1480,
+                  "stun_ratio_growth": 70,
                   "sp_recovery": 7500,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 57475,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 2081,
+                  "attribute_infliction": 1338,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -423,18 +423,18 @@
               "desc": "{Skill:1661002, Prop:1002}",
               "param": {
                 "1661002": {
-                  "main": 4170,
-                  "growth": 190,
+                  "main": 3450,
+                  "growth": 160,
                   "format": "%",
                   "damage_percentage": 4400,
                   "damage_percentage_growth": 400,
-                  "stun_ratio": 4170,
-                  "stun_ratio_growth": 190,
+                  "stun_ratio": 3450,
+                  "stun_ratio_growth": 160,
                   "sp_recovery": 13640,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 104225,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 3788,
+                  "attribute_infliction": 3134,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -449,18 +449,18 @@
               "desc": "{Skill:1661003, Prop:1002}",
               "param": {
                 "1661003": {
-                  "main": 11870,
-                  "growth": 540,
+                  "main": 10140,
+                  "growth": 470,
                   "format": "%",
                   "damage_percentage": 11520,
                   "damage_percentage_growth": 1050,
-                  "stun_ratio": 11870,
-                  "stun_ratio_growth": 540,
+                  "stun_ratio": 10140,
+                  "stun_ratio_growth": 470,
                   "sp_recovery": 38850,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 296725,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 10789,
+                  "attribute_infliction": 9212,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -526,22 +526,22 @@
     "dodge": {
       "description": [
         {
-          "name": "Dodge: Robin Dodge",
-          "desc": "Press <IconMap:Icon_Dash> to activate:\nA quick dash dodge.\nCharacter is invulnerable while using this skill.",
+          "name": "Robin_Skill_Evade_Title",
+          "desc": "Robin_Skill_Evade_Desc",
           "potential": []
         },
         {
-          "name": "Dash Attack: Robin Dash",
-          "desc": "Press <IconMap:Icon_Normal> during a dodge to activate:\nPerform an attack forward, dealing <color=#FE437E>Ether DMG</color>.",
+          "name": "Robin_Skill_Rush_Title",
+          "desc": "Robin_Skill_Rush_Desc",
           "potential": []
         },
         {
-          "name": "Dodge Counter: Robin Counter",
-          "desc": "Press <IconMap:Icon_Normal> during a <color=#FFFFFF>Perfect Dodge</color> to activate:\nSwing the staff to attack enemies in front, dealing <color=#FE437E>Ether DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Robin_Skill_Counter_Title",
+          "desc": "Robin_Skill_Counter_Desc",
           "potential": []
         },
         {
-          "name": "Dash Attack: Robin Dash",
+          "name": "Robin_Skill_Rush_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -599,7 +599,7 @@
           "potential": []
         },
         {
-          "name": "Dodge Counter: Robin Counter",
+          "name": "Robin_Skill_Counter_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -709,22 +709,22 @@
     "special": {
       "description": [
         {
-          "name": "Special Attack: Robin Exit",
-          "desc": "Press <IconMap:Icon_Special> to activate:\nLeaps high into the air and unleashes an Energy Blast around her, dealing massive <color=#FE437E>Ether DMG</color>.\nDuring skill activation, Anti-Interrupt level increases, and DMG taken is reduced by 40%.\nAfter activation, triggers a Quick Assist. After switching out, Robin enters the [Off-Field Guard] state for 60s. Repeated triggers refresh the duration. Also grants all squad members a [Robin Shield] equal to 2% of Robin's initial Max HP, lasting 15s.\nWhile Robin is in the [Off-Field Guard] state, she can only be switched in via [Chain Attack], [Entry Skill], or [Counter Assist]. Switching her in ends the [Off-Field Guard] state.\nWhile [Off-Field Guard] is active, all squad members gain bonus DEF: when Robin's initial Max HP exceeds 16,000, every 1,000 additional HP grants <color=#2BAD00>{CAL:44+AvatarSkillLevel(1)*3,1,3}</color> DEF, up to a maximum of <color=#2BAD00>{CAL:440+AvatarSkillLevel(1)*30,1,2}</color> DEF. This effect lasts for another 15s after Robin's [Off-Field Guard] state ends.",
+          "name": "Robin_Skill_Special_Title",
+          "desc": "Robin_Skill_Special_Desc",
           "potential": []
         },
         {
-          "name": "Special Attack: Aftershock",
-          "desc": "While Robin is in the [Off-Field Guard] state, this skill triggers automatically when another active character in the squad lands any attack on an enemy:\nSwings her staff to attack forward, dealing <color=#FE437E>Ether DMG</color>;\nCharacter is invulnerable while using this skill;\nUpon activation, gains 20 [Entry Points] and grants all squad members a [Robin Shield] equal to 3% of Robin's initial Max HP, lasting 15s;\n[Special Attack: Aftershock] counts as an Aftershock and can be triggered at most once every 8s.",
+          "name": "Robin_Skill_CoAttack_Title",
+          "desc": "Robin_Skill_CoAttack_Desc",
           "potential": []
         },
         {
-          "name": "EX Special Attack: Enhanced Aftershock",
-          "desc": "When activating [Special Attack: Aftershock], if Energy is at least 40, it is upgraded to [EX Special Attack: Enhanced Aftershock]:\nContinuously consumes a total of 40 Energy to fire a powerful laser forward, dealing massive <color=#FE437E>Ether DMG</color>;\nRobin's heavy attacks deal additional DMG equal to <color=#2BAD00>{CAL:0.214+AvatarSkillLevel(1)*0.028,100,2}%</color> of her Max HP;\nCharacter is invulnerable while using this skill;\nUpon activation, gains 20 [Entry Points] and grants all squad members a [Robin Shield] equal to 6% of her initial Max HP, lasting 15s;\n[EX Special Attack: Enhanced Aftershock] counts as an Aftershock.",
+          "name": "Robin_Skill_EnhanceCoAttack_Title",
+          "desc": "Robin_Skill_EnhanceCoAttack_Desc",
           "potential": []
         },
         {
-          "name": "Special Attack: Robin Exit",
+          "name": "Robin_Skill_Special_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -792,30 +792,30 @@
           "potential": []
         },
         {
-          "name": "Special Attack: Aftershock",
+          "name": "Robin_Skill_CoAttack_Title",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1661005, Prop:1001}",
               "param": {
                 "1661005": {
-                  "main": 5600,
-                  "growth": 510,
+                  "main": 21000,
+                  "growth": 1910,
                   "format": "%",
-                  "damage_percentage": 5600,
-                  "damage_percentage_growth": 510,
-                  "stun_ratio": 6050,
-                  "stun_ratio_growth": 280,
+                  "damage_percentage": 21000,
+                  "damage_percentage_growth": 1910,
+                  "stun_ratio": 5500,
+                  "stun_ratio_growth": 250,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 151250,
+                  "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 5500,
+                  "attribute_infliction": 5000,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 5500
+                  "ether_purify": 0
                 }
               },
               "potential": []
@@ -825,23 +825,23 @@
               "desc": "{Skill:1661005, Prop:1002}",
               "param": {
                 "1661005": {
-                  "main": 6050,
-                  "growth": 280,
+                  "main": 5500,
+                  "growth": 250,
                   "format": "%",
-                  "damage_percentage": 5600,
-                  "damage_percentage_growth": 510,
-                  "stun_ratio": 6050,
-                  "stun_ratio_growth": 280,
+                  "damage_percentage": 21000,
+                  "damage_percentage_growth": 1910,
+                  "stun_ratio": 5500,
+                  "stun_ratio_growth": 250,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 151250,
+                  "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 5500,
+                  "attribute_infliction": 5000,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 5500
+                  "ether_purify": 0
                 }
               },
               "potential": []
@@ -850,30 +850,30 @@
           "potential": []
         },
         {
-          "name": "EX Special Attack: Enhanced Aftershock",
+          "name": "Robin_Skill_EnhanceCoAttack_Title",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1661006, Prop:1001}",
               "param": {
                 "1661006": {
-                  "main": 14000,
-                  "growth": 1280,
+                  "main": 68250,
+                  "growth": 6210,
                   "format": "%",
-                  "damage_percentage": 14000,
-                  "damage_percentage_growth": 1280,
-                  "stun_ratio": 15850,
-                  "stun_ratio_growth": 730,
+                  "damage_percentage": 68250,
+                  "damage_percentage_growth": 6210,
+                  "stun_ratio": 20350,
+                  "stun_ratio_growth": 930,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 128425,
+                  "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 16022,
+                  "attribute_infliction": 18500,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 4667
+                  "ether_purify": 0
                 }
               },
               "potential": []
@@ -883,23 +883,23 @@
               "desc": "{Skill:1661006, Prop:1002}",
               "param": {
                 "1661006": {
-                  "main": 15850,
-                  "growth": 730,
+                  "main": 20350,
+                  "growth": 930,
                   "format": "%",
-                  "damage_percentage": 14000,
-                  "damage_percentage_growth": 1280,
-                  "stun_ratio": 15850,
-                  "stun_ratio_growth": 730,
+                  "damage_percentage": 68250,
+                  "damage_percentage_growth": 6210,
+                  "stun_ratio": 20350,
+                  "stun_ratio_growth": 930,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 128425,
+                  "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 16022,
+                  "attribute_infliction": 18500,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 4667
+                  "ether_purify": 0
                 }
               },
               "potential": []
@@ -965,17 +965,17 @@
     "chain": {
       "description": [
         {
-          "name": "Chain Attack: Robin Chain Attack",
-          "desc": "When a <color=#FFFFFF>Chain Attack</color> is triggered, select the character to activate:\nFires a powerful laser forward, dealing massive <color=#FE437E>Ether DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Robin_Skill_QTE_Title",
+          "desc": "Robin_Skill_QTE_Desc",
           "potential": []
         },
         {
-          "name": "Ultimate: Robin Ultimate",
-          "desc": "When Decibel Rating is at <color=#FFFFFF>Maximum</color>, press <IconMap:Icon_UltimateReady> to activate:\nChannels powerful energy through song to unleash a devastating blast, dealing massive <color=#FE437E>Ether DMG</color>.\nCharacter is invulnerable while using this skill.\nUpon activation, converts 40% of each squad Agent's [Robin Shield] into their own HP.",
+          "name": "Robin_Skill_ExQTE_Title",
+          "desc": "Robin_Skill_ExQTE_Desc",
           "potential": []
         },
         {
-          "name": "Chain Attack: Robin Chain Attack",
+          "name": "Robin_Skill_QTE_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1033,7 +1033,7 @@
           "potential": []
         },
         {
-          "name": "Ultimate: Robin Ultimate",
+          "name": "Robin_Skill_ExQTE_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1143,53 +1143,48 @@
     "assist": {
       "description": [
         {
-          "name": "Entry Skill: Robin Entrance",
-          "desc": "When at 100 or more [Entry Points], switching this character on field or holding <IconMap:Icon_Normal> consumes 100 [Entry Points] to activate:\nUnleashes an Energy blast at enemies in front, dealing massive <color=#FE437E>Ether DMG</color>.\nActivating this skill counts as activating a [Quick Assist].\nProvides all squad members with a [Robin Shield] equal to 4% of this character's initial Max HP, lasting 20s.",
+          "name": "Robin_Skill_Appear_Title",
+          "desc": "Robin_Skill_Appear_Desc",
           "potential": []
         },
         {
-          "name": "Quick Assist: Robin Assist",
-          "desc": "When the active character is launched, press <IconMap:Icon_Switch> to activate:\nSwing the staff to attack enemies in front, dealing <color=#FE437E>Ether DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Robin_Skill_BeHitAid_Title",
+          "desc": "Robin_Skill_BeHitAid_Desc",
           "potential": []
         },
         {
-          "name": "Defensive Assist: Robin Defensive Assist",
-          "desc": "When the on-field character is about to be attacked, press <IconMap:Icon_Switch> to activate:\nParries the enemy's attack, dealing massive Daze.\nCharacter is invulnerable while using this skill.",
+          "name": "Robin_Skill_ParryAid_Title",
+          "desc": "Robin_Skill_ParryAid_Desc",
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Robin Assist Follow-Up",
-          "desc": "Press <IconMap:Icon_Normal> after a <color=#FFFFFF>Defensive Assist</color> to activate:\nSwing the staff to attack enemies in front, dealing <color=#FE437E>Ether DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Robin_Skill_AssaultAid_Title",
+          "desc": "Robin_Skill_AssaultAid_Desc",
           "potential": []
         },
         {
-          "name": "Counter Assist: Robin Counter",
-          "desc": "When you or the on-field character is about to be hit by certain enemies' Control Skills, press <IconMap:Icon_Switch> to activate:\nEngage in a power clash with the monster. If successful, neutralize the enemy's Control Skill and deal <color=#FE437E>Ether DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Robin_Skill_CounterAssist_Title",
+          "desc": "Robin_Skill_CounterAssist_Desc",
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Grapple Assault",
-          "desc": "After using a <color=#FFFFFF>Counter Assist</color>, press <IconMap:Icon_Normal> to activate [Assist Follow-Up], which automatically triggers:\nDeals massive <color=#FE437E>Ether DMG</color>;\nCharacter is invulnerable while using this skill.",
+          "name": "Robin_Skill_WrestleAidAssist_Title",
+          "desc": "Robin_Skill_WrestleAidAssist_Desc",
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Grappling Synergy Strike",
-          "desc": "Press <IconMap:Icon_Normal> after other squad members activate a <color=#FFFFFF>Counter Assist</color> to activate:\nFire a powerful laser forward, dealing massive <color=#FE437E>Ether DMG</color>.\nCharacter is invulnerable while using this skill.",
-          "potential": []
-        },
-        {
-          "name": "Entry Skill: Robin Entrance",
+          "name": "Robin_Skill_Appear_Title",
           "param": [
             {
               "name": "DMG Multiplier",
               "desc": "{Skill:1661011, Prop:1001}",
               "param": {
                 "1661011": {
-                  "main": 106400,
-                  "growth": 9680,
+                  "main": 148400,
+                  "growth": 13500,
                   "format": "%",
-                  "damage_percentage": 106400,
-                  "damage_percentage_growth": 9680,
+                  "damage_percentage": 148400,
+                  "damage_percentage_growth": 13500,
                   "stun_ratio": 17600,
                   "stun_ratio_growth": 800,
                   "sp_recovery": 57590,
@@ -1214,8 +1209,8 @@
                   "main": 17600,
                   "growth": 800,
                   "format": "%",
-                  "damage_percentage": 106400,
-                  "damage_percentage_growth": 9680,
+                  "damage_percentage": 148400,
+                  "damage_percentage_growth": 13500,
                   "stun_ratio": 17600,
                   "stun_ratio_growth": 800,
                   "sp_recovery": 57590,
@@ -1236,7 +1231,7 @@
           "potential": []
         },
         {
-          "name": "Quick Assist: Robin Assist",
+          "name": "Robin_Skill_BeHitAid_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1294,7 +1289,7 @@
           "potential": []
         },
         {
-          "name": "Defensive Assist: Robin Defensive Assist",
+          "name": "Robin_Skill_ParryAid_Title",
           "param": [
             {
               "name": "Light Defensive Daze Multiplier",
@@ -1378,7 +1373,7 @@
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Robin Assist Follow-Up",
+          "name": "Robin_Skill_AssaultAid_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1436,56 +1431,56 @@
           "potential": []
         },
         {
-          "name": "Counter Assist: Robin Counter",
+          "name": "Robin_Skill_CounterAssist_Title",
           "param": [
             {
               "name": "DMG Multiplier",
-              "desc": "{Skill:1611017, Prop:1001}",
+              "desc": "{Skill:1661017, Prop:1001}",
               "param": {
-                "1611017": {
-                  "main": 13420,
-                  "growth": 1220,
+                "1661017": {
+                  "main": 105280,
+                  "growth": 9580,
                   "format": "%",
-                  "damage_percentage": 13420,
-                  "damage_percentage_growth": 1220,
-                  "stun_ratio": 4680,
-                  "stun_ratio_growth": 220,
+                  "damage_percentage": 105280,
+                  "damage_percentage_growth": 9580,
+                  "stun_ratio": 72440,
+                  "stun_ratio_growth": 3300,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 128700,
+                  "fever_recovery": 2324850,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 4248,
+                  "attribute_infliction": 70523,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 4249
+                  "ether_purify": 67837
                 }
               },
               "potential": []
             },
             {
               "name": "Daze Multiplier",
-              "desc": "{Skill:1611017, Prop:1002}",
+              "desc": "{Skill:1661017, Prop:1002}",
               "param": {
-                "1611017": {
-                  "main": 4680,
-                  "growth": 220,
+                "1661017": {
+                  "main": 72440,
+                  "growth": 3300,
                   "format": "%",
-                  "damage_percentage": 13420,
-                  "damage_percentage_growth": 1220,
-                  "stun_ratio": 4680,
-                  "stun_ratio_growth": 220,
+                  "damage_percentage": 105280,
+                  "damage_percentage_growth": 9580,
+                  "stun_ratio": 72440,
+                  "stun_ratio_growth": 3300,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 128700,
+                  "fever_recovery": 2324850,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 4248,
+                  "attribute_infliction": 70523,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 4249
+                  "ether_purify": 67837
                 }
               },
               "potential": []
@@ -1494,114 +1489,56 @@
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Grapple Assault",
+          "name": "Robin_Skill_WrestleAidAssist_Title",
           "param": [
             {
               "name": "DMG Multiplier",
-              "desc": "{Skill:1611018, Prop:1001}",
+              "desc": "{Skill:1661019, Prop:1001}",
               "param": {
-                "1611018": {
-                  "main": 27250,
-                  "growth": 2480,
+                "1661019": {
+                  "main": 15900,
+                  "growth": 1450,
                   "format": "%",
-                  "damage_percentage": 27250,
-                  "damage_percentage_growth": 2480,
-                  "stun_ratio": 19620,
-                  "stun_ratio_growth": 900,
+                  "damage_percentage": 15900,
+                  "damage_percentage_growth": 1450,
+                  "stun_ratio": 6250,
+                  "stun_ratio_growth": 290,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 237050,
+                  "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 7833,
+                  "attribute_infliction": 0,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 22834
+                  "ether_purify": 0
                 }
               },
               "potential": []
             },
             {
               "name": "Daze Multiplier",
-              "desc": "{Skill:1611018, Prop:1002}",
+              "desc": "{Skill:1661019, Prop:1002}",
               "param": {
-                "1611018": {
-                  "main": 19620,
-                  "growth": 900,
+                "1661019": {
+                  "main": 6250,
+                  "growth": 290,
                   "format": "%",
-                  "damage_percentage": 27250,
-                  "damage_percentage_growth": 2480,
-                  "stun_ratio": 19620,
-                  "stun_ratio_growth": 900,
+                  "damage_percentage": 15900,
+                  "damage_percentage_growth": 1450,
+                  "stun_ratio": 6250,
+                  "stun_ratio_growth": 290,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 237050,
+                  "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 7833,
+                  "attribute_infliction": 0,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 22834
-                }
-              },
-              "potential": []
-            }
-          ],
-          "potential": []
-        },
-        {
-          "name": "Assist Follow-Up: Grappling Synergy Strike",
-          "param": [
-            {
-              "name": "DMG Multiplier",
-              "desc": "{Skill:1611019, Prop:1001}",
-              "param": {
-                "1611019": {
-                  "main": 33000,
-                  "growth": 3000,
-                  "format": "%",
-                  "damage_percentage": 33000,
-                  "damage_percentage_growth": 3000,
-                  "stun_ratio": 19070,
-                  "stun_ratio_growth": 870,
-                  "sp_recovery": 0,
-                  "sp_recovery_growth": 0,
-                  "fever_recovery": 221925,
-                  "fever_recovery_growth": 0,
-                  "attribute_infliction": 7333,
-                  "sp_consume": 0,
-                  "attack_data": [],
-                  "rp_recovery": 0,
-                  "rp_recovery_growth": 0,
-                  "ether_purify": 22334
-                }
-              },
-              "potential": []
-            },
-            {
-              "name": "Daze Multiplier",
-              "desc": "{Skill:1611019, Prop:1002}",
-              "param": {
-                "1611019": {
-                  "main": 19070,
-                  "growth": 870,
-                  "format": "%",
-                  "damage_percentage": 33000,
-                  "damage_percentage_growth": 3000,
-                  "stun_ratio": 19070,
-                  "stun_ratio_growth": 870,
-                  "sp_recovery": 0,
-                  "sp_recovery_growth": 0,
-                  "fever_recovery": 221925,
-                  "fever_recovery_growth": 0,
-                  "attribute_infliction": 7333,
-                  "sp_consume": 0,
-                  "attack_data": [],
-                  "rp_recovery": 0,
-                  "rp_recovery_growth": 0,
-                  "ether_purify": 22334
+                  "ether_purify": 0
                 }
               },
               "potential": []
@@ -1668,12 +1605,12 @@
         "level": 1,
         "id": 1661501,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Robin_UniqueSkill_Title",
+          "Robin_MathSkill_Title"
         ],
         "desc": [
-          "When Robin uses certain skills, she grants all squad members a shield [Robin Shield] based on a varying percentage of Robin's initial Max HP, lasting 15s. When a character gains [Robin Shield] again, the shield value stacks and the duration of [Robin Shield] is extended, up to a maximum of 60s. The shield value cannot exceed 8% of Robin's initial Max HP;\nEach time a squad member gains [Robin Shield], their DMG increases by <color=#2BAD00>12.5%</color> for 15s. Repeated triggers refresh the duration;\nUsing [Special Attack: Step Up] triggers a Quick Assist. After switching out, Robin enters the [Off-Field Guard] state for 60s. While in the [Off-Field Guard] state, Robin's Aftershocks grant [Entry Points], up to a maximum of 120;\nWhen [Entry Points] are at 100 or above, Robin can be actively switched in via [Entry Skill]. Switching in automatically consumes 100 [Entry Points] to activate [Entry Skill] and ends the [Off-Field Guard] state;\nWhen activating [Entry Skill], Robin gains 1 [Buff Enhance Point], up to a maximum of 1;\nWhen entering the [Off-Field Guard] state, if Robin has a [Buff Enhance Point], 1 [Buff Enhance Point] is consumed to further increase the DEF boost provided by the [Off-Field Guard] state and its cap by 25%;\nEach time a squad member triggers Maim, Robin restores 15 Energy.",
-          "Triggers when another character in your squad is an [Armorer] or [Stun] Character:\nUpon entering the battlefield, gain 1 [Buff Enhance Point]. In Domain Mode, this effect can trigger once every 180s."
+          "Robin_UniqueSkill_01_Desc",
+          "Robin_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -1682,12 +1619,12 @@
         "level": 2,
         "id": 1661502,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Robin_UniqueSkill_Title",
+          "Robin_MathSkill_Title"
         ],
         "desc": [
-          "When Robin uses certain skills, she grants all squad members a [Robin Shield] that scales with Robin's initial Max HP, lasting 15s. Gaining [Robin Shield] again stacks the shield amount and extends its duration, up to a maximum of 60s. The shield amount cannot exceed 8% of Robin's initial Max HP.\nEach time all squad members gain [Robin Shield], their DMG dealt increases by <color=#2BAD00>14.6%</color> for 15s. Repeated triggers refresh the duration.\nUsing [Special Attack: Step Up] triggers a Quick Assist. After switching out, Robin enters the [Off-Field Guard] state for 60s. While in [Off-Field Guard], Robin gains [Entry Points] when she uses Aftershocks, up to a maximum of 120 points.\nWhen [Entry Points] are at 100 or above, Robin can be actively switched in via [Entry Skill]. On switching in, she automatically consumes 100 [Entry Points] to use [Entry Skill] and exits the [Off-Field Guard] state.\nWhen using [Entry Skill], Robin gains 1 [Buff Enhance Point], up to a maximum of 1.\nWhen entering the [Off-Field Guard] state, if Robin has a [Buff Enhance Point], she consumes 1 [Buff Enhance Point] to further increase the DEF boost granted by [Off-Field Guard] and its cap by 25%.\nEach time a squad member triggers Maim, Robin restores 15 Energy.",
-          "Triggers when another character in your squad is an [Armorer] or [Stun] Character:\nUpon entering the battlefield, gain 1 [Buff Enhance Point]. In Domain Mode, this effect can trigger once every 180s."
+          "Robin_UniqueSkill_02_Desc",
+          "Robin_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -1696,12 +1633,12 @@
         "level": 3,
         "id": 1661503,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Robin_UniqueSkill_Title",
+          "Robin_MathSkill_Title"
         ],
         "desc": [
-          "When Robin uses certain skills, she grants all squad members a [Robin Shield] equal to a set percentage of her initial Max HP, lasting 15s. When a character gains [Robin Shield] again, the shield value stacks and its duration is extended, up to a maximum of 60s. The shield value cannot exceed 8% of Robin's initial Max HP.\nEach time a squad member gains [Robin Shield], their DMG is increased by <color=#2BAD00>16.7%</color> for 15s. Repeated triggers refresh the duration.\nUsing [Special Attack: Step Up] triggers a Quick Assist. After switching out, Robin enters the [Off-Field Guard] state for 60s. While in [Off-Field Guard], Robin gains [Entry Points] when her Aftershock is triggered, up to a maximum of 120 points.\nWhen Robin has 100 or more [Entry Points], she can be manually switched in via her [Entry Skill]. Switching in automatically consumes 100 [Entry Points] to activate the [Entry Skill] and ends the [Off-Field Guard] state.\nWhen Robin uses her [Entry Skill], she gains 1 [Buff Enhance Point], up to a maximum of 1.\nUpon entering the [Off-Field Guard] state, if Robin has a [Buff Enhance Point], she consumes 1 [Buff Enhance Point] to further increase the DEF bonus provided by [Off-Field Guard] and its cap by 25%.\nEach time a squad member triggers Maim, Robin recovers 15 Energy.",
-          "Triggers when another character in your squad is an [Armorer] or [Stun] Character:\nUpon entering the battlefield, gain 1 [Buff Enhance Point]. In Domain Mode, this effect can trigger once every 180s."
+          "Robin_UniqueSkill_03_Desc",
+          "Robin_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -1710,12 +1647,12 @@
         "level": 4,
         "id": 1661504,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Robin_UniqueSkill_Title",
+          "Robin_MathSkill_Title"
         ],
         "desc": [
-          "When Robin uses certain skills, she grants all squad members a [Robin Shield] scaling off varying percentages of Robin's initial Max HP, lasting 15s. Gaining [Robin Shield] again stacks the shield amount and extends its duration, up to a maximum of 60s. The total shield amount cannot exceed 8% of Robin's initial Max HP;\nEach time a squad member gains [Robin Shield], their DMG dealt increases by <color=#2BAD00>18.8%</color> for 15s. Repeated triggers refresh the duration;\nUsing [Special Attack: Step Up] triggers a Quick Assist. After switching out, Robin enters the [Off-Field Guard] state for 60s. While in [Off-Field Guard], Robin gains [Entry Points] when she uses an Aftershock, up to a maximum of 120 points;\nWhen Robin has 100 or more [Entry Points], she can be actively switched in via her [Entry Skill]. Upon switching in, 100 [Entry Points] are automatically consumed to activate her [Entry Skill], and she exits the [Off-Field Guard] state;\nWhen Robin activates her [Entry Skill], she gains 1 [Buff Enhance Point], up to a maximum of 1;\nUpon entering the [Off-Field Guard] state, if Robin has a [Buff Enhance Point], 1 [Buff Enhance Point] is consumed to further increase the DEF boost granted by [Off-Field Guard] and its cap by 25%;\nEach time a squad member triggers a Maim, Robin restores 15 Energy.",
-          "Triggers when another character in your squad is an [Armorer] or [Stun] Character:\nUpon entering the battlefield, gain 1 [Buff Enhance Point]. In Domain Mode, this effect can trigger once every 180s."
+          "Robin_UniqueSkill_04_Desc",
+          "Robin_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -1724,12 +1661,12 @@
         "level": 5,
         "id": 1661505,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Robin_UniqueSkill_Title",
+          "Robin_MathSkill_Title"
         ],
         "desc": [
-          "When Robin uses certain skills, she grants all squad members a [Robin Shield] equal to a set percentage of her initial Max HP, lasting 15s. When a character gains [Robin Shield] again, the shield value stacks and its duration is extended, up to a maximum of 60s. The shield value cannot exceed 8% of Robin's initial Max HP.\nEach time a squad member gains [Robin Shield], their DMG is increased by <color=#2BAD00>20.8%</color> for 15s. Repeated triggers refresh the duration.\nUsing [Special Attack: Step Up] triggers a Quick Assist. After switching out, Robin enters the [Off-Field Guard] state for 60s. While in [Off-Field Guard], Robin gains [Entry Points] when her Aftershock is triggered, up to a maximum of 120 points.\nWhen Robin has 100 or more [Entry Points], she can be manually switched in via her [Entry Skill]. Switching in automatically consumes 100 [Entry Points] to activate the [Entry Skill] and ends the [Off-Field Guard] state.\nWhen Robin uses her [Entry Skill], she gains 1 [Buff Enhance Point], up to a maximum of 1.\nUpon entering the [Off-Field Guard] state, if Robin has a [Buff Enhance Point], she consumes 1 [Buff Enhance Point] to further increase the DEF bonus provided by [Off-Field Guard] and its cap by 25%.\nEach time a squad member triggers Maim, Robin recovers 15 Energy.",
-          "Triggers when another character in your squad is an [Armorer] or [Stun] Character:\nUpon entering the battlefield, gain 1 [Buff Enhance Point]. In Domain Mode, this effect can trigger once every 180s."
+          "Robin_UniqueSkill_05_Desc",
+          "Robin_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -1738,12 +1675,12 @@
         "level": 6,
         "id": 1661506,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Robin_UniqueSkill_Title",
+          "Robin_MathSkill_Title"
         ],
         "desc": [
-          "When Robin uses certain skills, she grants all squad members a [Robin Shield] equal to a set percentage of her initial Max HP, lasting 15s. When a character gains [Robin Shield] again, the shield value stacks and its duration is extended, up to a maximum of 60s. The shield value cannot exceed 8% of Robin's initial Max HP.\nEach time a squad member gains [Robin Shield], their DMG is increased by <color=#2BAD00>22.9%</color> for 15s. Repeated triggers refresh the duration.\nUsing [Special Attack: Step Up] triggers a Quick Assist. After switching out, Robin enters the [Off-Field Guard] state for 60s. While in [Off-Field Guard], Robin gains [Entry Points] when her Aftershock is triggered, up to a maximum of 120 points.\nWhen Robin has 100 or more [Entry Points], she can be manually switched in via her [Entry Skill]. Switching in automatically consumes 100 [Entry Points] to activate the [Entry Skill] and ends the [Off-Field Guard] state.\nWhen Robin uses her [Entry Skill], she gains 1 [Buff Enhance Point], up to a maximum of 1.\nUpon entering the [Off-Field Guard] state, if Robin has a [Buff Enhance Point], she consumes 1 [Buff Enhance Point] to further increase the DEF bonus provided by [Off-Field Guard] and its cap by 25%.\nEach time a squad member triggers Maim, Robin recovers 15 Energy.",
-          "Triggers when another character in your squad is an [Armorer] or [Stun] Character:\nUpon entering the battlefield, gain 1 [Buff Enhance Point]. In Domain Mode, this effect can trigger once every 180s."
+          "Robin_UniqueSkill_06_Desc",
+          "Robin_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -1752,12 +1689,12 @@
         "level": 7,
         "id": 1661507,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Robin_UniqueSkill_Title",
+          "Robin_MathSkill_Title"
         ],
         "desc": [
-          "When Robin uses certain skills, she grants all squad members a [Robin Shield] equal to a set percentage of her initial Max HP, lasting 15s. When a character gains [Robin Shield] again, the shield value stacks and its duration is extended, up to a maximum of 60s. The shield value cannot exceed 8% of Robin's initial Max HP.\nEach time a squad member gains [Robin Shield], their DMG is increased by <color=#2BAD00>25%</color> for 15s. Repeated triggers refresh the duration.\nUsing [Special Attack: Step Up] triggers a Quick Assist. After switching out, Robin enters the [Off-Field Guard] state for 60s. While in [Off-Field Guard], Robin gains [Entry Points] when her Aftershock is triggered, up to a maximum of 120 points.\nWhen Robin has 100 or more [Entry Points], she can be manually switched in via her [Entry Skill]. Switching in automatically consumes 100 [Entry Points] to activate the [Entry Skill] and ends the [Off-Field Guard] state.\nWhen Robin uses her [Entry Skill], she gains 1 [Buff Enhance Point], up to a maximum of 1.\nUpon entering the [Off-Field Guard] state, if Robin has a [Buff Enhance Point], she consumes 1 [Buff Enhance Point] to further increase the DEF bonus provided by [Off-Field Guard] and its cap by 25%.\nEach time a squad member triggers Maim, Robin recovers 15 Energy.",
-          "Triggers when another character in your squad is an [Armorer] or [Stun] Character:\nUpon entering the battlefield, gain 1 [Buff Enhance Point]. In Domain Mode, this effect can trigger once every 180s."
+          "Robin_UniqueSkill_07_Desc",
+          "Robin_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -1795,21 +1732,21 @@
   "talent": {
     "1": {
       "level": 1,
-      "name": "PlaceHolder",
-      "desc": "Each time Robin consumes <color=#FFFFFF>[Enhance Buff Points]</color>, all squad members gain 20% Laceration DMG for 60s. Repeated triggers refresh the duration. When consuming <color=#FFFFFF>[Enhance Buff Points]</color>, Robin gains 1 stack of <color=#FFFFFF>[Feather Defense]</color>. When the on-field character takes DMG, Robin consumes 1 stack of <color=#FFFFFF>[Feather Defense]</color> to make them briefly Invulnerable.",
-      "desc2": "PlaceHolder"
+      "name": "Robin_Talent_01_Title",
+      "desc": "Robin_Talent_01_Desc_01",
+      "desc2": "Robin_Talent_01_Desc_02"
     },
     "2": {
       "level": 2,
-      "name": "PlaceHolder",
-      "desc": "When Robin triggers an <color=#FFFFFF>[Aftershock]</color>, DMG dealt by all squad members ignores 12% of the enemy's RES for 15s. Repeated triggers refresh the duration. Squad members with <color=#FFFFFF>[Robin Shield]</color> gain increased Anti-Interrupt level.",
-      "desc2": "PlaceHolder"
+      "name": "Robin_Talent_02_Title",
+      "desc": "Robin_Talent_02_Desc_01",
+      "desc2": "Robin_Talent_02_Desc_02"
     },
     "3": {
       "level": 3,
-      "name": "PlaceHolder",
+      "name": "Robin_Talent_03_Title",
       "desc": "<color=#FFFFFF>Basic Attack</color>, <color=#FFFFFF>Dodge</color>, <color=#FFFFFF>Assist</color>, <color=#FFFFFF>Special Attack</color>, and <color=#FFFFFF>Chain Attack</color> Lv. +2",
-      "desc2": "PlaceHolder"
+      "desc2": "Robin_Talent_03_Desc_02"
     },
     "4": {
       "level": 4,

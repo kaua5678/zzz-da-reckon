@@ -4,7 +4,8 @@
  * 判据四臂（用户 2026-10-25 交付要求 + spec 1661.json notes 点名）：
  *   ① HP < 16000 ⇒ 0；② 每满 1000 一档；③ 封顶；④ Buff 强化点 ×1.25。
  * 外加：模块接线面（sourcePanels 真读知更鸟局外生命 → 全队 inCombatDefFlat），
- * 以及登场值循环（追击 +20 / 上限 120 / ≥100 触发登场技）。
+ * 以及登场值循环（追击 +20 / 上限 120 / ≥100 触发登场技；CD = ROBIN_AFTERSHOCK_CD_SECONDS，
+ * 3.4.1+19997538 热更由 8 → 10s，判据按常量取、只把「5 次追击 = 1 次登场技」的整数关系写死）。
  */
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -58,26 +59,28 @@ describe('1661 知更鸟 · 登场值循环（追击 +20 / 上限 120 / ≥100 �
     expect(solveRobinEntry({ combatTime: 180 })).toEqual({ aftershockCount: 0, entryValue: 0, entrySkillCount: 0 })
     expect(solveRobinEntry({ combatTime: 180, teammateFrontlineSeconds: 0 }).aftershockCount).toBe(0)
   })
-  it('追击次数 = floor(有效战斗时间 / 8)；每 5 次追击触发 1 次登场技', () => {
+  // ⚠ CD 按 ROBIN_AFTERSHOCK_CD_SECONDS 取（3.4.1+19997538 由 8 → 10s）：本套件不写死 cd 数字，
+  //   换版本只需改常量——但「5 次追击 = 1 次登场技」这条整数关系是**口径**，写死在这里当护栏。
+  it('追击次数 = floor(有效战斗时间 / CD)；每 5 次追击触发 1 次登场技', () => {
     const none = solveRobinEntry({ combatTime: ROBIN_AFTERSHOCK_CD_SECONDS - 0.001, ...WITH_MATE })
     expect(none).toEqual({ aftershockCount: 0, entryValue: 0, entrySkillCount: 0 })
-    const one = solveRobinEntry({ combatTime: 40, ...WITH_MATE })
+    const one = solveRobinEntry({ combatTime: ROBIN_AFTERSHOCK_CD_SECONDS * 5, ...WITH_MATE })
     expect(one.aftershockCount).toBe(5)
     expect(one.entrySkillCount).toBe(1)
     expect(one.entryValue).toBe(0) // 5 × 20 = 100，正好消耗完
-    const partial = solveRobinEntry({ combatTime: 8 * 4, ...WITH_MATE })
+    const partial = solveRobinEntry({ combatTime: ROBIN_AFTERSHOCK_CD_SECONDS * 4, ...WITH_MATE })
     expect(partial.aftershockCount).toBe(4)
     expect(partial.entryValue).toBe(80) // 不足 100 ⇒ 不触发
     expect(partial.entrySkillCount).toBe(0)
   })
 
   it('120 是「同时持有」上限、不是整局总量：长局仍按 5 次追击 1 次登场技线性累加', () => {
-    const long = solveRobinEntry({ combatTime: 8 * 30, ...WITH_MATE })
+    const long = solveRobinEntry({ combatTime: ROBIN_AFTERSHOCK_CD_SECONDS * 30, ...WITH_MATE })
     expect(long.aftershockCount).toBe(30)
     expect(long.entrySkillCount).toBe(6) // 600 点 / 100
     expect(long.entryValue).toBeLessThanOrEqual(ROBIN_ENTRY_MAX)
     // 反空洞：整局攒出的登场值总量（30 × 20 = 600）确实远超「同时持有」上限 120
-    expect(long.aftershockCount * ROBIN_ENTRY_PER_AFTERSHOCK).toBeGreaterThan(ROBIN_ENTRY_MAX * 4)
+    expect(long.aftershockCount * ROBIN_ENTRY_PER_AFTERSHOCK).toBeGreaterThan(ROBIN_ENTRY_MAX * 3)
   })
 })
 

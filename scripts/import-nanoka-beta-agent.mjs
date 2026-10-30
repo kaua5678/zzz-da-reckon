@@ -27,7 +27,8 @@ import { fetchJson } from './lib/http.mjs'
 // 暴击映射口径的单一事实源（规则 11）：与审计/修复脚本共用同一张规则表，
 // 保证「下次重导」不会再漏掉突破加成 —— 改口径只需改 lib/level60-rules.mjs 一处。
 import { FIELD_RULES } from './lib/level60-rules.mjs'
-import { remapTemplateMoveId } from './lib/move-elements.mjs'
+// 招式派生值（Lv12 倍率 / 耗能 / 动作时间）的单一事实源：与热更增量同步脚本共用同一份口径
+import { actionTime, collectMoveRows, num, remapMoveId, stripPrefix } from './lib/nanoka-move-rows.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = process.argv.slice(2)
@@ -62,81 +63,19 @@ const SPECIALTY_KEYWORDS = [
   ['锋御', 'sharpen'],
 ]
 
-function num(v) { return typeof v === 'number' && Number.isFinite(v) ? v : 0 }
-
 /** 取规则表中某字段的 `expected(raw)` 求值器（找不到就大声失败，不静默回落） */
 function ruleOf(field) {
   const rule = FIELD_RULES.find((r) => r.field === field)
   if (!rule?.expected) throw new Error(`level60 规则表缺少字段 ${field}（检查 scripts/lib/level60-rules.mjs）`)
   return rule.expected
 }
-function stripPrefix(s) { return String(s ?? '').replace(/^\(Test\d+\)/, '').trim() }
 function pick(dict, keywords) {
   const values = Object.values(dict ?? {}).map(String)
   for (const [kw, key] of keywords) if (values.some(v => v.includes(kw))) return key
   return ''
 }
 
-/** 逐 moveId 收集参数（首次出现为准）+ 中/英文名（import-v12 的 entry/param 命名逻辑） */
-/**
- * (Test1) 占位包模板残留重映射：实现已迁 `scripts/lib/move-elements.mjs#remapTemplateMoveId`
- * （单一事实源——导入器与 move-element 对账的 orphan 检查共用，见其注释）。
- */
-const remapMoveId = remapTemplateMoveId
-
-function collectMoves(full, selfId) {
-  const moves = new Map()
-  for (const cat of ['basic', 'dodge', 'special', 'chain', 'assist']) {
-    for (const entry of full.skill?.[cat]?.description ?? []) {
-      const entryName = stripPrefix(entry?.name)
-      const params = Array.isArray(entry?.param) ? entry.param : []
-      const idsOfParam = []
-      for (const p of params) {
-        for (const [rawId, pv] of Object.entries(p?.param ?? {})) {
-          const moveId = remapMoveId(rawId, selfId)
-          idsOfParam.push([moveId, stripPrefix(p?.name)])
-          if (!moves.has(moveId)) {
-            moves.set(moveId, { moveId, cat, entryName, paramName: stripPrefix(p?.name), pv })
-          }
-        }
-      }
-      // 兜底：同 entry 多段时用「招式名·参数名」区分只出现一次的 id
-      if (params.length > 1) {
-        const idCount = new Map()
-        for (const [id] of idsOfParam) idCount.set(id, (idCount.get(id) ?? 0) + 1)
-        for (const [id, pname] of idsOfParam) {
-          const m = moves.get(id)
-          if (m && idCount.get(id) === 1 && pname) m.entryName = `${m.entryName}·${pname}`
-        }
-      }
-    }
-  }
-  return moves
-}
-
-/**
- * 能量消耗提取（2026-09-12 用户纠错：此前漏抓）——耗能**不在 param 数值字典里**，
- * 而是同 entry 下独立的展示 param 行：name 含「能量消耗」，**desc 是文本**（如「(Test1)80点」），
- * 无 {Skill:id} 引用 → 归属 = 该 entry 参数序列中**前一个带 id 的 param 行**的 moveId
- * （组合技能量消耗 跟在 组合技伤害/失衡倍率 后 → 归 1631008；风刃最大能量消耗 → 归 1631009）。
- */
-function collectEnergyCosts(full, selfId) {
-  const costs = new Map()
-  for (const cat of ['basic', 'dodge', 'special', 'chain', 'assist']) {
-    for (const entry of full.skill?.[cat]?.description ?? []) {
-      let lastMoveId = ''
-      for (const p of Array.isArray(entry?.param) ? entry.param : []) {
-        const ids = Object.keys(p?.param ?? {})
-        if (ids.length > 0) lastMoveId = remapMoveId(ids[ids.length - 1], selfId)
-        if (!/能量消耗/.test(String(p?.name ?? ''))) continue
-        const amount = Number(String(p?.desc ?? '').replace(/<[^>]*>|\(Test\d+\)|点/g, '').trim())
-        if (lastMoveId && Number.isFinite(amount) && amount > 0) costs.set(lastMoveId, amount)
-      }
-    }
-  }
-  return costs
-}
-
+/** 英文招式名（import-v12 的 entry/param 命名逻辑；只在导入器用，增量同步不动名字） */
 function enNamesOf(fullEn, selfId) {  const names = new Map()
   for (const cat of ['basic', 'dodge', 'special', 'chain', 'assist']) {
     for (const entry of fullEn.skill?.[cat]?.description ?? []) {
@@ -150,20 +89,6 @@ function enNamesOf(fullEn, selfId) {  const names = new Map()
     }
   }
   return names
-}
-
-/** 秽盾口径 = import-nanoka-missing.actionTime（输入为爬虫刻度 ether=raw/100、buildup=raw/100）：
- *  秽盾 = 动作时间×100 + 类型加成（闪反+1.5/弹刀+2.5/终结+5）→ 按中文名识别类型折减 */
-function actionTime(etherRaw, zhName) {
-  const ether = etherRaw / 100
-  let t = ether > 0 ? ether / 100 : 0
-  if (/闪避反击/.test(zhName)) t -= 1.5
-  else if (/招架支援/.test(zhName)) t -= 2.5
-  // 「终结技：入场」是入场动作不是喧响终结，不吃 -5 加成折减
-  else if (/(终极技|终结技)/.test(zhName) && !/入场/.test(zhName)) t -= 5
-  // actionTimeSanity 全库口径：秽盾 ≤ 类型加成（beta 数据终结技常见）→ 未含加成，时间 = ether/100，禁止钳位 0.001
-  if (t <= 0) t = ether > 0 ? ether / 100 : 0
-  return Math.round(t * 1000) / 1000
 }
 
 const added = []
@@ -224,26 +149,20 @@ for (const id of ids) {
     penRatio: 0,
   }
 
-  const moves = collectMoves(full, id)
-  const energyCosts = collectEnergyCosts(full, id)
+  const moves = collectMoveRows(full, id)
   const enNames = enNamesOf(fullEn, id)
   const byCat = new Map()
   for (const m of moves.values()) {
-    const pv = m.pv
-    const damage = (num(pv.damage_percentage) + num(pv.damage_percentage_growth) * 11) / 100
-    const daze = (num(pv.stun_ratio) + num(pv.stun_ratio_growth) * 11) / 100
-    const energy = num(pv.sp_recovery) / 10000
-    const decibel = num(pv.fever_recovery) / 10000
-    const anomaly = num(pv.attribute_infliction) / 100
-    const ether = num(pv.ether_purify)
+    // 派生值来自 lib/nanoka-move-rows.mjs（与热更增量同步脚本同源；刻度口径见该文件头）
+    const { damage, daze, energy, decibel, anomaly, ether } = m
     const rows = []
     if (damage > 0) rows.push({ id: 'damage', kind: 'damageMultiplier', values: [Math.round(damage * 1000) / 1000], damageBasis: 'atk', damageElement: element })
     if (daze > 0) rows.push({ id: 'daze', kind: 'dazeMultiplier', values: [Math.round(daze * 1000) / 1000] })
     if (energy > 0) rows.push({ id: 'energy_recovery', kind: 'energy', values: [Math.round(energy * 10000) / 10000] })
     if (decibel > 0) rows.push({ id: 'decibel_recovery', kind: 'decibel', values: [Math.round(decibel * 10000) / 10000] })
     if (anomaly > 0) rows.push({ id: 'anomaly_buildup', kind: 'anomaly', values: [Math.round(anomaly * 1000) / 1000], damageElement: element })
-    for (let i = 0; i < (pv.attack_data ?? []).length; i++) {
-      const v = num(pv.attack_data[i]) / 10000
+    for (let i = 0; i < m.attackData.length; i++) {
+      const v = m.attackData[i] / 10000
       if (v > 0) rows.push({ id: `attack_data_${i}`, kind: 'special', values: [Math.round(v * 10000) / 10000] })
     }
     if (ether > 0) rows.push({ id: 'ether_purify', kind: 'etherPurify', values: [Math.round(ether / 100 * 1000) / 1000] })
@@ -257,10 +176,9 @@ for (const id of ids) {
       timeType: isUltimate ? 'ultimate' : 'normal',
       actionTime: actionTime(ether, m.entryName),
     }
-    // 能量消耗：从「能量消耗」展示 param 行的 desc 文本提取（collectEnergyCosts，2026-09-12 补）；
+    // 能量消耗：从「能量消耗」展示 param 行的 desc 文本提取（lib/nanoka-move-rows，2026-09-12 补）；
     // 无耗能行的招式不写 energyCost（此前「强特 60 兜底」猜测作废）
-    const energyCost = energyCosts.get(m.moveId)
-    if (energyCost) move.energyCost = { 'Energy Cost': String(energyCost) }
+    if (m.energyCost) move.energyCost = { 'Energy Cost': String(m.energyCost) }
     if (!byCat.has(m.cat)) byCat.set(m.cat, [])
     byCat.get(m.cat).push(move)
   }

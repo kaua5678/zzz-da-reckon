@@ -22,6 +22,8 @@
 | `scripts/fetch-nanoka-full-missing.mjs [<id>...] [--force] [--version <v>]` | 爬 nanoka 全量（含 talent/passive）；不带 id = 补「缺失角色」，带 id = 重爬指定角色（`--force` 覆盖存档） | `data/raw/nanoka_missing/full/<id>.json` |
 | `scripts/import-nanoka-wengine.mjs <id>... [--force] [--version <v>] [--tag vN]` | 音擎 raw + catalog.wEngines（`--force` 按正式服重抓 raw 后重导；`--tag v1` 录测试服 v1 占位） | `data/raw/nanoka_wengine_<id>_{zh,en}.json` + catalog |
 | `scripts/import-nanoka-disc-set.mjs <id>... [--version <v>] [--tag vN] [--dry-run]` | 驱动盘套装 raw + catalog.driveDiscSets（nanoka 只给套装文本，2pc/4pc **机读效果在 `MANUAL_SETS` 手工建模**，没建模的只落文本） | `data/raw/nanoka_equipment_<版本>.json` + catalog |
+| `scripts/sync-nanoka-agent-rows.mjs <id>... [--write]` | **热更增量同步**（2026-10-30 立）：按 `full/<id>.json`（新包）只刷已录入角色的 6 类数值行（伤害/失衡/回能/喧响/积蓄/秽盾）+ 动作时间 + 耗能，**保住招式名与 gachabase 补充列**（整片重建会把名字、`gash_buildup`/`sharpness_gain`、level60 的 `sharpCritDmg`/`sharpnessRegen` 全抹掉）；量级不自洽的增量走 `HOLD_DELTAS` 暂缓不落盘 | `public/static/catalog.json`（只改这些行） |
+| `scripts/lib/nanoka-move-rows.mjs` | 招式派生值（Lv12 倍率 / 耗能 / 动作时间）的**单一事实源**：导入器与增量同步共用，防两处口径分叉 | 无（被上面两个脚本消费） |
 | `scripts/sync-build-recommendations.mjs <id>... [--write] [--force] [--verify-rule] [--main-stats-only]` | 邦布精灵配装推荐（4pc/2pc/主词条/副词条/专武）；`--main-stats-only` 只重写 `main_stats`（修单条口径时用，避免顺带翻掉 strategy/substats 的 en→zh 名称） | `data/raw/nanoka_{character,equipment,weapon}.json` + build-recommendations.json |
 
 **主词条口径（2026-10-20 订正，单一事实源 `scripts/lib/build-recommendation-rule.mjs`）**：4/5/6 槽**每槽独立**，按 `part4 → part5 → part6 → part_sub` 取**首个该槽合法**的词条；`alt_build` 是备选配装的副属性，**不参与**主词条选择。这是 nanoka 页面自身的规则（bundle `_app/immutable/nodes/9.*.js` 里 `slot.stats = ml.filter(槽合法)` 再显示首项），实测 62 角色逐位对上。

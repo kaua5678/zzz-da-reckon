@@ -57,6 +57,15 @@ export const JU_FENG_WISH_COST = 120
 /** 烬痕：按实际伤害的 75% 累积并计入总伤害 */
 export const EMBER_SCAR_RATE = 0.75
 /**
+ * [招架支援]造成的失衡值提升 50%（nanoka **3.4.1+19997538** 新包新增的一句，3.4.1+19850203 及更早没有）：
+ * > 「德蕾琪娜发动[招架支援]**造成的失衡值提升50%**，艾尔妲与林德薇恩发动的[支援突击]残痕积蓄效率提升15%，
+ * >  造成的伤害提升20%」
+ * 落点 = **自身招架行（轻/重/连续三行）的 daze 倍率 ×1.5**，经 `dazeMultiplierOverride` 精确结算
+ * （与琥珀 1272 影画4「招架支援失衡 +25%」同款，见 seth.ts#patchSethExecutions——引擎取哪一段
+ * 由 `findDefensiveAssist` 决定，故三行一起放大，不押注引擎选哪一行）。
+ */
+export const PARRY_ASSIST_DAZE_BONUS = 50
+/**
  * 耗能 30 的强化特殊技代表行 = 焚夜·曦生（1601106）。
  * 燃灯·晦尽（1601006，at 2.433）与它是**多形态对称数据**（收益公式相同，用户 2026-10-27
  * 「两段耗能 30 的 e 只需考虑一个」）⇒ 只走这一条线，不再另开。
@@ -93,6 +102,8 @@ declare module '@/types/resource/config' {
     sunbringerMeta?: SunbringerMeta
     /** 命座等级（buildCharConfig 写；影画1/2 分支用） */
     sunbringerCinemaLevel?: number
+    /** 招架支援行 moveId → 已 ×1.5 的失衡值（buildCharConfig 预存；见 PARRY_ASSIST_DAZE_BONUS） */
+    sunbringerParryDazeById?: Record<string, number>
   }
 }
 
@@ -111,7 +122,7 @@ export function applySunbringerPanel({ panel, outOfCombatPanel, cinemaLevel }: A
   if (cinemaLevel >= 2) panel.enemyDefReduction = panel.enemyDefReduction + 12
 }
 
-function buildSunbringerCharConfig({ cfg, skills, agent, cinemaLevel }: AgentCharConfigInput): void {
+export function buildSunbringerCharConfig({ cfg, skills, agent, cinemaLevel }: AgentCharConfigInput): void {
   cfg.sunbringerCinemaLevel = cinemaLevel
   const all = skills.categories.flatMap(c => c.moves)
   const metaOf = (id: string): SunbringerMoveMeta => {
@@ -144,6 +155,16 @@ function buildSunbringerCharConfig({ cfg, skills, agent, cinemaLevel }: AgentCha
     maim: metaOf('1601114'),
     chain: metaOf('1601110'),
     sharpnessRegen: agent.level60.sharpnessRegen ?? 0,
+  }
+  // 招架支援失衡 +50%（3.4.1+19997538 新增）：按**表值**预缩，patchExecutions 里打 override。
+  // 认行口径 = 本角色的「招架支援」行（原文点的是德蕾琪娜的招架，即挽昼自己的招架段），
+  // 不列 moveId 名单——角色自己的表结构变了也不会漏（规则 6 的同一取向：按数据认行）。
+  const parryMoves = all.filter(m => m.skillType === 'assist' && /招架支援/.test(m.name.zhCN ?? ''))
+  if (parryMoves.length > 0) {
+    cfg.sunbringerParryDazeById = Object.fromEntries(parryMoves.map(m => [
+      m.id,
+      Math.round(getRowValue(m, 'daze') * (1 + PARRY_ASSIST_DAZE_BONUS / 100) * 1000) / 1000,
+    ]))
   }
 }
 
@@ -395,7 +416,8 @@ export function computeEmberScar(input: {
  * ② 烬痕按**已物化行的倍率**结算（同一基底，龙格等价），均摊进那次终结技的倍率并打 override。
  * 行名会带上烬痕数值，资源页与执行行都能复核。
  */
-function patchSunbringerExecutions({ cfg, state, executions }: AgentResourceInput): void {
+export function patchSunbringerExecutions({ cfg, state, executions }: AgentResourceInput): void {
+  applySunbringerParryDaze(cfg, executions)
   const meta = cfg.sunbringerMeta
   if (!meta) return
   const ultRow = executions.find(e => e.moveId === meta.ultB.moveId && e.count > 0)
@@ -428,6 +450,23 @@ function patchSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
 }
 
 /**
+ * [招架支援]失衡值 ×1.5（3.4.1+19997538）：把 `buildCharConfig` 预缩好的值写到命中行上。
+ *
+ * ⚠ 绝对写 + `dazeMultiplierOverride`（不是 +=）：patch 每轮都会跑，累加会重复放大。
+ * ⚠ 与烬痕那段共用同一个 patchExecutions ⇒ 必须**在 meta 早退之前**调用（本函数不依赖 meta）。
+ */
+function applySunbringerParryDaze(cfg: { sunbringerParryDazeById?: Record<string, number> }, executions: AgentResourceInput['executions']): void {
+  const scaled = cfg.sunbringerParryDazeById
+  if (!scaled) return
+  for (const exec of executions) {
+    const daze = scaled[exec.moveId]
+    if (!(daze > 0)) continue
+    exec.dazeMultiplier = daze
+    exec.dazeMultiplierOverride = true
+  }
+}
+
+/**
  * 兜底池（用户口径 2026-10-27）：「每失衡兜底可以放多个 e」。
  *
  * 窗尾秒数优先塞**耗能 30 的强化特殊技**（焚夜·曦生 1601106；与燃灯·晦尽 1601006 是多形态
@@ -454,8 +493,8 @@ export const sunbringerMechanic: AgentMechanicModule = {
   id: 'agent:sunbringer',
   agentIds: [SUNBRINGER_AGENT_ID],
   name: '挽昼',
-  description: 'v1 占位包（3.4.1+19850203）：面板层（初始暴伤→暴击 0.35%/1%、极昼 +40% 暴击 / 无视 20% 防御）'
-    + '+ 六条资源循环执行行（锐能→残痕→毁伤→愿力→聚锋→链齿/旗令→愿核→烬痕）；影画 1/2 未实现、C3–C6 占位。',
+  description: 'v1 占位包（3.4.1+19997538 热更）：面板层（初始暴伤→暴击 0.35%/1%、极昼 +40% 暴击 / 无视 20% 防御）'
+    + '+ 六条资源循环执行行（锐能→残痕→毁伤→愿火→聚锋→链齿/旗令→愿核→烬痕）+ 招架支援失衡 +50%；影画 1/2 未实现、C3–C6 占位。',
   applyPanel: applySunbringerPanel,
   // 兜底池：窗尾秒数优先塞耗能 30 的强化特殊技（见 expandSunbringerBasicFill 注释）
   expandBasicFill: expandSunbringerBasicFill,

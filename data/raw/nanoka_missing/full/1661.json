@@ -60,7 +60,7 @@
       "Punch",
       "Ether",
       "Female",
-      "Camp10",
+      "Camp18",
       "Size2",
       "AidTypeParry",
       "Robin",
@@ -307,12 +307,12 @@
     "basic": {
       "description": [
         {
-          "name": "(Test1)普通攻击：普通攻击",
+          "name": "(Test1)普通攻击：",
           "desc": "(Test1)点按 <IconMap:Icon_Normal> 发动：\n向前方进行至多三段的攻击，造成<color=#FE437E>以太伤害</color>；",
           "potential": []
         },
         {
-          "name": "(Test1)普通攻击：普通攻击",
+          "name": "(Test1)普通攻击：",
           "param": [
             {
               "name": "一段伤害倍率",
@@ -324,13 +324,13 @@
                   "format": "%",
                   "damage_percentage": 3750,
                   "damage_percentage_growth": 350,
-                  "stun_ratio": 2290,
-                  "stun_ratio_growth": 110,
+                  "stun_ratio": 1480,
+                  "stun_ratio_growth": 70,
                   "sp_recovery": 7500,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 57475,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 2081,
+                  "attribute_infliction": 1338,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -350,13 +350,13 @@
                   "format": "%",
                   "damage_percentage": 4400,
                   "damage_percentage_growth": 400,
-                  "stun_ratio": 4170,
-                  "stun_ratio_growth": 190,
+                  "stun_ratio": 3450,
+                  "stun_ratio_growth": 160,
                   "sp_recovery": 13640,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 104225,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 3788,
+                  "attribute_infliction": 3134,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -376,13 +376,13 @@
                   "format": "%",
                   "damage_percentage": 11520,
                   "damage_percentage_growth": 1050,
-                  "stun_ratio": 11870,
-                  "stun_ratio_growth": 540,
+                  "stun_ratio": 10140,
+                  "stun_ratio_growth": 470,
                   "sp_recovery": 38850,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 296725,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 10789,
+                  "attribute_infliction": 9212,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -397,18 +397,18 @@
               "desc": "{Skill:1661001, Prop:1002}",
               "param": {
                 "1661001": {
-                  "main": 2290,
-                  "growth": 110,
+                  "main": 1480,
+                  "growth": 70,
                   "format": "%",
                   "damage_percentage": 3750,
                   "damage_percentage_growth": 350,
-                  "stun_ratio": 2290,
-                  "stun_ratio_growth": 110,
+                  "stun_ratio": 1480,
+                  "stun_ratio_growth": 70,
                   "sp_recovery": 7500,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 57475,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 2081,
+                  "attribute_infliction": 1338,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -423,18 +423,18 @@
               "desc": "{Skill:1661002, Prop:1002}",
               "param": {
                 "1661002": {
-                  "main": 4170,
-                  "growth": 190,
+                  "main": 3450,
+                  "growth": 160,
                   "format": "%",
                   "damage_percentage": 4400,
                   "damage_percentage_growth": 400,
-                  "stun_ratio": 4170,
-                  "stun_ratio_growth": 190,
+                  "stun_ratio": 3450,
+                  "stun_ratio_growth": 160,
                   "sp_recovery": 13640,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 104225,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 3788,
+                  "attribute_infliction": 3134,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -449,18 +449,18 @@
               "desc": "{Skill:1661003, Prop:1002}",
               "param": {
                 "1661003": {
-                  "main": 11870,
-                  "growth": 540,
+                  "main": 10140,
+                  "growth": 470,
                   "format": "%",
                   "damage_percentage": 11520,
                   "damage_percentage_growth": 1050,
-                  "stun_ratio": 11870,
-                  "stun_ratio_growth": 540,
+                  "stun_ratio": 10140,
+                  "stun_ratio_growth": 470,
                   "sp_recovery": 38850,
                   "sp_recovery_growth": 0,
                   "fever_recovery": 296725,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 10789,
+                  "attribute_infliction": 9212,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
@@ -526,22 +526,22 @@
     "dodge": {
       "description": [
         {
-          "name": "(Test1)闪避：闪避",
+          "name": "(Test1)闪避：",
           "desc": "(Test1)点按 <IconMap:Icon_Dash> 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)冲刺攻击：冲刺攻击",
+          "name": "(Test1)冲刺攻击：",
           "desc": "(Test1)闪避时，点按 <IconMap:Icon_Normal> 发动：\n向前方进行攻击，造成<color=#FE437E>以太伤害</color>。",
           "potential": []
         },
         {
-          "name": "(Test1)闪避反击：闪避反击",
+          "name": "(Test1)闪避反击：",
           "desc": "(Test1)触发<color=#FFFFFF>[极限闪避]</color>时，点按 <IconMap:Icon_Normal> 发动：\n挥舞法杖，向前方敌人发动攻击，造成<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)冲刺攻击：冲刺攻击",
+          "name": "(Test1)冲刺攻击：",
           "param": [
             {
               "name": "伤害倍率",
@@ -599,7 +599,7 @@
           "potential": []
         },
         {
-          "name": "(Test1)闪避反击：闪避反击",
+          "name": "(Test1)闪避反击：",
           "param": [
             {
               "name": "伤害倍率",
@@ -709,22 +709,22 @@
     "special": {
       "description": [
         {
-          "name": "(Test1)特殊技：离场技",
-          "desc": "(Test1)点按 <IconMap:Icon_Special> 发动：\n高高跃起后向周身发动能量冲击，造成大量<color=#FE437E>以太伤害</color>；\n招式发动期间抗打断等级提升，受到的伤害降低40%；\n发动后触发快速支援，知更鸟在换人后进入[离场守护]状态，持续60秒，重复触发刷新持续时间，同时为全队角色提供相当于自身最大初始生命值2%的[守卫护盾]，持续15秒；\n当知更鸟处于[离场守护]状态时，无法通过[连携技]、[登场技]和[反制支援]之外的方式主动换入，被换入时退出[离场守护]状态；\n[离场守护]状态期间全队角色获得防御力提升，知更鸟初始最大生命值大于16000时，每多拥有1000点生命值获得<color=#2BAD00>{CAL:44+AvatarSkillLevel(1)*3,1,3}</color>点防御，最高不超过<color=#2BAD00>{CAL:440+AvatarSkillLevel(1)*30,1,2}</color>点，该效果在知更鸟结束[离场守护]状态后仍保留15秒。",
+          "name": "(Test1)特殊技：离场",
+          "desc": "(Test1)点按 <IconMap:Icon_Special> 发动：\n高高跃起后向周身发动能量冲击，造成大量<color=#FE437E>以太伤害</color>；\n招式发动期间抗打断等级提升，受到的伤害降低40%；\n发动后触发快速支援，知更鸟在换人后进入[离场守护]状态，持续80秒，重复触发刷新持续时间，同时为全队角色提供相当于自身最大初始生命值2%的[守卫护盾]，持续15秒；\n当知更鸟处于[离场守护]状态时，无法通过[连携技]、[登场技]和[反制支援]之外的方式主动换入，被换入时退出[离场守护]状态；\n[离场守护]状态期间全队角色获得防御力提升，知更鸟初始最大生命值大于16000时，每多拥有1000点生命值获得<color=#2BAD00>{CAL:44+AvatarSkillLevel(1)*3,1,3}</color>点防御，最高不超过<color=#2BAD00>{CAL:440+AvatarSkillLevel(1)*30,1,2}</color>点，该效果在知更鸟结束[离场守护]状态后仍保留15秒。",
           "potential": []
         },
         {
           "name": "(Test1)特殊技：追加攻击",
-          "desc": "(Test1)知更鸟处于[离场守护]状态时，队伍中其他操作中的角色发动任意攻击命中敌人时自动发动：\n挥舞法杖，向前方发动攻击，造成<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果；\n发动时获得20点[登场值]，并为全队角色提供相当于自身最大初始生命值3%的[守卫护盾]，持续15秒；\n[特殊技：追加攻击]为追加攻击，每8秒最多可以发动一次。",
+          "desc": "(Test1)知更鸟处于[离场守护]状态时，队伍中其他操作中的角色发动任意攻击命中敌人时自动发动：\n挥舞法杖，向前方发动攻击，造成<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果；\n发动时获得20点[登场值]，并为全队角色提供相当于自身最大初始生命值4%的[守卫护盾]，持续15秒；\n[特殊技：追加攻击]为追加攻击，每10秒最多可以发动一次。",
           "potential": []
         },
         {
           "name": "(Test1)强化特殊技：强化追加攻击",
-          "desc": "(Test1)发动[特殊技：追加攻击]时，若能量大于等于40点则升级为[强化特殊技：强化追加攻击]：\n持续消耗总计40点能量向前方发射强力激光，造成大量<color=#FE437E>以太伤害</color>；\n知更鸟会根据最大生命值的<color=#2BAD00>{CAL:0.214+AvatarSkillLevel(1)*0.028,100,2}%</color>额外提升重击的伤害；\n招式发动期间拥有无敌效果；\n发动时获得20点[登场值]，并为全队角色提供相当于自身最大初始生命值6%的[守卫护盾]，持续15秒；\n[强化特殊技：强化追加攻击]为追加攻击。",
+          "desc": "(Test1)发动[特殊技：追加攻击]时，若能量大于等于40点则升级为[强化特殊技：强化追加攻击]：\n持续消耗总计40点能量向前方发射强力激光，造成大量<color=#FE437E>以太伤害</color>；\n知更鸟会根据最大生命值的<color=#2BAD00>{CAL:0.256+AvatarSkillLevel(1)*0.052,100,2}%</color>额外提升重击的伤害；\n招式发动期间拥有无敌效果；\n发动时获得20点[登场值]，并为全队角色提供相当于自身最大初始生命值6%的[守卫护盾]，持续15秒；\n[强化特殊技：强化追加攻击]为追加攻击。",
           "potential": []
         },
         {
-          "name": "(Test1)特殊技：离场技",
+          "name": "(Test1)特殊技：离场",
           "param": [
             {
               "name": "伤害倍率",
@@ -779,13 +779,13 @@
               "potential": []
             },
             {
-              "name": "Robin_Property_Special_Desc_ExtraDef",
-              "desc": "Robin_Property_Special_Value_ExtraDef",
+              "name": "(Test1)额外防御力",
+              "desc": "(Test1){CAL:44+AvatarSkillLevel(1)*3,1,3}",
               "potential": []
             },
             {
-              "name": "Robin_Property_Special_Desc_ExtraDefMax",
-              "desc": "Robin_Property_Special_Value_ExtraDefMax",
+              "name": "(Test1)额外防御力上限",
+              "desc": "(Test1){CAL:440+AvatarSkillLevel(1)*30,1,2}",
               "potential": []
             }
           ],
@@ -799,23 +799,23 @@
               "desc": "{Skill:1661005, Prop:1001}",
               "param": {
                 "1661005": {
-                  "main": 5600,
-                  "growth": 510,
+                  "main": 21000,
+                  "growth": 1910,
                   "format": "%",
-                  "damage_percentage": 5600,
-                  "damage_percentage_growth": 510,
-                  "stun_ratio": 6050,
-                  "stun_ratio_growth": 280,
+                  "damage_percentage": 21000,
+                  "damage_percentage_growth": 1910,
+                  "stun_ratio": 5500,
+                  "stun_ratio_growth": 250,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 151250,
+                  "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 5500,
+                  "attribute_infliction": 5000,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 5500
+                  "ether_purify": 0
                 }
               },
               "potential": []
@@ -825,23 +825,23 @@
               "desc": "{Skill:1661005, Prop:1002}",
               "param": {
                 "1661005": {
-                  "main": 6050,
-                  "growth": 280,
+                  "main": 5500,
+                  "growth": 250,
                   "format": "%",
-                  "damage_percentage": 5600,
-                  "damage_percentage_growth": 510,
-                  "stun_ratio": 6050,
-                  "stun_ratio_growth": 280,
+                  "damage_percentage": 21000,
+                  "damage_percentage_growth": 1910,
+                  "stun_ratio": 5500,
+                  "stun_ratio_growth": 250,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 151250,
+                  "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 5500,
+                  "attribute_infliction": 5000,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 5500
+                  "ether_purify": 0
                 }
               },
               "potential": []
@@ -857,23 +857,23 @@
               "desc": "{Skill:1661006, Prop:1001}",
               "param": {
                 "1661006": {
-                  "main": 14000,
-                  "growth": 1280,
+                  "main": 68250,
+                  "growth": 6210,
                   "format": "%",
-                  "damage_percentage": 14000,
-                  "damage_percentage_growth": 1280,
-                  "stun_ratio": 15850,
-                  "stun_ratio_growth": 730,
+                  "damage_percentage": 68250,
+                  "damage_percentage_growth": 6210,
+                  "stun_ratio": 20350,
+                  "stun_ratio_growth": 930,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 128425,
+                  "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 16022,
+                  "attribute_infliction": 18500,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 4667
+                  "ether_purify": 0
                 }
               },
               "potential": []
@@ -883,30 +883,30 @@
               "desc": "{Skill:1661006, Prop:1002}",
               "param": {
                 "1661006": {
-                  "main": 15850,
-                  "growth": 730,
+                  "main": 20350,
+                  "growth": 930,
                   "format": "%",
-                  "damage_percentage": 14000,
-                  "damage_percentage_growth": 1280,
-                  "stun_ratio": 15850,
-                  "stun_ratio_growth": 730,
+                  "damage_percentage": 68250,
+                  "damage_percentage_growth": 6210,
+                  "stun_ratio": 20350,
+                  "stun_ratio_growth": 930,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 128425,
+                  "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 16022,
+                  "attribute_infliction": 18500,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 4667
+                  "ether_purify": 0
                 }
               },
               "potential": []
             },
             {
-              "name": "Robin_Property_ExSpecial_Desc_ExtraDamageHPRatio",
-              "desc": "Robin_Property_ExSpecial_Value_ExtraDamageHPRatio",
+              "name": "(Test1)额外伤害倍率",
+              "desc": "(Test1){CAL:0.256+AvatarSkillLevel(1)*0.052,100,2}%",
               "potential": []
             }
           ],
@@ -965,17 +965,17 @@
     "chain": {
       "description": [
         {
-          "name": "(Test1)连携技：连携技",
-          "desc": "(Test1)触发<color=#FFFFFF>[连携技]</color>时，选择对应角色发动：\n向前方发射强力激光，造成大量<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果。",
+          "name": "(Test1)连携技：",
+          "desc": "(Test1)触发<color=#FFFFFF>[连携技]</color>时，选择对应角色发动：\n向前方发射强力激光，造成大量<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果；\n发动后触发快速支援，1.5秒内换人后知更鸟自动释放[特殊技：离场]。",
           "potential": []
         },
         {
-          "name": "(Test1)终结技：终结技",
-          "desc": "(Test1)喧响等级达到<color=#FFFFFF>[极]</color>时，点按 <IconMap:Icon_UltimateReady> 发动：\n用歌声引导强力能量轰击，造成大量<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果；\n发动时将全队代理人各自的[守卫护盾]以40%的比例转换为其自身生命值。",
+          "name": "(Test1)终结技：",
+          "desc": "(Test1)喧响等级达到<color=#FFFFFF>[极]</color>时，点按 <IconMap:Icon_UltimateReady> 发动：\n用歌声引导强力能量轰击，造成大量<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果；\n发动时将全队代理人各自的[守卫护盾]以50%的比例转换为其自身生命值；\n发动后触发快速支援，1.5秒内换人后知更鸟自动释放[特殊技：离场]。",
           "potential": []
         },
         {
-          "name": "(Test1)连携技：连携技",
+          "name": "(Test1)连携技：",
           "param": [
             {
               "name": "伤害倍率",
@@ -1033,7 +1033,7 @@
           "potential": []
         },
         {
-          "name": "(Test1)终结技：终结技",
+          "name": "(Test1)终结技：",
           "param": [
             {
               "name": "伤害倍率",
@@ -1143,53 +1143,48 @@
     "assist": {
       "description": [
         {
-          "name": "(Test1)登场技：登场技",
-          "desc": "(Test1)拥有大于等于100点[登场值]时，被换入前场或长按 <IconMap:Icon_Normal> 消耗100点[登场值]发动：\n对前方敌人发动能量轰击，造成大量<color=#FE437E>以太伤害</color>；\n招式发动视为发动[快速支援]；\n为全队角色提供相当于自身最大初始生命值4%的[守卫护盾]，持续20秒。\n",
+          "name": "(Test1)登场技：",
+          "desc": "(Test1)拥有大于等于100点[登场值]时，被换入前场或长按 <IconMap:Icon_Normal> 消耗100点[登场值]发动：\n对前方敌人发动能量轰击，造成大量<color=#FE437E>以太伤害</color>；\n招式发动视为发动[快速支援]，发动后退出[离场守护状态]；\n为全队角色提供相当于自身最大初始生命值4%的[守卫护盾]，持续20秒；\n发动后触发快速支援，1.5秒内换人后知更鸟自动释放[特殊技：离场]。\n",
           "potential": []
         },
         {
-          "name": "(Test1)快速支援：快速支援",
+          "name": "(Test1)快速支援：",
           "desc": "(Test1)当前操作中的角色被击飞时，点按 <IconMap:Icon_Switch> 发动：\n挥舞法杖，向前方敌人发动攻击，造成<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)招架支援：招架支援",
+          "name": "(Test1)招架支援：",
           "desc": "(Test1)前场角色即将被攻击时，点按 <IconMap:Icon_Switch> 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)支援突击：支援突击",
-          "desc": "(Test1)发动<color=#FFFFFF>[招架支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n挥舞法杖，向前方敌人发动攻击，造成<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果。",
+          "name": "(Test1)支援突击：",
+          "desc": "(Test1)发动<color=#FFFFFF>[招架支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n挥舞法杖，向前方敌人发动攻击，造成<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果；\n发动后触发快速支援，1.5秒内换人后知更鸟自动释放[特殊技：离场]。",
           "potential": []
         },
         {
-          "name": "(Test1)反制支援：反制支援",
-          "desc": "(Test1)自身或前场角色即将被部分敌人的控制技攻击时，点按 <IconMap:Icon_Switch> 发动：\n与怪物进行角力，角力成功后，化解敌人的控制技并造成<color=#FE437E>以太伤害</color>。\n招式发动期间拥有无敌效果。",
-          "potential": []
-        },
-        {
-          "name": "(Test1)支援突击：角力突击",
-          "desc": "(Test1)发动<color=#FFFFFF>[反制支援]</color>后，点按 <IconMap:Icon_Normal> 发动[支援突击]时自动发动：\n造成大量<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果。",
+          "name": "(Test1)反制支援：角力",
+          "desc": "(Test1)自身或前场角色即将被部分敌人的控制技攻击时，点按 <IconMap:Icon_Switch> 发动：\n与怪物进行角力，角力成功后，化解敌人的控制技并造成<color=#FE437E>以太伤害</color>，并获得1点[强化Buff点]；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
           "name": "(Test1)支援突击：角力协同突击",
-          "desc": "(Test1)队伍中其他角色发动<color=#FFFFFF>[反制支援]</color>后，点按 <IconMap:Icon_Normal> 发动：\n向前方发射强力激光，造成大量<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果。",
+          "desc": "(Test1)队伍中其他角色发动<color=#FFFFFF>[反制支援]</color>后，若触发[完美反制]自动发动：\n向前方发射强力激光，造成大量<color=#FE437E>以太伤害</color>；\n招式发动期间拥有无敌效果。",
           "potential": []
         },
         {
-          "name": "(Test1)登场技：登场技",
+          "name": "(Test1)登场技：",
           "param": [
             {
               "name": "伤害倍率",
               "desc": "{Skill:1661011, Prop:1001}",
               "param": {
                 "1661011": {
-                  "main": 106400,
-                  "growth": 9680,
+                  "main": 148400,
+                  "growth": 13500,
                   "format": "%",
-                  "damage_percentage": 106400,
-                  "damage_percentage_growth": 9680,
+                  "damage_percentage": 148400,
+                  "damage_percentage_growth": 13500,
                   "stun_ratio": 17600,
                   "stun_ratio_growth": 800,
                   "sp_recovery": 57590,
@@ -1214,8 +1209,8 @@
                   "main": 17600,
                   "growth": 800,
                   "format": "%",
-                  "damage_percentage": 106400,
-                  "damage_percentage_growth": 9680,
+                  "damage_percentage": 148400,
+                  "damage_percentage_growth": 13500,
                   "stun_ratio": 17600,
                   "stun_ratio_growth": 800,
                   "sp_recovery": 57590,
@@ -1236,7 +1231,7 @@
           "potential": []
         },
         {
-          "name": "(Test1)快速支援：快速支援",
+          "name": "(Test1)快速支援：",
           "param": [
             {
               "name": "伤害倍率",
@@ -1294,7 +1289,7 @@
           "potential": []
         },
         {
-          "name": "(Test1)招架支援：招架支援",
+          "name": "(Test1)招架支援：",
           "param": [
             {
               "name": "轻招架失衡倍率",
@@ -1378,7 +1373,7 @@
           "potential": []
         },
         {
-          "name": "(Test1)支援突击：支援突击",
+          "name": "(Test1)支援突击：",
           "param": [
             {
               "name": "伤害倍率",
@@ -1436,114 +1431,56 @@
           "potential": []
         },
         {
-          "name": "(Test1)反制支援：反制支援",
+          "name": "(Test1)反制支援：角力",
           "param": [
             {
               "name": "伤害倍率",
-              "desc": "{Skill:1611017, Prop:1001}",
+              "desc": "{Skill:1661017, Prop:1001}",
               "param": {
-                "1611017": {
-                  "main": 13420,
-                  "growth": 1220,
+                "1661017": {
+                  "main": 105280,
+                  "growth": 9580,
                   "format": "%",
-                  "damage_percentage": 13420,
-                  "damage_percentage_growth": 1220,
-                  "stun_ratio": 4680,
-                  "stun_ratio_growth": 220,
+                  "damage_percentage": 105280,
+                  "damage_percentage_growth": 9580,
+                  "stun_ratio": 72440,
+                  "stun_ratio_growth": 3300,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 128700,
+                  "fever_recovery": 2324850,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 4248,
+                  "attribute_infliction": 70523,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 4249
+                  "ether_purify": 67837
                 }
               },
               "potential": []
             },
             {
               "name": "失衡倍率",
-              "desc": "{Skill:1611017, Prop:1002}",
+              "desc": "{Skill:1661017, Prop:1002}",
               "param": {
-                "1611017": {
-                  "main": 4680,
-                  "growth": 220,
+                "1661017": {
+                  "main": 72440,
+                  "growth": 3300,
                   "format": "%",
-                  "damage_percentage": 13420,
-                  "damage_percentage_growth": 1220,
-                  "stun_ratio": 4680,
-                  "stun_ratio_growth": 220,
+                  "damage_percentage": 105280,
+                  "damage_percentage_growth": 9580,
+                  "stun_ratio": 72440,
+                  "stun_ratio_growth": 3300,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 128700,
+                  "fever_recovery": 2324850,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 4248,
+                  "attribute_infliction": 70523,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 4249
-                }
-              },
-              "potential": []
-            }
-          ],
-          "potential": []
-        },
-        {
-          "name": "(Test1)支援突击：角力突击",
-          "param": [
-            {
-              "name": "伤害倍率",
-              "desc": "{Skill:1611018, Prop:1001}",
-              "param": {
-                "1611018": {
-                  "main": 27250,
-                  "growth": 2480,
-                  "format": "%",
-                  "damage_percentage": 27250,
-                  "damage_percentage_growth": 2480,
-                  "stun_ratio": 19620,
-                  "stun_ratio_growth": 900,
-                  "sp_recovery": 0,
-                  "sp_recovery_growth": 0,
-                  "fever_recovery": 237050,
-                  "fever_recovery_growth": 0,
-                  "attribute_infliction": 7833,
-                  "sp_consume": 0,
-                  "attack_data": [],
-                  "rp_recovery": 0,
-                  "rp_recovery_growth": 0,
-                  "ether_purify": 22834
-                }
-              },
-              "potential": []
-            },
-            {
-              "name": "失衡倍率",
-              "desc": "{Skill:1611018, Prop:1002}",
-              "param": {
-                "1611018": {
-                  "main": 19620,
-                  "growth": 900,
-                  "format": "%",
-                  "damage_percentage": 27250,
-                  "damage_percentage_growth": 2480,
-                  "stun_ratio": 19620,
-                  "stun_ratio_growth": 900,
-                  "sp_recovery": 0,
-                  "sp_recovery_growth": 0,
-                  "fever_recovery": 237050,
-                  "fever_recovery_growth": 0,
-                  "attribute_infliction": 7833,
-                  "sp_consume": 0,
-                  "attack_data": [],
-                  "rp_recovery": 0,
-                  "rp_recovery_growth": 0,
-                  "ether_purify": 22834
+                  "ether_purify": 67837
                 }
               },
               "potential": []
@@ -1556,52 +1493,52 @@
           "param": [
             {
               "name": "伤害倍率",
-              "desc": "{Skill:1611019, Prop:1001}",
+              "desc": "{Skill:1661019, Prop:1001}",
               "param": {
-                "1611019": {
-                  "main": 33000,
-                  "growth": 3000,
+                "1661019": {
+                  "main": 15900,
+                  "growth": 1450,
                   "format": "%",
-                  "damage_percentage": 33000,
-                  "damage_percentage_growth": 3000,
-                  "stun_ratio": 19070,
-                  "stun_ratio_growth": 870,
+                  "damage_percentage": 15900,
+                  "damage_percentage_growth": 1450,
+                  "stun_ratio": 6250,
+                  "stun_ratio_growth": 290,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 221925,
+                  "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 7333,
+                  "attribute_infliction": 0,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 22334
+                  "ether_purify": 0
                 }
               },
               "potential": []
             },
             {
               "name": "失衡倍率",
-              "desc": "{Skill:1611019, Prop:1002}",
+              "desc": "{Skill:1661019, Prop:1002}",
               "param": {
-                "1611019": {
-                  "main": 19070,
-                  "growth": 870,
+                "1661019": {
+                  "main": 6250,
+                  "growth": 290,
                   "format": "%",
-                  "damage_percentage": 33000,
-                  "damage_percentage_growth": 3000,
-                  "stun_ratio": 19070,
-                  "stun_ratio_growth": 870,
+                  "damage_percentage": 15900,
+                  "damage_percentage_growth": 1450,
+                  "stun_ratio": 6250,
+                  "stun_ratio_growth": 290,
                   "sp_recovery": 0,
                   "sp_recovery_growth": 0,
-                  "fever_recovery": 221925,
+                  "fever_recovery": 0,
                   "fever_recovery_growth": 0,
-                  "attribute_infliction": 7333,
+                  "attribute_infliction": 0,
                   "sp_consume": 0,
                   "attack_data": [],
                   "rp_recovery": 0,
                   "rp_recovery_growth": 0,
-                  "ether_purify": 22334
+                  "ether_purify": 0
                 }
               },
               "potential": []
@@ -1669,11 +1606,11 @@
         "id": 1661501,
         "name": [
           "(Test1)核心被动：",
-          "(Test1)额外能力："
+          "(Test1)额外能力：PlaceHolder"
         ],
         "desc": [
-          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的8%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>12.5%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：离场技]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续60秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
-          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次。"
+          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的12%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>12.5%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：走台阶]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续80秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n发动登场技、终结技、连携技、支援突击后触发快速支援，且1.5秒内切人，则知更鸟自动留场释放[特殊技：离场]，期间知更鸟拥有无敌效果；\n知更鸟发动[反制支援]和[双人弹刀]时获得1个[强化Buff点]；\n发动[双人弹刀后]，若知更鸟不为当前操作角色则自动释放[特殊技：离场]，期间知更鸟拥有无敌效果；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
+          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次；\n全队[击破]角色攻击力提升350点。"
         ],
         "extra_property": {},
         "potential": []
@@ -1683,11 +1620,11 @@
         "id": 1661502,
         "name": [
           "(Test1)核心被动：",
-          "(Test1)额外能力："
+          "(Test1)额外能力：PlaceHolder"
         ],
         "desc": [
-          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的8%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>14.6%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：离场技]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续60秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
-          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次。"
+          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的12%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>14.6%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：走台阶]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续80秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
+          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次；\n全队[击破]角色攻击力提升350点。"
         ],
         "extra_property": {},
         "potential": []
@@ -1697,11 +1634,11 @@
         "id": 1661503,
         "name": [
           "(Test1)核心被动：",
-          "(Test1)额外能力："
+          "(Test1)额外能力：PlaceHolder"
         ],
         "desc": [
-          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的8%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>16.7%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：离场技]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续60秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
-          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次。"
+          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的12%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>16.7%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：走台阶]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续80秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
+          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次；\n全队[击破]角色攻击力提升350点。"
         ],
         "extra_property": {},
         "potential": []
@@ -1711,11 +1648,11 @@
         "id": 1661504,
         "name": [
           "(Test1)核心被动：",
-          "(Test1)额外能力："
+          "(Test1)额外能力：PlaceHolder"
         ],
         "desc": [
-          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的8%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>18.8%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：离场技]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续60秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
-          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次。"
+          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的12%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>18.8%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：走台阶]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续80秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
+          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次；\n全队[击破]角色攻击力提升350点。"
         ],
         "extra_property": {},
         "potential": []
@@ -1725,11 +1662,11 @@
         "id": 1661505,
         "name": [
           "(Test1)核心被动：",
-          "(Test1)额外能力："
+          "(Test1)额外能力：PlaceHolder"
         ],
         "desc": [
-          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的8%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>20.8%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：离场技]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续60秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
-          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次。"
+          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的12%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>20.8%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：走台阶]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续80秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
+          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次；\n全队[击破]角色攻击力提升350点。"
         ],
         "extra_property": {},
         "potential": []
@@ -1739,11 +1676,11 @@
         "id": 1661506,
         "name": [
           "(Test1)核心被动：",
-          "(Test1)额外能力："
+          "(Test1)额外能力：PlaceHolder"
         ],
         "desc": [
-          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的8%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>22.9%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：离场技]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续60秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
-          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次。"
+          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的12%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>22.9%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：走台阶]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续80秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
+          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次；\n全队[击破]角色攻击力提升350点。"
         ],
         "extra_property": {},
         "potential": []
@@ -1753,11 +1690,11 @@
         "id": 1661507,
         "name": [
           "(Test1)核心被动：",
-          "(Test1)额外能力："
+          "(Test1)额外能力：PlaceHolder"
         ],
         "desc": [
-          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的8%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>25%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：离场技]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续60秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
-          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次。"
+          "(Test1)知更鸟发动部分招式时，会为全队角色提供基于知更鸟初始最大生命值不同数额的护盾[守卫护盾]，持续15秒，角色重复获得[守卫护盾]时可以累积盾量并延长[守卫护盾]的持续时间，持续时间最多可延长至60秒，持有盾量最多不超过知更鸟初始最大生命值的12%；\n全队角色每次获得[守卫护盾]时，造成的伤害提升<color=#2BAD00>25%</color>，持续15秒，重复触发刷新持续时间；\n发动[特殊技：走台阶]后会触发快速支援，知更鸟在换人后将进入[离场守护]状态，持续80秒，[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；\n当[登场值]大于等于100点时，知更鸟可以通过[登场技]的方式被主动换入，换入时自动消耗100点[登场值]发动[登场技]，并退出[离场守护]状态；\n发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个；\n进入[离场守护]状态时，若拥有[Buff强化点]，则消耗1个[Buff强化点]使[离场守护]状态下提供的防御力提升效果及其上限额外提升25%；\n全队角色每触发一次毁伤，知更鸟恢复15能量。",
+          "(Test1)队伍中存在[锋御]或[击破]角色时触发：\n进入战场时，获得1个[Buff强化点]，在堪域模式中此效果180秒内最多触发一次；\n全队[击破]角色攻击力提升350点。"
         ],
         "extra_property": {},
         "potential": []
@@ -1795,21 +1732,21 @@
   "talent": {
     "1": {
       "level": 1,
-      "name": "(Test1)",
+      "name": "(Test1)PlaceHolder",
       "desc": "(Test1)知更鸟每次消耗<color=#FFFFFF>[强化Buff点]</color>时，全队角色锐暴伤害提升20%，持续60秒，重复触发刷新持续时间；消耗<color=#FFFFFF>[强化Buff点]</color>时，知更鸟获得1层<color=#FFFFFF>[羽毛防护]</color>，前场角色受到伤害时，知更鸟消耗1层<color=#FFFFFF>[羽毛防护]</color>使其获得短暂无敌。",
-      "desc2": "(Test1)"
+      "desc2": "(Test1)PlaceHolder"
     },
     "2": {
       "level": 2,
-      "name": "(Test1)",
+      "name": "(Test1)PlaceHolder",
       "desc": "(Test1)知更鸟发动<color=#FFFFFF>[追加攻击]</color>时，全队角色造成的伤害无视敌人12%抗性，持续15秒，重复触发刷新持续时间；全队持有<color=#FFFFFF>[守卫护盾]</color>的角色抗打断等级提升。",
-      "desc2": "(Test1)"
+      "desc2": "(Test1)PlaceHolder"
     },
     "3": {
       "level": 3,
-      "name": "(Test1)",
+      "name": "(Test1)PlaceHolder",
       "desc": "<color=#FFFFFF>[普通攻击]</color>、<color=#FFFFFF>[闪避]</color>、<color=#FFFFFF>[支援技]</color>、<color=#FFFFFF>[特殊技]</color>、<color=#FFFFFF>[连携技]</color> 技能等级+2",
-      "desc2": "(Test1)"
+      "desc2": "(Test1)PlaceHolder"
     },
     "4": {
       "level": 4,

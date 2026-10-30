@@ -12,8 +12,8 @@
   },
   "special_element_type": {
     "id": 201,
-    "name": "Genesis Flare",
-    "title": "Genesis Flare Stats",
+    "name": "ElementType_GenesisFlare",
+    "title": "ElementIconTitle_GenesisFlare",
     "desc": "ElementIconText_GenesisFlare",
     "icon": "UI/Sprite/A1DynamicLoad/IconGeneralBuff/Packer/IconGenesisFlare.png"
   },
@@ -278,22 +278,22 @@
     "basic": {
       "description": [
         {
-          "name": "Basic Attack: Thornbreaker",
-          "desc": "Press <IconMap:Icon_Normal> to activate:\nLindverne performs up to 4 consecutive attacks forward, dealing <color=#FF5521>Genesis Flare DMG</color>.\nRepeatedly press or hold during the 4th attack to perform an extended slash against enemies.\nWhen the heavy attack of the 4th attack hits an enemy with <color=#FFFFFF>[Gash]</color>, consume all <color=#FFFFFF>[Gash]</color> stacks on the target, up to 3 stacks. For each <color=#FFFFFF>[Gash]</color> stack consumed, trigger <color=#FFFFFF>[Maim]</color> on the target once, dealing additional AoE <color=#FF5521>Genesis Flare DMG</color>.\nCharacter is invulnerable during the 4th attack.\nDuring the 3rd and 4th attacks, Anti-Interrupt Level is increased and DMG taken is reduced by 40%.",
+          "name": "Lindverne_Skill_Normal_Title",
+          "desc": "Lindverne_Skill_Normal_Desc",
           "potential": []
         },
         {
-          "name": "Basic Attack: Bannerbearer",
-          "desc": "Press <IconMap:Icon_Normal> to activate:\nEldreda performs up to four consecutive attacks forward, dealing <color=#FF5521>Genesis Flare DMG</color>;\nWhen the heavy attack of the fourth hit lands on an enemy with <color=#FFFFFF>[Gash]</color>, it consumes all <color=#FFFFFF>[Gash]</color> stacks on the target, up to 3 stacks. For each stack of <color=#FFFFFF>[Gash]</color> consumed, triggers <color=#FFFFFF>[Maim]</color> on the target once, dealing additional AoE <color=#FF5521>Genesis Flare DMG</color>;\nDuring the third and fourth hits, Anti-Interrupt Level is increased and DMG taken is reduced by 40%.",
+          "name": "Eldreda_Skill_Normal_Title",
+          "desc": "Eldreda_Skill_Normal_Desc",
           "potential": []
         },
         {
-          "name": "Basic Attack: Bannerbearer - Converging Edge",
-          "desc": "When <color=#FFFFFF>[Willpower]</color> is sufficient, hold <IconMap:Icon_Normal> to activate:\nSwitch to Eldreda and launch an attack, dealing <color=#FF5521>Genesis Flare DMG</color>.\nCharacter is invulnerable while using this skill.\nAfter using this skill, gain <color=#FFFFFF>[Chain Teeth]</color> and <color=#FFFFFF>[Flag Order]</color>.",
+          "name": "Eldreda_Skill_Normal_Enhance_Title",
+          "desc": "Eldreda_Skill_Normal_Enhance_Desc",
           "potential": []
         },
         {
-          "name": "Basic Attack: Thornbreaker",
+          "name": "Lindverne_Skill_Normal_Title",
           "param": [
             {
               "name": "1st-Hit DMG Multiplier",
@@ -533,7 +533,7 @@
           "potential": []
         },
         {
-          "name": "Basic Attack: Bannerbearer",
+          "name": "Eldreda_Skill_Normal_Title",
           "param": [
             {
               "name": "1st-Hit DMG Multiplier",
@@ -773,7 +773,7 @@
           "potential": []
         },
         {
-          "name": "Basic Attack: Bannerbearer - Converging Edge",
+          "name": "Eldreda_Skill_Normal_Enhance_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -883,47 +883,47 @@
     "dodge": {
       "description": [
         {
-          "name": "Dodge: Phase Fold",
-          "desc": "Press <IconMap:Icon_Evade> to activate:\nLindverne performs a quick dash dodge.\nCharacter is invulnerable while using this skill.",
+          "name": "Lindverne_Skill_Evade_Title",
+          "desc": "Lindverne_Skill_Evade_Desc",
           "potential": []
         },
         {
-          "name": "Dash Attack: Void Slash Rush",
-          "desc": "Press <IconMap:Icon_Normal> during a dodge to activate:\nLindverne slashes forward, dealing <color=#FF5521>Genesis Flare DMG</color>.",
+          "name": "Lindverne_Skill_Rush_Title",
+          "desc": "Lindverne_Skill_Rush_Desc",
           "potential": []
         },
         {
-          "name": "Dodge Counter: Smoldering Fire Reignition",
-          "desc": "When <color=#FFFFFF>[Perfect Dodge]</color> is triggered, press <IconMap:Icon_Normal> to activate:\nLindverne unleashes a consecutive attack forward, dealing <color=#FF5521>Genesis Flare DMG</color>.\nAfter using this skill, press <IconMap:Icon_Normal> to quickly chain into the 3rd hit of <color=#FFFFFF>[Basic Attack]</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Lindverne_Skill_Counter_Title",
+          "desc": "Lindverne_Skill_Counter_Desc",
           "potential": []
         },
         {
-          "name": "Dodge: Spatial Reconstruction",
-          "desc": "Press <IconMap:Icon_Evade> to activate:\nEldreda performs a quick dash dodge.\nCharacter is invulnerable while using this skill.",
+          "name": "Eldreda_Skill_Evade_Title",
+          "desc": "Eldreda_Skill_Evade_Desc",
           "potential": []
         },
         {
-          "name": "Dash Attack: Reality Reversal",
-          "desc": "Press <IconMap:Icon_Normal> during a dodge to activate:\nEldreda thrusts forward, dealing <color=#FF5521>Genesis Flare DMG</color>.",
+          "name": "Eldreda_Skill_Rush_Title",
+          "desc": "Eldreda_Skill_Rush_Desc",
           "potential": []
         },
         {
-          "name": "Dodge: Patrol",
-          "desc": "Hold <IconMap:Icon_Evade> while moving the {LAYOUT_CONSOLECONTROLLER#stick}{LAYOUT_FALLBACK#joystick} to activate:\nEldreda enters the <color=#FFFFFF>[Nightglide]</color> state, allowing high-speed movement.\nWhile in the <color=#FFFFFF>[Nightglide]</color> state, use the {LAYOUT_CONSOLECONTROLLER#stick}{LAYOUT_FALLBACK#joystick} to control direction. Release the {LAYOUT_CONSOLECONTROLLER#stick}{LAYOUT_FALLBACK#joystick} to stop.\nCharacter is invulnerable at the moment this skill activates.",
+          "name": "Eldreda_Skill_Dash_Title",
+          "desc": "Eldreda_Skill_Dash_Desc",
           "potential": []
         },
         {
-          "name": "Dash Attack: Patrol - Shadow Realm Raid",
-          "desc": "In <color=#FFFFFF>[Nightglide]</color> state, Press <IconMap:Icon_Normal> to activate:\nEldreda unleashes a quick Tail Swipe attack, dealing <color=#FF5521>Genesis Flare DMG</color>.",
+          "name": "Eldreda_Skill_Dash_Attack_Title",
+          "desc": "Eldreda_Skill_Dash_Attack_Desc",
           "potential": []
         },
         {
-          "name": "Dodge Counter: Cold Flame Returning Edge",
-          "desc": "Press <IconMap:Icon_Normal> during a <color=#FFFFFF>Perfect Dodge</color> to activate:\nEldreda launches consecutive attacks forward, dealing <color=#FF5521>Genesis Flare DMG</color>.\nAfter using this skill, press <IconMap:Icon_Normal> to follow up with the 4th hit of <color=#FFFFFF>Basic Attack</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Eldreda_Skill_Counter_Title",
+          "desc": "Eldreda_Skill_Counter_Desc",
           "potential": []
         },
         {
-          "name": "Dash Attack: Void Slash Rush",
+          "name": "Lindverne_Skill_Rush_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -981,7 +981,7 @@
           "potential": []
         },
         {
-          "name": "Dodge Counter: Smoldering Fire Reignition",
+          "name": "Lindverne_Skill_Counter_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1039,7 +1039,7 @@
           "potential": []
         },
         {
-          "name": "Dash Attack: Reality Reversal",
+          "name": "Eldreda_Skill_Rush_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1097,7 +1097,7 @@
           "potential": []
         },
         {
-          "name": "Dodge Counter: Cold Flame Returning Edge",
+          "name": "Eldreda_Skill_Counter_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1155,7 +1155,7 @@
           "potential": []
         },
         {
-          "name": "Dash Attack: Patrol - Shadow Realm Raid",
+          "name": "Eldreda_Skill_Dash_Attack_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1265,47 +1265,47 @@
     "special": {
       "description": [
         {
-          "name": "Special Attack: Night Blaze",
-          "desc": "Press <IconMap:Icon_Special> to activate:\nSwitch to Lindverne and launch an attack, dealing <color=#FF5521>Genesis Flare DMG</color>.",
+          "name": "Lindverne_Skill_Special_01_Title",
+          "desc": "Lindverne_Skill_Special_01_Desc",
           "potential": []
         },
         {
-          "name": "EX Special Attack: Night Blaze - Dawnrise",
-          "desc": "When Sharpness is sufficient, press <IconMap:Icon_SpecialReady_Ep> to activate:\nLindverne and Eldreda launch a Synergy attack, keeping Lindverne on the field and dealing <color=#FF5521>Genesis Flare DMG</color>.\nWhen the heavy attack hits an enemy with <color=#FFFFFF>[Gash]</color>, consumes all <color=#FFFFFF>[Gash]</color> stacks on the target, up to 3 stacks. For each stack of <color=#FFFFFF>[Gash]</color> consumed, triggers <color=#FFFFFF>[Maim]</color> once on the target, dealing additional AoE <color=#FF5521>Genesis Flare DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Lindverne_Skill_ExSpecial_01_Title",
+          "desc": "Lindverne_Skill_ExSpecial_01_Desc",
           "potential": []
         },
         {
-          "name": "EX Special Attack: Night Blaze - Dawnborn (Modified)",
-          "desc": "When Sharpness is sufficient, press <IconMap:Icon_SpecialReady_Ep> after the final hit of <color=#FFFFFF>[Basic Attack: Thornbreaker]</color>, <color=#FFFFFF>[Dodge Counter: Smoldering Fire Reignition]</color>, <color=#FFFFFF>[Assist Follow-Up: Undying Passion]</color>, <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color>, or <color=#FFFFFF>[EX Special Attack: Night Blaze - Dawnborn (Modified)]</color> to activate:\nLindverne and Eldreda launch a coordinated attack, keeping Lindverne on the field and dealing <color=#FF5521>Genesis Flare DMG</color>.\nWhen the heavy attack hits an enemy with <color=#FFFFFF>[Gash]</color>, it consumes all <color=#FFFFFF>[Gash]</color> stacks on the target, up to a max of 3 stacks. For each stack of <color=#FFFFFF>[Gash]</color> consumed, triggers <color=#FFFFFF>[Maim]</color> on the target once, dealing additional AoE <color=#FF5521>Genesis Flare DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Lindverne_Skill_ExSpecial_03_Title",
+          "desc": "Lindverne_Skill_ExSpecial_03_Desc",
           "potential": []
         },
         {
-          "name": "EX Special Attack: Night Blaze - End of the Long Dark",
-          "desc": "When <color=#FFFFFF>[Chain Teeth]</color> is available, press <IconMap:Icon_Special> to activate:\nConsume <color=#FFFFFF>[Chain Teeth]</color>. Lindverne and Eldreda unleash a high-tier Synergy attack while Lindverne remains on the field, dealing massive <color=#FF5521>Genesis Flare DMG</color>;\nAfter using this skill, press <IconMap:Icon_Normal> to quickly chain into the 4th hit of <color=#FFFFFF>[Basic Attack]</color>;\nCharacter is invulnerable while using this skill.",
+          "name": "Lindverne_Skill_ExSpecial_02_Title",
+          "desc": "Lindverne_Skill_ExSpecial_02_Desc",
           "potential": []
         },
         {
-          "name": "Special Attack: Kindled Lamp",
-          "desc": "Press <IconMap:Icon_Special> to activate:\nSwitch to Eldreda and launch an attack, dealing <color=#FF5521>Genesis Flare DMG</color>.",
+          "name": "Eldreda_Skill_Special_01_Title",
+          "desc": "Eldreda_Skill_Special_01_Desc",
           "potential": []
         },
         {
-          "name": "EX Special Attack: Kindled Lamp - Gloom's End",
-          "desc": "When Sharpness is sufficient, press <IconMap:Icon_SpecialReady_Ep> to activate:\nEldreda and Lindverne launch a Synergy attack, keeping Eldreda on the field and dealing <color=#FF5521>Genesis Flare DMG</color>.\nWhen the heavy attack hits an enemy with <color=#FFFFFF>[Gash]</color>, it consumes all <color=#FFFFFF>[Gash]</color> stacks on the target, up to 3 stacks. For each <color=#FFFFFF>[Gash]</color> stack consumed, triggers <color=#FFFFFF>[Maim]</color> on the target once, dealing additional AoE <color=#FF5521>Genesis Flare DMG</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Eldreda_Skill_ExSpecial_01_Title",
+          "desc": "Eldreda_Skill_ExSpecial_01_Desc",
           "potential": []
         },
         {
-          "name": "EX Special Attack: Kindled Lamp - Gloom's End - Revised",
-          "desc": "When Sharpness is sufficient, press <IconMap:Icon_SpecialReady_Ep> after the final hit of <color=#FFFFFF>[Bannerbearer]</color>, or after using <color=#FFFFFF>[Dodge Counter: Cold Flame Returning Edge]</color>, <color=#FFFFFF>[Assist Follow-Up: Faith Unwavering]</color>, <color=#FFFFFF>[Ultimate: \"Onward, Together\"]</color>, or <color=#FFFFFF>[EX Special Attack: Night Blaze - Dawnborn (Modified)]</color> to activate:\nEldreda launches a Synergy attack with Lindverne and Dracaene while remaining on the field, dealing <color=#FF5521>Genesis Flare DMG</color>;\nWhen the heavy attack hits an enemy with <color=#FFFFFF>[Gash]</color>, it consumes all <color=#FFFFFF>[Gash]</color> stacks on the target, up to a maximum of 3. For each <color=#FFFFFF>[Gash]</color> stack consumed, <color=#FFFFFF>[Maim]</color> is triggered once on the target, dealing additional AoE <color=#FF5521>Genesis Flare DMG</color>;\nCharacter is invulnerable while using this skill.",
+          "name": "Eldreda_Skill_ExSpecial_03_Title",
+          "desc": "Eldreda_Skill_ExSpecial_03_Desc",
           "potential": []
         },
         {
-          "name": "EX Special Attack: Kindled Lamp - Torch of Eternal Day",
-          "desc": "When holding <color=#FFFFFF>[Flag Order]</color>, press <IconMap:Icon_Special> to activate:\nConsume <color=#FFFFFF>[Flag Order]</color> for Eldreda and Lindverne to unleash a high-powered Synergy attack, keeping Eldreda on the field and dealing massive <color=#FF5521>Genesis Flare DMG</color>;\nAfter using this skill, press <IconMap:Icon_Normal> to chain into the 4th hit of <color=#FFFFFF>[Basic Attack]</color>;\nCharacter is invulnerable while using this skill.",
+          "name": "Eldreda_Skill_ExSpecial_02_Title",
+          "desc": "Eldreda_Skill_ExSpecial_02_Desc",
           "potential": []
         },
         {
-          "name": "Special Attack: Night Blaze",
+          "name": "Lindverne_Skill_Special_01_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1363,7 +1363,7 @@
           "potential": []
         },
         {
-          "name": "EX Special Attack: Night Blaze - Dawnrise",
+          "name": "Lindverne_Skill_ExSpecial_01_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1419,14 +1419,14 @@
             },
             {
               "name": "Sharpness Cost",
-              "desc": "30",
+              "desc": "Sunbringer_Property_ExSpecial_CpCostValue_01",
               "potential": []
             }
           ],
           "potential": []
         },
         {
-          "name": "EX Special Attack: Night Blaze - Dawnborn (Modified)",
+          "name": "Lindverne_Skill_ExSpecial_03_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1482,14 +1482,14 @@
             },
             {
               "name": "Sharpness Cost",
-              "desc": "30",
+              "desc": "Sunbringer_Property_ExSpecial_CpCostValue_01",
               "potential": []
             }
           ],
           "potential": []
         },
         {
-          "name": "EX Special Attack: Night Blaze - End of the Long Dark",
+          "name": "Lindverne_Skill_ExSpecial_02_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1547,7 +1547,7 @@
           "potential": []
         },
         {
-          "name": "Special Attack: Kindled Lamp",
+          "name": "Eldreda_Skill_Special_01_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1605,7 +1605,7 @@
           "potential": []
         },
         {
-          "name": "EX Special Attack: Kindled Lamp - Gloom's End",
+          "name": "Eldreda_Skill_ExSpecial_01_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1661,14 +1661,14 @@
             },
             {
               "name": "Sharpness Cost",
-              "desc": "30",
+              "desc": "Sunbringer_Property_ExSpecial_CpCostValue_01",
               "potential": []
             }
           ],
           "potential": []
         },
         {
-          "name": "EX Special Attack: Kindled Lamp - Gloom's End - Revised",
+          "name": "Eldreda_Skill_ExSpecial_03_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1724,14 +1724,14 @@
             },
             {
               "name": "Sharpness Cost",
-              "desc": "30",
+              "desc": "Sunbringer_Property_ExSpecial_CpCostValue_01",
               "potential": []
             }
           ],
           "potential": []
         },
         {
-          "name": "EX Special Attack: Kindled Lamp - Torch of Eternal Day",
+          "name": "Eldreda_Skill_ExSpecial_02_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1841,27 +1841,27 @@
     "chain": {
       "description": [
         {
-          "name": "Chain Attack: Building Dreams for All",
-          "desc": "When a <color=#FFFFFF>Chain Attack</color> is triggered, select the character to activate:\nLindverne and Eldreda team up to unleash a powerful attack, keeping Lindverne on the field and dealing <color=#FF5521>Genesis Flare DMG</color>;\nWhen the heavy attack hits an enemy with <color=#FFFFFF>[Gash]</color>, it consumes all <color=#FFFFFF>[Gash]</color> stacks on the target, up to 3 stacks. For each <color=#FFFFFF>[Gash]</color> stack consumed, triggers <color=#FFFFFF>[Maim]</color> on the target once, dealing additional AoE <color=#FF5521>Genesis Flare DMG</color>;\nCharacter is invulnerable while using this skill;\nWhen Lindverne triggers a Daze Chain Attack window, Lindverne can be selected directly to activate this skill.",
+          "name": "Lindverne_Skill_QTE_Title",
+          "desc": "Lindverne_Skill_QTE_Desc",
           "potential": []
         },
         {
-          "name": "Ultimate: \"Onward, Together\"",
-          "desc": "When Decibel Rating is at <color=#FFFFFF>Maximum</color>, press <IconMap:Icon_UltimateReady> to activate:\nLindverne launches a Coordinated Attack with Eldreda and Dracaene and remains on the field, dealing massive <color=#FF5521>Genesis Flare DMG</color>.\nWhile holding <color=#FFFFFF>Flag Order</color>, consumes <color=#FFFFFF>Flag Order</color> and converts it into <color=#FFFFFF>Wish Core</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Lindverne_Skill_ExQTE_01_Title",
+          "desc": "Lindverne_Skill_ExQTE_01_Desc",
           "potential": []
         },
         {
-          "name": "Chain Attack: In the Name of Sunbringer",
-          "desc": "When a <color=#FFFFFF>Chain Attack</color> is triggered, select the character to activate:\nEldreda and Lindverne team up to unleash a high-powered Synergy attack, keeping Eldreda on the field and dealing <color=#FF5521>Genesis Flare DMG</color>;\nAfter using this skill, press <IconMap:Icon_Normal> to follow up with the 4th hit of the <color=#FFFFFF>Basic Attack</color>;\nWhen the heavy attack hits an enemy with <color=#FFFFFF>Gash</color>, it consumes all <color=#FFFFFF>Gash</color> stacks on the target, up to 3 stacks. For each <color=#FFFFFF>Gash</color> stack consumed, triggers <color=#FFFFFF>Maim</color> once on the target, dealing additional AoE <color=#FF5521>Genesis Flare DMG</color>;\nCharacter is invulnerable while using this skill;\nWhen Eldreda triggers a Daze Chain Attack window, Eldreda can be selected directly to activate this skill.",
+          "name": "Eldreda_Skill_QTE_Title",
+          "desc": "Eldreda_Skill_QTE_Desc",
           "potential": []
         },
         {
-          "name": "Ultimate: \"By This Wish, All Things Remade\"",
-          "desc": "When Eldreda has <color=#FFFFFF>[Wish Core]</color>, press <IconMap:Icon_UltimateReady> to activate:\nEldreda warps space in mid-air to attack, dealing <color=#FF5521>Genesis Flare DMG</color> and removing all <color=#FFFFFF>[Ember Scar]</color> from enemies.\nCharacter is invulnerable while using this skill.",
+          "name": "Eldreda_Skill_ExQTE_01_Title",
+          "desc": "Eldreda_Skill_ExQTE_01_Desc",
           "potential": []
         },
         {
-          "name": "Chain Attack: Building Dreams for All",
+          "name": "Lindverne_Skill_QTE_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1919,7 +1919,7 @@
           "potential": []
         },
         {
-          "name": "Ultimate: \"Onward, Together\"",
+          "name": "Lindverne_Skill_ExQTE_01_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -1977,7 +1977,7 @@
           "potential": []
         },
         {
-          "name": "Chain Attack: In the Name of Sunbringer",
+          "name": "Eldreda_Skill_QTE_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -2035,7 +2035,7 @@
           "potential": []
         },
         {
-          "name": "Ultimate: \"By This Wish, All Things Remade\"",
+          "name": "Eldreda_Skill_ExQTE_01_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -2145,42 +2145,42 @@
     "assist": {
       "description": [
         {
-          "name": "Quick Assist: Dauntless Aid",
-          "desc": "When the active character is launched, press <IconMap:Icon_Switch> to activate:\nLindverne unleashes a consecutive attack forward, dealing <color=#FF5521>Genesis Flare DMG</color>.\nAfter using this skill, press <IconMap:Icon_Normal> to quickly chain into the 3rd hit of <color=#FFFFFF>[Basic Attack]</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Lindverne_Skill_BeHitAid_Title",
+          "desc": "Lindverne_Skill_BeHitAid_Desc",
           "potential": []
         },
         {
-          "name": "Quick Assist: Path of the Gleaming Edge",
-          "desc": "When the active character is launched, press <IconMap:Icon_Switch> to activate:\nEldreda unleashes a flurry of consecutive attacks forward, dealing <color=#FF5521>Genesis Flare DMG</color>.\nAfter activating this skill, press <IconMap:Icon_Normal> to chain into the 4th hit of her <color=#FFFFFF>[Basic Attack]</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Eldreda_Skill_BeHitAid_Title",
+          "desc": "Eldreda_Skill_BeHitAid_Desc",
           "potential": []
         },
         {
-          "name": "Defensive Assist: Oath of Steadfastness",
-          "desc": "When the on-field character is about to be attacked, press <IconMap:Icon_Switch> to activate:\nDracaene parries the enemy's attack, accumulating massive Daze.\nWhen Lindverne or Eldreda is on field, this skill can also be activated by switching in the next character.\nCharacter is invulnerable while using this skill.",
+          "name": "Dracaene_Skill_ParryAid_Title",
+          "desc": "Dracaene_Skill_ParryAid_Desc",
           "potential": []
         },
         {
-          "name": "Counter Assist: Fortress of Hope",
-          "desc": "When the user or the on-field Character is about to be hit by certain enemy Control Skills, press <IconMap:Icon_Switch> to activate:\nDracaene grapples with the monster. If she wins the struggle, she neutralizes the enemy's Control Skill and deals <color=#FF5521>Genesis Flare DMG</color>;\nCharacter is invulnerable while using this skill.",
+          "name": "Dracaene_Skill_WrestleAid_Title",
+          "desc": "Dracaene_Skill_WrestleAid_Desc",
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Lighthouse, Towering in the Sky",
-          "desc": "After activating a <color=#FFFFFF>[Counter Assist]</color>, press <IconMap:Icon_Normal> to activate:\nDracaene unleashes an attack dealing massive <color=#FF5521>Genesis Flare DMG</color>. When the heavy attack hits an enemy, it directly applies 1 stack of [Gash] to the target.\nCharacter is invulnerable while using this skill.",
+          "name": "Dracaene_Skill_AssaultAid_Title",
+          "desc": "Dracaene_Skill_AssaultAid_Desc",
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Undying Passion",
-          "desc": "Press <IconMap:Icon_Normal> after Dracaene performs a <color=#FFFFFF>[Defensive Assist]</color> to activate:\nLindverne unleashes a swift forward Slash, then triggers an explosion, dealing <color=#FF5521>Genesis Flare DMG</color>;\nAfter activating this skill, press <IconMap:Icon_Normal> to quickly chain into the 4th hit of the <color=#FFFFFF>[Basic Attack]</color>;\nRepeatedly press or hold during this skill to keep slashing enemies;\nCharacter is invulnerable while using this skill.",
+          "name": "Lindverne_Skill_AssaultAid_Title",
+          "desc": "Lindverne_Skill_AssaultAid_Desc",
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Faith Unwavering",
-          "desc": "Press <IconMap:Icon_Normal> after Dracaene activates a <color=#FFFFFF>Defensive Assist</color> to activate:\nEldreda unleashes a swift forward slash, followed by an explosion that deals <color=#FF5521>Genesis Flare DMG</color>.\nAfter using this skill, press <IconMap:Icon_Normal> to chain into the 4th hit of her <color=#FFFFFF>Basic Attack</color>.\nCharacter is invulnerable while using this skill.",
+          "name": "Eldreda_Skill_AssaultAid_Title",
+          "desc": "Eldreda_Skill_AssaultAid_Desc",
           "potential": []
         },
         {
-          "name": "Quick Assist: Dauntless Aid",
+          "name": "Lindverne_Skill_BeHitAid_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -2238,7 +2238,7 @@
           "potential": []
         },
         {
-          "name": "Quick Assist: Path of the Gleaming Edge",
+          "name": "Eldreda_Skill_BeHitAid_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -2296,7 +2296,7 @@
           "potential": []
         },
         {
-          "name": "Defensive Assist: Oath of Steadfastness",
+          "name": "Dracaene_Skill_ParryAid_Title",
           "param": [
             {
               "name": "Light Defensive Daze Multiplier",
@@ -2380,7 +2380,7 @@
           "potential": []
         },
         {
-          "name": "Counter Assist: Fortress of Hope",
+          "name": "Dracaene_Skill_WrestleAid_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -2438,7 +2438,7 @@
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Lighthouse, Towering in the Sky",
+          "name": "Dracaene_Skill_AssaultAid_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -2496,7 +2496,7 @@
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Undying Passion",
+          "name": "Lindverne_Skill_AssaultAid_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -2554,7 +2554,7 @@
           "potential": []
         },
         {
-          "name": "Assist Follow-Up: Faith Unwavering",
+          "name": "Eldreda_Skill_AssaultAid_Title",
           "param": [
             {
               "name": "DMG Multiplier",
@@ -2670,12 +2670,12 @@
         "level": 1,
         "id": 1601501,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Sunbringer_UniqueSkill_Title",
+          "Sunbringer_MathSkill_Title"
         ],
         "desc": [
-          "All DMG dealt by Sunbringer's skills is Sharp DMG, which uses DEF for the skill DMG Multiplier. Some Sharp DMG accumulates Gash value. When the Gash value is full, the enemy enters <color=#FFFFFF>[Gash]</color>. <color=#FFFFFF>[Gash]</color> can stack up to 3 times. When certain heavy attacks from Sunbringer's skills hit an enemy in the <color=#FFFFFF>[Gash]</color> state, 1 stack of <color=#FFFFFF>[Gash]</color> is consumed to deal AoE DMG once;\nWhen a critical hit is triggered, Sharp DMG does not benefit from CRIT DMG Bonus and uses Laceration DMG Bonus instead. If CRIT Rate exceeds 100% and a critical hit has already been triggered, an additional Laceration check is made based on the excess CRIT Rate. If Laceration is triggered, Laceration DMG Bonus is applied one additional time. For every 1% initial CRIT DMG Sunbringer has, Sunbringer's initial CRIT Rate increases by 0.35%;\nWhen Sunbringer enters the battlefield, Sunbringer immediately restores 60 Sharpness. In Investigation Zone mode, this effect can trigger once every 180s;\nWhen Sunbringer enters combat, Sunbringer gains the <color=#FFFFFF>[Midnight Sun]</color> effect, increasing CRIT Rate by <color=#2BAD00>40%</color> and ignoring <color=#2BAD00>20%</color> of the target's DEF when dealing DMG. <color=#FFFFFF>[Midnight Sun]</color> lasts 15s, and its duration stops decreasing while Eldreda and Lindverne are off field. Sunbringer regains the <color=#FFFFFF>[Midnight Sun]</color> effect upon activating any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nAfter Dracaene performs a <color=#FFFFFF>[Defensive Assist]</color>, the <color=#FFFFFF>[Assist Follow-Up]</color> performed by Eldreda and Lindverne gains <color=#2BAD00>15%</color> increased Gash Buildup Rate and deals <color=#2BAD00>20%</color> increased DMG;\nWhen any Agent in the squad triggers <color=#FFFFFF>[Maim]</color>, Sunbringer gains 40 <color=#FFFFFF>[Willpower]</color> for each stack of <color=#FFFFFF>[Gash]</color> removed, up to a maximum of 160 <color=#FFFFFF>[Willpower]</color>. When Sunbringer has at least 120 <color=#FFFFFF>[Willpower]</color>, 120 <color=#FFFFFF>[Willpower]</color> can be consumed to activate <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nWhen a teammate triggers <color=#FFFFFF>[Maim]</color>, if Sunbringer has enough <color=#FFFFFF>[Willpower]</color>, a <color=#FFFFFF>[Quick Assist]</color> is triggered. When Sunbringer switches on field via <color=#FFFFFF>[Quick Assist]</color>, 120 <color=#FFFFFF>[Willpower]</color> is consumed to directly activate <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>. This effect can trigger once every 3s;\nWhen Sunbringer's <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>, <color=#FFFFFF>[EX Special Attack: Night Blaze - End of the Long Dark]</color>, <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color>, <color=#FFFFFF>[Ultimate: \"Onward, Together\"]</color>, or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy and deals DMG, the target accumulates <color=#FFFFFF>[Ember Scar]</color> equal to <color=#2BAD00>75%</color> of the actual DMG dealt by the skill. When the Finishing Move of Eldreda's <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color> or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy, all <color=#FFFFFF>[Ember Scar]</color> is removed, directly deducting an equal amount of HP.\nWhen an attack hits a normal enemy, if that enemy's <color=#FFFFFF>[Ember Scar]</color> is greater than or equal to its current HP, all of its <color=#FFFFFF>[Ember Scar]</color> is removed and the enemy is instantly defeated.",
-          "When another character in your squad is a <color=#FFFFFF>[Stun]</color> character, a <color=#FFFFFF>[Defense]</color> character, or an <color=#FFFFFF>[Armorer]</color> character:\nWhen Sunbringer uses any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Dash Attack: Patrol - Shadow Realm Raid]</color>, all <color=#FFFFFF>[Armorer]</color> Agents in the whole squad enter the <color=#FFFFFF>[Unanimous Wish]</color> state. While in the <color=#FFFFFF>[Unanimous Wish]</color> state, Laceration DMG increases by <color=#FFFFFF>25%</color> for 45s. Re-entering the <color=#FFFFFF>[Unanimous Wish]</color> state refreshes the duration."
+          "Sunbringer_UniqueSkill_01_Desc",
+          "Sunbringer_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -2684,12 +2684,12 @@
         "level": 2,
         "id": 1601502,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Sunbringer_UniqueSkill_Title",
+          "Sunbringer_MathSkill_Title"
         ],
         "desc": [
-          "Sunbringer's skills all deal Sharp DMG and use DEF as the skill DMG Multiplier. Some Sharp DMG accumulates Gash Buildup. When Gash Buildup is full, the enemy enters <color=#FFFFFF>[Gash]</color>, which can stack up to 3 times. When certain heavy attacks from Sunbringer's skills hit an enemy affected by <color=#FFFFFF>[Gash]</color>, 1 stack of <color=#FFFFFF>[Gash]</color> is consumed to deal AoE DMG once;\nWhen a critical hit is triggered, Sharp DMG does not benefit from CRIT DMG Bonus and uses Laceration DMG Bonus instead. If CRIT Rate exceeds 100% and a critical hit has been triggered, an additional Laceration check is made based on the excess CRIT Rate. If Laceration is triggered, an additional Laceration DMG Bonus is applied. For every 1% initial CRIT DMG Sunbringer has, her initial CRIT Rate increases by 0.35%;\nWhen Sunbringer enters the battlefield, she restores 60 Sharpness. In Investigation Zone mode, this effect can trigger once every 180s;\nWhen she enters combat, Sunbringer gains <color=#FFFFFF>[Midnight Sun]</color>, increasing CRIT Rate by <color=#2BAD00>40%</color> and allowing her DMG to ignore <color=#2BAD00>20%</color> of the target's DEF. <color=#FFFFFF>[Midnight Sun]</color> lasts 15s. While Eldreda and Lindverne are off field, its duration no longer decreases. Sunbringer regains <color=#FFFFFF>[Midnight Sun]</color> whenever she uses any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nAfter Dracaene performs a <color=#FFFFFF>[Defensive Assist]</color>, the <color=#FFFFFF>[Assist Follow-Up]</color> performed by Eldreda and Lindverne gains <color=#2BAD00>15%</color> increased Gash Buildup Rate and deals <color=#2BAD00>20%</color> more DMG;\nWhenever any Agent in the squad triggers <color=#FFFFFF>[Maim]</color>, Sunbringer gains 40 <color=#FFFFFF>[Willpower]</color> for each stack of <color=#FFFFFF>[Gash]</color> removed, up to a maximum of 160 <color=#FFFFFF>[Willpower]</color>. When she has at least 120 <color=#FFFFFF>[Willpower]</color>, she can consume 120 <color=#FFFFFF>[Willpower]</color> to perform <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nWhen a teammate triggers <color=#FFFFFF>[Maim]</color>, if Sunbringer has enough <color=#FFFFFF>[Willpower]</color>, <color=#FFFFFF>[Quick Assist]</color> is triggered. When Sunbringer switches on field via <color=#FFFFFF>[Quick Assist]</color>, she consumes 120 <color=#FFFFFF>[Willpower]</color> to immediately perform <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>. This effect can trigger once every 3s;\nWhen Sunbringer's <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>, <color=#FFFFFF>[EX Special Attack: Night Blaze - End of the Long Dark]</color>, <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color>, <color=#FFFFFF>[Ultimate: \"Onward, Together\"]</color>, or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy and deals DMG, the target accumulates <color=#FFFFFF>[Ember Scar]</color> equal to <color=#2BAD00>75%</color> of the actual DMG dealt by the skill. When the Finishing Move of Eldreda's <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color> or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy, all <color=#FFFFFF>[Ember Scar]</color> is cleared, directly deducting an equal amount of HP.\nWhen an attack hits normal enemies, if the enemy's <color=#FFFFFF>[Ember Scar]</color> is greater than or equal to its current HP, all of its <color=#FFFFFF>[Ember Scar]</color> is immediately cleared and the enemy is defeated.",
-          "When another character in your squad is a <color=#FFFFFF>[Stun]</color> character, a <color=#FFFFFF>[Defense]</color> character, or an <color=#FFFFFF>[Armorer]</color> character:\nWhen Sunbringer uses any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Dash Attack: Patrol - Shadow Realm Raid]</color>, all <color=#FFFFFF>[Armorer]</color> Agents in the whole squad enter the <color=#FFFFFF>[Unanimous Wish]</color> state. While in the <color=#FFFFFF>[Unanimous Wish]</color> state, Laceration DMG increases by <color=#FFFFFF>25%</color> for 45s. Re-entering the <color=#FFFFFF>[Unanimous Wish]</color> state refreshes the duration."
+          "Sunbringer_UniqueSkill_02_Desc",
+          "Sunbringer_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -2698,12 +2698,12 @@
         "level": 3,
         "id": 1601503,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Sunbringer_UniqueSkill_Title",
+          "Sunbringer_MathSkill_Title"
         ],
         "desc": [
-          "Sunbringer's skills all deal Sharp DMG and use DEF as the skill DMG Multiplier. Some Sharp DMG accumulates Gash Buildup. When Gash Buildup is full, the enemy enters <color=#FFFFFF>[Gash]</color>, which can stack up to 3 times. When certain heavy attacks from Sunbringer's skills hit an enemy affected by <color=#FFFFFF>[Gash]</color>, 1 stack of <color=#FFFFFF>[Gash]</color> is consumed to deal AoE DMG once;\nWhen a critical hit is triggered, Sharp DMG does not benefit from CRIT DMG Bonus and uses Laceration DMG Bonus instead. If CRIT Rate exceeds 100% and a critical hit has been triggered, an additional Laceration check is made based on the excess CRIT Rate. If Laceration is triggered, an additional Laceration DMG Bonus is applied. For every 1% initial CRIT DMG Sunbringer has, her initial CRIT Rate increases by 0.35%;\nWhen Sunbringer enters the battlefield, she restores 60 Sharpness. In Investigation Zone mode, this effect can trigger once every 180s;\nWhen she enters combat, Sunbringer gains <color=#FFFFFF>[Midnight Sun]</color>, increasing CRIT Rate by <color=#2BAD00>40%</color> and allowing her DMG to ignore <color=#2BAD00>20%</color> of the target's DEF. <color=#FFFFFF>[Midnight Sun]</color> lasts 15s. While Eldreda and Lindverne are off field, its duration no longer decreases. Sunbringer regains <color=#FFFFFF>[Midnight Sun]</color> whenever she uses any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nAfter Dracaene performs a <color=#FFFFFF>[Defensive Assist]</color>, the <color=#FFFFFF>[Assist Follow-Up]</color> performed by Eldreda and Lindverne gains <color=#2BAD00>15%</color> increased Gash Buildup Rate and deals <color=#2BAD00>20%</color> more DMG;\nWhenever any Agent in the squad triggers <color=#FFFFFF>[Maim]</color>, Sunbringer gains 40 <color=#FFFFFF>[Willpower]</color> for each stack of <color=#FFFFFF>[Gash]</color> removed, up to a maximum of 160 <color=#FFFFFF>[Willpower]</color>. When she has at least 120 <color=#FFFFFF>[Willpower]</color>, she can consume 120 <color=#FFFFFF>[Willpower]</color> to perform <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nWhen a teammate triggers <color=#FFFFFF>[Maim]</color>, if Sunbringer has enough <color=#FFFFFF>[Willpower]</color>, <color=#FFFFFF>[Quick Assist]</color> is triggered. When Sunbringer switches on field via <color=#FFFFFF>[Quick Assist]</color>, she consumes 120 <color=#FFFFFF>[Willpower]</color> to immediately perform <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>. This effect can trigger once every 3s;\nWhen Sunbringer's <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>, <color=#FFFFFF>[EX Special Attack: Night Blaze - End of the Long Dark]</color>, <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color>, <color=#FFFFFF>[Ultimate: \"Onward, Together\"]</color>, or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy and deals DMG, the target accumulates <color=#FFFFFF>[Ember Scar]</color> equal to <color=#2BAD00>75%</color> of the actual DMG dealt by the skill. When the Finishing Move of Eldreda's <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color> or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy, all <color=#FFFFFF>[Ember Scar]</color> is cleared, directly deducting an equal amount of HP.\nWhen an attack hits normal enemies, if the enemy's <color=#FFFFFF>[Ember Scar]</color> is greater than or equal to its current HP, all of its <color=#FFFFFF>[Ember Scar]</color> is immediately cleared and the enemy is defeated.",
-          "When another character in your squad is a <color=#FFFFFF>[Stun]</color> character, a <color=#FFFFFF>[Defense]</color> character, or an <color=#FFFFFF>[Armorer]</color> character:\nWhen Sunbringer uses any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Dash Attack: Patrol - Shadow Realm Raid]</color>, all <color=#FFFFFF>[Armorer]</color> Agents in the whole squad enter the <color=#FFFFFF>[Unanimous Wish]</color> state. While in the <color=#FFFFFF>[Unanimous Wish]</color> state, Laceration DMG increases by <color=#FFFFFF>25%</color> for 45s. Re-entering the <color=#FFFFFF>[Unanimous Wish]</color> state refreshes the duration."
+          "Sunbringer_UniqueSkill_03_Desc",
+          "Sunbringer_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -2712,12 +2712,12 @@
         "level": 4,
         "id": 1601504,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Sunbringer_UniqueSkill_Title",
+          "Sunbringer_MathSkill_Title"
         ],
         "desc": [
-          "Sunbringer's skills all deal Sharp DMG and use DEF as the skill DMG Multiplier. Some Sharp DMG accumulates Gash Buildup. When Gash Buildup is full, the enemy enters <color=#FFFFFF>[Gash]</color>, which can stack up to 3 times. When certain heavy attacks from Sunbringer's skills hit an enemy affected by <color=#FFFFFF>[Gash]</color>, 1 stack of <color=#FFFFFF>[Gash]</color> is consumed to deal AoE DMG once;\nWhen a critical hit is triggered, Sharp DMG does not benefit from CRIT DMG Bonus and uses Laceration DMG Bonus instead. If CRIT Rate exceeds 100% and a critical hit has been triggered, an additional Laceration check is made based on the excess CRIT Rate. If Laceration is triggered, an additional Laceration DMG Bonus is applied. For every 1% initial CRIT DMG Sunbringer has, her initial CRIT Rate increases by 0.35%;\nWhen Sunbringer enters the battlefield, she restores 60 Sharpness. In Investigation Zone mode, this effect can trigger once every 180s;\nWhen she enters combat, Sunbringer gains <color=#FFFFFF>[Midnight Sun]</color>, increasing CRIT Rate by <color=#2BAD00>40%</color> and allowing her DMG to ignore <color=#2BAD00>20%</color> of the target's DEF. <color=#FFFFFF>[Midnight Sun]</color> lasts 15s. While Eldreda and Lindverne are off field, its duration no longer decreases. Sunbringer regains <color=#FFFFFF>[Midnight Sun]</color> whenever she uses any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nAfter Dracaene performs a <color=#FFFFFF>[Defensive Assist]</color>, the <color=#FFFFFF>[Assist Follow-Up]</color> performed by Eldreda and Lindverne gains <color=#2BAD00>15%</color> increased Gash Buildup Rate and deals <color=#2BAD00>20%</color> more DMG;\nWhenever any Agent in the squad triggers <color=#FFFFFF>[Maim]</color>, Sunbringer gains 40 <color=#FFFFFF>[Willpower]</color> for each stack of <color=#FFFFFF>[Gash]</color> removed, up to a maximum of 160 <color=#FFFFFF>[Willpower]</color>. When she has at least 120 <color=#FFFFFF>[Willpower]</color>, she can consume 120 <color=#FFFFFF>[Willpower]</color> to perform <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nWhen a teammate triggers <color=#FFFFFF>[Maim]</color>, if Sunbringer has enough <color=#FFFFFF>[Willpower]</color>, <color=#FFFFFF>[Quick Assist]</color> is triggered. When Sunbringer switches on field via <color=#FFFFFF>[Quick Assist]</color>, she consumes 120 <color=#FFFFFF>[Willpower]</color> to immediately perform <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>. This effect can trigger once every 3s;\nWhen Sunbringer's <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>, <color=#FFFFFF>[EX Special Attack: Night Blaze - End of the Long Dark]</color>, <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color>, <color=#FFFFFF>[Ultimate: \"Onward, Together\"]</color>, or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy and deals DMG, the target accumulates <color=#FFFFFF>[Ember Scar]</color> equal to <color=#2BAD00>75%</color> of the actual DMG dealt by the skill. When the Finishing Move of Eldreda's <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color> or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy, all <color=#FFFFFF>[Ember Scar]</color> is cleared, directly deducting an equal amount of HP.\nWhen an attack hits normal enemies, if the enemy's <color=#FFFFFF>[Ember Scar]</color> is greater than or equal to its current HP, all of its <color=#FFFFFF>[Ember Scar]</color> is immediately cleared and the enemy is defeated.",
-          "When another character in your squad is a <color=#FFFFFF>[Stun]</color> character, a <color=#FFFFFF>[Defense]</color> character, or an <color=#FFFFFF>[Armorer]</color> character:\nWhen Sunbringer uses any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Dash Attack: Patrol - Shadow Realm Raid]</color>, all <color=#FFFFFF>[Armorer]</color> Agents in the whole squad enter the <color=#FFFFFF>[Unanimous Wish]</color> state. While in the <color=#FFFFFF>[Unanimous Wish]</color> state, Laceration DMG increases by <color=#FFFFFF>25%</color> for 45s. Re-entering the <color=#FFFFFF>[Unanimous Wish]</color> state refreshes the duration."
+          "Sunbringer_UniqueSkill_04_Desc",
+          "Sunbringer_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -2726,12 +2726,12 @@
         "level": 5,
         "id": 1601505,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Sunbringer_UniqueSkill_Title",
+          "Sunbringer_MathSkill_Title"
         ],
         "desc": [
-          "Sunbringer's skills all deal Sharp DMG and use DEF as the skill DMG Multiplier. Some Sharp DMG accumulates Gash Buildup. When Gash Buildup is full, the enemy enters <color=#FFFFFF>[Gash]</color>, which can stack up to 3 times. When certain heavy attacks from Sunbringer's skills hit an enemy affected by <color=#FFFFFF>[Gash]</color>, 1 stack of <color=#FFFFFF>[Gash]</color> is consumed to deal AoE DMG once;\nWhen a critical hit is triggered, Sharp DMG does not benefit from CRIT DMG Bonus and uses Laceration DMG Bonus instead. If CRIT Rate exceeds 100% and a critical hit has been triggered, an additional Laceration check is made based on the excess CRIT Rate. If Laceration is triggered, an additional Laceration DMG Bonus is applied. For every 1% initial CRIT DMG Sunbringer has, her initial CRIT Rate increases by 0.35%;\nWhen Sunbringer enters the battlefield, she restores 60 Sharpness. In Investigation Zone mode, this effect can trigger once every 180s;\nWhen she enters combat, Sunbringer gains <color=#FFFFFF>[Midnight Sun]</color>, increasing CRIT Rate by <color=#2BAD00>40%</color> and allowing her DMG to ignore <color=#2BAD00>20%</color> of the target's DEF. <color=#FFFFFF>[Midnight Sun]</color> lasts 15s. While Eldreda and Lindverne are off field, its duration no longer decreases. Sunbringer regains <color=#FFFFFF>[Midnight Sun]</color> whenever she uses any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nAfter Dracaene performs a <color=#FFFFFF>[Defensive Assist]</color>, the <color=#FFFFFF>[Assist Follow-Up]</color> performed by Eldreda and Lindverne gains <color=#2BAD00>15%</color> increased Gash Buildup Rate and deals <color=#2BAD00>20%</color> more DMG;\nWhenever any Agent in the squad triggers <color=#FFFFFF>[Maim]</color>, Sunbringer gains 40 <color=#FFFFFF>[Willpower]</color> for each stack of <color=#FFFFFF>[Gash]</color> removed, up to a maximum of 160 <color=#FFFFFF>[Willpower]</color>. When she has at least 120 <color=#FFFFFF>[Willpower]</color>, she can consume 120 <color=#FFFFFF>[Willpower]</color> to perform <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nWhen a teammate triggers <color=#FFFFFF>[Maim]</color>, if Sunbringer has enough <color=#FFFFFF>[Willpower]</color>, <color=#FFFFFF>[Quick Assist]</color> is triggered. When Sunbringer switches on field via <color=#FFFFFF>[Quick Assist]</color>, she consumes 120 <color=#FFFFFF>[Willpower]</color> to immediately perform <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>. This effect can trigger once every 3s;\nWhen Sunbringer's <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>, <color=#FFFFFF>[EX Special Attack: Night Blaze - End of the Long Dark]</color>, <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color>, <color=#FFFFFF>[Ultimate: \"Onward, Together\"]</color>, or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy and deals DMG, the target accumulates <color=#FFFFFF>[Ember Scar]</color> equal to <color=#2BAD00>75%</color> of the actual DMG dealt by the skill. When the Finishing Move of Eldreda's <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color> or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy, all <color=#FFFFFF>[Ember Scar]</color> is cleared, directly deducting an equal amount of HP.\nWhen an attack hits normal enemies, if the enemy's <color=#FFFFFF>[Ember Scar]</color> is greater than or equal to its current HP, all of its <color=#FFFFFF>[Ember Scar]</color> is immediately cleared and the enemy is defeated.",
-          "When another character in your squad is a <color=#FFFFFF>[Stun]</color> character, a <color=#FFFFFF>[Defense]</color> character, or an <color=#FFFFFF>[Armorer]</color> character:\nWhen Sunbringer uses any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Dash Attack: Patrol - Shadow Realm Raid]</color>, all <color=#FFFFFF>[Armorer]</color> Agents in the whole squad enter the <color=#FFFFFF>[Unanimous Wish]</color> state. While in the <color=#FFFFFF>[Unanimous Wish]</color> state, Laceration DMG increases by <color=#FFFFFF>25%</color> for 45s. Re-entering the <color=#FFFFFF>[Unanimous Wish]</color> state refreshes the duration."
+          "Sunbringer_UniqueSkill_05_Desc",
+          "Sunbringer_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -2740,12 +2740,12 @@
         "level": 6,
         "id": 1601506,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Sunbringer_UniqueSkill_Title",
+          "Sunbringer_MathSkill_Title"
         ],
         "desc": [
-          "All DMG dealt by Sunbringer's skills is Sharp DMG, which uses DEF as the skill DMG Multiplier. Some Sharp DMG accumulates Gash buildup. When Gash buildup is full, the enemy enters <color=#FFFFFF>[Gash]</color>, which stacks up to 3 times. When certain heavy attack skills from Sunbringer hit an enemy in the <color=#FFFFFF>[Gash]</color> state, 1 stack of <color=#FFFFFF>[Gash]</color> is consumed to deal AoE DMG once;\nWhen a critical hit is triggered, Sharp DMG does not benefit from CRIT DMG Bonus and uses Laceration DMG Bonus instead. If CRIT Rate exceeds 100% and a critical hit has been triggered, an additional Laceration check is made based on the excess CRIT Rate. If Laceration is triggered, Laceration DMG Bonus is applied one additional time. For every 1% initial CRIT DMG Sunbringer has, Sunbringer's initial CRIT Rate increases by 0.35%;\nSunbringer recovers 60 Sharpness upon entering the battlefield. In Investigation Zone mode, this effect can trigger once every 180s;\nWhen Sunbringer enters combat, Sunbringer gains <color=#FFFFFF>[Midnight Sun]</color>, increasing CRIT Rate by <color=#2BAD00>40%</color> and ignoring <color=#2BAD00>20%</color> of the target's DEF when dealing DMG. <color=#FFFFFF>[Midnight Sun]</color> lasts 15s. While Eldreda and Lindverne are off field, its duration no longer decreases. Sunbringer regains <color=#FFFFFF>[Midnight Sun]</color> upon using any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nAfter Dracaene uses <color=#FFFFFF>[Defensive Assist]</color>, the <color=#FFFFFF>[Assist Follow-Up]</color> used by Eldreda and Lindverne gains <color=#2BAD00>15%</color> increased Gash Buildup Rate and deals <color=#2BAD00>20%</color> more DMG;\nWhen any Agent in the squad triggers <color=#FFFFFF>[Maim]</color>, Sunbringer gains 40 <color=#FFFFFF>[Willpower]</color> for each stack of <color=#FFFFFF>[Gash]</color> removed, up to a maximum of 160 <color=#FFFFFF>[Willpower]</color>. With at least 120 <color=#FFFFFF>[Willpower]</color>, 120 <color=#FFFFFF>[Willpower]</color> can be consumed to activate <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nWhen a teammate triggers <color=#FFFFFF>[Maim]</color>, if Sunbringer has enough <color=#FFFFFF>[Willpower]</color>, <color=#FFFFFF>[Quick Assist]</color> is triggered. When Sunbringer switches on field via <color=#FFFFFF>[Quick Assist]</color>, 120 <color=#FFFFFF>[Willpower]</color> is consumed to instantly activate <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>. This effect can trigger once every 3s;\nWhen Sunbringer's <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>, <color=#FFFFFF>[EX Special Attack: Night Blaze - End of the Long Dark]</color>, <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color>, <color=#FFFFFF>[Ultimate: \"Onward, Together\"]</color>, or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy and deals DMG, the target accumulates <color=#FFFFFF>[Ember Scar]</color> equal to <color=#2BAD00>75%</color> of the actual DMG dealt by the skill. When the Finishing Move of Eldreda's <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color> or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy, all <color=#FFFFFF>[Ember Scar]</color> is removed, directly deducting an equal amount of HP.\nWhen an attack hits a normal enemy, if that enemy's <color=#FFFFFF>[Ember Scar]</color> is equal to or greater than its current HP, all of its <color=#FFFFFF>[Ember Scar]</color> is removed and the enemy is instantly defeated.",
-          "When another character in your squad is a <color=#FFFFFF>[Stun]</color> character, a <color=#FFFFFF>[Defense]</color> character, or an <color=#FFFFFF>[Armorer]</color> character:\nWhen Sunbringer uses any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Dash Attack: Patrol - Shadow Realm Raid]</color>, all <color=#FFFFFF>[Armorer]</color> Agents in the whole squad enter the <color=#FFFFFF>[Unanimous Wish]</color> state. While in the <color=#FFFFFF>[Unanimous Wish]</color> state, Laceration DMG increases by <color=#FFFFFF>25%</color> for 45s. Re-entering the <color=#FFFFFF>[Unanimous Wish]</color> state refreshes the duration."
+          "Sunbringer_UniqueSkill_06_Desc",
+          "Sunbringer_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -2754,12 +2754,12 @@
         "level": 7,
         "id": 1601507,
         "name": [
-          "Core Passive:",
-          "Additional Ability:"
+          "Sunbringer_UniqueSkill_Title",
+          "Sunbringer_MathSkill_Title"
         ],
         "desc": [
-          "All skills used by Sunbringer deal Sharp DMG, with DEF used as the skill DMG Multiplier. Some Sharp DMG builds up Gash. When Gash buildup is full, the enemy enters <color=#FFFFFF>[Gash]</color>. <color=#FFFFFF>[Gash]</color> stacks up to 3 times. When certain skills' heavy attacks from Sunbringer hit an enemy in the <color=#FFFFFF>[Gash]</color> state, 1 stack of <color=#FFFFFF>[Gash]</color> is consumed to deal AoE DMG once;\nWhen a critical hit is triggered, Sharp DMG does not benefit from CRIT DMG Bonus and uses Laceration DMG Bonus instead. If CRIT Rate exceeds 100% and a critical hit has been triggered, an additional Laceration check is made based on the excess CRIT Rate. If Laceration is triggered, Laceration DMG Bonus is applied one additional time. For every 1% of initial CRIT DMG Sunbringer has, initial CRIT Rate increases by 0.35%;\nSunbringer recovers 60 Sharpness upon entering the battlefield. In Investigation Zone mode, this effect can trigger once every 180s;\nWhen Sunbringer enters combat, Sunbringer gains the <color=#FFFFFF>[Midnight Sun]</color> effect, increasing CRIT Rate by <color=#2BAD00>40%</color> and ignoring <color=#2BAD00>20%</color> of the target's DEF when dealing DMG. <color=#FFFFFF>[Midnight Sun]</color> lasts 15s, and its duration does not decrease while Eldreda and Lindverne are off field. Sunbringer regains the <color=#FFFFFF>[Midnight Sun]</color> effect upon using any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nAfter Dracaene activates <color=#FFFFFF>[Defensive Assist]</color>, the <color=#FFFFFF>[Assist Follow-Up]</color> launched by Eldreda and Lindverne gains <color=#2BAD00>15%</color> increased Gash Buildup Rate and deals <color=#2BAD00>20%</color> increased DMG;\nWhen any squad Agent triggers <color=#FFFFFF>[Maim]</color>, Sunbringer gains 40 <color=#FFFFFF>[Willpower]</color> for each stack of <color=#FFFFFF>[Gash]</color> removed, up to a maximum of 160 <color=#FFFFFF>[Willpower]</color>. When Sunbringer has at least 120 <color=#FFFFFF>[Willpower]</color>, 120 <color=#FFFFFF>[Willpower]</color> can be consumed to activate <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>;\nWhen a teammate triggers <color=#FFFFFF>[Maim]</color>, if Sunbringer has enough <color=#FFFFFF>[Willpower]</color>, <color=#FFFFFF>[Quick Assist]</color> is triggered. When Sunbringer switches on field via <color=#FFFFFF>[Quick Assist]</color>, 120 <color=#FFFFFF>[Willpower]</color> is consumed to immediately activate <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>. This effect can trigger once every 3s;\nWhen Sunbringer's <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color>, <color=#FFFFFF>[EX Special Attack: Night Blaze - End of the Long Dark]</color>, <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color>, <color=#FFFFFF>[Ultimate: \"Onward, Together\"]</color>, or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy and deals DMG, the target accumulates <color=#FFFFFF>[Ember Scar]</color> equal to <color=#2BAD00>75%</color> of the actual DMG dealt by the skill. When the Finishing Move of Eldreda's <color=#FFFFFF>[EX Special Attack: Kindled Lamp - Torch of Eternal Day]</color> or <color=#FFFFFF>[Ultimate: \"By This Wish, All Things Remade\"]</color> hits an enemy, all <color=#FFFFFF>[Ember Scar]</color> is cleared, directly deducting an equal amount of HP.\nWhen an attack hits a normal enemy, if the <color=#FFFFFF>[Ember Scar]</color> it holds is greater than or equal to its current HP, all of its <color=#FFFFFF>[Ember Scar]</color> is immediately cleared and the enemy is defeated.",
-          "When another character in your squad is a <color=#FFFFFF>[Stun]</color> character, a <color=#FFFFFF>[Defense]</color> character, or an <color=#FFFFFF>[Armorer]</color> character:\nWhen Sunbringer uses any <color=#FFFFFF>[EX Special Attack]</color> or <color=#FFFFFF>[Dash Attack: Patrol - Shadow Realm Raid]</color>, all <color=#FFFFFF>[Armorer]</color> Agents in the whole squad enter the <color=#FFFFFF>[Unanimous Wish]</color> state. While in the <color=#FFFFFF>[Unanimous Wish]</color> state, Laceration DMG increases by <color=#FFFFFF>25%</color> for 45s. Re-entering the <color=#FFFFFF>[Unanimous Wish]</color> state refreshes the duration."
+          "Sunbringer_UniqueSkill_07_Desc",
+          "Sunbringer_MathSkill_Desc"
         ],
         "extra_property": {},
         "potential": []
@@ -2797,15 +2797,15 @@
   "talent": {
     "1": {
       "level": 1,
-      "name": "The Reclusive Void Hunter",
-      "desc": "When Sunbringer enters the battlefield, she immediately gains 120 <color=#FFFFFF>[Willpower]</color>. This effect can trigger once every 180s in Investigation Zone mode. The first use of <color=#FFFFFF>[Basic Attack: Bannerbearer - Converging Edge]</color> increases the amount of <color=#FFFFFF>[Ember Scar]</color> accumulated by enemies to 150% of the original amount. DMG dealt by Sunbringer's skills ignores 15% of the enemy's Fire RES.",
-      "desc2": "Even soaring to the heights, one can never truly reach the sky.\nYet someone must always stand a little higher—for even glimpsing just an inch more Celestial Light than the rest of the world might be enough to seek out a glimmer of hope in this long, endless night.\nAnd so, in that lone city hidden within a sea of clouds, they gave day after day, night after night, to their vigil."
+      "name": "TestKey_PlaceHolder",
+      "desc": "TestKey_PlaceHolder",
+      "desc2": "TestKey_PlaceHolder"
     },
     "2": {
       "level": 2,
-      "name": "The Heir's Banner of Rebellion",
-      "desc": "When Sunbringer hits an enemy with other skills and deals DMG, the target also accumulates <color=#FFFFFF>[Ember Scar]</color>. The amount of <color=#FFFFFF>[Ember Scar]</color> accumulated is equal to 12% of the actual DMG dealt by the skill. Sharp DMG dealt by Sunbringer ignores 12% of the enemy's DEF.",
-      "desc2": "This is a world where the strong devour the weak. Slaughter and consumption are its Absolute Order. The weak become fodder, paving the steps for a king's ascent to the throne.\nThe first thing born was not Fear, but doubt and disgust toward fate.\nThen, through countless hazy dreams, loneliness and Fear followed like shadows... All it could hold tight was a banner of rebellion against the Hollow."
+      "name": "TestKey_PlaceHolder",
+      "desc": "TestKey_PlaceHolder",
+      "desc2": "TestKey_PlaceHolder"
     },
     "3": {
       "level": 3,

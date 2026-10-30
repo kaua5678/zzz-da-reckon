@@ -15,7 +15,7 @@ import { mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
 import { fmt } from '@/utils/format'
 
 /**
- * 知更鸟（1661·防护/以太）——v1 测试服占位包（nanoka 3.4.1+19850203 热更包），2026-10-25 第三刀。
+ * 知更鸟（1661·防护/以太）——v1 测试服占位包（nanoka **3.4.1+19997538** 热更包，2026-10-30 重录），2026-10-25 第三刀。
  *
  * ## 本文档覆盖的两个机制（原文出处都在 spec 1661.json）
  *
@@ -42,10 +42,11 @@ import { fmt } from '@/utils/format'
  * 把防御提升再 ×1.25（ROBIN_BUFF_POINT_DEF_MULT）。
  *
  * ## 近似（有意，逐条写明）
- * - **满覆盖近似**：离场守护 60s / 追加攻击 8s CD / 护盾 15s 全不建状态机——追加攻击按 floor(t/8) 满打，
- *   防御提升按常驻上屏（原文「结束后仍保留 15 秒」⇒ 60s 守护 + 15s 尾巴，覆盖率本就近 1）。
+ * - **满覆盖近似**：离场守护 80s / 追加攻击 10s CD / 护盾 15s 全不建状态机——追加攻击按 floor(t/10) 满打，
+ *   防御提升按常驻上屏（原文「结束后仍保留 15 秒」⇒ 80s 守护 + 15s 尾巴，覆盖率本就近 1）。
  * - **Buff 强化点按满覆盖**：登场技每次 +1、进离场守护必消耗 1（上限 1）⇒ 循环稳态恒有 ⇒ ×1.25 常驻。
- * - 护盾量（2%/3%/4%/6% 生命）、抗打断、无敌、「全队每毁伤回 15 能量」**不建**：前四者是生存面，
+ * - 护盾量（3.4.1+19997538：离场技 2% / 追加攻击 4% / 强化追加攻击 6% 生命）、抗打断、无敌、
+ *   「全队每毁伤回 15 能量」**不建**：前四者是生存面，
  *   最后一条需要跨角色毁伤计数通道（ModuleFeedback 现无该键），已记在 spec 的「明日实录」。
  *
  * ## 滑块
@@ -65,8 +66,13 @@ export const ROBIN_DEF_CAP_BASE = 440
 export const ROBIN_DEF_CAP_PER_LEVEL = 30
 /** [Buff强化点]：使防御提升效果**及其上限**额外提升 25%（原文核心被动 Lv.7 末段） */
 export const ROBIN_BUFF_POINT_DEF_MULT = 1.25
-/** 追加攻击 CD（秒）：原文「每8秒最多可以发动一次」 */
-export const ROBIN_AFTERSHOCK_CD_SECONDS = 8
+/**
+ * 追加攻击 CD（秒）：原文「[特殊技：追加攻击]为追加攻击，**每10秒最多可以发动一次**」。
+ * ⚠ 2026-10-30 随 nanoka 3.4.1+19997538 热更由 **8 → 10**（同批：离场守护 60s → 80s、
+ *   追加攻击护盾 3% → 4%、强化追加攻击「按最大生命值」系数 0.214+0.028×Lv → 0.256+0.052×Lv、
+ *   终结技护盾→生命转化 40% → 50%、[反制支援]成功额外 +1 [Buff强化点]）。CD 是**唯一进产行次数**的那条。
+ */
+export const ROBIN_AFTERSHOCK_CD_SECONDS = 10
 /** 每次追加攻击获得的[登场值] */
 export const ROBIN_ENTRY_PER_AFTERSHOCK = 20
 /** [登场值]上限 */
@@ -106,13 +112,14 @@ export function robinGuardDefBonus(input: { hp: number; buffPointActive: boolean
 /**
  * 登场值 / 登场技循环（纯函数；buildExecutions 与判据共用，杜绝两处各算一份）。
  *
- * - 追加攻击次数 = floor(有效战斗时间 / 8)（满覆盖近似：离场守护 60s 覆盖整局，见文件头）；
+ * - 追加攻击次数 = floor(有效战斗时间 / 10)（满覆盖近似：离场守护 80s 覆盖整局，见文件头）；
  * - 登场值总量 = 追加次数 × 20；登场技次数 = floor(总量 / 100)；
  * - entryValue = 最后一次登场技之后**手里还剩的**登场值（展示用，0..120）。
  *
  * ⚠ 为什么不是「总量封 120」：120 是**同时持有**上限，不是整局总量（用户口径「追加上限120」+ 原文
  *   「最多可以拥有120点」）。每消耗 100 点后又能重新攒，故整局可用点数不受 120 钳制；
- *   floor(总量/100) 与逐轮循环在「+20 / 100」这组整数下逐位相同（5 次追加 = 1 次登场技、余 0）。
+ *   floor(总量/100) 与逐轮循环在「+20 / 100」这组整数下逐位相同（5 次追加 = 1 次登场技、余 0；
+ *   10s CD 下 5 次追击 = 50s）。
  */
 export function solveRobinEntry(input: { combatTime: number; teammateFrontlineSeconds?: number }): {
   aftershockCount: number
@@ -167,7 +174,7 @@ function buildRobinResourceSections({ result }: AgentResourceSectionsInput) {
       title: '知更鸟·登场值 / Buff 强化点',
       summary: `追击 ${fmt(source.aftershockCount)} 次 · 登场技 ${fmt(source.entrySkillCount)} 次 · 结余登场值 ${fmt(source.entryValue)}`,
       rows: [
-        { label: '追加攻击（8s CD）', value: `${fmt(source.aftershockCount)} 次`, detail: '每次 +20 登场值（满覆盖近似：离场守护 60s 覆盖整局）' },
+        { label: `追加攻击（${ROBIN_AFTERSHOCK_CD_SECONDS}s CD）`, value: `${fmt(source.aftershockCount)} 次`, detail: '每次 +20 登场值（满覆盖近似：离场守护 80s 覆盖整局）' },
         { label: '登场值上限', value: `${fmt(ROBIN_ENTRY_MAX)}`, detail: '同时持有上限；每 100 点触发一次登场技，余量继续累积' },
         { label: '登场技（≥100 点）', value: `${fmt(source.entrySkillCount)} 次`, detail: '每次消耗 100 点 + 获得 1 个 Buff 强化点（快速支援语义，占前台）' },
         { label: 'Buff 强化点', value: source.buffPointActive ? '常驻' : '无', detail: '离场守护防御提升 ×1.25（上限同步 ×1.25）' },
@@ -184,15 +191,15 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
   if (entry.aftershockCount > 0) {
     executions.push(moduleExecRow({
       moveId: '1661005',
-      moveName: '特殊技：追加攻击（离场守护·队友命中触发，8s CD）',
+      moveName: `特殊技：追加攻击（离场守护·队友命中触发，${ROBIN_AFTERSHOCK_CD_SECONDS}s CD）`,
       category: 'special',
       count: entry.aftershockCount,
       damageMultiplier: Number(cfg.robinAftershockDamage ?? 0),
       ...RECOVERY_OFF,
       timeBucket: 'backstage',
-      // CC-391 D1：CD 驱动的后台自动行（8s CD，不靠玩家放置）⇒ 轴模式按失衡时间占比吃易伤
+      // CC-391 D1：CD 驱动的后台自动行（10s CD，不靠玩家放置）⇒ 轴模式按失衡时间占比吃易伤
       autoSplitByStun: true,
-      skillTableNote: '满覆盖近似：floor(有效战斗时间/8)，每次 +20 登场值（同时上限 120）',
+      skillTableNote: `满覆盖近似：floor(有效战斗时间/${ROBIN_AFTERSHOCK_CD_SECONDS})，每次 +20 登场值（同时上限 120）`,
     }))
   }
   // 登场技：≥100 登场值时被换入发动（快速支援语义），占前台
@@ -209,6 +216,8 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
       ...RECOVERY_OFF,
       timeBucket: 'necessary',
       skillTableNote: '登场技 = 快速支援 + 全队 4% 生命护盾（生存面不录）+ Buff 强化点（离场守护防御 ×1.25）；剩余登场值 ' + fmt(entry.entryValue),
+      // ⚠ 3.4.1+19997538 新增：连携技 / 登场技 / 支援突击**发动后触发快速支援，1.5s 内换人自动释放[特殊技：离场]**
+      //   ——是换人操作面的连续性，不改本模块的次数解（登场技仍按登场值 ≥100 触发）。
     }))
   }
 }
@@ -238,8 +247,8 @@ export const robinMechanic: AgentMechanicModule = {
   id: 'agent:robin',
   agentIds: [ROBIN_AGENT_ID],
   name: '知更鸟',
-  description: 'v1 占位包（3.4.1+19850203）：离场守护·全队固定防御（每 1000 初始生命 +80 / 上限 800 / Buff 点 ×1.25）'
-    + ' + 登场值循环（追加攻击 +20 / 上限 120 / ≥100 触发登场技）；护盾量与「每毁伤回 15 能量」未建模。',
+  description: 'v1 占位包（3.4.1+19997538 热更）：离场守护·全队固定防御（每 1000 初始生命 +80 / 上限 800 / Buff 点 ×1.25）'
+    + ' + 登场值循环（追加攻击 10s CD +20 / 上限 120 / ≥100 触发登场技）；护盾量与「每毁伤回 15 能量」未建模。',
   teamPanelEffects: applyRobinTeamPanelEffects,
   buildCharConfig: buildRobinCharConfig,
   buildExecutions: buildRobinExecutions,
