@@ -59,11 +59,6 @@ export interface CalcRoundThreads {
   postRoundInput: PostRoundInput | null
   /** 上一轮失衡池整数次数（坑36：轴内块数落地与池同源——0 命轴决算次数 = 轴认领块 × 池窗口数） */
   prevPoolStunCount?: number
-  /**
-   * 各槽**上一轮**收敛到的平A时间（slot → 秒）：兜底平A填充的预算上界（用户口径 2026-10-25）。
-   * 与 `energyBySlot`/`decibelRegenBySlot` 同款滞后一轮注入；首轮空对象 ⇒ 不设上界（旧行为）。
-   */
-  basicBySlot: Record<number, number>
 }
 
 export function initialCalcRoundThreads(): CalcRoundThreads {
@@ -78,7 +73,6 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     inStunWindowTriggers: 0,
     teamVeilCountTotal: 0,
     decibelRegenBySlot: {},
-    basicBySlot: {},
     prevPoolStunCount: undefined,
     postRoundInput: null,
   }
