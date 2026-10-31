@@ -193,6 +193,8 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
             // 极性紊乱基数取自紊乱均摊（池级 stunned = 全局覆盖率），盖同一覆盖率供属性区反算
             stunWindowCoverage: stunCoverage,
             note: `${event.note ?? ''}；${el}·Boss异常状态轴·按触发时刻状态归因·基数=该元素紊乱均摊`,
+            // 2026-10-31：极性紊乱 = 该元素紊乱均摊 × 极性比例（单一来源 = 池紊乱明细）
+            formula: `该元素紊乱均摊(${elEvents > 0 ? (elDamage / elEvents).toFixed(2) : perEvent}) × 极性比例(${polarRatio})`,
           })
         }
         continue
@@ -223,6 +225,7 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
           totalDamage: perEvent * event.count,
           stunWindowCoverage: stunCoverage,
           note: event.note ?? '',
+          formula: `紊乱均摊(${dd?.avgDamage ?? 0}) × 极性比例(${polarRatio})`,
         })
       }
     } else if (event.eventType === 'direct_damage') {

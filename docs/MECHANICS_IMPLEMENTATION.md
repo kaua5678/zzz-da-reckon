@@ -933,6 +933,12 @@ elementResReduction= panelElementStat(source, 'enemyRes', element)  // 元素减
   · `sunbringer-norma-robin`（诺姆 +2s ⇒ **第二轮起**才命中 18s 分支）81.69M→**94.13M（+15.2%）**、失衡 3→4。
   时间账同批变化（槽0 chain +1 / 槽1 chain −3 等，见 golden diff），棘轮 slack 1 条（robin 0.8→0.1）。拆账：**只加轴**（钩子临时关）时两队分别是 +14.4% / +17.2%，余下 +1.3% / +2.6% 来自伤害段折算。判据 `sunbringerAxisWindow.test.ts` 8 例（含「按全长折算只剩 0.76/0.64」的反空洞臂与时间账不变臂）。
 
+**二段终结技不扣喧响（2026-10-31 用户报障，逐字）**：
+> 「挽昼失衡轴第二个大招消耗的资源不是喧响，但却说我喧响不够只打了一个。结果导致总量说2个，失衡轴显示1个。」
+- **根因**：两段终结技的英文名都带 `Ultimate:` ⇒ 轴栈按 `chainMoveKind === 'ultimate'` **各收 3000 喧响**；而原文本是「一段（此行，共赴前路）耗[旗令]→产 1 点[愿核]；二段（此愿，重塑万象）**耗[愿核]、不耗喧响**」。实测槽0 喧响 `decibelSource.total = 7577` ⇒ 只够 2 段中的 1 组：轴栈 executed 1/1，而资源页（总量口径 `floor(喧响/单价)`）两行各 2 发。
+- **落法（通用能力，不认角色 id）**：① `AgentMechanicModule#axisMoveFreeOfDecibel` 只对 1601011 返回 true（一段仍是真喧响大）；② 新增同类能力 `axisSwayFlow(moveId) → { cost, produce }`（`mechanics/types.ts`，补上专属资源的**产出侧**）——一段产 1、二段耗 1；③ 轴栈 `StackActionCost#producesSway` 在扣费后把产物回补到该槽的 `swayLeft`（跨窗口累积），二段从同一本账扣 ⇒ **一段没打出来的窗口二段也不会凭空执行**（反空洞臂锁定）。
+- **实测**：同一队 executed 由 `{1601111:1, 1601011:1}` → **`{2, 2}`**，与资源页 2/2 对齐；第 3 窗一段判 `decibel`、二段判 `sway`（顺序依赖真实生效）。三支 `sunbringer-*` 预设队伤再次上移（golden 已逐条归因后重生成）：`koleda-robin` 61.80M→**65.23M（+5.55%）**、`roxy-robin` 106.87M→**114.37M（+7.02%）**、`norma-robin` 94.13M→**100.22M（+6.47%）**；时间账零变化（只多执行动作、不改时间模型）。判据 `sunbringerAxisWindow.test.ts` T5 三例（总量↔轴对账、模块声明、无愿核时二段跳过）。
+
 **已知缺口**：影画 3–6 仍为 `TestKey_PlaceHolder`（1/2 文本已随热更给出，未实现）；极昼窗口状态机（满覆盖近似）与「队友毁伤触发快速支援聚锋 3s CD」未建模；终结技二段链只发「此行，共赴前路」，二段「此愿，重塑万象」复用引擎既有终结技行并叠加烬痕（避免双计）。
 
 **配装（人工条目，用户 2026-10-26 裁决；非 nanoka 站点数据——站点 `fairy_recommend` 对本角色为空）**：

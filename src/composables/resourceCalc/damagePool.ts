@@ -17,6 +17,8 @@ import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolDamageEnv } from 
 import { panelAt } from '@/core/panel'
 // 行级失衡易伤派生（与「加权有效易伤」展示同一套算式，规则 11）：建池末尾给每行盖章
 import { stunPanelBonusOf, stunRowWindowAppliedMultOf, stunRowWindowCoverageOf, stunAlwaysMultOf } from '@/core/stunVulnRow'
+// 行级公式链（展示字段；单一事实源 = 引擎 breakdown，展示层不重算乘区）
+import { damageFormulaText } from '@/utils/damageFormulaText'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
 import { getBaseElement } from '@/data/anomalyElement'
 import { findModuleSlot, getAgentMechanic } from '@/mechanics'
@@ -239,6 +241,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         moveId: row.moveId,
         sourceTag: row.sourceTag,
         multiplier: row.multiplier,
+        // 2026-10-31：本行乘区链（引擎 breakdown 单一事实源，展示层不重算）
+        formula: damageFormulaText(result.breakdown),
       })
     }
 
@@ -305,6 +309,8 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         totalDamage: result.damage * row.count,
         note: `${row.note ?? ''}${releaseMod.note}`,
         multiplier: row.multiplier,
+        // 异放按「单次」结算：calcAnomalyDamage 的 breakdown 不含次数，直接拼即可
+        formula: damageFormulaText(result.breakdown),
         // ⚠ 写 `stunWindowCoverage` 而不是 `stunCoverage`：后者是「直伤行」的既有语义，
         // 而「加权有效易伤」对异常/异放行刻意按 1 计（@fact 已登记的保守口径）——
         // 给它补 stunCoverage 会把那条汇总一起改掉，属于另一口径变更。

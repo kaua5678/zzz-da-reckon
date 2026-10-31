@@ -590,6 +590,22 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
   + `composables/__tests__/damageStunSplit.test.ts`（建池盖章：直伤行窗内占比与引擎实值逐位一致 / 异常行也有覆盖 / 轴模式 0/1 两档）
   + `composables/__tests__/damageSourceBreakdown.test.ts`（族与合计的算术）。
 
+### 7.4d 伤害池「说明 / 公式」列（2026-10-31）
+
+用户原话：「这个公式显示做得很好，但是只有耀变显示了，其他都没显示。」
+（当时只有蕾米埃尔耀变行把公式写在 `note` 里，其余行只有普通说明。）
+
+**入口**：结果页 →「伤害池」页签 → 每行最后一列「说明 / 公式」。
+
+| 口径 | 说明 |
+| --- | --- |
+| 数据源 | `DamagePoolRow.formula`（`utils/damageFormulaText.ts` 由引擎 `DamageBreakdownItem[]` 拼成）——**展示层不重算乘区**（规则 11），引擎加/删乘区时自动跟上 |
+| 拼法 | `label(formula)` 逐区用 ` × ` 连接；基底区补实际取值（`攻击力区(atk = 4,052.53)`）；**跳过「次数」**（行上已有次数列，公式按单次口径） |
+| 覆盖 | 直伤 / 异放 / 标准异常（DoT）来自 `calcDirectDamage / calcAnomalyDamage` 的 breakdown；紊乱 / 乱流 / 极性紊乱按池明细字段拼（异常质量 × 结算区）；模块自建行（蕾米埃尔耀变等）继续用 `note` 里的自定义公式 |
+| 全局异常乘区 | `calcAnomalyDamage` 末尾的 `anomalyMultiplier`（异化系数等）现在也进 breakdown（`全局异常乘区`），否则公式链与单次伤害对不上 |
+| 展示 | 说明在上、公式在下（次要色、小一号，`.damage-formula`）；无说明的行公式独占该列 |
+| 判据 | `composables/__tests__/damageRowFormula.test.ts`（纯函数 / 真管线每类行都有公式 / 耀变自定义公式回归） |
+
 ### 7.5 血量膨胀图（「血量膨胀」Tab）
 
 - 数据 = `public/static/boss-presets.json` 每期 `hpVersionCoeff`（版本系数 %，导入脚本按 `mo.stats.hp / (1级基础血量 × 247.95)` 反推）+ `monsterId`/`monsterName`（合并预设的试炼版/恶名版拆成独立折线，如 死路屠夫 vs 恶名·死路屠夫）。

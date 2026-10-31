@@ -57,7 +57,17 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
  * 若将来出现「第一个 `ultimate` 才是该免的那个」的反常角色 ⇒ 登记进例外表并写明理由，
  * **不要**为了让本护栏变绿而放宽判据。
  */
-const REAL_DECIBEL_ULT_OVERRIDES: Record<string, string | null> = {}
+const REAL_DECIBEL_ULT_OVERRIDES: Record<string, string | null> = {
+  /**
+   * 1601 挽昼（2026-10-31，用户报障后登记）：倍率表里第一个 `Ultimate:` 是
+   * **1601011 此愿，重塑万象**，但它是**二段**——由一段当场产出的 [愿核] 购买
+   * （spec 1601「愿核」：结果行写死「解除二段终结技（不耗喧响）」）；
+   * 真正的喧响大是 **1601111 此行，共赴前路**（spec 施工图「喧响极，旗令→愿核」）。
+   * ⇒ 引擎「第一个 ultimate = 真喧响大」的约定在本角色不成立，登记实测值。
+   * 负控：把本行删掉 ⇒ ① 立刻红（1601011 被判误免），这正是它要防的事。
+   */
+  '1601': '1601111',
+}
 
 /** 从倍率表派生某角色的真·喧响大 moveId（引擎同源：`findUltimateMove`） */
 function realDecibelUltOf(agentId: string): string | null {

@@ -34,6 +34,8 @@ import { allocateBossGashPool, GASH_PER_LAYER } from '@/mechanics/gashMaim'
  *   不挤平A 的秒数由折叠环自己收敛（与克拉蕾葬血强袭同款）。
  * - **终结技可行性**用 `floor(totalDecibel / ultimateCost)` 封顶（引擎对 1601 没有 ultimate 行 ——
  *   两个终结技的 `skillType` 都没标 ultimate）；两条终结技行一律 `RECOVERY_OFF`，不回填喧响，避免虚增。
+ *   ⚠ 该封顶只约束**一段**（喧响大）；**二段由 [愿核] 购买、不耗喧响**（轴内见模块能力
+ *   `axisMoveFreeOfDecibel` + `axisSwayFlow`，用户口径 2026-10-31）。
  * - 毁伤**不进时间**（附带事件，actionTime 0）；烬痕均摊到每次 B 的倍率上。
  * - 影画 1/2 文本已有（3.4.1+19850203）但**未实现**；C3–C6 仍占位。
  */
@@ -517,6 +519,12 @@ export function expandSunbringerBasicFill(input: {
 export const SUNBRINGER_ULT_B_DAMAGE_SECONDS = 1
 /** 第二段终结技·此愿，重塑万象（`meta.ultB` 的 moveId；轴内伤害段声明的键） */
 export const SUNBRINGER_ULT_B_MOVE_ID = '1601011'
+/**
+ * 第一段终结技·此行，共赴前路（`meta.ultA` 的 moveId）：**由喧响购买**、消耗 [旗令] 并产出
+ * **1 点 [愿核]**（spec 1601「愿核」段原文：「为此类招式消耗 1 点[旗令]」→「获得 1 点[愿核]」）。
+ * 轴内它是唯一收费的终结点（`axisMoveFreeOfDecibel` 对二段返回 true）。
+ */
+export const SUNBRINGER_ULT_A_MOVE_ID = '1601111'
 export const sunbringerMechanic: AgentMechanicModule = {
   id: 'agent:sunbringer',
   agentIds: [SUNBRINGER_AGENT_ID],
@@ -532,4 +540,23 @@ export const sunbringerMechanic: AgentMechanicModule = {
   // 轴内易伤折算：第二段大招伤害前置 1s、其余为后摇（用户口径 2026-10-30）
   axisMoveDamageSeconds: (moveId: string) =>
     (moveId === SUNBRINGER_ULT_B_MOVE_ID ? SUNBRINGER_ULT_B_DAMAGE_SECONDS : undefined),
+  /**
+   * ## 二段终结技**不是喧响大**（用户口径 2026-10-31，逐字）
+   * > 「挽昼失衡轴第二个大招消耗的资源不是喧响，但却说我喧响不够只打了一个。」
+   *
+   * 原文链条：一段「此行，共赴前路」消耗 [旗令] → 产出 1 点 [愿核]；二段「此愿，重塑万象」
+   * **消耗 [愿核]**（spec 1601「愿核」表：结果行写死「解除二段终结技（不耗喧响）」）。
+   * ⇒ 轴栈里二段不得再收 3000 喧响，否则两段会被算成 6000：实测槽0 喧响 7577 只够
+   * 一次「一段+二段」组合 ⇒ 第 2/3 窗两段一起被判 `decibel` 跳过（总量 2 发、轴内 1 发）。
+   *
+   * 两段的关系用**专属资源流向**表达（`axisSwayFlow`）：一段产 1 愿核、二段耗 1 —— 因此
+   * 二段也不会在「一段没打出来」的窗口凭空执行（`producesSway` 未发生 ⇒ `swayLeft` 不足 ⇒ 跳过）。
+   * ⚠ 只有二段免喧响：一段仍是真正的喧响大（模块资源解也按 `floor(喧响/单价)` 封顶）。
+   */
+  axisMoveFreeOfDecibel: (moveId: string) => moveId === SUNBRINGER_ULT_B_MOVE_ID,
+  axisSwayFlow: (moveId: string) => {
+    if (moveId === SUNBRINGER_ULT_A_MOVE_ID) return { produce: 1 }
+    if (moveId === SUNBRINGER_ULT_B_MOVE_ID) return { cost: 1 }
+    return undefined
+  },
 }

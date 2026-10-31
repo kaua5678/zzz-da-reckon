@@ -744,6 +744,21 @@ export interface BasicFillInput {
   exSpecialAvailable?: number
 }
 
+/**
+ * `AgentMechanicModule.axisSwayFlow` 的返回值：轴块**消耗/产出**的角色专属资源点。
+ *
+ * 为什么需要产出侧（2026-10-31，挽昼二段终结技）：`axisSwaySupply` 只能给**静态初值**
+ * （般岳怒相 = 进轴时已有的山威）；挽昼的 [愿核] 由「此行，共赴前路」**当场产出**、
+ * 只被「此愿，重塑万象」消耗 ⇒ 缺产出侧就只能把二段当成第二发 3000 喧响收费
+ * （用户实测：总量 2 发、失衡轴只执行 1 发）。引擎侧字段 = `StackActionCost#producesSway`。
+ */
+export interface AxisSwayFlow {
+  /** 单次消耗（点；缺省 0） */
+  cost?: number
+  /** 单次产出（点；缺省 0；执行后回补到该槽的剩余量，跨窗口累积） */
+  produce?: number
+}
+
 export interface AxisSwaySupplyInput {
   slot: number
   cfg: CharacterOperationConfig

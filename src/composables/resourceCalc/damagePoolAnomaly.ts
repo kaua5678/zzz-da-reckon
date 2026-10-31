@@ -24,6 +24,7 @@ import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_ANOMALY_LABEL, isCorrosionCycloneRelease, standardDot, windEffectiveTriggerCount } from '@/core/anomalyPool/helpers'
 import { corrosionOwner } from '@/core/anomalyPool/corrosion'
 import { elementLabel, parseReleaseMultiplier, type DamagePoolRow } from './helpers'
+import { damageFormulaText } from '@/utils/damageFormulaText'
 // 异常面板簇（D 簇）与招式行取值簇（C 簇）：同目录兄弟模块直接指真实现。
 import {
   buildAnomalyVirtualPanel,
@@ -162,6 +163,10 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
       // 乱流 / 紊乱 / 标准异常都按池级 `stunned`（= 同一 stunCoverage）结算；盖到行上供「属性区有/无失衡」反算
       stunWindowCoverage: stunCoverage,
       note: `T=${detail.remainingTime}s，倍率=${detail.turbulenceMultiplier}%${detail.boostedCount ? `，其中${detail.boostedCount}次吃风蚀+150%倍率` : ''}`,
+      // 乱流明细只留最终量（详情在 core）：公式链按「异常质量 × 结算区」如实拼（单次口径，
+      // 次数与总数走行上的「次数 / 单次 / 总伤」列；风蚀强化的额外倍率已折进 anomalyMass 的注记里）
+      formula: `异常质量(${detail.anomalyMass}) × 结算区(${detail.settlementMultiplier})`
+        + (globalAnomalyMultiplier !== 1 ? ` × 全局异常乘区(${globalAnomalyMultiplier})` : ''),
     })
   }
 
@@ -185,6 +190,9 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
       multiplier: detail.disorderMultiplier,
       stunWindowCoverage: stunCoverage,
       note: `T=${detail.remainingTime}s，倍率=${detail.disorderMultiplier}%，anomalyMass=${detail.anomalyMass}，settlement=${detail.settlementMultiplier}`,
+      // 紊乱单次 = 异常质量 × 结算区；全局异常乘区来自 ctx（不在 detail 里），事件数走行上的次数列
+      formula: `异常质量(${detail.anomalyMass}) × 结算区(${detail.settlementMultiplier})`
+        + (globalAnomalyMultiplier !== 1 ? ` × 全局异常乘区(${globalAnomalyMultiplier})` : ''),
     })
   }
 
@@ -253,6 +261,8 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         multiplier,
         stunWindowCoverage: stunCoverage,
         note: noteParts.join(' · '),
+        // 标准异常 / DoT：与直伤同一份引擎 breakdown（含精通、防御、抗性、异常增伤、异常暴击等）
+        formula: damageFormulaText(result.breakdown),
       })
     }
   }

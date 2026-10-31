@@ -83,6 +83,13 @@ export type DamagePoolRow = {
    *  DoT=perTick×tick数 等；秒均行 count 已折算成总秒数 → count×multiplier = 该行总倍率）。
    *  供「伤害来源分解」诊断：总倍率 = Σ(count×multiplier)，属性区 = 总伤害/(总倍率/100)。 */
   multiplier?: number
+  /**
+   * **本行实际吃到的乘区链**（结果页·伤害池「说明」列第二行；2026-10-31）：
+   * 由引擎 `calcDirectDamage / calcAnomalyDamage` 的 breakdown 经 `utils/damageFormulaText` 拼成，
+   * 按**单次**口径、与引擎乘区顺序一致。缺省 = 该行不是引擎标准管线产出（模块自建行 / 旧数据）。
+   * ⚠ 展示字段，不参与结算；不得由展示层重算（规则 11）。
+   */
+  formula?: string
 }
 
 export function parseReleaseMultiplier(event: { formula?: string; fields?: string[] }): number {
@@ -893,4 +900,21 @@ export function axisMoveDamageSecondsOf(agentId: string | undefined, moveId: str
  */
 export function axisMoveFreeOfDecibelOf(agentId: string | undefined, moveId: string): boolean {
   return !!(agentId && getAgentMechanic(agentId)?.axisMoveFreeOfDecibel?.(moveId))
+}
+
+/**
+ * 轴块的**专属资源流向**（2026-10-31）：按本槽角色派发模块能力 `axisSwayFlow`。
+ * 消费方 = `roundInputs#buildStackAxes`（非连段块填 `swayCost` / `producesSway`）。
+ * 未声明 / 空槽 / 非有限数 ⇒ `undefined`（不参与专属资源账，逐位不变）。
+ */
+export function axisSwayFlowOf(
+  agentId: string | undefined,
+  moveId: string,
+): { cost?: number; produce?: number } | undefined {
+  const flow = agentId ? getAgentMechanic(agentId)?.axisSwayFlow?.(moveId) : undefined
+  if (!flow) return undefined
+  const cost = Number.isFinite(flow.cost) && (flow.cost ?? 0) > 0 ? flow.cost : undefined
+  const produce = Number.isFinite(flow.produce) && (flow.produce ?? 0) > 0 ? flow.produce : undefined
+  if (cost === undefined && produce === undefined) return undefined
+  return { ...(cost !== undefined ? { cost } : {}), ...(produce !== undefined ? { produce } : {}) }
 }

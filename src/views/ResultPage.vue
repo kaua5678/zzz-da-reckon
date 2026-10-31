@@ -756,7 +756,7 @@
             <span>单次</span>
             <span>失衡易伤</span>
             <span>总伤</span>
-            <span>说明</span>
+            <span>说明 / 公式</span>
           </div>
           <div v-for="row in damagePoolRows" :key="row.id" class="damage-pool-row">
             <span>{{ row.agentName }}</span>
@@ -771,7 +771,11 @@
               :title="stunVulnTitleOf(row)"
             >{{ appliedVulnOf(row) }}</span>
             <span class="damage-total">{{ fmt(row.totalDamage, 0) }}</span>
-            <span class="damage-note">{{ row.note || '-' }}</span>
+            <span class="damage-note">
+              <template v-if="row.note">{{ row.note }}</template>
+              <span v-if="row.formula" class="damage-formula">{{ row.formula }}</span>
+              <template v-if="!row.note && !row.formula">-</template>
+            </span>
           </div>
           <div class="damage-pool-row damage-pool-footer">
             <span class="damage-pool-footer-label">加权有效易伤</span>

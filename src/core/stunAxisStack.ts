@@ -49,6 +49,20 @@ export interface StackActionCost {
    * 本引擎只做「够不够」的通用门控 —— 不认任何角色 id（判据 26）。
    */
   swayCost?: number
+  /**
+   * 单次**角色专属资源产出**（点；0 = 不产出）。与 `swayCost` **同一本账**：执行本块时先扣成本、
+   * 再按本字段回补该槽的剩余量（`swayLeft` 跨窗口累积）。
+   *
+   * 为什么需要（2026-10-31，挽昼二段终结技）：闪能/喧响是「一次性购买」，而**专属资源链条**是
+   * 「A 产出 → B 消耗」——挽昼「此行，共赴前路」→ [愿核] → 「此愿，重塑万象」。
+   * 修前只建了消耗侧（`swayCost`），供给侧只能给一个**静态初值**（般岳怒相）；
+   * 挽昼的愿核不是初值、是**由前一块现产**的 ⇒ 二段大招被当成第二发 3000 喧响收费
+   * （用户实测：总量 2 发，失衡轴只执行 1 发）。
+   *
+   * ⚠ 与 `swayCost` 同款：引擎只认「够不够」，不认资源名（判据 26）；产物按**槽位**记账
+   * （同一槽的后续块可用，不跨槽共享——与闪能/喧响门控的槽位口径一致）。
+   */
+  producesSway?: number
   /** 动作开始时间（秒，相对失衡窗口起点；缺省 0，可为负=窗口外提前起手）。
    *  平A填充用：从该槽位最后一个动作的结束时刻填到窗口结束（富余才填），不是「窗口 − Σ动作时长」。 */
   startTime?: number
@@ -769,6 +783,11 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         }
         if ((act.swayCost ?? 0) > 0) {
           swayLeft[act.slot] = (swayLeft[act.slot] ?? 0) - (act.swayCost ?? 0)
+        }
+        // 专属资源产出（2026-10-31）：与扣费同处、在扣费之后回补 ⇒ `producesSway` 与 `swayCost`
+        // 同一次执行里可同时发生（本块自产自销时先扣后补，净额为 0）。跨窗口累积（同闪能/喧响）。
+        if ((act.producesSway ?? 0) > 0) {
+          swayLeft[act.slot] = (swayLeft[act.slot] ?? 0) + (act.producesSway ?? 0)
         }
         // 执行：整次计入 count（资源/时间按整次），只有 inAxisCount 按 fits 打折
         bump(act.slot, act.moveId, 1, t0, windowNo, fits)

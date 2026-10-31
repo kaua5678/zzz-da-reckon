@@ -325,6 +325,18 @@
   line-height: 1.45;
 }
 
+/* 本行实际吃到的乘区链（2026-10-31）：与说明分两行显示，说明在上、公式在下（次要色、小一号）。
+   用户口径：蕾米埃尔耀变行那种「基础×倍率×增伤×…」的展示要做成**每行都有**。
+   颜色只用语义令牌/色阶，不写死色值（docs/UI_THEME_GUIDE.md §1）。 */
+.damage-formula {
+  display: block;
+  margin-top: 2px;
+  color: var(--app-text-dim);
+  font-size: 11px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
 /* 失衡易伤列（账本 Open #2）：生效易伤三档着色 + 汇总行（只用语义别名，护栏：零新增硬编码色/--wa-* 直引） */
 .damage-stun-vuln {
   font-weight: 600;

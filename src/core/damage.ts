@@ -587,5 +587,21 @@ export function calcAnomalyDamage(
     })
   }
 
-  return { damage: afterCrit * (input.anomalyMultiplier ?? 1), breakdown }
+  /**
+   * 11. 全局异常乘区（如蕾米埃尔异化系数）：**必须在 breakdown 里留痕**（2026-10-31）。
+   *
+   * 此前它只出现在最后一行 `afterCrit * anomalyMultiplier` 里 ⇒ 结果页按 breakdown 拼出的
+   * 公式链会**漏掉这一整段**（用户看到的「公式」与单次伤害对不上）。纯展示补记，
+   * 不改任何数值：只有 `anomalyMultiplier !== 1` 时才多一条，未传该入参的调用方逐位同旧。
+   */
+  const anomalyMultiplier = input.anomalyMultiplier ?? 1
+  const afterAnomalyMultiplier = afterCrit * anomalyMultiplier
+  if (anomalyMultiplier !== 1) {
+    breakdown.push({
+      label: '全局异常乘区', formula: fmt(anomalyMultiplier, 4),
+      value: afterAnomalyMultiplier, displayValue: fmt(afterAnomalyMultiplier),
+    })
+  }
+
+  return { damage: afterAnomalyMultiplier, breakdown }
 }

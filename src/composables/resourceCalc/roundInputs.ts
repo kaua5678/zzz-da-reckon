@@ -26,7 +26,7 @@ import type { ExecutedMoveCount, StackActionCost, StackAxisInput, StackSequenceE
 import { axisKindOf, allocateAxisWindows } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
-import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf, axisMoveDamageSecondsOf, axisMoveFreeOfDecibelOf } from './helpers'
+import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf, axisMoveDamageSecondsOf, axisMoveFreeOfDecibelOf, axisSwayFlowOf } from './helpers'
 import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
 import { findChainAttack } from '@/core/resource/moveLookup'
 import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
@@ -431,6 +431,8 @@ export function createConvergenceRoundInputs(deps: {
         let decibelCost = 0
         // T169：连段块可声明**角色专属资源**成本（般岳山威）——由栈做通用门控，供给侧见 `axisSwaySupply`
         let swayCost = 0
+        // 2026-10-31：非连段块也可声明专属资源流向（挽昼愿核：A 产出 → B 消耗），见 `axisSwayFlow`
+        let producesSway = 0
         if (combo) {
           // 连段：能量按打包口径；影画覆盖经 combo.energyCostAtCinema（CC-69；如伊德海莉单次碾 1 命 60→50，原按 moveId 写死）
           energyCost = combo.energyCostAtCinema && cinema >= combo.energyCostAtCinema.minCinema ? combo.energyCostAtCinema.energyCost : combo.energyCost
@@ -486,6 +488,16 @@ export function createConvergenceRoundInputs(deps: {
            */
           if (axisMoveFreeOfDecibelOf(configStore.team[act.slot]?.agentId, act.moveId)) decibelCost = 0
           /**
+           * 2026-10-31：**专属资源流向**（挽昼二段终结技）——二段「此愿，重塑万象」由一段
+           * 「此行，共赴前路」产出的 [愿核] 购买，不是第二发 3000 喧响。
+           * 供给侧不在 `axisSwaySupply`（那是静态初值）；产物由本块执行时回补到该槽的
+           * `swayLeft`（`core/stunAxisStack#producesSway`），二段块从同一本账扣 1 点。
+           * 未声明该能力的角色 ⇒ 两个量都是 0 ⇒ 逐位不变。
+           */
+          const swayFlow = axisSwayFlowOf(configStore.team[act.slot]?.agentId, act.moveId)
+          if (swayFlow?.cost) swayCost = swayFlow.cost
+          if (swayFlow?.produce) producesSway = swayFlow.produce
+          /**
            * **同一次动作的分段只收一次喧响**（用户裁决 2026-10-22）。
            *
            * 场景：奥菲与玛格莎终结技「与火共舞」= #1 旋转攻击 + #2 激光，原文
@@ -530,6 +542,7 @@ export function createConvergenceRoundInputs(deps: {
           energyCost,
           decibelCost,
           ...(swayCost > 0 ? { swayCost } : {}),
+          ...(producesSway > 0 ? { producesSway } : {}),
           startTime: act.startTime ?? 0,
           // 伤害前置的招式（挽昼第二段大招 1601011）：易伤折算按伤害段算，见上面 damageSeconds 注释
           ...(damageSeconds !== undefined ? { damageSeconds } : {}),

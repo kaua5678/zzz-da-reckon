@@ -20,6 +20,7 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { stunAxisPresets, resolveStunAxisPlan } from '@/data/stunAxisPresets'
 import { calcStunAxis, computeInAxisRatio } from '@/core/stunAxis'
+import { calcStunAxisStack } from '@/core/stunAxisStack'
 import { SUNBRINGER_ULT_B_DAMAGE_SECONDS, SUNBRINGER_ULT_B_MOVE_ID, sunbringerMechanic } from '@/mechanics/agents/sunbringer'
 import { axisMoveDamageSecondsOf } from '@/composables/resourceCalc/helpers'
 
@@ -42,6 +43,13 @@ async function runTeam(agentIds: string[]) {
     ultRows: calc.damagePoolRows.value.filter(r => r.moveId === SUNBRINGER_ULT_B_MOVE_ID),
     ultExecRow: calc.resourceResult.value?.characters
       .find(c => c.slot === 0)?.executions.find(e => e.moveId === SUNBRINGER_ULT_B_MOVE_ID),
+    /** 资源页（总量口径）两段终结技的次数：与轴栈 executed 对账（T5） */
+    execUlts: {
+      a: calc.resourceResult.value?.characters.find(c => c.slot === 0)?.executions
+        .find(e => e.moveId === '1601111')?.count ?? 0,
+      b: calc.resourceResult.value?.characters.find(c => c.slot === 0)?.executions
+        .find(e => e.moveId === SUNBRINGER_ULT_B_MOVE_ID)?.count ?? 0,
+    },
     stack,
   }
 }
@@ -116,10 +124,13 @@ describe('T3 末位大招：伤害整段吃满失衡易伤', () => {
     const r = await runTeam(['1601', '1101', '1661'])
     const ult = r.ultEntry!
     expect(ult, '16s 轴里末位大招没被执行').toBeDefined()
-    expect(ult.count, '施放次数恒为整数').toBe(1)
-    expect(ult.inAxisCount, '伤害段（1s）完整在窗内 ⇒ 整次吃满易伤').toBeCloseTo(1, 9)
+    // 2026-10-31：二段由愿核购买后，轴内次数 = 总量次数（修前被 3000×2 喧响截成 1 发）。
+    // 只断言「整数、且与总量同源」，不写死 1 —— 喧响供给变化时这条判据仍然有判别力。
+    expect(ult.count, '施放次数恒为整数').toBe(r.execUlts.b)
+    expect(Number.isInteger(ult.count), '施放次数恒为整数').toBe(true)
+    expect(ult.inAxisCount, '伤害段（1s）完整在窗内 ⇒ 整次吃满易伤').toBeCloseTo(ult.count, 9)
     const inSum = r.ultRows.filter(row => (row.stunCoverage ?? 0) > 0).reduce((a, row) => a + row.count, 0)
-    expect(inSum, '窗内吃易伤的份数应等于轴内认领的整发').toBeCloseTo(1, 6)
+    expect(inSum, '窗内吃易伤的份数应等于轴内认领的整发').toBeCloseTo(ult.count, 6)
   }, 180_000)
 
   it('★ 18s 轴（多一个强特、大招 15.4s 起手）：轴内那一发同样整次吃满', async () => {
@@ -173,6 +184,65 @@ describe('T4 时间账不动：后摇照占前台，只有易伤折算换成伤�
     expect(withDamage.axisDetails[0].axisDuration).toBeCloseTo(naive.axisDetails[0].axisDuration, 9)
     expect(naive.allocation['0:U'].inAxisUnits).toBeCloseTo(0.7592, 3)
     expect(withDamage.allocation['0:U'].inAxisUnits).toBeCloseTo(1, 9)
+  })
+})
+
+describe('T5 二段终结技**不扣喧响**：由 [愿核] 购买（用户口径 2026-10-31）', () => {
+  /**
+   * 用户逐字：「挽昼失衡轴第二个大招消耗的资源不是喧响，但却说我喧响不够只打了一个。
+   * 结果导致总量说2个，失衡轴显示1个。」
+   *
+   * 判据 = **总量与轴一致**：资源页（总量口径）每个终结技发几次，轴栈就必须执行几次。
+   * 修前槽0 喧响 7577 ⇒ 轴里两段各收 3000 ⇒ 只够 1 组，第 2/3 窗两段一起被判 decibel
+   * （实测 executed 1/1 vs 执行行 2/2）。
+   */
+  it('★ 两段终结技在轴内的执行次数 == 资源页（总量）次数', async () => {
+    const r = await runTeam(['1601', '1101', '1661'])
+    const slot0 = r.execUlts
+    const totalA = slot0.a
+    const totalB = slot0.b
+    expect(totalA, '资源页应打出终结技·此行共赴前路').toBeGreaterThan(0)
+    expect(totalB, '资源页应打出终结技·此愿重塑万象').toBeGreaterThan(0)
+    const axisA = r.stack?.executed['0:1601111']?.count ?? 0
+    const axisB = r.stack?.executed['0:1601011']?.count ?? 0
+    expect(axisA, '一段（喧响大）轴内次数必须等于总量').toBe(totalA)
+    expect(axisB, '二段（愿核大）轴内次数必须等于总量——修前这里少 1 发').toBe(totalB)
+  }, 180_000)
+
+  it('模块声明：只有二段免喧响；一段产 1 愿核、二段耗 1 愿核', () => {
+    expect(sunbringerMechanic.axisMoveFreeOfDecibel!('1601011'), '二段由 [愿核] 购买，不是喧响大').toBe(true)
+    expect(sunbringerMechanic.axisMoveFreeOfDecibel!('1601111'), '一段仍是真正的喧响大').toBe(false)
+    expect(sunbringerMechanic.axisSwayFlow!('1601111')).toEqual({ produce: 1 })
+    expect(sunbringerMechanic.axisSwayFlow!('1601011')).toEqual({ cost: 1 })
+    expect(sunbringerMechanic.axisSwayFlow!('1601006')).toBeUndefined()
+  })
+
+  it('反空洞：没有一段产出 ⇒ 二段照样跳过（不是无条件免单）', () => {
+    const base = {
+      axes: [{
+        count: 1,
+        actions: [{ slot: 0, moveId: '1601011', count: 1, actionTime: 4.083, energyCost: 0, decibelCost: 0, swayCost: 1 }],
+        basicFillerSlot: 0,
+      }],
+      stunCount: 1,
+      windowDuration: 16,
+    }
+    const noWishCore = calcStunAxisStack(base)
+    expect(noWishCore.executed['0:1601011'], '无愿核时二段不得执行').toBeUndefined()
+    expect(noWishCore.skipped.some(s => s.moveId === '1601011' && s.reason === 'sway')).toBe(true)
+    // 一段执行时回补 1 点 ⇒ 二段可执行（同一本账、跨块累积）
+    const withProduce = calcStunAxisStack({
+      ...base,
+      axes: [{
+        count: 1,
+        actions: [
+          { slot: 0, moveId: '1601111', count: 1, actionTime: 2.883, energyCost: 0, decibelCost: 0, producesSway: 1 },
+          { slot: 0, moveId: '1601011', count: 1, actionTime: 4.083, energyCost: 0, decibelCost: 0, swayCost: 1 },
+        ],
+        basicFillerSlot: 0,
+      }],
+    })
+    expect(withProduce.executed['0:1601011']?.count ?? 0).toBe(1)
   })
 })
 
