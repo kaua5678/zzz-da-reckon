@@ -1048,6 +1048,14 @@ export interface YixuanNingshen { critDmg: number; sheerDmg: number }
 export interface YixuanOverlay {
   byMove?: Map<string, YixuanNingshen>
   flat?: YixuanNingshen
+  /**
+   * **失衡内**段的凝神值（uptime 折算臂）。与 `flat`/`byMove` 的分工：
+   * `flat` = 旧的「对本槽全部行同值」；`inStun`/`outStun` = 按**失衡内 / 非失衡**分段的 uptime 折算
+   * （用户口径 2026-10-30：凝神很长，要把「失衡占了多少秒、剩余 buff 在非失衡的占比」算进去）。
+   */
+  inStun?: YixuanNingshen
+  /** **非失衡**段的凝神值（= 剩余 uptime ÷ 非失衡秒数，青衣式覆盖率） */
+  outStun?: YixuanNingshen
 }
 export const yixuanOverlay = axisOverlayChannel<YixuanOverlay>()
 
@@ -1166,33 +1174,90 @@ export const yixuanMechanic: AgentMechanicModule = {
    * ⚠ 2026-09-16 round 16：派发器不再在非轴时早退（`axes.length === 0` 那行已删——它让别的模块的
    * 非轴折算臂物理不可达），故进入条件用 `isAxis`（不是 `axes.length`）。
    */
-  axisWindowOverlays: ({ slot, axes, cinemaLevel, isAxis, additionalAbilityActive, settings }) => {
+  axisWindowOverlays: ({ slot, axes, cinemaLevel, isAxis, additionalAbilityActive, settings, battleTime, stunSeconds, ultimateCount }) => {
     if (!additionalAbilityActive) return null
+    /**
+     * ## 凝神的**时间占比**折算（用户口径 2026-10-30，青衣式覆盖率）
+     *
+     * 用户原话：「仪玄凝神buff很长，6命还有更多大招，需要你计算一下**失衡占了多少秒**，**剩余的buff在
+     * 非失衡的占比是多少**，然后接入计算。类似青衣的覆盖率算法。」
+     *
+     * 口径 = 先把 buff 的 uptime 填进失衡，溢出部分摊到非失衡（青衣式 `min(1, 次数 × 时长 / 时长分母)`）：
+     * - `uptime = 终结技次数 × 15s`（封顶 = 有效战斗时长）；
+     * - 失衡内 = `min(1, uptime / 失衡秒数)`；
+     * - 非失衡 = `min(1, max(0, uptime − 失衡秒数) / (战斗时长 − 失衡秒数))`。
+     *
+     * ⚠ 修前**没有**第二项：非失衡行拿的是和失衡内一样的值（C6 臂的 flat 100%、非 C6 轴臂按 moveId
+     * 平均下来的扫描值）⇒ 长 buff 溢出到非失衡的那一段被当成 0（或当成满覆盖）。
+     */
+    // ⚠ 三个入参都要 `finiteOr0`：未接线（测试夹具 / 旧调用方）时按 0 处理，不能让 NaN 传进伤害
+    const T = Math.max(0, finiteOr0(battleTime))
+    const stunSec = Math.max(0, finiteOr0(stunSeconds))
+    const uptime = Math.min(T, Math.max(0, finiteOr0(ultimateCount)) * NINGSHEN_SECONDS)
+    const nonStunSeconds = Math.max(0, T - stunSec)
+    const covInStun = stunSec > 0 ? Math.min(1, uptime / stunSec) : 0
+    const covNonStun = nonStunSeconds > 0 ? Math.min(1, Math.max(0, uptime - stunSec) / nonStunSeconds) : 0
+    const scale = (x: number, critDmg: number, sheerDmg: number): YixuanNingshen => ({
+      critDmg: Math.round(critDmg * x),
+      sheerDmg: Math.round(sheerDmg * x),
+    })
+    /**
+     * **无时间事实的兜底**（T <= 0 = 未接线）：退回修前的「只看滑块」语义——失衡内给满、非失衡给 0。
+     *
+     * 为什么不能直接按 uptime 算：T=0 ⇒ covInStun/covNonStun 全 0 ⇒ 凝神**整块静默归零**
+     * （未接线的调用方/夹具会白少一大截伤害，且没有任何报错）。宁可按旧语义给，也不要静默变 0。
+     */
+    const hasTiming = T > 0
     if (cinemaLevel >= 6) {
+      // C6：调息送大量符法千重 ⇒ 不走轴扫描，两段都按 uptime 折算（滑块仍可整体压低）
       const cov = clampRatio(settingOf(settings, 'yixuan.c6NingshenCoverage'))
-      return yixuanOverlay.wrap({ flat: { critDmg: Math.round(40 * cov), sheerDmg: Math.round(20 * cov) } })
+      return yixuanOverlay.wrap({
+        inStun: scale((hasTiming ? covInStun : 1) * cov, 40, 20),
+        outStun: scale((hasTiming ? covNonStun : 0) * cov, 40, 20),
+      })
     }
     if (isAxis) {
+      // 非 6 命 + 轴模式：失衡内保留**逐实例**的 15s 窗口扫描（比 uptime 摊派更细），非失衡按 uptime 折算
       const map = computeYixuanNingshenBonus(slot, axes, 0)
-      return map.size > 0 ? yixuanOverlay.wrap({ byMove: map }) : null
+      return yixuanOverlay.wrap({ byMove: map, outStun: scale(hasTiming ? covNonStun : 0, 40, 0) })
     }
     const cov = clampRatio(settingOf(settings, 'yixuan.ningshenCoverage'))
-    return yixuanOverlay.wrap({ flat: { critDmg: Math.round(40 * cov), sheerDmg: 0 } })
+    return yixuanOverlay.wrap({
+      inStun: scale((hasTiming ? covInStun : 1) * cov, 40, 0),
+      outStun: scale((hasTiming ? covNonStun : 0) * cov, 40, 0),
+    })
   },
   /**
    * 凝神行级加成（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §4）：
    * 优先用本槽标量（C6 满覆盖臂 / 非 C6 非轴折算臂），否则轴模式查**本槽**桶，否则取 0。
    * note **先暴伤后贯穿**，模板逐字照原 `damagePoolDirect.ts#emitExecDirect`。
    */
-  directRowBonus: ({ exec, isAxis, overlay }) => {
+  directRowBonus: ({ exec, isAxis, stunOverride, overlay }) => {
     const o = yixuanOverlay.read(overlay)
     const moveId = exec.moveId
-    const ns = o?.flat
-      ?? (isAxis ? o?.byMove?.get(moveId) : undefined)
-      ?? { critDmg: 0, sheerDmg: 0 }
+    const scanned = isAxis ? o?.byMove?.get(moveId) : undefined
+    // 分段取值（用户口径 2026-10-30）：失衡内 = 逐实例窗口扫描（非6命轴臂）或 uptime 折算；
+    // **非失衡 = uptime 溢出到非失衡的那一段**（修前非失衡行拿的是与失衡内相同的值）。
+    // ⚠ stunOverride 是 **0-1 覆盖率**（不是布尔）：30% 覆盖率的行要按 0.3/0.7 混合两段，
+    //   否则整行拿失衡内值（退回「覆盖率当布尔」的老坑）。
+    const alpha = clampRatio(stunOverride)
+    // ⚠ 取值优先级 = 原式三元顺序（C6 标量臂**优先于**轴桶）：`flat ?? (isAxis ? byMove.get(moveId) : undefined)`。
+    // 分段化后把 `inStun` 插在 `flat` 之前（inStun 是 uptime 折算臂，与 flat 同源但按时段切开）——
+    // `flat` 只在未接线兜底时出现，两者不会同时在场。
+    const inStunVal = o?.inStun ?? o?.flat ?? scanned ?? { critDmg: 0, sheerDmg: 0 }
+    const outStunVal = o?.outStun ?? { critDmg: 0, sheerDmg: 0 }
+    const ns: YixuanNingshen = alpha >= 1
+      ? inStunVal
+      : alpha <= 0
+        ? outStunVal
+        : {
+            critDmg: Math.round(inStunVal.critDmg * alpha + outStunVal.critDmg * (1 - alpha)),
+            sheerDmg: Math.round(inStunVal.sheerDmg * alpha + outStunVal.sheerDmg * (1 - alpha)),
+          }
     if (ns.critDmg <= 0 && ns.sheerDmg <= 0) return null
+    const label = alpha <= 0 ? '（非失衡）' : scanned ? '（buff轴）' : alpha >= 1 ? '（失衡内 uptime）' : '（分段加权）'
     let note = ''
-    if (ns.critDmg > 0) note += ` · 凝神暴伤+${ns.critDmg.toFixed(0)}%${isAxis ? '（buff轴）' : '（覆盖率近似）'}`
+    if (ns.critDmg > 0) note += ` · 凝神暴伤+${ns.critDmg.toFixed(0)}%${label}`
     if (ns.sheerDmg > 0) note += ` · 凝神贯穿+${ns.sheerDmg.toFixed(0)}%`
     return { critDmgBonus: ns.critDmg, sheerDmgBonus: ns.sheerDmg, note }
   },

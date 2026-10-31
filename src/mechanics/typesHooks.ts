@@ -182,6 +182,26 @@ export interface AgentAxisOverlayInput {
    * 缺省（非轴模式 / 轴退化 / 未接线）为空数组 = 各轴不按窗口数加权。
    */
   axisWindows: readonly number[]
+  /**
+   * 本帧的**战斗时间事实**（只读）——给「大招触发的长 buff」做时间占比折算用。
+   *
+   * 用户口径 2026-10-30（仪玄凝神）：「凝神buff很长，6命还有更多大招，需要你计算一下**失衡占了多少秒**，
+   * **剩余的buff在非失衡的占比是多少**，然后接入计算。类似青衣的覆盖率算法」
+   * （青衣式 = `min(1, Σ触发次数 × 时长 / 时长分母)`，见 `docs/GAME_TERM_TO_CODE_FIELD.md` §覆盖率行）。
+   *
+   * - `battleTime` = 有效战斗时长（秒，`effectiveBattleTime`，已扣无敌时间）；
+   * - `stunSeconds` = 失衡总秒数（= 次数 × 名义窗长 − 决算截断损失秒）；
+   * - `ultimateCount` = **本槽**角色本轮终结技次数（uptime 的分子：次数 × buff 时长）。
+   *
+   * 三者的用途是「先把 buff 的 uptime 填进失衡，溢出部分再摊到非失衡」：
+   * 失衡内覆盖 = `min(1, uptime / stunSeconds)`、非失衡覆盖 = `min(1, max(0, uptime − stunSeconds) / (battleTime − stunSeconds))`。
+   * 缺省 0（非轴 / 未接线）= 该模块不参与这类折算。
+   */
+  battleTime: number
+  /** 失衡总秒数（见 `battleTime` 的整段说明） */
+  stunSeconds: number
+  /** 本槽角色本轮终结技次数（见 `battleTime` 的整段说明） */
+  ultimateCount: number
   cinemaLevel: number
   /** 倍率表访问（可琳等需要把普攻段归并到 'basic_attack' 聚合行键时查 basic 段 moveId） */
   getAgentSkills: (agentId: string) => { categories: { id: string; moves: { id: string }[] }[] } | undefined

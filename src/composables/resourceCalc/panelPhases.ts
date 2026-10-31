@@ -342,6 +342,16 @@ export function collectAxisWindowOverlays(
   damagePanels: readonly PanelValues[],
   /** 每条轴分到的窗口数（与 `CalcRoundResult.axisWindows` 同源）；缺省 [] = 各轴不加权 */
   axisWindows: readonly number[] = [],
+  /**
+   * 战斗时间事实（见 `AgentAxisOverlayInput.battleTime` 的整段说明）：
+   * 总时长 / 失衡秒数 / **按槽取**的终结技次数（`ultimateCountOf` 由调用方按 slot 查，禁下标）。
+   * 缺省 = 全 0（未接线），模块据此不参与折算。
+   */
+  timing: {
+    battleTime: number
+    stunSeconds: number
+    ultimateCountOf: (slot: number) => number
+  } = { battleTime: 0, stunSeconds: 0, ultimateCountOf: () => 0 },
 ): Map<number, AgentAxisOverlay> {
   const out = new Map<number, AgentAxisOverlay>()
   const getAgentSkills = (agentId: string) => catalogStore.agentSkillsByAgentMap.get(agentId)
@@ -361,6 +371,9 @@ export function collectAxisWindowOverlays(
       cinemaLevel: member.cinemaLevel,
       getAgentSkills,
       isAxis,
+      battleTime: timing.battleTime,
+      stunSeconds: timing.stunSeconds,
+      ultimateCount: timing.ultimateCountOf(member.slot),
       additionalAbilityActive: additionalAbilityActiveOf(memberPanel),
       windInfectionRate: Number(memberPanel?.windInfectionRate ?? 0),
       settings,

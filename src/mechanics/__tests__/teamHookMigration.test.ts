@@ -172,23 +172,31 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
     expect(banyueMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, additionalAbilityActive: false }))).toBeNull()
   })
 
-  it('仪玄凝神：终结技块开 15s 窗；触发块自身不享受；**非轴臂已迁入本模块**（标量）', () => {
+  it('仪玄凝神：终结技块开 15s 窗；触发块自身不享受；失衡内/非失衡两段（用户口径 2026-10-30）', () => {
     // 2026-09-17 round 21 夜 A：非轴臂（原「仍在伤害池」，T7 裁决把注册 default 与伤害池
     // fallback 归一为 0.5 后已无阻塞）整段迁进本模块 ⇒ 断言从 `toBeNull()` 改为
     // 「桶留空 + 标量表给折算值」。⚠ 本断言**加强**而非放宽：原来只钉「非轴时什么都不做」，
     // 现在钉「非轴时给出哪个精确值」，把「分支删掉」与「分支迁走」真正区分开
     // （删掉会让这里变 null，仍有判据）。
-    // CC-437：返回值对编排层不透明，用模块 channel 读（`flat` = 原标量，`byMove` = 原桶）
-    const rd = (o: Record<string, unknown> = {}) => yixuanOverlay.read(yixuanMechanic.axisWindowOverlays!(overlayInput(o))!)!
-    expect(rd({ isAxis: false }).flat).toEqual({ critDmg: 20, sheerDmg: 0 })  // 40 × 默认 0.5
-    // 非 C6 非轴：滑块两端精确值（0 ⇒ 0；1 ⇒ 40），且**不给贯穿**（贯穿只由 C6 给）
-    expect(rd({ isAxis: false, settings: { 'yixuan.ningshenCoverage': 0 } }).flat).toEqual({ critDmg: 0, sheerDmg: 0 })
-    expect(rd({ isAxis: false, settings: { 'yixuan.ningshenCoverage': 1 } }).flat).toEqual({ critDmg: 40, sheerDmg: 0 })
-    // C6 非轴：满覆盖 40 暴伤 + 20 贯穿（与非 C6 臂**同字段不同值**，证明命座分支真在模块里）
-    expect(rd({ isAxis: false, cinemaLevel: 6 }).flat).toEqual({ critDmg: 40, sheerDmg: 20 })
+    // 时间事实（本用例统一给）：战斗 180s / 失衡 90s / 大招 8 次 ⇒ uptime = 8×15 = 120s
+    //   ⇒ 失衡内 min(1, 120/90) = 1、非失衡 min(1, (120−90)/(180−90)) = 1/3
+    // CC-437：返回值对编排层不透明，用模块 channel 读（`inStun`/`outStun` = 分段值，`byMove` = 原桶）
+    const rd = (o: Record<string, unknown> = {}) => yixuanOverlay.read(yixuanMechanic.axisWindowOverlays!(overlayInput({ battleTime: 180, stunSeconds: 90, ultimateCount: 8, ...o }))!)!
+    // 非 C6 非轴：失衡内 40 × 1 × 默认滑块 0.5 = 20；非失衡 40 × (1/3) × 0.5 = 7（round）
+    const nonAxis = rd({ isAxis: false })
+    expect(nonAxis.inStun).toEqual({ critDmg: 20, sheerDmg: 0 })
+    expect(nonAxis.outStun).toEqual({ critDmg: 7, sheerDmg: 0 })
+    // 非 C6 非轴：滑块两端精确值（0 ⇒ 0；1 ⇒ 40 / 13），且**不给贯穿**（贯穿只由 C6 给）
+    expect(rd({ isAxis: false, settings: { 'yixuan.ningshenCoverage': 0 } }).inStun).toEqual({ critDmg: 0, sheerDmg: 0 })
+    expect(rd({ isAxis: false, settings: { 'yixuan.ningshenCoverage': 1 } }).inStun).toEqual({ critDmg: 40, sheerDmg: 0 })
+    expect(rd({ isAxis: false, settings: { 'yixuan.ningshenCoverage': 1 } }).outStun).toEqual({ critDmg: 13, sheerDmg: 0 })
+    // C6 非轴：covIn=1 ⇒ 40/20；covOut=1/3 ⇒ 13/7（与非 C6 臂**同字段不同值**，证明命座分支真在模块里）
+    const c6 = rd({ isAxis: false, cinemaLevel: 6 })
+    expect(c6.inStun).toEqual({ critDmg: 40, sheerDmg: 20 })
+    expect(c6.outStun).toEqual({ critDmg: 13, sheerDmg: 7 })
     // 额外能力未触发 ⇒ 一律不参与（门控逐位保留）
     expect(yixuanMechanic.axisWindowOverlays!(overlayInput({ isAxis: false, additionalAbilityActive: false }))).toBeNull()
-    // 轴臂：桶（非 C6 + 轴）
+    // 轴臂：桶（非 C6 + 轴）+ 非失衡段（uptime 溢出 30s ÷ 非失衡 90s = 1/3 ⇒ 13）
     const axes = axis([
       { slot: 0, moveId: '1371014', count: 1, startTime: 0 },
       { slot: 0, moveId: '1371009', count: 1, startTime: 3 },
@@ -196,12 +204,13 @@ describe('轴窗口覆盖钩子（原四个 findIndex computed）', () => {
     const res = rd({ axes })
     expect(res.byMove!.get('1371009')!.critDmg).toBe(40)
     expect(res.byMove!.has('1371014')).toBe(false)
-    // 轴臂**不产标量**（两臂互斥；若实现把两者同时产出，`flat` 会盖掉 `byMove` ⇒ 这里红）
-    expect(res.flat).toBeUndefined()
-    // ★ C6 臂**优先于轴臂**：轴态 + C6 仍走满覆盖标量、不查桶（原伤害池三元顺序逐位保留）
+    expect(res.outStun).toEqual({ critDmg: 13, sheerDmg: 0 })
+    // 轴臂**不产失衡内标量**（失衡内走桶；若实现把两者同时产出，段值会盖掉桶 ⇒ 这里红）
+    expect(res.inStun).toBeUndefined()
+    // ★ C6 臂**优先于轴臂**：轴态 + C6 仍走 uptime 折算、不查桶（原伤害池三元顺序逐位保留）
     const c6Axis = rd({ axes, cinemaLevel: 6 })
     expect(c6Axis.byMove).toBeUndefined()
-    expect(c6Axis.flat).toEqual({ critDmg: 40, sheerDmg: 20 })
+    expect(c6Axis.inStun).toEqual({ critDmg: 40, sheerDmg: 20 })
   })
 
   it('佩洛伊斯阳炎：上分支开 21s 窗，仅上分支/决算受益；**非轴臂已迁入本模块**（标量）', () => {

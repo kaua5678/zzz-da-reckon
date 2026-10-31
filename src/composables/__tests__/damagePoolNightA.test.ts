@@ -188,60 +188,83 @@ describe('R21 夜A 跳② 仪玄 1371 凝神三臂（:510 整段迁进 yixuan.ts
   const ningshenNotes = (calc: ReturnType<typeof useResourceCalc>) =>
     directRowsOf(calc, '1371').filter(r => r.note.includes('凝神'))
 
-  it('非 C6 非轴：滑块 0 / 0.5 / 1 给出 **0% / 20% / 40%** 三档不同暴伤（精确值）', async () => {
+  /**
+   * 凝神在 note 里的暴伤/贯穿数值（正则抓「凝神暴伤+N%」）
+   *
+   * ⚠ **2026-10-30 口径变更（并行会话落地，本用例随之重写）**：凝神不再是一个「对本槽全部行同值」的
+   * 折算标量（旧 `flat`），而是按**失衡内 / 非失衡**分段（`inStun` / `outStun`），失衡内用
+   * `min(1, 终结技次数×15s / 失衡秒数)`、非失衡用溢出部分摊到剩余秒数（青衣式覆盖率）。
+   * ⇒ 断言的**性质**从「等于 40×滑块」变成：①滑块线性缩放（0 ⇒ 无、0.5 ⇒ 半、1 ⇒ 满）；
+   * ②非 C6 不给贯穿；③C6 的贯穿恒为暴伤的一半（20/40 的源比例）。
+   */
+  const critOf = (note: string): number => Number((note.match(/凝神暴伤\+(\d+)%/) ?? [])[1] ?? NaN)
+  const sheerOf = (note: string): number => Number((note.match(/凝神贯穿\+(\d+)%/) ?? [])[1] ?? NaN)
+
+  it('非 C6 非轴：滑块线性缩放（0 ⇒ 无该机制 / 0.5 ⇒ 恰好半值 / 1 ⇒ 满值），且**不给贯穿**', async () => {
     const { calc, config } = await calcOf([{ agentId: '1371' }, { agentId: '1181' }, { agentId: '1011' }])
     forceNonAxis(config)
 
-    const seen: number[] = []
-    for (const cov of [0, 0.5, 1]) {
+    // 滑块 0 ⇒ 折算 0 ⇒ 消费端不写「凝神」段（note 里彻底没有该机制）
+    config.setMechanicSetting('yixuan.ningshenCoverage', 0)
+    await settle()
+    expect(ningshenNotes(calc).length, '滑块 0 时不应出现凝神段').toBe(0)
+
+    /** 同一批行在给定滑块下的凝神暴伤集合（排序后便于逐位对比） */
+    const profile = async (cov: number): Promise<number[]> => {
       config.setMechanicSetting('yixuan.ningshenCoverage', cov)
       await settle()
-      const notes = ningshenNotes(calc)
-      if (cov === 0) {
-        // 覆盖率为 0 ⇒ 折算暴伤 0 ⇒ 消费端不写「凝神暴伤」段（note 里彻底没有该机制）
-        expect(notes.length).toBe(0)
-        seen.push(0)
-        continue
-      }
-      expect(notes.length).toBeGreaterThan(0)
-      const expected = Math.round(40 * cov)
-      // 每行都带同一个折算值（标量臂 = 对本槽全部行同值）
-      for (const r of notes) {
-        expect(r.note).toContain(`凝神暴伤+${expected}%`)
-        expect(r.note).toContain('（覆盖率近似）')
+      const rows = ningshenNotes(calc)
+      expect(rows.length, `滑块 ${cov} 时应出现凝神段`).toBeGreaterThan(0)
+      for (const r of rows) {
         // 非 C6 非轴臂**不给贯穿**（贯穿只由 C6 给）
         expect(r.note).not.toContain('凝神贯穿')
       }
-      seen.push(expected)
+      return rows.map(r => critOf(r.note)).sort((a, b) => a - b)
     }
-    expect(seen).toEqual([0, 20, 40])
+
+    const half = await profile(0.5)
+    const full = await profile(1)
+    // 线性缩放：每一行都满足 round(全值 × 0.5) === 半值（±1 容差 = 取整）
+    expect(half.length).toBe(full.length)
+    for (let i = 0; i < full.length; i++) {
+      expect(Math.abs(half[i]! * 2 - full[i]!), `第 ${i} 行：半值 ${half[i]} ×2 应等于全值 ${full[i]}`).toBeLessThanOrEqual(1)
+    }
+    // 满值不超过源上限 40
+    for (const v of full) expect(v).toBeLessThanOrEqual(40)
   })
 
-  it('C6 非轴：满覆盖 **40% 暴伤 + 20% 贯穿**，且与 c6 滑块联动（精确值）', async () => {
+  it('C6 非轴：暴伤/贯穿按 40/20 源比例同步缩放（贯穿恒为暴伤一半），与 c6 滑块联动', async () => {
     const { calc, config } = await calcOf([{ agentId: '1371', cinemaLevel: 6 }, { agentId: '1181' }, { agentId: '1011' }])
     forceNonAxis(config)
-
-    config.setMechanicSetting('yixuan.c6NingshenCoverage', 1)
     config.setMechanicSetting('yixuan.ningshenCoverage', 1)
-    await settle()
-    let notes = ningshenNotes(calc)
-    expect(notes.length).toBeGreaterThan(0)
-    for (const r of notes) {
-      expect(r.note).toContain('凝神暴伤+40%')
-      expect(r.note).toContain('凝神贯穿+20%')
+
+    const profile = async (cov: number) => {
+      config.setMechanicSetting('yixuan.c6NingshenCoverage', cov)
+      await settle()
+      const rows = ningshenNotes(calc)
+      expect(rows.length, `c6 滑块 ${cov} 时应出现凝神段`).toBeGreaterThan(0)
+      return rows.map(r => ({ crit: critOf(r.note), sheer: sheerOf(r.note) }))
     }
 
-    // 砍到 0.5 ⇒ 20/10（证明读的是 **c6** 滑块，而不是非 C6 的 ningshenCoverage）
-    config.setMechanicSetting('yixuan.c6NingshenCoverage', 0.5)
-    await settle()
-    notes = ningshenNotes(calc)
-    for (const r of notes) {
-      expect(r.note).toContain('凝神暴伤+20%')
-      expect(r.note).toContain('凝神贯穿+10%')
+    const full = await profile(1)
+    for (const r of full) {
+      expect(r.crit, 'C6 每行都应带贯穿').toBeGreaterThan(0)
+      expect(r.sheer).toBeGreaterThan(0)
+      // 源比例 40:20 ⇒ 贯穿恒为暴伤的一半（±1 取整容差）
+      expect(Math.abs(r.sheer * 2 - r.crit), `贯穿 ${r.sheer}×2 应≈暴伤 ${r.crit}`).toBeLessThanOrEqual(1)
+      expect(r.crit).toBeLessThanOrEqual(40)
+    }
+
+    // 砍到 0.5 ⇒ 每一行都恰好减半（证明读的是 **c6** 滑块，而不是非 C6 的 ningshenCoverage）
+    const half = await profile(0.5)
+    expect(half.length).toBe(full.length)
+    for (let i = 0; i < full.length; i++) {
+      expect(Math.abs(half[i]!.crit * 2 - full[i]!.crit)).toBeLessThanOrEqual(1)
+      expect(Math.abs(half[i]!.sheer * 2 - full[i]!.sheer)).toBeLessThanOrEqual(1)
     }
   })
 
-  it('★ C6 臂**优先于轴臂**：轴模式下 C6 仍走满覆盖、不查扫描桶（逐位保留原三元顺序）', async () => {
+  it('★ C6 臂**优先于轴臂**：轴模式下 C6 不查扫描桶（note 里不得出现「（buff轴）」）', async () => {
     // ⚠ 队伍不能随便挑：C6 仪玄的轴**极易退化**（资源需求超时间预算 ⇒ `forceNoAxis` ⇒
     // `resolvedAxes` 清空 ⇒ 本用例会静默走非轴臂、变成一条假判据）。实测：
     // `1371C6+1181+1011` / `+1511+1311` / `+1361+1211` / `+1031+1221` 四种编成全部
@@ -258,10 +281,10 @@ describe('R21 夜A 跳② 仪玄 1371 凝神三臂（:510 整段迁进 yixuan.ts
 
     const notes = ningshenNotes(calc)
     expect(notes.length).toBeGreaterThan(0)
-    // 轴态 + C6 ⇒ 仍是满覆盖 40/20；若实现把轴臂排在 C6 之前，这里会掉到扫描值（且贯穿消失）
+    // C6 臂优先 ⇒ 走 uptime 折算而不是扫描桶；若实现把轴臂排在 C6 之前，标签会变「（buff轴）」
     for (const r of notes) {
-      expect(r.note).toContain('凝神暴伤+40%')
-      expect(r.note).toContain('凝神贯穿+20%')
+      expect(r.note, 'C6 臂不得落到扫描桶').not.toContain('（buff轴）')
+      expect(r.note, 'C6 每行都应带贯穿').toContain('凝神贯穿')
     }
   })
 
@@ -295,31 +318,61 @@ describe('R21 夜A 跳② 仪玄 1371 凝神三臂（:510 整段迁进 yixuan.ts
     expect(leaked.length).toBe(0)
   })
 
-  it('跳③ 钩子层：C6 臂与非 C6 非轴臂都产**标量**（`flat`），非 C6 轴臂产桶（`byMove`）；CC-437 起经 yixuanOverlay 读', () => {
+  /**
+   * 钩子层：**未接线时间事实**（无 `battleTime`/`stunSeconds`/`ultimateCount`）时的兜底语义。
+   *
+   * ⚠ 2026-10-30 分段改造后，`flat` 已被 `inStun`/`outStun` 取代。未接线时（T=0）若按 uptime 算
+   * 会把凝神整块算成 0（未接线的调用方白少伤害、且无任何报错）⇒ **必须退回修前的「只看滑块」语义**：
+   * 失衡内给满滑块值、非失衡给 0。本用例锁的就是这条兜底。
+   */
+  it('跳③ 钩子层：未接线时间事实时退回「只看滑块」（inStun=滑块满值、outStun=0）；C6 优先于轴臂', () => {
     const base = {
       slot: 0, axes: [], getAgentSkills: () => undefined,
       additionalAbilityActive: true, windInfectionRate: 0,
       settings: { 'yixuan.c6NingshenCoverage': 1, 'yixuan.ningshenCoverage': 1 } as Record<string, number>,
     }
-    // C6（非轴）：标量 {40,20}
     const rd = (o: Record<string, unknown>) => yixuanOverlay.read(yixuanMechanic.axisWindowOverlays!({ ...base, ...o } as never)!)!
+    // C6（非轴）：失衡内标量 {40,20}，非失衡 0（无时间事实）
     const c6 = rd({ cinemaLevel: 6, isAxis: false })
     expect(c6.byMove).toBeUndefined()
-    expect(c6.flat).toEqual({ critDmg: 40, sheerDmg: 20 })
-    // C6（轴）：同样是标量（C6 臂优先于轴臂）
+    expect(c6.inStun).toEqual({ critDmg: 40, sheerDmg: 20 })
+    expect(c6.outStun).toEqual({ critDmg: 0, sheerDmg: 0 })
+    // C6（轴）：同样走 C6 臂（不产扫描桶）
     const c6Axis = rd({ cinemaLevel: 6, isAxis: true })
-    expect(c6Axis.flat).toEqual({ critDmg: 40, sheerDmg: 20 })
-    // 非 C6 非轴：标量 {40,0}（不给贯穿）
+    expect(c6Axis.byMove).toBeUndefined()
+    expect(c6Axis.inStun).toEqual({ critDmg: 40, sheerDmg: 20 })
+    // 非 C6 非轴：失衡内 {40,0}（不给贯穿）
     const nonC6 = rd({ cinemaLevel: 0, isAxis: false })
-    expect(nonC6.flat).toEqual({ critDmg: 40, sheerDmg: 0 })
-    // 非 C6 轴：**无标量**，走桶（空轴 ⇒ 桶为空 ⇒ 返回 null）
+    expect(nonC6.inStun).toEqual({ critDmg: 40, sheerDmg: 0 })
+    // 非 C6 轴：**无 inStun 标量**，走桶（空轴 ⇒ 桶为空）
     const nonC6Axis = yixuanMechanic.axisWindowOverlays!({ ...base, cinemaLevel: 0, isAxis: true } as never)
-    expect(yixuanOverlay.read(nonC6Axis ?? undefined)?.flat).toBeUndefined()
+    expect(yixuanOverlay.read(nonC6Axis ?? undefined)?.inStun).toBeUndefined()
     // 额外能力未触发 ⇒ 一律 null（门控逐位保留）
     expect(yixuanMechanic.axisWindowOverlays!({ ...base, cinemaLevel: 6, isAxis: false, additionalAbilityActive: false } as never)).toBeNull()
-    // CC-437：overlay 按槽归属由编排层（`axisOverlayBySlot` → T15-g 后的 per-slot map）保证，
-    // 模块值本身**槽无关**：槽 2 的仪玄读到与槽 0 完全相同的 `flat`
-    expect(rd({ slot: 2, cinemaLevel: 6, isAxis: false }).flat).toEqual({ critDmg: 40, sheerDmg: 20 })
+    // CC-437：overlay 按槽归属由编排层保证，模块值本身**槽无关**
+    expect(rd({ slot: 2, cinemaLevel: 6, isAxis: false }).inStun).toEqual({ critDmg: 40, sheerDmg: 20 })
+  })
+
+  /**
+   * 接线时间事实后：**失衡内 / 非失衡分段**（用户口径 2026-10-30）。
+   * 构造 uptime = 2 次终结技 × 15s = 30s、战斗 100s、失衡 20s ⇒ 失衡内 min(1,30/20)=100%，
+   * 非失衡 (30−20)/(100−20)=12.5% ⇒ 40×0.125=5 / 20×0.125=2.5→3。
+   */
+  it('跳③ 钩子层：接线后按 uptime 分段（失衡内 100% / 非失衡 12.5%），非失衡段按比例衰减', () => {
+    const base = {
+      slot: 0, axes: [], getAgentSkills: () => undefined,
+      additionalAbilityActive: true, windInfectionRate: 0,
+      settings: { 'yixuan.c6NingshenCoverage': 1, 'yixuan.ningshenCoverage': 1 } as Record<string, number>,
+      battleTime: 100, stunSeconds: 20, ultimateCount: 2,
+    }
+    const rd = (o: Record<string, unknown>) => yixuanOverlay.read(yixuanMechanic.axisWindowOverlays!({ ...base, ...o } as never)!)!
+    const c6 = rd({ cinemaLevel: 6, isAxis: false })
+    expect(c6.inStun).toEqual({ critDmg: 40, sheerDmg: 20 })
+    expect(c6.outStun).toEqual({ critDmg: 5, sheerDmg: 3 })
+    // 终结技次数为 0 ⇒ uptime 0 ⇒ 两段都 0（无 buff 可摊）
+    const zeroUlt = rd({ cinemaLevel: 6, isAxis: false, ultimateCount: 0 })
+    expect(zeroUlt.inStun).toEqual({ critDmg: 0, sheerDmg: 0 })
+    expect(zeroUlt.outStun).toEqual({ critDmg: 0, sheerDmg: 0 })
   })
 })
 

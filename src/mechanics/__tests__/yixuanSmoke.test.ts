@@ -671,14 +671,33 @@ describe('仪玄失衡延时（影画2，回归：2026-08 修复全队多计）'
 describe('CC-17：仪玄 directRowBonus（凝神，标量优先 / 轴臂桶 / 先暴伤后贯穿）', () => {
   const exec = (moveId: string) => ({ moveId } as never)
 
-  it('非轴臂：读本槽标量，note「凝神暴伤…（覆盖率近似）」（无贯穿段）', () => {
-    const rb = yixuanMechanic.directRowBonus!({
-      exec: exec('1371009'), isAxis: false, stunOverride: 0,
-      overlay: yixuanOverlay.wrap({ flat: { critDmg: 20, sheerDmg: 0 } }),  // CC-437：不透明 overlay 经模块 channel 构造
+  it('分段取值：失衡内读 inStun、非失衡读 outStun（用户口径 2026-10-30）', () => {
+    const overlay = yixuanOverlay.wrap({
+      inStun: { critDmg: 40, sheerDmg: 0 },
+      outStun: { critDmg: 13, sheerDmg: 0 },
+    })
+    const inStun = yixuanMechanic.directRowBonus!({
+      exec: exec('1371009'), isAxis: true, stunOverride: 1, overlay,
     })!
-    expect(rb.critDmgBonus).toBe(20)
-    expect(rb.sheerDmgBonus).toBe(0)
-    expect(rb.note).toBe(' · 凝神暴伤+20%（覆盖率近似）')
+    expect(inStun.critDmgBonus).toBe(40)
+    expect(inStun.sheerDmgBonus).toBe(0)
+    expect(inStun.note).toBe(' · 凝神暴伤+40%（失衡内 uptime）')
+    const outStun = yixuanMechanic.directRowBonus!({
+      exec: exec('1371009'), isAxis: true, stunOverride: 0, overlay,
+    })!
+    expect(outStun.critDmgBonus).toBe(13)
+    expect(outStun.note).toBe(' · 凝神暴伤+13%（非失衡）')
+  })
+
+  it('uptime 分摊：大招不够覆盖失衡时失衡内覆盖率 < 1（分母 = 失衡秒数）', () => {
+    const ov = yixuanMechanic.axisWindowOverlays!({
+      slot: 0, axes: [], axisWindows: [], cinemaLevel: 6, getAgentSkills: () => undefined,
+      isAxis: false, additionalAbilityActive: true, windInfectionRate: 0, settings: {},
+      battleTime: 180, stunSeconds: 64, ultimateCount: 3, // uptime = 45 < 64 ⇒ 45/64
+    } as never)!
+    const read = yixuanOverlay.read(ov)!
+    expect(read.inStun!.critDmg).toBe(28) // round(40 × 45/64)
+    expect(read.outStun).toEqual({ critDmg: 0, sheerDmg: 0 }) // 溢出为 0
   })
 
   it('轴臂：标量缺席时查本槽桶，note「（buff轴）」', () => {
