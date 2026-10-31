@@ -157,24 +157,38 @@ export const EX_ENERGY_CONVERSION = {
  * ⇒ **支援突击公式 ≡ 强特公式在 e=20 处的取值**：弹刀后跟的支援突击是「送 20 点等效能量」的奖励，
  * 这 20 点不是玩家花的能量，而是策划调倍率时的记账单位。
  *
- * 反制支援系同构，数值由克拉蕾(1611) 三行反解得到（用她自己的列系数；喧响/积蓄两列
- * 各有 19~21 个样本、独立命中同一整数，故可信）：
- * - 1611028 寸铁不让（本体） = 支援突击基线 + 奖励 **20** ⇒ 等效 **40**
- * - 1611030 琢形（专属支援突击） = 支援突击基线 + 奖励 **60** ⇒ 等效 **80**
- * 两行合计 = 120 等效能量（融合成一次动作只体现在动作/时间层，倍率按行各算各的，见 data/moveFusions.ts）。
+ * **反制支援本体 = @40（招族价，三家反解一致）**：克拉蕾 1611028 / 挽昼 1601204 / 知更鸟 1661017
+ * 按各自列系数反解，失衡/喧响/积蓄三列都落在 40.0±0.06。
+ * **反制支援的专属追击 = 招式级事实、不按招族定价**（见 `COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY`）：
+ * 克拉蕾 1611030 琢形 = @80（基线 + 60），挽昼 1601205 灯塔 = @20（**普通支援突击基线本身、零奖励**）。
+ * 2026-10-31 用户提问「灯塔说送了很多等效能量、各项数值却都低」触发复核：按 @80 评估会把四列统一压到
+ * 0.51~0.59 的假象，按 @20 评估则失衡/喧响/积蓄 1.000、伤害 = 她的直伤系数 1.091（四列同证）。
+ * 融合只体现在动作/时间层，倍率按行各算各的（见 data/moveFusions.ts）。
  *
- * @fact data:倍率系数/反制支援等效能量 口径: 反制支援本体 = 支援突击基线 + 20 等效能量（整行 = 强特公式@40），专属支援突击·琢形 = 支援突击基线 + 60（整行 = @80）；支援突击本身 = 强特公式@20 | 据 用户@2026-10-24（「其奖励倍率是相当于等效多少能量×能量转化率算出来的数值」）·反解自 克拉蕾 1611028/1611030 的失衡/喧响/积蓄三列（40.0/80.0，两列独立命中整数） | 验 src/composables/__tests__/multiplierCoefficients.test.ts | 锚 src/data/standardMultiplierTable.ts#EQUIVALENT_ENERGY | 信 确认
- * ⟳复核: 新增锋御/反制支援角色时，用其本体+专属追击三行重新反解等效能量——若解出 40/80 之外的值，说明反制系不是固定定价、需改为逐角色记录；若官方给反制支援补 energyCost，则等效能量口径让位给真耗能 | 到期 2027-06-30
+ * @fact data:倍率系数/反制支援等效能量 口径: 反制支援本体 = 支援突击基线 + 20（整行 = 强特公式@40，克拉蕾/挽昼/知更鸟三家反解一致）；专属追击**逐招式登记**（克拉蕾 1611030 = @80，挽昼 1601205 = @20 基线零奖励）；支援突击本身 = 强特公式@20 | 据 用户@2026-10-24（「其奖励倍率是相当于等效多少能量×能量转化率算出来的数值」）·反解自 1611028/1611030（40.0/80.0）·1601204/1601205（40.0/20.0）·1661017（40.0） | 验 src/composables/__tests__/multiplierCoefficients.test.ts | 锚 src/data/standardMultiplierTable.ts#COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY | 信 确认
+ * ⟳复核: 新增反制支援角色时，先反解「本体 + 专属追击」两行的失衡/喧响/积蓄——本体不在 40、追击不在 20/80 说明这族又不是这个价，按解出的整数登记到 COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY，不要套类型默认；若官方补 energyCost，等效能量口径让位给真耗能 | 到期 2027-06-30
  */
 export const EQUIVALENT_ENERGY: Partial<Record<MoveType, number>> = {
   assistFollowUp: 20,
   counterAssist: 40,
-  counterAssistFollowUp: 80,
 }
 
-/** 反制系在「支援突击基线」之上额外的奖励等效能量（= EQUIVALENT_ENERGY − 20） */
+/**
+ * 反制支援**专属追击**段的等效能量 —— **逐招式登记**（MoveType 级只留 20 这个基线价）。
+ *
+ * 为什么不能按类型定价：@80 是克拉蕾一个人的价。她与挽昼同为锋御、同形的「反制支援后点按攻击发动」段，
+ * 灯塔(1601205) 却反解出 20.02 / 20.05 / 20.00（失衡/喧响/积蓄三列独立命中）——就是普通支援突击基线、
+ * **零奖励**（伤害列 109.1% = 她的直伤系数 1.091，第四列同证）。套 @80 会让这四列统一显示 0.51~0.59。
+ * 值 = 整行等效能量（含支援突击基线的 20）；标准式由 `counterAssistFormulaForEquivalentEnergy` 生成。
+ * 未登记 = 没有标准式（该招只展示实际值），新增角色必须反解后登记（判据会点名）。
+ */
+export const COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY: Partial<Record<string, number>> = {
+  '1611030': 80, // 克拉蕾·血华誓·琢形：79.96 / 80.03 / 80.01
+  '1601205': 20, // 挽昼·灯塔，立于苍穹：20.02 / 20.05 / 20.00 = 基线、零奖励（2026-10-31 复核）
+}
+
+/** 反制支援本体在「支援突击基线」之上额外的奖励等效能量（= 40 − 20） */
 export const COUNTER_ASSIST_REWARD_ENERGY = 20
-export const COUNTER_ASSIST_FOLLOW_UP_REWARD_ENERGY = 60
 
 /**
  * 锋御「锐能」按能量计价（e 通道）——**逐角色登记，不按职业泛化**。
@@ -238,6 +252,11 @@ function counterAssistFormula(
       : { const: round6((f.const ?? 0) + perE * rewardEnergy), perT: f.perT }
   }
   return out
+}
+
+/** 反制系整行等效能量 → 标准式（= 支援突击实录基线 + (E − 20) × 强特耗能利用率系数） */
+export function counterAssistFormulaForEquivalentEnergy(equivalentEnergy: number): Partial<Record<StandardRowId, StdFormula>> {
+  return counterAssistFormula(ASSIST_FOLLOW_UP_FORMULA, equivalentEnergy - (EQUIVALENT_ENERGY.assistFollowUp ?? 0))
 }
 
 /** 保留 6 位（与 formatStdFormula 的 trimNum 同精度；避免 1.909×20 一类浮点尾巴进表） */
@@ -310,10 +329,11 @@ export const STANDARD_MULTIPLIER_TABLE: Record<MoveType, Partial<Record<Standard
   },
   // 支援突击：社区表实录常数（= 强特公式在 20 等效能量处的取整，残差 ≤0.16%，见 EQUIVALENT_ENERGY）
   assistFollowUp: ASSIST_FOLLOW_UP_FORMULA,
-  // 反制支援系（克拉蕾 1611028 本体 / 1611030 专属追击）= 实录基线 + 奖励等效能量折算。
-  // 本体 = 基线 + 20（整行 ≈ @40）、专属追击 = 基线 + 60（整行 ≈ @80）。
+  // 反制支援本体 = 实录基线 + 奖励 20（整行 @40，招族价）。
   counterAssist: counterAssistFormula(ASSIST_FOLLOW_UP_FORMULA, COUNTER_ASSIST_REWARD_ENERGY),
-  counterAssistFollowUp: counterAssistFormula(ASSIST_FOLLOW_UP_FORMULA, COUNTER_ASSIST_FOLLOW_UP_REWARD_ENERGY),
+  // 专属追击**没有类型级标准式**：同一 MoveType 下两家价位不同（克拉蕾 @80 / 挽昼 @20），
+  // 由 COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY 逐招式生成（standardTableOfMove）。
+  counterAssistFollowUp: {},
   parryLight: {
     daze: { const: 95.511, perT: 130 },
     ether_purify: { const: 250, perT: 100 },
@@ -355,6 +375,29 @@ export const STANDARD_MULTIPLIER_TABLE: Record<MoveType, Partial<Record<Standard
     anomaly_buildup: { const: 800, perT: 100 },
     ether_purify: { const: 500, perT: 100 },
   },
+}
+
+/**
+ * 招式的等效能量（奖励口径）：反制支援·专属追击**逐招式登记**，其余按 MoveType 定价。
+ * 未分类 / 未登记的追击 = null（= 没有标准式，只展示实际值，不静默套别人的价）。
+ */
+export function equivalentEnergyOfMove(moveType: MoveType | 'other', moveId: string): number | null {
+  if (moveType === 'other') return null
+  if (moveType === 'counterAssistFollowUp') return COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY[moveId] ?? null
+  return EQUIVALENT_ENERGY[moveType] ?? null
+}
+
+/**
+ * 招式级标准式查表：反制系按「该招式的等效能量」现算（同一个 MoveType 下价位可以不同），
+ * 其余类型直接取类型表。**不要绕过它去索引 STANDARD_MULTIPLIER_TABLE[moveType]**——
+ * 反制系那一格是空的（没有类型级标准式）。
+ */
+export function standardTableForMove(moveType: MoveType, moveId: string): Partial<Record<StandardRowId, StdFormula>> {
+  if (moveType === 'counterAssist' || moveType === 'counterAssistFollowUp') {
+    const energy = equivalentEnergyOfMove(moveType, moveId)
+    return energy == null ? {} : counterAssistFormulaForEquivalentEnergy(energy)
+  }
+  return STANDARD_MULTIPLIER_TABLE[moveType]
 }
 
 /** 稀有度系数（只乘伤害与失衡）：限定 S 1.1 / 常驻 S 1.05 / A 及以下 1.0 */

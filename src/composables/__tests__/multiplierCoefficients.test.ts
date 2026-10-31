@@ -26,6 +26,7 @@ import {
   type CoefficientRowId,
   type MoveType,
 } from '@/data/standardMultiplierTable'
+import { COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY } from '@/data/standardMultiplierTable'
 import { COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS, COUNTER_ASSIST_MOVE_IDS, COUNTER_ASSIST_REGISTRY } from '@/data/counterAssists'
 import {
   buildDirectDamageTimeline,
@@ -178,35 +179,72 @@ describe('倍率表系数演算：角色纵向系数', () => {
   })
 })
 
-describe('反制支援 / 支援突击的「等效能量」口径（2026-10-24 用户裁决）', () => {
+describe('反制支援 / 支援突击的「等效能量」口径（2026-10-24 用户裁决 · 2026-10-31 逐招式复核）', () => {
   /**
    * 口径：支援突击系标准式 = 「等效多少能量 × 强特耗能利用率系数」。
-   * 支援突击 = 20（弹刀后奖励）、反制支援本体 = 40、专属支援突击（琢形）= 80。
+   * 支援突击 = 20（弹刀后奖励）、反制支援**本体** = 40（招族价，三家一致）、
+   * 反制支援**专属追击** = 逐招式登记（克拉蕾 1611030 琢形 = 80；挽昼 1601205 灯塔 = 20 基线、零奖励）。
    *
    * ⚠ 这里**不抄常数**（const = 等效能量 × 系数 那种断言是同义反复：两边都改就绿，等于没测）。
-   * 只钉两件会真出事的事：① 反解能被录入数据复现（口径与 catalog 的桥梁）；
-   * ② 反制系不污染支援突击锚点与纵向聚合（分类错了会静默改一串角色的直伤系数）。
+   * 只钉三件会真出事的事：① 反解能被录入数据复现（口径与 catalog 的桥梁）；
+   * ② 反制系不污染支援突击锚点与纵向聚合（分类错了会静默改一串角色的直伤系数）；
+   * ③ **同一 MoveType 下价位不同**（2026-10-31 用户提问「灯塔说送了很多等效能量、各项数值却都低」：
+   *    套用克拉蕾的 @80 会把她的失衡/喧响/积蓄 压到 0.51~0.59 的假象）。
    */
-  it('★反解复现：用克拉蕾自己的列系数解方程，喧响/积蓄两列独立命中 40 / 80', () => {
+  it('★反解复现：三家反制支援的失衡/喧响/积蓄独立解出登记价（本体 40；追击 80 / 20）', () => {
     // 这是唯一能把「等效能量」和「catalog 录入值」连起来的东西：
-    // 若哪天标准表常数被改动、或克拉蕾被重录，等式立刻不成立 —— 那才是需要人看的地方。
-    const K = {
-      daze: coefOf('1611', 'daze'),
-      decibel_recovery: coefOf('1611', 'decibel_recovery'),
-      anomaly_buildup: coefOf('1611', 'anomaly_buildup'),
-    }
+    // 若哪天标准表常数被改动、或这三行被重录，等式立刻不成立 —— 那才是需要人看的地方。
     const LVL: Record<string, number> = { daze: LEVEL1_TO_LEVEL12.daze, decibel_recovery: 1, anomaly_buildup: 1 }
     const RAR: Record<string, number> = { daze: 1.1, decibel_recovery: 1, anomaly_buildup: 1 }
-    for (const r of [{ moveId: '1611028', t: 3.717, expect: 40 }, { moveId: '1611030', t: 1.117, expect: 80 }]) {
-      const m = report.moves.find((x) => x.moveId === r.moveId)!
+    const rows = [
+      { agentId: '1611', moveId: '1611028', t: 3.717, expect: 40 }, // 克拉蕾 本体
+      { agentId: '1611', moveId: '1611030', t: 1.117, expect: 80 }, // 克拉蕾 琢形
+      { agentId: '1601', moveId: '1601204', t: 3, expect: 40 },     // 挽昼 希望堡垒
+      { agentId: '1601', moveId: '1601205', t: 2, expect: 20 },     // 挽昼 灯塔（基线、零奖励）
+      { agentId: '1661', moveId: '1661017', t: 3.784, expect: 40 }, // 知更鸟 角力
+    ]
+    for (const r of rows) {
+      const K = {
+        daze: verticalOf(r.agentId).coefficients.daze?.value ?? 1,
+        decibel_recovery: verticalOf(r.agentId).coefficients.decibel_recovery?.value ?? 1,
+        anomaly_buildup: verticalOf(r.agentId).coefficients.anomaly_buildup?.value ?? 1,
+      }
+      const m = report.moves.find((x) => x.moveId === r.moveId)
+      expect(m, `${r.moveId} 应在演算表里`).toBeDefined()
       for (const rowId of ['daze', 'decibel_recovery', 'anomaly_buildup'] as const) {
-        const cell = m.cells.find((c) => c.rowId === rowId)!
+        const cell = m!.cells.find((c) => c.rowId === rowId)!
         const f = STANDARD_MULTIPLIER_TABLE.assistFollowUp[rowId]!
         const solved = ((cell.actual / (K[rowId] * LVL[rowId] * RAR[rowId])) - (f.const ?? 0) - (f.perT ?? 0) * r.t)
           / EX_ENERGY_CONVERSION[rowId] + EQUIVALENT_ENERGY.assistFollowUp!
         // 容差 0.6：失衡列因角色系数噪声（1.0022）浮 0.2~0.6；其余列 = 实录常数取整残差（≤0.05）
         expectNear(solved, r.expect, 0.6, `${r.moveId}/${rowId} 反解等效能量`)
       }
+      // 登记值与反解同源：演算页展示与标准式必须用同一个数（两处各抄一份就失去意义）
+      expect(m!.equivalentEnergy, `${r.moveId} 登记的等效能量`).toBe(r.expect)
+    }
+  })
+
+  it('★挽昼 1601205 灯塔 = 普通支援突击基线（@20、零奖励），不是克拉蕾的 @80', () => {
+    const m = report.moves.find((x) => x.moveId === '1601205')!
+    expect(m.moveType, '仍是反制专属追击（不进直伤锚点/纵向聚合）').toBe('counterAssistFollowUp')
+    expect(m.equivalentEnergy).toBe(20)
+    expect(m.rewardEnergy, '灯塔没有奖励等效能量').toBe(0)
+    for (const rowId of ['daze', 'decibel_recovery', 'anomaly_buildup'] as const) {
+      expectNear(m.cells.find((c) => c.rowId === rowId)!.ratio!, 1, 0.01, `灯塔 ${rowId} 比值应为 100%`)
+    }
+    // 伤害列 = 她的直伤系数（第四列独立同证：@20 时 939.1 / 860.97 = 1.0907）
+    expectNear(m.cells.find((c) => c.rowId === 'damage')!.ratio!, verticalOf('1601').directDamage!.value, 0.005, '灯塔伤害比值 = 挽昼直伤系数')
+    // 反锁：克拉蕾的琢形仍按 @80 计价（逐招式登记不是把整族压平成 20）
+    const claret = report.moves.find((x) => x.moveId === '1611030')!
+    expect(claret.equivalentEnergy).toBe(80)
+  })
+
+  it('反制支援追击段：有动作时间的必须登记等效能量（新增角色不许继承别人的价）', () => {
+    for (const id of COUNTER_ASSIST_FOLLOW_UP_MOVE_IDS) {
+      const m = report.moves.find((x) => x.moveId === id)
+      // 1661019：catalog 无 actionTime（t=0）、只有伤害/失衡两行 ⇒ 反解不了，也没有比值需要标准式
+      if (!m || !m.cells.some((c) => c.ratio != null)) continue
+      expect(COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY[id], `${id} 必须登记等效能量`).toBeDefined()
     }
   })
 

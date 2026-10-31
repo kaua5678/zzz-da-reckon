@@ -6,7 +6,8 @@
  *      **反制支援本体与专属追击各自是独立招式类型**（counterAssist / counterAssistFollowUp），
  *      分类上就不属于支援突击，恒不进锚点，见 classifyMove）
  *   3. 反制支援系「等效能量」（standardMultiplierTable#EQUIVALENT_ENERGY）：支援突击 = 强特公式@20、
- *      反制本体 = @40、专属追击 = @80 —— 奖励值是「等效多少能量 × 能量转化率」算出来的
+ *      反制本体 = @40（招族价）、专属追击 = **逐招式登记**（克拉蕾 1611030 @80 / 挽昼 1601205 @20）
+ *      —— 奖励值是「等效多少能量 × 能量转化率」算出来的
  *   3. 招式特定偏差（单招式比值 vs 本角色该列基准：连携增强/大招削弱一类设计空间）
  *
  * 纯函数：输入 catalog 原始数组、输出类型化报告，页面（MultiplierCoeffPage）与测试共用同一实现。
@@ -17,6 +18,8 @@ import type { Agent, AgentSkills, SkillMove } from '@/types/catalog'
 import {
   COEFFICIENT_ROW_IDS,
   EQUIVALENT_ENERGY,
+  equivalentEnergyOfMove,
+  standardTableForMove,
   EX_SHARPNESS_ENERGY,
   FIXED_RECORD_UNITS,
   RESOURCE_ROW_IDS,
@@ -27,7 +30,6 @@ import {
   MOVE_TYPE_OVERRIDES,
   MOVE_TYPE_TIME_SCALE,
   SHARPNESS_GATED_MOVES,
-  STANDARD_MULTIPLIER_TABLE,
   STANDARD_ROW_IDS,
   STANDARD_S_AGENT_IDS,
   getRarityMultiplier,
@@ -356,11 +358,13 @@ export interface MoveEval {
   energy: EnergyCostInfo | null
   /**
    * 等效能量（奖励口径）：支援突击 / 反制支援系的标准式是「等效多少能量 × 强特耗能利用率系数」
-   * 堆出来的，不是玩家花掉的真能量。支援突击 = 20，反制支援本体 = 40，反制专属追击 = 80。
+   * 堆出来的，不是玩家花掉的真能量。支援突击 = 20，反制支援本体 = 40（招族价），
+   * **反制专属追击 = 逐招式登记**（克拉蕾 1611030 = 80 / 挽昼 1601205 = 20，见
+   * standardMultiplierTable#COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY）。
    * 其余招式（含强特）为 null —— 它们的 energy 是真实耗能。
    */
   equivalentEnergy: number | null
-  /** 相对「支援突击基线(=20)」多出来的奖励等效能量（反制本体 +20 / 专属追击 +60；其余 null） */
+  /** 相对「支援突击基线(=20)」多出来的奖励等效能量（反制本体 +20 / 专属追击按登记值−20；其余 null） */
   rewardEnergy: number | null
   flags: string[]
   cells: MoveCellEval[]
@@ -368,7 +372,8 @@ export interface MoveEval {
 
 function evaluateUnit(unit: RawUnit): MoveEval {
   const cells: MoveCellEval[] = []
-  const table = unit.moveType === 'other' ? undefined : STANDARD_MULTIPLIER_TABLE[unit.moveType]
+  const equivalentEnergy = equivalentEnergyOfMove(unit.moveType, unit.moveId)
+  const table = unit.moveType === 'other' ? undefined : standardTableForMove(unit.moveType, unit.moveId)
   const timeScale = unit.moveType === 'other' ? 1 : MOVE_TYPE_TIME_SCALE[unit.moveType] ?? 1
   const t = unit.t != null && unit.t > MIN_ACTION_TIME ? unit.t * timeScale : null
   for (const rowId of COEFFICIENT_ROW_IDS) {
@@ -421,12 +426,10 @@ function evaluateUnit(unit: RawUnit): MoveEval {
     moveTypeLabel: unit.moveType === 'other' ? '未分类' : MOVE_TYPE_LABELS[unit.moveType],
     t: unit.t,
     energy: unit.energy,
-    equivalentEnergy: unit.moveType === 'other' ? null : EQUIVALENT_ENERGY[unit.moveType] ?? null,
-    rewardEnergy: unit.moveType === 'counterAssist'
-      ? (EQUIVALENT_ENERGY.counterAssist! - EQUIVALENT_ENERGY.assistFollowUp!)
-      : unit.moveType === 'counterAssistFollowUp'
-        ? (EQUIVALENT_ENERGY.counterAssistFollowUp! - EQUIVALENT_ENERGY.assistFollowUp!)
-        : null,
+    equivalentEnergy,
+    rewardEnergy: equivalentEnergy == null || unit.moveType === 'assistFollowUp'
+      ? null
+      : equivalentEnergy - (EQUIVALENT_ENERGY.assistFollowUp ?? 20),
     flags: [...unit.flags],
     cells,
   }

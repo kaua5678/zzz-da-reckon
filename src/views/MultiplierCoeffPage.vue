@@ -9,7 +9,7 @@
         <p>实际录入值(Lv12) = 标准式(const + b×t [+ c×e]) × 等级系数（伤害×2 / 失衡×1.5）× 稀有度系数（限定S ×1.1 / 常驻S ×1.05，只乘伤害与失衡；命破伤害另×0.8）× <b>角色系数</b>。t = 动作时间，e = 强化特殊技耗能。特殊技不回能。</p>
         <p><b>闪能质量 ×1.2</b>：强特消耗闪能（Flash Energy Cost）时，四个耗能利用率系数（5.55835/4.175/1.909/4.86）先 ×1.2 再乘闪能量——相同闪能比相同能量多转化 20% 数值。锚点真斗已数据验证：强特耗 80 闪能代入后五列比值全部 ≈1.000。</p>
         <p>角色纵向系数 = 该角色各「干净类型」招式比值的中位数（排除强化特殊技、轻/重招架、反制支援系与未分类）；<b>版本直伤系数</b>取支援突击伤害列比值（支援突击通常不随角色变化，作锚点）。中位数落在 99.5%~100.5%（±0.5%）噪声带的按 <b>100%</b> 展示（原始数据从小数位截断，那点偏离不是角色系数）。</p>
-        <p><b>等效能量（奖励口径）</b>：支援突击那串常数不是随手定的——四个常数 ÷ 强特耗能利用率系数（伤害 5.55835 / 失衡 4.175 / 喧响 1.909 / 积蓄 4.86）= <b>20.03 / 20.00 / 19.96 / 20.00</b>，即「<b>支援突击 = 强特公式在 20 点等效能量处</b>」。反制支援系同构：本体 = 基线 + 20（整行 @40）、专属支援突击（琢形）= 基线 + 60（整行 @80）。等效能量是策划调倍率时的记账单位，<b>不是玩家花的能量</b>；命破角色的「能」是闪能，同样四个系数再 ×1.2。锋御的锐能要**逐角色**判：挽昼(1601) 的 30 点锐能与能量同价（四行反解 e=30.0，四列贴合），已登记进 e 通道（耗能列标「锐」）；克拉蕾(1611) 的 60 锐能只是 16s [猩红铭刻] 的入场门禁（三列速率量实测是特殊技基线），不登记、e 项恒 0（标注「锐能=门禁」）。</p>
+        <p><b>等效能量（奖励口径）</b>：支援突击那串常数不是随手定的——四个常数 ÷ 强特耗能利用率系数（伤害 5.55835 / 失衡 4.175 / 喧响 1.909 / 积蓄 4.86）= <b>20.03 / 20.00 / 19.96 / 20.00</b>，即「<b>支援突击 = 强特公式在 20 点等效能量处</b>」。反制支援系同构：本体 = 基线 + 20（整行 @40，克拉蕾/挽昼/知更鸟三家反解一致）；<b>专属支援突击逐招登记</b>——克拉蕾 1611030 琢形 = 基线 + 60（@80），但挽昼 1601205 灯塔 = <b>@20（就是支援突击基线本身、零奖励）</b>；两者同为「反制后点按攻击」形，价不同是招式事实、不是笔误（标准表按招式生成，见 <code>COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY</code>）。等效能量是策划调倍率时的记账单位，<b>不是玩家花的能量</b>；命破角色的「能」是闪能，同样四个系数再 ×1.2。锋御的锐能要**逐角色**判：挽昼(1601) 的 30 点锐能与能量同价（四行反解 e=30.0，四列贴合），已登记进 e 通道（耗能列标「锐」）；克拉蕾(1611) 的 60 锐能只是 16s [猩红铭刻] 的入场门禁（三列速率量实测是特殊技基线），不登记、e 项恒 0（标注「锐能=门禁」）。</p>
         <p>已验证样例：爱丽丝失衡 90%、伊德海莉喧响 ~49%（章鱼）、耀嘉音/琉音回能 50%、叶瞬光失衡 50%+喧响 80%。固化描述见 <code>docs/multiplier-record.md</code>（npm run gen:multiplier-record 再生成）。</p>
       </div>
     </n-card>
@@ -107,12 +107,13 @@ import type { DataTableColumns } from 'naive-ui'
 import { useCatalogStore } from '@/stores/catalog'
 import { SPECIALTY_LABEL } from '@/utils/agentLabelMaps'
 import {
+  COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY,
   EQUIVALENT_ENERGY,
   MOVE_TYPE_LABELS,
   RESOURCE_ROW_LABELS,
-  STANDARD_MULTIPLIER_TABLE,
   STANDARD_ROW_IDS,
   formatStdFormula,
+  standardTableForMove,
   type CoefficientRowId,
   type MoveType,
   type ResourceRowId,
@@ -161,22 +162,44 @@ function ratioStyle(ratio: number | null | undefined): Record<string, string> {
 interface StdRow {
   moveType: MoveType
   label: string
-  /** 等效能量（奖励口径）：支援突击 = 20 / 反制支援 = 40 / 反制专属支援突击 = 80；其余为真耗能/无 */
+  /** 等效能量（奖励口径）：支援突击 = 20 / 反制支援 = 40；反制专属支援突击**逐招式**（克拉蕾 80 / 挽昼 20） */
   equivalentEnergyText: string
   cells: Record<StandardRowId, string>
 }
 
-const stdRows: StdRow[] = (Object.keys(MOVE_TYPE_LABELS) as MoveType[]).map((moveType): StdRow => {
-  const eq = EQUIVALENT_ENERGY[moveType]
-  const row: StdRow = {
-    moveType,
-    label: MOVE_TYPE_LABELS[moveType],
-    equivalentEnergyText: eq == null ? '—' : `${eq}（奖励）`,
-    cells: Object.fromEntries(
-      STANDARD_ROW_IDS.map((rowId) => [rowId, formatStdFormula(STANDARD_MULTIPLIER_TABLE[moveType][rowId] ?? {})]),
-    ) as Record<StandardRowId, string>,
+function stdCellsOf(moveType: MoveType, moveId: string): Record<StandardRowId, string> {
+  const table = standardTableForMove(moveType, moveId)
+  return Object.fromEntries(
+    STANDARD_ROW_IDS.map((rowId) => [rowId, formatStdFormula(table[rowId] ?? {})]),
+  ) as Record<StandardRowId, string>
+}
+
+const stdRows = computed<StdRow[]>(() => {
+  const rows: StdRow[] = []
+  for (const moveType of Object.keys(MOVE_TYPE_LABELS) as MoveType[]) {
+    // 反制支援的专属追击**没有类型级标准式**：同一 MoveType 下两家价位不同（克拉蕾 @80 / 挽昼 @20 基线）
+    // ⇒ 每招一行，避免把一家的价当成整族的价（2026-10-31 用户提问触发复核）。
+    if (moveType === 'counterAssistFollowUp') {
+      for (const [moveId, energy] of Object.entries(COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY)) {
+        const moveName = report.value.moves.find((m) => m.moveId === moveId)?.moveName ?? moveId
+        rows.push({
+          moveType,
+          label: `${MOVE_TYPE_LABELS[moveType]}·${moveName}`,
+          equivalentEnergyText: `${energy}（奖励）`,
+          cells: stdCellsOf(moveType, moveId),
+        })
+      }
+      continue
+    }
+    const eq = EQUIVALENT_ENERGY[moveType]
+    rows.push({
+      moveType,
+      label: MOVE_TYPE_LABELS[moveType],
+      equivalentEnergyText: eq == null ? '—' : `${eq}（奖励）`,
+      cells: stdCellsOf(moveType, ''),
+    })
   }
-  return row
+  return rows
 })
 
 const stdColumns: DataTableColumns<StdRow> = [
@@ -286,7 +309,10 @@ function energyCostText(r: MoveEval): string {
     return `${r.energy.value}${suffix}`
   }
   if (r.equivalentEnergy != null) {
-    return r.rewardEnergy == null ? `${r.equivalentEnergy}（等效）` : `${r.equivalentEnergy}（20+${r.rewardEnergy}）`
+    // 奖励 0 = 该招就值普通支援突击基线（例如挽昼 1601205 灯塔），别显示成「20+0」
+    return r.rewardEnergy == null || r.rewardEnergy === 0
+      ? `${r.equivalentEnergy}（等效）`
+      : `${r.equivalentEnergy}（20+${r.rewardEnergy}）`
   }
   return '—'
 }
