@@ -761,6 +761,8 @@ function buildPhoenixAnomalyEvents({ cfg, events, totalTime }: AgentEventInput):
       carrierMoveName: '[灼蚀]',
       count: ticks,
       damageMultiplier: PHOENIX_SCORCH_DOT_RATIO,
+      // 原文「该伤害视为[强化特殊技]伤害」⇒ 吃强化特殊技定向 buff（增伤/暴伤/减防的 __exSpecial 通道）
+      skillDamageTarget: 'exSpecial',
       formula: `每 ${PHOENIX_SCORCH_DOT_INTERVAL}s 造成 ${PHOENIX_SCORCH_DOT_RATIO}% 攻击力火属性伤害；次数 = floor(战斗时长 × 覆盖率 / ${PHOENIX_SCORCH_DOT_INTERVAL})`,
       fields: ['totalTime', 'phoenix.scorchCoverage', 'PHOENIX_SCORCH_DOT_INTERVAL', 'PHOENIX_SCORCH_DOT_RATIO'],
       note: `[灼蚀] 敌人每 8 秒受到菲欧妮 50% 攻击力火伤（视为强化特殊技伤害）；次数按 ${effectiveSeconds.toFixed(1)}s（已扣无敌）× ${(scorchCoverage * 100).toFixed(0)}% 近似。异常暴击 率${crit.rate.toFixed(1)}%/伤${crit.dmg}% 由 spec teamBuffs 承载。`,

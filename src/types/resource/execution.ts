@@ -226,6 +226,15 @@ export interface AnomalyEventExecution {
    */
   damageMultiplier?: number
   /**
+   * 直伤事件（eventType='direct_damage'）的**招式族定向**（SkillDamageTarget，如 'exSpecial'）。
+   *
+   * 原文写「该伤害视为[强化特殊技]伤害」时必须填本字段：伤害池把它透传成直伤行的 `skillDamageTarget`，
+   * `core/damage.ts` 的增伤 / 暴伤 / 减防通道按它匹配 `<stat>__<target>`（`core/buff.ts#targetedStatKey`）。
+   * 缺省 = 只吃无定向的通用 buff（此前菲欧妮 [灼蚀] 周期火伤就是这样——note 里写着「视为强化特殊技伤害」
+   * 却拿不到任何强化特殊技定向 buff，2026-10-29 接线）。
+   */
+  skillDamageTarget?: SkillDamageTarget
+  /**
    * 比例型异放（eventType='release' 且非固定 releaseMultiplier）。
    * 倍率 = 原异常单次/单跳倍率(element) × (触发者[basis]/10 × perTenByElement[element]%) × 失衡加成。
    * basis 取触发者面板的异常掌控或异常精通；basis='anomalyDamageRatio' 时倍率直接 =

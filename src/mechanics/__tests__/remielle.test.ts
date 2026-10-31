@@ -6,7 +6,7 @@ import { computePanelPhases, computeEntrySnapshotPanel } from '@/composables/res
 import { findMoveById } from '@/data/moveTableQueries'
 import { emptyPanel } from '@/core/panel'
 import { calcVoidflareDamage, computeRemielleMechanic, getRemielleLevelValue, remielleMechanic, remielleFlowerFeatherDanceCasts, remielleFleetingGraceMultiplier, remielleSpecialVoidflareCount, remielleSpecialVoidflareRainbowCount, remielleSpecialVoidflareUseCount, REMIELLE_LUMEN_DRAIN_PER_SECOND, REMIELLE_LUMEN_FLIGHT_SECONDS, REMIELLE_LUMEN_FLOWER_FEATHER_THRESHOLD, REMIELLE_LUMEN_GAIN, REMIELLE_LUMEN_MAX, remielleRoundCount, REMIELLE_SPLIT_ROUND_MAX } from '@/mechanics/agents/remielle'
-import type { AgentSkills } from '@/types/catalog'
+import type { AgentSkills, PanelValues } from '@/types/catalog'
 import { getAgentSpec } from '@/specs/registry'
 import { emptyAnomalyPool } from '@/test/fixtures'
 
@@ -93,6 +93,32 @@ describe('蕾米埃尔（1581）虚曜·耀变·异化系数', () => {
     expect(full / off).toBeCloseTo(1.7, 12) // 1.5 + 20/100
     expect(dmg(0.3)).toBeCloseTo(off * (1 + 0.7 * 0.3), 6) // 旧实现 = full（覆盖率被当 truthy）
     expect(dmg(0)).toBeCloseTo(off, 9)
+  })
+
+  /**
+   * 用户 2026-10-29：「菲欧妮的异常暴击区…这个应该在结算区，除了紊乱不能吃，其他的什么异放耀变乱流都能吃，
+   * 和简的强击暴击是加算的，但是简的强击暴击耀变不能吃。」
+   *
+   * 缺陷形态：`calcVoidflareDamage` 的连乘里**整块没有暴击项**（`formula` 也不提），实测队
+   * [1641,1581,1171] 的六条耀变行 perDamage 逐位不吃 [灼蚀] 的 30%/40%。
+   * 负控：删掉 `const critMult = calcAnomalyCritExpect(remielle)` ⇒ 本用例前两条断言红。
+   */
+  it('耀变吃通用异常暴击（结算区），但**不继承**强击暴击（用户口径 2026-10-29）', () => {
+    const base = { ...emptyPanel(), atk: 3000, anomalyProficiency: 300 }
+    const run = (over: Partial<PanelValues>, element = 'fire') => calcVoidflareDamage({
+      sourcePanel: base, remiellePanel: { ...base, ...over },
+      multiplier: 100, element, enemyDefense: 953, enemyResistances: {},
+      stunMultiplier: 1.5, stunned: 0, cinema1ResIgnore: 0,
+    })
+    const off = run({}).damage
+    // 通用异常暴击：率 30 / 伤 40 ⇒ EV = 1 + 0.30 × 0.40 = 1.12
+    expect(run({ anomalyCritRate: 30, anomalyCritDmg: 40 }).damage).toBeCloseTo(off * 1.12, 9)
+    expect(run({}).formula).toContain('异常暴击(1)')
+    expect(run({ anomalyCritRate: 30, anomalyCritDmg: 40 }).formula).toContain('异常暴击(1.12)')
+    // 强击暴击（简）**不继承**：即使耀变继承来的是物理属性，assaultCrit 字段也不得并入
+    expect(run({ assaultCritRate: 100, assaultCritDmg: 50 }, 'physical').damage).toBeCloseTo(off, 12)
+    expect(run({ anomalyCritRate: 30, anomalyCritDmg: 40, assaultCritRate: 100, assaultCritDmg: 50, selfAssaultCritDmgBonus: 80 }, 'physical').damage)
+      .toBeCloseTo(off * 1.12, 9)
   })
 
   /**

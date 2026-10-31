@@ -20,6 +20,9 @@ import {
   PHOENIX_SCORCH_MASTERY_THRESHOLD,
 } from '@/mechanics/agents/phoenix'
 import { BOSS_ATTACK_INTERACTIONS } from '@/composables/teamCompare'
+import { emptyPanel } from '@/core/panel'
+import { getAnomalyCritStats } from '@/core/anomalyPool/helpers'
+import { calcAnomalyDamage } from '@/core/damage'
 import { clampActionCount } from '@/stores/config'
 
 const baseConfig = {
@@ -152,6 +155,55 @@ describe('菲欧妮（1641）3.3.12 v12 正式录入', () => {
     if (c4Entry) expect(c4Entry.formula).toContain('600')
     const chargedC4 = events.find(e => e.eventId === 'phoenix_charged_release')
     if (chargedC4) expect(chargedC4.formula).toContain('485')
+  })
+
+  /**
+   * 用户 2026-10-29 ②：「核心技写了敌人每 8 秒受到 50% 攻击力的直伤伤害计算了吗，这个相当于 8 秒一个 50% 直伤倍率事件。」
+   *
+   * 答案 = **已建模**（direct_damage 事件 → 直伤行 `direct-damage-<slot>-phoenix_scorch_dot`）；本用例锁三件
+   * 此前没有任何判据看着的事：
+   * ① 事件带**强化特殊技定向**（原文「该伤害视为[强化特殊技]伤害」）——改前这句话只活在 note 文案里，
+   *    没有任何通道（`damagePoolRelease` 直伤事件分支不传 `skillDamageTarget`）⇒ 拿不到任何 `__exSpecial` buff；
+   * ② 行真的物化进伤害池且 multiplier = 50%（不是只活在事件列表里）；
+   * ③ 次数 = floor(有效战斗时间 / 8)（覆盖率滑块缺省 1）。
+   */
+  it('[灼蚀] 周期火伤：强化特殊技定向 + 物化进伤害池 + 次数 = floor(有效时长/8)', async () => {
+    const { config } = await setup(['1641', '1171', ''], 0)
+    const calc = useResourceCalc()
+    const phoenix = calc.resourceResult.value!.characters.find(c => c.agentId === '1641')!
+    const dot = (phoenix.anomalyEventExecutions ?? []).find(e => e.eventId === 'phoenix_scorch_dot')!
+    expect(dot.eventType).toBe('direct_damage')
+    expect(dot.damageMultiplier).toBe(50)
+    expect(dot.skillDamageTarget, '原文「视为[强化特殊技]伤害」必须走招式族定向').toBe('exSpecial')
+
+    const row = calc.damagePoolRows.value.find(r => r.id.endsWith('phoenix_scorch_dot'))!
+    expect(row, '周期火伤必须物化进伤害池（只登记事件 = 不结算）').toBeTruthy()
+    expect(row.multiplier).toBe(50)
+    expect(row.count).toBe(Math.floor(config.enemy.battleTime / 8))
+  })
+
+  /**
+   * 用户 2026-10-29 ①：「菲欧妮的异常暴击区…这个应该在结算区，除了紊乱不能吃，其他的什么异放耀变乱流都能吃，
+   * 和简的强击暴击是加算的，但是简的强击暴击耀变不能吃。」
+   *
+   * 本用例锁「加算」与「紊乱不吃」两条分区口径（耀变见 `remielle.test.ts`；乱流见
+   * `core/anomalyPool/helpers#calcTurbulenceSettlement` 的 `calcAnomalyCritExpect`）。
+   */
+  it('[灼蚀] 异常暴击分区：与强击暴击同区加算；异常/异放吃，紊乱不吃', () => {
+    const panel = { ...emptyPanel(), anomalyCritRate: 30, anomalyCritDmg: 40, assaultCritRate: 60, assaultCritDmg: 50 }
+    // 物理强击：通用异常暴击（[灼蚀] 30/40）+ 强击暴击（简 60/50）**同区加算**
+    expect(getAnomalyCritStats(panel, 'physical')).toMatchObject({ rate: 90, dmg: 90 })
+    // 属性异常：只吃通用那一份，强击暴击不参与
+    expect(getAnomalyCritStats(panel, 'fire')).toMatchObject({ rate: 30, dmg: 40 })
+
+    const rowsOf = (kind: 'anomaly' | 'release' | 'disorder') => calcAnomalyDamage({
+      panel, element: 'fire', baseMultiplier: 100, enemyDefense: 953,
+      enemyDefReduction: 0, enemyDefFlatReduction: 0, enemyResistance: 0, enemyResReduction: 0,
+      critMode: 'crit', damageKind: kind,
+    }).breakdown.map(b => b.label)
+    expect(rowsOf('anomaly')).toContain('异常暴击')
+    expect(rowsOf('release')).toContain('异常暴击')
+    expect(rowsOf('disorder'), '紊乱不吃异常暴击').not.toContain('异常暴击')
   })
 
   it('命座差分：C6 无视15%全属性抗性 + 异放无视40%防御；整局伤害 C6 > C0', async () => {

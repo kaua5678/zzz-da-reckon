@@ -25,7 +25,7 @@ import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt, localized } from '@/utils/format'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '@/core/damageMultipliers'
-import { calcPanelStunMultiplier, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
+import { calcAnomalyCritExpect, calcPanelStunMultiplier, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
 import { enemyResistanceOf, panelElementStat } from '@/utils/elementStatKeys'
 import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
 import { channelMetricsOf, type ChannelMoveInfo, type MoveTableLike } from '@/core/resource/moveLookup'
@@ -394,8 +394,24 @@ export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: numb
   // 此前手写 `stunned ? 满乘区 : 1`，把覆盖率（0-1 小数）当布尔用 ⇒ 覆盖率 > 0 即吃满额易伤；且非失衡时漏掉 Always 通道。
   const stunMult = calcPanelStunMultiplier(remielle, stunMultiplier, stunned)
 
-  const damage = mass * resMult * anomalyDmgMult * luminizeMult * refringeMult * stunMult * dmgTakenMult
-  const formula = `基础 ${fmt(source.atk)}×${fmt(multiplier)}% × 增伤(1+${fmt(source.dmgBonus + elementDmg)}%) × 精通(${fmt(source.anomalyProficiency)}/100) × 防御(${fmt(defMult, 4)}) × 等级(${levelMult}) × 抗性(${fmt(resMult, 4)}) × 异化(${fmt(refringeMult, 4)}) × 异常增伤(1+${fmt(remielle.anomalyDmgBonus)}%) × 耀变被动(${fmt(passiveLuminizeMult, 4)}) × 4命(${fmt(cinema4LuminizeMult, 4)}) × 失衡(${fmt(stunMult, 4)}) × 易伤(${fmt(dmgTakenMult, 4)})`
+  /**
+   * 异常暴击区（**结算区**，用户口径 2026-10-29）：
+   * > 「菲欧妮的异常暴击区…这个应该在结算区，除了紊乱不能吃，其他的什么异放耀变乱流都能吃，
+   * >   和简的强击暴击是加算的，但是简的强击暴击耀变不能吃。」
+   *
+   * ⇒ 耀变 / 特殊虚耀吃**通用**异常暴击（结算面板的 `anomalyCritRate` / `anomalyCritDmg`），
+   * 与乱流共用单一来源 `calcAnomalyCritExpect`（不另写一份 §1 规则 11）。
+   * **刻意不传 `element` / `sourcePanel`**：`getAnomalyCritStats` 仅在 `baseElement === 'physical'`
+   * 时才并入 `assaultCritRate / assaultCritDmg / selfAssaultCritDmgBonus`，而耀变继承的属性恰恰可能是物理
+   * （队友是物理异常角色时 `teamElement(slot) === 'physical'`）——按用户口径**不得并入**简的强击暴击。
+   * 此前整块缺失（连乘里没有暴击项），实测 30%/40% 的 [灼蚀] 暴击对耀变逐位无效。
+   */
+  // @fact agent:1581/耀变异常暴击区 口径: 耀变与特殊虚耀吃**通用**异常暴击——结算区取 panel.anomalyCritRate/anomalyCritDmg（单一来源 calcAnomalyCritExpect，与乱流同函数），**不并入** assaultCritRate/assaultCritDmg/selfAssaultCritDmgBonus（继承属性即使是物理也不吃强击暴击）；紊乱不吃异常暴击，异放/乱流/耀变都吃；[灼蚀] 给的 anomalyCrit 与简的强击暴击在物理强击上同区加算 | 据 用户@2026-10-29 | 验 src/mechanics/__tests__/remielle.test.ts | 锚 src/mechanics/agents/remielle.ts#calcVoidflareDamage | 信 确认
+  // ⟳复核: 若异常暴击改成按「施加者面板」结算、或出现全队向的强击暴击来源 / 新派生异常通道 → 重核本口径（耀变只取通用项，不继承强击暴击） | 到期 2027-04-30
+  const critMult = calcAnomalyCritExpect(remielle)
+
+  const damage = mass * resMult * anomalyDmgMult * luminizeMult * refringeMult * stunMult * dmgTakenMult * critMult
+  const formula = `基础 ${fmt(source.atk)}×${fmt(multiplier)}% × 增伤(1+${fmt(source.dmgBonus + elementDmg)}%) × 精通(${fmt(source.anomalyProficiency)}/100) × 防御(${fmt(defMult, 4)}) × 等级(${levelMult}) × 抗性(${fmt(resMult, 4)}) × 异化(${fmt(refringeMult, 4)}) × 异常增伤(1+${fmt(remielle.anomalyDmgBonus)}%) × 耀变被动(${fmt(passiveLuminizeMult, 4)}) × 4命(${fmt(cinema4LuminizeMult, 4)}) × 失衡(${fmt(stunMult, 4)}) × 易伤(${fmt(dmgTakenMult, 4)}) × 异常暴击(${fmt(critMult, 4)})`
 
   return { damage, formula }
 }
@@ -1075,6 +1091,8 @@ export const remielleMechanic: AgentMechanicModule = {
               count,
               perDamage: result.damage,
               totalDamage: result.damage * count,
+              // 本行实际用的失衡覆盖率（= 上面传给 calcVoidflareDamage 的 stunCoverage）
+              stunWindowCoverage: stunCoverage,
               note: `来源虚耀 ${count} 次 · ${result.formula}`,
             })
           }
@@ -1123,6 +1141,8 @@ export const remielleMechanic: AgentMechanicModule = {
             count: specialCount,
             perDamage: result.damage,
             totalDamage: result.damage * specialCount,
+            // 本行实际用的失衡覆盖率（= 上面传给 calcVoidflareDamage 的 stunCoverage）
+            stunWindowCoverage: stunCoverage,
             note: `垂虹倍率 ${fmt(rainbowMultiplier)}% × 2.5 · ${result.formula}`,
           })
         }
