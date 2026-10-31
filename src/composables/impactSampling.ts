@@ -17,7 +17,7 @@ import { cloneConfigState } from '@/composables/analysisScenario'
 import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import { teamMechanicSettings, teamReleaseShares } from '@/composables/agentMechanicView'
 import { buildImpactVariables, type TeamImpactVariable } from '@/composables/impactVariables'
-import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
+import { computeSubstatAllocationForSlot, slotPanelCritReader } from '@/composables/substatOptimizer'
 import { useCatalogStore } from '@/stores/catalog'
 import type { CharacterConfig } from '@/stores/config'
 import type { MechanicSetting } from '@/types/resource'
@@ -79,7 +79,10 @@ export async function sampleImpactCurve(scenario: AnalysisContext, opts: ImpactC
     v.write(config, x)
     await yieldToMacrotask()
     if (opts.optimizePerPoint) {
-      const alloc = computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => calc.teamTotalDamage.value }, calc.effectiveWEngineCoverages.value)
+      const alloc = computeSubstatAllocationForSlot(0, config, catalog, {
+        readDamage: () => calc.teamTotalDamage.value,
+        readPanelCrit: slotPanelCritReader(calc, 0),
+      }, calc.effectiveWEngineCoverages.value)
       const char = config.team[0]
       if (char && alloc) char.driveDisc.subStatAllocation = alloc
     }

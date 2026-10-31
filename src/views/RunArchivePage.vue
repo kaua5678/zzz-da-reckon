@@ -152,6 +152,26 @@
                 </n-button>
               </div>
               <div v-else-if="deployPhaseView" class="period-buff-row muted">当期 Buff：无可选牌（未解析/测试服占位）</div>
+
+              <!-- 配装最优（坑 53 B 档：显式按钮、缺省不跑；4/5/6 主词条单换扫描 + 双爆配平 + 副词条真实伤害精修） -->
+              <div class="loadout-opt-row">
+                <n-tooltip trigger="hover">
+                  <template #trigger>
+                    <n-button size="tiny" :loading="loadoutOptimizing" @click="runLoadoutOptimize">配装最优</n-button>
+                  </template>
+                  <span>
+                    对当前队伍：4/5/6 号位主词条逐项试换 + 双爆配平（4 号位暴击率↔爆伤、2 件套换双爆） + 副词条真实伤害精修（逐槽爬山 = 近似最优，不保证全局最优）。
+                    实测 2 人队约 2s / 3 人队约 20s（约 100 次求值）；期间可切页取消。写入后该槽副词条转「手动」，换部署会重置。
+                  </span>
+                </n-tooltip>
+                <span class="muted">默认配装 = 推荐主词条 + 模板副词条；这里才是按这支队算的近似最优</span>
+                <span v-if="loadoutResult" class="loadout-opt-result">
+                  {{ loadoutResult.changed }} 处主词条 · {{ loadoutResult.evals }} 次求值 / {{ loadoutResult.ms }}ms
+                  · {{ loadoutResult.pct >= 0 ? '+' : '' }}{{ loadoutResult.pct.toFixed(2) }}%
+                  （{{ compact(loadoutResult.before) }} → {{ compact(loadoutResult.after) }}）
+                </span>
+                <span v-if="loadoutNote" class="loadout-opt-result">{{ loadoutNote }}</span>
+              </div>
             </div>
           </template>
         </n-card>
@@ -164,7 +184,7 @@
           「顶级玩家」= 至少有一条顶分战斗的投稿人——<b>窗口 +N 金就是「稍微宽松」的唯一旋钮</b>（不按分数百分比放宽：本数据集全员 65000，按分数放等于全放行）。
           选中玩家 = 看他的<b>全部</b>投稿，再配「只看顶分战斗」即他的顶分场次；角色筛选按<b>队伍任一槽位</b>命中，与「只看顶分战斗」叠加 = 该角色的所有顶分战斗。
           <br />
-          口径：配装 = 计算器默认理想（推荐驱动盘 + 最优副词条 + 技能全满）；交互 = 轴模式自动推导（连携从轴读、弹刀按「失衡次数四舍五入 + 喧响四舍五入：缺口÷215」反推，闪反按职业基准（支援/防护 0，其余 10）/ 快支3 为固定基准）。
+          口径：配装 = 计算器默认理想（推荐驱动盘 + 推荐主词条 + 模板默认副词条 + 技能全满；模板副词条≠最优，要按本队算近似最优请点上方「配装最优」）；交互 = 轴模式自动推导（连携从轴读、弹刀按「失衡次数四舍五入 + 喧响四舍五入：缺口÷215」反推，闪反按职业基准（支援/防护 0，其余 10）/ 快支3 为固定基准）。
           当期可选牌（3 选 1）不自动应用（归档未记录玩家选择）。伤害分 = 分段线性伤害分（普通/困难两套曲线，操作分已剔除）；归档 65000 = 60000 伤害分 + 5000 操作分，击杀即伤害分 60000。差异 = 配装差 + 建模误差，需用理想配装作上界夹逼。
         </div>
       </div>
@@ -206,7 +226,7 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue'
-import { NCard, NSelect, NDataTable, NTag, NButton, NSwitch, NDivider, NAlert, type DataTableColumn } from 'naive-ui'
+import { NCard, NSelect, NDataTable, NTag, NButton, NSwitch, NDivider, NAlert, NTooltip, type DataTableColumn } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useUiStore } from '@/stores/ui'
 import { useStunDiscreteDisplay } from '@/composables/stunDiscreteDisplay'
@@ -215,12 +235,14 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { submissionToDeploy, type ArchiveRun, type RunArchiveFile } from '@/composables/runArchiveImport'
 import { applyDeployConfig, applyPeriodBuff, pickBestPeriodBuff } from '@/composables/runArchiveDeploy'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
+import { useBatchOwner } from '@/composables/batchTask'
+import { optimizeLoadout, writeLoadoutToStore } from '@/composables/loadoutOptimizer'
 import { runLimitedGold } from '@/composables/limitedGold'
 import { authorOf, queryArchiveRuns, type AgentFacet, type PlayerFacet } from '@/composables/runArchiveFilter'
 import { selectedPeriodBuffCard, NONE_PERIOD_CARD } from '@/utils/phaseBuff'
 import { scoreForDamageRatio } from '@/data/deadlyAssaultScore'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
-import { localized } from '@/utils/format'
+import { compact, localized } from '@/utils/format'
 import { withBase } from '@/utils/staticUrl'
 import type { BossPreset, PhaseView, PhaseBuffCard } from '@/types/bossPreset'
 import {
@@ -270,6 +292,7 @@ const topPlayersOnly = ref(false)
 const playerName = ref<string | null>(null)
 /** 角色筛选（null = 全部；按队伍任一槽位命中） */
 const agentFilter = ref<string | null>(null)
+
 /**
  * 部署态（选中的 run + 部署配置）**住 ui store，不是页面局部 ref**：
  * 页面由 CalculatorView 的 `<component :is="currentPage" />` 渲染，切页签 = 卸载重挂 ⇒ 局部 ref 一切页就没了，
@@ -282,7 +305,6 @@ const selected = computed(() => deployed.value?.run ?? null)
 const lastDeploy = computed(() => deployed.value?.deploy ?? null)
 /** 部署告警 = 部署配置自带的那一份（不再另存页面态，免得两边不同步） */
 const lastWarnings = computed(() => lastDeploy.value?.warnings ?? [])
-
 
 // ========== 建模缺口提示（信息展示，不做拦截——归档不作误差判据的用户裁决不变） ==========
 const modelingLedgers = ref<{
@@ -494,6 +516,10 @@ function onDeploy(run: ArchiveRun) {
   void ensureModelingLedgers()
   const room = f.rooms[run.targetId]
   const deploy = submissionToDeploy(run, room, presets.value, room?.seasonStart)
+  // 换部署 = 换配装：上一次「配装最优」的结果作废（进行中的也停掉，别把旧队的分配写到新队上）
+  loadoutOwner.cancel()
+  loadoutResult.value = null
+  loadoutNote.value = ''
   applyDeployConfig(configStore, deploy, presets.value)
   // 先记部署（下面 deployPhaseView / selectedPeriodCard 都读它），再判过期牌
   uiStore.setArchiveDeploy(run, deploy)
@@ -502,6 +528,7 @@ function onDeploy(run: ArchiveRun) {
   if (selectedPeriodCard.value === null) pickPeriodBuff(null)
 }
 
+// ========== 当期 Buff 快捷选择 ==========
 /**
  * 部署 Boss 的期相位 → 当期 buff 牌视图（数据源 = 期视图；部署态本身见 stores/ui.ts#archiveDeploy）。
  */
@@ -544,6 +571,44 @@ async function autoPickPeriodBuff() {
     pickPeriodBuff(best)
   } finally {
     buffPicking.value = false
+  }
+}
+
+/**
+ * 「配装最优」（ENGINE_PIPELINE_GUIDE §4 坑 53 的 **B 档**）：显式一次性把当前队伍的 4/5/6 主词条 +
+ * 2 件套（双爆配平）+ 副词条对齐到近似最优（composables/loadoutOptimizer.ts）。缺省不跑——实战对比的
+ * 默认配装仍是「推荐主词条 + 模板副词条」。
+ * 在独立场景上算（withAnalysisScenario），只把最终结果写回 UI store 一次（CC-343 口径：不在 UI store 上试算）。
+ */
+const loadoutOwner = useBatchOwner()
+const loadoutOptimizing = ref(false)
+/** 取消 / 失败等一次性提示（**不用 useMessage**：本页要被 SSR setup 判据 renderToString，不能依赖 n-message-provider） */
+const loadoutNote = ref('')
+const loadoutResult = ref<{ before: number; after: number; pct: number; evals: number; ms: number; changed: number } | null>(null)
+async function runLoadoutOptimize() {
+  if (loadoutOptimizing.value) return
+  const task = loadoutOwner.start()
+  loadoutOptimizing.value = true
+  loadoutNote.value = ''
+  const started = performance.now()
+  try {
+    const res = await withAnalysisScenario(s => optimizeLoadout(s, catalogStore, { control: { signal: task.signal } }))
+    if (!res.complete) {
+      task.commit(() => { loadoutNote.value = '已取消，未写入' })
+      return
+    }
+    const changed = res.slots.reduce((n, r) => n + r.mainChanges.length, 0)
+    const pct = res.before > 0 ? (res.after / res.before - 1) * 100 : 0
+    const ms = Math.round(performance.now() - started)
+    task.commit(() => {
+      writeLoadoutToStore(configStore, res)
+      loadoutResult.value = { before: res.before, after: res.after, pct, evals: res.evals, ms, changed }
+    })
+  } catch (e) {
+    const text = e instanceof Error ? e.message : String(e)
+    task.commit(() => { loadoutNote.value = `失败：${text}` })
+  } finally {
+    task.commit(() => { loadoutOptimizing.value = false })
   }
 }
 
@@ -687,6 +752,19 @@ function fmt(n: number): string {
   font-size: 12px;
   opacity: 0.75;
   margin-right: 2px;
+}
+.loadout-opt-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line-strong);
+}
+.loadout-opt-result {
+  font-size: 12px;
+  color: var(--fg-2);
 }
 @media (max-width: 960px) {
   .run-archive-page { grid-template-columns: 1fr; }

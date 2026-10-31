@@ -3,6 +3,7 @@ import { useCatalogStore, type CatalogLoadStatus } from '@/stores/catalog'
 import { useConfigStore } from '@/stores/config'
 import { defaultRowFusionRules } from '@/logicEditor/defaults'
 import { setActiveRowFusionRules } from '@/logicEditor/fusion'
+import { installTeamAwareBuildRecommendation } from '@/composables/teamAwareRecommendation'
 
 /**
  * 计算器启动入口：完整加载后才开放编辑；错误可见，start() 同时也是显式重试。
@@ -16,6 +17,10 @@ export function useCalculatorStartup() {
   // 原「逻辑编辑」页（用户改规则 + 本地存档）已于 2026-10-26 下线 ⇒ 这里是唯一激活路径；
   // r697 的口径不变：不打开任何页面也生效，测试与生产同态。
   setActiveRowFusionRules(defaultRowFusionRules())
+  // 推荐配装接队友暴击（2026-10-29）：必须在 `start()` 里的 `initDefaultTeam()` **之前**装好，
+  // 否则默认队伍的配装推荐按旧口径（只算角色自身面板）算 —— 队友给暴击时推荐分配会溢出。
+  // 与行融合规则同形态：生产唯一安装点在这里，测试侧镜像在 `src/test/harness.ts#setupHarness`。
+  installTeamAwareBuildRecommendation()
   const status = ref<CatalogLoadStatus>('idle')
   const error = ref<string | null>(null)
   let inFlight: Promise<boolean> | null = null

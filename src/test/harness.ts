@@ -21,6 +21,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useConfigStore, interactionBaselineFor } from '@/stores/config'
 import { defaultRowFusionRules } from '@/logicEditor/defaults'
 import { setActiveRowFusionRules } from '@/logicEditor/fusion'
+import { installTeamAwareBuildRecommendation } from '@/composables/teamAwareRecommendation'
 import { collectInCombatTeamBuffs } from '@/core/inCombatBuffs'
 import { applyEffect } from '@/core/buff'
 import { emptyPanel } from '@/core/panel'
@@ -282,6 +283,9 @@ export async function setupHarness(
   // 与 useCalculatorStartup 同一入口激活行融合规则：测试态 = 生产启动态（r697，原先测试态规则恒空）。
   // 每次调用都重新激活 spec 默认规则；用例要自定规则须在 setupHarness 之后 setActiveRowFusionRules。
   setActiveRowFusionRules(defaultRowFusionRules())
+  // 与 src/main.ts 同一启动态：推荐配装接队友暴击（2026-10-29）。判据看到的推荐分配必须与生产一致，
+  // 否则「推荐配装在队友给暴击时溢出」这类缺陷在测试面上永远看不见。
+  installTeamAwareBuildRecommendation()
   const catalog = await loadCatalogStore(opts.loadTeammateBuffs ?? true)
   const config = useConfigStore()
   applyFixtureDefaults(config, opts.fixtures ?? 'baseline')

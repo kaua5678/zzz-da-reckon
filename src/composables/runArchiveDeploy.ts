@@ -2,7 +2,9 @@
  * 实战对比部署：把 runArchiveImport 的 DeployConfig 写进 configStore，触发一轮「理论理想」计算。
  *
  * 口径（与 teamTimeline.applyTeamToStore 的交互基准同源）：
- * - 配装缺口 = 计算器默认理想配装：applyTeamPreset → 专属音擎推荐 + 推荐驱动盘 + 最优副词条 + 技能全满。
+ * - 配装缺口 = 计算器默认理想配装：applyTeamPreset → 专属音擎推荐 + 推荐驱动盘 + 推荐主词条 + 模板默认副词条 + 技能全满。
+ *   ⚠ 模板副词条不是最优（core 贪心 + 百暴封顶 + TOP2≤35）；要按本队算近似最优见 composables/loadoutOptimizer.ts
+ *   （实战对比页「配装最优」按钮，坑 53 的 B 档：显式、缺省不跑）。
  * - 交互基准：不预设弹刀——弹刀由「失衡次数四舍五入（Boss 预设反推）」运行时反推；
  *   闪反按职业基准（roleInteractionBaseline：支援/防护 0，其余 10）、快支固定 3 作为喧响基础供给；连携基准 1（轴模式由轴内连携块反推覆盖）。
  * - Boss：applyBossPreset 应用期相位血量/失衡/防御/三表抗性（分期数决定血量膨胀），并写关卡固有 layer_buff。

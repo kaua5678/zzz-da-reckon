@@ -5,8 +5,10 @@ import { clampRatio } from '@/utils/finiteClamp'
 import { defineStore } from 'pinia'
 import { ref, computed, watch, type UnwrapRef } from 'vue'
 import type {
-  Agent, WEngine, DriveDiscConfig, SkillDamageTarget, TeammateBuffGroup,
+  Agent, WEngine, DriveDiscConfig, SkillDamageTarget, TeammateBuff, TeammateBuffGroup,
 } from '@/types/catalog'
+import type { SourcePanelsByOwner } from '@/core/buff'
+import type { SourcePanelsBySlot } from '@/core/sourcePanels'
 import { computeDefaultSubStatAllocation, getTemplate, normalizeSubstatAllocation, resolveSubstatBudget, SUBSTAT_BUDGET_SETTINGS } from '@/core/substatOptimizer'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { useCatalogStore } from './catalog'
@@ -371,6 +373,39 @@ function defaultEnemy(): EnemyConfig {
  */
 function defaultGlobalBuffs(): GlobalBuffRow[] {
   return []
+}
+
+// ========== 推荐配装的队友面板输入端口（2026-10-29） ==========
+
+/**
+ * 「推荐配装」百暴基线的队友面板输入。
+ *
+ * 背景：推荐配装的副词条默认档按「百暴缺口」填暴击，缺口必须按**真实面板**算。修前它只补角色自身面板
+ * （`teammateBuffs: []`）：实测般岳 + 本（1121「拥有守卫护盾时暴击率 +16%」）推荐分配的面板是
+ * **113.8%**（溢出 13.8%，6 步暴击全白扔），用户 2026-10-29 口径「推荐配装接一下队友暴击……接了更真实。
+ * 不然给别人溢出了别人看着也奇怪」。
+ *
+ * 为什么是端口而不是直接调用：那 5 步解析（来源上下文 → 在队模块来源修正 → 全局 Buff 并入 →
+ * 额外能力门控 + 接收槽过滤 → 覆盖率表）住在 `composables/resourceCalc/panelPhases.ts#resolveSlotPanelBuffInputs`，
+ * 而 store 不反向依赖编排层 ⇒ 由编排层在启动时**注册**解析器（形态同 `logicEditor/fusion#setActiveRowFusionRules`，
+ * 安装点见 `composables/teamAwareRecommendation.ts#installTeamAwareBuildRecommendation`）。
+ * 未注册 = 保持旧口径（推荐配装与队友无关，只补角色自身面板），行为逐位不变——单测直调 store 时走这条。
+ */
+export interface RecommendationTeamPanelInputs {
+  teammateBuffs: TeammateBuff[]
+  sourcePanelsByOwner: SourcePanelsByOwner
+  effectCoverageMap: Map<string, number>
+  /** 槽位键控的源面板（`panelHooks.sourcePanels`；与伤害管线同一份表） */
+  sourcePanels?: SourcePanelsBySlot
+}
+
+let recommendationTeamPanelResolver: ((slot: number) => RecommendationTeamPanelInputs | undefined) | null = null
+
+/** 注册 / 清除解析器（唯一写入方 = 编排层安装函数；传 null 恢复旧口径，测试用） */
+export function setRecommendationTeamPanelResolver(
+  resolver: ((slot: number) => RecommendationTeamPanelInputs | undefined) | null,
+): void {
+  recommendationTeamPanelResolver = resolver
 }
 
 // ========== Store ==========
@@ -847,6 +882,8 @@ export function createConfigModel(
     return sets.find(set => localized(set.name).trim() === name)
   }
 
+  // @fact optimizer:推荐配装/百暴基线 口径: 推荐配装的百暴基线接队友拐力（队友面板暴击 / 全局 Buff / 覆盖率，与伤害管线同源 resolveSlotPanelBuffInputs），解析器由编排层注册（stores/config.ts#setRecommendationTeamPanelResolver），未注册 = 只算角色自身面板 | 据 用户@2026-10-29（「推荐配装接一下队友暴击……接了更真实。不然给别人溢出了别人看着也奇怪」） | 验 src/composables/__tests__/substatCritOverflow.test.ts | 锚 src/composables/teamAwareRecommendation.ts#installTeamAwareBuildRecommendation | 信 确认
+  // ⟳复核: 若队友面板输入的 5 步加工（门控/覆盖率/全局 Buff）拆改，或推荐配装改走另一条取数路径，重核本端口与未注册降级路径 | 到期 2027-04-30
   /** 自动/手动应用当前角色的配装推荐：专武、驱动盘、主词条、副词条 */
   function applyBuildRecommendationForSlot(slot: number): boolean {
     const char = team.value[slot]
@@ -891,17 +928,29 @@ export function createConfigModel(
         // `applyPanel`（核心被动/额外能力/影画面板段）与 3/5 命技能等级通用规则只在编排层派发。
         // 不带 ⇒「百暴」基线读到没跑角色面板的暴击率：实测 8/62 角色把暴击词条配到溢出
         // （希格莉德基线 19.4% / 真实 85.4% ⇒ 满 20 步后 133.4%，浪费 13 步）。
-        // 这里仍传 `teammateBuffs: []`（推荐配装与队友无关的口径，见 mcp-r6 §8 第 361 轮）——
-        // 只补角色**自身**面板，不引入队友拐力。
+        // 队友面板输入：编排层注册了解析器就接（2026-10-29，见文件头「队友面板输入端口」）——
+        // 本 +16% 暴击这类队友拐力进百暴基线，推荐分配不再把暴击配到溢出；
+        // 未注册 ⇒ 退回旧口径（`teammateBuffs: []`，只补角色自身面板，行为逐位不变）。
+        const teamInputs = recommendationTeamPanelResolver?.(slot)
+        const teamPanelHooks = teamInputs
+          ? { sourcePanels: teamInputs.sourcePanels, withTeamPanelEffects: true }
+          : {}
         const alloc = computeDefaultSubStatAllocation({
           agent,
           wEngine,
           driveDiscConfig: char.driveDisc,
           setsMap: catalogStore.driveDiscSetsMap,
-          teammateBuffs: [],
+          teammateBuffs: teamInputs?.teammateBuffs ?? [],
           statRules: catalogStore.statRules,
           ...resolveSubstatBudget(getTemplate(agent), getMechanicSetting),
-          config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel, potentialLevel: char.potentialLevel, enemyWeakness: enemy.value.weakness },
+          config: {
+            cinemaLevel: char.cinemaLevel,
+            wEngineModLevel: char.wEngineModLevel,
+            potentialLevel: char.potentialLevel,
+            sourcePanelsByOwner: teamInputs?.sourcePanelsByOwner,
+            effectCoverageMap: teamInputs?.effectCoverageMap,
+            enemyWeakness: enemy.value.weakness,
+          },
           panelHooks: {
             slot,
             // 机制滑块：store 是唯一写入方，直接读 state + 声明缺省（与
@@ -934,6 +983,7 @@ export function createConfigModel(
               wEngineModLevel: c.wEngineModLevel,
             })),
             enemyStunVuln: enemy.value.stunVuln,
+            ...teamPanelHooks,
           },
         })
         char.driveDisc.subStatAllocation = normalizeSubstatAllocation(alloc)

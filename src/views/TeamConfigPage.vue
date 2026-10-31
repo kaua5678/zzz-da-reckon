@@ -570,8 +570,10 @@
                                 最优分配
                               </n-button>
                             </template>
-                            按真实伤害精修本槽副词条配比（含队友 buff / 全局 Buff，与伤害管线同一面板）。
-                            起点 = 上面的「配装推荐」默认档；每次尝试都是真实求值（实测 4–44 次 / 0.1–1.4 秒，上限 80 次）。
+                            按真实伤害配平本槽：4 号位主词条（暴击率↔爆伤）+ 2 件套（双爆）+ 副词条一起求
+                            （含队友 buff / 全局 Buff，与伤害管线同一面板）。起点 = 上面的「配装推荐」默认档。
+                            每次尝试都是真实求值（精修 4–44 次 + 组合 ≤4 次，实测 0.1–1.5 秒，上限 80 次）；
+                            只要结果里暴击没白堆（面板暴击 ≤ 封顶 + 1 条）就不写溢出态。
                             写入后本槽标记「手动」，改预算设置不会再覆盖它（恢复自动分配点「配装推荐 · 一键应用」）。
                           </n-tooltip>
                           <!-- 自动/手改状态：预算设置只重算「自动」的槽位（见 stores/config.ts 的 watcher），
@@ -873,7 +875,7 @@ import { effectAtModLevel } from '@/composables/wEngineEffectDisplay'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { computePanel } from '@/composables/resourceCalc/panelPhases'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
-import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
+import { computeLoadoutPlanForSlot, slotPanelCritReader } from '@/composables/substatOptimizer'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from '@/composables/resourceCalc/noAxisVulnShare'
 import CharacterCard from '@/components/CharacterCard.vue'
@@ -1377,12 +1379,14 @@ function getSubStatValue(stat: string): string {
 const subStatManual = computed(() => !!configStore.subStatAllocationManual[uiStore.selectedSlot])
 
 /**
- * 「最优分配」：在**独立场景**上跑真实伤害精修（composables/substatOptimizer.ts#computeSubstatAllocationForSlot），
- * 只把最终结果一次写回 UI store（CC-343 口径：不在 UI store 上试算）。
+ * 「最优分配」：在**独立场景**上跑双爆配平（composables/substatOptimizer.ts#computeLoadoutPlanForSlot），
+ * 把 **4 号位主词条 / 2 件套 / 副词条一起**写回 UI store（载入到的 4 号位与 2 件套都是双爆来源，
+ * 配平宽度 = 10 + 3.33 条词条，只写副词条兑现不了溢出折算；口径见该模块文件头「双爆配平」段）。
+ * 不写 UI store 试算这一点不变（CC-343 口径）。
  *
  * 为什么是显式按钮而不是默认行为（ENGINE_PIPELINE_GUIDE §4 坑 53 的 B 档）：
- * 精修一次 4–44 次全量求值（上限 maxEvals=80；实测 0.1–1.4s），且结果是「近似最优」不是不变量；
- * 默认静默跑会让每次换人/改预算都卡一下，并替用户决定配比。
+ * 一次 = 组合枚举 + 精修，实测 4–44 次全量求值（上限 maxEvals=80，组合数另计 ≤4）≈ 0.1–1.5s，
+ * 且结果是「近似最优」不是不变量；默认静默跑会让每次换人/改预算都卡一下，还会替用户改 4 号位与套装。
  */
 const optimalComputing = ref(false)
 async function runOptimalSubStats() {
@@ -1395,24 +1399,36 @@ async function runOptimalSubStats() {
       if (!char?.agentId) return null
       const before = s.calc.teamTotalDamage.value ?? 0
       let evals = 0
-      const alloc = computeSubstatAllocationForSlot(
+      const plan = computeLoadoutPlanForSlot(
         slot,
         s.config,
         catalogStore,
-        { readDamage: () => { evals++; return s.calc.teamTotalDamage.value ?? 0 } },
+        {
+          readDamage: () => { evals++; return s.calc.teamTotalDamage.value ?? 0 },
+          readPanelCrit: slotPanelCritReader(s.calc, slot),
+        },
         s.calc.effectiveWEngineCoverages.value,
       )
-      if (!alloc) return null
-      char.driveDisc.subStatAllocation = alloc
+      if (!plan) return null
+      if (plan.mainStat4) char.driveDisc.mainStats[4] = plan.mainStat4
+      char.driveDisc.twoPieceSetId = plan.twoPieceSetId
+      char.driveDisc.subStatAllocation = plan.subStatAllocation
       await nextTick()
-      return { alloc, before, after: s.calc.teamTotalDamage.value ?? 0, evals }
+      return { plan, before, after: s.calc.teamTotalDamage.value ?? 0, evals }
     })
-    if (!res) { message.warning('当前槽位没有可优化的副词条分配（角色/配装推荐未就绪）'); return }
-    configStore.setSubStatAllocation(slot, res.alloc)
+    if (!res) { message.warning('当前槽位没有可配平的分配（角色/配装推荐未就绪）'); return }
+    configStore.setSubStatAllocation(slot, res.plan.subStatAllocation)
+    // 配平是联合的：4 号位 / 2 件套 翻动了才写（没翻就不动用户现场）
+    if (res.plan.flippedMainStat4 && res.plan.mainStat4) configStore.setMainStat(slot, 4, res.plan.mainStat4)
+    if (res.plan.flippedTwoPiece) configStore.setTwoPieceSet(slot, res.plan.twoPieceSetId)
     const delta = res.before > 0 ? (res.after / res.before - 1) * 100 : 0
-    const steps = Object.values(res.alloc).reduce((a, b) => a + b, 0)
+    const steps = Object.values(res.plan.subStatAllocation).reduce((a, b) => a + b, 0)
+    const flips = [
+      res.plan.flippedMainStat4 ? `4号位→${statLabel(res.plan.mainStat4)}` : '',
+      res.plan.flippedTwoPiece ? '2件套换双爆配平' : '',
+    ].filter(Boolean)
     message.success(
-      `已写入最优分配：${steps} 步 · 全队伤害 ${compact(res.before)} → ${compact(res.after)}`
+      `已写入最优分配：${steps} 步${flips.length ? ` · ${flips.join(' · ')}` : ''} · 全队伤害 ${compact(res.before)} → ${compact(res.after)}`
       + `（${delta >= 0 ? '+' : ''}${delta.toFixed(2)}%，${res.evals} 次求值）`,
     )
   } catch (e) {

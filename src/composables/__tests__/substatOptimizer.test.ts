@@ -10,6 +10,7 @@ import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
 import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
 import { resolveSlotPanelBuffInputs } from '@/composables/resourceCalc/panelPhases'
 import { useResourceCalc } from '@/composables/useResourceCalc'
+import { panelAt } from '@/core/panel'
 
 type Harness = Awaited<ReturnType<typeof setupHarness>>
 const sum = (a: Record<string, number>) => Object.values(a).reduce((x, y) => x + y, 0)
@@ -22,7 +23,14 @@ function damageOf(h: Harness, slot: number, a: Record<string, number>): number {
   disc.subStatAllocation = keep
   return d
 }
-const realDamage = () => { const calc = useResourceCalc(); return { readDamage: () => calc.teamTotalDamage.value ?? 0 } }
+const realDamage = (slot: number) => {
+  const calc = useResourceCalc()
+  return {
+    readDamage: () => calc.teamTotalDamage.value ?? 0,
+    // 候选有效性（百暴溢出套利）：面板暴击必须与伤害管线同源
+    readPanelCrit: () => panelAt(calc.panels.value, slot)?.critRate ?? 0,
+  }
+}
 
 describe('computeSubstatAllocationForSlot', () => {
   it('起点 = core 默认分配（队友 buff 同源）；精修后真实伤害不低于起点、总步数不变（三个槽位）', async () => {
@@ -43,9 +51,9 @@ describe('computeSubstatAllocationForSlot', () => {
     for (const slot of [0, 1, 2]) {
       const s0 = seed(slot)
       // maxEvals=1 ⇒ 只评估起点、不挪步：返回值即起点本身（钉「起点 = useDefault」）
-      expect(computeSubstatAllocationForSlot(slot, config, catalog, { ...realDamage(), maxEvals: 1 })).toEqual(
+      expect(computeSubstatAllocationForSlot(slot, config, catalog, { ...realDamage(slot), maxEvals: 1 })).toEqual(
         Object.fromEntries(Object.entries(s0).filter(([, n]) => n > 0)))
-      const got = computeSubstatAllocationForSlot(slot, config, catalog, realDamage())!
+      const got = computeSubstatAllocationForSlot(slot, config, catalog, realDamage(slot))!
       expect(Object.keys(got).length).toBeGreaterThan(0)
       expect(sum(got)).toBe(sum(s0))
       expect(damageOf(h, slot, got)).toBeGreaterThanOrEqual(damageOf(h, slot, s0))
@@ -54,7 +62,7 @@ describe('computeSubstatAllocationForSlot', () => {
 
   it('空槽 ⇒ null', async () => {
     const { config, catalog } = await setupHarness([{ agentId: '1161' }, '', ''])
-    expect(computeSubstatAllocationForSlot(1, config, catalog, { readDamage: () => 0 })).toBeNull()
+    expect(computeSubstatAllocationForSlot(1, config, catalog, { readDamage: () => 0, readPanelCrit: () => 0 })).toBeNull()
   }, 60000)
 })
 
@@ -88,14 +96,21 @@ describe('副词条优化器的队友 buff 输入与伤害管线同源（第 194
     const original = { ...config.team[0]!.driveDisc.subStatAllocation }
     const calc = useResourceCalc()
     let evals = 0
-    const refined = computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => { evals++; return calc.teamTotalDamage.value ?? 0 } })!
+    const refined = computeSubstatAllocationForSlot(0, config, catalog, {
+      readDamage: () => { evals++; return calc.teamTotalDamage.value ?? 0 },
+      readPanelCrit: () => panelAt(calc.panels.value, 0)?.critRate ?? 0,
+    })!
     expect(config.team[0]!.driveDisc.subStatAllocation).toEqual(original)
     expect(evals).toBeGreaterThan(1)
     expect(evals).toBeLessThanOrEqual(80)
     expect(sum(refined)).toBe(sum(original)) // 只挪步不增步
     expect(damageOf(h, 0, refined)).toBeGreaterThan(damageOf(h, 0, original)) // 本样本有严格改进，否则用例无判别力
     let capped = 0
-    computeSubstatAllocationForSlot(0, config, catalog, { readDamage: () => { capped++; return calc.teamTotalDamage.value ?? 0 }, maxEvals: 5 })
+    computeSubstatAllocationForSlot(0, config, catalog, {
+      readDamage: () => { capped++; return calc.teamTotalDamage.value ?? 0 },
+      readPanelCrit: () => panelAt(calc.panels.value, 0)?.critRate ?? 0,
+      maxEvals: 5,
+    })
     expect(capped).toBeLessThanOrEqual(5)
   }, 60000)
 })

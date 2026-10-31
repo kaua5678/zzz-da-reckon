@@ -51,7 +51,7 @@
 import type { Agent } from '@/types/catalog'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { batchReporter, isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
-import { computeSubstatAllocationForSlot } from '@/composables/substatOptimizer'
+import { computeSubstatAllocationForSlot, slotPanelCritReader } from '@/composables/substatOptimizer'
 import { getTemplate, resolveSubstatBudget } from '@/core/substatOptimizer'
 import { panelAt } from '@/core/panel'
 import { useCatalogStore } from '@/stores/catalog'
@@ -241,7 +241,11 @@ export async function sampleSubstatCurves(
         slot,
         config,
         catalog,
-        { readDamage: () => calc.teamTotalDamage.value },
+        {
+          readDamage: () => calc.teamTotalDamage.value,
+          // 候选有效性判据（百暴溢出套利）：与曲线用的结算侧面板同源（压缩数组 ⇒ panelAt 按槽取，判据 17）
+          readPanelCrit: slotPanelCritReader(calc, slot),
+        },
         calc.effectiveWEngineCoverages.value,
       )
     if (!allocation) return emptyResult(slot, '优化器没有给出分配（角色 / 音擎数据不全）')
