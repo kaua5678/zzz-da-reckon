@@ -1,0 +1,3703 @@
+{
+  "version": 1,
+  "packet": {
+    "version": 1,
+    "agentId": "1581",
+    "source": {
+      "raw": "data/raw/nanoka_missing/full/1581.json",
+      "nouns": "data/raw/nanoka_missing/noun_3.3.12.json"
+    },
+    "passiveLevel": 7,
+    "hashes": {
+      "raw": "c620ad9ce90708261e8880a6fa0d93c22b320cc61ec16d9c106220272b9fdeb5",
+      "nouns": "35db6f0b30a275554585731fb8a7454a3ebeeded7706673726c572cfeb880a1e",
+      "moves": "753d104825d5209cde81f1be4bb83efab79dcaefb6d9a28a3d7fee25c3bba71e"
+    },
+    "moves": [
+      {
+        "id": "1581",
+        "agentId": "1581",
+        "name": {
+          "zhCN": "蕾米埃尔技能倍率",
+          "en": "Remielle Skill Multipliers"
+        },
+        "categories": [
+          {
+            "id": "basic",
+            "name": {
+              "zhCN": "普通攻击",
+              "en": "Basic Attack"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 16,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1581002",
+                "name": {
+                  "zhCN": "普通攻击：蹁跹 #1",
+                  "en": "Basic Attack: Leap #1"
+                },
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      63.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      18.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0.698
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      5.335
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      19.37
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.194,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581003",
+                "name": {
+                  "zhCN": "普通攻击：蹁跹 #2",
+                  "en": "Basic Attack: Leap #2"
+                },
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      109.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      42.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.088
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      8.3325
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      30.23
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.302,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581004",
+                "name": {
+                  "zhCN": "普通攻击：蹁跹 #3",
+                  "en": "Basic Attack: Leap #3"
+                },
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      169
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      74.6
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.578
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      12.0725
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      43.84
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.438,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581005",
+                "name": {
+                  "zhCN": "普通攻击：蹁跹 #4",
+                  "en": "Basic Attack: Leap #4"
+                },
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      501.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      190.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      4.258
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      32.5325
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      118.26
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.183,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581006",
+                "name": {
+                  "zhCN": "普通攻击：独舞",
+                  "en": "Basic Attack: Solo Dance"
+                },
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      193.3
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      123.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.336
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      10.2025
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      74.17
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.742,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581007",
+                "name": {
+                  "zhCN": "普通攻击：垂虹",
+                  "en": "Basic Attack: Rainbow's End"
+                },
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      390.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      247.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      2.7
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      20.625
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      149.97
+                    ]
+                  },
+                  {
+                    "id": "luminize_multiplier",
+                    "label": {
+                      "zhCN": "耀变倍率（普通攻击：垂虹）",
+                      "en": "Luminize Multiplier (Rainbow's End)"
+                    },
+                    "kind": "luminizeMultiplier",
+                    "values": [
+                      160,
+                      170,
+                      180
+                    ],
+                    "damageBasis": "atk",
+                    "levelValues": [
+                      12,
+                      14,
+                      16
+                    ],
+                    "formula": "100 + skillLevel * 5"
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.5,
+                "canTriggerLuminize": true,
+                "luminizeLevelValues": [
+                  12,
+                  14,
+                  16
+                ],
+                "luminizeFormula": "100 + skillLevel * 5",
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581008",
+                "name": {
+                  "zhCN": "普通攻击：惊鸿",
+                  "en": "Basic Attack: Fleeting Grace"
+                },
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1194.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      583.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      6.36
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      97.185
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      353.34
+                    ]
+                  },
+                  {
+                    "id": "luminize_multiplier",
+                    "label": {
+                      "zhCN": "耀变倍率（普通攻击：惊鸿）",
+                      "en": "Luminize Multiplier (Fleeting Grace)"
+                    },
+                    "kind": "luminizeMultiplier",
+                    "values": [
+                      320,
+                      340,
+                      360
+                    ],
+                    "damageBasis": "atk",
+                    "levelValues": [
+                      12,
+                      14,
+                      16
+                    ],
+                    "formula": "200 + skillLevel * 10"
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 3.533,
+                "canTriggerLuminize": true,
+                "luminizeLevelValues": [
+                  12,
+                  14,
+                  16
+                ],
+                "luminizeFormula": "200 + skillLevel * 10",
+                "damageElement": "lumiflux"
+              }
+            ]
+          },
+          {
+            "id": "special",
+            "name": {
+              "zhCN": "特殊技",
+              "en": "Special Attack"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1581009",
+                "name": {
+                  "zhCN": "特殊技：薄明",
+                  "en": "Special Attack: Sliver of Light"
+                },
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      100.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      64.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      5.28
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      38.34
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.383,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581010",
+                "name": {
+                  "zhCN": "特殊技：曙色颂·转辉",
+                  "en": "Special Attack: Ode to Dawn - Radiant Turn"
+                },
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      329.7
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      104.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      17.435
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      126.67
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.267,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581011",
+                "name": {
+                  "zhCN": "强化特殊技：曙色颂",
+                  "en": "EX Special Attack: Ode to Dawn"
+                },
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1443.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      425.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      179.905
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      158.3
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.583,
+                "energyCost": {
+                  "Energy Cost": "60"
+                },
+                "damageElement": "lumiflux"
+              }
+            ]
+          },
+          {
+            "id": "dodge",
+            "name": {
+              "zhCN": "闪避/冲刺",
+              "en": "Dodge/Dash"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1581012",
+                "name": {
+                  "zhCN": "冲刺攻击：锐芒",
+                  "en": "Dash Attack: Keen Light"
+                },
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      78.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      49.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.08
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      4.125
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      30
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.3,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581013",
+                "name": {
+                  "zhCN": "闪避反击：对影",
+                  "en": "Dodge Counter: Mirrored Shadow"
+                },
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      429
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      247.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      1.799
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      6.875
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      199.97
+                    ]
+                  }
+                ],
+                "timeType": "dodgeCounter",
+                "actionTime": 0.5,
+                "damageElement": "lumiflux"
+              }
+            ]
+          },
+          {
+            "id": "chain",
+            "name": {
+              "zhCN": "连携/终结",
+              "en": "Chain/Ultimate"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 16,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1581014",
+                "name": {
+                  "zhCN": "连携技：交叠舞步",
+                  "en": "Chain Attack: Interwoven Dance Steps"
+                },
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1570.6
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      338.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      239.25
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      205
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 2.05,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581016",
+                "name": {
+                  "zhCN": "终结技：缭乱终幕",
+                  "en": "Ultimate: Dazzling Curtain Call"
+                },
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      4019.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      391.3
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      736.71
+                    ]
+                  },
+                  {
+                    "id": "luminize_multiplier",
+                    "label": {
+                      "zhCN": "耀变倍率（终结技：缭乱终幕）",
+                      "en": "Luminize Multiplier (Dazzling Curtain Call)"
+                    },
+                    "kind": "luminizeMultiplier",
+                    "values": [
+                      336,
+                      357,
+                      378
+                    ],
+                    "damageBasis": "atk",
+                    "levelValues": [
+                      12,
+                      14,
+                      16
+                    ],
+                    "formula": "210 + skillLevel * 10.5"
+                  }
+                ],
+                "timeType": "ultimate",
+                "actionTime": 2.367,
+                "canTriggerLuminize": true,
+                "luminizeLevelValues": [
+                  12,
+                  14,
+                  16
+                ],
+                "luminizeFormula": "210 + skillLevel * 10.5",
+                "damageElement": "lumiflux"
+              }
+            ]
+          },
+          {
+            "id": "assist",
+            "name": {
+              "zhCN": "支援",
+              "en": "Assist"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 16,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1581017",
+                "name": {
+                  "zhCN": "快速支援：片羽新生",
+                  "en": "Quick Assist: Featherglow Rebirth"
+                },
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      65.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      41.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0.9
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      3.4375
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      24.99
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.25,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581018",
+                "name": {
+                  "zhCN": "招架支援：浮光掠影 #1",
+                  "en": "Defensive Assist: Fleeting Light #1"
+                },
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      0
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      407.7
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      366.64
+                    ]
+                  }
+                ],
+                "timeType": "parry",
+                "actionTime": 1.166,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581019",
+                "name": {
+                  "zhCN": "招架支援：浮光掠影 #2",
+                  "en": "Defensive Assist: Fleeting Light #2"
+                },
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      0
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      514.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      416.64
+                    ]
+                  }
+                ],
+                "timeType": "parry",
+                "actionTime": 1.666,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581020",
+                "name": {
+                  "zhCN": "招架支援：浮光掠影 #3",
+                  "en": "Defensive Assist: Fleeting Light #3"
+                },
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      0
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      250.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      116.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581021",
+                "name": {
+                  "zhCN": "支援突击：眠醒残明",
+                  "en": "Assist Follow-Up: Awakening Glimmer"
+                },
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      762.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      417.3
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      45.925
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      130.01
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.3,
+                "damageElement": "lumiflux"
+              },
+              {
+                "id": "1581015",
+                "name": {
+                  "zhCN": "支援技：花羽轮舞",
+                  "en": "Assist: Flower & Feather Dance"
+                },
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "label": {
+                      "zhCN": "伤害倍率",
+                      "en": "Damage Multiplier"
+                    },
+                    "kind": "damageMultiplier",
+                    "values": [
+                      907.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "daze",
+                    "label": {
+                      "zhCN": "失衡倍率",
+                      "en": "Daze Multiplier"
+                    },
+                    "kind": "daze",
+                    "values": [
+                      443.7
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "label": {
+                      "zhCN": "能量回复",
+                      "en": "Energy Recovery"
+                    },
+                    "kind": "energy",
+                    "values": [
+                      0
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "label": {
+                      "zhCN": "喧响回复",
+                      "en": "Decibel Recovery"
+                    },
+                    "kind": "decibel",
+                    "values": [
+                      73.7825
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "label": {
+                      "zhCN": "异常积蓄",
+                      "en": "Anomaly Buildup"
+                    },
+                    "kind": "anomaly",
+                    "values": [
+                      0
+                    ],
+                    "damageElement": "lumiflux"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "label": {
+                      "zhCN": "秽盾削减",
+                      "en": "Ether Purify"
+                    },
+                    "kind": "etherPurify",
+                    "values": [
+                      268.3
+                    ]
+                  },
+                  {
+                    "id": "luminize_multiplier",
+                    "label": {
+                      "zhCN": "耀变倍率（支援技：花羽轮舞）",
+                      "en": "Luminize Multiplier (Flower & Feather Dance)"
+                    },
+                    "kind": "luminizeMultiplier",
+                    "values": [
+                      320,
+                      340,
+                      360
+                    ],
+                    "damageBasis": "atk",
+                    "levelValues": [
+                      12,
+                      14,
+                      16
+                    ],
+                    "formula": "200 + skillLevel * 10"
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 2.683,
+                "canTriggerLuminize": true,
+                "luminizeLevelValues": [
+                  12,
+                  14,
+                  16
+                ],
+                "luminizeFormula": "200 + skillLevel * 10",
+                "damageElement": "lumiflux"
+              }
+            ]
+          }
+        ],
+        "remielleLuminizeLevels": [
+          12,
+          14,
+          16
+        ],
+        "remielleLuminizeMultipliers": {
+          "1581007": {
+            "formula": "100 + skillLevel * 5",
+            "values": [
+              160,
+              170,
+              180
+            ]
+          },
+          "1581008": {
+            "formula": "200 + skillLevel * 10",
+            "values": [
+              320,
+              340,
+              360
+            ]
+          },
+          "1581015": {
+            "formula": "200 + skillLevel * 10",
+            "values": [
+              320,
+              340,
+              360
+            ]
+          },
+          "1581016": {
+            "formula": "210 + skillLevel * 10.5",
+            "values": [
+              336,
+              357,
+              378
+            ]
+          }
+        }
+      }
+    ],
+    "units": [
+      {
+        "id": "/skill/assist/description/0/desc:0",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：片羽新生",
+        "category": "assist",
+        "quote": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对目标发动斩击，造成流明属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:1",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：片羽新生",
+        "category": "assist",
+        "quote": "对目标发动斩击，造成流明属性伤害；",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对目标发动斩击，造成流明属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:2",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：片羽新生",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对目标发动斩击，造成流明属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:0",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：浮光掠影",
+        "category": "assist",
+        "quote": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:1",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：浮光掠影",
+        "category": "assist",
+        "quote": "招架敌人的攻击，累积大量失衡值；",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:2",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：浮光掠影",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:0",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：眠醒残明",
+        "category": "assist",
+        "quote": "发动[招架支援]后，点按 [普攻键] 发动：",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对目标发动连续斩击，造成流明属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:1",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：眠醒残明",
+        "category": "assist",
+        "quote": "对目标发动连续斩击，造成流明属性伤害；",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对目标发动连续斩击，造成流明属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:2",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：眠醒残明",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对目标发动连续斩击，造成流明属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/3/desc:0",
+        "pointer": "/skill/assist/description/3/desc",
+        "title": "支援技：花羽轮舞",
+        "category": "assist",
+        "quote": "入场并发动大范围攻击，造成流明属性伤害；",
+        "context": "入场并发动大范围攻击，造成流明属性伤害；\n发动时消耗40点[浮晖]，若发动时自身剩余[浮晖]小于等于90点，则本次[支援技：花羽轮舞]不再消耗[浮晖]，并且自身进入[映曜]状态，下次发动[普通攻击：垂虹]时会升级为[普通攻击：惊鸿]；\n招式命中处于失衡状态的敌人时，敌人的失衡持续时间提升3秒，同一敌人在一次失衡状态下最多受到一次此效果，失衡持续时间提升效果与同类效果不可叠加；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:200+AvatarSkillLevel(6)*10,1,2}%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/3/desc:1",
+        "pointer": "/skill/assist/description/3/desc",
+        "title": "支援技：花羽轮舞",
+        "category": "assist",
+        "quote": "发动时消耗40点[浮晖]，若发动时自身剩余[浮晖]小于等于90点，则本次[支援技：花羽轮舞]不再消耗[浮晖]，并且自身进入[映曜]状态，下次发动[普通攻击：垂虹]时会升级为[普通攻击：惊鸿]；",
+        "context": "入场并发动大范围攻击，造成流明属性伤害；\n发动时消耗40点[浮晖]，若发动时自身剩余[浮晖]小于等于90点，则本次[支援技：花羽轮舞]不再消耗[浮晖]，并且自身进入[映曜]状态，下次发动[普通攻击：垂虹]时会升级为[普通攻击：惊鸿]；\n招式命中处于失衡状态的敌人时，敌人的失衡持续时间提升3秒，同一敌人在一次失衡状态下最多受到一次此效果，失衡持续时间提升效果与同类效果不可叠加；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:200+AvatarSkillLevel(6)*10,1,2}%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/3/desc:2",
+        "pointer": "/skill/assist/description/3/desc",
+        "title": "支援技：花羽轮舞",
+        "category": "assist",
+        "quote": "招式命中处于失衡状态的敌人时，敌人的失衡持续时间提升3秒，同一敌人在一次失衡状态下最多受到一次此效果，失衡持续时间提升效果与同类效果不可叠加；",
+        "context": "入场并发动大范围攻击，造成流明属性伤害；\n发动时消耗40点[浮晖]，若发动时自身剩余[浮晖]小于等于90点，则本次[支援技：花羽轮舞]不再消耗[浮晖]，并且自身进入[映曜]状态，下次发动[普通攻击：垂虹]时会升级为[普通攻击：惊鸿]；\n招式命中处于失衡状态的敌人时，敌人的失衡持续时间提升3秒，同一敌人在一次失衡状态下最多受到一次此效果，失衡持续时间提升效果与同类效果不可叠加；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:200+AvatarSkillLevel(6)*10,1,2}%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/3/desc:3",
+        "pointer": "/skill/assist/description/3/desc",
+        "title": "支援技：花羽轮舞",
+        "category": "assist",
+        "quote": "若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:200+AvatarSkillLevel(6)*10,1,2}%；",
+        "context": "入场并发动大范围攻击，造成流明属性伤害；\n发动时消耗40点[浮晖]，若发动时自身剩余[浮晖]小于等于90点，则本次[支援技：花羽轮舞]不再消耗[浮晖]，并且自身进入[映曜]状态，下次发动[普通攻击：垂虹]时会升级为[普通攻击：惊鸿]；\n招式命中处于失衡状态的敌人时，敌人的失衡持续时间提升3秒，同一敌人在一次失衡状态下最多受到一次此效果，失衡持续时间提升效果与同类效果不可叠加；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:200+AvatarSkillLevel(6)*10,1,2}%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/3/desc:4",
+        "pointer": "/skill/assist/description/3/desc",
+        "title": "支援技：花羽轮舞",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "入场并发动大范围攻击，造成流明属性伤害；\n发动时消耗40点[浮晖]，若发动时自身剩余[浮晖]小于等于90点，则本次[支援技：花羽轮舞]不再消耗[浮晖]，并且自身进入[映曜]状态，下次发动[普通攻击：垂虹]时会升级为[普通攻击：惊鸿]；\n招式命中处于失衡状态的敌人时，敌人的失衡持续时间提升3秒，同一敌人在一次失衡状态下最多受到一次此效果，失衡持续时间提升效果与同类效果不可叠加；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:200+AvatarSkillLevel(6)*10,1,2}%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:0",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：蹁跹",
+        "category": "basic",
+        "quote": "点按 [普攻键] 发动：",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成流明属性伤害；\n若普攻命中目标，招式结束后可为自身回复[浮晖]；\n第四段普攻结束后可为命中的敌人施加1个[流明积蓄点]。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:1",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：蹁跹",
+        "category": "basic",
+        "quote": "向前方进行至多四段攻击，造成流明属性伤害；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成流明属性伤害；\n若普攻命中目标，招式结束后可为自身回复[浮晖]；\n第四段普攻结束后可为命中的敌人施加1个[流明积蓄点]。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:2",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：蹁跹",
+        "category": "basic",
+        "quote": "若普攻命中目标，招式结束后可为自身回复[浮晖]；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成流明属性伤害；\n若普攻命中目标，招式结束后可为自身回复[浮晖]；\n第四段普攻结束后可为命中的敌人施加1个[流明积蓄点]。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:3",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：蹁跹",
+        "category": "basic",
+        "quote": "第四段普攻结束后可为命中的敌人施加1个[流明积蓄点]。",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段攻击，造成流明属性伤害；\n若普攻命中目标，招式结束后可为自身回复[浮晖]；\n第四段普攻结束后可为命中的敌人施加1个[流明积蓄点]。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:0",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：独舞",
+        "category": "basic",
+        "quote": "长按 [普攻键] 发动：",
+        "context": "长按 [普攻键] 发动：\n向前方进行范围斩击，造成流明属性伤害；\n若命中目标，招式结束后可为自身回复[浮晖]。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:1",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：独舞",
+        "category": "basic",
+        "quote": "向前方进行范围斩击，造成流明属性伤害；",
+        "context": "长按 [普攻键] 发动：\n向前方进行范围斩击，造成流明属性伤害；\n若命中目标，招式结束后可为自身回复[浮晖]。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:2",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：独舞",
+        "category": "basic",
+        "quote": "若命中目标，招式结束后可为自身回复[浮晖]。",
+        "context": "长按 [普攻键] 发动：\n向前方进行范围斩击，造成流明属性伤害；\n若命中目标，招式结束后可为自身回复[浮晖]。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:0",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：垂虹",
+        "category": "basic",
+        "quote": "当蕾米埃尔身上储存有[虚曜]时，长按 [普攻键] 发动：",
+        "context": "当蕾米埃尔身上储存有[虚曜]时，长按 [普攻键] 发动：\n向前方发动大范围强力攻击，造成流明属性伤害；\n招式结束后可为自身回复大量[浮晖]；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:100+AvatarSkillLevel(0)*5,1,2}%；\n发动后会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:1",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：垂虹",
+        "category": "basic",
+        "quote": "向前方发动大范围强力攻击，造成流明属性伤害；",
+        "context": "当蕾米埃尔身上储存有[虚曜]时，长按 [普攻键] 发动：\n向前方发动大范围强力攻击，造成流明属性伤害；\n招式结束后可为自身回复大量[浮晖]；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:100+AvatarSkillLevel(0)*5,1,2}%；\n发动后会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:2",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：垂虹",
+        "category": "basic",
+        "quote": "招式结束后可为自身回复大量[浮晖]；",
+        "context": "当蕾米埃尔身上储存有[虚曜]时，长按 [普攻键] 发动：\n向前方发动大范围强力攻击，造成流明属性伤害；\n招式结束后可为自身回复大量[浮晖]；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:100+AvatarSkillLevel(0)*5,1,2}%；\n发动后会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:3",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：垂虹",
+        "category": "basic",
+        "quote": "若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:100+AvatarSkillLevel(0)*5,1,2}%；",
+        "context": "当蕾米埃尔身上储存有[虚曜]时，长按 [普攻键] 发动：\n向前方发动大范围强力攻击，造成流明属性伤害；\n招式结束后可为自身回复大量[浮晖]；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:100+AvatarSkillLevel(0)*5,1,2}%；\n发动后会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:4",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：垂虹",
+        "category": "basic",
+        "quote": "发动后会清空身上储存的所有[虚曜]。",
+        "context": "当蕾米埃尔身上储存有[虚曜]时，长按 [普攻键] 发动：\n向前方发动大范围强力攻击，造成流明属性伤害；\n招式结束后可为自身回复大量[浮晖]；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:100+AvatarSkillLevel(0)*5,1,2}%；\n发动后会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:0",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：惊鸿",
+        "category": "basic",
+        "quote": "当蕾米埃尔身上储存有[虚曜]，且自身处于[映曜]状态时，长按 [普攻键] 发动：",
+        "context": "当蕾米埃尔身上储存有[虚曜]，且自身处于[映曜]状态时，长按 [普攻键] 发动：\n向前方发动大范围强力攻击，造成流明属性伤害；\n招式结束后可为自身回复大量[浮晖]；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:200+AvatarSkillLevel(0)*10,1,2}%；\n发动后会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:1",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：惊鸿",
+        "category": "basic",
+        "quote": "向前方发动大范围强力攻击，造成流明属性伤害；",
+        "context": "当蕾米埃尔身上储存有[虚曜]，且自身处于[映曜]状态时，长按 [普攻键] 发动：\n向前方发动大范围强力攻击，造成流明属性伤害；\n招式结束后可为自身回复大量[浮晖]；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:200+AvatarSkillLevel(0)*10,1,2}%；\n发动后会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:2",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：惊鸿",
+        "category": "basic",
+        "quote": "招式结束后可为自身回复大量[浮晖]；",
+        "context": "当蕾米埃尔身上储存有[虚曜]，且自身处于[映曜]状态时，长按 [普攻键] 发动：\n向前方发动大范围强力攻击，造成流明属性伤害；\n招式结束后可为自身回复大量[浮晖]；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:200+AvatarSkillLevel(0)*10,1,2}%；\n发动后会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:3",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：惊鸿",
+        "category": "basic",
+        "quote": "若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:200+AvatarSkillLevel(0)*10,1,2}%；",
+        "context": "当蕾米埃尔身上储存有[虚曜]，且自身处于[映曜]状态时，长按 [普攻键] 发动：\n向前方发动大范围强力攻击，造成流明属性伤害；\n招式结束后可为自身回复大量[浮晖]；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:200+AvatarSkillLevel(0)*10,1,2}%；\n发动后会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:4",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：惊鸿",
+        "category": "basic",
+        "quote": "发动后会清空身上储存的所有[虚曜]。",
+        "context": "当蕾米埃尔身上储存有[虚曜]，且自身处于[映曜]状态时，长按 [普攻键] 发动：\n向前方发动大范围强力攻击，造成流明属性伤害；\n招式结束后可为自身回复大量[浮晖]；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:200+AvatarSkillLevel(0)*10,1,2}%；\n发动后会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:0",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：交叠舞步",
+        "category": "chain",
+        "quote": "触发[连携技]时，选择对应角色发动：",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方发动多段大范围攻击，造成流明属性伤害；\n发动时自身进入[映曜]状态，下次发动[普通攻击：垂虹]时会升级为[普通攻击：惊鸿]；\n招式结束后为命中的敌人施加2个[流明积蓄点]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:1",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：交叠舞步",
+        "category": "chain",
+        "quote": "对前方发动多段大范围攻击，造成流明属性伤害；",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方发动多段大范围攻击，造成流明属性伤害；\n发动时自身进入[映曜]状态，下次发动[普通攻击：垂虹]时会升级为[普通攻击：惊鸿]；\n招式结束后为命中的敌人施加2个[流明积蓄点]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:2",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：交叠舞步",
+        "category": "chain",
+        "quote": "发动时自身进入[映曜]状态，下次发动[普通攻击：垂虹]时会升级为[普通攻击：惊鸿]；",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方发动多段大范围攻击，造成流明属性伤害；\n发动时自身进入[映曜]状态，下次发动[普通攻击：垂虹]时会升级为[普通攻击：惊鸿]；\n招式结束后为命中的敌人施加2个[流明积蓄点]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:3",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：交叠舞步",
+        "category": "chain",
+        "quote": "招式结束后为命中的敌人施加2个[流明积蓄点]；",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方发动多段大范围攻击，造成流明属性伤害；\n发动时自身进入[映曜]状态，下次发动[普通攻击：垂虹]时会升级为[普通攻击：惊鸿]；\n招式结束后为命中的敌人施加2个[流明积蓄点]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:4",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：交叠舞步",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方发动多段大范围攻击，造成流明属性伤害；\n发动时自身进入[映曜]状态，下次发动[普通攻击：垂虹]时会升级为[普通攻击：惊鸿]；\n招式结束后为命中的敌人施加2个[流明积蓄点]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:0",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：缭乱终幕",
+        "category": "chain",
+        "quote": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n向前方进行大范围攻击，造成流明属性伤害；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:210+AvatarSkillLevel(3)*10.5,1,2}%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:1",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：缭乱终幕",
+        "category": "chain",
+        "quote": "向前方进行大范围攻击，造成流明属性伤害；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n向前方进行大范围攻击，造成流明属性伤害；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:210+AvatarSkillLevel(3)*10.5,1,2}%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:2",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：缭乱终幕",
+        "category": "chain",
+        "quote": "若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:210+AvatarSkillLevel(3)*10.5,1,2}%；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n向前方进行大范围攻击，造成流明属性伤害；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:210+AvatarSkillLevel(3)*10.5,1,2}%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:3",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：缭乱终幕",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n向前方进行大范围攻击，造成流明属性伤害；\n若命中目标，招式结束后可触发[耀变]效果，倍率为{CAL:210+AvatarSkillLevel(3)*10.5,1,2}%；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:0",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：敛光",
+        "category": "dodge",
+        "quote": "点按 [Icon_Evade] 发动：",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:1",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：敛光",
+        "category": "dodge",
+        "quote": "快速的冲刺闪避；",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:2",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：敛光",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:0",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：锐芒",
+        "category": "dodge",
+        "quote": "闪避时，点按 [普攻键] 发动：",
+        "context": "闪避时，点按 [普攻键] 发动：\n向前方进行快速攻击，造成流明属性伤害。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:1",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：锐芒",
+        "category": "dodge",
+        "quote": "向前方进行快速攻击，造成流明属性伤害。",
+        "context": "闪避时，点按 [普攻键] 发动：\n向前方进行快速攻击，造成流明属性伤害。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:0",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：对影",
+        "category": "dodge",
+        "quote": "触发[极限闪避]后，点按 [普攻键] 发动：",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对目标发动强力斩击，造成流明属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:1",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：对影",
+        "category": "dodge",
+        "quote": "对目标发动强力斩击，造成流明属性伤害；",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对目标发动强力斩击，造成流明属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:2",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：对影",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对目标发动强力斩击，造成流明属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:0",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：薄明",
+        "category": "special",
+        "quote": "点按 [特技键] 发动：",
+        "context": "点按 [特技键] 发动：\n向前方发动远程攻击，造成流明属性伤害。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:1",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：薄明",
+        "category": "special",
+        "quote": "向前方发动远程攻击，造成流明属性伤害。",
+        "context": "点按 [特技键] 发动：\n向前方发动远程攻击，造成流明属性伤害。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:0",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：曙色颂",
+        "category": "special",
+        "quote": "进入战场时，若自身不足60点能量则回复至60点，在勘域模式中此效果180秒内最多触发一次；",
+        "context": "进入战场时，若自身不足60点能量则回复至60点，在勘域模式中此效果180秒内最多触发一次；\n能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方发动大范围攻击，造成流明属性伤害；\n招式结束后为命中的敌人施加2个[流明积蓄点]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:1",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：曙色颂",
+        "category": "special",
+        "quote": "能量足够时，点按 [Icon_SpecialReady] 发动：",
+        "context": "进入战场时，若自身不足60点能量则回复至60点，在勘域模式中此效果180秒内最多触发一次；\n能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方发动大范围攻击，造成流明属性伤害；\n招式结束后为命中的敌人施加2个[流明积蓄点]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:2",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：曙色颂",
+        "category": "special",
+        "quote": "向前方发动大范围攻击，造成流明属性伤害；",
+        "context": "进入战场时，若自身不足60点能量则回复至60点，在勘域模式中此效果180秒内最多触发一次；\n能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方发动大范围攻击，造成流明属性伤害；\n招式结束后为命中的敌人施加2个[流明积蓄点]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:3",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：曙色颂",
+        "category": "special",
+        "quote": "招式结束后为命中的敌人施加2个[流明积蓄点]；",
+        "context": "进入战场时，若自身不足60点能量则回复至60点，在勘域模式中此效果180秒内最多触发一次；\n能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方发动大范围攻击，造成流明属性伤害；\n招式结束后为命中的敌人施加2个[流明积蓄点]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:4",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：曙色颂",
+        "category": "special",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "进入战场时，若自身不足60点能量则回复至60点，在勘域模式中此效果180秒内最多触发一次；\n能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方发动大范围攻击，造成流明属性伤害；\n招式结束后为命中的敌人施加2个[流明积蓄点]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:0",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "特殊技：曙色颂·转辉",
+        "category": "special",
+        "quote": "若蕾米埃尔处于接战状态中且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]后长按 [特技键] 可进入[转换姿态]，在[转换姿态]下切换角色时，蕾米埃尔会进入[相变时流]状态：",
+        "context": "若蕾米埃尔处于接战状态中且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]后长按 [特技键] 可进入[转换姿态]，在[转换姿态]下切换角色时，蕾米埃尔会进入[相变时流]状态：\n[相变时流]状态下蕾米埃尔会自主行动，协助作战，其中部分攻击还可为目标施加[流明积蓄点]，期间[浮晖]会随时间消耗，当[浮晖]耗尽或离开接战状态时会退出[相变时流]状态，未退出[相变时流]状态前，蕾米埃尔无法通过[连携技]之外的方式主动换入；\n若蕾米埃尔在一次[相变时流]状态下触发3次[异化]反应后，或在[浮晖]耗尽时自身储存的[虚曜]数量大于等于1时，则激活[支援技：花羽轮舞]，解锁普通换入并使蕾米埃尔下次普通换入时自动发动[支援技：花羽轮舞]；\n进入[相变时流]状态时，蕾米埃尔会使全队角色造成的伤害提升{CAL:0+AvatarSkillLevel(1)*1.5,1,2}%，持续60秒，重复触发时刷新持续时间；\n若蕾米埃尔发动[特殊技]或[强化特殊技]攻击命中处于失衡状态的敌人，且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]中切换角色也可进入[相变时流]状态；\n若进入[转换姿态]后未切换角色，则蕾米埃尔发动下落攻击回到地面。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:1",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "特殊技：曙色颂·转辉",
+        "category": "special",
+        "quote": "[相变时流]状态下蕾米埃尔会自主行动，协助作战，其中部分攻击还可为目标施加[流明积蓄点]，期间[浮晖]会随时间消耗，当[浮晖]耗尽或离开接战状态时会退出[相变时流]状态，未退出[相变时流]状态前，蕾米埃尔无法通过[连携技]之外的方式主动换入；",
+        "context": "若蕾米埃尔处于接战状态中且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]后长按 [特技键] 可进入[转换姿态]，在[转换姿态]下切换角色时，蕾米埃尔会进入[相变时流]状态：\n[相变时流]状态下蕾米埃尔会自主行动，协助作战，其中部分攻击还可为目标施加[流明积蓄点]，期间[浮晖]会随时间消耗，当[浮晖]耗尽或离开接战状态时会退出[相变时流]状态，未退出[相变时流]状态前，蕾米埃尔无法通过[连携技]之外的方式主动换入；\n若蕾米埃尔在一次[相变时流]状态下触发3次[异化]反应后，或在[浮晖]耗尽时自身储存的[虚曜]数量大于等于1时，则激活[支援技：花羽轮舞]，解锁普通换入并使蕾米埃尔下次普通换入时自动发动[支援技：花羽轮舞]；\n进入[相变时流]状态时，蕾米埃尔会使全队角色造成的伤害提升{CAL:0+AvatarSkillLevel(1)*1.5,1,2}%，持续60秒，重复触发时刷新持续时间；\n若蕾米埃尔发动[特殊技]或[强化特殊技]攻击命中处于失衡状态的敌人，且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]中切换角色也可进入[相变时流]状态；\n若进入[转换姿态]后未切换角色，则蕾米埃尔发动下落攻击回到地面。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:2",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "特殊技：曙色颂·转辉",
+        "category": "special",
+        "quote": "若蕾米埃尔在一次[相变时流]状态下触发3次[异化]反应后，或在[浮晖]耗尽时自身储存的[虚曜]数量大于等于1时，则激活[支援技：花羽轮舞]，解锁普通换入并使蕾米埃尔下次普通换入时自动发动[支援技：花羽轮舞]；",
+        "context": "若蕾米埃尔处于接战状态中且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]后长按 [特技键] 可进入[转换姿态]，在[转换姿态]下切换角色时，蕾米埃尔会进入[相变时流]状态：\n[相变时流]状态下蕾米埃尔会自主行动，协助作战，其中部分攻击还可为目标施加[流明积蓄点]，期间[浮晖]会随时间消耗，当[浮晖]耗尽或离开接战状态时会退出[相变时流]状态，未退出[相变时流]状态前，蕾米埃尔无法通过[连携技]之外的方式主动换入；\n若蕾米埃尔在一次[相变时流]状态下触发3次[异化]反应后，或在[浮晖]耗尽时自身储存的[虚曜]数量大于等于1时，则激活[支援技：花羽轮舞]，解锁普通换入并使蕾米埃尔下次普通换入时自动发动[支援技：花羽轮舞]；\n进入[相变时流]状态时，蕾米埃尔会使全队角色造成的伤害提升{CAL:0+AvatarSkillLevel(1)*1.5,1,2}%，持续60秒，重复触发时刷新持续时间；\n若蕾米埃尔发动[特殊技]或[强化特殊技]攻击命中处于失衡状态的敌人，且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]中切换角色也可进入[相变时流]状态；\n若进入[转换姿态]后未切换角色，则蕾米埃尔发动下落攻击回到地面。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:3",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "特殊技：曙色颂·转辉",
+        "category": "special",
+        "quote": "进入[相变时流]状态时，蕾米埃尔会使全队角色造成的伤害提升{CAL:0+AvatarSkillLevel(1)*1.5,1,2}%，持续60秒，重复触发时刷新持续时间；",
+        "context": "若蕾米埃尔处于接战状态中且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]后长按 [特技键] 可进入[转换姿态]，在[转换姿态]下切换角色时，蕾米埃尔会进入[相变时流]状态：\n[相变时流]状态下蕾米埃尔会自主行动，协助作战，其中部分攻击还可为目标施加[流明积蓄点]，期间[浮晖]会随时间消耗，当[浮晖]耗尽或离开接战状态时会退出[相变时流]状态，未退出[相变时流]状态前，蕾米埃尔无法通过[连携技]之外的方式主动换入；\n若蕾米埃尔在一次[相变时流]状态下触发3次[异化]反应后，或在[浮晖]耗尽时自身储存的[虚曜]数量大于等于1时，则激活[支援技：花羽轮舞]，解锁普通换入并使蕾米埃尔下次普通换入时自动发动[支援技：花羽轮舞]；\n进入[相变时流]状态时，蕾米埃尔会使全队角色造成的伤害提升{CAL:0+AvatarSkillLevel(1)*1.5,1,2}%，持续60秒，重复触发时刷新持续时间；\n若蕾米埃尔发动[特殊技]或[强化特殊技]攻击命中处于失衡状态的敌人，且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]中切换角色也可进入[相变时流]状态；\n若进入[转换姿态]后未切换角色，则蕾米埃尔发动下落攻击回到地面。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:4",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "特殊技：曙色颂·转辉",
+        "category": "special",
+        "quote": "若蕾米埃尔发动[特殊技]或[强化特殊技]攻击命中处于失衡状态的敌人，且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]中切换角色也可进入[相变时流]状态；",
+        "context": "若蕾米埃尔处于接战状态中且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]后长按 [特技键] 可进入[转换姿态]，在[转换姿态]下切换角色时，蕾米埃尔会进入[相变时流]状态：\n[相变时流]状态下蕾米埃尔会自主行动，协助作战，其中部分攻击还可为目标施加[流明积蓄点]，期间[浮晖]会随时间消耗，当[浮晖]耗尽或离开接战状态时会退出[相变时流]状态，未退出[相变时流]状态前，蕾米埃尔无法通过[连携技]之外的方式主动换入；\n若蕾米埃尔在一次[相变时流]状态下触发3次[异化]反应后，或在[浮晖]耗尽时自身储存的[虚曜]数量大于等于1时，则激活[支援技：花羽轮舞]，解锁普通换入并使蕾米埃尔下次普通换入时自动发动[支援技：花羽轮舞]；\n进入[相变时流]状态时，蕾米埃尔会使全队角色造成的伤害提升{CAL:0+AvatarSkillLevel(1)*1.5,1,2}%，持续60秒，重复触发时刷新持续时间；\n若蕾米埃尔发动[特殊技]或[强化特殊技]攻击命中处于失衡状态的敌人，且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]中切换角色也可进入[相变时流]状态；\n若进入[转换姿态]后未切换角色，则蕾米埃尔发动下落攻击回到地面。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:5",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "特殊技：曙色颂·转辉",
+        "category": "special",
+        "quote": "若进入[转换姿态]后未切换角色，则蕾米埃尔发动下落攻击回到地面。",
+        "context": "若蕾米埃尔处于接战状态中且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]后长按 [特技键] 可进入[转换姿态]，在[转换姿态]下切换角色时，蕾米埃尔会进入[相变时流]状态：\n[相变时流]状态下蕾米埃尔会自主行动，协助作战，其中部分攻击还可为目标施加[流明积蓄点]，期间[浮晖]会随时间消耗，当[浮晖]耗尽或离开接战状态时会退出[相变时流]状态，未退出[相变时流]状态前，蕾米埃尔无法通过[连携技]之外的方式主动换入；\n若蕾米埃尔在一次[相变时流]状态下触发3次[异化]反应后，或在[浮晖]耗尽时自身储存的[虚曜]数量大于等于1时，则激活[支援技：花羽轮舞]，解锁普通换入并使蕾米埃尔下次普通换入时自动发动[支援技：花羽轮舞]；\n进入[相变时流]状态时，蕾米埃尔会使全队角色造成的伤害提升{CAL:0+AvatarSkillLevel(1)*1.5,1,2}%，持续60秒，重复触发时刷新持续时间；\n若蕾米埃尔发动[特殊技]或[强化特殊技]攻击命中处于失衡状态的敌人，且[浮晖]达到最大值120点时，在[特殊技]或[强化特殊技]中切换角色也可进入[相变时流]状态；\n若进入[转换姿态]后未切换角色，则蕾米埃尔发动下落攻击回到地面。"
+      },
+      {
+        "id": "/passive/level/1581507/desc/0:0",
+        "pointer": "/passive/level/1581507/desc/0",
+        "title": "核心被动：时序=万色滞行",
+        "category": "passive",
+        "quote": "蕾米埃尔的[异化系数]为自身异常精通的0.02%，且当队伍中[异常]角色数量为3时，[异化系数]额外提升10%；",
+        "context": "蕾米埃尔的[异化系数]为自身异常精通的0.02%，且当队伍中[异常]角色数量为3时，[异化系数]额外提升10%；\n蕾米埃尔通过队友触发[异化]反应时，会根据此次属性异常效果在受到[异化]加强后的[异常效果强度]生成[虚曜]，最多可储存最新生成的3个[虚曜]；\n若[支援技：花羽轮舞]/[终结技：缭乱终幕]/[普通攻击：垂虹]/[普通攻击：惊鸿]命中目标，在招式结束后可触发[耀变]效果：\n基于已储存的所有[虚曜]中的[异常效果强度]，对敌人造成招式对应倍率的属性异常伤害，并根据自身异常精通的0.2%提升此伤害倍率；\n蕾米埃尔在进入[相变时流]状态时或发动[普通攻击：垂虹]或[普通攻击：惊鸿]后，会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/passive/level/1581507/desc/0:1",
+        "pointer": "/passive/level/1581507/desc/0",
+        "title": "核心被动：时序=万色滞行",
+        "category": "passive",
+        "quote": "蕾米埃尔通过队友触发[异化]反应时，会根据此次属性异常效果在受到[异化]加强后的[异常效果强度]生成[虚曜]，最多可储存最新生成的3个[虚曜]；",
+        "context": "蕾米埃尔的[异化系数]为自身异常精通的0.02%，且当队伍中[异常]角色数量为3时，[异化系数]额外提升10%；\n蕾米埃尔通过队友触发[异化]反应时，会根据此次属性异常效果在受到[异化]加强后的[异常效果强度]生成[虚曜]，最多可储存最新生成的3个[虚曜]；\n若[支援技：花羽轮舞]/[终结技：缭乱终幕]/[普通攻击：垂虹]/[普通攻击：惊鸿]命中目标，在招式结束后可触发[耀变]效果：\n基于已储存的所有[虚曜]中的[异常效果强度]，对敌人造成招式对应倍率的属性异常伤害，并根据自身异常精通的0.2%提升此伤害倍率；\n蕾米埃尔在进入[相变时流]状态时或发动[普通攻击：垂虹]或[普通攻击：惊鸿]后，会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/passive/level/1581507/desc/0:2",
+        "pointer": "/passive/level/1581507/desc/0",
+        "title": "核心被动：时序=万色滞行",
+        "category": "passive",
+        "quote": "若[支援技：花羽轮舞]/[终结技：缭乱终幕]/[普通攻击：垂虹]/[普通攻击：惊鸿]命中目标，在招式结束后可触发[耀变]效果：",
+        "context": "蕾米埃尔的[异化系数]为自身异常精通的0.02%，且当队伍中[异常]角色数量为3时，[异化系数]额外提升10%；\n蕾米埃尔通过队友触发[异化]反应时，会根据此次属性异常效果在受到[异化]加强后的[异常效果强度]生成[虚曜]，最多可储存最新生成的3个[虚曜]；\n若[支援技：花羽轮舞]/[终结技：缭乱终幕]/[普通攻击：垂虹]/[普通攻击：惊鸿]命中目标，在招式结束后可触发[耀变]效果：\n基于已储存的所有[虚曜]中的[异常效果强度]，对敌人造成招式对应倍率的属性异常伤害，并根据自身异常精通的0.2%提升此伤害倍率；\n蕾米埃尔在进入[相变时流]状态时或发动[普通攻击：垂虹]或[普通攻击：惊鸿]后，会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/passive/level/1581507/desc/0:3",
+        "pointer": "/passive/level/1581507/desc/0",
+        "title": "核心被动：时序=万色滞行",
+        "category": "passive",
+        "quote": "基于已储存的所有[虚曜]中的[异常效果强度]，对敌人造成招式对应倍率的属性异常伤害，并根据自身异常精通的0.2%提升此伤害倍率；",
+        "context": "蕾米埃尔的[异化系数]为自身异常精通的0.02%，且当队伍中[异常]角色数量为3时，[异化系数]额外提升10%；\n蕾米埃尔通过队友触发[异化]反应时，会根据此次属性异常效果在受到[异化]加强后的[异常效果强度]生成[虚曜]，最多可储存最新生成的3个[虚曜]；\n若[支援技：花羽轮舞]/[终结技：缭乱终幕]/[普通攻击：垂虹]/[普通攻击：惊鸿]命中目标，在招式结束后可触发[耀变]效果：\n基于已储存的所有[虚曜]中的[异常效果强度]，对敌人造成招式对应倍率的属性异常伤害，并根据自身异常精通的0.2%提升此伤害倍率；\n蕾米埃尔在进入[相变时流]状态时或发动[普通攻击：垂虹]或[普通攻击：惊鸿]后，会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/passive/level/1581507/desc/0:4",
+        "pointer": "/passive/level/1581507/desc/0",
+        "title": "核心被动：时序=万色滞行",
+        "category": "passive",
+        "quote": "蕾米埃尔在进入[相变时流]状态时或发动[普通攻击：垂虹]或[普通攻击：惊鸿]后，会清空身上储存的所有[虚曜]。",
+        "context": "蕾米埃尔的[异化系数]为自身异常精通的0.02%，且当队伍中[异常]角色数量为3时，[异化系数]额外提升10%；\n蕾米埃尔通过队友触发[异化]反应时，会根据此次属性异常效果在受到[异化]加强后的[异常效果强度]生成[虚曜]，最多可储存最新生成的3个[虚曜]；\n若[支援技：花羽轮舞]/[终结技：缭乱终幕]/[普通攻击：垂虹]/[普通攻击：惊鸿]命中目标，在招式结束后可触发[耀变]效果：\n基于已储存的所有[虚曜]中的[异常效果强度]，对敌人造成招式对应倍率的属性异常伤害，并根据自身异常精通的0.2%提升此伤害倍率；\n蕾米埃尔在进入[相变时流]状态时或发动[普通攻击：垂虹]或[普通攻击：惊鸿]后，会清空身上储存的所有[虚曜]。"
+      },
+      {
+        "id": "/passive/level/1581507/desc/1:0",
+        "pointer": "/passive/level/1581507/desc/1",
+        "title": "额外能力：芳菲之邀",
+        "category": "passive",
+        "quote": "队伍中存在其他[异常]角色或同阵营角色时触发：",
+        "context": "队伍中存在其他[异常]角色或同阵营角色时触发：\n当队伍中[异常]角色数量为1/2/3时，进入战场时为全队角色提升等同于蕾米埃尔初始攻击力6%/12%/40%的攻击力，提升上限不超过1600点，蕾米埃尔在[相变时流]状态下造成的失衡值提升6%/12%/35%；\n蕾米埃尔为敌人施加[流明积蓄点]时会同时附加[幻色]效果：全队角色攻击[幻色]效果下的敌人时，异常积蓄效率提升15%，敌人身上无[流明积蓄点]时[幻色]效果消失，[幻色]效果消失后该异常积蓄效率提升效果会额外持续8秒。"
+      },
+      {
+        "id": "/passive/level/1581507/desc/1:1",
+        "pointer": "/passive/level/1581507/desc/1",
+        "title": "额外能力：芳菲之邀",
+        "category": "passive",
+        "quote": "当队伍中[异常]角色数量为1/2/3时，进入战场时为全队角色提升等同于蕾米埃尔初始攻击力6%/12%/40%的攻击力，提升上限不超过1600点，蕾米埃尔在[相变时流]状态下造成的失衡值提升6%/12%/35%；",
+        "context": "队伍中存在其他[异常]角色或同阵营角色时触发：\n当队伍中[异常]角色数量为1/2/3时，进入战场时为全队角色提升等同于蕾米埃尔初始攻击力6%/12%/40%的攻击力，提升上限不超过1600点，蕾米埃尔在[相变时流]状态下造成的失衡值提升6%/12%/35%；\n蕾米埃尔为敌人施加[流明积蓄点]时会同时附加[幻色]效果：全队角色攻击[幻色]效果下的敌人时，异常积蓄效率提升15%，敌人身上无[流明积蓄点]时[幻色]效果消失，[幻色]效果消失后该异常积蓄效率提升效果会额外持续8秒。"
+      },
+      {
+        "id": "/passive/level/1581507/desc/1:2",
+        "pointer": "/passive/level/1581507/desc/1",
+        "title": "额外能力：芳菲之邀",
+        "category": "passive",
+        "quote": "蕾米埃尔为敌人施加[流明积蓄点]时会同时附加[幻色]效果：全队角色攻击[幻色]效果下的敌人时，异常积蓄效率提升15%，敌人身上无[流明积蓄点]时[幻色]效果消失，[幻色]效果消失后该异常积蓄效率提升效果会额外持续8秒。",
+        "context": "队伍中存在其他[异常]角色或同阵营角色时触发：\n当队伍中[异常]角色数量为1/2/3时，进入战场时为全队角色提升等同于蕾米埃尔初始攻击力6%/12%/40%的攻击力，提升上限不超过1600点，蕾米埃尔在[相变时流]状态下造成的失衡值提升6%/12%/35%；\n蕾米埃尔为敌人施加[流明积蓄点]时会同时附加[幻色]效果：全队角色攻击[幻色]效果下的敌人时，异常积蓄效率提升15%，敌人身上无[流明积蓄点]时[幻色]效果消失，[幻色]效果消失后该异常积蓄效率提升效果会额外持续8秒。"
+      },
+      {
+        "id": "/talent/1/desc:0",
+        "pointer": "/talent/1/desc",
+        "title": "青涩誓言",
+        "category": "talent",
+        "quote": "进入战场时，蕾米埃尔获得3个特殊[虚曜]，在勘域模式中此效果180秒内最多触发一次；",
+        "context": "进入战场时，蕾米埃尔获得3个特殊[虚曜]，在勘域模式中此效果180秒内最多触发一次；蕾米埃尔触发[耀变]效果造成伤害时，无视目标50%的全属性伤害抗性；发动[支援技：花羽轮舞]时，获得200点喧响值，18秒内最多触发1次此效果；蕾米埃尔处于[相变时流]状态下时，队伍中其他角色造成的属性异常伤害提升10%。"
+      },
+      {
+        "id": "/talent/1/desc:1",
+        "pointer": "/talent/1/desc",
+        "title": "青涩誓言",
+        "category": "talent",
+        "quote": "蕾米埃尔触发[耀变]效果造成伤害时，无视目标50%的全属性伤害抗性；",
+        "context": "进入战场时，蕾米埃尔获得3个特殊[虚曜]，在勘域模式中此效果180秒内最多触发一次；蕾米埃尔触发[耀变]效果造成伤害时，无视目标50%的全属性伤害抗性；发动[支援技：花羽轮舞]时，获得200点喧响值，18秒内最多触发1次此效果；蕾米埃尔处于[相变时流]状态下时，队伍中其他角色造成的属性异常伤害提升10%。"
+      },
+      {
+        "id": "/talent/1/desc:2",
+        "pointer": "/talent/1/desc",
+        "title": "青涩誓言",
+        "category": "talent",
+        "quote": "发动[支援技：花羽轮舞]时，获得200点喧响值，18秒内最多触发1次此效果；",
+        "context": "进入战场时，蕾米埃尔获得3个特殊[虚曜]，在勘域模式中此效果180秒内最多触发一次；蕾米埃尔触发[耀变]效果造成伤害时，无视目标50%的全属性伤害抗性；发动[支援技：花羽轮舞]时，获得200点喧响值，18秒内最多触发1次此效果；蕾米埃尔处于[相变时流]状态下时，队伍中其他角色造成的属性异常伤害提升10%。"
+      },
+      {
+        "id": "/talent/1/desc:3",
+        "pointer": "/talent/1/desc",
+        "title": "青涩誓言",
+        "category": "talent",
+        "quote": "蕾米埃尔处于[相变时流]状态下时，队伍中其他角色造成的属性异常伤害提升10%。",
+        "context": "进入战场时，蕾米埃尔获得3个特殊[虚曜]，在勘域模式中此效果180秒内最多触发一次；蕾米埃尔触发[耀变]效果造成伤害时，无视目标50%的全属性伤害抗性；发动[支援技：花羽轮舞]时，获得200点喧响值，18秒内最多触发1次此效果；蕾米埃尔处于[相变时流]状态下时，队伍中其他角色造成的属性异常伤害提升10%。"
+      },
+      {
+        "id": "/talent/2/desc:0",
+        "pointer": "/talent/2/desc",
+        "title": "倾落喧嚣",
+        "category": "talent",
+        "quote": "蕾米埃尔的[异化系数]提升20%；",
+        "context": "蕾米埃尔的[异化系数]提升20%；队伍中[异常]角色对[幻色]效果下的敌人造成属性异常伤害时，无视目标15%的防御力，[幻色]效果消失后该效果会额外持续8秒；蕾米埃尔在[相变时流]状态下自主发动攻击为敌人施加[流明积蓄点]的频率提升。"
+      },
+      {
+        "id": "/talent/2/desc:1",
+        "pointer": "/talent/2/desc",
+        "title": "倾落喧嚣",
+        "category": "talent",
+        "quote": "队伍中[异常]角色对[幻色]效果下的敌人造成属性异常伤害时，无视目标15%的防御力，[幻色]效果消失后该效果会额外持续8秒；",
+        "context": "蕾米埃尔的[异化系数]提升20%；队伍中[异常]角色对[幻色]效果下的敌人造成属性异常伤害时，无视目标15%的防御力，[幻色]效果消失后该效果会额外持续8秒；蕾米埃尔在[相变时流]状态下自主发动攻击为敌人施加[流明积蓄点]的频率提升。"
+      },
+      {
+        "id": "/talent/2/desc:2",
+        "pointer": "/talent/2/desc",
+        "title": "倾落喧嚣",
+        "category": "talent",
+        "quote": "蕾米埃尔在[相变时流]状态下自主发动攻击为敌人施加[流明积蓄点]的频率提升。",
+        "context": "蕾米埃尔的[异化系数]提升20%；队伍中[异常]角色对[幻色]效果下的敌人造成属性异常伤害时，无视目标15%的防御力，[幻色]效果消失后该效果会额外持续8秒；蕾米埃尔在[相变时流]状态下自主发动攻击为敌人施加[流明积蓄点]的频率提升。"
+      },
+      {
+        "id": "/talent/3/desc:0",
+        "pointer": "/talent/3/desc",
+        "title": "时间分岔的花园",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/4/desc:0",
+        "pointer": "/talent/4/desc",
+        "title": "漫长的告别",
+        "category": "talent",
+        "quote": "蕾米埃尔触发[耀变]效果时，伤害倍率额外提升12%；",
+        "context": "蕾米埃尔触发[耀变]效果时，伤害倍率额外提升12%；在蕾米埃尔进入战场获得3个特殊[虚曜]后，若将[虚曜]全部消耗，则可再一次获得最大数量的特殊[虚曜]，可再次获得特殊[虚曜]的效果在生效1次后或蕾米埃尔进入[相变时流]状态时消失。"
+      },
+      {
+        "id": "/talent/4/desc:1",
+        "pointer": "/talent/4/desc",
+        "title": "漫长的告别",
+        "category": "talent",
+        "quote": "在蕾米埃尔进入战场获得3个特殊[虚曜]后，若将[虚曜]全部消耗，则可再一次获得最大数量的特殊[虚曜]，可再次获得特殊[虚曜]的效果在生效1次后或蕾米埃尔进入[相变时流]状态时消失。",
+        "context": "蕾米埃尔触发[耀变]效果时，伤害倍率额外提升12%；在蕾米埃尔进入战场获得3个特殊[虚曜]后，若将[虚曜]全部消耗，则可再一次获得最大数量的特殊[虚曜]，可再次获得特殊[虚曜]的效果在生效1次后或蕾米埃尔进入[相变时流]状态时消失。"
+      },
+      {
+        "id": "/talent/5/desc:0",
+        "pointer": "/talent/5/desc",
+        "title": "归客痛饮遗忘",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/6/desc:0",
+        "pointer": "/talent/6/desc",
+        "title": "千度振翅的孑羽",
+        "category": "talent",
+        "quote": "蕾米埃尔发动[普通攻击：垂虹]和[普通攻击：惊鸿]时，会触发2次[耀变]效果；",
+        "context": "蕾米埃尔发动[普通攻击：垂虹]和[普通攻击：惊鸿]时，会触发2次[耀变]效果；若第四段[普通攻击]命中目标，招式结束后蕾米埃尔可获得3个特殊[虚曜]，通过此种方式获得的特殊[虚曜]可造成的伤害为进入战场时获得的特殊[虚曜]的25%。"
+      },
+      {
+        "id": "/talent/6/desc:1",
+        "pointer": "/talent/6/desc",
+        "title": "千度振翅的孑羽",
+        "category": "talent",
+        "quote": "若第四段[普通攻击]命中目标，招式结束后蕾米埃尔可获得3个特殊[虚曜]，通过此种方式获得的特殊[虚曜]可造成的伤害为进入战场时获得的特殊[虚曜]的25%。",
+        "context": "蕾米埃尔发动[普通攻击：垂虹]和[普通攻击：惊鸿]时，会触发2次[耀变]效果；若第四段[普通攻击]命中目标，招式结束后蕾米埃尔可获得3个特殊[虚曜]，通过此种方式获得的特殊[虚曜]可造成的伤害为进入战场时获得的特殊[虚曜]的25%。"
+      }
+    ]
+  },
+  "decisions": [
+    {
+      "sourceId": "/skill/assist/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/3/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_lumen_cycle"
+      ]
+    },
+    {
+      "sourceId": "/skill/assist/description/3/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_grace_stun"
+      ]
+    },
+    {
+      "sourceId": "/skill/assist/description/3/desc:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_core_voidflare"
+      ]
+    },
+    {
+      "sourceId": "/skill/assist/description/3/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_core_voidflare"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_core_voidflare"
+      ]
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_core_voidflare"
+      ]
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_lumen_cycle"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_lumen_cycle"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_lumen_cycle"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_lumen_cycle"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:4",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_lumen_cycle"
+      ]
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:5",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_lumen_cycle"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1581507/desc/0:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_core_refringe"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1581507/desc/0:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_core_voidflare"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1581507/desc/0:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_core_voidflare"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1581507/desc/0:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_core_voidflare"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1581507/desc/0:4",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_core_voidflare"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1581507/desc/1:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_additional_ability"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1581507/desc/1:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_additional_ability"
+      ]
+    },
+    {
+      "sourceId": "/passive/level/1581507/desc/1:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_additional_ability"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_c1"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_c1"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_c1"
+      ]
+    },
+    {
+      "sourceId": "/talent/1/desc:3",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_c1"
+      ]
+    },
+    {
+      "sourceId": "/talent/2/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_c2_refringe"
+      ]
+    },
+    {
+      "sourceId": "/talent/2/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_c2_anomaly_def"
+      ]
+    },
+    {
+      "sourceId": "/talent/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "只提升[相变时流]下施加[流明积蓄点]的频率、不改变单次积蓄值；引擎按招式表固定积蓄结算、未逐帧模拟积蓄频率 ⇒ 收益无法从原文取数值，已被虚曜池总量近似吸收",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "技能等级 +2 由 cinemaLevel → skillLevelBonus 通用通道承载（catalog 等级阶梯），非本模块机制",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/4/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_c4"
+      ]
+    },
+    {
+      "sourceId": "/talent/4/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_c4"
+      ]
+    },
+    {
+      "sourceId": "/talent/5/desc:0",
+      "status": "out_of_scope",
+      "reason": "技能等级 +2 由 cinemaLevel → skillLevelBonus 通用通道承载（catalog 等级阶梯），非本模块机制",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/6/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "rem_c6"
+      ]
+    },
+    {
+      "sourceId": "/talent/6/desc:1",
+      "status": "out_of_scope",
+      "reason": "明确未建模（模块 pending）：第 4 段普攻获得的 3 个特殊虚曜仅 25% 倍率，收益不足 1 次耀变；如实记 out_of_scope，不伪称已实现",
+      "mechanics": []
+    }
+  ],
+  "mechanics": [
+    {
+      "id": "rem_core_refringe",
+      "dimension": "D3",
+      "certainty": "L1",
+      "trigger": "核心被动常驻：蕾米埃尔在队即生效",
+      "target": "全部异常结算（紊乱/乱流/标准DoT/畏缩/耀变）乘区 1+(异化系数+加算)/100",
+      "gate": "恒生效（本体 = 面板异常精通×0.02%；3 异常加算由额外能力档位门控）",
+      "formula": "异化系数 = 异常精通 × 0.02%；队伍中[异常]角色数为 3 时额外 +10%（同区加算）",
+      "field": "PanelValues.remielleRefringeCoefficient / remielleRefringeCoefficientBonusPct → globalAnomalyMultiplier",
+      "countSource": "不适用（静态面板量，读局内最终异常精通）",
+      "duration": "不适用（常驻）",
+      "cap": "不适用（原文未设上限）",
+      "assumptions": [
+        {
+          "premise": "异常精通取局内最终值而非效果应用时刻的局外快照",
+          "falsifier": "若应取局外快照，3 异常队异化系数会由 12.96% 回落 10.04%（实测 502 vs 648）"
+        }
+      ],
+      "decisionEvidence": "原文「[异化系数]为自身异常精通的0.02%」+ 用户 2026-10-20 裁决「肯定按照真实的来啊」⇒ 局内最终值",
+      "implementation": {
+        "spec": "src/specs/agents/1581.json#/notes/1",
+        "consumer": "src/mechanics/agents/remielle.ts#computeRemielleMechanic"
+      },
+      "sources": [
+        "/passive/level/1581507/desc/0:0"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "异常精通 500",
+          "expected": "异化系数 = 10%（500×0.02）",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "异化系数 = 异常精通×0.02%；耀变倍率提升 = 异常精通×0.2%（2026-09-07 账本+原文四源校对，旧 0.1% 为转写错误）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "异常精通 0",
+          "expected": "异化系数 = 0",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "异化系数 = 异常精通×0.02%；耀变倍率提升 = 异常精通×0.2%（2026-09-07 账本+原文四源校对，旧 0.1% 为转写错误）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "异常精通 648 + 3 异常队",
+          "expected": "本体 12.96% + 加算 10% = 22.96%",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "资源卡异化度 = 本体 + 加算（3异常/C2），且与伤害乘区同源"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rem_core_voidflare",
+      "dimension": "D8",
+      "certainty": "L2",
+      "trigger": "队友触发[异化]反应生成[虚曜]（最多存最新 3 个）；花羽轮舞/缭乱终幕/垂虹/惊鸿命中后触发[耀变]",
+      "target": "耀变结算行（remielle-luminize-*）+ 特殊虚耀行（remielle-special-voidflare）",
+      "gate": "虚曜池 > 0 且后台时长够飞；每轮 1 次入场 + 1 次长按A（有映曜时）+ 大招按实际终结次数封顶",
+      "formula": "每动作结算 min(虚曜池,3) 次；倍率 = 招式耀变倍率 × (1 + 异常精通×0.2%)；伤害 = 触发队友面板 × 蕾米修正（异化/异常增伤/减防/耀变倍率/C4/C1 无视 50% 抗）",
+      "field": "伤害池 extraAnomalyRows（remielle.ts）→ calcVoidflareDamage",
+      "countSource": "perSlotAnomalyTriggers（排除本槽）→ distributeIntegerByWeight 按占比分配子弹；轮数 = min(⌊池/3⌋, ⌊后台时长/15s⌋) 且默认封顶 7 轮",
+      "duration": "每轮飞行 15s（浮晖 120→90，2/s）",
+      "cap": "每轮只存最新 3 个虚曜；默认封顶 7 轮（拆轮滑块每 +1 换 1 轮惊鸿为垂虹）",
+      "assumptions": [
+        {
+          "premise": "一轮 = 3 豆，且入场/长按A/大招三载体各结算「已储存的全部虚曜」",
+          "falsifier": "若实际每轮只结算一次，耀变行数会由 9 次/轮降到 3 次/轮（用户 2026-10-18 反例即此形态）"
+        },
+        {
+          "premise": "耀变吃通用异常暴击但不并入强击暴击",
+          "falsifier": "若并入，物理异常队友供豆时耀变会额外 ×(1+强击暴击 EV)，实测队总伤偏离 >1.6%"
+        }
+      ],
+      "decisionEvidence": "用户 2026-10-18 玩法口径 + 2026-10-29 异常暴击分区口径；账本「蕾米埃尔.xlsx」四源校对",
+      "implementation": {
+        "spec": "src/specs/agents/1581.json#/notes/26",
+        "consumer": "src/mechanics/agents/remielle.ts#calcVoidflareDamage"
+      },
+      "sources": [
+        "/passive/level/1581507/desc/0:1",
+        "/passive/level/1581507/desc/0:2",
+        "/passive/level/1581507/desc/0:3",
+        "/passive/level/1581507/desc/0:4",
+        "/skill/assist/description/3/desc:3",
+        "/skill/basic/description/2/desc:3",
+        "/skill/basic/description/3/desc:3",
+        "/skill/chain/description/1/desc:2"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "虚曜池 3 + 有映曜 + 有大招",
+          "expected": "入场 3 + 长按A 3 + 大招 3 = 9 次耀变",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "用户 2026-10-18 玩法口径：一轮 3 豆 ⇒ 入场/长按A 各结算 3 次；有大招再加 3 次（共 9）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "无 entryPanel（无进场快照面板）",
+          "expected": "返回空行数组",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "无 entryPanel → []"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "失衡覆盖率 0.3",
+          "expected": "易伤按 1+0.7×0.3 加权，不被当布尔吃满额",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "CC-220：耀变失衡易伤区按覆盖率加权（与 calcStunMultiplier 同源；覆盖率不再被当布尔吃满额）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rem_additional_ability",
+      "dimension": "D7",
+      "certainty": "L1",
+      "trigger": "队伍中存在其他[异常]角色或同阵营角色时触发",
+      "target": "全队（攻击力档位）/ 蕾米自身（相变时流失衡值）/ 全队（幻色异常积蓄效率）",
+      "gate": "additionalAbilityActive + 队伍[异常]角色数 1/2/3 分档（teammateBuffGate 按档门控）",
+      "formula": "全队攻击 + 蕾米初始攻击力 6%/12%/40%（上限 1600）；蕾米相变时流失衡值 +6%/12%/35%；幻色目标异常积蓄效率 +15%",
+      "field": "PanelValues.atkFlat / stunBuildUpBonus / anomalyBuildUpEfficiency（teammate-buffs 1581 组）",
+      "countSource": "computeRemielleAdditionalState 读队伍特化数",
+      "duration": "进入战场时（攻击力）/ 常驻（积蓄效率）",
+      "cap": "攻击力提升上限 1600 点",
+      "assumptions": [
+        {
+          "premise": "「队伍中[异常]角色数量」按特化 specialty === anomaly 计数、含蕾米本人",
+          "falsifier": "若排除本人，3 异常队会错降为 2 档（12% 而非 40%）"
+        }
+      ],
+      "decisionEvidence": "原文三档明写 6%/12%/40% 与上限 1600；档位门控由 REMIELLE_BUFF_GATES 与 spec additionalAbility 同步",
+      "implementation": {
+        "spec": "src/specs/agents/1581.json#/resources/0",
+        "consumer": "src/mechanics/agents/remielle.ts#remielleTeammateBuffGate"
+      },
+      "sources": [
+        "/passive/level/1581507/desc/1:0",
+        "/passive/level/1581507/desc/1:1",
+        "/passive/level/1581507/desc/1:2"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "3 名[异常]角色",
+          "expected": "全队攻击 +40% 初始攻击力（≤1600）",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "1581010：1 + 档位%（35 档 → 1.35）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "队伍中无其他异常且不同阵营",
+          "expected": "额外能力不触发、三档全关",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "其他招式 → 1；面板为 null 或字段缺席 → 1"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "初始攻击力 5000 × 40% = 2000",
+          "expected": "按上限截断到 1600",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "能力与全队乘区同源：factor = 1 + pct / 100"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rem_c1",
+      "dimension": "D8",
+      "certainty": "L1",
+      "trigger": "进入战场（特殊虚曜）/ 耀变造成伤害（无视 50% 抗性）/ 发动花羽轮舞（喧响）/ 处于相变时流（队友异常增伤）",
+      "target": "蕾米自身（特殊虚曜、无视抗性）/ 自身喧响池 / 队伍其他角色（属性异常伤害）",
+      "gate": "影画 ≥ 1",
+      "formula": "特殊��曜 3 个；耀变无视 50% 全属性抗性；花羽轮舞 +200 喧响（18s CD）；队友属性异常伤害 +10%",
+      "field": "cinema1ResIgnore / remielleCinema1SpecialVoidflareCount / extraSelfDecibelReward / teammate anomalyDmgBonus（excludeTargetAgentIds 排除本人）",
+      "countSource": "影画等级；花羽轮舞次数按轮数且 18s 冷却封顶",
+      "duration": "相变时流期间（队友增伤）；18 秒（喧响 CD）",
+      "cap": "每次花羽轮舞 200 喧响，18s 内最多 1 次",
+      "assumptions": [
+        {
+          "premise": "特殊虚曜只通过普攻垂虹打出并消耗，全吃进场记录面板（不吃队友战内拐力）",
+          "falsifier": "若吃战内拐力，特殊虚曜行会随队友 buff 时段波动，与实测逐位不符"
+        }
+      ],
+      "decisionEvidence": "原文影画一四句逐条；特殊虚曜 ×2.5 独立乘区经用户 2026-08-26 口径①确认",
+      "implementation": {
+        "spec": "src/specs/agents/1581.json#/notes/2",
+        "consumer": "src/mechanics/agents/remielle.ts#remielleSpecialVoidflareCount"
+      },
+      "sources": [
+        "/talent/1/desc:0",
+        "/talent/1/desc:1",
+        "/talent/1/desc:2",
+        "/talent/1/desc:3"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "影画 1 + 触发耀变",
+          "expected": "含 remielle-special-voidflare 行且吃 50% 抗性无视",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "C1（remielleCinema1SpecialVoidflareCount>0）时含 remielle-special-voidflare 行"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "影画 0",
+          "expected": "不含特殊虚耀行（普通耀变行仍在）",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "CC-165/CC-166/CC-332：特殊虚耀垂虹施放次数 1/2/2 vs 耀变次数 3/6/12，惊鸿 0 命 ×1 / 6 命 ×2"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "一轮多次花羽轮舞但间隔 <18s",
+          "expected": "喧响只记 1 次（18s 冷却封顶）",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "次数 = 队友虚曜数（排除本槽），按 18s 冷却封顶"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rem_c2_refringe",
+      "dimension": "D3",
+      "certainty": "L1",
+      "trigger": "影画 ≥ 2（常驻）",
+      "target": "全部异常结算乘区（全队同一值）",
+      "gate": "影画 ≥ 2",
+      "formula": "异化系数 +20%（与本体、3异常加算同区相加）",
+      "field": "PanelValues.remielleRefringeCoefficientBonusPct（teammate-buff excludeTargetAgentIds 排除本人，catalog cinemaBuffs 自身 buff 为唯一写者）",
+      "countSource": "不适用（静态）",
+      "duration": "常驻",
+      "cap": "不适用",
+      "assumptions": [
+        {
+          "premise": "C2 +20 只有单一写者（catalog cinemaBuffs），teammate-buffs 同值条排除本人",
+          "falsifier": "若两处都写，3 异常队 C2 面板 BonusPct 会由 30 变 50（双计）"
+        }
+      ],
+      "decisionEvidence": "账本核对 2026-09-07：双通道双计已修（差分测试固化 10→30）",
+      "implementation": {
+        "spec": "src/specs/agents/1581.json#/notes/3",
+        "consumer": "src/composables/resourceCalc/panelPhases.ts#computePanelPhases"
+      },
+      "sources": [
+        "/talent/2/desc:0"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "3 异常队 C0",
+          "expected": "BonusPct = 10（仅 3 异常加算）",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "C2 命座差分：3异常队 BonusPct 精确 10→30（+20 单写者，双计修复回归）；本人吃 Prismatic 无视15%防御；队友侧全队口径 30 不变"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "3 异常队 C2",
+          "expected": "BonusPct = 30（10 + 20，非 50）",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "C2 命座差分：3异常队 BonusPct 精确 10→30（+20 单写者，双计修复回归）；本人吃 Prismatic 无视15%防御；队友侧全队口径 30 不变"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "队友槽 C2",
+          "expected": "BonusPct 同为 30（全队口径，不因排除本人而降低）",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "蕾米埃尔在队：每行 refringe = 蕾米面板的异化系数 + 提升（全队固定值，不按行加权）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rem_c2_anomaly_def",
+      "dimension": "D2",
+      "certainty": "L1",
+      "trigger": "影画 ≥ 2 且目标处于[幻色]（或消失后 8 秒延长期）",
+      "target": "队伍中[异常]角色（含蕾米本人）造成属性异常伤害时的防御区",
+      "gate": "影画 ≥ 2 + 接收槽特化 = anomaly（teammateBuffRecipientFilter 剔除击破/支援/强攻等非异常槽）",
+      "formula": "异常伤害无视目标 15% 防御力 → enemyAnomalyDefReduction +15（与通用减防同字段加算，只作用于异常结算）",
+      "field": "PanelValues.enemyAnomalyDefReduction",
+      "countSource": "不适用（静态面板量，覆盖率由 teammate-buff coverage 控制）",
+      "duration": "[幻色] 存在期间 + 消失后额外 8 秒（静态按满覆盖近似）",
+      "cap": "不适用",
+      "assumptions": [
+        {
+          "premise": "「队伍中[异常]角色」是受益人限定而非门控 ⇒ 非异常特化队友不得吃这 15%",
+          "falsifier": "实测 [1581,1511 击破,1411 支援]：C2 时 1411 紊乱单跳 104970→114324（恰为防御区比值）即证明原实现越界"
+        }
+      ],
+      "decisionEvidence": "原文「队伍中[异常]角色…造成属性异常伤害时…无视目标15%的防御力」；外部日志 DefenceRatio −15% 只作「该通道存在」的线索，数值依据取原文",
+      "implementation": {
+        "spec": "src/specs/agents/1581.json#/notes/3",
+        "consumer": "src/mechanics/agents/remielle.ts#remielleTeammateBuffRecipientFilter"
+      },
+      "sources": [
+        "/talent/2/desc:1"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "C2 + 蕾米本人",
+          "expected": "enemyAnomalyDefReduction = 15，enemyDefReduction = 0（直伤不得吃）",
+          "test": {
+            "file": "src/mechanics/__tests__/defReductionChannels.test.ts",
+            "title": "蕾米影画二 15%：只进 enemyAnomalyDefReduction，不进 enemyDefReduction（直伤不得吃）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "C0 或关掉该 buff",
+          "expected": "enemyAnomalyDefReduction = 0（影画门控）",
+          "test": {
+            "file": "src/mechanics/__tests__/defReductionChannels.test.ts",
+            "title": "蕾米影画二：C0 无此效果（命座门控）；C2 关掉该 buff 后归零"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C2 + 队友为击破/支援特化",
+          "expected": "非异常槽不吃 15%，异常槽（含本人）照吃",
+          "test": {
+            "file": "src/mechanics/__tests__/defReductionChannels.test.ts",
+            "title": "蕾米影画二 15% 只给[异常]角色（原文「队伍中[异常]角色」）：击破/支援队友不吃"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rem_c4",
+      "dimension": "D8",
+      "certainty": "L1",
+      "trigger": "影画 ≥ 4：触发耀变 / 进场 3 个特殊虚曜全部消耗后",
+      "target": "耀变结算倍率 / 特殊虚曜池",
+      "gate": "影画 ≥ 4；补充特殊虚曜在「生效 1 次后」或「进入相变时流」时消失",
+      "formula": "耀变伤害倍率额外 +12%；进场获得 3 个特殊虚曜后若全部消耗可再获得满额一次",
+      "field": "remielleCinema4LuminizeMultiplierBonus / remielleCinema4SpecialVoidflareCount",
+      "countSource": "影画等级 + 特殊虚曜消耗事件",
+      "duration": "补充效果生效 1 次后消失",
+      "cap": "补充 1 次",
+      "assumptions": [
+        {
+          "premise": "补充特殊虚曜按「再获得满额一次」建模（C1+C4 = 6 次耀变）",
+          "falsifier": "若实际可无限补充，特殊虚耀行数会高于 1/2/2 阶梯"
+        }
+      ],
+      "decisionEvidence": "原文影画四两句；CC-332 将垂虹施放次数 1/2/2 与耀变次数 3/6/12 分离",
+      "implementation": {
+        "spec": "src/specs/agents/1581.json#/notes/5",
+        "consumer": "src/mechanics/agents/remielle.ts#remielleSpecialVoidflareCount"
+      },
+      "sources": [
+        "/talent/4/desc:0",
+        "/talent/4/desc:1"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "C4 触发耀变",
+          "expected": "倍率 ×1.12",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "特殊虚耀 ×2.5 独立乘区生效（2026-09-15 复核：乘区自初始提交即在线，2026-09-14「引擎零实现」审计系误判）；普通虚耀逐字不吃 ×2.5"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "C4 的 40% 减防？",
+          "expected": "原文影画四无任何减防，减防仍只来自影画二的 15%",
+          "test": {
+            "file": "src/mechanics/__tests__/defReductionChannels.test.ts",
+            "title": "原文影画四不含减防（防按日志 Talent_04 标号反推）：C4 蕾米的减防仍只来自影画二的 15%"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C1 + C4",
+          "expected": "特殊虚耀耀变次数 3→6（满额补充 1 次）",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "CC-165/CC-166/CC-332：特殊虚耀垂虹施放次数 1/2/2 vs 耀变次数 3/6/12，惊鸿 0 命 ×1 / 6 命 ×2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rem_c6",
+      "dimension": "D4",
+      "certainty": "L1",
+      "trigger": "影画 ≥ 6：发动普通攻击垂虹/惊鸿时",
+      "target": "耀变触发次数",
+      "gate": "影画 ≥ 6",
+      "formula": "每次垂虹/惊鸿触发 2 次耀变（关联虚曜触发次数翻倍）",
+      "field": "remielleCinema6FleetingGraceVoidflareTriggerMultiplier",
+      "countSource": "影画等级（1 + 加成）",
+      "duration": "不适用",
+      "cap": "×2",
+      "assumptions": [
+        {
+          "premise": "「触发2次耀变」与「关联虚曜触发次数翻倍」是同一效果（①=③）",
+          "falsifier": "若两者独立，特殊虚曜次数会由 12 变更多（用户 2026-09-30 裁决为一效果）"
+        }
+      ],
+      "decisionEvidence": "用户裁决 2026-09-30（CC-166）：原文两句合并；LuminizeTriggerMultiplier 记录错误已删",
+      "implementation": {
+        "spec": "src/specs/agents/1581.json#/notes/7",
+        "consumer": "src/mechanics/agents/remielle.ts#remielleFleetingGraceMultiplier"
+      },
+      "sources": [
+        "/talent/6/desc:0"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "C6 + 垂虹",
+          "expected": "耀变次数 ×2",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "CC-165/CC-166/CC-332：特殊虚耀垂虹施放次数 1/2/2 vs 耀变次数 3/6/12，惊鸿 0 命 ×1 / 6 命 ×2"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "C0 惊鸿",
+          "expected": "耀变次数 ×1",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "CC-165/CC-166/CC-332：特殊虚耀垂虹施放次数 1/2/2 vs 耀变次数 3/6/12，惊鸿 0 命 ×1 / 6 命 ×2"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "C6 特殊虚耀",
+          "expected": "垂虹施放 2 次 × 3 豆 × 2 = 12 次耀变",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "CC-165/CC-166/CC-332：特殊虚耀垂虹施放次数 1/2/2 vs 耀变次数 3/6/12，惊鸿 0 命 ×1 / 6 命 ×2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rem_lumen_cycle",
+      "dimension": "D6",
+      "certainty": "L3",
+      "trigger": "[浮晖] 达 120 时转换姿态 → 切换角色进入[相变时流]；浮晖随时间消耗",
+      "target": "飞行轮数（决定入场/长按A/大招的耀变载体次数）",
+      "gate": "接战状态且浮晖满 120；浮晖耗尽或离开接战退出相变时流",
+      "formula": "浮晖 2 点/秒消耗，120→90 需 15s；轮数 = min(⌊虚曜池/3⌋, ⌊后台时长/15s⌋)，默认封顶 7 轮；拆轮每 +1 转一轮惊鸿为垂虹",
+      "field": "REMIELLE_LUMEN_DRAIN_PER_SECOND / remielleRoundCount / remielleSplitRounds",
+      "countSource": "后台时长（effectiveBackstageTime）与虚曜池（perSlotAnomalyTriggers）",
+      "duration": "每轮 15s（120→90）；惊鸿 +120 回满",
+      "cap": "默认 7 轮完整惊鸿；拆轮上限 4（再多 180s 也打不完）",
+      "assumptions": [
+        {
+          "premise": "浮晖消耗是纯时间驱动（2/s），自主攻击不额外扣浮晖",
+          "falsifier": "若攻击也扣，轮数会低于「后台时长/15s」，实测 67 段日志段长中位 15.5s 与 2/s 吻合"
+        },
+        {
+          "premise": "默认 7 轮上限（可飞 9 轮 ≠ 默认飞 9 轮）",
+          "falsifier": "若默认就飞 9 轮，普通玩家打法会被系统性高估（实测拆轮后 C0 +2.6%）"
+        }
+      ],
+      "decisionEvidence": "用户 2026-10-18 逐字：「我们默认 7 轮上限，如果一个队伍的轮次想达到 8，就要拆一轮惊鸿」+ 67 段日志反推消耗速率",
+      "implementation": {
+        "spec": "src/specs/agents/1581.json#/notes/17",
+        "consumer": "src/mechanics/agents/remielle.ts#remielleRoundCount"
+      },
+      "sources": [
+        "/skill/special/description/2/desc:0",
+        "/skill/special/description/2/desc:1",
+        "/skill/special/description/2/desc:2",
+        "/skill/special/description/2/desc:3",
+        "/skill/special/description/2/desc:4",
+        "/skill/special/description/2/desc:5",
+        "/skill/assist/description/3/desc:1"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "虚曜池 27 + 后台 180s",
+          "expected": "9 轮（豆子侧咬合）",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "轮数 = min(豆子够打几轮, 时间够飞几轮)"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "后台不足 15s",
+          "expected": "0 轮（时间侧咬合）",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "轮数 = min(豆子够打几轮, 时间够飞几轮)"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "拆轮 = 0（默认）",
+          "expected": "只打 7 轮惊鸿，第 8 轮起不再产惊鸿行",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "默认 0：只打 7 轮惊鸿，第 8 轮起不再产惊鸿行"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rem_grace_stun",
+      "dimension": "D5",
+      "certainty": "L0",
+      "trigger": "花羽轮舞（支援技）命中处于失衡状态的敌人",
+      "target": "全队失衡窗口总时长",
+      "gate": "命中失衡敌人；同一敌人在一次失衡状态下最多 1 次，与同类效果不叠加",
+      "formula": "失衡持续时间 +3 秒（panel.stunDurationBonusSeconds，引擎按全队求和计入失衡覆盖率）",
+      "field": "PanelValues.stunDurationBonusSeconds",
+      "countSource": "不适用（面板加总量，覆盖率由失衡池按次数折算）",
+      "duration": "当次失衡窗口",
+      "cap": "一次失衡状态最多 1 次",
+      "assumptions": [],
+      "decisionEvidence": "原文「招式命中处于失衡状态的敌人时，敌人的失衡持续时间提升3秒」",
+      "implementation": {
+        "spec": "src/specs/agents/1581.json#/notes/23",
+        "consumer": "src/mechanics/agents/remielle.ts#applyRemiellePanel"
+      },
+      "sources": [
+        "/skill/assist/description/3/desc:2"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "蕾米在队 applyPanel",
+          "expected": "stunDurationBonusSeconds +3",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "惊鸿：失衡持续时间 +3s 进面板（此前完全未实现）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "不命中失衡敌人",
+          "expected": "不产生延长（引擎按失衡次数折算覆盖率）",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "惊鸿：失衡持续时间 +3s 进面板（此前完全未实现）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "同一次失衡内两次花羽轮舞",
+          "expected": "仍只 +3s（一次失衡最多 1 次）",
+          "test": {
+            "file": "src/mechanics/__tests__/remielle.test.ts",
+            "title": "惊鸿：失衡持续时间 +3s 进面板（此前完全未实现）"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -26,7 +26,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // 纯类型：运行时被擦除，不构成 mechanics → composables 值边（判据 19 豁免 import type，见设计稿
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
-import type { AgentLimitPointDecl, DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
+import type { AgentLimitPointDecl, DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput, TeammateBuffRecipientFilterInput } from './typesRows'
 import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, AxisRageCombos, ReleaseShareSpec, TeammateDropSpec, AxisGashResourceSpec, FinalizePassSpec, DamageFormulaFieldDecl, UniformStunRowInput } from './typesHooks'
 // CC-451：展示层专用声明类型（CC-444/445/446/448 陆续长在本文件里，把 CC-83 预算顶破）拆出 typesView.ts；本文件原样转出，导入方不用改
 import type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
@@ -895,14 +895,7 @@ export interface AgentMechanicModule {
    * - 探针内部（重入）不再调用本能力。
    * `getOutOfCombatPanel(slot)` = 该槽 `computePanelPhases(...).outOfCombat`（与 CC-129 build 阶段 `cfg.outOfCombatPanel` 同源）。
    */
-  teammateBuffRecipientFilter?(input: {
-    team: ReadonlyTeam
-    /** 本角色（buff 来源）槽位 */
-    slot: number
-    /** 正在计算面板的接收槽位 */
-    recipientSlot: number
-    getOutOfCombatPanel: (slot: number) => Readonly<PanelValues> | null
-  }): readonly string[]
+  teammateBuffRecipientFilter?(input: TeammateBuffRecipientFilterInput): readonly string[]
   /**
    * CC-258：本角色引擎交互字段的**专属类型名**（键见 teamCompare.ts#INTERACTION_LABELS / INTERACTION_WEIGHTS）。
    * 同一 store 字段对不同角色是不同交互（般岳 blockCount = 金身格挡、星徽·比利 blockCount = 普通格挡）⇒
@@ -1392,7 +1385,7 @@ export interface AgentMechanicModule {
 
 // CC-83（2026-09-27，census §5.90）：卫星类型拆到同级 typesRows.ts / typesHooks.ts，这里原样转出，
 // 导入方继续写 `from '@/mechanics/types'`。AgentMechanicModule 本体与各 Agent*Input 留在本文件。
-export type { DirectRowAxisSplitInput, DirectRowAxisSplit, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput } from './typesRows'
+export type { DirectRowAxisSplitInput, DirectRowAxisSplit, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput, TeammateBuffRecipientFilterInput } from './typesRows'
 export { EXTRA_ANOMALY_ROW_ORDER } from './typesRows'
 export { axisOverlayChannel } from './typesHooks'
 export type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentAxisOverlay, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput } from './typesHooks'

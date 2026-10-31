@@ -15,6 +15,7 @@ import type {
   AgentTeamConfigInput,
   ModuleFeedback,
   TeammateBuffGateInput,
+  TeammateBuffRecipientFilterInput,
 } from '../types'
 import { EXTRA_ANOMALY_ROW_ORDER } from '../types'
 import type { Agent, PanelValues, SkillMove } from '@/types/catalog'
@@ -704,6 +705,23 @@ function remielleTeammateBuffGate({ buffId, team, self }: TeammateBuffGateInput)
   return gate(computeRemielleAdditionalState(team, self.slot, self.agent))
 }
 
+/**
+ * 影画二减防的**作用范围**：原文「**队伍中[异常]角色**对[幻色]效果下的敌人造成属性异常伤害时，
+ * 无视目标15%的防御力」——只给 [异常] 特化的队友（含蕾米本人）。
+ *
+ * 缺陷形态（2026-10-31 探针实测）：静态 teammate-buff 对该组默认全队生效 ⇒ 非异常队友的异常结算
+ * 也白吃这 15%（队 [1581,1511 击破,1411 支援]：C2 时 1411 的紊乱单跳 104970 → 114324，恰为防御区
+ * 比值 794/(794+952.8×0.85) ÷ 794/(794+952.8)）。走 CC-130 同款「按接收槽过滤」（模块能力
+ * `teammateBuffRecipientFilter`），不新造通道、不改 JSON 数据。
+ */
+const REMIELLE_ANOMALY_ONLY_EFFECT_IDS = ['remielle_cinema2_prismatic_anomaly_def_ignore'] as const
+
+function remielleTeammateBuffRecipientFilter({ team, recipientSlot }: TeammateBuffRecipientFilterInput): readonly string[] {
+  // 压缩数组 ⇒ 槽位号 ≠ 下标，按 slot 查（判据 17）；取不到 = 响亮失败语义由调用方保证，这里保守放行
+  const recipient = team.find(m => m.slot === recipientSlot)
+  return recipient?.agent?.specialty === 'anomaly' ? [] : REMIELLE_ANOMALY_ONLY_EFFECT_IDS
+}
+
 export const remielleMechanic: AgentMechanicModule = {
   // 拆轮（用户 2026-10-18）：默认 0 = 7 轮完整惊鸿；每 +1 就多飞一轮，代价是该轮长按A 降级为垂虹
   settings: [
@@ -721,6 +739,8 @@ export const remielleMechanic: AgentMechanicModule = {
 
   // CC-64b：额外能力档位门控队友 buff（原 stores/config.ts 写死 1581 + 5 个 buff id）
   teammateBuffGate: remielleTeammateBuffGate,
+  // 2026-10-31：影画二减防只给[异常]角色（原文「队伍中[异常]角色」）——非异常队友按接收槽剔除
+  teammateBuffRecipientFilter: remielleTeammateBuffRecipientFilter,
   // CC-64：新上阵默认不分配平A时间（原 stores/config.ts#defaultBasicAttackTimeWeight 写死 1581）
   defaultBasicAttackTimeWeight: 0,
   // 2026-10-18 用户口径：「蕾米和柚叶这种辅助，初始交互次数也该是 0」——蕾米是**后台飞行**型异常辅助

@@ -11,6 +11,7 @@ import type { DamagePoolContext } from '@/composables/resourceCalc/damagePool'
 import type { calcPoolAnomalyDamage as calcPoolAnomalyDamageFn, calcPoolDirectDamage as calcPoolDirectDamageFn, PoolAnomalyRow, PoolDamageEnv, PoolDirectRow } from '@/composables/resourceCalc/poolDamage'
 import type { buildAnomalyVirtualPanel as buildAnomalyVirtualPanelFn, buildAnomalySettlementEntries as buildAnomalySettlementEntriesFn } from '@/composables/resourceCalc/anomalyPanels'
 import type { AgentAxisOverlay } from './typesHooks'
+import type { ReadonlyTeam } from './types'
 
 /**
  * `directRowBonus` 钩子输入（CC-17 2026-09-26，设计稿 `docs/mcp-cc17-axis-overlay-consume.md` §3）。
@@ -262,4 +263,19 @@ export interface AgentLimitPointDecl {
    * ⇒ 「同耗时、更高嗔火」的直接推论就是**全替**，扫金身档位是浪费求值次数。
    */
   zeroed?: ReadonlyArray<ActionCountField>
+}
+
+/**
+ * `teammateBuffRecipientFilter` 入参（CC-130；具名化 CC-29 判据：钩子声明与模块实现共用同一形状）。
+ *
+ * 放在本文件而非 `typesHooks.ts`：后者受 CC-435 锁「整文件无 `| null`」约束，而本入参的
+ * `getOutOfCombatPanel` 探针**合法返回 null**（该槽面板拿不到），与钩子入参 null 化是两回事。
+ */
+export interface TeammateBuffRecipientFilterInput {
+  team: ReadonlyTeam
+  /** 本角色（buff 来源）槽位 */
+  slot: number
+  /** 正在计算面板的接收槽位 */
+  recipientSlot: number
+  getOutOfCombatPanel: (slot: number) => Readonly<PanelValues> | null
 }
