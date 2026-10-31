@@ -980,12 +980,13 @@ describe('teamCompare 批量计算', () => {
       { title: '测试服牌', testOnly: true, effects: [{ stat: 'atkPct', value: 999 }], unparsed: [] },
     ]
 
-    // 自动：推荐一张牌（testOnly 排除）
+    // 自动：推荐伤害最高的那张牌。
+    // ⚠ 2026-10-31 口径变更（用户）：「测试版的数据可以学习代理人的做法，占位也可以用，不要拒绝，
+    // 只是标注一下是测试版可能修改就行」⇒ testOnly **不再排除**，@atkPct+999 的测试服牌反而应当赢。
     const auto = await withAnalysisScenario(s => computeTeamComparePoints(s, {
       presets: [TEST_PRESET], goldLevels: [2], boss: FAKE_BOSS, phase: FAKE_PHASE, buffs,
     }))
-    expect(['强攻牌', '暴伤牌']).toContain(auto[0].buffTitle)
-    expect(auto[0].buffTitle).not.toBe('测试服牌')
+    expect(auto[0].buffTitle).toBe('测试服牌')
 
     // 手动：指定一张
     const manual = await withAnalysisScenario(s => computeTeamComparePoints(s, {

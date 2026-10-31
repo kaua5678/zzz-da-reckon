@@ -254,12 +254,11 @@
                   :key="card.title"
                   type="button"
                   class="env-card-btn"
-                  :class="{ active: selectedPeriodTitle === card.title, disabled: card.testOnly }"
-                  :disabled="card.testOnly"
+                  :class="{ active: selectedPeriodTitle === card.title }"
                   :title="card.effects.map(phaseEffectLabel).join('；') || card.unparsed.join('；')"
                   @click="pickEnvironmentCard(card)"
                 >
-                  <span class="env-card-title">{{ card.title || '(未命名)' }}<span v-if="card.testOnly" class="env-tag">测试服</span></span>
+                  <span class="env-card-title">{{ phaseBuffCardLabel(card) }}</span>
                   <span class="env-card-effects">
                     <span v-for="e in card.effects" :key="e.stat + ':' + e.value" class="effect-tag">{{ phaseEffectLabel(e) }}</span>
                     <span v-for="(u, i) in card.unparsed" :key="'u' + i" class="effect-tag unparsed" :title="u">未解析：{{ u.slice(0, 20) }}…</span>
@@ -409,7 +408,7 @@ import { SKILL_DMG_TARGETS, SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTa
 import { isTeammateBuffInteractive, declaredOnlyReason } from '@/utils/teammateBuffRows'
 import {
   phaseBuffCondLabel, resolvePhaseEnvironment, sortedPhaseViews,
-  selectedPeriodBuffCard, periodBuffRowsOf, layerBuffRowsOf,
+  selectedPeriodBuffCard, periodBuffRowsOf, layerBuffRowsOf, phaseBuffCardLabel,
 } from '@/utils/phaseBuff'
 import { applyPeriodBuff } from '@/composables/runArchiveDeploy'
 import { usePhaseSelection } from '@/composables/phaseSelection'

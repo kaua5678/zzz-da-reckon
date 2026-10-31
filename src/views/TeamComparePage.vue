@@ -1179,6 +1179,7 @@ import { currentRowFusionRules } from '@/logicEditor/fusion'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, axisWorseThanNoAxis, type CurveDatum, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
 import { axisKindLabel } from '@/composables/difficultyAxis'
 import { axisCompareOf, axisCutMarkerOf, axisDetailOf, axisMarkerLegend, axisMarkerOf } from '@/composables/axisMarker'
+import { phaseBuffCardLabel } from '@/utils/phaseBuff'
 import { planCurveViewport, X_COMPRESS_DEFAULTS, type LaneXRange } from '@/composables/curveViewport'
 import { cinemaCostOf, cinemaFilmCostOf, GOLD_PER_CINEMA_LEVEL } from '@/composables/cinemaUpliftCost'
 import type { CinemaUpliftEntry as CinemaUpliftEntryType } from '@/composables/cinemaUplift'
@@ -1315,8 +1316,7 @@ const buffOptions = computed(() => [
   { value: '', label: '自动推荐（每队取最优，慢 3 倍）' },
   ...(currentPhaseView.value?.buffs ?? []).map(b => ({
     value: b.title,
-    label: `${b.title || '(未命名)'}${b.testOnly ? '（测试服）' : ''}`,
-    disabled: b.testOnly,
+    label: phaseBuffCardLabel(b),
   })),
 ])
 watch([currentPhaseView], () => {
@@ -1583,8 +1583,8 @@ const upliftPhaseView = computed<PhaseView | null>(
   () => phaseViews.value.find(v => v.phaseId === selectedPeriodId.value) ?? null,
 )
 
-/** 该期**可用的** buff 牌（排除 testOnly 占位牌）；0 张 = 该期没有可选牌 */
-const upliftUsableCards = computed(() => (upliftPhaseView.value?.buffs ?? []).filter(b => !b.testOnly))
+/** 该期**可用的** buff 牌（测试服占位牌同样可用——用户 2026-10-31 口径「占位也可以用，不要拒绝，只是标注」）；0 张 = 该期没有可选牌 */
+const upliftUsableCards = computed(() => upliftPhaseView.value?.buffs ?? [])
 
 /** 网格列：该期可用牌，按牌数上限截断；首列恒「不吃」。无可用牌时只有「不吃」一列 */
 const upliftCols = computed<GridColSpec[]>(() => {
@@ -1780,9 +1780,9 @@ function phaseOfPeriod(periodId: string): BossPresetPhase | null {
   return selectedBoss.value?.phases.find(p => p.phaseId === periodId) ?? null
 }
 
-/** 该期的 buff 牌（`phaseViews` 按期；测试服占位牌不算） */
+/** 该期的 buff 牌（`phaseViews` 按期；测试服占位牌同样可用，只在标签上标注） */
 function buffsOfPeriod(periodId: string): PhaseBuffCard[] {
-  return (phaseViews.value.find(v => v.phaseId === periodId)?.buffs ?? []).filter(b => !b.testOnly)
+  return phaseViews.value.find(v => v.phaseId === periodId)?.buffs ?? []
 }
 
 /**

@@ -551,6 +551,7 @@ import { layoutStepLabels } from '@/composables/charts/stepLabelLayout'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
 
 import { localized } from '@/utils/format'
+import { phaseBuffCardLabel } from '@/utils/phaseBuff'
 const catalog = useCatalogStore()
 
 // ---------- 数据 ----------
@@ -725,11 +726,10 @@ const currentBuffs = computed(() => {
 })
 const buffOptions = computed(() => [
   { value: 'none', label: '不使用（默认，快）' },
-  { value: 'all', label: `全状态对比（本体 + 每张牌各一条线，慢 ${currentBuffs.value.filter(b => !b.testOnly).length + 1} 倍）` },
+  { value: 'all', label: `全状态对比（本体 + 每张牌各一条线，慢 ${currentBuffs.value.length + 1} 倍）` },
   ...currentBuffs.value.map(b => ({
     value: `card:${b.title}`,
-    label: `${b.title || '(未命名)'}${b.testOnly ? '（测试服）' : ''}`,
-    disabled: b.testOnly,
+    label: phaseBuffCardLabel(b),
   })),
 ])
 watch(currentBuffs, () => {
@@ -939,7 +939,7 @@ const costHint = computed(() => {
   const levels = AXIS_BY_ID.get(axisId.value)?.levels(EMPTY_SERIES_SPEC, axisOpts.value).length ?? 0
   const nSeries = series.value.filter(s => s.kind === 'team' ? s.members.every(Boolean) : !!s.agentId).length
   // 全状态对比：每个主系列拆 本体+每张可用牌 条输出系列（求值量 ×(牌数+1)）；切片再 × 片数
-  const buffMult = buffChoice.value === 'all' ? currentBuffs.value.filter(b => !b.testOnly).length + 1 : 1
+  const buffMult = buffChoice.value === 'all' ? currentBuffs.value.length + 1 : 1
   const slices = sliceCount.value
   const n = levels * nSeries * buffMult * slices
   if (n === 0) return ''

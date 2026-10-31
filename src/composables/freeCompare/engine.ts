@@ -314,7 +314,7 @@ export async function computeFreeCompare(
   // 三态：'none' = 不使用（每个主系列 1 条输出）；'all' = 全状态对比（本体 + 每张可用牌各一条）；
   // PhaseBuffCard = 手动指定一张牌（每个主系列 1 条输出，该牌生效）。
   // 拆分在装配前完成 ⇒ 主循环对「输出系列」无差别遍历，buff 只是输出系列自带的装配参数。
-  const usableBuffs = (cs.buffs ?? []).filter(b => !b.testOnly)
+  const usableBuffs = cs.buffs ?? []
   interface RunRow { spec: SeriesSpec; baseId: string; buff: PhaseBuffCard | null; outKey: string }
   const runRows: RunRow[] = []
   for (const spec of series) {

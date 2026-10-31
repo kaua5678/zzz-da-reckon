@@ -51,7 +51,9 @@ export function applyPeriodBuff(
   for (let i = configStore.globalBuffs.length - 1; i >= 0; i--) {
     if (String(configStore.globalBuffs[i].id).startsWith(PERIOD_BUFF_PREFIX)) configStore.globalBuffs.splice(i, 1)
   }
-  if (!card || card.testOnly) return false
+  // ⚠ 2026-10-31：testOnly（测试服占位牌）**不再拒收**（用户口径「占位也可以用，不要拒绝，只是标注」）——
+  // 牌照写进全局 Buff 表，测试服标记只由展示层（`phaseBuffCardLabel`）打。原判据 `card.testOnly` 已删。
+  if (!card) return false
   // CC-341：同 bossRoom#applyBossLayerBuffs，`cond` 随行写入（修前丢 cond ⇒ 「异常 2/3 名」按满编档、特性限定对任何队都生效）
   const rows = phaseBuffRows(card, e => `${PERIOD_BUFF_PREFIX}${phaseId}:${e.stat}:${e.value}`, `当期·${card.title || '(未命名)'}`)
   configStore.globalBuffs.push(...rows)
@@ -70,7 +72,7 @@ export function pickBestPeriodBuff(
   phaseId: string,
   cards: readonly PhaseBuffCard[],
 ): PhaseBuffCard | null {
-  const candidates = cards.filter(b => !b.testOnly && b.effects.some(e => e.stat))
+  const candidates = cards.filter(b => b.effects.some(e => e.stat))
   if (candidates.length === 0) return null
   const damageWith = (card: PhaseBuffCard | null): number => {
     applyPeriodBuff(ctx.config, phaseId, card)

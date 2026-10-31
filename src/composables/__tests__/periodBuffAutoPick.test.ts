@@ -10,7 +10,12 @@ import type { BossPresetFile, PhaseBuffCard, PhaseView } from '@/types/bossPrese
 
 const bp = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as BossPresetFile
 const views = (bp.phaseViews ?? []) as PhaseView[]
-const usable = (b: PhaseBuffCard) => !b.testOnly && (b.effects ?? []).some(e => e.stat)
+/**
+ * 可用牌 = **有任何可解析数值效果**的牌。
+ * ⚠ 2026-10-31 起 `testOnly` **不再是排除条件**（用户：「测试版的数据可以学习代理人的做法，占位也可以用，
+ * 不要拒绝，只是标注一下是测试版可能修改就行」）——测试服占位牌同样参选，只在展示层打标签。
+ */
+const usable = (b: PhaseBuffCard) => (b.effects ?? []).some(e => e.stat)
 
 describe('CC-352 pickBestPeriodBuff', () => {
   it('结果 = 「不用」+ 各可用牌里伤害最高者；UI 现场一行不动', async () => {
@@ -33,10 +38,16 @@ describe('CC-352 pickBestPeriodBuff', () => {
     expect(await damageOf(best)).toBe(max)
   }, 120000)
 
-  it('没有可用牌 → null（不试）', async () => {
+  it('没有可解析数值效果 → null（不试）；测试服占位牌本身不算「不可用」', async () => {
     const { config } = await setupHarness([{ agentId: '1091' }, { agentId: '1511' }, { agentId: '1411' }])
-    const r = await withAnalysisScenario(s => pickBestPeriodBuff(s, 'p', [{ title: 't', testOnly: true, effects: [{ stat: 'atkPct', value: 1 }], unparsed: [] } as PhaseBuffCard]), config)
-    expect(r).toBeNull()
+    // ① 无 effects（只有未解析文本）⇒ 不试、返回 null
+    const none = await withAnalysisScenario(
+      s => pickBestPeriodBuff(s, 'p', [{ title: 't', testOnly: false, effects: [], unparsed: ['看不懂'] } as PhaseBuffCard]), config)
+    expect(none).toBeNull()
+    // ② testOnly 但**有**数值效果 ⇒ 参选（2026-10-31 用户口径：占位可以用，只是标注）
+    const testCard = { title: 't', testOnly: true, effects: [{ stat: 'atkPct', value: 1 }], unparsed: [] } as PhaseBuffCard
+    const picked = await withAnalysisScenario(s => pickBestPeriodBuff(s, 'p', [testCard]), config)
+    expect(picked?.title).toBe('t')
   }, 60000)
 
   it('源码锁：RunArchivePage 不再在 UI store 上逐张试牌', () => {

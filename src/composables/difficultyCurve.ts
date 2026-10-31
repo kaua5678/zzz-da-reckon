@@ -360,9 +360,9 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
        */
       let chosen: PhaseBuffCard | null = null
       if (buffMode === 'manual') {
-        chosen = lane.buffs.filter(b => !b.testOnly).find(b => b.title === env?.manualBuffTitle) ?? null
+        chosen = lane.buffs.find(b => b.title === env?.manualBuffTitle) ?? null
       } else if (buffMode === 'auto') {
-        const cards = lane.buffs.filter(b => !b.testOnly)
+        const cards = lane.buffs.slice()
         if (cards.length > 0) {
           clearDifficultyLevers({ config: configStore, calc })
           applyTeamToStore(configStore, preset)

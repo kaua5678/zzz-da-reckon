@@ -101,7 +101,8 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
   - 字段补全：`[紊乱]伤害`→`disorderDamageBonus`；`[异放]伤害`→`anomalyReleaseDmgBonus`；`[乱流]伤害`→`turbulenceDamageBonus`；`暴击率`→`critRate`；`喧响值获取效率`→`decibelGainEfficiency`；`能量/闪能获得效率`→`energyGainEfficiency`/`flashEnergyGainEfficiency`；`受到的伤害提升`→`enemyDamageTakenBonus`；`受到的暴击伤害提升`→`enemyCritDmgTakenBonus`；无条件`造成的伤害提升`→`dmgBonus`（`首领敌人/自身` 的 boss 自我增伤跳过）
   - **叠层满覆盖**：`每层[X]/每有1层[X]/每拥有1层[X]/每持有1层[X]…提升Y%` 配 `最多叠加N层/最多累计N层/最多N层/至多可以叠加N层`（或隐式 `施加1层/N层`、`额外施加N层`、`拥有N层[X]时`）→ 按 `Y×N` 录入满叠值（如 彷徨猎手 动摇 7%×5=35%）；`最多叠加N层` 的 selectable buff 按「后，/时，」触发器拆：前段 flat、后段叠层
   - 其余条件效果（施放后持续 X 秒）→ 默认满覆盖，原文保留在 `note`
-  - `(Test1)TBD` → `testOnly: true` 不参与推荐；`unparsed` = 未命中规则表的段落（UI 展示原文）
+  - `(Test1)TBD` → `testOnly: true`（**可用，只在标签上标「测试服·可能改动」**；用户 2026-10-31 裁决「占位也可以用，不要拒绝」，
+  单一标注实现 = `utils/phaseBuff.ts#phaseBuffCardLabel`）；`unparsed` = 未命中规则表的段落（UI 展示原文）
 - 规则表在 `RULES`（正则数组，先命中先得；段落内循环删匹配继续解析；按 `。\n;` 分句）
 - **两个数据源都走同一解析器**：`selectable_buff`（当期可选牌 3 张）与 `layer_buff`（当期关卡固有 buff，随 Boss 卡展示/应用）
 - 新 buff 文案类型解析不了时：加规则到 `RULES`，或把属性名加进 `TIER_STAT_MAP`（分档）、`STAT_LABELS`（显示名）

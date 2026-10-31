@@ -144,14 +144,13 @@
                   :key="b.title"
                   size="tiny"
                   :type="selectedBuffTitle === b.title ? 'primary' : 'default'"
-                  :disabled="b.testOnly"
                   :title="b.effects.map(e => `${e.stat} +${e.value}`).join('；') || (b.unparsed ?? []).join('；')"
                   @click="pickPeriodBuff(b)"
                 >
-                  {{ b.title || '(未命名)' }}{{ b.testOnly ? '（测试）' : '' }}
+                  {{ phaseBuffCardLabel(b) }}
                 </n-button>
               </div>
-              <div v-else-if="deployPhaseView" class="period-buff-row muted">当期 Buff：无可选牌（未解析/测试服占位）</div>
+              <div v-else-if="deployPhaseView" class="period-buff-row muted">当期 Buff：该期没有可解析的牌</div>
 
               <!-- 配装最优（坑 53 B 档：显式按钮、缺省不跑；4/5/6 主词条单换扫描 + 双爆配平 + 副词条真实伤害精修） -->
               <div class="loadout-opt-row">
@@ -239,7 +238,7 @@ import { useBatchOwner } from '@/composables/batchTask'
 import { optimizeLoadout, writeLoadoutToStore } from '@/composables/loadoutOptimizer'
 import { runLimitedGold } from '@/composables/limitedGold'
 import { authorOf, queryArchiveRuns, type AgentFacet, type PlayerFacet } from '@/composables/runArchiveFilter'
-import { selectedPeriodBuffCard, NONE_PERIOD_CARD } from '@/utils/phaseBuff'
+import { selectedPeriodBuffCard, NONE_PERIOD_CARD, phaseBuffCardLabel } from '@/utils/phaseBuff'
 import { scoreForDamageRatio } from '@/data/deadlyAssaultScore'
 import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import { compact, localized } from '@/utils/format'

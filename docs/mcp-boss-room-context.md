@@ -10,7 +10,7 @@
 |---|---|---|
 | buff 牌条件（特性限定 / 人数分档）被两个写入方丢掉 | **CC-341 已修（`8f80b031`）**：条件随行写入，管线按当前队伍唯一解析 | §1.1、§2 |
 | 房间上下文 13 处写法分裂；抽卡规划、角色兑现曲线的 `periodViews` 是死参 | **CC-342 已完成**：第 1、2 步 `602c0f94`（第 363 轮）；第 3 步 `59ea97ea`（第 364 轮）——关卡 buff 随 `BossPresetPhase.layerBuffs` 走，所有分析器经 `bossRoom#applyBossRoom` 进房间 | §3、§4、§5 |
-| 测试服占位（testOnly）关卡牌照样写入 | 未改，记为待裁决 | §1.3 |
+| 测试服占位（testOnly）关卡牌照样写入 | ✅ 2026-10-31 用户裁决：**占位也可以用，不要拒绝，只标注**（全局生效） | §1.3 |
 | 解析器把「对敌减抗」也挂上强攻限定；「全队[强攻]代理人」被近似成「队里有强攻就全队生效」 | 未改，数据侧近似 | §1.4 |
 
 ## 1. 审计（第 360 轮）
@@ -77,7 +77,13 @@ brief 查找有两套写法：`resolveBossApply`（普通 + 困难，`presetId` 
 `applyPeriodLayerBuffs`（困难 + 普通，`presetId` 相等）。数据上 159 个 brief 都有 `presetId` 且都在 `bosses` 里，
 `monsterId` 兜底命中 0 次；每个 Boss 预设内 `phaseId` 不重复（159 个阶段，重复 0），所以 `(presetId, phaseId)` 唯一定位一个 brief。
 
-### 1.3 测试服占位的关卡牌照样写入（未改，待裁决）
+### 1.3 测试服占位的关卡牌照样写入 —— ✅ 2026-10-31 已裁决（占位可用，只标注）
+
+> **用户裁决（2026-10-31，逐字）**：「测试版的数据可以学习代理人的做法，**占位也可以用，不要拒绝**，
+> 只是**标注一下是测试版可能修改**就行。」
+> ⇒ 全部 `testOnly` 排除点已删除（`applyPeriodBuff` / `pickBestPeriodBuff` / 队伍对比自动推荐 / 自由对比 /
+> 难度曲线选牌 / 提升率网格列 / 各页下拉 disabled）；唯一标注实现 = `utils/phaseBuff.ts#phaseBuffCardLabel`。
+> 下面保留原始勘察记录作沿革。
 
 解析器口径：「(Test1)TBD 测试服占位 → testOnly（不参与解析/推荐，等正式服）」。`applyPeriodBuff` 和队伍对比的自动推荐都拒收
 testOnly 牌，但 `applyBossLayerBuffs` 照写，`BossCard` 也照常显示。

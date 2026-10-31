@@ -11,7 +11,8 @@
  * - 写入方只做「牌 → 行」映射（`phaseBuffRows`），**带上 `cond`**，不看队伍；
  * - 管线在 `resolveSlotPanelBuffInputs` 按**当前队伍**调 `resolvePhaseBuffValue` 解析（换人、批处理逐队求值都自动正确）；
  * - 调试页按同一函数展示「实际生效值」。
- * testOnly（测试服占位牌）是否写入由各调用方决定，不在这里判。
+ * testOnly（测试服占位牌）**不再筛除**（用户 2026-10-31 口径「占位也可以用，不要拒绝，只是标注」）——
+ * 本文件提供 `isTestServerCard` / `phaseBuffCardLabel` 作为唯一标注实现。
  */
 import type { BossPresetFile, PhaseBuffCard, PhaseBuffEffect, PhaseView } from '@/types/bossPreset'
 import type { SkillDamageTarget } from '@/types/catalog'
@@ -155,6 +156,31 @@ export function resolvePhaseEnvironment(
     }
   }
   return { phaseId: view.phaseId, label: view.label, version: view.version, selectable: view.buffs, layer }
+}
+
+/**
+ * **测试服占位牌**（解析器按标题 `(Test1)TBD` 打标）——**可以用，只是要标出来**。
+ *
+ * 用户口径（2026-10-31，逐字）：「测试版的数据可以学习代理人的做法，**占位也可以用，不要拒绝**，
+ * 只是**标注一下是测试版可能修改**就行。」
+ * ⇒ 牌本身不筛（可选 / 可推荐 / 可自动挑），只在**展示文案**上加「（测试服·可能改动）」。
+ * 唯一标签实现 = `phaseBuffCardLabel`（页面不许各写一套）。
+ *
+ * ⚠ 历史口径（CC-352 / 2026-10-20 提升率网格）「testOnly 一律剔除」——**已作废**：
+ * 那是为防止占位牌把「吃 buff」列筛空，属当时数据形态的处置；现在解析器已拿到正式数值
+ * （690481/690491/690501 的牌都有 effects），占位只剩「标题仍是 TBD」，再剔就是白丢可选牌。
+ */
+export const TEST_SERVER_CARD_LABEL = '（测试服·可能改动）'
+
+/** 这张牌是不是测试服占位牌（解析器标记，**不参与筛除**，只参与标注） */
+export function isTestServerCard(card: { testOnly?: boolean }): boolean {
+  return card.testOnly === true
+}
+
+/** 牌的展示名（唯一实现：页面 / 下拉 / tooltip 都从这里取） */
+export function phaseBuffCardLabel(card: { title?: string; testOnly?: boolean }): string {
+  const name = card.title || '(未命名)'
+  return isTestServerCard(card) ? name + TEST_SERVER_CARD_LABEL : name
 }
 
 /**

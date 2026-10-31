@@ -861,7 +861,7 @@ export function applyBuffToStore(configStore: ConfigModel, card: PhaseBuffCard |
 }
 
 /**
- * 自动推荐：对每张可用牌（非 testOnly）应用后算一次伤害，取最高者。
+ * 自动推荐：对每张可用牌应用后算一次伤害，取最高者（测试服占位牌同样参选，只在展示层标注）。
  * 用第一个金数档位做推荐（buff 选择对队伍而言跨金档基本稳定）。
  */
 function pickBestBuff(
@@ -869,7 +869,7 @@ function pickBestBuff(
   configStore: ConfigModel,
   options: TeamCompareOptions,
 ): PhaseBuffCard | null {
-  const cards = (options.buffs ?? []).filter(b => !b.testOnly)
+  const cards = options.buffs ?? []
   if (cards.length === 0) return null
   let best: PhaseBuffCard | null = null
   let bestDmg = -1
