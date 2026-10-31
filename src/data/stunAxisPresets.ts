@@ -81,14 +81,22 @@ export interface StunAxisPreset {
 /** 手写预设（可选；也可全用 JSON 文件） */
 const handwrittenPresets: StunAxisPreset[] = []
 
-/** 解析轴方案时读的队伍状态（失衡次数 / 好评 / 各槽能量 / 各槽命座） */
+/** 解析轴方案时读的队伍状态（失衡次数 / 好评 / 各槽能量 / 各槽命座 / 单窗时长） */
 interface AxisPlanState {
   stunCount: number
   goodReview: number
   energyBySlot?: Record<number, number>
   cinemaBySlot?: Record<number, number>
+  /**
+   * **单窗时长（秒）**：`effectiveTime#stunWindowDuration`（boss stunTime + 连携 4s + 全队失衡延时）。
+   * 用户口径 2026-10-30「不要限定这队伍，仅仅通过失衡长度来筛选」⇒ `when.windowMin/windowMax` 吃它。
+   * 缺省（`undefined`） ⇒ 声明了 window 门的方案**一律不命中**（宁可不选，不要按猜的窗长选错轴）。
+   */
+  windowDuration?: number
 }
 
+// @fact engine:失衡轴/窗长门 口径: 轴方案按**单窗时长**筛选（`StunAxisCondition.windowMin/windowMax`），预设 `team` 只锚定主C、队友 `*` 通配；窗长单一事实源 = `useResourceCalc#computeWindowDuration`（boss stunTime + 连携 4s + 全队 stunDurationBonusSeconds）经 createConvergenceRoundInputs 注入；未传窗长 ⇒ 声明该门的方案不命中（不猜）。现唯一使用者 = 挽昼通用轴 `preset-1601-any-window`（≤16s / ≥17s 两分支，18s 分支多一发 1601106） | 据 用户@2026-10-30「不要限定这队伍，仅仅通过失衡长度来筛选」「辅助也不需要固定知更鸟」 | 验 src/mechanics/__tests__/sunbringerAxisWindow.test.ts | 锚 src/data/stunAxisPresets.ts#conditionMatches | 信 确认
+// ⟳复核: 若轴方案条件改用别的窗长来源（非 computeWindowDuration）、或预设 team 允许通配槽0（主C 不再锚定），本口径失效 ⇒ 重核并同步 sunbringerAxisWindow 判据 | 到期 2027-06-30
 /** 条件是否命中（when 全部满足才命中） */
 function conditionMatches(
   w: StunAxisCondition | undefined,
@@ -108,6 +116,13 @@ function conditionMatches(
     const cinema = state.cinemaBySlot?.[w.cinemaSlot ?? 0] ?? 0
     if (w.cinemaMin !== undefined && cinema < w.cinemaMin) return false
     if (w.cinemaMax !== undefined && cinema > w.cinemaMax) return false
+  }
+  // 单窗时长门（2026-10-30）：调用方没给窗长 ⇒ 声明了该门的方案不命中（不猜）
+  if (w.windowMin !== undefined || w.windowMax !== undefined) {
+    const win = state.windowDuration
+    if (win === undefined) return false
+    if (w.windowMin !== undefined && win + 1e-9 < w.windowMin) return false
+    if (w.windowMax !== undefined && win - 1e-9 > w.windowMax) return false
   }
   return true
 }

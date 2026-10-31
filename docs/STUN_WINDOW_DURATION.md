@@ -131,3 +131,36 @@ W（单次失衡窗口秒数） = enemy.stunTime + 4（连携窗口） + Σ 各�
 
 ⚠ spec `1551.json` 的 `teamBuffs[].effects` 现已留空并附 `note` —— 这是有意的：
 该条目只承载文档与门控语义，数值走模块能力（防两套账）。
+
+## 8. 伤害前置的招式：**伤害段** ≠ 动作全长（2026-10-30）
+
+用户口径（挽昼 1601 第二段大招，逐字）：「**第二段大招在第一秒就会把所有伤害打出来，后面3秒都是后摇**，
+所以这里大招后摇放在失衡后面也应当算他所有伤害都吃到失衡易伤了，比如这个16s的失衡轴最后大招超出去了，
+但你要算都吃到易伤」。
+
+### 与 §7 的区别（别混）
+- §7 佩洛伊斯：**窗口真的变长**（3s，`stunWindowExtendOnEnd`）。
+- §8 挽昼：**窗口一秒都不变**，只是把「伤害」与「后摇」分开看——后摇仍占满前台时间（`count`/时间/资源按整段 4.083s），
+  但**伤害段（1s）完整落在窗内** ⇒ 易伤全额兑现。
+
+### 实现
+模块能力 `axisMoveDamageSeconds(moveId, actionTime)`（`src/mechanics/types.ts`，声明处 = `sunbringer.ts#SUNBRINGER_ULT_B_DAMAGE_SECONDS = 1`，只认 1601011）；
+派发器 `resourceCalc/helpers.ts#axisMoveDamageSecondsOf`（`(0, actionTime)` 之外一律视作未声明）→ 两个**同源**消费方：
+① 轴栈 `StackActionCost#damageSeconds`（`fits` 的分母，真正算伤的那份）；② 展示 `core/stunAxis#perActionDamageSeconds`（失衡轴页）。
+
+### 实测
+16s 轴末位大招 12.9s 起手、动作 4.083s：按全长折算 `fits = 0.7798`（白丢 22% 易伤）；18s 轴 15.4s 起手 `fits = 0.6574`。
+声明伤害段 1s 后两条轴都 `fits = 1`。判据 `src/mechanics/__tests__/sunbringerAxisWindow.test.ts`（9 例，含时间账不变臂与「按全长只剩 0.76/0.64」反空洞臂）。
+
+⚠ **别把它当通用口径**：只有「伤害集中在开头、后面是纯后摇」的招式才能声明；普通招式缺省 `undefined` ⇒ 分母回落全长、逐位不变。
+## 9. 轴方案按**窗长**筛选（`when.windowMin/windowMax`，2026-10-30）
+
+用户口径：「这个轴希望**不要限定这队伍，仅仅通过失衡长度来筛选**行吗。而且**辅助也不需要固定知更鸟**」。
+
+⇒ 预设 `team` 只锚定主C（如 `["1601","*","*"]`），队友任意；同一份动作脚本按**单窗时长**分成多个方案。
+窗长由上面第 1 节的口径算出（boss stunTime + 连携 4s + 全队失衡延时），所以「换个带延长的辅助」自动改变分支。
+
+**单一事实源**：`useResourceCalc#computeWindowDuration` → 经 `createConvergenceRoundInputs` 的
+`computeWindowDuration` 依赖注入 → `resolveStunAxisPlan` 的 `state.windowDuration` → `StunAxisCondition.windowMin/windowMax`。
+⚠ 未传窗长时，声明了该门的方案**一律不命中**（宁可不选，不按猜的窗长选错轴）。
+⚠ 与 §7 的 `stunWindowExtendOnEnd` 不同：那是**按招式**改窗口，这里是**按窗口挑轴**。

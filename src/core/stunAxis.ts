@@ -42,11 +42,23 @@ export const AXIS_BASIC_UNIT_SECONDS = 1
 /** 每动作单位时长：`${slot}:${moveId}` → 单次动作前台秒数（basic=1s，见 `AXIS_BASIC_UNIT_SECONDS`） */
 export type PerActionDuration = Record<string, number>
 
+/**
+ * 每动作**伤害段**时长：`${slot}:${moveId}` → 单次伤害只发生在前 N 秒（其余是后摇）。
+ *
+ * 只进**易伤折算的分母**（`computeInAxisRatio`），不进时间账——时间账始终按 `perActionDuration`。
+ * 缺键 = 该动作未声明（分母回落动作全长，逐位不变）。口径与用户原文见
+ * `mechanics/types.ts#axisMoveDamageSeconds`；与轴栈 `StackActionCost#damageSeconds` **同源同值**
+ * （编排层派发同一模块钩子）——两处各算一份正是本仓最怕的「同一物理量两把尺」。
+ */
+export type PerActionDamageSeconds = Record<string, number>
+
 export interface CalcStunAxisInput {
   axes: StunAxis[]
   globalPool: GlobalActionPool
   perActionStun: PerActionStun
   perActionDuration: PerActionDuration
+  /** 每动作**伤害段**时长（可选；缺键 = 未声明）。只改易伤折算比例，不改时间账 */
+  perActionDamageSeconds?: PerActionDamageSeconds
   /** 失衡次数（固定，来自失衡池收敛结果；捏轴不改变它） */
   stunCount: number
   /** 单次失衡窗口时长（秒）= stunTime + 连携窗口(4) + 队伍失衡持续时间延长 */
@@ -67,7 +79,7 @@ export function computeInAxisRatio(startTime: number, duration: number, windowDu
 }
 
 export function calcStunAxis(input: CalcStunAxisInput): StunAxisResult {
-  const { axes, globalPool, perActionStun, perActionDuration, stunCount, windowDuration } = input
+  const { axes, globalPool, perActionStun, perActionDuration, perActionDamageSeconds, stunCount, windowDuration } = input
 
   const axisDetails: StunAxisResult['axisDetails'] = []
   const globalWarnings: string[] = []
@@ -128,7 +140,17 @@ export function calcStunAxis(input: CalcStunAxisInput): StunAxisResult {
       // 单轮动作块时长 = 单轮次数 × 单位时长；跨边界比例按窗口内时长折算
       const perRoundCount = axisTimes > 0 ? Math.round(effective / axisTimes) : 0
       const blockDuration = perRoundCount * perDur
-      const ratio = computeInAxisRatio(action.startTime ?? 0, blockDuration, windowDuration)
+      /**
+       * **易伤折算的分母 = 伤害段**，不是动作全长（2026-10-30）：伤害只发生在前 N 秒，其余是后摇，
+       * 后摇出窗不吃亏易伤份额（口径与用户原文见 `PerActionDamageSeconds` / `mechanics/types.ts`）。
+       * 缺键 ⇒ `damageDur === perDur` ⇒ 与旧口径**逐位相同**。
+       * ⚠ 时间账仍用 `blockDuration`（后摇照占前台，见下面 slotDurations）。
+       */
+      const damagePerUnit = perActionDamageSeconds?.[key]
+      const damageDur = damagePerUnit !== undefined && damagePerUnit > 0 && damagePerUnit < perDur
+        ? perRoundCount * damagePerUnit
+        : blockDuration
+      const ratio = computeInAxisRatio(action.startTime ?? 0, damageDur, windowDuration)
       const inAxisUnits = effective * ratio
       const outAxisUnits = effective * (1 - ratio)
 

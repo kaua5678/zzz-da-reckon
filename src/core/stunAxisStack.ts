@@ -21,6 +21,9 @@
 import type { StunAxisKind } from '@/types/resource'
 import type { StunWindowTrace } from './stunTimeline'
 
+// @fact engine:失衡轴/伤害段折算 口径: 轴内易伤按**伤害段**与窗口的重叠折算，分母 = `damageSeconds`（伤害只发生在前 N 秒，其余为后摇）而非动作全长；时间账/资源/施放次数一律按整段 actionTime（后摇照占前台）。缺省未声明 ⇒ 分母回落全长、逐位不变。现唯一声明 = 挽昼第二段大招 1601011（伤害段 1s）⇒ 16s 轴 inAxisCount 0.7798→1、18s 轴 0.6574→1 | 据 用户@2026-10-30「第二段大招在第一秒就会把所有伤害打出来，后面3秒都是后摇……这个16s的失衡轴最后大招超出去了，但你要算都吃到易伤」 | 验 src/mechanics/__tests__/sunbringerAxisWindow.test.ts | 锚 src/core/stunAxisStack.ts#StackActionCost | 信 确认
+// ⟳复核: 若某个「伤害前置」招式不再用整段动作时长占前台、或伤害段声明改由 catalog 行（如 actionTime 拆段）供给，本口径与 damageSeconds 分母失效 ⇒ 重核并同步 sunbringerAxisWindow 判据 | 到期 2027-06-30
+
 export interface StackActionCost {
   slot: number
   moveId: string
@@ -49,6 +52,23 @@ export interface StackActionCost {
   /** 动作开始时间（秒，相对失衡窗口起点；缺省 0，可为负=窗口外提前起手）。
    *  平A填充用：从该槽位最后一个动作的结束时刻填到窗口结束（富余才填），不是「窗口 − Σ动作时长」。 */
   startTime?: number
+  /**
+   * **本招的「伤害段」时长**（秒；缺省 = 动作全长 = 逐位不变）。
+   *
+   * 物理含义：这一招的**伤害只发生在前 N 秒**，剩下的都是**后摇**——后摇照旧占满前台时间
+   * （时间账按 `actionTime` 整段算，见下方「槽位占用时间按整段推进」），但**不再产生伤害**，
+   * 因此它落到窗口外也**不吃亏易伤份额**：易伤折算按「伤害段与窗口的重叠」算（`fits`）。
+   *
+   * 用户口径 2026-10-30（挽昼第二段大招 1601011，逐字）：
+   * > 「第二段大招在第一秒就会把所有伤害打出来，后面3秒都是后摇，所以这里大招后摇放在失衡后面
+   * >  也应当算他所有伤害都吃到失衡易伤了……这个16s的失衡轴最后大招超出去了，但你要算都吃到易伤」
+   *
+   * 值与「这一招是不是伤害前置」由**角色模块**声明（`axisMoveDamageSeconds`，引擎不认角色 id；
+   * 判据 26），编排层经 `resourceCalc/helpers#axisMoveDamageSecondsOf` 派发后填进来。
+   * ⚠ 与 `endsStunWindow` + `stunWindowExtendOnEnd`（佩洛伊斯决算）**不是一回事**：那种口径把窗口
+   * **真的延长** N 秒；本字段**一秒都不延长窗口**，只是把「伤害」与「后摇」分开看。
+   */
+  damageSeconds?: number
   /**
    * **同族每窗上限**（2026-10-27 用户口径）：同一 `fillFamily` 的动作**每窗**最多执行
    * `maxPerWindow` 次，超出的**整条跳过**（不占时间、不扣资源）。
@@ -697,9 +717,15 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
          */
         // ⚠ 用 `effectiveWindowDuration`（含决算块的窗口延长）：佩洛伊斯决算块按用户口径
         // 「大招在最后不会出窗口」⇒ 它总能整段打进窗内（fits = 1）。
+        /**
+         * 折算是按**伤害段**算的，分母不是动作全长（`StackActionCost#damageSeconds`）：
+         * 伤害只发生在前 `damageSeconds` 秒，其余是后摇——后摇出窗不吃亏易伤份额。
+         * 缺省 `damageSeconds === actionTime` ⇒ 与旧口径**逐位相同**（未声明伤害段的角色零变化）。
+         */
+        const damageSeconds = act.damageSeconds && act.damageSeconds > 0 ? act.damageSeconds : act.actionTime
         const fits = act.endsStunWindow || act.actionTime <= 0
           ? 1
-          : Math.max(0, Math.min(1, (effectiveWindowDuration - used) / act.actionTime))
+          : Math.max(0, Math.min(1, (effectiveWindowDuration - used) / damageSeconds))
         // 窗口剩余为负（前序动作把该槽位撑爆）⇒ 一点都进不了窗口：按整段跳过（与旧口径同形态）
         if (fits <= 0 && !act.endsStunWindow && act.actionTime > 0) {
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'time', window: windowNo })

@@ -26,7 +26,7 @@ import type { ExecutedMoveCount, StackActionCost, StackAxisInput, StackSequenceE
 import { axisKindOf, allocateAxisWindows } from '@/core/stunAxisStack'
 import { resolveStunAxisPlan, autoStunAxisPresetOf, cloneStunAxes } from '@/data/stunAxisPresets'
 import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
-import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf, axisMoveFreeOfDecibelOf } from './helpers'
+import { extractSkillExecutions, axisMoveEndsStunWindow, axisMoveActionTimeOf, axisMoveDamageSecondsOf, axisMoveFreeOfDecibelOf } from './helpers'
 import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
 import { findChainAttack } from '@/core/resource/moveLookup'
 import { supplyTargetTeamSlot } from '@/core/resource/crossAgentSupply'
@@ -120,6 +120,12 @@ export function createConvergenceRoundInputs(deps: {
   catalogStore: ReturnType<typeof useCatalogStore>
   panels: ComputedRef<PanelValues[]>
   resourceConfig: ComputedRef<ResourceCalcConfig | null>
+  /**
+   * 当前队伍的单窗时长（= `useResourceCalc#computeWindowDuration`，单一事实源）。
+   * 只供轴方案的 `when.windowMin/windowMax` 门控（用户口径 2026-10-30「仅按失衡长度筛选轴」）；
+   * 缺省 ⇒ 声明了窗长门的方案不命中（不猜窗长）。
+   */
+  computeWindowDuration?: () => number
 }) {
   const { configStore, catalogStore, panels, resourceConfig } = deps
 
@@ -244,8 +250,14 @@ export function createConvergenceRoundInputs(deps: {
   function resolveAxesBySource(stunCount: number, goodReview: number, energyBySlot: Record<number, number>): { axes: StunAxis[]; planName: string | null } {
     const cinemaBySlot: Record<number, number> = {}
     configStore.team.forEach((c, i) => { cinemaBySlot[i] = c.cinemaLevel })
+    /**
+     * **单窗时长**（2026-10-30 用户口径「不要限定队伍，仅按失衡长度筛选轴」）：
+     * 由 `useResourceCalc#computeWindowDuration` 注入（同一事实源，含全队失衡延时）⇒ 窗长门与
+     * 引擎真正用的窗长逐位同源。取不到（未注入）⇒ undefined ⇒ 声明了窗长门的方案不命中。
+     */
+    const windowDuration = deps.computeWindowDuration?.()
     if (configStore.stunAxisPlans.length > 0) {
-      const r = resolveStunAxisPlan(configStore.stunAxisPlans, { stunCount, goodReview, energyBySlot, cinemaBySlot })
+      const r = resolveStunAxisPlan(configStore.stunAxisPlans, { stunCount, goodReview, energyBySlot, cinemaBySlot, windowDuration })
       if (r) return { axes: r.axes, planName: r.plan.name }
     }
     if (configStore.stunAxes.length > 0) {
@@ -254,7 +266,7 @@ export function createConvergenceRoundInputs(deps: {
     const auto = autoPreset.value
     if (auto) {
       if (auto.plans && auto.plans.length > 0) {
-        const r = resolveStunAxisPlan(auto.plans, { stunCount, goodReview, energyBySlot, cinemaBySlot })
+        const r = resolveStunAxisPlan(auto.plans, { stunCount, goodReview, energyBySlot, cinemaBySlot, windowDuration })
         if (r) return { axes: r.axes, planName: `${auto.name}·${r.plan.name}` }
       }
       if (auto.axes && auto.axes.length > 0) {
@@ -501,6 +513,10 @@ export function createConvergenceRoundInputs(deps: {
         // 合成行（无倍率表条目）的动作时长兜底由本槽模块能力 `axisMoveActionTime` 提供（CC-39b；
         // 现唯一实现 = 雨果强特终结一击），保证窗口截断按「块结束时刻」而非「块起点」算剩余失衡时间。
         actionTime = axisMoveActionTimeOf(configStore.team[act.slot]?.agentId, act.moveId, actionTime)
+        // **伤害段时长**（2026-10-30）：本招伤害只发生在前 N 秒、其余是后摇 ⇒ 易伤折算按**伤害段**
+        // 与窗口的重叠算（时间账仍按整段 actionTime）。缺省 undefined = 逐位不变，见
+        // `mechanics/types.ts#axisMoveDamageSeconds` 的用户原文与实测数字。
+        const damageSeconds = axisMoveDamageSecondsOf(configStore.team[act.slot]?.agentId, act.moveId, actionTime)
         // 窗口终结（决算）：佩洛伊斯右分支 1551016；雨果强特终结一击(1291_ex_verdict_final) 永远结束失衡；
         // 雨果终结技本体(1291018) 仅 C0/C1 结束失衡——影画2「终结技决算不结束失衡」不截断窗口（0命2命区分）。
         const slotCinema = configStore.team[act.slot]?.cinemaLevel ?? 0
@@ -515,6 +531,8 @@ export function createConvergenceRoundInputs(deps: {
           decibelCost,
           ...(swayCost > 0 ? { swayCost } : {}),
           startTime: act.startTime ?? 0,
+          // 伤害前置的招式（挽昼第二段大招 1601011）：易伤折算按伤害段算，见上面 damageSeconds 注释
+          ...(damageSeconds !== undefined ? { damageSeconds } : {}),
           // 佩洛伊斯右分支·永陷幽囚 / 雨果决算 = 决算：做完时清空窗口剩余失衡时间（填充归零+窗口截断）
           ...(endsWindow ? { endsStunWindow: true } : {}),
         })

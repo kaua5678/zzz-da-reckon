@@ -1057,6 +1057,7 @@ export interface AgentMechanicModule {
    * 现实现：佩洛伊斯（`1551016`，3s）。缺省 `undefined` = 不延长（其余角色逐位不变）。
    */
   stunWindowExtendOnEnd?(moveId: string, cinemaLevel: number): number
+  axisMoveDamageSeconds?(moveId: string, actionTime: number): number | undefined
   /**
    * CC-42（2026-09-27）：风化浸染「默认挑槽」时跳过本角色（首选轮排除；兜底轮仍可被选中，语义同原 `!isRemielle`）。
    * 读取方：`resourceCalc/anomalyPanels.ts#getWindInfectionTargetSlot`，按槽位 agentId 派发。现实现：蕾米埃尔。

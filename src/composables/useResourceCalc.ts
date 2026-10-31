@@ -23,6 +23,7 @@ import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from './resour
 import { freezeCached } from './resourceCalc/freezeCached'
 import { createRunCalcRound } from './resourceCalc/convergence'
 import { createConvergenceRoundInputs, type FillResourceBudget } from './resourceCalc/roundInputs'
+import { axisMoveDamageSecondsOf } from './resourceCalc/helpers'
 // CC-10（2026-09-25）：外层不动点 + S3 可行化决策已原样外提 `./resourceCalc/solveTeam`，
 // 本文件不再 import `roundThreads` / `outerCycle` / `feasibilitySearch` / `netFrontlineOccupation`
 // （全部随搬移成为新文件的依赖）。
@@ -265,7 +266,11 @@ export function createResourceCalc(
   const {
     extractAnomalyExecsFrom, extractStunExecsFrom, autoPreset, autoActive,
     resolveAxes, buildStackAxes, buildStackSwaySupply, expandExecutedToCounts, expandSequenceToMoveIds, calcAnomalyPoolInput,
-  } = createConvergenceRoundInputs({ configStore, catalogStore, panels: resourcePanels, resourceConfig })
+  } = createConvergenceRoundInputs({
+    configStore, catalogStore, panels: resourcePanels, resourceConfig,
+    // 轴方案「按失衡长度筛选」的门控量（2026-10-30 用户口径）：与引擎真正用的窗长同源
+    computeWindowDuration: () => computeWindowDuration(),
+  })
 
 
   /**
@@ -432,6 +437,13 @@ export function createResourceCalc(
     damagePanels.value,
     // 每轴窗口数：与 `axis.windows`（applyTeamConfig 侧）同源，供 overlay 按「轴 × 窗口数」加权
     calcOutput.value?.axisWindows ?? [],
+    // 时间事实（凝神这类长 buff 的 uptime 分摊）：有效战斗时长 / 失衡秒数 / 逐槽终结技次数。
+    // 失衡秒数 = 权威覆盖率 × 有效时长（`stunCoverage` 的口径就是「次数 × 窗长 − 决算截断损失秒」占比）。
+    {
+      battleTime: stunEffectiveTime.value,
+      stunSeconds: stunCoverage.value * stunEffectiveTime.value,
+      ultimateCountOf: slot => resourceResult.value?.characters.find(c => c.slot === slot)?.ultimateCount ?? 0,
+    },
   ))
 
   /** 当前命中的轴方案名（条件轴模式用于 UI 展示；无方案 = null） */
@@ -533,6 +545,26 @@ export function createResourceCalc(
       }
     }
 
+    /**
+     * 每动作**伤害段**时长（2026-10-30）：只进易伤折算的分母，不改时间账。
+     * 与轴栈那份**同源**（同一个模块钩子 `axisMoveDamageSeconds`，经 `axisMoveDamageSecondsOf` 派发）
+     * ——两处各算一份就是「页面写 A、实际按 B」的静默漂移。缺键 = 未声明（回落动作全长）。
+     */
+    const perActionDamageSeconds: Record<string, number> = {}
+    configStore.team.forEach((tc, slot) => {
+      // ⚠ 按身份查（`resRes.characters` 按位置压缩，槽位号 ≠ 下标）
+      const char = resRes.characters.find(ch => ch.slot === slot)
+      if (!char) return
+      for (const exec of char.executions) {
+        const mid = exec.moveId === 'basic_attack' ? 'basic' : exec.moveId
+        if (!mid || exec.count <= 0) continue
+        const key = `${slot}:${mid}`
+        if (key in perActionDamageSeconds) continue
+        const dmgSec = axisMoveDamageSecondsOf(tc.agentId, mid, exec.actionTime || 0)
+        if (dmgSec !== undefined) perActionDamageSeconds[key] = dmgSec
+      }
+    })
+
     // 每单位失衡值：basic=每秒失衡值（总失衡/平A秒数），其他=单次失衡值（总失衡/次数）
     const perActionStun: Record<string, number> = {}
     for (const c of stunRes.contributions) {
@@ -554,6 +586,7 @@ export function createResourceCalc(
       globalPool,
       perActionStun,
       perActionDuration,
+      perActionDamageSeconds,
       stunCount: stunRes.stunCount,
       windowDuration: computeWindowDuration(),
     })

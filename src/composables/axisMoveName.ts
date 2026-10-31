@@ -14,7 +14,7 @@
  * ② 角色模块声明的连段名（`agentMechanicView#agentCombos`，如 `banyue-combo` / `sigrid-pozhen`）：
  *    连段块不在倍率表里，名字只有模块给得出（轴编辑器的动作池同一口径）；
  * ③ 目录倍率表：走 **`utils/format#localized` 单一解析器**（CC-456）—— 手写
- *    `x.name.zhCN ?? …` 回退链会被 `localizedSingleSource` 源码锁拦下，别再散写；
+ *    `x.name.zhCN` 的 `??` 回退链会被 `localizedSingleSource` 源码锁拦下，别再散写；
  * ④ 三档都不中 ⇒ **回落 moveId 原样**：**不编名字**（编一个像真的中文比显示 id 更危险）。
  *
  * ⚠ 判定与数据一律由调用方注入（槽位、技能表），本模块不读 store。

@@ -191,6 +191,7 @@ Type B 比例式（releaseRatio.basis=掌控/精通）的基数取**施放者自
 | 窗口终结动作截断 | 佩洛伊斯 | 决算（1551016）做完清空窗口剩余失衡时间 | `calcStunAxisStack (stunAxisStack.ts)` `endsStunWindow` | stunAxisStack.test.ts | L1 |
 | 窗口分配（精确轮数 / 兜底吃剩余） | 通用轴引擎 | count 有值 = 精确轮数，缺省 = 兜底吃剩余窗口 | `allocateAxisWindows (stunAxisStack.ts)` | stunAxisStack.test.ts | L1 |
 | 跨边界动作窗口覆盖折算 | 通用轴引擎 | 跨边界动作按窗口内时长比例折算轴内易伤 | `computeInAxisRatio (stunAxis.ts)` | stunAxis.test.ts | L1 |
+| **伤害前置招式**（伤害段 ≠ 动作全长） | 挽昼（1601）第二段大招 | 「第二段大招**在第一秒就会把所有伤害打出来**，后面3秒都是后摇」⇒ 后摇出窗仍算伤害全吃易伤 | 模块钩子 `axisMoveDamageSeconds`（`sunbringer.ts`，只认 1601011）+ 派发点 `resourceCalc/helpers.ts#axisMoveDamageSecondsOf`；消费方 = 轴栈 `StackActionCost#damageSeconds`（`fits` 分母）与展示 `core/stunAxis#perActionDamageSeconds` | sunbringerAxisWindow.test.ts | L1 |
 | 失衡轴预设 JSON（自动加载 + 匹配） | 般岳/琉音 | 好评溢出爆发轴：默认常规轴，好评富余逐窗升级爆发轴 | `stunAxisPresets.ts`（import.meta.glob 加载 `stunAxisPresets/*.json`，如 般琉通用.json） | stunAxisPresets.test.ts | L0 |
 | 连段动作块（combos） | 席德 | 崩坠 = 重戮+一式+二式三连（中间自动衔接，连着一块放） | `xide.ts combos['xide-bengzhui']`：`{ moves: [{1461006,1},{1461007,1},{1461008,1}], energyCost:0 }`，轴预设里 `moveId:'xide-bengzhui', count:3` | stunAxisPresets.test.ts | L1 |
 | 自动触发招式·资源占比结算 | 希希芙 | 蚀骨自动触发本按时间占比进失衡；蛇吻手动消耗毒素 → 失衡内回复的毒素全部失衡内爆发 | `useResourceCalc.ts xixifuToxinInAxisFraction`：毒牙/终结/连携按轴内单位折算、C2 全轴内 → 蚀骨行按占比切轴内/轴外 | xixifu.test.ts | L2 |

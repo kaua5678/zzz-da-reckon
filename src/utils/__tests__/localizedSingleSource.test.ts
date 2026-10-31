@@ -20,6 +20,7 @@ const ALLOWED: Record<string, number> = {
   'core/damage.ts': 2,                        // moveName 关键字匹配（moveSignalDamageTarget + inferSkillDamageTarget 分类兜底；CC-500 起资源侧转调前者，不再手抄）
   'composables/multiplierCoefficients.ts': 1, // :46 招式名关键字
   'mechanics/agents/remielle.ts': 2,          // 「垂虹」招式识别
+  'mechanics/agents/sunbringer.ts': 1,        // :162 招架支援 招式名关键字匹配（不是显示值）
 }
 
 function walk(dir: string, out: string[] = []): string[] {
