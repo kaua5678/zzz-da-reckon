@@ -12,10 +12,10 @@
  */
 
 // ========== 配置码 ==========
-// 实现已外提 `utils/setupCode.ts`（2026-10-25：队伍对比「逐槽锁定」要用同一套解析，复制一份会在
-// 「右位 0 = 无专武」这条边界上分叉）。此处只转出，保持自由对比既有 import 面不变。
-import { formatSetupCode, parseSetupCode, setupCodeLabel, type SetupCode } from '@/utils/setupCode'
-export { formatSetupCode, parseSetupCode, setupCodeLabel, type SetupCode }
+// 实现住 `utils/setupCode.ts`（2026-10-25：队伍对比「逐槽锁定」要用同一套解析，复制一份会在
+// 「右位 0 = 无专武」这条边界上分叉）。**本文件不转出它**（r722：转出别处声明的符号 = 兼容壳）——
+// 需要配置码的模块一律直接从 `@/utils/setupCode` 取；本文件只 import 自用。
+import { formatSetupCode, parseSetupCode, type SetupCode } from '@/utils/setupCode'
 
 // ========== 系列规格 ==========
 

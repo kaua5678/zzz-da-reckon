@@ -8,7 +8,7 @@
  * 判据：改任何一条约束不影响「系列怎么定义、x 怎么枚举」，只影响求值时的 store 装配。
  */
 
-import type { SetupCode } from './axes'
+import type { SetupCode } from '@/utils/setupCode'
 import type { BossPreset, PhaseBuffCard } from '@/types/bossPreset'
 
 /** 一个锁定条件（场景角色 + 影画/精炼） */

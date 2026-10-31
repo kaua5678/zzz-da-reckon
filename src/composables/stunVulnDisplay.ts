@@ -2,7 +2,8 @@ import { computed, type ComputedRef } from 'vue'
 import type { ConfigModel } from '@/stores/config'
 import type { PanelValues } from '@/types/catalog'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
-import { computeStunVulnSummary, computeStunVulnBySlot, rowAppliedStunMultOf, rowFullStunMultOf, rowStunCoverage } from '@/composables/stunVulnSummary'
+import { computeStunVulnSummary, computeStunVulnBySlot } from '@/composables/stunVulnSummary'
+import { rowAppliedStunMultOf, rowFullStunMultOf, rowStunCoverage } from '@/core/stunVulnRow'
 import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 
 /**

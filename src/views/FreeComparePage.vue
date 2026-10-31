@@ -512,12 +512,8 @@ import {
   type AxisId,
   type AxisOptions,
   type SeriesSpec,
-  type SetupCode,
   type SliceSpec,
   axisOptions as buildAxisOptions,
-  formatSetupCode,
-  parseSetupCode,
-  setupCodeLabel,
   parseSliceKey,
   sliceKeyOf,
   sliceConflicts,
@@ -525,6 +521,7 @@ import {
   sliceOptions,
   sliceTitleOf,
 } from '@/composables/freeCompare/axes'
+import { formatSetupCode, parseSetupCode, setupCodeLabel, type SetupCode } from '@/utils/setupCode'
 import { METRICS, formatMetric, metricDef, metricOptions, type MetricDef } from '@/composables/freeCompare/metrics'
 import {
   deleteUserPreset,

@@ -15,9 +15,6 @@ import {
   AXES,
   AXIS_BY_ID,
   type SeriesSpec,
-  parseSetupCode,
-  formatSetupCode,
-  setupCodeLabel,
   parseSliceKey,
   sliceConflicts,
   sliceKeyOf,
@@ -25,6 +22,7 @@ import {
   sliceOptions,
   sliceTitleOf,
 } from '@/composables/freeCompare/axes'
+import { formatSetupCode, parseSetupCode, setupCodeLabel } from '@/utils/setupCode'
 import {
   METRICS,
   METRIC_BY_ID,

@@ -85,6 +85,9 @@ export const DOCS_READING_TESTS = [
   // 2026-10-12 更新日志：规则 ① 入选（闭包里的 `'docs'` 是 kind id 不是 docs/ 路径 ⇒ 已知误报，见文件头注释）
   'src/composables/__tests__/changelogView.test.ts',
   'src/composables/__tests__/compactedSlotValueBlindSpot.test.ts',
+  // 2026-10-31 补登记（规则 ②）：import scripts/lib/type-bonus-time.mjs 的运行时导出（COUNTER_ASSIST_ETHER_BASE），
+  // 读的是该模块的仓库口径；2026-10-30 反制支援接入时漏登记 ⇒ 清单与派生集不一致（checkGuards 棘轮红）。
+  'src/composables/__tests__/counterAssist.test.ts',
   'src/composables/__tests__/multiplierRecord.test.ts',
   'src/composables/__tests__/outerContinuity.test.ts',
   'src/composables/__tests__/phaseBuffParser.test.ts',

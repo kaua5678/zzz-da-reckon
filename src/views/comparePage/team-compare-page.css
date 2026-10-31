@@ -553,10 +553,14 @@ svg .curve-hit {
   font-size: 10px;
   font-variant-numeric: tabular-nums;
 }
-.uplift-cell .cell-pergold {
+/* 成本轴两把尺（用户 2026-10-28）：金 = 队伍强度的直观表达，万菲林 = 价值/ROI 的唯一量纲。
+   同一样式块共用选择器（不加第二条 var() 引用 ⇒ VAR_TOTAL_BASELINE 不必为排版上调）。 */
+.uplift-cell .cell-pergold,
+.uplift-cell .cell-perfilm {
   font-size: 11px;
   color: var(--fg-2);
   margin-top: 2px;
+  font-variant-numeric: tabular-nums;
 }
 .cell-pergold-best {
   color: var(--c-success);

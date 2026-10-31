@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { teamPresets } from '@/data/teamPresets'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
-import { baseStateFor } from '@/composables/teamTimelineStore'
+import { baseStateFor } from '@/composables/goldStepsFromCatalog'
 import { chainBaselineFor, interactionBaselineFor } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 

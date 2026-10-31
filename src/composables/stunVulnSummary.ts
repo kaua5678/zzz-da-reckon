@@ -18,10 +18,8 @@
 // ⟳复核: 若 always 通道语义变化（现为「全时段生效、轴内外都吃」）、轴模式改为「轴内按覆盖率部分吃易伤」（现为 1/0 两档硬分）、或异常行开始暴露行级易伤，本恒等式失效 ⇒ 重核精确式并同步改「兑现率」的用户可见措辞（它现被 always 通道抬高，不是纯轴内占比） | 到期 2027-04-30
 // 行级失衡易伤派生（覆盖率反推 / 生效易伤 / 满额）**已迁 `core/stunVulnRow.ts`**：它现在有两个消费者
 // （本展示汇总 + 建池时给每行盖章 stunAppliedMult / stunAlwaysMult），公式只能有一份（规则 11）。
-// ⚠ **只转出这三个**（既有 import 点 stunVulnDisplay / 两个测试用到的那三个）：建池用的
-// `stunRowWindowCoverageOf` / `stunAlwaysMultOf` / `stunPanelBonusOf` 与两个类型**不在这里转出**——
-// 它们的生产消费者直接从 `@/core/stunVulnRow` 取；多转一手 = 死转出（deadChannelLs 判据 ⑫ 会红）。
-export { rowStunCoverage, rowAppliedStunMultOf, rowFullStunMultOf } from '@/core/stunVulnRow'
+// ⚠ **本文件不转出它们**（r722 口径：转出别处声明的符号 = 兼容壳，deadChannelLs 判据 ⑫ 会红）——
+// 需要行级派生的地方一律直接 import `@/core/stunVulnRow`（导入方已同批迁到声明处）。
 
 export interface StunVulnSummary {
   /** 满额生效易伤（Boss 失衡易伤 × 面板加成，轴内 100% 覆盖；雨果队典型 2.100） */

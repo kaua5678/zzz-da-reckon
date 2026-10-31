@@ -11,7 +11,8 @@ import { CINEMA_GOLD_FILM, WEAPON_GOLD_FILM, PERIODS_PER_VERSION, allocateTopUpF
 import type { TimelineAxisNode } from './teamTimeline'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { batchReporter, isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
-import { baseGoldOfTeam, buildBudgetAwareGoldSteps, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
+import { baseGoldOfTeam, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
+import { buildBudgetAwareGoldSteps } from './goldStepsFromCatalog'
 
 
 // ========== Chart 4：菲林经济模拟（选定 Boss + 主C，逐期菲林投放 → 加金 → 当期 Boss 强度） ==========

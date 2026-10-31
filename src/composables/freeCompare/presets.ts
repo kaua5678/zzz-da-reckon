@@ -11,7 +11,8 @@
  *   旧版本/手改/损坏的条目**丢弃**而不是让页面炸（schema 版本在顶层，未来可迁移）。
  */
 
-import { AXES, type AxisId, parseSetupCode, parseSliceKey } from './axes'
+import { AXES, type AxisId, parseSliceKey } from './axes'
+import { parseSetupCode } from '@/utils/setupCode'
 import { METRIC_BY_ID } from './metrics'
 import { ANALYSIS_VIEWS, type AnalysisView } from './views'
 

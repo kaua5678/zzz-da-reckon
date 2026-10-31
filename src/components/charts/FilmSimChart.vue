@@ -37,7 +37,7 @@
     <div class="ctl-field">
       <span class="ctl-label">每版本充值预算（元）</span>
       <n-input-number v-model:value="simBudgetYuan" :min="0" :max="100000" :step="30" size="small" style="width: 110px" />
-      <span class="ctl-note">按档位分配：绳网会员(30元→3000)×2 → 丽都城募(68元→800)×1；余量按直充 10 菲林/元（六档均 1:10），不足 6 元的零头不折算</span>
+      <span class="ctl-note">按档位分配：绳网会员(30元→3000)×2 → 丽都城募(68元→800)×1；余量按直充 10 菲林/元（六档均 1:10），不足 6 元的零头不折算。首充双倍一次性额外 +{{ FIRST_DOUBLE_BONUS_FILM }} 菲林（账号级起点，<b>不进每版本预算</b>）</span>
     </div>
     <div class="ctl-field">
       <span class="ctl-label">目标卡池（清空银行投入）</span>
@@ -128,6 +128,7 @@
 import { computed, ref } from 'vue'
 import { NButton, NCard, NInputNumber, NProgress, NSelect } from 'naive-ui'
 import { fmt } from '@/utils/format'
+import { FIRST_DOUBLE_BONUS_FILM } from '@/data/filmEconomy'
 import { useCatalogStore } from '@/stores/catalog'
 import { useSeriesFilter } from '@/composables/seriesFilter'
 import { hoverCardPosition, readSvgPointer } from '@/composables/svgPointer'

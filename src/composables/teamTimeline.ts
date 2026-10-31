@@ -46,7 +46,8 @@ import type { ResourceCalc } from '@/composables/useResourceCalc'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { batchReporter, isBatchAborted, type BatchTaskOptions } from '@/composables/batchTask'
 import { takeBestGoldStep } from '@/composables/goldGreedy'
-import { bestLimitedWEngineFor, baseStateFor, baseGoldOfTeam, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
+import { baseGoldOfTeam, budgetAwareStateFor, applyTeamToStore, yieldNow } from './teamTimelineStore'
+import { bestLimitedWEngineFor, baseStateFor } from './goldStepsFromCatalog'
 
 import { localized } from '@/utils/format'
 type Calc = ResourceCalc

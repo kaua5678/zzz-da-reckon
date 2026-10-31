@@ -1080,6 +1080,9 @@
                       · 最划算 C{{ cellCost(cell).best!.level }}
                     </span>
                   </div>
+                  <div class="cell-perfilm" :title="`价值口径（用户 2026-10-28）：每万菲林收益 = 累计 ${cellFilmCost(cell).per10kFilmTotalPct?.toFixed(2) ?? '—'}% / 万菲林（共 ${cellFilmCost(cell).totalFilm} 菲林）；逐级平均 ${cellFilmCost(cell).per10kFilmMeanPct?.toFixed(2) ?? '—'}% / 万菲林 —— 与抽卡规划器 cardValuePer10kFilm 同尺`">
+                    每万菲林 {{ cellFilmCost(cell).per10kFilmTotalPct == null ? '—' : signed1(cellFilmCost(cell).per10kFilmTotalPct!) }}
+                  </div>
                   <div class="cell-steps">
                     <span v-for="e in cell.lockedEntries" :key="e.to" class="cell-step" :title="`C${e.to - 1}→C${e.to}：${e.gainPct.toFixed(2)}%（${GOLD_PER_CINEMA_LEVEL} 金 ⇒ 每金 ${e.gainPct.toFixed(2)}%）`">
                       {{ signed1(e.gainPct) }}
@@ -1106,6 +1109,8 @@
           <b>失衡通道</b> = 不锁累计 − 锁累计（正 = 不锁时命座从失衡次数/攒条上多拿了收益）。
           <b>每金</b> = 累计提升率 ÷ 总金数（每级命座恒 1 金，见 <code>goldSteps</code> 口径）；
           「最划算 C{n}」= 逐级里每金收益最高那一级——因为累计每金是**复利**口径，与逐级算术平均不等，两个都要看。
+          <b>每万菲林</b> = 累计提升率 ÷ (总菲林/10000)，<b>价值/ROI 用这一列</b>（用户 2026-10-28：
+          「金数是不严谨的措辞…做价值计算的时候只用万菲林均强度」）——与抽卡规划器 <code>cardValuePer10kFilm</code> 同尺。
           <br>
           勾「多锁值采样」后每格还会并排印出 `锁值:累计%` 的多档读数（含跨度）——那是同一个格子在几把尺子下的样子，
           用来分辨「台阶抖动」与「真的没收益」；跨档数值**不可**互相替代，只作敏感性参考。
@@ -1175,7 +1180,7 @@ import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverl
 import { axisKindLabel } from '@/composables/difficultyAxis'
 import { axisCompareOf, axisCutMarkerOf, axisDetailOf, axisMarkerLegend, axisMarkerOf } from '@/composables/axisMarker'
 import { planCurveViewport, X_COMPRESS_DEFAULTS, type LaneXRange } from '@/composables/curveViewport'
-import { cinemaCostOf, GOLD_PER_CINEMA_LEVEL } from '@/composables/cinemaUpliftCost'
+import { cinemaCostOf, cinemaFilmCostOf, GOLD_PER_CINEMA_LEVEL } from '@/composables/cinemaUpliftCost'
 import type { CinemaUpliftEntry as CinemaUpliftEntryType } from '@/composables/cinemaUplift'
 import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from '@/composables/resourceCalc/noAxisVulnShare'
 import type { KnobPointName } from '@/composables/difficultyLadder'
@@ -1610,6 +1615,13 @@ function upliftCellClass(v: number | null | undefined): string {
  */
 function cellCost(cell: { lockedEntries: CinemaUpliftEntryType[]; lockedTotalPct: number }) {
   return cinemaCostOf(cell.lockedEntries, cell.lockedTotalPct)
+}
+/**
+ * 单元格 → **价值口径**的成本轴（菲林尺，用户 2026-10-28：「价值/ROI 一律用每万菲林，金只是社区俗语」）。
+ * 与 `cellCost`（金尺：队伍强度的直观表达）并列显示：金回答「听起来强不强」，万菲林回答「值不值」。
+ */
+function cellFilmCost(cell: { lockedEntries: CinemaUpliftEntryType[]; lockedTotalPct: number }) {
+  return cinemaFilmCostOf(cell.lockedEntries, cell.lockedTotalPct)
 }
 const upliftGrid = computed(() => {
   const r = upliftResult.value

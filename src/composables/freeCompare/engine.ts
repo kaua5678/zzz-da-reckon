@@ -30,7 +30,6 @@ import {
   type AxisLevel,
   type AxisOptions,
   type SeriesSpec,
-  type SetupCode,
   type SliceLevel,
   type SliceSpec,
   AXIS_BY_ID,
@@ -40,6 +39,7 @@ import {
   sliceLevelsOf,
   sliceTitleOf,
 } from './axes'
+import type { SetupCode } from '@/utils/setupCode'
 import { type ConstraintSpec, conditionToCode, constraintSummary, withConditionCinema } from './constraints'
 import {
   type MetricDef,
