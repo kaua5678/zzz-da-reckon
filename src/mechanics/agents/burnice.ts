@@ -728,6 +728,8 @@ export const burniceMechanic: AgentMechanicModule = {
             count: burstCount,
             perDamage: burstResult.damage,
             totalDamage: burstResult.damage * burstCount,
+            // 本行实际用的失衡覆盖率（= 上面传给 anomalyDamage 的 burnBurstStun）
+            stunWindowCoverage: burnBurstStun,
             note: `${burniceSrc.cinema6BurnBurstDamageRatio}%（灼烧基础50% × 1800%），跟随双喷轴内易伤，无视火抗${burniceSrc.cinema6FireResIgnore}%，同一目标20秒最多一次`,
             moveId: 'burnice-c6-burn-burst',
           })

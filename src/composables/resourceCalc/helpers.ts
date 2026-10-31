@@ -67,12 +67,18 @@ export type DamagePoolRow = {
   moveId?: string
   /** 来源标签：gift=队友赠送（诺姆转连携/琉音转大等）、stun=失衡送连携、self=自身攒 */
   sourceTag?: 'gift' | 'stun' | 'self'
-  /** 失衡易伤乘数（轴启用时按轴内位置分配，默认 1） */
+  /** 失衡易伤乘数（轴启用时按轴内位置分配，默认 1；仅 Boss 失衡易伤分量，不含面板加成） */
   stunMult?: number
   /** 直伤行：引擎本行实际用的失衡覆盖率（= damagePool 的 stunForThis，0..1）。CC-226：展示层直接用它，不再由 stunMult 反推 */
   stunCoverage?: number
   /** 直伤行：引擎本行实际用的失衡易伤基数（Boss stunVuln；叶瞬光帷幕行 = veilStunVulnBase）。CC-226 */
   stunVulnBase?: number
+  /** 展示用：本行伤害落在失衡窗内的占比（直伤=行级 stunCoverage；异常/异放=建池时的全局或分段覆盖）。不参与结算 */
+  stunWindowCoverage?: number
+  /** 展示用：本行实际生效的失衡易伤乘数（含面板失衡增伤 + Always 通道；建池后盖章） */
+  stunAppliedMult?: number
+  /** 展示用：覆盖率 0 时仍生效的 Always 通道乘数（扳机 35% 等常驻易伤） */
+  stunAlwaysMult?: number
   /** 单次倍率（%，直伤=招式倍率、异放=releaseMultiplier、紊乱=disorderMultiplier、
    *  DoT=perTick×tick数 等；秒均行 count 已折算成总秒数 → count×multiplier = 该行总倍率）。
    *  供「伤害来源分解」诊断：总倍率 = Σ(count×multiplier)，属性区 = 总伤害/(总倍率/100)。 */
@@ -103,6 +109,25 @@ export interface DamageSourceFamily {
   multiplierRows: number
   /** 有倍率行的伤害合计（属性区反推的分子） */
   multiplierDamage: number
+  /** 有倍率行的**反事实（无失衡）**伤害合计（attrRegionNoStun 的分子） */
+  multiplierDamageNoStun: number
+  /**
+   * **无失衡属性区**：把 Boss 失衡系统整条抹掉（每行的失衡窗倍率还原成 1）后，同一批倍率的属性区。
+   * ⚠ 只抹「失衡窗内才有的那部分」——Always 常驻易伤（扳机 1361 的 35%/55%）**保留**，
+   * 因为它在非失衡期也在生效，抹掉等于篡改该角色的拐力（用户口径 2026-10-28）。
+   */
+  attrRegionNoStun: number
+  /** **失衡期贡献率** = 1 − attrRegionNoStun / attrRegion（0..1；0 = 该族与 Boss 失衡系统无关） */
+  stunContributionRate: number
+  /**
+   * **失衡爆发效率** = Σ(行伤害 × 行窗内占比) / Σ行伤害（0..1）。
+   * 回答「这个角色的伤害有多大比例是在失衡窗里打出来的」——捏轴越集中、越贴窗，数越大。
+   */
+  burstEfficiency: number
+  /** 失衡窗内的伤害合计（burstEfficiency 的分子，展示用） */
+  windowDamage: number
+  /** 反事实（无失衡）伤害合计（展示用；= Σ 行伤害 × Always/实生效） */
+  damageNoStun: number
 }
 export interface DamageSourceBreakdown {
   slot: number
@@ -117,13 +142,34 @@ const DIRECT_FAMILY_TYPES = new Set<string>(['直伤'])
 
 export function computeDamageSourceBreakdown(rows: DamagePoolRow[]): DamageSourceBreakdown[] {
   const bySlot = new Map<number, DamageSourceBreakdown>()
-  const emptyFamily = (): DamageSourceFamily => ({ damage: 0, multiplier: 0, attrRegion: 0, flatDamage: 0, multiplierRows: 0, multiplierDamage: 0 })
+  const emptyFamily = (): DamageSourceFamily => ({
+    damage: 0, multiplier: 0, attrRegion: 0, flatDamage: 0, multiplierRows: 0, multiplierDamage: 0, multiplierDamageNoStun: 0,
+    attrRegionNoStun: 0, stunContributionRate: 0, burstEfficiency: 0, windowDamage: 0, damageNoStun: 0,
+  })
+  /**
+   * 反事实（无失衡）行伤害 = 行伤害 × alwaysMult / appliedMult。
+   * 两个乘数都由建池侧盖章（`core/stunVulnRow` 同一套算式）；行没带 `stunAppliedMult`
+   * （测试夹具 / 旧数据）⇒ 视为「与失衡无关」，反事实 = 原值。
+   */
+  const noStunDamageOf = (row: DamagePoolRow): number => {
+    const applied = row.stunAppliedMult
+    const always = row.stunAlwaysMult
+    if (applied === undefined || always === undefined || applied <= 0) return row.totalDamage
+    // 比值 ≤ 1 恒成立（applied 是 always 按覆盖率线性插值到满额的结果）；钳一下只为防浮点噪声
+    return row.totalDamage * Math.min(1, always / applied)
+  }
   const add = (fam: DamageSourceFamily, row: DamagePoolRow) => {
+    const noStunDmg = noStunDamageOf(row)
     fam.damage += row.totalDamage
+    fam.damageNoStun += noStunDmg
+    const cov = row.stunWindowCoverage ?? row.stunCoverage
+    if (cov !== undefined && cov > 0) fam.windowDamage += row.totalDamage * Math.max(0, Math.min(1, cov))
+    // 反事实口径的属性区分子：同样只计「有倍率行」，倍率是行属性、不随易伤变
     if (row.multiplier && row.multiplier > 0 && row.count > 0) {
       fam.multiplier += row.count * row.multiplier
       fam.multiplierRows += 1
       fam.multiplierDamage += row.totalDamage
+      fam.multiplierDamageNoStun += noStunDmg
     } else {
       fam.flatDamage += row.totalDamage
     }
@@ -138,6 +184,11 @@ export function computeDamageSourceBreakdown(rows: DamagePoolRow[]): DamageSourc
   }
   const finish = (fam: DamageSourceFamily) => {
     fam.attrRegion = fam.multiplier > 0 ? fam.multiplierDamage / (fam.multiplier / 100) : 0
+    fam.attrRegionNoStun = fam.multiplier > 0 ? fam.multiplierDamageNoStun / (fam.multiplier / 100) : 0
+    fam.stunContributionRate = fam.attrRegion > 0
+      ? Math.max(0, Math.min(1, 1 - fam.attrRegionNoStun / fam.attrRegion))
+      : 0
+    fam.burstEfficiency = fam.damage > 0 ? fam.windowDamage / fam.damage : 0
   }
   const out: DamageSourceBreakdown[] = []
   for (const b of bySlot.values()) {
@@ -147,6 +198,66 @@ export function computeDamageSourceBreakdown(rows: DamagePoolRow[]): DamageSourc
   }
   out.sort((a, b) => a.slot - b.slot)
   return out
+}
+
+/**
+ * 队伍级合计（用户口径 2026-10-28：「显示属性区总和和倍率区总和的地方」要能看出 Boss 失衡系统的
+ * 影响大小与各角色的失衡爆发效率）。倍率与属性区都按**伤害族**合并后再算，不做「两个属性区相加」——
+ * 属性区的分母是倍率，直接相加两族的值没有意义（族间倍率不同）。
+ */
+export interface DamageSourceTotals {
+  /** 总倍率 Σ(count × multiplier)（%） */
+  multiplier: number
+  /** 有失衡属性区 = Σ(有倍率行伤害) / (总倍率/100) */
+  attrRegion: number
+  /** 无失衡属性区（只抹 Boss 失衡窗，Always 常驻易伤保留） */
+  attrRegionNoStun: number
+  /** 失衡期贡献率 = 1 − attrRegionNoStun / attrRegion */
+  stunContributionRate: number
+  /** 失衡爆发效率 = 窗内伤害 / 总伤害 */
+  burstEfficiency: number
+  /** 全队伤害合计（含无倍率行） */
+  damage: number
+  /** 全队无失衡反事实伤害合计 */
+  damageNoStun: number
+  /** 窗内伤害合计 */
+  windowDamage: number
+  /** 无倍率行伤害合计 */
+  flatDamage: number
+}
+
+export function computeDamageSourceTotals(breakdown: DamageSourceBreakdown[]): DamageSourceTotals {
+  let multiplierDamage = 0
+  let multiplierDamageNoStun = 0
+  let multiplier = 0
+  let damage = 0
+  let damageNoStun = 0
+  let windowDamage = 0
+  let flatDamage = 0
+  for (const b of breakdown) {
+    for (const fam of [b.direct, b.anomaly]) {
+      multiplier += fam.multiplier
+      multiplierDamage += fam.multiplierDamage
+      multiplierDamageNoStun += fam.multiplierDamageNoStun
+      damage += fam.damage
+      damageNoStun += fam.damageNoStun
+      windowDamage += fam.windowDamage
+      flatDamage += fam.flatDamage
+    }
+  }
+  const attrRegion = multiplier > 0 ? multiplierDamage / (multiplier / 100) : 0
+  const attrRegionNoStun = multiplier > 0 ? multiplierDamageNoStun / (multiplier / 100) : 0
+  return {
+    multiplier,
+    attrRegion,
+    attrRegionNoStun,
+    stunContributionRate: attrRegion > 0 ? Math.max(0, Math.min(1, 1 - attrRegionNoStun / attrRegion)) : 0,
+    burstEfficiency: damage > 0 ? windowDamage / damage : 0,
+    damage,
+    damageNoStun,
+    windowDamage,
+    flatDamage,
+  }
 }
 
 export function safeElement(element?: string): DamageElement {
@@ -753,6 +864,23 @@ export function axisMoveExtendOnEndOf(agentId: string | undefined, moveId: strin
 export function axisMoveActionTimeOf(agentId: string | undefined, moveId: string, actionTime: number): number {
   const fn = agentId ? getAgentMechanic(agentId)?.axisMoveActionTime : undefined
   return fn ? fn(moveId, actionTime) : actionTime
+}
+
+/**
+ * **本招的「伤害段」时长**（秒）：按本槽角色派发模块能力 `axisMoveDamageSeconds`（口径与用户原文
+ * 见 `mechanics/types.ts` 该钩子）。返回 `undefined` = 不声明（分母回落动作全长）。
+ *
+ * 两个消费方**必须同源**（本仓反复踩的「同一物理量两把尺」）：
+ * · 轴栈 `core/stunAxisStack.ts`（真正算伤害的那份，roundInputs 建块时填 `damageSeconds`）；
+ * · 展示侧 `core/stunAxis.ts#calcStunAxis`（失衡轴页的 `perActionDamageSeconds`）。
+ * 合法区间 = `(0, actionTime)`：≤0 或 ≥动作全长 ⇒ 视作未声明（返回 undefined），避免
+ * 「声明 0 秒 ⇒ 除零」与「声明 ≥ 全长 ⇒ 假装声明了其实没变」两种退化。
+ */
+export function axisMoveDamageSecondsOf(agentId: string | undefined, moveId: string, actionTime: number): number | undefined {
+  const fn = agentId ? getAgentMechanic(agentId)?.axisMoveDamageSeconds : undefined
+  const v = fn ? fn(moveId, actionTime) : undefined
+  if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) return undefined
+  return v < actionTime ? v : undefined
 }
 
 /**

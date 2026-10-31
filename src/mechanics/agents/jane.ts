@@ -329,6 +329,8 @@ export const janeMechanic: AgentMechanicModule = {
           count: critCount,
           perDamage: critCount > 0 ? result.damage / critCount : 0,
           totalDamage: result.damage,
+          // 本行实际用的失衡覆盖率（= 上面传给 directDamage 的 janeStun）
+          stunWindowCoverage: janeStun,
           note: `异常精通 ${fmt(janePanel.anomalyProficiency)} × 1600% 标准直伤管线（增伤/防御/抗性/易伤/暴击全吃）；按强击期望暴击次数 ${fmt(critCount, 2)} 次${isAxis ? ` · 易伤跟随物理强击轴内占比 ${fmt(janeStun, 2)}` : ''}`,
         }]
         groups.push({ order: EXTRA_ANOMALY_ROW_ORDER.assaultCritC6, rows })

@@ -190,6 +190,8 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
             count: shareCount,
             perDamage: perEventEl,
             totalDamage: perEventEl * shareCount,
+            // 极性紊乱基数取自紊乱均摊（池级 stunned = 全局覆盖率），盖同一覆盖率供属性区反算
+            stunWindowCoverage: stunCoverage,
             note: `${event.note ?? ''}；${el}·Boss异常状态轴·按触发时刻状态归因·基数=该元素紊乱均摊`,
           })
         }
@@ -219,6 +221,7 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
           count: event.count,
           perDamage: perEvent,
           totalDamage: perEvent * event.count,
+          stunWindowCoverage: stunCoverage,
           note: event.note ?? '',
         })
       }
@@ -236,6 +239,8 @@ export function emitCharReleaseRows(env: CharRowsEnv, cl: CharLocals): void {
           source: event.carrierMoveName || event.carrierMoveId || event.eventId,
           count: event.count,
           multiplier: mult,
+          // 招式族定向由事件声明（「该伤害视为[强化特殊技]伤害」⇒ 'exSpecial'）；缺省 = 无定向
+          skillDamageTarget: event.skillDamageTarget,
           note: event.note ?? event.formula ?? '',
         })
       }

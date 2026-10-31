@@ -159,6 +159,8 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
       perDamage: detail.count > 0 ? detail.damage / detail.count : detail.damage,
       totalDamage: detail.damage,
       multiplier: detail.turbulenceMultiplier,
+      // 乱流 / 紊乱 / 标准异常都按池级 `stunned`（= 同一 stunCoverage）结算；盖到行上供「属性区有/无失衡」反算
+      stunWindowCoverage: stunCoverage,
       note: `T=${detail.remainingTime}s，倍率=${detail.turbulenceMultiplier}%${detail.boostedCount ? `，其中${detail.boostedCount}次吃风蚀+150%倍率` : ''}`,
     })
   }
@@ -181,6 +183,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
       perDamage: detail.perEventDamage,
       totalDamage: detail.damage,
       multiplier: detail.disorderMultiplier,
+      stunWindowCoverage: stunCoverage,
       note: `T=${detail.remainingTime}s，倍率=${detail.disorderMultiplier}%，anomalyMass=${detail.anomalyMass}，settlement=${detail.settlementMultiplier}`,
     })
   }
@@ -248,6 +251,7 @@ export function emitAnomalyRows(env: AnomalyRowsEnv): void {
         perDamage,
         totalDamage,
         multiplier,
+        stunWindowCoverage: stunCoverage,
         note: noteParts.join(' · '),
       })
     }

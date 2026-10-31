@@ -15,6 +15,8 @@ import { resolveSpecialDamageProfile } from '@/core/damage'
 import { calcPoolAnomalyDamage, calcPoolDirectDamage, type PoolDamageEnv } from './poolDamage'
 // 面板数组按位置压缩（下标 ≠ 槽位号）⇒ 一律 panelAt 按身份取，不用 damagePanels[slot]（见 core/panel.ts）。
 import { panelAt } from '@/core/panel'
+// 行级失衡易伤派生（与「加权有效易伤」展示同一套算式，规则 11）：建池末尾给每行盖章
+import { stunPanelBonusOf, stunRowWindowAppliedMultOf, stunRowWindowCoverageOf, stunAlwaysMultOf } from '@/core/stunVulnRow'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER } from '@/core/anomalyPool/helpers'
 import { getBaseElement } from '@/data/anomalyElement'
 import { findModuleSlot, getAgentMechanic } from '@/mechanics'
@@ -286,6 +288,9 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         damageKind: 'release',
         anomalyCritOverride: critOverride,
       })
+      // 本行实际用的失衡覆盖率 / 基数（= 上面传进 calcPoolAnomalyDamage 的两个量）：
+      // 行级盖章，供「属性区有/无失衡」反算——不盖章就只能回落全局值，轴内 1 / 轴外 0 的分段会被抹平。
+      const stunnedUsed = row.stunnedOverride ?? stunCoverage
       rows.push({
         id: row.id,
         slot: row.slot,
@@ -300,6 +305,11 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
         totalDamage: result.damage * row.count,
         note: `${row.note ?? ''}${releaseMod.note}`,
         multiplier: row.multiplier,
+        // ⚠ 写 `stunWindowCoverage` 而不是 `stunCoverage`：后者是「直伤行」的既有语义，
+        // 而「加权有效易伤」对异常/异放行刻意按 1 计（@fact 已登记的保守口径）——
+        // 给它补 stunCoverage 会把那条汇总一起改掉，属于另一口径变更。
+        stunWindowCoverage: stunnedUsed,
+        stunVulnBase: configStore.enemy.stunVuln,
       })
     }
 
@@ -426,6 +436,32 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       inWindowFraction, nonWindInAxisFraction, ultimateInAxisFraction,
       axisStunFor, pushRelease,
     })
+
+    /**
+     * **行级失衡易伤盖章**（用户口径 2026-10-28：「属性区要分有失衡 / 无失衡两个，
+     * 差的正好是失衡期贡献率；但扳机这种非失衡也给易伤的不能抹」）。
+     *
+     * 建池末尾统一写三个展示字段，**不改任何结算量**：
+     *   · `stunWindowCoverage` = 本行落在失衡窗内的占比（直伤行 = 引擎实值；异放/异常/模块行 =
+     *     `axisStunFor` / 全局覆盖 —— 它们本来就按这个覆盖率结算，写回去只是把「隐含输入」显式化）；
+     *   · `stunAppliedMult` = 本行实际生效的失衡易伤乘数（含面板增伤 + Always 通道）；
+     *   · `stunAlwaysMult` = 覆盖率 0 时的常驻易伤（扳机 35%/55%）。
+     * 反事实属性区 = 行伤害 × always / applied（见 `core/stunVulnRow` 头注释），**只抹 Boss 失衡窗**。
+     */
+    for (const row of rows) {
+      const panel = panelAt(damagePanels, row.slot)
+      if (!panel) continue
+      const bonus = stunPanelBonusOf(panel, configStore.enemy.stunVuln)
+      // 窗内占比：直伤行建池时已写 stunCoverage（= 引擎实值）；异放/异常/模块行建池时各自盖章；
+      // 都没有（如 pushRelease 的辅路）⇒ 回落本轮全局覆盖率（引擎给它们结算用的也是这个值）。
+      const cov = stunRowWindowCoverageOf(row) ?? stunCoverage
+      row.stunWindowCoverage = cov
+      // 生效易伤与常驻易伤都用**同一套算式**（core/stunVulnRow）：比值 = 失衡窗把这一行放大多少。
+      // ⚠ 这里刻意不用 `rowAppliedStunMultOf`：那个函数按「加权有效易伤」的保守口径把异常行按 1 计，
+      // 拿来算反事实会把异常行的常驻易伤也一并抹掉（用户明确要求「扳机这种非失衡也给易伤的不能抹」）。
+      row.stunAppliedMult = stunRowWindowAppliedMultOf({ ...row, stunWindowCoverage: cov }, bonus)
+      row.stunAlwaysMult = stunAlwaysMultOf(bonus)
+    }
 
   // ===== 非轴「易伤贡献率」φ 已在建池前并进 stunCoverage（见上方 vulnShare） =====
   //

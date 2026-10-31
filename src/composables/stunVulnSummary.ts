@@ -16,50 +16,12 @@
 // @fact engine:失衡易伤可见化/加权信用 口径: 行级 stunMult = Boss 失衡易伤分量；覆盖率取行级引擎实值 `stunCoverage`、基数取行级 `stunVulnBase`（缺省 = Boss stunVuln），`stunMult` 反推仅作无新字段时的回落（CC-226）；生效易伤 = calcStunMultiplier(行级基数, 面板失衡增伤, 覆盖率)；加权信用 = Σ(伤害×生效易伤)/Σ伤害 − 1，与部署 A/B 差分同构（archiveStunVulnProbe 实测 0.1966），异常行按 1 计、信用偏保守；满额参照 = 槽0 面板 | 据 实测@2026-09-10（archiveStunVulnProbe A/B 差分）+ 用户@2026-09-10 方案听取·复核@2026-09-25·复核@2026-09-30 | 验 src/composables/__tests__/stunVulnSummary.test.ts | 锚 src/composables/stunVulnSummary.ts#computeStunVulnSummary | 信 确认
 // @fact engine:失衡易伤/信用恒等式 口径: **加权信用 ≡ [always×D_直伤 + (满额信用−always)×Σ_直伤(伤害×cov)] / D_全池**（always = 面板 `stunDmgMultiplierBonusAlways` 经 `stunDmgMultiplierBonusCapAlways` 钳后 /100；cov = 行级 `stunCoverage`）。推导：轴模式下直伤行生效易伤 = `alwaysMult + (fullMult−alwaysMult)×cov`（**always 通道全时段生效、轴内外都吃**，见 `calcStunMultiplier` 的线性插值式），异常行恒按 1 ⇒ 加权平均展开即上式。⚠ **简化式「credit = 轴内伤害占比 × 满额信用」只在 always=0 时成立**（实测：无扳机队逐位相等，**含扳机 1361 的队偏差最大 0.198**——本文件 2026-10-16 首版曾写成无条件恒等式，同日被 T184 代理的 980 格普查证伪并订正）。故 `coverageRate`（页面「兑现率」）**不等于**轴内伤害占比（有 always 通道时被抬高），也不等于「时间覆盖率」（引擎无轴时按 `失衡次数×单窗/有效时长` 均匀给易伤，轴模式把它**集中**到轴内高倍率招式上） | 据 实测@2026-10-16（`.zc/perf/T184identity.perf.ts` 精确式误差 ≤7.8e-16 逐位成立；`.zc/perf/T184relation.perf.ts` 的简化式在 112/980 格失效，根因 = 扳机 1361 的 always=35） | 验 src/composables/__tests__/stunVulnSummary.test.ts | 锚 src/composables/stunVulnSummary.ts#computeStunVulnSummary | 信 确认
 // ⟳复核: 若 always 通道语义变化（现为「全时段生效、轴内外都吃」）、轴模式改为「轴内按覆盖率部分吃易伤」（现为 1/0 两档硬分）、或异常行开始暴露行级易伤，本恒等式失效 ⇒ 重核精确式并同步改「兑现率」的用户可见措辞（它现被 always 通道抬高，不是纯轴内占比） | 到期 2027-04-30
-import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
-
-/**
- * 由行级 stunMult 反推覆盖率——**只作回落**（行没带 `stunCoverage` 时：测试夹具 / 旧数据）。全仓唯一实现（CC-226 源码锁）。
- * 反推假设本行基数 = Boss stunVuln；叶瞬光帷幕行的基数是 `veilStunVulnBase`（触顶时 < stunVuln），
- * 用 stunVuln 反推会把覆盖率压低（例：基数 1.1、stunVuln 1.5 ⇒ 满覆盖被读成 20%）——这正是 CC-226 让行直接携带覆盖率与基数的原因。
- */
-function coverageFromStunMult(stunMult: number, vuln: number): number {
-  return vuln > 1 + 1e-9
-    ? Math.max(0, Math.min(1, (stunMult - 1) / (vuln - 1)))
-    : (stunMult >= 1 ? 1 : 0)
-}
-
-/** 按行计算所需的最小行形状（DamagePoolRow 的子集） */
-export interface StunRowLike {
-  stunMult?: number
-  stunCoverage?: number
-  stunVulnBase?: number
-}
-/** 满额参照所用的面板失衡加成（槽 0 惯例）+ Boss stunVuln */
-export interface StunPanelBonus {
-  vuln: number
-  bonus: number
-  always: number
-  cap: number
-}
-
-/** 行的失衡覆盖率：优先引擎实值 `stunCoverage`，缺失才反推；异常行（无 stunMult）→ undefined */
-export function rowStunCoverage(row: StunRowLike, vuln: number): number | undefined {
-  if (row.stunMult === undefined) return undefined
-  return row.stunCoverage ?? coverageFromStunMult(row.stunMult, vuln)
-}
-
-/** 行级生效易伤（CC-226）：用本行真实基数（`stunVulnBase`，缺失 = vuln）与覆盖率；异常行 → 1 */
-export function rowAppliedStunMultOf(row: StunRowLike, p: StunPanelBonus): number {
-  const cov = rowStunCoverage(row, p.vuln)
-  if (cov === undefined) return 1
-  return calcStunMultiplier(row.stunVulnBase ?? p.vuln, p.bonus, p.always, p.cap, cov)
-}
-
-/** 本行满覆盖时的生效易伤（用本行基数；叶瞬光帷幕行触顶时低于全队满额参照） */
-export function rowFullStunMultOf(row: StunRowLike, p: StunPanelBonus): number {
-  return calcStunMultiplier(row.stunVulnBase ?? p.vuln, p.bonus, p.always, p.cap, true)
-}
+// 行级失衡易伤派生（覆盖率反推 / 生效易伤 / 满额）**已迁 `core/stunVulnRow.ts`**：它现在有两个消费者
+// （本展示汇总 + 建池时给每行盖章 stunAppliedMult / stunAlwaysMult），公式只能有一份（规则 11）。
+// ⚠ **只转出这三个**（既有 import 点 stunVulnDisplay / 两个测试用到的那三个）：建池用的
+// `stunRowWindowCoverageOf` / `stunAlwaysMultOf` / `stunPanelBonusOf` 与两个类型**不在这里转出**——
+// 它们的生产消费者直接从 `@/core/stunVulnRow` 取；多转一手 = 死转出（deadChannelLs 判据 ⑫ 会红）。
+export { rowStunCoverage, rowAppliedStunMultOf, rowFullStunMultOf } from '@/core/stunVulnRow'
 
 export interface StunVulnSummary {
   /** 满额生效易伤（Boss 失衡易伤 × 面板加成，轴内 100% 覆盖；雨果队典型 2.100） */

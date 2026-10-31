@@ -581,6 +581,9 @@ export const aliceMechanic: AgentMechanicModule = {
         perDamage,
         totalDamage: perDamage * polarAssaultProg.triggerCount,
         multiplier: ANOMALY_SINGLE_HIT_MULTIPLIER.physical,
+        // 本行实际用的失衡覆盖率（= 上面传给 anomalyDamage 的 polarStunFor）：
+        // 供「属性区有/无失衡」反算；不写就回落全局覆盖率，轴内 1 / 轴外 0 的分段会丢
+        stunWindowCoverage: polarStunFor,
         note: `${ANOMALY_SINGLE_HIT_MULTIPLIER.physical}% 单次 × 爱丽丝面板 · 赠送触发不耗异常条${isAxis ? ` · 易伤按触发源加权轴内占比 ${fmt(polarStunFor, 2)}（SW3 ${fmt(sw3Frac, 2)}${ultExtra > 0 ? ` ×${sw3Count} + 终结 ${fmt(ultimateInAxisFraction(polarAssaultSlot), 2)} ×${ultExtra}` : ''}）` : ''}`,
       }] })
     }
@@ -641,6 +644,8 @@ export const aliceMechanic: AgentMechanicModule = {
             count: totalTriggers,
             perDamage: totalTriggers > 0 ? result.damage / totalTriggers : 0,
             totalDamage: result.damage,
+            // 本行实际用的失衡覆盖率（= 上面传给 directDamage 的 stateFrac）
+            stunWindowCoverage: stateFrac,
             note: `异常精通 ${fmt(proficiency)} × 3300% 标准直伤管线（增伤/防御/抗性/易伤全吃）× 必定暴击 → 单次 ${fmt(totalTriggers > 0 ? result.damage / totalTriggers : 0)} · 状态进入 ${stateEntries} 次 × 每次 ${perStateCount} 次 = ${totalTriggers} 次${isAxis ? ` · 易伤按状态进入加权轴内占比 ${fmt(stateFrac, 2)}（SW3 ${fmt(sw3Frac, 2)} / 终结 ${fmt(ultFrac, 2)}）` : ''}`,
           }] })
         }
@@ -662,6 +667,8 @@ export const aliceMechanic: AgentMechanicModule = {
         count: coweringDot.totalTicks,
         perDamage: coweringDot.dotDamagePerTick,
         totalDamage: coweringDot.totalDotDamage,
+        // 畏缩 DOT 与全池同用全局失衡覆盖率结算（core/anomalyPool#calcAnomalyPoolDamage 传同一 dmgConfig）
+        stunWindowCoverage: stunCoverage,
         note: `畏缩 DOT：每 ${coweringDot.dotInterval}s 造成强击伤害 ${coweringDot.dotRatio}% · ${fmt(coweringDot.totalTicks)} tick`,
       }] })
     }

@@ -63,6 +63,25 @@
   background: var(--wa-20);
 }
 
+/* 逐窗兑现卡（2026-10-27）：满宽铺在「失衡池汇总」行与三角色卡片之间——
+   它是「这一局轴到底打成了什么样」的逐窗台账，比单角色卡片更先被读到。 */
+.axis-window-card {
+  margin-bottom: 16px;
+  background: var(--app-panel);
+}
+
+.axis-window-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.axis-window-summary {
+  font-size: 11px;
+  color: var(--fg-3);
+}
+
 .pool-title {
   font-size: 14px;
   font-weight: 600;
@@ -253,6 +272,32 @@
 /* 伤害来源分解行：复用 damage-pool-row 视觉，仅覆盖 6 列布局 */
 .damage-source-row {
   grid-template-columns: 88px 58px 110px 120px 110px 130px;
+}
+
+/* 有/无失衡两个属性区 + 失衡期贡献率 + 失衡爆发效率（用户口径 2026-10-28）：
+   6 列 → 9 列。窄屏（<1100px）横滚，不压字（表格语义不能靠缩字号保住可读性）。 */
+.damage-source-row-stun {
+  grid-template-columns: 88px 58px 100px 110px 108px 108px 96px 96px 110px;
+  min-width: 900px;
+}
+
+.damage-source-card .damage-source-table {
+  overflow-x: auto;
+}
+
+.damage-source-nostun {
+  color: var(--app-text-dim);
+}
+
+.damage-source-rate {
+  color: var(--c-info);
+  font-variant-numeric: tabular-nums;
+}
+
+.damage-source-total-row {
+  background: var(--fill-hover);
+  color: var(--fg-2);
+  font-weight: 600;
 }
 
 .damage-source-table {
