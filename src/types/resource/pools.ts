@@ -253,8 +253,6 @@ export interface AnomalyElementTriggers { element: string; triggerCount: number;
  */
 export interface AnomalyPoolDamageInputs {
   dmgConfig: Omit<DamageCalcConfig, 'globalAnomalyMultiplier'>
-  /** 霜寒覆盖折算的敌人受暴伤加成（%），只进伤害面板 */
-  frostCritBonus: number
   /** 非风时间窗内的元素触发与紊乱次数（无紊乱时缺省） */
   disorder?: { elements: AnomalyElementTriggers[]; count: number }
   /** 风化窗口内改走乱流的非风触发、风属性槽位、风触发次数、乱流次数上限（队伍无风属性时缺省） */
@@ -459,6 +457,17 @@ export interface StunAxisCondition {
   cinemaMax?: number
   /** 命座检查的槽位（默认 0 = 主C） */
   cinemaSlot?: number
+  /**
+   * **失衡窗口时长下限（秒，含）**——按当前队伍算出来的单窗时长（`stunWindowDuration`）筛选方案。
+   *
+   * 用户口径 2026-10-30：“这个轴希望不要限定这队伍，**仅仅通过失衡长度来筛选**”。同一套捏轴动作在
+   * 16s / 18s 窗口下容得下的东西不同（18s 才塞得进多发强特）⇒ 用窗长分支，而不是把队友写死进 `team`。
+   * 窗口时长 = boss stunTime + 连携窗口 4s + 全队失衡持续时间延长（洛克茜 +2 / 琉音 +2 / 般岳 C1 +2…），
+   * 所以它天然吸收“第三个队友换谁”。
+   */
+  windowMin?: number
+  /** 失衡窗口时长上限（秒，含） */
+  windowMax?: number
 }
 
 /** 窗口自动分配算法名（读取时按此名匹配，不按预设名；新轴文件声明此字段即可复用同一算法） */

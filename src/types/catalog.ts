@@ -182,7 +182,7 @@ export interface PanelValues {
   enemyEtherAnomalyResReduction: number // 以太属性专属积蓄抗性降低/无视
   enemyWindAnomalyResReduction: number // 风属性专属积蓄抗性降低/无视
   enemyDamageTakenBonus: number    // 敌方受到伤害提升（易伤），百分比
-  enemyCritDmgTakenBonus: number   // 敌方受到暴击伤害提升，百分比（霜寒状态提供）
+  enemyCritDmgTakenBonus: number   // 敌方受到暴击伤害提升，百分比（霜寒状态提供）；**直伤族专属**——只进 calcCritMultiplier / calcSharpCritMultiplier，不进异常暴击区（用户裁决 2026-10-29）
   enemyStunTakenBonus: number      // 敌方受到失衡值提升，百分比
   disorderDamageBonus: number       // 紊乱增伤，百分比（仅紊乱结算区）
   disorderBaseMultiplierBonus: number // 紊乱基础倍率提升（加到紊乱基础倍率）

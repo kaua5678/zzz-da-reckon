@@ -285,8 +285,10 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
   }
   const coverage = calcCoverage(coverageTriggerCounts, totalTime, invincibleTime, elementDurations, hasWindChar)
 
-  // 霜寒状态使敌人受到暴击伤害+10%，按霜寒覆盖率折算；只影响伤害结算面板（`calcAnomalyPoolDamage` 叠加），不影响积蓄。
-  const frostCritBonus = 10 * coverage.frostCoverageRate
+  // ⚠ 霜寒「敌人受到的暴击伤害提升」**不进异常**（用户裁决 2026-10-29：那是直伤族的乘区）——
+  // 原先这里算好 `frostCritBonus` 再在 `calcAnomalyPoolDamage` 里叠到结算面板上；紊乱/乱流/畏缩三条
+  // 结算路径**全都不读** `enemyCritDmgTakenBonus` ⇒ 那是一次死注入（还写着错口径），已删。
+  // 直伤侧仍走 `useResourceCalc#damagePanels` 的注入（`calcDirectDamage` 需要）。
 
   // ---- 5. 乱流次数与风蚀（紊乱 / 乱流伤害在结算侧由 `calcAnomalyPoolDamage` 按 damageInputs 算，r701） ----
   let turbulenceCount = 0
@@ -391,7 +393,6 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
     corrosionSource,
     damageInputs: {
       dmgConfig: { enemyDefense, enemyDefReduction, enemyResistances, enemyResReduction, stunned, stunMultiplier, coweringConfig: input.coweringConfig },
-      frostCritBonus,
       // 非风时间窗内的紊乱：紊乱需要2种以上元素交替触发（新异常覆盖老异常），wind不参与
       disorder: normalNonWindElements.length >= 2 && disorderCount > 0
         ? { elements: normalNonWindElements, count: disorderCount } : undefined,
@@ -408,17 +409,15 @@ export function calcAnomalyPool(input: AnomalyPoolInput): AnomalyPoolResult {
 /**
  * 异常池三项伤害（紊乱 / 乱流 / 畏缩 DoT）的结算（r701，T10 第③步）。资源侧 `calcAnomalyPool` 只出次数与
  * `damageInputs`；结算侧（`useResourceCalc#anomalyPoolResult`）用结算面板调本函数补齐，口径与原池内计算一致。
- * `panels` = 不带霜寒的角色面板（霜寒加成按 `frostCritBonus` 在此叠加）；全队异常乘区由面板决定，结算侧传入。
+ * `panels` = 角色面板（**不**叠加霜寒——霜寒是直伤族乘区，异常侧不吃，见本文件上方 2026-10-29 注）；全队异常乘区由面板决定，结算侧传入。
  */
 export function calcAnomalyPoolDamage(
   inputs: AnomalyPoolDamageInputs,
   panels: PanelValues[],
   env: { globalAnomalyMultiplier: number; teamMechanics: readonly TeamMechanic[] },
 ): Pick<AnomalyPoolResult, 'disorderDamage' | 'turbulenceDamage' | 'coweringDot'> {
-  const { frostCritBonus, disorder, turbulence, cowering } = inputs
-  const damagePanels = frostCritBonus > 0
-    ? panels.map(p => ({ ...p, enemyCritDmgTakenBonus: p.enemyCritDmgTakenBonus + frostCritBonus }))
-    : panels
+  const { disorder, turbulence, cowering } = inputs
+  const damagePanels = panels
   const config: DamageCalcConfig = { ...inputs.dmgConfig, globalAnomalyMultiplier: env.globalAnomalyMultiplier }
   return {
     disorderDamage: disorder && calcDisorderDamage(disorder.elements, disorder.count, damagePanels, config),

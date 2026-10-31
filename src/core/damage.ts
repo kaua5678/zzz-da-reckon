@@ -547,8 +547,18 @@ export function calcAnomalyDamage(
   const anomalyCritStats = isDisorder
     ? { rate: 0, dmg: 0, labelPrefix: '异常暴击' }
     : (input.anomalyCritOverride ?? getAnomalyCritStats(settle, element))
+  /**
+   * ⚠ **霜寒的「敌人受到的暴击伤害提升」不进这里**（用户裁决 2026-10-29）：
+   * > 「霜寒的 buff 完全是直伤的『暴击伤害』，菲欧妮这个是异常的『异常暴击』，两者不同乘区，
+   * >   作用范围也不同，互不影响。侵染的独立直伤区也是不做用于你这几个异常事件的。」
+   *
+   * `enemyCritDmgTakenBonus` 只服务直伤族（`calcCritMultiplier` / `calcSharpCritMultiplier`），
+   * 修前本行把它加进异常暴击伤害 ⇒ 霜寒队里标准异常与异放的暴伤被直伤 buff 虚抬（最多 +10 点）。
+   */
+  // @fact engine:damage/受暴伤区归属 口径: enemyCritDmgTakenBonus（霜寒「敌人受到的暴击伤害提升」）是**直伤族专属**，只进 calcCritMultiplier / calcSharpCritMultiplier；异常暴击区（anomalyCritRate/anomalyCritDmg）不读它，侵染区 infectionZoneBonus 同样只作用于风/染色直伤——直伤暴击与异常暴击是两个不同乘区 | 据 用户@2026-10-29 | 验 src/core/__tests__/damage.test.ts | 锚 src/core/damage.ts#calcAnomalyDamage | 信 确认
+  // ⟳复核: 若出现「敌人受到任意伤害的暴击伤害提升」这类**跨族**新字段（与霜寒不同名≠不同义），或渊下某个异常真吃暴伤，重核本分区 | 到期 2027-04-30
   const anomalyCritRate = anomalyCritStats.rate
-  const anomalyCritDmg = anomalyCritStats.dmg + settle.enemyCritDmgTakenBonus
+  const anomalyCritDmg = anomalyCritStats.dmg
   let critMult = 1
   let critLabel = '无异常暴击'
   if (anomalyCritRate > 0 || anomalyCritDmg > 0) {

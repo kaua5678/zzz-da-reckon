@@ -307,6 +307,41 @@ describe('calcAnomalyDamage', () => {
 
     expect(result.damage).toBeCloseTo(4500 * 2)
   })
+
+  /**
+   * 用户裁决 2026-10-29：「霜寒的 buff 完全是直伤的『暴击伤害』，菲欧妮这个是异常的『异常暴击』，
+   * 两者不同乘区，作用范围也不同，互不影响。侵染的独立直伤区也是不做用于你这几个异常事件的。」
+   *
+   * 缺陷形态：修前第 10 区写作 `anomalyCritStats.dmg + settle.enemyCritDmgTakenBonus` ⇒ 带霜寒的队里
+   * 标准异常与异放的暴伤被**直伤** buff 虚抬（霜寒满覆盖时最多 +10 点）。负控：把那半句加回去 ⇒ 本用例红。
+   */
+  it('异常暴击区只吃 anomalyCrit*：霜寒「受暴伤」与侵染区（直伤族）一概不进', () => {
+    const panel = emptyPanel()
+    panel.atk = 1000
+    panel.anomalyProficiency = 100
+    panel.anomalyCritRate = 100
+    panel.anomalyCritDmg = 50
+    const opts = {
+      panel, baseMultiplier: 450, element: 'physical' as const, enemyDefense: 0,
+      enemyDefReduction: 0, enemyDefFlatReduction: 0, enemyResistance: 0, enemyResReduction: 0,
+      stunned: false, critMode: 'crit' as const, damageKind: 'anomaly' as const,
+    }
+    const base = calcAnomalyDamage(opts).damage
+    expect(base).toBeCloseTo(4500 * 2 * 1.5) // 等级 ×2 × 异常暴伤 150%
+    expect(calcAnomalyDamage({ ...opts, panel: { ...panel, enemyCritDmgTakenBonus: 10 } }).damage)
+      .toBeCloseTo(base, 9)
+    expect(calcAnomalyDamage({ ...opts, panel: { ...panel, infectionZoneBonus: 18 } }).damage)
+      .toBeCloseTo(base, 9)
+
+    // 对照：同样两个字段在**直伤**上确实生效（是两条乘区分开，不是字段被删了）
+    const direct = calcDirectDamage({
+      panel: { ...panel, critRate: 100, critDmg: 50, enemyCritDmgTakenBonus: 10, infectionZoneBonus: 18 },
+      skillMultiplier: 100, damageElement: 'wind', enemyDefense: 0, enemyDefReduction: 0,
+      enemyDefFlatReduction: 0, enemyResistance: 0, enemyResReduction: 0, stunMultiplier: 1,
+      stunned: false, critMode: 'crit', count: 1, infectionElement: 'wind',
+    })
+    expect(direct.damage).toBeCloseTo(1000 * 1.6 * 1.18)
+  })
 })
 
 describe('失衡乘区分解展示与乘数一致（CC-221）', () => {
