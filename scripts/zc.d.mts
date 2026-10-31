@@ -90,6 +90,16 @@ export declare function driftQueue(root?: string): {
 }[]
 
 // ---- L3 动作层（租约 / 信封 / CLI） ----
+
+/**
+ * 棘轮 burn-down 的度量映射：`RATCHET_BURNDOWN.id → () => 实测值`（度量实现在 check-guards，本函数只接线）。
+ * ⚠ 键集必须**逐字等于** `RATCHET_BURNDOWN` 的 id 集——漏一个键 = 静默 NaN = 该条永不被点名
+ * （审计 P0/C-2）；由 `src/scripts/__tests__/checkGuards.test.ts` 断言锁死。
+ */
+export declare function burndownMeasures(
+  g: typeof import('./check-guards.mjs'),
+  root?: string,
+): Record<string, () => number>
 export interface Lease { path: string; lane: string; at: number; ttlMs: number }
 export declare function readLeases(): Lease[]
 export declare function writeLeases(leases: Lease[]): void

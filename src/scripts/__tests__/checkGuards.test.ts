@@ -89,7 +89,10 @@ import {
   scanCaliberTriggerDue,
 } from '../../../scripts/check-guards.mjs'
 // parseFactLine 的单一实现在 zc.mjs（规则 11）——判据 15 的「行尾追加不破坏解析」断言要直接用它
-import { auditAuthoredFacts, parseFactLine } from '../../../scripts/zc.mjs'
+import { auditAuthoredFacts, burndownMeasures, parseFactLine } from '../../../scripts/zc.mjs'
+// 棘轮度量映射的**注入对象**：必须按 zc 的同一条路径（check-guards 模块命名空间）喂进去，
+// 才能证明「真仓库上每个 id 都连到了活的度量函数」（审计 P0/C-2 的第 ② 条断言）
+import * as checkGuardsModule from '../../../scripts/check-guards.mjs'
 import {
   DOCS_READING_TESTS,
   DOCS_READING_MIN_TESTS,
@@ -586,11 +589,65 @@ describe('computeBurndown（棘轮 burn-down：防「冻结 = 永久豁免」）
     expect(byId('agentId 分支').frozen).toBe(AGENT_BRANCH_BASELINE)
     expect(byId('core agentId 分支').frozen).toBe(CORE_AGENT_BRANCH_BASELINE)
     expect(byId('展示层越层 import').frozen).toBe(EXHIBITION_LAYER_IMPORT_BASELINE)
+    // 2026-10-30 补最后一条可锁的（审计 P0/C-2 的姊妹项）：本条此前**没有** frozen 双向锁——
+    // 即改了 `CORE_ROLE_IMPORT_BASELINE` 而漏改登记表时，check-guards 判据 12 自己也会红，
+    // 但若哪天判据 12 被改口径/降级成读数，这里就没人接了（R44 实测过同族：两处数字不一致而 19/19 全绿）。
+    // ⚠ 余下 `游戏语义口径复核触发器` **无法**这样锁：它的 frozen=82 是登记时的**一次性存量**，
+    // 代码里没有对应常量可对照（还款方向是递减到 0，常数名会说谎）⇒ 只能靠 measure 的接线断言守着。
+    expect(byId('core 角色模块引用').frozen).toBe(CORE_ROLE_IMPORT_BASELINE)
   })
 
   it('daysBetween 计算正确（用于 dueSoon 提示）', () => {
     expect(daysBetween('2026-09-11', '2026-12-31')).toBe(111)
     expect(daysBetween('2026-12-31', '2026-12-31')).toBe(0)
+  })
+})
+
+// ═══ 审计 P0/C-2（2026-10-30）：棘轮 burn-down 的 **measure 接线** ═══
+//
+// 背景（不是假想，是实测）：`zc.mjs` 的 `measured` 映射原先是一张手写字面量，少写一个键的后果
+// **完全静默**——`measured[id] === undefined` ⇒ `computeBurndown` 收到 NaN ⇒ `measured=null`、
+// `done=false`、`stale=false` ⇒ `zc status` **永远不会点名该条**。它长得像「没事」，实际是判据瞎了。
+// 「core 角色名中缀/子目录」就这样从 2026-09-27 登记起瞎到 2026-10-30 被审计抓出：
+// 判据 23 是绿的（硬门 0），但它登记的 `due 2026-12-31` 形同虚设，到期也不会进「超期未清」。
+//
+// 两条断言分工不同、都不可省：
+//   ① **结构**判据：映射的键集 == `RATCHET_BURNDOWN` 的 id 集 ⇒ 漏接 / 退役键残留 = 当场红；
+//   ② **行为**判据：在真仓库上逐 id 调一次且读数有限 ⇒ 接了线但度量实现坏了（返回 undefined）也红。
+describe('棘轮 measure 接线（审计 P0/C-2：漏接线 ⇒ 静默 NaN ⇒ 这条永远不会被点名）', () => {
+  it('① 键集与 RATCHET_BURNDOWN 的 id 集**相等**（漏接一个即红）', () => {
+    // 传桩对象即可：映射的键由字面量决定、与注入的 g 无关（这正是不必搬真 g 的意义）
+    const keys = Object.keys(burndownMeasures({} as never)).sort()
+    const ids = RATCHET_BURNDOWN.map(e => e.id).sort()
+    expect(keys).toEqual(ids)
+    // 「不多不少」的另一半：重复键会静默覆盖前一个度量，键集本身要无重复
+    expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('② 真仓库逐 id 实测：每条读数都必须是有限数（接了线但度量坏了也红）', () => {
+    const measures = burndownMeasures(checkGuardsModule)
+    for (const e of RATCHET_BURNDOWN) {
+      const fn = measures[e.id]
+      expect(typeof fn, `${e.id} 缺 measure（静默 NaN ⇒ 永不被点名）`).toBe('function')
+      const v = fn!()
+      expect(Number.isFinite(v), `${e.id} 的 measure 返回 ${v}（NaN = 接线断了）`).toBe(true)
+    }
+    // 端到端（走 zc 的同一条注入路径）：这批读数一条都不许是 measureBroken
+    const rows = computeBurndown(id => (measures[id] ? measures[id]() : NaN))
+    expect(rows.filter(r => r.measureBroken).map(r => r.id)).toEqual([])
+  })
+
+  it('③ 负控/正控：NaN 读数被标记 measureBroken，正常读数不标记', () => {
+    // 负控：模拟「漏接一个键」（zc 传 NaN 进来）——必须被标出来，而不是静默成「没事」
+    const broken = computeBurndown(id => (id === 'core 角色名中缀/子目录' ? NaN : 0), '2028-01-15')
+      .find(r => r.id === 'core 角色名中缀/子目录')!
+    expect(broken.measureBroken).toBe(true)
+    expect(Number.isFinite(broken.measured)).toBe(false)
+    expect(broken.done).toBe(false)
+    expect(broken.stale).toBe(false)   // ← 这就是「到期也不会被点名」的机制本身
+    // 正控：真读数一律不标记（防「一律报坏」的假判据）
+    const atFrozen = (id: string) => RATCHET_BURNDOWN.find(e => e.id === id)!.frozen
+    expect(computeBurndown(atFrozen, '2028-01-15').every(r => !r.measureBroken)).toBe(true)
   })
 })
 

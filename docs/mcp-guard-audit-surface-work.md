@@ -306,7 +306,7 @@ STATUS: done
 
 | 优先级 | 卡片 | 改动面 | 验证方式 |
 |---|---|---|---|
-| **P0** | C-2：给 `core 角色名中缀/子目录` 补 measure + `computeBurndown` 对 NaN 报错 | `scripts/zc.mjs`（+1 行映射）、`scripts/check-guards.mjs`（computeBurndown）、`checkGuards.test.ts`（全量 id 断言） | `zc status` 应能点名该条；`npx vitest run checkGuards` 绿 |
+| **P0** | C-2：给 `core 角色名中缀/子目录` 补 measure + `computeBurndown` 对 NaN 报错 | ✅ 2026-10-30 已落地：度量映射抽成 `scripts/zc.mjs#burndownMeasures`（补该键 + 闭类断言）、`computeBurndown` 标 `measureBroken`、`zc status` 打「measure 断了」 | 实测：`status --json` 该条 `measured null→0` / `done false→true`；**删一个键 ⇒ 用例红 + status 报警**；11 条读数全有限 |
 | **P0** | B-3：`VAR_TOTAL_BASELINE` → per-file 单向棘轮 | `check-tokens.mjs`、`checkTokens.test.ts` | 注入「某文件 var() 减少」⇒ 红 |
 | **P1** | B-2：`手册 §4 行数` 从判据降为读数 | ✅ 2026-10-30 已落地：判据 34 `scripts/lib/guide-entry-budget.mjs` + `guard-registries.mjs` + `checkGuards.test.ts` | 加 1 行否决记录 ⇒ **不红**（已按此验收）；加编年史行 / 新增超标条目 ⇒ 红 |
 | **P1** | A-1/A-2：格式锁改结构锁（按花括号配对 + 允许修饰符） | `battleTimeDisplaySingleSource.test.ts`、`noNullRoundCc418.test.ts` | 加 `readonly` / 改缩进 ⇒ 绿；跨接口搬字段 ⇒ **红** |

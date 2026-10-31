@@ -170,6 +170,8 @@ export interface RatchetBurndownEntry {
 export interface RatchetBurndownState extends RatchetBurndownEntry {
   /** 实测当前值（数值）——与登记表里的文字字段 current 刻意不同名 */
   measured: number
+  /** measure 返回非有限数（接线断了：该 id 没 measure 或它炸了）⇒ zc status 报警（审计 P0/C-2） */
+  measureBroken: boolean
   progress: number
   remaining: number
   overdue: boolean

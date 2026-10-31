@@ -189,6 +189,9 @@ export const RATCHET_HISTORY_MAX = 120
  * `measure(id)` 由调用方注入（避免本文件硬依赖各判据的测量实现）。
  * 返回 [{ ...entry, measured, progress, stale, overdue }]
  * - measured = 实测当前值（数值；与登记表里的文字字段 `current` 刻意不同名）
+ * - measureBroken = measure 返回**非有限数**（= 接线断了：该 id 没有 measure 或它炸了）。
+ *   此时 measured/progress/remaining 全是 NaN，done/stale 恒 false ⇒ **永远不会被点名**；
+ *   zc status 据此打红字报警（审计 P0/C-2）。
  * - progress = frozen - measured（>0 表示已还款）
  * - stale = 已过 due 且零进展（点名；这是本判据存在的唯一理由）
  * - overdue = 已过 due 但还没做完（有进展或已清零 → 提示剩余/收尾，不算 stale）
@@ -205,12 +208,18 @@ export function computeBurndown(measure, today = new Date().toISOString().slice(
     //（当前值/下一步/阻塞点，判据 33），两者同名会被展开覆盖——正是「人工可读状态被
     // 自动读数静默顶掉」的同一族缺陷。
     const measured = measure(e.id)
+    // ⚠ 审计 P0/C-2（2026-10-30）：measure 返回非有限数 = **接线断了**，不是「读数为 0」。
+    // 原实现让它静默穿透（measured=NaN ⇒ done=false / stale=false）⇒ 这条棘轮永远不被点名，
+    // 登记的 due（如 2026-12-31）形同虚设。故显式标记：zc status 打「measure 断了」报警
+    // （只报不红——红由 checkGuards.test.ts 的「键集 == RATCHET_BURNDOWN 的 id 集」负责）。
+    const measureBroken = !Number.isFinite(measured)
     const progress = e.frozen - measured
     const overdue = today > e.due
     const done = measured <= e.target
     return {
       ...e,
       measured,
+      measureBroken,
       progress,
       remaining: Math.max(0, measured - e.target),
       overdue,

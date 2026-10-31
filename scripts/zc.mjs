@@ -938,6 +938,71 @@ function mtimeMap(paths, root = ROOT) {
   return out
 }
 
+// ───────────────────────────────────────────── 棘轮 burn-down 的度量映射（唯一一份）
+
+/**
+ * 棘轮 burn-down 的度量映射：`RATCHET_BURNDOWN.id → () => 实测值`。
+ * 度量实现全在 scripts/check-guards.mjs（规则 11：口径单一实现，zc 只注入），本函数只做**接线**。
+ *
+ * ⚠ 为什么抽成具名导出（审计 P0/C-2，2026-10-30）：原先这张映射是 verbStatus 里的**字面量**，
+ * 少写一个键的后果是**静默**的——`measured[id] === undefined` ⇒ `computeBurndown` 收到 NaN
+ * ⇒ `measured=null / done=false / stale=false`，**zc status 永远不会点名该条**（不是「绿」，
+ * 是判据瞎了）。『core 角色名中缀/子目录』就这么从 2026-09-27 登记起瞎到被审计抓出。
+ * 抽出来之后，checkGuards.test.ts 断言「键集 == RATCHET_BURNDOWN 的 id 集」⇒ 漏接线当场红。
+ *
+ * ⚠ 键必须**逐字等于** `RATCHET_BURNDOWN` 的 id（汉字、斜杠、空格都算），多一个/少一个都红。
+ *
+ * @param g scripts/check-guards.mjs 的模块命名空间（度量实现全在那里）
+ * @param root 仓库根（度量要扫工作区）
+ */
+export function burndownMeasures(g, root = ROOT) {
+  return {
+    // 度量函数一律调用 check-guards 的具名导出（规则 11：口径单一实现，zc 不复制）
+    'agentId 分支': () => g.countAgentBranchLines(root),
+    'core agentId 分支': () => g.countAgentIdBranchLinesInFiles(g.CORE_AGENT_BRANCH_FILES, root),
+    'core 角色模块引用': () => g.scanCoreRoleImports(root).count,
+    '展示层越层 import': () => g.scanExhibitionLayerImports(root).count,
+    // 2026-10-30 换尺（审计 P1/B-2）：旧键 '手册 §4 行数' 已退役——它量总量，
+    // 而规则 16③ 要求每次开发都可能 +N 行否决记录 ⇒ 读数涨不是退步。
+    // 新键量「单条超预算的条数」：加合规新条目不变，拆薄一条降一条。
+    '手册 §4 超标条目': () => scanGuideEntries(root).overBudget.length,
+    // ⚠ 度量「**剩余工作量**」= 豁免清单长度，不是 missing.length——
+    // missing 一登记就归零，用它当 current 会让棘轮当场显示「已完成」（实测踩过：
+    // 首版写 missing.length，8 条棘轮里这条 current=0/done=true 直接消失）。
+    '游戏语义口径复核触发器': () => g.scanCaliberTriggers(root).missing.length + g.CALIBER_TRIGGER_ALLOWLIST.length,
+    // 用 countDeadChannelWorkload 而不是 allowlisted.length 之和：后者的口径已由该函数接管，
+    // namesake 记录（kind:'namesake'）不计入待处置量（它的候选永不消失，算进去棘轮永远还不完）——
+    // 见 check-guards.mjs#countDeadChannelWorkload 与 T15 审计 #13。
+    '死通道豁免清单': () => g.countDeadChannelWorkload(),
+    // ⚠ 同「游戏语义口径复核触发器」的坑（2026-09-14 实测，T15 审计 #4）：
+    // 原 measure 只数 `unhandled.length`，而判据 13 上线时就把 40 条判成 deferred 清零了
+    // ⇒ current 恒为 0、done=true，**41 条挂账从提醒面消失**（与上面那条首版缺陷同型：
+    // 「存量一登记，棘轮就自称还清」）。剩余工作量 = unhandled（红灯）+ deferred（已挂账存量）。
+    '名词表未处理': () => {
+      const n = g.auditNounTriage(root)
+      if (n === null) return NaN
+      const deferred = Object.values(n.triage.entries ?? {}).filter(e => e?.state === 'deferred').length
+      return n.unhandled.length + deferred
+    },
+    // ⚠ 同上面两条的坑（R49 换尺时按纪律先查了这一条）：frozen=60 是**存量待办**，
+    // measure 必须是「还剩几条没补测试」。
+    // 若写成 `newGaps.length`（新缺口数）⇒ 换尺时就恒 0、done=true ⇒ 60 条从提醒面消失
+    // （与上面两条同型的「存量一登记就自称还清」）。
+    // 若写成 `SETTINGS_UNTESTED_BACKLOG.length` ⇒ 补了测试也不降，棘轮永远显示零进展。
+    // 正解 = 清单长度 − stale 长度（stale = 清单里**已被测试引用**、待回收的行；
+    // 补测试但漏删行时 stale 也涨 ⇒ 读数照样下降，不会因「忘了删行」而假装没还）。
+    'core 角色前缀字段': () => g.scanCoreRoleFields(root)?.count ?? NaN,
+    // 2026-10-30 审计 P0/C-2 补接线：这条自 2026-09-27 登记起**没有 measure**——
+    // 判据 23 本身是绿的（硬门 0），但 burn-down 读数恒 NaN ⇒ 到期（2026-12-31）后
+    // 也不会被点名（stale 恒 false）。正例参照上面同型的 'core 角色前缀字段'。
+    'core 角色名中缀/子目录': () => g.scanCoreRoleInfix(root)?.count ?? NaN,
+    '滑块生效测试存量': () => {
+      const r = g.scanSettingsCoverage(root)
+      return g.SETTINGS_UNTESTED_BACKLOG.length - r.stale.length
+    },
+  }
+}
+
 // ───────────────────────────────────────────────────────────────────── 各动词
 
 async function verbStatus(root = ROOT) {
@@ -957,49 +1022,11 @@ async function verbStatus(root = ROOT) {
     const markers = g.scanDebtMarkers(root)
     const audit = g.matchDebtRegistry(markers)
     debt = { registered: markers.length - audit.unregistered.length, unregistered: audit.unregistered.length, cleared: audit.cleared.length }
-    // 棘轮 burn-down（只报不红）——测量函数注入，zc 不复制各判据的实现
+    // 棘轮 burn-down（只报不红）——测量函数由 burndownMeasures 注入，zc 不复制各判据的实现
     // （编号说明：check-guards 的判据 11 = 手册密度棘轮；burn-down 本身不是判据）
-    const measured = {
-      // 度量函数一律调用 check-guards 的具名导出（规则 11：口径单一实现，zc 不复制）
-      'agentId 分支': () => g.countAgentBranchLines(root),
-      'core agentId 分支': () => g.countAgentIdBranchLinesInFiles(g.CORE_AGENT_BRANCH_FILES, root),
-      'core 角色模块引用': () => g.scanCoreRoleImports(root).count,
-      '展示层越层 import': () => g.scanExhibitionLayerImports(root).count,
-      // 2026-10-30 换尺（审计 P1/B-2）：旧键 '手册 §4 行数' 已退役——它量总量，
-      // 而规则 16③ 要求每次开发都可能 +N 行否决记录 ⇒ 读数涨不是退步。
-      // 新键量「单条超预算的条数」：加合规新条目不变，拆薄一条降一条。
-      '手册 §4 超标条目': () => scanGuideEntries(root).overBudget.length,
-      // ⚠ 度量「**剩余工作量**」= 豁免清单长度，不是 missing.length——
-      // missing 一登记就归零，用它当 current 会让棘轮当场显示「已完成」（实测踩过：
-      // 首版写 missing.length，8 条棘轮里这条 current=0/done=true 直接消失）。
-      '游戏语义口径复核触发器': () => g.scanCaliberTriggers(root).missing.length + g.CALIBER_TRIGGER_ALLOWLIST.length,
-      // 用 countDeadChannelWorkload 而不是 allowlisted.length 之和：后者的口径已由该函数接管，
-      // namesake 记录（kind:'namesake'）不计入待处置量（它的候选永不消失，算进去棘轮永远还不完）——
-      // 见 check-guards.mjs#countDeadChannelWorkload 与 T15 审计 #13。
-      '死通道豁免清单': () => g.countDeadChannelWorkload(),
-      // ⚠ 同「游戏语义口径复核触发器」的坑（2026-09-14 实测，T15 审计 #4）：
-      // 原 measure 只数 `unhandled.length`，而判据 13 上线时就把 40 条判成 deferred 清零了
-      // ⇒ current 恒为 0、done=true，**41 条挂账从提醒面消失**（与上面那条首版缺陷同型：
-      // 「存量一登记，棘轮就自称还清」）。剩余工作量 = unhandled（红灯）+ deferred（已挂账存量）。
-      '名词表未处理': () => {
-        const n = g.auditNounTriage(root)
-        if (n === null) return NaN
-        const deferred = Object.values(n.triage.entries ?? {}).filter(e => e?.state === 'deferred').length
-        return n.unhandled.length + deferred
-      },
-      // ⚠ 同上面两条的坑（R49 换尺时按纪律先查了这一条）：frozen=60 是**存量待办**，
-      // measure 必须是「还剩几条没补测试」。
-      // 若写成 `newGaps.length`（新缺口数）⇒ 换尺时就恒 0、done=true ⇒ 60 条从提醒面消失
-      // （与上面两条同型的「存量一登记就自称还清」）。
-      // 若写成 `SETTINGS_UNTESTED_BACKLOG.length` ⇒ 补了测试也不降，棘轮永远显示零进展。
-      // 正解 = 清单长度 − stale 长度（stale = 清单里**已被测试引用**、待回收的行；
-      // 补测试但漏删行时 stale 也涨 ⇒ 读数照样下降，不会因「忘了删行」而假装没还）。
-      'core 角色前缀字段': () => g.scanCoreRoleFields(root)?.count ?? NaN,
-      '滑块生效测试存量': () => {
-        const r = g.scanSettingsCoverage(root)
-        return g.SETTINGS_UNTESTED_BACKLOG.length - r.stale.length
-      },
-    }
+    // ⚠ 映射已抽成具名导出（审计 P0/C-2）：漏接一个 id 的后果是**静默 NaN**（读数 null、
+    // done=false、stale=false ⇒ 永不被点名）；checkGuards.test.ts 断言其键集 == RATCHET_BURNDOWN 的 id 集。
+    const measured = burndownMeasures(g, root)
     burndown = g.computeBurndown(id => (measured[id] ? measured[id]() : NaN))
   } catch { /* 护栏不可用时不阻塞 status */ }
   const statusDoc = join(root, 'docs/implementation-status.md')
@@ -1245,6 +1272,9 @@ function humanize(res) {
     if (d.debt) lines.push('债务 ' + d.debt.registered + ' 条已登记' + (d.debt.unregistered ? ' / ✗ ' + d.debt.unregistered + ' 条未登记' : ''))
     // 判据 11：棘轮 burn-down（只报不红）——点名「到期零进展」的棘轮，防「冻结 = 永久豁免」
     for (const b of d.burndown ?? []) {
+      // 审计 P0/C-2：measure 断了 = 读数恒 null、done/stale 恒 false ⇒ **这条永远不会被点名**。
+      // 不许静默——它长得像「没事」，实际是判据瞎了（同族：规则 16① 的死口径）。
+      if (b.measureBroken) { lines.push('⚠ 棘轮 measure 断了：' + b.id + '（静默 NaN ⇒ 这条永远不会被点名）'); continue }
       if (b.done) continue
       const head = `${b.id} ${b.frozen}→${b.measured}（剩 ${b.remaining}，目标 ${b.target}）`
       if (b.stale) lines.push(`⚠ 棘轮零进展·已到期(${b.due})：${head} → ${b.current}`)
