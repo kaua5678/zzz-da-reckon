@@ -23,7 +23,7 @@
  * - 非轴队（`timeline.hasTrace === false`）⇒ `hasTrace: false`、`phases: []`（不可推演）；
  * - `net ≤ 0` 或战斗时间为 0 ⇒ 同上；
  * - 一窗都没开（K = 0）⇒ 整局就是一段积攒（`phases = [build]`）；
- * - **只读**：不参与覆盖率 / 伤害（要接进去须先定「部分窗的分母」，见模块末尾 TODO）。
+ * - **只读**：不参与覆盖率 / 伤害。⚠ 「按余量比例给部分窗」的数值口径**已否决**（用户 2026-11-01 裁明机制：窗口只有「开/不开」两态，连续失衡 = **满条开窗后把超出 180s 的溢出从最后一窗时间里丢弃**即时钟截断），本模块只报「攒向下一窗的比例」这个读数。
  */
 import { finiteOr0 } from '@/utils/finiteClamp'
 import type { StunTimeline, StunWindowAction } from '@/core/stunTimeline'
@@ -63,16 +63,16 @@ export interface StunPhaseTimeline {
   /** 余量失衡值（= `net − Σ开窗成本`，与 `continuousStunCount` 的小数残量同源） */
   trailingStun: number
   /**
-   * **余量折成下一窗的条数比例** = `trailingStun / bossStunValue` ∈ [0,1)。
+   * **余量折成下一窗的条数比例** = `trailingStun / 边际开窗成本` ∈ [0,1)，与池
+   * `continuousStunCount` 的小数残量逐位同源（判据锁）。只回答「**下一窗还差多少条**」——
+   * 对应结果页 `nextWindowProgress`（没满 = 没开窗，离散）。
    *
-   * 这是「失衡满了但窗口时间没开完」的**候选分母 A**（引擎自洽：开一窗的成本 = `b`，
-   * 窗内失衡作废不补贴下一窗——用户 2026-10-28）。候选 B = `余量/e`（§1 原式，`e=inAxis/K`）
-   * 实测多为 >1。**只读，未进数值**。
+   * ⚠ **不是**「部分窗的易伤比例」：那条数值口径已否决（窗口只有开/不开；连续失衡是时钟截断末窗）。
    */
   trailingFraction: number
   /**
-   * **下一窗的部分时长** = `trailingFraction × 名义窗长`——窗口时间只兑现这一截
-   * （「残缺的只有前半部分」的读数表达）。**只读，未进数值**。
+   * **下一窗的条数比例 × 名义窗长**（读数，便于直读「还差多少秒的窗」）。
+   * ⚠ 只读，**不是**覆盖率输入（见 `trailingFraction` 的否决说明）。
    */
   trailingWindowSeconds: number
   /** 实际排出的窗口数 */

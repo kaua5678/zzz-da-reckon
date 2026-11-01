@@ -352,7 +352,8 @@
             <span class="pool-title">逐窗兑现（轴模式）</span>
             <!-- 三读数按 A/B/C 口径措辞（用户 2026-11-01）：
                  动作 = 轴块真打出的秒数；填充 = 通道 A 的物理量（不产失衡值）；发呆 = 通道 C（容器不是缺陷）。
-                 通道 B（时钟截短）已被裁定非物理、且显示必须与计算同步（用户 2026-11-01）⇒ 不上屏。 -->
+                 时钟截短（连续失衡的终点）当前被 solveTeam.physicalMax 钳在 0 窗 ⇒ 恒 0，暂不上屏；
+                 A10 四步放开让末窗真被截短后再露出。 -->
             <span class="axis-window-summary">
               轴 {{ axisWindows.windows.length }} 窗 · 动作 {{ fmt(axisWindows.totals.actionSeconds, 1) }}s
               · 填充 {{ fmt(axisWindows.totals.fillSeconds, 1) }}s<span class="dim" title="通道 A：窗内平A填充不产失衡值 ⇒ 填一秒就少一秒攒条">（不产失衡）</span>

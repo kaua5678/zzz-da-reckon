@@ -397,7 +397,12 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
 
     let capacityResolved = false
     if (outerExit === 'cycle' && stunWindowDur > 0 && stunEffTime > 0 && overrideLock === undefined) {
-      /** 物理上限：窗长不可能装下超过 floor(effTime/W) 次 */
+      /**
+       * ⚠ **这一行把「连续失衡」钳掉了**（用户 2026-11-01 裁明机制）：满条开出 18s 窗后，若
+       * 「非失衡攒条时间 + K×W」超过 180s，溢出应从**最后一窗的时间里丢掉**（时钟截断 `clippedByClock`）。
+       * `floor(effTime/W)` 先封顶 ⇒ 该状态永远构造不出来（全库 `clippedByClock=0`）。
+       * 放开 = A10 四步（①池可超上限 ②排被截短末窗 ③覆盖率扣截断秒 ④展示读时间轴）。
+       */
       const physicalMax = Math.max(1, Math.floor(stunEffTime / stunWindowDur))
       /**
        * 时间上界（沿用上一版 cap 口径）：`nec < effTime` ⇒ 窗口余地 = `ceil((effTime−nec)/W)`；
@@ -942,13 +947,13 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    *
    * 开关 `PROBE_STUN_CONT_COV`：`formula` = 失衡值公式（§1 口径，e = 每秒失衡值 × 窗长），
    * `trace` = 轴栈逐窗实测填充率（用户 2026-10-25「应该有前面失衡期的数据」），
-   * `phase` = 二元相位口径：末窗按「余量 ÷ 开窗成本」部分兑现（用户 2026-11-01「失衡满了但窗口
-   *   时间没开完，只给了一部分」；= 池的 `continuousStunCount` 的整数+小数，与
+   * `phase` = 试过的「按余量比例给部分窗」口径（= 池 `continuousStunCount` 的整数+小数，与
    *   `stunPhaseTimeline#trailingFraction` 同源）。**不设 = 逐位不变**（默认关）。
-   *   ⛔ **`phase` 已否决（2026-11-01）**：与固定窗长机制冲突——窗长 `W` 按队伍固定
-   *   （`stunWindowDuration = boss 失衡时间 + 4 + 全队失衡延时`），半条不触发失衡，
-   *   「攒 X% 条 ⇒ 给 X% 窗」是额外假设。实测 97/103 队全上升 +0.03%~+7.11%，仅作否决记录，
-   *   **不要改成默认**。否决全文见 `docs/STUN_WINDOW_DURATION.md` §10。
+   *   ⛔ **已否决（2026-11-01，用户裁明机制后）**：失衡只有「开窗 / 不开窗」两态
+   *   （`stunWindowDuration` 按队伍固定），「攒 X% 条 ⇒ 给 X% 窗」是额外假设。
+   *   **连续失衡的真正机制 = 满条开窗后总时间超 180s，把溢出从最后一窗的时间里丢弃（时钟截断）**
+   *   ——那是 A10 四步放开 `physicalMax` 的活，不是本条。实测 97/103 队全上升 +0.03%~+7.11%，
+   *   仅留作否决记录，**不要改成默认**。
    *
    * 换的是 `out.stunCoverage`（= 伤害池易伤与行级 `stunCoverage` 的唯一输入），
    * **不换**迭代内部用的那份（`runOuterLoop` 每轮用的是它自己的局部 `stunWindowFraction(stunCount, …)`），
