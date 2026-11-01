@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { classifyPreset } from '../../../scripts/lib/presetCategories.mjs'
-import { teamPresets, presetGroupLabels, UNGROUPED_LABEL, PRESET_UNGROUPED_SUB, presetSubgroupLabelsFor, presetsForFilter } from '@/data/teamPresets'
+import { teamPresets, visibleTeamPresets, presetGroupLabels, UNGROUPED_LABEL, PRESET_UNGROUPED_SUB, presetSubgroupLabelsFor, presetsForFilter } from '@/data/teamPresets'
 
 const catalogText = readFileSync(new URL('../../../public/static/catalog.json', import.meta.url), 'utf8')
 const catalog = JSON.parse(catalogText) as {
@@ -32,6 +32,19 @@ describe('teamPresets 预设队伍库', () => {
   it('预设 id 唯一', () => {
     const ids = teamPresets.map(p => p.id)
     expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('beta 开关关 ⇒ 引用 beta 快照角色的预设整条隐藏；开 ⇒ 全库（用户 2026-11-01）', () => {
+    const betaIds = teamPresets.filter(p => p.team.some(id => /^\d{4}v\d+$/.test(String(id)))).map(p => p.id)
+    expect(betaIds.length, '库里应存在 v1 版预设（sunbringer-v1-*）').toBeGreaterThan(0)
+    const off = visibleTeamPresets(false).map(p => p.id)
+    const on = visibleTeamPresets(true).map(p => p.id)
+    for (const id of betaIds) {
+      expect(off, `${id} 在 beta 关时不该出现`).not.toContain(id)
+      expect(on, `${id} 在 beta 开时该出现`).toContain(id)
+    }
+    expect(on.length).toBe(teamPresets.length)
+    expect(off.length).toBe(teamPresets.length - betaIds.length)
   })
 
   it('★ 成员集合唯一：同 3 人不得出现两条（防 auto-/手编孪生重复）', () => {

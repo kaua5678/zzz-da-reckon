@@ -1,5 +1,5 @@
 import { computed, ref, watch } from 'vue'
-import { teamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
+import { teamPresets, visibleTeamPresets, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, firstNonEmptyFilter } from '@/data/teamPresets'
 import { useCatalogStore } from '@/stores/catalog'
 import { useCustomTeamsStore } from '@/composables/customTeams'
 
@@ -38,6 +38,9 @@ export const presetGroupOptions: Array<{ label: string; value: string }> = [
  * @param init 初始筛选；缺省取第一个非空（用户 2026-09-03：打开即有队伍可选——此前全空像「没下拉框」）
  */
 export function usePresetFilter(init: { group: string | null; subgroup: string | null } = firstNonEmptyFilter()) {
+  const catalog = useCatalogStore()
+  /** beta 关时整条隐藏 v1 队（成员含 beta 快照 id）；开关切换需刷新页面（catalog store 口径） */
+  const poolIds = computed(() => new Set(visibleTeamPresets(catalog.betaEnabled).map(t => t.id)))
   const groupSel = ref<string | null>(init.group)
   const subSel = ref<string | null>(init.subgroup)
   const subOptions = computed(() => [
@@ -46,7 +49,9 @@ export function usePresetFilter(init: { group: string | null; subgroup: string |
   ])
   const teamOptions = computed(() =>
     /* 两级各自「不限」= 该级不筛（跨分类自由勾选），故不再要求两级都选中 */
-    presetsForFilter(toFilterValue(groupSel.value), toFilterValue(subSel.value)).map(t => ({ value: t.id, label: t.name })),
+    presetsForFilter(toFilterValue(groupSel.value), toFilterValue(subSel.value))
+      .filter(t => poolIds.value.has(t.id))
+      .map(t => ({ value: t.id, label: t.name })),
   )
   return { groupSel, subSel, groupOptions: presetGroupOptions, subOptions, teamOptions }
 }
@@ -102,7 +107,7 @@ export function usePresetTeamPicker() {
   const mainCQuickOptions = computed(() => {
     const seen = new Map<string, string>()
     // 自定义队一并参与（主C 口径 = 槽位 0，与预设库一致）：槽位 0 空着的自定义队不进快选
-    for (const t of [...teamPresets, ...custom.presets]) {
+    for (const t of [...visibleTeamPresets(catalogStore.betaEnabled), ...custom.presets]) {
       const main = t.team[0]
       if (!main || seen.has(main)) continue
       seen.set(main, catalogStore.agentName(main))
@@ -111,7 +116,7 @@ export function usePresetTeamPicker() {
   })
   watch(quickPickMainC, main => {
     if (!main) return
-    selectedPresetIds.value = [...teamPresets, ...custom.presets].filter(t => t.team[0] === main).map(t => t.id)
+    selectedPresetIds.value = [...visibleTeamPresets(catalogStore.betaEnabled), ...custom.presets].filter(t => t.team[0] === main).map(t => t.id)
   })
   /**
    * 默认选中 = **空**（用户 2026-10-16：「预设队伍会**自动勾选克拉蕾的 5 个队**，希望**不要自动勾选**」）。

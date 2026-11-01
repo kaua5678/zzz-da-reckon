@@ -128,6 +128,23 @@ export function presetSubgroupLabelsFor(group: string | null): string[] {
   return subs.sort((a, b) => a === PRESET_UNGROUPED_SUB ? 1 : b === PRESET_UNGROUPED_SUB ? -1 : a.localeCompare(b))
 }
 
+/** beta 快照角色 id（`<agentId>v<n>`，scripts/snapshot-agent.mjs 生成） */
+export const BETA_AGENT_ID_RE = /^\d{4}v\d+$/
+
+/** 预设是否引用了 beta 快照角色 */
+export function presetUsesBetaAgent(p: { team: string[] }): boolean {
+  return p.team.some(id => BETA_AGENT_ID_RE.test(String(id)))
+}
+
+/**
+ * 按 beta 开关过滤预设（用户 2026-11-01：「关着肯定藏着呗，有正式角色时，关着就只显示正式角色」）。
+ * 关 = 只留**成员全是正式角色**的预设（引用 `1601v1/1661v1` 的 v1 队整条隐藏）；开 = 全库可见。
+ * 注意只在**列表/选择器**这一层过滤：按 id 的引用（timeGolden、归档对拍）仍读全量 `teamPresets`。
+ */
+export function visibleTeamPresets(betaEnabled: boolean): TeamPreset[] {
+  return betaEnabled ? teamPresets : teamPresets.filter(p => !presetUsesBetaAgent(p))
+}
+
 /** 三级：该（职业, 属性）下的预设队伍。两级各自 `null` = 该级不筛（跨分类自由勾选，2026-10-11） */
 export function presetsForFilter(group: string | null, subgroup: string | null): TeamPreset[] {
   return teamPresets.filter(p =>
