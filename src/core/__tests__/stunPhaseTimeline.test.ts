@@ -14,6 +14,7 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { buildStunTimeline, type StunWindowTrace } from '@/core/stunTimeline'
 import { buildStunPhaseTimeline } from '@/core/stunPhaseTimeline'
+import { continuousStunCount } from '@/core/stunPool'
 import { teamPresets } from '@/data/teamPresets'
 
 const trace = (i: number, over: Partial<StunWindowTrace> = {}): StunWindowTrace => ({
@@ -91,6 +92,12 @@ describe('真管线：相位恒等式（3 般岳 + 佩洛伊斯）', () => {
       if (ph!.hasTrace) {
         expect(ph!.phases.reduce((s, p) => s + p.seconds, 0), `${id} 恒等式`).toBe(ph!.effectiveTime)
         expect(ph!.buildSeconds + ph!.windowSeconds, `${id} 积攒+窗`).toBe(ph!.effectiveTime)
+        // 单一尺：K + trailingFraction 必须等于池的连续计数（`continuousStunCount`）的小数残量。
+        // 无 gift 时逐位；有 gift 时池含 gift、相位不含 ⇒ 豁免（见 stunPhaseTimeline.ts 的边际成本注释）。
+        if ((pool!.stunGift ?? 0) === 0) {
+          const frac = Math.min(1, Math.max(0, continuousStunCount(pool!) - pool!.stunCount))
+          expect(ph!.trailingFraction, `${id} 相位比例与池计数律同一把尺`).toBeCloseTo(frac, 9)
+        }
       }
     }
   }, 900_000)
