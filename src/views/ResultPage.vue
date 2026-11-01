@@ -366,6 +366,12 @@
               · 相位 积攒 {{ fmt(stunPhaseTimeline.buildSeconds, 1) }}s / 窗 {{ fmt(stunPhaseTimeline.windowSeconds, 1) }}s
               <template v-if="stunPhaseTimeline.trailingSeconds > 0.05"> / 余量 {{ fmt(stunPhaseTimeline.trailingSeconds, 1) }}s</template>
             </span>
+            <!-- 部分窗读数（连续失衡的「窗口时间只给一截」）：分母 = 余量/开窗成本（候选 A，引擎自洽）；
+                 候选 B 用余量/e（§1 原式）实测多为 >1。⚠ 纯读数额，**未进覆盖率/伤害**（步 3 待定）。 -->
+            <span v-if="stunPhaseTimeline?.hasTrace && stunPhaseTimeline.trailingFraction > 0.001" class="axis-window-summary"
+              title="失衡满了但窗口时间没开完：余量 ÷ 开窗成本 = 下一窗能兑现的条数比例，× 名义窗长 = 下一窗只给的部分时长。⚠ 只读读数，尚未进覆盖率/伤害。">
+              · 下一窗只给 {{ (stunPhaseTimeline.trailingFraction * 100).toFixed(0) }}%（{{ fmt(stunPhaseTimeline.trailingWindowSeconds, 1) }}s）
+            </span>
             <!-- 池排出的窗数 vs 轴实际排的窗数：fixed / tail / bestEffort 类型的轴不吃完剩余窗口，
                  差额窗口**没有轴块**（不是「轴打空了」）——不点明会被读成逐窗图少画了几窗 -->
             <span

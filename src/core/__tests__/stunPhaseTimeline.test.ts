@@ -27,7 +27,10 @@ describe('buildStunPhaseTimeline 纯函数（二元相位骨架）', () => {
     // 2 窗 × 16s、战斗 100s ⇒ 窗外 68s；b=10、net=25 ⇒ 开窗成本 20、余量 5
     const tl = buildStunTimeline({
       stunCount: 2, windowDuration: 16, effectiveTime: 100,
-      windows: [trace(0, { actionSeconds: 16 }), trace(1, { actionSeconds: 16 })],
+      windows: [
+        trace(0, { actionSeconds: 16, actions: [{ slot: 0, moveId: 'burst', count: 1, inAxisCount: 1, startTime: 0, actionTime: 16 }] }),
+        trace(1, { actionSeconds: 16 }),
+      ],
     })
     const ph = buildStunPhaseTimeline({ timeline: tl, totalStunBuildUp: 25, bossStunValue: 10 })
     expect(ph.hasTrace).toBe(true)
@@ -40,6 +43,12 @@ describe('buildStunPhaseTimeline 纯函数（二元相位骨架）', () => {
     expect(ph.trailingSeconds).toBeCloseTo(5 / (25 / 68), 9)
     expect(ph.phases.filter(p => p.kind === 'window').every(p => p.stunBuildUp === 0), '窗内失衡作废').toBe(true)
     expect(ph.phases.filter(p => p.kind === 'build').reduce((s, p) => s + p.stunBuildUp, 0), '积攒段失衡值合计 = net').toBe(25)
+    // 窗段携带**有序**的吃易伤动作；积攒段无逐动作顺序（引擎只有分桶总量）
+    expect(ph.phases.filter(p => p.kind === 'window')[0]!.actions.map(a => a.moveId), '第 1 窗动作').toEqual(['burst'])
+    expect(ph.phases.filter(p => p.kind === 'build').every(p => p.actions.length === 0), '积攒段无逐动作顺序').toBe(true)
+    // 部分窗（候选分母 A = 余量/b）：余量 5 / b 10 = 0.5 窗 ⇒ 0.5 × 16 = 8s
+    expect(ph.trailingFraction, '候选分母 A：余量/b').toBeCloseTo(0.5, 9)
+    expect(ph.trailingWindowSeconds, '部分窗时长 = frac × 名义窗长').toBeCloseTo(8, 9)
   })
 
   it('② 非轴队 / net=0 ⇒ 不编造（phases 空）', () => {

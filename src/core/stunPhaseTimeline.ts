@@ -26,7 +26,7 @@
  * - **只读**：不参与覆盖率 / 伤害（要接进去须先定「部分窗的分母」，见模块末尾 TODO）。
  */
 import { finiteOr0 } from '@/utils/finiteClamp'
-import type { StunTimeline } from '@/core/stunTimeline'
+import type { StunTimeline, StunWindowAction } from '@/core/stunTimeline'
 
 /** 相位类型：积攒（窗外）/ 窗（吃易伤） */
 export type StunPhaseKind = 'build' | 'window'
@@ -42,6 +42,12 @@ export interface StunPhaseSegment {
   stunBuildUp: number
   /** `window` 段 = 窗口序号（0-based）；`build` 段 = -1 */
   windowIndex: number
+  /**
+   * `window` 段：窗内执行的动作（来自 `StunWindowSlot.actions`，**有序**）——「吃易伤」那一半，
+   * 顺序即引擎实际执行顺序。`build` 段恒为空：窗外的积攒动作在引擎里只有分桶总量、**没有逐动作顺序**
+   * （见文件头「缺口」）。
+   */
+  actions: StunWindowAction[]
 }
 
 /** 二元相位时序产物 */
@@ -56,6 +62,19 @@ export interface StunPhaseTimeline {
   trailingSeconds: number
   /** 余量失衡值（= `net − Σ开窗成本`，与 `continuousStunCount` 的小数残量同源） */
   trailingStun: number
+  /**
+   * **余量折成下一窗的条数比例** = `trailingStun / bossStunValue` ∈ [0,1)。
+   *
+   * 这是「失衡满了但窗口时间没开完」的**候选分母 A**（引擎自洽：开一窗的成本 = `b`，
+   * 窗内失衡作废不补贴下一窗——用户 2026-10-28）。候选 B = `余量/e`（§1 原式，`e=inAxis/K`）
+   * 实测多为 >1。**只读，未进数值**。
+   */
+  trailingFraction: number
+  /**
+   * **下一窗的部分时长** = `trailingFraction × 名义窗长`——窗口时间只兑现这一截
+   * （「残缺的只有前半部分」的读数表达）。**只读，未进数值**。
+   */
+  trailingWindowSeconds: number
   /** 实际排出的窗口数 */
   windowCount: number
   /** 是否可推演（false ⇒ `phases` 空，不编造） */
@@ -66,7 +85,7 @@ const EPS = 1e-9
 
 const EMPTY: StunPhaseTimeline = {
   phases: [], effectiveTime: 0, buildSeconds: 0, windowSeconds: 0,
-  trailingSeconds: 0, trailingStun: 0, windowCount: 0, hasTrace: false,
+  trailingSeconds: 0, trailingStun: 0, trailingFraction: 0, trailingWindowSeconds: 0, windowCount: 0, hasTrace: false,
 }
 
 /**
@@ -95,14 +114,14 @@ export function buildStunPhaseTimeline(input: {
   }
   const phases: StunPhaseSegment[] = []
   let cursor = 0
-  const push = (kind: StunPhaseKind, seconds: number, stunBuildUp: number, windowIndex: number) => {
-    phases.push({ kind, startSeconds: cursor, seconds, stunBuildUp, windowIndex })
+  const push = (kind: StunPhaseKind, seconds: number, stunBuildUp: number, windowIndex: number, actions: StunWindowAction[] = []) => {
+    phases.push({ kind, startSeconds: cursor, seconds, stunBuildUp, windowIndex, actions })
     cursor += seconds
   }
   // 一窗都没开：整局都是积攒（没有窗口可吃易伤）。
   if (tl.slots.length === 0) {
     push('build', eff, net, -1)
-    return { phases, effectiveTime: eff, buildSeconds: eff, windowSeconds: 0, trailingSeconds: eff, trailingStun: net, windowCount: 0, hasTrace: true }
+    return { phases, effectiveTime: eff, buildSeconds: eff, windowSeconds: 0, trailingSeconds: eff, trailingStun: net, trailingFraction: 0, trailingWindowSeconds: 0, windowCount: 0, hasTrace: true }
   }
   const outside = Math.max(0, eff - windowTotal)
   const buildRate = outside > EPS ? net / outside : 0
@@ -115,7 +134,7 @@ export function buildStunPhaseTimeline(input: {
   for (let i = 0; i < tl.slots.length; i++) {
     const buildSec = buildRate > EPS ? openCosts[i]! / buildRate : 0
     push('build', buildSec, openCosts[i]!, -1)
-    push('window', Math.max(0, tl.slots[i]!.effectiveSeconds), 0, i)
+    push('window', Math.max(0, tl.slots[i]!.effectiveSeconds), 0, i, tl.slots[i]!.actions)
   }
   const trailingSeconds = buildRate > EPS ? trailingStun / buildRate : 0
   push('build', trailingSeconds, trailingStun, -1)
@@ -132,6 +151,10 @@ export function buildStunPhaseTimeline(input: {
   // 用 eff − windowTotal 而不是重求和：浮点结合律会让 Σbuild + Σwindow 差 ~1e-14，
   // 恒等式要零容差 ⇒ 直接取算术补（与 outside 同源，见函数头恒等式）。
   const buildSeconds = Math.max(0, eff - windowTotal)
+  /** 候选分母 A：余量 / 开窗成本（引擎自洽；候选 B = 余量/e 见读数说明） */
+  const trailingFraction = b > 0 ? Math.max(0, Math.min(1, trailingStun / b)) : 0
+  const nominalW = Math.max(0, finiteOr0(tl.slots[0]?.nominalSeconds))
+  const trailingWindowSeconds = trailingFraction * nominalW
   return {
     phases,
     effectiveTime: eff,
@@ -141,6 +164,8 @@ export function buildStunPhaseTimeline(input: {
       ? phases[phases.length - 1]!.kind === 'build' ? phases[phases.length - 1]!.seconds : 0
       : 0,
     trailingStun,
+    trailingFraction,
+    trailingWindowSeconds,
     windowCount: tl.slots.length,
     hasTrace: true,
   }
