@@ -5,20 +5,306 @@
   "agentIds": [
     "1601v1"
   ],
-  "status": "not_described_not_implemented",
-  "attributeConversions": [],
-  "resources": [],
+  "status": "partially_implemented",
+  "attributeConversions": [
+    {
+      "id": "sunbringer_initial_crit_dmg_to_crit_rate",
+      "name": "挽昼｜初始暴伤转化",
+      "sourceStat": "critDmg",
+      "sourceValue": "panel",
+      "sourcePanelPhase": "outOfCombat",
+      "threshold": 0,
+      "stepSize": 1,
+      "stepRounding": "floor",
+      "targetStat": "critRate",
+      "valuePerStep": 0.35,
+      "cap": null,
+      "coverage": 1,
+      "status": "implemented",
+      "note": "核心被动 Lv.7：「挽昼每拥有1%的初始暴击伤害，初始暴击率提升0.35%」。实现位置：src/mechanics/agents/sunbringer.ts#applySunbringerPanel（模块手写，读局外面板、整 1% floor；与克拉蕾同口径）。判据 src/mechanics/__tests__/sunbringer.test.ts。"
+    }
+  ],
+  "resources": [
+    {
+      "id": "sunbringer_sharpness",
+      "name": "锐能",
+      "nature": "resource",
+      "initialValue": 60,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "sharpness_entry",
+          "trigger": "进入战场",
+          "countSource": "none",
+          "amountPerCount": 60,
+          "coverage": 1,
+          "status": "implemented_approximation",
+          "note": "勘域 180s 一次 ⇒ 每局一次。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        },
+        {
+          "id": "sharpness_auto",
+          "trigger": "自动累积",
+          "countSource": "battleTime",
+          "amountPerCount": 1.5,
+          "coverage": 1,
+          "status": "implemented_approximation",
+          "note": "catalog level60.sharpnessRegen = 1.5/s（raw stats.ep_recover=150）。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "sharpness_ex",
+          "trigger": "强化特殊技：焚夜·曦生 / 燃灯·晦尽（含改）",
+          "cost": 30,
+          "result": "每发消耗 30 锐能",
+          "status": "implemented",
+          "note": "raw「锐能消耗 30点」×3 行 + 1 行无 id（属曦生（改））。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "properties": {
+        "costPerUse": 30
+      }
+    },
+    {
+      "id": "sunbringer_gash",
+      "name": "残痕",
+      "nature": "state_machine",
+      "initialValue": 0,
+      "maxValue": 3,
+      "gainRules": [
+        {
+          "id": "gash_buildup",
+          "trigger": "部分锐化伤害命中",
+          "countSource": "none",
+          "coverage": 1,
+          "status": "implemented",
+          "note": "招式级 gash_buildup 行（gachabase 补入 26 行），每 600 点 = 1 层（用户 2026-10-25 裁决沿用克拉蕾口径）。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "gash_maim",
+          "trigger": "重击命中持有[残痕]的敌人",
+          "cost": 1,
+          "result": "每层触发 1 次[毁伤]（每次最多消耗 3 层）",
+          "status": "implemented",
+          "note": "消耗招式：平A四段/强化特殊技/连携/支援突击。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "properties": {
+        "perLayer": 600,
+        "maxStacks": 3
+      }
+    },
+    {
+      "id": "sunbringer_maim",
+      "name": "毁伤（伤害行）",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "maim_count",
+          "trigger": "每消耗 1 层残痕",
+          "countSource": "none",
+          "coverage": 1,
+          "status": "implemented",
+          "note": "毁伤次数 = min(层数, 3×消耗招式次数)。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [],
+      "properties": {
+        "damageMoveId": "1601114",
+        "damageMultiplierLv12": 336.3
+      }
+    },
+    {
+      "id": "sunbringer_wish",
+      "name": "愿力",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": 160,
+      "gainRules": [
+        {
+          "id": "wish_from_maim",
+          "trigger": "全队触发[毁伤]（每消除 1 层残痕）",
+          "countSource": "none",
+          "amountPerCount": 40,
+          "coverage": 1,
+          "status": "implemented",
+          "note": "每层 +40，上限 160。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "wish_jufeng",
+          "trigger": "普通攻击：执旌·聚锋",
+          "cost": 120,
+          "result": "消耗 120 愿力发动聚锋，并获得[链齿]与[旗令]",
+          "status": "implemented",
+          "note": "实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "properties": {
+        "perMaim": 40,
+        "max": 160,
+        "costPerUse": 120
+      }
+    },
+    {
+      "id": "sunbringer_tokens",
+      "name": "链齿 / 旗令",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "tokens_from_jufeng",
+          "trigger": "聚锋发动后",
+          "countSource": "none",
+          "coverage": 1,
+          "status": "implemented",
+          "note": "每次聚锋各 +1（两个 token 同一节奏）。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "link_gears_changan",
+          "trigger": "强化特殊技：焚夜·长暗终焉",
+          "cost": 1,
+          "result": "消耗[链齿]发动高量级强化特殊技",
+          "status": "implemented",
+          "note": "实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        },
+        {
+          "id": "flag_ult_a",
+          "trigger": "终结技：此行，共赴前路",
+          "cost": 1,
+          "result": "消耗[旗令] → 获得[愿核]",
+          "status": "implemented",
+          "note": "用户裁决 2026-10-25：旗令**优先给终结技**，永昼之炬本版按 0 次。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "properties": {
+        "perJufeng": 1
+      }
+    },
+    {
+      "id": "sunbringer_wish_core",
+      "name": "愿核",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "core_from_ult_a",
+          "trigger": "终结技：此行，共赴前路 消耗旗令",
+          "countSource": "none",
+          "coverage": 1,
+          "status": "implemented",
+          "note": "实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "core_ult_b",
+          "trigger": "终结技：此愿，重塑万象",
+          "cost": 1,
+          "result": "解除二段终结技（不耗喧响）",
+          "status": "implemented",
+          "note": "二段行由引擎既有终结技行承担（moveId 1601011），模块只在 patch 里加烬痕。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "properties": {}
+    },
+    {
+      "id": "sunbringer_ember",
+      "name": "烬痕",
+      "nature": "resource",
+      "initialValue": 0,
+      "maxValue": null,
+      "gainRules": [
+        {
+          "id": "ember_accumulate",
+          "trigger": "聚锋 / 长暗终焉 / 两个终结技命中",
+          "countSource": "none",
+          "coverage": 1,
+          "status": "implemented",
+          "note": "按招式**实际伤害的 75%** 累积（用户 2026-10-25：计入总伤害）。实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "spendRules": [
+        {
+          "id": "ember_clear",
+          "trigger": "终结技：此愿，重塑万象 终结一击",
+          "cost": "all",
+          "result": "消除全部[烬痕]，直接扣除等量血量（= 等量伤害）",
+          "status": "implemented",
+          "note": "实现位置：src/mechanics/agents/sunbringer.ts#solveSunbringerLoops（buildExecutions 发执行行；判据 sunbringerLoops.test.ts）"
+        }
+      ],
+      "properties": {
+        "rate": 0.75
+      }
+    }
+  ],
   "rowFusions": [],
   "events": [],
   "verifications": [],
   "stateMachines": [],
-  "teamBuffs": [],
-  "notes": [
-    "占位测试包（Test1）：nanoka 3.4.1+19836465 首版，后续版本会用正式逻辑与数值整体替换——替换前先跑 scripts/snapshot-agent.mjs 冻结本版（1601v1）。",
-    "当前深度＝倍率表直读（generic 路径：平A秒均 + 特殊/强特 + 终结），机制未实录。",
-    "未建模清单（原文已核对，待正式包落地后实录）：双实体（艾尔妲底形/林德薇恩切换，德蕾琪娜为招架位）；[残痕]（重击命中消耗至多 3 层，每层触发 1 次[毁伤]范围伤害）；[愿力]/[锐能]（能量族）；[链齿]/[旗令]（强特资源，曦生·长暗终焉/晦尽·永昼之炬消耗）；[愿核]（终结技「此愿，重塑万象」消耗并清除[烬痕]）；[掠夜]状态（闪避长按高速移动）。",
-    "数据裁决：basicBenchmarkMoveId=1601003（执旌第 3 段，艾尔妲为底形）；specialty 原文空缺，暂空串。",
-    "beta 冻结副本：源 1601@e84090f6（nanoka 3.4.1+19836465，2026-10-24）"
+  "teamBuffs": [
+    {
+      "id": "sunbringer_unity_sharp_crit",
+      "name": "挽昼｜众愿一心",
+      "source": "额外能力",
+      "description": "队伍中存在[击破]角色、[防护]角色或其他[锋御]角色时触发：挽昼发动任意[强化特殊技]或[冲刺攻击：巡征·影域穿袭]时，全队[锋御]代理人进入[众愿一心]状态：锐暴伤害提升25%，持续45秒，重复进入刷新持续时间。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "stat": "sharpCritDmg",
+          "value": 25,
+          "mode": "flat"
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "接收者限锋御——sharpCritDmg 仅锐化伤害消费 ⇒ 全队施加数值等价（克拉蕾残锋同口径，见 claret.ts debt）。触发 = 强化特殊技（轮转高频）⇒ 满覆盖近似。门控 = 额外能力 teamConditions（见 additionalAbility）。"
+    }
   ],
+  "notes": [
+    "★ 2026-10-25 用户裁决（通用化，未实施）：残痕/毁伤 = **锋御职业的通用机制**，不是克拉蕾/挽昼的专属——多个锋御同队时共用**同一个 Boss 残痕池**（不是各算各的）。实现方向：抽 `src/mechanics/gashMaim.ts` 团队级单一实现（每槽贡献 gash_buildup → 合并池 → 600 点/层 → 按各槽消耗招式的次数分配毁伤），claret/sunbringer 都改为读它；判定 = `src/mechanics/__tests__/gashMaimTeam.test.ts`（双锋御队：池合并、毁伤总数不翻倍）。另一条：**防御力 buff 必须建模**（锋御以防御力为伤害基底）——1661 知更鸟「离场守护」提供的防御力提升（含 Buff强化点 +25%）要进面板；护盾量本身可以不建。",
+    "(Test1) 占位包（nanoka 3.4.1+19836465），今日增量 = 众愿一心 spec teamBuff + 额外能力门控声明；核心循环明日实录。",
+    "★ 明日实录施工图（原文已核对）：挽昼 = 克拉蕾同族锋御模板——伤害均为锐化伤害、防御力作招式伤害倍率、锐暴替代暴伤、初始暴伤→暴击 0.35%/1%、残痕(≤3层)→重击消耗→毁伤。镜像 claret.ts 架构（D4 资源循环 + D8 毁伤附伤行 + D2 面板），暂定模块名 sunbringer.ts。逐项：①极昼（暴击+40% + 无视20%防御，15s，强化特殊技/聚锋刷新，后场不减 ⇒ 满覆盖近似）；②锐能池（进战回60；强化特殊技消耗，数值看锐能消耗 param 行）；③愿力循环（全队毁伤每层+40，上限160，≥120 发动聚锋→获得链齿+旗令；队友毁伤触发快速支援聚锋 3s CD）；④链齿/旗令 → 长暗终焉/永昼之炬（高量级强化特殊技）；⑤终结技二段链：此行共赴前路（喧响极，旗令→愿核）→ 此愿重塑万象（愿核，消除烬痕=等量扣血——烬痕=特定招式实际伤害75%积累，Boss 战等效增伤通道）；⑥德蕾琪娜招架后支援突击（残痕积蓄+15% / 伤害+20%，moveId 级）；⑦支援突击·灯塔 直接+1层残痕。",
+    "★ 2026-10-25 热更包（nanoka 3.4.1+19850203，上一版 19836465）：①招式倍率整体改动——平A 四段 −18~20%、强化特殊技（曦生/晦尽/含改）−8%、聚锋 +9.1%、长暗终焉 +24.4%、永昼之炬 +27.6%、终结技「此行共赴前路」+25.9%；②**新增 moveId 1601114「毁伤伤害倍率」168%**（basic 分类下，无失衡/喧响/异常行）——这是此前缺失、导致「本期不建模毁伤伤害」的那一行，前提已消失；③新增 moveId 1601016（强化特殊技：焚夜·曦生（改）本体，62350 → Lv12 折算 68.585%）；④影画 1/2 文本首次给出（隐世的虚狩 / 继承者的叛旗），影画 3–6 仍 TestKey_PlaceHolder；⑤基础属性与音擎/驱动盘文本零变化（1661 全部零变化）。",
+    "★ 2026-10-25 进展：①数据缺口已补——gash/sharpness 行来自 **gachabase**（fetch-gachabase-agent 1601 → upsert-gachabase-rows，入库残痕 26 行 / 锐能 16 行）；level60 另补 sharpCritDmg 150 / sharpnessRegen 1.5（level60-rules 新增两条规则，见 commit 4428670a）。②面板层已接线（src/mechanics/agents/sunbringer.ts）：初始暴伤→暴击 0.35%/1%（整 1% floor）+ 极昼（暴击 +40、无视 20% 防御，满覆盖近似）。③资源循环口径已与用户逐条裁定（2026-10-25）：残痕 600 点/层沿用克拉蕾；**本期不建模毁伤伤害**（缺毁伤倍率行，毁伤只出次数）；旗令优先给终结技·此行共赴前路；烬痕按实际伤害 75% 累积且计入总伤害。④待接线：锐能池/残痕→毁伤→愿力→聚锋→链齿·旗令→愿核→烬痕的执行行与资源区块（口径全文见模块头注释 §1–§6）。",
+    "⚠ 影画 1-6 全部 TestKey_PlaceHolder（无命座数据，不标 implemented）。",
+    "数据裁决：basicBenchmarkMoveId=1601003（执旌第3段，艾尔妲底形）；specialty=sharpen（锋御，weapon_type 码 7）。",
+    "★ 2026-10-26 倍率表口径（用户裁决「挽昼加进去」）：四个强化特殊技行（1601106 / 1601006 / 1601016 / 1601115）的 **30 锐能按能量等价**计入强特标准式的 e 通道（`standardMultiplierTable#EX_SHARPNESS_ENERGY`，倍率演算页耗能列标「锐」）——四行 12 个格子反解 e=30.0~30.1、失衡/喧响/积蓄/秽盾全 1.000~1.001、伤害 1.091=她的直伤系数；「（改）」两行伤害与失衡整列 ×1.1。⚠ 克拉蕾的 60 锐能是[猩红铭刻]的入场门禁、不进公式（逐角色登记，不按锋御职业泛化）。判据 `multiplierCoefficients.test.ts::锋御锐能：挽昼`。",
+    "★ 2026-10-30 热更重录（nanoka 3.4.1+19997538，上一版 19850203）：**招式倍率表逐行未变**（36 行 Lv12 伤害/失衡/积蓄/回能逐字相同，`node scripts/sync-nanoka-agent-rows.mjs 1601` 空跑 = 0 处变化可证），新包给的是文本级机制：",
+    "★ 2026-10-30 补录·反制支援公式（用户提问「我在倍率表看到挽昼的反制支援的时间直接用秽盾/100 在算，得出来 6 秒。这里不进行公式计算吗，是不是漏了」——确实是漏了）：1601204「反制支援：希望堡垒」的 `ether_purify = 600`，按 `ether/100` 直读得 **6.0s**；实际它是**反制支援系**，秽盾公式 = **300 + 100t** ⇒ 真值 **(600−300)/100 = 3.0s**。三列独立验证：失衡 919.05→实测 919.3、喧响 200.03→200.145、积蓄 599.40→599.44（反制支援标准式 = 支援突击实录常数 + 20 等效能量奖励，按她的 S 级/锋御系数换算）。根因：基数 300 原先只钉在 `scripts/import-nanoka-v12.mjs#MOVE_ETHER_BASE` 的**逐 id 抄本**里（只有克拉蕾两行），其余导入路径完全不知道这条口径。现收成**单一事实源** `scripts/lib/type-bonus-time.mjs#counterAssistEtherBase`（按名「反制支援 / Counter Assist」+ 定点 id 1611030 琢形识别），导入器 / 增量同步 / `patch-move-action-time` / `validate:data` 四处共用；判据 `counterAssist.test.ts::反制支援秽盾定点基数 300`（全库每个反制支援行都验 + 普通支援突击负控）。⚠ 与**招架支援 250** 的区别：250 是弹刀（Defensive Assist）的类型加成；反制支援是另一招族、基数 300。实测 1601204 按 250 折得 3.5s（三列比值 0.896 / 0.907 / 0.899 明显偏低），按 300 折得 3.0s（1.0003 / 1.0006 / 1.0001）。⚠ 本角色与 1661 的「反制支援 + 专属支援突击」**尚未登记进** `src/data/counterAssists.ts`（那只登记了克拉蕾）⇒ 引擎目前**不会**用它们替换 Boss 控制技组的弹刀，也不会产反制支援行；倍率表/资源卡里只是把它们当普通招式展示。是否接入待定（接入会改变含这两个角色的队伍在带控制技 Boss 下的队伤与难度读数）。",
+    "① **「德蕾琪娜发动[招架支援]造成的失衡值提升50%」——已建模**：`src/mechanics/agents/sunbringer.ts#PARRY_ASSIST_DAZE_BONUS` + `applySunbringerParryDaze`（本角色三段「招架支援」行按表值 ×1.5、经 dazeMultiplierOverride 精确结算，与琥珀 1272 影画4 同款；引擎取哪一段由 findDefensiveAssist 决定 ⇒ 三行一起放大）。判据 `sunbringer.test.ts::招架支援失衡 +50%`。",
+    "② 「挽昼在队伍中时，队伍中角色触发[招架支援]的优先级提升…」= 换人操作面，**无数值不入账**（原文没给任何量）。",
+    "③ 终结技「此愿，重塑万象」新增「招式发动的短时间内敌人的失衡时间不会减少」——**未建模**：原文没给秒数，且引擎的 `enemyStunDurationBonusSeconds` 是「延长窗口」语义、不是「本招不扣失衡时间」语义（要新通道）。已记在下方待办。",
+    "④ 额外能力名补齐为「领袖之证」（纯文本）。⑤ 术语改名 **愿力 → 愿火**（同一版原文；英文标识符 `WISH_*` 不动，中文注释/文档同步——同名物见 GAME_TERM_TO_CODE_FIELD）。",
+    "⚠ 同版把影画 1/2 文本退回 `TestKey_PlaceHolder`（19850203 有「隐世的虚狩 / 继承者的叛旗」且已接线实现）——按用户 2026-10-30 口径「命座回退应该是搞错了，你不管这个就行」，**本版保留既有影画文本与实现，不随新包回退**。",
+    "★ 2026-10-30 反制支援接入（用户裁决「接吧，有反制支援的角色越来越多了，不再是克拉蕾专属」）：counterAssists.ts 登记 1601 = 1601204 希望堡垒 + 1601205 灯塔，两段按 moveFusions.ts#SUNBRINGER_COUNTER_ASSIST **融合成一次动作**（3.0s + 2.0s = 5.0s；伤害 1757.6% + 939.1%、喧响 200.145 + 120.6975）。带控制技的 Boss（40000/40002/40003/40005）下她在场会用反制支援整组化解弹刀，产一行反制支援执行行。灯塔「重击命中敌人时，直接为目标添加 1 层[残痕]」⇒ 每组 +600 点、不吃积蓄效率、受同时存量 3 层上限，已在 sunbringer.ts#solveSunbringerLoops（输入 counterAssistCount）与烬痕同源解里同步；判据 counterAssist.test.ts（开/关替换的毁伤次数差分 + 融合时间/倍率）。",
+    "★ 2026-10-31 倍率表复核·灯塔的等效能量（用户提问「支援突击：灯塔，立于苍穹 (1601205) 挽昼这招式倍率系数说他送了很多等效能量，但是各项数值都很低，是不是赠送能量搞错了」）：**确实搞错了——原实现把克拉蕾专属追击的 @80 当成整族价**，灯塔实际就是普通支援突击基线 **@20、零奖励**。反解：按她自己列系数（失衡 100% / 喧响 100% / 积蓄 100%、直伤 1.091）代入，失衡 20.02 / 喧响 20.05 / 积蓄 20.00（三列独立命中），伤害列 939.1/(111.35+140×2)×2×1.1 = 1.0907 = 她的直伤系数（第四列同证）；套 @80 时四列全被压到 0.51~0.59 的假象。改法：标准式改为**逐招式登记**（`standardMultiplierTable#COUNTER_ASSIST_FOLLOW_UP_EQUIVALENT_ENERGY`，克拉蕾 1611030 = 80 / 挽昼 1601205 = 20），本体 @40 升级为招族价（克拉蕾/挽昼/知更鸟三家一致）；判据 multiplierCoefficients.test.ts::三家反解 + 灯塔零奖励。⚠ 只影响倍率演算页与系数记录，不动引擎数值（灯塔送 1 层残痕的建模与融合时间/倍率未变）。",
+    "beta 冻结副本：源 1601@645f0325（nanoka 3.4.1+19997538，2026-11-01）"
+  ],
+  "additionalAbility": {
+    "teamConditions": [
+      {
+        "type": "specialty",
+        "values": [
+          "stun",
+          "defense"
+        ]
+      },
+      {
+        "type": "sameSpecialtyAsSelf"
+      }
+    ],
+    "note": "额外能力（raw 1601 passive Lv.7）：「队伍中存在[击破]角色、[防护]角色或其他[锋御]角色时触发」。sameSpecialtyAsSelf 已排除自身槽位 = 「其他锋御」。"
+  },
   "beta": true
 }
