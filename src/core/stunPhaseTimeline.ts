@@ -151,8 +151,13 @@ export function buildStunPhaseTimeline(input: {
   // 用 eff − windowTotal 而不是重求和：浮点结合律会让 Σbuild + Σwindow 差 ~1e-14，
   // 恒等式要零容差 ⇒ 直接取算术补（与 outside 同源，见函数头恒等式）。
   const buildSeconds = Math.max(0, eff - windowTotal)
-  /** 候选分母 A：余量 / 开窗成本（引擎自洽；候选 B = 余量/e 见读数说明） */
-  const trailingFraction = b > 0 ? Math.max(0, Math.min(1, trailingStun / b)) : 0
+  /**
+   * 候选分母 A：余量 / **边际开窗成本**（首窗 b、之后 b(1−refund)）——
+   * 与池 `stunPool#continuousStunCount` 的计数律同源 ⇒ `K + trailingFraction === continuousStunCount(pool)`
+   * （无 gift 时逐位；有 gift 时池含 gift、相位不含，见交叉判据的豁免）。
+   */
+  const marginalCost = b * (1 - refund)
+  const trailingFraction = marginalCost > 0 ? Math.max(0, Math.min(1, trailingStun / marginalCost)) : 0
   const nominalW = Math.max(0, finiteOr0(tl.slots[0]?.nominalSeconds))
   const trailingWindowSeconds = trailingFraction * nominalW
   return {
