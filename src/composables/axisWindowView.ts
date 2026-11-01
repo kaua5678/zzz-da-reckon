@@ -136,14 +136,6 @@ export interface AxisWindowTotals {
   skippedTimes: number
   /** 有动作或填充的窗数（空窗 = 一个动作都没执行） */
   activeWindows: number
-  /**
-   * **被战斗时钟截短的窗数**（通道 B「时间不够」的逐窗显影：窗排到 180s 外 ⇒ 末窗只剩前半部分）。
-   *
-   * 用户口径 2026-11-01：「要么是失衡打了但是时间不够无法填充，导致最后一窗变成**残缺的只有前半部分**」。
-   * 今天全库 `clippedByClock = 0`（`solveTeam.physicalMax` 把窗数钉在装得下的范围内）⇒ 这里恒 0，
-   * 但读数必须先在：通道 B 一旦可达，展示层不用再改一次口径。
-   */
-  clippedWindows: number
 }
 
 export interface AxisWindowView {
@@ -174,7 +166,7 @@ const EPS = 1e-9
 const EMPTY: AxisWindowView = {
   windows: [],
   hasTrace: false,
-  totals: { actionSeconds: 0, fillSeconds: 0, idleSeconds: null, zeroedSeconds: 0, skippedTimes: 0, activeWindows: 0, clippedWindows: 0 },
+  totals: { actionSeconds: 0, fillSeconds: 0, idleSeconds: null, zeroedSeconds: 0, skippedTimes: 0, activeWindows: 0 },
 }
 
 /**
@@ -300,7 +292,6 @@ export function axisWindowView(input: AxisWindowViewInput): AxisWindowView {
     zeroedSeconds: windows.reduce((s, w) => s + w.zeroedSeconds, 0),
     skippedTimes,
     activeWindows,
-    clippedWindows: windows.reduce((s, w) => s + (w.clippedByClock ? 1 : 0), 0),
   }
   return { windows, hasTrace: true, totals }
 }

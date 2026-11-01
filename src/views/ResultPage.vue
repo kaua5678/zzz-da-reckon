@@ -350,14 +350,13 @@
         <template #header>
           <div class="axis-window-header">
             <span class="pool-title">逐窗兑现（轴模式）</span>
-            <!-- 三读数按 A/B/C 口径措辞（用户 2026-11-01 的两条稀缺通道）：
-                 动作 = 轴块真打出的秒数；填充 = 通道 A 的物理量（不产失衡值）；发呆 = 通道 C（容器不是缺陷）；
-                 时钟截短 = 通道 B（末窗被 180s 时钟切掉尾巴，今天全库为 0，读数先在）。 -->
+            <!-- 三读数按 A/B/C 口径措辞（用户 2026-11-01）：
+                 动作 = 轴块真打出的秒数；填充 = 通道 A 的物理量（不产失衡值）；发呆 = 通道 C（容器不是缺陷）。
+                 通道 B（时钟截短）已被裁定非物理、且显示必须与计算同步（用户 2026-11-01）⇒ 不上屏。 -->
             <span class="axis-window-summary">
               轴 {{ axisWindows.windows.length }} 窗 · 动作 {{ fmt(axisWindows.totals.actionSeconds, 1) }}s
               · 填充 {{ fmt(axisWindows.totals.fillSeconds, 1) }}s<span class="dim" title="通道 A：窗内平A填充不产失衡值 ⇒ 填一秒就少一秒攒条">（不产失衡）</span>
               <template v-if="axisWindows.totals.idleSeconds !== null"> · 发呆 {{ fmt(axisWindows.totals.idleSeconds, 1) }}s</template>
-              <template v-if="axisWindows.totals.clippedWindows > 0"> · 时钟截短 {{ axisWindows.totals.clippedWindows }} 窗</template>
               <template v-if="axisWindows.totals.skippedTimes > 0"> · 跳过 {{ axisWindows.totals.skippedTimes }} 次</template>
             </span>
             <!-- 池排出的窗数 vs 轴实际排的窗数：fixed / tail / bestEffort 类型的轴不吃完剩余窗口，
