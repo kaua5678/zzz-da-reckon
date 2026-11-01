@@ -61,7 +61,12 @@ export interface CalcRoundThreads {
   prevPoolStunCount?: number
   /**
    * **A10：上一轮装配溢出秒**（连续失衡，用户 2026-11-01）——末窗被时钟截短的秒数。
-   * 滞后一轮注入轴栈（与 energy/decibel 同款）；`PROBE_STUN_CLIP_ITER=1` 才消费，缺省 0/undefined ⇒ 零 delta。
+   *
+   * ⚠ **已不再注入轴栈**（2026-11-01 轮内两趟稳定化）：轴栈的 clip 改由 `runCalcRound` 的
+   * `opts.stunLastWindowClip` **轮内直给**（solveTeam 用 pass1 溢出作 pass2 clip）——滞后一轮的
+   * 注入正是 `auto-1051-1141-1451` K 6→5 双稳态的成因（`.zc/perf/zzIso.perf.ts`）。
+   * 本字段保留的唯一用途 = 外层收敛签名（`outerCycle.ts#outerFeedbackSignature`，6834685 引入，
+   * 防环在它收敛前判 stable）；缺省 undefined ⇒ 与既有停点同形。
    */
   prevStunOverflowSeconds?: number
 }

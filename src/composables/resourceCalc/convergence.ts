@@ -8,7 +8,7 @@ import type { useCatalogStore } from '@/stores/catalog'
 import type { AnomalySkillExecution } from '@/core/anomalyPool/helpers'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { continuousStunCount } from '@/core/stunPool'
-import { probeFlag, probeKey, probePush } from '@/core/probeTrace'
+import { probeKey, probePush } from '@/core/probeTrace'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic, interactionBaselineFor } from '@/mechanics'
@@ -111,7 +111,7 @@ export function createRunCalcRound(deps: {
     resolveAxes, calcAnomalyPoolInput, extractAnomalyExecsFrom, extractStunExecsFrom, autoActive,
   } = deps
 
-  function runCalcRound(stunCount: number, threads: CalcRoundThreads, opts?: { forceNoAxis?: boolean; interactionScale?: number; interruptTopUp?: boolean; axisAutoTrim?: number }): CalcRoundResult {
+  function runCalcRound(stunCount: number, threads: CalcRoundThreads, opts?: { forceNoAxis?: boolean; interactionScale?: number; interruptTopUp?: boolean; axisAutoTrim?: number; stunLastWindowClip?: number }): CalcRoundResult {
     const {
       goodReview: prevGoodReview,
       energyBySlot: prevEnergyBySlot,
@@ -145,6 +145,17 @@ export function createRunCalcRound(deps: {
       // （雨果轴内决算块数落地，坑36）已整块迁进 `hugo.ts#applyHugoTeamConfig`，
       // 该模块经 `threads.prevPoolStunCount` 契约自取（规则 6：编排层不写角色规则）。
     } = threads
+    /**
+     * **A10 连续失衡：末窗时钟截短秒**（用户 2026-11-01 裁明机制）——只在本文件归一化一次，
+     * 下面**两处** `calcStunAxisStack`（执行集合 :484 / 攒条分数 :1028）必须**同值**读它（同源纪律）。
+     *
+     * ⚠ 轮内两趟（2026-11-01 稳定化）：值由 `solveTeam#runOuterLoop` 用**同一轮** pass1 的
+     * `overflowSeconds` 经 `opts` 直给，**不再**走 `threads.prevStunOverflowSeconds` 的滞后注入
+     * （滞后一轮 = 轴栈按上一轮的溢出重排、而本轮溢出已变 ⇒ `auto-1051-1141-1451` K 6→5 双稳态）。
+     * 缺省 / ≤1e-9 ⇒ 两处都不传该字段 ⇒ 逐位不变（零 delta）。
+     */
+    const stunLastWindowClip = Number(opts?.stunLastWindowClip ?? 0)
+    const clipForStacks = Number.isFinite(stunLastWindowClip) && stunLastWindowClip > 1e-9 ? stunLastWindowClip : undefined
     const base = resourceConfig.value
     // CC-418：`runCalcRound` 不再有 null 出口。唯一调用链 `calcOutput → solveTeam → runCalcRound` 在
     // 同一次同步求值内已前置守卫 `resourceConfig.value && catalogStore.ready`（useResourceCalc#calcOutput），
@@ -496,11 +507,9 @@ export function createRunCalcRound(deps: {
         swayBySlot: stackSwaySupplyOf(Math.max(0, opts?.axisAutoTrim ?? 0)),
         // T157：升级轴（bestEffort）的资源门控 —— 与下方 6 处同源
         goodReview: Math.max(0, prevGoodReview),
-        // A10（连续失衡）：末窗被时钟截短 —— 溢出取**上一轮**装配溢出（滞后一轮，与 energy/decibel 同款）。
-        // 探针闸 PROBE_STUN_CLIP_ITER=1 才消费；缺省不传 ⇒ 逐位不变。两处栈调用必须同值（同源纪律）。
-        ...(probeFlag('PROBE_STUN_CLIP_ITER') === '1' && (threads.prevStunOverflowSeconds ?? 0) > 1e-9
-          ? { lastWindowClipSeconds: threads.prevStunOverflowSeconds }
-          : {}),
+        // A10（连续失衡）：末窗被时钟截短 —— 轮内两趟，值由 solveTeam 本轮 pass1 溢出经 opts 直给。
+        // 缺省不传 ⇒ 逐位不变。两处栈调用必须同值（同源纪律，见顶部 `clipForStacks`）。
+        ...(clipForStacks !== undefined ? { lastWindowClipSeconds: clipForStacks } : {}),
         // 决算块的窗口延长（佩洛伊斯 3s）：按本槽角色派发，与下方 inAxisFractionProvider 同源
         extendOnEndOf: (slot, moveId) => axisMoveExtendOnEndOf(configStore.team[slot]?.agentId, moveId, configStore.team[slot]?.cinemaLevel ?? 0),
       })
@@ -1038,10 +1047,8 @@ export function createRunCalcRound(deps: {
           decibelBySlot: stackDecibelBySlot,
           swayBySlot: stackSwaySupplyOf(Math.max(0, opts?.axisAutoTrim ?? 0)),
           goodReview: Math.max(0, prevGoodReview),
-          // A10：与上方 axisExecutedStack 同值（上一轮装配溢出 = 末窗时钟截短秒）
-          ...(probeFlag('PROBE_STUN_CLIP_ITER') === '1' && (threads.prevStunOverflowSeconds ?? 0) > 1e-9
-            ? { lastWindowClipSeconds: threads.prevStunOverflowSeconds }
-            : {}),
+          // A10：与上方 axisExecutedStack **同值**（同一个 `clipForStacks` 归一化结果）
+          ...(clipForStacks !== undefined ? { lastWindowClipSeconds: clipForStacks } : {}),
           // 与上方 axisExecutedStack 同源（决算块窗口延长）
         extendOnEndOf: (slot, moveId) => axisMoveExtendOnEndOf(configStore.team[slot]?.agentId, moveId, configStore.team[slot]?.cinemaLevel ?? 0),
         })

@@ -98,11 +98,28 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
   const pendingTopUpSeconds = (x: CalcRoundResult, prev: CalcRoundResult | null): number =>
     Math.max(0, x.interactionTopUp.requiredSeconds - (prev?.interactionTopUp.requiredSeconds ?? 0))
   /**
+   * **A10 轮内两趟的当前截短秒**（连续失衡，用户 2026-11-01 裁明机制）：0/undefined = 不截短。
+   *
+   * 语义 = 满条开出的窗装不进 180s 时，溢出从**最后一窗的时间里丢掉**（战斗时钟截断）。
+   * 本变量 = 本次整轮求值采用的截短量；`runOuterLoop` 第 6 参缺省读它 ⇒ 其后所有重跑
+   * （中断臂 / 挤压臂 / 轴态降配 / 弃轴 / 非轴降配 / kStar 按 K 重跑）**同一个 clip**，
+   * 不会出现「主路径带截短、试算不带」的两套账。
+   * 只有 `PROBE_STUN_CLIP_ITER=1` 的两趟块会写它；缺省 undefined ⇒ 逐位不变（零 delta）。
+   */
+  let stunClipPass: number | undefined
+  /**
    * 跑完整外层不动点。forceNoAxis = 轴退化重算（用户口径 2026-08：轴的资源需求
    * （喧响/嗔火/轴内块 × 窗口数）超出时间预算 → 必要时间 > 战斗时间 → 该轴不可操作
    * （需 boss 秽盾等外界环境才打得成）→ 退化为一般轴（不注入轴块/连携覆盖/自动补齐）重算）。
    */
-  function runOuterLoop(forceNoAxis: boolean, interactionScale?: number, interruptTopUp?: boolean, axisAutoTrim?: number, overrideLock?: number): { out: CalcRoundResult; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: OuterExit; outerCyclePickedEarlier: boolean; capacityResolved: boolean } {
+  /**
+   * @param stunLastWindowClip **A10 轮内两趟**（2026-11-01 稳定化）：本次整轮求值用的**末窗时钟截短秒**
+   *   （= pass1 的 `resourceResult.overflowSeconds`）。undefined ⇒ 不截短（逐位不变）。
+   *   为什么不再用线程滞后注入：滞后 = 本轮轴栈按**上一轮**溢出重排，而本轮溢出已变 ⇒
+   *   `auto-1051-1141-1451` K 6→5 双稳态（`zzIso`：stackOnly 就 6→5）。轮内两趟把「测溢出 → 用它重排」
+   *   放进同一轮，clip 在整次求值内恒定 ⇒ 没有滞后通道。
+   */
+  function runOuterLoop(forceNoAxis: boolean, interactionScale?: number, interruptTopUp?: boolean, axisAutoTrim?: number, overrideLock?: number, stunLastWindowClip: number | undefined = stunClipPass): { out: CalcRoundResult; outPrev: CalcRoundResult | null; outerRounds: number; outerConverged: boolean; outerExit: OuterExit; outerCyclePickedEarlier: boolean; capacityResolved: boolean } {
     /**
      * 有效锁定值：`overrideLock` 优先（连续失衡「按时间可容纳次数重跑」用，2026-10-20）。
      * 缺省 undefined ⇒ 与原来逐位相同（读用户配置的 `lockedStunCount`）。
@@ -218,7 +235,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       const locked = effLock >= 0
       // CC-418：runCalcRound 无 null 出口（CC-417 删空失衡池 null 后，剩余守卫与 calcOutput 同条件不可达），
       // 原「null 轮 ⇒ threadsAfterNullRound 回退 + 签名清空 + continue」分支随之删除。
-      out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim })
+      out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim, stunLastWindowClip })
       const t = out.threadsNext
       /**
        * ===== 步 4 实验（`PROBE_STUN_NEXT=trace`）：喂给下一轮计划的窗数改用**轴栈实测兑现窗数** =====
@@ -388,7 +405,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        */
       if (resourceConfig.stunPlanProjection === 'physical') resourceConfig.stunPlanProjection = 'off'
       try {
-        return runOuterLoop(forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim, k)
+        return runOuterLoop(forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim, k, stunLastWindowClip)
       } finally {
         resourceConfig.stunCountLockOverride = prevOverride
         resourceConfig.stunPlanProjection = prevProjection
@@ -595,6 +612,48 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
   }
 
   let r = runOuterLoop(false)
+  /**
+   * ===== A10 轮内两趟（连续失衡稳定化，2026-11-01）=====
+   *
+   * 用户 2026-11-01 裁明机制：满条开出 18s 窗，但「非失衡攒条时间 + K×W」超过 180s ⇒
+   * **溢出从最后一窗的时间里丢掉**（战斗时钟截断）。
+   *
+   * ## 为什么必须轮内两趟（旧实现的病灶）
+   * 旧实现把 clip 走 `threads.prevStunOverflowSeconds` **滞后一轮**注入轴栈（与 energy/decibel 同款）：
+   * 本轮轴栈按**上一轮**的溢出重排窗，而本轮溢出已经变了 ⇒ 反馈通道有延迟 ⇒
+   * `auto-1051-1141-1451` 出现 K **6→5** 双稳态（`zzIso.perf.ts` 隔离：`stackOnly` 就 6→5，`covOnly` 稳定 6）。
+   * 轮内两趟把「测溢出 → 用它重排」放进**同一次外层求解**里：clip 在整次求值内是**常量**，
+   * 没有滞后通道，也没有 K 的第二不动点。
+   *
+   * ## 收敛
+   * pass1（无截短）给出溢出 ⇒ 作为 pass2 的 clip 重跑；若 pass2 自己的装配溢出又变了（说明
+   * 「按截短排窗」改变了装不下的量），再带新值跑一趟，最多 2 次重跑（`|Δclip| ≤ 1e-6` 即停）。
+   * `stunClipPass` 留在作用域里 ⇒ 后续 `stageResolveFeasibility` 的全部试算（中断/挤压/轴态降配/
+   * 弃轴/非轴降配）**继承同一个 clip**，不会出现「主路径带截短、试算不带」的两套账。
+   *
+   * ## 仍走探针闸（本轮状态）
+   * 本块与覆盖率 `clip` 口径**默认仍关**（`PROBE_STUN_CLIP_ITER=1` + `PROBE_STUN_CONT_COV=clip`
+   * 才生效）——用户 2026-11-01 口径「稳定化通过后再谈进默认」，故本轮只交付稳定化本身，数值零 delta。
+   *
+   * ## 稳定化实测（`zzClipIter` / `zzClipExit` / `zzIso`，全库 103 队，闸开）
+   * 7 队动、全部下降 up=0/down=7（−0.075%~−0.705%），**KChanged=0 / exitChanged=0 / rounds 逐位不变**；
+   * 滞后注入时代 `auto-1051-1141-1451` 的 K **6→5** 双稳态已消失（`zzIso`：改前 stackOnly 就 6→5）。
+   * 进默认的实测影响面（`zzDefaultOn` 与 timeGolden 闸开跑）：timeGolden **23 条 dmg 全降**、时间账零变化，
+   * 回退闸下全绿（归因闭合）。详见提交说明 delta 表。
+   */
+  if (probeFlag('PROBE_STUN_CLIP_ITER') === '1' && stunWindowDur > 0) {
+    /** 末窗最多被截到 0：clip 不得超过「全部窗秒」 */
+    const clampClip = (x: CalcRoundResult): number =>
+      Math.min(Math.max(0, x.resourceResult.overflowSeconds ?? 0), Math.max(0, x.stunPool.stunCount) * stunWindowDur)
+    for (let pass = 0, clip = clampClip(r.out); pass < 2; pass++) {
+      if (!(clip > 1e-9) || Math.abs(clip - (stunClipPass ?? 0)) <= 1e-6) break
+      stunClipPass = clip
+      r = runOuterLoop(false)
+      const nextClip = clampClip(r.out)
+      if (Math.abs(nextClip - clip) <= 1e-6) break
+      clip = nextClip
+    }
+  }
   // 轴退化检测（用户口径 2026-08）：轴的资源需求（轴内块/自动补齐交互 × 窗口数）超出战斗时间预算
   // → 轴不可操作（需 boss 秽盾等外界环境才打得成）→ 退化为一般轴重算。
   // 误伤护栏：般岳等角色「配置本身的交互行」（金身20/招架10 等）也会把必要时间推超预算
@@ -948,7 +1007,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * 开关 `PROBE_STUN_CONT_COV`：`formula` = 失衡值公式（§1 口径，e = 每秒失衡值 × 窗长），
    * `trace` = 轴栈逐窗实测填充率（用户 2026-10-25「应该有前面失衡期的数据」），
    * `clip` = ★ A10 口径：装配溢出 `overflowSeconds` 记到**最后一窗的时间里**（覆盖率扣它，不砍行）——
-   *   用户 2026-11-01 裁明的连续失衡机制。默认关。
+   *   用户 2026-11-01 裁明的连续失衡机制。默认关（与两趟同闸，进默认待用户点头）。
    * `phase` = 试过的「按余量比例给部分窗」口径（= 池 `continuousStunCount` 的整数+小数，与
    *   `stunPhaseTimeline#trailingFraction` 同源）。**不设 = 逐位不变**（默认关）。
    *   ⛔ **已否决（2026-11-01，用户裁明机制后）**：失衡只有「开窗 / 不开窗」两态
@@ -970,7 +1029,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        * ★ A10 口径（用户 2026-11-01 裁明机制）：满条开出的窗装不进 180s 时，
        * **溢出从最后一窗的时间里丢掉**（不是砍非失衡招式）——
        * 覆盖率 = 原覆盖率 − overflow/eff（同分母，不重算、不引入不同源）。
-       * ⚠ 本探针**只改覆盖率**，行侧的 cut 仍在（真实现要把行恢复），故是下界。默认关。
+       * ⚠ 覆盖率只扣截断秒，**行侧的 cut 仍在**（A10 第 2 步未做行恢复）⇒ 本口径是下界。
        */
       const clipSec = Math.min(Math.max(0, out.resourceResult.overflowSeconds ?? 0), out.stunPool.stunCount * stunWindowDur)
       const clipped = Math.max(0, out.stunCoverage - clipSec / stunEffTime)
