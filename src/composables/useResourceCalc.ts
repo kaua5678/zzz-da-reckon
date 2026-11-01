@@ -44,6 +44,7 @@ import { panelAt } from '@/core/panel'
 import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_ANOMALY_LABEL, standardDot } from '@/core/anomalyPool/helpers'
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import { buildStunTimeline, realizeStunWindows } from '@/core/stunTimeline'
+import { buildStunPhaseTimeline } from '@/core/stunPhaseTimeline'
 import type { ExecutedMoveCount } from '@/core/stunAxisStack'
 import {
   BASIC_HIT_STACK_EFFECTS,
@@ -868,6 +869,26 @@ export function createResourceCalc(
   }))
 
   /**
+   * **二元相位时序**（连续失衡专项，2026-11-01）：把一局切成
+   * `积攒 → 窗 → 积攒 → 窗 → … → 余量`（`core/stunPhaseTimeline.ts`）。
+   *
+   * 纯追加读数（不参与覆盖率/伤害）：输入全来自既有单一来源——
+   * 时间轴（逐窗有效秒）+ 池（净失衡值 / Boss 失衡值 / 返还比例）。
+   * 恒等式 `Σ相位秒 === 有效战斗时间` 由 `stunPhaseTimeline.test.ts` 零容差锁住。
+   */
+  const stunPhaseTimeline = computed(() => {
+    const out = calcOutput.value
+    const pool = out?.stunPool
+    if (!out || !pool) return null
+    return buildStunPhaseTimeline({
+      timeline: stunTimeline.value,
+      totalStunBuildUp: pool.totalStunBuildUp,
+      bossStunValue: pool.bossStunValue,
+      stunRefundRatio: pool.stunRefundRatio,
+    })
+  })
+
+  /**
    * (slot, moveId) → 轴内单位数分配（来自栈遍历 executed，连段展开成招式，outAxisUnits 由 axisSplitFor 反推）。
    *
    * ⚠ **读 `inAxisCount` 不读 `count`**（2026-10-18 跨界小数）：`count` 是**施放次数**（整数，
@@ -1172,6 +1193,8 @@ const attributeLedger = computed(() => {
     windowDuration,
     stunEffectiveTime,
     stunTimeline,
+    /** 二元相位时序（积攒/窗/余量；纯读，见上） */
+    stunPhaseTimeline,
     /**
      * **失衡窗口占比（0..1）**——含**决算截断损失秒**的权威口径
      * （`stunSeconds = 次数 × 窗长 − verdictSecondsLost`，见 `runCalcRound` 的决算段）。

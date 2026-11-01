@@ -359,6 +359,13 @@
               <template v-if="axisWindows.totals.idleSeconds !== null"> · 发呆 {{ fmt(axisWindows.totals.idleSeconds, 1) }}s</template>
               <template v-if="axisWindows.totals.skippedTimes > 0"> · 跳过 {{ axisWindows.totals.skippedTimes }} 次</template>
             </span>
+            <!-- 二元相位时序（连续失衡专项）：积攒 → 窗 交替 + 余量段；Σ相位秒 === 有效战斗时间（恒等式）。
+                 纯读骨架，先让「先积攒后窗口、剩余动作贴剩余窗口」看得见；部分窗 frac 待步 2。 -->
+            <span v-if="stunPhaseTimeline?.hasTrace" class="axis-window-summary"
+              title="二元相位时序：积攒段（窗外，攒失衡值）→ 窗段（吃易伤，窗内不攒条）交替，末尾余量段对应「下一窗攒了多少」。Σ相位秒恒 === 有效战斗时间。">
+              · 相位 积攒 {{ fmt(stunPhaseTimeline.buildSeconds, 1) }}s / 窗 {{ fmt(stunPhaseTimeline.windowSeconds, 1) }}s
+              <template v-if="stunPhaseTimeline.trailingSeconds > 0.05"> / 余量 {{ fmt(stunPhaseTimeline.trailingSeconds, 1) }}s</template>
+            </span>
             <!-- 池排出的窗数 vs 轴实际排的窗数：fixed / tail / bestEffort 类型的轴不吃完剩余窗口，
                  差额窗口**没有轴块**（不是「轴打空了」）——不点明会被读成逐窗图少画了几窗 -->
             <span
@@ -989,6 +996,8 @@ const {
   stackTraversalResult,
   effectiveStunAxes,
   stunTimeline,
+  /** 二元相位时序（积攒/窗/余量；连续失衡专项，2026-11-01） */
+  stunPhaseTimeline,
   /** 窗尾填充展开成真实招式（与伤害侧同一个兜底池函数） */
   axisFillExpansion,
 } = calc
