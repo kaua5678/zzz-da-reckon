@@ -33,7 +33,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { teamPresets, visibleTeamPresets } from '@/data/teamPresets'
+import { visibleTeamPresets } from '@/data/teamPresets'
 import { buildTeamTimeSummary } from '@/composables/teamTimeSummary'
 
 const BASELINE_FILE = new URL('./timeFillRatchet.baseline.json', import.meta.url)
