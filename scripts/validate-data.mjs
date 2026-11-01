@@ -64,6 +64,11 @@ const catalog = load('public/static/catalog.json')
 
 const agents = catalog.agents ?? []
 const agentById = new Map(agents.map(a => [String(a.id), a]))
+// beta 冻结角色（public/static/beta-agents.json，snapshot-agent.mjs 生成）也是合法预设成员：
+// 预设库里的 1601v1/1661v1 要能过「分类口径」与「id 存在」两道校验（2026-11-01，v1/v2 同屏对比）。
+for (const a of (load('public/static/beta-agents.json')?.agents ?? [])) {
+  if (!agentById.has(String(a.id))) agentById.set(String(a.id), a)
+}
 const agentOf = id => agentById.get(String(id))
 const ENGINE_POOLS = load('src/data/enginePools.json')
 const catalogWEngines = new Set((load('public/static/catalog.json').wEngines ?? []).map(w => String(w.id)))

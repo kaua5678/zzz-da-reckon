@@ -8,7 +8,9 @@ const catalog = JSON.parse(catalogText) as {
   agents: { id: string }[]
   wEngines: { id: string; ownerAgentId?: string }[]
 }
-const agentIds = new Set(catalog.agents.map(a => a.id))
+/** beta 冻结角色（public/static/beta-agents.json）也是合法预设成员（v1/v2 同屏对比，2026-11-01） */
+const betaAgents = JSON.parse(readFileSync(new URL('../../../public/static/beta-agents.json', import.meta.url), 'utf8')) as { agents: { id: string }[] }
+const agentIds = new Set([...catalog.agents.map(a => a.id), ...betaAgents.agents.map(a => a.id)])
 
 const LIUYIN = '1481'
 const NORMA = '1571'
@@ -243,6 +245,8 @@ describe('预设分组（两级下拉：分类 → 队伍）', () => {
 
 const presetDesc = (p: { id: string; name: string }) => `${p.id}（${p.name}）`
 const agentById = new Map<string, any>(catalog.agents.map((a: any) => [String(a.id), a]))
+// beta 冻结角色也参与分类重算（v1/v2 双份预设，2026-11-01）
+for (const a of betaAgents.agents) if (!agentById.has(String(a.id))) agentById.set(String(a.id), a)
 const agentOf = (id: string) => agentById.get(String(id))
 /** 属性 → 预设二级分类的中文标签（唯一来源 = 预设分类器，不在这里另抄一份） */
 const ATTRIBUTE_LABEL: Record<string, string> = { electric: '电', fire: '火', ice: '冰', physical: '物理', ether: '以太', wind: '风', frost: '凛刃', auricInk: '玄墨' }
