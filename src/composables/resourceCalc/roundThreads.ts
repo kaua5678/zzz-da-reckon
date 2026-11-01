@@ -59,6 +59,11 @@ export interface CalcRoundThreads {
   postRoundInput: PostRoundInput | null
   /** 上一轮失衡池整数次数（坑36：轴内块数落地与池同源——0 命轴决算次数 = 轴认领块 × 池窗口数） */
   prevPoolStunCount?: number
+  /**
+   * **A10：上一轮装配溢出秒**（连续失衡，用户 2026-11-01）——末窗被时钟截短的秒数。
+   * 滞后一轮注入轴栈（与 energy/decibel 同款）；`PROBE_STUN_CLIP_ITER=1` 才消费，缺省 0/undefined ⇒ 零 delta。
+   */
+  prevStunOverflowSeconds?: number
 }
 
 export function initialCalcRoundThreads(): CalcRoundThreads {
@@ -74,6 +79,7 @@ export function initialCalcRoundThreads(): CalcRoundThreads {
     teamVeilCountTotal: 0,
     decibelRegenBySlot: {},
     prevPoolStunCount: undefined,
+    prevStunOverflowSeconds: undefined,
     postRoundInput: null,
   }
 }

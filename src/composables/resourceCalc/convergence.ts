@@ -8,7 +8,7 @@ import type { useCatalogStore } from '@/stores/catalog'
 import type { AnomalySkillExecution } from '@/core/anomalyPool/helpers'
 import type { StunSkillExecution } from '@/core/stunPool'
 import { continuousStunCount } from '@/core/stunPool'
-import { probeKey, probePush } from '@/core/probeTrace'
+import { probeFlag, probeKey, probePush } from '@/core/probeTrace'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
 import { findInteractionTopUpSlot, getAgentMechanic, interactionBaselineFor } from '@/mechanics'
@@ -496,6 +496,11 @@ export function createRunCalcRound(deps: {
         swayBySlot: stackSwaySupplyOf(Math.max(0, opts?.axisAutoTrim ?? 0)),
         // T157：升级轴（bestEffort）的资源门控 —— 与下方 6 处同源
         goodReview: Math.max(0, prevGoodReview),
+        // A10（连续失衡）：末窗被时钟截短 —— 溢出取**上一轮**装配溢出（滞后一轮，与 energy/decibel 同款）。
+        // 探针闸 PROBE_STUN_CLIP_ITER=1 才消费；缺省不传 ⇒ 逐位不变。两处栈调用必须同值（同源纪律）。
+        ...(probeFlag('PROBE_STUN_CLIP_ITER') === '1' && (threads.prevStunOverflowSeconds ?? 0) > 1e-9
+          ? { lastWindowClipSeconds: threads.prevStunOverflowSeconds }
+          : {}),
         // 决算块的窗口延长（佩洛伊斯 3s）：按本槽角色派发，与下方 inAxisFractionProvider 同源
         extendOnEndOf: (slot, moveId) => axisMoveExtendOnEndOf(configStore.team[slot]?.agentId, moveId, configStore.team[slot]?.cinemaLevel ?? 0),
       })
@@ -1033,6 +1038,10 @@ export function createRunCalcRound(deps: {
           decibelBySlot: stackDecibelBySlot,
           swayBySlot: stackSwaySupplyOf(Math.max(0, opts?.axisAutoTrim ?? 0)),
           goodReview: Math.max(0, prevGoodReview),
+          // A10：与上方 axisExecutedStack 同值（上一轮装配溢出 = 末窗时钟截短秒）
+          ...(probeFlag('PROBE_STUN_CLIP_ITER') === '1' && (threads.prevStunOverflowSeconds ?? 0) > 1e-9
+            ? { lastWindowClipSeconds: threads.prevStunOverflowSeconds }
+            : {}),
           // 与上方 axisExecutedStack 同源（决算块窗口延长）
         extendOnEndOf: (slot, moveId) => axisMoveExtendOnEndOf(configStore.team[slot]?.agentId, moveId, configStore.team[slot]?.cinemaLevel ?? 0),
         })
@@ -1482,6 +1491,8 @@ export function createRunCalcRound(deps: {
         inStunWindowTriggers: inStunWindowTriggersNext,
         teamVeilCountTotal: teamVeilCountTotalNext,
         postRoundInput: postRoundInputNext,
+        // A10：把本轮装配溢出带给下一轮（末窗时钟截短的秒数；滞后一轮，探针闸消费）
+        prevStunOverflowSeconds: rr.overflowSeconds ?? 0,
         // 轴栈喧响预算 = 本轮各槽喧响产出。CC-317 删掉原先的 max(上一轮, 本轮) 棘轮（防「轨削减大招 → 产出下滑 →
         // 螺旋到 0」）：第 332 轮复测 495 例 golden + specs，棘轮在约 20% 的轮次生效，但只改变 7 次中间轮的喧响跳过，
         // 最终结果、退出类型、总轮数逐位不变；而棘轮让预算依赖迭代路径（历史最大值）。若日后复现螺旋，回退 CC-317。
