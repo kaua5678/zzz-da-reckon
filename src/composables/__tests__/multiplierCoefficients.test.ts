@@ -341,6 +341,44 @@ describe('角色专属资源行：残痕积累 / 锐能回复（锋御）与秒�
   })
 })
 
+describe('秒均直伤倍率（失衡期内挑高 DPS 招式，用户 2026-11-01）', () => {
+  const moveOf = (moveId: string) => {
+    const m = report.moves.find((x) => x.moveId === moveId)
+    expect(m, `${moveId} 应在演算结果中`).toBeDefined()
+    return m!
+  }
+  const dmgCell = (moveId: string) => {
+    const cell = moveOf(moveId).cells.find((c) => c.rowId === 'damage')
+    expect(cell, `${moveId} 应有伤害格`).toBeDefined()
+    return cell!
+  }
+
+  it('★秒均伤害 = 整招伤害倍率 ÷ 有效 t（含类型级时间缩放），不是 ÷ 原始 actionTime', () => {
+    // 星见雅翻倍版快支（1091021）：actionTime 0.475s 只录了实际时间的一半，MOVE_TYPE_TIME_SCALE ×2
+    // ⇒ 有效 t = 0.95s；伤害 209 / 0.95 = 220.0%/s。误用原始 actionTime 会得 440.0（差 2 倍）
+    // ——这正是页面「秒均伤害」列的数据源，列头默认按它降序。
+    const cell = dmgCell('1091021')
+    expect(cell.actual).toBeCloseTo(209, 4)
+    expect(moveOf('1091021').moveType).toBe('quickAssistLegacy')
+    expect(cell.perSecond).toBeCloseTo(220.0, 1)
+    expect(cell.perSecond).not.toBeCloseTo(440.0, 0)
+  })
+
+  it('标准行（含伤害列）在 t 有效时都带秒均，页面秒均列不靠资源行走私', () => {
+    let checked = 0
+    for (const m of report.moves) {
+      const dmg = m.cells.find((c) => c.rowId === 'damage')
+      if (!dmg) continue
+      checked++
+      if (m.t != null && m.t > 0.01) {
+        expect(dmg.perSecond, `${m.moveId} 应有秒均伤害`).not.toBeNull()
+        expect(dmg.perSecond!).toBeGreaterThan(0)
+      }
+    }
+    expect(checked, '伤害格样本数').toBeGreaterThan(200)
+  })
+})
+
 describe('倍率表系数演算：招式分类', () => {
   const mkMove = (overrides: Record<string, unknown>) => ({ rows: [], ...overrides }) as unknown as Parameters<typeof classifyMove>[0]
 

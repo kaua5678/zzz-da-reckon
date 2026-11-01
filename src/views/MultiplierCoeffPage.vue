@@ -53,6 +53,8 @@
         比值列 = 实际录入值 ÷ 标准表期望值；<b>资源列（专属资源 / 残痕积累 / 锐能回复）为秒均</b>（整招合计 ÷ t；残痕 600 点 = 1 层）。
         锋御的「能」是锐能（catalog 没有 energy_recovery 行）⇒ 锐能回复并进「回能」列显示（标「锐」）；
         耗能与等效能量互斥（真耗能 vs 奖励记账单位），已合并为一列。
+        <b>秒均伤害 = 整招伤害倍率(Lv12) ÷ 有效 t</b>（含类型级时间缩放）——比值列已把各招归一化到 ≈100%，看不出 DPS 差异；
+        点该列头可排序（默认降序），用于在失衡期内挑秒伤最高的招式。
       </p>
       <n-data-table
         v-if="selectedAgentId"
@@ -285,6 +287,21 @@ function findCell(r: MoveEval, rowId: CoefficientRowId): MoveCellEval | undefine
   return r.cells.find((c) => c.rowId === rowId)
 }
 
+/**
+ * 秒均直伤倍率 = 整招伤害倍率(Lv12) ÷ **有效 t**（与资源列同一个 perSecond，t 已含 MOVE_TYPE_TIME_SCALE 缩放）。
+ * 用户 2026-11-01 口径：失衡期内要挑秒伤最高的招式，而比值列把每招都归一化到本角色的直伤系数附近
+ * （≈100%），读不出 DPS 差异——秒均才是跨招式可比的量（长招总倍率高但秒均可能更低）。
+ */
+function damagePerSecond(r: MoveEval): number | null {
+  return findCell(r, 'damage')?.perSecond ?? null
+}
+
+/** 秒均伤害格：无伤害行 / 无 t（分段噪声）时记「—」 */
+function damagePerSecondCell(r: MoveEval): string {
+  const v = damagePerSecond(r)
+  return v == null ? '—' : `${v.toFixed(1)}%/s`
+}
+
 /** 资源值展示：有 t 就显示秒均（定两位小数，如 100.03/s），没有 t（分段噪声行）退回整招合计 */
 function rateText(cell: MoveCellEval): string {
   const v = (cell.perSecond ?? cell.actual).toFixed(2)
@@ -334,6 +351,15 @@ const detailColumns: DataTableColumns<MoveEval> = [
   { title: 't(s)', key: 't', width: 70, render: (r) => (r.t == null ? '—' : String(Number(r.t.toFixed(3)))) },
   { title: '耗能/等效能量', key: 'energy', width: 130, render: energyCostText },
   { title: '伤害', key: 'damage', width: 90, render: detailCell('damage') },
+  {
+    title: '秒均伤害',
+    key: 'damagePerSecond',
+    width: 110,
+    // 升序比较 + 默认降序 ⇒ 进入明细即以 DPS 从高到低排列（失衡期挑招式），点列头可反转
+    sorter: (a: MoveEval, b: MoveEval) => (damagePerSecond(a) ?? -1) - (damagePerSecond(b) ?? -1),
+    defaultSortOrder: 'descend',
+    render: damagePerSecondCell,
+  },
   { title: '失衡', key: 'daze', width: 90, render: detailCell('daze') },
   { title: '回能', key: 'energyRecovery', width: 110, render: energyRecoveryCell },
   { title: '喧响', key: 'decibel', width: 90, render: detailCell('decibel_recovery') },
