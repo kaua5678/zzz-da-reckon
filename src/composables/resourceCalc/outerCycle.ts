@@ -40,6 +40,9 @@ export function outerFeedbackSignature(out: CalcRoundResult): string {
     // 其余下一轮输入（第 330 轮插桩停点 0 分叉 ⇒ 零成本）：琉音好评（条件轴解析）、失衡内每窗异常触发（南宫羽）、
     // 全队帷幕开启总次数（叶瞬光 / 爱芮 / 千夏）、上一轮池整数次数（轴块落地，坑36）。
     `${out.threadsNext.goodReview},${out.threadsNext.inStunWindowTriggers},${out.threadsNext.teamVeilCountTotal},${out.threadsNext.prevPoolStunCount ?? ''}`,
+    // A10：末窗时钟截短秒（下一轮轴栈会读）——不入签名则环在它收敛前就判 stable（K 停在错误不动点）。
+    // 按毫秒取整比较（与 TIME_FOLD_CONVERGENCE_SECONDS 同精度，浮点尾数不算变化）。
+    (out.threadsNext.prevStunOverflowSeconds ?? 0).toFixed(3),
   ].join('|')
 }
 
