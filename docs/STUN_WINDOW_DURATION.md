@@ -164,3 +164,26 @@ W（单次失衡窗口秒数） = enemy.stunTime + 4（连携窗口） + Σ 各�
 `computeWindowDuration` 依赖注入 → `resolveStunAxisPlan` 的 `state.windowDuration` → `StunAxisCondition.windowMin/windowMax`。
 ⚠ 未传窗长时，声明了该门的方案**一律不命中**（宁可不选，不按猜的窗长选错轴）。
 ⚠ 与 §7 的 `stunWindowExtendOnEnd` 不同：那是**按招式**改窗口，这里是**按窗口挑轴**。
+## 10. 否决记录：把「余量失衡值」按比例折成易伤覆盖率（2026-11-01）
+
+**候选做法**：连续失衡专项试过 `solveTeam` 的 `PROBE_STUN_CONT_COV=phase`——把打完整数 K 窗后剩下的
+余量（`net − K×b`）按 `余量 / 开窗成本` 折成一扇**部分窗**，加进易伤覆盖率：
+`coverage = (K×W + frac×W − 决算损失) / eff`。
+
+**实测（`.zc/perf/zzPhaseCov.perf.ts`，全库 103 队）**：97 队动、**全部上升**（up=97/down=0），
+区间 **+0.03% ~ +7.11%**（最大 `auto-1021-1481-1311` 57.516M→61.608M）；`outerExit` 与池次数 0 变化
+（只喂结算侧 ⇒ 无 §41 塌陷）。
+
+**否决理由（机制层面，不是数值层面）**：
+- 本文件 §1：`W = boss 失衡时间 + 4 + 全队失衡延时`——**窗长按队伍固定**，与攒条量无关；
+  一旦 boss 进入失衡，窗口就是整扇 `W`。
+- 游戏里**半条不触发失衡**（0 秒易伤）。所以「攒了 X% 的条 ⇒ 给 X% 的一扇窗」是额外假设，不是机制。
+- 窗口时间可被削短的通道只有两条：① **决算截断**（`truncated`，已由 `stunVerdictLostSeconds` 进覆盖率）
+  ② **战斗时钟截短**（`clippedByClock`，用户 2026-11-01 裁定物理不可达）。**没有**「按余量比例削窗」这条。
+
+**结论**：
+- 「失衡值不够」= **下一窗开不出来** ⇒ 由 `continuousStunSplitOf#nextWindowProgress`（整数 floor 的小数残量）表达，
+  已在结果页「还积累了 X%」；**不进覆盖率**。
+- 「窗口没打满」= **伤害内容**（轴里没牌 / 平A兜底），由窗口内容读数（动作/填充/发呆）表达，**不改易伤时长**。
+- 故连续失衡的**数值侧不需要改**；二元相位时序（`core/stunPhaseTimeline.ts`）作为只读读数保留。
+  探针 `phase` 口径保留在 `solveTeam`（默认关），仅作否决记录，**不要改成默认**。

@@ -945,6 +945,10 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * `phase` = 二元相位口径：末窗按「余量 ÷ 开窗成本」部分兑现（用户 2026-11-01「失衡满了但窗口
    *   时间没开完，只给了一部分」；= 池的 `continuousStunCount` 的整数+小数，与
    *   `stunPhaseTimeline#trailingFraction` 同源）。**不设 = 逐位不变**（默认关）。
+   *   ⛔ **`phase` 已否决（2026-11-01）**：与固定窗长机制冲突——窗长 `W` 按队伍固定
+   *   （`stunWindowDuration = boss 失衡时间 + 4 + 全队失衡延时`），半条不触发失衡，
+   *   「攒 X% 条 ⇒ 给 X% 窗」是额外假设。实测 97/103 队全上升 +0.03%~+7.11%，仅作否决记录，
+   *   **不要改成默认**。否决全文见 `docs/STUN_WINDOW_DURATION.md` §10。
    *
    * 换的是 `out.stunCoverage`（= 伤害池易伤与行级 `stunCoverage` 的唯一输入），
    * **不换**迭代内部用的那份（`runOuterLoop` 每轮用的是它自己的局部 `stunWindowFraction(stunCount, …)`），
