@@ -941,8 +941,10 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * ===== 步 3 实验：连续失衡覆盖率**只喂结算侧**（施工图 §8c 第 1 步）=====
    *
    * 开关 `PROBE_STUN_CONT_COV`：`formula` = 失衡值公式（§1 口径，e = 每秒失衡值 × 窗长），
-   * `trace` = 轴栈逐窗实测填充率（用户 2026-10-25「应该有前面失衡期的数据」）。
-   * **不设 = 逐位不变**（默认关）。
+   * `trace` = 轴栈逐窗实测填充率（用户 2026-10-25「应该有前面失衡期的数据」），
+   * `phase` = 二元相位口径：末窗按「余量 ÷ 开窗成本」部分兑现（用户 2026-11-01「失衡满了但窗口
+   *   时间没开完，只给了一部分」；= 池的 `continuousStunCount` 的整数+小数，与
+   *   `stunPhaseTimeline#trailingFraction` 同源）。**不设 = 逐位不变**（默认关）。
    *
    * 换的是 `out.stunCoverage`（= 伤害池易伤与行级 `stunCoverage` 的唯一输入），
    * **不换**迭代内部用的那份（`runOuterLoop` 每轮用的是它自己的局部 `stunWindowFraction(stunCount, …)`），
@@ -960,7 +962,14 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           effectiveTime: stunEffTime,
           windows: out.axisStack?.windowTrace,
         })).realizedWindows
-      : continuousStunSplitOf(out.stunPool).realizedWindows
+      : contMode === 'phase'
+        /**
+         * 二元相位口径：连续窗数 = 池的 continuousStunCount（整数 K + 余量/b 的小数），
+         * 与 core/stunPhaseTimeline.ts#buildStunPhaseTimeline 的 trailingFraction 同源。
+         * 探针专用，默认关；要不要进默认待用户裁决（会动全库数值，规则 10 四步）。
+         */
+        ? continuousStunCount(out.stunPool)
+        : continuousStunSplitOf(out.stunPool).realizedWindows
     const contCoverage = stunWindowFraction(realized, stunWindowDur, stunEffTime, out.stunVerdictLostSeconds)
     if (contCoverage !== out.stunCoverage) finalOut = { ...out, stunCoverage: contCoverage }
   }
