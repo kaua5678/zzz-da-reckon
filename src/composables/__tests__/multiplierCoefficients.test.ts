@@ -639,15 +639,18 @@ describe('倍率表系数演算：强化特殊技（逐段评估，不参与纵�
       expect(move!.flags).toContain('锐能按能量计价(30/发)')
       expect(move!.flags).not.toContain('缺耗能标注')
       // 「（改）」两行是把伤害与失衡整列 ×1.1（喧响/积蓄/秽盾不动），故先除掉这一档再对强特式
+      // ⚠ v2（3.4.2+20049556）打破了 1601106↔1601006 / 1601115↔1601016 的「多形态对称数据」：
+      //   v2 只下调了「燃灯·晦尽」两式的失衡（1601006 728.6→658.4、1601016 742.2→665.1），「焚夜」两式未动。
+      //   用户 2026-11-01「暂时承认不对称，还是以真实数据为主」⇒ 失衡列逐行取实测比值（其余三列仍 1.0）。
+      const dazeExpected = { '1601106': 1.0, '1601006': 0.9037, '1601016': 0.8959, '1601115': 1.0 } as Record<string, number>
       const variant = id === '1601016' || id === '1601115' ? 1.1 : 1
       const ratioOf = (rowId: string) => move!.cells.find((c) => c.rowId === rowId)?.ratio ?? NaN
-      expectNear(ratioOf('daze') / variant, 1.0, 0.005, `${id} 失衡`)
+      expectNear(ratioOf('daze') / variant, dazeExpected[id], 0.005, `${id} 失衡`)
       expectNear(ratioOf('decibel_recovery'), 1.0, 0.005, `${id} 喧响`)
       expectNear(ratioOf('anomaly_buildup'), 1.0, 0.005, `${id} 积蓄`)
       expectNear(ratioOf('ether_purify'), 1.0, 0.005, `${id} 秽盾`)
-      // 直伤系数由该行 catalog 伤害/标准式派生 ⇒ v2（3.4.2+20049556）重录后由 1.09 落到 1.046
-      // （1601106 伤害 1240.5→1189.4，见 docs/multiplier-record.md 与 v2 归因）。只断 1601106 一行。
-      expectNear(ratioOf('damage') / variant, id === '1601106' ? 1.046 : 1.09, 0.005, `${id} 伤害=她的直伤系数`)
+      // 直伤系数 = 该行 catalog 伤害 / 标准式（四行同源）⇒ v2 起 1.09 → 1.046
+      expectNear(ratioOf('damage') / variant, 1.046, 0.005, `${id} 伤害=她的直伤系数`)
     }
   })
 
