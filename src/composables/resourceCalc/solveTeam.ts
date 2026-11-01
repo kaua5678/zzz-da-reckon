@@ -947,6 +947,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    *
    * 开关 `PROBE_STUN_CONT_COV`：`formula` = 失衡值公式（§1 口径，e = 每秒失衡值 × 窗长），
    * `trace` = 轴栈逐窗实测填充率（用户 2026-10-25「应该有前面失衡期的数据」），
+   * `clip` = ★ A10 口径：装配溢出 `overflowSeconds` 记到**最后一窗的时间里**（覆盖率扣它，不砍行）——
+   *   用户 2026-11-01 裁明的连续失衡机制。默认关。
    * `phase` = 试过的「按余量比例给部分窗」口径（= 池 `continuousStunCount` 的整数+小数，与
    *   `stunPhaseTimeline#trailingFraction` 同源）。**不设 = 逐位不变**（默认关）。
    *   ⛔ **已否决（2026-11-01，用户裁明机制后）**：失衡只有「开窗 / 不开窗」两态
@@ -963,24 +965,31 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
   let finalOut = out
   const contMode = probeFlag('PROBE_STUN_CONT_COV')
   if (contMode && stunEffTime > 0 && stunWindowDur > 0) {
-    /** 已兑现的等效窗数：两种口径并列，`formula` 用失衡值账，`trace` 用轴栈逐窗实测 */
-    const realized = contMode === 'trace'
-      ? realizeStunWindows(buildStunTimeline({
-          stunCount: out.stunPool.stunCount,
-          windowDuration: stunWindowDur,
-          effectiveTime: stunEffTime,
-          windows: out.axisStack?.windowTrace,
-        })).realizedWindows
-      : contMode === 'phase'
-        /**
-         * 二元相位口径：连续窗数 = 池的 continuousStunCount（整数 K + 余量/b 的小数），
-         * 与 core/stunPhaseTimeline.ts#buildStunPhaseTimeline 的 trailingFraction 同源。
-         * 探针专用，默认关；要不要进默认待用户裁决（会动全库数值，规则 10 四步）。
-         */
-        ? continuousStunCount(out.stunPool)
-        : continuousStunSplitOf(out.stunPool).realizedWindows
-    const contCoverage = stunWindowFraction(realized, stunWindowDur, stunEffTime, out.stunVerdictLostSeconds)
-    if (contCoverage !== out.stunCoverage) finalOut = { ...out, stunCoverage: contCoverage }
+    if (contMode === 'clip') {
+      /**
+       * ★ A10 口径（用户 2026-11-01 裁明机制）：满条开出的窗装不进 180s 时，
+       * **溢出从最后一窗的时间里丢掉**（不是砍非失衡招式）——
+       * 覆盖率 = 原覆盖率 − overflow/eff（同分母，不重算、不引入不同源）。
+       * ⚠ 本探针**只改覆盖率**，行侧的 cut 仍在（真实现要把行恢复），故是下界。默认关。
+       */
+      const clipSec = Math.min(Math.max(0, out.resourceResult.overflowSeconds ?? 0), out.stunPool.stunCount * stunWindowDur)
+      const clipped = Math.max(0, out.stunCoverage - clipSec / stunEffTime)
+      if (clipped !== out.stunCoverage) finalOut = { ...out, stunCoverage: clipped }
+    } else {
+      /** 已兑现的等效窗数：`trace` 用轴栈逐窗实测、`phase` 用池连续计数、其余用公式 */
+      const realized = contMode === 'trace'
+        ? realizeStunWindows(buildStunTimeline({
+            stunCount: out.stunPool.stunCount,
+            windowDuration: stunWindowDur,
+            effectiveTime: stunEffTime,
+            windows: out.axisStack?.windowTrace,
+          })).realizedWindows
+        : contMode === 'phase'
+          ? continuousStunCount(out.stunPool)
+          : continuousStunSplitOf(out.stunPool).realizedWindows
+      const contCoverage = stunWindowFraction(realized, stunWindowDur, stunEffTime, out.stunVerdictLostSeconds)
+      if (contCoverage !== out.stunCoverage) finalOut = { ...out, stunCoverage: contCoverage }
+    }
   }
   return { out: finalOut }
 }
