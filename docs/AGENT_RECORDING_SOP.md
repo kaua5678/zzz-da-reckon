@@ -30,7 +30,7 @@
    **完成条件**：`node scripts/record-agent.mjs check <id> plan` exit 0，才进入机制函数实现；blocked/pending 不可放行。
 4. **实现并对账**：按契约落在既有模块钩子；测试用公共 harness，差分观测消费端。每个 case 的 `test` 填 `file` 与唯一的字面量 `it/test` 名（断言在该测试体内）；固定输入与预期的语义须对应契约。
    **完成条件**：运行所引用的 Vitest 测试全部通过，且 `check <id> complete` exit 0。complete 检查引用存在与测试体断言，不证明消费者可达、语义正确或测试已执行；仍需 §6.10 的全管线/页面自检及真人复核。
-5. **来源更新/续录**：已有契约先 `check`。漂移时 `packet <id>` 重新输出，与旧 packet 比较后逐条复核受影响的 decisions/mechanics/cases，再替换 packet；不要仅刷新 hash。
+5. **来源更新/续录**：已有契约先 `check`。**来源漂移先取 base（gachabase）最新构建的数据与机制**——用户说「base 更新 vN 了」时，按最新页改录（diff 页只是人类视觉友好的辅助，不是必走入口；URL / 构建口径见 `DATA_FETCHING.md`「★ base（gachabase）」）；**覆盖正主前先 `scripts/snapshot-agent.mjs` 冻结旧版**（冻结后不再改）。漂移时 `packet <id>` 重新输出，与旧 packet 比较后逐条复核受影响的 decisions/mechanics/cases，再替换 packet；不要仅刷新 hash。
    **完成条件**：重新通过 plan/complete 与行为测试。新增角色必须有契约；历史角色在 `data/recordings/legacy.json` 显式标为未复核，补录完成后删掉对应豁免，不能用批量生成“已实现”代替复核。
 
 **复现边界**：同一版本工具、同一输入产生逐字相同的 packet；已落盘契约约束后续实现与复核，不承诺不同模型首次推理逐字相同。`out_of_scope` 是否合理、公式是否正确、测试预期是否独立，留给语义审查与实际行为测试，不能以静态 PASS 代替。

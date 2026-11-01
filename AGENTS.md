@@ -21,6 +21,7 @@
 | 命座提升率异常 / 写测试 / 录拐力 | `AGENT_RECORDING_SOP.md` §3.5 根因表 / §5 模板 / §6 |
 | 录新角色前做模式匹配 | `MECHANIC_PATTERNS.md` §2，只读命中的 1 个维度（D1–D9） |
 | 中文术语→字段不确定 | `GAME_TERM_TO_CODE_FIELD.md` 对应章节 |
+| **用户说「base 更新 vN 了，你录入一下」/ 取某角色最新数据与机制** | `DATA_FETCHING.md`「★ base（gachabase）= 录角色最常用的入口」——**base = gachabase 网站**（不是基线，也不是 beta），要的是**最新构建的数据与机制**（diff 页只是人类视觉友好的辅助）；改录前先 `scripts/snapshot-agent.mjs` 冻结旧版 |
 | **碰时间/账本/物化行/超时判定/留白** | `ENGINE_PIPELINE_GUIDE.md` §4 开头**「时间系统三本账」表** + 坑 19 **「否决记录」** |
 | **要断言「X 的专武/归属/属性是 Y」** | `ENTITY_CARDS.md` + 先跑 `node scripts/resolve.mjs` 查证（规则 15） |
 

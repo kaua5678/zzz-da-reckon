@@ -14,6 +14,38 @@
 - **影画（talent）/核心被动（passive）文本只有 nanoka 全量 JSON 有**（`data/raw/nanoka_<id>_zh.json`）。
 - gachabase `/beta` = **测试服**，倍率会变；nanoka `manifest.zzz.live`（如 `3.2`）= 正式服稳定版，带 hash 的构建是预发布。
 
+## ★ base（gachabase）= 用户口语的「base 网站」；录 vN = 取**最新构建的数据与机制**（diff 页只是辅助）
+
+> 用户口径 2026-11-01：「base 就是 base 网站……请把这个行为记录一下，我们项目开发最常用的录角色」。
+> **「base」= `zzz.gachabase.net`**（不是 nanoka、不是「基线 baseline」、也不是 beta 的笔误）；
+> 「vN」= **测试服包批次**（如 v1 = 3.4.1 周期、v2 = 3.4.2 周期；同一批次内还会有多个构建）。
+> 用户 2026-11-01 补充纠正：「**最常用的入口不一定是 diff 页，diff 只是人类视觉友好，你需要的只是最新页的数据和机制**」。
+> 听到「**base 更新 v2 了，你录入一下**」= 去 gachabase 取**最新构建**的数值行与技能/机制文本，按它改录 —— 这是最常用的录角色动作；diff 页只是可选辅助。
+
+**主路径：取最新构建的数据与机制**
+
+- **最新数据（倍率行）**：`scripts/fetch-gachabase-agent.mjs <id> <slug>` 抓 `/agents/<id>/<slug>/beta`（**永远滚到最新构建**）→ `data/raw/gachabase/<id>.json`（skill_data）；倍率口径见该脚本头注释，补列走 `upsert-gachabase-rows.mjs`。
+- **最新机制（技能描述）**：技能文本在同一页面（SSR HTML，实测最新页含全招描述）；**被动/影画（talent）原文仍以 nanoka 全量 JSON 为准**（gachabase 无影画文本）。
+- **出网**：这些页 ~1MB SSR，`node fetch` 常失败，用 `curl -sL --max-time 60 '<url>'`（与 `fetch-gachabase-agent.mjs#loadHtml` 同一回退）。
+
+**辅助：diff 页（人看「这版改了什么」，不是必走步骤）**（页面标题形如 `v<版本> Rev. <revisionA> (Beta) to v<版本> Rev. <revisionB> (Beta)`）：
+
+```
+https://zzz.gachabase.net/diff/agents/<agentId>/<slug>?prev=<旧构建>&cur=<新构建>&lang=chs
+```
+
+- `<slug>` = 页面 URL 的小写英文名（如 `1601` → `sunbringer`、`1611` → `claret`）。
+- 构建 id = `beta_<游戏版本>_<revision>`；`<revision>` 与 nanoka `manifest.zzz.available` 里 `+<revision>` 是同一套客户端构建号。
+- 实测例（用户给的挽昼 v2 diff）：`.../diff/agents/1601/sunbringer?prev=beta_3.4.2_20022701&cur=beta_3.4.2_20049556&lang=chs`
+  —— 左右两栏 = 旧构建 → 新构建，技能描述与倍率表（DMG / Daze / Anomaly / Decibel / Gash / Sharpness / Miasma）逐行并列；`?lang=chs` 出中文。
+- **怎么拿 prev / cur**：gachabase 的版本下拉是客户端渲染（静态 HTML 里没有），从 `/update-log?lang=chs&branch=beta`
+  或 nanoka `manifest.zzz.available` 取最新构建；diff 的是**相邻两版**，不是跨批次。
+- 差异 = **旧构建 → 新构建**（描述文本 + 逐行倍率）；用来决定要不要重录、录哪些字段。
+
+**纪律（与 `snapshot-agent.mjs` 配套）**：要覆盖正主前先把上一版冻结
+（`node scripts/snapshot-agent.mjs <agentId> --tag v1 --source-version <版本>`，用户口语「先冻结 v1」），
+冻结副本与正主同屏可对比、**冻结后不再改**；对照 `ARCHITECTURE.md` §4 决策树「保存测试服旧版角色」那一行。
+
 ## 爬取脚本
 
 | 脚本 | 用途 | 输出 |
