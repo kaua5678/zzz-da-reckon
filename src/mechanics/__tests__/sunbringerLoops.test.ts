@@ -106,6 +106,16 @@ describe('烬痕：存值不吃易伤，但攒的时候吃（线性，不平方�
     expect(total2 / total1).toBeCloseTo(s2 / s1, 6)
   })
 
+  it('灯塔送层（反制支援）：每组白送 1 层残痕 = +600 点，且不吃积蓄效率', () => {
+    const plain = solveSunbringerLoops(base)
+    const gifted = solveSunbringerLoops({ ...base, counterAssistCount: 1 } as any)
+    expect(gifted.gash - plain.gash).toBe(600)
+    // C1 的残痕效率只放大「积累来源」，灯塔那 600 点原样
+    const g0 = solveSunbringerLoops({ ...base, cinemaLevel: 0, counterAssistCount: 1 } as any)
+    const g1 = solveSunbringerLoops({ ...base, cinemaLevel: 1, counterAssistCount: 1 } as any)
+    expect(g1.gash - g0.gash).toBeCloseTo(plain.gash * 0.1, 6)
+  })
+
   it('零积攒 ⇒ 烬痕为 0（不造数）', () => {
     expect(computeEmberScar({ meta: meta as any, loops: { jufengCount: 0, changanCount: 0, ultACount: 0 }, ultBCount: 0 })).toBe(0)
   })

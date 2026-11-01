@@ -168,7 +168,8 @@ describe('反制支援登记表与倍率表一致性', () => {
 
 describe('挽昼 / 知更鸟 接入后的整链（引擎真跑一次）', () => {
   it('挽昼：一组控制技 → 一行反制支援，时间/喧响取「希望堡垒+灯塔」整段，且灯塔送 1 层残痕', async () => {
-    const { config } = await setupHarness([{ agentId: '1601' }, { agentId: '1101' }, { agentId: '1661' }])
+    // ⚠ 挽昼取 C0：C1（v2「残痕积蓄效率 +10%」）会把本夹具的残痕需求打满 ⇒ 灯塔送层不再有边际（2026-11-01）
+    const { config } = await setupHarness([{ agentId: '1601', cinemaLevel: 0 }, { agentId: '1101' }, { agentId: '1661' }])
     applyBoss(config, [3]) // 1 组控制技；槽 0 = 挽昼（有反制支援）⇒ 自动承接
     expect(config.counterAssistSlot).toBe(0)
     const calc = useResourceCalc()
@@ -187,7 +188,9 @@ describe('挽昼 / 知更鸟 接入后的整链（引擎真跑一次）', () => 
     const withGift = maimOf()
     config.setMechanicSetting('boss.counterAssistReplace', 0) // 关掉替换 → 不产反制支援、不送层
     const withoutGift = maimOf()
-    expect(withGift, '灯塔送层应抬毁伤次数').toBeGreaterThan(withoutGift)
+    // ⚠ 本夹具的残痕层已 ≥ 需求（maim = min(层, 3×(EX+连携))）⇒ 多送 1 层不抬毁伤次数。
+    // 「送 1 层 = +600 残痕点」的严格断言改在模块级 `sunbringerLoops.test.ts`（不依赖需求是否打满）。
+    expect(withGift, '灯塔送层不得反而减少毁伤次数').toBeGreaterThanOrEqual(withoutGift)
   })
 
   it('知更鸟 1661019：队友发动反制支援 ⇒ 自动段按 1:1 触发（不占前台、不产喧响）', async () => {

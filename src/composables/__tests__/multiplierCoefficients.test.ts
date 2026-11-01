@@ -645,7 +645,9 @@ describe('倍率表系数演算：强化特殊技（逐段评估，不参与纵�
       expectNear(ratioOf('decibel_recovery'), 1.0, 0.005, `${id} 喧响`)
       expectNear(ratioOf('anomaly_buildup'), 1.0, 0.005, `${id} 积蓄`)
       expectNear(ratioOf('ether_purify'), 1.0, 0.005, `${id} 秽盾`)
-      expectNear(ratioOf('damage') / variant, 1.09, 0.005, `${id} 伤害=她的直伤系数`)
+      // 直伤系数由该行 catalog 伤害/标准式派生 ⇒ v2（3.4.2+20049556）重录后由 1.09 落到 1.046
+      // （1601106 伤害 1240.5→1189.4，见 docs/multiplier-record.md 与 v2 归因）。只断 1601106 一行。
+      expectNear(ratioOf('damage') / variant, id === '1601106' ? 1.046 : 1.09, 0.005, `${id} 伤害=她的直伤系数`)
     }
   })
 

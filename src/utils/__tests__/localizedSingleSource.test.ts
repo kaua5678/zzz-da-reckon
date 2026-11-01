@@ -41,6 +41,8 @@ describe('LocalizedString 显示名单一解析器（CC-456）', () => {
       const n = (readFileSync(p, 'utf8').match(HAND_COPY) ?? []).length
       if (n === 0) continue
       const rel = relative(SRC, p).replace(/\\/g, '/')
+      // beta 冻结副本（snapshot-agent.mjs 生成，勿手改）不是手写源码：与判据 28/29、debt、死导出同口径排除
+      if (rel.startsWith('mechanics/agents/beta/')) continue
       if (n > (ALLOWED[rel] ?? 0)) over.push(`${rel}:${n}`)
     }
     expect(over).toEqual([])
