@@ -133,6 +133,14 @@ export interface StackTraversalInput {
   stunCount: number
   /** 单次失衡窗口时长（秒）= stunTime + 连携窗口 + 队伍延长 */
   windowDuration: number
+  /**
+   * **A10：最后一窗被战斗时钟截短的秒数**（连续失衡，用户 2026-11-01 裁明机制）。
+   *
+   * 末窗有效时长 = `windowDuration + 决算延长 − clip`；窗内动作按缩短后的时长门控——
+   * 落在被丢掉的窗尾里的那部分**变成轴外**（吃 1.0 倍、且**照常攒条**），正是用户口径
+   * 「把失衡期的招式挪到非失衡去补充」的引擎表达。缺省 0 ⇒ 逐位不变。
+   */
+  lastWindowClipSeconds?: number
   /** 各槽位可用闪能（点）；缺省槽位按 0 */
   energyBySlot?: Record<number, number>
   /** 各槽位可用喧响（点）；缺省槽位按 0 */
@@ -489,6 +497,8 @@ export function allocateAxisWindows(
 
 export function calcStunAxisStack(input: StackTraversalInput): StackTraversalResult {
   const { axes, stunCount, windowDuration, goodReview: goodReviewInput } = input
+  /** A10：末窗时钟截短秒（缺省 0 = 逐位不变） */
+  const lastWindowClip = Math.max(0, Number(input.lastWindowClipSeconds ?? 0) || 0)
   const energyBySlot = input.energyBySlot ?? {}
   const decibelBySlot = input.decibelBySlot ?? {}
   const swayBySlot = input.swayBySlot ?? {}
@@ -662,6 +672,11 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
       if (!act.endsStunWindow) continue
       const extend = Math.max(0, input.extendOnEndOf?.(act.slot, act.moveId) ?? 0)
       if (extend > 0) { effectiveWindowDuration = windowDuration + extend; break }
+    }
+    // A10：最后一窗被时钟截短（连续失衡）——溢出从**窗尾时间**里丢；窗内动作按缩短后的时长
+    // 门控 ⇒ 超出部分自动落到轴外（吃 1.0 倍、并照常攒条）。缺省 0 ⇒ 逐位不变。
+    if (windowNo === schedule.length) {
+      effectiveWindowDuration = Math.max(0, effectiveWindowDuration - lastWindowClip)
     }
 
     for (const act of window.actions) {

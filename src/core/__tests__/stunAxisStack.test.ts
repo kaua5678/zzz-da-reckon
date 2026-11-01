@@ -574,5 +574,15 @@ describe('逐窗归属：skipped.window / windowTrace.fillSegments / axisIndex�
     const declared = calcStunAxisStack({ ...base, axes: [{ actions, basicFillerSlot: 0 }] })
     expect(declared.windowTrace[0]!.fillerDefaulted).toBe(false)
   })
+
+  it('★ A10：lastWindowClipSeconds 缩短末窗 ⇒ 超出部分落到轴外（照常攒条）', () => {
+    const actions = [{ slot: 0, moveId: 'a', count: 1, actionTime: 16, energyCost: 0, decibelCost: 0 }]
+    const base2 = { axes: [{ actions }], stunCount: 2, windowDuration: 18, energyBySlot: { 0: 999 }, decibelBySlot: { 0: 9999 } }
+    const full = calcStunAxisStack(base2)
+    expect(full.executed['0:a']!.inAxisCount, '无 clip：两窗都整段在窗内').toBeCloseTo(2, 6)
+    const clipped = calcStunAxisStack({ ...base2, lastWindowClipSeconds: 10 })
+    expect(clipped.windowTrace[1]!.endSeconds, '末窗有效 8s').toBeCloseTo(8, 6)
+    expect(clipped.executed['0:a']!.inAxisCount, '末窗只有 8/16 在窗内 ⇒ 合计 1.5').toBeCloseTo(1.5, 6)
+  })
 })
 
