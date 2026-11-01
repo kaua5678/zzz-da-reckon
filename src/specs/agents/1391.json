@@ -170,6 +170,65 @@
       ],
       "status": "implemented_approximation",
       "note": "[已确认·数据] 影画2 虎啸暴伤 +22%；覆盖率与核心虎啸拐力同口径默认满覆盖。"
+    },
+    {
+      "id": "jufufu.potential_chain_ult_dmg",
+      "name": "橘福福｜潜能觉醒·侠肝义胆",
+      "source": "潜能觉醒",
+      "description": "[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升 10%/30%（潜能 II~VI 同文）。",
+      "target": "team",
+      "coverage": 1,
+      "effects": [
+        {
+          "id": "jufufu-potential-chain-dmg",
+          "type": "formula",
+          "stat": "finalDmgBonus",
+          "mode": "flat",
+          "sourceStat": "potentialLevel",
+          "sourcePanelPhase": "inCombat",
+          "formula": { "expression": "min(1, max(0, x - 1)) * 10" },
+          "target": { "kind": "default" },
+          "targetSkillType": "chain",
+          "coverage": { "default": 1, "min": 0, "max": 1, "step": 0.05 }
+        },
+        {
+          "id": "jufufu-potential-ult-dmg",
+          "type": "formula",
+          "stat": "finalDmgBonus",
+          "mode": "flat",
+          "sourceStat": "potentialLevel",
+          "sourcePanelPhase": "inCombat",
+          "formula": { "expression": "min(1, max(0, x - 1)) * 30" },
+          "target": { "kind": "default" },
+          "targetSkillType": "ultimate",
+          "coverage": { "default": 1, "min": 0, "max": 1, "step": 0.05 }
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "v2 测试服（3.4.2+20052336）潜能觉醒·侠肝义胆（猛虎下山 II~VI 同文；用户 2026-11-01「后面可能微调数值」）。原文「最终伤害提升」是**独立乘区**（2026-11-01 用户口径「最终伤害这可是个新独立乘区」）⇒ 走新通道 `stat: finalDmgBonus`（core/damage.ts 第 9.5 步：暴击后 ×(1+值/100)），与核心被动虎啸的连携/终结 `skillDmgBonus` **相乘不相加**；targetSkillType 定向 chain/ultimate。经 sourceStat=potentialLevel 取值，关潜能开关（effective level=I）⇒ 归 0。"
+    },
+    {
+      "id": "jufufu.potential_stun_vuln",
+      "name": "橘福福｜潜能觉醒·侠肝义胆（失衡易伤）",
+      "source": "潜能觉醒",
+      "description": "[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升 25%，失衡结束时移除该效果（潜能 II~VI 同文）。",
+      "target": "enemy",
+      "coverage": 1,
+      "effects": [
+        {
+          "id": "jufufu-potential-stun-vuln",
+          "type": "formula",
+          "stat": "stunDmgMultiplierBonus",
+          "mode": "flat",
+          "sourceStat": "potentialLevel",
+          "sourcePanelPhase": "inCombat",
+          "formula": { "expression": "min(1, max(0, x - 1)) * 25" },
+          "target": { "kind": "default" },
+          "coverage": { "default": 1, "min": 0, "max": 1, "step": 0.05 }
+        }
+      ],
+      "status": "implemented_approximation",
+      "note": "v2 测试服潜能觉醒·侠肝义胆；原文「失衡结束时移除」⇒ 只在失衡窗口计数，与 panel.stunDmgMultiplierBonus 口径一致（仅失衡时）⇒ flat 25。虎啸满覆盖（用户口径），不做覆盖率折算。"
     }
   ],
   "notes": [

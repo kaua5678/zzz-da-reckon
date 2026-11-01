@@ -221,7 +221,7 @@ export interface DirectDamageInput {
   basisLabelOverride?: string
 }
 
-// @fact engine:damage/乘区顺序 口径: 乘区顺序=代码顺序（基底→技能倍率→固定附加→增伤→锐化→贯穿→防御→抗性→易伤→失衡→侵染→暴击/锐暴→次数），调换 breakdown.push 顺序即改口径；两处**非可交换**落点必须保持不变——① 固定附加在**各乘区之前**进基础区（放到最后加 = 少乘增伤…暴击全链）② 抗性在易伤**之前** | 据 实测@2026-09-01复核·复核@2026-09-08·复核@2026-09-09（锐暴 200% 封顶+乘算改动后顺序未变）·复核@2026-09-18（R32 假绿扫描：旧 `驗` 只断言 `result.damage`，纯换序 0 红 ⇒ 已补行为面+形状面成对判据）·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/core/__tests__/damage.test.ts | 锚 src/core/damage.ts#calcDirectDamage | 信 确认
+// @fact engine:damage/乘区顺序 口径: 乘区顺序=代码顺序（基底→技能倍率→固定附加→增伤→锐化→贯穿→防御→抗性→易伤→失衡→侵染→暴击/锐暴→最终伤害→次数），调换 breakdown.push 顺序即改口径；两处**非可交换**落点必须保持不变——① 固定附加在**各乘区之前**进基础区（放到最后加 = 少乘增伤…暴击全链）② 抗性在易伤**之前** | 据 实测@2026-09-01复核·复核@2026-09-08·复核@2026-09-09（锐暴 200% 封顶+乘算改动后顺序未变）·复核@2026-09-18（R32 假绿扫描：旧 `驗` 只断言 `result.damage`，纯换序 0 红 ⇒ 已补行为面+形状面成对判据）·复核@2026-09-25·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07·复核@2026-11-01（新增「最终伤害」独立乘区：暴击后 ×(1+finalDmgBonus%)，用户口径） | 验 src/core/__tests__/damage.test.ts | 锚 src/core/damage.ts#calcDirectDamage | 信 确认
 // ⚠ 上面这条口径的 `breakdown` **在本文件内零消费者**——`calcDirectDamage` 只被活管线
 //   （`resourceCalc/damagePool.ts`）调用，而它**只读 `result.damage`**、把 `breakdown` 丢弃
 //   ⇒ 顺序错误在当前版本**只由下面那条行为面 + 形状面成对判据守护**，不由任何页面暴露。
@@ -383,8 +383,24 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
     value: afterCrit, displayValue: fmt(afterCrit),
   })
 
+  /**
+   * 9.5 最终伤害乘区（**独立乘区**，2026-11-01 用户口径「最终伤害这可是个新独立乘区」）。
+   *
+   * 位置 = 暴击之后、次数之前；与增伤/暴伤独立相乘（不进任何既有加算区）。
+   * 定向 = `getTargetedStat(p, 'finalDmgBonus', skillDamageTarget)` ⇒ 可写 `finalDmgBonus__chain` 等。
+   * **直伤专属**：本函数只结算直接伤害；异常/异放走 calcAnomalyDamage，不经此乘区。
+   */
+  const finalDmgBonus = getTargetedStat(p, 'finalDmgBonus', input.skillDamageTarget)
+  const afterFinalDmg = finalDmgBonus !== 0 ? afterCrit * (1 + finalDmgBonus / 100) : afterCrit
+  if (finalDmgBonus !== 0) {
+    breakdown.push({
+      label: '最终伤害乘区', formula: `1 + ${fmt(finalDmgBonus)}%`,
+      value: afterFinalDmg, displayValue: fmt(afterFinalDmg),
+    })
+  }
+
   // 10. 次数
-  const finalDamage = afterCrit * input.count
+  const finalDamage = afterFinalDmg * input.count
   breakdown.push({
     label: '次数', formula: `× ${input.count}`,
     value: finalDamage, displayValue: fmt(finalDamage),

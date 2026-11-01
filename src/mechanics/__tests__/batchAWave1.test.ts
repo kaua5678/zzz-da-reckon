@@ -51,8 +51,9 @@ describe('薇薇安（1331）影画2《暴风雨夜，暴风雨夜》：以太�
     expect((p2.etherAnomalyBuildUpEfficiency ?? 0) - (p1.etherAnomalyBuildUpEfficiency ?? 0)).toBe(25)
   })
 
-  it('防死数据：0命时无积蓄效率加成', async () => {
+  it('防死数据：0命时无积蓄效率加成（隔离 v2 潜能：+50 是潜能不是影画2）', async () => {
     const { catalog, config } = await setup([{ agentId: '1331', cinemaLevel: 0 }])
+    config.team[0].potentialEnabled = false
     const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p0 = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(p0.etherAnomalyBuildUpEfficiency ?? 0).toBe(0)

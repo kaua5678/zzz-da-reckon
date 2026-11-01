@@ -28,6 +28,26 @@ describe('calcPerHitBuildUp（异常积蓄唯一活实现）', () => {
 })
 
 describe('calcDirectDamage', () => {
+  it('最终伤害乘区（独立乘区）：×(1+值%) 与增伤区相乘不相加，且可定向招式类型', () => {
+    const mk = () => { const p = emptyPanel(); p.atk = 1000; p.critRate = 100; p.critDmg = 150; return p }
+    const run = (p: ReturnType<typeof emptyPanel>, skillDamageTarget?: 'chain' | 'basic') => calcDirectDamage({
+      panel: p, skillMultiplier: 100, damageElement: 'physical',
+      enemyDefense: 0, enemyDefReduction: 0, enemyDefFlatReduction: 0,
+      enemyResistance: 0, enemyResReduction: 0, stunMultiplier: 1, stunned: false,
+      critMode: 'expect', count: 1, ...(skillDamageTarget ? { skillDamageTarget } : {}),
+    }).damage
+    const plain = run(mk()) // 2500
+    const pFinal = mk(); pFinal.finalDmgBonus = 30
+    expect(run(pFinal)).toBeCloseTo(plain * 1.3, 6)
+    // 独立乘区：增伤 30 与最终伤害 30 ⇒ ×1.3×1.3（不是 ×1.6）
+    const pBoth = mk(); pBoth.dmgBonus = 30; pBoth.finalDmgBonus = 30
+    expect(run(pBoth)).toBeCloseTo(plain * 1.3 * 1.3, 6)
+    // 定向：finalDmgBonus__chain 只作用于连携技
+    const pTargeted = mk(); setPanelStat(pTargeted, 'finalDmgBonus__chain', 30)
+    expect(run(pTargeted, 'chain')).toBeCloseTo(plain * 1.3, 6)
+    expect(run(pTargeted, 'basic')).toBeCloseTo(plain, 6)
+  })
+
   it('computes a clean no-defense hit with 100% crit expectation', () => {
     const panel = emptyPanel()
     panel.atk = 1000

@@ -18,6 +18,7 @@ import { panelAt } from '@/core/panel'
 import { allocateAxisWindows } from '@/core/stunAxisStack'
 import { getAgentMechanic } from '@/mechanics'
 import { getSkillLevelCoef } from '@/core/skillLevel'
+import { effectivePotentialLevelOf } from '@/data/potentialLevel'
 import type { Agent, AgentSkills, PanelValues, SkillDamageTarget } from '@/types/catalog'
 import type { AnomalyEventExecution, CharacterResourceResult } from '@/types/resource'
 import type { DirectRowAxisSplit } from '@/mechanics/types'
@@ -143,7 +144,7 @@ export function emitCharDirectRows(env: CharRowsEnv, cl: CharLocals): void {
       exec,
       team: buildMechanicTeamMembers(configStore, catalogStore),
       cinemaLevel: configStore.team[slot]?.cinemaLevel ?? 0,
-      potentialLevel: configStore.team[slot]?.potentialLevel ?? 6,
+      potentialLevel: effectivePotentialLevelOf(configStore.team[slot]?.potentialLevel, configStore.team[slot]?.potentialEnabled),
     })
     // 元素回落走单一来源：角色无 damageElement（蕾米 1581，流明不是伤害元素）时
     // 跟随下一位队友的属性，绝不静默按物理算（否则 10 条含蕾米队伍掉 3~5%）

@@ -14,7 +14,10 @@ import { setupHarness } from '@/test/harness'
 
 async function setup(mateId = '1181', cinemaLevel = 0) {
   const result = await setupHarness([
-    { agentId: '1331', cinemaLevel, parryCount: 0, dodgeCounterCount: 0 },
+    // 潜能开关（2026-11-01）关掉：本文件测的是**影画/资源/异放框架**本身，
+    // 不把 v2 潜能（异常掌控 +30 / 积蓄 +50 / 异放 ×1.5）混进基线（同 R60 钉 potentialLevel=1 先例）。
+    // 潜能本身的行为判据在 src/mechanics/__tests__/potentialSwitch.test.ts。
+    { agentId: '1331', potentialEnabled: false, cinemaLevel, parryCount: 0, dodgeCounterCount: 0 },
     { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false
@@ -235,7 +238,7 @@ describe('薇薇安完整计算链', () => {
 
 describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
   it('落羽生花异放事件：dominant 元素 + 精通比例 + 次数=追击次数', () => {
-    const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 8, vivianAnomalyTriggerTotal: 0 }
+    const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 8, vivianAnomalyTriggerTotal: 0, panel: { potentialLevel: 1 } }
     const events: any[] = []
     vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 8 } as any, events, totalTime: 180 })
     const release = events.find(e => e.eventId === 'vivian_luoyu_release')
@@ -250,7 +253,7 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
 
   it('异放触发条件：命中异常目标占比（vivian.releaseCoverage）折算次数', () => {
     // 原文：落羽生花命中「处于异常状态」的目标才触发异放
-    const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 10, vivianAnomalyTriggerTotal: 0, 'setting:vivian.releaseCoverage': 0.6, invincibleTime: 0 }
+    const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 10, vivianAnomalyTriggerTotal: 0, 'setting:vivian.releaseCoverage': 0.6, invincibleTime: 0, panel: { potentialLevel: 1 } }
     const events: any[] = []
     vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 10 } as any, events, totalTime: 180 })
     const release = events.find(e => e.eventId === 'vivian_luoyu_release')!
@@ -262,7 +265,7 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
   })
 
   it('影画2：异放精通收益 ×130%（perTen 放大）', () => {
-    const cfg: any = { vivianCinemaLevel: 2, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0 }
+    const cfg: any = { vivianCinemaLevel: 2, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0, panel: { potentialLevel: 1 } }
     const events: any[] = []
     vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 4 } as any, events, totalTime: 180 })
     const release = events.find(e => e.eventId === 'vivian_luoyu_release')!
@@ -271,7 +274,7 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
   })
 
   it('影画6：悬落特殊异放比例 ×5', () => {
-    const cfg: any = { vivianCinemaLevel: 6, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0 }
+    const cfg: any = { vivianCinemaLevel: 6, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0, panel: { potentialLevel: 1 } }
     const events: any[] = []
     vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 4 } as any, events, totalTime: 180 })
     const c6 = events.find(e => e.eventId === 'vivian_xuanluo_c6_release')
@@ -279,8 +282,20 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
     expect(c6.releaseRatio.perTenByElement.ether).toBeCloseTo(6.15 * 1.3 * 5, 5)
   })
 
+  it('潜能觉醒·星月诗篇（v2）：[异放] 伤害 +50% ⇒ perTen ×1.5（关开关回到基线）', () => {
+    const on: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0, panel: { potentialLevel: 6 } }
+    const off: any = { ...on, panel: { potentialLevel: 1 } }
+    const evOn: any[] = []
+    const evOff: any[] = []
+    vivianMechanic.buildAnomalyEvents!({ cfg: on, state: { exSpecialCount: 4 } as any, events: evOn, totalTime: 180 })
+    vivianMechanic.buildAnomalyEvents!({ cfg: off, state: { exSpecialCount: 4 } as any, events: evOff, totalTime: 180 })
+    const ratio = (ev: any[]) => ev.find(e => e.eventId === 'vivian_luoyu_release').releaseRatio.perTenByElement.ether
+    expect(ratio(evOn)).toBeCloseTo(6.15 * 1.5, 5)
+    expect(ratio(evOff)).toBeCloseTo(6.15, 5)
+  })
+
   it('预言 DoT：次数 = floor(战斗时长 × 覆盖率 / 0.55)，覆盖率可调', () => {
-    const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0, invincibleTime: 0 }
+    const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0, invincibleTime: 0, panel: { potentialLevel: 1 } }
     const events: any[] = []
     vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 4 } as any, events, totalTime: 180 })
     const dot = events.find(e => e.eventId === 'vivian_prediction_dot')
@@ -290,7 +305,7 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
     expect(dot.count).toBe(Math.floor(180 / 0.55))
 
     // 覆盖率 50% → 次数减半
-    const cfgHalf: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0, 'setting:vivian.dotCoverage': 0.5, invincibleTime: 0 }
+    const cfgHalf: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0, 'setting:vivian.dotCoverage': 0.5, invincibleTime: 0, panel: { potentialLevel: 1 } }
     const eventsHalf: any[] = []
     vivianMechanic.buildAnomalyEvents!({ cfg: cfgHalf, state: {} as any, events: eventsHalf, totalTime: 180 })
     expect(eventsHalf.find(e => e.eventId === 'vivian_prediction_dot')!.count).toBe(Math.floor(180 * 0.5 / 0.55))

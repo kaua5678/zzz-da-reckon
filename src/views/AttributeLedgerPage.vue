@@ -250,7 +250,7 @@ import { STAT_META, type FormulaZone } from '@/utils/statMeta'
 /** 属性区展示顺序（与 statMeta 同源，只用于分面小表的列排序） */
 const ZONE_ORDER_UI: FormulaZone[] = [
   '基础属性', '暴击区', '增伤区', '防御/穿透区', '贯穿力区', '贯穿增伤区',
-  '锐化增伤区', '抗性/易伤区', '失衡区', '异常积蓄区', '异常伤害区', '能量/喧响区', '其他',
+  '锐化增伤区', '最终伤害区', '抗性/易伤区', '失衡区', '异常积蓄区', '异常伤害区', '能量/喧响区', '其他',
 ]
 import { localized } from '@/utils/format'
 

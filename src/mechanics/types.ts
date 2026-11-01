@@ -836,6 +836,8 @@ export interface AgentMechanicModule {
    * 现实现：蕾米埃尔 0、薇薇安 0（后台/合轴快切，基本不平A）。
    */
   defaultBasicAttackTimeWeight?: number
+  /** 潜能开关声明（2026-11-01 用户口径）：true ⇒ 「潜能等级」区露「启用潜能」开关。只给「有无潜能」是布尔语义的新录入（1391/1331）；老角色逐档取值、滑块即开关，不声明本字段（用户：「11号这种老角色的就不用加开关了」）。未声明 = 无开关 = 行为逐位不变。 */
+  potentialSwitch?: boolean
   /**
    * CC-64b（2026-09-27）：**本角色 buff 组**里队友 buff 的附加启用条件。CC-207 起 store 默认门控与引擎面板阶段共读
    * （`mechanics/additionalAbilityGates.ts#teammateBuffGateBlocks`）：返回 false ⇒ 默认不勾，且用户强行勾上也不生效。

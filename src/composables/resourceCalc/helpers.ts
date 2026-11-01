@@ -13,6 +13,7 @@
  *     → calcStunPool / calcAnomalyPool (失衡池 + 积蓄池)
  */
 import { damageElementLabel } from '@/utils/agentLabelMaps'
+import { effectivePotentialLevelOf } from '@/data/potentialLevel'
 import { writeMechanicSettingCfg } from '@/specs/cfgField'
 // CC-245：只在类型位置使用（store 实例由调用方注入）⇒ type-only，resourceCalc/ 运行时不依赖 stores/config、stores/catalog
 // （锁：resourceCalcStoreDeps.test；ARCHITECTURE.md §0「管线后半段并入 core」前提）
@@ -626,7 +627,7 @@ export function buildCharConfig(
     agent,
     skills,
     cinemaLevel: char.cinemaLevel,
-    potentialLevel: char.potentialLevel ?? 6,
+    potentialLevel: effectivePotentialLevelOf(char.potentialLevel, char.potentialEnabled),
     wEngineId: char.wEngineId,
     wEngineModLevel: char.wEngineModLevel,
     team: buildMechanicTeamMembers(configStore, catalogStore),
@@ -832,7 +833,7 @@ export function extractSkillExecutions(
       charResult,
       panel,
       cinemaLevel: charCfg?.cinemaLevel ?? 0,
-      potentialLevel: charCfg?.potentialLevel ?? 6,
+      potentialLevel: effectivePotentialLevelOf(charCfg?.potentialLevel, charCfg?.potentialEnabled),
       team,
       dazeCoef,
       stunExecs,

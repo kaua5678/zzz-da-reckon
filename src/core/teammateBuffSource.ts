@@ -1,4 +1,5 @@
 import { calcPanel } from './panel'
+import { effectivePotentialLevelOf } from '@/data/potentialLevel'
 import { collectInCombatTeamBuffs } from './inCombatBuffs'
 import type {
   Agent, WEngine, DriveDiscConfig, DriveDiscSet, PanelValues,
@@ -13,6 +14,8 @@ export interface TeamMemberPanelConfig {
   cinemaLevel: number
   wEngineModLevel: number
   potentialLevel?: number
+  /** 潜能开关（缺省 true）；关掉 ⇒ 面板盖章 potentialLevel 恒 1 */
+  potentialEnabled?: boolean
 }
 
 export interface TeammateBuffSourceDeps {
@@ -98,7 +101,7 @@ export function buildTeammateBuffSourceContext(
       {
         cinemaLevel: char.cinemaLevel,
         wEngineModLevel: char.wEngineModLevel,
-        potentialLevel: char.potentialLevel,
+        potentialLevel: effectivePotentialLevelOf(char.potentialLevel, char.potentialEnabled),
         enemyWeakness: deps.enemyWeakness,
         effectCoverageMap: deps.effectCoverageMap,
       },

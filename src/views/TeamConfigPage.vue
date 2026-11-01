@@ -133,6 +133,16 @@
                   <!-- 潜能等级 -->
                   <div class="section">
                     <div class="section-title">潜能等级</div>
+                    <div v-if="supportsPotentialSwitch" class="row-item" style="margin-bottom: 8px">
+                      <span class="field-label">启用潜能</span>
+                      <span class="field-hint">{{ selectedChar.potentialEnabled === false ? '已关：潜能整条不生效（等价潜能 I）' : '已开' }}</span>
+                      <n-switch
+                        :value="selectedChar.potentialEnabled !== false"
+                        size="small"
+                        style="margin-left: auto"
+                        @update:value="(v: boolean) => configStore.setPotentialEnabled(uiStore.selectedSlot, v === true)"
+                      />
+                    </div>
                     <div class="row-item">
                       <n-slider
                         :value="selectedChar.potentialLevel ?? 6"
@@ -895,7 +905,7 @@ import { withSkillTargetLabel } from '@/utils/skillTargetLabel'
 import { stackGroupPeerIds } from '@/utils/stackGroupCoverage'
 import type { WEngine, WEngineAdvancedStat, PanelValues, CharacterBuildRecommendation, BuffEffect, BuffGroup } from '@/types/catalog'
 import type { CharacterConfig } from '@/stores/config'
-import { agentCharacterCountInputs, characterCountInputValue, characterCountInputClearValue, agentInteractionInputs, teamHasGuaranteeFuryOwner } from '@/composables/agentMechanicView'
+import { agentCharacterCountInputs, characterCountInputValue, characterCountInputClearValue, agentInteractionInputs, teamHasGuaranteeFuryOwner, agentSupportsPotentialSwitch } from '@/composables/agentMechanicView'
 
 const configStore = useConfigStore()
 const uiStore = useUiStore()
@@ -1013,6 +1023,8 @@ const { saveTargetPreset, saveTeamMismatch, saveStepsPreview, savePresetJson, co
   useTeamConfigPresetIO({ configStore, goldDraft, saveTargetPresetId, message })
 
 const selectedChar = computed<CharacterConfig>(() => configStore.team[uiStore.selectedSlot])
+// 潜能开关（2026-11-01）：只有声明 potentialSwitch 的角色露出——老角色（11号等）不显示、行为不变
+const supportsPotentialSwitch = computed(() => agentSupportsPotentialSwitch(selectedChar.value?.agentId))
 // CC-65：角色专属计数输入框（模块声明）
 const characterCountInputs = computed(() => agentCharacterCountInputs(selectedChar.value?.agentId))
 // CC-65b：交互栏专属输入框（格挡/双反）

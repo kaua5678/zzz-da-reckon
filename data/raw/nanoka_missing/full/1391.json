@@ -1846,7 +1846,9 @@
           "队伍中存在<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色时触发：\n队伍中所有角色的喧响值上限提升1000点，<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色发动<color=#FFFFFF>[终结技]</color>时，该角色获得300点喧响值。"
         ],
         "extra_property": {},
-        "potential": []
+        "potential": [
+          0
+        ]
       },
       "1391502": {
         "level": 2,
@@ -1860,7 +1862,9 @@
           "队伍中存在<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色时触发：\n队伍中所有角色的喧响值上限提升1000点，<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色发动<color=#FFFFFF>[终结技]</color>时，该角色获得300点喧响值。"
         ],
         "extra_property": {},
-        "potential": []
+        "potential": [
+          0
+        ]
       },
       "1391503": {
         "level": 3,
@@ -1874,7 +1878,9 @@
           "队伍中存在<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色时触发：\n队伍中所有角色的喧响值上限提升1000点，<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色发动<color=#FFFFFF>[终结技]</color>时，该角色获得300点喧响值。"
         ],
         "extra_property": {},
-        "potential": []
+        "potential": [
+          0
+        ]
       },
       "1391504": {
         "level": 4,
@@ -1888,7 +1894,9 @@
           "队伍中存在<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色时触发：\n队伍中所有角色的喧响值上限提升1000点，<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色发动<color=#FFFFFF>[终结技]</color>时，该角色获得300点喧响值。"
         ],
         "extra_property": {},
-        "potential": []
+        "potential": [
+          0
+        ]
       },
       "1391505": {
         "level": 5,
@@ -1902,7 +1910,9 @@
           "队伍中存在<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色时触发：\n队伍中所有角色的喧响值上限提升1000点，<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色发动<color=#FFFFFF>[终结技]</color>时，该角色获得300点喧响值。"
         ],
         "extra_property": {},
-        "potential": []
+        "potential": [
+          0
+        ]
       },
       "1391506": {
         "level": 6,
@@ -1916,7 +1926,9 @@
           "队伍中存在<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色时触发：\n队伍中所有角色的喧响值上限提升1000点，<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色发动<color=#FFFFFF>[终结技]</color>时，该角色获得300点喧响值。"
         ],
         "extra_property": {},
-        "potential": []
+        "potential": [
+          0
+        ]
       },
       "1391507": {
         "level": 7,
@@ -1930,7 +1942,9 @@
           "队伍中存在<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色时触发：\n队伍中所有角色的喧响值上限提升1000点，<color=#FFFFFF>[强攻]</color>或<color=#FFFFFF>[命破]</color>角色发动<color=#FFFFFF>[终结技]</color>时，该角色获得300点喧响值。"
         ],
         "extra_property": {},
-        "potential": []
+        "potential": [
+          0
+        ]
       }
     },
     "materials": {
@@ -2003,12 +2017,37 @@
   "fairy_recommend": {
     "slot4": 33200,
     "slot2": 31000,
-    "slot_sub": 31400,
+    "slot_sub": 31200,
     "part_sub_list": [
+      20103,
       12102,
-      20103
+      21103
     ],
-    "alt_build": [],
+    "alt_build": [
+      {
+        "suit_list": [
+          33200,
+          32800
+        ],
+        "part_sub_list": [
+          12102,
+          20103
+        ]
+      },
+      {
+        "suit_list": [],
+        "part_sub_list": [
+          12102
+        ]
+      },
+      {
+        "suit_list": [],
+        "part_sub_list": [
+          12102,
+          12202
+        ]
+      }
+    ],
     "part4": {
       "prop": 20103,
       "name": "暴击率",
@@ -2028,19 +2067,134 @@
       "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconSpRecover.png"
     },
     "part_sub": {
-      "prop": 21103,
-      "name": "暴击伤害",
+      "prop": 12202,
+      "name": "冲击力",
       "format": "{0:0.#%}",
-      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconCritDam.png"
+      "icon": "UI/Sprite/A1DynamicLoad/IconAttribute/UnPacker/Role/IconBreakStun.png"
     }
   },
   "strategy": [
     "07",
-    "<IconMap:Icon_GeneralBuff_Fire>火属性，后台击破",
+    "<IconMap:Icon_GeneralBuff_Fire>火属性，<IconMap:Icon_AvatarClass_Stun>后台击破",
     "提升全队角色暴伤与喧响值上限",
-    "为强攻&命破代理人额外回复喧响值"
+    "为[强攻]/[命破]代理人额外回复喧响值"
   ],
-  "potential": [],
-  "potential_detail": {},
+  "potential": [
+    139100,
+    139101,
+    139102,
+    139103,
+    139104,
+    139105
+  ],
+  "potential_detail": {
+    "139100": {
+      "id": 139100,
+      "name": "",
+      "desc": "",
+      "image": "Jufufu",
+      "level_show_name": "猛虎下山 I",
+      "level": 1,
+      "ability_list": [
+        13911401
+      ],
+      "potential_materials": [
+        {
+          "item_id": 20139,
+          "number": 1
+        }
+      ]
+    },
+    "139101": {
+      "id": 139101,
+      "name": "潜能觉醒：侠肝义胆",
+      "desc": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升<color=#2BAD00>10%</color>/<color=#2BAD00>30%</color>；[普通攻击：「虎威」]造成的失衡提升<color=#2BAD00>50%</color>，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升<color=#2BAD00>50%</color>；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升<color=#2BAD00>25%</color>，失衡结束时移除该效果。",
+      "image": "Jufufu",
+      "level_show_name": "猛虎下山 II",
+      "level": 2,
+      "ability_list": [
+        13911401,
+        13911501
+      ],
+      "potential_materials": [
+        {
+          "item_id": 20139,
+          "number": 1
+        }
+      ]
+    },
+    "139102": {
+      "id": 139102,
+      "name": "潜能觉醒：侠肝义胆",
+      "desc": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升<color=#2BAD00>10%</color>/<color=#2BAD00>30%</color>；[普通攻击：「虎威」]造成的失衡提升<color=#2BAD00>50%</color>，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升<color=#2BAD00>50%</color>；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升<color=#2BAD00>25%</color>，失衡结束时移除该效果。",
+      "image": "Jufufu",
+      "level_show_name": "猛虎下山 III",
+      "level": 3,
+      "ability_list": [
+        13911401,
+        13911502
+      ],
+      "potential_materials": [
+        {
+          "item_id": 20139,
+          "number": 1
+        }
+      ]
+    },
+    "139103": {
+      "id": 139103,
+      "name": "潜能觉醒：侠肝义胆",
+      "desc": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升<color=#2BAD00>10%</color>/<color=#2BAD00>30%</color>；[普通攻击：「虎威」]造成的失衡提升<color=#2BAD00>50%</color>，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升<color=#2BAD00>50%</color>；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升<color=#2BAD00>25%</color>，失衡结束时移除该效果。",
+      "image": "Jufufu",
+      "level_show_name": "猛虎下山 IV",
+      "level": 4,
+      "ability_list": [
+        13911401,
+        13911503
+      ],
+      "potential_materials": [
+        {
+          "item_id": 20139,
+          "number": 1
+        }
+      ]
+    },
+    "139104": {
+      "id": 139104,
+      "name": "潜能觉醒：侠肝义胆",
+      "desc": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升<color=#2BAD00>10%</color>/<color=#2BAD00>30%</color>；[普通攻击：「虎威」]造成的失衡提升<color=#2BAD00>50%</color>，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升<color=#2BAD00>50%</color>；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升<color=#2BAD00>25%</color>，失衡结束时移除该效果。",
+      "image": "Jufufu",
+      "level_show_name": "猛虎下山 V",
+      "level": 5,
+      "ability_list": [
+        13911401,
+        13911504
+      ],
+      "potential_materials": [
+        {
+          "item_id": 20139,
+          "number": 1
+        }
+      ]
+    },
+    "139105": {
+      "id": 139105,
+      "name": "潜能觉醒：侠肝义胆",
+      "desc": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升<color=#2BAD00>10%</color>/<color=#2BAD00>30%</color>；[普通攻击：「虎威」]造成的失衡提升<color=#2BAD00>50%</color>，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升<color=#2BAD00>50%</color>；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升<color=#2BAD00>25%</color>，失衡结束时移除该效果。",
+      "image": "Jufufu",
+      "level_show_name": "猛虎下山 VI",
+      "level": 6,
+      "ability_list": [
+        13911401,
+        13911505
+      ],
+      "potential_materials": [
+        {
+          "item_id": 20139,
+          "number": 1
+        }
+      ]
+    }
+  },
   "live2_d": "UISpineJufufu"
 }

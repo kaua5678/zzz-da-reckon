@@ -11,6 +11,7 @@ export type FormulaZone =
   | '贯穿力区'
   | '贯穿增伤区'
   | '锐化增伤区'
+  | '最终伤害区'
   | '抗性/易伤区'
   | '失衡区'
   | '异常积蓄区'
@@ -76,6 +77,7 @@ export const STAT_META: StatMeta[] = [
   { value: 'sheerForceFlat', label: '贯穿力提升', zone: '贯穿力区', mode: 'flat', description: `直接加到命破贯穿力：${penetrationPowerFormulaLabel('局内攻击力', '局内生命值', '固定贯穿力提升')}` },
   { value: 'sheerDmgBonus', label: '贯穿伤害提升', zone: '贯穿增伤区', mode: 'pct', description: '命破角色贯穿伤害提升，与贯穿增伤加算进入独立乘区' },
   { value: 'sharpDmgBonus', label: '锐化增伤', zone: '锐化增伤区', mode: 'pct', description: '锋御角色额外独立乘区：1 + 锐化增伤' },
+  { value: 'finalDmgBonus', label: '最终伤害', zone: '最终伤害区', mode: 'pct', description: '独立乘区：暴击之后 ×(1 + 最终伤害%)；可定向招式类型（如 finalDmgBonus__chain）；直伤专属（异常/异放不走此乘区）' },
   { value: 'physicalSheerDmg', label: '物理贯穿增伤', zone: '贯穿增伤区', mode: 'pct', description: '只在物理属性命破/贯穿伤害结算时，与通用贯穿增伤加算进入独立乘区' },
   { value: 'fireSheerDmg', label: '火属性贯穿增伤', zone: '贯穿增伤区', mode: 'pct', description: '只在火属性命破/贯穿伤害结算时，与通用贯穿增伤加算进入独立乘区' },
   { value: 'iceSheerDmg', label: '冰属性贯穿增伤', zone: '贯穿增伤区', mode: 'pct', description: '只在冰属性命破/贯穿伤害结算时，与通用贯穿增伤加算进入独立乘区' },

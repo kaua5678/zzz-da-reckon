@@ -52,6 +52,7 @@ import {
 } from '@/core/substatOptimizer'
 import type { SubstatTemplate } from '@/core/substatOptimizer'
 import { CRIT_RATE_STEP } from '@/data/critMultiplier'
+import { effectivePotentialLevelOf } from '@/data/potentialLevel'
 import type { Agent, DriveDiscSet, WEngine } from '@/types/catalog'
 import type { DriveDiscConfig } from '@/types/catalog'
 import type { ConfigModel } from '@/stores/config'
@@ -196,7 +197,7 @@ function resolveSlotOptimizerContext(
           teammateBuffs: setInfo.teammateBuffs,
           statRules: catalogStore.statRules,
           ...budget,
-          config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel, potentialLevel: char.potentialLevel, sourcePanelsByOwner: setInfo.sourcePanelsByOwner, effectCoverageMap: setInfo.effectCoverageMap, enemyWeakness: configStore.enemy.weakness },
+          config: { cinemaLevel: char.cinemaLevel, wEngineModLevel: char.wEngineModLevel, potentialLevel: effectivePotentialLevelOf(char.potentialLevel, char.potentialEnabled), sourcePanelsByOwner: setInfo.sourcePanelsByOwner, effectCoverageMap: setInfo.effectCoverageMap, enemyWeakness: configStore.enemy.weakness },
           // 起点面板必须与伤害管线同口径（2026-10-18 百暴溢出修复）：calcPanel 不跑角色模块 applyPanel，
           // 不传 panelHooks ⇒「百暴」缺口按没跑核心被动的暴击率算（希格莉德 19.4% vs 真实 85.4%）。
           panelHooks: {

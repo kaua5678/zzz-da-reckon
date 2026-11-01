@@ -23,6 +23,8 @@ function targetedStatKey(stat: string, target?: string): string {
 
 const TARGETABLE_STATS = new Set([
   'skillDmgBonus',
+  // 最终伤害（独立乘区，2026-11-01）：可定向（finalDmgBonus__chain / __ultimate …）
+  'finalDmgBonus',
   'stunBuildUpBonus',
   'critDmg',
   'critRate',
@@ -898,6 +900,8 @@ export function applyStat(panel: PanelValues, stat: StatId, value: number, mode:
     case 'sheerForceFlat': panel.sheerForceFlat += value; break
     case 'sheerDmgBonus': panel.sheerDmgBonus += value; break
     case 'sharpDmgBonus': panel.sharpDmgBonus += value; break
+    // 最终伤害乘区（独立乘区，2026-11-01；直伤专属：只在 core/damage.ts#calcDirectDamage 结算）
+    case 'finalDmgBonus': panel.finalDmgBonus += value; break
     // 失衡相关
     case 'stunBuildUpBonus': panel.stunBuildUpBonus += value; break
     case 'stunDmgMultiplierBonus': panel.stunDmgMultiplierBonus += value; break

@@ -8,7 +8,7 @@ import { applyBuffs, applyEffect, applyStat, collectAllBuffs, discSelfBuffNeedsO
 import { agentPanelStatInitials, calcEnergyRegenTotal } from '@/data/agentPanelStats'
 import type { StatRules } from '@/types/catalog'
 import { driveDiscStatMode } from './discStatMode'
-import { potentialLevelOf } from '@/data/potentialLevel'
+import { effectivePotentialLevelOf } from '@/data/potentialLevel'
 
 /** 创建空面板 */
 export function emptyPanel(): PanelValues {
@@ -30,6 +30,8 @@ export function emptyPanel(): PanelValues {
     sheerDmgBonus: 0,
     sharpDmgBonus: 0,
     skillDmgBonus: 0,
+    // 最终伤害乘区（独立乘区；直伤专属，见 core/damage.ts 第 9.5 步）
+    finalDmgBonus: 0,
     // 失衡相关
     stunBuildUpBonus: 0,
     anomalyBuildUpEfficiencyOnStunBonus: 0,
@@ -309,6 +311,8 @@ export interface PanelCalcConfig {
   wEngineModLevel: number
   /** 角色潜能档（1..6），透传给起点面板盖章（CC-174：calcPanel 生产调用点须显式给出）。缺省 = 6。 */
   potentialLevel?: number
+  /** 潜能开关（缺省 true）；false ⇒ 盖进面板的 potentialLevel 恒 1（见 data/potentialLevel.ts#effectivePotentialLevelOf） */
+  potentialEnabled?: boolean
   sourcePanelsByOwner?: SourcePanelsByOwner
   /** 效果覆盖率表（effect id → 0~1），与伤害管线同口径；缺省 = 全部按 100%（第 194 轮） */
   effectCoverageMap?: Map<string, number>
@@ -413,7 +417,8 @@ export function calcPanel(
   const inCombat = applyBuffs(outOfCombat, buffs.inCombat, config.effectCoverageMap, 'inCombat')
 
   // 潜能等级写入源面板（供 teamBuff formula/derived 通道读 potentialLevel）
-  const potentialLevel = potentialLevelOf(config.potentialLevel) // CC-503：与各机制模块同一归一口
+  // 潜能开关（2026-11-01）：关掉 ⇒ 恒 I 档，formula/derived 通道（如 1381 潜能电脉冲）一并归零
+  const potentialLevel = effectivePotentialLevelOf(config.potentialLevel, config.potentialEnabled) // CC-503：与各机制模块同一归一口
   outOfCombat.potentialLevel = potentialLevel
   inCombat.potentialLevel = potentialLevel
 

@@ -24,6 +24,7 @@ import {
   wEngineEffectCoverageMapOf,
 } from '@/stores/selectionReads'
 import { calcPanel, panelAt } from '@/core/panel'
+import { effectivePotentialLevelOf } from '@/data/potentialLevel'
 import { normalizePanelStatAlias } from '@/core/buff'
 import { localized } from '@/utils/format'
 import { buildTeammateBuffSourceContext } from '@/core/teammateBuffSource'
@@ -79,7 +80,7 @@ export function buildMechanicTeamMembers(
     agentId: char.agentId,
     agent: char.agentId ? catalogStore.agentsMap.get(char.agentId) ?? null : null,
     cinemaLevel: char.cinemaLevel,
-    potentialLevel: char.potentialLevel ?? 6,
+    potentialLevel: effectivePotentialLevelOf(char.potentialLevel, char.potentialEnabled),
     wEngineId: char.wEngineId,
     wEngineModLevel: char.wEngineModLevel,
   }))
@@ -225,7 +226,7 @@ export function applyTeamMechanics(params: {
       cfg,
       agent: catalogStore.agentsMap.get(cfg.agentId) ?? null,
       cinemaLevel: configStore.team[cfg.slot]?.cinemaLevel ?? 0,
-      potentialLevel: configStore.team[cfg.slot]?.potentialLevel ?? 6,
+      potentialLevel: effectivePotentialLevelOf(configStore.team[cfg.slot]?.potentialLevel, configStore.team[cfg.slot]?.potentialEnabled),
       characters,
       team,
       settings,
@@ -619,7 +620,7 @@ export function computePanelPhases(
       wEngineModLevel: char.wEngineModLevel,
       // CC-171（第 196 轮）：此前漏传 ⇒ core/panel.ts 缺省盖章 6，cfg.panel.potentialLevel 与潜能滑块脱钩
       // （柏妮思 buildExecutions / 简、柏妮思资源结果按满潜算）。来源面板（teammateBuffSource）一直有传。
-      potentialLevel: char.potentialLevel,
+      potentialLevel: effectivePotentialLevelOf(char.potentialLevel, char.potentialEnabled),
       sourcePanelsByOwner,
       effectCoverageMap,
       enemyWeakness: configStore.enemy.weakness,
@@ -645,7 +646,7 @@ export function computePanelPhases(
     slot,
     agent,
     cinemaLevel: char.cinemaLevel,
-    potentialLevel: char.potentialLevel ?? 6,
+    potentialLevel: effectivePotentialLevelOf(char.potentialLevel, char.potentialEnabled),
     team,
     outOfCombatPanel: result.outOfCombat,
     panel,
@@ -795,7 +796,7 @@ export function computeEntrySnapshotPanel(
     {
       cinemaLevel: char.cinemaLevel,
       wEngineModLevel: char.wEngineModLevel,
-      potentialLevel: char.potentialLevel, // CC-171：与 computePanelPhases 同口径
+      potentialLevel: effectivePotentialLevelOf(char.potentialLevel, char.potentialEnabled), // CC-171：与 computePanelPhases 同口径
       enemyWeakness: configStore.enemy.weakness,
       effectCoverageMap: selfEffectCoverageMap(configStore, catalogStore, wEngineCoverages, discCoverages),
     },

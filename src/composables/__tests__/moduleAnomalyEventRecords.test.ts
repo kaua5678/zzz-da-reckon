@@ -8,17 +8,19 @@ const UPDATE = process.env.MODULE_EVENT_RECORDS_UPDATE === '1'
 
 const TEAMS: Record<string, unknown[]> = {
   'r0': [{ agentId: '1581' }, { agentId: '1501' }, { agentId: '1561' }],
-  'r2': [{ agentId: '1261' }, { agentId: '1331' }, { agentId: '1581' }],
+  // 1331 统一钉 potentialEnabled:false：本文件是「异常事件行记录」的数值基线，
+  // 不把 v2 潜能（异放 ×1.5 等）混进基线（同 R60 钉 potentialLevel=1 先例；潜能判据见 potentialSwitch.test.ts）。
+  'r2': [{ agentId: '1261' }, { agentId: '1331', potentialEnabled: false }, { agentId: '1581' }],
   'lead-empty': ['', { agentId: '1501' }, { agentId: '1581' }],
-  'none': [{ agentId: '1261' }, { agentId: '1331' }, { agentId: '1501' }],
+  'none': [{ agentId: '1261' }, { agentId: '1331', potentialEnabled: false }, { agentId: '1501' }],
 }
 
 const TEAMS29: Record<string, unknown[]> = {
-  'j0c6': [{ agentId: '1261', cinemaLevel: 6 }, { agentId: '1331' }, { agentId: '1501' }],
-  'j2c6': [{ agentId: '1501' }, { agentId: '1331' }, { agentId: '1261', cinemaLevel: 6 }],
-  'jempty': ['', { agentId: '1331' }, { agentId: '1261', cinemaLevel: 6 }],
-  'j0c5': [{ agentId: '1261', cinemaLevel: 5 }, { agentId: '1331' }, { agentId: '1501' }],
-  'jr': [{ agentId: '1261', cinemaLevel: 6 }, { agentId: '1331' }, { agentId: '1581' }],
+  'j0c6': [{ agentId: '1261', cinemaLevel: 6 }, { agentId: '1331', potentialEnabled: false }, { agentId: '1501' }],
+  'j2c6': [{ agentId: '1501' }, { agentId: '1331', potentialEnabled: false }, { agentId: '1261', cinemaLevel: 6 }],
+  'jempty': ['', { agentId: '1331', potentialEnabled: false }, { agentId: '1261', cinemaLevel: 6 }],
+  'j0c5': [{ agentId: '1261', cinemaLevel: 5 }, { agentId: '1331', potentialEnabled: false }, { agentId: '1501' }],
+  'jr': [{ agentId: '1261', cinemaLevel: 6 }, { agentId: '1331', potentialEnabled: false }, { agentId: '1581' }],
 }
 
 interface Baseline {

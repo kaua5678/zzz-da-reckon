@@ -17,6 +17,7 @@ import { AUTO_AXIS_PRESET_HINTS, getAgentMechanic, getRegisteredMechanicSettings
 import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { interactionBaselineFor } from '@/mechanics/interactionBaseline'
+import { effectivePotentialLevelOf } from '@/data/potentialLevel'
 // CC-478（r658）：交互基准纯函数簇（getInteractionDefaults / roleInteractionBaseline / interactionBaselineFor / hasCustomInteractionDefaults）
 // 下沉到 mechanics/interactionBaseline.ts——它们只读角色模块声明，不碰 pinia；原先住在 store 里让引擎（composables/resourceCalc）
 // 一引用就打破 CC-245/246 分层锁（aa0fe35c 实测）。此处 re-export 保持既有导入路径与 CC-255「单一来源」不变。
@@ -46,6 +47,8 @@ export interface CharacterConfig {
   agentId: string
   cinemaLevel: number  // 影画/命座 0-6
   potentialLevel?: number  // 潜能觉醒等级 1-6（缺省 6 = 满级；潜能效果见各模块按档位取值）
+  /** 潜能开关（2026-11-01 用户口径）：缺省 true = 有潜能；false = 潜能整条不生效（等价潜能 I）。只有声明支持的角色在 UI 露出开关，见 potentialLevel.ts#effectivePotentialLevelOf */
+  potentialEnabled?: boolean
   wEngineId: string
   wEngineModLevel: number  // 精修/精炼 1-5
   driveDisc: DriveDiscConfig
@@ -162,6 +165,7 @@ function defaultCharacter(slot: number, agentId: string, element: string): Chara
     agentId,
     cinemaLevel: 6,
     potentialLevel: 6,
+    potentialEnabled: true,
     wEngineId: '',
     wEngineModLevel: 5,
     driveDisc: defaultDriveDisc(element),
@@ -446,7 +450,7 @@ export function parseCinemaRequirement(sourceLabel: string): number {
  * 2026-09-24：watch 源曾手写成 `{agentId, cinemaLevel}`，而派生函数还读潜能/音擎（经额外能力判定），
  * 两边各写一份就会漂。现在新增依赖字段只改这一处，类型与 watch 同时跟上。
  */
-const TEAMMATE_BUFF_INPUT_KEYS = ['slot', 'agentId', 'cinemaLevel', 'potentialLevel', 'wEngineId', 'wEngineModLevel'] as const
+const TEAMMATE_BUFF_INPUT_KEYS = ['slot', 'agentId', 'cinemaLevel', 'potentialLevel', 'potentialEnabled', 'wEngineId', 'wEngineModLevel'] as const
 type TeammateBuffInput = Pick<CharacterConfig, typeof TEAMMATE_BUFF_INPUT_KEYS[number]>
 
 export function deriveTeammateBuffEnabled(
@@ -474,7 +478,7 @@ export function deriveTeammateBuffEnabled(
     agentId: char.agentId,
     agent: agent ?? null,
     cinemaLevel: char.cinemaLevel,
-    potentialLevel: char.potentialLevel ?? 6,
+    potentialLevel: effectivePotentialLevelOf(char.potentialLevel, char.potentialEnabled),
     wEngineId: char.wEngineId,
     wEngineModLevel: char.wEngineModLevel,
   }))
@@ -701,6 +705,7 @@ export function createConfigModel(
       // （散点实测：用户槽潜能 1 时 40/104 预设伤害变化，最多 −20.7%，艾莲 / 悠真（harumasa 1201）/ 零号安比模块与 spec 公式 p 变量读它）。
       // 命座 / 精炼不在此重置：所有分析器与 applyTeamPreset 都显式设置；主页换人保留用户所选档位是有意的 UX。
       char.potentialLevel = tpl.potentialLevel
+      char.potentialEnabled = tpl.potentialEnabled
     }
 
     const agent = catalogStore.getAgent(agentId)
@@ -781,6 +786,12 @@ export function createConfigModel(
     if (char) {
       char.potentialLevel = Math.max(1, Math.min(6, level))
     }
+  }
+
+  /** 潜能开关（2026-11-01）：关 = 潜能整条不生效（等价潜能 I），档位保留。 */
+  function setPotentialEnabled(slot: number, on: boolean) {
+    const char = team.value[slot]
+    if (char) char.potentialEnabled = !!on
   }
 
   function setWEngine(slot: number, wEngineId: string) {
@@ -946,7 +957,7 @@ export function createConfigModel(
           config: {
             cinemaLevel: char.cinemaLevel,
             wEngineModLevel: char.wEngineModLevel,
-            potentialLevel: char.potentialLevel,
+            potentialLevel: effectivePotentialLevelOf(char.potentialLevel, char.potentialEnabled),
             sourcePanelsByOwner: teamInputs?.sourcePanelsByOwner,
             effectCoverageMap: teamInputs?.effectCoverageMap,
             enemyWeakness: enemy.value.weakness,
@@ -967,7 +978,7 @@ export function createConfigModel(
                 agentId: c.agentId,
                 agent: c.agentId ? catalogStore.getAgent(c.agentId) ?? null : null,
                 cinemaLevel: c.cinemaLevel,
-                potentialLevel: c.potentialLevel ?? 6,
+                potentialLevel: effectivePotentialLevelOf(c.potentialLevel, c.potentialEnabled),
                 wEngineId: c.wEngineId,
                 wEngineModLevel: c.wEngineModLevel,
               }))
@@ -978,7 +989,7 @@ export function createConfigModel(
               agentId: c.agentId,
               agent: c.agentId ? catalogStore.getAgent(c.agentId) ?? null : null,
               cinemaLevel: c.cinemaLevel,
-              potentialLevel: c.potentialLevel ?? 6,
+              potentialLevel: effectivePotentialLevelOf(c.potentialLevel, c.potentialEnabled),
               wEngineId: c.wEngineId,
               wEngineModLevel: c.wEngineModLevel,
             })),
@@ -1582,6 +1593,7 @@ export function createConfigModel(
     setAgent,
     setCinemaLevel,
     setPotentialLevel,
+    setPotentialEnabled,
     setWEngine,
     setWEngineModLevel,
     setFourPieceSet,

@@ -17,6 +17,7 @@ import { specToMechanicModule } from '@/specs/mechanics'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { mechanicSettingPanelReader, mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { potentialLevelOf } from '@/data/potentialLevel'
 import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
@@ -469,10 +470,18 @@ export const JUFUFU_SPIN_AWE = 25
 export const JUFUFU_C6_POPCORN_PER_SPIN = 3
 export const JUFUFU_C6_POPCORN_MULT = 160
 export const JUFUFU_C6_CHAIN_DMG_BONUS = 30
+/**
+ * 潜能觉醒·侠肝义胆（v2 测试服 3.4.2+20052336，II~VI 同文，2026-11-01 用户口径）：
+ * [普通攻击：「虎威」] 与 [冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升 +50%（招式限定）。
+ * 另外两条（[虎啸] 下 连携/终结 最终伤害 +10%/30% → 独立乘区 finalDmgBonus；[虎啸] 命中 → 失衡易伤 +25%）走 spec teamBuffs 的
+ * `sourceStat: 'potentialLevel'` formula 通道（本模块只承载招式级失衡）。
+ */
+export const JUFUFU_POTENTIAL_STUN_BUILDUP = 50
 
 const JUFUFU_MOVE = {
   huwei: '1391005', // 普通攻击：「虎威」
   spinWeishi: '1391010', // 冲刺攻击：恶虎七式·山君鼎戏·威势
+  spinHuwei: '1391022', // 冲刺攻击：恶虎七式·山君鼎戏·「虎威」（潜能觉醒·侠肝义胆 失衡 +50% 的另一个目标招）
   tigerChain: '1391013', // 连携技：虎釜震煞
   tigerChainManual: '1391012', // 连携技：虎釜崩
   popcorn: '1391_c6_popcorn',
@@ -680,6 +689,8 @@ function jufufuCycleOf(
 export const jufufuTigerRoarMechanic: AgentMechanicModule = {
   id: 'agent:jufufu_tiger_roar',
   agentIds: ['1391'],
+  // 潜能开关（1391/1331 是「有无潜能」布尔语义：潜能 II~VI 同文，滑块无意义）
+  potentialSwitch: true,
   name: '橘福福·虎啸',
   description: '虎威4秒/次驱动威风；虎釜震煞/山君鼎戏·威势次数由账本收敛；虎啸满覆盖冲击+50；影画1/2/4/6 面板与附伤。',
   /**
@@ -831,6 +842,14 @@ export const jufufuTigerRoarMechanic: AgentMechanicModule = {
   },
   patchExecutions: ({ cfg, executions }) => {
     const cinema = jufufuCinemaOf(cfg)
+    // 潜能觉醒·侠肝义胆：虎威/山君鼎戏·「虎威」失衡 +50%（II~VI 同文；cfg.panel.potentialLevel 已由开关折算）
+    if (potentialLevelOf(cfg.panel.potentialLevel) >= 2) {
+      for (const e of executions) {
+        if (e.moveId === JUFUFU_MOVE.huwei || e.moveId === JUFUFU_MOVE.spinHuwei) {
+          e.stunBuildUpBonus = (e.stunBuildUpBonus ?? 0) + JUFUFU_POTENTIAL_STUN_BUILDUP
+        }
+      }
+    }
     if (cinema < 6) return
     // 影画6：所有连携技（含虎釜崩手动连携，若有）+30% 招式限定增伤
     for (const e of executions) {
@@ -1003,3 +1022,6 @@ declare module '@/types/resource/config' {
     jufufuCinemaLevel?: number
   }
 }
+
+// @fact agent:1391/潜能觉醒侠肝义胆 口径: v2 测试服 3.4.2+20052336 猛虎下山 II~VI 同文：① 虎威 1391005 与 山君鼎戏·「虎威」1391022 失衡 +50%（招式级 exec.stunBuildUpBonus，模块）② [虎啸] 下 连携/终结 最终伤害 +10%/30%（spec teamBuffs，新独立乘区 finalDmgBonus + targetSkillType；2026-11-01 用户口径「最终伤害这可是个新独立乘区」，core/damage.ts 第 9.5 步）③ [虎啸] 命中 → 目标失衡易伤 +25%（stunDmgMultiplierBonus）；②③ 经 sourceStat=potentialLevel formula 通道取值 ⇒ 关开关归零 | 据 data/raw/nanoka_missing/full/1391.json potential_detail + 用户口径@2026-11-01 | 验 src/mechanics/__tests__/potentialSwitch.test.ts | 锚 src/mechanics/agents/specPanelBuffs.ts#JUFUFU_POTENTIAL_STUN_BUILDUP + src/mechanics/agents/specPanelBuffs.ts#patchExecutions | 信 确认
+// ⟳复核: 下一个正式包落地后，逐条对账 1391 潜能三条数值；另复核「最终伤害」独立乘区的落点（是否需要覆盖异常/异放，当前为直伤专属） | 到期 2027-03-31

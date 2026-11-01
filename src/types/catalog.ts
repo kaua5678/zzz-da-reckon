@@ -94,6 +94,8 @@ export interface PanelValues {
   sheerDmgBonus: number  // 贯穿伤害提升，百分比
   sharpDmgBonus: number // 锐化增伤（锋御角色用），百分比
   skillDmgBonus: number // 全招式伤害加成，百分比
+  /** 最终伤害乘区（独立乘区，2026-11-01）：暴击之后 ×(1 + 值/100)；可定向 `finalDmgBonus__<target>`；直伤专属 */
+  finalDmgBonus: number
   // 失衡相关
   stunBuildUpBonus: number      // 造成失衡值提升，百分比
   stunDmgMultiplierBonus: number // 失衡易伤（仅失衡时），百分比

@@ -262,6 +262,13 @@ const panels = computed(() => {
       ...targetedStatRows(pIn, 'critDmg', t => `暴击伤害（${SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t}）`),
     ]
 
+    // 最终伤害区（独立乘区，直伤公式 9.5：暴击之后 ×(1+值%)；与增伤/暴伤相乘不相加）
+    // 1391 潜能的「连携/终结最终伤害 +10%/30%」写定向键 finalDmgBonus__chain|__ultimate ⇒ 逐行列出
+    const finalRows: FinalRow[] = [
+      makeRow(pOut, pIn, 'finalDmgBonus', '最终伤害（通用）'),
+      ...targetedStatRows(pIn, 'finalDmgBonus', t => `最终伤害（${SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t}）`),
+    ]
+
     // 招式限定的敌方减益（`enemyDefReduction__basic` 一族）：引擎按招式读回（`core/damage.ts`），
     // 终局面板此前不显示（2026-10-18：机巧心种 14146 普攻/终结无视防御、心弦夜响 14132 连携/终结无视火抗）。
     const targetedDebuffRows = targetedStatRows(pIn, 'enemyDefReduction', t => `减防（${SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t}）`)
@@ -333,6 +340,8 @@ const panels = computed(() => {
     const penDmgTotal = (pIn.penDmgBonus ?? 0) + (pIn.sheerDmgBonus ?? 0) + (elementSheerKey ? (getPanelStat(pIn, elementSheerKey) ?? 0) : 0)
     const resTotal = (pIn.enemyResReduction ?? 0) + elementRes
     const stunMultTotal = (pIn.stunDmgMultiplierBonus ?? 0) + (pIn.stunDmgMultiplierBonusAlways ?? 0)
+    const finalDmgTotal = pIn.finalDmgBonus ?? 0
+    const finalDmgTargeted = targetedRows(pIn, 'finalDmgBonus', t => SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t)
     // CC-223：风异常增伤只对风属性异常生效（引擎按异常元素判定：damage.ts / anomalyPool helpers），不并入通用异常增伤，单列
     const anomalyDmgTotal = pIn.anomalyDmgBonus ?? 0
     const windAnomalyDmg = pIn.windAnomalyDmgBonus ?? 0
@@ -379,6 +388,14 @@ const panels = computed(() => {
             lines: ['暴击率按 100% 封顶；锐暴/强击暴击走各自字段'],
           },
       {
+        title: '最终伤害乘区（独立，公式9.5）',
+        main: `1 + ${pct(finalDmgTotal)} = ${fmt(1 + finalDmgTotal / 100, 4)}`,
+        lines: [
+          `通用 ${pct(pIn.finalDmgBonus ?? 0)}${finalDmgTargeted.map(r => ` + 定向 ${r.label} ${pct(r.value)}`).join('')}`,
+          '暴击之后乘，与直伤增伤/暴伤互不相加；直伤专属（异常/异放不走此区）',
+        ],
+      },
+      {
         title: '抗性削减 / 易伤 / 失衡',
         main: `全 ${pct(pIn.enemyResReduction ?? 0)} + ${element} ${pct(elementRes)} = ${pct(resTotal)}`,
         lines: [
@@ -421,6 +438,7 @@ const panels = computed(() => {
         { title: '锐化增伤区（锋御独立乘区）', name: 'sharp', rows: sharpRows },
         { title: '贯穿增伤区（命破独立乘区）', name: 'sheer', rows: sheerRows },
         { title: '暴击区（直伤）', name: 'crit', rows: critRows },
+        { title: '最终伤害区（独立乘区，暴击后）', name: 'final', rows: finalRows },
         { title: '减益区（对敌）', name: 'debuff', rows: debuffRows },
         { title: '异常区（积蓄/异常增伤/紊乱/异放/乱流）', name: 'anomaly', rows: anomalyRows },
         { title: '资源区', name: 'resource', rows: resourceRows },

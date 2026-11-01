@@ -10,6 +10,15 @@ import type { AgentMechanicModule, AgentPoolSummaryInput, AxisDurationInputDecl,
 import type { MechanicSetting } from '@/types/resource'
 
 /**
+ * 潜能开关（2026-11-01 用户口径）：只有声明 `potentialSwitch` 的角色露「启用潜能」开关。
+ * 老角色（11号等）不声明 ⇒ 不露开关、行为逐位不变。
+ * ⚠ 住在 composable 层：views 禁直接 import `@/mechanics`（展示→编排→引擎分层，ARCHITECTURE §0）。
+ */
+export function agentSupportsPotentialSwitch(agentId: string | undefined): boolean {
+  return getAgentMechanic(agentId ?? '')?.potentialSwitch === true
+}
+
+/**
  * 队伍各槽模块声明的机制设置，按 `setting.id` 去重、**先出现的槽位优先**；
  * 顺序 = 槽位顺序 × 模块内声明顺序；空槽跳过。
  * 原位置：ResourceUtilizationPage.vue `mechanicSettings`、ImpactChart.vue `settingMap`（两处同口径）。
