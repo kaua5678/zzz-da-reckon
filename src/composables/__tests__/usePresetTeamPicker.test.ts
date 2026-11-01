@@ -14,7 +14,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { usePresetFilter, usePresetTeamPicker, PRESET_FILTER_ANY } from '@/composables/usePresetTeamPicker'
 import { useCustomTeamsStore } from '@/composables/customTeams'
-import { firstNonEmptyFilter, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, teamPresets } from '@/data/teamPresets'
+import { firstNonEmptyFilter, presetGroupLabels, presetSubgroupLabelsFor, presetsForFilter, teamPresets, visibleTeamPresets } from '@/data/teamPresets'
 
 describe('usePresetTeamPicker（CC-482）', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -84,7 +84,8 @@ describe('usePresetTeamPicker（CC-482）', () => {
     // 二级也「不限」→ 全库可选，跨分类勾选不被过滤掉
     p.presetSubSel.value = null
     await nextTick()
-    expect(p.presetFilteredOptions.value.length).toBe(teamPresets.length)
+    // beta 关（本套件默认）⇒ 引用 beta 快照角色的 v1 队整条隐藏（用户 2026-11-01「关着就只显示正式角色」）
+    expect(p.presetFilteredOptions.value.length).toBe(visibleTeamPresets(false).length)
     const a = p.presetFilteredOptions.value[0]!.value
     const b = p.presetFilteredOptions.value.at(-1)!.value
     expect(a).not.toBe(b)
@@ -140,7 +141,7 @@ describe('usePresetTeamPicker（CC-482）', () => {
     expect(f.groupSel.value).toBeNull()
     // 一级「不限」⇒ 二级列出全部属性（此前 null 时 subOptions 为空，用户没法从「不限」再往下选）
     expect(f.subOptions.value.map(o => o.value)).toEqual([PRESET_FILTER_ANY, ...presetSubgroupLabelsFor(null)])
-    expect(f.teamOptions.value.length).toBe(teamPresets.length)
+    expect(f.teamOptions.value.length).toBe(visibleTeamPresets(false).length)
     f.groupSel.value = presetGroupLabels[0]!
     expect(f.subOptions.value.map(o => o.value)).toEqual([PRESET_FILTER_ANY, ...presetSubgroupLabelsFor(presetGroupLabels[0]!)])
     const first = firstNonEmptyFilter()

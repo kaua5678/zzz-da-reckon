@@ -12,7 +12,7 @@
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { teamPresets } from '@/data/teamPresets'
+import { teamPresets, visibleTeamPresets } from '@/data/teamPresets'
 import { setupHarness } from '@/test/harness'
 import { presetBaseEngines } from '@/composables/goldStepsFromCatalog'
 import { baseGoldOf } from '@/composables/teamCompare'
@@ -33,7 +33,8 @@ describe('预设文件载荷 = 身份 + 策划标签（不含配装）', () => {
 
   it('基础音擎由 catalog 派生：限定角色带专武，其余不占金；且基础金 = 1 人 1 金（限定本体+限定专武）', async () => {
     const h = await setupHarness(['', '', ''])
-    for (const p of teamPresets) {
+    // beta 关（默认）⇒ 引用 beta 快照角色的预设不在可见集，也无法从当前 catalog 派生音擎（用户 2026-11-01 隐藏口径）
+    for (const p of visibleTeamPresets(h.catalog.betaEnabled)) {
       const eng = presetBaseEngines(p, h.catalog)
       expect(eng.length).toBe(3)
       // 每槽必须有一件可穿的音擎（空音擎实测比专武本体低 34–41%：那是「没带武器」不是「没抽专武」）

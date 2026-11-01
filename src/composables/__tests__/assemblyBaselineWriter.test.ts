@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { teamPresets } from '@/data/teamPresets'
+import { visibleTeamPresets } from '@/data/teamPresets'
 import { applyTeamToStore } from '@/composables/teamTimelineStore'
 import { baseStateFor } from '@/composables/goldStepsFromCatalog'
 import { chainBaselineFor, interactionBaselineFor } from '@/stores/config'
@@ -18,7 +18,8 @@ describe('CC-266 装配入口不重复写基准', () => {
     const { config } = await setupHarness(['', '', ''], { recommendedBuild: false })
     const catalog = useCatalogStore()
     await catalog.loadBuildRecommendations() // autoBuild=true 走 applyTeamPreset，要求推荐已加载
-    const teams = [...new Map(teamPresets.map(p => [p.team.join('-'), p.team as [string, string, string]])).values()]
+    // beta 关（默认）⇒ 引用 beta 快照角色的预设不可见（用户 2026-11-01），装配面按可见集枚举
+    const teams = [...new Map(visibleTeamPresets(catalog.betaEnabled).map(p => [p.team.join('-'), p.team as [string, string, string]])).values()]
     for (const autoBuild of [false, true]) {
       for (const team of teams) {
         for (const c of config.team) { c.parryCount = 77; c.dodgeCounterCount = 77; c.blockCount = 77; c.dualCounterCount = 77; c.chainCountPerStun = 3 }
