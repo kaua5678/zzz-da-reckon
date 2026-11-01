@@ -93,11 +93,11 @@ describe('1601 挽昼 · 资源循环求解', () => {
 })
 
 describe('烬痕：存值不吃易伤，但攒的时候吃（线性，不平方）', () => {
-  it('烬痕 = 0.75 × 积攒招式倍率和，且只套一次乘区 ⇒ 总伤对失衡覆盖率线性', () => {
+  it('烬痕 = 0.65 × 积攒招式倍率和（v2 核心被动），且只套一次乘区 ⇒ 总伤对失衡覆盖率线性', () => {
     const loops = { jufengCount: 6, changanCount: 6, ultACount: 2 }
     const ember = computeEmberScar({ meta: meta as any, loops, ultBCount: 2 })
     const sum = 6 * 1722.5 + 6 * 2690.6 + 2 * 3900.1 + 2 * 2827
-    expect(ember).toBeCloseTo(sum * 0.75, 6)
+    expect(ember).toBeCloseTo(sum * 0.65, 6)
     // 线性：易伤系数 s 只作用一次 —— 「积攒伤害 × s」得出的存量，在结算行再乘同一个 s 之前
     // 已经是 s 的一份；若模型把它当"结算时再吃一次"就会变成 s²（这里断言不会）
     const s1 = 1, s2 = 1.5
@@ -113,22 +113,35 @@ describe('烬痕：存值不吃易伤，但攒的时候吃（线性，不平方�
 
 
 describe('影画 1/2（2026-10-25 接线）', () => {
-  it('一命：进战 +120 愿力 ⇒ 多一次聚锋；首次聚锋烬痕按 150%', () => {
+  it('一命（v2）：进战 +120 愿力 ⇒ 多一次聚锋 + 残痕积蓄效率 +10%；首次聚锋 150% 已删', () => {
     const c0 = solveSunbringerLoops({ ...base, cinemaLevel: 0 } as any)
     const c1 = solveSunbringerLoops({ ...base, cinemaLevel: 1 } as any)
-    expect(c1.wishTotal - c0.wishTotal).toBe(120)
+    // C1 的直接 +120，加上残痕效率 +10% 多消出的层（每层 +40）
+    expect(c1.wishTotal - c0.wishTotal).toBeGreaterThanOrEqual(120)
     expect(c1.jufengCount).toBeGreaterThanOrEqual(c0.jufengCount)
-    const e0 = computeEmberScar({ meta: meta as any, loops: c0, ultBCount: 1, cinemaLevel: 0 })
-    const e1 = computeEmberScar({ meta: meta as any, loops: c1, ultBCount: 1, cinemaLevel: 1 })
-    expect(e1).toBeGreaterThan(e0)
+    // v2 C1 = 残痕积蓄效率 +10%（灯台白送层除外）；base 无 counterAssist ⇒ 精确 ×1.1
+    expect(c1.gash).toBeCloseTo(c0.gash * 1.1, 6)
+    // v2 删掉「首次聚锋烬痕 150%」⇒ 同 loops 下烬痕与命座无关
+    const e = computeEmberScar({ meta: meta as any, loops: c0, ultBCount: 1, cinemaLevel: 0 })
+    const e1 = computeEmberScar({ meta: meta as any, loops: c0, ultBCount: 1, cinemaLevel: 1 })
+    expect(e1).toBeCloseTo(e, 6)
   })
 
-  it('二命：其他招式（EX/连携）按实际伤害 12% 也积攒烬痕', () => {
+  it('二命（v2）：积攒量 +20% + 其他招式（除 5 招外）实际伤害 15% 也积攒', () => {
     const loops = { jufengCount: 6, changanCount: 6, ultACount: 2 }
     const c1 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2, cinemaLevel: 1 })
-    const c2 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2, cinemaLevel: 2, exCount: 17, chainCount: 1 })
-    const extra = (17 * 1240.5 + 1 * 1550.3) * 0.12
-    expect(c2 - c1).toBeCloseTo(extra, 6)
+    const other = 17 * 1240.5 + 1 * 1550.3
+    const c2 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2, cinemaLevel: 2, otherMultiplierSum: other })
+    expect(c2 - c1).toBeCloseTo(c1 * 0.2 + other * 0.15, 6)
+  })
+
+  it('六命（v2）：终结技额外一次[烬灭] = 该次终结技积攒烬痕量的 150%', () => {
+    const loops = { jufengCount: 6, changanCount: 6, ultACount: 2 }
+    const c2 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2, cinemaLevel: 2 })
+    const c6 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2, cinemaLevel: 6 })
+    // C6 相对 C2 的净增 = 额外烬灭（含 C2 的 ×1.2）
+    const ultBEmber = 2 * 2827 * 0.65 * 1.2
+    expect(c6 - c2).toBeCloseTo(ultBEmber * 1.5, 6)
   })
 })
 

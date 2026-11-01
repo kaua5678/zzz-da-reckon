@@ -27,7 +27,7 @@ import { allocateBossGashPool, GASH_PER_LAYER } from '@/mechanics/gashMaim'
  * | 愿力 | 每层 +40（上限 160）⇒ **每 3 层 = 1 次聚锋**（120） | raw 核心被动 Lv.7 |
  * | 链齿/旗令 | 每次聚锋各 +1；链齿 → 长暗终焉；**旗令优先终结技·此行共赴前路**（永昼之炬按 0 次） | 用户裁决 2026-10-25 |
  * | 愿核 | 终结技 A 消耗 1 旗令 → 1 愿核 → 解除 B（此愿，重塑万象） | raw |
- * | 烬痕 | 聚锋/长暗终焉/两个终结技**实际伤害的 75%**，存下来就是**固定数值**——不吃失衡易伤、不吃任何属性；B 清空时等量计入总伤害 | raw + 用户裁决 2026-10-25（"存下来的数字已经固定死了"） |
+ * | 烬痕 | **5 个积攒招式**（聚锋/长暗终焉/永昼之炬/两个终结技）**实际伤害的 65%**（v2 核心被动），存下来就是**固定数值**——不吃失衡易伤、不吃任何属性；B/永昼之炬的终结一击清空时等量计入总伤害 | raw 3.4.2+20049556 + 用户裁决 2026-10-25（"存下来的数字已经固定死了"） |
  *
  * ## 建模取舍（都写在行名/注释里，便于复核）
  * - **次数上限靠时间**：模块按 `combatTime` 顺序分配预算（EX → 聚锋 → 长暗终焉），超预算就少打；
@@ -56,8 +56,16 @@ export const WISH_PER_MAIM = 40
 export const WISH_MAX = 160
 /** 愿力：一次聚锋消耗 120 */
 export const JU_FENG_WISH_COST = 120
-/** 烬痕：按实际伤害的 75% 累积并计入总伤害 */
-export const EMBER_SCAR_RATE = 0.75
+/** 烬痕：v2（3.4.2+20049556）核心被动 = 按实际伤害的 **65%** 累积（3.4.1 是 75%，随 v2 下调） */
+export const EMBER_SCAR_RATE = 0.65
+/** 影画2：使敌人积攒的[烬痕]量提升 20%（v2 文本） */
+export const EMBER_SCAR_C2_BONUS = 0.2
+/** 影画2：其他招式（除 5 个积攒招式外）按实际伤害 15% 也积攒（v2 文本） */
+export const EMBER_SCAR_OTHER_RATE = 0.15
+/** 影画6：终结技额外一次[烬灭] = 该次终结技积攒[烬痕]量的 150%（v2 文本） */
+export const EMBER_SCAR_C6_EXTRA_MULT = 1.5
+/** 影画1：残痕积蓄效率 +10%（v2 文本）；灯塔白送的整层不吃此效率 */
+export const SUNBRINGER_C1_GASH_EFFICIENCY = 1.1
 /**
  * [招架支援]造成的失衡值提升 50%（nanoka **3.4.1+19997538** 新包新增的一句，3.4.1+19850203 及更早没有）：
  * > 「德蕾琪娜发动[招架支援]**造成的失衡值提升50%**，艾尔妲与林德薇恩发动的[支援突击]残痕积蓄效率提升15%，
@@ -118,14 +126,20 @@ export function applySunbringerPanel({ panel, outOfCombatPanel, cinemaLevel }: A
   // 极昼：满覆盖近似（见文件头）
   panel.critRate = panel.critRate + POLAR_DAY_CRIT_RATE
   panel.enemyDefReduction = panel.enemyDefReduction + POLAR_DAY_DEF_IGNORE
-  // 影画1（隐世的虚狩）：造成伤害无视 15% 火属性抗性（满覆盖）
+  // 影画1（隐世的虚狩）：造成伤害无视 15% 火属性抗性（满覆盖）；「残痕积蓄效率 +10%」在 solveSunbringerLoops
   if (cinemaLevel >= 1) panel.enemyFireResReduction = panel.enemyFireResReduction + 15
-  // 影画2（继承者的叛旗）：锐化伤害无视 12% 防御力（满覆盖）
-  if (cinemaLevel >= 2) panel.enemyDefReduction = panel.enemyDefReduction + 12
+  // 影画2（继承者的叛旗）v2 文本 = 烬痕积攒（+20% / 其他招式 15% / 击溃）——**不再是无视 12% 防御**
+  //   （旧文本 3.4.1+19850203 的「无视 12% 防御」随 v2 删除；烬痕侧在 computeEmberScar）
+  // 影画4（奉献者的虚像）：自身造成的伤害 +15%（满覆盖）
+  if (cinemaLevel >= 4) panel.dmgBonus = panel.dmgBonus + 15
+  // 影画6（破晓的希冀）：招式造成伤害无视目标 20% 防御力（满覆盖；额外[烬灭]在 computeEmberScar）
+  if (cinemaLevel >= 6) panel.enemyDefReduction = panel.enemyDefReduction + 20
 }
 
 export function buildSunbringerCharConfig({ cfg, skills, agent, cinemaLevel }: AgentCharConfigInput): void {
   cfg.sunbringerCinemaLevel = cinemaLevel
+  // 影画4（奉献者的虚像）：进入战场立刻获得 1000 点喧响值（勘域 180s 一次 ⇒ 每局一次）
+  if (cinemaLevelOf(cinemaLevel) >= 4) cfg.initialDecibelGift = cfg.initialDecibelGift + 1000
   const all = skills.categories.flatMap(c => c.moves)
   const metaOf = (id: string): SunbringerMoveMeta => {
     const m = all.find(x => x.id === id)
@@ -181,7 +195,7 @@ export function solveSunbringerLoops(input: {
   chainCount: number
   totalDecibel: number
   ultimateCost: number
-  /** 命座等级（影画1：进战 +120 愿力；影画2：其他招式 12% 烬痕） */
+  /** 命座等级（影画1：进战 +120 愿力 + 残痕效率 +10%；影画2：烬痕 +20% + 其他招式 15%；影画4/6：面板） */
   cinemaLevel?: number
   /**
    * 本局反制支援次数（Boss 控制技组数，store 折算注入 `cfg.counterAssistCount`）。
@@ -200,7 +214,9 @@ export function solveSunbringerLoops(input: {
 
   // 残痕来源：平A 秒均 + 强特/连携表值 + **反制支援灯塔送的层**（每组 +600 点，不吃积蓄效率）
   const counterGiftStacks = Math.max(0, Math.floor(input.counterAssistCount ?? 0))
-  const gash = meta.basic.gashPerSec * basicTime + exCount * meta.ex.gash + chainCount * meta.chain.gash
+  // 影画1（v2 文本「残痕积蓄效率提升10%」）：只放大**积累来源**，灯塔白送的整层不吃效率
+  const gashEfficiency = cinemaLevelOf(input.cinemaLevel) >= 1 ? SUNBRINGER_C1_GASH_EFFICIENCY : 1
+  const gash = (meta.basic.gashPerSec * basicTime + exCount * meta.ex.gash + chainCount * meta.chain.gash) * gashEfficiency
     + counterGiftStacks * GASH_PER_LAYER
   // 消耗层：强化特殊技与连携技都会「重击命中后消耗」，每次最多 3 层
   const maimDemand = 3 * (exCount + chainCount)
@@ -390,35 +406,58 @@ function buildSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
 }
 
 /**
- * 烬痕存量（纯函数，用户 2026-10-25 口径）：
- * **0.75 × 积攒招式的实际伤害之和**——存下来的数字是死数：不再吃失衡易伤、也不吃任何属性。
- * 引擎里以「同乘区倍率」承载（挂到终结技行上），因为积攒行与结算行共用同一套乘区
- * （同基底 def、同元素/防御/抗性/增伤，失衡易伤由引擎全局 coverage 统一供给）⇒
- * 「攒的时候吃到易伤、结算时不再追加」在总量上等价：总贡献 = 0.75 × Σ倍率 × 乘区 × 易伤(一次)。
+ * 烬痕存量（纯函数；v2 = nanoka 3.4.2+20049556 核心被动 + 影画 2/6）：
+ * **0.65 × 5 个积攒招式（聚锋 / 长暗终焉 / 永昼之炬 / 此行共赴前路 / 此愿重塑万象）的实际伤害之和**
+ * ——存下来的数字是死数：不再吃失衡易伤、也不吃任何属性。引擎里以「同乘区倍率」承载（挂到二段大招行上），
+ * 因为积攒行与结算行共用同一套乘区（同基底 def、同元素/防御/抗性/增伤，失衡易伤由引擎全局 coverage 统一供给）⇒
+ * 「攒的时候吃到易伤、结算时不再追加」在总量上等价：总贡献 = 0.65 × Σ倍率 × 乘区 × 易伤(一次)。
+ * ⚠ 影画2（v2）：① 全部积攒量 ×1.2；② **其他招式**（除上面 5 招外）按实际伤害 15% 也积攒
+ *   ——挽昼所有招式都是锐化/火/DEF 基底 ⇒ 同基底倍率等价（`otherMultiplierSum`）。
+ * ⚠ 影画6（v2）：终结技额外一次[烬灭] = 该次终结技积攒[烬痕]量的 150%。
  * ⚠ 前提：积攒行与结算行同乘区。若将来给某招挂招式级增伤/易伤差异，这里要改成按行加权。
  */
 export function computeEmberScar(input: {
   meta: SunbringerMeta
-  loops: { jufengCount: number; changanCount: number; ultACount: number }
+  loops: { jufengCount: number; changanCount: number; torchCount?: number; ultACount: number }
   ultBCount: number
-  /** 影画1：首次聚锋的烬痕量 = 原本 150%；影画2：其他招式按实际伤害 12% 也积攒 */
+  /** 影画2：其他招式（除 5 个积攒招式外）的执行行「倍率 × 次数」之和（同基底近似） */
+  otherMultiplierSum?: number
   cinemaLevel?: number
-  exCount?: number
-  chainCount?: number
 }): number {
   const { meta, loops, ultBCount } = input
   const cinema = cinemaLevelOf(input.cinemaLevel)
-  // 影画1：首次聚锋从 75% 提到 112.5%（其余聚锋不变）
-  const jufengRate = cinema >= 1 && loops.jufengCount > 0
-    ? ((loops.jufengCount - 1) * EMBER_SCAR_RATE + EMBER_SCAR_RATE * 1.5) / loops.jufengCount
-    : EMBER_SCAR_RATE
-  const qualifying = loops.jufengCount * meta.jufeng.damage * jufengRate
-    + (loops.changanCount * meta.changan.damage + loops.ultACount * meta.ultA.damage + ultBCount * meta.ultB.damage) * EMBER_SCAR_RATE
-  // 影画2：其他招式（EX/连携）按实际伤害 12% 也积攒
-  const otherMoves = cinema >= 2
-    ? ((input.exCount ?? 0) * meta.ex.damage + (input.chainCount ?? 0) * meta.chain.damage) * 0.12
-    : 0
-  return qualifying + otherMoves
+  // v2 核心被动：5 个积攒招式，率 65%。影画1 的「首次聚锋 150%」随 v2 文本删除（v2 C1 改成残痕积蓄+10%）
+  const qualifying = (
+    loops.jufengCount * meta.jufeng.damage
+    + loops.changanCount * meta.changan.damage
+    + (loops.torchCount ?? 0) * meta.torch.damage
+    + loops.ultACount * meta.ultA.damage
+    + ultBCount * meta.ultB.damage
+  ) * EMBER_SCAR_RATE
+  // 影画2（v2）：① 全部积攒量 ×1.2；② 其他招式按实际伤害 15% 也积攒（已排除 5 招，避免与 ① 重复）
+  const c2 = cinema >= 2
+    ? qualifying * (1 + EMBER_SCAR_C2_BONUS) + (input.otherMultiplierSum ?? 0) * EMBER_SCAR_OTHER_RATE
+    : qualifying
+  // 影画6（v2）：额外一次[烬灭] = 该次终结技积攒[烬痕]量的 150%
+  const ultBEmber = ultBCount * meta.ultB.damage * EMBER_SCAR_RATE * (cinema >= 2 ? 1 + EMBER_SCAR_C2_BONUS : 1)
+  const c6 = cinema >= 6 ? ultBEmber * EMBER_SCAR_C6_EXTRA_MULT : 0
+  return c2 + c6
+}
+
+/**
+ * 「其他招式」执行行倍率和（影画2 的 15% 烬痕来源）：只数本角色自己的行，排除 5 个已积攒招式。
+ * ⚠ 前缀从 `meta` 的 moveId 现取，**不用 agentId 常量**：beta 冻结副本的 agentId 被改写成 `1601v1`，
+ * 但 moveId 仍是 `1601xxx` 原样——用 agentId 常量取前缀在副本里会一条都数不到。
+ */
+function sumOtherDamageMultipliers(executions: AgentResourceInput['executions'], meta: SunbringerMeta): number {
+  const prefix = meta.ultB.moveId.slice(0, 4)
+  const qualifying = new Set([meta.jufeng.moveId, meta.changan.moveId, meta.torch.moveId, meta.ultA.moveId, meta.ultB.moveId])
+  let sum = 0
+  for (const e of executions) {
+    if (!e.moveId.startsWith(prefix) || qualifying.has(e.moveId)) continue
+    sum += (e.damageMultiplier ?? 0) * e.count
+  }
+  return sum
 }
 
 /**
@@ -453,8 +492,7 @@ export function patchSunbringerExecutions({ cfg, state, executions }: AgentResou
     loops,
     ultBCount: ultRow.count,
     cinemaLevel: cinemaLevelOf(cfg.sunbringerCinemaLevel),
-    exCount: loops.exCount,
-    chainCount: Math.max(0, Math.floor(state.chainCountTotal)),
+    otherMultiplierSum: sumOtherDamageMultipliers(executions, meta),
   })
   if (!(ember > 0)) return
   const perCast = ember / Math.max(1, ultRow.count)
@@ -529,8 +567,9 @@ export const sunbringerMechanic: AgentMechanicModule = {
   id: 'agent:sunbringer',
   agentIds: [SUNBRINGER_AGENT_ID],
   name: '挽昼',
-  description: 'v1 占位包（3.4.1+19997538 热更）：面板层（初始暴伤→暴击 0.35%/1%、极昼 +40% 暴击 / 无视 20% 防御）'
-    + '+ 六条资源循环执行行（锐能→残痕→毁伤→愿火→聚锋→链齿/旗令→愿核→烬痕）+ 招架支援失衡 +50%；影画 1/2 未实现、C3–C6 占位。',
+  description: 'v2（3.4.2+20049556）：面板层（初始暴伤→暴击 0.35%/1%、极昼 +40% 暴击 / 无视 20% 防御）'
+    + ' + 六条资源循环执行行（锐能→残痕→毁伤→愿火→聚锋→链齿/旗令→愿核→烬痕）+ 招架支援失衡 +50%'
+    + ' + 影画 1（残痕效率+10%/120愿火/无视15%火抗）、2（烬痕+20% + 其他招式15%）、4（自身+15%伤害/1000喧响）、6（无视20%防御 + 额外烬灭150%）；C3/C5=技能等级+2。',
   applyPanel: applySunbringerPanel,
   // 兜底池：窗尾秒数优先塞耗能 30 的强化特殊技（见 expandSunbringerBasicFill 注释）
   expandBasicFill: expandSunbringerBasicFill,
