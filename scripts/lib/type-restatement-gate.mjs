@@ -229,7 +229,11 @@ export function scanTypeRestatements(root = ROOT) {
   const selfTest = typeRestatementSelfTest()
   const program = appTsProgram(root)
   if (!program) return { count: 0, sites: [], scanned: 0, selfTest, belowFloor: true, ok: false }
-  const { sites, scanned } = findTypeRestatements(program, { root, isScanned: isAppTsScanned })
+  // beta 冻结副本（snapshot-agent.mjs 生成，勿手改）不是手写源码：本门防「手写代码把已知类型又写一遍」，
+  // 生成副本与正主逐字相同会立刻报 ×2（2026-11-01 冻结 1601/1661 实测 14 处）⇒ 仅本门排除生成面。
+  // 注意不能改 isAppTsScanned 本身：判据 4（滑块覆盖）与判据 28 的扫描面要含 beta 才能与运行时注册表对齐。
+  const isHandwritten = (rel) => isAppTsScanned(rel) && !rel.startsWith('src/mechanics/agents/beta/')
+  const { sites, scanned } = findTypeRestatements(program, { root, isScanned: isHandwritten })
   const belowFloor = scanned < TYPE_RESTATEMENT_MIN_FILES
   return { count: sites.length, sites, scanned, selfTest, belowFloor,
     ok: sites.length === TYPE_RESTATEMENT_BASELINE && selfTest.ok && !belowFloor }

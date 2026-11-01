@@ -1,6 +1,6 @@
 /**
  * ⚠ beta 冻结副本（生成文件，勿手改——重跑 snapshot-agent.mjs 会整体覆盖）。
- * 冻结自 src/mechanics/agents/robin.ts @ 645f0325（nanoka 3.4.1+19997538，2026-11-01T07:04:14.917Z）；
+ * 冻结自 src/mechanics/agents/robin.ts @ 619426f4（nanoka 3.4.1+19997538，2026-11-01T07:32:25.332Z）；
  * 角色 id 1661v1；由 scripts/snapshot-agent.mjs 生成，mechanics/index.ts 的 glob 自动注册。
  * 引擎共享件（chargeLock / moduleExecRow 等）不冻结——副本只锁角色自身逻辑。
  */
@@ -298,7 +298,7 @@ function applyRobinTeamPanelEffects({ slot, agent, panel, settings, sourcePanels
 }
 
 export const robinMechanic: AgentMechanicModule = {
-  id: 'agent:robin',
+  id: 'agent:1661v1',
   agentIds: [ROBIN_AGENT_ID],
   name: '知更鸟',
   description: 'v1 占位包（3.4.1+19997538 热更）：离场守护·全队固定防御（每 1000 初始生命 +80 / 上限 800 / Buff 点 ×1.25）'

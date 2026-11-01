@@ -1,6 +1,6 @@
 /**
  * ⚠ beta 冻结副本（生成文件，勿手改——重跑 snapshot-agent.mjs 会整体覆盖）。
- * 冻结自 src/mechanics/agents/sunbringer.ts @ 645f0325（nanoka 3.4.1+19997538，2026-11-01T07:04:14.661Z）；
+ * 冻结自 src/mechanics/agents/sunbringer.ts @ 619426f4（nanoka 3.4.1+19997538，2026-11-01T07:32:25.241Z）；
  * 角色 id 1601v1；由 scripts/snapshot-agent.mjs 生成，mechanics/index.ts 的 glob 自动注册。
  * 引擎共享件（chargeLock / moduleExecRow 等）不冻结——副本只锁角色自身逻辑。
  */
@@ -532,7 +532,7 @@ export const SUNBRINGER_ULT_B_MOVE_ID = '1601011'
  */
 export const SUNBRINGER_ULT_A_MOVE_ID = '1601111'
 export const sunbringerMechanic: AgentMechanicModule = {
-  id: 'agent:sunbringer',
+  id: 'agent:1601v1',
   agentIds: [SUNBRINGER_AGENT_ID],
   name: '挽昼',
   description: 'v1 占位包（3.4.1+19997538 热更）：面板层（初始暴伤→暴击 0.35%/1%、极昼 +40% 暴击 / 无视 20% 防御）'

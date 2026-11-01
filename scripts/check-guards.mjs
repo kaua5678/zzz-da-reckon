@@ -670,6 +670,8 @@ export function scanDebtMarkers(root = ROOT) {
       const rel = relative(root, p).split(sep).join('/')
       if (statSync(p).isDirectory()) {
         if (n === 'node_modules' || n === 'dist' || n === '__tests__') continue
+        // beta 冻结副本（snapshot-agent.mjs 生成）不是手写源码：其 debt 标记由正主文件登记
+        if (rel === 'src/mechanics/agents/beta') continue
         rec(p)
       } else if (/\.(ts|mjs|py)$/.test(n) && n !== 'check-guards.mjs' && !DEBT_SCAN_SELF_REFERENTIAL.includes(rel)) {
         const src = readFileSync(p, 'utf8')
@@ -679,6 +681,8 @@ export function scanDebtMarkers(root = ROOT) {
           markers.push({ file: rel, text: m[1].trim() })
         }
       } else if (/\.json$/.test(n) && rel.startsWith('src/specs/agents/')) {
+        // beta 冻结 spec（<agentId>v<n>.json，snapshot-agent.mjs 生成）由正主 spec 复制而来，debt 在正主登记
+        if (/\d+v\d+\.json$/.test(rel)) continue
         // 2026-09-10（账本 Open #6）：spec JSON 的 notes 里也写 debt: 标记，此前扫描不覆盖
         // → 既不计数也不登记（1411.json 那条债静默至今）。spec 是单行 JSON，逐行扫描即可。
         const src = readFileSync(p, 'utf8')

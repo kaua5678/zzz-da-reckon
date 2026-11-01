@@ -6,7 +6,9 @@
  * 冻结面（四件）：
  *  ① catalog 切片：agents 条目 + agentSkills 条目 + 专武（ownerAgentId 命中）；id 改写、名字加 ` v<n>`。
  *  ② 机制模块：`src/mechanics/agents/<file>.ts` → `agents/beta/<betaId>.ts`，逐字面量改写 agentId
- *     （mechanics/index.ts 的 import.meta.glob 自动注册；模块 id 不改——registry 只按 agentIds 查重）。
+ *     **+ 模块自身 `id: 'agent:<name>'` 改写为 `agent:<betaId>`**（mechanics/index.ts 的 import.meta.glob
+ *     自动注册）。模块 id 必须与正主区分：两个模块对象同 moduleId 会让判据 4 的 `declared` Map
+ *     （键 = moduleId）折叠掉一条、与运行时模块数对不上（2026-11-01 首次真实机制模块冻结实测 57 vs 58）。
  *  ③ spec：`src/specs/agents/<agentId>.json` → `<betaId>.json`，id/agentIds 改写 + `beta: true` + 出处 note
  *     （specs registry 的 glob 自动加载；verify-recording / docs:status 按 beta 标记豁免）。
  *  ④ beta-agents.json：public/static/beta-agents.json 旁挂（紧凑写），catalog store 仅在 beta 开关打开时合并。
@@ -17,6 +19,9 @@
  *  - 专武副本**删 legacyIds**：live 与 beta 各带一份旧 slug 会让 wEnginesMap 的 legacy 兜底互相覆盖。
  *  - 滑块/settings id **不改写**：registry 已按模块命名空间容忍同 id（首注册=活体优先，见
  *    src/mechanics/registry.ts）；specAdjustableRate 的全局裸 id 表只收非 beta spec（specs/resources.ts）。
+ *  - **生成副本不进「手写门」**：判据 29（类型只声明一次）、debt 标记扫描、死导出扫描都排除
+ *    `agents/beta/`（见 scripts/lib/{type-restatement-gate,dead-channel-ls}.mjs 与 scripts/check-guards.mjs
+ *    的 `scanDebtMarkers`）——副本与正主逐字相同会假红（2026-11-01 冻结 1601/1661 实测）。
  */
 export const BETA_ID_RE = /^(\d{4})(v\d+)$/
 export const BETA_TAG_RE = /^v\d+$/
@@ -72,7 +77,12 @@ export function rewriteAgentSlice(slice, agentId, tag, meta) {
 export function rewriteModuleSource(source, agentId, betaId) {
   const re = new RegExp("(['\"`])" + agentId + '\\1', 'g')
   const replacements = (source.match(re) ?? []).length
-  return { source: source.replace(re, '$1' + betaId + '$1'), replacements }
+  const withAgentId = source.replace(re, '$1' + betaId + '$1')
+  // 模块对象自身的 `id: 'agent:<name>'` 也换成 `agent:<betaId>`：否则正主与冻结副本同 moduleId，
+  // 判据 4 的 declared Map 折叠、死导出/注册表诊断也会把两份当一份（2026-11-01 实测 57 vs 58）。
+  const idRe = /(\bid\s*:\s*)(['"`])agent:[^'"`]*\2/
+  const withId = withAgentId.replace(idRe, `$1$2agent:${betaId}$2`)
+  return { source: withId, replacements: replacements + (withId === withAgentId ? 0 : 1) }
 }
 
 /** spec 改写成 beta 副本：id/agentIds 改写 + beta 标记 + 出处 note（深拷贝）。 */

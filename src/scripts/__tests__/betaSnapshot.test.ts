@@ -74,6 +74,19 @@ describe('rewriteModuleSource', () => {
   it('零替换计数可作「找错文件」判据', () => {
     expect(rewriteModuleSource('const x = 1', '1091', '1091v1').replacements).toBe(0)
   })
+
+  it('模块自身 id 改成冻结副本 id（两个模块同 moduleId 会让判据 4 的 declared Map 折叠）', () => {
+    const src = [
+      "export const m: AgentMechanicModule = {",
+      "  id: 'agent:sunbringer',",
+      "  agentIds: ['1601'],",
+      '}',
+    ].join('\n')
+    const out = rewriteModuleSource(src, '1601', '1601v1')
+    expect(out.source).toContain("id: 'agent:1601v1'")
+    expect(out.source).toContain("agentIds: ['1601v1']")
+    expect(out.replacements).toBe(2)
+  })
 })
 
 describe('findModuleFile / rewriteSpec / mergeBetaFile', () => {

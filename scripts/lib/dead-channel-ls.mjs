@@ -570,6 +570,9 @@ export function scanDeadExports(opts = {}) {
   for (const sf of program.getSourceFiles()) {
     const f = sf.fileName
     if (sf.isDeclarationFile || !f.startsWith(srcDir + '/') || isTestSide(root, f)) continue
+    // beta 冻结副本（snapshot-agent.mjs 生成，勿手改）不是手写源码：整模块由 mechanics/index.ts 的
+    // import.meta.glob 注册（非显式 import ⇒ 检测器不认作命名空间消费）⇒ 会误报 mechanic 导出「只被测试用」。
+    if (relative(root, f).startsWith('src/mechanics/agents/beta/')) continue
     const mod = checker.getSymbolAtLocation(sf)
     if (!mod) continue
     const rel = relative(root, f)
