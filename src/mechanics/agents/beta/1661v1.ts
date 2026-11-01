@@ -11,7 +11,7 @@ import type {
   AgentTeamConfigInput,
   AgentTeamPanelEffectInput,
   AgentResourceSectionsInput,
-} from '../types'
+} from '../../types'
 import { getRowValue } from '@/data/moveTableQueries'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { outOfCombatStat } from '@/mechanics/initialStat'

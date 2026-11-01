@@ -9,7 +9,7 @@ import type {
   AgentMechanicModule,
   AgentPanelInput,
   AgentResourceInput,
-} from '../types'
+} from '../../types'
 import { getRowValue } from '@/data/moveTableQueries'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { cinemaLevelOf } from '@/data/cinemaLevel'

@@ -87,6 +87,20 @@ describe('rewriteModuleSource', () => {
     expect(out.source).toContain("agentIds: ['1601v1']")
     expect(out.replacements).toBe(2)
   })
+
+  it('相对导入随副本下移一层（agents/beta/ 比正主深一层；否则 TS2307 + implicit any）', () => {
+    const src = [
+      "import type { A } from '../types'",
+      "import { b } from '../moduleExecRow'",
+      "import { c } from '@/mechanics/types'",
+      "import { d } from './local'",
+    ].join('\n')
+    const out = rewriteModuleSource(src, '1601', '1601v1')
+    expect(out.source).toContain("from '../../types'")
+    expect(out.source).toContain("from '../../moduleExecRow'")
+    expect(out.source).toContain("from '@/mechanics/types'") // 别名导入不动
+    expect(out.source).toContain("from '../local'")
+  })
 })
 
 describe('findModuleFile / rewriteSpec / mergeBetaFile', () => {

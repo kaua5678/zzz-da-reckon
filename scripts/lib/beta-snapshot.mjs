@@ -82,7 +82,12 @@ export function rewriteModuleSource(source, agentId, betaId) {
   // 判据 4 的 declared Map 折叠、死导出/注册表诊断也会把两份当一份（2026-11-01 实测 57 vs 58）。
   const idRe = /(\bid\s*:\s*)(['"`])agent:[^'"`]*\2/
   const withId = withAgentId.replace(idRe, `$1$2agent:${betaId}$2`)
-  return { source: withId, replacements: replacements + (withId === withAgentId ? 0 : 1) }
+  // 副本落在 agents/beta/（比正主深一层）⇒ 相对导入必须同步下移一层：否则 `'../types'` 解析成不存在的
+  // `agents/types`。它是 type-only 导入、运行时被抹掉 ⇒ 只在 vue-tsc 报 TS2307 + 一串 implicit any（2026-11-01 实测）。
+  const withRel = withId
+    .replace(/(['"`])\.\.\/(?!\.)/g, '$1../../')
+    .replace(/(['"`])\.\/(?!\.)/g, '$1../')
+  return { source: withRel, replacements: replacements + (withId === withAgentId ? 0 : 1) + (withRel === withId ? 0 : 1) }
 }
 
 /** spec 改写成 beta 副本：id/agentIds 改写 + beta 标记 + 出处 note（深拷贝）。 */
