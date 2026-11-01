@@ -265,6 +265,23 @@ describe('buildStunTimeline 纯函数（边界与残疾口径）', () => {
     expect(tl.windowSeconds + tl.outsideSeconds).toBe(50)
   })
 
+  it('★ A10：lastWindowClipSeconds 把溢出从最后一窗时间里丢（连续失衡）', () => {
+    // 3 窗 × 18s = 54s ≤ 180 ⇒ 旧路径不截短；显式 clip 10s ⇒ 末窗 18→8s、clippedByClock 置位
+    const tl = buildStunTimeline({
+      stunCount: 3, windowDuration: 18, effectiveTime: 180,
+      windows: [trace(0, { actionSeconds: 18 }), trace(1, { actionSeconds: 18 }), trace(2, { actionSeconds: 18 })],
+      lastWindowClipSeconds: 10,
+    })
+    expect(tl.slots.map(s => s.effectiveSeconds)).toEqual([18, 18, 8])
+    expect(tl.slots.map(s => s.clippedByClock)).toEqual([false, false, true])
+    expect(tl.windowSeconds).toBe(44)
+    expect(tl.windowSeconds + tl.outsideSeconds, '恒等式仍成立').toBe(180)
+    // 缺省 0 ⇒ 逐位不变（旧路径）
+    const noClip = buildStunTimeline({ stunCount: 3, windowDuration: 18, effectiveTime: 180, windows: [trace(0), trace(1), trace(2)] })
+    expect(noClip.slots[2]!.effectiveSeconds).toBe(18)
+    expect(noClip.slots[2]!.clippedByClock).toBe(false)
+  })
+
   it('窗口数按 floor(计划值)：小数不产生窗口（与轴栈 for (i < wins) 同口径）', () => {
     const tl = buildStunTimeline({ stunCount: 2.9, windowDuration: 16, effectiveTime: 180 })
     expect(tl.windows).toBe(2)

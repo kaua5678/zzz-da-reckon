@@ -210,6 +210,14 @@ export interface StunTimelineInput {
    *   窗开了但短 = **时间**不够（`clippedByClock` / `truncated`）。
    *   两者是不同成因，**不存在「失衡值不足导致已开窗变短」**这回事，故本入参已移除。
    */
+  /**
+   * **A10：最后一窗被战斗时钟截短的秒数**（连续失衡，用户 2026-11-01 裁明机制）。
+   *
+   * 「满条开出的窗装不进 180s」时，溢出从**最后一窗的时间里**丢掉（不是砍非失衡招式）：
+   * 末窗 `effectiveSeconds = nominal + extended − clip`、`clippedByClock = true`。
+   * 缺省 0 ⇒ 逐位不变（仍走逐窗连续排布 + 时钟钳的旧路径）。
+   */
+  lastWindowClipSeconds?: number
 }
 
 /** 时间轴产物 */
@@ -251,6 +259,8 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline {
   const windows = Math.floor(plannedWindows)
   const trace = input.windows
   const hasTrace = !!trace && trace.length > 0
+  /** A10：末窗时钟截短秒（缺省 0 = 逐位不变） */
+  const lastWindowClip = Math.max(0, finiteOr0(input.lastWindowClipSeconds))
 
   const slots: StunWindowSlot[] = []
   /** 当前排到的时刻（= 上一窗的结束时刻；恒 ≤ effectiveTime） */
@@ -267,6 +277,11 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline {
     let clippedByClock = false
     if (startSeconds + effectiveSeconds > effectiveTime) {
       effectiveSeconds = Math.max(0, effectiveTime - startSeconds)
+      clippedByClock = true
+    }
+    // A10（连续失衡）：溢出从**最后一窗的时间**里丢（用户 2026-11-01）；缺省 0 = 逐位不变。
+    if (i === windows - 1 && lastWindowClip > 1e-9) {
+      effectiveSeconds = Math.max(0, effectiveSeconds - lastWindowClip)
       clippedByClock = true
     }
     // 窗内占用 = 动作毛时长 − 合轴节省 + 平A填充（与栈引擎的记账同源）
