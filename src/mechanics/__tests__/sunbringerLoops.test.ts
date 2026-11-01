@@ -142,7 +142,8 @@ describe('影画 1/2（2026-10-25 接线）', () => {
     const c1 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2, cinemaLevel: 1 })
     const other = 17 * 1240.5 + 1 * 1550.3
     const c2 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2, cinemaLevel: 2, otherMultiplierSum: other })
-    expect(c2 - c1).toBeCloseTo(c1 * 0.2 + other * 0.15, 6)
+    // C2 = 两条来源都 ×1.2：核心 65→78%、其他招式 15→18%（用户 2026-11-01）
+    expect(c2 - c1).toBeCloseTo(c1 * 0.2 + other * 0.15 * 1.2, 6)
   })
 
   it('六命（v2）：终结技额外一次[烬灭] = 该次终结技积攒烬痕量的 150%', () => {

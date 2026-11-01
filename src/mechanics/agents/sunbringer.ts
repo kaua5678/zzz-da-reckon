@@ -411,8 +411,8 @@ function buildSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
  * ——存下来的数字是死数：不再吃失衡易伤、也不吃任何属性。引擎里以「同乘区倍率」承载（挂到二段大招行上），
  * 因为积攒行与结算行共用同一套乘区（同基底 def、同元素/防御/抗性/增伤，失衡易伤由引擎全局 coverage 统一供给）⇒
  * 「攒的时候吃到易伤、结算时不再追加」在总量上等价：总贡献 = 0.65 × Σ倍率 × 乘区 × 易伤(一次)。
- * ⚠ 影画2（v2）：① 全部积攒量 ×1.2；② **其他招式**（除上面 5 招外）按实际伤害 15% 也积攒
- *   ——挽昼所有招式都是锐化/火/DEF 基底 ⇒ 同基底倍率等价（`otherMultiplierSum`）。
+ * ⚠ 影画2（v2）：积攒量整体 ×1.2——核心被动 65%→**78%**、**其他招式**（除上面 5 招外）实际伤害
+ *   15%→**18%**（用户 2026-11-01 口径）；挽昼所有招式都是锐化/火/DEF 基底 ⇒ 同基底倍率等价（`otherMultiplierSum`）。
  * ⚠ 影画6（v2）：终结技额外一次[烬灭] = 该次终结技积攒[烬痕]量的 150%。
  * ⚠ 前提：积攒行与结算行同乘区。若将来给某招挂招式级增伤/易伤差异，这里要改成按行加权。
  */
@@ -434,9 +434,10 @@ export function computeEmberScar(input: {
     + loops.ultACount * meta.ultA.damage
     + ultBCount * meta.ultB.damage
   ) * EMBER_SCAR_RATE
-  // 影画2（v2）：① 全部积攒量 ×1.2；② 其他招式按实际伤害 15% 也积攒（已排除 5 招，避免与 ① 重复）
+  // 影画2（v2）：积攒量整体 ×1.2——**两条来源都乘**：核心被动 65%→**78%**、其他招式 15%→**18%**
+  // （用户 2026-11-01 逐字：「2命分别是 78% 和 18%」）
   const c2 = cinema >= 2
-    ? qualifying * (1 + EMBER_SCAR_C2_BONUS) + (input.otherMultiplierSum ?? 0) * EMBER_SCAR_OTHER_RATE
+    ? (qualifying + (input.otherMultiplierSum ?? 0) * EMBER_SCAR_OTHER_RATE) * (1 + EMBER_SCAR_C2_BONUS)
     : qualifying
   // 影画6（v2）：额外一次[烬灭] = 该次终结技积攒[烬痕]量的 150%
   const ultBEmber = ultBCount * meta.ultB.damage * EMBER_SCAR_RATE * (cinema >= 2 ? 1 + EMBER_SCAR_C2_BONUS : 1)

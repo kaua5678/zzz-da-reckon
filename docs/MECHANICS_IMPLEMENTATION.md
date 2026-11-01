@@ -323,6 +323,7 @@
 ### 薇薇安（vivian / 1331）—— 落羽生花追击与护羽
 > **当前实现状态 [已实现 2026-08]**（实现位置：`src/mechanics/agents/vivian.ts` + `src/composables/useResourceCalc.ts` 收敛注入 + spec `1331.json` teamBuffs/events；测试 `src/mechanics/__tests__/vivian.test.ts` 17 例）。含：资源循环、落羽双源计数、核心异放、预言 DoT、影画 1/2/4/6。`docs/AGENT_RECORDING_SOP.md` §3.8 为异放/跨角色计数/后台招式的录入规则。
 - **核心被动异放（跟随事件触发）**：落羽生花命中「处于异常状态」的目标触发；比例 = 每10点异常精通 6.15%/3.2%/8%/0.75%/1.08%/0.32%（以太/电/火/物/冰/风）；`releaseRatio` 框架（basis=anomalyProficiency，次数 × 命中异常占比，异常角色默认满覆盖）。**异放限定增益走 `releaseModifier`**（影画2 无视15%全抗只作用于异放结算，禁止面板级 enemyResReduction）。**失衡轴内（2026-08 审计补接）**：异放随落羽生花（资源驱动特殊普攻，消耗护羽）触发 → `followCarrierInStun: true` + `carrierTotalCount`（分母用落羽生花次数本身，事件次数 = 落羽生花×命中异常占比已被稀释）；轴内占比 = 载体 `1331008` 轴内单位/落羽生花总次数；特殊普攻非 basic filler 兜底可打出——玩家显式把落羽生花捏进窗内才吃易伤，不捏=轴外（用户口径「计数轴内消耗了多少资源」）。悬落 C6 特殊异放同口径（载体 1331006）。生效测试 `inStunAttribution.test.ts`「薇薇安落羽生花轴内放置」。
+- **潜能觉醒·星月诗篇（v2 测试服 `3.4.2+20052336`，2026-11-01 录入；用户「注明 v2、后面可能微调数值」）**：憧憬的轮廓 II~VI 同文 —— ① 落羽生花异常积蓄效率 +50%（近似 element 限定 `etherAnomalyBuildUpEfficiency`：引擎无招式级积蓄效率通道，与影画2 +25 同款近似）② 自身异常掌控 +30（`panel.anomalyMastery`）③ [异放] 伤害 +50%（perTen ×1.5，与影画2 ×1.3 相乘）。三条读 effective `potentialLevel`（≥2）⇒ **潜能开关关掉即归零**；开关声明 = `vivianMechanic.potentialSwitch`（老角色不声明、不露开关）。判据 `src/mechanics/__tests__/potentialSwitch.test.ts`。
 - **模块**：`src/mechanics/agents/vivian.ts`。
 
 ### 仪玄（yixuan / 1371）—— 命破/以太·术法宗师（TS 模块）
@@ -653,6 +654,7 @@ c0 1493272→1543102（+3.34%）、c3 2190653→2303648（+5.16%）、c4 2658186
 - **建模范围**：① 核心被动·虎虎生威 虎啸（暴伤 20+min(30,⌊(atk−2800)/100⌋×5)、连携+20%/终结+40%、自身冲击+50）；② 账本：虎威后台 floor(后场/4)×20（前台插队相位延后等效 CD）、威势=强特×3+终结×6+支援突击×1+影画2 队伍终结×3、旋转次数=威势、威风→虎釜震煞 floor(总量/100)；③ 执行行 `1391005` / `1391013` / `1391010` / `1391_c6_popcorn`；④ 额外能力·八面威风 强攻/命破终结 +300 喧响（含自身，build 钩子）；**喧响上限 +1000 已裁决不做**（2026-09-22，`docs/mcp-r65j1-decibel-cap-verdict.md`）；⑤ 影画1（暴击+12/威风+100/连携失衡易伤+35 teammate-buffs）、影画2（虎啸暴伤+22 + 任意终结 +3 威势，converge threads）、影画4（暴伤+35）、影画6（连携+30 + 爆米花 3×160% 视为连携 + 轴内失衡易伤继承）；⑥ 滑块 `jufufu.frontSwitchRatio` + **威势两条次数上限** `jufufu.weishiAssistCap` / `jufufu.weishiTeamUltCap`（2026-10-22 用户裁决「威势影响自动后台攻击，滑块应该只能设置上限吧」：`capOfAuto` 只压不抬、0=不限；原 spec `adjustable` 两条 `.rate` 已删，倍率会凭空造次数）。
 - **已验证范围**：账本闭式、虎威相位延后与滑块差分、影画1/2/4 面板差分、影画6 行/爆米花（`jufufu.test.ts`）；+300 接线（`teamHookMigration.test.ts`、`decibelCapVerdict.test.ts`）；两条 rate 三点线性（`adminRulingEffect.test.ts`）；爆米花轴内易伤（`attachedAxisStunR20D1.test.ts`）；converge threads（`nextRoundFeedbackR20.test.ts`）。
 - **未证明事项**：虎啸暴伤公式与连携+20%/终结+40%、影画1 失衡易伤+35 仅声明入 teammate-buffs 通道，**无数值断言**。
+- **潜能觉醒·侠肝义胆（v2 测试服 `3.4.2+20052336`，2026-11-01 录入；用户「注明 v2、后面可能微调数值」）**：猛虎下山 II~VI 同文 —— ① 虎威 `1391005` / 山君鼎戏·「虎威」`1391022` 失衡 +50%（exec `stunBuildUpBonus`，模块 `patchExecutions`）② [虎啸] 下 连携/终结**最终伤害** +10%/30%（spec teamBuffs，`skillDmgBonus` + `targetSkillType`；引擎无独立最终伤害乘区，按规则 5 与核心虎啸的连携/终结增伤同区加算）③ [虎啸] 命中 → 目标失衡易伤 +25%（`stunDmgMultiplierBonus`）。②③ 走 `sourceStat: 'potentialLevel'` formula 通道 ⇒ **潜能开关关掉（effective level=I）归零**；开关声明 = `jufufuTigerRoarMechanic.potentialSwitch`。判据 `src/mechanics/__tests__/potentialSwitch.test.ts`。⚠ **原文覆盖仍未逐段核对**：`data/recordings/1391.json` 不存在、仍在 `legacy.json` 豁免内（本次只补潜能三条 + 开关）。
 - **模块**：`src/mechanics/agents/specPanelBuffs.ts#jufufuTigerRoarMechanic`；数值单一事实源 = 模块常量 + spec `src/specs/agents/1391.json` notes。
 
 ### 卢西娅·艾洛温（lucia_elowen / 1451）—— 梦境值计划 + [合唱]行修正 + 帷幕/回血跨角色
@@ -889,7 +891,7 @@ elementResReduction= panelElementStat(source, 'enemyRes', element)  // 元素减
 
 ### 挽昼（1601）—— 锋御/燎源·多资源循环（v1 测试服占位包，2026-10-25 第 1 刀；2026-10-30 随 3.4.1+19997538 热更重录；**2026-11-01 随 v2（3.4.2+20049556）影画/烬痕重定标**）
 
-> **v2 重定标（2026-11-01）**：核心被动烬痕率 75%→**65%** + 积攒招式补 [永昼之炬]（共 5 招）；影画1 = 残痕效率 +10% / 120 愿火 / 无视 15% 火抗（**删**旧「首次聚锋 150%」）；影画2 = 烬痕 +20% + 其他招式（除 5 招）实际伤害 15% 也积攒（**删**旧「无视 12% 防御」）；影画4 = 自身 +15% 伤害 + 1000 开场喧响；影画6 = 无视 20% 防御 + 额外烬灭（该次终结技积攒烬痕 150%）。实现 = `sunbringer.ts`，判据 = `sunbringerLoops.test.ts` / `sunbringer.test.ts`。
+> **v2 重定标（2026-11-01）**：核心被动烬痕率 75%→**65%** + 积攒招式补 [永昼之炬]（共 5 招）；影画1 = 残痕效率 +10% / 120 愿火 / 无视 15% 火抗（**删**旧「首次聚锋 150%」）；影画2 = 烬痕积攒**整体 ×1.2**（核心 65→78%、其他招式 15→18%）（**删**旧「无视 12% 防御」）；影画4 = 自身 +15% 伤害 + 1000 开场喧响；影画6 = 无视 20% 防御 + 额外烬灭（该次终结技积攒烬痕 150%）。实现 = `sunbringer.ts`，判据 = `sunbringerLoops.test.ts` / `sunbringer.test.ts`。
 
 **热更重录（2026-10-30，nanoka 3.4.1+19997538；用户口径「新包这点内容直接录进当前 v1，不冻结、不建新 id」）**：
 - **倍率表逐行未变**（36 行 Lv12 伤害/失衡/积蓄/回能逐字相同；`node scripts/sync-nanoka-agent-rows.mjs 1601` 空跑 = 0 处变化即证）⇒ 本角色这次只有文本级增量。

@@ -33,7 +33,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { teamPresets } from '@/data/teamPresets'
+import { teamPresets, visibleTeamPresets } from '@/data/teamPresets'
 import { buildTeamTimeSummary } from '@/composables/teamTimeSummary'
 
 const BASELINE_FILE = new URL('./timeFillRatchet.baseline.json', import.meta.url)
@@ -93,7 +93,10 @@ async function measureWithResidual(team: string[]): Promise<{ entry: RatchetEntr
  *   （`SKIP_TIME_RATCHET=1`）：赶时间的人应该跳过它，而不是改基线。
  */
 describe('时间系统不变量与留白棘轮', () => {
-  const presets = teamPresets.filter(p => Array.isArray(p.team) && p.team.length === 3)
+  // ⚠ beta 快照预设（成员含 `<id>v<n>`，如 sunbringer-v1-*）**不进棘轮**：它们「关」时根本不露出，且在
+  // 无 beta 的判据环境里会被压缩成残缺队 ⇒ 量出来的留白不是产品行为（用户 2026-11-01「关着只显示正式角色」）。
+  // 硬 bake 进基线 = 把假数钉死；正式角色集 = visibleTeamPresets(false)。
+  const presets = visibleTeamPresets(false).filter(p => Array.isArray(p.team) && p.team.length === 3)
   /** 绝对地板（秒）：当前最差单队留白 15.7s / 最大超预算 14.4s，各留一倍余量。
    *  收紧它 = 承认真有改善，应与基线一起评审；放宽它需要理由。 */
   const ABSOLUTE_SLACK_FLOOR = 30
