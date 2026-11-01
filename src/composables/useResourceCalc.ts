@@ -45,6 +45,7 @@ import { ANOMALY_SINGLE_HIT_MULTIPLIER, STANDARD_ANOMALY_LABEL, standardDot } fr
 import { effectiveBattleTime, stunWindowDuration, stunWindowFraction } from '@/core/effectiveTime'
 import { buildStunTimeline, realizeStunWindows } from '@/core/stunTimeline'
 import { buildStunPhaseTimeline } from '@/core/stunPhaseTimeline'
+import { probeFlag } from '@/core/probeTrace'
 import type { ExecutedMoveCount } from '@/core/stunAxisStack'
 import {
   BASIC_HIT_STACK_EFFECTS,
@@ -358,6 +359,19 @@ export function createResourceCalc(
     return continuousStunSplitOf(pool)
   })
   /**
+   * **A10 连续失衡：末窗被战斗时钟截短的秒数**（用户 2026-11-01 裁明机制）——**展示与引擎同值同闸**。
+   *
+   * 单一事实源 = `resourceResult.overflowSeconds`：`solveTeam` 用它做两趟 clip（覆盖率扣
+   * `clip/eff`、轴栈末窗按 `W − clip` 门控）。展示侧必须喂**同一个值**给
+   * `buildStunTimeline.lastWindowClipSeconds`，否则屏幕上会显示一个引擎没算的完整末窗
+   * —— 破用户口径「显示要和计算同步」（2026-11-01）。
+   * 回退开关与引擎同一枚（`PROBE_STUN_CLIP_ITER=off`）⇒ 两边一起退回改动前。
+   */
+  function a10LastWindowClipOf(out: CalcRoundResult | null): number {
+    if (!out || probeFlag('PROBE_STUN_CLIP_ITER') === 'off') return 0
+    return Math.max(0, out.resourceResult.overflowSeconds ?? 0)
+  }
+  /**
    * **已兑现的失衡窗口读数**（`core/stunTimeline.ts#realizeStunWindows`）：等效窗数 / 占用秒 / **窗内发呆秒**。
    *
    * 用户口径 2026-10-26：「再没有就空着，**写明发呆时间**」——窗口开着却没动作也没人兜底平A的秒数
@@ -376,6 +390,8 @@ export function createResourceCalc(
       effectiveTime: effTime,
       // `axisStack` 类型是 `StackTraversalResult | null`（非 undefined）⇒ 不能写 `?.`（判据 28 死兜底）
       windows: out.axisStack ? out.axisStack.windowTrace : undefined,
+      // A10：末窗时钟截短 —— 与引擎同值（显示=计算）
+      lastWindowClipSeconds: a10LastWindowClipOf(out),
     }))
   })
   /** 失衡内异常状态（轴模式）：每元素触发次数/窗均覆盖（失衡内异常系统 v2） */
@@ -863,6 +879,8 @@ export function createResourceCalc(
     windowDuration: windowDuration.value,
     effectiveTime: effectiveBattleTime(configStore.enemy),
     windows: stackTraversalResult.value?.windowTrace,
+    // A10：末窗时钟截短 —— 与引擎同值（显示=计算，见 `a10LastWindowClipOf`）
+    lastWindowClipSeconds: a10LastWindowClipOf(calcOutput.value),
     // 末窗不传 frac：`StunTimelineInput.lastWindowFraction` 已按 2026-10-28 口径删除
     // （失衡值不够 = 下一窗开不出来；窗开了但短 = 时间不够）。理由的单源在
     // `core/stunTimeline.ts#StunTimelineInput` 的【已删除】段，此处不复制，也别把入参加回来。

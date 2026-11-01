@@ -631,9 +631,9 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * `stunClipPass` 留在作用域里 ⇒ 后续 `stageResolveFeasibility` 的全部试算（中断/挤压/轴态降配/
    * 弃轴/非轴降配）**继承同一个 clip**，不会出现「主路径带截短、试算不带」的两套账。
    *
-   * ## 仍走探针闸（本轮状态）
-   * 本块与覆盖率 `clip` 口径**默认仍关**（`PROBE_STUN_CLIP_ITER=1` + `PROBE_STUN_CONT_COV=clip`
-   * 才生效）——用户 2026-11-01 口径「稳定化通过后再谈进默认」，故本轮只交付稳定化本身，数值零 delta。
+   * ## 已进默认（2026-11-01，A10 第 2 步）
+   * 本块与覆盖率 `clip` 口径**已进默认**（用户 2026-11-01 裁明机制 = 时钟截断是连续失衡的终点）。
+   * 回退开关：`PROBE_STUN_CLIP_ITER=off` ⇒ 两趟与覆盖率截短一起退回改动前（零 delta，对拍/探针用）。
    *
    * ## 稳定化实测（`zzClipIter` / `zzClipExit` / `zzIso`，全库 103 队，闸开）
    * 7 队动、全部下降 up=0/down=7（−0.075%~−0.705%），**KChanged=0 / exitChanged=0 / rounds 逐位不变**；
@@ -641,7 +641,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * 进默认的实测影响面（`zzDefaultOn` 与 timeGolden 闸开跑）：timeGolden **23 条 dmg 全降**、时间账零变化，
    * 回退闸下全绿（归因闭合）。详见提交说明 delta 表。
    */
-  if (probeFlag('PROBE_STUN_CLIP_ITER') === '1' && stunWindowDur > 0) {
+  if (probeFlag('PROBE_STUN_CLIP_ITER') !== 'off' && stunWindowDur > 0) {
     /** 末窗最多被截到 0：clip 不得超过「全部窗秒」 */
     const clampClip = (x: CalcRoundResult): number =>
       Math.min(Math.max(0, x.resourceResult.overflowSeconds ?? 0), Math.max(0, x.stunPool.stunCount) * stunWindowDur)
@@ -1007,7 +1007,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * 开关 `PROBE_STUN_CONT_COV`：`formula` = 失衡值公式（§1 口径，e = 每秒失衡值 × 窗长），
    * `trace` = 轴栈逐窗实测填充率（用户 2026-10-25「应该有前面失衡期的数据」），
    * `clip` = ★ A10 口径：装配溢出 `overflowSeconds` 记到**最后一窗的时间里**（覆盖率扣它，不砍行）——
-   *   用户 2026-11-01 裁明的连续失衡机制。默认关（与两趟同闸，进默认待用户点头）。
+   *   用户 2026-11-01 裁明的连续失衡机制。**已进默认**（2026-11-01，A10 第 2 步）；
+   *   回退 = `PROBE_STUN_CONT_COV=off`（与 `PROBE_STUN_CLIP_ITER=off` 配套 ⇒ 退回改动前）。
    * `phase` = 试过的「按余量比例给部分窗」口径（= 池 `continuousStunCount` 的整数+小数，与
    *   `stunPhaseTimeline#trailingFraction` 同源）。**不设 = 逐位不变**（默认关）。
    *   ⛔ **已否决（2026-11-01，用户裁明机制后）**：失衡只有「开窗 / 不开窗」两态
@@ -1022,7 +1023,12 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * 先量「把末窗兑现折进易伤」对伤害的影响，以及会不会触发 §41 那种「覆盖率↑ ⇒ 攒条↓ ⇒ 池塌陷」。
    */
   let finalOut = out
-  const contMode = probeFlag('PROBE_STUN_CONT_COV')
+  /**
+   * 口径选择：**缺省 = `clip`**（A10 已进默认）；`off` = 整块不生效（回退到改动前，零 delta）；
+   * `formula` / `trace` / `phase` = 保留的实验口径（`phase` 已被用户否决，仅留否决记录）。
+   */
+  const contRaw = probeFlag('PROBE_STUN_CONT_COV')
+  const contMode = contRaw === 'off' ? '' : (contRaw || 'clip')
   if (contMode && stunEffTime > 0 && stunWindowDur > 0) {
     if (contMode === 'clip') {
       /**
