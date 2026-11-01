@@ -84,6 +84,29 @@ describe('1661 知更鸟 · 登场值循环（追击 +20 / 上限 140 / ≥120 �
   })
 })
 
+describe('1661 知更鸟 · 强化追加攻击 1661006（v2：能量≥40 升级 / 影画4 保底 / 影画6 必定暴击）', () => {
+  it('队伍有队友时：能量升级是核心被动（C0 就有）；影画6 才带行级 critRateBonus；未升级部分仍在 1661005', async () => {
+    const run = async (cinema: number) => {
+      await setupHarness([{ agentId: '1661', cinemaLevel: cinema }, { agentId: '1601' }, { agentId: '1011' }])
+      const calc = useResourceCalc()
+      return calc.resourceResult.value!.characters.find(c => c.slot === 0)!.executions
+    }
+    const c0 = await run(0)
+    const c4 = await run(4)
+    const c6 = await run(6)
+    const r0 = c0.find(e => e.moveId === '1661006')
+    const r4 = c4.find(e => e.moveId === '1661006')!
+    const r6 = c6.find(e => e.moveId === '1661006')!
+    expect(r6, '影画4 保底（floor(t/60)）保证 C6 必有强化追加攻击行').toBeDefined()
+    expect(r6.count).toBeGreaterThan(0)
+    expect(r6.critRateBonus ?? 0, '影画6：必定暴击 ⇒ 行级 critRateBonus 抬到 100 − 面板暴击率').toBeGreaterThan(0)
+    expect(r0?.critRateBonus ?? 0, 'C0 不必定暴击').toBe(0)
+    expect(r4.count).toBeGreaterThanOrEqual(r0?.count ?? 0)
+    expect(c0.find(e => e.moveId === '1661005')?.count ?? 0, '未升级部分仍走 1661005').toBeGreaterThan(0)
+    expect(c6.find(e => e.moveId === '1661005')?.count ?? 0).toBeGreaterThan(0)
+  })
+})
+
 describe('1661 知更鸟 · 管线接线（sourcePanels → 全队 inCombatDefFlat）', () => {
   it('堆生命到 16000 以上时，全队每槽的 def 都涨；没堆时不动', async () => {
     const { config, catalog } = await setupHarness([{ agentId: '1661' }, { agentId: '1601' }, { agentId: '1101' }])

@@ -82,6 +82,15 @@ export const ROBIN_ENTRY_PER_AFTERSHOCK = 20
 export const ROBIN_ENTRY_MAX = 140
 /** 触发[登场技]所需[登场值]（也是每次消耗量；v2：100 → 120） */
 export const ROBIN_ENTRY_COST = 120
+/** 强化追加攻击：能量门槛 / 单次耗能（原文「若能量大于等于40点则升级为[强化特殊技：强化追加攻击]：持续消耗总计40点能量」） */
+export const ROBIN_REINFORCED_ENERGY_COST = 40
+/** 影画4：能量不足时也可升级为强化追加攻击，每 60 秒最多一次 */
+export const ROBIN_C4_GUARANTEE_CD_SECONDS = 60
+/** 强化追加攻击「根据最大生命值额外提升重击的伤害」系数：CAL 0.44 + 0.08×技能等级（Lv12 = 1.4 = 140%） */
+export const ROBIN_REINFORCED_HP_RATE_BASE = 0.44
+export const ROBIN_REINFORCED_HP_RATE_PER_LEVEL = 0.08
+/** 影画6：上述生命值系数提升为原本的 200% */
+export const ROBIN_C6_HP_RATE_MULT = 2
 
 /** 面板钩子侧的设置读口（默认值只来自 settings 声明；CC-508） */
 const robinSetting = mechanicSettingPanelReader(() => robinMechanic.settings)
@@ -142,11 +151,15 @@ export function solveRobinEntry(input: { combatTime: number; teammateFrontlineSe
   return { aftershockCount, entryValue, entrySkillCount }
 }
 
-function buildRobinCharConfig({ cfg, skills }: AgentCharConfigInput): void {
+function buildRobinCharConfig({ cfg, skills, cinemaLevel }: AgentCharConfigInput): void {
   const all = skills.categories.flatMap(c => c.moves)
   const timeOf = (id: string) => Math.max(0, all.find(m => m.id === id)?.actionTime ?? 0)
+  cfg.robinCinemaLevel = cinemaLevel
   cfg.robinEntryActionTime = timeOf('1661011')
   cfg.robinAftershockDamage = getRowValue(all.find(m => m.id === '1661005'), 'damage')
+  // 强化追加攻击表值（1661006；能量≥40 升级，影画4/6 追加规则见 buildRobinExecutions）
+  cfg.robinReinforcedDamage = getRowValue(all.find(m => m.id === '1661006'), 'damage')
+  cfg.robinReinforcedDaze = getRowValue(all.find(m => m.id === '1661006'), 'daze')
   cfg.robinEntryDamage = getRowValue(all.find(m => m.id === '1661011'), 'damage')
   // 1661019 表值（不带 override ⇒ 由引擎按 fusedOf 回填也行，但显式预存让「表值变了」可见）
   cfg.robinCornerAssistDamage = getRowValue(all.find(m => m.id === '1661019'), 'damage')
@@ -217,20 +230,59 @@ function applyRobinTeamConfig({ slot, cfg, characters, phase }: AgentTeamConfigI
 }
 
 function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: AgentResourceInput): void {
-  const entry = solveRobinEntry({ combatTime: effectiveCombatTime(state, cfg), teammateFrontlineSeconds: teamFrontlineSeconds })
+  const combatTime = effectiveCombatTime(state, cfg)
+  const entry = solveRobinEntry({ combatTime, teammateFrontlineSeconds: teamFrontlineSeconds })
+  const cinema = cinemaLevelOf(cfg.robinCinemaLevel)
+  const panel = cfg.panel
+  /**
+   * 强化追加攻击（1661006，v2 核心被动 + 影画 4/6）：
+   * ① 原文「发动[特殊技：追加攻击]时，若能量大于等于40点则升级为[强化特殊技：强化追加攻击]：
+   *    持续消耗总计40点能量」⇒ 升级次数 = min(追击次数, floor(总能量 / 40))，行上如实记 `totalEnergyConsume`。
+   *    ⚠ **单轮读态、不回压本轮能量池**（升级耗的 40 点不改本轮 EX 次数）——用户 2026-11-01 口径
+   *    「你认为怎么实现符合文本都可以」；不动点联立留作 debt。
+   * ② 影画4：能量不足时也可升级，每 60s 最多一次 ⇒ 只补「能量没升的那些」。
+   * ③ 影画6：升级后的[强化追加攻击]必定暴击（行级 critRateBonus 抬到 100）+ 生命值系数 ×2。
+   */
+  const energyUpgraded = Math.min(entry.aftershockCount, Math.floor(Math.max(0, state.totalEnergy) / ROBIN_REINFORCED_ENERGY_COST))
+  const guaranteed = cinema >= 4
+    ? Math.min(Math.max(0, entry.aftershockCount - energyUpgraded), Math.floor(combatTime / ROBIN_C4_GUARANTEE_CD_SECONDS))
+    : 0
+  const reinforcedCount = Math.max(0, energyUpgraded + guaranteed)
+  const plainAftershockCount = Math.max(0, entry.aftershockCount - reinforcedCount)
   // 追加攻击：离场守护期间队友命中触发，后台行（不占前台时间）
-  if (entry.aftershockCount > 0) {
+  if (plainAftershockCount > 0) {
     executions.push(moduleExecRow({
       moveId: '1661005',
       moveName: `特殊技：追加攻击（离场守护·队友命中触发，${ROBIN_AFTERSHOCK_CD_SECONDS}s CD）`,
       category: 'special',
-      count: entry.aftershockCount,
+      count: plainAftershockCount,
       damageMultiplier: Number(cfg.robinAftershockDamage ?? 0),
       ...RECOVERY_OFF,
       timeBucket: 'backstage',
       // CC-391 D1：CD 驱动的后台自动行（10s CD，不靠玩家放置）⇒ 轴模式按失衡时间占比吃易伤
       autoSplitByStun: true,
-      skillTableNote: `满覆盖近似：floor(有效战斗时间/${ROBIN_AFTERSHOCK_CD_SECONDS})，每次 +20 登场值（同时上限 120）`,
+      skillTableNote: `满覆盖近似：floor(有效战斗时间/${ROBIN_AFTERSHOCK_CD_SECONDS})，每次 +20 登场值（同时上限 ${ROBIN_ENTRY_MAX}）`,
+    }))
+  }
+  if (reinforcedCount > 0) {
+    const hpRate = (ROBIN_REINFORCED_HP_RATE_BASE + ROBIN_REINFORCED_HP_RATE_PER_LEVEL * SKILL_LEVEL)
+      * (cinema >= 6 ? ROBIN_C6_HP_RATE_MULT : 1)
+    // 「根据最大生命值额外提升重击的伤害」折算成等价倍率（本行基底 = 攻击力，与 1661006 本行同乘区/同元素/同防御）
+    const hpExtraMultiplier = panel.hp * hpRate * 100 / Math.max(1, panel.atk)
+    executions.push(moduleExecRow({
+      moveId: '1661006',
+      moveName: `强化特殊技：强化追加攻击（能量≥${ROBIN_REINFORCED_ENERGY_COST} 升级${cinema >= 4 ? ' / 影画4 保底' : ''}${cinema >= 6 ? ' / 必定暴击' : ''}）`,
+      category: 'special',
+      count: reinforcedCount,
+      damageMultiplier: Number(cfg.robinReinforcedDamage ?? 0) + hpExtraMultiplier,
+      dazeMultiplier: Number(cfg.robinReinforcedDaze ?? 0),
+      // 能量升级的那几次各扣 40 点（影画4 保底不耗能）；行级如实记账
+      totalEnergyConsume: energyUpgraded * ROBIN_REINFORCED_ENERGY_COST,
+      ...RECOVERY_OFF,
+      timeBucket: 'backstage',
+      autoSplitByStun: true,
+      ...(cinema >= 6 ? { critRateBonus: Math.max(0, 100 - Number(panel.critRate)) } : {}),
+      skillTableNote: `升级 = 能量 ≥${ROBIN_REINFORCED_ENERGY_COST}（耗 ${ROBIN_REINFORCED_ENERGY_COST}）${cinema >= 4 ? ' 或影画4 每 60s 保底' : ''}；生命值附加 = maxHP × ${Math.round(hpRate * 100)}%${cinema >= 6 ? '；影画6 必定暴击' : ''}`,
     }))
   }
   // 支援突击·角力协同突击（1661019）：**队友**发动反制支援且完美反制时自动发动。
@@ -343,6 +395,11 @@ declare module '@/types/resource/config' {
      * 「队伍中**其他**角色发动[反制支援]后，若触发[完美反制]自动发动」——**不含她自己**发动的那几次。
      */
     robinTeammateCounterAssists?: number
+    /** 命座等级（buildCharConfig 写；影画4 保底升级 / 影画6 必定暴击用） */
+    robinCinemaLevel?: number
+    /** 强化追加攻击 1661006 表值（buildCharConfig 预存） */
+    robinReinforcedDamage?: number
+    robinReinforcedDaze?: number
     /** 登场技 1661011 动作时长（buildCharConfig 预存） */
     robinEntryActionTime?: number
     /** 追加攻击表值倍率（1661005 damage） */
