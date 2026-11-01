@@ -1,6 +1,7 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentPanelInput,
   AgentResourceInput,
   AgentTeamConfigInput,
   AgentTeamPanelEffectInput,
@@ -14,6 +15,7 @@ import { panelOfSlot } from '@/core/sourcePanels'
 import { applyStat } from '@/core/buff'
 import { mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
 import { fmt } from '@/utils/format'
+import { cinemaLevelOf } from '@/data/cinemaLevel'
 
 /**
  * 知更鸟（1661·防护/以太）——v1 测试服占位包（nanoka **3.4.1+19997538** 热更包，2026-10-30 重录），2026-10-25 第三刀。
@@ -76,10 +78,10 @@ export const ROBIN_BUFF_POINT_DEF_MULT = 1.25
 export const ROBIN_AFTERSHOCK_CD_SECONDS = 10
 /** 每次追加攻击获得的[登场值] */
 export const ROBIN_ENTRY_PER_AFTERSHOCK = 20
-/** [登场值]上限 */
-export const ROBIN_ENTRY_MAX = 120
-/** 触发[登场技]所需[登场值]（也是每次消耗量） */
-export const ROBIN_ENTRY_COST = 100
+/** [登场值]上限（v2 3.4.2+20049556：120 → 140，用户 2026-11-01 裁决取核心被动口径） */
+export const ROBIN_ENTRY_MAX = 140
+/** 触发[登场技]所需[登场值]（也是每次消耗量；v2：100 → 120） */
+export const ROBIN_ENTRY_COST = 120
 
 /** 面板钩子侧的设置读口（默认值只来自 settings 声明；CC-508） */
 const robinSetting = mechanicSettingPanelReader(() => robinMechanic.settings)
@@ -291,12 +293,23 @@ function applyRobinTeamPanelEffects({ slot, agent, panel, settings, sourcePanels
   report?.({ stat: 'inCombatDefFlat', value: bonus, mode: 'flat' })
 }
 
+/**
+ * 面板钩子：影画4（奉献者的虚像，v2 3.4.2+20049556）「知更鸟自身造成的伤害提升10%」。
+ * ⚠ 只写本人面板（panel 是这一槽自己的那份），与 teamBuffs 的全队项区分。
+ */
+function applyRobinPanel({ panel, cinemaLevel }: AgentPanelInput): void {
+  if (cinemaLevelOf(cinemaLevel) >= 4) panel.dmgBonus = panel.dmgBonus + 10
+}
+
 export const robinMechanic: AgentMechanicModule = {
   id: 'agent:robin',
   agentIds: [ROBIN_AGENT_ID],
   name: '知更鸟',
-  description: 'v1 占位包（3.4.1+19997538 热更）：离场守护·全队固定防御（每 1000 初始生命 +80 / 上限 800 / Buff 点 ×1.25）'
-    + ' + 登场值循环（追加攻击 10s CD +20 / 上限 120 / ≥100 触发登场技）；护盾量与「每毁伤回 15 能量」未建模。',
+  description: 'v2（3.4.2+20049556）：离场守护·全队固定防御（每 1000 初始生命 +80 / 上限 800 / Buff 点 ×1.25）'
+    + ' + 登场值循环（追加攻击 10s CD +20 / 上限 140 / ≥120 触发登场技）+ 角力协同突击 1661019'
+    + '；影画1 全队无视20%防御 / 影画2 全队无视15%抗性（spec teamBuffs）/ 影画4 自身+10%伤害；'
+    + '强化追加攻击 1661006 与「每毁伤回 15 能量」未建模。',
+  applyPanel: applyRobinPanel,
   teamPanelEffects: applyRobinTeamPanelEffects,
   applyTeamConfig: applyRobinTeamConfig,
   // 1661019 已有模块行（队友反制支援触发）⇒ 轴编辑器不得再把它当 [表] 直读候选（会双计）

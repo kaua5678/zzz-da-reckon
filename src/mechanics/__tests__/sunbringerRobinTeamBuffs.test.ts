@@ -42,15 +42,15 @@ describe('(Test1) 知更鸟 1661 spec teamBuffs', () => {
     const robin = groups.find(g => g.id === '1661')
     expect(robin).toBeDefined()
     expect(robin!.buffs.map(b => b.id)).toEqual(expect.arrayContaining([
-      'robin_guard_shield_team_dmg', 'robin_c1_team_sharp_crit', 'robin_c2_enemy_res',
+      'robin_guard_shield_team_dmg', 'robin_c1_team_def_ignore', 'robin_c2_enemy_res',
     ]))
     const base = basePanel()
     expect(base.sharpCritDmg, '基线前提：锐暴基础 50%（不是 0）').toBeCloseTo(50, 6)
     const panel = resolveTeammateBuffsOnEmptyPanel(
-      ['robin_guard_shield_team_dmg', 'robin_c1_team_sharp_crit', 'robin_c2_enemy_res'], 0)
+      ['robin_guard_shield_team_dmg', 'robin_c1_team_def_ignore', 'robin_c2_enemy_res'], 0)
     expect(panel.dmgBonus - base.dmgBonus).toBeCloseTo(25, 6)
-    expect(panel.sharpCritDmg - base.sharpCritDmg).toBeCloseTo(20, 6)
-    expect(panel.enemyResReduction - base.enemyResReduction).toBeCloseTo(12, 6)
+    expect(panel.enemyDefReduction - base.enemyDefReduction).toBeCloseTo(20, 6) // v2 影画1 = 无视20%防御
+    expect(panel.enemyResReduction - base.enemyResReduction).toBeCloseTo(15, 6) // v2 影画2 = 无视15%抗性
   })
 
   it('门控面：影画1/2 条目在拥有者 C0 不启用、C2 启用；核心被动条不受命座门控', async () => {
@@ -58,11 +58,11 @@ describe('(Test1) 知更鸟 1661 spec teamBuffs', () => {
     const groups = catalog.teammateBuffGroups
     const c0 = enabledOf(teamOf(['1661', 0], ['1011'], ['1011']), groups)
     expect(c0.has('robin_guard_shield_team_dmg')).toBe(true) // 核心被动 source → 命座需求 0
-    expect(c0.has('robin_c1_team_sharp_crit')).toBe(false)
+    expect(c0.has('robin_c1_team_def_ignore')).toBe(false)
     expect(c0.has('robin_c2_enemy_res')).toBe(false)
 
     const c2 = enabledOf(teamOf(['1661', 2], ['1011'], ['1011']), groups)
-    expect(c2.has('robin_c1_team_sharp_crit')).toBe(true)
+    expect(c2.has('robin_c1_team_def_ignore')).toBe(true)
     expect(c2.has('robin_c2_enemy_res')).toBe(true)
   })
 })
