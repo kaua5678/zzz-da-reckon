@@ -419,3 +419,93 @@ describe('realizeStunWindows（计划 K 窗 / 兑现 X 窗 / 窗内发呆 Y 秒�
     expect(r.idleSeconds).toBeCloseTo(0, 10)
   })
 })
+
+/**
+ * **三读数拆分**（用户 2026-11-01，逐字）：
+ * > 「这个平a填充是**足够分配**的情况，**如果资源不够**，要么是**平a填充了导致失衡不够，
+ * >  打不出新失衡或者新失衡残缺**，要么是**失衡打了但是时间不够无法填充**，导致最后一窗变成
+ * >  **残缺的只有前半部分**。」
+ *
+ * 本条只锁**读数**，不碰 `realizedWindows` 的语义（它已是生产通道）：
+ * ① 无填充 ⇒ `axisOnlyWindows === realizedWindows`（同一把尺的退化）；
+ * ② 有填充 ⇒ `axisOnly < realized`，且差值逐位等于「填充占比 × 时钟截短份额」（不是拍出来的系数）；
+ * ③ 非轴队 `hasTrace=false` ⇒ 不编造（`axisOnly === realized`、`fillSeconds === 0`）。
+ */
+describe('三读数拆分（axisOnlyWindows / fillSeconds / idleSeconds）', () => {
+  const trace = (i: number, over: Partial<StunWindowTrace> = {}): StunWindowTrace => ({
+    index: i, axisIndex: 0, fillerDefaulted: false, fillSegments: [],
+    idleSegments: [],
+    nominalSeconds: 16, extendSeconds: 0, endSeconds: 16,
+    truncated: false, actions: [], actionSeconds: 0, overlapSeconds: 0, fillSeconds: 0, ...over,
+  })
+
+  it('① 无填充 ⇒ axisOnly 与 realized 逐位相等（同一把尺，不是另算一套账）', () => {
+    const tl = buildStunTimeline({
+      stunCount: 3, windowDuration: 16, effectiveTime: 180,
+      windows: [
+        trace(0, { actionSeconds: 16 }),                    // 打满
+        trace(1, { actionSeconds: 6, overlapSeconds: 2 }),  // 净 4s ⇒ 4/16
+        trace(2, { actionSeconds: 8 }),                     // 8/16
+      ],
+    })
+    const r = realizeStunWindows(tl)
+    expect(r.fillSeconds, '没有任何填充秒').toBe(0)
+    expect(r.axisOnlyWindows).toBe(r.realizedWindows)
+    expect(r.axisOnlyWindows).toBeCloseTo(1 + 4 / 16 + 8 / 16, 12)
+  })
+
+  it('② 有填充 ⇒ axisOnly < realized，差值 = 填充占比（逐窗可复算）', () => {
+    // 窗 0：轴 6s + 填充 10s ⇒ realized 1、axisOnly 6/16、填充贡献 10/16
+    // 窗 1：轴 8s + 填充 4s ⇒ realized 12/16、axisOnly 8/16、填充贡献 4/16（其余 4s 发呆）
+    const tl = buildStunTimeline({
+      stunCount: 2, windowDuration: 16, effectiveTime: 180,
+      windows: [
+        trace(0, { actionSeconds: 6, fillSeconds: 10 }),
+        trace(1, { actionSeconds: 8, fillSeconds: 4 }),
+      ],
+    })
+    const r = realizeStunWindows(tl)
+    expect(r.realizedWindows).toBeCloseTo(1 + 12 / 16, 12)
+    expect(r.axisOnlyWindows).toBeCloseTo(6 / 16 + 8 / 16, 12)
+    expect(r.realizedWindows - r.axisOnlyWindows, '差值 = 两个窗的填充占比之和').toBeCloseTo(10 / 16 + 4 / 16, 12)
+    expect(r.fillSeconds, '窗内填充总秒 = 10 + 4').toBeCloseTo(14, 12)
+    // 发呆只在中间窗（窗 0 没发呆、窗 1 是末窗 ⇒ 归零 4s），证明三读数互不代扣
+    expect(r.idleSeconds).toBe(0)
+    expect(r.zeroedSeconds).toBeCloseTo(4, 12)
+  })
+
+  it('②b 时钟截短的窗：填充贡献也乘同一个时长份额（两把尺不打架）', () => {
+    // 12 窗 × 16s > 180s ⇒ 末窗只剩 4s；末窗轴 0s + 填充 4s（填满了剩下的全部）
+    const windows = Array.from({ length: 12 }, (_, i) => trace(i, i === 11
+      ? { actionSeconds: 0, fillSeconds: 4 }
+      : { actionSeconds: 16 }))
+    const tl = buildStunTimeline({ stunCount: 12, windowDuration: 16, effectiveTime: 180, windows })
+    const r = realizeStunWindows(tl)
+    const share = 4 / 16
+    expect(r.realizedWindows).toBeCloseTo(11 + 1 * share, 12)
+    expect(r.axisOnlyWindows).toBeCloseTo(11, 12)
+    // 末窗填充 4s 填满 4s 有效窗长 ⇒ 填充贡献 = 1 × share（与上面 realized−axisOnly 同源）
+    expect(r.realizedWindows - r.axisOnlyWindows).toBeCloseTo(share, 12)
+    expect(r.fillSeconds, '填充落入有效窗内的部分 = 4s').toBeCloseTo(4, 12)
+  })
+
+  it('③ 非轴队（hasTrace=false）不编造：axisOnly 与 realized 同值、填充秒记 0', () => {
+    const tl = buildStunTimeline({ stunCount: 3, windowDuration: 16, effectiveTime: 180 })
+    const r = realizeStunWindows(tl)
+    expect(r.hasTrace).toBe(false)
+    expect(r.axisOnlyWindows, '不可区分 ⇒ 不写「轴一秒没打」').toBe(r.realizedWindows)
+    expect(r.fillSeconds, '不可推演 ⇒ 不写 0 以外的数（0 = 没量到，不等于没填）').toBe(0)
+  })
+
+  it('④ 轨迹比窗口数短：缺轨迹的窗按「不可区分」并入 axisOnly（不编造填充）', () => {
+    const tl = buildStunTimeline({
+      stunCount: 3, windowDuration: 16, effectiveTime: 180,
+      windows: [trace(0, { actionSeconds: 4, fillSeconds: 12 })],
+    })
+    const r = realizeStunWindows(tl)
+    // 窗 0：axisOnly 4/16、填充 12s；窗 1/2 无轨迹 ⇒ 与 realized 同值（各 1 窗）
+    expect(r.axisOnlyWindows).toBeCloseTo(4 / 16 + 2, 12)
+    expect(r.realizedWindows).toBeCloseTo(1 + 2, 12)
+    expect(r.fillSeconds).toBeCloseTo(12, 12)
+  })
+})

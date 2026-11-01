@@ -41,6 +41,9 @@ const slotSnap = (over: Partial<StunWindowSlot> = {}): StunWindowSlot => ({
   clippedByClock: false,
   actions: [],
   unusedSeconds: 0,
+  // 三读数拆分后新增的两列（axisWindowView 不读它们，但类型必填）
+  axisSeconds: null,
+  fillSeconds: null,
   ...over,
 })
 

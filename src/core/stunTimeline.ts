@@ -161,6 +161,26 @@ export interface StunWindowSlot {
    * ⚠ 无轴轨迹（`hasTrace === false`）时记 0：**不代表打满**，只表示本模式不可逐窗推演。
    */
   unusedSeconds: number
+  /**
+   * 窗内**轴动作净占用**秒数 = 动作毛时长 − 合轴节省（**不含**平A填充；未按有效窗长钳位）。
+   *
+   * 它是「只算轴动作兑现了几窗」（`realizeStunWindows().axisOnlyWindows`）的唯一输入：
+   * 与 `fillSeconds` 拆开，才能回答用户 2026-11-01 的两条稀缺通道——
+   * **通道 A**（平A填充挤走攒条）看填充秒，**「轴真打完了吗」**看本字段。
+   *
+   * `null` = 本窗没有轴栈轨迹（非轴模式 / 轨迹比窗口数短）⇒ 不可推演，**不写 0**
+   * （0 会被读成「这窗轴块一秒都没打」，而实际是「没量到」）。
+   */
+  axisSeconds: number | null
+  /**
+   * 窗内**平A兜底填充**秒数（来自 `windowTrace[].fillSeconds`，**不含**窗内轴动作）。
+   *
+   * 它占的是窗内时间本身 ⇒ 每填一秒就少一秒攒条（用户 2026-10-28「填充是产出端、窗内作废」），
+   * 但它**也会**把窗"填满"，让旧的「兑现比例」看起来完整——2026-11-01 认定的盲区正是它。
+   *
+   * `null` = 本窗没有轴栈轨迹 ⇒ 不可推演，**不写 0**（同上）。
+   */
+  fillSeconds: number | null
 }
 
 /** 时间轴输入 */
@@ -250,9 +270,9 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline {
       clippedByClock = true
     }
     // 窗内占用 = 动作毛时长 − 合轴节省 + 平A填充（与栈引擎的记账同源）
-    const occupied = t
-      ? Math.max(0, finiteOr0(t.actionSeconds) - finiteOr0(t.overlapSeconds) + finiteOr0(t.fillSeconds))
-      : 0
+    const axisActionSeconds = t ? Math.max(0, finiteOr0(t.actionSeconds) - finiteOr0(t.overlapSeconds)) : 0
+    const fillSeconds = t ? Math.max(0, finiteOr0(t.fillSeconds)) : 0
+    const occupied = axisActionSeconds + fillSeconds
     slots.push({
       index: i,
       startSeconds,
@@ -263,6 +283,10 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline {
       clippedByClock,
       actions: t?.actions ? [...t.actions] : [],
       unusedSeconds: t ? Math.max(0, effectiveSeconds - occupied) : 0,
+      // 两条稀缺通道的**原材料**（纯透传，不参与排布）：轴动作净占用 / 平A兜底填充。
+      // 无轨迹 ⇒ null（不可推演），不当 0——0 会被读成「轴块一秒没打」。
+      axisSeconds: t ? axisActionSeconds : null,
+      fillSeconds: t ? fillSeconds : null,
     })
     cursor = startSeconds + effectiveSeconds
   }
@@ -297,6 +321,24 @@ export function buildStunTimeline(input: StunTimelineInput): StunTimeline {
  * - 无轴栈轨迹（非轴队；全库 96 队里 61 队）⇒ `hasTrace === false`，**不编造**，`realizedWindows` 返回整数窗数；
  * - 轨迹比窗口数短时缺的那几窗按「无轨迹」处理（`unusedSeconds` 记 0），与 `buildStunTimeline` 同口径；
  * - `realizedWindows ≤ windows` 按构造成立（每窗填充率 ≤ 1）——它只能**减少**兑现，不会凭空多算。
+ *
+ * ## 2026-11-01：三读数拆分（**纯追加，不改 realizedWindows**）
+ * 用户口径（逐字）：「这个平a填充是**足够分配**的情况，**如果资源不够**，要么是**平a填充了导致失衡不够，
+ * 打不出新失衡或者新失衡残缺**，要么是**失衡打了但是时间不够无法填充**，导致最后一窗变成**残缺的只有前半部分**。」
+ * ⇒ 「一个兑现比例」把两条互斥的稀缺通道混在一起了，必须拆开读：
+ * | 通道 | 读数 | 物理 |
+ * |---|---|---|
+ * | **A 失衡值不够** | `fillSeconds`（+ 结果页「下一窗进度」） | 窗内平A填充**不产失衡值** ⇒ 填一秒少一秒攒条 |
+ * | **B 时间不够** | `clippedByClock`（逐窗，`buildStunTimeline` 已标） | 窗排到 180s 外 ⇒ 末窗被时钟截短 |
+ * | **C 窗开了没牌** | `idleSeconds` | 轴块 + 平A都填不满 ⇒ 发呆（**容器不是缺陷**，用户 2026-10-28） |
+ *
+ * `realizedWindows` 与 `axisOnlyWindows` 的差 = **平A填充撑起来的窗数**：
+ * 旧读数把「填充把窗填满」当成「兑现完整」（2026-11-01 认定的盲区），
+ * `axisOnlyWindows` 则只认轴动作本身。两者**同一把尺**（同 `effectiveSeconds` 归一、同 `durationShare` 折算），
+ * 故 `realizedWindows − axisOnlyWindows === Σ(填充秒 / 有效窗长 × 时钟截短份额)` 恒成立（判据锁住）。
+ *
+ * ⚠ **纯读数，不进任何数值路径**：通道 A 要不要进数值待用户裁决（且必须先证伪「与池的
+ * `inAxisStunFractionByKey` 双扣」）；通道 B 要可达须放开 `solveTeam.physicalMax`（A10 四步连锁）。
  */
 export interface StunRealization {
   /**
@@ -316,6 +358,25 @@ export interface StunRealization {
    * 无轨迹时填充率按 1（不编造），但时钟截短照样折算。
    */
   realizedWindows: number
+  /**
+   * **只算轴动作**的等效兑现窗数（**不含**平A填充；用户 2026-11-01 通道 A 的读数）。
+   *
+   * 与 `realizedWindows` 同一把尺（同 `effectiveSeconds` 归一、同 `durationShare` 折算），
+   * 只是把分子从「轴动作 + 平A填充」换成「轴动作」。恒等式（判据锁）：
+   * `realizedWindows − axisOnlyWindows === Σ(填充秒 / 有效窗长 × 时钟截短份额)`。
+   *
+   * 无轨迹 ⇒ 与 `realizedWindows` 同值（**不可区分**，不编造「轴一秒没打」）；轨迹比窗口数短时
+   * 缺的那几窗同样按不可区分处理（与 `realizedWindows` 对这些窗的「按 1 计」同源）。
+   */
+  axisOnlyWindows: number
+  /**
+   * **窗内平A填充总秒数**（只算落在有效窗内的部分，已按 `effectiveSeconds` 钳位）。
+   *
+   * 通道 A 的物理量：填充**不产失衡值**（用户 2026-10-28「填充是产出端、窗内作废」），
+   * 于是每填一秒就少一秒攒条。**纯读数**：不改池、不改覆盖率、不改伤害。
+   * 无轨迹 ⇒ 0（不可推演，不代表没填）。
+   */
+  fillSeconds: number
   /** 已兑现的易伤秒数（= Σ 每窗实际占用秒数；无轨迹时为 0） */
   occupiedSeconds: number
   /**
@@ -334,15 +395,31 @@ export interface StunRealization {
   hasTrace: boolean
 }
 
+// @fact engine:stun/三读数 口径: `realizeStunWindows` 同时报三个**互不代扣**的读数——`realizedWindows`（含平A填充的兑现，生产通道，语义不变）、`axisOnlyWindows`（只算轴动作净占用，与前者同一把尺：同 effectiveSeconds 归一、同 durationShare 折算）、`fillSeconds`（落在有效窗内的填充秒，通道 A 的物理量）、`idleSeconds`（通道 C，发呆容器）；恒等式 `realized − axisOnly === Σ(填充秒/有效窗长 × 时钟截短份额)` 由判据锁；无轨迹 ⇒ axisOnly 与 realized 同值、fillSeconds 记 0（不可区分，不编造）；**纯读数，不进任何数值路径**（通道 A 进数值须先证伪与 `stunPool#inAxisStunFractionByKey` 双扣；通道 B 须先放开 `solveTeam.physicalMax`） | 据 用户@2026-11-01（「平a填充了导致失衡不够」vs「失衡打了但是时间不够无法填充」） | 验 src/core/__tests__/stunTimeline.test.ts | 锚 src/core/stunTimeline.ts#realizeStunWindows + src/core/stunTimeline.ts#StunRealization | 信 确认
+// ⟳复核: 若通道 A 获准进数值（或 `solveTeam.physicalMax` 放开使通道 B 可达），重核「三读数纯展示、互不代扣」这条前提与恒等式的折算份额 | 到期 2027-06-30
 export function realizeStunWindows(timeline: StunTimeline): StunRealization {
   if (!timeline.hasTrace) {
     // 无轨迹 ⇒ 不编造填充（每窗按 1 计），但**时钟截短照样折算**：末窗只剩 4s 就只值 0.25 窗，
     // 与可视化那根短窗条一致（用户口径 2026-10-27「最后一窗……时间截断」）。
     const realized = timeline.slots.reduce((sum, s) => sum
       + (s.clippedByClock && s.nominalSeconds > 0 ? Math.max(0, Math.min(1, s.effectiveSeconds / s.nominalSeconds)) : 1), 0)
-    return { plannedWindows: timeline.windows, realizedWindows: realized, occupiedSeconds: 0, idleSeconds: 0, zeroedSeconds: 0, hasTrace: false }
+    // 无轨迹 ⇒ 轴/填充**不可区分**：axisOnly 与 realized 同值（不是「轴一秒没打」），填充秒记 0（不可推演）。
+    return {
+      plannedWindows: timeline.windows,
+      realizedWindows: realized,
+      axisOnlyWindows: realized,
+      fillSeconds: 0,
+      occupiedSeconds: 0,
+      idleSeconds: 0,
+      zeroedSeconds: 0,
+      hasTrace: false,
+    }
   }
   let realizedWindows = 0
+  /** 只算轴动作的等效窗数（与 realizedWindows 同一把尺，分子换成轴动作净占用） */
+  let axisOnlyWindows = 0
+  /** 落在有效窗内的平A填充秒数（逐窗钳位，与 axisOnly 的分子同源） */
+  let fillSeconds = 0
   let occupiedSeconds = 0
   let idleSeconds = 0
   /**
@@ -379,6 +456,35 @@ export function realizeStunWindows(timeline: StunTimeline): StunRealization {
       ? Math.max(0, Math.min(1, slot.effectiveSeconds / slot.nominalSeconds))
       : 1
     realizedWindows += fillRate * durationShare
+    /**
+     * **三读数拆分**（用户 2026-11-01）：
+     * - `axisOnlyWindows`：分子只留轴动作净占用（`slot.axisSeconds`），口径与 `fillRate` 逐位同源；
+     * - `fillSeconds`：填充落在**有效窗内**的部分（先让轴动作占用，再给填充剩下的），
+     *   与 `realizedWindows − axisOnlyWindows` 严格互补（同一处产出，不另算一遍）。
+     *
+     * 本窗没有轴栈轨迹（`slot.axisSeconds === null`）⇒ **不可区分**，把整窗算作轴动作
+     * （与 `unusedSeconds = 0` 的「按 1 计」同源），填充秒不编造。
+     */
+    if (slot.axisSeconds === null) {
+      axisOnlyWindows += fillRate * durationShare
+    } else {
+      /** 轴动作能占到的窗内秒数（时钟截短后不够时按有效窗长钳位——与 `occupied` 的钳位同源） */
+      const axisOccupied = Math.max(0, Math.min(slot.effectiveSeconds, slot.axisSeconds))
+      /** 填充只能占轴动作之后剩下的那部分有效窗长（栈引擎里两者本就不重叠） */
+      const fillOccupied = Math.max(0, Math.min(slot.effectiveSeconds - axisOccupied, slot.fillSeconds ?? 0))
+      const axisRate = slot.effectiveSeconds > 0 ? Math.min(1, axisOccupied / slot.effectiveSeconds) : 0
+      axisOnlyWindows += axisRate * durationShare
+      fillSeconds += fillOccupied
+    }
   }
-  return { plannedWindows: timeline.windows, realizedWindows, occupiedSeconds, idleSeconds, zeroedSeconds, hasTrace: true }
+  return {
+    plannedWindows: timeline.windows,
+    realizedWindows,
+    axisOnlyWindows,
+    fillSeconds,
+    occupiedSeconds,
+    idleSeconds,
+    zeroedSeconds,
+    hasTrace: true,
+  }
 }

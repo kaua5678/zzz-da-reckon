@@ -302,10 +302,34 @@
                 还积累了 {{ (continuousStun.nextWindowProgress * 100).toFixed(1) }}%
               </span>
             </div>
+            <!--
+              **三读数拆分**（用户 2026-11-01，逐字）：「这个平a填充是**足够分配**的情况，**如果资源不够**，
+              要么是**平a填充了导致失衡不够，打不出新失衡或者新失衡残缺**，要么是**失衡打了但是时间不够
+              无法填充**，导致最后一窗变成**残缺的只有前半部分**。」
+              ⇒ 一个「兑现比例」把两条互斥的稀缺通道混着算了，这里按 A/B/C 拆开读：
+              · **A 失衡值不够**：窗内平A填充不产失衡值（填一秒少一秒攒条）⇒ 看「窗内填充」+ 上方「下一窗进度」；
+              · **B 时间不够**：窗排到 180s 外 ⇒ 末窗被时钟截短（在「逐窗兑现」卡头计数）；
+              · **C 窗开了没牌**：轴块 + 平A都填不满 ⇒ 发呆（容器不是缺陷，用户 2026-10-28）。
+              ⚠ 非轴队 hasTrace=false：三读数都不可推演 ⇒ 不编造（整块不显示）。
+            -->
+            <div class="pool-stat" v-if="stunRealization && stunRealization.hasTrace">
+              <span class="pool-stat-label">兑现窗数</span>
+              <span class="pool-stat-value"
+                :title="`只算轴动作 ${stunRealization.axisOnlyWindows.toFixed(2)} 窗 / 含平A填充 ${stunRealization.realizedWindows.toFixed(2)} 窗（计划 ${stunRealization.plannedWindows} 窗）。差值 = 平A填充把窗「填满」撑起来的那部分——它不产失衡值（通道 A），旧读数会把它当成兑现完整（2026-11-01 认定的盲区）。`">
+                轴动作 {{ stunRealization.axisOnlyWindows.toFixed(2) }} / 含填充 {{ stunRealization.realizedWindows.toFixed(2) }} 窗
+              </span>
+            </div>
+            <div class="pool-stat" v-if="stunRealization && stunRealization.hasTrace && stunRealization.fillSeconds > 0.05"
+              :class="{ highlight: stunRealization.fillSeconds > 0.05 }">
+              <span class="pool-stat-label">窗内填充</span>
+              <span class="pool-stat-value" title="通道 A：窗内平A填充**不产失衡值**（用户 2026-10-28「填充是产出端、窗内作废」）⇒ 每填一秒就少一秒攒条。它同时会把窗填满，所以不能当「兑现完整」读。">
+                {{ stunRealization.fillSeconds.toFixed(2) }} 秒
+              </span>
+            </div>
             <div class="pool-stat" v-if="stunRealization && stunRealization.hasTrace"
               :class="{ highlight: stunRealization.idleSeconds > 0.05 }">
               <span class="pool-stat-label">窗内发呆</span>
-              <span class="pool-stat-value" title="窗口开着、轴动作打完了、三个槽的平A预算也都见底 ⇒ 这段秒数没人打（不是打满）">
+              <span class="pool-stat-value" title="通道 C：窗口开着、轴动作打完了、三个槽的平A预算也都见底 ⇒ 这段秒数没人打（不是打满）。发呆等效于后台（用户 2026-10-28），是容器不是缺陷。">
                 {{ stunRealization.idleSeconds.toFixed(2) }} 秒
               </span>
             </div>
@@ -326,10 +350,14 @@
         <template #header>
           <div class="axis-window-header">
             <span class="pool-title">逐窗兑现（轴模式）</span>
+            <!-- 三读数按 A/B/C 口径措辞（用户 2026-11-01 的两条稀缺通道）：
+                 动作 = 轴块真打出的秒数；填充 = 通道 A 的物理量（不产失衡值）；发呆 = 通道 C（容器不是缺陷）；
+                 时钟截短 = 通道 B（末窗被 180s 时钟切掉尾巴，今天全库为 0，读数先在）。 -->
             <span class="axis-window-summary">
               轴 {{ axisWindows.windows.length }} 窗 · 动作 {{ fmt(axisWindows.totals.actionSeconds, 1) }}s
-              · 填充 {{ fmt(axisWindows.totals.fillSeconds, 1) }}s
+              · 填充 {{ fmt(axisWindows.totals.fillSeconds, 1) }}s<span class="dim" title="通道 A：窗内平A填充不产失衡值 ⇒ 填一秒就少一秒攒条">（不产失衡）</span>
               <template v-if="axisWindows.totals.idleSeconds !== null"> · 发呆 {{ fmt(axisWindows.totals.idleSeconds, 1) }}s</template>
+              <template v-if="axisWindows.totals.clippedWindows > 0"> · 时钟截短 {{ axisWindows.totals.clippedWindows }} 窗</template>
               <template v-if="axisWindows.totals.skippedTimes > 0"> · 跳过 {{ axisWindows.totals.skippedTimes }} 次</template>
             </span>
             <!-- 池排出的窗数 vs 轴实际排的窗数：fixed / tail / bestEffort 类型的轴不吃完剩余窗口，
