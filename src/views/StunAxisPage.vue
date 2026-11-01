@@ -78,7 +78,8 @@
               <span class="sap-label">次</span>
             </template>
             <span class="sap-label">兜底平A</span>
-            <n-select :value="fillerValue(ai)" @update:value="v => setFiller(ai, v)" size="small" style="width:110px" :options="fillerOptions" />
+            <n-select :value="fillerValue(ai)" @update:value="v => setFiller(ai, v)" size="small" style="width:110px" :options="fillerOptions"
+              title="窗尾空档由谁打平A兜底。未显式选槽 = 回落轴内主C（必要时间，不可被克扣）；引擎不提供真关闭——平A填充本身是产出端、不回抽窗外池，没有坏处" />
             <span class="sap-label">初始状态</span>
             <n-select :value="axis.entryAnomaly ?? 0" size="small" style="width:96px" :options="entryAnomalyOptions"
               :disabled="hasPlans" :title="hasPlans ? '条件轴方案模式下只读' : undefined"
@@ -450,7 +451,15 @@ function moveBadgeFor(act: Pick<StunAxisAction, 'slot' | 'moveId'>): string {
 function durationInputFor(act: Pick<StunAxisAction, 'slot' | 'moveId'>) {
   return agentAxisDurationInput(configStore.team[act.slot]?.agentId, act.moveId)
 }
-const fillerOptions = computed(() => [{ label: '不填充', value: -1 }, ...slotOptions.value])
+/**
+ * 兜底槽选项 = 「默认（主C兜底）」+ 三个槽。
+ *
+ * ⚠ 旧标签「不填充」名不副实（2026-11-01）：引擎里未声明 basicFillerSlot ⇒ 回落轴内主C
+ * （用户口径 2026-10-27「任何轴都默认该有主C平A的兜底填充……这个是必要时间不可被克扣」）
+ * ⇒ 选「不填充」照样填，按钮在说谎。默认填充没有坏处（用户 2026-11-01），故不提供真关闭，
+ * 只把 -1 如实标成「默认」。
+ */
+const fillerOptions = computed(() => [{ label: '默认（主C兜底）', value: -1 }, ...slotOptions.value])
 function fillerValue(ai: number): number { return axes.value[ai]?.basicFillerSlot ?? -1 }
 function setFiller(ai: number, v: number) {
   editAxis(ai, axis => {
