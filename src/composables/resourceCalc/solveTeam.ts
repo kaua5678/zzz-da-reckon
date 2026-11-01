@@ -642,9 +642,18 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * 回退闸下全绿（归因闭合）。详见提交说明 delta 表。
    */
   if (probeFlag('PROBE_STUN_CLIP_ITER') !== 'off' && stunWindowDur > 0) {
-    /** 末窗最多被截到 0：clip 不得超过「全部窗秒」 */
+    /**
+     * **末窗最多被截到 0**：clip 上限 = **一窗**（不是 K 窗）。
+     *
+     * 为什么是一窗（2026-11-01 修正，与 `buildStunTimeline` 对齐）：时间轴只把**最后一窗**按
+     * `W − clip` 缩短并钳到 0 ⇒ 一窗最多丢 `W` 秒。覆盖率若按 `K×W` 上限扣（旧实现），
+     * 两个量就不同源：溢出 > 一窗的那些队被**过度扣减**。实测反例 `billy-trigger-lucia`
+     * parry=20：overflow 44.81s > W 16s ⇒ 旧上限把覆盖率从 0.3556 扣到 0.1066（时间轴只丢 16s），
+     * 连带把「加弹刀不降伤」的单调性打破。改一窗上限后 7 支 golden 溢出队**逐位不变**
+     * （overflow 0.24~10.70s 全部 < W）。
+     */
     const clampClip = (x: CalcRoundResult): number =>
-      Math.min(Math.max(0, x.resourceResult.overflowSeconds ?? 0), Math.max(0, x.stunPool.stunCount) * stunWindowDur)
+      Math.min(Math.max(0, x.resourceResult.overflowSeconds ?? 0), Math.max(0, stunWindowDur))
     for (let pass = 0, clip = clampClip(r.out); pass < 2; pass++) {
       if (!(clip > 1e-9) || Math.abs(clip - (stunClipPass ?? 0)) <= 1e-6) break
       stunClipPass = clip
@@ -1037,7 +1046,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        * 覆盖率 = 原覆盖率 − overflow/eff（同分母，不重算、不引入不同源）。
        * ⚠ 覆盖率只扣截断秒，**行侧的 cut 仍在**（A10 第 2 步未做行恢复）⇒ 本口径是下界。
        */
-      const clipSec = Math.min(Math.max(0, out.resourceResult.overflowSeconds ?? 0), out.stunPool.stunCount * stunWindowDur)
+      // 上限 = 一窗（与时间轴 / 两趟同源，见两趟块内 clampClip 注释）
+      const clipSec = Math.min(Math.max(0, out.resourceResult.overflowSeconds ?? 0), Math.max(0, stunWindowDur))
       const clipped = Math.max(0, out.stunCoverage - clipSec / stunEffTime)
       if (clipped !== out.stunCoverage) finalOut = { ...out, stunCoverage: clipped }
     } else {

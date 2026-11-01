@@ -25,6 +25,7 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { teamPresets } from '@/data/teamPresets'
+import { probeFlag } from '@/core/probeTrace'
 
 describe('C：覆盖率与失衡池次数同源', () => {
   it('全库预设：stunCoverage == clamp((池次数 × 窗长 − 决算损失) / 有效时间)', async () => {
@@ -52,13 +53,19 @@ describe('C：覆盖率与失衡池次数同源', () => {
       if (cov > 0) nonZeroCoverage++
       if (cov < 0.999 && Math.abs(cov * effTime / W - pool.stunCount) > 0.02) truncatedTeams++
       /**
-       * 直接判据：覆盖率隐含的窗口数 == 池次数（决算队按 lost 修正后比）。
+       * 直接判据：覆盖率隐含的窗口数 **+ A10 末窗截断** == 池次数（决算队按 lost 修正后比）。
        * `lost` 不在公开结果里，故用「覆盖率 × effTime ≤ 池 × W 且差值 ≤ 一个窗」做弱形式，
        * 强形式在非决算队上退化为相等（`lost == 0`）。
+       *
+       * **A10（2026-11-01 进默认）**：连续失衡的末窗被战斗时钟截短 ⇒ `stunCoverage` 扣掉
+       * `clip / effTime`（`clip = min(overflowSeconds, 一窗)`，与 `buildStunTimeline` / 轴栈同源）。
+       * ⇒ 同源恒等式变成 `隐含窗数 + clip/W == 池次数`。回退闸关时 clip 恒 0（退回原式）。
        */
+      const a10On = probeFlag('PROBE_STUN_CLIP_ITER') !== 'off'
+      const clip = a10On ? Math.min(Math.max(0, rr.overflowSeconds ?? 0), W) : 0
       const impliedWindows = cov * effTime / W
-      if (Math.abs(impliedWindows - pool.stunCount) > 0.02 && cov < 0.999) {
-        violations.push(`${preset.id}: 覆盖率隐含 ${impliedWindows.toFixed(3)} 窗 vs 池 ${pool.stunCount}（exit=${rr.convergence.outerExit}）`)
+      if (Math.abs(impliedWindows + clip / W - pool.stunCount) > 0.02 && cov < 0.999) {
+        violations.push(`${preset.id}: 覆盖率隐含 ${impliedWindows.toFixed(3)} 窗 + clip ${(clip / W).toFixed(3)} 窗 vs 池 ${pool.stunCount}（exit=${rr.convergence.outerExit}）`)
       }
     }
     expect(violations, `覆盖率与池次数不同源（同一结果里两个物理量）：\n${violations.join('\n')}`).toEqual([])
