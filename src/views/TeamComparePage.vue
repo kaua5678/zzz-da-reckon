@@ -511,6 +511,14 @@
           </n-radio-group>
         </div>
       </template>
+      <div class="curve-context">
+        <div class="curve-context-head">
+          <b>本次比较的背景条件</b>
+          <span class="td-muted">（这张图的口径上下文；右侧可整段复制）</span>
+          <n-button size="tiny" quaternary @click="copyCurveContext">{{ curveContextCopied ? '已复制 ✓' : '复制' }}</n-button>
+        </div>
+        <pre class="curve-context-text">{{ curveContextText }}</pre>
+      </div>
       <div class="compare-note curve-note">
         <b>口径 = 同一支队伍 · 同一个 Boss · 同一套配装</b>（预设基础档：0命1精 + 预设音擎/驱动盘/权重/交互 + 当前期数 Boss）
         ，<b>只让「操作难度」从全关爬到全开</b>——配置不参与曲线（金数提升/换装在散点图型与「角色兑现」看）。
@@ -1721,6 +1729,50 @@ const curveView = ref<'2d' | '3d'>('2d')
  *   实测同一 Boss 每版本最多上 2 期 ⇒ 道数 ≈ 队数 × 1~2（用户口径「压力会变成 1~3 倍」）。
  */
 const curveEnv = ref(false)
+/**
+ * **本次比较的背景条件**（用户 2026-11-03：「你这个配置不汇总在表头作为比较的背景条件显示，**我也复制不过来**呀」）。
+ *
+ * 为什么要有它：难度曲线的口径是「同一支队 · 同一 Boss · 同一套配装」，但**究竟是哪一期 / 哪个 Boss /
+ * 吃不吃 buff / 难度权重多少 / 选了哪几支队**只散落在上方控件里 ⇒ 看图的人（含 agent）拿不到这份上下文，
+ * 复现不了、也说不清。这里**一处汇总 + 一键复制**，就是这张图的「比较背景」。
+ */
+const curveContextText = computed(() => {
+  const phase = selectedPhase.value
+  const period = allPeriods.value.find(p => p.phaseId === selectedPeriodId.value)
+  const boss = selectedBoss.value
+  const w = diffWeights.value
+  const buffText = buffChoice.value === 'none'
+    ? '不吃（自身实力）'
+    : buffChoice.value === ''
+      ? '每期自动取最优牌（硬算）'
+      : '手动取牌：' + buffChoice.value
+  return [
+    '期数：' + (period ? period.label + (period.hasCA ? '（危局）' : '') : '—'),
+    'Boss：' + (boss ? boss.name : '—') + (phase && phase.hp > 0 ? '（血量 ' + (phase.hp / 1e4).toFixed(0) + ' 万）' : ''),
+    '配装：预设基础档（0 命 1 精 + 预设音擎/驱动盘/平A权重/交互）',
+    '纵轴：伤害/血量%（击杀线 = 100%）',
+    '环境模式：' + (curveEnv.value ? '开（每条道 = 该队版本内该 Boss 的每一期，各吃该期血量+buff）' : '关（全部队用当前期数、不吃 buff）'),
+    '期数 buff：' + buffText,
+    '难度权重：时间压力 ×' + fmt(w.timePressure, 2) + '；交互逐类型 '
+      + (Object.entries(w.interaction ?? {}).map(([t, v]) => t + '×' + fmt(v, 2)).join('、') || '—')
+      + (Object.keys(w.interactionFormula ?? {}).length > 0
+        ? '（含自定义公式 ' + Object.keys(w.interactionFormula ?? {}).length + ' 项）'
+        : '')
+      + '（「难度权重」弹层可调）',
+    '队伍（' + selectedPresets.value.length + '）：' + (selectedPresets.value.map(p => p.name).join('、') || '（未选）'),
+  ].join('\n')
+})
+/** 复制按钮的瞬时反馈（本页没有 message provider：用本地计时器，不引新依赖） */
+const curveContextCopied = ref(false)
+async function copyCurveContext() {
+  try {
+    await navigator.clipboard.writeText(curveContextText.value)
+    curveContextCopied.value = true
+    setTimeout(() => { curveContextCopied.value = false }, 2000)
+  } catch {
+    curveContextCopied.value = false
+  }
+}
 /** buff 三态（用户「勾选与不勾选都要能做，你可以让用户自己选，也可以提供硬算功能」） */
 const curveBuffMode = ref<'none' | 'auto' | 'manual'>('none')
 const curveManualBuff = ref<string | null>(null)

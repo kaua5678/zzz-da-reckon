@@ -508,6 +508,34 @@ svg .curve-hit {
   stroke-dasharray: 2, 2;
 }
 
+/*
+ * 「本次比较的背景条件」块（用户 2026-11-03：「配置不汇总在表头…我也复制不过来呀」）：
+ * 只读、可选中复制（`user-select: text`），一行一项、窄屏自动折行。
+ */
+.curve-context {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  background: var(--app-inset);
+}
+.curve-context-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.curve-context-text {
+  margin: 6px 0 0;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--fg-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
 /* 逐点资源池面板里的三张资源卡（与结果页/归档页同一版式）
  * ⚠ 2026-11-02（T186）：改成**容器自适应** —— 固定 3 列 + 视口 media query 在**窄容器**里会踩坑
  * （实测：620px 抽屉里仍是 3 列 ⇒ 每张卡 ≈190px，一行字回车十几个）。auto-fit + 每列 ≥360px ⇒
