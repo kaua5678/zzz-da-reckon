@@ -309,17 +309,15 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
 
 describe('v2 长按强特（堇花悼亡）附加段：淑女突刺连续攻击 ×4 + 额外爆炸 + 额外异放', () => {
   // 用户 2026-11-02 倍率表判据：增量 (176%+440%)/1.467s ≈ 420%/s，含异放 ≈ 570%/s > 主C平A 215–450%/s ⇒ 必要招式
-  it('执行行：1331022 = 强特×4、1331024 = 强特×1，且都不另占时间（嵌在强特动作内）', () => {
+  it('执行行：只物化白嫖的额外爆炸 1331024 = 强特×1（0s）；四圈连续攻击 1331022 **不建模**（平A级）', () => {
     const executions: any[] = []
     vivianMechanic.buildExecutions!({ cfg: { panel: {} } as any, state: { exSpecialCount: 3 } as any, executions } as never)
-    const cont = executions.filter(e => e.moveId === '1331022')
     const exp = executions.filter(e => e.moveId === '1331024')
-    expect(cont).toHaveLength(1)
-    expect(cont[0].count).toBe(12)
     expect(exp).toHaveLength(1)
     expect(exp[0].count).toBe(3)
-    expect(cont[0].actionTime ?? 0).toBe(0)
     expect(exp[0].actionTime ?? 0).toBe(0)
+    // 1331022（44%/0.2s = 220%/s ≈ 平A 227.7%/s）按用户判据不入模型
+    expect(executions.filter(e => e.moveId === '1331022'), '四圈是平A级，不建模').toHaveLength(0)
   })
   it('额外异放事件：次数 = 强特次数 × 命中异常占比，倍率 = 0.5 × 落羽生花 440% = 220%', () => {
     const events: any[] = []

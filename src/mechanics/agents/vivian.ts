@@ -83,10 +83,11 @@ export const VIVIAN_POTENTIAL_MASTERY = 30
  */
 export const VIVIAN_POTENTIAL_RELEASE_BONUS = 50
 /**
- * v2 长按强特（堇花悼亡）附加段（3.4.2+20052336）：长按进入[淑女突刺]——至多 4 圈连续攻击（1331022，44%/圈）
- * + 一次额外爆炸（1331024，440%/0 失衡）；两者**嵌在强特动作内**（actionTime=0，不另占前台）。
- * 用户 2026-11-02 判据（倍率表分析）：增量 (176%+440%)/1.467s ≈ 420%/s，加异放 ≈ 570%/s > 队伍主C平A
- * 215–450%/s ⇒ **必要招式** ⇒ 建模（默认按满 4 圈 = 最优操作）。
+ * v2 长按强特（堇花悼亡）附加段（3.4.2+20052336）：长按进入[淑女突刺]——至多 4 圈连续攻击（1331022，44%/圈、
+ * 秽盾 2000 ⇒ 派生 0.2s/圈）+ 一次额外爆炸（1331024，440%、秽盾 0 ⇒ 0s）。
+ * 用户 2026-11-02 判据：四圈 = 44%/0.2s = 220%/s ≈ 薇薇安平A 227.7%/s ⇒ **平A级 ⇒ 不建模**；
+ * 额外爆炸 + 其触发的异放（0.5×落羽生花 = 220%）**不耗前台时间 ⇒ 白嫖**，次数上限 = 强特次数 ⇒ 建模。
+ * 注意「耗时」是**派生**出来的（scripts/lib/nanoka-move-rows.mjs#actionTime，秽盾/10000 − 类型加成），不是我手填。
  */
 export const VIVIAN_ENHANCED_CONTINUOUS_MOVE_ID = '1331022'
 export const VIVIAN_ENHANCED_EXPLOSION_MOVE_ID = '1331024'
@@ -98,7 +99,7 @@ export const VIVIAN_ENHANCED_CONTINUOUS_ROUNDS = 4
  */
 export const VIVIAN_ENHANCED_EXPLOSION_RELEASE_PCT = 220
 
-// @fact agent:1331/v2长按强特附加段 口径: v2 3.4.2+20052336 长按强特（堇花悼亡）新增段 —— 淑女突刺连续攻击 1331022（44%/33% 失衡每圈，至多 4 圈）+ 额外爆炸 1331024（440%、0 失衡）+ 每次爆炸命中异常目标触发一次[异放]（0.5×落羽生花 440% = 220% 以太直接伤害）；两者嵌在强特 1331010 的 1.467s 动作内（actionTime=0、不另占前台），默认按满 4 圈（最优操作）。必要条件依据 = 用户 2026-11-02 判据：增量 (176%+440%+220%)/1.467s ≈ 570%/s > 队伍主C平A 215–450%/s ⇒ 必要招式 | 据 data/raw/nanoka_1331_v2_zh_3.4.2+20052336.json skill.special param + 用户口径@2026-11-02 | 验 src/mechanics/__tests__/vivian.test.ts | 锚 src/mechanics/agents/vivian.ts#VIVIAN_ENHANCED_EXPLOSION_RELEASE_PCT | 信 确认
+// @fact agent:1331/v2长按强特附加段 口径: v2 3.4.2+20052336 长按强特（堇花悼亡）新增段：① 淑女突刺连续攻击 1331022（44%/圈、秽盾 2000 ⇒ 派生 0.2s/圈）= 220%/s ≈ 薇薇安平A 227.7%/s ⇒ **平A级，不建模**；② 额外爆炸 1331024（440%、秽盾 0 ⇒ 0s）+ 其触发的[异放]（0.5×落羽生花 440% = 220% 以太伤害）**不耗前台时间 ⇒ 白嫖，只受次数限制（= 强特次数）** ⇒ 建模。判据 = 用户 2026-11-02「如果是平a级别那就不需要建模；真不耗前台时间就是白嫖，dps 短时间无穷，只是次数有限制」 | 据 data/raw/nanoka_1331_v2_zh_3.4.2+20052336.json skill.special param + scripts/lib/nanoka-move-rows.mjs#actionTime 派生耗时 + 用户口径@2026-11-02 | 验 src/mechanics/__tests__/vivian.test.ts | 锚 src/mechanics/agents/vivian.ts#VIVIAN_ENHANCED_EXPLOSION_RELEASE_PCT | 信 确认
 // ⟳复核: 正式包落地后核对 1331022/1331024 倍率、「相当于落羽生花50%」的读法（现按 0.5×440%=220% 直接伤害；异放通道读法在异常暴击/抗性区略有差异）、以及长按是否真的零额外时间 | 到期 2027-03-31
 /** 影画6：悬落消耗全部护羽的特殊异放，比例最多提高至 5 倍（5 点护羽） */
 export const VIVIAN_C6_RELEASE_MAX_MULT = 5
@@ -247,18 +248,12 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
 
 function buildVivianExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
-  // v2 长按强特（堇花悼亡）附加段：淑女突刺至多 4 圈连续攻击 + 一次额外爆炸。
-  // 倍率走 catalog 行（1331022 / 1331024），actionTime=0——**嵌在强特 1331010 的 1.467s 动作内**，不另占前台。
+  // v2 长按强特（堇花悼亡）附加段：只物化**白嫖的额外爆炸**（1331024，秽盾 0 ⇒ 0s）。
+  // ⚠ 淑女突刺连续攻击（1331022）**不建模**：派生 0.2s/圈（秽盾 2000）⇒ 44%/0.2s = 220%/s，
+  // 与薇薇安平A秒均 227.7%/s 同级（用户 2026-11-02 判据「如果是平a级别，那就不需要建模」）；
+  // 不物化等价于把那几段时间留给平A池（收益与耗时都≈平A）。
   const exTotal = Math.max(0, Math.floor(state.exSpecialCount))
   if (exTotal > 0) {
-    executions.push(moduleExecRow({
-      moveId: VIVIAN_ENHANCED_CONTINUOUS_MOVE_ID,
-      moveName: '强化特殊技：堇花悼亡·连续攻击（淑女突刺至多4圈）',
-      category: 'special',
-      element: 'ether',
-      count: exTotal * VIVIAN_ENHANCED_CONTINUOUS_ROUNDS,
-      ...RECOVERY_OFF,
-    }))
     executions.push(moduleExecRow({
       moveId: VIVIAN_ENHANCED_EXPLOSION_MOVE_ID,
       moveName: '强化特殊技：堇花悼亡·额外爆炸',
