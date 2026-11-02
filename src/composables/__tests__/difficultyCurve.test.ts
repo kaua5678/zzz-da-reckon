@@ -293,6 +293,39 @@ describe('关键次数差分（用户口径：难度上升到关键变化要标�
     expect(s.jumps[0]!.changes.map(c => c.label)).toEqual(['大招'])
     expect(s.jumps[1]!.changes.map(c => c.label)).toEqual(['紊乱'])
   })
+
+  it('★ T183 双向差分：变少进 downChanges、x 回落进 back', () => {
+    /**
+     * 用户 2026-11-02：「关键变化可以分为多列，**多的少的分别说**。**有回退之类的也要说明**。」
+     * ⇒ 数据层给出双向差分（`downChanges`）+ 回退标记（`back`）；
+     * **图上标注仍只取变多**（`majorChanges`），面板行 = 有 major **变多** 的档
+     * （纯变少的档不算「跃迁」⇒ 不上图也不进面板——这是有意口径，不是漏项）。
+     */
+    const rows: DifficultyCurveRow[] = [mkRow('a', 'A', mkLadder(
+      [[0, 100], [3, 200], [2, 260]],   // 第 3 点 x 回落（3 → 2）= 白拿的优化
+      ['baseline', 'progress', 'max'],
+      [
+        { 大招: 7, 紊乱: 1 },
+        { 大招: 8, 紊乱: 1 },          // 大招 +1（major up）
+        { 大招: 8, 紊乱: 0 },          // 紊乱 −1（major down；这一步没有任何变多）
+      ],
+    ))]
+    const s = buildCurveChart(rows, 100).series[0]!
+    expect(s.points[0]!.downChanges).toEqual([])
+    expect(s.points[0]!.back, '首点不算回退').toBe(false)
+    // 第 2 点：只有变多
+    expect(s.points[1]!.changes.map(c => c.label)).toEqual(['大招'])
+    expect(s.points[1]!.downChanges).toEqual([])
+    expect(s.points[1]!.back).toBe(false)
+    // 第 3 点：只有变少 + x 回落
+    expect(s.points[2]!.changes, '变少不进「变多」').toEqual([])
+    expect(s.points[2]!.downChanges.map(c => [c.label, c.dir, c.delta, c.major]))
+      .toEqual([['紊乱', 'down', -1, true]])
+    expect(s.points[2]!.back, 'x 回落 = 回退（图上那段画虚线）').toBe(true)
+    // 图上标注仍只认变多 ⇒ 纯变少的档不进 `jumps`（面板行同源）
+    expect(majorChanges(s.points[2]!.downChanges), 'majorChanges 只取变多').toEqual([])
+    expect(s.jumps.map(j => j.cost)).toEqual([3])
+  })
 })
 
 describe('操作难度自动算（x 轴自变量 = 交互值 + 时间占用，用户 2026-09-10 口径）', () => {

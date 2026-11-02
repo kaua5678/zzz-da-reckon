@@ -38,7 +38,8 @@
  * @fact engine:难度曲线/x轴 口径: x = **自动算的操作难度绝对值** = `computeDifficulty`(当前点实打交互次数, 时间压力秒, 用户权重) —— 与散点页横轴同一函数同一单位（故可直接对齐比较）；**时间压力 = 硬溢出 overflowSeconds + 合轴抵扣 saved，一笔秒数只挂一个权重**；各队起点不齐是特性，且 x 不保证单调 | 据 用户@2026-09-10·口径合并@2026-09-11·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07·复核@2026-10-12（T140c 改关键点结构，x 口径不变） | 验 difficultyCurve.test.ts::集成：x 轴 = 实测操作难度 | 锚 src/composables/difficultyCurve.ts#measureOperationalDifficulty | 信 确认
  * @fact engine:难度曲线/伤害归因 口径: 每点伤害按来源分组（直伤行 = 招式名、异常行 = 行 `type`，同名跨槽位合并），Σ 分组 ≡ 该点总伤害 ⇒ 归因精确；相邻点差分 = 正贡献 top + 被挤掉（最负在前）+ 其余，三段合计 ≡ 总 Δ | 据 实测@2026-09-10·复核@2026-09-25·复核@2026-09-30·复核@2026-10-12 | 验 difficultyCurve.test.ts::伤害归因 | 锚 src/composables/difficultyCurve.ts#attributeDmgChanges | 信 确认
  * @fact engine:难度曲线/交互项截断缩 口径: x 的交互项按**装配期截断存活率**缩到「180s 里真打的次数」——每槽因子 = `convergence.truncationBySlot` 的 kept/requested（引擎截断是整槽按比例缩，故同比例缩该槽交互）；并先按引擎非轴降配 `interactionScale`（`DOWNSCALED_INTERACTION_FIELDS`，`round(raw×scale)`）缩；截断因子与降配因子都不动时为 1 ⇒ 只有带截断**或**处于非轴降配的队数值会动。近似：按槽缩而没按交互类型精确缩（般岳 金身/双反 共用「冲霄」一行），精确版随 A 项（截断回灌资源循环）落地 | 据 用户@2026-09-11·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07·复核@2026-10-12 | 验 difficultyCurve.test.ts::交互项按装配期截断存活率缩 + liveInteractionsDownscale.test.ts | 锚 src/composables/liveInteractions.ts#liveInteractions | 信 确认
- * @fact engine:难度曲线/关键次数标注 口径: 图上标注与「关键变化」面板只显示 Δ≥1 的次数跃迁（「多了一次」），Δ<1 的小数级微调只进 tooltip；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30·复核@2026-10-12 | 验 difficultyCurve.test.ts::只认「变多」 | 锚 src/composables/difficultyCurve.ts#diffKeyCounts | 信 确认
+ * @fact engine:难度曲线/关键次数标注 口径: **图上标注只取「变多」的 Δ≥1 次数跃迁**（`majorChanges`）；**「关键变化」面板 T183 起按方向分列**——「变多」/「变少」两列（`diffKeyCountsBoth`，`major` = |Δ|≥1）+「时间/备注」列放**秒量**（合轴节省，单位 s）与**难度回落**标注（`CurveDatum.back`）；Δ<1 的小数级微调只进 tooltip/单元格 title；关键次数 = 队伍级 7 项（大招/强特/连携/失衡/异常触发/紊乱/乱流，取自引擎结果字段）+ 角色专属「N 次」行（模块 `resourceSections` 自报，零角色硬编码） | 据 用户@2026-09-10·复核@2026-10-12·**改口径@2026-11-02（「交互次数写的太乱」「多的少的分别说」「有回退之类的也要说明」）** | 验 difficultyCurve.test.ts::只认「变多」 + difficultyCurve.test.ts::★ T183 双向差分：变少进 downChanges、x 回落进 back | 锚 src/composables/difficultyCurve.ts#diffKeyCountsBoth | 信 确认
+ * ⟳复核: 面板列布局再改（合并变少列 / 秒量回并次数列）时重核本节口径是否仍描述实现 | 到期 2027-06-30
  * @fact engine:难度曲线/全关基线 口径: 「全关」= 散点页口径（`applyTeamToStore` 预设静态权重/交互 + `clearDifficultyLevers` + timeWeightStrategy=static），**不是** `resetDifficultyGoals` 的 agent 默认权重 ⇒ 展示层必须用 `opts.base` 覆盖；不含 buff/加金/自动下位，故曲线起点 ≠ 散点页的点（页面已注明） | 据 用户@2026-09-10·复核@2026-09-25·复核@2026-09-30·复核@2026-10-07·复核@2026-10-12 | 验 difficultyCurve.test.ts::computeDifficultyCurves | 锚 src/composables/difficultyCurve.ts#computeDifficultyCurves | 信 确认
  * @fact engine:难度曲线/轴上限 口径: 轴上限必须覆盖**所有要画的点**——`costMax` 取 `max(所有点的 x)`、`ratioMax` 取 `max(所有点的 ratio)`（散点图 `teamCompareScatter#xMax` 同口径）。**不得**用「末点 x」（`totalCost`，那是表里「终点难度」列的语义）：x 不保证单调（见上条），末点可能小于中途点 ⇒ 那些点 `cx = padL + (x/costMax)*plotW` 越出绘图区被 SVG 裁掉 | 据 实测@2026-10-12·用户报「难度曲线右边看不见」 | 验 difficultyCurve.test.ts::★ x 轴上限覆盖**所有点** + difficultyCurve.test.ts::★ 不变量：任意点集下 | 锚 src/composables/difficultyCurve.ts#buildCurveChart | 信 确认
  * ⟳复核: 若新增「按某维度截取/聚合曲线」的图型或改用对数轴，重核「轴上限覆盖所有点」是否仍成立（尤其筛选后只剩 1 队时——那是越界最严重的场景） | 到期 2027-04-30
@@ -1175,11 +1176,19 @@ export function captureKeyCounts(calc: Calc): Record<string, number> {
 export interface KeyCountChange {
   /** 可读标签（= 快照键） */
   label: string
+  /**
+   * 方向（T183）：`'up'` = 变多、`'down'` = **变少**。
+   *
+   * 用户 2026-11-02：「关键变化可以分为多列，**多的少的分别说**。有回退之类的也要说明。」
+   * ⇒ 「关键变化」面板**变多/变少分列**；**图上标注仍只取变多**（`majorChanges`），
+   * 免得把抖动当成果。
+   */
+  dir: 'up' | 'down'
   from: number
   to: number
   delta: number
   /**
-   * **「多了一次」** = `delta ≥ 1`：玩家确实多拿到一次离散动作/事件（大招/强特/失衡/紊乱…）。
+   * **「多了一次」** = `delta ≥ 1`（变少侧对称取 `|delta| ≥ 1`，T183）：玩家确实多/少拿到一次离散动作/事件（大招/强特/失衡/紊乱…）。
    * 引擎的次数常带小数（覆盖率折算/外层不动点），+0.09 这种微调**不算**关键变化 ⇒
    * 图上的标注与「关键变化」面板只显示 `major`，原始 from→to 仍在 tooltip / 数据里。
    */
@@ -1200,14 +1209,37 @@ export function diffKeyCounts(
     const from = prev[label]
     if (from === undefined) continue
     const delta = to - from
-    if (delta > 1e-6) out.push({ label, from, to, delta, major: delta >= 1 - 1e-6 })
+    if (delta > 1e-6) out.push({ label, from, to, delta, major: delta >= 1 - 1e-6, dir: 'up' })
   }
   return out
 }
 
-/** 只留「多了一次」量级的跃迁（图标注 / 关键变化面板用） */
+/**
+ * **双向**差分（T183）：变多与变少都出来（`dir` 标明方向；`major` = `|Δ| ≥ 1`）。
+ *
+ * 与 `diffKeyCounts` 的分工：那个只给「变多」（**图上标注**与 tooltip 的既有口径，逐位不变）；
+ * 本函数给「关键变化」面板 —— 用户 2026-11-02「多的少的分别说…有回退之类的也要说明」。
+ * 缺席（`undefined`）的项不报：键集以两边并集为准但只报**两边都有**的项（新出现的键没有「从多少变来」）。
+ */
+export function diffKeyCountsBoth(
+  prev: Record<string, number> | undefined,
+  next: Record<string, number> | undefined,
+): KeyCountChange[] {
+  if (!prev || !next) return []
+  const out: KeyCountChange[] = []
+  for (const [label, to] of Object.entries(next)) {
+    const from = prev[label]
+    if (from === undefined) continue
+    const delta = to - from
+    if (Math.abs(delta) <= 1e-6) continue
+    out.push({ label, from, to, delta, major: Math.abs(delta) >= 1 - 1e-6, dir: delta > 0 ? 'up' : 'down' })
+  }
+  return out
+}
+
+/** 只留「多了一次」量级的跃迁（**图上标注**用；面板分列见 `diffKeyCountsBoth`） */
 export function majorChanges(changes: KeyCountChange[]): KeyCountChange[] {
-  return changes.filter(c => c.major)
+  return changes.filter(c => c.major && c.dir === 'up')
 }
 
 /**
@@ -1294,8 +1326,21 @@ export interface CurveDatum {
    * 缺失 = 该档没采交互量快照（`capture` 未给）——**不写 0**（0 是测到 0）。
    */
   interactions?: { filled: number; played: number }
-  /** 相对上一点**变多**的关键次数（空 = 这一点没有次数跃迁） */
+  /** 相对上一点**变多**的关键次数（空 = 这一点没有次数跃迁）；**图上标注只取它** */
   changes: KeyCountChange[]
+  /**
+   * 相对上一点**变少**的关键次数（`major` = |Δ|≥1，T183）。
+   *
+   * 用户 2026-11-02：「关键变化可以分为多列，**多的少的分别说**。有回退之类的也要说明。」
+   * ⇒ 面板「变少」列 = 它 ∩ `major`；**图上不标**（免得把抖动当成果）。
+   */
+  downChanges: KeyCountChange[]
+  /**
+   * 这一点相对上一点**难度回落**（x 变小；`back` = 白拿的优化，图上那一段画虚线）。
+   * 面板据它在「备注」列说明 —— 用户 2026-11-02「有回退之类的也要说明」。
+   * 首点恒 `false`。
+   */
+  back: boolean
   /**
    * 相对上一点的**伤害归因**（按 Δ 降序，正贡献在前、被挤掉的在后）；
    * Σ `delta` ≡ 本点伤害 − 上一点伤害（伤害池按来源分组求和 == 总伤害，故精确）。
@@ -1605,6 +1650,8 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
         ? { interactions: { filled: p.interactionsFilled, played: p.interactionsPlayed } }
         : {}),
       changes: diffKeyCounts(r.ladder.points[i - 1]?.counts, p.counts),
+      downChanges: diffKeyCountsBoth(r.ladder.points[i - 1]?.counts, p.counts).filter(c => c.dir === 'down'),
+      back: i > 0 && p.x < (r.ladder.points[i - 1]?.x ?? p.x) - 1e-9,
       dmgChanges: diffDmgBySource(r.ladder.points[i - 1]?.dmgBySource, p.dmgBySource),
       hint: truncationHintAt(r.ladder.points, i),
       ...(p.stunProgress ? { stunProgress: p.stunProgress } : {}),

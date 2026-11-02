@@ -851,6 +851,11 @@ export interface LadderResult {
    * 诊断也要能回答「这个天花板是哪条入口爬出来的、另一条差多少」。
    */
   maxArms?: Array<{ entry: MaxEntry; dmg: number }>
+  /**
+   * ③「台阶」**只在吸收拉满时才出现 ⇒ 已并入 ④**（T183，用户「可以把 23 合并」）。
+   * 缺省 = 没有这回事（③ 缺失的原因是「区间内完整失衡台阶不存在」，不是合并）。
+   */
+  progressMergedIntoMax?: boolean
   /** ② 点是否缺失（本队轴在任何难度下都不成立）——UI 据此在 ③ 位置如实标注 */
   axisPointMissing: boolean
   /**
@@ -945,6 +950,47 @@ export interface LadderOpts {
    * 见 `LadderPoint.noAxis`。成本 = 每点一次完整求值（点 1~4 ⇒ 每队多 1~4 次）。
    */
   noAxisOf?: (ctx: LadderCtx) => { dmg: number; cost: number }
+}
+
+/**
+ * ③「台阶」判据的**唯一可数量 = 完整失衡窗口数**（T183，用户 2026-11-02）。
+ *
+ * 用户逐字：「第三个重大进步感觉太模糊了…比如**完整 3 失衡到完整 4 失衡**…如果**整个交互只让失衡
+ * 变了 1 次**，那也相当于第三个找不到。」
+ *
+ * ## 为什么必须换掉旧判据（实测病根：把「秒」当「次」）
+ *
+ * 旧判据 = 「`counts` 里**任一项** Δ≥1」——而 `counts` 里**混着「合轴节省」（单位是秒）**。
+ * 实测 `auto-1461-1521-1491`（页面口径）：② → ③ 那一步的全部变化只有
+ * **「合轴节省 +1.32s」**（次数一个没动），台阶因此照落 ⇒ 用户看到的就是「模糊的第三点」。
+ * 同一队的真台阶（完整失衡 2→3）其实出现在 ④。
+ *
+ * ## 读数口径
+ *
+ * 优先读连续失衡的**完整窗数**（`continuousStunProgress.completeWindows`，与页面「已完整 N 次」
+ * 同一读数）；调用方没采它时回落队伍级「失衡」次数（`stunCount`）。
+ * ⚠ 两个读数都缺（调用方没给 `capture`）⇒ **判不出台阶** ⇒ ③ 如实不出（不再"默认算成立"）。
+ *
+ * @fact engine:难度曲线/③台阶 口径: ③ 的台阶判据 = **完整失衡窗口数 +1**（优先 `continuousStunProgress.completeWindows`，缺则回落队伍级「失衡」次数）；**秒量（「合轴节省」）不参与台阶判定**——旧判据把它当次数，实测 `auto-1461-1521-1491` 的 ③ 就是被「合轴节省 +1.32s」单独触发的；台阶若只在吸收拉满时出现 ⇒ 并入 ④（`progressMergedIntoMax`）；读数缺（调用方没给 capture）⇒ 如实不落点 | 据 用户@2026-11-02（「第三个重大进步太模糊了…比如完整 3 失衡到完整 4 失衡…如果整个交互只让失衡变了 1 次，那也相当于第三个找不到」） | 验 src/composables/__tests__/difficultyLadder.test.ts::★ 回归：② 缺失时 ③ 必须把**交互步**算作候选 | 锚 src/composables/difficultyLadder.ts#stunWindowsOf | 信 确认
+ * ⟳复核: 台阶量改口径（改用别的可数量 / 同时要求多个台阶 / 残缺窗也算）时重核「①②③④ 点名序列 + 合并规则」并复测全库 avgPoints | 到期 2027-06-30
+ */
+const STUN_WINDOW_LABEL = '失衡'
+function stunWindowsOf(
+  snap: { counts?: Record<string, number>; stunProgress?: ContinuousStunProgress } | undefined,
+): number | undefined {
+  if (!snap) return undefined
+  const cw = snap.stunProgress?.completeWindows
+  return cw === undefined ? snap.counts?.[STUN_WINDOW_LABEL] : cw
+}
+
+/**
+ * ③ 的**台阶候选/基准点**（T183 就地起名）：点位状态 + 它的关键次数读数 + 完整失衡窗口读数。
+ * 两个字段都要带上：次数读数在「没采到连续失衡进度」时是台阶判据的回落源（见 `stunWindowsOf`）。
+ */
+interface StepCandidate {
+  st: PointState
+  counts?: Record<string, number>
+  windows?: number
 }
 
 /** 一个「点位」的完整现场（写盘前先试算，够好才落地） */
@@ -1106,7 +1152,9 @@ export function climbDifficultyLadder(
   applyInteractionKnob(ctx, 'zero')
   const baseState = readState(ctx, { interactions: 'zero', absorb: 0 })
   /** ① 的关键次数快照（③ 的跃迁基准；与 `land` 内的 `snap()` 同源同刻） */
-  const baseCounts = capture?.(ctx)?.counts
+  const baseSnap = capture?.(ctx)
+  const baseCounts = baseSnap?.counts
+  const baseWindows = stunWindowsOf(baseSnap)
   const basePt = land('baseline', baseState)
   const points: LadderPoint[] = basePt ? [basePt] : []
   /**
@@ -1133,6 +1181,8 @@ export function climbDifficultyLadder(
    */
   const scanSteps = Math.max(1, Math.trunc(opts.axisScanSteps ?? 20))
   let axisPointMissing = false
+  /** ③ 的台阶只在吸收拉满时出现 ⇒ 已并入 ④（T183；UI 可据此说明「③ 并入 ④」） */
+  let progressMergedIntoMax = false
   let axisPoint: LadderPoint | null = null
   /**
    * ③ 的**扫描基准点**（② 存在时 = ②；② 缺失时 = 「① 之后路径上的下一点」）。
@@ -1142,7 +1192,7 @@ export function climbDifficultyLadder(
    * 若 ③ 硬依赖 ②，非轴队就只剩 ①④ 两点 ⇒ 违反卡 §4。故 ③ 的基准取「路径上 ② 本该在的位置」：
    * 交互已取最优（joint）、吸收仍为 0。对非轴队这就是**① 到 ④ 之间的唯一天然中间态**。
    */
-  let progressBase: { st: PointState; counts?: Record<string, number> } | null = null
+  let progressBase: StepCandidate | null = null
   /** ③ 的扫描起点吸收率（= 基准点的吸收率） */
   let progressFrom = 0
   /**
@@ -1156,7 +1206,8 @@ export function climbDifficultyLadder(
    * **S1 交互步带跃迁 11 队 / S2 吸收步带跃迁 0 队**，而其中 34 队在 ①→④ 之间确实有跃迁
    * （`.zc/perf/T140cWhy2.perf.ts`）⇒ 这些队的 ③ 本该存在。
    */
-  let preJoint: { st: PointState; counts?: Record<string, number> } | null = null
+  /** ③ 的「台阶」读数随候选带上（T183：台阶 = 完整失衡窗口数 +1，见 `stunWindowsOf`） */
+  let preJoint: StepCandidate | null = null
   {
     /**
      * **②③④ 的搜索起点 = 角色声明的交互基准**（`applyRoleInteractionBaseline`，2026-10-15 新增）。
@@ -1178,8 +1229,8 @@ export function climbDifficultyLadder(
      * 而吸收率是**兜底**手段 ⇒ 先把最优分配做掉，再问"还差多少兜底"。
      */
     const jointOnly = readState(ctx, { interactions: 'joint', absorb: 0 })
-    const jointCounts = capture?.(ctx)?.counts
-    preJoint = { st: jointOnly, counts: jointCounts }
+    const jointSnap = capture?.(ctx)
+    preJoint = { st: jointOnly, counts: jointSnap?.counts, windows: stunWindowsOf(jointSnap) }
     /**
      * ★ 轴修扫（2026-10-25）：13b9f584「交互默认全 0」之后，② 的轴常要靠角色特色交互才能立起来
      * （般岳：金身 blockCount 产嗔火 → 怒相 → 山威）。逐槽阶梯是坐标上升、只认伤害/跳过数的单调改善，
@@ -1211,7 +1262,10 @@ export function climbDifficultyLadder(
       }
     }
     /** 命中即用修扫后的现场继续走 ② / 吸收网格（未命中则 jointNow === jointOnly，逐位同旧） */
-    if (jointNow !== jointOnly) preJoint = { st: jointNow, counts: capture?.(ctx)?.counts }
+    if (jointNow !== jointOnly) {
+      const jointFixSnap = capture?.(ctx)
+      preJoint = { st: jointNow, counts: jointFixSnap?.counts, windows: stunWindowsOf(jointFixSnap) }
+    }
     if (axisStands(jointNow.axis)) {
       // 交互最优后轴**本就成立** ⇒ ② = (joint, 0)。
       // 用户 §4：合轴「拉满」与「轴成立」冲突时**优先让轴成立** ⇒ 这里不为好看去抬吸收率（0 已经够）。
@@ -1231,7 +1285,12 @@ export function climbDifficultyLadder(
     }
     if (axisPoint) {
       points.push(axisPoint)
-      progressBase = { st: { dmg: axisPoint.dmg, knobs: axisPoint.knobs, axis: axisPoint.axis }, counts: axisPoint.counts }
+      progressBase = {
+        st: { dmg: axisPoint.dmg, knobs: axisPoint.knobs, axis: axisPoint.axis },
+        counts: axisPoint.counts,
+        // ② 的落点自带 `stunProgress`（`captureLadderSnapshot` 采）⇒ 直接构造读数源，不额外求值
+        windows: stunWindowsOf({ counts: axisPoint.counts, stunProgress: axisPoint.stunProgress }),
+      }
     } else {
       /**
        * ② 缺失（非轴队 / 轴在任何难度下都不成立）⇒ ③ 以 **① 的交互状态**为基准，
@@ -1248,7 +1307,11 @@ export function climbDifficultyLadder(
        * ⚠ **不能用 `points[0].counts`**：① 可能被截断（轴要求未满足）⇒ `points` 为空 ⇒ 崩。
        * ① 的关键次数快照在截断与否下都存在（`snap()` 是纯读），故单独采一次。
        */
-      progressBase = { st: readState(ctx, { interactions: 'zero', absorb: 0 }), counts: baseCounts }
+      progressBase = {
+        st: readState(ctx, { interactions: 'zero', absorb: 0 }),
+        counts: baseCounts,
+        windows: baseWindows,
+      }
     }
     /** ③ 的扫描起点吸收率（= 基准点的吸收率；② 存在时就是它的落点） */
     progressFrom = progressBase.st.knobs.absorb
@@ -1270,21 +1333,22 @@ export function climbDifficultyLadder(
    */
   let progressSnap: LadderMutSnap | null = null
   if (progressBase) {
-    const baseCounts = progressBase.counts
-    /** 「跃迁」判据：基准点 → 候选点之间出现 ≥1 次离散动作增量（口径见 difficultyCurve#diffKeyCounts） */
-    const jumpedFrom = (from: Record<string, number> | undefined, to: Record<string, number> | undefined): boolean => {
-      if (from === undefined || to === undefined) return true
-      for (const [k, v] of Object.entries(to)) {
-        const prev = from[k]
-        if (prev !== undefined && v - prev >= 1 - 1e-6) return true
-      }
-      return false
-    }
+    /**
+     * **「台阶」判据（T183）= 完整失衡窗口数 +1**（用户 2026-11-02 口径，见 `stunWindowsOf` 头注释）。
+     *
+     * 与旧判据（`counts` 里任一项 Δ≥1）的分水岭：旧判据把**秒**当**次** —— 实测
+     * `auto-1461-1521-1491` 的 ③ 就是被「合轴节省 +1.32s」**单独**触发的（次数一个没动），
+     * 这正是用户说的「第三个重大进步太模糊」。
+     * ⚠ 读数缺（调用方没给 `capture`）⇒ 判不出台阶 ⇒ **如实不落点**（旧行为是「默认算成立」）。
+     */
+    const stunStepUp = (windows: number | undefined): boolean =>
+      progressBase.windows !== undefined && windows !== undefined
+      && windows - progressBase.windows >= 1 - 1e-6
     // ② 缺失 ⇒ 先试「交互步」（`preJoint`）：它是非轴队 ①→④ 之间唯一带跃迁的候选
     let landed = false
     if (!axisPoint && preJoint) {
       const st = preJoint.st
-      if (st.dmg - progressBase.st.dmg >= acceptAt && jumpedFrom(baseCounts, preJoint.counts)) {
+      if (st.dmg - progressBase.st.dmg >= acceptAt && stunStepUp(preJoint.windows)) {
         // 现场切到 joint（`applyInteractionKnob` 幂等：joint 写下的值再跑一次结果相同）
         applyInteractionKnob(ctx, 'joint')
         const pt = land('progress', st)
@@ -1298,9 +1362,15 @@ export function climbDifficultyLadder(
         const st = readState(ctx, { interactions: 'joint', absorb: r })
         if (st.dmg - progressBase.st.dmg < acceptAt) return false
         const s = capture?.(ctx)
-        if (!jumpedFrom(baseCounts, s?.counts)) return false
+        if (!stunStepUp(stunWindowsOf(s))) return false
         const pt = land('progress', st) // 命中即落点
         if (!pt) return false // 轴要求未满足 ⇒ 这一点不出数（继续往后扫，别停）
+        /**
+         * **台阶只在「吸收拉满」时才出现 ⇒ 与 ④ 重合 ⇒ 合并**（T183，用户「可以把 23 合并」）：
+         * 这一档的旋钮组合已经等于 ④（吸收 = cap），再出一个 ③ 只是同一点的重复读数。
+         * 如实留痕在 `progressMergedIntoMax`，UI 可据此说明「③ 已并入 ④」。
+         */
+        if (r >= cap - 1e-9) { progressMergedIntoMax = true; return true }
         points.push(pt)
         progressSnap = snapshot(ctx) // ③ 落点现场（含它自己的吸收率）——④ 的第二条入口用
         return true
@@ -1395,6 +1465,12 @@ export function climbDifficultyLadder(
    *
    * 成本：多一次 `slotLadder`（≤96 次全队求值，实际早停），且**只在 ③ 存在时付**。
    *
+   * ⚠ **否决「用穷举换准确」（用户 2026-11-02）**：用户逐字「这里我们肯定要考虑**计算成本和计算可信度**
+   * **综合效果**，**优化算法达成帕累托最优是长久目标**，你想用穷举肯定给未来的计算成本埋下风险」
+   * ⇒ 方向 = **在成本预算内把搜索做得更聪明**（候选：`interactionSurface` 已有的帕累托梯度线 /
+   * 上界包络那套），**不是**再加臂、再加网格。上面这条两臂取高是「同一旋钮组合的两次起点」——
+   * 成本已知（+1 次 slotLadder），不是穷举。
+   *
    * @fact engine:难度曲线/④口径 口径: ④ = **两条入口取高** —— 臂 A 从 ① 现场重来、臂 B 从 ③ 落点重来，两条都是「吸收拉满 + 逐槽交互最优（slotLadder）」的同一旋钮组合，只差搜索原点（坐标上升起点决定落点）⇒ 单臂会丢 ③ 的更好盆地（实测 auto-1461-1031-1521：③ 68.53M → 单臂 ④ 66.39M < ③；双臂 ④ 73.33M）；胜出入口 = `LadderResult.maxEntry`、各臂伤害 = `maxArms`，展示层复现 ④ 现场必须按入口选 | 据 用户@2026-11-02（「最高难度被看的最多，他要算准确…一个队伍应当这时候最强了」） | 验 src/composables/__tests__/difficultyLadder.test.ts::★ T182 | 锚 src/composables/difficultyLadder.ts#climbDifficultyLadder | 信 确认
    * ⟳复核: ④ 的旋钮组合再变（新增第三臂 / 换 `slotLadder` 的接受门 / 出现第五个点名点）时，重核「两条入口取高」是否仍覆盖全部盆地，且 `maxArms` 的两臂仍是全部候选 | 到期 2027-06-30
    */
@@ -1452,6 +1528,7 @@ export function climbDifficultyLadder(
     ...(maxArms.length > 0
       ? { maxArms: [...maxArms].sort((a, b) => b.dmg - a.dmg).map(a => ({ entry: a.entry, dmg: a.dmg })) }
       : {}),
+    ...(progressMergedIntoMax ? { progressMergedIntoMax: true } : {}),
   }
 }
 

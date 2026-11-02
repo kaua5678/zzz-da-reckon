@@ -775,10 +775,11 @@
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="detail-card">
       <template #header>关键变化（{{ curveJumpRows.length }} 处跃迁）</template>
       <div class="compare-note">
-        只列<b>「多了一次」量级</b>的跃迁（Δ ≥ 1）：多放一次大招/强特/连携、多一次失衡/紊乱/乱流，
-        以及角色专属次数（如克拉蕾·毁伤触发、希希芙·蛇影层数来源）。引擎次数常带小数（覆盖率折算、外层不动点），
-        +0.1 这类微调不列——鼠标放到曲线点上，tooltip 里能看到该档的<b>全部</b>增量。
-        括号里的「终结技系 Δ」是<b>同档同类伤害行一起变了多少，不是因果</b>（伤害同时受权重/易伤/覆盖率影响）；
+        只列<b>Δ ≥ 1 量级</b>的跃迁，并按<b>方向分列</b>：<b>「变多」</b>= 多放一次大招/强特/连携、多一次失衡/紊乱/乱流、
+        角色专属次数（如克拉蕾·毁伤触发、希希芙·蛇影层数来源）；<b>「变少」</b>= 同一步被挤掉的次数（多在交互重分配时出现）。
+        次数一律<b>整数化</b>（小数级细节悬停单元格看原始区间；+0.1 这类微调不列）；<b>「时间 / 备注」</b>列单独放
+        <b>秒量</b>（合轴节省，单位 s）与<b>难度回落</b>标注（回退 = 白拿的优化，图上那段画虚线）。
+        曲线上更细的每档明细，鼠标放到曲线点上可在 tooltip 里看<b>全部</b>增量。
         「伤害归因（相对上一档）」列 = <b>本档伤害 − 上一档伤害</b>的精确拆分：先列涨得最多的来源，「挤掉」= 跌得最多的，
         「其余」= 剩下全部，三段合计 ≡「伤害」列下方的 Δ。
         <b>「挤掉」来自交互重分配，不是合轴吸收</b>：两个旋钮要分开看——
@@ -788,12 +789,14 @@
         被砍掉的是性价比低的那部分（实测大招/紊乱各减，同时强特/角色专属资源增）。
         所以每一点都是<b>有涨有跌、净额为正</b>。
       </div>
-      <ChartTable :columns="curveJumpTableColumns" table-class="detail-table chart-table-nowrap" align="right" dense>
+      <ChartTable :columns="curveJumpTableColumns" table-class="detail-table chart-table-nowrap chart-table-jumps" align="right" dense>
             <tr v-for="r in curveJumpRows" :key="r.key">
               <td class="td-team" :style="{ color: r.color }">{{ r.team }}</td>
               <td>{{ fmt(r.cost, 0) }} 点</td>
               <td class="td-detail">{{ pointLabel(r.point) }}</td>
-              <td class="td-detail"><div class="cell-clamp">{{ r.text }}</div></td>
+              <td class="td-detail" :title="r.upTitle"><div class="cell-clamp">{{ r.upText }}</div></td>
+              <td class="td-detail" :title="r.downTitle"><div class="cell-clamp curve-neg">{{ r.downText }}</div></td>
+              <td class="td-detail"><div class="cell-clamp">{{ r.noteText }}</div></td>
               <td>
                 {{ compact(r.dmg) }}
                 <div class="td-standard">{{ signedDmg(r.attr.totalDelta) }}（{{ fmt(r.ratio, 1) }}%）</div>
@@ -809,7 +812,7 @@
               </td>
             </tr>
             <tr v-if="curveJumpRows.length === 0">
-              <td colspan="6" class="td-detail">
+              <td colspan="8" class="td-detail">
                 本次曲线没有「多一次」量级的跃迁：要么该队已饱和，要么爬升只带来小数级微调
                 （鼠标停在曲线点上可看每档明细）。
               </td>
@@ -2294,9 +2297,16 @@ const goldAltTableColumns = [
   { key: 'team', label: '队伍' }, { key: 'gold', label: '金数' }, { key: 'target', label: '这笔金投给' },
   { key: 'damage', label: '伤害' }, { key: 'cost', label: '代价' }, { key: 'state', label: '分配后状态' },
 ]
+/**
+ * 「关键变化」面板列（T183 起按用户 2026-11-02 口径分列）：
+ * **变多 / 变少分列**（多的少的分别说）、**秒量（合轴节省）与回退另起一列**（时间 / 备注）、
+ * 伤害归因仍单独一列（把原来塞在次数单元格里的「（终结技系 Δ …）」括号去掉——它和这张表重复）。
+ */
 const curveJumpTableColumns = [
   { key: 'team', label: '队伍' }, { key: 'cost', label: '操作难度' }, { key: 'point', label: '关键点' },
-  { key: 'change', label: '关键变化' }, { key: 'damage', label: '伤害' },
+  { key: 'up', label: '变多（次数）' }, { key: 'down', label: '变少（次数）' },
+  { key: 'note', label: '时间 / 备注' },
+  { key: 'damage', label: '伤害' },
   { key: 'attr', label: '伤害归因（相对上一档）' },
 ]
 const curveTruncTableColumns = [
@@ -2396,6 +2406,27 @@ function cntRangeWithDmg(c: KeyCountChange, dmgChanges: { label: string; delta: 
   return `${cntRange(c)}${link ? `（${link.label} Δ ${signedDmg(link.delta)}）` : ''}`
 }
 
+/**
+ * 「变多 / 变少」单元格文案（T183）：只列 **Δ≥1 量级**，且**次数整数化**。
+ *
+ * - 两端都近整数（失衡 2→3）⇒ 直接写区间 —— 一眼看出「到第几次了」；
+ * - 带小数（连携 3.4→4.7）⇒ 只写 `+1`（原值在单元格 `title` 里）—— 用户 2026-11-02「交互次数写的太乱」。
+ */
+function cntCellsText(items: KeyCountChange[]): string {
+  const major = items.filter(c => c.major)
+  if (major.length === 0) return '—'
+  return major.map(c => {
+    const intish = Math.abs(c.from - Math.round(c.from)) < 5e-2 && Math.abs(c.to - Math.round(c.to)) < 5e-2
+    return intish
+      ? `${c.label} ${Math.round(c.from)}→${Math.round(c.to)}`
+      : `${c.label} ${c.delta > 0 ? '+' : '−'}${Math.max(1, Math.round(Math.abs(c.delta)))}`
+  }).join('、')
+}
+/** 同上单元格的 `title`：原始区间（`连携 3.4→4.7`），小数细节不丢 */
+function cntCellsTitle(items: KeyCountChange[]): string {
+  const major = items.filter(c => c.major)
+  return major.length === 0 ? '' : major.map(cntRange).join('、')
+}
 /** 伤害增量带符号：`+683.00万` / `−12.00万` */
 function signedDmg(v: number): string {
   return `${v >= 0 ? '+' : '−'}${compact(Math.abs(v))}`
@@ -2549,17 +2580,33 @@ const curveSeriesPx = computed(() => {
 /** 关键变化面板的行（跨队铺平；数据源 = 各队已过滤过 major 的 `jumps`） */
 const curveJumpRows = computed(() =>
   curveSeriesPx.value.flatMap((s, si) =>
-    s.jumpPts.map((j, ji) => ({
-      key: `${s.presetId}-${si}-${ji}`,
-      team: s.name,
-      color: s.color,
-      cost: j.cost,
-      dmg: j.dmg,
-      ratio: j.ratio,
-      point: j.point,
-      text: j.changes.map(c => cntRangeWithDmg(c, j.dmgChanges)).join('、'),
-      attr: attributeDmgChanges(j.dmgChanges),
-    })),
+    s.jumpPts.map((j, ji) => {
+      /**
+       * 三类内容分开说（用户 2026-11-02「交互次数写的太乱…多的少的分别说」）：
+       * 变多（次数）/ 变少（次数）/ 秒量（合轴节省，单位 s）——秒量不再混进次数列。
+       */
+      const up = j.changes.filter(c => c.label !== SECONDS_LABEL)
+      const down = j.downChanges.filter(c => c.label !== SECONDS_LABEL)
+      const saved = [...j.changes, ...j.downChanges].filter(c => c.label === SECONDS_LABEL)
+      return {
+        key: `${s.presetId}-${si}-${ji}`,
+        team: s.name,
+        color: s.color,
+        cost: j.cost,
+        dmg: j.dmg,
+        ratio: j.ratio,
+        point: j.point,
+        upText: cntCellsText(up),
+        upTitle: cntCellsTitle(up),
+        downText: cntCellsText(down),
+        downTitle: cntCellsTitle(down),
+        noteText: [
+          ...saved.map(cntRange),
+          ...(j.back ? ['难度回落（白拿的优化）'] : []),
+        ].join(' · ') || '—',
+        attr: attributeDmgChanges(j.dmgChanges),
+      }
+    }),
   ),
 )
 /**

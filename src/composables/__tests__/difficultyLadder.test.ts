@@ -805,6 +805,14 @@ describe('难度曲线关键旋钮点（T140c）', () => {
   }, 300_000)
 
   it('★ 回归：② 缺失时 ③ 必须把**交互步**算作候选（否则非轴队塌成 2 点）', async () => {
+    /**
+     * ⚠ **T183（2026-11-02）更换夹具与判据**：③ 的台阶判据从「`counts` 任一项 Δ≥1」收紧为
+     * **完整失衡窗口数 +1**（用户口径「第三个重大进步太模糊了…比如完整 3 失衡到完整 4 失衡」）。
+     * 旧夹具 `auto-1511-1561-1581` 的交互步跃迁是大招/异常触发/乱流（**失衡不动**）⇒
+     * 按新口径它**不该有 ③**（实测已塌成 `baseline→max`，符合预期）。
+     * 现夹具 = `auto-1431-1481-1031`（非轴 + 交互步 完整失衡 2→3，实测 ③ 83.33M > ① 80.74M）。
+     * 本用例护的**缺陷本身没变**：② 缺失时若不让「交互步」当候选，非轴队就塌成 ①④ 两点。
+     */
     // ## 修的是什么（2026-10-12 实测定位的真缺陷）
     //
     // ② 的第一步会**无条件**施加 joint（交互取最优）。② 缺失时旧实现把 ③ 的基准点设成
@@ -819,9 +827,8 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    // 夹具 = `auto-1511-1561-1581`：实测 2 点队中「S1 交互步」跃迁最丰富的一支
-    // （大招 +1 / 异常触发 +3 / 乱流 +2，伤害 +8.81M）
-    const p = teamPresets.find(x => x.id === 'auto-1511-1561-1581')!
+    // 夹具 = `auto-1431-1481-1031`：非轴队，且「交互步（joint@吸收0）」带**完整失衡 2→3** 的台阶
+    const p = teamPresets.find(x => x.id === 'auto-1431-1481-1031')!
     const r = climbDifficultyLadder({ config, calc, absorbCap: DEFAULT_COMBO_ALIGN_ABSORB_RATIO }, p.team as [string, string, string], {
       capture: c => ({
         counts: captureKeyCounts(c.calc), dmgBySource: captureDmgBySource(c.calc),
@@ -840,6 +847,9 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     expect(r.points.map(x => x.point)).toEqual(['baseline', 'progress', 'max'])
     // ⑤ ③ 相对 ① 确有增益（否则它不是「重大进步」）
     expect(prog!.dmg).toBeGreaterThan(r.base)
+    // ⑥ ★ T183：台阶**必须是完整失衡 +1**（不是「随便哪个次数动了」）
+    const base = r.points[0]!
+    expect(prog!.counts!['失衡'] - base.counts!['失衡'], '③ 的台阶 = 完整失衡 +1').toBeGreaterThanOrEqual(1 - 1e-6)
   }, 300_000)
 
   it('④ 的天花板 = 用户设置的上限（absorbCap 契约：队间不串味）', async () => {

@@ -228,7 +228,7 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "src/composables/difficultyCurve.ts engine:难度曲线/x轴",
   "src/composables/difficultyCurve.ts engine:难度曲线/伤害归因",
   "src/composables/difficultyCurve.ts engine:难度曲线/交互项截断缩",
-  "src/composables/difficultyCurve.ts engine:难度曲线/关键次数标注",
+  // ✅ 2026-11-02 T183：`关键次数标注` 已补 ⟳复核 触发器（面板双向分列/秒量单列）⇒ **销号**
   "src/composables/difficultyCurve.ts engine:难度曲线/全关基线",
   "src/composables/liveInteractions.ts engine:操作难度/角力权重",
   // ⚠ 2026-09-17 round 21 夜D：`engine:轴内块数落地` 的**键随实现改路径**——
