@@ -551,7 +551,7 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 用户原话：「算出伤害后需要换算危局分数，绝境和普通换算不一样」+「默认33亿血的其实是一个木桩本，
 他的曲线和绝境普通都不一样，是和分数成正比的，没有操作分」。
 
-**入口**：结果页 →「伤害池」页签最上方 `components/charts/DeadlyAssaultScoreCard.vue`。
+**入口**：资源页（共享视图 `components/ResourcePoolView.vue`——结果页与各比较入口**同一个组件**）→「伤害池」段最上方 `components/charts/DeadlyAssaultScoreCard.vue`；结果页挂载点 = `views/ResultPage.vue` 的 `<ResourcePoolView>`。
 
 | 曲线 | 血量口径 | 形状 | 操作分 |
 | --- | --- | --- | --- |
@@ -573,7 +573,7 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 用户原话：「显示属性区总和和倍率区总和的地方，属性区需要区分两个，一个是无失衡期易伤的属性区，
 一个有失衡易伤的属性区，这俩相比差了一个失衡期贡献率。当然像扳机这种非失衡也给了易伤区的你不能抹除其易伤贡献。」
 
-**入口**：结果页 →「伤害池」页签 →「伤害来源分解」卡（`views/ResultPage.vue`）。
+**入口**：资源页（共享视图 `components/ResourcePoolView.vue`）→「伤害来源分解」卡。
 
 | 列 | 口径 |
 | --- | --- |
@@ -596,7 +596,7 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 用户原话：「这个公式显示做得很好，但是只有耀变显示了，其他都没显示。」
 （当时只有蕾米埃尔耀变行把公式写在 `note` 里，其余行只有普通说明。）
 
-**入口**：结果页 →「伤害池」页签 → 每行最后一列「说明 / 公式」。
+**入口**：资源页（共享视图 `components/ResourcePoolView.vue`）→「伤害池」卡 → 每行最后一列「说明 / 公式」。
 
 | 口径 | 说明 |
 | --- | --- |
@@ -606,6 +606,26 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 | 全局异常乘区 | `calcAnomalyDamage` 末尾的 `anomalyMultiplier`（异化系数等）现在也进 breakdown（`全局异常乘区`），否则公式链与单次伤害对不上 |
 | 展示 | 说明在上、公式在下（次要色、小一号，`.damage-formula`）；无说明的行公式独占该列 |
 | 判据 | `composables/__tests__/damageRowFormula.test.ts`（纯函数 / 真管线每类行都有公式 / 耀变自定义公式回归） |
+
+### 7.4e 资源池共享视图（T188，2026-11-03）
+
+用户逐字：「我在**很多地方的比较**中都会要求**完整的资源展示页显示**，**资源页的一切**支撑了结果的有效性和可溯源性。」
+
+⇒ 不是摘要卡：**资源页那一整套**抽成一个组件，**结果页与各比较入口就地打开**，完整 = 默认全含。
+
+**入口**：结果页 → 页头页签「资源池」；难度曲线 → 点曲线点 / 点表行 / 点 3D 点 ⇒ 下方「该档资源池」卡里的「完整资源池」段。
+
+| 面 | 单一事实源 |
+| --- | --- |
+| 数据面 | `composables/resourcePoolView.ts`：`ResourcePoolSnapshot`（**一个档位**的快照：池 / 伤害 / 异常 / 轴窗三件 / 面板 / 该档配置标量 / 槽名）+ **唯一构造入口** `resourcePoolSnapshotFromCalc(calc, config)` + 纯派生（伤害占比 / 个人占比 / 队伍总览 / 异常事件行 / 逐窗图注入）+ 三态 `resourceBlockStates` |
+| 渲染面 | `components/ResourcePoolView.vue`（+ `components/resourcePool/resource-pool-view.css`）；入参 = `snapshot`（+ 可选 `title`/`reason`） |
+| 两个入口 | 结果页传 `useResourceCalc()` + UI store；难度曲线在**该档的重放场景**里调同一入口（`composables/curvePointPool.ts`），快照随结果带出场景（纯值） |
+
+- **块清单**（完整 = 默认全含，三页签已去掉）：时间分配汇总 · 失衡池 · 逐窗兑现（轴模式）· 三角色资源卡 · 积蓄池 · 异常虚拟面板 · 异常事件明细 · 特殊动作喧响 · 团队总览 · 伤害占比 · 伤害来源分解 · 伤害池；弃轴提示随块一起进视图（「去调合轴率」按钮只在父方接了动作时出现）；
+- **缺读数 ⇒ 如实写「无/未采 + 原因」**（非轴队 / 弃轴 / 未采三态逐字区分，判据住 `resourceBlockStates`），**不补造、不编 0**，也不把块藏起来（`v-if` 会把「没这回事」与「没量到」混成同一种静默）；
+- **取数只走快照**：展示层不读 store —— 比较入口那一档是差分重放出来的，现读会显示**另一个档**；
+- 判据：`composables/__tests__/resourcePoolView.test.ts`（三态四态 / 同一快照喂两个入口逐位相等 / 真实求值的读数归属）+ `curvePointPool.test.ts`（重算伤害与该点 `dmg` 逐位相等）+ `stunDiscreteDisplay.test.ts`（TDZ 源码锁改钉共享组件）；
+- **其余比较入口（散点 / 选第三人 / 命座提升率网格 / 实战对比）「点的是哪一档」= 待定口径**，先写进 `.claude/OPEN-ITEMS.md` 的前提假设 + 证伪闸门，不自己拍。
 
 ### 7.5 血量膨胀图（「血量膨胀」Tab）
 
