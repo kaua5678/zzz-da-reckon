@@ -1,5 +1,4 @@
 import { computed, type ComputedRef } from 'vue'
-import type { ConfigModel } from '@/stores/config'
 import type { PanelValues } from '@/types/catalog'
 import { calcStunMultiplier } from '@/core/anomalyPool/helpers'
 import { computeStunVulnSummary, computeStunVulnBySlot } from '@/composables/stunVulnSummary'
@@ -12,21 +11,26 @@ import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
  * 行级 stunMult = Boss 失衡易伤分量；生效易伤 = calcStunMultiplier(vuln, 面板加成, frac)。
  * 面板加成取槽 0（主C 惯例，与逐招矩阵探针同口径）；异常行无 stunMult → 显示 '—'、按 1 计。
  *
- * ⚠ 依赖以**同名参数**注入（`configStore` / `panels` / `damagePoolRows`）而不是重命名成
- * `panelInput` 之类：这样搬出的正文与原地**逐字节相同**，保真可机器证明（见 R44 报告的
- * 保真证明表）。改名会静默扩大「搬了什么」的口径，规则 17 的「逐位保真」就失效了。
+ * ⚠ 依赖以**同名参数**注入（`panels` / `damagePoolRows`）而不是重命名成 `panelInput` 之类：
+ * 这样搬出的正文与原地**逐字节相同**，保真可机器证明（见 R44 报告的保真证明表）。
+ *
+ * ⚠ T188（2026-11-03）把第一个入参从 `configStore: ConfigModel` 收窄成 **`enemy: { stunVuln }`**：
+ * 本函数只读 `configStore.enemy.stunVuln` 这一个量，而共享视图 `ResourcePoolView` 的入参是
+ * **一个档位快照**（比较入口那一档是差分重放出来的 ⇒ 展示层不得读 store）。收窄后视图直接喂
+ * 快照里的 `enemyStunVuln`，两处不可能再漂移（原先只有这一个读点，改完全库调用点仅此一处）。
  */
 export function useStunVulnDisplay(opts: {
-  configStore: ConfigModel
+  /** 只读这一个量（Boss 失衡易伤基数）；**不许**再从这里读别的 store 字段 */
+  enemy: { stunVuln: number }
   panels: ComputedRef<PanelValues[]>
   damagePoolRows: ComputedRef<DamagePoolRow[]>
 }) {
-  const { configStore, panels, damagePoolRows } = opts
+  const { enemy, panels, damagePoolRows } = opts
 
   const stunVulnPanelOf = () => {
     const p0 = panels.value[0]
     return {
-      vuln: configStore.enemy.stunVuln,
+      vuln: enemy.stunVuln,
       bonus: p0?.stunDmgMultiplierBonus ?? 0,
       always: p0?.stunDmgMultiplierBonusAlways ?? 0,
       cap: p0?.stunDmgMultiplierBonusCapAlways ?? 0,
@@ -49,7 +53,7 @@ export function useStunVulnDisplay(opts: {
   }
   function stunVulnTitleOf(row: DamagePoolRow): string {
     if (row.stunMult === undefined) return '异常行：易伤已在结算内部，不逐行暴露'
-    const frac = rowStunCoverage(row, configStore.enemy.stunVuln) ?? 0
+    const frac = rowStunCoverage(row, enemy.stunVuln) ?? 0
     return `轴内覆盖 ${(frac * 100).toFixed(0)}% → 生效易伤 ×${appliedVulnOf(row)}`
   }
   // 行级生效易伤映射（全队汇总与逐人共用，避免两处各算一遍漂移）

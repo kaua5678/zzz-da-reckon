@@ -16,8 +16,20 @@
  *    `curvePointPool.test.ts`）。
  * 2. **跑在独立场景上**（`withAnalysisScenario`）：不改 UI 现场、不动页面上正在显示的计算
  *    （分析器场景隔离的既有口径，见 `analysisScenario`）。
- * 3. **结果对象带出场景**：`withAnalysisScenario` 跑完即 `dispose`，所以本模块只带出**值快照**
- *    （`resourceResult` / `stunPool` / `anomalyPool` 的 `.value`）——它们是纯数据，dispose 后照常可读。
+ * 3. **结果对象带出场景**：`withAnalysisScenario` 跑完即 `dispose`，所以本模块只带出**一个档位快照**
+ *    （`composables/resourcePoolView#ResourcePoolSnapshot`）——它是**纯值**，dispose 后照常可读。
+ *
+ * ## T188（2026-11-03）：快照 = **资源池共享视图的入参**
+ *
+ * 用户口径：「我在**很多地方的比较**中都会要求**完整的资源展示页显示**，**资源页的一切**支撑了结果的
+ * 有效性和可溯源性」⇒ 难度曲线这一档要**就地打开资源页那一整套**。做法不是在这里另写一套展示，而是
+ * **在本档的重放场景里调同一个构造入口** `resourcePoolSnapshotFromCalc(s.calc, s.config)`，
+ * 把结果喂给 `components/ResourcePoolView.vue`——与 `views/ResultPage.vue` **同一个组件**。
+ * 于是「该档快照」的**全部**展示读数（含轴窗三件、伤害占比、队伍总览、异常池…）都来自**同一次求值**，
+ * 页面不再各自现读 store（现读会显示**另一个档**，见下）。
+ *
+ * ⚠ 快照**只在用户点开的那一档**构造一次（`pool` 只持有当前这一档），不随每点携带 ⇒ 上面 38MB 的
+ * 结论不变。
  *
  * ## 竞态
  *
@@ -27,51 +39,11 @@
 import { ref } from 'vue'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { restoreStateDelta } from '@/composables/configDelta'
-import type { AxisWindowViewInput } from '@/composables/axisWindowView'
-import type { ExecutedMoveCount } from '@/core/stunAxisStack'
+import { resourcePoolSnapshotFromCalc, type ResourcePoolSnapshot } from '@/composables/resourcePoolView'
 import type { LadderPointScene } from '@/composables/difficultyLadder'
-import type { AnomalyPoolResult, StunPoolResult, TeamResourceResult } from '@/types/resource'
-import type { StackTraversalResult } from '@/core/stunAxisStack'
-
-export interface CurvePointPoolResult {
-  resourceResult: TeamResourceResult
-  stunPool: StunPoolResult | null
-  anomalyPool: AnomalyPoolResult | null
-  /**
-   * 本次重算的**总伤害**——必须与该曲线点的 `dmg` **逐位相等**（判据 `curvePointPool.test.ts` ①）。
-   * 面板把它显示出来：不相等就是「显示的不是那个点的资源池」，那是本模块唯一要防的事故。
-   */
-  damage: number
-  /** 本次重算耗时（ms）——面板上如实显示「这一次点开花了多久」 */
-  ms: number
-  /**
-   * 该档的**名义失衡窗长 W**（秒）= `useResourceCalc#windowDuration`（含全队失衡延时）。
-   * 残疾失衡展示要用它，而它**不能事后从 UI store 重算**：本档现场是差分重放出来的，
-   * 队友面板加成来自该档的队伍/命座，页面上的值属于「当前档」而非「用户点开的那一档」。
-   */
-  windowDuration: number
-  /** 该档的**有效战斗时间**（秒）= `useResourceCalc#stunEffectiveTime`（战斗时间 − 无敌时间） */
-  effectiveTime: number
-  /**
-   * 该档的**轴栈**（R10「这一档的轴」视图的数据源；`useResourceCalc#stackTraversalResult`）。
-   *
-   * 为什么必须在这里带出来而不是页面现读：本档现场是**差分重放**出来的，页面上的
-   * `stackTraversalResult` 属于「当前档」而非「用户点开的那一档」——现读会显示另一个档的轴。
-   * `null` = 非轴队 / 弃轴（**如实**为空，不补一行「平A」凑数）。
-   */
-  axisStack: StackTraversalResult | null
-  /**
-   * **逐窗兑现图**（用户 2026-11-03：「轴的可视化也没有…**失衡信息完全不可视化**」）：
-   * `axisWindowView` 的三份输入随本档一起带出来（与资源池页 `ResultPage` 同一套口径、同一个组件）——
-   * 出场景后照常可读（纯值快照）。**失衡窗就是轴窗** ⇒ 这张图同时把失衡可视化。
-   */
-  stunTimelineSlots: NonNullable<AxisWindowViewInput['slots']>
-  effectiveStunAxes: NonNullable<AxisWindowViewInput['axes']>
-  axisFillExpansion: Record<string, ExecutedMoveCount>
-}
 
 export function useCurvePointPool() {
-  const pool = ref<CurvePointPoolResult | null>(null)
+  const pool = ref<ResourcePoolSnapshot | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   /** 竞态令牌：只有最后一次 `load` 的结果会被采纳 */
@@ -87,7 +59,7 @@ export function useCurvePointPool() {
 
   /**
    * 重算某档的资源池。`scene` 缺省（该档没采到现场，如 `collectScenes` 未开）⇒ 清空并**不编数据**，
-   * 由调用方显示「该档未采现场」。
+   * 由调用方（共享视图的空态）显示「该档未采现场」。
    */
   async function load(scene: LadderPointScene | undefined): Promise<void> {
     const my = ++token
@@ -99,38 +71,15 @@ export function useCurvePointPool() {
     try {
       const out = await withAnalysisScenario(s => {
         restoreStateDelta(s.config, scene.base, scene.delta)
-        // 读 `.value` 即触发求值；三份结果同一次求值（与曲线落点同一份读数）
-        return {
-          resourceResult: s.calc.resourceResult.value,
-          stunPool: s.calc.stunPoolResult.value,
-          anomalyPool: s.calc.anomalyPoolResult.value,
-          damage: s.calc.teamTotalDamage.value,
-          windowDuration: s.calc.windowDuration.value,
-          effectiveTime: s.calc.stunEffectiveTime.value,
-          axisStack: s.calc.stackTraversalResult.value,
-          stunTimelineSlots: s.calc.stunTimeline.value.slots,
-          effectiveStunAxes: s.calc.effectiveStunAxes.value,
-          axisFillExpansion: s.calc.axisFillExpansion.value,
-        }
+        // 读 `.value` 即触发求值：快照里的全部读数来自**这一次**求值（与曲线落点同一份读数）
+        return resourcePoolSnapshotFromCalc(s.calc, s.config, { ms: performance.now() - t0 })
       })
       if (my !== token) return
-      if (!out.resourceResult) {
+      if (!out) {
         error.value = '该档现场重算后没有资源结果（现场可能不完整）'
         return
       }
-      pool.value = {
-        resourceResult: out.resourceResult,
-        stunPool: out.stunPool,
-        anomalyPool: out.anomalyPool,
-        damage: out.damage,
-        windowDuration: out.windowDuration,
-        effectiveTime: out.effectiveTime,
-        axisStack: out.axisStack,
-        stunTimelineSlots: out.stunTimelineSlots,
-        effectiveStunAxes: out.effectiveStunAxes,
-        axisFillExpansion: out.axisFillExpansion,
-        ms: performance.now() - t0,
-      }
+      pool.value = out
     } catch (e) {
       if (my !== token) return
       error.value = String((e as Error)?.message ?? e)

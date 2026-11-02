@@ -1,0 +1,577 @@
+/* 资源池共享视图（T188，2026-11-03）——**从 `views/resultPage/result-page.css` 整块搬来**：
+   用户口径「资源页的一切」在比较处要就地打开；抽组件时**样式必须跟着 DOM 一起搬**，
+   否则 `<style scoped>` 的 data-v 归属错位 ⇒ 规则静默失配、机器不红、只是屏幕上少一条线
+   （判据 16 `scoped-style-reach`）。
+
+   搬动时的三处改动（其余逐字保留）：
+   ① 卡片间距改由容器 `.resource-pool-view` 的 `gap` 统一给（原靠逐卡 `margin-bottom`，那只在 tabs 布局里成立）；
+   ② 字面色值换成语义令牌（`#f0a020` ×2 → `--c-warning`、`rgba(251,191,36,0.08)` → `--c-warning-soft`）——
+      新文件不带硬编码色值（`check-tokens` 判据 3）；贴片的墨按**贴片底**重选（判据 11）：
+      `.virtual-panel-virtual` 的墨从 `--c-warning` 换成 `--c-warning-strong`（浅色档 4.38 → 达标）；
+   ③ 新增 `.rpv-*`：共享视图自己的抬头 / 口径 / 「无 / 未采 + 原因」/ 弃轴提示。
+
+   ⚠ 本文件**只被 `components/ResourcePoolView.vue` 经 `<style scoped src>` 载入**（类在这里定义，
+   谁载入谁生效；另一处要用同一批类就得自己也载入本文件——判据 16）。 */
+
+.resource-pool-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rpv-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.rpv-reason {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--app-text-dim);
+}
+
+.rpv-axis-detail {
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.rpv-axis-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rpv-axis-hint {
+  font-size: 12px;
+  color: var(--fg-2);
+}
+
+.rpv-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.rpv-empty-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+/* 次级墨（逐窗兑现卡头「（不产失衡）」这类附注）。
+   ⚠ 原先用页面级 `.dim`（定义在 `views/InteractionSweepPage.vue` 的**内联 scoped** 里）——那种定义只带
+   定义方的 data-v-*，本组件吃不到（判据 16 实测抓出）；名随本文件，语义仍是「次级墨」。 */
+.rpv-dim {
+  color: var(--fg-3);
+}
+
+/* 「无 / 未采 + 原因」那一句（缺读数时替代整块内容；用户口径：不补造、不编 0） */
+.rpv-empty-reason {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--app-text-dim);
+}
+
+/* 虚拟面板的「（赠）」标记（原为模板内联 `style="color:#f0a020;font-size:10px"`，内联字面色值同样算硬编码） */
+.virtual-panel-gifted {
+  color: var(--c-warning);
+  font-size: 10px;
+  margin-left: 4px;
+}
+
+.pool-summary-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1200px) {
+  .pool-summary-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pool-summary-card {
+  background: var(--wa-20);
+}
+
+/* 逐窗兑现卡（2026-10-27）：满宽铺在「失衡池汇总」行与三角色卡片之间——
+   它是「这一局轴到底打成了什么样」的逐窗台账，比单角色卡片更先被读到。 */
+.axis-window-card {
+  background: var(--app-panel);
+}
+
+.axis-window-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.axis-window-summary {
+  font-size: 11px;
+  color: var(--fg-3);
+}
+
+.pool-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--wa-800);
+}
+
+.pool-summary-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pool-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.pool-stat-label {
+  color: var(--wa-500);
+  min-width: 80px;
+}
+
+.pool-stat-value {
+  color: var(--wa-900);
+  font-weight: 600;
+}
+
+/* 值列的次级墨（原 `.pool-stat-value.dim`；类名随本文件 ⇒ 判据 16） */
+.pool-stat-value.rpv-dim {
+  color: var(--wa-450);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.pool-stat-detail {
+  color: var(--wa-300);
+  font-size: 11px;
+  margin-left: auto;
+}
+
+.pool-stat.highlight .pool-stat-value {
+  color: var(--c-warning);
+  font-size: 14px;
+}
+
+.pool-stat.bonus .pool-stat-value {
+  color: var(--c-success);
+  font-weight: 700;
+}
+
+/* 时间留白/账本虚高/超预算/未收敛：留白类告警用 danger（与 .highlight 的 warning 区分
+   ——warning = 引擎关键量，danger = 口径异常需要人看） */
+.pool-stat.danger .pool-stat-value {
+  color: var(--c-danger);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pool-coverage-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--wa-60);
+}
+
+.pool-subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--wa-500);
+  margin-bottom: 4px;
+}
+
+.pool-per-slot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--wa-60);
+}
+
+.slot-chip {
+  font-size: 11px;
+  color: var(--fg-2);
+  background: var(--wa-40);
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+
+.event-table-wrap {
+  overflow-x: auto;
+}
+
+.event-table-wrap.expanded {
+  max-height: none;
+  overflow: visible;
+}
+
+.anomaly-event-card {
+  grid-column: 1 / -1;
+}
+
+.event-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.event-table th,
+.event-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--wa-60);
+  vertical-align: top;
+}
+
+.event-table th {
+  position: sticky;
+  top: 0;
+  background: var(--app-tablehead-bg);
+  text-align: left;
+  color: var(--fg-2);
+  font-weight: 600;
+}
+
+.event-name,
+.event-count {
+  color: var(--c-warning);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.event-formula,
+.event-fields {
+  font-family: Consolas, monospace;
+  color: var(--wa-620);
+  line-height: 1.55;
+}
+
+.event-note {
+  margin-top: 3px;
+  color: var(--wa-360);
+}
+
+.damage-pool-card {
+  background: var(--wa-30);
+}
+
+.damage-pool-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.damage-pool-total {
+  color: var(--c-warning);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.damage-pool-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.damage-pool-row {
+  display: grid;
+  grid-template-columns: 88px 58px minmax(140px, 1fr) minmax(180px, 1.2fr) 64px 92px 72px 104px minmax(180px, 1.2fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--wa-35);
+  color: var(--wa-760);
+  font-size: 12px;
+}
+
+.damage-pool-head {
+  background: var(--wa-70);
+  color: var(--fg-2);
+  font-weight: 600;
+}
+
+/* 伤害来源分解行：复用 damage-pool-row 视觉，仅覆盖 6 列布局 */
+.damage-source-row {
+  grid-template-columns: 88px 58px 110px 120px 110px 130px;
+}
+
+/* 有/无失衡两个属性区 + 失衡期贡献率 + 失衡爆发效率（用户口径 2026-10-28）：
+   6 列 → 9 列。窄屏（<1100px）横滚，不压字（表格语义不能靠缩字号保住可读性）。 */
+.damage-source-row-stun {
+  grid-template-columns: 88px 58px 100px 110px 108px 108px 96px 96px 110px;
+  min-width: 900px;
+}
+
+.damage-source-card .damage-source-table {
+  overflow-x: auto;
+}
+
+.damage-source-nostun {
+  color: var(--app-text-dim);
+}
+
+.damage-source-rate {
+  color: var(--c-info);
+  font-variant-numeric: tabular-nums;
+}
+
+.damage-source-total-row {
+  background: var(--fill-hover);
+  color: var(--fg-2);
+  font-weight: 600;
+}
+
+.damage-source-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.damage-type {
+  color: var(--c-info);
+  font-weight: 600;
+}
+
+.damage-name {
+  color: var(--wa-900);
+}
+
+.damage-total {
+  color: var(--c-warning);
+  font-weight: 700;
+}
+
+.damage-note {
+  color: var(--wa-520);
+  line-height: 1.45;
+}
+
+/* 本行实际吃到的乘区链（2026-10-31）：与说明分两行显示，说明在上、公式在下（次要色、小一号）。
+   用户口径：蕾米埃尔耀变行那种「基础×倍率×增伤×…」的展示要做成**每行都有**。
+   颜色只用语义令牌/色阶，不写死色值（docs/UI_THEME_GUIDE.md §1）。 */
+.damage-formula {
+  display: block;
+  margin-top: 2px;
+  color: var(--app-text-dim);
+  font-size: 11px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* 失衡易伤列（账本 Open #2）：生效易伤三档着色 + 汇总行（只用语义别名，护栏：零新增硬编码色/--wa-* 直引） */
+.damage-stun-vuln {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stun-vuln-full {
+  color: var(--c-success);
+}
+.stun-vuln-partial {
+  color: var(--c-warning);
+}
+.stun-vuln-zero {
+  color: var(--app-text-dim);
+}
+.stun-vuln-na {
+  color: var(--fg-placeholder);
+}
+.damage-pool-footer {
+  background: var(--app-tablehead-bg);
+  color: var(--app-text);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.damage-pool-slots {
+  background: var(--app-tablehead-bg);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 12px;
+}
+.damage-pool-slot-item b {
+  color: var(--app-accent-gold);
+  font-weight: 600;
+}
+.damage-pool-footer-label {
+  color: var(--app-text-dim);
+}
+.damage-pool-footer-value {
+  color: var(--app-accent-gold);
+  font-size: 13px;
+}
+.damage-pool-footer-sub {
+  color: var(--app-text-dim);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.card-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1200px) {
+
+.card-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.damage-share-card {
+  background: var(--wa-30);
+}
+
+.damage-share-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  background: var(--wa-40);
+  color: var(--wa-620);
+}
+
+.damage-share-summary b {
+  color: var(--c-warning);
+  font-size: 18px;
+}
+
+.share-category-row,
+.share-character-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.share-category-chip,
+.share-character-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--wa-40);
+  color: var(--wa-700);
+  font-size: 12px;
+}
+
+.share-category-chip b {
+  color: var(--app-text-solid);
+}
+
+.share-character {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--wa-25);
+}
+
+.share-character-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: var(--wa-900);
+  font-weight: 600;
+}
+
+.share-character-head b {
+  color: var(--c-warning);
+}
+
+.share-note {
+  margin-top: 10px;
+  color: var(--wa-450);
+  font-size: 12px;
+}
+
+.team-overview-card {
+  background: var(--wa-30);
+}
+
+.team-overview-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.team-overview-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 1fr 0.8fr 0.8fr 0.8fr;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--wa-30);
+  color: var(--wa-820);
+  font-size: 12px;
+}
+
+.team-overview-head {
+  background: var(--wa-70);
+  color: var(--fg-2);
+  font-weight: 600;
+}
+
+.virtual-panel-card {
+  background: var(--wa-30);
+}
+
+.virtual-panel-block {
+  margin-bottom: 12px;
+}
+
+.virtual-panel-title {
+  margin-bottom: 8px;
+  color: var(--wa-850);
+  font-weight: 600;
+}
+
+.virtual-panel-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.virtual-panel-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.9fr 0.7fr 0.9fr 0.8fr 0.8fr 0.9fr 0.8fr 0.8fr;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: var(--wa-30);
+  color: var(--wa-780);
+  font-size: 12px;
+}
+
+.virtual-panel-head {
+  background: var(--wa-70);
+  color: var(--fg-2);
+  font-weight: 600;
+}
+
+.virtual-panel-virtual {
+  /* 底是**语义贴片**（--c-warning-soft）⇒ 墨必须按贴片底选（判据 11 tinted-contrast）：
+     原先字面色 rgba(251,191,36,0.08) 配 --c-warning 在**浅色档只有 4.38 < 4.5**，故一并换成 -strong。 */
+  background: var(--c-warning-soft);
+  color: var(--c-warning-strong);
+  font-weight: 700;
+}

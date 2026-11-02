@@ -899,23 +899,13 @@
           <n-button size="tiny" @click="curvePoolPick = null; curvePool.clear()">收起</n-button>
         </div>
       </template>
-      <div class="compare-note curve-note">
-        <b>口径 = 那一点的现场重放</b>（不是全关档、也不是终点档）：面板把该点采到的现场差分写回一个独立场景
-        （<code>restoreStateDelta</code>）再算一次 ⇒ <b>伤害与该点读数逐位相等</b>（判据 <code>curvePointPool.test.ts</code>）。
-        所以这里的三张资源卡 = <b>曲线该档的资源池</b>：能量/喧响/失衡/积蓄与招式执行计划都按那一档的交互与吸收率算。
-        <template v-if="curvePoolPickReason">
-          <br>⚠ <b>这一档轴没打完</b>（{{ curvePoolPickReason }}）⇒ 它<b>不在曲线上</b>（按你的口径「达不到要求就不算」），
-          但引擎算过的数如实给出来，用来看「差在哪」。
-        </template>
-      </div>
       <div v-if="curvePoolChangedKeys.length > 0" class="compare-note curve-note">
         这一档相对曲线起点的<b>输入变动</b>：{{ curvePoolChangedKeys.map(stateKeyLabel).join('、') }}
         <span class="td-muted">（面板重算用的就是这份差分；判据 `curvePointPool.test.ts` 断言重算伤害与该点读数逐位相等）</span>
       </div>
       <div v-if="curvePool.loading.value" class="empty-hint">重算该档资源池中…</div>
       <div v-else-if="curvePool.error.value" class="empty-hint curve-neg">重算失败：{{ curvePool.error.value }}</div>
-      <template v-else-if="curvePool.pool.value">
-        <template v-if="curvePool.pool.value">
+      <template v-else>
         <!-- **这一档的轴**（R10 第 2 条）：逐条列出轴内动作 / 被跳过的招 + 原因 + 打出来的次数。
              数据全部来自引擎读数（`axisDetailOf` 只做分组，不重算判定）。 -->
         <div class="curve-axis-detail">
@@ -940,22 +930,6 @@
               <span v-if="curveAxisCompare.nullReason.overlapSeconds" class="td-muted">（{{ curveAxisCompare.nullReason.overlapSeconds }}）</span>
             </span>
           </div>
-          <!-- 逐窗兑现图（用户 2026-11-03「轴的可视化也没有…失衡信息完全不可视化」）：
-               与资源池页同一个组件、同一套口径；**轴窗就是失衡窗** ⇒ 一张图同时把轴与失衡画出来。
-               没轴栈（非轴队/弃轴）⇒ 如实不画，写明原因，不补造。 -->
-          <template v-if="curvePoolWindows.hasTrace">
-            <div class="curve-axis-windows-head">
-              逐窗兑现 · <b>失衡 完整 {{ curvePoolWindows.windows.length }} 窗</b>
-              <span class="td-muted">（引擎失衡 {{ curvePool.pool.value.stunPool?.stunCount ?? 0 }} 次；窗内细节见下）</span>
-              · 动作 {{ fmt(curvePoolWindows.totals.actionSeconds, 1) }}s
-              · 填充 {{ fmt(curvePoolWindows.totals.fillSeconds, 1) }}s<span class="td-muted">（不产失衡）</span>
-              <template v-if="curvePoolWindows.totals.idleSeconds !== null"> · 发呆 {{ fmt(curvePoolWindows.totals.idleSeconds, 1) }}s</template>
-              <template v-if="curvePoolWindows.totals.skippedTimes > 0"> · 跳过 {{ curvePoolWindows.totals.skippedTimes }} 次</template>
-            </div>
-            <AxisWindowChart :windows="curvePoolWindows.windows" :fill-moves="curvePoolFillGroups" />
-          </template>
-          <div v-else class="empty-hint">
-            这一档没有可画的逐窗兑现（非轴队 / 弃轴 / 轴栈为空）——如实为空，不补造。</div>
           <div v-if="curveAxisDetail.skipTotals.length > 0" class="curve-axis-skips">
             跳过原因：
             <span v-for="(t, ti) in curveAxisDetail.skipTotals" :key="t.reason" class="curve-axis-skip-tag">
@@ -982,29 +956,25 @@
             引擎这一档没有执行任何轴内动作（轴被弃或全被门控掉）——如实为空，不补造。
           </div>
         </div>
-        </template>
-        <div class="compare-note curve-note">
+        <div v-if="curvePool.pool.value" class="compare-note curve-note">
           总伤害 {{ compact(curvePool.pool.value.damage) }} · 迭代 {{ curvePool.pool.value.resourceResult.iterations }} 次
           {{ curvePool.pool.value.resourceResult.converged ? '·已收敛' : '·未收敛' }}
           · 失衡 {{ curvePool.pool.value.stunPool?.stunCount ?? 0 }} 次
           · 连携 {{ curvePool.pool.value.stunPool?.chainCountTotal ?? 0 }} 次
           · 重算耗时 {{ fmt(curvePool.pool.value.ms, 0) }}ms
         </div>
-        <div class="resource-cards">
-          <ResourceResultCard
-            v-for="c in curvePool.pool.value.resourceResult.characters"
-            :key="c.slot"
-            :result="c"
-            :agent-name="agentNameOf(c.agentId) || c.agentName || c.agentId"
-            :specialty="specialtyOf(c.agentId)"
-            :stun-pool-result="curvePool.pool.value.stunPool"
-            :stun-discrete-label="compareStunDiscrete?.label ?? null"
-            :anomaly-pool-result="curvePool.pool.value.anomalyPool"
-            :total-time="curvePool.pool.value.resourceResult.totalTime"
-          />
-        </div>
+        <!-- **完整资源池 = 资源页那个共享视图**（用户 2026-11-03 逐字：「我在很多地方的比较中都会要求
+             **完整的资源展示页显示**，**资源页的一切**支撑了结果的有效性和可溯源性」）。
+             与 `views/ResultPage.vue` 是**同一个组件、同一条快照构造入口**（`resourcePoolSnapshotFromCalc`
+             跑在**该档的重放场景**里）：池摘要 / 失衡池 / 轴窗卡 / 异常池 / 虚拟面板 / 异常事件 /
+             特殊动作 / 队伍总览 / 伤害占比 / 伤害来源 / 伤害池 / 三角色资源卡全在，**不裁剪**（完整 = 默认全含）。
+             缺读数（非轴队 / 弃轴 / 未采）由视图**如实写「无/未采 + 原因」**，不补造、不编 0。 -->
+        <ResourcePoolView
+          :snapshot="curvePool.pool.value"
+          :title="curvePoolPoolTitle"
+          :reason="curvePoolReason"
+        />
       </template>
-      <div v-else class="empty-hint">该档未采现场（本次曲线没有带现场差分）⇒ 不显示资源池，也不编数据。</div>
     </n-card>
 
     <!-- 曲线摘要表：难易强度对比看这几列 -->
@@ -1203,12 +1173,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NInput, NPopover, NRadioGroup, NRadioButton } from 'naive-ui'
-import AxisWindowChart, { type AxisFillMoveGroup } from '@/components/AxisWindowChart.vue'
-import { axisWindowView } from '@/composables/axisWindowView'
 import DifficultyCurve3DChart from '@/components/charts/DifficultyCurve3DChart.vue'
 import { buildBossHpCurve, buildEnvLanes, deriveVersionAxis, type VersionLane } from '@/composables/difficultyCurve3d'
 import { useConfigStore } from '@/stores/config'
-import { useStunDiscreteDisplay } from '@/composables/stunDiscreteDisplay'
 import { useCatalogStore } from '@/stores/catalog'
 import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, type PresetGoldAlternative } from '@/composables/teamCompare'
 import { datasetFromTeamGold } from '@/composables/analysis/dataset'
@@ -1220,8 +1187,8 @@ import { useBatchOwner } from '@/composables/batchTask'
 import { runDifficultyCurves } from '@/composables/difficultyCurveRunner'
 import { computeCinemaUpliftGrid, type CinemaUpliftGridResult, type GridColSpec, type GridRowSpec } from '@/composables/cinemaUpliftGrid'
 import { useCurvePointPool } from '@/composables/curvePointPool'
+import ResourcePoolView from '@/components/ResourcePoolView.vue'
 import { deltaKeys } from '@/composables/configDelta'
-import ResourceResultCard from '@/components/ResourceResultCard.vue'
 import { axisMoveNameResolver } from '@/composables/axisMoveName'
 import { currentRowFusionRules } from '@/logicEditor/fusion'
 import { assignLabelLanes, attributeDmgChanges, estimateLabelWidth, pickNonOverlapping, linkCountToDmg, buildCurveChart, majorChanges, axisColumnText, axisWorseThanNoAxis, type CurveDatum, type DifficultyCurveRow, type KeyCountChange } from '@/composables/difficultyCurve'
@@ -2300,10 +2267,6 @@ const {
 function agentNameOf(id: string | null | undefined): string {
   return id ? catalogStore.agentName(id) : '—'
 }
-/** 职业（资源卡上的标签）；与 RunArchivePage#getSpecialty 同口径（catalog 是唯一来源） */
-function specialtyOf(id: string): string {
-  return catalogStore.getAgent(id)?.specialty ?? ''
-}
 function teamNames(team: [string, string, string]): string {
   return team.map(agentNameOf).join(' + ')
 }
@@ -2789,20 +2752,6 @@ const curveTruncBaseOnly = computed(() =>
  * 判据：`curvePointPool.test.ts`（重算伤害与该点 `dmg` 逐位相等 / 三份结果同源 / 竞态后发者胜）。
  */
 const curvePool = useCurvePointPool()
-/**
- * 残疾失衡载荷（逻辑在 composables/stunDiscreteDisplay.ts；展示层不 import @/core）。
- *
- * ⚠ 必须**声明在 `curvePool` 之后**、且传 **ref** 给模板、不许在 setup 顶层写 `.value`：
- * 旧写法在 `curvePool`（2285 行）之前执行 ⇒ TDZ「Cannot access 'curvePool' before initialization」，
- * 切到难度曲线页签 setup 直接中断（2026-10-22 实测）。
- * 窗长 / 有效时长取**该档资源池重算时的快照**（`curvePool.pool` 一并带出），不用 UI store——
- * 否则「点开某一档看到的残疾失衡」会用当前现场（而非那一档）的队友加成。
- */
-const compareStunDiscrete = useStunDiscreteDisplay({
-  pool: () => curvePool.pool.value?.stunPool ?? null,
-  windowDuration: () => curvePool.pool.value?.windowDuration ?? null,
-  effectiveTime: () => curvePool.pool.value?.effectiveTime ?? null,
-})
 /** 当前选中的点（`null` = 面板收起）。键 = 道键 + 点名，跨队不串味 */
 const curvePoolPick = ref<{ laneKey: string; point: KnobPointName; cost: number } | null>(null)
 /** 点是否可查明细：该档采到了现场（`collectScenes` 开着） */
@@ -2887,48 +2836,30 @@ const axisMoveNameOf = axisMoveNameResolver({
   agentIdOf: slot => configStore.team[slot]?.agentId ?? '',
   skillsOf: agentId => catalogStore.getAgentSkills(agentId),
 })
-/** 槽位 → 角色名（与「这一档的轴」文本明细同一口径 `slotLabels`；缺省回落「N 号位」）——逐窗图/填充分组要用 */
-const slotNameOf = (slot: number): string => slotLabels[slot] ?? (slot + 1) + ' 号位'
 /**
- * **这一档的逐窗兑现图**（用户 2026-11-03：「轴的可视化也没有…**失衡信息完全不可视化**」）。
+ * **共享视图的抬头与口径**（喂 `ResourcePoolView` 的 `title` / `reason`）。
  *
- * 复用资源池页同一个组件与同一套口径（`components/AxisWindowChart.vue` + `composables/axisWindowView.ts`），
- * 数据全部来自本档重算结果（`curvePool.pool`）——轴窗就是失衡窗 ⇒ 这一张图同时把**轴**和**失衡**画出来
- * （每窗：动作/填充/发呆/跳过；末窗归零；填充与 skip 的量纲分开）。没轴栈 ⇒ `hasTrace=false`，如实不画。
+ * 抬头 = 「这一档」的身份（道键 + 档名 + 操作难度）；口径 = 该档重放现场怎么来的。
+ * 该档**没采到现场**（`pool` 空）时口径换成「未采」那句——共享视图对空快照就渲染它，
+ * 不在页面另写一套空态（两个入口一个口径）。判据 `curvePointPool.test.ts`。
  */
-const curvePoolWindows = computed(() => {
-  const p = curvePool.pool.value
-  return axisWindowView({
-    trace: p?.axisStack?.windowTrace,
-    skipped: p?.axisStack?.skipped,
-    slots: p?.stunTimelineSlots,
-    axes: p?.effectiveStunAxes,
-    nameOf: axisMoveNameOf,
-    nameOfSlot: slotNameOf,
-  })
+const curvePoolPoolTitle = computed<string>(() => {
+  const picked = curvePoolPick.value
+  if (!picked) return ''
+  return `完整资源池（该档重放现场） · ${pointLabel(picked.point)} · 操作难度 ${fmt(picked.cost, 1)} 点（${picked.laneKey}）`
 })
-/** 窗尾填充 → 真实招式（与资源池页同口径：`basic` 的 count 是秒数，其余是次数） */
-const curvePoolFillGroups = computed<AxisFillMoveGroup[]>(() => {
-  const p = curvePool.pool.value
-  if (!p) return []
-  const secs = p.axisStack?.basicFillBySlot ?? {}
-  const groups: AxisFillMoveGroup[] = []
-  for (const slot of Object.keys(secs).map(Number).sort((a, b) => a - b)) {
-    const seconds = secs[slot] ?? 0
-    if (!(seconds > 0)) continue
-    const moves = Object.values(p.axisFillExpansion)
-      .filter(v => v.slot === slot)
-      .map(v => ({
-        moveId: v.moveId,
-        name: v.moveId === 'basic' ? '平A' : axisMoveNameOf(slot, v.moveId),
-        count: v.count,
-        unit: (v.moveId === 'basic' ? 'seconds' : 'times') as 'seconds' | 'times',
-      }))
-      .sort((a, b) => b.count - a.count)
-    groups.push({ slot, name: slotNameOf(slot), seconds, moves })
+const curvePoolReason = computed<string>(() => {
+  if (!curvePool.pool.value) {
+    return '该档未采现场（本次曲线没有带现场差分）⇒ 不显示资源池，也不编数据。'
   }
-  return groups
+  const base = '口径 = 那一点的现场重放（不是全关档、也不是终点档）：把该点采到的现场差分写回一个独立场景'
+    + '（restoreStateDelta）再算一次 ⇒ 伤害与该点读数逐位相等（判据 curvePointPool.test.ts）。'
+    + '所以下面这些块 = 曲线该档的资源池：能量/喧响/失衡/积蓄与招式执行计划都按那一档的交互与吸收率算。'
+  return curvePoolPickReason.value
+    ? base + ' ⚠ 这一档轴没打完（' + curvePoolPickReason.value + '）⇒ 它不在曲线上（按你的口径「达不到要求就不算」），但引擎算过的数如实给出来，用来看「差在哪」。'
+    : base
 })
+
 /** 被砍档（R10 打叉）的悬停态：与曲线点 hover（`curveHover`）分开，两者图形不同、文案不同 */
 const cutHover = ref<{ si: number; ci: number } | null>(null)
 /** 选中点相对运行起点的**输入变动键**（诊断用：一眼看出这一档改了队伍还是机制设置） */
