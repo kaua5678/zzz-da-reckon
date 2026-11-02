@@ -47,6 +47,23 @@ describe('axisMoveNameResolver', () => {
     expect(bare(0, '111')).toBe('111')
   })
 
+  it('⑤ 版本化 id（beta 快照 `1601v1`）回落同名 live 角色；只在版本化 id 查不到时才试基名', () => {
+    /**
+     * 2026-11-03 实报：beta 队（挽昼v2 = `1601v1`）的轴明细/逐窗图把 `1601006` 当名字裸写出来。
+     * 实测 beta 旁挂的 `agentSkills` 与 live **同 id 同名字**（`强化特殊技：燃灯·晦尽`）；
+     * 当本次会话的目录索引里没有 beta 旁挂（例如页面是在开 beta 之前加载的）时，只有基名查得到 ⇒ 回落基名。
+     * **这是按 id 查同一张表，不是编名字**：基名也查不到 ⇒ 仍回落 moveId。
+     */
+    const viaBase = axisMoveNameResolver({ agentIdOf: () => '1601v1', skillsOf: id => (id === '1601' ? skills : undefined) })
+    expect(viaBase(0, '111')).toBe('测试招式')
+    const seen: string[] = []
+    const ownFirst = axisMoveNameResolver({ agentIdOf: () => '1601v1', skillsOf: id => { seen.push(id); return skills } })
+    expect(ownFirst(0, '111')).toBe('测试招式')
+    expect(seen, '版本化 id 自己查得到时不得越过它去查基名').toEqual(['1601v1'])
+    const none = axisMoveNameResolver({ agentIdOf: () => '1601v1', skillsOf: () => undefined })
+    expect(none(0, '111')).toBe('111')
+  })
+
   it('两个调用方绑同一份口径（槽位 → 角色 id 由调用方注入，解析链只有这一条）', () => {
     const perSlot = axisMoveNameResolver({ agentIdOf: s => (s === 1 ? '1471' : ''), skillsOf: () => skills })
     expect(perSlot(1, 'banyue-combo')).toBe('怒相连段·论道')

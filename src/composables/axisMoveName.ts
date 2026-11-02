@@ -57,6 +57,19 @@ export function axisMoveNameResolver(ctx: AxisMoveNameContext): (slot: number, m
     if (combo?.label) return combo.label
     // ③④ 目录倍率表 → 回落 moveId（不编名字）
     const move = ctx.skillsOf ? findMoveById(ctx.skillsOf(agentId), moveId) : null
-    return move ? localized(move.name, moveId) : moveId
+    if (move) return localized(move.name, moveId)
+    /**
+     * ⑤ **版本化 id（beta 快照 `1601v1`）回落同名 live 角色**（2026-11-03 实报修）：
+     * beta 旁的 `agentSkills` 与 live **同 id 同名字**（实测 `1601006` 两边都是「强化特殊技：燃灯·晦尽」），
+     * 而当 beta 旁挂没进本次会话的目录索引（例如页面是在开 beta 之前加载的）时，
+     * `getAgentSkills('1601v1')` 为空 ⇒ 面板/逐窗图会裸写 `1601006`。
+     * **这是按 id 查同一张表，不是编名字**：只有在版本化 id 查不到时才试它的基名，且仍然查不到就回落 moveId。
+     */
+    const baseId = agentId.replace(/v\d+$/, '')
+    if (baseId !== agentId && ctx.skillsOf) {
+      const viaBase = findMoveById(ctx.skillsOf(baseId), moveId)
+      if (viaBase) return localized(viaBase.name, moveId)
+    }
+    return moveId
   }
 }

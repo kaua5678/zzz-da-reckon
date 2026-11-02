@@ -940,6 +940,22 @@
               <span v-if="curveAxisCompare.nullReason.overlapSeconds" class="td-muted">（{{ curveAxisCompare.nullReason.overlapSeconds }}）</span>
             </span>
           </div>
+          <!-- 逐窗兑现图（用户 2026-11-03「轴的可视化也没有…失衡信息完全不可视化」）：
+               与资源池页同一个组件、同一套口径；**轴窗就是失衡窗** ⇒ 一张图同时把轴与失衡画出来。
+               没轴栈（非轴队/弃轴）⇒ 如实不画，写明原因，不补造。 -->
+          <template v-if="curvePoolWindows.hasTrace">
+            <div class="curve-axis-windows-head">
+              逐窗兑现 · <b>失衡 完整 {{ curvePoolWindows.windows.length }} 窗</b>
+              <span class="td-muted">（引擎失衡 {{ curvePool.pool.value.stunPool?.stunCount ?? 0 }} 次；窗内细节见下）</span>
+              · 动作 {{ fmt(curvePoolWindows.totals.actionSeconds, 1) }}s
+              · 填充 {{ fmt(curvePoolWindows.totals.fillSeconds, 1) }}s<span class="td-muted">（不产失衡）</span>
+              <template v-if="curvePoolWindows.totals.idleSeconds !== null"> · 发呆 {{ fmt(curvePoolWindows.totals.idleSeconds, 1) }}s</template>
+              <template v-if="curvePoolWindows.totals.skippedTimes > 0"> · 跳过 {{ curvePoolWindows.totals.skippedTimes }} 次</template>
+            </div>
+            <AxisWindowChart :windows="curvePoolWindows.windows" :fill-moves="curvePoolFillGroups" />
+          </template>
+          <div v-else class="empty-hint">
+            这一档没有可画的逐窗兑现（非轴队 / 弃轴 / 轴栈为空）——如实为空，不补造。</div>
           <div v-if="curveAxisDetail.skipTotals.length > 0" class="curve-axis-skips">
             跳过原因：
             <span v-for="(t, ti) in curveAxisDetail.skipTotals" :key="t.reason" class="curve-axis-skip-tag">
@@ -1187,6 +1203,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NInput, NPopover, NRadioGroup, NRadioButton } from 'naive-ui'
+import AxisWindowChart, { type AxisFillMoveGroup } from '@/components/AxisWindowChart.vue'
+import { axisWindowView } from '@/composables/axisWindowView'
 import DifficultyCurve3DChart from '@/components/charts/DifficultyCurve3DChart.vue'
 import { buildBossHpCurve, buildEnvLanes, deriveVersionAxis, type VersionLane } from '@/composables/difficultyCurve3d'
 import { useConfigStore } from '@/stores/config'
@@ -2868,6 +2886,48 @@ const curveAxisCompare = computed(() => {
 const axisMoveNameOf = axisMoveNameResolver({
   agentIdOf: slot => configStore.team[slot]?.agentId ?? '',
   skillsOf: agentId => catalogStore.getAgentSkills(agentId),
+})
+/** 槽位 → 角色名（与「这一档的轴」文本明细同一口径 `slotLabels`；缺省回落「N 号位」）——逐窗图/填充分组要用 */
+const slotNameOf = (slot: number): string => slotLabels[slot] ?? (slot + 1) + ' 号位'
+/**
+ * **这一档的逐窗兑现图**（用户 2026-11-03：「轴的可视化也没有…**失衡信息完全不可视化**」）。
+ *
+ * 复用资源池页同一个组件与同一套口径（`components/AxisWindowChart.vue` + `composables/axisWindowView.ts`），
+ * 数据全部来自本档重算结果（`curvePool.pool`）——轴窗就是失衡窗 ⇒ 这一张图同时把**轴**和**失衡**画出来
+ * （每窗：动作/填充/发呆/跳过；末窗归零；填充与 skip 的量纲分开）。没轴栈 ⇒ `hasTrace=false`，如实不画。
+ */
+const curvePoolWindows = computed(() => {
+  const p = curvePool.pool.value
+  return axisWindowView({
+    trace: p?.axisStack?.windowTrace,
+    skipped: p?.axisStack?.skipped,
+    slots: p?.stunTimelineSlots,
+    axes: p?.effectiveStunAxes,
+    nameOf: axisMoveNameOf,
+    nameOfSlot: slotNameOf,
+  })
+})
+/** 窗尾填充 → 真实招式（与资源池页同口径：`basic` 的 count 是秒数，其余是次数） */
+const curvePoolFillGroups = computed<AxisFillMoveGroup[]>(() => {
+  const p = curvePool.pool.value
+  if (!p) return []
+  const secs = p.axisStack?.basicFillBySlot ?? {}
+  const groups: AxisFillMoveGroup[] = []
+  for (const slot of Object.keys(secs).map(Number).sort((a, b) => a - b)) {
+    const seconds = secs[slot] ?? 0
+    if (!(seconds > 0)) continue
+    const moves = Object.values(p.axisFillExpansion)
+      .filter(v => v.slot === slot)
+      .map(v => ({
+        moveId: v.moveId,
+        name: v.moveId === 'basic' ? '平A' : axisMoveNameOf(slot, v.moveId),
+        count: v.count,
+        unit: (v.moveId === 'basic' ? 'seconds' : 'times') as 'seconds' | 'times',
+      }))
+      .sort((a, b) => b.count - a.count)
+    groups.push({ slot, name: slotNameOf(slot), seconds, moves })
+  }
+  return groups
 })
 /** 被砍档（R10 打叉）的悬停态：与曲线点 hover（`curveHover`）分开，两者图形不同、文案不同 */
 const cutHover = ref<{ si: number; ci: number } | null>(null)

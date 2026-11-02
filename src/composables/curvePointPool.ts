@@ -27,6 +27,8 @@
 import { ref } from 'vue'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { restoreStateDelta } from '@/composables/configDelta'
+import type { AxisWindowViewInput } from '@/composables/axisWindowView'
+import type { ExecutedMoveCount } from '@/core/stunAxisStack'
 import type { LadderPointScene } from '@/composables/difficultyLadder'
 import type { AnomalyPoolResult, StunPoolResult, TeamResourceResult } from '@/types/resource'
 import type { StackTraversalResult } from '@/core/stunAxisStack'
@@ -58,6 +60,14 @@ export interface CurvePointPoolResult {
    * `null` = 非轴队 / 弃轴（**如实**为空，不补一行「平A」凑数）。
    */
   axisStack: StackTraversalResult | null
+  /**
+   * **逐窗兑现图**（用户 2026-11-03：「轴的可视化也没有…**失衡信息完全不可视化**」）：
+   * `axisWindowView` 的三份输入随本档一起带出来（与资源池页 `ResultPage` 同一套口径、同一个组件）——
+   * 出场景后照常可读（纯值快照）。**失衡窗就是轴窗** ⇒ 这张图同时把失衡可视化。
+   */
+  stunTimelineSlots: NonNullable<AxisWindowViewInput['slots']>
+  effectiveStunAxes: NonNullable<AxisWindowViewInput['axes']>
+  axisFillExpansion: Record<string, ExecutedMoveCount>
 }
 
 export function useCurvePointPool() {
@@ -98,6 +108,9 @@ export function useCurvePointPool() {
           windowDuration: s.calc.windowDuration.value,
           effectiveTime: s.calc.stunEffectiveTime.value,
           axisStack: s.calc.stackTraversalResult.value,
+          stunTimelineSlots: s.calc.stunTimeline.value.slots,
+          effectiveStunAxes: s.calc.effectiveStunAxes.value,
+          axisFillExpansion: s.calc.axisFillExpansion.value,
         }
       })
       if (my !== token) return
@@ -113,6 +126,9 @@ export function useCurvePointPool() {
         windowDuration: out.windowDuration,
         effectiveTime: out.effectiveTime,
         axisStack: out.axisStack,
+        stunTimelineSlots: out.stunTimelineSlots,
+        effectiveStunAxes: out.effectiveStunAxes,
+        axisFillExpansion: out.axisFillExpansion,
         ms: performance.now() - t0,
       }
     } catch (e) {
