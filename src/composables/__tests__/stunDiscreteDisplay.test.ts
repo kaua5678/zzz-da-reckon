@@ -130,7 +130,12 @@ describe('三页 setup 不得踩 TDZ（2026-10-22 切页白屏回归）', () => 
  * 调用点之后，照样会红。
  */
 describe('源码锁：取值函数读的标识符必须声明在调用点之前（TDZ 的通用形态）', () => {
-  const PAGES = ['views/RunArchivePage.vue', 'views/ResultPage.vue', 'views/TeamComparePage.vue']
+  /**
+   * T188（2026-11-03）：结果页与难度曲线页的这次接线**合并进一个共享组件**
+   * （`components/ResourcePoolView.vue`——正是「两处漂移」的根治）⇒ 覆盖面从「两个页面各查一遍」
+   * 变成「查那个共享组件」（两个入口都走它），TDZ 的判定面没缩小。
+   */
+  const PAGES = ['views/RunArchivePage.vue', 'components/ResourcePoolView.vue']
 
   const KEYS = ['pool', 'windowDuration', 'effectiveTime'] as const
 
@@ -163,8 +168,9 @@ describe('源码锁：调用点不许在 setup 顶层读 .value（TDZ / 冻快�
     readFileSync(resolve(__dirname, '../../', rel), 'utf-8')
       .split('\n').filter(l => !/^\s*(\/\/|\*|\/\*|<!--)/.test(l)).join('\n')
 
-  it('三个页面都传取值函数、都不写 useStunDiscreteDisplay(...).value，模板都传载荷 ref', () => {
-    for (const rel of ['views/RunArchivePage.vue', 'views/ResultPage.vue', 'views/TeamComparePage.vue']) {
+  it('两个调用点都传取值函数、都不写 useStunDiscreteDisplay(...).value，模板都传载荷 ref', () => {
+    // T188：ResultPage 与难度曲线页的接线合并进 components/ResourcePoolView.vue（见上一段的 PAGES 注释）
+    for (const rel of ['views/RunArchivePage.vue', 'components/ResourcePoolView.vue']) {
       const src = code(rel)
       expect(src, rel + '：不许在 setup 顶层读 .value（TDZ）').not.toMatch(/useStunDiscreteDisplay\([\s\S]{0,400}?\)\s*\.value/)
       expect(src, rel + '：必须传引擎窗长').toMatch(/windowDuration: \(\) =>/)

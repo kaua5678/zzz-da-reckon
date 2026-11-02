@@ -18,13 +18,18 @@ const code = (rel: string) => readFileSync(resolve(__dirname, '../..', rel), 'ut
   .split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')
 
 describe('伤害 → 分数卡 · 接线与单一来源', () => {
-  it('① 结果页伤害池页签渲染该卡，伤害来自 teamTotalDamage', () => {
+  it('① 结果页挂上资源池共享视图，卡在其中且伤害来自 teamTotalDamage', () => {
+    /**
+     * T188（2026-11-03）：卡随资源块搬进 `components/ResourcePoolView.vue`（ResultPage 与各比较入口
+     * **同一个组件**）；原先的「必须在「伤害池」页签内」随页签一并消失，改成更强的形态——
+     * 卡在共享视图里 + **结果页必须真的把这个视图挂上**（两段都要红，不能只红一半）。
+     */
+    const poolView = code('components/ResourcePoolView.vue')
+    expect(poolView).toContain("import DeadlyAssaultScoreCard from '@/components/charts/DeadlyAssaultScoreCard.vue'")
+    expect(poolView).toMatch(/<DeadlyAssaultScoreCard[^>]*:team-damage="teamTotalDamage"/)
     const resultPage = code('views/ResultPage.vue')
-    expect(resultPage).toContain("import DeadlyAssaultScoreCard from '@/components/charts/DeadlyAssaultScoreCard.vue'")
-    expect(resultPage).toMatch(/<DeadlyAssaultScoreCard[^>]*:team-damage="teamTotalDamage"/)
-    // 卡片必须在「伤害池」页签内（不是因为文件名像就算接上）
-    const damageTab = resultPage.slice(resultPage.indexOf('name="damage"'))
-    expect(damageTab).toContain('<DeadlyAssaultScoreCard')
+    expect(resultPage).toContain("import ResourcePoolView from '@/components/ResourcePoolView.vue'")
+    expect(resultPage).toMatch(/<ResourcePoolView/)
   })
 
   it('② 卡片 / 换算模块 / 结果页都不手抄曲线字面量', () => {
