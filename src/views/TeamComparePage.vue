@@ -777,8 +777,11 @@
       <div class="compare-note">
         只列<b>Δ ≥ 1 量级</b>的跃迁，并按<b>方向分列</b>：<b>「变多」</b>= 多放一次大招/强特/连携、多一次失衡/紊乱/乱流、
         角色专属次数（如克拉蕾·毁伤触发、希希芙·蛇影层数来源）；<b>「变少」</b>= 同一步被挤掉的次数（多在交互重分配时出现）。
+        <b>「变少」也可能单独成行</b>：整档只有变少的那些步同样列出来，但<b>不在图上标注</b>（图上只认变多）。
         次数一律<b>整数化</b>（小数级细节悬停单元格看原始区间；+0.1 这类微调不列）；<b>「时间 / 备注」</b>列单独放
         <b>秒量</b>（合轴节省，单位 s）与<b>难度回落</b>标注（回退 = 白拿的优化，图上那段画虚线）。
+        <b>「失衡（完整窗）」</b>列 = 这一档<b>已完整 N 次</b>（+ 相对上一档的 Δ），悬停给出「距下一次完整失衡还差多少」。
+        <b>点任意一行（或行尾「资源池」）即可展开这一档的细致资源池</b>——与点曲线上的点是同一条链。
         曲线上更细的每档明细，鼠标放到曲线点上可在 tooltip 里看<b>全部</b>增量。
         「伤害归因（相对上一档）」列 = <b>本档伤害 − 上一档伤害</b>的精确拆分：先列涨得最多的来源，「挤掉」= 跌得最多的，
         「其余」= 剩下全部，三段合计 ≡「伤害」列下方的 Δ。
@@ -790,10 +793,11 @@
         所以每一点都是<b>有涨有跌、净额为正</b>。
       </div>
       <ChartTable :columns="curveJumpTableColumns" table-class="detail-table chart-table-nowrap chart-table-jumps" align="right" dense>
-            <tr v-for="r in curveJumpRows" :key="r.key">
+            <tr v-for="r in curveJumpRows" :key="r.key" :class="{ 'jump-row-open': isPoolOpen(r) }" @click="openRowPool(r)">
               <td class="td-team" :style="{ color: r.color }">{{ r.team }}</td>
               <td>{{ fmt(r.cost, 0) }} 点</td>
               <td class="td-detail">{{ pointLabel(r.point) }}</td>
+              <td class="td-detail" :title="r.stunTitle">{{ r.stunText }}</td>
               <td class="td-detail" :title="r.upTitle"><div class="cell-clamp">{{ r.upText }}</div></td>
               <td class="td-detail" :title="r.downTitle"><div class="cell-clamp curve-neg">{{ r.downText }}</div></td>
               <td class="td-detail"><div class="cell-clamp">{{ r.noteText }}</div></td>
@@ -810,11 +814,15 @@
                   <div v-if="Math.abs(r.attr.restDelta) > 1" class="td-standard">其余 {{ signedDmg(r.attr.restDelta) }}</div>
                 </div>
               </td>
+              <td>
+                <n-button v-if="r.canOpen" size="tiny" quaternary @click.stop="openRowPool(r)">资源池</n-button>
+                <span v-else class="td-muted">—</span>
+              </td>
             </tr>
             <tr v-if="curveJumpRows.length === 0">
-              <td colspan="8" class="td-detail">
-                本次曲线没有「多一次」量级的跃迁：要么该队已饱和，要么爬升只带来小数级微调
-                （鼠标停在曲线点上可看每档明细）。
+              <td colspan="10" class="td-detail">
+                本次曲线没有任何 |Δ| ≥ 1 的次数变化：要么该队已饱和，要么爬升只带来小数级微调
+                （点曲线上的点、或看下方「截断提醒」，仍可展开每一档的资源池）。
               </td>
             </tr>
       </ChartTable>
@@ -845,16 +853,20 @@
                 <template v-if="r.hint.neededX !== null">≈ {{ fmt(r.hint.neededX, 0) }} 点</template>
                 <template v-else><span class="curve-neg">曲线内无法达到</span><div class="td-standard">最多 {{ cntNum(r.hint.maxPlayed ?? 0) }} 次</div></template>
               </td>
+              <td>
+                <n-button v-if="r.canOpen" size="tiny" quaternary @click="openRowPool(r)">资源池</n-button>
+                <span v-else class="td-muted">—</span>
+              </td>
             </tr>
             <tr v-for="b in curveTruncBaseOnly" :key="b.key">
               <td class="td-team" :style="{ color: b.color }">{{ b.team }}</td>
-              <td colspan="5" class="td-detail">
+              <td colspan="6" class="td-detail">
                 只有全关起点被砍（本档交互 {{ cntNum(b.hint.filled) }} → 实打 {{ cntNum(b.hint.played) }} 次<template v-if="b.hint.overflow > 1">，截断 {{ fmt(b.hint.overflow, 1) }}s</template>）：
                 起点是曲线基准、不进表；往上爬的各档都足量交付本档配置的交互，没有可对照的被砍档。
               </td>
             </tr>
             <tr v-if="curveTruncRows.length === 0 && curveTruncBaseOnly.length === 0">
-              <td colspan="6" class="td-detail">
+              <td colspan="7" class="td-detail">
                 本次曲线每一档的交互都足量交付（没有降配缩交互、也没有时间截断）——每一档配置的交互次数都打出来了。
               </td>
             </tr>
@@ -2304,15 +2316,18 @@ const goldAltTableColumns = [
  */
 const curveJumpTableColumns = [
   { key: 'team', label: '队伍' }, { key: 'cost', label: '操作难度' }, { key: 'point', label: '关键点' },
+  { key: 'stun', label: '失衡（完整窗）' },
   { key: 'up', label: '变多（次数）' }, { key: 'down', label: '变少（次数）' },
   { key: 'note', label: '时间 / 备注' },
   { key: 'damage', label: '伤害' },
   { key: 'attr', label: '伤害归因（相对上一档）' },
+  { key: 'pool', label: '资源池' },
 ]
 const curveTruncTableColumns = [
   { key: 'team', label: '队伍' }, { key: 'cost', label: '操作难度' }, { key: 'point', label: '关键点' },
   { key: 'hint', label: '本档交互 → 实打' }, { key: 'cut', label: '被砍' },
   { key: 'needed', label: '达标所需难度' },
+  { key: 'pool', label: '资源池' },
 ]
 const sweepTableColumns = [
   { key: 'rank', label: '排名' }, { key: 'third', label: '第三人' }, { key: 'damage', label: '伤害' },
@@ -2580,33 +2595,57 @@ const curveSeriesPx = computed(() => {
 /** 关键变化面板的行（跨队铺平；数据源 = 各队已过滤过 major 的 `jumps`） */
 const curveJumpRows = computed(() =>
   curveSeriesPx.value.flatMap((s, si) =>
-    s.jumpPts.map((j, ji) => {
-      /**
-       * 三类内容分开说（用户 2026-11-02「交互次数写的太乱…多的少的分别说」）：
-       * 变多（次数）/ 变少（次数）/ 秒量（合轴节省，单位 s）——秒量不再混进次数列。
-       */
-      const up = j.changes.filter(c => c.label !== SECONDS_LABEL)
-      const down = j.downChanges.filter(c => c.label !== SECONDS_LABEL)
-      const saved = [...j.changes, ...j.downChanges].filter(c => c.label === SECONDS_LABEL)
-      return {
-        key: `${s.presetId}-${si}-${ji}`,
-        team: s.name,
-        color: s.color,
-        cost: j.cost,
-        dmg: j.dmg,
-        ratio: j.ratio,
-        point: j.point,
-        upText: cntCellsText(up),
-        upTitle: cntCellsTitle(up),
-        downText: cntCellsText(down),
-        downTitle: cntCellsTitle(down),
-        noteText: [
-          ...saved.map(cntRange),
-          ...(j.back ? ['难度回落（白拿的优化）'] : []),
-        ].join(' · ') || '—',
-        attr: attributeDmgChanges(j.dmgChanges),
-      }
-    }),
+    /**
+     * 行源（T184，用户 2026-11-02「**纯变少的档也可以列**」）：`s.points` 里**任一侧有 major**（|Δ|≥1）
+     * 的档 —— 不再只看「变多」。图上标注仍只取变多（`s.jumpPts` 不动），面板则把「这一步变少了什么」
+     * 也摆出来（含整档只有变少的那类）。
+     */
+    s.points.filter(p => p.changes.some(c => c.major) || p.downChanges.some(c => c.major))
+      .map((j, ji) => {
+        /**
+         * 三类内容分开说（用户 2026-11-02「交互次数写的太乱…多的少的分别说」）：
+         * 变多（次数）/ 变少（次数）/ 秒量（合轴节省，单位 s）——秒量不再混进次数列。
+         */
+        const up = j.changes.filter(c => c.label !== SECONDS_LABEL)
+        const down = j.downChanges.filter(c => c.label !== SECONDS_LABEL)
+        const saved = [...j.changes, ...j.downChanges].filter(c => c.label === SECONDS_LABEL)
+        /**
+         * 失衡列（用户 2026-11-02「失衡能显示更清楚更好」）：本档**已完整 N 次** + 相对上一档的 Δ。
+         * 读数 = `continuousStunProgress`（与图上「已完整 N 次」同一读数）；没采到 ⇒ 如实空（不编 0）。
+         */
+        const idx = s.points.indexOf(j)
+        const prevWindows = idx > 0 ? s.points[idx - 1]!.stunProgress?.completeWindows : undefined
+        const windows = j.stunProgress?.completeWindows
+        const stunDelta = windows !== undefined && prevWindows !== undefined ? windows - prevWindows : undefined
+        return {
+          key: `${s.presetId}-${si}-${ji}`,
+          team: s.name,
+          color: s.color,
+          cost: j.cost,
+          dmg: j.dmg,
+          ratio: j.ratio,
+          point: j.point,
+          laneKey: s.laneKey,
+          /** 该档曲线点本体（点开资源池时 `inspectCurvePoint` 要 `p.scene`）；只买指针，不复制数据 */
+          datum: j,
+          canOpen: canInspectPoint(j),
+          stunText: windows === undefined
+            ? '—'
+            : `完整 ${windows} 次` + (stunDelta !== undefined && Math.abs(stunDelta) >= 1 - 1e-6 ? `（${stunDelta > 0 ? '+' : '−'}${Math.abs(stunDelta)}）` : ''),
+          stunTitle: j.stunProgress
+            ? `已完整 ${windows} 次；距下一次完整失衡 ${fmt((j.stunProgress.nextWindowProgress ?? 0) * 100, 0)}%，再攒 ${fmt(j.stunProgress.missingBuildUp ?? 0, 0)} 点失衡值`
+            : '该档没采到连续失衡读数',
+          upText: cntCellsText(up),
+          upTitle: cntCellsTitle(up),
+          downText: cntCellsText(down),
+          downTitle: cntCellsTitle(down),
+          noteText: [
+            ...saved.map(cntRange),
+            ...(j.back ? ['难度回落（白拿的优化）'] : []),
+          ].join(' · ') || '—',
+          attr: attributeDmgChanges(j.dmgChanges),
+        }
+      }),
   ),
 )
 /**
@@ -2637,6 +2676,11 @@ const curveTruncRows = computed(() =>
         cost: t.cost,
         point: t.point,
         hint: t.hint,
+        /** 被砍的档**也有完整现场**（用户 2026-10-16「我本来想看看有没有 4 失衡，伤害为什么低」）
+         * ⇒ 与曲线点同一条 `inspectCurvePoint` 链，行内一个按钮就能展开它的资源池。 */
+        laneKey: s.laneKey,
+        datum: t,
+        canOpen: canInspectPoint(t),
       })),
   ),
 )
@@ -2698,6 +2742,19 @@ async function inspectCurvePoint(laneKey: string, p: CurveDatum, source: 'point'
   await curvePool.load(p.scene)
 }
 const curvePoolPickReason = ref('')
+/** 这一行是否正是当前打开的资源池档（行高亮；与图上「点中的点」同一份状态） */
+function isPoolOpen(r: { laneKey: string; point: KnobPointName; cost: number }): boolean {
+  const p = curvePoolPick.value
+  return !!p && p.laneKey === r.laneKey && p.point === r.point && Math.abs(p.cost - r.cost) < 1e-9
+}
+/**
+ * 行内「资源池」按钮 / 整行点击 ⇒ 展开该档资源池（用户 2026-11-02「**每个计算点都能展示细致资源池**最好」）。
+ * 复用图上点选那条链（`inspectCurvePoint`）——同一份 `curvePoolPick`，图上与表上不会各说各话。
+ */
+function openRowPool(r: { laneKey: string; point: KnobPointName; datum: CurveDatum; canOpen: boolean }) {
+  if (!r.canOpen) return
+  void inspectCurvePoint(r.laneKey, r.datum, 'point')
+}
 /** 轴态图例（唯一来源 = `axisMarkerLegend()`；页面不手写第二套形状↔含义映射） */
 const axisLegend = axisMarkerLegend()
 /**
