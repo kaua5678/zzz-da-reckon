@@ -25,6 +25,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { applyTeamToStore } from '@/composables/teamCompare'
+/** ⚠ 本文件顶部已 import 过 `captureDmgBySource`/`captureKeyCounts`（③ 的跃迁判据要用它） */
 import {
   absorbCapOf, climbDifficultyLadder, summarizeLadder, resetDifficultyGoals, clearDifficultyLevers, scanAbsorbGrid, climbFieldsOf,
   applyRoleInteractionBaseline,
@@ -260,6 +261,61 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     expect(r.final, '④ 伤害必须 ≥ ① 伤害').toBeGreaterThanOrEqual(r.base - 1e-6)
     expect(r.gain).toBeCloseTo(r.final - r.base, 6)
     expect(r.gain).toBeGreaterThan(0) // 这条队实测确有提升
+  })
+
+  it('★ T182：④ ≥ ③（两条入口取高；负控 = 只从 ① 重来会低于 ③）', async () => {
+    /**
+     * ## 为什么加这条（T182，2026-11-02；用户实报「难度曲线不单调」）
+     *
+     * 用户口径逐字：「**最高难度被看的最多，他要算准确**。理论上合轴率拉满得出最多富余时间，
+     * 交互较多得出更多收益，一个队伍应当这时候最强了。」
+     *
+     * 缺陷形态：④ 旧口径**只**从 ① 的现场重来（T141，为修「④ < ①」而立），而 `joint`/`slotLadder`
+     * 都是坐标上升（**起点决定落点**）⇒ 从 ① 出发爬到的是另一个更差的局部解，把 ③ 已经爬到的
+     * 更好盆地丢掉了。实测 `auto-1461-1031-1521`（页面同源口径）：③ 68.53M → ④ **66.39M**
+     * （x 却 +17.3 点），掉的全是希希芙的毒素链（蛇影 22→17 ⇒ 蚀骨 −6.45M、蛇吻 −1.67M）。
+     *
+     * 现口径 = 两条入口各爬一次、取伤害高者（臂 A ① / 臂 B ③，见 `climbDifficultyLadder` 的 T182 段）。
+     *
+     * ## 负控（改回单臂 ⇒ 本测试红）
+     *
+     * 下面第二段**手工摆回「只从 ① 重来」的单臂现场**（= T141 口径）并断言它**低于 ③** ——
+     * 这条锁的是缺陷机制本身：任何人把 ④ 改回单臂，第一段「④ ≥ ③」立刻红。
+     */
+    const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
+    await catalog.loadBuildRecommendations()
+    const calc = useResourceCalc()
+    const ctx: LadderCtx = { config, calc }
+    const p = teamPresets.find(x => x.id === 'auto-1461-1031-1521')!
+    const r = climbDifficultyLadder(ctx, p.team as [string, string, string], {
+      // 基线与页面同口径（`difficultyCurve` 的 `opts.base`）
+      base: c => {
+        clearDifficultyLevers(c)
+        applyTeamToStore(c.config, p)
+        return c.calc.teamTotalDamage.value
+      },
+      // ③ 的「离散动作增量」判据需要 counts（页面口径同此）
+      capture: c => ({ counts: captureKeyCounts(c.calc), dmgBySource: captureDmgBySource(c.calc) }),
+    })
+    const prog = r.points.find(x => x.point === 'progress')
+    const maxPt = r.points.find(x => x.point === 'max')
+    expect(prog, '夹具队必须有 ③（否则本判据没有分母）').toBeDefined()
+    expect(maxPt, '④ 恒存在').toBeDefined()
+    expect(maxPt!.dmg, '④ 必须 ≥ ③（「难度上升 ⇒ 总伤上升」）').toBeGreaterThanOrEqual(prog!.dmg - 1e-6)
+    expect(r.final, 'T141 的 ④ ≥ ① 结构性保证不得被本修法破坏').toBeGreaterThanOrEqual(r.base - 1e-6)
+    expect(r.maxEntry, '本队实测由 ③ 入口臂胜出（旧单臂口径在这一步更低）').toBe('progress')
+    /**
+     * ★ **负控**：两条入口臂的实测伤害必须**真的不同**（臂 B 更高），且 ④ = 取高者。
+     * 谁把 ④ 改回单臂（臂 B 不存在）⇒ `maxArms` 里没有 `progress` 项 + 上面的 `maxEntry` 断言
+     * + 本段的「取高者」断言三处同时红。
+     */
+    const arms = r.maxArms ?? []
+    const armBase = arms.find(a => a.entry === 'baseline')
+    const armProg = arms.find(a => a.entry === 'progress')
+    expect(armBase, '臂 A（① 入口）必须在').toBeDefined()
+    expect(armProg, '臂 B（③ 入口）必须在（③ 存在时恒有）').toBeDefined()
+    expect(armProg!.dmg, '负控：臂 B 必须真的优于臂 A（否则本修法无话可说）').toBeGreaterThan(armBase!.dmg)
+    expect(maxPt!.dmg, '④ = 各臂取高者').toBeCloseTo(Math.max(armBase!.dmg, armProg!.dmg), 6)
   })
 
   it('⑤ `scanAbsorbGrid` 确实在找**最小**吸收率（网格分辨率决定找到的值 + 还原纪律）', async () => {

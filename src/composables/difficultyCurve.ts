@@ -46,8 +46,8 @@
 import { applyBossRoom } from '@/composables/bossRoom'
 import { applySlotOverrides, NO_SLOT_OVERRIDES, type SlotOverrides } from '@/composables/presetSlotOverrides'
 import { useCatalogStore } from '@/stores/catalog'
-import { captureState, stateDeltaOf } from '@/composables/configDelta'
-import { type ConfigModel } from '@/stores/config'
+import { captureState, restoreStateDelta, stateDeltaOf } from '@/composables/configDelta'
+import { type ConfigModel, type EvalConfig } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import {
   absorbCapOf, applyInteractionKnob, clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
@@ -456,6 +456,7 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
           ctx: { config: configStore, calc },
           preset,
           applied,
+          ladder,
           phaseHp: lane.phase.hp,
           weights: options.difficultyWeights,
           baseAxis,
@@ -498,7 +499,12 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
  * ④ 恒存在（卡 §4），故这条实际上不会触发；写成显式分支是为了不静默编一个落点。
  */
 function computeAltAxisPoints(args: {
-  ctx: { config: ConfigModel; calc: Calc }
+  /**
+   * ⚠ 这里必须是 `EvalConfig`（= `ConfigModel & { $state }`）：T182 的「按 ④ 胜出入口复现现场」
+   * 走 `restoreStateDelta`，它差分读 `$state`，而静态类型 `ConfigModel` 不含它
+   * （同一原因见本文件 `sceneOf` 处的闭包写法）。
+   */
+  ctx: { config: EvalConfig; calc: Calc }
   preset: TeamPreset
   ladder: LadderResult
   /** 该道已应用的加金步骤（与阶梯同一份现场，换轴时不能丢） */
@@ -521,13 +527,20 @@ function computeAltAxisPoints(args: {
     for (const alt of alts) {
       const axisPreset = stunAxisPresets.find(p => p.id === alt.stunAxisPresetId)
       if (!axisPreset) continue // 找不到预设 = 不静默换一条别的轴（与 buffMode 'manual' 同款纪律）
-      // 复现 ④ 的现场：预设 → 加金 → 吸收拉满 → 交互取最优
-      clearDifficultyLevers(ctx)
-      applyTeamToStore(ctx.config, preset)
-      applyGoldAllocationToStore(ctx.config, applied)
-      ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, userAbsorbCap)
-      applyInteractionKnob(ctx, 'zero')
-      applyInteractionKnob(ctx, 'slotLadder')
+      // 复现 ④ 的现场：**按 ④ 实际胜出的入口**（T182，见 `LadderResult.maxEntry`）——
+      // ④ 现在有两条入口臂（① / ③），摆错那条就不是「同一个 x」了。
+      if (ladder.maxEntry === 'progress' && maxPoint.scene) {
+        // 精确路径：直接用 ④ 那一档的现场差分（含 ③ 入口臂的全部写入，含轴修扫的字段）
+        restoreStateDelta(ctx.config, maxPoint.scene.base, maxPoint.scene.delta)
+      } else {
+        // ① 入口（T141 口径，逐位同旧）；也是「没采到现场」时的退路
+        clearDifficultyLevers(ctx)
+        applyTeamToStore(ctx.config, preset)
+        applyGoldAllocationToStore(ctx.config, applied)
+        ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, userAbsorbCap)
+        applyInteractionKnob(ctx, 'zero')
+        applyInteractionKnob(ctx, 'slotLadder')
+      }
       // 换轴：以该预设自己的轴绑定为底，再套 altAxes 指定的轴预设
       applyAxisBinding(ctx.config, baseAxis, preset)
       ctx.config.applyStunAxisPreset(axisPreset)
@@ -637,14 +650,17 @@ const LIMIT_FINE_ABSORB_STEPS = 6
  * 「能力存在即声明」，谁实现就用谁的）。找不到 ⇒ 返回 `null`（**不**为不支持的队编一个极限点）。
  */
 function computeLimitPointFor(args: {
-  ctx: { config: ConfigModel; calc: Calc }
+  /** `EvalConfig` 的必要性见 `computeAltAxisPoints` 的注释 */
+  ctx: { config: EvalConfig; calc: Calc }
   preset: TeamPreset
   applied: ReturnType<typeof applyGoldSteps>
+  /** 本道的阶梯结果（T182：极限点要按 ④ 胜出的入口复现现场） */
+  ladder: LadderResult
   phaseHp: number
   weights?: DifficultyWeights
   baseAxis: ReturnType<ConfigModel['getAxisState']>
 }): LimitPointResult | null {
-  const { ctx, preset, applied, weights, baseAxis } = args
+  const { ctx, preset, applied, ladder, weights, baseAxis } = args
   // ⚠ 按槽位顺序查（预设 team 数组 = 槽位序），取第一个声明者
   for (let slot = 0; slot < preset.team.length; slot++) {
     const agentId = preset.team[slot]
@@ -662,15 +678,18 @@ function computeLimitPointFor(args: {
      * 匹配不到 ⇒ null（跑预设默认绑定轴），**不静默换一条别的轴**（与 buffMode 'manual' 同款纪律）。
      */
     const targetAxisPresetId = preset.altAxes?.find(a => decl.name.includes(a.name.replace(/轴$/, '')))?.stunAxisPresetId ?? null
-    return computeLimitPoint({ ctx, preset, applied, weights, baseAxis, decl, slot, targetAxisPresetId })
+    return computeLimitPoint({ ctx, preset, applied, ladder, weights, baseAxis, decl, slot, targetAxisPresetId })
   }
   return null
 }
 
 function computeLimitPoint(args: {
-  ctx: { config: ConfigModel; calc: Calc }
+  /** `EvalConfig` 的必要性见 `computeAltAxisPoints` 的注释 */
+  ctx: { config: EvalConfig; calc: Calc }
   preset: TeamPreset
   applied: ReturnType<typeof applyGoldSteps>
+  /** 本道的阶梯结果（T182：按 ④ 胜出的入口复现现场） */
+  ladder: LadderResult
   weights?: DifficultyWeights
   baseAxis: ReturnType<ConfigModel['getAxisState']>
   decl: NonNullable<AgentMechanicModule['limitPoint']>
@@ -678,7 +697,7 @@ function computeLimitPoint(args: {
   /** 极限点要跑的轴预设 id（`preset.altAxes` 里与 `decl` 同名的那条；缺省用预设默认绑定轴） */
   targetAxisPresetId: string | null
 }): LimitPointResult {
-  const { ctx, preset, applied, weights, baseAxis, decl, slot, targetAxisPresetId } = args
+  const { ctx, preset, applied, ladder, weights, baseAxis, decl, slot, targetAxisPresetId } = args
   const out: LimitPointResult = {
     name: decl.name, targetValue: decl.target.value,
     found: false, x: null, dmg: null, axis: null, absorb: null,
@@ -703,11 +722,20 @@ function computeLimitPoint(args: {
    * （对照：10大轴上同条件 90.905M）。⇒ 用 `targetAxisPresetId` 显式指定。
    */
   const resetScene = () => {
-    clearDifficultyLevers(ctx)
-    applyTeamToStore(ctx.config, preset)
-    applyGoldAllocationToStore(ctx.config, applied)
-    applyInteractionKnob(ctx, 'zero')
-    applyInteractionKnob(ctx, 'slotLadder')
+    /**
+     * 复现 ④ 的现场（T182）：**按 ④ 实际胜出的入口**——④ 现在有两条入口臂（① / ③），
+     * 摆错那条就不是「同一个旋钮组合」了。④ 未落点 / 没采到现场 ⇒ 退回 ① 入口的旧配方（逐位同旧）。
+     */
+    const maxScene = ladder.points.find(p => p.point === 'max')?.scene
+    if (ladder.maxEntry === 'progress' && maxScene) {
+      restoreStateDelta(ctx.config, maxScene.base, maxScene.delta)
+    } else {
+      clearDifficultyLevers(ctx)
+      applyTeamToStore(ctx.config, preset)
+      applyGoldAllocationToStore(ctx.config, applied)
+      applyInteractionKnob(ctx, 'zero')
+      applyInteractionKnob(ctx, 'slotLadder')
+    }
     applyAxisBinding(ctx.config, baseAxis, preset)
     if (targetAxisPresetId) {
       const ap = stunAxisPresets.find(p => p.id === targetAxisPresetId)

@@ -89,9 +89,12 @@ export const VIVIAN_POTENTIAL_RELEASE_BONUS = 50
  * 额外爆炸 + 其触发的异放（0.5×落羽生花 = 220%）**不耗前台时间 ⇒ 白嫖**，次数上限 = 强特次数 ⇒ 建模。
  * 注意「耗时」是**派生**出来的（scripts/lib/nanoka-move-rows.mjs#actionTime，秽盾/10000 − 类型加成），不是我手填。
  */
-export const VIVIAN_ENHANCED_CONTINUOUS_MOVE_ID = '1331022'
+/**
+ * ⚠ 1331022（四圈连续攻击）与「至多 4 圈」**有意不落成导出常量**：本模型不物化那四圈
+ * （见上条口径「平A级 ⇒ 不建模」），全仓零消费者 ⇒ 常量会被 deadChannelLs 死导出闸门判红。
+ * 证据留在上面的散文注释里，要复现时按 1331022 去 raw 里查。
+ */
 export const VIVIAN_ENHANCED_EXPLOSION_MOVE_ID = '1331024'
-export const VIVIAN_ENHANCED_CONTINUOUS_ROUNDS = 4
 /**
  * 额外爆炸命中异常目标 → 触发一次[异放]，「造成相当于[普通攻击：落羽生花]50%的伤害」。
  * 读法 = 0.5 × 落羽生花 440% = 220% 以太伤害（直接伤害通道）。

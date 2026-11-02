@@ -823,11 +823,34 @@ export interface LadderSnapshot {
   interactionsPlayed?: number
 }
 
+/**
+ * ④（最高点）的两条**入口**（T182，2026-11-02）。
+ *
+ * - `'baseline'`：从 ① 的现场重来（T141 口径，结构性保证 ④ ≥ ①）；
+ * - `'progress'`：从 ③ 的落点现场再爬一次（T182 新增，修「④ < ③」——见 ④ 段注释的实测表）。
+ *
+ * 两条入口都是「吸收拉满 + 交互取最优」的同一个旋钮组合，只差**搜索起点**（坐标上升起点决定落点）。
+ */
+export type MaxEntry = 'baseline' | 'progress'
+
 export interface LadderResult {
   base: number
   final: number
   /** 关键点序列（1~4 点；`baseline` 与 `max` 恒存在，见卡 §4） */
   points: LadderPoint[]
+  /**
+   * ④ **实际胜出的入口**（T182）。展示层复现 ④ 现场时**必须按它选入口**
+   * （`difficultyCurve.ts` 的曲线外补充点 / 极限点），否则摆出的是另一条入口的现场
+   * ⇒「同 x」这个前提不成立。缺省（④ 未落点）= undefined。
+   */
+  maxEntry?: MaxEntry
+  /**
+   * ④ 各入口臂的**实测伤害**（按伤害降序 = 落点尝试次序；缺省 = ④ 未落点）。
+   *
+   * 留痕而不是只留胜者：判据要能断言「④ = 各臂取高」（T182 主判据），
+   * 诊断也要能回答「这个天花板是哪条入口爬出来的、另一条差多少」。
+   */
+  maxArms?: Array<{ entry: MaxEntry; dmg: number }>
   /** ② 点是否缺失（本队轴在任何难度下都不成立）——UI 据此在 ③ 位置如实标注 */
   axisPointMissing: boolean
   /**
@@ -1240,6 +1263,12 @@ export function climbDifficultyLadder(
    * ⚠ 成本纪律：② 存在时现场已是 ② 的配置 ⇒ 循环里**只改吸收率**；② 缺失时先试**交互步**
    *   （`preJoint`，那是非轴队唯一真实的离散跃迁来源），再扫吸收率。
    */
+  /**
+   * ③ 落点的**现场快照**（T182）：④ 的第二条入口要从这里出发（见 ④ 段）。
+   * 必须在**落点那一刻**采——`scanAbsorbGrid` 的 `finally` 会把吸收率还原到扫描前，
+   * 事后采到的就不是 ③ 的现场了。
+   */
+  let progressSnap: LadderMutSnap | null = null
   if (progressBase) {
     const baseCounts = progressBase.counts
     /** 「跃迁」判据：基准点 → 候选点之间出现 ≥1 次离散动作增量（口径见 difficultyCurve#diffKeyCounts） */
@@ -1259,7 +1288,7 @@ export function climbDifficultyLadder(
         // 现场切到 joint（`applyInteractionKnob` 幂等：joint 写下的值再跑一次结果相同）
         applyInteractionKnob(ctx, 'joint')
         const pt = land('progress', st)
-        if (pt) { points.push(pt); landed = true }
+        if (pt) { points.push(pt); landed = true; progressSnap = snapshot(ctx) }
       }
     }
     // 未落点 ⇒ 扫吸收率（② 存在时从 ② 的落点起；② 缺失且交互步未落点则从 0 起）
@@ -1273,6 +1302,7 @@ export function climbDifficultyLadder(
         const pt = land('progress', st) // 命中即落点
         if (!pt) return false // 轴要求未满足 ⇒ 这一点不出数（继续往后扫，别停）
         points.push(pt)
+        progressSnap = snapshot(ctx) // ③ 落点现场（含它自己的吸收率）——④ 的第二条入口用
         return true
       }, scanSteps)
     }
@@ -1333,7 +1363,48 @@ export function climbDifficultyLadder(
    *
    * 成本：`joint`（~15-20 求值）+ 逐槽阶梯（≤ 3 槽 × 2 类型 × 16 步 = 96 求值，实际早停）。
    * 它买的是 ④ 的正确性与**路径无关性**——天花板值这个价。
+   * ⚠ 但「只从 ① 重来」**不是**天花板问题的完整解（会丢掉 ③ 的更好盆地）⇒ T182 起为**两条入口取高**，
+   *   见下方 T182 段。
    */
+  /**
+   * ## ⚠ T182（2026-11-02）：只从 ① 重来 ⇒ ④ 会**低于 ③**（用户实报「难度曲线不单调」）
+   *
+   * 用户口径（逐字）：「**最高难度被看的最多，他要算准确**。理论上合轴率拉满得出最多富余时间，
+   * 交互较多得出更多收益，一个队伍应当这时候最强了。」
+   *
+   * 实测（页面同源口径 `PROBE_DIFF_TEAMS=auto-1461-1031-1521`，期数 3.3 · 熔狱行赭 hp 19698 万）：
+   *
+   * | 配置 | 伤害 | 蛇影层数 |
+   * |---|---|---|
+   * | ③ progress（joint @ 吸收 0.02） | 68.53M | 22 |
+   * | ④ 旧口径（**只**从 ① 重来，slotLadder @ 0.4） | **66.39M** ← 比 ③ 低 2.14M、x 却 +17.3 点 | 17 |
+   * | ④ 新口径（③ 现场重来，本段） | **72.44M** | 23 |
+   * | 参照：③ 现场 + **只**抬吸收到 cap | 72.24M ↑ | 24 |
+   * | 参照：③ 现场 + **只** slotLadder（吸收不动） | 68.85M ↑ | 22 |
+   *
+   * ⇒ **两只旋钮单独/一起上都是涨的**，掉档不是旋钮语义问题，而是**搜索起点**问题：
+   * `joint`/`slotLadder` 都是坐标上升（起点决定落点，见上方 T141 第 2/3 层）⇒
+   * 从 ① 出发爬到的是**另一个更差的局部解**（蛇影 17，而 ③ 的盆地能到 23），
+   * 于是「难度 +17.3 点、总伤 −2.14M」，用户看到的就是「不单调」。
+   * 旧修法（T141 只从 ① 重来）是为修「④ < ①」立的、本身没错；**错在把它当成唯一入口**。
+   * 判据只钉了 ④ ≥ ①（全库 97 队 0 违例），没有钉 ④ ≥ ③ ⇒ 这个洞此前无机器看守。
+   *
+   * **现口径 = 两条入口各爬一次、取伤害高者**：
+   * - 臂 A（`'baseline'`，T141）：保 ④ ≥ ① 的**结构性**保证；
+   * - 臂 B（`'progress'`）：保 ④ ≥ ③ 的**实测**（③ 缺失时无此臂）。
+   *
+   * 成本：多一次 `slotLadder`（≤96 次全队求值，实际早停），且**只在 ③ 存在时付**。
+   *
+   * @fact engine:难度曲线/④口径 口径: ④ = **两条入口取高** —— 臂 A 从 ① 现场重来、臂 B 从 ③ 落点重来，两条都是「吸收拉满 + 逐槽交互最优（slotLadder）」的同一旋钮组合，只差搜索原点（坐标上升起点决定落点）⇒ 单臂会丢 ③ 的更好盆地（实测 auto-1461-1031-1521：③ 68.53M → 单臂 ④ 66.39M < ③；双臂 ④ 73.33M）；胜出入口 = `LadderResult.maxEntry`、各臂伤害 = `maxArms`，展示层复现 ④ 现场必须按入口选 | 据 用户@2026-11-02（「最高难度被看的最多，他要算准确…一个队伍应当这时候最强了」） | 验 src/composables/__tests__/difficultyLadder.test.ts::★ T182 | 锚 src/composables/difficultyLadder.ts#climbDifficultyLadder | 信 确认
+   * ⟳复核: ④ 的旋钮组合再变（新增第三臂 / 换 `slotLadder` 的接受门 / 出现第五个点名点）时，重核「两条入口取高」是否仍覆盖全部盆地，且 `maxArms` 的两臂仍是全部候选 | 到期 2027-06-30
+   */
+  interface MaxArm { entry: MaxEntry; dmg: number; snap: LadderMutSnap }
+  const maxArms: MaxArm[] = []
+  /** 收一臂：调用方已把现场摆好，这里只读伤害 + 采现场快照（胜出后要还原到它才能落点） */
+  const collectMaxArm = (entry: MaxEntry) => {
+    maxArms.push({ entry, dmg: ctx.calc.teamTotalDamage.value, snap: snapshot(ctx) })
+  }
+  // 臂 A：① 现场重来（T141 口径 ⇒ ④ ≥ ① 的结构性保证）
   restore(ctx, before) // ← 回到进入本函数前的现场（= ① 的权重/合轴率底子）
   ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, cap)
   applyInteractionKnob(ctx, 'zero')
@@ -1344,9 +1415,28 @@ export function climbDifficultyLadder(
    */
   applyRoleInteractionBaseline(ctx)
   applyInteractionKnob(ctx, 'slotLadder')
-  const maxState = readState(ctx, { interactions: 'slotLadder', absorb: cap })
-  const maxPt = land('max', maxState)
-  if (maxPt) points.push(maxPt)
+  collectMaxArm('baseline')
+  // 臂 B：③ 落点现场重来（T182）。③ 的交互解是在**它自己的吸收率**上求的 ⇒
+  // 抬到 cap 后优化目标变了，必须**重跑一次逐槽阶梯**（同 T141 第 2 层那条性质）。
+  if (progressSnap) {
+    restore(ctx, progressSnap)
+    ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, cap)
+    applyInteractionKnob(ctx, 'slotLadder')
+    collectMaxArm('progress')
+  }
+  /**
+   * 取伤害高者。⚠ **逐臂试落点**（而不是「先选伤害最高的臂、再落一次」）：某一臂可能过不了
+   * 轴要求（`land` 返回 null）⇒ 不能因为它伤害高就把 ④ 整点丢掉（「④ 恒存在」优先）。
+   */
+  let maxEntry: MaxEntry | undefined
+  for (const arm of [...maxArms].sort((a, b) => b.dmg - a.dmg)) {
+    restore(ctx, arm.snap)
+    const pt = land('max', readState(ctx, { interactions: 'slotLadder', absorb: cap }))
+    if (!pt) continue
+    maxEntry = arm.entry
+    points.push(pt)
+    break
+  }
 
   // 现场恢复：本函数只负责**探测**，调用方（`computeDifficultyCurves` 的调用方）按契约还原
   restore(ctx, before)
@@ -1356,7 +1446,13 @@ export function climbDifficultyLadder(
    * ⇒ 退化为 `base`（全关读数）。⚠ **不得**回退成 `points[0]`（可能为空 ⇒ 崩）。
    */
   const final = points[points.length - 1]?.dmg ?? base
-  return { base, final, points, axisPointMissing, gain: final - base, axisTruncated }
+  return {
+    base, final, points, axisPointMissing, gain: final - base, axisTruncated,
+    ...(maxEntry ? { maxEntry } : {}),
+    ...(maxArms.length > 0
+      ? { maxArms: [...maxArms].sort((a, b) => b.dmg - a.dmg).map(a => ({ entry: a.entry, dmg: a.dmg })) }
+      : {}),
+  }
 }
 
 /** 曲线摘要（用于"难易强度"比较）：全关 / 终点 / 提升率 / 单位难度收益 */

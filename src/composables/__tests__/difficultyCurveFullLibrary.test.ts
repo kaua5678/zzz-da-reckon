@@ -53,11 +53,18 @@ describe.runIf(ENABLED)('T140c §6.5 全库：④ ≥ ①（难度上升 ⇒ 总
     const phase = boss.phases[0]! as BossPresetPhase
 
     const violations: string[] = []
+    /**
+     * **④ ≥ ③**（T182）：④「最高」是两条入口取高（① / ③），而 ③ 只存在时才有这条判据。
+     * 旧单臂口径实测会让 ④ 低于 ③（`auto-1461-1031-1521`：③ 68.53M > ④ 66.39M）⇒ 全库也要有看守。
+     */
+    const violations43: string[] = []
     const errors: string[] = []
     let scanned = 0
     let improved = 0
     let axisMissing = 0
     let totalPoints = 0
+    /** ④ 胜出入口分布（诊断：臂 B 实际赢了多少队 —— 全 0 说明臂 B 是空转） */
+    const byEntry: Record<string, number> = { baseline: 0, progress: 0 }
 
     for (const preset of teamPresets) {
       try {
@@ -67,6 +74,7 @@ describe.runIf(ENABLED)('T140c §6.5 全库：④ ≥ ①（难度上升 ⇒ 总
         scanned++
         totalPoints += L.points.length
         if (L.axisPointMissing) axisMissing++
+        if (L.maxEntry) byEntry[L.maxEntry] = (byEntry[L.maxEntry] ?? 0) + 1
         // ①④ 恒存在（卡 §4）
         expect(L.points[0]!.point, `${preset.id}: 首点必须是 baseline`).toBe('baseline')
         expect(L.points[L.points.length - 1]!.point, `${preset.id}: 末点必须是 max`).toBe('max')
@@ -75,6 +83,12 @@ describe.runIf(ENABLED)('T140c §6.5 全库：④ ≥ ①（难度上升 ⇒ 总
         if (L.gain > 1e-6) improved++
         if (L.gain < -1e-6) {
           violations.push(`${preset.id}: ①=${(L.base / 1e6).toFixed(3)}M ④=${(L.final / 1e6).toFixed(3)}M Δ=${(L.gain / 1e6).toFixed(3)}M`)
+        }
+        // ★ T182：④ ≥ ③（有 ③ 的队才判）
+        const prog = L.points.find(p => p.point === 'progress')
+        const maxPt = L.points.find(p => p.point === 'max')!
+        if (prog && maxPt.dmg < prog.dmg - 1e-6) {
+          violations43.push(`${preset.id}: ③=${(prog.dmg / 1e6).toFixed(3)}M ④=${(maxPt.dmg / 1e6).toFixed(3)}M Δ=${((maxPt.dmg - prog.dmg) / 1e6).toFixed(3)}M`)
         }
       } catch (e) {
         errors.push(`${preset.id}: ${(e as Error).message.slice(0, 120)}`)
@@ -89,9 +103,13 @@ describe.runIf(ENABLED)('T140c §6.5 全库：④ ≥ ①（难度上升 ⇒ 总
       .toBeGreaterThan(teamPresets.length * 0.3)
     // ④ 核心判据：逐队 ④ ≥ ①
     expect(violations, `④ < ① 的队（难度上升却没涨伤害）：\n${violations.join('\n')}`).toEqual([])
+    // ⑤ T182 核心判据：有 ③ 的队逐队 ④ ≥ ③（最高点必须是天花板）
+    expect(violations43, `④ < ③ 的队（最高难度反而低伤）：\n${violations43.join('\n')}`).toEqual([])
 
     // 诊断输出（跑一次就能看到全库形态；失败时也打印）
     console.log(`T140C_FULL scanned=${scanned} improved=${improved} axisPointMissing=${axisMissing} `
-      + `avgPoints=${(totalPoints / Math.max(1, scanned)).toFixed(2)}`)
+      + `avgPoints=${(totalPoints / Math.max(1, scanned)).toFixed(2)} `
+      + `maxEntries=${JSON.stringify(byEntry)} `
+      + `violations43=${violations43.length}`)
   }, 3_600_000)
 })
