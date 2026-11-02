@@ -873,17 +873,17 @@
       </ChartTable>
     </n-card>
 
-    <!-- 逐点资源池明细（用户 2026-10-16）：点曲线上的点 ⇒ 该档的完整资源池 -->
-    <n-card v-if="chartMode === 'curve' && curvePoolPick" size="small" :bordered="true" class="detail-card">
-      <template #header>
-        <div class="curve-head">
-          <span>
-            该档资源池 · {{ pointLabel(curvePoolPick.point) }} · 操作难度 {{ fmt(curvePoolPick.cost, 1) }} 点
-            <span class="td-muted">（{{ curvePoolPick.laneKey }}）</span>
-          </span>
-          <n-button size="tiny" @click="curvePoolPick = null; curvePool.clear()">收起</n-button>
-        </div>
-      </template>
+    <!-- 逐点资源池明细（用户 2026-10-16；T185 起改**右侧抽屉**：「点哪个换哪个、不用滚下去」） -->
+    <n-drawer v-if="chartMode === 'curve'" v-model:show="poolDrawerOpen" width="min(620px, 92vw)" placement="right" :trap-focus="false">
+      <n-drawer-content v-if="curvePoolPick" closable>
+        <template #header>
+          <div class="curve-head">
+            <span>
+              该档资源池 · {{ pointLabel(curvePoolPick.point) }} · 操作难度 {{ fmt(curvePoolPick.cost, 1) }} 点
+              <span class="td-muted">（{{ curvePoolPick.laneKey }}）</span>
+            </span>
+          </div>
+        </template>
       <div class="compare-note curve-note">
         <b>口径 = 那一点的现场重放</b>（不是全关档、也不是终点档）：面板把该点采到的现场差分写回一个独立场景
         （<code>restoreStateDelta</code>）再算一次 ⇒ <b>伤害与该点读数逐位相等</b>（判据 <code>curvePointPool.test.ts</code>）。
@@ -973,8 +973,9 @@
           />
         </div>
       </template>
-      <div v-else class="empty-hint">该档未采现场（本次曲线没有带现场差分）⇒ 不显示资源池，也不编数据。</div>
-    </n-card>
+        <div v-else class="empty-hint">该档未采现场（本次曲线没有带现场差分）⇒ 不显示资源池，也不编数据。</div>
+      </n-drawer-content>
+    </n-drawer>
 
     <!-- 曲线摘要表：难易强度对比看这几列 -->
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="detail-card">
@@ -1171,7 +1172,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NInput, NPopover, NRadioGroup, NRadioButton } from 'naive-ui'
+import { NCard, NDrawer, NDrawerContent, NSelect, NInputNumber, NButton, NCheckbox, NInput, NPopover, NRadioGroup, NRadioButton } from 'naive-ui'
 import DifficultyCurve3DChart from '@/components/charts/DifficultyCurve3DChart.vue'
 import { buildBossHpCurve, buildEnvLanes, deriveVersionAxis, type VersionLane } from '@/composables/difficultyCurve3d'
 import { useConfigStore } from '@/stores/config'
@@ -2629,9 +2630,15 @@ const curveJumpRows = computed(() =>
           /** 该档曲线点本体（点开资源池时 `inspectCurvePoint` 要 `p.scene`）；只买指针，不复制数据 */
           datum: j,
           canOpen: canInspectPoint(j),
+          /**
+           * 展示**过渡区间**（用户 2026-11-02「把完整几到几标注清楚还是可以」）：有台阶写 `完整 2→3`，
+           * 没有台阶写 `完整 3`（该档维持上一档的完整窗数）。
+           */
           stunText: windows === undefined
             ? '—'
-            : `完整 ${windows} 次` + (stunDelta !== undefined && Math.abs(stunDelta) >= 1 - 1e-6 ? `（${stunDelta > 0 ? '+' : '−'}${Math.abs(stunDelta)}）` : ''),
+            : (prevWindows !== undefined && Math.abs(stunDelta ?? 0) >= 1 - 1e-6
+              ? '完整 ' + prevWindows + '→' + windows
+              : '完整 ' + windows),
           stunTitle: j.stunProgress
             ? `已完整 ${windows} 次；距下一次完整失衡 ${fmt((j.stunProgress.nextWindowProgress ?? 0) * 100, 0)}%，再攒 ${fmt(j.stunProgress.missingBuildUp ?? 0, 0)} 点失衡值`
             : '该档没采到连续失衡读数',
@@ -2736,12 +2743,18 @@ function onCurve3dPick(laneKey: string, point: KnobPointName, cost: number) {
 /** 点开/收起某一档的资源池明细（`source` = 被轴砍掉的档时带理由，面板上如实标注） */
 async function inspectCurvePoint(laneKey: string, p: CurveDatum, source: 'point' | 'axisTruncated', reason = '') {
   const same = curvePoolPick.value?.laneKey === laneKey && curvePoolPick.value?.point === p.point && curvePoolPick.value?.cost === p.cost
-  if (same) { curvePoolPick.value = null; curvePool.clear(); return }
+  if (same) { curvePoolPick.value = null; poolDrawerOpen.value = false; curvePool.clear(); return }
+  poolDrawerOpen.value = true
   curvePoolPick.value = { laneKey, point: p.point, cost: p.cost }
   curvePoolPickReason.value = source === 'axisTruncated' ? reason : ''
   await curvePool.load(p.scene)
 }
 const curvePoolPickReason = ref('')
+/**
+ * 资源池**右侧抽屉**（T185，用户 2026-11-02「可以试试新风格」）：
+ * 点曲线点 / 点表行 / 点 3D 图都开同一个抽屉，点哪个换哪个 —— 不再把明细铺在页面下方（滚下去才看得到）。
+ */
+const poolDrawerOpen = ref(false)
 /** 这一行是否正是当前打开的资源池档（行高亮；与图上「点中的点」同一份状态） */
 function isPoolOpen(r: { laneKey: string; point: KnobPointName; cost: number }): boolean {
   const p = curvePoolPick.value
