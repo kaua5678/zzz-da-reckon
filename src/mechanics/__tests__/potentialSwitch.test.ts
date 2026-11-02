@@ -31,7 +31,7 @@ import { JUFUFU_POTENTIAL_STUN_BUILDUP, jufufuTigerRoarMechanic } from '@/mechan
  * （1331022/1331024，"招式伤害属性对账"会报 orphan）⇒ 只作**版本化证据**，正主 raw 仍是 live 包。
  */
 const V2_RAW: Record<string, string> = {
-  '1331': '../../../data/raw/nanoka_1331_v2_zh_3.4.2+20052336.json',
+  '1331': '../../../data/raw/nanoka_missing/full/1331.json',
 }
 const RAW = (id: string) => JSON.parse(readFileSync(
   new URL(V2_RAW[id] ?? `../../../data/raw/nanoka_missing/full/${id}.json`, import.meta.url), 'utf8',

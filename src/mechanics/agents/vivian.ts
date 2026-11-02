@@ -99,7 +99,7 @@ export const VIVIAN_ENHANCED_CONTINUOUS_ROUNDS = 4
  */
 export const VIVIAN_ENHANCED_EXPLOSION_RELEASE_PCT = 220
 
-// @fact agent:1331/v2长按强特附加段 口径: v2 3.4.2+20052336 长按强特（堇花悼亡）新增段：① 淑女突刺连续攻击 1331022（44%/圈、秽盾 2000 ⇒ 派生 0.2s/圈）= 220%/s ≈ 薇薇安平A 227.7%/s ⇒ **平A级，不建模**；② 额外爆炸 1331024（440%、秽盾 0 ⇒ 0s）+ 其触发的[异放]（0.5×落羽生花 440% = 220% 以太伤害）**不耗前台时间 ⇒ 白嫖，只受次数限制（= 强特次数）** ⇒ 建模。判据 = 用户 2026-11-02「如果是平a级别那就不需要建模；真不耗前台时间就是白嫖，dps 短时间无穷，只是次数有限制」 | 据 data/raw/nanoka_1331_v2_zh_3.4.2+20052336.json skill.special param + scripts/lib/nanoka-move-rows.mjs#actionTime 派生耗时 + 用户口径@2026-11-02 | 验 src/mechanics/__tests__/vivian.test.ts | 锚 src/mechanics/agents/vivian.ts#VIVIAN_ENHANCED_EXPLOSION_RELEASE_PCT | 信 确认
+// @fact agent:1331/v2长按强特附加段 口径: v2 3.4.2+20052336 长按强特（堇花悼亡）新增段：① 淑女突刺连续攻击 1331022（44%/圈、秽盾 2000 ⇒ 派生 0.2s/圈）= 220%/s ≈ 薇薇安平A 227.7%/s ⇒ **平A级，不建模**；② 额外爆炸 1331024（440%、秽盾 0 ⇒ 0s）+ 其触发的[异放]（0.5×落羽生花 440% = 220% 以太伤害）**不耗前台时间 ⇒ 白嫖，只受次数限制（= 强特次数）** ⇒ 建模。判据 = 用户 2026-11-02「如果是平a级别那就不需要建模；真不耗前台时间就是白嫖，dps 短时间无穷，只是次数有限制」 | 据 data/raw/nanoka_missing/full/1331.json skill.special param + scripts/lib/nanoka-move-rows.mjs#actionTime 派生耗时 + 用户口径@2026-11-02 | 验 src/mechanics/__tests__/vivian.test.ts | 锚 src/mechanics/agents/vivian.ts#VIVIAN_ENHANCED_EXPLOSION_RELEASE_PCT | 信 确认
 // ⟳复核: 正式包落地后核对 1331022/1331024 倍率、「相当于落羽生花50%」的读法（现按 0.5×440%=220% 直接伤害；异放通道读法在异常暴击/抗性区略有差异）、以及长按是否真的零额外时间 | 到期 2027-03-31
 /** 影画6：悬落消耗全部护羽的特殊异放，比例最多提高至 5 倍（5 点护羽） */
 export const VIVIAN_C6_RELEASE_MAX_MULT = 5
@@ -629,5 +629,5 @@ declare module '@/types/resource/agentResources' {
   }
 }
 
-// @fact agent:1331/潜能觉醒星月诗篇 口径: v2 测试服 3.4.2+20052336 憧憬的轮廓 II~VI 同文（用户 2026-11-01「后面可能微调数值」）：① 落羽生花 异常积蓄效率 +50%（**招式限定**走 exec.buildUpEfficiencyBonusPct，格莉丝同款通道；不进元素面板）② 自身异常掌控 +30（panel.anomalyMastery）③ 异放伤害 +50%（**异放专用独立增伤区** panel.anomalyReleaseDmgBonus，与普罗米娅那条加算；**不改** perTen 比例）；三条读 effective potentialLevel（≥2 生效）⇒ 关开关即归零 | 据 data/raw/nanoka_1331_v2_zh_3.4.2+20052336.json potential_detail（正主 raw 保持 live——v2 包含 catalog 未收录新招） + 用户口径@2026-11-01 | 验 src/mechanics/__tests__/potentialSwitch.test.ts | 锚 src/mechanics/agents/vivian.ts#applyVivianPanel + src/mechanics/agents/vivian.ts#patchVivianExecutions | 信 确认
-// ⟳复核: 下一个正式包落地后，按 data/raw/nanoka_1331_v2_zh_3.4.2+20052336.json 逐条对账 1331 潜能三条数值（用户说「后面可能微调数值」） | 到期 2027-03-31
+// @fact agent:1331/潜能觉醒星月诗篇 口径: v2 测试服 3.4.2+20052336 憧憬的轮廓 II~VI 同文（用户 2026-11-01「后面可能微调数值」）：① 落羽生花 异常积蓄效率 +50%（**招式限定**走 exec.buildUpEfficiencyBonusPct，格莉丝同款通道；不进元素面板）② 自身异常掌控 +30（panel.anomalyMastery）③ 异放伤害 +50%（**异放专用独立增伤区** panel.anomalyReleaseDmgBonus，与普罗米娅那条加算；**不改** perTen 比例）；三条读 effective potentialLevel（≥2 生效）⇒ 关开关即归零 | 据 data/raw/nanoka_missing/full/1331.json potential_detail（正主 raw 保持 live——v2 包含 catalog 未收录新招） + 用户口径@2026-11-01 | 验 src/mechanics/__tests__/potentialSwitch.test.ts | 锚 src/mechanics/agents/vivian.ts#applyVivianPanel + src/mechanics/agents/vivian.ts#patchVivianExecutions | 信 确认
+// ⟳复核: 下一个正式包落地后，按 data/raw/nanoka_missing/full/1331.json 逐条对账 1331 潜能三条数值（用户说「后面可能微调数值」） | 到期 2027-03-31

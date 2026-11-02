@@ -1,0 +1,2764 @@
+{
+  "version": 1,
+  "packet": {
+    "version": 1,
+    "agentId": "1331",
+    "source": {
+      "raw": "data/raw/nanoka_missing/full/1331.json",
+      "nouns": "data/raw/nanoka_missing/noun_3.3.12.json"
+    },
+    "passiveLevel": 7,
+    "hashes": {
+      "raw": "0de9d344cdae38e420de67ee44866e163bf574dd37cb3164b9004ea9add3bc38",
+      "nouns": "35db6f0b30a275554585731fb8a7454a3ebeeded7706673726c572cfeb880a1e",
+      "moves": "112b3e90cbd02dfd9ca5551c2678cc9f0bf7b8372bb2de5270f185a267262571"
+    },
+    "moves": [
+      {
+        "id": "1331",
+        "agentId": "1331",
+        "name": {
+          "zhCN": "薇薇安",
+          "en": "Vivian"
+        },
+        "categories": [
+          {
+            "id": "basic",
+            "name": {
+              "zhCN": "basic",
+              "en": "basic"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1331001",
+                "name": {
+                  "zhCN": "普通攻击：翎羽拂击 #1",
+                  "en": "Basic Attack: Feathered Strike #1"
+                },
+                "damageElement": "ether",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      68.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      64.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.387
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      10.615
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      38.51
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.385
+              },
+              {
+                "id": "1331002",
+                "name": {
+                  "zhCN": "普通攻击：翎羽拂击 #2",
+                  "en": "Basic Attack: Feathered Strike #2"
+                },
+                "damageElement": "ether",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      48.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      42.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      0.92
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      7.04
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      25.55
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.256
+              },
+              {
+                "id": "1331003",
+                "name": {
+                  "zhCN": "普通攻击：翎羽拂击 #3",
+                  "en": "Basic Attack: Feathered Strike #3"
+                },
+                "damageElement": "ether",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      153.9
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      123.6
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      2.675
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      20.46
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      74.31
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.743
+              },
+              {
+                "id": "1331004",
+                "name": {
+                  "zhCN": "普通攻击：翎羽拂击 #4",
+                  "en": "Basic Attack: Feathered Strike #4"
+                },
+                "damageElement": "ether",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      257.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      191
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      4.16
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      31.79
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      86.61
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      115.55
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.156
+              },
+              {
+                "id": "1331005",
+                "name": {
+                  "zhCN": "普通攻击：淑女礼仪·舞步",
+                  "en": "Basic Attack: Noblewoman - Waltz"
+                },
+                "damageElement": "ether",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      96.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      55.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.215
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      9.295
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      33.75
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      33.75
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.338
+              },
+              {
+                "id": "1331006",
+                "name": {
+                  "zhCN": "普通攻击：裙裾浮游·悬落",
+                  "en": "Basic Attack: Fluttering Frock - Suspension"
+                },
+                "damageElement": "ether",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      160.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      94.3
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      2.04
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      15.5925
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      56.65
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      56.66
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.567
+              },
+              {
+                "id": "1331008",
+                "name": {
+                  "zhCN": "普通攻击：落羽生花",
+                  "en": "Basic Attack: Featherbloom"
+                },
+                "damageElement": "ether",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      440
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      126
+                    ],
+                    "damageElement": "ether"
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0
+              }
+            ]
+          },
+          {
+            "id": "dodge",
+            "name": {
+              "zhCN": "dodge",
+              "en": "dodge"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1331011",
+                "name": {
+                  "zhCN": "冲刺攻击：银刺舞曲",
+                  "en": "Dash Attack: Silver Thorned Melody"
+                },
+                "damageElement": "physical",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      100.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      38
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      0.811
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      6.215
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      22.51
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.225
+              },
+              {
+                "id": "1331012",
+                "name": {
+                  "zhCN": "闪避反击：羽刃反振",
+                  "en": "Dodge Counter: Wingblade Reverb"
+                },
+                "damageElement": "ether",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      472.9
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      311.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      3.182
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      24.31
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      70.69
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      238.37
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.884
+              }
+            ]
+          },
+          {
+            "id": "special",
+            "name": {
+              "zhCN": "special",
+              "en": "special"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1331009",
+                "name": {
+                  "zhCN": "特殊技：银羽咏叹",
+                  "en": "Special Attack: Song of Silver Wings"
+                },
+                "damageElement": "ether",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      114.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      85.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      14.2175
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      41.34
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      51.69
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.517
+              },
+              {
+                "id": "1331010",
+                "name": {
+                  "zhCN": "强化特殊技：堇花悼亡",
+                  "en": "EX Special Attack: Violet Requiem"
+                },
+                "damageElement": "ether",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1185.5
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      727.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      175.12
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      352.56
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      146.71
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.467,
+                "energyCost": {
+                  "Energy Cost": "60"
+                }
+              },
+              {
+                "id": "1331022",
+                "name": {
+                  "zhCN": "强化特殊技：堇花悼亡·连续攻击（淑女突刺，to 4 圈）",
+                  "en": "EX Special: Violet Requiem - Continuous Attack"
+                },
+                "damageElement": "ether",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      44
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      33
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      2.75
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      8
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      20
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.2
+              },
+              {
+                "id": "1331024",
+                "name": {
+                  "zhCN": "强化特殊技：堇花悼亡·额外爆炸",
+                  "en": "EX Special: Violet Requiem - Extra Explosion"
+                },
+                "damageElement": "ether",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      440
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      96
+                    ],
+                    "damageElement": "ether"
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0
+              }
+            ]
+          },
+          {
+            "id": "chain",
+            "name": {
+              "zhCN": "chain",
+              "en": "chain"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1331013",
+                "name": {
+                  "zhCN": "连携技：星羽和声",
+                  "en": "Chain Attack: Chorus of Celestial Wings"
+                },
+                "damageElement": "ether",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1317.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      330
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      237.875
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      319.57
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      199.97
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 2
+              },
+              {
+                "id": "1331014",
+                "name": {
+                  "zhCN": "终结技：飞鸟鸣颂",
+                  "en": "Ultimate: Soaring Bird's Song"
+                },
+                "damageElement": "ether",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      3374.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      374.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      808.56
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      726.71
+                    ]
+                  }
+                ],
+                "timeType": "ultimate",
+                "actionTime": 2.267
+              }
+            ]
+          },
+          {
+            "id": "assist",
+            "name": {
+              "zhCN": "assist",
+              "en": "assist"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1331015",
+                "name": {
+                  "zhCN": "快速支援：凛羽之护",
+                  "en": "Quick Assist: Frostwing Guard"
+                },
+                "damageElement": "ether",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      195.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      74
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.591
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      12.155
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      35.34
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      44.19
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.442
+              },
+              {
+                "id": "1331016",
+                "name": {
+                  "zhCN": "招架支援：银伞列阵 #1",
+                  "en": "Defensive Assist: Silver Umbrella Formation #1"
+                },
+                "damageElement": "ether",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      407.7
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      366.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166
+              },
+              {
+                "id": "1331017",
+                "name": {
+                  "zhCN": "招架支援：银伞列阵 #2",
+                  "en": "Defensive Assist: Silver Umbrella Formation #2"
+                },
+                "damageElement": "ether",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      514.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      416.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.666
+              },
+              {
+                "id": "1331018",
+                "name": {
+                  "zhCN": "招架支援：银伞列阵 #3",
+                  "en": "Defensive Assist: Silver Umbrella Formation #3"
+                },
+                "damageElement": "ether",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      250.4
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      116.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166
+              },
+              {
+                "id": "1331019",
+                "name": {
+                  "zhCN": "支援突击：裁决羽刃",
+                  "en": "Assist Follow-Up: Featherblade Execution"
+                },
+                "damageElement": "ether",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      747.9
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      488.1
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      105.6
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      236.56
+                    ],
+                    "damageElement": "ether"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      163.37
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.634
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "units": [
+      {
+        "id": "/skill/assist/description/0/desc:0",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：凛羽之护",
+        "category": "assist",
+        "quote": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动攻击，造成物理伤害和以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后进入[淑女礼仪]状态；\n拥有[飞羽]时，在招式发动过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:1",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：凛羽之护",
+        "category": "assist",
+        "quote": "对前方敌人发动攻击，造成物理伤害和以太伤害；",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动攻击，造成物理伤害和以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后进入[淑女礼仪]状态；\n拥有[飞羽]时，在招式发动过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:2",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：凛羽之护",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动攻击，造成物理伤害和以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后进入[淑女礼仪]状态；\n拥有[飞羽]时，在招式发动过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:3",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：凛羽之护",
+        "category": "assist",
+        "quote": "招式发动后进入[淑女礼仪]状态；",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动攻击，造成物理伤害和以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后进入[淑女礼仪]状态；\n拥有[飞羽]时，在招式发动过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:4",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：凛羽之护",
+        "category": "assist",
+        "quote": "拥有[飞羽]时，在招式发动过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动攻击，造成物理伤害和以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后进入[淑女礼仪]状态；\n拥有[飞羽]时，在招式发动过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:0",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：银伞列阵",
+        "category": "assist",
+        "quote": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:1",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：银伞列阵",
+        "category": "assist",
+        "quote": "招架敌人的攻击，累积大量失衡值；",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:2",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：银伞列阵",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:0",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：裁决羽刃",
+        "category": "assist",
+        "quote": "发动[招架支援]后，点按 [普攻键] 发动：",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动攻击，造成以太伤害，并回复2点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:1",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：裁决羽刃",
+        "category": "assist",
+        "quote": "对前方敌人发动攻击，造成以太伤害，并回复2点[飞羽]；",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动攻击，造成以太伤害，并回复2点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:2",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：裁决羽刃",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动攻击，造成以太伤害，并回复2点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:3",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：裁决羽刃",
+        "category": "assist",
+        "quote": "招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动攻击，造成以太伤害，并回复2点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:0",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：翎羽拂击",
+        "category": "basic",
+        "quote": "点按 [普攻键] 发动：",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段的攻击，造成物理伤害和以太伤害；\n发动第四段攻击后进入[淑女礼仪]状态；\n拥有[飞羽]时，在第四段攻击过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:1",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：翎羽拂击",
+        "category": "basic",
+        "quote": "向前方进行至多四段的攻击，造成物理伤害和以太伤害；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段的攻击，造成物理伤害和以太伤害；\n发动第四段攻击后进入[淑女礼仪]状态；\n拥有[飞羽]时，在第四段攻击过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:2",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：翎羽拂击",
+        "category": "basic",
+        "quote": "发动第四段攻击后进入[淑女礼仪]状态；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段的攻击，造成物理伤害和以太伤害；\n发动第四段攻击后进入[淑女礼仪]状态；\n拥有[飞羽]时，在第四段攻击过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:3",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：翎羽拂击",
+        "category": "basic",
+        "quote": "拥有[飞羽]时，在第四段攻击过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段的攻击，造成物理伤害和以太伤害；\n发动第四段攻击后进入[淑女礼仪]状态；\n拥有[飞羽]时，在第四段攻击过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:0",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：淑女礼仪·舞步",
+        "category": "basic",
+        "quote": "[淑女礼仪]状态下，点按 [普攻键] 发动：",
+        "context": "[淑女礼仪]状态下，点按 [普攻键] 发动：\n向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；\n招式发动期间拥有无敌效果；\n若突进期间触发极限闪避，会额外回复1点[飞羽]；\n招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:1",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：淑女礼仪·舞步",
+        "category": "basic",
+        "quote": "向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；",
+        "context": "[淑女礼仪]状态下，点按 [普攻键] 发动：\n向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；\n招式发动期间拥有无敌效果；\n若突进期间触发极限闪避，会额外回复1点[飞羽]；\n招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:2",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：淑女礼仪·舞步",
+        "category": "basic",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "[淑女礼仪]状态下，点按 [普攻键] 发动：\n向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；\n招式发动期间拥有无敌效果；\n若突进期间触发极限闪避，会额外回复1点[飞羽]；\n招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:3",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：淑女礼仪·舞步",
+        "category": "basic",
+        "quote": "若突进期间触发极限闪避，会额外回复1点[飞羽]；",
+        "context": "[淑女礼仪]状态下，点按 [普攻键] 发动：\n向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；\n招式发动期间拥有无敌效果；\n若突进期间触发极限闪避，会额外回复1点[飞羽]；\n招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:4",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：淑女礼仪·舞步",
+        "category": "basic",
+        "quote": "招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。",
+        "context": "[淑女礼仪]状态下，点按 [普攻键] 发动：\n向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；\n招式发动期间拥有无敌效果；\n若突进期间触发极限闪避，会额外回复1点[飞羽]；\n招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:0",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：淑女礼仪·舞步",
+        "category": "basic",
+        "quote": "[淑女礼仪]状态下，点按或长按 [普攻键] 发动：",
+        "context": "[淑女礼仪]状态下，点按或长按 [普攻键] 发动：\n向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；\n若突进期间触发极限闪避，会额外回复1点[飞羽]；\n首次在[淑女礼仪]状态下发动[淑女礼仪·舞步]，可以获得一次机会：招式发动时连点或保持长按 [普攻键] 可以再次回到[淑女礼仪]状态；\n招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消；\n淑女礼仪·舞步拥有更强的闪避性能。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:1",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：淑女礼仪·舞步",
+        "category": "basic",
+        "quote": "向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；",
+        "context": "[淑女礼仪]状态下，点按或长按 [普攻键] 发动：\n向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；\n若突进期间触发极限闪避，会额外回复1点[飞羽]；\n首次在[淑女礼仪]状态下发动[淑女礼仪·舞步]，可以获得一次机会：招式发动时连点或保持长按 [普攻键] 可以再次回到[淑女礼仪]状态；\n招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消；\n淑女礼仪·舞步拥有更强的闪避性能。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:2",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：淑女礼仪·舞步",
+        "category": "basic",
+        "quote": "若突进期间触发极限闪避，会额外回复1点[飞羽]；",
+        "context": "[淑女礼仪]状态下，点按或长按 [普攻键] 发动：\n向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；\n若突进期间触发极限闪避，会额外回复1点[飞羽]；\n首次在[淑女礼仪]状态下发动[淑女礼仪·舞步]，可以获得一次机会：招式发动时连点或保持长按 [普攻键] 可以再次回到[淑女礼仪]状态；\n招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消；\n淑女礼仪·舞步拥有更强的闪避性能。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:3",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：淑女礼仪·舞步",
+        "category": "basic",
+        "quote": "首次在[淑女礼仪]状态下发动[淑女礼仪·舞步]，可以获得一次机会：招式发动时连点或保持长按 [普攻键] 可以再次回到[淑女礼仪]状态；",
+        "context": "[淑女礼仪]状态下，点按或长按 [普攻键] 发动：\n向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；\n若突进期间触发极限闪避，会额外回复1点[飞羽]；\n首次在[淑女礼仪]状态下发动[淑女礼仪·舞步]，可以获得一次机会：招式发动时连点或保持长按 [普攻键] 可以再次回到[淑女礼仪]状态；\n招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消；\n淑女礼仪·舞步拥有更强的闪避性能。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:4",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：淑女礼仪·舞步",
+        "category": "basic",
+        "quote": "招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消；",
+        "context": "[淑女礼仪]状态下，点按或长按 [普攻键] 发动：\n向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；\n若突进期间触发极限闪避，会额外回复1点[飞羽]；\n首次在[淑女礼仪]状态下发动[淑女礼仪·舞步]，可以获得一次机会：招式发动时连点或保持长按 [普攻键] 可以再次回到[淑女礼仪]状态；\n招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消；\n淑女礼仪·舞步拥有更强的闪避性能。"
+      },
+      {
+        "id": "/skill/basic/description/2/desc:5",
+        "pointer": "/skill/basic/description/2/desc",
+        "title": "普通攻击：淑女礼仪·舞步",
+        "category": "basic",
+        "quote": "淑女礼仪·舞步拥有更强的闪避性能。",
+        "context": "[淑女礼仪]状态下，点按或长按 [普攻键] 发动：\n向前突进攻击，造成以太伤害，并在命中目标时回复1点[飞羽]；\n若突进期间触发极限闪避，会额外回复1点[飞羽]；\n首次在[淑女礼仪]状态下发动[淑女礼仪·舞步]，可以获得一次机会：招式发动时连点或保持长按 [普攻键] 可以再次回到[淑女礼仪]状态；\n招式发动后若拥有[飞羽]，会进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消；\n淑女礼仪·舞步拥有更强的闪避性能。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:0",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：裙裾浮游·悬落",
+        "category": "basic",
+        "quote": "[裙裾浮游]状态下，点按 [普攻键] 发动：",
+        "context": "[裙裾浮游]状态下，点按 [普攻键] 发动：\n向前方发动范围攻击，造成以太伤害；\n招式发动后消耗全部[飞羽]，每消耗1点[飞羽]，都会获得1点[护羽]；\n招式发动期间拥有无敌效果；\n在[裙裾浮游]状态下切换角色时，薇薇安会自动发动[普通攻击：裙裾浮游·悬落]；\n在[裙裾浮游]状态下点按 [Icon_Evade] 可以退出[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:1",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：裙裾浮游·悬落",
+        "category": "basic",
+        "quote": "向前方发动范围攻击，造成以太伤害；",
+        "context": "[裙裾浮游]状态下，点按 [普攻键] 发动：\n向前方发动范围攻击，造成以太伤害；\n招式发动后消耗全部[飞羽]，每消耗1点[飞羽]，都会获得1点[护羽]；\n招式发动期间拥有无敌效果；\n在[裙裾浮游]状态下切换角色时，薇薇安会自动发动[普通攻击：裙裾浮游·悬落]；\n在[裙裾浮游]状态下点按 [Icon_Evade] 可以退出[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:2",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：裙裾浮游·悬落",
+        "category": "basic",
+        "quote": "招式发动后消耗全部[飞羽]，每消耗1点[飞羽]，都会获得1点[护羽]；",
+        "context": "[裙裾浮游]状态下，点按 [普攻键] 发动：\n向前方发动范围攻击，造成以太伤害；\n招式发动后消耗全部[飞羽]，每消耗1点[飞羽]，都会获得1点[护羽]；\n招式发动期间拥有无敌效果；\n在[裙裾浮游]状态下切换角色时，薇薇安会自动发动[普通攻击：裙裾浮游·悬落]；\n在[裙裾浮游]状态下点按 [Icon_Evade] 可以退出[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:3",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：裙裾浮游·悬落",
+        "category": "basic",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "[裙裾浮游]状态下，点按 [普攻键] 发动：\n向前方发动范围攻击，造成以太伤害；\n招式发动后消耗全部[飞羽]，每消耗1点[飞羽]，都会获得1点[护羽]；\n招式发动期间拥有无敌效果；\n在[裙裾浮游]状态下切换角色时，薇薇安会自动发动[普通攻击：裙裾浮游·悬落]；\n在[裙裾浮游]状态下点按 [Icon_Evade] 可以退出[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:4",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：裙裾浮游·悬落",
+        "category": "basic",
+        "quote": "在[裙裾浮游]状态下切换角色时，薇薇安会自动发动[普通攻击：裙裾浮游·悬落]；",
+        "context": "[裙裾浮游]状态下，点按 [普攻键] 发动：\n向前方发动范围攻击，造成以太伤害；\n招式发动后消耗全部[飞羽]，每消耗1点[飞羽]，都会获得1点[护羽]；\n招式发动期间拥有无敌效果；\n在[裙裾浮游]状态下切换角色时，薇薇安会自动发动[普通攻击：裙裾浮游·悬落]；\n在[裙裾浮游]状态下点按 [Icon_Evade] 可以退出[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/basic/description/3/desc:5",
+        "pointer": "/skill/basic/description/3/desc",
+        "title": "普通攻击：裙裾浮游·悬落",
+        "category": "basic",
+        "quote": "在[裙裾浮游]状态下点按 [Icon_Evade] 可以退出[裙裾浮游]状态。",
+        "context": "[裙裾浮游]状态下，点按 [普攻键] 发动：\n向前方发动范围攻击，造成以太伤害；\n招式发动后消耗全部[飞羽]，每消耗1点[飞羽]，都会获得1点[护羽]；\n招式发动期间拥有无敌效果；\n在[裙裾浮游]状态下切换角色时，薇薇安会自动发动[普通攻击：裙裾浮游·悬落]；\n在[裙裾浮游]状态下点按 [Icon_Evade] 可以退出[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/basic/description/4/desc:0",
+        "pointer": "/skill/basic/description/4/desc",
+        "title": "普通攻击：落羽生花",
+        "category": "basic",
+        "quote": "队伍中任意角色发动[强化特殊技]命中目标后，薇薇安会消耗1点[护羽]并对目标发动一次[普通攻击：落羽生花]，造成以太伤害，同一招式最多触发一次，这一效果可以在薇薇安处于后场时触发；",
+        "context": "队伍中任意角色发动[强化特殊技]命中目标后，薇薇安会消耗1点[护羽]并对目标发动一次[普通攻击：落羽生花]，造成以太伤害，同一招式最多触发一次，这一效果可以在薇薇安处于后场时触发；\n[护羽]最多持有5点。"
+      },
+      {
+        "id": "/skill/basic/description/4/desc:1",
+        "pointer": "/skill/basic/description/4/desc",
+        "title": "普通攻击：落羽生花",
+        "category": "basic",
+        "quote": "[护羽]最多持有5点。",
+        "context": "队伍中任意角色发动[强化特殊技]命中目标后，薇薇安会消耗1点[护羽]并对目标发动一次[普通攻击：落羽生花]，造成以太伤害，同一招式最多触发一次，这一效果可以在薇薇安处于后场时触发；\n[护羽]最多持有5点。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:0",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：星羽和声",
+        "category": "chain",
+        "quote": "触发[连携技]时，选择对应角色发动：",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方大范围敌人发动强力攻击，造成大量以太伤害，并回复2点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:1",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：星羽和声",
+        "category": "chain",
+        "quote": "对前方大范围敌人发动强力攻击，造成大量以太伤害，并回复2点[飞羽]；",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方大范围敌人发动强力攻击，造成大量以太伤害，并回复2点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:2",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：星羽和声",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方大范围敌人发动强力攻击，造成大量以太伤害，并回复2点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:3",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：星羽和声",
+        "category": "chain",
+        "quote": "招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。",
+        "context": "触发[连携技]时，选择对应角色发动：\n对前方大范围敌人发动强力攻击，造成大量以太伤害，并回复2点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:0",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：飞鸟鸣颂",
+        "category": "chain",
+        "quote": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方大范围敌人发动强力攻击，造成大量以太伤害，并回复5点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:1",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：飞鸟鸣颂",
+        "category": "chain",
+        "quote": "对前方大范围敌人发动强力攻击，造成大量以太伤害，并回复5点[飞羽]；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方大范围敌人发动强力攻击，造成大量以太伤害，并回复5点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:2",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：飞鸟鸣颂",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方大范围敌人发动强力攻击，造成大量以太伤害，并回复5点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:3",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "终结技：飞鸟鸣颂",
+        "category": "chain",
+        "quote": "招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n对前方大范围敌人发动强力攻击，造成大量以太伤害，并回复5点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 取消。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:0",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：流光",
+        "category": "dodge",
+        "quote": "点按 [Icon_Evade] 发动：",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:1",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：流光",
+        "category": "dodge",
+        "quote": "快速的冲刺闪避；",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:2",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：流光",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:0",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：银刺舞曲",
+        "category": "dodge",
+        "quote": "闪避时，点按 [普攻键] 发动：",
+        "context": "闪避时，点按 [普攻键] 发动：\n向前方进行突刺，造成物理伤害；"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:1",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：银刺舞曲",
+        "category": "dodge",
+        "quote": "向前方进行突刺，造成物理伤害；",
+        "context": "闪避时，点按 [普攻键] 发动：\n向前方进行突刺，造成物理伤害；"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:0",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：羽刃反振",
+        "category": "dodge",
+        "quote": "触发[极限闪避]后，点按 [普攻键] 发动：",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动攻击，造成物理伤害和以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后进入[淑女礼仪]状态；\n拥有[飞羽]时，在招式发动过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:1",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：羽刃反振",
+        "category": "dodge",
+        "quote": "对前方敌人发动攻击，造成物理伤害和以太伤害；",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动攻击，造成物理伤害和以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后进入[淑女礼仪]状态；\n拥有[飞羽]时，在招式发动过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:2",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：羽刃反振",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动攻击，造成物理伤害和以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后进入[淑女礼仪]状态；\n拥有[飞羽]时，在招式发动过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:3",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：羽刃反振",
+        "category": "dodge",
+        "quote": "招式发动后进入[淑女礼仪]状态；",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动攻击，造成物理伤害和以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后进入[淑女礼仪]状态；\n拥有[飞羽]时，在招式发动过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:4",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "闪避反击：羽刃反振",
+        "category": "dodge",
+        "quote": "拥有[飞羽]时，在招式发动过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动攻击，造成物理伤害和以太伤害；\n招式发动期间拥有无敌效果；\n招式发动后进入[淑女礼仪]状态；\n拥有[飞羽]时，在招式发动过程中保持按住 [普攻键] 可进入[裙裾浮游]状态。"
+      },
+      {
+        "id": "/skill/dodge/description/3/desc:0",
+        "pointer": "/skill/dodge/description/3/desc",
+        "title": "闪避：淑女滑步",
+        "category": "dodge",
+        "quote": "[淑女礼仪]状态下即将受到攻击时，会进行自动闪避，期间拥有无敌效果，但不会触发[极限闪避]；",
+        "context": "[淑女礼仪]状态下即将受到攻击时，会进行自动闪避，期间拥有无敌效果，但不会触发[极限闪避]；\n每次进入[淑女礼仪]状态仅能触发一次。"
+      },
+      {
+        "id": "/skill/dodge/description/3/desc:1",
+        "pointer": "/skill/dodge/description/3/desc",
+        "title": "闪避：淑女滑步",
+        "category": "dodge",
+        "quote": "每次进入[淑女礼仪]状态仅能触发一次。",
+        "context": "[淑女礼仪]状态下即将受到攻击时，会进行自动闪避，期间拥有无敌效果，但不会触发[极限闪避]；\n每次进入[淑女礼仪]状态仅能触发一次。"
+      },
+      {
+        "id": "/skill/dodge/description/4/desc:0",
+        "pointer": "/skill/dodge/description/4/desc",
+        "title": "闪避：淑女嘲讽",
+        "category": "dodge",
+        "quote": "[淑女礼仪]状态下，拖曳摇杆发动：",
+        "context": "[淑女礼仪]状态下，拖曳摇杆发动：\n薇薇安进入[嘲讽状态]，即将受到攻击时，会进行自动闪避，并发动淑女礼仪·舞步，且突进结束前必定触发极限闪避；\n该状态下维持一段时间后且未保持拖曳摇杆，薇薇安也会自动发动[淑女礼仪·舞步]，且突进结束前必定触发极限闪避；\n招式发动期间拥有无敌效果；\n[嘲讽状态]状态可以留在前场。"
+      },
+      {
+        "id": "/skill/dodge/description/4/desc:1",
+        "pointer": "/skill/dodge/description/4/desc",
+        "title": "闪避：淑女嘲讽",
+        "category": "dodge",
+        "quote": "薇薇安进入[嘲讽状态]，即将受到攻击时，会进行自动闪避，并发动淑女礼仪·舞步，且突进结束前必定触发极限闪避；",
+        "context": "[淑女礼仪]状态下，拖曳摇杆发动：\n薇薇安进入[嘲讽状态]，即将受到攻击时，会进行自动闪避，并发动淑女礼仪·舞步，且突进结束前必定触发极限闪避；\n该状态下维持一段时间后且未保持拖曳摇杆，薇薇安也会自动发动[淑女礼仪·舞步]，且突进结束前必定触发极限闪避；\n招式发动期间拥有无敌效果；\n[嘲讽状态]状态可以留在前场。"
+      },
+      {
+        "id": "/skill/dodge/description/4/desc:2",
+        "pointer": "/skill/dodge/description/4/desc",
+        "title": "闪避：淑女嘲讽",
+        "category": "dodge",
+        "quote": "该状态下维持一段时间后且未保持拖曳摇杆，薇薇安也会自动发动[淑女礼仪·舞步]，且突进结束前必定触发极限闪避；",
+        "context": "[淑女礼仪]状态下，拖曳摇杆发动：\n薇薇安进入[嘲讽状态]，即将受到攻击时，会进行自动闪避，并发动淑女礼仪·舞步，且突进结束前必定触发极限闪避；\n该状态下维持一段时间后且未保持拖曳摇杆，薇薇安也会自动发动[淑女礼仪·舞步]，且突进结束前必定触发极限闪避；\n招式发动期间拥有无敌效果；\n[嘲讽状态]状态可以留在前场。"
+      },
+      {
+        "id": "/skill/dodge/description/4/desc:3",
+        "pointer": "/skill/dodge/description/4/desc",
+        "title": "闪避：淑女嘲讽",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "[淑女礼仪]状态下，拖曳摇杆发动：\n薇薇安进入[嘲讽状态]，即将受到攻击时，会进行自动闪避，并发动淑女礼仪·舞步，且突进结束前必定触发极限闪避；\n该状态下维持一段时间后且未保持拖曳摇杆，薇薇安也会自动发动[淑女礼仪·舞步]，且突进结束前必定触发极限闪避；\n招式发动期间拥有无敌效果；\n[嘲讽状态]状态可以留在前场。"
+      },
+      {
+        "id": "/skill/dodge/description/4/desc:4",
+        "pointer": "/skill/dodge/description/4/desc",
+        "title": "闪避：淑女嘲讽",
+        "category": "dodge",
+        "quote": "[嘲讽状态]状态可以留在前场。",
+        "context": "[淑女礼仪]状态下，拖曳摇杆发动：\n薇薇安进入[嘲讽状态]，即将受到攻击时，会进行自动闪避，并发动淑女礼仪·舞步，且突进结束前必定触发极限闪避；\n该状态下维持一段时间后且未保持拖曳摇杆，薇薇安也会自动发动[淑女礼仪·舞步]，且突进结束前必定触发极限闪避；\n招式发动期间拥有无敌效果；\n[嘲讽状态]状态可以留在前场。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:0",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：银羽咏叹",
+        "category": "special",
+        "quote": "点按 [特技键] 发动：",
+        "context": "点按 [特技键] 发动：\n快速向前方进行攻击，造成物理伤害和以太伤害；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:1",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：银羽咏叹",
+        "category": "special",
+        "quote": "快速向前方进行攻击，造成物理伤害和以太伤害；",
+        "context": "点按 [特技键] 发动：\n快速向前方进行攻击，造成物理伤害和以太伤害；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:2",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：银羽咏叹",
+        "category": "special",
+        "quote": "招式发动期间抗打断等级提升。",
+        "context": "点按 [特技键] 发动：\n快速向前方进行攻击，造成物理伤害和以太伤害；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:0",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：堇花悼亡",
+        "category": "special",
+        "quote": "能量足够时，点按 [Icon_SpecialReady] 发动：",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:1",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：堇花悼亡",
+        "category": "special",
+        "quote": "向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:2",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：堇花悼亡",
+        "category": "special",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:3",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：堇花悼亡",
+        "category": "special",
+        "quote": "招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:0",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：堇花悼亡",
+        "category": "special",
+        "quote": "能量足够时，点按或长按 [Icon_SpecialReady] 发动：",
+        "context": "能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；\n[裙裾浮游]状态下发动会改变招式的形式；\n招式命中目标时，若保持长按 [Icon_SpecialReady] ，薇薇安会进入[淑女突刺]状态进行至多四圈的持续攻击，期间会出现一道闪光，若闪光期间松开 [Icon_SpecialReady] ，则可以释放一次爆炸，爆炸命中处于异常状态的目标时，可以触发一次[异放]，造成相当于[普通攻击：落羽生花]50%的伤害，并自动维持[淑女突刺]状态；\n每点溢出的[飞羽]或[护羽]都会转换成[溢出羽毛]，至多储存3层，[淑女突刺]期间每圈可以消耗1层[溢出羽毛]转换回[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:1",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：堇花悼亡",
+        "category": "special",
+        "quote": "向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；",
+        "context": "能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；\n[裙裾浮游]状态下发动会改变招式的形式；\n招式命中目标时，若保持长按 [Icon_SpecialReady] ，薇薇安会进入[淑女突刺]状态进行至多四圈的持续攻击，期间会出现一道闪光，若闪光期间松开 [Icon_SpecialReady] ，则可以释放一次爆炸，爆炸命中处于异常状态的目标时，可以触发一次[异放]，造成相当于[普通攻击：落羽生花]50%的伤害，并自动维持[淑女突刺]状态；\n每点溢出的[飞羽]或[护羽]都会转换成[溢出羽毛]，至多储存3层，[淑女突刺]期间每圈可以消耗1层[溢出羽毛]转换回[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:2",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：堇花悼亡",
+        "category": "special",
+        "quote": "[裙裾浮游]状态下发动会改变招式的形式；",
+        "context": "能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；\n[裙裾浮游]状态下发动会改变招式的形式；\n招式命中目标时，若保持长按 [Icon_SpecialReady] ，薇薇安会进入[淑女突刺]状态进行至多四圈的持续攻击，期间会出现一道闪光，若闪光期间松开 [Icon_SpecialReady] ，则可以释放一次爆炸，爆炸命中处于异常状态的目标时，可以触发一次[异放]，造成相当于[普通攻击：落羽生花]50%的伤害，并自动维持[淑女突刺]状态；\n每点溢出的[飞羽]或[护羽]都会转换成[溢出羽毛]，至多储存3层，[淑女突刺]期间每圈可以消耗1层[溢出羽毛]转换回[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:3",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：堇花悼亡",
+        "category": "special",
+        "quote": "招式命中目标时，若保持长按 [Icon_SpecialReady] ，薇薇安会进入[淑女突刺]状态进行至多四圈的持续攻击，期间会出现一道闪光，若闪光期间松开 [Icon_SpecialReady] ，则可以释放一次爆炸，爆炸命中处于异常状态的目标时，可以触发一次[异放]，造成相当于[普通攻击：落羽生花]50%的伤害，并自动维持[淑女突刺]状态；",
+        "context": "能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；\n[裙裾浮游]状态下发动会改变招式的形式；\n招式命中目标时，若保持长按 [Icon_SpecialReady] ，薇薇安会进入[淑女突刺]状态进行至多四圈的持续攻击，期间会出现一道闪光，若闪光期间松开 [Icon_SpecialReady] ，则可以释放一次爆炸，爆炸命中处于异常状态的目标时，可以触发一次[异放]，造成相当于[普通攻击：落羽生花]50%的伤害，并自动维持[淑女突刺]状态；\n每点溢出的[飞羽]或[护羽]都会转换成[溢出羽毛]，至多储存3层，[淑女突刺]期间每圈可以消耗1层[溢出羽毛]转换回[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:4",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：堇花悼亡",
+        "category": "special",
+        "quote": "每点溢出的[飞羽]或[护羽]都会转换成[溢出羽毛]，至多储存3层，[淑女突刺]期间每圈可以消耗1层[溢出羽毛]转换回[飞羽]；",
+        "context": "能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；\n[裙裾浮游]状态下发动会改变招式的形式；\n招式命中目标时，若保持长按 [Icon_SpecialReady] ，薇薇安会进入[淑女突刺]状态进行至多四圈的持续攻击，期间会出现一道闪光，若闪光期间松开 [Icon_SpecialReady] ，则可以释放一次爆炸，爆炸命中处于异常状态的目标时，可以触发一次[异放]，造成相当于[普通攻击：落羽生花]50%的伤害，并自动维持[淑女突刺]状态；\n每点溢出的[飞羽]或[护羽]都会转换成[溢出羽毛]，至多储存3层，[淑女突刺]期间每圈可以消耗1层[溢出羽毛]转换回[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:5",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：堇花悼亡",
+        "category": "special",
+        "quote": "招式发动期间拥有无敌效果；",
+        "context": "能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；\n[裙裾浮游]状态下发动会改变招式的形式；\n招式命中目标时，若保持长按 [Icon_SpecialReady] ，薇薇安会进入[淑女突刺]状态进行至多四圈的持续攻击，期间会出现一道闪光，若闪光期间松开 [Icon_SpecialReady] ，则可以释放一次爆炸，爆炸命中处于异常状态的目标时，可以触发一次[异放]，造成相当于[普通攻击：落羽生花]50%的伤害，并自动维持[淑女突刺]状态；\n每点溢出的[飞羽]或[护羽]都会转换成[溢出羽毛]，至多储存3层，[淑女突刺]期间每圈可以消耗1层[溢出羽毛]转换回[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。"
+      },
+      {
+        "id": "/skill/special/description/2/desc:6",
+        "pointer": "/skill/special/description/2/desc",
+        "title": "强化特殊技：堇花悼亡",
+        "category": "special",
+        "quote": "招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。",
+        "context": "能量足够时，点按或长按 [Icon_SpecialReady] 发动：\n向前方发动强力攻击，造成大量以太伤害，并回复3点[飞羽]；\n[裙裾浮游]状态下发动会改变招式的形式；\n招式命中目标时，若保持长按 [Icon_SpecialReady] ，薇薇安会进入[淑女突刺]状态进行至多四圈的持续攻击，期间会出现一道闪光，若闪光期间松开 [Icon_SpecialReady] ，则可以释放一次爆炸，爆炸命中处于异常状态的目标时，可以触发一次[异放]，造成相当于[普通攻击：落羽生花]50%的伤害，并自动维持[淑女突刺]状态；\n每点溢出的[飞羽]或[护羽]都会转换成[溢出羽毛]，至多储存3层，[淑女突刺]期间每圈可以消耗1层[溢出羽毛]转换回[飞羽]；\n招式发动期间拥有无敌效果；\n招式发动后进入[裙裾浮游]状态，可以通过招式发动时保持长按 [Icon_Evade] 进入[淑女礼仪]状态。"
+      },
+      {
+        "id": "/passive/level/1331507/desc/0:0",
+        "pointer": "/passive/level/1331507/desc/0",
+        "title": "核心被动：命运悲歌",
+        "category": "passive",
+        "quote": "[普通攻击：落羽生花]命中处于以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、冰属性异常状态、风属性异常状态的目标时，触发一次[异放]：额外结算一次属性异常伤害，相对于原属性异常伤害的比例为每10点异常精通6.15%/3.2%/8%/0.75%/1.08%/0.32%；",
+        "context": "[普通攻击：落羽生花]命中处于以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、冰属性异常状态、风属性异常状态的目标时，触发一次[异放]：额外结算一次属性异常伤害，相对于原属性异常伤害的比例为每10点异常精通6.15%/3.2%/8%/0.75%/1.08%/0.32%；\n[普通攻击：裙裾浮游·悬落]或[普通攻击：落羽生花]命中处于任意属性异常状态的目标时，使目标陷入[薇薇安的预言]，每0.55秒受到薇薇安55%攻击力的以太伤害，该伤害可以触发属性异常效果的额外伤害；当目标不再处于属性异常状态时，[薇薇安的预言]结束；\n进入战场时，薇薇安获得2点[飞羽]。"
+      },
+      {
+        "id": "/passive/level/1331507/desc/0:1",
+        "pointer": "/passive/level/1331507/desc/0",
+        "title": "核心被动：命运悲歌",
+        "category": "passive",
+        "quote": "[普通攻击：裙裾浮游·悬落]或[普通攻击：落羽生花]命中处于任意属性异常状态的目标时，使目标陷入[薇薇安的预言]，每0.55秒受到薇薇安55%攻击力的以太伤害，该伤害可以触发属性异常效果的额外伤害；",
+        "context": "[普通攻击：落羽生花]命中处于以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、冰属性异常状态、风属性异常状态的目标时，触发一次[异放]：额外结算一次属性异常伤害，相对于原属性异常伤害的比例为每10点异常精通6.15%/3.2%/8%/0.75%/1.08%/0.32%；\n[普通攻击：裙裾浮游·悬落]或[普通攻击：落羽生花]命中处于任意属性异常状态的目标时，使目标陷入[薇薇安的预言]，每0.55秒受到薇薇安55%攻击力的以太伤害，该伤害可以触发属性异常效果的额外伤害；当目标不再处于属性异常状态时，[薇薇安的预言]结束；\n进入战场时，薇薇安获得2点[飞羽]。"
+      },
+      {
+        "id": "/passive/level/1331507/desc/0:2",
+        "pointer": "/passive/level/1331507/desc/0",
+        "title": "核心被动：命运悲歌",
+        "category": "passive",
+        "quote": "当目标不再处于属性异常状态时，[薇薇安的预言]结束；",
+        "context": "[普通攻击：落羽生花]命中处于以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、冰属性异常状态、风属性异常状态的目标时，触发一次[异放]：额外结算一次属性异常伤害，相对于原属性异常伤害的比例为每10点异常精通6.15%/3.2%/8%/0.75%/1.08%/0.32%；\n[普通攻击：裙裾浮游·悬落]或[普通攻击：落羽生花]命中处于任意属性异常状态的目标时，使目标陷入[薇薇安的预言]，每0.55秒受到薇薇安55%攻击力的以太伤害，该伤害可以触发属性异常效果的额外伤害；当目标不再处于属性异常状态时，[薇薇安的预言]结束；\n进入战场时，薇薇安获得2点[飞羽]。"
+      },
+      {
+        "id": "/passive/level/1331507/desc/0:3",
+        "pointer": "/passive/level/1331507/desc/0",
+        "title": "核心被动：命运悲歌",
+        "category": "passive",
+        "quote": "进入战场时，薇薇安获得2点[飞羽]。",
+        "context": "[普通攻击：落羽生花]命中处于以太异常状态、电属性异常状态、火属性异常状态、物理属性异常状态、冰属性异常状态、风属性异常状态的目标时，触发一次[异放]：额外结算一次属性异常伤害，相对于原属性异常伤害的比例为每10点异常精通6.15%/3.2%/8%/0.75%/1.08%/0.32%；\n[普通攻击：裙裾浮游·悬落]或[普通攻击：落羽生花]命中处于任意属性异常状态的目标时，使目标陷入[薇薇安的预言]，每0.55秒受到薇薇安55%攻击力的以太伤害，该伤害可以触发属性异常效果的额外伤害；当目标不再处于属性异常状态时，[薇薇安的预言]结束；\n进入战场时，薇薇安获得2点[飞羽]。"
+      },
+      {
+        "id": "/passive/level/1331507/desc/1:0",
+        "pointer": "/passive/level/1331507/desc/1",
+        "title": "额外能力：预言之泪",
+        "category": "passive",
+        "quote": "队伍中存在其他[异常]角色或与自身属性相同的角色时触发：",
+        "context": "队伍中存在其他[异常]角色或与自身属性相同的角色时触发：\n队伍中其他角色对敌人施加属性异常效果时，薇薇安会消耗1点[护羽]并对目标发动一次[普通攻击：落羽生花]，0.5秒内至多触发一次；\n全队角色造成的[侵蚀]伤害和[侵蚀]状态被结算的[紊乱]伤害提升12%。"
+      },
+      {
+        "id": "/passive/level/1331507/desc/1:1",
+        "pointer": "/passive/level/1331507/desc/1",
+        "title": "额外能力：预言之泪",
+        "category": "passive",
+        "quote": "队伍中其他角色对敌人施加属性异常效果时，薇薇安会消耗1点[护羽]并对目标发动一次[普通攻击：落羽生花]，0.5秒内至多触发一次；",
+        "context": "队伍中存在其他[异常]角色或与自身属性相同的角色时触发：\n队伍中其他角色对敌人施加属性异常效果时，薇薇安会消耗1点[护羽]并对目标发动一次[普通攻击：落羽生花]，0.5秒内至多触发一次；\n全队角色造成的[侵蚀]伤害和[侵蚀]状态被结算的[紊乱]伤害提升12%。"
+      },
+      {
+        "id": "/passive/level/1331507/desc/1:2",
+        "pointer": "/passive/level/1331507/desc/1",
+        "title": "额外能力：预言之泪",
+        "category": "passive",
+        "quote": "全队角色造成的[侵蚀]伤害和[侵蚀]状态被结算的[紊乱]伤害提升12%。",
+        "context": "队伍中存在其他[异常]角色或与自身属性相同的角色时触发：\n队伍中其他角色对敌人施加属性异常效果时，薇薇安会消耗1点[护羽]并对目标发动一次[普通攻击：落羽生花]，0.5秒内至多触发一次；\n全队角色造成的[侵蚀]伤害和[侵蚀]状态被结算的[紊乱]伤害提升12%。"
+      },
+      {
+        "id": "/talent/1/desc:0",
+        "pointer": "/talent/1/desc",
+        "title": "《在春天走进果园》",
+        "category": "talent",
+        "quote": "累计消耗4点[护羽]时回复1点[飞羽]；",
+        "context": "累计消耗4点[护羽]时回复1点[飞羽]；处于[薇薇安的预言]下的目标受到的所有属性异常伤害和[紊乱]伤害提升16%。"
+      },
+      {
+        "id": "/talent/1/desc:1",
+        "pointer": "/talent/1/desc",
+        "title": "《在春天走进果园》",
+        "category": "talent",
+        "quote": "处于[薇薇安的预言]下的目标受到的所有属性异常伤害和[紊乱]伤害提升16%。",
+        "context": "累计消耗4点[护羽]时回复1点[飞羽]；处于[薇薇安的预言]下的目标受到的所有属性异常伤害和[紊乱]伤害提升16%。"
+      },
+      {
+        "id": "/talent/2/desc:0",
+        "pointer": "/talent/2/desc",
+        "title": "《暴风雨夜，暴风雨夜》",
+        "category": "talent",
+        "quote": "薇薇安的以太异常积蓄效率提升25%；",
+        "context": "薇薇安的以太异常积蓄效率提升25%；[异放]从精通中获得的收益提升至原本的130%，且无视目标15%全属性伤害抗性。"
+      },
+      {
+        "id": "/talent/2/desc:1",
+        "pointer": "/talent/2/desc",
+        "title": "《暴风雨夜，暴风雨夜》",
+        "category": "talent",
+        "quote": "[异放]从精通中获得的收益提升至原本的130%，且无视目标15%全属性伤害抗性。",
+        "context": "薇薇安的以太异常积蓄效率提升25%；[异放]从精通中获得的收益提升至原本的130%，且无视目标15%全属性伤害抗性。"
+      },
+      {
+        "id": "/talent/3/desc:0",
+        "pointer": "/talent/3/desc",
+        "title": "《另一个，同一个》",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/4/desc:0",
+        "pointer": "/talent/4/desc",
+        "title": "《苇间风》",
+        "category": "talent",
+        "quote": "[普通攻击：裙裾浮游·悬落]和[普通攻击：落羽生花]命中时必定暴击，并使薇薇安的攻击力提升12%，持续12秒，重复触发时刷新持续时间；",
+        "context": "[普通攻击：裙裾浮游·悬落]和[普通攻击：落羽生花]命中时必定暴击，并使薇薇安的攻击力提升12%，持续12秒，重复触发时刷新持续时间；进入战场时，薇薇安立即获得5点[护羽]。"
+      },
+      {
+        "id": "/talent/4/desc:1",
+        "pointer": "/talent/4/desc",
+        "title": "《苇间风》",
+        "category": "talent",
+        "quote": "进入战场时，薇薇安立即获得5点[护羽]。",
+        "context": "[普通攻击：裙裾浮游·悬落]和[普通攻击：落羽生花]命中时必定暴击，并使薇薇安的攻击力提升12%，持续12秒，重复触发时刷新持续时间；进入战场时，薇薇安立即获得5点[护羽]。"
+      },
+      {
+        "id": "/talent/5/desc:0",
+        "pointer": "/talent/5/desc",
+        "title": "《十四行诗》",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/6/desc:0",
+        "pointer": "/talent/6/desc",
+        "title": "《薇薇安》",
+        "category": "talent",
+        "quote": "薇薇安造成的以太伤害提升40%；",
+        "context": "薇薇安造成的以太伤害提升40%；[普通攻击：淑女礼仪·舞步]突进期间触发极限闪避、发动[强化特殊技：堇花悼亡]时，均额外回复1点[飞羽]；发动[普通攻击：裙裾浮游·悬落]时会消耗全部[护羽]，下落攻击的范围大幅增加，并在命中时触发一次特殊的[异放]，额外消耗的[护羽]会提高此次[异放]结算的额外异常伤害的比例，最多消耗5点[护羽]，使伤害比例提高至原本的5倍。"
+      },
+      {
+        "id": "/talent/6/desc:1",
+        "pointer": "/talent/6/desc",
+        "title": "《薇薇安》",
+        "category": "talent",
+        "quote": "[普通攻击：淑女礼仪·舞步]突进期间触发极限闪避、发动[强化特殊技：堇花悼亡]时，均额外回复1点[飞羽]；",
+        "context": "薇薇安造成的以太伤害提升40%；[普通攻击：淑女礼仪·舞步]突进期间触发极限闪避、发动[强化特殊技：堇花悼亡]时，均额外回复1点[飞羽]；发动[普通攻击：裙裾浮游·悬落]时会消耗全部[护羽]，下落攻击的范围大幅增加，并在命中时触发一次特殊的[异放]，额外消耗的[护羽]会提高此次[异放]结算的额外异常伤害的比例，最多消耗5点[护羽]，使伤害比例提高至原本的5倍。"
+      },
+      {
+        "id": "/talent/6/desc:2",
+        "pointer": "/talent/6/desc",
+        "title": "《薇薇安》",
+        "category": "talent",
+        "quote": "发动[普通攻击：裙裾浮游·悬落]时会消耗全部[护羽]，下落攻击的范围大幅增加，并在命中时触发一次特殊的[异放]，额外消耗的[护羽]会提高此次[异放]结算的额外异常伤害的比例，最多消耗5点[护羽]，使伤害比例提高至原本的5倍。",
+        "context": "薇薇安造成的以太伤害提升40%；[普通攻击：淑女礼仪·舞步]突进期间触发极限闪避、发动[强化特殊技：堇花悼亡]时，均额外回复1点[飞羽]；发动[普通攻击：裙裾浮游·悬落]时会消耗全部[护羽]，下落攻击的范围大幅增加，并在命中时触发一次特殊的[异放]，额外消耗的[护羽]会提高此次[异放]结算的额外异常伤害的比例，最多消耗5点[护羽]，使伤害比例提高至原本的5倍。"
+      },
+      {
+        "id": "/potential_detail/133101/desc:0",
+        "pointer": "/potential_detail/133101/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133101/desc:1",
+        "pointer": "/potential_detail/133101/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "薇薇安自身的异常掌控提升30点；",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133101/desc:2",
+        "pointer": "/potential_detail/133101/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "薇薇安造成的[异放]伤害提升50%。",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133102/desc:0",
+        "pointer": "/potential_detail/133102/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133102/desc:1",
+        "pointer": "/potential_detail/133102/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "薇薇安自身的异常掌控提升30点；",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133102/desc:2",
+        "pointer": "/potential_detail/133102/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "薇薇安造成的[异放]伤害提升50%。",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133103/desc:0",
+        "pointer": "/potential_detail/133103/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133103/desc:1",
+        "pointer": "/potential_detail/133103/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "薇薇安自身的异常掌控提升30点；",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133103/desc:2",
+        "pointer": "/potential_detail/133103/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "薇薇安造成的[异放]伤害提升50%。",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133104/desc:0",
+        "pointer": "/potential_detail/133104/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133104/desc:1",
+        "pointer": "/potential_detail/133104/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "薇薇安自身的异常掌控提升30点；",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133104/desc:2",
+        "pointer": "/potential_detail/133104/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "薇薇安造成的[异放]伤害提升50%。",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133105/desc:0",
+        "pointer": "/potential_detail/133105/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133105/desc:1",
+        "pointer": "/potential_detail/133105/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "薇薇安自身的异常掌控提升30点；",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      },
+      {
+        "id": "/potential_detail/133105/desc:2",
+        "pointer": "/potential_detail/133105/desc",
+        "title": "潜能觉醒：星月诗篇",
+        "category": "potential",
+        "quote": "薇薇安造成的[异放]伤害提升50%。",
+        "context": "(Test1)[普通攻击：落羽生花]造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升30点；薇薇安造成的[异放]伤害提升50%。"
+      }
+    ]
+  },
+  "decisions": [
+    {
+      "sourceId": "/skill/assist/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/2/desc:5",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/3/desc:5",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/4/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/4/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/3/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/4/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/4/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/4/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/4/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/4/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:5",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/2/desc:6",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1331507/desc/0:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1331507/desc/0:1",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1331507/desc/0:2",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1331507/desc/0:3",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1331507/desc/1:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1331507/desc/1:1",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1331507/desc/1:2",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/4/desc:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/4/desc:1",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/5/desc:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/6/desc:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/6/desc:1",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/6/desc:2",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01/02）只补 v2 潜能觉醒·星月诗篇三条 + 长按强特附加段，本段未逐段重核（补录仅覆盖上述，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/potential_detail/133101/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_buildup"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133101/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_mastery"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133101/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_release"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133102/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_buildup"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133102/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_mastery"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133102/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_release"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133103/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_buildup"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133103/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_mastery"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133103/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_release"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133104/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_buildup"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133104/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_mastery"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133104/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_release"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133105/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_buildup"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133105/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_mastery"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/133105/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "vivian_potential_release"
+      ]
+    }
+  ],
+  "mechanics": [
+    {
+      "id": "vivian_potential_buildup",
+      "dimension": "D2",
+      "certainty": "L1",
+      "trigger": "潜能觉醒·星月诗篇（潜能 II~VI，v2 3.4.2+20052336）：[普通攻击：落羽生花]（1331008）命中",
+      "target": "该招造成的异常积蓄值",
+      "gate": "潜能开关开 且 effective potentialLevel >= 2",
+      "formula": "积蓄效率 +50%（与面板/元素效率同区加算）；只挂 1331008 一行",
+      "field": "AnomalySkillExecution.buildUpEfficiencyBonusPct（行级；core/anomalyPool.ts#calcAnomalyPool 消费）",
+      "countSource": "不适用（比例型；行次数 = 落羽生花次数）",
+      "duration": "不适用",
+      "cap": "不适用（原文无上限）",
+      "assumptions": [
+        {
+          "premise": "v2 文案 II~VI 同文 ⇒ 按「觉醒 II 起即 +50%」建模",
+          "falsifier": "若正式包给 II~VI 递增档位，低档玩家会被高估"
+        }
+      ],
+      "decisionEvidence": "原文「[普通攻击：落羽生花]造成的异常积蓄效率提升50%」+ SOP 铁律 6（招式限定必须落实，不得用元素面板一视同仁）⇒ 走行级字段",
+      "implementation": {
+        "spec": "src/specs/agents/1331.json#/notes/11",
+        "consumer": "src/mechanics/agents/vivian.ts#transformVivianExecutions"
+      },
+      "sources": [
+        "/potential_detail/133101/desc:0",
+        "/potential_detail/133102/desc:0",
+        "/potential_detail/133103/desc:0",
+        "/potential_detail/133104/desc:0",
+        "/potential_detail/133105/desc:0"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "潜能 VI + 落羽生花行 1331008",
+          "expected": "buildUpEfficiencyBonusPct = +50",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "落羽生花行级积蓄 +50%（招式限定；悬落不吃；关开关归零）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "潜能 VI + 悬落行 1331006",
+          "expected": "不加（招式限定）",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "落羽生花行级积蓄 +50%（招式限定；悬落不吃；关开关归零）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "effective level = 1（无潜能）",
+          "expected": "1331008 也不加",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "落羽生花行级积蓄 +50%（招式限定；悬落不吃；关开关归零）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "vivian_potential_mastery",
+      "dimension": "D2",
+      "certainty": "L1",
+      "trigger": "潜能觉醒·星月诗篇：常驻（薇薇安在队）",
+      "target": "薇薇安自身异常掌控",
+      "gate": "潜能开关开 且 effective potentialLevel >= 2",
+      "formula": "panel.anomalyMastery +30（flat）",
+      "field": "PanelValues.anomalyMastery",
+      "countSource": "不适用（面板量）",
+      "duration": "不适用（常驻）",
+      "cap": "不适用",
+      "assumptions": [
+        {
+          "premise": "本角色无掌控转模（spec attributeConversions 为空）⇒ 直接落面板即可",
+          "falsifier": "若日后加了掌控→精通类转模，需确认写入时机/基数"
+        }
+      ],
+      "decisionEvidence": "原文「薇薇安自身的异常掌控提升30点」",
+      "implementation": {
+        "spec": "src/specs/agents/1331.json#/notes/11",
+        "consumer": "src/mechanics/agents/vivian.ts#applyVivianPanel"
+      },
+      "sources": [
+        "/potential_detail/133101/desc:1",
+        "/potential_detail/133102/desc:1",
+        "/potential_detail/133103/desc:1",
+        "/potential_detail/133104/desc:1",
+        "/potential_detail/133105/desc:1"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "潜能 VI 在队",
+          "expected": "panel.anomalyMastery 比关潜能高 30",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "开 minus 关 = 异常掌控 +30 / 异放专用独立增伤 +50（积蓄 +50 走行级、不在面板）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "潜能开关关掉",
+          "expected": "+30 归零",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "开 minus 关 = 异常掌控 +30 / 异放专用独立增伤 +50（积蓄 +50 走行级、不在面板）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "潜能 I（未觉醒）",
+          "expected": "不加",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "开 minus 关 = 异常掌控 +30 / 异放专用独立增伤 +50（积蓄 +50 走行级、不在面板）"
+          }
+        }
+      ]
+    },
+    {
+      "id": "vivian_potential_release",
+      "dimension": "D3",
+      "certainty": "L1",
+      "trigger": "潜能觉醒·星月诗篇：薇薇安造成的[异放]结算时",
+      "target": "异放伤害",
+      "gate": "潜能开关开 且 effective potentialLevel >= 2；只在 settlementType=release 生效",
+      "formula": "异放专用独立增伤区 +50% ⇒ ×(1 + (50 + 其他异放增伤)/100)",
+      "field": "PanelValues.anomalyReleaseDmgBonus",
+      "countSource": "不适用（比例型，随异放事件次数）",
+      "duration": "不适用",
+      "cap": "不适用",
+      "assumptions": [
+        {
+          "premise": "「异放伤害提升50%」是独立增伤区（与普罗米娅冰队异放增伤加算），不是改异放比例表",
+          "falsifier": "若游戏把 ×1.5 作用在比例上（perTen），与其它异放增伤的加算关系会变为相乘 —— 实测两者差异体现在同队带普罗米娅时的异放伤害"
+        }
+      ],
+      "decisionEvidence": "statMeta「异放伤害提升，异放专用独立增伤区，只在 settlementType=release 时进入公式」+ 避免污染 VIVIAN_RELEASE_RATIO_PER_TEN 的比例语义（2026-11-02 修正）",
+      "implementation": {
+        "spec": "src/specs/agents/1331.json#/notes/11",
+        "consumer": "src/mechanics/agents/vivian.ts#applyVivianPanel"
+      },
+      "sources": [
+        "/potential_detail/133101/desc:2",
+        "/potential_detail/133102/desc:2",
+        "/potential_detail/133103/desc:2",
+        "/potential_detail/133104/desc:2",
+        "/potential_detail/133105/desc:2"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "潜能 VI 在队",
+          "expected": "panel.anomalyReleaseDmgBonus 比关潜能高 50",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "开 minus 关 = 异常掌控 +30 / 异放专用独立增伤 +50（积蓄 +50 走行级、不在面板）"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "潜能开关关掉",
+          "expected": "+50 归零",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "开 minus 关 = 异常掌控 +30 / 异放专用独立增伤 +50（积蓄 +50 走行级、不在面板）"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "同一 panel 下非异放结算",
+          "expected": "不进公式（core/damage.ts 仅在 release 时读该字段）",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "开 minus 关 = 异常掌控 +30 / 异放专用独立增伤 +50（积蓄 +50 走行级、不在面板）"
+          }
+        }
+      ]
+    }
+  ]
+}

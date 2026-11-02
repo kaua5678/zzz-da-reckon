@@ -347,7 +347,21 @@
         {
           "name": "普通攻击：淑女礼仪·舞步",
           "desc": "<color=#FFFFFF>[淑女礼仪]</color>状态下，点按 <IconMap:Icon_Normal> 发动：\n向前突进攻击，造成<color=#FE437E>以太伤害</color>，并在命中目标时回复1点<color=#FFFFFF>[飞羽]</color>；\n招式发动期间拥有无敌效果；\n若突进期间触发极限闪避，会额外回复1点<color=#FFFFFF>[飞羽]</color>；\n招式发动后若拥有<color=#FFFFFF>[飞羽]</color>，会进入<color=#FFFFFF>[裙裾浮游]</color>状态，可以通过招式发动时保持长按 <IconMap:Icon_Evade> 取消。",
-          "potential": []
+          "potential": [
+            0
+          ]
+        },
+        {
+          "name": "普通攻击：淑女礼仪·舞步",
+          "desc": "<color=#FFFFFF>[淑女礼仪]</color>状态下，点按或长按 <IconMap:Icon_Normal> 发动：\n向前突进攻击，造成<color=#FE437E>以太伤害</color>，并在命中目标时回复1点<color=#FFFFFF>[飞羽]</color>；\n若突进期间触发极限闪避，会额外回复1点<color=#FFFFFF>[飞羽]</color>；\n首次在<color=#FFFFFF>[淑女礼仪]</color>状态下发动<color=#FFFFFF>[淑女礼仪·舞步]</color>，可以获得一次机会：招式发动时连点或保持长按 <IconMap:Icon_Normal> 可以再次回到<color=#FFFFFF>[淑女礼仪]</color>状态；\n招式发动后若拥有<color=#FFFFFF>[飞羽]</color>，会进入<color=#FFFFFF>[裙裾浮游]</color>状态，可以通过招式发动时保持长按 <IconMap:Icon_Evade> 取消；\n<color=#FFFFFF>淑女礼仪·舞步</color>拥有更强的闪避性能。",
+          "potential": [
+            133100,
+            133101,
+            133102,
+            133103,
+            133104,
+            133105
+          ]
         },
         {
           "name": "普通攻击：裙裾浮游·悬落",
@@ -820,6 +834,18 @@
           "potential": []
         },
         {
+          "name": "闪避：淑女嘲讽",
+          "desc": "<color=#FFFFFF>[淑女礼仪]</color>状态下，拖曳摇杆发动：\n薇薇安进入<color=#FFFFFF>[嘲讽状态]</color>，即将受到攻击时，会进行自动闪避，并发动<color=#FFFFFF>淑女礼仪·舞步</color>，且突进结束前必定触发极限闪避；\n该状态下维持一段时间后且未保持拖曳摇杆，薇薇安也会自动发动<color=#FFFFFF>[淑女礼仪·舞步]</color>，且突进结束前必定触发极限闪避；\n招式发动期间拥有无敌效果；\n<color=#FFFFFF>[嘲讽状态]</color>状态可以留在前场。",
+          "potential": [
+            133100,
+            133101,
+            133102,
+            133103,
+            133104,
+            133105
+          ]
+        },
+        {
           "name": "冲刺攻击：银刺舞曲",
           "param": [
             {
@@ -995,7 +1021,21 @@
         {
           "name": "强化特殊技：堇花悼亡",
           "desc": "能量足够时，点按 <IconMap:Icon_SpecialReady> 发动：\n向前方发动强力攻击，造成大量<color=#FE437E>以太伤害</color>，并回复3点<color=#FFFFFF>[飞羽]</color>；\n招式发动期间拥有无敌效果；\n招式发动后进入<color=#FFFFFF>[裙裾浮游]</color>状态，可以通过招式发动时保持长按 <IconMap:Icon_Evade> 进入<color=#FFFFFF>[淑女礼仪]</color>状态。",
-          "potential": []
+          "potential": [
+            0
+          ]
+        },
+        {
+          "name": "强化特殊技：堇花悼亡",
+          "desc": "能量足够时，点按或长按 <IconMap:Icon_SpecialReady> 发动：\n向前方发动强力攻击，造成大量<color=#FE437E>以太伤害</color>，并回复3点<color=#FFFFFF>[飞羽]</color>；\n<color=#FFFFFF>[裙裾浮游]</color>状态下发动会改变招式的形式；\n招式命中目标时，若保持长按 <IconMap:Icon_SpecialReady> ，薇薇安会进入<color=#FFFFFF>[淑女突刺]</color>状态进行至多四圈的持续攻击，期间会出现一道闪光，若闪光期间松开 <IconMap:Icon_SpecialReady> ，则可以释放一次爆炸，爆炸命中处于异常状态的目标时，可以触发一次<color=#FFFFFF>[异放]</color>，造成相当于<color=#FFFFFF>[普通攻击：落羽生花]</color>50%的伤害，并自动维持<color=#FFFFFF>[淑女突刺]</color>状态；\n每点溢出的<color=#FFFFFF>[飞羽]</color>或<color=#FFFFFF>[护羽]</color>都会转换成<color=#FFFFFF>[溢出羽毛]</color>，至多储存3层，<color=#FFFFFF>[淑女突刺]</color>期间每圈可以消耗1层<color=#FFFFFF>[溢出羽毛]</color>转换回<color=#FFFFFF>[飞羽]</color>；\n招式发动期间拥有无敌效果；\n招式发动后进入<color=#FFFFFF>[裙裾浮游]</color>状态，可以通过招式发动时保持长按 <IconMap:Icon_Evade> 进入<color=#FFFFFF>[淑女礼仪]</color>状态。",
+          "potential": [
+            133100,
+            133101,
+            133102,
+            133103,
+            133104,
+            133105
+          ]
         },
         {
           "name": "特殊技：银羽咏叹",
@@ -1109,6 +1149,138 @@
                 }
               },
               "potential": []
+            },
+            {
+              "name": "连续攻击伤害倍率",
+              "desc": "{Skill:1331022, Prop:1001}",
+              "param": {
+                "1331022": {
+                  "main": 2200,
+                  "growth": 200,
+                  "format": "%",
+                  "damage_percentage": 2200,
+                  "damage_percentage_growth": 200,
+                  "stun_ratio": 2200,
+                  "stun_ratio_growth": 100,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 27500,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 800,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 2000
+                }
+              },
+              "potential": [
+                133100,
+                133101,
+                133102,
+                133103,
+                133104,
+                133105
+              ]
+            },
+            {
+              "name": "连续攻击失衡倍率",
+              "desc": "{Skill:1331022, Prop:1002}",
+              "param": {
+                "1331022": {
+                  "main": 2200,
+                  "growth": 100,
+                  "format": "%",
+                  "damage_percentage": 2200,
+                  "damage_percentage_growth": 200,
+                  "stun_ratio": 2200,
+                  "stun_ratio_growth": 100,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 27500,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 800,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 2000
+                }
+              },
+              "potential": [
+                133100,
+                133101,
+                133102,
+                133103,
+                133104,
+                133105
+              ]
+            },
+            {
+              "name": "额外爆炸伤害倍率",
+              "desc": "{Skill:1331024, Prop:1001}",
+              "param": {
+                "1331024": {
+                  "main": 22000,
+                  "growth": 2000,
+                  "format": "%",
+                  "damage_percentage": 22000,
+                  "damage_percentage_growth": 2000,
+                  "stun_ratio": 0,
+                  "stun_ratio_growth": 0,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 0,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 9600,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 0
+                }
+              },
+              "potential": [
+                133100,
+                133101,
+                133102,
+                133103,
+                133104,
+                133105
+              ]
+            },
+            {
+              "name": "额外爆炸失衡倍率",
+              "desc": "{Skill:1331024, Prop:1002}",
+              "param": {
+                "1331024": {
+                  "main": 0,
+                  "growth": 0,
+                  "format": "%",
+                  "damage_percentage": 22000,
+                  "damage_percentage_growth": 2000,
+                  "stun_ratio": 0,
+                  "stun_ratio_growth": 0,
+                  "sp_recovery": 0,
+                  "sp_recovery_growth": 0,
+                  "fever_recovery": 0,
+                  "fever_recovery_growth": 0,
+                  "attribute_infliction": 9600,
+                  "sp_consume": 0,
+                  "attack_data": [],
+                  "rp_recovery": 0,
+                  "rp_recovery_growth": 0,
+                  "ether_purify": 0
+                }
+              },
+              "potential": [
+                133100,
+                133101,
+                133102,
+                133103,
+                133104,
+                133105
+              ]
             },
             {
               "name": "能量消耗",
@@ -1910,7 +2082,29 @@
       31203,
       12102
     ],
-    "alt_build": [],
+    "alt_build": [
+      {
+        "suit_list": [
+          33000,
+          31300
+        ],
+        "part_sub_list": [
+          31203
+        ]
+      },
+      {
+        "suit_list": [],
+        "part_sub_list": [
+          31903
+        ]
+      },
+      {
+        "suit_list": [],
+        "part_sub_list": [
+          31402
+        ]
+      }
+    ],
     "part4": {
       "prop": 31203,
       "name": "异常精通",
@@ -1937,12 +2131,127 @@
     }
   },
   "strategy": [
-    "04",
-    "<IconMap:Icon_GeneralBuff_DungeonBuffEther>以太属性，异常后台输出",
-    "触发[异放]造成额外异常伤害",
-    "后台攻击并快速累积异常积蓄值"
+    "03",
+    "<IconMap:Icon_GeneralBuff_DungeonBuffEther>以太属性，<IconMap:Icon_AvatarClass_Anomaly>异常后台输出",
+    "触发<Term:3000002></Term>造成额外异常伤害",
+    "后台攻击并快速累积<Term:3000005></Term>"
   ],
-  "potential": [],
-  "potential_detail": {},
+  "potential": [
+    133100,
+    133101,
+    133102,
+    133103,
+    133104,
+    133105
+  ],
+  "potential_detail": {
+    "133100": {
+      "id": 133100,
+      "name": "",
+      "desc": "",
+      "image": "Vivian",
+      "level_show_name": "憧憬的轮廓 I",
+      "level": 1,
+      "ability_list": [
+        13311401
+      ],
+      "potential_materials": [
+        {
+          "item_id": 20133,
+          "number": 1
+        }
+      ]
+    },
+    "133101": {
+      "id": 133101,
+      "name": "潜能觉醒：星月诗篇",
+      "desc": "(Test1)<color=#FFFFFF>[普通攻击：落羽生花]</color>造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升<color=#2BAD00>30</color>点；薇薇安造成的<color=#FFFFFF>[异放]</color>伤害提升50%。",
+      "image": "Vivian",
+      "level_show_name": "憧憬的轮廓 II",
+      "level": 2,
+      "ability_list": [
+        13311401,
+        13311501
+      ],
+      "potential_materials": [
+        {
+          "item_id": 20133,
+          "number": 1
+        }
+      ]
+    },
+    "133102": {
+      "id": 133102,
+      "name": "潜能觉醒：星月诗篇",
+      "desc": "(Test1)<color=#FFFFFF>[普通攻击：落羽生花]</color>造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升<color=#2BAD00>30</color>点；薇薇安造成的<color=#FFFFFF>[异放]</color>伤害提升50%。",
+      "image": "Vivian",
+      "level_show_name": "憧憬的轮廓 III",
+      "level": 3,
+      "ability_list": [
+        13311401,
+        13311502
+      ],
+      "potential_materials": [
+        {
+          "item_id": 20133,
+          "number": 1
+        }
+      ]
+    },
+    "133103": {
+      "id": 133103,
+      "name": "潜能觉醒：星月诗篇",
+      "desc": "(Test1)<color=#FFFFFF>[普通攻击：落羽生花]</color>造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升<color=#2BAD00>30</color>点；薇薇安造成的<color=#FFFFFF>[异放]</color>伤害提升50%。",
+      "image": "Vivian",
+      "level_show_name": "憧憬的轮廓 IV",
+      "level": 4,
+      "ability_list": [
+        13311401,
+        13311503
+      ],
+      "potential_materials": [
+        {
+          "item_id": 20133,
+          "number": 1
+        }
+      ]
+    },
+    "133104": {
+      "id": 133104,
+      "name": "潜能觉醒：星月诗篇",
+      "desc": "(Test1)<color=#FFFFFF>[普通攻击：落羽生花]</color>造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升<color=#2BAD00>30</color>点；薇薇安造成的<color=#FFFFFF>[异放]</color>伤害提升50%。",
+      "image": "Vivian",
+      "level_show_name": "憧憬的轮廓 V",
+      "level": 5,
+      "ability_list": [
+        13311401,
+        13311504
+      ],
+      "potential_materials": [
+        {
+          "item_id": 20133,
+          "number": 1
+        }
+      ]
+    },
+    "133105": {
+      "id": 133105,
+      "name": "潜能觉醒：星月诗篇",
+      "desc": "(Test1)<color=#FFFFFF>[普通攻击：落羽生花]</color>造成的异常积蓄效率提升50%；薇薇安自身的异常掌控提升<color=#2BAD00>30</color>点；薇薇安造成的<color=#FFFFFF>[异放]</color>伤害提升50%。",
+      "image": "Vivian",
+      "level_show_name": "憧憬的轮廓 VI",
+      "level": 6,
+      "ability_list": [
+        13311401,
+        13311505
+      ],
+      "potential_materials": [
+        {
+          "item_id": 20133,
+          "number": 1
+        }
+      ]
+    }
+  },
   "live2_d": "UISpine_Vivian"
 }
