@@ -780,7 +780,12 @@
         <b>「变少」也可能单独成行</b>：整档只有变少的那些步同样列出来，但<b>不在图上标注</b>（图上只认变多）。
         次数一律<b>整数化</b>（小数级细节悬停单元格看原始区间；+0.1 这类微调不列）；<b>「时间 / 备注」</b>列单独放
         <b>秒量</b>（合轴节省，单位 s）与<b>难度回落</b>标注（回退 = 白拿的优化，图上那段画虚线）。
-        <b>「失衡（完整窗）」</b>列 = 这一档<b>已完整 N 次</b>（+ 相对上一档的 Δ），悬停给出「距下一次完整失衡还差多少」。
+        <b>「失衡（连续·完整窗）」</b>列 = 这一档<b>连续失衡</b>口径的<b>已完整 N 次</b>；有台阶写 <code>完整 2→3 ▲</code>、
+        <b>变少也如实写 `▼`</b>（悬停给出「距下一次完整失衡还差多少失衡值 / 进度」）。
+        <b>⚠ 为什么难度提高、次数（含完整窗）反而会降</b>：② 那一档是<b>「轴成立」的台阶</b>——轴一旦成立，
+        引擎会把资源（喧响/能量）与时间账按<b>轴内块</b>重排，轴外那些低效动作会被挤掉 ⇒
+        <b>强特 / 完整失衡窗这类计数可能比上一档少</b>；交互取最优（joint）本身也会按伤害边际砍低效交互。
+        这是<b>引擎实况</b>（同类现象已登记：解锁失衡次数时命座读数可能非单调），不是显示问题。
         <b>点任意一行（或行尾「资源池」）即可展开这一档的细致资源池</b>——与点曲线上的点是同一条链。
         曲线上更细的每档明细，鼠标放到曲线点上可在 tooltip 里看<b>全部</b>增量。
         「伤害归因（相对上一档）」列 = <b>本档伤害 − 上一档伤害</b>的精确拆分：先列涨得最多的来源，「挤掉」= 跌得最多的，
@@ -873,17 +878,19 @@
       </ChartTable>
     </n-card>
 
-    <!-- 逐点资源池明细（用户 2026-10-16；T185 起改**右侧抽屉**：「点哪个换哪个、不用滚下去」） -->
-    <n-drawer v-if="chartMode === 'curve'" v-model:show="poolDrawerOpen" width="min(620px, 92vw)" placement="right" :trap-focus="false">
-      <n-drawer-content v-if="curvePoolPick" closable>
-        <template #header>
-          <div class="curve-head">
-            <span>
-              该档资源池 · {{ pointLabel(curvePoolPick.point) }} · 操作难度 {{ fmt(curvePoolPick.cost, 1) }} 点
-              <span class="td-muted">（{{ curvePoolPick.laneKey }}）</span>
-            </span>
-          </div>
-        </template>
+    <!-- 逐点资源池明细（用户 2026-10-16）：点曲线点 / 点表行 / 点 3D 图 ⇒ 该档的完整资源池。
+         ⚠ T186 起**回到页面下方全宽卡片**（用户 2026-11-02：「这个侧边栏还是太窄了，还是不做了，
+         移到下面展示完整资源池更好」）—— 620px 抽屉里三张资源卡会被压成一列一个宽的字行。 -->
+    <n-card v-if="chartMode === 'curve' && curvePoolPick" size="small" :bordered="true" class="detail-card">
+      <template #header>
+        <div class="curve-head">
+          <span>
+            该档资源池 · {{ pointLabel(curvePoolPick.point) }} · 操作难度 {{ fmt(curvePoolPick.cost, 1) }} 点
+            <span class="td-muted">（{{ curvePoolPick.laneKey }}）</span>
+          </span>
+          <n-button size="tiny" @click="curvePoolPick = null; curvePool.clear()">收起</n-button>
+        </div>
+      </template>
       <div class="compare-note curve-note">
         <b>口径 = 那一点的现场重放</b>（不是全关档、也不是终点档）：面板把该点采到的现场差分写回一个独立场景
         （<code>restoreStateDelta</code>）再算一次 ⇒ <b>伤害与该点读数逐位相等</b>（判据 <code>curvePointPool.test.ts</code>）。
@@ -973,9 +980,8 @@
           />
         </div>
       </template>
-        <div v-else class="empty-hint">该档未采现场（本次曲线没有带现场差分）⇒ 不显示资源池，也不编数据。</div>
-      </n-drawer-content>
-    </n-drawer>
+      <div v-else class="empty-hint">该档未采现场（本次曲线没有带现场差分）⇒ 不显示资源池，也不编数据。</div>
+    </n-card>
 
     <!-- 曲线摘要表：难易强度对比看这几列 -->
     <n-card v-if="chartMode === 'curve' && curveData" size="small" :bordered="true" class="detail-card">
@@ -1172,7 +1178,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { NCard, NDrawer, NDrawerContent, NSelect, NInputNumber, NButton, NCheckbox, NInput, NPopover, NRadioGroup, NRadioButton } from 'naive-ui'
+import { NCard, NSelect, NInputNumber, NButton, NCheckbox, NInput, NPopover, NRadioGroup, NRadioButton } from 'naive-ui'
 import DifficultyCurve3DChart from '@/components/charts/DifficultyCurve3DChart.vue'
 import { buildBossHpCurve, buildEnvLanes, deriveVersionAxis, type VersionLane } from '@/composables/difficultyCurve3d'
 import { useConfigStore } from '@/stores/config'
@@ -2317,7 +2323,7 @@ const goldAltTableColumns = [
  */
 const curveJumpTableColumns = [
   { key: 'team', label: '队伍' }, { key: 'cost', label: '操作难度' }, { key: 'point', label: '关键点' },
-  { key: 'stun', label: '失衡（完整窗）' },
+  { key: 'stun', label: '失衡（连续·完整窗）' },
   { key: 'up', label: '变多（次数）' }, { key: 'down', label: '变少（次数）' },
   { key: 'note', label: '时间 / 备注' },
   { key: 'damage', label: '伤害' },
@@ -2637,7 +2643,10 @@ const curveJumpRows = computed(() =>
           stunText: windows === undefined
             ? '—'
             : (prevWindows !== undefined && Math.abs(stunDelta ?? 0) >= 1 - 1e-6
-              ? '完整 ' + prevWindows + '→' + windows
+              /** 升降都标出来（用户 2026-11-02「难度提高还给我失衡次数降低咋回事…有标注吗」）：
+               * **降低也如实标 ▼** —— ② 那一档是「轴成立」的台阶，轴会把资源/时间账重排，
+               * 完整窗与若干次数**可能比上一档少**（引擎实况，不是显示 bug）。 */
+              ? '完整 ' + prevWindows + '→' + windows + ((stunDelta ?? 0) > 0 ? ' ▲' : ' ▼')
               : '完整 ' + windows),
           stunTitle: j.stunProgress
             ? `已完整 ${windows} 次；距下一次完整失衡 ${fmt((j.stunProgress.nextWindowProgress ?? 0) * 100, 0)}%，再攒 ${fmt(j.stunProgress.missingBuildUp ?? 0, 0)} 点失衡值`
@@ -2743,18 +2752,12 @@ function onCurve3dPick(laneKey: string, point: KnobPointName, cost: number) {
 /** 点开/收起某一档的资源池明细（`source` = 被轴砍掉的档时带理由，面板上如实标注） */
 async function inspectCurvePoint(laneKey: string, p: CurveDatum, source: 'point' | 'axisTruncated', reason = '') {
   const same = curvePoolPick.value?.laneKey === laneKey && curvePoolPick.value?.point === p.point && curvePoolPick.value?.cost === p.cost
-  if (same) { curvePoolPick.value = null; poolDrawerOpen.value = false; curvePool.clear(); return }
-  poolDrawerOpen.value = true
+  if (same) { curvePoolPick.value = null; curvePool.clear(); return }
   curvePoolPick.value = { laneKey, point: p.point, cost: p.cost }
   curvePoolPickReason.value = source === 'axisTruncated' ? reason : ''
   await curvePool.load(p.scene)
 }
 const curvePoolPickReason = ref('')
-/**
- * 资源池**右侧抽屉**（T185，用户 2026-11-02「可以试试新风格」）：
- * 点曲线点 / 点表行 / 点 3D 图都开同一个抽屉，点哪个换哪个 —— 不再把明细铺在页面下方（滚下去才看得到）。
- */
-const poolDrawerOpen = ref(false)
 /** 这一行是否正是当前打开的资源池档（行高亮；与图上「点中的点」同一份状态） */
 function isPoolOpen(r: { laneKey: string; point: KnobPointName; cost: number }): boolean {
   const p = curvePoolPick.value

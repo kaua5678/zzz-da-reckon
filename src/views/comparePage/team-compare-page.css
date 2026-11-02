@@ -508,14 +508,14 @@ svg .curve-hit {
   stroke-dasharray: 2, 2;
 }
 
-/* 逐点资源池面板里的三张资源卡（与结果页/归档页同一版式） */
+/* 逐点资源池面板里的三张资源卡（与结果页/归档页同一版式）
+ * ⚠ 2026-11-02（T186）：改成**容器自适应** —— 固定 3 列 + 视口 media query 在**窄容器**里会踩坑
+ * （实测：620px 抽屉里仍是 3 列 ⇒ 每张卡 ≈190px，一行字回车十几个）。auto-fit + 每列 ≥360px ⇒
+ * 宽容器 3 列、容器一窄自动降 1~2 列，任何宿主（页面全宽 / 侧栏 / 弹层）都不会再压成竖条。 */
 .resource-cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
   gap: 14px;
-}
-@media (max-width: 1200px) {
-  .resource-cards { grid-template-columns: 1fr; }
 }
 
 /* ========== 命座提升率网格（chartMode === 'uplift'）==========
