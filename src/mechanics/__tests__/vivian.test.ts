@@ -306,6 +306,35 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
     expect(eventsHalf.find(e => e.eventId === 'vivian_prediction_dot')!.count).toBe(Math.floor(180 * 0.5 / 0.55))
   })
 
+
+describe('v2 长按强特（堇花悼亡）附加段：淑女突刺连续攻击 ×4 + 额外爆炸 + 额外异放', () => {
+  // 用户 2026-11-02 倍率表判据：增量 (176%+440%)/1.467s ≈ 420%/s，含异放 ≈ 570%/s > 主C平A 215–450%/s ⇒ 必要招式
+  it('执行行：1331022 = 强特×4、1331024 = 强特×1，且都不另占时间（嵌在强特动作内）', () => {
+    const executions: any[] = []
+    vivianMechanic.buildExecutions!({ cfg: { panel: {} } as any, state: { exSpecialCount: 3 } as any, executions } as never)
+    const cont = executions.filter(e => e.moveId === '1331022')
+    const exp = executions.filter(e => e.moveId === '1331024')
+    expect(cont).toHaveLength(1)
+    expect(cont[0].count).toBe(12)
+    expect(exp).toHaveLength(1)
+    expect(exp[0].count).toBe(3)
+    expect(cont[0].actionTime ?? 0).toBe(0)
+    expect(exp[0].actionTime ?? 0).toBe(0)
+  })
+  it('额外异放事件：次数 = 强特次数 × 命中异常占比，倍率 = 0.5 × 落羽生花 440% = 220%', () => {
+    const events: any[] = []
+    vivianMechanic.buildAnomalyEvents!({
+      cfg: { panel: {}, battleTime: 180, invincibleTime: 0, 'setting:vivian.releaseCoverage': 0.5 } as any,
+      state: { exSpecialCount: 4 } as any, events, totalTime: 180,
+    } as never)
+    const ev = events.find(e => e.eventId === 'vivian_enhanced_explosion_release')
+    expect(ev).toBeTruthy()
+    expect(ev.count, '4 次强特 × 50% 命中异常').toBe(2)
+    expect(ev.element).toBe('ether')
+    expect(ev.damageMultiplier).toBe(220)
+  })
+})
+
   it('异放进入伤害池（type=异放，次数=追击次数）', async () => {
     await setup('1181', 6)
     const calc = useResourceCalc()

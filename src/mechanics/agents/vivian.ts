@@ -82,6 +82,24 @@ export const VIVIAN_POTENTIAL_MASTERY = 30
  * 并破坏与其它异放增伤的加算关系）。
  */
 export const VIVIAN_POTENTIAL_RELEASE_BONUS = 50
+/**
+ * v2 长按强特（堇花悼亡）附加段（3.4.2+20052336）：长按进入[淑女突刺]——至多 4 圈连续攻击（1331022，44%/圈）
+ * + 一次额外爆炸（1331024，440%/0 失衡）；两者**嵌在强特动作内**（actionTime=0，不另占前台）。
+ * 用户 2026-11-02 判据（倍率表分析）：增量 (176%+440%)/1.467s ≈ 420%/s，加异放 ≈ 570%/s > 队伍主C平A
+ * 215–450%/s ⇒ **必要招式** ⇒ 建模（默认按满 4 圈 = 最优操作）。
+ */
+export const VIVIAN_ENHANCED_CONTINUOUS_MOVE_ID = '1331022'
+export const VIVIAN_ENHANCED_EXPLOSION_MOVE_ID = '1331024'
+export const VIVIAN_ENHANCED_CONTINUOUS_ROUNDS = 4
+/**
+ * 额外爆炸命中异常目标 → 触发一次[异放]，「造成相当于[普通攻击：落羽生花]50%的伤害」。
+ * 读法 = 0.5 × 落羽生花 440% = 220% 以太伤害（直接伤害通道）。
+ * ⚠ 另一读法（按异放通道、0.5×perTen 比例强度）在异常暴击/抗性区会略有差异 —— 已挂 ⟳复核。
+ */
+export const VIVIAN_ENHANCED_EXPLOSION_RELEASE_PCT = 220
+
+// @fact agent:1331/v2长按强特附加段 口径: v2 3.4.2+20052336 长按强特（堇花悼亡）新增段 —— 淑女突刺连续攻击 1331022（44%/33% 失衡每圈，至多 4 圈）+ 额外爆炸 1331024（440%、0 失衡）+ 每次爆炸命中异常目标触发一次[异放]（0.5×落羽生花 440% = 220% 以太直接伤害）；两者嵌在强特 1331010 的 1.467s 动作内（actionTime=0、不另占前台），默认按满 4 圈（最优操作）。必要条件依据 = 用户 2026-11-02 判据：增量 (176%+440%+220%)/1.467s ≈ 570%/s > 队伍主C平A 215–450%/s ⇒ 必要招式 | 据 data/raw/nanoka_1331_v2_zh_3.4.2+20052336.json skill.special param + 用户口径@2026-11-02 | 验 src/mechanics/__tests__/vivian.test.ts | 锚 src/mechanics/agents/vivian.ts#VIVIAN_ENHANCED_EXPLOSION_RELEASE_PCT | 信 确认
+// ⟳复核: 正式包落地后核对 1331022/1331024 倍率、「相当于落羽生花50%」的读法（现按 0.5×440%=220% 直接伤害；异放通道读法在异常暴击/抗性区略有差异）、以及长按是否真的零额外时间 | 到期 2027-03-31
 /** 影画6：悬落消耗全部护羽的特殊异放，比例最多提高至 5 倍（5 点护羽） */
 export const VIVIAN_C6_RELEASE_MAX_MULT = 5
 /** 预言 DoT：每 0.55 秒 55% 攻击力以太伤害 */
@@ -229,6 +247,27 @@ function cycleFromInput({ cfg, state }: Pick<AgentResourceInput, 'cfg' | 'state'
 
 function buildVivianExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
+  // v2 长按强特（堇花悼亡）附加段：淑女突刺至多 4 圈连续攻击 + 一次额外爆炸。
+  // 倍率走 catalog 行（1331022 / 1331024），actionTime=0——**嵌在强特 1331010 的 1.467s 动作内**，不另占前台。
+  const exTotal = Math.max(0, Math.floor(state.exSpecialCount))
+  if (exTotal > 0) {
+    executions.push(moduleExecRow({
+      moveId: VIVIAN_ENHANCED_CONTINUOUS_MOVE_ID,
+      moveName: '强化特殊技：堇花悼亡·连续攻击（淑女突刺至多4圈）',
+      category: 'special',
+      element: 'ether',
+      count: exTotal * VIVIAN_ENHANCED_CONTINUOUS_ROUNDS,
+      ...RECOVERY_OFF,
+    }))
+    executions.push(moduleExecRow({
+      moveId: VIVIAN_ENHANCED_EXPLOSION_MOVE_ID,
+      moveName: '强化特殊技：堇花悼亡·额外爆炸',
+      category: 'special',
+      element: 'ether',
+      count: exTotal,
+      ...RECOVERY_OFF,
+    }))
+  }
   if (cycle.followUpCount > 0) {
     executions.push(moduleExecRow({
       moveId: VIVIAN_LUOYU_MOVE_ID,
@@ -365,10 +404,32 @@ function buildVivianAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
   const cycle = cycleFromInput({ cfg, state })
   const cinemaLevel = cycle.cinemaLevel
   const followUpCount = cycle.followUpCount
-  if (followUpCount <= 0) return
-
   // 命中异常目标占比：异常角色异常覆盖率高，默认满覆盖（用户口径 2026-08）
   const hitAnomalyRatio = clampRatio(setting(cfg, 'vivian.releaseCoverage'))
+
+  /**
+   * v2 长按强特：额外爆炸命中异常目标 → 触发一次[异放]，「造成相当于[普通攻击：落羽生花]50%的伤害」。
+   * 次数 = 强特次数 × 命中异常占比（**与落羽生花次数无关**，故放在下面的提前返回之前）。
+   * 读法 = 0.5 × 440% = 220% 以太伤害（直接伤害通道），见 VIVIAN_ENHANCED_EXPLOSION_RELEASE_PCT。
+   */
+  const explosionReleases = Math.max(0, Math.floor(Math.max(0, Math.floor(state.exSpecialCount)) * hitAnomalyRatio))
+  if (explosionReleases > 0) {
+    events.push({
+      eventId: 'vivian_enhanced_explosion_release',
+      eventName: '额外爆炸·异放',
+      eventType: 'direct_damage',
+      element: 'ether',
+      carrierMoveId: VIVIAN_ENHANCED_EXPLOSION_MOVE_ID,
+      carrierMoveName: '强化特殊技：堇花悼亡·额外爆炸',
+      count: explosionReleases,
+      damageMultiplier: VIVIAN_ENHANCED_EXPLOSION_RELEASE_PCT,
+      formula: `0.5 × [普通攻击：落羽生花] 440% = ${VIVIAN_ENHANCED_EXPLOSION_RELEASE_PCT}% 以太伤害；次数 = 强特次数 × 命中异常占比`,
+      fields: ['exSpecialCount', 'vivian.releaseCoverage', 'VIVIAN_ENHANCED_EXPLOSION_RELEASE_PCT'],
+      note: `v2 长按强特（淑女突刺）额外爆炸触发（${explosionReleases} 次 = 强特 × 命中异常占比 ${(hitAnomalyRatio * 100).toFixed(0)}%）`,
+    })
+  }
+
+  if (followUpCount <= 0) return
   const releaseCount = Math.max(0, Math.floor(followUpCount * hitAnomalyRatio))
 
   // ⚠ 比例表只装原文口径（影画2 ×1.3）；潜能的「异放 +50%」走面板 anomalyReleaseDmgBonus 独立区，
