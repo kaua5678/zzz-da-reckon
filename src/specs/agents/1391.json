@@ -241,6 +241,7 @@
     "[已确认·数据] 影画2：虎啸暴伤 +22%（teamBuffs）+ 任意角色终结技 +3 威势（队伍终结次数含符法千重）。",
     "[已确认·数据] 影画3/5：技能等级 +2（通用）。",
     "[已确认·数据] 影画4：自身暴伤 +35%（虎啸满覆盖）。",
-    "[已确认·数据] 影画6：连携技伤害 +30%（虎釜震煞/虎釜崩/爆米花 exec.dmgBonus）；旋转耗威势命中发射 3 爆米花，每个 160% 攻击力视为连携（次数=旋转×3）。"
+    "[已确认·数据] 影画6：连携技伤害 +30%（虎釜震煞/虎釜崩/爆米花 exec.dmgBonus）；旋转耗威势命中发射 3 爆米花，每个 160% 攻击力视为连携（次数=旋转×3）。",
+    "[v2 潜能觉醒·侠肝义胆（2026-11-01 录入，用户「注明 v2、后面可能微调数值」）实现落点] ① [虎啸] 下 连携/终结 **最终伤害** +10%/30% → spec teamBuffs `jufufu.potential_chain_ult_dmg`（新独立乘区 `finalDmgBonus`，可定向招式类型；直伤专属）；② [普通攻击：「虎威」]/[冲刺攻击：…山君鼎戏·「虎威」] 失衡 +50% → **模块** `specPanelBuffs.ts#patchExecutions` 行级 `exec.stunBuildUpBonus`（`JUFUFU_POTENTIAL_STUN_BUILDUP`；1391005 = 后台自动攻击行，1391022 = 冲刺变体同名单）；③ [虎啸] 状态下角色攻击命中敌人 → 目标失衡易伤 +25%（失衡结束时移除）→ spec teamBuffs `jufufu.potential_stun_vuln`（`stunDmgMultiplierBonus`，仅失衡窗口计数）。三条都经 `potentialLevel` 取值 ⇒ 潜能开关关掉（effective level=I）整条归零。判据：`src/mechanics/__tests__/potentialSwitch.test.ts`。"
   ]
 }

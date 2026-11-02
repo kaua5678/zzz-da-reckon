@@ -390,6 +390,8 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
    * 定向 = `getTargetedStat(p, 'finalDmgBonus', skillDamageTarget)` ⇒ 可写 `finalDmgBonus__chain` 等。
    * **直伤专属**：本函数只结算直接伤害；异常/异放走 calcAnomalyDamage，不经此乘区。
    */
+  // @fact engine:最终伤害乘区 口径: 「最终伤害提升」是**独立乘区**，落点 = 暴击之后 ×(1 + finalDmgBonus%/100)，与增伤/暴伤/锐化等全部既有区**相乘**（不进任何加算区）；可按招式类型定向（finalDmgBonus__chain / __ultimate）；**直伤专属**——用户 2026-11-02 确认「最终伤害肯定直伤专属啊」，异常/异放走 calcAnomalyDamage 不经此区 | 据 用户口径@2026-11-01（独立乘区）+@2026-11-02（直伤专属）·1391 潜能觉醒·侠肝义胆（v2 3.4.2+20052336）首用 | 验 src/core/__tests__/damage.test.ts（增伤 30 与最终伤害 30 = ×1.3×1.3 ≠ ×1.6；可定向）+ src/mechanics/__tests__/potentialSwitch.test.ts | 锚 src/core/damage.ts#calcDirectDamage | 信 确认
+  // ⟳复核: 若游戏出现「最终伤害提升」作用于异常/异放（或与侵染/锐化等区顺序不同的证据），复核本落点与是否新增异常侧同名字段 | 到期 2027-03-31
   const finalDmgBonus = getTargetedStat(p, 'finalDmgBonus', input.skillDamageTarget)
   const afterFinalDmg = finalDmgBonus !== 0 ? afterCrit * (1 + finalDmgBonus / 100) : afterCrit
   if (finalDmgBonus !== 0) {

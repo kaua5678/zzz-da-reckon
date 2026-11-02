@@ -30,6 +30,7 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   ReleaseModifierInput,
+  AgentSkillTransformInput,
   AgentTeamConfigInput,
 } from '../types'
 import type { ModuleFeedback } from '../types'
@@ -39,7 +40,6 @@ import type { CharacterResourceResult } from '@/types/resource'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { outOfCombatStat } from '@/mechanics/initialStat'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
-import { potentialLevelOf } from '@/data/potentialLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const setting = mechanicSettingReader(() => vivianMechanic.settings)
@@ -68,16 +68,20 @@ export const VIVIAN_C2_RELEASE_RES_IGNORE = 15
 export const VIVIAN_C2_BUILDUP_EFF = 25
 /**
  * 潜能觉醒·星月诗篇（v2 测试服 3.4.2+20052336，II~VI 同文，2026-11-01 用户口径「后面可能微调数值」）：
- * ① [普通攻击：落羽生花] 造成的异常积蓄效率 +50%。
- * ⚠ 近似：引擎**没有招式级**积蓄效率通道（SkillExecution 无该字段，`core/anomalyPool.ts` 按面板
- * `anomalyBuildUpEfficiency` 聚合）⇒ 暂按元素限定 `etherAnomalyBuildUpEfficiency` 计入（落羽生花是
- * 薇薇安以太积蓄的主要载体，悬落等以太招会被一并抬高；同款近似已有影画2 的 +25）。
+ * ① [普通攻击：落羽生花] 造成的异常积蓄效率 +50% —— **招式限定**走执行行字段
+ * `exec.buildUpEfficiencyBonusPct`（`core/anomalyPool.ts:55` 消费；同款先例 = 格莉丝 1171 积蓄 +130%），
+ * **不进面板** `etherAnomalyBuildUpEfficiency`（那会波及悬落/其他以太招，SOP 铁律 6 禁止一视同仁）。
  */
 export const VIVIAN_POTENTIAL_BUILDUP_EFF = 50
 /** 潜能觉醒·星月诗篇：薇薇安自身异常掌控 +30 点（面板直接加算） */
 export const VIVIAN_POTENTIAL_MASTERY = 30
-/** 潜能觉醒·星月诗篇：[异放] 伤害 +50%（perTen 比例 ×1.5，与影画2 ×1.3 相乘） */
-export const VIVIAN_POTENTIAL_RELEASE_MULT = 1.5
+/**
+ * 潜能觉醒·星月诗篇：[异放] 伤害 +50% —— 走**异放专用独立增伤区** `panel.anomalyReleaseDmgBonus`
+ * （`core/damage.ts:552` 只在 settlementType=release 时进公式；与普罗米娅那条冰队异放增伤**加算**）。
+ * ⚠ 不得改写 `VIVIAN_RELEASE_RATIO_PER_TEN`（那是「异放/原异常比例」的口径，乘进去会污染比例语义、
+ * 并破坏与其它异放增伤的加算关系）。
+ */
+export const VIVIAN_POTENTIAL_RELEASE_BONUS = 50
 /** 影画6：悬落消耗全部护羽的特殊异放，比例最多提高至 5 倍（5 点护羽） */
 export const VIVIAN_C6_RELEASE_MAX_MULT = 5
 /** 预言 DoT：每 0.55 秒 55% 攻击力以太伤害 */
@@ -253,6 +257,23 @@ function vivianEstimateExSpecialTime(): { necessaryTime: number; comboAlignTime:
   return { necessaryTime: 0, comboAlignTime: 0 }
 }
 
+/**
+ * 潜能觉醒·星月诗篇 ①：落羽生花异常积蓄效率 +50%（**招式限定**）。
+ *
+ * 走 `transformSkillExecutions`（enrich 之后、拿 `anomalyExecs`）——行级积蓄效率字段
+ * `AnomalySkillExecution.buildUpEfficiencyBonusPct` 只在这个通道上（`core/anomalyPool.ts:55` 消费），
+ * `SkillExecution` 没有该字段；同款先例 = 格莉丝 1171（只给特殊技/强特两行 +130%，不进面板）。
+ * 入参 `potentialLevel` 已由潜能开关折算（关 = I 档）。
+ */
+function transformVivianExecutions({ anomalyExecs, potentialLevel }: AgentSkillTransformInput): void {
+  if (potentialLevel < 2) return
+  for (const exec of anomalyExecs) {
+    if (exec.moveId === VIVIAN_LUOYU_MOVE_ID) {
+      exec.buildUpEfficiencyBonusPct = (exec.buildUpEfficiencyBonusPct ?? 0) + VIVIAN_POTENTIAL_BUILDUP_EFF
+    }
+  }
+}
+
 function patchVivianExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cycle = cycleFromInput({ cfg, state })
   // 强化特殊技全部合轴（后台打完，不占前台）：timeBucket=backstage
@@ -295,13 +316,13 @@ function applyVivianPanel({ cinemaLevel, panel, outOfCombatPanel, settings, pote
   }
   /**
    * 潜能觉醒·星月诗篇（v2，II~VI 同文；2026-11-01 用户口径）：
-   * ① 落羽生花异常积蓄效率 +50%（近似走元素限定字段，见常量注释）；② 自身异常掌控 +30。
+   * ① 落羽生花异常积蓄 +50% → **执行行**（见 patchVivianExecutions，招式限定）；
+   * ② 自身异常掌控 +30（本处）；③ 异放 +50% → 异放专用独立增伤区（本处）。
    * 入参 potentialLevel 已由潜能开关折算（关 = I 档），模块不再自己判开关。
-   * ③ 异放 +50% 在 buildAnomalyEvents 的 perTen 上乘。
    */
   if (potentialLevel >= 2) {
-    panel.etherAnomalyBuildUpEfficiency = panel.etherAnomalyBuildUpEfficiency + VIVIAN_POTENTIAL_BUILDUP_EFF
     panel.anomalyMastery = panel.anomalyMastery + VIVIAN_POTENTIAL_MASTERY
+    panel.anomalyReleaseDmgBonus = panel.anomalyReleaseDmgBonus + VIVIAN_POTENTIAL_RELEASE_BONUS
   }
 }
 
@@ -350,11 +371,11 @@ function buildVivianAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
   const hitAnomalyRatio = clampRatio(setting(cfg, 'vivian.releaseCoverage'))
   const releaseCount = Math.max(0, Math.floor(followUpCount * hitAnomalyRatio))
 
-  // 潜能觉醒·星月诗篇：异放伤害 +50%（perTen ×1.5）。cfg.panel.potentialLevel 已由开关折算。
-  const potentialReleaseMult = potentialLevelOf(cfg.panel.potentialLevel) >= 2 ? VIVIAN_POTENTIAL_RELEASE_MULT : 1
+  // ⚠ 比例表只装原文口径（影画2 ×1.3）；潜能的「异放 +50%」走面板 anomalyReleaseDmgBonus 独立区，
+  //   不乘进 perTen（否则污染比例语义、破坏与其它异放增伤的加算关系）。
   const perTen: Record<string, number> = {}
   for (const [element, ratio] of Object.entries(VIVIAN_RELEASE_RATIO_PER_TEN)) {
-    perTen[element] = ratio * (cinemaLevel >= 2 ? VIVIAN_C2_RELEASE_MULT : 1) * potentialReleaseMult
+    perTen[element] = cinemaLevel >= 2 ? ratio * VIVIAN_C2_RELEASE_MULT : ratio
   }
 
   // 落羽生花命中异常目标触发异放（dominant 元素按异常覆盖率分配，引擎处理）
@@ -387,7 +408,7 @@ function buildVivianAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
   if (cinemaLevel >= 6 && cycle.c6ReleaseMult > 1) {
     const c6PerTen: Record<string, number> = {}
     for (const [element, ratio] of Object.entries(VIVIAN_RELEASE_RATIO_PER_TEN)) {
-      c6PerTen[element] = ratio * (cinemaLevel >= 2 ? VIVIAN_C2_RELEASE_MULT : 1) * potentialReleaseMult * cycle.c6ReleaseMult
+      c6PerTen[element] = ratio * (cinemaLevel >= 2 ? VIVIAN_C2_RELEASE_MULT : 1) * cycle.c6ReleaseMult
     }
     events.push({
       eventId: 'vivian_xuanluo_c6_release',
@@ -495,6 +516,7 @@ export const vivianMechanic: AgentMechanicModule = {
   },
   buildExecutions: buildVivianExecutions,
   patchExecutions: patchVivianExecutions,
+  transformSkillExecutions: transformVivianExecutions,
   estimateExSpecialTime: vivianEstimateExSpecialTime,
   buildResourceResult: buildVivianResourceResult,
   resourceSections: buildVivianResourceSections,
@@ -551,5 +573,5 @@ declare module '@/types/resource/agentResources' {
   }
 }
 
-// @fact agent:1331/潜能觉醒星月诗篇 口径: v2 测试服 3.4.2+20052336 憧憬的轮廓 II~VI 同文（用户 2026-11-01「后面可能微调数值」）：① 落羽生花 异常积蓄效率 +50%（近似 element 限定 etherAnomalyBuildUpEfficiency——引擎无招式级积蓄通道）② 自身异常掌控 +30 ③ 异放伤害 +50%（perTen ×1.5，与影画2 ×1.3 相乘）；三条读 effective potentialLevel（≥2 生效）⇒ 关开关即归零 | 据 data/raw/nanoka_1331_v2_zh_3.4.2+20052336.json potential_detail（正主 raw 保持 live——v2 包含 catalog 未收录新招） + 用户口径@2026-11-01 | 验 src/mechanics/__tests__/potentialSwitch.test.ts | 锚 src/mechanics/agents/vivian.ts#applyVivianPanel + src/mechanics/agents/vivian.ts#buildVivianAnomalyEvents | 信 确认
+// @fact agent:1331/潜能觉醒星月诗篇 口径: v2 测试服 3.4.2+20052336 憧憬的轮廓 II~VI 同文（用户 2026-11-01「后面可能微调数值」）：① 落羽生花 异常积蓄效率 +50%（**招式限定**走 exec.buildUpEfficiencyBonusPct，格莉丝同款通道；不进元素面板）② 自身异常掌控 +30（panel.anomalyMastery）③ 异放伤害 +50%（**异放专用独立增伤区** panel.anomalyReleaseDmgBonus，与普罗米娅那条加算；**不改** perTen 比例）；三条读 effective potentialLevel（≥2 生效）⇒ 关开关即归零 | 据 data/raw/nanoka_1331_v2_zh_3.4.2+20052336.json potential_detail（正主 raw 保持 live——v2 包含 catalog 未收录新招） + 用户口径@2026-11-01 | 验 src/mechanics/__tests__/potentialSwitch.test.ts | 锚 src/mechanics/agents/vivian.ts#applyVivianPanel + src/mechanics/agents/vivian.ts#patchVivianExecutions | 信 确认
 // ⟳复核: 下一个正式包落地后，按 data/raw/nanoka_1331_v2_zh_3.4.2+20052336.json 逐条对账 1331 潜能三条数值（用户说「后面可能微调数值」） | 到期 2027-03-31

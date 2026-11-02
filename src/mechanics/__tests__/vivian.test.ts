@@ -282,16 +282,11 @@ describe('薇薇安核心被动异放（releaseRatio 框架）', () => {
     expect(c6.releaseRatio.perTenByElement.ether).toBeCloseTo(6.15 * 1.3 * 5, 5)
   })
 
-  it('潜能觉醒·星月诗篇（v2）：[异放] 伤害 +50% ⇒ perTen ×1.5（关开关回到基线）', () => {
-    const on: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0, panel: { potentialLevel: 6 } }
-    const off: any = { ...on, panel: { potentialLevel: 1 } }
-    const evOn: any[] = []
-    const evOff: any[] = []
-    vivianMechanic.buildAnomalyEvents!({ cfg: on, state: { exSpecialCount: 4 } as any, events: evOn, totalTime: 180 })
-    vivianMechanic.buildAnomalyEvents!({ cfg: off, state: { exSpecialCount: 4 } as any, events: evOff, totalTime: 180 })
-    const ratio = (ev: any[]) => ev.find(e => e.eventId === 'vivian_luoyu_release').releaseRatio.perTenByElement.ether
-    expect(ratio(evOn)).toBeCloseTo(6.15 * 1.5, 5)
-    expect(ratio(evOff)).toBeCloseTo(6.15, 5)
+  it('潜能觉醒·星月诗篇（v2）：**不**改异放比例 perTen（+50% 走异放专用独立区 anomalyReleaseDmgBonus）', () => {
+    const cfg: any = { vivianCinemaLevel: 0, vivianTeamExTotal: 4, vivianAnomalyTriggerTotal: 0, panel: { potentialLevel: 6 } }
+    const ev: any[] = []
+    vivianMechanic.buildAnomalyEvents!({ cfg, state: { exSpecialCount: 4 } as any, events: ev, totalTime: 180 })
+    expect(ev.find(e => e.eventId === 'vivian_luoyu_release').releaseRatio.perTenByElement.ether).toBeCloseTo(6.15, 5)
   })
 
   it('预言 DoT：次数 = floor(战斗时长 × 覆盖率 / 0.55)，覆盖率可调', () => {

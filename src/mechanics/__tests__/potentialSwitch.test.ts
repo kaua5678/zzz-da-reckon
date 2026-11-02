@@ -17,9 +17,12 @@ import { effectivePotentialLevelOf, potentialEnabledOf } from '@/data/potentialL
 import { getAgentMechanic } from '@/mechanics'
 import { getAgentSpec } from '@/specs/registry'
 import {
+  VIVIAN_LUOYU_MOVE_ID,
+  VIVIAN_XUANLUO_MOVE_ID,
   VIVIAN_POTENTIAL_BUILDUP_EFF,
   VIVIAN_POTENTIAL_MASTERY,
-  VIVIAN_POTENTIAL_RELEASE_MULT,
+  VIVIAN_POTENTIAL_RELEASE_BONUS,
+  vivianMechanic,
 } from '@/mechanics/agents/vivian'
 import { JUFUFU_POTENTIAL_STUN_BUILDUP, jufufuTigerRoarMechanic } from '@/mechanics/agents/specPanelBuffs'
 
@@ -113,12 +116,24 @@ describe('v2 原文出处（1391/1331 潜能 II~VI 同文）', () => {
 })
 
 describe('1331 潜能：开关差分（面板通道量）', () => {
-  it('开 minus 关 = 异常掌控 +30 / 以太积蓄效率 +50', async () => {
+  it('开 minus 关 = 异常掌控 +30 / 异放专用独立增伤 +50（积蓄 +50 走行级、不在面板）', async () => {
     const on = await arm([{ agentId: '1331' }, { agentId: '1211' }, ''])
     const off = await arm([{ agentId: '1331' }, { agentId: '1211' }, ''], 0)
     expect((on.panel0.anomalyMastery ?? 0) - (off.panel0.anomalyMastery ?? 0)).toBeCloseTo(VIVIAN_POTENTIAL_MASTERY, 6)
-    expect((on.panel0.etherAnomalyBuildUpEfficiency ?? 0) - (off.panel0.etherAnomalyBuildUpEfficiency ?? 0)).toBeCloseTo(VIVIAN_POTENTIAL_BUILDUP_EFF, 6)
-    expect(VIVIAN_POTENTIAL_RELEASE_MULT).toBe(1.5)
+    expect((on.panel0.anomalyReleaseDmgBonus ?? 0) - (off.panel0.anomalyReleaseDmgBonus ?? 0)).toBeCloseTo(VIVIAN_POTENTIAL_RELEASE_BONUS, 6)
+    // 招式限定的积蓄 +50 不得进元素面板（那会波及悬落等以太招）
+    expect(on.panel0.etherAnomalyBuildUpEfficiency ?? 0).toBe(off.panel0.etherAnomalyBuildUpEfficiency ?? 0)
+  })
+
+  it('落羽生花行级积蓄 +50%（招式限定；悬落不吃；关开关归零）', () => {
+    const st = (moveId: string, pot: number) => {
+      const anomalyExecs = [{ moveId, count: 1, baseBuildUp: 100, element: 'ether', slot: 0, moveName: 'x' }]
+      vivianMechanic.transformSkillExecutions!({ anomalyExecs, potentialLevel: pot } as never)
+      return (anomalyExecs[0] as { buildUpEfficiencyBonusPct?: number }).buildUpEfficiencyBonusPct ?? 0
+    }
+    expect(st(VIVIAN_LUOYU_MOVE_ID, 6)).toBe(VIVIAN_POTENTIAL_BUILDUP_EFF)
+    expect(st(VIVIAN_XUANLUO_MOVE_ID, 6), '悬落不吃招式限定积蓄').toBe(0)
+    expect(st(VIVIAN_LUOYU_MOVE_ID, 1)).toBe(0)
   })
 })
 

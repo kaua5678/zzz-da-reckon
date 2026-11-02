@@ -1,0 +1,2389 @@
+{
+  "version": 1,
+  "packet": {
+    "version": 1,
+    "agentId": "1391",
+    "source": {
+      "raw": "data/raw/nanoka_missing/full/1391.json",
+      "nouns": "data/raw/nanoka_missing/noun_3.3.12.json"
+    },
+    "passiveLevel": 7,
+    "hashes": {
+      "raw": "bbc4f624b05f0a55cb42580ea1c318c67aea3154baeb284ae4be0c4ca12c9fde",
+      "nouns": "35db6f0b30a275554585731fb8a7454a3ebeeded7706673726c572cfeb880a1e",
+      "moves": "eb607e5901ea177f6b17a0a07128cfa197768fe0558ab3ffd812d87c14d1db3e"
+    },
+    "moves": [
+      {
+        "id": "1391",
+        "agentId": "1391",
+        "name": {
+          "zhCN": "橘福福",
+          "en": "Ju Fufu"
+        },
+        "categories": [
+          {
+            "id": "basic",
+            "name": {
+              "zhCN": "basic",
+              "en": "basic"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1391001",
+                "name": {
+                  "zhCN": "普通攻击：恶虎七式·燎身爪 #1",
+                  "en": "Basic Attack: Tiger Seven Forms - Flaming Claw #1"
+                },
+                "damageElement": "fire",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      85.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      73.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.587
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      12.1275
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      44.07
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.441
+              },
+              {
+                "id": "1391002",
+                "name": {
+                  "zhCN": "普通攻击：恶虎七式·燎身爪 #2",
+                  "en": "Basic Attack: Tiger Seven Forms - Flaming Claw #2"
+                },
+                "damageElement": "fire",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      91.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      58.9
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.279
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      9.79
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      35.52
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.355
+              },
+              {
+                "id": "1391003",
+                "name": {
+                  "zhCN": "普通攻击：恶虎七式·燎身爪 #3",
+                  "en": "Basic Attack: Tiger Seven Forms - Flaming Claw #3"
+                },
+                "damageElement": "fire",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      63.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      73.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.586
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      12.1275
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      44.04
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      44.05
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.44
+              },
+              {
+                "id": "1391004",
+                "name": {
+                  "zhCN": "普通攻击：恶虎七式·燎身爪 #4",
+                  "en": "Basic Attack: Tiger Seven Forms - Flaming Claw #4"
+                },
+                "damageElement": "fire",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      437.3
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      201
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      4.382
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      33.495
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      121.71
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      121.72
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.217
+              },
+              {
+                "id": "1391005",
+                "name": {
+                  "zhCN": "普通攻击：「虎威」",
+                  "en": "Basic Attack: Hu Wei"
+                },
+                "damageElement": "fire",
+                "skillType": "basic",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      184.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      104.5
+                    ],
+                    "damageBasis": "atk"
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0
+              }
+            ]
+          },
+          {
+            "id": "dodge",
+            "name": {
+              "zhCN": "dodge",
+              "en": "dodge"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1391008",
+                "name": {
+                  "zhCN": "冲刺攻击：恶虎七式·虎奔",
+                  "en": "Dash Attack: Tiger Seven Forms - Tiger Charge"
+                },
+                "damageElement": "physical",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      74.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "physical"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      28.3
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      0.601
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      4.5925
+                    ]
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      16.69
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.167
+              },
+              {
+                "id": "1391009",
+                "name": {
+                  "zhCN": "冲刺攻击：恶虎七式·山君鼎戏",
+                  "en": "Dash Attack: Tiger Seven Forms - Mountain King's Game"
+                },
+                "damageElement": "fire",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      37.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      28.3
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      0.601
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      4.5925
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0
+              },
+              {
+                "id": "1391010",
+                "name": {
+                  "zhCN": "冲刺攻击：恶虎七式·山君鼎戏·威势",
+                  "en": "Dash Attack: Tiger Seven Forms - Mountain King's Game - Momentum"
+                },
+                "damageElement": "fire",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      39
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      13.1
+                    ],
+                    "damageBasis": "atk"
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0
+              },
+              {
+                "id": "1391022",
+                "name": {
+                  "zhCN": "冲刺攻击：恶虎七式·山君鼎戏·「虎威」",
+                  "en": "Dash Attack: Tiger Seven Forms - Mountain King's Game - Hu Wei"
+                },
+                "damageElement": "fire",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      184.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      104.5
+                    ],
+                    "damageBasis": "atk"
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0
+              },
+              {
+                "id": "1391011",
+                "name": {
+                  "zhCN": "闪避反击：恶虎七式·离火回峰",
+                  "en": "Dodge Counter: Tiger Seven Forms - Reignited Mountain"
+                },
+                "damageElement": "fire",
+                "skillType": "dodge",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      415.7
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      278.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      2.462
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      18.81
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      68.36
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      218.37
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.684
+              }
+            ]
+          },
+          {
+            "id": "special",
+            "name": {
+              "zhCN": "special",
+              "en": "special"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1391006",
+                "name": {
+                  "zhCN": "特殊技：恶虎七式·下山虎",
+                  "en": "Special Attack: Tiger Seven Forms - Mountain-Descending Tiger"
+                },
+                "damageElement": "fire",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      133.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      100.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      16.5275
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      60.01
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      60.02
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.6
+              },
+              {
+                "id": "1391007",
+                "name": {
+                  "zhCN": "强化特殊技：恶虎七式改·下山猛虎",
+                  "en": "EX Special Attack: Tiger Seven Forms Alt - Mountain-Descending Savage Tiger"
+                },
+                "damageElement": "fire",
+                "skillType": "special",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1053.4
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      516.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      181.9675
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      512.12
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      163.31
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.633,
+                "energyCost": {
+                  "Energy Cost": "60"
+                }
+              }
+            ]
+          },
+          {
+            "id": "chain",
+            "name": {
+              "zhCN": "chain",
+              "en": "chain"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1391012",
+                "name": {
+                  "zhCN": "连携技：虎釜崩",
+                  "en": "Chain Attack: Tiger Cauldron Collapse"
+                },
+                "damageElement": "fire",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      1336.9
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      240.8
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      148.7475
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      308.08
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      208.34
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 2.083
+              },
+              {
+                "id": "1391013",
+                "name": {
+                  "zhCN": "连携技：虎釜震煞",
+                  "en": "Chain Attack: Suppressing Tiger Cauldron"
+                },
+                "damageElement": "fire",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      709.8
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      332.7
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      45.4025
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      60.41
+                    ],
+                    "damageElement": "fire"
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0
+              },
+              {
+                "id": "1391014",
+                "name": {
+                  "zhCN": "终结技：恶虎七式·猛虎炸开花",
+                  "en": "Ultimate: Tiger Seven Forms - Raging Tiger Explosion"
+                },
+                "damageElement": "fire",
+                "skillType": "chain",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      3328.1
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      1636.3
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      210.03
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      710.04
+                    ]
+                  }
+                ],
+                "timeType": "ultimate",
+                "actionTime": 2.1
+              }
+            ]
+          },
+          {
+            "id": "assist",
+            "name": {
+              "zhCN": "assist",
+              "en": "assist"
+            },
+            "levelRange": {
+              "min": 1,
+              "max": 12,
+              "default": 12
+            },
+            "moves": [
+              {
+                "id": "1391015",
+                "name": {
+                  "zhCN": "快速支援：怒决蹯",
+                  "en": "Quick Assist: Decisive Stomp"
+                },
+                "damageElement": "fire",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      151.2
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      57.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "energy_recovery",
+                    "kind": "energy",
+                    "values": [
+                      1.231
+                    ]
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      9.405
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      34.18
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      34.19
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 0.342
+              },
+              {
+                "id": "1391016",
+                "name": {
+                  "zhCN": "招架支援：岿然虎踞 #1",
+                  "en": "Defensive Assist: Steadfast Crouching Tiger #1"
+                },
+                "damageElement": "fire",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      302.5
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      366.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166
+              },
+              {
+                "id": "1391017",
+                "name": {
+                  "zhCN": "招架支援：岿然虎踞 #2",
+                  "en": "Defensive Assist: Steadfast Crouching Tiger #2"
+                },
+                "damageElement": "fire",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      409.2
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      416.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.666
+              },
+              {
+                "id": "1391018",
+                "name": {
+                  "zhCN": "招架支援：岿然虎踞 #3",
+                  "en": "Defensive Assist: Steadfast Crouching Tiger #3"
+                },
+                "damageElement": "fire",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      206.1
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      116.64
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.166
+              },
+              {
+                "id": "1391019",
+                "name": {
+                  "zhCN": "支援突击：彪形焰颌",
+                  "en": "Assist Follow-Up: Feral Blazing Maw"
+                },
+                "damageElement": "fire",
+                "skillType": "assist",
+                "rows": [
+                  {
+                    "id": "damage",
+                    "kind": "damageMultiplier",
+                    "values": [
+                      815.3
+                    ],
+                    "damageBasis": "atk",
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "daze",
+                    "kind": "daze",
+                    "values": [
+                      385
+                    ],
+                    "damageBasis": "atk"
+                  },
+                  {
+                    "id": "decibel_recovery",
+                    "kind": "decibel",
+                    "values": [
+                      114.51
+                    ]
+                  },
+                  {
+                    "id": "anomaly_buildup",
+                    "kind": "anomaly",
+                    "values": [
+                      346.97
+                    ],
+                    "damageElement": "fire"
+                  },
+                  {
+                    "id": "ether_purify",
+                    "kind": "etherPurify",
+                    "values": [
+                      185.01
+                    ]
+                  }
+                ],
+                "timeType": "normal",
+                "actionTime": 1.85
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "units": [
+      {
+        "id": "/skill/assist/description/0/desc:0",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：怒决蹯",
+        "category": "assist",
+        "quote": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动斩击，造成火属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:1",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：怒决蹯",
+        "category": "assist",
+        "quote": "对前方敌人发动斩击，造成火属性伤害；",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动斩击，造成火属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/0/desc:2",
+        "pointer": "/skill/assist/description/0/desc",
+        "title": "快速支援：怒决蹯",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "当前操作中的角色被击飞时，点按 [Icon_Switch] 发动：\n对前方敌人发动斩击，造成火属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:0",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：岿然虎踞",
+        "category": "assist",
+        "quote": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:1",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：岿然虎踞",
+        "category": "assist",
+        "quote": "招架敌人的攻击，累积大量失衡值；",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/1/desc:2",
+        "pointer": "/skill/assist/description/1/desc",
+        "title": "招架支援：岿然虎踞",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "前场角色即将被攻击时，点按 [Icon_Switch] 发动：\n招架敌人的攻击，累积大量失衡值；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:0",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：彪形焰颌",
+        "category": "assist",
+        "quote": "发动[招架支援]后，点按 [普攻键] 发动：",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动斩击后，使用「虎威」追加一次下落攻击，造成火属性伤害；\n发动时获得1点[威势]，10秒内最多获得1次；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:1",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：彪形焰颌",
+        "category": "assist",
+        "quote": "对前方敌人发动斩击后，使用「虎威」追加一次下落攻击，造成火属性伤害；",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动斩击后，使用「虎威」追加一次下落攻击，造成火属性伤害；\n发动时获得1点[威势]，10秒内最多获得1次；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:2",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：彪形焰颌",
+        "category": "assist",
+        "quote": "发动时获得1点[威势]，10秒内最多获得1次；",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动斩击后，使用「虎威」追加一次下落攻击，造成火属性伤害；\n发动时获得1点[威势]，10秒内最多获得1次；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/assist/description/2/desc:3",
+        "pointer": "/skill/assist/description/2/desc",
+        "title": "支援突击：彪形焰颌",
+        "category": "assist",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "发动[招架支援]后，点按 [普攻键] 发动：\n对前方敌人发动斩击后，使用「虎威」追加一次下落攻击，造成火属性伤害；\n发动时获得1点[威势]，10秒内最多获得1次；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:0",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：恶虎七式·燎身爪",
+        "category": "basic",
+        "quote": "点按 [普攻键] 发动：",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段的斩击，造成物理伤害和火属性伤害；\n第三段攻击期间，连续点按 [普攻键] 可以维持连击，持续打击敌人；\n第三段攻击期间，长按或停顿后点按 [普攻键] ，将衔接第四段攻击；\n第三段攻击期间抗打断等级提升，受到伤害降低40%。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:1",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：恶虎七式·燎身爪",
+        "category": "basic",
+        "quote": "向前方进行至多四段的斩击，造成物理伤害和火属性伤害；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段的斩击，造成物理伤害和火属性伤害；\n第三段攻击期间，连续点按 [普攻键] 可以维持连击，持续打击敌人；\n第三段攻击期间，长按或停顿后点按 [普攻键] ，将衔接第四段攻击；\n第三段攻击期间抗打断等级提升，受到伤害降低40%。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:2",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：恶虎七式·燎身爪",
+        "category": "basic",
+        "quote": "第三段攻击期间，连续点按 [普攻键] 可以维持连击，持续打击敌人；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段的斩击，造成物理伤害和火属性伤害；\n第三段攻击期间，连续点按 [普攻键] 可以维持连击，持续打击敌人；\n第三段攻击期间，长按或停顿后点按 [普攻键] ，将衔接第四段攻击；\n第三段攻击期间抗打断等级提升，受到伤害降低40%。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:3",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：恶虎七式·燎身爪",
+        "category": "basic",
+        "quote": "第三段攻击期间，长按或停顿后点按 [普攻键] ，将衔接第四段攻击；",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段的斩击，造成物理伤害和火属性伤害；\n第三段攻击期间，连续点按 [普攻键] 可以维持连击，持续打击敌人；\n第三段攻击期间，长按或停顿后点按 [普攻键] ，将衔接第四段攻击；\n第三段攻击期间抗打断等级提升，受到伤害降低40%。"
+      },
+      {
+        "id": "/skill/basic/description/0/desc:4",
+        "pointer": "/skill/basic/description/0/desc",
+        "title": "普通攻击：恶虎七式·燎身爪",
+        "category": "basic",
+        "quote": "第三段攻击期间抗打断等级提升，受到伤害降低40%。",
+        "context": "点按 [普攻键] 发动：\n向前方进行至多四段的斩击，造成物理伤害和火属性伤害；\n第三段攻击期间，连续点按 [普攻键] 可以维持连击，持续打击敌人；\n第三段攻击期间，长按或停顿后点按 [普攻键] ，将衔接第四段攻击；\n第三段攻击期间抗打断等级提升，受到伤害降低40%。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:0",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：「虎威」",
+        "category": "basic",
+        "quote": "战斗中，「虎威」会自动对敌人发动攻击， 造成火属性伤害；",
+        "context": "战斗中，「虎威」会自动对敌人发动攻击， 造成火属性伤害；\n命中敌人时，获得20点[威风]，招式内最多触发一次；[威风]上限为200点。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:1",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：「虎威」",
+        "category": "basic",
+        "quote": "命中敌人时，获得20点[威风]，招式内最多触发一次；",
+        "context": "战斗中，「虎威」会自动对敌人发动攻击， 造成火属性伤害；\n命中敌人时，获得20点[威风]，招式内最多触发一次；[威风]上限为200点。"
+      },
+      {
+        "id": "/skill/basic/description/1/desc:2",
+        "pointer": "/skill/basic/description/1/desc",
+        "title": "普通攻击：「虎威」",
+        "category": "basic",
+        "quote": "[威风]上限为200点。",
+        "context": "战斗中，「虎威」会自动对敌人发动攻击， 造成火属性伤害；\n命中敌人时，获得20点[威风]，招式内最多触发一次；[威风]上限为200点。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:0",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：虎釜崩",
+        "category": "chain",
+        "quote": "触发[连携技]时，选择对应角色发动：",
+        "context": "触发[连携技]时，选择对应角色发动：\n挥舞「虎威」对前方小范围敌人进行强力打击，造成大量火属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:1",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：虎釜崩",
+        "category": "chain",
+        "quote": "挥舞「虎威」对前方小范围敌人进行强力打击，造成大量火属性伤害；",
+        "context": "触发[连携技]时，选择对应角色发动：\n挥舞「虎威」对前方小范围敌人进行强力打击，造成大量火属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/0/desc:2",
+        "pointer": "/skill/chain/description/0/desc",
+        "title": "连携技：虎釜崩",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "触发[连携技]时，选择对应角色发动：\n挥舞「虎威」对前方小范围敌人进行强力打击，造成大量火属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:0",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "连携技：虎釜震煞",
+        "category": "chain",
+        "quote": "拥有至少100点[威风]时，触发[连携技]后自动发动：",
+        "context": "拥有至少100点[威风]时，触发[连携技]后自动发动：\n消耗100点[威风]，打开「虎威」对前方小范围敌人发射火焰和爆米花打击敌人，造成大量火属性伤害；\n拥有[威势]且不为操作中角色时，招式结束会进入高速旋转状态；\n招式为[追加攻击]，发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:1",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "连携技：虎釜震煞",
+        "category": "chain",
+        "quote": "消耗100点[威风]，打开「虎威」对前方小范围敌人发射火焰和爆米花打击敌人，造成大量火属性伤害；",
+        "context": "拥有至少100点[威风]时，触发[连携技]后自动发动：\n消耗100点[威风]，打开「虎威」对前方小范围敌人发射火焰和爆米花打击敌人，造成大量火属性伤害；\n拥有[威势]且不为操作中角色时，招式结束会进入高速旋转状态；\n招式为[追加攻击]，发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:2",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "连携技：虎釜震煞",
+        "category": "chain",
+        "quote": "拥有[威势]且不为操作中角色时，招式结束会进入高速旋转状态；",
+        "context": "拥有至少100点[威风]时，触发[连携技]后自动发动：\n消耗100点[威风]，打开「虎威」对前方小范围敌人发射火焰和爆米花打击敌人，造成大量火属性伤害；\n拥有[威势]且不为操作中角色时，招式结束会进入高速旋转状态；\n招式为[追加攻击]，发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/1/desc:3",
+        "pointer": "/skill/chain/description/1/desc",
+        "title": "连携技：虎釜震煞",
+        "category": "chain",
+        "quote": "招式为[追加攻击]，发动期间拥有无敌效果。",
+        "context": "拥有至少100点[威风]时，触发[连携技]后自动发动：\n消耗100点[威风]，打开「虎威」对前方小范围敌人发射火焰和爆米花打击敌人，造成大量火属性伤害；\n拥有[威势]且不为操作中角色时，招式结束会进入高速旋转状态；\n招式为[追加攻击]，发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/2/desc:0",
+        "pointer": "/skill/chain/description/2/desc",
+        "title": "终结技：恶虎七式·猛虎炸开花",
+        "category": "chain",
+        "quote": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n使用「虎威」进行两次下落攻击，造成大量火属性伤害；\n发动时获得6点[威势]和100点[威风]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/2/desc:1",
+        "pointer": "/skill/chain/description/2/desc",
+        "title": "终结技：恶虎七式·猛虎炸开花",
+        "category": "chain",
+        "quote": "使用「虎威」进行两次下落攻击，造成大量火属性伤害；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n使用「虎威」进行两次下落攻击，造成大量火属性伤害；\n发动时获得6点[威势]和100点[威风]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/2/desc:2",
+        "pointer": "/skill/chain/description/2/desc",
+        "title": "终结技：恶虎七式·猛虎炸开花",
+        "category": "chain",
+        "quote": "发动时获得6点[威势]和100点[威风]；",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n使用「虎威」进行两次下落攻击，造成大量火属性伤害；\n发动时获得6点[威势]和100点[威风]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/chain/description/2/desc:3",
+        "pointer": "/skill/chain/description/2/desc",
+        "title": "终结技：恶虎七式·猛虎炸开花",
+        "category": "chain",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "喧响等级达到[极]时，点按 [Icon_UltimateReady] 发动：\n使用「虎威」进行两次下落攻击，造成大量火属性伤害；\n发动时获得6点[威势]和100点[威风]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:0",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：恶虎七式·风从虎",
+        "category": "dodge",
+        "quote": "点按 [Icon_Evade] 发动：",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:1",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：恶虎七式·风从虎",
+        "category": "dodge",
+        "quote": "快速的冲刺闪避；",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/0/desc:2",
+        "pointer": "/skill/dodge/description/0/desc",
+        "title": "闪避：恶虎七式·风从虎",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "点按 [Icon_Evade] 发动：\n快速的冲刺闪避；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:0",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：恶虎七式·虎奔",
+        "category": "dodge",
+        "quote": "闪避时，点按 [普攻键] 发动：",
+        "context": "闪避时，点按 [普攻键] 发动：\n向前发动快速斩击，造成物理伤害。"
+      },
+      {
+        "id": "/skill/dodge/description/1/desc:1",
+        "pointer": "/skill/dodge/description/1/desc",
+        "title": "冲刺攻击：恶虎七式·虎奔",
+        "category": "dodge",
+        "quote": "向前发动快速斩击，造成物理伤害。",
+        "context": "闪避时，点按 [普攻键] 发动：\n向前发动快速斩击，造成物理伤害。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:0",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "冲刺攻击：恶虎七式·山君鼎戏",
+        "category": "dodge",
+        "quote": "[冲刺攻击：恶虎七式·虎奔]发动后，长按 [普攻键] 发动：",
+        "context": "[冲刺攻击：恶虎七式·虎奔]发动后，长按 [普攻键] 发动：\n进入高速旋转状态，该状态下可以拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}进行移动，接触敌人时造成物理伤害；\n橘福福通过其他招式获得[威势]后，会在高速旋转状态下带有火焰；接触敌人时消耗1点[威势]，改为造成火属性伤害并获得25点[威风]，[威势]上限为15点；\n橘福福消耗[威势]造成火属性伤害时，若[威风]高于100点，会自动消耗100点[威风]发动[连携技：虎釜震煞]；\n松开 [普攻键] 可退出旋转状态，并丢出「虎威」攻击敌人，造成火属性伤害；切换至其他角色时，橘福福会继续处于旋转状态，尝试撞击最近的敌人；\n橘福福为当前操作中角色时，招式发动期间受到伤害降低40%，抗打断等级提升，不为当前操作中角色时，获得无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:1",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "冲刺攻击：恶虎七式·山君鼎戏",
+        "category": "dodge",
+        "quote": "进入高速旋转状态，该状态下可以拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}进行移动，接触敌人时造成物理伤害；",
+        "context": "[冲刺攻击：恶虎七式·虎奔]发动后，长按 [普攻键] 发动：\n进入高速旋转状态，该状态下可以拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}进行移动，接触敌人时造成物理伤害；\n橘福福通过其他招式获得[威势]后，会在高速旋转状态下带有火焰；接触敌人时消耗1点[威势]，改为造成火属性伤害并获得25点[威风]，[威势]上限为15点；\n橘福福消耗[威势]造成火属性伤害时，若[威风]高于100点，会自动消耗100点[威风]发动[连携技：虎釜震煞]；\n松开 [普攻键] 可退出旋转状态，并丢出「虎威」攻击敌人，造成火属性伤害；切换至其他角色时，橘福福会继续处于旋转状态，尝试撞击最近的敌人；\n橘福福为当前操作中角色时，招式发动期间受到伤害降低40%，抗打断等级提升，不为当前操作中角色时，获得无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:2",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "冲刺攻击：恶虎七式·山君鼎戏",
+        "category": "dodge",
+        "quote": "橘福福通过其他招式获得[威势]后，会在高速旋转状态下带有火焰；",
+        "context": "[冲刺攻击：恶虎七式·虎奔]发动后，长按 [普攻键] 发动：\n进入高速旋转状态，该状态下可以拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}进行移动，接触敌人时造成物理伤害；\n橘福福通过其他招式获得[威势]后，会在高速旋转状态下带有火焰；接触敌人时消耗1点[威势]，改为造成火属性伤害并获得25点[威风]，[威势]上限为15点；\n橘福福消耗[威势]造成火属性伤害时，若[威风]高于100点，会自动消耗100点[威风]发动[连携技：虎釜震煞]；\n松开 [普攻键] 可退出旋转状态，并丢出「虎威」攻击敌人，造成火属性伤害；切换至其他角色时，橘福福会继续处于旋转状态，尝试撞击最近的敌人；\n橘福福为当前操作中角色时，招式发动期间受到伤害降低40%，抗打断等级提升，不为当前操作中角色时，获得无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:3",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "冲刺攻击：恶虎七式·山君鼎戏",
+        "category": "dodge",
+        "quote": "接触敌人时消耗1点[威势]，改为造成火属性伤害并获得25点[威风]，[威势]上限为15点；",
+        "context": "[冲刺攻击：恶虎七式·虎奔]发动后，长按 [普攻键] 发动：\n进入高速旋转状态，该状态下可以拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}进行移动，接触敌人时造成物理伤害；\n橘福福通过其他招式获得[威势]后，会在高速旋转状态下带有火焰；接触敌人时消耗1点[威势]，改为造成火属性伤害并获得25点[威风]，[威势]上限为15点；\n橘福福消耗[威势]造成火属性伤害时，若[威风]高于100点，会自动消耗100点[威风]发动[连携技：虎釜震煞]；\n松开 [普攻键] 可退出旋转状态，并丢出「虎威」攻击敌人，造成火属性伤害；切换至其他角色时，橘福福会继续处于旋转状态，尝试撞击最近的敌人；\n橘福福为当前操作中角色时，招式发动期间受到伤害降低40%，抗打断等级提升，不为当前操作中角色时，获得无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:4",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "冲刺攻击：恶虎七式·山君鼎戏",
+        "category": "dodge",
+        "quote": "橘福福消耗[威势]造成火属性伤害时，若[威风]高于100点，会自动消耗100点[威风]发动[连携技：虎釜震煞]；",
+        "context": "[冲刺攻击：恶虎七式·虎奔]发动后，长按 [普攻键] 发动：\n进入高速旋转状态，该状态下可以拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}进行移动，接触敌人时造成物理伤害；\n橘福福通过其他招式获得[威势]后，会在高速旋转状态下带有火焰；接触敌人时消耗1点[威势]，改为造成火属性伤害并获得25点[威风]，[威势]上限为15点；\n橘福福消耗[威势]造成火属性伤害时，若[威风]高于100点，会自动消耗100点[威风]发动[连携技：虎釜震煞]；\n松开 [普攻键] 可退出旋转状态，并丢出「虎威」攻击敌人，造成火属性伤害；切换至其他角色时，橘福福会继续处于旋转状态，尝试撞击最近的敌人；\n橘福福为当前操作中角色时，招式发动期间受到伤害降低40%，抗打断等级提升，不为当前操作中角色时，获得无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:5",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "冲刺攻击：恶虎七式·山君鼎戏",
+        "category": "dodge",
+        "quote": "松开 [普攻键] 可退出旋转状态，并丢出「虎威」攻击敌人，造成火属性伤害；",
+        "context": "[冲刺攻击：恶虎七式·虎奔]发动后，长按 [普攻键] 发动：\n进入高速旋转状态，该状态下可以拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}进行移动，接触敌人时造成物理伤害；\n橘福福通过其他招式获得[威势]后，会在高速旋转状态下带有火焰；接触敌人时消耗1点[威势]，改为造成火属性伤害并获得25点[威风]，[威势]上限为15点；\n橘福福消耗[威势]造成火属性伤害时，若[威风]高于100点，会自动消耗100点[威风]发动[连携技：虎釜震煞]；\n松开 [普攻键] 可退出旋转状态，并丢出「虎威」攻击敌人，造成火属性伤害；切换至其他角色时，橘福福会继续处于旋转状态，尝试撞击最近的敌人；\n橘福福为当前操作中角色时，招式发动期间受到伤害降低40%，抗打断等级提升，不为当前操作中角色时，获得无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:6",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "冲刺攻击：恶虎七式·山君鼎戏",
+        "category": "dodge",
+        "quote": "切换至其他角色时，橘福福会继续处于旋转状态，尝试撞击最近的敌人；",
+        "context": "[冲刺攻击：恶虎七式·虎奔]发动后，长按 [普攻键] 发动：\n进入高速旋转状态，该状态下可以拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}进行移动，接触敌人时造成物理伤害；\n橘福福通过其他招式获得[威势]后，会在高速旋转状态下带有火焰；接触敌人时消耗1点[威势]，改为造成火属性伤害并获得25点[威风]，[威势]上限为15点；\n橘福福消耗[威势]造成火属性伤害时，若[威风]高于100点，会自动消耗100点[威风]发动[连携技：虎釜震煞]；\n松开 [普攻键] 可退出旋转状态，并丢出「虎威」攻击敌人，造成火属性伤害；切换至其他角色时，橘福福会继续处于旋转状态，尝试撞击最近的敌人；\n橘福福为当前操作中角色时，招式发动期间受到伤害降低40%，抗打断等级提升，不为当前操作中角色时，获得无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/2/desc:7",
+        "pointer": "/skill/dodge/description/2/desc",
+        "title": "冲刺攻击：恶虎七式·山君鼎戏",
+        "category": "dodge",
+        "quote": "橘福福为当前操作中角色时，招式发动期间受到伤害降低40%，抗打断等级提升，不为当前操作中角色时，获得无敌效果。",
+        "context": "[冲刺攻击：恶虎七式·虎奔]发动后，长按 [普攻键] 发动：\n进入高速旋转状态，该状态下可以拖曳{LAYOUT_CONSOLECONTROLLER#操作杆}{LAYOUT_FALLBACK#摇杆}进行移动，接触敌人时造成物理伤害；\n橘福福通过其他招式获得[威势]后，会在高速旋转状态下带有火焰；接触敌人时消耗1点[威势]，改为造成火属性伤害并获得25点[威风]，[威势]上限为15点；\n橘福福消耗[威势]造成火属性伤害时，若[威风]高于100点，会自动消耗100点[威风]发动[连携技：虎釜震煞]；\n松开 [普攻键] 可退出旋转状态，并丢出「虎威」攻击敌人，造成火属性伤害；切换至其他角色时，橘福福会继续处于旋转状态，尝试撞击最近的敌人；\n橘福福为当前操作中角色时，招式发动期间受到伤害降低40%，抗打断等级提升，不为当前操作中角色时，获得无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/3/desc:0",
+        "pointer": "/skill/dodge/description/3/desc",
+        "title": "闪避反击：恶虎七式·离火回峰",
+        "category": "dodge",
+        "quote": "触发[极限闪避]后，点按 [普攻键] 发动：",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动多次斩击，造成火属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/3/desc:1",
+        "pointer": "/skill/dodge/description/3/desc",
+        "title": "闪避反击：恶虎七式·离火回峰",
+        "category": "dodge",
+        "quote": "对前方敌人发动多次斩击，造成火属性伤害；",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动多次斩击，造成火属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/dodge/description/3/desc:2",
+        "pointer": "/skill/dodge/description/3/desc",
+        "title": "闪避反击：恶虎七式·离火回峰",
+        "category": "dodge",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "触发[极限闪避]后，点按 [普攻键] 发动：\n对前方敌人发动多次斩击，造成火属性伤害；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:0",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：恶虎七式·下山虎",
+        "category": "special",
+        "quote": "点按 [特技键] 发动：",
+        "context": "点按 [特技键] 发动：\n向前方进行旋转斩击后发动下落斩击，造成火属性伤害；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:1",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：恶虎七式·下山虎",
+        "category": "special",
+        "quote": "向前方进行旋转斩击后发动下落斩击，造成火属性伤害；",
+        "context": "点按 [特技键] 发动：\n向前方进行旋转斩击后发动下落斩击，造成火属性伤害；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/0/desc:2",
+        "pointer": "/skill/special/description/0/desc",
+        "title": "特殊技：恶虎七式·下山虎",
+        "category": "special",
+        "quote": "招式发动期间抗打断等级提升。",
+        "context": "点按 [特技键] 发动：\n向前方进行旋转斩击后发动下落斩击，造成火属性伤害；\n招式发动期间抗打断等级提升。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:0",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：恶虎七式改·下山猛虎",
+        "category": "special",
+        "quote": "能量足够时，点按 [Icon_SpecialReady] 发动：",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n挥舞「虎威」向前方进行强力打击，造成大量火属性伤害；\n发动时获得3点[威势]和80点[威风]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:1",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：恶虎七式改·下山猛虎",
+        "category": "special",
+        "quote": "挥舞「虎威」向前方进行强力打击，造成大量火属性伤害；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n挥舞「虎威」向前方进行强力打击，造成大量火属性伤害；\n发动时获得3点[威势]和80点[威风]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:2",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：恶虎七式改·下山猛虎",
+        "category": "special",
+        "quote": "发动时获得3点[威势]和80点[威风]；",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n挥舞「虎威」向前方进行强力打击，造成大量火属性伤害；\n发动时获得3点[威势]和80点[威风]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/skill/special/description/1/desc:3",
+        "pointer": "/skill/special/description/1/desc",
+        "title": "强化特殊技：恶虎七式改·下山猛虎",
+        "category": "special",
+        "quote": "招式发动期间拥有无敌效果。",
+        "context": "能量足够时，点按 [Icon_SpecialReady] 发动：\n挥舞「虎威」向前方进行强力打击，造成大量火属性伤害；\n发动时获得3点[威势]和80点[威风]；\n招式发动期间拥有无敌效果。"
+      },
+      {
+        "id": "/passive/level/1391507/desc/0:0",
+        "pointer": "/passive/level/1391507/desc/0",
+        "title": "核心被动：虎虎生威",
+        "category": "passive",
+        "quote": "橘福福未使用「虎威」时，「虎威」会自动攻击敌人，并在命中敌人时获得[威风]；",
+        "context": "橘福福未使用「虎威」时，「虎威」会自动攻击敌人，并在命中敌人时获得[威风]；\n「虎威」命中敌人时，若拥有至少100点[威风]且橘福福不为当前操作中角色，橘福福会围绕目标敌人，发动[连携技：虎釜震煞]；发动时，全队角色获得[虎啸]效果：暴击伤害提升20%，橘福福的初始攻击力大于等于2800点时，每超过100点攻击力会使暴击伤害额外提升5%，最多额外提升30%；\n[虎啸]状态下，角色的[连携技]/[终结技]造成的伤害提升20%/40%；\n[虎啸]状态持续30秒，重复触发时刷新持续时间，橘福福处于[虎啸]效果中，冲击力提升50点。"
+      },
+      {
+        "id": "/passive/level/1391507/desc/0:1",
+        "pointer": "/passive/level/1391507/desc/0",
+        "title": "核心被动：虎虎生威",
+        "category": "passive",
+        "quote": "「虎威」命中敌人时，若拥有至少100点[威风]且橘福福不为当前操作中角色，橘福福会围绕目标敌人，发动[连携技：虎釜震煞]；",
+        "context": "橘福福未使用「虎威」时，「虎威」会自动攻击敌人，并在命中敌人时获得[威风]；\n「虎威」命中敌人时，若拥有至少100点[威风]且橘福福不为当前操作中角色，橘福福会围绕目标敌人，发动[连携技：虎釜震煞]；发动时，全队角色获得[虎啸]效果：暴击伤害提升20%，橘福福的初始攻击力大于等于2800点时，每超过100点攻击力会使暴击伤害额外提升5%，最多额外提升30%；\n[虎啸]状态下，角色的[连携技]/[终结技]造成的伤害提升20%/40%；\n[虎啸]状态持续30秒，重复触发时刷新持续时间，橘福福处于[虎啸]效果中，冲击力提升50点。"
+      },
+      {
+        "id": "/passive/level/1391507/desc/0:2",
+        "pointer": "/passive/level/1391507/desc/0",
+        "title": "核心被动：虎虎生威",
+        "category": "passive",
+        "quote": "发动时，全队角色获得[虎啸]效果：暴击伤害提升20%，橘福福的初始攻击力大于等于2800点时，每超过100点攻击力会使暴击伤害额外提升5%，最多额外提升30%；",
+        "context": "橘福福未使用「虎威」时，「虎威」会自动攻击敌人，并在命中敌人时获得[威风]；\n「虎威」命中敌人时，若拥有至少100点[威风]且橘福福不为当前操作中角色，橘福福会围绕目标敌人，发动[连携技：虎釜震煞]；发动时，全队角色获得[虎啸]效果：暴击伤害提升20%，橘福福的初始攻击力大于等于2800点时，每超过100点攻击力会使暴击伤害额外提升5%，最多额外提升30%；\n[虎啸]状态下，角色的[连携技]/[终结技]造成的伤害提升20%/40%；\n[虎啸]状态持续30秒，重复触发时刷新持续时间，橘福福处于[虎啸]效果中，冲击力提升50点。"
+      },
+      {
+        "id": "/passive/level/1391507/desc/0:3",
+        "pointer": "/passive/level/1391507/desc/0",
+        "title": "核心被动：虎虎生威",
+        "category": "passive",
+        "quote": "[虎啸]状态下，角色的[连携技]/[终结技]造成的伤害提升20%/40%；",
+        "context": "橘福福未使用「虎威」时，「虎威」会自动攻击敌人，并在命中敌人时获得[威风]；\n「虎威」命中敌人时，若拥有至少100点[威风]且橘福福不为当前操作中角色，橘福福会围绕目标敌人，发动[连携技：虎釜震煞]；发动时，全队角色获得[虎啸]效果：暴击伤害提升20%，橘福福的初始攻击力大于等于2800点时，每超过100点攻击力会使暴击伤害额外提升5%，最多额外提升30%；\n[虎啸]状态下，角色的[连携技]/[终结技]造成的伤害提升20%/40%；\n[虎啸]状态持续30秒，重复触发时刷新持续时间，橘福福处于[虎啸]效果中，冲击力提升50点。"
+      },
+      {
+        "id": "/passive/level/1391507/desc/0:4",
+        "pointer": "/passive/level/1391507/desc/0",
+        "title": "核心被动：虎虎生威",
+        "category": "passive",
+        "quote": "[虎啸]状态持续30秒，重复触发时刷新持续时间，橘福福处于[虎啸]效果中，冲击力提升50点。",
+        "context": "橘福福未使用「虎威」时，「虎威」会自动攻击敌人，并在命中敌人时获得[威风]；\n「虎威」命中敌人时，若拥有至少100点[威风]且橘福福不为当前操作中角色，橘福福会围绕目标敌人，发动[连携技：虎釜震煞]；发动时，全队角色获得[虎啸]效果：暴击伤害提升20%，橘福福的初始攻击力大于等于2800点时，每超过100点攻击力会使暴击伤害额外提升5%，最多额外提升30%；\n[虎啸]状态下，角色的[连携技]/[终结技]造成的伤害提升20%/40%；\n[虎啸]状态持续30秒，重复触发时刷新持续时间，橘福福处于[虎啸]效果中，冲击力提升50点。"
+      },
+      {
+        "id": "/passive/level/1391507/desc/1:0",
+        "pointer": "/passive/level/1391507/desc/1",
+        "title": "额外能力：八面威风",
+        "category": "passive",
+        "quote": "队伍中存在[强攻]或[命破]角色时触发：",
+        "context": "队伍中存在[强攻]或[命破]角色时触发：\n队伍中所有角色的喧响值上限提升1000点，[强攻]或[命破]角色发动[终结技]时，该角色获得300点喧响值。"
+      },
+      {
+        "id": "/passive/level/1391507/desc/1:1",
+        "pointer": "/passive/level/1391507/desc/1",
+        "title": "额外能力：八面威风",
+        "category": "passive",
+        "quote": "队伍中所有角色的喧响值上限提升1000点，[强攻]或[命破]角色发动[终结技]时，该角色获得300点喧响值。",
+        "context": "队伍中存在[强攻]或[命破]角色时触发：\n队伍中所有角色的喧响值上限提升1000点，[强攻]或[命破]角色发动[终结技]时，该角色获得300点喧响值。"
+      },
+      {
+        "id": "/talent/1/desc:0",
+        "pointer": "/talent/1/desc",
+        "title": "超级可怕小老虎",
+        "category": "talent",
+        "quote": "进入战场时，橘福福的暴击率提升12%，立即获得100点[威风]；",
+        "context": "进入战场时，橘福福的暴击率提升12%，立即获得100点[威风]；橘福福的[连携技]命中敌人时，目标处于失衡状态下时，失衡易伤倍率提升35%，持续30秒。"
+      },
+      {
+        "id": "/talent/1/desc:1",
+        "pointer": "/talent/1/desc",
+        "title": "超级可怕小老虎",
+        "category": "talent",
+        "quote": "橘福福的[连携技]命中敌人时，目标处于失衡状态下时，失衡易伤倍率提升35%，持续30秒。",
+        "context": "进入战场时，橘福福的暴击率提升12%，立即获得100点[威风]；橘福福的[连携技]命中敌人时，目标处于失衡状态下时，失衡易伤倍率提升35%，持续30秒。"
+      },
+      {
+        "id": "/talent/2/desc:0",
+        "pointer": "/talent/2/desc",
+        "title": "神通广大青溟客",
+        "category": "talent",
+        "quote": "处于[虎啸]状态下角色的暴击伤害额外提升22%；",
+        "context": "处于[虎啸]状态下角色的暴击伤害额外提升22%；任意角色发动[终结技]时，橘福福回复3点[威势]。"
+      },
+      {
+        "id": "/talent/2/desc:1",
+        "pointer": "/talent/2/desc",
+        "title": "神通广大青溟客",
+        "category": "talent",
+        "quote": "任意角色发动[终结技]时，橘福福回复3点[威势]。",
+        "context": "处于[虎啸]状态下角色的暴击伤害额外提升22%；任意角色发动[终结技]时，橘福福回复3点[威势]。"
+      },
+      {
+        "id": "/talent/3/desc:0",
+        "pointer": "/talent/3/desc",
+        "title": "仗义行侠少年郎",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/4/desc:0",
+        "pointer": "/talent/4/desc",
+        "title": "降妖伏魔虎修者",
+        "category": "talent",
+        "quote": "橘福福处于[虎啸]状态下时，自身的暴击伤害提升35%。",
+        "context": "橘福福处于[虎啸]状态下时，自身的暴击伤害提升35%。"
+      },
+      {
+        "id": "/talent/5/desc:0",
+        "pointer": "/talent/5/desc",
+        "title": "神威盖世大师姐",
+        "category": "talent",
+        "quote": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2",
+        "context": "[普通攻击]、[闪避]、[支援技]、[特殊技]、[连携技] 技能等级+2"
+      },
+      {
+        "id": "/talent/6/desc:0",
+        "pointer": "/talent/6/desc",
+        "title": "知我心中虎啸声",
+        "category": "talent",
+        "quote": "橘福福的[连携技]造成的伤害提升30%；",
+        "context": "橘福福的[连携技]造成的伤害提升30%；橘福福在高速旋转状态下时，消耗[威势]命中敌人时，会发射3个爆米花，每个爆米花造成福福攻击力160%的伤害，且造成的伤害视为[连携技]伤害。"
+      },
+      {
+        "id": "/talent/6/desc:1",
+        "pointer": "/talent/6/desc",
+        "title": "知我心中虎啸声",
+        "category": "talent",
+        "quote": "橘福福在高速旋转状态下时，消耗[威势]命中敌人时，会发射3个爆米花，每个爆米花造成福福攻击力160%的伤害，且造成的伤害视为[连携技]伤害。",
+        "context": "橘福福的[连携技]造成的伤害提升30%；橘福福在高速旋转状态下时，消耗[威势]命中敌人时，会发射3个爆米花，每个爆米花造成福福攻击力160%的伤害，且造成的伤害视为[连携技]伤害。"
+      },
+      {
+        "id": "/potential_detail/139101/desc:0",
+        "pointer": "/potential_detail/139101/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139101/desc:1",
+        "pointer": "/potential_detail/139101/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139101/desc:2",
+        "pointer": "/potential_detail/139101/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139102/desc:0",
+        "pointer": "/potential_detail/139102/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139102/desc:1",
+        "pointer": "/potential_detail/139102/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139102/desc:2",
+        "pointer": "/potential_detail/139102/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139103/desc:0",
+        "pointer": "/potential_detail/139103/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139103/desc:1",
+        "pointer": "/potential_detail/139103/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139103/desc:2",
+        "pointer": "/potential_detail/139103/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139104/desc:0",
+        "pointer": "/potential_detail/139104/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139104/desc:1",
+        "pointer": "/potential_detail/139104/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139104/desc:2",
+        "pointer": "/potential_detail/139104/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139105/desc:0",
+        "pointer": "/potential_detail/139105/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139105/desc:1",
+        "pointer": "/potential_detail/139105/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      },
+      {
+        "id": "/potential_detail/139105/desc:2",
+        "pointer": "/potential_detail/139105/desc",
+        "title": "潜能觉醒：侠肝义胆",
+        "category": "potential",
+        "quote": "[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。",
+        "context": "(Test1)[虎啸]状态下，角色的[连携技]/[终结技]造成的最终伤害提升10%/30%；[普通攻击：「虎威」]造成的失衡提升50%，[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 造成的失衡提升50%；\n[虎啸]状态下的角色攻击命中敌人时，使其失衡易伤倍率提升25%，失衡结束时移除该效果。"
+      }
+    ]
+  },
+  "decisions": [
+    {
+      "sourceId": "/skill/assist/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/assist/description/2/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/0/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/basic/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/chain/description/2/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:4",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:5",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:6",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/2/desc:7",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/3/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/dodge/description/3/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/0/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:2",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/skill/special/description/1/desc:3",
+      "status": "out_of_scope",
+      "reason": "招式本体倍率/失衡/积蓄/无敌帧由 catalog 倍率表与执行行承载，非机制乘区",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1391507/desc/0:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1391507/desc/0:1",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1391507/desc/0:2",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1391507/desc/0:3",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1391507/desc/0:4",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1391507/desc/1:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/passive/level/1391507/desc/1:1",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/1/desc:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/1/desc:1",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/2/desc:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/2/desc:1",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/3/desc:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/4/desc:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/5/desc:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/6/desc:0",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/talent/6/desc:1",
+      "status": "out_of_scope",
+      "reason": "该机制（核心被动/额外能力/影画）已由模块 + spec + teammate-buffs 实现且有既有判据；本轮（2026-11-01）只补 v2 潜能觉醒·侠肝义胆三条，本段未逐段重核（补录仅覆盖潜能，不可据此宣称全场复核）",
+      "mechanics": []
+    },
+    {
+      "sourceId": "/potential_detail/139101/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_final_dmg"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139101/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_stun_buildup"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139101/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_stun_vuln"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139102/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_final_dmg"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139102/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_stun_buildup"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139102/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_stun_vuln"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139103/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_final_dmg"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139103/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_stun_buildup"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139103/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_stun_vuln"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139104/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_final_dmg"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139104/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_stun_buildup"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139104/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_stun_vuln"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139105/desc:0",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_final_dmg"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139105/desc:1",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_stun_buildup"
+      ]
+    },
+    {
+      "sourceId": "/potential_detail/139105/desc:2",
+      "status": "modeled",
+      "reason": "",
+      "mechanics": [
+        "jufufu_potential_stun_vuln"
+      ]
+    }
+  ],
+  "mechanics": [
+    {
+      "id": "jufufu_potential_final_dmg",
+      "dimension": "D3",
+      "certainty": "L1",
+      "trigger": "潜能觉醒·侠肝义胆（潜能 II~VI，v2 测试服 3.4.2+20052336）：[虎啸]状态下角色的[连携技]/[终结技]命中",
+      "target": "[虎啸]状态下角色的 连携技 / 终结技 伤害（最终伤害乘区，全队受益）",
+      "gate": "潜能开关开 且 effective potentialLevel >= 2（觉醒 II 起，II~VI 同文）；[虎啸] 按满覆盖近似（与 teammate-buffs jufufu.core_tiger_roar 同口径）",
+      "formula": "独立乘区：连携技 ×(1 + 10/100)、终结技 ×(1 + 30/100)；落点 = 暴击之后、次数之前（与增伤/暴伤等既有区相乘）",
+      "field": "PanelValues.finalDmgBonus（定向 finalDmgBonus__chain / finalDmgBonus__ultimate）",
+      "countSource": "不适用（常驻乘区，按 skillDamageTarget 定向）",
+      "duration": "不适用（[虎啸] 持续 30s、重复触发刷新；按满覆盖）",
+      "cap": "不适用（原文无上限）",
+      "assumptions": [
+        {
+          "premise": "v2 文案 II~VI 同文 ⇒ 按「觉醒 II 起即 10%/30%」建模，无逐档递增",
+          "falsifier": "若正式包给 II~VI 递增档位，低潜能玩家会被高估（当前低档按满值算）"
+        },
+        {
+          "premise": "[虎啸] 满覆盖（既有用户口径）",
+          "falsifier": "若虎啸未触发（无虎威命中/威风不足 100），本乘区与③应整条不生效；按满覆盖会高估"
+        }
+      ],
+      "decisionEvidence": "用户 2026-11-01「最终伤害这可是个新独立乘区」+ 2026-11-02「最终伤害肯定直伤专属啊」⇒ 落点独立乘区、直伤专属",
+      "implementation": {
+        "spec": "src/specs/agents/1391.json#/teamBuffs/1/effects/0",
+        "consumer": "src/core/damage.ts#calcDirectDamage"
+      },
+      "sources": [
+        "/potential_detail/139101/desc:0",
+        "/potential_detail/139102/desc:0",
+        "/potential_detail/139103/desc:0",
+        "/potential_detail/139104/desc:0",
+        "/potential_detail/139105/desc:0"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "潜能 II 及以上 + 连携技行",
+          "expected": "最终伤害乘区 = 1 + 10/100",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "spec teamBuffs 的两条潜能 buff：连携 +10 / 终结 +30 / 失衡易伤 +25，均经 potentialLevel formula 通道"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "潜能 I（或潜能开关关掉）+ 连携/终结行",
+          "expected": "乘区 = 1（与未开潜能逐位相同）",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "开关差分（端到端）：1391 在队时关掉潜能 ⇒ 最终伤害乘区/失衡/易伤三条一起归零，总伤下降"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "潜能 VI + 终结技行（同面板下 basic 行）",
+          "expected": "终结技 = 1 + 30/100；basic 行不受影响（定向只作用于 chain/ultimate）",
+          "test": {
+            "file": "src/core/__tests__/damage.test.ts",
+            "title": "最终伤害乘区（独立乘区）：×(1+值%) 与增伤区相乘不相加，且可定向招式类型"
+          }
+        }
+      ]
+    },
+    {
+      "id": "jufufu_potential_stun_buildup",
+      "dimension": "D2",
+      "certainty": "L1",
+      "trigger": "潜能觉醒·侠肝义胆：[普通攻击：「虎威」]/[冲刺攻击：恶虎七式·山君鼎戏·「虎威」] 命中",
+      "target": "这两条招式的失衡值（行级 stunBuildUpBonus，与面板失衡提升同乘区加算）",
+      "gate": "潜能开关开 且 effective potentialLevel >= 2",
+      "formula": "失衡值 ×(1 + 50/100)；只挂 1391005 与 1391022 两行，其他招不吃",
+      "field": "SkillExecution.stunBuildUpBonus（行级）",
+      "countSource": "1391005 次数 = floor(有效后场时间 / 等效CD)（后台自动攻击，CD 驱动；其威风产出再驱动威势→旋转/虎釜震煞 = 资源驱动）；1391022 = 冲刺变体，当前循环不生成行",
+      "duration": "不适用（招式级）",
+      "cap": "不适用（原文无上限）",
+      "assumptions": [
+        {
+          "premise": "模块的后台自动攻击行 = 1391005（用户确认口径）",
+          "falsifier": "若游戏后台自动用的是冲刺变体 1391022：本补丁名单已同时覆盖两个 id，无需改代码即可生效"
+        }
+      ],
+      "decisionEvidence": "用户 2026-11-02「这个是后台自动攻击，资源和cd驱动的次数」（确认该招=已建模的后台自动行）",
+      "implementation": {
+        "spec": "src/specs/agents/1391.json#/notes/10",
+        "consumer": "src/mechanics/agents/specPanelBuffs.ts#patchExecutions"
+      },
+      "sources": [
+        "/potential_detail/139101/desc:1",
+        "/potential_detail/139102/desc:1",
+        "/potential_detail/139103/desc:1",
+        "/potential_detail/139104/desc:1",
+        "/potential_detail/139105/desc:1"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "潜能 VI + 虎威行 1391005（或 1391022）",
+          "expected": "stunBuildUpBonus = +50",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "虎威 1391005 与 山君鼎戏·「虎威」1391022 各 +50；其他招（旋转 1391010）不吃"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "潜能 VI + 山君鼎戏·威势旋转行 1391010",
+          "expected": "stunBuildUpBonus 不变（0）",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "虎威 1391005 与 山君鼎戏·「虎威」1391022 各 +50；其他招（旋转 1391010）不吃"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "effective level = 1（无潜能）",
+          "expected": "1391005/1391022 的 stunBuildUpBonus = 0",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "无潜能（effective level 1）⇒ 招式级失衡归零"
+          }
+        }
+      ]
+    },
+    {
+      "id": "jufufu_potential_stun_vuln",
+      "dimension": "D3",
+      "certainty": "L1",
+      "trigger": "[虎啸] 状态下的角色攻击命中敌人（[虎啸] 由虎釜震煞发动时给全队）",
+      "target": "目标受到的失衡伤害（敌方侧易伤，全队受益）",
+      "gate": "潜能开关开 且 effective potentialLevel >= 2；[虎啸] 按满覆盖近似",
+      "formula": "stunDmgMultiplierBonus +25（只在失衡窗口内计数 ⇒「失衡结束时移除」由字段语义天然满足）",
+      "field": "PanelValues.stunDmgMultiplierBonus",
+      "countSource": "不适用（常驻，[虎啸] 满覆盖）",
+      "duration": "与 [虎啸] 同（30s，重复触发刷新）+ 失衡结束即失效",
+      "cap": "不适用（原文无上限）",
+      "assumptions": [
+        {
+          "premise": "[虎啸] 满覆盖（既有用户口径）",
+          "falsifier": "若虎啸未触发，本易伤应整条不生效；按满覆盖会高估"
+        }
+      ],
+      "decisionEvidence": "用户 2026-11-02「覆盖率本来就容易满，默认1不用管了」⇒ coverage 默认 1，不做额外联动",
+      "implementation": {
+        "spec": "src/specs/agents/1391.json#/teamBuffs/2/effects/0",
+        "consumer": "src/core/damage.ts#calcDirectDamage"
+      },
+      "sources": [
+        "/potential_detail/139101/desc:2",
+        "/potential_detail/139102/desc:2",
+        "/potential_detail/139103/desc:2",
+        "/potential_detail/139104/desc:2",
+        "/potential_detail/139105/desc:2"
+      ],
+      "cases": [
+        {
+          "kind": "positive",
+          "input": "潜能 VI + 1391 在队（虎啸满覆盖）",
+          "expected": "目标 stunDmgMultiplierBonus = +25",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "spec teamBuffs 的两条潜能 buff：连携 +10 / 终结 +30 / 失衡易伤 +25，均经 potentialLevel formula 通道"
+          }
+        },
+        {
+          "kind": "negative",
+          "input": "潜能开关关掉 / effective level = 1",
+          "expected": "+25 归零（与其他两条一起）",
+          "test": {
+            "file": "src/mechanics/__tests__/potentialSwitch.test.ts",
+            "title": "开关差分（端到端）：1391 在队时关掉潜能 ⇒ 最终伤害乘区/失衡/易伤三条一起归零，总伤下降"
+          }
+        },
+        {
+          "kind": "boundary",
+          "input": "未失衡窗口",
+          "expected": "不进公式（stunMultiplier = 1）——仅失衡时计数",
+          "test": {
+            "file": "src/core/__tests__/damage.test.ts",
+            "title": "最终伤害乘区（独立乘区）：×(1+值%) 与增伤区相乘不相加，且可定向招式类型"
+          }
+        }
+      ]
+    }
+  ]
+}
