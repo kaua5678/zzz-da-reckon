@@ -22,6 +22,7 @@
 import { applyBossRoom } from '@/composables/bossRoom'
 import { isLimitedSAgentId, isLimitedSWengineId, runLimitedGold } from '@/composables/limitedGold'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
+import { captureState, stateDeltaOf } from '@/composables/configDelta'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { interactionFieldForType, teamCompareInteractionTypes } from '@/composables/agentMechanicView'
 import { type StunAxisState, type ConfigModel } from '@/stores/config'
@@ -124,6 +125,16 @@ export interface TeamCompareOptions {
    * timePressure = 「时间压力」（难度点/秒，默认 1），见 `computeDifficulty`。
    */
   difficultyWeights?: DifficultyWeights
+  // @fact ui:比较入口/散点档位 口径: 散点图上**一个点 = 一个金档**（`goldLevels` 的一档），点它就地打开该金档的**完整资源池**（与难度曲线同一条链：`useCurvePointPool` → `ResourcePoolView`）；展示层靠该点的现场差分（本开关）重放，**重放伤害 === 该点 `damage`**（逐位相等） | 据 用户@2026-11-03（「每个点都代表一个金，只有这个能看资源池了」） | 验 src/composables/__tests__/pointSceneCapture.test.ts::★ 每个点都带现场差分，且重放伤害 ≡ 该点 damage；UI 现场不被污染 | 锚 src/types/teamPreset.ts#TeamComparePoint | 信 确认
+  // ⟳复核: 散点的档位语义（`goldLevels` / 贪婪链取哪些档）再变时，复核「重放伤害 ≡ 该点 damage」仍逐位成立 | 到期 2026-12-31
+  /**
+   * **每点采一次现场差分**（缺省不采 = 零开销；用户口径 2026-11-03「每个点都代表一个金，只有这个
+   * 能看资源池了」⇒ 散点每一档也要能就地打开完整资源池）。
+   *
+   * 成本：每点一次 `captureState`（全表深拷贝 ~11KB）+ `stateDeltaOf`（JSON 比对 ~0.2ms），
+   * 相对一次全队求值（50–120ms）可忽略；不采时**一个字节都不花**。
+   */
+  collectScenes?: boolean
   /**
    * 逐槽锁定（用户 2026-10-25「修改自由度大一点」）：配置码形式的最终配装，锁了的槽不参与加金。
    * 缺口省 = `NO_SLOT_OVERRIDES`（逐位不变）。口径见 `presetSlotOverrides.ts`。
@@ -1072,6 +1083,11 @@ function actionTimeTotal(
 export function computeTeamComparePoints(scenario: AnalysisContext, options: TeamCompareOptions): TeamComparePoint[] {
   const { config: configStore, calc } = scenario
   const baseAxis = configStore.getAxisState()
+  /**
+   * 现场差分基线 = **本次运行的起点**（在改写任何配置**之前**采一次；每个调用方在自己的场景里跑，
+   * 故 base 与该次运行的第一档现场逐字节相同）。见 `configDelta` 的语义三条。
+   */
+  const sceneBase = options.collectScenes ? captureState(configStore) : null
   const points: TeamComparePoint[] = []
   const overrides = options.slotOverrides ?? NO_SLOT_OVERRIDES
   for (const rawPreset of options.presets) {
@@ -1249,6 +1265,8 @@ export function computeTeamComparePoints(scenario: AnalysisContext, options: Tea
         buffTitle: chosen?.title,
         timeExceeded,
         timeDetail,
+        // 这一档的现场（差分）——与上面的读数**同刻**采，供展示层按需重算该档完整资源池
+        scene: sceneBase ? { base: sceneBase, delta: stateDeltaOf(sceneBase, captureState(configStore)) } : undefined,
       })
     }
   }

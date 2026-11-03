@@ -109,6 +109,8 @@ export function useSlotSweep(opts: {
         budget: sweepBudget.value,
         optimalGold: sweepOptimalGold.value,
         candidateIds,
+        // 每名候选带一份现场差分 ⇒ 候选行可就地展开**整队**资源池（用户 2026-11-03）
+        collectScenes: true,
         control: { signal: run.signal },
         onProgress: p => run.commit(() => { progress.value = p }),
       }))

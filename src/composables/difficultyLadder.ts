@@ -65,7 +65,7 @@ import { axisStateOf, axisStands, axisRequirementMet, axisTruncationReason, part
 import { getInteractionDefaults } from '@/mechanics/interactionBaseline'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
-import type { StateDelta } from '@/composables/configDelta'
+import type { PointScene } from '@/types/configDelta'
 import type { ContinuousStunProgress } from '@/core/continuousStun'
 
 export interface LadderCtx {
@@ -775,16 +775,14 @@ export interface LadderPoint {
 }
 
 /**
- * 一档的**现场差分**（相对本次运行基线）。
+ * 一档的**现场差分**（相对本次运行基线）——`LadderPointScene` = `types/configDelta.ts#PointScene`
+ * 的**兼容别名**（T189：散点 / 选第三人的点也带同一份现场，类型单一来源下沉到 types/）。
  *
  * `base` = 运行起点的整份 `$state` 值快照（每次 `computeDifficultyCurves` 一份，所有道共用），
  * `delta` = 该档与基线的差分。重放 = `restoreStateDelta(config, base, delta)`
  * ⇒ 现场与落点那刻**逐字节相同**（判据 `difficultyCurve.test.ts::★ 重放每点现场`）。
  */
-export interface LadderPointScene {
-  base: Record<string, unknown>
-  delta: StateDelta
-}
+export type LadderPointScene = PointScene
 
 /**
  * 一点的快照：展示层要什么就采什么（`opts.capture` 的返回）。

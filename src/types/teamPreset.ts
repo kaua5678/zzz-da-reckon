@@ -1,4 +1,5 @@
 /** 预设队伍对比（危局决策层）：队伍 × 加金顺序 × Boss × 当期 buff → 难度/伤害散点 */
+import type { PointScene } from './configDelta'
 
 /**
  * 加金步骤：一步 = 一个角色 +1 影画，一把音擎 +1 精炼，或一把音擎本体（都算金，UI 直接显示 label 消除歧义）。
@@ -211,6 +212,14 @@ export interface TeamComparePoint {
   timeExceeded: boolean
   /** 时间明细（如 "轴时间 42.3s + 交互 18.5s + 无敌 0s = 60.8s / 180s"） */
   timeDetail: string
+  /**
+   * 这一点的**现场差分**（仅当调用方开了 `collectScenes` 才在；缺省 = 零开销不采）。
+   *
+   * 用户口径 2026-11-03（「**每个点都代表一个金，只有这个能看资源池了**」）⇒ 散点每一档也要能就地
+   * 打开**完整资源池**：展示层拿它按需重算（`useCurvePointPool` → `components/ResourcePoolView.vue`，
+   * 与难度曲线**同一条链**），重算伤害必然与该点 `damage` 逐位相等（判据 `pointSceneCapture.test.ts`）。
+   */
+  scene?: PointScene
 }
 
 /** 内置交互类型 → 难度权重（条目可 weight 覆盖；未知类型默认 1） */

@@ -29,7 +29,9 @@
  *   独立场景 `AnalysisContext`，在场景上改写求值，UI store 不被碰（CC-343，arena-D 第 371 轮；原为快照/恢复 UI store）。
  */
 import { applyBossRoom } from '@/composables/bossRoom'
+import { captureState, stateDeltaOf } from '@/composables/configDelta'
 import type { ConfigModel } from '@/stores/config'
+import type { PointScene } from '@/types/configDelta'
 import { equalizeTimeWeights } from '@/composables/timeWeightBalancer'
 import { useCatalogStore } from '@/stores/catalog'
 import { teammatePairsFor } from '@/composables/teamStructure'
@@ -959,6 +961,14 @@ export interface SlotSweepPoint {
   hpRatio: number
   totalGold: number
   goldLabel: string
+  /**
+   * 这一名候选的**现场差分**（仅当开了 `collectScenes` 才在）。
+   *
+   * 用户口径 2026-11-03：「**显示整队的好，单一角色分析是从整队数据挑选部分数据来分析的**」
+   * ⇒ 候选行要能就地打开**整队**资源池（`useCurvePointPool` → `ResourcePoolView`，与难度曲线/散点
+   * 同一条链），而不是另造一个「单角色视图」。
+   */
+  scene?: PointScene
 }
 
 export interface SlotSweepResult {
@@ -984,6 +994,10 @@ export interface SlotSweepOptions extends BatchTaskOptions {
   optimalGold?: boolean
   /** 候选池覆盖（缺省 = 目录全部可见角色 − 固定 2 人；测试/定向复算用） */
   candidateIds?: string[]
+  // @fact ui:比较入口/第三人候选 口径: 选第三人的**一名候选 = 一档整队**（不另造「单角色视图」）：候选行就地打开**整队**完整资源池（与难度曲线/散点同一条链），**重放伤害 === 该候选行 `damage`**（逐位相等） | 据 用户@2026-11-03（「显示整队的好，单一角色分析是从整队数据挑选部分数据来分析的」） | 验 src/composables/__tests__/pointSceneCapture.test.ts::★ 每名候选都带现场差分，且重放伤害 ≡ 该候选行 damage | 锚 src/composables/teamTimeline.ts#SlotSweepPoint | 信 确认
+  // ⟳复核: 候选求值口径（`evalTeamByBudget` / 加金分配 / 预算钳制）再变时，复核「重放伤害 ≡ 候选行 damage」仍逐位成立 | 到期 2026-12-31
+  /** **每名候选采一次现场差分**（缺省不采 = 零开销）：候选行按需重算整队资源池用 */
+  collectScenes?: boolean
   // 取消粒度 = 一个候选；已算部分照常返回（control / onProgress 见 BatchTaskOptions）
 }
 
@@ -1009,6 +1023,8 @@ export async function computeSlotSweepPoints(scenario: AnalysisContext, opts: Sl
   const report = batchReporter(opts)
   applyBossRoom(configStore, opts.boss, opts.phase)
   const candidateIds = slotSweepCandidates(catalog, opts.fixed, opts.candidateIds)
+  /** 现场差分基线：在 `applyBossRoom` **之后**采（Boss/期数已在基线里，差分只记各候选的配置改写） */
+  const sceneBase = opts.collectScenes ? captureState(configStore) : null
   const points: SlotSweepPoint[] = []
   let skipped = 0
   let aborted = false
@@ -1026,6 +1042,8 @@ export async function computeSlotSweepPoints(scenario: AnalysisContext, opts: Sl
       hpRatio: opts.phase.hp > 0 ? Math.round((res.damage / opts.phase.hp) * 10000) / 100 : 0,
       totalGold: res.totalGold,
       goldLabel: res.goldLabel,
+      // 这一名候选的现场（差分）——与 damage 同刻采（刚求值完，现场就是这名候选的配置）
+      scene: sceneBase ? { base: sceneBase, delta: stateDeltaOf(sceneBase, captureState(configStore)) } : undefined,
     })
     report((i + 1) / candidateIds.length, `第三人对比 ${i + 1}/${candidateIds.length}（${localized(agent.name, agent.id)}）…`)
     if (i % 2 === 0) await yieldNow()

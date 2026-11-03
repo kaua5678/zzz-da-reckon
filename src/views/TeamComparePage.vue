@@ -474,6 +474,12 @@
               <td>{{ p.cinemas.join('/') }}</td>
               <td>{{ p.wengineMods.join('/') }}</td>
               <td :class="{ 'time-ok': !p.timeExceeded, 'time-exceeded': p.timeExceeded }">{{ p.timeDetail }}</td>
+              <!-- 一个点 = 一个金档 ⇒ 就地展开该档**完整资源池**（用户 2026-11-03：「每个点都代表一个金，
+                   只有这个能看资源池了」）。没采到现场（`collectScenes` 没开 / 旧结果）⇒ 如实写「无」。 -->
+              <td class="td-pool">
+                <n-button v-if="canInspectPoint(p)" size="tiny" quaternary @click="inspectScatterPoint(p)">资源池</n-button>
+                <span v-else class="td-muted" title="这一点没有采到现场差分 ⇒ 无法重算该档资源池（不编数据）">无</span>
+              </td>
             </tr>
       </ChartTable>
     </n-card>
@@ -654,7 +660,7 @@
               />
               <circle
                 :cx="p.cx" :cy="p.cy" :r="9" fill="transparent"
-                :class="{ 'curve-hit': canInspectPoint(p), 'curve-hit-on': curvePoolPick && curvePoolPick.laneKey === s.laneKey && curvePoolPick.point === p.point && curvePoolPick.cost === p.cost }"
+                :class="{ 'curve-hit': canInspectPoint(p), 'curve-hit-on': isPoolOpen({ laneKey: s.laneKey, point: p.point, cost: p.cost }) }"
                 @mouseenter="curveHover = { si, pi }" @mouseleave="curveHover = null"
                 @click="inspectCurvePoint(s.laneKey, p, 'point')"
               >
@@ -889,26 +895,28 @@
     <!-- 逐点资源池明细（用户 2026-10-16）：点曲线点 / 点表行 / 点 3D 图 ⇒ 该档的完整资源池。
          ⚠ T186 起**回到页面下方全宽卡片**（用户 2026-11-02：「这个侧边栏还是太窄了，还是不做了，
          移到下面展示完整资源池更好」）—— 620px 抽屉里三张资源卡会被压成一列一个宽的字行。 -->
-    <n-card v-if="chartMode === 'curve' && curvePoolPick" size="small" :bordered="true" class="detail-card">
+    <!-- **哪一档的资源池**（T189 泛化到三个比较入口；用户 2026-11-03：「很多地方的比较中都会要求
+         完整的资源展示页显示」/「每个点都代表一个金」/「显示整队的好」）。
+         三个入口（难度曲线点 / 散点金档 / 第三人候选）共用同一张卡片、同一条重放链、同一个共享视图。 -->
+    <n-card v-if="poolPick" size="small" :bordered="true" class="detail-card">
       <template #header>
         <div class="curve-head">
-          <span>
-            该档资源池 · {{ pointLabel(curvePoolPick.point) }} · 操作难度 {{ fmt(curvePoolPick.cost, 1) }} 点
-            <span class="td-muted">（{{ curvePoolPick.laneKey }}）</span>
-          </span>
-          <n-button size="tiny" @click="curvePoolPick = null; curvePool.clear()">收起</n-button>
+          <span>{{ poolTitle }}</span>
+          <n-button size="tiny" @click="closePointPool()">收起</n-button>
         </div>
       </template>
-      <div v-if="curvePoolChangedKeys.length > 0" class="compare-note curve-note">
-        这一档相对曲线起点的<b>输入变动</b>：{{ curvePoolChangedKeys.map(stateKeyLabel).join('、') }}
-        <span class="td-muted">（面板重算用的就是这份差分；判据 `curvePointPool.test.ts` 断言重算伤害与该点读数逐位相等）</span>
+      <div v-if="poolChangedKeys.length > 0" class="compare-note curve-note">
+        这一档相对<b>运行起点</b>的输入变动：{{ poolChangedKeys.map(stateKeyLabel).join('、') }}
+        <span class="td-muted">（面板重算用的就是这份差分；判据 `pointSceneCapture.test.ts` 断言重算伤害与该档读数逐位相等）</span>
       </div>
       <div v-if="curvePool.loading.value" class="empty-hint">重算该档资源池中…</div>
       <div v-else-if="curvePool.error.value" class="empty-hint curve-neg">重算失败：{{ curvePool.error.value }}</div>
       <template v-else>
         <!-- **这一档的轴**（R10 第 2 条）：逐条列出轴内动作 / 被跳过的招 + 原因 + 打出来的次数。
-             数据全部来自引擎读数（`axisDetailOf` 只做分组，不重算判定）。 -->
-        <div class="curve-axis-detail">
+             数据全部来自引擎读数（`axisDetailOf` 只做分组，不重算判定）。
+             ⚠ 只对**难度曲线档**显示：散点/第三人没有「轴预设 vs 实打」这组对照（那是曲线档的
+             `CurveDatum.axis` 才有的口径）⇒ 非 curve 不渲染，而不是拿空态糊一张「无轴」上去。 -->
+        <div v-if="poolPick.kind === 'curve'" class="curve-axis-detail">
           <div class="curve-axis-title">
             这一档的轴 · <b>{{ curveAxisDetail.title }}</b>
             <span class="td-muted">（{{ curveAxisDetail.note }}）</span>
@@ -971,8 +979,8 @@
              缺读数（非轴队 / 弃轴 / 未采）由视图**如实写「无/未采 + 原因」**，不补造、不编 0。 -->
         <ResourcePoolView
           :snapshot="curvePool.pool.value"
-          :title="curvePoolPoolTitle"
-          :reason="curvePoolReason"
+          :title="poolTitle"
+          :reason="poolReason"
         />
       </template>
     </n-card>
@@ -1161,9 +1169,15 @@
               <td>{{ p.totalGold }}</td>
               <td class="td-detail"><div class="cell-clamp">{{ goldDetail(p.goldLabel) }}</div></td>
               <td class="td-detail">{{ teamNames(p.team) }}</td>
+              <!-- 候选行 ⇒ 就地展开**整队**资源池（用户 2026-11-03：「显示整队的好，单一角色分析是从整队
+                   数据挑选部分数据来分析的」）——不另造「单角色视图」。 -->
+              <td class="td-pool">
+                <n-button v-if="canInspectPoint(p)" size="tiny" quaternary @click="inspectSweepPoint(p)">资源池</n-button>
+                <span v-else class="td-muted" title="这一名候选没有采到现场差分 ⇒ 无法重算资源池（不编数据）">无</span>
+              </td>
             </tr>
             <tr v-if="sweepResult.points.length === 0">
-              <td colspan="7" class="td-detail">没有可用候选：全部未收敛或候选池为空（检查固定队友选择）。</td>
+              <td colspan="8" class="td-detail">没有可用候选：全部未收敛或候选池为空（检查固定队友选择）。</td>
             </tr>
       </ChartTable>
     </n-card>
@@ -1219,6 +1233,8 @@ import type { BossPreset, BossPresetPhase, PhaseBuffCard, PhaseView } from '@/ty
 import { releaseDateOf, releaseNodeOf, nodeIndexOf, VERSION_NODES } from '@/data/versionTimeline'
 import { buildPeriodAxis } from '@/composables/bossSchedule'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
+import type { SlotSweepPoint } from '@/composables/teamTimeline'
+import type { PointScene } from '@/types/configDelta'
 import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
 
 const configStore = useConfigStore()
@@ -2119,6 +2135,8 @@ async function runCompare() {
       // 按队覆盖（`TeamSlotCodeEditor` 写的那份；空 = 不覆盖，逐位不变）
       slotOverrides: teamSlotCodes.overridesFor(p.id),
       goldAlternatives: showGoldAlternatives.value ? alts : undefined,
+      // 每点采一份现场差分（~0.2ms/点）⇒ 散点每一档都能就地打开完整资源池（用户 2026-11-03）
+      collectScenes: true,
       phase,
       autoEngine: autoEngine.value,
       autoEngineMods: { aRank: autoModA.value, standard: autoModStd.value },
@@ -2343,7 +2361,7 @@ const scatterTableColumns = [
   { key: 'team', label: '队伍' }, { key: 'gold', label: '限定金' }, { key: 'buff', label: 'Buff' },
   { key: 'damage', label: '伤害' }, { key: 'ratio', label: '伤害/血量' }, { key: 'difficulty', label: '难度' },
   { key: 'detail', label: '交互明细' }, { key: 'cinema', label: '影画' },
-  { key: 'wengine', label: '精炼' }, { key: 'time', label: '时间' },
+  { key: 'wengine', label: '精炼' }, { key: 'time', label: '时间' }, { key: 'pool', label: '资源池' },
 ]
 const goldAltTableColumns = [
   { key: 'team', label: '队伍' }, { key: 'gold', label: '金数' }, { key: 'target', label: '这笔金投给' },
@@ -2372,7 +2390,7 @@ const curveTruncTableColumns = [
 const sweepTableColumns = [
   { key: 'rank', label: '排名' }, { key: 'third', label: '第三人' }, { key: 'damage', label: '伤害' },
   { key: 'ratio', label: '伤害/血量' }, { key: 'gold', label: '限定金' },
-  { key: 'goldDetail', label: '加金明细' }, { key: 'team', label: '队伍' },
+  { key: 'goldDetail', label: '加金明细' }, { key: 'team', label: '队伍' }, { key: 'pool', label: '资源池' },
 ]
 
 /** 共享图例项：标签/颜色/悬浮说明都由页面给，ChartLegend 只管外观与事件 */
@@ -2752,8 +2770,46 @@ const curveTruncBaseOnly = computed(() =>
  * 判据：`curvePointPool.test.ts`（重算伤害与该点 `dmg` 逐位相等 / 三份结果同源 / 竞态后发者胜）。
  */
 const curvePool = useCurvePointPool()
-/** 当前选中的点（`null` = 面板收起）。键 = 道键 + 点名，跨队不串味 */
-const curvePoolPick = ref<{ laneKey: string; point: KnobPointName; cost: number } | null>(null)
+/**
+ * **哪一档的资源池被打开**（T189 泛化；用户 2026-11-03 口径）：
+ *
+ * > 「**每个点都代表一个金，只有这个能看资源池了**」/「**显示整队的好，单一角色分析是从整队数据
+ * >  挑选部分数据来分析的**」
+ *
+ * ⇒ 三个入口就地打开**同一张卡片、同一份共享视图**：
+ * · `curve`   = 难度曲线的档（点曲线点 / 点 3D 点 / 点表行 / 被轴砍掉的档）；
+ * · `scatter` = 散点的档（**一个点 = 一个金档**）；
+ * · `sweep`   = 选第三人的候选（**整队**——不另造「单角色视图」）。
+ *
+ * 三者共用同一个 `useCurvePointPool`（它只吃一个 `{base, delta}` 现场差分）与同一份重算结果
+ * ⇒ 三个入口不可能各说各话（本仓最怕「两处漂移」）。
+ */
+type ComparePoolPick =
+  | { kind: 'curve'; laneKey: string; point: KnobPointName; cost: number; label: string; scene?: PointScene; reason: string }
+  | { kind: 'scatter'; key: string; label: string; scene?: PointScene }
+  | { kind: 'sweep'; key: string; label: string; scene?: PointScene }
+const poolPick = ref<ComparePoolPick | null>(null)
+/**
+ * 换图型 ⇒ 收起已打开的那一档资源池。
+ * 理由：三个入口的档位来自**不同运行**（散点点 = 金档 / 曲线点 = 旋钮档 / 候选行 = 第三人），换图型后
+ * 旧面板既不再有对应的行可高亮，也容易被读成「新图型的这一档就是它」⇒ 直接收起，最诚实。
+ */
+watch(chartMode, () => { closePointPool() })
+/** 这一档的身份键（同一档再点一次 = 收起；换档/换入口 = 重新加载） */
+function pickKeyOf(p: ComparePoolPick): string {
+  return p.kind === 'curve' ? `curve|${p.laneKey}|${p.point}|${p.cost}` : `${p.kind}|${p.key}`
+}
+/** 收起面板（三个入口共用） */
+function closePointPool(): void {
+  poolPick.value = null
+  curvePool.clear()
+}
+/** 打开某一档的资源池（同一个入口点同一个档 = 收起） */
+async function openPointPool(pick: ComparePoolPick): Promise<void> {
+  if (poolPick.value && pickKeyOf(poolPick.value) === pickKeyOf(pick)) { closePointPool(); return }
+  poolPick.value = pick
+  await curvePool.load(pick.scene)
+}
 /** 点是否可查明细：该档采到了现场（`collectScenes` 开着） */
 function canInspectPoint(p: { scene?: unknown }): boolean {
   return !!p.scene
@@ -2768,23 +2824,50 @@ function onCurve3dPick(laneKey: string, point: KnobPointName, cost: number) {
   if (s && p) void inspectCurvePoint(s.laneKey, p, 'point')
 }
 
-/** 点开/收起某一档的资源池明细（`source` = 被轴砍掉的档时带理由，面板上如实标注） */
+/** 难度曲线：点开/收起某一档（`source` = 被轴砍掉的档时带理由，面板上如实标注） */
 async function inspectCurvePoint(laneKey: string, p: CurveDatum, source: 'point' | 'axisTruncated', reason = '') {
-  const same = curvePoolPick.value?.laneKey === laneKey && curvePoolPick.value?.point === p.point && curvePoolPick.value?.cost === p.cost
-  if (same) { curvePoolPick.value = null; curvePool.clear(); return }
-  curvePoolPick.value = { laneKey, point: p.point, cost: p.cost }
-  curvePoolPickReason.value = source === 'axisTruncated' ? reason : ''
-  await curvePool.load(p.scene)
+  await openPointPool({
+    kind: 'curve',
+    laneKey,
+    point: p.point,
+    cost: p.cost,
+    label: `该档资源池 · ${pointLabel(p.point)} · 操作难度 ${fmt(p.cost, 1)} 点（${laneKey}）`,
+    scene: p.scene,
+    reason: source === 'axisTruncated' ? reason : '',
+  })
 }
-const curvePoolPickReason = ref('')
+/** 散点：**一个点 = 一个金档** ⇒ 展开该档完整资源池（用户 2026-11-03：「只有这个能看资源池了」） */
+async function inspectScatterPoint(p: TeamComparePoint) {
+  await openPointPool({
+    kind: 'scatter',
+    key: `${p.presetId}|${p.goldCount}`,
+    label: `这一档资源池 · ${p.presetName} · ${p.goldLabel}（${p.goldCount} 金）`,
+    scene: p.scene,
+  })
+}
+/** 选第三人：候选行 ⇒ 展开**整队**资源池（用户 2026-11-03：「显示整队的好」） */
+async function inspectSweepPoint(p: SlotSweepPoint) {
+  const slot = sweepResult.value?.slot
+  const slotText = slot === undefined ? '' : `${slotLabelsForSlot(slot)} · `
+  await openPointPool({
+    kind: 'sweep',
+    key: p.candidateId,
+    label: `这一档资源池 · ${slotText}${p.candidateName} · ${goldDetail(p.goldLabel)}`,
+    scene: p.scene,
+  })
+}
+/** 槽位名（第三人候选行的抬头用；与页头槽位选择同一份 `slotLabels`） */
+function slotLabelsForSlot(slot: number): string {
+  return slotLabels[slot as 0 | 1 | 2] ?? `槽${slot + 1}`
+}
 /** 这一行是否正是当前打开的资源池档（行高亮；与图上「点中的点」同一份状态） */
 function isPoolOpen(r: { laneKey: string; point: KnobPointName; cost: number }): boolean {
-  const p = curvePoolPick.value
-  return !!p && p.laneKey === r.laneKey && p.point === r.point && Math.abs(p.cost - r.cost) < 1e-9
+  const p = poolPick.value
+  return !!p && p.kind === 'curve' && pickKeyOf(p) === `curve|${r.laneKey}|${r.point}|${r.cost}`
 }
 /**
  * 行内「资源池」按钮 / 整行点击 ⇒ 展开该档资源池（用户 2026-11-02「**每个计算点都能展示细致资源池**最好」）。
- * 复用图上点选那条链（`inspectCurvePoint`）——同一份 `curvePoolPick`，图上与表上不会各说各话。
+ * 复用图上点选那条链（`inspectCurvePoint`）——同一份 `poolPick`，图上与表上不会各说各话。
  */
 function openRowPool(r: { laneKey: string; point: KnobPointName; datum: CurveDatum; canOpen: boolean }) {
   if (!r.canOpen) return
@@ -2797,27 +2880,29 @@ const axisLegend = axisMarkerLegend()
  * `axisDetailOf` 的分组口径住 `composables/axisMarker.ts`（纯函数，有判据）。
  */
 const curveAxisDetail = computed(() => {
-  const picked = curvePoolPick.value
+  const picked = poolPick.value
   const pool = curvePool.pool.value
+  const curvePicked = picked && picked.kind === 'curve' ? picked : null
   // 没选中点 / 本档还没重算完 ⇒ 空态（**不编**一个「无轴」出来）
   const empty = axisDetailOf(
     { kind: 'none', skipped: { time: 0, decibel: 0, energy: 0, sway: 0, family: 0 }, skippedTotal: 0, fallback: false },
     null,
     (slot, moveId) => axisMoveNameOf(slot, moveId),
   )
-  if (!picked || !pool) return empty
-  const series = curveData.value?.series.find(x => x.laneKey === picked.laneKey)
+  if (!curvePicked || !pool) return empty
+  const series = curveData.value?.series.find(x => x.laneKey === curvePicked.laneKey)
   // 曲线上的点优先；不在曲线上 = 被轴砍掉的档（`axisTruncated`）
-  const pt = series?.points.find(x => x.point === picked.point && Math.abs(x.cost - picked.cost) < 1e-9)
+  const pt = series?.points.find(x => x.point === curvePicked.point && Math.abs(x.cost - curvePicked.cost) < 1e-9)
   const axis = pt?.axis
-    ?? series?.axisTruncated.find(t => t.point === picked.point && t.x !== undefined && Math.abs(t.x - picked.cost) < 1e-9)?.axis
+    ?? series?.axisTruncated.find(t => t.point === curvePicked.point && t.x !== undefined && Math.abs(t.x - curvePicked.cost) < 1e-9)?.axis
   if (!axis) return empty
   return axisDetailOf(axis, pool.axisStack, (slot, moveId) => axisMoveNameOf(slot, moveId))
 })
 /** 交互 / 合轴吸收 / 合轴节省的三项并排（缺省 null + 原因，不写 0——见 `axisCompareOf`） */
 const curveAxisCompare = computed(() => {
-  const picked = curvePoolPick.value
-  if (!picked) return axisCompareOf({})
+  const picked = poolPick.value
+  // 「交互 / 合轴」三项并排只对**曲线档**有意义（散点/第三人没有轴预设可对照）⇒ 非 curve 一律空态
+  if (!picked || picked.kind !== 'curve') return axisCompareOf({})
   const series = curveData.value?.series.find(x => x.laneKey === picked.laneKey)
   const pt = series?.points.find(x => x.point === picked.point && Math.abs(x.cost - picked.cost) < 1e-9)
   const pool = curvePool.pool.value
@@ -2843,33 +2928,42 @@ const axisMoveNameOf = axisMoveNameResolver({
  * 该档**没采到现场**（`pool` 空）时口径换成「未采」那句——共享视图对空快照就渲染它，
  * 不在页面另写一套空态（两个入口一个口径）。判据 `curvePointPool.test.ts`。
  */
-const curvePoolPoolTitle = computed<string>(() => {
-  const picked = curvePoolPick.value
-  if (!picked) return ''
-  return `完整资源池（该档重放现场） · ${pointLabel(picked.point)} · 操作难度 ${fmt(picked.cost, 1)} 点（${picked.laneKey}）`
-})
-const curvePoolReason = computed<string>(() => {
+const poolTitle = computed<string>(() => poolPick.value?.label ?? '')
+/**
+ * 面板口径（**各入口自己那句「这一档的现场是怎么来的」**；同一份 `restoreStateDelta` 重放链）。
+ * 该档没采到现场（`pool` 空）⇒ 换成「未采」那句——共享视图对空快照就渲染它，不在页面另写空态。
+ */
+const poolReason = computed<string>(() => {
+  const pick = poolPick.value
+  if (!pick) return ''
   if (!curvePool.pool.value) {
-    return '该档未采现场（本次曲线没有带现场差分）⇒ 不显示资源池，也不编数据。'
+    return '该档未采现场（本次运行没有带现场差分）⇒ 不显示资源池，也不编数据。'
   }
-  const base = '口径 = 那一点的现场重放（不是全关档、也不是终点档）：把该点采到的现场差分写回一个独立场景'
-    + '（restoreStateDelta）再算一次 ⇒ 伤害与该点读数逐位相等（判据 curvePointPool.test.ts）。'
+  const replay = '把该档采到的现场差分写回一个独立场景（restoreStateDelta）再算一次 ⇒ '
+    + '伤害与该档读数逐位相等（判据 pointSceneCapture.test.ts）。'
+  if (pick.kind === 'scatter') {
+    return `口径 = **这一个金档**的现场重放（一个点 = 一个金，用户 2026-11-03）：${replay}`
+      + '下面这些块 = 该金档的资源池（配置就是这一点算出来的那份，不是预算分配后的近似）。'
+  }
+  if (pick.kind === 'sweep') {
+    return `口径 = **整队**候选那一档的现场重放：${replay}`
+      + '下面这些块 = 该候选在场时**整支队**的资源池（单一角色分析是从这份整队数据里挑子集看，不另造视图）。'
+  }
+  const base = '口径 = 那一点的现场重放（不是全关档、也不是终点档）：' + replay
     + '所以下面这些块 = 曲线该档的资源池：能量/喧响/失衡/积蓄与招式执行计划都按那一档的交互与吸收率算。'
-  return curvePoolPickReason.value
-    ? base + ' ⚠ 这一档轴没打完（' + curvePoolPickReason.value + '）⇒ 它不在曲线上（按你的口径「达不到要求就不算」），但引擎算过的数如实给出来，用来看「差在哪」。'
+  return pick.reason
+    ? base + ' ⚠ 这一档轴没打完（' + pick.reason + '）⇒ 它不在曲线上（按你的口径「达不到要求就不算」），但引擎算过的数如实给出来，用来看「差在哪」。'
     : base
 })
 
 /** 被砍档（R10 打叉）的悬停态：与曲线点 hover（`curveHover`）分开，两者图形不同、文案不同 */
 const cutHover = ref<{ si: number; ci: number } | null>(null)
 /** 选中点相对运行起点的**输入变动键**（诊断用：一眼看出这一档改了队伍还是机制设置） */
-const curvePoolChangedKeys = computed<string[]>(() => {
-  const pick = curvePoolPick.value
-  if (!pick) return []
-  const s = curveData.value?.series.find(x => x.laneKey === pick.laneKey)
-  const p = s?.points.find(x => x.point === pick.point && Math.abs(x.cost - pick.cost) < 1e-9)
-  return deltaKeys(p?.scene?.delta)
-})
+/**
+ * 打开的那一档相对**运行起点**的输入变动键（诊断用：一眼看出这一档改了队伍还是机制设置）。
+ * 三个入口统一读 `pick.scene.delta`（曲线点以前要走 `curveData` 反查，现在不必——差分本来就在手上）。
+ */
+const poolChangedKeys = computed<string[]>(() => deltaKeys(poolPick.value?.scene?.delta))
 /** config state 键 → 可读名（只列难度曲线真会动的那些，其余回落键名——不编一个看起来像真的中文） */
 const STATE_KEY_LABELS: Record<string, string> = {
   team: '队伍配置（角色/命座/音擎/驱动盘/交互次数/权重）',
