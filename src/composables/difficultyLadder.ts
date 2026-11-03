@@ -62,7 +62,6 @@ import { type StunAxisState, type ConfigModel, type ComboAlignState } from '@/st
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
 import { DEEP_TIME_WEIGHT_STRATEGY_ID } from '@/composables/timeWeightAllocation'
-import { INTERACTION_OPTIMUM_STRATEGY_ID } from '@/composables/interactionOptimum'
 import { absorbCapOf, clearInteractions, applyRoleInteractionBaseline, INTERACTION_COUNT_KEYS } from '@/composables/interactionControls'
 import { axisStateOf, axisStands, axisRequirementMet, axisTruncationReason, partialAxisContributes, type AxisState } from '@/composables/difficultyAxis'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
@@ -146,13 +145,14 @@ export function applyInteractionKnob(ctx: LadderCtx, knob: InteractionKnob): voi
    * 「最高档」的最优性由主页/散点/实战入口保证；曲线是视图，代价必须可控。
    * 同一函数的判据由 interactionOptimum.test.ts 与各入口测试守着。
    */
+
   applyTimeWeightAllocation({ calc: ctx.calc, configStore: ctx.config,
     interactionOptions: { maximizeNetGains: false, absorbCap: ctx.absorbCap } }, DEEP_TIME_WEIGHT_STRATEGY_ID)
 }
 
 /** 逐槽阶梯入口：曲线内保留轻量实现（完整策略在主页/散点/实战入口跑）。 */
-export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void {
-  applyInteractionKnob(ctx, 'slotLadder', maxCount)
+export function optimizeInteractionsPerSlot(ctx: LadderCtx, _maxCount = 16): void {
+  applyInteractionKnob(ctx, 'slotLadder')
 }
 
 /**
