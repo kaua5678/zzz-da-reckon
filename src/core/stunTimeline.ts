@@ -157,8 +157,11 @@ export interface StunWindowSlot {
   /** 窗内动作（来自轴栈；非轴模式为空 = 走比例近似） */
   actions: StunWindowAction[]
   /**
-   * 窗内剩余秒数 = `effectiveSeconds − (动作毛占用 − 合轴节省 + 平A填充)`（下限 0）。
+   * 窗内剩余秒数（显示名「发呆」）= `effectiveSeconds − (动作毛占用 − 合轴节省 + 平A填充)`（下限 0）。
    * ⚠ 无轴轨迹（`hasTrace === false`）时记 0：**不代表打满**，只表示本模式不可逐窗推演。
+   *
+   * @fact engine:逐窗兑现/发呆 口径: 「发呆」是**平账残差项**——承担「局部窗各项之和 = 窗长」的闭合职责，把 180s 总量分配到该窗的显示调平；**不是**「肉眼可见空白」的度量（可见空白另由 `StunWindowTrace.idleSegments` 承载） | 据 用户@2026-11-03「发呆时间其实是用来平账的，调和总量在局部轴的显示，180s的具体分配」 | 验 src/core/__tests__/stunTimeline.test.ts + src/composables/__tests__/resourcePoolView.test.ts | 锚 src/core/stunTimeline.ts#StunWindowSlot | 信 确认
+   * // ⟳复核: 若「越窗块」（`startTime + actionTime > 窗尾`）的处理改为「窗内只算落入窗内的那一段」（读者：本项 + `StunWindowTrace.actionSeconds` + fits 门），重核本公式的闭合性（当前实测 26/157 窗不闭合，差额 = 越窗秒数） | 到期 2027-06-30
    */
   unusedSeconds: number
   /**
