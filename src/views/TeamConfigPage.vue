@@ -133,15 +133,21 @@
                   <!-- 潜能等级 -->
                   <div class="section">
                     <div class="section-title">潜能等级</div>
+                    <!--
+                      潜能开关（2026-11-01 用户口径）：开关必须**紧贴标签**（曾写 margin-left:auto 把它顶到行最右，
+                      用户实测"看不到"）；同时也踩过一次「模板用了 n-switch 但本文件没 import NSwitch ⇒ 未解析标签、
+                      静默不渲染」（naive 组件是逐文件显式 import，没有全局注册，vue-tsc 看不见）——
+                      两者都在 src/views/__tests__ 之外的实机 ui-check 里才暴露。
+                    -->
                     <div v-if="supportsPotentialSwitch" class="row-item" style="margin-bottom: 8px">
-                      <span class="field-label">启用潜能</span>
+                      <span class="field-label" style="display: inline-flex; align-items: center; gap: 8px">启用潜能
+                        <n-switch
+                          :value="selectedChar.potentialEnabled !== false"
+                          size="small"
+                          @update:value="(v: boolean) => configStore.setPotentialEnabled(uiStore.selectedSlot, v === true)"
+                        />
+                      </span>
                       <span class="field-hint">{{ selectedChar.potentialEnabled === false ? '已关：潜能整条不生效（等价潜能 I）' : '已开' }}</span>
-                      <n-switch
-                        :value="selectedChar.potentialEnabled !== false"
-                        size="small"
-                        style="margin-left: auto"
-                        @update:value="(v: boolean) => configStore.setPotentialEnabled(uiStore.selectedSlot, v === true)"
-                      />
                     </div>
                     <div class="row-item">
                       <n-slider
@@ -875,7 +881,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import {
   NCard, NSpace, NGrid, NGi, NSelect, NSlider, NInputNumber, NText, NAlert,
-  NRadioGroup, NRadioButton, NTag, NButton, NModal, NCollapse, NCollapseItem, NCheckbox, NTooltip, useMessage,
+  NRadioGroup, NRadioButton, NTag, NButton, NModal, NCollapse, NCollapseItem, NCheckbox, NSwitch, NTooltip, useMessage,
 } from 'naive-ui'
 import { useConfigStore, getInteractionDefaults, ACTION_COUNT_BOUNDS } from '@/stores/config'
 import { useUiStore } from '@/stores/ui'
