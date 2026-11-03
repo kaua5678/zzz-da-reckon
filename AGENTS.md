@@ -51,7 +51,7 @@
 ## 1. 硬性规则
 
 1. **基线先绿再动手**：改代码前跑 `npm run check`；改完跑 `npm run check` + `npm run build`。
-   `npm run check` = **核心环**（~110s，含 `vue-tsc -b` 增量类型检查），**不是全量**。
+   `npm run check` = **核心环**（**实测 172.7s** @2026-11-04；含 `vue-tsc -b` 增量类型检查），**不是全量**。
    要不要升环**看改动性质，不看日历**：动到计算路径/时间账/数值数据/角色模块/护栏脚本 ⇒ 先跑
    `node scripts/test-ring.mjs advise`，它给 `full` 才跑 `npm run check:full`；给 `core` 就是真的不用跑全量。
 2. **数值唯一事实源 = `public/static/catalog.json`**：改数值走 `scripts/` 导入/爬取脚本重跑，不要手改 JSON 本体。
@@ -110,11 +110,13 @@
 
 | 环 | 命令 | 何时跑 | 实测 |
 |---|---|---|---|
-| **core** | `npm run check` | **每个对话收工**（规则 1） | ~110s |
-| **fast** | `npm run check:fast` | 合并前 / 半天的活收尾 | ~250s |
-| **full** | `npm run check:full` / `npm run verify` | **改到危险面时** / 合并前 / CI | ~540s |
+| **core** | `npm run check` | **每个对话收工**（规则 1） | **172.7s**（2026-11-04） |
+| **fast** | `npm run check:fast` | 合并前 / 半天的活收尾 | 未复测（估 250~300s） |
+| **full** | `npm run check:full` / `npm run verify` | **改到危险面时** / 合并前 / CI | **946~1143s**（2026-11-01 全量）+ build 19s |
 
 **三环里都含 `npm run typecheck:inc`（`vue-tsc -b` 增量）**：类型错是编译期就死的那类错，不该等到全量才发现。⚠ 别换成非增量的 `npm run typecheck`（每次 ~17s）。
+
+⚠ **表里的秒数是实测值，不是预算**（2026-11-04 复测：core 曾因**单个测试文件** `interactionSurface` 扫 5 遍而达到 **648.9s**，已修成共扫一次 ⇒ 172.7s）。读数为「一个文件吃掉整环」时的根因分析与剩余排期见 `docs/mcp-dev-process-speed.md` §11–§12。**环划分的判据是「改动性质」，秒数只用于判断这次量到的墙钟是否异常**（异常先查最长文件，别先怀疑机器）。
 
 清单与嵌套关系的单一事实源 = `scripts/test-ring.mjs`（core ⊂ fast ⊂ full 由 `check-guards` **判据 32** 断言，默认环不许改回全量也是它守）。**改了东西先问要不要升环**：
 
