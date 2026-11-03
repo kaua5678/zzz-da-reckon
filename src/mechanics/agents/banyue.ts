@@ -770,16 +770,22 @@ export function computeBanyueMingwangBlocks(
  *   唯一编码「契约没接上」，而不是静默按「保底全关 + 无轴」算出一组看似正常的零值）。
  */
 /**
- * 自动补齐门控（CC-295 单一来源）：轴模式或保底4嗔火打开，且设置 `banyue.autoTopUpInteractions`
- * 未关闭。`applyBanyueTeamConfig`（用不用补齐量）与 `computeInteractionTopUp`（算不算补齐量）共用；
- * 此前编排层 convergence 另抄一份并直读本模块设置键。
+ * 自动补齐门控（CC-295 单一来源）：**只由轴模式驱动**，且设置 `banyue.autoTopUpInteractions` 未关闭。
+ * `applyBanyueTeamConfig`（用不用补齐量）与 `computeInteractionTopUp`（算不算补齐量）共用。
+ *
+ * ⚠ **2026-11-03 用户裁决：「保底 4 嗔火这种字眼也是人为规定的想象更优」** ⇒ 去掉 `|| guarantee.fury`。
+ * 补齐的唯一正当理由 = **轴里的招式需要资源才打得出来**（`axisActive`），不是「凑到某个次数」。
+ * 非轴队没有任何补齐来源——与「弹刀不再反推目标次数」同一口径。
+ *
+ * 沿革：原门控是 `axisActive || guarantee.fury`，`guarantee.fury` 由「轴模式 ⇒ 视同勾选」驱动；
+ * 目标语义退场后它不再有独立含义。
  */
 function banyueAutoTopUpEnabled(
   axisActive: boolean,
-  guarantee: Readonly<{ fury: boolean }>,
   settings: Readonly<Record<string, number>> | undefined,
-): boolean {
-  return (axisActive || guarantee.fury)
+)
+  : boolean {
+  return axisActive
     && settingOf(settings, 'banyue.autoTopUpInteractions') !== 0
 }
 
@@ -790,7 +796,7 @@ function applyBanyueTeamConfig({ slot, cfg, phase, axis, guarantee, settings, th
   // 秽盾闪能：三个相位都要写（`computeBanyueCycleFromCfg` 在 build/converge/postRound 都跑）
   cfg.banyueShieldFlashGift = Math.max(0, shieldFlashGift ?? cfg.banyueShieldFlashGift ?? 0)
   // 轴模式自动补齐（保底）：轴模式之外，保底开关也可独立驱动（非轴亦生效）；设置可整体关闭。
-  const autoTopUp = banyueAutoTopUpEnabled(axis.active, guarantee, settings)
+  const autoTopUp = banyueAutoTopUpEnabled(axis.active, settings)
   const topUp = autoTopUp ? (threads?.interactionTopUp ?? { parry: 0, dual: 0 }) : { parry: 0, dual: 0 }
   if (topUp.parry > 0 || topUp.dual > 0) {
     cfg.parryCount = cfg.parryCount + topUp.parry
@@ -1550,7 +1556,7 @@ export const banyueMechanic: AgentMechanicModule = {
   // 补本不需要的双反（与 T162 漏传 `shieldFlashGift` 完全同型，见 `InteractionTopUpInput.shieldFlashGift`）。
   // 设置 id 的家在本模块（判据 26），故由本模块读 `gate.settings`，编排层只递事实。
   computeInteractionTopUp: ({ gate, ...opts }) =>
-    banyueAutoTopUpEnabled(gate.axisActive, gate.guarantee, gate.settings)
+    banyueAutoTopUpEnabled(gate.axisActive, gate.settings)
       ? computeBanyueInteractionTopUp({
         ...opts,
         wastedFlash: Math.max(0, settingOf(gate.settings, 'banyue.wastedFlash')),
