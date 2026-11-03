@@ -19,7 +19,7 @@ import {
   PHOENIX_SCORCH_MASTERY_CAP,
   PHOENIX_SCORCH_MASTERY_THRESHOLD,
 } from '@/mechanics/agents/phoenix'
-import { BOSS_ATTACK_INTERACTIONS } from '@/composables/teamCompare'
+import { BOSS_ATTACK_INTERACTIONS } from '@/composables/operationalDifficulty'
 import { emptyPanel } from '@/core/panel'
 import { getAnomalyCritStats } from '@/core/anomalyPool/helpers'
 import { calcAnomalyDamage } from '@/core/damage'

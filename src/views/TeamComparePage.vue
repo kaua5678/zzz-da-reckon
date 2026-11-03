@@ -81,6 +81,10 @@
           它改的是「这支队是什么」，不是「这个图型怎么画」。
         -->
         <TeamSlotCodeEditor :presets="selectedPresets" />
+        <div v-if="chartMode === 'scatter'" class="ctl-field" title="每个金档均走同一交互策略；0交互为全关原点，最优保留当前合轴，最高拉满净收益并搜交互驻点">
+          <span class="ctl-label">交互档位</span>
+          <n-select v-model:value="comparisonInteractionLevel" :options="comparisonInteractionOptions" size="small" style="width: 170px" />
+        </div>
         <div class="ctl-field" title="操作难度是主观量（两图共用同一口径）：难度 = Σ(交互次数×权重) + 时间压力秒×权重；散点图横轴同口径。按你的手感改，浏览器本地持久化；预设条目自带 weight 仍最优先">
           <n-popover trigger="click" placement="bottom-end" :style="{ width: '300px' }">
             <template #trigger>
@@ -1191,7 +1195,8 @@ import DifficultyCurve3DChart from '@/components/charts/DifficultyCurve3DChart.v
 import { buildBossHpCurve, buildEnvLanes, deriveVersionAxis, type VersionLane } from '@/composables/difficultyCurve3d'
 import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
-import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula, type PresetGoldAlternative } from '@/composables/teamCompare'
+import { computeTeamComparePoints, DEFAULT_AUTO_ENGINE_POOL, type PresetGoldAlternative } from '@/composables/teamCompare'
+import { INTERACTION_LABELS, BOSS_ATTACK_INTERACTIONS, defaultInteractionFormula } from '@/composables/operationalDifficulty'
 import { datasetFromTeamGold } from '@/composables/analysis/dataset'
 import { publishAnalysis } from '@/composables/analysis/transfer'
 import { cloneConfigState, withAnalysisScenario } from '@/composables/analysisScenario'
@@ -1237,6 +1242,11 @@ import type { SlotSweepPoint } from '@/composables/teamTimeline'
 import type { PointScene } from '@/types/configDelta'
 import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
 
+const comparisonInteractionLevel = ref<'manual' | 'zero' | 'optimal' | 'max'>('max')
+const comparisonInteractionOptions = [
+  { label: '0交互（全关）', value: 'zero' }, { label: '自动最优交互', value: 'optimal' },
+  { label: '最高操作难度', value: 'max' }, { label: '手填配置', value: 'manual' },
+]
 const configStore = useConfigStore()
 
 /**
@@ -2128,6 +2138,7 @@ async function runCompare() {
     await new Promise(r => setTimeout(r, 0))
     const alts: PresetGoldAlternative[] = []
     const batch = await withAnalysisScenario(scenario => computeTeamComparePoints(scenario, {
+      interactionLevel: comparisonInteractionLevel.value,
       presets: [p],
       goldLevels: levels,
       boss,

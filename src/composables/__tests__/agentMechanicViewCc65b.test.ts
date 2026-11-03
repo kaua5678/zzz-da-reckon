@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
-import { agentInteractionInputs, teamHasGuaranteeFuryOwner } from '@/composables/agentMechanicView'
+import { agentInteractionInputs } from '@/composables/agentMechanicView'
 import { getInteractionDefaults, interactionBaselineFor } from '@/stores/config'
 import { roleInteractionBaseline } from '@/mechanics/interactionBaseline'
 
@@ -44,7 +44,7 @@ describe('CC-65b 交互默认值与交互栏特殊输入 → 模块声明', () =
     const ids = [...new Set(['', ...catalog.agentsMap.keys()])]
     expect(ids.length).toBeGreaterThan(30)
     const specs = [undefined, 'attack', 'stun', 'anomaly', 'support', 'defense', 'rupture']
-    let hitDef = 0, hitInp = 0, hitFury = 0
+    let hitDef = 0, hitInp = 0
     for (const id of ids) {
       const d = getInteractionDefaults(id)
       expect(d, id).toEqual(LEGACY_DEFAULTS[id] ?? ZERO)
@@ -55,17 +55,10 @@ describe('CC-65b 交互默认值与交互栏特殊输入 → 模块声明', () =
       const inp = JSON.parse(JSON.stringify(agentInteractionInputs(id)))
       expect(inp, id).toEqual(legacyInputs(id))
       hitInp += Object.keys(inp).length
-      for (const pos of [0, 2]) {
-        const team = [{ agentId: '' }, { agentId: '' }, { agentId: '' }]
-        team[pos] = { agentId: id }
-        const got = teamHasGuaranteeFuryOwner(team)
-        expect(got, `${id}@${pos}`).toBe(team.some(c => c?.agentId === '1471'))
-        if (got) hitFury++
-      }
+
     }
-    expect([hitDef, hitInp, hitFury]).toEqual([2, 3, 2])
+    expect([hitDef, hitInp]).toEqual([2, 3])
     expect(agentInteractionInputs(null)).toEqual({})
-    expect(teamHasGuaranteeFuryOwner([null, undefined, { agentId: null }])).toBe(false)
   }, 60000)
 
   it('getInteractionDefaults 返回副本（改返回值不污染模块声明）', () => {

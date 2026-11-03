@@ -19,9 +19,12 @@ import { watch } from 'vue'
 import { useConfigStore, type ConfigModel } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc, type ResourceCalc } from '@/composables/useResourceCalc'
-import { optimizeTeamTimeWeights } from '@/composables/teamTimeline'
+import { optimizeTeamTimeWeights } from '@/composables/teamTimeWeights'
 import { isCarrySpecialty } from '../../scripts/lib/presetCategories.mjs'
-import { getAgentMechanic } from '@/mechanics'
+import { tauntLeverSlots, clearInteractions } from '@/composables/interactionControls'
+import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
+import { INTERACTION_MODE_SETTING, INTERACTION_OPTIMUM_MODE } from '@/data/interactionOptimization'
+import { createInteractionOptimumStrategy, type InteractionOptimumOptions, type InteractionOptimumReading } from '@/composables/interactionOptimum'
 import type { TimeWeightMode } from '@/types/resource'
 
 /**
@@ -55,32 +58,16 @@ function carrySlotsOf(configStore: ConfigStore, catalogStore: ReturnType<typeof 
   return slots.length > 0 ? slots : [0]
 }
 
-/**
- * 本队可用的「嘲讽取消」杠杆槽位（升序）。
- *
- * 嘲讽取消是般岳专属的**零成本时间杠杆**：每取消一次，直接抹掉一次失衡外连段末尾后摇的战场占用
- * （时长 = 末尾强特自身动作时间，期间不能平A）⇒ 回收的秒数回流平A池。它不耗闪能/嗔火/喧响，
- * 是联合搜索里唯一「只减时间占用、不加资源成本」的杠杆（其余交互都是加占用换收益）。
- *
- * 判据走模块能力（`characterCountInputs` 声明了 tauntCancelCount 才算），**不认 agentId**（判据 26）。
- * 用户口径 2026-10-11：默认值 0 是给**非轴模式**的；轴模式对资源与时间有高要求，应由本搜索自动抬。
- */
-export function tauntLeverSlots(configStore: ConfigStore): number[] {
-  return [0, 1, 2].filter(s => {
-    const id = String(configStore.team[s]?.agentId ?? '')
-    return !!id && (getAgentMechanic(id)?.characterCountInputs ?? []).some(i => i.field === 'tauntCancelCount')
-  })
-}
-
 type Calc = ResourceCalc
 type ConfigStore = ConfigModel
 
 export interface TimeWeightAllocationContext {
   calc: Calc
   configStore: ConfigStore
+  interactionOptions?: InteractionOptimumOptions
 }
 
-export interface TimeWeightAllocationResult {
+export interface TimeWeightAllocationResult extends Partial<InteractionOptimumReading> {
   strategyId: string
   /** 应用后的各槽权重 */
   weights: number[]
@@ -549,7 +536,9 @@ const marginalEqualizeStrategy: TimeWeightStrategy = {
 }
 
 /** 策略注册表（扩展点：`energy-driven` / `team-combo-align` 等新策略往这里加，调用点不动） */
-export const TIME_WEIGHT_STRATEGIES: TimeWeightStrategy[] = [jointLeverStrategy, marginalEqualizeStrategy]
+export const interactionOptimumStrategy = createInteractionOptimumStrategy(ctx => marginalEqualizeStrategy.allocate(ctx))
+export const INTERACTION_OPTIMUM_STRATEGY_ID = interactionOptimumStrategy.id
+export const TIME_WEIGHT_STRATEGIES: TimeWeightStrategy[] = [jointLeverStrategy, marginalEqualizeStrategy, interactionOptimumStrategy]
 
 /**
  * 主路径**默认**策略 = 边际均衡（B）：用户 2026-09-10 裁决「默认快一些的B，做个开关，如果开了就是更慢的C」。
@@ -567,7 +556,8 @@ export const DEEP_TIME_WEIGHT_STRATEGY_ID = jointLeverStrategy.id
  * · `'joint'`    → 多杠杆联合（C，更慢）
  */
 export function timeWeightStrategyIdForMode(mode: TimeWeightMode): string | null {
-  if (mode === 'static') return null
+  if (mode === 'static' || mode === 'zero') return null
+  if (mode === 'interaction-optimum' || mode === 'max') return interactionOptimumStrategy.id
   return mode === 'joint' ? DEEP_TIME_WEIGHT_STRATEGY_ID : DEFAULT_TIME_WEIGHT_STRATEGY_ID
 }
 
@@ -594,11 +584,18 @@ export function applyTimeWeightAllocation(
  * `useTimeWeightAutoAllocation` 的防自触发两条（2026-09-10 实测 `Maximum recursive updates exceeded`）。
  */
 export function timeWeightAllocationSignature(configStore: ConfigStore): string {
-  return JSON.stringify(configStore.team.map(c => {
+  // ⚠ 不写成 `{ team: configStore.team… }` 字面量：那正是 CC-278 源码锁判定的「内联现场快照」形态。
+  // 这里只做**触发签名**（不拷贝、不恢复）。
+  const rows = configStore.team.map(c => {
     const o = { ...c } as Record<string, unknown>
     delete o.basicAttackTimeWeight
     return o
-  }))
+  })
+  return JSON.stringify([
+    rows, configStore.enemy, configStore.appliedBoss, configStore.globalBuffs,
+    configStore.mechanicSettings, configStore.getAxisState(),
+    configStore.autoYidhariAxis, configStore.interactionsLocked, configStore.getComboAlignState(),
+  ])
 }
 
 /**
@@ -633,8 +630,18 @@ export function useTimeWeightAutoAllocation(): { applyNow: () => TimeWeightAlloc
   /** 源必须是**原始值**（见上文①）：返回数组会因引用不等而每次求值都判定「变了」 */
   const signature = () => `${configStore.timeWeightStrategy}|${timeWeightAllocationSignature(configStore)}`
   const apply = () => {
+    if (configStore.interactionsLocked || configStore.enemy.stunCountLock >= 0) return null
+    if (configStore.timeWeightStrategy === 'zero') {
+      clearInteractions({ config: configStore, calc })
+      configStore.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0)
+      configStore.setMechanicSetting('time.stunPlanProjection', 0)
+      for (let slot = 0; slot < 3; slot++) configStore.clearComboAlignOverrides(slot)
+      return null
+    }
     const id = timeWeightStrategyIdForMode(configStore.timeWeightStrategy)
-    return id === null ? null : applyTimeWeightAllocation({ calc, configStore }, id)
+    if (id === interactionOptimumStrategy.id) configStore.setMechanicSetting(INTERACTION_MODE_SETTING, INTERACTION_OPTIMUM_MODE)
+    return id === null ? null : applyTimeWeightAllocation({ calc, configStore,
+      interactionOptions: { maximizeNetGains: configStore.timeWeightStrategy === 'max' } }, id)
   }
   const run = () => {
     if (running) return

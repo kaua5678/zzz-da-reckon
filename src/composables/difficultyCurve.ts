@@ -50,15 +50,11 @@ import { useCatalogStore } from '@/stores/catalog'
 import { captureState, restoreStateDelta, stateDeltaOf } from '@/composables/configDelta'
 import { type ConfigModel, type EvalConfig } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
-import {
-  absorbCapOf, applyInteractionKnob, clearDifficultyLevers, climbDifficultyLadder, summarizeLadder,
-  type AxisTruncatedPoint, type KnobPointName, type LadderPoint, type LadderPointScene, type LadderResult, type LadderSnapshot,
-} from '@/composables/difficultyLadder'
+import { applyInteractionKnob, clearDifficultyLevers, climbDifficultyLadder, summarizeLadder, type AxisTruncatedPoint, type KnobPointName, type LadderPoint, type LadderPointScene, type LadderResult, type LadderSnapshot } from '@/composables/difficultyLadder'
+import { absorbCapOf } from '@/composables/interactionControls'
 import { axisKindLabel, axisStateOf, axisStands, type AxisState } from '@/composables/difficultyAxis'
-import {
-  applyAxisBinding, applyBuffToStore, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf,
-  computeDifficulty, type DifficultyWeights,
-} from '@/composables/teamCompare'
+import { applyAxisBinding, applyBuffToStore, applyGoldAllocationToStore, applyGoldSteps, applyTeamToStore, baseGoldOf } from '@/composables/teamCompare'
+import { computeDifficulty, type DifficultyWeights } from '@/composables/operationalDifficulty'
 import { presetBaseEngines } from '@/composables/goldStepsFromCatalog'
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'

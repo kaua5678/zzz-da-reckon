@@ -6,24 +6,8 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { interactionSurvivalBySlot, roundInteractionCount } from '@/composables/liveInteractions'
-import {
-  applyAxisBinding,
-  applyPresetInteractions,
-  applyGoldSteps,
-  baseGoldOf,
-  buildGoldStepsFromConfig,
-  computeAutoEnginePicks,
-  DEFAULT_AUTO_ENGINE_POOL,
-  computeDifficulty,
-  defaultInteractionExponent,
-  BOSS_ATTACK_INTERACTIONS,
-  computeOptimalGoldAllocations,
-  type GoldAllocationAlternative,
-  computeTeamComparePoints,
-  isLimitedWEngine,
-  resolveGoldLevel,
-  teamGoldOf,
-} from '@/composables/teamCompare'
+import { applyAxisBinding, applyPresetInteractions, applyGoldSteps, baseGoldOf, buildGoldStepsFromConfig, computeAutoEnginePicks, DEFAULT_AUTO_ENGINE_POOL, computeOptimalGoldAllocations, type GoldAllocationAlternative, computeTeamComparePoints, isLimitedWEngine, resolveGoldLevel, teamGoldOf } from '@/composables/teamCompare'
+import { computeDifficulty, defaultInteractionExponent, BOSS_ATTACK_INTERACTIONS } from '@/composables/operationalDifficulty'
 import { catalogGoldSteps, presetBaseEngines, goldStepsForPreset } from '@/composables/goldStepsFromCatalog'
 import { teamPresets } from '@/data/teamPresets'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard } from '@/types/bossPreset'

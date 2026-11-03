@@ -17,9 +17,11 @@ import {
   axisWorseThanNoAxis,
   type DifficultyCurveOptions, type DifficultyCurveRow,
 } from '@/composables/difficultyCurve'
-import { absorbCapOf, clearDifficultyLevers, climbDifficultyLadder, scanAbsorbGrid, type LadderResult, type LadderPoint } from '@/composables/difficultyLadder'
+import { clearDifficultyLevers, climbDifficultyLadder, scanAbsorbGrid, type LadderResult, type LadderPoint } from '@/composables/difficultyLadder'
+import { absorbCapOf } from '@/composables/interactionControls'
 import { restoreStateDelta } from '@/composables/configDelta'
-import { applyTeamToStore, computeDifficulty } from '@/composables/teamCompare'
+import { applyTeamToStore } from '@/composables/teamCompare'
+import { computeDifficulty } from '@/composables/operationalDifficulty'
 import { frontlineOccupationBreakdown, netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { teamPresets } from '@/data/teamPresets'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'

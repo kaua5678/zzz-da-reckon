@@ -39,8 +39,13 @@ describe('CC-68 队伍对比专属交互类型 → compareInteractionTypes', () 
   }, 60000)
 
   it('源码锁：teamCompare.ts 不再写死 1471', () => {
-    const src = readFileSync(resolve(__dirname, '../teamCompare.ts'), 'utf-8')
-    expect(src).not.toContain(`'1471'`)
-    expect(src).toContain('teamCompareInteractionTypes(team)')
+    // 口径跟随声明位置：2026-11-03 起难度量尺（含补零行）住在 operationalDifficulty.ts，
+    // teamCompare 只转出新入口；两处都不得写死角色 id，且必须按模块声明取交互类型。
+    for (const rel of ['../teamCompare.ts', '../operationalDifficulty.ts']) {
+      const src = readFileSync(resolve(__dirname, rel), 'utf-8')
+      expect(src, rel).not.toContain(`'1471'`)
+    }
+    expect(readFileSync(resolve(__dirname, '../operationalDifficulty.ts'), 'utf-8'))
+      .toContain('teamCompareInteractionTypes(team)')
   })
 })

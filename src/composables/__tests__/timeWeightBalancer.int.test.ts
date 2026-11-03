@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
-import { optimizeTeamTimeWeights } from '@/composables/teamTimeline'
+import { optimizeTeamTimeWeights } from '@/composables/teamTimeWeights'
 
 describe('optimizeTeamTimeWeights（真实引擎接线）', () => {
   it('猫又+格莉丝+丽娜：均衡不劣于等权、总权重守恒、支援槽保持 0', async () => {

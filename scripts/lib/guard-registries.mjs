@@ -253,7 +253,6 @@ export const CALIBER_TRIGGER_ALLOWLIST = [
   "src/composables/resourceCalc/ultimatePromote.ts engine:实战档位喧响计数",
   "src/composables/resourceCalc/ultimatePromote.ts engine:失衡次数不动点",
   "src/composables/stunVulnSummary.ts engine:失衡易伤可见化/加权信用",
-  "src/composables/teamCompare.ts engine:操作难度/权重可调",
   "src/composables/timeWeightAllocation.ts engine:分配策略/主C判定",
   "src/core/damage.ts engine:damage/乘区顺序",
   "src/core/effectiveTime.ts engine:stun/时间守恒",

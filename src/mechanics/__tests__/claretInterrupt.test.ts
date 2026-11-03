@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { useConfigStore } from '@/stores/config'
-import { computeDifficulty, defaultInteractionExponent, defaultInteractionFormula } from '@/composables/teamCompare'
+import { computeDifficulty, defaultInteractionExponent, defaultInteractionFormula } from '@/composables/operationalDifficulty'
 import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
 import { getAgentMechanic } from '@/mechanics'
 import {

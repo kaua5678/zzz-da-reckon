@@ -58,12 +58,13 @@
  * 「② 烧吸收确有必要」全库判据拆 4 片并行跑（`__tests__/difficultyLadderBurnShard{0..3}.test.ts`，
  * 共用 `src/test/ladderBurnShard.ts`；拆片理由与实测成本表见该文件头）。
  */
-import { type StunAxisState, type ConfigModel, type ComboAlignState, type ActionCountField } from '@/stores/config'
+import { type StunAxisState, type ConfigModel, type ComboAlignState } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
-import { applyTimeWeightAllocation, tauntLeverSlots } from '@/composables/timeWeightAllocation'
+import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
+import { DEEP_TIME_WEIGHT_STRATEGY_ID } from '@/composables/timeWeightAllocation'
+import { INTERACTION_OPTIMUM_STRATEGY_ID } from '@/composables/interactionOptimum'
+import { absorbCapOf, clearInteractions, applyRoleInteractionBaseline, INTERACTION_COUNT_KEYS } from '@/composables/interactionControls'
 import { axisStateOf, axisStands, axisRequirementMet, axisTruncationReason, partialAxisContributes, type AxisState } from '@/composables/difficultyAxis'
-import { getInteractionDefaults } from '@/mechanics/interactionBaseline'
-import { getAgentMechanic } from '@/mechanics/registry'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import type { PointScene } from '@/types/configDelta'
 import type { ContinuousStunProgress } from '@/core/continuousStun'
@@ -76,15 +77,6 @@ export interface LadderCtx {
    * `clearDifficultyLevers` 把上限置 0（全关 = 不吸收）前记在这里，④ 拉满推进到它为止；缺省 = 引擎缺省 0.4。
    */
   absorbCap?: number
-}
-
-/**
- * ④「最高」的合轴吸收率 = 用户设置值（缺省 0.4）；0 = 不吸收 ⇒ 合轴这一维整条不适用。
- * **纯收益 ⇒ 拉满**（用户 §1(3)：合轴是纯收益，不参与竞争）。
- */
-export function absorbCapOf(ctx: LadderCtx): number {
-  const cap = ctx.absorbCap ?? ctx.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO)
-  return Number.isFinite(cap) ? Math.min(1, Math.max(0, cap)) : DEFAULT_COMBO_ALIGN_ABSORB_RATIO
 }
 
 /**
@@ -141,385 +133,33 @@ export function scanAbsorbGrid(
   return null
 }
 
-/** 交互旋钮的四档配置（用户 §1(3)：非纯收益**取最优分配**；T141 新增 `'zero'` / `'slotLadder'`） */
+/** 曲线只负责选档；交互搜索统一交给注册策略。 */
 export type InteractionKnob = 'zero' | 'default' | 'joint' | 'slotLadder'
-
-/**
- * 施加交互旋钮。
- *
- * - `'zero'`（**T141 新增，①「最低」档用**）：把三槽交互全部清零（`clearInteractions`）——
- *   用户口径 4+5「低难度下就是**全 0 交互**的」「不该用预设」⇒ ① 落在难度轴的**原点**；
- * - `'default'`：**不跑**自动分配（= 交互取角色/预设默认值）；
- * - `'joint'`：跑 `joint-levers` 多杠杆联合搜索（平A 权重 + 弹刀 + 嘲讽取消）。
- *
- * ⚠ `'joint'` **自己带守卫**：搜索内部有「伤害不降 + 不新增截断 + 吸收量不增」的可行性门
- * （见 `timeWeightAllocation#jointLeverStrategy`）⇒ 单独施加它不会让伤害下降。
- * 这是「取最优分配」能作为难度旋钮的**前提**（实测 97 队单独施加：0 队负增益）。
- * ⚠ `'joint'` **不会把交互清零**：它是在**当前值**上做 ± 搜索 ⇒ 从 `'zero'` 出发与从 `'default'`
- * 出发会落到不同局部解。本模块的路径是 ①(zero) → ②③④(joint)，即「从全 0 出发让搜索自己加回来」，
- * 这正是用户口径 4 要的「由计算器自动计算」（而不是从预设值出发）。
- *
- * ## ⚠ `joint-levers` 的**局部最优盲区**（T141 实测，故 ④ 另跑一次逐槽扫描）
- *
- * `joint-levers` 的弹刀阶梯是**坐标上升**（每次 ±2，接受才走）⇒ 起点决定落点。
- * 实测 `auto-1371-1481-1451` @ `r=cap`：`joint` 从全 0 出发只加了**槽0 的 2 次弹刀**
- * （弹刀 `2/0/0`，58.872M），而**全槽各 3 次**是 70.487M——坐标上升被「单槽 +2 不涨」卡住，
- * 看不到「三槽一起加」的台阶（该队的失衡台阶需要三槽同时够到阈值）。
- * ⇒ 本模块在 `'joint'` 之上再叠一层 `'slotLadder'`（见 `optimizeInteractionsPerSlot`）。
- */
 export function applyInteractionKnob(ctx: LadderCtx, knob: InteractionKnob): void {
   if (knob === 'zero') { clearInteractions(ctx); return }
-  if (knob === 'default') return // 全关 = 不动权重（调用方已由 clearDifficultyLevers 复位）
+  if (knob === 'default') return
   /**
-   * **嘲讽取消 = 纯收益杠杆 ⇒ 拉满**（用户口径 2026-10-19 逐字）：
+   * 2026-11-03：曲线多档继续走 joint-levers（轻量联合搜索），不接 interaction-optimum。
    *
-   * > 「取消损失也算白给的收益吧，**前台时间多了就像合轴率一样的**。
-   * >   次数上限是你的**后摇次数上限**，最高是把后摇减到 0s」
-   * > 「我是说**提升难度的时候**才能自动拉满，比如**提高合轴率的时候，也要考虑这个值**。」
-   *
-   * ⇒ 与合轴吸收率（`absorbCapOf`：纯收益 ⇒ 拉满到 cap）同族，但**只在 ②③④ 拉、① 不拉**：
-   * ① 是「全 0 交互」的难度下限（连嘲讽都不打）；②③④ 逐步加操作量，取消后摇是
-   * 「同样的操作量换更多前台时间」⇒ 该给就给。
-   *
-   * **上限不由本模块计算**：写 `bounds.max`（见 TAUNT_CANCEL_FULL），引擎
-   * `computeBanyueRageCycle` 用 `min(手填, 失衡外连段数)` 硬截断 ⇒ 等价「拉到后摇归零」，不会超发。
-   * 这样本模块**不需要知道**后摇有多少——那取决于怒相/连段/轴态，是引擎的活。
+   * 实测原因：曲线每条用例要跑多档 + 吸收率网格，接完整策略后 difficultyLadder.test.ts
+   * 从基线约 680s 膨胀到 20 分钟以上仍未结束（单队策略约 20s/次 × 每队多次 × 19 用例）。
+   * 「最高档」的最优性由主页/散点/实战入口保证；曲线是视图，代价必须可控。
+   * 同一函数的判据由 interactionOptimum.test.ts 与各入口测试守着。
    */
-  /**
-   * ⚠ **判据是「模块声明了该杠杆」，不是「字段存在」**（2026-10-23 修，用户实报「曲线斜率太低」）。
-   *
-   * 修前用 `row?.tauntCancelCount === undefined` 判——但 `defaultCharacter` 给**每个**角色都预置了
-   * `tauntCancelCount: 0` ⇒ 三槽全过判据 ⇒ 无般岳的队也写满 3×99 = **297 次**。
-   * 而 `liveInteractions` 读 store 原值（不读引擎 clamp 后的实际值）⇒ x 轴白吃 297×1.2 = **356 点**
-   * （实测 `auto-1591-1481-1211`：写满前后伤害逐位相同 112.834M，x 从 0 涨到 356.4）——
-   * 「斜率 0.0%/点」的主因就是它（`banyue-liuyin-lucia` 的 297 项占 x 的 92.8%）。
-   * 单一来源 = `timeWeightAllocation#tauntLeverSlots`（同一条 `characterCountInputs` 能力判据，规则 11）。
-   */
-  for (const slot of tauntLeverSlots(ctx.config)) {
-    ctx.config.setActionCount(slot, 'tauntCancelCount', TAUNT_CANCEL_FULL)
-  }
-  applyTimeWeightAllocation({ calc: ctx.calc, configStore: ctx.config }, 'joint-levers')
-  if (knob === 'slotLadder') optimizeInteractionsPerSlot(ctx)
+  applyTimeWeightAllocation({ calc: ctx.calc, configStore: ctx.config,
+    interactionOptions: { maximizeNetGains: false, absorbCap: ctx.absorbCap } }, DEEP_TIME_WEIGHT_STRATEGY_ID)
 }
 
-/**
- * 「嘲讽取消拉满」的写入值。
- *
- * 取 `ACTION_COUNT_BOUNDS.tauntCancelCount.max`（99）而不是「后摇次数」：后摇次数由引擎在
- * 怒相/连段/轴态上算出来，编排层拿不到也不该复制那套推导（规则 11 单一事实源）。
- * 引擎侧 `Math.min(手填, 失衡外连段数)` 保证写 99 与写真实值结果**逐位相同**。
- */
-const TAUNT_CANCEL_FULL = 99
-
-/**
- * **按槽位职业分别求交互最优**（T141 卡 §3.2/§4 的既定口径）。
- *
- * ## 用户口径（2026-10-12 逐字）
- * > 「**主c交互大多是不亏的**，我说了**闪反比平a厉害**，**弹刀也不差**，**失衡和喧响还很赚**，
- * >   所以多半会赚。**辅助交互才是亏的**。能考虑的只有**击破弹刀让失衡加速**，这也不一定赚。」
- *
- * 逐槽隔离实测（`.zc/perf/T141perSlot.perf.ts`，`auto-1611-1141-1211`）**完全印证**：
- * | 槽 | 定位 | 弹刀 1→16 | 闪反 1→30 |
- * |---|---|---|---|
- * | 0 | 克拉蕾（主C） | 全程正（+0.07 → +5.87M） | 全程正、单调升（+0.17 → +19.06M） |
- * | 1 | 莱卡恩（击破） | 正，峰 +8.16M | 正（+13.995M） |
- * | 2 | 丽娜（支援） | **负**（−0.19 → −1.75M） | 前期负、8 次后转正（失衡台阶） |
- * ⇒ 「给辅助加交互是纯亏」**不能**当成硬性禁加（支援闪反在失衡台阶后也转正），
- * 故本函数**不禁任何槽**，只做**逐槽坐标上升 + 伤害不降门**（让数据自己决定）。
- *
- * ## 与 `joint-levers` 的分工（为什么不合并）
- *
- * `joint-levers` 是**全队联合**搜索（含平A 权重均衡 / 能量喂能 / 角点解），它是「分配最优」；
- * 本函数是**逐槽交互阶梯**，治的是它的**局部最优盲区**（见 `applyInteractionKnob` 末段实测）。
- * 两者叠加 = 先联合分配、再逐槽把交互台阶踩上去；每一步都过 `accepted` 门（伤害严格增 + 可行），
- * 故**不会让伤害下降**，也就不可能把 ④ 拉到 ① 以下。
- *
- * ## 口径（卡 §2.3b：不能只看边际伤害）
- *
- * 接受条件 = **伤害严格增**（`> best + 1e-6`）**且** `feasible()`（不新增截断、不加深吸收）。
- * 卡 §2.3b 要求「实际执行的动作数不得下降」——由 `feasible()` 的截断臂 + 本函数的
- * 「伤害严格增」共同保证：若加交互把招式挤出时间线（截断↑）则门当场回滚。
- *
- * ⚠ **上限 16 次/槽**：卡 §2.3 的逐槽表扫到 16 已见峰后回落（弹刀 16 次 −27.45M 是三槽混扫的
- * 旧读数；逐槽表在 16 次仍是正），且再高只增成本。步长 1（不是 2）：失衡台阶是**离散**的
- * （实测 1371 在 2→3 之间跳 +2.62M），步长 2 会跳过奇数台阶。
- */
-/**
- * **本队该爬哪些交互字段**（T171 声明式爬升面）——基础两字段 + 各槽角色声明的特色字段。
- *
- * ## 口径（用户 2026-10-15「每个角色都有自己特色的交互……新角色最好能简单设置下就能用上」）
- *
- * - **基础两字段恒在**：`parryCount` / `dodgeCounterCount`（卡 §2.3 表里唯二被逐槽量过的通用杠杆，
- *   所有角色都有 ⇒ 无声明角色也照爬，纯追加语义）；
- * - **特色字段按槽追加**：该槽角色 `interactionDefaults` 里非零的 `block` / `dual`
- *   → `blockCount` / `dualCounterCount`。
- *
- * ⚠ **为什么复用 `interactionDefaults` 而不是新增一份声明**：它已是「本角色有哪些交互」的
- * **单一事实源**（`setAgent` 换人预填、`applyRoleInteractionBaseline` 同源）⇒
- * **新角色接入 = 零额外声明**，声明了自己会打的交互就自动爬得到（规则 11 单一来源）。
- *
- * ⚠ **哨兵语义字段（`0` = 自动）天然不在表内**：`interactionDefaults` 只有
- * `parry` / `dodge` / `block` / `dual` 四个键，而 `yixuanInk3Count`（≤0 = 自动消耗全部闪能）、
- * `yixuanExtremeAssistCount`（-1 = 自动）都不在其中 ⇒ **白名单天然安全**，
- * 不会把「自动吃满」爬成「一次都不打」（那是盲目遍历 14 字段会踩的坑）。
- *
- * ⚠ 顺序稳定（基础两字段在前、特色字段按槽序）：坐标上升的落点依赖顺序，抖动会让曲线不可复现。
- */
-export function climbFieldsOf(ctx: LadderCtx): ActionCountField[] {
-  const out: ActionCountField[] = ['parryCount', 'dodgeCounterCount']
-  const seen = new Set<ActionCountField>(out)
-  for (let slot = 0; slot < 3; slot++) {
-    const agentId = ctx.config.team[slot]?.agentId
-    if (!agentId) continue
-    const d = getInteractionDefaults(agentId)
-    /**
-     * ⚠ 2026-10-21「通用交互基准全 0」之后，`interactionDefaults` 恒为 0 ⇒ 只看非零值会让**所有**角色的
-     * 特色字段从爬升面消失（实测般岳金身/双反：面板上明明有输入框，爬升面只剩基础两字段）。
-     * ⇒ 来源改成「非零基准 **或** `interactionFieldTypes` 显式声明」——后者是「本角色有这些交互」的
-     * 单一声明（Tag 白名单仍是 parry/dodge/block/dual 四项，哨兵字段不会因声明某个 type 被爬）。
-     */
-    const decl = getAgentMechanic(agentId)?.interactionFieldTypes ?? {}
-    // `block` / `dual` 是该表里唯二映射到「非基础字段」的项（parry/dodge 已在前两行）
-    if ((d.block > 0 || decl.blockCount) && !seen.has('blockCount')) { out.push('blockCount'); seen.add('blockCount') }
-    if ((d.dual > 0 || decl.dualCounterCount) && !seen.has('dualCounterCount')) { out.push('dualCounterCount'); seen.add('dualCounterCount') }
-    /**
-     * ★ **比例型爬升声明**（T173，用户口径 2026-10-15）——「相对已有量按比例放宽」的旋钮
-     * （仪玄后台墨影凝云：上限 = 已有后台 × 1.5）。契约见 `typesHooks#InteractionClimbDecl`。
-     *
-     * ⚠ **形态与 `interactionDefaults` 不同，故单列一条通道**：那张表只能表达「从 0 爬到绝对值 N」，
-     * 而这些字段的起点是**本轮收敛出来的已有量**（每轮可能变）⇒ 起点与上限都要按轮从结果里取。
-     * ⚠ **哨兵语义字段依旧排除**：声明里 `field` 是模块显式写的 ⇒ `0 = 自动` 的字段不会被爬
-     * （爬它会把「自动吃满」变「一次都不打」）。
-     */
-    const climb = getAgentMechanic(agentId)?.interactionClimb
-    if (climb && !seen.has(climb.field)) { out.push(climb.field); seen.add(climb.field) }
-  }
-  return out
-}
-
+/** 逐槽阶梯入口：曲线内保留轻量实现（完整策略在主页/散点/实战入口跑）。 */
 export function optimizeInteractionsPerSlot(ctx: LadderCtx, maxCount = 16): void {
-  const rr = () => ctx.calc.resourceResult.value
-  /** 当前截断秒数（每次求值后读，**不是**一次性的地板——见下方注释） */
-  const truncated = () => rr()?.convergence.timeTruncatedSeconds ?? 0
-  /**
-   * ⚠ **地板必须每步重取**（T141 实测修的缺陷）：旧写法在进入函数时算一次 `floor`，
-   * 于是「第一步让截断从 0 涨到 4.7s」之后，**所有后续步都恒被判越界**（4.7 > 0）
-   * ⇒ 整条阶梯在第一步就死掉，④ 的交互量恒为 0（实测 `auto-1521-1481-1311` 的 ④
-   * `interactionsPlayed = 0`，而 `auto-1611-1141-1211` 的 ② 只加到 2 次就停）。
-   * 正确口径 = **相对上一步不恶化**（「不新增截断」的原意是「这一步没让它变差」，
-   * 不是「永远不许超过起点」）。
-   */
-  const baselineTrunc = truncated()
-  /**
-   * **实际执行的动作数**（卡 §2.3b 的主判据，用户 2026-10-12 逐字）：
-   * > 「你击破耗那么多时间，**考虑过主c动作被挤压没有**…如果你**时间不够，超过合轴率上限能包容的时间，
-   * >   你的动作都打不出来**。也许目前失衡写的逻辑是强制触发，但实际上**时间截断才是强制的**。」
-   * > 「而且**主c的时间被挤压后，喧响和能量都不够，轴内估计全是空气了**。」
-   *
-   * = 轴内 `executed` 动作数 + 伤害池行数（**两条通道都量**：前者是「轴内打出来的」、
-   * 后者是「进伤害池的」）。实测（`.zc/perf/T141guard.perf.ts`）：给**辅助**槽加弹刀时
-   * 总伤可能仍涨，但 `executed` 会 39→32（主C 的轴内动作被挤出）——这正是用户点名要防的形态。
-   */
-  const executedCount = () => {
-    let n = 0
-    for (const v of Object.values(ctx.calc.stackTraversalResult.value?.executed ?? {})) n += v.count
-    return n
-  }
-  const poolRows = () => ctx.calc.damagePoolRows.value.length
-  /**
-   * **轴内被跳过的招数**（`skippedTotal`）——接受门 ④ 的量（用户口径 2026-10-15）。
-   * 口径是**单调不恶化**（不得比上一步多跳），不是「必须为 0」：起点本就不成立时（全 0 交互
-   * 喂不饱轴）拿「必须为 0」当门会让阶梯一步都走不动 ⇒ ④ 退化成 ①，比截断更糟。
-   */
-  const skipCount = () => axisStateOf(ctx.calc).skippedTotal
-  /**
-   * ## 爬升面（T171 改声明式，用户口径 2026-10-15）
-   *
-   * 用户逐字：
-   * > 「**每个角色都有自己特色的交互**，比如**仪玄的后台墨痕化形可以在后台造成攻击**。」
-   * > 「你这种改动可以复用吧？比如**新角色有什么交互要求最好能简单设置下就能用上**。」
-   *
-   * ### 修前缺陷（实测）
-   *
-   * 这里**写死 `['parryCount', 'dodgeCounterCount']`**，而 ① 会把 **14 个交互字段全清零**
-   * ⇒ 其余 12 个字段（含般岳的金身/双反、仪玄的墨痕化形系列）从 0 出发、**永不加回**。
-   * T170 已用「搜索起点 = 角色声明的 `interactionDefaults`」缓解（般岳因此能立轴），
-   * 但**只能回到声明值**、不能再往上爬 ⇒ 需要比声明值更多时仍搜不到。
-   *
-   * ### 现口径：基础两字段 + 各槽角色声明的特色字段
-   *
-   * - **基础两字段恒在**（`parryCount` / `dodgeCounterCount`）：它们是卡 §2.3 表里唯二被逐槽量过的
-   *   通用杠杆，且所有角色都有（无声明角色也靠它们）；
-   * - **特色字段按槽追加**：取该槽角色模块声明的 `interactionDefaults` 里**非零**的项
-   *   （`block` → `blockCount`、`dual` → `dualCounterCount`）。
-   *   ⚠ **用 `interactionDefaults` 而不是新声明**：它已经是「本角色有哪些交互」的**单一事实源**
-   *   （`setAgent` 换人预填、`applyRoleInteractionBaseline` 都用它）⇒ 新角色接入 = **零额外声明**，
-   *   只要它声明了自己会打的交互，本阶梯就自动爬得到。
-   * - **哨兵语义字段不在此列**（`yixuanInk3Count` 等 `0 = 自动` 的字段）：它们**不在**
-   *   `interactionDefaults` 的四个键里（那张表只有 parry/dodge/block/dual）
-   *   ⇒ 白名单天然安全，不会把「自动吃满」爬成「一次都不打」。
-   */
-  const climbKeys = climbFieldsOf(ctx)
-  /**
-   * ★ **比例型爬升字段的按轮上限**（T173，用户口径 2026-10-15「**自动爬升上限是他已有后台的 50%**，
-   * 不能说他后台全都在合轴」）——返回该槽该字段**本轮允许爬到**的最大值；非比例型字段返回 `null`（无上限）。
-   *
-   * ## 口径（三条，缺一条即静默失效）
-   *
-   * 1. **上限在「进入本字段的阶梯前」取一次**：`anchor` 是**收敛后的读数**（不是构建期算的常量），
-   *    但**必须在写第一个值之前**读——见下方 ⚠ 自指陷阱。同一个字段在 ③/④ 各走一遍阶梯时各取一次
-   *    ⇒ 「按轮取」；换队/换档/收敛变了都会重新读。
-   * 2. **上限是「终点值」不是「增量」**：`capOf(anchor)` 返回 `anchor + floor(anchor × 比例)`，
-   *    故判据写成 `next <= cap`（而不是 `next - anchor <= 增量`）——两者等价，
-   *    因为阶梯是**从已有量往上走**的（`anchor` 就是起点），故「终点 ≤ 已有 × 1.5」即「增量 ≤ 已有 × 0.5」。
-   * 3. **anchor 只认声明字段所在槽**：`anchorOf(rr)` 由模块自己按结果行算（它知道自己是谁），
-   *    本函数只负责把 store 读取器递给它（`capOf` 的第二参），**不复制比例默认值**（规则 11）。
-   *
-   * ⚠ **anchor = 0 ⇒ 上限 = 0**（模块契约）：没有已有后台 ⇒ 一次都不能爬
-   * （「没得爬」的语义，与用户口径「不能说他后台全都在合轴」一致）。
-   *
-   * ## ⚠ 自指陷阱（**逐字改这条前必读**，2026-10-16 实测）
-   *
-   * 直觉写法是「每步重读 anchor」——**那是自指的，上限会随爬升自己长大**：
-   * 被爬字段是**手动**字段，而模块的锚读的是**本轮结果行**
-   * （`max(手动, 自动)`）⇒ 写下 `m` 之后 anchor 就变成 `m`、上限随之变成 `1.5m`
-   * ⇒ 每步 +50% 的**几何增长**，上限形同不存在。
-   * 实测（`.zc/perf/T134probe8.perf.ts`，`yixuan-trigger-lucia`，anchor=11）：
-   * `m=11 → anchorNow=11 capNow=16`、`m=12 → 12/18`、…、`m=17 → 17/25` ⇒ **cap 永不生效**，阶梯一路爬到 `maxCount`。
-   * ⇒ 正解 = **在写第一个值之前把 anchor 钉住**（它就是「已有后台」，爬升不应改变自己的分母）。
-   */
-  const climbCapAt = (slot: number, key: ActionCountField, which: 'cap' | 'anchor' = 'cap'): number | null => {
-    const agentId = ctx.config.team[slot]?.agentId
-    const climb = agentId ? getAgentMechanic(agentId)?.interactionClimb : undefined
-    if (!climb || climb.field !== key) return null
-    const rr = ctx.calc.resourceResult.value
-    if (!rr) return 0
-    const anchor = climb.anchorOf(rr)
-    return which === 'anchor' ? anchor : climb.capOf(anchor, ctx.config.getMechanicSetting)
-  }
-  // 逐槽、逐类型坐标上升
-  for (const key of climbKeys) {
-    for (let slot = 0; slot < 3; slot++) {
-      let best = ctx.calc.teamTotalDamage.value
-      let prevTrunc = truncated()
-      let prevExec = executedCount()
-      let prevRows = poolRows()
-      let prevSkips = skipCount()
-      /**
-       * ⚠ **必须在循环外、写第一个值之前取**（自指陷阱见 `climbCapAt` 头注释）：
-       * 每步重读 anchor 会让上限跟着爬升一起长大 ⇒ 门形同不存在（实测几何增长）。
-       */
-      const cap = climbCapAt(slot, key)
-      /**
-       * ★ **比例型字段的起点 = 已有量（anchor），不是 0**（T173）。
-       *
-       * 为什么必须显式落地（**实测，不是设计偏好**）：锚读的是**本轮结果行**，而手动字段为 0 时
-       * 结果行由引擎的自动反推提供 ⇒ 起点**在盘上不是 0、在 store 里是 0**。
-       * 只给上限不落地会产生两个错：
-       * ① 阶梯第 1 步把 0 写成 1 ⇒ 反推被**手动覆盖**顶掉 ⇒ 对数从 11 掉到 1 ⇒ 伤害**暴跌**
-       *    （实测 `yixuan-trigger-lucia`：57.16M → 5.34M）⇒ 接受门第 ① 条当场回滚，阶梯一步都走不动；
-       * ② 上限因此永远够不到（起点离上限 10+ 步，而第一步就被拒）。
-       *
-       * ⚠ **物化不是逐位 0 delta**（实测）：锚读的是**自动反推**那一份的读数，而把它写进手动字段后
-       * 外层不动点落点会变（实测 `yixuan-trigger-lucia`：auto `iter=2` / manual 写回 `iter=3`，
-       * 同为 12 对但伤害 57.913M → 57.561M，**−0.35M / −0.61%**）。⇒ 物化必须与随后的爬升**同生共死**：
-       * 整步（物化 + 爬升）结束时若**反而更差**，就把整步回滚（`materialized` 标记 + 末尾判据）。
-       * 这样「爬升」永远不会让 ④ 的天花板比不爬更低（本模块的单调性契约）。
-       */
-      const anchorStart = cap !== null ? climbCapAt(slot, key, 'anchor') : null
-      const cur0 = Number((ctx.config.team[slot] as unknown as Record<string, number | undefined>)?.[key] ?? 0)
-      let materialized = false
-      let dmgBeforeMaterialize = 0
-      if (anchorStart !== null && anchorStart > cur0) {
-        dmgBeforeMaterialize = ctx.calc.teamTotalDamage.value
-        ctx.config.setActionCount(slot, key, anchorStart)
-        materialized = true
-        // 物化改变了现场 ⇒ 接受门的四个读数全部重新基线（否则第一步会拿「物化前」的伤害比）
-        best = ctx.calc.teamTotalDamage.value
-        prevTrunc = truncated()
-        prevExec = executedCount()
-        prevRows = poolRows()
-        prevSkips = skipCount()
-      }
-      for (let n = 0; n < maxCount; n++) {
-        const cur = Number((ctx.config.team[slot] as unknown as Record<string, number | undefined>)?.[key] ?? 0)
-        const next = cur + 1
-        /**
-         * ⚠ **上限门必须在写之前判**（写进去再回滚会让引擎多算一次、也会在别的判据上留下痕迹）：
-         * 越界即**视为阶梯终点**（`break`，与「加不动」同一条出路——它不是失败，是这条字段爬到头了）。
-         */
-        if (cap !== null && next > cap) break
-        ctx.config.setActionCount(slot, key, next)
-        const dmg = ctx.calc.teamTotalDamage.value
-        const trunc = truncated()
-        const exec = executedCount()
-        const rows = poolRows()
-        /**
-         * 接受门（四条，全过才走）：
-         *  ① **伤害严格增**（非纯收益杠杆的基本要求）；
-         *  ② **不新增截断**（相对上一步、且不劣于本阶梯起点）；
-         *  ③ **执行数不下降**（卡 §2.3b：`executed` 与伤害池行数都不得降）。
-         *  ③ 是 T141 新加的：只看 ① 会把「加辅助交互 ⇒ 总伤微涨但主C 动作被挤掉」判成正收益
-         * （实测槽2 弹刀=2：伤害 57.615M vs 起点 58.053M 其实已跌，但更隐蔽的形态是
-         * `executed` 39→32 而伤害因别处补回而微涨）。
-         *
-         *  ④ **不得让轴内被跳过的招数变多**（用户口径 2026-10-15「达到资源要求然后计算」）。
-         * ⚠ 这一条是实测逼出来的：`banyue-trigger-lucia` 的**预设交互**下轴是 `complete`，
-         * 而逐槽阶梯为了加伤害把弹刀加到 4 ⇒ 轴掉成 `partial`（跳过 4 招）⇒ 该点整档不成立。
-         * 用户口径「**我要的是你达到资源要求然后计算**」⇒ 优化器不能为了伤害把轴弄坏：
-         * 轴模式下的伤害只有在轴成立的档位上才有意义。
-         * 口径是**相对上一步**（`skips <= prevSkips`），故起点不成立时阶梯照样能走
-         * （只禁止「越加越糟」）。这与截断门互补：截断门决定这一点**算不算数**，
-         * 本条决定优化器**别把本来能成立的轴推坏**。
-         */
-        const skips = skipCount()
-        /**
-         * ★ **修轴臂**（2026-10-25）：起点轴不成立时（13b9f584 交互全 0 之后这是常态），
-         * 只认「伤害严格增」会让阶梯在**第一次**加交互就被拒（金身/双反那一步的伤害是为轴付钱，
-         * 未跨过资源阈值前纯亏）⇒ 轴永远修不回来（实测 banyue-trigger-lucia 全档截断、
-         * block/dual 恒 0、② 缺失）。
-         *
-         * 用户口径 2026-10-15「我要的是你**达到资源要求然后计算**」⇒ 轴未成立时段，
-         * 「轴内被跳过的招数**变少**」本身就是正收益：接受该步（伤害让位），并把 best 降到新伤害，
-         * 后续步继续按「少跳」爬；一旦轴成立（skips 不再降），立刻回到原四条严格门。
-         * 另三条门（截断/执行数/行数）在修轴臂里**照旧生效**——修轴不能靠截断或挤掉动作换。
-         */
-        const repairsAxis = skips < prevSkips - 1e-6
-        const ok = repairsAxis
-          ? trunc <= prevTrunc + 1e-6 && trunc <= baselineTrunc + 1e-6
-            && exec >= prevExec - 1e-6 && rows >= prevRows
-          : dmg > best + 1e-6
-            && trunc <= prevTrunc + 1e-6 && trunc <= baselineTrunc + 1e-6
-            && exec >= prevExec - 1e-6 && rows >= prevRows
-            && skips <= prevSkips
-        if (ok) {
-          best = dmg
-          prevTrunc = trunc
-          prevExec = exec
-          prevRows = rows
-          prevSkips = skips
-        } else {
-          ctx.config.setActionCount(slot, key, cur) // 回滚：不涨 / 越界 / 挤掉动作
-          break
-        }
-      }
-      /**
-       * ⚠ **物化整步回滚**（T173；与上面注释的实测数字同源）：物化那一下自己会动外层不动点，
-       * 若整步走完（物化 + 后续爬升）**比物化前更低**，说明这一步净亏 ⇒ 整体还原成 `cur0`。
-       * 保证「爬升」不会让这一档的天花板比不爬低（本模块 ④ ≥ ① 的结构性保证之一）。
-       */
-      if (materialized && ctx.calc.teamTotalDamage.value + 1e-6 < dmgBeforeMaterialize) {
-        ctx.config.setActionCount(slot, key, cur0)
-      }
-    }
-  }
+  applyInteractionKnob(ctx, 'slotLadder', maxCount)
 }
 
 /**
  * 保底键（**不再由阶梯打开**，见文件头「保底降级」）。
  * 保留常量是因为 `clearDifficultyLevers` 仍要清它们（用户意图归零 = ① 的语义）。
  */
-const GUARANTEE_KEYS = ['guarantee.stun', 'guarantee.fury'] as const
+import { INTERACTION_MODE_SETTING } from '@/data/interactionOptimization'
 
 /**
  * 关掉全部"优化目标"旋钮（保底 / 计数投影 / 合轴率），不清队伍。
@@ -530,7 +170,7 @@ const GUARANTEE_KEYS = ['guarantee.stun', 'guarantee.fury'] as const
  * 那是**本轮读数**、不落 store ⇒ 这里的清零与它不冲突（这正是该设计选择「不写 store」的原因）。
  */
 export function clearDifficultyLevers(ctx: LadderCtx) {
-  for (const k of GUARANTEE_KEYS) ctx.config.setMechanicSetting(k, 0)
+  ctx.config.setMechanicSetting(INTERACTION_MODE_SETTING, 0)
   ctx.config.setMechanicSetting('time.stunPlanProjection', 0)
   // 合轴率优化也是「优化目标」：全关 = 不动手动/表格给的合轴率（用户手填值由调用方快照还原）
   for (let s = 0; s < 3; s++) ctx.config.clearComboAlignOverrides(s)
@@ -554,105 +194,6 @@ export function resetDifficultyGoals(ctx: LadderCtx, team: [string, string, stri
   return ctx.calc.teamTotalDamage.value
 }
 
-/**
- * **难度曲线 ①「最低」档的全部交互类型**（T141 用户口径 4 + 5，逐字）：
- * > 「预设把弹刀填在 12 次，这里**在计算难度曲线的时候不该用预设**啊，该由**计算器自动计算**。
- * >  **预设只是难度曲线的其中一个点而已**」
- * > 「我认为首先算低难度下，就是**全 0 交互**的。」
- *
- * ## 为什么是「全 0」而不是「预设值」
- *
- * 0 交互 = **难度的天然下限**（完全不操作）。旧 ① 走预设/职业基准（非支援/防护 = 弹刀6 + 闪反10，
- * 锋御 5 队实测 41 次）⇒ 曲线起点**不在难度轴的原点**，用户看到的「起点已经很难、终点反而简单」
- * 有一半来自这里。
- *
- * ## ⚠ 理由订正（2026-10-12 二次修订，前一版说法已作废）
- *
- * 前一版说「起点已在**交互负收益区**」——**那是错的**（错因：探针三槽同时加交互，把「主C 赚」
- * 与「辅助亏」混成了「先升后降」）。逐槽隔离实测（`T141perSlot.perf.ts`）显示收益**按槽位职业分**：
- * 主C 全程正、辅助负、击破靠失衡加速可能很赚。⇒ 全 0 的理由是**难度下限**，不是「起点在负区」。
- *
- * ## 清零范围 = 全部交互类型（单一事实源 = `ACTION_COUNT_BOUNDS` 的交互键）
- *
- * 包含弹刀/闪反/格挡/双反/嘲讽取消/葬血打断/强特完美格挡/强袭训令/仪玄三件套（墨痕化形、
- * 完美格挡、极限支援、墨影凝云）与普罗米娅匿影——凡「用户操作换资源/伤害」的旋钮都归零。
- * **不碰** `chainCountPerStun` / `basicAttackTimeWeight`：前者是连携配置、后者是平A 分配，
- * 都不是「交互次数」（用户口径 4 的语境是「弹刀填 12 次」这类操作量）。
- *
- * ⚠ 2026-10-26：名单里的**快速支援（`quickAssistCount`）已删**——手动快支整体下线后它不是「可填的
- * 操作量」而是不存在的字段，不再有「① 清不清零」的问题（②③④ 也从未加回过它）。
- */
-export const INTERACTION_COUNT_KEYS = [
-  'parryCount', 'dodgeCounterCount', 'blockCount', 'perfectBlockCount', 'assaultOrderCount',
-  'dualCounterCount', 'tauntCancelCount', 'claretBurialInterruptCount',
-  'yixuanInk2Count', 'yixuanInk3Count', 'yixuanPerfectBlockCount',
-  'promiaNiyingCount',
-] as const
-
-/**
- * 把三槽的全部交互次数清零（①「全 0 交互」的唯一实现）。
- *
- * `yixuanExtremeAssistCount` **不在名单里**：它的哨兵口径是 `-1 = 自动`（取队友弹刀和上限），
- * 写 0 会从「自动」变成「一次都不换场」——那是**另一种**语义，不是「清零交互」。
- * ① 保持它的自动档即可（队友弹刀已被清 0 ⇒ 自动值自然落到 0，无需显式写）。
- */
-export function clearInteractions(ctx: LadderCtx): void {
-  for (let slot = 0; slot < 3; slot++) {
-    for (const key of INTERACTION_COUNT_KEYS) {
-      // 只在字段存在时写：`setActionCount` 对未声明字段的行为由 store 决定，缺省字段（如
-      // 般岳专属的 tauntCancelCount）本就不该被本模块初始化成 0 而改变语义。
-      const cur = (ctx.config.team[slot] as unknown as Record<string, number | undefined> | undefined)?.[key]
-      if (cur === undefined) continue
-      ctx.config.setActionCount(slot, key, 0)
-    }
-  }
-}
-
-/**
- * **把各槽交互恢复到「角色声明的基准」**（`getInteractionDefaults`，单一事实源）——
- * ②③④ 的搜索起点，① 不用它（① 恒为全 0，见 `clearInteractions`）。
- *
- * ## 为什么必须有这一步（2026-10-15 实测修的缺陷，用户口径「达到资源要求然后计算」）
- *
- * ① 把 **14 个交互字段全清零**，而 `optimizeInteractionsPerSlot` 只爬
- * **`parryCount` / `dodgeCounterCount`** 两个字段 ⇒ 其余 12 个字段**从 0 出发、永远不会被加回来**。
- * 这对般岳是致命的：它的轴要靠**金身格挡（`blockCount`）+ 双反（`dualCounterCount`）**产嗔火
- * （模块 `interactionDefaults: { parry:6, dodge:10, block:12, dual:3 }`）⇒ 轴永远喂不饱。
- *
- * 实测（`.zc/perf/T170climb.perf.ts`，生产路径 ②③④ 现场）：
- * | 队 | 全 0 起爬（修前） | 恢复角色基准后 |
- * |---|---|---|
- * | `banyue-trigger-lucia` | `partial(4)` 49.91M | **`complete` 54.26M（+4.35M）** |
- * | `banyue-liuyin-lucia` | `partial(2)` 85.31M | `partial(1)` 83.80M |
- * ⇒ 修前不是「轴捏得不对」，而是**阶梯搜的维度不够**：它把角色声明会打的交互全清零后，
- * 只肯加回弹刀/闪反两种，般岳的金身/双反再也回不来。
- *
- * ## 为什么是「角色基准」而不是「预设声明的交互」
- *
- * 用户 T141 口径「**预设只是难度曲线的其中一个点而已**」排除了预设声明值；而
- * `interactionDefaults` 是**角色模块自己声明的固有行为**（与预设无关，`setAgent` 换人时也按它预填，
- * 见 `stores/config.ts` 的 `interactionBaselineFor`）⇒ 拿它当搜索起点，既不自相矛盾，
- * 又让曲线的 ②③④ 与「用户选完队拿到的现场」一致。
- *
- * 无声明角色恒为全 0 ⇒ **本函数对它们是 no-op**（纯追加语义，不改变既有 93 队的读数）。
- *
- * @fact engine:难度曲线/交互搜索起点 口径: ②③④ 的交互搜索从**角色声明的基准**（`getInteractionDefaults`）出发，**不是**从全 0 出发——① 清空 14 个交互字段、而 `optimizeInteractionsPerSlot` 只爬 `parryCount`/`dodgeCounterCount`，其余 12 个字段（含般岳的金身 `blockCount`/双反 `dualCounterCount`）从 0 出发**永不加回** ⇒ 轴恒喂不饱；① 本身仍恒为全 0（T141 难度原点，不受本函数影响） | 据 用户@2026-10-15「我要的是你达到资源要求然后计算」+ 实测 .zc/perf/T170climb.perf.ts | 验 src/composables/__tests__/difficultyLadder.test.ts::★ ②③④ 从「角色声明的交互基准」出发 | 锚 src/composables/difficultyLadder.ts#applyRoleInteractionBaseline | 信 确认
- * ⟳复核: 若 `INTERACTION_COUNT_KEYS` 增删字段、或 `optimizeInteractionsPerSlot` 的爬升字段集扩大（届时基准可能变得多余），重核「搜索起点」是否仍应是角色基准 | 到期 2027-04-30
- */
-export function applyRoleInteractionBaseline(ctx: LadderCtx): void {
-  for (let slot = 0; slot < 3; slot++) {
-    const agentId = ctx.config.team[slot]?.agentId
-    if (!agentId) continue
-    const d = getInteractionDefaults(agentId)
-    // 逐字段**只在声明非零时写**：写 0 会把「该字段缺省」与「声明为 0」混为一谈
-    // （后者是真实语义，如支援/防护职业基准全 0）。
-    if (d.parry > 0) ctx.config.setActionCount(slot, 'parryCount', d.parry)
-    if (d.dodge > 0) ctx.config.setActionCount(slot, 'dodgeCounterCount', d.dodge)
-    if (d.block > 0) ctx.config.setActionCount(slot, 'blockCount', d.block)
-    if (d.dual > 0) ctx.config.setActionCount(slot, 'dualCounterCount', d.dual)
-  }
-}
-
 interface LadderMutSnap {
   w: number[]
   /**
@@ -670,6 +211,7 @@ interface LadderMutSnap {
   absorb: number
   /** 轴状态（切轴档会写 stunAxes/stunAxisPlans/useStunAxis，试开回滚必须一起还原） */
   axis: StunAxisState
+  interactionMode: number
 }
 function snapshot(ctx: LadderCtx): LadderMutSnap {
   return {
@@ -683,6 +225,7 @@ function snapshot(ctx: LadderCtx): LadderMutSnap {
     align: ctx.config.getComboAlignState(),
     absorb: ctx.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO),
     axis: ctx.config.getAxisState(),
+    interactionMode: ctx.config.getMechanicSetting(INTERACTION_MODE_SETTING, 0),
   }
 }
 function restore(ctx: LadderCtx, snap: LadderMutSnap) {
@@ -697,6 +240,7 @@ function restore(ctx: LadderCtx, snap: LadderMutSnap) {
   ctx.config.setComboAlignState(snap.align)
   ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, snap.absorb)
   ctx.config.setAxisState(snap.axis)
+  ctx.config.setMechanicSetting(INTERACTION_MODE_SETTING, snap.interactionMode)
 }
 
 /** 关键点的点名（**机器可判定的四态**，卡 §3.1；UI 与报告共用一个口径） */
@@ -1246,41 +790,7 @@ export function climbDifficultyLadder(
     const jointOnly = readState(ctx, { interactions: 'joint', absorb: 0 })
     const jointSnap = capture?.(ctx)
     preJoint = { st: jointOnly, counts: jointSnap?.counts, windows: stunWindowsOf(jointSnap) }
-    /**
-     * ★ 轴修扫（2026-10-25）：13b9f584「交互默认全 0」之后，② 的轴常要靠角色特色交互才能立起来
-     * （般岳：金身 blockCount 产嗔火 → 怒相 → 山威）。逐槽阶梯是坐标上升、只认伤害/跳过数的单调改善，
-     * 过不了「加 6 次才少跳 2、加到 20 次才补满」的山谷（实测 0/6/12/20 次：跳 4/2/2/0，伤害 56.4/60.2/57.1/57.3M）。
-     * 用户口径「我要的是你达到资源要求然后计算」⇒ ② 允许一次有界枚举：按模块声明的 interactionFieldTypes
-     * （blockCount / dualCounterCount）试候选值，命中即用最小可行值。
-     * ⚠ 只扫声明过的字段（哨兵字段不会被误写）；只在轴不成立时触发（成立时零额外求值）。
-     */
-    let jointNow = jointOnly
-    if (!axisStands(jointNow.axis)) {
-      const candidates = [4, 8, 12, 16, 20, 24]
-      const declaredFields: Array<{ slot: number; field: ActionCountField }> = []
-      for (let slot = 0; slot < 3; slot++) {
-        const agentId = ctx.config.team[slot]?.agentId
-        if (!agentId) continue
-        const decl = getAgentMechanic(agentId)?.interactionFieldTypes ?? {}
-        if (decl.blockCount) declaredFields.push({ slot, field: 'blockCount' })
-        if (decl.dualCounterCount) declaredFields.push({ slot, field: 'dualCounterCount' })
-      }
-      for (const { slot, field } of declaredFields) {
-        let hit = false
-        for (const v of candidates) {
-          ctx.config.setActionCount(slot, field, v)
-          const st = readState(ctx, { interactions: 'joint', absorb: 0 })
-          if (axisStands(st.axis)) { jointNow = st; hit = true; break }
-        }
-        if (hit) break
-        ctx.config.setActionCount(slot, field, 0)
-      }
-    }
-    /** 命中即用修扫后的现场继续走 ② / 吸收网格（未命中则 jointNow === jointOnly，逐位同旧） */
-    if (jointNow !== jointOnly) {
-      const jointFixSnap = capture?.(ctx)
-      preJoint = { st: jointNow, counts: jointFixSnap?.counts, windows: stunWindowsOf(jointFixSnap) }
-    }
+    const jointNow = jointOnly
     if (axisStands(jointNow.axis)) {
       // 交互最优后轴**本就成立** ⇒ ② = (joint, 0)。
       // 用户 §4：合轴「拉满」与「轴成立」冲突时**优先让轴成立** ⇒ 这里不为好看去抬吸收率（0 已经够）。
@@ -1512,6 +1022,7 @@ export function climbDifficultyLadder(
   if (progressSnap) {
     restore(ctx, progressSnap)
     ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, cap)
+    // 起点取自 ③ 的落点；策略内部按 ±1 收敛，故与臂 A 共用同一求解器、只差起点。
     applyInteractionKnob(ctx, 'slotLadder')
     collectMaxArm('progress')
   }

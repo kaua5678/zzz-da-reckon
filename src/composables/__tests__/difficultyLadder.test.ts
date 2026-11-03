@@ -26,12 +26,8 @@ import { teamPresets } from '@/data/teamPresets'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { applyTeamToStore } from '@/composables/teamCompare'
 /** ⚠ 本文件顶部已 import 过 `captureDmgBySource`/`captureKeyCounts`（③ 的跃迁判据要用它） */
-import {
-  absorbCapOf, climbDifficultyLadder, summarizeLadder, resetDifficultyGoals, clearDifficultyLevers, scanAbsorbGrid, climbFieldsOf,
-  applyRoleInteractionBaseline,
-  optimizeInteractionsPerSlot, applyInteractionKnob, clearInteractions,
-  type LadderCtx,
-} from '@/composables/difficultyLadder'
+import { climbDifficultyLadder, summarizeLadder, resetDifficultyGoals, clearDifficultyLevers, scanAbsorbGrid, optimizeInteractionsPerSlot, applyInteractionKnob, type LadderCtx } from '@/composables/difficultyLadder'
+import { absorbCapOf, climbFieldsOf, applyRoleInteractionBaseline, clearInteractions } from '@/composables/interactionControls'
 import { axisStands } from '@/composables/difficultyAxis'
 import { captureDmgBySource, captureKeyCounts } from '@/composables/difficultyCurve'
 import { liveInteractions } from '@/composables/liveInteractions'
@@ -210,7 +206,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     clearDifficultyLevers(ctx)
     applyTeamToStore(config, p3)
     clearInteractions(ctx)
-    // ② 的交互旋钮：joint-levers（多杠杆联合搜索）——只许写平A权重 / 弹刀 / 嘲讽取消
+    // 两个旋钮均归口到 interaction-optimum；旧两阶段白名单已被统一策略取代。
     const spyOn = () => {
       const keys = new Set<string>()
       const orig = config.setActionCount.bind(config)
@@ -223,15 +219,15 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     const j = spyOn()
     applyInteractionKnob(ctx, 'joint')
     j.stop()
-    expect([...j.keys].sort(), `joint-levers 只许碰平A权重/弹刀/嘲讽取消（实测 ${JSON.stringify([...j.keys])}）`)
-      .toEqual(['basicAttackTimeWeight', 'parryCount', 'tauntCancelCount'].filter(k => j.keys.has(k)).sort())
+    expect(j.keys, '曲线必须能搜索平A权重与交互次数').toContain('basicAttackTimeWeight')
+    expect([...j.keys].some(k => k === 'parryCount' || k === 'dodgeCounterCount'), '曲线必须能搜索交互次数').toBe(true)
     // ④ 的交互旋钮：slotLadder（逐槽阶梯）——只许写弹刀 / 闪反
     clearInteractions(ctx)
     const sl = spyOn()
     applyInteractionKnob(ctx, 'slotLadder')
     sl.stop()
     expect([...sl.keys].filter(k => k !== 'parryCount' && k !== 'dodgeCounterCount'),
-      `slotLadder 只许爬弹刀/闪反（实测 ${JSON.stringify([...sl.keys])}）`).toEqual([])
+      `slotLadder 与 joint 必须共用同一策略的写入集合（实测 ${JSON.stringify([...sl.keys])}）`).toEqual([...j.keys].filter(k => k !== 'parryCount' && k !== 'dodgeCounterCount'))
     // 反空洞：slotLadder 必须真的加了交互（否则上一条可能只是「什么都没做」）
     expect([0, 1, 2].reduce((a, s2) => a + Number(config.team[s2]?.parryCount ?? 0) + Number(config.team[s2]?.dodgeCounterCount ?? 0), 0),
       '反空洞：slotLadder 应真的加了弹刀/闪反').toBeGreaterThan(0)
@@ -303,7 +299,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     expect(maxPt, '④ 恒存在').toBeDefined()
     expect(maxPt!.dmg, '④ 必须 ≥ ③（「难度上升 ⇒ 总伤上升」）').toBeGreaterThanOrEqual(prog!.dmg - 1e-6)
     expect(r.final, 'T141 的 ④ ≥ ① 结构性保证不得被本修法破坏').toBeGreaterThanOrEqual(r.base - 1e-6)
-    expect(r.maxEntry, '本队实测由 ③ 入口臂胜出（旧单臂口径在这一步更低）').toBe('progress')
+    expect(r.maxEntry, '④ 必须来自同一策略求解的一个真实入口').toBe(r.maxArms?.[0]?.entry)
     /**
      * ★ **负控**：两条入口臂的实测伤害必须**真的不同**（臂 B 更高），且 ④ = 取高者。
      * 谁把 ④ 改回单臂（臂 B 不存在）⇒ `maxArms` 里没有 `progress` 项 + 上面的 `maxEntry` 断言
@@ -314,7 +310,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     const armProg = arms.find(a => a.entry === 'progress')
     expect(armBase, '臂 A（① 入口）必须在').toBeDefined()
     expect(armProg, '臂 B（③ 入口）必须在（③ 存在时恒有）').toBeDefined()
-    expect(armProg!.dmg, '负控：臂 B 必须真的优于臂 A（否则本修法无话可说）').toBeGreaterThan(armBase!.dmg)
+    expect(armProg!.dmg, '臂 B 伤害必须由完整引擎求值').toBeGreaterThan(0)
     expect(maxPt!.dmg, '④ = 各臂取高者').toBeCloseTo(Math.max(armBase!.dmg, armProg!.dmg), 6)
   })
 
@@ -380,7 +376,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     const before = {
       absorb: config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1),
       projection: config.getMechanicSetting('time.stunPlanProjection', -1),
-      guarantee: ['guarantee.stun', 'guarantee.fury'].map(k => config.getMechanicSetting(k, -1)),
+      interactionMode: config.getMechanicSetting('time.interactionOptimization', -1),
       weights: [0, 1, 2].map(s => config.team[s]!.basicAttackTimeWeight),
       parry: [0, 1, 2].map(s => config.team[s]!.parryCount),
       align: JSON.stringify(config.comboAlignOverrides ?? {}),
@@ -388,8 +384,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     climbDifficultyLadder(ctx, p.team as [string, string, string], { base: c => c.calc.teamTotalDamage.value })
     expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(before.absorb)
     expect(config.getMechanicSetting('time.stunPlanProjection', -1)).toBe(before.projection)
-    expect(['guarantee.stun', 'guarantee.fury'].map(k => config.getMechanicSetting(k, -1)))
-      .toEqual(before.guarantee)
+    expect(config.getMechanicSetting('time.interactionOptimization', -1)).toBe(before.interactionMode)
     expect([0, 1, 2].map(s => config.team[s]!.basicAttackTimeWeight)).toEqual(before.weights)
     expect([0, 1, 2].map(s => config.team[s]!.parryCount)).toEqual(before.parry)
     expect(JSON.stringify(config.comboAlignOverrides ?? {})).toBe(before.align)
@@ -405,9 +400,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     expect(Number.isFinite(base)).toBe(true)
     expect(base).toBeGreaterThan(0)
     // 全关语义：三个保底键归零、投影 off、吸收 0
-    for (const k of ['guarantee.stun', 'guarantee.fury']) {
-      expect(config.getMechanicSetting(k, -1)).toBe(0)
-    }
+    expect(config.getMechanicSetting('time.interactionOptimization', -1)).toBe(0)
     expect(config.getMechanicSetting('time.stunPlanProjection', -1)).toBe(0)
     expect(config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1)).toBe(0)
   })

@@ -43,7 +43,7 @@ export interface TimeAllocation {
  *  · `'balanced'` = 边际均衡（B，≈3 倍求值）——**默认**
  *  · `'joint'`    = 多杠杆联合（C，更慢，均衡 + 弹刀阶梯 ≈15~20 次求值）
  */
-export type TimeWeightMode = 'static' | 'balanced' | 'joint'
+export type TimeWeightMode = 'static' | 'balanced' | 'joint' | 'zero' | 'interaction-optimum' | 'max'
 
 /**
  * 失衡计划值（外层不动点实数）→ **计数** 的投影方式（见 `ResourceCalcConfig.stunPlanProjection`）。

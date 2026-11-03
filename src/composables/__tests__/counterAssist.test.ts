@@ -28,7 +28,7 @@ import { fusedGroupMetrics } from '@/core/resource/moveLookup'
 import { getAgentMechanic } from '@/mechanics'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { fusedRowValue } from '@/data/moveTableQueries'
-import { computeDifficulty } from '@/composables/teamCompare'
+import { computeDifficulty } from '@/composables/operationalDifficulty'
 import { INTERACTION_WEIGHTS } from '@/types/teamPreset'
 
 const bossData = JSON.parse(readFileSync(new URL('../../../public/static/boss-presets.json', import.meta.url), 'utf8')) as BossPresetFile
