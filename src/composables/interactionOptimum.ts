@@ -36,7 +36,7 @@ interface SearchState {
   absorb: number
   taunts: number[]
 }
-interface Score { damage: number; executed: number; overflow: number; amount: number; axisComplete: boolean; repairTotal: number }
+interface Score { damage: number; executed: number; overflow: number; amount: number; axisFallback: boolean; axisComplete: boolean; repairTotal: number }
 const DAMAGE_EPS = 1e-6
 const TIME_EPS = 1e-6
 
@@ -115,6 +115,7 @@ export function createInteractionOptimumStrategy(_balance?: (ctx: TimeWeightAllo
         let executed = 0
         for (const c of rrNow?.characters ?? []) executed += c.exSpecialCount
         const value = { damage, executed, overflow: rrNow?.convergence.timeTruncatedSeconds ?? 0,
+          axisFallback: rrNow?.convergence.axisFallback === true,
           axisComplete: true,
           repairTotal: 0,
           amount: coords.reduce((sum, c) => sum + Number(config.team[c.slot]?.[c.field] ?? 0), 0) }
@@ -132,7 +133,14 @@ export function createInteractionOptimumStrategy(_balance?: (ctx: TimeWeightAllo
       const initialScore = score()
       let bestState = initial
       let best = initialScore
-      const feasibleScore = (s: Score) => Number.isFinite(s.damage)
+      /**
+       * 可行 = 伤害有限 **且没弃轴**。
+       *
+       * 「最高操作难度」的定义里轴必须成立（用户口径：最高档 = 最强**理论** dps，弃轴的队伍不是同一套理论）。
+       * 硬约束而不是事后筛：策略自己把交互推到装不下时，应当退回上一个可行点，而不是交给调用方去丢弃。
+       * 判据取 `convergence.axisFallback`（零额外求值；不读 `stackTraversalResult` —— 那是独立 computed，会重算整条轴栈）。
+       */
+      const feasibleScore = (s: Score) => Number.isFinite(s.damage) && !s.axisFallback
       const compareCandidates = (a: Score, b: Score) => {
         if (a.overflow > b.overflow + TIME_EPS) return -1
         if (b.overflow > a.overflow + TIME_EPS) return 1

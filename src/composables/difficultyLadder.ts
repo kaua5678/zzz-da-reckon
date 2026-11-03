@@ -137,8 +137,26 @@ export type InteractionKnob = 'zero' | 'default' | 'joint' | 'slotLadder'
 export function applyInteractionKnob(ctx: LadderCtx, knob: InteractionKnob): void {
   if (knob === 'zero') { clearInteractions(ctx); return }
   if (knob === 'default') return
+
   /**
-   * ②③④ 走轻量 joint-levers（**曲线视图**），不接 interaction-optimum。
+   * ②③④ 走轻量 joint-levers（**曲线视图**）。
+   *
+   * ⚠ **2026-11-04 四次独立尝试后的最终结论：曲线不接 `interaction-optimum`**（规则 16③ 否决记录）。
+   * 已逐步排除的表层原因：① 性能（2m→3m18s~4m19s，但真正问题是判据红）；② 档位名（新增 `optimum` 档后仍红）；
+   * ③ 轴态（策略加「不弃轴」硬约束后仍红）。**剩下的才是实质冲突**：
+   *
+   * 曲线 ④ 的判据要求 `slotLadder` 与 `joint` **共用同一写入集合**、般岳金身格挡必须能恢复、
+   * `executed` 不得下降、吸收率精确等于 cap；而策略是一个**按总伤求驻点**的黑盒 —— 它的写入集合、
+   * 执行数、落点都由搜索决定，**不承诺**满足这些中间态约束。实测三例：
+   *   · `slotLadder 与 joint 必须共用同一写入集合（实测 ["parryCount"]）: expected [] to equal ['" + "basicAttackTimeWeight']`
+   *   · `★ 般岳的金身格挡必须被恢复（修前恒为 0）: expected false to be true`
+   *   · `接受门：executed 不得低于起点: expected 27 to be >= 45`
+   *
+   * ⇒ 把策略塞进曲线 = 要求它同时满足「总伤最优」与「曲线的过程约束」，而这两者在实测夹具上**互相排斥**。
+   * 强行统一只会得到对两者都不最优的点（且代价 3~4 分钟/次）。
+   *
+   * **分工**：曲线 = 视图（轻量、可解释、过程可核）；最高档最优点 = 主页/散点/选第三人/实战四入口，
+   * 同源调 `interaction-optimum`，由 `interactionOptimum.test.ts` 与各入口测试守着。
    *
    * 2026-11-04 三次独立尝试接入完整策略，全部失败且可复现（2m → 3m18s~4m19s，固定 6 条判据红）。
    * 最后一轮已排除「档位名」这一层（新增 `optimum` 档、判据接受它），暴露出**真正的**冲突点：
