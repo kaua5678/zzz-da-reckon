@@ -619,13 +619,14 @@ node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archi
 | --- | --- |
 | 数据面 | `composables/resourcePoolView.ts`：`ResourcePoolSnapshot`（**一个档位**的快照：池 / 伤害 / 异常 / 轴窗三件 / 面板 / 该档配置标量 / 槽名）+ **唯一构造入口** `resourcePoolSnapshotFromCalc(calc, config)` + 纯派生（伤害占比 / 个人占比 / 队伍总览 / 异常事件行 / 逐窗图注入）+ 三态 `resourceBlockStates` |
 | 渲染面 | `components/ResourcePoolView.vue`（+ `components/resourcePool/resource-pool-view.css`）；入参 = `snapshot`（+ 可选 `title`/`reason`） |
-| 两个入口 | 结果页传 `useResourceCalc()` + UI store；难度曲线在**该档的重放场景**里调同一入口（`composables/curvePointPool.ts`），快照随结果带出场景（纯值） |
+| 三个比较入口 | 结果页传 `useResourceCalc()` + UI store；**难度曲线 / 散点 / 选第三人**都在**该档的重放场景**里调同一入口（`composables/curvePointPool.ts`，吃一个 `{base, delta}` 现场差分），快照随结果带出场景（纯值）。三处共用同一张卡片与同一个视图 ⇒ 「看哪一档」不会各说各话 |
 
 - **块清单**（完整 = 默认全含，三页签已去掉）：时间分配汇总 · 失衡池 · 逐窗兑现（轴模式）· 三角色资源卡 · 积蓄池 · 异常虚拟面板 · 异常事件明细 · 特殊动作喧响 · 团队总览 · 伤害占比 · 伤害来源分解 · 伤害池；弃轴提示随块一起进视图（「去调合轴率」按钮只在父方接了动作时出现）；
 - **缺读数 ⇒ 如实写「无/未采 + 原因」**（非轴队 / 弃轴 / 未采三态逐字区分，判据住 `resourceBlockStates`），**不补造、不编 0**，也不把块藏起来（`v-if` 会把「没这回事」与「没量到」混成同一种静默）；
 - **取数只走快照**：展示层不读 store —— 比较入口那一档是差分重放出来的，现读会显示**另一个档**；
 - 判据：`composables/__tests__/resourcePoolView.test.ts`（三态四态 / 同一快照喂两个入口逐位相等 / 真实求值的读数归属）+ `curvePointPool.test.ts`（重算伤害与该点 `dmg` 逐位相等）+ `stunDiscreteDisplay.test.ts`（TDZ 源码锁改钉共享组件）；
-- **其余比较入口（散点 / 选第三人 / 命座提升率网格 / 实战对比）「点的是哪一档」= 待定口径**，先写进 `.claude/OPEN-ITEMS.md` 的前提假设 + 证伪闸门，不自己拍。
+- **各比较入口「点的是哪一档」（用户 2026-11-03 裁定）**：难度曲线 = 该档重放现场；**散点 = 一个点一个金档**（每行末尾「资源池」按钮）；**选第三人 = 一名候选一档整队**（每行末尾「资源池」按钮；用户：「显示整队的好，单一角色分析是从整队数据挑选部分数据来分析的」）。三处共用同一条链，判据 `composables/__tests__/pointSceneCapture.test.ts`（重放伤害 ≡ 该档读数逐位相等）。
+- **不接的两个入口（已裁决）**：**命座提升率网格**（用户：「这里应该不用展示全部，提升率准确就行」）、**实战对比**（用户：「感觉目前的已经达标了」）⇒ 不挂共享视图，也不为它们采现场差分。
 
 ### 7.5 血量膨胀图（「血量膨胀」Tab）
 
