@@ -627,3 +627,36 @@ describe('轴内动作顺序不参与语义（2026-11-03）', () => {
     expect(r.windowTrace[0]!.actions.at(-1)!.moveId).toBe('b')
   })
 })
+
+/**
+ * **越窗块的时间归属**（用户口径 2026-11-03，逐字）：「末块伸出窗外有两种情况，一个是挽昼这种第二种大招
+ * **锁1秒失衡**，而且伤害也在第一秒打出来，后续的3秒后摇都没伤害。这种极限情况算他**1秒在失衡内3秒在失衡外**，
+ * 但伤害计算认为**所有伤害全吃到易伤**了。第二种是普通招式，一部分在失衡内一部分在外面，认为其一部分能吃易伤，
+ * 一部分吃不到易伤，而产生失衡值。」
+ *
+ * ⇒ 窗内动作占用（`windowTrace[].actionSeconds`）只累计**落在失衡内的那一段** =
+ * `min(整段时长, 吃易伤的那一段, 几何窗内剩余)`，越窗段归**失衡外**（不吃易伤、照常攒条）。
+ * 排布 / 合轴 / fits 门仍按整段推进（动作真的占满前台）。
+ */
+describe('越窗块的时间归属（2026-11-03）', () => {
+  it('普通招式：窗内只算落在窗内的那一段（越窗段归失衡外）', () => {
+    const long = { slot: 0, moveId: 'long', count: 1, actionTime: 3, energyCost: 0, decibelCost: 0, startTime: 8.5 }
+    const r = calcStunAxisStack({ axes: [{ actions: [long], basicFillerSlot: 0 }], stunCount: 1, windowDuration: 10, energyBySlot: { 0: 999 }, decibelBySlot: { 0: 9999 } })
+    expect(r.windowTrace[0]!.actionSeconds, '窗内占用 = 10 − 8.5 = 1.5（修前记整段 3）').toBeCloseTo(1.5, 6)
+    expect(r.executed['0:long']!.count, '施放次数仍按整次').toBe(1)
+  })
+
+  it('伤害前置招式（挽昼第二段大招式）：窗内 1s（伤害段），伤害仍全吃易伤（inAxisCount = 1）', () => {
+    const ult = { slot: 0, moveId: 'ult2', count: 1, actionTime: 4.083, damageSeconds: 1, energyCost: 0, decibelCost: 0, startTime: 8.5 }
+    const r = calcStunAxisStack({ axes: [{ actions: [ult], basicFillerSlot: 0 }], stunCount: 1, windowDuration: 10, energyBySlot: { 0: 999 }, decibelBySlot: { 0: 9999 } })
+    expect(r.windowTrace[0]!.actionSeconds, '1 秒在失衡内、3 秒后摇在失衡外').toBeCloseTo(1, 6)
+    expect(r.executed['0:ult2']!.inAxisCount, '伤害全吃易伤（用户口径）').toBe(1)
+  })
+
+  it('窗内各项平账闭合：动作（窗内）− 合轴 + 填充 + 发呆 == 窗有效秒', () => {
+    const long = { slot: 0, moveId: 'long', count: 1, actionTime: 3, energyCost: 0, decibelCost: 0 }
+    const r = calcStunAxisStack({ axes: [{ actions: [long], basicFillerSlot: 0 }], stunCount: 1, windowDuration: 10, energyBySlot: { 0: 999 }, decibelBySlot: { 0: 9999 } })
+    const t = r.windowTrace[0]!
+    expect(t.actionSeconds - t.overlapSeconds + t.fillSeconds, '占用 ≤ 窗长').toBeLessThanOrEqual(10 + 1e-9)
+  })
+})

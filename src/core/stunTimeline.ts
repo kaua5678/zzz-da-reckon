@@ -115,7 +115,12 @@ export interface StunWindowTrace {
   truncated: boolean
   /** 窗内执行的动作（按实际执行顺序；含跨界小数） */
   actions: StunWindowAction[]
-  /** 窗内动作毛占用（秒，= Σ actionTime 整段，未扣合轴） */
+  /**
+   * **窗内动作占用**（秒，未扣合轴）——只算**落在失衡内的那一段**（用户口径 2026-11-03「时间归属」）：
+   * 普通招式 = `fits × actionTime`（吃易伤的那部分秒数），声明伤害段的招式 = 伤害段秒数（挽昼第二段大招 1s）。
+   * 越窗段归**失衡外**，不计在这里 ⇒ 「动作（窗内）− 合轴 + 平A填充 + 发呆」恒等于窗有效秒（平账闭合）。
+   * ⚠ 与「可见空档」（`idleSegments`，物理补集）**不是同一个量**：本项是归属账，`idleSegments` 是物理空档。
+   */
   actionSeconds: number
   /** 窗内合轴节省（秒，跨槽位并集口径，见栈引擎 `overlapSeconds`） */
   overlapSeconds: number

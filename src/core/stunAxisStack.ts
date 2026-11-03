@@ -661,6 +661,15 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
     const slotCursor: Record<number, number> = {}
     let windowDidSomething = false
     let windowTimeSum = 0
+    /**
+     * **窗内动作占用**（用户口径 2026-11-03「时间归属」）：只累计**落在失衡内的那一段**秒数，
+     * 越窗段归**失衡外**。逐动作取值 = `min(actionTime, fits × damageSeconds)`：
+     *  · 普通招式（`damageSeconds === actionTime`）⇒ `fits × actionTime`（吃易伤的那部分秒数）；
+     *  · 声明了伤害段的招式（挽昼第二段大招 1601011，伤害段 1s）⇒ 恒 1s —— 用户明确「锁 1 秒失衡、
+     *    伤害也全在第一秒打出 ⇒ **算它 1 秒在失衡内、3 秒后摇在失衡外**，但伤害仍全吃易伤（fits = 1）」。
+     * 排布 / 合轴区间 / fits 门仍按**整段** `actionTime` 推进（动作真的占满前台，只是不都记在窗内）。
+     */
+    let windowInAxisSum = 0
     /** 本窗合轴节省（期 1 逐窗轨迹用；窗口区间数 ≤ 1 时恒 0） */
     let windowTraceOverlap = 0
     /** 本窗执行的动作（期 1 逐窗轨迹；按实际执行顺序，含跨界 `inAxisCount`） */
@@ -838,6 +847,14 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
           slotCursor[act.slot] = t0 + act.actionTime
         }
         windowTimeSum += act.actionTime
+        // 窗内占用 = min(整段时长, 吃易伤的那一段, **几何上落在窗内的那一段**)：
+        // 第三项是硬上界（fits 门按 Σ 动作时长累计、不把作者留出的空白算进额度，
+        // 故 `fits × damageSeconds` 可能超过几何剩余 ⇒ 不夹就会让本窗各项之和 > 窗长）。
+        windowInAxisSum += Math.min(
+          act.actionTime,
+          Math.max(0, fits * damageSeconds),
+          Math.max(0, effectiveWindowDuration - t0),
+        )
         windowDidSomething = true
         if (act.endsStunWindow) windowTruncEnd = Math.max(windowTruncEnd, t0 + act.actionTime)
       }
@@ -1027,7 +1044,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
       endSeconds: traceEnd,
       truncated: windowTruncEnd >= 0,
       actions: windowActions,
-      actionSeconds: windowTimeSum,
+      actionSeconds: windowInAxisSum,
       overlapSeconds: windowTraceOverlap,
       fillSeconds: windowFillSec,
       fillSegments: windowFillSegments,

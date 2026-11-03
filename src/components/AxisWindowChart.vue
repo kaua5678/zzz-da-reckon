@@ -37,7 +37,7 @@
         <span class="awc-win-no">{{ w.label }}</span>
         <span v-if="w.axisName" class="awc-axis" :title="`该窗来自「${w.axisName}」这条轴`">{{ w.axisName }}</span>
         <span class="awc-metric" :title="headTitle(w)">窗 {{ fmt(w.effectiveSeconds, 1) }}s</span>
-        <span class="awc-metric" title="窗内动作毛占用（整段时长的和，未扣合轴）">动作 {{ fmt(w.actionSeconds, 1) }}s</span>
+        <span class="awc-metric" title="窗内动作占用（只算落在失衡内的那一段：普通招式按吃易伤比例折算，伤害前置招式按伤害段；越窗段归失衡外）">动作 {{ fmt(w.actionSeconds, 1) }}s</span>
         <span v-if="w.overlapSeconds > 0.05" class="awc-metric" title="跨角色块并行只计一次前台（合轴节省）">
           合轴省 {{ fmt(w.overlapSeconds, 1) }}s
         </span>
