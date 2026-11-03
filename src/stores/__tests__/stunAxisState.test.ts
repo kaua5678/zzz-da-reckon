@@ -47,3 +47,23 @@ describe('config store 轴状态', () => {
     expect(empty).toEqual([])
   })
 })
+
+/**
+ * 写入口的**动作规范序**（用户口径 2026-11-03）：预设 JSON 里怎么写顺序都不再影响结果——
+ * store 落盘即按 `startTime` 时间序（乱序预设 `preset-1371-1391-1451` 就是实例）。
+ */
+describe('setAxisState 规范化动作顺序', () => {
+  it('乱序轴 + 方案轴 ⇒ 落盘即时间序，且不改快照本体', async () => {
+    const { config } = await setupHarness([{ agentId: '1191' }, { agentId: '1211' }, { agentId: '1311' }])
+    const messy = { name: '轴1', actions: [
+      { slot: 0, moveId: 'm0', count: 1, startTime: 0 },
+      { slot: 0, moveId: 'm5', count: 1, startTime: 5 },
+      { slot: 0, moveId: 'm3', count: 1, startTime: 3 },
+    ] } as StunAxis
+    const plan = { when: [], axes: [messy] } as unknown as StunAxisPlan
+    config.setAxisState({ stunAxes: [messy], stunAxisPlans: [plan], useStunAxis: true })
+    expect(config.stunAxes[0].actions.map(a => a.moveId)).toEqual(['m0', 'm3', 'm5'])
+    expect(config.stunAxisPlans[0].axes![0]!.actions.map(a => a.moveId)).toEqual(['m0', 'm3', 'm5'])
+    expect(messy.actions.map(a => a.moveId), '快照本体不动').toEqual(['m0', 'm5', 'm3'])
+  })
+})

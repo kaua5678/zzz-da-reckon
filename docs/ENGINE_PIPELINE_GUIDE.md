@@ -212,10 +212,21 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
    组合块已展开成 moveId），模块读 cfg 决定轴内次数；轴外剩余资源模块自行分配。
    轴内动作时间/能量由 `calcStunAxisStack` 的 combos（`module.combos`）定义，`buildStackAxes` 消费。
    **排布口径（2026-10-26）**：轴栈里 `count > 1` 的块按段**顺序平铺**（逐段起点 `t0 = max(该槽游标, startTime)`），
-   `slotMaxEnd` / `windowTrace.startTime` / 合轴区间同源用 `t0`；**fits 门仍按数组顺序累计**（不动）。
-   **否决记录**：把 fits 门也改成吃 `startTime` ⇒ `billySmoke`「默认轴态 = complete」当场红
-   （双连携窗末位跨界变成「起点越界⇒整段跳过」⇒ 轴态 partial、难度曲线整档不出数）；该口径出处 = 轴预设
-   `比琉通用.json` note「时间门按数组顺序累计，`startTime` 只决定合轴区间起点」。
+   `slotMaxEnd` / `windowTrace.startTime` / 合轴区间同源用 `t0`。
+   **动作顺序口径（2026-11-03，用户裁决「顺序几乎没啥用」）**：轴内动作的**数组顺序不参与语义** —— 引擎入口
+   （`core/stunAxisStack#calcStunAxisStack`）、轴状态写入口（`stores/config#setAxisState`）、轴编辑器每次编辑
+   （`views/StunAxisPage#editAxis` 与拖拽收手）三处调同一原语 `utils/axisOrder.ts#canonicalizeAxis`，先按
+   `startTime` 稳定升序再排布/门控 ⇒ 编辑器（按声明位置画）与逐窗兑现图（按引擎落点画）不再分叉。
+   症状（改前实测）：乱序轴 `preset-1371-1391-1451`（声明 10.5s 的块排在 12.5s 那块**之后**）被游标顶到 12.8s
+   ⇒ 逐窗图中段 10.47~12.5s 空成真空、抬头「发呆 1.066s」而编辑器看着「几乎占满」；规范序后发呆 0.266s、
+   末块不再伸出窗（该队伤害 +0.239%，来自窗尾 0.8s 兜底平A吃上易伤）。fits 门的**公式**未动（仍是 Σ 已排动作
+   时长 —— 不把作者留出的空白算进额度），只规范输入次序 ⇒ 本来按时间序排好的轴逐位不变（golden 实测：105 预设
+   + 60 角色×命座只动 5 条 dmg，全是含 1371/1531 乱序轴的队，时间账 0 条）。
+   **否决记录**：① 把 fits 门改用 `t0`（游标）当额度 ⇒ `billySmoke`「默认轴态 = complete」当场红（双连携窗末位
+   跨界变成「起点越界⇒整段跳过」⇒ 轴态 partial、难度曲线整档不出数）——那条否决的是**换公式**，不是规范次序，
+   本口径与它不冲突；② 旧口径「**数组顺序决定谁跨界**」（出处 = 轴预设 `比琉通用.json` note）已随本裁决撤销：
+   它是**早期产物**（那时没有平A兜底/招式兜底，只能靠「末位动作被吞」表达先丢谁），现在「谁跨界」= 时间上最后者，
+   由规范序自动给出，用户不必再维护列表顺序（轴编辑器已删 ↑↓ 排序按钮）。
 
 10. **进场闪能**：`cfg.initialEnergyGift` 默认 40（composables 构建），命破角色需模块设为 60（伊德海莉/星徽·比利）。
 11. **星辉类"指定招式增伤"**：不要加全局 panel.dmgBonus，在 patchExecutions 按 moveId 集合加 exec.dmgBonus

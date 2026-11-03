@@ -586,3 +586,44 @@ describe('逐窗归属：skipped.window / windowTrace.fillSegments / axisIndex�
   })
 })
 
+
+/**
+ * **轴内动作顺序不参与语义**（用户口径 2026-11-03，逐字）：
+ * > 「我们捏轴的时候几乎不看顺序了，**顺序本身是早期产物**，为了考虑缩短失衡后最末尾的招式被吞而设计的。
+ * >  现在有平a兜底和招式兜底了，**顺序几乎没啥用**。」
+ *
+ * 旧行为：排布游标 `t0 = max(该槽游标, 显式 startTime)` 让「数组里靠后但声明更早」的块被**顺延** ⇒
+ * 编辑器（按声明位置画）与逐窗兑现图（按引擎落点画）分叉，中段凭空空出一段。
+ * 现在入口 `canonicalizeAxis` 先按 `startTime` 规范化：声明怎么写、数组怎么排，结果都一致，
+ * 且轨迹落点 = **声明的起点**。
+ */
+describe('轴内动作顺序不参与语义（2026-11-03）', () => {
+  const a = { slot: 0, moveId: 'a', count: 1, actionTime: 1, energyCost: 0, decibelCost: 0, startTime: 0 }
+  const b = { slot: 0, moveId: 'b', count: 1, actionTime: 2, energyCost: 0, decibelCost: 0, startTime: 5 }
+  const c = { slot: 0, moveId: 'c', count: 1, actionTime: 1, energyCost: 0, decibelCost: 0, startTime: 3 }
+  const base = { stunCount: 1, windowDuration: 16, energyBySlot: { 0: 999 }, decibelBySlot: { 0: 9999 } }
+  const run = (actions: typeof a[]) => calcStunAxisStack({ ...base, axes: [{ actions, basicFillerSlot: 0 }] })
+
+  it('★ 乱序声明（b@5 排在 c@3 之前）⇒ 轨迹仍按声明起点 0 / 3 / 5 排（修前 b 落到 4）', () => {
+    const r = run([a, b, c])
+    expect(r.windowTrace[0]!.actions.map(x => x.moveId)).toEqual(['a', 'c', 'b'])
+    expect(r.windowTrace[0]!.actions.map(x => +x.startTime.toFixed(3))).toEqual([0, 3, 5])
+    // 真空只在声明的空档里（1~3 / 4~5），不因为数组顺序多出一段
+    expect(r.windowTrace[0]!.idleSegments.map(g => +g.startSeconds.toFixed(3))).toEqual([1, 4])
+    expect(r.basicFillBySlot[0]).toBeCloseTo(16 - 7, 6)
+  })
+
+  it('★ 同一份声明写成任意顺序 ⇒ 逐字段相同（顺序不再有语义）', () => {
+    const canonical = JSON.stringify(run([a, c, b]))
+    for (const perm of [[a, b, c], [b, a, c], [b, c, a], [c, b, a], [c, a, b]]) {
+      expect(JSON.stringify(run(perm)), perm.map(x => x.moveId).join('>')).toBe(canonical)
+    }
+  })
+
+  it('★ 时间上最后者才跨界（派生结论，不靠列表顺序）', () => {
+    // 末块 5s 起手、时长 2s ⇒ 16s 窗里整段在窗内；把它写进数组任意位置都不影响
+    const r = run([b, c, a])
+    expect(r.executed['0:b']!.inAxisCount).toBeCloseTo(1, 6)
+    expect(r.windowTrace[0]!.actions.at(-1)!.moveId).toBe('b')
+  })
+})

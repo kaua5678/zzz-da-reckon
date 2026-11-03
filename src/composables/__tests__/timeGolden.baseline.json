@@ -3609,7 +3609,7 @@
   ]
  },
  "preset:auto-1371-1481-1451": {
-  "dmg": "98273908",
+  "dmg": "98382825",
   "stun": 5,
   "windowDur": "18.000",
   "slack": "0.000",
@@ -3933,7 +3933,7 @@
   ]
  },
  "preset:auto-1531-1481-1451": {
-  "dmg": "79355945",
+  "dmg": "79447392",
   "stun": 2,
   "windowDur": "18.000",
   "slack": "0.000",
@@ -4419,7 +4419,7 @@
   ]
  },
  "preset:yixuan-jufufu-lucia": {
-  "dmg": "84151414",
+  "dmg": "84352282",
   "stun": 4,
   "windowDur": "16.000",
   "slack": "0.000",
@@ -4431,7 +4431,7 @@
   ]
  },
  "preset:yixuan-roxy-lucia": {
-  "dmg": "86959625",
+  "dmg": "87380003",
   "stun": 3,
   "windowDur": "18.000",
   "slack": "0.002",
@@ -4443,7 +4443,7 @@
   ]
  },
  "preset:yixuan-trigger-lucia": {
-  "dmg": "56427149",
+  "dmg": "56522633",
   "stun": 4,
   "windowDur": "16.000",
   "slack": "0.000",

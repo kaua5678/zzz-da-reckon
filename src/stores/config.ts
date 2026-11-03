@@ -2,6 +2,7 @@
  * 配置 Store - 3人队伍配置 + 全局Buff + 敌人配置
  */
 import { clampRatio } from '@/utils/finiteClamp'
+import { canonicalizeAxis } from '@/utils/axisOrder'
 import { defineStore } from 'pinia'
 import { ref, computed, watch, type UnwrapRef } from 'vue'
 import type {
@@ -615,10 +616,20 @@ export function createConfigModel(
   function getAxisState(): StunAxisState {
     return { stunAxes: cloneJson(stunAxes.value), stunAxisPlans: cloneJson(stunAxisPlans.value), useStunAxis: useStunAxis.value }
   }
-  /** 整体写回轴状态（深拷贝写入：同一份快照可反复恢复，store 后续编辑不会改到快照） */
+  /**
+   * 整体写回轴状态（深拷贝写入：同一份快照可反复恢复，store 后续编辑不会改到快照）。
+   *
+   * ⚠ **写入口同时做「动作规范序」**（用户口径 2026-11-03「顺序几乎没啥用」）：每个轴的动作按
+   * `startTime` 稳定升序落盘（`utils/axisOrder.ts#canonicalizeAxis`）⇒ store 里永远是时间序，
+   * 编辑器列表 / 逐窗兑现图 / 异常逐窗标注（`srcIndex` = 数组下标）三处天然同序。
+   * 预设在自己 JSON 里怎么写顺序都不再影响结果（`preset-1371-1391-1451` 就是乱序的）。
+   */
   function setAxisState(s: StunAxisState) {
-    stunAxes.value.splice(0, stunAxes.value.length, ...cloneJson(s.stunAxes))
-    stunAxisPlans.value.splice(0, stunAxisPlans.value.length, ...cloneJson(s.stunAxisPlans))
+    stunAxes.value.splice(0, stunAxes.value.length, ...cloneJson(s.stunAxes).map(ax => canonicalizeAxis(ax)))
+    stunAxisPlans.value.splice(0, stunAxisPlans.value.length, ...cloneJson(s.stunAxisPlans).map(plan => ({
+      ...plan,
+      axes: plan.axes?.map(ax => canonicalizeAxis(ax)),
+    })))
     useStunAxis.value = s.useStunAxis
   }
   /**

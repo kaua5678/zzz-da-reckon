@@ -178,7 +178,7 @@
             </div>
           </div>
 
-          <!-- 动作列表（优先级栈：从上到下=优先级；改次数/转大变体/排序/删除） -->
+          <!-- 动作列表（**按时间序**：顺序不参与语义，用户口径 2026-11-03；改次数/转大变体/删除） -->
           <div class="sap-stack" v-if="axis.actions.length > 0">
             <div v-for="(act, aii) in axis.actions" :key="aii" class="sap-stack-row">
               <span class="sap-prio" :class="{ top: aii === 0 }">{{ aii + 1 }}</span>
@@ -199,8 +199,6 @@
                 <span class="sap-t-time">{{ actDurationText(act) }}</span>s · 起点 <span class="sap-t-time">{{ (act.startTime ?? 0).toFixed(1) }}</span>s
               </span>
               <span class="sap-ops">
-                <n-button size="tiny" quaternary :disabled="aii===0" @click="moveAction(ai, aii, -1)">↑</n-button>
-                <n-button size="tiny" quaternary :disabled="aii===axis.actions.length-1" @click="moveAction(ai, aii, 1)">↓</n-button>
                 <n-button size="tiny" quaternary type="error" @click="editAxis(ai, a => { a.actions.splice(aii, 1) })">×</n-button>
               </span>
             </div>
@@ -340,6 +338,7 @@ import { isStaleAxisActionFor } from '@/composables/resourceCalc/roundInputs'
 import { axisTableDirectCandidates } from '@/composables/resourceCalc/axisTableDirect'
 import type { StunAxisPreset } from '@/data/stunAxisPresets'
 import { fmt } from '@/utils/format'
+import { sortAxisActionsByTime } from '@/utils/axisOrder'
 import { shortMoveLabel } from '@/utils/moveShortLabel'
 import { damageElementLabel } from '@/utils/agentLabelMaps'
 import type { StunAxisAction, StunAxis, StunAxisKind } from '@/types/resource'
@@ -491,8 +490,19 @@ function writableAxisAt(ai: number): StunAxis | null {
   if (!axes.value[ai] || !beginEdit()) return null
   return configStore.stunAxes[ai] ?? null
 }
+/**
+ * 轴内动作**规范序**（就地）：按 `startTime` 稳定升序 —— 顺序不参与语义（用户口径 2026-11-03，
+ * 见 `utils/axisOrder.ts`）。逐次编辑后就地归一 ⇒ 列表顺序恒 = 时间顺序，与编辑器里块的位置、
+ * 与引擎排布（`t0 = max(游标, startTime)`）三处一致，不再出现「编辑器看着占满、逐窗图中间空一段」。
+ */
+function canonicalizeAxisInPlace(axis: StunAxis) {
+  const sorted = sortAxisActionsByTime(axis.actions)
+  if (sorted !== axis.actions) axis.actions.splice(0, axis.actions.length, ...sorted)
+}
 function editAxis(ai: number, fn: (axis: StunAxis) => void) {
-  const axis = writableAxisAt(ai); if (axis) fn(axis)
+  const axis = writableAxisAt(ai); if (!axis) return
+  fn(axis)
+  canonicalizeAxisInPlace(axis)
 }
 function editAction(ai: number, aii: number, fn: (act: StunAxisAction) => void) {
   editAxis(ai, axis => { const act = axis.actions[aii]; if (act) fn(act) })
@@ -1135,7 +1145,12 @@ function onTimelineMove(e: PointerEvent, ai: number) {
   const dur = actDuration(act)
   act.startTime = Math.max(-dur, Math.round((dragging.value.origStart + dx) * 10) / 10)
 }
-function endDrag() { dragging.value = null }
+function endDrag() {
+  const d = dragging.value
+  dragging.value = null
+  // 拖拽是页面里唯一不走 `editAxis` 的写路径 ⇒ 收手时同样归一（拖出乱序也立刻回到时间序）
+  if (d) { const ax = configStore.stunAxes[d.ai]; if (ax) canonicalizeAxisInPlace(ax) }
+}
 /**
  * 块悬停全文（用户报「失衡轴的块有时候看不到招式名字了」）。
  *
@@ -1191,15 +1206,9 @@ function addToCurrentAxis(s: number, mid: string, promoteVariant?: '60' | '90', 
     .filter(a => a.slot === s)
     .reduce((max, a) => Math.max(max, (a.startTime ?? 0) + actDuration(a)), 0)
   axis.actions.push({ slot: s, moveId: mid, count: 1, label: info?.label, startTime: Math.round(endTime * 10) / 10, promoteVariant, sourceTag })
+  canonicalizeAxisInPlace(axis)
 }
-function moveAction(ai: number, aii: number, dir: -1 | 1) {
-  editAxis(ai, axis => {
-    const to = aii + dir
-    if (to < 0 || to >= axis.actions.length) return
-    const arr = axis.actions
-    const tmp = arr[aii]; arr[aii] = arr[to]; arr[to] = tmp
-  })
-}
+
 function agentName(s: number) {
   const c = configStore.team[s]; if (!c?.agentId) return `槽${s+1}`
   return catalogStore.agentName(c.agentId, '').slice(0, 5) || `槽${s+1}`

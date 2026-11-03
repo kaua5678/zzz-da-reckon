@@ -20,6 +20,7 @@
 
 import type { StunAxisKind } from '@/types/resource'
 import type { StunWindowTrace } from './stunTimeline'
+import { canonicalizeAxis } from '@/utils/axisOrder'
 
 // @fact engine:失衡轴/伤害段折算 口径: 轴内易伤按**伤害段**与窗口的重叠折算，分母 = `damageSeconds`（伤害只发生在前 N 秒，其余为后摇）而非动作全长；时间账/资源/施放次数一律按整段 actionTime（后摇照占前台）。缺省未声明 ⇒ 分母回落全长、逐位不变。现唯一声明 = 挽昼第二段大招 1601011（伤害段 1s）⇒ 16s 轴 inAxisCount 0.7798→1、18s 轴 0.6574→1 | 据 用户@2026-10-30「第二段大招在第一秒就会把所有伤害打出来，后面3秒都是后摇……这个16s的失衡轴最后大招超出去了，但你要算都吃到易伤」 | 验 src/mechanics/__tests__/sunbringerAxisWindow.test.ts | 锚 src/core/stunAxisStack.ts#StackActionCost | 信 确认
 // ⟳复核: 若某个「伤害前置」招式不再用整段动作时长占前台、或伤害段声明改由 catalog 行（如 actionTime 拆段）供给，本口径与 damageSeconds 分母失效 ⇒ 重核并同步 sunbringerAxisWindow 判据 | 到期 2027-06-30
@@ -102,7 +103,11 @@ export interface StackActionCost {
 }
 
 export interface StackAxisInput {
-  /** 优先级栈，数组顺序 = 优先级从高到低 */
+  /**
+   * 轴内动作。**数组顺序不参与语义**（用户口径 2026-11-03）：
+   * 入口按 `startTime` 规范化为**时间序**（`utils/axisOrder.ts#canonicalizeAxis`），
+   * 「时间上最后的那块才可能跨界」是派生结论，不要求调用方先把数组排成时间序。
+   */
   actions: StackActionCost[]
   /**
    * 轴类型（T155）：`tail` 末尾优先占 1 窗 / `bestEffort` 有富余给 1 / `fallback` 末条吃剩余 /
@@ -434,7 +439,8 @@ export function allocateAxisWindows(
   // 每个升级窗的**增量成本** = 升级轴每窗成本 − 基础轴每窗成本（可为 0 或负 ⇒ 不限量）。
   // 换出来的窗从基础轴扣、给升级轴（`u` 个基础窗变升级窗）。
   //
-  // 多条 bestEffort 时按数组顺序依次消耗富余（每条独立算增量）；`remaining` 不足则不换。
+  // 多条 bestEffort 时按轴列表顺序依次消耗富余（每条独立算增量）；`remaining` 不足则不换。
+  // ⚠ 这里的「顺序」是**轴之间**的先后（与轴内动作顺序无关，后者不参与语义）。
   for (let i = 0; i < n; i++) {
     if (remaining <= 0) break
     if (kinds[i] !== 'bestEffort') continue
@@ -496,7 +502,10 @@ export function allocateAxisWindows(
 }
 
 export function calcStunAxisStack(input: StackTraversalInput): StackTraversalResult {
-  const { axes, stunCount, windowDuration, goodReview: goodReviewInput } = input
+  // 轴内动作顺序**不参与语义**（用户口径 2026-11-03）⇒ 入口统一规范化为时间序。
+  // 已规范 ⇒ `canonicalizeAxis` 原对象返回，既有（本来就排好序的）轴逐位零变化、零拷贝。
+  const { stunCount, windowDuration, goodReview: goodReviewInput } = input
+  const axes = input.axes.map(canonicalizeAxis)
   /** A10：末窗时钟截短秒（缺省 0 = 逐位不变） */
   const lastWindowClip = Math.max(0, Number(input.lastWindowClipSeconds ?? 0) || 0)
   const energyBySlot = input.energyBySlot ?? {}
@@ -628,16 +637,17 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
   let windowNo = 0
   for (const window of schedule) {
     windowNo++
-    // 合轴：时间按槽位独立门控（各角色并行填窗口，互不挤占先后时间）
     /**
-     * **fits 门的时间累计器（按数组顺序）**——⚠ 这是**有意**与下面 `slotCursor` 分开的两个量：
-     *
-     * `startTime` 只决定**排布/合轴区间**的起点；**谁跨界由数组顺序决定**，不由 startTime 决定。
-     * 口径出处 = 轴预设 `比琉通用.json` 的 note（用户轴）：`比琉通用` 双连携窗单槽累计 19.249s > 18s，
-     * 「末位动作跨界」，且「引擎的时间门按**数组顺序**累计该槽占用秒数（startTime 只决定合轴区间起点）
-     * ⇒ 数组顺序决定谁跨界，不影响轴态」。实测反向证据：把 fits 门也改成吃 startTime
-     * ⇒ `billySmoke`「默认配置下轴态 = complete」当场红（轴态变 partial ⇒ 难度曲线整档不出数）。
-     * 故本累计器保持数组顺序语义，只有 `slotMaxEnd`（兜底平A 的剩余时间）/轨迹起点用顺序游标。
+     * **fits 门的时间累计器**——与下面 `slotCursor`（排布/合轴区间起点）是**有意分开**的两个量：
+     * 本累计器 = **Σ 已排动作时长**（按规范序 = **时间序**；见 `utils/axisOrder.ts`），
+     * 也就是「窗装得下多少**动作时长**」，不把作者留出的空白（`startTime` 之间的空隙）算进额度。
+     * 口径沿革（**旧口径已撤**，用户 2026-11-03）：旧注释写的「**数组顺序决定谁跨界**」源自轴预设
+     * `比琉通用.json` 的 note——那时没有平A兜底/招式兜底，只能靠末位动作被吞来表达「先丢谁」。
+     * 现在数组顺序**不参与语义**（入口已规范化为时间序）⇒ 「谁跨界」由**时间上最后者**决定，
+     * 与用户意图一致，且不再依赖列表顺序。本次改动不动本累计器的公式（**只规范输入次序**），
+     * 故本来就排好时间序的轴逐位不变；乱序轴按时间序重排后与本式同源。
+     * 历史实测（保留作证据）：把本门改用 `t0`（游标）当日额 ⇒ `billySmoke`「默认配置下轴态 = complete」
+     * 当场红（轴态变 partial ⇒ 难度曲线整档不出数）⇒ 那次否决的是**换公式**，不是规范次序。
      */
     /** 本窗各「族」已执行次数（同族每窗上限门用；见 `StackActionCost#fillFamily`） */
     const familyUsed: Record<string, number> = {}
@@ -700,10 +710,10 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
          * （`blockDuration = count × 单段时长`，起点 = `startTime`）算易伤占比；UI 的
          * `actDuration = 单段 × count` 也是同一读法 ⇒ 排布侧按段平铺才是同口径。
          *
-         * ⚠ **只改排布，不动 fits 门**（`used` 仍是数组顺序累计）：把 fits 门也改成吃 startTime
+         * ⚠ **只改排布，不动 fits 门**（`used` 仍是 Σ 动作时长累计）：把 fits 门也改成吃 `t0`
          * 会让「双连携窗末位跨界」变成「起点越界 ⇒ 整段跳过」⇒ `billySmoke`「默认配置下轴态 =
          * complete（跨肆不算 partial ⇒ 难度曲线能出点）」当场红——那条口径是轴预设
-         * `比琉通用.json` 的 note 写死的（「时间门按数组顺序累计，startTime 只决定合轴区间起点」）。
+         * 那次否决的理由（现已不成立，见上方 `slotTime` 注释的口径沿革：数组顺序已不参与语义）。
          */
         /**
          * **同族每窗上限门**（2026-10-27，见 `StackActionCost#fillFamily`）：族内已执行满额 ⇒
@@ -722,7 +732,7 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
           }
           familyUsed[act.fillFamily] = usedInFamily + 1
         }
-        /** fits 门用的数组顺序累计时刻（口径见上方 `slotTime` 注释） */
+        /** fits 门用的**规范序**（= 时间序）累计时刻（口径见上方 `slotTime` 注释） */
         const used = slotTime[act.slot] ?? 0
         /** 排布用的实际起点：该槽位顺序游标，显式 startTime 更晚则顺延到它（`count > 1` 时逐段推进） */
         const t0 = Math.max(slotCursor[act.slot] ?? 0, Math.max(0, act.startTime ?? 0))
