@@ -486,13 +486,18 @@ dump 41.6 s / 520 键，rowsnap 42.8 s / 533 键；差集 **13** 条全是 `auto
 | # | 做什么 | 实测收益 | 验收 |
 |---|---|---|---|
 | **P0** | `interactionSurface.test.ts` 五条判据共扫一次（**已做并复测，`53fb6cf7`**） | 该文件 单跑 **568 → 93.9s**、套件内 **645.2 → 169.6s**；**core 环 648.87 → 172.72s（3.76×）** | `npx vitest run src/composables/__tests__/interactionSurface.test.ts`（5/5，<120s） |
-| **P1** | 把 `CORE_EXCLUDES` 换成**由实测生成的清单**（≥20s 自动出环 + 不变量白名单），并在 `zc status` 里报「清单已腐坏」 | 剩余 12 个 ≥20s 文件（allAgentsGuards 72s / substatCritOverflow 63s / basicPoolLeftoverFill 45s…）出环后，core 逼近 L1 实测 **136.3s** | `node scripts/test-ring.mjs core`，跑前后记 HEAD |
+| **P1** | 把 `interactionSurface.test.ts` 移出 core（它 170s，且按 `CORE_INVARIANTS` 三条判据它**一条都不满足**：测的是「二维面这个功能」不是跨切面维度；同类的 `interactionSweep` 早已在排除集里）。同时把 `CORE_EXCLUDES` 换成**由实测生成的清单**（≥20s 自动出环 + 不变量白名单），`zc status` 报「清单已腐坏」 | core **172.72 → 136.3s**（L1 实测）。⚠ **只摘掉非关键路径上的那 11 个文件买不到任何墙钟**：它们在 170s 的窗口里并发跑完，`makespan = 最长文件`（实测：整环 172.72s，最长文件 169.56s ⇒ 其余 635 个文件只溢出 3.16s） | `node scripts/test-ring.mjs core`，跑前后记 HEAD |
 | **P2** | `check-guards` 去重读 + 去 600 次 git 子进程（今日实测 **28.9~109s**，波动来自并行会话） | 每轮省 **15~20s**（读缓存实验 30.7→28.3s） | `node scripts/check-guards.mjs`，34/34 且 <15s |
 | **P3** | 把 L1 拆成 `check`（纯 vitest）+ `guards`（护栏链）两条并行链；本地一条命令并行起两个进程 | 每轮再省一个 `check-guards` 的墙钟 | `npm run check` 墙钟；两条链 exit 0 |
 | **P4** | L2 = 20~60s 那 28 个文件（1021s CPU / 138s 理想）：只在 `git status` 命中危险面时跑，复用 `test-ring advise` 的路径规则 | 合并前 665s → ~250s | `node scripts/test-ring.mjs fast` |
 | **P5** | 长尾并行化（见 12.3）：`difficultyCurve` 515s、四个 burnShard 1440s、`truncationCountDeduction` 325s | 全量 **665 → ~480s**（估） | 全量 passed 数不变 |
 
-**P0/P1 是帕累托**：省 5.8 倍墙钟、判据一条没少、改动只有一个测试文件 + 一份清单生成器。
+**P0/P1 是帕累托**：省 4.8 倍墙钟、判据一条没少、改动只有一个测试文件 + 一份清单生成器。
+
+**本轮第二个 Pareto 洞察（本轮量的，反直觉）**：环的墙钟 = **最长那个文件**，不是 CPU 总和。
+实测：core 172.72s 里最长文件占 169.56s ⇒ 剩下 635 个文件全部只溢出 **3.16s**。
+所以「把一批 20~70s 的文件挪出 core」这条直觉动作，只要它们不在关键路径上，**省下的墙钟是 0**，
+而「把最长那一个拆开或移走」立刻省下它的差值。**先找最长文件，再谈清单**——顺序反了就白改。
 **P2~P5 是第二阶**：收益递减，且 P5 要动测试结构（分片/共享扫描器），必须逐条 A/B。
 
 ### 12.3 长尾的正确修法（不是「加并行」）
