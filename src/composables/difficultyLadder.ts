@@ -138,14 +138,18 @@ export function applyInteractionKnob(ctx: LadderCtx, knob: InteractionKnob): voi
   if (knob === 'zero') { clearInteractions(ctx); return }
   if (knob === 'default') return
   /**
-   * 2026-11-03：曲线多档继续走 joint-levers（轻量联合搜索），不接 interaction-optimum。
+   * ②③④ 走轻量 joint-levers（**曲线视图**），不接 interaction-optimum。
    *
-   * 实测原因：曲线每条用例要跑多档 + 吸收率网格，接完整策略后 difficultyLadder.test.ts
-   * 从基线约 680s 膨胀到 20 分钟以上仍未结束（单队策略约 20s/次 × 每队多次 × 19 用例）。
-   * 「最高档」的最优性由主页/散点/实战入口保证；曲线是视图，代价必须可控。
-   * 同一函数的判据由 interactionOptimum.test.ts 与各入口测试守着。
+   * 实测（2026-11-04，两次独立尝试）：接完整策略后 `difficultyLadder.test.ts` 从 2 分钟涨到
+   * **3m33s~4m19s**，且固定 6 条判据红（§6.3b / §6.4 档位名 / 吸收上限 / 点位序列 …）。
+   *
+   * 根因不是性能，是**架构耦合**：曲线 ④ 的判据读的是「旋钮档位名」（`knobs.interactions === 'max'`）
+   * 与「吸收率 == absorbCap」这类**曲线自己的中间态**，而策略产出的是**最终数值**、且会连带重写
+   * 权重/吸收率/嘲讽取消。把策略塞进曲线 = 要求策略暴露内部档位语义 ⇒ 反向依赖。
+   *
+   * ⇒ 曲线保持轻量实现；「最高档最优点」由主页/散点/选第三人/实战四个入口同源保证，
+   * 那四条判据由 `interactionOptimum.test.ts` 与各入口测试守着。
    */
-
   applyTimeWeightAllocation({ calc: ctx.calc, configStore: ctx.config,
     interactionOptions: { maximizeNetGains: false, absorbCap: ctx.absorbCap } }, DEEP_TIME_WEIGHT_STRATEGY_ID)
 }
