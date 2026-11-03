@@ -710,6 +710,18 @@ export interface LadderPoint {
    *    于是这条曲线的 x 与散点图的横轴**同一把尺**（可跨图对照）。
    */
   x: number
+  /**
+   * 这一点的**难度构成明细**（仅当 `opts.costDetailOf` 给了才在）：
+   * 「哪几项交互 × 多少次 × 什么权重 + 时间压力秒」。
+   *
+   * 为什么要有它（用户 2026-11-03）：「**他的默认操作模式算什么难度**？总不能没有自动调整吧，
+   * 比如你把交互全硬编码为 0 还不能改」——此前曲线点只有 `x` 总数，**看不出交互是引擎自己搜出来的
+   * 还是写死的**。逐类型明细 + 权重把这件事变成可读的读数（悬停 tooltip 显示）。
+   * 单一来源 = `teamCompare#computeDifficulty` 的 `detail`（与散点页横轴同一函数）。
+   * ⚠ ①（最低）的交互恒为 0 是**用户 2026-10-15 裁的难度原点**（「低难度下就是全 0 交互的」），
+   * ②③④ 则是引擎搜出来的（`joint` / `slotLadder` 旋钮，见 `applyInteractionKnob`）。
+   */
+  costDetail?: string
   dmg: number
   /** 这一点的**点名**（① `baseline` / ② `axis` / ③ `progress` / ④ `max`） */
   point: KnobPointName
@@ -931,6 +943,8 @@ export interface LadderOpts {
    * 自变量就是交互值、吃掉队友的合轴时间等」）。给了它之后 `x` = **绝对值**（与散点横轴同尺）。
    */
   costOf?: (ctx: LadderCtx) => number
+  /** **难度构成明细**（缺省不采）：与 `costOf` **同刻同现场**量，见 `LadderPoint.costDetail` */
+  costDetailOf?: (ctx: LadderCtx) => string
   /**
    * ② 的扫描步数（吸收率网格；缺省 20 = 5% 网格，见 `scanAbsorbGrid`）。
    * 单测可调小以控成本。
@@ -1102,6 +1116,8 @@ export function climbDifficultyLadder(
       }
     }
     const x = costOf ? costOf(ctx) : 0
+    /** 构成明细与 `x` 同刻量（同一现场、同一次读数）⇒ 两者不可能描述不同的档 */
+    const costDetail = opts.costDetailOf?.(ctx)
     /**
      * 非轴参照（用户 2026-10-16）——**必须在伤害已算好、现场仍是该点**时采；
      * `noAxisOf` 内部自带轴状态保存/恢复，采完现场不变（继续落点）。
@@ -1117,6 +1133,7 @@ export function climbDifficultyLadder(
       ...sceneSnap(),
       ...(noAxis ? { noAxis } : {}),
       ...(costOf ? { difficulty: x } : {}),
+      ...(costDetail ? { costDetail } : {}),
     }
   }
 

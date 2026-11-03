@@ -427,6 +427,8 @@ export function computeDifficultyCurves(scenario: AnalysisContext, options: Diff
           : {}),
         // x 轴 = 自动算的操作难度（不是手填代价）
         costOf: ctx => measureOperationalDifficulty(ctx, preset, options.difficultyWeights),
+        // 难度**构成明细**（与 costOf 同刻同现场量；悬停 tooltip 显示「算什么难度」）
+        costDetailOf: ctx => measureOperationalDifficultyDetail(ctx, preset, options.difficultyWeights).detail,
         base: (ctx, team) => {
           clearDifficultyLevers(ctx)
           applyTeamToStore(ctx.config, lockedPreset)
@@ -886,11 +888,11 @@ export function measureNoAxisAt(
  *
  * ⚠️ 与散点页**同一个函数、同一个单位** ⇒ 两张图的 x 轴可对齐比较（这正是难度曲线要解决的对比问题）。
  */
-export function measureOperationalDifficulty(
+export function measureOperationalDifficultyDetail(
   ctx: { config: ConfigModel; calc: Calc },
   preset?: Pick<TeamPreset, 'interactions' | 'team'>,
   weights?: DifficultyWeights,
-): number {
+): { difficulty: number; detail: string } {
   const rr = ctx.calc.resourceResult.value
   const overflow = rr?.overflowSeconds ?? 0
   // 合轴抵扣出去的秒数：与硬溢出同属「必做前台超出 180s」这一笔，故交给 computeDifficulty 合成一项
@@ -899,7 +901,23 @@ export function measureOperationalDifficulty(
   return computeDifficulty(
     liveInteractions(ctx.config, preset, rr), team, overflow, weights, saved,
     stunWindowRatioOf(ctx.calc, ctx.config.enemy),
-  ).difficulty
+  )
+}
+
+/**
+ * 只要数值（既有调用点不变）。
+ *
+ * 与 `measureOperationalDifficultyDetail` **同一实现**（不复制算式）——用户 2026-11-03 问
+ * 「他的默认操作模式算什么难度」时暴露的缺口：曲线点的 `cost` 只有**总数**，**构成**
+ * （哪几项交互 × 多少次 × 什么权重 + 时间压力秒）此前无处可读 ⇒ 悬停 tooltip 现显示它
+ * （`detail` 的单一来源 = `teamCompare#computeDifficulty`，与散点页同一把尺）。
+ */
+export function measureOperationalDifficulty(
+  ctx: { config: ConfigModel; calc: Calc },
+  preset?: Pick<TeamPreset, 'interactions' | 'team'>,
+  weights?: DifficultyWeights,
+): number {
+  return measureOperationalDifficultyDetail(ctx, preset, weights).difficulty
 }
 
 
@@ -1308,6 +1326,12 @@ export function estimateLabelWidth(text: string): number {
 export interface CurveDatum {
   /** 该点的操作难度（该队自己的 x） */
   cost: number
+  /**
+   * 该点**难度构成的明细**（仅当引擎侧采了才在）：「哪几项交互 × 多少次 × 什么权重 + 时间压力秒」
+   * ——悬停 tooltip 显示，回答用户 2026-11-03 的「**他的默认操作模式算什么难度**」。
+   * 单一来源 = `teamCompare#computeDifficulty` 的 `detail`（与散点页横轴同一函数、同一把尺）。
+   */
+  costDetail?: string
   dmg: number
   /** 伤害 / Boss 血量 × 100% */
   ratio: number
@@ -1641,6 +1665,8 @@ export function buildCurveChart(rows: DifficultyCurveRow[], hp: number): CurveCh
     const s = summarizeLadder(r.ladder)
     const points: CurveDatum[] = r.ladder.points.map((p, i) => ({
       cost: p.x,
+      // 难度构成（哪几项交互×多少×什么权重 + 时间压力）；缺省不带（`costDetailOf` 未给）
+      ...(p.costDetail ? { costDetail: p.costDetail } : {}),
       dmg: p.dmg,
       ratio: (p.dmg / safeHp) * 100,
       point: p.point,

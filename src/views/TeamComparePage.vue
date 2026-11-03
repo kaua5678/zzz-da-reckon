@@ -3042,6 +3042,9 @@ const curveHoverTips = computed(() => {
   return [
     s.name,
     `操作难度 ${fmt(point.cost, 0)} 点 · 伤害 ${compact(point.dmg)}（${fmt(point.ratio, 1)}%）${vsNoAxis}`,
+    // 难度**构成**（用户 2026-11-03「他的默认操作模式算什么难度」）：哪几项交互×多少×什么权重 + 时间压力秒。
+    // 单一来源 = 引擎侧 `computeDifficulty.detail`（与散点页同一把尺），页面不复算。
+    ...(point.costDetail ? [`难度构成：${point.costDetail}`] : []),
     attr
       ? `较上一档 Δ ${signedDmg(attr.totalDelta)} ← ${attr.top.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、') || '（无正贡献）'}${attr.squeezed.length > 0 ? `｜挤掉 ${attr.squeezed.map(c => `${c.label} ${signedDmg(c.delta)}`).join('、')}` : ''}`
       : '本点无伤害变化（全关起点）',
