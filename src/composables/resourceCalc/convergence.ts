@@ -11,7 +11,7 @@ import { continuousStunCount } from '@/core/stunPool'
 import { probeKey, probePush } from '@/core/probeTrace'
 import type { AnomalyPoolResult, StunAxis, ResourceCalcConfig, TeamResourceResult, InStunAnomalySummary, StunPoolResult } from '@/types/resource'
 import type { PanelValues } from '@/types/catalog'
-import { findInteractionTopUpSlot, getAgentMechanic, interactionBaselineFor } from '@/mechanics'
+import { findInteractionTopUpSlot, getAgentMechanic } from '@/mechanics'
 import { firstGiftedPolarAssaultSlot, sumGiftedPolarAssault } from './giftedPolarAssault'
 import { findMoveById } from '@/data/moveTableQueries'
 import type { FillResourceBudget } from './roundInputs'
@@ -278,16 +278,18 @@ export function createRunCalcRound(deps: {
      * ⚠ **不要**改成「`parryTotal` 无 Boss 时回落为手填总量」：实测**非单调**
      * （20 次 44.02M < 12 次 47.07M——`parryTotal` 变大会让反推把更多弹刀塞给击破位、占前台时间）。
      */
-    const parryBaseline = configStore.team.reduce((a, c) => {
-      if (!c.agentId) return a
-      const specialty = catalogStore.agentsMap.get(c.agentId)?.specialty
-      return a + interactionBaselineFor(c.agentId, specialty).parry
-    }, 0)
-    const manualParryAboveBaseline = Math.max(0,
-      configStore.team.reduce((a, c) => a + Math.max(0, c.parryCount), 0) - parryBaseline)
-    const parrySplitActive = (parryTotal + parryNoFollowUpTotal + parryDecibelOnlyTotal > 0
-        || manualParryAboveBaseline > 0)
-      && guaranteeStun && (breakerSlot >= 0 || configStore.team.length > 0)
+    /**
+     * ⚠ **2026-11-03 用户裁决：删掉「失衡次数四舍五入」这个人为目标**。
+     *
+     * 用户原话：「我用四舍五入其实是近似代替了梯度下降的局部最优……这个四舍五入其实并不严谨更优，
+     * 还是要综合目前的交互情况，考虑失衡收益和交互代价」/「4 失衡不是下限，甚至不能作为一个指引目标」。
+     *
+     * ⇒ 普通弹刀**不再按目标次数反推**：`parryCount` 直接取 store 输入（用户手填或外侧
+     * `interaction-optimum` 策略按总伤选的驻点）。Boss 的**特殊**交互（无突击弹刀 / 只喧响弹刀 /
+     * x 弹刀）仍是预设自带的静态分配，不属「目标次数反推」。
+     */
+    const parrySplitActive = (parryNoFollowUpTotal + parryDecibelOnlyTotal > 0)
+      && (breakerSlot >= 0 || configStore.team.length > 0)
     const mainDpsSlot = breakerSlot === 0 ? -1 : 0
     // 保底开关（配装页「保底目标」勾选）：保底4嗔火 → 抬双反补嗔火；保底4喧响 → 抬弹刀补喧响。
     // 是否补齐由产出者模块按 gate 判定（CC-295：轴模式 / 保底开关 / 模块设置，公式只在模块里一份）。
@@ -920,7 +922,6 @@ export function createRunCalcRound(deps: {
          * 改为 `Math.max(ultNeed, axisActive ? 4 : 0)`，与「删除前、用户未勾选」逐位相同。
          */
         ultimateCountNeeded: Math.max(ultNeed, axisActive ? 4 : 0),
-        minRageCount: guaranteeFury ? 4 : 0,
         ultimateCost: base.characters.find(c => c.slot === interactionTopUpSlot)?.ultimateCost ?? ULTIMATE_COST_DEFAULT,
         decibelHave,
         /**

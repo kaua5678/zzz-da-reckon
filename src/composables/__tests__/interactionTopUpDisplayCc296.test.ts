@@ -30,13 +30,24 @@ async function run(fury: number) {
 }
 
 describe('CC-296 自动补齐显示门控与模块门控同源', () => {
-  it('非轴 + 保底4嗔火：补齐生效 ⇒ 交互栏显示同一数量', async () => {
+  /**
+   * ⚠ **2026-11-03 口径修正**：「保底 4 嗔火」退场（用户：这是人为规定的想象更优）。
+   * 旧主题「保底4嗔火 ⇒ 补齐生效」随之失效；新主题 = 「显示门控与模块门控同源」本身仍成立：
+   * 模块补了什么、交互栏就显示什么（0/0 ⇒ 不显示）。
+   */
+  it('非轴 + 保底开关（已无引擎语义）：显示与模块门控仍同源', async () => {
     const { shown, applied } = await run(1)
-    // 2026-10-23：原断言 `applied.parry > 0`——那是「保底4喧响」驱动的弹刀通道。该功能删除后
-    // 保底4嗔火驱动的是**双反**通道（parry 恒 0）⇒ 判据改为「补齐量 > 0」（parry + dual），
-    // 语义仍是「模块真的补了东西」。反空洞由下面 shown 与 applied 逐字段相等共同保证。
-    expect((applied?.parry ?? 0) + (applied?.dual ?? 0)).toBeGreaterThan(0)
-    expect(shown).toEqual({ slot: 0, parry: applied!.parry, dual: applied!.dual })
+    /**
+     * ⚠ **2026-11-03 口径修正**：保底 4 嗔火退场后，**非轴态不再有补齐来源**
+     * （旧实现靠 `guarantee.fury` 在非轴也驱动双反）。本用例的主题是**显示门控与模块门控同源**，
+     * 与「补多少」无关：模块补 N ⇒ 交互栏显示 N；模块不补 ⇒ 交互栏不显示。
+     */
+    const total = (applied?.parry ?? 0) + (applied?.dual ?? 0)
+    if (total === 0) {
+      expect(shown, '模块没补 ⇒ 交互栏不显示').toBeNull()
+    } else {
+      expect(shown).toEqual({ slot: 0, parry: applied!.parry, dual: applied!.dual })
+    }
   })
   it('非轴 + 保底全关：模块不补 ⇒ 交互栏不显示', async () => {
     const { shown, applied } = await run(0)

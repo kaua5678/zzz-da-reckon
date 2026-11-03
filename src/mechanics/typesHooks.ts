@@ -388,7 +388,6 @@ export interface InteractionTopUpInput {
   /** 轴内需要的终结技总次数（块 × 窗口数） */
   ultimateCountNeeded: number
   /** 保底怒相（嗔火）次数下界：需求 = max(轴内怒相需求, 此值)，供保底4嗔火开关 */
-  minRageCount?: number
   /** 终结技喧响消耗（默认 3000） */
   ultimateCost: number
   /** 当前喧响供给（般岳个人；终结技次数 = 个人喧响 / 终结技消耗，非全队总和） */

@@ -250,7 +250,14 @@ function measuredParryUnitOf(opts: InteractionTopUpInput): number | undefined {
 
 export function computeBanyueInteractionTopUp(opts: InteractionTopUpInput): InteractionTopUp {
   const rageGroups = (opts.axisEx['banyue-combo'] ?? 0) + (opts.axisEx['banyue-combo-didong'] ?? 0)
-  const rageNeeded = Math.max(Math.ceil(rageGroups / 2), opts.minRageCount ?? 0) // 每组连段 2 块 = 一次怒相
+  /**
+   * 怒相需求 = **轴内容本身**（连段块 ÷ 2，一次怒相供 2 组）。
+   *
+   * ⚠ 2026-11-03 用户裁决「保底 4 嗔火是人为规定的想象更优」⇒ 删掉 `minRageCount` 下界。
+   * 终结技那一侧的嗔火需求由调用方以**向上取整后的真实次数**递入（见 `ultimateCountNeeded`），
+   * 不靠目标常数兜底。
+   */
+  const rageNeeded = Math.ceil(rageGroups / COMBO_GROUPS_PER_RAGE)
   const cycle = computeBanyueRageCycle(
     opts.dodgeCount,
     opts.parryCount,
@@ -291,8 +298,15 @@ export function computeBanyueInteractionTopUp(opts: InteractionTopUpInput): Inte
    * 每轮把已装当「还没装」，实测无界累加 5→11→16→…→69 刀（`.zc/perf/tauntAfterFix.perf.ts`）。
    * 差额是**总需求**不是**增量**，这是两种写法的分水岭。
    */
+  /**
+   * ⚠ **终结技次数必须向上取整**（2026-11-03）：`ultimateCountNeeded` 来自轴声明 × 窗口分配，
+   * 实测是 **3.21** 这类实数；而终结技是**离散事件** —— 要打满 3.21 次，必须备够 **4 次**的喧响。
+   * 旧实现靠 `Math.max(ultNeed, axisActive ? 4 : 0)` 顺带把「4」当成取整结果，常数退场后这个
+   * 量纲职责就丢了（少算 0.79 次 ⇒ 少补约 4 刀）。这是**量纲要求**，不是目标次数。
+   */
+  const ultimateNeededWhole = Math.ceil(Math.max(0, opts.ultimateCountNeeded) - 1e-9)
   const decibelShort = Math.max(0,
-    opts.ultimateCountNeeded * (opts.ultimateCost || ULTIMATE_COST)
+    ultimateNeededWhole * (opts.ultimateCost || ULTIMATE_COST)
     + appliedParry * PARRY_TOPUP_DECIBEL_UNIT
     - opts.decibelHave)
   // 分母 = **一次普通弹刀完整链**的实测收益（301.35，含支援突击：昂霄），不是招架判定单段的 215：

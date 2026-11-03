@@ -64,14 +64,20 @@ describe('队友 buff 触发型效果覆盖率折算', () => {
   })
 
   it('③④⑤ 真管线：自动折算进伤害通道、手调同值逐位相等、手调优先', async () => {
-    // 般岳+青衣(C6)+卢西娅：她只分到 13% 前台时间、6 轮醉花 ⇒ 折算值 50%
+    /**
+     * 般岳+青衣(C6)+卢西娅：青衣分到约 22% 前台时间、**8 轮**醉花 ⇒ 折算值 66.67%（8×15/180）。
+     *
+     * ⚠ 2026-11-03 口径修正：旧值是 6 轮 / 50%——那是「保底 4 嗔火 + 终结技需求未向上取整」时的落点。
+     * 两者退场/修正后（minRageCount 删除、ultimateCountNeeded 向上取整），般岳补齐量 60→4 刀，
+     * 时间面重排 ⇒ 青衣强特次数 10→8。折算式本身未变（轮次 × 15s ÷ 180s）。
+     */
     await setupHarness([{ agentId: '1471' }, { agentId: '1251', cinemaLevel: 6 }, { agentId: '1451' }])
     const config = useConfigStore()
     const calc = useResourceCalc()
     await flush()
     const auto = calc.effectiveTeammateBuffCoverages.value
-    expect(auto[C1_DEF], '影画一减防折算值（6 轮 × 15s / 180s）').toBeCloseTo(50, 6)
-    expect(auto[C6_RES], '影画六减抗折算值').toBeCloseTo(50, 6)
+    expect(auto[C1_DEF], '影画一减防折算值（8 轮 × 15s / 180s）').toBeCloseTo(66.667, 2)
+    expect(auto[C6_RES], '影画六减抗折算值').toBeCloseTo(66.667, 2)
     const base = calc.teamTotalDamage.value
     expect(base).toBeGreaterThan(0)
 
@@ -82,7 +88,7 @@ describe('队友 buff 触发型效果覆盖率折算', () => {
     config.toggleTeammateBuff(C6_BUFF, true)
     await flush()
     expect(calc.teamTotalDamage.value, '自动值 ≠ 手调同值的伤害 ⇒ 折算没进伤害管线').toBeCloseTo(base, 4)
-    expect(config.teammateBuffManualCoverages[C1_BUFF], '手调标记').toBeCloseTo(50, 6)
+    expect(config.teammateBuffManualCoverages[C1_BUFF], '手调标记').toBeCloseTo(auto[C1_DEF]!, 6)
 
     // ⑤ 手调 100 ⇒ 高于折算（说明折算真的咬下去了）；手调 0 ⇒ 低于折算
     config.setTeammateBuffCoverage(C1_BUFF, 100)

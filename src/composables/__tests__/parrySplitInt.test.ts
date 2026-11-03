@@ -41,115 +41,94 @@ const STANDARD_TEAM = [
 ] as never
 
 describe('Boss 预设弹刀反推（叶释渊）', () => {
-  it('预设字段落库：无敌 24s / 秽盾 1 / 弹刀总数 13，自动勾选「失衡次数四舍五入」', async () => {
+  it('预设字段落库：无敌 24s / 秽盾 1 / 弹刀总数 13；不再自动勾选目标次数', async () => {
     const { config } = await setupHarness([...STANDARD_TEAM])
     const { preset, phase, monster, defaults } = yeshiyuanPreset()
     expect(defaults.invincibleTime).toBe(24)
     expect(defaults.shieldCount).toBe(1)
+    // parryTotal 仍落库（Boss 声明），但它**不再是引擎的优化目标**
     expect(defaults.parryTotal).toBe(13)
 
     config.applyBossPreset({ id: preset.id }, phase as never, monster as never, defaults as never)
     expect(config.enemy.invincibleTime).toBe(24)
     expect(config.enemy.shieldCount).toBe(1)
     expect(config.enemy.battleTime).toBe(180)
-    expect(config.getMechanicSetting('guarantee.stun', 0)).toBe(1)
+    // ✅ 2026-11-03：人为目标退场 —— 不再自动写「失衡次数四舍五入」
+    expect(config.getMechanicSetting('guarantee.stun', 0)).toBe(0)
   })
 
-  it('应用叶释渊 → 击破位弹刀反推、主C 拿剩余、失衡池达保底 4 次（注入自洽）', async () => {
+  /**
+   * ⚠ **2026-11-03 用户裁决：普通弹刀不再按目标次数反推**
+   *
+   * 用户原话：「4 失衡不是下限，甚至不能作为一个指引目标」/「我用四舍五入其实是近似代替了梯度下降的局部最优」。
+   * ⇒ 下列用例的旧主题（击破位反推 / 封顶 parryTotal / 主C 拿剩余）**整组作废**；
+   * 新主题 = 「用户手填多少就是多少，引擎不改写」+「Boss 特殊交互仍静态分配」。
+   */
+  it('应用叶释渊 → 普通弹刀直接取 store 输入，引擎不改写', async () => {
     const { config } = await setupHarness([...STANDARD_TEAM])
     const { preset, phase, monster, defaults } = yeshiyuanPreset()
     config.applyBossPreset({ id: preset.id }, phase as never, monster as never, defaults as never)
 
+    const before = config.team.map(c => c.parryCount)
     const calc = useResourceCalc()
-    const split = calc.parrySplitResult.value
-    expect(split).not.toBeNull()
-    expect(split!.breakerSlot).toBe(1)
-    // 拆分：击破位 = 反推、主C = 13 − 击破位（输入未填时）
-    expect(split!.breakerParry).toBeGreaterThan(0)
-    expect(split!.breakerParry).toBeLessThanOrEqual(13)
-    expect(split!.mainDpsParry).toBe(13 - split!.breakerParry)
+    calc.stunPoolResult.value
+    // 引擎跑完一轮后，store 里的弹刀次数逐槽不变（没有任何反推写回）
+    expect(config.team.map(c => c.parryCount)).toEqual(before)
+    // 结果池仍然有效（不是空转）
+    expect(calc.stunPoolResult.value).not.toBeNull()
+  })
 
-    // 注入自洽：失衡池里击破位弹刀行（招架支援 + 支援突击）count = 拆分出的击破位弹刀次数
+  it('队伍失衡输出不足 → 如实反映，不再按 parryTotal 封顶填充', async () => {
+    const { config } = await setupHarness([
+      { agentId: '1081', parryCount: 0 },
+      { agentId: '1141', parryCount: 0 },
+      { agentId: '1211', parryCount: 0 },
+    ])
+    const { preset, phase, monster, defaults } = yeshiyuanPreset()
+    config.applyBossPreset({ id: preset.id }, phase as never, monster as never, defaults as never)
+    const calc = useResourceCalc()
     const sp = calc.stunPoolResult.value
     expect(sp).not.toBeNull()
-    const breakerRows = sp!.contributions.filter(c => c.slot === 1 && (c.moveName.includes('招架') || c.moveName.includes('支援突击')))
-    expect(breakerRows.length).toBe(2)
-    for (const row of breakerRows) expect(row.count).toBe(split!.breakerParry)
-
-    // 时间守恒口径（用户 2026-09-01）后：窗口内的招式不再攒条，同样的弹刀上限（13）攒不满 4 次。
-    // 保底是「尽力而为，不虚标」——反推照旧顶到上限（下面那条断言），次数如实报 3 而不是硬凑 4。
-    expect(sp!.stunCount).toBeGreaterThanOrEqual(3)
-
-    // 反推自洽：T = ceil((4×失衡条 − 非弹刀基数) / 每次弹刀失衡)，封顶 13 = 拆分出的击破位次数
-    const perParryDaze = breakerRows.reduce((s, c) => s + c.perHitStun, 0)
-    const nonParryStun = sp!.totalStunBuildUp - breakerRows.reduce((s, c) => s + c.totalStun, 0)
-    const T = Math.min(13, Math.ceil((4 * config.enemy.stunValue - nonParryStun) / perParryDaze))
-    expect(split!.breakerParry).toBe(Math.max(0, T))
+    // 零弹刀输入 ⇒ 池里没有弹刀行（旧实现会按 parryTotal 灌 13 刀）
+    // 只认「招架」行（弹刀本体）；「支援突击」也可能是角色自身强特（如莱卡恩的复仇反扑）
+    const parryRows = sp!.contributions.filter(c => c.moveName.includes('招架'))
+    expect(parryRows.length, '引擎不再替用户灌弹刀').toBe(0)
   })
 
-  it('队伍失衡输出不足 → 击破位封顶弹刀总数（保底尽力而为，不虚标）', async () => {
-    // 无装备的弱势击破位：13 次弹刀也到不了 4 次失衡 → 拆分如实封顶、主C 归 0
-    const { config } = await setupHarness([
-      { agentId: '1081', parryCount: 0 },
-      { agentId: '1251', parryCount: 0 },
-      { agentId: '1451', parryCount: 0 },
-    ] as never)
-    const { preset, phase, monster, defaults } = yeshiyuanPreset()
-    config.applyBossPreset({ id: preset.id }, phase as never, monster as never, defaults as never)
-
-    const calc = useResourceCalc()
-    const split = calc.parrySplitResult.value
-    expect(split).not.toBeNull()
-    expect(split!.breakerParry).toBe(13)
-    expect(split!.topUp).toBe(13)
-    expect(split!.mainDpsParry).toBe(0)
-    expect(calc.stunPoolResult.value!.stunCount).toBeLessThan(4)
-  })
-
-  it('未勾选「失衡次数四舍五入」→ 不反推（拆分不生效）', async () => {
+  it('未勾选「失衡次数四舍五入」→ 行为不变（该开关已无引擎语义）', async () => {
     const { config } = await setupHarness([...STANDARD_TEAM])
     const { preset, phase, monster, defaults } = yeshiyuanPreset()
     config.applyBossPreset({ id: preset.id }, phase as never, monster as never, defaults as never)
-    config.setMechanicSetting('guarantee.stun', 0) // 用户手动取消
-
+    config.setMechanicSetting('guarantee.stun', 0)
+    const before = config.team.map(c => c.parryCount)
     const calc = useResourceCalc()
-    expect(calc.parrySplitResult.value).toBeNull()
+    calc.stunPoolResult.value
+    expect(config.team.map(c => c.parryCount)).toEqual(before)
   })
 
-  it('主C 手填弹刀 → 不被默认拆分覆盖', async () => {
-    const { config } = await setupHarness([
-      { agentId: '1081', parryCount: 8 }, // 主C 手填 8
-      gearedBreaker(),
-      { agentId: '1451', parryCount: 0 },
-    ] as never)
+  it('主C 手填弹刀 → 原样保留（既不覆盖也不补）', async () => {
+    const { config } = await setupHarness([...STANDARD_TEAM])
     const { preset, phase, monster, defaults } = yeshiyuanPreset()
     config.applyBossPreset({ id: preset.id }, phase as never, monster as never, defaults as never)
-
+    config.setActionCount(0, 'parryCount', 7)
     const calc = useResourceCalc()
-    const split = calc.parrySplitResult.value
-    expect(split).not.toBeNull()
-    expect(split!.mainDpsParry).toBe(8)
+    calc.stunPoolResult.value
+    expect(config.team[0].parryCount).toBe(7)
   })
 
-  it('队伍无击破位（stun 特性）→ 回落主C（槽位 0）承担弹刀（2026-09-07，归档 72db6dc3 口径）', async () => {
+  it('队伍无击破位（stun 特性）→ 普通弹刀仍按各槽输入，不做槽位回落分配', async () => {
     const { config } = await setupHarness([
-      { agentId: '1081', parryCount: 0 },
+      { agentId: '1371', parryCount: 3 },
+      { agentId: '1481', parryCount: 2 },
       { agentId: '1451', parryCount: 0 },
-      { agentId: '1551', parryCount: 0 }, // 佩洛伊斯（attack）
-    ] as never)
+    ])
     const { preset, phase, monster, defaults } = yeshiyuanPreset()
     config.applyBossPreset({ id: preset.id }, phase as never, monster as never, defaults as never)
-
     const calc = useResourceCalc()
-    // 无击破位不再熄火：拆分回落槽位 0（主C）。本队裸失衡已足 4 次 → 反推 T=0（正确：
-    // 不需要弹刀就不补）；拆分对象本身必须存在且字段自洽。
-    const split = calc.parrySplitResult.value
-    expect(split).not.toBeNull()
-    expect(split!.breakerSlot).toBe(0)
-    expect(split!.breakerParry).toBeGreaterThanOrEqual(0)
-    expect(split!.breakerParry).toBeLessThanOrEqual(split!.parryTotal)
-    expect(split!.mainDpsParry).toBeLessThanOrEqual(split!.parryTotal)
+    calc.stunPoolResult.value
+    expect([config.team[0].parryCount, config.team[1].parryCount]).toEqual([3, 2])
   })
+
 })
 
 describe('Boss 预设不带支援突击弹刀 + 喧响赠礼', () => {

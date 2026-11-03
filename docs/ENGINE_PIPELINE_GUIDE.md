@@ -282,14 +282,11 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
      （iterate 必要时间预留 + 折叠/探针行测量同口径），并修 `computeNormaHatToChainCount`
      长按项漏乘 exCount（迭代期喧响信道与最终行差 1 条赠链）。
 18. **Boss 特殊交互分配（控制技组）× 反制支援（弹刀拆分/折算单一事实源条目）**
-    - **普通弹刀不再反推目标次数**：`parryCount` 直接走 store 输入；由外侧 `interaction-optimum` 策略按完整引擎总伤逐槽选择。
-      **目标常数（4 失衡 / 4 嗔火）已退场**，见本条末「否决记录」。
+    - **普通弹刀不再反推目标次数**：`parryCount` 走 store 输入，由外侧 `interaction-optimum` 按总伤选；目标常数（4 失衡 / 4 嗔火）已退场，见末「否决记录」。
     - **Boss 特殊交互（仍保留）**：`parryNoFollowUpTotal`（无支援突击）按**对半分**
       （2026-09-10 更正，见「弹刀口径三件事」）、非用户可调；执行行：轻弹刀 count = parry + 无突击、支援突击
       count = parry。
-    - **口径坑**：③击破位每次弹刀失衡 = 招架支援 + 支援突击两行 `effectiveStun/count` 之和（无突击 = 仅招架支援）；
-      ④首轮注入 ≥1 探针保证轻弹刀行存在供测量（探针 215 喧响会级联污染本轮失衡）⇒ 每次弹刀失衡值随线程携带 `perParryDaze`；
-      ⑤弹刀 215 喧响用**注入后有效次数**（`parryForBonus` 读 `characters[slot].parryCount + parryNoFollowUpCount`，勿用 store 原值）。
+    - **口径坑**：③击破位每次弹刀失衡 = 招架支援 + 支援突击两行 `effectiveStun/count` 之和；④首轮注入 ≥1 探针保证轻弹刀行存在（探针 215 喧响会级联污染本轮失衡）⇒ 弹刀失衡值随线程携带 `perParryDaze`；⑤弹刀 215 喧响用**注入后有效次数**（读 `characters[slot].parryCount + parryNoFollowUpCount`）。
     - **只给喧响的弹刀 / 失衡赠礼**：`parryDecibelOnlyTotal`（轻弹刀打小怪无 daze）只计 215 喧响、**不产任何行**
       （不进 parryForBonus 之外的行生成）；`stunGiftRatio` 应用时换算 `bossStunGift = 比例 × stunValue`，`calcStunPool`
       加 `stunGift` 直接计入 stunCount 推导（不计抗性/返还），反推的非弹刀基数也加它（减少缺口）。
@@ -318,6 +315,10 @@ agentId 棘轮计数——规则 6 的真实漏网面）——现已收口：cor
         `auto-1591-1481-1211` −28.86%、`banyue-qingyi-lucia` −24.58%、`auto-1431-1481-1491` −10.41%、`auto-1461-1521-1491` −6.14%；
         正例 `auto-1501-1511-1411` +81.79%（灌 13 刀远超「刚好到 4」）⇒ 既过冲又不足。**新判据** = 提高交互到下一节点若完整引擎总伤提高就提高（同一策略
         `interaction-optimum`）；失衡次数是分配结果，不作目标、不设「至少 N 窗」。
+        **实施要点（勿重犯）**：删常数必须同时补「终结技次数向上取整」——`ultimateCountNeeded` 是实数（实测 3.21），
+        终结技是离散事件 ⇒ 要备 4 次的喧响。旧式 `Math.max(ultNeed, axisActive ? 4 : 0)` 顺带做了这个取整；
+        只删常数不补 ⇒ `banyue-liuyin-lucia` 补齐 60→2 刀、净占用压到 180.000 退化、94.21M→**70.23M（−25%）**；
+        补上后补齐 4 刀、轴成立、**96.94M（+2.9%）**。`minRageCount` 删除后由「连段块 ÷ 2」接管，无需目标下界。
       · 无突击弹刀「全部归击破位」→ 2026-09-10 判错、改**对半分**，详「弹刀口径三件事」。
       · 整组并入后再反扣对应弹刀次数 → 用户裁决「直接不把对应弹刀次数录进去，就无需反扣」，比反扣少一个振荡面。
       · 时长只按名扣 闪反1.5/招架2.5/终结5（v12 导入器）→ 两行各多算 3s（6.717/4.117 实为 3.717/1.117）；v12 一次性导入器还静默丢掉 gachabase 补的 gash_buildup/sharpness_gain 行（catalog 重跑时一并修）。

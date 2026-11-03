@@ -1454,8 +1454,12 @@ export function createConfigModel(
     // （弹刀反推的开关；用户可手动取消）。控制技组无替换时会并入弹刀总数，故也算弹刀来源；
     // 整组被反制支援化解时折算后总数可能归零 → parrySplitActive 自然为假，勾选无害。
     const groups = defaults.counterAssistGroups ?? []
-    if (((defaults.parryTotal ?? 0) + (defaults.parryNoFollowUpTotal ?? 0) + (defaults.parryDecibelOnlyTotal ?? 0)) > 0
-      || groups.length > 0) setMechanicSetting('guarantee.stun', 1)
+    /**
+     * ⚠ **2026-11-03 用户裁决：不再自动勾选「失衡次数四舍五入」**。
+     * 「4 失衡不是下限，甚至不能作为一个指引目标」⇒ 应用 Boss 预设只落**事实**（无敌/秽盾/弹刀声明），
+     * 不替用户打开任何「目标次数」开关。普通弹刀走 store 输入（手填或 interaction-optimum 策略）。
+     */
+    void groups
     appliedBoss.value = {
       presetId: preset.id,
       phaseId: phase.phaseId,

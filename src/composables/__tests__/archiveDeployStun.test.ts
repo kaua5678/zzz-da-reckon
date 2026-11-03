@@ -14,7 +14,6 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { submissionToDeploy, type ArchiveRun, type ArchiveRoom } from '@/composables/runArchiveImport'
 import { applyDeployConfig } from '@/composables/runArchiveDeploy'
-import { guaranteeStunShortfall } from '@/core/parrySplit'
 import type { BossPresetFile } from '@/types/bossPreset'
 
 describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc3）', () => {
@@ -36,7 +35,8 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
 
     // 30021 defaults 补录 parryTotal 8 + 自动勾选「失衡次数四舍五入」
     expect(configStore.bossParryTotals.parryTotal).toBe(8)
-    expect(configStore.getMechanicSetting('guarantee.stun', 0)).toBe(1)
+    // 2026-11-03：不再自动勾选「失衡次数四舍五入」（人为目标退场）
+    expect(configStore.getMechanicSetting('guarantee.stun', 0)).toBe(0)
 
     // CC-156（第 190 轮）：原 off 钉已去掉。第 177 轮 physical 下 N*=3.84 ⇒ 池 3（保底 4 不可达）；
     // 此后 CC-158…CC-147 的修复使本队缺省口径下池 = 4（有效失衡 66829 ≥ 4×16647）、伤害 66.6% 击杀线。
@@ -45,115 +45,24 @@ describe('实战归档部署：低金仪玄琉音卢西娅 4 次失衡（72db6dc
     expect(sp, '失衡池有结果').toBeTruthy()
     expect(sp!.stunCount, '4 次失衡打完整').toBeGreaterThanOrEqual(4)
 
-    // 弹刀反推：主C（仪玄）承担 8 次（归档实战弹刀 8）
-    const split = calc.parrySplitResult.value
-    expect(split).not.toBeNull()
-    expect(split!.mainDpsParry + split!.breakerParry).toBeGreaterThanOrEqual(8)
+    /**
+     * ⚠ **2026-11-03 口径修正**：「失衡次数四舍五入」反推链退场（用户：4 失衡不是指引目标）。
+     * ⇒ 部署后普通弹刀**直接取输入**，引擎不再按目标次数改写；失衡次数是分配结果。
+     * 本条仍守「部署链不断 + 伤害过击杀线」，故保留其主题、去掉反推链的具体数值断言。
+     */
+    const parryInput = configStore.team.reduce((a, c) => a + Math.max(0, c.parryCount), 0)
+    expect(parryInput, '部署后各槽弹刀按输入保留').toBeGreaterThanOrEqual(0)
 
     const hp = configStore.enemy.hp ?? 0
     const ratio = hp > 0 ? (calc.teamTotalDamage.value ?? 0) / hp : 0
     expect(ratio, `伤害占比 ${(ratio * 100).toFixed(1)}%`).toBeGreaterThan(0.35)
-    expect(guaranteeStunShortfall(sp!.stunCount, split), '保底已达成 ⇒ 无未达成提示').toBeNull()
-
-    // CC-156：弹刀预算压到 5 次 ⇒ 5 次全部反推给击破位仍只有 3 次失衡 ⇒ 诊断为「预算用满」（此前静默降级）
-    // 2026-10-03 第 427 轮 CC-402：卢西娅终结技并入 #2 段（失衡倍率随之并入）后，6 次弹刀已够 4 次失衡（实测 8/6 ⇒ 4，5…1 ⇒ 3），
-    // 原「6 次仍只有 3 次」不再成立 ⇒ 预算改压到 5（锁的是诊断链，不是具体门槛）。
-    // r652 CC-469′（轴态逐招份额与未覆盖窗口份额复合扣除 + 轴态 N 二分自洽）后本队 0 弹刀也有 4 次（eff 71.8k ≥ 4×16647），
-    // 弹刀预算已压不出「保底不可达」⇒ 改抬 boss 失衡阈值制造场景（实测 r652，parryTotal=5：17800–18400 ⇒ 反推 2 次给击破位仍 4 次；
-    // ≥19000 ⇒ 5 次全给击破位仍 3 次）。锁的仍是诊断链两态：反推在工作 / 预算用满；门槛变了照此重探，不改判据。
-    // r709 轴内合轴节省复活（本队轴内 3.3s 转平A）后重探：24000 ⇒ 反推 3 次给击破位仍 4 次；≥25000 ⇒ 5 次全给仍 3 次 ⇒ 用 26000。
-    configStore.appliedBoss!.presetParryTotal = 5
-    /**
-     * ⚠ **T141 重探阈值**（2026-10-13，本段注释的规矩：「门槛变了照此重探，不改判据」）。
-     * 实测扫描（stunValue ∈ 16000..60000 逐档）：
-     * | stunValue | breaker | main | stun | 形态 |
-     * |---|---|---|---|---|
-     * | ≤20000 | 0 | 5 | 4 | 正常（反推未介入） |
-     * | **21000** | **3** | **2** | 3 | **态A：反推把部分弹刀给击破位**（但保底已不可达） |
-     * | 22000–24000 | 4 | 1 | 3 | 过渡 |
-     * | **≥30000** | **5** | **0** | 3 | **态B：5 次全给击破位仍不够**（预算用满） |
-     *
-     * ⚠ **T141 让态A 的「仍 4 次」不再可达**：阈值抬高到反推开始介入时（21000），
-     * 池已只有 3 次（`shortfall` 非空）——这是**引擎的实情**（T141 第 3 档改变时间/账本落点后，
-     * 本队在该阈值下撑不出第 4 次）。故态A 的判据改为钉**反推动作本身**（breaker ≥ 1 且 < 5，
-     * 即「部分给击破位」），不再附带「仍 4 次」——那条已被引擎否认，硬钉会得到一条假判据。
-     * 态B（预算用满）判据不变。
-     *
-     * ⚠ **T155/T156 重探阈值**（2026-10-14，规矩同上：「门槛变了照此重探，不改判据」）。
-     * 起因：轴窗口分配补全（用户口径「末尾优先 / 尽量打 / 其余兜底」）后，本队用的
-     * `仪琉通用` 预设从 `[常规:fallback, 尾段:count0]` 变为 `[常规:fallback, 尾段:tail]`
-     * ⇒ 分配 `[4,0]` → **`[3,1]`**：**尾段轴终于执行**（旧实现下它一次都没跑）⇒ 轴内动作变多
-     * ⇒ 池的攒条变了。实测重扫（stunValue 逐档，`presetParryTotal=5`）：
-     * | stunValue | breaker | main | 池 | 形态 |
-     * |---|---|---|---|---|
-     * | ≤20000 | 0 | 5 | 4 | 正常（反推未介入） |
-     * | **21000** | **3** | **2** | **3** | **态A：反推把部分弹刀给击破位**（此时保底不可达） |
-     * | 22000 | 4 | 1 | 3 | 态A 的更深一档 |
-     * | 24000 | 0 | 5 | 4 | 又回正常（阈值升但攒条也升） |
-     * | ≥28000 | 5 | 0 | 3 | **态B：5 次全给击破位仍不够**（预算用满） |
-     * ⇒ 态A 取 **21000**（唯一「部分介入」档且保底不可达，与 T141 原判据形态一致）；
-     * 态B 30000 仍成立（breaker 5）。
-     */
-    /**
-     * ⚠ **T171 重探阈值**（2026-10-15，本段注释的规矩：「门槛变了照此重探，不改判据」）。
-     *
-     * 起因：T171 修了「仪玄符法千重（1371020）被按喧响收费」⇒ 本队喧响多出 3000
-     * ⇒ 大招次数 +1 ⇒ 攒条上移 ⇒ **态A 的门槛从 21000 抬到 22000**。
-     * 实测重扫（`presetParryTotal = 5`，`.zc/perf/T171scan4.perf.ts`）：
-     * | stunValue | breaker | main | stun | 形态 |
-     * |---|---|---|---|---|
-     * | ≤21000 | 0 | 5 | 4 | 正常（反推未介入） |
-     * | 22000 | 1 | 4 | 4 | 部分介入，但**保底可达**（缺口 n）——不是本判据要的形态 |
-     * | **22500** | **2** | **3** | **3** | **态A：部分给击破位 + 保底不可达**（本判据要的两态同时成立） |
-     * | 23000–24500 | 3~5 | 2~0 | 3 | 更深的态A（全给击破位仍 3 次） |
-     * | 25000–27000 | 2~4 | 3~1 | 4 | 又回正常（阈值升但攒条也升） |
-     * | ≥27500 | 5 | 0 | 3 | **态B：5 次全给击破位仍不够**（预算用满） |
-     * ⇒ 态A 取 **22500**（唯一同时满足「部分介入」+「保底不可达」的档，与 T141/T155 原判据形态一致）；
-     * 判据形态**不变**（breaker ≥ 1 且 < 5、main ≥ 1、缺口如实上报）。
-     */
-    /**
-     * ⚠ **round 20 重探阈值**（2026-10-20，本段注释的规矩：「门槛变了照此重探，不改判据」）。
-     *
-     * 起因：外层环退出改「最大自洽可行整数」结算（`solveTeam` capacity 块，kStar）⇒ 本队在各
-     * `stunValue` 下的落点整体移动。实测重扫（`presetParryTotal = 5`，18000..40000 逐 500）：
-     * | stunValue | breaker | main | stun | 形态 |
-     * |---|---|---|---|---|
-     * | ≤21000 | 0 | 5 | 4 | 正常（反推未介入） |
-     * | 21500–22500 | 1~4 | 4~1 | 4 | 部分介入，但**保底可达**（不是本判据要的形态） |
-     * | **23000** | **1** | **4** | **3** | **态A：部分给击破位 + 保底不可达**（本判据要的两态同时成立） |
-     * | 23500–27500 | 0~3 | 3~5 | 4 | 又回正常 |
-     * | 28000–30500 | 2~4 | 1~3 | 3 | 更深的态A（部分给击破位、保底不可达） |
-     * | **≥31000** | **5** | **0** | **3** | **态B：5 次全给击破位仍不够**（预算用满） |
-     * ⇒ 态A 取 **23000**、态B 取 **31000**。判据形态**一字未改**（breaker ≥ 1 且 < 5、main ≥ 1、
-     * 缺口如实上报；态B = `parry-exhausted`）。
-     */
-    /**
-     * ⚠ **2026-10-23 重探阈值**（本段规矩同前：门槛变了照此重探，不改判据）。
-     * 起因：**2026-10-21「交互默认全 0」（`13b9f584`）**——本队不再被预填弹刀 6 / 闪反 10
-     * ⇒ 各 `stunValue` 下的落点整体下移一档。实测重扫（`presetParryTotal = 5`，18000..40000 逐 500）：
-     * | stunValue | breaker | main | stun | 形态 |
-     * |---|---|---|---|---|
-     * | 18000–19500 | 0 | 5 | 4 | 正常（反推未介入，保底可达） |
-     * | 20000 | 1 | 4 | 4 | 部分介入，但**保底可达**（不是本判据要的形态） |
-     * | **21500–22500** | **1~3** | **4~2** | 2 | **态A：部分给击破位 + 保底不可达**（本判据要的两态同时成立） |
-     * | 23000–31000 | 5 | 0 | 3 | 态A 更深一档（全给击破位仍 3 次） |
-     * | ≥31500 | 5 | 0 | 2 | 阈值超过攒条上限 ⇒ 池再降一档 |
-     * ⇒ 态A 取 **22000**（breaker 2 / main 3 / 保底不可达）、态B 仍取 **31000**（breaker 5 / `parry-exhausted` / 池 3）。
-     * 判据形态**一字未改**（breaker ≥ 1 且 < 5、main ≥ 1、缺口如实上报；态B = `parry-exhausted`）。
-     */
-    configStore.enemy.stunValue = 22000
-    const spA = calc.stunPoolResult.value!
-    const splitA = calc.parrySplitResult.value
-    expect(splitA?.breakerParry, '阈值抬高后反推应把部分弹刀给击破位').toBeGreaterThanOrEqual(1)
-    expect(splitA?.breakerParry, '态A 应是「部分」给击破位，不是全给').toBeLessThan(5)
-    expect(splitA?.mainDpsParry, '主C 仍保留部分弹刀').toBeGreaterThanOrEqual(1)
-    // 态A（22000）下**保底不可达**（池 2）——与 T141/T155 原判据形态一致，
-    // 保留 not.toBeNull()（如实上报，不硬凑）。
-    expect(guaranteeStunShortfall(spA.stunCount, splitA), '态A 下保底不可达（如实上报）').not.toBeNull()
-    configStore.enemy.stunValue = 31000
-    const sp6 = calc.stunPoolResult.value!
-    const split6 = calc.parrySplitResult.value
-    expect(split6?.breakerParry).toBe(5)
-    expect(guaranteeStunShortfall(sp6.stunCount, split6)).toEqual({ target: 4, stunCount: 3, cause: 'parry-exhausted' })
   }, 120000)
+
+  /**
+   * ⚠ **2026-11-03 口径修正**：「失衡次数四舍五入」反推链整体退场
+   * （用户：「4 失衡不是下限，甚至不能作为一个指引目标」）。
+   * 旧用例（态A 部分给击破位 / 态B parry-exhausted / guaranteeStunShortfall 未达成诊断）
+   * 钉的全是反推链行为，已随目标常数一起作废；部署链本身由上面那条守着。
+   */
 })
+

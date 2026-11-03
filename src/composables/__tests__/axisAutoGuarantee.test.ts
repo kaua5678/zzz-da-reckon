@@ -139,7 +139,16 @@ describe('轴模式 ⇒ 自动保底（嗔火 / 喧响）', () => {
     config.enemy.shieldCount = 1
     await new Promise(r => setTimeout(r, 120))
     const withShield = topUpOf(calc)
-    expect(withShield.parry + withShield.dual, '有秽盾（+60 闪能）⇒ 缺口被补上 ⇒ 无需抬交互').toBe(0)
+    /**
+     * ⚠ **2026-11-03 口径修正（保底 4 嗔火退场 + 终结技需求向上取整）**：
+     *
+     * 旧式「有秽盾 ⇒ 缺口被补上 ⇒ 补齐归零」依赖嗔火侧的固定目标 4。目标退场后，
+     * 补齐由**轴内终结技的喧响需求**驱动：秽盾的 +60 闪能仍是真实供给 ⇒ **补齐量减少**，
+     * 但不会归零（喧响缺口本就大于 60）。实测 `banyue-norma-lucia`：盾0 = 8 刀 / 盾1 = 7 刀。
+     * ⇒ 判据改为「有盾 ⇒ 补齐量严格更小」，判别力（盾确实进了账）一字未减。
+     */
+    expect(withShield.parry + withShield.dual, '有秽盾（+60 闪能）⇒ 缺口变小 ⇒ 补齐量严格减少')
+      .toBeLessThan(noShield.parry + noShield.dual)
 
     // ③ store 未被写（只做本轮读数的视同勾选）
     for (const k of GUARANTEES) {

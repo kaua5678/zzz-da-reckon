@@ -653,16 +653,20 @@ describe('般岳轴内捏强特集成（轴内强特反馈执行计划）', () =
     await new Promise(r => setTimeout(r, 80))
     const c0 = calc.resourceResult.value!.characters[0]
     const cycle = c0.banyueRageCycle!
-    // 自动补齐非零（双反补嗔火），且不写回 store（保底语义：交互栏输入不变）
+    /**
+     * ⚠ **2026-11-03 口径修正（保底 4 嗔火退场）**：本夹具轴内连段 4 块 ⇒ 真实怒相需求 2，
+     * 而零交互下怒相已达 3 ⇒ **嗔火侧不需要补双反**（旧断言 dual>0 钉的是人为目标 4）。
+     * 喧响侧仍按轴内终结技需求补弹刀（实测 18 刀），且补齐量**不写回 store**（交互栏输入不变）。
+     */
     const topUp = calc.interactionTopUp.value
-    expect(topUp).not.toBeNull()
-    expect(topUp!.slot).toBe(0)
-    expect(topUp!.dual).toBeGreaterThan(0)
-    expect(config.team[0].parryCount).toBe(0)
-    expect(config.team[0].dualCounterCount).toBe(0)
-    // 怒相达到轴内需求（轴内连段块 ÷ 2 向上取整）；不补齐时低交互只有 2 次怒相
     const rageNeeded = Math.ceil(cycle.axisInComboCount / 2)
-    expect(cycle.rageCount).toBeGreaterThanOrEqual(rageNeeded)
+    expect(cycle.rageCount, '怒相达到轴内真实需求').toBeGreaterThanOrEqual(rageNeeded)
+    expect(topUp, '喧响侧仍需补齐 ⇒ 非 null').not.toBeNull()
+    expect(topUp!.slot).toBe(0)
+    expect(topUp!.parry, '喧响缺口按轴内终结技需求补弹刀').toBeGreaterThan(0)
+    expect(topUp!.dual, '嗔火需求已满足 ⇒ 不补双反（不再凑固定 4 嗔火）').toBe(0)
+    expect(config.team[0].parryCount, '补齐量不写回 store').toBe(0)
+    expect(config.team[0].dualCounterCount).toBe(0)
     // 资源卡片出现「轴模式自动补齐」行（含补齐量）
     const sections = getAgentMechanic('1471')?.resourceSections?.({ result: c0 }) ?? []
     expect(JSON.stringify(sections)).toContain('轴模式自动补齐')
