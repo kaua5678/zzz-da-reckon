@@ -11,7 +11,7 @@
  * ⑤ **反空洞**：面上确实存在「不干净」的格（否则第 ③④ 条对「离散分支」零判别力），
  *    且「先交互」的**途中最低点**严格低于「先合轴」（两条路径终点相同 ⇒ 只能比途中掉多深）。
  */
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { applyAxisBinding, applyTeamToStore } from '@/composables/teamCompare'
@@ -54,8 +54,22 @@ async function withSurface(
 }
 
 describe('交互 × 合轴 二维面 runInteractionSurface', () => {
-  it('① 面自洽：行列对齐、每格 count/ratio 与所在行列一致', async () => {
-    await withSurface(r => {
+  /**
+   * 五条判据读的是**同一张面**（options 逐字相同）⇒ 只扫一次。
+   * 实测：一次扫描 = 176 格 ≈ 113s（空载 16 核）；原写法每条 it 各扫一遍 ⇒ 5 × 113 ≈ 568s，
+   * 全量里它一个人占 1139s（并发下更慢），是 `core` 环墙钟的 80%。
+   * 断言一字未改：只改「谁在何时扫」，不改任何判据与扫描参数。
+   */
+  let shared: Awaited<ReturnType<typeof runInteractionSurface>>
+  let sharedScenario: Parameters<Parameters<typeof withAnalysisScenario>[0]>[0]
+  beforeAll(async () => {
+    await withSurface((r, sc) => { shared = r; sharedScenario = sc })
+  }, 900_000)
+
+  it('① 面自洽：行列对齐、每格 count/ratio 与所在行列一致', () => {
+    {
+      const r = shared
+      {
       expect(r.series.length).toBeGreaterThan(0)
       for (const s of r.series) {
         expect(s.cells.length, s.label + ' 行数 = 合轴档数').toBe(s.ratios.length)
@@ -68,11 +82,15 @@ describe('交互 × 合轴 二维面 runInteractionSurface', () => {
           }
         }
       }
-    })
+      }
+    }
   }, 900_000)
 
-  it('② 单一自变量：扫完交互与合轴率都回到基线', async () => {
-    await withSurface((r, s) => {
+  it('② 单一自变量：扫完交互与合轴率都回到基线', () => {
+    {
+      const r = shared
+      const s = sharedScenario
+      {
       // 起点 = 基线现场（不是全 0）
       const baseParry = [0, 1, 2].map(slot =>
         Number((s.config.team[slot] as unknown as Record<string, number | undefined>)?.parryCount ?? 0))
@@ -83,11 +101,14 @@ describe('交互 × 合轴 二维面 runInteractionSurface', () => {
       const ratio = Number(s.config.getMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, -1))
       expect(ratio, '扫完合轴率必须回到设置值').toBeGreaterThanOrEqual(0)
       expect(r.evaluations).toBeGreaterThan(0)
-    })
+      }
+    }
   }, 900_000)
 
-  it('★ ③ 可行域形状：合轴率越高，干净格能容纳的交互次数越多（单调不减）', async () => {
-    await withSurface(r => {
+  it('★ ③ 可行域形状：合轴率越高，干净格能容纳的交互次数越多（单调不减）', () => {
+    {
+      const r = shared
+      {
       const s = r.series.find(x => x.key === 'parryCount')!
       expect(s, '般岳队必须有弹刀线').toBeDefined()
       // 逐行「最后一个干净格」的交互次数：随合轴率单调不减（允许相等 = 平台）
@@ -101,11 +122,14 @@ describe('交互 × 合轴 二维面 runInteractionSurface', () => {
       const hi = s.cleanLimitByRatio[s.cleanLimitByRatio.length - 1]!
       expect(hi, '合轴拉满后干净边界必须更宽（实测 r=0 时 12 次、r=cap 时 20 次）')
         .toBeGreaterThan(lo)
-    })
+      }
+    }
   }, 900_000)
 
-  it('★ ④ 帕累托前沿：伤害严格递增且 (交互, 合轴) 两项都不回头', async () => {
-    await withSurface(r => {
+  it('★ ④ 帕累托前沿：伤害严格递增且 (交互, 合轴) 两项都不回头', () => {
+    {
+      const r = shared
+      {
       for (const s of r.series) {
         const f = s.frontier
         expect(f.length, s.label + ' 前沿不应为空').toBeGreaterThan(0)
@@ -117,11 +141,14 @@ describe('交互 × 合轴 二维面 runInteractionSurface', () => {
           expect(ok, s.label + ' 前沿相邻两点必须 x、y 都不回头').toBe(true)
         }
       }
-    })
+      }
+    }
   }, 900_000)
 
-  it('★ ⑤ 反空洞：面上确实有不可行格，且「先交互」掉得比「先合轴」深', async () => {
-    await withSurface(r => {
+  it('★ ⑤ 反空洞：面上确实有不可行格，且「先交互」掉得比「先合轴」深', () => {
+    {
+      const r = shared
+      {
       const s = r.series.find(x => x.key === 'parryCount')!
       const dirty = s.cells.flat().filter(c => !c.clean)
       expect(dirty.length, '低合轴档应存在弃轴/降配格（否则本页对「离散分支」零判别力）')
@@ -169,6 +196,7 @@ describe('交互 × 合轴 二维面 runInteractionSurface', () => {
       }
       expect(strict.length, '至少一类交互上「先交互」必须真的掉得更深（否则本页对离散分支零判别力）')
         .toBeGreaterThan(0)
-    })
+      }
+    }
   }, 900_000)
 })
