@@ -80,6 +80,12 @@ describe('T140b 现状锁：轴队「全关」档的保底键边际', () => {
     // 2026-10-23：原负控用 'banyue-norma-lucia' + `guarantee.ultimate`。该键随「保底4喧响」功能删除，
      // 而 norma 队**没有** fury 缺口（实测 fury 边际 0）⇒ 换一支实测有 fury 边际的非轴队
      // （banyue-trigger-lucia：实测 +3.97M），判据语义不变。
+    /**
+     * ⚠ **2026-11-03 口径修正（保底 4 嗔火退场）**：旧负控要求「非轴队 `guarantee.fury` 边际 > 0」，
+     * 用来证明上面那个 0 是**轴态**造成、而非键本身无用。但该键现已**不参与引擎数值**
+     * （用户：「保底 4 嗔火是人为规定的想象更优」）⇒ 边际必然恒为 0，旧负控前提不成立。
+     * 新判据 = 反过来钉死这件事：**非轴队开该键也不改数值**（键已彻底退场，不是「泄漏」）。
+     */
     const nonAxisTeam = pick('banyue-trigger-lucia')
     baseline(config, calc, nonAxisTeam)
     config.setAxisState({ stunAxes: [], stunAxisPlans: [], useStunAxis: false })
@@ -87,7 +93,7 @@ describe('T140b 现状锁：轴队「全关」档的保底键边际', () => {
     expect(calc.effectiveStunAxes.value.length, '负控前提：清轴后非轴态').toBe(0)
     const off = dmgOf(calc)
     config.setMechanicSetting('guarantee.fury', 1)
-    expect(dmgOf(calc) - off, '负控：非轴队的 guarantee.fury 必须真有边际').toBeGreaterThan(0)
+    expect(dmgOf(calc) - off, 'guarantee.fury 已退场 ⇒ 非轴队开它也不改数值').toBeCloseTo(0, 6)
   }, 300_000)
 
   it('② 反证路线 (a)：阶梯只动「交互配置 + 合轴吸收」两个旋钮，没有任何"开轴"旋钮', async () => {
@@ -145,10 +151,11 @@ describe('T140b 现状锁：轴队「全关」档的保底键边际', () => {
     const phase: BossPresetPhase = boss.phases[boss.phases.length - 1]!
     expect(boss.defaults, '前提：该 Boss 声明了弹刀预算').toHaveProperty('parryNoFollowUpTotal')
 
-    // ⚠ 顺序是关键（与 `computeDifficultyCurves` 同序）：先 applyBossRoom —— 它会**自动勾选**
-    // `guarantee.stun`（`stores/config#applyBossPreset`：Boss 声明了弹刀预算就替用户勾上），
-    // 而曲线的「全关」`clearDifficultyLevers` 在那之后再把它清零。反过来写会让 off 基线自带 stun=1
-    // ⇒ 本用例退化成恒 0、对这条口径零判别力（首版实测踩到）。
+    /**
+     * ⚠ **2026-11-03 口径修正（失衡次数四舍五入退场）**：`applyBossPreset` 现在**不再**自动勾选
+     * `guarantee.stun`（用户：「4 失衡不是下限，甚至不能作为一个指引目标」）。
+     * ⇒ 本用例从「该键对轴队仍有边际」改为「该键对引擎已无作用」，与①负控同口径。
+     */
     baseline(config, calc, preset)
     applyBossRoom(config, boss, phase)
     clearDifficultyLevers({ config, calc })
@@ -157,10 +164,7 @@ describe('T140b 现状锁：轴队「全关」档的保底键边际', () => {
     expect(calc.effectiveStunAxes.value.length, '前提：该队在曲线全关档仍是轴态').toBeGreaterThan(0)
     const off = dmgOf(calc)
     config.setMechanicSetting('guarantee.stun', 1)
-    expect(
-      dmgOf(calc) - off,
-      'guarantee.stun 被有意排除在自动勾选外 ⇒ 它对轴队必须仍有边际（路线 (b) 不得把 G3 整档标成"已前置满足"）',
-    ).toBeGreaterThan(0)
+    expect(dmgOf(calc) - off, 'guarantee.stun 已退场 ⇒ 开关不改任何数值').toBeCloseTo(0, 6)
   }, 300_000)
 
   it('④ T140c 取代：G3 不再是阶梯的一点（保底降级为轴可行性判定条件）', async () => {
