@@ -37,7 +37,7 @@ interface SearchState {
   absorb: number
   taunts: number[]
 }
-interface Score { damage: number; executed: number; overflow: number; amount: number; axisFallback: boolean; repairTotal: number }
+interface Score { damage: number; executed: number; overflow: number; amount: number; axisFallback: boolean; axisBroken: boolean; repairTotal: number }
 const DAMAGE_EPS = 1e-6
 const TIME_EPS = 1e-6
 
@@ -115,8 +115,19 @@ export function createInteractionOptimumStrategy(_balance?: (ctx: TimeWeightAllo
         const rrNow = calc.resourceResult.value
         let executed = 0
         for (const c of rrNow?.characters ?? []) executed += c.exSpecialCount
+        /**
+         * **轴完整性**（`partial` = 跳过若干招）。
+         *
+         * ⚠ 早先注释说「读 `stackTraversalResult` 会重算整条轴栈、单队 19s→222s」——**实测是错的**：
+         * 它是 `computed(() => calcOutput.value?.axisStack ?? null)`，纯读取已缓存的引擎输出，
+         * 50 次连读测得的增量是 **0ms**（见 `.zc/perf/cost.perf.ts`）。
+         * 那次 222s 的真实原因是**别处**的级联（执行数门当时的写法）。
+         * ⇒ 轴完整性可以放进每步评分，这正是曲线 ④ 能同源的前提。
+         */
+        const axisBroken = (calc.stackTraversalResult.value?.skipped.length ?? 0) > 0
         const value = { damage, executed, overflow: rrNow?.convergence.timeTruncatedSeconds ?? 0,
           axisFallback: rrNow?.convergence.axisFallback === true,
+          axisBroken,
           repairTotal: 0,
           amount: coords.reduce((sum, c) => sum + Number(config.team[c.slot]?.[c.field] ?? 0), 0) }
         scores.set(key, value)
@@ -140,7 +151,7 @@ export function createInteractionOptimumStrategy(_balance?: (ctx: TimeWeightAllo
        * 硬约束而不是事后筛：策略自己把交互推到装不下时，应当退回上一个可行点，而不是交给调用方去丢弃。
        * 判据取 `convergence.axisFallback`（零额外求值；不读 `stackTraversalResult` —— 那是独立 computed，会重算整条轴栈）。
        */
-      const feasibleScore = (s: Score) => Number.isFinite(s.damage) && !s.axisFallback
+      const feasibleScore = (s: Score) => Number.isFinite(s.damage) && !s.axisFallback && !s.axisBroken
       const compareCandidates = (a: Score, b: Score) => {
         if (a.overflow > b.overflow + TIME_EPS) return -1
         if (b.overflow > a.overflow + TIME_EPS) return 1
