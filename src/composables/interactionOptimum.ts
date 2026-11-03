@@ -8,6 +8,7 @@ import type { TimeWeightAllocationContext, TimeWeightAllocationResult, TimeWeigh
 import { absorbCapOf, interactionFieldsAt, TAUNT_CANCEL_FULL, tauntLeverSlots, INTERACTION_COUNT_KEYS } from '@/composables/interactionControls'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
+import { axisStateOf } from '@/composables/difficultyAxis'
 import { computeDifficulty } from '@/composables/operationalDifficulty'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
@@ -214,7 +215,23 @@ export function createInteractionOptimumStrategy(_balance?: (ctx: TimeWeightAllo
         break
       }
       }
+      /**
+       * **收尾：轴完整性校验**（只做**一次**，不放进评分内）。
+       *
+       * `axisFallback` 只能抓「弃轴」(`infeasible`)，抓不到「跳过若干招」(`partial`)。
+       * 而「最高操作难度」的定义要求轴**打完整**——跳招换来的高总伤不是同一个理论 dps。
+       *
+       * ⚠ 不能放进 `score()` 每步判：`stackTraversalResult` 是独立 computed，读它会重算整条轴栈，
+       * 实测把单队策略从 ~19s 抬到 ~222s。只在**收尾**验一次，代价一次求值。
+       */
       restore(bestState)
+      const axisState = axisStateOf(calc)
+      const axisIntact = axisState.kind !== 'partial' && axisState.kind !== 'infeasible'
+      if (!axisIntact && config.useStunAxis) {
+        // 轴队：退回起点（全 0 + 角色声明基准）——那是「轴一定打完整」的安全现场
+        restore(initial)
+        return result(false, `轴被打残（跳过 ${axisState.kind === 'partial' ? axisState.skippedTotal : '全部'} 招）⇒ 保留输入：跳招换来的总伤不算最高难度`)
+      }
       const applied = JSON.stringify(bestState) !== JSON.stringify(initial)
       return result(applied, `逐槽±1无可行正收益${evaluations >= EVAL_BUDGET ? '（跨节点试探达预算）' : ''}；失衡次数为分配结果`, evaluations)
     },
