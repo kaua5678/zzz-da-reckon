@@ -26,8 +26,10 @@ import { teamPresets } from '@/data/teamPresets'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { applyTeamToStore } from '@/composables/teamCompare'
 /** ⚠ 本文件顶部已 import 过 `captureDmgBySource`/`captureKeyCounts`（③ 的跃迁判据要用它） */
-import { climbDifficultyLadder, summarizeLadder, resetDifficultyGoals, clearDifficultyLevers, scanAbsorbGrid, optimizeInteractionsPerSlot, applyInteractionKnob, type LadderCtx } from '@/composables/difficultyLadder'
-import { absorbCapOf, climbFieldsOf, applyRoleInteractionBaseline, clearInteractions } from '@/composables/interactionControls'
+/** 爬升面（测试侧自建；生产侧该口径已内联进 `interactionFieldsAt` 的消费点）。 */
+const climbFieldsOf = (c: LadderCtx) => [...new Set(c.config.team.flatMap((_, slot) => interactionFieldsAt(c.config, slot)))]
+import { climbDifficultyLadder, summarizeLadder, resetDifficultyGoals, clearDifficultyLevers, scanAbsorbGrid, applyInteractionKnob, type LadderCtx } from '@/composables/difficultyLadder'
+import { absorbCapOf, interactionFieldsAt, applyRoleInteractionBaseline, clearInteractions } from '@/composables/interactionControls'
 import { axisStands } from '@/composables/difficultyAxis'
 import { captureDmgBySource, captureKeyCounts } from '@/composables/difficultyCurve'
 import { liveInteractions } from '@/composables/liveInteractions'
@@ -756,7 +758,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     // ===== B. 接受门有效：生产门走过的每一步都不许让 executed/行数下降 =====
     zeroAll()
     const beforeState = { exec: health().executed, rows: health().rows }
-    optimizeInteractionsPerSlot({ config, calc })
+    applyInteractionKnob({ config, calc }, 'slotLadder')
     const afterState = { exec: health().executed, rows: health().rows }
     expect(afterState.exec, '接受门：跑完逐槽阶梯后 executed 不得低于起点').toBeGreaterThanOrEqual(beforeState.exec)
     expect(afterState.rows, '接受门：跑完逐槽阶梯后伤害池行数不得低于起点').toBeGreaterThanOrEqual(beforeState.rows)

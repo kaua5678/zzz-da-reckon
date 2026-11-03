@@ -69,6 +69,3 @@ export function interactionFieldsAt(config: ConfigModel, slot: number): ActionCo
   return [...fields]
 }
 
-export function climbFieldsOf(ctx: InteractionContext): ActionCountField[] {
-  return [...new Set(ctx.config.team.flatMap((_, slot) => interactionFieldsAt(ctx.config, slot)))]
-}

@@ -150,10 +150,6 @@ export function applyInteractionKnob(ctx: LadderCtx, knob: InteractionKnob): voi
     interactionOptions: { maximizeNetGains: false, absorbCap: ctx.absorbCap } }, DEEP_TIME_WEIGHT_STRATEGY_ID)
 }
 
-/** 逐槽阶梯入口：曲线内保留轻量实现（完整策略在主页/散点/实战入口跑）。 */
-export function optimizeInteractionsPerSlot(ctx: LadderCtx, _maxCount = 16): void {
-  applyInteractionKnob(ctx, 'slotLadder')
-}
 
 /**
  * 保底键（**不再由阶梯打开**，见文件头「保底降级」）。

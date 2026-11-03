@@ -20,7 +20,7 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { teamPresets } from '@/data/teamPresets'
 import { buildTeamTimeSummary } from '@/composables/teamTimeSummary'
-import { optimizeTeamTimeWeights } from '@/composables/teamTimeline'
+import { optimizeTeamTimeWeights } from '@/composables/teamTimeWeights'
 import { isFrontlineExecution } from '@/types/resource'
 
 const active = process.env.PROBE_CONV_SCAN === '1'

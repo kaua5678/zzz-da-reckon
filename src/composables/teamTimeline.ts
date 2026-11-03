@@ -210,7 +210,6 @@ export function classifySwapUplift(prevDamage: number, curDamage: number): { kin
 
 // ========== 平A时间权重·边际均衡（默认「均衡」而非 1:1） ==========
 
-export { optimizeTeamTimeWeights } from '@/composables/teamTimeWeights'
 import { optimizeTeamTimeWeights } from '@/composables/teamTimeWeights'
 
 // ========== 最优加金分配（逐金贪婪） ==========

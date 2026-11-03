@@ -42,7 +42,6 @@ import { cloneConfigState } from '@/composables/analysisScenario'
  * **声明在 `types/configDelta.ts`**（T189 下沉：散点/选第三人的点也要带同一份现场，
  * 而 `types/teamPreset.ts` 不许 import composables/）；本模块**转出同名类型**保持既有调用点不变。
  */
-export type { StateDelta } from '@/types/configDelta'
 import type { StateDelta } from '@/types/configDelta'
 
 /**
