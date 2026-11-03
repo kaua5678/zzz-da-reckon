@@ -244,6 +244,18 @@
                       </div>
                       <!-- 手动锁定交互（用户口径 2026-10-06）：勾选 = 下方交互次数是用户明确意图，引擎不缩量、装不下如实报截断 -->
                       <div class="guarantee-row" title="勾选：下方「战斗动作次数」按你填的算——次数是明确的难度设定，引擎不再按时间可行性自动缩减交互，而是尽量用合轴（队友前台并行吸收）装下；实在装不下就在结果页如实报「时间截断 X 秒」。不勾选：装不下时引擎**按比例缩小你填的交互次数**（缩的是同一份输入，不是另算一套）。⚠ 另有一条**与本次数无关**的自动通道：Boss 声明了弹刀预算（如叶释渊 13 刀）时，引擎会按「失衡次数四舍五入」**反推弹刀次数**并填充（开关在同一行的「失衡次数四舍五入」）。">
+                        <div class="guarantee-row" data-testid="interaction-strategy-controls" title="按完整引擎总伤给各槽选交互次数：提高交互到下一个节点若伤害提高就提高、否则不提高（失衡次数是分配结果，不是目标）。手动锁定时不改写输入。">
+                          <span class="section-title" style="margin-right: 12px">自动最优交互（整队）</span>
+                          <n-select
+                            :value="configStore.timeWeightStrategy"
+                            :options="timeWeightModeOptions"
+                            :disabled="configStore.interactionsLocked || configStore.enemy.stunCountLock >= 0"
+                            size="small"
+                            style="width: 170px"
+                            @update:value="v => configStore.setTimeWeightStrategy(v)"
+                          />
+                          <span class="muted" style="font-size: 12px; margin-left: 8px">0 交互 / 最优 / 最高 三档；失衡次数是结果不是目标</span>
+                        </div>
                         <n-checkbox :checked="configStore.interactionsLocked" @update:checked="v => (configStore.interactionsLocked = v)">手动锁定交互</n-checkbox>
                         <span class="muted" style="font-size: 12px; margin-left: 8px">{{ interactionsLockedHint }}</span>
                       </div>
@@ -926,9 +938,20 @@ import { useTeamConfigPresetIO } from '@/composables/teamConfigPresetIO'
 import { buildInteractionHint } from '@/composables/interactionHint'
 const presetSelectValue = ref<string | null>(null)
 
-/** 权重分配策略三态选项（默认 balanced；用户 2026-09-10 裁决，见 stores/config.ts#timeWeightStrategy） */
+/**
+ * 交互/权重策略选项（默认 balanced；用户 2026-09-10 裁决，见 stores/config.ts#timeWeightStrategy）。
+ *
+ * 用户 2026-11-03：「通过交互次数最优调整一个队伍的 dps，不该是难度曲线的专利」
+ * ⇒ 新增 zero / interaction-optimum / max 三档，入口就放在**交互栏旁**：
+ *  · zero = 0 交互（全关原点，与难度曲线 ① 同义）；
+ *  · interaction-optimum = 自动最优交互（净收益项拉满 + 按总伤取交互驻点）；
+ *  · max = 最高操作难度（在最优基础上再把净收益项拉到用户上限）。
+ */
 const timeWeightModeOptions = [
-  { label: '静态', value: 'static' },
+  { label: '自动最优交互', value: 'interaction-optimum' },
+  { label: '最高操作难度', value: 'max' },
+  { label: '0 交互（全关）', value: 'zero' },
+  { label: '静态（手填）', value: 'static' },
   { label: '均衡（快）', value: 'balanced' },
   { label: '联合（慢）', value: 'joint' },
 ]

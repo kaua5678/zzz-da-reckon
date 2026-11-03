@@ -63,6 +63,8 @@ describe.skipIf(!enabled)('统一交互最优全库单调性与边际见证',()=
  it('原全零旋钮仍清零全部既有输入',async()=>{
   const {config}=await setupHarness([{agentId:'1471'},{agentId:'1481'},{agentId:'1451'}])
   const calc=useResourceCalc();clearDifficultyLevers({config,calc});clearInteractions({config,calc})
-  expect(config.team.every(c=>c.parryCount===0&&c.dodgeCounterCount===0&&c.blockCount===0&&c.dualCounterCount===0)).toBe(true)
+  // 契约 = 只清「字段存在」的项（未初始化字段保持 undefined，见 clearInteractions 头注释）
+  const keys = ['parryCount','dodgeCounterCount','blockCount','dualCounterCount'] as const
+  expect(config.team.every(c => keys.every(f => c[f] === undefined || c[f] === 0))).toBe(true)
  })
 })
