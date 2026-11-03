@@ -37,7 +37,7 @@ interface SearchState {
   absorb: number
   taunts: number[]
 }
-interface Score { damage: number; executed: number; overflow: number; amount: number; axisFallback: boolean; axisComplete: boolean; repairTotal: number }
+interface Score { damage: number; executed: number; overflow: number; amount: number; axisFallback: boolean; repairTotal: number }
 const DAMAGE_EPS = 1e-6
 const TIME_EPS = 1e-6
 
@@ -117,7 +117,6 @@ export function createInteractionOptimumStrategy(_balance?: (ctx: TimeWeightAllo
         for (const c of rrNow?.characters ?? []) executed += c.exSpecialCount
         const value = { damage, executed, overflow: rrNow?.convergence.timeTruncatedSeconds ?? 0,
           axisFallback: rrNow?.convergence.axisFallback === true,
-          axisComplete: true,
           repairTotal: 0,
           amount: coords.reduce((sum, c) => sum + Number(config.team[c.slot]?.[c.field] ?? 0), 0) }
         scores.set(key, value)
