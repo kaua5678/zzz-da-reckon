@@ -153,7 +153,7 @@ describe('convergence 夜间批 B · 组 3 保留项：cfg-merge 分支仍在（
     const { computeBanyueInteractionTopUp } = await import('@/mechanics/agents/banyue')
     const opts = {
       battleTime: 180, dodgeCount: 10, parryCount: 6, blockCount: 20, dualCounterCount: 5, cinemaLevel: 0,
-      axisEx: {}, ultimateCountNeeded: 4, minRageCount: 4, ultimateCost: 3000, decibelHave: 3000,
+      axisEx: {}, ultimateCountNeeded: 4, ultimateCost: 3000, decibelHave: 3000,
     }
     const on = { fury: true, ultimate: false }
     const off = { fury: false, ultimate: false }
