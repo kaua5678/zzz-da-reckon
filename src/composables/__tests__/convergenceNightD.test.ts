@@ -349,7 +349,12 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
     expect(cfg.parryCount).toBe(4)
   })
 
-  it('★ 保底4嗔火（fury）也能独立驱动补齐（非轴亦生效）', () => {
+  /**
+   * ⚠ **2026-11-03 口径修正（保底 4 嗔火退场）**：旧用例断言「`guarantee.fury=true` 且非轴 ⇒
+   * 仍驱动补齐」。用户裁决「保底 4 嗔火这种字眼也是人为规定的想象更优」后，补齐门控改为**只由
+   * `axisActive` 驱动** ⇒ 非轴队即使开 fury 也不补。本用例改为钉死这件事（防口径回退）。
+   */
+  it('★ 保底4嗔火（fury）已退场：非轴队开它也不再驱动补齐', () => {
     const hook = getAgentMechanic('1471')!.applyTeamConfig!
     const cfg = { slot: 0, agentId: '1471', parryCount: 0, dualCounterCount: 0 } as never as Record<string, unknown>
     hook(hookInput({
@@ -359,9 +364,10 @@ describe('夜D · 层②-b 般岳 1471（原 convergence.ts:849 块）', () => {
       threads: { interactionTopUp: { parry: 0, dual: 4 } } as never,
       settings: { 'banyue.autoTopUpInteractions': 1 },
     }))
-    expect(cfg.banyueInteractionTopUp).toEqual({ parry: 0, dual: 4 })
-    expect(cfg.dualCounterCount).toBe(4)   // 只写有值那侧
-    expect(cfg.parryCount).toBe(0)         // topUp.parry=0 ⇒ 该字段走 `?? 0` 分支（同值）
+    // 门控只认 axisActive ⇒ 非轴时不得把线程里的 dual:4 写进 cfg（写 0 也等价于「没补」）
+    expect(cfg.dualCounterCount, '非轴 + fury ⇒ 不写补齐量（目标语义已退场）').toBe(0)
+    expect(cfg.parryCount).toBe(0)
+    expect(cfg.banyueInteractionTopUp, '不得落地非零补齐').toEqual({ parry: 0, dual: 0 })
   })
 
   it('★ 契约缺 `guarantee` ⇒ 整块不写（不静默按「保底全关」算）', () => {

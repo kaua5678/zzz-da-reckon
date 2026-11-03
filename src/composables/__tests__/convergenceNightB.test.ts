@@ -159,7 +159,15 @@ describe('convergence 夜间批 B · 组 3 保留项：cfg-merge 分支仍在（
     const off = { fury: false, ultimate: false }
     expect(mod.computeInteractionTopUp!({ ...opts, gate: { axisActive: false, guarantee: off, settings: {} } })).toBeNull()
     expect(mod.computeInteractionTopUp!({ ...opts, gate: { axisActive: true, guarantee: on, settings: { 'banyue.autoTopUpInteractions': 0 } } })).toBeNull()
-    expect(mod.computeInteractionTopUp!({ ...opts, gate: { axisActive: false, guarantee: on, settings: {} } })).toEqual(computeBanyueInteractionTopUp(opts))
+    /**
+     * ⚠ **2026-11-03 口径修正（保底 4 嗔火退场）**：旧断言是「非轴 + fury 开 ⇒ 补齐生效」。
+     * 门控已改为只由 `axisActive` 驱动 ⇒ 非轴队即使开 fury 也不补。
+     * 保留「轴队 ⇒ 与纯函数同值」这一半（它才是真实需求通道）。
+     */
+    expect(mod.computeInteractionTopUp!({ ...opts, gate: { axisActive: false, guarantee: on, settings: {} } }),
+      '非轴 + fury ⇒ 不补（目标语义已退场）').toBeNull()
+    expect(mod.computeInteractionTopUp!({ ...opts, gate: { axisActive: true, guarantee: on, settings: {} } }),
+      '轴队 ⇒ 补齐通道仍生效').toEqual(computeBanyueInteractionTopUp(opts))
   })
 
   it('★ 契约缺口可复现：`guarantee.*` 不是注册 MechanicSetting ⇒ 模块侧读不到（故 :840 的 autoTopUp 迁不动）', async () => {
