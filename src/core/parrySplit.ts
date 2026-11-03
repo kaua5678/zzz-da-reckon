@@ -28,7 +28,17 @@
  * 因此弃轴）。改成**四舍五入**后口径 = 对**补的弹刀次数**取整（见 `roundedParryCount`），
  * 「尽力而为」不变，只削掉余量 < 半刀的那一次。
  */
-export const GUARANTEE_STUN_TARGET = 4
+/**
+ * **Boss 特殊交互**（无突击弹刀 / 只喧响弹刀）的静态分配参考次数。
+ *
+ * ⚠ **2026-11-03 用户裁决：它不再是「目标次数」**（「4 失衡不是下限，甚至不能作为一个指引目标」）。
+ * 普通弹刀（`parryTotal`）已**不再反推**——`parrySplitActive` 只看 Boss 特殊交互，
+ * 弹刀次数直接取 store 输入（手填或 `interaction-optimum` 策略按总伤选的驻点）。
+ * 本常量只用于特殊交互的静态拆分，**不驱动任何补齐**。
+ *
+ * 沿革：原叫「保底4失衡」→ 2026-10-11 改「四舍五入」→ 2026-11-03 目标语义整体退场，仅剩本用途。
+ */
+export const BOSS_SPECIAL_PARRY_DIVISOR = 4
 
 /**
  * 补的弹刀次数取整：**四舍五入**（用户裁决 2026-10-11），取代原来的「总是向上取（ceil）」。
@@ -93,7 +103,7 @@ export interface ParrySplitResult {
 }
 
 export function computeParrySplit(input: ParrySplitInput): ParrySplitResult {
-  const target = Math.max(1, Math.floor(input.targetStunCount) || GUARANTEE_STUN_TARGET)
+  const target = Math.max(1, Math.floor(input.targetStunCount) || BOSS_SPECIAL_PARRY_DIVISOR)
   const bossStun = Math.max(0, input.bossStunValue)
   const refund = Math.min(1, Math.max(0, input.stunRefundRatio))
   const parryTotal = Math.max(0, Math.floor(input.parryTotal))
@@ -154,9 +164,9 @@ export function guaranteeStunShortfall(
   stunCount: number,
   split: { breakerParry: number; parryTotal: number } | null,
 ): GuaranteeStunShortfall | null {
-  // CC-181：目标固定取弹刀反推同一常量（convergence 传 `targetStunCount: GUARANTEE_STUN_TARGET`）；
+  // CC-181：目标固定取弹刀反推同一常量（convergence 传 `targetStunCount: BOSS_SPECIAL_PARRY_DIVISOR`）；
   // 原默认形参全仓无人传，留着只会让诊断与反推有机会用两个目标
-  const target = GUARANTEE_STUN_TARGET
+  const target = BOSS_SPECIAL_PARRY_DIVISOR
   if (stunCount >= target) return null
   const cause: GuaranteeStunShortfall['cause'] = !split
     ? 'no-parry-budget'

@@ -41,7 +41,7 @@ import {
 import { applyChainGift } from './chainGift'
 import { DOWNSCALED_INTERACTION_FIELDS, downscaleInteractionCount } from './feasibilitySearch'
 import type { CalcRoundThreads, PostRoundInput } from './roundThreads'
-import { computeParrySplit, GUARANTEE_STUN_TARGET } from '@/core/parrySplit'
+import { computeParrySplit, BOSS_SPECIAL_PARRY_DIVISOR } from '@/core/parrySplit'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
 import { calcStunAxisStack, allocateAxisWindows, type ExecutedMoveCount, type StackAxisInput, type StackSequenceEntry } from '@/core/stunAxisStack'
 import type { AxisSequenceEntry } from '@/types/resource/config'
@@ -1262,7 +1262,7 @@ export function createRunCalcRound(deps: {
       const nonParryStun = Math.max(0, sp1.pool.totalStunBuildUp - injectedParryDaze - injectedMainDpsParryDaze + sp1.pool.stunGift)
       parrySplitNext = {
         ...computeParrySplit({
-          targetStunCount: GUARANTEE_STUN_TARGET,
+          targetStunCount: BOSS_SPECIAL_PARRY_DIVISOR,
           stunCount: sp1.pool.stunCount,
           nonParryStun,
           bossStunValue: configStore.enemy.stunValue,
