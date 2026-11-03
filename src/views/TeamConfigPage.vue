@@ -243,7 +243,7 @@
                         <span class="muted" style="font-size: 12px; margin-left: 8px">{{ noAxisVulnSharePct }}%（100% = 每招均匀摊；调低 = 你认为无轴打法只兑现了这么多失衡易伤）</span>
                       </div>
                       <!-- 手动锁定交互（用户口径 2026-10-06）：勾选 = 下方交互次数是用户明确意图，引擎不缩量、装不下如实报截断 -->
-                      <div class="guarantee-row" title="勾选：下方「战斗动作次数」按你填的算——次数是明确的难度设定，引擎不再自动缩减交互，而是尽量用合轴（队友前台并行吸收）装下；实在装不下就在结果页如实报「时间截断 X 秒」。不勾选：引擎按难度曲线自动计算低/高交互档（超时会自动缩小交互次数）。">
+                      <div class="guarantee-row" title="勾选：下方「战斗动作次数」按你填的算——次数是明确的难度设定，引擎不再按时间可行性自动缩减交互，而是尽量用合轴（队友前台并行吸收）装下；实在装不下就在结果页如实报「时间截断 X 秒」。不勾选：装不下时引擎**按比例缩小你填的交互次数**（缩的是同一份输入，不是另算一套）。⚠ 另有一条**与本次数无关**的自动通道：Boss 声明了弹刀预算（如叶释渊 13 刀）时，引擎会按「失衡次数四舍五入」**反推弹刀次数**并填充（开关在同一行的「失衡次数四舍五入」）。">
                         <n-checkbox :checked="configStore.interactionsLocked" @update:checked="v => (configStore.interactionsLocked = v)">手动锁定交互</n-checkbox>
                         <span class="muted" style="font-size: 12px; margin-left: 8px">{{ interactionsLockedHint }}</span>
                       </div>
@@ -1079,7 +1079,9 @@ const { interactionTopUp, parrySplitResult, guaranteeStunShortfallResult, resour
  * 未勾选时不显示（自动降配会把截断压到容差内，读数没有解释价值）。
  */
 const interactionsLockedHint = computed(() => {
-  if (!configStore.interactionsLocked) return '（未勾选：引擎按难度曲线自动调交互次数）'
+  // 更正（2026-11-03）：旧文案「引擎按难度曲线自动调交互次数」把两条不相干的通道说混了——
+  // 本开关只管**非轴降配**（时间可行性缩你填的次数）；「按 Boss 弹刀预算反推弹刀」由「失衡次数四舍五入」管。
+  if (!configStore.interactionsLocked) return '（未勾选：装不下时引擎按时间可行性自动缩交互次数）'
   const cut = resourceResult.value?.overflowSeconds ?? 0
   return cut > 1
     ? `（已锁定：装不下，时间截断 ${cut.toFixed(1)}s —— 结果页「时间截断」有被砍招式明细）`
