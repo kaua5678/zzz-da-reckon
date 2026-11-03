@@ -15,8 +15,6 @@ import { frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'
 
 export const INTERACTION_OPTIMUM_STRATEGY_ID = 'interaction-optimum'
 export interface InteractionOptimumOptions {
-  /** 曲线视图专用预算（缺省 24）；最高档不受影响。 */
-  curveBudget?: number
   /** 曲线中间档保留正在探测的吸收率；最高档先将净收益项拉满。 */
   maximizeNetGains?: boolean
   absorbCap?: number
@@ -126,12 +124,10 @@ export function createInteractionOptimumStrategy(_balance?: (ctx: TimeWeightAllo
       // 曲线中间档（maximizeNetGains=false）只要「比原档更好」即可，给更紧的预算；
       // 最高档/主页/实战才跑完整搜索（用户口径：最高档必须最准）。
       /**
-       * 求值预算：最高档（主页/散点/实战）跑满 180；曲线视图档位跑 24（够爬到局部最优，
-       * 且曲线每队要跑 ②③④ 多次 × 19 用例 —— 实测 40 会让 difficultyLadder.test 从 2 分钟涨到 10 分钟以上）。
+       * 求值预算：最高档（主页/散点/实战）跑满 180；`maximizeNetGains === false`（曲线视图档位）跑 24。
+       * 实测 40 会让 difficultyLadder.test 从 2 分钟涨到 10 分钟以上。
        */
-      const EVAL_BUDGET = ctx.interactionOptions?.maximizeNetGains === false
-        ? (ctx.interactionOptions?.curveBudget ?? 24)
-        : 180
+      const EVAL_BUDGET = ctx.interactionOptions?.maximizeNetGains === false ? 24 : 180
       const initial = capture()
       const initialScore = score()
       let bestState = initial
