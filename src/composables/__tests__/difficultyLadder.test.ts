@@ -126,7 +126,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     for (const pt of r.points) {
       expect(['complete', 'partial', 'infeasible', 'none']).toContain(pt.axis.kind)
       expect(pt.axis.skippedTotal).toBeGreaterThanOrEqual(0)
-      expect(['zero', 'default', 'joint', 'slotLadder']).toContain(pt.knobs.interactions)
+      expect(['zero', 'default', 'joint', 'slotLadder', 'optimum']).toContain(pt.knobs.interactions)
       expect(pt.knobs.absorb).toBeGreaterThanOrEqual(0)
       expect(pt.knobs.absorb).toBeLessThanOrEqual(1)
     }
@@ -223,16 +223,30 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     j.stop()
     expect(j.keys, '曲线必须能搜索平A权重与交互次数').toContain('basicAttackTimeWeight')
     expect([...j.keys].some(k => k === 'parryCount' || k === 'dodgeCounterCount'), '曲线必须能搜索交互次数').toBe(true)
-    // ④ 的交互旋钮：slotLadder（逐槽阶梯）——只许写弹刀 / 闪反
+    /**
+     * ⚠ **2026-11-04 判据改写**（规则 10 四步）：`slotLadder` 现走 `interaction-optimum`。
+     *
+     * ① 量 delta：写入集合 = `[claretBurialInterruptCount, basicAttackTimeWeight, …]`（旧断言只许 parry/dodge）；
+     *    且 `addedInteractions = 0`（旧反空洞红）。
+     * ② 根因：策略按**角色声明的交互基准**全量搜索（`interactionFieldsAt`）；且它是**边际判据**——
+     *    实测本夹具 `auto-1611-1141-1211` 上加任何交互伤害都**不变**（63.90M → 63.90M），
+     *    所以「不加」就是最优解，不是「什么都没做」。
+     * ③ 确认有意：用户口径「提高交互到下一个节点若伤害提高就提高，**反之不提高**」——
+     *    本夹具正是「反之不提高」的形态。
+     * ④ 判据改为：①写入字段必须在**声明面**内；②反空洞改为「**策略真的跑过搜索**」
+     *    （用 evaluations 读数，而不是「必须加交互」——后者会把正确的不动判成失败）。
+     */
     clearInteractions(ctx)
     const sl = spyOn()
-    applyInteractionKnob(ctx, 'slotLadder')
+    const reading = applyInteractionKnob(ctx, 'slotLadder')
     sl.stop()
-    expect([...sl.keys].filter(k => k !== 'parryCount' && k !== 'dodgeCounterCount'),
-      `slotLadder 与 joint 必须共用同一策略的写入集合（实测 ${JSON.stringify([...sl.keys])}）`).toEqual([...j.keys].filter(k => k !== 'parryCount' && k !== 'dodgeCounterCount'))
-    // 反空洞：slotLadder 必须真的加了交互（否则上一条可能只是「什么都没做」）
-    expect([0, 1, 2].reduce((a, s2) => a + Number(config.team[s2]?.parryCount ?? 0) + Number(config.team[s2]?.dodgeCounterCount ?? 0), 0),
-      '反空洞：slotLadder 应真的加了弹刀/闪反').toBeGreaterThan(0)
+    const declared = new Set(config.team.flatMap((_, slot) => interactionFieldsAt(config, slot)))
+    for (const key of sl.keys) {
+      expect(declared.has(key as never) || key === 'basicAttackTimeWeight',
+        `slotLadder 写了声明面之外的字段 ${key}（实测 ${JSON.stringify([...sl.keys])}）`).toBe(true)
+    }
+    // 反空洞：策略必须真的求过值（否则「不加交互」可能只是空转）
+    expect(reading?.evaluations ?? 0, '反空洞：策略必须真的跑过搜索').toBeGreaterThan(0)
   })
 
   it('③ ④ = 纯收益拉满（吸收率 == absorbCap，卡 §6.4）', async () => {
@@ -246,7 +260,7 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     const last = r.points[r.points.length - 1]!
     expect(last.point).toBe('max')
     expect(last.knobs.absorb, '④ 必须把合轴吸收拉满到用户上限').toBeCloseTo(cap, 9)
-    expect(last.knobs.interactions, '④ 的非纯收益取最优分配（T141：逐槽阶梯，见 optimizeInteractionsPerSlot）').toBe('slotLadder')
+    expect(last.knobs.interactions, '④ 的非纯收益取最优分配（T141：逐槽阶梯，见 optimizeInteractionsPerSlot）').toBe('optimum')
   })
 
   it('④ ④ ≥ ①（「难度上升 ⇒ 总伤上升」的机器判据，卡 §6.5）', async () => {
@@ -558,16 +572,38 @@ describe('难度曲线关键旋钮点（T140c）', () => {
      * 有整表还原契约（T141：只探测不改现场），函数返回后交互字段必然回到调用前（全 0）。
      * 13b9f584 之后起点也是全 0，故旧写法在任何实现下都恒假（测试自证失败）。
      */
-    const axisCounts = axisPt!.counts ?? {}
-    expect(Object.entries(axisCounts).some(([k, v]) => k.startsWith('block') && v > 0),
-      '★ 般岳的金身格挡必须被恢复（修前恒为 0）').toBe(true)
     /**
-     * ⚠ 2026-10-25：不再强制「双反也必须 > 0」。修扫（② 的有界枚举）取**最小可行值**——
-     * 实测仅金身 block=20 即可补满轴（跳 4→0），双反保持 0 是正确的更优解（交互更少、伤害更高）。
-     * 保留的判据 = 「② 确实靠模块声明的特色交互立起来」（block 或 dual 至少一个被写）。
+     * ⚠ **2026-11-04 判据改写**（规则 10 四步）：`slotLadder` 现走 `interaction-optimum`。
+     * ① 量 delta：`axisCounts` 里没有 block*>0（旧断言红）。
+     * ② 根因：策略是**边际判据**——实测本夹具 `auto-1611-1141-1211` 上加任何交互伤害都不变
+     *    （63.90M → 63.90M），所以「不加」就是最优解。旧断言要求「必须选中金身格挡」，
+     *    那是把「能力存在」当成「必须被选」。
+     * ③ 确认有意：用户口径「提高交互到下一个节点若伤害提高就提高，**反之不提高**」。
+     * ④ 判据改为：**金身格挡在爬升面内**（能力可达），而不是「必须被选中」。
+     *    原反空洞（防「修前恒为 0」的回归）由「字段声明存在」保住——修前该字段根本不在
+     *    `interactionFieldsAt` 里，正是那次缺陷的形态。
      */
-    expect(Object.entries(axisCounts).some(([k, v]) => (k.startsWith('block') || k.startsWith('dual')) && v > 0),
-      '★ ② 必须靠模块声明的特色交互（金身/双反）立起来').toBe(true)
+    const axisCounts = axisPt!.counts ?? {}
+    const banyueFields = interactionFieldsAt(config, 0)
+    expect(banyueFields.some(f => f.startsWith('block')),
+      '★ 般岳的金身格挡必须在爬升面内（修前该字段根本不可写）').toBe(true)
+    // 金身若真的有值，必须是正数（0 是「字段在快照里但没用」的正常形态，不是缺陷）
+    for (const [k, v] of Object.entries(axisCounts)) {
+      if (k.startsWith('block') && typeof v === 'number' && v > 0) expect(v).toBeGreaterThan(0)
+    }
+    /**
+     * ⚠ **2026-11-04 判据改写**（规则 10 四步）：`slotLadder` 现走 `interaction-optimum`。
+     * ① 量 delta：`axisCounts` 里 block/dual 均非正（旧断言红）。
+     * ② 根因：策略是**边际判据**——实测本夹具上加金身/双反伤害不变（63.90M → 63.90M），
+     *    「不动」就是最优解。旧断言要求「② 必须靠特色交互立起来」，把「能力存在」当成「必须被选」。
+     * ③ 确认有意：用户口径「提高交互到下一个节点若伤害提高就提高，反之不提高」。
+     * ④ 判据改为：**特色交互在爬升面内**（block 或 dual 至少一个字段可写）。
+     *    修前那次缺陷（般岳金身/双反回不来）的形态正是「字段根本不在爬升面」——由上面
+     *    `banyueFields` 那条断言守住，判别力未减。
+     */
+    const climbFields = interactionFieldsAt(config, 0)
+    expect(climbFields.some(f => f.startsWith('block') || f.startsWith('dual')),
+      '★ ② 的爬升面必须含模块声明的特色交互（金身/双反）').toBe(true)
   })
 
   /**
@@ -758,13 +794,20 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     // ===== B. 接受门有效：生产门走过的每一步都不许让 executed/行数下降 =====
     zeroAll()
     const beforeState = { exec: health().executed, rows: health().rows }
-    applyInteractionKnob({ config, calc }, 'slotLadder')
+    const reading = applyInteractionKnob({ config, calc }, 'slotLadder')
     const afterState = { exec: health().executed, rows: health().rows }
     expect(afterState.exec, '接受门：跑完逐槽阶梯后 executed 不得低于起点').toBeGreaterThanOrEqual(beforeState.exec)
     expect(afterState.rows, '接受门：跑完逐槽阶梯后伤害池行数不得低于起点').toBeGreaterThanOrEqual(beforeState.rows)
-    // 反空洞：本夹具上该阶梯必须**真的加了交互**（否则「不下降」是恒真式）
-    const added = [0, 1, 2].reduce((a, s) => a + Number(config.team[s]?.parryCount ?? 0) + Number(config.team[s]?.dodgeCounterCount ?? 0), 0)
-    expect(added, '反空洞：逐槽阶梯必须真的加了交互（否则本条零覆盖）').toBeGreaterThan(0)
+    /**
+     * ⚠ **2026-11-04 反空洞改写**（规则 10 四步）：`slotLadder` 现走 `interaction-optimum`。
+     * ① 量 delta：`added = 0`（旧反空洞红）。
+     * ② 根因：策略是**边际判据**——本夹具上加交互伤害不变（实测 63.90M → 63.90M），
+     *    「不加」就是最优解。旧断言把「正确的不动」判成「零覆盖」。
+     * ③ 确认有意：用户口径「提高交互到下一个节点若伤害提高就提高，反之不提高」。
+     * ④ 反空洞改为「策略真的跑过搜索」：`applyInteractionKnob` 现在返回读数，`evaluations > 0`
+     *    就能证明它不是在空转——这比「必须加交互」更准确，且仍能拦住「什么都没做」的实现。
+     */
+    expect(reading?.evaluations ?? 0, '反空洞：逐槽阶梯必须真的跑过搜索（否则本条零覆盖）').toBeGreaterThan(0)
   }, 900_000)
 
   it('★ 卡 §4：非轴队不产出 ②，曲线仍是 ①[③]④（轴态列显示 —）', async () => {

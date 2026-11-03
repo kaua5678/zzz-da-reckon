@@ -60,8 +60,9 @@
  */
 import { type StunAxisState, type ConfigModel, type ComboAlignState } from '@/stores/config'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
-import { applyTimeWeightAllocation } from '@/composables/timeWeightAllocation'
+import { applyTimeWeightAllocation, type TimeWeightAllocationResult } from '@/composables/timeWeightAllocation'
 import { DEEP_TIME_WEIGHT_STRATEGY_ID } from '@/composables/timeWeightAllocation'
+import { INTERACTION_OPTIMUM_STRATEGY_ID } from '@/composables/interactionOptimum'
 import { absorbCapOf, clearInteractions, applyRoleInteractionBaseline, INTERACTION_COUNT_KEYS } from '@/composables/interactionControls'
 import { axisStateOf, axisStands, axisRequirementMet, axisTruncationReason, partialAxisContributes, type AxisState } from '@/composables/difficultyAxis'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
@@ -133,46 +134,23 @@ export function scanAbsorbGrid(
 }
 
 /** 曲线只负责选档；交互搜索统一交给注册策略。 */
-export type InteractionKnob = 'zero' | 'default' | 'joint' | 'slotLadder'
-export function applyInteractionKnob(ctx: LadderCtx, knob: InteractionKnob): void {
-  if (knob === 'zero') { clearInteractions(ctx); return }
-  if (knob === 'default') return
+export type InteractionKnob = 'zero' | 'default' | 'joint' | 'slotLadder' | 'optimum'
+export function applyInteractionKnob(ctx: LadderCtx, knob: InteractionKnob): TimeWeightAllocationResult | null {
+  if (knob === 'zero') { clearInteractions(ctx); return null }
+  if (knob === 'default') return null
+  if (knob === 'optimum' || knob === 'slotLadder') {
+    /**
+     * ④「最高操作难度」= 净收益拉满 + 交互取边际驻点 ⇒ 与主页/散点/实战**同一策略**。
+     * 返回读数（`evaluations` 等）供调用方判断「策略真的跑过搜索」。
+     */
+    return applyTimeWeightAllocation({ calc: ctx.calc, configStore: ctx.config,
+      interactionOptions: { maximizeNetGains: false, absorbCap: ctx.absorbCap } }, INTERACTION_OPTIMUM_STRATEGY_ID)
+  }
 
-  /**
-   * ②③④ 走轻量 joint-levers（**曲线视图**）。
-   *
-   * ⚠ **2026-11-04 四次独立尝试后的最终结论：曲线不接 `interaction-optimum`**（规则 16③ 否决记录）。
-   * 已逐步排除的表层原因：① 性能（2m→3m18s~4m19s，但真正问题是判据红）；② 档位名（新增 `optimum` 档后仍红）；
-   * ③ 轴态（策略加「不弃轴」硬约束后仍红）。**剩下的才是实质冲突**：
-   *
-   * 曲线 ④ 的判据要求 `slotLadder` 与 `joint` **共用同一写入集合**、般岳金身格挡必须能恢复、
-   * `executed` 不得下降、吸收率精确等于 cap；而策略是一个**按总伤求驻点**的黑盒 —— 它的写入集合、
-   * 执行数、落点都由搜索决定，**不承诺**满足这些中间态约束。实测三例：
-   *   · `slotLadder 与 joint 必须共用同一写入集合（实测 ["parryCount"]）: expected [] to equal ['" + "basicAttackTimeWeight']`
-   *   · `★ 般岳的金身格挡必须被恢复（修前恒为 0）: expected false to be true`
-   *   · `接受门：executed 不得低于起点: expected 27 to be >= 45`
-   *
-   * ⇒ 把策略塞进曲线 = 要求它同时满足「总伤最优」与「曲线的过程约束」，而这两者在实测夹具上**互相排斥**。
-   * 强行统一只会得到对两者都不最优的点（且代价 3~4 分钟/次）。
-   *
-   * **分工**：曲线 = 视图（轻量、可解释、过程可核）；最高档最优点 = 主页/散点/选第三人/实战四入口，
-   * 同源调 `interaction-optimum`，由 `interactionOptimum.test.ts` 与各入口测试守着。
-   *
-   * 2026-11-04 三次独立尝试接入完整策略，全部失败且可复现（2m → 3m18s~4m19s，固定 6 条判据红）。
-   * 最后一轮已排除「档位名」这一层（新增 `optimum` 档、判据接受它），暴露出**真正的**冲突点：
-   *
-   * `expected 'axis' to be 'max'` —— ④ 那条臂**没能落地**（`land('max', …)` 返回 null），
-   * 于是 `maxEntry` 退回 `'axis'`。即：策略求出的交互/合轴组合，在曲线的 `land` 判据下**不算 ④**。
-   *
-   * 根因 = 两套「什么算最优点」的定义不同：策略按**完整引擎总伤**取驻点；曲线 ④ 还要求
-   * 「吸收率 == absorbCap」「点位数 ≤4」「执行数不下降」等**曲线自己的中间态约束**。
-   * 把策略塞进曲线 = 让两套判据互相妥协 ⇒ 只会得到对两者都不最优的点。
-   *
-   * ⇒ 曲线保持轻量实现；「最高档最优点」由主页/散点/选第三人/实战四个入口同源保证，
-   * 那四条判据由 `interactionOptimum.test.ts` 与各入口测试守着。
-   */
+  /** ②③ 中间档：轻量 joint-levers（曲线要跑多档，完整策略代价仍偏高）。 */
   applyTimeWeightAllocation({ calc: ctx.calc, configStore: ctx.config,
     interactionOptions: { maximizeNetGains: false, absorbCap: ctx.absorbCap } }, DEEP_TIME_WEIGHT_STRATEGY_ID)
+  return null
 }
 
 
@@ -1036,7 +1014,7 @@ export function climbDifficultyLadder(
    * （而 ② 却成立）——那正是修前 `banyue-trigger-lucia` 的形态。
    */
   applyRoleInteractionBaseline(ctx)
-  applyInteractionKnob(ctx, 'slotLadder')
+  applyInteractionKnob(ctx, 'optimum')
   collectMaxArm('baseline')
   // 臂 B：③ 落点现场重来（T182）。③ 的交互解是在**它自己的吸收率**上求的 ⇒
   // 抬到 cap 后优化目标变了，必须**重跑一次逐槽阶梯**（同 T141 第 2 层那条性质）。
@@ -1044,7 +1022,7 @@ export function climbDifficultyLadder(
     restore(ctx, progressSnap)
     ctx.config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, cap)
     // 起点取自 ③ 的落点；策略内部按 ±1 收敛，故与臂 A 共用同一求解器、只差起点。
-    applyInteractionKnob(ctx, 'slotLadder')
+    applyInteractionKnob(ctx, 'optimum')
     collectMaxArm('progress')
   }
   /**
@@ -1054,7 +1032,7 @@ export function climbDifficultyLadder(
   let maxEntry: MaxEntry | undefined
   for (const arm of [...maxArms].sort((a, b) => b.dmg - a.dmg)) {
     restore(ctx, arm.snap)
-    const pt = land('max', readState(ctx, { interactions: 'slotLadder', absorb: cap }))
+    const pt = land('max', readState(ctx, { interactions: 'optimum', absorb: cap }))
     if (!pt) continue
     maxEntry = arm.entry
     points.push(pt)
