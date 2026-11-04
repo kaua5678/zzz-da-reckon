@@ -12,8 +12,8 @@ import { describe, expect, it } from 'vitest'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  CORE_EXCLUDES, CORE_INVARIANTS, CORE_MAX_SECONDS, FAST_MAX_SECONDS,
-  adviseFor, excludesFor, vitestArgsFor,
+  CORE_EXCLUDES, CORE_INVARIANTS, CORE_MAX_SECONDS, FAST_MAX_SECONDS, MEASURED_SECONDS,
+  adviseFor, excludesFor, measureRing, vitestArgsFor,
 } from '../../../scripts/test-ring.mjs'
 
 const SRC = join(process.cwd(), 'src')
@@ -68,12 +68,56 @@ describe('测试三环（core / fast / full）', () => {
     }
   })
 
-  it('⑤ 保留面（CORE_INVARIANTS）也必须是现存文件，且确实 ≥ core 门槛', () => {
+  it('⑤ 保留面（CORE_INVARIANTS）：现存 + 有理由 + **真的不在排除集里**（否则「保留」是句空话）', () => {
     const names = testFileNames()
+    const core = new Set(excludesFor('core'))
     for (const inv of CORE_INVARIANTS) {
       expect(names.has(inv.file), `保留面 ${inv.file} 不存在`).toBe(true)
       expect(inv.why.length, `${inv.file} 必须写清「为什么它留在每对话那圈」`).toBeGreaterThan(10)
+      expect(core.has(inv.file), `保留面 ${inv.file} 竟然在 core 排除集里（「每对话都跑」被清单吃掉）`).toBe(false)
     }
+  })
+
+  /**
+   * ★ 2026-11-04：这条是本轮的核心判据——**门槛必须真的被执行**。
+   *
+   * 旧版把清单手写死在源码里，判据本身也是那份清单 ⇒ 清单腐坏（漏进 12 个 ≥20s 的新文件、
+   * 3 条该放回来的没放回来）时**没有任何机器会红**。实测后果：core 环墙钟被单文件占到 99.4%。
+   * 现在清单由 MEASURED_SECONDS 派生，这一条钉的就是「派生规则没有被绕过」。
+   */
+  it('★ ⑩ 排除集 = 门槛的**派生结果**（≥CORE_MAX_SECONDS 且非不变量 ⇒ 必在；<门槛且非不变量 ⇒ 必不在）', () => {
+    const core = new Set(excludesFor('core'))
+    const inv = new Set(CORE_INVARIANTS.map(i => i.file))
+    const missing = []
+    const overExcluded = []
+    for (const [file, seconds] of Object.entries(MEASURED_SECONDS)) {
+      if (inv.has(file)) continue
+      if (seconds >= CORE_MAX_SECONDS && !core.has(file)) missing.push(file + '=' + seconds + 's')
+      if (seconds < CORE_MAX_SECONDS && core.has(file)) overExcluded.push(file + '=' + seconds + 's')
+    }
+    expect(missing, '≥门槛却没出 core（清单又被手改漏了一批）').toEqual([])
+    expect(overExcluded, '<门槛却还在排除集（该放回每对话那圈了）').toEqual([])
+  })
+
+  it('★ ⑪ fast 环在 core 之上只多砍 ≥FAST_MAX_SECONDS 的（避免「fast 比 core 更宽」的错位）', () => {
+    const core = new Set(excludesFor('core'))
+    const fast = new Set(excludesFor('fast'))
+    for (const f of fast) expect(core.has(f), f + ' 在 fast 却不在 core（嵌套反了）').toBe(true)
+    for (const e of CORE_EXCLUDES) {
+      const inFast = fast.has(e.file)
+      expect(inFast, e.file + '=' + e.seconds + 's 该不该进 fast 由 FAST_MAX_SECONDS 决定').toBe(e.seconds >= FAST_MAX_SECONDS)
+    }
+  })
+
+  it('★ ⑫ measureRing 是派生值：core ⊂ fast ⊂ full 的文件数与 CPU 单调', () => {
+    const m = { core: measureRing('core'), fast: measureRing('fast'), full: measureRing('full') }
+    expect(m.core.files).toBeLessThan(m.fast.files)
+    expect(m.fast.files).toBeLessThan(m.full.files)
+    expect(m.core.seconds).toBeLessThan(m.fast.seconds)
+    expect(m.fast.seconds).toBeLessThan(m.full.seconds)
+    // 最长文件也单调（core 的最长必须 ≤ fast 的 ≤ full 的）
+    expect(m.core.longest.seconds).toBeLessThanOrEqual(m.fast.longest.seconds)
+    expect(m.fast.longest.seconds).toBeLessThanOrEqual(m.full.longest.seconds)
   })
 
   it('⑥ 每条排除项都带实测秒数（数字是「为什么它在这」的唯一证据）', () => {
