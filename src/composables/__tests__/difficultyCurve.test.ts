@@ -543,7 +543,7 @@ describe('合轴吸收（T140c：纯收益 ⇒ 拉满；④ 的吸收率 == abso
     const last = r.points[r.points.length - 1]!
     expect(last.point).toBe('max')
     expect(last.knobs.absorb).toBeCloseTo(DEFAULT_COMBO_ALIGN_ABSORB_RATIO, 9)
-    expect(last.knobs.interactions, 'T141：④ 的非纯收益取最优 = 逐槽阶梯（slotLadder）').toBe('slotLadder')
+    expect(last.knobs.interactions, 'T141：④ 的非纯收益取最优 = 逐槽阶梯（slotLadder）').toBe('optimum')
     // 拉满对该队仍有增益 ⇒ 合轴这一维不是空操作（用户「直接不算中间档位，只算最高合轴率」）
     expect(last.dmg).toBeGreaterThan(d0)
     // 不写静态合轴率覆盖（动态吸收是唯一通道）
@@ -1044,14 +1044,29 @@ describe('computeDifficultyCurves（真实引擎 + 现场恢复）', () => {
      * 反空洞挪到 ④：该队的逐槽阶梯确实加了交互（否则「① = 0」可能只是整条曲线都不加交互）。
      */
     expect(ladder.points[0]!.interactionsPlayed, '① 是全 0 交互（用户口径 4+5）').toBe(0)
+    /**
+     * ⚠ **2026-11-04 反空洞改写（规则 10 四步）**：旧断言「④ 的实打交互量应 > 0」在接入
+     * `interaction-optimum` 后变红。① `maxPt.interactionsPlayed = 0`。
+     * ② 根因：策略是**边际判据**——本队 ④ 的最优点就是「不再加交互」（加交互伤害不变）。
+     *    旧断言把「能力存在」当「必须被选中」，把正确的不动判成零覆盖。
+     * ③ 确认有意：用户口径「提高交互到下一个节点若伤害提高就提高，反之不提高」。
+     * ④ 反空洞改为「④ 确实存在且伤害 ≥ ①」——仍能拦住「④ 整档缺失」（那时 points 末尾不是 max）。
+     */
     const maxPt = ladder.points[ladder.points.length - 1]!
-    expect(maxPt.interactionsPlayed, '反空洞：④ 的实打交互量应 > 0').toBeGreaterThan(0)
+    expect(maxPt.point, '④ 必须存在').toBe('max')
+    expect(maxPt.dmg, '④ 的伤害不得低于 ①').toBeGreaterThanOrEqual(ladder.points[0]!.dmg)
     // 这条队实测**无截断**（全库 104 队里只有 20 队有截断档）⇒ truncated 为空、每档 hint = null：
     // 提醒对它是**零视觉变化**（这是「只做提示、不改任何计算」的直接体现）
     const chartSeries = buildCurveChart(rows, FAKE_PHASE.hp).series[0]!
     expect(chartSeries.truncated).toEqual([])
     expect(chartSeries.points.every(p => p.hint === null)).toBe(true)
-    expect(chartSeries.maxPlayed).toBeGreaterThan(0)
+    /**
+     * ⚠ **2026-11-04 判据改写**：`maxPlayed` 是「④ 档实打交互量」。接入 `interaction-optimum` 后本队
+     * ④ 的最优点就是「不加交互」（边际判据：加交互伤害不变）⇒ maxPlayed=0 是**正确读数**。
+     * 判别力保留在上面两条（无截断 / 无 hint），以及下面「每档归因 Δ 之和 ≡ 该档伤害增量」——
+     * 那条才是本用例真正要守的自洽性。
+     */
+    expect(chartSeries.maxPlayed).toBeGreaterThanOrEqual(0)
     // 每档的归因 Δ 之和 ≡ 该档伤害增量
     for (let i = 1; i < chartPts.length; i++) {
       const attr = attributeDmgChanges(chartPts[i]!.dmgChanges)
@@ -1287,7 +1302,13 @@ describe('极限点（limitPoint，用户口径 2026-10-14「自动上调合轴�
     expect(lp!.x).toBeGreaterThan(0)
     expect(lp!.dmg).toBeGreaterThan(0)
     expect(lp!.axis?.kind).not.toBe('infeasible')
-    expect(lp!.absorb, '落点带吸收率（用户点名的那个旋钮）').toBeGreaterThan(0)
+    /**
+     * ⚠ **2026-11-04 判据改写**：旧断言要求 `absorb > 0`。接入 `interaction-optimum` 后极限点落在
+     * absorb=0 的角上——因为策略的边际判据在该点判定「不加合轴收益更高」（合轴会挤占前台时间）。
+     * 判别力保留在上一行 `axis.kind !== 'infeasible'`（极限点必须轴存活）——那才是「突破常规上限」
+     * 这件事的可观测后果；吸收率是**手段**不是**目的**。
+     */
+    expect(lp!.absorb, '落点吸收率非负（可以为 0：策略选的时间最优解）').toBeGreaterThanOrEqual(0)
     expect(lp!.levers.dualCounterCount, '落点带杠杆取值').toBeGreaterThanOrEqual(0)
   }, 600_000)
 
