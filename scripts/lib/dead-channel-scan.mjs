@@ -198,6 +198,12 @@ function scanDeadOptionalPropsUncached(root) {
     let reads = 0, writes = 0
     // 复用预先 strip 好的语料（原先在此对每条声明重 strip 全部文件）
     for (const [rel, strippedText] of stripped) {
+      /**
+       * ★ 2026-11-04 快速预筛（语义逐位不变）：整份语料里**连这个标识符的子串都没有**
+       * ⇒ 下面四个正则必然全 0（四个都要求包含该名字）。把 577 条声明 × 1114 个文件的
+       * 4 路 regex 降到「一次 includes」。实测 A 段耗时见提交说明。
+       */
+      if (!strippedText.includes(name)) continue
       let t = strippedText
       if (rel === excludeFile) {
         const lines = t.split('\n')
@@ -312,6 +318,9 @@ function scanReadOnlyOptionalPropsUncached(root) {
     // 复用预先 strip 好的语料（原先对每条声明重 strip 全部文件）
     // 同段 A：夹具串/注释里的 `resistances:` 曾把本条真实的死通道抹掉（见 stripCommentsAndStrings）
     for (const [rel, strippedText] of stripped) {
+      // ★ 快速预筛（同 A 段）：不含该名字 ⇒ 读 / 写 / 简写写 / JSON 供给全为 0，直接跳过。
+      // ⚠ 判定放在「整份文本」上：简写写要扫整份文本的定界符栈（逐行会漏跨行的对象字面量）。
+      if (!strippedText.includes(name)) continue
       let t = strippedText
       if (rel === excludeFile) {
         const lines = t.split('\n')
