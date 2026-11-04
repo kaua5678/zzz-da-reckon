@@ -224,29 +224,22 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     expect(j.keys, '曲线必须能搜索平A权重与交互次数').toContain('basicAttackTimeWeight')
     expect([...j.keys].some(k => k === 'parryCount' || k === 'dodgeCounterCount'), '曲线必须能搜索交互次数').toBe(true)
     /**
-     * ⚠ **2026-11-04 判据改写**（规则 10 四步）：`slotLadder` 现走 `interaction-optimum`。
+     * ⚠ **2026-11-04 判据恢复原样**（策略 bug 修好后，见 `interactionOptimum.ts#remember`）。
      *
-     * ① 量 delta：写入集合 = `[claretBurialInterruptCount, basicAttackTimeWeight, …]`（旧断言只许 parry/dodge）；
-     *    且 `addedInteractions = 0`（旧反空洞红）。
-     * ② 根因：策略按**角色声明的交互基准**全量搜索（`interactionFieldsAt`）；且它是**边际判据**——
-     *    实测本夹具 `auto-1611-1141-1211` 上加任何交互伤害都**不变**（63.90M → 63.90M），
-     *    所以「不加」就是最优解，不是「什么都没做」。
-     * ③ 确认有意：用户口径「提高交互到下一个节点若伤害提高就提高，**反之不提高**」——
-     *    本夹具正是「反之不提高」的形态。
-     * ④ 判据改为：①写入字段必须在**声明面**内；②反空洞改为「**策略真的跑过搜索**」
-     *    （用 evaluations 读数，而不是「必须加交互」——后者会把正确的不动判成失败）。
+     * 上一轮曾把本条放宽成「写入字段 ⊆ 声明面 + evaluations > 0」，理由是「策略是边际判据，
+     * 本夹具加任何交互伤害都不变（63.90M → 63.90M）」。**该理由经实测不成立**：
+     * 真因是记录门把 partial 起点的所有可达点都滤掉了（策略空转回起点），
+     * 修好后同一夹具能爬出真实收益，写入集合也回到「全量声明面」。
+     * ⇒ 原判据（反空洞：必须真的加了交互）恢复，它拦的正是「什么都没做」。
      */
     clearInteractions(ctx)
     const sl = spyOn()
-    const reading = applyInteractionKnob(ctx, 'slotLadder')
+    applyInteractionKnob(ctx, 'slotLadder')
     sl.stop()
-    const declared = new Set(config.team.flatMap((_, slot) => interactionFieldsAt(config, slot)))
-    for (const key of sl.keys) {
-      expect(declared.has(key as never) || key === 'basicAttackTimeWeight',
-        `slotLadder 写了声明面之外的字段 ${key}（实测 ${JSON.stringify([...sl.keys])}）`).toBe(true)
-    }
-    // 反空洞：策略必须真的求过值（否则「不加交互」可能只是空转）
-    expect(reading?.evaluations ?? 0, '反空洞：策略必须真的跑过搜索').toBeGreaterThan(0)
+    expect(sl.keys, '曲线必须能搜索平A权重与交互次数').toContain('basicAttackTimeWeight')
+    // 反空洞：slotLadder 必须真的加了交互（否则上一条可能只是「什么都没做」）
+    expect([0, 1, 2].reduce((a, s2) => a + Number(config.team[s2]?.parryCount ?? 0) + Number(config.team[s2]?.dodgeCounterCount ?? 0), 0),
+      '反空洞：slotLadder 应真的加了弹刀/闪反').toBeGreaterThan(0)
   })
 
   it('③ ④ = 纯收益拉满（吸收率 == absorbCap，卡 §6.4）', async () => {
@@ -573,37 +566,33 @@ describe('难度曲线关键旋钮点（T140c）', () => {
      * 13b9f584 之后起点也是全 0，故旧写法在任何实现下都恒假（测试自证失败）。
      */
     /**
-     * ⚠ **2026-11-04 判据改写**（规则 10 四步）：`slotLadder` 现走 `interaction-optimum`。
-     * ① 量 delta：`axisCounts` 里没有 block*>0（旧断言红）。
-     * ② 根因：策略是**边际判据**——实测本夹具 `auto-1611-1141-1211` 上加任何交互伤害都不变
-     *    （63.90M → 63.90M），所以「不加」就是最优解。旧断言要求「必须选中金身格挡」，
-     *    那是把「能力存在」当成「必须被选」。
-     * ③ 确认有意：用户口径「提高交互到下一个节点若伤害提高就提高，**反之不提高**」。
-     * ④ 判据改为：**金身格挡在爬升面内**（能力可达），而不是「必须被选中」。
-     *    原反空洞（防「修前恒为 0」的回归）由「字段声明存在」保住——修前该字段根本不在
-     *    `interactionFieldsAt` 里，正是那次缺陷的形态。
+     * ## ★ 判据的诊断（2026-11-04 实现者复核；**前提已被历史提交改变**）
+     *
+     * 原判据「② 必须靠金身/双反立起来」在今天**结构上不可能成立**，与策略实现无关：
+     *
+     * - **② 点走 `joint`**（`readState(ctx, { interactions: 'joint' })`）= joint-levers 策略，
+     *   它只动「平A权重 / 弹刀 / 嘲讽取消」⇒ **写不到** `blockCount`/`dualCounterCount`。
+     * - 那这条判据以前为什么过？靠 `applyRoleInteractionBaseline` 把般岳声明的
+     *   `interactionDefaults: { parry:6, dodge:10, block:12, dual:3 }` 写进现场 —— 是**声明**给的，不是策略选中的。
+     * - `13b9f584`（用户裁决「交互次数全设 0 吧，没必要给他特殊做」）把那份声明改成 `0/0/0/0`，
+     *   **但没同步本判据** ⇒ 从那天起它测的对象就不存在了。
+     *
+     * 实测（本夹具，修好策略记录门后）：②落点 `parry0=6, parry2=2`、金身恒 0；
+     * ④ 走 `interaction-optimum`（爬升面 = `interactionFieldsAt` 全量声明面，含 block/dual）才能碰到金身。
+     *
+     * ⇒ 本用例改成钉**机制可达性**（这才是 ② 这一档能守的东西）：
+     *  ① 爬升面含 block/dual（能力可达，修前那次缺陷正是「字段不在爬升面」）；
+     *  ② ② 的落点**确实来自 joint 的搜索面**（防它被悄悄换成别的策略而判据失效）。
+     * ⚠ 待裁决：「金身必须被自动选中」若要继续钉，需要放宽 §6.3b 的逐步门
+     *   （实测路径 `block0: 0→24` 上 `rows` 单调降 41→34、`executed` 在 22/43/11 间跳动，
+     *   逐步硬门过不去），那是口径选择不是实现缺陷 —— 已上报。
      */
     const axisCounts = axisPt!.counts ?? {}
-    const banyueFields = interactionFieldsAt(config, 0)
-    expect(banyueFields.some(f => f.startsWith('block')),
+    expect(interactionFieldsAt(config, 0).some(f => f.startsWith('block')),
       '★ 般岳的金身格挡必须在爬升面内（修前该字段根本不可写）').toBe(true)
-    // 金身若真的有值，必须是正数（0 是「字段在快照里但没用」的正常形态，不是缺陷）
-    for (const [k, v] of Object.entries(axisCounts)) {
-      if (k.startsWith('block') && typeof v === 'number' && v > 0) expect(v).toBeGreaterThan(0)
-    }
-    /**
-     * ⚠ **2026-11-04 判据改写**（规则 10 四步）：`slotLadder` 现走 `interaction-optimum`。
-     * ① 量 delta：`axisCounts` 里 block/dual 均非正（旧断言红）。
-     * ② 根因：策略是**边际判据**——实测本夹具上加金身/双反伤害不变（63.90M → 63.90M），
-     *    「不动」就是最优解。旧断言要求「② 必须靠特色交互立起来」，把「能力存在」当成「必须被选」。
-     * ③ 确认有意：用户口径「提高交互到下一个节点若伤害提高就提高，反之不提高」。
-     * ④ 判据改为：**特色交互在爬升面内**（block 或 dual 至少一个字段可写）。
-     *    修前那次缺陷（般岳金身/双反回不来）的形态正是「字段根本不在爬升面」——由上面
-     *    `banyueFields` 那条断言守住，判别力未减。
-     */
-    const climbFields = interactionFieldsAt(config, 0)
-    expect(climbFields.some(f => f.startsWith('block') || f.startsWith('dual')),
-      '★ ② 的爬升面必须含模块声明的特色交互（金身/双反）').toBe(true)
+    expect(axisPt!.knobs.interactions, '② 恒为 joint（金身只可能出现在走全量声明面的 ④）').toBe('joint')
+    expect(Object.entries(axisCounts).some(([k, v]) => k.startsWith('block') && v > 0),
+      '② 走 joint ⇒ 金身不可能非 0（若这条变红，说明 ② 换了策略，上面那条诊断需重核）').toBe(false)
   })
 
   /**
@@ -713,21 +702,44 @@ describe('难度曲线关键旋钮点（T140c）', () => {
         expect(d, `主C ${key}=${n} 必须 Δ ≥ 0（2026-10-28 逐招口径下全程为正）`).toBeGreaterThanOrEqual(-1e-6)
       }
     }
-    // 辅助（槽2 丽娜，支援）：低档为正（逐招口径的真实失衡），但**过量必转负**——那才是用户
-    // 「辅助交互才是亏的」的可判别落点；只钉 ≤0 会把旧残差通道的假象固化下来。
-    const supportParry = sweep(2, 'parryCount', [1, 2, 4, 8])
+    /**
+     * ## 辅助弹刀（槽2 丽娜）：**2026-11-04 重测**——莱卡恩围猎入场券落地后首次直接印证用户口径
+     *
+     * ① 量 delta（本夹具，百万单位）：弹刀 1/2/4/8/12/16 = **−0.122 / −0.240 / −1.368 / +5.927 / −8.107 / −9.932**
+     *
+     * ② 为什么与 2026-10-28 那张表（+2.612 / +2.227 / +2.880 / −2.356）不同：那张表是**在缺陷上量的**——
+     *    夹具 `zeroAll()` 把莱卡恩弹刀也置 0，而旧实现 `huntCount = 失衡次数`（不看弹刀）⇒ 基线里狼照样
+     *    全场打后台冰舞+蓄力平A ⇒ 辅助弹刀的一点失衡被 **狼的后台放大**成了正收益。
+     *    修成 `min(失衡次数, 弹刀次数)` 后，0 弹刀 ⇒ 围猎为 0 ⇒ 辅助的时间成本**如实暴露**。
+     *
+     * ③ 用户口径「**辅助交互才是亏的**」现在被数据直接印证（低档全负）。
+     *    n=8 的 +5.927M **不是**「交互赚了」：丽娜是**回避支援型**（无招架支援，`defensiveAssistMoveId` 空）
+     *    ⇒ 每次弹刀 = 1.166s 时停 + **215 喧响**（`calcSpecialActionBonus` 的 parry 通道）
+     *    ⇒ 8 次 = 1720 喧响跨过终结技门槛。那是**资源阈值事件**，与「交互收益率」不是同一件事。
+     *
+     * ④ 判据：低档（1/2/4）必须 ≤ 0（辅助亏），过量（12/16）必须显著为负（越加越亏）。
+     *    中间档 n=8 由上述喧响阈值解释，**刻意不设断言**——把它钉成任何一种符号都是在钉阈值位置。
+     */
+    const supportParry = sweep(2, 'parryCount', [1, 2, 4, 8, 12, 16])
     for (const { n, d } of supportParry.filter(x => x.n <= 4)) {
-      expect(d, `辅助弹刀=${n} 允许为正（实测 +2.2~+2.9M，逐招口径的真实失衡）`).toBeGreaterThan(-1_000_000)
+      expect(d, `辅助弹刀=${n} 必须亏（用户口径「辅助交互才是亏的」，实测 −0.12/−0.24/−1.37M）`)
+        .toBeLessThanOrEqual(1e-6)
     }
-    const supportOver = supportParry.find(x => x.n === 8)!
-    expect(supportOver.d, '辅助弹刀=8 必须回落为负（过量交互才是亏的，实测 −2.356M）').toBeLessThan(0)
-    // 辅助闪反在整个扫描域内仍为负（时间成本主导，实测 −0.047 → −0.888M）
+    for (const { n, d } of supportParry.filter(x => x.n >= 12)) {
+      expect(d, `辅助弹刀=${n} 过量必亏（实测 −8.11/−9.93M）`).toBeLessThan(-1_000_000)
+    }
+    // 辅助闪反在整个扫描域内仍为负（时间成本主导，实测 −0.040 → −2.407M；2026-11-04 重测）
     for (const { n, d } of sweep(2, 'dodgeCounterCount', [1, 2, 4, 8])) {
       expect(d, `辅助闪反=${n} 不得为正（实测全负）`).toBeLessThanOrEqual(1e-6)
     }
     // 击破（槽1 莱卡恩）：**允许为正**（靠失衡加速）——判据只要求「不是被结构性排除」
     const breakthrough = sweep(1, 'parryCount', [2, 4])
-    expect(Math.max(...breakthrough.map(x => x.d)), '击破弹刀允许为正（实测 +2.2M）').toBeGreaterThan(0)
+    /**
+     * 2026-11-04 重测（围猎入场券落地后）：击破弹刀 1/2/4/8/12/16 = **+4.62 / +4.01 / +12.16 / +9.81 / +8.34 / +3.95M**
+     * ——全程为正，且这就是用户「击破弹刀让失衡加速」的落点被**接上**后的样子：
+     * 修前狼不弹刀也有围猎（收益与弹刀无关），修后才真正是「弹刀 → 进后台 → 打失衡」。
+     */
+    expect(Math.max(...breakthrough.map(x => x.d)), '击破弹刀允许为正（实测 +4.0~+12.2M）').toBeGreaterThan(0)
   }, 900_000)
 
   it('★ 卡 §6.3b：交互增加时**实际执行的动作数不得下降**（逐槽扫描 + 逐档四信号）', async () => {
@@ -791,23 +803,38 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     }
     console.log(`T141 卡§6.3b 逐档四信号（基线 exec=${base.executed} 行=${base.rows} dmg=${(base.dmg / 1e6).toFixed(3)}M）:\n${rows.join('\n')}`)
 
-    // ===== B. 接受门有效：生产门走过的每一步都不许让 executed/行数下降 =====
+    // ===== B. 接受门有效：生产门不许**净劣化**（伤害/截断），执行数按用户裁定的口径 =====
     zeroAll()
-    const beforeState = { exec: health().executed, rows: health().rows }
+    const beforeState = { exec: health().executed, rows: health().rows, dmg: health().dmg }
     const reading = applyInteractionKnob({ config, calc }, 'slotLadder')
-    const afterState = { exec: health().executed, rows: health().rows }
-    expect(afterState.exec, '接受门：跑完逐槽阶梯后 executed 不得低于起点').toBeGreaterThanOrEqual(beforeState.exec)
-    expect(afterState.rows, '接受门：跑完逐槽阶梯后伤害池行数不得低于起点').toBeGreaterThanOrEqual(beforeState.rows)
+    const afterState = { exec: health().executed, rows: health().rows, dmg: health().dmg }
     /**
-     * ⚠ **2026-11-04 反空洞改写**（规则 10 四步）：`slotLadder` 现走 `interaction-optimum`。
-     * ① 量 delta：`added = 0`（旧反空洞红）。
-     * ② 根因：策略是**边际判据**——本夹具上加交互伤害不变（实测 63.90M → 63.90M），
-     *    「不加」就是最优解。旧断言把「正确的不动」判成「零覆盖」。
-     * ③ 确认有意：用户口径「提高交互到下一个节点若伤害提高就提高，反之不提高」。
-     * ④ 反空洞改为「策略真的跑过搜索」：`applyInteractionKnob` 现在返回读数，`evaluations > 0`
-     *    就能证明它不是在空转——这比「必须加交互」更准确，且仍能拦住「什么都没做」的实现。
+     * ## ★ 用户裁定（2026-11-04）：**平A 可以被挤压**，§6.3b 不再是逐步硬门
+     *
+     * 用户原话：「**平a可以被挤压**，必要时间最好不挤压。因为**平a的dps通常低于交互**，
+     * 你想达到交互最优可能会**无止境的挤压平a**，这就不太合理了。所以我认为**轴模式要保证轴内强特的能量恢复**，
+     * **非轴模式挤压平a可能导致强特降低的负反馈来自然限制交互次数**」。
+     *
+     * 即：限制交互的机制 = **引擎内的自然负反馈**（挤掉平A → 能量/强特下降 → 收益回落），
+     * **不是**在策略里加一条「executed 不许降」的计数式硬门。后者实测会否掉真实收益：
+     * 本夹具 parry=7 → 75.17M/exec40，parry=8 → 86.23M/exec34（**+11M**，代价是失衡窗 6→5），
+     * 而窗口数变化**不是**「主C 动作被挤掉」。
+     *
+     * ⇒ 本段保留的判据（**净不劣化**，这才是用户要守的那半）：
+     *  ① 伤害不降；② 截断不增；③ 策略真的写了交互（反空洞）；④ 策略真的求过值。
+     * 执行数只作**读数**打印（A 段的逐档四信号），不再当门。
+     *
+     * ⚠ 另两条按用户口径**待开工**（长线，已登记不在本条覆盖）：
+     *  · 轴模式「保证轴内强特的能量恢复」（轴内 ex 次数不得被交互挤掉）；
+     *  · 非轴模式「挤平A → 强特下降」的负反馈要在引擎里真的成立（当前只对能量循环角色成立）。
      */
-    expect(reading?.evaluations ?? 0, '反空洞：逐槽阶梯必须真的跑过搜索（否则本条零覆盖）').toBeGreaterThan(0)
+    expect(afterState.dmg, '接受门：跑完逐槽阶梯后伤害不得下降').toBeGreaterThanOrEqual(beforeState.dmg - 1e-6)
+    const afterOverflow = calc.resourceResult.value?.convergence.timeTruncatedSeconds ?? 0
+    expect(afterOverflow, '接受门：跑完逐槽阶梯后截断不得增加（§6.3b 的「动作打不出来」由这条守）').toBeLessThanOrEqual(1e-6)
+    const addedInteractions = [0, 1, 2].reduce((a, s2) => a + Number(config.team[s2]?.parryCount ?? 0) + Number(config.team[s2]?.dodgeCounterCount ?? 0), 0)
+    expect(addedInteractions, '反空洞：逐槽阶梯必须真的加了交互（否则本条零覆盖）').toBeGreaterThan(0)
+    expect(reading?.evaluations ?? 0, '策略必须真的求过值').toBeGreaterThan(0)
+    console.log(`§6.3b 读数（非门）：exec ${beforeState.exec}→${afterState.exec} / 行 ${beforeState.rows}→${afterState.rows} / dmg ${(beforeState.dmg/1e6).toFixed(2)}→${(afterState.dmg/1e6).toFixed(2)}M`)
   }, 900_000)
 
   it('★ 卡 §4：非轴队不产出 ②，曲线仍是 ①[③]④（轴态列显示 —）', async () => {
