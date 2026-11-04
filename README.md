@@ -76,7 +76,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | 实战归档（**只作单条部署对照，不作误差判据**，用户裁决 2026-09） | `public/static/run-archive.json` ← `scripts/{fetch,import}-zzz-run-archive.mjs` | `docs/FEATURES_GUIDE.md` §7 |
 | 动作时间公式 / 合轴率 / 失衡轴 | 招式时间口径在 `scripts/import-nanoka-missing.mjs`（真源，勿在文档抄公式）· `comboAlignRatio` 进 catalog · `src/data/stunAxisPresets/` | `docs/ENGINE_PIPELINE_GUIDE.md` §1 与 §4 坑 21 |
 
-## 6. 文档（90 份，其余知识在代码注释 / spec / 测试里）
+## 6. 文档（91 份，其余知识在代码注释 / spec / 测试里）
 
 | 文档 | 定位 |
 | --- | --- |
@@ -158,6 +158,7 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 | `docs/mcp-r22d1-batch12-field-census.md` | **R22-D1 批 1-2 裁决不做 + 核心角色字段普查计划（handoff）**：批 1-2（billy/yeshuguang 终局旗标并入通用骨架）判不做理由、核心 `CharacterOperationConfig` 角色字段 census 方案（字段→写入方/读取方） |
 | `docs/STUN_CONTINUOUS_LASTWINDOW.md` | **连续失衡专项（2026-10-20 开工，未完成）**：用户口径（保全前面失衡 / 争取最后一次 / 做不到也能连续算）+ 6 支环队实测分类 + **环的载体确认**（A/B 实验：只把 time.stunPlanProjection 从 physical 改成 off ⇒ 4 支里 3 支立刻 stable ⇒ 载体是 prevPoolStunCount 的滞后自反馈）+ P0″ 护栏（弃轴 4→0）+ 仍未解的 2 类新环。**含 5 次失败尝试的留痕**，接手前必读 |
 | `docs/REQUIREMENTS_BACKLOG.md` | **需求清单与状态（2026-10-20 盘点）**：把用户这一路提的需求切成 A–E 五组（失衡连续化专项 / 命座提升率 / 喧响 / 图表轴态 / 文档漂移），每条带「已做·未做·阻塞点·判据」与提交号；末尾「已裁决不做」列出 R12 引擎自动认领、R13 引擎自抬吸收率、R4 事件时间轴三条**别再派**的活 |
+| `docs/mcp-cinema-interval-uplift.md` | **命座 × 难度曲线的「区间提升」专项（用户 2026-11-04 立项）**：为什么「取两点」会算出负提升（两级曲线的点根本不在同一批难度）、固定网格前沿对前沿的实测表、以及负值里混着的一条**真引擎缺陷**——C3 的轴内凝云是 `轴内·技能表直读` 的幻影行（15 次、免费、不占时间），C4 一旦由模块产行就被 `backed` 存在性门整体压制只剩 1 次（−11.8%，执行数逐位相同）；含两条反事实臂、三条否决记录、两条证伪闸门与复现探针清单 |
 | `docs/mcp-cinema-uplift-multi-metric.md` | **命座提升率口径与交接** |：失衡栏为什么用 `totalStunBuildUp` 而非被 `stunCountLock` 锁死的 `stunCount`（3 队 × 6 级引擎探针实测表）、显示口径与「显示位四舍五入为 0 即 `—`」的共同判据、七道闸门 + 两次负控 + 实机 DOM 读回证据；**§8 = 命座提升率网格**（2026-10-20：Boss × 环境 buff 的 N×M 网格、锁值取 C0 基线、`free−locked` 量失衡通道；实测锁值本身就能让累计提升率在 34.6%~75.0% 之间漂） |
 | `docs/mcp-core-agent-math-census.md` | **core/** 角色专属数学盘点（CC-70）**：不靠 agentId、但按某角色机制写的 core 逻辑逐项裁定留/迁——维琳娜气旋事件已迁模块（CC-71）、core 的 C2 风蚀默认值已删（CC-72），帷幕/风蚀派发器/真元/加农转子裁定留 core 及理由、复现 grep |
 | `docs/mcp-panel-fields.md` | **PanelValues 未声明字段盘点（r400 CC-374；r402 CC-376 完成：签名收紧为模板签名，§6 为新增字段规则）**：删签名跑 tsc 的精确清单（`scripts/audit-panel-fields.mjs`）、四类访问（定向属性键 / 通用属性未声明 / 模块私有 / 动态键网关）各自归宿、命座自检被零读者字段短路的发现与 9 个删除、去掉 `[key: string]: number` 的四阶段执行卡 |
@@ -175,6 +176,6 @@ data/raw/          nanoka 原始数据（含 nanoka_missing/）
 > 归档只放**确认已完成、且不含现役口径**的报告；口径还在用的先搬进活手册再归档。找历史结论用 `git log` / 归档目录，别从头重建。
 >
 > 项目知识以代码为唯一事实来源：角色口径在 spec `notes` + 模块头注释，用户确认数值在 `verifications`（测试固化），引擎规则在 core/ 注释与测试。删掉的文档不再重建（2026-09-14 删 `architecture-review-2026-09-11.md` 点时间快照：已落地结论长在代码与护栏里，未落地 4 条曾迁账本 Open 段，现随账本瘦身统一收在 `.claude/OPEN-ITEMS.md`）。
-> 文档数量以本表为准（90 份，与节标题一致），新增文档需同步本表。
+> 文档数量以本表为准（91 份，与节标题一致），新增文档需同步本表。
 > **判据 9 已递归到子目录**（`docs/**/*.md`）：子目录里的文档同样必须登记，路径按 `docs/<相对路径>` 写
 > （2026-10-06 修：`docs/proposals/pull-value-optimization.md` 曾因 glob 只扫顶层而长期不在表内 = agent 找不到）。
