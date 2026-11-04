@@ -5,6 +5,7 @@ import { readdirSync } from 'fs'
 import { availableParallelism, totalmem } from 'os'
 import { workerCap } from './scripts/lib/worker-cap.mjs'
 import { stripSpecDocFields } from './scripts/lib/spec-doc-fields.mjs'
+import SlowestFirstSequencer from './scripts/lib/slowest-first-sequencer.mjs'
 
 /**
  * vitest worker 上限（自适应；CC-424 的固定 4 → 按 CPU/内存取最优）。
@@ -131,6 +132,18 @@ export default defineConfig({
     // 2026-10-09 口径纠正——旧的「同进程参照量归一化」实测对负载敏感且对回归反向，已废），
     // 这里只放开基础设施超时。
     testTimeout: 180_000,
+    /**
+     * **按实测耗时降序**把文件交给 worker（LPT 调度）。
+     *
+     * 2026-11-04 实测（core 环 619 文件 / CPU 773s / 8 workers）：
+     * 默认序墙钟 **164.4s**，而 CPU / workers = **97s**，按耗时降序模拟即 **97s**
+     * ⇒ 默认序白扔 **68s（41%）**：长文件被排到后面，最后只剩少数 worker 在跑长尾。
+     *
+     * 排序键 = scripts/lib/test-durations.json（与三环清单同一份数据）。
+     * **只改顺序，不改选择面 / 不改断言 / 不改并发度**；未测到的文件排在最后。
+     * 判据 = src/scripts/__tests__/testSequencer.test.ts。
+     */
+    sequence: { sequencer: SlowestFirstSequencer },
     // CC-424（2026-10-03 r450）：worker 上限进配置，不再靠每个人记得加 `--maxWorkers=4`。
     // 2026-10-12 由固定 4 改为自适应（口径与实测见文件头 `workerCap` / scripts/lib/worker-cap.mjs）。
     maxWorkers: Number(process.env.VITEST_MAX_WORKERS) || resolvedWorkers,
