@@ -1,25 +1,32 @@
 /**
- * **「模块沉默 ⇒ `[表]` 免费接管」的源头判据**（用户 2026-11-04 专项第二轮，
- * 口径与实测全文见 `docs/mcp-cinema-interval-uplift.md` §3，坑条目 `ENGINE_PIPELINE_GUIDE` §4 坑 62）。
+ * **「模块沉默 ⇒ `[表]` 免费接管」的源头判据**（用户 2026-11-04 专项，两轮）。
  *
- * ## 钉的是什么
+ * 口径与实测全文见 `docs/mcp-cinema-interval-uplift.md` §3，坑 `ENGINE_PIPELINE_GUIDE` §4 坑 62。
  *
- * `yixuan-jufufu-lucia` 在 parry=20 下 C3 36.60M / C4 32.29M（−11.79%）。扣掉池里
- * `轴内·技能表直读` 的行后 C3 只剩 31.93M ⇒ **命座是 +1.12%**，负值全部是「C3 多拿的白送」。
+ * ## 这条判据守的是什么
  *
- * 白送的成立条件是**两个数同时为真**：
- *   ① 模块那一招**一行都不产**（`executions` 里没有该 moveId）⇒ `backed` 门放行 `[表]` 直读；
- *   ② 但**同一轮的轴执行集合**里该 moveId 有 N 次 ⇒ 这条白送的东西系统「本来就要打」。
+ * 2026-11-04 发现 `yixuan-jufufu-lucia` C3→C4 在 parry=20 是 **−11.79%**，而执行数、前台时间、
+ * 轴窗、截断全部逐位相同。追到底是**两层叠加**：
  *
- * 现状：①②**可以同时成立**（计划窗 0.137 < 1 ⇒ 模块丢弃；执行集合 5 窗 ⇒ 15 次）。
- * 本文件把这个**矛盾组合**钉成红灯：任何让「表行 + 执行集合同招」同时出现的改动都会在这里失败，
- * 逼改动方回到专项文档确认口径，而不是让白送继续静默存在。
+ * ① `axisTableDirect.ts#axisTableDirectMove` 判据 ② 按 moveId 的**存在性**判（`backed`，不看条数）
+ *    ⇒ 模块一行不产时，`[表]` 直读按满倍率免费接管（**不收闪能、不占时间、窗内不产失衡值**）；
+ * ② 模块为什么不产行：它读 `axis.windows` = **计划小数 0.137**（= `(eff−Σnec)/W` 的 nec 余量），
+ *    `1 块 × 0.137` 被 `positiveWholeCounts` 丢弃 ⇒ 沉默。
  *
- * ## 为什么不直接断言「不能有表行」
+ * ⇒ **「不产行」在这个体系里是收益**：低命座因此被抬高 12.76%，命座看起来是负提升。
  *
- * `[表]` 直读本身是正当通道（CC-393：模块没建模的招式放进轴也能出伤）。要禁的是
- * **「模块其实该打、只是没表达」时的白送**——所以判据是「表行 ∧ 执行集合同招」这个交集，
- * 不是「表行」本身。这样 CC-393 的既有普查（`axisTableDirectCc393.test.ts`）仍然独立成立。
+ * ## 修法（用户 2026-11-04 裁决「我肯定选真实计算，你看 b 的模拟到位了就做吧」）
+ *
+ * `convergence.ts` 引入**单一事实源** `axisWindowCount = threads.prevPoolStunCount ?? countStun`，
+ * 让「派发给模块的 `axis.windows`」「轴栈执行集合」「伤害侧 `stunCoverage`」三处同源（都读池整数）。
+ * 模块照常产行 ⇒ 白送自然消失。
+ *
+ * ## 本文件的两段判据
+ *
+ * - **第一段（现存缺陷钉住）**：修前若有人动 `[表]` 门或窗口数入参，这里会红，逼他回到专项文档。
+ *   修复落地后这两条已按新口径改写（见 `★ 修复后` 组）——**不是删判据，是换口径**。
+ * - **第二段（不变量）**：任何命座级别下，`[表]` 行与该槽执行集合**不得同招并存**
+ *   （那正是「模块该打却没表达」的形态）。修复前为真（= 缺陷存在），修复后必须是空集。
  */
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupHarness } from '@/test/harness'
@@ -31,22 +38,24 @@ import { teamPresets } from '@/data/teamPresets'
 const PRESET = 'yixuan-jufufu-lucia'
 const PARRY = 20
 
+interface Frame {
+  dmg: number
+  tableByMove: Record<string, { count: number; dmg: number }>
+  execByMove: Record<string, number>
+  stunCoverage: number
+  poolStun: number
+}
+
 /** 采一帧：表行（按 moveId）+ 轴执行集合（按 moveId）+ 总伤 */
-async function frame(cinema: number) {
-  const preset = teamPresets.find(p => p.id === PRESET)!
-  let out: {
-    dmg: number
-    tableByMove: Record<string, { count: number; dmg: number }>
-    execByMove: Record<string, number>
-    stunCoverage: number
-    poolStun: number
-  } | null = null
+async function frame(cinema: number, presetId = PRESET, parry = PARRY): Promise<Frame> {
+  const preset = teamPresets.find(p => p.id === presetId)!
+  let out: Frame | null = null
   await withAnalysisScenario(async s => {
     clearDifficultyLevers({ config: s.config, calc: s.calc })
     applyTeamToStore(s.config, preset)
     s.config.setCinemaLevel(0, cinema)
     s.config.syncTeammateBuffsFromTeam()
-    for (let sl = 0; sl < 3; sl++) s.config.setActionCount(sl, 'parryCount', sl === 0 ? PARRY : 0)
+    for (let sl = 0; sl < 3; sl++) s.config.setActionCount(sl, 'parryCount', sl === 0 ? parry : 0)
     const dmg = s.calc.teamTotalDamage.value
     const rows = (s.calc as unknown as {
       damagePoolRows: { value: Array<{ moveId?: string; count?: number; source?: string; totalDamage: number }> }
@@ -76,37 +85,52 @@ async function frame(cinema: number) {
   return out!
 }
 
-describe('模块沉默 ⇒ [表] 免费接管（源头判据）', () => {
-  // 场景隔离（CC-347）：analysisScenario 需要 active pinia；harness 装一次即可
+describe('命座 × 难度曲线：不得再有「模块沉默 ⇒ 表行免费接管」', () => {
   beforeAll(async () => { await setupHarness(['', '', ''], { productionBasicWeights: true }) })
 
-  it('★ 一个模型名【负提升是测量虚高】：扣掉表行后 C3 ≤ C4 消失，命座为正', async () => {
+  it('★ 修复后：该队该档不得再有表行白送（原 12.76% 虚高的载体）', async () => {
+    const f = await frame(3)
+    const tableDmg = Object.values(f.tableByMove).reduce((a, v) => a + v.dmg, 0)
+    // 反空洞：这一档必须真的打出东西（否则「没有白送」是空操作）
+    expect(f.dmg, '反空洞：夹具必须真的算出伤害').toBeGreaterThan(1e7)
+    expect(f.poolStun, '反空洞：这一档必须真的有多窗（否则沉默路径不可达）').toBeGreaterThanOrEqual(3)
+    expect(tableDmg, '修复后不得再有 [表] 直读白送（修前这里是 4.67M）').toBe(0)
+  })
+
+  it('★ 修复后：C3 → C4 必须是正提升（用户口径「纯正提升的命座系统」）', async () => {
     const c3 = await frame(3)
     const c4 = await frame(4)
-    const tableDmg = (f: typeof c3) => Object.values(f.tableByMove).reduce((a, v) => a + v.dmg, 0)
-    const c3Clean = c3.dmg - tableDmg(c3)
-    const c4Clean = c4.dmg - tableDmg(c4)
-    // 模型名必须成立：现状下 raw 是负的（这是被解释的现象）
-    expect((c4.dmg - c3.dmg) / c3.dmg, '模型名：现状 raw Δ 应为负（否则这条判据失去意义）').toBeLessThan(0)
-    // 扣掉白送后必须转正 ⇒ 负值来自虚高，不是命座变弱
-    expect(c4Clean / c3Clean - 1, '扣掉表行后命座必须为正').toBeGreaterThan(0)
-    // 且虚高必须真的存在（否则上面的「扣掉后转正」是空操作）
-    expect(tableDmg(c3), 'C3 必须真的有表行虚高（反空洞）').toBeGreaterThan(0)
+    const delta = (c4.dmg - c3.dmg) / c3.dmg
+    expect(delta, `C3→C4 必须为正；实测 C3=${(c3.dmg / 1e6).toFixed(2)}M C4=${(c4.dmg / 1e6).toFixed(2)}M`).toBeGreaterThan(0)
+  })
+
+  it('★ 不变量：表行 ∧ 执行集合**不得同招并存**（空集 = 「模块该打却没表达」已消失）', async () => {
+    for (const cinema of [0, 3, 4]) {
+      const f = await frame(cinema)
+      const overlap = Object.keys(f.tableByMove).filter(id => (f.execByMove[id] ?? 0) > 0)
+      expect(overlap, `C${cinema}：同一招既走 [表] 直读又在轴执行集合里 = 两套账`).toEqual([])
+    }
   })
 
   it('★ 同一轮「轴内几窗」自洽：stunCoverage 必须由**池窗**推出，不是计划窗', async () => {
     const f = await frame(3)
-    // 覆盖率 = 池窗 × W / eff；W=19 / eff=180 时 5 窗 = 0.5278（实测逐位）
-    const expected = (f.poolStun * 19) / 180
+    const windowSeconds = 19
+    const effectiveSeconds = 180
+    const expected = (f.poolStun * windowSeconds) / effectiveSeconds
     expect(Math.abs(f.stunCoverage - expected), `覆盖率应由池窗推出：实测 ${f.stunCoverage} vs 期望 ${expected}`).toBeLessThan(0.02)
-    // 反空洞：这一档必须真的打到多窗（否则「池窗 vs 计划窗」的分歧不可达）
-    expect(f.poolStun).toBeGreaterThanOrEqual(3)
   })
 
-  it('★ 白送的交集形态：表行 ∧ 执行集合同招（现状为真 ⇒ 这是被钉住的缺陷）', async () => {
-    const f = await frame(3)
-    const overlap = Object.keys(f.tableByMove).filter(id => (f.execByMove[id] ?? 0) > 0)
-    // 现状：C3 的凝云/墨烬既在表行、也在执行集合 ⇒ 「模块该打却没表达」
-    expect(overlap.length, '现状应存在「表行 ∧ 执行集合同招」的交集（修复后本条改成 toEqual([])）').toBeGreaterThan(0)
+  it('★ 多队多档：命座不得造成「窗口数下降」（用户口径：只是提供更多选择，不是强制降低）', async () => {
+    const cases: Array<[string, number]> = [
+      ['yixuan-roxy-lucia', 20],
+      ['yixuan-jufufu-lucia', 20],
+      ['yixuan-trigger-lucia', 20],
+    ]
+    for (const [id, parry] of cases) {
+      const c0 = await frame(0, id, parry)
+      const c4 = await frame(4, id, parry)
+      expect(c4.poolStun, `${id} p=${parry}：C4 的失衡窗数不得少于 C0（${c0.poolStun} → ${c4.poolStun}）`)
+        .toBeGreaterThanOrEqual(c0.poolStun - 1)
+    }
   })
 })

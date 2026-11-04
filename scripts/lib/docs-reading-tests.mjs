@@ -139,6 +139,9 @@ export const DOCS_READING_TESTS = [
   // 2026-10-19 测试三环（判据 32）：规则 ② 入选（写 `scripts/test-ring.mjs` 路径字面量，
   // 且自身读仓库现状——断言 core ⊂ fast ⊂ full 的清单嵌套与默认环不许改回全量）
   'src/scripts/__tests__/testRing.test.ts',
+  // 2026-11-04 LPT 调度（a1e41cb2）：规则 ② 入选（写 `scripts/lib/test-durations.json` 与
+  // `scripts/lib/slowest-first-sequencer.mjs` 路径字面量，且读仓库现状——断言排序键与环清单同源）
+  'src/scripts/__tests__/testSequencer.test.ts',
   // 2026-10-12 更新日志：规则 ② 入选（写 scripts/lib/json-contract.mjs 路径字面量，核静态入口登记）
   'src/stores/__tests__/changelogLoad.test.ts',
 ]

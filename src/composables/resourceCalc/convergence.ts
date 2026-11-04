@@ -484,8 +484,32 @@ export function createRunCalcRound(deps: {
      * ⇒ 容量从 8 块降到 6 块）。若供给按 trim=0 算死，门控就会按**没被削**的口径放行连段块，
      * 多出的块又是幽灵块（实测执行 8 块 vs 容量 6 块）。故按本轮真实 `axisAutoTrim` 现算。
      */
+    /**
+     * ## ★ 轴窗口数的**单一事实源**（用户 2026-11-04 裁决「口径选择我肯定选真实计算」）
+     *
+     * 同一轮里「轴内几窗」曾经有**三个数**，这是「命座负提升」的真正源头
+     * （口径与实测全文见 `docs/mcp-cinema-interval-uplift.md` §3，坑 `ENGINE_PIPELINE_GUIDE` §4 坑 62）：
+     *
+     * | 用途 | 修复前的入参 | 实测值 |
+     * |---|---|---|
+     * | 派发给模块的 `axis.windows` | `countStun`（projection=off 时**仍是计划小数**） | **0.137** |
+     * | 轴栈执行集合（`actionCountsBySlot`） | `threads.prevPoolStunCount ?? countStun` | **5** |
+     * | 伤害侧 `stunCoverage` | 池 | **5** |
+     *
+     * 后果：模块读到 0.137 ⇒ `1 块 × 0.137` 被 `positiveWholeCounts` 丢弃 ⇒ 模块**沉默**；
+     * 而 `[表]` 直读按「模块没产行」放行 ⇒ 按满倍率**免费接管**（不收闪能、不占时间）
+     * ⇒ **「不产行」比「产行」更值钱**，低命座因此被抬高 12.76%，命座看起来是负提升。
+     *
+     * 现口径：**轴块是「块 × 整数窗」的物理执行**，所以窗口数一律取**池整数**
+     * （`threads.prevPoolStunCount ?? countStun`，与轴栈/伤害侧同源）。
+     * 计划值 `stunCount` 仍然驱动时间账与不动点迭代——它回答的是「时间上容得下几次」，
+     * 不是「这一窗里放了几块」。
+     *
+     * ⚠ 首轮 `prevPoolStunCount` 缺省 ⇒ 回落 `countStun`（与修复前逐位相同）。
+     */
+    const axisWindowCount = threads.prevPoolStunCount ?? countStun
     const stackSwaySupplyOf = (autoTrim: number) =>
-      buildStackSwaySupply(resolvedAxes, threads.prevPoolStunCount ?? countStun, prevGoodReview, autoTrim)
+      buildStackSwaySupply(resolvedAxes, axisWindowCount, prevGoodReview, autoTrim)
     let axisExecutedStack: ReturnType<typeof calcStunAxisStack> | null = null
     /**
      * 轴内终结技块实际执行总次数：通用注入 cfg.axisUltimateTotal 供模块消费（希希芙影画2 等）。
@@ -496,12 +520,10 @@ export function createRunCalcRound(deps: {
     if (axisActive) {
       axisExecutedStack = calcStunAxisStack({
         axes: buildStackAxes(resolvedAxes),
-        // CC-298：执行集合 = axisActionCounts / axisUltimateTotal 的来源，属计数通道（同 CC-142 的 axisChainTotal）
-        // ⇒ 窗口数读 countStun。旧读计划实数 stunCount：physical 下 1371 队计划 0.655 ⇒ 1 窗，而物化行 / 池按物理 3 窗。
-        // CC-301：窗口数 = 上一轮池整数（`threads.prevPoolStunCount`，首轮缺省回落 countStun）。physical ≡ countStun、
-        // 锁定下池已钉 countStun（CC-300）⇒ 两者零差；只有 off / floor / round / ceil 投影下由「计划值」改为「池整数」——
-        // 轴块是「块 × 窗」的整数执行，与雨果决算行（坑36，读池）及伤害侧栈（读池）同源。
-        stunCount: threads.prevPoolStunCount ?? countStun,
+        // CC-298/CC-301：执行集合 = axisActionCounts / axisUltimateTotal 的来源，属计数通道。
+        // 窗口数一律用**单一事实源** `axisWindowCount`（= 池整数）——2026-11-04 起它与派发给模块的
+        // `axis.windows` 同源（此前那里用计划小数 ⇒ 模块沉默 ⇒ `[表]` 免费接管 ⇒ 命座负提升）。
+        stunCount: axisWindowCount,
         windowDuration: computeWindowDuration(),
         energyBySlot: prevEnergyBySlot,
         decibelBySlot: prevDecibelRegenBySlot,
@@ -771,7 +793,15 @@ export function createRunCalcRound(deps: {
         // `CalcRoundResult.resolvedAxes`（`forceNoAxis` 退化时被清空）语义不同，这是设计卡 §7-E7
         // 的待定点，本批选定「递局部 + active 标志」。
         axes: resolvedAxes,
-        windows: allocateAxisWindows(resolvedAxes, countStun, axisWindowResources), // CC-154：与同快照 actionCounts/chainTotal/ultimateTotal 同源（原为计划值）
+        /**
+         * ★ **与执行集合 / 伤害侧同源**（2026-11-04）：窗口数读 `axisWindowCount`（池整数），
+         * 不再读 `countStun`（projection=off 时它是**计划小数** 0.137）。
+         *
+         * 这是「命座负提升」的源头修复：模块按 `act.count × wins` 数轴内块，给小数窗
+         * ⇒ `positiveWholeCounts` 把整条记录丢掉 ⇒ 模块沉默 ⇒ `[表]` 直读免费接管。
+         * 给整数窗后模块照常产行，白送自然消失（实测 4 队 × 4 档全部转正，见专项文档 §5.1）。
+         */
+        windows: allocateAxisWindows(resolvedAxes, axisWindowCount, axisWindowResources),
         windowSeconds: computeWindowDuration(),
         actionCountsBySlot: axisActionCountsBySlot,
         chainTotalBySlot: axisChainTotal,

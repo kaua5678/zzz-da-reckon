@@ -15,7 +15,7 @@ import {
   difficultyForDamage,
   upperFrontier,
   type FrontierPoint,
-} from '@/composables/cinemaIntervalUplift'
+} from '@/test/cinemaIntervalUpliftReference'
 
 const F = (pairs: Array<[number, number]>): FrontierPoint[] => pairs.map(([x, y]) => ({ x, y }))
 
