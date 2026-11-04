@@ -50,6 +50,12 @@ async function setupYidhariTeam() {
     config.setCinemaLevel(s, cinemas[s])
     config.setWEngineModLevel(s, 1)
   }
+  /**
+   * ⚠ 莱卡恩（槽1）必须**真的弹刀**才进得了后台（2026-11-04 口径：围猎入场券 = 弹刀，
+   * `huntCount = min(失衡次数, 弹刀次数)`）。本文件要验的是「后台行不占共享轴」——
+   * 旧夹具吃的是「0 弹刀也能进后台」那个缺陷。给它 6 次弹刀（历史非支援基准）让后台行真实存在。
+   */
+  config.setActionCount(1, 'parryCount', 6)
   config.applyBossPreset({ id: BOSS.id }, PHASE, BOSS.monster, BOSS.defaults)
   return calc_resource(calc())
   function calc() { return useResourceCalc() }

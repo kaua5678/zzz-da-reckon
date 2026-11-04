@@ -36,14 +36,17 @@ const cfgNum = mechanicSettingReader(() => lycaonMechanic.settings)
  *   C1：强特失衡值提升 12%（8s CD → 覆盖率滑块 lycaon.c1Coverage，只给有限次强特）；
  *   长按蓄力中 #3 额外 +10% → 22%。实现为执行级 stunBuildUpBonus（与面板同乘区加算）。
  * - 围猎（2.6 潜能激发，用户确认口径）：
- *   - 次数 = 失衡次数（开场 1 次用于打第一失衡，每失衡刷新 1 次 → "每一失衡都能打一次"）。
+ *   - **次数 = min(失衡次数, 弹刀次数)**（用户 2026-11-04）：原文触发链是「冰舞命中 → 触发快速支援
+ *     → 其他角色经快速支援入场 → 莱卡恩进入围猎」，而冰舞是**弹刀（支援突击：复仇反扑）的末段**
+ *     ⇒ **不弹刀进不了后台**。每次非失衡最多触发一次（失衡时获得 1 次进场次数、最多存 1 次）。
  *   - 蓄力段：带冰积蓄的 #2/#4/#6/#8/#10/#11 是蓄力段；围猎后台只打 #2→#4→#6 短循环。
  *   - 一次围猎：① 弹刀 → 开场冰舞（1141027，必定合轴，完整数值）；② 后台跟随前台角色
  *     闪反次数打后台闪避反击（次数 = 队伍其他角色 dodgeCounterCount 之和；仅伤害+失衡值）；
  *     ③ 后台时间 − 闪反时间 = 真正围猎平A时间（蓄力短循环）；④ 收尾冰舞（自动，完整数值）。
  *     一轮失衡两个冰舞。围猎后台蓄力平A/闪反都吃核心被动失衡提升（basic/dodgeCounter 面板区）。
- *   - 后台时间模型：后台时间 = 总时间 − 无敌 − 失衡时长×次数 − 莱卡恩前台时间；
- *     平A时间 = max(0, 后台时间 − 闪反时间)，每次 ≤ 8s。
+ *   - 后台时间模型（用户 2026-11-04 纠正）：后台时间 = **队友在场秒数**（`teamFrontlineSeconds`）；
+ *     平A时间 = max(0, 后台时间 − 闪反时间)，每次 ≤ 8s。⚠ 旧式「总时间 − 无敌 − 失衡时长×次数 − 自身前台」
+ *     把整个失衡窗当成狼不行动，与「狼的后台也会打进失衡期」相反，已删。
  *   - 忽略：围猎提前结束每剩余 1s → 下次冰舞失衡 +6%；招架支援强化（黄光弹刀 2→1）。
  * - 近似点：开场/收尾冰舞按倍率表完整数值；后台闪反/蓄力平A无积蓄/喧响/能量（显式 0）；
  *   潜能冲击按面板级全覆盖近似（围猎期间生效）；C2 连携次数取队伍连携总次数。
@@ -151,15 +154,13 @@ export const lycaonMechanic: AgentMechanicModule = {
    *   `lycaonInvincibleTime` ← `cfg.invincibleTime` 只在 converge 写入、此前取 180 / 0；现直接读
    *   `cfg.battleTime` / `cfg.invincibleTime`（buildCharConfig 恒写，与 `combatTime` 同源于 `configStore.enemy`）。
    *
-   * **需要轴上下文**的一个字段（round 12 批次 2 迁入，用 `axis.windowSeconds`）：
-   * - `lycaonWindowDuration` ← `axis.windowSeconds`。原实现写 `computeWindowDuration()`
-   *   （= `enemy.stunTime + 4 + 全队 stunDurationBonusSeconds`），而契约的 `windowSeconds`
-   *   就是**同一个函数的返回值**（`convergence.ts` 派发点：`windowSeconds: computeWindowDuration()`）
-   *   ⇒ 逐位等价。⚠ 该字段**不判 `axis.active`**：原实现在轴/非轴**都**写同一个窗口时长，
-   *   等价要求保留（`forceNoAxis` 退化时轴仍解析过，窗口时长与轴开关无关）。
-   *   ⚠ 契约缺 `axis` 时**不写**（`undefined`）——与批次 1（1201/1241）同款约定：
-   *   「字段 undefined」唯一编码「契约没接上」，由 `axisContext.test.ts` 精确断言分辨，
-   *   而不是写一个看着合法的默认值把断路掩盖掉（消费端 `?? 16` 是既存兜底，不是新通道）。
+   * **本钩子不再需要轴上下文**（2026-11-04 删除 `lycaonWindowDuration`，规则 16 ① 死口径清理）：
+   * 后台时间改按「队友在场秒数」（`teamFrontlineSeconds`）后，窗口时长**不再参与**围猎预算
+   * ⇒ `axis.windowSeconds → cfg.lycaonWindowDuration` 这条通道**零消费方**。
+   * 沿革（别重新论证）：它曾是 round 12 批次 2 从 `computeWindowDuration()` 迁来的轴契约字段，
+   * 由 `axisContext.test.ts` 的三层断言（写入 / 相位门控 / 端到端读数）钉住；
+   * 用户 2026-11-04 口径「狼的后台也不全打在非失衡」改掉预算式后，这条链的**唯一**读数口
+   * （围猎平A秒数）不再随窗口变 ⇒ 保留它只会是一条恒真的死断言。整条链（字段 + 写入 + 三条断言）同批删除。
    *
    * ⚠ **`lycaonC2Energy` 的契约缺口已在 round 20（2026-09-17 C-γ 收尾批）补齐并迁入**，
    * 本分支的**最后一个字段**就此消失（`convergence.ts` 的 `agentId === '1141'` 分支整段删除
@@ -190,7 +191,6 @@ export const lycaonMechanic: AgentMechanicModule = {
   applyTeamConfig: ({ cfg, phase, stunCount, countStun, axis, interactions }: AgentTeamConfigInput) => {
     if (phase !== 'converge') return
     cfg.lycaonStunCount = stunCount
-    if (axis) cfg.lycaonWindowDuration = axis.windowSeconds
     // `lycaonBackstageDodgeCount` = 队伍**其他**槽位的**未缩放**闪反次数之和（round 14 批次 4 迁入，
     // 用本轮新增的 `interactions` 契约）。⚠ 原实现读 `configStore.team` **store 原值**——
     // `characters` 上那份已被 `interactionScale` 缩放（实测 scale=0.125 时 store 10 → cfg 0）
@@ -289,11 +289,25 @@ export const lycaonMechanic: AgentMechanicModule = {
     pushEx(executions, cfg, '1141017', holdStrong, EX_HOLD_ENERGY, 22, `狂猎时刻 #3（长按蓄力${c1Note}）`)
   },
 
-  patchExecutions({ cfg, executions }: AgentResourceInput) {
-    const huntCount = cfg.lycaonStunCount ?? 0
+  patchExecutions({ cfg, executions, teamFrontlineSeconds }: AgentResourceInput) {
+    /**
+     * ## 围猎入场券：**必须有弹刀**（用户口径 2026-11-04，原文「① 弹刀 → 开场冰舞」）
+     *
+     * 原文链：`[围猎]状态有可用次数时，[支援突击：复仇反扑·冰舞]命中敌人时` 才会触发快速支援 →
+     * 其他角色经快速支援入场 → 莱卡恩进入围猎。而冰舞是**弹刀（支援突击：复仇反扑）的末段**
+     * ⇒ 一次围猎的必要条件是「本次失衡里有弹刀」，不弹刀根本进不了后台。
+     * ⚠ 只认 `parryCount`（带支援突击的弹刀）；`parryNoFollowUpCount`（不带支援突击）只出轻弹刀、
+     * 没有复仇反扑 ⇒ 化不出冰舞 ⇒ **不产生围猎**（这正是它单独成字段的理由）。
+     * 用户同批口径：「莱卡恩的击破要求有最低限制……每次非失衡可以触发一次」⇒ 次数上限 = 失衡次数。
+     *
+     * 修前实测（`auto-1611-1141-1211`，2026-11-04 探针）：`huntCount = lycaonStunCount` 与弹刀
+     * **完全无关**——槽1 弹刀 0→8 时冰舞恒为 8.63 次，等于「不弹刀也能进后台」。
+     */
+    const huntCharges = cfg.lycaonStunCount ?? 0
+    const parryTicket = Math.max(0, Math.floor(Number(cfg.parryCount) || 0))
+    const huntCount = Math.min(huntCharges, parryTicket)
     if (huntCount <= 0) return
 
-    const windowDur = cfg.lycaonWindowDuration ?? 16
     const totalTime = cfg.battleTime
     const invincible = cfg.invincibleTime
     const backstageDodgeCount = cfg.lycaonBackstageDodgeCount ?? 0
@@ -301,8 +315,23 @@ export const lycaonMechanic: AgentMechanicModule = {
     // 莱卡恩前台时间 = 自身执行计划全部招式总时间（平A/强特/终结/连携/闪反/弹刀/支援突击）
     const frontTime = executions.reduce((sum, e) => sum + e.totalTime, 0)
 
-    // 围猎可用后台时间（用户口径）：总时间 - 无敌时间 - 失衡总时长 - 莱卡恩前台时间
-    const backstageTotal = Math.max(0, totalTime - invincible - huntCount * windowDur - frontTime)
+    /**
+     * ## 围猎可用后台时间 = **队友在场秒数**（用户口径 2026-11-04 纠正）
+     *
+     * 用户逐字：「狼的后台也不是全打在非失衡。有可能俩队友打的招式失衡已经足够了，
+     * 导致狼剩余的围猎打在失衡期内。这种自动后台招式没法控制提前出伤」。
+     *
+     * 修前式 `总时间 − 无敌 − 失衡时长×次数 − 莱卡恩前台` 把**全部失衡窗**当成「莱卡恩不行动」，
+     * 于是后台被系统性低估、并在次数偏大时退化为 0（实测 4.315×16=69s + 前台 78.15s 已顶满 180s，
+     * 而失衡池报 7 个窗 ⇒ `backstage = 0` 与「围猎平A 32.8s」自相矛盾）。
+     * 物理上失衡窗里**队友就在场上打爆发**，狼的镜像招式照打不误 ⇒ 正确判据是
+     * 「队友在场秒数」（`teamFrontlineSeconds` = Σ 其他槽前台秒，引擎已按槽递入）。
+     * 缺省（通道未接上）时退回 `总时间 − 无敌 − 自身前台`。
+     */
+    const teammatesOnField = teamFrontlineSeconds !== undefined && Number.isFinite(teamFrontlineSeconds) && teamFrontlineSeconds > 0
+      ? teamFrontlineSeconds
+      : Math.max(0, totalTime - invincible - frontTime)
+    const backstageTotal = Math.max(0, teammatesOnField)
     if (backstageTotal <= 0) return
 
     // 后台闪反时间 = 闪反次数 × 闪避反击 actionTime（1141019 = 0.6s）
@@ -474,8 +503,6 @@ declare module '@/types/resource/config' {
     lycaonC2EnergyPerTrigger?: number
     /** 莱卡恩失衡次数（外层不动点传入，围猎次数 = 失衡次数，用户口径） */
     lycaonStunCount?: number
-    /** 莱卡恩单次失衡窗口时长（秒，外层注入 = stunTime + 4 + 全队失衡延长） */
-    lycaonWindowDuration?: number
     /** 莱卡恩围猎后台跟随闪反次数 = 队伍其他角色闪避反击次数之和（useResourceCalc 注入） */
     lycaonBackstageDodgeCount?: number
     /** 莱卡恩影画2回能总额（useResourceCalc 注入 = (失衡次数 + 队伍连携总次数) × 5） */

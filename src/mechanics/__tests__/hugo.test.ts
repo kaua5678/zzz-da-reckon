@@ -22,9 +22,17 @@ import {
 import { setupHarness } from '@/test/harness'
 
 async function setup(mateId = '1141', cinemaLevel = 0, thirdId = '') {
+  /**
+   * ⚠ 队友给 `parryCount: 0` 曾是**静默依赖缺陷**（2026-11-04 修）：莱卡恩围猎原按失衡次数发放、
+   * 不看弹刀，于是「0 弹刀」的夹具也能拿到后台冰舞/蓄力平A 的失衡贡献。修成
+   * `huntCount = min(失衡次数, 弹刀次数)` 后，0 弹刀 ⇒ 围猎完全消失 ⇒ 本文件「决算返还让
+   * 失衡次数上升」这类**信号**判据失去分辨率（实测 stun 5s/0s 都 = 3）。
+   * 故队友发 6 次弹刀（= `interactionBaselineFor` 的历史非支援基准），让「有人真的在打失衡」。
+   * 雨果自己仍 0（他的决算路径不靠弹刀）。
+   */
   const result = await setupHarness([
     { agentId: '1291', cinemaLevel, parryCount: 0, dodgeCounterCount: 0 },
-    { agentId: mateId, cinemaLevel: 0, parryCount: 0, dodgeCounterCount: 0 },
+    { agentId: mateId, cinemaLevel: 0, parryCount: mateId === '1141' ? 6 : 0, dodgeCounterCount: 0 },
     thirdId ? { agentId: thirdId, cinemaLevel: 0 } : '',
   ])
   for (const buff of result.config.globalBuffs) buff.enabled = false

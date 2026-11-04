@@ -241,6 +241,16 @@ describe('债 1a · 1631 赛维里安流息方程 = (a) 有序级联（不可松
     ] as Array<[string[], string, number]>) {
       for (let i = 0; i < 3; i++) config.setAgent(i, team[i]!)
       config.setCinemaLevel(0, cin)
+      /**
+       * ⚠ 第三位是莱卡恩（1141）：他要**真的弹刀**才进得了后台（2026-11-04 口径：
+       * `huntCount = min(失衡次数, 弹刀次数)`）。旧实现「0 弹刀也发围猎」让本夹具白拿后台失衡贡献。
+       *
+       * 但**发多少**必须让本用例留在判别档（`relaxedHunt > reachableMaxHunt`，见文件头 §E）：
+       * 实测（`.zc/perf` 扫弹刀 0/2/4/6/8/10/12）：`0` ⇒ base=870 mod=45 **非判别**；
+       * `6/8` ⇒ base=880 **mod=0 ⇒ 两式按构造恒等、也非判别**；**`2/4` ⇒ base=900 mod=20 判别**。
+       * ⇒ 取 2 次（本轮修前该夹具的 0 弹刀同样落在非判别档，是「假牙」；2 次顺带把牙修回来了）。
+       */
+      config.setActionCount(2, 'parryCount', team[2] === '1141' ? 2 : 0)
       const rr = calc.resourceResult.value!
       const ch = rr.characters.find(c => c.slot === 0)!
       const flow = (ch as unknown as { severianFlow?: { flowIncome: number; shadowHuntCount: number } }).severianFlow!

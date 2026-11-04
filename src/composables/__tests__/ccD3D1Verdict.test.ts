@@ -15,7 +15,12 @@ import { setupHarness } from '@/test/harness'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 
 /** 真管线读伤害池（每次独立 pinia；返回全行，调用方自己筛） */
-async function rowsFor(team: Array<{ agentId: string }>) {
+/**
+ * ⚠ `1141`（莱卡恩）必须**真的弹刀**才进得了后台（2026-11-04 口径：`huntCount = min(失衡次数, 弹刀次数)`）。
+ * 这两个用例拿 1141 当「干净的风队第三人」，而旧实现「0 弹刀也发围猎」让夹具白拿了后台失衡/积蓄贡献
+ * （实测：弹刀 0 ⇒ 乱流行 0 条；弹刀 6 ⇒ 乱流行 1 条）。故夹具统一给 1141 发 6 次弹刀。
+ */
+async function rowsFor(team: Array<{ agentId: string; parryCount?: number }>) {
   const { config } = await setupHarness(team as any)
   const calc = useResourceCalc()
   return { config, calc, rows: calc.damagePoolRows.value as any[] }
@@ -31,7 +36,7 @@ describe('CC-D3：风蚀是维琳娜专属资源（不按「队里第一个风�
     for (const windId of ['1621', '1631']) {
       const { calc, rows } = await rowsFor([
         { agentId: windId },
-        { agentId: '1141' },
+        { agentId: '1141', parryCount: 6 },
         { agentId: '1031' },
       ])
       // ① 池子里不该有名字带「维琳娜」的行
@@ -51,7 +56,7 @@ describe('CC-D3：风蚀是维琳娜专属资源（不按「队里第一个风�
   it('维琳娜本人在队 ⇒ 风蚀照常结算（正面锁，防修过头）', async () => {
     const { calc, rows } = await rowsFor([
       { agentId: '1561' },
-      { agentId: '1141' },
+      { agentId: '1141', parryCount: 6 },
       { agentId: '1031' },
     ])
     expect((calc.anomalyPoolResult.value as any)?.corrosionSource).toBeTruthy()

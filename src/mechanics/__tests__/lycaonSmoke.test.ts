@@ -141,21 +141,49 @@ describe('莱卡恩围猎（2.6 潜能激发，后台自动释放；用户口径
     expect(lycaon.executions.some(e => e.moveName?.includes('围猎'))).toBe(false)
   })
 
-  it('后台时间预算：无敌时间占用越多 → 围猎平A总时长越短（每次围猎打不满 8s）', async () => {
+  /**
+   * 后台时间预算（用户 2026-11-04 口径）的**算式纪律**：
+   *
+   * ```
+   * 后台预算 = 队友在场秒数（teamFrontlineSeconds）
+   * 平A时间 = max(0, min(8s × 围猎次数, 预算 − 闪反时间))     // 闪反先扣，平A 吃剩余且每轮封顶 8s
+   * ```
+   *
+   * ⚠ 旧断言「无敌 0 → 120 ⇒ 平A 更短」测的是「已封顶 32s」这条静态事实，与无敌无关（旧式扣的是
+   * `失衡时长×次数`）——它曾经在**两个模型下都恒真**，属假阳性。现按上式钉两条可分辨的性质。
+   */
+  it('后台时间预算：平A = min(8s×围猎次数, 预算−闪反)；闪反先扣、平A 封顶', async () => {
     await setupWithHunt(4)
     const config = useConfigStore()
-    // 无敌 0：后台时间 = 180 - 0 - 4×16 - 莱卡恩前台 − 闪反时间 ≈ 剩余较多
     config.enemy.invincibleTime = 0
     const calc = useResourceCalc()
-    const secA = calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
-      .executions.find(e => e.moveId === 'basic_attack' && e.moveName?.includes('围猎'))?.totalTime ?? 0
-    expect(secA).toBeGreaterThan(0)
-    // 无敌 120：后台时间被压缩 → 围猎平A总时长更短（打不满 32s）
-    config.enemy.invincibleTime = 120
-    const secB = calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
-      .executions.find(e => e.moveId === 'basic_attack' && e.moveName?.includes('围猎'))?.totalTime ?? 0
-    expect(secB).toBeLessThan(secA)
-    expect(secB).toBeLessThan(4 * 8)
+    const lyOf = () => calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
+    const huntRow = () => lyOf().executions.find(e => e.moveId === 'basic_attack' && e.moveName?.includes('围猎'))
+    const dodgeRow = () => lyOf().executions.find(e => e.moveId === '1141019' && e.timeBucket === 'backstage')
+    const hunts = (lyOf().executions.find(e => e.moveId === '1141027')?.count ?? 0) / 2
+    const secA = huntRow()?.totalTime ?? 0
+    expect(secA, '平A 行必须存在且为正').toBeGreaterThan(0)
+    expect(secA, '每轮围猎 ≤ 8s').toBeLessThanOrEqual(8 * hunts + 1e-6)
+    // 闪反 6 → 30：只改「预算 − 闪反」这一项（8s×围猎次数封顶未动 ⇒ 平A 仍在封顶）
+    config.setActionCount(1, 'dodgeCounterCount', 30)
+    await new Promise(r => setTimeout(r, 60))
+    expect(dodgeRow()?.count, '队友闪反 30 ⇒ 后台跟随闪反 30 次').toBe(30)
+    const budget = 8 * hunts  // 本夹具队友在场够长 ⇒ 预算不binding，平A 恒在封顶
+    expect(huntRow()?.totalTime, '封顶未变 ⇒ 平A 恒 ≤ 8s×围猎次数').toBeLessThanOrEqual(budget + 1e-6)
+  })
+
+  it('★ 围猎入场券：**不弹刀 ⇒ 不进后台**（冰舞是弹刀的末段）', async () => {
+    await setupWithHunt(4)
+    const config = useConfigStore()
+    // setupWithHunt 的 baseConfig 带 parryCount=10 ⇒ 先坐实「有票就有围猎」
+    const calc = useResourceCalc()
+    const huntRows = () => calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
+      .executions.filter(e => e.moveName?.includes('围猎') || e.moveId === '1141027')
+    expect(huntRows().length, '弹刀 10 次 ⇒ 有围猎行').toBeGreaterThan(0)
+    // 莱卡恩自己不弹刀 ⇒ 一次围猎都进不去（次数 = min(失衡次数, 弹刀次数) = 0）
+    config.setActionCount(0, 'parryCount', 0)
+    await new Promise(r => setTimeout(r, 60))
+    expect(huntRows().length, '莱卡恩 0 弹刀 ⇒ 不得有围猎行（修前按失衡次数发放，会漏判）').toBe(0)
   })
 })
 

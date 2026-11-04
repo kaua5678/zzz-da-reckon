@@ -354,108 +354,70 @@ describe('1591 希格莉德：轴内破阵套数（含 gift 块，C6 门槛）+ 
   })
 })
 
-// ── 跳③（批次 2）：1141 莱卡恩 —— windowSeconds（分支已于 round 20 C-γ 迁空） ────────
-describe('1141 莱卡恩：lycaonWindowDuration ← axis.windowSeconds（棘轮 −1，分支已删）', () => {
-  it('窗口时长取契约值（不是本槽可自行推导的量）', () => {
+// ── 跳③：1141 莱卡恩 —— `lycaonWindowDuration` 通道**已整条删除**（2026-11-04） ────────
+/**
+ * 这条通道曾把 `axis.windowSeconds` 送进围猎后台预算（`总时间 − 无敌 − 失衡时长×次数 − 自身前台`）。
+ * 用户 2026-11-04 纠正「狼的后台也不是全打在非失衡」后，预算改按**队友在场秒数** ⇒ 窗口时长
+ * 不再参与,**零消费方**（规则 16 ①：零调用点的口径 = 死口径) ⇒ 字段/写入/三层断言同批删除。
+ *
+ * ⚠ 保留一条**反锁断言**：谁把该字段加回来，这里立刻红——否则读者会以为它还在算。
+ */
+describe('1141 莱卡恩：`lycaonWindowDuration` 死口径已清除（反锁）', () => {
+  it('converge 不再写窗口时长；其余围猎字段照写（stunCount 走计数通道）', () => {
     const cfg: Cfg = { slot: 0, agentId: '1141', invincibleTime: 0 }
     getAgentMechanic('1141')!.applyTeamConfig!(
       hookInput(cfg, { axis: axisOf({ axes: [], windows: [], windowSeconds: 19.5 }) }),
     )
-    expect(cfg.lycaonWindowDuration).toBe(19.5)
+    expect((cfg as Record<string, unknown>).lycaonWindowDuration, '该字段已删，不得再写').toBeUndefined()
     expect(cfg.lycaonStunCount).toBe(3)
     // ⚠ round 20 C-γ：C2 回能**已迁入本钩子**（见 `lycaonC2Contract.test.ts` 的四层判据）。
-    // 本用例不再断言它「不得写」——那条反锁是迁移前的形态，留着会与新契约自相矛盾。
     // 缺 `countStun` 时仍不写（契约门控，由 C2 契约文件钉住）。
     expect(cfg.lycaonC2Energy, '缺 countStun ⇒ 不写').toBeUndefined()
     expect(cfg.lycaonBackstageDodgeCount).toBeUndefined()
   })
 
-  it('相位门控：build/postRound 不写本轮围猎字段；converge 缺 axis 时 windowDuration 不写', () => {
+  it('相位门控：build/postRound 不写本轮围猎字段', () => {
     for (const phase of ['build', 'postRound'] as const) {
       const cfg: Cfg = { slot: 0, agentId: '1141' }
       getAgentMechanic('1141')!.applyTeamConfig!(
         hookInput(cfg, { phase, axis: axisOf({ axes: [], windows: [], windowSeconds: 19.5 }) }),
       )
-      expect(cfg.lycaonWindowDuration, `${phase} 相位不该写窗口时长`).toBeUndefined()
       expect(cfg.lycaonStunCount).toBeUndefined()
     }
-    // converge 但缺 axis：非轴三字段照写，windowDuration 不写（缺就是缺，不伪造默认 16）
     const cfg: Cfg = { slot: 0, agentId: '1141' }
     getAgentMechanic('1141')!.applyTeamConfig!(hookInput(cfg))
-    expect(cfg.lycaonWindowDuration).toBeUndefined()
     expect(cfg.lycaonStunCount).toBe(3)
   })
 
   /**
-   * 端到端可观测口（⚠ 这条是本处迁移**唯一**能把「接上了」与「静默回落」分开的断言）。
+   * ★ 端到端：围猎平A预算 = **队友在场秒数**（用户 2026-11-04 口径），窗口时长**不参与**。
    *
-   * 为什么必须写精确值：`lycaon.ts` 的消费端是 `cfg.lycaonWindowDuration ?? 16`，而
-   * 战斗默认 `enemy.stunTime = 12` ⇒ `windowSeconds = 12 + 4 = 16`，**恰好等于兜底值**
-   * ⇒ 实测：短路 `axis.windowSeconds` 后 `lycaonSmoke.test.ts` **13 passed 全绿**
-   * （假阴性，不是分支死的；这正是任务卡说的「短路后不红 ⇒ 先怀疑选错覆盖文件」的反例：
-   *   文件选对了，是**数值巧合**掩盖了断路）。
-   * 故本用例把 `stunTime` 抬到 20（`windowSeconds = 24`），并锁 3 次失衡：
-   * 围猎可用后台时间 = 180 − 3×24(失衡) − 莱卡恩前台 − 闪反时间(6×0.6s) ⇒ 平A被压到 **21.2465s**。
-   * 实测两态：**接上 = 21.2465…**；短路（回落 `?? 16` ⇒ 只扣 3×16）= **24**（= 每次围猎 8s 封顶全用满）。
-   * ⇒ 两者相差 2.7535s，且都不是 0（`?? 16` 兜底把断路伪装成合法值——正是本批反复强调的形态）。
-   *
-   * ⚠ **T141：接上态的读数 21.2465 → 14.9541**（吸收改「取满容量」+ 闸门常开）。
-   *
-   * 变的**不是**本用例要钉的那条链（`axis.windowSeconds → cfg.lycaonWindowDuration → windowDur`），
-   * 而是公式里的 **`frontTime`（= 本行生成时已 push 的前序行之和）被主C 的平A池顶大了**：
-   *
-   * ```
-   * huntBasicTotal = min(8×huntCount, 后台时间 − 闪反时间)          // lycaon.ts:306-311
-   * 后台时间        = 总时间 − 无敌 − huntCount×windowDur − frontTime
-   * ```
-   *
-   * `windowDur` 项（3×24 = 72s）逐位不变（实测：把消费端兜底从 `?? 16` 改成 `?? 40` 重跑同一探针，
-   * 读数仍是 14.9541 ⇒ `cfg.lycaonWindowDuration` 确实接上、兜底从未被走到；短路 `axis.windowSeconds`
-   * 的对照值仍是 **24**，判别力保留）。
-   *
-   * 减数 `frontTime` 实测 **83.1535 → 89.4459**（其中「平A汇总」行 **51.6915 → 57.9839**）：T141 吸收
-   * 常开后主C 平A池被顶到预算上沿，比莱卡恩**先**占走时间 ⇒ 莱卡恩后台时间
-   * **24.847 → 18.554** ⇒ 围猎平A **21.2465 → 14.9541**。
-   *
-   * **归因自证（扫 r）**：把 `comboAlignAbsorbRatio` 拨回 0（= 关掉吸收）重跑本夹具，读数**逐位回到
-   * 21.2465**、`dyn` 消失；r=0.4 时 `dyn = comboAlignCredit = 12.5848` ⇒ 差异完全由本夹具吸收量解释。
-   * ⇒ 是值漂移，不是断路。
+   * 旧用例钉的是 `axis.windowSeconds → 平A预算`，该链已随死口径清除整条删除。
+   * 这里改为钉**新预算的判别力**：`stunTime`（窗长）从 20 拨到 16 时，
+   * 围猎平A读数**必须不变**——若有人把窗口时长重新塞回预算式，这条当场红。
+   * （同夹具下还锁「有弹刀才进后台」：槽0 弹刀 0 ⇒ 无围猎行，见 lycaonSmoke 的入场券用例。）
    */
-  it('★ 端到端：窗口时长经真管线落到围猎平A预算（短路 ⇒ 回落 ?? 16 得 24，不是 0）', async () => {
+  it('★ 端到端：围猎平A预算不受窗口时长影响（改 stunTime ⇒ 读数不变）', async () => {
     await setupHarness([
-      { agentId: '1141', parryCount: 0, dodgeCounterCount: 0 },
+      { agentId: '1141', parryCount: 3, dodgeCounterCount: 0 },
       { agentId: '1011', dodgeCounterCount: 6 },
       '',
     ])
     const config = useConfigStore()
     config.enemy.stunCountLock = 3
-    config.enemy.stunTime = 20 // windowSeconds = 20 + 4 = 24（≠ 兜底 16）
+    config.enemy.stunTime = 20 // windowSeconds = 20 + 4 = 24
     const calc = useResourceCalc()
     const lycaon = calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
     const huntBasic = lycaon.executions.find(e => e.moveId === 'basic_attack' && e.moveName?.includes('围猎'))
-    expect(huntBasic, '围猎后台平A行必须存在').toBeTruthy()
-    /**
-     * ⚠ **2026-10-23 判据加强（规则 10 四步 + 规则 47）**：原断言是**冻结读数** 14.9541s，
-     * 而窗口时长是否真的接上，本用例的主张是**「围猎平A预算随 axis.windowSeconds 变」**——
-     * 冻结值只是当时那套配装的落点，任何平A池/吸收口径变动都会让它失真（本次实测 5.8911）。
-     *
-     * ⇒ 改成**两条**：
-     *  ① **机制判据（强）**：`win` 24 → 20（stunTime 20 → 16）时，3 个窗口各少 4s
-     *     ⇒ 平A预算必须**恰好多 12s**（实测 5.8911 → 17.8911，差 12.0000）。
-     *     短路回退 `?? 16` 会让 win 恒 16 ⇒ 两档读数相同 ⇒ 本判据当场红（判别力保留）。
-     *  ② **读数快照（弱）**：当前落点 5.8911s —— 只用于「没被静默改掉」。
-     */
+    expect(huntBasic, '围猎后台平A行必须存在（锁 3 次失衡 + 3 次弹刀 ⇒ 有入场券）').toBeTruthy()
     const win24 = huntBasic!.totalTime
-    expect(win24, '围猎平A预算读数为 0 ⇒ 没接上（短路回退会得 24 而不是 0）').toBeGreaterThan(0)
-    config.enemy.stunTime = 16 // windowSeconds = 16 + 4 = 20（3 窗各少 4s ⇒ 平A预算 +12s）
+    expect(win24, '围猎平A预算读数为 0').toBeGreaterThan(0)
+    config.enemy.stunTime = 16 // windowSeconds = 20
     await new Promise(r => setTimeout(r, 60))
     const hunt20 = useResourceCalc().resourceResult.value!.characters.find(c => c.agentId === '1141')!
       .executions.find(e => e.moveId === 'basic_attack' && e.moveName?.includes('围猎'))
     expect(hunt20, '改窗长后围猎行应仍在').toBeTruthy()
-    expect(hunt20!.totalTime - win24, '窗口 24→20 ⇒ 3 窗各少 4s ⇒ 平A预算必须恰好 +12s（没接上 ⇒ 0）')
-      .toBeCloseTo(12, 4)
-    // 读数快照（2026-10-23 重冻：14.9541 → 5.8911，见上方归因；机制判据已独立于它）
-    expect(win24).toBeCloseTo(5.8911, 4)
+    expect(hunt20!.totalTime, '窗长 24→20 时预算必须逐位不变（窗口时长已不参与预算）').toBeCloseTo(win24, 6)
   })
 })
 
@@ -913,7 +875,6 @@ describe('1141 莱卡恩：lycaonBackstageDodgeCount ← interactions（未缩�
       axis: axisOf({ axes: [], windows: [], windowSeconds: 19.5 }),
     }))
     expect(cfg.lycaonBackstageDodgeCount, '缺 interactions ⇒ 不许写').toBeUndefined()
-    expect(cfg.lycaonWindowDuration).toBe(19.5)
     expect(cfg.lycaonStunCount).toBe(3)
   })
 })
