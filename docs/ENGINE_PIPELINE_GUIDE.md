@@ -1484,20 +1484,17 @@ C3 36.600M 里 **4.671M（12.76%）** 是这份白送；洁净后 **C3 31.929M v
 **用户硬填极端值 ⇒ 只提示不拦**（「提醒了计算失真就行了，不用管错误计算的逻辑」）：`composables/bossAttackBudgetNotice.ts`
 （纯函数）→ `ResourcePoolView` alert + 自动交互 `note`，**与「入场券」同一条通道**。计算照常完成，不抛错、不改 store。
 
-⚠ **提示的分母必须与引擎同源**（2026-11-05 实测缺陷）：提示曾用 `覆盖率 × 有效时间` 算预算，而引擎用
-**本轮计划窗数 × 窗长**——旗舰夹具 `auto-1611-1141-1211` 槽0 填 99 时，引擎兑现 **66** 次（2.95 窗 × 16s
-⇒ 非失衡 132.8s），提示却报「实际兑现 **58** 次」（覆盖率 35.6% ⇒ 非失衡 116s）⇒ 结果页的闪反行与旁边的提示
-**自相矛盾**。现口径：`stunSecondsForBudget({plannedStunCount, windowDuration})` 是提示侧唯一实现，
-读的就是引擎回传的 `resourceResult.plannedStunCount`；判据 `bossAttackBudgetNotice.test.ts` 的
-「同一现场，提示预算必须等于引擎预算」+ e2e 的「提示的兑现 = 结果页那一行的次数」。
+⚠ **提示的分母必须与引擎同源**（2026-11-05 实测缺陷）：提示曾用 `覆盖率 × 有效时间`、引擎用**计划窗数 × 窗长**
+——夹具槽0 填 99 时引擎兑现 **66** 次（2.95×16s ⇒ 非失衡 132.8s）、提示却报「兑现 **58** 次」（35.6% ⇒ 116s），
+结果页闪反行与提示**自相矛盾**。现口径 = `stunSecondsForBudget({plannedStunCount, windowDuration})` 读引擎回传的
+`resourceResult.plannedStunCount`；判据 `bossAttackBudgetNotice.test.ts`「提示预算 = 引擎预算」+ e2e「兑现 = 结果行」。
 
-**判据**：`core/__tests__/bossAttackBudget.test.ts` 9 条 + `composables/__tests__/bossAttackBudgetEngine.test.ts` 4 条
-+ `composables/__tests__/bossAttackBudgetNotice.test.ts` 8 条。
+**判据**：`core/__tests__/bossAttackBudget.test.ts` 9 条 + `bossAttackBudgetEngine.test.ts` 4 条 +
+`bossAttackBudgetNotice.test.ts` 10 条 + `bossAttackBudgetNoticeE2e.test.ts` 3 条。
 
-**否决记录**：❌「加 dazeClaimRatio 折幅进失衡池」——与既有 `windowTimeFraction = N·W/eff` **重复扣减**（同一现场
-现值 2.66w/K=2，加 claim(0.47) 后 1.24w/**K=1**，而物理上限 2.95 ⇒ 现值已收敛到正确量级）。❌「按围猎窗口封顶镜像闪反」
-当根因修复——只治 1141 一条行（那是坑 64，保留），不治「闪反次数本身能填 99」。❌「整场 180s/2s = 90 次」当预算——
-失衡期不出手，用户明确否掉「整场」口径。
+**否决记录**：❌「加 dazeClaimRatio 折幅进失衡池」——与 `windowTimeFraction = N·W/eff` **重复扣减**（2.66w/K=2 →
+加 claim(0.47) 1.24w/**K=1**，物理上限 2.95 ⇒ 现值已收敛）。❌「按围猎窗口封顶镜像闪反」当根因修复——只治 1141
+一条行（坑 64 保留），不治「闪反次数本身能填 99」。❌「整场 180s/2s = 90 次」当预算——失衡期不出手，用户否掉。
 
 ### 坑 66：**围猎会被连携/大招提前终止——窗口不是恒定的 `8s × 次数`**
 

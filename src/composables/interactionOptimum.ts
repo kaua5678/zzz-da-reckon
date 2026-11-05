@@ -103,9 +103,12 @@ export function interactionOptimumReading(ctx: TimeWeightAllocationContext, elap
 function coordinatesOf(ctx: TimeWeightAllocationContext): Coordinate[] {
   const config = ctx.configStore
   const effTime = effectiveBattleTime(config.enemy)
+  // 读 `resourceResult` 求值前先判空（计算中可能还是 null）；缺读 ⇒ `stunSecondsForBudget` 退回
+  // 「整场非失衡」⇒ 上界偏宽，绝不会因为读不到而把搜索压成 0。
+  const rr = ctx.calc.resourceResult.value
   const stunSeconds = stunSecondsForBudget({
     effectiveTime: effTime,
-    plannedStunCount: ctx.calc.resourceResult.value?.plannedStunCount,
+    plannedStunCount: rr?.plannedStunCount,
     windowDuration: ctx.calc.windowDuration.value,
   })
   const budget = bossAttackBudget(nonStunSeconds(effTime, stunSeconds))
@@ -397,7 +400,7 @@ export function createInteractionOptimumStrategy(_balance?: (ctx: TimeWeightAllo
         effectiveTime: effectiveBattleTime(config.enemy),
         stunSeconds: stunSecondsForBudget({
           effectiveTime: effectiveBattleTime(config.enemy),
-          plannedStunCount: calc.resourceResult.value?.plannedStunCount,
+          plannedStunCount: calc.resourceResult.value.plannedStunCount,
           windowDuration: calc.windowDuration.value,
         }),
         slotCount: config.team.length,
