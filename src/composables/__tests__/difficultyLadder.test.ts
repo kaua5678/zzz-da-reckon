@@ -875,7 +875,12 @@ describe('难度曲线关键旋钮点（T140c）', () => {
      * **完整失衡窗口数 +1**（用户口径「第三个重大进步太模糊了…比如完整 3 失衡到完整 4 失衡」）。
      * 旧夹具 `auto-1511-1561-1581` 的交互步跃迁是大招/异常触发/乱流（**失衡不动**）⇒
      * 按新口径它**不该有 ③**（实测已塌成 `baseline→max`，符合预期）。
-     * 现夹具 = `auto-1431-1481-1031`（非轴 + 交互步 完整失衡 2→3，实测 ③ 83.33M > ① 80.74M）。
+     * ⚠ **T180（2026-11-04）第二次换夹具**：`auto-1431-1481-1031` 已失效——不是它变了，而是
+     * **引擎交付变对了**。旧引擎的 ① baseline 报 **80.74M / 完整失衡 2**，那个 2 正是「kStar 上界把
+     * 候选 K 砍成 2」算出来的（钉 3 窗实测 89.94M）；新引擎交付 89.94M / 3 窗 ⇒ ① 自己就是 3 窗，
+     * 交互步再也长不出 2→3 的台阶 ⇒ 塌成 `baseline→max`。**这不是回归，是夹具依赖了旧的错误读数。**
+     * 新夹具 = `auto-1461-1031-1521`（非轴 + 交互步 完整失衡 **3→4**，实测 ③ 77.19M > ① 65.73M，
+     * 重扫全库 105 预设所得，仍烧交互的只剩 2 支）。
      * 本用例护的**缺陷本身没变**：② 缺失时若不让「交互步」当候选，非轴队就塌成 ①④ 两点。
      */
     // ## 修的是什么（2026-10-12 实测定位的真缺陷）
@@ -892,8 +897,9 @@ describe('难度曲线关键旋钮点（T140c）', () => {
     const { catalog, config } = await setupHarness(['', '', ''], { productionBasicWeights: true })
     await catalog.loadBuildRecommendations()
     const calc = useResourceCalc()
-    // 夹具 = `auto-1431-1481-1031`：非轴队，且「交互步（joint@吸收0）」带**完整失衡 2→3** 的台阶
-    const p = teamPresets.find(x => x.id === 'auto-1431-1481-1031')!
+    // 夹具 = `auto-1461-1031-1521`：非轴队，且「交互步（joint@吸收0）」带**完整失衡 3→4** 的台阶
+    // （T180 换：原 `auto-1431-1481-1031` 的 2→3 是旧引擎「上界砍 K」造成的假台阶，见上方注释）
+    const p = teamPresets.find(x => x.id === 'auto-1461-1031-1521')!
     const r = climbDifficultyLadder({ config, calc, absorbCap: DEFAULT_COMBO_ALIGN_ABSORB_RATIO }, p.team as [string, string, string], {
       capture: c => ({
         counts: captureKeyCounts(c.calc), dmgBySource: captureDmgBySource(c.calc),

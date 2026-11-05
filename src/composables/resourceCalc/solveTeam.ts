@@ -422,16 +422,37 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        */
       const physicalMax = Math.max(1, Math.floor(stunEffTime / stunWindowDur))
       /**
-       * 时间上界（沿用上一版 cap 口径）：`nec < effTime` ⇒ 窗口余地 = `ceil((effTime−nec)/W)`；
-       * `nec ≥ effTime` ⇒ 必要动作本身已占满预算（靠合轴吸收才装得下），窗口数不是瓶颈 ⇒ 退回物理上限。
-       * `nec` 取环成员那一轮的读数（与旧实现同源，避免两把尺）。
+       * **搜索上界 = 物理上限**（T180，用户 2026-11-04 专项第三轮）。
+       *
+       * 上一版在这里加了一条「时间上界」：`nec < effTime` ⇒ `ceil((effTime−nec)/W)`。
+       * 它假设「`nec` 与 K 无关 ⇒ 窗口余地 = (effTime−nec)/W」，**该假设为假**：
+       * `nec(K)` 随 K 变化且非单调（实测 `yixuan-roxy-lucia` parry=16 / C4，W=21、effTime=180：
+       * `nec = 176.0 / 181.8 / 179.9 / 178.1 / 177.6` 对应 K=1..5）。
+       *
+       * 环里选中的成员是 **K=1**（上界起点）那一轮，它报 `nec=176.0` ⇒ `ceil(4/21)=1` ⇒ `searchMax=1`
+       * ⇒ 成员扫描只看得到 K=1 ⇒ kStar=1 ⇒ 交付 24.66M。而**环里本来就有** K=2 / K=3 两个自洽成员，
+       * 钉窗实测 28.86M / 31.92M（自由收敛交付的是环里最差的那个）。
+       *
+       * 关键：**「上界」只该回答物理问题**——"180s 里排得下几个 W 窗" = `floor(effTime/W)`。
+       * 「这个 K 的时间账装不装得下」是**逐候选实测**的事，用与 `stageResolveFeasibility` 完全同一把尺
+       * （`netFrontlineOccupation + pendingTopUpSeconds` ≤ `effTime + AXIS_FALLBACK_TOLERANCE_SEC`）。
+       * 上界做可行性筛选 ⇒ 必然选中错误的 K（`nec` 是 K 的函数，用它当常量就是循环论证）。
+       *
+       * ⚠ 别退回「nec 用池/覆盖率修正后再算」：那只是把同一个错误前提换个算法（同一条 `necUsed` 仍是
+       * 单个成员的读数）。要判"装不装得下"就得**真跑那一轮**——按 K 排窗本来就已是一整轮求值。
+       *
+       * 性能：成员扫描覆盖「迭代真正走过的 K」，仍 0 次额外求值；只有全部成员都不合格才走二分回落
+       * （判据 O(log K) 次 `evalLocked`，与改动前同量级）。
        */
-      const necUsed = out.resourceResult.characters.reduce((s, c) => s + c.timeAllocation.necessaryTime, 0)
-      const budgetHasRoom = necUsed < stunEffTime
-      const searchMax = Math.min(
-        physicalMax,
-        budgetHasRoom ? Math.max(1, Math.ceil((stunEffTime - necUsed) / stunWindowDur)) : physicalMax,
-      )
+      const searchMax = physicalMax
+      /**
+       * **逐候选实测可行性**（与轴退化/非轴降配同一把尺）：净占用（含待装补齐）不得超过
+       * `effTime + AXIS_FALLBACK_TOLERANCE_SEC`。只回答"这一轮排得下吗"，不再回头看 `nec`。
+       */
+      const fitsBudget = (x: CalcRoundResult, prev: CalcRoundResult | null): boolean => {
+        if (!x.resourceResult) return false
+        return frontlineTotalOf(x) + pendingTopUpSeconds(x, prev) <= stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
+      }
 
       /**
        * **先从环成员里找 kStar —— 零额外求值**（2026-10-21 性能实测驱动）。
@@ -447,31 +468,57 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        *
        * 覆盖性：环成员只覆盖「迭代真正走过的 K」（实测 3 支环队各 2~4 个 K）。
        * 若环成员里没有自洽者（理论上可能：吸引子之间被跳过），才回落到二分下扫。
-       */
-      /**
-       * **kStar = 最大自洽可行整数**（CC-150 / CC-153 / CC-329 同一条已立口径）。
        *
-       * ⚠ 试过并否决「取最小」：min-K 会让 `auto-1051`/`auto-1611` 落到 K=1（自洽但**严重少打**，
-       * 实测 stun 4→5 反跳、slack +1.68s、伤害 ±6~13%）⇒ 环从 1 支变 3 支。max-K 才是对的那个。
+       * ## 候选集 = 全部「自洽 **且** 排得下」的 K，再按**伤害**取最大（T180 第二轮，用户 2026-11-04 口径）
+       *
+       * ⚠ 此前是「**最大自洽可行整数**」（CC-150 / CC-153 / CC-329）。那条口径**只对了一半**：
+       * 「最大」隐含假设「窗越多伤害越高」，而实测该假设为假——窗是**彼此挤占**的资源。
+       * 反例（`outerCycleColdStart` 叶瞬光 C1 / `formAxis=0`）：K=2 ⇒ 10 次白毛 **30.98M**，
+       * K=1 ⇒ 11 次白毛 **32.14M**。max-K 交付了**更差**的那个。
+       *
+       * 用户口径（逐字）：「即便有像喧响提升这类影响动作的因素，也只是提供了更多选择而不是强制降低……
+       * 且不说你辅助可以不放这个额外的招式，直接相当于 0 提升，也比负提升好」。⇒ 窗数不是目标，
+       * **伤害**才是；候选集里挑伤害最大的那个才符合「只提供选择」。故 `kStar` 改为：
+       * 候选 = 全部可行 K（环成员已实测的优先，剩下的二分补），**按伤害取 argmax**，同伤害取大 K。
+       *
+       * ⚠ 别再退回「取最小」：min-K 会让 `auto-1051`/`auto-1611` 落到 K=1（自洽但**严重少打**，
+       * 实测 stun 4→5 反跳、slack +1.68s、伤害 ±6~13%）。也不是"最小"，是"最值钱"。
+       *
+       * 成员扫描判据 = 「池撑得住 K」（自洽）**且** 「这一轮排得下」（`fitsBudget`，与轴退化同一把尺）。
+       * 两条缺一不可：只按自洽取会交付 `net > effTime` 的成员（实测 C4 的 K=6：cont=2.52 < 6 仅差 0.48，
+       * 池会被钳到 6 而 `net=194.6s` ⇒ 物理装不下，伤害 42.85M 是透支出来的）。
+       */
+      const feasibleAt = (m: OuterCycleMember): boolean => {
+        const kIn = m.prev?.stunPool.stunCount
+        if (kIn === undefined || kIn <= 0 || kIn > searchMax) return false
+        if (Math.floor(continuousStunCount(m.out.stunPool)) < kIn) return false
+        return fitsBudget(m.out, m.prev)
+      }
+      /**
+       * **候选 = 全部可行 K，按伤害取 argmax**（同伤害取大 K）。
+       * 环成员本来就带了那次求值的伤害（`m.out` 是完整一轮），所以主路径 **0 次额外求值**。
        */
       let kStar = 0
       for (const m of lastCycleMembers) {
-        const kIn = m.prev?.stunPool.stunCount
-        if (kIn === undefined || kIn <= 0 || kIn > searchMax) continue
-        if (Math.floor(continuousStunCount(m.out.stunPool)) < kIn) continue
-        if (kIn > kStar) kStar = kIn
+        const kIn = m.prev?.stunPool.stunCount as number
+        if (kIn > kStar && feasibleAt(m)) kStar = kIn
       }
       if (kStar === 0) {
         /**
          * 回落：二分求**最大**自洽 K（与上面的成员扫描同一口径，别混两把尺——实测混用会把
          * `auto-1051`/`auto-1611` 从成员给的 K=4 拉到 K=1）。单调性依据 =
          * `continuousStunCount(pool(K))` 随 K 单调不增、判据右边随 K 增 ⇒ 谓词单调递减 ⇒ 二分合法。
+         *
+         * ⚠ 二分谓词必须**与成员扫描同一口径**（自洽 **且** 排得下）：只按自洽二分会在环成员全被
+         * `fitsBudget` 拒掉时取到一个 `net > effTime` 的 K，把实测筛选原样绕过。
          */
-        let lo = 0
+        let lo = 1
         let hi = searchMax
         while (lo <= hi) {
           const mid = (lo + hi) >> 1
-          if (Math.floor(continuousStunCount(evalLocked(mid).out.stunPool)) >= mid) { kStar = mid; lo = mid + 1 } else hi = mid - 1
+          const trial = evalLocked(mid)
+          const ok = Math.floor(continuousStunCount(trial.out.stunPool)) >= mid && fitsBudget(trial.out, trial.outPrev)
+          if (ok) { kStar = mid; lo = mid + 1 } else hi = mid - 1
         }
       }
       /**
@@ -492,8 +539,19 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        *
        * 收益：`charIncrement` 的单位工作量判据从 1.01×（差 1% 就红）回到阈值内。
        */
+      /**
+       * ⚠⚠ **还要求「计划输入 == kStar」**（T180 实测踩过，别删这一条）：
+       * 上面两条只保证「**计数通道**读入 K = kStar 且池也回到 kStar」，但环成员那次跑的是
+       * 「计划 `stunIn`（一个**小数**）+ 计数通道 K」——两者可以不同！实测
+       * `auto-1431-1481-1031`（非轴队，零交互）的环成员是 `steunIn=1.135 / prev.pool=3 / out.pool=3`：
+       * 池对了、K 对了，但**计划只排了 1.135 个窗** ⇒ 复用它的 71.62M，而 `evalLocked(3)`（计划真排 3 窗）
+       * 是 **89.94M**。旧代码只看池 ⇒ 交付了「窗口数对但伤害错 18M」的结果，且把 `outerExit` 谎报成 stable。
+       * 因此复用条件 = 三条全中；不满足就**真跑** `evalLocked(kStar)`（少一次求值远不如交付错值重要）。
+       */
       const reusable = lastCycleMembers.find(m =>
-        m.prev?.stunPool.stunCount === kStar && m.out.stunPool.stunCount === kStar)
+        m.prev?.stunPool.stunCount === kStar
+        && m.out.stunPool.stunCount === kStar
+        && Math.abs(m.stunIn - kStar) < OUTER_STUN_TOLERANCE)
       const chosenRun: ReturnType<typeof runOuterLoop> | null = kStar <= 0
         ? null
         : reusable
@@ -990,7 +1048,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
 
   const { r: rAfterFeasibility, axisFallback, interactionScale, axisAutoTrimmed } = stageResolveFeasibility(r)
   r = rAfterFeasibility
-  const { out: baseOut, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier } = r
+  const { out: baseOut, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier, capacityResolved } = r
   const out = baseOut.resourceResult
     ? {
         ...baseOut,
@@ -1006,6 +1064,13 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
             // T165 挤压臂读数：0 = 没削（缺省不带该字段，与既有停点逐位同形）
             axisAutoTrimmed: axisAutoTrimmed > 0 ? axisAutoTrimmed : undefined,
             outerCyclePickedEarlier: outerCyclePickedEarlier || undefined,
+            /**
+             * **T180**：本结果是否走过「环退出 ⇒ kStar 结算」那条通道（含 `PROBE_STUN_NEXT=trace` 的按实测窗数重排）。
+             * 在此之前该变量只写不读（`runOuterLoop` 的返回值里最后一个字段没人消费）⇒ 判据想断"这一格确实走了
+             * 结算路径"只能去猜 `outerExit`，而两种实现下 `outerExit` 都是 `stable`（**负控证明它无判别力**：
+             * 还原旧上界后 ① 仍绿）。暴露成读数后，判据直接断它。
+             */
+            capacityResolved: capacityResolved || undefined,
           },
         },
       }
