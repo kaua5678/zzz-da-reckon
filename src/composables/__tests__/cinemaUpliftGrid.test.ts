@@ -23,7 +23,10 @@ import type { BossPreset, BossPresetPhase, PhaseBuffCard, PhaseView } from '@/ty
 
 /** 合成一条提升率记录（只填累计用得上的字段） */
 function entry(to: number, gainPct: number): CinemaUpliftEntry {
-  return { to, gainPct, ultBefore: 0, ultAfter: 0, changedFields: [], warn: 'ok', metrics: [] }
+  return {
+    to, gainPct, ultBefore: 0, ultAfter: 0, changedFields: [], warn: 'ok', metrics: [],
+    breakdown: { resourcePct: 0, execPct: 0, attrPct: 0, tier: 'NONE', coupled: false, newRowCount: 0, attrFieldsViaResource: [] },
+  }
 }
 
 describe('cumulativeUpliftPct（复利式拼接）', () => {

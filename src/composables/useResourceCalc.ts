@@ -17,7 +17,7 @@ import type { StunAxis } from '@/types/resource'
 import { BossAnomalyStateResult } from '@/core/stunAxis/inStunAnomaly'
 import { findInteractionTopUpSlot, getAgentMechanic, teamMechanicSlots } from '@/mechanics'
 import { calcAnomalyPoolDamage } from '@/core/anomalyPool'
-import { buildDamagePoolRows } from './resourceCalc/damagePool'
+import { buildDamagePoolRows, type DamagePoolContext } from './resourceCalc/damagePool'
 // R14 订正（2026-10-19）：非轴不再自动估算易伤，改为用户自填贡献率 φ
 import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from './resourceCalc/noAxisVulnShare'
 import { freezeCached } from './resourceCalc/freezeCached'
@@ -1019,9 +1019,16 @@ export function createResourceCalc(
     return out
   })
 
-  /** 伤害池：按角色/事件拆分直伤、异放、乱流（消费转大修正后的执行计划） */
-  /** 伤害池行（构建逻辑在 resourceCalc/damagePool.ts，纯函数 + 快照入参） */
-  const damagePoolRows = computed<DamagePoolRow[]>(() => buildDamagePoolRows({
+  /**
+   * **伤害池上下文**（构建逻辑在 resourceCalc/damagePool.ts，纯函数 + 快照入参）。
+   *
+   * 单列成 computed 而不是内联在 `damagePoolRows` 里：命座提升率的**面板口径**分解
+   * （`cinemaUpliftBreakdown.ts`，用户 2026-11-05 裁决「涉及资源的需要重算新资源的净增益，
+   * 在此基础上乘面板属性增益」）要在**同一份快照**上换面板重算一遍，拿到「只换面板」的商。
+   * 换面板 = 换 `damagePanels` 一项，其余（执行计划 / 失衡覆盖率 / 异常池 / 轴）必须逐位不动，
+   * 否则求出来的商里混着资源通道的变化，就不是面板增益了。
+   */
+  const damagePoolContext = computed<DamagePoolContext>(() => ({
     configStore,
     catalogStore,
     adjustedResourceResult: adjustedResourceResult.value,
@@ -1050,6 +1057,41 @@ export function createResourceCalc(
     //   非轴行级覆盖率 = 时间覆盖率 × φ（φ 缺省 1 = 旧口径的「每招均匀」，逐位不变）。
     noAxisVulnShare: configStore.getMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, DEFAULT_NO_AXIS_VULN_SHARE),
   }))
+
+  /** 伤害池：按角色/事件拆分直伤、异放、乱流（消费转大修正后的执行计划） */
+  /** 伤害池行（构建逻辑在 resourceCalc/damagePool.ts，纯函数 + 快照入参） */
+  const damagePoolRows = computed<DamagePoolRow[]>(() => buildDamagePoolRows(damagePoolContext.value))
+
+  /**
+   * **换面板重算用的上下文**（命座提升率「面板口径分解」的唯一入口，用户 2026-11-05 裁决）。
+   *
+   * 只换面板：`damagePanels` 换成入参，**异常池的三项伤害**（紊乱 / 乱流 / 畏缩 DoT）也按新面板重算
+   * ——它们是结算侧用 `panels` 算出来的（见上面 `anomalyPoolResult` 的 producer），
+   * 若只换 `damagePanels`，异常族伤害会继续读旧面板 ⇒ 面板增益被系统性低估、并漏进执行级残差。
+   * 其余（执行计划 / 次数 / 失衡覆盖率 / 轴 / 异常触发次数）**逐位不动**。
+   */
+  function damagePoolContextWithPanels(
+    panels: PanelValues[],
+    source: DamagePoolContext = damagePoolContext.value,
+  ): DamagePoolContext {
+    // ⚠ `source` 必须由调用方传入（命座分解传的是**已绑定该级命座等级**的快照）：
+    // 用 `damagePoolContext.value` 会把它换回活现场 ⇒ 命座等级从反事实里漏回来，
+    // 属性型被系统性多算（2026-11-05 实测踩到过，见 cinemaUpliftBreakdown#bindPoolStore）。
+    const ctx = source
+    const pool = ctx.anomalyPoolResult
+    if (!pool) return { ...ctx, damagePanels: panels }
+    return {
+      ...ctx,
+      damagePanels: panels,
+      anomalyPoolResult: {
+        ...pool,
+        ...calcAnomalyPoolDamage(pool.damageInputs, panels, {
+          globalAnomalyMultiplier: ctx.globalAnomalyMultiplier,
+          teamMechanics: teamMechanicSlots(configStore.team),
+        }),
+      },
+    }
+  }
 
   /**
    * 模块异常事件记录（CC-28；原 `remielleVoidflareEvents`——按身份 `['1581']` 找槽、读蕾米面板的**编排层角色分支**，
@@ -1180,6 +1222,14 @@ const attributeLedger = computed(() => {
     anomalyPoolResult,
     specialActionBonus,
     damagePoolRows,
+    /**
+     * 伤害池上下文快照（面板 / 执行计划 / 失衡覆盖率 / 异常池 / 轴的**同一份**入参）。
+     * 命座提升率面板口径（`computeCinemaPanelBreakdown`）拿它在同一快照上换面板重算，
+     * 从而把「面板属性增益」与「资源净增益」分开——只对外暴露快照，不新增计算路径。
+     */
+    damagePoolContext,
+    /** 换面板重算用的上下文（异常池三项伤害也按新面板重算）；命座面板口径分解专用 */
+    damagePoolContextWithPanels,
     damageSourceBreakdown,
     /** 伤害来源分解·队伍合计（含/无失衡两个属性区 + 失衡期贡献率 + 失衡爆发效率）：展示用，不参与计算 */
     damageSourceTotals,

@@ -83,6 +83,9 @@ export const DOCS_READING_MIN_SCANNED = 800
 export const DOCS_READING_TESTS = [
   'src/composables/__tests__/agentColorSingleSource.test.ts',
   // 2026-10-12 更新日志：规则 ① 入选（闭包里的 `'docs'` 是 kind id 不是 docs/ 路径 ⇒ 已知误报，见文件头注释）
+  // 2026-11-05 命座分类表：规则 ① 入选（生成器 src/test/cinemaClassify.ts 读 docs/cinema-classification.md
+  // 做逐行比对；只读 docs 的测试必须登记，否则「只改 docs 走快路」会静默漏测）。
+  'src/composables/__tests__/cinemaClassify.test.ts',
   'src/composables/__tests__/changelogView.test.ts',
   'src/composables/__tests__/compactedSlotValueBlindSpot.test.ts',
   // 2026-10-31 补登记（规则 ②）：import scripts/lib/type-bonus-time.mjs 的运行时导出（COUNTER_ASSIST_ETHER_BASE），

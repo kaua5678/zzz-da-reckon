@@ -36,6 +36,12 @@
                   <tr>
                     <th>影画</th>
                     <th>伤害</th>
+                    <!--
+                      通道分解（用户 2026-11-05 裁决「涉及资源的需要重算新资源的净增益，在此基础上乘面板属性增益」）：
+                      三块分开印、**不合成一个百分比**——可解释性就是这张卡的目的。数字全部来自
+                      cinemaUplift#breakdown（引擎三反事实算出来的），页面不重算（规则 11）。
+                    -->
+                    <th>通道分解</th>
                     <th v-for="m in upliftMetricDefs" :key="m.key">{{ m.label }}</th>
                     <th>大招</th>
                     <th>自检</th>
@@ -48,6 +54,12 @@
                       :class="upliftCellClass(e.gainPct)"
                       :title="`伤害提升率 ${fmt(e.gainPct, 2)}%${e.gainPct < 0 ? '（预算权衡：该命座资源侧收益被时间成本抵消）' : ''}`"
                     >{{ signed1(e.gainPct) }}%</td>
+                    <td class="cinema-uplift-split" :title="breakdownTitle(e)">
+                      <span v-if="e.breakdown.tier === 'NONE'">—</span>
+                      <template v-else>
+                        <span v-for="p in breakdownParts(e)" :key="p.key" class="split-part">{{ p.label }} {{ p.text }}</span>
+                      </template>
+                    </td>
                     <td
                       v-for="m in upliftMetricDefs"
                       :key="m.key"
@@ -143,6 +155,51 @@ function entryBadgeStyle(e: { warn: 'ok' | 'execLevel' | 'unimplemented' }): Rec
 }
 
 /** 三态角标的中文文案（原先散在模板的 <template v-if> 里，改成表格后集中一处） */
+/**
+ * 通道分解格要印哪几段（**判据与 tier 同源**：tier 里有的通道必须出现）。
+ *
+ * 为什么不能只按「`|pct| ≥ 0.05`」筛：tier 还会因为**面板字段变了**（如 `skillLevelBonus`、
+ * 能量效率）而带上该通道，而它的百分比读数可能恰好舍入到 0.0 —— 只按读数筛会印出一个**空白格**，
+ * 读者以为是渲染坏了（实机 DOM 读回抓到过空 cell）。⇒ 两种证据取并集，任何非 NONE 的级至少印一段。
+ */
+function breakdownParts(e: CinemaUpliftEntry): Array<{ key: string; label: string; text: string }> {
+  const zones = e.breakdown.tier.split('+')
+  const defs: Array<{ key: string; zone: string; label: string; pct: number }> = [
+    { key: 'resource', zone: 'RESOURCE', label: '资源', pct: e.breakdown.resourcePct },
+    { key: 'exec', zone: 'EXEC', label: '执行', pct: e.breakdown.execPct },
+    { key: 'attr', zone: 'ATTR', label: '面板', pct: e.breakdown.attrPct },
+  ]
+  return defs
+    .filter(d => zones.includes(d.zone) || Math.abs(d.pct) >= UPLIFT_EPSILON_PCT)
+    // 一位小数舍入到 0 的段不能印 `+0%`——那读起来像「完全没变」，而它可能是 0.04%，
+    // 且 tier 已判定这条通道**确实动了**。印 `±<0.1%` 把「动过但极小」这层意思说清楚；
+    // 精确值仍在悬浮提示里（`breakdownTitle` 打全精度）。
+    .map(d => ({
+      key: d.key,
+      label: d.label,
+      text: Math.abs(d.pct) < 0.05 ? '±<0.1%' : `${d.pct >= 0 ? '+' : ''}${fmt(d.pct, 1)}%`,
+    }))
+}
+
+/**
+ * 通道分解的悬浮说明：三段各自的含义 + 连乘对账 + 耦合提示。
+ *
+ * 「三段连乘 = 总提升」是**定义式**（`cinemaUpliftBreakdown#computeCinemaBreakdown`），
+ * 但读数四舍五入后会有零点几个 pp 的缝，所以这里直接印出连乘结果供读者自己对。
+ */
+function breakdownTitle(e: CinemaUpliftEntry): string {
+  const b = e.breakdown
+  const recomposed = ((1 + b.resourcePct / 100) * (1 + b.execPct / 100) * (1 + b.attrPct / 100) - 1) * 100
+  const lines = [
+    `资源 ${signed1(b.resourcePct)}%：次数/能量/喧响/失衡次数换来的净增益（单次伤害冻结在旧值）`,
+    `执行 ${signed1(b.execPct)}%：同样招式单次伤害变了（技能等级/倍率/附伤/新招式行）${b.newRowCount > 0 ? `，含 ${b.newRowCount} 条新招式行` : ''}`,
+    `面板 ${signed1(b.attrPct)}%：在**新资源基线**上乘的面板属性增益`,
+    `三段连乘 = ${signed1(recomposed)}%（实算总提升 ${signed1(e.gainPct)}%）`,
+  ]
+  if (b.coupled) lines.push('⚠ 该级的旧池某种伤害整体消失，三段商无法逐段解读，只能看总提升。')
+  return lines.join('\n')
+}
+
 function upliftWarnLabel(e: CinemaUpliftEntry): string {
   if (e.warn === 'unimplemented') return '⚠无变化'
   return e.warn === 'execLevel' ? '执行级' : 'ok'
@@ -303,6 +360,20 @@ async function computeCinemaGains() {
 /* 特异性要压过上面的 `.cinema-uplift-table td`（0,1,1 > 0,1,0），否则居中不生效 */
 .cinema-uplift-table td.cinema-uplift-warn {
   text-align: center;
+}
+
+/* 通道分解格：三段并排、每段自动换行，不挤成一行长字符串（列宽有限，横滚条已经在外面了） */
+.cinema-uplift-table td.cinema-uplift-split {
+  text-align: left;
+  white-space: normal;
+  min-width: 118px;
+  line-height: 1.5;
+}
+
+.split-part {
+  display: block;
+  font-size: 10px;
+  color: var(--fg-2);
 }
 
 .uplift-pct {

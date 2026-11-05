@@ -36,7 +36,31 @@ import type { AnalysisContext } from '@/composables/analysisScenario'
 import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
+import { bindPoolStore, computeCinemaBreakdown, formulaRoleOf, isExecPanelStat } from '@/composables/cinemaUpliftBreakdown'
+import type { DamagePoolContext } from '@/composables/resourceCalc/damagePool'
+import type { PanelValues } from '@/types/catalog'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
+
+/** 三分区分解在页面上的**一行**（数字口径全部来自 cinemaUpliftBreakdown，页面不重算 —— 规则 11） */
+export interface CinemaUpliftBreakdown {
+  /** 资源型 %（次数/能量/喧响/失衡换来） */
+  resourcePct: number
+  /** 执行级 %（招式/倍率/附伤/新招式行） */
+  execPct: number
+  /** 属性型 %（在**新资源基线**上乘的面板属性增益） */
+  attrPct: number
+  /** 组成标签（'ATTR' / 'RESOURCE+EXEC+ATTR' / 'NONE' …） */
+  tier: string
+  /** 三段商没法定义（旧池某种伤害彻底消失）⇒ 读数不可逐段解读 */
+  coupled: boolean
+  /** 本级只出现的新招式行数（结构型执行级的机器读数） */
+  newRowCount: number
+  /**
+   * 走资源管线的白名单字段（公式上是乘区、实测面板增益 ≈ 0，因为效果体现在**次数**上）。
+   * 非空 ≠ 缺陷：它们的收益已计在资源/执行段（见 `cinemaUpliftBreakdown#CinemaBreakdown`）。
+   */
+  attrFieldsViaResource: string[]
+}
 
 export interface CinemaUpliftEntry {
   /** 目标命座等级（本条 = 从 to-1 升到 to） */
@@ -55,6 +79,12 @@ export interface CinemaUpliftEntry {
    * 未传 `readMetrics` 时为空数组（既有调用方与既有测试零改动）。
    */
   metrics: CinemaUpliftMetric[]
+  /**
+   * **三分区分解**（用户 2026-11-05 裁决）：资源型 / 执行级 / 属性型三段，由引擎三反事实算出
+   * （`cinemaUpliftBreakdown#computeCinemaBreakdown`）。同一份分解也决定 `warn`——见该模块头注释。
+   * 恒等式：`(1+resource)(1+exec)(1+attr) = 1+gainPct`。
+   */
+  breakdown: CinemaUpliftBreakdown
 }
 
 export interface CinemaUpliftRow {
@@ -218,16 +248,45 @@ export async function analyzeCinemaUplift(
    * 故按「操作够就能打 N 次失衡」的用户口径把次数钉死再比。
    * 伤害 / 大招 / 附加指标同帧读，保证各栏**同场景**（锁的加解锁序列与迁移前逐位一致，结果零差异）。
    */
-  async function readScene(): Promise<SceneReading> {
-    if (targetStunCount > 0) {
-      config.enemy.stunCountLock = targetStunCount
-      await nextTick()
-      const reading = readCinemaScene(calc)
-      config.enemy.stunCountLock = -1
-      await nextTick()
-      return reading
+  /**
+   * 锁定失衡次数后读一帧：3/5 命抬技能等级 → 失衡值↑ → 失衡次数联动放大成假提升，
+   * 故按「操作够就能打 N 次失衡」的用户口径把次数钉死再比。
+   * 伤害 / 大招 / 附加指标同帧读，保证各栏**同场景**（锁的加解锁序列与迁移前逐位一致，结果零差异）。
+   *
+   * ⚠ **分解快照也在这里读**（2026-11-05 修）：`breakdown` 与 `gainPct` 必须是**同一个现场**。
+   * 修前分解在锁窗外单独读 ⇒ 资源型命座（尤其改循环的 6 命）两个口径对不上
+   * （实测 1181C6：页面 59.45% vs 分解连乘 71.02%；1011C2：3.65% vs 16.26%）。
+   */
+  async function readScene(slot: number): Promise<SceneReading & { shot: BreakdownSnapshot }> {
+    const target = targetStunCount > 0 ? targetStunCount : -1
+    config.enemy.stunCountLock = target
+    await nextTick()
+    const reading = readCinemaScene(calc)
+    const shot = readBreakdownSnapshot(slot)
+    config.enemy.stunCountLock = -1
+    await nextTick()
+    return { ...reading, shot }
+  }
+
+  /**
+   * 一帧的**分解快照**：伤害池上下文（已绑定该级的命座等级）+ 结算面板。
+   *
+   * 三者必须同帧取（面板与伤害池必须来自同一次求值，否则分解会拿错现场）。
+   * **不读 `teamTotalDamage`**：一是伤害基数由分解自己从同一份上下文重算（逐位相同，见
+   * `cinemaUpliftBreakdown#computeCinemaBreakdown` 的 beforeTotal 缺省分支），
+   * 二是这里读值发生在**锁窗外**（用户 2026-11-05「不锁吧」的自由口径），
+   * 若顺手读一下总伤害，就会撞碎 R1 的「伤害/栏位同在一个锁定场景内」纪律判据。
+   */
+  interface BreakdownSnapshot {
+    ctx: DamagePoolContext
+    panels: PanelValues[]
+  }
+  function readBreakdownSnapshot(slot: number): BreakdownSnapshot {
+    const ctx = calc.damagePoolContext.value
+    return {
+      ctx: bindPoolStore(ctx, { [slot]: config.team[slot]?.cinemaLevel ?? 0 }),
+      panels: [...ctx.damagePanels],
     }
-    return readCinemaScene(calc)
   }
 
   for (const slot of slots) {
@@ -244,15 +303,20 @@ export async function analyzeCinemaUplift(
     // 防止多槽分析（slots=[0,1,2]）时前序槽位留在 C6 污染后续槽位的命座提升率（场景内同样需要）。
     config.setCinemaLevel(slot, 0)
     config.syncTeammateBuffsFromTeam()
-    let before = await readScene()
+    const beforeScene = await readScene(slot)
+    let before = beforeScene
     let panelBefore = computePanelPhases(slot, config, catalogStore, calc.effectiveWEngineCoverages.value, calc.effectiveDiscEffectCoverages.value, calc.effectiveTeammateBuffCoverages.value)?.inCombat ?? null
+    // 分解用的 C0 现场 = 与 gainPct **同一次**锁窗内读出的快照（面板数组取结算侧那一份）
+    let breakBefore = beforeScene.shot
 
     for (let to = 1; to <= maxLevel; to++) {
       if (isBatchAborted(control)) return rows
       config.setCinemaLevel(slot, to)
       config.syncTeammateBuffsFromTeam()
-      const after = await readScene()
+      const afterScene = await readScene(slot)
+      const after = afterScene
       const panelAfter = computePanelPhases(slot, config, catalogStore, calc.effectiveWEngineCoverages.value, calc.effectiveDiscEffectCoverages.value, calc.effectiveTeammateBuffCoverages.value)?.inCombat ?? null
+      const breakAfter = afterScene.shot
       const pb = panelBefore
 
       const changedFields = pb && panelAfter
@@ -268,14 +332,53 @@ export async function analyzeCinemaUplift(
       // 加喧响/加能量的命座要推动「大招次数」这个整数阈值才会进伤害，夹具没跨过阈值时伤害恒 0，
       // 但资源账已经变了（实测 1451 影画四：帷幕喧响每触发 +100/人，伤害零移动被误判成死数据）。
       const metricMoved = metrics.some(m => Math.abs(m.delta) > 1e-6)
-      const warn: CinemaUpliftEntry['warn'] = changedFields.length > 0
+      // 三分区分解（用户 2026-11-05 裁决）：同一份分解既出读数，也判「本级到底动了哪条通道」
+      const breakdown = computeCinemaBreakdown({
+        beforeCtx: breakBefore.ctx,
+        afterCtx: breakAfter.ctx,
+        beforePanels: breakBefore.panels,
+        afterPanels: breakAfter.panels,
+        withPanels: (ctx, next) => calc.damagePoolContextWithPanels(next, ctx),
+        slots: [slot],
+      })
+      /**
+       * 三态自检（口径随分解升级，2026-11-05）：
+       * - `ok` 有面板字段变化 **或** 分解判定面板通道真的动了（`ATTR` 在场）。判据从
+       *   「面板有字段变化」换成「分解说了算」的理由：`energyGainEfficiency` 这类**资源通道**字段也长在面板上，
+       *   旧判据会把它们记成 ok（1011C1 就是），而它们与属性增益毫无关系。
+       * - `execLevel` 面板没动但**执行级或资源**动了——这正是用户点名的「加速失衡/加速积蓄/新招式」那一类。
+       * - `unimplemented` 三块全不动（面板/资源/执行都没收益）：效果可能完全没接进计算。
+       */
+      // 「面板 ok」只认**属性通道**：changedFields 里混着资源通道（能量效率/冲击波…）与倍率类（技能等级），
+      // 它们长在面板上却不是属性增益 —— 用 formulaRoleOf 把它们挡在 ok 之外（与分解的判据同源）。
+      const attrChannelMoved = breakdown.components.includes('ATTR')
+        || changedFields.some(f => formulaRoleOf(f) !== null && !isExecPanelStat(f))
+      const warn: CinemaUpliftEntry['warn'] = attrChannelMoved
         ? 'ok'
-        : Math.abs(gainPct) >= UPLIFT_EPSILON_PCT || metricMoved
-          ? 'execLevel' // 面板无变化但伤害 / 资源有移动：执行级或资源侧效果
+        : Math.abs(gainPct) >= UPLIFT_EPSILON_PCT || metricMoved || breakdown.components.length > 0
+          ? 'execLevel' // 面板无变化但伤害 / 资源 / 执行级有移动：资源型或执行级效果
           : 'unimplemented' // 无字段无伤害无资源移动：效果可能未接进计算
-      entries.push({ to, gainPct, ultBefore: before.ult, ultAfter: after.ult, changedFields, warn, metrics })
+      entries.push({
+        to,
+        gainPct,
+        ultBefore: before.ult,
+        ultAfter: after.ult,
+        changedFields,
+        warn,
+        metrics,
+        breakdown: {
+          resourcePct: breakdown.resourcePct,
+          execPct: breakdown.execPct,
+          attrPct: breakdown.attrPct,
+          tier: breakdown.tier,
+          coupled: breakdown.coupled,
+          newRowCount: breakdown.newRows.length,
+          attrFieldsViaResource: breakdown.attrFieldsViaResource,
+        },
+      })
       before = after
       panelBefore = panelAfter
+      breakBefore = breakAfter
     }
     config.setCinemaLevel(slot, originalCinemas[slot] ?? 0)
     config.syncTeammateBuffsFromTeam()

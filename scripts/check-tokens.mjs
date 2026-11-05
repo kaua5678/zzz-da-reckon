@@ -747,7 +747,10 @@ export const WA_REF_BASELINE = 375  /* ★ 2026-10-30 失衡轴页配色令牌�
    同轮 check-tokens 的扫描面扩到 src/styles/*.css——否则这次「搬家」会让四条棘轮一起失明。 */
 
 /** var() 引用总数基线（2026-08-31 实测 494→497→502；B4 语义色替换后 524；2026-09-03 实战对比 buff 快捷区 +1；2026-09-04 难度权重弹层 --fg-2 +1；2026-09-04 时间图表 Chart 7 同槽位对比 --c-info/--c-warning/--line-strong 等 +12；2026-09-10 失衡易伤可见化 结果页列/汇总行 + 部署页缺口折叠 = +10；2026-09-10 难度曲线「被挤掉」行 --c-danger +1（全部语义别名，同轮 hardcoded-color/tokens-defined 转绿）；2026-09-12 图表图例筛选交互（队伍对比/时间图表/血量膨胀三页图例可点 + 隐藏态 --fill-hover/--line-strong/--fg-3；血量膨胀页图例收敛到共享 seriesFilter 时把 --wa-750 换成 --fg-2）= +21；2026-09-13 Boss 卡控制技组编辑器（ca-label/ca-idx/ca-fold 全走 --fg-2/--fg-3 语义别名）= +3；2026-09-13 结果页失衡易伤逐人增幅行（--app-tablehead-bg/--app-accent-gold）= +2）。只增不减，防把变量改回字面量 */
-export const VAR_TOTAL_BASELINE = 1252  /* ★ 2026-11-03 T188 资源池共享视图：1244 → **1252**（+8，同笔可归因、方向是「字面色值 → 令牌」不是新增内容）：
+export const VAR_TOTAL_BASELINE = 1253  /* ★ 2026-11-05 命座提升率「通道分解」列：1252 → **1253**（+1，可归因、非新增内容方向）：
+    .split-part（收益分析页三段分解的每段落行）取 `--fg-2` 语义别名——不是 --wa-* 直引（wa 面 375 不变），
+    也不是把某个变量改回字面量（hardcoded-color 合计仍 78）。同一笔新增的悬浮提示块同样全走语义别名。
+    ★ 2026-11-03 T188 资源池共享视图：1244 → **1252**（+8，同笔可归因、方向是「字面色值 → 令牌」不是新增内容）：
    ① 3 处字面色值变 var()：`.event-name/.event-count` 与「（赠）」标记从 `#f0a020` 换 `--c-warning`、
       `.virtual-panel-virtual` 的底从 `rgba(251,191,36,0.08)` 换 `--c-warning-soft`（其墨按贴片底改 `--c-warning-strong`）；
    ② 5 处新增 `.rpv-*` 声明的 var()：抬头/空态标题 `--app-text` ×2、口径/空态原因 `--app-text-dim` ×2、弃轴提示 `--fg-2`；

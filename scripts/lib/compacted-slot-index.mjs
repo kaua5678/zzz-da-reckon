@@ -62,6 +62,14 @@ export const IDX_SAFE_ALLOWLIST = [
     reason: '`buildRecommendations.value?.characters[agentId]`：这是**按 agentId 键控的对象**'
       + '（Record<string, …>），与压缩数组同名但不同物。',
   },
+  {
+    file: 'src/test/cinemaClassify.ts',
+    array: 'characters',
+    key: 'agentId',
+    reason: '`constellations.characters[agentId]`：**public/static/character-constellations.json** 的'
+      + '状态表，按 agentId 键控的 Record（`{ [agentId]: { name, cinemas } }`），'
+      + '与引擎的压缩面板数组同名但不同物，与上面 catalog 那条同族。',
+  },
 ]
 
 /**
