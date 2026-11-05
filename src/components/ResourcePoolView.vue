@@ -24,6 +24,15 @@
       </div>
     </n-alert>
 
+    <!-- 机制「入场券」未满足（用户口径 2026-11-04：「没弹刀就没围猎……用户误认为莱卡恩弱就不透明了」）。
+         判据住 `composables/capabilityGateNotice.ts`（纯函数 + 单测），本组件只渲染；
+         与弃轴提示同一位置：它改变「下面这些数是怎么算出来的」，必须比伤害数字先被读到。 -->
+    <n-alert v-if="capabilityNotice.show" type="warning" size="small" class="rpv-gate-alert">
+      <template #header>{{ capabilityNotice.title }}</template>
+      <div class="rpv-gate-detail">
+        <div>{{ capabilityNotice.detail }}</div>
+      </div>
+    </n-alert>
     <!-- 未采（没有这一档的快照）⇒ 如实写「未采」+ 原因，**不补造、不编 0**（用户口径） -->
     <div v-if="!snapshot" class="rpv-empty">
       <div class="rpv-empty-title">资源池：未采</div>
@@ -786,6 +795,7 @@ import {
 import { axisMoveNameResolver } from '@/composables/axisMoveName'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'
 import { axisFallbackNoticeOf } from '@/composables/axisFallbackNotice'
+import { capabilityGateNoticeOfSnapshot } from '@/composables/capabilityGateNotice'
 import { PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 import { DECIBEL_COMPANION_RATIO } from '@/data/decibelCompanion'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
@@ -954,6 +964,16 @@ function getSpecialty(agentId: string): string {
  * 弃轴提示：读数全部来自**快照**（该档的轴开关 / 吸收率 / 弃轴读数 / 自动轴命中），
  * 判定口径住 `composables/axisFallbackNotice.ts`（纯函数 + 单测）。
  */
+/**
+ * 机制「入场券」未满足提示：读数全部来自**快照**（该档的交互次数现状 + 该档的资源结果），
+ * 判定口径住 `composables/capabilityGateNotice.ts`（纯函数 + 单测）。与弃轴提示并列：两者都是
+ * 「下面这些数是怎么算出来的」的更正，必须比伤害数字先被读到。
+ */
+const capabilityNotice = computed(() => capabilityGateNoticeOfSnapshot(
+  { resourceResult: snapshot.value?.resourceResult ?? null, slotLabels: snapshot.value?.slotLabels },
+  (slot, field) => snapshot.value?.interactionCounts[slot]?.[field] ?? 0,
+))
+
 const axisNotice = computed(() => axisFallbackNoticeOf(
   {
     useStunAxis: snapshot.value?.useStunAxis ?? false,

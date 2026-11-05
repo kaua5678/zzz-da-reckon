@@ -13,6 +13,7 @@ import { computeDifficulty } from '@/composables/operationalDifficulty'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'
+import { capabilityGateMissesOf, capabilityGateNoteText, type CapabilityGateMiss } from '@/composables/capabilityGateNotice'
 
 export const INTERACTION_OPTIMUM_STRATEGY_ID = 'interaction-optimum'
 export interface InteractionOptimumOptions {
@@ -26,6 +27,17 @@ export interface InteractionOptimumReading {
   stunCount: number
   overflowSeconds: number
   counts: Array<{ slot: number; fields: Partial<Record<ActionCountField, number>> }>
+  /**
+   * **交付状态下仍未满足的「机制入场券」**（`capabilityGates`；空数组 = 没有未满足的门）。
+   *
+   * 需求来源（用户 2026-11-04 逐字）：「**自动交互的情况下我希望这个能被检测出来**」——
+   * 旧实现在 `auto-1611-1141-1211` 上交付 84.10M 时**没给莱卡恩任何弹刀**（槽1 弹刀 0 ⇒ 围猎 0 次、冰舞 0 次），
+   * 而 note 里一字未提。现在同一次交付会把它写进 `note` 与本字段。
+   *
+   * ⚠ 本字段**只是报告**：策略不会为了解门而改交互（那会破坏「伤害不降 / 截断不增」的既有判据，
+   * 且实测解门后收益可能为负——见 `capabilityGateNotice.ts` 头注释的 A/B 表）。
+   */
+  gateMisses: CapabilityGateMiss[]
   elapsedMs: number
   evaluations: number
   converged: boolean
@@ -54,7 +66,10 @@ export function interactionOptimumReading(ctx: TimeWeightAllocationContext, elap
     counts: ctx.configStore.team.flatMap((c, slot) => c.agentId ? [{ slot, fields: Object.fromEntries(
       [...new Set([...INTERACTION_COUNT_KEYS, ...interactionFieldsAt(ctx.configStore, slot)])]
         .flatMap(field => typeof c[field] === 'number' ? [[field, c[field]]] : []),
-    ) }] : []), elapsedMs, evaluations, converged,
+    ) }] : []),
+    // 「机制入场券」未满足读数：与结果页提示**同一个纯函数**（capabilityGateNotice），读数取交付后的现场
+    gateMisses: capabilityGateMissesOf(rr, (slot, field) => Number(ctx.configStore.team[slot]?.[field] ?? 0)),
+    elapsedMs, evaluations, converged,
   }
 }
 
@@ -318,7 +333,22 @@ export function createInteractionOptimumStrategy(_balance?: (ctx: TimeWeightAllo
       }
       const applied = JSON.stringify(winner.state) !== JSON.stringify(initial)
       const tierNote = bestIntact ? '' : '；无可达完整轴，退回最好残缺档'
-      return result(applied, `逐槽±1无可行正收益${evaluations >= EVAL_BUDGET ? '（跨节点试探达预算）' : ''}${tierNote}；失衡次数为分配结果`, evaluations)
+      /**
+       * ## 机制「入场券」报告（用户 2026-11-04：「自动交互的情况下我希望这个能被检测出来」）
+       *
+       * 交付前按**交付点**（已经 `restore(winner.state)`）算一次门清单，把未启用的机制写进 `note`。
+       * 与结果页顶部提示**同一纯函数**（`capabilityGateNotice`）⇒ 页面上看到的与 note 里说的逐字一致。
+       *
+       * ⚠ **只报告、不改交互**：搜索空间本来就含每槽 `parryCount`（`coordinatesOf`），没选它是因为
+       * 当时评分不划算而不是找不到。为了让某道门亮起来而强改交互 = 策略行为变更，必须单独 A/B；
+       * 实测本夹具上给莱卡恩补弹刀 **84.05M → 75.93M（−8.1M）** ⇒ 强行解门会直接违反「伤害不降」。
+       */
+      const gateNote = capabilityGateNoteText(
+        capabilityGateMissesOf(calc.resourceResult.value, (slot, field) => Number(config.team[slot]?.[field] ?? 0)),
+        // 槽位名与快照 `slotLabels` 同一口径（`agentNames[id] || 槽(i+1)`，1-based）——两处显示的名必须一样
+        config.team.map((c, i) => (c.agentId ? calc.agentNames.value[c.agentId] : '') || `槽${i + 1}`),
+      )
+      return result(applied, `逐槽±1无可行正收益${evaluations >= EVAL_BUDGET ? '（跨节点试探达预算）' : ''}${tierNote}；失衡次数为分配结果${gateNote ? `；${gateNote}` : ''}`, evaluations)
     },
   }
 }

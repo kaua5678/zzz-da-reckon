@@ -6,7 +6,7 @@
 import type { DeepReadonly } from 'vue'
 import type { ActionCountField } from '@/stores/config'
 import type { AgentSkills, PanelValues } from '@/types/catalog'
-import type { AnomalyContribution, AnomalyPoolResult, CharacterOperationConfig, IterationState, StunAxis, TeamResourceResult } from '@/types/resource'
+import type { AnomalyContribution, AnomalyPoolResult, CharacterOperationConfig, CharacterResourceResult, IterationState, StunAxis, TeamResourceResult } from '@/types/resource'
 import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 
 /**
@@ -627,6 +627,61 @@ export interface InteractionCounts { parry: number; dodge: number; block: number
  * 它**全仓零消费者**（`anchorOf(rr)` 直接收 `TeamResourceResult`，不需要那层包装），
  * 被 `deadChannelLs` 判为死导出 ⇒ 已删（规则 12：YAGNI，留着的"设计草稿形态"没人用就是负担）。
  */
+/**
+ * **机制「入场券」声明**（2026-11-04，用户口径；见 `AgentMechanicModule.capabilityGates`）。
+ *
+ * ## 为什么需要它
+ *
+ * 用户逐字：
+ * > 「莱卡恩这种感觉需要提醒一下，**没弹刀就没围猎**。这个强度占模太多了，如果有用户
+ * >  **误认为莱卡恩弱就不透明了**，搞得好像计算器故意针对莱卡恩一样，不给别人关键的模。
+ * >  **自动交互的情况下我希望这个能被检测出来**。」
+ *
+ * ⇒ 一类能力是**有前置条件的**：前置没配好时它**完全**不生效，而结果页只显示一个安静的数字，
+ * 用户会把它读成「这个角色就这点强度」。这类「不生效」必须**明说**（缺什么 / 补到多少能解锁），
+ * 自动交互也必须**报出来**（不能默默交付一份「关键能力为 0」的结果）。
+ *
+ * 声明后两处消费（同一纯函数，措辞逐字一致）：
+ * - **结果页 / 各比较入口**顶部提示「它没生效 + 缺什么 + 补到几次解锁」
+ *   （`composables/capabilityGateNotice.ts` 判定，`components/ResourcePoolView.vue` 只渲染）；
+ * - **自动交互**交付前把同一份 miss 写进 `note` 与 `reading.gateMisses`（`composables/interactionOptimum.ts`）——
+ *   用户要求的正是「自动交互的情况下我希望这个能被检测出来」，旧实现交付 84.10M 时一字未提。
+ *
+ * ## 为什么是声明式钩子而不是编排层按 agentId 分支
+ *
+ * 规则 6：编排层不许出现角色判定。而「本角色有哪些带前置条件的能力」是**角色自己的**语义
+ * （同 `interactionClimb` / `interactionDefaults` 一族）⇒ 由模块声明，消费端只遍历声明。
+ * 业务判据住纯函数（`composables/capabilityGateNotice.ts`），展示层只渲染。
+ *
+ * ## 契约（两条，缺一条会静默失效）
+ *
+ * 1. `requirement.field` 是**次数类** store 字段（`ActionCountField`）——提示要给出「补到 N 次」
+ *    这个**用户能直接去改的旋钮**，所以必须指向交互栏里的真实字段，不能是模块私有 cfg；
+ * 2. `activeOf(rr)` 读**本轮**该角色的结果（`CharacterResourceResult`）：它回答「这次算它到底生效了没有」。
+ *    ⚠ 必须按轮取——它是收敛后的读数（外层不动点每轮都可能变）；
+ *    ⚠ 判据必须是**引擎实际消费的那条**（例：莱卡恩的 `min(失衡次数, 弹刀次数)` 写在
+ *      `lycaon.ts#patchExecutions` 里 ⇒ `activeOf` 也按同一条判，不许另写一个「应该生效」的口径）。
+ */
+export interface CapabilityGateDecl {
+  /** 稳定 key（同一模块内唯一；用于去重与测试定位，展示不读它） */
+  key: string
+  /** 能力名（页面标题里直接出现，如「围猎」） */
+  label: string
+  /** 前置条件：该交互字段至少 `min` 次才解锁（`0` 或正数） */
+  requirement: { field: ActionCountField; min: number }
+  /**
+   * 本轮**实际生效了吗**（读模块自己的结果行）。
+   * 返回 `false` ⇒ 该门未满足（提示会要求「补到 N 次」）；返回 `true` ⇒ 什么都不提示。
+   */
+  activeOf(rr: CharacterResourceResult): boolean
+  /**
+   * **解锁后引擎会额外产出什么**（一行可读的量，如「冰舞 ×2/次」）。
+   * 只作提示的补充说明——⚠ 不要在这里写「补了会涨多少伤害」：实测在某些状态补弹刀反而掉伤
+   * （见 `composables/capabilityGateNotice.ts` 头注释），收益正负必须由引擎算，不由声明猜。
+   */
+  unlockHint?: string
+}
+
 export interface InteractionClimbDecl {
   /** 被爬升的次数字段（`ActionCountField`；⚠ 哨兵语义字段不得声明进来——`0` 与「不做」同义的字段爬了会改语义） */
   field: ActionCountField

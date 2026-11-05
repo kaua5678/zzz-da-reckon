@@ -27,7 +27,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { AgentLimitPointDecl, DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput, TeammateBuffRecipientFilterInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, AxisRageCombos, ReleaseShareSpec, TeammateDropSpec, AxisGashResourceSpec, FinalizePassSpec, DamageFormulaFieldDecl, UniformStunRowInput, AxisSwayFlow } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, CapabilityGateDecl, AxisRageCombos, ReleaseShareSpec, TeammateDropSpec, AxisGashResourceSpec, FinalizePassSpec, DamageFormulaFieldDecl, UniformStunRowInput, AxisSwayFlow } from './typesHooks'
 // CC-451：展示层专用声明类型（CC-444/445/446/448 陆续长在本文件里，把 CC-83 预算顶破）拆出 typesView.ts；本文件原样转出，导入方不用改
 import type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
 
@@ -863,6 +863,8 @@ export interface AgentMechanicModule {
   /** CC-65b：不吃通用交互基准（`interactionBaselineFor` 返回全 0；原 stores/config.ts 写死名单）。 */
   noGenericInteraction?: boolean
   interactionClimb?: InteractionClimbDecl // T173：按「已有量 × 比例」放宽的次数字段，契约见 InteractionClimbDecl
+  /** 机制「入场券」：前置没配就**完全不生效**的能力清单（2026-11-04）。契约/为何需要/实测数字全在 `typesHooks.ts#CapabilityGateDecl`。 */
+  capabilityGates?: ReadonlyArray<CapabilityGateDecl>
   /** CC-65b：TeamConfigPage 交互栏专属输入框（格挡 blockCount / 双反 dualCounterCount）是否显示及标签（展示层）。 */
   interactionInputs?: Readonly<{ block?: { label: string }; dualCounter?: { label: string } }>
   /** CC-65b：队里有本角色才显示「保底4嗔火」开关（展示层；引擎侧由模块自身消费 guarantee.fury）。 */

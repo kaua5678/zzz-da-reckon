@@ -86,6 +86,7 @@ function fixture(over: Partial<ResourcePoolSnapshot> = {}): ResourcePoolSnapshot
     noAxisVulnShare: 1,
     isAxisMode: true,
     stunCoverage: 0.5,
+    interactionCounts: [{}, {}, {}],
     axisFallback: false,
     useStunAxis: true,
     autoActive: false,

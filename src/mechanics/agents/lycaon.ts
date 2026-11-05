@@ -41,7 +41,9 @@ const cfgNum = mechanicSettingReader(() => lycaonMechanic.settings)
  *     ⇒ **不弹刀进不了后台**。每次非失衡最多触发一次（失衡时获得 1 次进场次数、最多存 1 次）。
  *   - 蓄力段：带冰积蓄的 #2/#4/#6/#8/#10/#11 是蓄力段；围猎后台只打 #2→#4→#6 短循环。
  *   - 一次围猎：① 弹刀 → 开场冰舞（1141027，必定合轴，完整数值）；② 后台跟随前台角色
- *     闪反次数打后台闪避反击（次数 = 队伍其他角色 dodgeCounterCount 之和；仅伤害+失衡值）；
+ *     闪反次数打后台闪避反击（次数 = 队伍其他角色 dodgeCounterCount 之和，**但受后台秒数约束**：
+ *     次数 ≤ floor(后台秒数 / 0.6s)，2026-11-04 修——旧式无上限，实测 81 次闪反打出 48.6s 的
+ *     后台动作而围猎只进了 2 次 16s，时间账不成立；仅伤害+失衡值）；
  *     ③ 后台时间 − 闪反时间 = 真正围猎平A时间（蓄力短循环）；④ 收尾冰舞（自动，完整数值）。
  *     一轮失衡两个冰舞。围猎后台蓄力平A/闪反都吃核心被动失衡提升（basic/dodgeCounter 面板区）。
  *   - 后台时间模型（用户 2026-11-04 纠正）：后台时间 = **队友在场秒数**（`teamFrontlineSeconds`）；
@@ -63,6 +65,13 @@ const cfgNum = mechanicSettingReader(() => lycaonMechanic.settings)
 // @fact agent:1141/潜能觉醒冲击力 口径: 潜能觉醒·掠冰按 `potentialLevel` 取档 II~VI = 5/7.5/10/12.5/15%（围猎后台普攻/冲刺/闪反期间局内冲击力），与影画（cinemaLevel）无关 | 据 raw nanoka_missing/full/1141.json `potential_detail` + R59 四臂正交实测@2026-09-20·锚未变@2026-09-27·复核@2026-09-30·复核@2026-10-07 | 验 src/mechanics/__tests__/potentialAxisBatchB.test.ts::1141 莱卡恩潜能觉醒 | 锚 src/mechanics/agents/lycaon.ts#LYCAON_POTENTIAL_IMPACT_PCT + src/mechanics/agents/lycaon.ts#applyPanel | 信 确认
 // ⟳复核: nanoka 若刷新 1141 的 potential_detail，逐档对账 II~VI 是否仍为 5/7.5/10/12.5/15 | 到期 2027-03-31
 export const LYCAON_POTENTIAL_IMPACT_PCT = [0, 0, 5, 7.5, 10, 12.5, 15] as const
+
+/**
+ * 冰舞（1141027）：围猎的开场（弹刀后必定合轴）与收尾（自动）都用它。
+ * 单列常量是因为它有**两个**消费点：`patchExecutions` 产行、`capabilityGates.activeOf` 判「围猎生效了没有」
+ * （规则 11：跨点复用的招式 id 不手抄字面量；两边同源才不会出现「提示说生效了但没产行」）。
+ */
+const LYCAON_ICE_DANCE_MOVE_ID = '1141027'
 
 export const lycaonMechanic: AgentMechanicModule = {
   id: 'agent:1141',
@@ -336,14 +345,37 @@ export const lycaonMechanic: AgentMechanicModule = {
 
     // 后台闪反时间 = 闪反次数 × 闪避反击 actionTime（1141019 = 0.6s）
     const DODGE_ACTION_TIME = 0.6
-    const dodgeTime = backstageDodgeCount * DODGE_ACTION_TIME
-    // 真正的围猎平A时间 = 后台时间 - 闪反时间（每次围猎 ≤ 8s）
-    const huntBasicTotal = Math.max(0, Math.min(8 * huntCount, backstageTotal - dodgeTime))
+    /**
+     * ## ⚠ 镜像闪反的时长预算 = **围猎状态的秒数**（2026-11-04 修；交接 §二 E 判为「过建模」，不是真实机制）
+     *
+     * 原文（2.6 潜能激发·围猎）：「当操作中角色发动 [闪避] 和 [闪避反击] 时，莱卡恩会**同步发动**
+     * [闪避] 和 [闪避反击]」+「莱卡恩会进入 [围猎] 状态，**持续 8 秒**」。
+     * ⇒ 两条都真的：① 镜像是**逐次**的（次数 = 队友闪反次数之和）；② **但只在围猎的 8 秒里能同步**。
+     *
+     * 旧实现只把闪反时间从**平A**预算里扣（`huntBasicTotal = 后台时间 − 闪反时间`），闪反自己不受任何约束，
+     * 而「后台时间」取的是**队友在场秒数**（133s 级）——那是「狼可以活动的时间」，不是「狼处于围猎的时间」。
+     * 实测（`auto-1611-1141-1211`，槽0 闪反 81 / 莱卡恩弹刀 2）：镜像闪反 **81 次 = 48.6s 动作**，
+     * 而围猎只开 **2 次 = 16s** ⇒ 狼在 16 秒里打了 48.6 秒的招（**3 倍**），物理上不成立。
+     * 后果是**后台闪反单独产 5.92 条失衡**、总失衡 11 次 × 16s 窗 ≈ 176s/180s（98.8% 在失衡里）。
+     *
+     * 修法：镜像闪反与后台平A **共享同一份围猎窗口预算** `8s × huntCount`（先闪反，剩下的才是平A，
+     * 与旧式同序）⇒ 次数 ≤ floor(8 × huntCount / 0.6s)。huntCount=2 时上限 26 次（= 15.6s），
+     * 而不是队友那 81 次。⚠ 只改**时间可行性**，不改「逐次镜像」这条次数口径。
+     */
+    const huntActiveSeconds = 8 * huntCount
+    const mirrorDodgeCap = Math.floor(huntActiveSeconds / DODGE_ACTION_TIME + 1e-9)
+    const mirrorDodge = Math.max(0, Math.min(backstageDodgeCount, mirrorDodgeCap))
+    const dodgeTime = mirrorDodge * DODGE_ACTION_TIME
+    //
+    // ⚠ **窗口是时间预算，不是两个独立的桶**：镜像闪反与后台蓄力平A 都在那 8s×次数里，
+    // 闪反占掉的秒数就是平A少掉的秒数（否则一个 16s 的窗口会被打出 16+15.6=31.6s 的动作）。
+    // 先闪反、剩下的才是平A（与旧式同序）；同时不超过后台可用秒数（队友不在场时无后台）。
+    const huntBasicTotal = Math.max(0, Math.min(huntActiveSeconds, backstageTotal) - dodgeTime)
 
     // ① + ④ 开场冰舞（弹刀后触发，必定合轴）+ 收尾冰舞（围猎结束自动）：
     // 1141027 完整数值（damage/daze/异常积蓄/喧响），不占前台时间
     executions.push(moduleExecRow({
-      moveId: '1141027',
+      moveId: LYCAON_ICE_DANCE_MOVE_ID,
       moveName: '支援突击：复仇反扑·冰舞（围猎·开场+收尾）',
       category: 'assist',
       count: huntCount * 2,
@@ -355,12 +387,12 @@ export const lycaonMechanic: AgentMechanicModule = {
     }))
 
     // ② 后台闪避反击（跟随前台角色闪反，仅伤害+失衡值；失衡提升由面板 dodgeCounter 区承担）
-    if (backstageDodgeCount > 0 && (cfg.lycaonDodgeDaze ?? 0) > 0) {
+    if (mirrorDodge > 0 && (cfg.lycaonDodgeDaze ?? 0) > 0) {
       executions.push(moduleExecRow({
         moveId: '1141019',
         moveName: '闪避反击（围猎·后台跟随）',
         category: 'dodge',
-        count: backstageDodgeCount,
+        count: mirrorDodge,
         decibelRecovery: 0, // 显式 0：后台招式仅伤害+失衡值（enrich 尊重显式 0）
         totalDecibelRecovery: 0,
         ...ENERGY_RECOVERY_OFF,
@@ -368,7 +400,7 @@ export const lycaonMechanic: AgentMechanicModule = {
         // CC-392 D1：次数 = 队友闪反次数之和。理想口径是跟随队友闪反的轴内占比，但队友不固定、attachedEvents 是静态表
         // 登记不了 ⇒ 近似按失衡时间占比（autoSplitByStun）。若日后 attachedEvents 支持按类别 / 跨槽父动作，改登记并删此标记。
         autoSplitByStun: true,
-        skillTableNote: `围猎后台跟随闪反 × ${backstageDodgeCount} 次（队伍其他角色闪反次数之和）；仅伤害+失衡值（吃核心被动闪反失衡+80%）`,
+        skillTableNote: `围猎后台跟随闪反 × ${mirrorDodge} 次（队友闪反 ${backstageDodgeCount} 次；受围猎窗口 ${huntActiveSeconds}s / 每次 ${DODGE_ACTION_TIME}s 约束，上限 ${mirrorDodgeCap} 次）；仅伤害+失衡值（吃核心被动闪反失衡+80%）`,
         timeBucket: 'backstage',
       }))
     }
@@ -394,6 +426,27 @@ export const lycaonMechanic: AgentMechanicModule = {
       }))
     }
   },
+
+  /**
+   * **机制入场券声明（2026-11-04，用户口径）**：围猎需要弹刀，不弹刀进不了后台。
+   *
+   * 用户逐字：「没弹刀就没围猎……如果有用户误认为莱卡恩弱就不透明了……**自动交互的情况下我希望这个能被检测出来**」。
+   *
+   * ⚠ 判据必须与 `patchExecutions` **同一条**（`huntCount = min(失衡次数, 弹刀次数)`）：
+   * - 只要 `parryCount > 0` 且失衡 > 0 ⇒ `huntCount > 0` ⇒ 围猎行存在 ⇒ 生效；
+   * - `parryCount = 0` ⇒ `huntCount = 0` ⇒ `patchExecutions` 提前 return，冰舞/后台闪反/蓄力平A **一行都不出**。
+   * ⚠ 这里**不重算** `min()`：直接看结果行（引擎已经算过），避免两处口径漂移；
+   * 结果行里冰舞（1141027）存在 ⇔ 围猎真的产出了东西。用「本槽围猎行存在」判而不看次数，
+   * 是因为 `huntCount` 是模块私有量、结果行才是**用户看得见的**事实。
+   */
+  capabilityGates: [{
+    key: 'lycaon.hunt',
+    label: '围猎',
+    requirement: { field: 'parryCount', min: 1 },
+    activeOf: (rr) => rr.executions.some(e => e.moveId === LYCAON_ICE_DANCE_MOVE_ID),
+    // ⚠ 不写「补了会涨多少」：实测同一状态下补弹刀反而掉伤（84.05M → 75.93M），收益正负由引擎算
+    unlockHint: '每次失衡最多 1 次围猎（开场冰舞 1141027 + 收尾冰舞 + 后台跟随闪反 1141019 + 后台蓄力 #2→#4→#6）',
+  }],
 
   /**
    * 影画2·能量回馈（2026-09-26 CC-14a）：使敌人失衡或触发队友[连携技]时回 5 能量；

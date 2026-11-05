@@ -50,6 +50,8 @@ import { axisWindowView, type AxisWindowView, type AxisWindowViewInput } from '@
 import { computePerSlotBuildUp } from '@/composables/positionCompare'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from '@/composables/resourceCalc/noAxisVulnShare'
+import { INTERACTION_COUNT_KEYS } from '@/composables/interactionControls'
+import type { ActionCountField } from '@/stores/config'
 
 /**
  * **一个档位的资源池快照**（视图唯一入参）。
@@ -104,6 +106,14 @@ export interface ResourcePoolSnapshot {
   isAxisMode: boolean
   /** 失衡窗口占比（0..1，含决算截断损失秒的权威口径）= `calc.stunCoverage` */
   stunCoverage: number
+  /**
+   * **逐槽交互次数现状**（该档的**输入**读数，下标 = 槽位号）——机制「入场券」提示要报
+   * 「当前 N 次 / 缺几次」（`composables/capabilityGateNotice.ts`）。
+   *
+   * ⚠ 必须随快照带出、不许页面现读 store：比较入口的这一档是**差分重放**出来的，
+   * 现读 UI store 会把「另一个档填的弹刀次数」当成这一档的现状（同 `comboAlignAbsorbRatio` 的理由）。
+   */
+  interactionCounts: Array<Partial<Record<ActionCountField, number>>>
   /** 引擎弃轴读数（`resourceResult.convergence.axisFallback`） */
   axisFallback: boolean
   useStunAxis: boolean
@@ -187,6 +197,11 @@ export function resourcePoolSnapshotFromCalc(
     noAxisVulnShare: config.getMechanicSetting(NO_AXIS_VULN_SHARE_SETTING, DEFAULT_NO_AXIS_VULN_SHARE),
     isAxisMode: calc.stunAxisResult.value !== null,
     stunCoverage: calc.stunCoverage.value,
+    interactionCounts: [0, 1, 2].map(slot => Object.fromEntries(
+      INTERACTION_COUNT_KEYS.flatMap(field => typeof config.team[slot]?.[field] === 'number'
+        ? [[field, config.team[slot]![field]]]
+        : []),
+    ) as Partial<Record<ActionCountField, number>>),
     axisFallback: resourceResult.convergence.axisFallback === true,
     useStunAxis: config.useStunAxis,
     autoActive: calc.autoActive.value,
