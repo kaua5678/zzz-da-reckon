@@ -66,12 +66,60 @@ const cfgNum = mechanicSettingReader(() => lycaonMechanic.settings)
 // ⟳复核: nanoka 若刷新 1141 的 potential_detail，逐档对账 II~VI 是否仍为 5/7.5/10/12.5/15 | 到期 2027-03-31
 export const LYCAON_POTENTIAL_IMPACT_PCT = [0, 0, 5, 7.5, 10, 12.5, 15] as const
 
+/** 单次围猎的满额时长（原文 2.6 潜能激发·围猎：「莱卡恩会进入[围猎]状态，**持续 8 秒**」） */
+export const LYCAON_HUNT_FULL_SECONDS = 8
+
+/**
+ * **围猎有效时长**（秒）—— 提前终止的唯一实现（用户口径 2026-11-04）。
+ *
+ * 用户逐字：「这个狼的后台状态会终止的，**进入失衡放连携或者大招就终止了**。」
+ * 原文（`data/raw/nanoka_missing/full/1141.json` 1141508 desc）：
+ * > 「当前操作中角色**停止进攻**或发动**[连携技]**和**[终结技]**时，莱卡恩会**提前结束**[围猎]状态。」
+ *
+ * ## 模型
+ *
+ * 每次围猎里队伍会打出 `perWindowActions` 个「连携/终结技」，位置在 8s 内均匀分布 ⇒
+ * 第一个动作的期望时刻 = `8 / (n + 1)`，围猎就在那一刻结束：
+ * ```
+ * 有效时长 = huntCount × 8 / (1 + 每次围猎的连携/终结技次数)
+ * ```
+ * `n = 0`（不打连携也不放大招）⇒ 满额 `8 × huntCount`，**与修改前逐位相同**。
+ *
+ * ⚠ 为什么用「到第一个中断动作」的期望值，而不是「每打一个扣 4s」：后者在 `n ≥ 2` 时把窗口扣成 0，
+ * 连「一次围猎」都不成立，与原文的因果方向相反（被终止的是**那一次**围猎，不是围猎这个机制）。
+ *
+ * ⚠ 已忽略项「围猎提前结束每剩余 1s → 下次冰舞失衡 +6%（用户确认忽略）」是**增益**口径，
+ * 与这里的**时长**口径是两件事：本函数只扣时长，不给那 6% 的失衡值。
+ *
+ * 判据（验收 §6-3）：围猎窗口时长随「该次围猎期间队伍连携/大招次数」**单调不增**。
+ */
+export function lycaonHuntWindowSeconds(huntCount: number, perWindowActions: number): number {
+  const hunts = Math.max(0, Number.isFinite(huntCount) ? huntCount : 0)
+  const actions = Math.max(0, Number.isFinite(perWindowActions) ? perWindowActions : 0)
+  if (hunts <= 0) return 0
+  return hunts * LYCAON_HUNT_FULL_SECONDS / (1 + actions)
+}
+
 /**
  * 冰舞（1141027）：围猎的开场（弹刀后必定合轴）与收尾（自动）都用它。
  * 单列常量是因为它有**两个**消费点：`patchExecutions` 产行、`capabilityGates.activeOf` 判「围猎生效了没有」
  * （规则 11：跨点复用的招式 id 不手抄字面量；两边同源才不会出现「提示说生效了但没产行」）。
  */
 const LYCAON_ICE_DANCE_MOVE_ID = '1141027'
+
+
+/**
+ * 莱卡恩（1141）模块私有反馈键：围猎窗口内「每窗终结技次数」。
+ *
+ * 全仓唯一读者 = 本文件的 `applyTeamConfig`（写进本模块私有 cfg `lycaonWindowUltimates`），
+ * 符合 CC-360 的「本模块自产自读 ⇒ 扩充块声明」判据（与 alice/anbyZero 等 14 个同款）。
+ */
+declare module '@/mechanics/types' {
+  interface ModuleFeedback {
+    /** 莱卡恩：每次围猎窗口内队伍打出的终结技次数（= 整场终结技次数 / 失衡次数，下一轮 converge 消费） */
+    lycaonWindowUltimates?: number
+  }
+}
 
 export const lycaonMechanic: AgentMechanicModule = {
   id: 'agent:1141',
@@ -197,7 +245,7 @@ export const lycaonMechanic: AgentMechanicModule = {
    * `interactions` 契约（store 口径**未缩放**交互次数）正是为它和仪玄 1371 的 `yixuanExtremeAssistCap`
    * 补的（两处需要同一个量：`characters` 上那份已被 `interactionScale` 缩放、被 `parrySplit` 改写）。
    */
-  applyTeamConfig: ({ cfg, phase, stunCount, countStun, axis, interactions }: AgentTeamConfigInput) => {
+  applyTeamConfig: ({ cfg, phase, stunCount, countStun, axis, interactions, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge') return
     cfg.lycaonStunCount = stunCount
     // `lycaonBackstageDodgeCount` = 队伍**其他**槽位的**未缩放**闪反次数之和（round 14 批次 4 迁入，
@@ -250,6 +298,57 @@ export const lycaonMechanic: AgentMechanicModule = {
         cfg.lycaonC2Energy = c2Per > 0 ? (stunCount + teamChainTotal) * c2Per : 0
       }
     }
+
+    /**
+     * ## 围猎**提前终止**的动作数（用户口径 2026-11-04）
+     *
+     * 原文 1141508：「当前操作中角色停止进攻或发动[连携技]和[终结技]时，莱卡恩会提前结束[围猎]状态。」
+     *
+     * ⇒ 每次围猎窗口内队伍打出的**连携 + 终结技次数**决定围猎断得多早（`patchExecutions` 里折算成秒）。
+     * 时间轴是一窗对一次围猎（`huntCount = min(失衡次数, 弹刀次数)`），所以「本次围猎期间」的连携量
+     * = **每窗**连携数（= 队内各槽 `chainCountPerStun` 之和）＋每窗终结技数。
+     *
+     * ⚠ 与上面 C2 的连携量**不是同一个量**：C2 是全队整场总次数（`× countStun`），这里要的是**单窗**次数。
+     * ⚠ 轴队没有「每窗 chainCountPerStun」这一说（轴即最终次数）⇒ 用轴内连携总次数 ÷ 窗数折算，
+     * 窗数取 `axis.windows`（与轴栈同源）；窗数为 0 时不写（`undefined` 编码「材料没接上」）。
+     */
+    if (axis) {
+      let chainsPerWindow: number | undefined
+      if (axis.active) {
+        const windows = axis.windows.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0)
+        if (windows > 0) {
+          chainsPerWindow = Object.values(axis.chainTotalBySlot).reduce((a, b) => a + b, 0) / windows
+        }
+      } else if (interactions) {
+        let sum = 0
+        for (const snap of Object.values(interactions.bySlot)) if (snap.agentId) sum += snap.chainCountPerStun
+        chainsPerWindow = sum
+      }
+      if (chainsPerWindow !== undefined) cfg.lycaonWindowChains = chainsPerWindow
+    }
+    // 终结技那一半由 nextRoundFeedback 产出（读本轮 rr 的 ultimateCount），下一轮 converge 在这里取回
+    const ultPerWindow = threads?.moduleFeedback.lycaonWindowUltimates
+    if (ultPerWindow !== undefined) cfg.lycaonWindowUltimates = Math.max(0, ultPerWindow)
+  },
+
+  /**
+   * **围猎提前终止的动作数 · 终结技那一半**（用户口径 2026-11-04）
+   *
+   * 原文 1141508 同时列了 [连携技] **和** [终结技] ⇒ 两者各打一次都会让围猎提前结束。
+   * 终结技次数拿不到「每窗」这种口径（它是整场的量）⇒ 用 **整场终结技总次数 / 失衡次数** 折算成每窗量，
+   * 失衡次数为 0 时不写。
+   *
+   * ⚠ 为什么放在 nextRoundFeedback 而不是 applyTeamConfig：终结技次数只有**轮末**的引擎结果
+   * （rr.characters[].ultimateCount）才有，而 converge 派发时那份还是**上一轮**的（threads.postRoundInput）；
+   * 这里读本轮 rr，下一轮 converge 由 applyTeamConfig 消费（与其它「本轮收敛 → 下一轮注入」同款滞后一轮）。
+   */
+  nextRoundFeedback({ slot, teamResult, prevThreads }) {
+    const own = teamResult.characters.find(c => c.slot === slot)
+    const ultimateCount = Math.max(0, Number(own?.ultimateCount ?? 0))
+    // 窗数取上一轮池次数（与 `axisWindowCount` 同一读法）；首轮缺省 ⇒ 不写（undefined 编码「材料没接上」）
+    const windows = Math.max(0, Number(prevThreads.prevPoolStunCount ?? 0))
+    if (!(windows > 0)) return undefined
+    return { lycaonWindowUltimates: ultimateCount / windows }
   },
 
   buildExecutions({ cfg, state, executions }: AgentResourceInput) {
@@ -362,7 +461,27 @@ export const lycaonMechanic: AgentMechanicModule = {
      * 与旧式同序）⇒ 次数 ≤ floor(8 × huntCount / 0.6s)。huntCount=2 时上限 26 次（= 15.6s），
      * 而不是队友那 81 次。⚠ 只改**时间可行性**，不改「逐次镜像」这条次数口径。
      */
-    const huntActiveSeconds = 8 * huntCount
+    /**
+     * ## ★ 围猎会**提前终止**（用户口径 2026-11-04，原文有依据）
+     *
+     * 用户逐字：「这个狼的后台状态会终止的，**进入失衡放连携或者大招就终止了**。」
+     *
+     * 原文（`data/raw/nanoka_missing/full/1141.json` 1141508 desc）：
+     * > 「当前操作中角色**停止进攻**或发动**[连携技]**和**[终结技]**时，莱卡恩会**提前结束**[围猎]状态。」
+     *
+     * 修前：围猎预算只按 `8s × huntCount` 封顶，完全没扣提前终止 ⇒ 每次围猎都按满 8s 兑现。
+     * 而一窗失衡里队伍会打连携（`chainCountPerStun` × 每窗）与大招 ⇒ 围猎在那之前就断了。
+     *
+     * 折算 = **到第一个中断动作的期望时刻**：`n` 个动作在 8s 内均匀分布 ⇒ `8 / (n + 1)`
+     * （唯一实现 `lycaonHuntWindowSeconds`，见上方同名函数的注释）。
+     * ⚠ 曾经写过「一次连携平均落在窗口一半处 ⇒ 每次扣 4s」，那是**已否决**的模型：`n ≥ 2` 时
+     * 把窗口扣成 0、连冰舞/后台行都整条消失，与原文因果相反（被终止的是**那一次**围猎）。
+     *
+     * ⚠ 已忽略项里那条「围猎提前结束每剩余 1s → 下次冰舞失衡 +6%（用户确认忽略）」是**增益**口径，
+     * 与本次的**时长**口径是两件事：这里只扣时长，不给那 6% 的失衡值。
+     */
+    const perWindowChains = Math.max(0, (cfg.lycaonWindowChains ?? 0) + (cfg.lycaonWindowUltimates ?? 0))
+    const huntActiveSeconds = lycaonHuntWindowSeconds(huntCount, perWindowChains)
     const mirrorDodgeCap = Math.floor(huntActiveSeconds / DODGE_ACTION_TIME + 1e-9)
     const mirrorDodge = Math.max(0, Math.min(backstageDodgeCount, mirrorDodgeCap))
     const dodgeTime = mirrorDodge * DODGE_ACTION_TIME
@@ -576,5 +695,14 @@ declare module '@/types/resource/config' {
     lycaonBackstageDodgeCount?: number
     /** 莱卡恩影画2回能总额（useResourceCalc 注入 = (失衡次数 + 队伍连携总次数) × 5） */
     lycaonC2Energy?: number
+    /**
+     * 每次围猎期间队伍会打出的**连携技次数**（applyTeamConfig 从 store/轴契约取）。
+     *
+     * 原文 1141508：「当前操作中角色停止进攻或发动[连携技]和[终结技]时，莱卡恩会**提前结束**[围猎]状态。」
+     * ⇒ 每打一次连携/终结技，本次围猎就断在那一刻 —— 见 `patchExecutions` 的提前终止折算。
+     */
+    lycaonWindowChains?: number
+    /** 每次围猎期间队伍会打出的**终结技次数**（同上，连携 + 终结合计决定提前终止量） */
+    lycaonWindowUltimates?: number
   }
 }

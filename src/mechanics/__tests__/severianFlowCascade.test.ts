@@ -233,24 +233,33 @@ describe('债 1a · 1631 赛维里安流息方程 = (a) 有序级联（不可松
     let discriminatingSeen = 0
     // 判别档夹具（2026-10-22 重测）：平A 改四段逐段物化后 flowIncome 变了，旧的 c6 两支一律漂到
     // base=930 / mod=50（WIND 实为 **45** = 20+25 ⇒ 判别档要求 mod < 45，故旧夹具已不在判别档）。
-    // 现取 c6 base=900/mod=20 与 c0 base=460/mod=20（均满足 mod < WIND，223 个候选中筛选）。
+    /**
+     * ⚠ **2026-11-05 夹具再换一次**（Boss 出手预算 + 围猎提前终止落地后）：
+     * 原两支 `sev+1481+1141/c6`（弹刀 2）与 `sev+1481+1211/c0` 现在都**掉出判别档**
+     * （前者 base=870/mod=45、后者 base=660/mod=20，两式按构造恒等 ⇒ E 在松弛下也会绿 =「假牙」）。
+     * 根因不是 1631，是**第三位 1141 的后台失衡贡献变了**（围猎窗口扣了提前终止，
+     * 且闪反次数被一起夹）⇒ 判别档的落点随之外移。这是**夹具选择**问题，不是被测机制变了。
+     *
+     * 现取（`.zc/perf` 扫第三位 × 命座 × 弹刀，取仍判别的组合）：
+     * `se6 + 1481 + 1141`（弹刀 **4**，base=900/mod=20）与 `se6 + 1481 + 1141`（弹刀 **0**，base=870/mod=45 非判别）
+     * ⇒ 第二支改用**无 1141** 的 `sev+1481+1311/c6`（base=950/mod=15，判别）——它同时验证「本条判据不依赖
+     * 任何单个角色的后台机制」，比原来那支更结实。
+     */
     for (const [team, tag, cin] of [
       [['1631', '1481', '1141'], 'sev+1481+1141', 6],
-      // ★ c0 档：返还只有 20（无[风起]），旧版用 C6 的 45 判它 ⇒ 假违约。现按命座取 wind。
-      [['1631', '1481', '1211'], 'sev+1481+1211', 0],
+      [['1631', '1481', '1311'], 'sev+1481+1311', 6],
     ] as Array<[string[], string, number]>) {
       for (let i = 0; i < 3; i++) config.setAgent(i, team[i]!)
       config.setCinemaLevel(0, cin)
       /**
        * ⚠ 第三位是莱卡恩（1141）：他要**真的弹刀**才进得了后台（2026-11-04 口径：
-       * `huntCount = min(失衡次数, 弹刀次数)`）。旧实现「0 弹刀也发围猎」让本夹具白拿后台失衡贡献。
+       * `huntCount = min(失衡次数, 弹刀次数)`）。
        *
        * 但**发多少**必须让本用例留在判别档（`relaxedHunt > reachableMaxHunt`，见文件头 §E）：
-       * 实测（`.zc/perf` 扫弹刀 0/2/4/6/8/10/12）：`0` ⇒ base=870 mod=45 **非判别**；
-       * `6/8` ⇒ base=880 **mod=0 ⇒ 两式按构造恒等、也非判别**；**`2/4` ⇒ base=900 mod=20 判别**。
-       * ⇒ 取 2 次（本轮修前该夹具的 0 弹刀同样落在非判别档，是「假牙」；2 次顺带把牙修回来了）。
+       * 实测（`.zc/perf`，本轮重扫 0/1/2/3/4/5/6/8）：`0..2` 与 `5+` ⇒ base=870/880 **非判别**
+       * （mod=45 或 0）；**`3/4` ⇒ 判别**（4 时 base=900/mod=20）。⇒ 取 **4**。
        */
-      config.setActionCount(2, 'parryCount', team[2] === '1141' ? 2 : 0)
+      config.setActionCount(2, 'parryCount', team[2] === '1141' ? 4 : 0)
       const rr = calc.resourceResult.value!
       const ch = rr.characters.find(c => c.slot === 0)!
       const flow = (ch as unknown as { severianFlow?: { flowIncome: number; shadowHuntCount: number } }).severianFlow!

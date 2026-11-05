@@ -43,6 +43,8 @@ import { DOWNSCALED_INTERACTION_FIELDS, downscaleInteractionCount } from './feas
 import type { CalcRoundThreads, PostRoundInput } from './roundThreads'
 import { computeParrySplit, BOSS_SPECIAL_PARRY_DIVISOR } from '@/core/parrySplit'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
+import { BOSS_ATTACK_LIMITED_FIELDS, bossAttackBudget, capToBossAttackBudget, nonStunSeconds } from '@/core/bossAttackBudget'
+import { effectiveBattleTime } from '@/core/effectiveTime'
 import { calcStunAxisStack, allocateAxisWindows, type ExecutedMoveCount, type StackAxisInput, type StackSequenceEntry } from '@/core/stunAxisStack'
 import type { AxisSequenceEntry } from '@/types/resource/config'
 import {
@@ -601,6 +603,56 @@ export function createRunCalcRound(deps: {
     }
     /** 中断臂：本轮起**整条补齐通道**（含 `interactionTopUpNext` 回灌）都不生效 ⇒ 该臂 ≡ 模块关闭 */
     const interruptTopUp = opts?.interruptTopUp === true
+    /**
+     * ## ★ Boss 出手预算：把交互次数的**读入量**夹到时间账推导出的上限（用户口径 2026-11-04）
+     *
+     * 用户逐字：「我不希望判据决定错误，我希望**计算引擎用时间限制自主推导**出失衡的上限和溢出性。」
+     * 病灶根因：「**本质还是前台闪反的产出太多了，没有哪个 boss 会如此高频的一直攻击。**」
+     *
+     * 修前：`dodgeCounterCount` 的界只有 `ACTION_COUNT_BOUNDS` 的 {0,99}（**纯 UI 常量、零物理来源**）
+     * ⇒ 旗舰夹具 `auto-1611-1141-1211` 上「槽0 闪反 81」既填得出来也搜得出来，而同一现场
+     * 必要动作合计 **133s**、非失衡只有 **84s**（1.58×），物理不可能。
+     *
+     * 现口径 = **推导**（不是判据）：
+     * ```
+     * 非失衡时间   = 有效战斗时间 − 真失衡秒数        // 失衡期 boss 瘫痪 ⇒ 不出手
+     * 预算         = floor(非失衡时间 / 2s)          // 用户「2s 有效战斗时间/每人一次」
+     * 兑现次数     = min(读入次数, 预算)              // 闪反、弹刀**各自各算一份**
+     * ```
+     * 闪反与弹刀**不相加、不互斥、不从同一池扣**（用户逐字「各自独立，有时可以闪反后选别人弹刀」）。
+     *
+     * ⚠ **`parryTotal` 不参与**：它是用户填写的「boss 机制强制弹刀」必要招式（**输入/下限**），
+     * 不是 boss 出手次数的来源。拿它当上限 = 把输入当物理量（用户 2026-11-04 连续纠正两次）。
+     *
+     * ⚠ **不动点**：预算依赖非失衡时间，非失衡时间依赖失衡次数 K，K 又依赖交互次数 ⇒ 这里用
+     * **本轮计划窗数** `stunCount`（外层不动点迭代自己在收紧它），**不是**上一轮的池次数、也不是覆盖率
+     * （三条反例见下方 `budgetWindows` 注释）。
+     *
+     * 语义 = 「引擎只兑现装得下的量」：不 throw、不否决，读数如实（`bossAttackBudget`）。
+     * 用户硬填极端值的**失真提示**走 `composables/bossAttackBudgetNotice`（复用「入场券」的同一条渲染通道），
+     * 不在这里拦。
+     */
+    const effTimeForBudget = effectiveBattleTime(configStore.enemy)
+    /**
+     * **预算分母的窗数 = 本轮计划值 `stunCount`**（= 这一轮真的按几个窗排时间的那个数，也原样回传给
+     * 结果侧作 `resourceResult.plannedStunCount` ⇒ **提示侧必须读同一个字段**，否则两把尺会差开）。
+     *
+     * ⚠ 三条**别退回去**的写法（都实测踩过，各有反例）：
+     * · `threads.prevPoolStunCount`（**池**次数）：池回答「攒出了几次」，可**远大于**计划值——雨果
+     *   `hugo-c0-e` 轴池报 **11** 而计划只排 **3.93** 窗（`11 × 21s = 231s > 180s`）⇒ 失衡秒数饱和成整场
+     *   ⇒ 非失衡 0 ⇒ 预算 0 ⇒ **所有**交互被夹成 0（实测该队闪反 12 次全部消失、轴里 1291012 不物化、
+     *   `stunVulnSummary` 案例 D 变红）。
+     * · 先 `min(有效时间, K×窗长)` 再取非失衡：与上条同一个饱和问题（`min` 把 231 压成 180）。
+     *   ⇒ 这里**不夹**，直接让 `nonStunSeconds` 自己的 `max(0, …)` 兜住负值。
+     * · 覆盖率（`provStunCoverage × 有效时间`）：12 支「窗数顶满整场」的队上会饱和成 1 ⇒ 预算 0。
+     *
+     * 锁定轮不需要单独分支：`stunCount` 在锁定重跑时**本身就是锁定值**（`stunCountLockOverride` 在上游
+     * 已参与求解），所以「取计划值」天然覆盖锁定语义。
+     */
+    const budgetWindows = Math.max(0, stunCount)
+    const bossAttackBudgetNow = bossAttackBudget(
+      nonStunSeconds(effTimeForBudget, budgetWindows * computeWindowDuration()),
+    )
     const characters = base.characters.map(cfg => {
       // 轴模式：连携总次数完全由轴决定（未列连携块的槽位 = 0 次，轴即最终次数）
       const chainOverride = axisActive
@@ -638,6 +690,19 @@ export function createRunCalcRound(deps: {
       if (iscale < 1) {
         // CC-263：字段表与取整口径单一来源（难度 x 同读，见 feasibilitySearch#DOWNSCALED_INTERACTION_FIELDS）
         for (const f of DOWNSCALED_INTERACTION_FIELDS) merged[f] = downscaleInteractionCount(merged[f] ?? 0, iscale)
+      }
+      /**
+       * **Boss 出手预算**（见上方 `bossAttackBudgetNow` 的推导注释）：把闪反/弹刀各自的读入次数夹到预算内。
+       *
+       * ⚠ 位置刻意在**降配之后、boss 强制弹刀注入之前**：
+       * - 降配是「用户交互整体缩水」（超预算时的相对臂），预算夹取是「物理上 boss 给不出这么多攻击」——
+       *   两件事都要生效，取更小者即可；
+       * - 弹刀注入（`parrySplit`）是 **boss 机制强制** 的招式，属用户/预设输入，**不归 boss 出手频率管**
+       *   （它由 `parryTotal` 决定，正是「不能拿 `parryTotal` 当上限」那条的来源）。
+       */
+      for (const limited of BOSS_ATTACK_LIMITED_FIELDS) {
+        const wanted = Number(merged[limited] ?? 0)
+        if (wanted > bossAttackBudgetNow) merged[limited] = capToBossAttackBudget(wanted, bossAttackBudgetNow).count
       }
       // Boss 预设弹刀反推注入（上一轮拆分；首轮 prev 为空 → 击破位注入 ≥1 探针保证轻弹刀行存在，
       // 供本轮失衡池读出每次弹刀失衡值，后续轮按真实拆分注入、不强制）

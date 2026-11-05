@@ -13,7 +13,10 @@ import { computeDifficulty } from '@/composables/operationalDifficulty'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'
+import { BOSS_ATTACK_LIMITED_FIELDS, bossAttackBudget, nonStunSeconds } from '@/core/bossAttackBudget'
+import { effectiveBattleTime } from '@/core/effectiveTime'
 import { capabilityGateMissesOf, capabilityGateNoteText, type CapabilityGateMiss } from '@/composables/capabilityGateNotice'
+import { bossAttackBudgetMissesOf, bossAttackBudgetNoteText, stunSecondsForBudget } from '@/composables/bossAttackBudgetNotice'
 
 export const INTERACTION_OPTIMUM_STRATEGY_ID = 'interaction-optimum'
 export interface InteractionOptimumOptions {
@@ -73,16 +76,50 @@ export function interactionOptimumReading(ctx: TimeWeightAllocationContext, elap
   }
 }
 
+/**
+ * 搜索坐标（槽 × 字段 × 上下界）。
+ *
+ * ## ★ 上界 = **Boss 出手预算**（用户口径 2026-11-04「自动交互不得产生非法值」）
+ *
+ * 用户逐字：「我们自动交互不能有这个情况，只有**用户主动填写极端数值**时才会失真。
+ * 但目前**自动交互的逻辑似乎也没写好**。」
+ *
+ * 旧实现上限恒取 `ACTION_COUNT_BOUNDS`（`{min:0, max:99}`，**纯 UI 常量、零物理来源**）
+ * ⇒ 旗舰夹具上自动搜索真的交付了「槽0 闪反 81」（= 63.4s 动作塞进 84s 非失衡）。
+ *
+ * 现口径：闪反 / 弹刀的上界 = `floor(非失衡时间 / 2s)`（`core/bossAttackBudget`，闪反与弹刀
+ * **各自独立各算一份**），且失衡秒数与引擎**同源**——`stunSecondsForBudget(资源结果里的
+ * plannedStunCount, 窗长)`，即 `convergence` 的 `budgetWindows`。所以这里只是**把搜索空间收窄到
+ * 物理可能**，不是给策略加判断：搜索仍按总伤找驻点，只是它从一开始就不可能搜到装不下的次数。
+ *
+ * ⚠ **别用覆盖率（`stunWindowRatioOf`）算这个上界**：它是上一轮派生量，且在 12 支「窗数顶满整场」
+ * 的队上饱和成 1 ⇒ 预算 0 ⇒ 搜索上界被压成 0 ⇒ 自动交互**一次闪反都加不了**（静默劣化）。
+ * 引擎侧早因同一反例否决了这个写法（见 `convergence.ts` 的 `budgetWindows` 注释）。
+ *
+ * ⚠ 预算是**当前现场**的读数（依赖当前失衡次数）；搜索过程中失衡次数会变（那正是搜索在做的事），
+ * 所以它可能略宽/略窄——越界的点仍会被引擎的净占用/截断账与 cfg 侧夹取
+ * （`convergence` 的 `BOSS_ATTACK_LIMITED_FIELDS` 循环）如实压回去，这里只是让搜索**不要往非法区爬**。
+ */
 function coordinatesOf(ctx: TimeWeightAllocationContext): Coordinate[] {
   const config = ctx.configStore
+  const effTime = effectiveBattleTime(config.enemy)
+  const stunSeconds = stunSecondsForBudget({
+    effectiveTime: effTime,
+    plannedStunCount: ctx.calc.resourceResult.value?.plannedStunCount,
+    windowDuration: ctx.calc.windowDuration.value,
+  })
+  const budget = bossAttackBudget(nonStunSeconds(effTime, stunSeconds))
   return config.team.flatMap((row, slot) => interactionFieldsAt(config, slot).map(field => {
     const bounds = ACTION_COUNT_BOUNDS[field]
     const climb = row.agentId ? getAgentMechanic(row.agentId)?.interactionClimb : undefined
     // 比例分母在首次写入前冻结，防手动值反过来抬高自己的上限。
     const rr = ctx.calc.resourceResult.value
     const anchor = climb?.field === field && rr ? climb.anchorOf(rr) : undefined
+    /** Boss 出手频率只约束闪反/弹刀；其余交互字段（格挡/双反/角色专属）不归它管 */
+    const bossLimited = (BOSS_ATTACK_LIMITED_FIELDS as readonly string[]).includes(field)
+    const hardMax = bossLimited ? Math.min(bounds.max, budget) : bounds.max
     return { slot, field, min: bounds.min,
-      max: anchor === undefined ? bounds.max : Math.min(bounds.max, climb!.capOf(anchor, config.getMechanicSetting)) }
+      max: anchor === undefined ? hardMax : Math.min(hardMax, climb!.capOf(anchor, config.getMechanicSetting)) }
   }))
 }
 
@@ -343,12 +380,31 @@ export function createInteractionOptimumStrategy(_balance?: (ctx: TimeWeightAllo
        * 当时评分不划算而不是找不到。为了让某道门亮起来而强改交互 = 策略行为变更，必须单独 A/B；
        * 实测本夹具上给莱卡恩补弹刀 **84.05M → 75.93M（−8.1M）** ⇒ 强行解门会直接违反「伤害不降」。
        */
+      const slotLabels = config.team.map((c, i) => (c.agentId ? calc.agentNames.value[c.agentId] : '') || `槽${i + 1}`)
       const gateNote = capabilityGateNoteText(
         capabilityGateMissesOf(calc.resourceResult.value, (slot, field) => Number(config.team[slot]?.[field] ?? 0)),
         // 槽位名与快照 `slotLabels` 同一口径（`agentNames[id] || 槽(i+1)`，1-based）——两处显示的名必须一样
-        config.team.map((c, i) => (c.agentId ? calc.agentNames.value[c.agentId] : '') || `槽${i + 1}`),
+        slotLabels,
       )
-      return result(applied, `逐槽±1无可行正收益${evaluations >= EVAL_BUDGET ? '（跨节点试探达预算）' : ''}${tierNote}；失衡次数为分配结果${gateNote ? `；${gateNote}` : ''}`, evaluations)
+      /**
+       * **计算失真**（用户口径 2026-11-04：「提醒了计算失真就行了，不用管错误计算的逻辑」）。
+       *
+       * 策略**不为此改任何交互**（预算已由引擎夹取 + 搜索空间上界兜住），只把差额写进 note；
+       * 与结果页顶部 alert 同一纯函数（`bossAttackBudgetNotice`）⇒ 两处显示逐字一致。
+       */
+      // 预算分母与引擎**同源**（计划窗数 × 窗长）——别用覆盖率：实测兑现 66 却提示 58
+      const budgetNote = bossAttackBudgetNoteText(bossAttackBudgetMissesOf({
+        effectiveTime: effectiveBattleTime(config.enemy),
+        stunSeconds: stunSecondsForBudget({
+          effectiveTime: effectiveBattleTime(config.enemy),
+          plannedStunCount: calc.resourceResult.value?.plannedStunCount,
+          windowDuration: calc.windowDuration.value,
+        }),
+        slotCount: config.team.length,
+        slotLabels,
+        requestedOf: (slot, field) => Number(config.team[slot]?.[field] ?? 0),
+      }))
+      return result(applied, `逐槽±1无可行正收益${evaluations >= EVAL_BUDGET ? '（跨节点试探达预算）' : ''}${tierNote}；失衡次数为分配结果${gateNote ? `；${gateNote}` : ''}${budgetNote ? `；${budgetNote}` : ''}`, evaluations)
     },
   }
 }

@@ -33,6 +33,15 @@
         <div>{{ capabilityNotice.detail }}</div>
       </div>
     </n-alert>
+    <!-- 计算失真（用户口径 2026-11-04：「提醒了计算失真就行了，不用管错误计算的逻辑」）——
+         用户手填的交互次数超出 Boss 出手频率时**只说明差额、不拦**：计算照常完成，
+         引擎只兑现装得下的量（core/bossAttackBudget）。与上面两条同位置：它同样是「下面这些数怎么来的」。 -->
+    <n-alert v-if="budgetNotice.show" type="info" size="small" class="rpv-gate-alert">
+      <template #header>{{ budgetNotice.title }}</template>
+      <div class="rpv-gate-detail">
+        <div>{{ budgetNotice.detail }}</div>
+      </div>
+    </n-alert>
     <!-- 未采（没有这一档的快照）⇒ 如实写「未采」+ 原因，**不补造、不编 0**（用户口径） -->
     <div v-if="!snapshot" class="rpv-empty">
       <div class="rpv-empty-title">资源池：未采</div>
@@ -796,6 +805,7 @@ import { axisMoveNameResolver } from '@/composables/axisMoveName'
 import { useStunVulnDisplay } from '@/composables/stunVulnDisplay'
 import { axisFallbackNoticeOf } from '@/composables/axisFallbackNotice'
 import { capabilityGateNoticeOfSnapshot } from '@/composables/capabilityGateNotice'
+import { bossAttackBudgetNoticeOfSnapshot } from '@/composables/bossAttackBudgetNotice'
 import { PARRY_DECIBEL_BONUS, CHAIN_DECIBEL_BONUS, DODGE_COUNTER_DECIBEL_BONUS } from '@/data/anomalyDecibelBonuses'
 import { DECIBEL_COMPANION_RATIO } from '@/data/decibelCompanion'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING } from '@/data/resourceDefaults'
@@ -973,6 +983,21 @@ const capabilityNotice = computed(() => capabilityGateNoticeOfSnapshot(
   { resourceResult: snapshot.value?.resourceResult ?? null, slotLabels: snapshot.value?.slotLabels },
   (slot, field) => snapshot.value?.interactionCounts[slot]?.[field] ?? 0,
 ))
+
+/**
+ * **计算失真提示**（用户口径 2026-11-04：「提醒了计算失真就行了，不用管错误计算的逻辑」）。
+ *
+ * 与上面那条「入场券」提示**同一条渲染通道**（交接 §五 明确要求复用，不另开一套 UI），
+ * 但回答的是另一个问题：「我填的交互次数为什么没兑现」。
+ * 判定口径住 `composables/bossAttackBudgetNotice.ts`（纯函数 + 单测），本组件只渲染。
+ */
+const budgetNotice = computed(() => {
+  const snap = snapshot.value
+  if (!snap) return { show: false, title: '', detail: '', misses: [] }
+  // 入参与快照同形 ⇒ 整份传（预算分母从 snap.resourceResult.plannedStunCount 取，与引擎同源）。
+  // ⚠ 别改成读 snap.stunCoverage（上一轮派生量，实测与引擎差 8 次：引擎兑现 66 却提示 58）。
+  return bossAttackBudgetNoticeOfSnapshot(snap)
+})
 
 const axisNotice = computed(() => axisFallbackNoticeOf(
   {

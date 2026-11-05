@@ -61,7 +61,23 @@ describe('统一交互边际策略', () => {
  *    （实测该状态下给莱卡恩补弹刀是 **−8.1M**：84.05M → 75.93M）。
  */
 describe('自动交互报告「机制入场券」未满足', () => {
-  it('★ 旗舰夹具：交付更高伤害且 note 里点名「围猎未启用」，但不为解门改交互', async () => {
+  /**
+   * ## ⚠ 2026-11-05 口径变化（本用例随 Boss 出手预算一起改）
+   *
+   * 旧断言是「交付态必须报出围猎未启用」——那是**修前**的事实：自动交互会搜到
+   * 「槽0 闪反 81 + 莱卡恩弹刀 0」（81 次闪反 = 63.4s 动作塞进 84s 非失衡），
+   * 而未受约束的搜索空间里给莱卡恩补弹刀是 −8.1M ⇒ 门自然解不开。
+   *
+   * 现在搜索空间被 `core/bossAttackBudget` 收窄到物理可能（闪反上限 = floor(非失衡/2s)），
+   * 同一夹具的驻点**自然落在「莱卡恩弹刀 1」**上（`huntCount > 0` ⇒ 围猎真的产出冰舞行），
+   * 总伤 84.10M → **86.89M**且门已满足。这不是「为解门改交互」——策略里没有任何门相关的分支，
+   * 是搜索在合法空间里找到的更优点。
+   *
+   * ⇒ 本用例改锁**新不变量**：note 不许把「已满足的门」谎报成未满足。
+   * 「门未满足时必须报出来」那条仍由 `lycaonGateAndMirrorBudget.test.ts` 的
+   * 「弹刀 0 ⇒ 门未满足」与下面的反空洞用例锁住（构造态，可独立触发）。
+   */
+  it('★ 旗舰夹具：交付更高伤害，且 note 与 gateMisses 不谎报（已满足的门不报）', async () => {
     const { config } = await setupHarness([{ agentId: '1611' }, { agentId: '1141' }, { agentId: '1211' }],
       { recommendedBuild: true, productionBasicWeights: true })
     const calc = useResourceCalc()
@@ -69,18 +85,19 @@ describe('自动交互报告「机制入场券」未满足', () => {
     const r = applyTimeWeightAllocation({ calc, configStore: config }, INTERACTION_OPTIMUM_STRATEGY_ID)
     expect(r.applied).toBe(true)
     expect(r.damage).toBeGreaterThan(before)
-    // ① 报告：note 里必须点名未启用的机制（旧实现这里一个字都没有）
+    // ① 报告口径：**已满足的门一条都不许报**（谎报未启用同样是不透明，只是方向相反）
     const gateMisses = r.gateMisses ?? []
-    expect(gateMisses.length, '交付状态应报出莱卡恩围猎未启用').toBeGreaterThan(0)
-    const miss = gateMisses.find(m => m.agentId === '1141')!
-    expect(miss).toBeDefined()
-    expect(miss.label).toBe('围猎')
-    expect(miss.field).toBe('parryCount')
-    expect(miss.min).toBe(1)
-    expect(miss.current).toBe(0)
-    expect(r.note).toContain('围猎未启用')
-    // ② 只报告、不改交互：莱卡恩弹刀仍是 0（策略没为了解门而动它）
-    expect(Number(config.team[1]!.parryCount)).toBe(0)
+    const lycaonMiss = gateMisses.find(m => m.agentId === '1141')
+    expect(lycaonMiss, '围猎已启用（弹刀 > 0 且产出了冰舞行）⇒ 不许报未启用').toBeUndefined()
+    // 与结果行同源：门满足 ⇔ 冰舞行存在（capabilityGates.activeOf 的判据）
+    const ly = calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
+    const gateSatisfied = ly.executions.some(e => e.moveId === '1141027')
+    expect(gateSatisfied, '前置：交付态真的产出了围猎行').toBe(true)
+    expect(gateMisses).toHaveLength(0)
+    expect(r.note).not.toContain('围猎未启用')
+    // ② 只报告、不改交互：策略里没有任何「为解门而动交互」的分支 ⇒ 交付的仍是伤害驻点
+    //    （莱卡恩弹刀 = 1 是搜索在合法空间里自己选的，不是被门驱动的）
+    expect(Number(config.team[1]!.parryCount)).toBe(1)
     // ③ 既有判据（伤害不降 / 截断不增）逐位保留
     expect(r.damage).toBe(calc.teamTotalDamage.value)
     expect(r.overflowSeconds).toBeLessThanOrEqual(1e-6)
