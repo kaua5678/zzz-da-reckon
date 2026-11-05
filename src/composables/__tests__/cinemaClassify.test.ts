@@ -20,16 +20,31 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, writeFileSync } from 'node:fs'
 import {
-  CINEMA_CLASSIFY_HEADER, TIER_ORDER, cinemaClassifyRows, formatClassifyTable, loadConstellations,
+  CINEMA_CLASSIFY_HEADER, TIER_ORDER, cinemaClassifyRows, formatClassifyTable, loadConstellations, regenerateDoc,
   type CinemaClassifyRow,
 } from '@/test/cinemaClassify'
 
 const TABLE_URL = new URL('../../../docs/cinema-classification.md', import.meta.url)
 const UPDATE = process.env.CINEMA_CLASSIFY_UPDATE === '1'
 
+/**
+ * `## 全表` 这一节的正文（到下一个 `## ` 为止）。
+ *
+ * 为什么必须切节：`docs/cinema-classification.md` 在表后面还有「为什么用单人夹具 / 28 格归因」等
+ * **口径正文**，里面也有 markdown 表格。不切节的话，本判据会把那些行当成「384 级之外的多余行」
+ * 报出来（2026-11-06 实测：假红 39 条）。
+ */
+function tableSectionOf(markdown: string): string {
+  const start = markdown.indexOf('## 全表')
+  if (start < 0) return markdown
+  const rest = markdown.slice(start + '## 全表'.length)
+  const next = rest.search(/\n## /)
+  return next < 0 ? rest : rest.slice(0, next)
+}
+
 /** 表文件里的 markdown 表格行（以 `| ` 开头且不是表头/分隔行） */
 function tableRowsOf(markdown: string): string[] {
-  return markdown.split('\n').filter(line => (
+  return tableSectionOf(markdown).split('\n').filter(line => (
     line.startsWith('| ')
     && !line.startsWith('| 级 ')
     && !line.startsWith('| **')
@@ -47,8 +62,7 @@ describe('命座分类表：表 == 引擎（384 级全量）', () => {
     const expected = tableRowsOf(rendered)
 
     if (UPDATE) {
-      const header = readFileSync(TABLE_URL, 'utf8').split('## 全表')[0]
-      writeFileSync(TABLE_URL, `${header}## 全表\n\n${rendered}\n`)
+      writeFileSync(TABLE_URL, regenerateDoc(readFileSync(TABLE_URL, 'utf8'), rendered))
       return
     }
 

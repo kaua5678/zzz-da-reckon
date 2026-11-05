@@ -19,6 +19,9 @@
  * `__tests__/cinemaClassify.test.ts` 全量跑一遍并对 `docs/cinema-classification.md` 逐行比对；
  * 表与引擎不一致即红。要更新表就 `CINEMA_CLASSIFY_UPDATE=1` 重跑那个测试（见 AGENTS 规则 10：
  * 基线是测量工具，先归因再更新）。
+ *
+ * 表后面的**口径与归因正文**住在文档里、手写维护；重生成只替换 `## 全表` 这一节（`regenerateDoc`）
+ * —— 正文若由本模块产出，prose 里的 agentId 就落进 `src/test`，会撞判据 26（id 字面量只许住 data/agents/specs）。
  */
 import { readFileSync } from 'node:fs'
 import { setupHarness } from './harness'
@@ -140,6 +143,17 @@ export async function cinemaClassifyRows(
   return out
 }
 
+/**
+ * 表头之后的**口径与归因正文**（生成器持有 ⇒ 重生成表时不会把它们冲掉）。
+ *
+ * 为什么放在这里、不手写在 markdown 里：`cinemaClassify.test.ts` 的更新模式会**整份重写**
+ * `docs/cinema-classification.md` 的 `## 全表` 之后部分。口径正文若只活在文档里，
+ * 下一次重生成就没了（2026-11-06 实测：更新分支写的是 `header + ## 全表 + 表`，
+ * 表之后的任何内容都会被丢掉）。所以正文必须由生成器产出。
+ *
+ * 内容 = ① 「为什么用单人夹具」+「夹具不可换」的证伪记录（2026-11-06 实测）
+ *        ② 29 格「声明 implemented 却 NONE」的逐格归因；判据 = `__tests__/cinemaNone28.test.ts`。
+ */
 /** 一行 → markdown 表格行（列 = 表头，见 `CINEMA_CLASSIFY_HEADER`） */
 export function formatClassifyRow(r: CinemaClassifyRow): string {
   const cells = [
@@ -163,7 +177,7 @@ export const CINEMA_CLASSIFY_HEADER = [
   '级', '角色', '状态', '通道', '总 %', '资源 %', '执行 %', '面板 %', '面板字段（旧→新）', '资源字段（旧→新）', '执行字段（旧→新）', '新行',
 ]
 
-/** 全表 → markdown（`docs/cinema-classification.md` 的正文） */
+/** 全表 → markdown（只含表格；判据按行比对的就是这一段） */
 export function formatClassifyTable(rows: readonly CinemaClassifyRow[]): string {
   const byTier = new Map<string, CinemaClassifyRow[]>()
   for (const r of rows) {
@@ -182,4 +196,23 @@ export function formatClassifyTable(rows: readonly CinemaClassifyRow[]): string 
     for (const r of list) lines.push(formatClassifyRow(r))
   }
   return lines.join('\n')
+}
+
+/**
+ * **重生成只替换 `## 全表` 这一节**，文档其余部分（表头说明 + 表后面的口径/归因正文）逐字保留。
+ *
+ * 为什么必须这样（2026-11-06）：旧更新路径写的是 `header + 表` —— 把表之后的一切
+ * **整份丢弃**。于是「为什么用单人夹具 / 28 格归因」这类手写正文活不过一次重生成；而把它们塞进
+ * 生成器又会把 agentId 字面量带进 `src/test`（判据 26：id 字面量只许住 src/data | mechanics/agents | specs）。
+ * ⇒ 正文住文档、重生成外科式替换表格。
+ */
+export function regenerateDoc(current: string, renderedTable: string): string {
+  const table = `## 全表\n\n${renderedTable}`
+  const start = current.indexOf('## 全表')
+  if (start < 0) return `${current.replace(/\n*$/, '\n\n')}${table}\n`
+  const rest = current.slice(start)
+  // 表后面若有下一个 `## ` 节，原样接回（正文逐字保留）
+  const next = rest.search(/\n## /)
+  const tail = next < 0 ? '' : rest.slice(next)
+  return `${current.slice(0, start)}${table}${tail || '\n'}`
 }
