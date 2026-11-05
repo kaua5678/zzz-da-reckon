@@ -107,10 +107,21 @@ describe('莱卡恩围猎（2.6 潜能激发，后台自动释放；用户口径
     expect(huntIces[0].anomalyBuildUp ?? 0).toBeGreaterThan(0)
     expect(huntIces[0].decibelRecovery ?? 0).toBeGreaterThan(0)
 
-    // 后台跟随闪反：1141019 且 totalTime=0（通用闪反 totalTime=3.6 区分），次数 = 队伍其他角色闪反之和（安比 6）
-    const huntDodge = lycaon.executions.find(e => e.moveId === '1141019' && e.totalTime === 0)
+    /**
+     * 后台跟随闪反：1141019，次数 = 队伍其他角色闪反之和（安比 6）。
+     *
+     * ⚠ **2026-11-04 口径纠正**：旧断言写的是「`totalTime === 0` 用来区分围猎行与通用闪反」——
+     * 那正是**偷渡**（零耗时动作凭空产伤害+失衡）。用户逐字：
+     * 「后台闪反的耗时可能没有标注，你可以**等效前台角色的闪反**，因为他机制是和前台闪反同步」
+     * ⇒ 现在必须有 `actionTime/totalTime`（0.6s/次 × count）。
+     * 与通用闪反的区分改用 `timeBucket === 'backstage'`（这才是围猎行的真实标识）。
+     */
+    const huntDodge = lycaon.executions.find(e => e.moveId === '1141019' && e.timeBucket === 'backstage')
     expect(huntDodge).toBeTruthy()
     expect(huntDodge!.count).toBe(6)
+    // 等效前台同招：1141019 倍率表 actionTime = 0.6s ⇒ 6 次 = 3.6s（不再是 0）
+    expect(huntDodge!.actionTime).toBeCloseTo(0.6, 6)
+    expect(huntDodge!.totalTime).toBeCloseTo(6 * 0.6, 6)
     expect(huntDodge!.anomalyBuildUp ?? 0).toBe(0)
     expect(huntDodge!.decibelRecovery ?? 0).toBe(0)
     expect(huntDodge!.energyRecovery ?? 0).toBe(0)

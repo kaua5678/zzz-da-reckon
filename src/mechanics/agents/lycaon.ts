@@ -393,6 +393,22 @@ export const lycaonMechanic: AgentMechanicModule = {
         moveName: '闪避反击（围猎·后台跟随）',
         category: 'dodge',
         count: mirrorDodge,
+        /**
+         * ## ⚠ **必须标注耗时**（2026-11-04 用户口径，逐字）
+         *
+         * > 「后台闪反的耗时可能没有标注，你可以**等效前台角色的闪反**，因为他机制是和前台闪反同步」
+         *
+         * 修前这一行只有 `count` 没有 `actionTime/totalTime` ⇒ 落到行骨架默认 **0 秒**：
+         * 26 次镜像闪反 = **0 秒动作**，而前台 1611 同招 81 次 = 63.4s。
+         * 后果不是「少算一点」，而是**这套模型允许凭空产生动作**：后台闪反照常产伤害 + 失衡值
+         * （实测 5.92 条失衡），却一秒都不占时间 ⇒ 时间账被绕开，失衡期可以被无限塞进
+         * 「零耗时高失衡」招式，于是浮出 11 次失衡 / 176s 占满 180s 那种读数。
+         *
+         * 口径 = **等效前台同招**：同一张倍率表（1141019 = 0.6s/次），因为原文是「同步发动」——
+         * 前台打一次闪反，后台就同拍打一次，单次时长与前台完全一致。
+         */
+        actionTime: DODGE_ACTION_TIME,
+        totalTime: mirrorDodge * DODGE_ACTION_TIME,
         decibelRecovery: 0, // 显式 0：后台招式仅伤害+失衡值（enrich 尊重显式 0）
         totalDecibelRecovery: 0,
         ...ENERGY_RECOVERY_OFF,
@@ -400,7 +416,7 @@ export const lycaonMechanic: AgentMechanicModule = {
         // CC-392 D1：次数 = 队友闪反次数之和。理想口径是跟随队友闪反的轴内占比，但队友不固定、attachedEvents 是静态表
         // 登记不了 ⇒ 近似按失衡时间占比（autoSplitByStun）。若日后 attachedEvents 支持按类别 / 跨槽父动作，改登记并删此标记。
         autoSplitByStun: true,
-        skillTableNote: `围猎后台跟随闪反 × ${mirrorDodge} 次（队友闪反 ${backstageDodgeCount} 次；受围猎窗口 ${huntActiveSeconds}s / 每次 ${DODGE_ACTION_TIME}s 约束，上限 ${mirrorDodgeCap} 次）；仅伤害+失衡值（吃核心被动闪反失衡+80%）`,
+        skillTableNote: `围猎后台跟随闪反 × ${mirrorDodge} 次 × ${DODGE_ACTION_TIME}s = ${(mirrorDodge * DODGE_ACTION_TIME).toFixed(1)}s（队友闪反 ${backstageDodgeCount} 次；受围猎窗口 ${huntActiveSeconds}s 约束，上限 ${mirrorDodgeCap} 次）；仅伤害+失衡值（吃核心被动闪反失衡+80%）`,
         timeBucket: 'backstage',
       }))
     }
