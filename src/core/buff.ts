@@ -307,6 +307,8 @@ function getAccumState(panel: PanelValues, stat: AccumStat): StatAccumState {
  * 已有的相位键同名同义——它们本来就是「本相位累计的加成量」，此前只做加法输入、没有可读出口。
  * 这是**纯附加**：合成值算式一字未改，任何读 `panel.def` 的地方行为不变。
  */
+// @fact engine:属性面板/两阶段 口径: 面板最终值 = 局内 = 局外 × (1 + Σ局内%) + Σ局内固定，其中 局外 = 白值(人物白值+武器白值) × (1 + Σ局外%) + Σ局外固定；括号位置即语义 —— Σ局外固定 与 白值×(1+Σ局外%) 同在 ×(1+Σ局内%) 内侧，故局外固定同样吃局内%（实测 1321 C2：局外 1245.759 = 929.759 + 316，局内 = 1245.759 × 1.35 = 1681.774，增量 436.016 == 0.35 × 1245.759）。hp/def/impact 与 atk 同式同函数 | 据 用户@2026-11-06 | 验 src/mechanics/__tests__/statZone.test.ts | 锚 src/core/buff.ts#recalcAccumStat | 信 确认
+// ⟳复核: 游戏改版导致「局外固定是否仍吃局内%」的口径变化，或 catalog 效果的 basis 字段开始被引擎读取时，复核本式与 mechanics/statZone 的增量兑现 | 到期 2027-06-30
 function recalcAccumStat(panel: PanelValues, stat: AccumStat, state: StatAccumState): void {
   // 同一批次内：先汇总百分比，再统一乘入，最后加固定值。
   // 例如：最终局内攻击 = 局外攻击 × (1 + Σ局内大攻击) + Σ局内小攻击。
