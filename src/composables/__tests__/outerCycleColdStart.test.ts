@@ -100,10 +100,22 @@ describe('外层不动点：2-循环判据要求环成员已稳态', () => {
      *   只有 C1 full 这两条漏了 ⇒ 属「同一次漂移只对齐了一半」。
      * · 判据形状未放宽：`zhaoyingForms = 5`、整数、分项闭合、照影=`floor(剑势/6)` 全部一字未改。
      */
-    expect(cycle!.totalForms, `实测 ${cycle!.totalForms}`).toBe(11)
-    // 1 命 +6 局外剑势（进场）但全满轴下剑势 35.89 差 0.11 点到第 6 次照影 ⇒ 仍 5 次
-    // （第 11 次要靠短轴省时把剑势抬到 37.6+，见下一条用例）
-    expect(cycle!.zhaoyingForms).toBe(5)
+    /**
+     * ⚠ **2026-11-06 锚值 11 → 10、照影 5 → 4**（规则 10 四步；与下方「C1 全满轴」同根因）。
+     * ① 量 delta：分项 `喧响 2 + 转大 4 + 照影 4 = 10`（闭合仍成立，整数仍成立，`stable` 仍成立）；
+     *    剑势 30.004 → **30.662**。
+     * ② 根因：**`2104eac5`（环退出搜索上界只回答物理问题 + 复用环成员要核计划输入）**——本队外层
+     *    选中的失衡次数 K 变了（`floor(effTime/W)` 取代 `ceil((eff−necUsed)/W)`，且可行性逐候选实测）
+     *    ⇒ 时间账重排 ⇒ 实数期照影落到 4.x ⇒ 终局整数化（CC-160：实数期 floor 一次后冻结）定在 **4**。
+     *    ⚠ 剑势 30.662 本身够 5 次（30.662/6 = 5.11）：照影**不是** `floor(剑势/6)` 的恒等式 ——
+     *    它是 CC-160 冻结值，余数只因整数态重推把剑势抬高才超过 6。C0 三轴那条判据仍成立。
+     * ③ 确认有意：`2104eac5` 是用户口径下的正确性修复（旧上界把 nec 当常量 ⇒ 选错 K，见该提交说明）；
+     *    本条判据形状（整数 / 分项闭合 / `stable` / 外层真收敛）一字未改。
+     * ④ 处置 = 只改两项锚值。
+     */
+    expect(cycle!.totalForms, `实测 ${cycle!.totalForms}`).toBe(10)
+    // 1 命 +6 局外剑势（进场）；全满轴下实数期照影 4.x ⇒ 冻结 4（第 5 次要靠短轴省时，见下一条用例）
+    expect(cycle!.zhaoyingForms).toBe(4)
     void config
   }, 300_000)
 })
@@ -240,9 +252,9 @@ describe('终局整数化：照影是离散触发，余数剑势留着不打', (
       return readCycle(useResourceCalc())
     })()
     expect(full.exit).toBe('stable')
-    // 2026-10-26：10 → 11（与本文件 axis=1/2 现值一致；分项闭合 2+4+5=11，照影仍 5）
-    expect(full.cycle!.totalForms, 'C1 全满轴：照影 5').toBe(11)
-    expect(full.cycle!.zhaoyingForms).toBe(5)
+    // 2026-11-06：11 → 10（同上方 C1 用例；根因 2104eac5 的 K 选择，分项闭合 2+4+4=10）
+    expect(full.cycle!.totalForms, 'C1 全满轴：照影 4（CC-160 冻结值，剑势 30.662 够 5 次）').toBe(10)
+    expect(full.cycle!.zhaoyingForms).toBe(4)
 
     for (const axis of [1, 2]) {
       const { config } = await setupYsgTeam(1, 0)
