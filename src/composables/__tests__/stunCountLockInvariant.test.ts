@@ -19,7 +19,7 @@
  * | A | 锁 N ⇒ **池次数 = N** 且 **`plannedStunCount` = N**（两个独立消费者同口径） | 池不钉锁定值（CC-300 前行为）⇒ 夹具当场红（可琳锁 3 报池 5 / 叶瞬光报池 2） |
  * | B | 锁 N ⇒ **不降配 / 不轴退化**（`interactionScale === undefined`、`axisFallback === false`） | 闸门失效 ⇒ 红（可琳锁 3 掉 `scale=0.5`、叶瞬光掉 `0.0625`） |
  * | C | 锁 N ⇒ 同 store 连算两次 / 全新 store 再算一次，**三者逐位相同**（= 出处要求的「A 前后输出逐位相同」） | 模块级可变状态 / 跨调用 cfg 残留 / 两条独立调用口径分裂 |
- * | D | **反空洞**：同队的**解锁态**必须处于降配态 ⇒ B 不是空断言 | 夹具换成「本来就不降配」的队 ⇒ D 红 |
+ * | D | **反空洞**：`downscales` 夹具的**解锁态**必须处于降配态 ⇒ B 不是空断言（且集合 ≥ 4） | 夹具换成「本来就不降配」的队 ⇒ D 红 |
  * | E | **源码锁**：退化/降配闸门必须读 `lockedStunCount < 0`、池必须钉 `countStun`，且降配搜索主体不得被删 | 闸门改 `true` ⇒ 源码锁红 |
  * | F | **多档**：同队锁 3 / 锁 4 两档都不得降配或退化（漏闸门只漏一档也会现形） | 只在某些锁值上漏闸门 |
  *
@@ -52,14 +52,31 @@ import { setCalcOutputMemoEnabled, useResourceCalc } from '@/composables/useReso
 /**
  * 锁定夹具。`heavy` = 手填交互加码（弹 20 / 闪 30）⇒ 结构性溢出。
  * 覆盖四类动力学：正反馈连续通道（1051）、链数实数化（1531）、轮数实数化（1431）、定点迭代（1591/1631）。
+ *
+ * ## ⚠ 2026-11-06：`downscales` 是**实测位**，不再是 `heavy` 的推论
+ *
+ * 成因 = `c4c831bb` + `576a6268` 的 **Boss 出手预算**（`core/bossAttackBudget.ts`）：引擎在进
+ * `characters.map` 之前就按「全队池 floor(非失衡/3) + 单人上限 floor(非失衡/4)」**按比例兑现**交互次数
+ * ⇒「手填 50 次交互 ⇒ 净占用超预算 ⇒ 降配搜索」这条因果链断了：重填不再是结构性能溢出的来源
+ * （引擎先把次数夹进物理可行域，`overBudget()` 再也看不到它）。
+ *
+ * 实测（2026-11-06，全库 105 预设 × 弹20/闪30）：交互加码**拉到 80/120 也不降配**的可琳 1061 /
+ * 莱卡恩 1141 / 伊德海莉 1051+1141+1451 三队 ⇒「再加重交互负荷」这条路**已被证伪**（不是没试过）。
+ * 但降配搜索本身活着：同口径下仍有 **51 队**落 `interactionScale`。⇒ 反空洞判据 D 按**实测换队**（判据一字未改），
+ * 原三队仍留作锁语义夹具（A/B/C/F），覆盖面只增不减。
  */
-const LOCK_FIXTURES: Array<{ name: string; team: string[]; lock: number; heavy: boolean }> = [
+const LOCK_FIXTURES: Array<{ name: string; team: string[]; lock: number; heavy: boolean; downscales?: boolean }> = [
+  // ── 锁语义夹具（A/B/C/F）：历史症状队 + 两条轻队。A/B/C/F 的判据不依赖「解锁态是否真降配」
   { name: '可琳 1061（历史症状队）', team: ['1061', '1141', '1011'], lock: 3, heavy: true },
   { name: '莱卡恩 1141（历史症状队）', team: ['1141', '1011', '1191'], lock: 4, heavy: true },
-  { name: '叶瞬光 1431 簇（结构性溢出最重）', team: ['1431', '1481', '1491'], lock: 3, heavy: true },
   { name: '伊德海莉 1051（连续强特通道）', team: ['1051', '1141', '1451'], lock: 4, heavy: true },
   { name: '希格莉德 1591（定点迭代）', team: ['1591', '1481', '1311'], lock: 3, heavy: false },
   { name: '仪玄 1371（净失衡缩放）', team: ['1371', '1481', '1451'], lock: 3, heavy: false },
+  // ── 降配夹具（D）：`downscales: true` = 实测解锁态确实落 interactionScale（2026-11-06 全库扫描）
+  { name: '叶瞬光 1431 簇（结构性溢出最重，实测 0.125）', team: ['1431', '1481', '1491'], lock: 3, heavy: true, downscales: true },
+  { name: '叶瞬光 1431+耀嘉音（轮数实数化旁支，实测 0.25）', team: ['1431', '1491', '1311'], lock: 3, heavy: true, downscales: true },
+  { name: '比利 1531+扳机（链数实数化，实测 0.25）', team: ['1531', '1361', '1451'], lock: 3, heavy: true, downscales: true },
+  { name: '希格莉德 1591+琉音（定点迭代，实测 0.2）', team: ['1591', '1481', '1211'], lock: 3, heavy: true, downscales: true },
 ]
 
 const enc = (v: unknown) => JSON.stringify(v, (_k, x) =>
@@ -158,14 +175,19 @@ describe('锁定队逐位相同（坑 19 前置：stunCountLock ≥ 0 ⇒ 用户
   }, 900_000)
 
   /**
-   * D：**反空洞**——`heavy` 夹具的**解锁态**必须处于降配态，否则 B 是空断言。
-   * 实测解锁态降配档（2026-10-10，隔离 worktree）：可琳 0.375 / 莱卡恩 0.375 / 叶瞬光 0.125 /
-   * 伊德海莉 0.5。两支 `heavy=false`（希格莉德 / 仪玄）本就不降配 ⇒ 只对 `heavy` 要求。
+   * D：**反空洞**——标了 `downscales` 的夹具，**解锁态**必须处于降配态，否则 B 是空断言。
+   *
+   * ⚠ 2026-11-06：判据（「解锁态 ⇒ `interactionScale !== undefined`」）**一字未改**，改的只是夹具，
+   * 且方向是**收紧**：① 标记从 `heavy` 的推论变成**实测位**（`downscales`）；② 新增集合基数下限
+   * （< 4 ⇒ 直接红，防「夹具被悄悄删空 ⇒ D 恒真」）。成因见 `LOCK_FIXTURES` 头注释。
+   * 实测降配档（2026-11-06，弹20/闪30 + `loadBuildRecommendations` 同本文件口径）：叶瞬光簇 0.125 /
+   * 1431+1491+1311 0.25 / 1531+1361+1451 0.25 / 1591+1481+1211 0.3。
    */
-  it('D 反空洞：heavy 夹具的解锁态必须处于降配态（否则判据 B 是空断言）', async () => {
+  it('D 反空洞：降配夹具的解锁态必须处于降配态（否则判据 B 是空断言）', async () => {
+    const targets = LOCK_FIXTURES.filter(f => f.downscales === true)
+    expect(targets.length, '降配夹具集合退化成空/缩水 ⇒ D 会变成恒真判据').toBeGreaterThanOrEqual(4)
     const vacuous: string[] = []
-    for (const f of LOCK_FIXTURES) {
-      if (!f.heavy) continue
+    for (const f of targets) {
       const { rr } = await withLock(f, -1)
       if (rr.convergence?.interactionScale === undefined) {
         vacuous.push(`${f.name}（解锁态未降配 ⇒ 锁它证明不了什么，换更重的交互加码或换队）`)

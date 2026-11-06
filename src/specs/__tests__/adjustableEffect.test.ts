@@ -269,6 +269,14 @@ describe('spec adjustable（Form-E）第二批：链式/严格线性', () => {
     for (const rate of [0, 0.5, 1, 2]) {
       const { char, resourceResult, gain } = await readSpecGainState(
         id, 'sigrid_lance_opportunity', 'sigrid_hit_opportunity_gain', ['1011', '1211'], rate,
+        /**
+         * ⚠ **2026-11-06 夹具加码（判据未动）**：`6efc333c` 把希格莉德影画1 敛枪式的自指返还改掉
+         * （1.56× → 1.33×，用户裁决）⇒ 同一 `rate` 下的请求命中数下降，**高档不再截断**
+         * （实测 RICH 8/12：rate=2 时 cutHits 8 → **0**）⇒ 判据「高档须覆盖截断前/后口径」变空。
+         * 处置 = 提高交互负荷把时间压力加回来（弹 20 / 闪 30，实测 rate=2：kept 28 + cut **8**），
+         * 三条断言（`hits>0` / `gain == hits×rate` / `cut>0`）一字未改。
+         */
+        { extra: { parryCount: 20, dodgeCounterCount: 30 } },
       )
       expect(char, `rate=${rate}: 必须有角色结果`).toBeTruthy()
       const keptHits = char!.executions
