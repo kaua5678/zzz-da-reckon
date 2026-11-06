@@ -134,8 +134,10 @@ describe('集成快照：雨果 0 命轴（坑36 修复后冻结）', () => {
     const rows = (calc.damagePoolRows.value ?? []) as DamagePoolRow[]
     const verdict = rows.find(r => r.moveId === '1291_ex_verdict_final')
     const normal = rows.find(r => r.moveId === '1291_ex_normal_final')
-    // ⚠ 2026-10-28 锚值 5→11：轴模式残差分摊删除 ⇒ 池如实升到 11 窗（同 hugoVerdictLanding）。
-    expect(verdict?.count).toBe(11) // 坑36 修复：轴栈同源
+    // ⚠ 2026-11-06 锚值 11 → 10：同队槽2 = 1161 莱特，6efc333c 把「喷发耗士气冲击 +20%」从整块 ×1.2
+    // 改成「局外基数 ×20% 的增量」⇒ 面板冲击 291.81→282.08 ⇒ 失衡蓄积降 ⇒ 池窗口 11→10。
+    // 同源判据（本行 count == hugoVerdictLanding 的 stackVerdict）与下方易伤口径一字未改。
+    expect(verdict?.count).toBe(10) // 坑36 修复：轴栈同源
     expect(rowAppliedStunMultOf(verdict ?? {}, p)).toBeCloseTo(2.1, 3)
     expect(rowAppliedStunMultOf(normal ?? {}, p)).toBeCloseTo(1.0, 3)
     const s = computeStunVulnSummary(

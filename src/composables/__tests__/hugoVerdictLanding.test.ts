@@ -41,16 +41,26 @@ describe('雨果决算轴内块数落地（坑36 回归）', () => {
     // 轴栈 executed 是「轴认领块数 × 窗口数」的展示/归因源（stunPoolResult.stunCount = 池整数）
     const stackExec = (calc.stackTraversalResult.value as { executed?: Record<string, { count: number }> } | null)?.executed
     const stackVerdict = stackExec?.[`0:${HUGO_EX_VERDICT_MOVE_ID}`]?.count ?? 0
-    // ⚠ 2026-10-28 锚值 5→11：轴模式残差分摊通道删除（非轴行失衡不再被窗占比扣）⇒ 池如实升到 11 窗。
-    // 同源判据（下行 verdictRow == stackVerdict）不受影响。
-    expect(stackVerdict).toBe(11)
+    /**
+     * ⚠ **2026-11-06 锚值 11 → 10**（规则 10 四步）。
+     * ① 量 delta：`stackVerdict` / `poolCount` / 资源行三者同步 11 → **10**（同源等式 `pool == stack == row`
+     *    一字未改，仍逐位成立）。
+     * ② 根因：**`6efc333c`「属性乘区唯一写入口」**——本队槽2 是 1161 莱特，他的「喷发耗士气冲击 +20%」
+     *    从「整块局内冲击力 ×1.2」改成「局外基数 ×20% 的增量」（`statZone#applyInCombatPct`）⇒
+     *    面板冲击 291.81 → **282.08**（−9.73 = 局内固定 48.632 × 20%）。冲击力降 ⇒ 失衡蓄积降 ⇒
+     *    池窗口 11 → 10。
+     * ③ 确认有意：用户 2026-11-06 逐字口径「一切属性都是在自己的乘区影响总属性」；旧写法把「局内
+     *    固定加成」也乘了百分比，是本条订正要消掉的误差。判据形状（同源 / 守恒）一条未动。
+     * ④ 处置 = 只改锚值。
+     */
+    expect(stackVerdict).toBe(10)
 
     // 资源池执行行必须与轴栈同源一致（坑36：实测 1 vs 5）
     const execs = calc.resourceResult.value?.characters?.[0]?.executions ?? []
     const verdictRow = execs.find(e => e.moveId === HUGO_EX_VERDICT_MOVE_ID)
     expect(verdictRow?.count ?? 0).toBe(stackVerdict)
-    // ⚠ 2026-10-28 锚值 5→11（同上行 stackVerdict）：同源等式仍逐位成立。
-    expect(verdictRow?.count ?? 0).toBe(11)
+    // 2026-11-06：与上行 stackVerdict 同锚 11 → 10（同一根因，见上）；同源等式仍逐位成立。
+    expect(verdictRow?.count ?? 0).toBe(10)
 
     // 守恒：强特总数 = 决算 + 普通终结（模块内 cycle 口径）
     const exSpecial = execs.find(e => e.moveId === HUGO_EX_OPEN_MOVE_ID)?.count ?? 0

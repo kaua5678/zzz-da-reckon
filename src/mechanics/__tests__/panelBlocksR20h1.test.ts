@@ -153,16 +153,29 @@ describe('A7 「11号」（1041）燎原火伤块迁入 soldier11', () => {
 
 // ---------------------------------------------------------------- A8 伊芙琳 1321（最高风险：乘法位置敏感）
 
-describe('A8 伊芙琳（1321）影画2 攻%块迁入 evelyn（乘法、位置敏感）', () => {
-  it('0/1 命 → 2 命：atk 取整乘法精确值（迁移前后逐位相同）', async () => {
-    const c0 = await panelOf([{ agentId: '1321' }, { agentId: '1011' }], 0)
-    const c2 = await panelOf([{ agentId: '1321', cinemaLevel: 2 }, { agentId: '1011' }], 0)
-    const c6 = await panelOf([{ agentId: '1321', cinemaLevel: 6 }, { agentId: '1011' }], 0)
-    // ★ 本批最高风险项：迁移前 HEAD 指纹 = 1494.9103200000002 → Math.round(×1.15) = 1719
+describe('A8 伊芙琳（1321）影画2 攻%块迁入 evelyn（局内百分比乘区）', () => {
+  it('0/1 命 → 2 命：增量 == 局外总攻击 × 15%（不是对局内值再乘一遍）', async () => {
+    /**
+     * ⚠ **2026-11-06 口径订正（6efc333c）**：影画2 走 mechanics/statZone.ts#applyInCombatPct ——
+     * 「自身攻击力 +15%」进**局内百分比乘区**，兑现成「**局外总攻击** × 15%」的增量。
+     *
+     * 修前实现是 Math.round(panel.atk * (1 + 0.15))，基数取**已合并的局内值**（含局内固定加成）
+     * ⇒ 旧指纹 1719 比正确值虚高 32.50。零命局内指纹 1494.9103200000002 **未变**（本块只门控
+     * cinema >= 2）⇒ 它仍是口径外的干净锚点，保留。
+     */
+    const phasesOf = async (cinemaLevel?: number) => {
+      const { catalog, config } = await setupHarness([{ agentId: '1321', ...(cinemaLevel ? { cinemaLevel } : {}) }, { agentId: '1011' }])
+      return computePanelPhases(0, config, catalog)!
+    }
+    const c0 = (await phasesOf()).inCombat as unknown as Record<string, number>
+    const ph2 = await phasesOf(2)
+    const c2 = ph2.inCombat as unknown as Record<string, number>
+    const c6 = (await phasesOf(6)).inCombat as unknown as Record<string, number>
     expect(c0.atk).toBe(1494.9103200000002)
-    expect(c2.atk).toBe(1719)
-    // 算式逐位钉住：Math.round(0命基数 × (1 + 0.15))，不是 ×1.15 的近似，也不是先加后乘
-    expect(c2.atk).toBe(Math.round(c0.atk * (1 + 0.15)))
+    // 算式钉住：增量 = 局外总攻击 × 15%（与 applyInCombatPct 同式，不是 ×1.15 的近似）
+    expect(c2.atk - c0.atk).toBeCloseTo((ph2.outOfCombat as unknown as Record<string, number>).atk * 0.15, 9)
+    // 反证：旧写法（对局内值再乘）必须偏离，否则本条退化成空断言
+    expect(c2.atk).not.toBe(Math.round(c0.atk * (1 + 0.15)))
     // 边界：2 命起才生效，6 命不再叠（本块只按 cinema >= 2 门控）
     expect(c6.atk).toBe(c2.atk)
   })
@@ -296,8 +309,9 @@ describe('R20-h1 交叉隔离：同队多块各按自己门控生效', () => {
     // 槽0 = 1531 C4：critDmg 156（核心 90 + C4 16 + 基数 50）、物抗无视 18 全部只落自己槽
     expect(s0.critDmg).toBe(156)
     expect(s0.enemyPhysicalResReduction).toBe(18)
-    // 槽1 = 1321 C2：atk 是取整乘法结果（1719），**不吃** 1531 的物抗无视
-    expect(s1.atk).toBe(1719)
+    // 槽1 = 1321 C2：atk = 零命局内 1494.9103200000002 + 局外 1245.7586 × 15% = 1681.7741100000003
+    // （局内百分比乘区，见本文件 A8 用例；旧指纹 1719 是「对局内值再乘」的错口径产物，已作废）
+    expect(s1.atk).toBe(1681.7741100000003)
     expect(s1.enemyPhysicalResReduction ?? 0).toBe(0)
     // 槽2 = 1481 C4：atk 含 500 折算（1789.04），只有琉音自己面板带 bonus 字段
     expect(s2.atk).toBe(1789.04)
@@ -318,12 +332,12 @@ describe('R20-h1 交叉隔离：同队多块各按自己门控生效', () => {
     expect(s0.critDmg).toBe(156)
     expect(s0.enemyPhysicalResReduction).toBe(18)
     // 1321 的 atk 只由自己的块决定（1531 的块不写 atk）
-    expect(s1.atk).toBe(1719)
+    expect(s1.atk).toBe(1681.7741100000003)
     // 把 A6 的滑块清零：A6 项真 0，A8 的槽1 atk 不受任何影响
     const z = await panelOf(team, 0, { '1531.driveSuppressionCritDmgCoverage': 0, '1531.c4CritDmgCoverage': 0, '1531.c1ResIgnoreCoverage': 0 })
     expect(z.critDmg).toBe(50)
     expect(z.enemyPhysicalResReduction ?? 0).toBe(0)
     const s1b = await panelOf(team, 1, { '1531.driveSuppressionCritDmgCoverage': 0 })
-    expect(s1b.atk).toBe(1719)
+    expect(s1b.atk).toBe(1681.7741100000003)
   })
 })

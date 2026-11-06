@@ -22,13 +22,24 @@ async function setup(team: Array<{ agentId: string; cinemaLevel: number }>) {
 }
 
 describe('伊芙琳（1321）影画2 赴火之舞：攻击力 +15%', () => {
-  it('命座差分：1命 → 2命，攻击力 ×1.15', async () => {
+  it('命座差分：1命 → 2命，攻击力 += 局外总攻击 ×15%（局内百分比乘区）', async () => {
     const { catalog, config } = await setup([{ agentId: '1321', cinemaLevel: 1 }])
     const { computePanelPhases } = await import('@/composables/resourceCalc/panelPhases')
     const p1 = computePanelPhases(0, config, catalog)!.inCombat as any
     config.team[0].cinemaLevel = 2
-    const p2 = computePanelPhases(0, config, catalog)!.inCombat as any
-    expect(p2.atk).toBe(Math.round(p1.atk * 1.15))
+    const phases2 = computePanelPhases(0, config, catalog)!
+    const p2 = phases2.inCombat as any
+    /**
+     * ⚠ **2026-11-06 口径订正（6efc333c）**：影画2「自身攻击力 +15%」是**局内百分比乘区**
+     * （mechanics/statZone.ts#applyInCombatPct），按「局外 = 基础白值 + 驱动盘 + 音擎」当基数兑现增量。
+     *
+     * 修前写法 Math.round(p1.atk * 1.15) 拿**已合并的局内值**当基数 ⇒ 把「局内固定加成」也乘了 15%。
+     * 定向夹具实测（本文件槽位）：局内 1829.60 / 局外 1789.85 ⇒ 旧值 2104（虚高 45.96），新值 2058.33。
+     * 判据形状不变（命座差分 + 逐位），变的是**基数**口径。
+     */
+    expect(p2.atk - p1.atk).toBeCloseTo((phases2.outOfCombat as any).atk * 0.15, 9)
+    // 反证：旧写法（对局内值再乘一遍）必须偏离，否则本条退化成空断言
+    expect(p2.atk).not.toBe(Math.round(p1.atk * 1.15))
   })
 
   it('防死数据：0/1命时无攻击力加成', async () => {

@@ -95,8 +95,13 @@ describe('奥菲丝（1301）追加攻击 tag 与定向增伤', () => {
     config.syncTeammateBuffsFromTeam()
     const phases2 = computePanelPhases(0, config, catalog)!
     const p2 = phases2.inCombat as any
-    // 影画2 按面板攻击乘20%近似（velina 先例）
-    expect(p2.atk - p1.atk).toBeCloseTo(p1.atk * 0.2, 0)
+    /**
+     * ⚠ **2026-11-06 口径订正（6efc333c）**：影画2 攻击 +20% 进**局内百分比乘区**
+     * （statZone#applyInCombatPct）⇒ 增量 = **局外总攻击** × 20%。
+     * 修前写成 p1.atk * 0.2（对已合并的局内值再乘）⇒ 把局内固定加成也乘进去：
+     * 实测旧式 305.16 vs 正确 249.16（差 56.00 = 局内固定 280.00 × 20%）。
+     */
+    expect(p2.atk - p1.atk).toBeCloseTo((phases2.outOfCombat as any).atk * 0.2, 9)
 
     config.team[0].cinemaLevel = 4
     config.syncTeammateBuffsFromTeam()
