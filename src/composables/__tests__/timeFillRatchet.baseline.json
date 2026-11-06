@@ -125,7 +125,7 @@
   "slack": 0,
   "over": 0,
   "stun": 2,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1171-1561-1411": {
   "slack": 0.7,
@@ -239,7 +239,7 @@
   "slack": 0,
   "over": 0,
   "stun": 1,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1431-1341-1031": {
   "slack": 0,
@@ -281,7 +281,7 @@
   "slack": 0,
   "over": 0,
   "stun": 1,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1461-1031-1521": {
   "slack": 0,
@@ -320,10 +320,10 @@
   "outerExit": "stable"
  },
  "auto-1501-1561-1411": {
-  "slack": 3,
+  "slack": 1,
   "over": 0,
   "stun": 2,
-  "outerExit": "stable"
+  "outerExit": "cycle"
  },
  "auto-1501-1581-1561": {
   "slack": 0,
