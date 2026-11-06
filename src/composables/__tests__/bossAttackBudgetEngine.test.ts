@@ -4,7 +4,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { applyTeamToStore } from '@/composables/teamCompare'
 import { teamPresets } from '@/data/teamPresets'
 import { clearDifficultyLevers } from '@/composables/difficultyLadder'
-import { bossAttackBudget } from '@/core/bossAttackBudget'
+import { bossAttackBudget, bossAttackPerSlotBudget } from '@/core/bossAttackBudget'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 
 /**
@@ -41,10 +41,18 @@ describe('引擎按时间账推导交互上限（不是判据）', () => {
      */
     const plannedStunCount = rr.plannedStunCount
     const stunSeconds = Math.min(eff, plannedStunCount * W)
-    const budget = bossAttackBudget(eff - stunSeconds)
+    const nonStun = eff - stunSeconds
+    /**
+     * ⚠ 2026-11-06 起有**两条尺**：全队池 floor(非失衡/3) 与单人 floor(非失衡/4)。
+     * 本队只压槽0一个槽 ⇒ 生效的是 **min(两者)**。读同一个 `core/bossAttackBudget`，不另造尺。
+     */
+    const teamBudget = bossAttackBudget(nonStun)
+    const slotBudget = bossAttackPerSlotBudget(nonStun)
+    const budget = Math.min(teamBudget, slotBudget)
     const s0 = rr.characters.find(c => c.slot === 0)!
     const dodgeRow = s0.executions.find(e => e.category === 'dodge')
-    return { config, calc, rr, pool, eff, W, stunSeconds, budget, delivered: dodgeRow?.count ?? 0 }
+    return { config, calc, rr, pool, eff, W, stunSeconds, budget, teamBudget, slotBudget, nonStun,
+      delivered: dodgeRow?.count ?? 0 }
   }
 
   it('★ 闪反填 81 ⇒ 引擎只兑现 ≤ 预算（不再打出 63.4s 的闪反）', async () => {
@@ -52,6 +60,8 @@ describe('引擎按时间账推导交互上限（不是判据）', () => {
     expect(m.budget, '前置：本夹具的预算必须真的小于 81（否则测不到夹取）').toBeLessThan(81)
     expect(m.delivered, '引擎兑现的闪反次数不得超过 boss 出手预算').toBeLessThanOrEqual(m.budget + 1e-9)
     expect(m.delivered).toBeLessThan(81)
+    // 2026-11-06 口径：单槽场景下生效的是「单人 /4」（它恒 ≤ 全队 /3）
+    expect(m.slotBudget).toBeLessThanOrEqual(m.teamBudget)
     // 推导而非判据：计算照常完成、不抛错、不返回非法值
     expect(Number.isFinite(m.calc.teamTotalDamage.value)).toBe(true)
     expect(m.rr.convergence.timeTruncatedSeconds ?? 0).toBeLessThanOrEqual(1)

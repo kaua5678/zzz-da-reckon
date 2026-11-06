@@ -33,23 +33,27 @@ describe('计算失真提示 · 端到端（只提示不拦）', () => {
   it('★ 填 99 ⇒ 快照上出现提示，且点名「填了 99 / 预算 N / 兑现 M」', async () => {
     const { calc, snap } = await snapshotWith(99)
     expect(snap, '前置：快照必须构造成功').not.toBeNull()
-    const n = bossAttackBudgetNoticeOfSnapshot(snap!)
-    expect(n.show, '填 99 应触发计算失真提示').toBe(true)
-    const dodge = n.misses.find(m => m.field === 'dodgeCounterCount')!
-    expect(dodge).toBeDefined()
-    expect(dodge.requested).toBe(99)
-    expect(dodge.delivered, '提示报的兑现量 = 引擎兑现量（不是另一把尺算的数）').toBe(dodge.budget)
-    expect(dodge.delivered).toBeLessThan(99)
-    expect(n.detail).toContain('99')
+    const notice = bossAttackBudgetNoticeOfSnapshot(snap!)
+    expect(notice.show, '填 99 应触发计算失真提示').toBe(true)
+    const m0 = notice.misses.find(x => x.slot === 0)!
+    expect(m0).toBeDefined()
+    // 该槽还有 parryCount = 1 ⇒ 两字段**合并计数** 99 + 1 = 100（2026-11-06 新口径）
+    expect(m0.requestedTotal).toBe(100)
+    expect(m0.requested.dodgeCounterCount).toBe(99)
+    expect(m0.requested.parryCount).toBe(1)
+    expect(m0.deliveredTotal, '被削到单人上限（非失衡/4）').toBe(m0.perSlotBudget)
+    expect(m0.deliveredTotal).toBeLessThan(99)
+    expect(notice.detail).toContain('99')
     /**
      * ★ **提示与引擎同源**（2026-11-05 缺陷的端到端锁）：引擎实际打出的闪反行次数必须等于
      * 提示里报的「实际兑现 N 次」。修前提示按覆盖率算 58、引擎按计划 K 兑现 66 ⇒ 页面自相矛盾。
      */
     const rr = calc.resourceResult.value!
-    const dodgeRows = rr.characters.find(c => c.slot === 0)!.executions.filter(e => e.category === 'dodge')
-    const engineDelivered = dodgeRows.reduce((a, e) => a + e.count, 0)
-    expect(engineDelivered, '前置：引擎真的兑现了（否则本条测不到）').toBeGreaterThan(0)
-    expect(dodge.delivered, '提示的「实际兑现」必须等于结果页那一行的次数').toBe(engineDelivered)
+    // 该槽的闪反兑现（逐 dodge 行相加；槽位号 ≠ 下标 ⇒ 用 find(slot)，见 AGENTS §2）
+    const slot0 = rr.characters.find(c => c.slot === 0)!
+    const engineDodge = slot0.executions.filter(e => e.category === 'dodge').reduce((a, e) => a + e.count, 0)
+    expect(engineDodge, '前置：引擎真的兑现了（否则本条测不到）').toBeGreaterThan(0)
+    expect(m0.delivered.dodgeCounterCount, '提示的「实际兑现」必须等于结果页那一行的次数').toBe(engineDodge)
   }, 900000)
 
   it('★ 只提示不拦：计算照常完成（有结果、伤害有限、无截断爆炸）', async () => {

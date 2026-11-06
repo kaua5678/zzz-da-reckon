@@ -43,7 +43,7 @@ import { DOWNSCALED_INTERACTION_FIELDS, downscaleInteractionCount } from './feas
 import type { CalcRoundThreads, PostRoundInput } from './roundThreads'
 import { computeParrySplit, BOSS_SPECIAL_PARRY_DIVISOR } from '@/core/parrySplit'
 import { projectStunPlanForCounts } from '@/core/stunPlanProjection'
-import { BOSS_ATTACK_LIMITED_FIELDS, bossAttackBudget, capToBossAttackBudget, nonStunSeconds } from '@/core/bossAttackBudget'
+import { BOSS_ATTACK_LIMITED_FIELDS, allocateBossAttackBudget, nonStunSeconds } from '@/core/bossAttackBudget'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { calcStunAxisStack, allocateAxisWindows, type ExecutedMoveCount, type StackAxisInput, type StackSequenceEntry } from '@/core/stunAxisStack'
 import type { AxisSequenceEntry } from '@/types/resource/config'
@@ -650,9 +650,23 @@ export function createRunCalcRound(deps: {
      * 已参与求解），所以「取计划值」天然覆盖锁定语义。
      */
     const budgetWindows = Math.max(0, stunCount)
-    const bossAttackBudgetNow = bossAttackBudget(
-      nonStunSeconds(effTimeForBudget, budgetWindows * computeWindowDuration()),
-    )
+    /**
+     * **全队交互额度分配**（2026-11-06 口径：全队共用 floor(非失衡/3) + 单人 floor(非失衡/4)）。
+     *
+     * ⚠ 必须在**进 characters.map 之前**一次性算好：三槽共用同一个池，逐槽各夹一次达不到
+     * 「全队合计 ≤ 池」——那正是旧口径（每槽各一份）与现口径的分水岭。
+     *
+     * 读入 = 本轮 base.characters 上的值（降配/轴注入尚未发生）⇒ 分配在**用户输入**这一层做，
+     * 与 interactionScale（降配臂）正交：两者取更小者即可（下面 merged 再乘 iscale）。
+     */
+    const bossAttackAllocation = allocateBossAttackBudget({
+      nonStunSeconds: nonStunSeconds(effTimeForBudget, budgetWindows * computeWindowDuration()),
+      // CharacterOperationConfig 上这两个字段是**必填 number**（判据 28：不要再写 ?? 0）
+      slots: base.characters.map(c => ({
+        dodgeCounterCount: c.dodgeCounterCount,
+        parryCount: c.parryCount,
+      })),
+    })
     const characters = base.characters.map(cfg => {
       // 轴模式：连携总次数完全由轴决定（未列连携块的槽位 = 0 次，轴即最终次数）
       const chainOverride = axisActive
@@ -692,17 +706,23 @@ export function createRunCalcRound(deps: {
         for (const f of DOWNSCALED_INTERACTION_FIELDS) merged[f] = downscaleInteractionCount(merged[f] ?? 0, iscale)
       }
       /**
-       * **Boss 出手预算**（见上方 `bossAttackBudgetNow` 的推导注释）：把闪反/弹刀各自的读入次数夹到预算内。
+       * **Boss 出手预算**（见上方 bossAttackAllocation 的推导注释）：把本槽的闪反/弹刀落到
+       * 全队分配结果上（全队池 `floor(非失衡/3)` + 单人 `floor(非失衡/4)`）。
        *
        * ⚠ 位置刻意在**降配之后、boss 强制弹刀注入之前**：
-       * - 降配是「用户交互整体缩水」（超预算时的相对臂），预算夹取是「物理上 boss 给不出这么多攻击」——
+       * - 降配是「用户交互整体缩水」（超预算时的相对臂），预算分配是「物理上 boss 给不出这么多攻击」——
        *   两件事都要生效，取更小者即可；
-       * - 弹刀注入（`parrySplit`）是 **boss 机制强制** 的招式，属用户/预设输入，**不归 boss 出手频率管**
-       *   （它由 `parryTotal` 决定，正是「不能拿 `parryTotal` 当上限」那条的来源）。
+       * - 弹刀注入（parrySplit）是 **boss 机制强制** 的招式，属用户/预设输入，**不归 boss 出手频率管**
+       *   （它由 parryTotal 决定，正是「不能拿 parryTotal 当上限」那条的来源）。
+       *   代价：注入量可能把该槽顶过单人上限——那里本就是「机制强制」的输入，不在物理尺的管辖内。
        */
-      for (const limited of BOSS_ATTACK_LIMITED_FIELDS) {
-        const wanted = Number(merged[limited] ?? 0)
-        if (wanted > bossAttackBudgetNow) merged[limited] = capToBossAttackBudget(wanted, bossAttackBudgetNow).count
+      const allocationForSlot = bossAttackAllocation.slots.find(s => s.slot === cfg.slot)
+      if (allocationForSlot) {
+        for (const limited of BOSS_ATTACK_LIMITED_FIELDS) {
+          const allowed = allocationForSlot.delivered[limited] ?? 0
+          const wanted = Number(merged[limited] ?? 0)
+          if (wanted > allowed) merged[limited] = allowed
+        }
       }
       // Boss 预设弹刀反推注入（上一轮拆分；首轮 prev 为空 → 击破位注入 ≥1 探针保证轻弹刀行存在，
       // 供本轮失衡池读出每次弹刀失衡值，后续轮按真实拆分注入、不强制）

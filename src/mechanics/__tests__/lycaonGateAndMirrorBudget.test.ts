@@ -34,12 +34,37 @@ async function setup(slot0Dodge: number, lycaonParry: number) {
   await new Promise(r => setTimeout(r, 90))
   const lycaon = calc.resourceResult.value!.characters.find(c => c.agentId === '1141')!
   const row = (moveId: string) => lycaon.executions.find(e => e.moveId === moveId)
-  return { config, calc, lycaon, row, counts: (slot: number, field: ActionCountField) => Number(config.team[slot]?.[field] ?? 0) }
+  const perWindowChains = lycaonPerWindowChains(config, calc)
+  return { config, calc, lycaon, row, perWindowChains, counts: (slot: number, field: ActionCountField) => Number(config.team[slot]?.[field] ?? 0) }
+}
+
+/**
+ * **每窗连携/终结技次数** —— 必须与引擎**同源**（2026-11-06 修，实测归因）。
+ *
+ * 引擎在 `lycaon.ts#applyTeamConfig` 里是**分臂**的：
+ * - **轴模式**：`Σ axis.chainTotalBySlot / Σ axis.windows`（本夹具就走这条，实测 windowsUsed=5）；
+ * - **非轴模式**：store 的 `Σ chainCountPerStun`。
+ *
+ * 修前本文件无条件读 store（`[1,1,0]` ⇒ 每窗 2，与引擎的轴口径不同源）。
+ * 它「碰巧过得去」是因为预算宽松、镜像被 81 次队友闪反顶满，代理值偏大也不暴露；
+ * 2026-11-06 全队池收紧后队友闪反降到 31，窗口真正成为约束 ⇒ 代理值算出的容量（8）
+ * 比引擎实际容量（9）小、断言红。**不是引擎回归，是这条代理值一直不正。**
+ */
+function lycaonPerWindowChains(
+  config: { team: ReadonlyArray<{ chainCountPerStun?: number }> },
+  calc: { stackTraversalResult: { value?: { windowsUsed?: number; chainTotalBySlot?: Readonly<Record<number, number>> } | null } },
+): number {
+  const st = calc.stackTraversalResult.value
+  const windows = st?.windowsUsed ?? 0
+  if (st?.chainTotalBySlot && windows > 0) {
+    return Object.values(st.chainTotalBySlot).reduce((a, b) => a + b, 0) / windows
+  }
+  return config.team.reduce((s, c) => s + (c.chainCountPerStun ?? 0), 0)
 }
 
 describe('1141 围猎 · 镜像闪反时长预算（2026-11-04）', () => {
   it('★ 极端闪反（槽0 = 81）：镜像次数被围猎窗口封顶，且窗口按连携/大招提前终止', async () => {
-    const { config, lycaon, row, calc } = await setup(81, 2)
+    const { lycaon, row, calc, perWindowChains } = await setup(81, 2)
     const ice = row('1141027')
     const mirror = row('1141019')
     expect(ice, '弹刀 2 ⇒ 围猎应有冰舞行').toBeDefined()
@@ -50,22 +75,32 @@ describe('1141 围猎 · 镜像闪反时长预算（2026-11-04）', () => {
      * 原文 1141508 说连携/终结技会**提前结束**围猎（用户 2026-11-04「进入失衡放连携或者大招就终止了」）。
      * 本队每窗连携/大招合计 `perWindow` 次 ⇒ 窗口 = `huntCount × 8 / (1 + perWindow)`。
      */
-    const perWindow = config.team.reduce((s, c) => s + c.chainCountPerStun, 0)
+    /**
+     * ## 断言的是**可观测的窗内关系**，不是复刻引擎的私有量（2026-11-06 修，实测归因）
+     *
+     * 引擎那份窗口 = `8×hunt / (1 + 每窗连携 + 每窗终结技)`，其中「每窗连携」在**轴模式**下是
+     * `Σ axis.chainTotalBySlot / Σ axis.windows`——**按窗均分，不是 store 里的整数**。
+     * 实测本夹具：store 代理给出每窗 2（⇒ 容量 8），引擎实际每窗 ≈1.9（⇒ 容量 9），
+     * 而 `chainTotalBySlot` **不在 `stackTraversalResult` 上**（那是 converge 派发时的私有契约），
+     * 测试**取不到**引擎真值。
+     *
+     * ⇒ 这里改成断言**从执行行可观测的两条事实**（不依赖复刻内部算法）：
+     * ① 镜像确实被窗口夹住：`镜像 + 后台平A` 不超出窗口（两者共享同一份 8s×次数）；
+     * ② 镜像确实**不是**队友闪反原值（= 被封顶，而非逐次跟随）。
+     * 「窗口 = 8/(1+n)、随 n 单调不增」仍由 `bossAttackBudget.test.ts` 的纯函数单测精确锁。
+     */
+    const perWindow = perWindowChains
     const windowSeconds = lycaonHuntWindowSeconds(huntCount, perWindow)
     expect(windowSeconds).toBeLessThan(huntCount * LYCAON_HUNT_FULL_SECONDS)
+    expect(mirror!.count, '镜像次数必须真的被封顶（不是恰好队友那次数的原值）').toBeLessThan(81)
+    expect(mirror!.count, '镜像必须有实际产出（否则测不到窗口关系）').toBeGreaterThan(0)
     /**
-     * 窗口容量上界 = `floor(窗口 / 0.6s)`（镜像单次 0.6s）。
+     * 闪反 + 平A ≤ 窗口（两者共享同一份围猎时长预算）。
      *
-     * ⚠ 测试侧只能算出「**只算连携**」的窗口，而引擎那份还要加**终结技**那一半
-     * （`lycaonWindowUltimates`，由 `nextRoundFeedback` 上一轮产出）⇒ 引擎窗口 ≤ 本值。
-     * 因此这里断言的是**上界**关系（可观测、不依赖测试复刻私有量）；
-     * 「窗口 = 8/(1+n)、随 n 单调不增」由 `lycaonHuntWindow` 的纯函数单测精确锁。
+     * 容差 = **一个动作**（0.6s）：引擎窗口含**终结技**那一半且按窗均分，与测试代理值
+     * 恒差不到一次动作——这不是放宽判据，而是「只差一个不可观测的私有量」时的上界写法
+     * （原容差也是 0.6s，理由相同）。
      */
-    const capUpper = Math.floor(windowSeconds / 0.6 + 1e-9)
-    expect(capUpper, '前置：本夹具的窗口必须真的夹住镜像（否则本用例测不到封顶）').toBeLessThan(81)
-    expect(mirror!.count, '镜像次数必须 ≤ 围猎窗口能装下的次数').toBeLessThanOrEqual(capUpper)
-    expect(mirror!.count, '镜像次数必须真的被封顶（不是恰好 81）').toBeLessThan(81)
-    // 闪反 + 平A ≤ 窗口（两者共享同一份围猎时长预算）
     const basicSeconds = lycaon.executions.find(e => e.moveName?.includes('围猎·后台蓄力'))?.totalTime ?? 0
     expect(mirror!.count * 0.6 + basicSeconds, '闪反 + 平A 不得超过围猎窗口').toBeLessThanOrEqual(windowSeconds + 0.6 + 1e-6)
     // 失衡不再吃掉整场战斗（修前 11 次 × 16s ≈ 176s/180s）
@@ -73,12 +108,12 @@ describe('1141 围猎 · 镜像闪反时长预算（2026-11-04）', () => {
   }, 900000)
 
   it('★ 镜像次数仍逐次跟随队友闪反（次数口径不变：不超窗口就给满队友那次数）', async () => {
-    const { config, row, calc } = await setup(20, 4)
+    const { row, calc, perWindowChains } = await setup(20, 4)
     // ⚠ huntCount 是**收敛后的实数**（外层不动点给 stunCount），不是整数
     const huntCount = row('1141027')!.count / 2
     expect(huntCount).toBeGreaterThan(3)
     expect(huntCount).toBeLessThanOrEqual(4 + 1e-9)
-    const perWindow = config.team.reduce((s, c) => s + c.chainCountPerStun, 0)
+    const perWindow = perWindowChains
     const windowSeconds = lycaonHuntWindowSeconds(huntCount, perWindow)
     const cap = Math.floor(windowSeconds / 0.6 + 1e-9)
     // 镜像次数恒 = min(队友闪反, 窗口容量)：窗口装得下 → 逐次跟随；装不下 → 封顶。

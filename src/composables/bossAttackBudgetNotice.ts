@@ -20,20 +20,36 @@
  * 计算照常完成、结果照常给出，只是如实说明「你填的 N 次里只有 M 次真的打得出来」。
  * 用户明确要求不要为此改变计算逻辑（「不用管错误计算的逻辑」）。
  */
-import { bossAttackBudgetReadings, bossAttackBudgetTotals } from '@/core/bossAttackBudget'
+import { bossAttackBudgetReadings, type BossAttackCutReason } from '@/core/bossAttackBudget'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import type { ActionCountField } from '@/stores/config'
 
-/** 一条失真读数（逐字段；页面逐条渲染，自动交互 note 用单行版） */
+/**
+ * 一条失真读数（**按槽位**；页面逐条渲染，自动交互 note 用单行版）。
+ *
+ * ⚠ 2026-11-06 起预算不再是「逐字段各一份」：全队共用 `floor(非失衡/3)`、
+ * 单人上限 `floor(非失衡/4)`，闪反与弹刀**合并在同一个池里**计数
+ * （用户：「般岳这种需要更多嗔火就刚需双弹，提高每次交互的利用率」）。
+ * ⇒ 读数单位从「字段」变成「槽位」，并带上被削原因的拆分。
+ */
 export interface BossAttackBudgetMiss {
-  field: ActionCountField
-  /** 用户填的次数 */
-  requested: number
-  /** boss 出手预算（= floor(非失衡时间 / 2s)） */
-  budget: number
-  /** 实际兑现的次数 */
-  delivered: number
-  /** 非失衡秒数（预算分母，给用户看「为什么是这个预算」） */
+  slot: number
+  /** 槽位名（1-based，与页面 slotLabels 同源） */
+  label: string
+  /** 该槽用户填的闪反 / 弹刀 */
+  requested: { dodgeCounterCount: number; parryCount: number }
+  /** 该槽实际兑现的闪反 / 弹刀 */
+  delivered: { dodgeCounterCount: number; parryCount: number }
+  /** 该槽读入合计 / 兑现合计（两个字段共用同一个池） */
+  requestedTotal: number
+  deliveredTotal: number
+  /** 触发削减的尺：全队池 / 单人上限（两者可同时命中） */
+  reasons: BossAttackCutReason[]
+  /** 全队池上限（次数）= floor(非失衡/3) */
+  teamBudget: number
+  /** 单人上限（次数）= floor(非失衡/4) */
+  perSlotBudget: number
+  /** 非失衡秒数（预算分母，给用户看「为什么是这个数」） */
   nonStunSeconds: number
 }
 
@@ -82,29 +98,52 @@ export function bossAttackBudgetNotice(input: BossAttackBudgetNoticeInput): Boss
   const eff = Math.max(0, Number(input.effectiveTime) || 0)
   const stun = Math.max(0, Math.min(eff, Number(input.stunSeconds) || 0))
   const nonStun = eff - stun
+  const slotCount = Math.max(0, input.slotCount)
+  const labels = input.slotLabels ?? []
+  const { allocation, slots } = bossAttackBudgetReadings({
+    nonStunSeconds: nonStun,
+    slots: Array.from({ length: slotCount }, (_, slot) => ({
+      dodgeCounterCount: input.requestedOf(slot, 'dodgeCounterCount'),
+      parryCount: input.requestedOf(slot, 'parryCount'),
+    })),
+  })
   const missing: BossAttackBudgetMiss[] = []
-  for (let slot = 0; slot < Math.max(0, input.slotCount); slot++) {
-    const readings = bossAttackBudgetReadings({ nonStunSeconds: nonStun, requestedOf: f => input.requestedOf(slot, f) })
-    for (const total of bossAttackBudgetTotals(readings)) {
-      if (!total.capped) continue
-      if (!(total.budget > 0)) continue
-      if (!(total.requested > 0)) continue
-      missing.push({
-        field: total.field, requested: total.requested, budget: total.budget,
-        delivered: total.delivered, nonStunSeconds: nonStun,
-      })
-    }
+  for (const s of slots) {
+    // 反空洞 ①：没被削 ⇒ 不报；③：该槽没填 ⇒ 不报
+    if (s.reasons.length === 0 || s.requestedTotal <= 0) continue
+    // 反空洞 ②：两条尺都为 0（非失衡不足 3s）⇒ 不报，防常亮噪音
+    if (!(allocation.teamBudget > 0) && !(allocation.perSlotBudget > 0)) continue
+    missing.push({
+      slot: s.slot,
+      label: labels[s.slot] ?? ('槽' + (s.slot + 1)),
+      requested: {
+        dodgeCounterCount: s.requested.dodgeCounterCount ?? 0,
+        parryCount: s.requested.parryCount ?? 0,
+      },
+      delivered: {
+        dodgeCounterCount: s.delivered.dodgeCounterCount ?? 0,
+        parryCount: s.delivered.parryCount ?? 0,
+      },
+      requestedTotal: s.requestedTotal,
+      deliveredTotal: s.deliveredTotal,
+      reasons: s.reasons,
+      teamBudget: allocation.teamBudget,
+      perSlotBudget: allocation.perSlotBudget,
+      nonStunSeconds: nonStun,
+    })
   }
   if (missing.length === 0) return NONE
   return {
     show: true,
-    title: missing.length === 1 ? '⚠ 有 1 项交互次数超出 Boss 出手频率，计算已按物理上限兑现'
-      : '⚠ 有 ' + missing.length + ' 项交互次数超出 Boss 出手频率，计算已按物理上限兑现',
-    detail: detailOf(missing, input.slotLabels),
+    title: missing.length === 1
+      ? '⚠ 有 1 个槽位的交互次数超出 Boss 出手频率，计算已按物理上限兑现'
+      : '⚠ 有 ' + missing.length + ' 个槽位的交互次数超出 Boss 出手频率，计算已按物理上限兑现',
+    detail: detailOf(missing, allocation),
     misses: missing,
   }
 }
 
+/** 交互字段的中文名（只在文案里用；口径一律走 `core/bossAttackBudget`） */
 const FIELD_LABELS: Partial<Record<ActionCountField, string>> = {
   parryCount: '弹刀',
   dodgeCounterCount: '闪避反击',
@@ -113,18 +152,44 @@ const FIELD_LABELS: Partial<Record<ActionCountField, string>> = {
 function fmt(v: number): string {
   return Number.isInteger(v) ? String(v) : v.toFixed(1)
 }
-function lineOf(m: BossAttackBudgetMiss): string {
-  const label = FIELD_LABELS[m.field] ?? m.field
-  const budget = fmt(m.budget)
-  const delivered = fmt(m.delivered)
-  return label + '填了 ' + fmt(m.requested) + ' 次，但非失衡时间 ' + m.nonStunSeconds.toFixed(0)
-    + 's 里 Boss 出手频率最多给 ' + budget + ' 次（按 2s/次估算）⇒ 实际兑现 ' + delivered + ' 次'
+
+/** 一槽填了哪几种交互（「闪避反击 63 + 弹刀 2」）；只有一种就不加号 */
+function countsText(c: { dodgeCounterCount: number; parryCount: number }): string {
+  const parts: string[] = []
+  if (c.dodgeCounterCount > 0) parts.push(FIELD_LABELS.dodgeCounterCount + ' ' + fmt(c.dodgeCounterCount))
+  if (c.parryCount > 0) parts.push(FIELD_LABELS.parryCount + ' ' + fmt(c.parryCount))
+  return parts.length > 0 ? parts.join(' + ') : '0'
 }
 
-function detailOf(misses: readonly BossAttackBudgetMiss[], slotLabels?: readonly string[]): string {
+/**
+ * 削在哪条尺上（用户能据此知道该改什么）：
+ * - 只有 `teamPool` ⇒ 全队总量超了，分给别人也救不回来，得整体减；
+ * - 只有 `slotCap` ⇒ 一个人吃太多，分给队友还能保住总量；
+ * - 两者都有 ⇒ 两条尺都顶到了。
+ */
+function reasonText(m: BossAttackBudgetMiss): string {
+  const team = m.reasons.includes('teamPool')
+  const slot = m.reasons.includes('slotCap')
+  if (team && slot) return '全队合计和单人上限都顶到了'
+  if (team) return '全队合计超了（全队共用 ' + fmt(m.teamBudget) + ' 次）'
+  return '单人上限超了（每人最多 ' + fmt(m.perSlotBudget) + ' 次，分给队友不占额外额度）'
+}
+
+function lineOf(m: BossAttackBudgetMiss): string {
+  return '填了 ' + countsText(m.requested) + '（合计 ' + fmt(m.requestedTotal) + ' 次），'
+    + '非失衡 ' + m.nonStunSeconds.toFixed(0) + 's 里 ' + reasonText(m)
+    + ' ⇒ 实际兑现 ' + fmt(m.deliveredTotal) + ' 次'
+}
+
+function detailOf(
+  misses: readonly BossAttackBudgetMiss[],
+  allocation: { teamBudget: number; perSlotBudget: number; deliveredTotal: number; requestedTotal: number },
+): string {
   // ⚠ 纯文本，不要写 Markdown 记法（naive-ui alert 会原样显示星号，`axisFallbackNotice` 实测踩到）
-  const body = misses.map((m, i) => (slotLabels?.[i] ? slotLabels[i] + '：' + lineOf(m) : lineOf(m))).join('；')
-  return body + '。失衡期内 Boss 瘫痪、不出手，所以可交互的攻击只能来自非失衡时间；'
+  const body = misses.map(m => m.label + '：' + lineOf(m)).join('；')
+  return body + '。失衡期内 Boss 瘫痪、不出手，所以可交互的攻击只能来自非失衡时间'
+    + '（全队 ' + fmt(allocation.teamBudget) + ' 次、每人 ' + fmt(allocation.perSlotBudget) + ' 次）；'
+    + '闪避反击与弹刀共用同一份额度，一次攻击吃两下交互（双反）也只算一次。'
     + '超出部分不会被计入（不会伪造动作），其余计算照常完成。填多少由你决定，这里只说明差额。'
 }
 

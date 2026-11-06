@@ -13,7 +13,9 @@ import { computeDifficulty } from '@/composables/operationalDifficulty'
 import { liveInteractions } from '@/composables/liveInteractions'
 import { stunWindowRatioOf } from '@/composables/difficultyRatio'
 import { frontlineOccupationBreakdown } from '@/core/resource/timeOccupation'
-import { BOSS_ATTACK_LIMITED_FIELDS, bossAttackBudget, nonStunSeconds } from '@/core/bossAttackBudget'
+import {
+  BOSS_ATTACK_LIMITED_FIELDS, bossAttackBudget, bossAttackPerSlotBudget, nonStunSeconds,
+} from '@/core/bossAttackBudget'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { capabilityGateMissesOf, capabilityGateNoteText, type CapabilityGateMiss } from '@/composables/capabilityGateNotice'
 import { bossAttackBudgetMissesOf, bossAttackBudgetNoteText, stunSecondsForBudget } from '@/composables/bossAttackBudgetNotice'
@@ -87,10 +89,13 @@ export function interactionOptimumReading(ctx: TimeWeightAllocationContext, elap
  * 旧实现上限恒取 `ACTION_COUNT_BOUNDS`（`{min:0, max:99}`，**纯 UI 常量、零物理来源**）
  * ⇒ 旗舰夹具上自动搜索真的交付了「槽0 闪反 81」（= 63.4s 动作塞进 84s 非失衡）。
  *
- * 现口径：闪反 / 弹刀的上界 = `floor(非失衡时间 / 2s)`（`core/bossAttackBudget`，闪反与弹刀
- * **各自独立各算一份**），且失衡秒数与引擎**同源**——`stunSecondsForBudget(资源结果里的
- * plannedStunCount, 窗长)`，即 `convergence` 的 `budgetWindows`。所以这里只是**把搜索空间收窄到
- * 物理可能**，不是给策略加判断：搜索仍按总伤找驻点，只是它从一开始就不可能搜到装不下的次数。
+ * 现口径（2026-11-06 收紧）：**单人上限** = `floor(非失衡 / 4s)`，且失衡秒数与引擎**同源**——
+ * `stunSecondsForBudget(资源结果里的 plannedStunCount, 窗长)`，即 `convergence` 的 `budgetWindows`。
+ *
+ * ⚠ **全队池（`floor(非失衡/3)`）不能只靠逐坐标上界表达**：它是**跨槽耦合**约束，
+ * 每个坐标各自取上界时三槽合计仍可超池。⇒ 池由 `createInteractionOptimumStrategy` 里的
+ * 联合可行性门（`bossAttackExcess`）守，这里只放**单人**这一条。
+ * 两处用的是同一个 `core/bossAttackBudget`，不各自造尺。
  *
  * ⚠ **别用覆盖率（`stunWindowRatioOf`）算这个上界**：它是上一轮派生量，且在 12 支「窗数顶满整场」
  * 的队上饱和成 1 ⇒ 预算 0 ⇒ 搜索上界被压成 0 ⇒ 自动交互**一次闪反都加不了**（静默劣化）。
@@ -100,6 +105,35 @@ export function interactionOptimumReading(ctx: TimeWeightAllocationContext, elap
  * 所以它可能略宽/略窄——越界的点仍会被引擎的净占用/截断账与 cfg 侧夹取
  * （`convergence` 的 `BOSS_ATTACK_LIMITED_FIELDS` 循环）如实压回去，这里只是让搜索**不要往非法区爬**。
  */
+/**
+ * **全队池的超额量**（次数；<= 0 表示可行）——搜索的**联合可行性门**。
+ *
+ * 为什么需要单独一个门：`coordinatesOf` 给的是**逐坐标**上界（单人 /4），而全队池
+ * （`floor(非失衡/3)`）是**跨槽耦合**的——三槽各自合规、合计仍可能超池。
+ * 逐坐标上界做不到这件事（那会让搜索以为三槽都能顶到单人上限）。
+ *
+ * ⚠ 只对 `BOSS_ATTACK_LIMITED_FIELDS`（闪反/弹刀）计数，其余交互字段不占这个池。
+ * ⚠ **只算当前现场**，搜索过程中失衡次数会变（那正是搜索在做的事）⇒ 池会跟着变，
+ * 这与引擎侧同源（引擎每一轮也用当轮 `stunCount` 重算）。
+ */
+function bossAttackExcess(ctx: TimeWeightAllocationContext): number {
+  const config = ctx.configStore
+  const effTime = effectiveBattleTime(config.enemy)
+  const stunSeconds = stunSecondsForBudget({
+    effectiveTime: effTime,
+    plannedStunCount: ctx.calc.resourceResult.value?.plannedStunCount,
+    windowDuration: ctx.calc.windowDuration.value,
+  })
+  const nonStun = nonStunSeconds(effTime, stunSeconds)
+  const budget = bossAttackBudget(nonStun)
+  const used = config.team.reduce((sum, row) => {
+    let slotSum = 0
+    for (const f of BOSS_ATTACK_LIMITED_FIELDS) slotSum += Number(row[f] ?? 0)
+    return sum + slotSum
+  }, 0)
+  return used - budget
+}
+
 function coordinatesOf(ctx: TimeWeightAllocationContext): Coordinate[] {
   const config = ctx.configStore
   const effTime = effectiveBattleTime(config.enemy)
@@ -111,7 +145,7 @@ function coordinatesOf(ctx: TimeWeightAllocationContext): Coordinate[] {
     plannedStunCount: rr?.plannedStunCount,
     windowDuration: ctx.calc.windowDuration.value,
   })
-  const budget = bossAttackBudget(nonStunSeconds(effTime, stunSeconds))
+  const perSlotBudget = bossAttackPerSlotBudget(nonStunSeconds(effTime, stunSeconds))
   return config.team.flatMap((row, slot) => interactionFieldsAt(config, slot).map(field => {
     const bounds = ACTION_COUNT_BOUNDS[field]
     const climb = row.agentId ? getAgentMechanic(row.agentId)?.interactionClimb : undefined
@@ -120,7 +154,7 @@ function coordinatesOf(ctx: TimeWeightAllocationContext): Coordinate[] {
     const anchor = climb?.field === field && rr ? climb.anchorOf(rr) : undefined
     /** Boss 出手频率只约束闪反/弹刀；其余交互字段（格挡/双反/角色专属）不归它管 */
     const bossLimited = (BOSS_ATTACK_LIMITED_FIELDS as readonly string[]).includes(field)
-    const hardMax = bossLimited ? Math.min(bounds.max, budget) : bounds.max
+    const hardMax = bossLimited ? Math.min(bounds.max, perSlotBudget) : bounds.max
     return { slot, field, min: bounds.min,
       max: anchor === undefined ? hardMax : Math.min(hardMax, climb!.capOf(anchor, config.getMechanicSetting)) }
   }))
@@ -271,6 +305,15 @@ export function createInteractionOptimumStrategy(_balance?: (ctx: TimeWeightAllo
        */
       const admissible = (s: Score, floor: Score) => Number.isFinite(s.damage)
         && s.damage >= floor.damage - DAMAGE_EPS && s.overflow <= floor.overflow + TIME_EPS
+        /**
+         * ④ **全队池不超**（2026-11-06 新口径的联合门）：闪反+弹刀全队合计 ≤ floor(非失衡/3)。
+         *
+         * 为什么放在「可行性」而不是「目标函数」里：那是**物理上不可能**，不是「不够赚」。
+         * 逐坐标上界（单人 /4）挡不住三槽合计超池——**耦合约束必须看全队**。
+         * 落在非法区的点引擎会按池夹回去（`convergence` 的 `allocateBossAttackBudget`），
+         * 于是「搜索以为涨了、实际没涨」——那正是要避免的静默劣化。
+         */
+        && bossAttackExcess(ctx) <= 1e-9
       /**
        * ## 修轴臂（旧 `optimizeInteractionsPerSlot` 的同一条，2026-11-04 移植回来）
        *
