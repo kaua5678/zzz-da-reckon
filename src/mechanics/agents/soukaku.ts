@@ -109,6 +109,10 @@ export function soukakuPerExExtraTime(cfg: unknown): { necessaryTime: number; co
   }
 }
 
+/**
+ * @fact agent:1131/c1 口径: 影画1「展旗增益时长 +8s」按**满覆盖口径**——展旗增益默认全程覆盖 ⇒ 时长延长不产生伤害增量，本格 0 是预期值，模块**有意不写** `cinemaLevel >= 1` 分支 | 据 用户@2026-11-06 | 验 src/composables/__tests__/cinemaNone28.test.ts#1131C1 状态表原文必须写着「满覆盖 ⇒ 0 是预期」，别让它退回「像待办」的措辞 | 锚 src/mechanics/agents/soukaku.ts#buildCharConfig | 信 确认
+ * ⟳复核: 若将来展旗增益不再按满覆盖（例如加了覆盖率滑块），本条失效、需补 C1 时长分支 | 到期 2027-05-06
+ */
 function buildCharConfig({ cinemaLevel, cfg }: AgentCharConfigInput): void {
   cfg.soukakuCinemaLevel = cinemaLevelOf(cinemaLevel)
   // 强特能量成本 = 30 能量×击数（60 能量 = 2 击 + 2 风团，2026-09-05 用户口径）：

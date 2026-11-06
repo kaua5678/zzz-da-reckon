@@ -211,12 +211,37 @@ describe('命座零收益格：逐格归因（docs/cinema-classification.md「28
   })
 
   describe('C 类 · 如实无增量（原文/口径上就没有伤害通道）', () => {
-    for (const [agentId, cinema, name] of [['1281', 6, '派派'], ['1131', 1, '苍角']] as Array<[string, number, string]>) {
-      it(`${agentId}C${cinema} ${name}：实测 0（无伤害通道）`, async () => {
-        const reading = await readCell(agentId, cinema)
-        expect(isZero(reading.total), `${agentId}C${cinema} 实测 ${reading.total.toFixed(2)}%`).toBe(true)
+    const cells: Array<{ agentId: string; cinema: number; name: string; why: string }> = [
+      { agentId: '1281', cinema: 6, name: '派派', why: '动力时长恒满口径 ⇒ 持续 12→16s 无伤害增量' },
+      {
+        agentId: '1131',
+        cinema: 1,
+        name: '苍角',
+        why: '满覆盖口径（用户 2026-11-06 裁决）⇒ 展旗增益时长 +8s 无伤害增量',
+      },
+    ]
+    for (const cell of cells) {
+      it(`${cell.agentId}C${cell.cinema} ${cell.name}：实测 0（${cell.why}）`, async () => {
+        const reading = await readCell(cell.agentId, cell.cinema)
+        expect(isZero(reading.total), `${cell.agentId}C${cell.cinema} 实测 ${reading.total.toFixed(2)}%：${cell.why}`).toBe(true)
       })
     }
+
+    /**
+     * 苍角的**满覆盖口径是用户裁决，不是实现漏了**（2026-11-06 逐字：「苍角算满覆盖就好」）。
+     *
+     * 为什么要把状态表原文也锁住：这一格唯一的「证据」就是那句口径。若有人把状态表改回
+     * 「时长 +8s」（读起来像待办）或订正成 `partially_implemented`（读起来像缺口），
+     * 下一个人就会去 `soukaku.ts` 里硬加一个 `cinemaLevel >= 1` 分支——那是**错的**。
+     */
+    it('1131C1 状态表原文必须写着「满覆盖 ⇒ 0 是预期」，别让它退回「像待办」的措辞', () => {
+      const constellations = loadConstellations()
+      const status = (constellations.characters['1131']?.cinemas ?? []).find(c => c.cinema === 1)
+      expect(status?.status, '1131C1 不再声明 implemented* —— 满覆盖口径的前提没了').toBe('implemented_approximation')
+      const text = (status?.implemented ?? []).join(' ')
+      expect(text, '1131C1 的原文没写「满覆盖」口径，下一个人会把它当缺口去补 C1 分支').toContain('满覆盖')
+      expect(text, '1131C1 的原文没写「0 是预期值」').toContain('预期')
+    })
   })
 
   /**
