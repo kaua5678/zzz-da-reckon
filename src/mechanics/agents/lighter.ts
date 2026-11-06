@@ -626,13 +626,19 @@ function lighterNextRoundFeedback({ characters, teamResult }: AgentNextRoundFeed
 export const lighterMechanic: AgentMechanicModule = {
   crossAgentEnergyLabels: [{ key: 'lighterC4Energy', label: '莱特影画4 喷发', detail: `后场 +${LIGHTER_C4_BURST_ENERGY}/次 × ${LIGHTER_C4_BURST_CD}s 冷却` }],  // CC-445
   // CC-35c-B：昂扬公式读局内冲击力；喷发耗士气冲击 +20% 需并入来源面板，否则公式少算一层（原 panelPhases 按 '1161' 写死，逐字迁入）
+  //
+  // ⚠ **2026-11-06 订正（规则 11 单一事实源）**：原实现是 `inCombat.impact * 1.2` —— 把来源面板的
+  // **整块局内冲击力**乘一遍。而 `applyPanel` 已改走 `statZone#applyInCombatPct`（局外基数 × 20%
+  // 的增量，见本文件第 345 行）⇒ 两条式子**同一件事写了两遍且已分叉**：实测来源面板 282.083 vs
+  // 旧式 291.810，差 9.727 = 局内固定 48.632 × 20%（即「别人给的局内固定冲击」被多乘了一次）。
+  // 现在两边调同一个函数、同一把 `outOfCombat.impact` 基数 ⇒ 来源面板 == 莱特自身最终面板，
+  // 判据 `lighterImpactSourceCc77.test.ts` 的 `S·1.2 == panel.impact` 不再依赖巧合。
   adjustTeammateBuffSource: ({ source }) => {
-    if (source.inCombat) {
-      source.inCombat = {
-        ...source.inCombat,
-        impact: source.inCombat.impact * 1.2,
-      }
-    }
+    if (!source.inCombat) return
+    // 先拷再改：`source.inCombat` 与 `sourcePanelsByOwner` 的别名键同实例，就地改会污染别名那一刻的读数
+    const patched = { ...source.inCombat }
+    applyInCombatPct(patched, source.outOfCombat, 'impact', computeLighterImpactBonusPct())
+    source.inCombat = patched
   },
   id: 'agent:lighter',
   agentIds: [LIGHTER_ID],

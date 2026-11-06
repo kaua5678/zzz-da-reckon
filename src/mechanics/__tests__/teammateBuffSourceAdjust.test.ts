@@ -52,11 +52,40 @@ describe('CC-35c-B：panelPhases 派发接线（包裹能力，记录调用）',
     return calls
   }
 
-  it('莱特在队：以莱特的来源条目调用一次，局内冲击 ×1.2', async () => {
-    const calls = await record(lighterMechanic, [{ agentId: '1161' }, { agentId: '1191' }], src => src.inCombat?.impact ?? NaN)
-    expect(calls.length).toBe(1)
-    expect(calls[0].before).toBeGreaterThan(0)
-    expect(calls[0].after).toBeCloseTo(calls[0].before * 1.2, 9)
+  /**
+   * ⚠ **2026-11-06 订正**：来源面板的「喷发耗士气冲击 +20%」必须与 `applyPanel` **同式**。
+   * 修前断言 `after == before × 1.2`（整块局内冲击力再乘一遍），而 `applyPanel` 早已走
+   * `statZone#applyInCombatPct`（局外基数 × 20% 的增量）⇒ 两条式子分叉：局内固定加成被多乘一次。
+   * 现判据 = `after − before == 局外冲击 × 20%`，外加两条反证（夹具必须真有局内固定量、旧式必须偏离）。
+   */
+  it('莱特在队：以莱特的来源条目调用一次，增量 == 局外冲击 × 20%', async () => {
+    // 推荐配装：局内冲击 > 局外冲击（驱动盘/音擎的局内固定量）⇒ 乘区口径的差别才可观察
+    const { config, catalog } = await setupHarness([{ agentId: '1161' }, { agentId: '1191' }], { recommendedBuild: true })
+    const m = lighterMechanic as { adjustTeammateBuffSource: Hook }
+    const saved = m.adjustTeammateBuffSource
+    let calls = 0
+    let beforeIn = Number.NaN
+    let beforeOut = Number.NaN
+    let afterIn = Number.NaN
+    m.adjustTeammateBuffSource = (input) => {
+      calls += 1
+      beforeIn = input.source.inCombat?.impact ?? Number.NaN
+      beforeOut = input.source.outOfCombat?.impact ?? Number.NaN
+      saved(input)
+      afterIn = input.source.inCombat?.impact ?? Number.NaN
+    }
+    try {
+      computePanelPhases(1, config, catalog)
+    } finally {
+      m.adjustTeammateBuffSource = saved
+    }
+    expect(calls).toBe(1)
+    expect(beforeIn).toBeGreaterThan(0)
+    expect(afterIn - beforeIn).toBeCloseTo(beforeOut * 0.2, 9)
+    // 反证①：夹具必须真的有「局内固定冲击」（否则新旧式逐位相同，本条证明不了任何事）
+    expect(beforeIn, '夹具的局内冲击必须大于局外冲击，否则乘区口径不可观察').toBeGreaterThan(beforeOut)
+    // 反证②：旧式（整块 ×1.2）必须偏离
+    expect(afterIn).not.toBeCloseTo(beforeIn * 1.2, 6)
   })
 
   it('耀嘉音 C5 在队：收到命座 5，局外技能等级加成 ≥ 4', async () => {

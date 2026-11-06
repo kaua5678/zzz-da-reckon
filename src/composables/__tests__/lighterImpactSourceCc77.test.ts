@@ -32,18 +32,29 @@ describe('CC-77 莱特来源面板冲击 ×1.2 集成覆盖', () => {
     orig = mod().adjustTeammateBuffSource
     expect(orig).toBeTypeOf('function')
 
-    // 包一层：记录进入钩子前的来源冲击 S，再交给原钩子
+    // 包一层：记录进入钩子前的来源冲击 S 与钩子交付值 SAfter，再交给原钩子
     let S = Number.NaN
-    mod().adjustTeammateBuffSource = (input) => { S = input.source.inCombat?.impact ?? Number.NaN; orig!(input) }
+    let SAfter = Number.NaN
+    mod().adjustTeammateBuffSource = (input) => {
+      S = input.source.inCombat?.impact ?? Number.NaN
+      orig!(input)
+      SAfter = input.source.inCombat?.impact ?? Number.NaN
+    }
     const on = panel(0)
     expect(Number.isFinite(S)).toBe(true)
-    // 来源 S × 1.2 == 莱特自身局内面板冲击（applyPanel 的 +20% 与本钩子同一口径）
-    expect(S * 1.2).toBeCloseTo(panel(1).impact, 6)
+    /**
+     * ⚠ **2026-11-06 订正**：钩子交付值 == 莱特自身局内面板冲击，但**不是** `S × 1.2` ——
+     * 「喷发耗士气冲击 +20%」走 `statZone#applyInCombatPct`（局外基数 × 20% 的增量），
+     * 与 `applyPanel` 同式。修前两边都写整块 ×1.2（实测 291.81），把「局内固定冲击 48.632」
+     * 也乘了 20%（虚高 9.727）。现判据盯的是**交付值**（SAfter），公式输入也用它。
+     */
+    expect(SAfter).toBeCloseTo(panel(1).impact, 6)
+    expect(SAfter - S).toBeLessThan(S * 0.2) // 反证：旧式整块 ×1.2 必然更大（局内固定 > 0）
     sel[BUFF_ID]!.enabled = false
     const off = panel(0)
     sel[BUFF_ID]!.enabled = true
-    expect(on.iceDmg - off.iceDmg).toBeCloseTo(formula(S * 1.2), 9)
-    expect(on.fireDmg - off.fireDmg).toBeCloseTo(formula(S * 1.2), 9)
+    expect(on.iceDmg - off.iceDmg).toBeCloseTo(formula(SAfter), 9)
+    expect(on.fireDmg - off.fireDmg).toBeCloseTo(formula(SAfter), 9)
 
     for (const k of [1.0, 1.05, 1.1, 1.15, 1.3]) {
       mod().adjustTeammateBuffSource = ({ source }) => {
@@ -51,7 +62,7 @@ describe('CC-77 莱特来源面板冲击 ×1.2 集成覆盖', () => {
       }
       expect(panel(0).iceDmg - off.iceDmg, `k=${k}`).toBeCloseTo(formula(S * k), 9)
     }
-    // 关键区分：推荐配装下没有 ×1.2 就到不了 75——若此条因配装数据变动失效，换一个 formula(S) < 75 的配装
-    expect(formula(S)).toBeLessThan(formula(S * 1.2))
+    // 关键区分：推荐配装下不吃这 +20% 就到不了 75——若此条因配装数据变动失效，换一个 formula(S) < 75 的配装
+    expect(formula(S)).toBeLessThan(formula(SAfter))
   }, 60000)
 })
