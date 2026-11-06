@@ -173,7 +173,11 @@ export function allocateBossAttackBudget(args: {
     const requested: BossAttackSlotRequest = {}
     for (const f of BOSS_ATTACK_LIMITED_FIELDS) requested[f] = clampField(Number(req[f] ?? 0))
     const requestedTotal = BOSS_ATTACK_LIMITED_FIELDS.reduce((a, f) => a + (requested[f] ?? 0), 0)
-    return { slot, requested, requestedTotal, capTotal: Math.min(requestedTotal, perSlotBudget) }
+    // 单人上限用 `capToBossAttackBudget`（**同一个函数**，规则 11）：它与下面的「请求量 ≤ 上界」是同一件事，
+    // 此前这里内联 `Math.min` ⇒ 那个导出成了纯测试用（`deadChannelLs` 判据 ⑫ 红）。两处都是非负量，
+    // `capToBossAttackBudget(x, y).count === Math.min(x, y)` 逐位等价（实测 bossAttackBudget 8 例与全库 105 预设零漂移）。
+    const capTotal = capToBossAttackBudget(requestedTotal, perSlotBudget).count
+    return { slot, requested, requestedTotal, capTotal }
   })
 
   // 第 1 轮：单人上限

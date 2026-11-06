@@ -86,6 +86,9 @@ export const DOCS_READING_TESTS = [
   // 2026-11-05 命座分类表：规则 ① 入选（生成器 src/test/cinemaClassify.ts 读 docs/cinema-classification.md
   // 做逐行比对；只读 docs 的测试必须登记，否则「只改 docs 走快路」会静默漏测）。
   'src/composables/__tests__/cinemaClassify.test.ts',
+  // 2026-11-06 补登记（规则 ①）：cinemaNone28 逐格对读 docs/cinema-classification.md 的「28 格归因」节
+  // （50dae4fe 引入时漏登记 ⇒ 清单与派生集不一致，checkGuards 棘轮在 HEAD 上是红的）。
+  'src/composables/__tests__/cinemaNone28.test.ts',
   'src/composables/__tests__/changelogView.test.ts',
   'src/composables/__tests__/compactedSlotValueBlindSpot.test.ts',
   // 2026-10-31 补登记（规则 ②）：import scripts/lib/type-bonus-time.mjs 的运行时导出（COUNTER_ASSIST_ETHER_BASE），
