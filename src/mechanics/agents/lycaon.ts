@@ -12,6 +12,7 @@ import { clampRatio, finiteOr0 } from '@/utils/finiteClamp'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { potentialLevelOf } from '@/data/potentialLevel'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { applyInCombatPct } from '@/mechanics/statZone'
 
 const cfgNum = mechanicSettingReader(() => lycaonMechanic.settings)
 /**
@@ -128,7 +129,7 @@ export const lycaonMechanic: AgentMechanicModule = {
   // 点按次数为 0 时它没有执行行，[表] 会把它当「没建模」提供 ⇒ 放进轴 = 不耗能的半个强特。点按应改点按次数，不经 [表]。
   axisHiddenMoves: ['1141016'],
 
-  applyPanel({ cinemaLevel, panel, potentialLevel }: AgentPanelInput) {
+  applyPanel({ cinemaLevel, panel, outOfCombatPanel, potentialLevel }: AgentPanelInput) {
     // 核心被动·金属狼足：普攻蓄力/闪反/冲刺失衡 +80%（Lv7 满级；增强后含闪反/冲刺）
     const CHARGE_STUN_BONUS = 80
     panel.stunBuildUpBonus__basic = (panel.stunBuildUpBonus__basic ?? 0) + CHARGE_STUN_BONUS
@@ -138,7 +139,8 @@ export const lycaonMechanic: AgentMechanicModule = {
     // （II~VI = 5/7.5/10/12.5/15%）。用户口径：这是局内冲击力，加成到面板看实际。
     // ⚠ R59 修复：原实现写死 `* 1.15`（= VI 满档）⇒ `potentialLevel` 滑块完全不进计算。
     const potLv = potentialLevelOf(potentialLevel)
-    panel.impact = panel.impact * (1 + LYCAON_POTENTIAL_IMPACT_PCT[potLv] / 100)
+    // 潜能觉醒·掠冰 = 局内冲击力百分比乘区（唯一写入口 mechanics/statZone.ts）
+    applyInCombatPct(panel, outOfCombatPanel, 'impact', LYCAON_POTENTIAL_IMPACT_PCT[potLv])
     // 影画6·冷酷猎手：莱卡恩自己对目标伤害 +50%（用户口径：全覆盖）
     if (cinemaLevel >= 6) {
       panel.dmgBonus = panel.dmgBonus + 50

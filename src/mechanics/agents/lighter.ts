@@ -28,6 +28,7 @@
  * 未建模：士气喷发逐帧进出、垫步/组合拳段数、逐敌火焰冲击独立 CD（按整场单目标 8s CD 近似）。
  */
 import { carveBasicPool, moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { applyInCombatPct } from '@/mechanics/statZone'
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
@@ -341,11 +342,12 @@ function cfgNum(cfg: CharacterOperationConfig, key: keyof CharacterOperationConf
   return Number.isFinite(raw) ? raw : fallback
 }
 
-function applyPanel({ cinemaLevel, panel }: AgentPanelInput): void {
+function applyPanel({ cinemaLevel, panel, outOfCombatPanel }: AgentPanelInput): void {
   const cinema = cinemaLevelOf(cinemaLevel)
   // 喷发耗士气冲击力 +20%（默认吃满）
   const impactPct = computeLighterImpactBonusPct(cinema)
-  panel.impact = panel.impact * (1 + impactPct / 100)
+  // 喷发耗士气冲击力 +20% = 局内百分比乘区（唯一写入口 mechanics/statZone.ts）
+  applyInCombatPct(panel, outOfCombatPanel, 'impact', impactPct)
 
   // 溃败：失衡时长延长
   panel.stunDurationBonusSeconds =

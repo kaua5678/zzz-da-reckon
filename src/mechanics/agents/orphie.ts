@@ -3,6 +3,7 @@ import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { applyInCombatPct } from '@/mechanics/statZone'
 import { countFrontActions, effectiveBackstageTime, effectiveBattleTime, effectiveCombatTime, frontBlockSeconds, phaseDelayedCooldown } from '@/core/effectiveTime'
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
@@ -61,7 +62,7 @@ const ORPHIE_EX_BURST = '1301022'
 const ORPHIE_ULT_1 = '1301015'
 const ORPHIE_ULT_2 = '1301016'
 
-function applyOrphiePanel({ panel, cinemaLevel }: AgentPanelInput): void {
+function applyOrphiePanel({ panel, outOfCombatPanel, cinemaLevel }: AgentPanelInput): void {
   panel.critRate = panel.critRate + ORPHIE_CORE_CRIT_RATE
   panel['skillDmgBonus__additionalAttack'] = (panel['skillDmgBonus__additionalAttack'] ?? 0)
     + ORPHIE_CORE_ADDITIONAL_ATTACK_DMG
@@ -69,7 +70,8 @@ function applyOrphiePanel({ panel, cinemaLevel }: AgentPanelInput): void {
     // 影画1 自身 4 招无视 15% 火伤抗性 → 移出面板，改 patchExecutions moveId 级 resIgnore（精确）
   }
   if (cinemaLevel >= 2) {
-    panel.atk = Math.round(panel.atk * (1 + ORPHIE_C2_ATK_PCT / 100))
+    // 影画2 自身攻击力 +X% = 局内百分比乘区（唯一写入口 mechanics/statZone.ts）
+    applyInCombatPct(panel, outOfCombatPanel, 'atk', ORPHIE_C2_ATK_PCT)
   }
   if (cinemaLevel >= 4) {
     panel['skillDmgBonus__ultimate'] = (panel['skillDmgBonus__ultimate'] ?? 0) + ORPHIE_C4_ULTIMATE_DMG

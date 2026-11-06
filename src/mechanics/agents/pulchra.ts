@@ -10,6 +10,7 @@ import type { SkillExecution } from '@/types/resource'
 import { getAgentSpec } from '@/specs/registry'
 import { computeSpecResources } from '@/specs/resources'
 import { specToMechanicModule } from '@/specs/mechanics'
+import { applyInCombatPct } from '@/mechanics/statZone'
 import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
@@ -64,7 +65,7 @@ export function computePulchraHuntStepCount(i: PulchraHuntStepInput): number {
     + Math.max(0, Math.floor(Number(i.ultimateCount) || 0))
 }
 
-function applyPulchraPanel({ panel, cinemaLevel }: AgentPanelInput): void {
+function applyPulchraPanel({ panel, outOfCombatPanel, cinemaLevel }: AgentPanelInput): void {
   // 猎步：恒常（强特/连携/终结不断触发，6s 刷新 → 失衡值 +30% 常驻）
   panel.stunBuildUpBonus = panel.stunBuildUpBonus + PULCHRA_HUNT_STEP_STUN
   // 影画1 原文「对被施加[困迹]效果的敌人造成伤害时」——困迹来自额外能力，未触发则无困迹（CC-199）
@@ -72,7 +73,8 @@ function applyPulchraPanel({ panel, cinemaLevel }: AgentPanelInput): void {
     panel.critRate = panel.critRate + PULCHRA_C1_CRIT_RATE
   }
   if (cinemaLevel >= 2) {
-    panel.atk = Math.round(panel.atk * (1 + PULCHRA_C2_ATK_PCT / 100))
+    // 影画2 自身攻击力 +X% = 局内百分比乘区（唯一写入口 mechanics/statZone.ts）
+    applyInCombatPct(panel, outOfCombatPanel, 'atk', PULCHRA_C2_ATK_PCT)
   }
 }
 

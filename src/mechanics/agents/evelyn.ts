@@ -27,6 +27,7 @@ import type {
   AgentResourceSectionsInput,
 } from '../types'
 import { mechanicSettingPanelReader, mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import { applyInCombatPct } from '@/mechanics/statZone'
 import { findMoveById as findMove } from '@/data/moveTableQueries'
 import type { CharacterResourceResult, SkillExecution } from '@/types/resource'
 import { cfgMoveActionTime } from '@/utils/moveActionTimeCfg'
@@ -235,7 +236,7 @@ function patchEvelynExecutions({ cfg, state, executions }: AgentResourceInput): 
   }
 }
 
-function applyEvelynPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
+function applyEvelynPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: AgentPanelInput): void {
   // 面板字段直接委托 computeEvelynCycle 求值（coreCritRate / c4CritDmg / c1DefIgnore）。
   // 这三项只看覆盖率滑块；次数与战斗时间不进面板（面板阶段也拿不到 cfg），一律按 0 占位。
   const cycle = computeEvelynCycle({
@@ -268,7 +269,9 @@ function applyEvelynPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
   // 迁移前后逐位等价证据 = `panelBlocksR20h1.test.ts` 的 atk 精确值用例 + 162 行面板指纹对拍。
   // 算式逐位保留（`1 + 0.15` 不折叠成 `1.15`，虽实测同一 double，但不给未来留改写口子）。
   if (cinemaLevel >= 2) {
-    panel.atk = Math.round(panel.atk * (1 + 0.15))
+    // 影画2 自身攻击力 +15% = 局内百分比乘区（唯一写入口 mechanics/statZone.ts）。
+    // 2026-11-06 订正：原写法把「已合并的局内值」当基数，会把局内固定加成也乘进去。
+    applyInCombatPct(panel, outOfCombatPanel, 'atk', 15)
   }
 }
 

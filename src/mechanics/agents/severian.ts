@@ -36,6 +36,7 @@ import type { CharacterOperationConfig, CharacterResourceResult, MechanicSetting
 import { mechanicSettingPanelReader, mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import { getRowValue } from '@/data/moveTableQueries'
 import { moduleExecRow, RECOVERY_OFF, carveBasicPool } from '@/mechanics/moduleExecRow'
+import { applyInCombatPct } from '@/mechanics/statZone'
 import { chargeLockComboAlignRatio } from '@/mechanics/chargeLock'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
@@ -378,7 +379,7 @@ function cycleFromCfg(cfg: Pick<CharacterOperationConfig, 'severianCinemaLevel' 
  * 转模读 **panel.critRate 当下值**（本钩子按槽位顺序派发，本人面板的常驻暴击加成已入账；
  * 影画/队伍后置加成不回溯——与诺玛 1571 暴击率转模同口径）。
  */
-function applySeverianPanel({ slot, team, cinemaLevel, panel, settings }: AgentPanelInput): void {
+function applySeverianPanel({ slot, team, cinemaLevel, panel, outOfCombatPanel, settings }: AgentPanelInput): void {
   if (!panel) return
   const cycle = computeSeverianCycle({
     cinemaLevel,
@@ -393,7 +394,8 @@ function applySeverianPanel({ slot, team, cinemaLevel, panel, settings }: AgentP
   if (cycle.atkFromCrit > 0) panel.atk = panel.atk + cycle.atkFromCrit
   if (cycle.c1WindResIgnore > 0) panel.enemyWindResReduction = panel.enemyWindResReduction + cycle.c1WindResIgnore
   if (cycle.c2PenRatio > 0) panel.penRatio = panel.penRatio + cycle.c2PenRatio
-  if (cycle.c4AtkPct > 0) panel.atk = panel.atk * (1 + cycle.c4AtkPct / 100)
+  // 影画4 自身攻击力 +X% = 局内百分比乘区（唯一写入口 mechanics/statZone.ts）
+  if (cycle.c4AtkPct > 0) applyInCombatPct(panel, outOfCombatPanel, 'atk', cycle.c4AtkPct)
   if (cycle.c4DecibelEfficiency > 0) panel.decibelGainEfficiency = panel.decibelGainEfficiency + cycle.c4DecibelEfficiency
 }
 

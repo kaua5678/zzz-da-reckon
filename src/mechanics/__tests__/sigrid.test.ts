@@ -71,14 +71,20 @@ describe('希格莉德（1591）面板：核心被动 / 额外能力 / 影画', 
     expect(pPos1.atk - pNeg.atk).toBeCloseTo(840, 0)
   })
 
-  it('命座差分：1命攻击 ×1.25、2命喧响获取 +10、4命增伤 +18', async () => {
+  it('命座差分：1命攻击进局内%乘区、2命喧响获取 +10、4命增伤 +18', async () => {
     const { config, computePanelPhases } = await setup(['1591', '1211', ''], 0)
-    const p0 = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
+    const ph0 = computePanelPhases(0, config, useCatalogStore())!
+    const p0 = ph0.inCombat as any
+    const oocAtk = Number(ph0.outOfCombat.atk)
     config.team[0].cinemaLevel = 1
     const p1 = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
-    // 影画1 攻击+25%：先乘百分比再叠 +840 固定值，差分 = round(base×1.25) - base
-    expect(p1.atk - p0.atk).toBeGreaterThanOrEqual(Math.round((p0.atk - 840) * 0.25) - 1)
-    expect(p1.atk - p0.atk).toBeLessThanOrEqual(Math.round((p0.atk - 840) * 0.25) + 1)
+    // 影画1「自身攻击力提升25%」= 局内百分比乘区 ⇒ 增量 = **局外总攻击 × 25%**
+    //（唯一写入口 mechanics/statZone.ts#applyInCombatPct；判据 statZone.test.ts）。
+    // ⚠ 2026-11-06 订正：旧断言写的是 round((p0.atk − 840) × 25%) —— 那是「拿已合并的局内值当基数」
+    //    的自洽验证，把 bug 锁成了金标（实测多算 28.8 点 = 把队友给的局内固定加成也乘了 25%）。
+    expect(p1.atk - p0.atk).toBeCloseTo(oocAtk * 0.25, 6)
+    // 反证：旧的「整体乘」写法必须偏离，否则上一条是空断言
+    expect(Math.abs(p1.atk - p0.atk - Math.round((p0.atk - 840) * 0.25))).toBeGreaterThan(20)
 
     config.team[0].cinemaLevel = 2
     const p2 = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
@@ -250,16 +256,19 @@ describe('希格莉德 buildExecutions：敛枪式三段轮转 + 破阵 + 影画
     // C6：破阵套数 = 连携总次数（2/失衡 × 3 失衡 = 6 套）。影画1「第三段送机会」把轮转再放大，
     // 绝对次数 = 破阵套数 + 定点解出的轮转，故与 C0 差分来锁「套数源 = 连携而非失衡」：
     // C0 每段 3（=失衡3），C6 每段必然 > 6（=连携6 套）——若误用失衡次数只会是 3+轮转。
+    // 2026-11-06 口径纠正：影画1 返还只算一层且**破阵/连携赠送的三连段不返还** ⇒
+    // 无基础命中时轮转 = 0，C6 的三段行 = 破阵 6 套（此前多算了「自指轮转 (3,3,2)」）
     const c6 = build({ sigridStunCount: 3, chainCountPerStun: 2, sigridCinemaLevel: 6, sigridAtk: 0 })
-    expect(c6.map(e => e.count)).toEqual([9, 9, 8]) // 破阵 6 套 + 影画1 自指轮转 (3,3,2)
-    expect(c6[0].count - c0[0].count).toBe(6)       // 差分恰等于连携总次数
+    expect(c6.map(e => e.count)).toEqual([6, 6, 6])
+    // 差分 = 连携总次数 − 失衡次数 = 6 − 3 ⇒ 证明「套数源 = 连携」而非失衡（若误用失衡次数差分为 0）
+    expect(c6[0].count - c0[0].count).toBe(3)
   })
 
   it('破阵口径：轴模式用注入的轴内套数（含诺姆赠送），覆盖非轴口径', () => {
     const axis = build({ sigridStunCount: 3, chainCountPerStun: 2, sigridCinemaLevel: 6, sigridAtk: 0, sigridAxisActive: true, sigridAxisPozhenSets: 4 })
     const nonAxis = build({ sigridStunCount: 3, chainCountPerStun: 2, sigridCinemaLevel: 6, sigridAtk: 0 })
     // 轴内注入 4 套 ≠ 非轴公式 6 套（2×3）→ 两者次数必须不同，且轴那侧更小
-    expect(axis.map(e => e.count)).toEqual([6, 6, 5]) // 破阵 4 套 + 影画1 自指轮转 (2,2,1)
+    expect(axis.map(e => e.count)).toEqual([4, 4, 4]) // 破阵 4 套，三层行各 4 次（2026-11-06：破阵不返还）
     expect(axis[0].count).toBeLessThan(nonAxis[0].count)
     // 轴模式不打影画6 时长折扣（破阵块时间由轴引擎按窗口计账，折两次=双算）
     for (const e of axis) expect(e.totalTime).toBeCloseTo(e.count * (e.actionTime ?? 0), 9)
@@ -282,11 +291,13 @@ describe('希格莉德 buildExecutions：敛枪式三段轮转 + 破阵 + 影画
     }
     const c0 = casts(0)
     const c1 = casts(1)
-    // 基础命中 6+2+3+2(#4)=13 → C0 轮转 13 发；C1 每发第三段再送 1 次机会 ⇒ 严格更多
+    // 基础命中 6+2+3+2(#4)=13 → C0 轮转 13 发
     expect(c0).toBe(13)
-    expect(c1).toBeGreaterThan(c0)
-    // 自指增益比 1/3 ⇒ 上界 1.5×基础（O = H + O/3），发散（2026-02 的 3200 亿秒）必须不可能
-    expect(c1).toBeLessThanOrEqual(Math.ceil(c0 * 1.5) + 1)
+    // 2026-11-06 口径纠正：**每 3 段返 1 段，只返一层** ⇒ C1 = H + ⌊H/3⌋ = 13 + 4 = 17。
+    // 旧实现解自指方程 I = H + ⌊I/3⌋（无限递归 ⇒ 19 发、比值 1.5），被用户判为不成立。
+    expect(c1).toBe(17)
+    // 发散（2026-02 的 3200 亿秒）必须不可能：上界 = 4/3 基础
+    expect(c1).toBeLessThanOrEqual(Math.ceil(c0 * 4 / 3) + 1)
     // 估时与物化同口径
     const est = sigridMechanic.estimateExSpecialTime!({ cfg: { ...cfg, sigridCinemaLevel: 1 }, exSpecialCount: 6, ultimateCount: 2, state })!
     const executions: any[] = []

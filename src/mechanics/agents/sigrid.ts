@@ -23,6 +23,7 @@ import { chainCountTotalOf } from '@/core/chainCount'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import { clampRatio } from '@/utils/finiteClamp'
+import { applyInCombatPct } from '@/mechanics/statZone'
 
 const cfgSetting = mechanicSettingReader(() => settings)
 const settingOf = mechanicSettingPanelReader(() => settings)
@@ -133,11 +134,15 @@ export const SIGRID_C6_LAST_HIT_RATIOS: readonly number[] = [80, 90, 100]
  * 从 computePanelPhases 硬编码块迁入（SOP 废弃绕法① → 文档化通道）。
  * 顺序保持原口径：影画1 攻击先乘百分比，再叠加额外能力固定 +840。
  */
-function applySigridPanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
+function applySigridPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: AgentPanelInput): void {
   if (!panel) return
   const coreCov = clampRatio(settingOf(settings, 'sigrid.corePassiveCoverage'))
   if (cinemaLevel >= 1) {
-    panel.atk = Math.round(panel.atk * (1 + SIGRID_C1_ATK_PCT / 100))
+    // 影画1「自身攻击力提升25%」= **局内百分比乘区**（局内 = 局外 × (1+Σ局内%) + Σ局内固定），
+    // 兑现成「局外总攻击 × 25%」的增量。**不能**拿 panel.atk 整体乘：此刻 panel 已含局内固定加成
+    //（额外能力 +840 与队友固定攻击），整体乘会把它们也乘上 25%（实测多算 239 点）。
+    // 唯一写入口 = mechanics/statZone.ts#applyInCombatPct（判据 statZone.test.ts）。
+    applyInCombatPct(panel, outOfCombatPanel, 'atk', SIGRID_C1_ATK_PCT)
   }
   if (additionalAbilityActiveOf(panel)) {
     panel.atk = panel.atk + SIGRID_ADDITIONAL_ATK_FLAT
@@ -466,16 +471,18 @@ function sigridLanceCounts(
     return 0
   }
   const baseHits = state ? sigridChuqiangFromState(state, cfg) : 0
-  let income = baseHits
-  if (cinema >= 1 && state) {
-    // 定点迭代：income = 基础命中 + (轮转第三段 + 破阵套数)。增益 1/3 ⇒ ≤8 轮即稳定。
-    for (let i = 0; i < 8; i++) {
-      const third = splitLanceRotation(solveSpend(income))[2] + pozhenSets
-      const next = baseHits + third
-      if (next === income) break
-      income = next
-    }
-  }
+  /**
+   * 影画1「发动第三段时获得一次机会」= **每 3 段返 1 段，只返一层**（用户 2026-11-06 口径纠正）。
+   *
+   * 旧实现解自指方程 `I = H + ⌊I/3⌋ + P`（无限递归，比值 1/(1−1/3) = 1.5），实测 C1 敛枪式
+   * 67 段 vs C0 43 段 = ×1.56，被用户判为不成立，理由两条：
+   * ① 现实中「失衡连携 / 诺姆连携送的三连段」打完后玩家**不接 a1**（时间有限），轴模式下该连段
+   *    之后也不再消耗敛枪式机会 ⇒ 破阵套数 P **不产生返还**；
+   * ② 返还来的那一次机会本身不再滚进下一轮 ⇒ 总量 = H + ⌊H/3⌋（比值 4/3 ≈ 1.33），不是 H/(2/3)。
+   *
+   * 实测（auto-1591-1481-1211 p16 K=3）：H=36 / P=3 ⇒ C1 57 段 vs C0 43 段 = ×1.326。
+   */
+  const income = cinema >= 1 && state ? baseHits + Math.floor(baseHits / 3) : baseHits
   return { rotation: splitLanceRotation(solveSpend(income)), pozhenSets, cinema, axisActive }
 }
 
