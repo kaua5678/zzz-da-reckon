@@ -62,6 +62,13 @@ export interface KFrontierPoint {
   pool: number
   /** 连续失衡次数（自洽判据的左边） */
   contiguous: number
+  /**
+   * **该帧按槽位拆开的伤害**（下标 = 槽位号，与 `damagePoolRows[].slot` 同源；长度 = 队伍槽数）。
+   * 用途：主读数要能说「这一级是主 C 涨、队友跌」，而不是只给一个全队合计。
+   * 恒等式：`Σ slots === dmg`（`teamTotalDamage` 的定义就是 Σ `damagePoolRows.totalDamage`，
+   * 判据 `teamTotalDamageSource.test.ts` / `cinemaUpliftSlots.test.ts`）。未求值的点为空数组。
+   */
+  slots: number[]
   /** Σ前台净占用（秒，含待装补齐后的口径与 kStar 结算同源） */
   net: number
   /** 装得下（`candidateFitsBudget`）：净占用 ≤ 有效战斗时间 + 2s 容差 */
@@ -101,6 +108,12 @@ export interface KFrontierDelivery {
   k: number
   /** 交付的伤害 */
   dmg: number
+  /**
+   * **交付帧按槽位拆开的伤害**（下标 = 槽位号）。来源与 `dmg` **同一帧**：
+   * `pinned` 取那个钉 K 点、`converged` 取收敛帧 ⇒ `Σ slots === dmg` 恒成立（判据见 `KFrontierPoint#slots`）。
+   * 页面「逐槽 Δ%」只用它，不另做一次求值（规则 11）。
+   */
+  slots: number[]
   /** `converged` = 收敛停点已经就是最优；`pinned` = 某个钉住的 K 更值钱 */
   source: DeliverySource
   /** 自由收敛自己交付的 K 与其伤害（= 用户不点本卡时看到的那一帧） */
@@ -173,8 +186,19 @@ export async function scanKFrontier(
     await nextTick()
     const rr = calc.resourceResult.value
     const pool = calc.stunPoolResult.value
+    const rows = calc.damagePoolRows.value
+    /**
+     * 逐槽求和（`teamTotalDamage` 就是这份 rows 的 totalDamage 之和，见 `useResourceCalc`），
+     * 所以 `Σ slots === teamTotalDamage` 是**定义上的恒等**，不是另算一遍。
+     * 行数很少（~百行），且这里本来就要读 rows ⇒ 零额外求值。
+     */
+    const slots = new Array<number>(config.team.length).fill(0)
+    for (const row of rows) {
+      if (row.slot >= 0 && row.slot < slots.length) slots[row.slot]! += row.totalDamage
+    }
     return {
       dmg: calc.teamTotalDamage.value,
+      slots,
       pool: (pool as unknown as { stunCount?: number } | null)?.stunCount ?? 0,
       contiguous: pool ? continuousStunCount(pool) : 0,
       net: rr ? netFrontlineOccupation(rr) : Number.NaN,
@@ -209,6 +233,7 @@ export async function scanKFrontier(
       points.push({
         k,
         dmg: f.dmg,
+        slots: f.slots,
         pool: f.pool,
         contiguous: f.contiguous,
         net: f.net,
@@ -239,6 +264,7 @@ export async function scanKFrontier(
           points.push({
             k: rest,
             dmg: Number.NaN,
+            slots: [],
             pool: Number.NaN,
             contiguous: Number.NaN,
             net: Number.NaN,
@@ -257,7 +283,7 @@ export async function scanKFrontier(
       windowDuration: free.windowDuration,
       effectiveTime: free.effectiveTime,
       points,
-      delivery: pickDelivery(points, free.dmg, free.pool, opts.rule),
+      delivery: pickDelivery(points, free.dmg, free.pool, opts.rule, free.slots),
     }
   } finally {
     config.enemy.stunCountLock = savedLock
@@ -280,11 +306,15 @@ export function pickDelivery(
   convergedDmg: number,
   convergedK: number,
   rule: DeliveryRule = 'argmax',
+  /** 收敛帧的逐槽伤害（缺省空 = 调用方不要逐槽读数；判据复用旧签名时不用改） */
+  convergedSlots: readonly number[] = [],
 ): KFrontierDelivery {
   const feasible = points.filter(p => p.feasible)
   const base = {
     convergedK,
     convergedDmg,
+    // 缺省 = 交付收敛帧 ⇒ 逐槽读数也取收敛帧；钉 K 分支会覆盖成那个点的
+    slots: [...convergedSlots],
     feasibleCount: feasible.length,
     // 「扫描了多少个」= **真的求值过**的点数（提前封闭的那些没求值，不能算进成本也不该算进覆盖率）
     scannedCount: points.filter(p => p.scanned).length,
@@ -298,6 +328,7 @@ export function pickDelivery(
       ...base,
       k: kmax.k,
       dmg: kmax.dmg,
+      slots: [...kmax.slots],
       source: kmax.dmg > convergedDmg + 1e-9 ? 'pinned' : 'converged',
       driftPct: convergedDmg > 0 ? ((kmax.dmg - convergedDmg) / convergedDmg) * 100 : 0,
     }
@@ -313,6 +344,7 @@ export function pickDelivery(
     ...base,
     k: best.k,
     dmg: best.dmg,
+    slots: [...best.slots],
     source: 'pinned',
     driftPct: convergedDmg > 0 ? ((best.dmg - convergedDmg) / convergedDmg) * 100 : 0,
   }
@@ -416,6 +448,16 @@ export interface SameKBandPoint {
   bothFeasible: boolean
   /** 后一级（高命）在该 K 不可行的原因；可行时为 null */
   afterReject: 'budget' | 'contiguous' | 'both' | 'unscanned' | 'out-of-range' | null
+  /**
+   * 后一级在该 K 上**攒出的连续窗数**（`continuousStunCount`）——「差多少才算够」的原始读数。
+   * 只在「攒不出」是原因之一时给（否则 null）。
+   *
+   * 为什么必须带出来：自洽判据是 `floor(连续窗) ≥ K` 的**整数门槛**，差 0.002 窗与差 2 窗
+   * 在读数上是同一个「✕」，但对读者完全是两件事（前者是门槛抖动、后者是真墙）。
+   */
+  afterContiguous: number | null
+  /** 攒出缺口 = `afterContiguous − k`（负数 = 还差这么多窗；仅 `contiguous`/`both` 时有值） */
+  afterGap: number | null
 }
 
 export interface SameKBand {
@@ -438,16 +480,21 @@ export function sameKBand(before: KFrontier, after: KFrontier): SameKBand {
   for (const b of before.points) {
     const a = after.points.find(p => p.k === b.k)
     if (!a) {
-      points.push({ k: b.k, pct: null, bothFeasible: false, afterReject: 'out-of-range' })
+      points.push({ k: b.k, pct: null, bothFeasible: false, afterReject: 'out-of-range', afterContiguous: null, afterGap: null })
       continue
     }
     const bothFeasible = b.feasible && a.feasible
     const pct = b.dmg > 0 && a.scanned && b.scanned ? ((a.dmg - b.dmg) / b.dmg) * 100 : null
+    const afterReject: SameKBandPoint['afterReject'] = a.feasible ? null : (a.scanned ? a.rejectReason : 'unscanned')
+    // 缺口只在「攒不出」是原因之一时才有意义（纯超预算的 K 与连续窗数无关）
+    const shortByContiguous = afterReject === 'contiguous' || afterReject === 'both'
     points.push({
       k: b.k,
       pct,
       bothFeasible,
-      afterReject: a.feasible ? null : (a.scanned ? a.rejectReason : 'unscanned'),
+      afterReject,
+      afterContiguous: shortByContiguous && Number.isFinite(a.contiguous) ? a.contiguous : null,
+      afterGap: shortByContiguous && Number.isFinite(a.contiguous) ? a.contiguous - b.k : null,
     })
   }
   const usable = points.filter(p => p.bothFeasible && p.pct !== null).map(p => p.pct!)

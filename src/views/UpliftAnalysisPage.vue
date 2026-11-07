@@ -76,6 +76,17 @@
                           >{{ c.text }}</span>
                         </div>
                         <div class="uplift-main-line uplift-sub">{{ sameKText(e) }}</div>
+                        <!--
+                          **逐槽 Δ%**（用户 2026-11-07：「−0.03% 这种如果他是主c就不合理」）。
+                          本槽 = 这一行被升命的那个角色（块标题）；队友 = 其余槽位**合计**后的增量。
+                          数字来自 cinemaUplift#computeSlotDeltas（两个交付帧的 damagePoolRows 按 slot 求和），
+                          页面只印；悬浮里给逐槽明细与「Σ槽增量 == 全队增量」的核对值。
+                        -->
+                        <div
+                          v-if="frontierOf(e)!.slotSummary"
+                          class="uplift-main-line uplift-sub uplift-slots"
+                          :title="frontierOf(e)!.slotDetail"
+                        >逐槽 Δ：{{ frontierOf(e)!.slotSummary }}</div>
                         <div class="uplift-main-line uplift-sub uplift-attr">{{ frontierOf(e)!.attribution }}</div>
                       </template>
                       <template v-else>{{ signed1(e.gainPct) }}%</template>
@@ -118,7 +129,13 @@
             首选窗数 = 前一级的交付 K；后一级在该 K 装不下时<b>下探</b>到两级都可行的最大 K，并标注「已下探」
             （高命座更吃预算是最常见的形态，返回「不可比」等于什么都没说）。
             <br>
+            ②′ <b>逐槽 Δ%</b> = 同一交付帧上「本槽（这一行被升命的角色）/ 队友合计」各自的涨跌。
+            全队一个数会把方向读反——仪玄 C1→C2 本槽 <b>+1.46%</b>、队友 <b>−6.2%</b>、合计 <b>−0.03%</b>
+            （新招式抢走 7.9s 平A 池）。悬浮里给逐槽明细与「Σ槽增量 == 全队增量」的核对值。
+            <br>
             ③ <b>归因行</b> = 所用 K + 两个前沿值 + 交付点来源（收敛停点已最优 / 前沿扩展）+ 窗长与有效时间。
+            <b>交付点掉窗时第①行会当场标出</b>（如「掉窗 K3→K2（同 K2 仍 +9.4%）」）——那说明这一级的负号来自
+            <b>操作强度少了一个窗</b>，不是同 K 收益变负；分布条上的断点同时印出<b>差多少窗</b>（如 <code>K3 ✕攒不出 2.96/3</code>）。
             <br>
             ⇒ ①与②差距大的时候，说明这一级的提升<b>有一部分来自引擎把它交付到了更值钱的 K</b>——那正是
             「取两点会看出负提升」的副作用的载体，现在能当场看见、且能下钻到归因行。
@@ -158,6 +175,7 @@ import { useBatchOwner } from '@/composables/batchTask'
 import {
   analyzeCinemaUplift,
   CINEMA_METRICS,
+  signed1,
   UPLIFT_EPSILON_PCT,
   type CinemaUpliftEntry,
   type CinemaUpliftFrontierEntry,
@@ -279,7 +297,10 @@ function bandCells(e: CinemaUpliftEntry): BandCell[] {
         : p.afterReject === 'unscanned' ? '未扫'
           : p.afterReject === 'both' ? '超预算且攒不出'
             : '不可行'
-    out.push({ k: p.k, text: `K${p.k} ✕${why}`, cls: 'band-break' })
+    // 「攒不出」必须带上**差多少**：整数门槛下差 0.002 窗与差 2 窗印出来是同一个 ✕，
+    // 但前者是门槛抖动、后者是真墙。读数来自 sameKBand 的 afterContiguous / afterGap（引擎原值）。
+    const gap = p.afterGap === null ? '' : ` ${p.afterContiguous!.toFixed(2)}/${p.k}`
+    out.push({ k: p.k, text: `K${p.k} ✕${why}${gap}`, cls: 'band-break' })
     break
   }
   return out
@@ -297,7 +318,11 @@ function bandTitle(e: CinemaUpliftEntry): string {
     : `同 K 提升中位 ${signed1(band.medianPct)}%（${band.feasibleKs.length} 个操作强度可行）`
   const tail: string[] = []
   if (band.breaksAt !== null) {
-    tail.push(`K${band.breaksAt} 起高命座装不下（窗 ${fmt(band.beforeWindow, 1)}s→${fmt(band.afterWindow, 1)}s）`)
+    const brk = band.points.find(p => p.k === band.breaksAt)
+    const gapText = brk?.afterGap === null || brk?.afterGap === undefined
+      ? ''
+      : `（该 K 上攒出 ${brk.afterContiguous!.toFixed(3)} 窗，需要 ${brk.k} 窗，差 ${Math.abs(brk.afterGap).toFixed(3)} 窗）`
+    tail.push(`K${band.breaksAt} 起高命座不可行（窗 ${fmt(band.beforeWindow, 1)}s→${fmt(band.afterWindow, 1)}s）${gapText}`)
   }
   if (band.windowChanged) {
     tail.push(`⚠ 窗长变了：${fmt(band.beforeWindow, 1)}s→${fmt(band.afterWindow, 1)}s —— 少而长的窗，这是本级的副作用`)
@@ -314,7 +339,10 @@ function millions(v: number): string {
 function damageRangeText(e: CinemaUpliftEntry): string {
   const f = frontierOf(e)
   if (!f) return signed1(e.gainPct) + '%'
-  return `${millions(f.beforeDmg)}→${millions(f.afterDmg)}（${signed1(f.pct)}%）`
+  // 交付点掉窗时把原因挂在**同一个数上**（字符串由 cinemaUplift 拼，页面只印）：
+  // 一个光秃秃的 −10.1% 让人读成「命座变弱」，而它常常是「操作强度从 3 窗掉到 2 窗」。
+  const note = f.deliveryNote ? ` · ${f.deliveryNote}` : ''
+  return `${millions(f.beforeDmg)}→${millions(f.afterDmg)}（${signed1(f.pct)}%）${note}`
 }
 
 /**
@@ -376,9 +404,7 @@ function upliftCellClass(delta: number): string {
   return delta > 0 ? 'uplift-up' : delta < 0 ? 'uplift-down' : 'uplift-flat'
 }
 
-function signed1(v: number): string {
-  return `${v >= 0 ? '+' : ''}${fmt(v, 1)}`
-}
+// `signed1` 已迁到 composables/cinemaUplift.ts：逐槽读数与页面读数必须同一舍入口径（规则 11）
 
 /**
  * 「显示用 delta」= 单元格文案与着色的**共同**判据（两者必须同源，否则会出现「绿色的 —」这种自相矛盾的格子）。
@@ -511,6 +537,10 @@ async function computeCinemaGains() {
 
 .uplift-main-line.uplift-sub {
   font-size: 10px;
+  color: var(--fg-2);
+}
+
+.uplift-main-line.uplift-slots {
   color: var(--fg-2);
 }
 

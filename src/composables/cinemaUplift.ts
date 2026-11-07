@@ -30,6 +30,7 @@
  * 迁移前它直接改 UI configStore、靠页面传入的三个读数闭包读 UI 现场、finally 再恢复。
  */
 import { getPanelStat } from '@/utils/panelStat'
+import { fmt } from '@/utils/format'
 import { nextTick } from 'vue'
 import { useCatalogStore } from '@/stores/catalog'
 import type { AnalysisContext } from '@/composables/analysisScenario'
@@ -147,6 +148,29 @@ export interface CinemaUpliftFrontierEntry {
    * 本字段逐 K 给提升率 + 可行性三态，页面画分布条。
    */
   band: SameKBand
+  /**
+   * **逐槽 Δ%**（用户 2026-11-07 口径：主 C 自己涨跌看不见）。
+   *
+   * 数据 = 两个**交付帧**的 `damagePoolRows` 按 `slot` 求和（同一帧内取，不另做求值）。
+   * 恒等式：`Σ slots.delta === afterDmg − beforeDmg`（`teamTotalDamage` 的定义就是 Σ 行伤害，
+   * 判据 `cinemaUpliftSlots.test.ts`）。**不做**的：把主读数换成主 C 口径（那会让「队伍总伤害」失真）。
+   */
+  slots: CinemaSlotDelta[]
+  /** 该行分析的是哪个槽位（= 本行的命座被切换的那个槽，页面块标题同名） */
+  analyzedSlot: number
+  /** 一行「本槽 / 队友」读数（页面只印；缺队友或本槽无伤害时为空串） */
+  slotSummary: string
+  /** 逐槽明细（悬浮提示用，多行字符串） */
+  slotDetail: string
+  /**
+   * **交付点 K 的移动**（"掉窗 K3→K2（同 K2 仍 +9.4%）" / "增窗 K2→K3" / ""）。
+   *
+   * 存在的理由：主读数「本队伤害 X→Y（Δ%）」在丢掉一个窗时会是负的，而读者无法从这一个数
+   * 分辨「命座让队伍变弱」与「这个命座把操作强度从 3 窗降到了 2 窗、同 K 仍然是涨的」。
+   * 实测（2026-11-07 全库 105 队 × C0..C6）：交付点掉窗的级 = 2 条负值（−10.14% / −4.20%），
+   * 同 K 口径分别是 +9.4% / +9.9%。⇒ 这句话必须与主读数**同一行**，不能只躺在归因行里。
+   */
+  deliveryNote: string
   /** 归因一行（页面直接印，不自己拼字符串） */
   attribution: string
   /** 两次扫描的物理输入（窗长 / 有效战斗时间，秒）——归因的下钻面 */
@@ -155,6 +179,62 @@ export interface CinemaUpliftFrontierEntry {
   /** 前一级的可行点数 / 扫描行数（0 可行 = 前沿扩展无从谈起，如实上报） */
   beforeFeasibleCount: number
   afterFeasibleCount: number
+}
+
+/**
+ * 一个槽位的伤害增量（两个**交付帧**之间）。
+ *
+ * `pct` 为 `null` = 该槽在前一帧没有伤害（分母 0）⇒ 「不可比」，**不是 0**（§4.2 判据②）。
+ */
+export interface CinemaSlotDelta {
+  slot: number
+  before: number
+  after: number
+  /** after − before（绝对伤害） */
+  delta: number
+  pct: number | null
+}
+
+/** 两个交付帧的逐槽伤害 → 逐槽 Δ（纯函数，页面与测试共用；规则 11） */
+export function computeSlotDeltas(before: readonly number[], after: readonly number[]): CinemaSlotDelta[] {
+  const n = Math.max(before.length, after.length)
+  const out: CinemaSlotDelta[] = []
+  for (let slot = 0; slot < n; slot++) {
+    const b = before[slot] ?? 0
+    const a = after[slot] ?? 0
+    out.push({ slot, before: b, after: a, delta: a - b, pct: b > 0 ? ((a - b) / b) * 100 : null })
+  }
+  return out
+}
+
+/** 一行「本槽 / 队友」读数：队友 = 其余槽位**合计**后的增量（合计算 pct，不是各槽 pct 求平均） */
+export function buildSlotSummary(slots: readonly CinemaSlotDelta[], analyzedSlot: number): string {
+  const main = slots.find(s => s.slot === analyzedSlot)
+  const mates = slots.filter(s => s.slot !== analyzedSlot && (s.before > 0 || s.after > 0))
+  const parts: string[] = []
+  if (main && main.pct !== null) parts.push(`本槽 ${signed1(main.pct)}%`)
+  if (mates.length > 0) {
+    const b = mates.reduce((s, x) => s + x.before, 0)
+    const a = mates.reduce((s, x) => s + x.after, 0)
+    if (b > 0) parts.push(`队友 ${signed1(((a - b) / b) * 100)}%`)
+  }
+  return parts.length ? parts.join('｜') : ''
+}
+
+/** 逐槽明细（悬浮提示）：每槽 before→after 与 Δ%，并印出「Σ槽 == 全队」的核对值 */
+export function buildSlotDetail(
+  slots: readonly CinemaSlotDelta[],
+  analyzedSlot: number,
+  beforeTotal: number,
+  afterTotal: number,
+): string {
+  const lines = slots.map(s => {
+    const tag = s.slot === analyzedSlot ? '（本槽）' : ''
+    return `槽${s.slot + 1}${tag} ${millions(s.before)}→${millions(s.after)}（${s.pct === null ? '前一帧无伤害，不可比' : `${signed1(s.pct)}%`}）`
+  })
+  const sumDelta = slots.reduce((s, x) => s + x.delta, 0)
+  lines.push(`Σ槽增量 ${millions(sumDelta)} = 全队增量 ${millions(afterTotal - beforeTotal)}（逐槽之和恒等于全队，两数应逐位相同）`)
+  return lines.join('\n')
 }
 
 export interface CinemaUpliftRow {
@@ -170,6 +250,11 @@ export const UPLIFT_EPSILON_PCT = 0.05
 /** 归因行里的伤害读数：百万级，两位小数（与页面其它伤害读数同精度） */
 function millions(v: number): string {
   return `${(v / 1e6).toFixed(2)}M`
+}
+
+/** 带符号一位小数（页面与逐槽读数共用一份，避免两处各写一遍舍入口径） */
+export function signed1(v: number): string {
+  return `${v >= 0 ? '+' : ''}${fmt(v, 1)}`
 }
 
 /**
@@ -406,7 +491,7 @@ export async function analyzeCinemaUplift(
    * ⚠ 前一级的前沿**按槽复用**（逐级 0→1→…→6 是链式的）：不复用就要扫 2×maxLevel 条，
    * 复用只要 maxLevel+1 条（实测 1 槽 6 级 6 条 vs 12 条）。
    */
-  async function readFrontier(to: number, cachedBefore: KFrontier | null): Promise<{ entry: CinemaUpliftFrontierEntry; after: KFrontier } | null> {
+  async function readFrontier(to: number, cachedBefore: KFrontier | null, slot: number): Promise<{ entry: CinemaUpliftFrontierEntry; after: KFrontier } | null> {
     // 复用的前提：缓存的 before 必须真的属于「按 to-1 级、与当前其余配置一致」的那一帧。
     // 缓存由本函数在上一次调用后立即写入，中间只有 readScene（改锁再复位）⇒ 其余配置不变。
     const before = cachedBefore ?? await scanKFrontier(scenario, { cinemaLevel: to - 1, control })
@@ -417,6 +502,18 @@ export async function analyzeCinemaUplift(
     const a = after.delivery
     // 同窗数对照的 K = **前一级的交付 K**（「玩家现在就在这个操作点上」）
     const sameK = compareAtSameK(before, after, b.k)
+    // 逐槽 Δ：两个**交付帧**各自的逐槽伤害相减（同一帧内取，不另做求值）
+    const slots = computeSlotDeltas(b.slots, a.slots)
+    /**
+     * 交付点掉窗时必须当场说出来（用户 2026-11-07 的分布口径的另一半）：
+     * 主读数一个负数无法区分「命座让队伍变弱」与「命座把操作强度从 3 窗降到 2 窗」。
+     * 同 K 提升率非空时一并印出——那就把「掉的是操作强度，不是同 K 收益」钉死了。
+     */
+    const deliveryNote = a.k === b.k
+      ? ''
+      : a.k < b.k
+        ? `掉窗 K${b.k}→K${a.k}${sameK.pct === null ? '' : `（同 K${sameK.k} 仍 ${signed1(sameK.pct)}%）`}`
+        : `增窗 K${b.k}→K${a.k}`
     return {
       entry: {
         beforeK: b.k,
@@ -430,6 +527,11 @@ export async function analyzeCinemaUplift(
         afterSource: a.source,
         sameK,
         band: sameKBand(before, after),
+        slots,
+        analyzedSlot: slot,
+        slotSummary: buildSlotSummary(slots, slot),
+        slotDetail: buildSlotDetail(slots, slot, b.dmg, a.dmg),
+        deliveryNote,
         attribution: buildFrontierAttribution(before, after, sameK),
         windowDuration: before.windowDuration,
         effectiveTime: before.effectiveTime,
@@ -513,7 +615,7 @@ export async function analyzeCinemaUplift(
           : 'unimplemented' // 无字段无伤害无资源移动：效果可能未接进计算
       // 前沿扩展（opt-in，见 AnalyzeCinemaUpliftOptions#frontier）：前一级的前沿按槽复用 ⇒ 每级只扫 1 条
       const frontierRun: { entry: CinemaUpliftFrontierEntry; after: KFrontier } | null =
-        frontier ? await readFrontier(to, frontierCache) : null
+        frontier ? await readFrontier(to, frontierCache, slot) : null
       if (frontierRun) frontierCache = frontierRun.after
       const frontierEntry = frontierRun?.entry
       entries.push({
