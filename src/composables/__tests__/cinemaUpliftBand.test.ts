@@ -21,7 +21,7 @@ const FULL_COVER = 'auto-1371-1481-1451'
 describe('判据①：分布逐 K 给出，且含窗长变化的断点（仪玄 C1→C2）', () => {
   beforeAll(async () => { await setupHarness(['', '', ''], { productionBasicWeights: true }) })
 
-  it('C1→C2：可行 K 逐点有提升率，K3 起断（窗 18→21s）', async () => {
+  it('C1→C2：可行 K 逐点有提升率，K4 起断（窗 18→21s；K3 走末窗截短）', async () => {
     const preset = teamPresets.find(p => p.id === FULL_COVER)!
     await withAnalysisScenario(async s => {
       applyTeamToStore(s.config, preset)
@@ -35,9 +35,11 @@ describe('判据①：分布逐 K 给出，且含窗长变化的断点（仪玄 
       expect(band.beforeWindow).toBeCloseTo(18, 1)
       expect(band.afterWindow).toBeCloseTo(21, 1)
 
-      // ① 可行集 = 高命座真正站得住的那些 K；C2 攒不出第 3 窗 ⇒ 断在 K3
-      expect(band.feasibleKs.length, '两级都可行的 K 太少（反空洞）').toBeGreaterThanOrEqual(2)
-      expect(band.breaksAt, 'C2 应在 K3 断掉（cont 2.95 < 3）').toBe(3)
+      // ① 可行集 = 高命座真正站得住的那些 K。
+      // 2026-11-07 连续失衡落地后：C2 的 K3 不再被判死——攒条 2.95 窗、时间只差 1.95s，
+      // 按「末窗时钟截短」兑现（判据 cinemaUpliftContinuous.test.ts ①）⇒ 分布前移到 K4 才断。
+      expect(band.feasibleKs.length, '两级都可行的 K 太少（反空洞）').toBeGreaterThanOrEqual(3)
+      expect(band.breaksAt, 'C2 应在 K4 断掉（K3 走末窗截短后可行）').toBe(4)
 
       // 每个可行 K 都有真实提升率，且为正（这一级的同 K 收益是稳定的 +13% 量级）
       const feasiblePts = band.points.filter(p => p.bothFeasible)

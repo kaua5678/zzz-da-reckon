@@ -182,6 +182,20 @@ export interface CinemaUpliftFrontierEntry {
 }
 
 /**
+ * **交付点 K 移动的一句话**（`掉窗 K3→K2（同 K2 仍 +9.4%）` / `增窗 K2→K3` / `''`）。
+ *
+ * 抽成纯函数是为了让「掉窗」这条分支有独立判据：2026-11-07 连续失衡落地后，交付点掉窗的级从 9 条
+ * 掉到几乎为零（攒不满的 K 现在按「末窗截短」兑现），**没有真实预设再走这条分支**——
+ * 但预算类不可行仍会掉窗，字符串不能没有判据。
+ */
+export function buildDeliveryNote(beforeK: number, afterK: number, sameK: SameKComparison): string {
+  if (afterK === beforeK) return ''
+  if (afterK > beforeK) return `增窗 K${beforeK}→K${afterK}`
+  const same = sameK.pct === null ? '' : `（同 K${sameK.k} 仍 ${signed1(sameK.pct)}%）`
+  return `掉窗 K${beforeK}→K${afterK}${same}`
+}
+
+/**
  * 一个槽位的伤害增量（两个**交付帧**之间）。
  *
  * `pct` 为 `null` = 该槽在前一帧没有伤害（分母 0）⇒ 「不可比」，**不是 0**（§4.2 判据②）。
@@ -509,11 +523,7 @@ export async function analyzeCinemaUplift(
      * 主读数一个负数无法区分「命座让队伍变弱」与「命座把操作强度从 3 窗降到 2 窗」。
      * 同 K 提升率非空时一并印出——那就把「掉的是操作强度，不是同 K 收益」钉死了。
      */
-    const deliveryNote = a.k === b.k
-      ? ''
-      : a.k < b.k
-        ? `掉窗 K${b.k}→K${a.k}${sameK.pct === null ? '' : `（同 K${sameK.k} 仍 ${signed1(sameK.pct)}%）`}`
-        : `增窗 K${b.k}→K${a.k}`
+    const deliveryNote = buildDeliveryNote(b.k, a.k, sameK)
     return {
       entry: {
         beforeK: b.k,

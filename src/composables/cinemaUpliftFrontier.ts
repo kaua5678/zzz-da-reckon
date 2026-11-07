@@ -52,6 +52,14 @@ import { nextTick } from 'vue'
  */
 const CONTINUOUS_FLOOR_EPS = 1e-9
 
+/**
+ * 连续失衡的**采纳容差**（单位：窗）。截短 δ 之后要求「这一轮真的攒得出 K 窗」，但实测
+ * `auto-1371-1481-1451` C4 的 K=3 会落在 **2.9999**（缺口 0.004 窗 → δ 只有 0.156s，
+ * 重读一帧后缺口只剩 1e-4 量级）——用机器 ε 判会把这种「就差一个舍入」的格子挡在门外。
+ * 0.001 窗 = 15 点失衡值，与「少了整整一窗」差三个数量级，不是放松判据。
+ */
+const CONTINUOUS_ACCEPT_EPS = 1e-3
+
 /** 前沿上的一个点 = **一个被钉住的 K**（不是难度网格）。 */
 export interface KFrontierPoint {
   /** 钉住的失衡次数（`enemy.stunCountLock`） */
@@ -60,8 +68,21 @@ export interface KFrontierPoint {
   dmg: number
   /** 输出池的失衡次数（钉 K 后应等于 K；小于 = 引擎按 K 排窗、池却撑不住） */
   pool: number
-  /** 连续失衡次数（自洽判据的左边） */
+  /** 连续失衡次数（自洽判据的左边；= 该帧净失衡值 / 一窗成本） */
   contiguous: number
+  /**
+   * 这个点**实际锁的计划窗数**（一般 = `k`；连续失衡生效时是**小数** `k − δ/W`）。
+   *
+   * 用户 2026-11-01 裁明机制：满条开出 K 窗后，若「攒条时间 + K×W」超过 180s，
+   * 溢出 δ 从**最后一窗的时间**里丢掉 ⇒ 第 K 窗不是「没开」，而是「开了但被时钟截短」。
+   * 兑现侧本来就吃小数（`stunWindowFraction(plan, W, eff) = plan·W/eff`，实测逐位成立），
+   * 所以这里直接用小数计划重算这一帧，而不是把整窗判死。
+   */
+  plan: number
+  /** 末窗被时钟截短的秒数（0 = 没截；> 0 时 `plan = k − clip/W`，末窗长 `W − clip`） */
+  clip: number
+  /** 这个点是否走了连续失衡（= `clip > 0`） */
+  continuous: boolean
   /**
    * **该帧按槽位拆开的伤害**（下标 = 槽位号，与 `damagePoolRows[].slot` 同源；长度 = 队伍槽数）。
    * 用途：主读数要能说「这一级是主 C 涨、队友跌」，而不是只给一个全队合计。
@@ -224,24 +245,82 @@ export async function scanKFrontier(
     const points: KFrontierPoint[] = []
     for (let k = 0; k <= maxK; k++) {
       if (isBatchAborted(opts.control)) return null
-      const f = await readFrame(k)
-      const selfConsistent = Math.floor(f.contiguous + CONTINUOUS_FLOOR_EPS) >= k
-      const rejectReason = !f.fits && !selfConsistent ? 'both' as const
+      let f = await readFrame(k)
+      /** 整数 K 下的读数（判据左边 + 分布条「差多少窗」都用它，**不**随截短改写） */
+      const contAtK = f.contiguous
+      const selfConsistent = Math.floor(contAtK + CONTINUOUS_FLOOR_EPS) >= k
+      /**
+       * **连续失衡：末窗时钟截短**（用户 2026-11-01 裁明机制）。
+       *
+       * 攒满 K 窗要 `K·b/ρ` 秒（ρ = 净攒条速率 = `cont·b/(eff − K·W)`），加上 `K·W` 窗时若超 eff，
+       * 溢出 **δ = (K/cont − 1)·(eff − K·W)** 从最后一窗的时间里丢 ⇒ 末窗只有 `W − δ` 秒。
+       * δ ∈ [0, W) 时这一窗**是开了的**（攒条够了，只是没打满），兑现按 `plan = K − δ/W` 重算。
+       *
+       * ⚠ 只在「差距不到一窗」时试：δ ≥ W ⇒ 第 K 窗一秒都分不到 ⇒ 等价 K−1 窗，不采纳。
+       * ⚠ 必须**重读一帧**（改计划窗数会改整轮排法）：这不是另算一遍伤害，与其它点同一条求值通道。
+       */
+      let plan = k
+      let clip = 0
+      if (!selfConsistent && f.fits && contAtK > 0) {
+        const W = f.windowDuration
+        /** 攒条总时长 = eff − K·W（窗时之外的可用时间） */
+        const T = f.effectiveTime - k * W
+        /**
+         * 第一步：解析式给一个**初始截短**（`δ = (k/cont − 1)·T`，来自「省下的窗秒全变成攒条」）。
+         * ⚠ 它只是初值：实测「省下 1 秒窗时能多攒多少」远小于这个假设（`auto-1371-1481-1451` C4
+         * 的 cont 对 plan 的实测斜率 0.286 窗/窗，解析式等价斜率 ~0.4），所以要用实测斜率再解一次。
+         */
+        const d1 = T > 0 ? T * (k / contAtK - 1) : Number.POSITIVE_INFINITY
+        if (d1 >= 0 && d1 < W) {
+          const plan1 = k - d1 / W
+          const f1 = await readFrame(plan1)
+          const cont1 = f1.contiguous
+          /**
+           * **自洽校验**（判据，不是装饰）：截短之后这一轮必须真的攒得出 K 窗（`cont' ≥ k`）——
+           * 那才叫「第 K 窗开了、只是被时钟截短」。攒不出 ⇒ 截短不够或模型不适用 ⇒ 不采纳。
+           */
+          if (f1.fits && cont1 + CONTINUOUS_ACCEPT_EPS >= plan1) {
+            plan = plan1
+            clip = d1
+            f = f1
+          } else if (f1.fits) {
+            /** 第二步：**实测斜率**切一刀（secant）。斜率 ≤ 0 说明改计划窗数救不回攒条 ⇒ 放弃 */
+            // cont 随 plan **增加而下降** ⇒ 斜率取正号，要涨攒条必须**减**计划窗数
+            const slope = (cont1 - contAtK) / (plan1 - k)
+            if (slope > 1e-6) {
+              const plan2 = plan1 - (k - cont1) / slope
+              if (plan2 > k - 1 && plan2 < k) {
+                const f2 = await readFrame(plan2)
+                if (f2.fits && f2.contiguous + CONTINUOUS_ACCEPT_EPS >= plan2) {
+                  plan = plan2
+                  clip = (k - plan2) * W
+                  f = f2
+                }
+              }
+            }
+          }
+        }
+      }
+      const continuous = clip > 0
+      const rejectReason = !f.fits && !selfConsistent && !continuous ? 'both' as const
         : !f.fits ? 'budget' as const
-          : !selfConsistent ? 'contiguous' as const
+          : !selfConsistent && !continuous ? 'contiguous' as const
             : null
       points.push({
         k,
         dmg: f.dmg,
         slots: f.slots,
         pool: f.pool,
-        contiguous: f.contiguous,
+        contiguous: contAtK,
+        plan,
+        clip,
+        continuous,
         net: f.net,
         fits: f.fits,
         selfConsistent,
         feasible: rejectReason === null,
         rejectReason,
-        clamped: f.pool < k,
+        clamped: f.pool < plan,
         scanned: true,
       })
       /**
@@ -259,7 +338,7 @@ export async function scanKFrontier(
        * 未扫的点**照样出现在 `points` 里**（`scanned=false`，原因注明 `contiguous`），
        * 因为「域内没有这个操作点」与「我们没去看」是两件事，读数必须能分开。
        */
-      if (!selfConsistent && opts.earlyClose !== false) {
+      if (!selfConsistent && !continuous && opts.earlyClose !== false) {
         for (let rest = k + 1; rest <= maxK; rest++) {
           points.push({
             k: rest,
@@ -267,6 +346,9 @@ export async function scanKFrontier(
             slots: [],
             pool: Number.NaN,
             contiguous: Number.NaN,
+            plan: rest,
+            clip: 0,
+            continuous: false,
             net: Number.NaN,
             fits: false,
             selfConsistent: false,
@@ -458,6 +540,11 @@ export interface SameKBandPoint {
   afterContiguous: number | null
   /** 攒出缺口 = `afterContiguous − k`（负数 = 还差这么多窗；仅 `contiguous`/`both` 时有值） */
   afterGap: number | null
+  /**
+   * 后一级在这个 K 上**末窗被时钟截短的秒数**（0 = 没截；> 0 = 走连续失衡兑现）。
+   * 页面悬浮据此说明「这个 K 是开了窗、只是没打满」，而不是「攒不出」。
+   */
+  afterClip: number
 }
 
 export interface SameKBand {
@@ -480,7 +567,7 @@ export function sameKBand(before: KFrontier, after: KFrontier): SameKBand {
   for (const b of before.points) {
     const a = after.points.find(p => p.k === b.k)
     if (!a) {
-      points.push({ k: b.k, pct: null, bothFeasible: false, afterReject: 'out-of-range', afterContiguous: null, afterGap: null })
+      points.push({ k: b.k, pct: null, bothFeasible: false, afterReject: 'out-of-range', afterContiguous: null, afterGap: null, afterClip: 0 })
       continue
     }
     const bothFeasible = b.feasible && a.feasible
@@ -495,6 +582,7 @@ export function sameKBand(before: KFrontier, after: KFrontier): SameKBand {
       afterReject,
       afterContiguous: shortByContiguous && Number.isFinite(a.contiguous) ? a.contiguous : null,
       afterGap: shortByContiguous && Number.isFinite(a.contiguous) ? a.contiguous - b.k : null,
+      afterClip: a.feasible ? a.clip : 0,
     })
   }
   const usable = points.filter(p => p.bothFeasible && p.pct !== null).map(p => p.pct!)

@@ -19,8 +19,8 @@ import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { applyTeamToStore } from '@/composables/teamCompare'
 import { clearDifficultyLevers } from '@/composables/difficultyLadder'
 import { teamPresets } from '@/data/teamPresets'
-import { compareAtSameK, sameKBand, scanKFrontier } from '@/composables/cinemaUpliftFrontier'
-import { analyzeCinemaUplift, buildSlotSummary, computeSlotDeltas } from '@/composables/cinemaUplift'
+import { sameKBand, scanKFrontier } from '@/composables/cinemaUpliftFrontier'
+import { analyzeCinemaUplift, buildDeliveryNote, buildSlotSummary, computeSlotDeltas } from '@/composables/cinemaUplift'
 import type { KFrontier } from '@/composables/cinemaUpliftFrontier'
 
 /** 扫两级前沿并返回两条前沿（同一场景、同一难度、只差命座等级） */
@@ -38,6 +38,19 @@ async function scanPair(presetId: string, from: number, to: number): Promise<[KF
   expect(out, presetId + ' 前沿没扫出来').toBeTruthy()
   return out!
 }
+
+describe('判据⓪：掉窗注记的三态（纯函数，不依赖某个预设是否还掉窗）', () => {
+  const sameK = (k: number, pct: number | null) => ({
+    k, preferredK: k, atPreferred: true, beforeDmg: 1, afterDmg: 1, pct, preferredReason: null,
+  })
+
+  it('掉窗：点名 K 的移动 + 同 K 对照；增窗/不变成对应文案', () => {
+    expect(buildDeliveryNote(3, 2, sameK(2, 9.4))).toBe('掉窗 K3→K2（同 K2 仍 +9.4%）')
+    expect(buildDeliveryNote(3, 2, sameK(2, null)), '同 K 不可比时不编数字').toBe('掉窗 K3→K2')
+    expect(buildDeliveryNote(2, 3, sameK(3, 5))).toBe('增窗 K2→K3')
+    expect(buildDeliveryNote(3, 3, sameK(3, 5)), '没移动就不印（否则是恒真的装饰）').toBe('')
+  })
+})
 
 describe('判据①：恒等式 —— 逐槽之和 == 全队（每个求值帧 + 两个交付帧）', () => {
   beforeAll(async () => { await setupHarness(['', '', ''], { productionBasicWeights: true }) })
@@ -93,10 +106,10 @@ describe('判据①b：投影 off 口径（难度曲线基线）下恒等式同�
   }, 300_000)
 })
 
-describe('判据②：结构看得见 —— 仪玄 C1→C2 本槽涨、队友跌、合计几乎为零', () => {
+describe('判据②：结构看得见 —— 仪玄 C1→C2 本槽远高于队友', () => {
   beforeAll(async () => { await setupHarness(['', '', ''], { productionBasicWeights: true }) })
 
-  it('本槽 +1.46%、队友 −6.2%、合计 −0.03%（用户点名的那一格）', async () => {
+  it('本槽 +14.1%、队友合计 +0.9%、槽2 −1.0%（合计 −0.03% 那一版已随连续失衡消失）', async () => {
     const [a, b] = await scanPair('auto-1371-1481-1451', 1, 2)
     const d = computeSlotDeltas(a.delivery.slots, b.delivery.slots)
     const main = d.find(x => x.slot === 0)!
@@ -104,73 +117,62 @@ describe('判据②：结构看得见 —— 仪玄 C1→C2 本槽涨、队友�
     const matePct = (mates.reduce((s, x) => s + x.after, 0) / mates.reduce((s, x) => s + x.before, 0) - 1) * 100
     const totalPct = (b.delivery.dmg / a.delivery.dmg - 1) * 100
 
-    // 本槽涨、队友跌 —— 这就是「全队 −0.03%」底下被藏掉的结构
-    expect(main.pct, '本槽应上涨').toBeGreaterThan(0.5)
-    expect(main.pct!).toBeLessThan(3)
-    expect(matePct, '队友应下跌').toBeLessThan(-3)
-    // 合计：正负相抵 ⇒ 全队读数几乎为零（±0.5% 内）
-    expect(Math.abs(totalPct), '全队合计应接近 0').toBeLessThan(0.5)
-    // 三槽符号不同 ⇒ 单看合计会把方向读反（反空洞：本判据不是「三个槽都涨」也能过）
-    expect(Math.sign(main.pct!) * Math.sign(matePct)).toBe(-1)
+    /**
+     * 2026-11-07 连续失衡落地后，这一级的交付从 K2 变成 K3（末窗截短 1.95s），
+     * 于是用户最早点名的「全队 −0.03% / 本槽 +1.46%」不再出现；**结构本身仍然在**：
+     * 本槽 +14.1% 与队友合计 +0.9% 差 13pp，且槽 2 是负的（−1.0%）⇒ 单看合计会把队伍结构读平。
+     */
+    expect(main.pct, '本槽应明显上涨').toBeGreaterThan(10)
+    expect(Math.abs(main.pct! - matePct), '本槽与队友合计必须分得开（否则这一行没意义）').toBeGreaterThan(8)
+    expect(totalPct, '全队合计为正').toBeGreaterThan(5)
+    // 至少一个队友槽与主槽符号相反 ⇒ 合计会掩盖反向的那一槽（反空洞）
+    expect(d.filter(x => x.slot !== 0).some(x => x.pct !== null && Math.sign(x.pct) !== Math.sign(main.pct!))).toBe(true)
 
     // 页面印的那一行必须与数据一致（不许页面另拼一套数）
     const summary = buildSlotSummary(d, 0)
-    expect(summary).toContain('本槽 +1.5%')
-    expect(summary).toContain('队友 -6.2%')
+    expect(summary).toContain('本槽 +14.1%')
+    expect(summary).toContain('队友 +0.9%')
   }, 300_000)
 })
 
-describe('判据③：交付点掉窗必须被点名（K3→K2 不是「命座变弱」）', () => {
+describe('判据③：交付点不再掉窗（连续失衡落地后），真掉窗的仍被点名', () => {
   beforeAll(async () => { await setupHarness(['', '', ''], { productionBasicWeights: true }) })
 
-  it('auto-1501-1511-1491 C3→C4：交付 −10.14%，同 K2 仍 +9.4%，断点差 0.042 窗', async () => {
+  it('auto-1501-1511-1491 C3→C4：末窗截短 1.5s 后交付仍在 K3，读数转正', async () => {
     const [a, b] = await scanPair('auto-1501-1511-1491', 3, 4)
-    const sameK = compareAtSameK(a, b, a.delivery.k)
     const band = sameKBand(a, b)
 
-    // 交付点确实掉了一个窗，且这就是负值的来源
+    // 2026-11-07 前这里是 K3→K2、交付 −10.14%；连续失衡落地后第 3 窗「开了但短 1.5s」⇒ 不掉窗
+    const p3 = b.points.find(p => p.k === 3)!
+    expect(p3.continuous).toBe(true)
+    expect(p3.feasible).toBe(true)
     expect(a.delivery.k).toBe(3)
-    expect(b.delivery.k).toBe(2)
-    expect((b.delivery.dmg / a.delivery.dmg - 1) * 100, '交付点口径应为负').toBeLessThan(-5)
-    // 同 K 口径是正的 ⇒ 掉的是**操作强度**，不是同 K 收益
-    expect(sameK.pct, '同 K 提升应为正').toBeGreaterThan(5)
-    expect(sameK.k).toBe(2)
-    expect(sameK.atPreferred, '首选 K3 在后一级不可行 ⇒ 已下探').toBe(false)
+    expect(b.delivery.k).toBe(3)
+    expect((b.delivery.dmg / a.delivery.dmg - 1) * 100, '交付点口径应转正').toBeGreaterThan(2)
 
-    // 断点带出「差多少窗」：整数门槛下这是唯一能分辨「门槛抖动」与「真墙」的读数
-    const brk = band.points.find(p => p.k === 3)!
+    // 分布条：K3 现在两级都可行；真正的断点在 K4（攒条差 1.7 窗，远超一窗 ⇒ 不许凑）
+    expect(band.points.find(p => p.k === 3)!.bothFeasible).toBe(true)
+    const brk = band.points.find(p => p.k === 4)!
     expect(brk.bothFeasible).toBe(false)
     expect(brk.afterReject).toBe('contiguous')
-    expect(brk.afterContiguous!).toBeGreaterThan(2.9)
-    expect(brk.afterContiguous!).toBeLessThan(3)
-    expect(brk.afterGap!).toBeLessThan(0)
-    expect(brk.afterGap!).toBeGreaterThan(-0.1)
-
+    expect(brk.afterGap!).toBeLessThan(-1)
   }, 300_000)
 
-  it('页面路径（analyzeCinemaUplift, frontier: true）：掉窗那行的字符串由 readFrontier 拼出', async () => {
+  it('页面路径（analyzeCinemaUplift, frontier: true）：逐槽读数与掉窗字符串都走同一条路径', async () => {
+    // 连续失衡落地后，这一队的 K3 不再掉窗（末窗截短 1.5s）⇒ 页面上的掉窗注记应为空，
+    // 「掉窗」那条分支改由下面的纯函数判据守住（见「掉窗注记的三态」）。
     const preset = teamPresets.find(p => p.id === 'auto-1501-1511-1491')!
     let note = ''
-    let noteAt3 = ''
-    let noteAt1 = ''
     let slotSummary = ''
     await withAnalysisScenario(async s => {
       applyTeamToStore(s.config, preset)
       const rows = await analyzeCinemaUplift(s, { targetStunCount: 0, frontier: true, slots: [0], maxLevel: 4 })
       const entries = rows[0]!.entries
       note = entries.find(x => x.to === 4)!.frontier!.deliveryNote
-      noteAt3 = entries.find(x => x.to === 3)!.frontier!.deliveryNote
-      noteAt1 = entries.find(x => x.to === 1)!.frontier!.deliveryNote
       slotSummary = entries.find(x => x.to === 4)!.frontier!.slotSummary
     })
-    // 掉窗：必须点名 K 的移动，并给出「同 K 仍为正」的对照（这正是负号被误读的那一层）
-    expect(note).toContain('掉窗 K3→K2')
-    expect(note).toContain('同 K2')
-    expect(note).toMatch(/\+\d/)
-    // 反向对照：K 上升时印「增窗」、K 不变时不印（否则这行字是恒真的装饰）
-    expect(noteAt3).toContain('增窗')
-    expect(noteAt1).toBe('')
-    // 逐槽读数也在页面的那条路径上
+    expect(note, 'K3→K3：没有掉窗就不印注记').toBe('')
+    // 「增窗」分支已由上面的纯函数判据覆盖（这一队现在各级都交付在同 K，没有真实预设可测）
     expect(slotSummary).toContain('本槽')
     expect(slotSummary).toContain('队友')
   }, 600_000)

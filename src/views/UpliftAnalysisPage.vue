@@ -137,6 +137,10 @@
             <b>交付点掉窗时第①行会当场标出</b>（如「掉窗 K3→K2（同 K2 仍 +9.4%）」）——那说明这一级的负号来自
             <b>操作强度少了一个窗</b>，不是同 K 收益变负；分布条上的断点同时印出<b>差多少窗</b>（如 <code>K3 ✕攒不出 2.96/3</code>）。
             <br>
+            <b>连续失衡（末窗时钟截短）</b>：攒条差不到一窗、只是时间不够时，引擎按「<b>这一窗开了但没打满</b>」兑现
+            ——把溢出从末窗时间里扣掉后用<b>小数计划</b>重算那一轮（覆盖 = 计划窗数 × 窗长 / 有效时间）。
+            悬浮里会写明截了多少秒（如「末窗被时钟截短 1.5s」）；缺口超过一整窗才判「攒不出」。
+            <br>
             ⇒ ①与②差距大的时候，说明这一级的提升<b>有一部分来自引擎把它交付到了更值钱的 K</b>——那正是
             「取两点会看出负提升」的副作用的载体，现在能当场看见、且能下钻到归因行。
             口径全文与实测见 <code>docs/mcp-cinema-interval-uplift.md</code> §5.7。
@@ -312,7 +316,7 @@ function bandTitle(e: CinemaUpliftEntry): string {
   if (!band) return ''
   const lines = band.points
     .filter(p => p.bothFeasible)
-    .map(p => `K${p.k}：${signed1(p.pct ?? 0)}%`)
+    .map(p => `K${p.k}：${signed1(p.pct ?? 0)}%${p.afterClip > 0 ? `（末窗被时钟截短 ${fmt(p.afterClip, 1)}s）` : ''}`)
   const head = band.medianPct === null
     ? '同 K 提升：两级没有公共可行操作点'
     : `同 K 提升中位 ${signed1(band.medianPct)}%（${band.feasibleKs.length} 个操作强度可行）`
