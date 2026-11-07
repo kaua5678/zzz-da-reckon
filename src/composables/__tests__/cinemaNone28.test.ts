@@ -118,7 +118,9 @@ interface ACell {
  * 队友按该格 `spec.additionalAbility.teamConditions` 解析选取（确定性：id 升序第一个命中者）。
  */
 const A_CLASS: ACell[] = [
-  { agentId: '1661', cinema: 6, name: '知更鸟', mates: ['1011'], total: 7.71, tier: 'EXEC' },
+  // 3.4.3（2026-11-07）：知更鸟基础伤害因「进战 +3000 喧响 ⇒ 多一发终结技」抬高（1661 各级 +7.2~7.3%），
+  // C6 的**相对**贡献被分母摊薄 ⇒ 7.71% → 5.97%（机制没退化：影画6 仍是必定暴击 + 生命值系数 ×2）。
+  { agentId: '1661', cinema: 6, name: '知更鸟', mates: ['1011'], total: 5.97, tier: 'EXEC' },
   { agentId: '1151', cinema: 6, name: '露西', mates: ['1021'], total: 5.35, tier: 'RESOURCE+EXEC' },
   { agentId: '1421', cinema: 1, name: '潘引壶', mates: ['1051'], total: 4.53, tier: 'ATTR' },
   { agentId: '1421', cinema: 6, name: '潘引壶', mates: ['1051'], total: 2.91, tier: 'ATTR' },

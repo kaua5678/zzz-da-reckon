@@ -16,81 +16,107 @@ import { applyStat } from '@/core/buff'
 import { mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
 import { fmt } from '@/utils/format'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
+import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
 
 /**
- * 知更鸟（1661·防护/以太）——v1 测试服占位包（nanoka **3.4.1+19997538** 热更包，2026-10-30 重录），2026-10-25 第三刀。
+ * 知更鸟（1661·防护/以太）——测试服角色（`Test1` 占位包起；**3.4.3+20278274** 重录＝整批更名 + 额外能力/终结技改口径），2026-10-25 第三刀。
  *
  * ## 本文档覆盖的两个机制（原文出处都在 spec 1661.json）
  *
- * ### ① 离场守护·全队防御（原文「特殊技：离场技」条目）——**伤害项，不是生存项**
- * > 「[离场守护]状态期间全队角色获得防御力提升，知更鸟初始最大生命值大于16000时，每多拥有1000点
+ * ### ① 幕后协奏·全队防御（原文「特殊技：万籁与我同歌」条目）——**伤害项，不是生存项**
+ * > 「[幕后协奏]状态期间全队角色获得防御力提升，知更鸟初始最大生命值大于16000时，每多拥有1000点
  * >  生命值获得{CAL:44+AvatarSkillLevel(1)*3}点防御，最高不超过{CAL:440+AvatarSkillLevel(1)*30}点，
- * >  该效果在知更鸟结束[离场守护]状态后仍保留15秒。」
+ * >  该效果在知更鸟结束[幕后协奏]状态后仍保留15秒。」
  *
  * 落点 = **全队固定防御**（inCombatDefFlat）——锋御以防御力作伤害基底（core/damage.ts 的
  * SHARPEN_DAMAGE_PROFILE.calcBasisValue = panel.def），所以这一条是实打实的伤害项。
  * 读取源 = **知更鸟自己的源面板局外生命**（panelOfSlot(sourcePanels, slot, 'outOfCombat')，
  * 「初始最大生命值」= 局外口径），不读队友面板、不读已叠过局内 buff 的 panel。
- * 数值：Lv12 ⇒ 每满 1000 点 +80、上限 800、门槛 16000；拥有[Buff强化点]时**提升效果与上限各 +25%**。
+ * 数值：Lv12 ⇒ 每满 1000 点 +80、上限 800、门槛 16000；拥有[重音节拍]时**提升效果与上限各 +25%**。
  *
- * ### ② 登场值 / Buff 强化点循环（原文核心被动 Lv.7 + 特殊技·追加攻击）
- * > 「[离场守护]状态下，知更鸟发动追加攻击可以获得[登场值]，[登场值]最多可以拥有120点；
- * >  当[登场值]大于等于100点时…消耗100点[登场值]发动[登场技]…
- * >  发动[登场技]时，知更鸟获得1个[Buff强化点]，[Buff强化点]最多持有1个」
- * > 「[特殊技：追加攻击]为追加攻击，**每8秒最多可以发动一次**…发动时获得20点[登场值]」
+ * ### ② 星耀值 / 重音节拍循环（原文核心被动 Lv.7 + 特殊技·弦歌相和）
+ * > 「[幕后协奏]状态下，知更鸟发动追加攻击可以获得[星耀值]，[星耀值]最多可以拥有140点；
+ * >  当[星耀值]大于等于120点时…消耗120点[星耀值]发动[登场技：星耀时刻]…
+ * >  发动[登场技：星耀时刻]时，知更鸟获得1点[重音节拍]，[重音节拍]最多持有1点」
+ * > 「[特殊技：弦歌相和]为追加攻击，**每10秒最多可以发动一次**…发动时获得20点[星耀值]」
  *
- * 循环：追加攻击 floor(有效战斗时间 / 8) 次 → 每次 +20 → 同时上限 120 ⇒
- * 登场技次数 = floor(登场值总量 / 100)（见 solveRobinEntry；120 对 20/100 这组整数不咬合）。
- * 登场技本体 = moveId 1661011（1.6s，**快速支援**语义），获得 Buff 强化点 ⇒ 下一次进离场守护时
+ * 循环：追加攻击 floor(有效战斗时间 / 10) 次 → 每次 +20 → 同时上限 140 ⇒
+ * 登场技次数 = floor(星耀值总量 / 120)（见 solveRobinEntry；140 对 20/120 这组整数不咬合）。
+ * 登场技本体 = moveId 1661011（1.6s，**快速支援**语义），获得 重音节拍 ⇒ 下一次进幕后协奏时
  * 把防御提升再 ×1.25（ROBIN_BUFF_POINT_DEF_MULT）。
  *
  * ## 近似（有意，逐条写明）
- * - **满覆盖近似**：离场守护 80s / 追加攻击 10s CD / 护盾 15s 全不建状态机——追加攻击按 floor(t/10) 满打，
+ * - **满覆盖近似**：幕后协奏 80s / 追加攻击 10s CD / 护盾 15s 全不建状态机——追加攻击按 floor(t/10) 满打，
  *   防御提升按常驻上屏（原文「结束后仍保留 15 秒」⇒ 80s 守护 + 15s 尾巴，覆盖率本就近 1）。
- * - **Buff 强化点按满覆盖**：登场技每次 +1、进离场守护必消耗 1（上限 1）⇒ 循环稳态恒有 ⇒ ×1.25 常驻。
- * - 护盾量（3.4.1+19997538：离场技 2% / 追加攻击 4% / 强化追加攻击 6% 生命）、抗打断、无敌、
- *   「全队每毁伤回 15 能量」**不建**：前四者是生存面，
- *   最后一条需要跨角色毁伤计数通道（ModuleFeedback 现无该键），已记在 spec 的「明日实录」。
+ * - **重音节拍按满覆盖**：登场技每次 +1、进幕后协奏必消耗 1（上限 1）⇒ 循环稳态恒有 ⇒ ×1.25 常驻。
+ * - 护盾量（3.4.3：万籁与我同歌 2% / 弦歌相和 4% / 震律齐鸣 8% 生命）、抗打断、无敌、
+ *   「全队角色每触发一次毁伤，知更鸟固定回复 15 点能量」**不建**：前四者是生存面，
+ *   最后一条需要跨角色毁伤计数通道（ModuleFeedback 现无该键），已记在 spec 的未建模段。
+ * - **3.4.3 终结技新增的「全队[锋御]角色固定回复 20 点锐能」没有通道**：锐能池由挽昼/克拉蕾
+ *   **各自模块**按闭式（进场 60 + 回复×时间 + 平A 锐能）算，引擎没有跨槽「锐能给养」通道；
+ *   知更鸟自己的终结技次数（`state.ultimateCount`，实测 3 次）在 converge 相位读不到。同样记在 spec 未建模段。
  *
  * ## 滑块
- * robin.buffPointActive（开关，缺省 1）：Buff 强化点是否常驻。0 = 白板离场守护（判据负控）。
+ * robin.buffPointActive（开关，缺省 1）：重音节拍是否常驻。0 = 白板幕后协奏（判据负控）。
  */
 const ROBIN_AGENT_ID = '1661'
 
-/** 离场守护·防御：门槛（知更鸟**初始最大生命值**，低于它整条不生效） */
+/** 幕后协奏·防御：门槛（知更鸟**初始最大生命值**，低于它整条不生效） */
 export const ROBIN_DEF_HP_THRESHOLD = 16000
-/** 离场守护·防御：每满多少点生命值加一档 */
+/** 幕后协奏·防御：每满多少点生命值加一档 */
 export const ROBIN_DEF_HP_PER_STEP = 1000
-/** 离场守护·防御：每档基础值 = 44 + 3 × 技能等级（Lv12 = 80） */
+/** 幕后协奏·防御：每档基础值 = 44 + 3 × 技能等级（Lv12 = 80） */
 export const ROBIN_DEF_PER_STEP_BASE = 44
 export const ROBIN_DEF_PER_STEP_PER_LEVEL = 3
-/** 离场守护·防御：基础上限 = 440 + 30 × 技能等级（Lv12 = 800） */
+/** 幕后协奏·防御：基础上限 = 440 + 30 × 技能等级（Lv12 = 800） */
 export const ROBIN_DEF_CAP_BASE = 440
 export const ROBIN_DEF_CAP_PER_LEVEL = 30
-/** [Buff强化点]：使防御提升效果**及其上限**额外提升 25%（原文核心被动 Lv.7 末段） */
+/** [重音节拍]：使防御提升效果**及其上限**额外提升 25%（原文核心被动 Lv.7 末段） */
 export const ROBIN_BUFF_POINT_DEF_MULT = 1.25
 /**
- * 追加攻击 CD（秒）：原文「[特殊技：追加攻击]为追加攻击，**每10秒最多可以发动一次**」。
- * ⚠ 2026-10-30 随 nanoka 3.4.1+19997538 热更由 **8 → 10**（同批：离场守护 60s → 80s、
- *   追加攻击护盾 3% → 4%、强化追加攻击「按最大生命值」系数 0.214+0.028×Lv → 0.256+0.052×Lv、
- *   终结技护盾→生命转化 40% → 50%、[反制支援]成功额外 +1 [Buff强化点]）。CD 是**唯一进产行次数**的那条。
+ * 追加攻击 CD（秒）：原文「[特殊技：弦歌相和]为追加攻击，**每10秒最多可以发动一次**」。
+ * ⚠ 2026-10-30 随 nanoka 3.4.1+19997538 热更由 **8 → 10**（同批：幕后协奏 60s → 80s、
+ *   追加攻击护盾 3% → 4%、震律齐鸣「按最大生命值」系数 0.214+0.028×Lv → 0.256+0.052×Lv、
+ *   终结技护盾→生命转化 40% → 50%、[反制支援]成功额外 +1 [重音节拍]）。CD 是**唯一进产行次数**的那条。
  */
 export const ROBIN_AFTERSHOCK_CD_SECONDS = 10
-/** 每次追加攻击获得的[登场值] */
+/** 每次追加攻击获得的[星耀值] */
 export const ROBIN_ENTRY_PER_AFTERSHOCK = 20
-/** [登场值]上限（v2 3.4.2+20049556：120 → 140，用户 2026-11-01 裁决取核心被动口径） */
+/**
+ * 额外能力（3.4.3）：进入战场时获得的喧响值（堪域 600s 内一次 ⇒ 每局一次）。
+ * 数值 = **一次终结技的单价**（原文 3000 = `ULTIMATE_COST_DEFAULT`，数据层单一来源；
+ * 字面量手抄会被 `handCopiedConstants` 的源码锁拦下）。
+ */
+export const ROBIN_ADDITIONAL_DECIBEL_GIFT = ULTIMATE_COST_DEFAULT
+/** [星耀值]上限（v2 3.4.2+20049556：120 → 140，用户 2026-11-01 裁决取核心被动口径） */
 export const ROBIN_ENTRY_MAX = 140
-/** 触发[登场技]所需[登场值]（也是每次消耗量；v2：100 → 120） */
+/** 触发[登场技]所需[星耀值]（也是每次消耗量；v2：100 → 120） */
 export const ROBIN_ENTRY_COST = 120
-/** 强化追加攻击：能量门槛 / 单次耗能（原文「若能量大于等于40点则升级为[强化特殊技：强化追加攻击]：持续消耗总计40点能量」） */
+/** 震律齐鸣：能量门槛 / 单次耗能（原文「若能量大于等于40点则升级为[强化特殊技：震律齐鸣]：持续消耗总计40点能量」） */
 export const ROBIN_REINFORCED_ENERGY_COST = 40
-/** 影画4：能量不足时也可升级为强化追加攻击，每 60 秒最多一次 */
+/** 影画4：能量不足时也可升级为震律齐鸣，每 60 秒最多一次 */
 export const ROBIN_C4_GUARANTEE_CD_SECONDS = 60
-/** 强化追加攻击「根据最大生命值额外提升重击的伤害」系数：CAL 0.44 + 0.08×技能等级（Lv12 = 1.4 = 140%） */
+/** 震律齐鸣「根据最大生命值额外提升重击的伤害」系数：CAL 0.44 + 0.08×技能等级（Lv12 = 1.4 = 140%） */
 export const ROBIN_REINFORCED_HP_RATE_BASE = 0.44
 export const ROBIN_REINFORCED_HP_RATE_PER_LEVEL = 0.08
 /** 影画6：上述生命值系数提升为原本的 200% */
 export const ROBIN_C6_HP_RATE_MULT = 2
+/**
+ * 额外能力（**3.4.3+20278274** 新文本）：「全队[击破]角色攻击力提升 **80 点**，该效果随知更鸟等级提升，
+ * 每级增加 12 点，最多提升{CAL:80+60*12}点」。
+ *
+ * v2 文本是「全队[击破]角色攻击力提升 800 点」的**定值**（v2 期间这条根本没进伤害账，spec 只登记了门控）；
+ * 3.4.3 改成按等级成长的上限式——满级 60 级 = 80 + 12×60 = 800，与本仓库一律按 60 级结算的口径一致。
+ * 落点 = inCombat 攻击力固定值（atkFlat），只写[击破]槽位（见 applyRobinTeamPanelEffects）。
+ */
+export const ROBIN_ADDITIONAL_STUN_ATK_BASE = 80
+export const ROBIN_ADDITIONAL_STUN_ATK_PER_LEVEL = 12
+export const ROBIN_ADDITIONAL_STUN_ATK_CAP = 800
+
+/** [击破]队友的攻击力固定加成（满级 60 级口径） */
+export function robinStunAtkBonus(level = 60): number {
+  return Math.min(ROBIN_ADDITIONAL_STUN_ATK_CAP, ROBIN_ADDITIONAL_STUN_ATK_BASE + ROBIN_ADDITIONAL_STUN_ATK_PER_LEVEL * level)
+}
 
 /** 面板钩子侧的设置读口（默认值只来自 settings 声明；CC-508） */
 const robinSetting = mechanicSettingPanelReader(() => robinMechanic.settings)
@@ -99,7 +125,7 @@ const robinSetting = mechanicSettingPanelReader(() => robinMechanic.settings)
 const SKILL_LEVEL = 12
 
 /**
- * 离场守护·防御提升量（纯函数；判据四臂见 robinGuard.test.ts）。
+ * 幕后协奏·防御提升量（纯函数；判据四臂见 robinGuard.test.ts）。
  *
  *   steps = max(0, floor((hp - 16000) / 1000))        // HP < 16000 ⇒ 0
  *   raw   = min(steps * (44 + 3*Lv), 440 + 30*Lv)      // Lv12: 每档 80 / 上限 800
@@ -122,11 +148,11 @@ export function robinGuardDefBonus(input: { hp: number; buffPointActive: boolean
 }
 
 /**
- * 登场值 / 登场技循环（纯函数；buildExecutions 与判据共用，杜绝两处各算一份）。
+ * 星耀值 / 登场技循环（纯函数；buildExecutions 与判据共用，杜绝两处各算一份）。
  *
- * - 追加攻击次数 = floor(有效战斗时间 / 10)（满覆盖近似：离场守护 80s 覆盖整局，见文件头）；
- * - 登场值总量 = 追加次数 × 20；登场技次数 = floor(总量 / 100)；
- * - entryValue = 最后一次登场技之后**手里还剩的**登场值（展示用，0..120）。
+ * - 追加攻击次数 = floor(有效战斗时间 / 10)（满覆盖近似：幕后协奏 80s 覆盖整局，见文件头）；
+ * - 星耀值总量 = 追加次数 × 20；登场技次数 = floor(总量 / 100)；
+ * - entryValue = 最后一次登场技之后**手里还剩的**星耀值（展示用，0..120）。
  *
  * ⚠ 为什么不是「总量封 120」：120 是**同时持有**上限，不是整局总量（用户口径「追加上限120」+ 原文
  *   「最多可以拥有120点」）。每消耗 100 点后又能重新攒，故整局可用点数不受 120 钳制；
@@ -141,7 +167,7 @@ export function solveRobinEntry(input: { combatTime: number; teammateFrontlineSe
   const time = Math.max(0, Number(input.combatTime) || 0)
   // 原文「**队伍中其他操作中的角色**发动任意攻击命中敌人时自动发动」⇒ 没有队友在场就一次都不触发。
   // 用 `teammateFrontlineSeconds`（Σ 队友前台秒）作判据：> 0 ⟺ 队里确有别的角色在场上打过。
-  // 这条不是近似的额外假设——单角色队里知更鸟全程离场守护，没有任何人替她触发追击。
+  // 这条不是近似的额外假设——单角色队里知更鸟全程幕后协奏，没有任何人替她触发追击。
   const hasTeammates = Number(input.teammateFrontlineSeconds ?? 0) > 0
   const aftershockCount = hasTeammates ? Math.floor(time / ROBIN_AFTERSHOCK_CD_SECONDS) : 0
   const totalEntry = aftershockCount * ROBIN_ENTRY_PER_AFTERSHOCK
@@ -155,9 +181,15 @@ function buildRobinCharConfig({ cfg, skills, cinemaLevel }: AgentCharConfigInput
   const all = skills.categories.flatMap(c => c.moves)
   const timeOf = (id: string) => Math.max(0, all.find(m => m.id === id)?.actionTime ?? 0)
   cfg.robinCinemaLevel = cinemaLevel
+  // 额外能力（3.4.3）：「进入战场时，获得 **3000 点喧响值**，在堪域模式中此效果 600 秒内最多触发一次」
+  // （v2 文本是「获得 1 个[重音节拍]」——那个是面子资源，不入伤害账；3.4.3 改成了真喧响）。
+  // 消费方 = 引擎的终结技通道：她的终结技 1661010「终结技：星辰协奏曲」由通用 ultimate 行物化，
+  // 次数 = floor(总喧响 / 单价) ⇒ 这 3000 点直接多一发。实测本配装终极技 2 → 3 次、伤害 +7.15%
+  // （判据 timeGolden agent:1661:c0，逐槽 ult 字段 2.0000 → 3.0000）。
+  cfg.initialDecibelGift = cfg.initialDecibelGift + ROBIN_ADDITIONAL_DECIBEL_GIFT
   cfg.robinEntryActionTime = timeOf('1661011')
   cfg.robinAftershockDamage = getRowValue(all.find(m => m.id === '1661005'), 'damage')
-  // 强化追加攻击表值（1661006；能量≥40 升级，影画4/6 追加规则见 buildRobinExecutions）
+  // 震律齐鸣表值（1661006；能量≥40 升级，影画4/6 追加规则见 buildRobinExecutions）
   cfg.robinReinforcedDamage = getRowValue(all.find(m => m.id === '1661006'), 'damage')
   cfg.robinReinforcedDaze = getRowValue(all.find(m => m.id === '1661006'), 'daze')
   cfg.robinEntryDamage = getRowValue(all.find(m => m.id === '1661011'), 'damage')
@@ -166,7 +198,7 @@ function buildRobinCharConfig({ cfg, skills, cinemaLevel }: AgentCharConfigInput
   cfg.robinCornerAssistDaze = getRowValue(all.find(m => m.id === '1661019'), 'daze')
 }
 
-/** 资源结算读数（展示用）：登场技次数 + Buff 强化点稳态。与 buildExecutions 同源调 solveRobinEntry。 */
+/** 资源结算读数（展示用）：登场技次数 + 重音节拍稳态。与 buildExecutions 同源调 solveRobinEntry。 */
 function buildRobinResourceResult({ cfg, state, teamFrontlineSeconds }: Pick<AgentResourceInput, 'cfg' | 'state' | 'teamFrontlineSeconds'>) {
   const entry = solveRobinEntry({ combatTime: effectiveCombatTime(state, cfg), teammateFrontlineSeconds: teamFrontlineSeconds })
   return {
@@ -174,7 +206,7 @@ function buildRobinResourceResult({ cfg, state, teamFrontlineSeconds }: Pick<Age
       aftershockCount: entry.aftershockCount,
       entryValue: entry.entryValue,
       entrySkillCount: entry.entrySkillCount,
-      // Buff 强化点：登场技每次 +1、进离场守护必消耗 1（上限 1）⇒ 循环稳态恒有
+      // 重音节拍：登场技每次 +1、进幕后协奏必消耗 1（上限 1）⇒ 循环稳态恒有
       buffPointActive: entry.entrySkillCount > 0,
       // 队友反制支援次数（converge 相位 applyTeamConfig 写入）→ 1661019 触发次数
       teammateCounterAssists: Math.max(0, Math.floor(Number(cfg.robinTeammateCounterAssists ?? 0))),
@@ -183,7 +215,7 @@ function buildRobinResourceResult({ cfg, state, teamFrontlineSeconds }: Pick<Age
 }
 
 /**
- * 资源卡分区（展示层）：登场值循环的读数与「离场守护防御」的口径说明。
+ * 资源卡分区（展示层）：星耀值循环的读数与「幕后协奏防御」的口径说明。
  * 防御值本身不在这里算——它是面板项（teamPanelEffects），资源卡只解释口径与门槛。
  */
 function buildRobinResourceSections({ result }: AgentResourceSectionsInput) {
@@ -192,20 +224,20 @@ function buildRobinResourceSections({ result }: AgentResourceSectionsInput) {
   return [
     {
       id: 'robin-entry',
-      title: '知更鸟·登场值 / Buff 强化点',
-      summary: `追击 ${fmt(source.aftershockCount)} 次 · 登场技 ${fmt(source.entrySkillCount)} 次 · 结余登场值 ${fmt(source.entryValue)}`,
+      title: '知更鸟·星耀值 / 重音节拍',
+      summary: `追击 ${fmt(source.aftershockCount)} 次 · 登场技 ${fmt(source.entrySkillCount)} 次 · 结余星耀值 ${fmt(source.entryValue)}`,
       rows: [
-        { label: `追加攻击（${ROBIN_AFTERSHOCK_CD_SECONDS}s CD）`, value: `${fmt(source.aftershockCount)} 次`, detail: '每次 +20 登场值（满覆盖近似：离场守护 80s 覆盖整局）' },
-        { label: '登场值上限', value: `${fmt(ROBIN_ENTRY_MAX)}`, detail: '同时持有上限；每 100 点触发一次登场技，余量继续累积' },
-        { label: '登场技（≥100 点）', value: `${fmt(source.entrySkillCount)} 次`, detail: '每次消耗 100 点 + 获得 1 个 Buff 强化点（快速支援语义，占前台）' },
-        { label: 'Buff 强化点', value: source.buffPointActive ? '常驻' : '无', detail: '离场守护防御提升 ×1.25（上限同步 ×1.25）' },
+        { label: `追加攻击（${ROBIN_AFTERSHOCK_CD_SECONDS}s CD）`, value: `${fmt(source.aftershockCount)} 次`, detail: '每次 +20 星耀值（满覆盖近似：幕后协奏 80s 覆盖整局）' },
+        { label: '星耀值上限', value: `${fmt(ROBIN_ENTRY_MAX)}`, detail: '同时持有上限；每 100 点触发一次登场技，余量继续累积' },
+        { label: '登场技（≥100 点）', value: `${fmt(source.entrySkillCount)} 次`, detail: '每次消耗 100 点 + 获得 1 个 重音节拍（快速支援语义，占前台）' },
+        { label: '重音节拍', value: source.buffPointActive ? '常驻' : '无', detail: '幕后协奏防御提升 ×1.25（上限同步 ×1.25）' },
         {
-          label: '角力协同突击（1661019）',
+          label: '完美节拍（1661019）',
           value: `${fmt(source.teammateCounterAssists)} 次`,
           detail: '触发 = 队伍中**其他**角色发动[反制支援]且[完美反制]（1:1）；自动发动 ⇒ 不占前台时间、不产喧响与秽盾',
         },
       ],
-      footer: '离场守护·全队固定防御：每满 1000 点初始生命 +80（上限 800），门槛 16000，Buff 强化点 ×1.25；'
+      footer: '幕后协奏·全队固定防御：每满 1000 点初始生命 +80（上限 800），门槛 16000，重音节拍 ×1.25；'
         + '护盾量 / 抗打断 / 每毁伤回 15 能量未建模（生存面 + 缺跨角色毁伤计数通道）。',
     },
   ]
@@ -235,13 +267,13 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
   const cinema = cinemaLevelOf(cfg.robinCinemaLevel)
   const panel = cfg.panel
   /**
-   * 强化追加攻击（1661006，v2 核心被动 + 影画 4/6）：
-   * ① 原文「发动[特殊技：追加攻击]时，若能量大于等于40点则升级为[强化特殊技：强化追加攻击]：
+   * 震律齐鸣（1661006，v2 核心被动 + 影画 4/6）：
+   * ① 原文「发动[特殊技：弦歌相和]时，若能量大于等于40点则升级为[强化特殊技：震律齐鸣]：
    *    持续消耗总计40点能量」⇒ 升级次数 = min(追击次数, floor(总能量 / 40))，行上如实记 `totalEnergyConsume`。
    *    ⚠ **单轮读态、不回压本轮能量池**（升级耗的 40 点不改本轮 EX 次数）——用户 2026-11-01 口径
    *    「你认为怎么实现符合文本都可以」；不动点联立留作 debt。
    * ② 影画4：能量不足时也可升级，每 60s 最多一次 ⇒ 只补「能量没升的那些」。
-   * ③ 影画6：升级后的[强化追加攻击]必定暴击（行级 critRateBonus 抬到 100）+ 生命值系数 ×2。
+   * ③ 影画6：升级后的[震律齐鸣]必定暴击（行级 critRateBonus 抬到 100）+ 生命值系数 ×2。
    */
   const energyUpgraded = Math.min(entry.aftershockCount, Math.floor(Math.max(0, state.totalEnergy) / ROBIN_REINFORCED_ENERGY_COST))
   const guaranteed = cinema >= 4
@@ -249,11 +281,11 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
     : 0
   const reinforcedCount = Math.max(0, energyUpgraded + guaranteed)
   const plainAftershockCount = Math.max(0, entry.aftershockCount - reinforcedCount)
-  // 追加攻击：离场守护期间队友命中触发，后台行（不占前台时间）
+  // 追加攻击：幕后协奏期间队友命中触发，后台行（不占前台时间）
   if (plainAftershockCount > 0) {
     executions.push(moduleExecRow({
       moveId: '1661005',
-      moveName: `特殊技：追加攻击（离场守护·队友命中触发，${ROBIN_AFTERSHOCK_CD_SECONDS}s CD）`,
+      moveName: `特殊技：弦歌相和（幕后协奏·队友命中触发，${ROBIN_AFTERSHOCK_CD_SECONDS}s CD）`,
       category: 'special',
       count: plainAftershockCount,
       damageMultiplier: Number(cfg.robinAftershockDamage ?? 0),
@@ -261,7 +293,7 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
       timeBucket: 'backstage',
       // CC-391 D1：CD 驱动的后台自动行（10s CD，不靠玩家放置）⇒ 轴模式按失衡时间占比吃易伤
       autoSplitByStun: true,
-      skillTableNote: `满覆盖近似：floor(有效战斗时间/${ROBIN_AFTERSHOCK_CD_SECONDS})，每次 +20 登场值（同时上限 ${ROBIN_ENTRY_MAX}）`,
+      skillTableNote: `满覆盖近似：floor(有效战斗时间/${ROBIN_AFTERSHOCK_CD_SECONDS})，每次 +20 星耀值（同时上限 ${ROBIN_ENTRY_MAX}）`,
     }))
   }
   if (reinforcedCount > 0) {
@@ -271,7 +303,7 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
     const hpExtraMultiplier = panel.hp * hpRate * 100 / Math.max(1, panel.atk)
     executions.push(moduleExecRow({
       moveId: '1661006',
-      moveName: `强化特殊技：强化追加攻击（能量≥${ROBIN_REINFORCED_ENERGY_COST} 升级${cinema >= 4 ? ' / 影画4 保底' : ''}${cinema >= 6 ? ' / 必定暴击' : ''}）`,
+      moveName: `强化特殊技：震律齐鸣（能量≥${ROBIN_REINFORCED_ENERGY_COST} 升级${cinema >= 4 ? ' / 影画4 保底' : ''}${cinema >= 6 ? ' / 必定暴击' : ''}）`,
       category: 'special',
       count: reinforcedCount,
       damageMultiplier: Number(cfg.robinReinforcedDamage ?? 0) + hpExtraMultiplier,
@@ -285,14 +317,14 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
       skillTableNote: `升级 = 能量 ≥${ROBIN_REINFORCED_ENERGY_COST}（耗 ${ROBIN_REINFORCED_ENERGY_COST}）${cinema >= 4 ? ' 或影画4 每 60s 保底' : ''}；生命值附加 = maxHP × ${Math.round(hpRate * 100)}%${cinema >= 6 ? '；影画6 必定暴击' : ''}`,
     }))
   }
-  // 支援突击·角力协同突击（1661019）：**队友**发动反制支援且完美反制时自动发动。
+  // 支援突击·完美节拍（1661019）：**队友**发动反制支援且完美反制时自动发动。
   // 3.4.1+19997538 起该行 decibel/ether 均为 0、actionTime = 0（自动触发段，不占前台、不产喧响与秽盾，
   // 与新包同批归零的 1661005/1661006 同性质）⇒ 只出伤害 + 失衡。
   const teammateCounter = Math.max(0, Math.floor(Number(cfg.robinTeammateCounterAssists ?? 0)))
   if (teammateCounter > 0) {
     executions.push(moduleExecRow({
       moveId: '1661019',
-      moveName: '支援突击：角力协同突击（队友反制支援·完美反制后自动发动）',
+      moveName: '支援突击：完美节拍（队友反制支援·完美反制后自动发动）',
       category: 'assist',
       count: teammateCounter,
       actionTime: 0,
@@ -304,12 +336,12 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
       skillTableNote: '触发 = 队伍中**其他**角色发动[反制支援]且触发[完美反制]（1:1）；自动发动，不占前台时间、不产喧响与秽盾',
     }))
   }
-  // 登场技：≥100 登场值时被换入发动（快速支援语义），占前台
+  // 登场技：≥100 星耀值时被换入发动（快速支援语义），占前台
   if (entry.entrySkillCount > 0) {
     const t = Number(cfg.robinEntryActionTime ?? 0)
     executions.push(moduleExecRow({
       moveId: '1661011',
-      moveName: '登场技：登场技（消耗 100 登场值，获 Buff 强化点）',
+      moveName: '登场技：登场技（消耗 100 星耀值，获 重音节拍）',
       category: 'assist',
       count: entry.entrySkillCount,
       actionTime: t,
@@ -317,15 +349,15 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
       damageMultiplier: Number(cfg.robinEntryDamage ?? 0),
       ...RECOVERY_OFF,
       timeBucket: 'necessary',
-      skillTableNote: '登场技 = 快速支援 + 全队 4% 生命护盾（生存面不录）+ Buff 强化点（离场守护防御 ×1.25）；剩余登场值 ' + fmt(entry.entryValue),
-      // ⚠ 3.4.1+19997538 新增：连携技 / 登场技 / 支援突击**发动后触发快速支援，1.5s 内换人自动释放[特殊技：离场]**
-      //   ——是换人操作面的连续性，不改本模块的次数解（登场技仍按登场值 ≥100 触发）。
+      skillTableNote: '登场技 = 快速支援 + 全队 4% 生命护盾（生存面不录）+ 重音节拍（幕后协奏防御 ×1.25）；剩余星耀值 ' + fmt(entry.entryValue),
+      // ⚠ 3.4.1+19997538 新增：连携技 / 登场技 / 支援突击**发动后触发快速支援，1.5s 内换人自动释放[特殊技：万籁与我同歌]**
+      //   ——是换人操作面的连续性，不改本模块的次数解（登场技仍按星耀值 ≥100 触发）。
     }))
   }
 }
 
 /**
- * 离场守护·全队防御提升（**本模块唯一的伤害项写入点**）。
+ * 幕后协奏·全队防御提升（**本模块唯一的伤害项写入点**）。
  *
  * 读**知更鸟自己的源面板局外生命**：sourcePanels 由派发器给出（AgentTeamPanelEffectInput，键 = 槽位号），
  * 与 calcPanel 的 sourcePanelsByOwner 同源同实例；源面板 = 角色自身配置、**不含队友 buff**，
@@ -335,8 +367,16 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
  * 最终 panel.def = base * (1 + Σpct) + Σflat，即「固定防御、不被局内百分比放大」。
  * 与其它 teamPanelEffects 一样必须是**可交换加法**——flat 累加天然满足。
  */
-function applyRobinTeamPanelEffects({ slot, agent, panel, settings, sourcePanels, report }: AgentTeamPanelEffectInput): void {
+function applyRobinTeamPanelEffects({ slot, agent, targetAgent, panel, settings, sourcePanels, report }: AgentTeamPanelEffectInput): void {
   if (agent.id !== ROBIN_AGENT_ID) return
+  // 额外能力（3.4.3）：全队[击破]角色攻击力提升 80 点，随知更鸟等级每级 +12（满级 = 800 点）。
+  // 原文门控是「队伍中存在[锋御]或[击破]角色时触发」——本效果只落在[击破]槽位上，
+  // 只要有一个[击破]在队，门控就必然成立（不存在「有击破却没触发」的组合）⇒ 不必单独判门控。
+  if (targetAgent.specialty === 'stun') {
+    const atk = robinStunAtkBonus()
+    applyStat(panel, 'atkFlat', atk, 'flat')
+    report?.({ stat: 'atkFlat', value: atk, mode: 'flat' })
+  }
   const hp = outOfCombatStat(panelOfSlot(sourcePanels, slot, 'outOfCombat'), 'hp')
   const buffPointActive = robinSetting(settings, 'robin.buffPointActive') > 0
   const bonus = robinGuardDefBonus({ hp, buffPointActive })
@@ -357,10 +397,11 @@ export const robinMechanic: AgentMechanicModule = {
   id: 'agent:robin',
   agentIds: [ROBIN_AGENT_ID],
   name: '知更鸟',
-  description: 'v2（3.4.2+20049556）：离场守护·全队固定防御（每 1000 初始生命 +80 / 上限 800 / Buff 点 ×1.25）'
-    + ' + 登场值循环（追加攻击 10s CD +20 / 上限 140 / ≥120 触发登场技）+ 角力协同突击 1661019'
+  description: '3.4.3（3.4.3+20278274）：幕后协奏·全队固定防御（每 1000 初始生命 +80 / 上限 800 / 重音节拍 ×1.25）'
+    + ' + 星耀值循环（追加攻击 10s CD +20 / 上限 140 / ≥120 触发登场技）+ 完美节拍 1661019'
+    + ' + 额外能力（全队[击破]攻击 +800 / 进战 +3000 喧响）'
     + '；影画1 全队无视20%防御 / 影画2 全队无视15%抗性（spec teamBuffs）/ 影画4 自身+10%伤害；'
-    + '强化追加攻击 1661006 与「每毁伤回 15 能量」未建模。',
+    + '终结技的「全队锋御 +20 锐能」与「每毁伤回 15 能量」未建模（无通道，见文件头）。',
   applyPanel: applyRobinPanel,
   teamPanelEffects: applyRobinTeamPanelEffects,
   applyTeamConfig: applyRobinTeamConfig,
@@ -373,13 +414,13 @@ export const robinMechanic: AgentMechanicModule = {
   settings: [
     {
       id: 'robin.buffPointActive',
-      label: '知更鸟｜Buff 强化点常驻（离场守护防御 ×1.25）',
+      label: '知更鸟｜重音节拍常驻（幕后协奏防御 ×1.25）',
       default: 1,
       min: 0,
       max: 1,
       step: 1,
-      description: '登场技每循环获得 1 个[Buff强化点]、进离场守护必消耗 1 个（上限 1）⇒ 循环稳态恒有。'
-        + '置 0 = 白板离场守护（判据负控 / 配装未堆生命时看基础值）。',
+      description: '登场技每循环获得 1 个[重音节拍]、进幕后协奏必消耗 1 个（上限 1）⇒ 循环稳态恒有。'
+        + '置 0 = 白板幕后协奏（判据负控 / 配装未堆生命时看基础值）。',
     },
   ],
 }
@@ -391,13 +432,13 @@ declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /**
      * 本局**队友**发动[反制支援]的次数（converge 相位由 applyTeamConfig 写入）。
-     * 用途 = 1661019「支援突击：角力协同突击」的触发次数：原文
+     * 用途 = 1661019「支援突击：完美节拍」的触发次数：原文
      * 「队伍中**其他**角色发动[反制支援]后，若触发[完美反制]自动发动」——**不含她自己**发动的那几次。
      */
     robinTeammateCounterAssists?: number
     /** 命座等级（buildCharConfig 写；影画4 保底升级 / 影画6 必定暴击用） */
     robinCinemaLevel?: number
-    /** 强化追加攻击 1661006 表值（buildCharConfig 预存） */
+    /** 震律齐鸣 1661006 表值（buildCharConfig 预存） */
     robinReinforcedDamage?: number
     robinReinforcedDaze?: number
     /** 登场技 1661011 动作时长（buildCharConfig 预存） */
@@ -406,7 +447,7 @@ declare module '@/types/resource/config' {
     robinAftershockDamage?: number
     /** 登场技表值倍率（1661011 damage） */
     robinEntryDamage?: number
-    /** 支援突击·角力协同突击表值（1661019 damage / daze） */
+    /** 支援突击·完美节拍表值（1661019 damage / daze） */
     robinCornerAssistDamage?: number
     robinCornerAssistDaze?: number
   }
@@ -414,13 +455,13 @@ declare module '@/types/resource/config' {
 
 declare module '@/types/resource/agentResources' {
   interface CharacterResourceResult {
-    /** 知更鸟登场值 / Buff 强化点循环读数（buildResourceResult 写、展示层读） */
+    /** 知更鸟星耀值 / 重音节拍循环读数（buildResourceResult 写、展示层读） */
     robinEntrySource?: {
       aftershockCount: number
       entryValue: number
       entrySkillCount: number
       buffPointActive: boolean
-      /** 队友反制支援次数 = 角力协同突击 1661019 的触发次数（只数别槽，不含自己） */
+      /** 队友反制支援次数 = 完美节拍 1661019 的触发次数（只数别槽，不含自己） */
       teammateCounterAssists: number
     }
   }

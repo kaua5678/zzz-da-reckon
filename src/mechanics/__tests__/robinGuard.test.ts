@@ -1,10 +1,10 @@
 /**
- * 知更鸟（1661）离场守护·全队固定防御 + 登场值循环的判据（2026-10-25）。
+ * 知更鸟（1661）幕后协奏·全队固定防御 + 星耀值循环的判据（2026-10-25）。
  *
  * 判据四臂（用户 2026-10-25 交付要求 + spec 1661.json notes 点名）：
- *   ① HP < 16000 ⇒ 0；② 每满 1000 一档；③ 封顶；④ Buff 强化点 ×1.25。
+ *   ① HP < 16000 ⇒ 0；② 每满 1000 一档；③ 封顶；④ 重音节拍 ×1.25。
  * 外加：模块接线面（sourcePanels 真读知更鸟局外生命 → 全队 inCombatDefFlat），
- * 以及登场值循环（追击 +20 / 上限 120 / ≥100 触发登场技；CD = ROBIN_AFTERSHOCK_CD_SECONDS，
+ * 以及星耀值循环（追击 +20 / 上限 120 / ≥100 触发登场技；CD = ROBIN_AFTERSHOCK_CD_SECONDS，
  * 3.4.1+19997538 热更由 8 → 10s，判据按常量取、只把「5 次追击 = 1 次登场技」的整数关系写死）。
  */
 import { describe, expect, it } from 'vitest'
@@ -21,7 +21,7 @@ import {
   ROBIN_AFTERSHOCK_CD_SECONDS,
 } from '@/mechanics/agents/robin'
 
-describe('1661 知更鸟 · 离场守护防御（纯函数四臂）', () => {
+describe('1661 知更鸟 · 幕后协奏防御（纯函数四臂）', () => {
   it('① HP < 16000 ⇒ 0（含恰好 16000）', () => {
     expect(robinGuardDefBonus({ hp: 10330.787, buffPointActive: false })).toBe(0)
     expect(robinGuardDefBonus({ hp: ROBIN_DEF_HP_THRESHOLD, buffPointActive: false })).toBe(0)
@@ -43,7 +43,7 @@ describe('1661 知更鸟 · 离场守护防御（纯函数四臂）', () => {
     expect(robinGuardDefBonus({ hp: 40000, buffPointActive: false, skillLevel: 1 })).toBe(470)
   })
 
-  it('④ Buff 强化点 ×1.25（作用在已封顶的量上）', () => {
+  it('④ 重音节拍 ×1.25（作用在已封顶的量上）', () => {
     expect(robinGuardDefBonus({ hp: 18000, buffPointActive: true })).toBeCloseTo(200, 6)
     expect(robinGuardDefBonus({ hp: 40000, buffPointActive: true })).toBeCloseTo(1000, 6)
     // 门槛以下仍然 0（×1.25 不能把 0 放大出值）
@@ -54,7 +54,7 @@ describe('1661 知更鸟 · 离场守护防御（纯函数四臂）', () => {
 // ⚠ 追击由「队伍中**其他**操作中的角色命中」触发 ⇒ 单人队 0 次（`teammateFrontlineSeconds` = 0）
 const WITH_MATE = { teammateFrontlineSeconds: 100 }
 
-describe('1661 知更鸟 · 登场值循环（追击 +20 / 上限 140 / ≥120 触发登场技，v2）', () => {
+describe('1661 知更鸟 · 星耀值循环（追击 +20 / 上限 140 / ≥120 触发登场技，v2）', () => {
   it('无队友（Σ 队友前台 = 0）⇒ 追击 0 次、登场技 0 次（原文「队伍中其他操作中的角色」）', () => {
     expect(solveRobinEntry({ combatTime: 180 })).toEqual({ aftershockCount: 0, entryValue: 0, entrySkillCount: 0 })
     expect(solveRobinEntry({ combatTime: 180, teammateFrontlineSeconds: 0 }).aftershockCount).toBe(0)
@@ -79,12 +79,12 @@ describe('1661 知更鸟 · 登场值循环（追击 +20 / 上限 140 / ≥120 �
     expect(long.aftershockCount).toBe(30)
     expect(long.entrySkillCount).toBe(5) // 600 点 / 120
     expect(long.entryValue).toBeLessThanOrEqual(ROBIN_ENTRY_MAX)
-    // 反空洞：整局攒出的登场值总量（30 × 20 = 600）确实远超「同时持有」上限 140
+    // 反空洞：整局攒出的星耀值总量（30 × 20 = 600）确实远超「同时持有」上限 140
     expect(long.aftershockCount * ROBIN_ENTRY_PER_AFTERSHOCK).toBeGreaterThan(ROBIN_ENTRY_MAX * 3)
   })
 })
 
-describe('1661 知更鸟 · 强化追加攻击 1661006（v2：能量≥40 升级 / 影画4 保底 / 影画6 必定暴击）', () => {
+describe('1661 知更鸟 · 震律齐鸣 1661006（v2：能量≥40 升级 / 影画4 保底 / 影画6 必定暴击）', () => {
   it('队伍有队友时：能量升级是核心被动（C0 就有）；影画6 才带行级 critRateBonus；未升级部分仍在 1661005', async () => {
     const run = async (cinema: number) => {
       await setupHarness([{ agentId: '1661', cinemaLevel: cinema }, { agentId: '1601' }, { agentId: '1011' }])
@@ -97,13 +97,45 @@ describe('1661 知更鸟 · 强化追加攻击 1661006（v2：能量≥40 升级
     const r0 = c0.find(e => e.moveId === '1661006')
     const r4 = c4.find(e => e.moveId === '1661006')!
     const r6 = c6.find(e => e.moveId === '1661006')!
-    expect(r6, '影画4 保底（floor(t/60)）保证 C6 必有强化追加攻击行').toBeDefined()
+    expect(r6, '影画4 保底（floor(t/60)）保证 C6 必有震律齐鸣行').toBeDefined()
     expect(r6.count).toBeGreaterThan(0)
     expect(r6.critRateBonus ?? 0, '影画6：必定暴击 ⇒ 行级 critRateBonus 抬到 100 − 面板暴击率').toBeGreaterThan(0)
     expect(r0?.critRateBonus ?? 0, 'C0 不必定暴击').toBe(0)
     expect(r4.count).toBeGreaterThanOrEqual(r0?.count ?? 0)
     expect(c0.find(e => e.moveId === '1661005')?.count ?? 0, '未升级部分仍走 1661005').toBeGreaterThan(0)
     expect(c6.find(e => e.moveId === '1661005')?.count ?? 0).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * 额外能力（3.4.3+20278274）：「全队[击破]角色攻击力提升 80 点，该效果随知更鸟等级提升，
+ * 每级增加 12 点，最多提升{CAL:80+60*12}点」——满级 = 800。落点 = atkFlat 只写[击破]槽位。
+ */
+describe('1661 知更鸟 · 额外能力（3.4.3）[击破]攻击力 +800', () => {
+  it('只给[击破]槽位写 atkFlat，防护/锋御目标不加', async () => {
+    await setupHarness([{ agentId: '1661' }, '', ''])
+    const { getAgentMechanic } = await import('@/mechanics/registry')
+    const { robinStunAtkBonus, ROBIN_ADDITIONAL_STUN_ATK_CAP } = await import('@/mechanics/agents/robin')
+    const mod = getAgentMechanic('1661')
+    const store = (await import('@/stores/catalog')).useCatalogStore()
+    const robin = store.getAgent('1661')!
+    const stun = store.getAgent('1511')!
+    const defense = store.getAgent('1661')!
+    const dispatch = (targetAgent: typeof robin) => {
+      const panel = emptyPanel()
+      mod!.teamPanelEffects!({
+        slot: 0, agent: robin, cinemaLevel: 0,
+        team: [{ slot: 0, agentId: '1661', agent: robin, cinemaLevel: 0, potentialLevel: 6, wEngineId: '', wEngineModLevel: 1 }],
+        targetSlot: 1, targetAgent, panel, settings: {}, sourcePanels: {},
+      })
+      return panel
+    }
+    expect(robinStunAtkBonus()).toBe(ROBIN_ADDITIONAL_STUN_ATK_CAP)
+    expect(robinStunAtkBonus()).toBe(800)
+    expect(robinStunAtkBonus(1)).toBe(92) // 低等级按 80 + 12×Lv 走，不被上限钳
+    expect(dispatch(stun).atk).toBeCloseTo(800, 6)
+    // 负控：目标不是[击破] ⇒ 一点不加（防护/锋御都不吃这条）
+    expect(dispatch(defense).atk).toBe(0)
   })
 })
 

@@ -197,8 +197,8 @@
 | 1571C6 | 诺玛·霍洛韦尔 | implemented | EXEC | 3.63 | 0.00 | 3.63 | 0.00 | — | — | — | 1 |
 | 1581C2 | 蕾米埃尔 | impl_approximation | EXEC | 1.08 | 0.00 | 1.08 | 0.00 | enemyAnomalyDefReduction 0.0→15.0（走资源）; remielleRefringeCoefficientBonusPct 0.0→20.0（走资源） | — | — | — |
 | 1591C3 | 希格莉德 | impl_generic_skill_level | EXEC | 8.90 | 0.00 | 8.90 | 0.00 | — | — | skillLevelBonus 0.0→2.0 | — |
-| 1601C2 | 挽昼 | impl_approximation | EXEC | 8.10 | 0.00 | 8.10 | 0.00 | — | — | — | — |
-| 1601C3 | 挽昼 | impl_generic_skill_level | EXEC | 8.77 | 0.00 | 8.77 | 0.00 | — | — | skillLevelBonus 0.0→2.0 | — |
+| 1601C2 | 挽昼 | impl_approximation | EXEC | 8.06 | 0.00 | 8.06 | 0.00 | — | — | — | — |
+| 1601C3 | 挽昼 | impl_generic_skill_level | EXEC | 8.71 | 0.00 | 8.71 | 0.00 | — | — | skillLevelBonus 0.0→2.0 | — |
 | 1611C3 | 克拉蕾 | impl_generic_skill_level | EXEC | 8.86 | 0.00 | 8.86 | 0.00 | — | — | skillLevelBonus 0.0→2.0 | — |
 | 1611C4 | 克拉蕾 | impl_approximation | EXEC | 1.06 | 0.00 | 1.06 | 0.00 | — | — | — | — |
 | 1611C5 | 克拉蕾 | impl_generic_skill_level | EXEC | 8.14 | 0.00 | 8.14 | 0.00 | — | — | skillLevelBonus 2.0→4.0 | — |
@@ -208,8 +208,8 @@
 | 1631C5 | 赛维里安 | impl_generic_skill_level | EXEC | 7.67 | 0.00 | 7.67 | 0.00 | — | — | skillLevelBonus 2.0→4.0 | — |
 | 1641C3 | 菲欧妮 | impl_generic_skill_level | EXEC | 6.26 | 0.00 | 6.26 | 0.00 | — | — | skillLevelBonus 0.0→2.0 | — |
 | 1641C4 | 菲欧妮 | impl_approximation | EXEC | 23.88 | 0.00 | 23.88 | 0.00 | — | — | — | 2 |
-| 1661C3 | 知更鸟 | impl_generic_skill_level | EXEC | 7.70 | 0.00 | 7.70 | 0.00 | — | — | skillLevelBonus 0.0→2.0 | — |
-| 1661C5 | 知更鸟 | impl_generic_skill_level | EXEC | 7.15 | 0.00 | 7.15 | 0.00 | — | — | skillLevelBonus 2.0→4.0 | — |
+| 1661C3 | 知更鸟 | impl_generic_skill_level | EXEC | 7.79 | 0.00 | 7.79 | 0.00 | — | — | skillLevelBonus 0.0→2.0 | — |
+| 1661C5 | 知更鸟 | impl_generic_skill_level | EXEC | 7.23 | 0.00 | 7.23 | 0.00 | — | — | skillLevelBonus 2.0→4.0 | — |
 | **ATTR**（63 级） |||||||||||
 | 1021C1 | 猫又 | impl_approximation | ATTR | 16.00 | 0.00 | 0.00 | 16.00 | enemyPhysicalResReduction 0.0→16.0 | — | — | — |
 | 1021C4 | 猫又 | impl_approximation | ATTR | 12.10 | 0.00 | 0.00 | 12.10 | critRate 19.4→33.4 | — | — | — |
@@ -349,7 +349,7 @@
 | 1581C1 | 蕾米埃尔 | impl_approximation | EXEC+ATTR | 5.67 | 0.00 | -0.21 | 5.90 | — | — | remielleCinema1SpecialVoidflareCount 0.0→1.0; remielleFlowerFeatherDanceDecibelPerUse 0.0→200.0 | 1 |
 | 1581C3 | 蕾米埃尔 | impl_generic_skill_level | EXEC+ATTR | 11.20 | 0.00 | 8.90 | 2.11 | dmgBonus 33.0→36.0 | — | skillLevelBonus 0.0→2.0 | — |
 | 1581C5 | 蕾米埃尔 | impl_generic_skill_level | EXEC+ATTR | 10.09 | 0.00 | 8.01 | 1.92 | dmgBonus 36.0→39.0 | — | skillLevelBonus 2.0→4.0 | — |
-| 1601C6 | 挽昼 | impl_approximation | EXEC+ATTR | 19.11 | 0.00 | 4.52 | 13.96 | enemyDefReduction 20.0→40.0 | — | — | — |
+| 1601C6 | 挽昼 | impl_approximation | EXEC+ATTR | 19.94 | 0.00 | 5.25 | 13.96 | enemyDefReduction 20.0→40.0 | — | — | — |
 | 1611C2 | 克拉蕾 | impl_approximation | EXEC+ATTR | 19.18 | 0.00 | 1.00 | 18.00 | enemyElectricResReduction 0.0→18.0 | — | — | — |
 | 1641C2 | 菲欧妮 | impl_approximation | EXEC+ATTR | 32.83 | 0.00 | 5.35 | 26.09 | dmgBonus 15.0→45.0 | — | fireAnomalyDurationBonusSeconds 0.0→2.0 | — |
 | 1641C6 | 菲欧妮 | impl_approximation | EXEC+ATTR | 26.65 | 0.00 | 10.13 | 15.00 | enemyResReduction 0.0→15.0 | — | — | — |
@@ -400,9 +400,9 @@
 | 1581C4 | 蕾米埃尔 | impl_approximation | RESOURCE+EXEC+ATTR | 7.59 | 0.42 | 0.14 | 7.00 | remielleCinema4LuminizeMultiplierBonus 0.0→12.0 | — | remielleCinema4SpecialVoidflareRefillCount 0.0→3.0 | — |
 | 1591C5 | 希格莉德 | impl_generic_skill_level | RESOURCE+EXEC+ATTR | 17.38 | 2.77 | 8.18 | 5.57 | — | — | skillLevelBonus 2.0→4.0 | — |
 | 1591C6 | 希格莉德 | impl_approximation | RESOURCE+EXEC+ATTR | 3.96 | 0.25 | 3.41 | 0.27 | — | — | — | — |
-| 1601C1 | 挽昼 | impl_approximation | RESOURCE+EXEC+ATTR | 20.27 | 4.48 | 0.10 | 15.00 | enemyFireResReduction 0.0→15.0 | — | — | — |
-| 1601C4 | 挽昼 | impl_approximation | RESOURCE+EXEC+ATTR | 16.67 | 0.25 | 6.13 | 9.67 | dmgBonus 15.0→30.0 | — | — | — |
-| 1601C5 | 挽昼 | impl_generic_skill_level | RESOURCE+EXEC+ATTR | 13.54 | 1.06 | 7.63 | 4.39 | — | — | skillLevelBonus 2.0→4.0 | — |
+| 1601C1 | 挽昼 | impl_approximation | RESOURCE+EXEC+ATTR | 6.98 | -2.57 | -4.52 | 15.00 | enemyFireResReduction 0.0→15.0 | — | — | — |
+| 1601C4 | 挽昼 | impl_approximation | RESOURCE+EXEC+ATTR | 32.99 | 7.48 | 12.83 | 9.67 | dmgBonus 15.0→30.0 | — | — | — |
+| 1601C5 | 挽昼 | impl_generic_skill_level | RESOURCE+EXEC+ATTR | 10.72 | 0.86 | 2.16 | 7.47 | — | — | skillLevelBonus 2.0→4.0 | — |
 | 1621C2 | 洛克茜 | impl_approximation | RESOURCE+EXEC+ATTR | 3.60 | 4.72 | -3.54 | 2.55 | stunDmgMultiplierBonus 0.0→30.0 | — | — | — |
 | 1621C6 | 洛克茜 | impl_approximation | RESOURCE+EXEC+ATTR | 46.33 | 3.07 | 17.77 | 20.55 | enemyWindResReduction 0.0→15.0 | — | — | — |
 | 1631C3 | 赛维里安 | impl_generic_skill_level | RESOURCE+EXEC+ATTR | 13.63 | 0.63 | 8.31 | 4.26 | — | — | skillLevelBonus 0.0→2.0 | — |

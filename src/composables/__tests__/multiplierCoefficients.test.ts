@@ -229,8 +229,12 @@ describe('反制支援 / 支援突击的「等效能量」口径（2026-10-24 �
     expect(m.moveType, '仍是反制专属追击（不进直伤锚点/纵向聚合）').toBe('counterAssistFollowUp')
     expect(m.equivalentEnergy).toBe(20)
     expect(m.rewardEnergy, '灯塔没有奖励等效能量').toBe(0)
+    // ⚠ 3.4.3（3.4.3+20278274）起挽昼的喧响整列 ×1.05（nanoka fever_recovery 与 gachabase
+    //   individual_decibel_gain_base 两源一致，逐行 1.0496~1.0501）⇒ 喧响比值不再贴合标准式的 100%，
+    //   而是 105%。失衡/积蓄不受影响（仍 100%），所以「@20 零奖励」的判定靠那两列 + 伤害列。
     for (const rowId of ['daze', 'decibel_recovery', 'anomaly_buildup'] as const) {
-      expectNear(m.cells.find((c) => c.rowId === rowId)!.ratio!, 1, 0.01, `灯塔 ${rowId} 比值应为 100%`)
+      const expected = rowId === 'decibel_recovery' ? 1.05 : 1
+      expectNear(m.cells.find((c) => c.rowId === rowId)!.ratio!, expected, 0.01, `灯塔 ${rowId} 比值（喧响 3.4.3 ×1.05）`)
     }
     // 伤害列 = 她的直伤系数（第四列独立同证：@20 时 939.1 / 860.97 = 1.0907）
     expectNear(m.cells.find((c) => c.rowId === 'damage')!.ratio!, verticalOf('1601').directDamage!.value, 0.005, '灯塔伤害比值 = 挽昼直伤系数')
@@ -299,8 +303,9 @@ describe('角色专属资源行：残痕积累 / 锐能回复（锋御）与秒�
   })
 
   it('★挽昼(1601)：强特/连携段残痕可见、普攻两列齐备', () => {
-    expect(cellOf('1601106', 'gash_buildup').perSecond).toBeCloseTo(80.01, 0.05)
-    expect(cellOf('1601010', 'gash_buildup').perSecond).toBeCloseTo(80.0, 0.05)
+    // 3.4.3 把残痕列整体上调（1601106 200.03→212.53、1601010 197.31→209.64）⇒ 秒均 80.01→85.01
+    expect(cellOf('1601106', 'gash_buildup').perSecond).toBeCloseTo(85.01, 0.05)
+    expect(cellOf('1601010', 'gash_buildup').perSecond).toBeCloseTo(85.0, 0.05)
     expect(cellOf('1601001', 'sharpness_gain').perSecond).toBeCloseTo(2.0, 0.01)
   })
 
@@ -680,11 +685,14 @@ describe('倍率表系数演算：强化特殊技（逐段评估，不参与纵�
       // ⚠ v2（3.4.2+20049556）打破了 1601106↔1601006 / 1601115↔1601016 的「多形态对称数据」：
       //   v2 只下调了「燃灯·晦尽」两式的失衡（1601006 728.6→658.4、1601016 742.2→665.1），「焚夜」两式未动。
       //   用户 2026-11-01「暂时承认不对称，还是以真实数据为主」⇒ 失衡列逐行取实测比值（其余三列仍 1.0）。
-      const dazeExpected = { '1601106': 1.0, '1601006': 0.9037, '1601016': 0.8959, '1601115': 1.0 } as Record<string, number>
+      // ⚠ 3.4.3 又打破了 1601115（燃灯·晦尽（改））的失衡：761.9 → 715.7（−6.1%）⇒ 比值 1.0 → 0.9018。
+      //   其余三行不变；同一句「以真实数据为主」的口径继续适用。
+      const dazeExpected = { '1601106': 1.0, '1601006': 0.9037, '1601016': 0.8959, '1601115': 0.9018 } as Record<string, number>
       const variant = id === '1601016' || id === '1601115' ? 1.1 : 1
       const ratioOf = (rowId: string) => move!.cells.find((c) => c.rowId === rowId)?.ratio ?? NaN
       expectNear(ratioOf('daze') / variant, dazeExpected[id], 0.005, `${id} 失衡`)
-      expectNear(ratioOf('decibel_recovery'), 1.0, 0.005, `${id} 喧响`)
+      // 3.4.3：挽昼喧响整列 ×1.05（两源一致）⇒ 这四行的喧响比值从 1.000 变 1.050
+      expectNear(ratioOf('decibel_recovery'), 1.05, 0.005, `${id} 喧响（3.4.3 ×1.05）`)
       expectNear(ratioOf('anomaly_buildup'), 1.0, 0.005, `${id} 积蓄`)
       expectNear(ratioOf('ether_purify'), 1.0, 0.005, `${id} 秽盾`)
       // 直伤系数 = 该行 catalog 伤害 / 标准式（四行同源）⇒ v2 起 1.09 → 1.046

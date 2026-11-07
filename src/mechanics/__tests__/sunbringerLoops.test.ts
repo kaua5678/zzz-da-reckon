@@ -93,11 +93,11 @@ describe('1601 挽昼 · 资源循环求解', () => {
 })
 
 describe('烬痕：存值不吃易伤，但攒的时候吃（线性，不平方）', () => {
-  it('烬痕 = 0.65 × 积攒招式倍率和（v2 核心被动），且只套一次乘区 ⇒ 总伤对失衡覆盖率线性', () => {
+  it('烬痕 = 0.60 × 积攒招式倍率和（3.4.3 核心被动），且只套一次乘区 ⇒ 总伤对失衡覆盖率线性', () => {
     const loops = { jufengCount: 6, changanCount: 6, ultACount: 2 }
     const ember = computeEmberScar({ meta: meta as any, loops, ultBCount: 2 })
     const sum = 6 * 1722.5 + 6 * 2690.6 + 2 * 3900.1 + 2 * 2827
-    expect(ember).toBeCloseTo(sum * 0.65, 6)
+    expect(ember).toBeCloseTo(sum * 0.6, 6)
     // 线性：易伤系数 s 只作用一次 —— 「积攒伤害 × s」得出的存量，在结算行再乘同一个 s 之前
     // 已经是 s 的一份；若模型把它当"结算时再吃一次"就会变成 s²（这里断言不会）
     const s1 = 1, s2 = 1.5
@@ -118,6 +118,29 @@ describe('烬痕：存值不吃易伤，但攒的时候吃（线性，不平方�
 
   it('零积攒 ⇒ 烬痕为 0（不造数）', () => {
     expect(computeEmberScar({ meta: meta as any, loops: { jufengCount: 0, changanCount: 0, ultACount: 0 }, ultBCount: 0 })).toBe(0)
+  })
+
+  /**
+   * 3.4.3 新增第二条来源：原文「全队代理人造成的[毁伤]也可使目标积攒等同于该次实际伤害 35% 的[烬痕]」。
+   * 自己那份 = 模块产出的毁伤行（maim 1601114）× 35%；影画2 的「积攒量 +20%」对两条来源一视同仁。
+   */
+  it('毁伤 35% 也积攒烬痕（3.4.3 第二条来源），影画2 对两条来源都 ×1.2', () => {
+    const loops = { jufengCount: 6, changanCount: 6, ultACount: 2, maimCount: 9 }
+    const sum = 6 * 1722.5 + 6 * 2690.6 + 2 * 3900.1 + 2 * 2827
+    const e0 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2 })
+    expect(e0).toBeCloseTo(sum * 0.6 + 9 * 336.3 * 0.35, 6)
+    const e2 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2, cinemaLevel: 2 })
+    expect(e2).toBeCloseTo((sum * 0.6 + 9 * 336.3 * 0.35) * 1.2, 6)
+  })
+
+  /**
+   * 3.4.3 的消耗限定「[愿火]未达上限时」在稳态里不咬合：上限 160、每层 +40、≥120 立刻转聚锋
+   * ⇒ 愿火银行恒 < 120 < 160，永远不会挡住残痕消耗（这条把注释变成断言）。
+   */
+  it('愿火未达上限：银行恒 < 120 ⇒ 3.4.3 的消耗限定不会少算毁伤', () => {
+    const r = solveSunbringerLoops(base)
+    expect(r.wishSpent).toBe(r.jufengCount * JU_FENG_WISH_COST)
+    expect(r.wishTotal - r.wishSpent).toBeLessThan(JU_FENG_WISH_COST)
   })
 })
 
@@ -151,7 +174,7 @@ describe('影画 1/2（2026-10-25 接线）', () => {
     const c2 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2, cinemaLevel: 2 })
     const c6 = computeEmberScar({ meta: meta as any, loops, ultBCount: 2, cinemaLevel: 6 })
     // C6 相对 C2 的净增 = 额外烬灭（含 C2 的 ×1.2）
-    const ultBEmber = 2 * 2827 * 0.65 * 1.2
+    const ultBEmber = 2 * 2827 * 0.6 * 1.2
     expect(c6 - c2).toBeCloseTo(ultBEmber * 1.5, 6)
   })
 })
