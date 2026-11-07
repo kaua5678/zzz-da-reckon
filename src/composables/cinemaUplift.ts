@@ -38,6 +38,14 @@ import type { ResourceCalc } from '@/composables/useResourceCalc'
 import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { bindPoolStore, computeCinemaBreakdown, formulaRoleOf, isExecPanelStat } from '@/composables/cinemaUpliftBreakdown'
 import type { DamagePoolContext } from '@/composables/resourceCalc/damagePool'
+import {
+  compareAtSameK,
+  sameKBand,
+  scanKFrontier,
+  type KFrontier,
+  type SameKBand,
+  type SameKComparison,
+} from '@/composables/cinemaUpliftFrontier'
 import type { PanelValues } from '@/types/catalog'
 import type { AnomalyPoolResult, CharacterResourceResult, StunPoolResult } from '@/types/resource'
 
@@ -65,8 +73,23 @@ export interface CinemaUpliftBreakdown {
 export interface CinemaUpliftEntry {
   /** 目标命座等级（本条 = 从 to-1 升到 to） */
   to: number
-  /** 伤害提升百分比 */
+  /**
+   * **本队伤害提升率**（口径 = 自由收敛，即玩家不锁失衡次数时看到的数）。
+   * 用户 2026-11-05 裁决「还是不锁吧」：锁口径会把命座的三条真实收益（加速失衡/加速积蓄/新招式）全清零
+   * —— 那一栏保留在 `lockedGainPct`，本栏是自由口径。
+   */
   gainPct: number
+  /**
+   * **本队伤害 X→Y（确切值 + 同条件对照）**——用户 2026-11-06 口径「用户可能想要的是当前情况的一个确切值」。
+   *
+   * 只在调用方传 `frontier: true` 时提供（每次逐级扫描 = `maxK + 1` 次完整外层求值，不默认开）：
+   * - `before` / `after` = **交付点**的伤害（= 前沿点，见 `cinemaUpliftFrontier#pickDelivery`）；
+   * - `gainPct` = 由交付点算的提升率（与上面的 `gainPct`（收敛停点口径）可能不同——差值就是交付点漂移）；
+   * - `sameK` = **同窗数对照**（把两级钉在同一个 K 上比），回答「不改操作强度，加这一级多打多少」；
+   * - `attribution` = 归因一行（含所用 K 与前沿值）。
+   */
+  frontier?: CinemaUpliftFrontierEntry
+
   /** 本级命座切换前后的全队终结技总次数（检测加喧响/加能量类命座是否推动大招 +1） */
   ultBefore: number
   ultAfter: number
@@ -87,6 +110,53 @@ export interface CinemaUpliftEntry {
   breakdown: CinemaUpliftBreakdown
 }
 
+/**
+ * 一级命座的**前沿口径**读数（用户 2026-11-06：「用户可能想要的是当前情况的一个确切值」+「同条件对照」）。
+ *
+ * 三条量分工（页面主读数三行就是这三条，规则 11：页面不重算）：
+ * 1. `beforeDmg → afterDmg`（`pct`）= **本队伤害 X→Y**：两级各自的**交付点**（前沿点）之间的比；
+ * 2. `sameK.pct` = **同窗数对照**：把两级钉在**同一个 K**（= 前一级的交付 K）上比；
+ * 3. `attribution` = **归因一行**：所用 K 与两个前沿值。
+ *
+ * ⚠ 三条必须一起给：只有 (1) 时读者无法判断「提升是因为命座，还是因为引擎把这一级交付到了更值钱的 K」；
+ * 只有 (2) 时读者看到的是「同样的操作强度」但可能不是任何一级的最优点。
+ */
+export interface CinemaUpliftFrontierEntry {
+  /** 前一级（C_{to-1}）的交付点 */
+  beforeK: number
+  beforeDmg: number
+  /** 后一级（C_to）的交付点 */
+  afterK: number
+  afterDmg: number
+  /** 交付点之间的提升率（%）；与 `CinemaUpliftEntry.gainPct` 的差 = 交付点漂移 */
+  pct: number
+  /** 两级各自相对自己**收敛停点**的漂移（%；0 = 引擎交付点已经是前沿点） */
+  beforeDriftPct: number
+  afterDriftPct: number
+  /** 交付点来源（`converged` = 收敛停点已最优；`pinned` = 前沿扩展选中了别的 K） */
+  beforeSource: 'converged' | 'pinned'
+  afterSource: 'converged' | 'pinned'
+  /** **同窗数对照**（`k` = 前一级的交付 K） */
+  sameK: SameKComparison
+  /**
+   * **同 K 提升的整条分布**（用户 2026-11-07：「正确的显示不是挑选好看或者不好看的交付点数字展示，
+   * 而是在整个面板显示完整的提升分布」）。
+   *
+   * `sameK` 只给一个 K（前一级的交付 K）⇒ 100/105 队那个稳定的 +11% 被压成一个数，
+   * 而 5/105 「丢窗」队的两面性（同 K 仍 +13.8%、交付口径只剩 +6.5%）被藏成一个负号。
+   * 本字段逐 K 给提升率 + 可行性三态，页面画分布条。
+   */
+  band: SameKBand
+  /** 归因一行（页面直接印，不自己拼字符串） */
+  attribution: string
+  /** 两次扫描的物理输入（窗长 / 有效战斗时间，秒）——归因的下钻面 */
+  windowDuration: number
+  effectiveTime: number
+  /** 前一级的可行点数 / 扫描行数（0 可行 = 前沿扩展无从谈起，如实上报） */
+  beforeFeasibleCount: number
+  afterFeasibleCount: number
+}
+
 export interface CinemaUpliftRow {
   slot: number
   agentId: string
@@ -96,6 +166,35 @@ export interface CinemaUpliftRow {
 
 /** 判定 execLevel 与 unimplemented 的伤害变化阈值（百分比，取绝对值）。零移动才是「未接入」。 */
 export const UPLIFT_EPSILON_PCT = 0.05
+
+/** 归因行里的伤害读数：百万级，两位小数（与页面其它伤害读数同精度） */
+function millions(v: number): string {
+  return `${(v / 1e6).toFixed(2)}M`
+}
+
+/**
+ * **归因一行**（页面主读数第三行；字符串在这里拼，页面只印——规则 11：页面不重算）。
+ *
+ * 必须含**所用的 K 与两个前沿值**（用户 2026-11-06 完成标准），因为「提升率变了」可能来自两种完全不同的原因：
+ * - 真·命座变强 ⇒ 两个交付点的差；
+ * - **交付点漂移**（引擎把这一级交付到了另一个 K）⇒ `drift` 段。
+ * 读者要能一眼分开这两者，否则「命座提升率」又会变成不可解释的数字。
+ */
+export function buildFrontierAttribution(
+  before: KFrontier,
+  after: KFrontier,
+  sameK: SameKComparison,
+): string {
+  const b = before.delivery
+  const a = after.delivery
+  const driftOf = (d: KFrontier['delivery']): string =>
+    d.source === 'pinned' ? `前沿扩展 K${d.convergedK}→K${d.k}（+${d.driftPct.toFixed(1)}%）` : `收敛停点已达前沿`
+  const why = ({ budget: `超出时间预算`, contiguous: `窗攒不出`, both: `超预算且窗攒不出`, 'out-of-range': `超出扫描域` } as const)
+  const sameKText = sameK.pct === null || sameK.k === null
+    ? `同 K${sameK.preferredK} 两级无公共可行操作点（后一级${sameK.preferredReason ? why[sameK.preferredReason] : '不可行'}）`
+    : `同 K${sameK.k}${sameK.atPreferred ? '' : `（首选 K${sameK.preferredK} 后一级${sameK.preferredReason ? why[sameK.preferredReason] : '不可行'}）`} ${millions(sameK.beforeDmg)}→${millions(sameK.afterDmg ?? 0)}（${sameK.pct >= 0 ? '+' : ''}${sameK.pct.toFixed(1)}%）`
+  return `K${b.k} ${millions(b.dmg)} → K${a.k} ${millions(a.dmg)}｜${driftOf(b)} / ${driftOf(a)}｜${sameKText}｜窗 ${before.windowDuration.toFixed(1)}s／有效 ${before.effectiveTime.toFixed(0)}s`
+}
 
 /** 一栏附加指标的显示形态：value=大数量 / count=整数次数 / rate=比率（按百分点显示） */
 export type CinemaMetricKind = 'value' | 'count' | 'rate'
@@ -200,6 +299,15 @@ export interface SceneReading {
 export interface AnalyzeCinemaUpliftOptions {
   /** 锁定的失衡次数（页面传 UI 现场当前收敛的 stunPoolResult.stunCount；<=0 表示不锁） */
   targetStunCount: number
+  /**
+   * **前沿扩展**（用户 2026-11-06 口径「用户可能想要的是当前情况的一个确切值」）：为每级额外跑一遍
+   * 钉 K 扫描，求出两级的**交付点**（= 前沿点）与**同窗数对照**，写进 `entry.frontier`。
+   *
+   * 成本：每槽 `Σ_{to=0..maxLevel}(maxK + 2)` 次完整外层求值（maxK = `floor(effTime / 窗长)`，实测 6~11）
+   * ⇒ 1 槽 6 级约 60~80 次求值。**所以不默认开**：`cinemaUpliftGrid` 的 N×M 采样网格与
+   * `allAgentsSweep` 都不开；只有收益分析页那一次显式计算（和本专项判据）会开。
+   */
+  frontier?: boolean
   /** 要分析的槽位，默认 0/1/2 */
   slots?: number[]
   /** 最高命座等级，默认 6 */
@@ -238,7 +346,7 @@ export async function analyzeCinemaUplift(
   opts: AnalyzeCinemaUpliftOptions,
 ): Promise<CinemaUpliftRow[]> {
   const { config, calc } = scenario
-  const { targetStunCount, slots = [0, 1, 2], maxLevel = 6, resolveName, control } = opts
+  const { targetStunCount, slots = [0, 1, 2], maxLevel = 6, resolveName, control, frontier = false } = opts
   const catalogStore = useCatalogStore()
   const originalCinemas = config.team.map(c => c.cinemaLevel)
   const rows: CinemaUpliftRow[] = []
@@ -289,6 +397,49 @@ export async function analyzeCinemaUplift(
     }
   }
 
+  /**
+   * 一级命座的**前沿读数**（`frontier` 开启时才有）：扫后一级的钉 K 前沿，与前一级的复用，
+   * 取两条交付点之间的差 + 同窗数对照 + 归因一行。
+   *
+   * ⚠ 扫描**必须在锁窗外**跑（`scanKFrontier` 自己会设/复位 `stunCountLock`）；调用方保证
+   * `readScene` 已经把锁复位成 -1（它 finally 段复位）。
+   * ⚠ 前一级的前沿**按槽复用**（逐级 0→1→…→6 是链式的）：不复用就要扫 2×maxLevel 条，
+   * 复用只要 maxLevel+1 条（实测 1 槽 6 级 6 条 vs 12 条）。
+   */
+  async function readFrontier(to: number, cachedBefore: KFrontier | null): Promise<{ entry: CinemaUpliftFrontierEntry; after: KFrontier } | null> {
+    // 复用的前提：缓存的 before 必须真的属于「按 to-1 级、与当前其余配置一致」的那一帧。
+    // 缓存由本函数在上一次调用后立即写入，中间只有 readScene（改锁再复位）⇒ 其余配置不变。
+    const before = cachedBefore ?? await scanKFrontier(scenario, { cinemaLevel: to - 1, control })
+    if (!before) return null
+    const after = await scanKFrontier(scenario, { cinemaLevel: to, control })
+    if (!after) return null
+    const b = before.delivery
+    const a = after.delivery
+    // 同窗数对照的 K = **前一级的交付 K**（「玩家现在就在这个操作点上」）
+    const sameK = compareAtSameK(before, after, b.k)
+    return {
+      entry: {
+        beforeK: b.k,
+        beforeDmg: b.dmg,
+        afterK: a.k,
+        afterDmg: a.dmg,
+        pct: b.dmg > 0 ? ((a.dmg - b.dmg) / b.dmg) * 100 : 0,
+        beforeDriftPct: b.driftPct,
+        afterDriftPct: a.driftPct,
+        beforeSource: b.source,
+        afterSource: a.source,
+        sameK,
+        band: sameKBand(before, after),
+        attribution: buildFrontierAttribution(before, after, sameK),
+        windowDuration: before.windowDuration,
+        effectiveTime: before.effectiveTime,
+        beforeFeasibleCount: b.feasibleCount,
+        afterFeasibleCount: a.feasibleCount,
+      },
+      after,
+    }
+  }
+
   for (const slot of slots) {
     if (isBatchAborted(control)) break
     const char = config.team[slot]
@@ -303,6 +454,8 @@ export async function analyzeCinemaUplift(
     // 防止多槽分析（slots=[0,1,2]）时前序槽位留在 C6 污染后续槽位的命座提升率（场景内同样需要）。
     config.setCinemaLevel(slot, 0)
     config.syncTeammateBuffsFromTeam()
+    /** 本槽的前沿缓存：`to-1` 那条扫描结果，供 `to` 那一级当 before 复用（链式逐级，见 readFrontier） */
+    let frontierCache: KFrontier | null = null
     const beforeScene = await readScene(slot)
     let before = beforeScene
     let panelBefore = computePanelPhases(slot, config, catalogStore, calc.effectiveWEngineCoverages.value, calc.effectiveDiscEffectCoverages.value, calc.effectiveTeammateBuffCoverages.value)?.inCombat ?? null
@@ -358,9 +511,15 @@ export async function analyzeCinemaUplift(
         : Math.abs(gainPct) >= UPLIFT_EPSILON_PCT || metricMoved || breakdown.components.length > 0
           ? 'execLevel' // 面板无变化但伤害 / 资源 / 执行级有移动：资源型或执行级效果
           : 'unimplemented' // 无字段无伤害无资源移动：效果可能未接进计算
+      // 前沿扩展（opt-in，见 AnalyzeCinemaUpliftOptions#frontier）：前一级的前沿按槽复用 ⇒ 每级只扫 1 条
+      const frontierRun: { entry: CinemaUpliftFrontierEntry; after: KFrontier } | null =
+        frontier ? await readFrontier(to, frontierCache) : null
+      if (frontierRun) frontierCache = frontierRun.after
+      const frontierEntry = frontierRun?.entry
       entries.push({
         to,
         gainPct,
+        frontier: frontierEntry ?? undefined,
         ultBefore: before.ult,
         ultAfter: after.ult,
         changedFields,

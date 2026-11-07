@@ -54,6 +54,9 @@ import { teamPresets } from '@/data/teamPresets'
 
 const PRESET = 'yixuan-roxy-lucia'
 const PARRY = 16
+/** 用户 2026-11-06 点名的那一格（`docs/mcp-cinema-interval-uplift.md` §5.7 的判据①⑤） */
+const AUTO1591 = 'auto-1591-1481-1211'
+const PARRY_1591 = 16
 
 interface Frame {
   dmg: number
@@ -135,6 +138,56 @@ describe(`kStar 结算（${PRESET} parry=${PARRY}）`, () => {
       `自由收敛不得劣于钉 2 窗：自由=${(free.dmg / 1e6).toFixed(2)}M / 钉2=${(pinned.dmg / 1e6).toFixed(2)}M`,
     ).toBeGreaterThanOrEqual(pinned.dmg)
   })
+})
+
+/**
+ * ⑤ **`auto-1591-1481-1211` p16 的 C0→C1 修复（用户 2026-11-06 完整标准）**。
+ *
+ * 病灶形态（`PROBE_TRACE_OUTER` 与逐 K 钉窗实测）：C0 与 C1 的**可行 K 集不同**
+ * ——C0 有 K0..K3（K4+ 净占用 193s 装不下），C1 只有 K0/K1（K2+ 净占用 191s 装不下），
+ * 而 C1 的**自由收敛停点**在 K3（净占用 179.54s，plan ≠ pin）。
+ * ⇒ 拿「各自可行集里的最大 K」当交付点，C0 落 K3（32.94M）、C1 落 K1（26.66M）= **−19.06%**，
+ * 这就是用户说的「命座说提升了，计算器算出来是负的」。
+ *
+ * 修法（`cinemaUpliftFrontier#pickDelivery`）= 候选集 **∪ 收敛停点**、取伤害 argmax
+ * ⇒ C1 交付它的收敛停点 K3（37.01M）= **+12.34%**。
+ *
+ * 本用例钉的是**用户可观测的两个数**，不是内部实现：
+ * ① 交付口径的 C0→C1 为正（+12.34%）；
+ * ② 固定 K 下 C0→C1 在 K=0..5 上全不为负（逐 K 真求值）。
+ *
+ * 逐 K 表的完整判据（含 max-K 负控 −19.06%）在 `cinemaUpliftFrontier.test.ts`——本文件只钉
+ * 「这一格不能被交付点漂移弄成负数」这个用户可见结论，避免两个文件各扫一遍全库。
+ */
+describe(`${AUTO1591} p${PARRY_1591}：C0→C1 交付口径为正 + 固定 K 全非负`, () => {
+  beforeAll(async () => {
+    await setupHarness(['', '', ''], { productionBasicWeights: true })
+  })
+
+  it('交付口径 C0→C1 = +12.34%（修前 max-K 口径 −19.06%）', async () => {
+    const c0 = await frame(0, -1, AUTO1591, PARRY_1591)
+    const c1 = await frame(1, -1, AUTO1591, PARRY_1591)
+    const pct = ((c1.dmg - c0.dmg) / c0.dmg) * 100
+    expect(pct, `C0→C1 交付口径必须为正（修前 −19.06%）：${(c0.dmg / 1e6).toFixed(2)}M → ${(c1.dmg / 1e6).toFixed(2)}M`)
+      .toBeGreaterThan(0)
+    // 反空洞：这一格的**指纹**（收敛停点 K3/K3、C1 更高）必须与文档 §5.7 的实测一致；
+    // 若哪天引擎把 C1 交付到别处，本条先红，提示负控 witness 需要重新标定
+    expect(c0.pool, `C0 收敛停点池窗应为 K3（实测），实际 ${c0.pool}`).toBe(3)
+    expect(c1.pool, `C1 收敛停点池窗应为 K3（plan≠pin 形态），实际 ${c1.pool}`).toBe(3)
+  })
+
+  it('固定 K 下 C0→C1 在 K=0..5 上全不为负（逐 K 真求值）', async () => {
+    const rows: string[] = []
+    const negative: string[] = []
+    for (const k of [0, 1, 2, 3, 4, 5]) {
+      const c0 = await frame(0, k, AUTO1591, PARRY_1591)
+      const c1 = await frame(1, k, AUTO1591, PARRY_1591)
+      const pct = c0.dmg > 0 ? ((c1.dmg - c0.dmg) / c0.dmg) * 100 : 0
+      rows.push(`K${k}: ${(c0.dmg / 1e6).toFixed(2)}M → ${(c1.dmg / 1e6).toFixed(2)}M（${pct.toFixed(2)}%）`)
+      if (pct < 0) negative.push(rows[rows.length - 1])
+    }
+    expect(negative, `固定 K 下出现 C0→C1 负提升：\n${negative.join('\n')}`).toHaveLength(0)
+  }, 240_000)
 })
 
 /**

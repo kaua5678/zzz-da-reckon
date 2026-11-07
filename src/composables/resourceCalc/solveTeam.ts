@@ -68,11 +68,67 @@ export interface SolveTeamResult {
   out: CalcRoundResult
 }
 
+/**
+ * 轴退化判据容差（秒）：收敛后仍留 ~2s 合轴可覆盖的量化残差（与 timeLedger 测试口径一致）。
+ *
+ * ⚠ **从本文件引用，不许在别处复制字面量**（规则 11）：`cinemaUpliftFrontier` 的钉 K 扫描用它判
+ * 「这一轮排得下吗」，与环退出结算（kStar）、轴退化、非轴降配是**同一把尺**。
+ */
+export const AXIS_FALLBACK_TOLERANCE_SEC = 2
+
+/**
+ * **待装补齐**（⑥″，2026-09-19）：般岳补齐（轴自动补齐 / 保底4喧响补弹刀）是反馈线程——本轮算出的 `interactionTopUp`
+ * 要到**下一轮**才装进计划。外层落进环时，「输入补齐 = 0、本轮才算出要补 N 次」的成员计划看似最贴预算，实则少装了它自己
+ * 声明的补齐（般岳厚轴 4-环实测：179.2s 的计划装上 46.66s 补齐是 225.9s；保底4喧响 2-环：180.0s 的计划少装 7 弹刀 16.3s）。
+ * 待装 = 本轮补齐时长 − 上一轮（= 本轮输入）补齐时长，取正；stable 停点两轮相等 ⇒ 0，对已收敛的队零影响。
+ * 环内选点、轴退化判据、非轴降配的净占用**都**按「计划 + 待装」算。
+ * 2-环根因（CC-296 实测）：补齐缺口按「已含本轮补齐弹刀喧响」的 decibelHave 算 ⇒ 装 N → 算 0 → 装 N。
+ * ⚠ 别用「补齐量单调夹住上一轮」根治：模块按 215/弹刀估，实测 ≈291/弹刀，夹住 = 锁死首轮超补（1471 锚 12→20 弹刀），
+ *   见 docs/mcp-stun-dual-source.md §24.135；要根治应改割线步（用实测 Δ喧响/Δ弹刀）。
+ *
+ * 提升到模块级（唯一目的 = 让 `candidateFitsBudget` 与升命座扫描共用同一份）：字面量算式**一字未改**。
+ */
+export function pendingTopUpSecondsOf(x: CalcRoundResult, prev: CalcRoundResult | null): number {
+  return Math.max(0, x.interactionTopUp.requiredSeconds - (prev?.interactionTopUp.requiredSeconds ?? 0))
+}
+
+/**
+ * **这一轮排得下吗**——环退出结算（kStar 成员扫描 / 二分回落）与 `cinemaUpliftFrontier` 的钉 K 扫描
+ * 共用的**唯一**可行性判据（规则 11：跨文件常量/算式只从单一来源引用）。
+ *
+ * 口径 = 净占用（`netFrontlineOccupation`，**计划本身**）+ 待装补齐 ≤ `effTime + AXIS_FALLBACK_TOLERANCE_SEC`。
+ *
+ * ⚠ **不含**「池撑得住 K」（`floor(continuousStunCount) ≥ K`）那一条：那是**自洽**判据，与本条（**装得下**）
+ * 是两把不同的尺，调用方必须两条都过。本函数只回答后者。
+ * ⚠ 别把它替换成 `stageResolveFeasibility` 的 `netOf`（只算计划、不含待装补齐）：那也是对的，但它判的是
+ * **轴退不退化**（见该处 `@fact engine:轴可行性/净占用`），不是「这个候选 K 装不装得下」。
+ */
+export function candidateFitsBudget(
+  x: CalcRoundResult,
+  prev: CalcRoundResult | null,
+  effTime: number,
+): boolean {
+  if (!x.resourceResult) return false
+  return netFitsBudget(netFrontlineOccupation(x.resourceResult), pendingTopUpSecondsOf(x, prev), effTime)
+}
+
+/**
+ * 「`net + 待装补齐 ≤ effTime + 容差`」的**字面算式**（唯一一处：`candidateFitsBudget` 与
+ * `cinemaUpliftFrontier` 的钉 K 扫描都经由它 ⇒ 两处不可能各写一把尺）。
+ *
+ * 为什么单独拆出来：钉 K 扫描手里是 `TeamResourceResult`（`calc.resourceResult.value`）而不是
+ * `CalcRoundResult`，且它跑的是**稳定停点**（`prev = null` ⇒ 待装补齐 = 0）。
+ * 曾经把 `TeamResourceResult` 当 `CalcRoundResult` 传进去 ⇒ `!x.resourceResult` 恒真 ⇒
+ * **每个点都判不可行**（实测 `auto-1591` C0 的 K0 net=178.37 也报 `fits=false`），
+ * 前沿扩展静默退化成「永远不扩展」。本函数让那个错误在类型上不可能再犯。
+ */
+export function netFitsBudget(net: number, pendingTopUpSeconds: number, effTime: number): boolean {
+  return net + pendingTopUpSeconds <= effTime + AXIS_FALLBACK_TOLERANCE_SEC
+}
+
 /** 外层不动点 + S3 可行化决策（函数体 = 原 `useResourceCalc.ts:254–652` 外提，CC-10；只读输入、不写 store）。 */
 export function solveTeam(input: SolveTeamInput): SolveTeamResult {
   const { runCalcRound, lockedStunCount, stunWindowDur, stunEffTime, resourceConfig } = input
-  /** 轴退化判据容差（秒）：收敛后仍留 ~2s 合轴可覆盖的量化残差（与 timeLedger 测试口径一致） */
-  const AXIS_FALLBACK_TOLERANCE_SEC = 2
   /**
    * T165 挤压臂的削减上限（份）。**为什么是小数字**：每个候选都是一次**完整外层求值**
    * （含外层不动点），且现实里「自动多打」的量级有限（般岳怒相外连段实测 4~10 组）。
@@ -95,8 +151,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
    * ⚠ 别用「补齐量单调夹住上一轮」根治：模块按 215/弹刀估，实测 ≈291/弹刀，夹住 = 锁死首轮超补（1471 锚 12→20 弹刀），
    *   见 docs/mcp-stun-dual-source.md §24.135；要根治应改割线步（用实测 Δ喧响/Δ弹刀）。
    */
-  const pendingTopUpSeconds = (x: CalcRoundResult, prev: CalcRoundResult | null): number =>
-    Math.max(0, x.interactionTopUp.requiredSeconds - (prev?.interactionTopUp.requiredSeconds ?? 0))
+  const pendingTopUpSeconds = (x: CalcRoundResult, prev: CalcRoundResult | null): number => pendingTopUpSecondsOf(x, prev)
   /**
    * **A10 轮内两趟的当前截短秒**（连续失衡，用户 2026-11-01 裁明机制）：0/undefined = 不截短。
    *
@@ -449,10 +504,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        * **逐候选实测可行性**（与轴退化/非轴降配同一把尺）：净占用（含待装补齐）不得超过
        * `effTime + AXIS_FALLBACK_TOLERANCE_SEC`。只回答"这一轮排得下吗"，不再回头看 `nec`。
        */
-      const fitsBudget = (x: CalcRoundResult, prev: CalcRoundResult | null): boolean => {
-        if (!x.resourceResult) return false
-        return frontlineTotalOf(x) + pendingTopUpSeconds(x, prev) <= stunEffTime + AXIS_FALLBACK_TOLERANCE_SEC
-      }
+      const fitsBudget = (x: CalcRoundResult, prev: CalcRoundResult | null): boolean =>
+        candidateFitsBudget(x, prev, stunEffTime)
 
       /**
        * **先从环成员里找 kStar —— 零额外求值**（2026-10-21 性能实测驱动）。

@@ -35,7 +35,7 @@
                 <thead>
                   <tr>
                     <th>影画</th>
-                    <th>伤害</th>
+                    <th>本队伤害 / 同条件对照</th>
                     <!--
                       通道分解（用户 2026-11-05 裁决「涉及资源的需要重算新资源的净增益，在此基础上乘面板属性增益」）：
                       三块分开印、**不合成一个百分比**——可解释性就是这张卡的目的。数字全部来自
@@ -50,10 +50,36 @@
                 <tbody>
                   <tr v-for="e in g.entries" :key="e.to">
                     <td>{{ e.to - 1 }}→{{ e.to }}</td>
+                    <!--
+                      主读数三行（用户 2026-11-06 口径「用户可能想要的是当前情况的一个确切值」）：
+                       ① 本队伤害 X→Y（Δ%）= 两级**交付点**（前沿点）之间的比；
+                       ② 同窗数对照 Δ% = 两级钉在同一个 K 上比（不改操作强度）；
+                       ③ 归因一行 = 所用 K + 两个前沿值 + 窗长/有效时间（字符串在 cinemaUplift#buildFrontierAttribution 拼好，页面只印）
+                      未跑前沿（`frontier` 关闭）时退回单行「收敛停点口径的提升率」，与改动前逐位相同。
+                    -->
                     <td
-                      :class="upliftCellClass(e.gainPct)"
-                      :title="`伤害提升率 ${fmt(e.gainPct, 2)}%${e.gainPct < 0 ? '（预算权衡：该命座资源侧收益被时间成本抵消）' : ''}`"
-                    >{{ signed1(e.gainPct) }}%</td>
+                      :class="upliftCellClass(frontierOf(e)?.pct ?? e.gainPct)"
+                      :title="frontierTitle(e)"
+                    >
+                      <template v-if="frontierOf(e)">
+                        <div class="uplift-main-line">{{ damageRangeText(e) }}</div>
+                        <!--
+                          **同 K 分布条**（用户 2026-11-07 口径：「正确的显示不是挑选好看或者不好看的交付点
+                          数字展示，而是在整个面板显示完整的提升分布」）。每个 chip = 一个操作强度 K 上
+                          这一级的提升率；断掉的那个 K 用 ✕ 如实标出，不藏。
+                        -->
+                        <div class="uplift-band" :title="bandTitle(e)">
+                          <span
+                            v-for="c in bandCells(e)"
+                            :key="c.k"
+                            :class="['uplift-band-cell', c.cls]"
+                          >{{ c.text }}</span>
+                        </div>
+                        <div class="uplift-main-line uplift-sub">{{ sameKText(e) }}</div>
+                        <div class="uplift-main-line uplift-sub uplift-attr">{{ frontierOf(e)!.attribution }}</div>
+                      </template>
+                      <template v-else>{{ signed1(e.gainPct) }}%</template>
+                    </td>
                     <td class="cinema-uplift-split" :title="breakdownTitle(e)">
                       <span v-if="e.breakdown.tier === 'NONE'">—</span>
                       <template v-else>
@@ -82,7 +108,23 @@
             </div>
           </div>
           <div class="cinema-uplift-note">
-            口径：伤害与各栏同在「失衡次数锁定{{ cinemaStunLock > 0 ? `（${cinemaStunLock} 次）` : '' }}」场景下逐级对比，保证同场景同固定条件；
+            <b>主读数三行</b>（用户 2026-11-06 口径「当前情况的一个确切值 + 同条件对照」）：
+            <br>
+            ① <b>本队伤害 X→Y（Δ%）</b> = 两级各自的<b>交付点</b>（= 该级在「失衡窗数」这根轴上的<b>前沿点</b>；
+            若某个钉住的窗数比自由收敛更值钱，引擎就交付那个）。<b>不是</b>「取两点看端点」——
+            交付点由逐 K 钉窗扫描（每个 K 一次完整重解）取伤害最大者，装不下/窗攒不出的 K 一律不参与竞选。
+            <br>
+            ② <b>同窗数对照</b> = 把两级钉在<b>同一个窗数</b>上比，即「不改操作强度，加这一级能多打多少」。
+            首选窗数 = 前一级的交付 K；后一级在该 K 装不下时<b>下探</b>到两级都可行的最大 K，并标注「已下探」
+            （高命座更吃预算是最常见的形态，返回「不可比」等于什么都没说）。
+            <br>
+            ③ <b>归因行</b> = 所用 K + 两个前沿值 + 交付点来源（收敛停点已最优 / 前沿扩展）+ 窗长与有效时间。
+            <br>
+            ⇒ ①与②差距大的时候，说明这一级的提升<b>有一部分来自引擎把它交付到了更值钱的 K</b>——那正是
+            「取两点会看出负提升」的副作用的载体，现在能当场看见、且能下钻到归因行。
+            口径全文与实测见 <code>docs/mcp-cinema-interval-uplift.md</code> §5.7。
+            <br><br>
+            各栏口径：伤害与各栏同在「失衡次数锁定{{ cinemaStunLock > 0 ? `（${cinemaStunLock} 次）` : '' }}」场景下逐级对比，保证同场景同固定条件；
             <b>失衡栏是失衡值总量</b>——失衡次数正是被锁的量，用它当栏会恒为 0（探针证据见 docs/mcp-cinema-uplift-multi-metric.md §2）。
             负值 = 该命座的资源侧收益被时间预算抵消（预算权衡），不是错误。`—` = 本级该量无变化。
             <br>
@@ -118,6 +160,7 @@ import {
   CINEMA_METRICS,
   UPLIFT_EPSILON_PCT,
   type CinemaUpliftEntry,
+  type CinemaUpliftFrontierEntry,
   type CinemaUpliftMetric,
   type CinemaUpliftRow,
 } from '@/composables/cinemaUplift'
@@ -200,6 +243,125 @@ function breakdownTitle(e: CinemaUpliftEntry): string {
   return lines.join('\n')
 }
 
+/** 前沿读数（未跑前沿时 undefined ⇒ 页面退回单行提升率，与改动前逐位相同） */
+function frontierOf(e: CinemaUpliftEntry): CinemaUpliftFrontierEntry | undefined {
+  return e.frontier
+}
+
+/**
+ * **同 K 分布条**的单元格（用户 2026-11-07 口径：显示完整分布，不挑一个数）。
+ *
+ * 逐 K 一个 chip：能打的操作强度印提升率，打不了的那个 K 印 ✕ 并说明原因（`窗+3s` / `超预算`）。
+ * 只印**前 `BAND_MAX_CHIPS` 个**——再长的可行域对「这一级值多少」没有新信息，全铺会把表格撑爆
+ * （用户：「显示太多也不好看」），完整列表在悬浮提示 `bandTitle` 里。
+ */
+const BAND_MAX_CHIPS = 5
+
+interface BandCell { k: number; text: string; cls: string }
+
+function bandCells(e: CinemaUpliftEntry): BandCell[] {
+  const band = frontierOf(e)?.band
+  if (!band) return []
+  const out: BandCell[] = []
+  for (const p of band.points) {
+    if (p.bothFeasible) {
+      if (out.length >= BAND_MAX_CHIPS) break
+      out.push({
+        k: p.k,
+        text: `K${p.k} ${signed1(p.pct ?? 0)}%`,
+        cls: (p.pct ?? 0) > 0 ? 'band-up' : (p.pct ?? 0) < 0 ? 'band-down' : 'band-flat',
+      })
+      continue
+    }
+    // 第一个断点：如实标原因，然后停（后面的 K 只会在更差的域里）
+    const why = p.afterReject === 'budget' ? '超预算'
+      : p.afterReject === 'contiguous' ? '攒不出'
+        : p.afterReject === 'unscanned' ? '未扫'
+          : p.afterReject === 'both' ? '超预算且攒不出'
+            : '不可行'
+    out.push({ k: p.k, text: `K${p.k} ✕${why}`, cls: 'band-break' })
+    break
+  }
+  return out
+}
+
+/** 悬浮说明：完整分布 + 断点原因 + 窗长是否变了（仪玄 C2 的「失衡持续 +3s」） */
+function bandTitle(e: CinemaUpliftEntry): string {
+  const band = frontierOf(e)?.band
+  if (!band) return ''
+  const lines = band.points
+    .filter(p => p.bothFeasible)
+    .map(p => `K${p.k}：${signed1(p.pct ?? 0)}%`)
+  const head = band.medianPct === null
+    ? '同 K 提升：两级没有公共可行操作点'
+    : `同 K 提升中位 ${signed1(band.medianPct)}%（${band.feasibleKs.length} 个操作强度可行）`
+  const tail: string[] = []
+  if (band.breaksAt !== null) {
+    tail.push(`K${band.breaksAt} 起高命座装不下（窗 ${fmt(band.beforeWindow, 1)}s→${fmt(band.afterWindow, 1)}s）`)
+  }
+  if (band.windowChanged) {
+    tail.push(`⚠ 窗长变了：${fmt(band.beforeWindow, 1)}s→${fmt(band.afterWindow, 1)}s —— 少而长的窗，这是本级的副作用`)
+  }
+  return [head, ...lines, ...tail].join('\n')
+}
+
+/** 伤害读数：百万级两位小数（与页面其它伤害读数同精度；数字本身来自引擎，页面不重算） */
+function millions(v: number): string {
+  return `${(v / 1e6).toFixed(2)}M`
+}
+
+/** 第①行：`本队伤害 X→Y (Δ%)` —— 两级**交付点**之间的比 */
+function damageRangeText(e: CinemaUpliftEntry): string {
+  const f = frontierOf(e)
+  if (!f) return signed1(e.gainPct) + '%'
+  return `${millions(f.beforeDmg)}→${millions(f.afterDmg)}（${signed1(f.pct)}%）`
+}
+
+/**
+ * 第②行：`同窗数对照 Δ%`（把两级钉在同一个 K 上比）。
+ *
+ * 为什么这一行必须与第①行并排：第①行是「两级各自的最优」，第②行是「同一个操作强度」。
+ * 两者差距大的时候，说明这一级的提升**有一部分来自引擎把它交付到了更值钱的 K**——
+ * 那正是「取两点会看出负提升」的那个副作用的载体，必须能当场看见。
+ * 没有公共可行 K 时印原因（数字为 null 是「不可比」，不是 0）。
+ */
+function sameKText(e: CinemaUpliftEntry): string {
+  const f = frontierOf(e)
+  if (!f) return ''
+  const { sameK } = f
+  if (sameK.pct === null || sameK.k === null) {
+    return `同窗数对照：不可比（首选 K${sameK.preferredK} 后一级${sameKReasonText(sameK.preferredReason)}）`
+  }
+  return `同窗数对照 K${sameK.k}：${signed1(sameK.pct)}%${sameK.atPreferred ? '' : `（首选 K${sameK.preferredK} ${sameKReasonText(sameK.preferredReason)}，已下探）`}`
+}
+
+const SAME_K_REASON: Record<string, string> = {
+  budget: '超出时间预算',
+  contiguous: '窗攒不出',
+  both: '超预算且窗攒不出',
+  'out-of-range': '超出扫描域',
+}
+
+function sameKReasonText(reason: string | null): string {
+  return reason ? (SAME_K_REASON[reason] ?? reason) : '不可行'
+}
+
+/** 主读数格的悬浮说明：两条口径的完整含义 + 交付点来源（谁是前沿扩展来的） */
+function frontierTitle(e: CinemaUpliftEntry): string {
+  const f = frontierOf(e)
+  const base = `伤害提升率 ${fmt(e.gainPct, 2)}%（口径 = 自由收敛停点）`
+  if (!f) return base + (e.gainPct < 0 ? '（预算权衡：该命座资源侧收益被时间成本抵消）' : '')
+  const src = (s: 'converged' | 'pinned', drift: number): string =>
+    s === 'pinned' ? `前沿扩展（比收敛停点高 ${fmt(drift, 2)}%）` : '收敛停点即前沿'
+  return [
+    `本队伤害 ${millions(f.beforeDmg)}→${millions(f.afterDmg)}（${signed1(f.pct)}%）= 两级**交付点**之间的比`,
+    `前一级 C${e.to - 1}：交付 K${f.beforeK}，${src(f.beforeSource, f.beforeDriftPct)}`,
+    `后一级 C${e.to}：交付 K${f.afterK}，${src(f.afterSource, f.afterDriftPct)}`,
+    `收敛停点口径的提升率 ${fmt(e.gainPct, 2)}%（与上面相差 ${fmt(f.pct - e.gainPct, 2)}pp = 交付点漂移）`,
+    `窗 ${fmt(f.windowDuration, 1)}s／有效 ${fmt(f.effectiveTime, 0)}s；可行点 ${f.beforeFeasibleCount}/${f.afterFeasibleCount} 个`,
+  ].join('\n')
+}
+
 function upliftWarnLabel(e: CinemaUpliftEntry): string {
   if (e.warn === 'unimplemented') return '⚠无变化'
   return e.warn === 'execLevel' ? '执行级' : 'ok'
@@ -263,8 +425,11 @@ async function computeCinemaGains() {
     // 「命座必须有效果」的红灯断言见 composables/__tests__/cinemaUplift.test.ts 与 allAgentsSweep）。
     // CC-347：在 UI 现场的独立拷贝里改命座 / 失衡锁并读数，UI store 全程不动（无需恢复现场）。
     const targetStun = stunPoolResult.value?.stunCount ?? 4 // 固定场景：以当前配置收敛的失衡次数为准
+    // `frontier: true` ⇒ 每级多跑一条钉 K 前沿，主读数给出「确切值 + 同条件对照」（用户 2026-11-06 口径）。
+    // 成本实测：3 槽 × 6 级 2.8s → 12~20s（每个 K 一次完整外层求值）；这是**显式点按钮才会付**的钱。
     const rows = await withAnalysisScenario(s => analyzeCinemaUplift(s, {
       targetStunCount: targetStun,
+      frontier: true,
       resolveName: agentId => agentNames.value[agentId] || '',
       control: { signal: task.signal },
     }))
@@ -335,6 +500,58 @@ async function computeCinemaGains() {
   width: 100%;
   border-collapse: collapse;
   font-size: 11px;
+}
+
+/* 主读数三行（本队伤害 / 同窗数对照 / 归因）：同一格里上下排，行距压紧、副行用弱色
+   ——三行必须读起来是「一个读数 + 两条注脚」，不是三列（列宽有限，横滚条已在外层） */
+.uplift-main-line {
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.uplift-main-line.uplift-sub {
+  font-size: 10px;
+  color: var(--fg-2);
+}
+
+.uplift-main-line.uplift-attr {
+  white-space: normal;
+  color: var(--fg-3);
+}
+
+/* 同 K 分布条（用户 2026-11-07）：每个 chip = 一个操作强度 K 上的提升率；
+   断掉的那个 K 印 ✕ 并标原因 —— 副作用必须能看见，不许只挑一个好看的点。 */
+.uplift-band {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 2px 0 1px;
+}
+
+.uplift-band-cell {
+  font-size: 10px;
+  line-height: 1.3;
+  padding: 0 3px;
+  border-radius: 3px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.uplift-band-cell.band-up {
+  color: var(--c-success);
+}
+
+.uplift-band-cell.band-down {
+  color: var(--c-danger);
+}
+
+.uplift-band-cell.band-flat {
+  color: var(--fg-2);
+}
+
+.uplift-band-cell.band-break {
+  color: var(--c-danger);
+  border: 1px dashed currentColor;
 }
 
 .cinema-uplift-table th,
