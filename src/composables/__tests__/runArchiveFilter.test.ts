@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { authorOf, queryArchiveRuns } from '@/composables/runArchiveFilter'
+import { authorOf, EXPERT_RULE, lowGoldExpertAuthors, queryArchiveRuns } from '@/composables/runArchiveFilter'
 import { runLimitedGold } from '@/composables/limitedGold'
 
 /**
@@ -166,6 +166,89 @@ describe('分面（下拉选项 + 选中后的摘要）', () => {
   it('顶分窗口不影响行数（只影响顶分判定）：同一份输入全量行恒等', () => {
     expect(queryArchiveRuns(ALL, { goldWindow: 0 }).rows).toHaveLength(5)
     expect(queryArchiveRuns(ALL, { goldWindow: 4 }).rows).toHaveLength(5)
+  })
+})
+
+describe('高手 = 给任意角色出过最低金（用户 2026-11-07）', () => {
+  /**
+   * 判据是**逐角色**的：同一房里每个角色各算各的最低金记录（不是整队最低金、也不是该房最低金）。
+   * ALL 里的既有记录（runLimitedGold 实测）：1241@s1|t1 = 1 金（r-low 阿甲）、1191@s1|t1 = 2 金（r-mid 阿乙）、
+   * 1041@s1|t2 = 0 金（r2-low 阿甲）、1241@s1|t2 = 3 金（r2-high 阿乙）；阿丙（r-high 4 金）不握任何记录。
+   */
+  const CHEAP_KILL = run('r-cheap-kill', '阿庚', [{ agentId: '1471', mindscape: 0 }], 's1|t1', { score: 50000 }) // 1 金，击杀
+  const CHEAP_MISS = run('r-cheap-miss', '阿辛', [{ agentId: '1571', mindscape: 0 }], 's1|t2', {
+    score: 50000,
+    bossKilled: false,
+  }) // 1 金，但没击杀
+  // 1471 记录 = CHEAP_KILL 的 1 金；这条 3 金 ⇒ 不握记录（窗口 +2 才收）
+  const PRICEY = run('r-pricey', '阿壬', [{ agentId: '1471', mindscape: 2 }], 's1|t1', { score: 60000 })
+
+  it('默认只认记录本身（窗口 0）且只认击杀 run', () => {
+    expect(EXPERT_RULE.goldWindow).toBe(0)
+    expect(EXPERT_RULE.killedOnly).toBe(true)
+    const experts = lowGoldExpertAuthors([...ALL, CHEAP_KILL, CHEAP_MISS, PRICEY])
+    // 阿甲 / 阿乙 握既有记录；阿庚 握 1471@s1|t1 的记录（1 金）
+    expect([...experts].sort()).toEqual(['阿乙', '阿庚', '阿甲'].sort())
+    // 阿辛：1571@s1|t2 的 1 金唯一一条 = 记录，但他没击杀 ⇒ 不进名单
+    expect(experts.has('阿辛')).toBe(false)
+    // 阿壬：1471 的记录已被阿庚拿走（1 金），他 3 金远超 ⇒ 不是高手
+    expect(experts.has('阿壬')).toBe(false)
+    // 阿丙：1191@s1|t1 的记录是阿乙的 2 金，他 4 金 ⇒ 不是高手
+    expect(experts.has('阿丙')).toBe(false)
+  })
+
+  it('逐角色，不是整队：整队 1 金最低，另一角色的记录持有者也算高手', () => {
+    // s2|t1：阿子 整队 1 金（1241 M0）；阿丑 整队 4 金，但 1191 在该房的最便宜记录就是他
+    const cheapTeam = run('r-cheap-team', '阿子', [{ agentId: '1241', mindscape: 0 }], 's2|t1')
+    const otherChar = run('r-other-char', '阿丑', [{ agentId: '1191', mindscape: 3 }], 's2|t1') // 4 金
+    const experts = lowGoldExpertAuthors([cheapTeam, otherChar])
+    // 整队最低金口径只会收阿子；逐角色口径阿丑也握着 1191 的记录
+    expect([...experts].sort()).toEqual(['阿丑', '阿子'].sort())
+  })
+
+  it('窗口 >0 = 放宽成「记录 + N 金内」（旧的宽松档，保留旋钮）', () => {
+    const runs = [...ALL, CHEAP_KILL, PRICEY]
+    expect(lowGoldExpertAuthors(runs, { goldWindow: 0 }).has('阿壬')).toBe(false)
+    // 1471 记录 1 金，阿壬 3 金 ⇒ +2 才收
+    expect(lowGoldExpertAuthors(runs, { goldWindow: 1 }).has('阿壬')).toBe(false)
+    expect(lowGoldExpertAuthors(runs, { goldWindow: 2 }).has('阿壬')).toBe(true)
+  })
+
+  it('未击杀可显式放行（killedOnly: false）——缺省不这么做', () => {
+    expect(lowGoldExpertAuthors([CHEAP_MISS]).size).toBe(0)
+    expect(lowGoldExpertAuthors([CHEAP_MISS], { killedOnly: false }).has('阿辛')).toBe(true)
+  })
+
+  it('分面带 expert 标；expertsOnly 只留高手投稿（选了具体玩家时不收窄）', () => {
+    const runs = [...ALL, CHEAP_KILL, PRICEY]
+    const experts = lowGoldExpertAuthors(runs)
+    const q = queryArchiveRuns(runs, { expertAuthors: experts })
+    expect(q.players.find((p) => p.name === '阿庚')?.expert).toBe(true)
+    expect(q.players.find((p) => p.name === '阿壬')?.expert).toBe(false)
+    const only = queryArchiveRuns(runs, { expertAuthors: experts, expertsOnly: true })
+    expect(only.rows.every((r) => experts.has(authorOf(r)))).toBe(true)
+    expect(only.rows.map((r) => r.id)).not.toContain('r-pricey')
+    // 点了一个高金非高手：仍看他的全部投稿（同 topPlayersOnly 的既有约定）
+    expect(
+      queryArchiveRuns(runs, { expertAuthors: experts, expertsOnly: true, player: '阿壬' }).rows.map((r) => r.id),
+    ).toEqual(['r-pricey'])
+  })
+
+  it('补录行参与顶分判定：同房同分的低金补录 run 会被打上「顶」标（顶分是房间级定义，不是主集专属）', () => {
+    // 主集只收「每队构成最低金」，但顶分定义是**房间级**的：同房另一支构成用更少金打满，也算该房顶分。
+    const otherComp = run('r-other-comp', '阿子', [{ agentId: '1041', mindscape: 6 }], 's1|t1') // 0 金满分击杀
+    const base = queryArchiveRuns(ALL, { goldWindow: 0 })
+    const mixed = queryArchiveRuns([...ALL, otherComp], { goldWindow: 0 })
+    expect(base.frontierIds.has('r-other-comp')).toBe(false)
+    expect(mixed.frontierIds.has('r-other-comp')).toBe(true)
+    // 最低金被拉低到 0 后，原先 1 金的 r-low 不再在窗口 0 内（这就是「定义用全」的可见后果）
+    expect(mixed.frontierIds.has('r-low')).toBe(false)
+  })
+
+  it('没有高手名单（缺省）= 分面 expert 全 false、expertsOnly 不生效（不留静默收窄）', () => {
+    const q = queryArchiveRuns(ALL, { expertsOnly: true })
+    expect(q.rows).toHaveLength(ALL.length)
+    expect(q.players.every((p) => !p.expert)).toBe(true)
   })
 })
 

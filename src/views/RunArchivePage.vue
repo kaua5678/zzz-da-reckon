@@ -5,7 +5,7 @@
         <n-card size="small" :bordered="true">
           <template #header>
             <div class="card-header">
-              <span>实战归档（危局强袭 · 每队最低金满分）</span>
+              <span>实战归档（危局强袭 · 每队最低金满分 ＋ 高手全部投稿）</span>
               <span v-if="file" class="muted">共 {{ file.totalRuns }} 条 · {{ file.generatedAt.slice(0, 10) }} 快照</span>
             </div>
           </template>
@@ -31,13 +31,21 @@
                   <n-switch v-model:value="topPlayersOnly" size="small" />
                   <span>只看顶级玩家</span>
                 </span>
+                <span class="switch-label muted">
+                  <n-switch v-model:value="expertsOnly" size="small" />
+                  <span>只看高手</span>
+                </span>
                 <n-select v-model:value="agentFilter" :options="agentOptions" size="small" style="width: 230px" placeholder="角色（全部）" clearable filterable />
                 <n-button size="tiny" quaternary @click="resetFilters">清空筛选</n-button>
               </div>
               <div class="archive-summary muted" v-if="file">
                 命中 {{ filteredRuns.length }} 条 · 本范围顶分 {{ archiveQuery.frontierCount }} 条 / {{ archiveQuery.roomCount }} 房
                 · 玩家 {{ archiveQuery.players.length }} · 角色 {{ archiveQuery.agents.length }}
-                ｜ 全库 {{ file.totalRuns }} 条 · {{ coverage.rooms }} 房 · {{ coverage.players }} 位投稿人 · {{ coverage.agents }} 个角色 · {{ file.generatedAt.slice(0, 10) }} 快照
+                ｜ 全库 {{ file.totalRuns }} 条<template v-if="expertsFile?.totalRuns"> + 补录 {{ expertsFile.totalRuns }} 条</template>
+                · {{ coverage.rooms }} 房 · {{ coverage.players }} 位投稿人 · {{ coverage.agents }} 个角色 · {{ file.generatedAt.slice(0, 10) }} 快照
+                <template v-if="expertsFile?.totalRuns">
+                  ｜ 高手 {{ expertCount }} 位 · 补录 {{ expertsFile.totalRuns }} 条（给某角色出过该房最低金记录的人，含非满分 / 未击杀）
+                </template>
               </div>
               <div v-if="selectionNote" class="archive-note muted">{{ selectionNote }}</div>
               <div class="archive-empty muted" v-if="!filteredRuns.length">
@@ -179,8 +187,12 @@
           <b>收录口径</b>（用户裁决 2026-10-08）：只收危局强袭里<b>每个队伍限定金数最低的满分（65000）投稿</b>——每（房间 × 队伍构成）取金数最低那一批，
           同（房间 × 构成 × 金数 × 精确配置）去重。它们 = 该队在该 Boss「实际能打到的上界」，与计算器理论理想值直接对照最合适；重复投稿与低水平投稿（未打满）不收录。
           <br />
+          <b>高手补录</b>（用户 2026-11-07：「高手定义为给任意角色出过最低金就行」）：在某个（房间 × 角色）上握着<b>该角色的最低限定金记录</b>的投稿人 = 高手，
+          他的<b>其余全部危局投稿</b>（含非满分、未击杀）也收进来（标「补录」）——只看满分会把这些人的真实打法丢掉。
+          <br />
           <b>筛选口径</b>（用户 2026-10-26）：「顶分战斗」= 该房（赛季 × 关卡）内限定金数 ≤「该房最低金 + 顶分窗口」的满分 run（lowGoldFrontier 单一实现）；
-          「顶级玩家」= 至少有一条顶分战斗的投稿人——<b>窗口 +N 金就是「稍微宽松」的唯一旋钮</b>（不按分数百分比放宽：本数据集全员 65000，按分数放等于全放行）。
+          「顶级玩家」= 至少有一条顶分战斗的投稿人——<b>窗口 +N 金就是「稍微宽松」的唯一旋钮</b>（不按分数百分比放宽：顶分只在满分组里选，按分数放等于全放行）。
+          「高手」= 补录名单里的人（逐角色最低金记录，见上）；「只看高手」与「只看顶级玩家」可叠加。列表排序 = 分数降序、同分按金数升序。
           选中玩家 = 看他的<b>全部</b>投稿，再配「只看顶分战斗」即他的顶分场次；角色筛选按<b>队伍任一槽位</b>命中，与「只看顶分战斗」叠加 = 该角色的所有顶分战斗。
           <br />
           口径：配装 = 计算器默认理想（推荐驱动盘 + 推荐主词条 + 模板默认副词条 + 技能全满；模板副词条≠最优，要按本队算近似最优请点上方「配装最优」）；交互 = 轴模式自动推导（连携从轴读、弹刀按「失衡次数四舍五入 + 喧响四舍五入：缺口÷215」反推，闪反按职业基准（支援/防护 0，其余 10）/ 快支3 为固定基准）。
@@ -231,7 +243,12 @@ import { useUiStore } from '@/stores/ui'
 import { useStunDiscreteDisplay } from '@/composables/stunDiscreteDisplay'
 import { useCatalogStore } from '@/stores/catalog'
 import { useResourceCalc } from '@/composables/useResourceCalc'
-import { submissionToDeploy, type ArchiveRun, type RunArchiveFile } from '@/composables/runArchiveImport'
+import {
+  submissionToDeploy,
+  type ArchiveRun,
+  type RunArchiveExpertsFile,
+  type RunArchiveFile,
+} from '@/composables/runArchiveImport'
 import { applyDeployConfig, applyPeriodBuff, pickBestPeriodBuff } from '@/composables/runArchiveDeploy'
 import { withAnalysisScenario } from '@/composables/analysisScenario'
 import { useBatchOwner } from '@/composables/batchTask'
@@ -253,6 +270,9 @@ import {
   type ModelingGapHint,
 } from '@/utils/modelingGaps'
 
+
+/** 列表行 = 归档 run + 「是否只出现在高手补录集」（补录集里的那一批不是「每队最低金满分」，要区别对待） */
+type ScopeRun = ArchiveRun & { expertOnly: boolean }
 
 const configStore = useConfigStore()
 
@@ -276,6 +296,11 @@ const archiveStunDiscrete = useStunDiscreteDisplay({
 const loading = ref(true)
 const error = ref('')
 const file = ref<RunArchiveFile | null>(null)
+/**
+ * 高手补录（单独文件 = `run-archive-experts.json`，与主集分开加载：探针 / 角色兑现 / 预设生成只读主集）。
+ * 缺文件 = 空补录（旧部署），页面照样工作，只是没有「高手 / 补录」标与开关效果。
+ */
+const expertsFile = ref<RunArchiveExpertsFile | null>(null)
 const presets = ref<BossPreset[]>([])
 const phaseViews = ref<PhaseView[]>([])
 
@@ -287,6 +312,8 @@ const goldWindow = ref(0)
 const frontierOnly = ref(false)
 /** 只看顶级玩家（窗口内出过顶分的投稿人） */
 const topPlayersOnly = ref(false)
+/** 只看高手（握着某个角色最低金记录的人；名单由归档导入烘焙，页面只读） */
+const expertsOnly = ref(false)
 /** 玩家筛选（null = 全部；选中后列出他的**全部**投稿，顶分筛选另由 frontierOnly 控制） */
 const playerName = ref<string | null>(null)
 /** 角色筛选（null = 全部；按队伍任一槽位命中） */
@@ -359,11 +386,14 @@ const goldWindowOptions = [
 
 onMounted(async () => {
   try {
-    const [ra, bp] = (await Promise.all([
+    const [ra, bp, ex] = (await Promise.all([
       useCatalogStore().loadRunArchive(),
       useCatalogStore().loadBossPresets(),
+      // 补录加载**内部吞错**（缺文件/坏响应都退化成空补录），不会让整页进 error 态
+      useCatalogStore().loadRunArchiveExperts(),
     ]))
     file.value = ra
+    expertsFile.value = ex
     presets.value = bp.bosses ?? []
     phaseViews.value = bp.phaseViews ?? []
     const ids = [...new Set(ra.runs.map((r) => r.seasonId))].sort(
@@ -380,7 +410,10 @@ onMounted(async () => {
 const seasonOptions = computed(() => {
   const f = file.value
   if (!f) return []
-  const ids = [...new Set(f.runs.map((r) => r.seasonId))].sort((a, b) => (f.seasons[b]?.start ?? '').localeCompare(f.seasons[a]?.start ?? ''))
+  // 赛季集合从候选行取（= 主集 + 补录；两者房间相同，补录将来若出现新房间也不会漏选项）
+  const ids = [...new Set(candidateRuns.value.map((r) => r.seasonId))].sort(
+    (a, b) => (f.seasons[b]?.start ?? '').localeCompare(f.seasons[a]?.start ?? ''),
+  )
   // '' = 全部期数（看某个玩家的全部投稿 / 某角色跨期表现时用）
   return [{ value: '', label: '全部期数' }, ...ids.map((id) => ({ value: id, label: `${id} ${(f.seasons[id]?.start ?? '').slice(0, 10)}` }))]
 })
@@ -397,34 +430,66 @@ const bossOptions = computed(() => {
   return [...names.keys()].map((n) => ({ value: n, label: n })).sort((a, b) => a.label.localeCompare(b.label))
 })
 
+/**
+ * 候选行 = 主集（每队最低金满分）+ 高手补录（其余投稿）。两组口径不同但都要在页面上可见：
+ * 行里带 `expertOnly` 标记（只在补录集里 = 非「每队最低金满分」那一批），列表给灰标区分。
+ */
+const candidateRuns = computed<ScopeRun[]>(() => {
+  const f = file.value
+  if (!f) return []
+  const main: ScopeRun[] = f.runs.map((r) => ({ ...r, expertOnly: false }))
+  const extra: ScopeRun[] = (expertsFile.value?.runs ?? []).map((r) => ({ ...r, expertOnly: true }))
+  return [...main, ...extra]
+})
+
 /** 候选范围 = 期数 × Boss（玩家 / 角色筛选**不能**在这一层收窄，否则顶分判定会退化成本地最低金） */
 const scopeRuns = computed(() => {
   const f = file.value
   if (!f) return []
-  return f.runs
+  return candidateRuns.value
     .filter((r) => (seasonId.value ? r.seasonId === seasonId.value : true))
     .filter((r) => (bossKey.value ? f.rooms[r.targetId]?.bossNameZh === bossKey.value : true))
 })
 
 /**
+ * 高手名单（数据集烘焙 = `run-archive-experts.json#authors`，判据在导入期算过，见
+ * `runArchiveFilter.ts#lowGoldExpertAuthors`）。页面只读——判据要看未入库的低金投稿，这里看不全。
+ */
+const expertAuthors = computed<ReadonlySet<string>>(() => new Set(expertsFile.value?.authors ?? []))
+
+/**
  * 筛选 + 分面（单一实现 = `composables/runArchiveFilter.ts`）：
  * 顶分集合在玩家 / 角色筛选**之前**于候选范围上算，顶分窗口只决定「多宽松」，不改变候选范围。
- * 本数据集全员满分且全击杀，故 killedOnly 恒真、顶分恒 65000。
+ *
+ * ⚠ 候选范围含高手补录，所以**顶分集合比只看主集时更大**（实测窗口 0：101 → 170 条，多出来的都是补录里的
+ * 65000 满分 run；窗口 +4：640 → 1302）。这不是缺陷：顶分的定义（`limitedGold.lowGoldFrontier`）本来就是
+ * 「**该房**（赛季 × 关卡）最高分里、限定金 ≤ 该房最低金 + 窗口的那批」，主集是**按队伍构成**筛过的子集，
+ * 只是它的一个下界。现在候选范围里有了全量高手投稿，就把定义按原样用全，别改回「只认主集」（那会把
+ * 「这个房里谁用最少金打满过」的真实答案裁掉一半）。
  */
 const archiveQuery = computed(() =>
   queryArchiveRuns(scopeRuns.value, {
     goldWindow: goldWindow.value,
+    expertAuthors: expertAuthors.value,
     player: playerName.value,
     agentId: agentFilter.value,
     topPlayersOnly: topPlayersOnly.value,
+    expertsOnly: expertsOnly.value,
     frontierOnly: frontierOnly.value,
   }),
 )
 
+/** 本范围（期数 × Boss）里的高手人数：名单是全库的，摘要要按当前范围收窄，否则切期数不变 */
+const expertCount = computed(() => archiveQuery.value.players.filter((p) => p.expert).length)
+
+/**
+ * 排序 = **分数降序，同分按金数升序**（2026-11-07 改）：主集全 65000 时等价于旧的「金数升序」，
+ * 但混进高手补录（低分 / 未击杀）后，按金数优先会把 0 金的两万分行顶到最前——那是补录噪声，不是上限数据点。
+ */
 const filteredRuns = computed(() =>
   archiveQuery.value.rows
     .slice()
-    .sort((a, b) => runLimitedGold(a.team) - runLimitedGold(b.team) || b.score - a.score),
+    .sort((a, b) => b.score - a.score || runLimitedGold(a.team) - runLimitedGold(b.team)),
 )
 
 /** 顶分窗口只在「只看顶分 / 只看顶级玩家」开启时参与行筛选，否则下拉是无意义的旋钮 */
@@ -432,13 +497,13 @@ const scoreWindowActive = computed(() => frontierOnly.value || topPlayersOnly.va
 
 /** 全库覆盖（快照信息，不随筛选变化；走同一套分面，避免页面另写一份去重口径） */
 const coverage = computed(() => {
-  const q = queryArchiveRuns(file.value?.runs ?? [], { goldWindow: goldWindow.value })
+  const q = queryArchiveRuns(candidateRuns.value, { goldWindow: goldWindow.value, expertAuthors: expertAuthors.value })
   return { rooms: q.roomCount, players: q.players.length, agents: q.agents.length }
 })
 
-/** 玩家下拉文案（工数 / 顶分数让「谁是顶级玩家」一眼可见，不用逐个点开） */
+/** 玩家下拉文案（工数 / 顶分数 / 高手标让「谁是高手」一眼可见，不用逐个点开） */
 function playerLabel(p: PlayerFacet): string {
-  return `${p.name} · ${p.runs} 场${p.frontierRuns ? ` · 顶 ${p.frontierRuns}` : ''}`
+  return `${p.name} · ${p.runs} 场${p.frontierRuns ? ` · 顶 ${p.frontierRuns}` : ''}${p.expert ? ' · 高手' : ''}`
 }
 
 function agentLabel(a: AgentFacet): string {
@@ -459,11 +524,11 @@ const selectionNote = computed(() => {
   const parts: string[] = []
   if (playerName.value) {
     const p = archiveQuery.value.players.find((x) => x.name === playerName.value)
-    const total = (file.value?.runs ?? []).filter((r) => authorOf(r) === playerName.value).length
+    const total = candidateRuns.value.filter((r) => authorOf(r) === playerName.value).length
     if (p) {
       const extra = total - p.runs
       parts.push(
-        `玩家 ${p.name}：本范围 ${p.runs} 场 · 顶分 ${p.frontierRuns} 场 · 最低 ${p.minGold} 金` +
+        `玩家 ${p.name}${p.expert ? '（高手）' : ''}：本范围 ${p.runs} 场 · 顶分 ${p.frontierRuns} 场 · 最低 ${p.minGold} 金` +
           (extra > 0 ? `（另有 ${extra} 场在其它期数 / Boss，期数切「全部期数」可看）` : ''),
       )
     } else {
@@ -490,6 +555,7 @@ function resetFilters() {
   playerName.value = null
   agentFilter.value = null
   topPlayersOnly.value = false
+  expertsOnly.value = false
   frontierOnly.value = false
   goldWindow.value = 0
 }
@@ -611,10 +677,11 @@ async function runLoadoutOptimize() {
   }
 }
 
-const columns = computed<DataTableColumn<ArchiveRun>[]>(() => {
+const columns = computed<DataTableColumn<ScopeRun>[]>(() => {
   // 「顶」标与「只看顶分」同源：同一份 frontierIds（窗口 = 顶分窗口），不另算一份前沿。
   const frontierIds = archiveQuery.value.frontierIds
-  const cols: DataTableColumn<ArchiveRun>[] = []
+  const experts = expertAuthors.value
+  const cols: DataTableColumn<ScopeRun>[] = []
   // 期数列只在看「全部期数」时出现（单选某期时整列恒等，纯占宽）
   if (!seasonId.value) {
     cols.push({ title: '期数', key: 'season', width: 72, ellipsis: { tooltip: true }, render: (r) => r.seasonId })
@@ -645,7 +712,7 @@ const columns = computed<DataTableColumn<ArchiveRun>[]>(() => {
         ]),
     },
     {
-      // 分数与击杀合并一格：本数据集分数恒 65000（满分才收录），单独占列纯占宽
+      // 分数与击杀合并一格（主集恒 65000；高手补录行会有更低分 / 未击杀，所以这一列现在真的在读数）
       title: '分数',
       key: 'score',
       width: 104,
@@ -661,11 +728,23 @@ const columns = computed<DataTableColumn<ArchiveRun>[]>(() => {
     },
     { title: '用时', key: 'time', width: 58, ellipsis: { tooltip: true }, render: (r) => `${r.timeSeconds}s` },
     {
-      // 投稿人 + 投稿日叠两行：省一列宽（横向滚动会把「部署」挤出视口）
+      // 投稿人 + 投稿日叠两行：省一列宽（横向滚动会把「部署」挤出视口）。
+      // 「高手」标 = 该投稿人在数据集的高手名单里（在某房握过某角色的最低金记录，全库口径，不是这一条）；
+      // 「补录」标 = 这条来自高手补录集（非「每队最低金满分」那一批）。
       title: '投稿',
       key: 'author',
-      width: 116,
-      render: (r) => h('div', [h('div', (r.authorName ?? '') || '未署名'), h('small', r.submittedAt?.slice(0, 10) ?? '')]),
+      width: 132,
+      render: (r) =>
+        h('div', [
+          h('div', { style: 'display:flex;align-items:center;gap:3px' }, [
+            h('span', (r.authorName ?? '') || '未署名'),
+            experts.has(authorOf(r))
+              ? h(NTag, { type: 'info', size: 'tiny', bordered: false }, { default: () => '高手' })
+              : null,
+            r.expertOnly ? h(NTag, { size: 'tiny', bordered: false }, { default: () => '补录' }) : null,
+          ]),
+          h('small', r.submittedAt?.slice(0, 10) ?? ''),
+        ]),
     },
     {
       title: '',

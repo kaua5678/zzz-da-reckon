@@ -8,7 +8,8 @@
  * 他们若穿着限定专武，音擎金仍计（有金就是金）。
  *
  * 共用同一口径的地方（改口径只改这里）：
- * - 归档侧经 runLimitedGold：归档精炼管道 `scripts/import-zzz-run-archive.mjs`（每队最低金满分的收录判据）、
+ * - 归档侧经 runLimitedGold：归档精炼管道 `scripts/import-zzz-run-archive.mjs`（每队最低金满分的收录判据，
+ *   以及高手补录的「逐角色最低金记录」判据 `runArchiveFilter.ts#lowGoldExpertAuthors`）、
  *   charIncrement（队伍基底 extractBaseTeams 的金数窗）、自动预设生成 `scripts/gen-auto-presets.mjs`（前沿窗口）、
  *   实战对比页 RunArchivePage（金数列）
  * - 计算器侧经 teamCompare.teamGoldOf：配置页「预设金数」、基础金 baseGoldOf（队伍对比）/ baseGoldOfTeam（时间线）

@@ -24,7 +24,7 @@
  * 由下任从基线删掉（棘轮只减不增，与 DEAD_CHANNEL_ALLOWLIST 同款纪律：不许为绿而登记）。
  *
  * @fact engine:guards/死通道LS 口径: 死通道=导出可选属性/内联opts可选属性 全仓零写入点（AST PropertyAssignment∪LS write-access∪vue `foo:` 三重交叉，namesake 同名写入保守压制不报）；reads=0 记 dead-both、reads>0 记 dead-input；基线棘轮新增即红；**基线键行号无关**（`文件 符号`，带行号的旧键经 normalizeBaseKey 兼容——2026-09-15 实测：无关改动给 types/resource/config.ts 插 9 行致 9 条冻结基线条目假红） | 据 实测@2026-09-15·复核@2026-09-25·复核@2026-09-27·复核@2026-09-30 | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadChannelsLs | 信 高
- * @fact engine:guards/死导出 口径: 死导出=src 非测试 .ts 的导出（含 `export {x} from` / `export {x as y}` 转出别名）没有任何**生产消费点**（本文件使用 / 其他 src 非测试 .ts / scripts 的 .ts / .vue 的 import）；**测试侧引用不算**（`__tests__`、`*.test.ts`、`src/test/`）——只被测试引用 = 生产死代码 + 它的测试（R33 真实病灶形态）；使用点沿别名链逐跳标记，命名空间按值用 / `import()` 未解构 ⇒ 整模块算被用（保守）；.vue 解析 `<script>` 的 import 经被导入模块导出表落到符号；例外只有 DEAD_EXPORT_TEST_SEAMS（必须与模块私有状态同处的测试接口，失效条目报红）；转出口径（r722）：转出别处声明的符号（`export {x} from` / `export *` / `import {x}` 再 `export {x}`）只许在 REEXPORT_ENTRY_FILES 登记的入口，其余文件的转出 = 兼容壳，有生产消费也报红（拆分 / 下沉时同批改导入方，不留第二条导入路径），入口条目不再转出任何符号也报红；全仓棘轮 = 死导出与兼容壳都为空；已知不覆盖=只被另一个死导出引用的导出（单层判定，前者删后下次扫描才红） | 据 实测@2026-10-07（r721：一次遍历反向索引取代逐导出 findReferences——⑫ 37.8s→约 5s；扫面 src/core→全 src；全仓 2402 导出中只被测试引用 21 + 零引用 5，逐条裁决：删 / 搬进测试侧 / 4 条登记测试接口）·实测@2026-10-07（r722：近一个月约 10 次拆分 / 下沉各留一个兼容壳，14 个门面 60 条转出的导入方全部迁到声明处后删除；保留入口 4 个） | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadExports + scripts/lib/dead-channel-ls.mjs#DEAD_EXPORT_TEST_SEAMS + scripts/lib/dead-channel-ls.mjs#REEXPORT_ENTRY_FILES | 信 高
+ * @fact engine:guards/死导出 口径: 死导出=src 非测试 .ts 的导出（含 `export {x} from` / `export {x as y}` 转出别名）没有任何**生产消费点**（本文件使用 / 其他 src 非测试 .ts / scripts 的 .ts / **scripts/*.mjs 的 `loadTsModule(root, '/src/…ts')`（整模块算被用）** / .vue 的 import）；**测试侧引用不算**（`__tests__`、`*.test.ts`、`src/test/`）——只被测试引用 = 生产死代码 + 它的测试（R33 真实病灶形态）；使用点沿别名链逐跳标记，命名空间按值用 / `import()` 未解构 ⇒ 整模块算被用（保守）；.vue 解析 `<script>` 的 import 经被导入模块导出表落到符号；例外只有 DEAD_EXPORT_TEST_SEAMS（必须与模块私有状态同处的测试接口，失效条目报红）；转出口径（r722）：转出别处声明的符号（`export {x} from` / `export *` / `import {x}` 再 `export {x}`）只许在 REEXPORT_ENTRY_FILES 登记的入口，其余文件的转出 = 兼容壳，有生产消费也报红（拆分 / 下沉时同批改导入方，不留第二条导入路径），入口条目不再转出任何符号也报红；全仓棘轮 = 死导出与兼容壳都为空；已知不覆盖=只被另一个死导出引用的导出（单层判定，前者删后下次扫描才红） | 据 实测@2026-10-07（r721：一次遍历反向索引取代逐导出 findReferences——⑫ 37.8s→约 5s；扫面 src/core→全 src；全仓 2402 导出中只被测试引用 21 + 零引用 5，逐条裁决：删 / 搬进测试侧 / 4 条登记测试接口）·实测@2026-10-07（r722：近一个月约 10 次拆分 / 下沉各留一个兼容壳，14 个门面 60 条转出的导入方全部迁到声明处后删除；保留入口 4 个） | 验 src/scripts/__tests__/deadChannelLs.test.ts | 锚 scripts/lib/dead-channel-ls.mjs#scanDeadExports + scripts/lib/dead-channel-ls.mjs#DEAD_EXPORT_TEST_SEAMS + scripts/lib/dead-channel-ls.mjs#REEXPORT_ENTRY_FILES | 信 高
  */
 import { createRequire } from 'node:module'
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
@@ -385,6 +385,31 @@ function resolveVueSpecifier(root, fromFile, spec) {
   return null
 }
 
+/**
+ * 数据管道脚本（`.mjs`）对 `src/**` 的消费：`loadTsModule(root, '/src/…ts')`（`scripts/lib/ts-modules.mjs`，
+ * vite ssrLoadModule 载入 TS 模块）。**扫描器必须看得见它**——否则脚本侧唯一使用点被漏掉，
+ * 导出会被误判成「零生产消费」（2026-11-07 实测：`lowGoldExpertAuthors` 只由 import 脚本调用 ⇒ 报死导出）。
+ * 这里做成保守的「整模块算被用」：`loadTsModule` 是动态载入 + 解构取符号，静态跟不上解构名，
+ * 整模块粒度宁可漏报（判据纪律：宁可漏报不误报）。
+ */
+function markScriptLoadedModules(root, wholeModules) {
+  const scriptsDir = join(root, 'scripts')
+  if (!existsSync(scriptsDir)) return
+  const walk = (dir) => {
+    for (const e of readdirSync(dir)) {
+      if (e === 'node_modules') continue
+      const p = join(dir, e)
+      if (statSync(p).isDirectory()) { walk(p); continue }
+      if (!/\.(mjs|js)$/.test(e) || /\.(test|spec)\.(mjs|js)$/.test(e)) continue
+      const text = readFileSync(p, 'utf8')
+      for (const m of text.matchAll(/loadTsModule\(\s*[^,]+,\s*['"]\/?(src\/[^'"]+\.ts)['"]/g)) {
+        wholeModules.add(join(root, m[1]))
+      }
+    }
+  }
+  walk(scriptsDir)
+}
+
 function walkVue(dir, out = []) {
   if (!existsSync(dir)) return out
   for (const e of readdirSync(dir)) {
@@ -408,7 +433,9 @@ const exportKindOf = (d) => ts.isFunctionDeclaration(d) ? 'function'
  * **死导出扫描**（r721 起：全 `src` 层 · 只认生产消费）。
  *
  * 判定：`src` 下非测试 `.ts` 的每个导出（含 `export {x} from` / `export {x as y}` 转出别名），没有任何
- * **生产消费点**即为死导出。生产消费点 = 本文件内使用 / 其他 `src` 非测试 `.ts` / `scripts` 的 `.ts` / `.vue` 的 import。
+ * **生产消费点**即为死导出。生产消费点 = 本文件内使用 / 其他 `src` 非测试 `.ts` / `scripts` 的 `.ts` /
+ * `scripts/*.mjs` 经 `loadTsModule(root, '/src/…ts')` 载入（整模块算被用，同 .vue 命名空间 import 一档）/
+ * `.vue` 的 import。
  * **测试侧引用不算**（`__tests__`、`*.test.ts`、`src/test/`）：只被测试引用的导出 = 生产死代码 + 它的测试
  * ——R33 的真实病灶（`damage.test.ts` 测的是 `damage.ts` 的死副本，活实现零测试）正是这一形态。
  *
@@ -519,6 +546,9 @@ export function scanDeadExports(opts = {}) {
     }
     visit(sf)
   }
+
+  // ---- scripts/*.mjs：loadTsModule(root, '/src/…ts') 的整模块消费（program 只有 .ts，看不见 .mjs） ----
+  markScriptLoadedModules(root, wholeModules)
 
   // ---- .vue：<script> 块的 import（program 看不见 .vue） ----
   for (const vf of walkVue(srcDir)) {

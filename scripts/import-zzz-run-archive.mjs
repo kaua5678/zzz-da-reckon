@@ -3,11 +3,20 @@
  *
  * 前端 RunArchivePage.vue 懒加载 fetch('/static/run-archive.json')，不进首屏 bundle。
  *
- * ## 收录口径（用户裁决 2026-10-08）
+ * ## 收录口径（用户裁决 2026-10-08 + 2026-11-07）
  *
- * **只收「每个队伍最低限定金数的满分 run」**——即每（房间 × 队伍构成）里，用最少限定金
+ * **主集 `runs`**：只收「每个队伍最低限定金数的满分 run」——即每（房间 × 队伍构成）里，用最少限定金
  * 打满 65000 的那一批。它们 = 该队在该 Boss 上「实际能打到的上界」，与计算器的理论理想值
  * 直接对照最合适（高金/低水平投稿只反映投入或操作，不反映角色上限）。
+ *
+ * **补录集（单独文件 `run-archive-experts.json`）**（用户 2026-11-07：「高手定义为给任意角色出过最低金
+ * 就行」／早先一句「打过至少一次极限最低金到+4这些较低的，可以认为他是高手，把他的所有数据都收进来，
+ * 不止满分」）：
+ * 高手 = 在某个（房间 × 角色）上握着**该角色的最低限定金记录**的人（逐角色，不是整队、也不是房间整体；
+ * 记录只从击杀 run 里取）。判据单一实现 = `runArchiveFilter.ts#lowGoldExpertAuthors`（+ `EXPERT_RULE`），
+ * 本脚本只调用、不重写。他们的**其余**投稿（非满分 / 未击杀都收，按 id 与主集不重复）进补录文件。
+ * ⚠ 两个集子**不许合并消费**：主集 = 上限对照（探针 / 角色兑现 / 预设生成都只读 `runs`），
+ * 补录集 = 「这位高手还打过什么」，只有实战对比页读。
  *
  * 落成四步：
  *   ① 只收 `Deadly Assault*`（危局强袭，含 Adversity 困难；Shiyu Defense / Annihilation
@@ -28,7 +37,9 @@
  * - **配对差分图（原 Chart 5）已下线**（用户 2026-10-08：价值要用计算器算，不用统计估）——
  *   本数据集只有满分 run，同作者「带卡 vs 不带卡」的分差恒为 0，那张图在本口径下没有信息量。
  * - `charIncrement`（角色兑现曲线）与本数据集兼容：它按「分数 ≥ 顶分×0.9 ∩ 金数窗」提基底队，
- *   在全员满分的本数据集上退化为「该房最低金 + 窗口内的队伍」，语义仍成立。
+ *   **只读主集 `runs`**（全满分）⇒ 退化为「该房最低金 + 窗口内的队伍」，语义仍成立；
+ *   补录集 `expertRuns` 含低分 / 未击杀，喂进去会稀释基底，故不喂。
+ * - 探针（`lowGoldFrontierProbe` / `anomalyFrontierProbe` 等）同样只读 `runs`。
  * - `rooms` / `seasons` 索引只保留**有收录 run** 的房间与赛季（原实现保留 bootstrap 全量，
  *   含 42 个零危局投稿的防卫战房间）。
  */
@@ -40,6 +51,8 @@ import { loadTsModule, closeTsModules } from './lib/ts-modules.mjs'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const rawDir = resolve(root, 'data/raw/zzz-run-archive')
 const outFile = resolve(root, 'public/static/run-archive.json')
+/** 高手补录单独出文件：主集被探针 / 角色兑现 / 预设生成整份读，别让它们替补录集付下载与解析成本。 */
+const expertOutFile = resolve(root, 'public/static/run-archive-experts.json')
 
 /** 支持的模式前缀：Deadly Assault 与 Deadly Assault: Adversity Mode（危局·困难异构）。 */
 const MODE_PREFIX = 'Deadly Assault'
@@ -85,6 +98,10 @@ async function main() {
   const bootstrap = readJson(resolve(rawDir, 'bootstrap.json'))
   const runs = readJson(resolve(rawDir, 'runs.json'))
   const { runLimitedGold } = await loadTsModule(root, '/src/composables/limitedGold.ts')
+  const { lowGoldExpertAuthors, authorOf, EXPERT_RULE } = await loadTsModule(
+    root,
+    '/src/composables/runArchiveFilter.ts',
+  )
 
   const da = runs.filter((r) => String(r.mode ?? '').startsWith(MODE_PREFIX))
   const full = da.filter((r) => Number(r.score) >= FULL_SCORE)
@@ -111,6 +128,13 @@ async function main() {
   }
   const kept = [...byConfig.values()].map(slimRun)
 
+  // ④ 高手补录：握着某角色最低金记录的人，其**其余**投稿（判据不在这里重写，见 lowGoldExpertAuthors）
+  const expertAuthors = lowGoldExpertAuthors(da)
+  const keptIds = new Set(kept.map((r) => String(r.id)))
+  const expertRuns = da
+    .filter((r) => expertAuthors.has(authorOf(r)) && !keptIds.has(String(r.id)))
+    .map(slimRun)
+
   // 索引：只保留有收录 run 的房间/赛季
   const keptRooms = new Set(kept.map((r) => r.targetId))
   const keptSeasons = new Set(kept.map((r) => r.seasonId))
@@ -135,7 +159,8 @@ async function main() {
     source: 'data/raw/zzz-run-archive（zzz-run-archive.onrender.com 公开 API 快照）',
     note:
       '只收危局强袭（Deadly Assault*）每（房间 × 队伍构成）限定金数最低的满分（65000）run；' +
-      '同（房间 × 构成 × 金数 × 精确配置）去重。配装缺口由计算器默认理想配装兜底。',
+      '同（房间 × 构成 × 金数 × 精确配置）去重。高手补录另见 run-archive-experts.json（口径不同、别合并消费）。' +
+      '配装缺口由计算器默认理想配装兜底。',
     totalRuns: kept.length,
     filter: {
       mode: MODE_PREFIX,
@@ -152,11 +177,28 @@ async function main() {
   }
   writeJson(outFile, out)
 
+  const expertOut = {
+    generatedAt: out.generatedAt,
+    source: out.source,
+    note:
+      '高手 = 在某个（房间 × 角色）上握着该角色的最低限定金记录的人（逐角色；记录只从击杀 run 里取，' +
+      `窗口 +${EXPERT_RULE.goldWindow} 金；判据 = composables/runArchiveFilter.ts#lowGoldExpertAuthors）；` +
+      'runs = 这些人的其余危局强袭投稿（含非满分 / 未击杀），与 run-archive.json#runs 按 id 不重复。' +
+      '两批口径不同、别合并消费。',
+    expertGoldWindow: EXPERT_RULE.goldWindow,
+    totalAuthors: expertAuthors.size,
+    totalRuns: expertRuns.length,
+    authors: [...expertAuthors].sort((a, b) => a.localeCompare(b)),
+    runs: expertRuns,
+  }
+  writeJson(expertOutFile, expertOut)
+
   const groups = new Set(kept.map((r) => `${roomKeyOf(r)}~${compKeyOf(r)}`))
   const golds = kept.map((r) => runLimitedGold(r.team ?? []))
   console.log(
     `已生成 ${outFile}\n` +
       `  原始 ${runs.length} → 危局 ${da.length} → 满分 ${full.length} → 每队最低金 ${atMinGold.length} → 去重 ${kept.length} 条\n` +
+      `  高手（逐角色最低金，击杀记录）${expertAuthors.size} 位 → 补录 ${expertRuns.length} 条 → ${expertOutFile}\n` +
       `  房间 ${Object.keys(rooms).length} / 赛季 ${Object.keys(seasons).length} / （房间×构成）组 ${groups.size}\n` +
       `  金数 min=${Math.min(...golds)} 中位=${golds.slice().sort((a, b) => a - b)[golds.length >> 1]} max=${Math.max(...golds)}`,
   )

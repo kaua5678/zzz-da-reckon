@@ -394,11 +394,15 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 - **队伍结构约束**：至多 1 名击破（stun）——真实 meta 无双击破；引擎失衡循环对双击破高估。
 - 交互基准：职业基准 roleInteractionBaseline（支援/防护 0 交互，其余弹刀6/闪反10；般岳/星徽·比利/蕾米埃尔按角色默认）+ **快支 0（全角色）/ 连携 1（支援·防护 0）**（用户 2026-10-18）；配装 = 邦布精灵推荐（含词条优化器）；当期可选 Buff 不参与（沿用当前全局 Buff 表）。
 
-### 4.4 实战归档口径（危局 · 每队最低金满分）
+### 4.4 实战归档口径（危局 · 每队最低金满分 + 高手补录）
 
-数据源 = `public/static/run-archive.json`，由 `scripts/import-zzz-run-archive.mjs` 从 `data/raw/zzz-run-archive/runs.json`（分页 API 快照，`scripts/fetch-zzz-run-archive.mjs` 抓取）**过滤**产出；页面 = `views/RunArchivePage.vue`（「实战对比」Tab）。
+数据源 = `public/static/run-archive.json`（**主集**）+ `public/static/run-archive-experts.json`（**高手补录**），同一脚本 `scripts/import-zzz-run-archive.mjs` 从 `data/raw/zzz-run-archive/runs.json`（分页 API 快照，`scripts/fetch-zzz-run-archive.mjs` 抓取）**过滤**产出；页面 = `views/RunArchivePage.vue`（「实战对比」Tab）。
 
 **收录口径（用户裁决 2026-10-08）**：只收**每（房间 × 队伍构成）限定金数最低的满分 run**——「房间」= 赛季 × Boss（`seasonId|targetId`），「队伍构成」= 成员集合（agentId 排序后比较，与槽位顺序无关）。同 (房间 × 构成) 取金数最低的一批；并列金数但**配置不同**（如 M6/M0 集中 vs M3/M1 分散）**各留一条**——它们是并列的合法上限数据点，只按 (房间 × 构成 × 金数 × 精确配置) 去重，取 id 最小者。淘汰重复投稿与低水平玩家（打不满 65000 的一律不收），代表**该角色的上限玩家**，用于与计算器的理论上限对照。
+
+**高手补录（用户裁决 2026-11-07）**：「实战对比只收录满分」太窄——**高手 = 在某个（房间 × 角色）上握着该角色的最低限定金记录的人**（判据 `composables/runArchiveFilter.ts#lowGoldExpertAuthors` + `EXPERT_RULE`）。给定口径的要点：① **逐角色**取最低金（不是整队最低金 = 主集收录口径，也不是该房最低金 = 会被 0 金常驻队一口吃掉）；② 记录只从**击杀** run 里取（低金没打死不算水平证据）；③ `goldWindow` 缺省 0 = 只认记录本身，设 >0 就退化成「最低金 +N 内」的宽松档。高手名单与该人在**危局强袭里的其余全部投稿**（含非满分 / 未击杀）进补录文件，页面用「只看高手」筛、行上标「高手 / 补录」。
+- **两个文件、不许合并消费**：主集被探针 / 角色兑现曲线 / 预设生成整份读（它们要的是「上限数据点」），补录集只有实战对比页读。合进一个文件会让那些消费方白付 2 MB 下载与解析，也会诱使别人把低分 run 当上限数据点。
+- 现状（2026-10-26 快照实测）：高手 **476** 位 → 补录 **3828** 条（其中未击杀 1470）。
 
 **金数口径**：单一事实源 = `src/composables/limitedGold.ts` `runLimitedGold`——限定 S 本体 1 + 影画；限定 S 专武本体 1 + (精炼−1)；常驻 S / A 级特例 / 未收录音擎 = 0。
 
@@ -412,8 +416,8 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 限定金分布 | min 0 / median 10 / max 36 |
 
 - **模式过滤**：只收 `mode` 前缀为 `Deadly Assault`（含「危局·逆境」），强袭/歼灭不收——满分阈值 65000 是危局口径。
-- **页面筛选**：金数窗口（`lowGoldFrontier` 的 `goldWindow`，缺省「不限（每队最低金）」/ 该房最低金 / +1 ~ +4）＋ 排序（金数升序、同金按分数降序）。因数据集已全是满分，「仅击杀」开关已移除（全部 `bossKilled: true`）。
-- **只作单条部署对照，不作误差判据**：归档是 approved 顶尖投稿（幸存者偏差、配装/操作/词条未知），预测值与其差分**不度量「真实性」**——不设低估/高估、不设基线、不据此拦或对冲任何录入改动（用户裁决 2026-09，全文见 `ARCHITECTURE.md` §3「实战归档对拍」行）。
+- **页面筛选**：金数窗口（`lowGoldFrontier` 的 `goldWindow`，缺省「只认该房最低金」/ +1 ~ +4）＋「只看顶分战斗」/「只看顶级玩家」/「只看高手」三个开关 ＋ 排序（**分数降序、同分按金数升序**）。主集全满分全击杀，**补录行会有非满分 / 未击杀**（列表「分数」列带击杀标）。
+- **只作单条部署对照，不作误差判据**：归档是 approved 顶尖投稿（幸存者偏差、配装/操作/词条未知），预测值与其差分**不度量「真实性」**——不设低估/高估、不设基线、不据此拦或对冲任何录入改动（用户裁决 2026-09，全文见 `ARCHITECTURE.md` §3「实战归档对拍」行）。补录集更弱（含未击杀 / 低分），**更不许**拿它做误差判据。
 - **下游预设生成对归档过滤中性**（2026-10-08 实测）：`scripts/gen-auto-presets.mjs` 读归档前沿，但「全量 DA 投稿」与「本过滤后归档」在窗口 +2 下产出**同一 77 队集合**（差分 0/0）——过滤只影响展示与对照，不改预设库。
 
 ### 4.5 抽卡规划器口径（Chart 6，序贯决策优化）
@@ -450,7 +454,7 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 | 每期新角色·强队强度（Chart 3） | `teamTimeline.ts`：`buildNewCharacterRows`（版本×新角色行，**排除 1.0 常驻 S**）/ `computeNewCharacterPoints`（**同角色多队**逐队配装+收敛过滤）/ `prefillStrongTeamsFromPresets`（口述预设优先 + 仓库 preset 补剩余）；**口述强队单一事实源 = `data/strongTeamPresets.ts`** |
 | 同槽位角色对比（Chart 7） | `teamTimeline.ts`：`findSlotComparePairs`（纯函数：预设中其余两槽相同、所选槽位 A/B 两队的成对去重）/ `computeSlotComparePoints`（每组 A/B 双伤、按主C实装节点排序、快照/恢复）；配装口径同 Chart 3；横轴 = `data/versionTimeline.ts` 版本节点 |
 | 菲林经济模拟（Chart 4） | `teamTimeline.ts`：`computeFilmSimulation`（经济累积 + 主C优先买金 + 逐期 Boss/buff 求值）；**抽卡期望/汇率常量 = `src/data/filmEconomy.ts`**（角色金 93.75 抽 = 15000 菲林 / 音擎金 62.5 抽 = 10000 菲林 —— **音擎价恒为角色的 2/3**，用户 2026-10-28 口径；直充 10 菲林/元；月卡/城募档位见 `TOP_UP_TIERS`） |
-| 实战归档口径（危局 · 每队最低金满分） | `scripts/import-zzz-run-archive.mjs`（过滤 + 去重 + 瘦身，产出 `public/static/run-archive.json`）；金数口径 = `composables/limitedGold.ts` `runLimitedGold`；口径见 §4.4 |
+| 实战归档口径（危局 · 每队最低金满分 + 高手补录） | `scripts/import-zzz-run-archive.mjs`（过滤 + 去重 + 瘦身，产出 `public/static/run-archive.json` 与 `run-archive-experts.json`）；金数口径 = `composables/limitedGold.ts` `runLimitedGold`，高手判据 = `composables/runArchiveFilter.ts` `lowGoldExpertAuthors`；口径见 §4.4 |
 | 抽卡规划器（Chart 6） | 纯逻辑核心 = `composables/pullPlanner.ts`（beam/不重叠匹配/购买阶梯/VCG，oracle 注入可单测）；引擎桥 = `composables/pullPlannerEngine.ts`（伤害→分数映射、期轴构造 `buildPlannerPeriods`、集成编排 `runPullPlanner`）；每版本菲林常量 = `data/filmEconomy.ts` `PLANNER_FILM_PER_VERSION`；口径与学术锚点见 §4.5 |
 | 图表 / 控制面板 / 明细表 | `src/views/TimeChartsPage.vue`（自绘 SVG，无图表库） |
 | 直伤系数散点数据 | `composables/multiplierCoefficients.ts` 的 `buildDirectDamageTimeline`（限定S × 首次UP节点 × 支援突击锚点比值；口径见 §5） |
@@ -513,20 +517,22 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 
 ```bash
 node scripts/fetch-zzz-run-archive.mjs      # 爬全量 → data/raw/zzz-run-archive/{bootstrap,runs,manifest}.json
-node scripts/import-zzz-run-archive.mjs     # 精炼 → public/static/run-archive.json（只收危局 + rooms/seasons 索引）
+node scripts/import-zzz-run-archive.mjs     # 精炼 → run-archive.json（主集）+ run-archive-experts.json（高手补录）
 ```
 
-- 前端 `RunArchivePage.vue` 懒加载 fetch `/static/run-archive.json`（不进首屏 bundle）。
+- 前端 `RunArchivePage.vue` 懒加载 fetch `/static/run-archive.json` + `/static/run-archive-experts.json`（两个都走 `stores/catalog.ts` 唯一入口，不进首屏 bundle）。补录文件**加载失败退化成空补录、不报错**（旧部署没有这个文件也正常工作）。
 - 归档新 Boss / 期数 → 补 `scripts/import-nanoka-bosses.mjs` 的 `CATALOG_MONSTER_MAP` 后重跑（见 §1.2），再重跑 import-zzz-run-archive。
 - **刷新节奏**：新一期危局上线当天投稿量最大（2026-10-26 刷新：13831 → 15779 条 approved，`+1948`；新增房间 `690481-1/2/3` 与困难房 `690481A-1`，产出 1490 → 1667 条 / 房间 44 → 52 / 赛季 18 → 22）。fetch 脚本**整份覆盖重写** `runs.json`/`bootstrap.json`，不做增量——重抓前先确认服务端 `submissionCounts.approved` 已增长（脚本会打印 `服务端 totalApproved=`），跑完核对 manifest 的 `targetCount` 与 `errors` 为空。
 
 ### 7.2 用户操作
 
-1. 「实战对比」Tab → 期数 / Boss / 仅击杀 / **仅看低金顶分** 筛选 → 列表点「部署」。
+1. 「实战对比」Tab → 期数 / Boss / 「只看顶分战斗」/「只看顶级玩家」/「只看高手」筛选 → 列表点「部署」。
 2. 右侧：玩家实战（分数/用时/击杀/队伍/视频链）vs 计算器（总伤害 / 当期 Boss 血量 / 伤害血量% / 击杀判定）。
 3. 判定不一致给方向提示：预测击杀但实战未击杀 = 理想配装被高估（配装差 + 建模误差）；实战击杀但未达线 = 口径偏保守（漏拐/漏机制）。
 
-**金数窗口筛选**（`composables/limitedGold.ts` `lowGoldFrontier`）：归档**已按「每队最低金满分」收录**（口径见 §4.4），故页面不再需要「仅看低金顶分」开关——缺省即只显示每 (房间 × 队伍构成) 限定金数最低的满分 run。窗口下拉控制再放宽几个金档（`不限（每队最低金）` / `该房最低金` / `+1` ~ `+4`），用最少限定金**实际打满**该房 Boss 的队 = **角色上限**（计算器算的是角色理论理想值，这些低金满分队是「该角色/队伍实际能打到的上界」，两者直接对照）。列表「金」列显示限定金数，排序 = 金数升序、同金按分数降序。金数口径 = 限定 S 本体 1 + 影画 + 限定专武本体 1 + 精炼−1，无限定专武不计音擎金（单一事实源 `runLimitedGold`）。
+**金数窗口筛选**（`composables/limitedGold.ts` `lowGoldFrontier`）：归档主集**已按「每队最低金满分」收录**（口径见 §4.4），故缺省即每 (房间 × 队伍构成) 限定金数最低的满分 run；窗口下拉再放宽几个金档（`该房最低金` / `+1` ~ `+4`），用最少限定金**实际打满**该房 Boss 的队 = **角色上限**（计算器算的是角色理论理想值，这些低金满分队是「该角色/队伍实际能打到的上界」，两者直接对照）。列表「金」列显示限定金数，排序 = **分数降序、同分按金数升序**（2026-11-07 改：混进补录行后按金数优先会把 0 金低分行顶到最前）。金数口径 = 限定 S 本体 1 + 影画 + 限定专武本体 1 + 精炼−1，无限定专武不计音擎金（单一事实源 `runLimitedGold`）。
+
+**高手补录**（用户 2026-11-07）：列表里混着两种行——主集（`每队最低金满分`）与「补录」（高手在本期/本 Boss 的其余投稿，带「补录」标）。「高手」标 = 该投稿人在某个（房间 × 角色）上握过该角色的最低限定金记录（全库口径，不是这一条）。「只看高手」只留这些人；它与「只看顶级玩家」（有顶分战斗）可叠加，选了具体玩家时都不收窄（看他的全部）。
 
 ### 7.3 修改入口
 

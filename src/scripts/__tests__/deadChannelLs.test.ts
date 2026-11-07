@@ -296,4 +296,38 @@ describe('dead-channel-ls 死导出（全 src · 只认生产消费）', () => {
     ]))
     expect(r.staleEntries).toEqual(['src/core/gone.ts'])
   })
+
+  it('⑮ 数据管道脚本的消费也算生产消费：scripts/*.mjs 的 loadTsModule(root, "/src/…ts") ⇒ 整模块算被用', () => {
+    // 病灶（2026-11-07 实测）：判据扫描面只有 .ts（program）与 .vue，而 `scripts/import-*.mjs` 用
+    // vite ssrLoadModule 载入 src 的 TS 模块 —— 脚本侧唯一使用点被漏掉，导出被误判成「零生产消费」。
+    const root = fixture({
+      'src/composables/gold.ts': 'export function runLimitedGold(): number { return 1 }\nexport function unused(): number { return 2 }\n',
+      'scripts/import-thing.mjs': [
+        "import { loadTsModule } from './lib/ts-modules.mjs'",
+        "const { runLimitedGold } = await loadTsModule(root, '/src/composables/gold.ts')",
+        '',
+      ].join('\n'),
+      'scripts/lib/ts-modules.mjs': 'export async function loadTsModule(): Promise<unknown> { return {} }\n',
+    })
+    const keys = scanDeadExports({ root, seams: {}, entries: {} }).dead.map(d => d.key)
+    // 整模块算被用（与 .vue 的命名空间 import 同档保守），所以两个导出都不报
+    expect(keys).toEqual([])
+  })
+
+  it('⑯ 夹具自证：脚本载入别的模块 ⇒ 无人消费的导出必须重新报红（防「扫描面塌了还绿」）', () => {
+    const root = fixture({
+      'src/composables/gold.ts': 'export function runLimitedGold(): number { return 1 }\n',
+      'src/composables/other.ts': 'export function other(): number { return 1 }\n',
+      'scripts/import-thing.mjs': [
+        "import { loadTsModule } from './lib/ts-modules.mjs'",
+        "await loadTsModule(root, '/src/composables/other.ts')",
+        '',
+      ].join('\n'),
+      'scripts/lib/ts-modules.mjs': 'export async function loadTsModule(): Promise<unknown> { return {} }\n',
+    })
+    const keys = scanDeadExports({ root, seams: {}, entries: {} }).dead.map(d => d.key)
+    // other.ts 被脚本载入 ⇒ 不报；gold.ts 无人消费 ⇒ 必须报
+    expect(keys).toEqual(['src/composables/gold.ts runLimitedGold'])
+  })
 })
+

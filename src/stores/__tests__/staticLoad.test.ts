@@ -10,13 +10,15 @@ import { mockStaticFetch, newPinia } from '@/test/harness'
 import { useCatalogStore } from '@/stores/catalog'
 
 type Store = ReturnType<typeof useCatalogStore>
+/** `failure` = 请求失败时的契约：'throw'（主数据，页面必须进 error 态）/ 'empty'（增量数据，退化成空形状） */
 const CASES = [
-  { file: 'boss-presets.json', load: (s: Store) => s.loadBossPresets(), cached: (s: Store) => s.bossPresetFile, nonEmpty: (d: { bosses: unknown[] }) => d.bosses.length },
-  { file: 'run-archive.json', load: (s: Store) => s.loadRunArchive(), cached: (s: Store) => s.runArchiveFile, nonEmpty: (d: { runs: unknown[] }) => d.runs.length },
+  { file: 'boss-presets.json', load: (s: Store) => s.loadBossPresets(), cached: (s: Store) => s.bossPresetFile, nonEmpty: (d: { bosses: unknown[] }) => d.bosses.length, failure: 'throw' },
+  { file: 'run-archive.json', load: (s: Store) => s.loadRunArchive(), cached: (s: Store) => s.runArchiveFile, nonEmpty: (d: { runs: unknown[] }) => d.runs.length, failure: 'throw' },
+  { file: 'run-archive-experts.json', load: (s: Store) => s.loadRunArchiveExperts(), cached: (s: Store) => s.runArchiveExpertsFile, nonEmpty: (d: { runs: unknown[] }) => d.runs.length, failure: 'empty' },
 ] as const
 const calls = (file: string) => vi.mocked(fetch).mock.calls.filter(c => String(c[0]).includes(`/static/${file}`)).length
 
-describe.each(CASES)('catalog 加载 $file', ({ file, load, cached, nonEmpty }) => {
+describe.each(CASES)('catalog 加载 $file', ({ file, load, cached, nonEmpty, failure }) => {
   it('并发调用只请求一次，之后命中缓存、各调用方拿到同一份', async () => {
     newPinia()
     mockStaticFetch()
@@ -30,12 +32,19 @@ describe.each(CASES)('catalog 加载 $file', ({ file, load, cached, nonEmpty }) 
     expect(nonEmpty(a as never)).toBeGreaterThan(0)
   }, 60000)
 
-  it('失败抛错且不缓存失败：下一次调用重新请求', async () => {
+  it('失败不缓存、下一次调用重新请求（主数据抛错 / 补录退化成空形状）', async () => {
     newPinia()
     mockStaticFetch()
     vi.mocked(fetch).mockImplementationOnce(async () => ({ ok: false, status: 503, json: async () => ({}) }) as unknown as Response)
     const store = useCatalogStore()
-    await expect(load(store)).rejects.toThrow('HTTP 503')
+    if (failure === 'throw') {
+      await expect(load(store)).rejects.toThrow('HTTP 503')
+    } else {
+      // 补录是增量信息：缺文件不能把实战对比页卡进 error 态，只能给空
+      const empty = await load(store)
+      expect(empty.runs).toEqual([])
+      expect(empty.totalAuthors).toBe(0)
+    }
     expect(cached(store)).toBeNull()
     expect(nonEmpty((await load(store)) as never)).toBeGreaterThan(0)
     expect(calls(file)).toBe(2)

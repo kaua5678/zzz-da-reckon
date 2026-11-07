@@ -60,6 +60,32 @@ export interface RunArchiveFile {
   generatedAt: string
   seasons: Record<string, { start: string; end: string }>
   rooms: Record<string, ArchiveRoom & { seasonStart?: string }>
+  /** 顶分数据集：每（房间 × 队伍构成）限定金数最低的满分 run（用户裁决 2026-10-08） */
+  runs: ArchiveRun[]
+}
+
+/**
+ * 高手补录（用户裁决 2026-11-07，「把他的所有数据都收进来，不止满分」）。
+ *
+ * **单独一个文件**（`public/static/run-archive-experts.json`）：主集被探针 / 角色兑现曲线 / 预设生成整份读，
+ * 而补录集只有实战对比页要看——塞进同一个文件会让那些消费方白付 2.3 MB 下载与解析。
+ *
+ * 口径：高手 = 在某个（房间 × 角色）上握着该角色的最低限定金记录的人（逐角色；记录只从击杀 run 里取，
+ * `expertGoldWindow` = 0 表示只认记录本身）——判据单源 = `runArchiveFilter.ts#lowGoldExpertAuthors`。
+ * `runs` = 这些人的其余危局强袭投稿（含非满分 / 未击杀），与 `RunArchiveFile#runs` 按 id **不重复**。
+ * ⚠ 两批口径不同，**不许合并消费**（探针 / 基底提取只读主集）。
+ */
+export interface RunArchiveExpertsFile {
+  generatedAt: string
+  source: string
+  /** 高手判据窗口（记录 +N 金；当前 = 0 = 只认记录本身） */
+  expertGoldWindow: number
+  /** 高手人数（= authors.length） */
+  totalAuthors: number
+  /** 补录条数（= runs.length） */
+  totalRuns: number
+  /** 高手名单（作者名已按 authorOf 归一，升序） */
+  authors: string[]
   runs: ArchiveRun[]
 }
 

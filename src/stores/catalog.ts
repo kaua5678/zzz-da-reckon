@@ -6,7 +6,7 @@ import { ref, shallowRef, computed } from 'vue'
 import type { Catalog, Agent, WEngine, DriveDiscSet, AgentSkills, StatRules, Boss, TeammateBuffGroup, BuildRecommendations, CharacterBuildRecommendation, BetaAgentsFile } from '@/types/catalog'
 import type { BossPresetFile } from '@/types/bossPreset'
 import type { ChangelogFile } from '@/types/changelog'
-import type { RunArchiveFile } from '@/composables/runArchiveImport'
+import type { RunArchiveExpertsFile, RunArchiveFile } from '@/composables/runArchiveImport'
 import { getAgentSpecsByAgentId } from '@/specs/registry'
 import { specTeamBuffToTeammateBuff } from '@/specs/teamBuffConvert'
 
@@ -103,6 +103,10 @@ export const useCatalogStore = defineStore('catalog', () => {
   // 实战归档（run-archive.json，3 MB）：同上约定（arena-D 第 367 轮；修前 3 处各自 fetch，兑现价值图另有模块级缓存）
   const runArchiveFile = shallowRef<RunArchiveFile | null>(null)
   let runArchivePromise: Promise<RunArchiveFile> | null = null
+  // 高手补录（run-archive-experts.json，2.3 MB）：只有实战对比页要，**与主集分开加载**——探针 / 角色兑现 /
+  // 预设生成只读主集，不该为它付下载与解析。缺文件（旧部署 / 未生成）= 空补录，不报错（主功能不依赖它）。
+  const runArchiveExpertsFile = shallowRef<RunArchiveExpertsFile | null>(null)
+  let runArchiveExpertsPromise: Promise<RunArchiveExpertsFile> | null = null
 
   // ============ beta 冻结角色（测试服旧版快照，2026-10-24） ============
   // beta-agents.json（scripts/snapshot-agent.mjs 生成）+ mechanics/agents/beta/*.ts（glob 注册，不受此开关
@@ -380,6 +384,32 @@ export const useCatalogStore = defineStore('catalog', () => {
     return runArchivePromise
   }
 
+  /**
+   * 加载高手补录（run-archive-experts.json）。**失败不抛**：补录是增量信息，缺了页面照样能用主集
+   * （旧部署没有这个文件也应当正常工作），所以这里返回空形状而不是把整个页面的 loading 卡死。
+   */
+  async function loadRunArchiveExperts(): Promise<RunArchiveExpertsFile> {
+    if (runArchiveExpertsFile.value) return runArchiveExpertsFile.value
+    if (runArchiveExpertsPromise) return runArchiveExpertsPromise
+    // 空形状（缺文件时）：窗口取 0 = 「只认记录本身」（与 EXPERT_RULE 缺省一致；这里不 import 判据模块，
+    // 免得把筛选逻辑拖进 store 的依赖面）
+    const empty: RunArchiveExpertsFile = { generatedAt: '', source: '', expertGoldWindow: 0, totalAuthors: 0, totalRuns: 0, authors: [], runs: [] }
+    runArchiveExpertsPromise = Promise.resolve().then(async () => {
+      try {
+        const res = await fetch(withBase('/static/run-archive-experts.json'))
+        if (!res.ok) return empty
+        const data = await res.json() as RunArchiveExpertsFile
+        runArchiveExpertsFile.value = data
+        return data
+      } catch {
+        return empty
+      } finally {
+        runArchiveExpertsPromise = null
+      }
+    })
+    return runArchiveExpertsPromise
+  }
+
   // 根据角色 ID 获取配装推荐
   function getBuildRecommendation(agentId: string): CharacterBuildRecommendation | undefined {
     return buildRecommendations.value?.characters[agentId]
@@ -444,6 +474,8 @@ export const useCatalogStore = defineStore('catalog', () => {
     loadBossPresets,
     runArchiveFile,
     loadRunArchive,
+    runArchiveExpertsFile,
+    loadRunArchiveExperts,
     changelogFile,
     loadChangelog,
     getAgent,

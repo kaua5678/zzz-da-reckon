@@ -118,7 +118,8 @@ export interface HarnessTeamSlot {
 }
 
 /**
- * stub fetch 返回静态文件（catalog / teammate-buffs / build-recommendations / boss-presets / run-archive / changelog）。
+ * stub fetch 返回静态文件（catalog / teammate-buffs / build-recommendations / boss-presets / run-archive /
+ * run-archive-experts / changelog）。
  * `betaAgents` 显式传入才服务 `/static/beta-agents.json`（默认 404，对齐「还没有 beta 快照」的部署态，
  * 保证测试不随工作区是否生成过快照而漂移）；beta 开关本身由测试自行写 localStorage。
  */
@@ -134,6 +135,9 @@ export function mockStaticFetch(options?: { betaAgents?: unknown }): void {
     }
     // 3 MB：按需读（不在模块加载时读，免得每个用 harness 的测试文件都付这笔）
     if (u.includes('/static/run-archive.json')) return { ok: true, json: async () => JSON.parse(readFileSync(new URL('../../public/static/run-archive.json', import.meta.url), 'utf8')) }
+    // 高手补录（2.3 MB，与主集分开一个文件）：同上按需读。注意两条判断互不包含
+    // （'/static/run-archive-experts.json' 不含 '/static/run-archive.json'），顺序不影响命中。
+    if (u.includes('/static/run-archive-experts.json')) return { ok: true, json: async () => JSON.parse(readFileSync(new URL('../../public/static/run-archive-experts.json', import.meta.url), 'utf8')) }
     // 400 KB，同上按需读（更新日志只有弹层的测试要）
     if (u.includes('/static/changelog.json')) return { ok: true, json: async () => JSON.parse(readFileSync(CHANGELOG_URL, 'utf8')) }
     return { ok: false, json: async () => ({}) }

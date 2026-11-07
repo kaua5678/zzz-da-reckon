@@ -184,20 +184,29 @@ describe('JSON 入口扫描器：fetch(withBase(...)) 必须可见（本次实�
     expect(CONTRACT_SRC).toContain('[A-Za-z_$][\\w$]*\\(\\s*)?')
   })
 
-  it('7 个静态入口全部被扫描器看得见（含 changelog.json / beta-agents.json）', () => {
+  it('8 个静态入口全部被扫描器看得见（含 changelog.json / beta-agents.json / run-archive-experts.json）', () => {
     expect([...STORE_SRC.matchAll(FETCH_RE)].map(m => m[1]).sort()).toEqual([
       'beta-agents.json',
       'boss-presets.json',
       'build-recommendations.json',
       'catalog.json',
       'changelog.json',
+      'run-archive-experts.json',
       'run-archive.json',
       'teammate-buffs.json',
     ])
   })
 
   it('每个入口都在 JSON_CONTRACTS 里登记（真值由 validate:data 的 ok 行给出）', () => {
-    for (const json of ['catalog', 'teammate-buffs', 'build-recommendations', 'boss-presets', 'run-archive', 'changelog']) {
+    for (const json of [
+      'catalog',
+      'teammate-buffs',
+      'build-recommendations',
+      'boss-presets',
+      'run-archive',
+      'run-archive-experts',
+      'changelog',
+    ]) {
       expect(CONTRACT_SRC, `${json}.json 未登记进 JSON_CONTRACTS`).toContain(`public/static/${json}.json`)
     }
   })
