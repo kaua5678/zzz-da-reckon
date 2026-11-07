@@ -81,6 +81,13 @@ const PER_AGENT_EVALUATORS: Record<string, StackEnergyEventEvaluator> = {
     2 * execCount(executions, ['1171010', '1171012']), // 持续行 count=施放数（爆炸行同 count，不重复数）
   // 格莉丝(1181)：普E + 强特每次发动 1 次
   '1181': ({ executions }) => execCount(executions, ['1181005', '1181006']),
+  /**
+   * 派派(1281)：强特 = **持续耗能段 + 末段下砸**（`piper.ts` 头注释「先持续耗能 20/秒、末段下砸耗能 20」）。
+   * ⚠ **持续段只算 1 个扣除事件**（用户 2026-11-07：「持续只算 1 段」）——一段连续耗能无论多少秒
+   * 都只扣一次能（与 `wEngineStackCoverage` 头注释「一段持续耗能只算 1 次扣除事件」同口径）。
+   * ⇒ 每次施放 = 旋转 1 + 下砸 1 = **2 个事件**。
+   */
+  '1281': ({ exSpecialCount }) => Math.max(0, exSpecialCount) * 2,
 }
 
 /**

@@ -33,7 +33,10 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join, basename } from 'node:path'
 
 export const CORE_ROLE_FIELD_BASELINE = 0
-export const ROLE_FIELD_EXEMPT = ['triggerCount', 'triggerPanel', 'triggerSlot', 'triggerAgentId', 'triggerCountValues', 'triggerSources']
+//   2026-11-07（触发型音擎覆盖率折算）：追加 triggerOccupiedSeconds —— 语义 = 「某类动作的占用秒数」
+//   （持续动作里按「发动/命中时」触发的音擎效果会被反复刷新，触发时长上界取占用秒数），
+//   与扳机（trigger.ts）无关，是纯时间量；同族已有 triggerCountValues / triggerSources。
+export const ROLE_FIELD_EXEMPT = ['triggerCount', 'triggerPanel', 'triggerSlot', 'triggerAgentId', 'triggerCountValues', 'triggerSources', 'triggerOccupiedSeconds']
 const PREFIX_EXCLUDE = ['spec', 'starlight', 'index', 'shared', 'types']
 const SCOPE = ['src/core/*.ts', 'src/composables/resourceCalc/*.ts', 'src/composables/useResourceCalc.ts']
 

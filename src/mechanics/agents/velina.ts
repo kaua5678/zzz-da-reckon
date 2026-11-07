@@ -417,16 +417,12 @@ function transformVelinaSkillExecutions(input: AgentSkillTransformInput): void {
           baseBuildUp,
           element: foundElement,
         })
-        if (isVelinaBroadCyclone && velinaCinema2 && velinaColorElementValue && velinaColorElementValue !== foundElement) {
-          anomalyExecs.push({
-            moveId: `${exec.moveId}_velina_colored_buildup`,
-            moveName: `${moveName}（维琳娜赠送积蓄）`,
-            slot,
-            count,
-            baseBuildUp,
-            element: velinaColorElementValue,
-          })
-        }
+        // 影画2「赋彩属性广域气旋的异常积蓄效果」的对象是**赋彩属性广域气旋（Sweeping Cyclone #2）**，
+        // 即 #2 拿到与广域气旋同等的积蓄列（见上面 isSweepingCyclone2 分支）。
+        // ⚠ 曾在此给**广域气旋 #1** 也复制一份同等积蓄（"赠送"）——那等于让广域气旋平白多打一份：
+        // 实测菲欧妮 C2 档火异常 16 次（应 14 次），维琳娜 C1→C2 提升率虚高到 22.05%。
+        // 用户裁决 2026-11-06：「复制#1肯定是错误的，相当于你给我广域气旋平白无故翻倍了」⇒ 已删。
+        // 2 命真正的额外收益走风蚀通道（部分微域气旋转广域，`resolveVelinaCorrosion` 的 c2 臂）。
       }
     }
   }

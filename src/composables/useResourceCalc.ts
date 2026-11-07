@@ -59,6 +59,7 @@ import {
   stackEnergyEvents,
   stacksToCoverage,
 } from '@/data/wEngineStackCoverage'
+import { conditionCoverageOf, countTriggerSource, occupiedSecondsOf } from '@/data/wEngineConditionCoverage'
 import { elementLabel, buildCharConfig, computeDamageSourceBreakdown, computeDamageSourceTotals } from './resourceCalc/helpers'
 import { computePanel, computePanelPhases, computeEntrySnapshotPanel, applyTeamMechanics, collectAxisWindowOverlays } from './resourceCalc/panelPhases'
 import { getTeamAnomalyDurationBonus, getWindInfectionCoverage, findWindSlot, buildAnomalyVirtualPanel } from './resourceCalc/anomalyPanels'
@@ -646,6 +647,12 @@ export function createResourceCalc(
     const res = adjustedResourceResult.value
     if (!res) return {}
     const battleSeconds = effectiveBattleTime(configStore.enemy)
+    /** 触发型效果的队级输入（失衡次数取池真值 `stunCount`，不是 plannedStunCount；异常施加次数 = 各元素触发数之和） */
+    const teamStunCount = stunPoolResult.value?.stunCount ?? 0
+    // ⚠ 必须读**资源侧**池（calcOutput.anomalyPool），不能读结算侧 anomalyPoolResult：
+    // 后者经 calcAnomalyPoolDamage 消费 panels，而 panels 又读覆盖率的自动折算 ⇒ 成环（实测抛
+    // "Cannot read properties of undefined (reading find)"、wEngineStackCoverage 6 条判据全红）。
+    const teamAnomalyApplications = (calcOutput.value?.anomalyPool.perElement ?? []).reduce((sum, el) => sum + Math.max(0, el.triggerCount), 0)
     const out: Record<string, number> = {}
     for (const ch of res.characters) {
       const slot = ch.slot
@@ -695,6 +702,46 @@ export function createResourceCalc(
             battleSeconds,
           }) * 100
           continue
+        }
+        /**
+         * **触发型（condition 门控）效果的真实覆盖率**（用户裁决 2026-11-06「接，真实才对」）：
+         * `fixed` + condition 在 `wEngineConditionMet` 里一律放行（散文条件不可机判），默认按 100% 生效。
+         * 覆盖面 = ①「触发后限时」型（轰鸣座驾随机三选一 / 含羞恶面强特全队攻 …），
+         * ②「失衡清空」型（双生泣星），③「持续出伤」型（家政员：强特长按段连续命中，按占用时间算），
+         * ④「敌方异常状态」型（触电唇彩：场上有没有异常）。
+         * 触发源按执行行 category 数（强特 / 连携 / 闪避反击）；异常两端**共用同一个计数器**
+         * （`teamAnomalyApplications`）——双生泣星要「每次施加 +1 层」，触电要「>0 即成立」，同源不重复建表。
+         * 登记表 = `@/data/wEngineConditionCoverage`（与 stacked 的 `wEngineStackCoverage` 互补，未登记 ⇒ 不折算）。
+         */
+        if (e.id) {
+          const conditionCoverage = conditionCoverageOf({
+            effectId: e.id,
+            battleSeconds,
+            triggerCountValues: {
+              // ⚠ 强特用**施放次数**（资源侧 exSpecialCount），不是执行行求和：
+              // 一次施放会拆成多行（派派 引擎转3s + 非常重2.13s、菲欧妮 眩焰+坠阳+燎斩、可琳 三段），
+              // 行求和会把「1 次施放」数成 2–3 次（实测派派 11.26 vs 真实 5.63、菲欧妮 15 vs 5）。
+              // 原文按「发动[强化特殊技]时」判的效果，触发单位就是**施放**。
+              exSpecial: ch.exSpecialCount,
+              chain: countTriggerSource(ch.executions, 'chain'),
+              dodge: countTriggerSource(ch.executions, 'dodge'),
+            },
+            // 持续动作（3 秒长按强特等）里按「发动时」触发的效果被反复刷新 ⇒ 用占用秒数
+            triggerOccupiedSeconds: {
+              exSpecial: occupiedSecondsOf(ch.executions, 'exSpecial'),
+              chain: occupiedSecondsOf(ch.executions, 'chain'),
+              dodge: occupiedSecondsOf(ch.executions, 'dodge'),
+            },
+            availableEnergy: ch.energySource.total,
+            // 自身向效果的分母：战场时间（不是整场 180 秒——没上场的时候不吃这个 buff）
+            frontlineSeconds: ch.timeAllocation.frontlineTime,
+            anomalyApplications: teamAnomalyApplications,
+            stunCount: teamStunCount,
+            stunWindowSeconds: configStore.enemy.stunTime,
+            maxStacks: e.maxStacks ?? 0,
+            defaultStacks: e.defaultStacks ?? 1,
+          })
+          if (conditionCoverage != null) { out[e.id] = conditionCoverage; continue }
         }
         if (e.type !== 'stacked' || !e.id) continue
         /**
