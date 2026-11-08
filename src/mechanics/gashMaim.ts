@@ -250,6 +250,11 @@ export interface SharpenGashClaimLike {
   points: number
   /** 本槽想消耗的层数（**声明口径**：斩金断铁 1/次 + 葬血强袭 3/段；影画6 不消耗不计） */
   demandLayers: number
+  /**
+   * 本槽本局**实际触发的毁伤次数**（`collectTeamMaimCount` 读；仅展示/回能计数用，不参与池分配）。
+   * 与 `demandLayers` 的区别：含影画6 那种「不消耗残痕」的额外毁伤（它们不耗层但**算毁伤事件**）。
+   */
+  maimCount?: number
 }
 
 /** 可能带申报的一槽（两模块字段名不同，任一命中即可）。 */
@@ -263,6 +268,8 @@ export interface SharpenGashClaimCarrier {
   claretSharpResourceSource?: {
     gashValuePct: number
     gashPoolDeclaredLayers?: number
+    /** 实际触发毁伤次数（含影画6 不耗层的那些）——`collectTeamMaimCount` 读 */
+    maimCount?: number
   } | undefined
   /** 挽昼 1601：`buildResourceResult` 暴露的申报 */
   sunbringerGashSource?: SharpenGashClaimLike | undefined
@@ -302,4 +309,34 @@ export function collectSharpenGashClaims(
     }
   }
   return Object.keys(claims).length >= 2 ? claims : null
+}
+
+/**
+ * 收集**全队毁伤触发总次数**（知更鸟「每毁伤回能」的输入，2026-11-08 接线）。
+ *
+ * 语义：
+ * - 锋御槽贡献自己的 `maimCount`（= 消耗残痕层数 + 不耗层的额外毁伤，如克拉蕾影画6）；
+ * - **单锋御队也成立**（不像 `collectSharpenGashClaims` 那样要求 ≥2 槽）——
+ *   知更鸟在只有一名锋御队友时同样每毁伤回 15 点；
+ * - 无锋御 ⇒ 0（本局没有任何毁伤来源）。
+ *
+ * ⚠ 为什么按**字段存在性**判锋御：本函数只拿得到资源结果、没有 team 快照；
+ * 而「暴露了 maimCount」本身就是模块在声明「我会产生毁伤」（与 `collectSharpenGashClaims` 同款纪律）。
+ */
+export function collectTeamMaimCount(
+  characters: readonly SharpenGashClaimCarrier[],
+): number {
+  let total = 0
+  for (const ch of characters) {
+    const sun = ch.sunbringerGashSource
+    if (sun && Number.isFinite(Number(sun.maimCount))) {
+      total += Math.max(0, Math.floor(Number(sun.maimCount)))
+      continue
+    }
+    const cl = ch.claretSharpResourceSource
+    if (cl && Number.isFinite(Number(cl.maimCount))) {
+      total += Math.max(0, Math.floor(Number(cl.maimCount)))
+    }
+  }
+  return total
 }

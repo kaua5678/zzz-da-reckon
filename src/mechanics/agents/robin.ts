@@ -1,12 +1,15 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentNextRoundFeedbackInput,
   AgentPanelInput,
   AgentResourceInput,
   AgentTeamConfigInput,
   AgentTeamPanelEffectInput,
   AgentResourceSectionsInput,
+  ModuleFeedback,
 } from '../types'
+import { collectTeamMaimCount } from '@/mechanics/gashMaim'
 import { getRowValue } from '@/data/moveTableQueries'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { outOfCombatStat } from '@/mechanics/initialStat'
@@ -85,6 +88,17 @@ export const ROBIN_DEF_CAP_PER_LEVEL = 30
  * ⟳复核: 若终结技行 1661010 的锐能句改数值（或改为「每次命中」/按层数），或[锋御]职业新增非锐能语义的角色，则本常量与 specialty 判据都要重核 | 到期 2027-09-30
  */
 export const ROBIN_ULT_TEAM_SHARPNESS = 20
+/**
+ * 核心被动（3.4.3+20278274）：「全队角色每触发一次[毁伤]，知更鸟固定回复 15 点能量」。
+ *
+ * 落点 = `bonusEnergy`（固定回能，不进百分比/效率乘区——原文说「**固定**回复」）。
+ * 次数来源 = `gashMaim#collectTeamMaimCount`（全队各锋御槽的 `maimCount` 之和），
+ * 经跨轮通道 `ModuleFeedback` 转一圈（毁伤次数是本轮资源解的产物，当轮拿不到）。
+ *
+ * @fact agent:1661/每毁伤回能 口径: 全队每触发一次[毁伤] ⇒ 知更鸟固定回 15 点能量（固定值、不进回能百分比/效率乘区）；次数 = 全队各锋御槽 maimCount 之和（克拉蕾含影画6 不耗层的额外毁伤） | 据 用户@2026-11-08「角色机制哪有不做的道理」+ spec 1661 核心被动原文·复核@2026-11-08 | 验 src/mechanics/__tests__/robinMaimEnergy.test.ts | 锚 src/mechanics/agents/robin.ts#ROBIN_MAIM_ENERGY_PER_TRIGGER | 信 确认
+ * ⟳复核: 若原文改数值（15 → N）/改成「按次命中」或「按层数」口径，或新增非锋御的毁伤来源（计数就不该只扫 maimCount），则本常量与 collectTeamMaimCount 的扫描面都要重核 | 到期 2027-09-30
+ */
+export const ROBIN_MAIM_ENERGY_PER_TRIGGER = 15
 /** [重音节拍]：使防御提升效果**及其上限**额外提升 25%（原文核心被动 Lv.7 末段） */
 export const ROBIN_BUFF_POINT_DEF_MULT = 1.25
 /**
@@ -252,7 +266,7 @@ function buildRobinResourceSections({ result }: AgentResourceSectionsInput) {
         },
       ],
       footer: '幕后协奏·全队固定防御：每满 1000 点初始生命 +80（上限 800），门槛 16000，重音节拍 ×1.25；'
-        + '护盾量 / 抗打断 / 每毁伤回 15 能量未建模（生存面 + 缺跨角色毁伤计数通道）。',
+        + '护盾量 / 抗打断未建模（生存面）；每毁伤回 15 能量**已建模**（走 bonusEnergy，次数 = 全队锋御槽 maimCount 之和）。',
     },
   ]
 }
@@ -265,7 +279,7 @@ function buildRobinResourceSections({ result }: AgentResourceSectionsInput) {
  * 口径（原文）：「队伍中**其他**角色发动[反制支援]后，若触发[完美反制]自动发动」
  * ⇒ 只数别槽、不数自己；一次反制支援 = 整组化解 = 一次完美反制 ⇒ 1:1。
  */
-function applyRobinTeamConfig({ slot, cfg, characters, team, phase, ultimateCounts }: AgentTeamConfigInput): void {
+function applyRobinTeamConfig({ slot, cfg, characters, team, phase, ultimateCounts, threads }: AgentTeamConfigInput): void {
   if (phase === 'converge') {
     let teammateCount = 0
     for (const other of characters) {
@@ -273,6 +287,8 @@ function applyRobinTeamConfig({ slot, cfg, characters, team, phase, ultimateCoun
       teammateCount += Math.max(0, Math.floor(Number(other.counterAssistCount) || 0))
     }
     cfg.robinTeammateCounterAssists = teammateCount
+    // 全队毁伤次数（上一轮资源解的产物，经 ModuleFeedback 转一圈）⇒ 核心被动「每毁伤回 15 能量」
+    cfg.robinTeamMaimCount = Math.max(0, Math.floor(Number(threads?.moduleFeedback.robinTeamMaimCount ?? 0)))
     return
   }
   applyRobinSharpnessGift({ slot, characters, team, phase, ultimateCounts })
@@ -462,6 +478,18 @@ function applyRobinPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if (cinemaLevelOf(cinemaLevel) >= 4) panel.dmgBonus = panel.dmgBonus + 10
 }
 
+/**
+ * 下一轮反馈：**全队毁伤触发总次数**（核心被动「每毁伤回 15 能量」的次数来源）。
+ *
+ * 为什么要跨轮：毁伤次数是**本轮资源解**的产物（`maimCount` 在各锋御槽的 source 里），
+ * 而知更鸟的能量在本轮解算时就要用 ⇒ 只能取上一轮的值，由外层不动点收敛。
+ * 单锋御 / 无锋御队都成立（`collectTeamMaimCount` 不要求 ≥2 槽；无锋御 ⇒ 0）。
+ */
+function robinNextRoundFeedback({ adjustedResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
+  const count = collectTeamMaimCount(adjustedResult.characters)
+  return count > 0 ? { robinTeamMaimCount: count } : {}
+}
+
 export const robinMechanic: AgentMechanicModule = {
   id: 'agent:robin',
   agentIds: [ROBIN_AGENT_ID],
@@ -470,7 +498,7 @@ export const robinMechanic: AgentMechanicModule = {
     + ' + 星耀值循环（追加攻击 10s CD +20 / 上限 140 / ≥120 触发登场技）+ 完美节拍 1661019'
     + ' + 额外能力（全队[击破]攻击 +800 / 进战 +3000 喧响）'
     + '；影画1 全队无视20%防御 / 影画2 全队无视15%抗性（spec teamBuffs）/ 影画4 自身+10%伤害；'
-    + '终结技的「全队锋御 +20 锐能」与「每毁伤回 15 能量」未建模（无通道，见文件头）。',
+    + '终结技的「全队锋御 +20 锐能」与核心被动「每毁伤回 15 能量」均已建模（前者 postRound 写队友 cfg，后者走 bonusEnergy）。',
   applyPanel: applyRobinPanel,
   teamPanelEffects: applyRobinTeamPanelEffects,
   applyTeamConfig: applyRobinTeamConfig,
@@ -479,6 +507,24 @@ export const robinMechanic: AgentMechanicModule = {
   buildCharConfig: buildRobinCharConfig,
   buildExecutions: buildRobinExecutions,
   buildResourceResult: buildRobinResourceResult,
+  nextRoundFeedback: robinNextRoundFeedback,
+  /**
+   * 核心被动「全队角色每触发一次[毁伤]，知更鸟固定回复 15 点能量」。
+   *
+   * 走 `bonusEnergy`（固定回能入口）而不是 `crossAgentEnergy`：后者的语义是
+   * 「队友给**落点**送能量」，而本条是**她自己**因队友的毁伤事件回能，落点就是自己。
+   *
+   * ⚠ 不进百分比/效率乘区：原文说「**固定**回复」，与诺姆帽子把戏、安东影画1 同款。
+   */
+  bonusEnergy({ cfg }) {
+    const count = Math.max(0, Math.floor(Number(cfg.robinTeamMaimCount ?? 0)))
+    return [{
+      key: 'teamMaimEnergy',
+      label: '每毁伤回能',
+      value: count * ROBIN_MAIM_ENERGY_PER_TRIGGER,
+      detail: `核心被动：全队每触发一次[毁伤]固定回 ${ROBIN_MAIM_ENERGY_PER_TRIGGER} 点（本局 ${count} 次，固定值不进回能乘区）`,
+    }]
+  },
   resourceSections: buildRobinResourceSections,
   settings: [
     {
@@ -497,6 +543,16 @@ export const robinMechanic: AgentMechanicModule = {
 /**
  * D2：本模块私有的 cfg 字段（只有本文件读写；仍是 CharacterOperationConfig 的成员，纯类型零运行时）。
  */
+/**
+ * D2：本模块私有的 ModuleFeedback 键（只有本文件读写，声明随模块走）。
+ */
+declare module '@/mechanics/types' {
+  interface ModuleFeedback {
+    /** 上一轮全队毁伤触发总次数（核心被动「每毁伤回 15 能量」的次数；见 robinNextRoundFeedback） */
+    robinTeamMaimCount?: number
+  }
+}
+
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /**
@@ -505,6 +561,11 @@ declare module '@/types/resource/config' {
      * 「队伍中**其他**角色发动[反制支援]后，若触发[完美反制]自动发动」——**不含她自己**发动的那几次。
      */
     robinTeammateCounterAssists?: number
+    /**
+     * 本局**全队毁伤触发总次数**（converge 相位由 applyTeamConfig 从跨轮通道写入）。
+     * 用途 = 核心被动「每毁伤回 15 能量」的次数（`bonusEnergy` 读）。
+     */
+    robinTeamMaimCount?: number
     /** 命座等级（buildCharConfig 写；影画4 保底升级 / 影画6 必定暴击用） */
     robinCinemaLevel?: number
     /** 震律齐鸣 1661006 表值（buildCharConfig 预存） */

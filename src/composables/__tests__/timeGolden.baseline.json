@@ -4293,7 +4293,7 @@
   ]
  },
  "preset:sunbringer-koleda-robin": {
-  "dmg": "69754582",
+  "dmg": "69865854",
   "stun": 6,
   "windowDur": "16.000",
   "slack": "1.299",
@@ -4305,7 +4305,7 @@
   ]
  },
  "preset:sunbringer-norma-robin": {
-  "dmg": "99136485",
+  "dmg": "99375390",
   "stun": 5,
   "windowDur": "18.000",
   "slack": "0.000",
@@ -4317,7 +4317,7 @@
   ]
  },
  "preset:sunbringer-roxy-robin": {
-  "dmg": "115480943",
+  "dmg": "116494137",
   "stun": 4,
   "windowDur": "18.000",
   "slack": "0.001",
