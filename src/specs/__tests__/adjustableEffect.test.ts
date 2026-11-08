@@ -80,6 +80,10 @@ const CASES: Array<[string, string, string, number]> = [
    * 于是「恰好 2 倍」这条比例判据在默认口径下**真的不成立**。
    * 这与 `substatScore ★主评分` 是同一族缺陷（离散跳变混进比例评分），
    * 按纪律**不许改断言求绿**，留红并在交接里点名。`=off` 口径 0/22/44 仍严格线性。
+   *
+   * 🔎 2026-11-09 复核：曾试图把它重钉成 26（以为「r1=26/r2=52 线性」），**实测否证** ——
+   * 那个 26 来自另一个队伍组成的探针；本用例自己的三点读数就是 0 / 22 / 52，
+   * 同一口径下 2×22 ≠ 52 ⇒ 非线性成立，维持留红。
    */
   ['1521.xixifu_toxin.toxin_tuxin_stage4.rate', 'xixifu_toxin', 'toxin_tuxin_stage4', 22],
   ['1531.billy_radiant_star.billy_radiant_basic4_gain.rate', 'billy_radiant_star', 'billy_radiant_basic4_gain', 21],
