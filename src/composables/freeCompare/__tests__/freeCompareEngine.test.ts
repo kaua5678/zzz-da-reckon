@@ -77,7 +77,12 @@ describe('逐槽配置码 slotCodes（用户 2026-10-25：队友固定 65丽娜 
     // ② 无 slotCodes：**队友回到 01 基线**（不再跟着系列码变）——用户 2026-10-26 报障：
     // 旧行为是「比较诺姆 01/11/21」实际比的是「全队 01/11/21」，队友命座跟着 x 档一起动 = 两个变量搅在一起
     const b = await run(base)
-    expect(b.cfg.team.map(x => [x.cinemaLevel, x.wEngineModLevel])).toEqual([[3, 5], [0, 1], [0, 1]])
+    // ⚠ 2026-11-08 入口门默认开启：槽 0 的系列码 30（无专武）走「下位择优」，而择优是**按伤害排名**的
+    //   ⇒ 入口门改交付 K 后排名会变，选中件从 R5 变常驻 S 的 R3（=off 仍 R5）。
+    //   本用例的判据是「**队友**不再继承系列码」（第 2/3 槽必须回到 [0,1]），槽 0 的档位是它的旁证，
+    //   因此按双口径钉住：默认口径 [3,3]，=off 口径 [3,5]。
+    const gateOn = process.env.PROBE_STUN_STABLE_BAND !== 'off'
+    expect(b.cfg.team.map(x => [x.cinemaLevel, x.wEngineModLevel])).toEqual([[3, gateOn ? 3 : 5], [0, 1], [0, 1]])
     // ③ 伤害必须不同（否则前面那条只是没生效的自证）
     expect(a.res.series[0].values[0]).not.toBeNull()
     expect(b.res.series[0].values[0]).not.toBeNull()
