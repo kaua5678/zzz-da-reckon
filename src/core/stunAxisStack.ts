@@ -774,8 +774,32 @@ export function calcStunAxisStack(input: StackTraversalInput): StackTraversalRes
         const fits = act.endsStunWindow || act.actionTime <= 0
           ? 1
           : Math.max(0, Math.min(1, (effectiveWindowDuration - used) / damageSeconds))
-        // 窗口剩余为负（前序动作把该槽位撑爆）⇒ 一点都进不了窗口：按整段跳过（与旧口径同形态）
-        if (fits <= 0 && !act.endsStunWindow && act.actionTime > 0) {
+        /**
+         * ## A10 时钟截短的末窗：`fits = 0` 的动作**认领但不进窗**（2026-11-09）
+         *
+         * 两种 `fits <= 0` 必须分开：
+         * ① **作者排布超窗**（普通短窗：轴里捏了 12s 塞进 8s 窗）⇒ 整段舍弃，
+         *    口径由 `core/__tests__/stunAxisStack.test.ts`「short window」锁死
+         *    （「整段舍弃的那些**不进 executed**」）—— **不动**。
+         * ② **A10 时钟把末窗截短**（`lastWindowClip > 0` 且本窗是末窗）：动作本身排得进
+         *    **名义窗**，只是时钟到了 ⇒ 它**照常施放**（扣资源、占时、计次），
+         *    只是 `inAxisCount = 0`（一点都没进窗 ⇒ 不吃失衡易伤、不攒下次失衡条）。
+         *
+         * 为什么必须区分：`fits` 是连续量（`(W−used)/damageSeconds` 钳到 [0,1]），
+         * `0 < fits < 1` 早就照常执行、只按比例折算；把 `fits = 0` 单列成「丢弃」是
+         * **不连续的特殊分支**。用户 2026-11-08 逐字：「窗的本意是移动或者认领动作，
+         * 结果你开窗给我动作挤掉了」—— 时钟截短造成的丢弃正是这一句。
+         *
+         * 实测（billy 默认夹具，W=18、`contClip=8.83s` ⇒ 末窗只剩 9.17s）：改前轴态
+         * `partial`（`skipped=[{1531010, time, 窗3}]`）、难度曲线整档不出数；改后 `complete`。
+         * 影响面（`timeGolden` 105 预设 + 60 角色 × 命座）：**仅 1 条变化**
+         * `auto-1051-1481-1451` 伤害 **+0.256%**（正是被挤压的 4 支队之一，方向向上）。
+         *
+         * ⚠ 与下方「资源不够就跳过」三条门控**不同源**：资源是**总量约束**（不许凭空创造），
+         * 时间是**排布约束**（动作打了，只是没打进窗）—— 前者必须去掉，后者只该打折。
+         */
+        const clippedLastWindow = windowNo === schedule.length && lastWindowClip > 1e-9
+        if (fits <= 0 && !act.endsStunWindow && act.actionTime > 0 && !clippedLastWindow) {
           skipped.push({ slot: act.slot, moveId: act.moveId, reason: 'time', window: windowNo })
           continue
         }
