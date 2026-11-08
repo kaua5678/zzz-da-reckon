@@ -1000,7 +1000,7 @@ elementResReduction= panelElementStat(source, 'enemyRes', element)  // 元素减
 - **自己不打伤害**（用户：「自己不需要打伤害，做好辅助的拐力就行」）：主词条与副词条都**不出现**攻击力/暴击类词条（判据 ⑤ 源码锁）。实测她自身伤害占全队 1.43%，副词条生命/防御对队伤零影响（72.0663M = 全空），拐力全在 4pc 雪兔 +18% + 14166v1（全队增伤 +20%、全队防御 +10%）。
 - 数据落盘 = `scripts/patch-curated-loadout.mjs`；判据 `src/data/__tests__/buildRecCuratedLoadout.test.ts`。
 
-**共享机制**：残痕/毁伤 = 锋御通用池（`src/mechanics/gashMaim.ts`，用户 2026-10-25 裁决），克拉蕾/挽昼都读它；多锋御整队分配仍挂 debt（双锋御队当前不存在）。
+**共享机制**：残痕/毁伤 = 锋御通用池（`src/mechanics/gashMaim.ts`，用户 2026-10-25 裁决），克拉蕾/挽昼都读它。多锋御同队时**共用一个 Boss 池**（2026-11-08 接线）：各槽按贡献点数比例分配、以声明需求封顶、余量给兜底槽（克拉蕾的自动补足葬血强袭）；跨轮通道 = `ModuleFeedback.gashPoolClaims` → 下一轮 converge 写 `cfg.gashPoolGrantedLayers`。判据 `gashMaimDualSharpen.test.ts` / `gashMaimDualPipeline.test.ts`。
 
 **面板管线**：`SourcePanelsByOwner` 已沿 `computePanelPhases → applyPanel/teamPanelEffects` 与 `applyAgentPanelHooks` 两处派发透传，槽位访问器 `core/sourcePanels#panelOfSlot`；接入本身零 delta（`sourcePanelsDispatch.test.ts` 4 例）。
 

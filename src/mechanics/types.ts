@@ -492,6 +492,7 @@ export interface ModuleFeedback {
   teamUltimateExtra?: number
   /** 莱特后场：全队常态能量消耗（converge 相位经通用输入 `teamEnergyConsumed` 递给模块） */
   consumedTeamEnergy?: number
+  /** 团队残痕池各槽申报（双锋御队；单锋御 = undefined）——通道/收敛理由见 `gashMaim.ts` 头「多锋御接线」 */ gashPoolClaims?: Record<number, { points: number; demandLayers: number }>
 }
 
 export interface AgentExSpecialTimeInput {

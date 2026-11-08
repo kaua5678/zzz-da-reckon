@@ -43,7 +43,30 @@ export function outerFeedbackSignature(out: CalcRoundResult): string {
     // A10：末窗时钟截短秒（下一轮轴栈会读）——不入签名则环在它收敛前就判 stable（K 停在错误不动点）。
     // 按毫秒取整比较（与 TIME_FOLD_CONVERGENCE_SECONDS 同精度，浮点尾数不算变化）。
     (out.threadsNext.prevStunOverflowSeconds ?? 0).toFixed(3),
+    // 双锋御团队残痕池申报（2026-11-08）：**必须单列**——moduleFeedbackSignature 只收有限数值，
+    // 而 gashPoolClaims 是对象 ⇒ 上面那项会把它整个滤掉。漏了这项，环会在池分配收敛前判 stable
+    // （下一轮 grant 与再下一轮不同 ⇒ 多轮之间数值抖动且无判据能看见）。
+    gashPoolClaimsSignature(out.threadsNext.moduleFeedback.gashPoolClaims),
   ].join('|')
+}
+
+/**
+ * 团队残痕池申报表的序列化（槽号升序 + 点数保留 1 位小数 + 需求取整）。
+ *
+ * 点数是**秒均 × 时间**的连续量，保留 1 位小数足以判稳（层数按 600 点折，1 位小数远小于 1 层粒度），
+ * 又不会被浮点尾数卡住不收敛。空表 / undefined ⇒ 空串（单锋御与改造前同形）。
+ */
+export function gashPoolClaimsSignature(
+  claims: Readonly<Record<number, { points: number; demandLayers: number }>> | undefined,
+): string {
+  if (!claims) return ''
+  return Object.keys(claims).map(Number).sort((a, b) => a - b)
+    .map(slot => {
+      const c = claims[slot]!
+      const pts = Number.isFinite(c.points) ? c.points.toFixed(1) : '0.0'
+      const dem = Number.isFinite(c.demandLayers) ? Math.round(c.demandLayers) : 0
+      return `${slot}:${pts}/${dem}`
+    }).join(',')
 }
 
 /** 槽位 → 点数表按槽号排序、取整点序列化（预算按整点比较，浮点尾数不算变化）。 */

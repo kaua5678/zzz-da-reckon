@@ -240,6 +240,19 @@ export interface CharacterOperationConfig {
    * 缺省 = undefined ⇒ 该来源本局不发生（消费侧 `Number(x ?? 0)`，与 initialEnergyGift 同款纪律）。
    */
   sharpnessGiftFromTeam?: number
+  /**
+   * **团队残痕池核定的可用层数**（双锋御队专用；单锋御 = undefined ⇒ 各模块走自己的单槽池）。
+   *
+   * 写入方：锋御模块（`claret.ts` / `sunbringer.ts`）各自的 `applyTeamConfig({phase:'converge'})`——
+   * 读 `threads.moduleFeedback.gashPoolClaims` → `gashMaim#resolveTeamGashPool` → 写本槽份额。
+   * 读取方：同两个模块的资源解（用它替代私有池算出的层数）。
+   *
+   * 为什么公共字段：两个写入方 + 两个读取方（跨模块），按 CC-360 归公共接口而非模块私有扩充块。
+   * 缺省 = undefined ⇒ 单锋御 / 首轮未收敛 ⇒ 回落私有池，**逐位不变**。
+   */
+  gashPoolGrantedLayers?: number
+  /** 团队池**总**层数（展示用；缺省 = 无团队池）。与 `gashPoolGrantedLayers` 同源同一次分配。 */
+  gashPoolTotalLayers?: number
   /** 开局赠送喧响（默认1000，部分命座额外） */
   initialDecibelGift: number
   /** 不可分享的额外喧响（默认0） */

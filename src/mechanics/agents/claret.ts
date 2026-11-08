@@ -22,7 +22,7 @@ import { buildSpecEventExecutions } from '@/specs/mechanics'
 import { pickThirdNamedBasicSegment, fusedRowValue, findMoveById, getRowValue } from '@/data/moveTableQueries'
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
-import { GASH_PER_LAYER, GASH_MAX_STACKS, allocateBossGashPool } from '@/mechanics/gashMaim'
+import { GASH_PER_LAYER, GASH_MAX_STACKS, allocateBossGashPool, collectSharpenGashClaims, resolveTeamGashPool } from '@/mechanics/gashMaim'
 import { SHARPNESS_INITIAL, sharpnessIncome } from '@/mechanics/sharpnessIncome'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
@@ -596,6 +596,15 @@ export function computeClaretSharpResource(input: {
   sharpnessAutoPerSec?: number
   /** 常态血锻四式的锐能招式增益（/s，catalog sharpness_gain 列） */
   normalAttackSharpnessPerSec?: number
+  /**
+   * **团队残痕池核定的本槽可用层数**（双锋御队专用；单锋御 / 首轮未收敛 = undefined）。
+   * 由 `applyTeamConfig({phase:'converge'})` 读 `threads.moduleFeedback.gashPoolClaims` →
+   * `gashMaim#resolveTeamGashPool` 算好后写进 `cfg.gashPoolGrantedLayers`。
+   * 缺省 ⇒ 回落私有单槽池，**逐位不变**。
+   */
+  teamGrantedLayers?: number
+  /** 团队池**总**层数（展示用；缺省 ⇒ 用私有池层数）。 */
+  teamPoolLayers?: number
   /** 平A时间能支撑的进场轮数（常态攒能 → EX 进场 → 铭刻窗口） */
   inscriptionEntries?: number
   /** 单轮铭刻窗口时长（秒） */
@@ -644,14 +653,17 @@ export function computeClaretSharpResource(input: {
    * 本槽贡献 `gashValuePct` 点、需求 = 层预算（斩金断铁 1/次 + 葬血强袭 3/段），单槽调用时结果
    * 恒等于 `min(floor(gashValuePct/600), demand)`（构造性恒等，见该函数头「单槽 = 逐位不变」）。
    *
-   * ⚠ 这里**先**取层数（demand 用 Infinity 占位）——本模块的层预算在覆盖率与轴内扣减之后才成形，
-   * 具体分配仍走下面的显式算式；共用池的分配入口留给「多槽同队」那一档（当前未接线，见 gashMaim debt）。
+   * **双锋御队**：`teamGrantedLayers` 由全队申报表核定（`gashMaim#resolveTeamGashPool`）⇒
+   * 用核定份额替代私有池结果，同一 Boss 残痕池不再各算各的。缺省（单锋御 / 首轮未收敛）⇒ 回落私有池。
    */
-  const gashStacks = allocateBossGashPool({
+  const privateGashLayers = allocateBossGashPool({
     contributions: [{ slot: 0, points: gashValuePct }],
     demand: [],
     priority: [0],
   }).layers
+  const gashStacks = input.teamGrantedLayers === undefined
+    ? privateGashLayers
+    : Math.max(0, Math.floor(Number(input.teamGrantedLayers) || 0))
   const cleaveCount = Math.max(0, Math.floor(input.cleaveSpecialCount))
   const burialCount = Math.max(0, Math.floor(input.bloodBurialCount))
   const c6Extra = cinemaLevel >= 6
@@ -779,6 +791,7 @@ export function computeClaretSharpResource(input: {
     axisMaimUnfiredPoints: Math.max(0, Number(input.axisGash?.unfiredPoints ?? 0)),
     minEntryForAllMaim: input.minEntryForAllMaim,
     axisGashSteps: input.axisGashSteps,
+    gashPoolDeclaredLayers: cleaveCount + burialCount * BURIAL_MAIM_PER_CAST,
     maimDemand,
     gashStackConsumed,
     axisGashConsumed: axisConsumed,
@@ -1309,6 +1322,9 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     affordableExCountOverride: affordableExCount,
     // 反制支援（boss 控制技整组化解，store 折算注入 cfg）→ 琢形每次直接送 1 层残痕
     counterAssistCount: Math.max(0, Math.floor(cfg.counterAssistCount)),
+    // 双锋御团队池份额（单锋御 = undefined ⇒ 私有池；见 computeClaretSharpResource 头注释）
+    teamGrantedLayers: cfg.gashPoolGrantedLayers,
+    teamPoolLayers: cfg.gashPoolTotalLayers,
   })
 }
 
@@ -1582,14 +1598,18 @@ const settings: MechanicSetting[] = [
  * 故按**风化触发次数**（= 每次风化必然产生至少一次浸染/净化循环）作为下界计数，再按 18s CD 钳制——
  * 这是所有自洽读法的共同下界（不会高估），且与用户「一次风化获得多次喧响」的方向一致（CD 才是真闸）。
  */
-function claretNextRoundFeedback({ anomalyPool, combatTime }: AgentNextRoundFeedbackInput): ModuleFeedback {
+function claretNextRoundFeedback({ anomalyPool, combatTime, adjustedResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
+  // 双锋御队：本槽对团队残痕池的申报（单锋御 = null ⇒ 不写该键，逐位不变）。
+  // 与挽昼模块算的是**同一份**表（同一输入 ⇒ 同一输出）⇒ Object.assign 后写覆盖先写无害。
+  const claims = collectSharpenGashClaims(adjustedResult.characters)
+  const gash = claims ? { gashPoolClaims: claims } : {}
   const windTriggers = anomalyPool.perElement.find(p => p.element === 'wind')?.triggerCount ?? 0
-  if (!(windTriggers > 0)) return {}
+  if (!(windTriggers > 0)) return gash
   // 18s CD ⇒ 整局至多 floor(战斗时间 / 18) 次（不足一次也给 1 次：首触发不受 CD 限制）
   const maxByCd = Math.max(1, Math.floor(combatTime / CLARET_INFECTION_DECIBEL_CD_SECONDS))
   const triggers = Math.min(Math.floor(windTriggers), maxByCd)
-  if (triggers <= 0) return {}
-  return { claretInfectionDecibel: triggers * CLARET_INFECTION_DECIBEL }
+  if (triggers <= 0) return gash
+  return { ...gash, claretInfectionDecibel: triggers * CLARET_INFECTION_DECIBEL }
 }
 
 export const claretMechanic: AgentMechanicModule = {
@@ -1704,6 +1724,20 @@ export const claretMechanic: AgentMechanicModule = {
    */
   applyTeamConfig: ({ cfg, phase, threads }: AgentTeamConfigInput) => {
     if (phase !== 'converge' || !threads) return
+    /**
+     * **团队残痕池写回**（双锋御队）：把上一轮全队申报核定出的本槽份额写进 cfg。
+     * - 只有 `gashPoolClaims` 存在（= 上一轮确有两个锋御槽申报）才动手；
+     * - `resolveTeamGashPool` 返回 null（申报不足 2 槽）⇒ 不写 ⇒ 资源解回落私有池，单锋御逐位不变；
+     * - 写**绝对量**（不是 +=）：cfg 每轮从 base.characters 重新克隆，写回只在当轮有效。
+     */
+    const claims = threads.moduleFeedback.gashPoolClaims
+    if (claims) {
+      const pool = resolveTeamGashPool(claims)
+      if (pool) {
+        cfg.gashPoolGrantedLayers = pool.bySlot[cfg.slot] ?? 0
+        cfg.gashPoolTotalLayers = pool.layers
+      }
+    }
     const add = Math.max(0, Math.floor(threads.moduleFeedback.claretInfectionDecibel ?? 0))
     if (add > 0) cfg.extraSelfDecibelReward = Math.max(0, cfg.extraSelfDecibelReward) + add
   },
@@ -1828,6 +1862,14 @@ export interface ClaretSharpResourceSource {
   /** 反制支援送层数（= 整组化解的控制技组数）：琢形「重击命中**直接**添加1层[残痕]」，
    *  每组 +600 点且**不吃积蓄效率倍率**（用户口径 2026-09-12）；0 = 本次计算没有反制支援。 */
   counterAssistGashStacks?: number
+  /**
+   * **对团队残痕池的申报需求（层）——与池无关**（双锋御队用）。
+   *
+   * = 斩金断铁声明次数 ×1 + 葬血强袭声明次数 ×3（**不含**自动补足的葬血强袭，那部分按定义
+   * 就是「吃池里剩下的」⇒ 拿它当申报需求会自我引用：本槽拿到的层越少，申报需求越小，
+   * 越拿不到层，形成死锁）。单锋御队无人读本字段。
+   */
+  gashPoolDeclaredLayers: number
   /** 血华誓毁伤需求**段数**（斩金断铁×1 + 葬血强袭×3/次 + 影画6 连携/终结各1）——**展示用总量**。
    *  按「招式段数」算（葬血强袭每次 3 段）；`gashStackConsumed` 按「层数」算，自动补足那发部分消耗时两者会差几层。
    *  ⚠ 不等于层预算：影画6 原文「不消耗[残痕]」⇒ 层预算只含斩金断铁/葬血强袭（R54 修正）。 */

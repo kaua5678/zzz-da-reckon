@@ -1,14 +1,19 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentNextRoundFeedbackInput,
   AgentPanelInput,
   AgentResourceInput,
+  AgentResourceResultInput,
+  AgentTeamConfigInput,
+  ModuleFeedback,
 } from '../types'
+import type { CharacterResourceResult } from '@/types/resource/agentResources'
 import { getRowValue } from '@/data/moveTableQueries'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
-import { allocateBossGashPool, GASH_PER_LAYER } from '@/mechanics/gashMaim'
+import { allocateBossGashPool, GASH_PER_LAYER, collectSharpenGashClaims, resolveTeamGashPool } from '@/mechanics/gashMaim'
 import { SHARPNESS_INITIAL, sharpnessIncome } from '@/mechanics/sharpnessIncome'
 
 /**
@@ -160,6 +165,16 @@ interface SunbringerMeta {
   sharpnessRegen: number
 }
 
+declare module '@/types/resource/agentResources' {
+  interface CharacterResourceResult {
+    /**
+     * 挽昼对**团队残痕池**的申报（双锋御队；单锋御时无人读）。
+     * 形状由 `gashMaim#SharpenGashClaimLike` 约束（结构子类型，无 import 耦合）。
+     */
+    sunbringerGashSource?: { points: number; demandLayers: number; gashLayers?: number; maimCount?: number }
+  }
+}
+
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 挽昼招式元数据（本模块私有） */
@@ -275,6 +290,15 @@ export function solveSunbringerLoops(input: {
    * 模块只做「moveId → 点数值」的翻译，不自己猜档、不列 id 名单（引擎换档数值自动跟着换）。
    */
   defensiveAssistMoveId?: string
+  /**
+   * **团队残痕池核定的本槽份额**（双锋御队专用；单锋御 / 首轮未收敛 = undefined）。
+   * 由 `applyTeamConfig({phase:'converge'})` 读 `threads.moduleFeedback.gashPoolClaims` →
+   * `gashMaim#resolveTeamGashPool` 算好后写进 `cfg.gashPoolGrantedLayers`。
+   * 缺省 ⇒ 回落下面的私有单槽池，**逐位不变**。
+   */
+  teamGrantedLayers?: number
+  /** 团队池**总**层数（展示用；缺省 ⇒ 用私有池层数）。 */
+  teamPoolLayers?: number
 }) {
   const { meta, combatTime, basicTime, chainCount, totalDecibel, ultimateCost } = input
   /**
@@ -327,15 +351,22 @@ export function solveSunbringerLoops(input: {
   //      （56.64 / 99.14 / 99.14），但仓库没有「每局成功招架几次」的通道，按 0 计；
   //   ② 燎源属性说明「触发[灼烧]效果时，额外为目标累积少量[残痕]，每 15 秒最多一次」——**原文没数值**。
   const maimDemand = 3 * (exCount + chainCount)
-  // 残痕池走**锋御通用池**（`mechanics/gashMaim#allocateBossGashPool`）：单槽调用 = min(层, 需求)，逐位不变；
-  // 多锋御同队时由该函数把各槽贡献合并（当前未接线，见 gashMaim 的 debt 段）。
+  /**
+   * 残痕池走**锋御通用池**（`mechanics/gashMaim#allocateBossGashPool`）：单槽调用 = `min(层, 需求)`，逐位不变。
+   *
+   * **双锋御队**：`teamGrantedLayers` 由全队申报表核定（见 `gashMaim#resolveTeamGashPool`）⇒
+   * 用核定份额替代私有池结果，同一 Boss 残痕池不再各算各的。缺省（单锋御 / 首轮未收敛）⇒ 回落私有池。
+   */
   const gashPool = allocateBossGashPool({
     contributions: [{ slot: 0, points: gash }],
     demand: [{ slot: 0, layers: maimDemand }],
     priority: [0],
   })
-  const gashLayers = gashPool.layers
-  const maimCount = gashPool.bySlot[0] ?? 0
+  const teamPoolLayers = Number(input.teamPoolLayers)
+  const gashLayers = Number.isFinite(teamPoolLayers) ? Math.max(0, Math.floor(teamPoolLayers)) : gashPool.layers
+  const maimCount = input.teamGrantedLayers === undefined
+    ? (gashPool.bySlot[0] ?? 0)
+    : Math.max(0, Math.min(Math.floor(Number(input.teamGrantedLayers) || 0), maimDemand))
 
   // 影画1：进入战场立即获得 120 愿力（勘域 180s 一次 ⇒ 每局一次）
   const wishFromEntry = cinemaLevelOf(input.cinemaLevel) >= 1 ? 120 : 0
@@ -416,6 +447,9 @@ function buildSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
     // 3.4.3 招架残痕：次数 = 本槽招架次数；档位 = 引擎选中的那条招架支援行（不自己猜档）
     parryCount: Math.max(0, Math.floor(cfg.parryCount)),
     defensiveAssistMoveId: cfg.defensiveAssistMoveId,
+    // 双锋御团队池份额（单锋御 = undefined ⇒ 私有池；见 solveSunbringerLoops 头注释）
+    teamGrantedLayers: cfg.gashPoolGrantedLayers,
+    teamPoolLayers: cfg.gashPoolTotalLayers,
   })
   const push = (row: Parameters<typeof moduleExecRow>[0]) => executions.push(moduleExecRow(row))
 
@@ -587,6 +621,70 @@ function sumOtherDamageMultipliers(executions: AgentResourceInput['executions'],
  * ② 烬痕按**已物化行的倍率**结算（同一基底，龙格等价），均摊进那次终结技的倍率并打 override。
  * 行名会带上烬痕数值，资源页与执行行都能复核。
  */
+/**
+ * **本槽对团队残痕池的申报**（双锋御队；单锋御时由 `collectSharpenGashClaims` 整体返回 null）。
+ *
+ * 为什么在 `buildResourceResult` 暴露而不是让 `nextRoundFeedback` 自己重算：点数依赖本轮的
+ * `state.basicAttackTime`（折叠环产物），重算要复制一遍 `solveSunbringerLoops` 的全部入参；
+ * 而资源结果里**已经有**这份解，暴露它就是「同一份时间只花一次」。
+ */
+export function buildSunbringerResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  const meta = cfg.sunbringerMeta
+  if (!meta) return {}
+  const loops = solveSunbringerLoops({
+    meta,
+    cinemaLevel: cinemaLevelOf(cfg.sunbringerCinemaLevel),
+    combatTime: effectiveCombatTime(state, cfg),
+    basicTime: Math.max(0, state.basicAttackTime),
+    chainCount: Math.max(0, Math.floor(state.chainCountTotal)),
+    totalDecibel: Math.max(0, state.totalDecibel),
+    ultimateCost: Number(cfg.ultimateCost),
+    counterAssistCount: cfg.counterAssistCount,
+    giftSharpness: Math.max(0, Number(cfg.sharpnessGiftFromTeam ?? 0)),
+    parryCount: Math.max(0, Math.floor(cfg.parryCount)),
+    defensiveAssistMoveId: cfg.defensiveAssistMoveId,
+    teamGrantedLayers: cfg.gashPoolGrantedLayers,
+    teamPoolLayers: cfg.gashPoolTotalLayers,
+  })
+  return {
+    sunbringerGashSource: {
+      points: loops.gash,
+      demandLayers: loops.maimDemand,
+      gashLayers: loops.gashLayers,
+      maimCount: loops.maimCount,
+    },
+  }
+}
+
+/**
+ * 下一轮残痕池申报（双锋御队）：从**本轮全队资源结果**收集所有锋御槽的（点数, 需求）。
+ *
+ * 两个锋御模块都会产出**同一份**申报表（同一输入 ⇒ 同一输出），故 `Object.assign` 的后写覆盖先写无害。
+ * 单锋御队 `collectSharpenGashClaims` 返回 null ⇒ 不写该键 ⇒ 与改造前逐位不变。
+ */
+export function sunbringerNextRoundFeedback({ adjustedResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
+  const claims = collectSharpenGashClaims(adjustedResult.characters)
+  return claims ? { gashPoolClaims: claims } : {}
+}
+
+/**
+ * **团队残痕池写回**（双锋御队，converge 相位）：把上一轮全队申报核定出的本槽份额写进 cfg。
+ *
+ * 三件事必须一起看：
+ * ① 只有 `threads.moduleFeedback.gashPoolClaims` 存在（= 上一轮确有两个锋御槽申报）才动手；
+ * ② `resolveTeamGashPool` 返回 null（申报不足 2 槽）⇒ 不写 ⇒ 资源解回落私有池，单锋御逐位不变；
+ * ③ 写的是**绝对量**（不是 +=）：cfg 每轮从 base.characters 重新克隆，写回只在当轮有效。
+ */
+export function applySunbringerTeamConfig({ cfg, phase, threads }: AgentTeamConfigInput): void {
+  if (phase !== 'converge' || !threads) return
+  const claims = threads.moduleFeedback.gashPoolClaims
+  if (!claims) return
+  const pool = resolveTeamGashPool(claims)
+  if (!pool) return
+  cfg.gashPoolGrantedLayers = pool.bySlot[cfg.slot] ?? 0
+  cfg.gashPoolTotalLayers = pool.layers
+}
+
 export function patchSunbringerExecutions({ cfg, state, executions }: AgentResourceInput): void {
   applySunbringerParryDaze(cfg, executions)
   const meta = cfg.sunbringerMeta
@@ -610,6 +708,9 @@ export function patchSunbringerExecutions({ cfg, state, executions }: AgentResou
     // 招架残痕会改毁伤次数 ⇒ 烬痕同源解同样必须吃同一输入（与 counterAssistCount 同理由）
     parryCount: Math.max(0, Math.floor(cfg.parryCount)),
     defensiveAssistMoveId: cfg.defensiveAssistMoveId,
+    // 团队池份额会改毁伤次数 ⇒ 烬痕同源解同样必须吃同一输入（与 parryCount 同理由）
+    teamGrantedLayers: cfg.gashPoolGrantedLayers,
+    teamPoolLayers: cfg.gashPoolTotalLayers,
   })
   const ember = computeEmberScar({
     meta,
@@ -700,6 +801,10 @@ export const sunbringerMechanic: AgentMechanicModule = {
   buildCharConfig: buildSunbringerCharConfig,
   buildExecutions: buildSunbringerExecutions,
   patchExecutions: patchSunbringerExecutions,
+  // 双锋御共用池：本轮申报（读全队资源结果）+ 下一轮按核定份额写回 cfg（见 gashMaim 头注释）
+  buildResourceResult: buildSunbringerResourceResult,
+  nextRoundFeedback: sunbringerNextRoundFeedback,
+  applyTeamConfig: applySunbringerTeamConfig,
   // 轴内易伤折算：第二段大招伤害前置 1s、其余为后摇（用户口径 2026-10-30）
   axisMoveDamageSeconds: (moveId: string) =>
     (moveId === SUNBRINGER_ULT_B_MOVE_ID ? SUNBRINGER_ULT_B_DAMAGE_SECONDS : undefined),
