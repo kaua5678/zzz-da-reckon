@@ -164,6 +164,34 @@ export function continuityTruncEnabled(): boolean {
   return probeFlag('PROBE_STUN_CONT_TRUNC') !== 'off'
 }
 
+/**
+ * **稳定停点入口门开关**（`PROBE_STUN_STABLE_BAND`，默认**关**）。
+ *
+ * 做什么：让自由收敛到 `stable(K0)` 的队也跑一次「向上试一格 `K0+1`」的截短结算
+ * （旧门只认 `outerExit === 'cycle'`，105 预设里 100 支是 stable ⇒ 带宽下端的缓坡进不来）。
+ *
+ * ## 为什么默认关（2026-11-08 实测，别急着改默认值）
+ * 全库 A/B：`=on` 动 25 队、伤害 22 升 3 **降**：
+ * `auto-1611-1361-1211` −5.76%、`auto-1611-1141-1211` −15.40%、`auto-1611-1571-1211` −9.81%。
+ * 根因是**结构性**的，不是参数问题：`solveTeam` 的 `CalcRoundResult` 只有资源面、**读不到伤害**
+ * ⇒ 结算层只能按「K 大就是好」上扫，而这 3 支队的「多开一窗」会把一个整行技能挤掉
+ * （实测 `auto-1611-1141-1211` slot1 `ex 9→8`、nec 23.48→25.98，即既有注释点名的
+ * 「葬血强袭整行消失、伤害反而更低」同族）。
+ *
+ * 钉 K 探针实证（`.zc/perf/pinVsDelivered.json`）：这 3 支的「钉 K+1」**本身就低于**「钉 K」——
+ * `auto-1611-1361-1211` 钉K5 22.36M > 钉K6 21.30M；`auto-1611-1141-1211` 钉K5 20.33M > 钉K6 18.32M。
+ * ⇒ 与用户裁决「只是提供了更多选择而不是**强制降低**」直接冲突 ⇒ **不许默认开**。
+ *
+ * 打开它的前置条件 = 交付层能按伤害做 argmax（现在只有分析层 `cinemaUpliftFrontier#pickDelivery`
+ * 会做；引擎自身的自由收敛结果没有这一层）。在那之前，本 flag 保持关。
+ *
+ * 打开后另测：`npx vitest run src/composables/__tests__/continuityTruncation.test.ts`
+ * + 全库 A/B 探针 `.zc/perf/stableBandAB.probe.perf.ts`。
+ */
+export function stableBandEnabled(): boolean {
+  return probeFlag('PROBE_STUN_STABLE_BAND') === 'on'
+}
+
 /** 外层不动点 + S3 可行化决策（函数体 = 原 `useResourceCalc.ts:254–652` 外提，CC-10；只读输入、不写 store）。 */
 export function solveTeam(input: SolveTeamInput): SolveTeamResult {
   const { runCalcRound, lockedStunCount, stunWindowDur, stunEffTime, resourceConfig } = input
@@ -506,7 +534,44 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     }
 
     let capacityResolved = false
-    if (outerExit === 'cycle' && stunWindowDur > 0 && stunEffTime > 0 && overrideLock === undefined) {
+    /**
+     * ## 稳定停点也要能进结算块（2026-11-08，第一优先修法）
+     *
+     * 旧门 = 只认 `outerExit === 'cycle'`。实测（`.zc/perf/bandGate*.probe.perf.ts`，105 预设）：
+     * 带宽下端 `cont ∈ (2.625, 3)` 里 **27 支队自由收敛是 stable(K)`，不是环** ⇒ 整块不执行 ⇒
+     * `feasibleAtK` / 判据⑦ / 截短 δ **一个都没被调用**（三个候选在 lock=K+1 帧上逐点全过：
+     * fits 失败 0 / exit 非 stable 0 / 判据⑦ 失败 0）。所以「入口陡升、带内几乎水平」不是判据错，
+     * 是**判据没有调用点**。
+     *
+     * ### 为什么稳定停点结构上永远进不了带（代数，不是参数）
+     * 无锁映射 `next = floor(cont(plan))·(1 − plan·W/eff)` ⇒ 不动点
+     * `plan* = P·eff/(eff + P·W)`，`P = floor(cont(plan*))`。W=18/eff=180 时
+     * `P=2 → plan*=1.667`、`P=3 → plan*=2.308`；要让 `plan*=3` 需 P = 3·180/126 = **4.286**
+     * ⇒ 必须 `cont(3) ≥ 5`（物理不可能）。**K=3 只能经由 2↔3 环 + kStar 结算进来**，
+     * 于是入口被钉在 `cont(自由规划) = 3.0` 那一刻（实测入口处 `cont(K+1)` 已只剩
+     * 2.87 / 2.82，δ 只剩 5.8s / 8.2s，而带宽下端 δ→W=18s 那 12 秒永远走不到）。
+     *
+     * ### 本块只做一件事：稳定停点**向上试一格**
+     * `k0 = 收敛停点的池次数` → `evalLocked(k0+1)` 一次 → `outerExit==='stable'` 且
+     * `feasibleAtK(…, k0+1)` 才采纳；否则 `kStar` 保持 0 ⇒ 下方 for 循环空转 ⇒
+     * **逐位落回原路径**（不做二分、不重跑 k0，故对既有交付零影响）。
+     *
+     * 为什么是「一格」而不是上扫到底：实测 `feasible K` 集合在这 9 支扫描队上**恒为前缀**
+     * （`[1..k]`，`.zc/perf/contShape.probe.perf.ts`），而 `cont(K)` 本身**不单调**
+     * （`auto-1461` 的 3→4→5→6 上升）⇒ 不能用二分，只能逐档真求值。
+     * 每档都是一次完整外层求值（`charIncrement` 单位工作量判据线 1.0×，线性下扫 11 档实测顶到
+     * 1.52× 红）⇒ **只试一格**是成本与覆盖率的下沿，且这一格正好是「带宽下端缺失缓坡」那一段。
+     *
+     * ⚠ **三道闸缺一不可**：
+     * - `lockedStunCount < 0`：用户锁定失衡次数（命座对比口径）时 `effLock ≥ 0` 走 locked 分支、
+     *   `outerExit` 也报 stable —— 不加这条就会**覆盖用户明确意图**（把用户锁的 K 顶成 K+1）。
+     * - `continuityTruncEnabled()`：`PROBE_STUN_CONT_TRUNC=off` ⇒ 本块整体不生效 ⇒ 逐位等于改动前。
+     * - `overrideLock === undefined`：递归深度闸（与旧门同一条）。
+     * 回退点：把 `stableExit` 恒置 false（其余代码原样保留，环路径逐位不变）。
+     */
+    const stableExit = outerExit === 'stable' && lockedStunCount < 0 && continuityTruncEnabled()
+      && stableBandEnabled()
+    if ((outerExit === 'cycle' || stableExit) && stunWindowDur > 0 && stunEffTime > 0 && overrideLock === undefined) {
       /**
        * ⚠ **这一行把「连续失衡」钳掉了**（用户 2026-11-01 裁明机制）：满条开出 18s 窗后，若
        * 「非失衡攒条时间 + K×W」超过 180s，溢出应从**最后一窗的时间里丢掉**（时钟截断 `clippedByClock`）。
@@ -649,6 +714,37 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        * **37.446M** ⇒ 「窗越多伤害越高」在结算层**不是**恒真。本层按 K 上扫，该队的交付上限由
        * `pickDelivery` 的 argmax 兜住（收敛停点 K1 在候选集里）。
        */
+      /**
+       * ## ⚠ **稳定停点也必须能进「连续失衡带」**（2026-11-08，用户裁决「大胆做、以长期为主」）
+       *
+       * 本块的入口此前是 `outerExit === 'cycle'` **独一门**，而实测（`.zc/perf/PREDICTION-band-entry.md`）
+       * 全库 105 预设里 **100 支是 stable 退出**，其中 **27 支「理论带存在却进不去」**：它们的
+       * `lock(K+1)` 帧 27/27 `stable`、27/27 `fits`、判据⑦ 26/27 通过 ⇒ **只要求值就会采纳**，
+       * 卡的是门本身，不是任何判据（A/B/C 三个候选在带宽内逐点 0 失败，已证伪）。
+       *
+       * ### 为什么 stable 停点结构性进不了带
+       * 无锁映射 `next = floor(cont(plan))·(1 − plan·W/eff)` 的不动点是
+       * `plan* = P·eff/(eff + P·W)`（P = floor(cont)）。W=18/eff=180 时 P=2 ⇒ **plan*=1.667**、
+       * P=3 ⇒ **plan*=2.308**；要让 `plan*` 落在 K 上需 `P = K·eff/T = 4.286` ⇒ `cont(K) ≥ 5`，
+       * 物理不可能 ⇒ **K≥2 的整数窗数在自由口径下没有稳定不动点**，只能经由 2↔3 环 + 本块进来。
+       * 于是入口被钉在 `cont(自由规划) 跨过整数 K+1` 的那一刻（实测差 0.003~0.008），
+       * 等价于 `cont(K+1) ≈ 2.87` 而不是带宽下端 `K·T/(T+W) = 2.625` ⇒
+       * **带宽下端那 12~16 秒的缓坡永远走不到**，这正是用户看到的「入口陡升、带内几乎水平」。
+       *
+       * ### 为什么「只看 K0+1 一格」而不是重扫
+       * ① 带的口径就是「**多开那一窗**被时钟截短」，再往上一格 δ 会翻倍并越界（δ ≥ W ⇒ null 负控）；
+       * ② 成员扫描对 stable 天然为空（`lastCycleMembers` 是每次 `runOuterLoop` 新建的），
+       *    二分回落要 O(log searchMax) 次整轮求值 ⇒ 会把 `charIncrement` 的单位工作量判据顶红；
+       * ③ K0 档**不需要重跑**——收敛结果 `out` 就是它，失败时原样返回（下面 `kTry < kStar` 直接 break）。
+       *
+       * ### 非回归的两道闸
+       * - `continuityOn`（`PROBE_STUN_CONT_TRUNC=off` ⇒ 整条路径不存在，逐位等于改动前）；
+       * - `lockedStunCount < 0`（用户锁失衡次数 = 明确意图，引擎不许替他改 K）。
+       */
+      const stableBandProbe = continuityOn && stableBandEnabled() && outerExit === 'stable'
+        && lockedStunCount < 0 && lastCycleMembers.length === 0
+      /** 收敛停点的窗数（stable 路径的「不许更差」下界；失败时原样交付它） */
+      const baseK = out.stunPool.stunCount
       let kStar = 0
       /**
        * **旧口径 kStar**（只按 `floor(cont) ≥ K`，不含截短）= 下扫的**下界**。
@@ -669,7 +765,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         const kIn = m.prev?.stunPool.stunCount as number
         if (kIn > kStar && feasibleAt(m)) kStar = kIn
       }
-      if (kStar === 0) {
+      if (kStar === 0 && !stableBandProbe) {
         /**
          * 回落：二分求**最大**自洽 K（与上面的成员扫描同一口径，别混两把尺——实测混用会把
          * `auto-1051`/`auto-1611` 从成员给的 K=4 拉到 K=1）。单调性依据 =
@@ -693,6 +789,15 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
             && fitsBudget(trial.out, trial.outPrev)
           if (ok) { kStar = mid; lo = mid + 1 } else hi = mid - 1
         }
+      }
+      /**
+       * **stable 路径的候选 = 收敛 K0 之上的一格**（见上方 `stableBandProbe` 头注释）。
+       * `kStarOld = baseK` ⇒ `K_FLOOR = baseK` ⇒ 下扫下界就是"不许比改动前更差"；
+       * `baseK + 1 > searchMax`（时间排不下再多一窗）⇒ `kStar = 0` ⇒ 循环不执行 ⇒ 原样交付。
+       */
+      if (stableBandProbe) {
+        kStarOld = baseK
+        kStar = baseK + 1 <= searchMax ? baseK + 1 : 0
       }
       /**
        * ⚠ **必须按 K 真跑一整轮，不能拿环成员的结果顶替**（实测踩过）：环成员那次跑的是
@@ -726,6 +831,12 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        * 若不加闸，`=off` 的交付也会跟着变（实测 4 条判据红，`auto-1591` 的 K3 被下扫成 K1）。
        */
       for (let kTry = kStar; kTry >= K_FLOOR; kTry--) {
+        /**
+         * **stable 路径只试 K0+1 这一格**：`kStar` 已经是 `baseK+1`，再往下是 `baseK`——
+         * 那一档就是当前收敛结果本身，重跑一次纯属浪费（且会得到逐位相同的值）。
+         * 直接 break ⇒ `chosenRun` 保持 null ⇒ 原样交付 `out`（= 改动前的读数，零回归）。
+         */
+        if (stableBandProbe && kTry < kStar) break
         /**
          * **能复用环成员就复用，省掉那次整轮重跑**（性能实测驱动）。
          * 可复用的条件 = 该成员**本身就是「按 K 排窗」的产物**：`m.prev.pool === K` 且

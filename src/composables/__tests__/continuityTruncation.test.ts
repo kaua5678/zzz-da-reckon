@@ -214,3 +214,98 @@ describe('判据⑦：截短档「让得出 δ 秒」才采纳（假截短负控
     expect(pinned.overflow, '判据触发条件：装配溢出 > δ').toBeGreaterThan(d!)
   })
 })
+/**
+ * ## 判据⑧~⑫：稳定停点入口门（2026-11-08，用户裁决「大胆做、以长期为主」）
+ *
+ * 背景：旧门只认 `outerExit === 'cycle'`，而全局 105 预设里 **100 支是 stable 退出** ——
+ * 带宽下端的缓坡由「判据没有调用点」造成，不是判据错。本组判据守新增的 stable 路径。
+ * 预测与逐条对账：`.zc/perf/PREDICTION-band-entry.md` §2c。
+ */
+/**
+ * 稳定停点入口门的 helper：本卡实测到 **3 队伤害下降**（`auto-1611-*`，钉 K+1 < 钉 K），
+ * 与用户裁决「只是提供更多选择而不是**强制降低**」冲突 ⇒ `PROBE_STUN_STABLE_BAND` **默认关**。
+ * 故下面这组判据必须**显式开**旗标；默认值由判据⑩ 的负控守（不开 ⇒ 逐位等于改动前）。
+ */
+function withStableBand<T>(fn: () => T): T {
+  setCalcOutputMemoEnabled(false)
+  process.env.PROBE_STUN_STABLE_BAND = 'on'
+  try { return fn() } finally {
+    delete process.env.PROBE_STUN_STABLE_BAND
+    setCalcOutputMemoEnabled(true)
+    H.config.enemy.stunCountLock = -1
+  }
+}
+
+describe('判据⑧：稳定停点也进带 —— yidhari-roxy-lucia K 从 2 升到 3', () => {
+  it('交付 K=3、报出 δ、走 kStar 结算（改动前是 K=2 / δ=0）', () => {
+    const f = withStableBand(() => frameOf('yidhari-roxy-lucia', 0))
+    expect(f.pool, '稳定停点必须能多认一档（改动前 K=2）').toBe(3)
+    expect(f.continuityClip, '且必须报出攒条侧截短 δ').toBeGreaterThan(0)
+    expect(f.capacityResolved, '必须走 kStar 结算（反空洞：不靠 outerExit 猜）').toBe(true)
+  })
+
+  it('缓坡连续：δ 越大 ⇒ 覆盖率增量越小（不是整窗跳变）', () => {
+    /**
+     * **这是用户「入口陡升」批评的机器判据**：分配器把 N 队按 δ 排序时，
+     * `Δcov = (W − δ)/eff` 必须单调递减 —— 否则带内要么水平（=没做），要么跳变。
+     */
+    const small = withStableBand(() => frameOf('auto-1021-1481-1211', 0)) // δ≈17.8s（贴近带宽下端）
+    const large = withStableBand(() => frameOf('auto-1501-1511-1491', 0)) // δ≈1.1s（贴近带宽上端）
+    const dSmall = small.pool * small.windowDuration - small.coverage * small.effectiveTime
+    const dLarge = large.pool * large.windowDuration - large.coverage * large.effectiveTime
+    expect(dSmall, '前置：贴近下端的那队 δ 更大').toBeGreaterThan(dLarge)
+    /** 带宽上端（δ 小）的窗口利用率更高 ⇒ 单位窗贡献更大 */
+    const utilSmall = (small.windowDuration - dSmall) / small.windowDuration
+    const utilLarge = (large.windowDuration - dLarge) / large.windowDuration
+    expect(utilLarge, 'δ 小时窗口更满').toBeGreaterThan(utilSmall)
+    expect(utilSmall, '但 δ 大时窗口仍分到正秒数（不是 0）').toBeGreaterThan(0)
+  })
+})
+
+describe('判据⑨：负控 —— 用户锁失衡次数时不得被改 K', () => {
+  it('lockedStunCount = 2 ⇒ 交付 K 必须仍是 2（引擎不许覆盖用户明确意图）', () => {
+    const f = withStableBand(() => frameOf('yidhari-roxy-lucia', 0, 2))
+    expect(f.pool, '用户锁 2 ⇒ 即使开了新门也不得升到 3').toBe(2)
+  })
+})
+
+describe('判据⑩：负控 —— 默认关（本卡实测 3 队负提升 ⇒ 不许默认开）', () => {
+  it('不设 PROBE_STUN_STABLE_BAND ⇒ 稳定路径不存在，K=2 / δ=0 / cap=false', () => {
+    setCalcOutputMemoEnabled(false)
+    delete process.env.PROBE_STUN_STABLE_BAND
+    try {
+      const dflt = frameOf('yidhari-roxy-lucia', 0)
+      expect(dflt.pool, '默认值必须是关：K 退回改动前的 2').toBe(2)
+      expect(dflt.continuityClip, '默认：不得报 δ').toBe(0)
+      expect(dflt.capacityResolved, '默认：不得走结算块').toBe(false)
+    } finally {
+      setCalcOutputMemoEnabled(true)
+    }
+  })
+
+  it('PROBE_STUN_CONT_TRUNC=off ⇒ 即使开了新门也逐位等于改动前', () => {
+    setCalcOutputMemoEnabled(false)
+    process.env.PROBE_STUN_CONT_TRUNC = 'off'
+    process.env.PROBE_STUN_STABLE_BAND = 'on'
+    try {
+      const off = frameOf('yidhari-roxy-lucia', 0)
+      expect(off.pool, '关旗标必须退回改动前的 K=2').toBe(2)
+      expect(off.continuityClip, '且不得报 δ').toBe(0)
+      expect(off.capacityResolved, '且不得走结算块').toBe(false)
+    } finally {
+      delete process.env.PROBE_STUN_CONT_TRUNC
+      delete process.env.PROBE_STUN_STABLE_BAND
+      setCalcOutputMemoEnabled(true)
+    }
+  })
+})
+
+describe('判据⑪：反空洞 —— 升 K 后时间账仍闭合、delta 同源', () => {
+  it('yidhari-roxy-lucia：δ 与覆盖率同源（恒等式逐位）且池=K', () => {
+    const f = withStableBand(() => frameOf('yidhari-roxy-lucia', 0))
+    const implied = f.pool * f.windowDuration - f.coverage * f.effectiveTime
+    expect(Math.abs(f.continuityClip - implied),
+      `δ 与覆盖率不同源：报 ${f.continuityClip.toFixed(6)} / 隐含 ${implied.toFixed(6)}`).toBeLessThan(1e-9)
+    expect(f.continuityClip, 'δ < W（负控：δ ≥ W 一律不采纳）').toBeLessThan(f.windowDuration)
+  })
+})
