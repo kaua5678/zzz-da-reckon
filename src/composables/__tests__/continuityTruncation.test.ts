@@ -222,13 +222,15 @@ describe('判据⑦：截短档「让得出 δ 秒」才采纳（假截短负控
  * 预测与逐条对账：`.zc/perf/PREDICTION-band-entry.md` §2c。
  */
 /**
- * 稳定停点入口门的 helper：本卡实测到 **3 队伤害下降**（`auto-1611-*`，钉 K+1 < 钉 K），
- * 与用户裁决「只是提供更多选择而不是**强制降低**」冲突 ⇒ `PROBE_STUN_STABLE_BAND` **默认关**。
- * 故下面这组判据必须**显式开**旗标；默认值由判据⑩ 的负控守（不开 ⇒ 逐位等于改动前）。
+ * 稳定停点入口门：**默认开**（2026-11-08 用户裁决「下降无所谓，没人说现在才是标准的」）。
+ * 全库实测 25 队 K 上升，其中 3 队（`auto-1611-*`）伤害下降 —— 那是同一物理模型的诚实结果
+ * （钉 K+1 本身就低于钉 K），不是判据错。负控走 `PROBE_STUN_STABLE_BAND=off`（判据⑩）。
+ *
+ * 本 helper 保留 = 让用例**显式声明**它依赖这条路径（并清掉可能残留的 =off）。
  */
 function withStableBand<T>(fn: () => T): T {
   setCalcOutputMemoEnabled(false)
-  process.env.PROBE_STUN_STABLE_BAND = 'on'
+  delete process.env.PROBE_STUN_STABLE_BAND
   try { return fn() } finally {
     delete process.env.PROBE_STUN_STABLE_BAND
     setCalcOutputMemoEnabled(true)
@@ -269,24 +271,24 @@ describe('判据⑨：负控 —— 用户锁失衡次数时不得被改 K', () 
   })
 })
 
-describe('判据⑩：负控 —— 默认关（本卡实测 3 队负提升 ⇒ 不许默认开）', () => {
-  it('不设 PROBE_STUN_STABLE_BAND ⇒ 稳定路径不存在，K=2 / δ=0 / cap=false', () => {
+describe('判据⑩：负控 —— =off 时逐位退回改动前（默认开，2026-11-08 用户裁决）', () => {
+  it('PROBE_STUN_STABLE_BAND=off ⇒ 稳定路径不存在，K=2 / δ=0 / cap=false', () => {
     setCalcOutputMemoEnabled(false)
-    delete process.env.PROBE_STUN_STABLE_BAND
+    process.env.PROBE_STUN_STABLE_BAND = 'off'
     try {
-      const dflt = frameOf('yidhari-roxy-lucia', 0)
-      expect(dflt.pool, '默认值必须是关：K 退回改动前的 2').toBe(2)
-      expect(dflt.continuityClip, '默认：不得报 δ').toBe(0)
-      expect(dflt.capacityResolved, '默认：不得走结算块').toBe(false)
+      const off = frameOf('yidhari-roxy-lucia', 0)
+      expect(off.pool, '关新门 ⇒ K 退回改动前的 2').toBe(2)
+      expect(off.continuityClip, '关新门：不得报 δ').toBe(0)
+      expect(off.capacityResolved, '关新门：不得走结算块').toBe(false)
     } finally {
+      delete process.env.PROBE_STUN_STABLE_BAND
       setCalcOutputMemoEnabled(true)
     }
   })
 
-  it('PROBE_STUN_CONT_TRUNC=off ⇒ 即使开了新门也逐位等于改动前', () => {
+  it('PROBE_STUN_CONT_TRUNC=off ⇒ 逐位等于改动前（新门也一起失效）', () => {
     setCalcOutputMemoEnabled(false)
     process.env.PROBE_STUN_CONT_TRUNC = 'off'
-    process.env.PROBE_STUN_STABLE_BAND = 'on'
     try {
       const off = frameOf('yidhari-roxy-lucia', 0)
       expect(off.pool, '关旗标必须退回改动前的 K=2').toBe(2)
@@ -294,7 +296,6 @@ describe('判据⑩：负控 —— 默认关（本卡实测 3 队负提升 ⇒ 
       expect(off.capacityResolved, '且不得走结算块').toBe(false)
     } finally {
       delete process.env.PROBE_STUN_CONT_TRUNC
-      delete process.env.PROBE_STUN_STABLE_BAND
       setCalcOutputMemoEnabled(true)
     }
   })

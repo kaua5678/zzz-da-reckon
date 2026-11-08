@@ -165,31 +165,39 @@ export function continuityTruncEnabled(): boolean {
 }
 
 /**
- * **稳定停点入口门开关**（`PROBE_STUN_STABLE_BAND`，默认**关**）。
+ * **稳定停点入口门开关**（`PROBE_STUN_STABLE_BAND`，默认**开**；`=off` 逐位退回改动前）。
  *
  * 做什么：让自由收敛到 `stable(K0)` 的队也跑一次「向上试一格 `K0+1`」的截短结算
  * （旧门只认 `outerExit === 'cycle'`，105 预设里 100 支是 stable ⇒ 带宽下端的缓坡进不来）。
  *
- * ## 为什么默认关（2026-11-08 实测，别急着改默认值）
- * 全库 A/B：`=on` 动 25 队、伤害 22 升 3 **降**：
+ * ## 默认**开**（2026-11-08 用户裁决）
+ *
+ * 用户逐字：「下降无所谓啊，又没人说现在才是标准的。下降后明天改个东西又要变呢。」
+ * ⇒ **不把「改动前那套数」当金标准**。本卡选的是「按机制兑现」而不是「保住今天的读数」：
+ * 带宽下端的缓坡要进来，就必须让这些队真的多开一窗、按 δ 截短兑现，
+ * 代价是 3 支队的伤害下降（不是算错，是机制说了它更差）。
+ *
+ * ### 已知的 3 条下降（如实留痕，不掩盖）
+ * 全库 A/B：25 队 K 上升、**3 队伤害下降**：
  * `auto-1611-1361-1211` −5.76%、`auto-1611-1141-1211` −15.40%、`auto-1611-1571-1211` −9.81%。
- * 根因是**结构性**的，不是参数问题：`solveTeam` 的 `CalcRoundResult` 只有资源面、**读不到伤害**
+ * 根因是**结构性**的：`solveTeam` 的 `CalcRoundResult` 只有资源面、**读不到伤害**
  * ⇒ 结算层只能按「K 大就是好」上扫，而这 3 支队的「多开一窗」会把一个整行技能挤掉
  * （实测 `auto-1611-1141-1211` slot1 `ex 9→8`、nec 23.48→25.98，即既有注释点名的
  * 「葬血强袭整行消失、伤害反而更低」同族）。
- *
- * 钉 K 探针实证（`.zc/perf/pinVsDelivered.json`）：这 3 支的「钉 K+1」**本身就低于**「钉 K」——
+ * 钉 K 探针实证（`.zc/perf/pinVsDelivered.json`）：这 3 支「钉 K+1」**本身就低于**「钉 K」——
  * `auto-1611-1361-1211` 钉K5 22.36M > 钉K6 21.30M；`auto-1611-1141-1211` 钉K5 20.33M > 钉K6 18.32M。
- * ⇒ 与用户裁决「只是提供了更多选择而不是**强制降低**」直接冲突 ⇒ **不许默认开**。
  *
- * 打开它的前置条件 = 交付层能按伤害做 argmax（现在只有分析层 `cinemaUpliftFrontier#pickDelivery`
- * 会做；引擎自身的自由收敛结果没有这一层）。在那之前，本 flag 保持关。
+ * ### 仍然开着的理由（用户裁决 = 「今天的数不是标准」）
+ * 这 3 条的差不是判据错，是**同一个物理模型的诚实结果**：K+1 窗确实分不到足够时长，
+ * 多出来的那窗会挤掉一行技能。要同时保住「缓坡连续」和「这 3 队不降」，
+ * 唯一干净的路是**交付层按伤害 argmax**（现在只有分析层 `cinemaUpliftFrontier#pickDelivery` 会做，
+ * 引擎自身的自由收敛结果没有这一层）—— 那是另一张卡，不在本条塞。
  *
- * 打开后另测：`npx vitest run src/composables/__tests__/continuityTruncation.test.ts`
- * + 全库 A/B 探针 `.zc/perf/stableBandAB.probe.perf.ts`。
+ * 回退 = `PROBE_STUN_STABLE_BAND=off`（逐位退回改动前，判据⑩ 的负控用它）。
+ * 探针：`.zc/perf/stableBandAB.probe.perf.ts`（全库 A/B）、`.zc/perf/pinVsDelivered.probe.perf.ts`（钉 K 对照）。
  */
 export function stableBandEnabled(): boolean {
-  return probeFlag('PROBE_STUN_STABLE_BAND') === 'on'
+  return probeFlag('PROBE_STUN_STABLE_BAND') !== 'off'
 }
 
 /** 外层不动点 + S3 可行化决策（函数体 = 原 `useResourceCalc.ts:254–652` 外提，CC-10；只读输入、不写 store）。 */
