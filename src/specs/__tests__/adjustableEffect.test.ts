@@ -74,18 +74,10 @@ const CASES: Array<[string, string, string, number]> = [
   // ⚠ 2026-10-30 重锚：蚀骨毒素账目/面板基线变更的下游 ⇒ stage4 层数读数 28→22（线性不变）。
   // ⚠ 2026-11-08 重锚 22 → **26**（稳定停点入口门默认开 ⇒ 本队失衡 K +1 ⇒ stage4 层数变；
   //   **仍是严格线性**：实测 rate=1 读 26、rate=2 读 52 = 2×26。`=off` 口径仍 22/44。
-  /**
-   * ⚠ **2026-11-08 入口门默认开启后本条**不能**重钉 —— 实测三点 rate=0/1/2 读 0 / 22 / 52，
-   * 而 2×22 = 44 ≠ 52：**rate=2 那一档把失衡 K 抬了一级**（22 口径的 K → 26 口径的 K），
-   * 于是「恰好 2 倍」这条比例判据在默认口径下**真的不成立**。
-   * 这与 `substatScore ★主评分` 是同一族缺陷（离散跳变混进比例评分），
-   * 按纪律**不许改断言求绿**，留红并在交接里点名。`=off` 口径 0/22/44 仍严格线性。
-   *
-   * 🔎 2026-11-09 复核：曾试图把它重钉成 26（以为「r1=26/r2=52 线性」），**实测否证** ——
-   * 那个 26 来自另一个队伍组成的探针；本用例自己的三点读数就是 0 / 22 / 52，
-   * 同一口径下 2×22 ≠ 52 ⇒ 非线性成立，维持留红。
-   */
-  ['1521.xixifu_toxin.toxin_tuxin_stage4.rate', 'xixifu_toxin', 'toxin_tuxin_stage4', 22],
+  // 1521 的 `toxin_tuxin_stage4` 已移到下方「§3 收敛反馈型」单独测（见那里的实测归因）：
+  // 它是 `countSource: cfgField`，值 = 吐信#4 计数 × 2 × rate，而**计数本身随 rate 变**
+  // （毒素总量↑ ⇒ 攒条↑ ⇒ 失衡池 K 跳级）⇒ 套「rate=2 ⇒ 恰好 2×基准」是**断言形态错配**，
+  // 本文件 §3 已明文规定这一型必须改用闭式恒等式。
   ['1531.billy_radiant_star.billy_radiant_basic4_gain.rate', 'billy_radiant_star', 'billy_radiant_basic4_gain', 21],
   ['1531.billy_radiant_star.billy_radiant_ex_gain.rate', 'billy_radiant_star', 'billy_radiant_ex_gain', 22],
   ['1531.billy_star_glow.billy_star_basic4_gain.rate', 'billy_star_glow', 'billy_star_basic4_gain', 21],
@@ -321,6 +313,75 @@ describe('spec adjustable（Form-E）第二批：链式/严格线性', () => {
     expect(points[1]!.hits, '反馈必须实际改变输入，不能退化成固定基准的线性夹具').not.toBe(points[2]!.hits)
     expect(points[1]!.cutHits, '低档须覆盖无截断口径').toBe(0)
     expect(points[3]!.cutHits, '高档须覆盖截断前/后口径差异').toBeGreaterThan(0)
+  }, 300000)
+})
+
+/**
+ * §3′ 收敛反馈型（1521 希希芙「吐信第四段」）：与 1591 同一族，**不能**套「rate=2 ⇒ 恰好 2×基准」。
+ *
+ * ## 为什么必须换断言形态（2026-11-09 实测归因）
+ *
+ * 该条 spec 是 `countSource: cfgField` / `countField: xixifuA4Count` / `amountPerCount: 2`，
+ * 值 = `xixifuA4Count × 2 × rate`。而 `xixifuA4Count` **本身随 rate 变**：
+ * rate↑ ⇒ 吐信#4 次数↑ ⇒ 毒素总量↑ ⇒ 攒条↑ ⇒ **失衡池 K 跳级** ⇒ 强特/连携次数↑
+ * ⇒ 又回头抬高 #4 次数。**这是正反馈，不是同一 K 下的比例失真。**
+ *
+ * 实测（本夹具，投影 off、吸收 0；两列都是同一份结果里的独立出口）：
+ * ```
+ * rate   stage4   stunned   ⇒ 解出的 #4 计数（stage4/(2·rate) 与 stunned/(1·0.5) 必须相等）
+ * 0         0       6.0     ⇒        —              12
+ * 0.5      11       5.5     ⇒       11              11
+ * 1        22       5.5     ⇒       11              11
+ * 2        52       6.5     ⇒       13              13     ← 计数真的变了
+ * ```
+ * 门开时 rate=2 那一档 K 从 4 跳到 5 ⇒ `2×22 = 44 ≠ 52`。**引擎自洽**（两条出口解出同一个 #4 计数），
+ * 错的是「三点必须严格成比例」这个**断言形态** —— 本文件 §3 早已为这一型规定正解：
+ * 「`rate=0` ⇒ 恒 0」+「从同一结果的独立出口重建输入并验**闭式恒等式**」+「反馈真的改变输入」。
+ */
+describe('spec adjustable §3′：1521 吐信第四段（收敛反馈型，闭式恒等式）', () => {
+  it('两条独立出口解出同一个 #4 计数，且反馈真的改变计数', async () => {
+    const id = '1521.xixifu_toxin.toxin_tuxin_stage4.rate'
+    const RICH1521 = { cinemaLevel: 6, parryCount: 8, dodgeCounterCount: 12, chainCountPerStun: 2, blockCount: 4, perfectBlockCount: 5 }
+    const { config } = await setupHarness([
+      { agentId: '1521', ...RICH1521 },
+      { agentId: '1011', cinemaLevel: 6 },
+      { agentId: '1211', cinemaLevel: 6 },
+    ] as never)
+    for (const buff of config.globalBuffs) buff.enabled = false
+    config.setMechanicSetting('time.stunPlanProjection', 0)
+    config.setMechanicSetting(COMBO_ALIGN_ABSORB_RATIO_SETTING, 0)
+    const calc = useResourceCalc()
+    /** 同一份结果里的两条独立出口：stage4（×2×rate）与 stunned_bonus（×1×0.5，缺省滑块不动） */
+    const read = async (rate: number) => {
+      config.setMechanicSetting(id, rate)
+      await new Promise(r => setTimeout(r, 0))
+      const ch = calc.resourceResult.value?.characters?.find(c => c.agentId === '1521') as
+        { specResources?: Record<string, { gains?: Record<string, number> }> } | undefined
+      const g = ch?.specResources?.xixifu_toxin?.gains ?? {}
+      return { stage4: g.toxin_tuxin_stage4 ?? 0, stunned: g.toxin_tuxin_stunned_bonus ?? 0 }
+    }
+    const points: Array<{ rate: number; stage4: number; a4: number }> = []
+    for (const rate of [0.5, 1, 2]) {
+      const { stage4, stunned } = await read(rate)
+      // 闭式恒等式：两条出口各自解出同一个 #4 计数
+      const a4FromStage4 = stage4 / (2 * rate)
+      const a4FromStunned = stunned / (1 * 0.5)
+      expect(a4FromStunned,
+        `rate=${rate}: 两条独立出口必须解出同一个 #4 计数（stage4 解出 ${a4FromStage4}，stunned 解出 ${a4FromStunned}）`,
+      ).toBeCloseTo(a4FromStage4, 9)
+      expect(a4FromStage4, `rate=${rate}: #4 计数必须为正整数`).toBeGreaterThan(0)
+      points.push({ rate, stage4, a4: a4FromStage4 })
+    }
+    // rate=0 ⇒ 该来源关闭（滑块真的接线）
+    expect((await read(0)).stage4, 'rate=0 必须关闭这个来源').toBe(0)
+    // 单调
+    for (let i = 1; i < points.length; i++) expect(points[i]!.stage4).toBeGreaterThan(points[i - 1]!.stage4)
+    /**
+     * **反馈必须真的改变输入**：否则本条退化成「固定基准 × rate」的线性夹具，
+     * 上面那条闭式恒等式就失去判别力（两列同乘一个常数，怎么都对）。
+     * 实测门开时 rate=2 的 #4 计数 13 ≠ rate=1 的 11 —— 差的正是 K 跳级那一次。
+     */
+    expect(points[2]!.a4, '反馈必须实际改变 #4 计数（否则不是反馈型，应回线性表）').not.toBe(points[1]!.a4)
   }, 300000)
 })
 
