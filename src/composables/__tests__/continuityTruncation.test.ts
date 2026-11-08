@@ -101,8 +101,29 @@ describe('判据①：Δ<W 时 K 上升，且伤害落在「钉 K2 < 自由 < �
     // 若结算侧只是把 K2 的读数抄过来 ⇒ 第一条红；若它按**整窗**虚高（覆盖 3 整窗）⇒ 第二条红。
     expect(free.dmg, `自由收敛低于钉 K2（截短被算亏了）：${(free.dmg / 1e6).toFixed(3)}M vs ${(pin2.dmg / 1e6).toFixed(3)}M`)
       .toBeGreaterThan(pin2.dmg)
-    expect(free.dmg, `自由收敛超过钉 K3（δ>0 却说整窗）：${(free.dmg / 1e6).toFixed(3)}M vs ${(pin3.dmg / 1e6).toFixed(3)}M`)
-      .toBeLessThan(pin3.dmg)
+    /**
+     * ⚠ **2026-11-09 第 58 轮：原参照物失效，改为直接钉语义**（提交 e1dff696 的下游）。
+     *
+     * 原断言是 `free.dmg < pin3.dmg`，把「钉 K3 帧」当作**整窗虚高**的参照物 —— 那时锁定帧
+     * 不报 δ（`stunContinuityClip` 只在 kStar 结算块里写），所以它按 3 个**整窗**算覆盖率，
+     * 读数确实更高。e1dff696 让锁定帧也如实报 δ 之后，钉 K3 与自由帧**逐位同源**
+     * （实测 dmg 31539594.59849368 两边相同、clip 都是 0.17515499944862545），
+     * 于是「free < pin3」这个写法恒假 —— 不是判据想抓的东西消失了，而是**参照物变成了同类**。
+     *
+     * 判据本意（注释原文）是「若它按**整窗**虚高（覆盖 3 整窗）⇒ 红」。直接钉这个语义：
+     * 交付覆盖率必须**严格小于** K 个整窗的覆盖率（差值就是 δ/effTime）。
+     * 同时把「钉 K3 ≡ 自由帧」钉成断言 —— 这比原来更严（原来只要求有差且方向对）。
+     */
+    const fullWindowCoverage = (free.pool * free.windowDuration) / free.effectiveTime
+    expect(free.coverage,
+      `δ>0 却按整窗报覆盖率：实测 ${free.coverage.toFixed(9)} / 整窗 ${fullWindowCoverage.toFixed(9)}`,
+    ).toBeLessThan(fullWindowCoverage)
+    expect(free.coverage,
+      '覆盖率差必须就是 δ/effTime（两条通路同源，不是各算一份）',
+    ).toBeCloseTo(fullWindowCoverage - free.continuityClip / free.effectiveTime, 12)
+    expect(pin3.dmg,
+      `钉 K3 与自由帧必须同源（锁定帧也报 δ）：${(pin3.dmg / 1e6).toFixed(3)}M vs ${(free.dmg / 1e6).toFixed(3)}M`,
+    ).toBeCloseTo(free.dmg, 6)
     // 且「按比例」而不是「掉一窗」：自由收敛必须**贴近**钉 K3 而不是钉 K2（δ=0.175s 只差 0.8%）
     expect(free.dmg / pin3.dmg, 'δ 只有 0.175s ⇒ 应贴近整窗，而不是像掉一窗那样落到 K2').toBeGreaterThan(0.99)
   })
