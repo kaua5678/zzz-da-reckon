@@ -52,9 +52,12 @@ import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
  * - 护盾量（3.4.3：万籁与我同歌 2% / 弦歌相和 4% / 震律齐鸣 8% 生命）、抗打断、无敌、
  *   「全队角色每触发一次毁伤，知更鸟固定回复 15 点能量」**不建**：前四者是生存面，
  *   最后一条需要跨角色毁伤计数通道（ModuleFeedback 现无该键），已记在 spec 的未建模段。
- * - **3.4.3 终结技新增的「全队[锋御]角色固定回复 20 点锐能」没有通道**：锐能池由挽昼/克拉蕾
- *   **各自模块**按闭式（进场 60 + 回复×时间 + 平A 锐能）算，引擎没有跨槽「锐能给养」通道；
- *   知更鸟自己的终结技次数（`state.ultimateCount`，实测 3 次）在 converge 相位读不到。同样记在 spec 未建模段。
+ * - **3.4.3 终结技「全队[锋御]角色固定回复 20 点锐能」已建模**（2026-11-08 批 2）：走 postRound 相位
+ *   （`convergence.ts:834` 起派发，带**上一轮**收敛的 `ultimateCounts`），读**自己槽**的次数
+ *   写到每个 `specialty === 'sharpen'` 队友的 `cfg.sharpnessGiftFromTeam`（她自己不写、无锋御队零写），
+ *   锋御模块把它作为一条 `gifts` 喂 `mechanics/sharpnessIncome`（批 1 抽出的单一事实源）。
+ *   实测：知更鸟 3 次终结技 ⇒ 克拉蕾锐能总量 80 → 140（+60）。判据 `robinSharpnessGift.test.ts` +
+ *   `robinSharpnessGiftPipeline.test.ts`（真管线）。
  *
  * ## 滑块
  * robin.buffPointActive（开关，缺省 1）：重音节拍是否常驻。0 = 白板幕后协奏（判据负控）。
@@ -71,6 +74,17 @@ export const ROBIN_DEF_PER_STEP_PER_LEVEL = 3
 /** 幕后协奏·防御：基础上限 = 440 + 30 × 技能等级（Lv12 = 800） */
 export const ROBIN_DEF_CAP_BASE = 440
 export const ROBIN_DEF_CAP_PER_LEVEL = 30
+/**
+ * 终结技「星辰协奏曲」：**全队[锋御]角色固定回复 20 点[锐能]**（3.4.3+20278274 新增句）。
+ *
+ * 原文：「队伍中所有[锋御]角色固定回复 20 点[锐能]」。
+ * 落点 = 每个 `specialty === 'sharpen'` 队友的 `cfg.sharpnessGiftFromTeam`（知更鸟自己不写），
+ * 由锋御模块作为一条 `gifts` 传给 `mechanics/sharpnessIncome`（见 `applyRobinSharpnessGift`）。
+ *
+ * @fact agent:1661/终结技·锋御锐能给养 口径: 知更鸟终结技每次给**全队每个[锋御]**固定 20 点锐能（不是按槽数叠加、不含她自己）；落点 = 锋御模块 cfg.sharpnessGiftFromTeam，postRound 相位按上一轮她自己终结次数×20 绝对写入 | 据 用户@2026-11-08「知更鸟终结技『全队[锋御]固定回复 20 点锐能』目前未建模」直给数值·复核@2026-11-08 | 验 src/mechanics/__tests__/robinSharpnessGift.test.ts | 锚 src/mechanics/agents/robin.ts#applyRobinSharpnessGift | 信 确认
+ * ⟳复核: 若终结技行 1661010 的锐能句改数值（或改为「每次命中」/按层数），或[锋御]职业新增非锐能语义的角色，则本常量与 specialty 判据都要重核 | 到期 2027-09-30
+ */
+export const ROBIN_ULT_TEAM_SHARPNESS = 20
 /** [重音节拍]：使防御提升效果**及其上限**额外提升 25%（原文核心被动 Lv.7 末段） */
 export const ROBIN_BUFF_POINT_DEF_MULT = 1.25
 /**
@@ -251,14 +265,69 @@ function buildRobinResourceSections({ result }: AgentResourceSectionsInput) {
  * 口径（原文）：「队伍中**其他**角色发动[反制支援]后，若触发[完美反制]自动发动」
  * ⇒ 只数别槽、不数自己；一次反制支援 = 整组化解 = 一次完美反制 ⇒ 1:1。
  */
-function applyRobinTeamConfig({ slot, cfg, characters, phase }: AgentTeamConfigInput): void {
-  if (phase !== 'converge') return
-  let teammateCount = 0
-  for (const other of characters) {
-    if (other.slot === slot) continue
-    teammateCount += Math.max(0, Math.floor(Number(other.counterAssistCount) || 0))
+function applyRobinTeamConfig({ slot, cfg, characters, team, phase, ultimateCounts }: AgentTeamConfigInput): void {
+  if (phase === 'converge') {
+    let teammateCount = 0
+    for (const other of characters) {
+      if (other.slot === slot) continue
+      teammateCount += Math.max(0, Math.floor(Number(other.counterAssistCount) || 0))
+    }
+    cfg.robinTeammateCounterAssists = teammateCount
+    return
   }
-  cfg.robinTeammateCounterAssists = teammateCount
+  applyRobinSharpnessGift({ slot, characters, team, phase, ultimateCounts })
+}
+
+/**
+ * 终结技「全队[锋御]角色固定回复 `20` 点[锐能]」——**跨槽锐能给养**（3.4.3+20278274 新增句）。
+ *
+ * 原文（spec 1661 终结技 1661010 条目）：「队伍中所有[锋御]角色固定回复 20 点[锐能]」。
+ *
+ * ## 为什么必须走 postRound + cfg 字段（规则 6）
+ * 锐能池住在**各锋御自己的模块**里（克拉蕾/挽昼都走 `sharpnessIncome`），引擎没有、也不该有
+ * 跨槽锐能通道。唯一被允许的跨槽写 cfg 路径 = 本钩子的 postRound 相位
+ * （`convergence.ts:834` 起派发，带**上一轮**收敛的 `ultimateCounts`）：
+ * 知更鸟读**自己槽**的终结技次数，写到每个锋御队友的 `cfg.sharpnessGiftFromTeam`，
+ * 锋御模块把它作为一条 `gifts` 传给 `sharpnessIncome`（批 1 留的那个口）。
+ *
+ * ## 三条硬判据（写在 `robinSharpnessGift.test.ts`）
+ * ① 单锋御队：该锋御的锐能池 **+ 20 × 知更鸟终结技次数**；
+ * ② 无锋御队：**零写**（字段缺省 = 该来源本局不发生，不留 0 残留）；
+ * ③ **她自己的槽不写**：原文限定「[锋御]角色」，她是[防护] ⇒ 判据必须是 specialty，
+ *    不能退化成「是所有队友都写」。
+ *
+ * ## 为什么用 `characters.find(c => c.slot === …)` 而不是 `characters[slot]`
+ * `characters` 是**按位置压缩**的（`buildCharConfig` 跳过空槽）⇒ 槽位号 ≠ 下标；
+ * `characters[slot]` 在前导/中间空槽时会取到 undefined 或**别人那份 cfg**（判据 17 的经典缺陷）。
+ * ⚠ `ultimateCounts` 与 `characters` **同序**（都按压缩后的位置），故取她的次数也必须用
+ * 「她那份 cfg 在 characters 里的下标」，不能写 `ultimateCounts[slot]`——两者在有空槽时不同。
+ */
+function applyRobinSharpnessGift(input: {
+  slot: number
+  characters: AgentTeamConfigInput['characters']
+  team: AgentTeamConfigInput['team']
+  phase: AgentTeamConfigInput['phase']
+  ultimateCounts?: readonly number[]
+}): void {
+  const { slot, characters, team, phase, ultimateCounts } = input
+  if (phase !== 'postRound') return
+  const ownIdx = characters.findIndex(c => c.slot === slot)
+  if (ownIdx < 0) return
+  const ultCount = Math.max(0, Math.floor(Number(ultimateCounts?.[ownIdx] ?? 0)))
+  const gift = ultCount * ROBIN_ULT_TEAM_SHARPNESS
+  for (const mate of characters) {
+    // ③ 她自己那一槽不写（原文限定 [锋御]）
+    if (mate.slot === slot) continue
+    if (!isSharpenSlot(mate.slot, team)) continue
+    // **绝对写**（不是 +=）：postRound 每轮都会跑，累加会按轮数重复计入；
+    // 0 次终结技时写 0 而非跳过——清零是必要的（上一轮的赠予不能留在池里）。
+    mate.sharpnessGiftFromTeam = gift
+  }
+}
+
+/** 该槽位是否是[锋御]（`specialty === 'sharpen'`）。身份从 `team` 快照读，不认 agentId 名单。 */
+function isSharpenSlot(slot: number, team: AgentTeamConfigInput['team']): boolean {
+  return team.some(m => m.slot === slot && m.agent?.specialty === 'sharpen')
 }
 
 function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: AgentResourceInput): void {

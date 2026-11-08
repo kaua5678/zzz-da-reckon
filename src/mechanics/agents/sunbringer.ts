@@ -9,6 +9,7 @@ import { effectiveCombatTime } from '@/core/effectiveTime'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { allocateBossGashPool, GASH_PER_LAYER } from '@/mechanics/gashMaim'
+import { SHARPNESS_INITIAL, sharpnessIncome } from '@/mechanics/sharpnessIncome'
 
 /**
  * 挽昼（1601·锋御/燎原）——测试服角色（`Test1` 占位包起，**3.4.3+20278274** 重录），2026-10-25 第二刀 = **六条资源循环**。
@@ -47,8 +48,13 @@ export const INITIAL_CRIT_DMG_TO_CRIT_RATE = 0.35
 export const POLAR_DAY_CRIT_RATE = 40
 /** 极昼：造成伤害无视目标 20% 防御力（满覆盖近似） */
 export const POLAR_DAY_DEF_IGNORE = 20
-/** 锐能：进场 +60（勘域 180s 一次 ⇒ 每局一次） */
-export const SHARPNESS_INITIAL = 60
+/**
+ * 锐能：进场 +60（勘域 180s 一次 ⇒ 每局一次）。
+ *
+ * ⚠ 进场基数**不在本文件定义**——单一事实源 = `mechanics/sharpnessIncome#SHARPNESS_INITIAL`
+ * （规则 11：改造前本文件与 `claret.ts` 各抄一份字面量 60）。本行 re-export 保持既有 import 路径不变。
+ */
+export { SHARPNESS_INITIAL }
 /** 锐能：强化特殊技单发消耗（raw「锐能消耗 30点」） */
 export const SHARPNESS_COST_PER_EX = 30
 /** 愿力：每消除 1 层残痕 +40，上限 160 */
@@ -79,6 +85,41 @@ export const EMBER_SCAR_OTHER_RATE = 0.15
 export const EMBER_SCAR_C6_EXTRA_MULT = 1.5
 /** 影画1：残痕积蓄效率 +10%（v2 文本）；灯塔白送的整层不吃此效率 */
 export const SUNBRINGER_C1_GASH_EFFICIENCY = 1.1
+/**
+ * **[招架支援]残痕**：每成功招架 1 次给 Boss 池加多少点（3.4.3+20278274 新增句「德蕾琪娜成功招架敌人
+ * 的攻击时，可为敌人积累残痕值」）。
+ *
+ * ## 为什么是模块常量而不是 catalog 行（二选一的依据）
+ * 数值在 gachabase `data/raw/gachabase/1601.json` 的 **1601206 / 1601207 / 1601208** 三行
+ * （`animator_event` = ParryAid_L / ParryAid_H / ParryAid_…，即轻 / 重 / 连续三档），
+ * `gash_buildup` = 5664 / 9914 / 9914，除以 100 得 **56.64 / 99.14 / 99.14**（与 base 网页显示值一致）。
+ *
+ * ⚠ **不走 `scripts/upsert-gachabase-rows.mjs`，也不硬塞进 catalog 的 1601201/2/3**，三条理由：
+ *   ① 1601206/7/8 在 catalog 里**不是 move**（没有 damage/daze/actionTime，只有 gash 一列）——
+ *      upsert 脚本按 moveId 逐条对齐，它们对不上任何 move；
+ *   ② 想让脚本落进 catalog，就得造一张**跨 id 别名表**（1601206→1601201…）。那张表的依据是
+ *      「ParryAid_**L** = **轻**招架」这条**推断**（L/H 与 轻/重 同名族，但没有共同的显式 key）——
+ *      把推断写进 catalog 会让它变成「数据事实」，而 catalog 是数值唯一事实源（规则 2），
+ *      不该装推断；
+ *   ③ 常量 + `data/raw` 引用 + **钉值测试**（`sunbringerParryGash.test.ts` 直接读 raw 对拍）= 可复核、
+ *      raw 一变测试就红，与 `handCopiedConstants.test.ts` 的 T129 反推单价同一手法。
+ *
+ * ## 哪一档
+ * 由**引擎选中的那条**招架支援行决定（`cfg.defensiveAssistMoveId`，来自 `moveLookup#findDefensiveAssist`：
+ * 优先 en 含 `#1`，否则取 min-id ⇒ 挽昼取 **1601201 轻招架**）。模块不自己猜档、也不列 id 名单——
+ * 只把「引擎选中的 moveId」翻译成点数值；引擎换档，数值自动跟着换。
+ *
+ * ⚠ 吃掉影画1 的 ×1.1 积蓄效率：与 basic/ex/chain 三条积累来源**在同一处乘**（见 `gash` 表达式），
+ *   因为原文说的是「积累残痕值」——它是**积累**，不是灯塔那种「直接添加」层。
+ */
+export const SUNBRINGER_PARRY_GASH_BY_ASSIST_MOVE_ID: Readonly<Record<string, number>> = {
+  /** 1601201 轻招架 ← gachabase 1601206 ParryAid_L，gash 5664/100 */
+  '1601201': 56.64,
+  /** 1601202 重招架 ← gachabase 1601207 ParryAid_H，gash 9914/100 */
+  '1601202': 99.14,
+  /** 1601203 连续招架 ← gachabase 1601208，gash 9914/100 */
+  '1601203': 99.14,
+}
 /**
  * [招架支援]造成的失衡值提升 50%（nanoka **3.4.1+19997538** 新包新增的一句，3.4.1+19850203 及更早没有）：
  * > 「德蕾琪娜发动[招架支援]**造成的失衡值提升50%**，艾尔妲与林德薇恩发动的[支援突击]残痕积蓄效率提升15%，
@@ -217,19 +258,61 @@ export function solveSunbringerLoops(input: {
    * 与克拉蕾 1611028+1611030 的「琢形送层」同口径（`claret.ts#computeClaretSharpResource`）。
    */
   counterAssistCount?: number
+  /**
+   * **跨槽锐能给养**（点）：3.4.3 知更鸟终结技「全队[锋御]固定回复 20 点锐能」。
+   * 由 `robin.ts#applyRobinSharpnessGift` 在 postRound 相位写进本槽 `cfg.sharpnessGiftFromTeam`，
+   * 两个调用点（buildExecutions / patchExecutions）都从 cfg 透传进来。缺省 0 = 本局无来源。
+   */
+  giftSharpness?: number
+  /**
+   * 本局**成功招架**次数（= `cfg.parryCount`；引擎按它同时产「招架支援行 + 支援突击行」，见
+   * `core/resource/rowBuild.ts:433`）。3.4.3 新增「成功招架 ⇒ 为敌人积累残痕值」，数值见
+   * `SUNBRINGER_PARRY_GASH_BY_ASSIST_MOVE_ID`（按引擎选中的那一档取）。
+   */
+  parryCount?: number
+  /**
+   * 引擎**选中的那一档**招架支援 moveId（= `cfg.defensiveAssistMoveId`，由 `findDefensiveAssist` 决定）。
+   * 模块只做「moveId → 点数值」的翻译，不自己猜档、不列 id 名单（引擎换档数值自动跟着换）。
+   */
+  defensiveAssistMoveId?: string
 }) {
   const { meta, combatTime, basicTime, chainCount, totalDecibel, ultimateCost } = input
-  const sharpPool = SHARPNESS_INITIAL + meta.sharpnessRegen * combatTime + meta.basic.sharpPerSec * basicTime
+  /**
+   * 跨槽给养（点，入参已由调用点清洗成 ≥0）：3.4.3 知更鸟终结技「全队[锋御]固定回复 20 点锐能」。
+   * ⚠ 只加进**锐能池**：它不改残痕/愿力/烬痕任何一条循环的输入（原文只说「回复锐能」）。
+   */
+  const giftSharpness = Number(input.giftSharpness ?? 0)
+  // 式子单源 = `mechanics/sharpnessIncome`（规则 11）：进场 + 自动累积×接战 + 招式回复×平A时间
+  // + 跨槽给养（3.4.3 知更鸟终结技「全队[锋御]固定回复 20 点锐能」；无来源时缺省 0）。
+  const sharpPool = sharpnessIncome({
+    initial: SHARPNESS_INITIAL,
+    regenPerSec: meta.sharpnessRegen,
+    seconds: combatTime,
+    movePerSec: meta.basic.sharpPerSec,
+    moveSeconds: basicTime,
+    gifts: [giftSharpness],
+  }).total
   let budget = Math.max(0, combatTime)
   const exMax = meta.ex.actionTime > 0 ? Math.floor(budget / meta.ex.actionTime) : 0
   const exCount = Math.max(0, Math.min(Math.floor(sharpPool / SHARPNESS_COST_PER_EX), exMax))
   budget = Math.max(0, budget - exCount * meta.ex.actionTime)
 
-  // 残痕来源：平A 秒均 + 强特/连携表值 + **反制支援灯塔送的层**（每组 +600 点，不吃积蓄效率）
+  // 残痕来源：平A 秒均 + 强特/连携表值 + **招架支援**（3.4.3）+ **反制支援灯塔送的层**（每组 +600 点，不吃效率）
   const counterGiftStacks = Math.max(0, Math.floor(input.counterAssistCount ?? 0))
   // 影画1（v2 文本「残痕积蓄效率提升10%」）：只放大**积累来源**，灯塔白送的整层不吃效率
   const gashEfficiency = cinemaLevelOf(input.cinemaLevel) >= 1 ? SUNBRINGER_C1_GASH_EFFICIENCY : 1
-  const gash = (meta.basic.gashPerSec * basicTime + exCount * meta.ex.gash + chainCount * meta.chain.gash) * gashEfficiency
+  /**
+   * **招架支援的残痕**（3.4.3+20278274 原文「德蕾琪娜成功招架敌人的攻击时，可为敌人积累残痕值」）。
+   *
+   * 数值按**引擎选中的那一档**取（`defensiveAssistMoveId`）：轻 56.64 / 重 99.14 / 连续 99.14 点/次
+   * （gachabase 1601206/7/8，落法依据见该常量头注释）。
+   * ⚠ 与 basic/ex/chain **在同一处乘** `gashEfficiency`：原文说它是「**积累**残痕值」，
+   *   与灯塔「直接为目标添加 1 层」不同——积累吃积蓄效率，白送层不吃。
+   * ⚠ 未选中任何招架档（无招架支援 / 引擎没解析到）⇒ 0，不影响其余来源。
+   */
+  const parryGashPerCast = SUNBRINGER_PARRY_GASH_BY_ASSIST_MOVE_ID[String(input.defensiveAssistMoveId ?? '')] ?? 0
+  const parryGash = Math.max(0, Math.floor(Number(input.parryCount ?? 0))) * parryGashPerCast
+  const gash = (meta.basic.gashPerSec * basicTime + exCount * meta.ex.gash + chainCount * meta.chain.gash + parryGash) * gashEfficiency
     + counterGiftStacks * GASH_PER_LAYER
   // 消耗层：强化特殊技与连携技都会「重击命中后消耗」，每次最多 3 层
   //
@@ -310,6 +393,7 @@ export function solveSunbringerLoops(input: {
   return {
     sharpPool, sharpUsed: exCount * SHARPNESS_COST_PER_EX, exCount,
     gash, gashLayers, maimDemand, maimCount, counterGiftStacks,
+    parryGash, parryGashPerCast,
     wishTotal, wishSpent: jufengCount * JU_FENG_WISH_COST, jufengCount,
     changanCount, ultFeasible, ultACount, torchCount,
   }
@@ -327,6 +411,11 @@ function buildSunbringerExecutions({ cfg, state, executions }: AgentResourceInpu
     totalDecibel: Math.max(0, state.totalDecibel),
     ultimateCost: Number(cfg.ultimateCost),
     counterAssistCount: cfg.counterAssistCount,
+    // 跨槽锐能给养（知更鸟终结技）——postRound 写 cfg、这里读，缺少即 0
+    giftSharpness: Math.max(0, Number(cfg.sharpnessGiftFromTeam ?? 0)),
+    // 3.4.3 招架残痕：次数 = 本槽招架次数；档位 = 引擎选中的那条招架支援行（不自己猜档）
+    parryCount: Math.max(0, Math.floor(cfg.parryCount)),
+    defensiveAssistMoveId: cfg.defensiveAssistMoveId,
   })
   const push = (row: Parameters<typeof moduleExecRow>[0]) => executions.push(moduleExecRow(row))
 
@@ -516,6 +605,11 @@ export function patchSunbringerExecutions({ cfg, state, executions }: AgentResou
     cinemaLevel: cinemaLevelOf(cfg.sunbringerCinemaLevel),
     // 反制支援送的残痕层会改毁伤次数 ⇒ 烬痕的同源解必须吃同一个输入（否则两处解法分叉）
     counterAssistCount: cfg.counterAssistCount,
+    // 锐能给养会影响强特发数 ⇒ 烬痕同源解也必须吃同一输入（理由同上）
+    giftSharpness: Math.max(0, Number(cfg.sharpnessGiftFromTeam ?? 0)),
+    // 招架残痕会改毁伤次数 ⇒ 烬痕同源解同样必须吃同一输入（与 counterAssistCount 同理由）
+    parryCount: Math.max(0, Math.floor(cfg.parryCount)),
+    defensiveAssistMoveId: cfg.defensiveAssistMoveId,
   })
   const ember = computeEmberScar({
     meta,

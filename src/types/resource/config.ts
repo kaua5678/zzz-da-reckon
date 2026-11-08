@@ -226,6 +226,20 @@ export interface CharacterOperationConfig {
   moveActionTimes: Record<string, number>
   /** 开局赠送能量（普通人40，仪玄120闪能等） */
   initialEnergyGift: number
+  /**
+   * **跨槽锐能给养**（点）：队友终结技给[锋御]补的锐能（3.4.3 知更鸟终结技「全队[锋御]固定回复 20 点锐能」）。
+   *
+   * 写入方：`agents/robin.ts#applyRobinSharpnessGift`（**postRound 相位**，按上一轮她自己的终结技次数 ×20
+   * 绝对写入，只写 specialty === 'sharpen' 的**队友**槽；她自己不写）。
+   * 读取方：锋御模块（`agents/claret.ts` / `agents/sunbringer.ts`）把它作为 `gifts` 的一项传给
+   * `mechanics/sharpnessIncome`。
+   *
+   * 为什么是**公共**字段而不是模块私有（CC-359/360 口径）：一个写入方（robin）+ **两个**读取方
+   * （claret / sunbringer）⇒ 被两处以上引用，按 CC-360 归公共接口。模块私有扩充块只收「单模块自产自读」。
+   *
+   * 缺省 = undefined ⇒ 该来源本局不发生（消费侧 `Number(x ?? 0)`，与 initialEnergyGift 同款纪律）。
+   */
+  sharpnessGiftFromTeam?: number
   /** 开局赠送喧响（默认1000，部分命座额外） */
   initialDecibelGift: number
   /** 不可分享的额外喧响（默认0） */

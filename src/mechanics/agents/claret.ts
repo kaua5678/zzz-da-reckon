@@ -23,6 +23,7 @@ import { pickThirdNamedBasicSegment, fusedRowValue, findMoveById, getRowValue } 
 import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
 import { moduleExecRow, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { GASH_PER_LAYER, GASH_MAX_STACKS, allocateBossGashPool } from '@/mechanics/gashMaim'
+import { SHARPNESS_INITIAL, sharpnessIncome } from '@/mechanics/sharpnessIncome'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 import type { AgentAxisActionExpandInput } from '@/mechanics/typesHooks'
@@ -64,8 +65,12 @@ export const MAIM_MOVE_ID = '1611013'
 export const BLOOD_BURIAL_MOVE_ID = '1611014'
 /** 秘血铸锋（锐能强特）表 id（v12 = 1249.6%） */
 export const EX_MOVE_ID = '1611010'
-/** 锐能：进场 60（勘域 180s 一次）；秘血铸锋 60/发 */
-export const SHARPNESS_INITIAL = 60
+/**
+ * 锐能：进场 60（勘域 180s 一次）；秘血铸锋 60/发。
+ * ⚠ 进场基数**不在本文件定义**——单一事实源 = `mechanics/sharpnessIncome#SHARPNESS_INITIAL`
+ * （规则 11：改造前它与 sunbringer.ts 各抄一份字面量）。此处 re-export 保住既有 import 路径。
+ */
+export { SHARPNESS_INITIAL }
 export const SHARPNESS_COST_PER_EX = 60
 /**
  * 终结技：千锤百炼 发动时回复 10 点锐能。
@@ -581,6 +586,12 @@ export function computeClaretSharpResource(input: {
    *  **直接为目标添加1层[残痕]**」（用户口径 2026-09-12「他的确是送了」）。
    *  直接给层 → **不吃积蓄效率倍率**（不是"积累"，是"添加"），但仍受 3 层上限约束。 */
   counterAssistGashStacks?: number
+  /**
+   * **跨槽锐能给养**（点）：3.4.3 知更鸟终结技「全队[锋御]固定回复 20 点锐能」。
+   * 由 `robin.ts#applyRobinSharpnessGift` 在 postRound 相位写进本槽 `cfg.sharpnessGiftFromTeam`；
+   * 本模块按 cfg 透传，作为一条 `gifts` 进 `sharpnessIncome`。缺省 0 = 本局无来源。
+   */
+  sharpnessGiftFromTeam?: number
   /** 锐能基础自动累积（/s，catalog level60.sharpnessRegen） */
   sharpnessAutoPerSec?: number
   /** 常态血锻四式的锐能招式增益（/s，catalog sharpness_gain 列） */
@@ -711,7 +722,14 @@ export function computeClaretSharpResource(input: {
   const maimDemand = axisMaim + (cleaveCount + burialCastsSettled * BURIAL_MAIM_PER_CAST) + c6Extra
   // 锐能总量 = 进场 60（开局赠送）+ 终结技 ×10 + 常态平A自动回复（锻星 0）
   const ultimateCount = Math.max(0, Math.floor(Number(input.ultimateCount ?? 0)))
-  const sharpnessGain = SHARPNESS_INITIAL + ultimateCount * SHARPNESS_ULTIMATE_GAIN
+  // 式子单源 = `mechanics/sharpnessIncome`（规则 11）。两条 gift：
+  //   ① 自己的终结技 +10/次（原文「招式发动时，回复10点锐能」）
+  //   ② 跨槽给养 `sharpnessGiftFromTeam`（3.4.3 知更鸟终结技「全队[锋御]固定回复 20 点锐能」，
+  //      由 robin.ts#applyRobinSharpnessGift 在 postRound 相位写入本槽 cfg；无来源时缺省 = 0）
+  const sharpnessGain = sharpnessIncome({
+    initial: SHARPNESS_INITIAL,
+    gifts: [ultimateCount * SHARPNESS_ULTIMATE_GAIN, Math.max(0, Number(input.sharpnessGiftFromTeam ?? 0))],
+  }).total
   // EX 发数：优先用循环解（每轮 = 常态攒 60 锐能 + 一度进场），否则回落「总量 / 60」
   const cycleExCount = Number(input.affordableExCountOverride)
   const affordableExCount = Number.isFinite(cycleExCount)
@@ -771,6 +789,8 @@ export function computeClaretSharpResource(input: {
     burialCastsSettled,
     autoBurialCasts,
     sharpnessGain,
+    /** 跨槽锐能给养（点，3.4.3 知更鸟终结技；无来源 = 0）——展示层与判据读它 */
+    sharpnessGiftFromTeam: Math.max(0, Number(input.sharpnessGiftFromTeam ?? 0)),
     affordableExCount,
     sharpnessSpend,
     sharpnessRemaining: Math.max(0, sharpnessGain - sharpnessSpend),
@@ -1060,7 +1080,15 @@ export function deriveClaretTwoStateTime(input: {
   const manual = Number.isFinite(setting) && setting > 0
   const share = manual ? Math.max(0.01, Math.min(1, setting / 100)) : ledgerShare
   const normalTime = manual ? basicAttackTime * (1 - share) : ledgerNormalTime
-  const sharpnessTotal = autoPerSec * combatTime + (normalPerSec - autoPerSec) * normalTime
+  // 式子单源 = `mechanics/sharpnessIncome`：自动项按接战时间、招式项按常态时间。
+  // `movePerSec = normalPerSec − autoPerSec` 是「招式增益相对自动累积的增量」，与原手写式逐位相同
+  // （claretSmoke 与 timeGolden 锁等价；否决记录见本函数上方：不要改代数闭式）。
+  const sharpnessTotal = sharpnessIncome({
+    regenPerSec: autoPerSec,
+    seconds: combatTime,
+    movePerSec: normalPerSec - autoPerSec,
+    moveSeconds: normalTime,
+  }).total
   return {
     normalBasicTimeNeeded: normalTime,
     inscriptionTime: Math.max(0, basicAttackTime - normalTime),
@@ -1272,6 +1300,7 @@ function buildClaretResourceSource(cfg: AgentCharConfigInput['cfg'], state: Agen
     normalSharpnessPerSec: Number(cfg.claretNormalSharpnessPerSec ?? 0),
     combatTime,
     sharpnessAutoPerSec: Number(cfg.claretSharpnessAutoPerSec ?? 0),
+    sharpnessGiftFromTeam: Math.max(0, Number(cfg.sharpnessGiftFromTeam ?? 0)),
     normalAttackSharpnessPerSec: Number(cfg.claretNormalAttackSharpnessPerSec ?? 0),
     inscriptionEntries: twoState.entries,
     inscriptionWindowSeconds: twoState.extensionSeconds,
@@ -1866,6 +1895,8 @@ export interface ClaretSharpResourceSource {
   sharpnessPerEntry: number
   /** 锐能总量 = 进场 60（勘域 180s 一次）+ 终结技 ×10（单次上限不参与总量口径） */
   sharpnessGain: number
+  /** 跨槽锐能给养（点）——3.4.3 知更鸟终结技「全队[锋御]固定回复 20 点锐能」；0 = 本局无来源 */
+  sharpnessGiftFromTeam: number
   /** 锐能可负担的秘血铸锋次数 = floor(锐能 / 60) */
   affordableExCount: number
   /** 锐能消耗（秘血铸锋 60/次） */
