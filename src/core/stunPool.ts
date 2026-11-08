@@ -19,6 +19,7 @@ import type { PanelValues } from '@/types/catalog'
 import { getStunBuildUpBonus, getTargetedElementStat, getTargetedStat } from './buff'
 import { panelAt, emptyPanel } from './panel'
 import { enemyResistanceOf } from '@/utils/elementStatKeys'
+import { finiteOr0 } from '@/utils/finiteClamp'
 import type {
   StunPoolResult, StunContribution,
 } from '@/types/resource'
@@ -227,6 +228,61 @@ export function continuousStunCount(pool: Pick<StunPoolResult, 'totalStunBuildUp
   const t = pool.totalStunBuildUp + Math.max(0, pool.stunGift)
   if (t < b) return t / b
   return 1 + (t - b) / (b * (1 - pool.stunRefundRatio))
+}
+/**
+ * **攒条侧的连续失衡：末窗被时钟截短的秒数 δ**（用户 2026-11-01 裁明的机制；2026-11-07 第七轮起进**结算侧**）。
+ *
+ * ## 口径推导（与 `cinemaUpliftFrontier#scanKFrontier` 的解析初值同一式）
+ *
+ * 计划 K 窗 ⇒ 窗外可用时间 `T = eff − K·W`。净攒条速率 ρ = B/T（B = 净失衡值），
+ * 要开出 K 窗需要 `K·b` 点失衡值 ⇒ 攒条时长 `K·b/ρ = K·T/cont`（cont = B/b）。
+ * 攒条时长 + 窗时若超 eff，超出部分就是**最后一窗被战斗时钟砍掉的秒数**：
+ *
+ * ```
+ * δ = (K·T/cont + K·W) − eff = (K/cont − 1)·T          （T = eff − K·W > 0）
+ * ```
+ *
+ * ## 为什么它是「自洽」而不是「放宽」
+ *
+ * δ 的定义就是「把 δ 秒还给攒条后，刚好够开 K 窗」：
+ * 可开窗数 = `cont·(T + δ)/T = cont + (K − cont) = K` —— **按构造**自洽。
+ * 物理读法 = 「第 K 窗满条开出了、只是时钟只给它 `W − δ` 秒」。
+ *
+ * ## 返回值（三态，别混成两态）
+ *
+ * | 返回 | 含义 | 调用方动作 |
+ * |---|---|---|
+ * | `0` | δ ≤ 0：`cont ≥ K`，本来就自洽 | 走原整数口径（逐位不变） |
+ * | `δ ∈ (0, W)` | 开了、被时钟截短 δ 秒 | 按 `plan = K − δ/W` 兑现 |
+ * | `null` | **不适用**：`T ≤ 0`（时间排不下 K 窗）或 `δ ≥ W`（第 K 窗一秒都分不到 ⇒ 等价 K−1 窗） | 不采纳（负控，见 `cinemaUpliftContinuous.test.ts` 判据②） |
+ *
+ * ⚠ **单源**：分析层（`cinemaUpliftFrontier`）与结算侧（`solveTeam` 的 kStar）都调它，
+ * 不许各写一份算式（两处一旦漂移，「分析层说可行、结算侧判不可行」就会静默出现）。
+ */
+export function continuousStunClip(input: {
+  /** 连续失衡次数（`continuousStunCount(pool(K))`）——在**未按 K 重建**的那一帧上读（见 `withStunCountRebuilt` 警告） */
+  cont: number
+  /** 计划的窗口数 K（整数） */
+  k: number
+  /** 单窗名义时长 W（秒） */
+  windowDuration: number
+  /** 有效战斗时间（秒） */
+  effectiveTime: number
+}): number | null {
+  const cont = Number.isFinite(input.cont) ? Math.max(0, input.cont) : 0
+  const k = Math.max(0, input.k)
+  const w = Math.max(0, finiteOr0(input.windowDuration))
+  const eff = Math.max(0, finiteOr0(input.effectiveTime))
+  if (!(cont > 0) || !(k > 0) || !(w > 0) || !(eff > 0)) return null
+  /** 窗外可用时间：≤ 0 ⇒ K 窗连时间都排不下（物理不可能），截短无从谈起 */
+  const outside = eff - k * w
+  if (!(outside > 0)) return null
+  const delta = (k / cont - 1) * outside
+  /** cont ≥ K ⇒ 已自洽，不需要截短（**不是** null：调用方据此走原口径） */
+  if (!(delta > 0)) return 0
+  /** δ ≥ W ⇒ 第 K 窗一秒都分不到 ⇒ 等价 K−1 窗，不采纳 */
+  if (delta >= w) return null
+  return delta
 }
 /**
  * `continuousStunCount` 的反函数（CC-472，r653）：要让池报出连续次数 n，`totalStunBuildUp` 至少要多少

@@ -42,7 +42,7 @@
 import type { AnalysisContext } from '@/composables/analysisScenario'
 import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import { netFitsBudget } from '@/composables/resourceCalc/solveTeam'
-import { continuousStunCount } from '@/core/stunPool'
+import { continuousStunClip, continuousStunCount } from '@/core/stunPool'
 import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { nextTick } from 'vue'
 
@@ -148,6 +148,19 @@ export interface KFrontierDelivery {
   scannedCount: number
   /** 物理上限 `floor(effTime / windowDuration)` —— 扫描域上界 */
   maxK: number
+  /**
+   * **交付帧的末窗被时钟截短的秒数**（0 = 末窗完整）。
+   *
+   * 两个来源、同一口径：
+   * - `converged` ⇒ 收敛帧的 `convergence.stunContinuityClip`；
+   * - `pinned` ⇒ 那个钉 K 点的 `KFrontierPoint#clip`。
+   *
+   * 为什么交付点要带它：`k` 相同不等于「失衡状况」相同——同一 K 下末窗可能完整、也可能只剩 88%。
+   * 用户 2026-11-08 口径：「如果不写就是同 K，如果有连续变化要注明残疾程度」。
+   */
+  clip: number
+  /** 交付帧的**计划窗数** `K − clip/W`（= 末窗按比例折下来的等效窗数；`clip=0` 时恒等于 `k`） */
+  plan: number
 }
 
 export interface KFrontier {
@@ -228,6 +241,12 @@ export async function scanKFrontier(
       fits: rr ? netFitsBudget(netFrontlineOccupation(rr), 0, calc.stunEffectiveTime.value) : false,
       windowDuration: calc.windowDuration.value,
       effectiveTime: calc.stunEffectiveTime.value,
+      /**
+       * **本帧末窗被时钟截短的秒数**（引擎读数 `convergence.stunContinuityClip` + 装配溢出取大，
+       * 与页面时间轴 / `solveTeam#deliveredStunWindowClip` 同一算式）。
+       * 收敛帧一律读它；钉 K 帧另由 `scanKFrontier` 自己的 `clip` 决定（那是计划口径）。
+       */
+      clip: (rr as unknown as { convergence?: { stunContinuityClip?: number } } | null)?.convergence?.stunContinuityClip ?? 0,
     }
   }
 
@@ -263,15 +282,17 @@ export async function scanKFrontier(
       let clip = 0
       if (!selfConsistent && f.fits && contAtK > 0) {
         const W = f.windowDuration
-        /** 攒条总时长 = eff − K·W（窗时之外的可用时间） */
-        const T = f.effectiveTime - k * W
         /**
-         * 第一步：解析式给一个**初始截短**（`δ = (k/cont − 1)·T`，来自「省下的窗秒全变成攒条」）。
+         * 第一步：解析式给一个**初始截短**——`δ = (k/cont − 1)·T`，来自「省下的窗秒全变成攒条」。
+         * **算式单源 = `core/stunPool#continuousStunClip`**（结算侧 `solveTeam` 的 kStar 判据与之同源；
+         * 两处各写一份算式的话，「分析层说可行 / 结算侧判不可行」会静默出现）。返回 `null` = 不适用
+         * （T ≤ 0 或 δ ≥ W）。
+         *
          * ⚠ 它只是初值：实测「省下 1 秒窗时能多攒多少」远小于这个假设（`auto-1371-1481-1451` C4
-         * 的 cont 对 plan 的实测斜率 0.286 窗/窗，解析式等价斜率 ~0.4），所以要用实测斜率再解一次。
+         * 的 cont 对 plan 的实测斜率 0.286 窗/窗，解析式等价斜率 ~0.4），所以下面要用实测斜率再解一次。
          */
-        const d1 = T > 0 ? T * (k / contAtK - 1) : Number.POSITIVE_INFINITY
-        if (d1 >= 0 && d1 < W) {
+        const d1 = continuousStunClip({ cont: contAtK, k, windowDuration: W, effectiveTime: f.effectiveTime })
+        if (d1 !== null && d1 > 0) {
           const plan1 = k - d1 / W
           const f1 = await readFrame(plan1)
           const cont1 = f1.contiguous
@@ -365,7 +386,7 @@ export async function scanKFrontier(
       windowDuration: free.windowDuration,
       effectiveTime: free.effectiveTime,
       points,
-      delivery: pickDelivery(points, free.dmg, free.pool, opts.rule, free.slots),
+      delivery: pickDelivery(points, free.dmg, free.pool, opts.rule, free.slots, free.clip, free.windowDuration),
     }
   } finally {
     config.enemy.stunCountLock = savedLock
@@ -390,8 +411,20 @@ export function pickDelivery(
   rule: DeliveryRule = 'argmax',
   /** 收敛帧的逐槽伤害（缺省空 = 调用方不要逐槽读数；判据复用旧签名时不用改） */
   convergedSlots: readonly number[] = [],
+  /**
+   * 收敛帧的**末窗时钟截短秒数**（缺省 0 = 末窗完整）。只有「交付点 = 收敛帧」时才用它；
+   * 钉 K 分支自己带 KFrontierPoint#clip。缺省 0 是为让判据复用旧签名。
+   */
+  convergedClip = 0,
+  /** 该次扫描的窗长（秒）；缺省 0 ⇒ plan 退化成 k（判据复用旧签名时不用改） */
+  windowDuration = 0,
 ): KFrontierDelivery {
   const feasible = points.filter(p => p.feasible)
+  /** 交付帧的「残疾程度」：末窗截短秒 + 等效计划窗数（k − clip/W） */
+  const stunOf = (k: number, clip: number) => ({
+    clip: Math.max(0, clip),
+    plan: windowDuration > 0 ? k - Math.max(0, clip) / windowDuration : k,
+  })
   const base = {
     convergedK,
     convergedDmg,
@@ -405,14 +438,18 @@ export function pickDelivery(
   if (rule === 'maxK') {
     // 旧口径：可行点里的最大 K（**没有**可行点 ⇒ 0 ⇒ 回落收敛停点，与旧引擎 min-K 回落同形）
     const kmax = feasible.length ? feasible.reduce((a, b) => (b.k > a.k ? b : a)) : null
-    if (!kmax) return { ...base, k: convergedK, dmg: convergedDmg, source: 'converged', driftPct: 0 }
+    if (!kmax) {
+      return { ...base, k: convergedK, dmg: convergedDmg, source: 'converged', driftPct: 0, ...stunOf(convergedK, convergedClip) }
+    }
+    const usePinned = kmax.dmg > convergedDmg + 1e-9
     return {
       ...base,
       k: kmax.k,
       dmg: kmax.dmg,
       slots: [...kmax.slots],
-      source: kmax.dmg > convergedDmg + 1e-9 ? 'pinned' : 'converged',
+      source: usePinned ? 'pinned' : 'converged',
       driftPct: convergedDmg > 0 ? ((kmax.dmg - convergedDmg) / convergedDmg) * 100 : 0,
+      ...(usePinned ? stunOf(kmax.k, kmax.clip) : stunOf(convergedK, convergedClip)),
     }
   }
   const best = feasible.length
@@ -420,7 +457,7 @@ export function pickDelivery(
     : null
   // 收敛停点领先或打平 ⇒ 引擎已经就位，不拿钉 K 去改读数（这一帧是「真的到达过」的点）
   if (!best || convergedDmg >= best.dmg - 1e-9) {
-    return { ...base, k: convergedK, dmg: convergedDmg, source: 'converged', driftPct: 0 }
+    return { ...base, k: convergedK, dmg: convergedDmg, source: 'converged', driftPct: 0, ...stunOf(convergedK, convergedClip) }
   }
   return {
     ...base,
@@ -429,6 +466,7 @@ export function pickDelivery(
     slots: [...best.slots],
     source: 'pinned',
     driftPct: convergedDmg > 0 ? ((best.dmg - convergedDmg) / convergedDmg) * 100 : 0,
+    ...stunOf(best.k, best.clip),
   }
 }
 

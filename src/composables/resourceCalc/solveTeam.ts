@@ -18,7 +18,7 @@
  */
 import { TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
-import { continuousStunCount, withStunCount, withStunCountRebuilt } from '@/core/stunPool'
+import { continuousStunClip, continuousStunCount, withStunCount, withStunCountRebuilt } from '@/core/stunPool'
 import { stunWindowFraction } from '@/core/effectiveTime'
 import { continuousStunSplitOf } from '@/core/continuousStun'
 import { buildStunTimeline, realizeStunWindows } from '@/core/stunTimeline'
@@ -31,6 +31,7 @@ import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted, downsca
 // 故 type-only import（不引入 convergence.ts 的运行时依赖）。
 import type { createRunCalcRound } from './convergence'
 import type { CalcRoundResult } from './roundResult'
+import type { TeamResourceResult } from '@/types/resource'
 
 /**
  * 失衡次数 ↔ 资源池（连携=每失衡连携×失衡次数）↔ 失衡池 外不动点迭代上限。
@@ -124,6 +125,43 @@ export function candidateFitsBudget(
  */
 export function netFitsBudget(net: number, pendingTopUpSeconds: number, effTime: number): boolean {
   return net + pendingTopUpSeconds <= effTime + AXIS_FALLBACK_TOLERANCE_SEC
+}
+
+/**
+ * **交付时末窗被时钟截短的秒数**（连续失衡 `docs/mcp-cinema-interval-uplift.md` §5.9 ⑧ + 本卡结算侧）。
+ *
+ * 两笔成因不同、表征相同的截断，**共用这一条通道**（规则 11：三处读者只此一份算式）：
+ * - 装配溢出 `overflowSeconds`（必要行排不下 ⇒ 砍招式，A10 已进默认）；
+ * - 攒条截短 `convergence.stunContinuityClip`（满条开出第 K 窗、但窗外攒条时间不够 δ 秒）。
+ *
+ * 取 **max 而不是相加**：两者都是「末窗到底还剩几秒」的估计，相加会把末窗压成负数。
+ * 上限 = **一窗**（不是 K 窗）：时间轴只把最后一窗缩短并钳到 0 ⇒ 一窗最多丢 W 秒。
+ *
+ * 读者：`solveTeam` 的轮内两趟 `clampClip` + 覆盖率最终口径、展示侧
+ * `useResourceCalc#a10LastWindowClipOf`（显示必须与引擎同值，否则屏幕上会出现一个引擎没算的完整末窗）。
+ */
+export function deliveredStunWindowClip(
+  rr: Pick<TeamResourceResult, 'overflowSeconds' | 'convergence'>,
+  windowDuration: number,
+  enabled = true,
+): number {
+  const cap = Math.max(0, windowDuration)
+  const assembly = Math.min(Math.max(0, rr.overflowSeconds ?? 0), cap)
+  if (!enabled) return assembly
+  return Math.max(assembly, Math.min(Math.max(0, rr.convergence.stunContinuityClip ?? 0), cap))
+}
+
+/**
+ * **连续失衡进结算侧的开关**（`PROBE_STUN_CONT_TRUNC`，与 A10 的 `PROBE_STUN_CLIP_ITER` 同一习语）。
+ *
+ * 回退 = `PROBE_STUN_CONT_TRUNC=off` ⇒ kStar 判据不多认「δ < W 可行」、交付不写
+ * `stunContinuityClip`、末窗截短退回只看装配溢出 ⇒ **逐位等于改动前**（对拍/探针用）。
+ *
+ * ⚠ 默认**开**（2026-11-07 第七轮：全库 delta 实测后定的，见 `.zc/perf/PREDICTION-continuous-engine.md`
+ * 的实测对账表）。判据 `continuityTruncation.test.ts` 的负控用 `=off` 复现改动前的读数。
+ */
+export function continuityTruncEnabled(): boolean {
+  return probeFlag('PROBE_STUN_CONT_TRUNC') !== 'off'
 }
 
 /** 外层不动点 + S3 可行化决策（函数体 = 原 `useResourceCalc.ts:254–652` 外提，CC-10；只读输入、不写 store）。 */
@@ -541,17 +579,92 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        * 两条缺一不可：只按自洽取会交付 `net > effTime` 的成员（实测 C4 的 K=6：cont=2.52 < 6 仅差 0.48，
        * 池会被钳到 6 而 `net=194.6s` ⇒ 物理装不下，伤害 42.85M 是透支出来的）。
        */
+      /**
+       * **末窗攒条截短的 δ**（`core/stunPool#continuousStunClip`，单源）：给定「按 K 排窗」的那一轮，
+       * 它的池撑不撑得住第 K 窗——撑得住（cont ≥ K）⇒ 0；差一点点（δ < W）⇒ 截短 δ 秒即可；
+       * 差一窗以上（δ ≥ W）或时间排不下 ⇒ null（不采纳，负控）。
+       *
+       * ⚠ **必须读未重建的那一帧**（`withStunCountRebuilt` 会把 `totalStunBuildUp` 按 K 重建成
+       * 整数 ⇒ 此时 `cont` 恒等于 K，任何截短都读成 0）。`m.out` 是那一轮原始输出，
+       * 重建只发生在**交付时**（`chosenRun` 之后）⇒ 读 `m.out.stunPool` 即未重建帧。
+       */
+      const continuityOn = continuityTruncEnabled()
+      const truncationOf = (pool: CalcRoundResult['stunPool'], k: number): number | null =>
+        continuousStunClip({
+          cont: continuousStunCount(pool),
+          k,
+          windowDuration: stunWindowDur,
+          effectiveTime: stunEffTime,
+        })
+      /** **自洽且排得下**——给「按 K 排窗的那一轮」用（`k` = 该轮实际排的窗数）。 */
+      const feasibleAtK = (x: CalcRoundResult, prev: CalcRoundResult | null, k: number): boolean => {
+        if (k <= 0 || k > searchMax) return false
+        const cont = continuousStunCount(x.stunPool)
+        const integral = Math.floor(cont) >= k
+        const trunc = continuityOn && !integral ? truncationOf(x.stunPool, k) : null
+        const selfConsistent = integral || (trunc !== null && trunc > 0)
+        if (!selfConsistent) return false
+        /**
+         * ## ⚠ **截短档只用「真的扣得出这 δ 秒」时才采纳**（2026-11-07 实测，反空洞）
+         *
+         * 这条排除的是一类**假截短**：环里那一轮已经因为「必要行装不下」被装配期砍了
+         * `overflowSeconds` 秒（`truncationCuts` 逐行有账），而末窗的缩短幅度**本来就由它决定**
+         * （`stunClipPass` 钳到一窗）。此时再加一个 δ 进去，**没有任何秒数真的被扣两次**——
+         * 末窗丢的是那 5.93s 装配截断，不是本卡的 δ ⇒ 「第 K 窗被时钟截短 δ 秒」这句话不成立。
+         *
+         * 实测反例（全库 21 个升 K 格中唯一为负的一格）：`auto-1431-1481-1491` C2 的 K=2 ——
+         * δ=0.94s 但装配溢出 **5.93s**（4 条行被砍），交付 37.446M **低于** K=1 的 37.541M（−0.25%）。
+         * 判据「装配溢出 ≤ δ」把全库 21 格切成 **20 采纳 / 1 拒绝**，且采纳侧**零负值**。
+         *
+         * 为什么这条判据是对的（不是挑参数）：δ 的定义是「要让第 K 窗开出来，需要从末窗让出 δ 秒」，
+         * 它的前提是**末窗还能让**。若装配期已经从这一窗砍掉比 δ 更多的动作，那个前提就不成立——
+         * 这与 §5.7「装不下的钉 K 是透支」同族：**先证明让得出，再谈开了窗**。
+         */
+        if (!integral && (x.resourceResult.overflowSeconds ?? 0) > (trunc ?? 0) + 1e-9) return false
+        return fitsBudget(x, prev)
+      }
       const feasibleAt = (m: OuterCycleMember): boolean => {
         const kIn = m.prev?.stunPool.stunCount
         if (kIn === undefined || kIn <= 0 || kIn > searchMax) return false
-        if (Math.floor(continuousStunCount(m.out.stunPool)) < kIn) return false
-        return fitsBudget(m.out, m.prev)
+        /**
+         * **自洽判据两条并列**（2026-11-07 第七轮，连续失衡进结算侧）：
+         * ① 原口径：`floor(cont) ≥ K`（池攒得出整整 K 窗）；
+         * ② 新口径：`cont < K` 但**δ ∈ (0, W)** ⇒ 第 K 窗满条开出了、只是被时钟截短 δ 秒
+         *    （`plan = K − δ/W` 兑现）。δ 的定义就是「把 δ 秒还给攒条刚好够开 K 窗」⇒ 按构造自洽。
+         *
+         * ⚠ δ ≥ W 一律不采纳（负控）：那种情况第 K 窗**一秒都分不到**，等价 K−1 窗，
+         * 把它算成开窗就是「把开不了的窗当开窗」（§5.7「装不下的钉 K 是透支」同族）。
+         */
+        return feasibleAtK(m.out, m.prev, kIn)
       }
       /**
-       * **候选 = 全部可行 K，按伤害取 argmax**（同伤害取大 K）。
-       * 环成员本来就带了那次求值的伤害（`m.out` 是完整一轮），所以主路径 **0 次额外求值**。
+       * **候选 = 全部可行 K，取最大可行 K**（贪心上扫）。
+       *
+       * ⚠ 环内注释与 `cinemaUpliftFrontier#pickDelivery` 都提到「按伤害取 argmax」，但**本函数读不到伤害**：
+       * `CalcRoundResult` 只有资源面，伤害池算在 composable（`useResourceCalc#teamTotalDamage`）。
+       * 往这里注入伤害求值器会重入（`cinemaUpliftFrontier` 头注释记的两次实测否决）⇒ argmax 只能留在
+       * 分析层；它的候选集**含收敛停点**，故页面读数不会被 max-K 拖低。
+       *
+       * 实测反例（2026-11-07 普查）：`auto-1431-1481-1491` C2 的钉 K1 **37.541M** > 钉 K2（δ=0.94s 可截短）
+       * **37.446M** ⇒ 「窗越多伤害越高」在结算层**不是**恒真。本层按 K 上扫，该队的交付上限由
+       * `pickDelivery` 的 argmax 兜住（收敛停点 K1 在候选集里）。
        */
       let kStar = 0
+      /**
+       * **旧口径 kStar**（只按 `floor(cont) ≥ K`，不含截短）= 下扫的**下界**。
+       * 为什么需要它：连续失衡开的只是「多认一档 δ<W 的 K」，它**不许**让交付比改动前更差。
+       * 旧路径在「选中档重跑不收敛」时落回环内选点；若我们下扫到比旧 kStar 更低的档，
+       * 就是拿一个**更差的** K 顶替那条路径（实测 `auto-1591-1481-1211` p16 C1：
+       * 新档 K3 重跑不收敛 ⇒ 下扫到 K1 ⇒ 26.66M，而旧路径本可交付 40.02M）。
+       */
+      let kStarOld = 0
+      for (const m of lastCycleMembers) {
+        const kIn = m.prev?.stunPool.stunCount as number
+        if (!(kIn > 0) || kIn > searchMax) continue
+        if (Math.floor(continuousStunCount(m.out.stunPool)) < kIn) continue
+        if (!fitsBudget(m.out, m.prev)) continue
+        if (kIn > kStarOld) kStarOld = kIn
+      }
       for (const m of lastCycleMembers) {
         const kIn = m.prev?.stunPool.stunCount as number
         if (kIn > kStar && feasibleAt(m)) kStar = kIn
@@ -570,53 +683,78 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         while (lo <= hi) {
           const mid = (lo + hi) >> 1
           const trial = evalLocked(mid)
-          const ok = Math.floor(continuousStunCount(trial.out.stunPool)) >= mid && fitsBudget(trial.out, trial.outPrev)
+          /**
+           * ⚠ **与成员扫描同一口径**（新增「δ < W 也算自洽」那一条必须两处都有）：
+           * 只按 `floor(cont) ≥ mid` 二分，会让「恰好靠截短才可行的 K」在二分里被判不可行
+           * ⇒ 成员扫描放行的 K 被回落路径否掉（两套账）。
+           */
+          const trunc = continuityOn ? truncationOf(trial.out.stunPool, mid) : null
+          const ok = (Math.floor(continuousStunCount(trial.out.stunPool)) >= mid || (trunc !== null && trunc > 0))
+            && fitsBudget(trial.out, trial.outPrev)
           if (ok) { kStar = mid; lo = mid + 1 } else hi = mid - 1
         }
       }
       /**
-       * ⚠ **必须按 kStar 真跑一整轮，不能拿环成员的结果顶替**（实测踩过）：环成员那次跑的是
+       * ⚠ **必须按 K 真跑一整轮，不能拿环成员的结果顶替**（实测踩过）：环成员那次跑的是
        * 「计划 m.stunIn、计数通道 K = 它前一轮的池」——池可能**大于** K（CC-150 的 `池 > 读入` 形态），
        * 直接拿它当结算结果就得人为把池钳到 K ⇒ 覆盖率与池不同源（实测 3 支队各差 1 窗）。
        * 重跑一次 = 「按 K 窗排时间重新算一遍」，池与覆盖率都由这一次自己产出 ⇒ 天然同源。
-       */
-      const chosenK = kStar
-      /**
-       * **能复用环成员就复用，省掉那次整轮重跑**（性能实测驱动）。
        *
-       * 可复用的条件 = 该成员**本身就是「按 K 排窗」的产物**：`m.prev.pool === kStar` 且
-       * `m.out.stunPool.stunCount === kStar`（池恰好等于读入 K，不存在「池 > 读入」需要钳位的情况）。
-       * 此时它跑的就是「按 kStar 窗排一整轮」，与 `evalLocked(kStar)` 是同一件事
-       * （实测逐位相同：auto-1501/auto-1611/banyue-jufufu/banyue-norma 的 kStar 成员都满足）。
-       * 不满足（池 ≠ K）才重跑——那种成员钳位后覆盖率会与池不同源（坑 6）。
-       *
-       * 收益：`charIncrement` 的单位工作量判据从 1.01×（差 1% 就红）回到阈值内。
+       * ## ⚠⚠ 候选按 K **降序逐个试**，首个「重跑 stable」者即交付（2026-11-07 实测修）
+       * 旧写法「选中最大可行 K 后就只重跑它一次，不 stable 就整块放弃」在连续失衡进判据后**会退化**：
+       * 实测 `yidhari-trigger-lucia` C4/C5 —— 成员扫描选中 K=3（δ=0 可截短），但 `evalLocked(3)` 重跑
+       * 报 `cycle` ⇒ 整块放弃 ⇒ 落回环内选点 `cycle` 路径，交付 27.449M **低于**改动前的 27.550M（−0.37%）。
+       * 那不是「新判据算错了」，是**回落粒度太粗**：更高的 K 不收敛，不该把更低的可行 K 一起丢掉。
+       * 降序逐个试 = 「上一个可行 K 仍然可用」这条单调性（`cont` 随 K 单调不增 ⇒ 低 K 更易自洽）的诚实表达。
+       * 代价：多试的每个不可行档都是一次完整外层求值，但只在**最高档不收敛**时才发生（全库实测 2 格）。
        */
       /**
-       * ⚠⚠ **还要求「计划输入 == kStar」**（T180 实测踩过，别删这一条）：
-       * 上面两条只保证「**计数通道**读入 K = kStar 且池也回到 kStar」，但环成员那次跑的是
-       * 「计划 `stunIn`（一个**小数**）+ 计数通道 K」——两者可以不同！实测
-       * `auto-1431-1481-1031`（非轴队，零交互）的环成员是 `steunIn=1.135 / prev.pool=3 / out.pool=3`：
-       * 池对了、K 对了，但**计划只排了 1.135 个窗** ⇒ 复用它的 71.62M，而 `evalLocked(3)`（计划真排 3 窗）
-       * 是 **89.94M**。旧代码只看池 ⇒ 交付了「窗口数对但伤害错 18M」的结果，且把 `outerExit` 谎报成 stable。
-       * 因此复用条件 = 三条全中；不满足就**真跑** `evalLocked(kStar)`（少一次求值远不如交付错值重要）。
+       * 试的顺序 = **`kStar`（可能含截短新档）→ 逐档往下，到 `kStarOld` 为止**。
+       *
+       * 两条纪律：
+       * - **下界 = `kStarOld`**：截短只许「多认一档」，不许把交付拉到比改动前的口径更差的 K
+       *   （实测 `auto-1591-1481-1211` p16 C1：新档 K3 重跑不收敛、若下扫到 K1 = 26.66M，
+       *   而旧口径本可交付 K3 的 40.02M）；
+       * - **只有 `continuityOn` 才下扫**：`=off` 时 `kStar === kStarOld` ⇒ 循环只跑一次，逐位等于改动前。
        */
-      const reusable = lastCycleMembers.find(m =>
-        m.prev?.stunPool.stunCount === kStar
-        && m.out.stunPool.stunCount === kStar
-        && Math.abs(m.stunIn - kStar) < OUTER_STUN_TOLERANCE)
-      const chosenRun: ReturnType<typeof runOuterLoop> | null = kStar <= 0
-        ? null
-        : reusable
+      const K_FLOOR = continuityOn ? Math.max(1, Math.min(kStarOld > 0 ? kStarOld : 1, kStar)) : kStar
+      let chosenRun: ReturnType<typeof runOuterLoop> | null = null
+      let chosenK = kStar
+      /**
+       * ⚠ **降档下扫只在连续失衡开（`continuityOn`）时发生**：`=off` 必须逐位等于改动前——
+       * 那时 `truncationOf` 恒 null ⇒ `feasibleAtK` 与原判据逐一相等，但**下扫粒度本身**是新增行为，
+       * 若不加闸，`=off` 的交付也会跟着变（实测 4 条判据红，`auto-1591` 的 K3 被下扫成 K1）。
+       */
+      for (let kTry = kStar; kTry >= K_FLOOR; kTry--) {
+        /**
+         * **能复用环成员就复用，省掉那次整轮重跑**（性能实测驱动）。
+         * 可复用的条件 = 该成员**本身就是「按 K 排窗」的产物**：`m.prev.pool === K` 且
+         * `m.out.stunPool.stunCount === K`（池恰好等于读入 K，不存在「池 > 读入」需要钳位的情况）。
+         * 收益：`charIncrement` 的单位工作量判据从 1.01×（差 1% 就红）回到阈值内。
+         *
+         * ⚠⚠ **还要求「计划输入 == K」**（T180 实测踩过，别删这一条）：
+         * 上面两条只保证「**计数通道**读入 K = K 且池也回到 K」，但环成员那次跑的是
+         * 「计划 `stunIn`（一个**小数**）+ 计数通道 K」——两者可以不同！实测
+         * `auto-1431-1481-1031`（非轴队，零交互）的环成员是 `stunIn=1.135 / prev.pool=3 / out.pool=3`：
+         * 池对了、K 对了，但**计划只排了 1.135 个窗** ⇒ 复用它的 71.62M，而 `evalLocked(3)`（计划真排 3 窗）
+         * 是 **89.94M**。旧代码只看池 ⇒ 交付了「窗口数对但伤害错 18M」的结果，且把 `outerExit` 谎报成 stable。
+         * 因此复用条件 = 三条全中；不满足就**真跑** `evalLocked(K)`（少一次求值远不如交付错值重要）。
+         */
+        const reusable = lastCycleMembers.find(m =>
+          m.prev?.stunPool.stunCount === kTry
+          && m.out.stunPool.stunCount === kTry
+          && Math.abs(m.stunIn - kTry) < OUTER_STUN_TOLERANCE)
+        const run = reusable
           ? { out: reusable.out, outPrev: reusable.prev, outerRounds: 0, outerConverged: true, outerExit: 'stable' as const, outerCyclePickedEarlier: false, capacityResolved: false }
-          : evalLocked(kStar)
-      /**
-       * ⚠ **重跑本身必须真的收敛**（实测踩过）：`auto-1591` 的 K=4 重跑 stable、但叶瞬光手组队
-       * （B 类反馈环）的 kStar 档重跑是 `maxIter`（20 轮仍在两态间跳）。把那种重跑标成 stable
-       * = **谎报收敛**（§27 已实测否决过同类做法）。故 `outerExit === 'stable'` 是采纳的前提；
-       * 没收敛就落回旧路径（环内选点 + cycle），逐位等于改动前。
-       */
-      if (chosenRun && chosenRun.outerExit === 'stable') {
+          : evalLocked(kTry)
+        /** 这一轮排的就是 `kTry` 个窗（override / 成员计划都是 K）⇒ 判据按 `kTry` 自身读，不回头读 prev */
+        if (!feasibleAtK(run.out, run.outPrev, kTry)) continue
+        if (run.outerExit !== 'stable') continue
+        chosenRun = run
+        chosenK = kTry
+        break
+      }
+      if (chosenRun) {
         /**
          * 池按 kStar 重建失衡值合计（`withStunCountRebuilt` = `stunBuildUpForCount` 反函数）：
          * locked 路径只钉「次数」，`totalStunBuildUp` 仍按自算值累加 ⇒ 不重建则
@@ -631,9 +769,25 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
          * （`yidhari-trigger` / `auto-1501` / `banyue-jufufu` 实测各差 1 窗）。
          * 算式与 `computeStunCoverage` 完全同源（`stunWindowFraction` + 同一个 `verdictSecondsLost`）。
          */
+        /**
+         * **本轮的攒条侧截短 δ**（连续失衡；读**未重建**的那一帧——`withStunCountRebuilt` 已经把
+         * `totalStunBuildUp` 按 K 重建，重建后 `cont` 恒等于 K，δ 会被读成 0）。
+         *
+         * ⚠ **覆盖率这里不扣 δ**：扣在 A10 的 clip 通道（`deliveredStunWindowClip` 与下方两趟 /
+         * 覆盖率最终口）——两处都扣就是同一笔秒数扣两遍。本函数只负责**如实报出** δ，
+         * 让「末窗缩短」这一条通道的引擎侧与展示侧同源（`useResourceCalc#a10LastWindowClipOf`）。
+         */
+        const continuityClip = continuityOn ? (truncationOf(chosenRun.out.stunPool, chosenK) ?? 0) : 0
         const aligned = {
           ...chosenRun.out,
           stunPool: rebuiltPool,
+          resourceResult: {
+            ...chosenRun.out.resourceResult,
+            convergence: {
+              ...chosenRun.out.resourceResult.convergence,
+              ...(continuityClip > 0 ? { stunContinuityClip: continuityClip } : {}),
+            },
+          },
           stunCoverage: stunEffTime > 0
             ? stunWindowFraction(rebuiltPool.stunCount, stunWindowDur, stunEffTime, chosenRun.out.stunVerdictLostSeconds)
             : chosenRun.out.stunCoverage,
@@ -763,8 +917,15 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
      * 连带把「加弹刀不降伤」的单调性打破。改一窗上限后 7 支 golden 溢出队**逐位不变**
      * （overflow 0.24~10.70s 全部 < W）。
      */
-    const clampClip = (x: CalcRoundResult): number =>
-      Math.min(Math.max(0, x.resourceResult.overflowSeconds ?? 0), Math.max(0, stunWindowDur))
+    /**
+     * **末窗截短秒数 = max(装配溢出, 攒条截短 δ)，上限仍是一窗**（单一算式，三处读者共用）。
+     *
+     * 两笔截断成因不同但表征相同（末窗只分到 `W − clip` 秒）：
+     * · 装配溢出 `overflowSeconds` = 必要行排不下、砍掉招式（A10 已进默认）；
+     * · 攒条截短 δ = 满条开出第 K 窗但窗外攒条时间不够（本卡新开，`convergence.stunContinuityClip`）。
+     * 取 **max 而不是相加**：两者都是「末窗到底剩几秒」的估计，相加会把末窗压成负数。
+     */
+    const clampClip = (x: CalcRoundResult): number => deliveredStunWindowClip(x.resourceResult, stunWindowDur, continuityTruncEnabled())
     for (let pass = 0, clip = clampClip(r.out); pass < 2; pass++) {
       if (!(clip > 1e-9) || Math.abs(clip - (stunClipPass ?? 0)) <= 1e-6) break
       stunClipPass = clip
@@ -1164,8 +1325,11 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        * 覆盖率 = 原覆盖率 − overflow/eff（同分母，不重算、不引入不同源）。
        * ⚠ 覆盖率只扣截断秒，**行侧的 cut 仍在**（A10 第 2 步未做行恢复）⇒ 本口径是下界。
        */
-      // 上限 = 一窗（与时间轴 / 两趟同源，见两趟块内 clampClip 注释）
-      const clipSec = Math.min(Math.max(0, out.resourceResult.overflowSeconds ?? 0), Math.max(0, stunWindowDur))
+      /**
+       * **上限 = 一窗，口径 = max(装配溢出, 攒条截短 δ)**——与两趟块内 `clampClip` **同一算式**，
+       * 且已按 `stunClipPass`（本次求值实际生效的 clip）收敛过 ⇒ 覆盖率扣的就是轴栈真按它排窗的那个量。
+       */
+      const clipSec = deliveredStunWindowClip(out.resourceResult, stunWindowDur, continuityTruncEnabled())
       const clipped = Math.max(0, out.stunCoverage - clipSec / stunEffTime)
       if (clipped !== out.stunCoverage) finalOut = { ...out, stunCoverage: clipped }
     } else {

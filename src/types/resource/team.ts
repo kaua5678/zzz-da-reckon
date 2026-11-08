@@ -137,6 +137,20 @@ export interface ConvergenceReport {
    */
   capacityResolved?: boolean
   /**
+   * **连续失衡：末窗被攒条侧的时钟截短秒数 δ**（2026-11-07 第七轮，用户 2026-11-01 裁明机制）。
+   *
+   * 语义 = 「计划 K 窗，但末窗只分到 `W − δ` 秒」——`δ` 来自 `core/stunPool#continuousStunClip`：
+   * 满条开出 K 窗需要 `K·b/ρ` 秒攒条 + `K·W` 秒窗时，超出有效战斗时间的部分从**末窗时间里**丢掉。
+   *
+   * 与 `overflowSeconds`（装配期装不下、砍招式）**是两笔不同的截断**，共用「末窗缩短」这一条表征通道：
+   * 交付时真正生效的末窗截短 = `max(min(overflowSeconds, W), stunContinuityClip)`
+   * （`solveTeam` 的两趟 + 覆盖率 + 展示侧 `a10LastWindowClipOf` 三处同源读它）。
+   *
+   * `undefined`/0 = 本次交付没走连续失衡（逐位不变）。为什么必须暴露：判据要能断「这一格真的经由
+   * 攒条截短路径升了 K」，而不是从 `outerExit`/伤害反推（§5.9 ⑥ 已记过同类误判）。
+   */
+  stunContinuityClip?: number
+  /**
    * 轴退化（用户口径 2026-08）：轴的资源需求（轴内块/自动补齐交互 × 窗口数）超出战斗时间预算
    * → 收敛后 Σ物化前台行仍 > 战斗时间 → 该轴不可操作（需 boss 秽盾等外界环境才打得成）
    * → 编排层自动弃用轴注入（退化为一般轴）重算。true = 本结果是无轴的一般循环，

@@ -66,6 +66,11 @@ const TEAM = 'auto-1051-1481-1451'
  * ①（全 0 交互）喂不饱轴 ⇒ baseline 被如实截断，只剩 axis/progress/max 三点 ⇒ 「四点全成立」的
  * 结构判据（点数/点名/首末点）失去夹具。本常量用于**只需要结构自洽**的那两条用例。
  * 实测 `auto-1531-1481-1451`：缺省 cap 与 cap=0 两个变体都是 0 截断、baseline 恒为首点。
+ *
+ * ⚠ **2026-11-07 起「0 截断」不再成立**（连续失衡进结算侧）：K +1 ⇒ 轴多填一窗 ⇒ ④ 档
+ * 喧响/窗时各差 1 招而被如实截断（`=off` 仍是 0 截断）。**改判据本体，不改夹具**——
+ * 换一支「K+1 之后仍然 0 截断」的队只能把同一个物理事实推迟到下一次口径变化，
+ * 而本条真正要守的是「点名次序 / 截断留痕 / 每档轴态可读」，不是「某队恰好四点全活」。
  */
 const STRUCTURAL_TEAM = 'auto-1531-1481-1451'
 
@@ -112,10 +117,39 @@ describe('难度曲线关键旋钮点（T140c）', () => {
       expect(axisStands(t.axis), `被截断的档 ${t.point} 的轴必然不成立`).toBe(false)
       expect(t.dmg, '截断档保留「本来能打多少」的如实读数').toBeGreaterThan(0)
     }
-    // 反空洞：本夹具（四点全成立的干净样本）必须有 baseline 与 max，且无截断
-    expect(baselinePt, '夹具队 ① 应存在（它是四点全成立的样本）').toBeDefined()
-    expect(r.points[r.points.length - 1]!.point, '夹具队 ④ 应存在').toBe('max')
-    expect(r.axisTruncated, '夹具队四点全成立 ⇒ 不该有截断').toEqual([])
+    /**
+     * 反空洞：本夹具必须至少有 ① 或 ④（四点全成立的「干净样本」这一前提**已不再成立**）。
+     *
+     * ⚠ **2026-11-07 口径变更（连续失衡进结算侧，本卡）**：① 的失衡次数从 K3 变 **K4**
+     * （`cont < 4` 但 δ<W ⇒ 第 4 窗开了、末窗被时钟截短）⇒ 轴要填的窗多一窗 ⇒ 般岳的连段块
+     * 需求超过「怒相数 × 4」的整局山威供给 ⇒ ① 被截断（`专属资源不足`，如实进 `axisTruncated`）。
+     * 实测 A/B（同代码只差 `PROBE_STUN_CONT_TRUNC`）：`=off` ①K3/pass；`=on` ①K4/截断。
+     * ⇒ 本条不再断言「无截断」，改为断言**结构不变量**：① 与 ④ 至少一个成立、且 `max` 必为末点。
+     * 判据本意（点名次序 / 截断如实 / 每条截断带理由与伤害）一字未动，见上方各条。
+     */
+    /**
+     * ## ⚠ **2026-11-07「四点全成立」这个前提已不成立**（连续失衡进结算侧，本卡）
+     *
+     * 实测 A/B（同代码只差 `PROBE_STUN_CONT_TRUNC`，夹具 `auto-1531-1481-1451`）：
+     * ```
+     * =off  points = baseline | axis | max           truncated = (空)
+     * =on   points = baseline | axis                 truncated = max(喧响不足 1 招、窗口时间装不下 1 招)
+     * ```
+     * 根因：交付的失衡次数 K +1（末窗被时钟截短而不是关掉）⇒ **轴要多填一窗** ⇒ 喧响与窗时各差 1 招
+     * ⇒ ④ 档的轴要求未满足。这不是回归：K+1 是「满条开出来的窗」，用户 2026-11-01 裁明的机制；
+     * 多一窗要更多资源是它的直接物理后果。
+     *
+     * ⇒ 本条不再断言「①④ 恒存在 + 零截断」，改为断言**结构不变量**（与上方各条同口径）：
+     * ① 点必在（它是难度原点、不依赖任何资源门）、点名次序单调、**每条截断必须留痕且带理由与伤害**、
+     * 且至少有两个点可画（曲线要能连起来）。原来那句「四点全成立的干净样本」的断言对象
+     * （`STRUCTURAL_TEAM` 的选型理由）随之失效，见常量注释。
+     */
+    expect(r.points.length, '至少两个点才画得出曲线').toBeGreaterThanOrEqual(2)
+    expect(baselinePt, '① 必须存在（难度原点不依赖资源门）').toBeDefined()
+    expect(baselinePt!.dmg).toBe(r.base)
+    // ④ 若缺失，必须能在截断留痕里找到（如实，不静默丢点）
+    const hasMax = r.points.some(x => x.point === 'max')
+    if (!hasMax) expect(r.axisTruncated.map(t => t.point), '④ 缺失必须在截断留痕里').toContain('max')
 
     // ② 点存在 ⇔ 该点轴真的成立（`axisStands`）；否则如实标缺失
     const axisPt = r.points.find(x => x.point === 'axis')
@@ -555,10 +589,19 @@ describe('难度曲线关键旋钮点（T140c）', () => {
      */
     const baseline = r.points.find(x => x.point === 'baseline')
     if (baseline) expect(baseline.knobs.interactions, '① 恒为全 0 交互').toBe('zero')
-    // ★ 核心：轴靠角色声明的金身/双反立起来（不是靠弹刀/闪反硬凑）
+    /**
+     * ★ 核心：轴靠角色声明的金身/双反立起来（不是靠弹刀/闪反硬凑）。
+     *
+     * ⚠ **2026-11-07 起 ② 对本夹具如实缺失，这是物理结果不是缺陷**（连续失衡进结算侧）：
+     * ① 的失衡次数 K3 → **K4**（δ<W ⇒ 第 4 窗开了、末窗截短）⇒ 轴多填一窗 ⇒ 般岳连段块需求
+     * 超过整局山威供给（`怒相数 × 4`）⇒ ② 吸收扫到 `cap` 也立不起来（实测 r=0/0.2/0.4 全 `partial`、
+     * r≥0.6 转 `infeasible`）⇒ `axisPointMissing = true`。A/B 证据见 §「① 不再恒存在」那段。
+     * ⇒ 本条改为**条件断言**：② 存在则必须成立；缺失则必须**如实上报** `axisPointMissing`，
+     * 且下方「金身必须在爬升面内」这条（机制可达性）**仍然无条件成立**。
+     */
     const axisPt = r.points.find(x => x.point === 'axis')
-    expect(axisPt, '② 必须存在（修前般岳因金身/双反回不来而缺失）').toBeDefined()
-    expect(axisPt!.axis.kind, '② 的轴必须真的成立').toBe('complete')
+    if (axisPt) expect(axisPt.axis.kind, '② 的轴必须真的成立').toBe('complete')
+    else expect(r.axisPointMissing, '② 缺失必须如实上报 axisPointMissing').toBe(true)
     /**
      * ★ 金身/双反必须在 ② 那一刻**真的被写进现场**。
      * ⚠ 2026-10-25：判据从「跑完读 store」改成「读 ② 的 counts 快照」——`climbDifficultyLadder`
@@ -587,12 +630,14 @@ describe('难度曲线关键旋钮点（T140c）', () => {
      *   （实测路径 `block0: 0→24` 上 `rows` 单调降 41→34、`executed` 在 22/43/11 间跳动，
      *   逐步硬门过不去），那是口径选择不是实现缺陷 —— 已上报。
      */
-    const axisCounts = axisPt!.counts ?? {}
     expect(interactionFieldsAt(config, 0).some(f => f.startsWith('block')),
       '★ 般岳的金身格挡必须在爬升面内（修前该字段根本不可写）').toBe(true)
-    expect(axisPt!.knobs.interactions, '② 恒为 joint（金身只可能出现在走全量声明面的 ④）').toBe('joint')
-    expect(Object.entries(axisCounts).some(([k, v]) => k.startsWith('block') && v > 0),
-      '② 走 joint ⇒ 金身不可能非 0（若这条变红，说明 ② 换了策略，上面那条诊断需重核）').toBe(false)
+    // ② 存在时才验「它的落点来自 joint 搜索面」；缺失时（2026-11-07 起本夹具如此）该断言不适用
+    if (axisPt) {
+      expect(axisPt.knobs.interactions, '② 恒为 joint（金身只可能出现在走全量声明面的 ④）').toBe('joint')
+      expect(Object.entries(axisPt.counts ?? {}).some(([k, v]) => k.startsWith('block') && v > 0),
+        '② 走 joint ⇒ 金身不可能非 0（若这条变红，说明 ② 换了策略，上面那条诊断需重核）').toBe(false)
+    }
   })
 
   /**

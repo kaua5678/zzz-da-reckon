@@ -27,7 +27,7 @@ import { axisMoveDamageSecondsOf } from './resourceCalc/helpers'
 // CC-10（2026-09-25）：外层不动点 + S3 可行化决策已原样外提 `./resourceCalc/solveTeam`，
 // 本文件不再 import `roundThreads` / `outerCycle` / `feasibilitySearch` / `netFrontlineOccupation`
 // （全部随搬移成为新文件的依赖）。
-import { solveTeam } from './resourceCalc/solveTeam'
+import { deliveredStunWindowClip, solveTeam } from './resourceCalc/solveTeam'
 import type { CalcRoundResult } from './resourceCalc/roundResult'
 import type {
   CharacterOperationConfig,
@@ -370,7 +370,10 @@ export function createResourceCalc(
    */
   function a10LastWindowClipOf(out: CalcRoundResult | null): number {
     if (!out || probeFlag('PROBE_STUN_CLIP_ITER') === 'off') return 0
-    return Math.max(0, out.resourceResult.overflowSeconds ?? 0)
+    // 算式单源 = `solveTeam#deliveredStunWindowClip`（装配溢出 ∪ 攒条截短 δ，上限一窗）。
+    // 展示若只读 overflowSeconds，屏幕会画出一个「引擎已按 δ 缩短、但 UI 仍按整窗画」的末窗——
+    // 用户口径「显示要和计算同步」（2026-11-01）。
+    return deliveredStunWindowClip(out.resourceResult, computeWindowDuration())
   }
   /**
    * **已兑现的失衡窗口读数**（`core/stunTimeline.ts#realizeStunWindows`）：等效窗数 / 占用秒 / **窗内发呆秒**。

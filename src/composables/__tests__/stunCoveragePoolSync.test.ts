@@ -26,6 +26,7 @@ import { useResourceCalc } from '@/composables/useResourceCalc'
 import { effectiveBattleTime } from '@/core/effectiveTime'
 import { teamPresets } from '@/data/teamPresets'
 import { probeFlag } from '@/core/probeTrace'
+import { deliveredStunWindowClip } from '@/composables/resourceCalc/solveTeam'
 
 describe('C：覆盖率与失衡池次数同源', () => {
   it('全库预设：stunCoverage == clamp((池次数 × 窗长 − 决算损失) / 有效时间)', async () => {
@@ -61,8 +62,17 @@ describe('C：覆盖率与失衡池次数同源', () => {
        * `clip / effTime`（`clip = min(overflowSeconds, 一窗)`，与 `buildStunTimeline` / 轴栈同源）。
        * ⇒ 同源恒等式变成 `隐含窗数 + clip/W == 池次数`。回退闸关时 clip 恒 0（退回原式）。
        */
+      /**
+       * **算式单源 = `solveTeam#deliveredStunWindowClip`**（本文件不另拼一份）。
+       *
+       * 2026-11-07 起末窗截短有**两笔成因**（装配溢出 + 攒条侧 δ，后者是本卡新开的结算路径），
+       * 取 max 后上限一窗。旧写法只读 `overflowSeconds` ⇒ 一旦某队走了攒条截短，本条会把它判成
+       * 「覆盖率与池不同源」——那是**尺子漏计形态**，不是覆盖率算错（池次数与覆盖率的隐含窗数之差
+       * 恰好就是 δ/W）。换尺不改被测语义：等式 `隐含窗数 + clip/W == 池次数` 一字未动。
+       */
       const a10On = probeFlag('PROBE_STUN_CLIP_ITER') !== 'off'
-      const clip = a10On ? Math.min(Math.max(0, rr.overflowSeconds ?? 0), W) : 0
+      const contOn = probeFlag('PROBE_STUN_CONT_TRUNC') !== 'off'
+      const clip = deliveredStunWindowClip(rr, W, a10On && contOn)
       const impliedWindows = cov * effTime / W
       if (Math.abs(impliedWindows + clip / W - pool.stunCount) > 0.02 && cov < 0.999) {
         violations.push(`${preset.id}: 覆盖率隐含 ${impliedWindows.toFixed(3)} 窗 + clip ${(clip / W).toFixed(3)} 窗 vs 池 ${pool.stunCount}（exit=${rr.convergence.outerExit}）`)

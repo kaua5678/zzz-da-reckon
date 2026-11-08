@@ -182,17 +182,95 @@ export interface CinemaUpliftFrontierEntry {
 }
 
 /**
- * **交付点 K 移动的一句话**（`掉窗 K3→K2（同 K2 仍 +9.4%）` / `增窗 K2→K3` / `''`）。
+ * **交付点的一句话**：K 的移动 + **失衡状况**（用户 2026-11-08 口径）。
  *
- * 抽成纯函数是为了让「掉窗」这条分支有独立判据：2026-11-07 连续失衡落地后，交付点掉窗的级从 9 条
- * 掉到几乎为零（攒不满的 K 现在按「末窗截短」兑现），**没有真实预设再走这条分支**——
- * 但预算类不可行仍会掉窗，字符串不能没有判据。
+ * > 「命座提升显示的地方要注明失衡情况，如果不写就是同 K，如果有连续变化要注明残疾程度，和失衡变化」
+ *
+ * 三态（**必须先能区分**，否则读者分不清「命座变强」与「操作强度变了」）：
+ * | 情形 | 输出 |
+ * |---|---|
+ * | 同 K、末窗完整 | `失衡 K3 完整` |
+ * | 同 K、末窗被截短 | `失衡 K3 残疾 1.5s/25.0s（末窗 94% 有效，等效 2.94 窗）` |
+ * | 换 K | `增窗 K2→K3｜失衡 K3 完整` / `掉窗 K3→K2（同 K2 仍 +9.4%）｜失衡 K2 完整` |
+ *
+ * 2026-11-07 起连续失衡进结算侧 ⇒ 「同 K」**不再等于「失衡状况相同」**：同一 K 下末窗可能完整、
+ * 也可能只剩 60%。这就是第三条必须印出来的理由——`k` 相同而 `clip` 不同的两帧，伤害可以差 1~2%。
+ *
+ * ⚠ `clip` 必须来自引擎（`convergence.stunContinuityClip` / 钉 K 扫描的 `clip`），
+ * **不许在展示层按 cont 反推**（那就是第二套算式，规则 11）。
+ * ⚠ 缺省 `stun` = 只印 K 的移动（旧行为）⇒ 判据复用旧签名时不用改。
  */
-export function buildDeliveryNote(beforeK: number, afterK: number, sameK: SameKComparison): string {
-  if (afterK === beforeK) return ''
-  if (afterK > beforeK) return `增窗 K${beforeK}→K${afterK}`
-  const same = sameK.pct === null ? '' : `（同 K${sameK.k} 仍 ${signed1(sameK.pct)}%）`
-  return `掉窗 K${beforeK}→K${afterK}${same}`
+export function buildDeliveryNote(
+  beforeK: number,
+  afterK: number,
+  sameK: SameKComparison,
+  /**
+   * 交付帧的**失衡状况**（后一级 = `after`、前一级 = `before`）。
+   * 缺省 null ⇒ 只印 K 的移动（旧行为，判据复用旧签名时不用改）。
+   */
+  stun?: {
+    before: DeliveryStunState
+    after: DeliveryStunState
+    /** 后一级窗长（秒）——残疾程度的分母 */
+    windowDuration: number
+  },
+): string {
+  const move = (() => {
+    if (afterK === beforeK) return ''
+    if (afterK > beforeK) return `增窗 K${beforeK}→K${afterK}`
+    const same = sameK.pct === null ? '' : `（同 K${sameK.k} 仍 ${signed1(sameK.pct)}%）`
+    return `掉窗 K${beforeK}→K${afterK}${same}`
+  })()
+  if (!stun) return move
+  const parts = [buildStunStateNote(stun.after, stun.windowDuration), buildStunChangeNote(stun.before, stun.after)]
+  if (move) parts.unshift(move)
+  return parts.join('｜')
+}
+
+/**
+ * 交付帧的**失衡状态一句话**（用户 2026-11-08 口径）。
+ *
+ * > 「命座提升显示的地方要注明失衡情况，如果不写就是同 K，如果有连续变化要注明残疾程度，和失衡变化」
+ *
+ * 三种形态，**必须能区分**（否则读者分不清「命座变强」与「操作强度变了」）：
+ * 1. `K3 完整`——末窗一秒没截，最干净的一档；
+ * 2. `K3 残疾 1.5s/25s（94% 有效，等效 2.94 窗）`——连续失衡兑现的那一档；
+ * 3. `K3（等效 2.94 窗）` 与其他细节。
+ *
+ * ⚠ **`clip` 必须来自引擎**（`convergence.stunContinuityClip` / 钉 K 扫描的 `clip`），
+ * 不许在展示层按 cont 反推——那就是第二套算式（规则 11）。
+ */
+export interface DeliveryStunState {
+  /** 交付的失衡次数 K */
+  k: number
+  /** 末窗被时钟截短的秒数（0 = 完整） */
+  clip: number
+  /** 等效计划窗数 `K − clip/W`（`clip=0` 时恒等于 K） */
+  plan: number
+}
+
+/**
+ * **两级之间的失衡变化**（用户 2026-11-08：「如果有连续变化要注明…和失衡变化」）。
+ *
+ * 只比「等效计划窗数」这一个量：它同时含 K 的移动与末窗残疾，是**唯一**能跨两级直接相减的失衡读数
+ * （比裸 `K` 精确到小数、比覆盖率少一层窗长/有效时间的干扰）。
+ *
+ * 输出（`Δ` 的符号与主读数的方向无关——失衡变多不一定伤害变高，反之亦然）：
+ * - `失衡 2.94→3.00 窗（+0.06）`：同 K 但末窗从残疾变完整；
+ * - `失衡 3.00→2.00 窗（−1.00）`：掉一整窗；
+ * - `失衡不变（2.00 窗）`：两级完全同档。
+ */
+export function buildStunChangeNote(before: DeliveryStunState, after: DeliveryStunState): string {
+  const d = after.plan - before.plan
+  if (Math.abs(d) < 1e-6) return `失衡不变（${after.plan.toFixed(2)} 窗）`
+  const sign = d > 0 ? '+' : ''
+  return `失衡 ${before.plan.toFixed(2)}→${after.plan.toFixed(2)} 窗（${sign}${d.toFixed(2)}）`
+}
+
+export function buildStunStateNote(state: DeliveryStunState, windowDuration: number): string {
+  if (!(state.clip > 1e-9) || !(windowDuration > 0)) return `失衡 K${state.k} 完整`
+  const effectivePct = Math.max(0, Math.min(1, (windowDuration - state.clip) / windowDuration)) * 100
+  return `失衡 K${state.k} 残疾 ${state.clip.toFixed(1)}s/${windowDuration.toFixed(1)}s（末窗 ${effectivePct.toFixed(0)}% 有效，等效 ${state.plan.toFixed(2)} 窗）`
 }
 
 /**
@@ -523,7 +601,17 @@ export async function analyzeCinemaUplift(
      * 主读数一个负数无法区分「命座让队伍变弱」与「命座把操作强度从 3 窗降到 2 窗」。
      * 同 K 提升率非空时一并印出——那就把「掉的是操作强度，不是同 K 收益」钉死了。
      */
-    const deliveryNote = buildDeliveryNote(b.k, a.k, sameK)
+    /**
+     * 交付点的失衡状况（用户 2026-11-08）：同一 K 下末窗可能完整也可能残疾 ⇒ 必须印出来。
+     * `clip` 取自两级的 `KFrontierDelivery#clip`（引擎读数，钉 K 帧与收敛帧同口径），窗长取前一级
+     * （两级窗长可能不同——仪玄 C2 就是 18s→21s，那种情况下面那句会如实印出后一级的窗长）。
+     */
+    const stunState = {
+      before: { k: b.k, clip: b.clip, plan: b.plan },
+      after: { k: a.k, clip: a.clip, plan: a.plan },
+      windowDuration: after.windowDuration,
+    }
+    const deliveryNote = buildDeliveryNote(b.k, a.k, sameK, stunState)
     return {
       entry: {
         beforeK: b.k,

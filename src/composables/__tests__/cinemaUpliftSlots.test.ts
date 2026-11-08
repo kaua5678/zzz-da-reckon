@@ -20,7 +20,7 @@ import { applyTeamToStore } from '@/composables/teamCompare'
 import { clearDifficultyLevers } from '@/composables/difficultyLadder'
 import { teamPresets } from '@/data/teamPresets'
 import { sameKBand, scanKFrontier } from '@/composables/cinemaUpliftFrontier'
-import { analyzeCinemaUplift, buildDeliveryNote, buildSlotSummary, computeSlotDeltas } from '@/composables/cinemaUplift'
+import { analyzeCinemaUplift, buildDeliveryNote, buildSlotSummary, computeSlotDeltas, signed1 } from '@/composables/cinemaUplift'
 import type { KFrontier } from '@/composables/cinemaUpliftFrontier'
 
 /** 扫两级前沿并返回两条前沿（同一场景、同一难度、只差命座等级） */
@@ -39,16 +39,48 @@ async function scanPair(presetId: string, from: number, to: number): Promise<[KF
   return out!
 }
 
-describe('判据⓪：掉窗注记的三态（纯函数，不依赖某个预设是否还掉窗）', () => {
+describe('判据⓪：交付点注记（纯函数，不依赖某个预设是否还掉窗）', () => {
   const sameK = (k: number, pct: number | null) => ({
     k, preferredK: k, atPreferred: true, beforeDmg: 1, afterDmg: 1, pct, preferredReason: null,
   })
 
-  it('掉窗：点名 K 的移动 + 同 K 对照；增窗/不变成对应文案', () => {
+  it('K 的移动：掉窗 / 增窗 / 不变', () => {
     expect(buildDeliveryNote(3, 2, sameK(2, 9.4))).toBe('掉窗 K3→K2（同 K2 仍 +9.4%）')
     expect(buildDeliveryNote(3, 2, sameK(2, null)), '同 K 不可比时不编数字').toBe('掉窗 K3→K2')
     expect(buildDeliveryNote(2, 3, sameK(3, 5))).toBe('增窗 K2→K3')
-    expect(buildDeliveryNote(3, 3, sameK(3, 5)), '没移动就不印（否则是恒真的装饰）').toBe('')
+    expect(buildDeliveryNote(3, 3, sameK(3, 5)), '不传失衡读数 ⇒ 只印 K 的移动（旧行为）').toBe('')
+  })
+
+  /**
+   * **用户 2026-11-08 口径**：「命座提升显示的地方要注明失衡情况，如果不写就是同 K，
+   * 如果有连续变化要注明残疾程度，和失衡变化」。
+   *
+   * 三态必须能区分——否则读者分不清「命座变强」与「操作强度变了」：
+   * 同 K 但末窗从完整变残疾，`k` 一个字都没动，而伤害能差 1~2%。
+   */
+  const stunOf = (k: number, clip: number, W: number) => ({
+    before: { k, clip: 0, plan: k },
+    after: { k, clip, plan: W > 0 ? k - clip / W : k },
+    windowDuration: W,
+  })
+
+  it('同 K、末窗完整 ⇒ 印「完整」而不是空', () => {
+    expect(buildDeliveryNote(3, 3, sameK(3, 5), stunOf(3, 0, 25)))
+      .toBe('失衡 K3 完整｜失衡不变（3.00 窗）')
+  })
+
+  it('同 K、末窗被截短 ⇒ 印残疾程度（秒/窗长/有效比例/等效窗数）+ 失衡变化', () => {
+    const note = buildDeliveryNote(3, 3, sameK(3, 5), stunOf(3, 1.5, 25))
+    expect(note).toContain('失衡 K3 残疾 1.5s/25.0s')
+    expect(note).toContain('末窗 94% 有效')
+    expect(note).toContain('等效 2.94 窗')
+    expect(note).toContain('失衡 3.00→2.94 窗（-0.06）')
+  })
+
+  it('换 K 时两段并排：先 K 的移动、再失衡状况与变化', () => {
+    const ctx = { before: { k: 3, clip: 0, plan: 3 }, after: { k: 2, clip: 0, plan: 2 }, windowDuration: 25 }
+    expect(buildDeliveryNote(3, 2, sameK(2, 9.4), ctx))
+      .toBe('掉窗 K3→K2（同 K2 仍 +9.4%）｜失衡 K2 完整｜失衡 3.00→2.00 窗（-1.00）')
   })
 })
 
@@ -109,7 +141,7 @@ describe('判据①b：投影 off 口径（难度曲线基线）下恒等式同�
 describe('判据②：结构看得见 —— 仪玄 C1→C2 本槽远高于队友', () => {
   beforeAll(async () => { await setupHarness(['', '', ''], { productionBasicWeights: true }) })
 
-  it('本槽 +14.1%、队友合计 +0.9%、槽2 −1.0%（合计 −0.03% 那一版已随连续失衡消失）', async () => {
+  it('本槽远高于队友合计，且至少一槽与主槽反向（合计 −0.03% 那一版已随连续失衡消失）', async () => {
     const [a, b] = await scanPair('auto-1371-1481-1451', 1, 2)
     const d = computeSlotDeltas(a.delivery.slots, b.delivery.slots)
     const main = d.find(x => x.slot === 0)!
@@ -119,8 +151,13 @@ describe('判据②：结构看得见 —— 仪玄 C1→C2 本槽远高于队�
 
     /**
      * 2026-11-07 连续失衡落地后，这一级的交付从 K2 变成 K3（末窗截短 1.95s），
-     * 于是用户最早点名的「全队 −0.03% / 本槽 +1.46%」不再出现；**结构本身仍然在**：
-     * 本槽 +14.1% 与队友合计 +0.9% 差 13pp，且槽 2 是负的（−1.0%）⇒ 单看合计会把队伍结构读平。
+     * 于是用户最早点名的「全队 −0.03% / 本槽 +1.46%」不再出现；**结构本身仍然在**。
+     *
+     * ⚠ 具体数字随结算口径变（本卡第七轮：末窗截短进 kStar 与覆盖率后，K3 的兑现更完整 ⇒
+     * 本槽 +14.1% → **+16%**、队友 +0.9% → **+1.2%**、槽 2 由 −1.0% → **+3.3%**）。
+     * ⇒ 本条**不钉死百分比**，只钉「结构看得见」这件事：本槽为正且明显高于队友合计、两者差 8pp 以上、
+     * 且**至少一个队友槽与主槽符号相反**（合计会掩盖反向那一槽）。钉死数字会让每次口径修正都要改测试，
+     * 而真正要守的是「页面只给合计数会把结构藏掉」——那是与数值无关的展示口径。
      */
     expect(main.pct, '本槽应明显上涨').toBeGreaterThan(10)
     expect(Math.abs(main.pct! - matePct), '本槽与队友合计必须分得开（否则这一行没意义）').toBeGreaterThan(8)
@@ -128,10 +165,15 @@ describe('判据②：结构看得见 —— 仪玄 C1→C2 本槽远高于队�
     // 至少一个队友槽与主槽符号相反 ⇒ 合计会掩盖反向的那一槽（反空洞）
     expect(d.filter(x => x.slot !== 0).some(x => x.pct !== null && Math.sign(x.pct) !== Math.sign(main.pct!))).toBe(true)
 
-    // 页面印的那一行必须与数据一致（不许页面另拼一套数）
+    /**
+     * 页面印的那一行必须与数据一致（不许页面另拼一套数）。
+     * **用页面同一个格式化函数**（`signed1`，不是 `toFixed(1)`——它会把 `+16.0` 印成 `+16`），
+     * 且断的是「summary 里的数 == 这里算出来的数」，不是某个写死的数值（写死数值会把口径修正误判成
+     * 「页面另拼一套」；本条上一版就是被这件事绊倒的）。
+     */
     const summary = buildSlotSummary(d, 0)
-    expect(summary).toContain('本槽 +14.1%')
-    expect(summary).toContain('队友 +0.9%')
+    expect(summary).toContain(`本槽 ${signed1(main.pct!)}%`)
+    expect(summary).toContain(`队友 ${signed1(matePct)}%`)
   }, 300_000)
 })
 
@@ -171,8 +213,18 @@ describe('判据③：交付点不再掉窗（连续失衡落地后），真掉�
       note = entries.find(x => x.to === 4)!.frontier!.deliveryNote
       slotSummary = entries.find(x => x.to === 4)!.frontier!.slotSummary
     })
-    expect(note, 'K3→K3：没有掉窗就不印注记').toBe('')
-    // 「增窗」分支已由上面的纯函数判据覆盖（这一队现在各级都交付在同 K，没有真实预设可测）
+
+    /**
+     * ⚠ **2026-11-08 口径变更**（用户：「如果不写就是同 K，如果有连续变化要注明残疾程度，和失衡变化」）：
+     * 旧断言「没掉窗 ⇒ 注记为空」，会让「同 K 但末窗被截短」这种**真的变化**在页面上完全看不见。
+     * 现在同 K 也要印失衡状况 ⇒ 这条改为断「注记说清了 K 与残疾程度」。
+     * 实测这一格：`失衡 K3 残疾 1.5s/25.0s（末窗 94% 有效，等效 2.94 窗）｜失衡 3.00→2.94 窗（-0.06）`。
+     */
+    expect(note, '同 K 也必须印失衡状况（不再为空）').not.toBe('')
+    expect(note, '必须点名 K').toContain('K3')
+    expect(note, '连续失衡生效时要点名残疾程度').toMatch(/残疾 \d+\.\ds\//)
+    expect(note, '必须给出失衡变化').toContain('窗')
+    // 「掉窗 / 增窗」分支已由上面的纯函数判据覆盖（这一队现在各级都交付在同 K，没有真实预设可测）
     expect(slotSummary).toContain('本槽')
     expect(slotSummary).toContain('队友')
   }, 600_000)
