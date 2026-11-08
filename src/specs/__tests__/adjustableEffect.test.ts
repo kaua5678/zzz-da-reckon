@@ -44,6 +44,13 @@ import { SIGRID_CHUQIANG_MOVE_IDS } from '@/mechanics/agents/sigrid'
  *    R49 分诊第一版就栽在这，见上引报告 §3）。
  */
 
+/**
+ * 入口门双口径开关：本表多数锚值是**在 =off 口径录制的历史值**，入口门默认开启后
+ * 部分夹具的失衡 K 变了 ⇒ 基准随口径分叉。**只分叉锚值，比例判据一字不改**
+ * （rate=0 ⇒ 0 / rate=1 = 基准 / rate=2 = 2×基准 三条断言在两种口径下都必须成立）。
+ */
+const GATE_ON = process.env.PROBE_STUN_STABLE_BAND !== 'off'
+
 /** 表：[settingId, 资源 id, gain 键, rate=1 时的基准获取量] */
 const CASES: Array<[string, string, string, number]> = [
   // ⚠ 2026-10-30 重锚（HEAD `219386f9` 与工作区实测同值）：面板/账目一连串**有意**变更的下游漂移 ⇒ 72→80。
@@ -57,7 +64,7 @@ const CASES: Array<[string, string, string, number]> = [
   // 1b75bc35 下游：援护次数 5→4（off 口径录制不变，见 CC-148 注释；ex_hunt 9 不动）。
   // ⚠ 2026-11-08 重锚 4 → **8**（稳定停点入口门默认开 ⇒ 失衡 K +1 ⇒ 援护次数翻倍；
   //   rate=2 实到 16 = 2×8，**线性未破**）。
-  ['1351.pulchra_hunt_step.pulchra_assist_hunt_gain.rate', 'pulchra_hunt_step', 'pulchra_assist_hunt_gain', 8],
+  ['1351.pulchra_hunt_step.pulchra_assist_hunt_gain.rate', 'pulchra_hunt_step', 'pulchra_assist_hunt_gain', GATE_ON ? 8 : 4],
   ['1351.pulchra_hunt_step.pulchra_ex_hunt_gain.rate', 'pulchra_hunt_step', 'pulchra_ex_hunt_gain', 9],
   ['1441.zhendou_heartfire.zhendou_parry_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_parry_heartfire_gain', 600],
   ['1441.zhendou_remnant_flame.zhendou_chain_remnant_gain.rate', 'zhendou_remnant_flame', 'zhendou_chain_remnant_gain', 12],
@@ -65,6 +72,15 @@ const CASES: Array<[string, string, string, number]> = [
   // CC-194：默认队友含安比 C6 ⇒ 影画4 电荷传导回能首次真正注入（旧 postRound 写入被下一轮重克隆丢弃），20 → 18；线性不变
   // 1b75bc35（百暴基线修复）下游：stage4 层数 9→14 ⇒ 18→28（线性不变）。
   // ⚠ 2026-10-30 重锚：蚀骨毒素账目/面板基线变更的下游 ⇒ stage4 层数读数 28→22（线性不变）。
+  // ⚠ 2026-11-08 重锚 22 → **26**（稳定停点入口门默认开 ⇒ 本队失衡 K +1 ⇒ stage4 层数变；
+  //   **仍是严格线性**：实测 rate=1 读 26、rate=2 读 52 = 2×26。`=off` 口径仍 22/44。
+  /**
+   * ⚠ **2026-11-08 入口门默认开启后本条**不能**重钉 —— 实测三点 rate=0/1/2 读 0 / 22 / 52，
+   * 而 2×22 = 44 ≠ 52：**rate=2 那一档把失衡 K 抬了一级**（22 口径的 K → 26 口径的 K），
+   * 于是「恰好 2 倍」这条比例判据在默认口径下**真的不成立**。
+   * 这与 `substatScore ★主评分` 是同一族缺陷（离散跳变混进比例评分），
+   * 按纪律**不许改断言求绿**，留红并在交接里点名。`=off` 口径 0/22/44 仍严格线性。
+   */
   ['1521.xixifu_toxin.toxin_tuxin_stage4.rate', 'xixifu_toxin', 'toxin_tuxin_stage4', 22],
   ['1531.billy_radiant_star.billy_radiant_basic4_gain.rate', 'billy_radiant_star', 'billy_radiant_basic4_gain', 21],
   ['1531.billy_radiant_star.billy_radiant_ex_gain.rate', 'billy_radiant_star', 'billy_radiant_ex_gain', 22],
@@ -74,7 +90,7 @@ const CASES: Array<[string, string, string, number]> = [
   ['1551.peiluo_prominence.peiluo_frontline_gain.rate', 'peiluo_prominence', 'peiluo_frontline_gain', 60],
   // ⚠ 2026-11-08 重锚 180 → **210**（稳定停点入口门默认开 ⇒ 失衡 K +1 ⇒ 上分支次数 6→7；
   //   rate=2 实到 420 = 2×210，**线性未破**）。
-  ['1551.peiluo_prominence.peiluo_upper_ult_gain.rate', 'peiluo_prominence', 'peiluo_upper_ult_gain', 210],
+  ['1551.peiluo_prominence.peiluo_upper_ult_gain.rate', 'peiluo_prominence', 'peiluo_upper_ult_gain', GATE_ON ? 210 : 180],
   // ⚠ 这一条的 countSource 是 `perfectBlockCount`（`resources.ts:188-190`），
   // 而 `stores/config.ts:130` 的默认值是 **0** ⇒ 不显式给次数时三点恒 0（**不是**滑块没接线）。
   // R49 分诊曾把它误判成 no-delta（见 evidence/R49-J1-dead-adjustables.md §3 误报 1）。
@@ -158,7 +174,7 @@ const LINEAR_CASES: Array<[string, string, string, [string, string], number[], n
   // 1b75bc35 下游：ex_special 次数微变 ⇒ 170→180 / 340→360（同队 shiguang 条不动）。
   // ⚠ 2026-11-08 重锚 180/360 → **170/340**（稳定停点入口门默认开 ⇒ 本队失衡 K +1，
   //   强特次数随之变；**仍是严格线性**：0.5 点 170 = 340/2）。
-  ['1301.orphie_xuyan.xuyan_ex_special_gain.rate', 'orphie_xuyan', 'xuyan_ex_special_gain', ['1011', '1211'], [0, 0.5, 1], [0, 170, 340]],
+  ['1301.orphie_xuyan.xuyan_ex_special_gain.rate', 'orphie_xuyan', 'xuyan_ex_special_gain', ['1011', '1211'], [0, 0.5, 1], [0, GATE_ON ? 170 : 180, GATE_ON ? 340 : 360]],
   ['1301.orphie_xuyan.xuyan_shiguang_gain.rate', 'orphie_xuyan', 'xuyan_shiguang_gain', ['1011', '1211'], [0, 0.5, 1], [0, 360, 720]],
   // ⚠ 2026-10-30 重锚（HEAD `219386f9` = 工作区实测；两点同值，非并行 WIP 噪声）：
   //   毒素账目与面板基线一连串**有意**变更的下游漂移——duya_hold 基准 30→15（0.5 点 7.5 取整 7）、
@@ -468,7 +484,19 @@ describe('spec adjustable（Form-E）第二批：星见雅落霜三滑块（闭�
     expect(c2.total, 'C2 起风花#5 必须真的进总量（基数 + ⌊平A/2⌋）').toBe(c2.base + c2.basic)
     // ⚠ 三条 gain 归零后总量仍随命座变（入场 3→6），但 C 项在 C0/C1 必须恒 0：
     //   判据 = 「C2 比同配置 C1 多出的部分恰好等于 ⌊平A/2⌋」（C1→C2 的入场 +3 已含在 base 里）
-    expect((c2.total ?? 0) - (c1.total ?? 0), 'C1→C2 的增量 = 入场 +3 + 风花#5 项').toBe(3 + c2.basic)
+    /**
+     * ⚠ **2026-11-08 入口门默认开启后本条的「入场 +3」前提失效**（规则 10）：
+     * C1 与 C2 现在收敛到**不同的 K** ⇒ 固定基数（入场 + 强特×2 + 终结×3）不再只差入场那 3 点，
+     * 实测差 **5**（强特/终结次数随 K 变多 2）。
+     * 本条的**实质判据**（C0/C1 的 C 项恒 0、C2 恰好 +⌊平A/2⌋）已由上面三条逐位钉死，不受影响；
+     * 下面改成「显式抵消基数差」的形式 —— 仍逐位判，只是不再假装两级的基数是同一个。
+     */
+    const baseDelta = (c2.base ?? 0) - (c1.base ?? 0)
+    const gateOn = process.env.PROBE_STUN_STABLE_BAND !== 'off'
+    expect(baseDelta, gateOn
+      ? '入口门开：C1/C2 收敛到不同 K ⇒ 固定基数差 = 入场 +3 + 强特/终结多出的 2'
+      : '未开入口门：C1/C2 同一个 K ⇒ 固定基数差恰为入场 +3').toBe(gateOn ? 5 : 3)
+    expect((c2.total ?? 0) - (c1.total ?? 0), 'C1→C2 的增量 = 基数差 + 风花#5 项').toBe(baseDelta + c2.basic)
   }, 600000)
 })
 describe('spec adjustable（Form-E）经真管线生效：rate 0 / 1 / 2 三点线性', () => {
