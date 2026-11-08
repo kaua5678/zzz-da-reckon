@@ -108,18 +108,27 @@ describe('1141 围猎 · 镜像闪反时长预算（2026-11-04）', () => {
   }, 900000)
 
   it('★ 镜像次数仍逐次跟随队友闪反（次数口径不变：不超窗口就给满队友那次数）', async () => {
-    const { row, calc, perWindowChains } = await setup(20, 4)
-    // ⚠ huntCount 是**收敛后的实数**（外层不动点给 stunCount），不是整数
-    const huntCount = row('1141027')!.count / 2
-    expect(huntCount).toBeGreaterThan(3)
-    expect(huntCount).toBeLessThanOrEqual(4 + 1e-9)
-    const perWindow = perWindowChains
-    const windowSeconds = lycaonHuntWindowSeconds(huntCount, perWindow)
-    const cap = Math.floor(windowSeconds / 0.6 + 1e-9)
-    // 镜像次数恒 = min(队友闪反, 窗口容量)：窗口装得下 → 逐次跟随；装不下 → 封顶。
-    // 「逐次跟随」这条口径没变，变的只是窗口本身（提前终止）。
-    expect(row('1141019')!.count).toBe(Math.min(20, cap))
-    expect(cap).toBeLessThan(81)
+    /**
+     * ## 用**可观测事实**断言「逐次跟随」，不再复刻引擎的私有窗口量（2026-11-09 修）
+     *
+     * 旧写法自己重算 `cap = floor(lycaonHuntWindowSeconds(huntCount, perWindow) / 0.6)`，
+     * 而 `perWindow` 的真值在引擎轴臂是 `Σ axis.chainTotalBySlot / axis.windows`
+     * （**含终结技那一半**，见 lycaon.ts 的 `perWindowChains = chains + ults`），
+     * 但 `stackTraversalResult` 上**没有** `chainTotalBySlot` 这个字段
+     * ⇒ 上面的代理函数恒退化成 store 的 `chainCountPerStun` 之和（实测 2），漏掉终结技那一半。
+     *
+     * 入口门默认开启后 `huntCount` 由 3.46 变 4，代理 cap 从 15 涨到 17，
+     * 而**引擎的镜像次数两档都是 15**（`.zc/perf` 探针 ON/OFF 同值，两次跑都打在同一处）
+     * ⇒ 红的是代理值，不是引擎。这与本文件 2026-11-06 已修过一次的同类问题同因
+     * （「不是引擎回归，是这条代理值一直不正」）。
+     *
+     * 正确测法：把队友闪反降到 **5** 次（远小于任何窗口容量）⇒ 「逐次跟随」的直接可观测
+     * 后果就是镜像**恰好 5 次**，一次不多一次不少，完全不需要知道窗口有几秒。
+     * 封顶那一半由上方第一个用例（81 次闪反 ⇒ 被窗口夹住）覆盖。
+     */
+    const { row, calc } = await setup(5, 4)
+    expect(row('1141027'), '弹刀 4 ⇒ 围猎应有冰舞行').toBeDefined()
+    expect(row('1141019')!.count, '窗口装得下 ⇒ 镜像逐次跟随队友那 5 次').toBe(5)
     expect(calc.stunCoverage.value).toBeGreaterThan(0)
   }, 900000)
 
