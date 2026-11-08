@@ -55,7 +55,9 @@ const CASES: Array<[string, string, string, number]> = [
   // （ex 次数不受影响 ⇒ 上一条 56 不动。git bisect 定位，非回归——该修复是用户报 bug 的有意修正。）
   ['1041.soldier11_charge.soldier11_ult_charge_gain.rate', 'soldier11_charge', 'soldier11_ult_charge_gain', 24],
   // 1b75bc35 下游：援护次数 5→4（off 口径录制不变，见 CC-148 注释；ex_hunt 9 不动）。
-  ['1351.pulchra_hunt_step.pulchra_assist_hunt_gain.rate', 'pulchra_hunt_step', 'pulchra_assist_hunt_gain', 4],
+  // ⚠ 2026-11-08 重锚 4 → **8**（稳定停点入口门默认开 ⇒ 失衡 K +1 ⇒ 援护次数翻倍；
+  //   rate=2 实到 16 = 2×8，**线性未破**）。
+  ['1351.pulchra_hunt_step.pulchra_assist_hunt_gain.rate', 'pulchra_hunt_step', 'pulchra_assist_hunt_gain', 8],
   ['1351.pulchra_hunt_step.pulchra_ex_hunt_gain.rate', 'pulchra_hunt_step', 'pulchra_ex_hunt_gain', 9],
   ['1441.zhendou_heartfire.zhendou_parry_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_parry_heartfire_gain', 600],
   ['1441.zhendou_remnant_flame.zhendou_chain_remnant_gain.rate', 'zhendou_remnant_flame', 'zhendou_chain_remnant_gain', 12],
@@ -70,7 +72,9 @@ const CASES: Array<[string, string, string, number]> = [
   ['1531.billy_star_glow.billy_star_ex_gain.rate', 'billy_star_glow', 'billy_star_ex_gain', 22],
   ['1531.billy_star_glow.billy_star_ultimate_gain.rate', 'billy_star_glow', 'billy_star_ultimate_gain', 3],
   ['1551.peiluo_prominence.peiluo_frontline_gain.rate', 'peiluo_prominence', 'peiluo_frontline_gain', 60],
-  ['1551.peiluo_prominence.peiluo_upper_ult_gain.rate', 'peiluo_prominence', 'peiluo_upper_ult_gain', 180],
+  // ⚠ 2026-11-08 重锚 180 → **210**（稳定停点入口门默认开 ⇒ 失衡 K +1 ⇒ 上分支次数 6→7；
+  //   rate=2 实到 420 = 2×210，**线性未破**）。
+  ['1551.peiluo_prominence.peiluo_upper_ult_gain.rate', 'peiluo_prominence', 'peiluo_upper_ult_gain', 210],
   // ⚠ 这一条的 countSource 是 `perfectBlockCount`（`resources.ts:188-190`），
   // 而 `stores/config.ts:130` 的默认值是 **0** ⇒ 不显式给次数时三点恒 0（**不是**滑块没接线）。
   // R49 分诊曾把它误判成 no-delta（见 evidence/R49-J1-dead-adjustables.md §3 误报 1）。
@@ -152,7 +156,9 @@ const LINEAR_CASES: Array<[string, string, string, [string, string], number[], n
   //   夹具的失衡计数，500/1000 仍恰成线性）。
   ['1441.zhendou_heartfire.zhendou_special_heartfire_gain.rate', 'zhendou_heartfire', 'zhendou_special_heartfire_gain', ['1011', '1211'], [0, 1, 2], [0, 500, 1000]],
   // 1b75bc35 下游：ex_special 次数微变 ⇒ 170→180 / 340→360（同队 shiguang 条不动）。
-  ['1301.orphie_xuyan.xuyan_ex_special_gain.rate', 'orphie_xuyan', 'xuyan_ex_special_gain', ['1011', '1211'], [0, 0.5, 1], [0, 180, 360]],
+  // ⚠ 2026-11-08 重锚 180/360 → **170/340**（稳定停点入口门默认开 ⇒ 本队失衡 K +1，
+  //   强特次数随之变；**仍是严格线性**：0.5 点 170 = 340/2）。
+  ['1301.orphie_xuyan.xuyan_ex_special_gain.rate', 'orphie_xuyan', 'xuyan_ex_special_gain', ['1011', '1211'], [0, 0.5, 1], [0, 170, 340]],
   ['1301.orphie_xuyan.xuyan_shiguang_gain.rate', 'orphie_xuyan', 'xuyan_shiguang_gain', ['1011', '1211'], [0, 0.5, 1], [0, 360, 720]],
   // ⚠ 2026-10-30 重锚（HEAD `219386f9` = 工作区实测；两点同值，非并行 WIP 噪声）：
   //   毒素账目与面板基线一连串**有意**变更的下游漂移——duya_hold 基准 30→15（0.5 点 7.5 取整 7）、
