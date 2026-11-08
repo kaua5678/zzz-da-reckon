@@ -100,6 +100,15 @@ export interface CinemaBreakdownBaselines {
   pureResource: number
   /** **新资源基线** = 旧面板 + 新资源/执行（资源型命座换来的净增益就落在这段） */
   afterResource: number
+  /**
+   * **新覆盖率基线** = 新资源/执行 + 新失衡覆盖率、**面板仍冻在旧值**。
+   *
+   * 为什么单列这一段（2026-11-09）：覆盖率是**资源/时间通道**的产物（见
+   * `computeCinemaBreakdown` 头注释 ②），但它同时是失衡易伤乘区的系数 ⇒ 若和面板一起放进
+   * 第三段，覆盖率差会被记成「面板增益」。本字段 = 把这段单独隔离出来：
+   * `resourcePct` 吃掉 `afterResource → afterCoverage`，`attrPct` 只剩纯面板。
+   */
+  afterCoverage: number
   /** C(n) 实算总伤害 */
   after: number
 }
@@ -428,6 +437,30 @@ export function computeCinemaBreakdown(input: CinemaBreakdownInput): CinemaBreak
   const resCtx = swapPanels(input, { ...input.afterCtx, stunCoverage: input.beforeCtx.stunCoverage }, input.afterCtx.damagePanels, afterSnapshot, beforeSnapshot)
   const resPool = rebuildDamagePool(resCtx, (_s, p) => p)
   const resRows = aggregateRows(resPool.rows)
+  /**
+   * ## 覆盖率差归**资源**通道（2026-11-09 修，实测归因）
+   *
+   * 上面 `resCtx` 把覆盖率**冻在旧值**（理由见函数头 ②：不冻会被误算成执行级）。
+   * 但 `afterTotal` 用的是**新覆盖率** ⇒ 覆盖率差全部落进 `attrPct`（第三段），
+   * 与模块自己写的「覆盖率是**资源/时间通道**的产物」自相矛盾。
+   *
+   * 实测（1011C1，入口门默认开启）：C0→C1 **失衡次数 3→3 不变**、覆盖率 `0.23999→0.26667`，
+   * 而分解报 `attrPct = 1.19%` —— 恰好等于
+   * `(1+0.5×0.26667)/(1+0.5×0.23999) − 1 = 1.1909%`（失衡易伤乘区）。
+   * 而这一级唯一改的面板字段 `energyGainEfficiency` **全仓只走资源管线**
+   * （`core/resource/resourceIncome.ts`），从不进伤害公式 ⇒ 面板通道本应是 0。
+   *
+   * 修法 = 补一个 **新覆盖率 + 旧面板** 的池，把覆盖率差从第三段移到第一段（资源）：
+   * ```
+   *   resourcePct = (pureResource/before) × (covPool/resPool) − 1   ← 次数 × 覆盖率
+   *   execPct     = resPool/pureResource − 1                        ← 单次伤害（执行级）
+   *   attrPct     = afterTotal/covPool − 1                          ← 纯面板
+   * ```
+   * 三段连乘仍恒等于总提升（望远镜式）：
+   * `(pure/before)(cov/res)(res/pure)(after/cov) = after/before`。
+   */
+  const covCtx = swapPanels(input, { ...input.afterCtx, stunCoverage: input.afterCtx.stunCoverage }, input.afterCtx.damagePanels, afterSnapshot, beforeSnapshot)
+  const covPool = rebuildDamagePool(covCtx, (_s, p) => p)
 
   // ① 纯资源：新次数 × **旧单次伤害**（旧池里没有的招式行 ⇒ 单次伤害无旧值 ⇒ 整体归执行级）
   let pureResource = 0
@@ -442,9 +475,14 @@ export function computeCinemaBreakdown(input: CinemaBreakdownInput): CinemaBreak
   }
   newRows.sort()
 
-  const resourcePct = pctOf(pureResource, beforeTotal)
+  /**
+   * 三段商（口径见 `covPool` 注释）：覆盖率归资源段，面板段只剩**纯面板**。
+   * 用**比值相乘**而不是逐段 `pctOf` 再相加，保证与 `totalPct` 的连乘恒等式逐位成立。
+   */
+  const covRatio = resPool.total > 0 ? covPool.total / resPool.total : 1
+  const resourcePct = beforeTotal > 0 ? ((pureResource / beforeTotal) * covRatio - 1) * 100 : 0
   const execPct = pctOf(resPool.total, pureResource)
-  const attrPct = pctOf(afterTotal, resPool.total)
+  const attrPct = pctOf(afterTotal, covPool.total)
 
   const diff = diffPanels(beforeSnapshot, afterSnapshot, input.slots)
   /**
@@ -487,6 +525,7 @@ export function computeCinemaBreakdown(input: CinemaBreakdownInput): CinemaBreak
       before: beforeTotal,
       pureResource,
       afterResource: resPool.total,
+      afterCoverage: covPool.total,
       after: afterTotal,
     },
     // 三段商没法定义（旧池某种伤害彻底消失 ⇒ 纯资源基线 ≤ 0）⇒ 如实标耦合，不伪造数字。

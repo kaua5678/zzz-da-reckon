@@ -135,7 +135,10 @@ const A_CLASS: ACell[] = [
   // ⚠ 2026-11-08 入口门默认开启：本格 C3→C4 的失衡窗数 2→3（=off 时仍 2→2）⇒ 后场电回能之外
   //    又多跨了一次失衡阈值，读数 1.49% → **9.65%**、通道标签多出 ATTR。
   //    「资源动了但没传导」的原归因在 =off 口径下仍成立（见下方 total/tier 两字段）。
-  { agentId: '1011', cinema: 4, name: '安比', mates: ['1041', '1211'], total: 1.49, tier: 'RESOURCE+EXEC', totalOn: 9.65, tierOn: 'RESOURCE+EXEC+ATTR' },
+  // ⚠ 2026-11-09 分解口径修正（cinemaUpliftBreakdown）：覆盖率差归**资源**通道，
+  //    不再落进面板段 ⇒ 入口门口径下这一格的 ATTR 标签消失（读数 9.65% 不变）。
+  //    原 tierOn = 'RESOURCE+EXEC+ATTR' 正是那个缺陷的表现（覆盖率 0.23999→0.26667 被记成面板 1.19%）。
+  { agentId: '1011', cinema: 4, name: '安比', mates: ['1041', '1211'], total: 1.49, tier: 'RESOURCE+EXEC', totalOn: 9.65, tierOn: 'RESOURCE+EXEC' },
   { agentId: '1211', cinema: 1, name: '丽娜', mates: ['1011'], total: 1.16, tier: 'ATTR' },
   { agentId: '1461', cinema: 4, name: '「席德」', mates: ['1021'], total: 1.07, tier: 'EXEC' },
   { agentId: '1161', cinema: 4, name: '莱特', mates: ['1021'], total: 0.92, tier: 'RESOURCE+EXEC' },
