@@ -946,6 +946,54 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     // 非环停点（stable / 真 maxIter）：前一轮 = 历史末项（stable 的本轮未入历史；maxIter 的本轮是历史末项，取其前一项）
     if (outerExit === 'stable') outPrev = outerOutHistory[outerOutHistory.length - 1] ?? null
     else if (outerExit === 'maxIter') outPrev = outerOutHistory[outerOutHistory.length - 2] ?? null
+
+    /**
+     * ★ **锁定帧也必须报出时钟截短 δ**（2026-11-09 第 54 轮，实测归因）。
+     *
+     * 病灶：`stunContinuityClip` 只在下方「环退出 ⇒ kStar 结算」的 `chosenRun` 块里写。
+     * 锁失衡次数走的是**非环停点**出口 ⇒ 那个字段永远 undefined ⇒ 交付时
+     * `deliveredStunWindowClip` 只看到装配溢出（这两队都是 0）⇒ 覆盖率按**整窗**报。
+     *
+     * 实测（探针 MONO / LK7，三支队，自由 vs 锁同 K，W=18、effTime=180）：
+     * | 队 | 自由帧 | 锁同 K 帧 | 伤害差 |
+     * |---|---|---|---|
+     * | auto-1611-1141-1211 | cont 6.00 / clip **8.677s** / cov 0.4851 | cont 5.42 / clip **0** / cov 0.5333 | +2.17% |
+     * | auto-1051-1141-1451 | cont 5.00 / clip **7.658s** / cov 0.4019 | cont 4.54 / clip **0** / cov 0.4444 | +2.59% |
+     * | yidhari-trigger-lucia | clip 0 / cov 0.3556 | clip 0 / cov 0.3556 | **0（逐位相同）** |
+     *
+     * 两队的分歧**完全**来自这一项：覆盖率差 = clip/180（8.677/180 = 4.82pp = 0.5333−0.4851 ✓）。
+     * 第三队两边 clip 都是 0，伤害也逐位相同 ⇒ 不是「锁定口径天然不同源」，而是**这一项没写**。
+     * 而且锁定帧自己的 δ 实测非零（1611: 7.639s、1051: 9.022s），它只是没被记进结果。
+     *
+     * 为什么锁定帧本就该有 δ：δ 的定义是「要让第 K 窗开出来，得从末窗让出多少秒」
+     * （`continuousStunClip`：δ = (K/cont − 1) × 窗外可用时间）。锁定帧 cont < K 时第 K 窗
+     * 同样是挤出来的 —— 池并没攒到 K 次。此时报「K 个整窗的覆盖率」等于宣称末窗是满的，
+     * 与它自己的池自相矛盾；自由帧在**同一个 K** 上报的正是扣过 δ 的值。
+     *
+     * 语义边界（与锁窗纪律一致）：只**如实报出** δ，不动 K、不动池、不动资源分配
+     * （「锁窗 = 用户明确意图 ⇒ 一律不动」，超时/挤窗都如实上报）。
+     * `cont >= K`（自洽）⇒ δ = 0 ⇒ 不写字段 ⇒ 逐位不变。
+     * 回退开关：`PROBE_STUN_CONT_TRUNC=off` ⇒ 本块整体不生效 ⇒ 逐位等于改动前。
+     */
+    if (effLock >= 0 && continuityTruncEnabled() && outerExit === 'stable'
+      && stunWindowDur > 0 && stunEffTime > 0 && out.resourceResult) {
+      const lockedDelta = continuousStunClip({
+        cont: continuousStunCount(out.stunPool),
+        k: effLock,
+        windowDuration: stunWindowDur,
+        effectiveTime: stunEffTime,
+      })
+      const prevClip = out.resourceResult.convergence.stunContinuityClip ?? 0
+      if (lockedDelta !== null && lockedDelta > prevClip) {
+        out = {
+          ...out,
+          resourceResult: {
+            ...out.resourceResult,
+            convergence: { ...out.resourceResult.convergence, stunContinuityClip: lockedDelta },
+          },
+        }
+      }
+    }
     // CC-150（第 174 轮）：physical 计数下外层 2-环 = 整数物理次数无不动点（实测雨果 0 命轴 hugo-c0-e：
     // 读入 5 → 池 4、读入 4 → 池 5）。规范成员的引擎按读入 K（= 其前一轮池 `outPrev.stunPool`，即
     // `threads.prevPoolStunCount`）分配时间与计数，池却报 K+1 ⇒ 资源行（决算 4）与池 / 轴栈 / 伤害侧（5）不同源。
