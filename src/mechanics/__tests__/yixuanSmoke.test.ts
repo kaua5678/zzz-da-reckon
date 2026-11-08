@@ -829,11 +829,29 @@ describe('T173 2连/3连比例滑块（用户口径 2026-10-15）', () => {
     let chain = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!.yixuanExChain!
     expect(chain.ink3Count, '手填 3连=1 ⇒ 比例 0 不得把它清成 0（哨兵语义）').toBe(1)
     expect(chain.ink2Count, '手填 2连=2 原样').toBe(2)
-    // 只手填 2连 ⇒ 3连走改前的自动算式（不与比例相乘）
+    /**
+     * ## 只手填 2连 ⇒ 3连走**自动算式**（不与比例相乘）
+     *
+     * ⚠ 2026-11-09：原断言是 `ink3Count > 0`（用「有 3 连」当「比例没被套用」的判别器）。
+     * 入口门默认开启后这条判别器**失效**了：多开一窗 ⇒ 轴内凝云 6→9 次 ⇒
+     * `axisCloudSpent` 360→540（`income` 660、`ink2` 占 80）⇒ 余量只剩 40 < 60
+     * ⇒ **自动算式合法地算出 ink3 = 0**（`.zc/perf` 探针：ON ink3=0 / OFF ink3=4，
+     * 且 `flashSpent = ink1×40 + ink4×20 + axisCloudSpent = 620` 逐项自洽）。
+     * 也就是说引擎没错，是「ink3>0」这个代理不再能区分「比例生效」与「算式本就为 0」。
+     *
+     * 改成直接测**语义本身**：比例档只在第三档生效（见 `resolveYixuanAutoInputs` 三档表），
+     * 故「2连手填」这一档下 **把比例从 0 改到 1，ink3 必须一点不变**。
+     * 若比例真的渗进来，ratio=1 会把 ink3 顶到 total ⇒ 当场不同。这条判别器
+     * 与自动算式算出多少无关，比原来的 `>0` 更精确、且不会因口径变化失效。
+     */
     config.setActionCount(0, 'yixuanInk3Count', 0)
     chain = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!.yixuanExChain!
-    expect(chain.ink2Count).toBe(2)
-    expect(chain.ink3Count).toBeGreaterThan(0)
+    expect(chain.ink2Count, '手填 2连=2 原样').toBe(2)
+    const ink3AtRatio0 = chain.ink3Count
+    config.setMechanicSetting('yixuan.ink3Ratio', 1)
+    chain = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!.yixuanExChain!
+    expect(chain.ink3Count, '2连手填档 ⇒ 比例 0→1 不得改变 3 连次数').toBe(ink3AtRatio0)
+    config.setMechanicSetting('yixuan.ink3Ratio', 0)
     // 清空两个手填 ⇒ 回到比例档（r=0 ⇒ 全 2 连、0 次 3 连）
     config.setActionCount(0, 'yixuanInk2Count', 0)
     chain = calc.resourceResult.value!.characters.find(c => c.agentId === '1371')!.yixuanExChain!
