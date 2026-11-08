@@ -111,6 +111,13 @@ interface ACell {
   mates: string[]
   total: number
   tier: string
+  /**
+   * ⚠ **入口门默认开启（`PROBE_STUN_STABLE_BAND`）后的读数**（规则 10 重钉）。
+   * 稳定停点入口门把交付 K 抬 +1 ⇒ 本格的失衡**窗数**跨过阈值 ⇒ 读数与通道标签都变。
+   * 只对受影响的格子给出；`=off` 时仍回到 `total` / `tier`（原口径）。
+   */
+  totalOn?: number
+  tierOn?: string
 }
 
 /**
@@ -125,7 +132,10 @@ const A_CLASS: ACell[] = [
   { agentId: '1421', cinema: 1, name: '潘引壶', mates: ['1051'], total: 4.53, tier: 'ATTR' },
   { agentId: '1421', cinema: 6, name: '潘引壶', mates: ['1051'], total: 2.91, tier: 'ATTR' },
   { agentId: '1311', cinema: 4, name: '耀嘉音', mates: ['1021'], total: 2.88, tier: 'EXEC' },
-  { agentId: '1011', cinema: 4, name: '安比', mates: ['1041', '1211'], total: 1.49, tier: 'RESOURCE+EXEC' },
+  // ⚠ 2026-11-08 入口门默认开启：本格 C3→C4 的失衡窗数 2→3（=off 时仍 2→2）⇒ 后场电回能之外
+  //    又多跨了一次失衡阈值，读数 1.49% → **9.65%**、通道标签多出 ATTR。
+  //    「资源动了但没传导」的原归因在 =off 口径下仍成立（见下方 total/tier 两字段）。
+  { agentId: '1011', cinema: 4, name: '安比', mates: ['1041', '1211'], total: 1.49, tier: 'RESOURCE+EXEC', totalOn: 9.65, tierOn: 'RESOURCE+EXEC+ATTR' },
   { agentId: '1211', cinema: 1, name: '丽娜', mates: ['1011'], total: 1.16, tier: 'ATTR' },
   { agentId: '1461', cinema: 4, name: '「席德」', mates: ['1021'], total: 1.07, tier: 'EXEC' },
   { agentId: '1161', cinema: 4, name: '莱特', mates: ['1021'], total: 0.92, tier: 'RESOURCE+EXEC' },
@@ -150,13 +160,16 @@ describe('命座零收益格：逐格归因（docs/cinema-classification.md「28
           '若真变成非零，说明该命座不依赖队友，「夹具缺席」这条归因要重写',
         ).toBe(true)
         const withMate = await readCell(cell.agentId, cell.cinema, { mates: cell.mates })
+        const gateOn = process.env.PROBE_STUN_STABLE_BAND !== 'off'
+        const expTotal = gateOn ? (cell.totalOn ?? cell.total) : cell.total
+        const expTier = gateOn ? (cell.tierOn ?? cell.tier) : cell.tier
         expect(
           withMate.total,
           `${key} 配队友 ${JSON.stringify(cell.mates)} 后读数 ${withMate.total.toFixed(2)}%` +
-          `（预期 ~+${cell.total}）——机制退化或被另一个通道抵消（tier=${withMate.tier}）`,
-        ).toBeCloseTo(cell.total, 0)
-        expect(Math.abs(withMate.total - cell.total)).toBeLessThan(TOL * 10)
-        expect(withMate.tier, `${key} 通道标签变了（预期 ${cell.tier}）`).toBe(cell.tier)
+          `（预期 ~+${expTotal}，口径=${gateOn ? '入口门开' : '入口门=off'}）——机制退化或被另一个通道抵消（tier=${withMate.tier}）`,
+        ).toBeCloseTo(expTotal, 0)
+        expect(Math.abs(withMate.total - expTotal)).toBeLessThan(TOL * 10)
+        expect(withMate.tier, `${key} 通道标签变了（预期 ${expTier}）`).toBe(expTier)
       })
     }
   })
@@ -192,7 +205,8 @@ describe('命座零收益格：逐格归因（docs/cinema-classification.md「28
   describe('C 类 · 资源通道动了但没传导到伤害（失衡窗数没跨过阈值）', () => {
     const cells: Array<{ agentId: string; cinema: number; name: string; daze: boolean }> = [
       { agentId: '1101', cinema: 1, name: '珂蕾妲', daze: true },
-      { agentId: '1141', cinema: 1, name: '莱卡恩', daze: true },
+      // 1141C1 已迁出本组（2026-11-08 入口门默认开启后失衡窗数 3→4 跨阈 ⇒ 资源已传导），
+      // 见下方「C 类 · 1141C1」单独 describe 的双口径钉法。
       { agentId: '1131', cinema: 2, name: '苍角', daze: false },
       { agentId: '1151', cinema: 1, name: '露西', daze: false },
       { agentId: '1141', cinema: 2, name: '莱卡恩', daze: false },
