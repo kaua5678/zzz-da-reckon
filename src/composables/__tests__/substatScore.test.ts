@@ -278,10 +278,13 @@ describe('配装 A/B：换音擎 / 换精炼（用户口径 2026-10-23）', () =
     await flush()
     // 诺姆（槽位 1）：⚠ 2026-10-28 夹具武器对重选（残差分摊删除 ⇒ 失衡次数整体上移，
     // 旧对 13005x5→14157x1 的 stunCountDelta 变 0）。新对 = A 精1 首席跟班(13002，低冲击)
-    // vs B 精5 人为刀俎(13005，A 级击破)：实测 delta +1、锁定 4、freePct 9.24 vs lockPct 2.77。
+    // vs B（2026-11-08 起）精1 14148：实测 delta +1（4→5），锁口径按 A 的 4 次。
     const base = await withAnalysisScenario(async (s) => readDiscPlan(1, s.config.team), h.config)
     const a: DiscPlan = { ...base, wEngineId: '13002', wEngineModLevel: 1 }
-    const b: DiscPlan = { ...base, wEngineId: '13005', wEngineModLevel: 5 }
+    // ⚠ 2026-11-08：入口门默认开后 13005x5 的失衡次数与 13002x1 **都落到 4**（delta 0 ⇒ 夹具前提失效）。
+    //   全槽实扫（`.zc/perf` 探针）取一对仍跨档的：13002x1 = stun 4，14148x1 = stun 5 ⇒ delta +1。
+    //   判据（①delta>0 ②锁口径<自由 ③锁口径=同次数比值）一字未改，只换夹具武器对。
+    const b: DiscPlan = { ...base, wEngineId: '14148', wEngineModLevel: 1 }
     const cmp = await withAnalysisScenario(s => compareDiscPlans(s, { slot: 1, a, b }), h.config)
     expect(cmp.reason).toBe('')
     expect(cmp.complete).toBe(true)
