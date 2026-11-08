@@ -869,6 +869,26 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         /** 这一轮排的就是 `kTry` 个窗（override / 成员计划都是 K）⇒ 判据按 `kTry` 自身读，不回头读 prev */
         if (!feasibleAtK(run.out, run.outPrev, kTry)) continue
         if (run.outerExit !== 'stable') continue
+        /**
+         * ## ⚠ **那一窗必须真的有轴内动作可放**（2026-11-08 实测，入口门默认开启后暴露）
+         *
+         * `feasibleAtK` 只回答「**池**攒得出 K 窗、**时间**排得下」，它读不到「轴栈到底往这几窗里
+         * 放没放进动作」。用户自组轴（`config.stunAxes` 里只声明 1 个决算块）时，轴栈只填了 K−1 窗
+         * （`windowsUsed < K`），第 K 窗**空着** —— 而交付仍然宣称 K 窗。
+         *
+         * 实测（`stunTimeline` / `peiluoVerdictTruncation` 两条判据）：佩洛伊斯夹具 K=5 时
+         * `windowsUsed=4`、第 5 窗 `actions=[]` 且 `truncated=false`，而 `stunCoverage` 由
+         * `(stunCount × W − 决算损失)/effTime` 算出**恰好 0** ——「5 个失衡窗、0 覆盖率」自相矛盾。
+         * 这正是用户 2026-11-08 点名的「窗的本意是移动或者认领动作，结果你开窗给我动作挤掉了」。
+         *
+         * 判据与同块已有的「装配溢出 ≤ δ」「δ < W」**同一族**：**先证明这一窗放得进动作，再谈开了窗**。
+         * 放不进 ⇒ 不采纳这一档 ⇒ 回落 `K0`（原样交付收敛停点，零回归）。
+         *
+         * 影响面实测：全库 105 预设上本闸**一次都不触发**（差异 0 条 —— 轴栈本来就把每窗填满），
+         * 只在**用户自组轴**（动作块数少于窗口数）时生效。`PROBE_STUN_STABLE_BAND=off`
+         * ⇒ `stableBandProbe=false` ⇒ 本闸不存在 ⇒ 逐位等于改动前。
+         */
+        if (stableBandProbe && run.out.axisStack && run.out.axisStack.windowsUsed < kTry) continue
         chosenRun = run
         chosenK = kTry
         break
