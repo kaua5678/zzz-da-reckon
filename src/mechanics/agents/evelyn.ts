@@ -256,7 +256,7 @@ function applyEvelynPanel({ cinemaLevel, panel, outOfCombatPanel, settings }: Ag
     panel.critDmg = panel.critDmg + cycle.c4CritDmg
   }
   if (cinemaLevel >= 1) {
-    panel.enemyDefReduction = panel.enemyDefReduction + cycle.c1DefIgnore
+    panel.enemyDefIgnoreDirect = panel.enemyDefIgnoreDirect + cycle.c1DefIgnore
   }
   // 影画2 赴火之舞：攻击力提升 15%（燎火返还部分未建模，见 status pending）。
   //

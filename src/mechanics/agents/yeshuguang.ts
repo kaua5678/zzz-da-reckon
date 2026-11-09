@@ -804,7 +804,7 @@ export const yeshuguangMechanic: AgentMechanicModule = {
     panel.dmgBonus = panel.dmgBonus + 25
     if (cinemaLevel >= 1) {
       panel.dmgBonus = panel.dmgBonus + 10
-      panel.enemyDefReduction = panel.enemyDefReduction + 20
+      panel.enemyDefIgnoreDirect = panel.enemyDefIgnoreDirect + 20
     }
     // 帷幕易伤 = min(boss基础易伤 + 全部失衡易伤加成, 2.1 或 3.0)。
     // 基数在**面板阶段**算好盖章（此时 bonus/capAlways 已由 buff 通道写入面板），

@@ -10,6 +10,7 @@ import type {
 import { localized } from '@/utils/format'
 import { GENERATED_ENEMY_DEBUFF_STAT_IDS, LEGACY_ENEMY_DEBUFF_STAT_IDS, normalizeEnemyDebuffStatAlias } from '@/utils/enemyDebuffStats'
 import { GENERATED_RES_IGNORE_STAT_IDS } from '@/utils/resistanceChannels'
+import { GENERATED_DEF_IGNORE_STAT_IDS } from '@/utils/defenseChannels'
 import { elementStatKey, type ElementStatKind } from '@/utils/elementStatKeys'
 import { wEngineConditionMet, wEngineEffectRequirementMet, type WEngineConditionContext } from '@/core/wengineConditions'
 
@@ -62,6 +63,8 @@ const TARGETABLE_STATS = new Set([
   ...LEGACY_ENEMY_DEBUFF_STAT_IDS,
   // 自身无视抗性两族（2026-11-09 三通道）：定向键（enemyIceResIgnoreDirect__basic 等）合法
   ...GENERATED_RES_IGNORE_STAT_IDS,
+  // 自身直伤无视防御（2026-11-09 防御三通道）：定向键（enemyDefIgnoreDirect__basic 等）合法
+  ...GENERATED_DEF_IGNORE_STAT_IDS,
 ])
 
 // skillTag → 招式族（`SKILL_TAG_TARGET`）住在 `@/data/skillDamageTargets`（2026-10-18 下沉）：
@@ -937,6 +940,14 @@ export function applyStat(panel: PanelValues, stat: StatId, value: number, mode:
     case 'enemyDefReduction': panel.enemyDefReduction += value; break
     case 'enemyDefFlatReduction': panel.enemyDefFlatReduction += value; break
     case 'enemyAnomalyDefReduction': panel.enemyAnomalyDefReduction += value; break
+    // 防御三通道（2026-11-09）：自身「造成伤害无视防御」= 直伤族，异常链读不到
+    case 'enemyDefIgnoreDirect': panel.enemyDefIgnoreDirect += value; break
+    case 'enemyPhysicalDefIgnoreDirect': panel.enemyPhysicalDefIgnoreDirect += value; break
+    case 'enemyFireDefIgnoreDirect': panel.enemyFireDefIgnoreDirect += value; break
+    case 'enemyIceDefIgnoreDirect': panel.enemyIceDefIgnoreDirect += value; break
+    case 'enemyElectricDefIgnoreDirect': panel.enemyElectricDefIgnoreDirect += value; break
+    case 'enemyEtherDefIgnoreDirect': panel.enemyEtherDefIgnoreDirect += value; break
+    case 'enemyWindDefIgnoreDirect': panel.enemyWindDefIgnoreDirect += value; break
     case 'enemyPhysicalDefReduction': panel.enemyPhysicalDefReduction += value; break
     case 'enemyFireDefReduction': panel.enemyFireDefReduction += value; break
     case 'enemyIceDefReduction': panel.enemyIceDefReduction += value; break

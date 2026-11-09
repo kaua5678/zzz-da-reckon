@@ -9,7 +9,8 @@ import type {
 import { calcPanelStunMultiplier, getAnomalyCritStats, type AnomalyCritStats } from './anomalyPool/helpers'
 import { defenseMultiplierDetail, resistanceMultiplierDetail } from './damageMultipliers'
 import { enemyResReductionOf, selfResIgnoreOf } from './resistanceChannels'
-import { getSkillDmgBonus, getTargetedElementStat, getTargetedStat, getTargetedStatExtra } from './buff'
+import { enemyDefReductionOf, selfDefIgnoreOf } from './defenseChannels'
+import { getSkillDmgBonus, getTargetedElementStat, getTargetedStat } from './buff'
 import { normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { fmt } from '@/utils/format'
 import { calcPenetrationPower, penetrationPowerFormulaLabel, penetrationPowerFormulaText } from '@/data/penetrationPower'
@@ -192,8 +193,11 @@ export interface DirectDamageInput {
   // 伤害基底（atk / def / 贯穿力…）不由调用方传：calcDirectDamage 按 profile（resolveSpecialDamageProfile 按 specialty 选）决定。
   // R6 C5（第 141 轮）删除了原来无人读取的 `damageBasis` 参数；catalog 行上的同名字段是导入脚本合成的展示字段，引擎同样不读。
   enemyDefense: number
+  /** 面板之外的额外通用减防（怪物身上 debuff）；面板值不走这里（防御三通道，2026-11-09） */
   enemyDefReduction: number
   enemyDefFlatReduction: number
+  /** 面板之外的额外**自身直伤无视防御**（moveId 限定等） */
+  enemyDefIgnoreDirect?: number
   enemyResistance: number
   /** 面板之外的额外通用减抗（怪物身上）；面板值由本函数内部读（三通道，2026-11-09） */
   enemyResReduction: number
@@ -319,8 +323,16 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
       value: afterDef, displayValue: fmt(afterDef),
     })
   } else {
+    // 防御三通道（2026-11-09，语义见 core/defenseChannels.ts）：
+    //   ① 通用（怪物身上减防）：面板值由 enemyDefReductionOf 内部读（含定向 + 元素族），
+    //      input.enemyDefReduction 只承载**面板之外**的额外量（现役调用方都传 0）；
+    //   ② 自身**直伤**无视防御：selfDefIgnoreOf（异常链不读 ⇒ 不再漏进异常）。
     const defResult = defenseMultiplierDetail(
-      input.enemyDefense, input.enemyDefReduction + getTargetedStatExtra(p, 'enemyDefReduction', input.skillDamageTarget) + getTargetedElementStat(p, 'enemyDef', input.damageElement, input.skillDamageTarget), input.enemyDefFlatReduction,
+      input.enemyDefense,
+      input.enemyDefReduction
+        + enemyDefReductionOf(p, input.damageElement, input.skillDamageTarget)
+        + selfDefIgnoreOf(p, input.damageElement, input.skillDamageTarget, input.enemyDefIgnoreDirect ?? 0),
+      input.enemyDefFlatReduction,
       p.penRatio, p.penFlat
     )
     afterDef = afterPenDmg * defResult.multiplier

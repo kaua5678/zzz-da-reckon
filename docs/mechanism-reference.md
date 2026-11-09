@@ -117,7 +117,9 @@
 
 ## 6. 穿透防御学（第八期）
 
-- **防御区**：`防御区 = 794 / (有效防御 + 794)`，794 是 60 级等级基数；`有效防御 = max(0, 怪物防御 × (1 - 穿透率/100) × (1 - 减防/100 - 无视防御/100) - 穿透值)`。「无视防御」与减防使用同一字段、加算（名字不同但游戏代码用减防字段）。
+- **防御区**：`防御区 = 794 / (有效防御 + 794)`，794 是 60 级等级基数；`有效防御 = max(0, 怪物防御 × (1 - 穿透率/100) × (1 - 减防/100 - 无视防御/100) - 穿透值)`。**「无视防御」与减防在公式里同形、加算，但通道归属不同**（见下）。
+  **防御三通道（2026-11-09 用户裁决，与抗性同构、不许合并）**：① **怪物身上减防**（`enemyDefReduction` 族）= 结算区 debuff，直伤与异常**都吃**；② 自身「**造成的伤害/攻击**无视防御」（`enemyDefIgnoreDirect` 族）**只作用于直伤**——它没有降低 boss 身上的防御；③ 异常专属 `enemyAnomalyDefReduction`（`enemyAssaultDefReduction` 为强击专属，仅物理）**只作用于异常**。修前原文「造成伤害无视 N% 防御」一律写进 `enemyDefReduction`（两族同时读）⇒ 异常白吃直伤专属的无视防御；又因两族在防御区同形，合并写法**静默通过全部既有测试**。
+- **防御实现事实源**：字段名/id 生成 `src/utils/defenseChannels.ts`；按伤害族读数 `src/core/defenseChannels.ts#enemyDefReductionOf` / `#selfDefIgnoreOf`；判据 `src/core/__tests__/defenseChannels.test.ts`；数据迁移 `scripts/patch-defense-channels.mjs`。
 - **抗性区**：`抗性区 = 1 - 有效抗性/100`；`有效抗性 = 怪物抗性 - 抗性降低 - 抗性无视`，**不设下限**（可为负 → 抗性区 > 1，弱点化线性提升）。boss 抗性可有偏好（同时火抗+冰弱点，每种元素独立）；弱点 -20%（区 1.2）/ 抗性 +20%（区 0.8）。
   **抗性三通道（2026-11-09 用户裁决，不许合并）**：① **怪物身上减抗**（`enemyResReduction` 族）= 结算区 debuff，直伤与异常**都吃**、对所有人生效；② 自身「**造成伤害**无视抗性」（`enemyResIgnoreDirect` 族）**只作用于直伤** —— 它没有降低 boss 身上的乘区，所以异常读不到；③ 自身「造成**异常**伤害时无视抗性」（`enemyResIgnoreAnomaly` 族，含属性异常/紊乱/异放/乱流/耀变）**只作用于异常**。修前三类文本一律写进 `enemyResReduction`（两族同时读）⇒ 异常白吃直伤专属的无视抗性、异常伤害系统性偏高；又因两族在抗性区同形（线性加算），合并写法**静默通过全部既有测试**。**异常/紊乱/乱流抗性**：基础抗性 ×0.5（减半）后再减 ①③ 两段，按元素抗性查找（`enemyResistances[element]`）。
 - **抗性实现事实源**：字段名/id 生成 `src/utils/resistanceChannels.ts`；按伤害族读数 `src/core/resistanceChannels.ts#enemyResReductionOf` / `#selfResIgnoreOf`；判据 `src/core/__tests__/resistanceChannels.test.ts`（读数层 + 行为层 + 源码锁）。

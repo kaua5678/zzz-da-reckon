@@ -64,17 +64,17 @@ describe('席德（1461）正兵拐门控（核心被动/影画2）', () => {
 
   it('影画2：围杀无视20%防御（enemyDefReduction，按额外能力门控）', async () => {
     const pos = await setup('1081', 2)
-    const on = (computePanelPhases(1, pos.config, pos.catalog)!.inCombat as any).enemyDefReduction as number
+    const on = (computePanelPhases(1, pos.config, pos.catalog)!.inCombat as any).enemyDefIgnoreDirect as number
     pos.config.toggleTeammateBuff('seed.cinema_2_encirclement_def_ignore', false)
-    const off = (computePanelPhases(1, pos.config, pos.catalog)!.inCombat as any).enemyDefReduction as number
+    const off = (computePanelPhases(1, pos.config, pos.catalog)!.inCombat as any).enemyDefIgnoreDirect as number
     pos.config.toggleTeammateBuff('seed.cinema_2_encirclement_def_ignore', true)
     expect(on - off).toBeCloseTo(20, 5)
 
     // 门控：无强攻队友时开关无差分
     const neg = await setup('1441', 2)
-    const nOn = (computePanelPhases(1, neg.config, neg.catalog)!.inCombat as any).enemyDefReduction as number
+    const nOn = (computePanelPhases(1, neg.config, neg.catalog)!.inCombat as any).enemyDefIgnoreDirect as number
     neg.config.toggleTeammateBuff('seed.cinema_2_encirclement_def_ignore', false)
-    const nOff = (computePanelPhases(1, neg.config, neg.catalog)!.inCombat as any).enemyDefReduction as number
+    const nOff = (computePanelPhases(1, neg.config, neg.catalog)!.inCombat as any).enemyDefIgnoreDirect as number
     neg.config.toggleTeammateBuff('seed.cinema_2_encirclement_def_ignore', true)
     expect(nOn).toBeCloseTo(nOff, 5)
   })

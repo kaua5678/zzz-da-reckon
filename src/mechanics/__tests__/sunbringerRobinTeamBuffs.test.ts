@@ -49,7 +49,8 @@ describe('(Test1) 知更鸟 1661 spec teamBuffs', () => {
     const panel = resolveTeammateBuffsOnEmptyPanel(
       ['robin_guard_shield_team_dmg', 'robin_c1_team_def_ignore', 'robin_c2_enemy_res'], 0)
     expect(panel.dmgBonus - base.dmgBonus).toBeCloseTo(25, 6)
-    expect(panel.enemyDefReduction - base.enemyDefReduction).toBeCloseTo(20, 6) // v2 影画1 = 无视20%防御
+    // 防御三通道（2026-11-09）：影画1「全队无视20%防御」= 自身**直伤**无视防御
+    expect(panel.enemyDefIgnoreDirect - base.enemyDefIgnoreDirect).toBeCloseTo(20, 6)
     // 三通道（2026-11-09）：影画2「全队造成的伤害无视敌人15%抗性」= 自身**直伤**无视
     expect(panel.enemyResIgnoreDirect - base.enemyResIgnoreDirect).toBeCloseTo(15, 6)
   })

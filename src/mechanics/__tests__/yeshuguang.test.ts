@@ -142,7 +142,7 @@ describe('叶瞬光面板', () => {
     config.team[0].cinemaLevel = 1
     const p1 = computePanelPhases(0, config, catalog)!.inCombat as any
     expect(p1.dmgBonus - p0.dmgBonus).toBe(10)
-    expect((p1.enemyDefReduction ?? 0) - (p0.enemyDefReduction ?? 0)).toBe(20)
+    expect((p1.enemyDefIgnoreDirect ?? 0) - (p0.enemyDefIgnoreDirect ?? 0)).toBe(20)
   })
 
   it('帷幕易伤上限 0命2.1 / 4命3.0', async () => {

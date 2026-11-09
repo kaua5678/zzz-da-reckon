@@ -50,11 +50,13 @@ export function calcPoolDirectDamage(env: PoolDamageEnv, row: PoolDirectRow): Re
     skillMultiplier: row.skillMultiplier,
     damageElement: safeElement(row.element),
     enemyDefense: env.enemy.defense,
-    // 减防/无视防御（GAME_TERM_TO_CODE_FIELD §4）：面板通用值（妮可 40%/叶瞬光C1 20%/席德C2 20%/
-    // 伊芙琳C1/爱芮C2/千夏C1/音擎 千面日陨·索魂影眸 等）+ 行级 moveId 限定值（叶瞬光C2/C6、雨果C2、
-    // 雅1命、席德…），两者同字段加算。**2026-09-08 修**：此前只传行级 `row.defIgnore`，面板通用值被
-    // 静默丢弃（直伤整条通道失效，实测 妮可队 -21%、席德+妮可队 -29%）。
-    enemyDefReduction: panel.enemyDefReduction + (row.defIgnore ?? 0),
+    // 防御三通道（2026-11-09）：通用减防（怪物身上）与自身直伤无视防御**分字段**。
+    // 面板通用值由 calcDirectDamage 内部读（单一入口）；这里只传**行级额外量**，
+    // 且行级 defIgnore 的原文语义一律是「自身造成伤害无视 X% 防御」⇒ 直伤族。
+    // ⚠ 修前把 `panel.enemyDefReduction + row.defIgnore` 一起塞进 enemyDefReduction，
+    // 与「自身无视防御」族混同 ⇒ 异常也跟着吃（防御区两族同形，静默通过全部既有测试）。
+    enemyDefReduction: 0,
+    enemyDefIgnoreDirect: row.defIgnore ?? 0,
     enemyDefFlatReduction: panel.enemyDefFlatReduction,
     enemyResistance: enemyResistanceOf(env.enemyDamageRes, row.element),
     // 抗性三通道（2026-11-09）：面板上的通用减抗 / 直伤无视抗性由 calcDirectDamage 内部读（单一入口），

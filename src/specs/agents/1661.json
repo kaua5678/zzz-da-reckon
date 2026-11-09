@@ -39,7 +39,7 @@
       "coverage": 1,
       "effects": [
         {
-          "stat": "enemyDefReduction",
+          "stat": "enemyDefIgnoreDirect",
           "value": 20,
           "mode": "flat"
         }

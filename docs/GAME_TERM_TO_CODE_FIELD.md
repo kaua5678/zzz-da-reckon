@@ -114,12 +114,28 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 |---------|------|------|
 | 穿透率 X% | `penRatio` | 百分比降低防御，与减防**乘算** |
 | 穿透值 X 点 | `penFlat` | 固定值降低防御，最后减 |
-| 防御力降低 X% | `enemyDefReduction` | 减防，与减防/无视防御**加算** |
-| 无视目标 X% 防御力 | `enemyDefReduction` | **与减防同字段**，加算 |
 | 防御力降低 X 点 | `enemyDefFlatReduction` | 固定值减防 |
 | X 属性防御降低 X% | `enemy{Element}DefReduction` | 元素专属减防，仅影响该元素伤害 |
 
-**示例**："无视防御"和"减防"都走 `enemyDefReduction`，两者加算后与 `penRatio` 乘算。
+### 4.1 三条防御通道（2026-11-09 用户口径，与 §5.1 抗性同构）
+
+> 「减防是不是也分直伤和异常和通用？」——是。防御区与抗性区都是**结算区**，通道归属规则一致。
+
+| 通道 | 游戏文本形态 | 字段 | 直伤吃 | 异常吃 |
+|---|---|---|---|---|
+| **通用**（怪物身上减防 = 结算区 debuff） | 「**使目标/敌人**的防御力**降低** N%」 | `enemyDefReduction` / `enemy{Element}DefReduction` | ✅ | ✅ |
+| **直伤无视**（自身无视防御） | 「**造成的伤害/攻击**无视 N% 防御」 | `enemyDefIgnoreDirect` / `enemy{Element}DefIgnoreDirect` | ✅ | ❌ |
+| **异常专属** | 「造成**属性异常/紊乱/异放**伤害时无视 N% 防御」 | `enemyAnomalyDefReduction`（存量字段） | ❌ | ✅ |
+| **强击专属** | 「**强击**伤害无视 N% 防御」（简 C2 等） | `enemyAssaultDefReduction`（存量字段，仅物理） | ❌ | ✅ |
+
+**为什么直伤族必须独立**：修前原文「造成伤害无视 N% 防御」一律写进 `enemyDefReduction` 族，而该族被直伤与异常结算**同时**读取 ⇒ 只作用于直伤的无视防御被异常也吃掉。两族在 `defenseMultiplierDetail` 里同形（有效防御 = 基础 × (1 − 降低/100)），合并写法**静默通过全部既有测试**。
+
+- 字段名与 id 生成：`src/utils/defenseChannels.ts`（叶子事实源，与 `resistanceChannels` / `damageElements` 同层）
+- 读数入口：`src/core/defenseChannels.ts#enemyDefReductionOf` / `#selfDefIgnoreOf`
+- 判据：`src/core/__tests__/defenseChannels.test.ts`（读数层 + 行为层 + 源码锁三层）
+- 数据迁移：`scripts/patch-defense-channels.mjs`（幂等；按原文把「自身无视防御」迁出通用族）
+
+**注意**：「无视防御」与「减防」在**公式里**仍是加算（同形），但**通道归属不同**：前者是攻击方结算侧的修正（不降低怪物身上的防御），后者是怪物身上的 debuff。
 
 ---
 

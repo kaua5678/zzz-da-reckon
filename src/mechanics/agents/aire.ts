@@ -228,7 +228,11 @@ function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void
       + cycle.c1EtherAnomalyResIgnore
   }
   if (cycle.c2DefIgnore > 0) {
-    panel.enemyDefReduction = panel.enemyDefReduction + cycle.c2DefIgnore
+    // 影画2 梦幻节拍：「爱芮**攻击和触发[异放]**时无视目标16%防御力」（妄想时刻内再+8%）
+    //   ⇒ 原文点名「攻击」（直伤）+「异放」（异常）**两族都吃**，但**不是**怪物身上的减防
+    //   ⇒ 因此两族字段各写一份，而不是塞进通用 enemyDefReduction（防御三通道，2026-11-09）。
+    panel.enemyDefIgnoreDirect = panel.enemyDefIgnoreDirect + cycle.c2DefIgnore
+    panel.enemyAnomalyDefReduction = panel.enemyAnomalyDefReduction + cycle.c2DefIgnore
   }
 }
 

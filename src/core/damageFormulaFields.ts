@@ -73,7 +73,8 @@ export const DAMAGE_FORMULA_FIELDS: DamageFormulaField[] = [
   // ── B. 防御穿透区 ──
   { stat: 'penRatio', role: '防御穿透区', note: '穿透率，进防御区' },
   { stat: 'penFlat', role: '防御穿透区', note: '穿透值，进防御区' },
-  { stat: 'enemyDefReduction', role: '防御穿透区', note: '敌人防御降低（百分比）' },
+  { stat: 'enemyDefReduction', role: '防御穿透区', note: '敌人防御降低（百分比）——**怪物身上**，直伤与异常都吃' },
+  { stat: 'enemyDefIgnoreDirect', role: '防御穿透区', note: '自身「造成伤害无视防御」：**只进直伤链**，异常读不到' },
   { stat: 'enemyDefFlatReduction', role: '防御穿透区', note: '敌人防御降低（固定值）' },
 
   // ── B. 抗性易伤区 ──

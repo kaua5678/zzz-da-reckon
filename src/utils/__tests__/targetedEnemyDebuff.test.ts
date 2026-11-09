@@ -44,12 +44,13 @@ describe('招式限定的敌方减益', () => {
     cfg.team[0]!.wEngineId = '14146'
     cfg.team[0]!.wEngineModLevel = 1
     const p = computePanel(0, cfg, catalog) as unknown as Record<string, number>
-    expect(p.enemyDefReduction__basic).toBe(20)
-    expect(p.enemyDefReduction__ultimate).toBe(20)
-    expect(getTargetedStatExtra(p as never, 'enemyDefReduction', 'basic'), '按普攻读得到').toBe(20)
-    expect(getTargetedStatExtra(p as never, 'enemyDefReduction', 'exSpecial'), '强特不应吃到').toBe(0)
-    const rows = targetedPanelRows(p as never, ['enemyDefReduction'])
-    expect(rows.map(r => r.key).sort()).toEqual(['enemyDefReduction__basic', 'enemyDefReduction__ultimate'])
+    // 防御三通道（2026-11-09）：14146「普攻/终结无视防御」= 自身**直伤**无视防御（定向键随之改名）
+    expect(p.enemyDefIgnoreDirect__basic).toBe(20)
+    expect(p.enemyDefIgnoreDirect__ultimate).toBe(20)
+    expect(getTargetedStatExtra(p as never, 'enemyDefIgnoreDirect', 'basic'), '按普攻读得到').toBe(20)
+    expect(getTargetedStatExtra(p as never, 'enemyDefIgnoreDirect', 'exSpecial'), '强特不应吃到').toBe(0)
+    const rows = targetedPanelRows(p as never, ['enemyDefIgnoreDirect'])
+    expect(rows.map(r => r.key).sort()).toEqual(['enemyDefIgnoreDirect__basic', 'enemyDefIgnoreDirect__ultimate'])
   }, 120000)
 
   it('源码锁：两处展示点都渲染了定向敌方减益行', () => {

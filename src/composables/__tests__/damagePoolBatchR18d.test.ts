@@ -166,8 +166,9 @@ describe('R15-d 跳③：applyPanel 盖章（唯一写入方 = 本角色模块�
   })
 
   it('★ 钩子级：随迁的面板直加逐值钉住（C0/C1/C4 三档）——原 helpers.ts 硬编码块的等价物', () => {
+    // 夹具字段随防御三通道迁移：叶瞬光影画1 写的是 enemyDefIgnoreDirect（自身直伤无视防御）
     const mk = () => ({
-      critRate: 5, dmgBonus: 100, enemyDefReduction: 0,
+      critRate: 5, dmgBonus: 100, enemyDefIgnoreDirect: 0,
       stunDmgMultiplierBonus: 60, stunDmgMultiplierBonusAlways: 0, stunDmgMultiplierBonusCapAlways: 0,
     })
     const call = (panel: any, cinemaLevel: number, enemyStunVuln = 1.5) =>
@@ -180,14 +181,15 @@ describe('R15-d 跳③：applyPanel 盖章（唯一写入方 = 本角色模块�
     call(p0, 0)
     expect(p0.critRate).toBe(35)        // 5 + 30（核心被动·合道）
     expect(p0.dmgBonus).toBe(125)       // 100 + 25
-    expect(p0.enemyDefReduction).toBe(0) // C0 无减防
+    // 防御三通道（2026-11-09）：叶瞬光影画1「无视防御20%」= 自身**直伤**无视防御
+    expect(p0.enemyDefIgnoreDirect).toBe(0) // C0 无无视防御
     expect(p0.veilStunCapMult).toBe(2.1)
     expect(p0.veilStunVulnBase).toBe(1.5) // min(1.5+0.6, 2.1) − 0.6
 
     const p1: any = mk()
     call(p1, 1)
     expect(p1.dmgBonus).toBe(135)        // +10（影画1）
-    expect(p1.enemyDefReduction).toBe(20) // +20（影画1）
+    expect(p1.enemyDefIgnoreDirect).toBe(20) // +20（影画1）
 
     const p4: any = mk()
     call(p4, 4, 3.5)

@@ -160,10 +160,15 @@ describe('③ 源码锁：抗性字段族只在 core/resistanceChannels 里拼',
     expect(src.split("selfResIgnoreOf(p, 'direct'").length - 1).toBe(0)
   })
 
-  it('耀变（蕾米埃尔）走异常族', () => {
+  it('耀变（蕾米埃尔）：异常族 + **结算者是蕾米**（读 settler 面板，不读来源队友）', () => {
     const src = code(readFileSync(join(SRC, 'mechanics/agents/remielle.ts'), 'utf8'))
-    expect(src).toContain("selfResIgnoreOf(source, 'anomaly'")
-    expect(src.split("selfResIgnoreOf(source, 'direct'").length - 1).toBe(0)
+    // 用户口径：队友的自身异常抗性吃不到，因为结算者是蕾米
+    expect(src).toContain("selfResIgnoreOf(remielle, 'anomaly'")
+    expect(src).toContain("enemyResReductionOf(remielle,")
+    // 反锁：不得再从来源队友（source）面板读抗性/无视抗性
+    expect(src.split("enemyResReductionOf(source").length - 1).toBe(0)
+    expect(src.split("selfResIgnoreOf(source").length - 1).toBe(0)
+    expect(src.split("selfResIgnoreOf(remielle, 'direct'").length - 1).toBe(0)
   })
 
   it('字段名只由 utils/resistanceChannels 生成（不手拼 ResIgnoreDirect / ResIgnoreAnomaly）', () => {

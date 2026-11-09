@@ -153,9 +153,19 @@ export interface PanelValues {
   flashEnergyGainEfficiency: number // 闪能获得效率，百分比
   decibelGainEfficiency: number     // 喧响获得效率，百分比
   // 敌方减益（作用于敌人的属性）
-  enemyDefReduction: number       // 敌方防御降低，百分比（无视防御/减防）
+  enemyDefReduction: number       // 敌方防御降低（**怪物身上**，结算区 debuff；直伤与异常都吃）
   enemyDefFlatReduction: number   // 敌方防御固定降低
-  enemyAnomalyDefReduction: number // 异常伤害专属防御降低/无视防御
+  enemyAnomalyDefReduction: number // 异常伤害专属防御降低/无视防御（异常链专属）
+  // ---- 防御三通道（2026-11-09 用户口径；语义见 utils/defenseChannels.ts 头注释）----
+  // 通用 = enemyDefReduction 族（怪物身上减防）；异常专属 = enemyAnomalyDefReduction / enemyAssaultDefReduction；
+  // 下面这条是**自身直伤无视防御**：只进 calcDirectDamage，异常链读不到。
+  enemyDefIgnoreDirect: number    // 自身直伤无视防御（全元素）
+  enemyPhysicalDefIgnoreDirect: number
+  enemyFireDefIgnoreDirect: number
+  enemyIceDefIgnoreDirect: number
+  enemyElectricDefIgnoreDirect: number
+  enemyEtherDefIgnoreDirect: number
+  enemyWindDefIgnoreDirect: number
   enemyPhysicalDefReduction: number // 物理属性专属防御降低/无视防御
   enemyFireDefReduction: number     // 火属性专属防御降低/无视防御
   enemyIceDefReduction: number      // 冰属性专属防御降低/无视防御

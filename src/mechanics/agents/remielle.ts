@@ -378,12 +378,18 @@ export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: numb
   const levelMult = LEVEL_MULT_60
   const mass = baseDmg * dmgMult * profMult * defMult * levelMult
 
-  // 抗性三通道（2026-11-09）：耀变属**异常族** ⇒ 吃「通用减抗（怪物身上）+ 异常无视」，
-  // **不吃**直伤无视（enemyResIgnoreDirect）——那份没有降低 boss 身上的乘区。
+  // 抗性三通道（2026-11-09），**结算者 = 蕾米**（用户口径）：
+  //   「队友的自身异常抗性他吃不到，因为这个结算者是蕾米。蕾米能吃的抗性只有 boss 通用和自身耀变减抗，
+  //    所以对于蕾米来说，认为他是单独的耀变减抗或者异常减抗都是一个结果。」
+  // ⇒ 抗性区一律读**蕾米面板**（settler），不读 source（虚耀来源队友）：
+  //   队友自身的「造成异常伤害时无视抗性」进不了蕾米的结算区（它没有降低 boss 身上的乘区）；
+  //   同理也不吃直伤族（enemyResIgnoreDirect）。蕾米自己的异常/耀变减抗两者等价（都读蕾米面板）。
+  // ⚠ 修前这里读的是 source（来源队友面板）——与防御区已按 remielle 结算的口径不一致，
+  //   会让队友的无视抗性从抗性区漏进耀变。
   const baseRes = enemyResistanceOf(enemyResistances, element)
-  const sourceResReduction = enemyResReductionOf(source, element)
-    + selfResIgnoreOf(source, 'anomaly', element) + cinema1ResIgnore
-  const resMult = resistanceMultiplierDetail(baseRes, sourceResReduction).multiplier
+  const settlerResReduction = enemyResReductionOf(remielle, element)
+    + selfResIgnoreOf(remielle, 'anomaly', element) + cinema1ResIgnore
+  const resMult = resistanceMultiplierDetail(baseRes, settlerResReduction).multiplier
 
   const anomalyDmgMult = 1 + remielle.anomalyDmgBonus / 100
   const passiveLuminizeMult = 1 + remielle.remielleLuminizeMultiplierBonus / 100

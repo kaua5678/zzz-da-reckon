@@ -87,7 +87,7 @@ describe('1601 挽昼 · 面板层', () => {
   it('极昼：暴击率 +40、无视 20% 防御', () => {
     const { panel } = runPanel(0)
     expect(panel.critRate).toBeCloseTo(33.8 + POLAR_DAY_CRIT_RATE, 6)
-    expect(panel.enemyDefReduction).toBeCloseTo(POLAR_DAY_DEF_IGNORE, 6)
+    expect(panel.enemyDefIgnoreDirect).toBeCloseTo(POLAR_DAY_DEF_IGNORE, 6)
   })
 
   it('catalog 锋御两列在库：锐暴 150 / 锐能 1.5（缺了会静默掉乘区）', () => {

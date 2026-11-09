@@ -278,6 +278,7 @@ const panels = computed(() => {
     // 直伤族异常吃不到、异常族直伤吃不到，故分行展示（判据 resistanceChannels.test.ts）
     const elementDirectIgnoreKey = elementStatKey('enemyResIgnoreDirect', element)
     const elementAnomalyIgnoreKey = elementStatKey('enemyResIgnoreAnomaly', element)
+    const elementDefIgnoreKey = elementStatKey('enemyDefIgnoreDirect', element)
     const debuffRows = [
       makeRow(pOut, pIn, 'enemyResReduction', '全属性减抗（怪物身上）'),
       ...(elementResKey ? [makeRow(pOut, pIn, elementResKey, `元素减抗（${element}）`)] : []),
@@ -286,7 +287,12 @@ const panels = computed(() => {
       ...(elementDirectIgnoreKey ? [makeRow(pOut, pIn, elementDirectIgnoreKey, `直伤无视抗性（${element}）`)] : []),
       makeRow(pOut, pIn, 'enemyResIgnoreAnomaly', '自身异常无视抗性'),
       ...(elementAnomalyIgnoreKey ? [makeRow(pOut, pIn, elementAnomalyIgnoreKey, `异常无视抗性（${element}）`)] : []),
-      makeRow(pOut, pIn, 'enemyDefReduction', '减防（%）'),
+      makeRow(pOut, pIn, 'enemyDefReduction', '减防（怪物身上·%）'),
+      // 防御三通道（2026-11-09）：自身「造成伤害无视防御」只进直伤链，与上面的怪物减防分列
+      makeRow(pOut, pIn, 'enemyDefIgnoreDirect', '自身直伤无视防御'),
+      ...(elementDefIgnoreKey ? [makeRow(pOut, pIn, elementDefIgnoreKey, `直伤无视防御（${element}）`)] : []),
+      makeRow(pOut, pIn, 'enemyAnomalyDefReduction', '异常专属无视防御'),
+      makeRow(pOut, pIn, 'enemyAssaultDefReduction', '强击专属无视防御'),
       makeRow(pOut, pIn, 'enemyDefFlatReduction', '减防（固定）'),
       makeRow(pOut, pIn, 'enemyDamageTakenBonus', '敌人受伤害提升（易伤）'),
       makeRow(pOut, pIn, 'enemyCritDmgTakenBonus', '敌人受暴伤提升'),

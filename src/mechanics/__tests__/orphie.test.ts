@@ -69,9 +69,9 @@ describe('奥菲丝额外能力·熔炉所铸（追加攻击无视25%防御门�
     // 正例1：1621 洛克茜（风·击破=stun，无队友 buff → 纯专精命中）
     const pos1 = await setup('1621', 0)
     expect((computePanelPhases(0, pos1.config, pos1.catalog)!.inCombat as any).additionalAbilityActive).toBe(1)
-    const on1 = (computePanelPhases(1, pos1.config, pos1.catalog)!.inCombat as any).enemyDefReduction as number
+    const on1 = (computePanelPhases(1, pos1.config, pos1.catalog)!.inCombat as any).enemyDefIgnoreDirect as number
     pos1.config.toggleTeammateBuff('orphie.additional_def_ignore', false)
-    const off1 = (computePanelPhases(1, pos1.config, pos1.catalog)!.inCombat as any).enemyDefReduction as number
+    const off1 = (computePanelPhases(1, pos1.config, pos1.catalog)!.inCombat as any).enemyDefIgnoreDirect as number
     pos1.config.toggleTeammateBuff('orphie.additional_def_ignore', true)
     expect(on1 - off1).toBeCloseTo(25, 5)
 
@@ -86,7 +86,7 @@ describe('奥菲丝额外能力·熔炉所铸（追加攻击无视25%防御门�
     const pNeg1Off = computePanelPhases(1, neg1.config, neg1.catalog)!.inCombat as any
     neg1.config.toggleTeammateBuff('orphie.additional_def_ignore', true)
     expect((computePanelPhases(0, neg1.config, neg1.catalog)!.inCombat as any).additionalAbilityActive ?? 0).toBe(0)
-    expect(pNeg1.enemyDefReduction).toBeCloseTo(pNeg1Off.enemyDefReduction, 5)
+    expect(pNeg1.enemyDefIgnoreDirect).toBeCloseTo(pNeg1Off.enemyDefIgnoreDirect, 5)
 
     // 负例2：1081 比利（物理·强攻 → 不激活）
     const neg2 = await setup('1081', 0)

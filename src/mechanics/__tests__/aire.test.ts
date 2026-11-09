@@ -76,12 +76,12 @@ describe('爱芮完整计算链', () => {
     const panel = calc.panels.value[0] as any
     expect(panel.anomalyProficiency).toBeGreaterThanOrEqual(AIRE_CORE_PROFICIENCY)
     expect(panel.enemyEtherAnomalyResReduction).toBeGreaterThanOrEqual(AIRE_C1_ETHER_ANOMALY_RES_IGNORE)
-    expect(panel.enemyDefReduction).toBeGreaterThanOrEqual(AIRE_C2_DEF_IGNORE)
+    expect(panel.enemyDefIgnoreDirect).toBeGreaterThanOrEqual(AIRE_C2_DEF_IGNORE)
   })
 
   it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {
     const { catalog, config } = await setup('1141', 2)
-    const defOf = () => (computePanelPhases(0, config, catalog)!.inCombat as any).enemyDefReduction ?? 0
+    const defOf = () => (computePanelPhases(0, config, catalog)!.inCombat as any).enemyDefIgnoreDirect ?? 0
     config.setMechanicSetting('aire.c2DelusionCoverage', 1)
     const on = defOf()
     config.setMechanicSetting('aire.c2DelusionCoverage', 0)

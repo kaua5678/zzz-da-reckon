@@ -426,6 +426,28 @@
             <span class="stat-label">敌方防御固定降低</span>
             <span class="stat-value debuff">{{ formatNumber(panel.enemyDefFlatReduction, 0) }}</span>
           </div>
+          <!-- 防御三通道（2026-11-09 用户口径）：与「怪物身上减防」分开显示——
+               自身直伤无视防御异常吃不到、异常专属直伤吃不到。 -->
+          <div class="stat-row" v-if="panel.enemyDefIgnoreDirect !== 0">
+            <span class="stat-label">自身直伤无视防御（全元素）</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.enemyDefIgnoreDirect) }}</span>
+          </div>
+          <div class="stat-row" v-for="row in elementDefIgnoreDirectRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}直伤无视防御</span>
+            <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
+          </div>
+          <div class="stat-row" v-for="row in targetedSelfDefIgnoreRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}</span>
+            <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
+          </div>
+          <div class="stat-row" v-if="panel.enemyAnomalyDefReduction !== 0">
+            <span class="stat-label">异常专属无视防御</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.enemyAnomalyDefReduction) }}</span>
+          </div>
+          <div class="stat-row" v-if="panel.enemyAssaultDefReduction !== 0">
+            <span class="stat-label">强击专属无视防御</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.enemyAssaultDefReduction) }}</span>
+          </div>
           <div class="stat-section-title">抗性相关</div>
           <!-- 抗性三通道（2026-11-09 用户口径）：
                ① 通用 = 降低**怪物身上**的抗性（结算区 debuff）—— 直伤与异常都吃
@@ -850,6 +872,17 @@ function elementIgnoreRows(family: 'enemyResIgnoreDirect' | 'enemyResIgnoreAnoma
 }
 const elementDirectIgnoreRows = computed(() => elementIgnoreRows('enemyResIgnoreDirect'))
 const elementAnomalyIgnoreRows = computed(() => elementIgnoreRows('enemyResIgnoreAnomaly'))
+/** 自身直伤无视防御的元素级行（防御三通道，2026-11-09）：与「怪物身上减防」分开列 */
+const elementDefIgnoreDirectRows = computed(() => {
+  const rows: { key: string; label: string; value: number }[] = []
+  for (const element of DAMAGE_ELEMENTS) {
+    const value = panelElementStat(props.panel, 'enemyDefIgnoreDirect', element)
+    if (!value) continue
+    rows.push({ key: `enemyDefIgnoreDirect__${element}`, label: `${damageElementLabel(element)}专属`, value })
+  }
+  const cur = props.damageElement
+  return rows.sort((a, b) => Number(b.key.endsWith(`__${cur}`)) - Number(a.key.endsWith(`__${cur}`)))
+})
 
 /**
  * 招式限定的敌方减益（`<stat>__<招式族>`）：引擎按招式读回，页面上此前**一条都不显示**。
@@ -860,6 +893,8 @@ const ENEMY_DEBUFF_BASE_STATS: readonly string[] = [
   'enemyDefReduction', 'enemyResReduction', 'enemyStunResReduction', 'enemyAnomalyResReduction',
   // 自身无视抗性两族（2026-11-09 三通道）：定向键（enemyResIgnoreDirect__basic 等）同样要能显示
   'enemyResIgnoreDirect', 'enemyResIgnoreAnomaly',
+  // 自身直伤无视防御（防御三通道，2026-11-09）：定向键（enemyDefIgnoreDirect__basic 等）同样要能显示
+  'enemyDefIgnoreDirect',
   // 元素专属字段名一律经 `elementStatKey` 解析（判据 CC-225：不许手拼元素字段名）
   ...DAMAGE_ELEMENTS.flatMap(el =>
     (['enemyDef', 'enemyRes', 'enemyStunRes', 'enemyAnomalyRes', 'enemyResIgnoreDirect', 'enemyResIgnoreAnomaly'] as const)
@@ -871,6 +906,8 @@ const targetedEnemyDebuffRows = computed(() => targetedPanelRows(props.panel, EN
 const targetedEnemyDefRows = computed(() => targetedEnemyDebuffRows.value.filter(r => r.base.includes('DefReduction')))
 const targetedEnemyResRows = computed(() => targetedEnemyDebuffRows.value.filter(r => r.base.includes('ResReduction') && !r.base.includes('StunRes') && !r.base.includes('AnomalyRes')))
 const targetedSelfIgnoreRows = computed(() => targetedEnemyDebuffRows.value.filter(r => r.base.includes('ResIgnore')))
+/** 招式限定的自身直伤无视防御（enemyDefIgnoreDirect__basic / __ultimate，如 14146 机巧心种） */
+const targetedSelfDefIgnoreRows = computed(() => targetedEnemyDebuffRows.value.filter(r => r.base.includes('DefIgnoreDirect')))
 
 const hasElementDefReduction = computed(() => elementDefReductionSummary.value.length > 0)
 const hasElementResReduction = computed(() => elementResReductionSummary.value.length > 0)
@@ -883,6 +920,9 @@ const hasAnyEnemyDebuff = computed(() => {
     || p.enemyResIgnoreDirect !== 0 || p.enemyResIgnoreAnomaly !== 0
     || elementDirectIgnoreRows.value.length > 0 || elementAnomalyIgnoreRows.value.length > 0
     || targetedSelfIgnoreRows.value.length > 0
+    || p.enemyDefIgnoreDirect !== 0 || elementDefIgnoreDirectRows.value.length > 0
+    || targetedSelfDefIgnoreRows.value.length > 0
+    || p.enemyAssaultDefReduction !== 0
     || p.enemyDamageTakenBonus !== 0 || p.enemyStunTakenBonus !== 0
 })
 
