@@ -91,11 +91,17 @@ describe('减防通道归属：蕾米影画二 15%（异常专用）· 菲欧妮
     expect((wrongChannel / off)).toBeCloseTo(expected, 9) // …但直伤侧完全不同，见上一条用例
   })
 
-  it('菲欧妮影画六 40%：只走 releaseModifier 且为 self 作用域（不挂面板、不给队友异放）', async () => {
-    const { config } = await setupPhoenix(6)
-    const self = releaseModifierSelf(phoenixMechanic, config.team, [])
+  it('菲欧妮影画六 40%：只走 releaseModifier 且为 self 作用域（不挂父层、不给队友异放）', async () => {
+    const { config, catalog } = await setupPhoenix(6)
+    // ⚠ 必须传**真实面板**：异放专属层现在由面板字段 enemyAnomalyReleaseDefReduction 承载
+    // （为了让状态面板能显示，2026-11-09）。传 [] 会让 self.panel 为 undefined ⇒ 读成 0。
+    const panels = [computePanelPhases(0, config, catalog)!.inCombat]
+    const self = releaseModifierSelf(phoenixMechanic, config.team, panels)
     expect(phoenixMechanic.releaseModifier!({ self }).enemyDefReduction)
       .toBeCloseTo(PHOENIX_C6_RELEASE_DEF_IGNORE, 5)
+    // 面板上能看见（算而必显），且父层仍为 0（不得过度授予）
+    expect(self.panel!.enemyAnomalyReleaseDefReduction).toBeCloseTo(PHOENIX_C6_RELEASE_DEF_IGNORE, 5)
+    expect(self.panel!.enemyAnomalyDefReduction).toBeCloseTo(0, 5)
     expect(PHOENIX_C6_RELEASE_DEF_IGNORE).toBe(40)
     // 缺省（未声明释放作用域）= self ⇒ 只有菲欧妮自己的异放行吃；声明 'team' 会让队友异放白吃 40%
     expect(phoenixMechanic.releaseModifierScope ?? 'self').toBe('self')
@@ -103,12 +109,17 @@ describe('减防通道归属：蕾米影画二 15%（异常专用）· 菲欧妮
 
   it('菲欧妮影画六：C0 不产生减防；C6 面板 enemyDefReduction 仍为 0（40% 不得串到直伤/标准异常）', async () => {
     const c0 = await setupPhoenix(0)
-    expect(phoenixMechanic.releaseModifier!({ self: releaseModifierSelf(phoenixMechanic, c0.config.team, []) }).enemyDefReduction ?? 0)
+    const c0Panels = [computePanelPhases(0, c0.config, c0.catalog)!.inCombat]
+    expect(phoenixMechanic.releaseModifier!({ self: releaseModifierSelf(phoenixMechanic, c0.config.team, c0Panels) }).enemyDefReduction ?? 0)
       .toBeCloseTo(0, 5)
-    expect(computePanelPhases(0, c0.config, c0.catalog)!.inCombat.enemyDefReduction).toBeCloseTo(0, 5)
+    expect(c0Panels[0].enemyDefReduction).toBeCloseTo(0, 5)
 
     const c6 = await setupPhoenix(6)
-    expect(computePanelPhases(0, c6.config, c6.catalog)!.inCombat.enemyDefReduction).toBeCloseTo(0, 5)
+    const c6Panel = computePanelPhases(0, c6.config, c6.catalog)!.inCombat
+    // 通用减防 / 异常父层都必须是 0：异放限定只能落在专属层
+    expect(c6Panel.enemyDefReduction).toBeCloseTo(0, 5)
+    expect(c6Panel.enemyAnomalyDefReduction).toBeCloseTo(0, 5)
+    expect(c6Panel.enemyAnomalyReleaseDefReduction).toBeCloseTo(PHOENIX_C6_RELEASE_DEF_IGNORE, 5)
   })
 
 
@@ -134,7 +145,7 @@ describe('减防通道归属：蕾米影画二 15%（异常专用）· 菲欧妮
     expect(panel.enemyDefReduction).toBeCloseTo(0, 5)
 
     const phoenixC4 = await setupPhoenix(4)
-    expect(phoenixMechanic.releaseModifier!({ self: releaseModifierSelf(phoenixMechanic, phoenixC4.config.team, []) }).enemyDefReduction ?? 0)
+    expect(phoenixMechanic.releaseModifier!({ self: releaseModifierSelf(phoenixMechanic, phoenixC4.config.team, [computePanelPhases(0, phoenixC4.config, phoenixC4.catalog)!.inCombat]) }).enemyDefReduction ?? 0)
       .toBeCloseTo(0, 5)
   })
 })

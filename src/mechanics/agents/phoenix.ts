@@ -511,14 +511,24 @@ function applyPhoenixPanel({ cinemaLevel, panel }: AgentPanelInput): void {
   // 影画6「**菲欧妮**无视目标 15% 全属性伤害抗性」——主语是**角色**（不是「造成的伤害」）
   // ⇒ **通用无视抗性**（用户口径 2026-11-09）：直伤与异常**都吃**，与「怪物减抗」同通道。
   if (cinema >= 6) panel.enemyResReduction = panel.enemyResReduction + PHOENIX_C6_RES_IGNORE
+  // 影画6 的异放那半「菲欧妮触发的[异放]效果无视敌人 40% 防御力」——**异放专属层**（异常父层的子层）。
+  // 落在面板上是为了**可展示**（算而不显 = 用户以为没算）；damage 链不读该字段，只由 releaseModifier 取用。
+  if (cinema >= 6) panel.enemyAnomalyReleaseDefReduction = panel.enemyAnomalyReleaseDefReduction + PHOENIX_C6_RELEASE_DEF_IGNORE
   // 影画2：对[灼蚀]状态下的敌人造成的伤害 +30%（[灼蚀] 由队伍异常伤害施加，默认满覆盖）
   if (cinema >= 2) panel.dmgBonus = panel.dmgBonus + PHOENIX_C2_SCORCH_DMG_BONUS
 }
 
 /** 影画6：异放限定无视 40% 防御（普罗米娅同款通道） */
+/**
+ * 异放专属减防（影画6）：**只在异放事件结算**（异常父层的子层）。
+ *
+ * 读数源 = 面板 `enemyAnomalyReleaseDefReduction`（applyPanel 写入）——单一事实源，
+ * 既让状态面板能显示，也让本函数不必重算（原本直接返回常量，面板看不见）。
+ */
 function phoenixReleaseModifier({ self }: ReleaseModifierInput): ReleaseModifier {
-  return self.cinemaLevel >= 6
-    ? { enemyResReduction: 0, enemyDefReduction: PHOENIX_C6_RELEASE_DEF_IGNORE, note: `；影画6：异放无视 ${PHOENIX_C6_RELEASE_DEF_IGNORE}% 防御（releaseModifier 异放限定）` }
+  const v = self.panel?.enemyAnomalyReleaseDefReduction ?? 0
+  return v > 0
+    ? { enemyResReduction: 0, enemyDefReduction: v, note: `；影画6：异放无视 ${v}% 防御（releaseModifier 异放专属）` }
     : { enemyResReduction: 0, note: '' }
 }
 

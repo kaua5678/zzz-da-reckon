@@ -97,6 +97,8 @@ export const STAT_META: StatMeta[] = [
   { value: 'enemyDefFlatReduction', label: '敌方固定防御降低', zone: '防御/穿透区', mode: 'flat', description: '当前与穿透值加算，作为固定防御扣除' },
   { value: 'enemyDefIgnoreDirect', label: '自身直伤无视防御（全元素）', zone: '防御/穿透区', mode: 'pct', description: '自身「造成伤害无视防御」：**只进直伤防御区**，异常伤害（乱流/灼烧/强击/紊乱/异放/耀变）读不到' },
   { value: 'enemyAnomalyDefReduction', label: '异常伤害防御降低/无视防御', zone: '防御/穿透区', mode: 'pct', description: '**异常专属**：只在异常伤害、紊乱、乱流、异放等异常结算中进入防御区，直伤读不到' },
+  { value: 'enemyAnomalyReleaseDefReduction', label: '异放专属无视防御', zone: '防御/穿透区', mode: 'pct', description: '**异放专属层**（异常父层的子层）：只在异放行与异常父层**相加**，侵蚀/感电/紊乱等父事件读不到' },
+  { value: 'enemyAnomalyReleaseResIgnore', label: '异放专属无视抗性', zone: '抗性/易伤区', mode: 'pct', description: '**异放专属层**（异常父层的子层）：只在异放行与异常父层**相加**，侵蚀/感电/紊乱等父事件读不到' },
   { value: 'enemyResReduction', label: '敌方抗性降低（全元素·怪物身上）', zone: '抗性/易伤区', mode: 'pct', description: '**降低怪物身上的抗性**（结算区 debuff）：直伤与一切异常伤害都吃这份值。⚠ 自身「造成伤害无视抗性」不走这里——直伤无视走 enemyResIgnoreDirect、异常无视走 enemyResIgnoreAnomaly' },
   { value: 'enemyResIgnoreDirect', label: '自身直伤无视抗性（全元素）', zone: '抗性/易伤区', mode: 'pct', description: '自身「造成伤害无视抗性」：**只进直伤抗性区**，异常伤害（乱流/灼烧/强击/紊乱/异放）读不到' },
   { value: 'enemyResIgnoreAnomaly', label: '自身异常伤害无视抗性（全元素）', zone: '抗性/易伤区', mode: 'pct', description: '自身「造成异常伤害时无视抗性」：**只进异常结算抗性区**（标准异常/紊乱/乱流/异放/耀变），直伤读不到' },

@@ -248,8 +248,8 @@ function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void
      * 正好是「异放加成 + 异常加成相加」。
      */
     panel.enemyDefIgnoreDirect = panel.enemyDefIgnoreDirect + cycle.c2DefIgnore
-    // 异放那半份的读数源：releaseModifier 拿不到 settings（滑块），故由面板承载
-    panel.aireCinema2DefIgnore = cycle.c2DefIgnore
+    // 异放那半份 ⇒ 统一承载字段（与菲欧妮/普罗米娅同族），既让面板可显示，也给 releaseModifier 做读数源
+    panel.enemyAnomalyReleaseDefReduction = panel.enemyAnomalyReleaseDefReduction + cycle.c2DefIgnore
   }
 }
 
@@ -338,7 +338,7 @@ function buildAireResourceSections({ result }: AgentResourceSectionsInput) {
  * 与面板 `enemyAnomalyDefReduction`（父层，一切异常都吃）**加算**。
  */
 function aireReleaseModifier({ self }: ReleaseModifierInput): ReleaseModifier {
-  const v = self.panel?.aireCinema2DefIgnore ?? 0
+  const v = self.panel?.enemyAnomalyReleaseDefReduction ?? 0
   return v > 0
     ? { enemyResReduction: 0, enemyDefReduction: v, note: `；影画2：异放无视 ${v}% 防御（releaseModifier 异放专属）` }
     : { enemyResReduction: 0, note: '' }
@@ -395,9 +395,4 @@ declare module '@/types/resource/agentResources' {
   }
 }
 
-/** 本模块私有面板字段（D2/CC-360）：只有本文件读写 —— 异放专属减防的承载量 */
-declare module '@/types/catalog' {
-  interface PanelValues {
-    aireCinema2DefIgnore?: number
-  }
-}
+// 异放专属减防已改用公共字段 enemyAnomalyReleaseDefReduction（与菲欧妮/普罗米娅同族，面板可显示）

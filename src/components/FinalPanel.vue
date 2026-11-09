@@ -292,6 +292,9 @@ const panels = computed(() => {
       makeRow(pOut, pIn, 'enemyDefIgnoreDirect', '自身直伤无视防御'),
       ...(elementDefIgnoreKey ? [makeRow(pOut, pIn, elementDefIgnoreKey, `直伤无视防御（${element}）`)] : []),
       makeRow(pOut, pIn, 'enemyAnomalyDefReduction', '异常专属无视防御'),
+      // 异放专属层（异常父层的子层）：算而不显会让人以为没算（用户 2026-11-09）
+      makeRow(pOut, pIn, 'enemyAnomalyReleaseDefReduction', '异放专属无视防御'),
+      makeRow(pOut, pIn, 'enemyAnomalyReleaseResIgnore', '异放专属无视抗性'),
       makeRow(pOut, pIn, 'enemyAssaultDefReduction', '强击专属无视防御'),
       makeRow(pOut, pIn, 'enemyDefFlatReduction', '减防（固定）'),
       makeRow(pOut, pIn, 'enemyDamageTakenBonus', '敌人受伤害提升（易伤）'),
@@ -320,6 +323,9 @@ const panels = computed(() => {
       makeRow(pOut, pIn, 'anomalyReleaseDmgBonus', '异放增伤（独立区）'),
       makeRow(pOut, pIn, 'turbulenceDamageBonus', '乱流增伤'),
       makeRow(pOut, pIn, 'disorderDamageBonus', '紊乱增伤（结算区）'),
+      makeRow(pOut, pIn, 'disorderBaseMultiplierBonus', '紊乱基础倍率提升'),
+      makeRow(pOut, pIn, 'turbulenceResIgnore', '乱流专属无视抗性'),
+      makeRow(pOut, pIn, 'anomalyDurationBonusSeconds', '异常持续时间延长（秒）'),
       makeRow(pOut, pIn, 'anomalyCritRate', '异常暴击率'),
       makeRow(pOut, pIn, 'anomalyCritDmg', '异常暴击伤害'),
     ]

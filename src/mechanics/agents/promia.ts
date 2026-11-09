@@ -160,16 +160,20 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
   if (cycle.additionalBuildUpEff > 0) {
     panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + cycle.additionalBuildUpEff
   }
+  // 有罪推定 40% + 影画1 20%：原文「全队角色对[有罪推定]状态的敌人造成[异放]效果时无视 N% 防御力」
+  // ⇒ **异放专属层**（异常父层的子层）。落面板是为了**可展示**；damage 链不读，只由 releaseModifier 取用。
+  if (cycle.guiltyDefIgnore > 0) {
+    panel.enemyAnomalyReleaseDefReduction = panel.enemyAnomalyReleaseDefReduction + cycle.guiltyDefIgnore
+  }
 }
 
 /** 异放限定减防（有罪推定 40% + 影画1 20%，原文均为「全队角色对[有罪推定]状态的敌人」）：只作用于异放结算；作用域 team（全队异放行，CC-121 / CC-333 与 computePromiaCycle.guiltyDefIgnore 同源）。 */
 function promiaReleaseModifier({ self }: ReleaseModifierInput): ReleaseModifier {
   if (self.slot < 0) return { enemyResReduction: 0, note: '' }
-  const cinema = self.cinemaLevel
-  const additionalActive = additionalAbilityActiveOf(self.panel)
-  const defIgnore = computePromiaCycle({ cinemaLevel: cinema, anomalyMastery: 0, additionalActive }).guiltyDefIgnore
+  // 读数源 = 面板 enemyAnomalyReleaseDefReduction（applyPanel 写入，单一事实源 ⇒ 面板可显示）
+  const defIgnore = self.panel?.enemyAnomalyReleaseDefReduction ?? 0
   return defIgnore > 0
-    ? { enemyResReduction: 0, enemyDefReduction: defIgnore, note: `；有罪推定/C1：异放无视 ${defIgnore}% 防御（releaseModifier 异放限定）` }
+    ? { enemyResReduction: 0, enemyDefReduction: defIgnore, note: `；有罪推定/C1：异放无视 ${defIgnore}% 防御（releaseModifier 异放专属）` }
     : { enemyResReduction: 0, note: '' }
 }
 

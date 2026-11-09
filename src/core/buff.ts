@@ -970,6 +970,9 @@ export function applyStat(panel: PanelValues, stat: StatId, value: number, mode:
     case 'enemyEtherResIgnoreDirect': panel.enemyEtherResIgnoreDirect += value; break
     case 'enemyWindResIgnoreDirect': panel.enemyWindResIgnoreDirect += value; break
     case 'enemyResIgnoreAnomaly': panel.enemyResIgnoreAnomaly += value; break
+    // 异放专属层（子层；只由 releaseModifier 取用，damage 链不读）
+    case 'enemyAnomalyReleaseDefReduction': panel.enemyAnomalyReleaseDefReduction += value; break
+    case 'enemyAnomalyReleaseResIgnore': panel.enemyAnomalyReleaseResIgnore += value; break
     case 'enemyPhysicalResIgnoreAnomaly': panel.enemyPhysicalResIgnoreAnomaly += value; break
     case 'enemyFireResIgnoreAnomaly': panel.enemyFireResIgnoreAnomaly += value; break
     case 'enemyIceResIgnoreAnomaly': panel.enemyIceResIgnoreAnomaly += value; break

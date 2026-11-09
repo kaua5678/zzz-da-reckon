@@ -110,6 +110,9 @@ export function emptyPanel(): PanelValues {
     enemyEtherResIgnoreDirect: 0,
     enemyWindResIgnoreDirect: 0,
     enemyResIgnoreAnomaly: 0,
+    // 异放专属层（父层的子层；只由 releaseModifier 取用，damage 链不读）
+    enemyAnomalyReleaseDefReduction: 0,
+    enemyAnomalyReleaseResIgnore: 0,
     enemyPhysicalResIgnoreAnomaly: 0,
     enemyFireResIgnoreAnomaly: 0,
     enemyIceResIgnoreAnomaly: 0,

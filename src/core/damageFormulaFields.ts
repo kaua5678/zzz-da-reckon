@@ -102,6 +102,11 @@ export const DAMAGE_FORMULA_FIELDS: DamageFormulaField[] = [
   { stat: 'anomalyCritRate', role: '异常乘区', note: '异常暴击率' },
   { stat: 'anomalyCritDmg', role: '异常乘区', note: '异常暴击伤害' },
   { stat: 'enemyAnomalyDefReduction', role: '异常乘区', note: '异常伤害无视防御' },
+  // ---- 异放专属层（异常父层的子层，2026-11-09 用户口径）----
+  // 「异放减防就是异常减防的子集，只在异放事件时计算」⇒ 异放行 = 父层 + 本层（相加），
+  // 侵蚀/感电/紊乱等父事件读不到。计算由 mechanics#releaseModifier 取用，damage 链不直读面板。
+  { stat: 'enemyAnomalyReleaseDefReduction', role: '异常乘区', note: '异放专属无视防御：**只在异放行**与异常父层相加，其他异常事件读不到' },
+  { stat: 'enemyAnomalyReleaseResIgnore', role: '异常乘区', note: '异放专属无视抗性：**只在异放行**与异常父层相加，其他异常事件读不到' },
   // 角色专属字段（remielle* 等）**不在此登记**：core 层不得出现角色前缀字段（判据 22）。
   // 它们经 registerDamageFormulaFields() 由机制层注册（见文件末尾）。
 
@@ -142,6 +147,18 @@ export function damageFormulaFieldOf(stat: string): DamageFormulaField | undefin
 /** 快速查表：通用字段 stat → 白名单条目 */
 export const DAMAGE_FORMULA_BY_STAT: ReadonlyMap<string, DamageFormulaField> =
   new Map(DAMAGE_FORMULA_FIELDS.map(f => [f.stat, f]))
+
+/**
+ * 全部伤害公式字段（core 白名单 + 已注册的角色专属）——**展示层完整性判据**的输入。
+ *
+ * 判据 `src/utils/__tests__/statDisplayCoverage.test.ts`：每一个都在册字段必须在状态面板或
+ * 终局面板上有展示行，否则报红。为什么要有它：展示层原先靠**手写行**列举，
+ * 新增/存量字段会静默「算而不显」——用户看到面板没有就会以为没算（2026-11-09 用户原话
+ * 「面板该显示乘区的一切内容……你一个一个修补，肯定要漏」）。
+ */
+export function allDamageFormulaFields(): DamageFormulaField[] {
+  return [...DAMAGE_FORMULA_FIELDS, ...ROLE_FIELD_REGISTRY.values()]
+}
 
 /** 某字段是否是「伤害公式值」 */
 export function isDamageFormulaStat(stat: string): boolean {

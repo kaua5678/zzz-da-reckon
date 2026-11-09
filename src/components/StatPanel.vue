@@ -246,6 +246,11 @@
             <span class="stat-label">蕾米异化度</span>
             <span class="stat-value">{{ formatPercent(panel.remielleRefringeCoefficient) }}</span>
           </div>
+          <!-- 异化度提升（3异常+10 / 二命+20）：与本体异化度**加算**后一起乘异常结算（普查补齐 2026-11-09） -->
+          <div class="stat-row" v-if="panel.remielleRefringeCoefficientBonusPct !== 0">
+            <span class="stat-label">蕾米异化度提升（加算）</span>
+            <span class="stat-value">+{{ formatPercent(panel.remielleRefringeCoefficientBonusPct) }}</span>
+          </div>
           <div class="stat-row" v-if="panel.remielleLuminizeMultiplierBonus !== 0">
             <span class="stat-label">蕾米被动耀变倍率提升</span>
             <span class="stat-value">+{{ formatPercent(panel.remielleLuminizeMultiplierBonus) }}</span>
@@ -422,6 +427,11 @@
             <span class="stat-label">元素专属减防</span>
             <span class="stat-value debuff">{{ elementDefReductionSummary }}</span>
           </div>
+          <!-- 异放专属层（异常父层的子层）：只在异放行与父层相加，其他异常读不到 -->
+          <div class="stat-row" v-if="panel.enemyAnomalyReleaseDefReduction !== 0">
+            <span class="stat-label">异放专属无视防御</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.enemyAnomalyReleaseDefReduction) }}</span>
+          </div>
           <div class="stat-row" v-if="panel.enemyDefFlatReduction !== 0">
             <span class="stat-label">敌方防御固定降低</span>
             <span class="stat-value debuff">{{ formatNumber(panel.enemyDefFlatReduction, 0) }}</span>
@@ -489,6 +499,10 @@
             <span class="stat-label">{{ row.label }}</span>
             <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
           </div>
+          <div class="stat-row" v-if="panel.enemyAnomalyReleaseResIgnore !== 0">
+            <span class="stat-label">异放专属无视抗性</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.enemyAnomalyReleaseResIgnore) }}</span>
+          </div>
           <div class="stat-section-title">失衡相关</div>
           <div class="stat-row" v-if="panel.enemyStunResReduction !== 0">
             <span class="stat-label">敌方失衡抗性降低/无视</span>
@@ -504,6 +518,19 @@
             <span class="stat-value debuff">+{{ formatPercent(panel.enemyStunTakenBonus) }}</span>
           </div>
           <div class="stat-section-title">异常相关</div>
+          <!-- 公式表（core/damageFormulaFields）在册、但此前无展示口的三个字段（2026-11-09 普查补齐） -->
+          <div class="stat-row" v-if="panel.disorderBaseMultiplierBonus !== 0">
+            <span class="stat-label">紊乱基础倍率提升</span>
+            <span class="stat-value">+{{ formatPercent(panel.disorderBaseMultiplierBonus) }}</span>
+          </div>
+          <div class="stat-row" v-if="panel.turbulenceResIgnore !== 0">
+            <span class="stat-label">乱流专属无视抗性</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.turbulenceResIgnore) }}</span>
+          </div>
+          <div class="stat-row" v-if="panel.anomalyDurationBonusSeconds !== 0">
+            <span class="stat-label">异常持续时间延长</span>
+            <span class="stat-value">+{{ formatNumber(panel.anomalyDurationBonusSeconds, 1) }} 秒</span>
+          </div>
           <div class="stat-row" v-if="panel.enemyAnomalyResReduction !== 0">
             <span class="stat-label">敌方积蓄抗性降低/无视</span>
             <span class="stat-value debuff">{{ formatPercent(panel.enemyAnomalyResReduction) }}</span>
@@ -918,6 +945,7 @@ const hasAnyEnemyDebuff = computed(() => {
     || hasElementDefReduction.value || hasElementResReduction.value
     || p.enemyStunResReduction !== 0 || p.enemyAnomalyResReduction !== 0
     || p.enemyResIgnoreDirect !== 0 || p.enemyResIgnoreAnomaly !== 0
+    || p.enemyAnomalyReleaseDefReduction !== 0 || p.enemyAnomalyReleaseResIgnore !== 0
     || elementDirectIgnoreRows.value.length > 0 || elementAnomalyIgnoreRows.value.length > 0
     || targetedSelfIgnoreRows.value.length > 0
     || p.enemyDefIgnoreDirect !== 0 || elementDefIgnoreDirectRows.value.length > 0

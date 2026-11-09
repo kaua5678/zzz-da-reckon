@@ -196,6 +196,12 @@ export interface PanelValues {
   enemyElectricResIgnoreAnomaly: number
   enemyEtherResIgnoreAnomaly: number
   enemyWindResIgnoreAnomaly: number
+  // ---- 异放专属层（2026-11-09 用户口径：「异放减防就是异常减防的子集，只在异放事件时计算」）----
+  // 它是**异常父层的子层**：异放行 = 父层 + 本层（相加），侵蚀/感电/紊乱等父事件读不到。
+  // ⚠ 计算路径**不走**面板读数（damage 链不读这两个字段），只由 mechanics#releaseModifier 取用；
+  //   之所以仍落在面板上，是为了**可展示**——算而不显会让人以为没算（用户 2026-11-09）。
+  enemyAnomalyReleaseDefReduction: number // 异放专属无视防御（只进异放行）
+  enemyAnomalyReleaseResIgnore: number    // 异放专属无视抗性（只进异放行）
   enemyStunResReduction: number    // 敌方失衡抗性降低，百分比（旧兼容：全元素）
   enemyPhysicalStunResReduction: number // 物理属性专属失衡抗性降低/无视
   enemyFireStunResReduction: number // 火属性专属失衡抗性降低/无视

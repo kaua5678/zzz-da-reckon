@@ -144,7 +144,20 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 
 - 异放行 = 父层 + 异放专属层（**相加**）；
 - 侵蚀这类父事件 = 只有父层，**读不到**异放专属层。
-- ⚠ 因此「异放限定」的减防**绝不能**写进 `enemyDefReduction`（通用）或 `enemyAnomalyDefReduction`（父层）——那两层范围更大 ⇒ **过度授予**。写法只有两条：面板承载 + `releaseModifier` 返回（如爱芮影画2 的异放那半），或直接由 `releaseModifier` 计算（如菲欧妮影画6、普罗米娅有罪推定）。
+- ⚠ 因此「异放限定」的减防**绝不能**写进 `enemyDefReduction`（通用）或 `enemyAnomalyDefReduction`（父层）——那两层范围更大 ⇒ **过度授予**。
+- **写法（统一）**：`applyPanel` 写面板字段 `enemyAnomalyReleaseDefReduction` / `enemyAnomalyReleaseResIgnore`，`releaseModifier` 从面板读回。这样**单一事实源**且**面板可见**（现役：菲欧妮影画6 40%、普罗米娅有罪推定+C1、薇薇安影画2 15%、爱芮影画2 异放那半）。
+  ⚠ 为什么不用「releaseModifier 直接返回常量」的旧写法：那样值只活在异放行的结算里，**状态面板上什么都看不到**——算而不显，人会以为没算（用户 2026-11-09）。
+
+### 4.3 ★ 展示完整性判据（2026-11-09，用户原话驱动）
+
+> 「面板该显示乘区的一切内容，所以会包含一切吧。你现在一个一个修补，肯定要漏。」
+
+**机器判据**：`src/utils/__tests__/statDisplayCoverage.test.ts` 断言 `allDamageFormulaFields()`（= core 白名单 36 条 + 模块注册的角色专属字段）**每一条**都能在 `StatPanel.vue` 或 `FinalPanel.vue` 里搜到，缺一个就红并点名。
+
+- 起因：展示层原先靠**手写行**列举，每加一个乘区字段都要人记得「顺手补一行展示」。忘了就变成**算而不显**，而这类漏项无法靠 review 拦住（没人会去数 36 个字段）。
+- 首次运行立刻抓出 4 个存量漏项：`disorderBaseMultiplierBonus`、`turbulenceResIgnore`、`anomalyDurationBonusSeconds`、`remielleRefringeCoefficientBonusPct`——全部已补展示行。
+- 新增乘区字段的正确顺序：① 登记 `core/damageFormulaFields`（或模块 `damageFormulaFields`）② 补展示行。漏第 ② 步 ⇒ 判据红。
+- 豁免：确有不进伤害式的字段须进 `EXEMPT` 并写理由（棘轮只减不增）。
 
 - 字段名与 id 生成：`src/utils/defenseChannels.ts`（叶子事实源，与 `resistanceChannels` / `damageElements` 同层）
 - 读数入口：`src/core/defenseChannels.ts#enemyDefReductionOf` / `#selfDefIgnoreOf`；异放层入口 `mechanics#releaseModifier`（派发 `composables/resourceCalc/damagePool.ts#pushRelease`）
