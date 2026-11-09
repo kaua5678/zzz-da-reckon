@@ -75,7 +75,12 @@ const LOCK_FIXTURES: Array<{ name: string; team: string[]; lock: number; heavy: 
   // ── 降配夹具（D）：`downscales: true` = 实测解锁态确实落 interactionScale（2026-11-06 全库扫描）
   { name: '叶瞬光 1431 簇（结构性溢出最重，实测 0.125）', team: ['1431', '1481', '1491'], lock: 3, heavy: true, downscales: true },
   { name: '叶瞬光 1431+耀嘉音（轮数实数化旁支，实测 0.25）', team: ['1431', '1491', '1311'], lock: 3, heavy: true, downscales: true },
-  { name: '比利 1531+扳机（链数实数化，实测 0.25）', team: ['1531', '1361', '1451'], lock: 3, heavy: true, downscales: true },
+  //
+  // ⚠ 2026-11-09（规则 10）：模型队 `1531+1361+1451` 在入口门默认开启后**不再降配**
+  // （判据 D 报「解锁态未降配」）⇒ 按本判据自己给的修法「换更重的交互加码或换队」换成
+  // `1531+1251+1451`（全库 29 支降配队之一，实测 scale 0.25），仍保留 1531 这条「链数实数化」动力学。
+  // 判据本身（`interactionScale !== undefined`）与集合基数下限一字未改。
+  { name: '比利 1531+青衣（链数实数化，实测 0.25）', team: ['1531', '1251', '1451'], lock: 3, heavy: true, downscales: true },
   { name: '希格莉德 1591+琉音（定点迭代，实测 0.2）', team: ['1591', '1481', '1211'], lock: 3, heavy: true, downscales: true },
 ]
 
