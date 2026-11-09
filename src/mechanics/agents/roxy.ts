@@ -498,7 +498,8 @@ function applyRoxyPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   // 影画2「失衡易伤 +30%」同理走采集通道 `roxy.cinema_2_stun_vulnerability`（敌方减益）；
   // 写 `panel.stunDmgMultiplierBonus` 只会让洛克茜自己吃、且与采集通道叠加即双计。
   if (cinema >= 6) {
-    panel.enemyWindResReduction = panel.enemyWindResReduction + ROXY_C6_WIND_RES_REDUCTION
+    // 影画6「自身攻击造成的伤害无视目标 15% 风属性伤害抗性」⇒ 自身直伤族（异常读不到）
+    panel.enemyWindResIgnoreDirect = panel.enemyWindResIgnoreDirect + ROXY_C6_WIND_RES_REDUCTION
   }
 }
 

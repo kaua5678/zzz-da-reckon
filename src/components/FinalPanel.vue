@@ -274,10 +274,18 @@ const panels = computed(() => {
     const targetedDebuffRows = targetedStatRows(pIn, 'enemyDefReduction', t => `减防（${SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t}）`)
       .concat(targetedStatRows(pIn, 'enemyResReduction', t => `减抗（${SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t}）`))
 
+    // 自身无视抗性两族（2026-11-09 三通道）：作用范围与「怪物身上减抗」不同——
+    // 直伤族异常吃不到、异常族直伤吃不到，故分行展示（判据 resistanceChannels.test.ts）
+    const elementDirectIgnoreKey = elementStatKey('enemyResIgnoreDirect', element)
+    const elementAnomalyIgnoreKey = elementStatKey('enemyResIgnoreAnomaly', element)
     const debuffRows = [
-      makeRow(pOut, pIn, 'enemyResReduction', '全属性减抗'),
+      makeRow(pOut, pIn, 'enemyResReduction', '全属性减抗（怪物身上）'),
       ...(elementResKey ? [makeRow(pOut, pIn, elementResKey, `元素减抗（${element}）`)] : []),
       ...targetedDebuffRows,
+      makeRow(pOut, pIn, 'enemyResIgnoreDirect', '自身直伤无视抗性'),
+      ...(elementDirectIgnoreKey ? [makeRow(pOut, pIn, elementDirectIgnoreKey, `直伤无视抗性（${element}）`)] : []),
+      makeRow(pOut, pIn, 'enemyResIgnoreAnomaly', '自身异常无视抗性'),
+      ...(elementAnomalyIgnoreKey ? [makeRow(pOut, pIn, elementAnomalyIgnoreKey, `异常无视抗性（${element}）`)] : []),
       makeRow(pOut, pIn, 'enemyDefReduction', '减防（%）'),
       makeRow(pOut, pIn, 'enemyDefFlatReduction', '减防（固定）'),
       makeRow(pOut, pIn, 'enemyDamageTakenBonus', '敌人受伤害提升（易伤）'),
@@ -338,7 +346,12 @@ const panels = computed(() => {
       : expectedCritMultiplier(critRateRaw, pIn.critDmg ?? 0)
     const sharpTotal = (pIn.sharpDmgBonus ?? 0) + (elementSharpKey ? (getPanelStat(pIn, elementSharpKey) ?? 0) : 0)
     const penDmgTotal = (pIn.penDmgBonus ?? 0) + (pIn.sheerDmgBonus ?? 0) + (elementSheerKey ? (getPanelStat(pIn, elementSheerKey) ?? 0) : 0)
+    // 抗性三通道（2026-11-09）：直伤看「通用 + 直伤无视」，异常看「通用 + 异常无视」
+    const elementDirectIgnore = elementDirectIgnoreKey ? getPanelStat(pIn, elementDirectIgnoreKey) ?? 0 : 0
+    const elementAnomalyIgnore = elementAnomalyIgnoreKey ? getPanelStat(pIn, elementAnomalyIgnoreKey) ?? 0 : 0
     const resTotal = (pIn.enemyResReduction ?? 0) + elementRes
+    const directResTotal = resTotal + (pIn.enemyResIgnoreDirect ?? 0) + elementDirectIgnore
+    const anomalyResTotal = resTotal + (pIn.enemyResIgnoreAnomaly ?? 0) + elementAnomalyIgnore
     const stunMultTotal = (pIn.stunDmgMultiplierBonus ?? 0) + (pIn.stunDmgMultiplierBonusAlways ?? 0)
     const finalDmgTotal = pIn.finalDmgBonus ?? 0
     const finalDmgTargeted = targetedRows(pIn, 'finalDmgBonus', t => SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t)
@@ -397,8 +410,10 @@ const panels = computed(() => {
       },
       {
         title: '抗性削减 / 易伤 / 失衡',
-        main: `全 ${pct(pIn.enemyResReduction ?? 0)} + ${element} ${pct(elementRes)} = ${pct(resTotal)}`,
+        main: `怪物减抗 ${pct(resTotal)}｜直伤 +${pct(directResTotal)}｜异常 +${pct(anomalyResTotal)}`,
         lines: [
+          `怪物身上减抗：全 ${pct(pIn.enemyResReduction ?? 0)} + ${element} ${pct(elementRes)} = ${pct(resTotal)}（直伤与异常都吃）`,
+          `直伤无视抗性 +${pct((pIn.enemyResIgnoreDirect ?? 0) + elementDirectIgnore)}（只进直伤）· 异常无视抗性 +${pct((pIn.enemyResIgnoreAnomaly ?? 0) + elementAnomalyIgnore)}（只进异常）`,
           `敌人受伤害 +${pct(pIn.enemyDamageTakenBonus ?? 0)} · 失衡易伤 +${pct(stunMultTotal)} · 暴击易伤 +${pct(pIn.enemyCritDmgTakenBonus ?? 0)}`,
           `冲击力 ${fmt(pIn.impact, 0)} · 失衡值提升 ${pct(pIn.stunBuildUpBonus ?? 0)}${stunTargeted.map(r => ` + ${r.label} ${pct(r.value)}`).join('')} · 失衡时长 +${fmt(pIn.stunDurationBonusSeconds ?? 0, 1)}s`,
         ],

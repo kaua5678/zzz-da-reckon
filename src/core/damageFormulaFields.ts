@@ -77,7 +77,9 @@ export const DAMAGE_FORMULA_FIELDS: DamageFormulaField[] = [
   { stat: 'enemyDefFlatReduction', role: '防御穿透区', note: '敌人防御降低（固定值）' },
 
   // ── B. 抗性易伤区 ──
-  { stat: 'enemyResReduction', role: '抗性易伤区', note: '敌人全属性抗性降低' },
+  { stat: 'enemyResReduction', role: '抗性易伤区', note: '敌人全属性抗性降低（**怪物身上**的结算区 debuff）：直伤与异常都吃' },
+  { stat: 'enemyResIgnoreDirect', role: '抗性易伤区', note: '自身「造成伤害无视抗性」：**只进直伤抗性区**，异常读不到' },
+  { stat: 'enemyResIgnoreAnomaly', role: '抗性易伤区', note: '自身「造成异常伤害时无视抗性」：**只进异常结算抗性区**，直伤读不到' },
   { stat: 'enemyDamageTakenBonus', role: '抗性易伤区', note: '敌人受到伤害提升（易伤）' },
 
   // ── B. 失衡易伤区 ──

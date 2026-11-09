@@ -251,7 +251,8 @@ function applyMiyabiPanel({ slot, cinemaLevel, team, panel, settings }: AgentPan
   // 额外能力：紊乱触发霜月无视 30% 冰抗（面板近似；原 transform 判 frostFall 资源存在——
   // 紊乱正常发生时落霜必存在，静态化以 AA 激活为准）
   if (aa) {
-    panel.enemyIceResReduction = panel.enemyIceResReduction + FROST_MOON_ICE_RES_IGNORE
+    // 「紊乱后霜月架势无视 30% 冰抗」——霜月是**烈霜直伤** ⇒ 自身直伤族（异常读不到）
+    panel.enemyIceResIgnoreDirect = panel.enemyIceResIgnoreDirect + FROST_MOON_ICE_RES_IGNORE
   }
 
   // 额外能力：霜月伤害+60%（限定基本攻击，通过 targetSkillType 机制）

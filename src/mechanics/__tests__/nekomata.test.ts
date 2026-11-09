@@ -128,7 +128,8 @@ describe('永续面板项与猫步秀（2026-08-23 第二批口供）', () => {
     expect(p0.dmgBonus).toBeGreaterThanOrEqual(60)
 
     const p1 = await panelFor(1)
-    expect((p1.enemyPhysicalResReduction ?? 0) - (p0.enemyPhysicalResReduction ?? 0)).toBeCloseTo(16)
+    // 三通道：影画1「从背后攻击命中无视16%物抗」= 自身直伤无视
+    expect((p1.enemyPhysicalResIgnoreDirect ?? 0) - (p0.enemyPhysicalResIgnoreDirect ?? 0)).toBeCloseTo(16)
 
     const p2 = await panelFor(2)
     expect((p2.energyGainEfficiency ?? 0) - (p0.energyGainEfficiency ?? 0)).toBeCloseTo(25)

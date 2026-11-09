@@ -126,7 +126,8 @@
 **异放（release）跟随事件触发**，不是独立资源。录入异放类核心被动时：
 - 载体 = 触发异放的招式（如薇薇安落羽生花、爱芮绝对音准#3）；**触发有条件**——「命中处于异常状态的目标」才触发（异常角色默认满覆盖，`xxx.releaseCoverage` 滑块默认 1）。
 - 次数口径：`载体命中异常目标次数 = 载体次数 × releaseCoverage`；`releaseRatio`（basis=anomalyProficiency / anomalyMastery，perTenByElement 各元素比例）→ 引擎按元素覆盖率分配次数、算倍率（参照爱芮模板）。
-- **异放限定增益**（如「异放无视 15% 抗性」）必须走模块 `releaseModifier` 返回 `enemyResReduction`——**只作用于异放结算**（`pushRelease` 单独加）。禁止写成面板级 `enemyResReduction`（会让全伤害都无视抗性）。
+- **异放限定增益**（如「异放无视 15% 抗性」）必须走模块 `releaseModifier` 返回 `enemyResReduction`——**只作用于异放结算**（`pushRelease` 单独加，落地为 `enemyResIgnoreAnomaly` 的「面板外额外量」）。禁止写成面板级字段（会让该角色**全部**伤害都无视该抗性）。
+  ⚠ 2026-11-09 **抗性三通道**（用户口径，见 `GAME_TERM_TO_CODE_FIELD.md` §5.1）：异放属**异常族**；自身「造成伤害无视抗性」类增益走 `enemyResIgnoreDirect`（**直伤专属**，异常读不到），两者**不可混写**到同一字段。
 - **异放暴击**（如爱芮 C1）用事件的 `releaseCrit` 字段（基础率/伤 + 掌控阈值递增）。
 
 **跨角色计数（团队级触发）**：机制依赖「全队强特次数」「全队异常触发次数」时，`buildAnomalyEvents` 阶段拿不到（异常池在更后阶段）。新增跨轮反馈 = 在 `resourceCalc/roundThreads.ts` 的 `CalcRoundThreads` 加**一个字段 + `initialCalcRoundThreads` 初值 + 轮内读写**（先例 `lucyTeammateEx` / `vivianTeamEx` / `vivianAnomalyTriggers` / `lighterTeamEnergy`），**不动 `runCalcRound` 签名**（历史形态是 21 个 prev 位置参数，漏一处即静默断链，已结构体化）；只影响伤害、不改终结技/喧响序列的线程（如 `lighterTeamEnergy`）要同步加进 `runOuterLoop` 手写收敛判据，否则提前判 stable。**团队级增益本体走角色模块 `applyTeamConfig`**（三阶段 build/converge/postRound，见 `ENGINE_PIPELINE_GUIDE.md` §2；规则 6：禁止往 `useResourceCalc` 加 agentId 分支）。

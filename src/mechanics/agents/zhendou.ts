@@ -71,7 +71,8 @@ function applyZhendouPanel({ panel, cinemaLevel, outOfCombatPanel, settings }: A
     panel.fireDmg = panel.fireDmg + ZHENDOU_C1_FIRE_DMG_CAP * cov
   }
   if (cinemaLevel >= 2) {
-    panel.enemyFireResReduction = panel.enemyFireResReduction + ZHENDOU_C2_FIRE_RES_IGNORE
+    // 影画2「[熔锋]状态下真斗无视目标 8% 火属性伤害抗性」⇒ 自身直伤族（异常读不到）
+    panel.enemyFireResIgnoreDirect = panel.enemyFireResIgnoreDirect + ZHENDOU_C2_FIRE_RES_IGNORE
   }
   if (cinemaLevel >= 4) {
     // ⚠ R60 修复：原写 `panel.hpPct = (panel.hpPct ?? 0) + 8` —— `applyPanel` 跑在 `calcPanel`

@@ -206,7 +206,8 @@ function applyNekoPanel(input: AgentPanelInput): void {
   panel.dmgBonus = panel.dmgBonus + 60
   if (cinemaLevel >= 1) {
     // 影画1·猎鸟技巧：肉球突袭永续 → 背后命中全覆盖 → 无视 16% 物理抗性
-    panel.enemyPhysicalResReduction = panel.enemyPhysicalResReduction + 16
+    // ⇒ 自身直伤族（异常读不到，2026-11-09 三通道）
+    panel.enemyPhysicalResIgnoreDirect = panel.enemyPhysicalResIgnoreDirect + 16
   }
   if (cinemaLevel >= 2) {
     // 影画2·猫鼠游戏：单敌前场能量获得效率 +25%

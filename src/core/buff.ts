@@ -9,6 +9,7 @@ import type {
 } from '@/types/catalog'
 import { localized } from '@/utils/format'
 import { GENERATED_ENEMY_DEBUFF_STAT_IDS, LEGACY_ENEMY_DEBUFF_STAT_IDS, normalizeEnemyDebuffStatAlias } from '@/utils/enemyDebuffStats'
+import { GENERATED_RES_IGNORE_STAT_IDS } from '@/utils/resistanceChannels'
 import { elementStatKey, type ElementStatKind } from '@/utils/elementStatKeys'
 import { wEngineConditionMet, wEngineEffectRequirementMet, type WEngineConditionContext } from '@/core/wengineConditions'
 
@@ -59,6 +60,8 @@ const TARGETABLE_STATS = new Set([
   'windSharpDmg',
   ...GENERATED_ENEMY_DEBUFF_STAT_IDS,
   ...LEGACY_ENEMY_DEBUFF_STAT_IDS,
+  // 自身无视抗性两族（2026-11-09 三通道）：定向键（enemyIceResIgnoreDirect__basic 等）合法
+  ...GENERATED_RES_IGNORE_STAT_IDS,
 ])
 
 // skillTag → 招式族（`SKILL_TAG_TARGET`）住在 `@/data/skillDamageTargets`（2026-10-18 下沉）：
@@ -947,6 +950,21 @@ export function applyStat(panel: PanelValues, stat: StatId, value: number, mode:
     case 'enemyElectricResReduction': panel.enemyElectricResReduction += value; break
     case 'enemyEtherResReduction': panel.enemyEtherResReduction += value; break
     case 'enemyWindResReduction': panel.enemyWindResReduction += value; break
+    // 抗性两族（自身无视抗性，2026-11-09 三通道拆分）：直伤族只进 calcDirectDamage，异常族只进异常结算
+    case 'enemyResIgnoreDirect': panel.enemyResIgnoreDirect += value; break
+    case 'enemyPhysicalResIgnoreDirect': panel.enemyPhysicalResIgnoreDirect += value; break
+    case 'enemyFireResIgnoreDirect': panel.enemyFireResIgnoreDirect += value; break
+    case 'enemyIceResIgnoreDirect': panel.enemyIceResIgnoreDirect += value; break
+    case 'enemyElectricResIgnoreDirect': panel.enemyElectricResIgnoreDirect += value; break
+    case 'enemyEtherResIgnoreDirect': panel.enemyEtherResIgnoreDirect += value; break
+    case 'enemyWindResIgnoreDirect': panel.enemyWindResIgnoreDirect += value; break
+    case 'enemyResIgnoreAnomaly': panel.enemyResIgnoreAnomaly += value; break
+    case 'enemyPhysicalResIgnoreAnomaly': panel.enemyPhysicalResIgnoreAnomaly += value; break
+    case 'enemyFireResIgnoreAnomaly': panel.enemyFireResIgnoreAnomaly += value; break
+    case 'enemyIceResIgnoreAnomaly': panel.enemyIceResIgnoreAnomaly += value; break
+    case 'enemyElectricResIgnoreAnomaly': panel.enemyElectricResIgnoreAnomaly += value; break
+    case 'enemyEtherResIgnoreAnomaly': panel.enemyEtherResIgnoreAnomaly += value; break
+    case 'enemyWindResIgnoreAnomaly': panel.enemyWindResIgnoreAnomaly += value; break
     case 'enemyStunResReduction': panel.enemyStunResReduction += value; break
     case 'enemyPhysicalStunResReduction': panel.enemyPhysicalStunResReduction += value; break
     case 'enemyFireStunResReduction': panel.enemyFireStunResReduction += value; break

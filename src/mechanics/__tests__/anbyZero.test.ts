@@ -128,7 +128,8 @@ describe('零号·安比完整计算链', () => {
     const panel = calc.panels.value[0] as any
     expect(panel.critRate).toBeGreaterThanOrEqual(ANBY_ZERO_ADDITIONAL_CRIT_RATE + ANBY_ZERO_C2_CRIT_RATE)
     expect(panel.dmgBonus).toBeGreaterThanOrEqual(ANBY_ZERO_CORE_DMG)
-    expect(panel.enemyElectricResReduction).toBeGreaterThanOrEqual(ANBY_ZERO_C4_RES_IGNORE)
+    // 三通道：影画4「攻击命中[银星]敌人无视12%电抗」= 自身直伤无视
+    expect(panel.enemyElectricResIgnoreDirect).toBeGreaterThanOrEqual(ANBY_ZERO_C4_RES_IGNORE)
   })
 
   it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {

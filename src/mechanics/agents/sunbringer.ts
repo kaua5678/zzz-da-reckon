@@ -196,7 +196,8 @@ export function applySunbringerPanel({ panel, outOfCombatPanel, cinemaLevel }: A
   panel.critRate = panel.critRate + POLAR_DAY_CRIT_RATE
   panel.enemyDefReduction = panel.enemyDefReduction + POLAR_DAY_DEF_IGNORE
   // 影画1（隐世的虚狩）：造成伤害无视 15% 火属性抗性（满覆盖）；「残痕积蓄效率 +10%」在 solveSunbringerLoops
-  if (cinemaLevel >= 1) panel.enemyFireResReduction = panel.enemyFireResReduction + 15
+  // 「发动招式造成的伤害无视敌人 15% 火抗」⇒ 自身直伤族（异常读不到）
+  if (cinemaLevel >= 1) panel.enemyFireResIgnoreDirect = panel.enemyFireResIgnoreDirect + 15
   // 影画2（继承者的叛旗）v2 文本 = 烬痕积攒（+20% / 其他招式 15% / 击溃）——**不再是无视 12% 防御**
   //   （旧文本 3.4.1+19850203 的「无视 12% 防御」随 v2 删除；烬痕侧在 computeEmberScar）
   // 影画4（奉献者的虚像）：自身造成的伤害 +15%（满覆盖）

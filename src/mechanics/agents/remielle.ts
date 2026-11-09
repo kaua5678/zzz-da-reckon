@@ -25,6 +25,7 @@ import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt, localized } from '@/utils/format'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '@/core/damageMultipliers'
+import { enemyResReductionOf, selfResIgnoreOf } from '@/core/resistanceChannels'
 import { calcAnomalyCritExpect, calcPanelStunMultiplier, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
 import { enemyResistanceOf, panelElementStat } from '@/utils/elementStatKeys'
 import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
@@ -377,10 +378,11 @@ export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: numb
   const levelMult = LEVEL_MULT_60
   const mass = baseDmg * dmgMult * profMult * defMult * levelMult
 
+  // 抗性三通道（2026-11-09）：耀变属**异常族** ⇒ 吃「通用减抗（怪物身上）+ 异常无视」，
+  // **不吃**直伤无视（enemyResIgnoreDirect）——那份没有降低 boss 身上的乘区。
   const baseRes = enemyResistanceOf(enemyResistances, element)
-  const sourceResReduction = source.enemyResReduction
-    + panelElementStat(source, 'enemyRes', element)
-    + cinema1ResIgnore
+  const sourceResReduction = enemyResReductionOf(source, element)
+    + selfResIgnoreOf(source, 'anomaly', element) + cinema1ResIgnore
   const resMult = resistanceMultiplierDetail(baseRes, sourceResReduction).multiplier
 
   const anomalyDmgMult = 1 + remielle.anomalyDmgBonus / 100

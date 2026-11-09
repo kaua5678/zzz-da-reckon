@@ -85,10 +85,10 @@ function applyYidhariPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   }
   // 以太帷幕·涌泉：全队局内最大生命值 +5%（0命）/ +10%（4命）——由 teammate-buffs.json 1051 条目
   // （yidhari.core_curtain_hp + yidhari.cinema4_curtain_hp）经 buff 引擎真正重算 panel.hp（含贯穿力基底）。
-  // 影画1：普攻/强化特殊技 无视 20% 冰属性伤害抗性
+  // 影画1：普攻/强化特殊技 无视 20% 冰属性伤害抗性 ⇒ 自身直伤族（异常读不到，2026-11-09 三通道）
   if (cinemaLevel >= 1) {
-    panel.enemyIceResReduction__basic = (panel.enemyIceResReduction__basic ?? 0) + 20
-    panel.enemyIceResReduction__exSpecial = (panel.enemyIceResReduction__exSpecial ?? 0) + 20
+    panel.enemyIceResIgnoreDirect__basic = (panel.enemyIceResIgnoreDirect__basic ?? 0) + 20
+    panel.enemyIceResIgnoreDirect__exSpecial = (panel.enemyIceResIgnoreDirect__exSpecial ?? 0) + 20
   }
   // 影画2：暴击伤害 +40%；溯寒/追碾后 0.5 闪能/秒（默认第5秒起永续，近似全局）
   if (cinemaLevel >= 2) {

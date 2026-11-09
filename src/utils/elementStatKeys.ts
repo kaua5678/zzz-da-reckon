@@ -2,6 +2,7 @@ import { getPanelStat } from '@/utils/panelStat'
 import type { PanelValues } from '@/types/catalog'
 import { resolveStatElement } from '@/data/anomalyElement'
 import { ELEMENT_FIELD_PREFIX, enemyDebuffElementStatId } from '@/utils/enemyDebuffStats'
+import { resIgnoreElementStatId } from '@/utils/resistanceChannels'
 
 /**
  * 元素 → 面板字段名（单一来源，CC-224）。
@@ -24,8 +25,13 @@ export type ElementStatKind =
   | 'enemyDef'
   | 'enemyAnomalyRes'
   | 'enemyStunRes'
+  /** 自身**直伤**无视抗性（元素限定，`enemyFireResIgnoreDirect`）：语义见 utils/resistanceChannels */
+  | 'enemyResIgnoreDirect'
+  /** 自身**异常伤害**无视抗性（元素限定，`enemyFireResIgnoreAnomaly`）：直伤吃不到 */
+  | 'enemyResIgnoreAnomaly'
 
-const OWN_SUFFIX: Record<Exclude<ElementStatKind, 'enemyRes' | 'enemyDef' | 'enemyAnomalyRes' | 'enemyStunRes'>, string> = {
+const OWN_SUFFIX: Record<Exclude<ElementStatKind,
+  'enemyRes' | 'enemyDef' | 'enemyAnomalyRes' | 'enemyStunRes' | 'enemyResIgnoreDirect' | 'enemyResIgnoreAnomaly'>, string> = {
   dmg: 'Dmg',
   critDmg: 'CritDmg',
   sheerDmg: 'SheerDmg',
@@ -39,6 +45,9 @@ export function elementStatKey(kind: ElementStatKind, element?: string | null): 
   if (kind === 'enemyDef') return enemyDebuffElementStatId('def', e)
   if (kind === 'enemyAnomalyRes') return enemyDebuffElementStatId('anomalyRes', e)
   if (kind === 'enemyStunRes') return enemyDebuffElementStatId('stunRes', e)
+  // 抗性两族（自身直伤无视 / 自身异常无视）：与 `enemy{El}ResReduction` 同构，只是后缀不同
+  if (kind === 'enemyResIgnoreDirect') return resIgnoreElementStatId('direct', e)
+  if (kind === 'enemyResIgnoreAnomaly') return resIgnoreElementStatId('anomaly', e)
   return `${e}${OWN_SUFFIX[kind]}`
 }
 

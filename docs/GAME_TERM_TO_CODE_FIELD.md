@@ -127,21 +127,40 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 
 **有效抗性公式**：`有效抗性 = 怪物抗性 - 抗性降低/100 - 无视抗性/100`，抗性区 = `1 - 有效抗性/100`（**抗性区不设上限**：抗性降低/无视抗性会线性提高该乘区）
 
+### 5.1 三条抗性通道（2026-11-09 用户口径，**别再合并**）
+
+> 「减抗的实现分为两种，一个是降低怪物的抗性，这相当于作用在怪物身上的结算区，直伤和异常
+> 比如乱流灼烧强击之类都能吃。还有一种是加自己的无视抗性，这种抗性只有自己直伤能无视，
+> 所谓（造成伤害无视抗性），这种抗性没有降低 boss 身上的乘区，所以异常状态吃不到这种减抗。」
+> 「只有怪物身上属性抗性降低和造成异常伤害时无视抗性，才能给异常吃。所以可以分为三种情况：
+> 直伤抗性，异常抗性，通用抗性。」
+
+| 通道 | 游戏文本形态 | 字段 | 直伤吃 | 异常吃 |
+|---|---|---|---|---|
+| **通用**（怪物身上减抗 = 结算区 debuff） | 「使敌人的 X 抗性**降低** N%」 | `enemyResReduction` / `enemy{Element}ResReduction` | ✅ | ✅ |
+| **直伤无视**（自身无视抗性） | 「**造成的伤害无视**目标 N% 抗性」 | `enemyResIgnoreDirect` / `enemy{Element}ResIgnoreDirect` | ✅ | ❌ |
+| **异常无视**（自身无视抗性，异常专属） | 「造成**属性异常 / 紊乱 / 异放 / 乱流 / 耀变**伤害时无视 N% 抗性」 | `enemyResIgnoreAnomaly` / `enemy{Element}ResIgnoreAnomaly` | ❌ | ✅ |
+
+**为什么必须拆**：自身无视抗性**没有降低怪物身上的抗性**（是攻击方结算侧的修正）⇒ 同一次怪物
+结算里的异常伤害读不到它。修前三类文本一律写进 `enemyResReduction`，而它被两族**同时**读取
+⇒「造成伤害无视抗性」被异常白吃，异常伤害系统性偏高；又因为两族在抗性区里同形（线性加算），
+合并写法**静默通过全部既有测试**。
+
+- 字段名与 id 生成：`src/utils/resistanceChannels.ts`（叶子事实源，与 `damageElements` 同层）
+- 读数入口：`src/core/resistanceChannels.ts#enemyResReductionOf` / `#selfResIgnoreOf`
+- 判据：`src/core/__tests__/resistanceChannels.test.ts`（读数层 + 行为层 + 源码锁三层）
+
 | 游戏文本 | 字段 | 说明 |
 |---------|------|------|
-| 全属性抗性降低 X% | `enemyResReduction` | 全局减抗 |
-| 物理伤害抗性降低 X% | `enemyPhysicalResReduction` | 元素专属减抗 |
-| 火属性伤害抗性降低 X% | `enemyFireResReduction` | 元素专属减抗 |
-| 冰属性伤害抗性降低 X% | `enemyIceResReduction` | 元素专属减抗 |
-| 电属性伤害抗性降低 X% | `enemyElectricResReduction` | 元素专属减抗 |
-| 以太伤害抗性降低 X% | `enemyEtherResReduction` | 元素专属减抗 |
-| 风属性伤害抗性降低 X% | `enemyWindResReduction` | 元素专属减抗 |
-| 辉光伤害抗性降低 X% | `enemyLumifluxResReduction` | 辉光专属减抗 |
+| 全属性抗性降低 X% | `enemyResReduction` | 全局减抗（怪物身上） |
+| 物理/火/冰/电/以太/风伤害抗性降低 X% | `enemy{Element}ResReduction` | 元素专属减抗（怪物身上） |
+| 造成的伤害无视 X% 抗性 | `enemyResIgnoreDirect`（元素版 `enemy{Element}ResIgnoreDirect`） | 自身直伤无视，**异常读不到** |
+| 造成异常/紊乱/异放/乱流/耀变伤害时无视 X% 抗性 | `enemyResIgnoreAnomaly`（元素版 `enemy{Element}ResIgnoreAnomaly`） | 自身异常无视，**直伤读不到** |
 | 受到伤害提升 X% | `enemyDamageTakenBonus` | 易伤，独立乘区 |
 
-**注意**："无视抗性"和"抗性降低"都走 `enemy{Element}ResReduction`，加算。
-
----
+**注意**：「无视抗性」与「抗性降低」**不再同字段**（2026-11-09 起）：前者是自身无视（按伤害族分家），
+后者是怪物身上的结算区 debuff（两族都吃）。旧数据里的 `enemyResIgnore` / `{element}ResIgnore` 别名
+经 `normalizeEnemyDebuffStatAlias` 归一到**直伤无视**族（不再归 `enemyResReduction`）。
 
 ## 6. 失衡区
 

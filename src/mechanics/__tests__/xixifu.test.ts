@@ -59,7 +59,8 @@ describe('希希芙（1521）核心被动电系无视防御公式', () => {
     config.syncTeammateBuffsFromTeam()
     const p1 = computePanelPhases(1, config, catalog)!.inCombat as any
     expect(p1.enemyElectricDefReduction - withoutBuff).toBeCloseTo(expected0 * 1.4, 5)
-    expect(p1.enemyElectricResReduction).toBeCloseTo(5, 5)
+    // 三通道：影画1「使全队角色造成的伤害无视目标5%电属性伤害抗性」= 自身**直伤**无视
+    expect(p1.enemyElectricResIgnoreDirect).toBeCloseTo(5, 5)
   })
 })
 

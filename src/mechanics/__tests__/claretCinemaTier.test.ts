@@ -51,7 +51,8 @@ async function probe(cinemaLevel: number) {
   const src = ch.claretSharpResourceSource!
   const maim = ch.executions.find(e => e.moveId === '1611013' && (e.damageMultiplierOverride ?? false))
   return {
-    resIgnore: (calc.panels.value[0] as { enemyElectricResReduction?: number })?.enemyElectricResReduction ?? 0,
+    // 三通道（2026-11-09）：影画2「攻击命中时无视18%电抗」= 自身**直伤**无视
+    resIgnore: (calc.panels.value[0] as { enemyElectricResIgnoreDirect?: number })?.enemyElectricResIgnoreDirect ?? 0,
     buildup: src.gashBuildupMultiplier,
     maimMultiplier: maim?.damageMultiplier ?? 0,
     windowSecondsPerEntry: src.inscriptionWindowSecondsPerEntry,

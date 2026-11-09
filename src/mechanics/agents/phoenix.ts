@@ -508,7 +508,8 @@ function applyPhoenixPanel({ cinemaLevel, panel }: AgentPanelInput): void {
   if (!panel) return
   const cinema = cinemaLevelOf(cinemaLevel)
   panel.anomalyProficiency = panel.anomalyProficiency + PHOENIX_CORE_PROFICIENCY
-  if (cinema >= 6) panel.enemyResReduction = panel.enemyResReduction + PHOENIX_C6_RES_IGNORE
+  // 影画6「菲欧妮无视目标 15% 全属性伤害抗性」——原文无「异常伤害时」限定 ⇒ 自身直伤族
+  if (cinema >= 6) panel.enemyResIgnoreDirect = panel.enemyResIgnoreDirect + PHOENIX_C6_RES_IGNORE
   // 影画2：对[灼蚀]状态下的敌人造成的伤害 +30%（[灼蚀] 由队伍异常伤害施加，默认满覆盖）
   if (cinema >= 2) panel.dmgBonus = panel.dmgBonus + PHOENIX_C2_SCORCH_DMG_BONUS
 }

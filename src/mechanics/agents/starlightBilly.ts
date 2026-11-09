@@ -838,7 +838,8 @@ function applyStarlightBillyPanel(input: AgentPanelInput): void {
     panel.critDmg = panel.critDmg + 8 * 2 * c4Coverage
   }
   if (cinemaLevel >= 1) {
-    panel.enemyPhysicalResReduction = panel.enemyPhysicalResReduction + 18 * c1Coverage
+    // 影画1「自身攻击无视 18% 物理抗性」⇒ 自身直伤族（异常读不到）
+    panel.enemyPhysicalResIgnoreDirect = panel.enemyPhysicalResIgnoreDirect + 18 * c1Coverage
   }
 }
 

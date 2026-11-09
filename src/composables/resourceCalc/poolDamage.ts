@@ -57,7 +57,10 @@ export function calcPoolDirectDamage(env: PoolDamageEnv, row: PoolDirectRow): Re
     enemyDefReduction: panel.enemyDefReduction + (row.defIgnore ?? 0),
     enemyDefFlatReduction: panel.enemyDefFlatReduction,
     enemyResistance: enemyResistanceOf(env.enemyDamageRes, row.element),
-    enemyResReduction: panel.enemyResReduction + (row.resIgnore ?? 0),
+    // 抗性三通道（2026-11-09）：面板上的通用减抗 / 直伤无视抗性由 calcDirectDamage 内部读（单一入口），
+    // 这里只传**行级额外量**。行级 resIgnore 的原文语义一律是「自身造成伤害无视 X% 抗性」⇒ 直伤族。
+    enemyResReduction: 0,
+    enemyResIgnoreDirect: row.resIgnore ?? 0,
     stunMultiplier: row.stunMultiplier ?? env.enemy.stunVuln,
     stunned: row.stunned,
     critMode: row.critMode ?? 'expect',
@@ -101,7 +104,10 @@ export function calcPoolAnomalyDamage(env: PoolDamageEnv, row: PoolAnomalyRow): 
     // 面板外的固定减防来源目前没有；面板固定减防由 calcAnomalyDamage 内部读（CC-175 ③）
     enemyDefFlatReduction: 0,
     enemyResistance: enemyResistanceOf(env.enemyDamageRes, row.element),
-    enemyResReduction: row.extraResReduction ?? 0,
+    // 抗性三通道（2026-11-09）：异常侧只吃「通用（怪物身上减抗）+ 异常无视」。
+    // releaseModifier / 柏妮思6命 等面板外额外量的原文都是「造成异常伤害时无视」⇒ 异常族。
+    enemyResReduction: 0,
+    enemyResIgnoreAnomaly: row.extraResReduction ?? 0,
     stunned: row.stunned,
     stunMultiplier: env.enemy.stunVuln,
     critMode: 'expect',

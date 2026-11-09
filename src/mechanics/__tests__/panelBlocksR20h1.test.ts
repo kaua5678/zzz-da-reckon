@@ -99,19 +99,19 @@ describe('A6 星徽·比利（1531）面板块迁入 starlightBilly', () => {
     expect(c0.critDmg).toBe(160)
     expect(c4.critDmg).toBe(176)
     expect(c4.critDmg - c0.critDmg).toBe(16)
-    // 影画1：物理抗性无视 18%（0 命真 0）
-    expect(c0.enemyPhysicalResReduction ?? 0).toBe(0)
-    expect(c4.enemyPhysicalResReduction).toBe(18)
+    // 影画1：物理抗性无视 18%（0 命真 0）——三通道（2026-11-09）「自身攻击无视」= 直伤族
+    expect(c0.enemyPhysicalResIgnoreDirect ?? 0).toBe(0)
+    expect(c4.enemyPhysicalResIgnoreDirect).toBe(18)
 
     const cov0 = await panelOf(t4, 0, { '1531.c4CritDmgCoverage': 0, '1531.c1ResIgnoreCoverage': 0 })
     const cov05 = await panelOf(t4, 0, { '1531.c4CritDmgCoverage': 0.5, '1531.c1ResIgnoreCoverage': 0.5 })
     // 覆盖率 0 ⇒ 这两项真 0（回落到与 0 命同值：160 / 0）
     expect(cov0.critDmg).toBe(160)
-    expect(cov0.enemyPhysicalResReduction ?? 0).toBe(0)
+    expect(cov0.enemyPhysicalResIgnoreDirect ?? 0).toBe(0)
     // 覆盖率 0.5 ⇒ C4 差分 8（8×2×0.5）、C1 差分 9（18×0.5）；核心被动不受这两个滑块影响（仍 90）
     expect(cov05.critDmg).toBe(168)
     expect(cov05.critDmg - c0.critDmg).toBe(8)
-    expect(cov05.enemyPhysicalResReduction).toBe(9)
+    expect(cov05.enemyPhysicalResIgnoreDirect).toBe(9)
   })
 
   it('5 命不额外加暴伤（+4 技能等级走 skillLevelBonus，不叠在本块）', async () => {
@@ -120,7 +120,7 @@ describe('A6 星徽·比利（1531）面板块迁入 starlightBilly', () => {
     const c5 = await panelOf([{ agentId: '1531', cinemaLevel: 5 }, { agentId: '1391' }], 0, cov)
     // 3 命 → 5 命只在通用 skillLevelBonus 上差分，本块（C4 暴伤/C1 减抗）不变
     expect(c5.critDmg).toBe(c4.critDmg)
-    expect(c5.enemyPhysicalResReduction).toBe(c4.enemyPhysicalResReduction)
+    expect(c5.enemyPhysicalResIgnoreDirect).toBe(c4.enemyPhysicalResIgnoreDirect)
   })
 })
 
@@ -308,11 +308,11 @@ describe('R20-h1 交叉隔离：同队多块各按自己门控生效', () => {
     const s2 = await panelOf(team, 2)
     // 槽0 = 1531 C4：critDmg 156（核心 90 + C4 16 + 基数 50）、物抗无视 18 全部只落自己槽
     expect(s0.critDmg).toBe(156)
-    expect(s0.enemyPhysicalResReduction).toBe(18)
+    expect(s0.enemyPhysicalResIgnoreDirect).toBe(18)
     // 槽1 = 1321 C2：atk = 零命局内 1494.9103200000002 + 局外 1245.7586 × 15% = 1681.7741100000003
     // （局内百分比乘区，见本文件 A8 用例；旧指纹 1719 是「对局内值再乘」的错口径产物，已作废）
     expect(s1.atk).toBe(1681.7741100000003)
-    expect(s1.enemyPhysicalResReduction ?? 0).toBe(0)
+    expect(s1.enemyPhysicalResIgnoreDirect ?? 0).toBe(0)
     // 槽2 = 1481 C4：atk 含 500 折算（1789.04），只有琉音自己面板带 bonus 字段
     expect(s2.atk).toBe(1789.04)
     expect(s2.liuyinGoodReviewAtkBonus).toBe(500)
@@ -320,8 +320,8 @@ describe('R20-h1 交叉隔离：同队多块各按自己门控生效', () => {
     expect(s0.liuyinGoodReviewAtkBonus ?? 0).toBe(0)
     expect(s1.liuyinGoodReviewAtkBonus ?? 0).toBe(0)
     // 串扰反锁：物抗无视只在 1531 自己槽上（另两槽 0）
-    expect(s1.enemyPhysicalResReduction ?? 0).toBe(0)
-    expect(s2.enemyPhysicalResReduction ?? 0).toBe(0)
+    expect(s1.enemyPhysicalResIgnoreDirect ?? 0).toBe(0)
+    expect(s2.enemyPhysicalResIgnoreDirect ?? 0).toBe(0)
   })
 
   it('A6 与 A8 同队时槽0 的两条各自独立（清除一个不影响另一个）', async () => {
@@ -330,13 +330,13 @@ describe('R20-h1 交叉隔离：同队多块各按自己门控生效', () => {
     const s0 = await panelOf(team, 0)
     const s1 = await panelOf(team, 1)
     expect(s0.critDmg).toBe(156)
-    expect(s0.enemyPhysicalResReduction).toBe(18)
+    expect(s0.enemyPhysicalResIgnoreDirect).toBe(18)
     // 1321 的 atk 只由自己的块决定（1531 的块不写 atk）
     expect(s1.atk).toBe(1681.7741100000003)
     // 把 A6 的滑块清零：A6 项真 0，A8 的槽1 atk 不受任何影响
     const z = await panelOf(team, 0, { '1531.driveSuppressionCritDmgCoverage': 0, '1531.c4CritDmgCoverage': 0, '1531.c1ResIgnoreCoverage': 0 })
     expect(z.critDmg).toBe(50)
-    expect(z.enemyPhysicalResReduction ?? 0).toBe(0)
+    expect(z.enemyPhysicalResIgnoreDirect ?? 0).toBe(0)
     const s1b = await panelOf(team, 1, { '1531.driveSuppressionCritDmgCoverage': 0 })
     expect(s1b.atk).toBe(1681.7741100000003)
   })

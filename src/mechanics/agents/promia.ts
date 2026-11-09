@@ -146,8 +146,9 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
     panel.anomalyProficiency = panel.anomalyProficiency + PROMIA_C2_PROFICIENCY
   }
   if (cinemaLevel >= 6) {
-    // 影画6：普罗米娅自身属性异常/紊乱伤害无视 15% 全属性抗性（挂面板 enemyResReduction，异放走 releaseModifier）
-    panel.enemyResReduction = panel.enemyResReduction + PROMIA_C6_ALL_RES_IGNORE
+    // 影画6：「普罗米娅**自身属性异常/紊乱伤害**无视 15% 全属性抗性」——原文点名异常/紊乱
+    // ⇒ **异常族**（enemyResIgnoreAnomaly，直伤读不到）；异放走 releaseModifier（同族额外量）
+    panel.enemyResIgnoreAnomaly = panel.enemyResIgnoreAnomaly + PROMIA_C6_ALL_RES_IGNORE
   }
   // 额外能力：冰异常积蓄效率 +30%（需 additionalAbilityActive 门控）——依赖全是静态
   // （cinema/掌控/AA），改在 applyPanel 算；曾由 transformSkillExecutions 写面板（布尔守卫防累积）。

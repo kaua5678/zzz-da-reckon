@@ -48,6 +48,7 @@ import {
   DAMAGE_ELEMENTS, ELEMENT_FIELD_PREFIX, ENEMY_DEBUFF_KIND_CONFIG, enemyDebuffStatId,
   type EnemyDebuffKind,
 } from '@/utils/enemyDebuffStats'
+import { RESISTANCE_CHANNELS, resIgnoreBaseStatId, resIgnoreStatId } from '@/utils/resistanceChannels'
 import type { PanelValues } from '@/types/catalog'
 
 /** 面板快照：槽位号 → 面板（按槽位号索引，不是数组下标——面板数组是压缩的，见 core/panel.ts） */
@@ -168,10 +169,15 @@ export const BREAKDOWN_EPSILON_PCT = 0.05
  */
 const ELEMENT_FORMULA_STATS: ReadonlySet<string> = (() => {
   const set = new Set<string>()
+  // 自身无视抗性的全元素字段（enemyResIgnoreDirect / enemyResIgnoreAnomaly）同样是公式字段
+  for (const channel of RESISTANCE_CHANNELS) set.add(resIgnoreBaseStatId(channel))
   const kinds = Object.keys(ENEMY_DEBUFF_KIND_CONFIG) as EnemyDebuffKind[]
   for (const e of DAMAGE_ELEMENTS) {
     if (!ELEMENT_FIELD_PREFIX[e]) continue
     for (const kind of kinds) set.add(enemyDebuffStatId(kind, e))
+    // 自身无视抗性两族（2026-11-09 三通道）：同样是抗性乘区字段，且**作用范围不同**
+    // （直伤族只进直伤、异常族只进异常）——不登记会被判成「非公式字段」而误分到资源型。
+    for (const channel of RESISTANCE_CHANNELS) set.add(resIgnoreStatId(channel, e))
     for (const suffix of ['Dmg', 'SheerDmg', 'SharpDmg', 'CritDmg', 'AnomalyBuildUpEfficiency']) {
       set.add(e + suffix)
     }

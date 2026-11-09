@@ -49,24 +49,34 @@ describe('enemyDebuffStatId（生成规则）', () => {
 })
 
 describe('normalizeEnemyDebuffStatAlias（三形态 legacy → 现名）', () => {
-  it('五条全局别名逐一钉死（含 allResIgnore 归**通用**减抗而非某元素）', () => {
+  /**
+   * ★ 2026-11-09 三通道订正：`*ResIgnore` 的字面语义是「**无视**抗性」（自身造成伤害时无视），
+   * 按用户口径它**只作用于直伤**、不降低 boss 身上的乘区 ⇒ 归 `enemyResIgnoreDirect`，
+   * **不再**归 `enemyResReduction`（怪物减抗，异常也吃）。修前那条映射正是「两类语义被合并」的旧别名层。
+   * 失衡抗性 / 积蓄抗性没有这层二分（`Ignore` / `Reduction` 本就是同一机制的两措辞），照旧归一。
+   */
+  it('五条全局别名逐一钉死（res 族「无视」归**自身直伤**通道，不再落回怪物减抗）', () => {
     expect(normalizeEnemyDebuffStatAlias('enemyDefIgnore')).toBe('enemyDefReduction')
-    expect(normalizeEnemyDebuffStatAlias('enemyResIgnore')).toBe('enemyResReduction')
-    expect(normalizeEnemyDebuffStatAlias('allResIgnore')).toBe('enemyResReduction')
+    expect(normalizeEnemyDebuffStatAlias('enemyResIgnore')).toBe('enemyResIgnoreDirect')
+    expect(normalizeEnemyDebuffStatAlias('allResIgnore')).toBe('enemyResIgnoreDirect')
     expect(normalizeEnemyDebuffStatAlias('enemyStunResIgnore')).toBe('enemyStunResReduction')
     expect(normalizeEnemyDebuffStatAlias('enemyAnomalyResIgnore')).toBe('enemyAnomalyResReduction')
+    // 反锁：res 族别名绝不能再落回怪物减抗族（落回去 = 异常白吃「无视抗性」）
+    expect(normalizeEnemyDebuffStatAlias('enemyResIgnore')).not.toBe('enemyResReduction')
   })
 
   it('旧形态 A：元素开头 fireDefIgnore → enemyFireDefReduction', () => {
     expect(normalizeEnemyDebuffStatAlias('fireDefIgnore')).toBe('enemyFireDefReduction')
-    expect(normalizeEnemyDebuffStatAlias('physicalResIgnore')).toBe('enemyPhysicalResReduction')
+    // res 族「无视」⇒ 自身直伤族（2026-11-09 三通道）
+    expect(normalizeEnemyDebuffStatAlias('physicalResIgnore')).toBe('enemyPhysicalResIgnoreDirect')
     expect(normalizeEnemyDebuffStatAlias('windStunResIgnore')).toBe('enemyWindStunResReduction')
     // 流明元素已删：legacy 别名不再映射到 enemyLumiflux*，按未知前缀原样穿过
     expect(normalizeEnemyDebuffStatAlias('lumifluxAnomalyResIgnore')).toBe('lumifluxAnomalyResIgnore')
   })
 
   it('旧形态 B：enemy+元素 Ignore → Reduction', () => {
-    expect(normalizeEnemyDebuffStatAlias('enemyIceResIgnore')).toBe('enemyIceResReduction')
+    // res 族「无视」⇒ 自身直伤族（2026-11-09 三通道）
+    expect(normalizeEnemyDebuffStatAlias('enemyIceResIgnore')).toBe('enemyIceResIgnoreDirect')
     expect(normalizeEnemyDebuffStatAlias('enemyElectricStunResIgnore')).toBe('enemyElectricStunResReduction')
   })
 

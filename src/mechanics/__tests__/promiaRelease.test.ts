@@ -115,7 +115,8 @@ describe('普罗米娅 影画4/6 异常结算区（2026-08-26）', () => {
   it('影画6：自身异常/紊乱无视 15% 全抗进面板', async () => {
     const { config, catalog } = await setupHarness([{ agentId: '1541', cinemaLevel: 6 }])
     const panel = computePanelPhases(0, config, catalog)!.inCombat as any
-    expect(panel.enemyResReduction).toBeGreaterThanOrEqual(PROMIA_C6_ALL_RES_IGNORE)
+    // 三通道（2026-11-09）：影画6「自身属性异常/紊乱伤害无视 15% 全属性抗性」= **异常族**
+    expect(panel.enemyResIgnoreAnomaly).toBeGreaterThanOrEqual(PROMIA_C6_ALL_RES_IGNORE)
   })
 
   it('影画4：异放回寒蚀 +5 → 霜刑反馈环使绝裁异放次数多于 0命', async () => {

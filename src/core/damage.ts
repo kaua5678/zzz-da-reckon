@@ -8,6 +8,7 @@ import type {
 } from '@/types/catalog'
 import { calcPanelStunMultiplier, getAnomalyCritStats, type AnomalyCritStats } from './anomalyPool/helpers'
 import { defenseMultiplierDetail, resistanceMultiplierDetail } from './damageMultipliers'
+import { enemyResReductionOf, selfResIgnoreOf } from './resistanceChannels'
 import { getSkillDmgBonus, getTargetedElementStat, getTargetedStat, getTargetedStatExtra } from './buff'
 import { normalizeSkillDamageTarget } from '@/data/skillDamageTargets'
 import { fmt } from '@/utils/format'
@@ -194,7 +195,10 @@ export interface DirectDamageInput {
   enemyDefReduction: number
   enemyDefFlatReduction: number
   enemyResistance: number
+  /** 面板之外的额外通用减抗（怪物身上）；面板值由本函数内部读（三通道，2026-11-09） */
   enemyResReduction: number
+  /** 面板之外的额外自身直伤无视抗性（moveId 限定等） */
+  enemyResIgnoreDirect?: number
   stunMultiplier: number
   stunned: boolean | number
   critMode: 'expect' | 'crit' | 'nonCrit'
@@ -327,9 +331,12 @@ export function calcDirectDamage(input: DirectDamageInput): { damage: number; br
     })
   }
 
-  // 6. 抗性乘区
-  const resReduction = input.enemyResReduction + getTargetedStatExtra(p, 'enemyResReduction', input.skillDamageTarget) + getTargetedElementStat(p, 'enemyRes', input.damageElement, input.skillDamageTarget)
-  const resResult = resistanceMultiplierDetail(input.enemyResistance, resReduction, 0)
+  // 6. 抗性乘区（三通道，2026-11-09 用户口径）：
+  //    ① 通用 = 降低**怪物身上**的抗性（结算区 debuff）—— 直伤与异常都吃
+  //    ② 直伤无视 = 自身「造成伤害无视抗性」—— **只有直伤吃**，异常读不到（calcAnomalyDamage 不读本族）
+  const resReduction = input.enemyResReduction + enemyResReductionOf(p, input.damageElement, input.skillDamageTarget)
+  const resIgnore = (input.enemyResIgnoreDirect ?? 0) + selfResIgnoreOf(p, 'direct', input.damageElement, input.skillDamageTarget)
+  const resResult = resistanceMultiplierDetail(input.enemyResistance, resReduction, resIgnore)
   const afterRes = afterDef * resResult.multiplier
   breakdown.push({
     label: '抗性乘区',
@@ -428,7 +435,10 @@ export interface AnomalyDamageInput {
   enemyDefReduction: number
   enemyDefFlatReduction: number
   enemyResistance: number
+  /** 面板之外的额外减抗（异放限定 releaseModifier 等）；面板通用减抗由本函数内部读 */
   enemyResReduction: number
+  /** 面板之外的额外异常无视抗性（异放限定 / 流浪无视等） */
+  enemyResIgnoreAnomaly?: number
   /** 敌人是否处于失衡状态 */
   stunned?: boolean | number
   /** 基础失衡易伤倍率 */
@@ -497,11 +507,11 @@ export function calcAnomalyDamage(
     value: afterDef, displayValue: fmt(afterDef),
   })
 
-  // 5. 抗性乘区：异常伤害使用对应元素的伤害抗性表
-  const resReduction = input.enemyResReduction
-    + settle.enemyResReduction
-    + getTargetedElementStat(settle, 'enemyRes', element)
-  const resResult = resistanceMultiplierDetail(input.enemyResistance, resReduction, 0)
+  // 5. 抗性乘区（三通道，2026-11-09）：异常伤害吃「通用（怪物身上减抗）+ 异常无视」，
+  //    **不吃**直伤无视（enemyResIgnoreDirect）——那份没有降低 boss 身上的乘区。
+  const resReduction = input.enemyResReduction + enemyResReductionOf(settle, element)
+  const resIgnore = (input.enemyResIgnoreAnomaly ?? 0) + selfResIgnoreOf(settle, 'anomaly', element)
+  const resResult = resistanceMultiplierDetail(input.enemyResistance, resReduction, resIgnore)
   const afterRes = afterDef * resResult.multiplier
   breakdown.push({
     label: '抗性乘区 (异放×0.5)',

@@ -199,9 +199,11 @@ function applyVelinaPanel({ cinemaLevel, panel, settings }: AgentPanelInput): vo
   // `cinema2CorrosionRate`（roundInputs → AnomalyPoolInput → core/corrosion → 能力入参），那条穿线已删。
   panel.velinaCinema2CorrosionRate = settingOf(settings, 'velina.cinema2CorrosionRate')
 
-  // 一命：风属性异常伤害无视20%风抗；异放继承风底性质，一并吃到
+  // 一命：「维琳娜触发[乱流]时无视目标 20% 全属性伤害抗性；全队造成[风化]伤害时，无视目标 20% 风属性伤害抗性」
+  // ⇒ 原文点名**乱流 / 风化**（都是异常）⇒ **异常族**（enemyResIgnoreAnomaly，直伤读不到）；
+  //    乱流专属那份仍走 turbulenceResIgnore（同上，只是限定到乱流结算）。
   if (cinemaLevel >= 1) {
-    panel.enemyWindResReduction = panel.enemyWindResReduction + 20
+    panel.enemyWindResIgnoreAnomaly = panel.enemyWindResIgnoreAnomaly + 20
   }
 
   // 回能转模：原文「初始能量自动回复」⇒ spec sourceValue = energyRegenOutOfCombat（局外总回能 = 基础 × (1 + 局外%) + 局外固定，

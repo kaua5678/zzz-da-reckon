@@ -245,7 +245,8 @@ function applyAnbyZeroPanel({ cinemaLevel, potentialLevel, panel, settings }: Ag
   if (cycle.critRateGain > 0) panel.critRate = panel.critRate + cycle.critRateGain
   panel.dmgBonus = panel.dmgBonus + cycle.coreDmgBonus
   if (cinemaLevel >= 4) {
-    panel.enemyElectricResReduction = panel.enemyElectricResReduction + cycle.c4ResIgnore
+    // 影画4「攻击命中[银星]敌人时无视12%电抗」⇒ 自身直伤族（异常读不到）
+    panel.enemyElectricResIgnoreDirect = panel.enemyElectricResIgnoreDirect + cycle.c4ResIgnore
   }
 }
 

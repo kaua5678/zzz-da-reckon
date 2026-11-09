@@ -169,6 +169,23 @@ export interface PanelValues {
   enemyElectricResReduction: number // 电属性专属抗性降低/无视抗性
   enemyEtherResReduction: number    // 以太属性专属抗性降低/无视抗性
   enemyWindResReduction: number     // 风属性专属抗性降低/无视抗性
+  // ---- 抗性三通道（2026-11-09 用户口径；语义见 utils/resistanceChannels.ts 头注释）----
+  // 通用 = 上面 enemyResReduction 族（怪物身上减抗，直伤与异常都吃）。
+  // 下面两族是**自身**无视抗性：直伤族只进 calcDirectDamage，异常族只进 calcAnomalyDamage / 紊乱 / 乱流 / 异放 / 耀变。
+  enemyResIgnoreDirect: number        // 自身直伤无视抗性（全元素）
+  enemyPhysicalResIgnoreDirect: number
+  enemyFireResIgnoreDirect: number
+  enemyIceResIgnoreDirect: number
+  enemyElectricResIgnoreDirect: number
+  enemyEtherResIgnoreDirect: number
+  enemyWindResIgnoreDirect: number
+  enemyResIgnoreAnomaly: number       // 自身异常伤害无视抗性（全元素）
+  enemyPhysicalResIgnoreAnomaly: number
+  enemyFireResIgnoreAnomaly: number
+  enemyIceResIgnoreAnomaly: number
+  enemyElectricResIgnoreAnomaly: number
+  enemyEtherResIgnoreAnomaly: number
+  enemyWindResIgnoreAnomaly: number
   enemyStunResReduction: number    // 敌方失衡抗性降低，百分比（旧兼容：全元素）
   enemyPhysicalStunResReduction: number // 物理属性专属失衡抗性降低/无视
   enemyFireStunResReduction: number // 火属性专属失衡抗性降低/无视

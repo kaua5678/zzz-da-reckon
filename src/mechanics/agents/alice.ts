@@ -86,8 +86,9 @@ function applyAlicePanel({ cinemaLevel, panel }: AgentPanelInput): void {
   // 此处不再重复施加，防双计（SOP §3.5）。
 
   // 四命：攻击时无视目标 10% 物理伤害抗性
+  //   ⇒ 自身「造成伤害无视抗性」= **直伤族**（异常读不到，2026-11-09 三通道）
   if (cinemaLevel >= 4) {
-    panel.enemyPhysicalResReduction = panel.enemyPhysicalResReduction + C4_PHYSICAL_RES_REDUCTION
+    panel.enemyPhysicalResIgnoreDirect = panel.enemyPhysicalResIgnoreDirect + C4_PHYSICAL_RES_REDUCTION
   }
 
   // 掌控转精通（>140 每点 +1.6）：原文（raw 1401 passive Lv.7）把「若爱丽丝的异常掌控大于140点…」写在

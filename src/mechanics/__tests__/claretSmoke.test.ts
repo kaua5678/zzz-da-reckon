@@ -287,7 +287,7 @@ describe('克拉蕾全管线冒烟（v12）', () => {
       const ch = calc.resourceResult.value!.characters.find(c => c.agentId === '1611')!
       const maim = ch.executions.find(e => e.moveId === '1611013' && (e.damageMultiplierOverride ?? false))
       return {
-        resIgnore: (calc.panels.value[0] as any)?.enemyElectricResReduction ?? 0,
+        resIgnore: (calc.panels.value[0] as any)?.enemyElectricResIgnoreDirect ?? 0,
         buildup: ch.claretSharpResourceSource!.gashBuildupMultiplier,
         maimMultiplier: maim?.damageMultiplier ?? 0,
         damage: calc.teamTotalDamage.value,
