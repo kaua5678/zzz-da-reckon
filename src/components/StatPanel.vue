@@ -409,9 +409,17 @@
         </div>
       </n-collapse-item>
 
-      <!-- 敌方减益 -->
-      <n-collapse-item title="敌方减益" name="enemy">
+      <!-- 敌方状态（**敌人身上**的 debuff）：与上面的「自身面板」相加才是本角色的实际结算状态。
+           为什么单列并改名（用户 2026-11-09）：「此处分为自身面板和敌方状态，加起来才是自身计算状态」——
+           敌我混在同一列会让人分不清「这份增益是我拥有的」还是「我打出去时敌人身上挂着什么」。
+           典型容易误解的：有罪推定 / 蕾米幻色 这类**全队共享的敌方减防**，它由某个队友提供，
+           却写在**每个槽位**的这里（因为每个槽位结算时都吃得到它）。 -->
+      <n-collapse-item title="敌方状态（敌人身上的 debuff · 与自身面板相加才是实际结算）" name="enemy">
         <div class="stat-grid">
+          <div class="zone-summary">
+            <span class="zone-label">口径</span>
+            <span class="zone-value">自身面板 × 敌方状态 = 实际结算</span>
+          </div>
           <div class="stat-section-title">防御相关</div>
           <div class="stat-row" v-if="panel.enemyDefReduction !== 0">
             <span class="stat-label">敌方防御降低（通用）</span>

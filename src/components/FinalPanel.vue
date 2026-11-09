@@ -466,7 +466,8 @@ const panels = computed(() => {
         { title: '贯穿增伤区（命破独立乘区）', name: 'sheer', rows: sheerRows },
         { title: '暴击区（直伤）', name: 'crit', rows: critRows },
         { title: '最终伤害区（独立乘区，暴击后）', name: 'final', rows: finalRows },
-        { title: '减益区（对敌）', name: 'debuff', rows: debuffRows },
+        // 敌方状态：敌人身上的 debuff，与上面的自身面板相乘后才是实际结算（用户 2026-11-09 口径）
+        { title: '敌方状态（敌人身上的 debuff · 与自身面板相乘 = 实际结算）', name: 'debuff', rows: debuffRows },
         { title: '异常区（积蓄/异常增伤/紊乱/异放/乱流）', name: 'anomaly', rows: anomalyRows },
         { title: '资源区', name: 'resource', rows: resourceRows },
       ],
