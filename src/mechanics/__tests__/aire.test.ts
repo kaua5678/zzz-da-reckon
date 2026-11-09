@@ -19,6 +19,7 @@ import {
   aireAbsolutePitchCount,
 } from '@/mechanics/agents/aire'
 import { setupHarness } from '@/test/harness'
+import { calcAnomalyDamage } from '@/core/damage'
 
 async function setup(mateId = '1141', cinemaLevel = 0) {
   const result = await setupHarness([
@@ -76,14 +77,45 @@ describe('爱芮完整计算链', () => {
     const panel = calc.panels.value[0] as any
     expect(panel.anomalyProficiency).toBeGreaterThanOrEqual(AIRE_CORE_PROFICIENCY)
     expect(panel.enemyEtherAnomalyResReduction).toBeGreaterThanOrEqual(AIRE_C1_ETHER_ANOMALY_RES_IGNORE)
-    // 防御三通道（2026-11-09 用户二次裁决）：「**爱芮**攻击和触发[异放]时无视16%防御」主语是**角色**
-    // ⇒ 通用无视防御（直伤与异常都吃）
-    expect(panel.enemyDefReduction).toBeGreaterThanOrEqual(AIRE_C2_DEF_IGNORE)
+    // 防御三通道（2026-11-09）：影画2「攻击**和触发[异放]**时无视16%防御」两半分落 ——
+    // 「攻击」那半 ⇒ 直伤族（只有直伤吃）；「触发[异放]」那半 ⇒ releaseModifier（异放专属层）。
+    // ⚠ 都**不得**进 enemyDefReduction / enemyAnomalyDefReduction：那两个层任何异常都吃，会过度授予。
+    expect(panel.enemyDefIgnoreDirect).toBeGreaterThanOrEqual(AIRE_C2_DEF_IGNORE)
+    expect(panel.enemyDefReduction ?? 0).toBe(0)
+    expect(panel.enemyAnomalyDefReduction ?? 0).toBe(0)
+  })
+
+  it('★ 异放专属减防层级：只在异放行结算，异常父层（侵蚀/感电/紊乱）读不到', async () => {
+    const { catalog, config } = await setup('1141', 2)
+    const panel = computePanelPhases(0, config, catalog)!.inCombat
+    // ① 异放专属层真的产出：releaseModifier 返回影画2 的量（16 + 妄想时刻 8×覆盖率）
+    const mod = aireMechanic.releaseModifier!({ self: { slot: 0, cinemaLevel: 2, panel } })
+    expect(mod.enemyDefReduction).toBeCloseTo(AIRE_C2_DEF_IGNORE + AIRE_C2_DELUSION_DEF_IGNORE, 5)
+    // ② 缺省 self 作用域 ⇒ 只有爱芮自己的异放行吃（不给队友异放）
+    expect(aireMechanic.releaseModifierScope ?? 'self').toBe('self')
+    // ③ 父层必须是 0：写进父层会让侵蚀/感电/紊乱 也吃 ⇒ 过度授予（用户口径 2026-11-09）
+    expect(panel.enemyAnomalyDefReduction ?? 0).toBe(0)
+    expect(panel.enemyDefReduction ?? 0).toBe(0)
+    // ④ 行为面：同一面板下，「异常父事件」不吃异放加成 —— releaseModifier 不参与非异放行，
+    //    故父事件伤害只取决于面板（父层 0 ⇒ 与无该 buff 一致）
+    const base = { ...panel, enemyDefIgnoreDirect: 0 }
+    const asParent = calcAnomalyDamage({
+      panel: base, element: 'ether', baseMultiplier: 100, enemyDefense: 953,
+      enemyDefReduction: 0, enemyDefFlatReduction: 0, enemyResistance: 0, enemyResReduction: 0,
+      damageKind: 'anomaly',
+    }).damage
+    const withRelease = calcAnomalyDamage({
+      panel: base, element: 'ether', baseMultiplier: 100, enemyDefense: 953,
+      enemyDefReduction: mod.enemyDefReduction ?? 0, enemyDefFlatReduction: 0,
+      enemyResistance: 0, enemyResReduction: 0,
+      damageKind: 'release',
+    }).damage
+    expect(withRelease).toBeGreaterThan(asParent) // 异放独占这份加成
   })
 
   it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {
     const { catalog, config } = await setup('1141', 2)
-    const defOf = () => (computePanelPhases(0, config, catalog)!.inCombat as any).enemyDefReduction ?? 0
+    const defOf = () => (computePanelPhases(0, config, catalog)!.inCombat as any).enemyDefIgnoreDirect ?? 0
     config.setMechanicSetting('aire.c2DelusionCoverage', 1)
     const on = defOf()
     config.setMechanicSetting('aire.c2DelusionCoverage', 0)

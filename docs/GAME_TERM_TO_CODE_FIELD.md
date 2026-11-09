@@ -125,14 +125,30 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 |---|---|---|---|---|
 | **通用**（怪物身上减防 = 结算区 debuff） | 「**使目标/敌人**的防御力**降低** N%」 | `enemyDefReduction` / `enemy{Element}DefReduction` | ✅ | ✅ |
 | **直伤无视**（自身无视防御） | 「**造成的伤害/攻击**无视 N% 防御」 | `enemyDefIgnoreDirect` / `enemy{Element}DefIgnoreDirect` | ✅ | ❌ |
-| **异常专属** | 「造成**属性异常/紊乱/异放**伤害时无视 N% 防御」 | `enemyAnomalyDefReduction`（存量字段） | ❌ | ✅ |
-| **强击专属** | 「**强击**伤害无视 N% 防御」（简 C2 等） | `enemyAssaultDefReduction`（存量字段，仅物理） | ❌ | ✅ |
+| **异常父层** | 「造成**属性异常/紊乱**伤害时无视 N% 防御」 | `enemyAnomalyDefReduction`（存量） | ❌ | ✅ |
+| **异放专属层** | 「**触发[异放]**时无视 N% 防御」/「异放无视 N% 防御」 | `releaseModifier` 返回的 `enemyDefReduction` | ❌ | 仅异放 |
+| **强击专属** | 「**强击**伤害无视 N% 防御」（简 C2 等） | `enemyAssaultDefReduction`（存量，仅物理） | ❌ | ✅ |
 
 **为什么直伤族必须独立**：修前原文「造成伤害无视 N% 防御」一律写进 `enemyDefReduction` 族，而该族被直伤与异常结算**同时**读取 ⇒ 只作用于直伤的无视防御被异常也吃掉。两族在 `defenseMultiplierDetail` 里同形（有效防御 = 基础 × (1 − 降低/100)），合并写法**静默通过全部既有测试**。
 
+### 4.2 ★ 异放是异常的子集（用户口径 2026-11-09，层级不许压平）
+
+> 「异放减防就是异常减防的子集，只在异放事件时计算。异放作为异常事件可以吃异放加成和
+>   异常加成相加，而异常比如侵蚀这种父事件就吃不了异放加成，只能吃异常。」
+
+```
+通用（怪物身上减防）        ← 直伤 + 一切异常（含父事件）
+  └─ 异常父层 enemyAnomalyDefReduction   ← 一切异常事件（侵蚀 / 感电 / 紊乱 / 异放 / 乱流 …）
+       └─ 异放专属层 releaseModifier     ← **只**异放事件（+ 父层，相加）
+```
+
+- 异放行 = 父层 + 异放专属层（**相加**）；
+- 侵蚀这类父事件 = 只有父层，**读不到**异放专属层。
+- ⚠ 因此「异放限定」的减防**绝不能**写进 `enemyDefReduction`（通用）或 `enemyAnomalyDefReduction`（父层）——那两层范围更大 ⇒ **过度授予**。写法只有两条：面板承载 + `releaseModifier` 返回（如爱芮影画2 的异放那半），或直接由 `releaseModifier` 计算（如菲欧妮影画6、普罗米娅有罪推定）。
+
 - 字段名与 id 生成：`src/utils/defenseChannels.ts`（叶子事实源，与 `resistanceChannels` / `damageElements` 同层）
-- 读数入口：`src/core/defenseChannels.ts#enemyDefReductionOf` / `#selfDefIgnoreOf`
-- 判据：`src/core/__tests__/defenseChannels.test.ts`（读数层 + 行为层 + 源码锁三层）
+- 读数入口：`src/core/defenseChannels.ts#enemyDefReductionOf` / `#selfDefIgnoreOf`；异放层入口 `mechanics#releaseModifier`（派发 `composables/resourceCalc/damagePool.ts#pushRelease`）
+- 判据：`src/core/__tests__/defenseChannels.test.ts`（读数层 + 行为层 + 源码锁）、`src/mechanics/__tests__/defReductionChannels.test.ts`（异放限定 vs 异常父层的作用域）
 - 数据迁移：`scripts/patch-defense-channels.mjs`（幂等；按原文把「自身无视防御」迁出通用族）
 
 **注意**：「无视防御」与「减防」在**公式里**仍是加算（同形），但**通道归属不同**：前者是攻击方结算侧的修正（不降低怪物身上的防御），后者是怪物身上的 debuff。

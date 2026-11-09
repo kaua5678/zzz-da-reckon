@@ -31,6 +31,8 @@ import type {
   AgentResourceResultInput,
   AgentResourceSectionsInput,
   ExtraNecessaryAction,
+  ReleaseModifier,
+  ReleaseModifierInput,
 } from '../types'
 import { basicComboCycleSeconds, findMoveById } from '@/data/moveTableQueries'
 import { mechanicSettingPanelReader, mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
@@ -228,12 +230,26 @@ function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void
       + cycle.c1EtherAnomalyResIgnore
   }
   if (cycle.c2DefIgnore > 0) {
-    // 影画2 梦幻节拍：「**爱芮**攻击和触发[异放]时无视目标16%防御力」（妄想时刻内再+8%）
-    //   ⇒ 主语是**角色**（「攻击 / 触发异放」只是触发条件）⇒ **通用无视防御**（用户口径 2026-11-09）：
-    //     直伤与异常**都吃** ⇒ 走通用族 enemyDefReduction。
-    //   ⚠ 此前写成「直伤族 + 异常族各一份」——数值上等价（通用族本来两族都读），
-    //     但语义上把它当成了两族专属，与主语判据不符。
-    panel.enemyDefReduction = panel.enemyDefReduction + cycle.c2DefIgnore
+    /**
+     * 影画2 梦幻节拍：「**爱芮攻击和触发[异放]**时无视目标16%防御力」（妄想时刻内再+8%）。
+     *
+     * 原文点名的载体只有两个：**攻击**（直伤）与**触发[异放]**，**不是**「造成属性异常伤害」。
+     * 按用户口径（2026-11-09）：
+     * > 「异放减防就是异常减防的子集，只在异放事件时计算。异放作为异常事件可以吃异放加成和
+     * >   异常加成相加，而异常比如侵蚀这种父事件就吃不了异放加成，只能吃异常。」
+     *
+     * ⇒ 两半分开落：
+     * - **攻击**那半 ⇒ 直伤族 `enemyDefIgnoreDirect`（只有直伤链读）；
+     * - **触发[异放]** 那半 ⇒ `releaseModifier`（**异放专属层**，只在异放行结算）。
+     *
+     * ⚠ 绝不能写进 `enemyDefReduction`（通用）/ `enemyAnomalyDefReduction`（异常父层）：
+     * 那两个是「所有异常都吃」的层，侵蚀 / 感电 / 紊乱 也会跟着吃 ⇒ 过度授予。
+     * 异放行本来就经 `calcAnomalyDamage` 吃父层，`releaseModifier` 在其上**再加**，
+     * 正好是「异放加成 + 异常加成相加」。
+     */
+    panel.enemyDefIgnoreDirect = panel.enemyDefIgnoreDirect + cycle.c2DefIgnore
+    // 异放那半份的读数源：releaseModifier 拿不到 settings（滑块），故由面板承载
+    panel.aireCinema2DefIgnore = cycle.c2DefIgnore
   }
 }
 
@@ -314,6 +330,20 @@ function buildAireResourceSections({ result }: AgentResourceSectionsInput) {
   }]
 }
 
+/**
+ * 异放专属减防（影画2 的「触发[异放]」那半）：**只在异放事件结算**。
+ *
+ * 用户口径：「异放减防就是异常减防的子集，只在异放事件时计算；异放可以吃异放加成和异常加成相加，
+ * 侵蚀这种父事件吃不了异放加成」。⇒ 本函数返回的量由 `damagePool#pushRelease` 仅加到异放行，
+ * 与面板 `enemyAnomalyDefReduction`（父层，一切异常都吃）**加算**。
+ */
+function aireReleaseModifier({ self }: ReleaseModifierInput): ReleaseModifier {
+  const v = self.panel?.aireCinema2DefIgnore ?? 0
+  return v > 0
+    ? { enemyResReduction: 0, enemyDefReduction: v, note: `；影画2：异放无视 ${v}% 防御（releaseModifier 异放专属）` }
+    : { enemyResReduction: 0, note: '' }
+}
+
 export const aireMechanic: AgentMechanicModule = {
   id: 'agent:aire',
   agentIds: [AIRE_ID],
@@ -327,6 +357,7 @@ export const aireMechanic: AgentMechanicModule = {
     { id: 'aire.cheerEnergyBonus', label: '应援能量额外', description: '应援能量总量额外补充（自动公式已含强特×3+连携×4+帷幕4个/次×全队帷幕次数，此处补甜心四段等次要来源）', default: 0, min: 0, max: 400, step: 10 },
   ],
   applyPanel: applyAirePanel,
+  releaseModifier: aireReleaseModifier,
   buildCharConfig: buildAireCharConfig,
   buildAnomalyEvents: buildAireAnomalyEvents,
   patchExecutions: patchAireExecutions,
@@ -361,5 +392,12 @@ declare module '@/types/resource/agentResources' {
   interface CharacterResourceResult {
     /** 艾瑞循环明细 */
     aireCycle?: AireCycle
+  }
+}
+
+/** 本模块私有面板字段（D2/CC-360）：只有本文件读写 —— 异放专属减防的承载量 */
+declare module '@/types/catalog' {
+  interface PanelValues {
+    aireCinema2DefIgnore?: number
   }
 }
