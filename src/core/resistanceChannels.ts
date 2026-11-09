@@ -12,9 +12,13 @@
  *
  * | 通道 | 面板字段 | 直伤 | 异常 |
  * |---|---|---|---|
- * | **通用**（怪物身上的减抗 = 结算区 debuff） | `enemyResReduction` / `enemy{El}ResReduction` | ✅ | ✅ |
- * | **直伤无视**（自身「造成伤害无视抗性」） | `enemyResIgnoreDirect` / `enemy{El}ResIgnoreDirect` | ✅ | ❌ |
- * | **异常无视**（自身「造成异常伤害时无视抗性」） | `enemyResIgnoreAnomaly` / `enemy{El}ResIgnoreAnomaly` | ❌ | ✅ |
+ * | **通用**（怪物身上的减抗 = 结算区 debuff；也收**主语是角色**的「无视抗性」） | `enemyResReduction` / `enemy{El}ResReduction` | ✅ | ✅ |
+ * | **直伤无视**（「**攻击 / 招式 / 造成的伤害**无视抗性」） | `enemyResIgnoreDirect` / `enemy{El}ResIgnoreDirect` | ✅ | ❌ |
+ * | **异常无视**（「造成异常伤害时无视抗性」） | `enemyResIgnoreAnomaly` / `enemy{El}ResIgnoreAnomaly` | ❌ | ✅ |
+ *
+ * **主语判据（用户 2026-11-09 二次裁决）**：`菲欧妮无视目标15%抗性` 的主语是**角色** ⇒ 通用（异常也吃）；
+ * `造成的伤害无视目标15%抗性` 的主语是**伤害** ⇒ 直伤专属。判别看主谓，不看有没有「无视」二字
+ * （`攻击命中敌人时，猫又无视…` 的主语仍是猫又，攻击只是触发条件）。见 `utils/resistanceChannels.ts` 头注释。
  *
  * ## 为什么必须拆（修前的错误形态）
  *

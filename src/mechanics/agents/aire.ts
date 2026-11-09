@@ -228,11 +228,12 @@ function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void
       + cycle.c1EtherAnomalyResIgnore
   }
   if (cycle.c2DefIgnore > 0) {
-    // 影画2 梦幻节拍：「爱芮**攻击和触发[异放]**时无视目标16%防御力」（妄想时刻内再+8%）
-    //   ⇒ 原文点名「攻击」（直伤）+「异放」（异常）**两族都吃**，但**不是**怪物身上的减防
-    //   ⇒ 因此两族字段各写一份，而不是塞进通用 enemyDefReduction（防御三通道，2026-11-09）。
-    panel.enemyDefIgnoreDirect = panel.enemyDefIgnoreDirect + cycle.c2DefIgnore
-    panel.enemyAnomalyDefReduction = panel.enemyAnomalyDefReduction + cycle.c2DefIgnore
+    // 影画2 梦幻节拍：「**爱芮**攻击和触发[异放]时无视目标16%防御力」（妄想时刻内再+8%）
+    //   ⇒ 主语是**角色**（「攻击 / 触发异放」只是触发条件）⇒ **通用无视防御**（用户口径 2026-11-09）：
+    //     直伤与异常**都吃** ⇒ 走通用族 enemyDefReduction。
+    //   ⚠ 此前写成「直伤族 + 异常族各一份」——数值上等价（通用族本来两族都读），
+    //     但语义上把它当成了两族专属，与主语判据不符。
+    panel.enemyDefReduction = panel.enemyDefReduction + cycle.c2DefIgnore
   }
 }
 

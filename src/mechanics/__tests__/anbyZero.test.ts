@@ -128,8 +128,9 @@ describe('零号·安比完整计算链', () => {
     const panel = calc.panels.value[0] as any
     expect(panel.critRate).toBeGreaterThanOrEqual(ANBY_ZERO_ADDITIONAL_CRIT_RATE + ANBY_ZERO_C2_CRIT_RATE)
     expect(panel.dmgBonus).toBeGreaterThanOrEqual(ANBY_ZERO_CORE_DMG)
-    // 三通道：影画4「攻击命中[银星]敌人无视12%电抗」= 自身直伤无视
-    expect(panel.enemyElectricResIgnoreDirect).toBeGreaterThanOrEqual(ANBY_ZERO_C4_RES_IGNORE)
+    // 三通道（2026-11-09 用户二次裁决）：「攻击命中[银星]的敌人时，**零号·安比**无视12%电抗」
+    // 主语是**角色** ⇒ 通用无视抗性（直伤与异常都吃）
+    expect(panel.enemyElectricResReduction).toBeGreaterThanOrEqual(ANBY_ZERO_C4_RES_IGNORE)
   })
 
   it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {

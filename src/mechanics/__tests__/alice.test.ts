@@ -39,11 +39,12 @@ describe('爱丽丝（1401）命座面板增益', () => {
 
   it('影画4：无视10%物理抗性接入面板', async () => {
     const c0 = await setup(0)
-    // 抗性三通道（2026-11-09）：原文「攻击时无视目标 10% 物理伤害抗性」= 自身**直伤**无视
-    // ⇒ enemyPhysicalResIgnoreDirect（异常伤害读不到）
-    const r0 = (computePanelPhases(0, c0.config, c0.catalog)!.inCombat as any).enemyPhysicalResIgnoreDirect ?? 0
+    // 抗性三通道（2026-11-09 用户二次裁决）：「**爱丽丝**无视目标 10% 物理伤害抗性」主语是**角色**
+    // ⇒ 通用无视抗性（直伤与异常都吃），走通用族 enemyPhysicalResReduction
+    // 通用无视（原文「爱丽丝无视目标…」主语是**角色**）⇒ enemyPhysicalResReduction（异常也吃）
+    const r0 = (computePanelPhases(0, c0.config, c0.catalog)!.inCombat as any).enemyPhysicalResReduction ?? 0
     const c4 = await setup(4)
-    const r4 = (computePanelPhases(0, c4.config, c4.catalog)!.inCombat as any).enemyPhysicalResIgnoreDirect ?? 0
+    const r4 = (computePanelPhases(0, c4.config, c4.catalog)!.inCombat as any).enemyPhysicalResReduction ?? 0
     expect(r4 - r0).toBe(10)
   })
 })

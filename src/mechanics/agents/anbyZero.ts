@@ -245,8 +245,9 @@ function applyAnbyZeroPanel({ cinemaLevel, potentialLevel, panel, settings }: Ag
   if (cycle.critRateGain > 0) panel.critRate = panel.critRate + cycle.critRateGain
   panel.dmgBonus = panel.dmgBonus + cycle.coreDmgBonus
   if (cinemaLevel >= 4) {
-    // 影画4「攻击命中[银星]敌人时无视12%电抗」⇒ 自身直伤族（异常读不到）
-    panel.enemyElectricResIgnoreDirect = panel.enemyElectricResIgnoreDirect + cycle.c4ResIgnore
+    // 影画4「攻击命中[银星]标记的敌人时，**零号·安比**无视目标12%电抗」——主语是**角色**
+    // ⇒ **通用无视抗性**（用户口径 2026-11-09）：直伤与异常都吃。
+    panel.enemyElectricResReduction = panel.enemyElectricResReduction + cycle.c4ResIgnore
   }
 }
 

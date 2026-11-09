@@ -38,8 +38,9 @@ describe('真斗（1441）炽心/熔锋 面板', () => {
     const outHp = computePanelPhases(0, config, catalog)!.outOfCombat.hp
     config.team[0].cinemaLevel = 4
     const p4 = computePanelPhases(0, config, catalog)!.inCombat as any
-    // 三通道：影画2「熔锋下真斗无视目标8%火属性伤害抗性」= 自身**直伤**无视
-    expect((p4.enemyFireResIgnoreDirect ?? 0) - (p0.enemyFireResIgnoreDirect ?? 0)).toBe(8)
+    // 三通道（2026-11-09 用户二次裁决）：「[熔锋]状态下，**真斗**无视目标8%火抗」主语是**角色**
+    // ⇒ 通用无视抗性（直伤与异常都吃）
+    expect((p4.enemyFireResReduction ?? 0) - (p0.enemyFireResReduction ?? 0)).toBe(8)
     // ⚠ R60 订正：原断言读 `panel.hpPct` —— 那是**零消费者的旁路字段**（`applyPanel` 在
     // `calcPanel` 之后 ⇒ 累加器已 finalize）⇒ 「字段被写」但 `panel.hp` 逐位不变，
     // 而 hp 是命破贯穿力基底（`damage.ts:187` 的 hp×0.1）的输入 ⇒ C4 整条没进伤害。
