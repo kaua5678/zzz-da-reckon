@@ -866,8 +866,33 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         const run = reusable
           ? { out: reusable.out, outPrev: reusable.prev, outerRounds: 0, outerConverged: true, outerExit: 'stable' as const, outerCyclePickedEarlier: false, capacityResolved: false }
           : evalLocked(kTry)
-        /** 这一轮排的就是 `kTry` 个窗（override / 成员计划都是 K）⇒ 判据按 `kTry` 自身读，不回头读 prev */
-        if (!feasibleAtK(run.out, run.outPrev, kTry)) continue
+        /**
+         * ## ⚠ 只有「新口径才多认的档」才复核自洽（`kTry > kStarOld`），不得复核旧口径已经交付的 kStar
+         *
+         * 两条纪律的先后顺序曾经写反，代价是**交付比改动前更差**（实测回归，见下）：
+         *
+         * `kTry <= kStarOld`——**这一档 = 改动前的 `kStar` 本身**（`K_FLOOR` 恒 ≤ `kStarOld`，
+         * 故循环里出现的 `kTry < kStarOld` 只有 `kStarOld = 0` 那一种，而那时 `kTry > 0 = kStarOld`）。
+         * 改动前对它的采纳条件**只有** `outerExit === 'stable'`（重跑=按 K 窗重排一整轮，收敛即交付）。
+         * 在这里再加 `feasibleAtK` 就等于**改判旧口径已交付的点**——而旧口径从不对重跑帧复核
+         * `floor(cont) ≥ K`：重跑帧是**按 K 窗重排后的自己**，它的 `cont` 与成员帧（按上一轮池排窗）
+         * 本来就不是同一个读数。实测反例（本判据的原点）：
+         * `auto-1431-1481-1491` C1（投影 off）：成员 `cont = 2.019 / 2.111 / 2.110`（全部 `floor ≥ 2`，fits，
+         * ⇒ kStar = kStarOld = 2），而 `evalLocked(2)` 重跑帧 `cont = 1.9896`（差 0.0104 窗）、
+         * `overflow = 6.257s`、`δ = 0.755s` ⇒ 判据⑦ 判「假截短」⇒ 整块放弃 ⇒ 落回环内 cycle 帧
+         * ⇒ 收敛帧 30.3989M **→ 30.1053M（−0.97%）**。这正是 `kStarOld` 那条「不许更差」要防的事，
+         * 却在**同一段代码里先被自己违反**。
+         *
+         * `kTry > kStarOld`——**只有连续失衡（δ）才多认得出的档**，也是判据⑦ 真正要守的那一格：
+         * 它的可行性**完全**依赖 δ，所以必须复核（`continuousStunClip` + 「装配溢出 ≤ δ」）。
+         * 实测 witness = `auto-1431-1481-1491` C2 的 K=2（δ=0.94s 但装配溢出 5.93s ⇒ 拒绝），
+         * 该格现在走的是 `stableBandProbe` 路径（`kStarOld = baseK`，`kTry = baseK + 1 > kStarOld`）⇒ 判据⑦ 照旧生效。
+         *
+         * ⚠ `PROBE_STUN_CONT_TRUNC=off` 的「逐位退回改动前」也**要求这个顺序**：off 时 `trunc ≡ null`，
+         * 若这里仍无条件复核，`feasibleAtK` 会退化成 `floor(cont) ≥ K && fits`——那**不是**改动前的判据
+         * （改动前根本不看 `cont`），于是 off 也复现不了旧值（实测 off 仍 −1.0942，本卡声称的「逐位退回」不成立）。
+         */
+        if (kTry > kStarOld && !feasibleAtK(run.out, run.outPrev, kTry)) continue
         if (run.outerExit !== 'stable') continue
         chosenRun = run
         chosenK = kTry
