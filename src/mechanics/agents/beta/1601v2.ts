@@ -109,6 +109,12 @@ interface SunbringerMeta {
   ultB: SunbringerMoveMeta
   maim: SunbringerMoveMeta
   chain: SunbringerMoveMeta
+  /**
+   * 冻结副本的**类型对齐位**：正主 `sunbringer.ts` 2026-11-10 起了这条（支援突击残痕 ×1.15）。
+   * 两处 `declare module` 扩充的是同一个 `sunbringerMeta` 属性，形态不一致即 TS2717。
+   * ⚠ **冻结副本不填这个字段**——它保留 v1/v2 当时的数值行为（无支援突击残痕），只是类型跟上。
+   */
+  assistFollowUp?: SunbringerMoveMeta
   sharpnessRegen: number
 }
 

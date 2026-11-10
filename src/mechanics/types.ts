@@ -493,6 +493,13 @@ export interface ModuleFeedback {
   /** 莱特后场：全队常态能量消耗（converge 相位经通用输入 `teamEnergyConsumed` 递给模块） */
   consumedTeamEnergy?: number
   /** 团队残痕池各槽申报（双锋御队；单锋御 = undefined）——通道/收敛理由见 `gashMaim.ts` 头「多锋御接线」 */ gashPoolClaims?: Record<number, { points: number; demandLayers: number }>
+  /**
+   * 队友锋御的[毁伤]累计倍率（挽昼烬痕 35% 那条来源的跨槽输入，2026-11-10）。
+   * 生产方 = `sunbringer.ts#sunbringerNextRoundFeedback`（`collectTeamMaimMultiplier`）；
+   * 消费方 = `applySunbringerTeamConfig`（converge）→ `cfg.sunbringerTeammateMaimMultiplier` → `computeEmberScar`。
+   * 是**有限数值** ⇒ 会被 `outerCycle#moduleFeedbackSignature` 自动纳入收敛签名，不必另开序列化。
+   */
+  sunbringerTeamMaimMultiplier?: number
 }
 
 export interface AgentExSpecialTimeInput {

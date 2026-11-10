@@ -5,6 +5,7 @@ import type {
   AgentPanelInput,
   AgentResourceInput,
   AgentResourceResultInput,
+  AgentResourceSectionsInput,
   AgentTeamConfigInput,
   ModuleFeedback,
 } from '../types'
@@ -13,8 +14,11 @@ import { getRowValue } from '@/data/moveTableQueries'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
-import { allocateBossGashPool, GASH_PER_LAYER, collectSharpenGashClaims, resolveTeamGashPool } from '@/mechanics/gashMaim'
+import { allocateBossGashPool, GASH_PER_LAYER, GASH_MAX_STACKS, collectSharpenGashClaims, collectTeamMaimMultiplier, resolveTeamGashPool } from '@/mechanics/gashMaim'
 import { SHARPNESS_INITIAL, sharpnessIncome } from '@/mechanics/sharpnessIncome'
+import { fmt } from '@/utils/format'
+import { mechanicSettingReader } from '@/utils/mechanicSettingCfg'
+import type { MechanicSetting } from '@/types/resource'
 
 /**
  * 挽昼（1601·锋御/燎原）——测试服角色（`Test1` 占位包起，**3.4.3+20278274** 重录），2026-10-25 第二刀 = **六条资源循环**。
@@ -28,7 +32,7 @@ import { SHARPNESS_INITIAL, sharpnessIncome } from '@/mechanics/sharpnessIncome'
  * | 环节 | 口径 | 数据来源 |
  * |---|---|---|
  * | 锐能 | 进场 +60；自动 1.5/s；强化特殊技 **30/发** | raw「锐能消耗 30点」×3 行；catalog `level60.sharpnessRegen` |
- * | 残痕 | 招式级 `gash_buildup` 积累，**600 点 = 1 层**，存量 ≤3 | catalog gash 行（gachabase 补入） |
+ * | 残痕 | 招式级 `gash_buildup` 积累（平A 秒均 + 强特 + 连携 + **招架支援** + **支援突击 ×1.15**），**600 点 = 1 层**，存量 ≤3 | catalog gash 行（gachabase 补入）+ gachabase 1601206/7/8 |
  * | 毁伤 | 重击消耗层（每层 1 次），**伤害 = moveId 1601114（Lv12 336.3%）** | 3.4.1+19850203 热更新增行 |
  * | 愿力 | 每层 +40（上限 160）⇒ **每 3 层 = 1 次聚锋**（120） | raw 核心被动 Lv.7 |
  * | 链齿/旗令 | 每次聚锋各 +1；链齿 → 长暗终焉；**旗令优先终结技·此行共赴前路**（永昼之炬按 0 次） | 用户裁决 2026-10-25 |
@@ -43,9 +47,12 @@ import { SHARPNESS_INITIAL, sharpnessIncome } from '@/mechanics/sharpnessIncome'
  *   ⚠ 该封顶只约束**一段**（喧响大）；**二段由 [愿核] 购买、不耗喧响**（轴内见模块能力
  *   `axisMoveFreeOfDecibel` + `axisSwayFlow`，用户口径 2026-10-31）。
  * - 毁伤**不进时间**（附带事件，actionTime 0）；烬痕均摊到每次 B 的倍率上。
- * - 影画 1/2 文本已有（3.4.1+19850203）但**未实现**；C3–C6 仍占位。
+ * - 影画 1/2 已实现（C1：残痕效率 ×1.1 + 进战 120 愿力 + 15% 火抗；C2：烬痕积攒 ×1.2 + 其他招式 15%），
+ *   C4/C6 走面板与烬灭，C3/C5 只是技能等级。
  */
 const SUNBRINGER_AGENT_ID = '1601'
+
+const cfgSetting = mechanicSettingReader(() => settings)
 
 /** 每 1% 初始暴击伤害 → 初始暴击率（核心被动 Lv.7） */
 export const INITIAL_CRIT_DMG_TO_CRIT_RATE = 0.35
@@ -90,6 +97,51 @@ export const EMBER_SCAR_OTHER_RATE = 0.15
 export const EMBER_SCAR_C6_EXTRA_MULT = 1.5
 /** 影画1：残痕积蓄效率 +10%（v2 文本）；灯塔白送的整层不吃此效率 */
 export const SUNBRINGER_C1_GASH_EFFICIENCY = 1.1
+/**
+ * **[支援突击]残痕积蓄效率 +15%**（nanoka 3.4.1+19997538，与下面 `PARRY_ASSIST_DAZE_BONUS` 同一句原文）：
+ * > 「德蕾琪娜发动[招架支援]造成的失衡值提升50%，**艾尔妲与林德薇恩发动的[支援突击]残痕积蓄效率提升15%**，
+ * >  造成的伤害提升20%」
+ *
+ * 落点 = 招架后紧跟的那一发**支援突击**（`cfg.assistFollowUpMoveId`）表值 ×1.15。为什么只这一招：
+ * 原文点的是「[支援突击]」这一招族，快速支援（Quick Assist）不在句内。
+ *
+ * **外部实录判据**（用户 2026-11-10 提供的 8 场 M0/M2 逐招 gash 回放，gachabase 回放口径）：
+ * 同一场里支援突击两条（1601013 坚定信仰 / 1601113 不灭的热情）的 rate = **1.15**，
+ * 而普攻/连携/EX/冲刺/闪避反击/快速支援 全部 1.00；M2 场（+10% 来自 `Sunbringer_Talent_01` = 影画1）
+ * 它们变成 **1.25 = 1.15 × 1.10**、其余招式 1.10 ⇒ 两个效率因子**同处连乘、互不替代**
+ * （这条也反过来证明「rate 是残痕唯一的乘算通道」：除此之外没有第二个因子会变）。
+ * 反算：1601013 的合计表值 186.98（= gachabase 18698 ÷100）⇒ 实录单段 19.55 = 17.00 × 1.15（逐段取整，合计差 0.02）。
+ *
+ * ⚠ 与 `SUNBRINGER_C1_GASH_EFFICIENCY` 相乘，且两者**都只在「积累括号」里**（见 `gash` 表达式）；
+ *   灯塔白送的整层仍然不吃任何效率。
+ */
+export const SUNBRINGER_ASSIST_FOLLOW_UP_GASH_EFFICIENCY = 1.15
+/**
+ * **[支援突击]造成的伤害 +20%**（与上面 15% 同一句原文的后半；用户裁决 2026-11-10 逐字：
+ * 「增伤肯定做啊，挽昼关键机制就在于这个，预计一局弹刀很多次」）。
+ *
+ * 落点 = **招式限定**的增伤区（执行行 dmgBonus += 20），不是全局面板：
+ * 原文点的只是 [支援突击] 那一行，写 panel.dmgBonus 会让她的强特/连携/终结一起吃到，
+ * 与「招式限定」不符（同一取向的先例：柚叶 1411 影画4 patchYuzuhaExecutions）。
+ *
+ * ⚠ 次数 = parryCount（引擎按它产支援突击行），所以这条在「一局弹刀很多次」的配装里权重很大——
+ *   这正是用户要求必须建模的理由。
+ * ⚠ 反制支援的专属追击（灯塔 1601205）**不**吃这条：原文说的是艾尔妲与林德薇恩发动的[支援突击]，
+ *   灯塔走 counterAssists.ts 的融合行（moveId = 1601204），行级门控天然分开。
+ */
+export const SUNBRINGER_ASSIST_FOLLOW_UP_DMG_BONUS = 20
+/**
+ * **招架+支援突击的自合轴率**默认值（%，用户裁决 2026-11-10）。
+ *
+ * 原文机制：挽昼的[招架支援]可以**自己接自己**、且不打断已有招式 ⇒ 她的合轴率能作用在**自己身上**，
+ * 让同一段时间里多打招式。用户口径：「实现就是加个滑块叫做招架+支突的合轴率，默认60%，
+ * 这样削减自身招架的耗时，流出更多时间给挽昼平a」。
+ *
+ * 落点 = cfg.defensiveAssistComboAlignRatio / cfg.assistFollowUpComboAlignRatio（同一滑块的同一个值）：
+ * 这两个字段既是 rowBuild 产行的 comboAlignRatio 来源，也是时间账 comboAlignGeneric 抵扣项的来源
+ * （core/resource/helpers.ts）⇒ 行与账本同源，不会犯 CC-454「行上写了比例但账本没读」的死数据病。
+ */
+export const SUNBRINGER_PARRY_COMBO_ALIGN_DEFAULT = 60
 /**
  * **[招架支援]残痕**：每成功招架 1 次给 Boss 池加多少点（3.4.3+20278274 新增句「德蕾琪娜成功招架敌人
  * 的攻击时，可为敌人积累残痕值」）。
@@ -162,8 +214,20 @@ interface SunbringerMeta {
   ultB: SunbringerMoveMeta
   maim: SunbringerMoveMeta
   chain: SunbringerMoveMeta
+  /**
+   * 招架后紧跟的那一发**支援突击**（引擎 `findAssistFollowUp` 选中的 `cfg.assistFollowUpMoveId`）。
+   * 残痕来源之一（表值 × `SUNBRINGER_ASSIST_FOLLOW_UP_GASH_EFFICIENCY`，见 `solveSunbringerLoops`）。
+   * 缺省（该角色没有支援突击 / 引擎没解析到）⇒ 这条来源本局不发生，其余来源不受影响。
+   */
+  assistFollowUp?: SunbringerMoveMeta
   sharpnessRegen: number
 }
+
+/**
+ * 本局循环解的完整形状 = `solveSunbringerLoops` 的返回（单一事实源：函数改字段，类型自动跟随）。
+ * 资源卡（`resourceSections`）只读它——展示层不许自己重算（见 `sunbringerLoopSource` 注释）。
+ */
+export type SunbringerLoop = ReturnType<typeof solveSunbringerLoops>
 
 declare module '@/types/resource/agentResources' {
   interface CharacterResourceResult {
@@ -172,6 +236,11 @@ declare module '@/types/resource/agentResources' {
      * 形状由 `gashMaim#SharpenGashClaimLike` 约束（结构子类型，无 import 耦合）。
      */
     sunbringerGashSource?: { points: number; demandLayers: number; gashLayers?: number; maimCount?: number }
+    /**
+     * **本局循环解**（残痕/毁伤/愿火/链齿/旗令/愿核/锐能 全部读数）：资源卡唯一数据源。
+     * 由 `buildResourceResult` 每轮写入（与 `sunbringerGashSource` 同一个 `solveSunbringerLoops` 结果）。
+     */
+    sunbringerLoopSource?: SunbringerLoop
   }
 }
 
@@ -183,6 +252,13 @@ declare module '@/types/resource/config' {
     sunbringerCinemaLevel?: number
     /** 招架支援行 moveId → 已 ×1.5 的失衡值（buildCharConfig 预存；见 PARRY_ASSIST_DAZE_BONUS） */
     sunbringerParryDazeById?: Record<string, number>
+    /**
+     * **队友锋御的[毁伤]累计倍率**（`gashMaim#collectTeamMaimMultiplier`，排除自己那份）。
+     * 写入方 = `sunbringerNextRoundFeedback`（`ModuleFeedback.sunbringerTeamMaimMultiplier`）→
+     * `applySunbringerTeamConfig` 的 converge 相位写本字段；消费方 = `computeEmberScar`。
+     * 缺省 0 = 无队友锋御 ⇒ 与接线前逐位不变。
+     */
+    sunbringerTeammateMaimMultiplier?: number
   }
 }
 
@@ -240,8 +316,18 @@ export function buildSunbringerCharConfig({ cfg, skills, agent, cinemaLevel }: A
     ultB: metaOf('1601011'),
     maim: metaOf('1601114'),
     chain: metaOf('1601110'),
+    // 招架后的支援突击（残痕 +15% 的载体）：moveId 由**引擎**解析（`core/resource/moveLookup#findAssistFollowUp`），
+    // 模块只把 moveId 翻成表值——与招架档位同一个取向（不列 id 名单，换档换招数值自动跟着走）。
+    ...(cfg.assistFollowUpMoveId ? { assistFollowUp: metaOf(cfg.assistFollowUpMoveId) } : {}),
     sharpnessRegen: agent.level60.sharpnessRegen ?? 0,
   }
+  // 招架+支援突击的**自身合轴率**（用户裁决 2026-11-10）：两个字段共用一个滑块值——她的招架能自己接
+  // 自己、不打断已有招式，所以合轴率作用在自己身上，削减这两段的实际耗时、把时间让回平A 池。
+  // ⚠ 写的是**时间账真正读的那两个 cfg 字段**（不是只在行上写 comboAlignRatio）：行与账本同源，
+  //   否则就是 CC-454 的死数据（core/__tests__/comboAlignLedgerInvariant.test.ts 会当场标红）。
+  const parryAlign = Math.max(0, Math.min(100, cfgSetting(cfg, 'sunbringer.parryComboAlign'))) / 100
+  cfg.defensiveAssistComboAlignRatio = parryAlign
+  cfg.assistFollowUpComboAlignRatio = parryAlign
   // 招架支援失衡 +50%（3.4.1+19997538 新增）：按**表值**预缩，patchExecutions 里打 override。
   // 认行口径 = 本角色的「招架支援」行（原文点的是德蕾琪娜的招架，即挽昼自己的招架段），
   // 不列 moveId 名单——角色自己的表结构变了也不会漏（规则 6 的同一取向：按数据认行）。
@@ -322,7 +408,8 @@ export function solveSunbringerLoops(input: {
   const exCount = Math.max(0, Math.min(Math.floor(sharpPool / SHARPNESS_COST_PER_EX), exMax))
   budget = Math.max(0, budget - exCount * meta.ex.actionTime)
 
-  // 残痕来源：平A 秒均 + 强特/连携表值 + **招架支援**（3.4.3）+ **反制支援灯塔送的层**（每组 +600 点，不吃效率）
+  // 残痕来源：平A 秒均 + 强特/连携表值 + **招架支援**（3.4.3）+ **支援突击**（同句 +15% 效率）
+  //          + **反制支援灯塔送的层**（每组 +600 点，不吃效率）
   const counterGiftStacks = Math.max(0, Math.floor(input.counterAssistCount ?? 0))
   // 影画1（v2 文本「残痕积蓄效率提升10%」）：只放大**积累来源**，灯塔白送的整层不吃效率
   const gashEfficiency = cinemaLevelOf(input.cinemaLevel) >= 1 ? SUNBRINGER_C1_GASH_EFFICIENCY : 1
@@ -335,9 +422,28 @@ export function solveSunbringerLoops(input: {
    *   与灯塔「直接为目标添加 1 层」不同——积累吃积蓄效率，白送层不吃。
    * ⚠ 未选中任何招架档（无招架支援 / 引擎没解析到）⇒ 0，不影响其余来源。
    */
+  const parryCount = Math.max(0, Math.floor(Number(input.parryCount ?? 0)))
   const parryGashPerCast = SUNBRINGER_PARRY_GASH_BY_ASSIST_MOVE_ID[String(input.defensiveAssistMoveId ?? '')] ?? 0
-  const parryGash = Math.max(0, Math.floor(Number(input.parryCount ?? 0))) * parryGashPerCast
-  const gash = (meta.basic.gashPerSec * basicTime + exCount * meta.ex.gash + chainCount * meta.chain.gash + parryGash) * gashEfficiency
+  const parryGash = parryCount * parryGashPerCast
+  /**
+   * **支援突击的残痕**（同一句原文的后半：「艾尔妲与林德薇恩发动的[支援突击]残痕积蓄效率提升15%」）。
+   *
+   * 次数 = 同一次招架后紧跟的那一行，引擎按 `parryCount` 产行（`core/resource/rowBuild.ts` 支援突击段），
+   * 表值 = `cfg.assistFollowUpMoveId` 的 `gash_buildup`（catalog 值 = gachabase ÷100，**不含**这 15%）。
+   * 引擎当前为 1601 选的是 1601013（坚定信仰，186.98）⇒ 每招架 1 次 = 186.98 × 1.15 = **215.027 点**。
+   *
+   * ⚠ 同样进「积累括号」吃影画1 的 ×1.1（两者相乘：实录 M2 场该招 rate 1.25 = 1.15 × 1.10）；
+   *   灯塔白送的整层仍不吃任何效率。
+   * ⚠ 反制支援整组化解时 `parryCount` 不增加（`counterAssistCount` 另走灯塔白送层）⇒ 这里不会双计。
+   */
+  // 门控 = 引擎真的会产这一行：`buildExecutions` 的支援突击段要求 `assistFollowUpActionTime > 0`。
+  // （actionTime=0 的角色即便有 moveId 也不产行 ⇒ 这里必须同步记 0，否则凭空多出残痕。）
+  const assistFollowUpGashPerCast = meta.assistFollowUp && meta.assistFollowUp.actionTime > 0
+    ? meta.assistFollowUp.gash * SUNBRINGER_ASSIST_FOLLOW_UP_GASH_EFFICIENCY
+    : 0
+  const assistFollowUpGash = parryCount * assistFollowUpGashPerCast
+  const gash = (meta.basic.gashPerSec * basicTime + exCount * meta.ex.gash + chainCount * meta.chain.gash
+    + parryGash + assistFollowUpGash) * gashEfficiency
     + counterGiftStacks * GASH_PER_LAYER
   // 消耗层：强化特殊技与连携技都会「重击命中后消耗」，每次最多 3 层
   //
@@ -347,10 +453,10 @@ export function solveSunbringerLoops(input: {
   // 而下面的入账顺序是「逐层入账、≥120 立刻转聚锋」，愿火银行恒 < 120 < 160 ⇒ 钳制在稳态里不会真的挡消耗
   // （判据 sunbringerLoops.test.ts「愿火未达上限」把这条写成断言，而不是留一句注释）。
   //
-  // ⚠ **未建模的两条 3.4.3 残痕来源**（原文见 spec 1601 未建模段）：
-  //   ①「德蕾琪娜成功招架敌人的攻击时，可为敌人积累残痕值」——gachabase 新行 1601206/7/8 只带 gash 列
-  //      （56.64 / 99.14 / 99.14），但仓库没有「每局成功招架几次」的通道，按 0 计；
-  //   ② 燎源属性说明「触发[灼烧]效果时，额外为目标累积少量[残痕]，每 15 秒最多一次」——**原文没数值**。
+  // ⚠ **仍未建模的一条 3.4.3 残痕来源**（原文见 spec 1601 未建模段）：
+  //   燎源属性说明「触发[灼烧]效果时，额外为目标累积少量[残痕]，每 15 秒最多一次」——**原文没数值**。
+  //   （「成功招架 ⇒ 积累残痕」= 上面的 `parryGash`，2026-11-08 已落地；「支援突击 +15% 效率」
+  //    = 上面的 `assistFollowUpGash`，2026-11-10 依据实录补入。别再把这句读成「两条都未建模」。）
   const maimDemand = 3 * (exCount + chainCount)
   /**
    * 残痕池走**锋御通用池**（`mechanics/gashMaim#allocateBossGashPool`）：单槽调用 = `min(层, 需求)`，逐位不变。
@@ -423,11 +529,30 @@ export function solveSunbringerLoops(input: {
   const torchCount = Math.max(0, Math.min(jufengCount - ultACount, torchMax))
   budget = Math.max(0, budget - torchCount * meta.torch.actionTime)
   return {
-    sharpPool, sharpUsed: exCount * SHARPNESS_COST_PER_EX, exCount,
+    sharpPool, sharpUsed: exCount * SHARPNESS_COST_PER_EX, exCount, exMax,
     gash, gashLayers, maimDemand, maimCount, counterGiftStacks,
-    parryGash, parryGashPerCast,
-    wishTotal, wishSpent: jufengCount * JU_FENG_WISH_COST, jufengCount,
+    parryGash, parryGashPerCast, parryCount,
+    assistFollowUpGash, assistFollowUpGashPerCast,
+    wishTotal, wishSpent: jufengCount * JU_FENG_WISH_COST, wishFromEntry, jufengCount,
+    jufengMax, changanMax, torchMax,
     changanCount, ultFeasible, ultACount, torchCount,
+    /**
+     * **残痕点数的来源拆分**（资源卡展示的唯一来源，用户 2026-11-10：「资源池没展示残痕积蓄」）。
+     * 五个"积累"来源都已乘过 `gashEfficiency`（灯塔白送层不吃效率，单列），
+     * 加起来逐位等于上面那个 `gash`（判据 sunbringerResourceCard.test.ts ②）。
+     * ⚠ 展示层不许自己重算这五个分量：那等于把这条式子抄第二份，引擎换来源时会静默分叉。
+     */
+    gashEfficiency,
+    gashFromBasic: meta.basic.gashPerSec * basicTime * gashEfficiency,
+    gashFromEx: exCount * meta.ex.gash * gashEfficiency,
+    gashFromChain: chainCount * meta.chain.gash * gashEfficiency,
+    gashFromParry: parryGash * gashEfficiency,
+    gashFromAssistFollowUp: assistFollowUpGash * gashEfficiency,
+    gashFromCounterGift: counterGiftStacks * GASH_PER_LAYER,
+    basicGashPerSec: meta.basic.gashPerSec,
+    giftSharpness,
+    /** 团队残痕池核定的本槽份额（单锋御 / 首轮未收敛 = null，展示层据此区分「私有池」与「团队池」） */
+    teamGranted: input.teamGrantedLayers === undefined ? null : Math.max(0, Math.floor(Number(input.teamGrantedLayers) || 0)),
   }
 }
 
@@ -572,6 +697,12 @@ export function computeEmberScar(input: {
   ultBCount: number
   /** 影画2：其他招式（除 5 个积攒招式外）的执行行「倍率 × 次数」之和（同基底近似） */
   otherMultiplierSum?: number
+  /**
+   * **队友锋御的[毁伤]累计倍率**（`gashMaim#collectTeamMaimMultiplier`，排除自己那份）。
+   * 原文 3.4.3：「全队代理人造成的[毁伤]也可使目标积攒等同于该次实际伤害 35% 的[烬痕]」。
+   * 缺省 0 = 无队友锋御（单锋御队逐位不变）。单位 = 倍率空间（与自身那份同空间，见该函数注释的 debt）。
+   */
+  teammateMaimMultiplier?: number
   cinemaLevel?: number
 }): number {
   const { meta, loops, ultBCount } = input
@@ -584,8 +715,10 @@ export function computeEmberScar(input: {
     + loops.ultACount * meta.ultA.damage
     + ultBCount * meta.ultB.damage
   ) * EMBER_SCAR_RATE
-  // 3.4.3 第二条来源：全队[毁伤]按该次实际伤害 35% 也积攒（自己那份；队友那份无通道，见常量注释）
-  const maimEmber = (loops.maimCount ?? 0) * meta.maim.damage * EMBER_SCAR_MAIM_RATE
+  // 3.4.3 第二条来源：**全队**[毁伤]按该次实际伤害 35% 也积攒——自己那份按本槽表值算，
+  // 队友锋御那份由 `gashMaim#collectTeamMaimMultiplier` 经 ModuleFeedback 跨轮送进来（2026-11-10 接线）。
+  const maimEmber = ((loops.maimCount ?? 0) * meta.maim.damage
+    + Math.max(0, Number(input.teammateMaimMultiplier ?? 0))) * EMBER_SCAR_MAIM_RATE
   // 影画2：积攒量整体 ×1.2——**三条来源都乘**：核心被动 60%→**72%**、毁伤 35%→**42%**、其他招式 15%→**18%**
   // （用户 2026-11-01 逐字「2命分别是 78% 和 18%」是 65% 时代的口径；按比值口径 60/15 同样各 ×1.2）
   const base = qualifying + maimEmber
@@ -654,7 +787,118 @@ export function buildSunbringerResourceResult({ cfg, state }: AgentResourceResul
       gashLayers: loops.gashLayers,
       maimCount: loops.maimCount,
     },
+    // 资源卡的孩子：同一份循环解（不重算），展示层只读它
+    sunbringerLoopSource: loops,
   }
+}
+
+/**
+ * **资源卡三张**（用户 2026-11-10，逐字：「挽昼资源池没展示残痕积蓄，毁伤次数和自身那个特殊条子的
+ * 数量呢」）：残痕·毁伤 / 愿火循环 / 锐能——与克拉蕾的 `claret-gash-maim` / `claret-sharpness` 同构。
+ *
+ * ## 为什么读 `result.sunbringerLoopSource` 而不是在展示层重算
+ * 循环解吃**折叠环产物**（`basicAttackTime` / `chainCountTotal` / `totalDecibel`），展示层拿不到这些
+ * 输入，重算只能近似或复制一份式子 ⇒ 一旦引擎改了来源（如 2026-11-10 新补的支援突击残痕），卡片会
+ * 静默停在旧数上。`buildResourceResult` 每轮已经算过这份解（团队残痕池申报也是从它来的）⇒ 同一份时间
+ * 只花一次。
+ */
+function buildSunbringerResourceSections({ result }: AgentResourceSectionsInput) {
+  const s = result.sunbringerLoopSource
+  if (!s) return []
+  const teamPool = s.teamGranted !== null
+  return [
+    {
+      id: 'sunbringer-gash-maim',
+      title: '挽昼·残痕 / 毁伤',
+      summary: `残痕 ${fmt(s.gash)} 点 → ${s.gashLayers} 层 · 毁伤 ${s.maimCount} / ${s.maimDemand} 段`,
+      rows: [
+        {
+          label: '残痕积累',
+          value: `${fmt(s.gash)} 点`,
+          detail: `平A ${fmt(s.basicGashPerSec)}/s × 平A时间 = ${fmt(s.gashFromBasic)}；强化特殊技 ${s.exCount} 发 = ${fmt(s.gashFromEx)}；连携 = ${fmt(s.gashFromChain)}；招架支援 ${s.parryCount} 次 × ${fmt(s.parryGashPerCast)} = ${fmt(s.gashFromParry)}；支援突击 ${s.parryCount} 次 × ${fmt(s.assistFollowUpGashPerCast)}（表值 ×1.15）= ${fmt(s.gashFromAssistFollowUp)}；上面五条之和 × 积蓄效率；反制支援·灯塔每组白送 1 层 = ${fmt(s.gashFromCounterGift)} 点（不吃效率）`,
+        },
+        {
+          label: '积蓄效率',
+          value: `×${fmt(s.gashEfficiency)}`,
+          detail: '1 + 影画1 的 +10%（原文「残痕积蓄效率提升10%」）；支援突击自带的 ×1.15 是**招式族**效率，已单列在「残痕积累」里，两者连乘',
+        },
+        {
+          label: '残痕层数（整局可用）',
+          value: `${s.gashLayers} 层`,
+          detail: `每 ${GASH_PER_LAYER} 点 = 1 层；敌人身上同时最多 ${GASH_MAX_STACKS} 层，但整局可用层数不封顶（层是消耗品，攒多少用多少）`,
+        },
+        {
+          label: '毁伤需求',
+          value: `${s.maimDemand} 段`,
+          detail: '强化特殊技 / 连携技每次命中至多消耗 3 层（原文「重击命中…消耗一层，最多连续触发 3 次」）',
+        },
+        {
+          label: '毁伤触发',
+          value: `${s.maimCount} 次`,
+          detail: teamPool
+            ? `双锋御队：全队共用同一个 Boss 残痕池（池 ${s.gashLayers} 层），本槽核定份额 ${s.teamGranted} 段——不是各算各的`
+            : `单锋御队：min(可用层 ${s.gashLayers}, 需求 ${s.maimDemand} 段)`,
+        },
+      ],
+      footer: '残痕/毁伤是**锋御职业的通用机制**（不是克拉蕾专属）：多个锋御同队时共用同一个 Boss 残痕池。挽昼的消耗方 = 强化特殊技 + 连携技；毁伤是附带事件（不占前台时间），伤害按招式的 actual 伤害结算。',
+    },
+    {
+      id: 'sunbringer-wish',
+      title: '挽昼·愿火 → 聚锋 → 链齿/旗令 → 愿核',
+      summary: `愿火 ${fmt(s.wishTotal)}（花 -${fmt(s.wishSpent)}）· 聚锋 ${s.jufengCount} 次 · 长暗终焉 ${s.changanCount} · 此行共赴前路 ${s.ultACount} · 永昼之炬 ${s.torchCount} · 愿核 ${s.ultACount}`,
+      rows: [
+        {
+          label: '愿火总量',
+          value: `${fmt(s.wishTotal)}`,
+          detail: `每消除 1 层残痕 +${WISH_PER_MAIM} 点（上限 ${WISH_MAX}）⇒ 毁伤 ${s.maimCount} 层 × ${WISH_PER_MAIM}${s.wishFromEntry > 0 ? ` + 影画1 进战 +${fmt(s.wishFromEntry)}` : ''}`,
+        },
+        {
+          label: '聚锋次数',
+          value: `${s.jufengCount} 次`,
+          detail: `每 ${JU_FENG_WISH_COST} 点愿火 = 1 次聚锋；愿火够买 ${Math.floor(s.wishTotal / JU_FENG_WISH_COST)} 次，时间预算封顶 ${s.jufengMax} 次；余量 ${fmt(s.wishTotal - s.wishSpent)} 点`,
+        },
+        {
+          label: '链齿 → 长暗终焉',
+          value: `${s.changanCount} 次`,
+          detail: `每次聚锋各发 1 个[链齿]，长暗终焉消耗 1 个；时间预算封顶 ${s.changanMax} 次`,
+        },
+        {
+          label: '旗令 → 此行共赴前路',
+          value: `${s.ultACount} 次`,
+          detail: `旗令**优先**给终结技一段（消耗 1 旗令 → 产 1 愿核）；受喧响封顶 ${s.ultFeasible} 次`,
+        },
+        {
+          label: '旗令 → 永昼之炬',
+          value: `${s.torchCount} 次`,
+          detail: `打完一段后剩下的旗令才给永昼之炬（强化 E，不耗锐能）；时间预算封顶 ${s.torchMax} 次`,
+        },
+        {
+          label: '愿核 → 二段终结技',
+          value: `${s.ultACount} 次`,
+          detail: '一段每产 1 点[愿核]，二段「此愿，重塑万象」消耗 1 点——**二段不耗喧响**（否则两段会被算成 6000 喧响）',
+        },
+      ],
+      footer: '烬痕不在这张卡上重复计数：5 个积攒招式实际伤害的 60% + 全队[毁伤]实际伤害的 35%（影画2 整体 ×1.2）存成固定数值后由二段终结技消除，引擎按「同乘区倍率」摊进二段那一行的倍率里，执行行名会带 +N%。',
+    },
+    {
+      id: 'sunbringer-sharpness',
+      title: '挽昼锐能',
+      summary: `锐能池 ${fmt(s.sharpPool)} · 强化特殊技 ${s.exCount} 发（-${fmt(s.sharpUsed)}）· 结余 ${fmt(s.sharpPool - s.sharpUsed)}`,
+      rows: [
+        {
+          label: '锐能总量',
+          value: `${fmt(s.sharpPool)}`,
+          detail: `进场 +${SHARPNESS_INITIAL} + 自动累积 × 战斗时间 + 平A 招式回复${s.giftSharpness > 0 ? ` + 队友给养 ${fmt(s.giftSharpness)}（知更鸟终结技 20/次）` : ''}`,
+        },
+        {
+          label: '强化特殊技',
+          value: `${s.exCount} 发`,
+          detail: `每发 ${SHARPNESS_COST_PER_EX} 点；发数 = min(锐能够买, 时间预算 ${s.exMax} 发)`,
+        },
+      ],
+      footer: '锐能循环是「自动回复 + 平A」驱动的：发数不足通常不是卡锐能，而是卡时间（动作时长 × 发数 > 时战斗时间）。',
+    },
+  ]
 }
 
 /**
@@ -663,9 +907,15 @@ export function buildSunbringerResourceResult({ cfg, state }: AgentResourceResul
  * 两个锋御模块都会产出**同一份**申报表（同一输入 ⇒ 同一输出），故 `Object.assign` 的后写覆盖先写无害。
  * 单锋御队 `collectSharpenGashClaims` 返回 null ⇒ 不写该键 ⇒ 与改造前逐位不变。
  */
-export function sunbringerNextRoundFeedback({ adjustedResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
+export function sunbringerNextRoundFeedback({ slot, adjustedResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
   const claims = collectSharpenGashClaims(adjustedResult.characters)
-  return claims ? { gashPoolClaims: claims } : {}
+  // 队友锋御的[毁伤]累计倍率（烬痕 35% 那条来源的跨槽输入）：读**本轮**执行计划里的毁伤行，
+  // 下一轮 converge 写回 cfg ⇒ 与残痕池申报同一个跨轮通道（同轮拿不到别的槽的折叠环产物）。
+  const teammateMaimMultiplier = collectTeamMaimMultiplier(adjustedResult.characters, slot)
+  return {
+    ...(claims ? { gashPoolClaims: claims } : {}),
+    sunbringerTeamMaimMultiplier: teammateMaimMultiplier,
+  }
 }
 
 /**
@@ -678,6 +928,12 @@ export function sunbringerNextRoundFeedback({ adjustedResult }: AgentNextRoundFe
  */
 export function applySunbringerTeamConfig({ cfg, phase, threads }: AgentTeamConfigInput): void {
   if (phase !== 'converge' || !threads) return
+  // 队友锋御[毁伤] → 烬痕 35%（2026-11-10）：与残痕池申报**分开**取值——
+  // 池申报要求「本队有两个锋御槽」，这条只要求「有别人打出了毁伤」，两件事互不前置。
+  cfg.sunbringerTeammateMaimMultiplier = Math.max(
+    0,
+    Number(threads.moduleFeedback.sunbringerTeamMaimMultiplier ?? 0),
+  )
   const claims = threads.moduleFeedback.gashPoolClaims
   if (!claims) return
   const pool = resolveTeamGashPool(claims)
@@ -686,8 +942,31 @@ export function applySunbringerTeamConfig({ cfg, phase, threads }: AgentTeamConf
   cfg.gashPoolTotalLayers = pool.layers
 }
 
+/**
+ * [支援突击]伤害 +20%（3.4.1+19997538 同句原文；用户裁决 2026-11-10）。
+ *
+ * 为什么走行级 dmgBonus 而不是面板：这是**招式限定**增伤（只有支援突击那一行），
+ * 写 panel.dmgBonus 会外溢到强特/连携/终结（先例与理由同 yuzuha.ts#patchYuzuhaExecutions）。
+ * 为什么是累加而不是绝对写：patchExecutions 每轮都会跑，但 dmgBonus 是**增伤区加成**（不是被
+ * enrich 回填的倍率字段），行本身每轮重建 ⇒ 与柚子 C4 同款累加即可；不存在重复放大的可能
+ * （对比 daze/倍率类字段必须绝对写，见 applySunbringerParryDaze 的注释）。
+ */
+function applySunbringerAssistFollowUpDamage(
+  cfg: { assistFollowUpMoveId?: string },
+  executions: AgentResourceInput['executions'],
+): void {
+  const assistId = String(cfg.assistFollowUpMoveId ?? '')
+  if (!assistId) return
+  for (const exec of executions) {
+    if (exec.moveId !== assistId) continue
+    exec.dmgBonus = (exec.dmgBonus ?? 0) + SUNBRINGER_ASSIST_FOLLOW_UP_DMG_BONUS
+    exec.skillTableNote = `${exec.skillTableNote ?? ''}；[支援突击]伤害+${SUNBRINGER_ASSIST_FOLLOW_UP_DMG_BONUS}%（3.4.1 被动）`
+  }
+}
+
 export function patchSunbringerExecutions({ cfg, state, executions }: AgentResourceInput): void {
   applySunbringerParryDaze(cfg, executions)
+  applySunbringerAssistFollowUpDamage(cfg, executions)
   const meta = cfg.sunbringerMeta
   if (!meta) return
   const ultRow = executions.find(e => e.moveId === meta.ultB.moveId && e.count > 0)
@@ -719,6 +998,7 @@ export function patchSunbringerExecutions({ cfg, state, executions }: AgentResou
     ultBCount: ultRow.count,
     cinemaLevel: cinemaLevelOf(cfg.sunbringerCinemaLevel),
     otherMultiplierSum: sumOtherDamageMultipliers(executions, meta),
+    teammateMaimMultiplier: Math.max(0, Number(cfg.sunbringerTeammateMaimMultiplier ?? 0)),
   })
   if (!(ember > 0)) return
   const perCast = ember / Math.max(1, ultRow.count)
@@ -789,6 +1069,21 @@ export const SUNBRINGER_ULT_B_MOVE_ID = '1601011'
  * 轴内它是唯一收费的终结点（`axisMoveFreeOfDecibel` 对二段返回 true）。
  */
 export const SUNBRINGER_ULT_A_MOVE_ID = '1601111'
+const settings: MechanicSetting[] = [
+  {
+    id: 'sunbringer.parryComboAlign',
+    label: '挽昼·招架+支突合轴率',
+    description: '她的[招架支援]可以自己接自己、不打断已有招式 ⇒ 合轴率作用在**自己身上**：'
+      + '按该比例削减「招架支援 + 支援突击」两段的实际占用，省下来的时间回流平A 池（打更多招式）。'
+      + '默认 60%（用户口径 2026-11-10）。0% = 完全串行（旧行为）；100% = 这两段完全不占前台时间。',
+    default: SUNBRINGER_PARRY_COMBO_ALIGN_DEFAULT,
+    min: 0,
+    max: 100,
+    step: 5,
+    suffix: '%',
+  },
+]
+
 export const sunbringerMechanic: AgentMechanicModule = {
   id: 'agent:sunbringer',
   agentIds: [SUNBRINGER_AGENT_ID],
@@ -804,6 +1099,8 @@ export const sunbringerMechanic: AgentMechanicModule = {
   patchExecutions: patchSunbringerExecutions,
   // 双锋御共用池：本轮申报（读全队资源结果）+ 下一轮按核定份额写回 cfg（见 gashMaim 头注释）
   buildResourceResult: buildSunbringerResourceResult,
+  // 资源卡：残痕·毁伤 / 愿火循环 / 锐能 三张（用户 2026-11-10 报「资源池没展示」）
+  resourceSections: buildSunbringerResourceSections,
   nextRoundFeedback: sunbringerNextRoundFeedback,
   applyTeamConfig: applySunbringerTeamConfig,
   // 轴内易伤折算：第二段大招伤害前置 1s、其余为后摇（用户口径 2026-10-30）
@@ -823,6 +1120,7 @@ export const sunbringerMechanic: AgentMechanicModule = {
    * ⚠ 只有二段免喧响：一段仍是真正的喧响大（模块资源解也按 `floor(喧响/单价)` 封顶）。
    */
   axisMoveFreeOfDecibel: (moveId: string) => moveId === SUNBRINGER_ULT_B_MOVE_ID,
+  settings,
   axisSwayFlow: (moveId: string) => {
     if (moveId === SUNBRINGER_ULT_A_MOVE_ID) return { produce: 1 }
     if (moveId === SUNBRINGER_ULT_B_MOVE_ID) return { cost: 1 }

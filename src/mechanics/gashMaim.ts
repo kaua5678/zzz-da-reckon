@@ -49,6 +49,45 @@
  * `agents/claret.ts`（整局总量口径 + 轴内推演）、`agents/sunbringer.ts`（六条循环的残痕/毁伤段）。
  */
 
+/**
+ * 一槽的[毁伤]**累计倍率**（Σ 该槽 毁伤行 `count × damageMultiplier`）。
+ *
+ * 用途 = 跨槽口径里唯一能拿到的「毁伤量」：全队[毁伤]结晶成烬痕（挽昼 1601 核心被动 3.4.3
+ * 「全队代理人造成的[毁伤]也可使目标积攒等同于该次实际伤害 35% 的[烬痕]」）。资源层**没有**实际伤害
+ * （伤害池在资源层之后才算），所以只能读执行行的倍率总量——与挽昼自己那份的算法（`maimCount × 毁伤表值`）
+ * **是同一个空间**，即「按倍率等价计入」。
+ *
+ * ⚠ 已知近似（debt）：跨槽**没有按两槽面板比折算**（克拉蕾的 1% 倍率含她自己的 ATK/增伤/锐暴面板，
+ * 与挽昼的不是同一把尺）。升级路径 = 伤害池把 毁伤行 `totalDamage` 通过 `ModuleFeedback` 回传，
+ * 消费侧按「实际伤害 ÷ 挽昼自身每 1% 倍率伤害」折算进二段倍率。
+ *
+ * 认行口径 = `moveName` 含「毁伤」（两模块行名都是「毁伤（每消耗 1 层残痕触发 1 次）」）：
+ * 不能用 moveId —— 克拉蕾 1611013 与挽昼 1601114 是两个不同 id，且都是 basic 分类下的独立行。
+ */
+export interface MaimRowCarrier {
+  slot: number
+  executions?: ReadonlyArray<{ moveName?: string; count?: number; damageMultiplier?: number }>
+}
+
+/** 全队[毁伤]累计倍率（**排除** `selfSlot`；自己那份由各模块按本槽口径单独算，避免双计）。 */
+export function collectTeamMaimMultiplier(
+  characters: readonly MaimRowCarrier[],
+  selfSlot: number,
+): number {
+  let total = 0
+  for (const ch of characters) {
+    if (ch.slot === selfSlot) continue
+    for (const exec of ch.executions ?? []) {
+      if (!/毁伤/.test(String(exec.moveName ?? ''))) continue
+      const count = Number(exec.count)
+      const mult = Number(exec.damageMultiplier)
+      if (!Number.isFinite(count) || !Number.isFinite(mult) || count <= 0 || mult <= 0) continue
+      total += count * mult
+    }
+  }
+  return total
+}
+
 /** 残痕值：每 600 点 = [残痕] 1 层（= 1 次毁伤）。用户口径 2026-09-03。 */
 export const GASH_PER_LAYER = 600
 
