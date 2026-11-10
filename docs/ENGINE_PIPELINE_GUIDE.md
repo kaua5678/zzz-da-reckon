@@ -1581,8 +1581,11 @@ C1 的收敛停点 37.01M 在任何钉 K 上都不存在（钉 K3 40.12M 但净�
 
 **本卡的处置**：漂移**吸收进交付点**（坑 67 的 `pickDelivery`）⇒ 该格 −2.05% → **+5.23%**（原记 +5.15%；2026-11-09 重锚：`298b286c` 抗性 / `2f168d59` 减防三通道拆分修正「异常白吃直伤专属的无视抗性/防御」⇒ 本队绝对伤害小幅下降、交付比值 5.1537→5.2297；收敛侧 −2.05 不受其影响）；判据 `cinemaUpliftFrontier.test.ts` ⑤（含反空洞：C2 的交付 K **仍是 K1** ⇒ 漂移确实发生在同一个 K 内）。**根治另开卡**：stable 退出路径也试一次 `evalLocked(kStar)` 取大者（会大面积动 `timeGolden`）。
 
+**⚠ 追加（2026-11-09，settle 回归）**：收敛侧 −2.05% 曾被 `30b218b7` 打断成 **−1.0942%** ⇒ **回归，不是口径变更**。交付循环对每档无条件复核 `feasibleAtK`，而 `kTry <= kStarOld` 那档正是改动前就交付的 kStar 本身（旧口径从不复核重跑帧的 `floor(cont)`：重跑帧是按 K 窗重排后的自己、与成员帧不同源）。该格 C1：成员 `cont 2.019/2.111/2.110`（⇒ kStar=kStarOld=2），重跑帧 `cont=1.9896`（差 0.0104 窗）/ `overflow=6.257s` / `δ=0.755s` ⇒ 判据⑦ 判假截短 ⇒ 整块放弃 ⇒ 落回 cycle 帧 ⇒ 30.3989M→30.1053M。**修法**（`8bbbf7c3`）= 复核收窄到 `kTry > kStarOld`（判据⑦ witness 走 stableBandProbe ⇒ 照旧生效）；判据 `cinemaUpliftFrontier.test.ts` 6/6，两锚点 −2.0496 / +5.2297。
+
 **否决记录**：
 ❌「把这条归因成『外层选错 K』就够了」——K 相同、伤害仍差 7.7% ⇒ 归因不到分支就无法验证修法。
+❌「`PROBE_STUN_CONT_TRUNC=off` 就逐位退回改动前」——不成立：off 时无条件复核退化成 `floor(cont) ≥ K && fits`，那不是改动前的判据（改动前不看 `cont`）⇒ 实测 off 仍 −1.0942。
 ❌「`applyTeamToStore` 把 `time.stunPlanProjection` 写成 0 ⇒ 缺省 physical 从未生效」——**探针口径假象**：`applyTeamToStore` 零提交碰过这个键（`git log -S`），写 0 的是它之前调的 `clearDifficultyLevers`（有意，`@fact engine:难度曲线/全关基线`）；生产路径实测 **105/105 physical**、原始值 105×4（= 缺省）。判据 `stunProjectionAssembly.test.ts` 钉死。
 ❌「拿未过滤可行性的同 K 差当漂移量级」——最差那格（22.2%）正是一个 247s 的透支点。
 
