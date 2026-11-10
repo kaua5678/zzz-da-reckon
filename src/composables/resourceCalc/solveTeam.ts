@@ -23,6 +23,7 @@ import { stunWindowFraction } from '@/core/effectiveTime'
 import { continuousStunSplitOf } from '@/core/continuousStun'
 import { buildStunTimeline, realizeStunWindows } from '@/core/stunTimeline'
 import type { OuterExit, ResourceCalcConfig } from '@/types/resource'
+import { getAgentMechanic } from '@/mechanics/registry'
 import { initialCalcRoundThreads } from './roundThreads'
 import { findOuterLongCycleLag, isOuterTwoCycle, outerFeedbackSignature, pickOuterCycleMember } from './outerCycle'
 import { probeFlag, probeKey, probePush } from '@/core/probeTrace'
@@ -1492,5 +1493,18 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       if (contCoverage !== out.stunCoverage) finalOut = { ...out, stunCoverage: contCoverage }
     }
   }
+  /**
+   * **滞后读数回填**（2026-11-10，用户报「知更鸟每毁伤回能 420，可全队毁伤只有 26 次」）。
+   *
+   * 有些读数天然走**上一轮**资源解（外层不动点通道，如「全队毁伤次数」）。外层停点若落在环上
+   * （1661/1601/1611 实测：失衡静止、反馈 26↔28 翻面，环里不存在自洽成员），末轮用到的滞后值
+   * 就会与它自己的输出差一拍 ⇒ 明细 15×28 与结果 26 次自相矛盾。
+   *
+   * 落点 = **停点确定之后**（此处），因此回填**不参与任何循环输入**：只把本槽的滞后读数按本局
+   * 最终结果绝对重写，收敛轨迹与资源/时间账逐位不变。模块声明能力 patchTeamReadouts
+   * （规则 6：引擎不认 agentId）；未声明的模块零影响。
+   */
+  const chars = finalOut.resourceResult.characters
+  for (const c of chars) getAgentMechanic(c.agentId)?.patchTeamReadouts?.({ characters: chars })
   return { out: finalOut }
 }

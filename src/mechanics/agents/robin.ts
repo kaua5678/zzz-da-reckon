@@ -9,6 +9,7 @@ import type {
   AgentResourceSectionsInput,
   ModuleFeedback,
 } from '../types'
+import type { CharacterResourceResult } from '@/types/resource/agentResources'
 import { collectTeamMaimCount } from '@/mechanics/gashMaim'
 import { getRowValue } from '@/data/moveTableQueries'
 import { effectiveCombatTime } from '@/core/effectiveTime'
@@ -541,6 +542,33 @@ function robinNextRoundFeedback({ adjustedResult }: AgentNextRoundFeedbackInput)
   return count > 0 ? { robinTeamMaimCount: count } : {}
 }
 
+/**
+ * **滞后读数回填**（2026-11-10 用户报「知更鸟每毁伤回能 420，而全队毁伤只有 26 次」）。
+ *
+ * 次数来源 = 上一轮资源解的 `cfg.robinTeamMaimCount`（外层不动点通道）。停点落在环上时
+ * （1661/1601/1611：失衡静止、反馈 26↔28 翻面，环里不存在自洽成员），末轮用到的值可能比
+ * 自己的输出多一拍 ⇒ 明细写 15×28、结果只有 26 次。这里按**本局最终毁伤次数**绝对重算，
+ * 并把同一笔差额同步到总能量（同一笔能量不能既按 28 次记、又按 26 次显示）。
+ *
+ * ⚠ 只写本槽自己的结果，且调用点在收敛之后（`solveTeam` 停点后）⇒ 不参与任何循环输入。
+ * ⚠ 绝对写：重复调用结果相同（同一份结果调两次幂等）。
+ *
+ * @fact agent:1661/毁伤回能·滞后读数 口径: 「每毁伤回 15 能量」的明细按**本局最终毁伤次数**绝对重写（停点后回填，不参与收敛）；外层停点在环上时明细与总能量必须与本局实际次数一致，不许留「按上一轮 28 次记、结果只有 26 次」的自相矛盾 | 据 用户@2026-11-10「鸟回复15能量…明细 420 而全队毁伤 26 次」 | 验 src/mechanics/__tests__/robinMaimEnergy.test.ts | 锚 src/mechanics/agents/robin.ts#patchRobinTeamReadouts | 信 确认
+ * ⟳复核: 若残痕/毁伤次数改走当轮通道（不再滞后一轮），本回填应随之下线 | 到期 2027-06-30
+ */
+function patchRobinTeamReadouts({ characters }: { characters: CharacterResourceResult[] }): void {
+  const self = characters.find(c => c.agentId === ROBIN_AGENT_ID)
+  if (!self) return
+  const entry = self.energySource.bonusEntries.find(e => e.key === 'teamMaimEnergy')
+  if (!entry) return
+  const count = collectTeamMaimCount(characters)
+  const value = count * ROBIN_MAIM_ENERGY_PER_TRIGGER
+  if (value === entry.value) return
+  self.energySource.total += value - entry.value
+  entry.value = value
+  entry.detail = `核心被动：全队每触发一次[毁伤]固定回 ${ROBIN_MAIM_ENERGY_PER_TRIGGER} 点（本局 ${count} 次，固定值不进回能乘区）`
+}
+
 export const robinMechanic: AgentMechanicModule = {
   id: 'agent:robin',
   agentIds: [ROBIN_AGENT_ID],
@@ -559,6 +587,8 @@ export const robinMechanic: AgentMechanicModule = {
   buildExecutions: buildRobinExecutions,
   buildResourceResult: buildRobinResourceResult,
   nextRoundFeedback: robinNextRoundFeedback,
+  // 停点后按本局实际毁伤次数回填明细（见 patchRobinTeamReadouts 注释）
+  patchTeamReadouts: patchRobinTeamReadouts,
   /**
    * 核心被动「全队角色每触发一次[毁伤]，知更鸟固定回复 15 点能量」。
    *

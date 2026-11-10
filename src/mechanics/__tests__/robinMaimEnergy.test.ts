@@ -16,6 +16,7 @@ import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { collectTeamMaimCount } from '@/mechanics/gashMaim'
 import { ROBIN_MAIM_ENERGY_PER_TRIGGER } from '@/mechanics/agents/robin'
+import { getAgentMechanic } from '@/mechanics/registry'
 
 function robinOf(rr: any) {
   const robin = rr.characters.find((c: any) => c.agentId === '1661')
@@ -93,5 +94,32 @@ describe('[1661] 每毁伤回 15 能量', () => {
     const maim = teamMaim(rr)
     expect(maim).toBeGreaterThan(0)
     expect(entry.value).toBe(maim * ROBIN_MAIM_ENERGY_PER_TRIGGER)
+  }, 120000)
+
+  /**
+   * ⑤ **滞后读数回填**（2026-11-10，用户报「明细 420 而全队毁伤只有 26 次」）。
+   *
+   * 次数走上一轮资源解（外层不动点通道）；停点落在环上时末轮用到的值会差一拍。回填在停点之后
+   * 按本局实际次数绝对重写 ⇒ 明细恒等于结果。本条锁三件事：① 停点后已自洽；② 幂等（绝对写，
+   * 不是累加，重复调用不翻倍）；③ 只碰自己那槽（队友能量一位不动）。
+   */
+  it('⑤ 停点后按本局实际次数回填：自洽、幂等、只碰自己那槽', async () => {
+    await setupHarness(['', '', ''])
+    const c = useConfigStore()
+    c.setAgent(0, '1661'); c.setAgent(1, '1601'); c.setAgent(2, '1611')
+    const rr = useResourceCalc().resourceResult.value!
+    const chars = rr.characters as any[]
+    const { entry } = robinOf(rr)
+    const maim = teamMaim(rr)
+    // ① 停点（solveTeam 返回前）已经把明细拉回本局实际次数
+    expect(entry.value).toBe(maim * ROBIN_MAIM_ENERGY_PER_TRIGGER)
+    const hook = getAgentMechanic('1661')!.patchTeamReadouts!
+    const othersBefore = chars.filter(x => x.agentId !== '1661').map(x => x.energySource.total)
+    // ② 幂等：再调两次不累加（绝对写）
+    hook({ characters: chars })
+    hook({ characters: chars })
+    expect(entry.value).toBe(maim * ROBIN_MAIM_ENERGY_PER_TRIGGER)
+    // ③ 不回写他人
+    expect(chars.filter(x => x.agentId !== '1661').map(x => x.energySource.total)).toEqual(othersBefore)
   }, 120000)
 })
