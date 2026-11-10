@@ -25,6 +25,7 @@ import { buildStunTimeline, realizeStunWindows } from '@/core/stunTimeline'
 import type { OuterExit, ResourceCalcConfig } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics/registry'
 import { GASH_PER_LAYER, collectSharpenGashClaims, collectTeamMaimCount } from '@/mechanics/gashMaim'
+import type { GashPoolClaims } from '@/mechanics/gashMaim'
 import { initialCalcRoundThreads } from './roundThreads'
 import { findOuterLongCycleLag, isOuterTwoCycle, moduleFeedbackSignature, outerFeedbackSignature, pickOuterCycleMember } from './outerCycle'
 import { probeFlag, probeKey, probePush } from '@/core/probeTrace'
@@ -393,6 +394,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     let outerRounds = 0
     let outerConverged = false
     let outerExit: OuterExit = 'maxIter'
+    /** 末轮自己的失衡输入（残痕自洽结算要在同一帧重跑，2026-11-10） */
+    let lastStunIn = 0
     // 净失衡迭代（用户 Excel 口径）：覆盖率由上一轮失衡次数得出，非失衡占比缩放全来源净失衡，
     // 时间预算把超出的残失衡折成小数——正反馈被全局负反馈对抗，收敛到静止
     for (let k = 0; k < MAX_OUTER_ITER; k++) {
@@ -405,6 +408,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       // CC-418：runCalcRound 无 null 出口（CC-417 删空失衡池 null 后，剩余守卫与 calcOutput 同条件不可达），
       // 原「null 轮 ⇒ threadsAfterNullRound 回退 + 签名清空 + continue」分支随之删除。
       out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim, stunLastWindowClip })
+      lastStunIn = stunCount
       const t = out.threadsNext
       /**
        * ===== 步 4 实验（`PROBE_STUN_NEXT=trace`）：喂给下一轮计划的窗数改用**轴栈实测兑现窗数** =====
@@ -1057,6 +1061,46 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           stunCoverage: stunWindowFraction(target, stunWindowDur, stunEffTime, re.out.stunVerdictLostSeconds),
         }
         capacityResolved = capacityResolved || true
+      }
+    }
+    /**
+     * ## 残痕/毁伤：**最大自洽层数**结算（kStar 同款，2026-11-10；用户口径「残痕和异常条差不多都是积攒的
+     * 格式……感觉都是所有角色通用的」）。
+     *
+     * 环的成因（实测 1661/1601/1611）：毁伤次数来自**上一轮**池申报，而本局点数取决于本轮平A时间。
+     * 两相在「池层数 27↔28」「愿火 440↔480（聚锋 3↔4）」两个整数台阶之间互相追 ⇒ 环里不存在不动点
+     * （实测钉 26 出 28、钉 28 出 26）。与本仓既有的「失衡窗数 ↔ 覆盖率」环同形，故沿用同一条修法：
+     * **不迭代追，直接求解「哪个层数 K 是自洽的」**——
+     * K★ = max { K : floor(本局残痕点数(K) / 600) ≥ 本局毁伤总数(K) }（毁伤只能花攒出来的层）。
+     *
+     * 落地 = 按 K 等比缩放本轮申报点数（份额分配仍走 resolveTeamGashPool：按点数比例 + 需求封顶），
+     * 用**同一帧**（同失衡输入 / 同交互）重跑一整轮，从高往低扫，取第一个自洽的 K。
+     * ⚠ 只在**返回结果本身违反该不变量**时才扫 ⇒ 正常队零开销、逐位不变。
+     */
+    {
+      const gashConsistent = (r: CalcRoundResult): boolean => {
+        const claimsOf = collectSharpenGashClaims(r.resourceResult.characters)
+        if (!claimsOf) return true
+        const points = Object.values(claimsOf).reduce((a, c) => a + c.points, 0)
+        return collectTeamMaimCount(r.resourceResult.characters) <= Math.floor(points / GASH_PER_LAYER)
+      }
+      const claims = collectSharpenGashClaims(out.resourceResult.characters)
+      if (claims && !gashConsistent(out)) {
+        const totalPoints = Object.values(claims).reduce((a, c) => a + c.points, 0)
+        const kHi = Math.floor(totalPoints / GASH_PER_LAYER)
+        for (let k = kHi; k >= Math.max(0, kHi - 8); k--) {
+          const scale = totalPoints > 0 ? (k * GASH_PER_LAYER) / totalPoints : 0
+          const scaled: GashPoolClaims = {}
+          for (const [slot, c] of Object.entries(claims)) scaled[Number(slot)] = { ...c, points: c.points * scale }
+          const trial = runCalcRound(lastStunIn, {
+            ...out.threadsApplied,
+            moduleFeedback: { ...out.threadsApplied.moduleFeedback, gashPoolClaims: scaled },
+          }, { forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim, stunLastWindowClip })
+          if (!gashConsistent(trial)) continue
+          out = trial
+          outerExit = 'cycle'
+          break
+        }
       }
     }
     return { out, outPrev, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier, capacityResolved }
