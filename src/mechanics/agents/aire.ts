@@ -17,11 +17,17 @@
  * 核心异放已建模：第三段绝对音准 #3 命中异常目标 → release 事件（dominant 元素按覆盖率分配），
  * 倍率 = 原异常单次/单跳倍率 × (初始掌控/10 × 元素比例%) × (失衡?1.5:1)，结算区=爱芮。
  * 影画1 异放暴击已建模：基础25%暴击率/25%暴伤，掌控>100每点+0.5%暴击率（releaseCrit）。
- * 影画4 异放回能/喧响已建模：floor(t/10)（10s CD 上限，异放次数≥floor(t/6)>floor(t/10)）× (4能量+70喧响) 并入 initialEnergyGift/initialDecibelGift。
+ * 影画4 异放回能/喧响已建模：floor(有效战斗时间/10)（10s CD 上限）× (4能量+70喧响)，经 bonusEnergy / extraSelfDecibelReward 入账
+ *   （CC-561：此前并入 initialEnergyGift / initialDecibelGift，把「战斗内累计」错贴成「进场赠送」）。
  * 影画6 强化绝对音准/终结技以太伤害+40%已建模：patchExecutions 按 moveId 加 dmgBonus（妄想时刻不退出 → 强化绝对音准全覆盖）。
+ *
+ * 妄想时刻窗口（CC-561）：玩家不是开场就开大——首次放大在「首次放大时间」滑块（默认 30s）。
+ * 影画6 的「妄想时刻内敌人进异常 ⇒ +1 层[全场应援]（6s 内至多一次）」只在
+ * [首次放大, 有效战斗时间) 里计数，即 floor((有效战斗时间 − 首次放大时间)/6)，不再从 t=0 起算。
  */
 import { clampRatio } from '@/utils/finiteClamp'
 import { initialStat } from '@/mechanics/initialStat'
+import { effectiveBattleTime } from '@/core/effectiveTime'
 import type {
   AgentCharConfigInput,
   AgentEventInput,
@@ -50,8 +56,6 @@ export const AIRE_C2_DELUSION_DEF_IGNORE = 8
 export const AIRE_C6_DECIBEL_GIFT = 1200
 /** 第三段[普通攻击：绝对音准 #3] 的 moveId（异放载体） */
 export const AIRE_ABSOLUTE_PITCH_MOVE_ID = '1501007'
-/** 绝对音准全段 moveId（影画6 强化版以太伤害 +40% 的作用范围） */
-export const AIRE_ABSOLUTE_PITCH_MOVE_IDS = new Set(['1501005', '1501006', '1501007', '1501022', '1501008'])
 /** 核心被动 Lv.7：每 10 点初始异常掌控 → 各元素异放比例（%） */
 export const AIRE_RELEASE_RATIO_PER_TEN: Record<string, number> = {
   ether: 27.5,
@@ -87,8 +91,17 @@ export const AIRE_CHEER_EX = 3
 export const AIRE_CHEER_CHAIN = 4
 /** 额外能力·合作舞台：每次以太帷幕开启生成 4 个应援能量（1s ICD 在帷幕持续 30s+ 下不约束） */
 export const AIRE_CHEER_PER_VEIL = 4
-/** 全场应援获取 CD（秒） */
+/** 全场应援获取 CD（秒）：影画6「敌人进属性异常 ⇒ +1 层，6 秒内最多一次」 */
 export const AIRE_CHEER_CD_SECONDS = 6
+/**
+ * 首次开大（进入[妄想时刻]）时间默认值（秒）。用户口径 2026-11-10：玩家通常 30 秒开大。
+ *
+ * 为什么需要它：影画6 的「妄想时刻内敌人进异常 ⇒ +1 层[全场应援]（6s 内至多一次）」是**条件触发**，
+ * 而[妄想时刻]要等第一次终结技才进入。旧实现按 {@link AIRE_CHEER_CD_SECONDS} 从 t=0 起
+ * `floor(总时间/6)`，等于假设「进场即妄想时刻」——实测默认队虚高约 5 层（30 → 25）。
+ * 局内旋钮 = 本模块 settings `aire.firstUltTime`（0–180s）。
+ */
+export const AIRE_FIRST_ULT_SECONDS = 30
 
 export interface AireCycle {
   cinemaLevel: number
@@ -97,6 +110,14 @@ export interface AireCycle {
   c1EtherAnomalyResIgnore: number
   c2DefIgnore: number
   c6DecibelGift: number
+  /** 影画4 异放回能（整局总量，引擎固定源通道 bonusEnergy；C4 以下为 0） */
+  c4EnergyGift: number
+  /** 影画4 异放喧响（整局总量，不可分享通道 extraSelfDecibelReward；C4 以下为 0） */
+  c4DecibelGift: number
+  /** 影画6 妄想时刻内 6s/层[全场应援]层数（首次放大之后才计数；C6 以下为 0） */
+  c6CheerLayers: number
+  /** 首次放大时间（秒，滑块）——妄想窗口起点 */
+  firstUltTime: number
   note: string
 }
 
@@ -116,6 +137,11 @@ export function computeAireCycle(input: {
       ? AIRE_C2_DEF_IGNORE + AIRE_C2_DELUSION_DEF_IGNORE * c2DelusionCoverage
       : 0,
     c6DecibelGift: cinemaLevel >= 6 ? AIRE_C6_DECIBEL_GIFT : 0,
+    // 面板/纯函数路径不带 cfg（无战斗时间）⇒ 这三项由 cycleFromCfg 回填
+    c4EnergyGift: 0,
+    c4DecibelGift: 0,
+    c6CheerLayers: 0,
+    firstUltTime: AIRE_FIRST_ULT_SECONDS,
     note: '妄想时刻与应援能量转化按总量近似；异放比例结算、影画1暴击与影画4异放回能/喧响已接入。',
   }
 }
@@ -125,12 +151,22 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills
   // 原文「每10点初始异常掌控」「若初始异常掌控大于100点」⇒ 初始 = 局外面板（CC-125；读取口 `initialStat`，CC-497）
   cfg.aireInitialMastery = initialStat(outOfCombatPanel, panel, 'anomalyMastery')
   if (cinemaLevel >= 4) {
-    // 影画4：异放触发回 4 能量 + 70 喧响，10秒一次。
-    // 异放次数 = 应援能量/2 + 全场应援；典型整局 ≫ floor(t/10)，故触发次数取 10s CD 上限
-    // （CC-196 后全场应援非C6=终结×3，不再恒 ≥ floor(t/6)；不设 min 截断，属近似）。
-    const triggers = Math.max(0, Math.floor(cfg.battleTime / AIRE_C4_CD_SECONDS))
-    cfg.initialEnergyGift = cfg.initialEnergyGift + triggers * AIRE_C4_RELEASE_ENERGY
-    cfg.initialDecibelGift = cfg.initialDecibelGift + triggers * AIRE_C4_RELEASE_DECIBEL
+    /**
+     * 影画4：异放触发回 4 能量 + 70 喧响，10秒一次。
+     * 异放次数 = 应援能量/2 + 全场应援；典型整局 ≫ floor(有效时间/10)，故触发次数取 10s CD 上限
+     * （CC-196 后全场应援非C6=终结×3，不再恒 ≥ floor(t/6)；不设 min 截断，属近似）。
+     *
+     * CC-561：触发次数改用**有效战斗时间**（扣 boss 无敌，同影画6 的窗口口径），
+     * 且这两笔**战斗内累计**不再写进 `initialEnergyGift` / `initialDecibelGift`——
+     * 那两个字段是「进场赠送」，写进去会让结果卡「开局赠送」显示成 1000+1260+1200=3460
+     * （用户实测直觉只有 2200），还会把战斗内收益提前成种子参与终结技次数推导。
+     * 回能走模块 `bonusEnergy`（引擎固定源能量通道，结果卡「专属额外」行），
+     * 喧响走 `extraSelfDecibelReward`（不可分享通道，官方面板同款归类）。
+     */
+    const triggers = Math.max(0, Math.floor(effectiveBattleTime(cfg) / AIRE_C4_CD_SECONDS))
+    cfg.aireC4EnergyGift = triggers * AIRE_C4_RELEASE_ENERGY
+    cfg.aireC4DecibelGift = triggers * AIRE_C4_RELEASE_DECIBEL
+    cfg.extraSelfDecibelReward = cfg.extraSelfDecibelReward + cfg.aireC4DecibelGift
   }
   if (cinemaLevel >= 6) {
     cfg.initialDecibelGift = cfg.initialDecibelGift + AIRE_C6_DECIBEL_GIFT
@@ -140,6 +176,46 @@ function buildAireCharConfig({ cinemaLevel, cfg, panel, outOfCombatPanel, skills
   // CC-197：绝对音准直伤行动作时长（倍率表）
   cfg.airePitchActionTime = findMoveById(skills, AIRE_ABSOLUTE_PITCH_MOVE_ID)?.actionTime ?? 1
   cfg.aireEnhancedPitchActionTime = findMoveById(skills, AIRE_ENHANCED_PITCH_MOVE_ID)?.actionTime ?? 1
+}
+
+// @fact agent:1501/妄想时刻窗口 口径: 影画6「妄想时刻内敌人进入属性异常 ⇒ +1 层[全场应援]（6s 内至多一次）」= floor((有效战斗时间 − 首次放大时间)/6)；首次放大时间 = 旋钮 `aire.firstUltTime`（0–180s，缺省 30s）。强化版绝对音准占比复用同一窗口（窗口/有效战斗时间），置 0 = 旧口径「进场即妄想时刻」 | 据 用户@2026-11-10（「玩家通常在 30 秒开大…后面才有 buff，这个需要算（180s−无敌时间−首次放大时间）/6 秒」） | 验 src/mechanics/__tests__/aire.test.ts | 锚 src/mechanics/agents/aire.ts#aireDelusionCheerLayers | 信 确认
+// ⟳复核: base(gachabase) 更新的 1501 talent.6 / 终结技文本若改变[妄想时刻]的进入条件（例如其他动作也能进入），复核「首次放大 = 唯一入口」是否仍成立，并相应改旋钮语义 | 到期 2027-05-10
+// @fact agent:1501/影画4入账通道 口径: 异放回能/喧响（floor(有效战斗时间/10) 次 × (4 能量 + 70 喧响)）走 `bonusEnergy` / `extraSelfDecibelReward` 两个战斗内通道，**不写** `initialEnergyGift` / `initialDecibelGift`——「进场赠送」只含基础 1000 + 影画6 的 1200；实测换通道零数值差（decibel total 逐位相同），只改归属 | 据 用户@2026-11-10（「开局赠送 3,460 啥情况，我感觉只有 2200，1k 和 1k2 的 6 命」） | 验 src/mechanics/__tests__/aire.test.ts | 锚 src/mechanics/agents/aire.ts#buildAireCharConfig | 信 确认
+// ⟳复核: 若结果卡「专属额外」通道改版，或引擎新增「战斗内固定源喧响」能力，复核影画4 的 1260 仍落在可对账通道上（不得回流「进场赠送」） | 到期 2027-05-10
+
+/**
+ * 首次放大时间（秒）——玩家第一次开出终结技、进入[妄想时刻]的时刻。
+ *
+ * 用户口径 2026-11-10：「玩家通常在 30 秒开大（具体的给个局内修改旋钮，0-180s 都能填，
+ * 作为首次放大时间），后面才有 buff」。⇒ 本值只做下限 0 的钳制（允许越过战斗时间，
+ * 此时窗口为空、层数为 0），上限由滑块范围的 180s 兜住。
+ */
+export function aireFirstUltTime(cfg: AgentResourceInput['cfg']): number {
+  return Math.max(0, setting(cfg, 'aire.firstUltTime'))
+}
+
+/**
+ * 影画6 的[全场应援]层数（「妄想时刻内敌人进属性异常 ⇒ +1 层，6 秒内最多一次」）。
+ *
+ * 计数窗口 = **[首次放大时间, 有效战斗时间)**，层数 = floor(窗口秒数 / 6)。
+ * 旧实现是 floor(总时间 / 6)，等于假设进场即妄想时刻（用户 2026-11-10 纠正）。
+ * 有效战斗时间扣 boss 无敌（`core/effectiveTime.ts`，单一来源）。
+ * 回退点：本函数（改回 `totalTime` 即恢复旧近似）。
+ */
+export function aireDelusionCheerLayers(cfg: AgentResourceInput['cfg'], fallbackTotalTime = 0): number {
+  return Math.max(0, Math.floor(aireDelusionWindowSeconds(cfg, fallbackTotalTime) / AIRE_CHEER_CD_SECONDS))
+}
+
+/**
+ * [妄想时刻]在局内剩余的覆盖秒数 = 有效战斗时间 − 首次放大时间（下限 0）。
+ *
+ * 影画6「妄想时刻不退出」⇒ 首次开大之后整局都在妄想时刻内，故窗口 = 首次放大 → 战斗结束。
+ * 影画6 的两个「妄想时刻内才有的效果」共用本函数：6s 一层[全场应援] + 强化版绝对音准占比。
+ */
+export function aireDelusionWindowSeconds(cfg: AgentResourceInput['cfg'], fallbackTotalTime = 0): number {
+  const battleTime = Number.isFinite(cfg.battleTime) ? cfg.battleTime : fallbackTotalTime
+  const invincibleTime = Number.isFinite(cfg.invincibleTime) ? cfg.invincibleTime : 0
+  return Math.max(0, effectiveBattleTime({ battleTime, invincibleTime }) - aireFirstUltTime(cfg))
 }
 
 /**
@@ -169,18 +245,34 @@ export function aireAbsolutePitchCount(
   // C6 妄想不退出 ⇒ 仅首次进入给 3 层（后续终结是否算「进入」原文未明，保守不计；回退点=本段）。
   const ultCount = Math.max(0, Math.floor(Number(state.ultimateCount ?? 0) || 0))
   const cheerGain = cinemaLevelOf(cfg.aireCinemaLevel) >= 6
-    ? Math.floor(totalTime / AIRE_CHEER_CD_SECONDS) + (ultCount > 0 ? 3 : 0)
+    ? aireDelusionCheerLayers(cfg, totalTime) + (ultCount > 0 ? 3 : 0)
     : 3 * ultCount
   // 次数自动 = 应援能量/2 + 全场应援；滑块 = **上限**（用户口径 2026-10-19「是修改上限而不是修改招式次数」），0 = 不设上限
   const auto = Math.floor(cheerEnergy / 2) + cheerGain
   return capOfAuto(auto, Math.max(0, Math.floor(setting(cfg, 'aire.absolutePitchCount'))))
 }
 
-/** 强化版占比：影画6 妄想时刻不退出 ⇒ 1；否则 = min(1, 终结次数 × 15s / 战斗时长)（CC-197 可逆近似） */
-export function aireEnhancedPitchShare(cinemaLevel: number, ultimateCount: number, totalTime: number): number {
-  if (cinemaLevel >= 6) return 1
-  if (!(totalTime > 0)) return 0
-  return clampRatio(Math.max(0, ultimateCount) * AIRE_DELUSION_SECONDS / totalTime)
+/**
+ * 强化版绝对音准占比。
+ *
+ * - 影画6：[妄想时刻]不退出 ⇒ 覆盖率 = **妄想窗口 / 有效战斗时间**（首次放大之前的绝对音准还是普通版）；
+ * - 其它命座：min(1, 终结次数 × 15s / 战斗时长)（CC-197 可逆近似）。
+ *
+ * CC-561：此前影画6 恒返回 1 = 「开局即妄想时刻」，与首次放大时间滑块矛盾（用户 2026-11-10 纠正）。
+ * 滑块置 0 时窗口 = 有效战斗时间 ⇒ 覆盖率 1，恢复旧口径。
+ */
+export function aireEnhancedPitchShare(cfg: AgentResourceInput['cfg'], ultimateCount: number, fallbackTotalTime = 0): number {
+  const cinemaLevel = cinemaLevelOf(cfg.aireCinemaLevel)
+  if (cinemaLevel >= 6) {
+    const effectiveSeconds = effectiveBattleTime({
+      battleTime: Number.isFinite(cfg.battleTime) ? cfg.battleTime : fallbackTotalTime,
+      invincibleTime: Number.isFinite(cfg.invincibleTime) ? cfg.invincibleTime : 0,
+    })
+    if (!(effectiveSeconds > 0)) return 0
+    return clampRatio(aireDelusionWindowSeconds(cfg, fallbackTotalTime) / effectiveSeconds)
+  }
+  if (!(fallbackTotalTime > 0)) return 0
+  return clampRatio(Math.max(0, ultimateCount) * AIRE_DELUSION_SECONDS / fallbackTotalTime)
 }
 
 /**
@@ -195,7 +287,7 @@ export function aireExtraNecessaryActions(cfg: AgentResourceInput['cfg'], state?
   const totalTime = cfg.battleTime
   const pitch = aireAbsolutePitchCount(cfg, state, totalTime)
   if (pitch <= 0) return null
-  const share = aireEnhancedPitchShare(cinemaLevelOf(cfg.aireCinemaLevel), state.ultimateCount, totalTime)
+  const share = aireEnhancedPitchShare(cfg, state.ultimateCount, totalTime)
   const enhanced = Math.round(pitch * share)
   const rows: ExtraNecessaryAction[] = []
   if (pitch - enhanced > 0) {
@@ -210,11 +302,20 @@ export function aireExtraNecessaryActions(cfg: AgentResourceInput['cfg'], state?
 }
 
 function cycleFromCfg(cfg: AgentResourceResultInput['cfg']): AireCycle {
-  return computeAireCycle({
+  const cycle = computeAireCycle({
     cinemaLevel: cinemaLevelOf(cfg.aireCinemaLevel),
     additionalActive: additionalAbilityActiveOf(cfg.panel),
     c2DelusionCoverage: clampRatio(setting(cfg, 'aire.c2DelusionCoverage')),
   })
+  // 结果卡展示用：影画4/6 的整局量与首次放大窗口（面板阶段拿不到 cfg，故在结果装配期回填）
+  // 影画4 两份量由 buildCharConfig 写进 cfg（单一事实源，不在此重算 floor）
+  return {
+    ...cycle,
+    c4EnergyGift: Number(cfg.aireC4EnergyGift ?? 0),
+    c4DecibelGift: Number(cfg.aireC4DecibelGift ?? 0),
+    c6CheerLayers: cycle.cinemaLevel >= 6 ? aireDelusionCheerLayers(cfg, cfg.battleTime) : 0,
+    firstUltTime: aireFirstUltTime(cfg),
+  }
 }
 
 function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
@@ -293,22 +394,29 @@ function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInp
           masteryValue: initialMastery,
         }
       : undefined,
-    note: `第三段绝对音准 #3 命中异常目标触发（次数=应援能量/2+全场应援）；基底属性取基底异常元素主施加者，结算区=爱芮。全场应援=终结×3层（影画6 另 +floor(t/6)，妄想内异常触发 6 秒CD上限近似）。`,
+    note: `第三段绝对音准 #3 命中异常目标触发（次数=应援能量/2+全场应援）；基底属性取基底异常元素主施加者，结算区=爱芮。全场应援=终结×3层（影画6 另 +floor((有效战斗时间−首次放大)/6)，妄想内异常触发 6 秒CD上限近似）。`,
   })
 }
 
 function patchAireExecutions({ cfg, executions }: AgentResourceInput): void {
   const cinema = cinemaLevelOf(cfg.aireCinemaLevel)
   if (cinema < 6) return
-  // 6命：妄想时刻不退出 → 强化版绝对音准全覆盖，强化直伤 +40% 全占比
+  /**
+   * 6 命 +40% 的作用范围 = 原文点名的两个载体：**强化版[普通攻击：绝对音准]**（妄想时刻内替换出的
+   * #5 行 1501008）与 **[终结技]**。
+   *
+   * CC-561：首次放大之前打的是普通版 #3（1501007），它**不是**强化版 ⇒ 不给 +40%。
+   * 此前对 1501005/1501006/1501007/1501022 一律加 +40%，前提是「妄想时刻从 t=0 起全覆盖」；
+   * 那个前提已被首次放大时间纠正，故收窄到强化版行（非强化行改由 aireEnhancedPitchShare 拆出）。
+   */
   for (const exec of executions) {
     if (!exec.moveId) continue
     if (exec.moveId === AIRE_ULTIMATE_MOVE_ID) {
       exec.dmgBonus = (exec.dmgBonus ?? 0) + AIRE_C6_ETHANOL_DMG_BONUS
       exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画6 终结技以太伤害+${AIRE_C6_ETHANOL_DMG_BONUS}%`
-    } else if (AIRE_ABSOLUTE_PITCH_MOVE_IDS.has(exec.moveId)) {
+    } else if (exec.moveId === AIRE_ENHANCED_PITCH_MOVE_ID) {
       exec.dmgBonus = (exec.dmgBonus ?? 0) + AIRE_C6_ETHANOL_DMG_BONUS
-      exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画6 强化绝对音准以太伤害+${AIRE_C6_ETHANOL_DMG_BONUS}%（妄想时刻全覆盖）`
+      exec.skillTableNote = `${exec.skillTableNote ?? ''}；影画6 强化绝对音准以太伤害+${AIRE_C6_ETHANOL_DMG_BONUS}%`
     }
   }
 }
@@ -324,7 +432,17 @@ function buildAireResourceSections({ result }: AgentResourceSectionsInput) {
       { label: '核心异常精通', value: `+${cycle.coreProficiency}`, detail: '计入面板，抬升异常/异放基底' },
       { label: '影画1以太积蓄抗性无视', value: `+${cycle.c1EtherAnomalyResIgnore}%`, detail: '普攻/特殊技/强特' },
       { label: '影画2无视防御', value: `+${cycle.c2DefIgnore}%`, detail: '16%+妄想时刻8%按覆盖率' },
-      { label: '影画6进场喧响', value: `+${cycle.c6DecibelGift}`, detail: '180秒一次整局近似' },
+      { label: '影画6进场喧响', value: `+${cycle.c6DecibelGift}`, detail: '进场 1200（整局一次）' },
+      {
+        label: '影画6妄想时刻全场应援',
+        value: `+${cycle.c6CheerLayers} 层`,
+        detail: `首次放大 ${cycle.firstUltTime}s 后，每 6s 至多 1 层（有效战斗时间扣无敌）`,
+      },
+      {
+        label: '影画4异放回能/喧响',
+        value: `${cycle.c4EnergyGift} 能量 / ${cycle.c4DecibelGift} 喧响`,
+        detail: '异放 10s 一次 × (4 能量 + 70 喧响)，整局总量',
+      },
     ],
     footer: cycle.note,
   }]
@@ -352,7 +470,17 @@ export const aireMechanic: AgentMechanicModule = {
   name: '爱芮·控场核心',
   description: '异常精通+90、影画1以太积蓄抗性无视+异放暴击、影画2无视防御、影画4异放回能/喧响、影画6进场喧响+强化直伤；核心异放已按异常比例结算。',
   settings: [
-    { id: 'aire.c2DelusionCoverage', label: '妄想时刻覆盖率', description: '影画2妄想时刻内额外无视8%防御的整局覆盖率', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
+    {
+      id: 'aire.firstUltTime',
+      label: '首次放大时间',
+      description: '爱芮第一次开出终结技、进入[妄想时刻]的局内秒数（0-180s，玩家通常 30s 开大）。影画6 的「妄想时刻内敌人进入属性异常 ⇒ +1 层[全场应援]（6s 内至多一次）」= floor((战斗时间−无敌时间−首次放大时间)/6)，强化版绝对音准占比同此窗口；置 0 = 旧口径（进场即妄想时刻）。',
+      default: AIRE_FIRST_ULT_SECONDS,
+      min: 0,
+      max: 180,
+      step: 1,
+      suffix: 's',
+    },
+    { id: 'aire.c2DelusionCoverage', label: '妄想时刻覆盖率', description: '影画2妄想时刻内额外无视8%防御的整局覆盖率（独立于上方首次放大时间，按需手动调）', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
     { id: 'aire.absolutePitchCount', label: '绝对音准#3次数上限', description: '第三段[普通攻击：绝对音准 #3]整局次数的**上限**。次数自动 = 应援能量/2 + 全场应援；调低 = 你手动吞掉一部分。0 = 不设上限。', default: 0, min: 0, max: 200, step: 1 },
     { id: 'aire.cheerEnergyBonus', label: '应援能量额外', description: '应援能量总量额外补充（自动公式已含强特×3+连携×4+帷幕4个/次×全队帷幕次数，此处补甜心四段等次要来源）', default: 0, min: 0, max: 400, step: 10 },
   ],
@@ -361,6 +489,19 @@ export const aireMechanic: AgentMechanicModule = {
   buildCharConfig: buildAireCharConfig,
   buildAnomalyEvents: buildAireAnomalyEvents,
   patchExecutions: patchAireExecutions,
+  /**
+   * 影画4 异放回能（整局总量）：异放每 10s 至多一次 × 4 点能量。
+   *
+   * CC-561：此前写进 `initialEnergyGift`（结果卡「开局赠送」）——那是**进场**通道，
+   * 把战斗内累计贴上去会让「开局赠送」显示 40+72=112，且提前成种子参与强特次数推导。
+   * 改走引擎通用「角色专属能量项」通道（结果卡单列一行，不乘效率，见 `calcEnergySource`）。
+   */
+  bonusEnergy({ cfg }) {
+    const value = Number(cfg.aireC4EnergyGift ?? 0)
+    return value > 0
+      ? [{ key: 'aireC4ReleaseEnergy', label: '影画4异放回能', value, detail: '异放 10s CD 上限 × 4 点（整局总量）' }]
+      : []
+  },
   // CC-197：绝对音准直伤行（通用必做动作通道，时间进账本估计）
   extraNecessaryAction: aireExtraNecessaryActions,
   buildResourceResult: buildAireResourceResult,
@@ -384,6 +525,10 @@ declare module '@/types/resource/config' {
     airePitchActionTime?: number
     /** 强化「绝对音高」动作时长（秒，缺省 1） */
     aireEnhancedPitchActionTime?: number
+    /** 影画4 异放回能整局总量（buildCharConfig 写，bonusEnergy 读） */
+    aireC4EnergyGift?: number
+    /** 影画4 异放喧响整局总量（buildCharConfig 写，同时累加进 extraSelfDecibelReward；结果卡展示读） */
+    aireC4DecibelGift?: number
   }
 }
 
