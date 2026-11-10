@@ -35,6 +35,12 @@
                 <thead>
                   <tr>
                     <th>影画</th>
+                    <!--
+                      **固定失衡·静态值**（用户 2026-11-10 裁决「可以迁移，毕竟核心逻辑是为了不误导用户」）：
+                      主读数 = 冻结 (失衡次数 K, 末窗截短 δ) 之后的逐级提升率；连续失衡那笔收益单列在第二行。
+                      口径与引擎读数单源在 cinemaUplift.ts（页面只印，规则 11）。
+                    -->
+                    <th>固定失衡·静态值</th>
                     <th>本队伤害 / 同条件对照</th>
                     <!--
                       通道分解（用户 2026-11-05 裁决「涉及资源的需要重算新资源的净增益，在此基础上乘面板属性增益」）：
@@ -50,6 +56,19 @@
                 <tbody>
                   <tr v-for="e in g.entries" :key="e.to">
                     <td>{{ e.to - 1 }}→{{ e.to }}</td>
+                    <td class="uplift-static" :title="staticTitle(e)">
+                      <div class="uplift-main-line" :class="upliftCellClass(displayPct(e.gainPct))">{{ pctText(e.gainPct) }}</div>
+                      <!--
+                        连续失衡贡献（与副词条评分的「击破区」同一份口径与同一套字段）：
+                        临界 = 基线末窗被截短、本级自由收敛后不再截短；非临界 = 带内推进/后退。
+                      -->
+                      <div
+                        v-if="e.continuous"
+                        class="uplift-main-line uplift-sub"
+                        :class="upliftCellClass(displayContinuous(e.continuous.gainPct))"
+                      >连续失衡 {{ continuousDeltaText(e.continuous.gainPct) }} · {{ continuousTag(e.continuous) }}</div>
+                      <div v-else class="uplift-main-line uplift-sub uplift-flat">连续失衡 —（未开自由口径）</div>
+                    </td>
                     <!--
                       主读数三行（用户 2026-11-06 口径「用户可能想要的是当前情况的一个确切值」）：
                        ① 本队伤害 X→Y（Δ%）= 两级**交付点**（前沿点）之间的比；
@@ -119,6 +138,16 @@
             </div>
           </div>
           <div class="cinema-uplift-note">
+            <b>固定失衡·静态值（第一列）</b>：本命提升率<b>只算命座本身</b>——把失衡次数<b>和末窗截短 δ</b> 一起冻在
+            C0 那一帧上（两帧处在<b>同一个失衡状态</b>），所以它不被「这一级顺带把末窗填满了 / 填得更短了」误导。
+            多数情况下看这个数。
+            <br>
+            <b>连续失衡贡献（同一列第二行）</b>：命座改冲击力 / 转模时，失衡状态本身会动，那笔收益<b>不是属性收益</b>，
+            单列在这里、<b>不并入静态值</b>（用户 2026-11-09：「让人分辨原始评分和特殊条件下的评分，防止用户被特殊评分误导」）。
+            三态：<b>临界</b>（基线末窗被截短、本级自由收敛后不再截短——「把末窗填满了」）、
+            <b>非临界·带内推进/后退</b>（仍在带上，只是截短量变了）、<b>失衡不变</b>。
+            恒等式：<code>静态值 + 连续失衡贡献 = 自由口径</code>（自由口径 = 不锁次数、不冻 δ 的收敛对比，悬浮里给）。
+            <br><br>
             <b>主读数三行</b>（用户 2026-11-06 口径「当前情况的一个确切值 + 同条件对照」）：
             <br>
             ① <b>本队伤害 X→Y（Δ%）</b> = 两级各自的<b>交付点</b>（= 该级在「失衡窗数」这根轴上的<b>前沿点</b>；
@@ -185,6 +214,7 @@ import {
   type CinemaUpliftFrontierEntry,
   type CinemaUpliftMetric,
   type CinemaUpliftRow,
+  type CinemaContinuousOutput,
 } from '@/composables/cinemaUplift'
 import { fmt } from '@/utils/format'
 
@@ -381,7 +411,7 @@ function sameKReasonText(reason: string | null): string {
 /** 主读数格的悬浮说明：两条口径的完整含义 + 交付点来源（谁是前沿扩展来的） */
 function frontierTitle(e: CinemaUpliftEntry): string {
   const f = frontierOf(e)
-  const base = `伤害提升率 ${fmt(e.gainPct, 2)}%（口径 = 自由收敛停点）`
+  const base = `伤害提升率 ${fmt(e.gainPct, 2)}%（口径 = 固定失衡·静态值）`
   if (!f) return base + (e.gainPct < 0 ? '（预算权衡：该命座资源侧收益被时间成本抵消）' : '')
   const src = (s: 'converged' | 'pinned', drift: number): string =>
     s === 'pinned' ? `前沿扩展（比收敛停点高 ${fmt(drift, 2)}%）` : '收敛停点即前沿'
@@ -392,6 +422,61 @@ function frontierTitle(e: CinemaUpliftEntry): string {
     `收敛停点口径的提升率 ${fmt(e.gainPct, 2)}%（与上面相差 ${fmt(f.pct - e.gainPct, 2)}pp = 交付点漂移）`,
     `窗 ${fmt(f.windowDuration, 1)}s／有效 ${fmt(f.effectiveTime, 0)}s；可行点 ${f.beforeFeasibleCount}/${f.afterFeasibleCount} 个`,
   ].join('\n')
+}
+
+/**
+ * **连续失衡贡献的三态**（用户 2026-11-09：「失衡不变的要求一个值，失衡变了的要求一个值，
+ * 代表击破效率在临界和非临界的贡献」）。三态必须能区分，否则读者分不清「命座变强」与「失衡状态变了」。
+ *
+ * ⚠ 判据全部来自引擎读数（`continuous`），页面不按 δ 反推。
+ */
+function continuousTag(c: CinemaContinuousOutput): string {
+  if (c.crossedCritical) return '临界：末窗被填满'
+  if (c.clipDeltaSeconds > 1e-9) return '非临界：带内推进'
+  if (c.clipDeltaSeconds < -1e-9) return '非临界：带内后退'
+  return '失衡不变'
+}
+
+/** 显示位上为 0 的百分比不着色（`displayDelta` 同一条纪律：不许出现「绿色的 +0%」） */
+function displayPct(v: number): number {
+  return Math.abs(Number(v.toFixed(1))) === 0 ? 0 : v
+}
+
+/** 百分比文案：一位小数；显示位上为 0 的印 `—` */
+function pctText(v: number): string {
+  return displayPct(v) === 0 ? '—' : signed1(v) + '%'
+}
+
+/**
+ * 连续失衡贡献的显示文案：pp 一位小数；**显示位上为 0 的一律 `—`**
+ * （与指标栏 `displayDelta` 同一条纪律：不许出现「绿色的 +0pp」）。
+ */
+function continuousDeltaText(v: number): string {
+  return Math.abs(Number(v.toFixed(2))) === 0 ? '—' : signed1(v) + 'pp'
+}
+
+/** 显示位上为 0 的连续失衡贡献不着色（与指标栏的 `displayDelta` 同一条纪律） */
+function displayContinuous(v: number): number {
+  return Math.abs(Number(v.toFixed(2))) === 0 ? 0 : v
+}
+
+/** 静态值格的悬浮：两笔账 + 恒等式，读者能自己核账 */
+function staticTitle(e: CinemaUpliftEntry): string {
+  const lines = [
+    '主读数 = 固定失衡·静态值：失衡次数与末窗截短 δ 都冻在 C0 帧上（两帧同一个失衡状态 ⇒ 只比命座本身）',
+  ]
+  const c = e.continuous
+  if (!c) {
+    lines.push('本次未开自由口径（只给静态值）')
+    return lines.concat(e.gainPct < 0 ? '（预算权衡：该命座资源侧收益被时间成本抵消）' : '').join('\n')
+  }
+  lines.push(
+    '冻结状态：K' + c.frozenStunCount + '、末窗被截短 ' + fmt(c.frozenClipSeconds, 2) + 's（易伤覆盖 ' + fmt(c.frozenCoverage * 100, 1) + '%）',
+    '自由收敛：末窗被截短 ' + fmt(c.freeClipSeconds, 2) + 's（易伤覆盖 ' + fmt(c.freeCoverage * 100, 1) + '%）· ' + continuousTag(c),
+    '连续失衡贡献 ' + signed1(c.gainPct) + 'pp（带内推进 ' + fmt(c.bandAdvance * 100, 1) + '%）',
+    '静态值 ' + signed1(e.gainPct) + '% + 连续失衡 ' + signed1(c.gainPct) + 'pp = 自由口径 ' + signed1(e.freeformGainPct ?? 0) + '%',
+  )
+  return lines.join('\n')
 }
 
 function upliftWarnLabel(e: CinemaUpliftEntry): string {

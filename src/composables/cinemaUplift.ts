@@ -38,6 +38,8 @@ import { isBatchAborted, type BatchControl } from '@/composables/batchTask'
 import type { ResourceCalc } from '@/composables/useResourceCalc'
 import { computePanelPhases } from '@/composables/resourceCalc/panelPhases'
 import { bindPoolStore, computeCinemaBreakdown, formulaRoleOf, isExecPanelStat } from '@/composables/cinemaUpliftBreakdown'
+import { continuityTruncEnabled, deliveredStunWindowClip } from '@/composables/resourceCalc/solveTeam'
+import type { SubstatContinuousOutput } from '@/composables/substatScore'
 import type { DamagePoolContext } from '@/composables/resourceCalc/damagePool'
 import {
   compareAtSameK,
@@ -109,6 +111,25 @@ export interface CinemaUpliftEntry {
    * 恒等式：`(1+resource)(1+exec)(1+attr) = 1+gainPct`。
    */
   breakdown: CinemaUpliftBreakdown
+  /**
+   * **连续失衡侧读数**（用户 2026-11-10 裁决「可以迁移，毕竟核心逻辑是为了不误导用户」）。
+   *
+   * 主读数 `gainPct` 自本卡起是**固定失衡状态下的静态值**：失衡次数由 `enemy.stunCountLock` 钉在
+   * 调用方给的锁值上，末窗时钟截短 δ 由 `enemy.stunClipLock` 钉在 **C0 帧**的实测值上
+   * ⇒ 逐级比较的两帧处在**同一个失衡状态**（同 K、同 δ），主读数只反映命座本身。
+   * 连续性那笔收益（把末窗填得更满 / 跨出带）单列在本字段，**不并入主读数**。
+   *
+   * `null` = 本次分析没开自由口径（`freeform: false`，例如队伍对比的 N×M 网格——它自己的
+   * 「不锁失衡」通道就是自由口径），不是「连续失衡贡献为 0」。
+   */
+  continuous: CinemaContinuousOutput | null
+  /**
+   * **自由口径**的本队提升率（%，= 不锁失衡次数、不冻 δ 的收敛帧对比）。
+   *
+   * 恒等式（判据逐级断言，1e-9）：`gainPct + continuous.gainPct ≡ freeformGainPct`。
+   * `null` = 未开自由口径。
+   */
+  freeformGainPct: number | null
 }
 
 /**
@@ -466,11 +487,35 @@ export function buildCinemaMetrics(
   })
 }
 
+/**
+ * 连续失衡侧读数——**类型即副词条侧那一份**（`SubstatContinuousOutput`，规则 11：同形不许各写一份）。
+ *
+ * 语义逐字相同：`frozen*` = 主读数冻结的那个失衡状态，`free*` = 本帧自由收敛的失衡状态，
+ * `gainPct` = 自由口径 − 主读数（> 0 = 连续失衡贡献为正）。
+ */
+export type CinemaContinuousOutput = SubstatContinuousOutput
+
 /** 锁定场景内的一帧读数（伤害 / 大招 / 附加指标同场景，R1 要求「同场景、同固定条件」） */
 export interface SceneReading {
   dmg: number
+  /** 本槽伤害（Σ 该槽的 `damagePoolRows`；`slot < 0` 时 = 全队）——同一帧内取，零额外求值 */
+  own: number
   ult: number
   metrics: Record<string, number> | null
+  /**
+   * 本帧**交付的末窗截短 δ**（秒，0 = 末窗完整）。
+   *
+   * 算式单源 = `solveTeam#deliveredStunWindowClip`（装配溢出与攒条截短取大，上限一窗）——
+   * 与引擎真的从覆盖率里扣掉的那个量**同一个数**。冻结失衡状态时钉的就是它（见 `freezeClipOf`）：
+   * 钉 `convergence` 那一路会在「装配溢出更大」的队上钉出一个引擎没算过的完整末窗。
+   */
+  clip: number
+  /** 本帧易伤覆盖率（失衡易伤乘区的系数） */
+  coverage: number
+  /** 本帧报出的失衡次数（锁口径下 = 锁值） */
+  stunCount: number
+  /** 本帧的失衡窗长（秒）——`bandAdvance` 的分母，必须同帧取（仪玄 C2 会让窗长 18→21s） */
+  windowDuration: number
 }
 
 export interface AnalyzeCinemaUpliftOptions {
@@ -493,6 +538,16 @@ export interface AnalyzeCinemaUpliftOptions {
   resolveName?: (agentId: string, slot: number) => string
   /** 页面「重新计算」/ 离开页面时中止；中止后返回已算完的槽位（未完成的槽位整行丢弃） */
   control?: BatchControl
+  /**
+   * **自由口径**（默认 true）：每级多读一帧「不锁次数、不冻 δ」的收敛帧，用来出
+   * `continuous`（连续失衡贡献）与 `freeformGainPct`，并守住恒等式
+   * `gainPct + continuous.gainPct ≡ freeformGainPct`。
+   *
+   * 成本 = 每槽 `maxLevel + 1` 次额外外层求值（单槽 7 → 14 次；带 `frontier` 时整页只多 ~17%，
+   * 因为钉 K 扫描本来就是大头）。**N×M 网格传 false**：它自己的「不锁失衡」那一档就是自由口径，
+   * `stunChannelDeltaPct` 已经给出同一笔差额，没必要再翻一倍成本。
+   */
+  freeform?: boolean
 }
 
 /**
@@ -500,16 +555,73 @@ export interface AnalyzeCinemaUpliftOptions {
  * CC-347 前由页面以 `readDamage / readUltimateTotal / readMetrics` 三个闭包传入（读的是 UI 现场）；
  * 现在三者都是 `calc` 的纯函数，分析器在自己的场景里直接读，调用方不再能传错现场。
  */
-export function readCinemaScene(calc: ResourceCalc): SceneReading {
+export function readCinemaScene(calc: ResourceCalc, slot = -1): SceneReading {
   const characters = calc.resourceResult.value?.characters
+  const rr = calc.resourceResult.value
+  const windowDuration = calc.windowDuration.value
+  let own = calc.teamTotalDamage.value
+  if (slot >= 0) {
+    own = 0
+    for (const row of calc.damagePoolRows.value) if (row.slot === slot) own += row.totalDamage
+  }
   return {
     dmg: calc.teamTotalDamage.value,
+    own,
     ult: (characters ?? []).reduce((sum, c) => sum + c.ultimateCount, 0),
     metrics: collectCinemaMetrics({
       characters,
       stunPool: calc.stunPoolResult.value,
       anomalyPool: calc.anomalyPoolResult.value,
     }),
+    // δ 的单一算式（引擎真扣的那个量）：装配溢出与攒条截短取大、上限一窗
+    clip: rr ? deliveredStunWindowClip(rr, windowDuration, continuityTruncEnabled()) : 0,
+    coverage: calc.stunCoverage.value,
+    stunCount: calc.stunPoolResult.value?.stunCount ?? -1,
+    windowDuration,
+  }
+}
+
+/**
+ * **连续失衡贡献**（纯函数；页面、测试与`analyzeCinemaUplift` 共用这一份，规则 11）。
+ *
+ * 四帧的来源与语义：
+ * - `frozen` = **C0 基线帧**（锁 K、钉 δ）：主读数冻结的就是它的 (次数, δ)；
+ * - `current` = 本级**冻结帧**（同一个 K、同一个 δ）：主读数的分子；
+ * - `freeBefore` / `freeAfter` = 两级各自**自由收敛**帧（不锁次数、不冻 δ）。
+ *
+ * `gainPct` = 自由口径 − 主读数（**定义式**，不是拟合）⇒ 恒等式
+ * `主读数 + continuous.gainPct ≡ 自由口径` 逐级成立（1e-9，判据见
+ * `__tests__/cinemaUpliftStaticValue.test.ts`）。
+ *
+ * ⚠ `freeClipSeconds` 与 `frozenClipSeconds` **不是同一口径下量的**：前者是自由收敛帧（K 可能不同），
+ * 后者是 K 锁下 C0 帧的实测值。这么取是因为「临界」问的是**真实发生的事**（让失衡自由收敛后末窗还截不截），
+ * 而主读数冻结的是一个**假设状态**（玩家就打 K 次）。两个量各自可解释，混算没有意义——所以只相减报
+ * `clipDeltaSeconds` 作「带内推进了几秒」的粗读数，真正的贡献看 `gainPct`。
+ */
+export function buildCinemaContinuous(input: {
+  frozen: SceneReading
+  current: SceneReading
+  freeBefore: SceneReading
+  freeAfter: SceneReading
+  /** 主读数（冻结口径）的逐级提升率，% */
+  gainPct: number
+  /** 自由口径的逐级提升率，% */
+  freeformGainPct: number
+}): CinemaContinuousOutput {
+  const clipDeltaSeconds = input.frozen.clip - input.freeAfter.clip
+  const windowDuration = input.current.windowDuration
+  const ownGainOf = (b: SceneReading, a: SceneReading): number => (b.own > 0 ? (a.own / b.own - 1) * 100 : 0)
+  return {
+    frozenStunCount: input.frozen.stunCount,
+    frozenClipSeconds: input.frozen.clip,
+    frozenCoverage: input.frozen.coverage,
+    freeClipSeconds: input.freeAfter.clip,
+    freeCoverage: input.freeAfter.coverage,
+    clipDeltaSeconds,
+    bandAdvance: windowDuration > 0 ? Math.max(-1, Math.min(1, clipDeltaSeconds / windowDuration)) : 0,
+    crossedCritical: input.frozen.clip > 0 && input.freeAfter.clip <= 0,
+    gainPct: input.freeformGainPct - input.gainPct,
+    ownGainPct: ownGainOf(input.freeBefore, input.freeAfter) - ownGainOf(input.frozen, input.current),
   }
 }
 
@@ -523,7 +635,7 @@ export async function analyzeCinemaUplift(
   opts: AnalyzeCinemaUpliftOptions,
 ): Promise<CinemaUpliftRow[]> {
   const { config, calc } = scenario
-  const { targetStunCount, slots = [0, 1, 2], maxLevel = 6, resolveName, control, frontier = false } = opts
+  const { targetStunCount, slots = [0, 1, 2], maxLevel = 6, resolveName, control, frontier = false, freeform = true } = opts
   const catalogStore = useCatalogStore()
   const originalCinemas = config.team.map(c => c.cinemaLevel)
   const rows: CinemaUpliftRow[] = []
@@ -542,16 +654,40 @@ export async function analyzeCinemaUplift(
    * 修前分解在锁窗外单独读 ⇒ 资源型命座（尤其改循环的 6 命）两个口径对不上
    * （实测 1181C6：页面 59.45% vs 分解连乘 71.02%；1011C2：3.65% vs 16.26%）。
    */
-  async function readScene(slot: number): Promise<SceneReading & { shot: BreakdownSnapshot }> {
-    const target = targetStunCount > 0 ? targetStunCount : -1
-    config.enemy.stunCountLock = target
+  const lockK = targetStunCount > 0 ? targetStunCount : -1
+  /** 冻结失衡状态用的 δ（场景内临时设；帧级与函数级双重还原，与 scoreSubstats 同款） */
+  const originalClipLock = config.enemy.stunClipLock
+
+  /**
+   * 读一帧：`countLock` = 失衡次数锁（-1 = 自由收敛），`clipLock` = 末窗截短 δ 的冻结值
+   * （undefined = 不冻，按本帧自己的 δ）。
+   *
+   * **本卡（2026-11-10）起主读数冻结的是 (K, δ) 两个量**：只钉次数时，同一个 K 下 `cont` 仍可不同
+   * ⇒ 末窗截短不同 ⇒ 覆盖率不同 ⇒ 主读数把「连续失衡兑现」漏进来（实测 billy-qingyi-lucia 槽1
+   * C2→C3：只钉次数 −8.97%、冻 δ 后 +0.4%~0.6%，那 9.5pp 全是末窗从 6.22s 被截到 15.32s 的差）。
+   * 用户 2026-11-09 裁决：「失衡不变的要求一个值，失衡变了的要求一个值」。
+   */
+  async function readFrame(
+    slot: number,
+    countLock: number,
+    clipLock: number | undefined,
+  ): Promise<SceneReading & { shot: BreakdownSnapshot }> {
+    config.enemy.stunCountLock = countLock
+    config.enemy.stunClipLock = clipLock
     await nextTick()
-    const reading = readCinemaScene(calc)
-    const shot = readBreakdownSnapshot(slot)
-    config.enemy.stunCountLock = -1
-    await nextTick()
-    return { ...reading, shot }
+    try {
+      return { ...readCinemaScene(calc, slot), shot: readBreakdownSnapshot(slot) }
+    } finally {
+      config.enemy.stunCountLock = -1
+      config.enemy.stunClipLock = originalClipLock
+      await nextTick()
+    }
   }
+
+  /** 主读数那一帧（锁 K；给了 `clip` 就连 δ 一起冻） */
+  const readScene = (slot: number, clip?: number) => readFrame(slot, lockK, clip)
+  /** 自由口径那一帧（不锁次数、不冻 δ）—— 只服务 `continuous` / `freeformGainPct` */
+  const readFreeScene = (slot: number) => readFrame(slot, -1, undefined)
 
   /**
    * 一帧的**分解快照**：伤害池上下文（已绑定该级的命座等级）+ 结算面板。
@@ -657,7 +793,24 @@ export async function analyzeCinemaUplift(
     /** 本槽的前沿缓存：`to-1` 那条扫描结果，供 `to` 那一级当 before 复用（链式逐级，见 readFrontier） */
     let frontierCache: KFrontier | null = null
     const beforeScene = await readScene(slot)
+    /**
+     * **冻结值 = C0 帧（同 K 锁下）实测交付的末窗截短 δ**。
+     *
+     * C0 那一帧自己就是冻结帧：钉 δ 到它自己的 δ 是恒等变换（逐位相同），所以不必重读一次。
+     * 逐级比较的两帧因此处在**同一个失衡状态**（同 K、同 δ）——这就是「固定失衡·静态值」。
+     * 未锁次数（`lockK < 0`）时不冻 δ：那时主读数本身就是自由口径。
+     */
+    /**
+     * 冻结 δ 前，同一 K 下 `cont` 仍可不同 ⇒ 末窗截短差被算进提升率（实测 A/B：105 预设 × C1..C6 = 1890 级里
+     * 389 级主读数会变（>1e-9），35 级 |Δ|>1pp、最大 ±10.3pp；单角色夹具 384 级里 45 级会变、25 级 |Δ|>1pp）。
+     * 典型：`billy-qingyi-lucia` 槽1 C2→C3 从 −8.97% 变 +0.4%~0.6%，那 9.5pp 全是末窗从 6.22s 被截到 15.32s 的差。
+     */
+    // @fact 命座提升率·主读数 口径: 主读数 gainPct = 固定失衡·静态值——失衡次数（stunCountLock，取调用方给的锁值）与末窗截短 δ（stunClipLock = C0 帧在同一 K 锁下实测交付的 δ，含装配溢出、上限一窗）都冻住，逐级两帧处在同一个失衡状态 ⇒ 主读数只反映命座本身；连续失衡那笔收益单列在 entry.continuous（与副词条评分同形同义），恒等式 gainPct + continuous.gainPct ≡ freeformGainPct 逐级成立 | 据 用户@2026-11-10「可以迁移，毕竟核心逻辑是为了不误导用户」+ 用户@2026-11-09「失衡不变的要求一个值，失衡变了的要求一个值」 | 验 src/composables/__tests__/cinemaUpliftStaticValue.test.ts | 锚 src/composables/cinemaUplift.ts#analyzeCinemaUplift | 信 确认
+    // ⟳复核: 复核「静态值是否仍是用户的主观察目标」——若用户要求本页的 frontier 卡也冻结 δ（另一张卡），或要求主读数改回自由口径，就把 gainPct 与 continuous 的归属重新裁决 | 到期 2027-03-31
+    const frozenClip = lockK >= 0 ? beforeScene.clip : undefined
     let before = beforeScene
+    /** 自由口径的上一帧（只服务 `continuous` / `freeformGainPct`；`freeform: false` 时为 null） */
+    let freeBefore = freeform ? await readFreeScene(slot) : null
     let panelBefore = computePanelPhases(slot, config, catalogStore, calc.effectiveWEngineCoverages.value, calc.effectiveDiscEffectCoverages.value, calc.effectiveTeammateBuffCoverages.value)?.inCombat ?? null
     // 分解用的 C0 现场 = 与 gainPct **同一次**锁窗内读出的快照（面板数组取结算侧那一份）
     let breakBefore = beforeScene.shot
@@ -666,8 +819,9 @@ export async function analyzeCinemaUplift(
       if (isBatchAborted(control)) return rows
       config.setCinemaLevel(slot, to)
       config.syncTeammateBuffsFromTeam()
-      const afterScene = await readScene(slot)
+      const afterScene = await readScene(slot, frozenClip)
       const after = afterScene
+      const freeAfter = freeform ? await readFreeScene(slot) : null
       const panelAfter = computePanelPhases(slot, config, catalogStore, calc.effectiveWEngineCoverages.value, calc.effectiveDiscEffectCoverages.value, calc.effectiveTeammateBuffCoverages.value)?.inCombat ?? null
       const breakAfter = afterScene.shot
       const pb = panelBefore
@@ -675,7 +829,15 @@ export async function analyzeCinemaUplift(
       const changedFields = pb && panelAfter
         ? Object.keys(panelAfter).filter(k => Math.abs((getPanelStat(panelAfter, k) ?? 0) - (getPanelStat(pb, k) ?? 0)) > 1e-9)
         : []
+      // 主读数 = **固定失衡·静态值**（两帧同在 (K, δ) 冻结态上）
       const gainPct = before.dmg > 0 ? ((after.dmg - before.dmg) / before.dmg) * 100 : 0
+      // 自由口径：不锁次数、不冻 δ 的收敛帧逐级对比（用户 2026-11-09「失衡变了的要求一个值」）
+      const freeformGainPct = freeBefore && freeAfter && freeBefore.dmg > 0
+        ? ((freeAfter.dmg / freeBefore.dmg) - 1) * 100
+        : null
+      const continuous: CinemaContinuousOutput | null = freeBefore && freeAfter && freeformGainPct !== null
+        ? buildCinemaContinuous({ frozen: before, current: after, freeBefore, freeAfter, gainPct, freeformGainPct })
+        : null
       const metrics = buildCinemaMetrics(before.metrics, after.metrics)
       // 三态判定：面板字段变化 → ok；无面板变化但伤害移动（|gain| ≥ ε，含负号）→ execLevel
       // ——伤害发生符号变化本身就是执行/资源级生效的证据（如卢西娅C4帷幕喧响挤占时间预算，
@@ -706,9 +868,15 @@ export async function analyzeCinemaUplift(
       // 它们长在面板上却不是属性增益 —— 用 formulaRoleOf 把它们挡在 ok 之外（与分解的判据同源）。
       const attrChannelMoved = breakdown.components.includes('ATTR')
         || changedFields.some(f => formulaRoleOf(f) !== null && !isExecPanelStat(f))
+      /**
+       * 连续失衡那一路也算「接进了计算」（2026-11-10 随静态值迁移补）：
+       * 主读数冻结后，一个**只**靠连续失衡生效的命座 gainPct 会接近 0——若只看它就判 `unimplemented`，
+       * 页面上会出现假的「⚠无变化」角标（AGENTS 规则 5 的肉眼自检面被污染）。
+       */
+      const continuousMoved = Math.abs(continuous?.gainPct ?? 0) >= UPLIFT_EPSILON_PCT
       const warn: CinemaUpliftEntry['warn'] = attrChannelMoved
         ? 'ok'
-        : Math.abs(gainPct) >= UPLIFT_EPSILON_PCT || metricMoved || breakdown.components.length > 0
+        : Math.abs(gainPct) >= UPLIFT_EPSILON_PCT || continuousMoved || metricMoved || breakdown.components.length > 0
           ? 'execLevel' // 面板无变化但伤害 / 资源 / 执行级有移动：资源型或执行级效果
           : 'unimplemented' // 无字段无伤害无资源移动：效果可能未接进计算
       // 前沿扩展（opt-in，见 AnalyzeCinemaUpliftOptions#frontier）：前一级的前沿按槽复用 ⇒ 每级只扫 1 条
@@ -719,6 +887,8 @@ export async function analyzeCinemaUplift(
       entries.push({
         to,
         gainPct,
+        continuous,
+        freeformGainPct,
         frontier: frontierEntry ?? undefined,
         ultBefore: before.ult,
         ultAfter: after.ult,
@@ -736,6 +906,7 @@ export async function analyzeCinemaUplift(
         },
       })
       before = after
+      freeBefore = freeAfter
       panelBefore = panelAfter
       breakBefore = breakAfter
     }

@@ -200,6 +200,10 @@ describe('R1 附加指标栏（失衡值/积蓄/喧响/能量）', () => {
     // 机器面锁死口径：分析器读场景结果（teamTotalDamage / resourceResult / stunPoolResult / anomalyPoolResult）时，
     // 场景的 enemy.stunCountLock 必须都等于 targetStunCount。若有人把 ult 或 metrics 移回锁外读（R1 前的形态），本用例立刻变红。
     // CC-347 前靠页面传入的三个读数闭包打点；现在读数在分析器内部，改为给 scenario.calc 套一层只记录不改值的 Proxy。
+    //
+    // ⚠ 2026-11-10 起本用例跑 `freeform: false`：连续失衡贡献要读**自由收敛帧**（锁外），那是
+    // **另一条通道**，不是「同一栏读数分裂成两个现场」。锁口径那条通道的纪律要求没变，且由下一条用例
+    // （freeform 开关不影响主读数逐位）把守「自由帧不许污染 entry 的任何一个数」。
     await setupHarness([{ agentId: '1371' }, { agentId: '1251' }, { agentId: '1271' }])
     const target = 2
     const scenario = createAnalysisScenario()
@@ -211,7 +215,7 @@ describe('R1 附加指标栏（失衡值/积蓄/喧响/能量）', () => {
       },
     })
     try {
-      await analyzeCinemaUplift({ config: scenario.config, calc }, { targetStunCount: target, slots: [0] })
+      await analyzeCinemaUplift({ config: scenario.config, calc }, { targetStunCount: target, slots: [0], freeform: false })
     } finally {
       scenario.dispose()
     }
@@ -223,6 +227,31 @@ describe('R1 附加指标栏（失衡值/积蓄/喧响/能量）', () => {
       ).toEqual([])
     }
   })
+
+  it('★ 自由口径不污染静态值：freeform 开关只多出 continuous，entry 的每个数逐位相同', async () => {
+    // 连续失衡贡献要读自由收敛帧（锁外）。它若能反过来改动主读数/指标/分解，就等于「两个口径混在一个数里」
+    // ——那正是本卡（2026-11-10）要消灭的东西。逐位比较是唯一能钉住它的判据（不是「量级差不多」）。
+    const suite = [{ agentId: '1371' }, { agentId: '1251' }, { agentId: '1271' }]
+    const run = async (freeform: boolean) => {
+      await setupHarness(suite)
+      return withAnalysisScenario(s => analyzeCinemaUplift(s, { targetStunCount: 2, slots: [0], freeform }))
+    }
+    const withFree = await run(true)
+    const withoutFree = await run(false)
+    const a = withFree[0]!.entries
+    const b = withoutFree[0]!.entries
+    expect(a).toHaveLength(b.length)
+    for (let i = 0; i < a.length; i++) {
+      expect(a[i]!.gainPct, `C${a[i]!.to} 主读数被自由口径改动了`).toBe(b[i]!.gainPct)
+      expect(a[i]!.metrics).toEqual(b[i]!.metrics)
+      expect(a[i]!.breakdown).toEqual(b[i]!.breakdown)
+      expect(a[i]!.changedFields).toEqual(b[i]!.changedFields)
+      expect(a[i]!.ultAfter).toBe(b[i]!.ultAfter)
+      // 自由口径开启时必须真的多出东西（反空洞：否则上面的「逐位相同」是拿两个 null 在比）
+      expect(b[i]!.continuous).toBeNull()
+      expect(a[i]!.continuous).not.toBeNull()
+    }
+  }, 300_000)
 
   // （CC-347 删除）原「向后兼容：不传 readMetrics 时 metrics 为空数组」——读数闭包已收进分析器
   // （`readCinemaScene`），附加指标恒在同一帧读，不存在「不传」这条分支，用例无对象可测。

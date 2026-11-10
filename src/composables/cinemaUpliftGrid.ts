@@ -291,6 +291,9 @@ export async function computeCinemaUpliftGrid(
           maxLevel,
           resolveName: opts.resolveName,
           control: opts.control,
+          // 网格不跑自由口径：它自己的「不锁失衡」通道（`includeFree`）就是自由口径，
+          // `stunChannelDeltaPct` 已经给出同一笔差额 ⇒ 再跑一遍只会让 N×M 格成本翻倍（见 AnalyzeCinemaUpliftOptions#freeform）。
+          freeform: false,
         })
         const lockedEntries = lockedRows[0]?.entries ?? []
 
@@ -307,6 +310,7 @@ export async function computeCinemaUpliftGrid(
             maxLevel,
             resolveName: opts.resolveName,
             control: opts.control,
+            freeform: false,
           })
           freeEntries = freeRows[0]?.entries ?? []
           const freeTop = readFreeStunCount(scenario)
@@ -340,6 +344,7 @@ export async function computeCinemaUpliftGrid(
             maxLevel,
             resolveName: opts.resolveName,
             control: opts.control,
+            freeform: false,
           })
           const entries = sampleRows[0]?.entries ?? []
           samples.push({ lock: sampleLock, entries, totalPct: cumulativeUpliftPct(entries) })
