@@ -18,6 +18,7 @@ import {
   aireMechanic,
   aireAbsolutePitchCount,
   aireDelusionCheerLayers,
+  aireDelusionCoverage,
   aireEnhancedPitchShare,
 } from '@/mechanics/agents/aire'
 import { setupHarness } from '@/test/harness'
@@ -36,7 +37,6 @@ function cycle(overrides: Partial<Parameters<typeof computeAireCycle>[0]> = {}) 
   return computeAireCycle({
     cinemaLevel: 6,
     additionalActive: true,
-    c2DelusionCoverage: 1,
     ...overrides,
   })
 }
@@ -46,10 +46,10 @@ describe('爱芮（1501）总量', () => {
     expect(cycle({ cinemaLevel: 0 }).coreProficiency).toBe(AIRE_CORE_PROFICIENCY)
     expect(cycle({ cinemaLevel: 0 }).c1EtherAnomalyResIgnore).toBe(0)
     expect(cycle({ cinemaLevel: 1 }).c1EtherAnomalyResIgnore).toBe(AIRE_C1_ETHER_ANOMALY_RES_IGNORE)
+    // 面板/纯函数路径只承载常驻 16%；妄想时刻那 8% 由覆盖率在结算期补（CC-561）
     expect(cycle({ cinemaLevel: 1 }).c2DefIgnore).toBe(0)
-    expect(cycle({ cinemaLevel: 2 }).c2DefIgnore).toBe(AIRE_C2_DEF_IGNORE + AIRE_C2_DELUSION_DEF_IGNORE)
-    expect(cycle({ cinemaLevel: 2, c2DelusionCoverage: 0.5 }).c2DefIgnore).toBe(
-      AIRE_C2_DEF_IGNORE + AIRE_C2_DELUSION_DEF_IGNORE * 0.5)
+    expect(cycle({ cinemaLevel: 2 }).c2DefIgnore).toBe(AIRE_C2_DEF_IGNORE)
+    expect(cycle({ cinemaLevel: 6 }).c2DefIgnore).toBe(AIRE_C2_DEF_IGNORE)
     expect(cycle({ cinemaLevel: 5 }).c6DecibelGift).toBe(0)
     expect(cycle({ cinemaLevel: 6 }).c6DecibelGift).toBe(AIRE_C6_DECIBEL_GIFT)
   })
@@ -90,9 +90,14 @@ describe('爱芮完整计算链', () => {
   it('★ 异放专属减防层级：只在异放行结算，异常父层（侵蚀/感电/紊乱）读不到', async () => {
     const { catalog, config } = await setup('1141', 2)
     const panel = computePanelPhases(0, config, catalog)!.inCombat
-    // ① 异放专属层真的产出：releaseModifier 返回影画2 的量（16 + 妄想时刻 8×覆盖率）
-    const mod = aireMechanic.releaseModifier!({ self: { slot: 0, cinemaLevel: 2, panel } })
-    expect(mod.enemyDefReduction).toBeCloseTo(AIRE_C2_DEF_IGNORE + AIRE_C2_DELUSION_DEF_IGNORE, 5)
+    // ① 异放专属层真的产出：常驻 16% 在面板上；妄想时刻那 8% 由覆盖率在结算期补（CC-561）
+    const cfg = { aireCinemaLevel: 2, battleTime: 180, invincibleTime: 0 } as any
+    // C2 覆盖率跟随终结次数：3 次 × 15s / 180s = 0.25 ⇒ 16 + 8×0.25 = 18
+    const mod = aireMechanic.releaseModifier!({ self: { slot: 0, cinemaLevel: 2, panel, cfg, ultimateCount: 3 } })
+    expect(mod.enemyDefReduction).toBeCloseTo(AIRE_C2_DEF_IGNORE + AIRE_C2_DELUSION_DEF_IGNORE * 0.25, 5)
+    // 手搭 self（无 cfg）⇒ 只给面板常驻 16%，不凭空授予妄想时刻那半
+    const bare = aireMechanic.releaseModifier!({ self: { slot: 0, cinemaLevel: 2, panel } })
+    expect(bare.enemyDefReduction).toBeCloseTo(AIRE_C2_DEF_IGNORE, 5)
     // ② 缺省 self 作用域 ⇒ 只有爱芮自己的异放行吃（不给队友异放）
     expect(aireMechanic.releaseModifierScope ?? 'self').toBe('self')
     // ③ 父层必须是 0：写进父层会让侵蚀/感电/紊乱 也吃 ⇒ 过度授予（用户口径 2026-11-09）
@@ -115,14 +120,26 @@ describe('爱芮完整计算链', () => {
     expect(withRelease).toBeGreaterThan(asParent) // 异放独占这份加成
   })
 
-  it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {
+  it('影画2 妄想时刻 8% 按覆盖率落结算期（C2 跟随终结次数 / C6 跟随首次放大滑块）', async () => {
+    // 纯函数：覆盖率单一源——C2~C5 按终结次数、C6 按首次放大窗口
+    const c2Cfg = { aireCinemaLevel: 2, battleTime: 180, invincibleTime: 0 } as any
+    expect(aireDelusionCoverage(c2Cfg, 3)).toBeCloseTo(0.25, 6) // 3×15/180
+    expect(aireDelusionCoverage(c2Cfg, 20)).toBe(1) // 封顶 1
+    const c6Cfg = { aireCinemaLevel: 6, battleTime: 180, invincibleTime: 0 } as any
+    expect(aireDelusionCoverage(c6Cfg, 3)).toBeCloseTo(150 / 180, 6) // 首次放大 30s
+    expect(aireDelusionCoverage({ ...c6Cfg, 'setting:aire.firstUltTime': 0 }, 3)).toBe(1)
+    // 真管线：直伤行拿到 8%×覆盖率的行级 defIgnore（= 直伤专属乘区），面板只留常驻 16%
     const { catalog, config } = await setup('1141', 2)
-    const defOf = () => (computePanelPhases(0, config, catalog)!.inCombat as any).enemyDefIgnoreDirect ?? 0
-    config.setMechanicSetting('aire.c2DelusionCoverage', 1)
-    const on = defOf()
-    config.setMechanicSetting('aire.c2DelusionCoverage', 0)
-    const off = defOf()
-    expect(on - off).toBeCloseTo(AIRE_C2_DELUSION_DEF_IGNORE, 1)
+    const panel = computePanelPhases(0, config, catalog)!.inCombat as any
+    expect(panel.enemyDefIgnoreDirect).toBe(AIRE_C2_DEF_IGNORE)
+    const calc = useResourceCalc()
+    const aire = calc.resourceResult.value!.characters.find(c => c.agentId === '1501')!
+    const coverage = aire.aireCycle!.c2DelusionCoverage
+    expect(coverage).toBeGreaterThan(0)
+    expect(aire.aireCycle!.c2DefIgnore).toBeCloseTo(AIRE_C2_DEF_IGNORE + AIRE_C2_DELUSION_DEF_IGNORE * coverage, 6)
+    const rowDefIgnore = (aire.executions ?? []).map(e => e.defIgnore ?? 0)
+    expect(rowDefIgnore.length).toBeGreaterThan(0)
+    expect(Math.max(...rowDefIgnore)).toBeCloseTo(AIRE_C2_DELUSION_DEF_IGNORE * coverage, 6)
   })
 
   it('影画6进场喧响+1200写入角色配置（开局赠送 = 1000 基础 + 1200 影画6）', async () => {

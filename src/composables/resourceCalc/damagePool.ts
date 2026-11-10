@@ -58,6 +58,11 @@ export interface DamagePoolContext {
   adjustedResourceResult: TeamResourceResult | null
   /** 结算面板（含霜寒/风化侵染盖章） */
   damagePanels: PanelValues[]
+  /**
+   * 各槽 cfg（= `resourceConfig.characters`，CC-561）：伤害结算期的模块钩子（`releaseModifier`）
+   * 需要「战斗时间 / 无敌秒 / 机制滑块」这类面板阶段拿不到的量（如影画2 妄想时刻覆盖率）。
+   */
+  configs?: readonly import('@/types/resource/config').CharacterOperationConfig[]
   /** 失衡易伤覆盖率（收敛值） */
   stunCoverage: number
   /** 轴内单位分配（栈遍历反推） */
@@ -108,7 +113,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
     adjustedResourceResult, damagePanels, stunCoverage: rawStunCoverage, axisAllocation: allocMap, attachedInAxisMap: attachedInAxis,
     anomalyPoolResult, inStunAnomalyState,
     globalAnomalyMultiplier, agentNames,
-    isAxis,
+    isAxis, configs,
   } = ctx
   if (!adjustedResourceResult || damagePanels.length === 0) return []
     const rows: DamagePoolRow[] = []
@@ -254,7 +259,7 @@ export function buildDamagePoolRows(ctx: DamagePoolContext): DamagePoolRow[] {
       const sources = own?.releaseModifier ? [own, ...teamReleaseModules.filter(m => m !== own)] : teamReleaseModules
       const acc = { enemyResReduction: 0, enemyDefReduction: 0, note: '' }
       for (const m of sources) {
-        const r = m!.releaseModifier!({ self: releaseModifierSelf(m!, configStore.team, damagePanels) })
+        const r = m!.releaseModifier!({ self: releaseModifierSelf(m!, configStore.team, damagePanels, { configs, resource: adjustedResourceResult }) })
         acc.enemyResReduction += r.enemyResReduction
         acc.enemyDefReduction += r.enemyDefReduction ?? 0
         acc.note += r.note
@@ -488,8 +493,25 @@ export function releaseModifierSelf(
   module: Pick<AgentMechanicModule, 'agentIds'>,
   team: ReadonlyArray<{ agentId?: string | null; cinemaLevel?: number } | null | undefined>,
   panels: readonly PanelValues[],
+  /**
+   * 伤害结算期补充量（CC-561）：`configs` = 各槽 cfg（战斗时间/无敌秒/机制滑块），
+   * `resource` = 收敛后的资源结果（取本槽终结技次数）。两者都缺省 ⇒ 模块收到 undefined，
+   * 必须回落「无条件」口径（旧调用方/手搭夹具逐位不变）。
+   */
+  extra?: {
+    configs?: readonly import('@/types/resource/config').CharacterOperationConfig[]
+    resource?: TeamResourceResult | null
+  },
 ): ReleaseModifierInput['self'] {
   const slot = findModuleSlot(module, team) // r399：与异常池派发同一个定位器
   if (slot < 0) return { slot, cinemaLevel: 0, panel: undefined }
-  return { slot, cinemaLevel: team[slot]?.cinemaLevel ?? 0, panel: panelAt(panels, slot) }
+  const cfg = extra?.configs?.find(c => c.slot === slot)
+  const ultimateCount = extra?.resource?.characters.find(c => c.slot === slot)?.ultimateCount
+  return {
+    slot,
+    cinemaLevel: team[slot]?.cinemaLevel ?? 0,
+    panel: panelAt(panels, slot),
+    ...(cfg ? { cfg } : {}),
+    ...(ultimateCount !== undefined ? { ultimateCount } : {}),
+  }
 }

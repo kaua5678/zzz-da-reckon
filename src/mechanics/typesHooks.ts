@@ -596,6 +596,33 @@ export interface AgentDamageResolution { element: string; source?: string; note?
 /** `releaseModifier` 的产出：异放限定的减抗 / 减防与说明 */
 export interface ReleaseModifier { enemyResReduction: number; enemyDefReduction?: number; note: string }
 
+/** `releaseModifier` 的入参（CC-83 自 types.ts 逐字拆出；r398 CC-372 的身份 payload + CC-561 的 cfg/次数） */
+export interface ReleaseModifierInput {
+  /**
+   * 本模块角色**自己那一槽**（r398 CC-372）：派发方按模块 `agentIds` 在队伍里定位后给出
+   * （`composables/resourceCalc/damagePool.ts#releaseModifierSelf`；命座与面板阶段同源 = `team[slot].cinemaLevel`）。
+   *
+   * 为什么不再给全队 `panels`：模块要的从来是「我自己的命座 / 面板」，却拿不到「我是哪一槽」，
+   * 于是 phoenix / promia / vivian 各自在 `applyPanel` 里往自己面板上夹带 `xxxCinemaLevel`，再用
+   * `panels.find(p => p.xxxCinemaLevel !== undefined)` 把自己认回来——三份同构 hack，靠 `PanelValues`
+   * 的 `[key: string]: number` 索引签名才成立。契约补上身份后，夹带字段全部删除。
+   * `slot = -1` ⇒ 本模块不在队（派发只对在队模块发生，防御性给 0 命、无面板）。
+   */
+  self: {
+    slot: number
+    cinemaLevel: number
+    panel: DeepReadonly<PanelValues> | undefined
+    /**
+     * 该槽 cfg（CC-561）：战斗时间 / 无敌秒 / 机制滑块（cfg 上的 `setting:` 键）都在里面 ——
+     * 「妄想时刻内才生效」这类**有条件**的异放修正需要时间窗口，而面板阶段拿不到战斗时间/终结次数。
+     * 由引擎在伤害结算期给出（缺省 undefined = 手搭夹具 / 旧调用方 ⇒ 模块须回落「无条件」口径）。
+     */
+    cfg?: Readonly<CharacterOperationConfig>
+    /** 该槽**收敛后**的终结技次数：按次数折算覆盖率（如爱芮影画2 的妄想时刻占比）用；缺省 0 */
+    ultimateCount?: number
+  }
+}
+
 /** 四种交互的次数（弹刀 / 闪反 / 格挡 / 双反）：角色声明的默认（`interactionDefaults`）与职业基准同一形状 */
 export interface InteractionCounts { parry: number; dodge: number; block: number; dual: number }
 

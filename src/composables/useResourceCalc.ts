@@ -1083,6 +1083,8 @@ export function createResourceCalc(
     catalogStore,
     adjustedResourceResult: adjustedResourceResult.value,
     damagePanels: damagePanels.value,
+    // CC-561：伤害结算期模块钩子（releaseModifier）要按「战斗时间 + 收敛后终结次数」算覆盖率
+    configs: resourceConfig.value?.characters ?? [],
     stunCoverage: stunCoverage.value,
     axisAllocation: axisAllocation.value,
     attachedInAxisMap: attachedInAxisMap.value,

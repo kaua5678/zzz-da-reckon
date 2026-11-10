@@ -363,7 +363,8 @@
 - **CC-561（2026-11-10，用户口径）妄想时刻窗口**：玩家不是开场就开大——局内旋钮 `aire.firstUltTime`（首次放大时间，0–180s，缺省 **30s**）。影画6 的两个「妄想时刻内才有」的效果共用窗口 `aireDelusionWindowSeconds = 有效战斗时间(core/effectiveTime) − 首次放大时间`：① 6s 一层[全场应援] ⇒ `aireDelusionCheerLayers`；② 强化版绝对音准占比（`aireEnhancedPitchShare`，此前 C6 恒 1 = 进场即妄想）。滑块置 0 = 旧口径（进场即妄想时刻），可逆。生效测试 `aire.test.ts`「CC-561 妄想时刻窗口」（纯函数 6 组 + 真管线滑块差分）。
 - **CC-197（2af8c466）**：绝对音准直伤行经通用 `extraNecessaryAction` 产出——次数 = `aireAbsolutePitchCount`（与异放同源），拆成 1501007（普通 #3）/ 1501008（强化 #5）；强化占比见 CC-561（C6 = 窗口/有效时间，其他 = min(1, 终结 × 15 / t)）；时间进账本估计，回能 / 喧响回落倍率表；影画6 `+40%` 只作用于**强化版行 1501008 + 终结技**（原文「强化版[普通攻击：绝对音准]和[终结技]」；普通 #3 行不吃）。#4（1501022，0s，83.1%）归属不明，不计。近似：异放次数不跟随装配截断（目前截断为 0）；甜心律动 #4 按整段普攻池折算、未扣第三段占用。
 - **CC-561 影画4 入账通道**：异放回能 4 / 喧响 70（10s CD，整局 = floor(有效战斗时间/10) 次）走**引擎固定源通道** `bonusEnergy`（结果卡「影画4异放回能」行）与 `extraSelfDecibelReward`（不可分享，结果卡「专属额外」行），**不再**写 `initialEnergyGift` / `initialDecibelGift`——那是「进场赠送」，写进去会让开局赠送显示 1000+1260+1200=3460（用户实测直觉 2200 = 1000 基础 + 1200 影画6）。实测**零数值差**（同一队 decibel total 逐位相同），只改归属。
-- **未建模**：影画6 全场应援 3 层上限与溢出转 2 应援能量（场上资源状态机），floor(窗口/6) 按「异常触发远多于 6 秒 CD」取上限近似；影画6 后续终结是否重复给 3 层原文未明，按不给；影画2 的「妄想时刻 +8% 防御」覆盖率仍是独立滑块 `aire.c2DelusionCoverage`（缺省 1，未跟随 CC-561 窗口——C2 与 C6 的妄想来源不同，暂不联动）。
+- **CC-561 影画2 覆盖率自算（用户 2026-11-10「2命应该能用妄想时间自己算覆盖率，6命跟首次大招滑块，2命跟大招次数」）**：删除滑块 `aire.c2DelusionCoverage`，改由 `aireDelusionCoverage` 单一来源算 —— 影画6 = 妄想窗口/有效战斗时间（跟 `aire.firstUltTime`），影画2~5 = min(1, 终结技次数 × 15s / 战斗时间)。落点按乘区拆：「直伤那半」= 行级 `exec.defIgnore`（`poolDamage` 归 `enemyDefIgnoreDirect` 同乘区，异常读不到），「异放那半」= `releaseModifier.enemyDefReduction`；**面板只承载常驻 16%**。为此 `ReleaseModifierInput.self` 扩了 `cfg` / `ultimateCount`（引擎在伤害结算期给，缺省 = 回落无条件口径），`DamagePoolContext` 扩了 `configs`。同一覆盖率还复用给强化版绝对音准占比（三条消费点同源）。
+- **未建模**：影画6 全场应援 3 层上限与溢出转 2 应援能量（场上资源状态机），floor(窗口/6) 按「异常触发远多于 6 秒 CD」取上限近似；影画6 后续终结是否重复给 3 层原文未明，按不给。
 - **模块**：`src/mechanics/agents/aire.ts`（替代旧 `aireProficiencyMechanic`）。
 
 ### 普罗米娅（promia / 1541）—— 掌控转精通与有罪推定

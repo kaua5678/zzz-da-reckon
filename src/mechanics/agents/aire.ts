@@ -21,6 +21,10 @@
  *   （CC-561：此前并入 initialEnergyGift / initialDecibelGift，把「战斗内累计」错贴成「进场赠送」）。
  * 影画6 强化绝对音准/终结技以太伤害+40%已建模：patchExecutions 按 moveId 加 dmgBonus（妄想时刻不退出 → 强化绝对音准全覆盖）。
  *
+ * 影画2 的「妄想时刻内额外无视 8% 防御」（CC-561）：覆盖率不再手填，改自算 ——
+ * 影画6 跟首次放大窗口、影画2~5 跟终结技次数（`aireDelusionCoverage`）；面板只落常驻 16%，
+ * 那 8% 按乘区分落直伤行 `defIgnore` 与异放 `releaseModifier`。
+ *
  * 妄想时刻窗口（CC-561）：玩家不是开场就开大——首次放大在「首次放大时间」滑块（默认 30s）。
  * 影画6 的「妄想时刻内敌人进异常 ⇒ +1 层[全场应援]（6s 内至多一次）」只在
  * [首次放大, 有效战斗时间) 里计数，即 floor((有效战斗时间 − 首次放大时间)/6)，不再从 t=0 起算。
@@ -41,13 +45,12 @@ import type {
   ReleaseModifierInput,
 } from '../types'
 import { basicComboCycleSeconds, findMoveById } from '@/data/moveTableQueries'
-import { mechanicSettingPanelReader, mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
+import { mechanicSettingReader, capOfAuto } from '@/utils/mechanicSettingCfg'
 import type { CharacterResourceResult } from '@/types/resource'
 import { cinemaLevelOf } from '@/data/cinemaLevel'
 import { additionalAbilityActiveOf } from '@/core/additionalAbilityActive'
 
 const setting = mechanicSettingReader(() => aireMechanic.settings)
-const settingOf = mechanicSettingPanelReader(() => aireMechanic.settings)
 export const AIRE_ID = '1501'
 export const AIRE_CORE_PROFICIENCY = 90
 export const AIRE_C1_ETHER_ANOMALY_RES_IGNORE = 10
@@ -108,7 +111,10 @@ export interface AireCycle {
   additionalActive: boolean
   coreProficiency: number
   c1EtherAnomalyResIgnore: number
+  /** 影画2 无视防御（= 16% 常驻 + 8% × 妄想时刻覆盖率；覆盖率由 `aireDelusionCoverage` 自算） */
   c2DefIgnore: number
+  /** 影画2 的那 8% 在整局里兑现的比例（C6 = 首次放大后窗口/有效时间；C2~C5 = min(1, 终结×15/战斗时间)） */
+  c2DelusionCoverage: number
   c6DecibelGift: number
   /** 影画4 异放回能（整局总量，引擎固定源通道 bonusEnergy；C4 以下为 0） */
   c4EnergyGift: number
@@ -121,21 +127,25 @@ export interface AireCycle {
   note: string
 }
 
+/**
+ * 面板/结果卡用的爱芮循环量。
+ *
+ * `c2DefIgnore` 的**常驻那半**（16%）在面板阶段落进 `enemyDefIgnoreDirect` / `enemyAnomalyReleaseDefReduction`；
+ * 妄想时刻那 8% 按覆盖率落到**结算期**（直伤行 `defIgnore` + 异放 `releaseModifier`），
+ * 因为覆盖率要「战斗时间 + 终结次数」，面板阶段两者都拿不到（CC-561）。
+ */
 export function computeAireCycle(input: {
   cinemaLevel: number
   additionalActive: boolean
-  c2DelusionCoverage: number
 }): AireCycle {
   const cinemaLevel = cinemaLevelOf(input.cinemaLevel)
-  const c2DelusionCoverage = clampRatio(input.c2DelusionCoverage)
   return {
     cinemaLevel,
     additionalActive: input.additionalActive,
     coreProficiency: AIRE_CORE_PROFICIENCY,
     c1EtherAnomalyResIgnore: cinemaLevel >= 1 ? AIRE_C1_ETHER_ANOMALY_RES_IGNORE : 0,
-    c2DefIgnore: cinemaLevel >= 2
-      ? AIRE_C2_DEF_IGNORE + AIRE_C2_DELUSION_DEF_IGNORE * c2DelusionCoverage
-      : 0,
+    c2DefIgnore: cinemaLevel >= 2 ? AIRE_C2_DEF_IGNORE : 0,
+    c2DelusionCoverage: 0,
     c6DecibelGift: cinemaLevel >= 6 ? AIRE_C6_DECIBEL_GIFT : 0,
     // 面板/纯函数路径不带 cfg（无战斗时间）⇒ 这三项由 cycleFromCfg 回填
     c4EnergyGift: 0,
@@ -262,17 +272,33 @@ export function aireAbsolutePitchCount(
  * 滑块置 0 时窗口 = 有效战斗时间 ⇒ 覆盖率 1，恢复旧口径。
  */
 export function aireEnhancedPitchShare(cfg: AgentResourceInput['cfg'], ultimateCount: number, fallbackTotalTime = 0): number {
-  const cinemaLevel = cinemaLevelOf(cfg.aireCinemaLevel)
-  if (cinemaLevel >= 6) {
-    const effectiveSeconds = effectiveBattleTime({
-      battleTime: Number.isFinite(cfg.battleTime) ? cfg.battleTime : fallbackTotalTime,
-      invincibleTime: Number.isFinite(cfg.invincibleTime) ? cfg.invincibleTime : 0,
-    })
-    if (!(effectiveSeconds > 0)) return 0
+  return aireDelusionCoverage(cfg, ultimateCount, fallbackTotalTime)
+}
+
+/**
+ * [妄想时刻]在整局里的覆盖率（0-1）——影画2 的 +8% 无视防御 与 强化版绝对音准占比**同一个数**。
+ *
+ * - 影画6：[妄想时刻]不退出 ⇒ 覆盖率 = 妄想窗口 / 有效战斗时间（首次放大之后全是妄想时刻）；
+ * - 影画2~5：每次终结技 15s ⇒ min(1, 终结技次数 × 15s / 战斗时间)（用户 2026-11-10「2命跟随大招次数」）。
+ *
+ * 三条消费点必须同源：`patchAireExecutions`（直伤行 defIgnore）/ `aireReleaseModifier`（异放层）/
+ * `aireExtraNecessaryActions` 的强化占比。
+ */
+// @fact agent:1501/妄想时刻覆盖率 口径: 影画2 的「妄想时刻内额外无视 8% 防御」与强化版绝对音准占比共用一个覆盖率 —— 影画6 = 妄想窗口/有效战斗时间（窗口起点 = 首次放大滑块 `aire.firstUltTime`）；影画2~5 = min(1, 终结技次数 × 15s / 战斗时间)。直伤那半落**行级** `defIgnore`（直伤专属乘区），异放那半落 `releaseModifier`；面板只承载常驻 16% | 据 用户@2026-11-10（「2命应该能用妄想时间自己算覆盖率吧，6命计算逻辑跟随首次大招滑块的，2命跟随大招次数的」） | 验 src/mechanics/__tests__/aire.test.ts | 锚 src/mechanics/agents/aire.ts#aireDelusionCoverage | 信 确认
+// ⟳复核: 若引擎把「终结次数」搬进面板阶段（或 releaseModifier 契约改版），复核这 8% 是否仍只需结算期落点；若 base 更新 1501 影画2 文本改变持续时间（如妄想时刻延长），同步改 AIRE_DELUSION_SECONDS | 到期 2027-05-10
+
+export function aireDelusionCoverage(cfg: AgentResourceInput['cfg'], ultimateCount: number, fallbackTotalTime = 0): number {
+  const battleTime = Number.isFinite(cfg.battleTime) ? cfg.battleTime : fallbackTotalTime
+  const effectiveSeconds = effectiveBattleTime({
+    battleTime,
+    invincibleTime: Number.isFinite(cfg.invincibleTime) ? cfg.invincibleTime : 0,
+  })
+  if (!(effectiveSeconds > 0)) return 0
+  if (cinemaLevelOf(cfg.aireCinemaLevel) >= 6) {
     return clampRatio(aireDelusionWindowSeconds(cfg, fallbackTotalTime) / effectiveSeconds)
   }
-  if (!(fallbackTotalTime > 0)) return 0
-  return clampRatio(Math.max(0, ultimateCount) * AIRE_DELUSION_SECONDS / fallbackTotalTime)
+  if (!(battleTime > 0)) return 0
+  return clampRatio(Math.max(0, ultimateCount) * AIRE_DELUSION_SECONDS / battleTime)
 }
 
 /**
@@ -301,16 +327,18 @@ export function aireExtraNecessaryActions(cfg: AgentResourceInput['cfg'], state?
   return rows
 }
 
-function cycleFromCfg(cfg: AgentResourceResultInput['cfg']): AireCycle {
+function cycleFromCfg(cfg: AgentResourceResultInput['cfg'], ultimateCount: number): AireCycle {
   const cycle = computeAireCycle({
     cinemaLevel: cinemaLevelOf(cfg.aireCinemaLevel),
     additionalActive: additionalAbilityActiveOf(cfg.panel),
-    c2DelusionCoverage: clampRatio(setting(cfg, 'aire.c2DelusionCoverage')),
   })
+  const delusionCoverage = aireDelusionCoverage(cfg, ultimateCount, cfg.battleTime)
   // 结果卡展示用：影画4/6 的整局量与首次放大窗口（面板阶段拿不到 cfg，故在结果装配期回填）
   // 影画4 两份量由 buildCharConfig 写进 cfg（单一事实源，不在此重算 floor）
   return {
     ...cycle,
+    c2DefIgnore: cycle.c2DefIgnore + (cycle.cinemaLevel >= 2 ? AIRE_C2_DELUSION_DEF_IGNORE * delusionCoverage : 0),
+    c2DelusionCoverage: cycle.cinemaLevel >= 2 ? delusionCoverage : 0,
     c4EnergyGift: Number(cfg.aireC4EnergyGift ?? 0),
     c4DecibelGift: Number(cfg.aireC4DecibelGift ?? 0),
     c6CheerLayers: cycle.cinemaLevel >= 6 ? aireDelusionCheerLayers(cfg, cfg.battleTime) : 0,
@@ -318,12 +346,12 @@ function cycleFromCfg(cfg: AgentResourceResultInput['cfg']): AireCycle {
   }
 }
 
-function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void {
+function applyAirePanel({ cinemaLevel, panel }: AgentPanelInput): void {
   // CC-333：面板字段直接复用 computeAireCycle（coreProficiency / c1EtherAnomalyResIgnore / c2DefIgnore 单源）。
+  // CC-561：面板只接 16% 常驻那半；妄想时刻的 8% 覆盖率要「战斗时间 + 终结次数」，面板阶段拿不到 ⇒ 结算期落。
   const cycle = computeAireCycle({
     cinemaLevel,
     additionalActive: additionalAbilityActiveOf(panel),
-    c2DelusionCoverage: settingOf(settings, 'aire.c2DelusionCoverage'),
   })
   panel.anomalyProficiency = panel.anomalyProficiency + cycle.coreProficiency
   if (cycle.c1EtherAnomalyResIgnore > 0) {
@@ -351,11 +379,15 @@ function applyAirePanel({ cinemaLevel, panel, settings }: AgentPanelInput): void
     panel.enemyDefIgnoreDirect = panel.enemyDefIgnoreDirect + cycle.c2DefIgnore
     // 异放那半份 ⇒ 统一承载字段（与菲欧妮/普罗米娅同族），既让面板可显示，也给 releaseModifier 做读数源
     panel.enemyAnomalyReleaseDefReduction = panel.enemyAnomalyReleaseDefReduction + cycle.c2DefIgnore
+    // ⚠ 这里只加 16%（`cycle.c2DefIgnore`）；妄想时刻的 8% 由 `patchAireExecutions`（直伤行 defIgnore）
+    // 与 `aireReleaseModifier`（异放层）按 `aireDelusionCoverage` 在结算期补 —— 覆盖率依赖
+    // 战斗时间与终结次数，面板阶段两样都没有（CC-561 用户口径「2命跟随大招次数」）。
   }
 }
 
-function buildAireResourceResult({ cfg }: AgentResourceResultInput): Partial<CharacterResourceResult> {
-  return { aireCycle: cycleFromCfg(cfg) }
+function buildAireResourceResult({ cfg, state }: AgentResourceResultInput): Partial<CharacterResourceResult> {
+  // CC-561：妄想时刻覆盖率需要收敛后的终结技次数 ⇒ 结果装配期（不是面板期）算
+  return { aireCycle: cycleFromCfg(cfg, state.ultimateCount) }
 }
 
 function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInput): void {
@@ -398,8 +430,20 @@ function buildAireAnomalyEvents({ cfg, state, events, totalTime }: AgentEventInp
   })
 }
 
-function patchAireExecutions({ cfg, executions }: AgentResourceInput): void {
+function patchAireExecutions({ cfg, state, executions }: AgentResourceInput): void {
   const cinema = cinemaLevelOf(cfg.aireCinemaLevel)
+  // 影画2 的「妄想时刻内额外无视 8% 防御」——直伤那半，按覆盖率落到**行级** defIgnore
+  // （`poolDamage` 把它塞进 enemyDefIgnoreDirect 同乘区 ⇒ 只影响直伤链，异常读不到）。
+  // 与面板阶段的 16% 加算；面板拿不到战斗时间/终结次数，故覆盖率只能在这里算（CC-561）。
+  if (cinema >= 2) {
+    const coverage = aireDelusionCoverage(cfg, state.ultimateCount)
+    const extra = AIRE_C2_DELUSION_DEF_IGNORE * coverage
+    if (extra > 0) {
+      for (const exec of executions) {
+        exec.defIgnore = (exec.defIgnore ?? 0) + extra
+      }
+    }
+  }
   if (cinema < 6) return
   /**
    * 6 命 +40% 的作用范围 = 原文点名的两个载体：**强化版[普通攻击：绝对音准]**（妄想时刻内替换出的
@@ -431,7 +475,11 @@ function buildAireResourceSections({ result }: AgentResourceSectionsInput) {
     rows: [
       { label: '核心异常精通', value: `+${cycle.coreProficiency}`, detail: '计入面板，抬升异常/异放基底' },
       { label: '影画1以太积蓄抗性无视', value: `+${cycle.c1EtherAnomalyResIgnore}%`, detail: '普攻/特殊技/强特' },
-      { label: '影画2无视防御', value: `+${cycle.c2DefIgnore}%`, detail: '16%+妄想时刻8%按覆盖率' },
+      {
+        label: '影画2无视防御',
+        value: `+${cycle.c2DefIgnore}%`,
+        detail: `16% 常驻 + 妄想时刻 8%×${Math.round(cycle.c2DelusionCoverage * 100)}% 覆盖率（C6 跟首次放大窗口 / C2~C5 跟终结次数）`,
+      },
       { label: '影画6进场喧响', value: `+${cycle.c6DecibelGift}`, detail: '进场 1200（整局一次）' },
       {
         label: '影画6妄想时刻全场应援',
@@ -456,9 +504,19 @@ function buildAireResourceSections({ result }: AgentResourceSectionsInput) {
  * 与面板 `enemyAnomalyDefReduction`（父层，一切异常都吃）**加算**。
  */
 function aireReleaseModifier({ self }: ReleaseModifierInput): ReleaseModifier {
-  const v = self.panel?.enemyAnomalyReleaseDefReduction ?? 0
+  const base = self.panel?.enemyAnomalyReleaseDefReduction ?? 0
+  // 妄想时刻那 8%：覆盖率按 `aireDelusionCoverage` 自算（C6 跟首次放大窗口，C2~C5 跟终结次数）。
+  // `self.cfg` 缺省（手搭夹具/旧调用方）⇒ 只给常驻 16%，不凭空授予。
+  const delusion = self.cfg && cinemaLevelOf(self.cinemaLevel) >= 2
+    ? AIRE_C2_DELUSION_DEF_IGNORE * aireDelusionCoverage(self.cfg, self.ultimateCount ?? 0)
+    : 0
+  const v = base + delusion
   return v > 0
-    ? { enemyResReduction: 0, enemyDefReduction: v, note: `；影画2：异放无视 ${v}% 防御（releaseModifier 异放专属）` }
+    ? {
+        enemyResReduction: 0,
+        enemyDefReduction: v,
+        note: `；影画2：异放无视 ${v}% 防御（releaseModifier 异放专属${delusion > 0 ? `，含妄想时刻 ${AIRE_C2_DELUSION_DEF_IGNORE}%×覆盖率` : ''}）`,
+      }
     : { enemyResReduction: 0, note: '' }
 }
 
@@ -480,7 +538,6 @@ export const aireMechanic: AgentMechanicModule = {
       step: 1,
       suffix: 's',
     },
-    { id: 'aire.c2DelusionCoverage', label: '妄想时刻覆盖率', description: '影画2妄想时刻内额外无视8%防御的整局覆盖率（独立于上方首次放大时间，按需手动调）', default: 1, min: 0, max: 1, step: 0.05, suffix: '%' },
     { id: 'aire.absolutePitchCount', label: '绝对音准#3次数上限', description: '第三段[普通攻击：绝对音准 #3]整局次数的**上限**。次数自动 = 应援能量/2 + 全场应援；调低 = 你手动吞掉一部分。0 = 不设上限。', default: 0, min: 0, max: 200, step: 1 },
     { id: 'aire.cheerEnergyBonus', label: '应援能量额外', description: '应援能量总量额外补充（自动公式已含强特×3+连携×4+帷幕4个/次×全队帷幕次数，此处补甜心四段等次要来源）', default: 0, min: 0, max: 400, step: 10 },
   ],
