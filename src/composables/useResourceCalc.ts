@@ -22,6 +22,7 @@ import { buildDamagePoolRows, type DamagePoolContext } from './resourceCalc/dama
 import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from './resourceCalc/noAxisVulnShare'
 import { freezeCached } from './resourceCalc/freezeCached'
 import { createRunCalcRound, setPendingFillSeed } from './resourceCalc/convergence'
+import { fillCacheEnabled, fillCacheKey, fillCacheLookup, fillCacheStats, fillCacheStore, resetFillCache, setFillCacheEnabled } from './resourceCalc/fillCache'
 import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { createConvergenceRoundInputs, type FillResourceBudget } from './resourceCalc/roundInputs'
 import { axisMoveDamageSecondsOf } from './resourceCalc/helpers'
@@ -115,13 +116,40 @@ function identityOf(o: unknown): number {
 }
 /** 测试/诊断：记忆化命中统计（全局，与 LRU 一样跨实例） */
 const calcOutputMemoStats = { hits: 0, misses: 0, bypass: 0 }
-export function getCalcOutputMemoStats(): { hits: number; misses: number; bypass: number } {
-  return { ...calcOutputMemoStats }
+export function getCalcOutputMemoStats(): {
+  hits: number
+  misses: number
+  bypass: number
+  /** 填充搜索缓存（`resourceCalc/fillCache.ts`）：与外层 hits/misses 同比，用于「命中率 < 30% 就停下」口径 */
+  fill: { hits: number; misses: number; bypass: number; candidates: number; baselines: number; evictions: number; size: number }
+} {
+  return {
+    ...calcOutputMemoStats,
+    fill: {
+      hits: fillCacheStats.hits,
+      misses: fillCacheStats.misses,
+      bypass: fillCacheStats.bypass,
+      candidates: fillCacheStats.candidates,
+      baselines: fillCacheStats.baselines,
+      evictions: fillCacheStats.evictions,
+      size: fillCacheStats.size,
+    },
+  }
 }
-/** 全局开关（测试做 A/B 逐位对照用；生产恒开） */
+/**
+ * 全局开关（测试做 A/B 逐位对照用；生产恒开）。
+ *
+ * `false` 时**两层缓存一起关**：外层 `calcOutputMemo` 旁路 + 填充搜索缓存清空并旁路——
+ * 逐位对拍要的正是「HEAD 的真求值」口径（只看外层关掉的话，填充搜索那层仍可能把上次结果还回来，
+ * 对拍会退化成恒等式；判据见 `marginalFill.test.ts` 的零漂移用例）。
+ */
 let calcOutputMemoEnabled = true
 export function setCalcOutputMemoEnabled(on: boolean): void {
   calcOutputMemoEnabled = on
+  // 两层一起开关：对拍要的是 HEAD 的「真求值」口径，只关外层的话填充搜索缓存仍会把上次结果还回来，
+  // 重复运行类判据（落点唯一 / 历史无关）会退化成恒等式。关 = 顺带清空，免得再打开时命中旧口径的条目。
+  setFillCacheEnabled(on)
+  if (!on) resetFillCache()
 }
 
 /** 资源计算实例（UI 入口与独立场景同一类型；各分析器的局部 `Calc` 别名都等于它） */
@@ -329,7 +357,52 @@ export function createResourceCalc(
   })
 
   /**
+   * **填充搜索的跨渲染缓存**（2026-11-10，动机 / 键纪律 / 容量实测见 `resourceCalc/fillCache.ts` 头注释）。
+   *
+   * 键 = 引擎真正读到的输入（`configStore.$state` **逐项** + 目录身份 + 行融合规则 + 引擎入参派生面 +
+   * 探针旗标取值），**不是**整份 state 深拷贝、也不把 store 对象当键。
+   * 命中直接返回上一次的 `CalcRoundResult`（外层已 `freezeCached` 深冻结；引擎对同一输入逐位确定）。
+   *
+   * 为什么值得有第二层（外层 `calcOutputMemo` 已经缓存整条 calcOutput）：外层键是**整份** `$state`，
+   * 里面有几项**引擎零读点却会换键**（`timeWeightStrategy` / `subStatAllocationManual` / `appliedBoss.at`），
+   * 且容量只有 16（105 队扫描一轮就淘汰）⇒ 「同一份引擎输入被重复求值」在外层仍会落空、填充搜索重跑。
+   * 实测（2026-11-10）：外层关掉时，全库 102 队扫两轮，本层第二轮整轮命中、墙钟 12.6s → 0.25s（51×）。
+   * ⚠ 副作用边界：外层开着的**单队交互**本层命中率是 0%（外层先接住）—— 本层不为此放宽键。
    */
+  function fillCacheKeyOf(base: ResourceCalcConfig): string {
+    return fillCacheKey({
+      state: configStore.$state as unknown as Record<string, unknown>,
+      catalogIdentity: identityOf(catalogStore.catalog),
+      teammateBuffGroupsIdentity: identityOf(catalogStore.teammateBuffGroups),
+      buildRecommendationsIdentity: identityOf(catalogStore.buildRecommendations),
+      teammateBuffsReady: catalogStore.teammateBuffsReady,
+      rowFusionRules: activeRowFusionRulesSnapshot(),
+      // build 阶段面板（天赋 / 音擎 / 驱动盘 / 队友 buff 的折算产物）＋局外面板：直接取引擎入参，
+      // 派生输入不必逐条登记（登记漏一项 = 静默错值）。
+      panels: base.characters.map(c => [c.panel, c.outOfCombatPanel ?? null]),
+      // 预算标量 + 失衡计划投影 + 合轴吸收比 + 手动锁定 + 锁定失衡次数：`computeCalcOutput` 的另外几个入参
+      engineScalars: [
+        base.totalTime, base.invincibleTime, base.bossStunValue, base.shieldCount, base.energyShieldCount,
+        base.maxIterations, base.stunPlanProjection, base.comboAlignAbsorbRatio, base.interactionsLocked,
+        configStore.enemy.stunCountLock,
+      ],
+    })
+  }
+
+  function computeWithFill(base: ResourceCalcConfig): CalcRoundResult {
+    // 关缓存（测试对拍 / 诊断）⇒ 与接缓存前逐位相同的旧路径（连键都不算，零额外开销）
+    if (!fillCacheEnabled()) {
+      fillCacheStats.bypass++
+      return computeWithFillUncached(base)
+    }
+    const key = fillCacheKeyOf(base)
+    const hit = fillCacheLookup(key)
+    if (hit !== undefined) return hit
+    const out = freezeCached(computeWithFillUncached(base))
+    fillCacheStore(key, out)
+    return out
+  }
+
   /**
    * ===== 边际填充搜索（2026-11-10）=====
    *
@@ -350,8 +423,12 @@ export function createResourceCalc(
    *   ② 失衡次数不下降；③ 留白确实变小。
    *
    * 成本：只有留白 > 1s 的队才会搜（全库 102 队里实测 10 队），且只在此类队上多 1~2 次顶层求值。
+   *
+   * ⚠ 本函数只在缓存 **miss** 时跑（2026-11-10 起）；`computeWithFill` 是带缓存的外层。
+   *   搜索与护栏语义一字未改 —— 缓存只决定「要不要重跑」，不参与任何判定。
    */
-  function computeWithFill(base: ResourceCalcConfig): CalcRoundResult {
+  function computeWithFillUncached(base: ResourceCalcConfig): CalcRoundResult {
+    fillCacheStats.baselines++
     const baseOut = computeCalcOutput(base)
     const baseRr = baseOut.resourceResult
     if (!baseRr) return baseOut
@@ -374,6 +451,7 @@ export function createResourceCalc(
       // 种子必须走 `setPendingFillSeed`：runCalcRound 读的是 resourceConfig.value，不认入参里的字段。
       setPendingFillSeed(seed)
       let cand: CalcRoundResult
+      fillCacheStats.candidates++
       try {
         cand = computeCalcOutput(clone)
       } finally {
