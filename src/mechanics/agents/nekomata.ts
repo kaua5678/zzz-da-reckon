@@ -205,7 +205,8 @@ function applyNekoPanel(input: AgentPanelInput): void {
   // 核心被动·猫步诡影 Lv.7：[闪避反击]/[快速支援]命中 60% 增伤 → 直接永续
   panel.dmgBonus = panel.dmgBonus + 60
   if (cinemaLevel >= 1) {
-    // 影画1·猎鸟技巧：肉球突袭永续 → 背后命中全覆盖 → 无视 16% 物理抗性
+    // 影画1·猎鸟技巧：「从背后攻击命中敌人时，**猫又**无视目标16%物理抗性」——主语是**角色**
+    // ⇒ **通用无视抗性**（用户口径 2026-11-09）：直伤与异常都吃。
     panel.enemyPhysicalResReduction = panel.enemyPhysicalResReduction + 16
   }
   if (cinemaLevel >= 2) {

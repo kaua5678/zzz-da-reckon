@@ -16,7 +16,10 @@ import { DAMAGE_ELEMENT_LABEL, damageElementLabel, SPECIALTY_LABEL } from '@/uti
 const SRC = join(__dirname, '..', '..')
 const ALLOWED = new Set([
   'utils/agentLabelMaps.ts',
-  'utils/enemyDebuffStats.ts',
+  // 2026-11-09 三通道重构：元素常量（DAMAGE_ELEMENTS / ELEMENT_LABEL / ELEMENT_FIELD_PREFIX）
+  // 从 enemyDebuffStats 下沉到叶子模块 damageElements（断开与 utils/resistanceChannels 的初始化环），
+  // 定义的物理位置随之移动；enemyDebuffStats 只做再导出。
+  'utils/damageElements.ts',
   'components/StatPanel.vue',
 ])
 /** `physical: '物理'`（对象写法）或 `'physical', label: '物理'`（选项数组写法） */

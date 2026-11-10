@@ -15,7 +15,8 @@ async function deltas(ids: string[]) {
   const sel = (config as any).teammateBuffSelections
   const snap = () => ids.map((_, i) => {
     const p = computePanelPhases(i, config, catalog)!
-    return { ooc: p.outOfCombat.atk, atk: p.inCombat.atk, cd: p.inCombat.critDmg, dmg: p.inCombat.dmgBonus, def: (p.inCombat as any).enemyDefReduction ?? 0 }
+    // 防御三通道（2026-11-09）：席德影画2「围杀无视20%防御」= 自身**直伤**无视防御
+    return { ooc: p.outOfCombat.atk, atk: p.inCombat.atk, cd: p.inCombat.critDmg, dmg: p.inCombat.dmgBonus, def: (p.inCombat as any).enemyDefIgnoreDirect ?? 0 }
   })
   for (const id of BUFFS) sel[id] = { enabled: false, coverage: 100 }
   const off = snap()

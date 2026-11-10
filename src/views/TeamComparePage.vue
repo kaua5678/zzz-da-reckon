@@ -1235,6 +1235,7 @@ import { useTeamSlotCodes } from '@/composables/teamSlotCodes'
 import type { SlotOverrides } from '@/composables/presetSlotOverrides'
 import { encodePointTimes, timeLegendRows } from '@/composables/pointTimeAxis'
 import type { BossPreset, BossPresetPhase, PhaseBuffCard, PhaseView } from '@/types/bossPreset'
+import { TRAINING_DUMMY_BOSS_ID, TRAINING_DUMMY_PHASE_ID, isTrainingDummyBoss, withTrainingDummy } from '@/data/trainingDummy'
 import { releaseDateOf, releaseNodeOf, nodeIndexOf, VERSION_NODES } from '@/data/versionTimeline'
 import { buildPeriodAxis } from '@/composables/bossSchedule'
 import type { TeamComparePoint, TeamPreset } from '@/types/teamPreset'
@@ -1273,11 +1274,13 @@ const selectedBossId = ref('')
 onMounted(async () => {
   try {
     const data = await useCatalogStore().loadBossPresets()
-    bossPresets.value = data.bosses ?? []
+    // 木桩永远排第一（用户 2026-11-10：「队伍对比之类的地方，怪物选择默认木桩」）——
+    // 它是中性测试场，不携带任何一期的血量/抗性/弱点/关卡 buff。
+    bossPresets.value = withTrainingDummy(data.bosses ?? []) as BossPreset[]
     phaseViews.value = data.phaseViews ?? []
-    // 默认选最新期数 + 该期第一个 Boss
-    const first = allPeriods.value[0]
-    if (first) selectedPeriodId.value = first.phaseId
+    // 默认 = 木桩（不是「最新期第一个 Boss」：那样每个数字都自带某期环境）
+    selectedPeriodId.value = TRAINING_DUMMY_PHASE_ID
+    selectedBossId.value = TRAINING_DUMMY_BOSS_ID
   } catch { /* boss 数据缺失时页面显示引导 */ }
   // 默认选中 = **当前筛选分类下的队伍**（不是全库全选）。口径与实现见
   // `usePresetTeamPicker#defaultSelection`（筛选函数只在 composable 里调用，规则 11 源码锁）。
@@ -1324,6 +1327,7 @@ const bossOptionsForPeriod = computed(() => {
     const phases = b.phases.filter(p => p.phaseId === selectedPeriodId.value)
     if (phases.length === 0) continue
     seen.add(b.id)
+    if (isTrainingDummyBoss(b.id)) { out.push({ value: b.id, label: '训练木桩（无关卡环境）' }); continue }
     const ph = phases.find(p => p.modeType === 'critical_assault') ?? phases[0]
     out.push({ value: b.id, label: `${b.name}${ph.modeType === 'critical_assault' ? '（困难）' : '（普通）'}` })
   }

@@ -114,12 +114,78 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 |---------|------|------|
 | 穿透率 X% | `penRatio` | 百分比降低防御，与减防**乘算** |
 | 穿透值 X 点 | `penFlat` | 固定值降低防御，最后减 |
-| 防御力降低 X% | `enemyDefReduction` | 减防，与减防/无视防御**加算** |
-| 无视目标 X% 防御力 | `enemyDefReduction` | **与减防同字段**，加算 |
 | 防御力降低 X 点 | `enemyDefFlatReduction` | 固定值减防 |
 | X 属性防御降低 X% | `enemy{Element}DefReduction` | 元素专属减防，仅影响该元素伤害 |
 
-**示例**："无视防御"和"减防"都走 `enemyDefReduction`，两者加算后与 `penRatio` 乘算。
+### 4.1 三条防御通道（2026-11-09 用户口径，与 §5.1 抗性同构）
+
+> 「减防是不是也分直伤和异常和通用？」——是。防御区与抗性区都是**结算区**，通道归属规则一致。
+
+| 通道 | 游戏文本形态 | 字段 | 直伤吃 | 异常吃 |
+|---|---|---|---|---|
+| **通用**（怪物身上减防 = 结算区 debuff） | 「**使目标/敌人**的防御力**降低** N%」 | `enemyDefReduction` / `enemy{Element}DefReduction` | ✅ | ✅ |
+| **直伤无视**（自身无视防御） | 「**造成的伤害/攻击**无视 N% 防御」 | `enemyDefIgnoreDirect` / `enemy{Element}DefIgnoreDirect` | ✅ | ❌ |
+| **异常父层** | 「造成**属性异常/紊乱**伤害时无视 N% 防御」 | `enemyAnomalyDefReduction`（存量） | ❌ | ✅ |
+| **异放专属层** | 「**触发[异放]**时无视 N% 防御」/「异放无视 N% 防御」 | `releaseModifier` 返回的 `enemyDefReduction` | ❌ | 仅异放 |
+| **强击专属** | 「**强击**伤害无视 N% 防御」（简 C2 等） | `enemyAssaultDefReduction`（存量，仅物理） | ❌ | ✅ |
+
+**为什么直伤族必须独立**：修前原文「造成伤害无视 N% 防御」一律写进 `enemyDefReduction` 族，而该族被直伤与异常结算**同时**读取 ⇒ 只作用于直伤的无视防御被异常也吃掉。两族在 `defenseMultiplierDetail` 里同形（有效防御 = 基础 × (1 − 降低/100)），合并写法**静默通过全部既有测试**。
+
+### 4.2 ★ 异放是异常的子集（用户口径 2026-11-09，层级不许压平）
+
+> 「异放减防就是异常减防的子集，只在异放事件时计算。异放作为异常事件可以吃异放加成和
+>   异常加成相加，而异常比如侵蚀这种父事件就吃不了异放加成，只能吃异常。」
+
+```
+通用（怪物身上减防）        ← 直伤 + 一切异常（含父事件）
+  └─ 异常父层 enemyAnomalyDefReduction   ← 一切异常事件（侵蚀 / 感电 / 紊乱 / 异放 / 乱流 …）
+       └─ 异放专属层 releaseModifier     ← **只**异放事件（+ 父层，相加）
+```
+
+- 异放行 = 父层 + 异放专属层（**相加**）；
+- 侵蚀这类父事件 = 只有父层，**读不到**异放专属层。
+- ⚠ 因此「异放限定」的减防**绝不能**写进 `enemyDefReduction`（通用）或 `enemyAnomalyDefReduction`（父层）——那两层范围更大 ⇒ **过度授予**。
+- **写法（统一）**：`applyPanel` 写面板字段 `enemyAnomalyReleaseDefReduction` / `enemyAnomalyReleaseResIgnore`，`releaseModifier` 从面板读回。这样**单一事实源**且**面板可见**（现役：菲欧妮影画6 40%、普罗米娅有罪推定+C1、薇薇安影画2 15%、爱芮影画2 异放那半）。
+  ⚠ 为什么不用「releaseModifier 直接返回常量」的旧写法：那样值只活在异放行的结算里，**状态面板上什么都看不到**——算而不显，人会以为没算（用户 2026-11-09）。
+
+### 4.3 ★ 自身面板 vs 敌方状态（2026-11-09 用户口径，UI 与字段都要分清）
+
+> 「有罪推定敌人感觉是敌人身上的debuff，全队击打到都能吃。我希望显示在队友身上，你有这样的
+>   疑问是因为我们面板有歧义，面板是自己拥有的？还是自己计算的？此处分为**自身面板**和
+>   **敌方状态**，加起来才是自身计算状态。」
+
+| 概念 | 含义 | 落在哪 | 典型字段 |
+|---|---|---|---|
+| **自身面板** | 这份增益**属于这个角色**（命座/音擎/技能给他自己的） | 该角色自己的 `PanelValues` | `dmgBonus` / `critRate` / `enemyResIgnoreDirect` |
+| **敌方状态** | **敌人身上**挂着什么（谁打都吃，全队共享） | **每个槽位**的面板（因为每槽结算都要用） | `enemyDefReduction` / `enemyResReduction` / `enemyAnomalyReleaseDefReduction` |
+
+**判定问句**：原文说「**使敌人/目标**…」「对处于 X 状态的**敌人**…」⇒ 敌方状态；说「**该角色/装备者**造成伤害时…」⇒ 自身面板。
+
+- 归属者：敌方状态由**提供者模块**经 `teamPanelEffects` 写进**全队每个槽位**，而不是只写自己那一槽。
+  若只写自己 ⇒ 队友面板看不见、但队友实际吃得到（面板与结算分叉），用户 2026-11-09 实测反馈即此类。
+- 现役例子：普罗米娅有罪推定 40% + 影画1 20%（原文「对[有罪推定]状态的**敌人**造成[异放]时无视 40% 防御」
+  ⇒ 敌人身上的异放专属减防，全队异放行都吃）；蕾米相变时流光环同理。
+- UI：`StatPanel` 的该段标题 = 「**敌方状态（敌人身上的 debuff · 与自身面板相加才是实际结算）**」，
+  `FinalPanel` 对应段 = 「敌方状态（… · 与自身面板相乘 = 实际结算）」。不要再叫「敌方减益」——
+  那个名字让人以为只是「减益列表」，而不是「结算状态的一半」。
+
+### 4.4 ★ 展示完整性判据（2026-11-09，用户原话驱动）
+
+> 「面板该显示乘区的一切内容，所以会包含一切吧。你现在一个一个修补，肯定要漏。」
+
+**机器判据**：`src/utils/__tests__/statDisplayCoverage.test.ts` 断言 `allDamageFormulaFields()`（= core 白名单 36 条 + 模块注册的角色专属字段）**每一条**都能在 `StatPanel.vue` 或 `FinalPanel.vue` 里搜到，缺一个就红并点名。
+
+- 起因：展示层原先靠**手写行**列举，每加一个乘区字段都要人记得「顺手补一行展示」。忘了就变成**算而不显**，而这类漏项无法靠 review 拦住（没人会去数 36 个字段）。
+- 首次运行立刻抓出 4 个存量漏项：`disorderBaseMultiplierBonus`、`turbulenceResIgnore`、`anomalyDurationBonusSeconds`、`remielleRefringeCoefficientBonusPct`——全部已补展示行。
+- 新增乘区字段的正确顺序：① 登记 `core/damageFormulaFields`（或模块 `damageFormulaFields`）② 补展示行。漏第 ② 步 ⇒ 判据红。
+- 豁免：确有不进伤害式的字段须进 `EXEMPT` 并写理由（棘轮只减不增）。
+
+- 字段名与 id 生成：`src/utils/defenseChannels.ts`（叶子事实源，与 `resistanceChannels` / `damageElements` 同层）
+- 读数入口：`src/core/defenseChannels.ts#enemyDefReductionOf` / `#selfDefIgnoreOf`；异放层入口 `mechanics#releaseModifier`（派发 `composables/resourceCalc/damagePool.ts#pushRelease`）
+- 判据：`src/core/__tests__/defenseChannels.test.ts`（读数层 + 行为层 + 源码锁）、`src/mechanics/__tests__/defReductionChannels.test.ts`（异放限定 vs 异常父层的作用域）
+- 数据迁移：`scripts/patch-defense-channels.mjs`（幂等；按原文把「自身无视防御」迁出通用族）
+
+**注意**：「无视防御」与「减防」在**公式里**仍是加算（同形），但**通道归属不同**：前者是攻击方结算侧的修正（不降低怪物身上的防御），后者是怪物身上的 debuff。
 
 ---
 
@@ -127,21 +193,51 @@ Buff 引擎默认规则：**来源没有显式写 `scope: 'outOfCombat'` 时，�
 
 **有效抗性公式**：`有效抗性 = 怪物抗性 - 抗性降低/100 - 无视抗性/100`，抗性区 = `1 - 有效抗性/100`（**抗性区不设上限**：抗性降低/无视抗性会线性提高该乘区）
 
+### 5.1 三条抗性通道（2026-11-09 用户口径，**别再合并**）
+
+> 「减抗的实现分为两种，一个是降低怪物的抗性，这相当于作用在怪物身上的结算区，直伤和异常
+> 比如乱流灼烧强击之类都能吃。还有一种是加自己的无视抗性，这种抗性只有自己直伤能无视，
+> 所谓（造成伤害无视抗性），这种抗性没有降低 boss 身上的乘区，所以异常状态吃不到这种减抗。」
+> 「只有怪物身上属性抗性降低和造成异常伤害时无视抗性，才能给异常吃。所以可以分为三种情况：
+> 直伤抗性，异常抗性，通用抗性。」
+
+| 通道 | 游戏文本形态 | 字段 | 直伤吃 | 异常吃 |
+|---|---|---|---|---|
+| **通用**（怪物身上减抗 = 结算区 debuff；也收**主语是角色**的「无视抗性」） | 「使敌人的 X 抗性**降低** N%」/「**菲欧妮**无视目标 N% 抗性」 | `enemyResReduction` / `enemy{Element}ResReduction` | ✅ | ✅ |
+| **直伤无视**（自身无视抗性） | 「**造成的伤害**无视目标 N% 抗性」/「**攻击命中时**无视 N% 抗性」 | `enemyResIgnoreDirect` / `enemy{Element}ResIgnoreDirect` | ✅ | ❌ |
+| **异常无视**（自身无视抗性，异常专属） | 「造成**属性异常 / 紊乱 / 异放 / 乱流 / 耀变**伤害时无视 N% 抗性」 | `enemyResIgnoreAnomaly` / `enemy{Element}ResIgnoreAnomaly` | ❌ | ✅ |
+
+**★ 主语判据（用户 2026-11-09 二次裁决，决定「通用无视」还是「直伤无视」）**
+
+> 「菲欧妮他说无视抗性，应该是通用无视抗性，可以给异常吃。造成攻击无视才算直伤无视抗性。」
+
+- 主语是**角色**（「**菲欧妮**无视目标 15% 抗性」「**猫又**无视目标 16% 物抗」「**真斗**无视目标 8% 火抗」）
+  ⇒ **通用无视**：形态与怪物减抗相同，直伤与异常**都吃** ⇒ `enemyResReduction` 族。
+- 主语是**攻击 / 招式 / 造成的伤害**（「**造成的伤害**无视目标 N% 抗性」「**攻击命中时**无视」）
+  ⇒ **直伤无视**：只有直伤吃 ⇒ `enemyResIgnoreDirect` 族。
+- ⚠ 判别看**主谓**而不是看有没有「无视」二字：`攻击命中敌人时，猫又无视…` 的主语是**猫又**（通用），
+  「攻击命中」只是触发条件；`使自身攻击造成的伤害无视…` 的主语才是**伤害**（直伤）。
+
+**为什么必须拆**：自身无视抗性**没有降低怪物身上的抗性**（是攻击方结算侧的修正）⇒ 同一次怪物
+结算里的异常伤害读不到它。修前三类文本一律写进 `enemyResReduction`，而它被两族**同时**读取
+⇒「造成伤害无视抗性」被异常白吃，异常伤害系统性偏高；又因为两族在抗性区里同形（线性加算），
+合并写法**静默通过全部既有测试**。
+
+- 字段名与 id 生成：`src/utils/resistanceChannels.ts`（叶子事实源，与 `damageElements` 同层）
+- 读数入口：`src/core/resistanceChannels.ts#enemyResReductionOf` / `#selfResIgnoreOf`
+- 判据：`src/core/__tests__/resistanceChannels.test.ts`（读数层 + 行为层 + 源码锁三层）
+
 | 游戏文本 | 字段 | 说明 |
 |---------|------|------|
-| 全属性抗性降低 X% | `enemyResReduction` | 全局减抗 |
-| 物理伤害抗性降低 X% | `enemyPhysicalResReduction` | 元素专属减抗 |
-| 火属性伤害抗性降低 X% | `enemyFireResReduction` | 元素专属减抗 |
-| 冰属性伤害抗性降低 X% | `enemyIceResReduction` | 元素专属减抗 |
-| 电属性伤害抗性降低 X% | `enemyElectricResReduction` | 元素专属减抗 |
-| 以太伤害抗性降低 X% | `enemyEtherResReduction` | 元素专属减抗 |
-| 风属性伤害抗性降低 X% | `enemyWindResReduction` | 元素专属减抗 |
-| 辉光伤害抗性降低 X% | `enemyLumifluxResReduction` | 辉光专属减抗 |
+| 全属性抗性降低 X% | `enemyResReduction` | 全局减抗（怪物身上） |
+| 物理/火/冰/电/以太/风伤害抗性降低 X% | `enemy{Element}ResReduction` | 元素专属减抗（怪物身上） |
+| 造成的伤害无视 X% 抗性 | `enemyResIgnoreDirect`（元素版 `enemy{Element}ResIgnoreDirect`） | 自身直伤无视，**异常读不到** |
+| 造成异常/紊乱/异放/乱流/耀变伤害时无视 X% 抗性 | `enemyResIgnoreAnomaly`（元素版 `enemy{Element}ResIgnoreAnomaly`） | 自身异常无视，**直伤读不到** |
 | 受到伤害提升 X% | `enemyDamageTakenBonus` | 易伤，独立乘区 |
 
-**注意**："无视抗性"和"抗性降低"都走 `enemy{Element}ResReduction`，加算。
-
----
+**注意**：「无视抗性」与「抗性降低」**不再同字段**（2026-11-09 起）：前者是自身无视（按伤害族分家），
+后者是怪物身上的结算区 debuff（两族都吃）。旧数据里的 `enemyResIgnore` / `{element}ResIgnore` 别名
+经 `normalizeEnemyDebuffStatAlias` 归一到**直伤无视**族（不再归 `enemyResReduction`）。
 
 ## 6. 失衡区
 

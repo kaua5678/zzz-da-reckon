@@ -47,9 +47,10 @@ describe('希希芙（1521）核心被动电系无视防御公式', () => {
     const regen = out.energyRegen * (1 + (out.energyRegenBonusPct ?? 0) / 100) + (out.energyRegenBonusFlat ?? 0)
     const expected0 = defIgnoreExpected(regen)
 
-    const withBuff = (computePanelPhases(1, config, catalog)!.inCombat as any).enemyElectricDefReduction as number
+    // 防御三通道（2026-11-09）：「电属性伤害无视6%防御」= 自身**直伤**无视防御（元素限定）
+    const withBuff = (computePanelPhases(1, config, catalog)!.inCombat as any).enemyElectricDefIgnoreDirect as number
     config.toggleTeammateBuff('xixifu.core_electric_def_ignore', false)
-    const withoutBuff = (computePanelPhases(1, config, catalog)!.inCombat as any).enemyElectricDefReduction as number
+    const withoutBuff = (computePanelPhases(1, config, catalog)!.inCombat as any).enemyElectricDefIgnoreDirect as number
     config.toggleTeammateBuff('xixifu.core_electric_def_ignore', true)
     expect(withBuff - withoutBuff).toBeCloseTo(expected0, 5)
     expect(expected0).toBeGreaterThan(6)
@@ -58,8 +59,9 @@ describe('希希芙（1521）核心被动电系无视防御公式', () => {
     config.team[0].cinemaLevel = 1
     config.syncTeammateBuffsFromTeam()
     const p1 = computePanelPhases(1, config, catalog)!.inCombat as any
-    expect(p1.enemyElectricDefReduction - withoutBuff).toBeCloseTo(expected0 * 1.4, 5)
-    expect(p1.enemyElectricResReduction).toBeCloseTo(5, 5)
+    expect(p1.enemyElectricDefIgnoreDirect - withoutBuff).toBeCloseTo(expected0 * 1.4, 5)
+    // 三通道：影画1「使全队角色造成的伤害无视目标5%电属性伤害抗性」= 自身**直伤**无视
+    expect(p1.enemyElectricResIgnoreDirect).toBeCloseTo(5, 5)
   })
 })
 

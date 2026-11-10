@@ -278,7 +278,8 @@ function applyClaretPanel({ panel, cinemaLevel, outOfCombatPanel }: AgentPanelIn
   // 影画2（薪火荣冠）：猩红铭刻/连携/终结/反制支援/支援突击期间攻击命中无视 18% 电抗
   //   （状态高频维持，满覆盖近似）——★ R55 订正：旧实现是 `>=1` + 16%，门控与数值双错
   if (cinemaLevelOf(cinemaLevel) >= 2) {
-    panel.enemyElectricResReduction = panel.enemyElectricResReduction + C2_RES_IGNORE
+    // 「攻击命中时无视目标 18% 电抗」⇒ 自身直伤族（异常读不到，2026-11-09 三通道）
+    panel.enemyElectricResIgnoreDirect = panel.enemyElectricResIgnoreDirect + C2_RES_IGNORE
   }
 }
 

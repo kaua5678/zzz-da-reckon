@@ -350,6 +350,9 @@ function applyVivianPanel({ cinemaLevel, panel, outOfCombatPanel, settings, pote
   if (cinemaLevel >= 2) {
     // 影画2：以太异常积蓄效率 +25%（薇薇安含物理积蓄，用元素限定字段避免污染物理积蓄）
     panel.etherAnomalyBuildUpEfficiency = panel.etherAnomalyBuildUpEfficiency + VIVIAN_C2_BUILDUP_EFF
+    // 影画2「薇薇安触发的[异放]效果无视敌人 15% 全属性伤害抗性」⇒ **异放专属层**（异常父层的子层）。
+    // 落面板是为了**可展示**（算而不显 = 用户以为没算）；damage 链不读该字段，只由 releaseModifier 取用。
+    panel.enemyAnomalyReleaseResIgnore = panel.enemyAnomalyReleaseResIgnore + VIVIAN_C2_RELEASE_RES_IGNORE
   }
   /**
    * 潜能觉醒·星月诗篇（v2，II~VI 同文；2026-11-01 用户口径）：
@@ -516,9 +519,10 @@ function buildVivianAnomalyEvents({ cfg, state, events, totalTime }: AgentEventI
 
 /** 影画2：异放无视 15% 全属性伤害抗性（releaseModifier 仅作用于异放结算，不作用于普通伤害） */
 function vivianReleaseModifier({ self }: ReleaseModifierInput): { enemyResReduction: number; note: string } {
-  const hasC2 = self.cinemaLevel >= 2
-  return hasC2
-    ? { enemyResReduction: VIVIAN_C2_RELEASE_RES_IGNORE, note: '；影画2：异放无视 15% 全属性伤害抗性（releaseModifier 异放限定）' }
+  // 读数源 = 面板 enemyAnomalyReleaseResIgnore（applyPanel 写入，单一事实源 ⇒ 面板可显示）
+  const v = self.panel?.enemyAnomalyReleaseResIgnore ?? 0
+  return v > 0
+    ? { enemyResReduction: v, note: `；影画2：异放无视 ${v}% 全属性伤害抗性（releaseModifier 异放专属）` }
     : { enemyResReduction: 0, note: '' }
 }
 

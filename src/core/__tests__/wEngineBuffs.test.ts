@@ -205,7 +205,8 @@ describe('w-engine buff application', () => {
     const none = calcPanel(roxy, undefined, disc, setsMap, [], cat.statRules, { cinemaLevel: 0, wEngineModLevel: 1 }).inCombat
     const r1 = calcPanel(roxy, wEngine, disc, setsMap, [], cat.statRules, { cinemaLevel: 0, wEngineModLevel: 1 }).inCombat
     expect(r1.critRate - none.critRate).toBeCloseTo(24, 6)
-    expect(r1.enemyWindResReduction - none.enemyWindResReduction).toBeCloseTo(15, 6)
+    // 三通道（2026-11-09）：原文「造成的伤害无视目标15%风抗」= 自身**直伤**无视抗性
+    expect(r1.enemyWindResIgnoreDirect - none.enemyWindResIgnoreDirect).toBeCloseTo(15, 6)
     expect(r1.stunBuildUpBonus - none.stunBuildUpBonus).toBeCloseTo(16, 6)
 
     // 全队段：队友 +32%（R5），装备者自身不吃（collect 端排除装备者，防双计）

@@ -128,6 +128,8 @@ describe('永续面板项与猫步秀（2026-08-23 第二批口供）', () => {
     expect(p0.dmgBonus).toBeGreaterThanOrEqual(60)
 
     const p1 = await panelFor(1)
+    // 三通道（2026-11-09 用户二次裁决）：「从背后攻击命中敌人时，**猫又**无视16%物抗」主语是**角色**
+    // ⇒ 通用无视抗性（直伤与异常都吃）
     expect((p1.enemyPhysicalResReduction ?? 0) - (p0.enemyPhysicalResReduction ?? 0)).toBeCloseTo(16)
 
     const p2 = await panelFor(2)

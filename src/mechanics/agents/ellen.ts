@@ -430,7 +430,8 @@ function applyEllenPanel({ cinemaLevel, potentialLevel, panel, settings }: Agent
   if (cycle.c1CritRate > 0) panel.critRate = panel.critRate + cycle.c1CritRate
   if (cycle.stormSurgeIceDmg > 0) panel.iceDmg = panel.iceDmg + cycle.stormSurgeIceDmg
   if (cycle.potentialCritDmg > 0) panel.critDmg = panel.critDmg + cycle.potentialCritDmg
-  if (cycle.potentialIceResIgnore > 0) panel.enemyIceResReduction = panel.enemyIceResReduction + cycle.potentialIceResIgnore
+  // 潜能「攻击目标无视 X% 冰抗」⇒ 自身直伤族（异常读不到，2026-11-09 三通道）
+  if (cycle.potentialIceResIgnore > 0) panel.enemyIceResIgnoreDirect = panel.enemyIceResIgnoreDirect + cycle.potentialIceResIgnore
   if (cinemaLevel >= 6) panel.penRatio = panel.penRatio + cycle.c6PenRatio
 }
 

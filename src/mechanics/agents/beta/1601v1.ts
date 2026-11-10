@@ -101,6 +101,12 @@ interface SunbringerMeta {
   ultB: SunbringerMoveMeta
   maim: SunbringerMoveMeta
   chain: SunbringerMoveMeta
+  /**
+   * 冻结副本的**类型对齐位**：正主 `sunbringer.ts` 2026-11-10 起了这条（支援突击残痕 ×1.15）。
+   * 两处 `declare module` 扩充的是同一个 `sunbringerMeta` 属性，形态不一致即 TS2717。
+   * ⚠ **冻结副本不填这个字段**——它保留 v1/v2 当时的数值行为（无支援突击残痕），只是类型跟上。
+   */
+  assistFollowUp?: SunbringerMoveMeta
   sharpnessRegen: number
 }
 
@@ -123,11 +129,13 @@ export function applySunbringerPanel({ panel, outOfCombatPanel, cinemaLevel }: A
   }
   // 极昼：满覆盖近似（见文件头）
   panel.critRate = panel.critRate + POLAR_DAY_CRIT_RATE
-  panel.enemyDefReduction = panel.enemyDefReduction + POLAR_DAY_DEF_IGNORE
+  // 防御三通道（2026-11-09）：极昼「造成伤害无视目标20%防御力」= 自身直伤无视（异常读不到）
+  panel.enemyDefIgnoreDirect = panel.enemyDefIgnoreDirect + POLAR_DAY_DEF_IGNORE
   // 影画1（隐世的虚狩）：造成伤害无视 15% 火属性抗性（满覆盖）
   if (cinemaLevel >= 1) panel.enemyFireResReduction = panel.enemyFireResReduction + 15
   // 影画2（继承者的叛旗）：锐化伤害无视 12% 防御力（满覆盖）
-  if (cinemaLevel >= 2) panel.enemyDefReduction = panel.enemyDefReduction + 12
+  // v1 旧文本「无视 12% 防御」（v2 已删）：同为自身直伤无视
+  if (cinemaLevel >= 2) panel.enemyDefIgnoreDirect = panel.enemyDefIgnoreDirect + 12
 }
 
 export function buildSunbringerCharConfig({ cfg, skills, agent, cinemaLevel }: AgentCharConfigInput): void {

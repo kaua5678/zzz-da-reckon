@@ -208,7 +208,7 @@ describe('伊芙琳完整计算链', () => {
     // C4：核心暴击+25、影画4暴伤+40、影画1减防+12（C4 已满）；无 C6 追击
     expect(panel.critRate).toBeGreaterThanOrEqual(EVELYN_CORE_CRIT_RATE)
     expect(panel.critDmg).toBeGreaterThanOrEqual(EVELYN_C4_CRIT_DMG)
-    expect(panel.enemyDefReduction).toBeGreaterThanOrEqual(12)
+    expect(panel.enemyDefIgnoreDirect).toBeGreaterThanOrEqual(12)
   })
 
   it('覆盖率滑块→面板重算（防守卫冻结，SOP §3.5）', async () => {
@@ -239,7 +239,7 @@ describe('伊芙琳完整计算链', () => {
 describe('伊芙琳滑块生效差分（防守卫冻结，SOP §3.5：改滑块→结果确实变）', () => {
   it.each([
     // [setting id, 影画等级, 面板字段, 满值期望差分]
-    ['evelyn.c1DefIgnoreCoverage', 1, 'enemyDefReduction', EVELYN_C1_DEF_IGNORE],
+    ['evelyn.c1DefIgnoreCoverage', 1, 'enemyDefIgnoreDirect', EVELYN_C1_DEF_IGNORE],
     ['evelyn.c4ShieldCoverage', 4, 'critDmg', EVELYN_C4_CRIT_DMG],
   ] as const)('%s → 面板差分', async (id, cinema, field, delta) => {
     const { catalog, config } = await setup('1141', cinema)

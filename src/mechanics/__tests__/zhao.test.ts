@@ -174,7 +174,8 @@ describe('照影画拐力（teammate-buffs 按命座门控）', () => {
     config.team[0].cinemaLevel = 1
     config.syncTeammateBuffsFromTeam()
     const p1 = computePanelPhases(1, config, catalog)!.inCombat as any
-    expect(p1.enemyResReduction - p0.enemyResReduction).toBeCloseTo(15, 5)
+    // 三通道：照影画1「使全队角色造成的伤害无视目标15%全属性伤害抗性」= 自身**直伤**无视
+    expect(p1.enemyResIgnoreDirect - p0.enemyResIgnoreDirect).toBeCloseTo(15, 5)
 
     config.team[0].cinemaLevel = 2
     config.syncTeammateBuffsFromTeam()

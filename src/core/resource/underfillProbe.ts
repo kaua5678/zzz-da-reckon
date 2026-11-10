@@ -113,6 +113,16 @@ export function runUnderfillProbe(
     const r = runInnerLoop(from, ctx.innerCtx)
     return { states: r.end, stable: r.clean }
   }
+  // ★ 边际填充种子（2026-11-10）：调用方已钉住一档填充量 ⇒ 就按这一档结算一次（真的跑 iterate，
+  // 否则只是记了个数字、行数一点不变）。折叠环 pass0 会覆盖 timeBudgetRefund，故种子走独立字段。
+  const refundSeed = ctx.config.timeBudgetRefundSeed
+  if (refundSeed !== undefined && refundSeed > 0) {
+    ctx.config.timeBudgetRefund = refundSeed
+    const seeded = convergeCounts(states)
+    diag.timeBudgetRefundedSeconds = refundSeed
+    diag.timeBudgetIdleSeconds = Math.max(0, budgetSeconds - frontlineRowsOf(seeded.states))
+    return seeded.states
+  }
   let rowsFilled = frontlineRowsOf(states)
   let underfill = budgetSeconds - rowsFilled
   // 门槛 = 1s（量化容差，2026-09-08 用户口径「平A权重与留白不应并存，剩余自由时间按权重

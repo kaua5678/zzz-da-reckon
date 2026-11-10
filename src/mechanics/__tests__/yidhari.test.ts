@@ -47,8 +47,9 @@ describe('伊德海莉面板（核心被动/额外能力/影画）', () => {
   it('影画1 普攻/强特无视20%冰抗；影画2 暴伤+40 与闪能回0.5；影画6 贯穿伤+25', async () => {
     const { catalog, config } = await setup(6)
     const p = computePanelPhases(0, config, catalog)!.inCombat as any
-    expect(p.enemyIceResReduction__basic).toBeGreaterThanOrEqual(20)
-    expect(p.enemyIceResReduction__exSpecial).toBeGreaterThanOrEqual(20)
+    // 三通道（2026-11-09）：普攻/强特「无视20%冰抗」= 自身**直伤**无视（定向键同步改名）
+    expect(p.enemyIceResIgnoreDirect__basic).toBeGreaterThanOrEqual(20)
+    expect(p.enemyIceResIgnoreDirect__exSpecial).toBeGreaterThanOrEqual(20)
     expect(p.critDmg).toBeGreaterThanOrEqual(50 + 30 + 40)
     expect(p.flashEnergyRegenBonusFlat).toBeGreaterThanOrEqual(0.5)
     expect(p.sheerDmgBonus).toBeGreaterThanOrEqual(25)
@@ -61,7 +62,7 @@ describe('伊德海莉面板（核心被动/额外能力/影画）', () => {
     const c6 = (await setup(6)).config
     const c6catalog = (await setup(6)).catalog
     const p6panel = computePanelPhases(0, c6, c6catalog)!.inCombat as any
-    expect(p6panel.enemyIceResReduction__basic - (p0panel.enemyIceResReduction__basic ?? 0)).toBe(20)
+    expect(p6panel.enemyIceResIgnoreDirect__basic - (p0panel.enemyIceResIgnoreDirect__basic ?? 0)).toBe(20)
     expect(p6panel.critDmg - p0panel.critDmg).toBe(40)
     expect(p6panel.sheerDmgBonus - (p0panel.sheerDmgBonus ?? 0)).toBe(25)
   })

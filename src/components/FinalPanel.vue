@@ -274,11 +274,28 @@ const panels = computed(() => {
     const targetedDebuffRows = targetedStatRows(pIn, 'enemyDefReduction', t => `减防（${SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t}）`)
       .concat(targetedStatRows(pIn, 'enemyResReduction', t => `减抗（${SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t}）`))
 
+    // 自身无视抗性两族（2026-11-09 三通道）：作用范围与「怪物身上减抗」不同——
+    // 直伤族异常吃不到、异常族直伤吃不到，故分行展示（判据 resistanceChannels.test.ts）
+    const elementDirectIgnoreKey = elementStatKey('enemyResIgnoreDirect', element)
+    const elementAnomalyIgnoreKey = elementStatKey('enemyResIgnoreAnomaly', element)
+    const elementDefIgnoreKey = elementStatKey('enemyDefIgnoreDirect', element)
     const debuffRows = [
-      makeRow(pOut, pIn, 'enemyResReduction', '全属性减抗'),
+      makeRow(pOut, pIn, 'enemyResReduction', '全属性减抗（怪物身上）'),
       ...(elementResKey ? [makeRow(pOut, pIn, elementResKey, `元素减抗（${element}）`)] : []),
       ...targetedDebuffRows,
-      makeRow(pOut, pIn, 'enemyDefReduction', '减防（%）'),
+      makeRow(pOut, pIn, 'enemyResIgnoreDirect', '自身直伤无视抗性'),
+      ...(elementDirectIgnoreKey ? [makeRow(pOut, pIn, elementDirectIgnoreKey, `直伤无视抗性（${element}）`)] : []),
+      makeRow(pOut, pIn, 'enemyResIgnoreAnomaly', '自身异常无视抗性'),
+      ...(elementAnomalyIgnoreKey ? [makeRow(pOut, pIn, elementAnomalyIgnoreKey, `异常无视抗性（${element}）`)] : []),
+      makeRow(pOut, pIn, 'enemyDefReduction', '减防（怪物身上·%）'),
+      // 防御三通道（2026-11-09）：自身「造成伤害无视防御」只进直伤链，与上面的怪物减防分列
+      makeRow(pOut, pIn, 'enemyDefIgnoreDirect', '自身直伤无视防御'),
+      ...(elementDefIgnoreKey ? [makeRow(pOut, pIn, elementDefIgnoreKey, `直伤无视防御（${element}）`)] : []),
+      makeRow(pOut, pIn, 'enemyAnomalyDefReduction', '异常专属无视防御'),
+      // 异放专属层（异常父层的子层）：算而不显会让人以为没算（用户 2026-11-09）
+      makeRow(pOut, pIn, 'enemyAnomalyReleaseDefReduction', '异放专属无视防御'),
+      makeRow(pOut, pIn, 'enemyAnomalyReleaseResIgnore', '异放专属无视抗性'),
+      makeRow(pOut, pIn, 'enemyAssaultDefReduction', '强击专属无视防御'),
       makeRow(pOut, pIn, 'enemyDefFlatReduction', '减防（固定）'),
       makeRow(pOut, pIn, 'enemyDamageTakenBonus', '敌人受伤害提升（易伤）'),
       makeRow(pOut, pIn, 'enemyCritDmgTakenBonus', '敌人受暴伤提升'),
@@ -306,6 +323,9 @@ const panels = computed(() => {
       makeRow(pOut, pIn, 'anomalyReleaseDmgBonus', '异放增伤（独立区）'),
       makeRow(pOut, pIn, 'turbulenceDamageBonus', '乱流增伤'),
       makeRow(pOut, pIn, 'disorderDamageBonus', '紊乱增伤（结算区）'),
+      makeRow(pOut, pIn, 'disorderBaseMultiplierBonus', '紊乱基础倍率提升'),
+      makeRow(pOut, pIn, 'turbulenceResIgnore', '乱流专属无视抗性'),
+      makeRow(pOut, pIn, 'anomalyDurationBonusSeconds', '异常持续时间延长（秒）'),
       makeRow(pOut, pIn, 'anomalyCritRate', '异常暴击率'),
       makeRow(pOut, pIn, 'anomalyCritDmg', '异常暴击伤害'),
     ]
@@ -338,7 +358,12 @@ const panels = computed(() => {
       : expectedCritMultiplier(critRateRaw, pIn.critDmg ?? 0)
     const sharpTotal = (pIn.sharpDmgBonus ?? 0) + (elementSharpKey ? (getPanelStat(pIn, elementSharpKey) ?? 0) : 0)
     const penDmgTotal = (pIn.penDmgBonus ?? 0) + (pIn.sheerDmgBonus ?? 0) + (elementSheerKey ? (getPanelStat(pIn, elementSheerKey) ?? 0) : 0)
+    // 抗性三通道（2026-11-09）：直伤看「通用 + 直伤无视」，异常看「通用 + 异常无视」
+    const elementDirectIgnore = elementDirectIgnoreKey ? getPanelStat(pIn, elementDirectIgnoreKey) ?? 0 : 0
+    const elementAnomalyIgnore = elementAnomalyIgnoreKey ? getPanelStat(pIn, elementAnomalyIgnoreKey) ?? 0 : 0
     const resTotal = (pIn.enemyResReduction ?? 0) + elementRes
+    const directResTotal = resTotal + (pIn.enemyResIgnoreDirect ?? 0) + elementDirectIgnore
+    const anomalyResTotal = resTotal + (pIn.enemyResIgnoreAnomaly ?? 0) + elementAnomalyIgnore
     const stunMultTotal = (pIn.stunDmgMultiplierBonus ?? 0) + (pIn.stunDmgMultiplierBonusAlways ?? 0)
     const finalDmgTotal = pIn.finalDmgBonus ?? 0
     const finalDmgTargeted = targetedRows(pIn, 'finalDmgBonus', t => SKILL_DMG_TARGET_LABELS[t as SkillDamageTarget] ?? t)
@@ -397,8 +422,10 @@ const panels = computed(() => {
       },
       {
         title: '抗性削减 / 易伤 / 失衡',
-        main: `全 ${pct(pIn.enemyResReduction ?? 0)} + ${element} ${pct(elementRes)} = ${pct(resTotal)}`,
+        main: `怪物减抗 ${pct(resTotal)}｜直伤 +${pct(directResTotal)}｜异常 +${pct(anomalyResTotal)}`,
         lines: [
+          `怪物身上减抗：全 ${pct(pIn.enemyResReduction ?? 0)} + ${element} ${pct(elementRes)} = ${pct(resTotal)}（直伤与异常都吃）`,
+          `直伤无视抗性 +${pct((pIn.enemyResIgnoreDirect ?? 0) + elementDirectIgnore)}（只进直伤）· 异常无视抗性 +${pct((pIn.enemyResIgnoreAnomaly ?? 0) + elementAnomalyIgnore)}（只进异常）`,
           `敌人受伤害 +${pct(pIn.enemyDamageTakenBonus ?? 0)} · 失衡易伤 +${pct(stunMultTotal)} · 暴击易伤 +${pct(pIn.enemyCritDmgTakenBonus ?? 0)}`,
           `冲击力 ${fmt(pIn.impact, 0)} · 失衡值提升 ${pct(pIn.stunBuildUpBonus ?? 0)}${stunTargeted.map(r => ` + ${r.label} ${pct(r.value)}`).join('')} · 失衡时长 +${fmt(pIn.stunDurationBonusSeconds ?? 0, 1)}s`,
         ],
@@ -439,7 +466,8 @@ const panels = computed(() => {
         { title: '贯穿增伤区（命破独立乘区）', name: 'sheer', rows: sheerRows },
         { title: '暴击区（直伤）', name: 'crit', rows: critRows },
         { title: '最终伤害区（独立乘区，暴击后）', name: 'final', rows: finalRows },
-        { title: '减益区（对敌）', name: 'debuff', rows: debuffRows },
+        // 敌方状态：敌人身上的 debuff，与上面的自身面板相乘后才是实际结算（用户 2026-11-09 口径）
+        { title: '敌方状态（敌人身上的 debuff · 与自身面板相乘 = 实际结算）', name: 'debuff', rows: debuffRows },
         { title: '异常区（积蓄/异常增伤/紊乱/异放/乱流）', name: 'anomaly', rows: anomalyRows },
         { title: '资源区', name: 'resource', rows: resourceRows },
       ],

@@ -65,9 +65,9 @@ const TYPES_TS_DECLARATIONS = [
   'AgentEventInput',
   'AgentResourceResultInput',
   'AgentSkillTransformInput',
-  // ---- 钩子 I/O 的**入参**（出参形状在 typesHooks；这两个是 AgentMechanicModule 的入参位，见 CC-18 设计稿 §2-1）----
+  // ---- 钩子 I/O 的**入参**（出参形状在 typesHooks；这是 AgentMechanicModule 的入参位，见 CC-18 设计稿 §2-1）----
+  // `ReleaseModifierInput` 已随 CC-561 的 `cfg`/`ultimateCount` 扩字段搬进 typesHooks（它本来就是钩子 I/O 的入参）
   'AgentDamageResolutionInput',
-  'ReleaseModifierInput',
   // ---- 组合根 ----
   'TeamMechanic',
   'AgentMechanicModule',

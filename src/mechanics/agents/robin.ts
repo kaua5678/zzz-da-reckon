@@ -1,16 +1,20 @@
 import type {
   AgentCharConfigInput,
   AgentMechanicModule,
+  AgentNextRoundFeedbackInput,
   AgentPanelInput,
   AgentResourceInput,
   AgentTeamConfigInput,
   AgentTeamPanelEffectInput,
   AgentResourceSectionsInput,
+  ModuleFeedback,
 } from '../types'
+import type { CharacterResourceResult } from '@/types/resource/agentResources'
+import { collectTeamMaimCount } from '@/mechanics/gashMaim'
 import { getRowValue } from '@/data/moveTableQueries'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { outOfCombatStat } from '@/mechanics/initialStat'
-import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { panelOfSlot } from '@/core/sourcePanels'
 import { applyStat } from '@/core/buff'
 import { mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
@@ -49,9 +53,23 @@ import { ULTIMATE_COST_DEFAULT } from '@/data/resourceDefaults'
  * - **满覆盖近似**：幕后协奏 80s / 追加攻击 10s CD / 护盾 15s 全不建状态机——追加攻击按 floor(t/10) 满打，
  *   防御提升按常驻上屏（原文「结束后仍保留 15 秒」⇒ 80s 守护 + 15s 尾巴，覆盖率本就近 1）。
  * - **重音节拍按满覆盖**：登场技每次 +1、进幕后协奏必消耗 1（上限 1）⇒ 循环稳态恒有 ⇒ ×1.25 常驻。
- * - 护盾量（3.4.3：万籁与我同歌 2% / 弦歌相和 4% / 震律齐鸣 8% 生命）、抗打断、无敌、
- *   「全队角色每触发一次毁伤，知更鸟固定回复 15 点能量」**不建**：前四者是生存面，
- *   最后一条需要跨角色毁伤计数通道（ModuleFeedback 现无该键），已记在 spec 的未建模段。
+ * - 护盾量（3.4.3：万籁与我同歌 2% / 弦歌相和 4% / 震律齐鸣 8% 生命）、抗打断、无敌**不建**（生存面）。
+ * - **核心被动「全队每触发一次毁伤，知更鸟固定回复 15 点能量」已建模**（2026-11-08 批 4）：
+ *   次数 = `gashMaim#collectTeamMaimCount`（全队各锋御槽 `maimCount` 之和），
+ *   经 `ModuleFeedback.robinTeamMaimCount` 跨轮传递、converge 相位写 `cfg.robinTeamMaimCount`，
+ *   走 `bonusEnergy`（**固定**回能，不进百分比/效率乘区）。判据 `robinMaimEnergy.test.ts`。
+ * - **震律齐鸣 1661006 是后台招式**（`timeBucket: 'backstage'`、不占前台时间）。
+ *   依据是**原文 + 用户裁决**，不是 catalog 里的 `actionTime = 0`：
+ *   原文末尾「[强化特殊技：震律齐鸣]**为追加攻击**」——它由弦歌相和升级触发，不是玩家主动做的
+ *   前台动作；用户 2026-11-09 补充「前台基本只有那个特殊资源槽满了才会做的强制动作，
+ *   耀嘉音他们的强特也是后台的，**不耗时但是能打**」。
+ *   ⚠ **`actionTime = 0` 不能当作后台判据**：全库 152 个强化特殊技里 10 个是 0/缺省，
+ *   里面混着子段（`#2` / `·额外爆炸`，时长记在父行上）与整招未录时长两类，性质不同。
+ * - **40 点能量是「次数上限」而非「先扣池再算次数」**：`floor(总能量/40)` 已隐含扣减
+ *   （14 次 × 40 = 560 ≤ 能量 563.8）。她 `exSpecialEnergyConsume = 0`
+ *   （catalog 1661006 无 `energyCost` ⇒ 引擎按 `costType='free'`，通用强特通道**不产行**，
+ *   与模块自造行无双计风险），且[防护]的她能量没有第二个去处 ⇒ 无回压对象、无不动点。
+ *   该笔消耗在行上 `totalEnergyConsume` 如实记账（资源卡可见），不是丢失。
  * - **3.4.3 终结技「全队[锋御]角色固定回复 20 点锐能」已建模**（2026-11-08 批 2）：走 postRound 相位
  *   （`convergence.ts:834` 起派发，带**上一轮**收敛的 `ultimateCounts`），读**自己槽**的次数
  *   写到每个 `specialty === 'sharpen'` 队友的 `cfg.sharpnessGiftFromTeam`（她自己不写、无锋御队零写），
@@ -85,6 +103,17 @@ export const ROBIN_DEF_CAP_PER_LEVEL = 30
  * ⟳复核: 若终结技行 1661010 的锐能句改数值（或改为「每次命中」/按层数），或[锋御]职业新增非锐能语义的角色，则本常量与 specialty 判据都要重核 | 到期 2027-09-30
  */
 export const ROBIN_ULT_TEAM_SHARPNESS = 20
+/**
+ * 核心被动（3.4.3+20278274）：「全队角色每触发一次[毁伤]，知更鸟固定回复 15 点能量」。
+ *
+ * 落点 = `bonusEnergy`（固定回能，不进百分比/效率乘区——原文说「**固定**回复」）。
+ * 次数来源 = `gashMaim#collectTeamMaimCount`（全队各锋御槽的 `maimCount` 之和），
+ * 经跨轮通道 `ModuleFeedback` 转一圈（毁伤次数是本轮资源解的产物，当轮拿不到）。
+ *
+ * @fact agent:1661/每毁伤回能 口径: 全队每触发一次[毁伤] ⇒ 知更鸟固定回 15 点能量（固定值、不进回能百分比/效率乘区）；次数 = 全队各锋御槽 maimCount 之和（克拉蕾含影画6 不耗层的额外毁伤） | 据 用户@2026-11-08「角色机制哪有不做的道理」+ spec 1661 核心被动原文·复核@2026-11-08 | 验 src/mechanics/__tests__/robinMaimEnergy.test.ts | 锚 src/mechanics/agents/robin.ts#ROBIN_MAIM_ENERGY_PER_TRIGGER | 信 确认
+ * ⟳复核: 若原文改数值（15 → N）/改成「按次命中」或「按层数」口径，或新增非锋御的毁伤来源（计数就不该只扫 maimCount），则本常量与 collectTeamMaimCount 的扫描面都要重核 | 到期 2027-09-30
+ */
+export const ROBIN_MAIM_ENERGY_PER_TRIGGER = 15
 /** [重音节拍]：使防御提升效果**及其上限**额外提升 25%（原文核心被动 Lv.7 末段） */
 export const ROBIN_BUFF_POINT_DEF_MULT = 1.25
 /**
@@ -210,6 +239,10 @@ function buildRobinCharConfig({ cfg, skills, cinemaLevel }: AgentCharConfigInput
   // 1661019 表值（不带 override ⇒ 由引擎按 fusedOf 回填也行，但显式预存让「表值变了」可见）
   cfg.robinCornerAssistDamage = getRowValue(all.find(m => m.id === '1661019'), 'damage')
   cfg.robinCornerAssistDaze = getRowValue(all.find(m => m.id === '1661019'), 'daze')
+  // 1661004「特殊技：万籁与我同歌」表值（连携招架后自动释放那一行的载体）
+  cfg.robinSpecialDamage = getRowValue(all.find(m => m.id === '1661004'), 'damage')
+  cfg.robinSpecialDaze = getRowValue(all.find(m => m.id === '1661004'), 'daze')
+  cfg.robinSpecialDecibel = getRowValue(all.find(m => m.id === '1661004'), 'decibel_recovery')
 }
 
 /** 资源结算读数（展示用）：登场技次数 + 重音节拍稳态。与 buildExecutions 同源调 solveRobinEntry。 */
@@ -252,7 +285,7 @@ function buildRobinResourceSections({ result }: AgentResourceSectionsInput) {
         },
       ],
       footer: '幕后协奏·全队固定防御：每满 1000 点初始生命 +80（上限 800），门槛 16000，重音节拍 ×1.25；'
-        + '护盾量 / 抗打断 / 每毁伤回 15 能量未建模（生存面 + 缺跨角色毁伤计数通道）。',
+        + '护盾量 / 抗打断未建模（生存面）；每毁伤回 15 能量**已建模**（走 bonusEnergy，次数 = 全队锋御槽 maimCount 之和）。',
     },
   ]
 }
@@ -265,7 +298,7 @@ function buildRobinResourceSections({ result }: AgentResourceSectionsInput) {
  * 口径（原文）：「队伍中**其他**角色发动[反制支援]后，若触发[完美反制]自动发动」
  * ⇒ 只数别槽、不数自己；一次反制支援 = 整组化解 = 一次完美反制 ⇒ 1:1。
  */
-function applyRobinTeamConfig({ slot, cfg, characters, team, phase, ultimateCounts }: AgentTeamConfigInput): void {
+function applyRobinTeamConfig({ slot, cfg, characters, team, phase, ultimateCounts, threads }: AgentTeamConfigInput): void {
   if (phase === 'converge') {
     let teammateCount = 0
     for (const other of characters) {
@@ -273,6 +306,8 @@ function applyRobinTeamConfig({ slot, cfg, characters, team, phase, ultimateCoun
       teammateCount += Math.max(0, Math.floor(Number(other.counterAssistCount) || 0))
     }
     cfg.robinTeammateCounterAssists = teammateCount
+    // 全队毁伤次数（上一轮资源解的产物，经 ModuleFeedback 转一圈）⇒ 核心被动「每毁伤回 15 能量」
+    cfg.robinTeamMaimCount = Math.max(0, Math.floor(Number(threads?.moduleFeedback.robinTeamMaimCount ?? 0)))
     return
   }
   applyRobinSharpnessGift({ slot, characters, team, phase, ultimateCounts })
@@ -386,6 +421,39 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
       skillTableNote: `升级 = 能量 ≥${ROBIN_REINFORCED_ENERGY_COST}（耗 ${ROBIN_REINFORCED_ENERGY_COST}）${cinema >= 4 ? ' 或影画4 每 60s 保底' : ''}；生命值附加 = maxHP × ${Math.round(hpRate * 100)}%${cinema >= 6 ? '；影画6 必定暴击' : ''}`,
     }))
   }
+  /**
+   * 特殊技：万籁与我同歌（1661004）——**[连携招架]后自动释放**（3.4.3 描述层新增句）：
+   * > 「成功[连携招架]时发动[支援突击]后，若知更鸟不为当前操作角色则自动释放[特殊技：万籁与我同歌]」
+   *
+   * 触发次数 = **Boss 的 x 弹次数**（`cfg.bossXParryTotal` = Boss 预设 `defaults.xParryTotal`）。
+   * 用户口径 2026-11-10 逐字：「x 弹必须是 **boss 身上**有的，普通的交替弹不会有。这个计数器只能去
+   * boss 身上取这个次数，**其他地方不会产**。角色读了 boss x 弹相当于转化为普通弹刀进行方便计算」
+   * ⇒ 不要拿队友 `parryCount` 顶替（那是普通弹刀，不是 x 弹；第一版正是这么写错的）。
+   *
+   * ⚠ 时间口径：timeBucket = backstage、不占前台——原文是「自动释放」，玩家不做这个动作；
+   *   与 1661005/1661006 后台行同一取向（用户 2026-11-09「后台的强特不耗时但是能打」）。
+   *   与 1661019 的区别：那一行连表值时间都是 0（新包归零），本行表值有 1.208s，是我们主动判成后台。
+   * ⚠ 「若知更鸟不为当前操作角色」这条前置**未单独判定**（近似）：她是辅助、默认不在前台。
+   *   若用户把她当主 C 操作，这一条会多算 —— 引擎目前没有「本槽是否前台操作位」的稳定信号。
+   */
+  const xParryCount = Math.max(0, Math.floor(Number(cfg.bossXParryTotal ?? 0)))
+  if (xParryCount > 0) {
+    const specialDecibel = Number(cfg.robinSpecialDecibel ?? 0)
+    executions.push(moduleExecRow({
+      moveId: '1661004',
+      moveName: '特殊技：万籁与我同歌（连携招架后自动释放）',
+      category: 'special',
+      count: xParryCount,
+      damageMultiplier: Number(cfg.robinSpecialDamage ?? 0),
+      dazeMultiplier: Number(cfg.robinSpecialDaze ?? 0),
+      decibelRecovery: specialDecibel,
+      totalDecibelRecovery: xParryCount * specialDecibel,
+      ...ENERGY_RECOVERY_OFF,
+      timeBucket: 'backstage',
+      autoSplitByStun: true,
+      skillTableNote: `触发 = Boss x 弹次数（连携招架）${xParryCount}；自动释放、不占前台`,
+    }))
+  }
   // 支援突击·完美节拍（1661019）：**队友**发动反制支援且完美反制时自动发动。
   // 3.4.1+19997538 起该行 decibel/ether 均为 0、actionTime = 0（自动触发段，不占前台、不产喧响与秽盾，
   // 与新包同批归零的 1661005/1661006 同性质）⇒ 只出伤害 + 失衡。
@@ -462,6 +530,45 @@ function applyRobinPanel({ panel, cinemaLevel }: AgentPanelInput): void {
   if (cinemaLevelOf(cinemaLevel) >= 4) panel.dmgBonus = panel.dmgBonus + 10
 }
 
+/**
+ * 下一轮反馈：**全队毁伤触发总次数**（核心被动「每毁伤回 15 能量」的次数来源）。
+ *
+ * 为什么要跨轮：毁伤次数是**本轮资源解**的产物（`maimCount` 在各锋御槽的 source 里），
+ * 而知更鸟的能量在本轮解算时就要用 ⇒ 只能取上一轮的值，由外层不动点收敛。
+ * 单锋御 / 无锋御队都成立（`collectTeamMaimCount` 不要求 ≥2 槽；无锋御 ⇒ 0）。
+ */
+function robinNextRoundFeedback({ adjustedResult }: AgentNextRoundFeedbackInput): ModuleFeedback {
+  const count = collectTeamMaimCount(adjustedResult.characters)
+  return count > 0 ? { robinTeamMaimCount: count } : {}
+}
+
+/**
+ * **滞后读数回填**（2026-11-10 用户报「知更鸟每毁伤回能 420，而全队毁伤只有 26 次」）。
+ *
+ * 次数来源 = 上一轮资源解的 `cfg.robinTeamMaimCount`（外层不动点通道）。停点落在环上时
+ * （1661/1601/1611：失衡静止、反馈 26↔28 翻面，环里不存在自洽成员），末轮用到的值可能比
+ * 自己的输出多一拍 ⇒ 明细写 15×28、结果只有 26 次。这里按**本局最终毁伤次数**绝对重算，
+ * 并把同一笔差额同步到总能量（同一笔能量不能既按 28 次记、又按 26 次显示）。
+ *
+ * ⚠ 只写本槽自己的结果，且调用点在收敛之后（`solveTeam` 停点后）⇒ 不参与任何循环输入。
+ * ⚠ 绝对写：重复调用结果相同（同一份结果调两次幂等）。
+ *
+ * @fact agent:1661/毁伤回能·滞后读数 口径: 「每毁伤回 15 能量」的明细按**本局最终毁伤次数**绝对重写（停点后回填，不参与收敛）；外层停点在环上时明细与总能量必须与本局实际次数一致，不许留「按上一轮 28 次记、结果只有 26 次」的自相矛盾 | 据 用户@2026-11-10「鸟回复15能量…明细 420 而全队毁伤 26 次」 | 验 src/mechanics/__tests__/robinMaimEnergy.test.ts | 锚 src/mechanics/agents/robin.ts#patchRobinTeamReadouts | 信 确认
+ * ⟳复核: 若残痕/毁伤次数改走当轮通道（不再滞后一轮），本回填应随之下线 | 到期 2027-06-30
+ */
+function patchRobinTeamReadouts({ characters }: { characters: CharacterResourceResult[] }): void {
+  const self = characters.find(c => c.agentId === ROBIN_AGENT_ID)
+  if (!self) return
+  const entry = self.energySource.bonusEntries.find(e => e.key === 'teamMaimEnergy')
+  if (!entry) return
+  const count = collectTeamMaimCount(characters)
+  const value = count * ROBIN_MAIM_ENERGY_PER_TRIGGER
+  if (value === entry.value) return
+  self.energySource.total += value - entry.value
+  entry.value = value
+  entry.detail = `核心被动：全队每触发一次[毁伤]固定回 ${ROBIN_MAIM_ENERGY_PER_TRIGGER} 点（本局 ${count} 次，固定值不进回能乘区）`
+}
+
 export const robinMechanic: AgentMechanicModule = {
   id: 'agent:robin',
   agentIds: [ROBIN_AGENT_ID],
@@ -470,7 +577,7 @@ export const robinMechanic: AgentMechanicModule = {
     + ' + 星耀值循环（追加攻击 10s CD +20 / 上限 140 / ≥120 触发登场技）+ 完美节拍 1661019'
     + ' + 额外能力（全队[击破]攻击 +800 / 进战 +3000 喧响）'
     + '；影画1 全队无视20%防御 / 影画2 全队无视15%抗性（spec teamBuffs）/ 影画4 自身+10%伤害；'
-    + '终结技的「全队锋御 +20 锐能」与「每毁伤回 15 能量」未建模（无通道，见文件头）。',
+    + '终结技的「全队锋御 +20 锐能」与核心被动「每毁伤回 15 能量」均已建模（前者 postRound 写队友 cfg，后者走 bonusEnergy）。',
   applyPanel: applyRobinPanel,
   teamPanelEffects: applyRobinTeamPanelEffects,
   applyTeamConfig: applyRobinTeamConfig,
@@ -479,6 +586,26 @@ export const robinMechanic: AgentMechanicModule = {
   buildCharConfig: buildRobinCharConfig,
   buildExecutions: buildRobinExecutions,
   buildResourceResult: buildRobinResourceResult,
+  nextRoundFeedback: robinNextRoundFeedback,
+  // 停点后按本局实际毁伤次数回填明细（见 patchRobinTeamReadouts 注释）
+  patchTeamReadouts: patchRobinTeamReadouts,
+  /**
+   * 核心被动「全队角色每触发一次[毁伤]，知更鸟固定回复 15 点能量」。
+   *
+   * 走 `bonusEnergy`（固定回能入口）而不是 `crossAgentEnergy`：后者的语义是
+   * 「队友给**落点**送能量」，而本条是**她自己**因队友的毁伤事件回能，落点就是自己。
+   *
+   * ⚠ 不进百分比/效率乘区：原文说「**固定**回复」，与诺姆帽子把戏、安东影画1 同款。
+   */
+  bonusEnergy({ cfg }) {
+    const count = Math.max(0, Math.floor(Number(cfg.robinTeamMaimCount ?? 0)))
+    return [{
+      key: 'teamMaimEnergy',
+      label: '每毁伤回能',
+      value: count * ROBIN_MAIM_ENERGY_PER_TRIGGER,
+      detail: `核心被动：全队每触发一次[毁伤]固定回 ${ROBIN_MAIM_ENERGY_PER_TRIGGER} 点（本局 ${count} 次，固定值不进回能乘区）`,
+    }]
+  },
   resourceSections: buildRobinResourceSections,
   settings: [
     {
@@ -497,6 +624,16 @@ export const robinMechanic: AgentMechanicModule = {
 /**
  * D2：本模块私有的 cfg 字段（只有本文件读写；仍是 CharacterOperationConfig 的成员，纯类型零运行时）。
  */
+/**
+ * D2：本模块私有的 ModuleFeedback 键（只有本文件读写，声明随模块走）。
+ */
+declare module '@/mechanics/types' {
+  interface ModuleFeedback {
+    /** 上一轮全队毁伤触发总次数（核心被动「每毁伤回 15 能量」的次数；见 robinNextRoundFeedback） */
+    robinTeamMaimCount?: number
+  }
+}
+
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /**
@@ -505,6 +642,11 @@ declare module '@/types/resource/config' {
      * 「队伍中**其他**角色发动[反制支援]后，若触发[完美反制]自动发动」——**不含她自己**发动的那几次。
      */
     robinTeammateCounterAssists?: number
+    /**
+     * 本局**全队毁伤触发总次数**（converge 相位由 applyTeamConfig 从跨轮通道写入）。
+     * 用途 = 核心被动「每毁伤回 15 能量」的次数（`bonusEnergy` 读）。
+     */
+    robinTeamMaimCount?: number
     /** 命座等级（buildCharConfig 写；影画4 保底升级 / 影画6 必定暴击用） */
     robinCinemaLevel?: number
     /** 震律齐鸣 1661006 表值（buildCharConfig 预存） */
@@ -519,6 +661,10 @@ declare module '@/types/resource/config' {
     /** 支援突击·完美节拍表值（1661019 damage / daze） */
     robinCornerAssistDamage?: number
     robinCornerAssistDaze?: number
+    /** 特殊技：万籁与我同歌 1661004 表值（buildCharConfig 预存；连携招架自动释放那一行用） */
+    robinSpecialDamage?: number
+    robinSpecialDaze?: number
+    robinSpecialDecibel?: number
   }
 }
 

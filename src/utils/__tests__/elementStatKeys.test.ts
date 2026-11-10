@@ -64,7 +64,9 @@ describe('元素 → 面板字段名单一来源（CC-224）', () => {
   it('源码锁（CC-225）：不许手拼元素字段名、不许复制元素 → 字段前缀表（注释行除外）', () => {
     const CONCAT = /\$\{[^}]*\}(?:Dmg|CritDmg|SheerDmg|SharpDmg)\b|enemy\$\{[^}]*\}(?:Res|Def)Reduction\b/
     const PREFIX_TABLE = /\bphysical\s*:\s*'Physical'|\[\s*'Physical'\s*,/
-    const ALLOW = new Set(['utils/elementStatKeys.ts', 'utils/enemyDebuffStats.ts'])
+    // `utils/damageElements.ts` 是元素清单 / 前缀表的**单一事实源**（2026-11-09 三通道重构把它下沉成
+    // 叶子模块，专门断开 enemyDebuffStats ↔ resistanceChannels 的初始化环）⇒ 前缀表住在那里是正确的。
+    const ALLOW = new Set(['utils/elementStatKeys.ts', 'utils/enemyDebuffStats.ts', 'utils/damageElements.ts'])
     const hits: string[] = []
     for (const p of walk(SRC)) {
       const rel = relative(SRC, p).replace(/\\/g, '/')

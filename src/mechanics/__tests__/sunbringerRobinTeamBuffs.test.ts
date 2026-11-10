@@ -49,8 +49,10 @@ describe('(Test1) 知更鸟 1661 spec teamBuffs', () => {
     const panel = resolveTeammateBuffsOnEmptyPanel(
       ['robin_guard_shield_team_dmg', 'robin_c1_team_def_ignore', 'robin_c2_enemy_res'], 0)
     expect(panel.dmgBonus - base.dmgBonus).toBeCloseTo(25, 6)
-    expect(panel.enemyDefReduction - base.enemyDefReduction).toBeCloseTo(20, 6) // v2 影画1 = 无视20%防御
-    expect(panel.enemyResReduction - base.enemyResReduction).toBeCloseTo(15, 6) // v2 影画2 = 无视15%抗性
+    // 防御三通道（2026-11-09）：影画1「全队无视20%防御」= 自身**直伤**无视防御
+    expect(panel.enemyDefIgnoreDirect - base.enemyDefIgnoreDirect).toBeCloseTo(20, 6)
+    // 三通道（2026-11-09）：影画2「全队造成的伤害无视敌人15%抗性」= 自身**直伤**无视
+    expect(panel.enemyResIgnoreDirect - base.enemyResIgnoreDirect).toBeCloseTo(15, 6)
   })
 
   it('门控面：影画1/2 条目在拥有者 C0 不启用、C2 启用；核心被动条不受命座门控', async () => {

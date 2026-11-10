@@ -106,7 +106,8 @@ describe('赛维里安（1631）3.3.12 v12 正式录入', () => {
     const inCombat = phases.inCombat as any
     expect(inCombat.critDmg).toBeGreaterThan(50 + 60 - 0.001) // 核心被动 +60 已入
     expect(inCombat.dmgBonus).toBeGreaterThanOrEqual(25) // 核心被动增伤 +25
-    expect(inCombat.enemyWindResReduction ?? 0).toBeGreaterThanOrEqual(15) // 影画1 无视 15% 风抗
+    // 三通道：影画1「攻击命中无视 15% 风抗」= 自身**直伤**无视
+    expect(inCombat.enemyWindResIgnoreDirect ?? 0).toBeGreaterThanOrEqual(15)
   })
 
   it('执行行：苍风影猎按流息收入产行（C6 最后击 +350 且 override），烈旋按闪反近似', async () => {
@@ -196,7 +197,8 @@ describe('赛维里安（1631）3.3.12 v12 正式录入', () => {
     const armed = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
     // 暴击率 +20（被动精炼1）+ 24（副属性词条 1 级 9.6% → 满级 24%）
     expect(armed.critRate - bare.critRate).toBeCloseTo(20 + 24, 5)
-    expect((armed.enemyWindResReduction ?? 0) - (bare.enemyWindResReduction ?? 0)).toBeCloseTo(15, 5)
+    // 三通道：专武「造成的伤害无视目标15%风抗」= 自身**直伤**无视（元素限定）
+    expect((armed.enemyWindResIgnoreDirect ?? 0) - (bare.enemyWindResIgnoreDirect ?? 0)).toBeCloseTo(15, 5)
     expect(armed.atk).toBeGreaterThan(bare.atk)
   })
 

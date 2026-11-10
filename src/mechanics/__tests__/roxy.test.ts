@@ -52,15 +52,16 @@ async function panelOf(team: Parameters<typeof setupHarness>[0]) {
 
 describe('洛克茜（1621）v4 影画', () => {
   it('影画1/6 **自身**面板：暴伤+40%、无视风抗15%（C1 全抗 / C2 易伤走 teamBuffs 敌方减益通道）', () => {
-    const p0: any = { critDmg: 50, enemyResReduction: 0, stunDmgMultiplierBonus: 0, enemyWindResReduction: 0 }
+    const p0: any = { critDmg: 50, enemyResReduction: 0, stunDmgMultiplierBonus: 0, enemyWindResIgnoreDirect: 0 }
     roxyMechanic.applyPanel!({ cinemaLevel: 0, panel: p0, settings: {} } as any)
     expect(p0.critDmg).toBeCloseTo(50)
     expect(p0.enemyResReduction).toBeCloseTo(0)
 
-    const p6: any = { critDmg: 50, enemyResReduction: 0, stunDmgMultiplierBonus: 0, enemyWindResReduction: 0 }
+    const p6: any = { critDmg: 50, enemyResReduction: 0, stunDmgMultiplierBonus: 0, enemyWindResIgnoreDirect: 0 }
     roxyMechanic.applyPanel!({ cinemaLevel: 6, panel: p6, settings: {} } as any)
     expect(p6.critDmg).toBeCloseTo(50 + ROXY_C1_CRIT_DMG)
-    expect(p6.enemyWindResReduction).toBeCloseTo(ROXY_C6_WIND_RES_REDUCTION)
+    // 三通道：影画6「自身攻击造成的伤害无视15%风抗」= 自身**直伤**无视
+    expect(p6.enemyWindResIgnoreDirect).toBeCloseTo(ROXY_C6_WIND_RES_REDUCTION)
     // 负控（2026-10-26 用户口径）：这两条是**敌方减益、全队都吃**，不是自身面板量。
     // 写在这里 = 只有洛克茜自己吃到，队友吃不到（且与 teamBuffs 采集通道叠加即双计）。
     expect(p6.enemyResReduction, 'C1 全抗-15% 走 teamBuffs，不得写自身面板').toBeCloseTo(0)

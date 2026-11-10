@@ -153,9 +153,19 @@ export interface PanelValues {
   flashEnergyGainEfficiency: number // 闪能获得效率，百分比
   decibelGainEfficiency: number     // 喧响获得效率，百分比
   // 敌方减益（作用于敌人的属性）
-  enemyDefReduction: number       // 敌方防御降低，百分比（无视防御/减防）
+  enemyDefReduction: number       // 敌方防御降低（**怪物身上**，结算区 debuff；直伤与异常都吃）
   enemyDefFlatReduction: number   // 敌方防御固定降低
-  enemyAnomalyDefReduction: number // 异常伤害专属防御降低/无视防御
+  enemyAnomalyDefReduction: number // 异常伤害专属防御降低/无视防御（异常链专属）
+  // ---- 防御三通道（2026-11-09 用户口径；语义见 utils/defenseChannels.ts 头注释）----
+  // 通用 = enemyDefReduction 族（怪物身上减防）；异常专属 = enemyAnomalyDefReduction / enemyAssaultDefReduction；
+  // 下面这条是**自身直伤无视防御**：只进 calcDirectDamage，异常链读不到。
+  enemyDefIgnoreDirect: number    // 自身直伤无视防御（全元素）
+  enemyPhysicalDefIgnoreDirect: number
+  enemyFireDefIgnoreDirect: number
+  enemyIceDefIgnoreDirect: number
+  enemyElectricDefIgnoreDirect: number
+  enemyEtherDefIgnoreDirect: number
+  enemyWindDefIgnoreDirect: number
   enemyPhysicalDefReduction: number // 物理属性专属防御降低/无视防御
   enemyFireDefReduction: number     // 火属性专属防御降低/无视防御
   enemyIceDefReduction: number      // 冰属性专属防御降低/无视防御
@@ -169,6 +179,29 @@ export interface PanelValues {
   enemyElectricResReduction: number // 电属性专属抗性降低/无视抗性
   enemyEtherResReduction: number    // 以太属性专属抗性降低/无视抗性
   enemyWindResReduction: number     // 风属性专属抗性降低/无视抗性
+  // ---- 抗性三通道（2026-11-09 用户口径；语义见 utils/resistanceChannels.ts 头注释）----
+  // 通用 = 上面 enemyResReduction 族（怪物身上减抗，直伤与异常都吃）。
+  // 下面两族是**自身**无视抗性：直伤族只进 calcDirectDamage，异常族只进 calcAnomalyDamage / 紊乱 / 乱流 / 异放 / 耀变。
+  enemyResIgnoreDirect: number        // 自身直伤无视抗性（全元素）
+  enemyPhysicalResIgnoreDirect: number
+  enemyFireResIgnoreDirect: number
+  enemyIceResIgnoreDirect: number
+  enemyElectricResIgnoreDirect: number
+  enemyEtherResIgnoreDirect: number
+  enemyWindResIgnoreDirect: number
+  enemyResIgnoreAnomaly: number       // 自身异常伤害无视抗性（全元素）
+  enemyPhysicalResIgnoreAnomaly: number
+  enemyFireResIgnoreAnomaly: number
+  enemyIceResIgnoreAnomaly: number
+  enemyElectricResIgnoreAnomaly: number
+  enemyEtherResIgnoreAnomaly: number
+  enemyWindResIgnoreAnomaly: number
+  // ---- 异放专属层（2026-11-09 用户口径：「异放减防就是异常减防的子集，只在异放事件时计算」）----
+  // 它是**异常父层的子层**：异放行 = 父层 + 本层（相加），侵蚀/感电/紊乱等父事件读不到。
+  // ⚠ 计算路径**不走**面板读数（damage 链不读这两个字段），只由 mechanics#releaseModifier 取用；
+  //   之所以仍落在面板上，是为了**可展示**——算而不显会让人以为没算（用户 2026-11-09）。
+  enemyAnomalyReleaseDefReduction: number // 异放专属无视防御（只进异放行）
+  enemyAnomalyReleaseResIgnore: number    // 异放专属无视抗性（只进异放行）
   enemyStunResReduction: number    // 敌方失衡抗性降低，百分比（旧兼容：全元素）
   enemyPhysicalStunResReduction: number // 物理属性专属失衡抗性降低/无视
   enemyFireStunResReduction: number // 火属性专属失衡抗性降低/无视

@@ -85,7 +85,8 @@ function applyAlicePanel({ cinemaLevel, panel }: AgentPanelInput): void {
   // alice_c2_team_assault_damage）合并生效（enemy/team 目标，全队受益含爱丽丝自身），
   // 此处不再重复施加，防双计（SOP §3.5）。
 
-  // 四命：攻击时无视目标 10% 物理伤害抗性
+  // 四命：「**爱丽丝**无视目标 10% 物理伤害抗性」——主语是**角色**（不是「造成的伤害」）
+  //   ⇒ **通用无视抗性**（用户口径 2026-11-09）：直伤与异常**都吃**。
   if (cinemaLevel >= 4) {
     panel.enemyPhysicalResReduction = panel.enemyPhysicalResReduction + C4_PHYSICAL_RES_REDUCTION
   }

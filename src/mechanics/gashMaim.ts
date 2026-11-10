@@ -49,6 +49,45 @@
  * `agents/claret.ts`（整局总量口径 + 轴内推演）、`agents/sunbringer.ts`（六条循环的残痕/毁伤段）。
  */
 
+/**
+ * 一槽的[毁伤]**累计倍率**（Σ 该槽 毁伤行 `count × damageMultiplier`）。
+ *
+ * 用途 = 跨槽口径里唯一能拿到的「毁伤量」：全队[毁伤]结晶成烬痕（挽昼 1601 核心被动 3.4.3
+ * 「全队代理人造成的[毁伤]也可使目标积攒等同于该次实际伤害 35% 的[烬痕]」）。资源层**没有**实际伤害
+ * （伤害池在资源层之后才算），所以只能读执行行的倍率总量——与挽昼自己那份的算法（`maimCount × 毁伤表值`）
+ * **是同一个空间**，即「按倍率等价计入」。
+ *
+ * ⚠ 已知近似（debt）：跨槽**没有按两槽面板比折算**（克拉蕾的 1% 倍率含她自己的 ATK/增伤/锐暴面板，
+ * 与挽昼的不是同一把尺）。升级路径 = 伤害池把 毁伤行 `totalDamage` 通过 `ModuleFeedback` 回传，
+ * 消费侧按「实际伤害 ÷ 挽昼自身每 1% 倍率伤害」折算进二段倍率。
+ *
+ * 认行口径 = `moveName` 含「毁伤」（两模块行名都是「毁伤（每消耗 1 层残痕触发 1 次）」）：
+ * 不能用 moveId —— 克拉蕾 1611013 与挽昼 1601114 是两个不同 id，且都是 basic 分类下的独立行。
+ */
+export interface MaimRowCarrier {
+  slot: number
+  executions?: ReadonlyArray<{ moveName?: string; count?: number; damageMultiplier?: number }>
+}
+
+/** 全队[毁伤]累计倍率（**排除** `selfSlot`；自己那份由各模块按本槽口径单独算，避免双计）。 */
+export function collectTeamMaimMultiplier(
+  characters: readonly MaimRowCarrier[],
+  selfSlot: number,
+): number {
+  let total = 0
+  for (const ch of characters) {
+    if (ch.slot === selfSlot) continue
+    for (const exec of ch.executions ?? []) {
+      if (!/毁伤/.test(String(exec.moveName ?? ''))) continue
+      const count = Number(exec.count)
+      const mult = Number(exec.damageMultiplier)
+      if (!Number.isFinite(count) || !Number.isFinite(mult) || count <= 0 || mult <= 0) continue
+      total += count * mult
+    }
+  }
+  return total
+}
+
 /** 残痕值：每 600 点 = [残痕] 1 层（= 1 次毁伤）。用户口径 2026-09-03。 */
 export const GASH_PER_LAYER = 600
 
@@ -250,6 +289,11 @@ export interface SharpenGashClaimLike {
   points: number
   /** 本槽想消耗的层数（**声明口径**：斩金断铁 1/次 + 葬血强袭 3/段；影画6 不消耗不计） */
   demandLayers: number
+  /**
+   * 本槽本局**实际触发的毁伤次数**（`collectTeamMaimCount` 读；仅展示/回能计数用，不参与池分配）。
+   * 与 `demandLayers` 的区别：含影画6 那种「不消耗残痕」的额外毁伤（它们不耗层但**算毁伤事件**）。
+   */
+  maimCount?: number
 }
 
 /** 可能带申报的一槽（两模块字段名不同，任一命中即可）。 */
@@ -263,6 +307,8 @@ export interface SharpenGashClaimCarrier {
   claretSharpResourceSource?: {
     gashValuePct: number
     gashPoolDeclaredLayers?: number
+    /** 实际触发毁伤次数（含影画6 不耗层的那些）——`collectTeamMaimCount` 读 */
+    maimCount?: number
   } | undefined
   /** 挽昼 1601：`buildResourceResult` 暴露的申报 */
   sunbringerGashSource?: SharpenGashClaimLike | undefined
@@ -302,4 +348,34 @@ export function collectSharpenGashClaims(
     }
   }
   return Object.keys(claims).length >= 2 ? claims : null
+}
+
+/**
+ * 收集**全队毁伤触发总次数**（知更鸟「每毁伤回能」的输入，2026-11-08 接线）。
+ *
+ * 语义：
+ * - 锋御槽贡献自己的 `maimCount`（= 消耗残痕层数 + 不耗层的额外毁伤，如克拉蕾影画6）；
+ * - **单锋御队也成立**（不像 `collectSharpenGashClaims` 那样要求 ≥2 槽）——
+ *   知更鸟在只有一名锋御队友时同样每毁伤回 15 点；
+ * - 无锋御 ⇒ 0（本局没有任何毁伤来源）。
+ *
+ * ⚠ 为什么按**字段存在性**判锋御：本函数只拿得到资源结果、没有 team 快照；
+ * 而「暴露了 maimCount」本身就是模块在声明「我会产生毁伤」（与 `collectSharpenGashClaims` 同款纪律）。
+ */
+export function collectTeamMaimCount(
+  characters: readonly SharpenGashClaimCarrier[],
+): number {
+  let total = 0
+  for (const ch of characters) {
+    const sun = ch.sunbringerGashSource
+    if (sun && Number.isFinite(Number(sun.maimCount))) {
+      total += Math.max(0, Math.floor(Number(sun.maimCount)))
+      continue
+    }
+    const cl = ch.claretSharpResourceSource
+    if (cl && Number.isFinite(Number(cl.maimCount))) {
+      total += Math.max(0, Math.floor(Number(cl.maimCount)))
+    }
+  }
+  return total
 }

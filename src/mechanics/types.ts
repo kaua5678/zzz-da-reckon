@@ -27,7 +27,7 @@ import type { CalcRoundThreads } from '@/composables/resourceCalc/roundThreads'
 // `docs/mcp-cc18-extra-direct-rows.md` §2-1）。
 import type { DirectRowInput } from '@/composables/resourceCalc/damagePoolDirect'
 import type { AgentLimitPointDecl, DirectRowAxisSplitInput, DirectRowAxisSplit, DirectRowBonusInput, DirectRowBonus, ExtraDirectRowsInput, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput, TeammateBuffRecipientFilterInput } from './typesRows'
-import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, CapabilityGateDecl, AxisRageCombos, ReleaseShareSpec, TeammateDropSpec, AxisGashResourceSpec, FinalizePassSpec, DamageFormulaFieldDecl, UniformStunRowInput, AxisSwayFlow } from './typesHooks'
+import type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentStunOverride, AgentAxisOverlayInput, AgentAxisOverlay, AgentAnomalyTransformInput, AnomalyHookSelf, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, InteractionTopUpGate, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentInteractionContext, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, InteractionClimbDecl, CapabilityGateDecl, AxisRageCombos, ReleaseShareSpec, TeammateDropSpec, AxisGashResourceSpec, FinalizePassSpec, DamageFormulaFieldDecl, UniformStunRowInput, AxisSwayFlow, ReleaseModifierInput } from './typesHooks'
 // CC-451：展示层专用声明类型（CC-444/445/446/448 陆续长在本文件里，把 CC-83 预算顶破）拆出 typesView.ts；本文件原样转出，导入方不用改
 import type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'
 
@@ -493,6 +493,13 @@ export interface ModuleFeedback {
   /** 莱特后场：全队常态能量消耗（converge 相位经通用输入 `teamEnergyConsumed` 递给模块） */
   consumedTeamEnergy?: number
   /** 团队残痕池各槽申报（双锋御队；单锋御 = undefined）——通道/收敛理由见 `gashMaim.ts` 头「多锋御接线」 */ gashPoolClaims?: Record<number, { points: number; demandLayers: number }>
+  /**
+   * 队友锋御的[毁伤]累计倍率（挽昼烬痕 35% 那条来源的跨槽输入，2026-11-10）。
+   * 生产方 = `sunbringer.ts#sunbringerNextRoundFeedback`（`collectTeamMaimMultiplier`）；
+   * 消费方 = `applySunbringerTeamConfig`（converge）→ `cfg.sunbringerTeammateMaimMultiplier` → `computeEmberScar`。
+   * 是**有限数值** ⇒ 会被 `outerCycle#moduleFeedbackSignature` 自动纳入收敛签名，不必另开序列化。
+   */
+  sunbringerTeamMaimMultiplier?: number
 }
 
 export interface AgentExSpecialTimeInput {
@@ -579,20 +586,6 @@ export interface AgentDamageResolutionInput {
   team: ReadonlyTeam
   cinemaLevel: number
   potentialLevel: number
-}
-
-export interface ReleaseModifierInput {
-  /**
-   * 本模块角色**自己那一槽**（r398 CC-372）：派发方按模块 `agentIds` 在队伍里定位后给出
-   * （`composables/resourceCalc/damagePool.ts#releaseModifierSelf`；命座与面板阶段同源 = `team[slot].cinemaLevel`）。
-   *
-   * 为什么不再给全队 `panels`：模块要的从来是「我自己的命座 / 面板」，却拿不到「我是哪一槽」，
-   * 于是 phoenix / promia / vivian 各自在 `applyPanel` 里往自己面板上夹带 `xxxCinemaLevel`，再用
-   * `panels.find(p => p.xxxCinemaLevel !== undefined)` 把自己认回来——三份同构 hack，靠 `PanelValues`
-   * 的 `[key: string]: number` 索引签名才成立。契约补上身份后，夹带字段全部删除。
-   * `slot = -1` ⇒ 本模块不在队（派发只对在队模块发生，防御性给 0 命、无面板）。
-   */
-  self: { slot: number; cinemaLevel: number; panel: DeepReadonly<PanelValues> | undefined }
 }
 
 /**
@@ -1350,6 +1343,18 @@ export interface AgentMechanicModule {
    */
   onFinalAssemble?(input: AgentFinalAssembleInput): void
   /**
+   * **滞后读数回填**（2026-11-10，规则 6 引擎落点；首个声明方 = 知更鸟）。
+   *
+   * 存在理由：有些读数天然来自**上一轮**资源解（外层不动点通道，如「全队毁伤次数」）。
+   * 若外层停点落在环上，末轮用到的滞后值可能与它自己的输出差一拍 —— 明细（15 × 28 次）
+   * 与结果（26 次）自相矛盾，用户当场就能看出来。
+   *
+   * 契约：**纯回填**，在停点确定之后调用一次；只能按**本局最终结果**绝对重写自己的读数
+   * （`CharacterResourceResult`），**不得**改写他人的结果、不得读 store、不得参与任何循环输入
+   * （调用点在收敛之后，写了也不会被下一轮看见）。幂等：同一份结果调两次结果相同。
+   */
+  patchTeamReadouts?(input: { characters: CharacterResourceResult[] }): void
+  /**
    * **角色专属能量项**（规则 6 引擎落点，2026-09-26 CC-14a；诺姆/青衣/莱卡恩/比利/仪玄/安东先例）。
    *
    * 语义：本模块角色独有的**固定源能量**（如诺姆影画2 帽子把戏、青衣影画4 稳态电弧屏障、
@@ -1396,5 +1401,5 @@ export interface AgentMechanicModule {
 export type { DirectRowAxisSplitInput, DirectRowAxisSplit, ExtraAnomalyRowGroup, ExtraAnomalyRowsInput, TeammateBuffRecipientFilterInput } from './typesRows'
 export { EXTRA_ANOMALY_ROW_ORDER } from './typesRows'
 export { axisOverlayChannel } from './typesHooks'
-export type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentAxisOverlay, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput } from './typesHooks'
+export type { CrossAgentSupplySpec, AgentStunOverrideInput, AgentAxisOverlay, AgentAnomalyTransformInput, AgentNextRoundFeedbackInput, InteractionTopUp, InteractionTopUpInput, ExtraNecessaryAction, AgentAnomalyEventRecordsInput, AxisEditorBlockMark, CharacterCountInputDecl, AgentDamageResolution, ReleaseModifier, InteractionCounts, AgentAxisActionExpandInput, AgentSelfBurnDecibelInput, AgentFinalAssembleInput, PromoteHugInput, ReleaseModifierInput } from './typesHooks'
 export type { AgentPoolSummaryInput, PoolSummarySection, CrossAgentEnergyLabel, AxisDurationInputDecl, AxisWindowLaneDecl, AgentResourceSectionsInput } from './typesView'

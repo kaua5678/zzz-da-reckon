@@ -241,6 +241,17 @@ export interface CharacterOperationConfig {
    */
   sharpnessGiftFromTeam?: number
   /**
+   * **Boss 的 x 弹（连携招架）次数** = Boss 预设 `defaults.xParryTotal`（当前只有 40006 基塔布鲁 = 1）。
+   *
+   * 语义（用户口径 2026-11-10 逐字）：「x 弹必须是 boss 身上有的，普通的交替弹不会有。这个计数器
+   * 只能去 boss 身上取这个次数，**其他地方不会产**。角色读了 boss x 弹相当于转化为普通弹刀进行方便计算」
+   * ⇒ ① 计算侧把它折算成普通弹刀（双方 `parryCount` 各 +xParryTotal，见 `convergence.ts` 那段）；
+   * ② 需要「x 弹发生了几次」的机制**直接读本字段**，不要拿队友 `parryCount` 顶替。
+   *
+   * 写入方 = `convergence.ts`（Boss 事实透传，不是角色分支 —— 规则 6）；消费者 = `robin.ts`（1661004）。
+   */
+  bossXParryTotal?: number
+  /**
    * **团队残痕池核定的可用层数**（双锋御队专用；单锋御 = undefined ⇒ 各模块走自己的单槽池）。
    *
    * 写入方：锋御模块（`claret.ts` / `sunbringer.ts`）各自的 `applyTeamConfig({phase:'converge'})`——
@@ -456,6 +467,15 @@ export interface ResourceCalcConfig {
    * 由 calcTeamResources 时间预算折叠循环每轮重写；iterate 只读。
    */
   timeBudgetRefund?: number
+  /**
+   * 边际填充种子（秒，团队级；缺省 `undefined` = 不启用）。
+   *
+   * 为什么单独一个字段：折叠环 pass0 会用「本轮 teamRefund」**覆盖** `timeBudgetRefund`
+   * （实测预置值被改成 0），所以「把填充量钉在某一档」这件事必须走独立通道，由欠打回填试探在
+   * 折叠环**之后**读它并直接结算一次。消费方 = `useResourceCalc` 的边际填充搜索
+   * （用户 2026-11-10「生产一点点消耗一点点」+「即便超时也不触发动作切换」）。
+   */
+  timeBudgetRefundSeed?: number
   /**
    * 轴内合轴节省按块分摊（`${slot}:${moveId}` → 秒，输入）：失衡窗口内跨角色块并行（般岳强特时琉音抱拳）只计一次前台。
    * 由编排层用栈引擎算好传入（StackTraversalResult.overlapByAction，Σ = overlapSeconds）；iterate 平A池、

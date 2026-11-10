@@ -31,7 +31,8 @@ async function miyabiPanel(team: Array<HarnessTeamSlot | ''>): Promise<PanelValu
 }
 
 const aaOf = (panel: PanelValues) => panel.additionalAbilityActive
-const iceResOf = (panel: PanelValues) => panel.enemyIceResReduction ?? 0
+// 三通道（2026-11-09）：霜月是烈霜**直伤** ⇒ 自身直伤无视族
+const iceResOf = (panel: PanelValues) => panel.enemyIceResIgnoreDirect ?? 0
 const basicBonusOf = (panel: PanelValues) => panel['skillDmgBonus__basic'] ?? 0
 
 describe('星见雅额外能力·同沐霜雪 门控（同阵营臂：spec sameFactionAsSelf）', () => {

@@ -214,6 +214,8 @@ describe('菲欧妮（1641）3.3.12 v12 正式录入', () => {
     config.team[0]!.cinemaLevel = 6
     config.syncTeammateBuffsFromTeam()
     const c6Panel = computePanelPhases(0, config, useCatalogStore())!.inCombat as any
+    // 三通道（2026-11-09 用户二次裁决）：「**菲欧妮**无视目标15%全属性伤害抗性」主语是**角色**
+    // ⇒ 通用无视抗性（直伤与异常都吃），与怪物减抗同通道
     expect((c6Panel.enemyResReduction ?? 0) - (bare.enemyResReduction ?? 0)).toBeCloseTo(15, 5)
     const d6 = useResourceCalc().teamTotalDamage.value
     expect(d6).toBeGreaterThan(d0)

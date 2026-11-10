@@ -120,4 +120,31 @@ describe('普罗米娅完整计算链', () => {
     expect(modNeg.enemyDefReduction).toBeUndefined()
     expect(modNeg.note).toBe('')
   })
+
+  /**
+   * ★ 敌方状态口径（用户 2026-11-09）：
+   * > 「有罪推定敌人感觉是敌人身上的debuff，全队击打到都能吃。我希望显示在队友身上……
+   * >   此处分为自身面板和敌方状态，加起来才是自身计算状态」
+   *
+   * 有罪推定是**敌人身上的减防**，不是普罗米娅的自有增益 ⇒ 必须出现在**每个槽位**的
+   * 敌方状态（enemyAnomalyReleaseDefReduction）上，队友异放才算得对、也才看得见。
+   */
+  it('★ 有罪推定是敌方状态：写进每个槽位（含队友）的 enemyAnomalyReleaseDefReduction', async () => {
+    await setup('1181', 1)
+    const calc = useResourceCalc()
+    const panels = calc.panels.value
+    const expected = PROMIA_GUILTY_DEF_IGNORE + PROMIA_C1_DEF_IGNORE
+    expect(panels.length).toBeGreaterThanOrEqual(2)
+    for (const p of panels) {
+      expect(
+        p.enemyAnomalyReleaseDefReduction ?? 0,
+        `槽 ${p.slot} 的敌方状态必须含这份减防（敌人身上，全队都吃）`,
+      ).toBeCloseTo(expected, 5)
+      // 且**不得**串进父层/通用层：那两层范围更大 ⇒ 过度授予
+      expect(p.enemyAnomalyDefReduction ?? 0).toBeCloseTo(0, 5)
+      expect(p.enemyDefReduction ?? 0).toBeCloseTo(0, 5)
+    }
+    // 队友的异放行也吃得到（releaseModifierScope = 'team'）
+    expect(promiaMechanic.releaseModifierScope).toBe('team')
+  })
 })

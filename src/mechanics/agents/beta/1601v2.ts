@@ -109,6 +109,12 @@ interface SunbringerMeta {
   ultB: SunbringerMoveMeta
   maim: SunbringerMoveMeta
   chain: SunbringerMoveMeta
+  /**
+   * 冻结副本的**类型对齐位**：正主 `sunbringer.ts` 2026-11-10 起了这条（支援突击残痕 ×1.15）。
+   * 两处 `declare module` 扩充的是同一个 `sunbringerMeta` 属性，形态不一致即 TS2717。
+   * ⚠ **冻结副本不填这个字段**——它保留 v1/v2 当时的数值行为（无支援突击残痕），只是类型跟上。
+   */
+  assistFollowUp?: SunbringerMoveMeta
   sharpnessRegen: number
 }
 
@@ -131,7 +137,8 @@ export function applySunbringerPanel({ panel, outOfCombatPanel, cinemaLevel }: A
   }
   // 极昼：满覆盖近似（见文件头）
   panel.critRate = panel.critRate + POLAR_DAY_CRIT_RATE
-  panel.enemyDefReduction = panel.enemyDefReduction + POLAR_DAY_DEF_IGNORE
+  // 防御三通道（2026-11-09）：极昼「造成伤害无视目标20%防御力」= 自身直伤无视（异常读不到）
+  panel.enemyDefIgnoreDirect = panel.enemyDefIgnoreDirect + POLAR_DAY_DEF_IGNORE
   // 影画1（隐世的虚狩）：造成伤害无视 15% 火属性抗性（满覆盖）；「残痕积蓄效率 +10%」在 solveSunbringerLoops
   if (cinemaLevel >= 1) panel.enemyFireResReduction = panel.enemyFireResReduction + 15
   // 影画2（继承者的叛旗）v2 文本 = 烬痕积攒（+20% / 其他招式 15% / 击溃）——**不再是无视 12% 防御**
@@ -139,7 +146,8 @@ export function applySunbringerPanel({ panel, outOfCombatPanel, cinemaLevel }: A
   // 影画4（奉献者的虚像）：自身造成的伤害 +15%（满覆盖）
   if (cinemaLevel >= 4) panel.dmgBonus = panel.dmgBonus + 15
   // 影画6（破晓的希冀）：招式造成伤害无视目标 20% 防御力（满覆盖；额外[烬灭]在 computeEmberScar）
-  if (cinemaLevel >= 6) panel.enemyDefReduction = panel.enemyDefReduction + 20
+  // 影画6「招式造成伤害无视目标20%防御力」= 自身直伤无视
+  if (cinemaLevel >= 6) panel.enemyDefIgnoreDirect = panel.enemyDefIgnoreDirect + 20
 }
 
 export function buildSunbringerCharConfig({ cfg, skills, agent, cinemaLevel }: AgentCharConfigInput): void {

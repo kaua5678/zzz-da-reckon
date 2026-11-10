@@ -2,6 +2,7 @@ import { localized } from '@/utils/format'
 import { penetrationPowerFormulaLabel } from '@/data/penetrationPower'
 import { SKILL_DMG_TARGET_LABELS } from '@/data/skillDamageTargets'
 import { DAMAGE_ELEMENTS, ELEMENT_LABEL, ENEMY_DEBUFF_KIND_CONFIG, LEGACY_ENEMY_DEBUFF_STAT_IDS, enemyDebuffStatId, type EnemyDebuffKind } from '@/utils/enemyDebuffStats'
+import { RESISTANCE_CHANNELS, RESISTANCE_CHANNEL_LABEL, resIgnoreStatId } from '@/utils/resistanceChannels'
 
 export type FormulaZone =
   | '基础属性'
@@ -92,10 +93,15 @@ export const STAT_META: StatMeta[] = [
   { value: 'windSharpDmg', label: '风属性锐化增伤', zone: '锐化增伤区', mode: 'pct', description: '只在风属性锋御/锐化伤害结算时，与通用锐化增伤加算进入独立乘区' },
   { value: 'penRatio', label: '穿透率', zone: '防御/穿透区', mode: 'pct', description: '防御区：怪物防御 × (1 - 穿透率)' },
   { value: 'penFlat', label: '穿透值', zone: '防御/穿透区', mode: 'flat', description: '防御区：有效防御中固定扣除' },
-  { value: 'enemyDefReduction', label: '敌方防御降低/无视防御（非元素限定）', zone: '防御/穿透区', mode: 'pct', description: '非元素限定的减防/无视防御，只按当前角色自己的面板进入该角色公式；不会自动变成全队共享减防' },
+  { value: 'enemyDefReduction', label: '敌方防御降低（非元素限定·怪物身上）', zone: '防御/穿透区', mode: 'pct', description: '**降低怪物身上的防御**（结算区 debuff）：直伤与一切异常都吃。⚠ 自身「造成伤害无视防御」不走这里——走 enemyDefIgnoreDirect（直伤专属）；异常专属无视防御走 enemyAnomalyDefReduction' },
   { value: 'enemyDefFlatReduction', label: '敌方固定防御降低', zone: '防御/穿透区', mode: 'flat', description: '当前与穿透值加算，作为固定防御扣除' },
-  { value: 'enemyAnomalyDefReduction', label: '异常伤害防御降低/无视防御', zone: '防御/穿透区', mode: 'pct', description: '只在异常伤害、紊乱、乱流、异放等异常结算中进入防御区' },
-  { value: 'enemyResReduction', label: '敌方抗性降低/无视抗性（全元素）', zone: '抗性/易伤区', mode: 'pct', description: '旧兼容字段：作为6个常规元素的全元素减抗使用' },
+  { value: 'enemyDefIgnoreDirect', label: '自身直伤无视防御（全元素）', zone: '防御/穿透区', mode: 'pct', description: '自身「造成伤害无视防御」：**只进直伤防御区**，异常伤害（乱流/灼烧/强击/紊乱/异放/耀变）读不到' },
+  { value: 'enemyAnomalyDefReduction', label: '异常伤害防御降低/无视防御', zone: '防御/穿透区', mode: 'pct', description: '**异常专属**：只在异常伤害、紊乱、乱流、异放等异常结算中进入防御区，直伤读不到' },
+  { value: 'enemyAnomalyReleaseDefReduction', label: '异放专属无视防御', zone: '防御/穿透区', mode: 'pct', description: '**异放专属层**（异常父层的子层）：只在异放行与异常父层**相加**，侵蚀/感电/紊乱等父事件读不到' },
+  { value: 'enemyAnomalyReleaseResIgnore', label: '异放专属无视抗性', zone: '抗性/易伤区', mode: 'pct', description: '**异放专属层**（异常父层的子层）：只在异放行与异常父层**相加**，侵蚀/感电/紊乱等父事件读不到' },
+  { value: 'enemyResReduction', label: '敌方抗性降低（全元素·怪物身上）', zone: '抗性/易伤区', mode: 'pct', description: '**降低怪物身上的抗性**（结算区 debuff）：直伤与一切异常伤害都吃这份值。⚠ 自身「造成伤害无视抗性」不走这里——直伤无视走 enemyResIgnoreDirect、异常无视走 enemyResIgnoreAnomaly' },
+  { value: 'enemyResIgnoreDirect', label: '自身直伤无视抗性（全元素）', zone: '抗性/易伤区', mode: 'pct', description: '自身「造成伤害无视抗性」：**只进直伤抗性区**，异常伤害（乱流/灼烧/强击/紊乱/异放）读不到' },
+  { value: 'enemyResIgnoreAnomaly', label: '自身异常伤害无视抗性（全元素）', zone: '抗性/易伤区', mode: 'pct', description: '自身「造成异常伤害时无视抗性」：**只进异常结算抗性区**（标准异常/紊乱/乱流/异放/耀变），直伤读不到' },
   { value: 'disorderDamageBonus', label: '紊乱增伤', zone: '异常伤害区', mode: 'pct', description: '只作用于紊乱，不作用于普通异常伤害；与 anomalyDmgBonus 分区' },
   { value: 'disorderBaseMultiplierBonus', label: '紊乱基础倍率提升', zone: '异常伤害区', mode: 'pct', description: '加到紊乱基础倍率区，例如把基础倍率450提高到700' },
   { value: 'anomalyDurationBonusSeconds', label: '异常持续时间增加', zone: '异常伤害区', mode: 'flat', description: '只影响DoT覆盖时间和紊乱/乱流剩余时间，不影响异常积蓄' },
@@ -172,6 +178,24 @@ const GENERATED_ENEMY_DEBUFF_META: StatMeta[] = DAMAGE_ELEMENTS.flatMap(element 
 
 STAT_META.push(...GENERATED_ENEMY_DEBUFF_META)
 
+/**
+ * 抗性两族（自身无视抗性）的元素级条目：`enemyFireResIgnoreDirect` / `enemyFireResIgnoreAnomaly`。
+ * 字段名由 `utils/resistanceChannels` 生成（单一事实源），这里只补标签 / 分区 / 口径。
+ */
+const GENERATED_RES_IGNORE_META: StatMeta[] = RESISTANCE_CHANNELS.flatMap(channel =>
+  DAMAGE_ELEMENTS.map(element => ({
+    value: resIgnoreStatId(channel, element),
+    label: `${ELEMENT_LABEL[element]}自身${RESISTANCE_CHANNEL_LABEL[channel]}无视抗性`,
+    zone: '抗性/易伤区' as const,
+    mode: 'pct' as const,
+    description: channel === 'direct'
+      ? '自身「造成伤害无视抗性」的元素限定版：**只进直伤抗性区**，异常伤害读不到'
+      : '自身「造成异常伤害时无视抗性」的元素限定版：**只进异常结算抗性区**，直伤读不到',
+  })),
+)
+
+STAT_META.push(...GENERATED_RES_IGNORE_META)
+
 const STAT_META_MAP = new Map(STAT_META.map(item => [item.value, item]))
 
 
@@ -194,7 +218,10 @@ export function isPctStat(stat: string): boolean {
     base.endsWith('Efficiency') ||
     base.endsWith('Bonus') ||
     base.endsWith('Reduction') ||
-    base.endsWith('Ignore')
+    base.endsWith('Ignore') ||
+    // 自身无视抗性两族（`enemyResIgnoreDirect` / `enemyFireResIgnoreAnomaly`）：后缀是 Direct/Anomaly
+    base.endsWith('IgnoreDirect') ||
+    base.endsWith('IgnoreAnomaly')
 }
 
 export function getStatMeta(stat: string): StatMeta {

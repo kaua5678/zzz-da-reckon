@@ -23,8 +23,11 @@ import { stunWindowFraction } from '@/core/effectiveTime'
 import { continuousStunSplitOf } from '@/core/continuousStun'
 import { buildStunTimeline, realizeStunWindows } from '@/core/stunTimeline'
 import type { OuterExit, ResourceCalcConfig } from '@/types/resource'
+import { getAgentMechanic } from '@/mechanics/registry'
+import { GASH_PER_LAYER, collectSharpenGashClaims, collectTeamMaimCount } from '@/mechanics/gashMaim'
+import type { GashPoolClaims } from '@/mechanics/gashMaim'
 import { initialCalcRoundThreads } from './roundThreads'
-import { findOuterLongCycleLag, isOuterTwoCycle, outerFeedbackSignature, pickOuterCycleMember } from './outerCycle'
+import { findOuterLongCycleLag, isOuterTwoCycle, moduleFeedbackSignature, outerFeedbackSignature, pickOuterCycleMember } from './outerCycle'
 import { probeFlag, probeKey, probePush } from '@/core/probeTrace'
 import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted, downscaleTrialFeasible } from './feasibilitySearch'
 // 仅类型：`ReturnType<typeof createRunCalcRound>` 与 `CalcRoundResult` 都用不到运行时值，
@@ -320,6 +323,44 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
      * 「按 K 排窗」的实测（K = 它前一轮的池次数，池 = 它的输出），所以「哪个 K 自洽」不必再求值。
      */
     let lastCycleMembers: OuterCycleMember[] = []
+    /**
+     * **必要招式优先**（用户口径 2026-11-10，逐字：「必要强力招式挤占可以变化的可选平A时间」）。
+     *
+     * 纯反馈环里两个成员**都不自洽**（本轮输入反馈 ≠ 本轮输出反馈 —— 失衡已静止，残痕/愿火两个整数
+     * 台阶互相追，实测钉 26 出 28、钉 28 出 26，环里没有不动点）时，取**必要时间更大**的那相：
+     * 多发的那一次聚锋/长暗/永昼是真实打得出的强力招式，被挤掉的只能是可变的平A时间。
+     * 既有 `pickOuterCycleMember` 的判据（零窗 / 可行 / 截断 / 时间自洽）在两相完全相同时会落到
+     * 「最后一轮」，与这条口径无关 ⇒ 这里只在「选中成员不自洽」时介入。
+     *
+     * ⚠ 有任一自洽成员 ⇒ 原样返回既有选点，不改任何既有环的落点。
+     */
+    const pickNecessaryPriority = (members: OuterCycleMember[], picked: CalcRoundResult): CalcRoundResult => {
+      const inconsistent = (r: CalcRoundResult) => moduleFeedbackSignature(r.threadsApplied.moduleFeedback) !== moduleFeedbackSignature(r.threadsNext.moduleFeedback)
+      if (!inconsistent(picked)) return picked
+      const necessaryOf = (r: CalcRoundResult) => r.resourceResult.characters
+        .reduce((a, c) => a + Math.max(0, Number(c.timeAllocation.necessaryTime)), 0)
+      /**
+       * 池不变量：全队毁伤次数 ≤ floor(Σ残痕点数 / 600)。这是「毁伤只能花攒出来的层」的直接表达
+       * （`gashMaimDualPipeline.test.ts` 一直在守它）。环里的成员靠**上一轮**申报拿层 ⇒ 有的成员会
+       * 违反它（打出比本局攒到的更多的毁伤）⇒ 这种成员不能当停点，哪怕它的必要时间更短。
+       * 单锋御（申报 < 2 槽）没有跨槽不变量 ⇒ 恒可行。
+       */
+      const poolFeasible = (r: CalcRoundResult): boolean => {
+        const claims = collectSharpenGashClaims(r.resourceResult.characters)
+        if (!claims) return true
+        const points = Object.values(claims).reduce((a, c) => a + c.points, 0)
+        return collectTeamMaimCount(r.resourceResult.characters) <= Math.floor(points / GASH_PER_LAYER)
+      }
+      const feasible = members.filter(m => poolFeasible(m.out))
+      if (feasible.length === 0) return picked
+      let best = feasible[0]!.out
+      let bestNecessary = necessaryOf(best)
+      for (const m of feasible) {
+        const nec = necessaryOf(m.out)
+        if (nec > bestNecessary + 1e-9) { best = m.out; bestNecessary = nec }
+      }
+      return best
+    }
     const pickCanonical = (all: OuterCycleMember[]): CalcRoundResult => {
       lastCycleMembers = all
       /**
@@ -353,6 +394,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
     let outerRounds = 0
     let outerConverged = false
     let outerExit: OuterExit = 'maxIter'
+    /** 末轮自己的失衡输入（残痕自洽结算要在同一帧重跑，2026-11-10） */
+    let lastStunIn = 0
     // 净失衡迭代（用户 Excel 口径）：覆盖率由上一轮失衡次数得出，非失衡占比缩放全来源净失衡，
     // 时间预算把超出的残失衡折成小数——正反馈被全局负反馈对抗，收敛到静止
     for (let k = 0; k < MAX_OUTER_ITER; k++) {
@@ -365,6 +408,7 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       // CC-418：runCalcRound 无 null 出口（CC-417 删空失衡池 null 后，剩余守卫与 calcOutput 同条件不可达），
       // 原「null 轮 ⇒ threadsAfterNullRound 回退 + 签名清空 + continue」分支随之删除。
       out = runCalcRound(stunCount, threads, { forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim, stunLastWindowClip })
+      lastStunIn = stunCount
       const t = out.threadsNext
       /**
        * ===== 步 4 实验（`PROBE_STUN_NEXT=trace`）：喂给下一轮计划的窗数改用**轴栈实测兑现窗数** =====
@@ -439,14 +483,42 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           signatureHistory: outerSigHistory,
           tolerance: OUTER_STUN_TOLERANCE,
         })
+        /**
+         * **纯反馈环早退**（2026-11-10，用户口径「40 轮代价太高了」）。
+         *
+         * `isOuterTwoCycle` 要求「失衡输入仍在变」才认环；而残痕/愿火这条链的环**失衡是静止的**
+         * （实测 1661/1601/1611：输入输出都锁在 1.698），只有模块反馈在 26↔28 翻面 ⇒ 上面那条判据
+         * 永远不命中，环要跑满 40 轮上限才停（纯耗时，结果再由 kStar 式的层数结算纠正）。
+         *
+         * 判据 = **稳定的 2 周期**：本轮签名 == 两轮前签名，且上一轮 == 三轮前（即整个「两相」重复了一遍），
+         * 同时失衡已静止（本轮输入 ≈ 输出）。要求「两相自身重复」而不是只看一次相等 —— 避免把还在缓慢
+         * 漂移的序列误判成环（那只会在收敛路上少跑几轮）。
+         *
+         * 早退后走的选点与「跑到 40 轮上限后由 `findOuterLongCycleLag` 取最近一个周期」**同一组成员**
+         * （最近两轮），故结论一致、只省轮数。
+         */
+        const feedbackCycle = Math.abs(next - stunCount) < OUTER_STUN_TOLERANCE
+          && outerSigHistory.length >= 3
+          && curSig === outerSigHistory[outerSigHistory.length - 2]
+          && outerSigHistory[outerSigHistory.length - 1] === outerSigHistory[outerSigHistory.length - 3]
+        if (feedbackCycle) {
+          outerExit = 'cycle'
+          const membersCycle = [
+            { out: outerOutHistory[outerOutHistory.length - 1]!, prev: outerOutHistory[outerOutHistory.length - 2] ?? null, stunIn: prevStunValue ?? stunCount, next: stunCount },
+            { out, prev: outerOutHistory[outerOutHistory.length - 1] ?? null, stunIn: stunCount, next },
+          ]
+          out = pickNecessaryPriority(membersCycle, pickCanonical(membersCycle))
+          break
+        }
         if (isTwoCycle) {
           outerExit = 'cycle'
           // 2-循环两个成员 = 上一轮（输入 prevStunValue → 输出 stunCount）与本轮（输入 stunCount → 输出 next）；按环内判据取点
-          out = pickCanonical([
+          const members2 = [
             // 2-环判定要求 history 非空（签名历史里有同相位轮）⇒ history[-1] 必存在；`!` 仅为类型收窄
             { out: outerOutHistory[outerOutHistory.length - 1]!, prev: outerOutHistory[outerOutHistory.length - 2] ?? null, stunIn: prevStunValue ?? stunCount, next: stunCount },
             { out, prev: outerOutHistory[outerOutHistory.length - 1] ?? null, stunIn: stunCount, next },
-          ])
+          ]
+          out = pickNecessaryPriority(members2, pickCanonical(members2))
           break
         }
         // 必须在判据之后追加，保证 history[-1] 是上一轮、history[-2] 是同相位轮。
@@ -473,7 +545,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         outerExit = 'cycle'
         // 长环（周期 lag）：成员 = 最近一个周期内的各轮结果，按环内判据取点
         const from = Math.max(0, outerOutHistory.length - lag)
-        out = pickCanonical(outerOutHistory.slice(from).map((o, j) => ({ out: o, prev: outerOutHistory[from + j - 1] ?? null, stunIn: outerStunHistory[from + j], next: outerNextHistory[from + j] })))
+        const membersLag = outerOutHistory.slice(from).map((o, j) => ({ out: o, prev: outerOutHistory[from + j - 1] ?? null, stunIn: outerStunHistory[from + j], next: outerNextHistory[from + j] }))
+        out = pickNecessaryPriority(membersLag, pickCanonical(membersLag))
       }
     }
     /**
@@ -866,8 +939,33 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         const run = reusable
           ? { out: reusable.out, outPrev: reusable.prev, outerRounds: 0, outerConverged: true, outerExit: 'stable' as const, outerCyclePickedEarlier: false, capacityResolved: false }
           : evalLocked(kTry)
-        /** 这一轮排的就是 `kTry` 个窗（override / 成员计划都是 K）⇒ 判据按 `kTry` 自身读，不回头读 prev */
-        if (!feasibleAtK(run.out, run.outPrev, kTry)) continue
+        /**
+         * ## ⚠ 只有「新口径才多认的档」才复核自洽（`kTry > kStarOld`），不得复核旧口径已经交付的 kStar
+         *
+         * 两条纪律的先后顺序曾经写反，代价是**交付比改动前更差**（实测回归，见下）：
+         *
+         * `kTry <= kStarOld`——**这一档 = 改动前的 `kStar` 本身**（`K_FLOOR` 恒 ≤ `kStarOld`，
+         * 故循环里出现的 `kTry < kStarOld` 只有 `kStarOld = 0` 那一种，而那时 `kTry > 0 = kStarOld`）。
+         * 改动前对它的采纳条件**只有** `outerExit === 'stable'`（重跑=按 K 窗重排一整轮，收敛即交付）。
+         * 在这里再加 `feasibleAtK` 就等于**改判旧口径已交付的点**——而旧口径从不对重跑帧复核
+         * `floor(cont) ≥ K`：重跑帧是**按 K 窗重排后的自己**，它的 `cont` 与成员帧（按上一轮池排窗）
+         * 本来就不是同一个读数。实测反例（本判据的原点）：
+         * `auto-1431-1481-1491` C1（投影 off）：成员 `cont = 2.019 / 2.111 / 2.110`（全部 `floor ≥ 2`，fits，
+         * ⇒ kStar = kStarOld = 2），而 `evalLocked(2)` 重跑帧 `cont = 1.9896`（差 0.0104 窗）、
+         * `overflow = 6.257s`、`δ = 0.755s` ⇒ 判据⑦ 判「假截短」⇒ 整块放弃 ⇒ 落回环内 cycle 帧
+         * ⇒ 收敛帧 30.3989M **→ 30.1053M（−0.97%）**。这正是 `kStarOld` 那条「不许更差」要防的事，
+         * 却在**同一段代码里先被自己违反**。
+         *
+         * `kTry > kStarOld`——**只有连续失衡（δ）才多认得出的档**，也是判据⑦ 真正要守的那一格：
+         * 它的可行性**完全**依赖 δ，所以必须复核（`continuousStunClip` + 「装配溢出 ≤ δ」）。
+         * 实测 witness = `auto-1431-1481-1491` C2 的 K=2（δ=0.94s 但装配溢出 5.93s ⇒ 拒绝），
+         * 该格现在走的是 `stableBandProbe` 路径（`kStarOld = baseK`，`kTry = baseK + 1 > kStarOld`）⇒ 判据⑦ 照旧生效。
+         *
+         * ⚠ `PROBE_STUN_CONT_TRUNC=off` 的「逐位退回改动前」也**要求这个顺序**：off 时 `trunc ≡ null`，
+         * 若这里仍无条件复核，`feasibleAtK` 会退化成 `floor(cont) ≥ K && fits`——那**不是**改动前的判据
+         * （改动前根本不看 `cont`），于是 off 也复现不了旧值（实测 off 仍 −1.0942，本卡声称的「逐位退回」不成立）。
+         */
+        if (kTry > kStarOld && !feasibleAtK(run.out, run.outPrev, kTry)) continue
         if (run.outerExit !== 'stable') continue
         /**
          * ## ⚠ **那一窗必须真的有轴内动作可放**（2026-11-08 实测，入口门默认开启后暴露）
@@ -1058,6 +1156,46 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           stunCoverage: stunWindowFraction(target, stunWindowDur, stunEffTime, re.out.stunVerdictLostSeconds),
         }
         capacityResolved = capacityResolved || true
+      }
+    }
+    /**
+     * ## 残痕/毁伤：**最大自洽层数**结算（kStar 同款，2026-11-10；用户口径「残痕和异常条差不多都是积攒的
+     * 格式……感觉都是所有角色通用的」）。
+     *
+     * 环的成因（实测 1661/1601/1611）：毁伤次数来自**上一轮**池申报，而本局点数取决于本轮平A时间。
+     * 两相在「池层数 27↔28」「愿火 440↔480（聚锋 3↔4）」两个整数台阶之间互相追 ⇒ 环里不存在不动点
+     * （实测钉 26 出 28、钉 28 出 26）。与本仓既有的「失衡窗数 ↔ 覆盖率」环同形，故沿用同一条修法：
+     * **不迭代追，直接求解「哪个层数 K 是自洽的」**——
+     * K★ = max { K : floor(本局残痕点数(K) / 600) ≥ 本局毁伤总数(K) }（毁伤只能花攒出来的层）。
+     *
+     * 落地 = 按 K 等比缩放本轮申报点数（份额分配仍走 resolveTeamGashPool：按点数比例 + 需求封顶），
+     * 用**同一帧**（同失衡输入 / 同交互）重跑一整轮，从高往低扫，取第一个自洽的 K。
+     * ⚠ 只在**返回结果本身违反该不变量**时才扫 ⇒ 正常队零开销、逐位不变。
+     */
+    {
+      const gashConsistent = (r: CalcRoundResult): boolean => {
+        const claimsOf = collectSharpenGashClaims(r.resourceResult.characters)
+        if (!claimsOf) return true
+        const points = Object.values(claimsOf).reduce((a, c) => a + c.points, 0)
+        return collectTeamMaimCount(r.resourceResult.characters) <= Math.floor(points / GASH_PER_LAYER)
+      }
+      const claims = collectSharpenGashClaims(out.resourceResult.characters)
+      if (claims && !gashConsistent(out)) {
+        const totalPoints = Object.values(claims).reduce((a, c) => a + c.points, 0)
+        const kHi = Math.floor(totalPoints / GASH_PER_LAYER)
+        for (let k = kHi; k >= Math.max(0, kHi - 8); k--) {
+          const scale = totalPoints > 0 ? (k * GASH_PER_LAYER) / totalPoints : 0
+          const scaled: GashPoolClaims = {}
+          for (const [slot, c] of Object.entries(claims)) scaled[Number(slot)] = { ...c, points: c.points * scale }
+          const trial = runCalcRound(lastStunIn, {
+            ...out.threadsApplied,
+            moduleFeedback: { ...out.threadsApplied.moduleFeedback, gashPoolClaims: scaled },
+          }, { forceNoAxis, interactionScale, interruptTopUp, axisAutoTrim, stunLastWindowClip })
+          if (!gashConsistent(trial)) continue
+          out = trial
+          outerExit = 'cycle'
+          break
+        }
       }
     }
     return { out, outPrev, outerRounds, outerConverged, outerExit, outerCyclePickedEarlier, capacityResolved }
@@ -1555,5 +1693,18 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
       if (contCoverage !== out.stunCoverage) finalOut = { ...out, stunCoverage: contCoverage }
     }
   }
+  /**
+   * **滞后读数回填**（2026-11-10，用户报「知更鸟每毁伤回能 420，可全队毁伤只有 26 次」）。
+   *
+   * 有些读数天然走**上一轮**资源解（外层不动点通道，如「全队毁伤次数」）。外层停点若落在环上
+   * （1661/1601/1611 实测：失衡静止、反馈 26↔28 翻面，环里不存在自洽成员），末轮用到的滞后值
+   * 就会与它自己的输出差一拍 ⇒ 明细 15×28 与结果 26 次自相矛盾。
+   *
+   * 落点 = **停点确定之后**（此处），因此回填**不参与任何循环输入**：只把本槽的滞后读数按本局
+   * 最终结果绝对重写，收敛轨迹与资源/时间账逐位不变。模块声明能力 patchTeamReadouts
+   * （规则 6：引擎不认 agentId）；未声明的模块零影响。
+   */
+  const chars = finalOut.resourceResult.characters
+  for (const c of chars) getAgentMechanic(c.agentId)?.patchTeamReadouts?.({ characters: chars })
   return { out: finalOut }
 }

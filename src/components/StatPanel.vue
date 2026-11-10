@@ -246,6 +246,11 @@
             <span class="stat-label">蕾米异化度</span>
             <span class="stat-value">{{ formatPercent(panel.remielleRefringeCoefficient) }}</span>
           </div>
+          <!-- 异化度提升（3异常+10 / 二命+20）：与本体异化度**加算**后一起乘异常结算（普查补齐 2026-11-09） -->
+          <div class="stat-row" v-if="panel.remielleRefringeCoefficientBonusPct !== 0">
+            <span class="stat-label">蕾米异化度提升（加算）</span>
+            <span class="stat-value">+{{ formatPercent(panel.remielleRefringeCoefficientBonusPct) }}</span>
+          </div>
           <div class="stat-row" v-if="panel.remielleLuminizeMultiplierBonus !== 0">
             <span class="stat-label">蕾米被动耀变倍率提升</span>
             <span class="stat-value">+{{ formatPercent(panel.remielleLuminizeMultiplierBonus) }}</span>
@@ -404,9 +409,17 @@
         </div>
       </n-collapse-item>
 
-      <!-- 敌方减益 -->
-      <n-collapse-item title="敌方减益" name="enemy">
+      <!-- 敌方状态（**敌人身上**的 debuff）：与上面的「自身面板」相加才是本角色的实际结算状态。
+           为什么单列并改名（用户 2026-11-09）：「此处分为自身面板和敌方状态，加起来才是自身计算状态」——
+           敌我混在同一列会让人分不清「这份增益是我拥有的」还是「我打出去时敌人身上挂着什么」。
+           典型容易误解的：有罪推定 / 蕾米幻色 这类**全队共享的敌方减防**，它由某个队友提供，
+           却写在**每个槽位**的这里（因为每个槽位结算时都吃得到它）。 -->
+      <n-collapse-item title="敌方状态（敌人身上的 debuff · 与自身面板相加才是实际结算）" name="enemy">
         <div class="stat-grid">
+          <div class="zone-summary">
+            <span class="zone-label">口径</span>
+            <span class="zone-value">自身面板 × 敌方状态 = 实际结算</span>
+          </div>
           <div class="stat-section-title">防御相关</div>
           <div class="stat-row" v-if="panel.enemyDefReduction !== 0">
             <span class="stat-label">敌方防御降低（通用）</span>
@@ -422,13 +435,44 @@
             <span class="stat-label">元素专属减防</span>
             <span class="stat-value debuff">{{ elementDefReductionSummary }}</span>
           </div>
+          <!-- 异放专属层（异常父层的子层）：只在异放行与父层相加，其他异常读不到 -->
+          <div class="stat-row" v-if="panel.enemyAnomalyReleaseDefReduction !== 0">
+            <span class="stat-label">异放专属无视防御</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.enemyAnomalyReleaseDefReduction) }}</span>
+          </div>
           <div class="stat-row" v-if="panel.enemyDefFlatReduction !== 0">
             <span class="stat-label">敌方防御固定降低</span>
             <span class="stat-value debuff">{{ formatNumber(panel.enemyDefFlatReduction, 0) }}</span>
           </div>
+          <!-- 防御三通道（2026-11-09 用户口径）：与「怪物身上减防」分开显示——
+               自身直伤无视防御异常吃不到、异常专属直伤吃不到。 -->
+          <div class="stat-row" v-if="panel.enemyDefIgnoreDirect !== 0">
+            <span class="stat-label">自身直伤无视防御（全元素）</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.enemyDefIgnoreDirect) }}</span>
+          </div>
+          <div class="stat-row" v-for="row in elementDefIgnoreDirectRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}直伤无视防御</span>
+            <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
+          </div>
+          <div class="stat-row" v-for="row in targetedSelfDefIgnoreRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}</span>
+            <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
+          </div>
+          <div class="stat-row" v-if="panel.enemyAnomalyDefReduction !== 0">
+            <span class="stat-label">异常专属无视防御</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.enemyAnomalyDefReduction) }}</span>
+          </div>
+          <div class="stat-row" v-if="panel.enemyAssaultDefReduction !== 0">
+            <span class="stat-label">强击专属无视防御</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.enemyAssaultDefReduction) }}</span>
+          </div>
           <div class="stat-section-title">抗性相关</div>
+          <!-- 抗性三通道（2026-11-09 用户口径）：
+               ① 通用 = 降低**怪物身上**的抗性（结算区 debuff）—— 直伤与异常都吃
+               ② 直伤无视 = 自身「造成伤害无视抗性」—— 只有直伤吃
+               ③ 异常无视 = 自身「造成异常伤害时无视抗性」—— 只有异常吃 -->
           <div class="stat-row" v-if="panel.enemyResReduction !== 0">
-            <span class="stat-label">敌方伤害抗性降低/无视（全元素）</span>
+            <span class="stat-label">敌方伤害抗性降低（全元素·怪物身上）</span>
             <span class="stat-value debuff">{{ formatPercent(panel.enemyResReduction) }}</span>
           </div>
           <!-- 招式限定减抗（`enemy<Element>ResReduction__<招式族>`）：心弦夜响 14132「连携/终结无视火抗」 -->
@@ -439,6 +483,33 @@
           <div class="stat-row" v-if="hasElementResReduction">
             <span class="stat-label">元素专属减抗</span>
             <span class="stat-value debuff">{{ elementResReductionSummary }}</span>
+          </div>
+          <!-- 自身无视抗性两族（2026-11-09 三通道）：与上面的「怪物身上减抗」分开显示，
+               因为它们的**作用范围不同**——直伤族异常吃不到，异常族直伤吃不到 -->
+          <div class="stat-row" v-if="panel.enemyResIgnoreDirect !== 0">
+            <span class="stat-label">自身直伤无视抗性（全元素）</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.enemyResIgnoreDirect) }}</span>
+          </div>
+          <div class="stat-row" v-for="row in elementDirectIgnoreRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}直伤无视抗性</span>
+            <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
+          </div>
+          <div class="stat-row" v-if="panel.enemyResIgnoreAnomaly !== 0">
+            <span class="stat-label">自身异常伤害无视抗性（全元素）</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.enemyResIgnoreAnomaly) }}</span>
+          </div>
+          <div class="stat-row" v-for="row in elementAnomalyIgnoreRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}异常伤害无视抗性</span>
+            <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
+          </div>
+          <!-- 招式限定自身无视抗性（`enemyResIgnoreDirect__basic` 一族，如伊德海莉 1 命普攻/强特限定） -->
+          <div class="stat-row" v-for="row in targetedSelfIgnoreRows" :key="row.key">
+            <span class="stat-label">{{ row.label }}</span>
+            <span class="stat-value debuff">{{ formatPercent(row.value) }}</span>
+          </div>
+          <div class="stat-row" v-if="panel.enemyAnomalyReleaseResIgnore !== 0">
+            <span class="stat-label">异放专属无视抗性</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.enemyAnomalyReleaseResIgnore) }}</span>
           </div>
           <div class="stat-section-title">失衡相关</div>
           <div class="stat-row" v-if="panel.enemyStunResReduction !== 0">
@@ -455,6 +526,19 @@
             <span class="stat-value debuff">+{{ formatPercent(panel.enemyStunTakenBonus) }}</span>
           </div>
           <div class="stat-section-title">异常相关</div>
+          <!-- 公式表（core/damageFormulaFields）在册、但此前无展示口的三个字段（2026-11-09 普查补齐） -->
+          <div class="stat-row" v-if="panel.disorderBaseMultiplierBonus !== 0">
+            <span class="stat-label">紊乱基础倍率提升</span>
+            <span class="stat-value">+{{ formatPercent(panel.disorderBaseMultiplierBonus) }}</span>
+          </div>
+          <div class="stat-row" v-if="panel.turbulenceResIgnore !== 0">
+            <span class="stat-label">乱流专属无视抗性</span>
+            <span class="stat-value debuff">{{ formatPercent(panel.turbulenceResIgnore) }}</span>
+          </div>
+          <div class="stat-row" v-if="panel.anomalyDurationBonusSeconds !== 0">
+            <span class="stat-label">异常持续时间延长</span>
+            <span class="stat-value">+{{ formatNumber(panel.anomalyDurationBonusSeconds, 1) }} 秒</span>
+          </div>
           <div class="stat-row" v-if="panel.enemyAnomalyResReduction !== 0">
             <span class="stat-label">敌方积蓄抗性降低/无视</span>
             <span class="stat-value debuff">{{ formatPercent(panel.enemyAnomalyResReduction) }}</span>
@@ -810,6 +894,30 @@ const elementResReductionSummary = computed(() => {
 })
 const elementStunResRows = computed(() => elementDebuffRows('enemyStunRes'))
 const elementAnomalyResRows = computed(() => elementDebuffRows('enemyAnomalyRes'))
+/** 自身无视抗性两族的元素级行（2026-11-09 三通道）：与「怪物身上减抗」分开列 */
+function elementIgnoreRows(family: 'enemyResIgnoreDirect' | 'enemyResIgnoreAnomaly'): { key: string; label: string; value: number }[] {
+  const rows: { key: string; label: string; value: number }[] = []
+  for (const element of DAMAGE_ELEMENTS) {
+    const value = panelElementStat(props.panel, family, element)
+    if (!value) continue
+    rows.push({ key: `${family}__${element}`, label: `${damageElementLabel(element)}专属`, value })
+  }
+  const cur = props.damageElement
+  return rows.sort((a, b) => Number(b.key.endsWith(`__${cur}`)) - Number(a.key.endsWith(`__${cur}`)))
+}
+const elementDirectIgnoreRows = computed(() => elementIgnoreRows('enemyResIgnoreDirect'))
+const elementAnomalyIgnoreRows = computed(() => elementIgnoreRows('enemyResIgnoreAnomaly'))
+/** 自身直伤无视防御的元素级行（防御三通道，2026-11-09）：与「怪物身上减防」分开列 */
+const elementDefIgnoreDirectRows = computed(() => {
+  const rows: { key: string; label: string; value: number }[] = []
+  for (const element of DAMAGE_ELEMENTS) {
+    const value = panelElementStat(props.panel, 'enemyDefIgnoreDirect', element)
+    if (!value) continue
+    rows.push({ key: `enemyDefIgnoreDirect__${element}`, label: `${damageElementLabel(element)}专属`, value })
+  }
+  const cur = props.damageElement
+  return rows.sort((a, b) => Number(b.key.endsWith(`__${cur}`)) - Number(a.key.endsWith(`__${cur}`)))
+})
 
 /**
  * 招式限定的敌方减益（`<stat>__<招式族>`）：引擎按招式读回，页面上此前**一条都不显示**。
@@ -818,9 +926,13 @@ const elementAnomalyResRows = computed(() => elementDebuffRows('enemyAnomalyRes'
  */
 const ENEMY_DEBUFF_BASE_STATS: readonly string[] = [
   'enemyDefReduction', 'enemyResReduction', 'enemyStunResReduction', 'enemyAnomalyResReduction',
+  // 自身无视抗性两族（2026-11-09 三通道）：定向键（enemyResIgnoreDirect__basic 等）同样要能显示
+  'enemyResIgnoreDirect', 'enemyResIgnoreAnomaly',
+  // 自身直伤无视防御（防御三通道，2026-11-09）：定向键（enemyDefIgnoreDirect__basic 等）同样要能显示
+  'enemyDefIgnoreDirect',
   // 元素专属字段名一律经 `elementStatKey` 解析（判据 CC-225：不许手拼元素字段名）
   ...DAMAGE_ELEMENTS.flatMap(el =>
-    (['enemyDef', 'enemyRes', 'enemyStunRes', 'enemyAnomalyRes'] as const)
+    (['enemyDef', 'enemyRes', 'enemyStunRes', 'enemyAnomalyRes', 'enemyResIgnoreDirect', 'enemyResIgnoreAnomaly'] as const)
       .map(kind => elementStatKey(kind, el))
       .filter((key): key is string => !!key),
   ),
@@ -828,6 +940,9 @@ const ENEMY_DEBUFF_BASE_STATS: readonly string[] = [
 const targetedEnemyDebuffRows = computed(() => targetedPanelRows(props.panel, ENEMY_DEBUFF_BASE_STATS))
 const targetedEnemyDefRows = computed(() => targetedEnemyDebuffRows.value.filter(r => r.base.includes('DefReduction')))
 const targetedEnemyResRows = computed(() => targetedEnemyDebuffRows.value.filter(r => r.base.includes('ResReduction') && !r.base.includes('StunRes') && !r.base.includes('AnomalyRes')))
+const targetedSelfIgnoreRows = computed(() => targetedEnemyDebuffRows.value.filter(r => r.base.includes('ResIgnore')))
+/** 招式限定的自身直伤无视防御（enemyDefIgnoreDirect__basic / __ultimate，如 14146 机巧心种） */
+const targetedSelfDefIgnoreRows = computed(() => targetedEnemyDebuffRows.value.filter(r => r.base.includes('DefIgnoreDirect')))
 
 const hasElementDefReduction = computed(() => elementDefReductionSummary.value.length > 0)
 const hasElementResReduction = computed(() => elementResReductionSummary.value.length > 0)
@@ -837,6 +952,13 @@ const hasAnyEnemyDebuff = computed(() => {
   return p.enemyDefReduction !== 0 || p.enemyDefFlatReduction !== 0 || p.enemyAnomalyDefReduction !== 0 || p.enemyResReduction !== 0
     || hasElementDefReduction.value || hasElementResReduction.value
     || p.enemyStunResReduction !== 0 || p.enemyAnomalyResReduction !== 0
+    || p.enemyResIgnoreDirect !== 0 || p.enemyResIgnoreAnomaly !== 0
+    || p.enemyAnomalyReleaseDefReduction !== 0 || p.enemyAnomalyReleaseResIgnore !== 0
+    || elementDirectIgnoreRows.value.length > 0 || elementAnomalyIgnoreRows.value.length > 0
+    || targetedSelfIgnoreRows.value.length > 0
+    || p.enemyDefIgnoreDirect !== 0 || elementDefIgnoreDirectRows.value.length > 0
+    || targetedSelfDefIgnoreRows.value.length > 0
+    || p.enemyAssaultDefReduction !== 0
     || p.enemyDamageTakenBonus !== 0 || p.enemyStunTakenBonus !== 0
 })
 

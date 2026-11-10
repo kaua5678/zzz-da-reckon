@@ -81,19 +81,20 @@ describe('朱鸢核心被动与影画（自身面板）', () => {
     config.team[0].cinemaLevel = 4
     config.syncTeammateBuffsFromTeam()
     const p4 = computePanelPhases(0, config, catalog)!.inCombat as any
-    expect(p4.enemyEtherResReduction - p2.enemyEtherResReduction).toBeCloseTo(25, 5)
+    // 三通道：影画4「[请勿抵抗]/[火力压制]无视25%以太伤害抗性」= 自身**直伤**无视
+    expect(p4.enemyEtherResIgnoreDirect - p2.enemyEtherResIgnoreDirect).toBeCloseTo(25, 5)
   })
 
   it('模块单元：applyPanel 门控与定向增伤', () => {
     const mk = (active: number, cinema: number) => ({
       slot: 0, agent: { id: '1241' } as any, cinemaLevel: cinema, team: [],
-      panel: { critRate: 5, etherDmg: 0, enemyEtherResReduction: 0, additionalAbilityActive: active } as any,
+      panel: { critRate: 5, etherDmg: 0, enemyEtherResIgnoreDirect: 0, additionalAbilityActive: active } as any,
     })
     const on = mk(1, 4); zhuYuanMechanic.applyPanel!(on as any)
     expect((on.panel as any).critRate).toBeCloseTo(35, 5)
     expect((on.panel as any).skillDmgBonus__basic).toBeCloseTo(40, 5)
     expect((on.panel as any).etherDmg).toBeCloseTo(50, 5)
-    expect((on.panel as any).enemyEtherResReduction).toBeCloseTo(25, 5)
+    expect((on.panel as any).enemyEtherResIgnoreDirect).toBeCloseTo(25, 5)
 
     const off = mk(0, 0); zhuYuanMechanic.applyPanel!(off as any)
     expect((off.panel as any).critRate).toBeCloseTo(5, 5)

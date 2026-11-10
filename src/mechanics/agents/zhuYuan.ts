@@ -83,7 +83,8 @@ function applyZhuYuanPanel({ panel, cinemaLevel }: AgentPanelInput): void {
     panel.etherDmg = panel.etherDmg + ZHUYUAN_C2_ETHER_DMG
   }
   if (cinemaLevel >= 4) {
-    panel.enemyEtherResReduction = panel.enemyEtherResReduction + ZHUYUAN_C4_ETHER_RES_IGNORE
+    // 影画4「[请勿抵抗]/[火力压制]无视 25% 以太伤害抗性」⇒ 自身直伤族（异常读不到）
+    panel.enemyEtherResIgnoreDirect = panel.enemyEtherResIgnoreDirect + ZHUYUAN_C4_ETHER_RES_IGNORE
   }
 }
 

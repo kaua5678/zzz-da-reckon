@@ -30,6 +30,7 @@ import type {
   ReleaseModifier,
   ReleaseModifierInput,
   AgentTeamConfigInput,
+  AgentTeamPanelEffectInput,
 } from '../types'
 import type { ModuleFeedback } from '../types'
 import type { CharacterOperationConfig, CharacterResourceResult } from '@/types/resource'
@@ -146,8 +147,9 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
     panel.anomalyProficiency = panel.anomalyProficiency + PROMIA_C2_PROFICIENCY
   }
   if (cinemaLevel >= 6) {
-    // 影画6：普罗米娅自身属性异常/紊乱伤害无视 15% 全属性抗性（挂面板 enemyResReduction，异放走 releaseModifier）
-    panel.enemyResReduction = panel.enemyResReduction + PROMIA_C6_ALL_RES_IGNORE
+    // 影画6：「普罗米娅**自身属性异常/紊乱伤害**无视 15% 全属性抗性」——原文点名异常/紊乱
+    // ⇒ **异常族**（enemyResIgnoreAnomaly，直伤读不到）；异放走 releaseModifier（同族额外量）
+    panel.enemyResIgnoreAnomaly = panel.enemyResIgnoreAnomaly + PROMIA_C6_ALL_RES_IGNORE
   }
   // 额外能力：冰异常积蓄效率 +30%（需 additionalAbilityActive 门控）——依赖全是静态
   // （cinema/掌控/AA），改在 applyPanel 算；曾由 transformSkillExecutions 写面板（布尔守卫防累积）。
@@ -159,16 +161,43 @@ function applyPromiaPanel({ cinemaLevel, outOfCombatPanel, panel }: AgentPanelIn
   if (cycle.additionalBuildUpEff > 0) {
     panel.anomalyBuildUpEfficiency = panel.anomalyBuildUpEfficiency + cycle.additionalBuildUpEff
   }
+  // ⚠ 有罪推定的异放专属减防**不在这里写**：它是**敌人身上的 debuff**（原文「对[有罪推定]状态的敌人」），
+  // 全队都能吃 ⇒ 走 teamPanelEffects 写进**每个槽位的敌方状态**（用户 2026-11-09：
+  // 「有罪推定敌人感觉是敌人身上的debuff，全队击打到都能吃。我希望显示在队友身上」）。
+  // 若写在自己面板上，队友面板看不到它，而队友异放实际上吃得到 ⇒ 面板与结算分叉。
 }
 
-/** 异放限定减防（有罪推定 40% + 影画1 20%，原文均为「全队角色对[有罪推定]状态的敌人」）：只作用于异放结算；作用域 team（全队异放行，CC-121 / CC-333 与 computePromiaCycle.guiltyDefIgnore 同源）。 */
+/**
+ * 有罪推定（40%）+ 影画1（20%）：**敌人身上的异放专属减防**，全队异放行都吃。
+ *
+ * 落点 = `teamPanelEffects`（写进**每个槽位**的 `enemyAnomalyReleaseDefReduction`），
+ * 而不是普罗米娅自己的面板 —— 后者会让「队友面板看不到、队友异放却吃得到」分叉。
+ * 用户口径（2026-11-09）：「有罪推定敌人感觉是敌人身上的debuff，全队击打到都能吃。
+ * 我希望显示在队友身上……此处分为自身面板和敌方状态，加起来才是自身计算状态」。
+ */
+function applyPromiaTeamPanelEffects({ slot, cinemaLevel, team, panel, report }: AgentTeamPanelEffectInput): void {
+  // 双普罗米娅队：只让**槽位最小**的那个认领（与 remielle 同款「光环不是每个蕾米各加一次」纪律）
+  const firstPromia = [...team].sort((a, b) => a.slot - b.slot).find(m => m.agent && String(m.agent.id) === PROMIA_ID)
+  if (!firstPromia || firstPromia.slot !== slot) return
+  const cycle = computePromiaCycle({
+    cinemaLevel: cinemaLevelOf(cinemaLevel),
+    anomalyMastery: 0,
+    additionalActive: additionalAbilityActiveOf(panel),
+  })
+  if (cycle.guiltyDefIgnore <= 0) return
+  panel.enemyAnomalyReleaseDefReduction = panel.enemyAnomalyReleaseDefReduction + cycle.guiltyDefIgnore
+  report?.({ stat: 'enemyAnomalyReleaseDefReduction', value: cycle.guiltyDefIgnore, mode: 'flat' })
+}
+
+/**
+ * 异放限定减防读数：从**结算者自己的面板**取（该面板已由 teamPanelEffects 写入敌人身上的那份）。
+ * 作用域 team ⇒ 队友的异放行也读得到，因为每个槽位的面板都拿到了这份敌方状态。
+ */
 function promiaReleaseModifier({ self }: ReleaseModifierInput): ReleaseModifier {
   if (self.slot < 0) return { enemyResReduction: 0, note: '' }
-  const cinema = self.cinemaLevel
-  const additionalActive = additionalAbilityActiveOf(self.panel)
-  const defIgnore = computePromiaCycle({ cinemaLevel: cinema, anomalyMastery: 0, additionalActive }).guiltyDefIgnore
+  const defIgnore = self.panel?.enemyAnomalyReleaseDefReduction ?? 0
   return defIgnore > 0
-    ? { enemyResReduction: 0, enemyDefReduction: defIgnore, note: `；有罪推定/C1：异放无视 ${defIgnore}% 防御（releaseModifier 异放限定）` }
+    ? { enemyResReduction: 0, enemyDefReduction: defIgnore, note: `；有罪推定/C1：异放无视 ${defIgnore}% 防御（敌人身上的异放专属减防）` }
     : { enemyResReduction: 0, note: '' }
 }
 
@@ -385,6 +414,7 @@ export const promiaMechanic: AgentMechanicModule = {
   name: '普罗米娅·盗火',
   description: '异常掌控转精通、影画2精通、额外能力冰异常积蓄效率；绝裁异放已接（霜刑上限钳制），全队异放增伤 0.35%/点经 spec teamBuff 生效。',
   applyPanel: applyPromiaPanel,
+  teamPanelEffects: applyPromiaTeamPanelEffects,
   buildCharConfig: buildPromiaCharConfig,
   /**
    * converge 阶段：注入上一轮「霜刑回复端」（触发命中数 + 队友异放次数 + 自身异放回喧响）。

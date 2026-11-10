@@ -134,9 +134,16 @@ node scripts/hdiff-agent.mjs 1621 --from 3.2 --save   # 顺带把新版存档进
   不要求定稿名。音擎的 `verification` 里另钉 `dataVersion: 'v1'` + `sourceVersion`。
 - **音擎数值必须先按测试服录、正式服重抓**（见下节 2026-09-09 结论）：v1 条目的数值会变，
   正式服上线后按同 id 重录，v1 保留作历史对比，不覆盖。
-- **v1 音擎不声明 `ownerAgentId`**（专武归属留给正式 id）：否则正式包落地时两把武器抢同一角色
+- **v1 音擎默认不声明 `ownerAgentId`**（专武归属留给正式 id）：否则正式包落地时两把武器抢同一角色
   （`buildRecWengine.test.ts` 锁「一角色至多一把专武」），并会凭空给占位角色发专武推荐块 / 抽卡卡。
   v1 照常在音擎列表里可选可装，只是不自动推荐；正式 id 录入后跑 `npm run sync:wengine-recs` 建归属。
+- **例外：角色正式服还没上线、而它的音擎只有 v1 占位** ⇒ 归属落到这唯一一把上
+  （`node scripts/tag-wengine-owner.mjs <wEngineId> <agentId>`，2026-11-10 起）。
+  不登记的话，预设/一键应用/加金阶梯都会给该角色发**同职业别人的**音擎：实测挽昼(1601) 穿「喵运当头」、
+  知更鸟(1661) 穿「震元奇枢」（用户 2026-11-10：「挽昼柯雷妲知更鸟的预设为什么点进来带的乱七八糟的专武」）。
+  首例：`14160v1 → 1601`、`14166v1 → 1661`。**正式 id（14160/14166）上线后**：先
+  `node scripts/tag-wengine-owner.mjs <v1 id> --clear`，再按常规导入正式 id —— 否则两把抢同一角色，
+  `buildRecWengine.test.ts` 会当场红。
 
 判据：`src/core/__tests__/v1TestItems.test.ts`（目录契约 + 四个条目的面板/团队效果生效）。
 

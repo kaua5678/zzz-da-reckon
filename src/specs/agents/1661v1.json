@@ -56,7 +56,7 @@
       "coverage": 1,
       "effects": [
         {
-          "stat": "enemyResReduction",
+          "stat": "enemyResIgnoreDirect",
           "value": 12,
           "mode": "flat"
         }

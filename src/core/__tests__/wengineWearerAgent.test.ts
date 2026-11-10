@@ -32,17 +32,18 @@ function delta(agentId: string, key: string) {
 describe('CC-103 音擎 effect 级 requirement.wearerAgentIds', () => {
   it('数据前提：14155 以太抗性无视 effect 限定 1551', () => {
     const eff = getWEngine('14155').effect.selfBuff.effects.find((e: any) => e.id === 'effect_wiki_2031_self_ether_res_ignore')
-    expect(eff.stat).toBe('enemyEtherResReduction')
+    // 三通道（2026-11-09）：原文「造成的伤害无视16%以太抗性」= 自身直伤无视抗性
+    expect(eff.stat).toBe('enemyEtherResIgnoreDirect')
     expect(eff.requirement?.wearerAgentIds).toEqual(['1551'])
   })
 
   it('佩洛伊斯（1551）：以太抗性无视 +16，暴击率 +20', () => {
-    expect(delta('1551', 'enemyEtherResReduction')).toBeCloseTo(16, 6)
+    expect(delta('1551', 'enemyEtherResIgnoreDirect')).toBeCloseTo(16, 6)
     expect(delta('1551', 'critRate')).toBeCloseTo(20, 6)
   })
 
   it('★ 朱鸢（1241）：不吃以太抗性无视（修前 +16），暴击率 +20 照常', () => {
-    expect(delta('1241', 'enemyEtherResReduction')).toBeCloseTo(0, 6)
+    expect(delta('1241', 'enemyEtherResIgnoreDirect')).toBeCloseTo(0, 6)
     expect(delta('1241', 'critRate')).toBeCloseTo(20, 6)
   })
 

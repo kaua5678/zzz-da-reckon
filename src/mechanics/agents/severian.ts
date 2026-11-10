@@ -392,7 +392,8 @@ function applySeverianPanel({ slot, team, cinemaLevel, panel, outOfCombatPanel, 
   panel.critDmg = panel.critDmg + cycle.coreCritDmg
   panel.dmgBonus = panel.dmgBonus + cycle.coreDmgBonus
   if (cycle.atkFromCrit > 0) panel.atk = panel.atk + cycle.atkFromCrit
-  if (cycle.c1WindResIgnore > 0) panel.enemyWindResReduction = panel.enemyWindResReduction + cycle.c1WindResIgnore
+  // 影画1「攻击命中目标时无视目标 15% 风抗」⇒ 自身直伤族（异常读不到，2026-11-09 三通道）
+  if (cycle.c1WindResIgnore > 0) panel.enemyWindResIgnoreDirect = panel.enemyWindResIgnoreDirect + cycle.c1WindResIgnore
   if (cycle.c2PenRatio > 0) panel.penRatio = panel.penRatio + cycle.c2PenRatio
   // 影画4 自身攻击力 +X% = 局内百分比乘区（唯一写入口 mechanics/statZone.ts）
   if (cycle.c4AtkPct > 0) applyInCombatPct(panel, outOfCombatPanel, 'atk', cycle.c4AtkPct)

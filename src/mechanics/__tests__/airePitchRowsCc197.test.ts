@@ -43,11 +43,22 @@ describe('CC-197 爱芮绝对音准直伤（通用必做动作通道）', () => 
     expect(release?.count).toBe(n)
   }, 120000)
 
-  it('C6：妄想时刻不退出 ⇒ 全部强化版（1501008）且吃影画6 +40%', async () => {
+  it('C6：妄想时刻不退出 ⇒ 首次放大之后的强化版（1501008）+40%，之前的 #3 保持普通版', async () => {
+    /**
+     * CC-561：强化版只在[妄想时刻]内存在，而妄想时刻从**首次放大**（缺省 30s）才开始，
+     * 故 C6 的绝对音准直伤行会拆成两段：普通 #3（1501007，不强化、不吃 +40%）+ 强化版（1501008，+40%）。
+     * 旧断言 `rows.length === 1` 编码的是「进场即妄想时刻」。
+     */
     const { rows } = await run(6)
-    expect(rows.length).toBe(1)
-    expect(rows[0].moveId).toBe('1501008')
-    expect(rows[0].dmgBonus ?? 0).toBeGreaterThanOrEqual(40)
+    const byMove = new Map<string, any>(rows.map((e: any) => [e.moveId as string, e]))
+    expect(byMove.has('1501008')).toBe(true)
+    expect(byMove.get('1501008').dmgBonus ?? 0).toBeGreaterThanOrEqual(40)
+    const normal = byMove.get('1501007')
+    if (normal) {
+      expect(normal.dmgBonus ?? 0).toBe(0)
+      expect(normal.count).toBeLessThan(byMove.get('1501008').count)
+    }
+    expect(rows.every((e: any) => e.timeBucket === 'necessary')).toBe(true)
   }, 120000)
 
   it('派发器：数组统一、count ≤ 0 丢弃；无 state ⇒ 爱芮不声明', () => {
@@ -58,8 +69,15 @@ describe('CC-197 爱芮绝对音准直伤（通用必做动作通道）', () => 
     // 应援能量 10×3+4×4 = 46 → 23；全场应援 3×3 = 9 ⇒ 32；强化占比 3×15/180 = 0.25 ⇒ 8
     expect(list.map(a => [a.moveId, a.count])).toEqual([['1501007', 24], ['1501008', 8]])
     expect(aireExtraNecessaryActions(cfg, undefined)).toBeNull()
+    // CC-561：C6 空应援能量时只剩「首次放大后每 6s 一层」= floor((180−0−30)/6)=25 层；
+    // 强化占比 = (180−30)/180 = 5/6 ⇒ 强化 21 段 + 普通 #3 4 段（旧口径恒 30 全强化）
     expect(extraNecessaryActionOf({ ...cfg, 'setting:aire.absolutePitchCount': 0, aireCinemaLevel: 6 }, { ...state, ultimateCount: 0, exSpecialCount: 0, chainCountTotal: 0 })
-      .map(a => [a.moveId, a.count])).toEqual([['1501008', 30]])
+      .map(a => [a.moveId, a.count])).toEqual([['1501007', 4], ['1501008', 21]])
+    // 首次放大滑块置 0（= 进场即妄想时刻）⇒ 恢复旧口径：30 段全强化
+    expect(extraNecessaryActionOf(
+      { ...cfg, 'setting:aire.absolutePitchCount': 0, aireCinemaLevel: 6, 'setting:aire.firstUltTime': 0, invincibleTime: 0 },
+      { ...state, ultimateCount: 0, exSpecialCount: 0, chainCountTotal: 0 },
+    ).map(a => [a.moveId, a.count])).toEqual([['1501008', 30]])
   })
 
   it('正反馈最强的队（1501-1511-1411）：净占用不超预算、无截断', async () => {

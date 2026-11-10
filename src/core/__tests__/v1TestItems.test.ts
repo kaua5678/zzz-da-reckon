@@ -87,10 +87,13 @@ describe('v1 占位条目：目录契约', () => {
       expect(d.name.zhCN.endsWith(' v1')).toBe(true)
       expect(d.sources.join(' ')).toContain('3.4.1+19836465')
     }
-    // v1 占位不声明专武归属（不受「一角色至多一把专武」的锁约束，也不给占位角色发专武推荐/抽卡卡）：
-    // 正式服同 id 落地时才建 ownerAgentId，否则两把武器会抢同一角色。
-    expect(getWEngine('14160v1').ownerAgentId).toBeUndefined()
-    expect(getWEngine('14166v1').ownerAgentId).toBeUndefined()
+    // 专武归属：**默认不声明**（正式服同 id 落地时才建 ownerAgentId，否则两把武器会抢同一角色）。
+    // 例外 = 角色正式服还没上线、而音擎只有 v1 占位 ⇒ 归属落到这唯一一把上（用户 2026-11-10：
+    // 「挽昼柯雷妲知更鸟的预设为什么点进来带的乱七八糟的专武」——不登记的话预设会给她们穿同职业别人的 A 级）。
+    // 首例：挽昼 1601 → 14160v1、知更鸟 1661 → 14166v1（scripts/tag-wengine-owner.mjs）。
+    // 3.4 正式音擎（14160/14166）上线后：先 --clear 这两条，再按常规导入正式 id。
+    expect(getWEngine('14160v1').ownerAgentId).toBe('1601')
+    expect(getWEngine('14166v1').ownerAgentId).toBe('1661')
     // 正式 id 留给正式包：v1 只占自己的槽
     expect(getWEngine('14160')).toBeUndefined()
     expect(getWEngine('14166')).toBeUndefined()

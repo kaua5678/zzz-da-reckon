@@ -71,6 +71,8 @@ function applyZhendouPanel({ panel, cinemaLevel, outOfCombatPanel, settings }: A
     panel.fireDmg = panel.fireDmg + ZHENDOU_C1_FIRE_DMG_CAP * cov
   }
   if (cinemaLevel >= 2) {
+    // 影画2「[熔锋]状态下，**真斗**无视目标 8% 火属性伤害抗性」——主语是**角色**
+    // ⇒ **通用无视抗性**（用户口径 2026-11-09）：直伤与异常都吃。
     panel.enemyFireResReduction = panel.enemyFireResReduction + ZHENDOU_C2_FIRE_RES_IGNORE
   }
   if (cinemaLevel >= 4) {

@@ -1,23 +1,20 @@
 import type { DamageElement } from '@/types/catalog'
+import {
+  DAMAGE_ELEMENTS,
+  ELEMENT_FIELD_PREFIX,
+  ELEMENT_LABEL,
+  STANDARD_ENEMY_DEBUFF_ELEMENTS,
+  type StandardEnemyDebuffElement,
+} from '@/utils/damageElements'
+import { resIgnoreStatId } from '@/utils/resistanceChannels'
 
 export type EnemyDebuffKind = 'def' | 'res' | 'stunRes' | 'anomalyRes'
 
-/**
- * 伤害元素全集（**不含 lumiflux**）。
- *
- * 2026-10-21 用户裁决全删：
- * > 「流明本身也没有积蓄，因此不会形成异常主人……全游戏没有流明属性进行攻击计算」
- * 官方设定流明是高级属性：流明角色（蕾米埃尔）的伤害跟随**下一位队友的属性**，
- * 耀变沿用**原主人的属性** ⇒ 引擎里不存在按流明结算的伤害，也就不需要流明抗性/弱点/增伤。
- *
- * 修前这里有 lumiflux，而 STANDARD_ENEMY_DEBUFF_ELEMENTS 又只有 6 个
- * ⇒ 同一份「元素清单」写了两遍且不一致（典型的两处实现漂移）。现合并为一份。
- */
-export const DAMAGE_ELEMENTS = ['physical', 'fire', 'ice', 'electric', 'ether', 'wind'] as const
-/** 敌人抗性 / 减抗认的标准元素（与 DAMAGE_ELEMENTS 同源，保留名字供既有调用点） */
-export const STANDARD_ENEMY_DEBUFF_ELEMENTS = DAMAGE_ELEMENTS
-/** 敌人抗性 / 减抗认的标准元素 */
-export type StandardEnemyDebuffElement = typeof STANDARD_ENEMY_DEBUFF_ELEMENTS[number]
+// 元素常量已下沉到叶子模块 `utils/damageElements`（2026-11-09 三通道重构：断开与
+// `resistanceChannels` 的**模块初始化环**）。这里原样再导出，既有调用点不用改。
+export { DAMAGE_ELEMENTS, ELEMENT_FIELD_PREFIX, ELEMENT_LABEL, STANDARD_ENEMY_DEBUFF_ELEMENTS }
+export type { StandardEnemyDebuffElement }
+
 /**
  * 敌人抗性表（伤害 / 失衡 / 积蓄三张同形）：标准 6 元素各一项，缺键是类型错误（r756 CC-539）。
  * 表只从这几处来：store 默认表、Boss 预设相位（validate:data 的 JSON 契约按本类型校验 boss-presets.json）、
@@ -25,24 +22,6 @@ export type StandardEnemyDebuffElement = typeof STANDARD_ENEMY_DEBUFF_ELEMENTS[n
  * 引擎读表的入参仍是 `Record<string, number>`、缺键按 0：引擎按执行行 / 异常的元素取键，键可能不在这 6 个里（失衡 / 紊乱 / 乱流三个读点各有没归到基础元素的变种，如 frostfire、ether_ink）。
  */
 export type ResistanceTable = Record<StandardEnemyDebuffElement, number>
-
-export const ELEMENT_FIELD_PREFIX: Record<string, string> = {
-  physical: 'Physical',
-  fire: 'Fire',
-  ice: 'Ice',
-  electric: 'Electric',
-  ether: 'Ether',
-  wind: 'Wind',
-}
-
-export const ELEMENT_LABEL: Record<string, string> = {
-  physical: '物理',
-  fire: '火属性',
-  ice: '冰属性',
-  electric: '电属性',
-  ether: '以太',
-  wind: '风属性',
-}
 
 export const ENEMY_DEBUFF_KIND_CONFIG: Record<EnemyDebuffKind, {
   baseStat: string
@@ -105,23 +84,38 @@ export function enemyDebuffElementStatId(kind: EnemyDebuffKind, element?: string
   return prefix ? `enemy${prefix}${ENEMY_DEBUFF_KIND_CONFIG[kind].suffix}` : undefined
 }
 
+/**
+ * 旧写法（`*Ignore`）→ 现名的归一层。
+ *
+ * ⚠ **抗性族的两处修正（2026-11-09 三通道）**：`*ResIgnore` 的字面语义是「**无视**抗性」
+ * （自身造成伤害时无视），按用户口径它**只作用于直伤**、不降低 boss 身上的乘区 ⇒ 必须归到
+ * `enemy{El}ResIgnoreDirect`，不能像修前那样归进 `enemy{El}ResReduction`（怪物减抗，异常也吃）。
+ * 修前 `enemyResIgnore → enemyResReduction` 正是「两类语义被合并」的旧别名层，异常因此白吃。
+ *
+ * 失衡抗性 / 积蓄抗性**不在此列**：那两族没有「自身 vs 怪物」的二分（`Ignore` 与 `Reduction`
+ * 本就是同一机制的两措辞），照旧归一。
+ */
 export function normalizeEnemyDebuffStatAlias(stat: string): string {
   if (stat === 'enemyDefIgnore') return 'enemyDefReduction'
-  if (stat === 'enemyResIgnore' || stat === 'allResIgnore') return 'enemyResReduction'
+  // 抗性「无视」⇒ 自身直伤族（元素限定 = enemyFireResIgnoreDirect）
+  if (stat === 'enemyResIgnore' || stat === 'allResIgnore') return 'enemyResIgnoreDirect'
   if (stat === 'enemyStunResIgnore') return 'enemyStunResReduction'
   if (stat === 'enemyAnomalyResIgnore') return 'enemyAnomalyResReduction'
 
   const oldElementFirst = stat.match(/^(physical|fire|ice|electric|ether|wind)(Def|Res|StunRes|AnomalyRes)Ignore$/)
   if (oldElementFirst) {
-    const suffix = `${oldElementFirst[2]}Ignore`
-    return enemyDebuffStatId(IGNORE_SUFFIX_TO_KIND[suffix], oldElementFirst[1])
+    const kind = IGNORE_SUFFIX_TO_KIND[`${oldElementFirst[2]}Ignore`]
+    // res 族：词义是「无视抗性」⇒ 自身直伤族（不归怪物减抗）
+    if (kind === 'res') return resIgnoreStatId('direct', oldElementFirst[1])
+    return enemyDebuffStatId(kind, oldElementFirst[1])
   }
 
   const oldEnemyPrefix = stat.match(/^enemy(Physical|Fire|Ice|Electric|Ether|Wind)(Def|Res|StunRes|AnomalyRes)Ignore$/)
   if (oldEnemyPrefix) {
     const element = PREFIX_TO_ELEMENT[oldEnemyPrefix[1]]
-    const suffix = `${oldEnemyPrefix[2]}Ignore`
-    return enemyDebuffStatId(IGNORE_SUFFIX_TO_KIND[suffix], element)
+    const kind = IGNORE_SUFFIX_TO_KIND[`${oldEnemyPrefix[2]}Ignore`]
+    if (kind === 'res') return resIgnoreStatId('direct', element)
+    return enemyDebuffStatId(kind, element)
   }
 
   return stat

@@ -25,6 +25,7 @@ import type { DamagePoolRow } from '@/composables/resourceCalc/helpers'
 import { fmt, localized } from '@/utils/format'
 import { getSkillLevelCoef } from '@/core/skillLevel'
 import { LEVEL_MULT_60, defenseMultiplierDetail, resistanceMultiplierDetail } from '@/core/damageMultipliers'
+import { enemyResReductionOf, selfResIgnoreOf } from '@/core/resistanceChannels'
 import { calcAnomalyCritExpect, calcPanelStunMultiplier, distributeIntegerByWeight } from '@/core/anomalyPool/helpers'
 import { enemyResistanceOf, panelElementStat } from '@/utils/elementStatKeys'
 import { findMoveById, fusedRowReader } from '@/data/moveTableQueries'
@@ -377,11 +378,18 @@ export function calcVoidflareDamage(input: VoidflareDamageInput): { damage: numb
   const levelMult = LEVEL_MULT_60
   const mass = baseDmg * dmgMult * profMult * defMult * levelMult
 
+  // 抗性三通道（2026-11-09），**结算者 = 蕾米**（用户口径）：
+  //   「队友的自身异常抗性他吃不到，因为这个结算者是蕾米。蕾米能吃的抗性只有 boss 通用和自身耀变减抗，
+  //    所以对于蕾米来说，认为他是单独的耀变减抗或者异常减抗都是一个结果。」
+  // ⇒ 抗性区一律读**蕾米面板**（settler），不读 source（虚耀来源队友）：
+  //   队友自身的「造成异常伤害时无视抗性」进不了蕾米的结算区（它没有降低 boss 身上的乘区）；
+  //   同理也不吃直伤族（enemyResIgnoreDirect）。蕾米自己的异常/耀变减抗两者等价（都读蕾米面板）。
+  // ⚠ 修前这里读的是 source（来源队友面板）——与防御区已按 remielle 结算的口径不一致，
+  //   会让队友的无视抗性从抗性区漏进耀变。
   const baseRes = enemyResistanceOf(enemyResistances, element)
-  const sourceResReduction = source.enemyResReduction
-    + panelElementStat(source, 'enemyRes', element)
-    + cinema1ResIgnore
-  const resMult = resistanceMultiplierDetail(baseRes, sourceResReduction).multiplier
+  const settlerResReduction = enemyResReductionOf(remielle, element)
+    + selfResIgnoreOf(remielle, 'anomaly', element) + cinema1ResIgnore
+  const resMult = resistanceMultiplierDetail(baseRes, settlerResReduction).multiplier
 
   const anomalyDmgMult = 1 + remielle.anomalyDmgBonus / 100
   const passiveLuminizeMult = 1 + remielle.remielleLuminizeMultiplierBonus / 100
