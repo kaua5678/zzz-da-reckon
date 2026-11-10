@@ -316,8 +316,16 @@ describe('配装 A/B：换音擎 / 换精炼（用户口径 2026-10-23）', () =
     // ④ 锁口径就是两边伤害之比（口径自洽）
     expect(cmp.deltaTeamPct).toBeCloseTo((cmp.bTeam / cmp.aTeam - 1) * 100, 10)
     expect(cmp.deltaOwnPct).toBeCloseTo((cmp.bOwn / cmp.aOwn - 1) * 100, 10)
-    // ⑤ 跑完不许留锁
+    // ⑥ 连续失衡侧单列（用户裁决 2026-11-09）：主口径冻结在 A 的 (次数, δ) 上，B 的推进不许混进去
+    const cont = cmp.continuous
+    expect(cont.frozenStunCount, '冻结次数 = A 的收敛次数（= 主口径锁值）').toBe(cmp.stunLock)
+    expect(cont.clipDeltaSeconds, 'δ 推进 = A 的 δ − B 的 δ（自洽）')
+      .toBeCloseTo(cont.frozenClipSeconds - cont.bFreeClipSeconds, 10)
+    expect(cont.gainPct, '连续失衡贡献 ≡ 自由口径 − 主口径（同一笔钱只记一次）')
+      .toBeCloseTo(cmp.freeformDeltaTeamPct - cmp.deltaTeamPct, 10)
+    // ⑤ 跑完不许留锁（δ 也一样）
     expect(h.config.enemy.stunCountLock, '场景内锁过，跑完必须还原').toBe(-1)
+    expect(h.config.enemy.stunClipLock, '冻结的 δ 也是临时状态，跑完必须还原').toBeUndefined()
   }, 180000)
 
   it('★ A vs A 在锁口径下恒 0（反空洞：锁定本身不能制造差值）', async () => {

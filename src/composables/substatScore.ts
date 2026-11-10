@@ -238,6 +238,11 @@ const ZERO_CONTINUOUS: SubstatContinuousOutput = {
   crossedCritical: false, gainPct: 0, ownGainPct: 0,
 }
 
+const ZERO_DISC_CONTINUOUS: DiscCompareContinuous = {
+  frozenStunCount: -1, frozenClipSeconds: 0, bFreeClipSeconds: 0,
+  clipDeltaSeconds: 0, bandAdvance: 0, crossedCritical: false, gainPct: 0, ownGainPct: 0,
+}
+
 const ZERO_STUN_OUTPUT: SubstatStunOutput = {
   stunCountDelta: 0, totalStunBuildUpDelta: 0, totalStunBuildUpPct: 0, coverageDeltaPct: 0,
   freeformGainPct: 0, freeformOwnGainPct: 0, jumpGainPct: 0, jumpOwnGainPct: 0,
@@ -621,6 +626,32 @@ export interface DiscPlanDiff {
   b: string
 }
 
+/**
+ * **配装 A/B 的连续失衡侧读数**（与 scoreSubstats 的 continuous 同口径）。
+ *
+ * 换音擎会改冲击力 ⇒ 会改 `cont` ⇒ 会把末窗截短 δ 推进（6 号冲击盘同族）。
+ * 主口径 `deltaTeamPct` 已冻结在 A 的失衡状态上（次数 + δ），所以它是**只比配装**的静态值；
+ * 本条把「B 让连续失衡走到哪」单独报出来，避免那笔收益被当成配装属性、误导用户。
+ */
+export interface DiscCompareContinuous {
+  /** 主口径冻结的失衡次数（= A 自由收敛的次数） */
+  frozenStunCount: number
+  /** 主口径冻结的末窗截短 δ（秒，= A 自由收敛的 δ） */
+  frozenClipSeconds: number
+  /** B 自由收敛的末窗截短 δ（秒） */
+  bFreeClipSeconds: number
+  /** δ 的推进（秒）= A 的 δ − B 的 δ；> 0 = B 把末窗填得更满 */
+  clipDeltaSeconds: number
+  /** 带内推进比例（−1..1）= clipDeltaSeconds / 窗长 */
+  bandAdvance: number
+  /** B 跨出「带」（A 末窗被截短而 B 不再截短）⇒ **临界** */
+  crossedCritical: boolean
+  /** 连续失衡贡献（= 自由口径 − 主口径），百分点 */
+  gainPct: number
+  /** 同上，该角色「当前配置下的个人伤害」口径 */
+  ownGainPct: number
+}
+
 export interface DiscCompareResult {
   slot: number
   aTeam: number
@@ -630,7 +661,9 @@ export interface DiscCompareResult {
   /**
    * (B − A) / A × 100，全队口径 —— **锁失衡次数**的版本（主口径）。
    *
-   * 与单人评分（`scoreSubstats`）同一把尺：A/B 两套配装装在**同一个失衡量**上比，
+   * 与单人评分（`scoreSubstats`）同一把尺：A/B 两套配装装在**同一个失衡状态**上比
+   * （2026-11-09 起连末窗截短 δ 一起冻结，见 `continuous`——只钉次数时换音擎改冲击力会把
+   * 「B 把末窗填满」的连续失衡收益算成配装属性），
    * 差值才只反映配装本身。口径依据见下方 `freeformDeltaTeamPct`。
    */
   deltaTeamPct: number
@@ -656,6 +689,8 @@ export interface DiscCompareResult {
   bStunCount: number
   /** B 比 A 多打的失衡次数（> 0 ⇒ 自由口径里含离散跳变） */
   stunCountDelta: number
+  /** 连续失衡侧读数（冻结在哪、B 推进了多少、是否临界） */
+  continuous: DiscCompareContinuous
   /** 逐项差异（套装 / 主词条 / 副词条；相等项不列） */
   diff: DiscPlanDiff[]
   /** 总副词条步数（A / B） */
@@ -804,10 +839,17 @@ export async function compareDiscPlans(
   const fail = (reason: string): DiscCompareResult => ({
     slot, aTeam: 0, bTeam: 0, aOwn: 0, bOwn: 0, deltaTeamPct: 0, deltaOwnPct: 0,
     freeformDeltaTeamPct: 0, freeformDeltaOwnPct: 0, stunLock: -1, aStunCount: -1, bStunCount: -1, stunCountDelta: 0,
+    continuous: ZERO_DISC_CONTINUOUS,
     diff: [], stepsA: 0, stepsB: 0, complete: false, reason,
   })
   const originalLock = config.enemy.stunCountLock
-  const readAxis = (): { stunCount: number } => ({ stunCount: calc.stunPoolResult.value?.stunCount ?? -1 })
+  /** 冻结失衡状态用的 δ（场景内临时设，finally 还原；声明在 try 外） */
+  const originalClipLock = config.enemy.stunClipLock
+  /** 轴态读数：次数 + 末窗截短 δ（δ 决定易伤覆盖率，「同次数」不足以冻结失衡状态） */
+  const readAxis = (): { stunCount: number; clip: number } => ({
+    stunCount: calc.stunPoolResult.value?.stunCount ?? -1,
+    clip: calc.resourceResult.value?.convergence.stunContinuityClip ?? 0,
+  })
   try {
     // ① 自由收敛：两套配装各跑各的次数（这是"换上去实际会打多少"，保留为对照）
     config.enemy.stunCountLock = -1
@@ -821,7 +863,15 @@ export async function compareDiscPlans(
     // ② 锁失衡次数：以 A 的收敛次数为锚，两套配装在同一失衡量上比（与 scoreSubstats 同一把尺）
     const stunLock = aAxis.stunCount
     const canLock = stunLock >= 0
-    if (canLock) config.enemy.stunCountLock = stunLock
+    if (canLock) {
+      config.enemy.stunCountLock = stunLock
+      /**
+       * ★ **把 A 的末窗截短 δ 一起钉住**（用户裁决 2026-11-09，与 scoreSubstats 同一把尺）：
+       * 只钉次数时，A / B 的 `cont` 仍可不同 ⇒ δ 不同 ⇒ 覆盖率不同 ⇒ 主口径把「B 把末窗填满」
+       * 那笔连续失衡收益算成配装属性（换音擎改冲击力正是这一型）。冻结后主口径只比配装。
+       */
+      config.enemy.stunClipLock = aAxis.clip
+    }
     apply(a)
     const ra = canLock ? read() : raFree
     const aAxisLocked = canLock ? readAxis() : aAxis
@@ -830,20 +880,37 @@ export async function compareDiscPlans(
     const bAxisLocked = canLock ? readAxis() : bAxis
     if (!(ra.team > 0) || !(rb.team > 0)) return fail('锁定失衡次数后至少一套配装的全队总伤为 0：百分比没有分母')
     const sum = (m: Record<string, number>) => Object.values(m).reduce((x, y) => x + y, 0)
+    const freeformDeltaTeamPct = (rbFree.team / raFree.team - 1) * 100
+    const freeformDeltaOwnPct = raFree.own > 0 ? (rbFree.own / raFree.own - 1) * 100 : 0
+    const deltaTeamPct = (rb.team / ra.team - 1) * 100
+    const deltaOwnPct = ra.own > 0 ? (rb.own / ra.own - 1) * 100 : 0
+    const windowDuration = calc.windowDuration.value
+    const clipDeltaSeconds = aAxis.clip - bAxis.clip
+    const continuous: DiscCompareContinuous = {
+      frozenStunCount: canLock ? stunLock : -1,
+      frozenClipSeconds: aAxis.clip,
+      bFreeClipSeconds: bAxis.clip,
+      clipDeltaSeconds,
+      bandAdvance: windowDuration > 0 ? Math.max(-1, Math.min(1, clipDeltaSeconds / windowDuration)) : 0,
+      crossedCritical: aAxis.clip > 0 && bAxis.clip <= 0,
+      gainPct: freeformDeltaTeamPct - deltaTeamPct,
+      ownGainPct: freeformDeltaOwnPct - deltaOwnPct,
+    }
     return {
       slot,
       aTeam: ra.team,
       bTeam: rb.team,
       aOwn: ra.own,
       bOwn: rb.own,
-      deltaTeamPct: (rb.team / ra.team - 1) * 100,
-      deltaOwnPct: ra.own > 0 ? (rb.own / ra.own - 1) * 100 : 0,
-      freeformDeltaTeamPct: (rbFree.team / raFree.team - 1) * 100,
-      freeformDeltaOwnPct: raFree.own > 0 ? (rbFree.own / raFree.own - 1) * 100 : 0,
+      deltaTeamPct,
+      deltaOwnPct,
+      freeformDeltaTeamPct,
+      freeformDeltaOwnPct,
       stunLock: canLock ? stunLock : -1,
       aStunCount: aAxisLocked.stunCount,
       bStunCount: bAxisLocked.stunCount,
       stunCountDelta: aAxis.stunCount >= 0 && bAxis.stunCount >= 0 ? bAxis.stunCount - aAxis.stunCount : 0,
+      continuous,
       diff: diffDiscPlans(a, b),
       stepsA: sum(a.subStatAllocation),
       stepsB: sum(b.subStatAllocation),
@@ -851,8 +918,9 @@ export async function compareDiscPlans(
       reason: '',
     }
   } finally {
-    // 锁定是本次求值的临时状态（与 scoreSubstats 同款：只在场景内改，跑完必须还原）
+    // 锁定 + 冻结 δ 都是本次求值的临时状态（与 scoreSubstats 同款：只在场景内改，跑完必须还原）
     config.enemy.stunCountLock = originalLock
+    config.enemy.stunClipLock = originalClipLock
     const char = config.team[slot]
     const disc = char.driveDisc
     disc.fourPieceSetId = originalDisc.fourPieceSetId
