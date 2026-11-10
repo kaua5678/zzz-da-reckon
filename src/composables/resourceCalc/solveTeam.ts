@@ -24,8 +24,9 @@ import { continuousStunSplitOf } from '@/core/continuousStun'
 import { buildStunTimeline, realizeStunWindows } from '@/core/stunTimeline'
 import type { OuterExit, ResourceCalcConfig } from '@/types/resource'
 import { getAgentMechanic } from '@/mechanics/registry'
+import { GASH_PER_LAYER, collectSharpenGashClaims, collectTeamMaimCount } from '@/mechanics/gashMaim'
 import { initialCalcRoundThreads } from './roundThreads'
-import { findOuterLongCycleLag, isOuterTwoCycle, outerFeedbackSignature, pickOuterCycleMember } from './outerCycle'
+import { findOuterLongCycleLag, isOuterTwoCycle, moduleFeedbackSignature, outerFeedbackSignature, pickOuterCycleMember } from './outerCycle'
 import { probeFlag, probeKey, probePush } from '@/core/probeTrace'
 import { DOWNSCALE_SCALES, selectDownscaleScale, downscaleTrialAccepted, downscaleTrialFeasible } from './feasibilitySearch'
 // 仅类型：`ReturnType<typeof createRunCalcRound>` 与 `CalcRoundResult` 都用不到运行时值，
@@ -321,6 +322,44 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
      * 「按 K 排窗」的实测（K = 它前一轮的池次数，池 = 它的输出），所以「哪个 K 自洽」不必再求值。
      */
     let lastCycleMembers: OuterCycleMember[] = []
+    /**
+     * **必要招式优先**（用户口径 2026-11-10，逐字：「必要强力招式挤占可以变化的可选平A时间」）。
+     *
+     * 纯反馈环里两个成员**都不自洽**（本轮输入反馈 ≠ 本轮输出反馈 —— 失衡已静止，残痕/愿火两个整数
+     * 台阶互相追，实测钉 26 出 28、钉 28 出 26，环里没有不动点）时，取**必要时间更大**的那相：
+     * 多发的那一次聚锋/长暗/永昼是真实打得出的强力招式，被挤掉的只能是可变的平A时间。
+     * 既有 `pickOuterCycleMember` 的判据（零窗 / 可行 / 截断 / 时间自洽）在两相完全相同时会落到
+     * 「最后一轮」，与这条口径无关 ⇒ 这里只在「选中成员不自洽」时介入。
+     *
+     * ⚠ 有任一自洽成员 ⇒ 原样返回既有选点，不改任何既有环的落点。
+     */
+    const pickNecessaryPriority = (members: OuterCycleMember[], picked: CalcRoundResult): CalcRoundResult => {
+      const inconsistent = (r: CalcRoundResult) => moduleFeedbackSignature(r.threadsApplied.moduleFeedback) !== moduleFeedbackSignature(r.threadsNext.moduleFeedback)
+      if (!inconsistent(picked)) return picked
+      const necessaryOf = (r: CalcRoundResult) => r.resourceResult.characters
+        .reduce((a, c) => a + Math.max(0, Number(c.timeAllocation.necessaryTime)), 0)
+      /**
+       * 池不变量：全队毁伤次数 ≤ floor(Σ残痕点数 / 600)。这是「毁伤只能花攒出来的层」的直接表达
+       * （`gashMaimDualPipeline.test.ts` 一直在守它）。环里的成员靠**上一轮**申报拿层 ⇒ 有的成员会
+       * 违反它（打出比本局攒到的更多的毁伤）⇒ 这种成员不能当停点，哪怕它的必要时间更短。
+       * 单锋御（申报 < 2 槽）没有跨槽不变量 ⇒ 恒可行。
+       */
+      const poolFeasible = (r: CalcRoundResult): boolean => {
+        const claims = collectSharpenGashClaims(r.resourceResult.characters)
+        if (!claims) return true
+        const points = Object.values(claims).reduce((a, c) => a + c.points, 0)
+        return collectTeamMaimCount(r.resourceResult.characters) <= Math.floor(points / GASH_PER_LAYER)
+      }
+      const feasible = members.filter(m => poolFeasible(m.out))
+      if (feasible.length === 0) return picked
+      let best = feasible[0]!.out
+      let bestNecessary = necessaryOf(best)
+      for (const m of feasible) {
+        const nec = necessaryOf(m.out)
+        if (nec > bestNecessary + 1e-9) { best = m.out; bestNecessary = nec }
+      }
+      return best
+    }
     const pickCanonical = (all: OuterCycleMember[]): CalcRoundResult => {
       lastCycleMembers = all
       /**
@@ -443,11 +482,12 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         if (isTwoCycle) {
           outerExit = 'cycle'
           // 2-循环两个成员 = 上一轮（输入 prevStunValue → 输出 stunCount）与本轮（输入 stunCount → 输出 next）；按环内判据取点
-          out = pickCanonical([
+          const members2 = [
             // 2-环判定要求 history 非空（签名历史里有同相位轮）⇒ history[-1] 必存在；`!` 仅为类型收窄
             { out: outerOutHistory[outerOutHistory.length - 1]!, prev: outerOutHistory[outerOutHistory.length - 2] ?? null, stunIn: prevStunValue ?? stunCount, next: stunCount },
             { out, prev: outerOutHistory[outerOutHistory.length - 1] ?? null, stunIn: stunCount, next },
-          ])
+          ]
+          out = pickNecessaryPriority(members2, pickCanonical(members2))
           break
         }
         // 必须在判据之后追加，保证 history[-1] 是上一轮、history[-2] 是同相位轮。
@@ -474,7 +514,8 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
         outerExit = 'cycle'
         // 长环（周期 lag）：成员 = 最近一个周期内的各轮结果，按环内判据取点
         const from = Math.max(0, outerOutHistory.length - lag)
-        out = pickCanonical(outerOutHistory.slice(from).map((o, j) => ({ out: o, prev: outerOutHistory[from + j - 1] ?? null, stunIn: outerStunHistory[from + j], next: outerNextHistory[from + j] })))
+        const membersLag = outerOutHistory.slice(from).map((o, j) => ({ out: o, prev: outerOutHistory[from + j - 1] ?? null, stunIn: outerStunHistory[from + j], next: outerNextHistory[from + j] }))
+        out = pickNecessaryPriority(membersLag, pickCanonical(membersLag))
       }
     }
     /**

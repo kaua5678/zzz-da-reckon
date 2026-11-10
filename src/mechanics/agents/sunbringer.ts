@@ -534,6 +534,16 @@ export function solveSunbringerLoops(input: {
     parryGash, parryGashPerCast, parryCount,
     assistFollowUpGash, assistFollowUpGashPerCast,
     wishTotal, wishSpent: jufengCount * JU_FENG_WISH_COST, wishFromEntry, jufengCount,
+    /**
+     * **愿火浪费**（用户口径 2026-11-10：「如果还是出现比如最后一秒平a回复出新的资源招式、但是没时间打，
+     * 这时候可以接受被截断……**此处需要把他的资源浪费标注一下**，不然用户看到回复了这么多次但没打这么多次
+     * 还以为逻辑计算错了」）。
+     *
+     * `jufengBlocked` = 愿火**够买**但被前台时间卡住的聚锋次数；`wishUnused` = 攒出但没用掉的全部愿火
+     * （= 上面那些 × 120 + 凑不满一次的零头）。两者都是**如实上报**，不回流任何通道。
+     */
+    jufengBlocked: Math.max(0, jufengFromWish - jufengCount),
+    wishUnused: Math.max(0, wishTotal - jufengCount * JU_FENG_WISH_COST),
     jufengMax, changanMax, torchMax,
     changanCount, ultFeasible, ultACount, torchCount,
     /**
@@ -832,6 +842,13 @@ function buildSunbringerResourceSections({ result }: AgentResourceSectionsInput)
           value: `${s.maimDemand} 段`,
           detail: '强化特殊技 / 连携技每次命中至多消耗 3 层（原文「重击命中…消耗一层，最多连续触发 3 次」）',
         },
+        ...(s.teamGranted === null && s.gashLayers > s.maimCount
+          ? [{
+              label: '残痕浪费（未消耗）',
+              value: `${s.gashLayers - s.maimCount} 层`,
+              detail: `本局攒出 ${s.gashLayers} 层，毁伤只花掉 ${s.maimCount} 层（需求 ${s.maimDemand} 段）—— 剩下的层没有对应招式可消耗，等于白攒。这是**末尾截断**（用户口径 2026-11-10：打不出就是打不出，如实标注，不回流）`,
+            }]
+          : []),
         {
           label: '毁伤触发',
           value: `${s.maimCount} 次`,
@@ -856,6 +873,11 @@ function buildSunbringerResourceSections({ result }: AgentResourceSectionsInput)
           label: '聚锋次数',
           value: `${s.jufengCount} 次`,
           detail: `每 ${JU_FENG_WISH_COST} 点愿火 = 1 次聚锋；愿火够买 ${Math.floor(s.wishTotal / JU_FENG_WISH_COST)} 次，时间预算封顶 ${s.jufengMax} 次；余量 ${fmt(s.wishTotal - s.wishSpent)} 点`,
+        },
+        {
+          label: '愿火浪费（未打出）',
+          value: `${fmt(s.wishUnused)}`,
+          detail: `攒出来但没用掉：够一次聚锋、但前台时间不够 ⇒ ${s.jufengBlocked} 次 × ${JU_FENG_WISH_COST} = ${fmt(s.jufengBlocked * JU_FENG_WISH_COST)}；余下 ${fmt(Math.max(0, s.wishUnused - s.jufengBlocked * JU_FENG_WISH_COST))} 是凑不满一次的零头。**这是可接受的末尾截断，不是算错**（用户口径 2026-11-10：玩家有资源就放，只有末尾那一小段攒出来没时间放；不 a 就没资源，只能发呆）`,
         },
         {
           label: '链齿 → 长暗终焉',

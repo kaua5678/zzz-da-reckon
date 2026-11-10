@@ -16,6 +16,7 @@ import { setupHarness } from '@/test/harness'
 import { useConfigStore } from '@/stores/config'
 import { useResourceCalc } from '@/composables/useResourceCalc'
 import { agentResourceSections } from '@/composables/agentMechanicView'
+import { fmt } from '@/utils/format'
 
 interface SunbringerLoopLike {
   gash: number
@@ -29,6 +30,8 @@ interface SunbringerLoopLike {
   gashFromAssistFollowUp: number
   gashFromCounterGift: number
   teamGranted: number | null
+  wishUnused: number
+  jufengBlocked: number
   jufengCount: number
   changanCount: number
   ultACount: number
@@ -84,6 +87,10 @@ describe('1601 挽昼 · 资源卡（残痕积蓄 / 毁伤次数 / 专属条）'
     expect(rowOf('此行')).toContain(`${loop!.ultACount} 次`)
     expect(rowOf('永昼之炬')).toContain(`${loop!.torchCount} 次`)
     expect(rowOf('愿核')).toContain(`${loop!.ultACount} 次`)
+    // 愿火浪费（用户口径 2026-11-10）：攒出但没打出的资源必须如实上卡，且与循环解同源
+    expect(rowOf('愿火浪费')).toBe(fmt(loop!.wishUnused))
+    expect(loop!.jufengBlocked).toBeGreaterThanOrEqual(0)
+    expect(loop!.wishUnused).toBeGreaterThanOrEqual(loop!.jufengBlocked * 120)
     // 锐能卡：池 / 消耗 / 发数同源
     const sharp = sections[2]!
     expect(sharp.summary).toContain(String(loop!.exCount))
