@@ -549,6 +549,7 @@ import {
 import { scGridStartOf, scYGridOf, scYOf, scYRangeOf, scYStepOf } from '@/composables/versionChartGeometry'
 import { layoutStepLabels } from '@/composables/charts/stepLabelLayout'
 import type { BossPreset, PhaseView } from '@/types/bossPreset'
+import { withTrainingDummy } from '@/data/trainingDummy'
 
 import { localized } from '@/utils/format'
 import { phaseBuffCardLabel } from '@/utils/phaseBuff'
@@ -1317,7 +1318,8 @@ onMounted(async () => {
   userPresets.value = loadUserPresets()
   try {
     const data = await useCatalogStore().loadBossPresets()
-    bossPresets.value = data.bosses ?? []
+    // 木桩排第一（用户 2026-11-10：怪物选择默认木桩）；不选 = 沿用当前页面 Boss（首页默认也是木桩）
+    bossPresets.value = withTrainingDummy(data.bosses ?? []) as BossPreset[]
     phaseViews.value = data.phaseViews ?? []
   } catch (e) {
     error.value = `Boss 预设加载失败：${e instanceof Error ? e.message : String(e)}`

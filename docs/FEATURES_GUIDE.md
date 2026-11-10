@@ -44,6 +44,12 @@
 按 AGENTS 规则 10 先量 delta 再归因。本轮归因表见 `docs/DEFAULT_ENEMY_TRAINING_DUMMY.md`。
 判据 = `src/stores/__tests__/trainingDummyDefault.test.ts`（十项逐条钉住 + 三个交叉验证 + 默认 buff 为空 + 反锁旧形态）。
 
+**分析页的「怪物」下拉同样默认木桩**（用户 2026-11-10：「队伍对比之类的地方，怪物选择默认木桩」）：
+`data/trainingDummy.ts#TRAINING_DUMMY_BOSS` 把同一组九项数值表达成 `BossPreset`（排在下拉第一位），
+队伍对比 / 自由对比 / 交互扫描都从它取默认值。进房间走 `bossRoom#applyBossRoom` 的木桩分支
+（`configStore.applyDefaultEnemy()`）——**不复用** `applyBossPreset` 的取整（def 952.8 会被取成 953，
+「选木桩」与「不选 Boss」就成了两个数）。判据 `src/data/__tests__/trainingDummyBoss.test.ts`。
+
 ### 1.1b 危局环境 Buff（属性配置页右侧「危局环境 Buff」卡，2026-10-26）
 
 用户原话：「属性修改下面也列出了很多队友，似乎用不到了。右边是自创buff，没看到危局期数的环境buff」。
@@ -118,7 +124,8 @@ node scripts/import-nanoka-bosses.mjs           # 生成 public/static/boss-pres
 
 - **数据源唯一**：`src/data/teamPresets/*.json`（`import.meta.glob` 自动加载，`disabled: true` 跳过）。
 - **三级筛选**（一级职业 → 二级属性 → 队伍）：**一级 `group` = 队伍输出核心的职业队名，只允许强攻队/命破队/异常队/锋御队**——击破/支援/防护是辅助位，2026-09-08 用户裁决「他们是辅助，怎么能作为一个命名呢」，两个分类已从菜单删除（输出核心 = 槽位 0，槽位 0 是辅助位则退到队内第一个输出位；整队无输出位不收录）。**二级 `subgroup` = 该输出核心的属性**（漏填会掉进「未分属性」，选「命破队·火」就看不见般岳其余配队——已锁死不许缺）。口径单源 `scripts/lib/presetCategories.mjs`，回填/校验 `scripts/sync-preset-categories.mjs` + `validate:data`；筛选统一由 `src/data/teamPresets.ts` 的 `presetGroupLabels` / `presetSubgroupLabelsFor` / `presetsForFilter` 提供，各页面共用（旧的两级下拉 `teamPresetGroupOptions` 早已无消费者，CC-188 删除）。槽位约定 0=主C、1=击破、2=辅助。
-- **首页（队伍配置）**：预设队伍是下拉选项（换人 + 自动配装，`applyTeamPreset` 只取 `team` 字段，金数/交互不应用）；队伍多了不拥挤。
+- **首页（队伍配置）**：预设队伍是下拉选项（换人 + 自动配装，`applyTeamPresetConfig` 只取 `team` 字段，金数/交互不应用）；队伍多了不拥挤。
+  - **新建队伍与选预设后都是「全 01」**（用户 2026-11-10：「我们预设队伍配置后影画应该是全01而不是现在的全65」「改成01吧」；潜能仍默认满 6）：`defaultCharacter` = 影画 0 / 精炼 1，应用预设时三槽也先复位成 0 命 1 精再换人、**不继承用户现场**；要更高档位用下面「预设金数」弹窗或队伍对比页的逐槽锁定。
   - **配装推荐 · 一键应用**（角色详细配置卡右下「配装推荐」卡的按钮）：把该槽的专武 / 4 件套 / 2 件套 / 4-5-6 主词条 / 副词条一次写全。**副词条 = 确定性默认档**：按角色模板优先序填，受三重上限约束——单属性上限（默认 20 步）、总步数档（2 词条→32 / 3→39 / ≥4→43）、以及 **「最高的两项步数之和 ≤ 35」**（用户 2026-10-26：「你的词条不能太极端了，最高的两个加起来最好不超过35，最高词条之前写过不超过20比较合理」；真实盘一块只有 4 条副词条，20+19 是刷不出来的）。暴击按「百暴」封顶（普通 100% / 锋御 200%），基线面板**接队友拐力**（2026-10-29 起：队友给的面板暴击 / 全局 Buff / 音擎覆盖率都按 `resolveSlotPanelBuffInputs` 与伤害管线同源算进去——修前只算角色自身面板，实测般岳 + 本〈额外能力 +16% 暴击〉推荐分配的面板是 113.8%，6 步暴击全白扔；用户口径「接了更真实，不然给别人溢出了别人看着也奇怪」。装配点 = `composables/teamAwareRecommendation.ts#installTeamAwareBuildRecommendation`，在 `main.ts` 与测试 harness 各装一次；未装 = 旧口径，行为逐位不变）。⚠ 这套静态推荐（邦布精灵来源 = nanoka 爬的官方新手指导）**只作兜底、不作最优**：主词条/套装/词条的取舍由引擎伤害裁决（「最优分配」= 4 号位 × 2 件套 × 副词条联合配平、「配装最优」），用户 2026-10-29 逐字「官方的只能兜底，在我们给玩家用的最优计算器中，他没有优先级」。⚠ 「百暴/贴顶」缺口按**最终分配的面板**定点迭代读（转模角色如挽昼「初始暴伤 ×0.35 = 初始暴击」会让暴伤副词条反过来涨暴击，按空面板算会多填 1 步、越过封顶白给）。口径与判据见 `core/substatOptimizer.ts` + `core/__tests__/substatOptimizer.test.ts`。
   - **最优分配**（副词条分配标题右侧按钮，2026-10-25 用户裁决；2026-10-29 起 = **双爆配平**）：在**独立场景**上联合求 **4 号位主词条（暴击率↔爆伤）× 2 件套（双爆形式）× 副词条**——起点 = 上面的默认档，枚举 ≤9 个组合各算一次起点伤害，在最佳组合上挪 4→2→1 步爬山（**只在「最高两项 ≤35」的合法空间里挪**，与默认档同一常量 `SUBSTAT_TOP2_STEP_CAP`），每次尝试都读 `teamTotalDamage`（含队友 buff / 全局 Buff / 音擎覆盖率，与伤害管线同一面板），最多 80 次求值（组合另计 ≤9；实测 0.1–1.5 秒，**每次求值 30–75ms 量级**）。点完提示写入步数、（翻动了就报）4 号位/2 件套、全队伤害前后与提升百分比。**候选有效性 = 面板暴击 ≤ 封顶 + 1 条**（越线候选不采纳：引擎的「溢出整条转爆伤」折算不给配平器白拿，微溢出一条仍是合法终态）；**折算的给付手段 = 翻动 4 号位与 2 件套**（4 号位 24% 暴击 ≡ 10 条词条 / 2 件套 8% 暴击 ≡ 3.33 条 ⇒ 配平宽度，用户 2026-10-29），所以结果**必须三个字段一起写回**，只写副词条会退回溢出态。属 `ENGINE_PIPELINE_GUIDE` §4 坑 53 的 **B 档（估算级）**：显式按钮、不默认跑、结果标「近似最优」。写入后该槽转「手动」标签（`setSubStatAllocation` 置 `subStatAllocationManual`）——改预算设置不再覆盖它；要回到自动档点「配装推荐 · 一键应用」。实现 `views/TeamConfigPage.vue#runOptimalSubStats` → `composables/substatOptimizer.ts#computeLoadoutPlanForSlot`。
   - 下拉旁「预设金数」按钮：弹窗设置当前队伍各槽位影画/精炼（0-6 / 1-5），含加金档位快捷按钮（0命1精 / 212121 / 612121 / 616161 / 656565）与实时「总限定金」显示；应用走 `setCinemaLevel`/`setWEngineModLevel`，只改当前队伍配置，不改预设文件（队伍对比页仍走 `goldSteps`）。总金数口径与对比页、实战归档一致（`teamCompare.ts` 的 `teamGoldOf`，公式只在 `limitedGold.ts` 的 `memberLimitedGold`：限定 S 角色/音擎本体各 1 金 + 影画/精炼每级 1 金，常驻不计）。

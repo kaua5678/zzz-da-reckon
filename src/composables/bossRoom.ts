@@ -15,6 +15,7 @@
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
 import type { ConfigModel } from '@/stores/config'
 import { phaseBuffRows, LAYER_BUFF_PREFIX } from '@/utils/phaseBuff'
+import { isTrainingDummyBoss } from '@/data/trainingDummy'
 
 /** 未录入体型的 Boss 按中型（用户口径 2026-09-05；体型表 = scripts/import-nanoka-bosses.mjs `BOSS_BODY_SIZES`） */
 export const DEFAULT_BOSS_BODY_SIZE = 'medium' as const
@@ -45,6 +46,16 @@ export function applyBossRoom(
   boss: BossPreset,
   phase: BossPresetPhase,
 ): void {
+  /**
+   * 「训练木桩」不是任何一期关卡：落产品默认敌人（`data/trainingDummy` 的九项），并只清关卡 buff。
+   * 走 `applyDefaultEnemy` 而不是 `applyBossPreset` 是为了绕开取整（def 952.8→953），
+   * 让「怪物选木桩」与「不选 Boss」逐字段相同。
+   */
+  if (isTrainingDummyBoss(boss.id)) {
+    configStore.applyDefaultEnemy()
+    applyBossLayerBuffs(configStore, boss, { phaseId: phase.phaseId, layerBuffs: [] })
+    return
+  }
   configStore.applyBossPreset({ id: boss.id }, phase, boss.monster, boss.defaults)
   // CC-350：体型是 Boss 的属性，随房间一起写。修前只有 TeamComparePage 的页面 watcher 写（写的还是 UI store），
   // 主计算器选 Boss 不写、其余分析器的场景继承「用户上次在队伍对比页选过的 Boss」的体型 ⇒ 艾莲 / 苍角等体型相关招式随导航史变。

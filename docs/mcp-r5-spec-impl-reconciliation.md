@@ -233,6 +233,7 @@
 ### D14 零访问的配置范围 / 蕾米埃尔 / formula 字段（归类时补核）：全部与引擎硬编码一致 → 无差异，有隐性耦合 （一致性单测已由 CC-111 补上）
 - `agentSkills[].categories[].levelRange` = `{min 1, max 12, default 12}`：引擎写死技能等级 12 + 加成（`core/skillLevel.ts:39`），与数据一致。
 - `wEngines[].modification` = `{minLevel 1, maxLevel 5, defaultLevel 1}`、`agents[].coreSkill.defaultLevel = "max"`：界面配置范围。**默认值口径不同**：`stores/config.ts:134–141` `defaultCharacter` 默认影画 6、精炼 5（计算器有意的「满配」默认），而数据 `defaultLevel` 为 1。数据的 defaultLevel 描述的是配置范围提示，不是游戏计算规则，**lead 拍板保持满配默认，不改**；回退点是 `config.ts:141`。
+  - ⚠ **2026-11-10 用户改口，本条作废**：「我们预设队伍配置后影画应该是全01而不是现在的全65」「潜能默认满倒是可以」「改成01吧」⇒ `defaultCharacter` = 影画 0 / 精炼 1（潜能仍 6），与「选预设 = 01」同口径。现状见 `stores/config.ts#defaultCharacter` 头注释。
 - `statRules.driveDisc.rarityMaxLevel` = `{S 15, A 12, B 9}`：引擎只支持 S 级驱动盘（主词条数值唯一来源 `sRankMaxMainStat`，`panel.ts:248`、`buff.ts:551`），A / B 两项无消费方。与界面只提供 S 级一致。
 - 蕾米埃尔 1581：
   - `canTriggerLuminize`（4 个招式 1581007 / 008 / 015 / 016）：`mechanics/agents/remielle.ts:267`、`:546`、`:552`、`:558`、`:604` 按 id 硬编码的正是这 4 个，集合一致；

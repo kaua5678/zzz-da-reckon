@@ -27,13 +27,11 @@ describe('signatureWEngineOf（CC-498）', () => {
     const { useCatalogStore } = await import('@/stores/catalog')
     const { setupHarness } = await import('@/test/harness')
     const h = await setupHarness([{ agentId: '1551' }, { agentId: '1601' }, { agentId: '1661' }])
-    // 数据现状（2026-10-26 实测）：14155 已有 effect 级 wearerAgentIds=['1551']；
-    // 14160v1/14166v1 的归属只在 raw 的 code_name（Weapon_S_1601/1661）里，catalog 两个字段都还没落
-    // ⇒ 本用例只断言「已落的能认」，并把缺口的形状钉住（数据补上后这条会自己变绿，见下方 TODO 断言）。
+    // 数据现状：14155 走 effect 级 wearerAgentIds=['1551']；14160v1/14166v1 走 ownerAgentId（2026-11-10 起，
+    // scripts/tag-wengine-owner.mjs 登记——两人正式服还没上线，音擎只有 v1 占位，归属只能落在这一把上）。
     expect(signatureWEngineOf(h.catalog, '1551')?.id, '1551 走 wearerAgentIds').toBe('14155')
-    // 缺口：这两把还没有任何机器可读的归属字段 ⇒ 断言「仍然是 undefined」，数据一补就会红，提醒同步本用例
-    expect(signatureWEngineOf(h.catalog, '1601'), '1601 的归属尚未落到 catalog（raw code_name=Weapon_S_1601）').toBeUndefined()
-    expect(signatureWEngineOf(h.catalog, '1661'), '1661 的归属尚未落到 catalog（raw code_name=Weapon_S_1661）').toBeUndefined()
+    expect(signatureWEngineOf(h.catalog, '1601')?.id, '1601 → 14160v1（ownerAgentId）').toBe('14160v1')
+    expect(signatureWEngineOf(h.catalog, '1661')?.id, '1661 → 14166v1（ownerAgentId）').toBe('14166v1')
     // 反证：别人的专武不能被认领（朱鸢装 14155 是能穿，但不是她的专武）
     expect(signatureWEngineOf(h.catalog, '1241')?.id).not.toBe('14155')
     void useCatalogStore

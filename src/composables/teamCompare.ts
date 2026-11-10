@@ -639,11 +639,7 @@ function pickBestBuff(
  * （预设声明的静态权重/交互，而不是 `setAgent` 的 agent 默认值），见该文件头。
  */
 export function applyTeamToStore(configStore: ConfigModel, preset: TeamPreset) {
-  // CC-339：换人前先把三槽复位为 0命1精，防止上一预设末尾的高命座/高精炼残留进 setAgent 内的 syncTeammateBuffsFromTeam 与配装推荐
-  for (let slot = 0; slot < 3; slot++) {
-    configStore.setCinemaLevel(slot, 0)
-    configStore.setWEngineModLevel(slot, 1)
-  }
+  // 0命1精的复位在 applyTeamPresetConfig 内部（唯一映射，2026-11-10 起主页与分析器同口径）
   applyTeamPresetConfig(configStore, preset)
 }
 
@@ -652,12 +648,23 @@ export function applyTeamToStore(configStore: ConfigModel, preset: TeamPreset) {
  * = 逐槽 `setAgent`（换人 + 推荐配装）→ 预设声明的音擎 / 驱动盘 / 连携 / 平A 权重覆盖 → 预设交互。
  * 用逐槽 `setAgent` 而非 `applyTeamPreset`：后者在推荐未加载时抛错，而分析器单测普遍不加载推荐（金标在兜底盘上录制），
  * 换过去会让金标整体漂移；主页入口自己先查 `catalogStore.buildRecsLoaded`（未就绪就提示返回），防线不丢。
- * **不动命座 / 精炼**：分析器在外层先复位 0命1精（CC-339）；主页保留用户所选档位（有意的 UX，见 store#setAgent 注释）。
+ * **命座 / 精炼一律复位成「01」**（用户 2026-11-10：「我们预设队伍配置后影画应该是全01而不是现在的全65」；
+ * 之前只有分析器在外层复位 CC-339，主页保留用户档位 ⇒ 新建队伍默认 6命5精 + 选预设后仍是 65，
+ * 与队伍对比报的基础档对不上）。要更高档位走「预设金数」弹窗或逐槽锁定，不再靠继承用户现场。
+ * 复位必须**在每个槽 setAgent 之前**（CC-339 的原始动机：上一预设末尾的高命座会先漏进
+ * `syncTeammateBuffsFromTeam` 与配装推荐的副词条分配）。
  * 修前主页只做 `applyTeamPreset` + 交互 ⇒ 拿的是**推荐音擎**而非预设 `wEngines`（104 预设里 65 个槽不同，多为辅助位
  * 预设用非限定音擎、推荐给限定专武）：主页算的不是队伍对比报的那支队，「预设金数 → 保存到预设文件」还会把推荐专武
  * 当成「换限定音擎」凭空写出一条本体加金步（`buildGoldStepsFromConfig` 以预设 wEngines 为基础音擎比对）。
  */
+// @fact ui:预设=01基线 口径: 应用预设队伍（主页选预设与分析器 applyTeamToStore 同一映射）一律先把三槽影画/精炼复位成 0 命 1 精再换人——不继承用户现场；要更高档位走「预设金数」弹窗或逐槽锁定 | 据 用户@2026-11-10「我们预设队伍配置后影画应该是全01而不是现在的全65」 | 验 src/composables/__tests__/teamPresetConfig.test.ts | 锚 src/composables/teamCompare.ts#applyTeamPresetConfig | 信 确认
+// ⟳复核: 预设起点若再改（如改成「记住上次金档」）→ 重核本条与队伍对比基础档 01 的口径是否仍一致 | 到期 2027-05-31
 export function applyTeamPresetConfig(configStore: ConfigModel, preset: TeamPreset) {
+  // 01 基线：**换人之前**逐槽复位（高命座/高精炼不能先漏进 setAgent 的推荐与队友 buff 同步）
+  for (let slot = 0; slot < 3; slot++) {
+    configStore.setCinemaLevel(slot, 0)
+    configStore.setWEngineModLevel(slot, 1)
+  }
   for (let slot = 0; slot < 3; slot++) {
     configStore.setAgent(slot, preset.team[slot])
     // 基础音擎 = presetBaseEngines（字段缺席 ⇒ catalog 派生 = 主页一键搭配口径）。

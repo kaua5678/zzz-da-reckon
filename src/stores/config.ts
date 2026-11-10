@@ -19,6 +19,7 @@ import { getAgentSpec } from '@/specs/registry'
 import { evalAdditionalAbility } from '@/specs/teamCondition'
 import { interactionBaselineFor } from '@/mechanics/interactionBaseline'
 import { effectivePotentialLevelOf } from '@/data/potentialLevel'
+import { TRAINING_DUMMY_VALUES, zeroResistances } from '@/data/trainingDummy'
 // CC-478（r658）：交互基准纯函数簇（getInteractionDefaults / roleInteractionBaseline / interactionBaselineFor / hasCustomInteractionDefaults）
 // 下沉到 mechanics/interactionBaseline.ts——它们只读角色模块声明，不碰 pinia；原先住在 store 里让引擎（composables/resourceCalc）
 // 一引用就打破 CC-245/246 分层锁（aa0fe35c 实测）。此处 re-export 保持既有导入路径与 CC-255「单一来源」不变。
@@ -160,15 +161,24 @@ function defaultBasicAttackTimeWeight(agent?: Agent | null): number {
   return 1
 }
 
+/**
+ * 新建队伍 / 新角色的起点 = **全 01**（影画 0 + 精炼 1），潜能满档 6。
+ *
+ * 用户 2026-11-10：「我们预设队伍配置后影画应该是全01而不是现在的全65」「潜能默认满倒是可以」
+ * 「改成01吧」。修前是 6 命 5 精（2026 年早期「计算器默认满配」的口径，见
+ * `docs/mcp-r5-spec-impl-reconciliation.md` §默认值 —— 该条已被本裁决取代）。
+ * 现在两条入口一致：新建队伍 = 01，选预设 = 01（`teamCompare#applyTeamPresetConfig`），
+ * 要更高档位走「预设金数」弹窗 / 逐槽锁定，不再有一个隐含的满配起点。
+ */
 function defaultCharacter(slot: number, agentId: string, element: string): CharacterConfig {
   return {
     slot,
     agentId,
-    cinemaLevel: 6,
+    cinemaLevel: 0,
     potentialLevel: 6,
     potentialEnabled: true,
     wEngineId: '',
-    wEngineModLevel: 5,
+    wEngineModLevel: 1,
     driveDisc: defaultDriveDisc(element),
     parryCount: 0,
     dodgeCounterCount: 0,
@@ -303,17 +313,6 @@ export const REC_MAIN_STAT_MAP: Record<string, string> = {
   '风属性伤害加成': 'windDmg',
 }
 
-function defaultResistanceTable(value: number): ResistanceTable {
-  return {
-    physical: value,
-    fire: value,
-    ice: value,
-    electric: value,
-    ether: value,
-    wind: value,
-  }
-}
-
 /**
  * 默认敌人 = 「自由训练模式（Free Training Mode）」木桩。
  *
@@ -343,25 +342,27 @@ function defaultResistanceTable(value: number): ResistanceTable {
  * ⟳复核: 游戏出新木桩/训练场或用户给出新数值表时，逐项重核木桩九项与被清空的默认 Buff | 到期 2027-04-30
  */
 function defaultEnemy(): EnemyConfig {
+  // 九项数值的单一事实源 = data/trainingDummy（同一组数字也喂分析页「怪物」下拉里的木桩项）。
+  const d = TRAINING_DUMMY_VALUES
   return {
-    hp: 3347325000,
-    stunValue: 17582.7,
-    stunTime: 12,
+    hp: d.hp,
+    stunValue: d.stunValue,
+    stunTime: d.stunTime,
     stunCountLock: -1,
-    stunVuln: 1.5,
-    defense: 952.8,
-    level: 70,
-    anomalyCoeff: 1.25,
-    bossAnomalyCoeff: 1,
+    stunVuln: d.stunVuln,
+    defense: d.defense,
+    level: d.level,
+    anomalyCoeff: d.anomalyCoeff,
+    bossAnomalyCoeff: d.bossAnomalyCoeff,
     bossStunGift: 0,
     shieldCount: 0,
     energyShield: 0,
     invincibleTime: 0,
-    battleTime: 180,
-    bodySize: 'large',
-    damageResistances: defaultResistanceTable(0),
-    stunResistances: defaultResistanceTable(0),
-    anomalyResistances: defaultResistanceTable(0),
+    battleTime: d.battleTime,
+    bodySize: d.bodySize,
+    damageResistances: zeroResistances(),
+    stunResistances: zeroResistances(),
+    anomalyResistances: zeroResistances(),
     weakness: [],
   }
 }
@@ -1477,6 +1478,18 @@ export function createConfigModel(
     appliedBoss.value = null
   }
 
+  /**
+   * 回到「自由训练模式木桩」= 产品默认敌人（分析页把木桩当可选怪物，见 `data/trainingDummy`）。
+   *
+   * 为什么不走 `applyBossPreset`：那条路会把 hp/defense 取整（真实 Boss 数据本来就是整数），
+   * 木桩的防御 952.8 会变成 953 ⇒「选了木桩」与「没选 Boss」差 0.2，同一份口径两个数。
+   * 这里直接落 `defaultEnemy()`，两条入口逐字段相同（判据 `data/__tests__/trainingDummyBoss.test.ts`）。
+   */
+  function applyDefaultEnemy() {
+    enemy.value = defaultEnemy()
+    appliedBoss.value = null
+  }
+
   // 有效时间 = 战斗时间 − 无敌时间。单一来源 core/effectiveTime#effectiveBattleTime（CC-216：原写死 180，不读 battleTime）
   const effectiveTime = computed(() => effectiveBattleTime(enemy.value))
 
@@ -1669,6 +1682,7 @@ export function createConfigModel(
     appliedBoss,
     applyBossPreset,
     clearBossPreset,
+    applyDefaultEnemy,
     /** 反制支援整组替换控制技：承接槽位（-1 = 不替换）。UI 与引擎同源判据。 */
     counterAssistSlot,
     /** Boss 弹刀反推的三项生效总数（控制技组折算后 = 引擎 `boss` 输入契约） */

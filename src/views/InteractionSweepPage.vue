@@ -216,6 +216,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { teamPresets } from '@/data/teamPresets'
 import { compact, fmt } from '@/utils/format'
 import type { BossPreset, BossPresetPhase } from '@/types/bossPreset'
+import { isTrainingDummyBoss, withTrainingDummy } from '@/data/trainingDummy'
 
 const catalog = useCatalogStore()
 const message = useMessage()
@@ -256,14 +257,18 @@ const bosses = ref<BossPreset[]>([])
 const bossOptions = computed(() => bosses.value.map(b => ({ label: b.name, value: b.id })))
 const currentBoss = computed(() => bosses.value.find(b => b.id === bossId.value) ?? null)
 const phaseOptions = computed(() => (currentBoss.value?.phases ?? [])
-  .map(p => ({ label: `${p.label}（${p.modeType === 'critical_assault' ? '危局' : '防卫战'}）`, value: p.phaseId })))
+  .map(p => ({
+    label: isTrainingDummyBoss(currentBoss.value?.id) ? '训练木桩（无关卡）' : `${p.label}（${p.modeType === 'critical_assault' ? '危局' : '防卫战'}）`,
+    value: p.phaseId,
+  })))
 const currentPhase = computed<BossPresetPhase | null>(() =>
   currentBoss.value?.phases.find(p => p.phaseId === phaseId.value) ?? null)
 
 /** 载入 Boss 预设 + 选默认值（最新一期危局；没有就取第一个） */
 async function loadBosses() {
   const data = await catalog.loadBossPresets()
-  bosses.value = [...(data.bosses ?? [])] as BossPreset[]
+  // 木桩排第一并作为默认（用户 2026-11-10：怪物选择默认木桩）；它是中性测试场，不带任何一期的环境
+  bosses.value = withTrainingDummy(data.bosses ?? []) as BossPreset[]
   if (bosses.value.length > 0 && !presetId.value) {
     /**
      * 默认队挑「交互机制最全」的那支，而不是字母序第一支。
@@ -279,7 +284,7 @@ async function loadBosses() {
   if (bosses.value.length > 0 && !bossId.value) {
     const sorted = [...bosses.value].sort((a, b) =>
       String(b.phases[0]?.begin ?? '').localeCompare(String(a.phases[0]?.begin ?? '')))
-    const b = sorted[0]!
+    const b = bosses.value.find(x => isTrainingDummyBoss(x.id)) ?? sorted[0]!
     bossId.value = b.id
     const ca = b.phases.find(p => p.modeType === 'critical_assault') ?? b.phases[0]
     phaseId.value = ca?.phaseId ?? null
