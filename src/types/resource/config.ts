@@ -468,6 +468,15 @@ export interface ResourceCalcConfig {
    */
   timeBudgetRefund?: number
   /**
+   * 边际填充种子（秒，团队级；缺省 `undefined` = 不启用）。
+   *
+   * 为什么单独一个字段：折叠环 pass0 会用「本轮 teamRefund」**覆盖** `timeBudgetRefund`
+   * （实测预置值被改成 0），所以「把填充量钉在某一档」这件事必须走独立通道，由欠打回填试探在
+   * 折叠环**之后**读它并直接结算一次。消费方 = `useResourceCalc` 的边际填充搜索
+   * （用户 2026-11-10「生产一点点消耗一点点」+「即便超时也不触发动作切换」）。
+   */
+  timeBudgetRefundSeed?: number
+  /**
    * 轴内合轴节省按块分摊（`${slot}:${moveId}` → 秒，输入）：失衡窗口内跨角色块并行（般岳强特时琉音抱拳）只计一次前台。
    * 由编排层用栈引擎算好传入（StackTraversalResult.overlapByAction，Σ = overlapSeconds）；iterate 平A池、
    * 折叠循环按行扣减、结果上报共用同一值。团队级总量字段 axisOverlapSeconds 已于 CC-178 删除（按块分摊是唯一表示，要总量就求和）。

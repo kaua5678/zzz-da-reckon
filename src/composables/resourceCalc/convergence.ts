@@ -88,6 +88,16 @@ import { SHIELD_BREAK_GIFT } from '@/core/resource/resourceIncome'
  * inStunAnomalyState/bossAnomalyState/stunCoverage/matchedPlanName/banyueInteractionTopUp/windowDuration〉，
  * 函数体 `.value` 读点实测 0 ⇒ 死依赖，旧注释「在 calcOutput 求值中读它们」与实现不符，已删。）
  */
+/**
+ * 边际填充种子（2026-11-10）：一次性覆盖下一次求值的 `timeBudgetRefundSeed`（模块级，求值同步 ⇒ 不需要实例化）。
+ *
+ * 为什么必须走这条通道：`runCalcRound` 读的是 `resourceConfig.value`（composable 的 computed），**不是**
+ * `solveTeam` 的入参，所以「在候选里改配置入参」传不到引擎 —— 实测种子恒为 undefined。
+ * 由 `useResourceCalc#computeWithFill` 在候选求值前后 set/clear；缺省 null = 完全不影响既有路径。
+ */
+let pendingFillSeed: number | null = null
+export function setPendingFillSeed(seed: number | null): void { pendingFillSeed = seed }
+
 export function createRunCalcRound(deps: {
   configStore: ConfigModel
   catalogStore: ReturnType<typeof useCatalogStore>
@@ -113,6 +123,13 @@ export function createRunCalcRound(deps: {
     resolveAxes, calcAnomalyPoolInput, extractAnomalyExecsFrom, extractStunExecsFrom, autoActive,
   } = deps
 
+  /**
+   * 边际填充种子（2026-11-10）：一次性覆盖下一轮求值的 `timeBudgetRefundSeed`。
+   *
+   * 为什么需要它：本函数读的是 `resourceConfig.value`（composable 的 computed），**不是** `solveTeam`
+   * 传进来的那份，所以「在候选里改配置」传不到引擎 —— 实测把种子塞进 solveTeam 的入参后，
+   * 欠打回填试探读到的种子恒为 undefined。由 `useResourceCalc#computeWithFill` 在候选求值前后 set/clear。
+   */
   function runCalcRound(stunCount: number, threads: CalcRoundThreads, opts?: { forceNoAxis?: boolean; interactionScale?: number; interruptTopUp?: boolean; axisAutoTrim?: number; stunLastWindowClip?: number }): CalcRoundResult {
     const {
       goodReview: prevGoodReview,
@@ -158,7 +175,17 @@ export function createRunCalcRound(deps: {
      */
     const stunLastWindowClip = Number(opts?.stunLastWindowClip ?? 0)
     const clipForStacks = Number.isFinite(stunLastWindowClip) && stunLastWindowClip > 1e-9 ? stunLastWindowClip : undefined
-    const base = resourceConfig.value
+    /**
+     * 边际填充候选（2026-11-10）：种子存在时用**深拷贝**的 characters 跑，候选轮的相位/记录写回不会漏进基线。
+     */
+    const rcBase: ResourceCalcConfig | null = resourceConfig.value
+    const base: ResourceCalcConfig | null = pendingFillSeed === null || rcBase === null
+      ? rcBase
+      : {
+        ...rcBase,
+        characters: JSON.parse(JSON.stringify(rcBase.characters)),
+        timeBudgetRefundSeed: pendingFillSeed,
+      }
     // CC-418：`runCalcRound` 不再有 null 出口。唯一调用链 `calcOutput → solveTeam → runCalcRound` 在
     // 同一次同步求值内已前置守卫 `resourceConfig.value && catalogStore.ready`（useResourceCalc#calcOutput），
     // 本条件不可达；CC-417 删掉空失衡池 `return null` 后「null 轮」概念整体退役（solveTeam 的 null 轮

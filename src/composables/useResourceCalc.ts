@@ -3,7 +3,7 @@ import { guaranteeStunShortfall, type GuaranteeStunShortfall } from '@/core/parr
 import { useConfigStore, type EvalConfig } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { activeRowFusionRulesSnapshot } from '@/logicEditor/fusion'
-import { INNER_LOOP_MAX_ITERATIONS } from '@/core/resource'
+import { INNER_LOOP_MAX_ITERATIONS, TIME_BUDGET_TOLERANCE_SECONDS } from '@/core/resource'
 import { COMBO_ALIGN_ABSORB_RATIO_SETTING, DEFAULT_COMBO_ALIGN_ABSORB_RATIO } from '@/data/resourceDefaults'
 import { DEFAULT_STUN_PLAN_PROJECTION_CODE, stunPlanProjectionFromCode } from '@/core/stunPlanProjection'
 import { continuousStunSplitOf } from '@/core/continuousStun'
@@ -21,7 +21,8 @@ import { buildDamagePoolRows, type DamagePoolContext } from './resourceCalc/dama
 // R14 订正（2026-10-19）：非轴不再自动估算易伤，改为用户自填贡献率 φ
 import { DEFAULT_NO_AXIS_VULN_SHARE, NO_AXIS_VULN_SHARE_SETTING } from './resourceCalc/noAxisVulnShare'
 import { freezeCached } from './resourceCalc/freezeCached'
-import { createRunCalcRound } from './resourceCalc/convergence'
+import { createRunCalcRound, setPendingFillSeed } from './resourceCalc/convergence'
+import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { createConvergenceRoundInputs, type FillResourceBudget } from './resourceCalc/roundInputs'
 import { axisMoveDamageSecondsOf } from './resourceCalc/helpers'
 // CC-10（2026-09-25）：外层不动点 + S3 可行化决策已原样外提 `./resourceCalc/solveTeam`，
@@ -302,7 +303,7 @@ export function createResourceCalc(
     if (!base || !catalogStore.ready) return null
     if (!calcOutputMemoEnabled) {
       calcOutputMemoStats.bypass++
-      return freezeCached(computeCalcOutput(base))
+      return freezeCached(computeWithFill(base))
     }
     const key = JSON.stringify([
       configStore.$state,
@@ -321,12 +322,81 @@ export function createResourceCalc(
     }
     calcOutputMemoStats.misses++
     // 记忆化命中会把同一对象交给下一位读者 ⇒ 测试环境深冻结，任何下游原地改写立即抛错
-    const out = freezeCached(computeCalcOutput(base))
+    const out = freezeCached(computeWithFill(base))
     calcOutputMemo.set(key, out)
     if (calcOutputMemo.size > CALC_OUTPUT_MEMO_MAX) calcOutputMemo.delete(calcOutputMemo.keys().next().value!)
     return out
   })
 
+  /**
+   */
+  /**
+   * ===== 边际填充搜索（2026-11-10）=====
+   *
+   * 用户口径：「生产一点点消耗一点点」，并且**即便超时也不触发动作切换**（切换会反向砍一批招式、失衡次数也掉）；
+   * 临界填充要自动停在超时之前。
+   *
+   * 实测依据（roxy 队 1601/1621/1661，2026-11-10）：留白 11.93s；把「平A 填充量」当连续旋钮逐档钉住后，
+   * 落点是**双峰**的 —— {5.5 … 7.2} 一档盆内：留白 4.51s、失衡仍 3 窗、零截断、伤害 18.12M→**19.17M**；
+   * 再多 0.05s 就跳崖（失衡 3→2、截断 10.3s、伤害 16.7M）。旧「从满额折半下探」只采 {11.96, 5.98, 2.99, 1.50}，
+   * 四档全在坏盆 ⇒ 全被拒 ⇒ 留白原样留着。
+   *
+   * 为什么放在**顶层求值**这一层而不是引擎内部：引擎的候选重跑会污染外层不动点（实测把同一队从
+   * 18.1222M/3 窗变成 18.0224M/2 窗，cfg 深拷贝也隔离不了模块级状态），而顶层重算是本仓既有模式
+   * （轴退化/降配/kStar 重跑都走这条）。
+   *
+   * 护栏（两条都过才采纳，否则原样返回基线 = 宁可留白，不退步）：
+   *   ① 截断不变多（`overflowSeconds ≤ 基线 + 容差`）—— 「买留白」的代价不许是砍招式；
+   *   ② 失衡次数不下降；③ 留白确实变小。
+   *
+   * 成本：只有留白 > 1s 的队才会搜（全库 102 队里实测 10 队），且只在此类队上多 1~2 次顶层求值。
+   */
+  function computeWithFill(base: ResourceCalcConfig): CalcRoundResult {
+    const baseOut = computeCalcOutput(base)
+    const baseRr = baseOut.resourceResult
+    if (!baseRr) return baseOut
+    const idle = baseRr.convergence.timeBudgetIdleSeconds
+    if (!(idle > TIME_BUDGET_TOLERANCE_SECONDS)) return baseOut
+    const baseCut = baseRr.overflowSeconds ?? 0
+    const baseStun = baseOut.stunPool.stunCount
+    // 档位预算：留白 > 2s 试两档（{0.6, 1}×留白），否则一档就够（实测多数 T1 队一档即命中）。
+    const fractions = idle > 2 ? [0.6, 1] : [0.6]
+    let best: CalcRoundResult | null = null
+    let bestIdle = idle
+    for (const frac of fractions) {
+      const seed = idle * frac
+      // 候选跑在**深拷贝**的 cfg 上：引擎会往 character 配置里写相位/记录，共享引用会把候选的写回漏给基线。
+      const clone: ResourceCalcConfig = {
+        ...base,
+        characters: JSON.parse(JSON.stringify(base.characters)),
+        timeBudgetRefundSeed: seed,
+      }
+      // 种子必须走 `setPendingFillSeed`：runCalcRound 读的是 resourceConfig.value，不认入参里的字段。
+      setPendingFillSeed(seed)
+      let cand: CalcRoundResult
+      try {
+        cand = computeCalcOutput(clone)
+      } finally {
+        setPendingFillSeed(null)
+      }
+      const candRr = cand.resourceResult
+      if (!candRr) continue
+      const candIdle = candRr.convergence.timeBudgetIdleSeconds
+      const candCut = candRr.overflowSeconds ?? 0
+      if (candCut > baseCut + TIME_BUDGET_TOLERANCE_SECONDS) continue
+      if (cand.stunPool.stunCount < baseStun) continue
+      // ⚠ 截断为 0 ≠ 没超预算：装配截断只削招式行，物化净占用仍可能 > 预算（实测 4 支队 over 0→0.1~2.1）。
+      // 超预算是被轴退化/降配/队伍对比消费的硬不变量，候选一并拒掉。
+      const candNet = netFrontlineOccupation(candRr)
+      const candBudget = candRr.totalTime - configStore.enemy.invincibleTime
+      // 零容差（只留浮点余量）：棘轮的自洽断言按零容差比对 `over`，1s 容差会把 0.1~0.4s 的超预算放过去。
+      if (candNet > candBudget + 1e-3) continue
+      if (!(candIdle < bestIdle - 0.1)) continue
+      best = cand
+      bestIdle = candIdle
+    }
+    return best ?? baseOut
+  }
   function computeCalcOutput(base: ResourceCalcConfig) {
     // 锁定失衡次数（命座对比固定场景）：stunCount 固定输入不回填（"操作够就能打 N 次失衡"口径），
     // 但异常喧响/终结技次数反馈仍收敛，避免与资源利用率页口径分裂
