@@ -483,6 +483,33 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
           signatureHistory: outerSigHistory,
           tolerance: OUTER_STUN_TOLERANCE,
         })
+        /**
+         * **纯反馈环早退**（2026-11-10，用户口径「40 轮代价太高了」）。
+         *
+         * `isOuterTwoCycle` 要求「失衡输入仍在变」才认环；而残痕/愿火这条链的环**失衡是静止的**
+         * （实测 1661/1601/1611：输入输出都锁在 1.698），只有模块反馈在 26↔28 翻面 ⇒ 上面那条判据
+         * 永远不命中，环要跑满 40 轮上限才停（纯耗时，结果再由 kStar 式的层数结算纠正）。
+         *
+         * 判据 = **稳定的 2 周期**：本轮签名 == 两轮前签名，且上一轮 == 三轮前（即整个「两相」重复了一遍），
+         * 同时失衡已静止（本轮输入 ≈ 输出）。要求「两相自身重复」而不是只看一次相等 —— 避免把还在缓慢
+         * 漂移的序列误判成环（那只会在收敛路上少跑几轮）。
+         *
+         * 早退后走的选点与「跑到 40 轮上限后由 `findOuterLongCycleLag` 取最近一个周期」**同一组成员**
+         * （最近两轮），故结论一致、只省轮数。
+         */
+        const feedbackCycle = Math.abs(next - stunCount) < OUTER_STUN_TOLERANCE
+          && outerSigHistory.length >= 3
+          && curSig === outerSigHistory[outerSigHistory.length - 2]
+          && outerSigHistory[outerSigHistory.length - 1] === outerSigHistory[outerSigHistory.length - 3]
+        if (feedbackCycle) {
+          outerExit = 'cycle'
+          const membersCycle = [
+            { out: outerOutHistory[outerOutHistory.length - 1]!, prev: outerOutHistory[outerOutHistory.length - 2] ?? null, stunIn: prevStunValue ?? stunCount, next: stunCount },
+            { out, prev: outerOutHistory[outerOutHistory.length - 1] ?? null, stunIn: stunCount, next },
+          ]
+          out = pickNecessaryPriority(membersCycle, pickCanonical(membersCycle))
+          break
+        }
         if (isTwoCycle) {
           outerExit = 'cycle'
           // 2-循环两个成员 = 上一轮（输入 prevStunValue → 输出 stunCount）与本轮（输入 stunCount → 输出 next）；按环内判据取点
