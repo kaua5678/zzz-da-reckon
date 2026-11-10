@@ -185,29 +185,44 @@ describe('转模（attributeConversions）必须在评分里被识别与计入',
     expect(ratio, `暴击率/爆伤 收益比实测 ${ratio.toFixed(2)}`).toBeGreaterThan(1.8)
   }, 180000)
 })
-describe('击破侧：主评分锁失衡次数，额外增幅单列（用户口径 2026-10-23）', () => {
+describe('击破侧：主评分 = 固定失衡下的静态值，连续失衡贡献单列（用户口径 2026-11-09）', () => {
   /**
-   * ★ 这是本批的核心判据。实测（琉音 1481 + 简 1021 + 妮可 1031，只投 critRate:9）：
-   *   自由收敛：全队 **+18.37%**、自身 +20.68%（失衡 3→4、覆盖 30%→40%）
-   *   锁失衡  ：全队 **+2.04%** 、自身 +12.74%（失衡锁在 3）
-   * ⇒ 89% 的全队「评分」来自那一次失衡跳变，不是词条本身。
+   * ★ 本组核心判据。用户 2026-11-09 裁决（逐字）：
+   * 「评分在固定失衡的情况下算的是静态值，是多数情况下的主要观察目标，他直观表达了这个词条的总伤精进。
+   *   当然连续失衡在 6 号冲击盘或者转模影响连续失衡的情况下需要额外算一份数据……
+   *   这一步是为了让人分辨你的原始评分和特殊条件下的评分，防止用户被特殊评分误导。」
+   *
+   * 夹具（琉音 1481 + 简 1021 + 妮可 1031，只投 critRate:9）实测：
+   *   0 词条帧 cont **3.46873** / δ **16.541s** / 覆盖率 0.3081（末窗只分到 1.46s）
+   *   crit 帧   cont **4.08176** / δ **0**      / 覆盖率 0.4000（末窗被填满）
+   * ⇒ 整数次数都是 4，但那 6.99pp 是**连续失衡兑现**，不是属性收益。
+   *
+   * ⚠ **断言已于本卡重锚**（用户裁决改口径，不是为了让数字好看）：旧断言写的是「入口门关闭口径」的
+   *   zeroAxis 3 / delta 1 / jump>10 —— 入口门默认开启后该夹具不再跨整数 K。新断言**更严**：
+   *   新增「两帧覆盖率逐位相同」这条**冻结不变量**（旧版没有，正是漏口所在）。
    */
-  it('★ 主评分不随失衡次数跳变（锁 vs 自由差 ≫ 词条本身收益）', async () => {
+  it('★ 主评分冻结失衡状态（静态值），连续失衡贡献单列', async () => {
     const h = await setupHarness([{ agentId: '1481' }, { agentId: '1021' }, { agentId: '1031' }], { recommendedBuild: true })
     h.config.team[0].driveDisc.subStatAllocation = { critRate: 9 }
     await flush()
     const r = await withAnalysisScenario(s => scoreSubstats(s, { slot: 0 }), h.config)
-    // 主评分必须锁在 0 词条时的次数（= 3），不随词条跨阈值跳变
-    expect(r.zeroAxis.stunCount).toBe(3)
-    expect(r.currentAxis.stunCount, '锁定生效 ⇒ 当前轴态次数也必须是 3').toBe(3)
-    expect(r.axisChanged, '锁定时不该报「跨轴态」').toBe(false)
-    // 击破侧的额外增幅必须**单列**且显著
-    expect(r.stunOutput.stunCountDelta, '这套词条确实把失衡从 3 抬到 4').toBe(1)
-    expect(r.stunOutput.totalStunBuildUpPct, '失衡总量提升率').toBeGreaterThan(5)
-    expect(r.stunOutput.jumpGainPct, '失衡跳变贡献 = 自由 − 锁定，必须显著 > 0').toBeGreaterThan(10)
-    // 主评分远小于自由口径（这就是「不把偶然跳变算进客观评分」）
+    // ① 冻结不变量（新）：两帧必须处在**同一个**失衡状态 —— 次数相同 **且** 覆盖率逐位相同
+    expect(r.zeroAxis.stunCount, '两次基线必须锁在同一次数上').toBe(r.currentAxis.stunCount)
+    expect(r.zeroAxis.coverage, '冻结后两帧覆盖率必须逐位相同（同次数下 cont 不同 = 漏口）')
+      .toBeCloseTo(r.currentAxis.coverage, 12)
+    expect(r.axisChanged, '冻结后不该再报「跨轴态」').toBe(false)
+    // ② 主评分是**静态值**：严格小于自由口径（连续失衡那笔不许混进来）
+    expect(r.gainPct, '静态值必须严格低于自由口径').toBeLessThan(r.stunOutput.freeformGainPct)
+    // ③ 连续失衡贡献单列，且与「自由 − 静态」恒等（同一笔钱只记一次）
+    const cont = r.stunOutput.continuous
+    expect(cont.frozenStunCount, '冻结次数 = 主评分锁的次数').toBe(r.zeroAxis.stunCount)
+    expect(cont.crossedCritical, '这套词条把末窗填满 ⇒ 属于「临界」').toBe(true)
+    expect(cont.clipDeltaSeconds, 'δ 必须从 16.5s 降到 0').toBeGreaterThan(10)
+    expect(cont.gainPct).toBeCloseTo(r.stunOutput.jumpGainPct, 10)
+    expect(r.stunOutput.jumpGainPct, '连续失衡贡献必须显著').toBeGreaterThan(5)
+    // ④ 静态值远小于自由口径（「特殊条件评分」不许冒充原始评分）
     expect(r.gainPct).toBeLessThan(r.stunOutput.freeformGainPct / 3)
-    // 两个口径都必须能闭合（Σ 逐条 ≡ 各自评分）
+    // ⑤ 闭合：Σ 逐条 ≡ 主评分
     const sum = r.contributions.reduce((a, c) => a + c.pct, 0)
     expect(sum).toBeCloseTo(r.gainPct, 8)
   }, 180000)
@@ -221,13 +236,15 @@ describe('击破侧：主评分锁失衡次数，额外增幅单列（用户口�
     expect(r.gainPct).toBeCloseTo(r.stunOutput.freeformGainPct, 6)
   }, 180000)
 
-  it('锁定是临时状态：跑完 stunCountLock 必须还原', async () => {
+  it('锁定是临时状态：跑完 stunCountLock / stunClipLock 都必须还原', async () => {
     const h = await setupHarness([{ agentId: '1481' }, { agentId: '1021' }, { agentId: '1031' }], { recommendedBuild: true })
     h.config.team[0].driveDisc.subStatAllocation = { critRate: 9 }
     h.config.enemy.stunCountLock = -1
+    h.config.enemy.stunClipLock = undefined
     await flush()
     await withAnalysisScenario(s => scoreSubstats(s, { slot: 0 }), h.config)
     expect(h.config.enemy.stunCountLock, '场景内锁过，跑完必须还原').toBe(-1)
+    expect(h.config.enemy.stunClipLock, '冻结的 δ 也是临时状态，跑完必须还原').toBeUndefined()
   }, 180000)
 })
 describe('配装 A/B：换音擎 / 换精炼（用户口径 2026-10-23）', () => {

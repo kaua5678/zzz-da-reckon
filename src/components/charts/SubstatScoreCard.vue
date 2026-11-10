@@ -26,8 +26,10 @@
       有转模的角色（如诺姆的暴击率→暴伤/定向失衡），「转模」列会标出这条词条**顺带转出**了多少——
       那部分收益**已经算在评分里**，这一列只是解释「为什么暴击率词条比爆伤词条值钱」。
       跑在独立场景里，不动你的配装；一个角色只有 2~4 个词条 ⇒ 几毫秒级。
-      主评分<b>锁定失衡次数</b>（与「命座提升率」同口径）——词条碰巧把失衡从 3 次推到 4 次时，
-      多出来的是「多一次失衡」的整窗易伤，不计入词条本身的价值，而是单列在下面的「击破」区。
+      主评分是<b>固定失衡状态下的静态值</b>：把失衡次数<b>和末窗截短</b>一起冻在 0 词条基线上，
+      所以它只反映词条的属性收益，是多数情况下的主要观察目标。
+      当词条（6 号冲击盘 / 转模）把<b>连续失衡</b>推进一步、把末窗填得更满时，那笔收益单列在下面的
+      「击破」区，<b>不并入上面的评分</b>——目的是让你分得清「原始评分」和「特殊条件下的评分」。
     </div>
 
     <div v-if="errorMsg" class="ssc-error">{{ errorMsg }}</div>
@@ -36,7 +38,7 @@
       <div class="ssc-summary">
         <div class="ssc-score">
           <span class="ssc-score-value">+{{ fmt(result.gainPct, 2) }}%</span>
-          <span class="ssc-score-label">全队伤害</span>
+          <span class="ssc-score-label">全队伤害（固定失衡·静态值）</span>
         </div>
         <div class="ssc-score ssc-score-secondary">
           <span class="ssc-score-value-sm">+{{ fmt(result.ownGainPct, 2) }}%</span>
@@ -55,7 +57,7 @@
       </div>
       <!-- 击破侧：额外增幅单列（用户口径 2026-10-23「除了说总伤提升外，还可以说失衡总量增加了多少」） -->
       <div v-if="hasStunOutput" class="ssc-stun">
-        <div class="ssc-stun-title">击破（失衡）侧的额外增幅 —— 不计入上面的评分</div>
+        <div class="ssc-stun-title">击破（失衡）侧：连续失衡贡献 —— 不计入上面的静态评分</div>
         <div class="ssc-stun-rows">
           <div class="ssc-stun-row">
             <span class="ssc-stun-label">失衡次数</span>
@@ -74,6 +76,15 @@
             <span>{{ fmt(stunBase.zeroCoverage * 100, 1) }}% → <b>{{ fmt((stunBase.zeroCoverage + result.stunOutput.coverageDeltaPct / 100) * 100, 1) }}%</b></span>
             <span class="ssc-stun-delta">{{ result.stunOutput.coverageDeltaPct >= 0 ? '+' : '' }}{{ fmt(result.stunOutput.coverageDeltaPct, 1) }}pp</span>
           </div>
+          <div class="ssc-stun-row">
+            <span class="ssc-stun-label">连续失衡</span>
+            <span>末窗截短 {{ fmt(result.stunOutput.continuous.frozenClipSeconds, 2) }}s → <b>{{ fmt(result.stunOutput.continuous.freeClipSeconds, 2) }}s</b>
+              <span class="ssc-stun-delta" :style="{ color: result.stunOutput.continuous.crossedCritical ? 'var(--app-accent-gold)' : 'var(--fg-3)' }">
+                {{ result.stunOutput.continuous.crossedCritical ? '临界：末窗被填满' : (result.stunOutput.continuous.clipDeltaSeconds > 0 ? '非临界：带内推进' : '无变化') }}
+              </span>
+            </span>
+            <span class="ssc-stun-delta">带内推进 {{ fmt(result.stunOutput.continuous.bandAdvance * 100, 1) }}%</span>
+          </div>
           <div class="ssc-stun-row ssc-stun-highlight">
             <span class="ssc-stun-label">折算伤害</span>
             <span>这部分的贡献</span>
@@ -81,9 +92,11 @@
           </div>
         </div>
         <div class="ssc-stun-note">
-          若不锁失衡次数，这套词条的全队增益会是 +{{ fmt(result.stunOutput.freeformGainPct, 2) }}%
-          （个人 +{{ fmt(result.stunOutput.freeformOwnGainPct, 2) }}%）——差额就是上面这一行。
-          它是「词条恰好越过击破阈值」的离散产物，不是词条的固有价值，所以不并入评分。
+          上面的静态评分锁在「{{ result.stunOutput.continuous.frozenStunCount }} 次失衡、末窗被截短
+          {{ fmt(result.stunOutput.continuous.frozenClipSeconds, 2) }}s」这个状态上；若让失衡自由收敛，
+          这套词条的全队增益是 +{{ fmt(result.stunOutput.freeformGainPct, 2) }}%
+          （个人 +{{ fmt(result.stunOutput.freeformOwnGainPct, 2) }}%）。差额就是本条「连续失衡」的贡献，
+          不是词条的属性价值，所以不并入评分。
         </div>
       </div>
 
@@ -455,6 +468,7 @@ const hasStunOutput = computed(() => {
   const st = result.value?.stunOutput
   if (!st) return false
   return st.stunCountDelta !== 0 || Math.abs(st.totalStunBuildUpDelta) > 1e-9
+    || st.continuous.crossedCritical || Math.abs(st.continuous.clipDeltaSeconds) > 1e-9
 })
 
 /** 自由收敛时的失衡次数（= 锁定值 + delta）与基线读数 */

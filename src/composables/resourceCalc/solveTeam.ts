@@ -1516,9 +1516,29 @@ export function solveTeam(input: SolveTeamInput): SolveTeamResult {
        * **上限 = 一窗，口径 = max(装配溢出, 攒条截短 δ)**——与两趟块内 `clampClip` **同一算式**，
        * 且已按 `stunClipPass`（本次求值实际生效的 clip）收敛过 ⇒ 覆盖率扣的就是轴栈真按它排窗的那个量。
        */
-      const clipSec = deliveredStunWindowClip(out.resourceResult, stunWindowDur, continuityTruncEnabled())
+      /**
+       * **冻结失衡状态时用钉住的 δ**（2026-11-09）：stunClipLock 由分析器给（副词条评分），
+       * 语义 = 「这两帧处在**同一个**失衡状态上」——次数由 enemy.stunCountLock 钉，
+       * 末窗截短由本条钉。两帧同 K、同 δ ⇒ 覆盖率逐位相同 ⇒ 主评分退化成纯属性收益。
+       * 缺省 undefined ⇒ 逐位不变（生产路径不受影响）。
+       *
+       * ⚠ 同时把 δ 写回 convergence.stunContinuityClip：否则会出现「覆盖率按冻结值算、
+       * 展示按帧自算值显示」两个物理量（同 R37 的 C 项纪律）。
+       * 恒等式依旧成立：K×W − coverage×effTime ≡ clip（coverage 就是由它扣出来的）。
+       */
+      const clipOverride = resourceConfig.stunClipLock
+      const clipSec = clipOverride ?? deliveredStunWindowClip(out.resourceResult, stunWindowDur, continuityTruncEnabled())
       const clipped = Math.max(0, out.stunCoverage - clipSec / stunEffTime)
       if (clipped !== out.stunCoverage) finalOut = { ...out, stunCoverage: clipped }
+      if (clipOverride !== undefined && clipOverride !== (out.resourceResult.convergence.stunContinuityClip ?? 0)) {
+        finalOut = {
+          ...finalOut,
+          resourceResult: {
+            ...finalOut.resourceResult,
+            convergence: { ...finalOut.resourceResult.convergence, stunContinuityClip: clipOverride },
+          },
+        }
+      }
     } else {
       /** 已兑现的等效窗数：`trace` 用轴栈逐窗实测、`phase` 用池连续计数、其余用公式 */
       const realized = contMode === 'trace'

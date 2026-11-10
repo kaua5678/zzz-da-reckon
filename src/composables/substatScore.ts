@@ -23,10 +23,13 @@
  * 为什么不用单项边际（只删这一条 / 顺序边际）：词条之间会互相放大（攻击×暴击×暴伤、
  * 穿透的非线性防御区）⇒ 单项边际不可加。实测 3 异常队：leave-one-out 和 87.82% vs 真值 77.81%。
  *
- * ## 轴态
- * 词条可能改变失衡次数（实测琉音 critRate 抬冲击力 ⇒ 失衡 6→7）。跨轴态那部分不是"词条收益"，
- * 而是「多了这一次失衡」的整窗易伤差。照实计入（评分 = 当前配装值多少），但把两侧轴态一并返回，
- * 供展示层提示。
+ * ## 轴态（用户口径 2026-11-09：静态值 + 特殊条件值，两个值都要有）
+ * 词条可能改变失衡状态（实测琉音 critRate 抬冲击力 ⇒ 失衡 6→7；也可能是"次数不变但末窗被填满"）。
+ * **主评分是固定失衡下的静态值**：把失衡次数与末窗截短 δ **一起**冻在 0 词条基线上（`stunClipLock`），
+ * 于是它只反映属性收益，是多数情况下的主要观察目标。
+ * **另外单列连续失衡贡献**（`stunOutput.continuous`）：6 号冲击盘 / 转模把 `cont` 推进一步、
+ * 把末窗填得更满时，那笔收益不是属性，不能混进静态值（否则用户会被"特殊条件评分"误导）。
+ * 两者相加 ≡ 自由收敛口径（判据里断恒等式）。
  *
  * ## 运行位置
  * 必须跑在**独立场景**上（`withAnalysisScenario`）：只读 `AnalysisContext`，结束时恢复全部槽位原值。
@@ -103,6 +106,37 @@ export interface SubstatScoreContribution {
  * 主评分锁失衡次数 ⇒ 词条本身的价值；本结构报「这套词条顺带把轴态改了多少」，
  * 让用户看到「击破的额外增幅」，而不是把它混进「平时增幅」。
  */
+/**
+ * **连续失衡侧读数**（用户口径 2026-11-09）。
+ *
+ * 主评分（gainPct）是**固定失衡状态下的静态值**——多数情况下的主要观察目标，直观表达
+ * 「这套词条让总伤精进多少」。但当 6 号冲击盘 / 转模让**连续失衡**变化时（末窗被填满），
+ * 那笔收益不是属性收益，也不该混进静态值 ⇒ 本块单列，让人能分辨「原始评分」与
+ * 「特殊条件下的评分」，并区分它是**临界**（跨出带）还是**非临界**（带内推进）。
+ */
+export interface SubstatContinuousOutput {
+  /** 主评分冻结的失衡次数（= 0 词条基线的交付次数） */
+  frozenStunCount: number
+  /** 主评分冻结的末窗截短 δ（秒） */
+  frozenClipSeconds: number
+  /** 主评分冻结的易伤覆盖率（两帧逐位相同 ⇒ 「失衡不变」成立） */
+  frozenCoverage: number
+  /** 当前帧自由收敛的末窗截短 δ（秒） */
+  freeClipSeconds: number
+  /** 当前帧自由收敛的易伤覆盖率 */
+  freeCoverage: number
+  /** δ 的推进（秒）= 冻结值 − 自由值；> 0 = 词条把末窗填得更满 */
+  clipDeltaSeconds: number
+  /** 带内推进比例（−1..1）= clipDeltaSeconds / 窗长 */
+  bandAdvance: number
+  /** 是否跨出「带」：基线末窗被截短（δ>0）而当前帧不再截短（δ≤0）⇒ **临界**已被跨过 */
+  crossedCritical: boolean
+  /** 连续失衡贡献（= 自由口径 − 主评分），百分点 */
+  gainPct: number
+  /** 同上，该角色「当前配置下的个人伤害」口径 */
+  ownGainPct: number
+}
+
 export interface SubstatStunOutput {
   /** 词条把失衡次数抬高了几次（0 = 没跨阈值；负值 = 反而少了，理论上不该出现但如实报） */
   stunCountDelta: number
@@ -123,6 +157,8 @@ export interface SubstatStunOutput {
   zeroTotalStunBuildUp: number
   /** 当前配装的失衡总量 */
   currentTotalStunBuildUp: number
+  /** 连续失衡侧读数（冻结在哪、推进了多少、是否临界） */
+  continuous: SubstatContinuousOutput
 }
 
 export interface SubstatScoreResult {
@@ -161,6 +197,9 @@ export interface SubstatScoreResult {
   /**
    * **击破侧的收益**（用户口径 2026-10-23：「除了说总伤提升外，还可以说失衡总量增加了多少」）。
    *
+   * ⚠ 2026-11-09 起：主评分的「锁」已扩成「冻结整个失衡状态」（次数 + 末窗截短 δ，见 `continuous`）；
+   * 本条只保留**自由口径那一侧**的读数（失衡总量 / 覆盖 / 次数变化），供展示层解释差额。
+   *
    * 旧口径的陷阱：`critRate` 越过阈值会让失衡次数 3→4，那一步伤害跳 **5.39M（73 倍）**，
    * 而那 5.39M 里词条本身只有 ~0.074M、其余全是「多了一次失衡」的整窗易伤——
    * 这是**离散产物**，不是词条属性，混进评分会把 89% 的分数记给一个偶然跳变
@@ -193,10 +232,17 @@ function discStepOf(stat: string): number {
   return rules?.driveDisc.sRankSubStatBaseStep[stat] ?? 0
 }
 
+const ZERO_CONTINUOUS: SubstatContinuousOutput = {
+  frozenStunCount: -1, frozenClipSeconds: 0, frozenCoverage: 0,
+  freeClipSeconds: 0, freeCoverage: 0, clipDeltaSeconds: 0, bandAdvance: 0,
+  crossedCritical: false, gainPct: 0, ownGainPct: 0,
+}
+
 const ZERO_STUN_OUTPUT: SubstatStunOutput = {
   stunCountDelta: 0, totalStunBuildUpDelta: 0, totalStunBuildUpPct: 0, coverageDeltaPct: 0,
   freeformGainPct: 0, freeformOwnGainPct: 0, jumpGainPct: 0, jumpOwnGainPct: 0,
   zeroTotalStunBuildUp: 0, currentTotalStunBuildUp: 0,
+  continuous: ZERO_CONTINUOUS,
 }
 
 const yieldToMacrotask = () => new Promise<void>(resolve => setTimeout(resolve, 0))
@@ -294,6 +340,8 @@ export async function scoreSubstats(
   const { config, calc } = scenario
   const original = config.team.map(c => ({ ...c.driveDisc.subStatAllocation }))
   const originalLock = config.enemy.stunCountLock
+  /** 冻结失衡状态用的 δ（场景内临时设，finally 还原；声明在 try 外，finally 才看得到） */
+  const originalClipLock = config.enemy.stunClipLock
   const slot = typeof opts.slot === 'number' ? opts.slot : null
   const slots = slot === null ? config.team.map((_, i) => i) : [slot]
   /** 一次求值同时读「全队」与「该槽自身」（同一份 `damagePoolRows`，零额外成本） */
@@ -369,6 +417,8 @@ export async function scoreSubstats(
     const zeroFree = read()
     const zeroFreeAxis = readAxis()
     const zeroStunBuildUp = calc.stunPoolResult.value?.totalStunBuildUp ?? 0
+    /** 0 词条帧的末窗截短 δ —— 主评分要冻结的失衡状态就是这个 (次数, δ) */
+    const zeroFreeClip = calc.resourceResult.value?.convergence.stunContinuityClip ?? 0
     for (let i = 0; i < config.team.length; i++) {
       const c = config.team[i]
       if (c) c.driveDisc.subStatAllocation = { ...original[i] }
@@ -376,12 +426,24 @@ export async function scoreSubstats(
     const currentFree = read()
     const currentFreeAxis = readAxis()
     const currentStunBuildUp = calc.stunPoolResult.value?.totalStunBuildUp ?? 0
+    /** 当前帧自由收敛的末窗截短 δ（用来判断「连续失衡推进了多少 / 有没有跨出带」） */
+    const currentFreeClip = calc.resourceResult.value?.convergence.stunContinuityClip ?? 0
     if (!(zeroFree.team > 0)) return fail('0 副词条时队伍总伤为 0：增益百分比没有分母', zeroFreeAxis, currentFreeAxis)
     // 锁定失衡次数 = 0 词条基线的收敛次数（≥0 才生效；-1 = 基线本身没算出次数，退回自由口径）
     const lockValue = zeroFreeAxis.stunCount
     const originalLock = config.enemy.stunCountLock
     const canLock = lockValue >= 0
-    if (canLock) config.enemy.stunCountLock = lockValue
+    if (canLock) {
+      config.enemy.stunCountLock = lockValue
+      /**
+       * ★ **把 δ 一起钉住**（2026-11-09 用户裁决）：只钉次数的话，同一次数下 cont 仍可不同 ⇒
+       * 末窗截短 δ 不同 ⇒ 覆盖率不同 ⇒ 主评分把连续失衡兑现漏进来（实测：
+       * 0 词条帧 δ=16.541s/覆盖率 0.3081、同 K 的 critRate 帧 δ=0/覆盖率 0.4000 ⇒
+       * gainPct 逐位等于 freeformGainPct，锁定成了空操作）。
+       * 冻结到基线实际态（K, δ）⇒ 两帧同一个失衡状态 ⇒ 主评分 = 纯属性收益（静态值）。
+       */
+      config.enemy.stunClipLock = zeroFreeClip
+    }
     setMask(0)
     const zero = read()
     const zeroAxis = readAxis()
@@ -393,12 +455,31 @@ export async function scoreSubstats(
     const currentAxis = readAxis()
     if (!(zero.team > 0)) {
       config.enemy.stunCountLock = originalLock
+      config.enemy.stunClipLock = originalClipLock
       return fail('锁定失衡次数后队伍总伤为 0：增益百分比没有分母', zeroAxis, currentAxis)
     }
     const gainPct = (current.team / zero.team - 1) * 100
     const ownGainPct = zero.own > 0 ? (current.own / zero.own - 1) * 100 : 0
     const freeformGainPct = (currentFree.team / zeroFree.team - 1) * 100
     const freeformOwnGainPct = zeroFree.own > 0 ? (currentFree.own / zeroFree.own - 1) * 100 : 0
+    /**
+     * **连续失衡侧**（用户 2026-11-09：「连续失衡在 6 号冲击盘或者转模影响连续失衡的情况下
+     * 需要额外算一份数据」）：主评分冻结在基线态，词条把它推到哪、推了多少，全部报在这里。
+     */
+    const windowDuration = calc.windowDuration.value
+    const clipDeltaSeconds = zeroFreeClip - currentFreeClip
+    const continuous: SubstatContinuousOutput = {
+      frozenStunCount: zeroAxis.stunCount,
+      frozenClipSeconds: zeroFreeClip,
+      frozenCoverage: zeroAxis.coverage,
+      freeClipSeconds: currentFreeClip,
+      freeCoverage: currentFreeAxis.coverage,
+      clipDeltaSeconds,
+      bandAdvance: windowDuration > 0 ? Math.max(-1, Math.min(1, clipDeltaSeconds / windowDuration)) : 0,
+      crossedCritical: zeroFreeClip > 0 && currentFreeClip <= 0,
+      gainPct: freeformGainPct - gainPct,
+      ownGainPct: freeformOwnGainPct - ownGainPct,
+    }
     const stunOutput: SubstatStunOutput = {
       stunCountDelta: currentFreeAxis.stunCount - zeroFreeAxis.stunCount,
       totalStunBuildUpDelta: currentStunBuildUp - zeroStunBuildUp,
@@ -410,6 +491,7 @@ export async function scoreSubstats(
       jumpOwnGainPct: freeformOwnGainPct - ownGainPct,
       zeroTotalStunBuildUp: zeroStunBuildUp,
       currentTotalStunBuildUp: currentStunBuildUp,
+      continuous,
     }
     const { shap, complete } = await shapleyValues(
       list.length,
@@ -501,8 +583,9 @@ export async function scoreSubstats(
       const c = config.team[i]
       if (c) c.driveDisc.subStatAllocation = { ...original[i] }
     }
-    // 锁定是本次求值的临时状态（与命座提升率同款：只在场景内改，跑完必须还原）
+    // 锁定 + 冻结 δ 都是本次求值的临时状态（与命座提升率同款：只在场景内改，跑完必须还原）
     config.enemy.stunCountLock = originalLock
+    config.enemy.stunClipLock = originalClipLock
   }
 }
 

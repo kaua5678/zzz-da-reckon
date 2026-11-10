@@ -118,6 +118,12 @@ export interface EnemyConfig {
   invincibleTime: number   // boss无敌时间（仅用于 DoT 扣减）
   battleTime: number       // 总战斗时间（秒，默认180）
   stunCountLock: number    // 锁定失衡次数（-1 = 正常收敛；命座对比固定场景用）
+  /**
+   * 冻结失衡状态时钉住的末窗截短 δ（秒，缺省 undefined = 不钉）。
+   * 与 stunCountLock 配套：次数相同但 cont 不同时，靠它把易伤覆盖率一起冻住。
+   * 只由分析器（副词条评分）在**场景内**临时设置，跑完还原；不是用户配置项。
+   */
+  stunClipLock?: number
   /** 敌方体型：影响体型相关招式倍率（如艾莲霜锋剑气 0/3/6 段） */
   bodySize: 'small' | 'medium' | 'large'
   /** 伤害抗性：用于直伤、异常伤害、紊乱/乱流结算 */

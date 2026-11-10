@@ -518,6 +518,19 @@ export interface ResourceCalcConfig {
    * 缺省 undefined ⇒ 逐位不变。
    */
   stunCountLockOverride?: number
+  /**
+   * **冻结失衡状态时钉住的末窗截短 δ（秒）**（2026-11-09，副词条评分口径）。
+   *
+   * 与 enemy.stunCountLock 配套：后者只钉「次数」（floor(cont)），但**同一次数下 cont 可以不同**
+   * ⇒ 末窗截短 δ 不同 ⇒ 易伤覆盖率不同 ⇒ 「在同样的失衡次数下这些词条值多少」这个前提在
+   * cont 维度上不成立（实测：0 词条帧 cont 3.46873 / δ 16.541s / 覆盖率 0.3081，
+   * 而同 K 的 critRate 帧 cont 4.08176 / δ 0 / 覆盖率 0.4000 ⇒ 主评分逐位等于自由口径）。
+   *
+   * 置值为「0 词条基线的 δ」⇒ 两帧用**同一个失衡状态**求值 ⇒ 主评分退化成纯属性收益。
+   * 缺省 undefined ⇒ 逐位不变（生产路径不受影响）。
+   * 只在分析器（scoreSubstats）里设，跑完必须还原。
+   */
+  stunClipLock?: number
   /** 失衡次数输入（连携次数 = chainCountPerStun × stunCount）；由外部失衡池不动点收敛后回填 */
   stunCount?: number
   /**

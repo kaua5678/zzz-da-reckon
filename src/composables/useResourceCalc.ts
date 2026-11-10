@@ -176,6 +176,8 @@ export function createResourceCalc(
       bossStunValue: configStore.enemy.stunValue,
       shieldCount: configStore.enemy.shieldCount,
       energyShieldCount: configStore.enemy.energyShield,
+      // 冻结失衡状态（副词条评分）：与 enemy.stunCountLock 配套，把末窗截短 δ 一并钉住 ⇒ 覆盖率同源
+      stunClipLock: configStore.enemy.stunClipLock,
       maxIterations: INNER_LOOP_MAX_ITERATIONS,
       // 失衡计划值 → 计数的投影方式（C7 实验开关，默认 off = 现行口径；见 core/stunPlanProjection.ts）
       // CC-151（第 175 轮）：锁定失衡次数（`enemy.stunCountLock ≥ 0`，命座对比「操作够就能打 N 次」口径）时，physical 投影
