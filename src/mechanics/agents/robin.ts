@@ -13,7 +13,7 @@ import { collectTeamMaimCount } from '@/mechanics/gashMaim'
 import { getRowValue } from '@/data/moveTableQueries'
 import { effectiveCombatTime } from '@/core/effectiveTime'
 import { outOfCombatStat } from '@/mechanics/initialStat'
-import { moduleExecRow, RECOVERY_OFF } from '@/mechanics/moduleExecRow'
+import { moduleExecRow, RECOVERY_OFF, ENERGY_RECOVERY_OFF } from '@/mechanics/moduleExecRow'
 import { panelOfSlot } from '@/core/sourcePanels'
 import { applyStat } from '@/core/buff'
 import { mechanicSettingPanelReader } from '@/utils/mechanicSettingCfg'
@@ -238,6 +238,10 @@ function buildRobinCharConfig({ cfg, skills, cinemaLevel }: AgentCharConfigInput
   // 1661019 表值（不带 override ⇒ 由引擎按 fusedOf 回填也行，但显式预存让「表值变了」可见）
   cfg.robinCornerAssistDamage = getRowValue(all.find(m => m.id === '1661019'), 'damage')
   cfg.robinCornerAssistDaze = getRowValue(all.find(m => m.id === '1661019'), 'daze')
+  // 1661004「特殊技：万籁与我同歌」表值（连携招架后自动释放那一行的载体）
+  cfg.robinSpecialDamage = getRowValue(all.find(m => m.id === '1661004'), 'damage')
+  cfg.robinSpecialDaze = getRowValue(all.find(m => m.id === '1661004'), 'daze')
+  cfg.robinSpecialDecibel = getRowValue(all.find(m => m.id === '1661004'), 'decibel_recovery')
 }
 
 /** 资源结算读数（展示用）：登场技次数 + 重音节拍稳态。与 buildExecutions 同源调 solveRobinEntry。 */
@@ -414,6 +418,39 @@ function buildRobinExecutions({ cfg, state, executions, teamFrontlineSeconds }: 
       autoSplitByStun: true,
       ...(cinema >= 6 ? { critRateBonus: Math.max(0, 100 - Number(panel.critRate)) } : {}),
       skillTableNote: `升级 = 能量 ≥${ROBIN_REINFORCED_ENERGY_COST}（耗 ${ROBIN_REINFORCED_ENERGY_COST}）${cinema >= 4 ? ' 或影画4 每 60s 保底' : ''}；生命值附加 = maxHP × ${Math.round(hpRate * 100)}%${cinema >= 6 ? '；影画6 必定暴击' : ''}`,
+    }))
+  }
+  /**
+   * 特殊技：万籁与我同歌（1661004）——**[连携招架]后自动释放**（3.4.3 描述层新增句）：
+   * > 「成功[连携招架]时发动[支援突击]后，若知更鸟不为当前操作角色则自动释放[特殊技：万籁与我同歌]」
+   *
+   * 触发次数 = **Boss 的 x 弹次数**（`cfg.bossXParryTotal` = Boss 预设 `defaults.xParryTotal`）。
+   * 用户口径 2026-11-10 逐字：「x 弹必须是 **boss 身上**有的，普通的交替弹不会有。这个计数器只能去
+   * boss 身上取这个次数，**其他地方不会产**。角色读了 boss x 弹相当于转化为普通弹刀进行方便计算」
+   * ⇒ 不要拿队友 `parryCount` 顶替（那是普通弹刀，不是 x 弹；第一版正是这么写错的）。
+   *
+   * ⚠ 时间口径：timeBucket = backstage、不占前台——原文是「自动释放」，玩家不做这个动作；
+   *   与 1661005/1661006 后台行同一取向（用户 2026-11-09「后台的强特不耗时但是能打」）。
+   *   与 1661019 的区别：那一行连表值时间都是 0（新包归零），本行表值有 1.208s，是我们主动判成后台。
+   * ⚠ 「若知更鸟不为当前操作角色」这条前置**未单独判定**（近似）：她是辅助、默认不在前台。
+   *   若用户把她当主 C 操作，这一条会多算 —— 引擎目前没有「本槽是否前台操作位」的稳定信号。
+   */
+  const xParryCount = Math.max(0, Math.floor(Number(cfg.bossXParryTotal ?? 0)))
+  if (xParryCount > 0) {
+    const specialDecibel = Number(cfg.robinSpecialDecibel ?? 0)
+    executions.push(moduleExecRow({
+      moveId: '1661004',
+      moveName: '特殊技：万籁与我同歌（连携招架后自动释放）',
+      category: 'special',
+      count: xParryCount,
+      damageMultiplier: Number(cfg.robinSpecialDamage ?? 0),
+      dazeMultiplier: Number(cfg.robinSpecialDaze ?? 0),
+      decibelRecovery: specialDecibel,
+      totalDecibelRecovery: xParryCount * specialDecibel,
+      ...ENERGY_RECOVERY_OFF,
+      timeBucket: 'backstage',
+      autoSplitByStun: true,
+      skillTableNote: `触发 = Boss x 弹次数（连携招架）${xParryCount}；自动释放、不占前台`,
     }))
   }
   // 支援突击·完美节拍（1661019）：**队友**发动反制支援且完美反制时自动发动。
@@ -594,6 +631,10 @@ declare module '@/types/resource/config' {
     /** 支援突击·完美节拍表值（1661019 damage / daze） */
     robinCornerAssistDamage?: number
     robinCornerAssistDaze?: number
+    /** 特殊技：万籁与我同歌 1661004 表值（buildCharConfig 预存；连携招架自动释放那一行用） */
+    robinSpecialDamage?: number
+    robinSpecialDaze?: number
+    robinSpecialDecibel?: number
   }
 }
 

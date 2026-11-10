@@ -759,6 +759,13 @@ export function createRunCalcRound(deps: {
       // 支援突击/喧响/失衡都算两人的（双方 parryCount 各 +xParryTotal），
       // 前台时间只计一份：非主弹窗位（主C 槽）的 x 次弹刀行时间豁免（cfg.parryTimeFreeCount）。
       const xParryTotal = configStore.appliedBoss?.xParryTotal ?? 0
+      /**
+       * **x 弹（连携招架）次数 = Boss 事实**（用户 2026-11-10 口径：「x 弹必须是 boss 身上有的，
+       * 普通的交替弹不会有。这个计数器只能去 boss 身上取这个次数，其他地方不会产」）。
+       * 写进每个槽的 cfg（不是角色分支，是 Boss 事实的透传），供需要它的模块读
+       * （知更鸟 1661004「连携招架后自动释放万籁与我同歌」）。
+       */
+      merged.bossXParryTotal = xParryTotal
       if (xParryTotal > 0 && parrySplitActive && (breakerSlot >= 0 || noBreakerFallback)) {
         if (cfg.slot === effectiveBreakerSlot) {
           merged.parryCount = merged.parryCount + xParryTotal
