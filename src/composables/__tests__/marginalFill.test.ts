@@ -32,18 +32,19 @@ import { useConfigStore } from '@/stores/config'
 import { useCatalogStore } from '@/stores/catalog'
 import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { buildTeamTimeSummary } from '@/composables/teamTimeSummary'
+import { setPendingFillSeed } from '@/composables/resourceCalc/convergence'
 
 /**
- * **有富余的队**（留白 > 1s 且搜索真的跑了候选）。
+ * **有富余的队**（留白 > 1s 且搜索真的跑了候选）：`auto-1051-1481-1451`。
+ * 基线（2026-11-11 修 `computeWithFillUncached` 候选入口后实测）：留白 4.46s → 1.87s，refund 0.69s。
  *
- * 2026-11-11 换夹具：原 `auto-1051-1481-1451` 在 `stable-band-reds` 合并 master 后**合法地**不再被填 ——
- * 该队候选（seed 0.69）的填充会把池压到 2 窗（`baseStun 3 → candStun 2`），护栏按用户口径
- * 「宁可留白也不退步」拒掉，落点回到 4.5s。这是**护栏正确工作**，不是回归：
- * 全库 102 队对拍 master `2fa1ea1c` 与合并树，填充队集 11 → 10，差值**恰好只有这一队**，
- * 其余 101 队逐位相同（slack 合计 48.48 vs 50.34）。
- * ⇒ 判据要的「有富余的队真的被填」换到仍被填的 `auto-1591-1481-1211`（实测 1.41s → 0.71s，refund 0.61s）。
+ * ⚠ 这一支曾是「合并后不再被填」的那一支。根因不是护栏误判，而是候选帧算错了：
+ * 旧实现给候选另造一份 `{...base, characters: 深拷贝}` 送给 `computeCalcOutput`，而
+ * `runCalcRound` 读的是 `resourceConfig.value`（另一个对象）⇒ 候选帧的毛失衡值少算 428 点，
+ * 恰好把这支**余量为 0** 的队伍（有效失衡值 = 3×阈值，一分不多）从 3 窗翻成 2 窗，于是被拒。
+ * 修好后它与干净求值逐位一致，正常被填。判据见本文件 ⑤（候选 ≡ 冷求值）。
  */
-const FILLED_TEAM = ['1591', '1481', '1211']
+const FILLED_TEAM = ['1051', '1481', '1451']
 /**
  * **候选数 = 2 的夹具**：`auto-1521-1461-1311`。
  * 留白 3.47s > 2s ⇒ 走 `{0.6, 1}` 两档 ⇒ 每次冷求值跑 2 个候选（「2,0,0」判据要的正是 2）。
@@ -54,8 +55,15 @@ const TWO_CANDIDATE_TEAM = ['1521', '1461', '1311']
  * 所以「改一个输入 ⇒ miss」量到的确实是填充缓存这一层）。
  */
 const CHEAP_TEAM = ['1591', '1161', '1211']
-/** 会掉失衡次数的队（任何填充档都把失衡 3→2 并砍 10s+ 招式 ⇒ 护栏拒） */
-const REJECTED_TEAM = ['1601', '1621', '1661']
+/**
+ * **会掉失衡次数的队**：`auto-1531-1481-1451`（留白 5.13s > 1s ⇒ 搜索真的跑候选）。
+ *
+ * 2026-11-11 换夹具：原 `1601/1621/1661`（sunbringer-roxy-robin）在候选入口修好后**不再掉窗** ——
+ * 实测两档候选都保持 3 窗（slack 6.25 / 7.34，零截断），只是「留白没变小」⇒ 被 idle 门拒。
+ * 那已经不属于本条判据要表达的「砍招式换留白」，故换到仍被 stun 门拒的那一支：
+ * 实测两档候选都把失衡压到 2 窗（seed 3.08 / 5.13 各报一次）⇒ 护栏按「宁可留白也不退步」拒。
+ */
+const REJECTED_TEAM = ['1531', '1481', '1451']
 
 async function measure(team: string[]) {
   await setupHarness(['', '', ''])
@@ -115,9 +123,49 @@ describe('边际填充搜索', () => {
   it('② 会掉失衡次数的队一律不填（护栏生效）', async () => {
     const b = await measure(REJECTED_TEAM)
     expect(b.stun, '失衡次数必须保持 3（填充会把池压到 2）').toBe(3)
-    expect(b.slack, '体检不过就必须原样留白（宁可留白，不退步）').toBeGreaterThan(10)
+    // 阈值随夹具：原夹具 slack 11.93，现夹具基线 5.1（timeFillRatchet 同源）⇒ 断言「留白原样保留」。
+    expect(b.slack, '体检不过就必须原样留白（宁可留白，不退步）').toBeGreaterThan(5)
     expect(b.refund, '被拒时不许留下填充量').toBe(0)
   }, 120_000)
+
+  /**
+   * ⑤ **候选帧 ≡ 干净求值**（2026-11-11，本卡回归护栏）。
+   *
+   * 用户口径「任何队伍都不留白」的实现前提是：填充搜索拿到的候选帧必须**就是**玩家真打出来的那一帧。
+   * 旧实现给候选另造一份 `{...base, characters: 深拷贝}`，而引擎读的是 `resourceConfig.value` ⇒
+   * 两份对象分叉，实测同一 seed 的毛失衡值差 428 点（62060 vs 62488），把一支余量为 0 的队从 3 窗翻成 2 窗。
+   *
+   * 判据：把「搜索最终采用的 seed」直接喂给一次**全新求值**，读数必须与搜索交付的帧逐位相同。
+   */
+  it('⑤ 候选帧 ≡ 干净求值（同一 seed 逐位相同）', async () => {
+    const filled = await measure(FILLED_TEAM)
+    expect(filled.refund, '前置：这支队伍必须真的被填过（否则本条退化成比两次基线）').toBeGreaterThan(0)
+    // 由交付帧反推搜索采用的 seed：refund 就是注入量。
+    await setupHarness(['', '', ''])
+    const config = useConfigStore()
+    for (let i = 0; i < 3; i++) config.setAgent(i, FILLED_TEAM[i])
+    setCalcOutputMemoEnabled(false)
+    setPendingFillSeed(filled.refund)
+    let clean: { slack: number; stun: number; dmg: number; gross: number }
+    try {
+      const calc = useResourceCalc()
+      const rr = calc.resourceResult.value!
+      const p = calc.stunPoolResult.value!
+      const t = buildTeamTimeSummary({
+        rr, battleTime: rr.totalTime,
+        invincibleTime: config.enemy.invincibleTime ?? 0,
+        nameOf: (_a, slot) => '槽' + slot,
+      })
+      clean = { slack: t.slack, stun: p.stunCount, dmg: calc.teamTotalDamage.value, gross: p.grossStunBuildUp }
+    } finally {
+      setPendingFillSeed(null)
+    }
+    const basePool = filled.calc.stunPoolResult.value!
+    expect(clean.stun, '失衡次数必须与候选帧一致').toBe(basePool.stunCount)
+    expect(clean.gross, '毛失衡值必须逐位一致（本条就是 428 点假分歧的护栏）').toBe(basePool.grossStunBuildUp)
+    expect(clean.slack, '留白必须逐位一致').toBe(filled.slack)
+    expect(clean.dmg, '伤害必须逐位一致').toBe(filled.calc.teamTotalDamage.value)
+  }, 300_000)
 })
 
 describe('边际填充搜索 · 跨渲染缓存', () => {

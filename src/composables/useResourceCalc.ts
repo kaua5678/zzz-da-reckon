@@ -444,18 +444,28 @@ export function createResourceCalc(
     let bestIdle = idle
     for (const frac of fractions) {
       const seed = idle * frac
-      // 候选跑在**深拷贝**的 cfg 上：引擎会往 character 配置里写相位/记录，共享引用会把候选的写回漏给基线。
-      const clone: ResourceCalcConfig = {
-        ...base,
-        characters: JSON.parse(JSON.stringify(base.characters)),
-        timeBudgetRefundSeed: seed,
-      }
-      // 种子必须走 `setPendingFillSeed`：runCalcRound 读的是 resourceConfig.value，不认入参里的字段。
+      /**
+       * ⚠ **候选必须走与真实求值同一条入口**（2026-11-11，实测归因）。
+       *
+       * 旧写法在这里另造一份 `{...base, characters: 深拷贝, timeBudgetRefundSeed: seed}` 传给
+       * `computeCalcOutput`。但 `runCalcRound` 读的是 `resourceConfig.value`（composable 的 computed），
+       * **不是** solveTeam 的入参 —— 于是「外层深拷贝」与「引擎实际读的那份」是两个不同对象：
+       * 引擎看到的 characters 是原件，而 solveTeam 拿到的标量/引用来自拷贝。
+       * 实测后果（`auto-1051-1481-1451`，seed 0.69）：候选帧读出 gross=62060 / 失衡 2 窗，
+       * 而同一份输入走干净求值是 gross=62488 / 3 窗 —— 428 点毛失衡值的假分歧，
+       * 恰好够把一支「余量为 0」的队伍从 3 窗翻到 2 窗，于是护栏按「宁可留白也不退步」拒填。
+       *
+       * 修法：**不再另造 cfg**。种子本来就有专用通道（`convergence#setPendingFillSeed`），
+       * 而 `runCalcRound` 在种子存在时**自己**会深拷贝 characters（那一层才是引擎真正读的、
+       * 也是真正需要隔离相位/记录写回的那一层）⇒ 这里传 `base` 本身就是「与真实求值同一条入口」。
+       *
+       * 判据：`marginalFill` 的「同一 seed，冷求值 ≡ 候选求值」逐位相同。
+       */
       setPendingFillSeed(seed)
       let cand: CalcRoundResult
       fillCacheStats.candidates++
       try {
-        cand = computeCalcOutput(clone)
+        cand = computeCalcOutput(base)
       } finally {
         setPendingFillSeed(null)
       }
@@ -463,15 +473,15 @@ export function createResourceCalc(
       if (!candRr) continue
       const candIdle = candRr.convergence.timeBudgetIdleSeconds
       const candCut = candRr.overflowSeconds ?? 0
-      if (candCut > baseCut + TIME_BUDGET_TOLERANCE_SECONDS) continue
-      if (cand.stunPool.stunCount < baseStun) continue
+      if (candCut > baseCut + TIME_BUDGET_TOLERANCE_SECONDS) { console.log('[REJ] cut ' + candCut.toFixed(2) + '>' + baseCut.toFixed(2) + ' seed=' + seed.toFixed(2)); continue }
+      if (cand.stunPool.stunCount < baseStun) { console.log('[REJ] stun ' + cand.stunPool.stunCount + '<' + baseStun + ' seed=' + seed.toFixed(2)); continue }
       // ⚠ 截断为 0 ≠ 没超预算：装配截断只削招式行，物化净占用仍可能 > 预算（实测 4 支队 over 0→0.1~2.1）。
       // 超预算是被轴退化/降配/队伍对比消费的硬不变量，候选一并拒掉。
       const candNet = netFrontlineOccupation(candRr)
       const candBudget = candRr.totalTime - configStore.enemy.invincibleTime
       // 零容差（只留浮点余量）：棘轮的自洽断言按零容差比对 `over`，1s 容差会把 0.1~0.4s 的超预算放过去。
-      if (candNet > candBudget + 1e-3) continue
-      if (!(candIdle < bestIdle - 0.1)) continue
+      if (candNet > candBudget + 1e-3) { console.log('[REJ] over seed=' + seed.toFixed(2)); continue }
+      if (!(candIdle < bestIdle - 0.1)) { console.log('[REJ] idle ' + candIdle.toFixed(2) + '>=' + bestIdle.toFixed(2)); continue }
       best = cand
       bestIdle = candIdle
     }

@@ -80,7 +80,7 @@
   "outerExit": "stable"
  },
  "auto-1051-1481-1451": {
-  "slack": 4.5,
+  "slack": 1.9,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
@@ -500,10 +500,10 @@
   "outerExit": "stable"
  },
  "banyue-roxy-lucia": {
-  "slack": 0.4,
+  "slack": 0.5,
   "over": 0,
   "stun": 2,
-  "outerExit": "cycle"
+  "outerExit": "stable"
  },
  "banyue-trigger-lucia": {
   "slack": 0,
@@ -560,7 +560,7 @@
   "outerExit": "stable"
  },
  "sunbringer-roxy-robin": {
-  "slack": 12,
+  "slack": 4.5,
   "over": 0,
   "stun": 3,
   "outerExit": "stable"
