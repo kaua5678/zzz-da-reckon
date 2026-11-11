@@ -121,12 +121,12 @@
         "type": "luminize",
         "label": "蕾米虚耀池",
         "source": "其他队友异常触发",
-        "count": 15,
+        "count": 14,
         "formula": "voidflareTotal = Σ perSlotAnomalyTriggers[非蕾米槽位]",
         "fields": [
           "AnomalyPoolResult.perSlotAnomalyTriggers",
           "蕾米槽位",
-          ":0 / 1501:15"
+          ":0 / 1501:14"
         ],
         "note": "每个虚耀记录触发队友的攻击/精通/增伤/穿透/抗性区；异化区统一取蕾米面板。"
       },
@@ -135,7 +135,7 @@
         "type": "luminize",
         "label": "支援技花羽轮舞·耀变",
         "source": "不消耗虚耀（换入时自动发动）",
-        "count": 15,
+        "count": 12,
         "formula": "count = 轮数 × 已储存虚曜数（每轮换入结算一次，最多 3 个）",
         "fields": [
           "voidflareTotal",
@@ -149,7 +149,7 @@
         "type": "luminize",
         "label": "终结技缭乱终幕·耀变",
         "source": "不消耗虚耀，每轮一次（有大招才结算）",
-        "count": 15,
+        "count": 12,
         "formula": "count = 轮数 × 已储存虚曜数；伤害行再按本轮实际大招次数封顶（来源由用户选择1号队友0-3、2号队友3-0）",
         "fields": [
           "voidflareTotal",
@@ -162,7 +162,7 @@
         "type": "luminize",
         "label": "普通攻击惊鸿·耀变",
         "source": "消耗并清空虚耀",
-        "count": 15,
+        "count": 12,
         "formula": "count = 轮数 × 已储存虚曜数 × 1",
         "fields": [
           "voidflareTotal",

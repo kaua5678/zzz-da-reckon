@@ -556,12 +556,14 @@ function robinNextRoundFeedback({ adjustedResult }: AgentNextRoundFeedbackInput)
  * @fact agent:1661/毁伤回能·滞后读数 口径: 「每毁伤回 15 能量」的明细按**本局最终毁伤次数**绝对重写（停点后回填，不参与收敛）；外层停点在环上时明细与总能量必须与本局实际次数一致，不许留「按上一轮 28 次记、结果只有 26 次」的自相矛盾 | 据 用户@2026-11-10「鸟回复15能量…明细 420 而全队毁伤 26 次」 | 验 src/mechanics/__tests__/robinMaimEnergy.test.ts | 锚 src/mechanics/agents/robin.ts#patchRobinTeamReadouts | 信 确认
  * ⟳复核: 若残痕/毁伤次数改走当轮通道（不再滞后一轮），本回填应随之下线 | 到期 2027-06-30
  */
-function patchRobinTeamReadouts({ characters }: { characters: CharacterResourceResult[] }): void {
-  const self = characters.find(c => c.agentId === ROBIN_AGENT_ID)
+function patchRobinTeamReadouts({ characters: rows }: { characters: CharacterResourceResult[] }): void {
+  // 入参是**结果行**集合（`CharacterResourceResult[]`），不是派发器给的 cfg ⇒ 按 agentId 定位本人那行是合法用法
+  // （CC-383 只锁「模块在 cfg 集合里自找/自证在队」；结果行集合写明在它的豁免清单里）。重命名让「这是结果行」显式。
+  const self = rows.find(c => c.agentId === ROBIN_AGENT_ID)
   if (!self) return
   const entry = self.energySource.bonusEntries.find(e => e.key === 'teamMaimEnergy')
   if (!entry) return
-  const count = collectTeamMaimCount(characters)
+  const count = collectTeamMaimCount(rows)
   const value = count * ROBIN_MAIM_ENERGY_PER_TRIGGER
   if (value === entry.value) return
   self.energySource.total += value - entry.value

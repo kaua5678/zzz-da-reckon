@@ -34,10 +34,16 @@ import { netFrontlineOccupation } from '@/core/resource/timeOccupation'
 import { buildTeamTimeSummary } from '@/composables/teamTimeSummary'
 
 /**
- * **有富余的队**（留白 > 1s 且搜索真的跑了候选）：`auto-1051-1481-1451`。
- * 基线（2026-11-10 HEAD 实测）：留白 4.5s → 填充后 2.60s，refund 0.69s。
+ * **有富余的队**（留白 > 1s 且搜索真的跑了候选）。
+ *
+ * 2026-11-11 换夹具：原 `auto-1051-1481-1451` 在 `stable-band-reds` 合并 master 后**合法地**不再被填 ——
+ * 该队候选（seed 0.69）的填充会把池压到 2 窗（`baseStun 3 → candStun 2`），护栏按用户口径
+ * 「宁可留白也不退步」拒掉，落点回到 4.5s。这是**护栏正确工作**，不是回归：
+ * 全库 102 队对拍 master `2fa1ea1c` 与合并树，填充队集 11 → 10，差值**恰好只有这一队**，
+ * 其余 101 队逐位相同（slack 合计 48.48 vs 50.34）。
+ * ⇒ 判据要的「有富余的队真的被填」换到仍被填的 `auto-1591-1481-1211`（实测 1.41s → 0.71s，refund 0.61s）。
  */
-const FILLED_TEAM = ['1051', '1481', '1451']
+const FILLED_TEAM = ['1591', '1481', '1211']
 /**
  * **候选数 = 2 的夹具**：`auto-1521-1461-1311`。
  * 留白 3.47s > 2s ⇒ 走 `{0.6, 1}` 两档 ⇒ 每次冷求值跑 2 个候选（「2,0,0」判据要的正是 2）。

@@ -244,6 +244,22 @@ declare module '@/types/resource/agentResources' {
   }
 }
 
+/**
+ * D2（CC-359/360）：本模块自产自读的跨轮反馈键（`nextRoundFeedback` 产出、下一轮本模块读回），声明随模块走，不堆在 `mechanics/types.ts`。
+ * 仍是 `ModuleFeedback` 的成员（模块扩充，纯类型、零运行时）；被第二处引用时请迁回公共接口。
+ */
+declare module '@/mechanics/types' {
+  interface ModuleFeedback {
+    /**
+     * 队友锋御的[毁伤]累计倍率（挽昼烬痕 35% 那条来源的跨槽输入，2026-11-10）。
+     * 生产方 = 本文件 `sunbringerNextRoundFeedback`（`collectTeamMaimMultiplier`）；
+     * 消费方 = `applySunbringerTeamConfig`（converge）→ `cfg.sunbringerTeammateMaimMultiplier` → `computeEmberScar`。
+     * 是**有限数值** ⇒ 会被 `outerCycle#moduleFeedbackSignature` 自动纳入收敛签名，不必另开序列化。
+     */
+    sunbringerTeamMaimMultiplier?: number
+  }
+}
+
 declare module '@/types/resource/config' {
   interface CharacterOperationConfig {
     /** 挽昼招式元数据（本模块私有） */
